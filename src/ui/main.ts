@@ -186,6 +186,14 @@ class App {
   }
 
   private download(): void {
+    if (document.getElementById('app')?.dataset.embed === 'artifact') {
+      const json = JSON.stringify(this.topo.toJSON(), null, 2);
+      navigator.clipboard?.writeText(json).then(
+        () => { this.hintEl.textContent = 'Topología copiada al portapapeles: pégala en un archivo .json para guardarla.'; },
+        () => { this.hintEl.textContent = 'No se pudo copiar. Usa la versión descargable de netsim para guardar archivos.'; },
+      );
+      return;
+    }
     const blob = new Blob([JSON.stringify(this.topo.toJSON(), null, 2)], { type: 'application/json' });
     const a = el('a', { href: URL.createObjectURL(blob), download: 'topologia.netsim.json' });
     document.body.appendChild(a);

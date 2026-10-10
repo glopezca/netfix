@@ -49,21 +49,43 @@ function visit(path, stack) {
 const entry = 'ui/main.js';
 visit(entry, []);
 
-const loader = `
-const sources = ${JSON.stringify(Object.fromEntries(order.map((p) => [p, modules.get(p).source]))).replace(/<\/script/gi, '<\\/script')};
-const order = ${JSON.stringify(order)};
-const urls = {};
-const norm = (base, spec) => { const parts = base.split('/'); parts.pop(); for (const seg of spec.split('/')) { if (seg === '..') parts.pop(); else if (seg !== '.') parts.push(seg); } return parts.join('/'); };
-for (const path of order) {
-  const code = sources[path].replace(${IMPORT_RE.toString()}, (m, kw, q, spec) => kw + q + urls[norm(path, spec)] + q);
-  urls[path] = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+// Classic-script bundle: each module becomes a function scope, run in dependency order.
+function transform(path, source) {
+  const exported = [];
+  let code = source.replace(/^import \{([^}]*)\} from (['"])([^'"]+)\2;?[ \t]*$/gm, (m, names, q, spec) => {
+    const target = posix.normalize(posix.join(posix.dirname(path), spec));
+    return `const {${names.replace(/(\w+)\s+as\s+(\w+)/g, '$1: $2')}} = __m[${JSON.stringify(target)}];`;
+  });
+  code = code.replace(/^export \{([^}]*)\};?[ \t]*$/gm, (m, names) => {
+    for (const n of names.split(',').map((x) => x.trim()).filter(Boolean)) {
+      const [local, as] = n.split(/\s+as\s+/);
+      exported.push(as ? `${as}: ${local}` : local);
+    }
+    return '';
+  });
+  code = code.replace(/^export ((?:async )?(?:function\*?|class|const|let|var) (\w+))/gm, (m, decl, name) => {
+    exported.push(name);
+    return decl;
+  });
+  if (/^(import|export)\s+[{*\w]/m.test(code)) throw new Error(`Unsupported import/export form in ${path}`);
+  return `__m[${JSON.stringify(path)}] = (() => {\n${code}\nreturn { ${exported.join(', ')} };\n})();`;
 }
-import(urls[${JSON.stringify(entry)}]);
-`;
+const bundle = `(() => {\n"use strict";\nconst __m = {};\n${order.map((p) => transform(p, modules.get(p).source)).join('\n')}\n})();`;
+writeFileSync(join(dist, 'netsim.bundle.js'), bundle);
+const inlineScript = bundle.replace(/<\/script/gi, '<\\/script');
 
 const css = readFileSync(join(root, 'src/ui/styles.css'), 'utf8');
 const single = readFileSync(join(root, 'src/ui/index.html'), 'utf8')
   .replace('<link rel="stylesheet" href="styles.css">', () => `<style>\n${css}\n</style>`)
-  .replace('<script type="module" src="js/ui/main.js"></script>', () => `<script type="module">${loader}</script>`);
+  .replace('<script type="module" src="js/ui/main.js"></script>', () => `<script>${inlineScript}</script>`);
 writeFileSync(join(dist, 'netsim.html'), single);
-console.log(`Built ${order.length} modules -> dist/index.html, dist/netsim.html (${Math.round(single.length / 1024)} KiB)`);
+
+// Artifact variant: no document skeleton, title first, embed flag for in-page saving.
+const artifact = single
+  .replace(/^[\s\S]*?<title>/, '<title>')
+  .replace('<title>netsim — laboratorio DHCP</title>', '<title>netsim DHCP Lab</title>')
+  .replace(/<\/head>\s*<body data-mode="realtime">/, '')
+  .replace(/<\/body>\s*<\/html>\s*$/, '')
+  .replace('<div id="app"></div>', '<div id="app" data-embed="artifact"></div>');
+writeFileSync(join(dist, 'artifact.html'), artifact);
+console.log(`Built ${order.length} modules -> dist/index.html, dist/netsim.html (${Math.round(single.length / 1024)} KiB), dist/artifact.html`);
