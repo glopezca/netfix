@@ -19,7 +19,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "build": "node scripts/build.mjs",
     "serve": "node scripts/serve.mjs",
-    "e2e": "node scripts/e2e.mjs",
+    "e2e": "npm run build && node scripts/e2e.mjs",
     "check": "npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
