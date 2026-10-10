@@ -10,6 +10,8 @@ import type { DeviceHooks } from './hooks.ts';
 import { routerModeTable } from '../ios/commands/router-modes.ts';
 import { headerLines, globalIpLines, interfaceSection, trailerLines } from '../ios/runconfig.ts';
 import { formatIp, formatMask } from '../core/ip.ts';
+import { DhcpServer } from '../dhcp/server.ts';
+import { dhcpRunningConfig } from '../dhcp/config-lines.ts';
 
 export const ROUTER_PORTS = ['GigabitEthernet0/0', 'GigabitEthernet0/1', 'GigabitEthernet0/2'] as const;
 
@@ -27,6 +29,7 @@ export class Router extends IosDevice {
   readonly baseMac: string;
   hooks: DeviceHooks = DETACHED;
   staticRoutes: readonly StaticRoute[] = [];
+  dhcp = new DhcpServer();
   private readonly macs = new Map<string, string>();
 
   constructor(hostname = 'Router', clock: SimClock = new SimClock(), seed = 1) {
@@ -48,6 +51,7 @@ export class Router extends IosDevice {
     this.domainName = undefined;
     this.nameServers = [];
     this.staticRoutes = [];
+    this.dhcp = new DhcpServer();
     this.ifaces.clear();
     ROUTER_PORTS.forEach((p, i) => {
       this.addIface(p, { shutdown: true, switchport: false });
@@ -118,7 +122,7 @@ export class Router extends IosDevice {
   runningConfig(): string[] {
     return [
       ...headerLines(this, '15.1'),
-      ...this.extraGlobalLines(),
+      ...dhcpRunningConfig(this.dhcp),
       '!',
       ...globalIpLines(this),
       'ip cef',
@@ -132,11 +136,6 @@ export class Router extends IosDevice {
       'ip flow-export version 9',
       ...trailerLines(this),
     ];
-  }
-
-  /** Extension point for features configured globally (DHCP server...). */
-  protected extraGlobalLines(): string[] {
-    return [];
   }
 }
 

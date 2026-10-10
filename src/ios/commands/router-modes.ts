@@ -7,6 +7,9 @@ import { ROUTER_IF, ROUTER_SUBIF } from './iface.ts';
 import { parseIp, parseMask, networkOf } from '../../core/ip.ts';
 import { parseIfaceName } from '../interfaces.ts';
 import { buildRoutingTable, showIpRoute } from '../../net/routing.ts';
+import { DHCP_GLOBAL } from './dhcp-global.ts';
+import { DHCP_POOL, DHCP_CLASS } from './dhcp-pool.ts';
+import { DHCP_EXEC_USER, DHCP_EXEC_PRIV } from './dhcp-exec.ts';
 
 type Def = CommandDef<Cli<Router>>;
 
@@ -45,11 +48,13 @@ const ROUTER_GLOBAL: readonly Def[] = [
 ];
 
 export const routerModeTable: ModeTable<Router> = {
-  user: [...EXEC_USER],
-  exec: [...EXEC_PRIV, ...ROUTER_EXEC],
-  config: [...GLOBAL, ...ROUTER_GLOBAL],
+  user: [...EXEC_USER, ...DHCP_EXEC_USER],
+  exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV],
+  config: [...GLOBAL, ...ROUTER_GLOBAL, ...DHCP_GLOBAL],
   'config-if': [...ROUTER_IF],
   'config-subif': [...ROUTER_SUBIF],
   'config-if-range': [...ROUTER_IF],
   'config-line': [...LINE_MODE],
+  'dhcp-config': [...DHCP_POOL],
+  'dhcp-class': [...DHCP_CLASS],
 };

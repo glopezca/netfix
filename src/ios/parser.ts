@@ -183,12 +183,15 @@ function insert<C>(root: TrieNode<C>, specs: readonly Spec[], def: CommandDef<C>
   node.terminal = { def, specs };
 }
 
+/** `no` forms accept the keyword prefix and any longer prefix of the full syntax. */
 function noVariants(variants: readonly Spec[][]): Spec[][] {
-  const prefixes = variants.map((v) => {
+  const out: Spec[][] = [];
+  for (const v of variants) {
     const firstParam = v.findIndex((s) => s.kind === 'param');
-    return firstParam === -1 ? v : v.slice(0, firstParam);
-  });
-  return [...variants, ...prefixes.filter((p) => p.length > 0)];
+    const start = firstParam === -1 ? v.length : Math.max(firstParam, 1);
+    for (let len = start; len <= v.length; len++) out.push(v.slice(0, len));
+  }
+  return out;
 }
 
 export function buildTrie<C>(defs: readonly CommandDef<C>[], help: HelpMap, noForm = false): TrieNode<C> {
