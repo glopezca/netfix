@@ -3,6 +3,8 @@
 Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado para practicar
 **DHCP en Cisco IOS** con la sintaxis, la ayuda contextual y las salidas del equipo real.
 
+![Área de trabajo de netsim con el laboratorio «DHCP básico»: Router0 (GW) conectado a Switch0 y a tres PCs, con luces de enlace verdes y la paleta de dispositivos abajo](docs/img/netsim-workspace.png)
+
 - Área de trabajo lógica con routers 2911, switches 2960 y PCs, cables y luces de enlace.
 - CLI de IOS completa para DHCP: pools de red y de host, `client-identifier`,
   `hardware-address`, reservas `address … client-id` / `address … hardware-address`,
