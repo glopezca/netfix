@@ -6,17 +6,18 @@ import { EXEC_USER, EXEC_PRIV, GLOBAL, LINE_MODE } from './common.ts';
 import { ROUTER_IF, ROUTER_SUBIF } from './iface.ts';
 import { parseIp, parseMask, networkOf } from '../../core/ip.ts';
 import { parseIfaceName } from '../interfaces.ts';
-import { buildRoutingTable, showIpRoute } from '../../net/routing.ts';
+import { showIpRoute } from '../../net/routing.ts';
 import { DHCP_GLOBAL } from './dhcp-global.ts';
 import { DHCP_POOL, DHCP_CLASS } from './dhcp-pool.ts';
 import { DHCP_EXEC_USER, DHCP_EXEC_PRIV } from './dhcp-exec.ts';
+import { ROUTER_NET_EXEC, ROUTER_NET_PRIV } from './net-exec.ts';
 
 type Def = CommandDef<Cli<Router>>;
 
 const DEFAULT_STATIC_DISTANCE = 1;
 
 const ROUTER_EXEC: readonly Def[] = [
-  { syntax: 'show ip route', run: (cli) => cli.out(...showIpRoute(buildRoutingTable(cli.device, cli.device.staticRoutes))) },
+  { syntax: 'show ip route', run: (cli) => cli.out(...showIpRoute(cli.device.plane.table())) },
 ];
 
 const ROUTER_GLOBAL: readonly Def[] = [
@@ -48,8 +49,8 @@ const ROUTER_GLOBAL: readonly Def[] = [
 ];
 
 export const routerModeTable: ModeTable<Router> = {
-  user: [...EXEC_USER, ...DHCP_EXEC_USER],
-  exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV],
+  user: [...EXEC_USER, ...DHCP_EXEC_USER, ...ROUTER_NET_EXEC],
+  exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV, ...ROUTER_NET_PRIV],
   config: [...GLOBAL, ...ROUTER_GLOBAL, ...DHCP_GLOBAL],
   'config-if': [...ROUTER_IF],
   'config-subif': [...ROUTER_SUBIF],

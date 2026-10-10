@@ -53,7 +53,7 @@ function isPhysical(name: string): boolean {
   return !isSubinterface(name) && type !== 'Vlan' && type !== 'Loopback';
 }
 
-export function interfaceBlock(cfg: IfaceConfig): string[] {
+export function interfaceBlock(cfg: IfaceConfig, extra: readonly string[] = []): string[] {
   const lines = [`interface ${cfg.name}`];
   if (cfg.description) lines.push(` description ${cfg.description}`);
   if (cfg.encapsulationVlan !== undefined) lines.push(` encapsulation dot1Q ${cfg.encapsulationVlan}`);
@@ -61,7 +61,11 @@ export function interfaceBlock(cfg: IfaceConfig): string[] {
   else lines.push(...addressLines(cfg));
   for (const h of cfg.helpers) lines.push(` ip helper-address ${formatIp(h)}`);
   if (cfg.relayInfoTrusted) lines.push(' ip dhcp relay information trusted');
-  if (isPhysical(cfg.name) && parseIfaceName(cfg.name)?.type !== 'Serial') {
+  lines.push(...extra);
+  if (cfg.switchport) {
+    if (cfg.duplex) lines.push(` duplex ${cfg.duplex}`);
+    if (cfg.speed) lines.push(` speed ${cfg.speed}`);
+  } else if (isPhysical(cfg.name) && parseIfaceName(cfg.name)?.type !== 'Serial') {
     lines.push(` duplex ${cfg.duplex ?? 'auto'}`, ` speed ${cfg.speed ?? 'auto'}`);
   }
   if (cfg.shutdown) lines.push(' shutdown');
@@ -69,10 +73,10 @@ export function interfaceBlock(cfg: IfaceConfig): string[] {
   return lines;
 }
 
-export function interfaceSection(device: IosDevice): string[] {
+export function interfaceSection(device: IosDevice, extra: (name: string) => string[] = () => []): string[] {
   return device.sortedIfaceNames().flatMap((n) => {
     const cfg = device.iface(n);
-    return cfg ? interfaceBlock(cfg) : [];
+    return cfg ? interfaceBlock(cfg, extra(n)) : [];
   });
 }
 

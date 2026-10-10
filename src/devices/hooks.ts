@@ -12,6 +12,10 @@ export interface DeviceHooks {
   schedule(delayMs: number, fn: () => void, label?: string): void;
   /** Network-wide check used by the DHCP server's ping-before-offer. */
   ipInUse(ip: number, exceptDevice: string): boolean;
+  /** Device kind and switchport mode at the far end of a cable (used by DTP). */
+  peerTrunking(port: string): boolean;
+  /** Fast-forwards simulated time until `done()` or `maxMs` (interactive commands). */
+  runUntil(done: () => boolean, maxMs: number): boolean;
 }
 
 export const DETACHED: DeviceHooks = {
@@ -20,6 +24,8 @@ export const DETACHED: DeviceHooks = {
   transmit: () => undefined,
   schedule: () => undefined,
   ipInUse: () => false,
+  runUntil: (done) => done(),
+  peerTrunking: () => false,
 };
 
 /** Adds `n` to the last 24 bits of a MAC (consecutive interface MACs). */

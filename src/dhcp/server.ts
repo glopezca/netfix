@@ -40,6 +40,8 @@ export interface ServerContext {
   readonly now: number;
   ipInUse(ip: number): boolean;
   log(line: string): void;
+  /** `ip dhcp relay information trusted` on the receiving interface. */
+  readonly relayTrusted?: boolean;
 }
 
 export interface ServerReply {
@@ -175,6 +177,11 @@ export class DhcpServer {
     if (!this.serviceEnabled || msg.op !== 'BOOTREQUEST') return null;
     this.expire(ctx.now);
     const type = msg.options.messageType;
+    if (msg.options.relayAgentInfo && msg.giaddr === 0 && !ctx.relayTrusted && !this.relayInfoTrustAll) {
+      this.packetLog(ctx, 'DHCPD: inconsistent relay information.');
+      this.packetLog(ctx, `DHCPD: relay information option exists, but giaddr is zero.`);
+      return null;
+    }
     this.received = bump(this.received, `DHCP${type}` as ReceivedCounter);
     const client = identity(msg);
     this.packetLog(ctx, `DHCPD: DHCP${type} received from client ${client.display}${msg.giaddr ? ` through relay ${formatIp(msg.giaddr)}` : ` on interface ${ctx.ifaceName}`}.`);

@@ -20,6 +20,8 @@ export interface DhcpOptions {
   /** Other options configured with `option <code> …`, rendered as text. */
   readonly extra?: Readonly<Record<number, string>>;
   readonly message?: string;
+  /** Option 82 present (inserted by a snooping switch or relay). */
+  readonly relayAgentInfo?: boolean;
 }
 
 export interface DhcpMessage {
