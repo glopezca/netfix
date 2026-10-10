@@ -79,8 +79,6 @@ const single = readFileSync(join(root, 'src/ui/index.html'), 'utf8')
   .replace('<link rel="stylesheet" href="styles.css">', () => `<style>\n${css}\n</style>`)
   .replace('<script type="module" src="js/ui/main.js"></script>', () => `<script>${inlineScript}</script>`);
 writeFileSync(join(dist, 'netsim.html'), single);
-// Prebuilt copy committed at the repo root: opens directly (Codespaces, GitHub download, file://).
-writeFileSync(join(root, 'netsim.html'), single);
 
 // Artifact variant: no document skeleton, title first, embed flag for in-page saving.
 const artifact = single

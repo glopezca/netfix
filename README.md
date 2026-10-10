@@ -16,30 +16,13 @@ Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado par
 
 ## Uso rápido
 
-[![Abrir en GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/glopezca/netsim?quickstart=1)
-
-El repositorio incluye **`netsim.html`**, la aplicación completa en un único archivo ya
-compilado. No hay que instalar ni desplegar nada:
-
-- **En GitHub Codespaces:** pulsa el botón de arriba. Al abrirse el Codespace, el puerto 8080
-  se abre solo en una pestaña del navegador con netsim funcionando (sirve `netsim.html` tal cual,
-  sin compilar). Si la pestaña no aparece, ve a la vista **Puertos** y abre el 8080, o ejecuta
-  `npm run serve` en la terminal. También puedes hacer clic derecho en `netsim.html` y elegir
-  **Show Preview** (extensión Live Preview, ya incluida en el contenedor).
-- **En tu equipo:** descarga `netsim.html` y ábrelo con doble clic; funciona con `file://` y sin conexión
-  (solo las fuentes tipográficas vienen de Google Fonts y tienen alternativa local).
-
-Para desarrollar:
-
 ```bash
 npm install          # solo instala TypeScript (opcional si ya tienes tsc global)
-npm run build        # dist/ (módulos) y actualiza netsim.html en la raíz
-npm run serve        # http://localhost:8080 (sirve dist/; sin dist/ usa netsim.html)
+npm run build        # dist/index.html + dist/netsim.html (archivo único, funciona sin servidor)
+npm run serve        # http://localhost:8080
 ```
 
-Tras cambiar el código, ejecuta `npm run build` y haz commit de `netsim.html` para que la versión
-precompilada siga al día; el CI avisa si no coincide.
-
+Abre `dist/netsim.html` directamente en el navegador si no quieres servidor.
 El menú **Laboratorios…** carga escenarios ya resueltos:
 
 | Laboratorio | Qué practica |
@@ -142,8 +125,6 @@ npm run typecheck
 npm run e2e            # Playwright sobre dist/ (requiere playwright instalado)
 npm run check          # typecheck + tests + build
 ```
-
-La configuración del Codespace está en `.devcontainer/devcontainer.json` (Node 22, puerto 8080).
 
 ```
 src/core      IP, MAC/client-id, reloj

@@ -17,8 +17,6 @@ jobs:
       - run: npx tsc -p tsconfig.json
       - run: npm run test:coverage
       - run: npx tsc -p tsconfig.build.json && node scripts/build.mjs --skip-tsc
-      - name: Comprobar que netsim.html precompilado está al día
-        run: git diff --quiet -- netsim.html || echo "::warning file=netsim.html::netsim.html no coincide con el build actual; ejecuta npm run build y haz commit."
       - uses: actions/upload-artifact@v4
         with:
           name: netsim-dist
