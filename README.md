@@ -144,4 +144,10 @@ aparecen en `show running-config`, pero no cambian la asignación.
 
 ## Licencia
 
-MIT. Las reglas y agentes de `.claude/` proceden de Everything Claude Code (MIT, © Affaan Mustafa).
+El material original se distribuye bajo
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).
+Autoría: Germán López Castro · <https://github.com/glopezca/netsim>.
+
+Las reglas y agentes de `.claude/` proceden de
+[Everything Claude Code](https://github.com/affaan-m/everything-claude-code) y conservan su
+licencia MIT (© Affaan Mustafa). Detalles y atribución recomendada en [LICENSE.md](LICENSE.md).
