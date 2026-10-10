@@ -145,7 +145,7 @@ function enterClass(cli: Cli<Router>, name: string): void {
 const NODE_TYPES = ['b-node', 'p-node', 'm-node', 'h-node'];
 
 export const DHCP_POOL: readonly Def[] = [
-  { syntax: 'exit', run: (cli) => { cli.session.pool = undefined; cli.session.enterMode('config'); } },
+  { syntax: 'exit', help: { exit: 'Exit from DHCP pool configuration mode' }, run: (cli) => { cli.session.pool = undefined; cli.session.enterMode('config'); } },
   { syntax: 'end', run: (cli) => endConfig(cli) },
   { syntax: 'do <LINE:cmd>', run: (cli, m) => cli.session.runExec(m.get('cmd') ?? '') },
   {
@@ -188,7 +188,7 @@ export const DHCP_POOL: readonly Def[] = [
   setter('bootfile <WORD:file>', (m) => ({ bootfile: m.get('file') }), { bootfile: undefined }, { file: 'Boot file name' }),
   {
     syntax: 'option <0-254:code> [instance <0-255:inst>] {ascii <LINE:text> | hex <LINE:hex> | ip <A.B.C.D...:ips>}',
-    help: { code: 'DHCP option code', inst: 'Instance number', text: 'ASCII string', hex: 'Dotted hexadecimal string', ips: 'Server\'s IP address' },
+    help: { option: 'Raw DHCP options', ascii: 'Data is an NVT ASCII character string', ip: 'Data is one or more IP addresses', code: 'DHCP option code', inst: 'Instance number', text: 'ASCII string', hex: 'Dotted hexadecimal string', ips: 'Server\'s IP address' },
     run: setOption,
     noRun: (cli, m) => {
       const code = Number(m.get('code'));
@@ -200,7 +200,7 @@ export const DHCP_POOL: readonly Def[] = [
   setter('origin {dhcp [<LINE:dhcpopts>] | ipcp | file <WORD:url>}', (m) => ({ origin: originText(m) }), { origin: undefined }),
   setter('import all', () => ({ importAll: true }), { importAll: false }),
   setter('update arp', () => ({ updateArp: true }), { updateArp: false }, { arp: 'Install secure ARP entries' }),
-  setter('renew deny unknown', () => ({ renewDenyUnknown: true }), { renewDenyUnknown: false }),
+  setter('renew deny unknown', () => ({ renewDenyUnknown: true }), { renewDenyUnknown: false }, { renew: 'Configure renewal policy' }),
   {
     syntax: 'utilization mark {high | low} <1-100:pct> [log]',
     help: { pct: 'Utilization percentage', log: 'Enable syslog message' },

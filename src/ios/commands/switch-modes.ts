@@ -2,7 +2,7 @@
 import type { CommandDef } from '../parser.ts';
 import type { Cli, ModeTable } from '../device.ts';
 import type { Switch } from '../../devices/switch.ts';
-import { DEFAULT_VLANS, SWITCH_PORTS } from '../../devices/switch.ts';
+import { DEFAULT_VLANS, SWITCH_PORTS } from '../../devices/switch-ports.ts';
 import { EXEC_USER, EXEC_PRIV, GLOBAL, LINE_MODE, endConfig } from './common.ts';
 import { SWITCH_PORT_IF, SWITCH_IP_IF } from './iface.ts';
 import { iosPing, showArp } from './net-exec.ts';

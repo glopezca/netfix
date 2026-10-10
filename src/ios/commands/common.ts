@@ -83,7 +83,7 @@ export const EXEC_PRIV: readonly Def[] = [
 
 export const GLOBAL: readonly Def[] = [
   { syntax: 'do <LINE:cmd>', run: (cli, m) => cli.session.runExec(m.get('cmd') ?? '') },
-  { syntax: 'exit', run: (cli) => cli.session.enterMode('exec') },
+  { syntax: 'exit', help: { exit: 'Exit from configure mode' }, run: (cli) => cli.session.enterMode('exec') },
   { syntax: 'end', run: (cli) => endConfig(cli) },
   {
     syntax: 'hostname <WORD:name>',

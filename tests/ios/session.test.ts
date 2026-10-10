@@ -165,7 +165,7 @@ test('clock set changes show clock', () => {
 test('initial configuration dialog', () => {
   const s = new Session(new Router(), { initialDialog: true });
   assert.match(s.banner().join('\n'), /System Configuration Dialog/);
-  assert.equal(s.prompt(), '');
+  assert.equal(s.prompt(), 'Continue with configuration dialog? [yes/no]: ');
   assert.ok(s.input('no').includes('Press RETURN to get started!'));
   assert.equal(s.prompt(), 'Router>');
 });

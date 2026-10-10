@@ -18,19 +18,12 @@ import { DhcpClient } from '../dhcp/client.ts';
 import type { Lease } from '../dhcp/client.ts';
 import { Snooping } from './snooping.ts';
 import { switchModeTable } from '../ios/commands/switch-modes.ts';
+import { SWITCH_PORTS, DEFAULT_VLANS } from './switch-ports.ts';
+
+export { SWITCH_PORTS, DEFAULT_VLANS };
 import { headerLines, globalIpLines, interfaceSection, trailerLines } from '../ios/runconfig.ts';
 
-const FAST_PORTS = 24;
-const GIG_PORTS = 2;
 const MAX_L2_HOPS = 32;
-export const DEFAULT_VLANS: ReadonlyMap<number, string> = new Map([
-  [1, 'default'], [1002, 'fddi-default'], [1003, 'token-ring-default'], [1004, 'fddinet-default'], [1005, 'trnet-default'],
-]);
-
-export const SWITCH_PORTS: readonly string[] = [
-  ...Array.from({ length: FAST_PORTS }, (_, i) => `FastEthernet0/${i + 1}`),
-  ...Array.from({ length: GIG_PORTS }, (_, i) => `GigabitEthernet0/${i + 1}`),
-];
 
 type HopFrame = Frame & { readonly l2hops?: number };
 

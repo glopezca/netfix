@@ -48,16 +48,12 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
 
   banner(): string[] {
     if (this.state.kind !== 'dialog') return [];
-    return [
-      '         --- System Configuration Dialog ---',
-      '',
-      'Continue with configuration dialog? [yes/no]: ',
-    ];
+    return ['         --- System Configuration Dialog ---', ''];
   }
 
   prompt(): string {
     if (this.state.kind === 'password') return 'Password: ';
-    if (this.state.kind === 'dialog') return '';
+    if (this.state.kind === 'dialog') return 'Continue with configuration dialog? [yes/no]: ';
     return `${this.device.hostname}${PROMPT_SUFFIX[this.mode]}`;
   }
 

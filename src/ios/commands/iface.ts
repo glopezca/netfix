@@ -80,7 +80,7 @@ function setDhcpClient(cli: Cli, m: Match): void {
   eachIface(cli, (c) => ({ ...c, address: undefined, secondaries: [], dhcpClient }));
 }
 
-const exitIf: Def = { syntax: 'exit', run: (cli) => { cli.session.ifaces = []; cli.session.enterMode('config'); } };
+const exitIf: Def = { syntax: 'exit', help: { exit: 'Exit from interface configuration mode' }, run: (cli) => { cli.session.ifaces = []; cli.session.enterMode('config'); } };
 const endIf: Def = { syntax: 'end', run: (cli) => endConfig(cli) };
 const doIf: Def = { syntax: 'do <LINE:cmd>', run: (cli, m) => cli.session.runExec(m.get('cmd') ?? '') };
 
