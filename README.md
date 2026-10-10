@@ -144,10 +144,10 @@ aparecen en `show running-config`, pero no cambian la asignación.
 
 ## Licencia
 
-El material original se distribuye bajo
-[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).
-Autoría: Germán López Castro · <https://github.com/glopezca/netsim>.
+- **Código** (`src/`, `tests/`, `scripts/`): [GPL-3.0-or-later](LICENSE).
+- **Documentación e imágenes**: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).
+- **`.claude/`**: reglas y agentes de
+  [Everything Claude Code](https://github.com/affaan-m/everything-claude-code), licencia MIT (© Affaan Mustafa).
 
-Las reglas y agentes de `.claude/` proceden de
-[Everything Claude Code](https://github.com/affaan-m/everything-claude-code) y conservan su
-licencia MIT (© Affaan Mustafa). Detalles y atribución recomendada en [LICENSE.md](LICENSE.md).
+Autoría: Germán López Castro · <https://github.com/glopezca/netsim>.
+Detalles y atribución recomendada en [LICENSE.md](LICENSE.md).

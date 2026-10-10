@@ -4,7 +4,7 @@
   "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
   "type": "module",
   "private": true,
-  "license": "CC-BY-SA-4.0",
+  "license": "GPL-3.0-or-later",
   "author": "glopezca",
   "repository": {
     "type": "git",
