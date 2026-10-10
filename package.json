@@ -1,0 +1,28 @@
+{
+  "name": "netsim",
+  "version": "0.1.0",
+  "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "author": "glopezca",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/glopezca/netsim.git"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.ts\"",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**/*.ts\" --test-coverage-exclude=\"src/ui/**\" --test-coverage-lines=80 --test-coverage-branches=70 --test-coverage-functions=80 \"tests/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "node scripts/build.mjs",
+    "serve": "node scripts/serve.mjs",
+    "e2e": "node scripts/e2e.mjs",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  }
+}
