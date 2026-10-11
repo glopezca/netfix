@@ -60,3 +60,4 @@ Exec: `show ip dhcp binding|pool|server statistics|conflict|database`,
 | 6.4 | Shells: bash de Ubuntu (`ip`, `dig`, `curl`, `ssh`, `systemctl`, `journalctl`, `ss`) y cmd de Windows (`ipconfig`, `nslookup`, `netstat`, `sc`, `net`) |
 | 6.5 | UI: paleta Server-PT, pestaña Servicios, navegador, correo, terminales; guardar `.json` con selector de archivo |
 | 6.6 | Revisión (code-reviewer), regresiones, e2e, documentación |
+| 6.7 | Compatibilidad: referencias de la v0.1 (`tests/compat/`), filtros de salida de `show` (`\| include`, `exclude`, `begin`, `section`), escenarios Tierra Media de ASIR2-SRI (UT2 y UT3) como tests |

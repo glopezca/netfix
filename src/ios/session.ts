@@ -1,4 +1,5 @@
 /** A console session on an IOS device: modes, prompts, dispatch, help and errors. */
+import { applyFilter, pipeHelp, splitPipe, withPipeEntry } from './pipe.ts';
 import { buildTrie, matchLine, helpFor, completeToken, tokenize } from './parser.ts';
 import type { TrieNode, MatchResult } from './parser.ts';
 import type { Cli, IosDevice, ModeName, SessionApi } from './device.ts';
@@ -80,6 +81,15 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
   }
 
   help(lineBeforeQuestion: string): string[] {
+    const first = tokenize(lineBeforeQuestion)[0]?.text.toLowerCase() ?? '';
+    const isShow = EXEC_MODES.has(this.mode) && first.length >= 2 && 'show'.startsWith(first);
+    const bar = lineBeforeQuestion.indexOf('|');
+    if (isShow && bar >= 0) return pipeHelp(lineBeforeQuestion.slice(bar + 1));
+    const help = this.plainHelp(lineBeforeQuestion);
+    return isShow ? withPipeEntry(help) : help;
+  }
+
+  private plainHelp(lineBeforeQuestion: string): string[] {
     const tries = this.tries(this.mode);
     const isNo = /^\s*no\s+/i.test(lineBeforeQuestion) && !EXEC_MODES.has(this.mode);
     const rest = isNo ? lineBeforeQuestion.replace(/^\s*no\s+/i, '') : lineBeforeQuestion;
@@ -135,6 +145,40 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
   private dispatch(line: string): void {
     if (line.trim() === '' || line.trim().startsWith('!')) return;
     this.remember(line);
+    if (EXEC_MODES.has(this.mode) && this.piped(line, 0, (cmd) => this.dispatchCommand(cmd))) return;
+    this.dispatchCommand(line);
+  }
+
+  /**
+   * `show … | include|exclude|begin|section <regex>`. Returns false when the line is not a
+   * piped `show`, so the normal parser reports the error where IOS would.
+   */
+  private piped(line: string, base: number, run: (command: string) => void): boolean {
+    const split = splitPipe(line);
+    const first = tokenize(line)[0]?.text.toLowerCase() ?? '';
+    if (!split || first.length < 2 || !'show'.startsWith(first)) return false;
+    if (!split.filter) {
+      this.out(`${' '.repeat(this.prompt().length + base + split.offset)}^`, "% Invalid input detected at '^' marker.", '');
+      return true;
+    }
+    if (!split.regex) {
+      this.out('% Incomplete command.', '');
+      return true;
+    }
+    const outer = this.output;
+    this.output = [];
+    let lines: string[];
+    try {
+      run(split.command);
+    } finally {
+      lines = this.output;
+      this.output = outer;
+    }
+    this.out(...(lines.some((l) => l.startsWith('% ')) ? lines : applyFilter(lines, split.filter, split.regex)));
+    return true;
+  }
+
+  private dispatchCommand(line: string): void {
     const isNo = !EXEC_MODES.has(this.mode) && /^\s*(no|default)\s/i.test(line);
     const body = isNo ? line.replace(/^\s*(no|default)\s+/i, '') : line;
     const offset = line.length - body.length;
@@ -236,6 +280,11 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
   }
 
   runExec(line: string): void {
+    if (this.piped(line, 3, (cmd) => this.runExecCommand(cmd))) return;
+    this.runExecCommand(line);
+  }
+
+  private runExecCommand(line: string): void {
     const saved = this.mode;
     const result = this.match('exec', line, false);
     if (result.kind === 'ok') {

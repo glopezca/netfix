@@ -1,0 +1,296 @@
+{
+ "format": "netsim",
+ "version": 1,
+ "devices": [
+  {
+   "id": "d1",
+   "kind": "router",
+   "label": "Router0",
+   "x": 460,
+   "y": 140,
+   "seed": 1,
+   "config": [
+    "!",
+    "version 15.1",
+    "no service timestamps log datetime msec",
+    "no service timestamps debug datetime msec",
+    "no service password-encryption",
+    "!",
+    "hostname GW",
+    "!",
+    "ip dhcp excluded-address 172.16.10.1",
+    "ip dhcp excluded-address 172.16.20.1",
+    "!",
+    "ip dhcp pool VENTAS",
+    " network 172.16.10.0 255.255.255.0",
+    " default-router 172.16.10.1",
+    "!",
+    "ip dhcp pool SOPORTE",
+    " network 172.16.20.0 255.255.255.0",
+    " default-router 172.16.20.1",
+    "!",
+    "!",
+    "ip cef",
+    "no ipv6 cef",
+    "!",
+    "!",
+    "interface GigabitEthernet0/0",
+    " no ip address",
+    " duplex auto",
+    " speed auto",
+    "!",
+    "interface GigabitEthernet0/0.10",
+    " encapsulation dot1Q 10",
+    " ip address 172.16.10.1 255.255.255.0",
+    "!",
+    "interface GigabitEthernet0/0.20",
+    " encapsulation dot1Q 20",
+    " ip address 172.16.20.1 255.255.255.0",
+    "!",
+    "interface GigabitEthernet0/1",
+    " no ip address",
+    " duplex auto",
+    " speed auto",
+    " shutdown",
+    "!",
+    "interface GigabitEthernet0/2",
+    " no ip address",
+    " duplex auto",
+    " speed auto",
+    " shutdown",
+    "!",
+    "interface Vlan1",
+    " no ip address",
+    " shutdown",
+    "!",
+    "ip classless",
+    "!",
+    "ip flow-export version 9",
+    "!",
+    "!",
+    "line con 0",
+    "!",
+    "line aux 0",
+    "!",
+    "line vty 0 4",
+    " login",
+    "!",
+    "!",
+    "!",
+    "end"
+   ],
+   "startup": null
+  },
+  {
+   "id": "d2",
+   "kind": "switch",
+   "label": "Switch0",
+   "x": 460,
+   "y": 320,
+   "seed": 2,
+   "config": [
+    "!",
+    "version 15.0",
+    "no service timestamps log datetime msec",
+    "no service timestamps debug datetime msec",
+    "no service password-encryption",
+    "!",
+    "hostname SW-ACCESO",
+    "!",
+    "spanning-tree mode pvst",
+    "spanning-tree extend system-id",
+    "!",
+    "vlan 10",
+    " name VENTAS",
+    "!",
+    "vlan 20",
+    " name SOPORTE",
+    "!",
+    "interface FastEthernet0/1",
+    " switchport access vlan 10",
+    " switchport mode access",
+    "!",
+    "interface FastEthernet0/2",
+    " switchport access vlan 10",
+    " switchport mode access",
+    "!",
+    "interface FastEthernet0/3",
+    " switchport access vlan 20",
+    " switchport mode access",
+    "!",
+    "interface FastEthernet0/4",
+    " switchport access vlan 20",
+    " switchport mode access",
+    "!",
+    "interface FastEthernet0/5",
+    "!",
+    "interface FastEthernet0/6",
+    "!",
+    "interface FastEthernet0/7",
+    "!",
+    "interface FastEthernet0/8",
+    "!",
+    "interface FastEthernet0/9",
+    "!",
+    "interface FastEthernet0/10",
+    "!",
+    "interface FastEthernet0/11",
+    "!",
+    "interface FastEthernet0/12",
+    "!",
+    "interface FastEthernet0/13",
+    "!",
+    "interface FastEthernet0/14",
+    "!",
+    "interface FastEthernet0/15",
+    "!",
+    "interface FastEthernet0/16",
+    "!",
+    "interface FastEthernet0/17",
+    "!",
+    "interface FastEthernet0/18",
+    "!",
+    "interface FastEthernet0/19",
+    "!",
+    "interface FastEthernet0/20",
+    "!",
+    "interface FastEthernet0/21",
+    "!",
+    "interface FastEthernet0/22",
+    "!",
+    "interface FastEthernet0/23",
+    "!",
+    "interface FastEthernet0/24",
+    "!",
+    "interface GigabitEthernet0/1",
+    " switchport mode trunk",
+    "!",
+    "interface GigabitEthernet0/2",
+    "!",
+    "interface Vlan1",
+    " no ip address",
+    " shutdown",
+    "!",
+    "!",
+    "!",
+    "!",
+    "line con 0",
+    "!",
+    "line aux 0",
+    "!",
+    "line vty 0 4",
+    " login",
+    "!",
+    "!",
+    "!",
+    "end"
+   ],
+   "startup": null
+  },
+  {
+   "id": "d3",
+   "kind": "pc",
+   "label": "PC0",
+   "x": 220,
+   "y": 520,
+   "seed": 3,
+   "pc": {
+    "mode": "dhcp",
+    "sendClientId": true
+   }
+  },
+  {
+   "id": "d4",
+   "kind": "pc",
+   "label": "PC1",
+   "x": 460,
+   "y": 520,
+   "seed": 4,
+   "pc": {
+    "mode": "dhcp",
+    "sendClientId": true
+   }
+  },
+  {
+   "id": "d5",
+   "kind": "pc",
+   "label": "PC2",
+   "x": 700,
+   "y": 520,
+   "seed": 5,
+   "pc": {
+    "mode": "dhcp",
+    "sendClientId": true
+   }
+  },
+  {
+   "id": "d6",
+   "kind": "pc",
+   "label": "PC3",
+   "x": 940,
+   "y": 520,
+   "seed": 6,
+   "pc": {
+    "mode": "dhcp",
+    "sendClientId": true
+   }
+  }
+ ],
+ "links": [
+  {
+   "a": {
+    "device": "d1",
+    "port": "GigabitEthernet0/0"
+   },
+   "b": {
+    "device": "d2",
+    "port": "GigabitEthernet0/1"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d3",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d2",
+    "port": "FastEthernet0/1"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d4",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d2",
+    "port": "FastEthernet0/2"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d5",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d2",
+    "port": "FastEthernet0/3"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d6",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d2",
+    "port": "FastEthernet0/4"
+   },
+   "cable": "auto"
+  }
+ ]
+}

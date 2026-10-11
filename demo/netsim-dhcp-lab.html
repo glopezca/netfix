@@ -1424,6 +1424,100 @@ class Terminal {
 
 return { Terminal };
 })();
+__m["ios/pipe.js"] = (() => {
+/**
+ * Output modifiers of `show` commands: `| include`, `| exclude`, `| begin`, `| section`.
+ * Keywords accept IOS abbreviations (`i`, `inc`, `e`, `b`, `sec`); the argument is a
+ * regular expression with the IOS `_` delimiter; invalid or catastrophic patterns
+ * (nested quantifiers) are matched literally so the simulator never hangs.
+ */
+const FILTERS = ['include', 'exclude', 'begin', 'section'];
+/** Splits `cmd | filter regex`; null when the line has no pipe. */
+function splitPipe(line) {
+    const bar = line.indexOf('|');
+    if (bar < 0)
+        return null;
+    const command = line.slice(0, bar).trimEnd();
+    const afterBar = line.slice(bar + 1);
+    const lead = afterBar.length - afterBar.trimStart().length;
+    const offset = bar + 1 + lead;
+    const m = /^(\S+)\s*(.*)$/.exec(afterBar.trimStart());
+    const word = (m?.[1] ?? '').toLowerCase();
+    const filter = word ? FILTERS.find((f) => f.startsWith(word)) : undefined;
+    return { command, filter, regex: (m?.[2] ?? '').trim(), offset };
+}
+/** IOS `_` matches a delimiter: comma, braces, parentheses, space, start or end of line. */
+const IOS_UNDERSCORE = '(?:^|$|[,{}()\\s])';
+/** A quantified group that is quantified again, e.g. `(a+)+`: catastrophic backtracking. */
+const NESTED_QUANTIFIER = /\((?:[^()\\]|\\.)*[+*}](?:[^()\\]|\\.)*\)\s*[+*{]/;
+function matcher(regex) {
+    const literal = (line) => line.includes(regex);
+    if (NESTED_QUANTIFIER.test(regex))
+        return literal;
+    try {
+        const re = new RegExp(regex.replace(/(\\.)|_/g, (m, escaped) => escaped ?? IOS_UNDERSCORE));
+        return (line) => re.test(line);
+    }
+    catch {
+        return literal;
+    }
+}
+/** Groups lines into sections: a line without indentation followed by its indented children. */
+function sections(lines) {
+    const out = [];
+    for (const line of lines) {
+        const last = out[out.length - 1];
+        if (last && /^\s/.test(line))
+            last.push(line);
+        else
+            out.push([line]);
+    }
+    return out;
+}
+function applyFilter(lines, filter, regex) {
+    const hit = matcher(regex);
+    switch (filter) {
+        case 'include':
+            return lines.filter(hit);
+        case 'exclude':
+            return lines.filter((l) => !hit(l));
+        case 'begin': {
+            const first = lines.findIndex(hit);
+            return first < 0 ? [] : lines.slice(first);
+        }
+        case 'section':
+            return sections(lines).filter((block) => block.some(hit)).flat();
+    }
+}
+const FILTER_HELP = {
+    begin: 'Begin with the line that matches',
+    exclude: 'Exclude lines that match',
+    include: 'Include lines that match',
+    section: 'Filter a section of output',
+};
+/** `?` after the bar: filter keywords, or the regular expression placeholder. */
+function pipeHelp(afterBar) {
+    const text = afterBar.trimStart();
+    if (/^\S+\s/.test(text))
+        return ['  LINE  Regular Expression'];
+    const word = text.toLowerCase();
+    const names = Object.keys(FILTER_HELP).sort().filter((f) => f.startsWith(word));
+    if (names.length === 0)
+        return ['% Unrecognized command'];
+    const width = Math.max(...names.map((f) => f.length)) + 2;
+    return names.map((f) => `  ${f.padEnd(width)}${FILTER_HELP[f]}`);
+}
+/** Adds the `|` entry in front of `<cr>` in the help of a complete `show` command. */
+function withPipeEntry(help) {
+    const cr = help.indexOf('  <cr>');
+    if (cr < 0)
+        return [...help];
+    const width = Math.max(1, ...help.filter((l) => l !== '  <cr>').map((l) => (/^ {2}(\S+)/.exec(l)?.[1]?.length ?? 0)));
+    return [...help.slice(0, cr), `  ${'|'.padEnd(width + 2)}Output modifiers`, ...help.slice(cr)];
+}
+
+return { splitPipe, applyFilter, pipeHelp, withPipeEntry };
+})();
 __m["ios/parser.js"] = (() => {
 /**
  * IOS-style command grammar: syntax strings are expanded into variants and merged into a
@@ -1876,6 +1970,7 @@ return { secretHash };
 })();
 __m["ios/session.js"] = (() => {
 /** A console session on an IOS device: modes, prompts, dispatch, help and errors. */
+const { applyFilter, pipeHelp, splitPipe, withPipeEntry } = __m["ios/pipe.js"];
 const { buildTrie, matchLine, helpFor, completeToken, tokenize } = __m["ios/parser.js"];
 const { HELP } = __m["ios/help.js"];
 const { secretHash } = __m["core/hash.js"];
@@ -1943,6 +2038,15 @@ class Session {
         return this.output;
     }
     help(lineBeforeQuestion) {
+        const first = tokenize(lineBeforeQuestion)[0]?.text.toLowerCase() ?? '';
+        const isShow = EXEC_MODES.has(this.mode) && first.length >= 2 && 'show'.startsWith(first);
+        const bar = lineBeforeQuestion.indexOf('|');
+        if (isShow && bar >= 0)
+            return pipeHelp(lineBeforeQuestion.slice(bar + 1));
+        const help = this.plainHelp(lineBeforeQuestion);
+        return isShow ? withPipeEntry(help) : help;
+    }
+    plainHelp(lineBeforeQuestion) {
         const tries = this.tries(this.mode);
         const isNo = /^\s*no\s+/i.test(lineBeforeQuestion) && !EXEC_MODES.has(this.mode);
         const rest = isNo ? lineBeforeQuestion.replace(/^\s*no\s+/i, '') : lineBeforeQuestion;
@@ -1992,6 +2096,41 @@ class Session {
         if (line.trim() === '' || line.trim().startsWith('!'))
             return;
         this.remember(line);
+        if (EXEC_MODES.has(this.mode) && this.piped(line, 0, (cmd) => this.dispatchCommand(cmd)))
+            return;
+        this.dispatchCommand(line);
+    }
+    /**
+     * `show … | include|exclude|begin|section <regex>`. Returns false when the line is not a
+     * piped `show`, so the normal parser reports the error where IOS would.
+     */
+    piped(line, base, run) {
+        const split = splitPipe(line);
+        const first = tokenize(line)[0]?.text.toLowerCase() ?? '';
+        if (!split || first.length < 2 || !'show'.startsWith(first))
+            return false;
+        if (!split.filter) {
+            this.out(`${' '.repeat(this.prompt().length + base + split.offset)}^`, "% Invalid input detected at '^' marker.", '');
+            return true;
+        }
+        if (!split.regex) {
+            this.out('% Incomplete command.', '');
+            return true;
+        }
+        const outer = this.output;
+        this.output = [];
+        let lines;
+        try {
+            run(split.command);
+        }
+        finally {
+            lines = this.output;
+            this.output = outer;
+        }
+        this.out(...(lines.some((l) => l.startsWith('% ')) ? lines : applyFilter(lines, split.filter, split.regex)));
+        return true;
+    }
+    dispatchCommand(line) {
         const isNo = !EXEC_MODES.has(this.mode) && /^\s*(no|default)\s/i.test(line);
         const body = isNo ? line.replace(/^\s*(no|default)\s+/i, '') : line;
         const offset = line.length - body.length;
@@ -2092,6 +2231,11 @@ class Session {
         this.state = { ...this.state, tries };
     }
     runExec(line) {
+        if (this.piped(line, 3, (cmd) => this.runExecCommand(cmd)))
+            return;
+        this.runExecCommand(line);
+    }
+    runExecCommand(line) {
         const saved = this.mode;
         const result = this.match('exec', line, false);
         if (result.kind === 'ok') {
@@ -9241,7 +9385,7 @@ interface GigabitEthernet0/1
     {
         id: 'servidores',
         title: 'Server-PT: DHCP, DNS, web, correo y SSH',
-        summary: 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba en PC0: navegador http://www.aula.lab, correo ana/ana1 y ssh admin@srv.aula.lab (clave cisco).',
+        summary: 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave cisco).',
         build: () => {
             const t = new Topology();
             const ip = (x) => parseIp(x) ?? 0;

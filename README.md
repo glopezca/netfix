@@ -100,8 +100,28 @@ través de un relay (`ip helper-address` apuntando al servidor).
 
 El laboratorio **«Server-PT: DHCP, DNS, web, correo y SSH»** lo trae todo configurado:
 - Abre `http://www.aula.lab` en el navegador de PC0.
-- La cuenta de correo es `ana` con contraseña `ana1`.
+- Lee el correo de `ana` en PC0 (IMAP) y el de `luis` en PC1 (POP3).
 - Entra al servidor con `ssh admin@srv.aula.lab` (contraseña `cisco`).
+
+### Usuarios y contraseñas de ejemplo
+
+Todas son credenciales de laboratorio, ficticias. Se cambian en la pestaña **Servicios** del servidor.
+
+| Uso | Usuario | Contraseña | Dónde |
+|---|---|---|---|
+| Correo (IMAP) | `ana` → `ana@aula.lab` | `ana1` | Buzón en `srv`; cuenta configurada en el Correo de **PC0** |
+| Correo (POP3) | `luis` → `luis@aula.lab` | `luis1` | Buzón en `srv`; cuenta configurada en el Correo de **PC1** |
+| SSH | `admin` | `cisco` | `ssh admin@srv.aula.lab` o `ssh admin@192.168.10.2` desde cualquier terminal |
+
+Usuarios de las terminales locales. No piden contraseña, y `sudo` tampoco:
+
+| Equipo | GNU/Linux | Windows |
+|---|---|---|
+| PC | `alumno` | `user` |
+| Server-PT | `admin` | `Administrator` |
+
+En este laboratorio PC1 usa la terminal GNU/Linux y PC0, Windows. El servidor DHCP de `srv` reserva la
+`192.168.10.50` a la MAC de PC1. El resto recibe direcciones desde la `192.168.10.100`.
 
 ### Guardar y abrir arquitecturas
 
@@ -170,6 +190,13 @@ Además: `show running-config`, `copy running-config startup-config`, `write`, `
 `show ip interface brief`, `show interfaces`, `show vlan brief`, `show mac address-table`,
 `clock set`, `enable secret`, `banner motd`, `interface range`, `do`, rutas estáticas…
 
+**Filtros de salida** en cualquier `show` (también con `do`):
+- Los filtros son `| include`, `| exclude`, `| begin` y `| section`, y se pueden abreviar (`| i`, `| sec`).
+- Admiten expresiones regulares con el comodín `_` de IOS.
+- `?` tras la barra lista los filtros disponibles.
+
+Por ejemplo, `show running-config | section dhcp` muestra las exclusiones y todos los pools con sus líneas.
+
 ## Cómo se identifica a un cliente (igual que en IOS)
 
 - `client-identifier X` coincide con la opción 61 que envía el cliente. Un PC con la casilla
@@ -199,6 +226,18 @@ npm run typecheck
 npm run e2e            # Playwright sobre dist/ (requiere playwright instalado)
 npm run check          # typecheck + tests + build
 ```
+
+**Compatibilidad con la v0.1:** `tests/compat/` compara la versión actual con lo que generaba la v0.1,
+anterior a Server-PT. Esas salidas de referencia están guardadas en `tests/fixtures/v0.1/` y la
+comparación cubre:
+- la salida de `show running-config`, `show ip dhcp binding|pool|server statistics|conflict` e `ipconfig` de
+  cada laboratorio;
+- los archivos `.json` v1;
+- un escenario con todas las formas de reserva IOS (`host` + `client-identifier`, `host` +
+  `hardware-address`, `address … client-id`, `address … client-id … ascii`, `address … hardware-address …`)
+  y con PCs que no envían la opción 61.
+
+Cualquier cambio en el DHCP de IOS rompe esa prueba.
 
 ```
 src/core      IP, MAC/client-id, reloj
