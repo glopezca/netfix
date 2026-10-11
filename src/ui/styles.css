@@ -18,6 +18,13 @@
   --dhcp: #7a4ec2;
   --arp: #c98a12;
   --icmp: #1f8bb5;
+  --dns: #2f8f83;
+  --tcp: #6b7780;
+  --http: #b34d7d;
+  --mail: #9a6a1f;
+  --ssh: #3d4f9c;
+  --ok: #2e7d4f;
+  --err: #b3362a;
   --dev-top: #dbe7ec;
   --dev-side: #b9cfd8;
   --dev-edge: #1f4f63;
@@ -110,6 +117,11 @@ button, input, select { font: inherit; color: inherit; }
 .env-dhcp rect { fill: var(--dhcp); }
 .env-arp rect { fill: var(--arp); }
 .env-icmp rect { fill: var(--icmp); }
+.env-dns rect { fill: var(--dns); }
+.env-tcp rect { fill: var(--tcp); }
+.env-http rect { fill: var(--http); }
+.env-smtp rect, .env-pop3 rect, .env-imap rect { fill: var(--mail); }
+.env-ssh rect { fill: var(--ssh); }
 
 .port-menu {
   position: absolute; z-index: 5; min-width: 200px; max-height: 320px; overflow: auto;
@@ -141,7 +153,7 @@ button, input, select { font: inherit; color: inherit; }
 /* ---------------------------------------------------------------- windows */
 .win-layer { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
 .window {
-  position: absolute; pointer-events: auto; width: min(760px, calc(100vw - 16px)); height: min(520px, calc(100vh - 120px));
+  position: absolute; pointer-events: auto; width: min(880px, calc(100vw - 16px)); height: min(600px, calc(100vh - 110px));
   display: grid; grid-template-rows: auto auto 1fr; background: var(--panel); border: 1px solid var(--line);
   border-radius: var(--radius-win); box-shadow: var(--shadow); overflow: hidden; resize: both; min-width: 320px; min-height: 240px;
 }
@@ -198,6 +210,11 @@ button, input, select { font: inherit; color: inherit; }
 .chip-dhcp { background: var(--dhcp); }
 .chip-arp { background: var(--arp); }
 .chip-icmp { background: var(--icmp); }
+.chip-dns { background: var(--dns); }
+.chip-tcp { background: var(--tcp); }
+.chip-http { background: var(--http); }
+.chip-smtp, .chip-pop3, .chip-imap { background: var(--mail); }
+.chip-ssh { background: var(--ssh); }
 .sim-count { font-size: 12px; color: var(--ink-2); }
 .events-wrap { flex: 1; min-height: 120px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-ctl); }
 .events { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -222,4 +239,51 @@ button, input, select { font: inherit; color: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
+}
+
+/* ---------------------------------------------------------------- desktop panes (v0.2) */
+.pane { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pane h3 { margin: 8px 0 0; font-size: 15px; }
+.pane .table-wrap { overflow-x: auto; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 14px; }
+.field-hint { font-size: 12px; color: var(--ink-2); }
+.field input, .field select, .field textarea, .pane textarea { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 6px 8px; background: var(--panel); font: inherit; }
+.field input { font-family: var(--font-mono); }
+.actions, .inline-form { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.btn-small { min-height: 26px; padding: 2px 8px; font-size: 13px; }
+.form-msg { margin: 0; min-height: 1.2em; }
+.form-msg[data-kind="ok"] { color: var(--ok); }
+.form-msg[data-kind="error"] { color: var(--err); }
+.switch-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--panel-2); }
+.switch-row input { width: 18px; height: 18px; accent-color: var(--accent); }
+.switch-label { font-weight: 700; flex: 1; }
+.switch-state { font-size: 13px; color: var(--ink-2); }
+.subsection { border-top: 1px solid var(--line); padding-top: 6px; display: flex; flex-direction: column; gap: 8px; }
+.grid-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.grid-table th { text-align: left; background: var(--panel-2); padding: 4px 8px; }
+.grid-table td { padding: 4px 8px; border-top: 1px solid var(--line); }
+.grid-table td.mono { font-family: var(--font-mono); }
+.grid-table tr[tabindex] { cursor: pointer; }
+.grid-table tr.is-current { background: var(--accent-soft); }
+.subnav { display: grid; grid-template-columns: 130px minmax(0, 1fr); height: 100%; }
+.subnav-list { display: flex; flex-direction: column; gap: 2px; padding: 10px 6px; border-right: 1px solid var(--line); background: var(--panel-2); }
+.subnav-item { text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: var(--radius-ctl); cursor: pointer; }
+.subnav-item[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.subnav-content { min-width: 0; overflow: auto; }
+.file-layout { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 14px; }
+.code-editor, .log-view { font: 13px/1.45 var(--font-mono); width: 100%; }
+.log-view { background: var(--console); color: var(--console-ink); padding: 10px; border-radius: var(--radius-ctl); min-height: 200px; white-space: pre-wrap; margin: 0; overflow: auto; }
+.browser-bar { display: flex; gap: 8px; }
+.url-bar { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-family: var(--font-mono); background: var(--panel); }
+.browser-status { margin: 0; font-size: 12px; color: var(--ink-2); min-height: 1.2em; }
+.browser-view { border: 1px solid var(--line); border-radius: var(--radius-ctl); background: #fff; color: #1b1b1b; padding: 16px 20px; min-height: 260px; overflow: auto; font-family: Georgia, "Times New Roman", serif; }
+.browser-view a { color: #1a4fd6; }
+.account summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+.mail-read { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 10px 14px; }
+.mail-read h4 { margin: 0 0 4px; }
+.mail-body { white-space: pre-wrap; font-family: var(--font-ui); margin: 8px 0 0; }
+@media (max-width: 760px) {
+  .subnav { grid-template-columns: 1fr; }
+  .subnav-list { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .file-layout { grid-template-columns: 1fr; }
 }

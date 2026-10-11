@@ -3,11 +3,12 @@ import { el, svg, clear, prefersReducedMotion } from './dom.ts';
 import type { Canvas } from './canvas.ts';
 import type { Topology } from '../net/topology.ts';
 import type { SimEvent } from '../net/network.ts';
-import type { Frame } from '../net/packets.ts';
+import type { Frame, AppPayload } from '../net/packets.ts';
+import { tcpService } from '../net/packets.ts';
 import { formatIp, formatMask } from '../core/ip.ts';
 import { formatMacCisco, formatHexId } from '../core/mac.ts';
 
-const PROTOCOLS = ['DHCP', 'ARP', 'ICMP'] as const;
+const PROTOCOLS = ['DHCP', 'DNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMTP', 'POP3', 'IMAP', 'SSH'] as const;
 const BASE_STEP_MS = 700;
 const MAX_ROWS = 600;
 
@@ -170,11 +171,34 @@ export class SimPanel {
   }
 }
 
+function appSummary(p: AppPayload): string {
+  switch (p.app) {
+    case 'HTTP': return p.kind === 'request' ? `${p.method} ${p.path}` : `${p.status} ${p.reason}`;
+    case 'SSH': return p.kind === 'auth' ? 'auth' : p.kind === 'command' ? 'datos cifrados →' : 'datos cifrados ←';
+    default: return p.kind === 'reply' ? p.code : p.kind === 'request' && 'mail' in p ? 'MAIL/RCPT/DATA' : 'USER/PASS';
+  }
+}
+
+function appFields(p: AppPayload): [string, string | undefined][] {
+  switch (p.app) {
+    case 'HTTP': return p.kind === 'request' ? [['Petición', `${p.method} ${p.path} HTTP/1.1`], ['Host', p.host]] : [['Estado', `HTTP/1.1 ${p.status} ${p.reason}`], ['Server', p.server], ['Content-Type', p.contentType], ['Tamaño', `${p.body.length} bytes`]];
+    case 'SSH': return [['Contenido', 'Cifrado (SSH-2.0): no se puede leer en tránsito'], ['Mensaje', p.kind]];
+    default:
+      if (p.kind === 'reply') return [['Respuesta', `${p.code} ${p.text}`], ['Mensajes', p.messages ? String(p.messages.length) : undefined]];
+      if ('mail' in p) return [['HELO', p.helo], ['MAIL FROM', p.mail.from], ['RCPT TO', p.mail.to.join(', ')], ['Subject', p.mail.subject]];
+      return [['USER', p.user], ['PASS', '•'.repeat(Math.min(8, p.password.length))], ['Nota', `${p.app} envía la contraseña sin cifrar`]];
+  }
+}
+
 function typeName(f: Frame): string {
   const dhcp = f.ip?.udp?.dhcp;
   if (dhcp) return `DHCP ${dhcp.options.messageType}`;
   if (f.arp) return `ARP ${f.arp.op === 'request' ? 'Request' : 'Reply'}`;
   if (f.ip?.icmp) return `ICMP ${f.ip.icmp.type}`;
+  const dns = f.ip?.udp?.dns;
+  if (dns) return `DNS ${dns.response ? `${dns.rcode ?? 'NOERROR'}` : `${dns.qtype}?`} ${dns.qname}`;
+  const tcp = f.ip?.tcp;
+  if (tcp) return tcp.data ? `${tcp.data.app} ${appSummary(tcp.data)}` : `TCP ${tcp.flags.join(',')} ${tcpService(tcp)}`;
   return 'IPv4';
 }
 
@@ -210,6 +234,17 @@ function pduView(e: SimEvent, from: string, to: string): HTMLElement[] {
     ]));
   } else if (ip.icmp) {
     out.push(el('h4', {}, 'ICMP'), kv([['Tipo', ip.icmp.type], ['id', String(ip.icmp.id)], ['seq', String(ip.icmp.seq)]]));
+  } else if (ip.udp?.dns) {
+    const q = ip.udp.dns;
+    out.push(el('h4', {}, `UDP ${ip.udp.sport} → ${ip.udp.dport} · DNS`), kv([
+      ['id', String(q.id)], ['QR', q.response ? 'respuesta' : 'consulta'], ['Pregunta', `${q.qname} IN ${q.qtype}`], ['rcode', q.rcode], ['AA', q.authoritative ? 'sí' : undefined],
+      ['Respuestas', q.answers?.map((a) => `${a.name} ${a.ttl} ${a.type} ${a.priority !== undefined ? `${a.priority} ` : ''}${a.data}`).join(' · ')],
+      ['Autoridad', q.authority?.map((a) => `${a.name} ${a.type}`).join(' · ')],
+    ]));
+  } else if (ip.tcp) {
+    const t = ip.tcp;
+    out.push(el('h4', {}, `TCP ${t.sport} → ${t.dport} (${tcpService(t)})`), kv([['Flags', t.flags.join(', ')], ['seq', String(t.seq)], ['ack', String(t.ack)]]));
+    if (t.data) out.push(el('h4', {}, t.data.app), kv(appFields(t.data)));
   }
   return out;
 }

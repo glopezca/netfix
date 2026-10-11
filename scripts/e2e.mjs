@@ -75,6 +75,30 @@ try {
   await page.click('g.device-switch');
   await page.click('.port-item:has-text("FastEthernet0/10")');
   assert.equal(await page.locator('g.link').count(), 5);
+
+  // 4. Server-PT lab: services panel, web browser, mail and SSH from a PC.
+  await page.selectOption('select.select >> nth=0', 'servidores');
+  await page.dblclick('g.device-server');
+  await page.click('.subnav-item:has-text("DNS")');
+  assert.match(await page.locator('.subnav-content').innerText(), /www\.aula\.lab/);
+  await page.click('.win-close');
+  await page.dblclick('g.device-pc >> nth=0');
+  await page.click('.win-tab:has-text("Navegador")');
+  await page.click('.browser-bar button');
+  assert.match(await page.locator('.browser-view').innerText(), /Servidor web de netsim/);
+  await page.click('.win-tab:has-text("Correo")');
+  await page.getByLabel('Para').fill('ana@aula.lab');
+  await page.getByLabel('Asunto').fill('Prueba e2e');
+  await page.click('button:has-text("Enviar")');
+  await page.click('button:has-text("Recibir")');
+  assert.match(await page.locator('.grid-table').last().innerText(), /Prueba e2e/);
+  await page.click('.win-tab:has-text("Terminal Linux")');
+  await type('ssh admin@srv.aula.lab');
+  await type('cisco');
+  await type('systemctl is-active apache2');
+  assert.match(await page.locator('.terminal:visible').innerText(), /admin@srv:~\$ systemctl is-active apache2\nactive/);
+  if (shots) await page.screenshot({ path: `${shots}/ssh.png` });
+
   assert.deepEqual(errors, []);
   console.log('e2e: ok');
 } finally {

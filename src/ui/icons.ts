@@ -37,8 +37,18 @@ const PC = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="6
   <rect x="18" y="37" width="28" height="5" rx="1.5" fill="var(--dev-top)" stroke="var(--dev-edge)" stroke-width="1.2"/>
 </svg>`;
 
-export const ICONS: Readonly<Record<DeviceKind, string>> = { router: ROUTER, switch: SWITCH, pc: PC };
+const SERVER = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="64" height="48">
+  <path d="M20 5 l8 -3 h20 l-8 3 z" fill="var(--dev-top)" stroke="var(--dev-edge)" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M40 5 l8 -3 v40 l-8 3 z" fill="var(--dev-top)" stroke="var(--dev-edge)" stroke-width="1.4" stroke-linejoin="round"/>
+  <rect x="20" y="5" width="20" height="40" rx="1.5" fill="var(--dev-side)" stroke="var(--dev-edge)" stroke-width="1.5"/>
+  <g fill="var(--dev-port)">
+    <rect x="23" y="9" width="14" height="3" rx="0.8"/><rect x="23" y="15" width="14" height="3" rx="0.8"/><rect x="23" y="21" width="14" height="3" rx="0.8"/>
+  </g>
+  <circle cx="25" cy="39" r="1.6" fill="var(--dev-mark)"/><path d="M29 39 h7" stroke="var(--dev-mark)" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
 
-export const MODEL_LABEL: Readonly<Record<DeviceKind, string>> = { router: '2911', switch: '2960-24TT', pc: 'PC-PT' };
+export const ICONS: Readonly<Record<DeviceKind, string>> = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER };
 
-export const KIND_NAME: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC' };
+export const MODEL_LABEL: Readonly<Record<DeviceKind, string>> = { router: '2911', switch: '2960-24TT', pc: 'PC-PT', server: 'Server-PT' };
+
+export const KIND_NAME: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Servidor' };

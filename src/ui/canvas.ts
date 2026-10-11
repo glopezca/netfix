@@ -143,7 +143,7 @@ export class Canvas {
 
   private drawDevice(id: string, p: Placed): SVGGElement {
     const d = p.device;
-    const name = d.kind === 'pc' ? '' : d.hostname;
+    const name = d.kind === 'pc' || d.kind === 'server' ? '' : d.hostname;
     const g = svg('g', {
       class: `device device-${d.kind}${this.selected === id ? ' is-selected' : ''}${this.pendingEnd?.device === id ? ' is-pending' : ''}`,
       transform: `translate(${p.x} ${p.y})`, tabindex: '0', 'data-id': id, role: 'button', 'aria-label': `${p.label} (${MODEL_LABEL[d.kind]})`,

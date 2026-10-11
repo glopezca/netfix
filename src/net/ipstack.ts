@@ -133,6 +133,7 @@ export class IpStack {
 
   /** Routes and sends a packet originated (or forwarded) by this host. */
   send(packet: IpPacket): boolean {
+    if (this.isMine(packet.dst)) return this.loopback(packet);
     const egress = this.host.route(packet.dst);
     if (!egress) return false;
     this.sendVia(egress, packet);
@@ -152,6 +153,17 @@ export class IpStack {
       return;
     }
     this.resolve(iface, egress.nextHop, packet);
+  }
+
+  /** Packets to one of our own addresses never reach the wire (like the kernel's loopback path). */
+  private loopback(packet: IpPacket): boolean {
+    const iface = this.host.l3Ifaces().find((i) => i.addrs.some((a) => a.ip === packet.dst));
+    if (!iface) return false;
+    this.host.schedule(0, () => {
+      if (packet.icmp) this.onIp(iface, packet, { src: iface.mac, dst: iface.mac, ip: packet });
+      else this.host.deliver(iface.name, packet, { src: iface.mac, dst: iface.mac, ip: packet });
+    });
+    return true;
   }
 
   /** Sends a frame on an interface to the broadcast MAC (DHCP, etc.). */

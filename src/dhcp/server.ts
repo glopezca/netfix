@@ -238,6 +238,11 @@ export class DhcpServer {
     for (const net of poolNetworks(pool)) {
       const { first, last } = usableRange(net);
       for (let ip = first; ip <= last; ip++) {
+        const excluded = this.excluded.find((r) => ip >= r.low && ip <= r.high);
+        if (excluded) {
+          ip = excluded.high;
+          continue;
+        }
         if (!this.isFree(pool, ip, client, ctx)) continue;
         if (this.conflictFound(ip, ctx)) continue;
         return ip;

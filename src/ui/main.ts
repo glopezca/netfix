@@ -43,6 +43,12 @@ class App {
     this.canvas.setTool({ kind: 'select' });
     this.canvas.render();
     window.setInterval(() => this.tick(), TICK_MS);
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        void this.save();
+      }
+    });
     this.tick();
   }
 
@@ -103,7 +109,7 @@ class App {
       el('nav', { class: 'file-actions', 'aria-label': 'Archivo' },
         btn('Nuevo', () => this.load(new Topology(), 'Área de trabajo vacía.')),
         btn('Abrir…', () => fileInput.click()),
-        btn('Guardar', () => this.download()),
+        btn('Guardar', () => void this.save(), { title: 'Guardar la topología en un archivo .json (Ctrl+S)' }),
         examples, fileInput),
       el('div', { class: 'time' }, this.clockEl, advance),
       el('div', { class: 'segmented', role: 'group', 'aria-label': 'Modo' }, modeRT, modeSim));
@@ -126,7 +132,7 @@ class App {
     };
     return el('footer', { class: 'palette' },
       el('div', { class: 'pal-group', role: 'group', 'aria-label': 'Dispositivos' },
-        deviceBtn('router', 'Router'), deviceBtn('switch', 'Switch'), deviceBtn('pc', 'PC')),
+        deviceBtn('router', 'Router'), deviceBtn('switch', 'Switch'), deviceBtn('pc', 'PC'), deviceBtn('server', 'Servidor')),
       el('div', { class: 'pal-group', role: 'group', 'aria-label': 'Herramientas' },
         toolBtn('select', 'Seleccionar', { kind: 'select' }, '↖'),
         toolBtn('cable', 'Cable', { kind: 'cable' }, '⌇'),
@@ -185,21 +191,37 @@ class App {
     this.saveTimer = window.setTimeout(() => safeStorageSet(AUTOSAVE_KEY, JSON.stringify(this.topo.toJSON())), AUTOSAVE_DELAY_MS);
   }
 
-  private download(): void {
+  /** Saves the topology as .json: file picker when the browser has one, download otherwise. */
+  private async save(): Promise<void> {
+    const json = JSON.stringify(this.topo.toJSON(), null, 2);
     if (document.getElementById('app')?.dataset.embed === 'artifact') {
-      const json = JSON.stringify(this.topo.toJSON(), null, 2);
       navigator.clipboard?.writeText(json).then(
         () => { this.hintEl.textContent = 'Topología copiada al portapapeles: pégala en un archivo .json para guardarla.'; },
         () => { this.hintEl.textContent = 'No se pudo copiar. Usa la versión descargable de netsim para guardar archivos.'; },
       );
       return;
     }
-    const blob = new Blob([JSON.stringify(this.topo.toJSON(), null, 2)], { type: 'application/json' });
-    const a = el('a', { href: URL.createObjectURL(blob), download: 'topologia.netsim.json' });
+    const name = `topologia-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.netsim.json`;
+    const picker = (window as unknown as { showSaveFilePicker?: (o: unknown) => Promise<{ createWritable(): Promise<{ write(d: string): Promise<void>; close(): Promise<void> }> }> }).showSaveFilePicker;
+    if (picker) {
+      try {
+        const handle = await picker({ suggestedName: name, types: [{ description: 'Topología de netsim', accept: { 'application/json': ['.json'] } }] });
+        const w = await handle.createWritable();
+        await w.write(json);
+        await w.close();
+        this.hintEl.textContent = 'Topología guardada.';
+        return;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+      }
+    }
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = el('a', { href: URL.createObjectURL(blob), download: name });
     document.body.appendChild(a);
     a.click();
     a.remove();
     window.setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    this.hintEl.textContent = `Descargado ${name}. Ábrelo luego con Abrir….`;
   }
 
   private async openFile(input: HTMLInputElement): Promise<void> {

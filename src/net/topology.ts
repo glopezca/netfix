@@ -5,12 +5,19 @@ import { SimClock } from '../core/clock.ts';
 import { Router } from '../devices/router.ts';
 import { Switch } from '../devices/switch.ts';
 import { Pc } from '../devices/pc.ts';
-import type { IpMode } from '../devices/pc.ts';
+import { Host } from '../devices/host.ts';
+import type { IpMode, HostOs } from '../devices/host.ts';
+import { Server } from '../devices/server.ts';
+import { servicesToJson, servicesFromJson, mailboxesFromJson } from '../services/persist.ts';
+import type { ServicesJson } from '../services/persist.ts';
+import type { UnitId } from '../services/units.ts';
+import type { MailMessage } from './packets.ts';
+import type { MailAccount } from '../clients/mail-client.ts';
 import { applyConfig } from '../ios/session.ts';
 import { parseIp, formatIp, parseMask } from '../core/ip.ts';
 
-export type DeviceKind = 'router' | 'switch' | 'pc';
-export type AnyDevice = Router | Switch | Pc;
+export type DeviceKind = 'router' | 'switch' | 'pc' | 'server';
+export type AnyDevice = Router | Switch | Pc | Server;
 
 export interface Placed {
   readonly device: AnyDevice;
@@ -26,6 +33,15 @@ export interface PcRecord {
   readonly gateway?: string;
   readonly dns?: string;
   readonly sendClientId?: boolean;
+  readonly os?: HostOs;
+  /** PC apps: e-mail account, inbox and last browser URL. */
+  readonly apps?: { readonly mail?: MailAccount; readonly inbox?: readonly MailMessage[]; readonly url?: string };
+}
+
+export interface ServerRecord {
+  readonly services: ServicesJson;
+  readonly autostart?: Partial<Record<UnitId, boolean>>;
+  readonly mailboxes?: Readonly<Record<string, readonly MailMessage[]>>;
 }
 
 export interface DeviceRecord {
@@ -38,16 +54,18 @@ export interface DeviceRecord {
   readonly config?: readonly string[];
   readonly startup?: readonly string[] | null;
   readonly pc?: PcRecord;
+  readonly server?: ServerRecord;
 }
 
 export interface TopologyFile {
   readonly format: 'netsim';
-  readonly version: 1;
+  readonly version: 1 | 2;
   readonly devices: readonly DeviceRecord[];
   readonly links: readonly { readonly a: Endpoint; readonly b: Endpoint; readonly cable: CableKind }[];
 }
 
-const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC' };
+const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server' };
+export const FILE_VERSION = 2;
 const SETTLE_MS = 30_000;
 
 export class Topology {
@@ -104,7 +122,7 @@ export class Topology {
 
   toJSON(): TopologyFile {
     const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
-    return { format: 'netsim', version: 1, devices, links: this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable })) };
+    return { format: 'netsim', version: FILE_VERSION, devices, links: this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable })) };
   }
 
   static fromJSON(data: unknown): Topology {
@@ -117,7 +135,7 @@ export class Topology {
       topo.nextId = Math.max(topo.nextId, n + 1);
     }
     for (const l of file.links) topo.connect(l.a, l.b, l.cable);
-    for (const p of topo.placed.values()) if (p.device instanceof Pc && p.device.config.mode === 'dhcp') p.device.useDhcp();
+    for (const p of topo.placed.values()) if (p.device instanceof Host && p.device.config.mode === 'dhcp') p.device.useDhcp();
     topo.settle();
     return topo;
   }
@@ -126,6 +144,7 @@ export class Topology {
 function createDevice(kind: DeviceKind, id: string, seed: number, clock: SimClock, label: string): AnyDevice {
   if (kind === 'router') return new Router({ id, clock, seed });
   if (kind === 'switch') return new Switch({ id, clock, seed });
+  if (kind === 'server') return new Server(id, label, clock, seed);
   return new Pc(id, label, clock, seed);
 }
 
@@ -133,13 +152,11 @@ function record(id: string, p: Placed): DeviceRecord {
   const d = p.device;
   const seed = deviceSeed(d);
   const base = { id, kind: d.kind, label: p.label, x: Math.round(p.x), y: Math.round(p.y), seed };
-  if (d instanceof Pc) {
-    const c = d.config;
-    const pc: PcRecord = c.mode === 'dhcp'
-      ? { mode: 'dhcp', sendClientId: d.sendClientId }
-      : { mode: 'static', ip: c.ip !== undefined ? formatIp(c.ip) : undefined, mask: c.prefix !== undefined ? `/${c.prefix}` : undefined,
-        gateway: c.gateway !== undefined ? formatIp(c.gateway) : undefined, dns: c.dns !== undefined ? formatIp(c.dns) : undefined, sendClientId: d.sendClientId };
-    return { ...base, pc };
+  if (d instanceof Host) {
+    const pc = hostRecord(d);
+    if (d instanceof Pc) return { ...base, pc: { ...pc, apps: { mail: d.mailAccount, inbox: d.inbox, url: d.browserUrl || undefined } } };
+    if (!(d instanceof Server)) return { ...base, pc };
+    return { ...base, pc, server: { services: servicesToJson(d.services), autostart: d.autostart, mailboxes: d.mailboxes.toJSON() } };
   }
   return { ...base, config: d.runningConfig(), startup: d.startupConfig };
 }
@@ -149,16 +166,43 @@ function deviceSeed(d: AnyDevice): number {
   return seeds.get(d) ?? 0;
 }
 
+function hostRecord(d: Host): PcRecord {
+  const c = d.config;
+  const os = d.os;
+  if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, os };
+  const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
+  return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, os };
+}
+
 function restore(device: AnyDevice, rec: DeviceRecord): void {
-  if (device instanceof Pc) {
+  if (device instanceof Host) {
     const pc = rec.pc ?? { mode: 'static' as const };
     device.sendClientId = pc.sendClientId ?? true;
+    if (pc.os === 'linux' || pc.os === 'windows') device.os = pc.os;
     if (pc.mode === 'dhcp') device.config = { mode: 'dhcp' };
     else device.setStatic(parseStatic(pc));
+    if (device instanceof Server && rec.server) restoreServer(device, rec.server);
+    if (device instanceof Pc && pc.apps) restoreApps(device, pc.apps);
     return;
   }
   if (rec.config) applyConfig(device, rec.config);
   device.startupConfig = rec.startup ?? null;
+}
+
+function restoreApps(pc: Pc, apps: NonNullable<PcRecord['apps']>): void {
+  const m = apps.mail;
+  if (isObject(m) && ['name', 'address', 'incoming', 'outgoing', 'user', 'password'].every((k) => typeof m[k as keyof MailAccount] === 'string')) {
+    pc.mailAccount = { ...m, protocol: m.protocol === 'IMAP' ? 'IMAP' : 'POP3' };
+  }
+  if (apps.inbox !== undefined) pc.inbox = [...(mailboxesFromJson({ inbox: apps.inbox }).inbox ?? [])];
+  if (typeof apps.url === 'string') pc.browserUrl = apps.url.slice(0, 2048);
+}
+
+function restoreServer(server: Server, rec: ServerRecord): void {
+  server.setServices(servicesFromJson(rec.services));
+  const auto = isObject(rec.autostart) ? rec.autostart : {};
+  for (const id of Object.keys(server.autostart) as UnitId[]) if (typeof auto[id] === 'boolean') server.autostart = { ...server.autostart, [id]: auto[id] };
+  server.mailboxes.load(mailboxesFromJson(rec.mailboxes));
 }
 
 export function parseStatic(pc: PcRecord): { ip?: number; prefix?: number; gateway?: number; dns?: number } {
@@ -172,16 +216,16 @@ function isObject(v: unknown): v is Record<string, unknown> {
 
 /** Validates untrusted JSON before building a topology from it. */
 export function validateFile(data: unknown): TopologyFile {
-  if (!isObject(data) || data.format !== 'netsim' || data.version !== 1) throw new Error('No es un archivo de netsim válido.');
+  if (!isObject(data) || data.format !== 'netsim' || (data.version !== 1 && data.version !== FILE_VERSION)) throw new Error('No es un archivo de netsim válido.');
   const { devices, links } = data;
   if (!Array.isArray(devices) || !Array.isArray(links)) throw new Error('Archivo incompleto: faltan dispositivos o enlaces.');
   for (const d of devices) {
-    if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc'].includes(String(d.kind))) throw new Error('Dispositivo no válido en el archivo.');
-    if (typeof d.x !== 'number' || typeof d.y !== 'number' || typeof d.seed !== 'number' || typeof d.label !== 'string') throw new Error(`Datos incompletos para ${d.id}.`);
+    if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server'].includes(String(d.kind))) throw new Error('Dispositivo no válido en el archivo.');
+    if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string') throw new Error(`Datos incompletos para ${d.id}.`);
     if (d.config !== undefined && (!Array.isArray(d.config) || d.config.some((l) => typeof l !== 'string'))) throw new Error(`Configuración no válida en ${d.id}.`);
   }
   for (const l of links) {
-    if (!isObject(l) || !isObject(l.a) || !isObject(l.b) || typeof l.a.device !== 'string' || typeof l.b.port !== 'string') throw new Error('Enlace no válido en el archivo.');
+    if (!isObject(l) || !isObject(l.a) || !isObject(l.b) || [l.a.device, l.a.port, l.b.device, l.b.port].some((x) => typeof x !== 'string')) throw new Error('Enlace no válido en el archivo.');
   }
   return data as unknown as TopologyFile;
 }

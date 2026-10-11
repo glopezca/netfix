@@ -1,17 +1,24 @@
 # netsim
 
 Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado para practicar
-**DHCP en Cisco IOS** con la sintaxis, la ayuda contextual y las salidas del equipo real.
+**DHCP en Cisco IOS** con la sintaxis, la ayuda contextual y las salidas del equipo real, y
+**servicios de red en servidores** (DHCP, DNS, HTTP, correo y SSH) con terminales Linux y Windows.
 
 ![Área de trabajo de netsim con el laboratorio «DHCP básico»: Router0 (GW) conectado a Switch0 y a tres PCs, con luces de enlace verdes y la paleta de dispositivos abajo](docs/img/netsim-workspace.png)
 
-- Área de trabajo lógica con routers 2911, switches 2960 y PCs, cables y luces de enlace.
+- Área de trabajo lógica con routers 2911, switches 2960, PCs y **servidores Server-PT**, cables y luces de enlace.
 - CLI de IOS completa para DHCP: pools de red y de host, `client-identifier`,
   `hardware-address`, reservas `address … client-id` / `address … hardware-address`,
   exclusiones, opciones, relay, snooping, cliente DHCP en interfaces y todos los `show`,
   `clear` y `debug`.
 - DORA real con tramas Ethernet, ARP e IPv4 a través de switches, VLAN y routers.
-- Modo simulación con lista de eventos, animación paso a paso y la PDU de cada paquete.
+- **Server-PT** con servicios DHCP, DNS, HTTP, SMTP/POP3/IMAP y SSH, configurables desde su
+  pestaña Servicios o desde la terminal (`systemctl`, `sc`, `net start`).
+- Terminales **GNU/Linux** (bash de Ubuntu) y **Windows** (cmd) en PCs y servidores; navegador web,
+  cliente de correo y cliente SSH en los PCs.
+- Modo simulación con lista de eventos (DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP, SSH),
+  animación paso a paso y la PDU de cada paquete.
+- Guardar y abrir topologías completas en archivos `.json` (también la configuración de los servicios).
 - Sin dependencias de ejecución: TypeScript compilado a módulos ES o a un único HTML.
 
 ## Uso rápido
@@ -46,6 +53,66 @@ Interacción: doble clic en un dispositivo abre su consola (router/switch) o su 
 En la consola funcionan `?`, `Tab`, flechas para el historial, `Ctrl+Z` y las abreviaturas
 (`sh ip dhcp b`). El escritorio del PC muestra su **MAC** y su **Client-ID** listos para copiar
 en `hardware-address` o `client-identifier`.
+
+## Servidores Server-PT
+
+Coloca un **Servidor** desde la paleta y haz doble clic. Pestañas:
+
+| Pestaña | Qué hace |
+|---|---|
+| **Servicios** | Activa y configura cada servicio. Cada uno tiene su interruptor y su panel. |
+| **Configuración IP** | IP estática o por DHCP, sistema operativo (Ubuntu o Windows Server), MAC y Client-ID. |
+| **Terminal Linux** / **Símbolo del sistema** | Shell local del servidor. |
+
+| Servicio | Configuración | Equivalente en el servidor real |
+|---|---|---|
+| **DHCP** | Pools al estilo Packet Tracer (IP inicial + usuarios máximos, gateway, DNS, dominio, TFTP, concesión), **reservas por MAC**, tabla de concesiones | `kea-dhcp4-server` · `/etc/kea/kea-dhcp4.conf` |
+| **DNS** | Registros A, CNAME, MX, NS y TXT; PTR automáticos; servidor autoritativo (NOERROR, NXDOMAIN, REFUSED) | `bind9` · `/etc/bind/db.<zona>` |
+| **HTTP** | Ficheros editables (`index.html`, `ayuda.html`, …), 404, banner Apache o IIS según el SO | `apache2` · `/var/www/html` |
+| **Correo** | SMTP, POP3 e IMAP por separado, dominio y usuarios; **reenvío entre dominios por MX** | `postfix` + `dovecot` |
+| **SSH** | Usuarios y contraseñas; las sesiones abren la shell Linux o Windows del servidor | `ssh` · `/etc/ssh/sshd_config` |
+| **Registros** | `journalctl -u <servicio>` de cada servicio | `journalctl` |
+
+El servidor DHCP de Server-PT usa el mismo motor que el router IOS, así que funciona también a
+través de un relay (`ip helper-address` apuntando al servidor).
+
+### Terminales
+
+**GNU/Linux (Ubuntu):**
+- Red: `ip a`, `ip r`, `ip neigh`, `ping [-c N]`, `sudo dhclient [-r] eth0`, `hostname -I`.
+- DNS: `dig [@srv] nombre [tipo] [+short]`, `dig -x IP`, `nslookup`, `host`.
+- Web y SSH: `curl [-I]`, `wget`, `ssh usuario@host`.
+- Servicios: `systemctl status|start|stop|restart|enable|disable|is-active <servicio>` (con `sudo`), `journalctl -u`, `ss -tulpn`.
+- Ficheros: `cat` y `ls` sobre los ficheros generados (`/etc/resolv.conf`, `/etc/netplan/…`, `/etc/kea/kea-dhcp4.conf`, `/etc/bind/…`, `/var/www/html/…`, `/etc/postfix/main.cf`, …).
+- Errores reales cuando toca: `Interactive authentication required` sin `sudo`, `Command 'ifconfig' not found`, `Connection refused`, `Name or service not known`.
+
+**Windows:**
+- Red: `ipconfig [/all|/release|/renew]`, `ping [-n N]`, `arp -a`.
+- DNS, web y SSH: `nslookup`, `netstat -an`, `curl [-I]`, `ssh usuario@host`.
+- Servicios: `sc query|start|stop <servicio>`, `net start|stop <servicio>` (`W3SVC`, `DNS`, `DHCPServer`, `SMTPSVC`, `POP3Svc`, `sshd`).
+- Sistema: `hostname`, `whoami`, `ver`.
+
+### Aplicaciones del PC
+
+- **Navegador**: `http://IP` o `http://nombre`. Resuelve por DNS y sigue los enlaces. La página se dibuja de forma segura, sin ejecutar scripts.
+- **Correo**: cuenta con servidor entrante (POP3 o IMAP) y saliente (SMTP). Para redactar, enviar y recibir. POP3 borra del servidor; IMAP deja copia.
+- **Terminales** Linux y Windows, con cliente SSH.
+
+El laboratorio **«Server-PT: DHCP, DNS, web, correo y SSH»** lo trae todo configurado:
+- Abre `http://www.aula.lab` en el navegador de PC0.
+- La cuenta de correo es `ana` con contraseña `ana1`.
+- Entra al servidor con `ssh admin@srv.aula.lab` (contraseña `cisco`).
+
+### Guardar y abrir arquitecturas
+
+**Guardar** (o `Ctrl+S`) crea un archivo `.json` con toda la topología:
+- Posiciones y cables.
+- Configuración IOS (running y startup).
+- IP de PCs y servidores.
+- Servicios, buzones y cuentas de correo.
+
+En Chrome y Edge aparece el diálogo para elegir nombre y carpeta; en otros navegadores se descarga.
+**Abrir…** recupera el archivo. Los archivos del formato anterior (v1) se siguen abriendo.
 
 ## Comandos DHCP soportados
 
@@ -137,15 +204,21 @@ npm run check          # typecheck + tests + build
 src/core      IP, MAC/client-id, reloj
 src/ios       parser (gramática → trie), sesión y modos, comandos
 src/dhcp      pools, servidor, reglas de coincidencia, cliente, salidas show
-src/net       red de eventos discretos, pila IPv4, rutas, topología, laboratorios
-src/devices   router (plano de datos, relay), switch (VLAN, snooping), PC
+src/net       red de eventos discretos, pila IPv4, TCP simplificado, resolvedor DNS, rutas, topología, laboratorios
+src/devices   router (plano de datos, relay), switch (VLAN, snooping), Host → PC y Server-PT
+src/services  DHCP (pools PT sobre el motor IOS), DNS, HTTP, correo, SSH, unidades, persistencia
+src/shells    bash de Ubuntu y cmd de Windows, cliente SSH, formatos de dig/nslookup
+src/clients   cliente de correo (SMTP, POP3, IMAP)
 src/ui        interfaz (SVG + DOM, sin frameworks)
 ```
 
 ## Limitaciones conocidas
 
 Sin STP (los bucles de capa 2 se cortan por un límite de saltos), sin IPv6, sin enrutamiento
-dinámico, un único modelo de cada dispositivo. Los comandos de DHCP poco habituales
+dinámico, un único modelo de cada dispositivo. TCP está simplificado: cada conexión lleva una
+petición y una respuesta. No hay HTTPS, FTP ni DNS recursivo. SSH no cifra de verdad: en modo
+simulación se muestra como «datos cifrados». Los ficheros de configuración de Linux se pueden
+leer (`cat`) pero se editan desde la pestaña Servicios. Los comandos de DHCP poco habituales
 (`origin`, `vrf`, `accounting`, `class`, `relay` en pool, `database`) se aceptan, se guardan y
 aparecen en `show running-config`, pero no cambian la asignación.
 

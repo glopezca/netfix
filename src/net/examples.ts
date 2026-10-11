@@ -3,6 +3,8 @@ import { Topology } from './topology.ts';
 import { Router } from '../devices/router.ts';
 import { Switch } from '../devices/switch.ts';
 import { Pc } from '../devices/pc.ts';
+import { Server } from '../devices/server.ts';
+import { parseIp } from '../core/ip.ts';
 import { applyConfig } from '../ios/session.ts';
 import { formatHexId, formatMacCisco, clientIdFromMac } from '../core/mac.ts';
 
@@ -225,6 +227,51 @@ interface GigabitEthernet0/1
  no shutdown`);
       t.settle();
       return t;
+    },
+  },
+  {
+    id: 'servidores',
+    title: 'Server-PT: DHCP, DNS, web, correo y SSH',
+    summary: 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba en PC0: navegador http://www.aula.lab, correo ana/ana1 y ssh admin@srv.aula.lab (clave cisco).',
+    build: () => {
+      const t = new Topology();
+      const ip = (x: string): number => parseIp(x) ?? 0;
+      const r = t.add('router', 460, 120).device as Router;
+      const s = t.add('switch', 460, 300).device as Switch;
+      const srv = t.add('server', 760, 300, { label: 'SRV0' }).device as Server;
+      link(t, r.id, 'GigabitEthernet0/0', s.id, 'GigabitEthernet0/1');
+      link(t, srv.id, 'FastEthernet0', s.id, 'FastEthernet0/24');
+      const p = [0, 1].map((i) => {
+        const pc = t.add('pc', 300 + i * 240, 500).device as Pc;
+        link(t, pc.id, 'FastEthernet0', s.id, `FastEthernet0/${i + 1}`);
+        return pc;
+      });
+      const [pc0, pc1] = p as [Pc, Pc];
+      pc1.os = 'linux';
+      conf(r, `
+hostname GW
+interface GigabitEthernet0/0
+ ip address 192.168.10.1 255.255.255.0
+ no shutdown`);
+      srv.name = 'srv';
+      srv.setStatic({ ip: ip('192.168.10.2'), prefix: 24, gateway: ip('192.168.10.1'), dns: ip('192.168.10.2') });
+      srv.setServices({
+        ...srv.services,
+        dhcp: { enabled: true, pools: [{ name: 'serverPool', start: ip('192.168.10.100'), prefix: 24, maxUsers: 50, gateway: ip('192.168.10.1'), dns: ip('192.168.10.2'), domain: 'aula.lab', leaseMinutes: 1440, reservations: [{ ip: ip('192.168.10.50'), mac: pc1.mac, name: 'PC1 (Linux)' }] }] },
+        dns: { enabled: true, records: [
+          { name: 'aula.lab', type: 'NS', value: 'srv.aula.lab', ttl: 86400 },
+          { name: 'srv.aula.lab', type: 'A', value: '192.168.10.2', ttl: 86400 },
+          { name: 'gw.aula.lab', type: 'A', value: '192.168.10.1', ttl: 86400 },
+          { name: 'www.aula.lab', type: 'CNAME', value: 'srv.aula.lab', ttl: 86400 },
+          { name: 'aula.lab', type: 'MX', value: 'srv.aula.lab', priority: 10, ttl: 86400 },
+        ] },
+        mail: { smtp: true, pop3: true, imap: true, domain: 'aula.lab', users: [{ name: 'ana', password: 'ana1' }, { name: 'luis', password: 'luis1' }] },
+        ssh: { enabled: true, users: [{ name: 'admin', password: 'cisco' }] },
+      });
+      pc0.mailAccount = { name: 'Ana', address: 'ana@aula.lab', incoming: 'srv.aula.lab', outgoing: 'srv.aula.lab', protocol: 'IMAP', user: 'ana', password: 'ana1' };
+      pc0.browserUrl = 'http://www.aula.lab';
+      pc1.mailAccount = { name: 'Luis', address: 'luis@aula.lab', incoming: 'srv.aula.lab', outgoing: 'srv.aula.lab', protocol: 'POP3', user: 'luis', password: 'luis1' };
+      return startDhcp(t, p);
     },
   },
   {

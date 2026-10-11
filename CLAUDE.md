@@ -34,7 +34,10 @@ npm run e2e           # Playwright (si está instalado globalmente)
 src/core/   ip.ts, mac.ts, clock.ts             utilidades puras (sin estado)
 src/ios/    parser.ts (gramática + abreviaturas + ?), session.ts (modos), commands/*
 src/dhcp/   pool.ts (config inmutable), server.ts (asignación, bindings), messages.ts
-src/net/    network.ts (cola de eventos discreta), packets.ts, devices/*
+src/net/    network.ts (eventos discretos), packets.ts, ipstack.ts, tcp.ts, dns.ts, topology.ts (JSON v2)
+src/devices/ router, switch, host.ts → pc.ts / server.ts (Server-PT)
+src/services/ dhcp-pt, dns-service, http-service, mail-service, ssh-service, units, persist
+src/shells/ base.ts (cliente SSH), linux.ts, windows.ts, factory.ts
 src/ui/     interfaz tipo Packet Tracer (SVG + DOM, sin frameworks)
 tests/      *.test.ts  (unit + integración DORA/relay) ; e2e/ (Playwright)
 ```

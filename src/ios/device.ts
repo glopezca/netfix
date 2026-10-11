@@ -29,7 +29,7 @@ export interface SessionApi {
 
 export type ModeTable<D extends IosDevice> = Partial<Record<ModeName, readonly CommandDef<Cli<D>>[]>>;
 
-export type DeviceKind = 'router' | 'switch' | 'pc';
+export type DeviceKind = 'router' | 'switch' | 'pc' | 'server';
 
 export interface IfaceRuntime {
   readonly mac: string;

@@ -49,3 +49,14 @@ Interfaz: `ip address dhcp [client-id <if>] [hostname <n>]`, `ip helper-address`
 Exec: `show ip dhcp binding|pool|server statistics|conflict|database`,
 `clear ip dhcp binding|conflict|server statistics`, `debug ip dhcp server events|packet`,
 `release dhcp <if>`, `renew dhcp <if>`.
+
+## Fase 6 · Server-PT y servicios (v0.2)
+
+| Paso | Entregable |
+|---|---|
+| 6.1 | Transporte: TCP simplificado (SYN, SYN/ACK, datos, FIN, RST) y DNS sobre UDP, visibles en simulación |
+| 6.2 | `Host` común (IP, cliente DHCP, TCP, resolvedor) → `Pc` y `Server` (Server-PT) |
+| 6.3 | Servicios: DHCP estilo PT con reservas (motor IOS), DNS autoritativo, HTTP, SMTP/POP3/IMAP con reenvío por MX, SSH |
+| 6.4 | Shells: bash de Ubuntu (`ip`, `dig`, `curl`, `ssh`, `systemctl`, `journalctl`, `ss`) y cmd de Windows (`ipconfig`, `nslookup`, `netstat`, `sc`, `net`) |
+| 6.5 | UI: paleta Server-PT, pestaña Servicios, navegador, correo, terminales; guardar `.json` con selector de archivo |
+| 6.6 | Revisión (code-reviewer), regresiones, e2e, documentación |
