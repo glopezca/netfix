@@ -22,7 +22,10 @@ npm run build        # dist/index.html + dist/netsim.html (archivo único, funci
 npm run serve        # http://localhost:8080
 ```
 
-Abre `dist/netsim.html` directamente en el navegador si no quieres servidor.
+**Sin instalar nada:** descarga [`netsim DHCP Lab.html`](netsim%20DHCP%20Lab.html) (en GitHub, botón
+*Download raw file*) y ábrelo con doble clic en el navegador. Es la aplicación completa en un único
+archivo y funciona sin servidor ni conexión. `npm run build` lo regenera; tras cambiar el código,
+haz commit de la nueva versión.
 El menú **Laboratorios…** carga escenarios ya resueltos:
 
 | Laboratorio | Qué practica |

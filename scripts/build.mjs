@@ -79,6 +79,8 @@ const single = readFileSync(join(root, 'src/ui/index.html'), 'utf8')
   .replace('<link rel="stylesheet" href="styles.css">', () => `<style>\n${css}\n</style>`)
   .replace('<script type="module" src="js/ui/main.js"></script>', () => `<script>${inlineScript}</script>`);
 writeFileSync(join(dist, 'netsim.html'), single);
+// Standalone page at the repo root: open it directly in a browser (file://), no server needed.
+writeFileSync(join(root, 'netsim DHCP Lab.html'), single.replace('<title>netsim — laboratorio DHCP</title>', '<title>netsim DHCP Lab</title>'));
 
 // Artifact variant: no document skeleton, title first, embed flag for in-page saving.
 const artifact = single
