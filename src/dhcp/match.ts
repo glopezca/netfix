@@ -70,5 +70,5 @@ export function findManualPool(
 }
 
 export function findReservation(pool: PoolConfig, client: ClientIdentity): Reservation | undefined {
-  return pool.reservations.find((r) => matchesClient({ clientId: r.clientId, mac: r.mac }, client));
+  return pool.reservations.find((r) => (r.macAlways && r.mac ? r.mac === client.mac : matchesClient({ clientId: r.clientId, mac: r.mac }, client)));
 }

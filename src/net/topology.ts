@@ -15,6 +15,7 @@ import type { MailMessage } from './packets.ts';
 import type { MailAccount } from '../clients/mail-client.ts';
 import { applyConfig } from '../ios/session.ts';
 import { parseIp, formatIp, parseMask } from '../core/ip.ts';
+import { parseHexId } from '../core/mac.ts';
 
 export type DeviceKind = 'router' | 'switch' | 'pc' | 'server';
 export type AnyDevice = Router | Switch | Pc | Server;
@@ -33,6 +34,8 @@ export interface PcRecord {
   readonly gateway?: string;
   readonly dns?: string;
   readonly sendClientId?: boolean;
+  /** Custom option 61 (hex), when it is not 01 + MAC. */
+  readonly clientId?: string;
   readonly os?: HostOs;
   /** PC apps: e-mail account, inbox and last browser URL. */
   readonly apps?: { readonly mail?: MailAccount; readonly inbox?: readonly MailMessage[]; readonly url?: string };
@@ -169,15 +172,17 @@ function deviceSeed(d: AnyDevice): number {
 function hostRecord(d: Host): PcRecord {
   const c = d.config;
   const os = d.os;
-  if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, os };
+  const clientId = d.clientIdOverride;
+  if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os };
   const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
-  return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, os };
+  return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os };
 }
 
 function restore(device: AnyDevice, rec: DeviceRecord): void {
   if (device instanceof Host) {
     const pc = rec.pc ?? { mode: 'static' as const };
     device.sendClientId = pc.sendClientId ?? true;
+    device.clientIdOverride = typeof pc.clientId === 'string' ? parseHexId(pc.clientId) ?? undefined : undefined;
     if (pc.os === 'linux' || pc.os === 'windows') device.os = pc.os;
     if (pc.mode === 'dhcp') device.config = { mode: 'dhcp' };
     else device.setStatic(parseStatic(pc));

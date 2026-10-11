@@ -258,12 +258,12 @@ interface GigabitEthernet0/0
       srv.setServices({
         ...srv.services,
         dhcp: { enabled: true, pools: [{ name: 'serverPool', start: ip('192.168.10.100'), prefix: 24, maxUsers: 50, gateway: ip('192.168.10.1'), dns: ip('192.168.10.2'), domain: 'aula.lab', leaseMinutes: 1440, reservations: [{ ip: ip('192.168.10.50'), mac: pc1.mac, name: 'PC1 (Linux)' }] }] },
-        dns: { enabled: true, records: [
-          { name: 'aula.lab', type: 'NS', value: 'srv.aula.lab', ttl: 86400 },
-          { name: 'srv.aula.lab', type: 'A', value: '192.168.10.2', ttl: 86400 },
-          { name: 'gw.aula.lab', type: 'A', value: '192.168.10.1', ttl: 86400 },
-          { name: 'www.aula.lab', type: 'CNAME', value: 'srv.aula.lab', ttl: 86400 },
-          { name: 'aula.lab', type: 'MX', value: 'srv.aula.lab', priority: 10, ttl: 86400 },
+        dns: { enabled: true, origin: 'aula.lab', records: [
+          { name: '@', type: 'NS', value: 'srv', ttl: 86400 },
+          { name: 'srv', type: 'A', value: '192.168.10.2', ttl: 86400 },
+          { name: 'gw', type: 'A', value: '192.168.10.1', ttl: 86400 },
+          { name: 'www', type: 'CNAME', value: 'srv', ttl: 86400 },
+          { name: '@', type: 'MX', value: 'srv.aula.lab.', priority: 10, ttl: 86400 },
         ] },
         mail: { smtp: true, pop3: true, imap: true, domain: 'aula.lab', users: [{ name: 'ana', password: 'ana1' }, { name: 'luis', password: 'luis1' }] },
         ssh: { enabled: true, users: [{ name: 'admin', password: 'cisco' }] },

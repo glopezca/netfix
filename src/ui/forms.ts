@@ -52,10 +52,11 @@ export interface Column<T> {
   readonly mono?: boolean;
 }
 
-/** Table with optional row selection and a per-row delete button. */
-export function table<T>(rows: readonly T[], cols: readonly Column<T>[], opts: { empty: string; onSelect?: (row: T) => void; onDelete?: (row: T) => void; selected?: (row: T) => boolean }): HTMLElement {
+/** Table with optional row selection, per-row action buttons and a delete button. */
+export function table<T>(rows: readonly T[], cols: readonly Column<T>[], opts: { empty: string; onSelect?: (row: T) => void; onDelete?: (row: T) => void; selected?: (row: T) => boolean; actions?: (row: T) => HTMLButtonElement[] }): HTMLElement {
   if (rows.length === 0) return el('p', { class: 'muted' }, opts.empty);
-  const head = el('tr', {}, ...cols.map((c) => el('th', {}, c.label)), opts.onDelete ? el('th', {}, '') : null);
+  const hasActions = Boolean(opts.onDelete || opts.actions);
+  const head = el('tr', {}, ...cols.map((c) => el('th', {}, c.label)), hasActions ? el('th', {}, '') : null);
   const body = rows.map((r) => {
     const tr = el('tr', { class: opts.selected?.(r) ? 'is-current' : '' }, ...cols.map((c) => el('td', { class: c.mono ? 'mono' : '' }, c.value(r))));
     if (opts.onSelect) {
@@ -63,10 +64,10 @@ export function table<T>(rows: readonly T[], cols: readonly Column<T>[], opts: {
       tr.addEventListener('click', () => opts.onSelect?.(r));
       tr.addEventListener('keydown', (e) => { if (e.key === 'Enter') opts.onSelect?.(r); });
     }
-    if (opts.onDelete) {
-      const del = button('Eliminar', () => opts.onDelete?.(r), 'btn btn-quiet btn-small');
-      del.addEventListener('click', (e) => e.stopPropagation());
-      tr.appendChild(el('td', {}, del));
+    if (hasActions) {
+      const buttons = [...(opts.actions?.(r) ?? []), ...(opts.onDelete ? [button('Eliminar', () => opts.onDelete?.(r), 'btn btn-quiet btn-small')] : [])];
+      buttons.forEach((b) => b.addEventListener('click', (e) => e.stopPropagation()));
+      tr.appendChild(el('td', { class: 'row-actions' }, ...buttons));
     }
     return tr;
   });

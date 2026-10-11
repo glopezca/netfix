@@ -10,6 +10,7 @@ import { defaultServices } from '../services/config.ts';
 import type { ServerServices } from '../services/config.ts';
 import { applyPtPools } from '../services/dhcp-pt.ts';
 import { answerQuery } from '../services/dns-service.ts';
+import { cleanOrigin, effectiveRecords } from '../services/dns-names.ts';
 import { serveHttp, SERVER_BANNER, IIS_BANNER } from '../services/http-service.ts';
 import { Mailboxes, handleSmtp, handleRetrieve } from '../services/mail-service.ts';
 import type { MailEnv } from '../services/mail-service.ts';
@@ -151,7 +152,7 @@ export class Server extends Host {
     if (!udp) return;
     if (udp.dport === DHCP_SERVER_PORT && udp.dhcp && udp.dhcp.op === 'BOOTREQUEST') this.onDhcp(udp.dhcp);
     else if (udp.dport === DNS_PORT && udp.dns && !udp.dns.response && this.services.dns.enabled) {
-      const answer = answerQuery(udp.dns, this.services.dns.records);
+      const answer = answerQuery(udp.dns, effectiveRecords(this.services.dns), cleanOrigin(this.services.dns.origin));
       this.log('dns', `client ${formatIp(packet.src)}#${udp.sport} (${udp.dns.qname}): query: ${udp.dns.qname} IN ${udp.dns.qtype} + (${formatIp(packet.dst)}) → ${answer.rcode}`);
       this.sendUdp(packet.src, DNS_PORT, udp.sport, { dns: answer });
     }

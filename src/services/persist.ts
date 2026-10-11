@@ -3,7 +3,8 @@ import type { ServerServices, PtDhcpPool, DnsRecord, Account, WebFile } from './
 import { defaultServices, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } from './config.ts';
 import type { MailMessage } from '../net/packets.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
-import { parseMac } from '../core/mac.ts';
+import { parseMac, parseHexId } from '../core/mac.ts';
+import { cleanOrigin, validateOrigin } from './dns-names.ts';
 
 type Json = Record<string, unknown>;
 
@@ -13,7 +14,7 @@ const RECORD_TYPES = new Set(['A', 'CNAME', 'MX', 'NS', 'TXT']);
 
 export interface ServicesJson {
   readonly dhcp: { enabled: boolean; pools: Json[] };
-  readonly dns: { enabled: boolean; records: DnsRecord[] };
+  readonly dns: { enabled: boolean; origin?: string; records: DnsRecord[] };
   readonly http: { enabled: boolean; files: WebFile[] };
   readonly mail: ServerServices['mail'];
   readonly ssh: ServerServices['ssh'];
@@ -28,10 +29,11 @@ export function servicesToJson(s: ServerServices): ServicesJson {
       pools: s.dhcp.pools.map((p) => ({
         name: p.name, start: formatIp(p.start), prefix: p.prefix, maxUsers: p.maxUsers, gateway: ip(p.gateway), dns: ip(p.dns),
         domain: p.domain, tftp: ip(p.tftp), leaseMinutes: p.leaseMinutes,
-        reservations: p.reservations.map((r) => ({ ip: formatIp(r.ip), mac: r.mac, name: r.name })),
+        reservations: p.reservations.map((r) => ({ ip: formatIp(r.ip), mac: r.mac, clientId: r.clientId, name: r.name })),
+        identifyBy: p.identifyBy,
       })),
     },
-    dns: { enabled: s.dns.enabled, records: [...s.dns.records] },
+    dns: { enabled: s.dns.enabled, origin: s.dns.origin, records: [...s.dns.records] },
     http: { enabled: s.http.enabled, files: [...s.http.files] },
     mail: s.mail,
     ssh: s.ssh,
@@ -78,14 +80,38 @@ function pool(v: unknown): PtDhcpPool {
     name: str(v.name, 'nombre de pool', 32), start, prefix: num(v.prefix, 'máscara de pool', 8, 30), maxUsers: num(v.maxUsers, 'usuarios del pool', 1, 65_534),
     gateway: optIp(v.gateway, 'puerta de enlace'), dns: optIp(v.dns, 'DNS del pool'), domain: v.domain === undefined ? undefined : str(v.domain, 'dominio'),
     tftp: optIp(v.tftp, 'TFTP'), leaseMinutes: num(v.leaseMinutes, 'concesión', 1, 525_600, DEFAULT_LEASE_MINUTES),
-    reservations: arr(v.reservations, 'reservas').map((r) => {
-      if (!isObj(r)) throw new Error('Reserva no válida.');
-      const mac = parseMac(str(r.mac, 'MAC'));
-      const rip = optIp(r.ip, 'reserva');
-      if (!mac || rip === undefined) throw new Error('Reserva DHCP incompleta.');
-      return { ip: rip, mac, name: r.name === undefined ? undefined : str(r.name, 'nombre de reserva', 64) };
-    }),
+    reservations: arr(v.reservations, 'reservas').map(reservation),
+    identifyBy: v.identifyBy === undefined ? undefined : identifyBy(v.identifyBy),
   };
+}
+
+function identifyBy(v: unknown): 'mac' | 'client-id' {
+  if (v === 'mac' || v === 'client-id') return v;
+  throw new Error('Identificación de concesiones no válida (mac o client-id).');
+}
+
+const MAX_CLIENT_ID_HEX = 510;
+
+function reservation(r: unknown): PtDhcpPool['reservations'][number] {
+  if (!isObj(r)) throw new Error('Reserva no válida.');
+  const rip = optIp(r.ip, 'reserva');
+  const name = r.name === undefined ? undefined : str(r.name, 'nombre de reserva', 64);
+  if (rip === undefined) throw new Error('Reserva DHCP incompleta.');
+  if (r.clientId !== undefined) {
+    const id = parseHexId(str(r.clientId, 'Client-ID', MAX_CLIENT_ID_HEX));
+    if (!id) throw new Error('Client-ID de reserva no válido (hexadecimal).');
+    return { ip: rip, clientId: id, name };
+  }
+  const mac = parseMac(str(r.mac, 'MAC'));
+  if (!mac) throw new Error('Reserva DHCP incompleta.');
+  return { ip: rip, mac, name };
+}
+
+function origin(v: unknown): string | undefined {
+  if (v === undefined || v === null || v === '') return undefined;
+  const o = str(v, 'origen de zona', 253);
+  if (validateOrigin(o)) throw new Error('Origen de zona DNS no válido.');
+  return cleanOrigin(o);
 }
 
 function record(v: unknown): DnsRecord {
@@ -108,7 +134,7 @@ export function servicesFromJson(v: unknown): ServerServices {
   const s = isObj(v.ssh) ? v.ssh : {};
   return {
     dhcp: { enabled: bool(d.enabled), pools: arr(d.pools, 'pools').map(pool) },
-    dns: { enabled: bool(n.enabled), records: arr(n.records, 'registros').map(record) },
+    dns: { enabled: bool(n.enabled), origin: origin(n.origin), records: arr(n.records, 'registros').map(record) },
     http: { enabled: bool(h.enabled), files: arr(h.files, 'ficheros web').map((f) => { if (!isObj(f)) throw new Error('Fichero web no válido.'); return { name: str(f.name, 'fichero web', 128), content: str(f.content, 'contenido web', MAX_TEXT) }; }) },
     mail: { smtp: bool(m.smtp), pop3: bool(m.pop3), imap: bool(m.imap), domain: m.domain === undefined ? '' : str(m.domain, 'dominio de correo'), users: arr(m.users, 'usuarios de correo').map(account) },
     ssh: { enabled: bool(s.enabled), users: arr(s.users, 'usuarios SSH').map(account) },

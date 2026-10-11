@@ -1,10 +1,16 @@
 /** Server-PT service configuration (immutable records, edited from the GUI or restored from JSON). */
 
+/** A reservation identifies the client by MAC (Kea `hw-address`) or by client-id (option 61). */
 export interface DhcpReservation {
   readonly ip: number;
-  readonly mac: string;
+  readonly mac?: string;
+  /** Lowercase hex, e.g. "01" + MAC for PCs or the hex of an ASCII identifier. */
+  readonly clientId?: string;
   readonly name?: string;
 }
+
+/** How automatic leases recognise a returning client (Kea `match-client-id`). */
+export type LeaseIdentity = 'client-id' | 'mac';
 
 /** A Packet Tracer-style pool: start address + maximum users inside one subnet. */
 export interface PtDhcpPool {
@@ -18,6 +24,8 @@ export interface PtDhcpPool {
   readonly tftp?: number;
   readonly leaseMinutes: number;
   readonly reservations: readonly DhcpReservation[];
+  /** Undefined = client-id (Kea default): option 61 when present, the MAC otherwise. */
+  readonly identifyBy?: LeaseIdentity;
 }
 
 export type DnsRecordType = 'A' | 'CNAME' | 'MX' | 'NS' | 'TXT';
@@ -42,7 +50,8 @@ export interface Account {
 
 export interface ServerServices {
   readonly dhcp: { readonly enabled: boolean; readonly pools: readonly PtDhcpPool[] };
-  readonly dns: { readonly enabled: boolean; readonly records: readonly DnsRecord[] };
+  /** `origin`: zone origin for relative names (BIND `$ORIGIN`); undefined = every name is absolute. */
+  readonly dns: { readonly enabled: boolean; readonly origin?: string; readonly records: readonly DnsRecord[] };
   readonly http: { readonly enabled: boolean; readonly files: readonly WebFile[] };
   readonly mail: {
     readonly smtp: boolean;

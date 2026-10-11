@@ -46,6 +46,8 @@ export abstract class Host implements NetDevice, StackHost {
   os: HostOs = 'windows';
   /** Windows-style clients send option 61 = 01 + MAC. */
   sendClientId = true;
+  /** Option 61 to send instead of 01 + MAC (lowercase hex), like dhclient's `send dhcp-client-identifier`. */
+  clientIdOverride: string | undefined = undefined;
   portUp = true;
   dhcpStatus: DhcpStatus = 'idle';
   readonly stack: IpStack;
@@ -110,7 +112,8 @@ export abstract class Host implements NetDevice, StackHost {
   }
 
   clientId(): string | undefined {
-    return this.sendClientId ? clientIdFromMac(this.mac) : undefined;
+    if (!this.sendClientId) return undefined;
+    return this.clientIdOverride ?? clientIdFromMac(this.mac);
   }
 
   private createDhcpClient(): DhcpClient {

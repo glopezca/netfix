@@ -195,6 +195,12 @@ export class DhcpServer {
     }
   }
 
+  /** A binding belongs to the client by client-id, or by MAC when its pool says so. */
+  private boundTo(b: Binding, client: ClientIdentity): boolean {
+    if (this.pool(b.pool)?.matchClientId === false) return b.mac === client.mac;
+    return matchesBinding(b, client);
+  }
+
   private subnetAddr(msg: DhcpMessage, ctx: ServerContext): number | undefined {
     return msg.giaddr || ctx.ifaceAddrs[0]?.ip;
   }
@@ -229,7 +235,7 @@ export class DhcpServer {
   private pickAddress(pool: PoolConfig, client: ClientIdentity, requested: number | undefined, ctx: ServerContext): number | null {
     const reserved = findReservation(pool, client);
     if (reserved) return reserved.ip;
-    const existing = [...this.bindings.values()].find((b) => b.pool === pool.name && matchesBinding(b, client));
+    const existing = [...this.bindings.values()].find((b) => b.pool === pool.name && this.boundTo(b, client));
     if (existing) return existing.ip;
     const offered = this.offers.get(client.key);
     if (offered && offered.pool === pool.name && offered.expiresAt > ctx.now) return offered.ip;
@@ -256,7 +262,7 @@ export class DhcpServer {
     if (!poolNetworks(pool).some((n) => { const r = usableRange(n); return ip >= r.first && ip <= r.last; })) return false;
     if (this.isExcluded(ip) || ctx.ownIps.includes(ip) || this.conflicts.has(ip)) return false;
     const bound = this.bindings.get(ip);
-    if (bound && !matchesBinding(bound, client)) return false;
+    if (bound && !this.boundTo(bound, client)) return false;
     if (this.pools.some((p) => p.host?.ip === ip)) return false;
     if (this.pools.some((p) => p.reservations.some((r) => r.ip === ip))) return false;
     const heldByOther = [...this.offers.entries()].some(([key, o]) => o.ip === ip && key !== client.key && o.expiresAt > ctx.now);
@@ -303,7 +309,7 @@ export class DhcpServer {
     if (!pool) return null;
     const reserved = findReservation(pool, client);
     if (reserved) return { ip: reserved.ip, pool: pool.name, manual: false };
-    const bound = [...this.bindings.values()].find((b) => b.pool === pool.name && matchesBinding(b, client));
+    const bound = [...this.bindings.values()].find((b) => b.pool === pool.name && this.boundTo(b, client));
     return bound ? { ip: bound.ip, pool: pool.name, manual: false } : null;
   }
 
@@ -313,7 +319,7 @@ export class DhcpServer {
     if (!offer.manual && pool) {
       const secs = leaseSeconds(effectiveParams(pool, this.pools).lease);
       const expiresAt = secs === INFINITE_LEASE ? null : ctx.now + secs * MS;
-      for (const [ip, b] of this.bindings) if (matchesBinding(b, client) && ip !== offer.ip) this.bindings.delete(ip);
+      for (const [ip, b] of this.bindings) if (this.boundTo(b, client) && ip !== offer.ip) this.bindings.delete(ip);
       this.bindings.set(offer.ip, { ip: offer.ip, pool: offer.pool, clientId: client.clientId, mac: msg.chaddr, type: 'Automatic', expiresAt, iface: ctx.ifaceName, hostname: msg.options.hostname });
       this.eventLog(ctx, ['DHCPD: Adding binding to radix tree (' + formatIp(offer.ip) + ')', 'DHCPD: Adding binding to hash tree', `DHCPD: assigned IP address ${formatIp(offer.ip)} to client ${client.display}.`]);
       this.checkUtilization(pool, ctx);
@@ -323,7 +329,7 @@ export class DhcpServer {
 
   private onRelease(msg: DhcpMessage, client: ClientIdentity, ctx: ServerContext): void {
     const b = this.bindings.get(msg.ciaddr);
-    if (!b || !matchesBinding(b, client)) return;
+    if (!b || !this.boundTo(b, client)) return;
     this.bindings.delete(msg.ciaddr);
     this.eventLog(ctx, [`DHCPD: returned ${formatIp(msg.ciaddr)} to address pool ${b.pool}.`]);
   }

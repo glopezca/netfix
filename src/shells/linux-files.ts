@@ -6,7 +6,8 @@ import { formatMacCisco } from '../core/mac.ts';
 import { zonesOf } from '../services/dns-service.ts';
 import { normalizeName } from '../net/dns.ts';
 import { ptExclusions } from '../services/dhcp-pt.ts';
-import type { ServerServices } from '../services/config.ts';
+import type { DnsRecord, ServerServices } from '../services/config.ts';
+import { cleanOrigin, effectiveRecords, qualify } from '../services/dns-names.ts';
 
 export const IFACE = 'eth0';
 
@@ -32,12 +33,12 @@ function keaConf(s: ServerServices): string {
       p.dns !== undefined ? `{ "name": "domain-name-servers", "data": "${formatIp(p.dns)}" }` : '',
       p.domain ? `{ "name": "domain-name", "data": "${p.domain}" }` : '',
     ].filter(Boolean).join(',\n          ');
-    const res = p.reservations.map((r) => `{ "hw-address": "${linuxMac(r.mac)}", "ip-address": "${formatIp(r.ip)}" }`).join(',\n          ');
+    const res = p.reservations.map((r) => `{ ${r.clientId ? `"client-id": "${linuxMac(r.clientId)}"` : `"hw-address": "${linuxMac(r.mac ?? '')}"`}, "ip-address": "${formatIp(r.ip)}" }`).join(',\n          ');
     return `      {
         "id": ${i + 1},
         "subnet": "${formatIp(net)}/${p.prefix}",
         "pools": [ { "pool": "${formatIp(p.start)} - ${formatIp(last)}" } ],
-        "valid-lifetime": ${p.leaseMinutes * 60},
+        "valid-lifetime": ${p.leaseMinutes * 60},${p.identifyBy === 'mac' ? '\n        "match-client-id": false,' : ''}
         "option-data": [
           ${opts}
         ],
@@ -58,21 +59,37 @@ ${subnets.join(',\n')}
 `;
 }
 
+function zoneLine(name: string, r: DnsRecord, value: string): string {
+  return `${name.padEnd(16)}${String(r.ttl).padEnd(8)}IN  ${r.type.padEnd(6)}${r.type === 'MX' ? `${r.priority ?? 10} ` : ''}${value}`;
+}
+
+const inZone = (name: string, zone: string): boolean => name === zone || name.endsWith(`.${zone}`);
+
+/** Zone file: the origin zone keeps the names as typed (relative, @ or absolute); others are derived. */
 function zoneFile(s: ServerServices, zone: string): string {
-  const recs = s.dns.records.filter((r) => { const n = normalizeName(r.name); return n === zone || n.endsWith(`.${zone}`); });
-  const lines = recs.map((r) => {
-    const name = normalizeName(r.name) === zone ? '@' : normalizeName(r.name).slice(0, -(zone.length + 1));
-    const value = r.type === 'A' || r.type === 'TXT' ? (r.type === 'TXT' ? `"${r.value}"` : r.value) : `${normalizeName(r.value)}.`;
-    return `${name.padEnd(16)}${String(r.ttl).padEnd(8)}IN  ${r.type.padEnd(6)}${r.type === 'MX' ? `${r.priority ?? 10} ` : ''}${value}`;
-  });
-  return [`$TTL 86400`, `@   IN  SOA  ns.${zone}. admin.${zone}. ( 2026101101 604800 86400 2419200 3600 )`, ...lines, ''].join('\n');
+  const origin = cleanOrigin(s.dns.origin);
+  const head = [`$TTL 86400`, ...(zone === origin ? [`$ORIGIN ${zone}.`] : []), `@   IN  SOA  ns.${zone}. admin.${zone}. ( 2026101101 604800 86400 2419200 3600 )`];
+  const typed = zone === origin
+    ? s.dns.records.filter((r) => inZone(qualify(r.name, origin) ?? '', zone)).map((r) => zoneLine(r.name.trim(), r, r.type === 'TXT' ? `"${r.value}"` : r.value.trim()))
+    : effectiveRecords(s.dns).filter((r) => inZone(normalizeName(r.name), zone)).map((r) => {
+      const name = normalizeName(r.name) === zone ? '@' : normalizeName(r.name).slice(0, -(zone.length + 1));
+      const value = r.type === 'A' ? r.value : r.type === 'TXT' ? `"${r.value}"` : `${normalizeName(r.value)}.`;
+      return zoneLine(name, r, value);
+    });
+  return [...head, ...typed, ''].join('\n');
+}
+
+function zonesFor(s: ServerServices): string[] {
+  const origin = cleanOrigin(s.dns.origin);
+  const zones = zonesOf(effectiveRecords(s.dns)).filter((z) => !origin || !inZone(z, origin));
+  return origin ? [origin, ...zones] : zones;
 }
 
 function serverFiles(server: Server): Map<string, string> {
   const s = server.services;
   const files = new Map<string, string>();
   files.set('/etc/kea/kea-dhcp4.conf', keaConf(s));
-  const zones = zonesOf(s.dns.records);
+  const zones = zonesFor(s);
   files.set('/etc/bind/named.conf.local', zones.map((z) => `zone "${z}" {\n    type master;\n    file "/etc/bind/db.${z}";\n};\n`).join('\n'));
   for (const z of zones) files.set(`/etc/bind/db.${z}`, zoneFile(s, z));
   for (const f of s.http.files) files.set(`/var/www/html/${f.name}`, f.content);

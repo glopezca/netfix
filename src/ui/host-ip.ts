@@ -3,7 +3,7 @@ import { el } from './dom.ts';
 import { field, copyRow, input, message } from './forms.ts';
 import type { Host } from '../devices/host.ts';
 import { formatIp, formatMask, parseIp, parseMask, classfulPrefix } from '../core/ip.ts';
-import { formatMacCisco, formatHexId, clientIdFromMac } from '../core/mac.ts';
+import { formatMacCisco, formatHexId, parseHexId, asciiToHex } from '../core/mac.ts';
 
 const DHCP_WAIT_MS = 20_000;
 
@@ -22,11 +22,24 @@ export function hostIpConfig(h: Host, app: AfterChange): { root: HTMLElement; di
   const osSel = el('select', { class: 'select' }, el('option', { value: 'windows' }, 'Windows'), el('option', { value: 'linux' }, 'GNU/Linux (Ubuntu)'));
   osSel.value = h.os;
   const idsBox = el('div', { class: 'ids' });
+  const customId = input({ placeholder: 'vacío = 01 + MAC', value: h.clientIdOverride ? formatHexId(h.clientIdOverride) : '' });
+  const customFmt = el('select', { class: 'select', 'aria-label': 'Formato del Client-ID' }, el('option', { value: 'hex' }, 'Hexadecimal'), el('option', { value: 'ascii' }, 'Texto ASCII'));
+  const applyCustomId = (): void => {
+    const text = customId.value.trim();
+    const hex = text === '' ? undefined : customFmt.value === 'ascii' ? asciiToHex(text) : parseHexId(text);
+    if (hex === null) return msg.error('Client-ID no válido: usa hexadecimal (0161.756c.61) o elige «Texto ASCII».');
+    msg.clear();
+    h.clientIdOverride = hex;
+    app.afterCommand();
+    renderIds();
+  };
+  customId.addEventListener('change', applyCustomId);
+  customFmt.addEventListener('change', applyCustomId);
 
   const renderIds = (): void => {
     idsBox.replaceChildren(
       copyRow('MAC', formatMacCisco(h.mac), 'Para «hardware-address» y las reservas por MAC.'),
-      copyRow('Client-ID (opción 61)', formatHexId(clientIdFromMac(h.mac)), h.sendClientId ? 'Para «client-identifier» y «address … client-id».' : 'No se envía: el servidor identificará al equipo por su MAC.'),
+      copyRow('Client-ID (opción 61)', formatHexId(h.clientId() ?? ''), h.sendClientId ? 'Para «client-identifier», «address … client-id» y las reservas por Client-ID.' : 'No se envía: el servidor identificará al equipo por su MAC.'),
     );
   };
 
@@ -82,6 +95,7 @@ export function hostIpConfig(h: Host, app: AfterChange): { root: HTMLElement; di
     el('div', { class: 'grid2' }, field('Dirección IPv4', inputs.ip), field('Máscara de subred', inputs.mask), field('Puerta de enlace', inputs.gw), field('Servidor DNS', inputs.dns)),
     msg.el,
     el('label', { class: 'check' }, sendId, 'Enviar identificador de cliente (opción 61), como Windows'),
+    el('div', { class: 'grid2' }, field('Client-ID personalizado (como «send dhcp-client-identifier»)', customId), field('Formato', customFmt)),
     field('Sistema operativo (servicios y banner SSH)', osSel),
     idsBox,
   );

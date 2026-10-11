@@ -2853,6 +2853,8 @@ class Host {
     os = 'windows';
     /** Windows-style clients send option 61 = 01 + MAC. */
     sendClientId = true;
+    /** Option 61 to send instead of 01 + MAC (lowercase hex), like dhclient's `send dhcp-client-identifier`. */
+    clientIdOverride = undefined;
     portUp = true;
     dhcpStatus = 'idle';
     stack;
@@ -2909,7 +2911,9 @@ class Host {
         this.dhcpClient.start();
     }
     clientId() {
-        return this.sendClientId ? clientIdFromMac(this.mac) : undefined;
+        if (!this.sendClientId)
+            return undefined;
+        return this.clientIdOverride ?? clientIdFromMac(this.mac);
     }
     createDhcpClient() {
         return new DhcpClient({
@@ -3186,7 +3190,7 @@ function findManualPool(pools, client, subnetAddr, ifaceAddrs, viaRelay) {
     });
 }
 function findReservation(pool, client) {
-    return pool.reservations.find((r) => matchesClient({ clientId: r.clientId, mac: r.mac }, client));
+    return pool.reservations.find((r) => (r.macAlways && r.mac ? r.mac === client.mac : matchesClient({ clientId: r.clientId, mac: r.mac }, client)));
 }
 
 return { matchesClient, selectPool, findManualPool, findReservation };
@@ -3322,6 +3326,12 @@ class DhcpServer {
                 return null;
         }
     }
+    /** A binding belongs to the client by client-id, or by MAC when its pool says so. */
+    boundTo(b, client) {
+        if (this.pool(b.pool)?.matchClientId === false)
+            return b.mac === client.mac;
+        return matchesBinding(b, client);
+    }
     subnetAddr(msg, ctx) {
         return msg.giaddr || ctx.ifaceAddrs[0]?.ip;
     }
@@ -3357,7 +3367,7 @@ class DhcpServer {
         const reserved = findReservation(pool, client);
         if (reserved)
             return reserved.ip;
-        const existing = [...this.bindings.values()].find((b) => b.pool === pool.name && matchesBinding(b, client));
+        const existing = [...this.bindings.values()].find((b) => b.pool === pool.name && this.boundTo(b, client));
         if (existing)
             return existing.ip;
         const offered = this.offers.get(client.key);
@@ -3392,7 +3402,7 @@ class DhcpServer {
         if (this.isExcluded(ip) || ctx.ownIps.includes(ip) || this.conflicts.has(ip))
             return false;
         const bound = this.bindings.get(ip);
-        if (bound && !matchesBinding(bound, client))
+        if (bound && !this.boundTo(bound, client))
             return false;
         if (this.pools.some((p) => p.host?.ip === ip))
             return false;
@@ -3446,7 +3456,7 @@ class DhcpServer {
         const reserved = findReservation(pool, client);
         if (reserved)
             return { ip: reserved.ip, pool: pool.name, manual: false };
-        const bound = [...this.bindings.values()].find((b) => b.pool === pool.name && matchesBinding(b, client));
+        const bound = [...this.bindings.values()].find((b) => b.pool === pool.name && this.boundTo(b, client));
         return bound ? { ip: bound.ip, pool: pool.name, manual: false } : null;
     }
     commit(msg, client, offer, ctx) {
@@ -3456,7 +3466,7 @@ class DhcpServer {
             const secs = leaseSeconds(effectiveParams(pool, this.pools).lease);
             const expiresAt = secs === INFINITE_LEASE ? null : ctx.now + secs * MS;
             for (const [ip, b] of this.bindings)
-                if (matchesBinding(b, client) && ip !== offer.ip)
+                if (this.boundTo(b, client) && ip !== offer.ip)
                     this.bindings.delete(ip);
             this.bindings.set(offer.ip, { ip: offer.ip, pool: offer.pool, clientId: client.clientId, mac: msg.chaddr, type: 'Automatic', expiresAt, iface: ctx.ifaceName, hostname: msg.options.hostname });
             this.eventLog(ctx, ['DHCPD: Adding binding to radix tree (' + formatIp(offer.ip) + ')', 'DHCPD: Adding binding to hash tree', `DHCPD: assigned IP address ${formatIp(offer.ip)} to client ${client.display}.`]);
@@ -3466,7 +3476,7 @@ class DhcpServer {
     }
     onRelease(msg, client, ctx) {
         const b = this.bindings.get(msg.ciaddr);
-        if (!b || !matchesBinding(b, client))
+        if (!b || !this.boundTo(b, client))
             return;
         this.bindings.delete(msg.ciaddr);
         this.eventLog(ctx, [`DHCPD: returned ${formatIp(msg.ciaddr)} to address pool ${b.pool}.`]);
@@ -3637,7 +3647,8 @@ function ptPoolToIos(p) {
         domainName: p.domain || undefined,
         lease,
         options: p.tftp !== undefined ? [{ code: TFTP_OPTION, kind: 'ip', value: '', ips: [p.tftp] }] : [],
-        reservations: p.reservations.map((r) => ({ ip: r.ip, mac: r.mac })),
+        reservations: p.reservations.map((r) => (r.clientId ? { ip: r.ip, clientId: r.clientId } : { ip: r.ip, mac: r.mac, macAlways: true })),
+        matchClientId: p.identifyBy === 'mac' ? false : undefined,
     };
 }
 /** Addresses of the subnet outside [start, start + maxUsers - 1] are excluded. */
@@ -3677,14 +3688,86 @@ function validatePool(p, others) {
     if (others.some((o) => networkOf(o.start, o.prefix) === net && o.prefix === p.prefix))
         return 'Ya hay un pool para esa subred.';
     const bad = p.reservations.find((r) => !inSubnet(r.ip, p.start, p.prefix));
-    return bad ? `La reserva ${formatIp(bad.ip)} no está en la subred del pool.` : null;
+    return bad ? `La reserva ${formatIp(bad.ip)} no está en la subred del pool.` : validateReservations(p.reservations);
+}
+function validateReservations(list) {
+    if (list.some((r) => Boolean(r.mac) === Boolean(r.clientId)))
+        return 'Cada reserva necesita una MAC o un Client-ID (solo uno de los dos).';
+    const ips = list.map((r) => r.ip);
+    if (new Set(ips).size !== ips.length)
+        return 'Hay una IP reservada repetida.';
+    const ids = list.map((r) => (r.mac ? `mac:${r.mac}` : `id:${r.clientId ?? ''}`));
+    return new Set(ids).size === ids.length ? null : 'Hay una MAC o un Client-ID repetido en las reservas.';
+}
+/** Turns an automatic lease into a reservation keyed by its MAC or by its client-id. */
+function leaseToReservation(lease, by) {
+    if (by === 'client-id')
+        return lease.clientId ? { ip: lease.ip, clientId: lease.clientId, name: lease.hostname } : null;
+    return { ip: lease.ip, mac: lease.mac, name: lease.hostname };
 }
 
-return { ptPoolToIos, ptExclusions, applyPtPools, validatePool };
+return { ptPoolToIos, ptExclusions, applyPtPools, validatePool, leaseToReservation };
+})();
+__m["services/dns-names.js"] = (() => {
+const LABEL = /^(?:\*|[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?)$/i;
+const MAX_NAME = 253;
+const TARGET_TYPES = new Set(['CNAME', 'MX', 'NS']);
+/** Origin without the final dot, lowercase; undefined when empty. */
+function cleanOrigin(origin) {
+    const o = (origin ?? '').trim().toLowerCase().replace(/\.$/, '');
+    return o === '' ? undefined : o;
+}
+/** Absolute name (lowercase, no final dot) or null when `@` is used without an origin. */
+function qualify(name, origin) {
+    const n = name.trim().toLowerCase();
+    const o = cleanOrigin(origin);
+    if (n === '@')
+        return o ?? null;
+    if (n.endsWith('.'))
+        return n.slice(0, -1);
+    return o ? `${n}.${o}` : n;
+}
+function validLabels(name) {
+    return name.length > 0 && name.length <= MAX_NAME && name.split('.').every((l) => LABEL.test(l));
+}
+function validateOrigin(origin) {
+    const o = cleanOrigin(origin);
+    return o === undefined || validLabels(o) ? null : 'Origen de zona no válido (por ejemplo aula.lab).';
+}
+/** Validates a name as typed in a record (owner or target). */
+function validateName(name, origin) {
+    const n = name.trim();
+    if (n === '@')
+        return cleanOrigin(origin) ? null : '«@» necesita el origen de la zona (campo Dominio de la zona).';
+    const body = n.endsWith('.') ? n.slice(0, -1) : n;
+    if (!validLabels(body))
+        return `Nombre no válido: «${n}». Usa www (relativo), www.aula.lab. (absoluto) o @.`;
+    const full = qualify(n, origin);
+    return full !== null && full.length <= MAX_NAME ? null : `Nombre demasiado largo: «${n}».`;
+}
+/** Records with every owner and CNAME/MX/NS target made absolute (invalid ones are skipped). */
+function effectiveRecords(dns) {
+    const out = [];
+    for (const r of dns.records) {
+        const name = qualify(r.name, dns.origin);
+        const value = TARGET_TYPES.has(r.type) ? qualify(r.value, dns.origin) : r.value;
+        if (name !== null && value !== null)
+            out.push({ ...r, name, value });
+    }
+    return out;
+}
+/** FQDN with the final dot, as BIND would print it (used as a preview in the GUI). */
+function displayName(name, origin) {
+    const q = qualify(name, origin);
+    return q === null ? '' : `${q}.`;
+}
+
+return { cleanOrigin, qualify, validateOrigin, validateName, effectiveRecords, displayName };
 })();
 __m["services/dns-service.js"] = (() => {
 const { normalizeName, ipFromReverse } = __m["net/dns.js"];
-const { formatIp } = __m["core/ip.js"];
+const { formatIp, parseIp } = __m["core/ip.js"];
+const { validateName } = __m["services/dns-names.js"];
 const MAX_CNAME_CHAIN = 8;
 const SOA_SERIAL = 2026101101;
 const NEGATIVE_TTL = 3600;
@@ -3734,14 +3817,14 @@ function lookup(qname, qtype, records) {
     }
     return answers;
 }
-function answerQuery(query, records) {
+function answerQuery(query, records, origin) {
     const qname = normalizeName(query.qname);
     const base = { id: query.id, response: true, qname, qtype: query.qtype };
     if (query.qtype === 'PTR') {
         const ptr = ptrAnswers(qname, records);
         return ptr.length > 0 ? { ...base, rcode: 'NOERROR', authoritative: true, answers: ptr } : { ...base, rcode: 'NXDOMAIN', authoritative: true, answers: [] };
     }
-    const zone = zoneFor(qname, zonesOf(records));
+    const zone = zoneFor(qname, origin ? [...zonesOf(records), origin] : zonesOf(records));
     if (!zone)
         return { ...base, rcode: 'REFUSED', answers: [] };
     const answers = lookup(qname, query.qtype, records);
@@ -3751,13 +3834,14 @@ function answerQuery(query, records) {
     return { ...base, rcode: exists ? 'NOERROR' : 'NXDOMAIN', authoritative: true, answers: [], authority: [soaFor(zone, records)] };
 }
 /** Validation used by the GUI. Returns an error message or null. */
-function validateRecord(r) {
-    if (!/^[a-z0-9_*.-]+$/i.test(r.name) || r.name.startsWith('.') || r.name.includes('..'))
-        return 'Nombre no válido: usa letras, números, guiones y puntos (www.aula.lab).';
-    if (r.type === 'A' && !/^\d{1,3}(\.\d{1,3}){3}$/.test(r.value))
+function validateRecord(r, origin) {
+    const nameErr = validateName(r.name, origin);
+    if (nameErr)
+        return nameErr;
+    if (r.type === 'A' && parseIp(r.value) === null)
         return 'Un registro A necesita una dirección IPv4.';
-    if ((r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX') && !/^[a-z0-9_.-]+$/i.test(r.value))
-        return `Un registro ${r.type} necesita un nombre de host.`;
+    if ((r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX') && validateName(r.value, origin))
+        return `Un registro ${r.type} necesita un nombre de host (relativo, absoluto con punto final o @): ${validateName(r.value, origin) ?? ''}`;
     if (r.type === 'MX' && (r.priority === undefined || r.priority < 0 || r.priority > 65535))
         return 'La prioridad MX va de 0 a 65535.';
     return r.value.trim() === '' ? 'El valor no puede estar vacío.' : null;
@@ -4151,6 +4235,7 @@ const { formatMacCisco } = __m["core/mac.js"];
 const { zonesOf } = __m["services/dns-service.js"];
 const { normalizeName } = __m["net/dns.js"];
 const { ptExclusions } = __m["services/dhcp-pt.js"];
+const { cleanOrigin, effectiveRecords, qualify } = __m["services/dns-names.js"];
 const IFACE = 'eth0';
 function linuxMac(mac) {
     return (mac.match(/../g) ?? []).join(':');
@@ -4173,12 +4258,12 @@ function keaConf(s) {
             p.dns !== undefined ? `{ "name": "domain-name-servers", "data": "${formatIp(p.dns)}" }` : '',
             p.domain ? `{ "name": "domain-name", "data": "${p.domain}" }` : '',
         ].filter(Boolean).join(',\n          ');
-        const res = p.reservations.map((r) => `{ "hw-address": "${linuxMac(r.mac)}", "ip-address": "${formatIp(r.ip)}" }`).join(',\n          ');
+        const res = p.reservations.map((r) => `{ ${r.clientId ? `"client-id": "${linuxMac(r.clientId)}"` : `"hw-address": "${linuxMac(r.mac ?? '')}"`}, "ip-address": "${formatIp(r.ip)}" }`).join(',\n          ');
         return `      {
         "id": ${i + 1},
         "subnet": "${formatIp(net)}/${p.prefix}",
         "pools": [ { "pool": "${formatIp(p.start)} - ${formatIp(last)}" } ],
-        "valid-lifetime": ${p.leaseMinutes * 60},
+        "valid-lifetime": ${p.leaseMinutes * 60},${p.identifyBy === 'mac' ? '\n        "match-client-id": false,' : ''}
         "option-data": [
           ${opts}
         ],
@@ -4198,20 +4283,33 @@ ${subnets.join(',\n')}
 }
 `;
 }
+function zoneLine(name, r, value) {
+    return `${name.padEnd(16)}${String(r.ttl).padEnd(8)}IN  ${r.type.padEnd(6)}${r.type === 'MX' ? `${r.priority ?? 10} ` : ''}${value}`;
+}
+const inZone = (name, zone) => name === zone || name.endsWith(`.${zone}`);
+/** Zone file: the origin zone keeps the names as typed (relative, @ or absolute); others are derived. */
 function zoneFile(s, zone) {
-    const recs = s.dns.records.filter((r) => { const n = normalizeName(r.name); return n === zone || n.endsWith(`.${zone}`); });
-    const lines = recs.map((r) => {
-        const name = normalizeName(r.name) === zone ? '@' : normalizeName(r.name).slice(0, -(zone.length + 1));
-        const value = r.type === 'A' || r.type === 'TXT' ? (r.type === 'TXT' ? `"${r.value}"` : r.value) : `${normalizeName(r.value)}.`;
-        return `${name.padEnd(16)}${String(r.ttl).padEnd(8)}IN  ${r.type.padEnd(6)}${r.type === 'MX' ? `${r.priority ?? 10} ` : ''}${value}`;
-    });
-    return [`$TTL 86400`, `@   IN  SOA  ns.${zone}. admin.${zone}. ( 2026101101 604800 86400 2419200 3600 )`, ...lines, ''].join('\n');
+    const origin = cleanOrigin(s.dns.origin);
+    const head = [`$TTL 86400`, ...(zone === origin ? [`$ORIGIN ${zone}.`] : []), `@   IN  SOA  ns.${zone}. admin.${zone}. ( 2026101101 604800 86400 2419200 3600 )`];
+    const typed = zone === origin
+        ? s.dns.records.filter((r) => inZone(qualify(r.name, origin) ?? '', zone)).map((r) => zoneLine(r.name.trim(), r, r.type === 'TXT' ? `"${r.value}"` : r.value.trim()))
+        : effectiveRecords(s.dns).filter((r) => inZone(normalizeName(r.name), zone)).map((r) => {
+            const name = normalizeName(r.name) === zone ? '@' : normalizeName(r.name).slice(0, -(zone.length + 1));
+            const value = r.type === 'A' ? r.value : r.type === 'TXT' ? `"${r.value}"` : `${normalizeName(r.value)}.`;
+            return zoneLine(name, r, value);
+        });
+    return [...head, ...typed, ''].join('\n');
+}
+function zonesFor(s) {
+    const origin = cleanOrigin(s.dns.origin);
+    const zones = zonesOf(effectiveRecords(s.dns)).filter((z) => !origin || !inZone(z, origin));
+    return origin ? [origin, ...zones] : zones;
 }
 function serverFiles(server) {
     const s = server.services;
     const files = new Map();
     files.set('/etc/kea/kea-dhcp4.conf', keaConf(s));
-    const zones = zonesOf(s.dns.records);
+    const zones = zonesFor(s);
     files.set('/etc/bind/named.conf.local', zones.map((z) => `zone "${z}" {\n    type master;\n    file "/etc/bind/db.${z}";\n};\n`).join('\n'));
     for (const z of zones)
         files.set(`/etc/bind/db.${z}`, zoneFile(s, z));
@@ -5100,6 +5198,7 @@ const { DhcpServer } = __m["dhcp/server.js"];
 const { defaultServices } = __m["services/config.js"];
 const { applyPtPools } = __m["services/dhcp-pt.js"];
 const { answerQuery } = __m["services/dns-service.js"];
+const { cleanOrigin, effectiveRecords } = __m["services/dns-names.js"];
 const { serveHttp, SERVER_BANNER, IIS_BANNER } = __m["services/http-service.js"];
 const { Mailboxes, handleSmtp, handleRetrieve } = __m["services/mail-service.js"];
 const { findUnit, setUnitActive, unitActive, UNITS } = __m["services/units.js"];
@@ -5222,7 +5321,7 @@ class Server extends Host {
         if (udp.dport === DHCP_SERVER_PORT && udp.dhcp && udp.dhcp.op === 'BOOTREQUEST')
             this.onDhcp(udp.dhcp);
         else if (udp.dport === DNS_PORT && udp.dns && !udp.dns.response && this.services.dns.enabled) {
-            const answer = answerQuery(udp.dns, this.services.dns.records);
+            const answer = answerQuery(udp.dns, effectiveRecords(this.services.dns), cleanOrigin(this.services.dns.origin));
             this.log('dns', `client ${formatIp(packet.src)}#${udp.sport} (${udp.dns.qname}): query: ${udp.dns.qname} IN ${udp.dns.qtype} + (${formatIp(packet.dst)}) → ${answer.rcode}`);
             this.sendUdp(packet.src, DNS_PORT, udp.sport, { dns: answer });
         }
@@ -5313,11 +5412,12 @@ function message() {
         clear: () => { p.textContent = ''; delete p.dataset.kind; },
     };
 }
-/** Table with optional row selection and a per-row delete button. */
+/** Table with optional row selection, per-row action buttons and a delete button. */
 function table(rows, cols, opts) {
     if (rows.length === 0)
         return el('p', { class: 'muted' }, opts.empty);
-    const head = el('tr', {}, ...cols.map((c) => el('th', {}, c.label)), opts.onDelete ? el('th', {}, '') : null);
+    const hasActions = Boolean(opts.onDelete || opts.actions);
+    const head = el('tr', {}, ...cols.map((c) => el('th', {}, c.label)), hasActions ? el('th', {}, '') : null);
     const body = rows.map((r) => {
         const tr = el('tr', { class: opts.selected?.(r) ? 'is-current' : '' }, ...cols.map((c) => el('td', { class: c.mono ? 'mono' : '' }, c.value(r))));
         if (opts.onSelect) {
@@ -5326,10 +5426,10 @@ function table(rows, cols, opts) {
             tr.addEventListener('keydown', (e) => { if (e.key === 'Enter')
                 opts.onSelect?.(r); });
         }
-        if (opts.onDelete) {
-            const del = button('Eliminar', () => opts.onDelete?.(r), 'btn btn-quiet btn-small');
-            del.addEventListener('click', (e) => e.stopPropagation());
-            tr.appendChild(el('td', {}, del));
+        if (hasActions) {
+            const buttons = [...(opts.actions?.(r) ?? []), ...(opts.onDelete ? [button('Eliminar', () => opts.onDelete?.(r), 'btn btn-quiet btn-small')] : [])];
+            buttons.forEach((b) => b.addEventListener('click', (e) => e.stopPropagation()));
+            tr.appendChild(el('td', { class: 'row-actions' }, ...buttons));
         }
         return tr;
     });
@@ -5367,7 +5467,7 @@ __m["ui/host-ip.js"] = (() => {
 const { el } = __m["ui/dom.js"];
 const { field, copyRow, input, message } = __m["ui/forms.js"];
 const { formatIp, formatMask, parseIp, parseMask, classfulPrefix } = __m["core/ip.js"];
-const { formatMacCisco, formatHexId, clientIdFromMac } = __m["core/mac.js"];
+const { formatMacCisco, formatHexId, parseHexId, asciiToHex } = __m["core/mac.js"];
 const DHCP_WAIT_MS = 20_000;
 function hostIpConfig(h, app) {
     const name = `mode-${h.id}`;
@@ -5380,8 +5480,22 @@ function hostIpConfig(h, app) {
     const osSel = el('select', { class: 'select' }, el('option', { value: 'windows' }, 'Windows'), el('option', { value: 'linux' }, 'GNU/Linux (Ubuntu)'));
     osSel.value = h.os;
     const idsBox = el('div', { class: 'ids' });
+    const customId = input({ placeholder: 'vacío = 01 + MAC', value: h.clientIdOverride ? formatHexId(h.clientIdOverride) : '' });
+    const customFmt = el('select', { class: 'select', 'aria-label': 'Formato del Client-ID' }, el('option', { value: 'hex' }, 'Hexadecimal'), el('option', { value: 'ascii' }, 'Texto ASCII'));
+    const applyCustomId = () => {
+        const text = customId.value.trim();
+        const hex = text === '' ? undefined : customFmt.value === 'ascii' ? asciiToHex(text) : parseHexId(text);
+        if (hex === null)
+            return msg.error('Client-ID no válido: usa hexadecimal (0161.756c.61) o elige «Texto ASCII».');
+        msg.clear();
+        h.clientIdOverride = hex;
+        app.afterCommand();
+        renderIds();
+    };
+    customId.addEventListener('change', applyCustomId);
+    customFmt.addEventListener('change', applyCustomId);
     const renderIds = () => {
-        idsBox.replaceChildren(copyRow('MAC', formatMacCisco(h.mac), 'Para «hardware-address» y las reservas por MAC.'), copyRow('Client-ID (opción 61)', formatHexId(clientIdFromMac(h.mac)), h.sendClientId ? 'Para «client-identifier» y «address … client-id».' : 'No se envía: el servidor identificará al equipo por su MAC.'));
+        idsBox.replaceChildren(copyRow('MAC', formatMacCisco(h.mac), 'Para «hardware-address» y las reservas por MAC.'), copyRow('Client-ID (opción 61)', formatHexId(h.clientId() ?? ''), h.sendClientId ? 'Para «client-identifier», «address … client-id» y las reservas por Client-ID.' : 'No se envía: el servidor identificará al equipo por su MAC.'));
     };
     const fill = () => {
         const c = h.config;
@@ -5428,12 +5542,113 @@ function hostIpConfig(h, app) {
     sendId.addEventListener('change', () => { h.sendClientId = sendId.checked; app.afterCommand(); renderIds(); });
     osSel.addEventListener('change', () => { h.os = osSel.value === 'linux' ? 'linux' : 'windows'; app.afterCommand(); });
     const dispose = h.onChange(fill);
-    const root = el('div', { class: 'pane' }, el('fieldset', { class: 'mode' }, el('legend', {}, 'Configuración IPv4'), el('label', { class: 'radio' }, dhcpRadio, 'DHCP'), el('label', { class: 'radio' }, staticRadio, 'Estática')), status, el('div', { class: 'grid2' }, field('Dirección IPv4', inputs.ip), field('Máscara de subred', inputs.mask), field('Puerta de enlace', inputs.gw), field('Servidor DNS', inputs.dns)), msg.el, el('label', { class: 'check' }, sendId, 'Enviar identificador de cliente (opción 61), como Windows'), field('Sistema operativo (servicios y banner SSH)', osSel), idsBox);
+    const root = el('div', { class: 'pane' }, el('fieldset', { class: 'mode' }, el('legend', {}, 'Configuración IPv4'), el('label', { class: 'radio' }, dhcpRadio, 'DHCP'), el('label', { class: 'radio' }, staticRadio, 'Estática')), status, el('div', { class: 'grid2' }, field('Dirección IPv4', inputs.ip), field('Máscara de subred', inputs.mask), field('Puerta de enlace', inputs.gw), field('Servidor DNS', inputs.dns)), msg.el, el('label', { class: 'check' }, sendId, 'Enviar identificador de cliente (opción 61), como Windows'), el('div', { class: 'grid2' }, field('Client-ID personalizado (como «send dhcp-client-identifier»)', customId), field('Formato', customFmt)), field('Sistema operativo (servicios y banner SSH)', osSel), idsBox);
     fill();
     return { root, dispose };
 }
 
 return { hostIpConfig };
+})();
+__m["ui/server-dhcp-res.js"] = (() => {
+/** Server-PT → DHCP: reservations (by MAC or client-id) and the lease table. */
+const { el } = __m["ui/dom.js"];
+const { field, input, select, button, message, table } = __m["ui/forms.js"];
+const { validatePool, leaseToReservation } = __m["services/dhcp-pt.js"];
+const { formatIp, parseIp } = __m["core/ip.js"];
+const { formatMacCisco, parseMac, parseHexId, asciiToHex, formatHexId } = __m["core/mac.js"];
+const { formatLeaseTime } = __m["core/clock.js"];
+const ID_KINDS = [['mac', 'MAC'], ['hex', 'Client-ID (hexadecimal)'], ['ascii', 'Client-ID (texto ASCII)']];
+function setReservations(server, poolName, list) {
+    const s = server.services;
+    const pool = s.dhcp.pools.find((p) => p.name === poolName);
+    if (!pool)
+        return 'El pool ya no existe.';
+    const err = validatePool({ ...pool, reservations: list }, s.dhcp.pools.filter((p) => p.name !== poolName));
+    if (err)
+        return err;
+    server.setServices({ ...s, dhcp: { ...s.dhcp, pools: s.dhcp.pools.map((p) => (p.name === poolName ? { ...p, reservations: list } : p)) } });
+    return null;
+}
+function readIdentifier(kind, text) {
+    if (kind === 'mac') {
+        const mac = parseMac(text);
+        return mac ? { mac } : 'MAC no válida: usa 0001.42AB.CDEF o 00:01:42:ab:cd:ef.';
+    }
+    const id = kind === 'ascii' ? (text ? asciiToHex(text) : null) : parseHexId(text);
+    return id ? { clientId: id } : 'Client-ID no válido: en hexadecimal (0100.0142.abcd.ef) o elige «texto ASCII».';
+}
+function identifierText(r) {
+    return r.clientId ? `Client-ID ${formatHexId(r.clientId)}` : `MAC ${formatMacCisco(r.mac ?? '')}`;
+}
+function reservationsPanel(server, pool, app, refresh) {
+    const ip = input({ placeholder: '192.168.1.20', inputmode: 'decimal' });
+    const kind = select(ID_KINDS, 'mac');
+    const id = input({ placeholder: '0001.42AB.CDEF' });
+    const name = input({ placeholder: 'PC-profesor' });
+    kind.addEventListener('change', () => { id.placeholder = kind.value === 'mac' ? '0001.42AB.CDEF' : kind.value === 'hex' ? '0100.0142.abcd.ef' : 'aula-pc-01'; });
+    const msg = message();
+    const apply = (list) => {
+        const err = setReservations(server, pool.name, list);
+        if (err)
+            return msg.error(err);
+        app.afterCommand();
+        refresh();
+    };
+    const add = () => {
+        const a = parseIp(ip.value.trim());
+        if (a === null)
+            return msg.error('IP no válida.');
+        const ident = readIdentifier(kind.value, id.value.trim());
+        if (typeof ident === 'string')
+            return msg.error(ident);
+        apply([...pool.reservations, { ip: a, ...ident, name: name.value.trim() || undefined }]);
+    };
+    return el('section', { class: 'subsection' }, el('h3', {}, `Reservas de ${pool.name}`), el('div', { class: 'grid3' }, field('IP reservada', ip), field('Identificar al cliente por', kind), field('MAC o Client-ID', id), field('Descripción', name)), el('div', { class: 'actions' }, button('Añadir reserva', add)), msg.el, el('p', { class: 'muted' }, 'Por MAC: coincide con la dirección física aunque el cliente envíe otro Client-ID (como «hw-address» en Kea). Por Client-ID: coincide con la opción 61 que envía el cliente.'), table(pool.reservations, [
+        { label: 'IP', value: (r) => formatIp(r.ip), mono: true },
+        { label: 'Identificador', value: identifierText, mono: true },
+        { label: 'Descripción', value: (r) => r.name ?? '' },
+    ], { empty: 'Sin reservas. La MAC y el Client-ID de cada equipo están en su pestaña Configuración IP.', onDelete: (r) => apply(pool.reservations.filter((x) => x !== r)) }));
+}
+function reservationKind(server, b) {
+    const pool = server.services.dhcp.pools.find((p) => p.name === b.pool);
+    const r = pool?.reservations.find((x) => x.ip === b.ip);
+    if (!r)
+        return 'Automática';
+    return r.clientId ? 'Reserva (Client-ID)' : 'Reserva (MAC)';
+}
+function leasesPanel(server, app, refresh) {
+    const msg = message();
+    const reserve = (b, by) => {
+        const pool = server.services.dhcp.pools.find((p) => p.name === b.pool);
+        const r = leaseToReservation(b, by);
+        if (!pool || !r)
+            return msg.error('Esta concesión no tiene Client-ID: resérvala por MAC.');
+        const err = setReservations(server, pool.name, [...pool.reservations.filter((x) => x.ip !== b.ip), r]);
+        if (err)
+            return msg.error(err);
+        app.afterCommand();
+        refresh();
+    };
+    const leases = server.dhcpEngine.allBindings(server.clock.now()).filter((b) => b.type === 'Automatic');
+    return el('section', { class: 'subsection' }, el('h3', {}, 'Concesiones'), msg.el, table(leases, [
+        { label: 'IP', value: (b) => formatIp(b.ip), mono: true },
+        { label: 'MAC', value: (b) => formatMacCisco(b.mac), mono: true },
+        { label: 'Client-ID', value: (b) => (b.clientId ? formatHexId(b.clientId) : '—'), mono: true },
+        { label: 'Equipo', value: (b) => b.hostname ?? '' },
+        { label: 'Tipo', value: (b) => reservationKind(server, b) },
+        { label: 'Expira', value: (b) => (b.expiresAt === null ? 'Infinita' : formatLeaseTime(b.expiresAt)) },
+    ], {
+        empty: 'Aún no hay concesiones.',
+        actions: (b) => {
+            const byMac = button('Reservar por MAC', () => reserve(b, 'mac'), 'btn btn-quiet btn-small');
+            const byId = button('Reservar por Client-ID', () => reserve(b, 'client-id'), 'btn btn-quiet btn-small');
+            byId.disabled = !b.clientId;
+            return [byMac, byId];
+        },
+    }));
+}
+
+return { identifierText, reservationsPanel, leasesPanel };
 })();
 __m["ui/server-dhcp-dns.js"] = (() => {
 /** Server-PT → Servicios → DHCP and DNS panels. */
@@ -5441,10 +5656,10 @@ const { el } = __m["ui/dom.js"];
 const { field, input, select, button, onOff, message, table } = __m["ui/forms.js"];
 const { DEFAULT_LEASE_MINUTES, DEFAULT_MAX_USERS, DEFAULT_TTL } = __m["services/config.js"];
 const { validatePool } = __m["services/dhcp-pt.js"];
+const { reservationsPanel, leasesPanel } = __m["ui/server-dhcp-res.js"];
 const { validateRecord } = __m["services/dns-service.js"];
+const { cleanOrigin, displayName, validateOrigin } = __m["services/dns-names.js"];
 const { formatIp, formatMask, parseIp, parseMask, networkOf } = __m["core/ip.js"];
-const { formatMacCisco, parseMac, formatHexId } = __m["core/mac.js"];
-const { formatLeaseTime } = __m["core/clock.js"];
 /** A panel that rebuilds itself after each change. */
 function livePanel(render) {
     const root = el('div', { class: 'pane' });
@@ -5452,6 +5667,7 @@ function livePanel(render) {
     refresh();
     return root;
 }
+const IDENTIFY = [['client-id', 'Client-ID (opción 61) o, si no la envía, MAC'], ['mac', 'Dirección MAC']];
 const ipOrEmpty = (n) => (n === undefined ? '' : formatIp(n));
 function dhcpPanel(server, app) {
     let editing = null;
@@ -5468,6 +5684,7 @@ function dhcpPanel(server, app) {
             domain: input({ value: pool?.domain ?? '' }),
             tftp: input({ value: ipOrEmpty(pool?.tftp), inputmode: 'decimal' }),
             lease: input({ value: String(pool?.leaseMinutes ?? DEFAULT_LEASE_MINUTES), inputmode: 'numeric' }),
+            identify: select(IDENTIFY, pool?.identifyBy ?? 'client-id'),
         };
         const msg = message();
         const read = () => {
@@ -5485,7 +5702,7 @@ function dhcpPanel(server, app) {
             const lease = Number(f.lease.value);
             if (!Number.isInteger(maxUsers) || !Number.isInteger(lease) || lease < 1)
                 return 'Usuarios máximos y concesión deben ser números enteros.';
-            return { name: f.name.value.trim(), start, prefix, maxUsers, gateway: vals.gw ?? undefined, dns: vals.dns ?? undefined, tftp: vals.tftp ?? undefined, domain: f.domain.value.trim() || undefined, leaseMinutes: lease, reservations: pool?.reservations ?? [] };
+            return { name: f.name.value.trim(), start, prefix, maxUsers, gateway: vals.gw ?? undefined, dns: vals.dns ?? undefined, tftp: vals.tftp ?? undefined, domain: f.domain.value.trim() || undefined, leaseMinutes: lease, reservations: pool?.reservations ?? [], identifyBy: f.identify.value === 'mac' ? 'mac' : undefined };
         };
         const save = () => {
             const p = read();
@@ -5511,7 +5728,7 @@ function dhcpPanel(server, app) {
         return [
             onOff('Servicio DHCP', s.dhcp.enabled, (on) => { server.setUnit('dhcp', on); app.afterCommand(); refresh(); }),
             el('h3', {}, pool ? `Editar pool ${pool.name}` : 'Nuevo pool'),
-            el('div', { class: 'grid3' }, field('Nombre del pool', f.name), field('IP inicial', f.start), field('Máscara de subred', f.mask), field('Usuarios máximos', f.max), field('Puerta de enlace', f.gw), field('Servidor DNS', f.dns), field('Dominio', f.domain), field('Servidor TFTP (opción 150)', f.tftp), field('Concesión (minutos)', f.lease)),
+            el('div', { class: 'grid3' }, field('Nombre del pool', f.name), field('IP inicial', f.start), field('Máscara de subred', f.mask), field('Usuarios máximos', f.max), field('Puerta de enlace', f.gw), field('Servidor DNS', f.dns), field('Dominio', f.domain), field('Servidor TFTP (opción 150)', f.tftp), field('Concesión (minutos)', f.lease), field('Identificar concesiones automáticas por', f.identify, 'Kea «match-client-id»: con MAC, un equipo que cambia de Client-ID conserva su IP.')),
             el('div', { class: 'actions' }, button(pool ? 'Guardar cambios' : 'Añadir pool', save), pool ? button('Nuevo pool', () => { editing = null; refresh(); }, 'btn btn-quiet') : null),
             msg.el,
             el('h3', {}, 'Pools'),
@@ -5522,83 +5739,85 @@ function dhcpPanel(server, app) {
                 { label: 'Gateway', value: (p) => ipOrEmpty(p.gateway), mono: true },
                 { label: 'DNS', value: (p) => ipOrEmpty(p.dns), mono: true },
                 { label: 'Reservas', value: (p) => String(p.reservations.length) },
+                { label: 'Concesiones por', value: (p) => (p.identifyBy === 'mac' ? 'MAC' : 'Client-ID') },
             ], { empty: 'No hay pools. Añade uno con la IP inicial y el número de usuarios.', onSelect: (p) => { editing = p.name; refresh(); }, onDelete: remove, selected: (p) => p.name === editing }),
-            pool ? reservations(server, pool, app, refresh) : el('p', { class: 'muted' }, 'Selecciona un pool para gestionar sus reservas por MAC.'),
-            el('h3', {}, 'Concesiones'),
-            table(server.dhcpEngine.allBindings(server.clock.now()).filter((b) => b.type === 'Automatic'), [
-                { label: 'IP', value: (b) => formatIp(b.ip), mono: true },
-                { label: 'MAC / Client-ID', value: (b) => (b.clientId ? formatHexId(b.clientId) : formatMacCisco(b.mac)), mono: true },
-                { label: 'Equipo', value: (b) => b.hostname ?? '' },
-                { label: 'Expira', value: (b) => (b.expiresAt === null ? 'Infinita' : formatLeaseTime(b.expiresAt)) },
-            ], { empty: 'Aún no hay concesiones.' }),
+            pool ? reservationsPanel(server, pool, app, refresh) : el('p', { class: 'muted' }, 'Selecciona un pool para gestionar sus reservas por MAC o Client-ID.'),
+            leasesPanel(server, app, refresh),
         ];
     });
 }
-function reservations(server, pool, app, refresh) {
-    const ip = input({ placeholder: '192.168.1.20', inputmode: 'decimal' });
-    const mac = input({ placeholder: '0001.42AB.CDEF' });
-    const name = input({ placeholder: 'PC-profesor' });
+const TYPES = [['A', 'A · dirección'], ['CNAME', 'CNAME · alias'], ['MX', 'MX · correo'], ['NS', 'NS · servidor de nombres'], ['TXT', 'TXT · texto']];
+function recordForm(server, app, refresh) {
+    const s = server.services;
+    const origin = s.dns.origin;
+    const name = input({ placeholder: origin ? 'www  ·  @  ·  host.otro.dom.' : 'www.aula.lab' });
+    const type = select(TYPES);
+    const value = input({ placeholder: '192.168.1.10' });
+    const prio = input({ value: '10', inputmode: 'numeric' });
+    const ttl = input({ value: String(DEFAULT_TTL), inputmode: 'numeric' });
+    const preview = el('p', { class: 'muted', 'aria-live': 'polite' });
+    const prioField = field('Prioridad (MX)', prio);
+    prioField.hidden = true;
+    const showPreview = () => {
+        const target = type.value === 'CNAME' || type.value === 'MX' || type.value === 'NS';
+        const owner = name.value.trim() ? displayName(name.value, origin) : '';
+        const dest = target && value.value.trim() ? displayName(value.value, origin) : '';
+        preview.textContent = owner ? `Nombre completo: ${owner}${dest ? `  →  ${dest}` : ''}` : '';
+    };
+    type.addEventListener('change', () => {
+        prioField.hidden = type.value !== 'MX';
+        value.placeholder = type.value === 'A' ? '192.168.1.10' : type.value === 'TXT' ? 'v=spf1 mx -all' : origin ? 'srv  ·  srv.otro.dom.' : 'srv.aula.lab';
+        showPreview();
+    });
+    name.addEventListener('input', showPreview);
+    value.addEventListener('input', showPreview);
     const msg = message();
-    const update = (list) => {
-        const s = server.services;
-        server.setServices({ ...s, dhcp: { ...s.dhcp, pools: s.dhcp.pools.map((p) => (p.name === pool.name ? { ...p, reservations: list } : p)) } });
+    const add = () => {
+        const rec = { name: name.value.trim().toLowerCase(), type: type.value, value: value.value.trim(), priority: type.value === 'MX' ? Number(prio.value) : undefined, ttl: Number(ttl.value) || DEFAULT_TTL };
+        const err = validateRecord(rec, origin);
+        if (err)
+            return msg.error(err);
+        server.setServices({ ...s, dns: { ...s.dns, records: [...s.dns.records, rec] } });
         app.afterCommand();
         refresh();
     };
-    const add = () => {
-        const a = parseIp(ip.value.trim());
-        const m = parseMac(mac.value.trim());
-        if (a === null)
-            return msg.error('IP no válida.');
-        if (!m)
-            return msg.error('MAC no válida: usa 0001.42AB.CDEF o 00:01:42:ab:cd:ef.');
-        if (pool.reservations.some((r) => r.ip === a || r.mac === m))
-            return msg.error('Esa IP o MAC ya tiene reserva.');
-        const err = validatePool({ ...pool, reservations: [...pool.reservations, { ip: a, mac: m }] }, []);
+    return [
+        el('h3', {}, 'Nuevo registro'),
+        el('div', { class: 'grid3' }, field('Nombre', name), field('Tipo', type), field('Valor', value), prioField, field('TTL (s)', ttl)),
+        preview,
+        el('div', { class: 'actions' }, button('Añadir registro', add)), msg.el,
+    ];
+}
+function originForm(server, app, refresh) {
+    const s = server.services;
+    const originIn = input({ value: s.dns.origin ?? '', placeholder: 'aula.lab' });
+    const msg = message();
+    const save = () => {
+        const err = validateOrigin(originIn.value);
         if (err)
             return msg.error(err);
-        update([...pool.reservations, { ip: a, mac: m, name: name.value.trim() || undefined }]);
+        server.setServices({ ...s, dns: { ...s.dns, origin: cleanOrigin(originIn.value) } });
+        app.afterCommand();
+        refresh();
     };
-    return el('section', { class: 'subsection' }, el('h3', {}, `Reservas de ${pool.name}`), el('div', { class: 'grid3' }, field('IP reservada', ip), field('MAC del cliente', mac), field('Descripción', name)), el('div', { class: 'actions' }, button('Añadir reserva', add)), msg.el, table(pool.reservations, [
-        { label: 'IP', value: (r) => formatIp(r.ip), mono: true },
-        { label: 'MAC', value: (r) => formatMacCisco(r.mac), mono: true },
-        { label: 'Descripción', value: (r) => r.name ?? '' },
-    ], { empty: 'Sin reservas. La MAC de cada PC está en su pestaña Configuración IP.', onDelete: (r) => update(pool.reservations.filter((x) => x !== r)) }));
+    return [
+        el('div', { class: 'grid3' }, field('Dominio de la zona ($ORIGIN)', originIn, 'Con dominio: «www» = www.dominio, «@» = el dominio, «host.otro.» (con punto final) = absoluto.')),
+        el('div', { class: 'actions' }, button('Guardar dominio', save, 'btn btn-quiet')), msg.el,
+    ];
 }
-const TYPES = [['A', 'A · dirección'], ['CNAME', 'CNAME · alias'], ['MX', 'MX · correo'], ['NS', 'NS · servidor de nombres'], ['TXT', 'TXT · texto']];
 function dnsPanel(server, app) {
     return livePanel((refresh) => {
         const s = server.services;
-        const name = input({ placeholder: 'www.aula.lab' });
-        const type = select(TYPES);
-        const value = input({ placeholder: '192.168.1.10' });
-        const prio = input({ value: '10', inputmode: 'numeric' });
-        const ttl = input({ value: String(DEFAULT_TTL), inputmode: 'numeric' });
-        const prioField = field('Prioridad (MX)', prio);
-        prioField.hidden = true;
-        type.addEventListener('change', () => {
-            prioField.hidden = type.value !== 'MX';
-            value.placeholder = type.value === 'A' ? '192.168.1.10' : type.value === 'TXT' ? 'v=spf1 mx -all' : 'srv.aula.lab';
-        });
-        const msg = message();
-        const add = () => {
-            const rec = { name: name.value.trim().toLowerCase().replace(/\.$/, ''), type: type.value, value: value.value.trim(), priority: type.value === 'MX' ? Number(prio.value) : undefined, ttl: Number(ttl.value) || DEFAULT_TTL };
-            const err = validateRecord(rec);
-            if (err)
-                return msg.error(err);
-            server.setServices({ ...s, dns: { ...s.dns, records: [...s.dns.records, rec] } });
-            app.afterCommand();
-            refresh();
-        };
+        const origin = s.dns.origin;
         return [
             onOff('Servicio DNS', s.dns.enabled, (on) => { server.setUnit('dns', on); app.afterCommand(); refresh(); }),
-            el('h3', {}, 'Nuevo registro'),
-            el('div', { class: 'grid3' }, field('Nombre', name), field('Tipo', type), field('Valor', value), prioField, field('TTL (s)', ttl)),
-            el('div', { class: 'actions' }, button('Añadir registro', add)), msg.el,
+            ...originForm(server, app, refresh),
+            ...recordForm(server, app, refresh),
             el('p', { class: 'muted' }, 'Los registros PTR se generan solos a partir de los A (prueba dig -x IP). El servidor es autoritativo: no resuelve nombres de Internet.'),
             el('h3', {}, 'Registros'),
             table(s.dns.records, [
                 { label: 'Nombre', value: (r) => r.name, mono: true },
+                { label: 'Nombre completo', value: (r) => displayName(r.name, origin), mono: true },
                 { label: 'Tipo', value: (r) => r.type },
                 { label: 'Valor', value: (r) => (r.type === 'MX' ? `${r.priority ?? 10} ${r.value}` : r.value), mono: true },
                 { label: 'TTL', value: (r) => String(r.ttl) },
@@ -8855,7 +9074,8 @@ return { SWITCH_PORTS, DEFAULT_VLANS, Switch };
 __m["services/persist.js"] = (() => {
 const { defaultServices, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } = __m["services/config.js"];
 const { formatIp, parseIp } = __m["core/ip.js"];
-const { parseMac } = __m["core/mac.js"];
+const { parseMac, parseHexId } = __m["core/mac.js"];
+const { cleanOrigin, validateOrigin } = __m["services/dns-names.js"];
 const MAX_ITEMS = 500;
 const MAX_TEXT = 200_000;
 const RECORD_TYPES = new Set(['A', 'CNAME', 'MX', 'NS', 'TXT']);
@@ -8867,10 +9087,11 @@ function servicesToJson(s) {
             pools: s.dhcp.pools.map((p) => ({
                 name: p.name, start: formatIp(p.start), prefix: p.prefix, maxUsers: p.maxUsers, gateway: ip(p.gateway), dns: ip(p.dns),
                 domain: p.domain, tftp: ip(p.tftp), leaseMinutes: p.leaseMinutes,
-                reservations: p.reservations.map((r) => ({ ip: formatIp(r.ip), mac: r.mac, name: r.name })),
+                reservations: p.reservations.map((r) => ({ ip: formatIp(r.ip), mac: r.mac, clientId: r.clientId, name: r.name })),
+                identifyBy: p.identifyBy,
             })),
         },
-        dns: { enabled: s.dns.enabled, records: [...s.dns.records] },
+        dns: { enabled: s.dns.enabled, origin: s.dns.origin, records: [...s.dns.records] },
         http: { enabled: s.http.enabled, files: [...s.http.files] },
         mail: s.mail,
         ssh: s.ssh,
@@ -8919,16 +9140,41 @@ function pool(v) {
         name: str(v.name, 'nombre de pool', 32), start, prefix: num(v.prefix, 'máscara de pool', 8, 30), maxUsers: num(v.maxUsers, 'usuarios del pool', 1, 65_534),
         gateway: optIp(v.gateway, 'puerta de enlace'), dns: optIp(v.dns, 'DNS del pool'), domain: v.domain === undefined ? undefined : str(v.domain, 'dominio'),
         tftp: optIp(v.tftp, 'TFTP'), leaseMinutes: num(v.leaseMinutes, 'concesión', 1, 525_600, DEFAULT_LEASE_MINUTES),
-        reservations: arr(v.reservations, 'reservas').map((r) => {
-            if (!isObj(r))
-                throw new Error('Reserva no válida.');
-            const mac = parseMac(str(r.mac, 'MAC'));
-            const rip = optIp(r.ip, 'reserva');
-            if (!mac || rip === undefined)
-                throw new Error('Reserva DHCP incompleta.');
-            return { ip: rip, mac, name: r.name === undefined ? undefined : str(r.name, 'nombre de reserva', 64) };
-        }),
+        reservations: arr(v.reservations, 'reservas').map(reservation),
+        identifyBy: v.identifyBy === undefined ? undefined : identifyBy(v.identifyBy),
     };
+}
+function identifyBy(v) {
+    if (v === 'mac' || v === 'client-id')
+        return v;
+    throw new Error('Identificación de concesiones no válida (mac o client-id).');
+}
+const MAX_CLIENT_ID_HEX = 510;
+function reservation(r) {
+    if (!isObj(r))
+        throw new Error('Reserva no válida.');
+    const rip = optIp(r.ip, 'reserva');
+    const name = r.name === undefined ? undefined : str(r.name, 'nombre de reserva', 64);
+    if (rip === undefined)
+        throw new Error('Reserva DHCP incompleta.');
+    if (r.clientId !== undefined) {
+        const id = parseHexId(str(r.clientId, 'Client-ID', MAX_CLIENT_ID_HEX));
+        if (!id)
+            throw new Error('Client-ID de reserva no válido (hexadecimal).');
+        return { ip: rip, clientId: id, name };
+    }
+    const mac = parseMac(str(r.mac, 'MAC'));
+    if (!mac)
+        throw new Error('Reserva DHCP incompleta.');
+    return { ip: rip, mac, name };
+}
+function origin(v) {
+    if (v === undefined || v === null || v === '')
+        return undefined;
+    const o = str(v, 'origen de zona', 253);
+    if (validateOrigin(o))
+        throw new Error('Origen de zona DNS no válido.');
+    return cleanOrigin(o);
 }
 function record(v) {
     if (!isObj(v) || !RECORD_TYPES.has(String(v.type)))
@@ -8952,7 +9198,7 @@ function servicesFromJson(v) {
     const s = isObj(v.ssh) ? v.ssh : {};
     return {
         dhcp: { enabled: bool(d.enabled), pools: arr(d.pools, 'pools').map(pool) },
-        dns: { enabled: bool(n.enabled), records: arr(n.records, 'registros').map(record) },
+        dns: { enabled: bool(n.enabled), origin: origin(n.origin), records: arr(n.records, 'registros').map(record) },
         http: { enabled: bool(h.enabled), files: arr(h.files, 'ficheros web').map((f) => { if (!isObj(f))
                 throw new Error('Fichero web no válido.'); return { name: str(f.name, 'fichero web', 128), content: str(f.content, 'contenido web', MAX_TEXT) }; }) },
         mail: { smtp: bool(m.smtp), pop3: bool(m.pop3), imap: bool(m.imap), domain: m.domain === undefined ? '' : str(m.domain, 'dominio de correo'), users: arr(m.users, 'usuarios de correo').map(account) },
@@ -8989,6 +9235,7 @@ const { Server } = __m["devices/server.js"];
 const { servicesToJson, servicesFromJson, mailboxesFromJson } = __m["services/persist.js"];
 const { applyConfig } = __m["ios/session.js"];
 const { parseIp, formatIp, parseMask } = __m["core/ip.js"];
+const { parseHexId } = __m["core/mac.js"];
 const PREFIX = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server' };
 const FILE_VERSION = 2;
 const SETTLE_MS = 30_000;
@@ -9089,15 +9336,17 @@ function deviceSeed(d) {
 function hostRecord(d) {
     const c = d.config;
     const os = d.os;
+    const clientId = d.clientIdOverride;
     if (c.mode === 'dhcp')
-        return { mode: 'dhcp', sendClientId: d.sendClientId, os };
+        return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os };
     const opt = (n) => (n === undefined ? undefined : formatIp(n));
-    return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, os };
+    return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os };
 }
 function restore(device, rec) {
     if (device instanceof Host) {
         const pc = rec.pc ?? { mode: 'static' };
         device.sendClientId = pc.sendClientId ?? true;
+        device.clientIdOverride = typeof pc.clientId === 'string' ? parseHexId(pc.clientId) ?? undefined : undefined;
         if (pc.os === 'linux' || pc.os === 'windows')
             device.os = pc.os;
         if (pc.mode === 'dhcp')
@@ -9411,12 +9660,12 @@ interface GigabitEthernet0/0
             srv.setServices({
                 ...srv.services,
                 dhcp: { enabled: true, pools: [{ name: 'serverPool', start: ip('192.168.10.100'), prefix: 24, maxUsers: 50, gateway: ip('192.168.10.1'), dns: ip('192.168.10.2'), domain: 'aula.lab', leaseMinutes: 1440, reservations: [{ ip: ip('192.168.10.50'), mac: pc1.mac, name: 'PC1 (Linux)' }] }] },
-                dns: { enabled: true, records: [
-                        { name: 'aula.lab', type: 'NS', value: 'srv.aula.lab', ttl: 86400 },
-                        { name: 'srv.aula.lab', type: 'A', value: '192.168.10.2', ttl: 86400 },
-                        { name: 'gw.aula.lab', type: 'A', value: '192.168.10.1', ttl: 86400 },
-                        { name: 'www.aula.lab', type: 'CNAME', value: 'srv.aula.lab', ttl: 86400 },
-                        { name: 'aula.lab', type: 'MX', value: 'srv.aula.lab', priority: 10, ttl: 86400 },
+                dns: { enabled: true, origin: 'aula.lab', records: [
+                        { name: '@', type: 'NS', value: 'srv', ttl: 86400 },
+                        { name: 'srv', type: 'A', value: '192.168.10.2', ttl: 86400 },
+                        { name: 'gw', type: 'A', value: '192.168.10.1', ttl: 86400 },
+                        { name: 'www', type: 'CNAME', value: 'srv', ttl: 86400 },
+                        { name: '@', type: 'MX', value: 'srv.aula.lab.', priority: 10, ttl: 86400 },
                     ] },
                 mail: { smtp: true, pop3: true, imap: true, domain: 'aula.lab', users: [{ name: 'ana', password: 'ana1' }, { name: 'luis', password: 'luis1' }] },
                 ssh: { enabled: true, users: [{ name: 'admin', password: 'cisco' }] },

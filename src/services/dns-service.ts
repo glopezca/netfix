@@ -1,7 +1,8 @@
 /** Authoritative DNS server built from a flat list of records (BIND-like answers). */
 import type { DnsAnswer, DnsMessage, DnsType } from '../net/packets.ts';
 import { normalizeName, ipFromReverse } from '../net/dns.ts';
-import { formatIp } from '../core/ip.ts';
+import { formatIp, parseIp } from '../core/ip.ts';
+import { validateName } from './dns-names.ts';
 import type { DnsRecord } from './config.ts';
 
 const MAX_CNAME_CHAIN = 8;
@@ -56,14 +57,14 @@ function lookup(qname: string, qtype: DnsType, records: readonly DnsRecord[]): D
   return answers;
 }
 
-export function answerQuery(query: DnsMessage, records: readonly DnsRecord[]): DnsMessage {
+export function answerQuery(query: DnsMessage, records: readonly DnsRecord[], origin?: string): DnsMessage {
   const qname = normalizeName(query.qname);
   const base = { id: query.id, response: true, qname, qtype: query.qtype };
   if (query.qtype === 'PTR') {
     const ptr = ptrAnswers(qname, records);
     return ptr.length > 0 ? { ...base, rcode: 'NOERROR', authoritative: true, answers: ptr } : { ...base, rcode: 'NXDOMAIN', authoritative: true, answers: [] };
   }
-  const zone = zoneFor(qname, zonesOf(records));
+  const zone = zoneFor(qname, origin ? [...zonesOf(records), origin] : zonesOf(records));
   if (!zone) return { ...base, rcode: 'REFUSED', answers: [] };
   const answers = lookup(qname, query.qtype, records);
   const exists = records.some((r) => normalizeName(r.name) === qname) || qname === zone;
@@ -72,10 +73,11 @@ export function answerQuery(query: DnsMessage, records: readonly DnsRecord[]): D
 }
 
 /** Validation used by the GUI. Returns an error message or null. */
-export function validateRecord(r: DnsRecord): string | null {
-  if (!/^[a-z0-9_*.-]+$/i.test(r.name) || r.name.startsWith('.') || r.name.includes('..')) return 'Nombre no válido: usa letras, números, guiones y puntos (www.aula.lab).';
-  if (r.type === 'A' && !/^\d{1,3}(\.\d{1,3}){3}$/.test(r.value)) return 'Un registro A necesita una dirección IPv4.';
-  if ((r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX') && !/^[a-z0-9_.-]+$/i.test(r.value)) return `Un registro ${r.type} necesita un nombre de host.`;
+export function validateRecord(r: DnsRecord, origin?: string): string | null {
+  const nameErr = validateName(r.name, origin);
+  if (nameErr) return nameErr;
+  if (r.type === 'A' && parseIp(r.value) === null) return 'Un registro A necesita una dirección IPv4.';
+  if ((r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX') && validateName(r.value, origin)) return `Un registro ${r.type} necesita un nombre de host (relativo, absoluto con punto final o @): ${validateName(r.value, origin) ?? ''}`;
   if (r.type === 'MX' && (r.priority === undefined || r.priority < 0 || r.priority > 65535)) return 'La prioridad MX va de 0 a 65535.';
   return r.value.trim() === '' ? 'El valor no puede estar vacío.' : null;
 }

@@ -3,7 +3,8 @@ import type { DhcpServer, ExcludedRange } from '../dhcp/server.ts';
 import type { PoolConfig } from '../dhcp/pool.ts';
 import { newPool, usableRange } from '../dhcp/pool.ts';
 import { networkOf, formatIp, inSubnet } from '../core/ip.ts';
-import type { PtDhcpPool } from './config.ts';
+import type { DhcpReservation, LeaseIdentity, PtDhcpPool } from './config.ts';
+import type { Binding } from '../dhcp/server.ts';
 
 const MINUTES_PER_DAY = 1440;
 const MINUTES_PER_HOUR = 60;
@@ -20,7 +21,8 @@ export function ptPoolToIos(p: PtDhcpPool): PoolConfig {
     domainName: p.domain || undefined,
     lease,
     options: p.tftp !== undefined ? [{ code: TFTP_OPTION, kind: 'ip', value: '', ips: [p.tftp] }] : [],
-    reservations: p.reservations.map((r) => ({ ip: r.ip, mac: r.mac })),
+    reservations: p.reservations.map((r) => (r.clientId ? { ip: r.ip, clientId: r.clientId } : { ip: r.ip, mac: r.mac, macAlways: true })),
+    matchClientId: p.identifyBy === 'mac' ? false : undefined,
   };
 }
 
@@ -54,5 +56,19 @@ export function validatePool(p: PtDhcpPool, others: readonly PtDhcpPool[]): stri
   const net = networkOf(p.start, p.prefix);
   if (others.some((o) => networkOf(o.start, o.prefix) === net && o.prefix === p.prefix)) return 'Ya hay un pool para esa subred.';
   const bad = p.reservations.find((r) => !inSubnet(r.ip, p.start, p.prefix));
-  return bad ? `La reserva ${formatIp(bad.ip)} no está en la subred del pool.` : null;
+  return bad ? `La reserva ${formatIp(bad.ip)} no está en la subred del pool.` : validateReservations(p.reservations);
+}
+
+function validateReservations(list: readonly DhcpReservation[]): string | null {
+  if (list.some((r) => Boolean(r.mac) === Boolean(r.clientId))) return 'Cada reserva necesita una MAC o un Client-ID (solo uno de los dos).';
+  const ips = list.map((r) => r.ip);
+  if (new Set(ips).size !== ips.length) return 'Hay una IP reservada repetida.';
+  const ids = list.map((r) => (r.mac ? `mac:${r.mac}` : `id:${r.clientId ?? ''}`));
+  return new Set(ids).size === ids.length ? null : 'Hay una MAC o un Client-ID repetido en las reservas.';
+}
+
+/** Turns an automatic lease into a reservation keyed by its MAC or by its client-id. */
+export function leaseToReservation(lease: Binding, by: LeaseIdentity): DhcpReservation | null {
+  if (by === 'client-id') return lease.clientId ? { ip: lease.ip, clientId: lease.clientId, name: lease.hostname } : null;
+  return { ip: lease.ip, mac: lease.mac, name: lease.hostname };
 }
