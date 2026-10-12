@@ -84,7 +84,7 @@ try {
   await page.click('.win-close');
   await page.dblclick('g.device-pc >> nth=0');
   await page.click('.win-tab:has-text("Navegador")');
-  await page.click('.browser-bar button');
+  await page.click('.browser-bar button:has-text("Ir")');
   assert.match(await page.locator('.browser-view').innerText(), /Servidor web de netsim/);
   await page.click('.win-tab:has-text("Correo")');
   await page.getByLabel('Para').fill('ana@aula.lab');
@@ -144,6 +144,27 @@ try {
   if (shots) await page.screenshot({ path: `${shots}/docs.png` });
   await page.click('button.seg:has-text("Red")');
   await page.waitForSelector('.workspace:visible');
+
+  // 7. v0.4: Internet lab — browse a site published through two ISP clouds, router web GUI tab, About.
+  const labs = page.locator('select.select').first();
+  const titles = await labs.locator('option').allTextContents();
+  await labs.selectOption({ label: titles.find((o) => o.startsWith('Internet')) });
+  await page.waitForSelector('g.device-cloud');
+  await page.dblclick('g.device-pc >> nth=0');
+  await page.click('.win-tab:has-text("Navegador")');
+  await page.fill('.url-bar', 'http://www.sede2.es');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  assert.match(await page.locator('.browser-status').innerText(), /200 OK · 81\.33\.3\.2/);
+  if (shots) await page.screenshot({ path: `${shots}/internet.png` });
+  await page.click('.win-close');
+  await page.dblclick('g.device-router');
+  await page.click('.win-tab:has-text("Gestión web")');
+  assert.match(await page.locator('.window').innerText(), /ip http server/);
+  await page.click('.win-close');
+  await page.click('button.seg:has-text("Acerca de")');
+  assert.match(await page.locator('#app').innerText(), /0\.4\.0/);
+  await page.click('button.seg:has-text("Red")');
 
   assert.deepEqual(errors, []);
   console.log('e2e: ok');

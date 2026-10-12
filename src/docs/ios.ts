@@ -19,6 +19,7 @@ export const IOS_DOCS: DocGroup = {
           ['Interfaz', 'Router(config-if)#', 'interface g0/0', 'exit'],
           ['Pool DHCP', 'Router(dhcp-config)#', 'ip dhcp pool LAN', 'exit'],
           ['Línea', 'Router(config-line)#', 'line vty 0 4', 'exit'],
+          ['ACL estándar con nombre', 'Router(config-std-nacl)#', 'ip access-list standard LAN', 'exit'],
         ]),
         h('Ayuda y edición'),
         list(

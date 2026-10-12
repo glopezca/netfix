@@ -65,6 +65,7 @@ export const CLIENT_DOCS: DocGroup = {
           ['ipconfig [/all]', 'Configuración IP; /all añade MAC, servidor DHCP, DNS y fechas de la concesión.'],
           ['ipconfig /release · ipconfig /renew', 'Libera o renueva la concesión DHCP.'],
           ['ping [-n N] destino', 'Eco ICMP (4 por defecto).'],
+          ['tracert [-h N] destino', 'Ruta salto a salto (ver «traceroute y tracert»).'],
           ['arp -a · arp -d', 'Muestra o borra la caché ARP.'],
           ['nslookup nombre [servidor]', 'Consulta DNS.'],
           ['netstat -an', 'Puertos a la escucha y conexiones.'],

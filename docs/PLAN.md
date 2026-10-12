@@ -100,3 +100,12 @@ operador de la nube; nube configurable con valores por defecto.
 | 8.8 | Roundcube (alias `/roundcube` o puerto propio): login IMAP, bandeja, lectura, redacción con SMTP y reenvío por MX, enviados, borrar | Sesiones por cookie, sin estado persistente |
 | 8.9 | Gestión web de Server-PT al estilo WRT300N (alias `/admin` o puerto 10000, usuario/contraseña): Setup, servicios, administración, estado | Sin marcas comerciales |
 | 8.10 | Documentación (pestaña y `man`), README, PLAN; revisión ECC (code + security), e2e, v0.4.0, commit y push | — |
+
+**Estado (v0.4.0):** fases 8.1–8.10 completadas. Revisión ECC: security-reviewer (ReDoS de comodines en `Include`
+→ comparador lineal para `* ? [...]`; bucle DNS al delegar en 8.8.8.8 → validación de dominios y SERVFAIL;
+contraseñas guardadas enviadas en redirecciones a otro sitio → el navegador ya no las manda; inyección en
+registros; `autocomplete` en formularios simulados; `cp -r` dentro de sí mismo) y code-reviewer (NAT que filtraba
+direcciones privadas con el pool agotado → se descarta; PAT que podía ocupar un puerto publicado; bloques
+públicos duplicados o reservados; estado de las líneas al cambiar el bloque; contadores tras `reload`; orden
+de reglas dinámicas; refcount por regla; contadores de ACL) corregidos con pruebas (`tests/net/review-fixes.test.ts`).
+272 pruebas, cobertura 93,5 % líneas; e2e con el laboratorio de Internet.

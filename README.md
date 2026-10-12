@@ -21,6 +21,12 @@ Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado par
   y cliente SSH en los PCs.
 - Pestaña **Documentación** con búsqueda: IOS, servicios de Server-PT, PC/Windows, Terminal Linux,
   nano, vim y la referencia de bash 5.3 (también `man` y `help` en la terminal).
+- **Internet emulada** (v0.4): nube ISP con líneas de cable, xDSL y fibra (IP pública o router del operador
+  con NAT y redirección de puertos), routers troncales que responden a `traceroute`, DNS públicos
+  `8.8.8.8`/`8.8.4.4` que resuelven los dominios registrados en todas las nubes, y **NAT de IOS**
+  (`ip nat inside/outside`, PAT, pools, NAT estático con puertos, ACL estándar).
+- **Gestión web**: servidor HTTP de IOS en routers y switches (`ip http server`, Device Manager),
+  **Roundcube** y una consola de administración web en Server-PT; Apache2 configurable en `/etc/apache2`.
 - Modo simulación con lista de eventos (DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP, SSH),
   animación paso a paso y la PDU de cada paquete.
 - Guardar y abrir topologías completas en archivos `.json` (también la configuración de los servicios).
@@ -52,6 +58,8 @@ El menú **Laboratorios…** carga escenarios ya resueltos:
 | Router-on-a-stick | subinterfaces `encapsulation dot1Q`, trunk, un pool por VLAN |
 | DHCP snooping | servidor falso bloqueado, `ip dhcp snooping trust`, opción 82 |
 | Router como cliente | `ip address dhcp`, client-id `cisco-<mac>-<if>`, ruta por defecto AD 254 |
+| Server-PT | DHCP, DNS, web (Apache), correo, SSH, Roundcube y gestión web en un servidor Ubuntu |
+| Internet: dos sedes | Nubes ISP, NAT overload en un 2911, router del operador con redirección de puertos, dominio delegado (NS) y DNS públicos |
 
 Interacción: doble clic en un dispositivo abre su consola (router/switch) o su escritorio
 (PC). Herramienta **Cable**: clic en un dispositivo, elige puerto, clic en el otro.
@@ -93,8 +101,12 @@ través de un relay (`ip helper-address` apuntando al servidor).
   `su`, usuarios y grupos; scripts con `#!/bin/bash`. Lo que escribas se guarda con la topología.
 - Utilidades: `ls cat cp mv rm mkdir chmod chown ln find stat tree du df file head tail wc sort uniq cut tr
   grep sed awk diff xargs tee seq expr base64 date id ps…` y `man`, `help`, `less`.
-- Editores **nano 8.4** y **vim 9.1** a pantalla completa (también dentro de una sesión SSH).
-- Red: `ip a|r|neigh` (`-br`), `ping`, `dig`, `nslookup`, `host`, `curl` (`-I -o -O`), `wget` (guarda el fichero),
+- Editores **nano 8.4** y **vim 9.1** a pantalla completa y **Midnight Commander** (`mc`), también dentro de una sesión SSH;
+  `batcat` con resaltado de sintaxis y `whereis`.
+- `hostnamectl` (nombre estático persistente en `/etc/hostname`, transitorio y descriptivo) y `hostname`.
+- Apache2: `/etc/apache2` real (`sites-*`, `mods-*`, `conf-*`, `<VirtualHost>`, `Alias`, `Redirect`…),
+  `a2ensite/a2dissite/a2enmod/a2dismod/a2enconf/a2disconf`, `apache2ctl configtest|-S|-M`.
+- Red: `ip a|r|neigh` (`-br`), `ping`, `traceroute`, `dig`, `nslookup`, `host`, `curl` (`-I -i -L -v -X -d -u -b -H -o -O`), `wget` (guarda el fichero),
   `ssh` (devuelve el estado remoto), `sudo dhclient [-r] eth0`, `hostname -I`.
 - Servicios: `systemctl status|start|stop|restart|enable|disable|is-active`, `service`, `journalctl -u`, `ss -tulpn`.
 - Ficheros generados de solo lectura que siguen la configuración: `/etc/resolv.conf`, `/etc/netplan/…`,
@@ -103,7 +115,7 @@ través de un relay (`ip helper-address` apuntando al servidor).
   installed with: sudo apt install net-tools`, `Connection refused`, `Name or service not known`.
 
 **Windows:**
-- Red: `ipconfig [/all|/release|/renew]`, `ping [-n N]`, `arp -a`.
+- Red: `ipconfig [/all|/release|/renew]`, `ping [-n N]`, `tracert [-h N]`, `arp -a`.
 - DNS, web y SSH: `nslookup`, `netstat -an`, `curl [-I]`, `ssh usuario@host`.
 - Servicios: `sc query|start|stop <servicio>`, `net start|stop <servicio>` (`W3SVC`, `DNS`, `DHCPServer`, `SMTPSVC`, `POP3Svc`, `sshd`).
 - Sistema: `hostname`, `whoami`, `ver`.
@@ -118,6 +130,21 @@ El laboratorio **«Server-PT: DHCP, DNS, web, correo y SSH»** lo trae todo conf
 - Abre `http://www.aula.lab` en el navegador de PC0.
 - Lee el correo de `ana` en PC0 (IMAP) y el de `luis` en PC1 (POP3).
 - Entra al servidor con `ssh admin@srv.aula.lab` (contraseña `cisco`).
+
+### Internet, NAT y gestión web
+
+- **Nube ISP** (paleta → Nube): seis líneas (`Coaxial0-1`, `DSL0-1`, `Fibra0-1`). En modo *router del operador*
+  la línea es la LAN `192.168.1.1/24` con DHCP, NAT y redirección de puertos; en modo *IP pública* entrega
+  `x.y.n.2/29` por DHCP a tu router Cisco para que hagas tú el NAT. En la pestaña ISP se registran dominios
+  (A o delegación NS) que publican `8.8.8.8` y `8.8.4.4`. `curl ifconfig.me` muestra la IP pública con que sales.
+- **NAT de IOS**: `ip nat inside|outside`, `access-list`, `ip access-list standard`, `ip nat pool`,
+  `ip nat inside source list … interface|pool [overload]`, `ip nat inside source static [tcp|udp …]`,
+  `show ip nat translations|statistics`, `debug ip nat`; y `traceroute` en el router.
+- **Gestión web de IOS**: `ip http server`, `ip http port`, `ip http authentication enable|local`,
+  `username … privilege 15 secret …`, o la pestaña *Gestión web* del router/switch. Desde el navegador de un PC:
+  inicio, Monitor (`/level/15/exec/-`), Configure y Device Manager.
+- **Server-PT**: Servicios → HTTP → Aplicaciones web activa **Roundcube** (alias `/roundcube` o puerto 8080) y la
+  **gestión web** del servidor (puerto 10000 o alias `/admin`, `admin`/`admin`).
 
 ### Usuarios y contraseñas de ejemplo
 

@@ -35,7 +35,8 @@ src/core/   ip.ts, mac.ts, clock.ts             utilidades puras (sin estado)
 src/ios/    parser.ts (gramática + abreviaturas + ?), session.ts (modos), commands/*
 src/dhcp/   pool.ts (config inmutable), server.ts (asignación, bindings), messages.ts
 src/net/    network.ts (eventos discretos), packets.ts, ipstack.ts, tcp.ts, dns.ts, topology.ts (JSON v2)
-src/devices/ router, switch, host.ts → pc.ts / server.ts (Server-PT)
+src/devices/ router, switch, host.ts → pc.ts / server.ts (Server-PT), cloud.ts (nube ISP), ios-web.ts
+src/web/    páginas HTTP generadas con escape (html.ts): Roundcube, gestión web de Server-PT y de IOS
 src/services/ dhcp-pt, dns-service, http-service, mail-service, ssh-service, units, persist
 src/bash/   intérprete bash 5.3 (lexer, parser, expand, exec con generadores, vfs, builtins/, coreutils/)
 src/editors/ nano.ts, vim*.ts (motores puros; la UI dibuja Frame)
@@ -61,3 +62,10 @@ tests/      *.test.ts  (unit + integración DORA/relay) ; e2e/ (Playwright)
 - La salida de bash se contrasta con el bash real: añade casos a `tests/bash/corpus/` y regenera con
   `scripts/gen-bash-corpus.sh` (los `*.manual.sh` son de bash 5.3 y se escriben a mano).
 - Toda orden nueva de la terminal necesita su entrada en `src/docs/utils.ts` (lo comprueba un test).
+- El empaquetador no admite reexportaciones (`export { x } from …`) ni imports solo por efecto: importa
+  del módulo de origen. Para que `src/devices` no importe código de `src/web` se usan **registros**
+  (`registerHostFs`, `registerWebApp`, `registerIosWeb`) que `registerWebApps()` rellena al cargar `net/topology.ts`.
+- `src/docs/about-data.ts` es generado (`npm run about`, también lo hace `npm run build`): tras cambiar la
+  versión en `package.json` o `LICENSE.md`, regenéralo o falla `tests/docs/about.test.ts`.
+- Internet emulada: `src/net/internet.ts` (núcleo y saltos), `internet-hosts.ts` (8.8.8.8, webs),
+  `devices/cloud*.ts` (nube ISP, un plano IP por línea); NAT común en `src/net/nat.ts`.

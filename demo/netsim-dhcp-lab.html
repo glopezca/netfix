@@ -76,9 +76,10 @@ button, input, select { font: inherit; color: inherit; }
 
 /* ---------------------------------------------------------------- top bar */
 .topbar {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
 }
+.topbar .select { max-width: 11rem; }
 .brand { margin: 0 8px 0 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 .brand::before {
   content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px; vertical-align: 1px;
@@ -7635,8 +7636,68 @@ function patternRegex(pattern, opts = {}, anchored = true) {
     }
     return re;
 }
+/** Tokens of a pattern without extglob, or null when it has one (then the regex path is used). */
+function simpleTokens(p, opts) {
+    const fold = (c) => (opts.nocase ? c.toLowerCase() : c);
+    const tokens = [];
+    for (let i = 0; i < p.length; i++) {
+        const c = p[i] ?? '';
+        if ('?*+@!'.includes(c) && p[i + 1] === '(')
+            return null;
+        if (c === '*') {
+            if (tokens.at(-1)?.kind !== 'star')
+                tokens.push({ kind: 'star' });
+        }
+        else if (c === '?')
+            tokens.push({ kind: 'one', test: (x) => !opts.pathname || x !== '/' });
+        else if (c === '[' && bracket(p, i, Boolean(opts.pathname))) {
+            const [re, end] = bracket(p, i, Boolean(opts.pathname)) ?? ['', i + 1];
+            const rx = new RegExp(`^${re}$`, opts.nocase ? 'i' : '');
+            tokens.push({ kind: 'one', test: (x) => rx.test(x) });
+            i = end - 1;
+        }
+        else {
+            const lit = c === '\\' && i + 1 < p.length ? p[++i] ?? '' : c;
+            tokens.push({ kind: 'one', test: (x) => fold(x) === fold(lit) });
+        }
+    }
+    return tokens;
+}
+/**
+ * Wildcard matching in O(pattern × text) with the classic "last star" backtracking: plain * ? [...]
+ * patterns cannot freeze the page however many stars they have (a regex would backtrack exponentially).
+ */
+function linearMatch(tokens, text, pathname) {
+    let t = 0;
+    let k = 0;
+    let star = -1;
+    let mark = 0;
+    while (t < text.length) {
+        const tok = tokens[k];
+        if (tok && tok.kind === 'one' && tok.test(text[t] ?? '')) {
+            t++;
+            k++;
+            continue;
+        }
+        if (tok && tok.kind === 'star') {
+            star = k++;
+            mark = t;
+            continue;
+        }
+        if (star < 0 || (pathname && text[mark] === '/'))
+            return false;
+        k = star + 1;
+        t = ++mark;
+    }
+    while (tokens[k]?.kind === 'star')
+        k++;
+    return k === tokens.length;
+}
 function matchPattern(pattern, text, opts = {}) {
     try {
+        const tokens = simpleTokens(pattern, opts);
+        if (tokens)
+            return linearMatch(tokens, Array.from(text), Boolean(opts.pathname));
         return patternRegex(pattern, opts).test(text);
     }
     catch {
@@ -8917,6 +8978,11 @@ function cp(ctx) {
             }
             if (p.opts.has('n') && fs.exists(to))
                 continue;
+            if (node.kind === 'dir' && normalize(to).startsWith(`${normalize(from)}/`)) {
+                ctx.err(`cp: cannot copy a directory, ${q(shown)}, into itself, ${q(to)}\n`);
+                status = 1;
+                continue;
+            }
             copyTree(ctx, from, to, p.opts.has('a') || p.opts.has('p'));
             if (p.opts.has('v'))
                 ctx.out(`${q(shown)} -> ${q(to)}\n`);
@@ -19719,20 +19785,21 @@ const NETSIM_DOCS = {
             title: 'Primeros pasos',
             summary: 'La interfaz: barra superior, área de trabajo, paleta de dispositivos y ventanas.',
             blocks: [
-                p('netsim es un simulador de redes en el navegador con el aspecto y el comportamiento de Cisco Packet Tracer. Todo se ejecuta en tu equipo: no hay servidor ni se envía nada a Internet.'),
+                p('netsim es un simulador de redes en el navegador con el aspecto y el comportamiento de Cisco Packet Tracer. Todo se ejecuta en tu equipo: no hay servidor ni se envía nada a Internet (la «Internet» de las nubes ISP también es simulada).'),
                 h('Barra superior'),
                 table(['Control', 'Qué hace'], [
                     ['Red / Documentación / Acerca de', 'Cambia entre el área de trabajo, esta documentación y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
                     ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S).'],
-                    ['Laboratorios…', 'Carga una práctica preparada (DHCP básico, reservas, relay, VLAN, snooping, router cliente, Server-PT).'],
+                    ['Laboratorios…', 'Carga una práctica preparada (DHCP básico, reservas, relay, VLAN, snooping, router cliente, Server-PT, Internet con dos sedes).'],
                     ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
                     ['Tiempo real / Simulación', 'Modo de ejecución (ver «Tiempo real y simulación»).'],
                 ]),
                 h('Paleta y herramientas'),
-                list('Router 2911, Switch 2960-24TT, PC-PT y Server-PT: elige uno y haz clic en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.', 'Seleccionar: arrastra equipos; doble clic abre su ventana.', 'Eliminar: borra equipos o cables.'),
+                list('Router 2911, Switch 2960-24TT, PC-PT, Server-PT y Nube ISP: elige uno y haz clic en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.', 'Seleccionar: arrastra equipos; doble clic abre su ventana.', 'Eliminar: borra equipos o cables.'),
                 h('Ventanas de los equipos'),
                 table(['Equipo', 'Pestañas'], [
-                    ['Router / Switch', 'CLI (Cisco IOS 15).'],
+                    ['Router / Switch', 'CLI (Cisco IOS 15) y Gestión web (ip http server).'],
+                    ['Nube ISP', 'ISP (proveedor, bloque público, dominios) y Líneas (modo, LAN, NAT, redirección de puertos).'],
                     ['PC', 'Configuración IP, Navegador, Correo, Equipo, Símbolo del sistema y Terminal Linux.'],
                     ['Server-PT', 'Servicios, Configuración IP, Equipo, Terminal Linux y Símbolo del sistema.'],
                 ]),
@@ -19809,6 +19876,7 @@ const IOS_DOCS = {
                     ['Interfaz', 'Router(config-if)#', 'interface g0/0', 'exit'],
                     ['Pool DHCP', 'Router(dhcp-config)#', 'ip dhcp pool LAN', 'exit'],
                     ['Línea', 'Router(config-line)#', 'line vty 0 4', 'exit'],
+                    ['ACL estándar con nombre', 'Router(config-std-nacl)#', 'ip access-list standard LAN', 'exit'],
                 ]),
                 h('Ayuda y edición'),
                 list('Las órdenes se pueden abreviar mientras no sean ambiguas: conf t, int g0/0, sh ip dhcp bind.', '? muestra las opciones en cualquier punto (también tras un espacio: ip dhcp ?).', 'Tab completa la palabra; ↑ y ↓ recorren el historial; Ctrl+Z vuelve a EXEC privilegiado.', 'do ejecuta una orden EXEC desde configuración: do show ip dhcp binding.', 'no <orden> deshace una configuración: no ip dhcp excluded-address 192.168.1.1 192.168.1.10.'),
@@ -20118,6 +20186,7 @@ const CLIENT_DOCS = {
                     ['ipconfig [/all]', 'Configuración IP; /all añade MAC, servidor DHCP, DNS y fechas de la concesión.'],
                     ['ipconfig /release · ipconfig /renew', 'Libera o renueva la concesión DHCP.'],
                     ['ping [-n N] destino', 'Eco ICMP (4 por defecto).'],
+                    ['tracert [-h N] destino', 'Ruta salto a salto (ver «traceroute y tracert»).'],
                     ['arp -a · arp -d', 'Muestra o borra la caché ARP.'],
                     ['nslookup nombre [servidor]', 'Consulta DNS.'],
                     ['netstat -an', 'Puertos a la escucha y conexiones.'],
@@ -20657,6 +20726,165 @@ const EDITOR_DOCS = [
 
 return { NANO_KEYS, VIM_KEYS, VIM_EX, EDITOR_DOCS };
 })();
+__m["docs/internet.js"] = (() => {
+const { code, h, list, note, p, table } = __m["docs/types.js"];
+const INTERNET_DOCS = {
+    id: 'internet',
+    title: 'Internet y NAT',
+    pages: [
+        {
+            id: 'inet-cloud',
+            title: 'Nube ISP',
+            summary: 'Líneas de cable, xDSL y fibra: IP pública por DHCP o router del operador con NAT y redirección de puertos.',
+            blocks: [
+                p('La Nube (paleta → Nube) emula la salida a Internet de un proveedor. Tiene seis puertos, uno por línea de cliente: Coaxial0-1 (cable DOCSIS), DSL0-1 (VDSL2) y Fibra0-1 (FTTH). Conecta a cada uno un router (GigabitEthernet), un switch o un PC.'),
+                table(['Modo de la línea', 'Qué hace', 'Cuándo usarlo'], [
+                    ['Router del operador (por defecto)', 'Es el router de casa: LAN 192.168.1.1/24, DHCP desde .33 (DNS 8.8.8.8 y 8.8.4.4), NAT de toda la LAN a la IP pública x.y.n.2 y redirección de puertos.', 'Conectar PCs, un switch o un servidor directamente.'],
+                    ['IP pública (/29)', 'La nube es la puerta de enlace x.y.n.1/29 y entrega por DHCP x.y.n.2 a tu router; .3-.6 quedan libres para NAT estático.', 'Configurar el NAT tú mismo en un Cisco 2911 (ip address dhcp + ip nat).'],
+                ]),
+                h('Direcciones'),
+                list('Cada nube tiene un bloque público /16 propio (la primera 81.32.0.0, la segunda 81.33.0.0…). El puerto número i (Coaxial0 = 1, Coaxial1 = 2, DSL0 = 3, DSL1 = 4, Fibra0 = 5, Fibra1 = 6) usa x.y.i.0/29.', 'El router del ISP en la red troncal es x.y.0.1 y aparece en traceroute.', 'Cada línea tiene su propio plano IP: varias líneas pueden usar 192.168.1.0/24 a la vez.'),
+                h('Ventana de la nube'),
+                list('ISP: nombre del proveedor, bloque público y dominios registrados.', 'Líneas: modo, velocidades contratadas (informativas), IP y máscara de la LAN, concesiones DHCP, traducciones NAT y redirección de puertos (TCP o UDP, puerto público → IP:puerto de la LAN).'),
+                note('Sin redirecciones, desde Internet solo responde el propio router (ping a la WAN); cualquier otro puerto devuelve RST: curl dice «Connection refused».'),
+            ],
+        },
+        {
+            id: 'inet-dns',
+            title: 'Internet emulada y DNS públicos',
+            summary: 'Routers troncales, 8.8.8.8/8.8.4.4, webs de prueba, dominios registrados y delegación NS.',
+            blocks: [
+                p('Todas las nubes del área de trabajo están unidas por una Internet emulada: el router de cada ISP, dos routers troncales (198.51.100.1 y 198.51.100.2) y los servidores de destino. Cada salto resta 1 al TTL y responde «tiempo excedido», así que traceroute y tracert muestran la ruta.'),
+                table(['Servidor', 'Dirección', 'Uso'], [
+                    ['dns.google', '8.8.8.8 · 8.8.4.4', 'DNS recursivo público (UDP 53). También responde a ping.'],
+                    ['www.google.com', '142.250.184.4', 'Web de prueba: muestra tu IP pública.'],
+                    ['example.com', '93.184.215.14', 'Web de prueba.'],
+                    ['ifconfig.me', '34.160.111.145', 'Devuelve solo tu IP pública en texto (curl ifconfig.me).'],
+                ]),
+                h('Dominios registrados en un ISP'),
+                p('En la pestaña ISP de una nube puedes registrar dominios. Los DNS públicos los resuelven para todas las nubes:'),
+                table(['Tipo', 'Respuesta de 8.8.8.8'], [
+                    ['A', 'El dominio y cualquier nombre bajo él (*.dominio) apuntan a la IP indicada.'],
+                    ['NS (delegación)', '8.8.8.8 pregunta al servidor DNS de esa IP y reenvía su respuesta: tu Server-PT es el autoritativo de la zona.'],
+                ]),
+                h('Ejemplo: publicar la web de una sede'),
+                code('Nube ISP-Sur → Líneas → DSL0 (router del operador, WAN 81.33.3.2)\n  Redirección TCP 80 → 192.168.1.10:80 y UDP 53 → 192.168.1.10:53\nNube ISP-Sur → ISP → dominio sede2.es, tipo NS, IP 81.33.3.2\nSRV-SEDE2 (192.168.1.10) → DNS: zona sede2.es con www → 81.33.3.2\nPC de otra sede:  host www.sede2.es  ·  navegador http://www.sede2.es'),
+                note('El laboratorio «Internet: dos sedes y DNS públicos» trae todo esto montado.'),
+                p('En modo simulación los paquetes que cruzan Internet aparecen como eventos entre las nubes (puerto «Internet»).'),
+            ],
+        },
+        {
+            id: 'ios-nat',
+            title: 'NAT y ACL estándar (IOS)',
+            summary: 'ip nat inside/outside, PAT con overload, pools, NAT estático con puertos y listas de acceso estándar.',
+            blocks: [
+                code('R1(config)# interface g0/0\nR1(config-if)# ip nat inside\nR1(config-if)# interface g0/1\nR1(config-if)# ip address dhcp\nR1(config-if)# ip nat outside\nR1(config-if)# exit\nR1(config)# access-list 1 permit 192.168.10.0 0.0.0.255\nR1(config)# ip nat inside source list 1 interface GigabitEthernet0/1 overload'),
+                table(['Orden', 'Uso'], [
+                    ['ip nat inside | outside', 'Marca la interfaz (también subinterfaces).'],
+                    ['access-list N permit|deny any | host A | A WILDCARD', 'ACL estándar numerada (1-99). remark para comentarios.'],
+                    ['ip access-list standard NOMBRE', 'ACL estándar con nombre: (config-std-nacl)# [secuencia] permit|deny …'],
+                    ['ip nat pool NOMBRE INICIO FIN netmask M | prefix-length N', 'Rango de direcciones globales.'],
+                    ['ip nat inside source list ACL interface IF overload', 'PAT: todas las direcciones permitidas salen con la IP de la interfaz.'],
+                    ['ip nat inside source list ACL pool NOMBRE [overload]', 'NAT dinámico 1:1 (o PAT sobre el pool).'],
+                    ['ip nat inside source static LOCAL GLOBAL', 'NAT estático 1:1 (el router responde ARP por GLOBAL).'],
+                    ['ip nat inside source static tcp|udp LOCAL P GLOBAL|interface IF P', 'Publica un puerto de un servidor interno.'],
+                ]),
+                h('Comprobación'),
+                table(['Orden', 'Muestra'], [
+                    ['show ip nat translations', 'Pro, Inside global, Inside local, Outside local, Outside global.'],
+                    ['show ip nat statistics', 'Traducciones activas, interfaces, aciertos/fallos y reglas dinámicas con sus pools.'],
+                    ['show access-lists', 'Entradas de cada lista y coincidencias.'],
+                    ['clear ip nat translation *', 'Borra las traducciones dinámicas.'],
+                    ['debug ip nat', 'NAT: s=192.168.10.10->81.32.5.2, d=8.8.8.8 [n] por cada paquete traducido.'],
+                ]),
+                note('Los paquetes que no coinciden con ninguna regla salen sin traducir (como en IOS): sin NAT, el otro extremo no sabe volver a una red privada.'),
+            ],
+        },
+        {
+            id: 'ios-web',
+            title: 'Gestión web de routers y switches',
+            summary: 'ip http server, puerto, autenticación enable o local, usuarios y páginas del servidor HTTP de IOS.',
+            blocks: [
+                p('Routers 2911 y switches 2960 (en una SVI, interface Vlan1) tienen el servidor HTTP de IOS. Se activa en la CLI o en la pestaña «Gestión web» de su ventana (casilla, puerto y usuarios).'),
+                code('Router(config)# ip http server\nRouter(config)# ip http port 8080\nRouter(config)# ip http authentication local\nRouter(config)# username admin privilege 15 secret cisco'),
+                table(['Orden', 'Uso'], [
+                    ['ip http server', 'Escucha en el puerto 80 (o el de ip http port).'],
+                    ['ip http port N', 'Cambia el puerto (1-65535).'],
+                    ['ip http authentication enable', 'Por defecto: cualquier usuario con la contraseña de enable secret/password. Sin enable secret nadie entra.'],
+                    ['ip http authentication local', 'Usuarios de username; su privilegio decide el nivel (15 = todo).'],
+                    ['username U [privilege N] secret|password CLAVE', 'Usuario local (secret se guarda como hash tipo 5).'],
+                ]),
+                h('Páginas'),
+                table(['URL', 'Contenido'], [
+                    ['/', 'Inicio: «Accessing Cisco … "R1"» con enlaces.'],
+                    ['/level/15/exec/-/show/ip/interface/brief/CR', 'Ejecuta una orden EXEC (las palabras separadas por /, CR al final).'],
+                    ['/level/N/exec/-', 'Monitor: palabras clave posibles como enlaces y cuadro Command (nivel 1 = EXEC de usuario).'],
+                    ['/level/15/configure/-', 'Configure: órdenes de configuración, una por línea.'],
+                    ['/level/15/dm', 'Device Manager: panel frontal, tabla de interfaces y ajustes rápidos de puerto (descripción, estado, VLAN de acceso, IP).'],
+                ]),
+                note('La autenticación es HTTP Basic (realm level_15_access). Los fallos se registran como %SEC_LOGIN-4-LOGIN_FAILED y los cambios como %SYS-5-CONFIG_I … on vty0 (IP del PC). También funciona curl -u usuario:clave.'),
+            ],
+        },
+        {
+            id: 'inet-trace',
+            title: 'traceroute y tracert',
+            summary: 'Ruta salto a salto en GNU/Linux, Windows e IOS.',
+            blocks: [
+                table(['Equipo', 'Orden', 'Opciones'], [
+                    ['GNU/Linux', 'traceroute DESTINO', '-n (sin nombres), -m SALTOS (30 por defecto)'],
+                    ['Windows', 'tracert DESTINO', '-h SALTOS, -d'],
+                    ['Router Cisco', 'traceroute A.B.C.D', '—'],
+                ]),
+                p('Las tres envían eco ICMP con TTL 1, 2, 3… (como traceroute -I): cada router del camino responde «tiempo excedido» y el destino responde al eco. Los saltos que no responden aparecen con *.'),
+                code('$ traceroute -n 8.8.8.8\ntraceroute to 8.8.8.8 (8.8.8.8), 30 hops max, 60 byte packets\n 1  192.168.1.1  2.400 ms  2.211 ms  2.292 ms\n 2  81.32.0.1  6.319 ms  6.400 ms  6.211 ms\n 3  198.51.100.1  …'),
+            ],
+        },
+    ],
+};
+
+return { INTERNET_DOCS };
+})();
+__m["docs/webapps.js"] = (() => {
+const { code, h, list, note, p, table } = __m["docs/types.js"];
+const WEBAPP_DOCS = [
+    {
+        id: 'srv-roundcube',
+        title: 'Roundcube (correo web)',
+        summary: 'Correo web sobre el IMAP y el SMTP del servidor, en un alias de Apache o en un puerto propio.',
+        blocks: [
+            p('Servicios → HTTP → Aplicaciones web: activa Roundcube y elige cómo se llega a él, para no ocupar el puerto 80 ni la raíz / de la web principal.'),
+            table(['Acceso', 'URL desde un PC', 'Notas'], [
+                ['Alias URL en Apache (por defecto /roundcube)', 'http://servidor/roundcube/', 'Lo sirve Apache: /etc/apache2/conf-enabled/roundcube.conf. Necesita el servicio HTTP activo.'],
+                ['Puerto propio (por defecto 8080)', 'http://servidor:8080/', 'Escucha aunque Apache esté parado.'],
+            ]),
+            list('Inicio de sesión con un usuario de correo del servidor (Servicios → Correo); necesita IMAP activo.', 'Bandeja de entrada, Enviados y Papelera; leer, redactar, responder, reenviar y borrar.', 'Los mensajes a otros dominios se entregan por SMTP al servidor MX que indique el DNS.', 'La sesión va en la cookie roundcube_sessid; la configuración generada está en /etc/roundcube/config.inc.php.'),
+            note('Con DNS, un CNAME webmail → srv permite escribir http://webmail.aula.lab/roundcube/.'),
+        ],
+    },
+    {
+        id: 'srv-webadmin',
+        title: 'Gestión web de Server-PT',
+        summary: 'Interfaz de administración tipo router doméstico: configuración básica, DHCP, DNS, web, correo, SSH, estado y registros.',
+        blocks: [
+            p('Servicios → HTTP → Aplicaciones web → Gestión web. Por defecto está desactivada; al activarla escucha en el puerto 10000 (o en un alias de Apache como /admin) con usuario admin y contraseña admin.'),
+            code('Navegador del PC:  http://srv.aula.lab:10000/\nTerminal:          curl -u admin:admin "http://192.168.10.2:10000/?page=status"'),
+            table(['Página', 'Qué cambia'], [
+                ['Configuración', 'Nombre de host, IP estática o DHCP, puerta de enlace y DNS.'],
+                ['DHCP', 'Activar el servidor, añadir y borrar pools.'],
+                ['DNS', 'Activar bind9, dominio de la zona y registros (A, CNAME, MX, NS, TXT; @ y * admitidos).'],
+                ['Web', 'Apache y el acceso a Roundcube.'],
+                ['Correo · SSH', 'Servicios y usuarios.'],
+                ['Administración', 'Usuario/contraseña de la interfaz y su puerto o alias (al cambiarlo, el navegador pasa a la nueva dirección).'],
+                ['Estado · Registros', 'Datos del equipo, servicios, concesiones y últimos mensajes (journalctl).'],
+            ]),
+            h('Seguridad'),
+            list('Autenticación HTTP Basic (realm «Server-PT»); los intentos fallidos quedan en journalctl -u apache2.', 'Cada cambio se valida igual que en la ventana del servidor y se registra con el usuario y la IP del PC.'),
+        ],
+    },
+];
+
+return { WEBAPP_DOCS };
+})();
 __m["docs/index.js"] = (() => {
 const { NETSIM_DOCS } = __m["docs/netsim.js"];
 const { IOS_DOCS } = __m["docs/ios.js"];
@@ -20668,10 +20896,13 @@ const { BASH_REFERENCE } = __m["docs/bash-ref.js"];
 const { EDITOR_DOCS, NANO_KEYS, VIM_EX, VIM_KEYS } = __m["docs/editors.js"];
 const { UTIL_DOCS } = __m["docs/utils.js"];
 const { BUILTIN_DOCS } = __m["docs/bash-builtins.js"];
+const { INTERNET_DOCS } = __m["docs/internet.js"];
+const { WEBAPP_DOCS } = __m["docs/webapps.js"];
 const DOC_GROUPS = [
     NETSIM_DOCS,
     IOS_DOCS,
-    SERVICE_DOCS,
+    { ...SERVICE_DOCS, pages: [...SERVICE_DOCS.pages, ...WEBAPP_DOCS] },
+    INTERNET_DOCS,
     CLIENT_DOCS,
     { id: 'linux', title: 'Terminal Linux', pages: [...LINUX_DOCS, ...EDITOR_DOCS] },
     { id: 'bash', title: 'GNU bash 5.3', pages: [...BASH_LANGUAGE, ...BASH_REFERENCE] },
@@ -25211,7 +25442,7 @@ const ALLOWED = new Set([
 const SKIP = new Set(['script', 'style', 'iframe', 'object', 'embed', 'noscript', 'template', 'svg', 'math', 'link', 'meta', 'head', 'frame', 'frameset', 'base']);
 const INPUT_TYPES = new Set(['text', 'password', 'hidden', 'checkbox', 'radio', 'submit', 'email', 'number', 'search', 'url', 'tel', 'reset']);
 const ATTRS = {
-    input: ['name', 'value', 'placeholder', 'size', 'maxlength', 'min', 'max', 'autocomplete'],
+    input: ['name', 'value', 'placeholder', 'size', 'maxlength', 'min', 'max'],
     select: ['name'], option: ['value'], textarea: ['name', 'rows', 'cols', 'placeholder'], button: ['name', 'value'],
     td: ['colspan', 'rowspan'], th: ['colspan', 'rowspan', 'scope'],
 };
@@ -25236,6 +25467,8 @@ function copyAttributes(src, out, tag) {
     if (tag === 'input') {
         const type = (src.getAttribute('type') ?? 'text').toLowerCase();
         out.setAttribute('type', INPUT_TYPES.has(type) ? type : 'text');
+        // simulated logins must not reach the real browser's password manager
+        out.setAttribute('autocomplete', type === 'password' ? 'new-password' : 'off');
     }
     if (tag === 'button')
         out.setAttribute('type', (src.getAttribute('type') ?? 'submit').toLowerCase() === 'button' ? 'button' : 'submit');
@@ -25338,15 +25571,21 @@ class BrowserEngine {
             else
                 url = `${url.split('?')[0] ?? url}?${encoded}`;
         }
+        // Saved passwords and cookies go with what the user does (typed URL, link, GET form, same-site POST),
+        // not with a cross-site POST or a redirect to another site: a page cannot drive a router behind the user's back.
+        let credentials = !nav.initiator || method === 'GET' || originOf(nav.initiator) === originOf(url);
         for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-            const r = this.fetch(url, method, body);
+            const r = this.fetch(url, method, body, credentials);
             if (r.kind === 'error')
                 return { kind: 'error', url, code: r.code, message: r.message };
             const res = r.response;
             this.storeCookies(url, res);
             const location = res.headers?.location;
             if (location && [301, 302, 303, 307, 308].includes(res.status)) {
-                url = resolveLink(url, location);
+                const next = resolveLink(url, location);
+                if (originOf(next) !== originOf(url))
+                    credentials = false;
+                url = next;
                 if (res.status !== 307 && res.status !== 308) {
                     method = 'GET';
                     body = undefined;
@@ -25372,12 +25611,12 @@ class BrowserEngine {
         const list = [...(this.jar.get(originOf(url)) ?? new Map()).entries()];
         return list.filter(([, c]) => path.startsWith(c.path)).map(([k, c]) => `${k}=${c.value}`).join('; ');
     }
-    fetch(url, method, body) {
+    fetch(url, method, body, credentials) {
         const headers = { 'user-agent': 'Mozilla/5.0 (netsim)' };
-        const cookie = this.cookieHeader(url);
+        const cookie = credentials ? this.cookieHeader(url) : '';
         if (cookie)
             headers.cookie = cookie;
-        const auth = this.credentials.get(originOf(url));
+        const auth = credentials ? this.credentials.get(originOf(url)) : undefined;
         if (auth)
             headers.authorization = auth;
         if (body !== undefined)
@@ -25497,7 +25736,7 @@ function browserApp(pc, app) {
         const res = r.response;
         const page = renderHtml(res.contentType.startsWith('text/html') ? res.body : `<pre>${res.body.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c)}</pre>`, {
             link: (href) => go(resolveLink(r.url, href)),
-            submit: (action, method, fields) => show(engine.open(resolveLink(r.url, action || r.url), { method, form: fields })),
+            submit: (action, method, fields) => show(engine.open(resolveLink(r.url, action || r.url), { method, form: fields, initiator: r.url })),
         });
         status.textContent = `${res.status} ${res.reason} · ${formatIp(r.ip)} · ${res.server}${page.title ? ` · ${page.title}` : ''}`;
         view.replaceChildren(page.body);
@@ -25859,7 +26098,7 @@ class NatTable {
     dynamic = [];
     hits = 0;
     misses = 0;
-    /** Inside → outside: translates the source, or returns null when no rule applies. */
+    /** Inside → outside: translates the source; null when no rule applies, 'drop' when the rule cannot. */
     inside(p, statics, target) {
         const f = flowOf(p);
         const st = statics.find((s) => staticMatchesOut(s, p, f));
@@ -25872,20 +26111,29 @@ class NatTable {
         if (!t)
             return null;
         this.misses += 1;
+        if (t === 'exhausted')
+            return 'drop';
+        const reserved = new Set(statics.filter((s) => s.global === t.global && s.proto === f.proto).map((s) => s.globalPort));
+        const port = t.overload ? this.freePort(f.proto, t.global, f.sport, reserved) : 0;
+        if (port === null)
+            return 'drop';
         const entry = t.overload
-            ? { proto: f.proto, insideLocal: p.src, insideGlobal: t.global, localPort: f.sport, globalPort: this.freePort(f.proto, t.global, f.sport), outside: p.dst, outsidePort: f.dport, static: false }
-            : { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false };
+            ? { proto: f.proto, insideLocal: p.src, insideGlobal: t.global, localPort: f.sport, globalPort: port, outside: p.dst, outsidePort: f.dport, static: false, rule: t.rule }
+            : { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false, rule: t.rule };
         this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
         return rewriteSrc(p, entry.insideGlobal, entry.proto ? entry.globalPort : undefined);
     }
     /** Outside → inside: translates the destination, or returns null when nothing maps it. */
     outside(p, statics) {
         const f = flowOf(p);
+        const port = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f));
+        if (port)
+            return this.hit(rewriteDst(p, port.local, port.localPort));
         const known = this.dynamic.find((e) => e.insideGlobal === p.dst && (e.proto === null || (e.proto === f.proto && e.globalPort === f.dport)));
         if (known)
             return this.hit(rewriteDst(p, known.insideLocal, known.proto ? known.localPort : undefined));
-        const st = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f)) ?? statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
-        return st ? this.hit(rewriteDst(p, st.local, st.proto ? st.localPort : undefined)) : null;
+        const whole = statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
+        return whole ? this.hit(rewriteDst(p, whole.local)) : null;
     }
     /** Is this global address (and pool member) taken by a 1:1 dynamic translation? */
     globalInUse(global) {
@@ -25894,21 +26142,30 @@ class NatTable {
     entries() {
         return this.dynamic;
     }
+    /** clear ip nat translation * (statistics are kept, like IOS). */
     clear() {
         this.dynamic = [];
+    }
+    /** Factory state (reload): no translations and zeroed statistics. */
+    reset() {
+        this.dynamic = [];
+        this.hits = 0;
+        this.misses = 0;
     }
     hit(p) {
         this.hits += 1;
         return p;
     }
-    freePort(proto, global, wanted) {
+    /** The inside port itself when free, else the first free one; null when every port is taken. */
+    freePort(proto, global, wanted, reserved) {
         const used = new Set(this.dynamic.filter((e) => e.proto === proto && e.insideGlobal === global).map((e) => e.globalPort));
-        if (!used.has(wanted) && wanted > 0)
+        const free = (port) => !used.has(port) && !reserved.has(port);
+        if (wanted > 0 && free(wanted))
             return wanted;
         for (let port = FIRST_PAT_PORT; port <= LAST_PORT; port++)
-            if (!used.has(port))
+            if (free(port))
                 return port;
-        return wanted;
+        return null;
     }
 }
 
@@ -25965,7 +26222,8 @@ class PublicDns {
             return;
         if (dns.response)
             return this.onUpstream(p.udp.dport, dns);
-        if (p.udp.dport === DNS_PORT)
+        // never answer the emulated Internet itself (a domain delegated to 8.8.8.8 would loop forever)
+        if (p.udp.dport === DNS_PORT && !this.core.isVirtual(p.src))
             this.resolve(p, dns);
     }
     reply(via, to, port, msg) {
@@ -25987,6 +26245,8 @@ class PublicDns {
     }
     /** Recursion: asks the domain's own name server and relays the answer. */
     forward(p, q, server) {
+        if (this.core.isVirtual(server))
+            return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { id: q.id, response: true, qname: q.qname, qtype: q.qtype, rcode: 'SERVFAIL', answers: [] });
         const sport = FIRST_QUERY_PORT + (this.nextPort++ % QUERY_PORTS);
         const entry = { client: p.src, port: p.udp?.sport ?? 0, id: q.id, via: p.dst, done: false };
         this.pending.set(sport, entry);
@@ -26086,6 +26346,15 @@ function lineSubnet(block, port) {
 function ispHop(block) {
     return (block + 1) >>> 0;
 }
+/** Ranges a cloud cannot use as public block or delegate a domain to (private, special, emulated Internet). */
+const RESERVED = [
+    ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16], ['172.16.0.0', 12],
+    ['192.168.0.0', 16], ['224.0.0.0', 3], ['8.8.0.0', 16], ['34.160.0.0', 16], ['93.184.0.0', 16], ['142.250.0.0', 15],
+    ['198.51.100.0', 24], ['203.0.113.0', 24],
+];
+function reservedAddress(ip) {
+    return RESERVED.some(([net, prefix]) => inSubnet(ip, parseIp(net) ?? 0, prefix));
+}
 function validDomain(name) {
     if (!/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(name))
         return 'Dominio no válido: usa nombres como sede2.es o empresa.com.';
@@ -26110,17 +26379,23 @@ function validatePort(p) {
     const dup = p.forwards.find((f, i) => p.forwards.findIndex((g) => g.proto === f.proto && g.port === f.port) !== i);
     return dup ? `El puerto ${dup.proto.toUpperCase()} ${dup.port} ya está redirigido.` : null;
 }
-function validateCloud(s) {
+function validateCloud(s, otherBlocks = []) {
     if (!s.isp.trim() || s.isp.length > 40)
         return 'Escribe el nombre del ISP (máximo 40 caracteres).';
     if (networkOf(s.block, BLOCK_PREFIX) !== s.block)
         return 'El bloque público debe ser una red /16 (por ejemplo 81.32.0.0).';
+    if (reservedAddress(s.block))
+        return `${formatIp(s.block)}/16 es privada, especial o de la Internet emulada: elige otro bloque público.`;
+    if (otherBlocks.includes(s.block))
+        return `${formatIp(s.block)}/16 ya lo usa otra nube.`;
     if (s.domains.length > MAX_DOMAINS)
         return 'Demasiados dominios registrados.';
     for (const d of s.domains) {
         const bad = validDomain(d.name);
         if (bad)
             return bad;
+        if (reservedAddress(d.ip))
+            return `${d.name}: ${formatIp(d.ip)} no es una dirección pública de un cliente.`;
     }
     for (const p of CLOUD_PORTS) {
         const bad = validatePort(s.ports[p]);
@@ -26149,17 +26424,18 @@ function portFromJson(port, v) {
     const p = { mode: o.mode === 'public' ? 'public' : 'router', down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards };
     return validatePort(p) ? d : p;
 }
+/** Settings from an untrusted file; anything invalid falls back to the defaults. */
 function cloudFromJson(v, fallback) {
     const o = obj(v);
     const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, portFromJson(p, obj(o.ports)[p])]));
     const domains = (Array.isArray(o.domains) ? o.domains : []).slice(0, MAX_DOMAINS).map(obj)
         .map((d) => ({ name: String(d.name ?? '').toLowerCase(), kind: d.kind === 'ns' ? 'ns' : 'a', ip: ipOf(d.ip, 0) }))
-        .filter((d) => validDomain(d.name) === null);
+        .filter((d) => validDomain(d.name) === null && !reservedAddress(d.ip));
     const s = { isp: typeof o.isp === 'string' ? o.isp.slice(0, 40) : fallback.isp, block: ipOf(o.block, fallback.block), ports, domains };
     return validateCloud(s) ? { ...fallback, ports, domains } : s;
 }
 
-return { CLOUD_PORTS, BLOCK_PREFIX, LINE_PREFIX, accessOf, ACCESS_LABEL, defaultPort, defaultCloud, lineSubnet, ispHop, validDomain, validatePort, validateCloud, cloudToJson, cloudFromJson };
+return { CLOUD_PORTS, BLOCK_PREFIX, LINE_PREFIX, accessOf, ACCESS_LABEL, defaultPort, defaultCloud, lineSubnet, ispHop, reservedAddress, validDomain, validatePort, validateCloud, cloudToJson, cloudFromJson };
 })();
 __m["devices/cloud-port.js"] = (() => {
 /**
@@ -26190,6 +26466,7 @@ class CloudPort {
     settings;
     owner;
     core;
+    appliedNet = -1;
     constructor(owner, core, name, settings) {
         this.owner = owner;
         this.core = core;
@@ -26202,10 +26479,13 @@ class CloudPort {
     line() {
         return lineSubnet(this.owner.block(), this.name);
     }
+    /** Reconfigures the line; a new mode, LAN or public block drops ARP, NAT and leases. */
     apply(settings) {
         const modeChanged = settings.mode !== this.settings.mode || settings.lanIp !== this.settings.lanIp || settings.lanPrefix !== this.settings.lanPrefix;
+        const blockChanged = this.line().net !== this.appliedNet;
         this.settings = settings;
-        if (modeChanged) {
+        this.appliedNet = this.line().net;
+        if (modeChanged || blockChanged) {
             this.stack.flushArp();
             this.nat.clear();
             this.dhcp = new DhcpServer();
@@ -26271,7 +26551,10 @@ class CloudPort {
         if (this.settings.mode === 'router') {
             if (!inSubnet(packet.src, g.ip, g.prefix))
                 return;
-            out = this.nat.inside(out, this.forwards(), () => ({ global: this.wan(), overload: true })) ?? out;
+            const translated = this.nat.inside(out, this.forwards(), () => ({ global: this.wan(), overload: true }));
+            if (translated === 'drop')
+                return;
+            out = translated ?? out;
         }
         this.core.send(out);
     }
@@ -26399,6 +26682,12 @@ class Cloud {
         return [...this.lines.values()].some((l) => l.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip)));
     }
     // ------------------------------------------------------------ InternetEdge
+    publicBlock() {
+        return this.settings.block;
+    }
+    otherBlocks() {
+        return this.core.otherBlocks(this);
+    }
     coreHop() {
         return ispHop(this.settings.block);
     }
@@ -26423,7 +26712,7 @@ const HOP_MS = 2;
 const ERROR_TTL = 250;
 const FIRST_BLOCK = ip('81.32.0.0');
 const BLOCK_STEP = 1 << 16;
-const MAX_BLOCKS = 64;
+const MAX_BLOCKS = 200;
 class InternetCore {
     edges = new Set();
     hosts = [];
@@ -26451,6 +26740,14 @@ class InternetCore {
     }
     domains() {
         return this.sources.flatMap((s) => s.domains());
+    }
+    /** Public blocks of the other ISP clouds. */
+    otherBlocks(edge) {
+        return [...this.edges].filter((e) => e !== edge).map((e) => e.publicBlock());
+    }
+    /** Addresses of the emulated Internet itself (virtual hosts and routers). */
+    isVirtual(addr) {
+        return this.hostFor(addr) !== undefined || BACKBONE.includes(addr);
     }
     /** First /16 public block not used by another ISP cloud. */
     freeBlock(used) {
@@ -26537,7 +26834,7 @@ const { ACCESS_LABEL, CLOUD_PORTS, LINE_PREFIX, accessOf, ispHop, lineSubnet, va
 const { formatIp, formatMask, parseIp, parseMask } = __m["core/ip.js"];
 const { BACKBONE } = __m["net/internet.js"];
 function save(cloud, next, msg, app, refresh) {
-    const err = validateCloud(next);
+    const err = validateCloud(next, cloud.otherBlocks());
     if (err)
         return msg.error(err);
     cloud.setSettings(next);
@@ -27256,26 +27553,26 @@ function permitted(r, acl, src) {
         r.aclHits.set(`${acl}:${entry.seq}`, (r.aclHits.get(`${acl}:${entry.seq}`) ?? 0) + 1);
     return entry?.action === 'permit';
 }
-function poolTarget(r, poolName, overload) {
+function poolTarget(r, poolName, overload, rule) {
     const pool = r.nat.pools.find((p) => p.name === poolName);
     if (!pool)
-        return null;
+        return 'exhausted';
     if (overload)
-        return { global: pool.start, overload: true };
+        return { global: pool.start, overload: true, rule };
     for (let ip = pool.start; ip <= pool.end; ip++)
         if (!r.natTable.globalInUse(ip))
-            return { global: ip, overload: false };
-    return null;
+            return { global: ip, overload: false, rule };
+    return 'exhausted';
 }
 function dynamicTarget(r, p) {
-    for (const d of r.nat.dynamic) {
+    for (const [rule, d] of r.nat.dynamic.entries()) {
         if (!permitted(r, d.acl, p.src))
             continue;
         if (d.iface) {
             const ip = ifaceIp(r, d.iface);
-            return ip === undefined ? null : { global: ip, overload: true };
+            return ip === undefined ? 'exhausted' : { global: ip, overload: true, rule };
         }
-        return poolTarget(r, d.pool, d.overload);
+        return poolTarget(r, d.pool, d.overload, rule);
     }
     return null;
 }
@@ -27296,11 +27593,16 @@ function natPrerouting(r, iface, p) {
     debug(r, p, out, true);
     return out;
 }
-/** Inside → outside, once the egress interface is known. */
+/** Inside → outside, once the egress interface is known; null = drop (pool exhausted). */
 function natForward(r, inIface, outIface, p) {
     if (natRole(r, inIface) !== 'inside' || natRole(r, outIface) !== 'outside')
         return p;
     const out = r.natTable.inside(p, resolvedStatics(r), (pk) => dynamicTarget(r, pk));
+    if (out === 'drop') {
+        if (r.debugNat)
+            r.log(`NAT: translation failed (A), dropping packet s=${formatIp(p.src)} d=${formatIp(p.dst)}`);
+        return null;
+    }
     if (!out)
         return p;
     debug(r, p, out, false);
@@ -27403,7 +27705,9 @@ class RouterPlane {
             this.icmpError(packet, src, 'unreachable');
             return;
         }
-        this.stack.sendVia(egress, natForward(this.router, inIface, egress.iface, { ...packet, ttl: packet.ttl - 1 }));
+        const out = natForward(this.router, inIface, egress.iface, { ...packet, ttl: packet.ttl - 1 });
+        if (out)
+            this.stack.sendVia(egress, out);
     }
     prerouting(iface, packet) {
         return natPrerouting(this.router, iface, packet);
@@ -28727,7 +29031,7 @@ function showNatStatistics(i) {
         '-- Inside Source',
     ];
     i.nat.dynamic.forEach((d, n) => {
-        const refs = dyn.filter((e) => (d.iface ? true : i.nat.pools.some((p) => p.name === d.pool && e.insideGlobal >= p.start && e.insideGlobal <= p.end))).length;
+        const refs = dyn.filter((e) => e.rule === n).length;
         lines.push(`[Id: ${n + 1}] access-list ${d.acl} ${d.iface ? `interface ${d.iface}` : `pool ${d.pool ?? ''}`} refcount ${refs}`);
         const pool = i.nat.pools.find((p) => p.name === d.pool);
         if (!pool)
@@ -28768,6 +29072,9 @@ function removeList(cli, name) {
     const next = new Map(cli.device.acls);
     next.delete(name);
     cli.device.acls = next;
+    for (const key of [...cli.device.aclHits.keys()])
+        if (key.startsWith(`${name}:`))
+            cli.device.aclHits.delete(key);
 }
 function setNat(cli, change) {
     cli.device.nat = change(cli.device.nat);
@@ -28795,9 +29102,10 @@ function dynamicRule(cli, m) {
         return;
     const pool = m.get('pool');
     if (pool && !cli.device.nat.pools.some((p) => p.name === pool))
-        cli.out(`%Pool ${pool} does not exist`);
+        return cli.out(`%Pool ${pool} not found`);
     const rule = { acl, iface, pool, overload: m.has('overload') || iface !== undefined };
-    setNat(cli, (n) => ({ ...n, dynamic: [...n.dynamic.filter((d) => d.acl !== acl), rule] }));
+    // a rule for the same list is replaced in place: the order of evaluation does not change
+    setNat(cli, (n) => ({ ...n, dynamic: n.dynamic.some((d) => d.acl === acl) ? n.dynamic.map((d) => (d.acl === acl ? rule : d)) : [...n.dynamic, rule] }));
 }
 function addPool(cli, m) {
     const start = parseIp(m.get('start') ?? '');
@@ -29310,7 +29618,7 @@ class Router extends IosDevice {
         this.acls = new Map();
         this.aclHits.clear();
         this.nat = EMPTY_NAT;
-        this.natTable.clear();
+        this.natTable.reset();
         this.debugNat = false;
         this.dhcp = new DhcpServer();
         this.plane = new RouterPlane(this);
@@ -29407,10 +29715,10 @@ class Router extends IosDevice {
             '!',
             '!',
             ...interfaceSection(this),
+            ...httpLines(this),
             ...natConfigLines(this.nat),
             'ip classless',
             ...this.staticRoutes.map(routeLine),
-            ...httpLines(this),
             '!',
             'ip flow-export version 9',
             ...(acl.named.length + acl.numbered.length ? ['!', ...acl.named, ...acl.numbered] : []),
@@ -30178,14 +30486,14 @@ function account(v) {
         throw new Error('Cuenta no válida.');
     return { name: str(v.name, 'usuario', 64), password: str(v.password, 'contraseña', 128) };
 }
-function access(v, dflt) {
+function access(v, dflt, other) {
     if (!isObj(v))
         return dflt;
     const a = {
         enabled: bool(v.enabled), mode: v.mode === 'port' ? 'port' : 'alias',
         alias: v.alias === undefined ? dflt.alias : str(v.alias, 'alias web', 64), port: num(v.port, 'puerto web', 1, 65_535, dflt.port),
     };
-    const err = validateAccess(a);
+    const err = validateAccess(a, other);
     if (err)
         throw new Error(err);
     return a;
@@ -30195,9 +30503,10 @@ function webapps(v) {
     if (!isObj(v))
         return d;
     const admin = isObj(v.admin) ? v.admin : {};
+    const roundcube = access(v.roundcube, d.roundcube);
     return {
-        roundcube: access(v.roundcube, d.roundcube),
-        admin: { ...access(v.admin, d.admin), user: admin.user === undefined ? d.admin.user : str(admin.user, 'usuario de gestión web', 32), password: admin.password === undefined ? d.admin.password : str(admin.password, 'contraseña de gestión web', 128) },
+        roundcube,
+        admin: { ...access(v.admin, d.admin, roundcube), user: admin.user === undefined ? d.admin.user : str(admin.user, 'usuario de gestión web', 32), password: admin.password === undefined ? d.admin.password : str(admin.password, 'contraseña de gestión web', 128) },
     };
 }
 function servicesFromJson(v) {
@@ -30400,7 +30709,7 @@ return { roundcube };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netsim",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netsim",
@@ -30580,6 +30889,8 @@ function addPool(server, f) {
 function addRecord(server, f) {
     const type = (f.get('type') ?? 'A');
     const r = { name: (f.get('name') ?? '').trim(), type, value: (f.get('value') ?? '').trim(), ttl: DEFAULT_TTL, priority: type === 'MX' ? Number(f.get('priority') ?? 10) : undefined };
+    if (type === 'MX' && !Number.isInteger(r.priority))
+        return { error: 'La prioridad MX va de 0 a 65535.' };
     const err = ['A', 'CNAME', 'MX', 'NS', 'TXT'].includes(type) ? validateRecord(r, server.services.dns.origin) : 'Tipo de registro no válido.';
     return err ? { error: err } : set(server, (s) => ({ ...s, dns: { ...s.dns, records: [...s.dns.records, r] } }));
 }
@@ -30655,6 +30966,8 @@ const { PAGES, frame } = __m["web/admin-layout.js"];
 const { setupPage, dhcpPage, dnsPage, webPage, mailPage, sshPage, adminPage, statusPage, logPage } = __m["web/admin-pages.js"];
 const { runAction } = __m["web/admin-actions.js"];
 const { formatIp } = __m["core/ip.js"];
+/** User names come from the request: no control characters in the logs. */
+const printable = (text) => text.replace(/[\x00-\x1f\x7f]/g, '?').slice(0, 64);
 const BANNER = 'netsim-webui/0.4';
 const REALM = 'Server-PT';
 function body(server, base, id) {
@@ -30681,7 +30994,7 @@ function serverAdmin(server, req, peer, base) {
     const cred = basicAuth(req);
     if (!cred || cred.user !== a.user || cred.password !== a.password) {
         if (cred)
-            server.log('http', `netsim-webui: acceso denegado para «${cred.user}» desde ${formatIp(peer.ip)}`);
+            server.log('http', `netsim-webui: acceso denegado para «${printable(cred.user)}» desde ${formatIp(peer.ip)}`);
         return unauthorized(BANNER, REALM, page('401 Unauthorized', '', h('h1', {}, 'Unauthorized'), h('p', {}, 'Se necesita usuario y contraseña.')));
     }
     const q = query(req);
@@ -30690,7 +31003,7 @@ function serverAdmin(server, req, peer, base) {
         return respond(BANNER, 404, 'Not Found');
     if (req.method === 'POST') {
         const result = runAction(server, current.id, formFields(req));
-        server.log('http', `netsim-webui: ${cred.user} desde ${formatIp(peer.ip)} → ${current.id}: ${result.error ?? 'guardado'}`);
+        server.log('http', `netsim-webui: ${printable(cred.user)} desde ${formatIp(peer.ip)} → ${current.id}: ${result.error ?? 'guardado'}`);
         if (result.error)
             return respond(BANNER, 200, frame(server, base, current, { error: result.error }, body(server, base, current.id)));
         return redirect(BANNER, result.moved ? newHome(server, req) : `${base}/?page=${current.id}&saved=1`, {}, 303);
@@ -30849,6 +31162,8 @@ const { page, h } = __m["web/html.js"];
 const { homePage, execPage, configurePage, frame } = __m["web/ios-web-pages.js"];
 const { deviceManager, portSettings } = __m["web/ios-dm.js"];
 const { formatIp } = __m["core/ip.js"];
+/** User names come from the request: no control characters in the logs. */
+const printable = (text) => text.replace(/[\x00-\x1f\x7f]/g, '?').slice(0, 64);
 const IOS_BANNER = 'cisco-IOS';
 const MAX_COMMAND = 512;
 const MAX_CONFIG_LINES = 200;
@@ -30882,7 +31197,7 @@ function runConfig(device, lines, who) {
         out.push({ prompt: s.prompt(), command: line, output: s.input(line) });
     }
     if (out.length)
-        device.log(`%SYS-5-CONFIG_I: Configured from console by ${who.user} on vty0 (${formatIp(who.peer.ip)})`);
+        device.log(`%SYS-5-CONFIG_I: Configured from console by ${printable(who.user)} on vty0 (${formatIp(who.peer.ip)})`);
     return out;
 }
 function denied(level) {
@@ -30926,13 +31241,13 @@ function iosWeb(device, req, peer) {
     const route = pathOnly(req.path) === '/' ? null : parseLevelPath(req.path);
     if (!route && pathOnly(req.path) !== '/')
         return respond(IOS_BANNER, 404, page('404 Not Found', '', h('h1', {}, 'Not Found')));
-    const need = route?.level ?? MAX_PRIVILEGE;
+    const need = route?.level ?? 0;
     const cred = basicAuth(req);
     const level = cred ? httpPrivilege(device, cred.user, cred.password) : null;
     if (!cred || level === null || level < need) {
         if (cred)
-            device.log(`%SEC_LOGIN-4-LOGIN_FAILED: Login failed [user: ${cred.user}] [Source: ${formatIp(peer.ip)}] [localport: ${device.http.port}] [Reason: Login Authentication Failed]`);
-        return denied(need);
+            device.log(`%SEC_LOGIN-4-LOGIN_FAILED: Login failed [user: ${printable(cred.user)}] [Source: ${formatIp(peer.ip)}] [localport: ${device.http.port}] [Reason: Login Authentication Failed]`);
+        return denied(route?.level ?? MAX_PRIVILEGE);
     }
     const who = { user: cred.user, level, peer };
     if (!route)
@@ -31006,6 +31321,18 @@ class Topology {
         const used = [...this.placed.values()].flatMap((p) => (p.device instanceof Cloud ? [p.device.settings.block] : []));
         return new Cloud({ id, name: label, clock: this.clock, seed, core: this.internet, block: this.internet.freeBlock(used) });
     }
+    /** A file may give two clouds the same public block: the later ones move to a free block. */
+    separateClouds() {
+        const seen = [];
+        for (const p of this.placed.values()) {
+            const c = p.device;
+            if (!(c instanceof Cloud))
+                continue;
+            if (seen.includes(c.settings.block))
+                c.setSettings({ ...c.settings, block: this.internet.freeBlock([...seen, ...c.otherBlocks()]) });
+            seen.push(c.settings.block);
+        }
+    }
     nextLabel(kind) {
         const used = new Set([...this.placed.values()].map((p) => p.label));
         for (let i = 0;; i++)
@@ -31049,6 +31376,7 @@ class Topology {
             const n = Number(/^d(\d+)$/.exec(d.id)?.[1] ?? 0);
             topo.nextId = Math.max(topo.nextId, n + 1);
         }
+        topo.separateClouds();
         for (const l of file.links)
             topo.connect(l.a, l.b, l.cable);
         for (const p of topo.placed.values())

@@ -10,13 +10,16 @@ import { BASH_REFERENCE } from './bash-ref.ts';
 import { EDITOR_DOCS, NANO_KEYS, VIM_EX, VIM_KEYS } from './editors.ts';
 import { UTIL_DOCS } from './utils.ts';
 import { BUILTIN_DOCS } from './bash-builtins.ts';
+import { INTERNET_DOCS } from './internet.ts';
+import { WEBAPP_DOCS } from './webapps.ts';
 
 export type { DocBlock, DocGroup, DocPage } from './types.ts';
 
 export const DOC_GROUPS: readonly DocGroup[] = [
   NETSIM_DOCS,
   IOS_DOCS,
-  SERVICE_DOCS,
+  { ...SERVICE_DOCS, pages: [...SERVICE_DOCS.pages, ...WEBAPP_DOCS] },
+  INTERNET_DOCS,
   CLIENT_DOCS,
   { id: 'linux', title: 'Terminal Linux', pages: [...LINUX_DOCS, ...EDITOR_DOCS] },
   { id: 'bash', title: 'GNU bash 5.3', pages: [...BASH_LANGUAGE, ...BASH_REFERENCE] },
