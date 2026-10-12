@@ -13,6 +13,7 @@ import type { Placed } from '../net/topology.ts';
 import { createShell } from '../shells/factory.ts';
 import type { Tab } from './windows.ts';
 import { hostIpConfig } from './host-ip.ts';
+import { hostSettings } from './host-settings.ts';
 import { servicesTab } from './server-apps.ts';
 import { browserApp, mailApp } from './pc-apps.ts';
 
@@ -109,8 +110,11 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost): void {
   });
   const ipTab: Tab = { id: 'ip', label: 'Configuración IP', render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
   const order: HostOs[] = h.os === 'linux' ? ['linux', 'windows'] : ['windows', 'linux'];
+  const model = h instanceof Server ? 'Server-PT' : 'PC-PT';
+  let handle: { setTitle(t: string): void } | undefined;
+  const settingsTab: Tab = { id: 'host', label: 'Equipo', render: () => hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) }) };
   const tabs: Tab[] = h instanceof Server
-    ? [{ id: 'svc', label: 'Servicios', render: () => servicesTab(h, app) }, ipTab, ...order.map(terminal)]
-    : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: 'Navegador', render: () => browserApp(h, app) }, { id: 'mail', label: 'Correo', render: () => mailApp(h, app) }] : []), ...order.map(terminal)];
-  app.windows.show(h.id, `${placed.label} · ${h instanceof Server ? 'Server-PT' : 'PC-PT'}`, tabs, () => disposers.forEach((f) => f()));
+    ? [{ id: 'svc', label: 'Servicios', render: () => servicesTab(h, app) }, ipTab, settingsTab, ...order.map(terminal)]
+    : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: 'Navegador', render: () => browserApp(h, app) }, { id: 'mail', label: 'Correo', render: () => mailApp(h, app) }] : []), settingsTab, ...order.map(terminal)];
+  handle = app.windows.show(h.id, `${placed.label} · ${model}`, tabs, () => disposers.forEach((f) => f()));
 }

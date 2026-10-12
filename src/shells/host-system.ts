@@ -1,5 +1,6 @@
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
 import type { Host } from '../devices/host.ts';
+import { validHostname } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import type { CommandFn, HostEnv, UserInfo } from '../bash/types.ts';
 import { Vfs } from '../bash/vfs.ts';
@@ -29,6 +30,7 @@ const ADM = 4;
 const SUDO = 27;
 const USERS = 100;
 const WWW = '/var/www/html';
+const MAX_PRETTY = 256;
 const systems = new WeakMap<Host, Entry>();
 /** Files loaded from a topology before the host's system was first used. */
 const pendingFiles = new WeakMap<Host, readonly FileRecord[]>();
@@ -75,11 +77,23 @@ function webRoot(server: Server): DirMount {
   };
 }
 
+/** Generated files that root may edit: writing them changes the device configuration. */
+const WRITERS: Readonly<Record<string, (host: Host, content: string) => void>> = {
+  '/etc/hostname': (host, content) => {
+    const name = content.trim().split('\n')[0]?.trim() ?? '';
+    if (validHostname(name) === null) host.setHostname(name);
+  },
+};
+
 /** Generated configuration files follow the live device config (zones, pools, netplan…). */
 function refreshMounts(host: Host, e: Entry): void {
   const now = linuxFiles(host);
   for (const p of e.mounted) if (!now.has(p)) e.fs.unmountFile(p);
-  for (const p of now.keys()) if (!e.mounted.has(p)) e.fs.mountFile(p, () => linuxFiles(host).get(p) ?? '');
+  for (const p of now.keys()) {
+    if (e.mounted.has(p)) continue;
+    const writer = WRITERS[p];
+    e.fs.mountFile(p, () => linuxFiles(host).get(p) ?? '', 0o644, writer ? (c) => writer(host, c) : undefined);
+  }
   e.mounted = new Set(now.keys());
 }
 
@@ -91,6 +105,17 @@ function refreshUsers(host: Host, e: Entry): void {
   e.usersKey = key;
 }
 
+function setName(host: Host, kind: 'static' | 'transient' | 'pretty', value: string): string | null {
+  if (kind === 'pretty') {
+    host.prettyName = value === '' ? undefined : value.slice(0, MAX_PRETTY);
+    return null;
+  }
+  if (validHostname(value) !== null) return `Invalid ${kind} hostname '${value}'`;
+  if (kind === 'transient') host.transientName = value;
+  else host.setHostname(value);
+  return null;
+}
+
 function createSystem(host: Host): Entry {
   const fs = new Vfs(() => host.clock.now());
   const programs = new Map<string, CommandFn>([...COREUTILS, ...linuxPrograms(host)]);
@@ -100,7 +125,7 @@ function createSystem(host: Host): Entry {
   const server = asServer(host);
   if (server) fs.mountDir(WWW, webRoot(server));
   const env: HostEnv = {
-    get hostname() { return host.name.toLowerCase(); },
+    get hostname() { return host.runtimeName().toLowerCase(); },
     fs,
     users: () => hostUsers(host),
     commands: programs,
@@ -108,6 +133,8 @@ function createSystem(host: Host): Entry {
     wait: (ms) => { host.hooks.runUntil(() => false, ms); },
     ipAddress: () => (host.config.ip !== undefined ? formatIp(host.config.ip) : ''),
     password: (name) => asServer(host)?.services.ssh.users.find((a) => a.name === name)?.password,
+    hostnames: () => ({ static: host.name.toLowerCase(), transient: host.runtimeName().toLowerCase(), pretty: host.prettyName }),
+    setHostname: (kind, value) => setName(host, kind, value),
   };
   importFiles(fs, pendingFiles.get(host) ?? []);
   pendingFiles.delete(host);

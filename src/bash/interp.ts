@@ -66,6 +66,8 @@ export class Interp {
   /** Descriptors of the command being expanded (for command substitution stdin/stderr). */
   currentFds: Fds = ttyFds();
   readonly startedAt: number;
+  /** Host name read when the shell started (bash's \h does not follow later changes). */
+  startHostname: string;
   /** State of $RANDOM. */
   rngSeed = 1;
   private procCounter = 63;
@@ -109,6 +111,7 @@ export class Interp {
     this.pid = ++pidCounter;
     this.bashpid = this.pid;
     this.startedAt = env.now();
+    this.startHostname = env.hostname;
     this.rngSeed = this.pid;
     for (const name of SET_OPTIONS) this.opts.set(name, false);
     for (const name of ['braceexpand', 'hashall', 'interactive-comments'] as const) this.opts.set(name, true);
@@ -135,6 +138,7 @@ export class Interp {
   /** Subshell: copies variables, functions, options; shares the file system, terminal and limits. */
   clone(): Interp {
     const c = new Interp(this.env, this.user, { interactive: this.interactive, term: this.term, budget: this.budget });
+    c.startHostname = this.startHostname;
     c.vars = this.vars.clone();
     c.functions = new Map(this.functions);
     c.aliases = new Map(this.aliases);
@@ -262,7 +266,7 @@ export class Interp {
 
   prompt(ps: string): string {
     const text = promptEscapes(ps, {
-      user: this.user.name, host: this.env.hostname, cwd: this.cwd, home: this.getVar('HOME'), uid: this.user.uid, now: this.env.now(),
+      user: this.user.name, host: this.startHostname, cwd: this.cwd, home: this.getVar('HOME'), uid: this.user.uid, now: this.env.now(),
       historyNumber: this.history.base + this.history.lines.length, commandNumber: this.commandNumber, jobs: 0, version: '5.3', release: '5.3.20',
     });
     if (!this.shoptOn('promptvars')) return text;

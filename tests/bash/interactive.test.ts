@@ -34,7 +34,8 @@ test('history expansion: !!, !$, !n, !prefix, ^old^new, :p and errors', () => {
 test('Tab completion of commands, files and variables', () => {
   const s = session();
   s.input('touch notas.txt nota2.txt; mkdir dir1');
-  assert.deepEqual(s.complete('hostn'), { line: 'hostname ', candidates: ['hostname'] });
+  assert.deepEqual(s.complete('hostnamec'), { line: 'hostnamectl ', candidates: ['hostnamectl'] });
+  assert.deepEqual(s.complete('hostn').candidates, ['hostname', 'hostnamectl']);
   assert.equal(s.complete('cat no').line, 'cat nota');
   assert.deepEqual(s.complete('cat no').candidates, ['nota2.txt', 'notas.txt']);
   assert.equal(s.complete('cd di').line, 'cd dir1/');

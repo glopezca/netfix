@@ -104,6 +104,16 @@ export interface HostEnv {
   ipAddress?(): string;
   /** Password of an account (SSH users); undefined = no password set (sudo does not ask). */
   password?(user: string): string | undefined;
+  /** Static, transient and pretty host names (hostnamectl). */
+  hostnames?(): HostNames;
+  /** Changes a host name; returns an error message or null. */
+  setHostname?(kind: 'static' | 'transient' | 'pretty', value: string): string | null;
+}
+
+export interface HostNames {
+  readonly static: string;
+  readonly transient: string;
+  readonly pretty?: string;
 }
 
 export class ShellSignal extends Error {}

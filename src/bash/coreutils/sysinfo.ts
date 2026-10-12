@@ -137,19 +137,10 @@ function which(ctx: Ctx): number {
   return status;
 }
 
-function hostname(ctx: Ctx): number {
-  const args = ctx.argv.slice(1);
-  if (args.includes('-I') || args.includes('-i')) { ctx.out(`${ctx.sh.env.ipAddress?.() ?? ''} \n`); return 0; }
-  const set = args.find((a) => !a.startsWith('-'));
-  if (set !== undefined) { ctx.err(ctx.cred.uid === 0 ? 'hostname: el nombre se cambia en netsim desde la etiqueta del equipo\n' : 'hostname: you must be root to change the host name\n'); return 1; }
-  ctx.out(`${args.includes('-f') ? `${ctx.sh.env.hostname}.localdomain` : ctx.sh.env.hostname}\n`);
-  return 0;
-}
-
 const viaBuiltin = (name: string): CommandFn => (ctx) => (BUILTINS.get(name) as CommandFn)(ctx);
 
 export const SYSINFO: ReadonlyMap<string, CommandFn> = new Map<string, CommandFn>([
-  ['date', date], ['id', id], ['uname', uname], ['uptime', uptime], ['ps', ps], ['free', free], ['env', env], ['printenv', printenv], ['which', which], ['hostname', hostname],
+  ['date', date], ['id', id], ['uname', uname], ['uptime', uptime], ['ps', ps], ['free', free], ['env', env], ['printenv', printenv], ['which', which],
   ['whoami', (c) => { c.out(`${c.sh.env.users().find((u) => u.uid === c.cred.uid)?.name ?? c.sh.user.name}\n`); return 0; }],
   ['groups', (c) => { const l = idLine(c, c.argv[1]); c.out(`${(l ?? '').replace(/.*groups=/, '').split(',').map((g) => /\((.*)\)/.exec(g)?.[1]).join(' ')}\n`); return 0; }],
   ['tty', (c) => { const t = isTty(c.fds.get(0)); c.out(t ? '/dev/pts/0\n' : 'not a tty\n'); return t ? 0 : 1; }],

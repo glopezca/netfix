@@ -27,6 +27,20 @@ export type IpMode = 'static' | 'dhcp';
 export type DhcpStatus = 'idle' | 'requesting' | 'ok' | 'failed';
 export type HostOs = 'windows' | 'linux';
 
+const MAX_LABEL = 63;
+const MAX_HOSTNAME = 253;
+const LABEL = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
+
+/** RFC 1123 host name (letters, digits and hyphens; dot-separated labels). Returns an error or null. */
+export function validHostname(name: string): string | null {
+  if (name.trim() === '') return 'El nombre de host no puede estar vacío.';
+  if (name.length > MAX_HOSTNAME) return `El nombre de host admite como máximo ${MAX_HOSTNAME} caracteres.`;
+  const labels = name.split('.');
+  if (labels.some((l) => l.length > MAX_LABEL)) return `Cada parte del nombre admite como máximo ${MAX_LABEL} caracteres.`;
+  if (!labels.every((l) => LABEL.test(l))) return 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).';
+  return null;
+}
+
 export interface HostIpConfig {
   readonly mode: IpMode;
   readonly ip?: number;
@@ -38,7 +52,12 @@ export interface HostIpConfig {
 export abstract class Host implements NetDevice, StackHost {
   abstract readonly kind: 'pc' | 'server';
   readonly id: string;
+  /** Static host name (hostnamectl, /etc/hostname, Windows computer name). */
   name: string;
+  /** Transient name set with `hostname NAME` (not saved); undefined = the static name. */
+  transientName: string | undefined = undefined;
+  /** hostnamectl's pretty host name (free text). */
+  prettyName: string | undefined = undefined;
   readonly mac: string;
   hooks: DeviceHooks = DETACHED;
   config: HostIpConfig = { mode: 'static' };
@@ -83,6 +102,20 @@ export abstract class Host implements NetDevice, StackHost {
     return this.name;
   }
 
+  /** The name the running system uses (gethostname). */
+  runtimeName(): string {
+    return this.transientName ?? this.name;
+  }
+
+  /** Sets the static host name (and the running one). Throws on an invalid name. */
+  setHostname(name: string): void {
+    const err = validHostname(name);
+    if (err) throw new Error(err);
+    this.name = name;
+    this.transientName = undefined;
+    this.changed();
+  }
+
   onChange(listener: () => void): () => void {
     this.statusListeners.add(listener);
     return () => this.statusListeners.delete(listener);
@@ -120,7 +153,7 @@ export abstract class Host implements NetDevice, StackHost {
     return new DhcpClient({
       mac: this.mac,
       send: (msg, dst, src) => {
-        const dhcp = { ...msg, options: { ...msg.options, clientId: this.clientId(), hostname: this.name } };
+        const dhcp = { ...msg, options: { ...msg.options, clientId: this.clientId(), hostname: this.runtimeName() } };
         this.sendUdp(dst, DHCP_CLIENT_PORT, DHCP_SERVER_PORT, { dhcp }, src);
       },
       schedule: (d, fn) => this.hooks.schedule(d, fn),

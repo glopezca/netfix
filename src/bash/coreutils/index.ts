@@ -13,8 +13,9 @@ import { find } from './find.ts';
 import { SHELLPROG } from './shellprog.ts';
 import { EDITORS } from './editors.ts';
 import { EXTRA } from './extra.ts';
+import { HOSTNAME_TOOLS } from './hostnamectl.ts';
 
 export const COREUTILS: ReadonlyMap<string, CommandFn> = new Map<string, CommandFn>([
-  ...FILES, ...FILEINFO, ...TEXT, ...SYSINFO, ...TOOLS, ...SHELLPROG, ...EDITORS, ...EXTRA,
+  ...FILES, ...FILEINFO, ...TEXT, ...SYSINFO, ...TOOLS, ...SHELLPROG, ...EDITORS, ...EXTRA, ...HOSTNAME_TOOLS,
   ['ls', ls], ['dir', ls], ['grep', grep], ['egrep', grep], ['fgrep', grep], ['sed', sed], ['awk', awk], ['mawk', awk], ['find', find],
 ]);

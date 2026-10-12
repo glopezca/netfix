@@ -30,8 +30,8 @@ export const NETSIM_DOCS: DocGroup = {
         h('Ventanas de los equipos'),
         table(['Equipo', 'Pestañas'], [
           ['Router / Switch', 'CLI (Cisco IOS 15).'],
-          ['PC', 'Configuración IP, Navegador, Correo, Símbolo del sistema y Terminal Linux.'],
-          ['Server-PT', 'Servicios, Configuración IP, Terminal Linux y Símbolo del sistema.'],
+          ['PC', 'Configuración IP, Navegador, Correo, Equipo, Símbolo del sistema y Terminal Linux.'],
+          ['Server-PT', 'Servicios, Configuración IP, Equipo, Terminal Linux y Símbolo del sistema.'],
         ]),
         note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim).'),
       ],

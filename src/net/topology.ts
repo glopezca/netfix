@@ -8,7 +8,7 @@ import { SimClock } from '../core/clock.ts';
 import { Router } from '../devices/router.ts';
 import { Switch } from '../devices/switch.ts';
 import { Pc } from '../devices/pc.ts';
-import { Host } from '../devices/host.ts';
+import { Host, validHostname } from '../devices/host.ts';
 import type { IpMode, HostOs } from '../devices/host.ts';
 import { Server } from '../devices/server.ts';
 import { servicesToJson, servicesFromJson, mailboxesFromJson } from '../services/persist.ts';
@@ -40,6 +40,9 @@ export interface PcRecord {
   /** Custom option 61 (hex), when it is not 01 + MAC. */
   readonly clientId?: string;
   readonly os?: HostOs;
+  /** Static host name (when it differs from the label) and hostnamectl's pretty name. */
+  readonly hostname?: string;
+  readonly prettyHostname?: string;
   /** PC apps: e-mail account, inbox and last browser URL. */
   readonly apps?: { readonly mail?: MailAccount; readonly inbox?: readonly MailMessage[]; readonly url?: string };
   /** Files created or changed from the Linux terminal (home directories, /etc, /var/www…). */
@@ -75,6 +78,7 @@ export interface TopologyFile {
 const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server' };
 export const FILE_VERSION = 2;
 const SETTLE_MS = 30_000;
+const MAX_PRETTY = 256;
 
 export class Topology {
   readonly clock = new SimClock();
@@ -179,9 +183,10 @@ function hostRecord(d: Host): PcRecord {
   const os = d.os;
   const clientId = d.clientIdOverride;
   const files = savedFiles(d);
-  if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files };
+  const names = { hostname: d.name, prettyHostname: d.prettyName };
+  if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
   const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
-  return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files };
+  return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
 }
 
 function restore(device: AnyDevice, rec: DeviceRecord): void {
@@ -190,6 +195,8 @@ function restore(device: AnyDevice, rec: DeviceRecord): void {
     device.sendClientId = pc.sendClientId ?? true;
     device.clientIdOverride = typeof pc.clientId === 'string' ? parseHexId(pc.clientId) ?? undefined : undefined;
     if (pc.os === 'linux' || pc.os === 'windows') device.os = pc.os;
+    if (typeof pc.hostname === 'string' && validHostname(pc.hostname) === null) device.name = pc.hostname;
+    if (typeof pc.prettyHostname === 'string') device.prettyName = pc.prettyHostname.slice(0, MAX_PRETTY);
     if (pc.files !== undefined) restoreFiles(device, validFileRecords(pc.files));
     if (pc.mode === 'dhcp') device.config = { mode: 'dhcp' };
     else device.setStatic(parseStatic(pc));

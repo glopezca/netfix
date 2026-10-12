@@ -45,7 +45,7 @@ interface Meta {
 }
 
 export type FsNode =
-  | (Meta & { kind: 'file'; content: string; generated?: () => string })
+  | (Meta & { kind: 'file'; content: string; generated?: () => string; writeBack?: (content: string) => void })
   | (Meta & { kind: 'dir'; children: Map<string, FsNode>; mount?: DirMount })
   | (Meta & { kind: 'link'; target: string })
   | (Meta & { kind: 'dev'; dev: string });
@@ -208,7 +208,14 @@ export class Vfs {
   }
 
   private overwrite(node: FsNode & { kind: 'file' }, content: string, cred: Cred, append: boolean): void {
-    if (node.generated) throw new FsError('EROFS');
+    if (node.generated) {
+      // A generated file with a writer (e.g. /etc/hostname) changes the live configuration.
+      if (!node.writeBack) throw new FsError('EROFS');
+      if (!canAccess(node, cred, 2)) throw new FsError('EACCES');
+      node.writeBack(append ? node.generated() + content : content);
+      node.mtime = this.now();
+      return;
+    }
     if (!canAccess(node, cred, 2)) throw new FsError('EACCES');
     const next = append ? node.content + content : content;
     if (next.length > MAX_FILE) throw new FsError('EFBIG');
@@ -341,11 +348,11 @@ export class Vfs {
   // ------------------------------------------------------------ setup helpers (as root)
 
   /** Adds or replaces a read-only generated file, creating parent directories. */
-  mountFile(path: string, read: () => string, mode = 0o644): void {
+  mountFile(path: string, read: () => string, mode = 0o644, write?: (content: string) => void): void {
     const p = normalize(path);
     this.mkdir(dirname(p), ROOT, true);
     const parent = this.lookup(dirname(p)) as FsNode & { kind: 'dir' };
-    parent.children.set(basename(p), { kind: 'file', content: '', generated: read, mode, uid: 0, gid: 0, mtime: this.now() });
+    parent.children.set(basename(p), { kind: 'file', content: '', generated: read, writeBack: write, mode, uid: 0, gid: 0, mtime: this.now() });
   }
 
   unmountFile(path: string): void {

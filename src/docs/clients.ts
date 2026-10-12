@@ -26,6 +26,26 @@ export const CLIENT_DOCS: DocGroup = {
       ],
     },
     {
+      id: 'pc-equipo',
+      title: 'Nombre del equipo',
+      summary: 'Nombre visible, nombre de host y nombre descriptivo; equivalencias en Linux y Windows.',
+      blocks: [
+        p('La pestaña Equipo de PCs y servidores separa dos nombres: el nombre visible (la etiqueta del icono en el área de trabajo) y el nombre de host del sistema. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea), aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname, y se guarda con la topología.'),
+        table(['Dónde', 'Cómo se cambia', 'Persistente'], [
+          ['Pestaña Equipo', 'Nombre de host + Guardar', 'Sí'],
+          ['GNU/Linux', 'sudo hostnamectl set-hostname NOMBRE', 'Sí (/etc/hostname)'],
+          ['GNU/Linux', 'echo NOMBRE | sudo tee /etc/hostname', 'Sí'],
+          ['GNU/Linux', 'sudo hostname NOMBRE', 'No: nombre transitorio hasta reiniciar'],
+          ['GNU/Linux', 'sudo hostnamectl set-hostname --pretty "Texto libre"', 'Sí (nombre descriptivo)'],
+        ]),
+        code('admin@srv:~$ hostnamectl set-hostname web01\n==== AUTHENTICATING FOR org.freedesktop.hostname1.set-static-hostname ====\nAuthentication is required to set the statically configured local hostname, as well as the pretty hostname.\nAuthenticating as: admin\nPassword:\n==== AUTHENTICATION COMPLETE ====\nadmin@srv:~$ exec bash\nadmin@web01:~$ hostnamectl | head -1\n Static hostname: web01'),
+        list(
+          'Como en Ubuntu, bash lee el nombre al arrancar: el prompt cambia en una shell nueva (exec bash o una terminal nueva).',
+          'Reglas (RFC 1123): letras sin tilde, números y guiones; partes de hasta 63 caracteres separadas por puntos; sin espacios.',
+        ),
+      ],
+    },
+    {
       id: 'pc-apps',
       title: 'Navegador y correo',
       summary: 'Aplicaciones de escritorio del PC.',
