@@ -61,3 +61,20 @@ Exec: `show ip dhcp binding|pool|server statistics|conflict|database`,
 | 6.5 | UI: paleta Server-PT, pestaña Servicios, navegador, correo, terminales; guardar `.json` con selector de archivo |
 | 6.6 | Revisión (code-reviewer), regresiones, e2e, documentación |
 | 6.7 | Compatibilidad: referencias de la v0.1 (`tests/compat/`), filtros de salida de `show` (`\| include`, `exclude`, `begin`, `section`), escenarios Tierra Media de ASIR2-SRI (UT2 y UT3) como tests |
+
+## Fase 7 · Servicios avanzados, bash 5.3, editores y documentación (v0.3)
+
+| Paso | Entregable | Riesgo |
+|---|---|---|
+| 7.1 | DHCP Server-PT: reservas por MAC (semántica `hw-address` de Kea) o por Client-ID; concesiones automáticas identificadas por Client-ID o por MAC (`match-client-id`); convertir una concesión en reserva | Clave de binding calculada tras elegir el pool |
+| 7.2 | DNS: origen de zona, `@`, nombres relativos autocompletados y absolutos con punto final; `$ORIGIN` en `db.*` | Compatibilidad con archivos v0.2 (sin origen = absolutos) |
+| 7.3 | Intérprete bash 5.3 (`src/bash/`): lexer, parser, expansiones, aritmética, ejecutor con generadores (entrada interactiva), builtins, VFS por equipo, utilidades GNU, corpus de conformidad contra bash real | Alcance; bucles infinitos (presupuesto de pasos) y ReDoS |
+| 7.4 | Editores `nano` y `vim` (motores puros + pantalla completa); edición remota por SSH sin tráfico por tecla | Captura de teclado en la UI |
+| 7.5 | Pestaña «Documentación» con búsqueda; `help` y `man` reutilizan el contenido | Mantener la doc al día (test: todo comando documentado) |
+| 7.6 | Revisión (code/security), e2e, versión 0.3.0, commit y push | — |
+
+**Estado (v0.3.0):** fases 7.1–7.6 completadas. Revisión ECC: code-reviewer (recursión sin límite, `mv` sin metadatos, UID estables) y security-reviewer (ReDoS → `src/bash/regex-guard.ts`, cadenas de enlaces → límite de 40, restauración de ficheros restringida, sin setuid) corregidos con pruebas. 207 pruebas, cobertura 92 % líneas.
+
+Decisiones: el VFS muestra los ficheros generados por los servicios como de solo lectura
+(`Read-only file system`); `/var/www/html` se sincroniza con el servicio HTTP; los ficheros
+del usuario se guardan en el `.json` de la topología (`hosts[].files`, con límites de tamaño).

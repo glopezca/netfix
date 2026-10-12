@@ -37,7 +37,10 @@ src/dhcp/   pool.ts (config inmutable), server.ts (asignación, bindings), messa
 src/net/    network.ts (eventos discretos), packets.ts, ipstack.ts, tcp.ts, dns.ts, topology.ts (JSON v2)
 src/devices/ router, switch, host.ts → pc.ts / server.ts (Server-PT)
 src/services/ dhcp-pt, dns-service, http-service, mail-service, ssh-service, units, persist
-src/shells/ base.ts (cliente SSH), linux.ts, windows.ts, factory.ts
+src/bash/   intérprete bash 5.3 (lexer, parser, expand, exec con generadores, vfs, builtins/, coreutils/)
+src/editors/ nano.ts, vim*.ts (motores puros; la UI dibuja Frame)
+src/docs/   documentación estructurada (pestaña Documentación, man, help)
+src/shells/ base.ts (cliente SSH), linux.ts (adaptador de BashSession), host-system.ts (VFS por equipo), windows.ts, factory.ts
 src/ui/     interfaz tipo Packet Tracer (SVG + DOM, sin frameworks)
 tests/      *.test.ts  (unit + integración DORA/relay) ; e2e/ (Playwright)
 ```
@@ -53,3 +56,8 @@ tests/      *.test.ts  (unit + integración DORA/relay) ; e2e/ (Playwright)
   marcador `^`, formato de `show`). La UI está en español.
 - Archivos < 400 líneas, funciones < 50 líneas, sin `any`, sin `console.log`.
 - Nunca insertar HTML con datos del usuario sin escapar (`textContent` o `escapeHtml`).
+- El build empaqueta un script clásico: **prohibidos los ciclos de imports de valor** (los `import type` sí).
+  En `src/bash`, solo `interp.ts`/`source.ts` importan `exec.ts`; el resto llama a métodos de `Interp`.
+- La salida de bash se contrasta con el bash real: añade casos a `tests/bash/corpus/` y regenera con
+  `scripts/gen-bash-corpus.sh` (los `*.manual.sh` son de bash 5.3 y se escriben a mano).
+- Toda orden nueva de la terminal necesita su entrada en `src/docs/utils.ts` (lo comprueba un test).

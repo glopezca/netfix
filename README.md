@@ -14,8 +14,13 @@ Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado par
 - DORA real con tramas Ethernet, ARP e IPv4 a través de switches, VLAN y routers.
 - **Server-PT** con servicios DHCP, DNS, HTTP, SMTP/POP3/IMAP y SSH, configurables desde su
   pestaña Servicios o desde la terminal (`systemctl`, `sc`, `net start`).
-- Terminales **GNU/Linux** (bash de Ubuntu) y **Windows** (cmd) en PCs y servidores; navegador web,
-  cliente de correo y cliente SSH en los PCs.
+- Terminal **GNU/Linux** con **GNU bash 5.3** de verdad (sintaxis, expansiones, funciones, arrays,
+  redirecciones, historial, trabajos, scripts) sobre un sistema de ficheros Ubuntu con permisos y usuarios,
+  utilidades GNU (`grep`, `sed`, `awk`, `find`, `sort`…) y los editores **nano** y **vim** a pantalla completa,
+  también a través de SSH. Terminal **Windows** (cmd) en PCs y servidores; navegador web, cliente de correo
+  y cliente SSH en los PCs.
+- Pestaña **Documentación** con búsqueda: IOS, servicios de Server-PT, PC/Windows, Terminal Linux,
+  nano, vim y la referencia de bash 5.3 (también `man` y `help` en la terminal).
 - Modo simulación con lista de eventos (DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP, SSH),
   animación paso a paso y la PDU de cada paquete.
 - Guardar y abrir topologías completas en archivos `.json` (también la configuración de los servicios).
@@ -66,9 +71,9 @@ Coloca un **Servidor** desde la paleta y haz doble clic. Pestañas:
 
 | Servicio | Configuración | Equivalente en el servidor real |
 |---|---|---|
-| **DHCP** | Pools al estilo Packet Tracer (IP inicial + usuarios máximos, gateway, DNS, dominio, TFTP, concesión), **reservas por MAC**, tabla de concesiones | `kea-dhcp4-server` · `/etc/kea/kea-dhcp4.conf` |
-| **DNS** | Registros A, CNAME, MX, NS y TXT; PTR automáticos; servidor autoritativo (NOERROR, NXDOMAIN, REFUSED) | `bind9` · `/etc/bind/db.<zona>` |
-| **HTTP** | Ficheros editables (`index.html`, `ayuda.html`, …), 404, banner Apache o IIS según el SO | `apache2` · `/var/www/html` |
+| **DHCP** | Pools al estilo Packet Tracer (IP inicial + usuarios máximos, gateway, DNS, dominio, TFTP, concesión), **reservas por MAC o por Client-ID**, concesiones automáticas identificadas por Client-ID o por MAC (`match-client-id`), «Reservar» desde la tabla de concesiones | `kea-dhcp4-server` · `/etc/kea/kea-dhcp4.conf` |
+| **DNS** | Registros A, CNAME, MX, NS y TXT; dominio de la zona (`$ORIGIN`) con nombres **relativos** (`www`, `@`) que se autocompletan y **absolutos** acabados en punto (`srv.aula.lab.`); PTR automáticos; servidor autoritativo (NOERROR, NXDOMAIN, REFUSED) | `bind9` · `/etc/bind/db.<zona>` |
+| **HTTP** | Ficheros editables (`index.html`, `ayuda.html`, …) también desde la terminal (`sudo nano /var/www/html/index.html`), 404, banner Apache o IIS según el SO | `apache2` · `/var/www/html` |
 | **Correo** | SMTP, POP3 e IMAP por separado, dominio y usuarios; **reenvío entre dominios por MX** | `postfix` + `dovecot` |
 | **SSH** | Usuarios y contraseñas; las sesiones abren la shell Linux o Windows del servidor | `ssh` · `/etc/ssh/sshd_config` |
 | **Registros** | `journalctl -u <servicio>` de cada servicio | `journalctl` |
@@ -78,13 +83,24 @@ través de un relay (`ip helper-address` apuntando al servidor).
 
 ### Terminales
 
-**GNU/Linux (Ubuntu):**
-- Red: `ip a`, `ip r`, `ip neigh`, `ping [-c N]`, `sudo dhclient [-r] eth0`, `hostname -I`.
-- DNS: `dig [@srv] nombre [tipo] [+short]`, `dig -x IP`, `nslookup`, `host`.
-- Web y SSH: `curl [-I]`, `wget`, `ssh usuario@host`.
-- Servicios: `systemctl status|start|stop|restart|enable|disable|is-active <servicio>` (con `sudo`), `journalctl -u`, `ss -tulpn`.
-- Ficheros: `cat` y `ls` sobre los ficheros generados (`/etc/resolv.conf`, `/etc/netplan/…`, `/etc/kea/kea-dhcp4.conf`, `/etc/bind/…`, `/var/www/html/…`, `/etc/postfix/main.cf`, …).
-- Errores reales cuando toca: `Interactive authentication required` sin `sudo`, `Command 'ifconfig' not found`, `Connection refused`, `Name or service not known`.
+**GNU/Linux (Ubuntu 26.04, GNU bash 5.3.20):**
+- Un intérprete bash completo: comillas, expansiones de llaves, tilde, parámetros (`${v%%pat}`, `${v//a/b}`,
+  `${v@Q}`…), aritmética, sustitución de órdenes y de procesos (y las nuevas `${ …; }` y `${| …; }` de 5.3),
+  `if`/`case`/`for`/`while`/`select`, funciones, arrays indexados y asociativos, redirecciones y here-docs,
+  `set -euxo pipefail`, `shopt`, historial (`!!`, `!$`, `^a^b`), alias, `trap`, trabajos, `PS1` en color y
+  completado con Tab. Los mensajes de error son los de bash; un corpus de pruebas compara la salida con el bash real.
+- Sistema de ficheros por equipo con permisos, `sudo` (pide la contraseña de la cuenta y la recuerda 15 min),
+  `su`, usuarios y grupos; scripts con `#!/bin/bash`. Lo que escribas se guarda con la topología.
+- Utilidades: `ls cat cp mv rm mkdir chmod chown ln find stat tree du df file head tail wc sort uniq cut tr
+  grep sed awk diff xargs tee seq expr base64 date id ps…` y `man`, `help`, `less`.
+- Editores **nano 8.4** y **vim 9.1** a pantalla completa (también dentro de una sesión SSH).
+- Red: `ip a|r|neigh` (`-br`), `ping`, `dig`, `nslookup`, `host`, `curl` (`-I -o -O`), `wget` (guarda el fichero),
+  `ssh` (devuelve el estado remoto), `sudo dhclient [-r] eth0`, `hostname -I`.
+- Servicios: `systemctl status|start|stop|restart|enable|disable|is-active`, `service`, `journalctl -u`, `ss -tulpn`.
+- Ficheros generados de solo lectura que siguen la configuración: `/etc/resolv.conf`, `/etc/netplan/…`,
+  `/etc/kea/kea-dhcp4.conf`, `/etc/bind/…`, `/etc/postfix/main.cf`…; `/var/www/html` es la carpeta del servidor web.
+- Errores reales: `Interactive authentication required` sin `sudo`, `Command 'ifconfig' not found, but can be
+  installed with: sudo apt install net-tools`, `Connection refused`, `Name or service not known`.
 
 **Windows:**
 - Red: `ipconfig [/all|/release|/renew]`, `ping [-n N]`, `arp -a`.
@@ -113,7 +129,9 @@ Todas son credenciales de laboratorio, ficticias. Se cambian en la pestaña **Se
 | Correo (POP3) | `luis` → `luis@aula.lab` | `luis1` | Buzón en `srv`; cuenta configurada en el Correo de **PC1** |
 | SSH | `admin` | `cisco` | `ssh admin@srv.aula.lab` o `ssh admin@192.168.10.2` desde cualquier terminal |
 
-Usuarios de las terminales locales. No piden contraseña, y `sudo` tampoco:
+Usuarios de las terminales locales (entran sin contraseña). En Linux están en el grupo `sudo`: en el
+servidor, `sudo` pide la contraseña SSH de la cuenta (`cisco` para `admin`); en los PCs no la pide.
+`root` no tiene contraseña, así que `su` falla: usa `sudo -i`.
 
 | Equipo | GNU/Linux | Windows |
 |---|---|---|
@@ -130,6 +148,7 @@ En este laboratorio PC1 usa la terminal GNU/Linux y PC0, Windows. El servidor DH
 - Configuración IOS (running y startup).
 - IP de PCs y servidores.
 - Servicios, buzones y cuentas de correo.
+- Ficheros creados o modificados desde la Terminal Linux (home, scripts, cambios en `/etc`).
 
 En Chrome y Edge aparece el diálogo para elegir nombre y carpeta; en otros navegadores se descarga.
 **Abrir…** recupera el archivo. Los archivos del formato anterior (v1) se siguen abriendo.
@@ -225,6 +244,7 @@ npm run test:coverage  # umbrales: 80 % líneas y funciones, 70 % ramas (núcleo
 npm run typecheck
 npm run e2e            # Playwright sobre dist/ (requiere playwright instalado)
 npm run check          # typecheck + tests + build
+scripts/gen-bash-corpus.sh   # regenera tests/bash/corpus/*.out con el bash del sistema
 ```
 
 **Compatibilidad con la v0.1:** `tests/compat/` compara la versión actual con lo que generaba la v0.1,
@@ -246,7 +266,10 @@ src/dhcp      pools, servidor, reglas de coincidencia, cliente, salidas show
 src/net       red de eventos discretos, pila IPv4, TCP simplificado, resolvedor DNS, rutas, topología, laboratorios
 src/devices   router (plano de datos, relay), switch (VLAN, snooping), Host → PC y Server-PT
 src/services  DHCP (pools PT sobre el motor IOS), DNS, HTTP, correo, SSH, unidades, persistencia
-src/shells    bash de Ubuntu y cmd de Windows, cliente SSH, formatos de dig/nslookup
+src/bash      intérprete GNU bash 5.3, VFS con permisos, builtins y utilidades GNU
+src/editors   motores de nano y vim
+src/docs      documentación (pestaña Documentación, man, help)
+src/shells    sistema Ubuntu de cada equipo, programas de red, cmd de Windows, cliente SSH
 src/clients   cliente de correo (SMTP, POP3, IMAP)
 src/ui        interfaz (SVG + DOM, sin frameworks)
 ```
@@ -256,8 +279,9 @@ src/ui        interfaz (SVG + DOM, sin frameworks)
 Sin STP (los bucles de capa 2 se cortan por un límite de saltos), sin IPv6, sin enrutamiento
 dinámico, un único modelo de cada dispositivo. TCP está simplificado: cada conexión lleva una
 petición y una respuesta. No hay HTTPS, FTP ni DNS recursivo. SSH no cifra de verdad: en modo
-simulación se muestra como «datos cifrados». Los ficheros de configuración de Linux se pueden
-leer (`cat`) pero se editan desde la pestaña Servicios. Los comandos de DHCP poco habituales
+simulación se muestra como «datos cifrados». Los ficheros de configuración generados en Linux se
+leen pero se cambian desde la pestaña Servicios (salvo `/var/www/html`). La terminal no tiene procesos
+reales ni `apt`; los modos visual y reemplazo de vim no están. Los comandos de DHCP poco habituales
 (`origin`, `vrf`, `accounting`, `class`, `relay` en pool, `database`) se aceptan, se guardan y
 aparecen en `show running-config`, pero no cambian la asignación.
 
