@@ -3,6 +3,7 @@ import type { IosDevice } from './device.ts';
 import type { IfaceConfig } from './interfaces.ts';
 import { isSubinterface, parseIfaceName } from './interfaces.ts';
 import { formatIp, formatMask } from '../core/ip.ts';
+import { userLines } from './http.ts';
 
 export function headerLines(device: IosDevice, version: string): string[] {
   const lines = [
@@ -18,6 +19,7 @@ export function headerLines(device: IosDevice, version: string): string[] {
   if (device.enableSecret) lines.push(`enable secret 5 ${device.enableSecret}`);
   if (device.enablePassword) lines.push(`enable password ${device.enablePassword}`);
   if (device.enableSecret || device.enablePassword) lines.push('!');
+  lines.push(...userLines(device));
   return lines;
 }
 

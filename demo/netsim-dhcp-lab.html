@@ -331,6 +331,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display:
 .pane { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .pane h3 { margin: 8px 0 0; font-size: 15px; }
 .pane .table-wrap { overflow-x: auto; }
+.pane > * { flex-shrink: 0; }
 .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 14px; }
 .field-hint { font-size: 12px; color: var(--ink-2); }
 .field input, .field select, .field textarea, .pane textarea { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 6px 8px; background: var(--panel); font: inherit; }
@@ -433,6 +434,32 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display:
 .web-wrt-muted { color: #555; margin: 0; }
 .web-wrt-log { font: 12px/1.4 var(--font-mono); white-space: pre-wrap; margin: 0; }
 .web-wrt-foot { text-align: center; color: #555; font-size: 11px; padding: 8px; }
+/* IOS HTTP server of routers and switches (classic Cisco IOS web pages + Device Manager) */
+.browser-view .web-ios { font: 13px/1.45 Arial, Helvetica, sans-serif; margin: -16px -20px; background: #fff; color: #000; }
+.web-ios-top { display: flex; justify-content: space-between; align-items: center; background: #1d4f91; color: #fff; padding: 8px 14px; }
+.web-ios-logo { font: 700 20px/1 Arial, sans-serif; letter-spacing: 1px; text-transform: lowercase; }
+.web-ios-host { font-size: 12px; }
+.web-ios-nav { display: flex; gap: 2px; background: #d9e2ef; padding: 0 10px; flex-wrap: wrap; }
+.browser-view .web-ios-nav a { padding: 6px 10px; color: #12335e; text-decoration: none; font-weight: 700; }
+.browser-view .web-ios-nav a:hover { background: #fff; }
+.web-ios-main { padding: 10px 16px 16px; }
+.web-ios-main h1 { font-size: 20px; margin: 6px 0; }
+.web-ios-main h2 { font-size: 16px; margin: 6px 0 10px; }
+.web-ios-main h3 { font-size: 13px; margin: 4px 0; }
+.web-ios-home li, .web-ios-help li { margin: 3px 0; }
+.web-ios-out { font: 12px/1.35 var(--font-mono); background: #f4f6f9; border: 1px solid #ccd3dd; padding: 8px; white-space: pre; overflow: auto; max-height: 360px; }
+.web-ios-form { margin-top: 10px; }
+.web-ios-panel { display: flex; flex-wrap: wrap; gap: 3px; background: #3a3f46; padding: 8px; border-radius: 4px; max-width: 640px; margin: 8px 0 4px; }
+.web-ios-port { display: inline-block; min-width: 22px; height: 18px; padding: 0 3px; border-radius: 2px; font: 700 11px/18px Arial, sans-serif; text-align: center; color: #fff; vertical-align: middle; }
+.web-ios-up { background: #2e9d3a; }
+.web-ios-down { background: #6b717a; }
+.web-ios-off { background: #c48a12; }
+.web-ios-legend { font-size: 12px; color: #444; }
+.web-ios-grid, .web-ios-settings { border-collapse: collapse; margin: 6px 0; }
+.web-ios-grid th, .web-ios-grid td { border: 1px solid #ccd3dd; padding: 3px 8px; text-align: left; }
+.web-ios-grid th, .web-ios-settings th { background: #e8edf4; text-align: left; padding: 3px 8px; }
+.web-ios-ok { color: #145214; font-weight: 700; }
+.web-ios-error { background: #fbe3e3; color: #8a1010; padding: 6px 10px; font-weight: 700; }
 .account summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
 .mail-read { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 10px 14px; }
 .mail-read h4 { margin: 0 0 4px; }
@@ -25387,6 +25414,238 @@ function mailApp(pc, app) {
 
 return { browserApp, mailApp };
 })();
+__m["ios/http.js"] = (() => {
+const { secretHash } = __m["core/hash.js"];
+const DEFAULT_HTTP_PORT = 80;
+const DEFAULT_HTTP = { server: false, port: DEFAULT_HTTP_PORT, auth: 'enable' };
+const MAX_PRIVILEGE = 15;
+const DEFAULT_PRIVILEGE = 1;
+function setUser(cli, user) {
+    const d = cli.device;
+    d.users = [...d.users.filter((u) => u.name !== user.name), user];
+}
+function priv(text) {
+    return text === undefined ? DEFAULT_PRIVILEGE : Number(text);
+}
+const http = (cli, change) => cli.device.setHttp({ ...cli.device.http, ...change });
+const HTTP_GLOBAL = [
+    { syntax: 'ip http server', run: (cli) => http(cli, { server: true }), noRun: (cli) => http(cli, { server: false }) },
+    { syntax: 'ip http port <1-65535:port>', run: (cli, m) => http(cli, { port: Number(m.get('port')) }), noRun: (cli) => http(cli, { port: DEFAULT_HTTP_PORT }) },
+    { syntax: 'ip http authentication {enable | local}', run: (cli, m) => http(cli, { auth: m.has('local') ? 'local' : 'enable' }), noRun: (cli) => http(cli, { auth: 'enable' }) },
+    {
+        syntax: 'username <WORD:name> [privilege <0-15:p>] secret [0] <WORD:pw>',
+        run: (cli, m) => setUser(cli, { name: m.get('name') ?? '', privilege: priv(m.get('p')), secret: secretHash(m.get('pw') ?? '') }),
+    },
+    {
+        syntax: 'username <WORD:name> [privilege <0-15:p>] secret 5 <WORD:hash>',
+        run: (cli, m) => setUser(cli, { name: m.get('name') ?? '', privilege: priv(m.get('p')), secret: m.get('hash') ?? '' }),
+        hidden: true,
+    },
+    {
+        syntax: 'username <WORD:name> [privilege <0-15:p>] password [0] <WORD:pw>',
+        run: (cli, m) => setUser(cli, { name: m.get('name') ?? '', privilege: priv(m.get('p')), password: m.get('pw') ?? '' }),
+    },
+    {
+        syntax: 'username <WORD:name> [<LINE:rest>]',
+        run: (cli) => cli.out('% Incomplete command.'),
+        noRun: (cli, m) => { cli.device.users = cli.device.users.filter((u) => u.name !== m.get('name')); },
+        hidden: true,
+    },
+];
+/** `username …` lines of the running configuration. */
+function userLines(device) {
+    const lines = device.users.map((u) => {
+        const p = u.privilege !== DEFAULT_PRIVILEGE ? ` privilege ${u.privilege}` : '';
+        return u.secret !== undefined ? `username ${u.name}${p} secret 5 ${u.secret}` : `username ${u.name}${p} password 0 ${u.password ?? ''}`;
+    });
+    return lines.length ? [...lines, '!'] : [];
+}
+/** `ip http …` lines of the running configuration. */
+function httpLines(device) {
+    const h = device.http;
+    const lines = h.server ? ['ip http server'] : [];
+    if (h.port !== DEFAULT_HTTP_PORT)
+        lines.push(`ip http port ${h.port}`);
+    if (h.auth === 'local')
+        lines.push('ip http authentication local');
+    return lines;
+}
+/**
+ * Privilege level granted to web credentials, or null when they are refused.
+ * `enable`: any user name with the enable secret/password (level 15); without one, nobody gets in.
+ * `local`: a `username` entry and its secret or password.
+ */
+function httpPrivilege(device, user, password) {
+    if (device.http.auth === 'enable') {
+        if (device.enableSecret !== undefined)
+            return secretHash(password) === device.enableSecret ? MAX_PRIVILEGE : null;
+        if (device.enablePassword !== undefined)
+            return password === device.enablePassword ? MAX_PRIVILEGE : null;
+        return null;
+    }
+    const u = device.users.find((x) => x.name === user);
+    if (!u)
+        return null;
+    const ok = u.secret !== undefined ? secretHash(password) === u.secret : password === u.password;
+    return ok ? u.privilege : null;
+}
+
+return { DEFAULT_HTTP_PORT, DEFAULT_HTTP, MAX_PRIVILEGE, HTTP_GLOBAL, userLines, httpLines, httpPrivilege };
+})();
+__m["ios/commands/show-iface.js"] = (() => {
+const { parseIfaceName } = __m["ios/interfaces.js"];
+const { formatIp, formatMask } = __m["core/ip.js"];
+const { formatMacCisco } = __m["core/mac.js"];
+/** Address actually in use: static config or DHCP-learned (provided by the device). */
+function effectiveAddress(device, cfg) {
+    const learned = device.dhcpLearned(cfg.name);
+    if (cfg.dhcpClient)
+        return learned ? { ...learned, method: 'DHCP' } : { method: 'DHCP' };
+    if (cfg.address)
+        return { ip: cfg.address.ip, prefix: cfg.address.prefix, method: 'manual' };
+    return { method: 'unset' };
+}
+function ifaceStatus(device, cfg) {
+    if (cfg.shutdown)
+        return { status: 'administratively down', protocol: 'down' };
+    const rt = device.ifaceRuntime(cfg.name);
+    return { status: rt.linkUp ? 'up' : 'down', protocol: rt.protocolUp ? 'up' : 'down' };
+}
+function showIpInterfaceBrief(device) {
+    const header = 'Interface              IP-Address      OK? Method Status                Protocol ';
+    const rows = device.sortedIfaceNames().map((name) => {
+        const cfg = device.iface(name);
+        if (!cfg)
+            return '';
+        const addr = cfg.switchport ? { method: 'unset' } : effectiveAddress(device, cfg);
+        const ip = addr.ip === undefined ? 'unassigned' : formatIp(addr.ip);
+        const { status, protocol } = ifaceStatus(device, cfg);
+        return `${name.padEnd(23)}${ip.padEnd(16)}YES ${addr.method.padEnd(7)}${status.padEnd(22)}${protocol} `;
+    });
+    return [header, ...rows];
+}
+function hardwareLine(device, cfg) {
+    const mac = formatMacCisco(device.ifaceRuntime(cfg.name).mac);
+    const type = parseIfaceName(cfg.name)?.type ?? 'Ethernet';
+    const hw = type === 'GigabitEthernet' ? 'CN Gigabit Ethernet' : type === 'Loopback' ? 'Loopback' : type === 'Vlan' ? 'CPU Interface' : 'Lance';
+    return `  Hardware is ${hw}, address is ${mac} (bia ${mac})`;
+}
+function showOne(device, cfg) {
+    const { status, protocol } = ifaceStatus(device, cfg);
+    const addr = effectiveAddress(device, cfg);
+    const lines = [`${cfg.name} is ${status}, line protocol is ${protocol}`, hardwareLine(device, cfg)];
+    if (cfg.description)
+        lines.push(`  Description: ${cfg.description}`);
+    if (addr.ip !== undefined && addr.prefix !== undefined)
+        lines.push(`  Internet address is ${formatIp(addr.ip)}/${addr.prefix}`);
+    lines.push('  MTU 1500 bytes, BW 1000000 Kbit, DLY 10 usec,', '     reliability 255/255, txload 1/255, rxload 1/255');
+    if (cfg.encapsulationVlan !== undefined)
+        lines.push(`  Encapsulation 802.1Q Virtual LAN, Vlan ID  ${cfg.encapsulationVlan}`);
+    else
+        lines.push('  Encapsulation ARPA, loopback not set');
+    return lines;
+}
+function showInterfaces(device, filter) {
+    if (filter) {
+        const parsed = parseIfaceName(filter);
+        const name = parsed ? device.resolveIface(parsed.full, false) : null;
+        const cfg = name ? device.iface(name) : undefined;
+        return cfg ? showOne(device, cfg) : ['%Invalid interface type and number'];
+    }
+    return device.sortedIfaceNames().flatMap((n) => {
+        const cfg = device.iface(n);
+        return cfg ? showOne(device, cfg) : [];
+    });
+}
+function maskText(prefix) {
+    return formatMask(prefix);
+}
+
+return { effectiveAddress, ifaceStatus, showIpInterfaceBrief, showInterfaces, maskText };
+})();
+__m["ui/ios-web-settings.js"] = (() => {
+/**
+ * Router/switch → «Gestión web»: turns the IOS HTTP server on/off, picks its port and how users log in.
+ * Every change is applied as the equivalent IOS commands (shown in the tab), as if typed in the CLI.
+ */
+const { el } = __m["ui/dom.js"];
+const { field, input, button, message, select, table } = __m["ui/forms.js"];
+const { livePanel } = __m["ui/server-dhcp-dns.js"];
+const { applyConfig } = __m["ios/session.js"];
+const { DEFAULT_HTTP_PORT, MAX_PRIVILEGE } = __m["ios/http.js"];
+const { effectiveAddress } = __m["ios/commands/show-iface.js"];
+const { formatIp } = __m["core/ip.js"];
+const MAX_PORT = 65535;
+const USER = /^[A-Za-z0-9._-]{1,32}$/;
+function addresses(device) {
+    return device.sortedIfaceNames().flatMap((n) => {
+        const cfg = device.iface(n);
+        const a = cfg && !cfg.switchport ? effectiveAddress(device, cfg) : undefined;
+        return a?.ip !== undefined && !cfg?.shutdown ? [formatIp(a.ip)] : [];
+    });
+}
+function urlOf(device, ip) {
+    return device.http.port === DEFAULT_HTTP_PORT ? `http://${ip}/` : `http://${ip}:${device.http.port}/`;
+}
+function iosWebSettings(device, afterCommand) {
+    const msg = message();
+    return livePanel((refresh) => {
+        const apply = (lines) => {
+            const errors = applyConfig(device, lines);
+            device.log('%SYS-5-CONFIG_I: Configured from console by console');
+            afterCommand();
+            refresh();
+            if (errors.length)
+                msg.error(errors.join(' '));
+            else
+                msg.ok(`Aplicado: ${lines.map((l) => l.replace(/ (secret|password) \S+$/, ' $1 ****')).join(' · ')}`);
+        };
+        const on = el('input', { type: 'checkbox', checked: device.http.server });
+        const port = input({ value: String(device.http.port), inputmode: 'numeric', maxlength: '5' });
+        const auth = select([['enable', 'enable secret / enable password'], ['local', 'usuarios locales (username)']], device.http.auth);
+        const save = () => {
+            const n = Number(port.value.trim());
+            if (!Number.isInteger(n) || n < 1 || n > MAX_PORT)
+                return msg.error('El puerto debe ser un número de 1 a 65535.');
+            apply([on.checked ? 'ip http server' : 'no ip http server', n === DEFAULT_HTTP_PORT ? 'no ip http port' : `ip http port ${n}`, `ip http authentication ${auth.value === 'local' ? 'local' : 'enable'}`]);
+        };
+        const name = input({ placeholder: 'admin', maxlength: '32' });
+        const pass = input({ type: 'password', placeholder: 'contraseña' });
+        const addUser = () => {
+            if (!USER.test(name.value.trim()))
+                return msg.error('Usuario: letras, números, punto, guion o guion bajo (máx. 32).');
+            if (!pass.value || /\s/.test(pass.value))
+                return msg.error('Escribe una contraseña sin espacios.');
+            apply([`username ${name.value.trim()} privilege ${MAX_PRIVILEGE} secret ${pass.value}`]);
+        };
+        const users = table(device.users, [
+            { label: 'Usuario', value: (u) => u.name, mono: true },
+            { label: 'Privilegio', value: (u) => String(u.privilege) },
+            { label: 'Clave', value: (u) => (u.secret !== undefined ? 'secret (hash)' : 'password') },
+        ], { empty: 'Sin usuarios locales.', onDelete: (u) => apply([`no username ${u.name}`]) });
+        const urls = addresses(device).map((ip) => urlOf(device, ip));
+        const noEnable = device.http.auth === 'enable' && !device.enableSecret && !device.enablePassword;
+        return [
+            el('h3', {}, 'Servidor HTTP del dispositivo'),
+            el('label', { class: 'switch-row' }, on, el('span', { class: 'switch-label' }, 'Gestión web (ip http server)')),
+            el('div', { class: 'grid2' }, field('Puerto', port, `Por defecto ${DEFAULT_HTTP_PORT} (ip http port).`), field('Autenticación', auth, 'ip http authentication enable | local')),
+            el('div', { class: 'actions' }, button('Aplicar', save)),
+            msg.el,
+            el('p', { class: 'form-msg', 'data-kind': noEnable ? 'error' : '' }, noEnable ? 'Sin enable secret nadie puede entrar: configúralo en la CLI o usa usuarios locales.' : ''),
+            el('h3', {}, 'Usuarios locales (privilegio 15)'),
+            users,
+            el('div', { class: 'grid2' }, field('Usuario', name), field('Contraseña', pass)),
+            el('div', { class: 'actions' }, button('Añadir usuario', addUser)),
+            el('h3', {}, 'Cómo conectarse'),
+            el('ul', { class: 'muted' }, el('li', {}, device.http.server
+                ? `Desde el navegador de un PC: ${urls.join(' · ') || '(asigna antes una IP a una interfaz' + (device.kind === 'switch' ? ' Vlan' : '') + ')'}`
+                : 'El servidor está apagado: no escucha en ningún puerto.'), el('li', {}, 'Páginas: inicio, Monitor (/level/15/exec/-), Configure (/level/15/configure/-) y Device Manager (/level/15/dm).'), el('li', {}, 'También con curl -u usuario:clave desde una terminal GNU/Linux.')),
+        ];
+    });
+}
+
+return { iosWebSettings };
+})();
 __m["ui/device-windows.js"] = (() => {
 /** Window contents: IOS CLI for routers/switches; desktop tabs for PCs and Server-PT. */
 const { el } = __m["ui/dom.js"];
@@ -25400,6 +25659,7 @@ const { hostIpConfig } = __m["ui/host-ip.js"];
 const { hostSettings } = __m["ui/host-settings.js"];
 const { servicesTab } = __m["ui/server-apps.js"];
 const { browserApp, mailApp } = __m["ui/pc-apps.js"];
+const { iosWebSettings } = __m["ui/ios-web-settings.js"];
 const terminals = new Map();
 function iosBackend(device, session) {
     return {
@@ -25451,7 +25711,10 @@ function openDeviceWindow(placed, host) {
         return;
     }
     const term = cliTerminal(placed, host);
-    host.windows.show(d.id, `${placed.label} · ${d.hostname}`, [{ id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() }]);
+    host.windows.show(d.id, `${placed.label} · ${d.hostname}`, [
+        { id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() },
+        { id: 'web', label: 'Gestión web', render: () => iosWebSettings(d, () => host.afterCommand()) },
+    ]);
 }
 function shellTerminal(placed, h, os, app) {
     const key = `${h.id}:${os}`;
@@ -25676,6 +25939,7 @@ __m["ios/device.js"] = (() => {
 /** Base class for devices managed through the IOS CLI (routers and switches). */
 const { SimClock } = __m["core/clock.js"];
 const { defaultIface, compareIfaces } = __m["ios/interfaces.js"];
+const { DEFAULT_HTTP } = __m["ios/http.js"];
 class IosDevice {
     hostname;
     enableSecret;
@@ -25684,6 +25948,8 @@ class IosDevice {
     domainLookup = true;
     domainName;
     nameServers = [];
+    http = DEFAULT_HTTP;
+    users = [];
     startupConfig = null;
     history = [];
     ifaces = new Map();
@@ -25696,6 +25962,25 @@ class IosDevice {
     /** Address learned through `ip address dhcp`, if any (routers and switch SVIs). */
     dhcpLearned(_name) {
         return undefined;
+    }
+    /** `ip http …`: replaces the HTTP server settings and lets the device (re)open its listener. */
+    setHttp(next) {
+        this.http = next;
+        this.onHttpChanged();
+    }
+    /** Hook for devices with a TCP stack (routers, switches). */
+    onHttpChanged() { }
+    /** Global settings shared by every IOS device, back to factory defaults. */
+    resetGlobals(hostname) {
+        this.hostname = hostname;
+        this.enableSecret = undefined;
+        this.enablePassword = undefined;
+        this.bannerMotd = undefined;
+        this.domainLookup = true;
+        this.domainName = undefined;
+        this.nameServers = [];
+        this.users = [];
+        this.setHttp(DEFAULT_HTTP);
     }
     onConsole(listener) {
         this.listeners.add(listener);
@@ -25728,77 +26013,6 @@ class IosDevice {
 }
 
 return { IosDevice };
-})();
-__m["ios/commands/show-iface.js"] = (() => {
-const { parseIfaceName } = __m["ios/interfaces.js"];
-const { formatIp, formatMask } = __m["core/ip.js"];
-const { formatMacCisco } = __m["core/mac.js"];
-/** Address actually in use: static config or DHCP-learned (provided by the device). */
-function effectiveAddress(device, cfg) {
-    const learned = device.dhcpLearned(cfg.name);
-    if (cfg.dhcpClient)
-        return learned ? { ...learned, method: 'DHCP' } : { method: 'DHCP' };
-    if (cfg.address)
-        return { ip: cfg.address.ip, prefix: cfg.address.prefix, method: 'manual' };
-    return { method: 'unset' };
-}
-function ifaceStatus(device, cfg) {
-    if (cfg.shutdown)
-        return { status: 'administratively down', protocol: 'down' };
-    const rt = device.ifaceRuntime(cfg.name);
-    return { status: rt.linkUp ? 'up' : 'down', protocol: rt.protocolUp ? 'up' : 'down' };
-}
-function showIpInterfaceBrief(device) {
-    const header = 'Interface              IP-Address      OK? Method Status                Protocol ';
-    const rows = device.sortedIfaceNames().map((name) => {
-        const cfg = device.iface(name);
-        if (!cfg)
-            return '';
-        const addr = cfg.switchport ? { method: 'unset' } : effectiveAddress(device, cfg);
-        const ip = addr.ip === undefined ? 'unassigned' : formatIp(addr.ip);
-        const { status, protocol } = ifaceStatus(device, cfg);
-        return `${name.padEnd(23)}${ip.padEnd(16)}YES ${addr.method.padEnd(7)}${status.padEnd(22)}${protocol} `;
-    });
-    return [header, ...rows];
-}
-function hardwareLine(device, cfg) {
-    const mac = formatMacCisco(device.ifaceRuntime(cfg.name).mac);
-    const type = parseIfaceName(cfg.name)?.type ?? 'Ethernet';
-    const hw = type === 'GigabitEthernet' ? 'CN Gigabit Ethernet' : type === 'Loopback' ? 'Loopback' : type === 'Vlan' ? 'CPU Interface' : 'Lance';
-    return `  Hardware is ${hw}, address is ${mac} (bia ${mac})`;
-}
-function showOne(device, cfg) {
-    const { status, protocol } = ifaceStatus(device, cfg);
-    const addr = effectiveAddress(device, cfg);
-    const lines = [`${cfg.name} is ${status}, line protocol is ${protocol}`, hardwareLine(device, cfg)];
-    if (cfg.description)
-        lines.push(`  Description: ${cfg.description}`);
-    if (addr.ip !== undefined && addr.prefix !== undefined)
-        lines.push(`  Internet address is ${formatIp(addr.ip)}/${addr.prefix}`);
-    lines.push('  MTU 1500 bytes, BW 1000000 Kbit, DLY 10 usec,', '     reliability 255/255, txload 1/255, rxload 1/255');
-    if (cfg.encapsulationVlan !== undefined)
-        lines.push(`  Encapsulation 802.1Q Virtual LAN, Vlan ID  ${cfg.encapsulationVlan}`);
-    else
-        lines.push('  Encapsulation ARPA, loopback not set');
-    return lines;
-}
-function showInterfaces(device, filter) {
-    if (filter) {
-        const parsed = parseIfaceName(filter);
-        const name = parsed ? device.resolveIface(parsed.full, false) : null;
-        const cfg = name ? device.iface(name) : undefined;
-        return cfg ? showOne(device, cfg) : ['%Invalid interface type and number'];
-    }
-    return device.sortedIfaceNames().flatMap((n) => {
-        const cfg = device.iface(n);
-        return cfg ? showOne(device, cfg) : [];
-    });
-}
-function maskText(prefix) {
-    return formatMask(prefix);
-}
-
-return { effectiveAddress, ifaceStatus, showIpInterfaceBrief, showInterfaces, maskText };
 })();
 __m["net/routing.js"] = (() => {
 /** IPv4 routing table built from connected interfaces and static routes. */
@@ -26012,6 +26226,10 @@ class RouterPlane {
     }
     // ------------------------------------------------------------ local delivery (DHCP)
     deliver(iface, packet) {
+        if (packet.tcp) {
+            this.router.web.tcp.receive(packet);
+            return;
+        }
         const dhcp = packet.udp?.dhcp;
         if (!dhcp)
             return;
@@ -26150,6 +26368,43 @@ class RouterPlane {
 
 return { RouterPlane };
 })();
+__m["devices/ios-web.js"] = (() => {
+const { TcpLayer } = __m["net/tcp.js"];
+let handler;
+function registerIosWeb(h) {
+    handler = h;
+}
+class IosWeb {
+    tcp;
+    device;
+    port;
+    constructor(device, env) {
+        this.device = device;
+        this.tcp = new TcpLayer(env);
+    }
+    /** Opens, moves or closes the listener after `ip http server|port`. */
+    sync() {
+        const want = this.device.http.server ? this.device.http.port : undefined;
+        if (want === this.port)
+            return;
+        if (this.port !== undefined)
+            this.tcp.unlisten(this.port);
+        this.port = want;
+        if (want !== undefined)
+            this.tcp.listen(want, (req, peer) => this.handle(req, peer));
+    }
+    listeningPort() {
+        return this.port;
+    }
+    handle(req, peer) {
+        if (req.app !== 'HTTP' || req.kind !== 'request' || !handler)
+            return null;
+        return handler(this.device, req, peer);
+    }
+}
+
+return { registerIosWeb, IosWeb };
+})();
 __m["ios/commands/iface-select.js"] = (() => {
 const { parseIfaceName, isSubinterface } = __m["ios/interfaces.js"];
 const INVALID_IFACE = '%Invalid interface type and number';
@@ -26203,6 +26458,7 @@ const { applyConfig } = __m["ios/session.js"];
 const { secretHash } = __m["core/hash.js"];
 const { selectInterface, selectInterfaceRange } = __m["ios/commands/iface-select.js"];
 const { showIpInterfaceBrief, showInterfaces } = __m["ios/commands/show-iface.js"];
+const { HTTP_GLOBAL } = __m["ios/http.js"];
 const MAX_HOSTNAME = 63;
 function startupBytes(device) {
     return (device.startupConfig ?? []).reduce((n, l) => n + l.length + 1, 0);
@@ -26305,6 +26561,7 @@ const GLOBAL = [
     { syntax: 'line {console <0-0:n> | vty <0-15:a> [<0-15:b>] | aux <0-0:x>}', run: (cli) => cli.session.enterMode('config-line') },
     { syntax: 'service password-encryption', run: () => undefined, noRun: () => undefined },
     { syntax: 'service timestamps [<LINE:rest>]', run: () => undefined, noRun: () => undefined, hidden: true },
+    ...HTTP_GLOBAL,
 ];
 const LINE_MODE = [
     { syntax: 'password <WORD:pw>', run: () => undefined, noRun: () => undefined },
@@ -27272,6 +27529,7 @@ return { routerModeTable };
 __m["ios/runconfig.js"] = (() => {
 const { isSubinterface, parseIfaceName } = __m["ios/interfaces.js"];
 const { formatIp, formatMask } = __m["core/ip.js"];
+const { userLines } = __m["ios/http.js"];
 function headerLines(device, version) {
     const lines = [
         '!',
@@ -27289,6 +27547,7 @@ function headerLines(device, version) {
         lines.push(`enable password ${device.enablePassword}`);
     if (device.enableSecret || device.enablePassword)
         lines.push('!');
+    lines.push(...userLines(device));
     return lines;
 }
 function globalIpLines(device) {
@@ -27517,7 +27776,10 @@ const { SimClock } = __m["core/clock.js"];
 const { macFromSeed } = __m["core/mac.js"];
 const { DETACHED, macPlus } = __m["devices/hooks.js"];
 const { RouterPlane } = __m["devices/router-plane.js"];
+const { IosWeb } = __m["devices/ios-web.js"];
+const { DEFAULT_TTL } = __m["net/packets.js"];
 const { routerModeTable } = __m["ios/commands/router-modes.js"];
+const { httpLines } = __m["ios/http.js"];
 const { headerLines, globalIpLines, interfaceSection, trailerLines } = __m["ios/runconfig.js"];
 const { formatIp, formatMask } = __m["core/ip.js"];
 const { DhcpServer } = __m["dhcp/server.js"];
@@ -27532,13 +27794,27 @@ class Router extends IosDevice {
     staticRoutes = [];
     dhcp = new DhcpServer();
     plane;
+    web;
     macs = new Map();
     constructor(opts = {}) {
         super('Router', opts.clock ?? new SimClock());
         this.id = opts.id ?? 'R';
         this.baseMac = macFromSeed(opts.seed ?? 1);
         this.plane = new RouterPlane(this);
+        this.web = new IosWeb(this, {
+            send: (p) => this.plane.stack.send(p),
+            sourceFor: (dst) => {
+                const egress = this.plane.route(dst);
+                return egress ? this.plane.l3Iface(egress.iface)?.addrs[0]?.ip : undefined;
+            },
+            schedule: (d, fn) => this.hooks.schedule(d, fn),
+            ttl: DEFAULT_TTL,
+        });
         this.resetConfig();
+    }
+    onHttpChanged() {
+        // called from resetConfig during construction, before `web` exists
+        this.web?.sync();
     }
     displayName() {
         return this.hostname;
@@ -27570,13 +27846,7 @@ class Router extends IosDevice {
         return routerModeTable;
     }
     resetConfig() {
-        this.hostname = 'Router';
-        this.enableSecret = undefined;
-        this.enablePassword = undefined;
-        this.bannerMotd = undefined;
-        this.domainLookup = true;
-        this.domainName = undefined;
-        this.nameServers = [];
+        this.resetGlobals('Router');
         this.staticRoutes = [];
         this.dhcp = new DhcpServer();
         this.plane = new RouterPlane(this);
@@ -27674,6 +27944,7 @@ class Router extends IosDevice {
             ...interfaceSection(this),
             'ip classless',
             ...this.staticRoutes.map(routeLine),
+            ...httpLines(this),
             '!',
             'ip flow-export version 9',
             ...trailerLines(this),
@@ -28014,6 +28285,8 @@ const { inSubnet, formatIp, formatMask, BROADCAST_IP } = __m["core/ip.js"];
 const { DETACHED } = __m["devices/hooks.js"];
 const { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DEFAULT_TTL } = __m["net/packets.js"];
 const { IpStack } = __m["net/ipstack.js"];
+const { IosWeb } = __m["devices/ios-web.js"];
+const { httpLines } = __m["ios/http.js"];
 const { DhcpClient } = __m["dhcp/client.js"];
 const { Snooping } = __m["devices/snooping.js"];
 const { switchModeTable } = __m["ios/commands/switch-modes.js"];
@@ -28032,6 +28305,7 @@ class Switch extends IosDevice {
     macTable = new Map();
     snooping = new Snooping();
     stack;
+    web;
     dropOnArpMiss = true;
     ttl = DEFAULT_TTL;
     clients = new Map();
@@ -28041,19 +28315,26 @@ class Switch extends IosDevice {
         this.id = opts.id ?? 'S';
         this.baseMac = macFromSeed((opts.seed ?? 1) + 7919);
         this.stack = new IpStack(this, () => this.clock.now());
+        this.web = new IosWeb(this, {
+            send: (p) => this.stack.send(p),
+            sourceFor: (dst) => {
+                const egress = this.route(dst);
+                return egress ? this.l3Iface(egress.iface)?.addrs[0]?.ip : undefined;
+            },
+            schedule: (d, fn) => this.schedule(d, fn),
+            ttl: DEFAULT_TTL,
+        });
         this.resetConfig();
+    }
+    onHttpChanged() {
+        // called from resetConfig during construction, before `web` exists
+        this.web?.sync();
     }
     modeTable() {
         return switchModeTable;
     }
     resetConfig() {
-        this.hostname = 'Switch';
-        this.enableSecret = undefined;
-        this.enablePassword = undefined;
-        this.bannerMotd = undefined;
-        this.domainLookup = true;
-        this.domainName = undefined;
-        this.nameServers = [];
+        this.resetGlobals('Switch');
         this.defaultGateway = undefined;
         this.vlans = new Map(DEFAULT_VLANS);
         this.snooping.reset();
@@ -28240,6 +28521,10 @@ class Switch extends IosDevice {
         return via ? { iface: via.name, nextHop: gw } : null;
     }
     deliver(iface, packet) {
+        if (packet.tcp) {
+            this.web.tcp.receive(packet);
+            return;
+        }
         const dhcp = packet.udp?.dhcp;
         if (dhcp && packet.udp?.dport === DHCP_CLIENT_PORT)
             this.clients.get(iface)?.receive(dhcp);
@@ -28301,6 +28586,7 @@ class Switch extends IosDevice {
             ...vlanLines,
             ...interfaceSection(this, (n) => this.snooping.ifaceLines(n)),
             ...(this.defaultGateway !== undefined ? [`ip default-gateway ${formatIp(this.defaultGateway)}`] : []),
+            ...httpLines(this),
             '!',
             ...trailerLines(this),
         ];
@@ -28948,14 +29234,258 @@ function serverAdmin(server, req, peer, base) {
 
 return { serverAdmin };
 })();
+__m["web/ios-web-pages.js"] = (() => {
+const { Session } = __m["ios/session.js"];
+const { MAX_PRIVILEGE } = __m["ios/http.js"];
+const { h, page } = __m["web/html.js"];
+const enc = (words) => words.map(encodeURIComponent).join('/');
+function model(device) {
+    return device.kind === 'router' ? 'router' : 'switch';
+}
+function frame(device, title, body) {
+    const nav = [['/', 'Home'], ['/level/15/exec/-', 'Monitor'], ['/level/15/configure/-', 'Configure'], ['/level/15/dm', 'Device Manager']];
+    return page(title, 'web-ios', h('div', { class: 'web-ios-top' }, h('span', { class: 'web-ios-logo' }, 'cisco'), h('span', { class: 'web-ios-host' }, `${device.hostname} · ${device.model}`)), h('div', { class: 'web-ios-nav' }, nav.map(([href, label]) => h('a', { href }, label))), h('div', { class: 'web-ios-main' }, body));
+}
+function homePage(device, level) {
+    const levels = Array.from({ length: level + 1 }, (_, i) => i);
+    const item = (href, label, text) => h('li', {}, h('a', { href }, label), ` - ${text}`);
+    return h('div', {}, h('h1', {}, 'Cisco Systems'), h('h2', {}, `Accessing Cisco ${device.model} "${device.hostname}"`), h('ul', { class: 'web-ios-home' }, item('/level/15/exec/-/show/interfaces/CR', 'Show interfaces', 'display the status of the interfaces.'), item('/level/15/exec/-/show/running-config/CR', 'Show running-config', 'display the current configuration.'), h('li', {}, h('a', { href: `/level/${level}/exec/-` }, `Monitor the ${model(device)}`), ' - HTML access to the command line interface at level ', levels.map((n, i) => [i ? ',' : '', h('a', { href: `/level/${n}/exec/-` }, String(n))])), level >= MAX_PRIVILEGE ? item('/level/15/configure/-', 'Configure', 'send configuration commands, one per line.') : null, level >= MAX_PRIVILEGE ? item('/level/15/dm', 'Device Manager', 'port status and quick port settings.') : null, item(`/level/${level}/exec/-/ping`, 'Extended Ping', 'send ping commands.')));
+}
+function helpList(device, level, base, words) {
+    const s = new Session(device);
+    s.mode = (level >= MAX_PRIVILEGE ? 'exec' : 'user');
+    const lines = s.help(words.length ? `${words.join(' ')} ` : '');
+    const rows = lines.map((line) => {
+        const m = /^\s*(\S+)\s*(.*)$/.exec(line);
+        const kw = m?.[1] ?? '';
+        const text = m?.[2] ?? '';
+        if (kw === '<cr>')
+            return h('li', {}, h('a', { href: `${base}/${enc([...words, 'CR'])}` }, 'CR'), ' - run the command');
+        if (kw === '|' || kw.startsWith('%'))
+            return null;
+        if (/^[a-z][\w-]*$/.test(kw))
+            return h('li', {}, h('a', { href: `${base}/${enc([...words, kw])}` }, kw), text ? ` - ${text}` : '');
+        return h('li', {}, h('code', {}, kw), text ? ` - ${text}` : '');
+    });
+    return h('ul', { class: 'web-ios-help' }, rows);
+}
+function transcript(t) {
+    return h('pre', { class: 'web-ios-out' }, t.map((r) => [`${r.prompt}${r.command}\n`, r.output.length ? `${r.output.join('\n')}\n` : '']));
+}
+function execPage(device, level, base, url, command, ran) {
+    return h('div', {}, h('h3', {}, `Command base-URL was: ${base}`), h('h3', {}, `Complete URL was: ${url}`), ran ? [h('h3', {}, `Command was: ${command}`), transcript(ran)] : helpList(device, level, base, command ? command.split(/\s+/) : []), h('form', { action: base, method: 'get', class: 'web-ios-form' }, h('label', {}, 'Command ', h('input', { type: 'text', name: 'command', size: 60, value: command })), h('button', { type: 'submit' }, 'Run')));
+}
+function configurePage(ran) {
+    return h('div', {}, h('h3', {}, 'Configure - enter configuration commands, one per line.'), ran ? transcript(ran) : null, h('form', { action: '/level/15/configure/-', method: 'post', class: 'web-ios-form' }, h('textarea', { name: 'command', rows: 10, cols: 70, placeholder: 'interface GigabitEthernet0/1\n description Enlace\n no shutdown' }), h('p', {}, h('button', { type: 'submit' }, 'Send'))));
+}
+
+return { frame, homePage, execPage, configurePage };
+})();
+__m["web/ios-dm.js"] = (() => {
+const { effectiveAddress, ifaceStatus } = __m["ios/commands/show-iface.js"];
+const { isSubinterface, parseIfaceName } = __m["ios/interfaces.js"];
+const { formatIp, formatMask, parseIp, parseMask } = __m["core/ip.js"];
+const { h } = __m["web/html.js"];
+const MAX_DESCRIPTION = 240;
+const MAX_VLAN = 4094;
+function physical(name) {
+    const type = parseIfaceName(name)?.type;
+    return !isSubinterface(name) && type !== 'Vlan' && type !== 'Loopback';
+}
+function portState(device, name) {
+    if (device.iface(name)?.shutdown)
+        return 'off';
+    return device.ifaceRuntime(name).protocolUp ? 'up' : 'down';
+}
+function panel(device) {
+    const ports = device.sortedIfaceNames().filter(physical);
+    return h('div', { class: 'web-ios-panel', title: 'Front panel' }, ports.map((p) => {
+        const state = portState(device, p);
+        return h('span', { class: `web-ios-port web-ios-${state}`, title: `${p}: ${state}` }, p.split('/').at(-1) ?? p);
+    }));
+}
+function addressOf(device, name) {
+    const cfg = device.iface(name);
+    if (!cfg)
+        return '';
+    if (cfg.switchport)
+        return `VLAN ${cfg.switchportMode === 'trunk' ? 'trunk' : cfg.accessVlan}`;
+    const a = effectiveAddress(device, cfg);
+    return a.ip !== undefined && a.prefix !== undefined ? `${formatIp(a.ip)} ${formatMask(a.prefix)}` : 'unassigned';
+}
+function ifaceTable(device) {
+    const rows = device.sortedIfaceNames().map((n) => {
+        const cfg = device.iface(n);
+        if (!cfg)
+            return null;
+        const st = ifaceStatus(device, cfg);
+        return h('tr', {}, h('td', {}, n), h('td', {}, addressOf(device, n)), h('td', {}, st.status), h('td', {}, st.protocol), h('td', {}, cfg.description ?? ''));
+    });
+    return h('table', { class: 'web-ios-grid' }, h('tr', {}, ['Interface', 'IP address / VLAN', 'Status', 'Protocol', 'Description'].map((c) => h('th', {}, c))), rows);
+}
+function settingsForm(device) {
+    const names = device.sortedIfaceNames();
+    const isSwitch = device.kind === 'switch';
+    const row = (label, control) => h('tr', {}, h('th', {}, label), h('td', {}, control));
+    return h('form', { action: '/level/15/dm', method: 'post', class: 'web-ios-form' }, h('table', { class: 'web-ios-settings' }, row('Interface', h('select', { name: 'iface' }, names.map((n) => h('option', { value: n }, n)))), row('Description', h('input', { type: 'text', name: 'description', size: 40, maxlength: MAX_DESCRIPTION })), row('Administrative state', h('select', { name: 'state' }, h('option', { value: '' }, '(no change)'), h('option', { value: 'up' }, 'Enabled (no shutdown)'), h('option', { value: 'down' }, 'Disabled (shutdown)'))), isSwitch ? row('Access VLAN', h('input', { type: 'text', name: 'vlan', size: 6, placeholder: '1-4094' })) : null, row('IP address', h('input', { type: 'text', name: 'ip', size: 16, placeholder: isSwitch ? 'SVI only' : 'A.B.C.D' })), row('Subnet mask', h('input', { type: 'text', name: 'mask', size: 16, placeholder: '255.255.255.0' }))), h('p', {}, h('button', { type: 'submit' }, 'Apply')));
+}
+function deviceManager(device, notice) {
+    return h('div', {}, h('h2', {}, `Device Manager - ${device.hostname}`), notice?.error ? h('p', { class: 'web-ios-error' }, notice.error) : null, notice?.ran ? [h('p', { class: 'web-ios-ok' }, 'Configuration applied:'), h('pre', { class: 'web-ios-out' }, notice.ran.map((r) => `${r.prompt}${r.command}\n${r.output.map((l) => `${l}\n`).join('')}`))] : null, panel(device), h('p', { class: 'web-ios-legend' }, h('span', { class: 'web-ios-port web-ios-up' }, ''), ' up ', h('span', { class: 'web-ios-port web-ios-down' }, ''), ' no link ', h('span', { class: 'web-ios-port web-ios-off' }, ''), ' shutdown'), ifaceTable(device), h('h3', {}, 'Port Settings'), settingsForm(device));
+}
+/** Builds the configuration lines of the port settings form, or explains what is wrong. */
+function portLines(device, f) {
+    const name = f.get('iface') ?? '';
+    const cfg = device.iface(name);
+    if (!cfg)
+        return 'Choose an existing interface.';
+    const lines = [`interface ${name}`];
+    const description = f.get('description')?.replace(/[\x00-\x1f\x7f]/g, ' ').trim();
+    if (description)
+        lines.push(` description ${description.slice(0, MAX_DESCRIPTION)}`);
+    const vlan = f.get('vlan')?.trim();
+    if (vlan) {
+        if (!cfg.switchport)
+            return `${name} is not a switch port: it has no access VLAN.`;
+        if (!/^\d{1,4}$/.test(vlan) || Number(vlan) < 1 || Number(vlan) > MAX_VLAN)
+            return 'The access VLAN must be a number from 1 to 4094.';
+        lines.push(` switchport access vlan ${Number(vlan)}`);
+    }
+    const ip = f.get('ip')?.trim();
+    if (ip) {
+        const addr = parseIp(ip);
+        const prefix = parseMask((f.get('mask') ?? '').trim());
+        if (addr === null || prefix === null)
+            return 'Check the IP address and the subnet mask.';
+        if (cfg.switchport)
+            return `${name} is a switch port: give the address to an SVI (interface Vlan).`;
+        lines.push(` ip address ${formatIp(addr)} ${formatMask(prefix)}`);
+    }
+    const state = f.get('state');
+    if (state === 'up')
+        lines.push(' no shutdown');
+    if (state === 'down')
+        lines.push(' shutdown');
+    return lines.length > 1 ? lines : 'Nothing to change.';
+}
+function portSettings(device, f, apply) {
+    const lines = portLines(device, f);
+    return typeof lines === 'string' ? { error: lines } : { ran: apply(lines) };
+}
+
+return { deviceManager, portLines, portSettings };
+})();
+__m["web/ios-web.js"] = (() => {
+const { Session } = __m["ios/session.js"];
+const { httpPrivilege, MAX_PRIVILEGE } = __m["ios/http.js"];
+const { basicAuth, formFields, forMethod, pathOnly, query, respond, unauthorized } = __m["web/http.js"];
+const { page, h } = __m["web/html.js"];
+const { homePage, execPage, configurePage, frame } = __m["web/ios-web-pages.js"];
+const { deviceManager, portSettings } = __m["web/ios-dm.js"];
+const { formatIp } = __m["core/ip.js"];
+const IOS_BANNER = 'cisco-IOS';
+const MAX_COMMAND = 512;
+const MAX_CONFIG_LINES = 200;
+function decodeWord(w) {
+    try {
+        return decodeURIComponent(w);
+    }
+    catch {
+        return w;
+    }
+}
+/** Runs EXEC commands at a level (15 → privileged EXEC, lower → user EXEC). */
+function runExec(device, level, command) {
+    const s = new Session(device);
+    s.mode = (level >= MAX_PRIVILEGE ? 'exec' : 'user');
+    const prompt = s.prompt();
+    return [{ prompt, command, output: s.input(command.slice(0, MAX_COMMAND)) }];
+}
+/** Runs configuration lines as from `configure terminal`, one by one, and logs who did it. */
+function runConfig(device, lines, who) {
+    const s = new Session(device);
+    s.mode = 'config';
+    const out = [];
+    for (const raw of lines.slice(0, MAX_CONFIG_LINES)) {
+        const line = raw.replace(/[\r\n\t]/g, ' ').slice(0, MAX_COMMAND);
+        if (!line.trim())
+            continue;
+        const mode = s.mode;
+        if (mode === 'exec' || mode === 'user')
+            break;
+        out.push({ prompt: s.prompt(), command: line, output: s.input(line) });
+    }
+    if (out.length)
+        device.log(`%SYS-5-CONFIG_I: Configured from console by ${who.user} on vty0 (${formatIp(who.peer.ip)})`);
+    return out;
+}
+function denied(level) {
+    return unauthorized(IOS_BANNER, `level_${level}_access`, page('Authorization Required', '', h('h1', {}, '401 Unauthorized'), h('p', {}, 'Authorization Required')));
+}
+/** "/level/15/exec/-/show/ip/route/CR" → { level: 15, area: 'exec', words: ['show','ip','route'], cr: true } */
+function parseLevelPath(path) {
+    const m = /^\/level\/(\d{1,2})\/([a-z]+)(?:\/-)?((?:\/[^/]*)*)\/?$/.exec(pathOnly(path));
+    if (!m)
+        return null;
+    const level = Number(m[1]);
+    if (level > MAX_PRIVILEGE)
+        return null;
+    const words = (m[3] ?? '').split('/').filter(Boolean).map(decodeWord);
+    const cr = words.at(-1)?.toUpperCase() === 'CR';
+    return { level, area: m[2] ?? '', words: cr ? words.slice(0, -1) : words, cr };
+}
+function levelPage(device, req, who, route) {
+    const ok = (title, body) => respond(IOS_BANNER, 200, frame(device, title, [body]));
+    if (route.area === 'exec') {
+        const typed = query(req).get('command')?.trim();
+        const command = typed || (route.cr ? route.words.join(' ') : '');
+        const base = `/level/${route.level}/exec/-`;
+        if (command)
+            return ok(`${device.hostname} Home Page`, execPage(device, route.level, base, req.path, command, runExec(device, route.level, command)));
+        return ok(`${device.hostname} Home Page`, execPage(device, route.level, base, req.path, route.words.join(' '), null));
+    }
+    if (route.level < MAX_PRIVILEGE)
+        return respond(IOS_BANNER, 404, 'Not Found');
+    if (route.area === 'configure') {
+        const text = req.method === 'POST' ? formFields(req).get('command') ?? '' : '';
+        return ok(`${device.hostname} Configure`, configurePage(text ? runConfig(device, text.split('\n'), who) : null));
+    }
+    if (route.area === 'dm') {
+        const notice = req.method === 'POST' ? portSettings(device, formFields(req), (lines) => runConfig(device, lines, who)) : null;
+        return ok(`Device Manager - ${device.hostname}`, deviceManager(device, notice));
+    }
+    return respond(IOS_BANNER, 404, 'Not Found');
+}
+function iosWeb(device, req, peer) {
+    const route = pathOnly(req.path) === '/' ? null : parseLevelPath(req.path);
+    if (!route && pathOnly(req.path) !== '/')
+        return respond(IOS_BANNER, 404, page('404 Not Found', '', h('h1', {}, 'Not Found')));
+    const need = route?.level ?? MAX_PRIVILEGE;
+    const cred = basicAuth(req);
+    const level = cred ? httpPrivilege(device, cred.user, cred.password) : null;
+    if (!cred || level === null || level < need) {
+        if (cred)
+            device.log(`%SEC_LOGIN-4-LOGIN_FAILED: Login failed [user: ${cred.user}] [Source: ${formatIp(peer.ip)}] [localport: ${device.http.port}] [Reason: Login Authentication Failed]`);
+        return denied(need);
+    }
+    const who = { user: cred.user, level, peer };
+    if (!route)
+        return forMethod(req, respond(IOS_BANNER, 200, frame(device, `${device.hostname} Home Page`, [homePage(device, level)])));
+    return forMethod(req, levelPage(device, req, who, route));
+}
+
+return { IOS_BANNER, runExec, runConfig, parseLevelPath, iosWeb };
+})();
 __m["web/apps.js"] = (() => {
-/** Connects the simulated web applications to the Server-PT web service. */
+/** Connects the simulated web applications to the Server-PT web service and the IOS HTTP server. */
 const { registerWebApp } = __m["devices/server-web.js"];
 const { roundcube } = __m["web/roundcube.js"];
 const { serverAdmin } = __m["web/server-admin.js"];
+const { registerIosWeb } = __m["devices/ios-web.js"];
+const { iosWeb } = __m["web/ios-web.js"];
 function registerWebApps() {
     registerWebApp('roundcube', roundcube);
     registerWebApp('admin', serverAdmin);
+    registerIosWeb(iosWeb);
 }
 
 return { registerWebApps };

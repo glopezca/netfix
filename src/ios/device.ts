@@ -3,6 +3,8 @@ import { SimClock } from '../core/clock.ts';
 import type { CommandDef } from './parser.ts';
 import { defaultIface, compareIfaces } from './interfaces.ts';
 import type { IfaceConfig } from './interfaces.ts';
+import { DEFAULT_HTTP } from './http.ts';
+import type { IosHttpConfig, LocalUser } from './http.ts';
 
 export type ModeName =
   | 'user' | 'exec' | 'config' | 'config-if' | 'config-subif' | 'config-if-range'
@@ -49,6 +51,8 @@ export abstract class IosDevice {
   domainLookup = true;
   domainName: string | undefined;
   nameServers: readonly number[] = [];
+  http: IosHttpConfig = DEFAULT_HTTP;
+  users: readonly LocalUser[] = [];
   startupConfig: readonly string[] | null = null;
   readonly history: string[] = [];
   readonly ifaces = new Map<string, IfaceConfig>();
@@ -73,6 +77,28 @@ export abstract class IosDevice {
   /** Address learned through `ip address dhcp`, if any (routers and switch SVIs). */
   dhcpLearned(_name: string): { ip: number; prefix: number } | undefined {
     return undefined;
+  }
+
+  /** `ip http …`: replaces the HTTP server settings and lets the device (re)open its listener. */
+  setHttp(next: IosHttpConfig): void {
+    this.http = next;
+    this.onHttpChanged();
+  }
+
+  /** Hook for devices with a TCP stack (routers, switches). */
+  protected onHttpChanged(): void {}
+
+  /** Global settings shared by every IOS device, back to factory defaults. */
+  protected resetGlobals(hostname: string): void {
+    this.hostname = hostname;
+    this.enableSecret = undefined;
+    this.enablePassword = undefined;
+    this.bannerMotd = undefined;
+    this.domainLookup = true;
+    this.domainName = undefined;
+    this.nameServers = [];
+    this.users = [];
+    this.setHttp(DEFAULT_HTTP);
   }
 
   onConsole(listener: ConsoleListener): () => void {

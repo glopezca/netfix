@@ -7,6 +7,7 @@ import { applyConfig } from '../session.ts';
 import { secretHash } from '../../core/hash.ts';
 import { selectInterface, selectInterfaceRange } from './iface-select.ts';
 import { showIpInterfaceBrief, showInterfaces } from './show-iface.ts';
+import { HTTP_GLOBAL } from '../http.ts';
 
 type Def = CommandDef<Cli<IosDevice>>;
 
@@ -110,6 +111,7 @@ export const GLOBAL: readonly Def[] = [
   { syntax: 'line {console <0-0:n> | vty <0-15:a> [<0-15:b>] | aux <0-0:x>}', run: (cli) => cli.session.enterMode('config-line') },
   { syntax: 'service password-encryption', run: () => undefined, noRun: () => undefined },
   { syntax: 'service timestamps [<LINE:rest>]', run: () => undefined, noRun: () => undefined, hidden: true },
+  ...HTTP_GLOBAL,
 ];
 
 export const LINE_MODE: readonly Def[] = [

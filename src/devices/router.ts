@@ -7,10 +7,13 @@ import { SimClock } from '../core/clock.ts';
 import { macFromSeed } from '../core/mac.ts';
 import { DETACHED, macPlus } from './hooks.ts';
 import { RouterPlane } from './router-plane.ts';
+import { IosWeb } from './ios-web.ts';
+import { DEFAULT_TTL } from '../net/packets.ts';
 import type { NetDevice } from '../net/network.ts';
 import type { Frame } from '../net/packets.ts';
 import type { DeviceHooks } from './hooks.ts';
 import { routerModeTable } from '../ios/commands/router-modes.ts';
+import { httpLines } from '../ios/http.ts';
 import { headerLines, globalIpLines, interfaceSection, trailerLines } from '../ios/runconfig.ts';
 import { formatIp, formatMask } from '../core/ip.ts';
 import { DhcpServer } from '../dhcp/server.ts';
@@ -35,6 +38,7 @@ export class Router extends IosDevice implements NetDevice {
   staticRoutes: readonly StaticRoute[] = [];
   dhcp = new DhcpServer();
   plane: RouterPlane;
+  readonly web: IosWeb;
   private readonly macs = new Map<string, string>();
 
   constructor(opts: { id?: string; clock?: SimClock; seed?: number } = {}) {
@@ -42,7 +46,21 @@ export class Router extends IosDevice implements NetDevice {
     this.id = opts.id ?? 'R';
     this.baseMac = macFromSeed(opts.seed ?? 1);
     this.plane = new RouterPlane(this);
+    this.web = new IosWeb(this, {
+      send: (p) => this.plane.stack.send(p),
+      sourceFor: (dst) => {
+        const egress = this.plane.route(dst);
+        return egress ? this.plane.l3Iface(egress.iface)?.addrs[0]?.ip : undefined;
+      },
+      schedule: (d, fn) => this.hooks.schedule(d, fn),
+      ttl: DEFAULT_TTL,
+    });
     this.resetConfig();
+  }
+
+  protected onHttpChanged(): void {
+    // called from resetConfig during construction, before `web` exists
+    this.web?.sync();
   }
 
   displayName(): string {
@@ -82,13 +100,7 @@ export class Router extends IosDevice implements NetDevice {
   }
 
   resetConfig(): void {
-    this.hostname = 'Router';
-    this.enableSecret = undefined;
-    this.enablePassword = undefined;
-    this.bannerMotd = undefined;
-    this.domainLookup = true;
-    this.domainName = undefined;
-    this.nameServers = [];
+    this.resetGlobals('Router');
     this.staticRoutes = [];
     this.dhcp = new DhcpServer();
     this.plane = new RouterPlane(this);
@@ -180,6 +192,7 @@ export class Router extends IosDevice implements NetDevice {
       ...interfaceSection(this),
       'ip classless',
       ...this.staticRoutes.map(routeLine),
+      ...httpLines(this),
       '!',
       'ip flow-export version 9',
       ...trailerLines(this),

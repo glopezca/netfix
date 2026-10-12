@@ -115,6 +115,10 @@ export class RouterPlane implements StackHost {
   // ------------------------------------------------------------ local delivery (DHCP)
 
   deliver(iface: string, packet: IpPacket): void {
+    if (packet.tcp) {
+      this.router.web.tcp.receive(packet);
+      return;
+    }
     const dhcp = packet.udp?.dhcp;
     if (!dhcp) return;
     if (packet.udp?.dport === DHCP_CLIENT_PORT && dhcp.op === 'BOOTREPLY') {

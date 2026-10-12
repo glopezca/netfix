@@ -320,6 +320,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display:
 .pane { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .pane h3 { margin: 8px 0 0; font-size: 15px; }
 .pane .table-wrap { overflow-x: auto; }
+.pane > * { flex-shrink: 0; }
 .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 14px; }
 .field-hint { font-size: 12px; color: var(--ink-2); }
 .field input, .field select, .field textarea, .pane textarea { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 6px 8px; background: var(--panel); font: inherit; }
@@ -422,6 +423,32 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display:
 .web-wrt-muted { color: #555; margin: 0; }
 .web-wrt-log { font: 12px/1.4 var(--font-mono); white-space: pre-wrap; margin: 0; }
 .web-wrt-foot { text-align: center; color: #555; font-size: 11px; padding: 8px; }
+/* IOS HTTP server of routers and switches (classic Cisco IOS web pages + Device Manager) */
+.browser-view .web-ios { font: 13px/1.45 Arial, Helvetica, sans-serif; margin: -16px -20px; background: #fff; color: #000; }
+.web-ios-top { display: flex; justify-content: space-between; align-items: center; background: #1d4f91; color: #fff; padding: 8px 14px; }
+.web-ios-logo { font: 700 20px/1 Arial, sans-serif; letter-spacing: 1px; text-transform: lowercase; }
+.web-ios-host { font-size: 12px; }
+.web-ios-nav { display: flex; gap: 2px; background: #d9e2ef; padding: 0 10px; flex-wrap: wrap; }
+.browser-view .web-ios-nav a { padding: 6px 10px; color: #12335e; text-decoration: none; font-weight: 700; }
+.browser-view .web-ios-nav a:hover { background: #fff; }
+.web-ios-main { padding: 10px 16px 16px; }
+.web-ios-main h1 { font-size: 20px; margin: 6px 0; }
+.web-ios-main h2 { font-size: 16px; margin: 6px 0 10px; }
+.web-ios-main h3 { font-size: 13px; margin: 4px 0; }
+.web-ios-home li, .web-ios-help li { margin: 3px 0; }
+.web-ios-out { font: 12px/1.35 var(--font-mono); background: #f4f6f9; border: 1px solid #ccd3dd; padding: 8px; white-space: pre; overflow: auto; max-height: 360px; }
+.web-ios-form { margin-top: 10px; }
+.web-ios-panel { display: flex; flex-wrap: wrap; gap: 3px; background: #3a3f46; padding: 8px; border-radius: 4px; max-width: 640px; margin: 8px 0 4px; }
+.web-ios-port { display: inline-block; min-width: 22px; height: 18px; padding: 0 3px; border-radius: 2px; font: 700 11px/18px Arial, sans-serif; text-align: center; color: #fff; vertical-align: middle; }
+.web-ios-up { background: #2e9d3a; }
+.web-ios-down { background: #6b717a; }
+.web-ios-off { background: #c48a12; }
+.web-ios-legend { font-size: 12px; color: #444; }
+.web-ios-grid, .web-ios-settings { border-collapse: collapse; margin: 6px 0; }
+.web-ios-grid th, .web-ios-grid td { border: 1px solid #ccd3dd; padding: 3px 8px; text-align: left; }
+.web-ios-grid th, .web-ios-settings th { background: #e8edf4; text-align: left; padding: 3px 8px; }
+.web-ios-ok { color: #145214; font-weight: 700; }
+.web-ios-error { background: #fbe3e3; color: #8a1010; padding: 6px 10px; font-weight: 700; }
 .account summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
 .mail-read { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 10px 14px; }
 .mail-read h4 { margin: 0 0 4px; }

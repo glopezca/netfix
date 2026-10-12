@@ -16,6 +16,7 @@ import { hostIpConfig } from './host-ip.ts';
 import { hostSettings } from './host-settings.ts';
 import { servicesTab } from './server-apps.ts';
 import { browserApp, mailApp } from './pc-apps.ts';
+import { iosWebSettings } from './ios-web-settings.ts';
 
 export interface WindowHost {
   readonly windows: WindowManager;
@@ -77,7 +78,10 @@ export function openDeviceWindow(placed: Placed, host: WindowHost): void {
     return;
   }
   const term = cliTerminal(placed, host);
-  host.windows.show(d.id, `${placed.label} · ${d.hostname}`, [{ id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() }]);
+  host.windows.show(d.id, `${placed.label} · ${d.hostname}`, [
+    { id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() },
+    { id: 'web', label: 'Gestión web', render: () => iosWebSettings(d, () => host.afterCommand()) },
+  ]);
 }
 
 function shellTerminal(placed: Placed, h: Host, os: HostOs, app: WindowHost): Terminal {

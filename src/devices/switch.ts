@@ -13,6 +13,8 @@ import type { NetDevice } from '../net/network.ts';
 import type { Frame, IpPacket } from '../net/packets.ts';
 import { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DEFAULT_TTL } from '../net/packets.ts';
 import { IpStack } from '../net/ipstack.ts';
+import { IosWeb } from './ios-web.ts';
+import { httpLines } from '../ios/http.ts';
 import type { L3Iface, StackHost, Egress } from '../net/ipstack.ts';
 import { DhcpClient } from '../dhcp/client.ts';
 import type { Lease } from '../dhcp/client.ts';
@@ -38,6 +40,7 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
   readonly macTable = new Map<string, { mac: string; vlan: number; port: string }>();
   readonly snooping = new Snooping();
   readonly stack: IpStack;
+  readonly web: IosWeb;
   readonly dropOnArpMiss = true;
   readonly ttl = DEFAULT_TTL;
   private readonly clients = new Map<string, DhcpClient>();
@@ -48,7 +51,21 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
     this.id = opts.id ?? 'S';
     this.baseMac = macFromSeed((opts.seed ?? 1) + 7919);
     this.stack = new IpStack(this, () => this.clock.now());
+    this.web = new IosWeb(this, {
+      send: (p) => this.stack.send(p),
+      sourceFor: (dst) => {
+        const egress = this.route(dst);
+        return egress ? this.l3Iface(egress.iface)?.addrs[0]?.ip : undefined;
+      },
+      schedule: (d, fn) => this.schedule(d, fn),
+      ttl: DEFAULT_TTL,
+    });
     this.resetConfig();
+  }
+
+  protected onHttpChanged(): void {
+    // called from resetConfig during construction, before `web` exists
+    this.web?.sync();
   }
 
   modeTable(): ModeTable<IosDevice> {
@@ -56,13 +73,7 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
   }
 
   resetConfig(): void {
-    this.hostname = 'Switch';
-    this.enableSecret = undefined;
-    this.enablePassword = undefined;
-    this.bannerMotd = undefined;
-    this.domainLookup = true;
-    this.domainName = undefined;
-    this.nameServers = [];
+    this.resetGlobals('Switch');
     this.defaultGateway = undefined;
     this.vlans = new Map(DEFAULT_VLANS);
     this.snooping.reset();
@@ -249,6 +260,10 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
   }
 
   deliver(iface: string, packet: IpPacket): void {
+    if (packet.tcp) {
+      this.web.tcp.receive(packet);
+      return;
+    }
     const dhcp = packet.udp?.dhcp;
     if (dhcp && packet.udp?.dport === DHCP_CLIENT_PORT) this.clients.get(iface)?.receive(dhcp);
   }
@@ -309,6 +324,7 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
       ...vlanLines,
       ...interfaceSection(this, (n) => this.snooping.ifaceLines(n)),
       ...(this.defaultGateway !== undefined ? [`ip default-gateway ${formatIp(this.defaultGateway)}`] : []),
+      ...httpLines(this),
       '!',
       ...trailerLines(this),
     ];
