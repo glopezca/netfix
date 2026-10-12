@@ -7,7 +7,7 @@ import type { Pc } from '../../src/devices/pc.ts';
 import { BrowserEngine } from '../../src/clients/browser.ts';
 import type { BrowseResult } from '../../src/clients/browser.ts';
 import { createShell } from '../../src/shells/factory.ts';
-import { parseIp } from '../../src/core/ip.ts';
+import { parseIp, formatIp } from '../../src/core/ip.ts';
 
 function lab(): { t: Topology; srv: Server; pc: Pc; web: BrowserEngine } {
   const t = new Topology();
@@ -74,4 +74,31 @@ test('status and log pages, and curl with -u', () => {
   const sh = createShell(pc, 'linux');
   assert.match(sh.run('curl -s -o /dev/null -w "%{http_code}" http://10.0.0.2:10000/; curl -si http://10.0.0.2:10000/ | head -1').join('\n'), /HTTP\/1\.1 401 Unauthorized/);
   assert.match(sh.run('curl -s -u admin:admin "http://10.0.0.2:10000/?page=status"').join('\n'), /Ubuntu 26\.04 LTS[\s\S]*kea-dhcp4-server/);
+});
+
+test('DHCP page: reservations by MAC, hexadecimal and ASCII client-id, and from the lease table', () => {
+  const { srv, pc, web, t } = lab();
+  web.login('http://10.0.0.2:10000/', 'admin', 'admin');
+  post(web, 'dhcp', [['action', 'dhcp'], ['enabled', '1']]);
+  post(web, 'dhcp', [['action', 'pool-add'], ['name', 'LAN'], ['start', '10.0.0.100'], ['mask', '255.255.255.0'], ['max', '20'], ['gateway', '10.0.0.1'], ['dns', '10.0.0.2'], ['domain', '']]);
+  const byMac = post(web, 'dhcp', [['action', 'res-add'], ['pool', 'LAN'], ['ip', '10.0.0.50'], ['kind', 'mac'], ['id', '0001.42ab.cdef'], ['name', 'impresora']]);
+  assert.match(body(byMac), /Los cambios se han guardado/);
+  post(web, 'dhcp', [['action', 'res-add'], ['pool', 'LAN'], ['ip', '10.0.0.51'], ['kind', 'hex'], ['id', '0100.0142.abcd.e0'], ['name', '']]);
+  post(web, 'dhcp', [['action', 'res-add'], ['pool', 'LAN'], ['ip', '10.0.0.52'], ['kind', 'ascii'], ['id', 'aula-pc-01'], ['name', '']]);
+  const bad = post(web, 'dhcp', [['action', 'res-add'], ['pool', 'LAN'], ['ip', '10.0.1.9'], ['kind', 'mac'], ['id', '0001.42ab.0000'], ['name', '']]);
+  assert.match(body(bad), /web-wrt-error/);
+  const pool = () => srv.services.dhcp.pools.find((p) => p.name === 'LAN')!;
+  assert.deepEqual(pool().reservations.map((r) => [r.ip, r.mac ?? r.clientId]), [[parseIp('10.0.0.50'), '000142abcdef'], [parseIp('10.0.0.51'), '01000142abcde0'], [parseIp('10.0.0.52'), '61756c612d70632d3031']]);
+  const page = body(web.open('http://10.0.0.2:10000/?page=dhcp'));
+  assert.match(page, /MAC 0001\.42ab\.cdef[\s\S]*impresora/i);
+  assert.match(page, /Client-ID 0100\.0142\.abcd\.e0/i);
+  // a PC that obtained an automatic lease is reserved from the lease table
+  pc.useDhcp();
+  t.settle();
+  const leased = pc.config.ip!;
+  assert.match(body(web.open('http://10.0.0.2:10000/?page=dhcp')), /Reservar por MAC/);
+  post(web, 'dhcp', [['action', 'lease-reserve'], ['ip', formatIp(leased)], ['by', 'mac']]);
+  assert.ok(pool().reservations.some((r) => r.ip === leased && r.mac === pc.mac));
+  post(web, 'dhcp', [['action', 'res-del'], ['key', `LAN|${formatIp(parseIp('10.0.0.50')!)}`]]);
+  assert.equal(pool().reservations.length, 3);
 });

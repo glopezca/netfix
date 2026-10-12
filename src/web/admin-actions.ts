@@ -3,6 +3,7 @@ import type { Server } from '../devices/server.ts';
 import { validHostname } from '../devices/host.ts';
 import { parseIp, parseMask } from '../core/ip.ts';
 import { validatePool } from '../services/dhcp-pt.ts';
+import { readIdentifier, reserveLease, setReservations } from '../services/dhcp-reservations.ts';
 import { validateRecord } from '../services/dns-service.ts';
 import { validateOrigin, cleanOrigin } from '../services/dns-names.ts';
 import { validateAccess, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } from '../services/config.ts';
@@ -48,9 +49,36 @@ function addPool(server: Server, f: Fields): Outcome {
   const dns = optIp(f.get('dns'));
   const max = Number(f.get('max'));
   if (!start || prefix === null || gateway === null || dns === null || !Number.isInteger(max)) return { error: 'Revisa la IP inicial, la máscara, los usuarios, la puerta de enlace y el DNS.' };
-  const pool = { name: (f.get('name') ?? '').trim(), start, prefix, maxUsers: max, gateway, dns, domain: (f.get('domain') ?? '').trim() || undefined, leaseMinutes: DEFAULT_LEASE_MINUTES, reservations: [] };
+  const pool = { name: (f.get('name') ?? '').trim(), start, prefix, maxUsers: max, gateway, dns, domain: (f.get('domain') ?? '').trim() || undefined, leaseMinutes: DEFAULT_LEASE_MINUTES, reservations: [], identifyBy: f.get('identify') === 'mac' ? 'mac' as const : undefined };
   const err = validatePool(pool, server.services.dhcp.pools);
   return err ? { error: err } : set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, pools: [...s.dhcp.pools, pool] } }));
+}
+
+const outcome = (err: string | null): Outcome => (err ? { error: err } : SAVED);
+
+function addReservation(server: Server, f: Fields): Outcome {
+  const pool = server.services.dhcp.pools.find((p) => p.name === f.get('pool'));
+  if (!pool) return { error: 'Elige un pool.' };
+  const ip = optIp(f.get('ip'));
+  if (!ip) return { error: 'Escribe la IP reservada.' };
+  const id = readIdentifier(f.get('kind') ?? 'mac', (f.get('id') ?? '').trim());
+  if (typeof id === 'string') return { error: id };
+  const name = (f.get('name') ?? '').trim().slice(0, 64) || undefined;
+  return outcome(setReservations(server, pool.name, [...pool.reservations, { ip, ...id, name }]));
+}
+
+function deleteReservation(server: Server, f: Fields): Outcome {
+  const [poolName = '', ipText = ''] = (f.get('key') ?? '').split('|');
+  const pool = server.services.dhcp.pools.find((p) => p.name === poolName);
+  const ip = parseIp(ipText);
+  if (!pool || ip === null) return { error: 'Esa reserva ya no existe.' };
+  return outcome(setReservations(server, pool.name, pool.reservations.filter((r) => r.ip !== ip)));
+}
+
+function reserveFromLease(server: Server, f: Fields): Outcome {
+  const ip = parseIp((f.get('ip') ?? '').trim());
+  if (ip === null) return { error: 'Esa concesión ya no existe.' };
+  return outcome(reserveLease(server, ip, f.get('by') === 'client-id' ? 'client-id' : 'mac'));
 }
 
 function addRecord(server: Server, f: Fields): Outcome {
@@ -109,6 +137,9 @@ export function runAction(server: Server, pageId: string, f: Fields): Outcome & 
     case 'dhcp': return set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, enabled: on(f, 'enabled') } }));
     case 'pool-add': return addPool(server, f);
     case 'pool-del': return set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, pools: s.dhcp.pools.filter((p) => p.name !== f.get('key')) } }));
+    case 'res-add': return addReservation(server, f);
+    case 'res-del': return deleteReservation(server, f);
+    case 'lease-reserve': return reserveFromLease(server, f);
     case 'dns': return dns(server, f);
     case 'record-add': return addRecord(server, f);
     case 'record-del': return set(server, (s) => ({ ...s, dns: { ...s.dns, records: s.dns.records.filter((_, i) => String(i) !== f.get('key')) } }));

@@ -4,36 +4,11 @@ import { field, input, select, button, message, table } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';
 import type { Server } from '../devices/server.ts';
 import type { DhcpReservation, LeaseIdentity, PtDhcpPool } from '../services/config.ts';
-import { validatePool, leaseToReservation } from '../services/dhcp-pt.ts';
+import { ID_KINDS, setReservations, readIdentifier, identifierText, reserveLease } from '../services/dhcp-reservations.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
-import { formatMacCisco, parseMac, parseHexId, asciiToHex, formatHexId } from '../core/mac.ts';
+import { formatMacCisco, formatHexId } from '../core/mac.ts';
 import { formatLeaseTime } from '../core/clock.ts';
 import type { Binding } from '../dhcp/server.ts';
-
-const ID_KINDS: readonly (readonly [string, string])[] = [['mac', 'MAC'], ['hex', 'Client-ID (hexadecimal)'], ['ascii', 'Client-ID (texto ASCII)']];
-
-function setReservations(server: Server, poolName: string, list: readonly DhcpReservation[]): string | null {
-  const s = server.services;
-  const pool = s.dhcp.pools.find((p) => p.name === poolName);
-  if (!pool) return 'El pool ya no existe.';
-  const err = validatePool({ ...pool, reservations: list }, s.dhcp.pools.filter((p) => p.name !== poolName));
-  if (err) return err;
-  server.setServices({ ...s, dhcp: { ...s.dhcp, pools: s.dhcp.pools.map((p) => (p.name === poolName ? { ...p, reservations: list } : p)) } });
-  return null;
-}
-
-function readIdentifier(kind: string, text: string): Pick<DhcpReservation, 'mac' | 'clientId'> | string {
-  if (kind === 'mac') {
-    const mac = parseMac(text);
-    return mac ? { mac } : 'MAC no válida: usa 0001.42AB.CDEF o 00:01:42:ab:cd:ef.';
-  }
-  const id = kind === 'ascii' ? (text ? asciiToHex(text) : null) : parseHexId(text);
-  return id ? { clientId: id } : 'Client-ID no válido: en hexadecimal (0100.0142.abcd.ef) o elige «texto ASCII».';
-}
-
-export function identifierText(r: Pick<DhcpReservation, 'mac' | 'clientId'>): string {
-  return r.clientId ? `Client-ID ${formatHexId(r.clientId)}` : `MAC ${formatMacCisco(r.mac ?? '')}`;
-}
 
 export function reservationsPanel(server: Server, pool: PtDhcpPool, app: AfterChange, refresh: () => void): HTMLElement {
   const ip = input({ placeholder: '192.168.1.20', inputmode: 'decimal' });
@@ -77,10 +52,7 @@ function reservationKind(server: Server, b: Binding): string {
 export function leasesPanel(server: Server, app: AfterChange, refresh: () => void): HTMLElement {
   const msg = message();
   const reserve = (b: Binding, by: LeaseIdentity): void => {
-    const pool = server.services.dhcp.pools.find((p) => p.name === b.pool);
-    const r = leaseToReservation(b, by);
-    if (!pool || !r) return msg.error('Esta concesión no tiene Client-ID: resérvala por MAC.');
-    const err = setReservations(server, pool.name, [...pool.reservations.filter((x) => x.ip !== b.ip), r]);
+    const err = reserveLease(server, b.ip, by);
     if (err) return msg.error(err);
     app.afterCommand();
     refresh();

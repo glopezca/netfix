@@ -6,6 +6,8 @@ import { section, row, text, check, choose, form, buttons } from './admin-layout
 import { formatIp, formatMask } from '../core/ip.ts';
 import { UNITS, unitActive } from '../services/units.ts';
 import type { WebAppAccess } from '../services/config.ts';
+import { ID_KINDS, identifierText } from '../services/dhcp-reservations.ts';
+import { formatMacCisco, formatHexId } from '../core/mac.ts';
 
 const ip = (n: number | undefined): string => (n === undefined ? '' : formatIp(n));
 
@@ -28,6 +30,26 @@ export function setupPage(server: Server, base: string): Child {
       row('Puerta de enlace', text('gateway', ip(c.gateway))), row('DNS', text('dns', ip(c.dns))))), buttons());
 }
 
+function reservations(server: Server, base: string): Child {
+  const pools = server.services.dhcp.pools;
+  const rows = pools.flatMap((p) => p.reservations.map((r) => [p.name, formatIp(r.ip), identifierText(r), r.name ?? '', del(base, 'dhcp', 'res-del', `${p.name}|${formatIp(r.ip)}`)]));
+  return [
+    h('table', {}, section('Reservas', 'Direcciones fijas para un cliente, identificado por su MAC o por su Client-ID (opción 61).', table(['Pool', 'IP', 'Identificador', 'Descripción', ''], rows, 'Sin reservas.'))),
+    pools.length ? form(base, 'dhcp', 'res-add', h('table', {}, section('Nueva reserva', 'Por MAC: coincide aunque el cliente envíe otro Client-ID. Por Client-ID: coincide con la opción 61.',
+      row('Pool', choose('pool', pools[0]?.name ?? '', pools.map((p) => [p.name, p.name]))), row('IP reservada', text('ip', '')),
+      row('Identificar por', choose('kind', 'mac', ID_KINDS.map(([v, l]) => [v, l]))), row('MAC o Client-ID', text('id', '')), row('Descripción', text('name', '')))), buttons()) : null,
+  ];
+}
+
+function leases(server: Server, base: string): Child {
+  const list = server.dhcpEngine.allBindings(server.clock.now()).filter((b) => b.type === 'Automatic');
+  const reserve = (ipText: string, by: 'mac' | 'client-id', label: string): Child => form(base, 'dhcp', 'lease-reserve',
+    h('input', { type: 'hidden', name: 'ip', value: ipText }), h('input', { type: 'hidden', name: 'by', value: by }), h('button', { type: 'submit', class: 'web-wrt-small' }, label));
+  const rows = list.map((b) => [formatIp(b.ip), formatMacCisco(b.mac), b.clientId ? formatHexId(b.clientId) : '—', b.hostname ?? '',
+    [reserve(formatIp(b.ip), 'mac', 'Reservar por MAC'), b.clientId ? reserve(formatIp(b.ip), 'client-id', 'Reservar por Client-ID') : null]]);
+  return h('table', {}, section('Concesiones', 'Clientes con dirección automática: conviértelas en reserva.', table(['IP', 'MAC', 'Client-ID', 'Equipo', ''], rows, 'Aún no hay concesiones.')));
+}
+
 export function dhcpPage(server: Server, base: string): Child {
   const d = server.services.dhcp;
   const rows = d.pools.map((p) => [p.name, formatIp(p.start), String(p.maxUsers), ip(p.gateway), ip(p.dns), del(base, 'dhcp', 'pool-del', p.name)]);
@@ -36,7 +58,10 @@ export function dhcpPage(server: Server, base: string): Child {
     h('table', {}, section('Pools', 'Rangos de direcciones que reparte el servidor.', table(['Nombre', 'IP inicial', 'Usuarios', 'Puerta de enlace', 'DNS', ''], rows, 'Sin pools.'))),
     form(base, 'dhcp', 'pool-add', h('table', {}, section('Nuevo pool', 'IP inicial y número máximo de usuarios, como en Packet Tracer.',
       row('Nombre', text('name', '')), row('IP inicial', text('start', '')), row('Máscara', text('mask', '255.255.255.0')), row('Usuarios máximos', text('max', '50')),
-      row('Puerta de enlace', text('gateway', '')), row('DNS', text('dns', '')), row('Dominio', text('domain', '')))), buttons()),
+      row('Puerta de enlace', text('gateway', '')), row('DNS', text('dns', '')), row('Dominio', text('domain', '')),
+      row('Concesiones por', choose('identify', 'client-id', [['client-id', 'Client-ID (opción 61) o MAC'], ['mac', 'MAC']])))), buttons()),
+    reservations(server, base),
+    leases(server, base),
   ];
 }
 
