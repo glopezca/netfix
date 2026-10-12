@@ -115,7 +115,7 @@ const TYPES: readonly (readonly [DnsRecordType, string])[] = [['A', 'A · direcc
 function recordForm(server: Server, app: AfterChange, refresh: () => void): HTMLElement[] {
   const s = server.services;
   const origin = s.dns.origin;
-  const name = input({ placeholder: origin ? 'www  ·  @  ·  host.otro.dom.' : 'www.aula.lab' });
+  const name = input({ placeholder: origin ? 'www  ·  @  ·  *  ·  host.otro.dom.' : 'www.aula.lab' });
   const type = select(TYPES);
   const value = input({ placeholder: '192.168.1.10' });
   const prio = input({ value: '10', inputmode: 'numeric' });
@@ -131,7 +131,7 @@ function recordForm(server: Server, app: AfterChange, refresh: () => void): HTML
   };
   type.addEventListener('change', () => {
     prioField.hidden = type.value !== 'MX';
-    value.placeholder = type.value === 'A' ? '192.168.1.10' : type.value === 'TXT' ? 'v=spf1 mx -all' : origin ? 'srv  ·  srv.otro.dom.' : 'srv.aula.lab';
+    value.placeholder = type.value === 'A' ? '192.168.1.10' : type.value === 'TXT' ? 'v=spf1 mx -all' : origin ? 'srv  ·  @  ·  srv.otro.dom.' : 'srv.aula.lab';
     showPreview();
   });
   name.addEventListener('input', showPreview);
@@ -165,7 +165,7 @@ function originForm(server: Server, app: AfterChange, refresh: () => void): HTML
     refresh();
   };
   return [
-    el('div', { class: 'grid3' }, field('Dominio de la zona ($ORIGIN)', originIn, 'Con dominio: «www» = www.dominio, «@» = el dominio, «host.otro.» (con punto final) = absoluto.')),
+    el('div', { class: 'grid3' }, field('Dominio de la zona ($ORIGIN)', originIn, 'Con dominio: «www» = www.dominio, «@» = el dominio (también como valor), «*» o «*.sub» = comodín para nombres que no existen, «host.otro.» (con punto final) = absoluto.')),
     el('div', { class: 'actions' }, button('Guardar dominio', save, 'btn btn-quiet')), msg.el,
   ];
 }

@@ -33,12 +33,18 @@ export function validateOrigin(origin: string | undefined): string | null {
   return o === undefined || validLabels(o) ? null : 'Origen de zona no válido (por ejemplo aula.lab).';
 }
 
-/** Validates a name as typed in a record (owner or target). */
-export function validateName(name: string, origin: string | undefined): string | null {
+/**
+ * Validates a name as typed in a record. Owners may start with the wildcard label `*`
+ * (`*`, `*.dev`, `*.aula.lab.`); targets (CNAME, MX, NS values) may not.
+ */
+export function validateName(name: string, origin: string | undefined, owner = true): string | null {
   const n = name.trim();
   if (n === '@') return cleanOrigin(origin) ? null : '«@» necesita el origen de la zona (campo Dominio de la zona).';
   const body = n.endsWith('.') ? n.slice(0, -1) : n;
-  if (!validLabels(body)) return `Nombre no válido: «${n}». Usa www (relativo), www.aula.lab. (absoluto) o @.`;
+  if (!validLabels(body)) return `Nombre no válido: «${n}». Usa www (relativo), www.aula.lab. (absoluto), @ o un comodín *.`;
+  const stars = body.split('.').map((l, i) => (l === '*' ? i : -1)).filter((i) => i >= 0);
+  if (stars.length > 0 && !owner) return `Un comodín «*» solo puede ser el nombre de un registro, no su valor: «${n}».`;
+  if (stars.some((i) => i > 0)) return `El comodín «*» solo puede ser la primera etiqueta del nombre: «${n}».`;
   const full = qualify(n, origin);
   return full !== null && full.length <= MAX_NAME ? null : `Nombre demasiado largo: «${n}».`;
 }

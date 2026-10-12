@@ -39,14 +39,43 @@ function ptrAnswers(qname: string, records: readonly DnsRecord[]): DnsAnswer[] {
   const ip = ipFromReverse(qname);
   if (ip === undefined) return [];
   const text = formatIp(ip);
-  return records.filter((r) => r.type === 'A' && r.value === text).map((r) => ({ name: qname, type: 'PTR' as const, ttl: r.ttl, data: normalizeName(r.name) }));
+  return records.filter((r) => r.type === 'A' && r.value === text && !r.name.startsWith('*.'))
+    .map((r) => ({ name: qname, type: 'PTR' as const, ttl: r.ttl, data: normalizeName(r.name) }));
+}
+
+/** A name exists when it owns records or is an ancestor of an owner (empty non-terminal). */
+function nodeExists(name: string, records: readonly DnsRecord[]): boolean {
+  return records.some((r) => {
+    const owner = normalizeName(r.name);
+    return owner === name || owner.endsWith(`.${name}`);
+  });
+}
+
+/**
+ * RFC 4592: a name that does not exist is answered from `*.<closest encloser>`, the wildcard
+ * directly below its nearest existing ancestor. The records keep the queried name as owner.
+ */
+function wildcardRecords(name: string, records: readonly DnsRecord[]): DnsRecord[] {
+  const labels = name.split('.');
+  for (let i = 1; i < labels.length; i++) {
+    const encloser = labels.slice(i).join('.');
+    if (!nodeExists(encloser, records)) continue;
+    return records.filter((r) => normalizeName(r.name) === `*.${encloser}`).map((r) => ({ ...r, name }));
+  }
+  return [];
+}
+
+/** Records owned by `name`, synthesised from a wildcard when the name does not exist. */
+function recordsAt(name: string, records: readonly DnsRecord[]): DnsRecord[] {
+  const own = records.filter((r) => normalizeName(r.name) === name);
+  return own.length > 0 || nodeExists(name, records) ? own : wildcardRecords(name, records);
 }
 
 function lookup(qname: string, qtype: DnsType, records: readonly DnsRecord[]): DnsAnswer[] {
   const answers: DnsAnswer[] = [];
   let name = qname;
   for (let i = 0; i < MAX_CNAME_CHAIN; i++) {
-    const here = records.filter((r) => normalizeName(r.name) === name);
+    const here = recordsAt(name, records);
     const exact = here.filter((r) => r.type === qtype);
     if (exact.length > 0) return [...answers, ...exact.map(toAnswer)];
     const cname = here.find((r) => r.type === 'CNAME');
@@ -67,7 +96,7 @@ export function answerQuery(query: DnsMessage, records: readonly DnsRecord[], or
   const zone = zoneFor(qname, origin ? [...zonesOf(records), origin] : zonesOf(records));
   if (!zone) return { ...base, rcode: 'REFUSED', answers: [] };
   const answers = lookup(qname, query.qtype, records);
-  const exists = records.some((r) => normalizeName(r.name) === qname) || qname === zone;
+  const exists = qname === zone || recordsAt(qname, records).length > 0 || nodeExists(qname, records);
   if (answers.length > 0) return { ...base, rcode: 'NOERROR', authoritative: true, answers };
   return { ...base, rcode: exists ? 'NOERROR' : 'NXDOMAIN', authoritative: true, answers: [], authority: [soaFor(zone, records)] };
 }
@@ -77,7 +106,8 @@ export function validateRecord(r: DnsRecord, origin?: string): string | null {
   const nameErr = validateName(r.name, origin);
   if (nameErr) return nameErr;
   if (r.type === 'A' && parseIp(r.value) === null) return 'Un registro A necesita una dirección IPv4.';
-  if ((r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX') && validateName(r.value, origin)) return `Un registro ${r.type} necesita un nombre de host (relativo, absoluto con punto final o @): ${validateName(r.value, origin) ?? ''}`;
+  const targetErr = r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX' ? validateName(r.value, origin, false) : null;
+  if (targetErr) return `Un registro ${r.type} necesita un nombre de host (relativo, absoluto con punto final o @): ${targetErr}`;
   if (r.type === 'MX' && (r.priority === undefined || r.priority < 0 || r.priority > 65535)) return 'La prioridad MX va de 0 a 65535.';
   return r.value.trim() === '' ? 'El valor no puede estar vacío.' : null;
 }
