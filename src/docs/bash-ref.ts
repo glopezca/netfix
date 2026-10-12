@@ -103,14 +103,14 @@ export const BASH_REFERENCE: readonly DocPage[] = [
       ]),
       p('history muestra el historial (HISTTIMEFORMAT añade la fecha); fc -l lo lista y fc -s repite. El historial se guarda en ~/.bash_history al salir.'),
       h('Trabajos'),
-      p('orden & arranca un trabajo en segundo plano. En netsim no hay procesos reales: el trabajo termina al momento y bash avisa con [1]+ Done antes del siguiente prompt. jobs, wait, fg, bg, disown y kill se aceptan con su sintaxis y mensajes.'),
+      p('orden & arranca un trabajo en segundo plano. En Netfix no hay procesos reales: el trabajo termina al momento y bash avisa con [1]+ Done antes del siguiente prompt. jobs, wait, fg, bg, disown y kill se aceptan con su sintaxis y mensajes.'),
       note('Cada orden tiene un límite de 4 s de cálculo para que un bucle infinito no bloquee la página; al superarlo se interrumpe como con Ctrl+C.'),
     ],
   },
   {
     id: 'bash-53',
     title: 'bash: novedades de la versión 5.3',
-    summary: 'Lo nuevo de bash 5.3 respecto a 5.2 que también está en netsim.',
+    summary: 'Lo nuevo de bash 5.3 respecto a 5.2 que también está en Netfix.',
     blocks: [
       table(['Novedad', 'Ejemplo'], [
         ['Sustitución de órdenes sin subshell ${ …; }', 'x=1; y=${ x=2; echo $x; }; echo $x   # 2'],

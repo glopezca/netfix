@@ -1,4 +1,4 @@
-/** Server-PT: a host running DHCP, DNS, HTTP, SMTP/POP3/IMAP and SSH services. */
+/** Server: a host running DHCP, DNS, HTTP, SMTP/POP3/IMAP and SSH services. */
 import { Host, HOST_PORT, DHCP_SERVER_PORT, DNS_PORT } from './host.ts';
 import type { HostOs } from './host.ts';
 import type { IpPacket, AppPayload, DhcpMessage, MailMessage } from '../net/packets.ts';

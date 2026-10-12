@@ -31,7 +31,7 @@ const HELP = [
   '  ping [-n N] <host>       Send ICMP echo requests',
   '  tracert [-h N] <host>    Trace the route to a host',
   '  ssh user@host            SSH client',
-  '  sc query [svc] | sc start|stop <svc> | net start [svc] | net stop <svc>   (Server-PT)',
+  '  sc query [svc] | sc start|stop <svc> | net start [svc] | net stop <svc>   (Server)',
 ];
 
 function linkLocal(mac: string): string {
@@ -188,7 +188,7 @@ export class WindowsShell extends BaseShell {
     return head ? [`HTTP/1.1 ${r.response.status} ${r.response.reason}`, `Server: ${r.response.server}`, `Content-Type: ${r.response.contentType}`, ''] : r.response.body.split('\n');
   }
 
-  // ------------------------------------------------------------ services (Server-PT)
+  // ------------------------------------------------------------ services (Server)
 
   private server(): Server | undefined {
     return this.host.kind === 'server' ? (this.host as Server) : undefined;

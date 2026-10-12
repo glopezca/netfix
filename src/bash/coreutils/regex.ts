@@ -4,7 +4,7 @@ import { isCatastrophic } from '../regex-guard.ts';
 export class RegexError extends Error {}
 
 /** Message for patterns that would backtrack exponentially in the browser. */
-export const TOO_COMPLEX = 'netsim: expresión regular demasiado costosa (grupos repetidos con alternativas o cuantificadores)';
+export const TOO_COMPLEX = 'Netfix: expresión regular demasiado costosa (grupos repetidos con alternativas o cuantificadores)';
 
 const CLASSES: Readonly<Record<string, string>> = {
   alpha: 'a-zA-Z', digit: '0-9', alnum: 'a-zA-Z0-9', upper: 'A-Z', lower: 'a-z', space: '\\s', blank: ' \\t', punct: '!-\\/:-@\\[-`{-~',

@@ -1,5 +1,5 @@
 /**
- * Roundcube Webmail 1.6 (Elastic look) on a Server-PT: login against the mail accounts (IMAP),
+ * Roundcube Webmail 1.6 (Elastic look) on a Server: login against the mail accounts (IMAP),
  * Inbox/Sent/Trash, reading, composing and sending through the server's own SMTP (MX relay included).
  */
 import type { Server } from '../devices/server.ts';
@@ -56,7 +56,8 @@ function shell(server: Server, base: string, title: string, s: RcSession, folder
       h('nav', { class: 'web-rc-menu' }, h('div', { class: 'web-rc-logo' }, 'roundcube'),
         h('a', { href: link('_task=mail&_action=compose'), class: 'web-rc-compose' }, '✎ Redactar'), h('ul', { class: 'web-rc-folders' }, nav),
         h('a', { href: link('_task=logout'), class: 'web-rc-logout' }, `Cerrar sesión (${s.address})`)),
-      h('main', { class: 'web-rc-main' }, main)));
+      h('main', { class: 'web-rc-main' }, main)),
+    h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), 'Roundcube Webmail · Netfix'));
 }
 
 function loginPage(base: string, error?: string): string {
@@ -69,7 +70,7 @@ function loginPage(base: string, error?: string): string {
         h('label', {}, 'Usuario', h('input', { type: 'text', name: '_user', autocomplete: 'off' })),
         h('label', {}, 'Contraseña', h('input', { type: 'password', name: '_pass' })),
         h('button', { type: 'submit', class: 'web-rc-button' }, 'Iniciar sesión')),
-      h('p', { class: 'web-rc-footer' }, 'Roundcube Webmail · netsim')));
+      h('p', { class: 'web-rc-footer web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), 'Roundcube Webmail · Netfix')));
 }
 
 function messageList(base: string, mails: readonly MailMessage[], folder: Folder, selected: number): Markup {

@@ -18,7 +18,7 @@ function status(ctx: Ctx): number {
     ...(n.pretty ? [['Pretty hostname', n.pretty] as [string, string]] : []),
     ['Icon name', 'computer-vm'], ['Chassis', 'vm 🖴'], ['Machine ID', MACHINE_ID], ['Boot ID', `${MACHINE_ID.slice(16)}${MACHINE_ID.slice(0, 16)}`],
     ['Virtualization', 'kvm'], ['Operating System', 'Ubuntu 26.04 LTS'], ['Kernel', 'Linux 6.17.0-14-generic'], ['Architecture', 'x86-64'],
-    ['Hardware Vendor', 'netsim'], ['Hardware Model', ctx.sh.env.hostname.startsWith('server') ? 'Server-PT' : 'PC-PT'],
+    ['Hardware Vendor', 'Netfix'], ['Hardware Model', ctx.sh.env.hostname.startsWith('server') ? 'Server' : 'PC'],
   ];
   ctx.out(rows.map(([k, v]) => `${k.padStart(16)}: ${v}\n`).join(''));
   return 0;

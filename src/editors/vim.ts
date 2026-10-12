@@ -227,7 +227,7 @@ export class VimEditor implements Editor, ExTarget {
     const delta: Record<string, number> = { '<C-f>': page, PageDown: page, '<C-b>': -page, PageUp: -page, '<C-d>': SCROLL_HALF, '<C-u>': -SCROLL_HALF };
     if (key in delta) { b.row += delta[key] ?? 0; b.clamp(false); this.view.top = Math.max(0, this.view.top + (delta[key] ?? 0)); return; }
     if (key === '<C-g>') this.message(`${fileInfo(this, b.modified ? ' [Modified]' : '')} --${Math.round(((b.row + 1) * 100) / b.lines.length)}%--`);
-    if (key === 'v' || key === 'V' || key === 'R') this.message('-- VISUAL / REPLACE no disponibles en netsim --', true);
+    if (key === 'v' || key === 'V' || key === 'R') this.message('-- VISUAL / REPLACE no disponibles en Netfix --', true);
   }
 
   private undo(): void {

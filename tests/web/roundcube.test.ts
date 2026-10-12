@@ -1,4 +1,4 @@
-/** Roundcube webmail on a Server-PT, used from a PC browser (alias or own port), plus the browser engine. */
+/** Roundcube webmail on a Server, used from a PC browser (alias or own port), plus the browser engine. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
@@ -35,7 +35,7 @@ test('the login page is served on the alias; the default site keeps the root URL
   assert.equal(r.kind, 'page');
   assert.match(body(r), /<title>Roundcube Webmail :: Bienvenido a Roundcube Webmail<\/title>/);
   assert.match(body(r), /<form method="post" action="\/roundcube\/\?_task=login">/);
-  assert.match(body(web.open('http://www.aula.lab/')), /Servidor web de netsim/);
+  assert.match(body(web.open('http://www.aula.lab/')), /Servidor web de Netfix/);
 });
 
 test('log in, read the inbox, compose and send (Sent folder and delivery), log out', () => {

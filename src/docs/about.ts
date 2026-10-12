@@ -20,7 +20,7 @@ const AUTHOR_LINE = /^\s*-\s*\*\*Autoría:\*\*\s*(.+?)\s*$/m;
 export function aboutInfo(): AboutInfo {
   const author = AUTHOR_LINE.exec(ABOUT.licenseMarkdown)?.[1] ?? '';
   return {
-    name: ABOUT.name,
+    name: ABOUT.name.charAt(0).toUpperCase() + ABOUT.name.slice(1),
     version: ABOUT.version,
     description: ABOUT.description,
     license: ABOUT.license,

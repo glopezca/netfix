@@ -2,8 +2,8 @@
 import type { Interp } from './interp.ts';
 import { canAccess, normalize } from './vfs.ts';
 
-/** First line of the placeholder files in /usr/bin: the program is implemented by netsim. */
-export const BINARY_MARK = '\u007fELF\u0002\u0001\u0001 netsim:';
+/** First line of the placeholder files in /usr/bin: the program is implemented by Netfix. */
+export const BINARY_MARK = '\u007fELF\u0002\u0001\u0001 netfix:';
 
 export function programName(content: string): string | undefined {
   return content.startsWith(BINARY_MARK) ? content.slice(BINARY_MARK.length).split('\n')[0] : undefined;

@@ -87,7 +87,7 @@ export class SshService {
     return [
       'Welcome to Ubuntu 26.04 LTS (GNU/Linux 6.17.0-generic x86_64)',
       '',
-      ` * Sesión SSH de ${user} en ${this.server.name} (simulada por netsim)`,
+      ` * Sesión SSH de ${user} en ${this.server.name} (simulada por Netfix)`,
       '',
     ];
   }

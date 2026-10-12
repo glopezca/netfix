@@ -79,7 +79,7 @@ export const EDITOR_DOCS: readonly DocPage[] = [
         '"f" E212: Can\'t open file for writing — sin permiso: :q! y sudo vim f.',
         'E486: Pattern not found: x · E492: Not an editor command: x · E32: No file name.',
       ),
-      note('Los modos visual (v, V) y reemplazo (R) no están disponibles en netsim.'),
+      note('Los modos visual (v, V) y reemplazo (R) no están disponibles en Netfix.'),
     ],
   },
 ];

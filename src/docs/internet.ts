@@ -46,7 +46,7 @@ export const INTERNET_DOCS: DocGroup = {
         p('En la pestaña ISP de una nube puedes registrar dominios. Los DNS públicos los resuelven para todas las nubes:'),
         table(['Tipo', 'Respuesta de 8.8.8.8'], [
           ['A', 'El dominio y cualquier nombre bajo él (*.dominio) apuntan a la IP indicada.'],
-          ['NS (delegación)', '8.8.8.8 pregunta al servidor DNS de esa IP y reenvía su respuesta: tu Server-PT es el autoritativo de la zona.'],
+          ['NS (delegación)', '8.8.8.8 pregunta al servidor DNS de esa IP y reenvía su respuesta: tu Server es el autoritativo de la zona.'],
         ]),
         h('Ejemplo: publicar la web de una sede'),
         code('Nube ISP-Sur → Líneas → DSL0 (router del operador, WAN 81.33.3.2)\n  Redirección TCP 80 → 192.168.1.10:80 y UDP 53 → 192.168.1.10:53\nNube ISP-Sur → ISP → dominio sede2.es, tipo NS, IP 81.33.3.2\nSRV-SEDE2 (192.168.1.10) → DNS: zona sede2.es con www → 81.33.3.2\nPC de otra sede:  host www.sede2.es  ·  navegador http://www.sede2.es'),

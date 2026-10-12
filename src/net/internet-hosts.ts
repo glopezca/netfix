@@ -118,10 +118,11 @@ function sitePage(site: Site, req: HttpRequest, peer: Peer): string {
   if (site.plain) return `${you}\n`;
   return page(site.name, '',
     h('h1', {}, site.name),
-    h('p', {}, 'Servidor web de la Internet emulada de netsim.'),
+    h('p', {}, 'Servidor web de la Internet emulada de Netfix.'),
     h('p', {}, 'Tu dirección IP pública: ', h('strong', {}, you)),
     h('p', {}, `Host solicitado: ${req.headers?.host ?? req.host} · ruta: ${req.path}`),
-    h('p', {}, 'Si tu equipo tiene una IP privada (192.168.x.x, 10.x.x.x), lo que ves aquí es la dirección que le ha puesto el NAT del router.'));
+    h('p', {}, 'Si tu equipo tiene una IP privada (192.168.x.x, 10.x.x.x), lo que ves aquí es la dirección que le ha puesto el NAT del router.'),
+    h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), 'Internet emulada por Netfix'));
 }
 
 class WebSite implements VirtualHost {
@@ -137,7 +138,7 @@ class WebSite implements VirtualHost {
     this.tcp.listen(80, (req, peer) => {
       if (req.app !== 'HTTP' || req.kind !== 'request') return null;
       const body = sitePage(site, req, peer);
-      return respond('ECS (netsim)', 200, req.method === 'HEAD' ? '' : body, {}, site.plain ? 'text/plain; charset=UTF-8' : 'text/html; charset=UTF-8');
+      return respond('ECS (Netfix)', 200, req.method === 'HEAD' ? '' : body, {}, site.plain ? 'text/plain; charset=UTF-8' : 'text/html; charset=UTF-8');
     });
   }
 

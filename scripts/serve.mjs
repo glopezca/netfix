@@ -22,4 +22,4 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404).end('Not found');
   }
-}).listen(port, () => process.stdout.write(`netsim en http://localhost:${port}\n`));
+}).listen(port, () => process.stdout.write(`Netfix en http://localhost:${port}\n`));

@@ -1,4 +1,4 @@
-/** Window contents: IOS CLI for routers/switches; desktop tabs for PCs and Server-PT. */
+/** Window contents: IOS CLI for routers/switches; desktop tabs for PCs and Server. */
 import { el } from './dom.ts';
 import { Terminal } from './terminal.ts';
 import type { ConsoleBackend } from './terminal.ts';
@@ -97,8 +97,8 @@ function shellTerminal(placed: Placed, h: Host, os: HostOs, app: WindowHost): Te
   if (!term) {
     const shell = createShell(h, os);
     const intro = os === 'windows'
-      ? ['Microsoft Windows (netsim) · escribe help para ver los comandos.', '']
-      : ['Ubuntu 26.04 LTS (GNU/Linux 6.17.0-14-generic x86_64) · GNU bash 5.3 en netsim', 'Ayuda: help, man <orden> o la pestaña Documentación. Editores: nano y vim.', ''];
+      ? ['Microsoft Windows (Netfix) · escribe help para ver los comandos.', '']
+      : ['Ubuntu 26.04 LTS (GNU/Linux 6.17.0-14-generic x86_64) · GNU bash 5.3 en Netfix', 'Ayuda: help, man <orden> o la pestaña Documentación. Editores: nano y vim.', ''];
     const backend: ConsoleBackend = {
       prompt: () => shell.prompt(), run: (l) => shell.run(l), secret: () => shell.secret(),
       complete: (l) => shell.complete?.(l) ?? null, interrupt: () => shell.interrupt?.() ?? [], eof: () => shell.eof?.() ?? [],
@@ -122,7 +122,7 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost): void {
   });
   const ipTab: Tab = { id: 'ip', label: 'Configuración IP', render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
   const order: HostOs[] = h.os === 'linux' ? ['linux', 'windows'] : ['windows', 'linux'];
-  const model = h instanceof Server ? 'Server-PT' : 'PC-PT';
+  const model = h instanceof Server ? 'Server' : 'PC';
   let handle: { setTitle(t: string): void } | undefined;
   const settingsTab: Tab = { id: 'host', label: 'Equipo', render: () => hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) }) };
   const tabs: Tab[] = h instanceof Server

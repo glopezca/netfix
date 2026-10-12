@@ -1,4 +1,4 @@
-/** JSON (de)serialisation of Server-PT services with validation of untrusted files. */
+/** JSON (de)serialisation of Server services with validation of untrusted files. */
 import type { ServerServices, PtDhcpPool, DnsRecord, Account, WebFile } from './config.ts';
 import { defaultServices, defaultWebApps, validateAccess, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } from './config.ts';
 import type { WebAppAccess, WebApps } from './config.ts';

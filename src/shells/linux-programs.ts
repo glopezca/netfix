@@ -1,4 +1,4 @@
-/** The netsim programs of an Ubuntu host: network clients, systemd tools, ssh and command-not-found. */
+/** The Netfix programs of an Ubuntu host: network clients, systemd tools, ssh and command-not-found. */
 import type { CommandFn, Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { httpGet } from './net-tools.ts';

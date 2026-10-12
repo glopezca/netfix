@@ -1,4 +1,4 @@
-/** Server-PT service configuration (immutable records, edited from the GUI or restored from JSON). */
+/** Server service configuration (immutable records, edited from the GUI or restored from JSON). */
 
 /** A reservation identifies the client by MAC (Kea `hw-address`) or by client-id (option 61). */
 export interface DhcpReservation {
@@ -105,10 +105,11 @@ export const DEFAULT_MAX_USERS = 50;
 
 export const DEFAULT_INDEX = `<!doctype html>
 <html lang="es">
-<head><meta charset="utf-8"><title>Server-PT</title></head>
+<head><meta charset="utf-8"><title>Server</title></head>
 <body>
-<h1>Servidor web de netsim</h1>
-<p>Esta página la sirve el servicio HTTP de un Server-PT.</p>
+<p><span class="web-brand-logo">Netfix</span></p>
+<h1>Servidor web de Netfix</h1>
+<p>Esta página la sirve el servicio HTTP de un servidor de Netfix.</p>
 <p>Edita <code>index.html</code> en la pestaña Servicios → HTTP, o crea páginas nuevas.</p>
 <p><a href="ayuda.html">Ayuda</a></p>
 </body>

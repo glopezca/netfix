@@ -62,7 +62,7 @@ function* fc(ctx: Ctx): Gen<number> {
     ctx.err(`${cmd}\n`);
     return yield* sh.runSource(cmd, ctx.fds);
   }
-  if (!p.flags.has('l')) return builtinError(ctx, 'netsim: la edición con fc no está disponible; usa fc -l o fc -s');
+  if (!p.flags.has('l')) return builtinError(ctx, 'Netfix: la edición con fc no está disponible; usa fc -l o fc -s');
   const all = lines.slice(0, -1).map((l, i) => ({ n: sh.history.base + i, l }));
   let list = all.slice(-16);
   if (p.rest[0] !== undefined) {

@@ -1,6 +1,6 @@
 /**
  * Zone-file name rules (BIND): `@` is the origin, a name ending in "." is absolute, any other
- * name is relative and gets the origin appended. Without an origin (files from netsim ≤ 0.2)
+ * name is relative and gets the origin appended. Without an origin (files from Netfix ≤ 0.2)
  * every name is taken as absolute.
  */
 import type { DnsRecord } from './config.ts';

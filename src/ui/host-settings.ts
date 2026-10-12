@@ -1,4 +1,4 @@
-/** PC / Server-PT → «Equipo»: name shown in the workspace and the host name of the system. */
+/** PC / Server → «Equipo»: name shown in the workspace and the host name of the system. */
 import { el } from './dom.ts';
 import { field, input, button, message } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';

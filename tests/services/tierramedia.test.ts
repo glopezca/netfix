@@ -1,6 +1,6 @@
 /**
- * Tierra Media scenarios of the ASIR2-SRI textbook (Annex XXII), reproduced in netsim:
- * UT2 practice 1 (Arnor, Server-PT DHCP with MAC reservations outside the dynamic range),
+ * Tierra Media scenarios of the ASIR2-SRI textbook (Annex XXII), reproduced in Netfix:
+ * UT2 practice 1 (Arnor, Server DHCP with MAC reservations outside the dynamic range),
  * UT2 practice 2 (Mordor, IOS pool + `show running-config | section dhcp`) and UT3 (Lothlorien DNS).
  */
 import { test } from 'node:test';
@@ -65,7 +65,7 @@ function configureLothlorien(lothlorien: Server): void {
   ] } });
 }
 
-test('UT2 practice 1: Arnor (Server-PT) pool .1–.32 and MAC reservations .64/.65 outside the range', () => {
+test('UT2 practice 1: Arnor (Server) pool .1–.32 and MAC reservations .64/.65 outside the range', () => {
   const tm = tierraMedia();
   tm.arnor.setServices({ ...tm.arnor.services, dhcp: { enabled: true, pools: [{
     name: 'TIERRAMEDIA-LAN', start: ip('192.168.10.1'), prefix: 24, maxUsers: 32, gateway: ip('192.168.10.254'),

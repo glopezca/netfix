@@ -11,7 +11,7 @@ test('exponential regular expressions are refused everywhere, ordinary ones work
   for (const re of ['(ab|cd)+', 'a+b*', '(foo|bar)', '(a|b|c)*', '^([0-9]{1,3}\\.){3}[0-9]{1,3}$', '[(]+']) assert.equal(isCatastrophic(re), false, re);
   const long = `${'a'.repeat(60)}b`;
   const r = runScript(`echo ${long} | grep -E '(a|aa)+$'; echo "g=$?"; [[ ${long} =~ (a|aa)+$ ]]; echo "t=$?"; shopt -s extglob; case ${long} in +(a|aa)) echo m;; *) echo n;; esac; echo abcd | grep -oE '(ab|cd)+'`);
-  assert.equal(r.out, `grep: netsim: expresión regular demasiado costosa (grupos repetidos con alternativas o cuantificadores)\ng=2\nt=2\nn\nabcd\n`);
+  assert.equal(r.out, `grep: Netfix: expresión regular demasiado costosa (grupos repetidos con alternativas o cuantificadores)\ng=2\nt=2\nn\nabcd\n`);
 });
 
 test('symbolic link chains are bounded (ELOOP) instead of exploding', () => {

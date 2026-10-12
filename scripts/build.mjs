@@ -1,4 +1,4 @@
-// Builds dist/ (index.html + ES modules) and dist/netsim.html (single self-contained file).
+// Builds dist/ (index.html + ES modules) and dist/netfix.html (single self-contained file).
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, copyFileSync } from 'node:fs';
 import { join, relative, dirname, posix } from 'node:path';
@@ -71,24 +71,24 @@ function transform(path, source) {
   return `__m[${JSON.stringify(path)}] = (() => {\n${code}\nreturn { ${exported.join(', ')} };\n})();`;
 }
 const bundle = `(() => {\n"use strict";\nconst __m = {};\n${order.map((p) => transform(p, modules.get(p).source)).join('\n')}\n})();`;
-writeFileSync(join(dist, 'netsim.bundle.js'), bundle);
+writeFileSync(join(dist, 'netfix.bundle.js'), bundle);
 const inlineScript = bundle.replace(/<\/script/gi, '<\\/script');
 
 const css = readFileSync(join(root, 'src/ui/styles.css'), 'utf8');
 const single = readFileSync(join(root, 'src/ui/index.html'), 'utf8')
   .replace('<link rel="stylesheet" href="styles.css">', () => `<style>\n${css}\n</style>`)
   .replace('<script type="module" src="js/ui/main.js"></script>', () => `<script>${inlineScript}</script>`);
-writeFileSync(join(dist, 'netsim.html'), single);
+writeFileSync(join(dist, 'netfix.html'), single);
 // Committed standalone page (served online via raw.githack.com, also opens from file://).
 mkdirSync(join(root, 'demo'), { recursive: true });
-writeFileSync(join(root, 'demo', 'netsim-dhcp-lab.html'), single.replace('<title>netsim — laboratorio DHCP</title>', '<title>netsim DHCP Lab</title>'));
+writeFileSync(join(root, 'demo', 'netfix-lab.html'), single.replace('<title>Netfix — laboratorio de redes</title>', '<title>Netfix Lab</title>'));
 
 // Artifact variant: no document skeleton, title first, embed flag for in-page saving.
 const artifact = single
   .replace(/^[\s\S]*?<title>/, '<title>')
-  .replace('<title>netsim — laboratorio DHCP</title>', '<title>netsim DHCP Lab</title>')
+  .replace('<title>Netfix — laboratorio de redes</title>', '<title>Netfix Lab</title>')
   .replace(/<\/head>\s*<body data-mode="realtime">/, '')
   .replace(/<\/body>\s*<\/html>\s*$/, '')
   .replace('<div id="app"></div>', '<div id="app" data-embed="artifact"></div>');
 writeFileSync(join(dist, 'artifact.html'), artifact);
-console.log(`Built ${order.length} modules -> dist/index.html, dist/netsim.html (${Math.round(single.length / 1024)} KiB), dist/artifact.html`);
+console.log(`Built ${order.length} modules -> dist/index.html, dist/netfix.html (${Math.round(single.length / 1024)} KiB), dist/artifact.html`);

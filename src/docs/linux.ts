@@ -23,7 +23,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
     title: 'La Terminal Linux',
     summary: 'Ubuntu 26.04 con GNU bash 5.3 en cada PC y servidor: qué hay y cómo se usa.',
     blocks: [
-      p('Cada PC y cada Server-PT tiene su propio sistema Ubuntu 26.04 simulado: un sistema de ficheros con permisos, cuentas de usuario, GNU bash 5.3.20 y las utilidades GNU más usadas (coreutils, grep, sed, mawk, find…), además de los programas de red que hablan con la red simulada (ip, ping, dig, curl, ssh…).'),
+      p('Cada PC y cada Server tiene su propio sistema Ubuntu 26.04 simulado: un sistema de ficheros con permisos, cuentas de usuario, GNU bash 5.3.20 y las utilidades GNU más usadas (coreutils, grep, sed, mawk, find…), además de los programas de red que hablan con la red simulada (ip, ping, dig, curl, ssh…).'),
       code('alumno@pc0:~$ echo "Hola" > saludo.txt && cat saludo.txt\nHola\nalumno@pc0:~$ for h in srv www; do dig +short $h.aula.lab; done\nalumno@pc0:~$ ip -br a\nalumno@pc0:~$ sudo dhclient -r eth0 && sudo dhclient eth0\nalumno@pc0:~$ ssh admin@srv.aula.lab'),
       h('Qué conviene saber'),
       list(

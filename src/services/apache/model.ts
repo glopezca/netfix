@@ -1,4 +1,4 @@
-/** What netsim keeps from an Apache configuration. */
+/** What Netfix keeps from an Apache configuration. */
 
 export interface ConfReader {
   /** File text (symbolic links followed), or null when it does not exist. */

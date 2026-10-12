@@ -99,7 +99,7 @@ export class McApp implements Editor {
       case 6: this.transfer('move'); break;
       case 7: this.dialog = { kind: 'input', title: 'Create a new Directory', label: 'Enter directory name:', value: '', onOk: (v) => this.mkdir(v) }; break;
       case 8: this.remove(); break;
-      case 2: case 9: this.dialog = { kind: 'message', title: 'Menú', lines: ['Los menús no están disponibles en netsim.'], error: false }; break;
+      case 2: case 9: this.dialog = { kind: 'message', title: 'Menú', lines: ['Los menús no están disponibles en Netfix.'], error: false }; break;
       case 10: this.dialog = { kind: 'confirm', title: 'The Midnight Commander', text: 'Do you really want to quit the Midnight Commander?', yes: true, onYes: () => { this.closed = true; } }; break;
       default: break;
     }

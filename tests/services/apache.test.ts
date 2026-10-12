@@ -40,7 +40,7 @@ test('the Ubuntu layout is in place and the default site serves /var/www/html', 
   const { root, client } = lab();
   assert.deepEqual(root.run('ls /etc/apache2 | tr "\\n" " "'), ['apache2.conf conf-available conf-enabled envvars mods-available mods-enabled ports.conf sites-available sites-enabled ']);
   assert.deepEqual(root.run('readlink /etc/apache2/sites-enabled/000-default.conf'), ['../sites-available/000-default.conf']);
-  assert.match(client.run('curl -s http://www.aula.lab/').join('\n'), /Servidor web de netsim/);
+  assert.match(client.run('curl -s http://www.aula.lab/').join('\n'), /Servidor web de Netfix/);
   assert.deepEqual(root.run('apache2ctl configtest'), [
     "AH00558: apache2: Could not reliably determine the server's fully qualified domain name, using 127.0.1.1. Set the 'ServerName' directive globally to suppress this message",
     'Syntax OK',
@@ -53,10 +53,10 @@ test('a new name-based virtual host with Alias and Redirect, enabled with a2ensi
   root.run(`cat > /etc/apache2/sites-available/empresa.conf <<'EOF'\n${SITE}\nEOF`);
   assert.deepEqual(root.run('a2ensite empresa'), ['Enabling site empresa.', 'To activate the new configuration, you need to run:', '  systemctl reload apache2']);
   assert.deepEqual(root.run('a2ensite empresa'), ['Site empresa already enabled']);
-  assert.match(client.run('curl -s http://empresa.aula.lab/').join(''), /Servidor web de netsim/, 'not active until reload');
+  assert.match(client.run('curl -s http://empresa.aula.lab/').join(''), /Servidor web de Netfix/, 'not active until reload');
   assert.deepEqual(root.run('systemctl reload apache2'), []);
   assert.deepEqual(client.run('curl -s http://empresa.aula.lab/'), ['<h1>Empresa</h1>']);
-  assert.match(client.run('curl -s http://www.aula.lab/').join(''), /Servidor web de netsim/, 'other names keep the default site');
+  assert.match(client.run('curl -s http://www.aula.lab/').join(''), /Servidor web de Netfix/, 'other names keep the default site');
   assert.match(client.run('curl -s http://empresa.aula.lab/docs/manual.txt').join(''), /Forbidden/, '/srv is outside the allowed directories');
   root.run(`cat >> /etc/apache2/sites-available/empresa.conf <<'EOF'\n<Directory /srv/docs>\n    Options Indexes\n    Require all granted\n</Directory>\nEOF`);
   root.run('systemctl reload apache2');
@@ -75,7 +75,7 @@ test('syntax errors: configtest, reload keeps the old configuration, restart fai
     "Action 'configtest' failed.", 'The Apache error log may have more information.', '1',
   ]);
   assert.deepEqual(root.run('systemctl reload apache2; echo $?'), ['Job for apache2.service failed because the control process exited with error code.', 'See "systemctl status apache2.service" and "journalctl -xeu apache2.service" for details.', '1']);
-  assert.match(client.run('curl -s http://www.aula.lab/').join(''), /Servidor web de netsim/, 'still running with the old configuration');
+  assert.match(client.run('curl -s http://www.aula.lab/').join(''), /Servidor web de Netfix/, 'still running with the old configuration');
   root.run('systemctl restart apache2');
   assert.equal(srv.services.http.enabled, false);
   assert.match(root.run('journalctl -u apache2 -n 12').join('\n'), /AH00526: Syntax error on line 16[\s\S]*Failed to start apache2\.service/);
@@ -95,7 +95,7 @@ test('modules: a2enmod with dependencies, directives of disabled modules, ports.
   root.run('echo "RewriteEngine On" >> /etc/apache2/apache2.conf');
   assert.match(root.run('apache2ctl -t 2>&1').join('\n'), /Invalid command 'RewriteEngine'/);
   root.run('a2enmod rewrite >/dev/null; sed -i "s/^Listen 80$/Listen 80\\nListen 8081/" /etc/apache2/ports.conf; systemctl restart apache2');
-  assert.match(client.run('curl -s http://10.0.0.2:8081/').join(''), /Servidor web de netsim/);
+  assert.match(client.run('curl -s http://10.0.0.2:8081/').join(''), /Servidor web de Netfix/);
   assert.match(root.run('ss -tln').join('\n'), /0\.0\.0\.0:8081/);
   assert.deepEqual(root.run('a2dismod nada'), ['ERROR: Module nada does not exist!']);
 });

@@ -52,7 +52,7 @@ export function setUnitActive(s: ServerServices, id: UnitId, on: boolean): Serve
 }
 
 /** The management GUI's own web server (port mode). */
-export const WEBUI_UNIT: UnitInfo = { id: 'http', linux: 'netsim-webui', aliases: [], process: 'netsim-webui', description: 'Gestión web de Server-PT', windows: 'netsim-webui', windowsDisplay: 'Gestión web', ports: [], pid: 1190 };
+export const WEBUI_UNIT: UnitInfo = { id: 'http', linux: 'netfix-webui', aliases: [], process: 'netfix-webui', description: 'Gestión web de Server', windows: 'netfix-webui', windowsDisplay: 'Gestión web', ports: [], pid: 1190 };
 
 /** Ports actually open on the server, for ss/netstat. `web` = the live web ports (Apache Listen, own ports). */
 export function openPorts(s: ServerServices, web?: { readonly http: readonly number[]; readonly admin: readonly number[] }): { proto: 'udp' | 'tcp'; port: number; unit: UnitInfo }[] {

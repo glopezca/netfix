@@ -1,6 +1,6 @@
 /** The whole documentation: groups for the Documentación tab, full-text search and man pages for the terminal. */
 import type { DocBlock, DocGroup, DocPage } from './types.ts';
-import { NETSIM_DOCS } from './netsim.ts';
+import { NETFIX_DOCS } from './netfix.ts';
 import { IOS_DOCS } from './ios.ts';
 import { SERVICE_DOCS } from './services.ts';
 import { CLIENT_DOCS } from './clients.ts';
@@ -16,7 +16,7 @@ import { WEBAPP_DOCS } from './webapps.ts';
 export type { DocBlock, DocGroup, DocPage } from './types.ts';
 
 export const DOC_GROUPS: readonly DocGroup[] = [
-  NETSIM_DOCS,
+  NETFIX_DOCS,
   IOS_DOCS,
   { ...SERVICE_DOCS, pages: [...SERVICE_DOCS.pages, ...WEBAPP_DOCS] },
   INTERNET_DOCS,
@@ -117,14 +117,14 @@ export function manPage(name: string): string | null {
   const lines = [header(key, sec), '', ...section('NAME', `${key} - ${doc.summary}`), ...section('SYNOPSIS', doc.synopsis)];
   if (doc.options) lines.push('OPTIONS', ...doc.options.split('\n').map((l) => INDENT + l), '');
   if (KEY_TABLES[key]) lines.push('KEYS', ...(KEY_TABLES[key] ?? '').split('\n').map((l) => INDENT + l), '');
-  lines.push('SEE ALSO', `${INDENT}La pestaña Documentación de netsim tiene ejemplos y la referencia completa.`, '', `netsim${' '.repeat(WIDTH - 'netsim'.length - `${key.toUpperCase()}(${sec})`.length)}${key.toUpperCase()}(${sec})`);
+  lines.push('SEE ALSO', `${INDENT}La pestaña Documentación de Netfix tiene ejemplos y la referencia completa.`, '', `Netfix${' '.repeat(WIDTH - 'Netfix'.length - `${key.toUpperCase()}(${sec})`.length)}${key.toUpperCase()}(${sec})`);
   return `${lines.join('\n')}\n`;
 }
 
 function bashManual(): string {
   const builtins = Object.keys(BUILTIN_DOCS).sort().join(' ');
   const pages = [...BASH_LANGUAGE, ...BASH_REFERENCE].map((p) => `${p.title}: ${p.summary}`).join('\n');
-  return [header('bash', 1), '', ...section('NAME', 'bash - GNU Bourne-Again SHell (versión 5.3.20 en netsim)'),
+  return [header('bash', 1), '', ...section('NAME', 'bash - GNU Bourne-Again SHell (versión 5.3.20 en Netfix)'),
     ...section('SYNOPSIS', 'bash [opciones] [orden_o_fichero ...]'),
     ...section('DESCRIPTION', 'Intérprete de órdenes compatible con sh que ejecuta lo que se escribe en la terminal o se lee de un fichero. La referencia completa está en la pestaña Documentación:'),
     ...pages.split('\n').map((l) => INDENT + l), '',

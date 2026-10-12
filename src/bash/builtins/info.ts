@@ -75,7 +75,7 @@ function help(ctx: Ctx): number {
   const p = parseOpts(ctx.argv.slice(1), 'dms');
   if (p.bad) return badOption(ctx, p.bad, 'help [-dms] [pattern ...]');
   if (!p.rest.length) {
-    ctx.out('GNU bash, version 5.3.20(1)-release (x86_64-pc-linux-gnu) — netsim\n');
+    ctx.out('GNU bash, version 5.3.20(1)-release (x86_64-pc-linux-gnu) — Netfix\n');
     ctx.out('Órdenes internas (builtins). Escribe `help nombre` para ver una, o abre la pestaña Documentación.\n\n');
     const names = Object.keys(BUILTIN_DOCS).sort();
     for (let i = 0; i < names.length; i += 2) ctx.out(`${(BUILTIN_DOCS[names[i] ?? '']?.synopsis ?? '').slice(0, 38).padEnd(40)}${BUILTIN_DOCS[names[i + 1] ?? '']?.synopsis.slice(0, 38) ?? ''}\n`);

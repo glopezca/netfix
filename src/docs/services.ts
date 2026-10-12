@@ -1,17 +1,17 @@
-/** Documentación: servicios de Server-PT (DHCP, DNS, HTTP, correo, SSH) y su equivalente en Ubuntu y Windows. */
+/** Documentación: servicios de Server (DHCP, DNS, HTTP, correo, SSH) y su equivalente en Ubuntu y Windows. */
 import type { DocGroup } from './types.ts';
 import { code, h, list, note, p, table } from './types.ts';
 
 export const SERVICE_DOCS: DocGroup = {
   id: 'servicios',
-  title: 'Servicios de Server-PT',
+  title: 'Servicios de Server',
   pages: [
     {
       id: 'srv-intro',
-      title: 'Server-PT',
+      title: 'Server',
       summary: 'Pestañas del servidor, sistema operativo y nombres de los servicios.',
       blocks: [
-        p('Un Server-PT es un equipo con servicios de red. Cada servicio tiene su interruptor y su panel en la pestaña Servicios; los cambios se aplican al momento y se reflejan en los ficheros de configuración que ve la Terminal Linux.'),
+        p('Un Server es un equipo con servicios de red. Cada servicio tiene su interruptor y su panel en la pestaña Servicios; los cambios se aplican al momento y se reflejan en los ficheros de configuración que ve la Terminal Linux.'),
         table(['Servicio', 'Puerto', 'Unidad systemd (Ubuntu)', 'Servicio de Windows', 'Configuración en Linux'], [
           ['DHCP', '67/udp', 'kea-dhcp4-server', 'DHCPServer', '/etc/kea/kea-dhcp4.conf, /var/lib/kea/kea-leases4.csv'],
           ['DNS', '53/udp', 'bind9 (named)', 'DNS', '/etc/bind/named.conf.local, /etc/bind/db.<zona>'],
@@ -27,7 +27,7 @@ export const SERVICE_DOCS: DocGroup = {
     },
     {
       id: 'srv-dhcp',
-      title: 'DHCP de Server-PT',
+      title: 'DHCP de Server',
       summary: 'Pools al estilo Packet Tracer, reservas y asignación automática por MAC o Client-ID.',
       blocks: [
         p('Cada pool se define como en Packet Tracer: IP inicial + número máximo de usuarios dentro de una subred, con puerta de enlace, servidor DNS, dominio, servidor TFTP y concesión en minutos (o infinita).'),
@@ -49,7 +49,7 @@ export const SERVICE_DOCS: DocGroup = {
     },
     {
       id: 'srv-dns',
-      title: 'DNS de Server-PT',
+      title: 'DNS de Server',
       summary: 'Registros, nombres relativos y absolutos, dominio de la zona ($ORIGIN) y respuestas.',
       blocks: [
         p('El servidor es autoritativo para las zonas de sus registros. Responde NOERROR con los datos, NXDOMAIN (con el SOA en AUTHORITY) si el nombre no existe en su zona y REFUSED si la consulta es de otra zona. Los PTR de los registros A se generan solos.'),
@@ -101,7 +101,7 @@ export const SERVICE_DOCS: DocGroup = {
       title: 'Apache2 en /etc/apache2',
       summary: 'Configuración real de Ubuntu: sitios, módulos, puertos, VirtualHost, Alias, permisos y recarga.',
       blocks: [
-        p('En un Server-PT con Ubuntu, el servicio HTTP es Apache 2.4 y se configura como en Ubuntu, con los ficheros de /etc/apache2 (como root o con sudo). La pestaña Servicios → HTTP sigue editando /var/www/html, la carpeta del sitio por defecto. En Windows Server el servicio es IIS y sirve esa misma lista de ficheros.'),
+        p('En un Server con Ubuntu, el servicio HTTP es Apache 2.4 y se configura como en Ubuntu, con los ficheros de /etc/apache2 (como root o con sudo). La pestaña Servicios → HTTP sigue editando /var/www/html, la carpeta del sitio por defecto. En Windows Server el servicio es IIS y sirve esa misma lista de ficheros.'),
         table(['Fichero o carpeta', 'Para qué sirve'], [
           ['apache2.conf', 'Configuración principal: incluye el resto y define los <Directory> permitidos (/var/www y /usr/share).'],
           ['ports.conf', 'Puertos con Listen (80; 443 si se activa ssl).'],

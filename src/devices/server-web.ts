@@ -1,5 +1,5 @@
 /**
- * The web side of a Server-PT: Apache (configured in /etc/apache2) or IIS, the Roundcube webmail and
+ * The web side of a Server: Apache (configured in /etc/apache2) or IIS, the Roundcube webmail and
  * the web management GUI, each on its alias or port. Owns the TCP listeners of those ports.
  */
 import type { Server } from './server.ts';

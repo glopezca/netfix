@@ -1,28 +1,28 @@
-/** Documentación: uso de netsim (interfaz, usuarios, guardar, simulación). */
+/** Documentación: uso de Netfix (interfaz, usuarios, guardar, simulación). */
 import type { DocGroup } from './types.ts';
 import { code, h, list, note, p, table } from './types.ts';
 
-export const NETSIM_DOCS: DocGroup = {
-  id: 'netsim',
-  title: 'netsim',
+export const NETFIX_DOCS: DocGroup = {
+  id: 'netfix',
+  title: 'Netfix',
   pages: [
     {
       id: 'inicio',
       title: 'Primeros pasos',
       summary: 'La interfaz: barra superior, área de trabajo, paleta de dispositivos y ventanas.',
       blocks: [
-        p('netsim es un simulador de redes en el navegador con el aspecto y el comportamiento de Cisco Packet Tracer. Todo se ejecuta en tu equipo: no hay servidor ni se envía nada a Internet (la «Internet» de las nubes ISP también es simulada).'),
+        p('Netfix es un simulador de redes en el navegador con el aspecto y el comportamiento de Cisco Packet Tracer. Todo se ejecuta en tu equipo: no hay servidor ni se envía nada a Internet (la «Internet» de las nubes ISP también es simulada).'),
         h('Barra superior'),
         table(['Control', 'Qué hace'], [
           ['Red / Documentación / Acerca de', 'Cambia entre el área de trabajo, esta documentación y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
           ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S).'],
-          ['Laboratorios…', 'Carga una práctica preparada (DHCP básico, reservas, relay, VLAN, snooping, router cliente, Server-PT, Internet con dos sedes).'],
+          ['Laboratorios…', 'Carga una práctica preparada (DHCP básico, reservas, relay, VLAN, snooping, router cliente, Server, Internet con dos sedes).'],
           ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
           ['Tiempo real / Simulación', 'Modo de ejecución (ver «Tiempo real y simulación»).'],
         ]),
         h('Paleta y herramientas'),
         list(
-          'Router 2911, Switch 2960-24TT, PC-PT, Server-PT y Nube ISP: elige uno y haz clic en el área de trabajo.',
+          'Router 2911, Switch 2960-24TT, PC, Server y Nube ISP: elige uno y haz clic en el área de trabajo.',
           'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.',
           'Seleccionar: arrastra equipos; doble clic abre su ventana.',
           'Eliminar: borra equipos o cables.',
@@ -32,7 +32,7 @@ export const NETSIM_DOCS: DocGroup = {
           ['Router / Switch', 'CLI (Cisco IOS 15) y Gestión web (ip http server).'],
           ['Nube ISP', 'ISP (proveedor, bloque público, dominios) y Líneas (modo, LAN, NAT, redirección de puertos).'],
           ['PC', 'Configuración IP, Navegador, Correo, Equipo, Símbolo del sistema y Terminal Linux.'],
-          ['Server-PT', 'Servicios, Configuración IP, Equipo, Terminal Linux y Símbolo del sistema.'],
+          ['Server', 'Servicios, Configuración IP, Equipo, Terminal Linux y Símbolo del sistema.'],
         ]),
         note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim).'),
       ],
@@ -43,14 +43,14 @@ export const NETSIM_DOCS: DocGroup = {
       summary: 'Cuentas de las terminales, de SSH y del correo en los laboratorios.',
       blocks: [
         p('Todas son credenciales de laboratorio, ficticias. Las cuentas SSH y de correo se cambian en la pestaña Servicios del servidor.'),
-        h('Laboratorio «Server-PT: DHCP, DNS, web, correo y SSH»'),
+        h('Laboratorio «Server: DHCP, DNS, web, correo y SSH»'),
         table(['Uso', 'Usuario', 'Contraseña', 'Dónde'], [
           ['Correo (IMAP)', 'ana → ana@aula.lab', 'ana1', 'Buzón en srv; cuenta configurada en el Correo de PC0'],
           ['Correo (POP3)', 'luis → luis@aula.lab', 'luis1', 'Buzón en srv; cuenta configurada en el Correo de PC1'],
           ['SSH', 'admin', 'cisco', 'ssh admin@srv.aula.lab o ssh admin@192.168.10.2'],
         ]),
         h('Cuentas de las terminales'),
-        table(['Equipo', 'GNU/Linux', 'Windows'], [['PC', 'alumno', 'user'], ['Server-PT', 'admin', 'Administrator']]),
+        table(['Equipo', 'GNU/Linux', 'Windows'], [['PC', 'alumno', 'user'], ['Server', 'admin', 'Administrator']]),
         h('Cuentas del sistema Linux de cada equipo'),
         table(['Cuenta', 'UID', 'Grupos', 'Notas'], [
           ['root', '0', 'root', 'Sin contraseña: su no permite entrar; usa sudo -i.'],

@@ -1,4 +1,5 @@
-/** netsim application shell: toolbar, workspace, palette, windows and simulation panel. */
+/** Netfix application shell: toolbar, workspace, palette, windows and simulation panel. */
+import { applyBrand, brandImage } from './brand.ts';
 import { el, staticSvg, safeStorageGet, safeStorageSet } from './dom.ts';
 import { Canvas } from './canvas.ts';
 import type { Tool } from './canvas.ts';
@@ -14,7 +15,9 @@ import { aboutView } from './about-view.ts';
 
 type View = 'net' | 'docs' | 'about';
 
-const AUTOSAVE_KEY = 'netsim:workspace:v1';
+const AUTOSAVE_KEY = 'netfix:workspace:v1';
+/** Workspace autosaved before the rename (netsim ≤ 0.4.0). */
+const LEGACY_AUTOSAVE_KEY = 'netsim:workspace:v1';
 const TICK_MS = 250;
 const AUTOSAVE_DELAY_MS = 800;
 const MINUTE = 60_000;
@@ -65,7 +68,7 @@ class App {
   }
 
   private initialTopology(): Topology {
-    const saved = safeStorageGet(AUTOSAVE_KEY);
+    const saved = safeStorageGet(AUTOSAVE_KEY) ?? safeStorageGet(LEGACY_AUTOSAVE_KEY);
     if (saved) {
       try {
         return Topology.fromJSON(JSON.parse(saved));
@@ -79,7 +82,7 @@ class App {
   // ------------------------------------------------------------ chrome
 
   private toolbar(): HTMLElement {
-    const fileInput = el('input', { type: 'file', accept: '.json,.netsim,application/json', hidden: true });
+    const fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
     fileInput.addEventListener('change', () => void this.openFile(fileInput));
     const btn = (label: string, fn: () => void, attrs: Record<string, string> = {}): HTMLButtonElement => {
       const b = el('button', { type: 'button', class: 'btn', ...attrs }, label);
@@ -117,7 +120,7 @@ class App {
     modeRT.addEventListener('click', () => setMode('realtime'));
     modeSim.addEventListener('click', () => setMode('simulation'));
     return el('header', { class: 'topbar' },
-      el('h1', { class: 'brand' }, 'netsim'),
+      el('h1', { class: 'brand' }, brandImage('logo', 'brand-logo', 'Netfix')),
       this.viewSwitch(),
       el('nav', { class: 'file-actions', 'aria-label': 'Archivo' },
         btn('Nuevo', () => this.load(new Topology(), 'Área de trabajo vacía.')),
@@ -243,15 +246,15 @@ class App {
     if (document.getElementById('app')?.dataset.embed === 'artifact') {
       navigator.clipboard?.writeText(json).then(
         () => { this.hintEl.textContent = 'Topología copiada al portapapeles: pégala en un archivo .json para guardarla.'; },
-        () => { this.hintEl.textContent = 'No se pudo copiar. Usa la versión descargable de netsim para guardar archivos.'; },
+        () => { this.hintEl.textContent = 'No se pudo copiar. Usa la versión descargable de Netfix para guardar archivos.'; },
       );
       return;
     }
-    const name = `topologia-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.netsim.json`;
+    const name = `topologia-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.netfix.json`;
     const picker = (window as unknown as { showSaveFilePicker?: (o: unknown) => Promise<{ createWritable(): Promise<{ write(d: string): Promise<void>; close(): Promise<void> }> }> }).showSaveFilePicker;
     if (picker) {
       try {
-        const handle = await picker({ suggestedName: name, types: [{ description: 'Topología de netsim', accept: { 'application/json': ['.json'] } }] });
+        const handle = await picker({ suggestedName: name, types: [{ description: 'Topología de Netfix', accept: { 'application/json': ['.json'] } }] });
         const w = await handle.createWritable();
         await w.write(json);
         await w.close();
@@ -284,4 +287,7 @@ class App {
 }
 
 const mount = document.getElementById('app');
-if (mount) new App(mount);
+if (mount) {
+  applyBrand();
+  new App(mount);
+}

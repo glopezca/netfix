@@ -1,4 +1,4 @@
-/** Page frame of the Server-PT management GUI, laid out like a Linksys WRT300N (no third-party marks). */
+/** Page frame of the Server management GUI, laid out like a Linksys WRT300N (no third-party marks). */
 import type { Server } from '../devices/server.ts';
 import { h, page } from './html.ts';
 import type { Child, Markup } from './html.ts';
@@ -57,13 +57,13 @@ export function frame(server: Server, base: string, current: AdminPage, notice: 
     return h('li', { class: id === current.tab ? 'web-wrt-tab web-wrt-on' : 'web-wrt-tab' }, h('a', { href: link(first) }, label));
   });
   const subs = PAGES.filter((p) => p.tab === current.tab).map((p) => h('li', { class: p.id === current.id ? 'web-wrt-on' : undefined }, h('a', { href: link(p.id) }, p.label)));
-  return page(`Server-PT · ${current.label}`, 'web-wrt',
-    h('div', { class: 'web-wrt-top' }, h('span', { class: 'web-wrt-brand' }, 'netsim'), h('span', {}, `Versión del firmware: ${ABOUT.version}`)),
-    h('div', { class: 'web-wrt-title' }, h('span', { class: 'web-wrt-product' }, 'Server-PT · Gestión web'), h('span', { class: 'web-wrt-model' }, server.name)),
+  return page(`Server · ${current.label}`, 'web-wrt',
+    h('div', { class: 'web-wrt-top' }, h('span', { class: 'web-brand-logo', title: 'Netfix' }, 'Netfix'), h('span', {}, `Versión del firmware: ${ABOUT.version}`)),
+    h('div', { class: 'web-wrt-title' }, h('span', { class: 'web-wrt-product' }, 'Server · Gestión web'), h('span', { class: 'web-wrt-model' }, server.name)),
     h('ul', { class: 'web-wrt-tabs' }, tabs),
     h('ul', { class: 'web-wrt-subtabs' }, subs),
     notice.ok ? h('p', { class: 'web-wrt-ok' }, notice.ok) : null,
     notice.error ? h('p', { class: 'web-wrt-error' }, notice.error) : null,
     h('table', { class: 'web-wrt-page' }, body),
-    h('p', { class: 'web-wrt-foot' }, 'Simulado por netsim · los cambios se aplican al momento en el servidor'));
+    h('p', { class: 'web-wrt-foot web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), 'Netfix · los cambios se aplican al momento en el servidor'));
 }

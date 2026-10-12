@@ -2,6 +2,7 @@
 import { el } from './dom.ts';
 import { docBlock } from './doc-blocks.ts';
 import { aboutInfo } from '../docs/about.ts';
+import { brandImage } from './brand.ts';
 
 const LICENSE_URL = 'https://www.gnu.org/licenses/gpl-3.0.html';
 
@@ -15,12 +16,15 @@ export function aboutView(): HTMLElement {
     el('dt', {}, 'Licencia del código'), el('dd', {}, link(LICENSE_URL, a.license)),
     el('dt', {}, 'Ejecución'), el('dd', {}, 'Todo funciona en tu navegador: sin servidor, sin dependencias y sin enviar datos.'));
   const hero = el('header', { class: 'about-hero' },
+    brandImage('isologoN', 'about-isologo', ''),
     el('p', { class: 'doc-crumb' }, 'Acerca de'),
-    el('h1', {}, a.name, ' ', el('small', {}, `v${a.version}`)),
+    brandImage('logo', 'about-logo', a.name),
+    el('h1', { class: 'visually-hidden' }, a.name),
+    el('p', { class: 'about-release' }, `Versión ${a.version}`),
     el('p', { class: 'doc-summary' }, a.description), facts);
   const license = el('section', { class: 'about-license', 'aria-label': 'Licencia y atribuciones' },
     el('h2', {}, 'Licencia y atribuciones'),
     el('p', { class: 'muted' }, 'Contenido de LICENSE.md, en la raíz del repositorio.'),
     ...a.blocks.map((b) => docBlock(b, a.fileBase)));
-  return el('section', { class: 'docs about', 'aria-label': 'Acerca de netsim' }, el('article', { class: 'doc-page about-page', tabindex: '-1' }, hero, license));
+  return el('section', { class: 'docs about', 'aria-label': 'Acerca de Netfix' }, el('article', { class: 'doc-page about-page', tabindex: '-1' }, hero, license));
 }

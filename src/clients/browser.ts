@@ -97,7 +97,7 @@ export class BrowserEngine {
   }
 
   private fetch(url: string, method: HttpMethod, body: string | undefined, credentials: boolean): HttpOutcome {
-    const headers: Record<string, string> = { 'user-agent': 'Mozilla/5.0 (netsim)' };
+    const headers: Record<string, string> = { 'user-agent': 'Mozilla/5.0 (Netfix)' };
     const cookie = credentials ? this.cookieHeader(url) : '';
     if (cookie) headers.cookie = cookie;
     const auth = credentials ? this.credentials.get(originOf(url)) : undefined;

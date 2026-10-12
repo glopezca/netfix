@@ -78,7 +78,8 @@ export interface DeviceRecord {
 }
 
 export interface TopologyFile {
-  readonly format: 'netsim';
+  /** 'netsim' in files saved before the rename to Netfix (v0.4.0 and earlier). */
+  readonly format: 'netfix' | 'netsim';
   readonly version: 1 | 2;
   readonly devices: readonly DeviceRecord[];
   readonly links: readonly { readonly a: Endpoint; readonly b: Endpoint; readonly cable: CableKind }[];
@@ -163,7 +164,7 @@ export class Topology {
 
   toJSON(): TopologyFile {
     const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
-    return { format: 'netsim', version: FILE_VERSION, devices, links: this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable })) };
+    return { format: 'netfix', version: FILE_VERSION, devices, links: this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable })) };
   }
 
   static fromJSON(data: unknown): Topology {
@@ -279,7 +280,7 @@ function isObject(v: unknown): v is Record<string, unknown> {
 
 /** Validates untrusted JSON before building a topology from it. */
 export function validateFile(data: unknown): TopologyFile {
-  if (!isObject(data) || data.format !== 'netsim' || (data.version !== 1 && data.version !== FILE_VERSION)) throw new Error('No es un archivo de netsim válido.');
+  if (!isObject(data) || (data.format !== 'netfix' && data.format !== 'netsim') || (data.version !== 1 && data.version !== FILE_VERSION)) throw new Error('No es un archivo de Netfix válido.');
   const { devices, links } = data;
   if (!Array.isArray(devices) || !Array.isArray(links)) throw new Error('Archivo incompleto: faltan dispositivos o enlaces.');
   for (const d of devices) {

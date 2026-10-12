@@ -1,4 +1,4 @@
-/** Server-PT → Servicios → HTTP, Correo, SSH and Registros panels. */
+/** Server → Servicios → HTTP, Correo, SSH and Registros panels. */
 import { el } from './dom.ts';
 import { field, input, select, button, onOff, message, table, subnav } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';

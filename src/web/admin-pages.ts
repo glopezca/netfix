@@ -1,4 +1,4 @@
-/** Pages of the Server-PT management GUI (forms filled with the live configuration). */
+/** Pages of the Server management GUI (forms filled with the live configuration). */
 import type { Server } from '../devices/server.ts';
 import { h } from './html.ts';
 import type { Child, Markup } from './html.ts';

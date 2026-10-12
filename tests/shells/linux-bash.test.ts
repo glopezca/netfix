@@ -1,4 +1,4 @@
-/** The Ubuntu terminal of netsim hosts: bash on the host file system, network programs, editors, SSH and saving. */
+/** The Ubuntu terminal of Netfix hosts: bash on the host file system, network programs, editors, SSH and saving. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';

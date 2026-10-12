@@ -1,4 +1,4 @@
-/** wait jobs fg bg disown kill suspend ulimit umask times caller. Background jobs finish immediately in netsim. */
+/** wait jobs fg bg disown kill suspend ulimit umask times caller. Background jobs finish immediately in Netfix. */
 import type { CommandFn, Ctx } from '../types.ts';
 import { builtinError } from '../io.ts';
 import { parseOpts, badOption } from './util.ts';

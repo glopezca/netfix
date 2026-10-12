@@ -1,9 +1,9 @@
 # Licencia y atribuciones
 
 - **Autoría:** Germán López Castro
-- **Repositorio:** <https://github.com/glopezca/netsim>
+- **Repositorio:** <https://github.com/glopezca/netfix>
 
-netsim usa dos licencias según el tipo de material, las dos con la misma idea de
+Netfix usa dos licencias según el tipo de material, las dos con la misma idea de
 «compartir igual»: quien distribuya versiones modificadas debe publicarlas con la misma licencia.
 
 | Material | Licencia |
@@ -21,7 +21,7 @@ compatibles en un sentido: el material CC BY-SA 4.0 puede incorporarse a obras G
 ## Aviso de copyright del código
 
 ```
-netsim — simulador de redes con CLI de Cisco IOS y servidor DHCP
+Netfix — simulador de redes con CLI de Cisco IOS y servidor DHCP
 Copyright (C) 2026 Germán López Castro
 
 This program is free software: you can redistribute it and/or modify
@@ -42,12 +42,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 Para la documentación o las capturas:
 
-> «netsim», de Germán López Castro (<https://github.com/glopezca/netsim>),
+> «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),
 > distribuido bajo licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).
 
 Para el software o una obra derivada:
 
-> Basado en «netsim», de Germán López Castro (<https://github.com/glopezca/netsim>),
+> Basado en «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),
 > GPL-3.0-or-later. Cambios: …
 
 ## Componentes de terceros
@@ -64,6 +64,6 @@ aplican a esos archivos.
 
 ### Marcas
 
-Cisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc. netsim es un proyecto
+Cisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc. Netfix es un proyecto
 educativo independiente, sin relación con Cisco ni respaldado por ella. Los símbolos de red
 de la interfaz son dibujos propios de este proyecto.

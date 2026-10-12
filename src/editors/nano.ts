@@ -115,9 +115,9 @@ export class NanoEditor implements Editor {
       case 'c': this.message = this.location(); break;
       case 'g': this.mode = { kind: 'help', top: 0 }; break;
       case '/': case '_': this.ask('goto', 'Enter line number, column number', ''); break;
-      case 't': this.message = 'Execute Command is not available in netsim'; break;
-      case 'j': this.message = 'Justify is not available in netsim'; break;
-      case 'r': this.message = 'Read File is not available in netsim'; break;
+      case 't': this.message = 'Execute Command is not available in Netfix'; break;
+      case 'j': this.message = 'Justify is not available in Netfix'; break;
+      case 'r': this.message = 'Read File is not available in Netfix'; break;
       default: this.message = 'Unknown command';
     }
   }

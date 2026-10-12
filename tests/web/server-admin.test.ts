@@ -1,4 +1,4 @@
-/** Server-PT management GUI (WRT300N style) used from a PC browser. */
+/** Server management GUI (WRT300N style) used from a PC browser. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
@@ -27,11 +27,11 @@ const post = (web: BrowserEngine, page: string, form: [string, string][]): Brows
 test('asks for credentials (HTTP Basic) on port 10000 and shows the Setup page', () => {
   const { web } = lab();
   const first = web.open('http://10.0.0.2:10000/');
-  assert.deepEqual(first.kind === 'auth' ? [first.realm, first.failed] : first.kind, ['Server-PT', false]);
+  assert.deepEqual(first.kind === 'auth' ? [first.realm, first.failed] : first.kind, ['Server', false]);
   const wrong = web.login('http://10.0.0.2:10000/', 'admin', 'x');
   assert.equal(wrong.kind === 'auth' && wrong.failed, true);
   const ok = web.login('http://10.0.0.2:10000/', 'admin', 'admin');
-  assert.match(body(ok), /<title>Server-PT · Configuración básica<\/title>/);
+  assert.match(body(ok), /<title>Server · Configuración básica<\/title>/);
   assert.match(body(ok), /class="web-wrt-tab web-wrt-on"><a href="\/\?page=setup">Configuración/);
   assert.match(body(ok), /name="hostname" value="server0"/i);
 });
@@ -54,7 +54,7 @@ test('changes made in the GUI apply to the server: hostname, DNS records, mail u
   post(web, 'ssh', [['action', 'ssh'], ['enabled', '1']]);
   post(web, 'ssh', [['action', 'user-add'], ['name', 'root2'], ['password', 'x']]);
   assert.equal(srv.services.ssh.enabled, true);
-  assert.match(createShell(srv, 'linux', 'root').run('journalctl -u apache2').join('\n'), /netsim-webui: admin desde 10\.0\.0\.10 → ssh: guardado/);
+  assert.match(createShell(srv, 'linux', 'root').run('journalctl -u apache2').join('\n'), /netfix-webui: admin desde 10\.0\.0\.10 → ssh: guardado/);
 });
 
 test('moving the GUI to an alias on Apache redirects the browser there', () => {
@@ -66,7 +66,7 @@ test('moving the GUI to an alias on Apache redirects the browser there', () => {
   assert.equal(srv.services.webapps.admin.password, 'nueva');
   assert.match(body(web.login(moved.url, 'admin', 'nueva')), /Los cambios se han guardado/);
   assert.equal(new BrowserEngine(pc).open('http://10.0.0.2:10000/').kind, 'error', 'port 10000 is closed now');
-  assert.match(createShell(srv, 'linux', 'root').run('cat /etc/apache2/conf-enabled/netsim-admin.conf').join('\n'), /^Alias \/gestion \/usr\/share\/netsim-admin$/m);
+  assert.match(createShell(srv, 'linux', 'root').run('cat /etc/apache2/conf-enabled/netfix-admin.conf').join('\n'), /^Alias \/gestion \/usr\/share\/netfix-admin$/m);
 });
 
 test('status and log pages, and curl with -u', () => {

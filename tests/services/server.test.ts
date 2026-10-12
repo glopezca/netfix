@@ -34,7 +34,7 @@ function services(base: ServerServices, extra: Partial<ServerServices> = {}): Se
   };
 }
 
-/** Server-PT + switch + two PCs on 192.168.10.0/24. */
+/** Server + switch + two PCs on 192.168.10.0/24. */
 function lab(): { t: Topology; srv: Server; pcs: Pc[] } {
   const t = new Topology();
   const srv = t.add('server', 0, 0).device as Server;
@@ -47,7 +47,7 @@ function lab(): { t: Topology; srv: Server; pcs: Pc[] } {
   return { t, srv, pcs };
 }
 
-test('Server-PT DHCP: pool start/max users, options and reservation by MAC', () => {
+test('Server DHCP: pool start/max users, options and reservation by MAC', () => {
   const { t, srv, pcs } = lab();
   const [a, b] = pcs as [Pc, Pc];
   const pool = srv.services.dhcp.pools[0]!;
@@ -98,7 +98,7 @@ test('HTTP: curl, wget, HEAD, 404, stopped service and Windows IIS banner', () =
   pc.useDhcp();
   t.settle();
   const sh = createShell(pc, 'linux');
-  assert.match(sh.run('curl http://www.aula.lab/').join('\n'), /<h1>Servidor web de netsim<\/h1>/);
+  assert.match(sh.run('curl http://www.aula.lab/').join('\n'), /<h1>Servidor web de Netfix<\/h1>/);
   assert.match(sh.run('curl -I http://192.168.10.2/ayuda.html').join('\n'), /HTTP\/1\.1 200 OK\nDate: [^\n]+ GMT\nServer: Apache\/2\.4\.62 \(Ubuntu\)/);
   assert.match(sh.run('curl http://www.aula.lab/nada.html').join('\n'), /Not Found/);
   assert.match(sh.run('wget http://www.aula.lab/ayuda.html').join('\n'), /‘ayuda\.html’ saved/);
@@ -201,7 +201,7 @@ test('SSH: login from Linux and Windows clients, remote commands, wrong password
   assert.deepEqual(createShell(pc, 'linux').run('ssh admin@nohay.lab'), ['ssh: Could not resolve hostname nohay.lab: Name or service not known']);
 });
 
-test('Windows Server-PT: sc, net start/stop, netstat; ssh session into Windows', () => {
+test('Windows Server: sc, net start/stop, netstat; ssh session into Windows', () => {
   const { t, srv, pcs } = lab();
   srv.os = 'windows';
   const pc = pcs[0]!;
@@ -250,7 +250,7 @@ test('Linux shell basics on a PC and service commands where no service exists', 
   assert.equal(formatIp(pc.config.ip!), '192.168.10.100');
 });
 
-test('relay: router ip helper-address towards a Server-PT DHCP pool', () => {
+test('relay: router ip helper-address towards a Server DHCP pool', () => {
   const t = new Topology();
   const srv = t.add('server', 0, 0).device as Server;
   const r = t.add('router', 0, 0).device as Router;
@@ -266,7 +266,7 @@ test('relay: router ip helper-address towards a Server-PT DHCP pool', () => {
   assert.equal(formatIp(pc.config.gateway!), '172.16.0.1');
 });
 
-test('topology JSON v2 round-trips a Server-PT with services and mailboxes', () => {
+test('topology JSON v2 round-trips a Server with services and mailboxes', () => {
   const { t, srv, pcs } = lab();
   pcs[0]!.useDhcp();
   t.settle();

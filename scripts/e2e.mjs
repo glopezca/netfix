@@ -76,7 +76,7 @@ try {
   await page.click('.port-item:has-text("FastEthernet0/10")');
   assert.equal(await page.locator('g.link').count(), 5);
 
-  // 4. Server-PT lab: services panel, web browser, mail and SSH from a PC.
+  // 4. Server lab: services panel, web browser, mail and SSH from a PC.
   await page.selectOption('select.select >> nth=0', 'servidores');
   await page.dblclick('g.device-server');
   await page.click('.subnav-item:has-text("DNS")');
@@ -85,7 +85,7 @@ try {
   await page.dblclick('g.device-pc >> nth=0');
   await page.click('.win-tab:has-text("Navegador")');
   await page.click('.browser-bar button:has-text("Ir")');
-  assert.match(await page.locator('.browser-view').innerText(), /Servidor web de netsim/);
+  assert.match(await page.locator('.browser-view').innerText(), /Servidor web de Netfix/);
   await page.click('.win-tab:has-text("Correo")');
   await page.getByLabel('Para').fill('ana@aula.lab');
   await page.getByLabel('Asunto').fill('Prueba e2e');
@@ -137,7 +137,7 @@ try {
   assert.match(await page.locator('.doc-page').innerText(), /Primeros pasos/);
   await page.fill('.doc-search', 'nombres relativos');
   await page.click('.doc-link >> nth=0');
-  assert.match(await page.locator('.doc-page').innerText(), /DNS de Server-PT[\s\S]*srv\.aula\.lab\.aula\.lab\./);
+  assert.match(await page.locator('.doc-page').innerText(), /DNS de Server[\s\S]*srv\.aula\.lab\.aula\.lab\./);
   await page.fill('.doc-search', '');
   await page.click('.doc-link:has-text("bash: expansiones")');
   assert.match(await page.locator('.doc-page').innerText(), /\$\{v%%pat\}|\$\{v%pat\}/);
@@ -163,7 +163,7 @@ try {
   assert.match(await page.locator('.window').innerText(), /ip http server/);
   await page.click('.win-close');
   await page.click('button.seg:has-text("Acerca de")');
-  assert.match(await page.locator('#app').innerText(), /0\.4\.0/);
+  assert.match(await page.locator('#app').innerText(), /0\.5\.0/);
   await page.click('button.seg:has-text("Red")');
 
   assert.deepEqual(errors, []);

@@ -1,4 +1,4 @@
-/** End host with one NIC (PC-PT, Server-PT): IP config, DHCP client, TCP, DNS resolver. */
+/** End host with one NIC (PC, Server): IP config, DHCP client, TCP, DNS resolver. */
 import type { NetDevice } from '../net/network.ts';
 import type { Frame, IpPacket, UdpDatagram, AppPayload, DnsType } from '../net/packets.ts';
 import { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DNS_PORT, PC_TTL } from '../net/packets.ts';

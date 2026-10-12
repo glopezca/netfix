@@ -1,4 +1,4 @@
-/** Server-PT → Servicios → DHCP and DNS panels. */
+/** Server → Servicios → DHCP and DNS panels. */
 import { el } from './dom.ts';
 import { field, input, select, button, onOff, message, table } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';

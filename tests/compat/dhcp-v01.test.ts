@@ -1,5 +1,5 @@
 /**
- * Compatibility with netsim v0.1 (before Server-PT).
+ * Compatibility with Netfix v0.1 (before Server).
  *
  * The fixtures in tests/fixtures/v0.1 were produced by the v0.1 code (commit fdcf3d3):
  * the v1 topology files of every lab, the IOS/PC outputs of each lab and a scenario with
@@ -50,7 +50,7 @@ function snapshot(t: Topology): Outputs {
 const golden = fixture<Record<string, Outputs>>('ios-outputs.json');
 const LAB_IDS = Object.keys(golden);
 
-test('v0.1 labs produce the same IOS and PC outputs as before Server-PT', () => {
+test('v0.1 labs produce the same IOS and PC outputs as before Server', () => {
   assert.ok(LAB_IDS.includes('reservas') && LAB_IDS.length === 7);
   for (const id of LAB_IDS) {
     const ex = EXAMPLES.find((e) => e.id === id);
@@ -61,7 +61,7 @@ test('v0.1 labs produce the same IOS and PC outputs as before Server-PT', () => 
 
 test('v1 topology files saved by v0.1 open and lease the same addresses', () => {
   for (const id of LAB_IDS) {
-    const t = Topology.fromJSON(fixture<unknown>(`${id}.netsim.json`));
+    const t = Topology.fromJSON(fixture<unknown>(`${id}.json`));
     const now = snapshot(t);
     for (const [key, lines] of Object.entries(golden[id] ?? {})) {
       if (key.endsWith('|show running-config')) assert.deepEqual(now[key], lines, `${id} ${key}`);
@@ -72,7 +72,7 @@ test('v1 topology files saved by v0.1 open and lease the same addresses', () => 
 
 test('v1 files re-saved by the current version keep every IOS line', () => {
   for (const id of LAB_IDS) {
-    const v1 = fixture<{ devices: { id: string; config?: string[] }[] }>(`${id}.netsim.json`);
+    const v1 = fixture<{ devices: { id: string; config?: string[] }[] }>(`${id}.json`);
     const v2 = Topology.fromJSON(v1).toJSON() as unknown as { version: number; devices: { id: string; config?: string[] }[] };
     assert.equal(v2.version, 2);
     for (const d of v1.devices) assert.deepEqual(v2.devices.find((x) => x.id === d.id)?.config, d.config, `${id} ${d.id}`);

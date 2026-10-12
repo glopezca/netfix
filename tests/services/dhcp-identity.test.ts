@@ -1,4 +1,4 @@
-/** Server-PT DHCP: reservations and automatic leases by MAC or by client identifier. */
+/** Server DHCP: reservations and automatic leases by MAC or by client identifier. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';

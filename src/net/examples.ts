@@ -232,7 +232,7 @@ interface GigabitEthernet0/1
   },
   {
     id: 'servidores',
-    title: 'Server-PT: DHCP, DNS, web, correo y SSH',
+    title: 'Server: DHCP, DNS, web, correo y SSH',
     summary: 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave cisco), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/admin).',
     build: () => {
       const t = new Topology();

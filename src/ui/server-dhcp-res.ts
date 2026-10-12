@@ -1,4 +1,4 @@
-/** Server-PT → DHCP: reservations (by MAC or client-id) and the lease table. */
+/** Server → DHCP: reservations (by MAC or client-id) and the lease table. */
 import { el } from './dom.ts';
 import { field, input, select, button, message, table } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';

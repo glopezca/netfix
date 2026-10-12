@@ -1,4 +1,4 @@
-/** Documentación: aplicaciones web de Server-PT (Roundcube y gestión web). */
+/** Documentación: aplicaciones web de Server (Roundcube y gestión web). */
 import type { DocPage } from './types.ts';
 import { code, h, list, note, p, table } from './types.ts';
 
@@ -24,7 +24,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
   },
   {
     id: 'srv-webadmin',
-    title: 'Gestión web de Server-PT',
+    title: 'Gestión web de Server',
     summary: 'Interfaz de administración tipo router doméstico: configuración básica, DHCP, DNS, web, correo, SSH, estado y registros.',
     blocks: [
       p('Servicios → HTTP → Aplicaciones web → Gestión web. Por defecto está desactivada; al activarla escucha en el puerto 10000 (o en un alias de Apache como /admin) con usuario admin y contraseña admin.'),
@@ -40,7 +40,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       ]),
       h('Seguridad'),
       list(
-        'Autenticación HTTP Basic (realm «Server-PT»); los intentos fallidos quedan en journalctl -u apache2.',
+        'Autenticación HTTP Basic (realm «Server»); los intentos fallidos quedan en journalctl -u apache2.',
         'Cada cambio se valida igual que en la ventana del servidor y se registra con el usuario y la IP del PC.',
       ),
     ],

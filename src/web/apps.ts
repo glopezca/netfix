@@ -1,4 +1,4 @@
-/** Connects the simulated web applications to the Server-PT web service and the IOS HTTP server. */
+/** Connects the simulated web applications to the Server web service and the IOS HTTP server. */
 import { registerWebApp } from '../devices/server-web.ts';
 import { roundcube } from './roundcube.ts';
 import { serverAdmin } from './server-admin.ts';

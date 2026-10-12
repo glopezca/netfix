@@ -168,13 +168,13 @@ export class Interp {
   tick(): void {
     this.budget.steps++;
     if (this.budget.steps % CHECK_EVERY === 0 && Date.now() > this.budget.deadline) {
-      throw new AbortSignal(124, 'bash: netsim: ejecución detenida tras 4 s (¿bucle infinito?)');
+      throw new AbortSignal(124, 'bash: Netfix: ejecución detenida tras 4 s (¿bucle infinito?)');
     }
   }
 
   countOutput(n: number): void {
     this.budget.output += n;
-    if (this.budget.output > MAX_OUTPUT) throw new AbortSignal(124, 'bash: netsim: ejecución detenida: demasiada salida');
+    if (this.budget.output > MAX_OUTPUT) throw new AbortSignal(124, 'bash: Netfix: ejecución detenida: demasiada salida');
   }
 
   /** "bash: " in interactive shells, "script: line N: " otherwise. */

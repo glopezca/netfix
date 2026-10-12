@@ -335,7 +335,7 @@ test('topology round-trips through JSON', () => {
   assert.equal(formatIp((t2.byLabel('PC1') as Pc).config.ip!), '192.168.1.200');
   assert.equal(t2.net.links.length, 3);
   assert.throws(() => Topology.fromJSON({ format: 'x' }), /no es un archivo/i);
-  assert.throws(() => Topology.fromJSON({ format: 'netsim', version: 1, devices: [{ id: 1 }], links: [] }), /no válido/);
+  assert.throws(() => Topology.fromJSON({ format: 'netfix', version: 1, devices: [{ id: 1 }], links: [] }), /no válido/);
 });
 
 test('link state logs and show interfaces', () => {

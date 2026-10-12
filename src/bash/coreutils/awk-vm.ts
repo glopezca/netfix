@@ -157,7 +157,7 @@ export class AwkVM {
   // ------------------------------------------------------------ expressions
 
   eval(e: Expr): Val {
-    if (++this.steps % 4096 === 0 && this.steps > 5_000_000) throw new AwkError('netsim: demasiadas operaciones (¿bucle infinito?)');
+    if (++this.steps % 4096 === 0 && this.steps > 5_000_000) throw new AwkError('Netfix: demasiadas operaciones (¿bucle infinito?)');
     switch (e.t) {
       case 'num': return e.v;
       case 'str': return e.v;

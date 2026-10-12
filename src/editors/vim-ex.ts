@@ -119,7 +119,7 @@ export function runEx(t: ExTarget, input: string): void {
     case 'set': case 'se': setOption(t, arg); return;
     case 'noh': case 'nohlsearch': return;
     case 'd': case 'delete': t.buf.checkpoint(); t.buf.removeLines(1); return;
-    case 'h': case 'help': t.message('E149: Sorry, no help for netsim (usa la pestaña Documentación)', true); return;
+    case 'h': case 'help': t.message('E149: Sorry, no help for Netfix (usa la pestaña Documentación)', true); return;
     default: t.message(`E492: Not an editor command: ${cmd}`, true);
   }
 }

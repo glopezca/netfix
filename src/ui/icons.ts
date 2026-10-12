@@ -57,6 +57,6 @@ const CLOUD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width
 
 export const ICONS: Readonly<Record<DeviceKind, string>> = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, cloud: CLOUD };
 
-export const MODEL_LABEL: Readonly<Record<DeviceKind, string>> = { router: '2911', switch: '2960-24TT', pc: 'PC-PT', server: 'Server-PT', cloud: 'Nube ISP' };
+export const MODEL_LABEL: Readonly<Record<DeviceKind, string>> = { router: '2911', switch: '2960-24TT', pc: 'PC', server: 'Server', cloud: 'Nube ISP' };
 
 export const KIND_NAME: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Servidor', cloud: 'Nube' };

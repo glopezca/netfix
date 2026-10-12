@@ -11,7 +11,7 @@ export interface Reservation {
   /** MAC (12 hex chars), when reserved by `hardware-address`. */
   readonly mac?: string;
   readonly hwType?: string;
-  /** Server-PT (Kea `hw-address`): the MAC matches whatever option 61 the client sends. */
+  /** Server (Kea `hw-address`): the MAC matches whatever option 61 the client sends. */
   readonly macAlways?: boolean;
 }
 
@@ -44,7 +44,7 @@ export interface PoolConfig {
   readonly hardwareAddress?: { readonly mac: string; readonly type?: string };
   readonly clientName?: string;
   readonly reservations: readonly Reservation[];
-  /** false = automatic bindings are recognised by MAC only (Server-PT, Kea `match-client-id: false`). */
+  /** false = automatic bindings are recognised by MAC only (Server, Kea `match-client-id: false`). */
   readonly matchClientId?: boolean;
   readonly reservedOnly: boolean;
   readonly defaultRouters: readonly number[];

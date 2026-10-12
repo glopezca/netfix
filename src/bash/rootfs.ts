@@ -120,12 +120,12 @@ function seedEtc(fs: Vfs, o: RootfsOptions): void {
   fs.seed('/etc/bash.bashrc', { kind: 'file', content: BASH_BASHRC });
   fs.seed('/etc/profile', { kind: 'file', content: '# /etc/profile: system-wide .profile file for the Bourne shell.\nif [ "${PS1-}" ]; then\n  if [ "${BASH-}" ] && [ "$BASH" != "/bin/sh" ]; then\n    if [ -f /etc/bash.bashrc ]; then\n      . /etc/bash.bashrc\n    fi\n  fi\nfi\n' });
   fs.seed('/etc/fstab', { kind: 'file', content: '# <file system> <mount point>   <type>  <options>       <dump>  <pass>\n/dev/sda1       /               ext4    errors=remount-ro 0       1\n' });
-  fs.seed('/etc/shadow', { kind: 'file', content: o.users.map((u) => `${u.name}:${u.uid === 0 ? '*' : '$y$j9T$netsim$'}:20372:0:99999:7:::`).join('\n') + '\n' }, 0o640, 0, shadowGid);
+  fs.seed('/etc/shadow', { kind: 'file', content: o.users.map((u) => `${u.name}:${u.uid === 0 ? '*' : '$y$j9T$netfix$'}:20372:0:99999:7:::`).join('\n') + '\n' }, 0o640, 0, shadowGid);
   fs.seed('/etc/skel/.bashrc', { kind: 'file', content: BASHRC });
   fs.seed('/etc/skel/.profile', { kind: 'file', content: PROFILE });
   fs.seed('/etc/motd', { kind: 'file', content: '' });
   fs.seed('/proc/version', { kind: 'file', content: 'Linux version 6.17.0-14-generic (buildd@lcy02-amd64-001) (x86_64-linux-gnu-gcc-15 (Ubuntu 15.2.0-4ubuntu4) 15.2.0) #14-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep 25 10:12:03 UTC 2026\n' });
-  fs.seed('/proc/cpuinfo', { kind: 'file', content: 'processor\t: 0\nvendor_id\t: GenuineIntel\nmodel name\t: netsim virtual CPU\ncpu MHz\t\t: 2400.000\ncpu cores\t: 2\n\nprocessor\t: 1\nvendor_id\t: GenuineIntel\nmodel name\t: netsim virtual CPU\ncpu MHz\t\t: 2400.000\ncpu cores\t: 2\n' });
+  fs.seed('/proc/cpuinfo', { kind: 'file', content: 'processor\t: 0\nvendor_id\t: GenuineIntel\nmodel name\t: Netfix virtual CPU\ncpu MHz\t\t: 2400.000\ncpu cores\t: 2\n\nprocessor\t: 1\nvendor_id\t: GenuineIntel\nmodel name\t: Netfix virtual CPU\ncpu MHz\t\t: 2400.000\ncpu cores\t: 2\n' });
   fs.seed('/proc/meminfo', { kind: 'file', content: 'MemTotal:        4014820 kB\nMemFree:         2531108 kB\nMemAvailable:    3202476 kB\n' });
   fs.seed('/proc/loadavg', { kind: 'file', content: '0.00 0.01 0.00 1/123 4321\n' });
 }

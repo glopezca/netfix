@@ -1,4 +1,4 @@
-/** Every external program (in /usr/bin) implemented by the bash core of netsim. */
+/** Every external program (in /usr/bin) implemented by the bash core of Netfix. */
 import type { CommandFn } from '../types.ts';
 import { FILES } from './files.ts';
 import { FILEINFO } from './fileinfo.ts';

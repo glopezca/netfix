@@ -1,4 +1,4 @@
-/** Form actions of the Server-PT management GUI: each one validates and applies to the live server. */
+/** Form actions of the Server management GUI: each one validates and applies to the live server. */
 import type { Server } from '../devices/server.ts';
 import { validHostname } from '../devices/host.ts';
 import { parseIp, parseMask } from '../core/ip.ts';

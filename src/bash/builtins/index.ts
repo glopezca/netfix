@@ -1,4 +1,4 @@
-/** Every builtin of bash 5.3 available in netsim. */
+/** Every builtin of bash 5.3 available in Netfix. */
 import type { CommandFn } from '../types.ts';
 import { CORE } from './core.ts';
 import { VARS } from './vars.ts';

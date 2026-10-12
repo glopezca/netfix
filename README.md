@@ -1,32 +1,36 @@
-# netsim
+<p align="center"><img src="assets/brand/logo.webp" alt="Netfix" width="360"></p>
+
+# Netfix
+
+> Antes se llamaba **netsim**; los archivos de topología `.json` guardados con netsim se siguen abriendo.
 
 Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado para practicar
 **DHCP en Cisco IOS** con la sintaxis, la ayuda contextual y las salidas del equipo real, y
 **servicios de red en servidores** (DHCP, DNS, HTTP, correo y SSH) con terminales Linux y Windows.
 
-![Área de trabajo de netsim con el laboratorio «DHCP básico»: Router0 (GW) conectado a Switch0 y a tres PCs, con luces de enlace verdes y la paleta de dispositivos abajo](docs/img/netsim-workspace.png)
+![Área de trabajo de Netfix con el laboratorio «DHCP básico»: Router0 (GW) conectado a Switch0 y a tres PCs, con luces de enlace verdes y la paleta de dispositivos abajo](docs/img/netfix-workspace.png)
 
-- Área de trabajo lógica con routers 2911, switches 2960, PCs y **servidores Server-PT**, cables y luces de enlace.
+- Área de trabajo lógica con routers 2911, switches 2960, PCs y **servidores** (Server), cables y luces de enlace.
 - CLI de IOS completa para DHCP: pools de red y de host, `client-identifier`,
   `hardware-address`, reservas `address … client-id` / `address … hardware-address`,
   exclusiones, opciones, relay, snooping, cliente DHCP en interfaces y todos los `show`,
   `clear` y `debug`.
 - DORA real con tramas Ethernet, ARP e IPv4 a través de switches, VLAN y routers.
-- **Server-PT** con servicios DHCP, DNS, HTTP, SMTP/POP3/IMAP y SSH, configurables desde su
+- **Server** con servicios DHCP, DNS, HTTP, SMTP/POP3/IMAP y SSH, configurables desde su
   pestaña Servicios o desde la terminal (`systemctl`, `sc`, `net start`).
 - Terminal **GNU/Linux** con **GNU bash 5.3** de verdad (sintaxis, expansiones, funciones, arrays,
   redirecciones, historial, trabajos, scripts) sobre un sistema de ficheros Ubuntu con permisos y usuarios,
   utilidades GNU (`grep`, `sed`, `awk`, `find`, `sort`…) y los editores **nano** y **vim** a pantalla completa,
   también a través de SSH. Terminal **Windows** (cmd) en PCs y servidores; navegador web, cliente de correo
   y cliente SSH en los PCs.
-- Pestaña **Documentación** con búsqueda: IOS, servicios de Server-PT, PC/Windows, Terminal Linux,
+- Pestaña **Documentación** con búsqueda: IOS, servicios de Server, PC/Windows, Terminal Linux,
   nano, vim y la referencia de bash 5.3 (también `man` y `help` en la terminal).
 - **Internet emulada** (v0.4): nube ISP con líneas de cable, xDSL y fibra (IP pública o router del operador
   con NAT y redirección de puertos), routers troncales que responden a `traceroute`, DNS públicos
   `8.8.8.8`/`8.8.4.4` que resuelven los dominios registrados en todas las nubes, y **NAT de IOS**
   (`ip nat inside/outside`, PAT, pools, NAT estático con puertos, ACL estándar).
 - **Gestión web**: servidor HTTP de IOS en routers y switches (`ip http server`, Device Manager),
-  **Roundcube** y una consola de administración web en Server-PT; Apache2 configurable en `/etc/apache2`.
+  **Roundcube** y una consola de administración web en Server; Apache2 configurable en `/etc/apache2`.
 - Modo simulación con lista de eventos (DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP, SSH),
   animación paso a paso y la PDU de cada paquete.
 - Guardar y abrir topologías completas en archivos `.json` (también la configuración de los servicios).
@@ -36,14 +40,14 @@ Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado par
 
 ```bash
 npm install          # solo instala TypeScript (opcional si ya tienes tsc global)
-npm run build        # dist/index.html + dist/netsim.html (archivo único, funciona sin servidor)
+npm run build        # dist/index.html + dist/netfix.html (archivo único, funciona sin servidor)
 npm run serve        # http://localhost:8080
 ```
 
 **Pruébalo online, sin instalar nada:**
-**[▶ Abrir netsim DHCP Lab en el navegador](https://raw.githack.com/glopezca/netsim/main/demo/netsim-dhcp-lab.html)**
+**[▶ Abrir Netfix Lab en el navegador](https://raw.githack.com/glopezca/Netfix/main/demo/netfix-lab.html)**
 
-El enlace sirve [`demo/netsim-dhcp-lab.html`](demo/netsim-dhcp-lab.html), la aplicación completa en un
+El enlace sirve [`demo/netfix-lab.html`](demo/netfix-lab.html), la aplicación completa en un
 único archivo, a través de [raw.githack.com](https://raw.githack.com) (servicio externo; tras un push
 puede tardar unos minutos en mostrar la última versión). También puedes descargar ese archivo y
 abrirlo con doble clic, sin servidor ni conexión. `npm run build` lo regenera: tras cambiar el código,
@@ -58,7 +62,7 @@ El menú **Laboratorios…** carga escenarios ya resueltos:
 | Router-on-a-stick | subinterfaces `encapsulation dot1Q`, trunk, un pool por VLAN |
 | DHCP snooping | servidor falso bloqueado, `ip dhcp snooping trust`, opción 82 |
 | Router como cliente | `ip address dhcp`, client-id `cisco-<mac>-<if>`, ruta por defecto AD 254 |
-| Server-PT | DHCP, DNS, web (Apache), correo, SSH, Roundcube y gestión web en un servidor Ubuntu |
+| Server | DHCP, DNS, web (Apache), correo, SSH, Roundcube y gestión web en un servidor Ubuntu |
 | Internet: dos sedes | Nubes ISP, NAT overload en un 2911, router del operador con redirección de puertos, dominio delegado (NS) y DNS públicos |
 
 Interacción: doble clic en un dispositivo abre su consola (router/switch) o su escritorio
@@ -67,7 +71,7 @@ En la consola funcionan `?`, `Tab`, flechas para el historial, `Ctrl+Z` y las ab
 (`sh ip dhcp b`). El escritorio del PC muestra su **MAC** y su **Client-ID** listos para copiar
 en `hardware-address` o `client-identifier`.
 
-## Servidores Server-PT
+## Servidores Server
 
 Coloca un **Servidor** desde la paleta y haz doble clic. Pestañas:
 
@@ -86,7 +90,7 @@ Coloca un **Servidor** desde la paleta y haz doble clic. Pestañas:
 | **SSH** | Usuarios y contraseñas; las sesiones abren la shell Linux o Windows del servidor | `ssh` · `/etc/ssh/sshd_config` |
 | **Registros** | `journalctl -u <servicio>` de cada servicio | `journalctl` |
 
-El servidor DHCP de Server-PT usa el mismo motor que el router IOS, así que funciona también a
+El servidor DHCP de Server usa el mismo motor que el router IOS, así que funciona también a
 través de un relay (`ip helper-address` apuntando al servidor).
 
 ### Terminales
@@ -126,7 +130,7 @@ través de un relay (`ip helper-address` apuntando al servidor).
 - **Correo**: cuenta con servidor entrante (POP3 o IMAP) y saliente (SMTP). Para redactar, enviar y recibir. POP3 borra del servidor; IMAP deja copia.
 - **Terminales** Linux y Windows, con cliente SSH.
 
-El laboratorio **«Server-PT: DHCP, DNS, web, correo y SSH»** lo trae todo configurado:
+El laboratorio **«Server: DHCP, DNS, web, correo y SSH»** lo trae todo configurado:
 - Abre `http://www.aula.lab` en el navegador de PC0.
 - Lee el correo de `ana` en PC0 (IMAP) y el de `luis` en PC1 (POP3).
 - Entra al servidor con `ssh admin@srv.aula.lab` (contraseña `cisco`).
@@ -143,7 +147,7 @@ El laboratorio **«Server-PT: DHCP, DNS, web, correo y SSH»** lo trae todo conf
 - **Gestión web de IOS**: `ip http server`, `ip http port`, `ip http authentication enable|local`,
   `username … privilege 15 secret …`, o la pestaña *Gestión web* del router/switch. Desde el navegador de un PC:
   inicio, Monitor (`/level/15/exec/-`), Configure y Device Manager.
-- **Server-PT**: Servicios → HTTP → Aplicaciones web activa **Roundcube** (alias `/roundcube` o puerto 8080) y la
+- **Server**: Servicios → HTTP → Aplicaciones web activa **Roundcube** (alias `/roundcube` o puerto 8080) y la
   **gestión web** del servidor (puerto 10000 o alias `/admin`, `admin`/`admin`).
 
 ### Usuarios y contraseñas de ejemplo
@@ -163,7 +167,7 @@ servidor, `sudo` pide la contraseña SSH de la cuenta (`cisco` para `admin`); en
 | Equipo | GNU/Linux | Windows |
 |---|---|---|
 | PC | `alumno` | `user` |
-| Server-PT | `admin` | `Administrator` |
+| Server | `admin` | `Administrator` |
 
 En este laboratorio PC1 usa la terminal GNU/Linux y PC0, Windows. El servidor DHCP de `srv` reserva la
 `192.168.10.50` a la MAC de PC1. El resto recibe direcciones desde la `192.168.10.100`.
@@ -275,7 +279,7 @@ scripts/gen-bash-corpus.sh   # regenera tests/bash/corpus/*.out con el bash del 
 ```
 
 **Compatibilidad con la v0.1:** `tests/compat/` compara la versión actual con lo que generaba la v0.1,
-anterior a Server-PT. Esas salidas de referencia están guardadas en `tests/fixtures/v0.1/` y la
+anterior a Server. Esas salidas de referencia están guardadas en `tests/fixtures/v0.1/` y la
 comparación cubre:
 - la salida de `show running-config`, `show ip dhcp binding|pool|server statistics|conflict` e `ipconfig` de
   cada laboratorio;
@@ -291,7 +295,7 @@ src/core      IP, MAC/client-id, reloj
 src/ios       parser (gramática → trie), sesión y modos, comandos
 src/dhcp      pools, servidor, reglas de coincidencia, cliente, salidas show
 src/net       red de eventos discretos, pila IPv4, TCP simplificado, resolvedor DNS, rutas, topología, laboratorios
-src/devices   router (plano de datos, relay), switch (VLAN, snooping), Host → PC y Server-PT
+src/devices   router (plano de datos, relay), switch (VLAN, snooping), Host → PC y Server
 src/services  DHCP (pools PT sobre el motor IOS), DNS, HTTP, correo, SSH, unidades, persistencia
 src/bash      intérprete GNU bash 5.3, VFS con permisos, builtins y utilidades GNU
 src/editors   motores de nano y vim
@@ -319,5 +323,5 @@ aparecen en `show running-config`, pero no cambian la asignación.
 - **`.claude/`**: reglas y agentes de
   [Everything Claude Code](https://github.com/affaan-m/everything-claude-code), licencia MIT (© Affaan Mustafa).
 
-Autoría: Germán López Castro · <https://github.com/glopezca/netsim>.
+Autoría: Germán López Castro · <https://github.com/glopezca/netfix>.
 Detalles y atribución recomendada en [LICENSE.md](LICENSE.md).

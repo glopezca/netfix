@@ -18,7 +18,8 @@ export function frame(device: IosDevice, title: string, body: readonly Child[]):
   return page(title, 'web-ios',
     h('div', { class: 'web-ios-top' }, h('span', { class: 'web-ios-logo' }, 'cisco'), h('span', { class: 'web-ios-host' }, `${device.hostname} · ${device.model}`)),
     h('div', { class: 'web-ios-nav' }, nav.map(([href, label]) => h('a', { href }, label))),
-    h('div', { class: 'web-ios-main' }, body));
+    h('div', { class: 'web-ios-main' }, body),
+    h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), 'Servidor HTTP de IOS emulado por Netfix'));
 }
 
 export function homePage(device: IosDevice, level: number): Markup {

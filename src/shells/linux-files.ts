@@ -90,13 +90,13 @@ function webAppFiles(s: ServerServices, files: Map<string, string>): void {
   const rc = s.webapps.roundcube;
   if (rc.enabled) {
     files.set('/etc/apache2/conf-enabled/roundcube.conf', rc.mode === 'alias'
-      ? `# Generado por netsim (Servicios → HTTP → Roundcube)\nAlias ${rc.alias} /var/lib/roundcube/public_html\n\n<Directory /var/lib/roundcube/public_html/>\n  Options +FollowSymLinks\n  AllowOverride All\n  Require all granted\n</Directory>\n`
-      : `# Generado por netsim (Servicios → HTTP → Roundcube)\nListen ${rc.port}\n<VirtualHost *:${rc.port}>\n  DocumentRoot /var/lib/roundcube/public_html\n  <Directory /var/lib/roundcube/public_html/>\n    Require all granted\n  </Directory>\n</VirtualHost>\n`);
+      ? `# Generado por Netfix (Servicios → HTTP → Roundcube)\nAlias ${rc.alias} /var/lib/roundcube/public_html\n\n<Directory /var/lib/roundcube/public_html/>\n  Options +FollowSymLinks\n  AllowOverride All\n  Require all granted\n</Directory>\n`
+      : `# Generado por Netfix (Servicios → HTTP → Roundcube)\nListen ${rc.port}\n<VirtualHost *:${rc.port}>\n  DocumentRoot /var/lib/roundcube/public_html\n  <Directory /var/lib/roundcube/public_html/>\n    Require all granted\n  </Directory>\n</VirtualHost>\n`);
     files.set('/etc/roundcube/config.inc.php', `<?php\n$config = [];\n$config['imap_host'] = 'localhost:143';\n$config['smtp_host'] = 'localhost:25';\n$config['product_name'] = 'Roundcube Webmail';\n$config['skin'] = 'elastic';\n$config['mail_domain'] = '${s.mail.domain}';\n`);
   }
   const ad = s.webapps.admin;
   if (ad.enabled && ad.mode === 'alias') {
-    files.set('/etc/apache2/conf-enabled/netsim-admin.conf', `# Generado por netsim (Servicios → HTTP → Gestión web)\nAlias ${ad.alias} /usr/share/netsim-admin\n<Directory /usr/share/netsim-admin>\n  Require all granted\n</Directory>\n`);
+    files.set('/etc/apache2/conf-enabled/netfix-admin.conf', `# Generado por Netfix (Servicios → HTTP → Gestión web)\nAlias ${ad.alias} /usr/share/netfix-admin\n<Directory /usr/share/netfix-admin>\n  Require all granted\n</Directory>\n`);
   }
 }
 
@@ -110,7 +110,7 @@ function serverFiles(server: Server): Map<string, string> {
   for (const z of zones) files.set(`/etc/bind/db.${z}`, zoneFile(s, z));
   files.set('/etc/postfix/main.cf', `myhostname = ${server.name.toLowerCase()}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
   files.set('/etc/dovecot/dovecot.conf', `protocols = ${[s.mail.pop3 ? 'pop3' : '', s.mail.imap ? 'imap' : ''].filter(Boolean).join(' ') || 'none'}\nmail_location = maildir:~/Maildir\n`);
-  files.set('/etc/ssh/sshd_config', `Port 22\nPermitRootLogin prohibit-password\nPasswordAuthentication yes\n# Usuarios permitidos (netsim): ${s.ssh.users.map((u) => u.name).join(' ') || '(ninguno)'}\n`);
+  files.set('/etc/ssh/sshd_config', `Port 22\nPermitRootLogin prohibit-password\nPasswordAuthentication yes\n# Usuarios permitidos (Netfix): ${s.ssh.users.map((u) => u.name).join(' ') || '(ninguno)'}\n`);
   const excl = s.dhcp.pools.flatMap(ptExclusions).length;
   files.set('/var/lib/kea/kea-leases4.csv', ['address,hwaddr,client_id,valid_lifetime,expire,subnet_id,hostname',
     ...server.dhcpEngine.allBindings(server.clock.now()).filter((b) => b.type === 'Automatic').map((b) =>
@@ -125,7 +125,7 @@ export function linuxFiles(host: Host): Map<string, string> {
     ['/etc/os-release', 'PRETTY_NAME="Ubuntu 26.04 LTS"\nNAME="Ubuntu"\nVERSION_ID="26.04"\nID=ubuntu\n'],
     ['/etc/hostname', `${host.name.toLowerCase()}\n`],
     ['/etc/hosts', `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`],
-    ['/etc/resolv.conf', `# netsim: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n`],
+    ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n`],
     ['/etc/netplan/50-cloud-init.yaml', netplan(host)],
   ]);
   if (host.kind === 'server') for (const [k, v] of serverFiles(host as Server)) files.set(k, v);

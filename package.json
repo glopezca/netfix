@@ -1,6 +1,6 @@
 {
-  "name": "netsim",
-  "version": "0.4.0",
+  "name": "netfix",
+  "version": "0.5.0",
   "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
   "type": "module",
   "private": true,
@@ -8,7 +8,7 @@
   "author": "glopezca",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/glopezca/netsim.git"
+    "url": "git+https://github.com/glopezca/netfix.git"
   },
   "engines": {
     "node": ">=22.18"
@@ -17,11 +17,12 @@
     "test": "node --test \"tests/**/*.test.ts\"",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**/*.ts\" --test-coverage-exclude=\"src/ui/**\" --test-coverage-lines=80 --test-coverage-branches=70 --test-coverage-functions=80 \"tests/**/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.json",
-    "build": "node scripts/gen-about.mjs && node scripts/build.mjs",
+    "build": "node scripts/gen-about.mjs && node scripts/gen-brand.mjs && node scripts/build.mjs",
     "serve": "node scripts/serve.mjs",
     "e2e": "npm run build && node scripts/e2e.mjs",
     "check": "npm run typecheck && npm test && npm run build",
-    "about": "node scripts/gen-about.mjs"
+    "about": "node scripts/gen-about.mjs",
+    "brand": "node scripts/gen-brand.mjs"
   },
   "devDependencies": {
     "typescript": "^5.8.0"
