@@ -1,6 +1,10 @@
 /** Shared types of the bash interpreter: interactions, file descriptors, command context, signals. */
 import type { Cred, Vfs } from './vfs.ts';
 import type { Interp } from './interp.ts';
+import type { Editor } from '../editors/buffer.ts';
+
+/** A full-screen program (mc) that runs where the shell runs: the terminal sends keys and draws its frames. */
+export type ScreenApp = Editor;
 
 /** What the editor needs to open a file (the UI or an SSH client builds the editor from it). */
 export interface EditSpec {
@@ -21,6 +25,8 @@ export type Interaction =
   | { readonly kind: 'edit'; readonly spec: EditSpec; readonly save: (path: string, content: string) => string | null }
   /** Nested interactive shell (bash, sudo -i, su): resumed with its exit status when it ends. */
   | { readonly kind: 'shell'; readonly user: UserInfo; readonly login: boolean }
+  /** Full-screen program (mc): resumed with "0" when it closes. */
+  | { readonly kind: 'screen'; readonly app: ScreenApp }
   /** ssh client session, handled by the terminal adapter; resumed with its exit status. */
   | { readonly kind: 'ssh'; readonly args: readonly string[] };
 

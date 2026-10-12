@@ -4,6 +4,7 @@ import type { Peer } from '../net/tcp.ts';
 import type { Server } from '../devices/server.ts';
 import type { ShellSession } from '../shells/base.ts';
 import { createShell } from '../shells/factory.ts';
+import { DEFAULT_SCREEN } from '../shells/base.ts';
 import { formatIp } from '../core/ip.ts';
 
 type SshOutput = Extract<AppPayload, { app: 'SSH'; kind: 'output' }>;
@@ -31,7 +32,7 @@ export class SshService {
   handle(req: AppPayload, peer: Peer): AppPayload | null {
     if (req.app !== 'SSH') return null;
     if (req.kind === 'auth') return this.auth(req, peer);
-    if (req.kind === 'command' || req.kind === 'key' || req.kind === 'edit') return this.command(req, peer);
+    if (req.kind === 'command' || req.kind === 'key' || req.kind === 'edit' || req.kind === 'screen') return this.command(req, peer);
     return null;
   }
 
@@ -58,7 +59,7 @@ export class SshService {
     for (const [id, s] of this.sessions) if (now - s.lastUsed > IDLE_LIMIT_MS) this.sessions.delete(id);
   }
 
-  private command(req: Extract<AppPayload, { app: 'SSH'; kind: 'command' | 'key' | 'edit' }>, peer: Peer): SshOutput {
+  private command(req: Extract<AppPayload, { app: 'SSH'; kind: 'command' | 'key' | 'edit' | 'screen' }>, peer: Peer): SshOutput {
     const found = this.sessions.get(req.session);
     const s = found && found.ip === peer.ip ? found : undefined;
     if (!s) return { app: 'SSH', kind: 'output', ok: false, closed: true, lines: ['Connection closed by remote host.'] };
@@ -67,15 +68,18 @@ export class SshService {
     if (req.kind === 'edit' && req.action === 'save') {
       return { app: 'SSH', kind: 'output', ok: true, lines: [], prompt: sh.prompt(), edit: sh.editRequest?.() ?? undefined, saveError: sh.saveEdit ? sh.saveEdit(req.path ?? '', req.content ?? '') : 'No editor' };
     }
+    const size = req.kind === 'screen' ? { width: req.width, height: req.height } : DEFAULT_SCREEN;
     const lines = req.kind === 'command' ? sh.run(req.line)
       : req.kind === 'edit' ? sh.closeEdit?.() ?? []
-        : (req.key === 'int' ? sh.interrupt?.() : sh.eof?.()) ?? [];
+        : req.kind === 'screen' ? (req.key ? sh.screenKey?.(req.key) ?? [] : [])
+          : (req.key === 'int' ? sh.interrupt?.() : sh.eof?.()) ?? [];
     if (sh.closed) {
       this.sessions.delete(req.session);
       this.server.log('ssh', `pam_unix(sshd:session): session closed for user ${s.user}`);
       return { app: 'SSH', kind: 'output', ok: true, closed: true, lines, status: sh.exitCode ?? 0 };
     }
-    return { app: 'SSH', kind: 'output', ok: true, lines, prompt: sh.prompt(), secret: sh.secret(), edit: sh.editRequest?.() ?? undefined };
+    const screen = sh.screenFrame?.(size.width, size.height) ?? undefined;
+    return { app: 'SSH', kind: 'output', ok: true, lines, prompt: sh.prompt(), secret: sh.secret(), edit: sh.editRequest?.() ?? undefined, screen };
   }
 
   private banner(user: string): string[] {

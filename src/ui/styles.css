@@ -189,12 +189,27 @@ button, input, select { font: inherit; color: inherit; }
 /* full-screen editors (nano, vim) */
 .term-editor { flex: 1; padding: 8px 12px; white-space: pre; overflow: hidden; outline: none; }
 .term-editor:focus-visible { box-shadow: inset 0 0 0 2px var(--console-msg); }
-.ed-row { min-height: 1.5em; }
+.ed-row { min-height: 1.25em; line-height: 1.25; }
 .ed-inverse { background: var(--console-ink); color: var(--console); }
 .ed-bold { font-weight: 700; }
 .ed-accent { color: #6aa7e8; }
 .ed-error { background: #a8352f; color: #ffffff; }
 .ed-cursor { background: var(--console-msg); color: var(--console); }
+/* Midnight Commander (classic blue skin) */
+.ed-panel, .ed-panelHead, .ed-dir, .ed-exec, .ed-link, .ed-marked { background: #1d3f8f; color: #d6dcef; }
+.ed-panelHead { color: #ffe066; font-weight: 700; }
+.ed-dir { color: #ffffff; font-weight: 700; }
+.ed-exec { color: #7ff07f; font-weight: 700; }
+.ed-link { color: #9fb7ff; }
+.ed-marked { color: #ffe066; font-weight: 700; }
+.ed-cursor.ed-cursor { background: var(--console-msg); color: var(--console); }
+.ed-row > .ed-cursor:not(:only-child) { outline: none; }
+.ed-menu { background: #2f9fa8; color: #071d20; }
+.ed-keynum { color: var(--console-ink); }
+.ed-keylabel { background: #2f9fa8; color: #071d20; }
+.ed-dialog { background: #c9ccd2; color: #121417; }
+.ed-dialogFocus { background: #2f9fa8; color: #071d20; }
+.ed-viewer { background: #1d3f8f; color: #d6dcef; }
 
 /* ---------------------------------------------------------------- documentation */
 body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display: none; }

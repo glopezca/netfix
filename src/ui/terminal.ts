@@ -4,7 +4,16 @@ import { ansiRow, columns, drawFrame, editorKey, fillAnsi } from './term-render.
 import { clearRequest } from '../core/ansi.ts';
 import type { AnsiStyle } from '../core/ansi.ts';
 import { createEditor } from '../editors/index.ts';
-import type { Editor } from '../editors/index.ts';
+import type { Frame, KeyInput } from '../editors/index.ts';
+
+/** A full-screen program shown instead of the scrollback. */
+interface FullScreen {
+  key(k: KeyInput): void;
+  /** The frame to draw, or null when the program has ended. */
+  frame(width: number, height: number): Frame | null;
+  /** Output to print when it ends (the shell continues). */
+  finish(): string[];
+}
 import type { EditSpec } from '../bash/types.ts';
 import type { Completion } from '../shells/base.ts';
 
@@ -23,6 +32,8 @@ export interface ConsoleBackend {
   editRequest?(): EditSpec | null;
   saveEdit?(path: string, content: string): string | null;
   closeEdit?(): string[];
+  screenFrame?(width: number, height: number): Frame | null;
+  screenKey?(key: KeyInput): string[];
 }
 
 const MAX_LINES = 3000;
@@ -42,7 +53,7 @@ export class Terminal {
   private readonly unsubscribe: (() => void) | undefined;
   private readonly afterRun: () => void;
   private style: AnsiStyle = {};
-  private editor: Editor | null = null;
+  private full: FullScreen | null = null;
   private lastTab = '';
 
   /** IOS consoles show lines starting with % (messages) in their own colour. */
@@ -62,7 +73,7 @@ export class Terminal {
     this.root = el('div', { class: 'terminal' }, this.screen, this.lineEl, this.editorEl);
     this.root.addEventListener('click', (e) => {
       if (window.getSelection()?.toString() !== '') return;
-      if (this.editor) this.editorEl.focus(); else if (e.target !== this.input) this.input.focus();
+      if (this.full) this.editorEl.focus(); else if (e.target !== this.input) this.input.focus();
     });
     this.input.addEventListener('keydown', (e) => this.onKey(e));
     this.input.addEventListener('input', () => this.onInput());
@@ -74,7 +85,7 @@ export class Terminal {
   }
 
   focus(): void {
-    (this.editor ? this.editorEl : this.input).focus({ preventScroll: true });
+    (this.full ? this.editorEl : this.input).focus({ preventScroll: true });
   }
 
   dispose(): void {
@@ -113,7 +124,7 @@ export class Terminal {
     this.print(lines);
     this.afterRun();
     this.refreshPrompt();
-    this.openEditorIfRequested();
+    this.openFullScreenIfRequested();
   }
 
   private submit(): void {
@@ -186,14 +197,20 @@ export class Terminal {
     this.input.setSelectionRange(end, end);
   }
 
-  // ------------------------------------------------------------ full-screen editor
+  // ------------------------------------------------------------ full-screen programs (nano, vim, mc)
 
-  private openEditorIfRequested(): void {
-    if (this.editor) return;
+  /** nano/vim run here with a local engine; mc runs where the shell runs and sends frames. */
+  private openFullScreenIfRequested(): void {
+    if (this.full) return;
     const spec = this.backend.editRequest?.();
-    if (!spec) return;
     const backend = this.backend;
-    this.editor = createEditor(spec, { save: (path, content) => (backend.saveEdit ? backend.saveEdit(path, content) : 'No se puede guardar') });
+    if (spec) {
+      const editor = createEditor(spec, { save: (path, content) => (backend.saveEdit ? backend.saveEdit(path, content) : 'No se puede guardar') });
+      this.full = { key: (k) => editor.key(k), frame: (w, h) => (editor.closed ? null : editor.frame(w, h)), finish: () => backend.closeEdit?.() ?? [] };
+    } else if (backend.screenFrame?.(DEFAULT_COLS, DEFAULT_ROWS)) {
+      let pending: string[] = [];
+      this.full = { key: (k) => { pending = [...pending, ...(backend.screenKey?.(k) ?? [])]; }, frame: (w, h) => backend.screenFrame?.(w, h) ?? null, finish: () => pending };
+    } else return;
     this.screen.hidden = true;
     this.lineEl.hidden = true;
     this.editorEl.hidden = false;
@@ -201,13 +218,14 @@ export class Terminal {
     this.editorEl.focus({ preventScroll: true });
   }
 
-  private closeEditor(): void {
-    this.editor = null;
+  private closeFullScreen(): void {
+    const finish = this.full?.finish;
+    this.full = null;
     this.editorEl.hidden = true;
     this.screen.hidden = false;
     this.lineEl.hidden = false;
-    this.after(this.backend.closeEdit?.() ?? []);
-    if (!this.editor) this.input.focus({ preventScroll: true });
+    this.after(finish?.() ?? []);
+    if (!this.full) this.input.focus({ preventScroll: true });
   }
 
   private cols(): number {
@@ -219,31 +237,35 @@ export class Terminal {
     return charWidth > 0 && width > 0 ? Math.max(20, Math.floor(width / charWidth)) : DEFAULT_COLS;
   }
 
-  private redrawEditor(): void {
-    if (!this.editor) return;
+  /** Draws the current frame; returns false when the program has ended. */
+  private redrawEditor(): boolean {
+    if (!this.full) return false;
     const probe = el('div', { class: 'ed-row term-probe' }, 'M');
     this.editorEl.appendChild(probe);
     const lineHeight = probe.getBoundingClientRect().height;
     probe.remove();
     const rows = lineHeight > 0 ? Math.max(6, Math.floor((this.root.clientHeight - 16) / lineHeight)) : DEFAULT_ROWS;
-    drawFrame(this.editorEl, this.editor.frame(this.cols(), rows));
+    const frame = this.full.frame(this.cols(), rows);
+    if (frame) drawFrame(this.editorEl, frame);
+    return frame !== null;
   }
 
   private onEditorKey(e: KeyboardEvent): void {
     const k = editorKey(e);
-    if (!k || !this.editor) return;
+    if (!k || !this.full) return;
     if (k.ctrl && ['v', 'c'].includes(k.key.toLowerCase()) && window.getSelection()?.toString()) return;
     e.preventDefault();
     e.stopPropagation();
-    this.editor.key(k);
-    if (this.editor.closed) this.closeEditor(); else this.redrawEditor();
+    this.full.key(k);
+    if (!this.redrawEditor()) this.closeFullScreen();
   }
 
   private onEditorPaste(e: ClipboardEvent): void {
     const text = e.clipboardData?.getData('text/plain') ?? '';
-    if (!this.editor || !text) return;
+    const full = this.full;
+    if (!full || !text) return;
     e.preventDefault();
-    for (const ch of text.replace(/\r\n?/g, '\n')) this.editor.key({ key: ch === '\n' ? 'Enter' : ch === '\t' ? 'Tab' : ch });
-    this.redrawEditor();
+    for (const ch of text.replace(/\r\n?/g, '\n')) full.key({ key: ch === '\n' ? 'Enter' : ch === '\t' ? 'Tab' : ch });
+    if (!this.redrawEditor()) this.closeFullScreen();
   }
 }

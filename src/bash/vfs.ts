@@ -171,7 +171,7 @@ export class Vfs {
   stat(path: string, cred: Cred = ROOT, follow = true): StatInfo {
     const n = this.lookup(path, cred, follow);
     const size = n.kind === 'file' ? new TextEncoder().encode(this.contentOf(n)).length : n.kind === 'dir' ? 4096 : n.kind === 'link' ? n.target.length : 0;
-    return { kind: n.kind, mode: n.mode, uid: n.uid, gid: n.gid, size, mtime: n.mtime, generated: n.kind === 'file' && Boolean(n.generated) };
+    return { kind: n.kind, mode: n.mode, uid: n.uid, gid: n.gid, size, mtime: n.mtime, generated: n.kind === 'file' && Boolean(n.generated) && !n.writeBack };
   }
 
   private contentOf(n: FsNode & { kind: 'file' }): string {

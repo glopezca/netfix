@@ -1,5 +1,5 @@
 /** Interactive bash session: startup files, prompts, continuation lines, history, interactions, Ctrl+C/Ctrl+D. */
-import type { EditSpec, Gen, HostEnv, Interaction, UserInfo } from './types.ts';
+import type { EditSpec, Gen, HostEnv, Interaction, ScreenApp, UserInfo } from './types.ts';
 import { AbortSignal, DiscardSignal, ExitSignal } from './types.ts';
 import { Interp, runSync, freshBudget } from './interp.ts';
 import { initVariables } from './startup.ts';
@@ -87,6 +87,12 @@ export class BashSession {
   editRequest(): EditSpec | null {
     const p = this.pending();
     return p?.kind === 'edit' ? p.spec : null;
+  }
+
+  /** The full-screen program the session is paused on (mc), if any. */
+  screen(): ScreenApp | null {
+    const p = this.pending();
+    return p?.kind === 'screen' ? p.app : null;
   }
 
   // ------------------------------------------------------------ input

@@ -206,6 +206,21 @@ button, input, select { font: inherit; color: inherit; }
 .ed-accent { color: #6aa7e8; }
 .ed-error { background: #a8352f; color: #ffffff; }
 .ed-cursor { background: var(--console-msg); color: var(--console); }
+/* Midnight Commander (classic blue skin) */
+.ed-panel, .ed-panelHead, .ed-dir, .ed-exec, .ed-link, .ed-marked { background: #1d3f8f; color: #d6dcef; }
+.ed-panelHead { color: #ffe066; font-weight: 700; }
+.ed-dir { color: #ffffff; font-weight: 700; }
+.ed-exec { color: #7ff07f; font-weight: 700; }
+.ed-link { color: #9fb7ff; }
+.ed-marked { color: #ffe066; font-weight: 700; }
+.ed-cursor.ed-cursor { background: var(--console-msg); color: var(--console); }
+.ed-row > .ed-cursor:not(:only-child) { outline: none; }
+.ed-menu { background: #2f9fa8; color: #071d20; }
+.ed-keynum { color: var(--console-ink); }
+.ed-keylabel { background: #2f9fa8; color: #071d20; }
+.ed-dialog { background: #c9ccd2; color: #121417; }
+.ed-dialogFocus { background: #2f9fa8; color: #071d20; }
+.ed-viewer { background: #1d3f8f; color: #d6dcef; }
 
 /* ---------------------------------------------------------------- documentation */
 body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display: none; }
@@ -240,6 +255,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display:
 .about-facts dt { color: var(--ink-2); font-weight: 600; }
 .about-facts dd { margin: 0; overflow-wrap: anywhere; }
 .about-version { font: 600 13px/1.4 var(--font-mono); background: var(--accent-soft); border-radius: var(--radius-ctl); padding: 2px 8px; }
+.about .doc-table tbody th { font: 600 14px/1.45 inherit; font-family: inherit; }
 .about-license h2 { font-size: 20px; margin: 22px 0 4px; }
 .doc-page a { color: var(--accent); overflow-wrap: anywhere; }
 .doc-page h4 { margin: 18px 0 6px; font-size: 16px; }
@@ -1454,6 +1470,20 @@ __m["ui/term-render.js"] = (() => {
 const { el } = __m["ui/dom.js"];
 const { parseAnsi } = __m["core/ansi.js"];
 const PALETTE_SIZE = 16;
+const CUBE_START = 16;
+const GRAY_START = 232;
+const CUBE_LEVELS = [0, 95, 135, 175, 215, 255];
+/** xterm 256-colour palette entry (16-231 colour cube, 232-255 grey ramp) as #rrggbb, computed from the number. */
+function xterm256(n) {
+    const hex = (v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+    if (n >= GRAY_START) {
+        const g = 8 + (Math.min(n, 255) - GRAY_START) * 10;
+        return `#${hex(g)}${hex(g)}${hex(g)}`;
+    }
+    const i = Math.max(0, n - CUBE_START);
+    const level = (k) => CUBE_LEVELS[k] ?? 0;
+    return `#${hex(level(Math.floor(i / 36) % 6))}${hex(level(Math.floor(i / 6) % 6))}${hex(level(i % 6))}`;
+}
 function runClasses(r) {
     const c = [];
     const fg = r.inverse ? r.bg ?? 'bg' : r.fg;
@@ -1474,7 +1504,12 @@ function runClasses(r) {
 }
 function runNode(r) {
     const cls = runClasses(r);
-    return cls ? el('span', { class: cls }, r.text) : document.createTextNode(r.text);
+    const fg = r.inverse ? r.bg : r.fg;
+    const bg = r.inverse ? r.fg : r.bg;
+    const style = [fg !== undefined && fg >= PALETTE_SIZE ? `color:${xterm256(fg)}` : '', bg !== undefined && bg >= PALETTE_SIZE ? `background:${xterm256(bg)}` : ''].filter(Boolean).join(';');
+    if (!cls && !style)
+        return document.createTextNode(r.text);
+    return el('span', { class: cls || undefined, style: style || undefined }, r.text);
 }
 /** One output row; returns the SGR state for the next row (colours may span lines). */
 function ansiRow(text, style, className) {
@@ -1529,7 +1564,7 @@ function columns(items, width = 80) {
     return Array.from({ length: rows }, (_, r) => Array.from({ length: per }, (_, c) => items[c * rows + r] ?? '').map((s, c, a) => (c === a.length - 1 ? s : s.padEnd(w))).join('').trimEnd());
 }
 
-return { ansiRow, fillAnsi, drawFrame, editorKey, columns };
+return { xterm256, ansiRow, fillAnsi, drawFrame, editorKey, columns };
 })();
 __m["editors/buffer.js"] = (() => {
 /** Text buffer shared by the nano and vim engines: lines, cursor, undo snapshots and display helpers. */
@@ -3299,7 +3334,7 @@ class Terminal {
     unsubscribe;
     afterRun;
     style = {};
-    editor = null;
+    full = null;
     lastTab = '';
     /** IOS consoles show lines starting with % (messages) in their own colour. */
     iosMessages;
@@ -3318,7 +3353,7 @@ class Terminal {
         this.root.addEventListener('click', (e) => {
             if (window.getSelection()?.toString() !== '')
                 return;
-            if (this.editor)
+            if (this.full)
                 this.editorEl.focus();
             else if (e.target !== this.input)
                 this.input.focus();
@@ -3332,7 +3367,7 @@ class Terminal {
         this.refreshPrompt();
     }
     focus() {
-        (this.editor ? this.editorEl : this.input).focus({ preventScroll: true });
+        (this.full ? this.editorEl : this.input).focus({ preventScroll: true });
     }
     dispose() {
         this.unsubscribe?.();
@@ -3373,7 +3408,7 @@ class Terminal {
         this.print(lines);
         this.afterRun();
         this.refreshPrompt();
-        this.openEditorIfRequested();
+        this.openFullScreenIfRequested();
     }
     submit() {
         const text = this.input.value;
@@ -3459,28 +3494,37 @@ class Terminal {
         const end = this.input.value.length;
         this.input.setSelectionRange(end, end);
     }
-    // ------------------------------------------------------------ full-screen editor
-    openEditorIfRequested() {
-        if (this.editor)
+    // ------------------------------------------------------------ full-screen programs (nano, vim, mc)
+    /** nano/vim run here with a local engine; mc runs where the shell runs and sends frames. */
+    openFullScreenIfRequested() {
+        if (this.full)
             return;
         const spec = this.backend.editRequest?.();
-        if (!spec)
-            return;
         const backend = this.backend;
-        this.editor = createEditor(spec, { save: (path, content) => (backend.saveEdit ? backend.saveEdit(path, content) : 'No se puede guardar') });
+        if (spec) {
+            const editor = createEditor(spec, { save: (path, content) => (backend.saveEdit ? backend.saveEdit(path, content) : 'No se puede guardar') });
+            this.full = { key: (k) => editor.key(k), frame: (w, h) => (editor.closed ? null : editor.frame(w, h)), finish: () => backend.closeEdit?.() ?? [] };
+        }
+        else if (backend.screenFrame?.(DEFAULT_COLS, DEFAULT_ROWS)) {
+            let pending = [];
+            this.full = { key: (k) => { pending = [...pending, ...(backend.screenKey?.(k) ?? [])]; }, frame: (w, h) => backend.screenFrame?.(w, h) ?? null, finish: () => pending };
+        }
+        else
+            return;
         this.screen.hidden = true;
         this.lineEl.hidden = true;
         this.editorEl.hidden = false;
         this.redrawEditor();
         this.editorEl.focus({ preventScroll: true });
     }
-    closeEditor() {
-        this.editor = null;
+    closeFullScreen() {
+        const finish = this.full?.finish;
+        this.full = null;
         this.editorEl.hidden = true;
         this.screen.hidden = false;
         this.lineEl.hidden = false;
-        this.after(this.backend.closeEdit?.() ?? []);
-        if (!this.editor)
+        this.after(finish?.() ?? []);
+        if (!this.full)
             this.input.focus({ preventScroll: true });
     }
     cols() {
@@ -3491,38 +3535,42 @@ class Terminal {
         const width = this.root.clientWidth - 24;
         return charWidth > 0 && width > 0 ? Math.max(20, Math.floor(width / charWidth)) : DEFAULT_COLS;
     }
+    /** Draws the current frame; returns false when the program has ended. */
     redrawEditor() {
-        if (!this.editor)
-            return;
+        if (!this.full)
+            return false;
         const probe = el('div', { class: 'ed-row term-probe' }, 'M');
         this.editorEl.appendChild(probe);
         const lineHeight = probe.getBoundingClientRect().height;
         probe.remove();
         const rows = lineHeight > 0 ? Math.max(6, Math.floor((this.root.clientHeight - 16) / lineHeight)) : DEFAULT_ROWS;
-        drawFrame(this.editorEl, this.editor.frame(this.cols(), rows));
+        const frame = this.full.frame(this.cols(), rows);
+        if (frame)
+            drawFrame(this.editorEl, frame);
+        return frame !== null;
     }
     onEditorKey(e) {
         const k = editorKey(e);
-        if (!k || !this.editor)
+        if (!k || !this.full)
             return;
         if (k.ctrl && ['v', 'c'].includes(k.key.toLowerCase()) && window.getSelection()?.toString())
             return;
         e.preventDefault();
         e.stopPropagation();
-        this.editor.key(k);
-        if (this.editor.closed)
-            this.closeEditor();
-        else
-            this.redrawEditor();
+        this.full.key(k);
+        if (!this.redrawEditor())
+            this.closeFullScreen();
     }
     onEditorPaste(e) {
         const text = e.clipboardData?.getData('text/plain') ?? '';
-        if (!this.editor || !text)
+        const full = this.full;
+        if (!full || !text)
             return;
         e.preventDefault();
         for (const ch of text.replace(/\r\n?/g, '\n'))
-            this.editor.key({ key: ch === '\n' ? 'Enter' : ch === '\t' ? 'Tab' : ch });
-        this.redrawEditor();
+            full.key({ key: ch === '\n' ? 'Enter' : ch === '\t' ? 'Tab' : ch });
+        if (!this.redrawEditor())
+            this.closeFullScreen();
     }
 }
 
@@ -4947,9 +4995,30 @@ const HOST_PORT = 'FastEthernet0';
 const APIPA_NET = 0xa9fe0000;
 const APIPA_PREFIX = 16;
 const APIPA_HOST_SPACE = 0xfe00;
+const MAX_LABEL = 63;
+const MAX_HOSTNAME = 253;
+const LABEL = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
+/** RFC 1123 host name (letters, digits and hyphens; dot-separated labels). Returns an error or null. */
+function validHostname(name) {
+    if (name.trim() === '')
+        return 'El nombre de host no puede estar vacío.';
+    if (name.length > MAX_HOSTNAME)
+        return `El nombre de host admite como máximo ${MAX_HOSTNAME} caracteres.`;
+    const labels = name.split('.');
+    if (labels.some((l) => l.length > MAX_LABEL))
+        return `Cada parte del nombre admite como máximo ${MAX_LABEL} caracteres.`;
+    if (!labels.every((l) => LABEL.test(l)))
+        return 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).';
+    return null;
+}
 class Host {
     id;
+    /** Static host name (hostnamectl, /etc/hostname, Windows computer name). */
     name;
+    /** Transient name set with `hostname NAME` (not saved); undefined = the static name. */
+    transientName = undefined;
+    /** hostnamectl's pretty host name (free text). */
+    prettyName = undefined;
     mac;
     hooks = DETACHED;
     config = { mode: 'static' };
@@ -4990,6 +5059,19 @@ class Host {
     displayName() {
         return this.name;
     }
+    /** The name the running system uses (gethostname). */
+    runtimeName() {
+        return this.transientName ?? this.name;
+    }
+    /** Sets the static host name (and the running one). Throws on an invalid name. */
+    setHostname(name) {
+        const err = validHostname(name);
+        if (err)
+            throw new Error(err);
+        this.name = name;
+        this.transientName = undefined;
+        this.changed();
+    }
     onChange(listener) {
         this.statusListeners.add(listener);
         return () => this.statusListeners.delete(listener);
@@ -5023,7 +5105,7 @@ class Host {
         return new DhcpClient({
             mac: this.mac,
             send: (msg, dst, src) => {
-                const dhcp = { ...msg, options: { ...msg.options, clientId: this.clientId(), hostname: this.name } };
+                const dhcp = { ...msg, options: { ...msg.options, clientId: this.clientId(), hostname: this.runtimeName() } };
                 this.sendUdp(dst, DHCP_CLIENT_PORT, DHCP_SERVER_PORT, { dhcp }, src);
             },
             schedule: (d, fn) => this.hooks.schedule(d, fn),
@@ -5128,7 +5210,7 @@ class Host {
     }
 }
 
-return { DHCP_SERVER_PORT, DNS_PORT, HOST_PORT, Host };
+return { DHCP_SERVER_PORT, DNS_PORT, HOST_PORT, validHostname, Host };
 })();
 __m["devices/pc.js"] = (() => {
 /** Packet Tracer-style PC: a host with client applications (browser, mail, SSH, terminals). */
@@ -6278,6 +6360,7 @@ return { SSH_WAIT_MS, dnsQuery, resolveHost, tcpCall, parseUrl, httpGet, reverse
 })();
 __m["shells/base.js"] = (() => {
 const { resolveHost, tcpCall, SSH_WAIT_MS } = __m["shells/net-tools.js"];
+const DEFAULT_SCREEN = { width: 80, height: 24 };
 const SSH_PORT = 22;
 const MAX_SSH_ATTEMPTS = 3;
 /** Exit status of ssh when the connection fails. */
@@ -6361,6 +6444,27 @@ class BaseShell {
             return this.remoteRequest({ kind: 'edit', action: 'close' });
         return this.localCloseEdit();
     }
+    screenFrame(width, height) {
+        if (this.state.kind !== 'remote')
+            return this.localScreenFrame(width, height);
+        const st = this.state;
+        if (st.screen && (st.size.width !== width || st.size.height !== height)) {
+            this.state = { ...st, size: { width, height } };
+            this.remoteRequest({ kind: 'screen', width, height });
+        }
+        return this.state.kind === 'remote' ? this.state.screen : null;
+    }
+    screenKey(key) {
+        if (this.state.kind !== 'remote')
+            return this.localScreenKey(key);
+        return this.remoteRequest({ kind: 'screen', key, ...this.state.size });
+    }
+    localScreenFrame(_width, _height) {
+        return null;
+    }
+    localScreenKey(_key) {
+        return [];
+    }
     localEditRequest() {
         return null;
     }
@@ -6409,7 +6513,7 @@ class BaseShell {
             this.state = { ...st, attempts };
             return ['Permission denied, please try again.'];
         }
-        this.state = { kind: 'remote', target: st.target, ip: st.ip, session: out.session, prompt: out.prompt ?? '$ ', secret: false, edit: null };
+        this.state = { kind: 'remote', target: st.target, ip: st.ip, session: out.session, prompt: out.prompt ?? '$ ', secret: false, edit: null, screen: null, size: { ...DEFAULT_SCREEN } };
         return [...out.lines];
     }
     remoteRequest(req) {
@@ -6420,7 +6524,7 @@ class BaseShell {
         const out = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
         if (!out || out.closed)
             return this.endSsh([...(out?.lines ?? []), `Connection to ${st.target} closed.`], out ? out.status ?? 0 : SSH_FAILED);
-        this.state = { ...st, prompt: out.prompt ?? st.prompt, secret: out.secret ?? false, edit: out.edit ?? null };
+        this.state = { ...st, prompt: out.prompt ?? st.prompt, secret: out.secret ?? false, edit: out.edit ?? null, screen: out.screen ?? null };
         return [...out.lines];
     }
     /** True while connected to a remote host (used by the UI to label the terminal). */
@@ -6429,7 +6533,7 @@ class BaseShell {
     }
 }
 
-return { SSH_PORT, SSH_FAILED, BaseShell };
+return { DEFAULT_SCREEN, SSH_PORT, SSH_FAILED, BaseShell };
 })();
 __m["bash/vfs.js"] = (() => {
 /**
@@ -6562,7 +6666,7 @@ class Vfs {
     stat(path, cred = ROOT, follow = true) {
         const n = this.lookup(path, cred, follow);
         const size = n.kind === 'file' ? new TextEncoder().encode(this.contentOf(n)).length : n.kind === 'dir' ? 4096 : n.kind === 'link' ? n.target.length : 0;
-        return { kind: n.kind, mode: n.mode, uid: n.uid, gid: n.gid, size, mtime: n.mtime, generated: n.kind === 'file' && Boolean(n.generated) };
+        return { kind: n.kind, mode: n.mode, uid: n.uid, gid: n.gid, size, mtime: n.mtime, generated: n.kind === 'file' && Boolean(n.generated) && !n.writeBack };
     }
     contentOf(n) {
         return n.generated ? n.generated() : n.content;
@@ -6604,8 +6708,16 @@ class Vfs {
         parent.mtime = this.now();
     }
     overwrite(node, content, cred, append) {
-        if (node.generated)
-            throw new FsError('EROFS');
+        if (node.generated) {
+            // A generated file with a writer (e.g. /etc/hostname) changes the live configuration.
+            if (!node.writeBack)
+                throw new FsError('EROFS');
+            if (!canAccess(node, cred, 2))
+                throw new FsError('EACCES');
+            node.writeBack(append ? node.generated() + content : content);
+            node.mtime = this.now();
+            return;
+        }
         if (!canAccess(node, cred, 2))
             throw new FsError('EACCES');
         const next = append ? node.content + content : content;
@@ -6766,11 +6878,11 @@ class Vfs {
     }
     // ------------------------------------------------------------ setup helpers (as root)
     /** Adds or replaces a read-only generated file, creating parent directories. */
-    mountFile(path, read, mode = 0o644) {
+    mountFile(path, read, mode = 0o644, write) {
         const p = normalize(path);
         this.mkdir(dirname(p), ROOT, true);
         const parent = this.lookup(dirname(p));
-        parent.children.set(basename(p), { kind: 'file', content: '', generated: read, mode, uid: 0, gid: 0, mtime: this.now() });
+        parent.children.set(basename(p), { kind: 'file', content: '', generated: read, writeBack: write, mode, uid: 0, gid: 0, mtime: this.now() });
     }
     unmountFile(path) {
         const p = normalize(path);
@@ -12775,23 +12887,9 @@ function which(ctx) {
     }
     return status;
 }
-function hostname(ctx) {
-    const args = ctx.argv.slice(1);
-    if (args.includes('-I') || args.includes('-i')) {
-        ctx.out(`${ctx.sh.env.ipAddress?.() ?? ''} \n`);
-        return 0;
-    }
-    const set = args.find((a) => !a.startsWith('-'));
-    if (set !== undefined) {
-        ctx.err(ctx.cred.uid === 0 ? 'hostname: el nombre se cambia en netsim desde la etiqueta del equipo\n' : 'hostname: you must be root to change the host name\n');
-        return 1;
-    }
-    ctx.out(`${args.includes('-f') ? `${ctx.sh.env.hostname}.localdomain` : ctx.sh.env.hostname}\n`);
-    return 0;
-}
 const viaBuiltin = (name) => (ctx) => BUILTINS.get(name)(ctx);
 const SYSINFO = new Map([
-    ['date', date], ['id', id], ['uname', uname], ['uptime', uptime], ['ps', ps], ['free', free], ['env', env], ['printenv', printenv], ['which', which], ['hostname', hostname],
+    ['date', date], ['id', id], ['uname', uname], ['uptime', uptime], ['ps', ps], ['free', free], ['env', env], ['printenv', printenv], ['which', which],
     ['whoami', (c) => { c.out(`${c.sh.env.users().find((u) => u.uid === c.cred.uid)?.name ?? c.sh.user.name}\n`); return 0; }],
     ['groups', (c) => { const l = idLine(c, c.argv[1]); c.out(`${(l ?? '').replace(/.*groups=/, '').split(',').map((g) => /\((.*)\)/.exec(g)?.[1]).join(' ')}\n`); return 0; }],
     ['tty', (c) => { const t = isTty(c.fds.get(0)); c.out(t ? '/dev/pts/0\n' : 'not a tty\n'); return t ? 0 : 1; }],
@@ -17223,6 +17321,8 @@ class Interp {
     /** Descriptors of the command being expanded (for command substitution stdin/stderr). */
     currentFds = ttyFds();
     startedAt;
+    /** Host name read when the shell started (bash's \h does not follow later changes). */
+    startHostname;
     /** State of $RANDOM. */
     rngSeed = 1;
     procCounter = 63;
@@ -17265,6 +17365,7 @@ class Interp {
         this.pid = ++pidCounter;
         this.bashpid = this.pid;
         this.startedAt = env.now();
+        this.startHostname = env.hostname;
         this.rngSeed = this.pid;
         for (const name of SET_OPTIONS)
             this.opts.set(name, false);
@@ -17296,6 +17397,7 @@ class Interp {
     /** Subshell: copies variables, functions, options; shares the file system, terminal and limits. */
     clone() {
         const c = new Interp(this.env, this.user, { interactive: this.interactive, term: this.term, budget: this.budget });
+        c.startHostname = this.startHostname;
         c.vars = this.vars.clone();
         c.functions = new Map(this.functions);
         c.aliases = new Map(this.aliases);
@@ -17419,7 +17521,7 @@ class Interp {
     }
     prompt(ps) {
         const text = promptEscapes(ps, {
-            user: this.user.name, host: this.env.hostname, cwd: this.cwd, home: this.getVar('HOME'), uid: this.user.uid, now: this.env.now(),
+            user: this.user.name, host: this.startHostname, cwd: this.cwd, home: this.getVar('HOME'), uid: this.user.uid, now: this.env.now(),
             historyNumber: this.history.base + this.history.lines.length, commandNumber: this.commandNumber, jobs: 0, version: '5.3', release: '5.3.20',
         });
         if (!this.shoptOn('promptvars'))
@@ -18457,7 +18559,7 @@ const NETSIM_DOCS = {
                 p('netsim es un simulador de redes en el navegador con el aspecto y el comportamiento de Cisco Packet Tracer. Todo se ejecuta en tu equipo: no hay servidor ni se envía nada a Internet.'),
                 h('Barra superior'),
                 table(['Control', 'Qué hace'], [
-                    ['Red / Documentación', 'Cambia entre el área de trabajo y esta documentación.'],
+                    ['Red / Documentación / Acerca de', 'Cambia entre el área de trabajo, esta documentación y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
                     ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S).'],
                     ['Laboratorios…', 'Carga una práctica preparada (DHCP básico, reservas, relay, VLAN, snooping, router cliente, Server-PT).'],
                     ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
@@ -18468,8 +18570,8 @@ const NETSIM_DOCS = {
                 h('Ventanas de los equipos'),
                 table(['Equipo', 'Pestañas'], [
                     ['Router / Switch', 'CLI (Cisco IOS 15).'],
-                    ['PC', 'Configuración IP, Navegador, Correo, Símbolo del sistema y Terminal Linux.'],
-                    ['Server-PT', 'Servicios, Configuración IP, Terminal Linux y Símbolo del sistema.'],
+                    ['PC', 'Configuración IP, Navegador, Correo, Equipo, Símbolo del sistema y Terminal Linux.'],
+                    ['Server-PT', 'Servicios, Configuración IP, Equipo, Terminal Linux y Símbolo del sistema.'],
                 ]),
                 note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim).'),
             ],
@@ -18802,6 +18904,23 @@ const CLIENT_DOCS = {
             ],
         },
         {
+            id: 'pc-equipo',
+            title: 'Nombre del equipo',
+            summary: 'Nombre visible, nombre de host y nombre descriptivo; equivalencias en Linux y Windows.',
+            blocks: [
+                p('La pestaña Equipo de PCs y servidores separa dos nombres: el nombre visible (la etiqueta del icono en el área de trabajo) y el nombre de host del sistema. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea), aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname, y se guarda con la topología.'),
+                table(['Dónde', 'Cómo se cambia', 'Persistente'], [
+                    ['Pestaña Equipo', 'Nombre de host + Guardar', 'Sí'],
+                    ['GNU/Linux', 'sudo hostnamectl set-hostname NOMBRE', 'Sí (/etc/hostname)'],
+                    ['GNU/Linux', 'echo NOMBRE | sudo tee /etc/hostname', 'Sí'],
+                    ['GNU/Linux', 'sudo hostname NOMBRE', 'No: nombre transitorio hasta reiniciar'],
+                    ['GNU/Linux', 'sudo hostnamectl set-hostname --pretty "Texto libre"', 'Sí (nombre descriptivo)'],
+                ]),
+                code('admin@srv:~$ hostnamectl set-hostname web01\n==== AUTHENTICATING FOR org.freedesktop.hostname1.set-static-hostname ====\nAuthentication is required to set the statically configured local hostname, as well as the pretty hostname.\nAuthenticating as: admin\nPassword:\n==== AUTHENTICATION COMPLETE ====\nadmin@srv:~$ exec bash\nadmin@web01:~$ hostnamectl | head -1\n Static hostname: web01'),
+                list('Como en Ubuntu, bash lee el nombre al arrancar: el prompt cambia en una shell nueva (exec bash o una terminal nueva).', 'Reglas (RFC 1123): letras sin tilde, números y guiones; partes de hasta 63 caracteres separadas por puntos; sin espacios.'),
+            ],
+        },
+        {
             id: 'pc-apps',
             title: 'Navegador y correo',
             summary: 'Aplicaciones de escritorio del PC.',
@@ -18901,7 +19020,8 @@ const UTIL_DOCS = {
     w: { group: 'sistema', synopsis: 'w', summary: 'Sesiones y carga del sistema.' },
     users: { group: 'sistema', synopsis: 'users', summary: 'Usuarios conectados.' },
     uname: { group: 'sistema', synopsis: 'uname [-asnrvmo]', summary: 'Sistema: Linux 6.17.0-14-generic x86_64 GNU/Linux.' },
-    hostname: { group: 'sistema', synopsis: 'hostname [-I|-f]', summary: 'Nombre del equipo (-I: sus direcciones IP).' },
+    hostname: { group: 'sistema', synopsis: 'hostname [-I|-f|-s] [NOMBRE]', summary: 'Nombre del equipo (-I: sus direcciones IP). Con NOMBRE (root) cambia el nombre transitorio, que no se guarda.' },
+    hostnamectl: { group: 'sistema', synopsis: 'hostnamectl [status] | hostnamectl set-hostname NOMBRE [--static|--transient|--pretty] | hostnamectl hostname [NOMBRE]', summary: 'Muestra y cambia el nombre de host de forma persistente (/etc/hostname). Pide autenticación de polkit a los administradores; el prompt de bash cambia en la siguiente shell (exec bash).' },
     uptime: { group: 'sistema', synopsis: 'uptime [-p]', summary: 'Tiempo encendido y carga.' },
     ps: { group: 'sistema', synopsis: 'ps [aux | -ef]', summary: 'Procesos (incluye los servicios del servidor).' },
     free: { group: 'sistema', synopsis: 'free [-h]', summary: 'Memoria.' },
@@ -18923,6 +19043,9 @@ const UTIL_DOCS = {
     su: { group: 'shell', synopsis: 'su [-|-l] [-c ORDEN] [USUARIO]', summary: 'Cambia de usuario pidiendo la contraseña del usuario destino.' },
     nano: { group: 'editores', synopsis: 'nano [+LÍNEA[,COL]] [-v] [FICHERO]', summary: 'Editor de texto GNU nano 8.4 (ver la página nano).' },
     vim: { group: 'editores', synopsis: 'vim [+N] [-R] [FICHERO]   ·   vi   ·   view', summary: 'Vi IMproved 9.1 (ver la página vim). view abre en solo lectura.' },
+    batcat: { group: 'texto', synopsis: 'batcat [-p|-pp] [-n] [-A] [-l LENGUAJE] [-r N:M] [--style=full|plain|numbers|grid|header] [--color=auto|always|never] [FICHERO]...', summary: 'cat con resaltado de sintaxis, números de línea y cabecera (bat; en Ubuntu se llama batcat). Si la salida no es la terminal se comporta como cat.', options: '-p, --plain      sin decoraciones (-pp: además sin paginar)\n-n, --number     solo números de línea\n-A, --show-all   muestra espacios (·), tabuladores (├──┤) y saltos de línea (␊)\n-l, --language   fuerza el lenguaje (bash, apache, html, json, yaml, python, dns, ini, markdown)\n-r, --line-range N:M   solo esas líneas\n--list-languages   lenguajes y extensiones reconocidos' },
+    whereis: { group: 'ficheros', synopsis: 'whereis [-b|-m] [-l] NOMBRE...', summary: 'Busca el programa, sus directorios de configuración (/etc, /usr/lib, /usr/share) y su página de manual.', options: '-b  solo binarios y directorios\n-m  solo páginas de manual\n-l  muestra los directorios en los que busca' },
+    mc: { group: 'editores', synopsis: 'mc [DIR_IZQUIERDO [DIR_DERECHO]] | mc -V', summary: 'Midnight Commander: gestor de ficheros a pantalla completa con dos paneles (también por SSH).', options: 'Tab cambiar de panel · ↑↓ RePág AvPág Inicio Fin moverse · Intro entrar\nInsert / Ctrl+T marcar · Ctrl+R releer\nF3 ver · F4 editar (nano) · F5 copiar · F6 mover/renombrar · F7 crear directorio · F8 borrar · F10 salir\nSin teclas de función: Esc y el número (Esc 5 = F5, Esc 0 = F10)' },
     man: { group: 'editores', synopsis: 'man [SECCIÓN] PÁGINA', summary: 'Muestra la página de manual de un programa de esta lista.' },
     less: { group: 'editores', synopsis: 'less [FICHERO]...', summary: 'Paginador: en netsim muestra el texto completo (usa la barra de desplazamiento).' },
     more: { group: 'editores', synopsis: 'more [FICHERO]...', summary: 'Paginador sencillo (igual que less en netsim).' },
@@ -19461,6 +19584,13 @@ function bashManual() {
         ...pages.split('\n').map((l) => INDENT + l), '',
         ...section('SHELL BUILTIN COMMANDS', `${builtins}\nUsa «help orden» para ver cada una.`), ''].join('\n');
 }
+/** Section of the manual page of a program (whereis), or undefined. */
+function manSection(name) {
+    if (name === 'bash' || name === 'sh')
+        return 1;
+    const doc = UTIL_DOCS[name];
+    return doc ? doc.section ?? 1 : undefined;
+}
 /** man -k: programs whose name or summary contains the word. */
 function apropos(word) {
     const w = fold(word);
@@ -19468,7 +19598,7 @@ function apropos(word) {
         .map((n) => `${`${n} (${UTIL_DOCS[n]?.section ?? 1})`.padEnd(20)}- ${UTIL_DOCS[n]?.summary ?? ''}`);
 }
 
-return { DOC_GROUPS, findPage, fold, searchDocs, manPage, apropos };
+return { DOC_GROUPS, findPage, fold, searchDocs, manPage, manSection, apropos };
 })();
 __m["bash/coreutils/extra.js"] = (() => {
 const { gnuOpts, readInputs, usageError } = __m["bash/coreutils/common.js"];
@@ -19604,6 +19734,940 @@ const EXTRA = new Map([
 
 return { EXTRA };
 })();
+__m["bash/coreutils/hostnamectl.js"] = (() => {
+const { readLineFrom } = __m["bash/io.js"];
+const SUDO_GROUP = 27;
+const MACHINE_ID = '4f8d0c2a9b6e4c1d8e7f3a2b1c0d9e8f';
+const ACTION = 'org.freedesktop.hostname1.set-static-hostname';
+function names(ctx) {
+    return ctx.sh.env.hostnames?.() ?? { static: ctx.sh.env.hostname, transient: ctx.sh.env.hostname };
+}
+function status(ctx) {
+    const n = names(ctx);
+    const rows = [
+        ['Static hostname', n.static],
+        ...(n.transient !== n.static ? [['Transient hostname', n.transient]] : []),
+        ...(n.pretty ? [['Pretty hostname', n.pretty]] : []),
+        ['Icon name', 'computer-vm'], ['Chassis', 'vm 🖴'], ['Machine ID', MACHINE_ID], ['Boot ID', `${MACHINE_ID.slice(16)}${MACHINE_ID.slice(0, 16)}`],
+        ['Virtualization', 'kvm'], ['Operating System', 'Ubuntu 26.04 LTS'], ['Kernel', 'Linux 6.17.0-14-generic'], ['Architecture', 'x86-64'],
+        ['Hardware Vendor', 'netsim'], ['Hardware Model', ctx.sh.env.hostname.startsWith('server') ? 'Server-PT' : 'PC-PT'],
+    ];
+    ctx.out(rows.map(([k, v]) => `${k.padStart(16)}: ${v}\n`).join(''));
+    return 0;
+}
+/** polkit, as pkttyagent does in a terminal: administrators confirm with their own password. */
+function* authorize(ctx) {
+    if (ctx.cred.uid === 0)
+        return true;
+    const me = ctx.sh.env.users().find((u) => u.uid === ctx.cred.uid);
+    if (!me?.groups.includes(SUDO_GROUP) || !ctx.sh.controllingTty)
+        return false;
+    ctx.out(`==== AUTHENTICATING FOR ${ACTION} ====\nAuthentication is required to set the statically configured local hostname, as well as the pretty hostname.\nAuthenticating as: ${me.name}\n`);
+    const expected = ctx.sh.env.password?.(me.name);
+    if (expected !== undefined) {
+        const line = yield* readLineFrom({ kind: 'tty' }, 'Password: ', true);
+        if (line?.text !== expected) {
+            ctx.out('==== AUTHENTICATION FAILED ====\n');
+            return false;
+        }
+    }
+    ctx.out('==== AUTHENTICATION COMPLETE ====\n');
+    return true;
+}
+function* setName(ctx, args) {
+    const flags = new Set(args.filter((a) => a.startsWith('--')));
+    const value = args.find((a) => !a.startsWith('--'));
+    if (value === undefined) {
+        ctx.err('Too few arguments.\n');
+        return 1;
+    }
+    const kinds = ['static', 'transient', 'pretty'].filter((k) => flags.has(`--${k}`));
+    const targets = kinds.length ? kinds : ['static'];
+    if (!(yield* authorize(ctx))) {
+        ctx.err(`Could not set ${targets[0]} hostname: Access denied\n`);
+        return 1;
+    }
+    for (const kind of targets) {
+        const err = ctx.sh.env.setHostname ? ctx.sh.env.setHostname(kind, value) : 'Access denied';
+        if (err) {
+            ctx.err(`Could not set ${kind} hostname: ${err}\n`);
+            return 1;
+        }
+    }
+    return 0;
+}
+function* hostnamectl(ctx) {
+    const args = ctx.argv.slice(1);
+    const verb = args.find((a) => !a.startsWith('-')) ?? 'status';
+    const rest = args.slice(args.indexOf(verb) + 1);
+    const opts = args.filter((a) => a.startsWith('--'));
+    if (verb === 'status')
+        return status(ctx);
+    if (verb === 'set-hostname')
+        return yield* setName(ctx, [...opts, ...rest]);
+    if (verb === 'hostname' || verb === 'pretty-hostname') {
+        const kind = verb === 'pretty-hostname' ? '--pretty' : opts.find((o) => o === '--transient' || o === '--pretty') ?? '--static';
+        if (rest.length)
+            return yield* setName(ctx, [kind, ...rest]);
+        const n = names(ctx);
+        ctx.out(`${kind === '--pretty' ? n.pretty ?? '' : kind === '--transient' ? n.transient : n.static}\n`);
+        return 0;
+    }
+    ctx.err(`Unknown command verb '${verb}'.\n`);
+    return 1;
+}
+/** hostname [-I|-f|-s] [NAME]: setting it (root only) changes the transient name. */
+function hostname(ctx) {
+    const args = ctx.argv.slice(1);
+    if (args.includes('-I') || args.includes('-i')) {
+        ctx.out(`${ctx.sh.env.ipAddress?.() ?? ''} \n`);
+        return 0;
+    }
+    const set = args.find((a) => !a.startsWith('-'));
+    if (set !== undefined) {
+        if (ctx.cred.uid !== 0) {
+            ctx.err('hostname: you must be root to change the host name\n');
+            return 1;
+        }
+        const err = ctx.sh.env.setHostname?.('transient', set) ?? null;
+        if (err) {
+            ctx.err('hostname: the specified hostname is invalid\n');
+            return 1;
+        }
+        return 0;
+    }
+    const name = names(ctx).transient;
+    ctx.out(`${args.includes('-f') ? `${name}.localdomain` : args.includes('-s') ? name.split('.')[0] ?? name : name}\n`);
+    return 0;
+}
+const HOSTNAME_TOOLS = new Map([['hostnamectl', hostnamectl], ['hostname', hostname]]);
+
+return { HOSTNAME_TOOLS };
+})();
+__m["bash/coreutils/syntax.js"] = (() => {
+/** Line-based syntax highlighting for batcat (colours of bat's default Monokai Extended theme). */
+const C = { comment: 242, string: 186, keyword: 203, number: 141, variable: 208, func: 149, key: 81, tag: 203, attr: 149 };
+const NUM = [/\b\d+(?:\.\d+)?\b/y, C.number];
+const DQ = [/"(?:[^"\\]|\\.)*"?/y, C.string];
+const SQ = [/'[^']*'?/y, C.string];
+const RULES = {
+    bash: [
+        [/(?:^|(?<=\s))#.*/y, C.comment], DQ, SQ, [/\$(?:\{[^}]*\}|[\w@#?*!$-]+|\()/y, C.variable],
+        [/\b(?:if|then|else|elif|fi|for|while|until|do|done|case|esac|in|function|return|local|export|select|time|declare|readonly)\b/y, C.keyword],
+        [/\b(?:echo|printf|cd|read|exit|source|test|set|shift|unset|trap|eval|exec|sudo)\b/y, C.func], NUM,
+    ],
+    apache: [
+        [/^\s*#.*/y, C.comment], [/<\/?[\w:]+/y, C.tag], [/>/y, C.tag], [/(?<=^\s*(?:<\/?)?)[A-Za-z][\w]*/y, C.key], DQ, [/\$\{\w+\}/y, C.variable], NUM,
+    ],
+    html: [[/<!--.*?(?:-->|$)/y, C.comment], [/<\/?[\w:-]+/y, C.tag], [/\/?>/y, C.tag], [/[\w:-]+(?==)/y, C.attr], DQ, SQ, [/&\w+;/y, C.number]],
+    json: [[/"(?:[^"\\]|\\.)*"(?=\s*:)/y, C.key], DQ, [/\b(?:true|false|null)\b/y, C.keyword], [/-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/y, C.number]],
+    yaml: [[/(?:^|(?<=\s))#.*/y, C.comment], [/(?<=^\s*(?:- )?)[\w.-]+(?=:)/y, C.key], DQ, SQ, [/\b(?:true|false|yes|no|null)\b/y, C.keyword], NUM],
+    python: [
+        [/#.*/y, C.comment], DQ, SQ,
+        [/\b(?:def|class|if|elif|else|for|while|return|import|from|as|with|try|except|finally|pass|in|not|and|or|None|True|False|lambda|yield|raise|global)\b/y, C.keyword],
+        [/(?<=\b(?:def|class) )\w+/y, C.func], NUM,
+    ],
+    dns: [[/;.*/y, C.comment], [/^\$(?:ORIGIN|TTL|INCLUDE)\b/y, C.keyword], [/\b(?:IN|SOA|NS|A|AAAA|CNAME|MX|TXT|PTR|SRV)\b/y, C.key], DQ, NUM],
+    ini: [[/^\s*[#;].*/y, C.comment], [/^\s*\[[^\]]*\]/y, C.tag], [/(?<=^\s*)[\w.-]+(?=\s*=)/y, C.key], DQ, NUM],
+    markdown: [[/^#{1,6} .*/y, C.keyword], [/`[^`]*`/y, C.string], [/\*\*[^*]+\*\*/y, C.func], [/^\s*[-*+] /y, C.number]],
+    text: [],
+};
+/** Colours one line: the first rule that matches at each position wins. */
+function highlightLine(line, rules) {
+    let out = '';
+    let plain = '';
+    let i = 0;
+    while (i < line.length) {
+        let hit;
+        for (const [re, color] of rules) {
+            re.lastIndex = i;
+            const m = re.exec(line);
+            if (m && m[0].length > 0) {
+                hit = { text: m[0], color };
+                break;
+            }
+        }
+        if (!hit) {
+            plain += line[i++];
+            continue;
+        }
+        out += `${plain}\x1b[38;5;${hit.color}m${hit.text}\x1b[0m`;
+        plain = '';
+        i += hit.text.length;
+    }
+    return out + plain;
+}
+function highlight(text, lang) {
+    const rules = RULES[lang];
+    if (rules.length === 0)
+        return text;
+    return text.split('\n').map((l) => highlightLine(l, rules)).join('\n');
+}
+const BY_NAME = {
+    '.bashrc': 'bash', '.profile': 'bash', '.bash_aliases': 'bash', '.bash_logout': 'bash', 'envvars': 'bash', 'apache2.conf': 'apache',
+};
+const BY_EXT = {
+    sh: 'bash', bash: 'bash', zsh: 'bash', conf: 'apache', htaccess: 'apache', load: 'apache', html: 'html', htm: 'html', xml: 'html', svg: 'html',
+    json: 'json', yaml: 'yaml', yml: 'yaml', py: 'python', zone: 'dns', ini: 'ini', cfg: 'ini', cf: 'ini', md: 'markdown', markdown: 'markdown',
+};
+const LANGUAGE_LIST = [
+    'Apache Conf:conf,htaccess,load,apache2.conf', 'Bourne Again Shell (bash):sh,bash,zsh,.bashrc,.bash_aliases,.profile,envvars',
+    'DNS Zone:zone,db.*', 'HTML:html,htm,xml,svg', 'INI:ini,cfg,cf', 'JSON:json', 'Markdown:md,markdown', 'Python:py', 'Plain Text:txt', 'YAML:yaml,yml',
+];
+/** Language of a file from its name, extension or shebang. */
+function languageFor(name, content) {
+    const base = name.split('/').pop() ?? name;
+    if (BY_NAME[base])
+        return BY_NAME[base];
+    if (/^db\./.test(base))
+        return 'dns';
+    const ext = /\.([\w]+)$/.exec(base)?.[1]?.toLowerCase();
+    if (ext && BY_EXT[ext])
+        return BY_EXT[ext];
+    if (/^#!.*\b(?:ba|z|da)?sh\b/.test(content))
+        return 'bash';
+    if (/^#!.*python/.test(content))
+        return 'python';
+    return 'text';
+}
+/** Names accepted by bat's --language. */
+function languageByName(name) {
+    const n = name.toLowerCase();
+    const alias = { sh: 'bash', bash: 'bash', shell: 'bash', apache: 'apache', conf: 'apache', html: 'html', xml: 'html', json: 'json', yaml: 'yaml', yml: 'yaml', python: 'python', py: 'python', dns: 'dns', zone: 'dns', ini: 'ini', md: 'markdown', markdown: 'markdown', txt: 'text', text: 'text' };
+    return alias[n];
+}
+
+return { highlight, LANGUAGE_LIST, languageFor, languageByName };
+})();
+__m["bash/coreutils/bat.js"] = (() => {
+const { gnuOpts, usageError } = __m["bash/coreutils/common.js"];
+const { isTty } = __m["bash/io.js"];
+const { errMsg } = __m["bash/coreutils/common.js"];
+const { highlight, languageByName, languageFor, LANGUAGE_LIST } = __m["bash/coreutils/syntax.js"];
+const { manSection } = __m["docs/index.js"];
+const GUTTER = 7;
+const DEFAULT_COLUMNS = 80;
+const GRID = '\x1b[38;5;238m';
+const RESET = '\x1b[0m';
+const BIN_DIRS = ['/usr/bin', '/usr/sbin', '/usr/local/bin', '/usr/local/sbin'];
+const EXTRA_DIRS = ['/etc', '/usr/lib', '/usr/share'];
+function styleFrom(value, plain, numbers, tty) {
+    if (plain > 0 || !tty)
+        return { header: false, grid: false, numbers: false };
+    if (numbers)
+        return { header: false, grid: false, numbers: true };
+    const parts = new Set(typeof value === 'string' ? value.split(',') : ['full']);
+    const full = parts.has('full') || parts.has('default');
+    return { header: full || parts.has('header') || parts.has('header-filename'), grid: full || parts.has('grid'), numbers: full || parts.has('numbers') };
+}
+function showAll(text) {
+    return text.replace(/ /g, '·').replace(/\t/g, '├──┤').replace(/\n/g, '␊\n');
+}
+function lineRange(spec, total) {
+    if (typeof spec !== 'string')
+        return [1, total];
+    const m = /^(\d*):(\d*)$/.exec(spec) ?? /^(\d+)$/.exec(spec);
+    if (!m)
+        return [1, total];
+    const from = Number(m[1] || 1);
+    const to = m[2] === undefined ? from : Number(m[2] || total);
+    return [from, to];
+}
+function render(ctx, input, o) {
+    const cols = Math.max(20, Number(ctx.env.get('COLUMNS') ?? DEFAULT_COLUMNS) || DEFAULT_COLUMNS);
+    const raw = o.all ? showAll(input.text) : input.text;
+    const body = raw.endsWith('\n') ? raw.slice(0, -1) : raw;
+    const lang = o.lang ?? languageFor(input.name, input.text);
+    const lines = (o.color && !o.all ? highlight(body, lang) : body).split('\n');
+    const [from, to] = lineRange(o.range, lines.length);
+    const g = (s) => (o.color ? `${GRID}${s}${RESET}` : s);
+    const rule = (mid) => g(`${'─'.repeat(GUTTER)}${mid}${'─'.repeat(cols - GUTTER - 1)}`);
+    const out = [];
+    const name = input.name === '-' ? 'STDIN' : input.name;
+    if (o.style.grid)
+        out.push(rule('┬'));
+    if (o.style.header)
+        out.push(o.style.grid ? `${' '.repeat(GUTTER)}${g('│')} File: ${name}` : `File: ${name}`);
+    if (o.style.grid)
+        out.push(rule('┼'));
+    lines.forEach((l, i) => {
+        const n = i + 1;
+        if (n < from || n > to)
+            return;
+        const num = g(String(n).padStart(4));
+        if (o.style.grid)
+            out.push(`${num}   ${g('│')} ${l}`);
+        else
+            out.push(o.style.numbers ? `${num} ${l}` : l);
+    });
+    if (o.style.grid)
+        out.push(rule('┴'));
+    return `${out.join('\n')}\n`;
+}
+function* readInput(ctx, name) {
+    if (name === '-')
+        return { name, text: yield* ctx.readAll() };
+    try {
+        const text = ctx.sh.env.fs.readFile(ctx.resolve(name), ctx.cred);
+        return { name, text };
+    }
+    catch (e) {
+        const why = errMsg(e);
+        return why === 'Is a directory' ? `'${name}' is a directory.` : `'${name}': ${why} (os error ${why === 'Permission denied' ? 13 : 2})`;
+    }
+}
+function* bat(ctx) {
+    const p = gnuOpts(ctx.argv.slice(1), {
+        flags: 'pnAPuV', withArg: 'lr',
+        long: { plain: 'p', number: 'n', 'show-all': 'A', 'language=': 'l', 'line-range=': 'r', 'style=': 'style', 'color=': 'color', 'paging=': 'paging', 'theme=': 'theme', 'list-languages': 'list', version: 'V', 'decorations=': 'decorations', 'wrap=': 'wrap', 'tabs=': 'tabs' },
+    });
+    if (p.error)
+        return usageError(ctx, p.error);
+    if (p.opts.has('V')) {
+        ctx.out('bat 0.25.0\n');
+        return 0;
+    }
+    if (p.opts.has('list')) {
+        ctx.out(`${LANGUAGE_LIST.join('\n')}\n`);
+        return 0;
+    }
+    const tty = isTty(ctx.fds.get(1));
+    const colorOpt = p.opts.get('color');
+    const color = colorOpt === 'always' || (colorOpt !== 'never' && tty);
+    const langName = p.opts.get('l');
+    const lang = typeof langName === 'string' ? languageByName(langName) : undefined;
+    if (typeof langName === 'string' && !lang) {
+        ctx.err(`[bat error]: unknown syntax: '${langName}'\n`);
+        return 1;
+    }
+    const plain = (p.multi.get('p')?.length ?? 0) + (p.opts.has('p') ? 1 : 0);
+    const decorated = p.opts.get('decorations') === 'always' || tty;
+    const style = styleFrom(p.opts.get('style'), plain, p.opts.has('n'), decorated);
+    let status = 0;
+    for (const name of p.operands.length ? p.operands : ['-']) {
+        const input = yield* readInput(ctx, name);
+        if (typeof input === 'string') {
+            ctx.err(`[bat error]: ${input}\n`);
+            status = 1;
+            continue;
+        }
+        ctx.out(render(ctx, input, { style, color, lang, all: p.opts.has('A'), range: p.opts.get('r') }));
+    }
+    return status;
+}
+function whereis(ctx) {
+    const p = gnuOpts(ctx.argv.slice(1), { flags: 'bmsul' });
+    if (p.error)
+        return usageError(ctx, p.error);
+    if (p.opts.has('l')) {
+        ctx.out([...BIN_DIRS.map((d) => `bin: ${d}`), 'man: /usr/share/man/man1', 'man: /usr/share/man/man8', ...EXTRA_DIRS.map((d) => `bin: ${d}`)].join('\n') + '\n');
+        return 0;
+    }
+    const only = ['b', 'm', 's'].filter((k) => p.opts.has(k));
+    const want = (k) => only.length === 0 || only.includes(k);
+    const fs = ctx.sh.env.fs;
+    for (const name of p.operands) {
+        const found = [];
+        if (want('b')) {
+            found.push(...BIN_DIRS.map((d) => `${d}/${name}`).filter((f) => fs.tryLookup(f)?.kind === 'file'));
+            found.push(...EXTRA_DIRS.map((d) => `${d}/${name}`).filter((f) => fs.exists(f)));
+            if (name === 'bash' && fs.exists('/etc/bash.bashrc'))
+                found.push('/etc/bash.bashrc');
+        }
+        const section = want('m') ? manSection(name) : undefined;
+        if (section)
+            found.push(`/usr/share/man/man${section}/${name}.${section}.gz`);
+        ctx.out(`${name}:${found.map((f) => ` ${f}`).join('')}\n`);
+    }
+    return 0;
+}
+const BAT_TOOLS = new Map([['batcat', bat], ['whereis', whereis]]);
+
+return { BAT_TOOLS };
+})();
+__m["editors/mc-fs.js"] = (() => {
+/** What Midnight Commander needs from the file system (the shell provides it with the user's credentials). */
+function joinPath(dir, name) {
+    if (name === '..')
+        return dir === '/' ? '/' : dir.replace(/\/[^/]*$/, '') || '/';
+    return dir === '/' ? `/${name}` : `${dir}/${name}`;
+}
+function shortPath(path, home) {
+    return path === home ? '~' : path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
+}
+
+return { joinPath, shortPath };
+})();
+__m["editors/mc-panel.js"] = (() => {
+const { fit } = __m["editors/buffer.js"];
+const { joinPath, shortPath } = __m["editors/mc-fs.js"];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const SIZE_W = 7;
+const TIME_W = 12;
+function mcTime(ms) {
+    const d = new Date(ms);
+    const p2 = (n) => String(n).padStart(2, '0');
+    return `${MONTHS[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2)} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
+}
+function humanSize(n) {
+    if (n < 1_000_000)
+        return String(n);
+    return `${Math.round(n / 1024)}K`;
+}
+class Panel {
+    dir;
+    entries = [];
+    cursor = 0;
+    top = 0;
+    marked = new Set();
+    error = null;
+    constructor(dir) {
+        this.dir = dir;
+    }
+    /** Re-reads the directory, keeping the cursor on `keep` when it still exists. */
+    reload(fs, keep) {
+        const listed = fs.list(this.dir);
+        if (typeof listed === 'string') {
+            this.error = listed;
+            this.entries = [{ name: '..', dir: true, link: false, exec: false, size: 4096, mtime: 0 }];
+        }
+        else {
+            this.error = null;
+            const sorted = [...listed].sort((a, b) => Number(b.dir) - Number(a.dir) || a.name.localeCompare(b.name));
+            this.entries = this.dir === '/' ? sorted : [{ name: '..', dir: true, link: false, exec: false, size: 4096, mtime: 0 }, ...sorted];
+        }
+        for (const m of [...this.marked])
+            if (!this.entries.some((e) => e.name === m))
+                this.marked.delete(m);
+        const at = keep === undefined ? -1 : this.entries.findIndex((e) => e.name === keep);
+        this.cursor = Math.max(0, Math.min(at >= 0 ? at : this.cursor, this.entries.length - 1));
+    }
+    current() {
+        return this.entries[this.cursor];
+    }
+    /** Marked files, or the one under the cursor (never ".."). */
+    selection() {
+        const marked = this.entries.filter((e) => this.marked.has(e.name)).map((e) => e.name);
+        if (marked.length)
+            return marked;
+        const cur = this.current();
+        return cur && cur.name !== '..' ? [cur.name] : [];
+    }
+    move(delta) {
+        this.cursor = Math.max(0, Math.min(this.entries.length - 1, this.cursor + delta));
+    }
+    toggleMark() {
+        const cur = this.current();
+        if (!cur || cur.name === '..')
+            return;
+        if (this.marked.has(cur.name))
+            this.marked.delete(cur.name);
+        else
+            this.marked.add(cur.name);
+        this.move(1);
+    }
+    /** Enters the directory under the cursor (".." goes up). */
+    enter(fs) {
+        const cur = this.current();
+        if (!cur?.dir)
+            return false;
+        const from = this.dir;
+        this.dir = joinPath(this.dir, cur.name);
+        this.marked.clear();
+        this.cursor = 0;
+        this.top = 0;
+        this.reload(fs, cur.name === '..' ? from.split('/').pop() : undefined);
+        return true;
+    }
+    nameStyle(e, i, active) {
+        if (active && i === this.cursor)
+            return 'cursor';
+        if (this.marked.has(e.name))
+            return 'marked';
+        if (e.dir)
+            return 'dir';
+        if (e.link)
+            return 'link';
+        return e.exec ? 'exec' : 'panel';
+    }
+    row(e, i, width, active) {
+        const nameW = Math.max(4, width - SIZE_W - TIME_W - 2);
+        const prefix = e.dir ? '/' : e.link ? '@' : e.exec ? '*' : ' ';
+        const size = e.name === '..' ? 'UP--DIR' : e.dir ? 'DIR' : humanSize(e.size);
+        const style = this.nameStyle(e, i, active);
+        const time = e.name === '..' ? '' : mcTime(e.mtime);
+        return [{ text: '│', style: 'panel' }, { text: `${fit(prefix + e.name, nameW)}│${size.padStart(SIZE_W)}│${fit(time, TIME_W)}`, style }, { text: '│', style: 'panel' }];
+    }
+    /** Rows of the panel (borders included), `height` rows high. */
+    render(width, height, active, home) {
+        const inner = width - 2;
+        const listRows = Math.max(1, height - 5);
+        if (this.cursor < this.top)
+            this.top = this.cursor;
+        if (this.cursor >= this.top + listRows)
+            this.top = this.cursor - listRows + 1;
+        const title = ` ${shortPath(this.dir, home)} `.slice(0, inner - 2);
+        const left = Math.max(1, Math.floor((inner - title.length) / 2));
+        const rows = [[{ text: `┌${'─'.repeat(left)}`, style: 'panel' }, { text: title, style: active ? 'cursor' : 'panel' }, { text: `${'─'.repeat(Math.max(0, inner - left - title.length))}┐`, style: 'panel' }]];
+        const nameW = Math.max(4, inner - SIZE_W - TIME_W - 2);
+        rows.push([{ text: '│', style: 'panel' }, { text: `${fit('.n   Name', nameW)}│${fit('  Size', SIZE_W)}│${fit('Modify time', TIME_W)}`, style: 'panelHead' }, { text: '│', style: 'panel' }]);
+        for (let r = 0; r < listRows; r++) {
+            const i = this.top + r;
+            const e = this.entries[i];
+            rows.push(e ? this.row(e, i, inner, active) : [{ text: `│${' '.repeat(inner)}│`, style: 'panel' }]);
+        }
+        const cur = this.current();
+        const status = this.error ?? (this.marked.size ? `${this.marked.size} marcados` : cur?.name === '..' ? 'UP--DIR' : cur?.name ?? '');
+        rows.push([{ text: `├${'─'.repeat(inner)}┤`, style: 'panel' }]);
+        rows.push([{ text: '│', style: 'panel' }, { text: fit(status, inner), style: this.error ? 'error' : 'panel' }, { text: '│', style: 'panel' }]);
+        rows.push([{ text: `└${'─'.repeat(inner)}┘`, style: 'panel' }]);
+        return rows;
+    }
+}
+
+return { mcTime, Panel };
+})();
+__m["editors/mc-dialog.js"] = (() => {
+const { fit } = __m["editors/buffer.js"];
+/** Handles a key; returns true when the dialog is finished (closed). */
+function dialogKey(d, k) {
+    if (k.key === 'Escape' || (k.ctrl && k.key.toLowerCase() === 'c') || k.key === 'F10')
+        return true;
+    if (d.kind === 'message')
+        return k.key === 'Enter' || k.key === ' ';
+    if (d.kind === 'confirm') {
+        if (['ArrowLeft', 'ArrowRight', 'Tab'].includes(k.key)) {
+            d.yes = !d.yes;
+            return false;
+        }
+        const c = k.key.toLowerCase();
+        if (c === 'y' || c === 's' || (k.key === 'Enter' && d.yes)) {
+            d.onYes();
+            return true;
+        }
+        return c === 'n' || k.key === 'Enter';
+    }
+    if (k.key === 'Enter') {
+        d.onOk(d.value);
+        return true;
+    }
+    if (k.key === 'Backspace')
+        d.value = d.value.slice(0, -1);
+    else if (k.ctrl && k.key.toLowerCase() === 'u')
+        d.value = '';
+    else if (k.key.length === 1 && !k.ctrl && !k.alt)
+        d.value += k.key;
+    return false;
+}
+/** Splits a message into lines of at most `width` characters (at spaces when possible). */
+function wrap(text, width) {
+    const out = [];
+    let rest = text;
+    while (rest.length > width) {
+        const cut = rest.lastIndexOf(' ', width);
+        const at = cut > width / 3 ? cut : width;
+        out.push(rest.slice(0, at));
+        rest = rest.slice(at).trimStart();
+    }
+    out.push(rest);
+    return out;
+}
+/** The part of a row of spans between two columns, keeping each span's style. */
+function sliceSpans(row, from, to) {
+    const out = [];
+    let col = 0;
+    for (const s of row) {
+        const a = Math.max(from, col);
+        const b = Math.min(to, col + s.text.length);
+        if (b > a)
+            out.push({ text: s.text.slice(a - col, b - col), style: s.style });
+        col += s.text.length;
+    }
+    return out;
+}
+/** Draws the dialog centred over `rows` (a screen `width` wide); returns the cursor cell. */
+function drawDialog(d, rows, width) {
+    const w = Math.min(width - 4, 60);
+    const body = [];
+    if (d.kind === 'input')
+        body.push({ text: d.label, style: 'dialog' }, { text: d.value, style: 'dialogFocus' }, { text: '', style: 'dialog' }, { text: '[< OK >]  [ Cancel ]', style: 'dialog' });
+    else if (d.kind === 'confirm')
+        body.push(...wrap(d.text, w - 4).map((text) => ({ text, style: 'dialog' })), { text: '', style: 'dialog' }, { text: d.yes ? '[< Yes >]   [ No ]' : '[ Yes ]   [< No >]', style: 'dialog' });
+    else
+        body.push(...d.lines.flatMap((l) => wrap(l, w - 4)).map((text) => ({ text, style: (d.error ? 'error' : 'dialog') })), { text: '', style: 'dialog' }, { text: '[< OK >]', style: 'dialog' });
+    const top = Math.max(1, Math.floor((rows.length - body.length - 2) / 2));
+    const left = Math.max(0, Math.floor((width - w) / 2));
+    const title = ` ${d.title} `;
+    const put = (r, spans) => {
+        const row = rows[r];
+        if (row)
+            rows[r] = [...sliceSpans(row, 0, left), ...spans, ...sliceSpans(row, left + w, Number.MAX_SAFE_INTEGER)];
+    };
+    const pad = Math.max(0, Math.floor((w - 2 - title.length) / 2));
+    put(top, [{ text: `┌${'─'.repeat(pad)}${title}${'─'.repeat(Math.max(0, w - 2 - pad - title.length))}┐`, style: d.kind === 'message' && d.error ? 'error' : 'dialog' }]);
+    body.forEach((b, i) => put(top + 1 + i, [{ text: '│ ', style: 'dialog' }, { text: fit(b.text, w - 4), style: b.style }, { text: ' │', style: 'dialog' }]));
+    put(top + 1 + body.length, [{ text: `└${'─'.repeat(w - 2)}┘`, style: 'dialog' }]);
+    return d.kind === 'input' ? { row: top + 2, col: left + 2 + Math.min(d.value.length, w - 5) } : null;
+}
+
+return { dialogKey, sliceSpans, drawDialog };
+})();
+__m["editors/mc.js"] = (() => {
+const { fit, expandTabs } = __m["editors/buffer.js"];
+const { joinPath } = __m["editors/mc-fs.js"];
+const { Panel } = __m["editors/mc-panel.js"];
+const { dialogKey, drawDialog } = __m["editors/mc-dialog.js"];
+const { NanoEditor } = __m["editors/nano.js"];
+const KEYS = [['1', 'Help'], ['2', 'Menu'], ['3', 'View'], ['4', 'Edit'], ['5', 'Copy'], ['6', 'RenMov'], ['7', 'Mkdir'], ['8', 'Delete'], ['9', 'PullDn'], ['10', 'Quit']];
+const MENU = '  Left     File     Command     Options     Right';
+const HELP = ['Tab: cambiar de panel   Insert / Ctrl+T: marcar', 'Intro: entrar en el directorio   Ctrl+R: releer', 'F3 ver · F4 editar · F5 copiar · F6 mover/renombrar', 'F7 crear directorio · F8 borrar · F10 salir', 'Sin teclas de función: Esc y el número (Esc 5 = F5)'];
+class McApp {
+    closed = false;
+    fs;
+    panels;
+    active = 0;
+    dialog = null;
+    viewer = null;
+    editor = null;
+    escPending = false;
+    height = 24;
+    constructor(fs, left, right) {
+        this.fs = fs;
+        this.panels = [new Panel(left), new Panel(right)];
+        for (const p of this.panels)
+            p.reload(fs);
+    }
+    get panel() {
+        return this.panels[this.active];
+    }
+    get other() {
+        return this.panels[this.active === 0 ? 1 : 0];
+    }
+    // ------------------------------------------------------------ keys
+    key(k) {
+        if (this.editor) {
+            this.editorKey(k);
+            return;
+        }
+        if (this.viewer) {
+            this.viewerKey(this.viewer, k);
+            return;
+        }
+        const open = this.dialog;
+        if (open) {
+            // a dialog's action may open another one (an error after a copy): close only the one answered
+            if (dialogKey(open, k) && this.dialog === open)
+                this.dialog = null;
+            return;
+        }
+        if (this.escPending) {
+            this.escPending = false;
+            if (/^[0-9]$/.test(k.key)) {
+                this.fkey(k.key === '0' ? 10 : Number(k.key));
+                return;
+            }
+        }
+        if (k.key === 'Escape') {
+            this.escPending = true;
+            return;
+        }
+        const f = /^F(\d{1,2})$/.exec(k.key);
+        if (f) {
+            this.fkey(Number(f[1]));
+            return;
+        }
+        this.navKey(k);
+    }
+    navKey(k) {
+        const p = this.panel;
+        const page = Math.max(1, this.height - 8);
+        const c = k.key.toLowerCase();
+        if (k.ctrl && c === 't') {
+            p.toggleMark();
+            return;
+        }
+        if (k.ctrl && c === 'r') {
+            this.reload();
+            return;
+        }
+        if (k.ctrl && (c === 'c' || c === 'g'))
+            return;
+        switch (k.key) {
+            case 'ArrowUp':
+                p.move(-1);
+                break;
+            case 'ArrowDown':
+                p.move(1);
+                break;
+            case 'PageUp':
+                p.move(-page);
+                break;
+            case 'PageDown':
+                p.move(page);
+                break;
+            case 'Home':
+                p.cursor = 0;
+                break;
+            case 'End':
+                p.cursor = p.entries.length - 1;
+                break;
+            case 'Tab':
+                this.active = this.active === 0 ? 1 : 0;
+                break;
+            case 'Insert':
+                p.toggleMark();
+                break;
+            case 'Enter':
+                if (!p.enter(this.fs))
+                    this.fkey(3);
+                break;
+            default: break;
+        }
+    }
+    fkey(n) {
+        const p = this.panel;
+        const cur = p.current();
+        switch (n) {
+            case 1:
+                this.dialog = { kind: 'message', title: 'Ayuda', lines: HELP, error: false };
+                break;
+            case 3:
+                if (cur && !cur.dir)
+                    this.view(joinPath(p.dir, cur.name));
+                break;
+            case 4:
+                if (cur && !cur.dir)
+                    this.edit(joinPath(p.dir, cur.name));
+                break;
+            case 5:
+                this.transfer('copy');
+                break;
+            case 6:
+                this.transfer('move');
+                break;
+            case 7:
+                this.dialog = { kind: 'input', title: 'Create a new Directory', label: 'Enter directory name:', value: '', onOk: (v) => this.mkdir(v) };
+                break;
+            case 8:
+                this.remove();
+                break;
+            case 2:
+            case 9:
+                this.dialog = { kind: 'message', title: 'Menú', lines: ['Los menús no están disponibles en netsim.'], error: false };
+                break;
+            case 10:
+                this.dialog = { kind: 'confirm', title: 'The Midnight Commander', text: 'Do you really want to quit the Midnight Commander?', yes: true, onYes: () => { this.closed = true; } };
+                break;
+            default: break;
+        }
+    }
+    // ------------------------------------------------------------ operations
+    reload() {
+        for (const p of this.panels)
+            p.reload(this.fs, p.current()?.name);
+    }
+    fail(err, title = 'Error') {
+        this.reload();
+        if (err)
+            this.dialog = { kind: 'message', title, lines: err.split('\n'), error: true };
+    }
+    transfer(op) {
+        const names = this.panel.selection();
+        if (!names.length)
+            return;
+        const what = names.length === 1 ? `"${names[0]}"` : `${names.length} files/directories`;
+        const title = op === 'copy' ? 'Copy' : 'Move';
+        this.dialog = {
+            kind: 'input', title, label: `${op === 'copy' ? 'Copy' : 'Move'} ${what} to:`, value: `${this.other.dir.replace(/\/?$/, '/')}`,
+            onOk: (target) => {
+                const sources = names.map((n) => joinPath(this.panel.dir, n));
+                const err = op === 'copy' ? this.fs.copy(sources, target) : this.fs.move(sources, target);
+                this.panel.marked.clear();
+                this.fail(err);
+            },
+        };
+    }
+    mkdir(name) {
+        if (!name.trim())
+            return;
+        const path = name.startsWith('/') ? name : joinPath(this.panel.dir, name.trim());
+        const err = this.fs.mkdir(path);
+        this.fail(err);
+        if (!err)
+            this.panel.reload(this.fs, name.trim().split('/').pop());
+    }
+    remove() {
+        const names = this.panel.selection();
+        if (!names.length)
+            return;
+        const text = names.length === 1 ? `Delete file "${names[0]}"?` : `Delete ${names.length} files/directories?`;
+        this.dialog = {
+            kind: 'confirm', title: 'Delete', text, yes: true,
+            onYes: () => {
+                const err = this.fs.remove(names.map((n) => joinPath(this.panel.dir, n)));
+                this.panel.marked.clear();
+                this.fail(err);
+            },
+        };
+    }
+    view(path) {
+        const r = this.fs.read(path);
+        if (typeof r !== 'string') {
+            this.fail(`Cannot open "${path}" for reading\n${r.error}`);
+            return;
+        }
+        this.viewer = { name: path, lines: r.split('\n').map(expandTabs), top: 0 };
+    }
+    viewerKey(v, k) {
+        const page = Math.max(1, this.height - 2);
+        const max = Math.max(0, v.lines.length - page);
+        if (['F3', 'F10', 'Escape', 'q'].includes(k.key))
+            this.viewer = null;
+        else if (k.key === 'ArrowDown' || k.key === 'Enter')
+            v.top = Math.min(max, v.top + 1);
+        else if (k.key === 'ArrowUp')
+            v.top = Math.max(0, v.top - 1);
+        else if (k.key === 'PageDown' || k.key === ' ')
+            v.top = Math.min(max, v.top + page);
+        else if (k.key === 'PageUp' || k.key === 'b')
+            v.top = Math.max(0, v.top - page);
+        else if (k.key === 'Home')
+            v.top = 0;
+        else if (k.key === 'End')
+            v.top = max;
+    }
+    edit(path) {
+        const r = this.fs.read(path);
+        if (typeof r !== 'string') {
+            this.fail(`Cannot open "${path}" for reading\n${r.error}`);
+            return;
+        }
+        this.editor = new NanoEditor({ editor: 'nano', path, content: r, exists: true, readOnly: false }, { save: (p, c) => this.fs.write(p, c) });
+    }
+    editorKey(k) {
+        this.editor?.key(k);
+        if (this.editor?.closed) {
+            this.editor = null;
+            this.reload();
+        }
+    }
+    // ------------------------------------------------------------ screen
+    frame(width, height) {
+        this.height = height;
+        if (this.editor)
+            return this.editor.frame(width, height);
+        if (this.viewer)
+            return this.viewerFrame(this.viewer, width, height);
+        const panelH = Math.max(6, height - 3);
+        const leftW = Math.floor(width / 2);
+        const left = this.panels[0].render(leftW, panelH, this.active === 0, this.fs.home);
+        const right = this.panels[1].render(width - leftW, panelH, this.active === 1, this.fs.home);
+        const rows = [[{ text: fit(MENU, width), style: 'menu' }]];
+        for (let i = 0; i < panelH; i++)
+            rows.push([...(left[i] ?? []), ...(right[i] ?? [])]);
+        const prompt = this.fs.prompt(this.panel.dir);
+        rows.push([{ text: fit(prompt, width) }]);
+        rows.push(this.keyBar(width));
+        const cursor = this.dialog ? drawDialog(this.dialog, rows, width) : { row: height - 2, col: Math.min(width - 1, prompt.length) };
+        return { rows: rows.slice(0, height), cursor };
+    }
+    keyBar(width) {
+        const cell = Math.max(4, Math.floor(width / KEYS.length));
+        const spans = [];
+        for (const [n, label] of KEYS) {
+            spans.push({ text: n, style: 'keynum' }, { text: fit(label, cell - n.length), style: 'keylabel' });
+        }
+        return spans;
+    }
+    viewerFrame(v, width, height) {
+        const body = height - 2;
+        const pct = v.lines.length <= body ? 100 : Math.round(((v.top + body) * 100) / v.lines.length);
+        const head = `${v.name}`.slice(0, width - 22);
+        const rows = [[{ text: fit(`${head}  Line: ${v.top + 1}/${v.lines.length}  ${Math.min(100, pct)}%`, width), style: 'menu' }]];
+        for (let i = 0; i < body; i++)
+            rows.push([{ text: fit(v.lines[v.top + i] ?? '', width), style: 'viewer' }]);
+        rows.push(this.keyBar(width).map((s) => (s.text.trim() === 'View' ? { ...s, text: fit('Quit', s.text.length) } : s)));
+        return { rows, cursor: null };
+    }
+}
+
+return { McApp };
+})();
+__m["bash/coreutils/mc.js"] = (() => {
+const { McApp } = __m["editors/mc.js"];
+const { bufferSink } = __m["bash/io.js"];
+const { runSync } = __m["bash/run-sync.js"];
+const { errMsg } = __m["bash/coreutils/common.js"];
+const { normalize } = __m["bash/vfs.js"];
+const MC_VERSION = 'GNU Midnight Commander 4.8.33\nBuilt with GLib 2.84.1\nUsing the S-Lang library with terminfo database\nWith builtin Editor and Aspell support\n';
+/** Runs a file utility (cp, mv, rm, mkdir) in a copy of the shell; returns its error text or null. */
+function run(ctx, argv) {
+    const err = bufferSink();
+    const fds = new Map([[0, { read: { kind: 'null' } }], [1, { write: { kind: 'null' } }], [2, { write: err }]]);
+    const status = runSync(ctx.sh.clone().invoke(argv, fds));
+    return status === 0 ? null : err.chunks.join('').trim() || `${argv[0]}: error ${status}`;
+}
+function entries(ctx, dir) {
+    const fs = ctx.sh.env.fs;
+    try {
+        return fs.readdir(dir, ctx.cred).map((name) => {
+            const path = normalize(name, dir);
+            const l = fs.stat(path, ctx.cred, false);
+            const s = l.kind === 'link' ? fs.tryLookup(path, ctx.cred) : undefined;
+            const st = s ? fs.stat(path, ctx.cred) : l;
+            return { name, dir: st.kind === 'dir', link: l.kind === 'link', exec: st.kind === 'file' && (st.mode & 0o111) !== 0, size: st.size, mtime: st.mtime };
+        });
+    }
+    catch (e) {
+        return `Cannot read directory contents: ${errMsg(e)}`;
+    }
+}
+function mcFs(ctx) {
+    const fs = ctx.sh.env.fs;
+    return {
+        home: ctx.sh.user.home,
+        list: (dir) => entries(ctx, dir),
+        read: (path) => { try {
+            return fs.readFile(path, ctx.cred);
+        }
+        catch (e) {
+            return { error: errMsg(e) };
+        } },
+        write: (path, content) => { try {
+            fs.writeFile(path, content, ctx.cred);
+            return null;
+        }
+        catch (e) {
+            return errMsg(e);
+        } },
+        copy: (sources, target) => run(ctx, ['cp', '-r', '--', ...sources, target]),
+        move: (sources, target) => run(ctx, ['mv', '--', ...sources, target]),
+        remove: (paths) => run(ctx, ['rm', '-rf', '--', ...paths]),
+        mkdir: (path) => run(ctx, ['mkdir', '-p', '--', path]),
+        prompt: (dir) => `${ctx.sh.user.name}@${ctx.sh.startHostname}:${dir === ctx.sh.user.home ? '~' : dir.startsWith(`${ctx.sh.user.home}/`) ? `~${dir.slice(ctx.sh.user.home.length)}` : dir}${ctx.cred.uid === 0 ? '#' : '$'} `,
+    };
+}
+function* mc(ctx) {
+    const args = ctx.argv.slice(1);
+    if (args.includes('-V') || args.includes('--version')) {
+        ctx.out(MC_VERSION);
+        return 0;
+    }
+    const dirs = args.filter((a) => !a.startsWith('-')).map((a) => ctx.resolve(a));
+    for (const d of dirs) {
+        if (ctx.sh.env.fs.tryLookup(d, ctx.cred)?.kind !== 'dir') {
+            ctx.err(`mc: ${d}: No such directory\n`);
+            return 1;
+        }
+    }
+    const app = new McApp(mcFs(ctx), dirs[0] ?? ctx.cwd, dirs[1] ?? dirs[0] ?? ctx.cwd);
+    yield { kind: 'screen', app };
+    return 0;
+}
+const MC_TOOLS = new Map([['mc', mc]]);
+
+return { mcFs, MC_TOOLS };
+})();
 __m["bash/coreutils/index.js"] = (() => {
 const { FILES } = __m["bash/coreutils/files.js"];
 const { FILEINFO } = __m["bash/coreutils/fileinfo.js"];
@@ -19618,8 +20682,11 @@ const { find } = __m["bash/coreutils/find.js"];
 const { SHELLPROG } = __m["bash/coreutils/shellprog.js"];
 const { EDITORS } = __m["bash/coreutils/editors.js"];
 const { EXTRA } = __m["bash/coreutils/extra.js"];
+const { HOSTNAME_TOOLS } = __m["bash/coreutils/hostnamectl.js"];
+const { BAT_TOOLS } = __m["bash/coreutils/bat.js"];
+const { MC_TOOLS } = __m["bash/coreutils/mc.js"];
 const COREUTILS = new Map([
-    ...FILES, ...FILEINFO, ...TEXT, ...SYSINFO, ...TOOLS, ...SHELLPROG, ...EDITORS, ...EXTRA,
+    ...FILES, ...FILEINFO, ...TEXT, ...SYSINFO, ...TOOLS, ...SHELLPROG, ...EDITORS, ...EXTRA, ...HOSTNAME_TOOLS, ...BAT_TOOLS, ...MC_TOOLS,
     ['ls', ls], ['dir', ls], ['grep', grep], ['egrep', grep], ['fgrep', grep], ['sed', sed], ['awk', awk], ['mawk', awk], ['find', find],
 ]);
 
@@ -20429,6 +21496,7 @@ function importFiles(fs, records) {
 return { exportFiles, validFileRecords, importFiles };
 })();
 __m["shells/host-system.js"] = (() => {
+const { validHostname } = __m["devices/host.js"];
 const { Vfs } = __m["bash/vfs.js"];
 const { seedRootfs, seedUsers } = __m["bash/rootfs.js"];
 const { COREUTILS } = __m["bash/coreutils/index.js"];
@@ -20443,6 +21511,7 @@ const ADM = 4;
 const SUDO = 27;
 const USERS = 100;
 const WWW = '/var/www/html';
+const MAX_PRETTY = 256;
 const systems = new WeakMap();
 /** Files loaded from a topology before the host's system was first used. */
 const pendingFiles = new WeakMap();
@@ -20486,15 +21555,26 @@ function webRoot(server) {
         remove: (name) => replace(files().filter((f) => f.name !== name)),
     };
 }
+/** Generated files that root may edit: writing them changes the device configuration. */
+const WRITERS = {
+    '/etc/hostname': (host, content) => {
+        const name = content.trim().split('\n')[0]?.trim() ?? '';
+        if (validHostname(name) === null)
+            host.setHostname(name);
+    },
+};
 /** Generated configuration files follow the live device config (zones, pools, netplan…). */
 function refreshMounts(host, e) {
     const now = linuxFiles(host);
     for (const p of e.mounted)
         if (!now.has(p))
             e.fs.unmountFile(p);
-    for (const p of now.keys())
-        if (!e.mounted.has(p))
-            e.fs.mountFile(p, () => linuxFiles(host).get(p) ?? '');
+    for (const p of now.keys()) {
+        if (e.mounted.has(p))
+            continue;
+        const writer = WRITERS[p];
+        e.fs.mountFile(p, () => linuxFiles(host).get(p) ?? '', 0o644, writer ? (c) => writer(host, c) : undefined);
+    }
     e.mounted = new Set(now.keys());
 }
 function refreshUsers(host, e) {
@@ -20504,6 +21584,19 @@ function refreshUsers(host, e) {
         return;
     seedUsers(e.fs, users);
     e.usersKey = key;
+}
+function setName(host, kind, value) {
+    if (kind === 'pretty') {
+        host.prettyName = value === '' ? undefined : value.slice(0, MAX_PRETTY);
+        return null;
+    }
+    if (validHostname(value) !== null)
+        return `Invalid ${kind} hostname '${value}'`;
+    if (kind === 'transient')
+        host.transientName = value;
+    else
+        host.setHostname(value);
+    return null;
 }
 function createSystem(host) {
     const fs = new Vfs(() => host.clock.now());
@@ -20515,7 +21608,7 @@ function createSystem(host) {
     if (server)
         fs.mountDir(WWW, webRoot(server));
     const env = {
-        get hostname() { return host.name.toLowerCase(); },
+        get hostname() { return host.runtimeName().toLowerCase(); },
         fs,
         users: () => hostUsers(host),
         commands: programs,
@@ -20523,6 +21616,8 @@ function createSystem(host) {
         wait: (ms) => { host.hooks.runUntil(() => false, ms); },
         ipAddress: () => (host.config.ip !== undefined ? formatIp(host.config.ip) : ''),
         password: (name) => asServer(host)?.services.ssh.users.find((a) => a.name === name)?.password,
+        hostnames: () => ({ static: host.name.toLowerCase(), transient: host.runtimeName().toLowerCase(), pretty: host.prettyName }),
+        setHostname: (kind, value) => setName(host, kind, value),
     };
     importFiles(fs, pendingFiles.get(host) ?? []);
     pendingFiles.delete(host);
@@ -20692,6 +21787,11 @@ class BashSession {
     editRequest() {
         const p = this.pending();
         return p?.kind === 'edit' ? p.spec : null;
+    }
+    /** The full-screen program the session is paused on (mc), if any. */
+    screen() {
+        const p = this.pending();
+        return p?.kind === 'screen' ? p.app : null;
     }
     // ------------------------------------------------------------ input
     /** One line typed by the user; returns the output text produced. */
@@ -21048,6 +22148,16 @@ class LinuxShell extends BaseShell {
         const p = this.session.pending();
         return p?.kind === 'edit' ? p.save(path, content) : 'No hay ningún editor abierto';
     }
+    localScreenFrame(width, height) {
+        return this.session.screen()?.frame(width, height) ?? null;
+    }
+    localScreenKey(key) {
+        const app = this.session.screen();
+        if (!app)
+            return [];
+        app.key(key);
+        return app.closed ? this.after(this.session.resume('0')) : [];
+    }
     localCloseEdit() {
         return this.session.pending()?.kind === 'edit' ? this.after(this.session.resume('0')) : [];
     }
@@ -21365,6 +22475,7 @@ return { defaultUser, createShell };
 })();
 __m["services/ssh-service.js"] = (() => {
 const { createShell } = __m["shells/factory.js"];
+const { DEFAULT_SCREEN } = __m["shells/base.js"];
 const { formatIp } = __m["core/ip.js"];
 const MAX_SESSIONS = 16;
 const IDLE_LIMIT_MS = 30 * 60_000;
@@ -21386,7 +22497,7 @@ class SshService {
             return null;
         if (req.kind === 'auth')
             return this.auth(req, peer);
-        if (req.kind === 'command' || req.kind === 'key' || req.kind === 'edit')
+        if (req.kind === 'command' || req.kind === 'key' || req.kind === 'edit' || req.kind === 'screen')
             return this.command(req, peer);
         return null;
     }
@@ -21425,15 +22536,18 @@ class SshService {
         if (req.kind === 'edit' && req.action === 'save') {
             return { app: 'SSH', kind: 'output', ok: true, lines: [], prompt: sh.prompt(), edit: sh.editRequest?.() ?? undefined, saveError: sh.saveEdit ? sh.saveEdit(req.path ?? '', req.content ?? '') : 'No editor' };
         }
+        const size = req.kind === 'screen' ? { width: req.width, height: req.height } : DEFAULT_SCREEN;
         const lines = req.kind === 'command' ? sh.run(req.line)
             : req.kind === 'edit' ? sh.closeEdit?.() ?? []
-                : (req.key === 'int' ? sh.interrupt?.() : sh.eof?.()) ?? [];
+                : req.kind === 'screen' ? (req.key ? sh.screenKey?.(req.key) ?? [] : [])
+                    : (req.key === 'int' ? sh.interrupt?.() : sh.eof?.()) ?? [];
         if (sh.closed) {
             this.sessions.delete(req.session);
             this.server.log('ssh', `pam_unix(sshd:session): session closed for user ${s.user}`);
             return { app: 'SSH', kind: 'output', ok: true, closed: true, lines, status: sh.exitCode ?? 0 };
         }
-        return { app: 'SSH', kind: 'output', ok: true, lines, prompt: sh.prompt(), secret: sh.secret(), edit: sh.editRequest?.() ?? undefined };
+        const screen = sh.screenFrame?.(size.width, size.height) ?? undefined;
+        return { app: 'SSH', kind: 'output', ok: true, lines, prompt: sh.prompt(), secret: sh.secret(), edit: sh.editRequest?.() ?? undefined, screen };
     }
     banner(user) {
         if (this.server.os === 'windows')
@@ -22115,6 +23229,50 @@ function dnsPanel(server, app) {
 
 return { livePanel, dhcpPanel, dnsPanel };
 })();
+__m["ui/host-settings.js"] = (() => {
+/** PC / Server-PT → «Equipo»: name shown in the workspace and the host name of the system. */
+const { el } = __m["ui/dom.js"];
+const { field, input, button, message } = __m["ui/forms.js"];
+const { livePanel } = __m["ui/server-dhcp-dns.js"];
+const { validHostname } = __m["devices/host.js"];
+const MAX_LABEL = 40;
+function hostSettings(placed, h, app) {
+    return livePanel((refresh) => {
+        const label = input({ value: placed.label, maxlength: String(MAX_LABEL), 'aria-describedby': 'label-hint' });
+        const hostname = input({ value: h.name, maxlength: '253' });
+        const pretty = input({ value: h.prettyName ?? '', placeholder: 'Opcional, texto libre' });
+        const msg = message();
+        const save = () => {
+            const name = hostname.value.trim();
+            const err = validHostname(name);
+            if (err)
+                return msg.error(err);
+            const shown = label.value.trim();
+            if (!shown)
+                return msg.error('El nombre visible no puede estar vacío.');
+            placed.label = shown.slice(0, MAX_LABEL);
+            h.prettyName = pretty.value.trim() || undefined;
+            h.setHostname(name);
+            app.retitle?.(placed.label);
+            app.afterCommand();
+            refresh();
+            msg.ok(`Guardado. Nombre de host: ${name}.`);
+        };
+        const same = button('Usar el nombre visible', () => { hostname.value = label.value.trim().replace(/[^a-z0-9-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase(); });
+        return [
+            el('h3', {}, 'Nombre del equipo'),
+            el('div', { class: 'grid2' }, field('Nombre visible (área de trabajo)', label, 'Solo identifica el icono; no cambia la red.'), field('Nombre de host', hostname, 'Lo envía el cliente DHCP (opción 12) y lo muestran el prompt, /etc/hostname y hostname.')),
+            field('Nombre descriptivo (pretty hostname)', pretty, 'Solo en GNU/Linux: lo muestra hostnamectl.'),
+            el('div', { class: 'actions' }, button('Guardar', save), same),
+            msg.el,
+            el('h3', {}, 'Equivalencias'),
+            el('ul', { class: 'muted' }, el('li', {}, 'GNU/Linux: sudo hostnamectl set-hostname NOMBRE (persistente) o sudo hostname NOMBRE (solo hasta reiniciar). bash muestra el nombre nuevo en una shell nueva (exec bash).'), el('li', {}, 'Windows: Configuración → Sistema → Cambiar el nombre de este equipo.'), el('li', {}, `Ahora mismo: estático «${h.name}»${h.transientName ? `, transitorio «${h.transientName}»` : ''}${h.prettyName ? `, descriptivo «${h.prettyName}»` : ''}.`)),
+        ];
+    });
+}
+
+return { hostSettings };
+})();
 __m["ui/server-apps.js"] = (() => {
 /** Server-PT → Servicios → HTTP, Correo, SSH and Registros panels. */
 const { el } = __m["ui/dom.js"];
@@ -22453,6 +23611,7 @@ const { Pc } = __m["devices/pc.js"];
 const { Server } = __m["devices/server.js"];
 const { createShell } = __m["shells/factory.js"];
 const { hostIpConfig } = __m["ui/host-ip.js"];
+const { hostSettings } = __m["ui/host-settings.js"];
 const { servicesTab } = __m["ui/server-apps.js"];
 const { browserApp, mailApp } = __m["ui/pc-apps.js"];
 const terminals = new Map();
@@ -22521,6 +23680,7 @@ function shellTerminal(placed, h, os, app) {
             complete: (l) => shell.complete?.(l) ?? null, interrupt: () => shell.interrupt?.() ?? [], eof: () => shell.eof?.() ?? [],
             editRequest: () => shell.editRequest?.() ?? null, saveEdit: (p, c) => (shell.saveEdit ? shell.saveEdit(p, c) : 'No disponible'),
             closeEdit: () => shell.closeEdit?.() ?? [],
+            screenFrame: (w, h) => shell.screenFrame?.(w, h) ?? null, screenKey: (k) => shell.screenKey?.(k) ?? [],
         };
         term = new Terminal(backend, {
             intro, label: `${os === 'windows' ? 'Símbolo del sistema' : 'Terminal'} de ${placed.label}`, afterRun: () => app.afterCommand(),
@@ -22537,10 +23697,13 @@ function openHostWindow(placed, h, app) {
     });
     const ipTab = { id: 'ip', label: 'Configuración IP', render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
     const order = h.os === 'linux' ? ['linux', 'windows'] : ['windows', 'linux'];
+    const model = h instanceof Server ? 'Server-PT' : 'PC-PT';
+    let handle;
+    const settingsTab = { id: 'host', label: 'Equipo', render: () => hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) }) };
     const tabs = h instanceof Server
-        ? [{ id: 'svc', label: 'Servicios', render: () => servicesTab(h, app) }, ipTab, ...order.map(terminal)]
-        : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: 'Navegador', render: () => browserApp(h, app) }, { id: 'mail', label: 'Correo', render: () => mailApp(h, app) }] : []), ...order.map(terminal)];
-    app.windows.show(h.id, `${placed.label} · ${h instanceof Server ? 'Server-PT' : 'PC-PT'}`, tabs, () => disposers.forEach((f) => f()));
+        ? [{ id: 'svc', label: 'Servicios', render: () => servicesTab(h, app) }, ipTab, settingsTab, ...order.map(terminal)]
+        : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: 'Navegador', render: () => browserApp(h, app) }, { id: 'mail', label: 'Correo', render: () => mailApp(h, app) }] : []), settingsTab, ...order.map(terminal)];
+    handle = app.windows.show(h.id, `${placed.label} · ${model}`, tabs, () => disposers.forEach((f) => f()));
 }
 
 return { forgetDevice, forgetAll, openDeviceWindow };
@@ -25521,7 +26684,7 @@ const { SimClock } = __m["core/clock.js"];
 const { Router } = __m["devices/router.js"];
 const { Switch } = __m["devices/switch.js"];
 const { Pc } = __m["devices/pc.js"];
-const { Host } = __m["devices/host.js"];
+const { Host, validHostname } = __m["devices/host.js"];
 const { Server } = __m["devices/server.js"];
 const { servicesToJson, servicesFromJson, mailboxesFromJson } = __m["services/persist.js"];
 const { applyConfig } = __m["ios/session.js"];
@@ -25530,6 +26693,7 @@ const { parseHexId } = __m["core/mac.js"];
 const PREFIX = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server' };
 const FILE_VERSION = 2;
 const SETTLE_MS = 30_000;
+const MAX_PRETTY = 256;
 class Topology {
     clock = new SimClock();
     net = new Network(this.clock);
@@ -25629,10 +26793,11 @@ function hostRecord(d) {
     const os = d.os;
     const clientId = d.clientIdOverride;
     const files = savedFiles(d);
+    const names = { hostname: d.name, prettyHostname: d.prettyName };
     if (c.mode === 'dhcp')
-        return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files };
+        return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
     const opt = (n) => (n === undefined ? undefined : formatIp(n));
-    return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files };
+    return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
 }
 function restore(device, rec) {
     if (device instanceof Host) {
@@ -25641,6 +26806,10 @@ function restore(device, rec) {
         device.clientIdOverride = typeof pc.clientId === 'string' ? parseHexId(pc.clientId) ?? undefined : undefined;
         if (pc.os === 'linux' || pc.os === 'windows')
             device.os = pc.os;
+        if (typeof pc.hostname === 'string' && validHostname(pc.hostname) === null)
+            device.name = pc.hostname;
+        if (typeof pc.prettyHostname === 'string')
+            device.prettyName = pc.prettyHostname.slice(0, MAX_PRETTY);
         if (pc.files !== undefined)
             restoreFiles(device, validFileRecords(pc.files));
         if (pc.mode === 'dhcp')

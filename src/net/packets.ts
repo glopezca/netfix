@@ -1,5 +1,6 @@
 /** Wire-level data structures exchanged between simulated devices. */
 import type { EditSpec } from '../bash/types.ts';
+import type { Frame as ScreenFrame, KeyInput } from '../editors/buffer.ts';
 
 export type DhcpType = 'DISCOVER' | 'OFFER' | 'REQUEST' | 'DECLINE' | 'ACK' | 'NAK' | 'RELEASE' | 'INFORM';
 
@@ -97,13 +98,17 @@ export type AppPayload =
   | { readonly app: 'SSH'; readonly kind: 'key'; readonly session: string; readonly key: 'int' | 'eof' }
   /** Remote editor: save the buffer, or close the editor (the remote command continues). */
   | { readonly app: 'SSH'; readonly kind: 'edit'; readonly session: string; readonly action: 'save' | 'close'; readonly path?: string; readonly content?: string }
+  /** Full-screen remote program (mc): a key (or only a redraw) and the terminal size. */
+  | { readonly app: 'SSH'; readonly kind: 'screen'; readonly session: string; readonly key?: KeyInput; readonly width: number; readonly height: number }
   | { readonly app: 'SSH'; readonly kind: 'output'; readonly ok: boolean; readonly lines: readonly string[]; readonly session?: string; readonly prompt?: string; readonly closed?: boolean; readonly secret?: boolean;
     /** A remote program opened an editor (nano/vim): the client shows it full screen. */
     readonly edit?: EditSpec;
     /** Result of an edit/save request: null when written. */
     readonly saveError?: string | null;
     /** Exit status of the remote shell when the session closes. */
-    readonly status?: number };
+    readonly status?: number;
+    /** Frame of the remote full-screen program, while one runs. */
+    readonly screen?: ScreenFrame };
 
 export interface TcpSegment {
   readonly sport: number;

@@ -5,6 +5,7 @@ import { splitArgs } from './net-tools.ts';
 import { hostSystem } from './host-system.ts';
 import { BashSession } from '../bash/shell.ts';
 import type { EditSpec, UserInfo } from '../bash/types.ts';
+import type { Frame, KeyInput } from '../editors/buffer.ts';
 import type { Host } from '../devices/host.ts';
 
 const FALLBACK_UID = 1999;
@@ -100,6 +101,17 @@ export class LinuxShell extends BaseShell {
   protected override localSaveEdit(path: string, content: string): string | null {
     const p = this.session.pending();
     return p?.kind === 'edit' ? p.save(path, content) : 'No hay ningún editor abierto';
+  }
+
+  protected override localScreenFrame(width: number, height: number): Frame | null {
+    return this.session.screen()?.frame(width, height) ?? null;
+  }
+
+  protected override localScreenKey(key: KeyInput): string[] {
+    const app = this.session.screen();
+    if (!app) return [];
+    app.key(key);
+    return app.closed ? this.after(this.session.resume('0')) : [];
   }
 
   protected override localCloseEdit(): string[] {

@@ -3,6 +3,7 @@ import type { Host } from '../devices/host.ts';
 import { resolveHost, tcpCall, SSH_WAIT_MS } from './net-tools.ts';
 import type { AppPayload } from '../net/packets.ts';
 import type { EditSpec } from '../bash/types.ts';
+import type { Frame, KeyInput } from '../editors/buffer.ts';
 
 export interface Completion {
   readonly line: string;
@@ -28,7 +29,13 @@ export interface ShellSession {
   saveEdit?(path: string, content: string): string | null;
   /** The editor was closed: the program that opened it continues. */
   closeEdit?(): string[];
+  /** Frame of the full-screen program running (mc), or null. */
+  screenFrame?(width: number, height: number): Frame | null;
+  /** A key for the full-screen program; returns the shell output when the program ends. */
+  screenKey?(key: KeyInput): string[];
 }
+
+export const DEFAULT_SCREEN = { width: 80, height: 24 } as const;
 
 export const SSH_PORT = 22;
 const MAX_SSH_ATTEMPTS = 3;
@@ -36,13 +43,13 @@ const MAX_SSH_ATTEMPTS = 3;
 export const SSH_FAILED = 255;
 
 type SshOutput = Extract<AppPayload, { app: 'SSH'; kind: 'output' }>;
-type SshRequest = Extract<AppPayload, { app: 'SSH'; kind: 'command' | 'key' | 'edit' }>;
+type SshRequest = Extract<AppPayload, { app: 'SSH'; kind: 'command' | 'key' | 'edit' | 'screen' }>;
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 type State =
   | { kind: 'local' }
   | { kind: 'password'; user: string; target: string; ip: number; attempts: number }
-  | { kind: 'remote'; target: string; ip: number; session: string; prompt: string; secret: boolean; edit: EditSpec | null };
+  | { kind: 'remote'; target: string; ip: number; session: string; prompt: string; secret: boolean; edit: EditSpec | null; screen: Frame | null; size: { width: number; height: number } };
 
 export abstract class BaseShell implements ShellSession {
   readonly host: Host;
@@ -131,6 +138,29 @@ export abstract class BaseShell implements ShellSession {
     return this.localCloseEdit();
   }
 
+  screenFrame(width: number, height: number): Frame | null {
+    if (this.state.kind !== 'remote') return this.localScreenFrame(width, height);
+    const st = this.state;
+    if (st.screen && (st.size.width !== width || st.size.height !== height)) {
+      this.state = { ...st, size: { width, height } };
+      this.remoteRequest({ kind: 'screen', width, height });
+    }
+    return this.state.kind === 'remote' ? this.state.screen : null;
+  }
+
+  screenKey(key: KeyInput): string[] {
+    if (this.state.kind !== 'remote') return this.localScreenKey(key);
+    return this.remoteRequest({ kind: 'screen', key, ...this.state.size });
+  }
+
+  protected localScreenFrame(_width: number, _height: number): Frame | null {
+    return null;
+  }
+
+  protected localScreenKey(_key: KeyInput): string[] {
+    return [];
+  }
+
   protected localEditRequest(): EditSpec | null {
     return null;
   }
@@ -178,7 +208,7 @@ export abstract class BaseShell implements ShellSession {
       this.state = { ...st, attempts };
       return ['Permission denied, please try again.'];
     }
-    this.state = { kind: 'remote', target: st.target, ip: st.ip, session: out.session, prompt: out.prompt ?? '$ ', secret: false, edit: null };
+    this.state = { kind: 'remote', target: st.target, ip: st.ip, session: out.session, prompt: out.prompt ?? '$ ', secret: false, edit: null, screen: null, size: { ...DEFAULT_SCREEN } };
     return [...out.lines];
   }
 
@@ -188,7 +218,7 @@ export abstract class BaseShell implements ShellSession {
     const r = tcpCall(this.host, st.ip, SSH_PORT, { ...req, app: 'SSH', session: st.session } as SshRequest, SSH_WAIT_MS);
     const out: SshOutput | undefined = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
     if (!out || out.closed) return this.endSsh([...(out?.lines ?? []), `Connection to ${st.target} closed.`], out ? out.status ?? 0 : SSH_FAILED);
-    this.state = { ...st, prompt: out.prompt ?? st.prompt, secret: out.secret ?? false, edit: out.edit ?? null };
+    this.state = { ...st, prompt: out.prompt ?? st.prompt, secret: out.secret ?? false, edit: out.edit ?? null, screen: out.screen ?? null };
     return [...out.lines];
   }
 

@@ -8,7 +8,9 @@ export interface KeyInput {
   readonly shift?: boolean;
 }
 
-export type SpanStyle = 'inverse' | 'bold' | 'dim' | 'accent' | 'error';
+export type SpanStyle = 'inverse' | 'bold' | 'dim' | 'accent' | 'error'
+  /** Midnight Commander skin. */
+  | 'panel' | 'panelHead' | 'cursor' | 'marked' | 'dir' | 'exec' | 'link' | 'menu' | 'keynum' | 'keylabel' | 'dialog' | 'dialogFocus' | 'viewer';
 
 export interface Span {
   readonly text: string;
