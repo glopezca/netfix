@@ -12,6 +12,8 @@ import { linuxFiles } from './linux-files.ts';
 import { linuxPrograms } from './linux-programs.ts';
 import { formatIp } from '../core/ip.ts';
 import { exportFiles, importFiles } from '../bash/vfs-persist.ts';
+import { seedApache } from '../services/apache/defaults.ts';
+import { registerHostFs } from '../devices/host-fs.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
 
 export interface HostSystem {
@@ -123,7 +125,10 @@ function createSystem(host: Host): Entry {
   seedRootfs(fs, { hostname: host.name.toLowerCase(), users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
   fs.seed('/usr/lib/command-not-found', { kind: 'file', content: `${BINARY_MARK}command-not-found\n` }, 0o755);
   const server = asServer(host);
-  if (server) fs.mountDir(WWW, webRoot(server));
+  if (server) {
+    seedApache(fs);
+    fs.mountDir(WWW, webRoot(server));
+  }
   const env: HostEnv = {
     get hostname() { return host.runtimeName().toLowerCase(); },
     fs,
@@ -163,3 +168,5 @@ export function restoreFiles(host: Host, files: readonly FileRecord[]): void {
   if (e) importFiles(e.fs, files);
   else pendingFiles.set(host, files);
 }
+
+registerHostFs((host) => hostSystem(host).fs);

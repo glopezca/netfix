@@ -20,7 +20,7 @@ test('every page has a unique id, a title, a summary and content', () => {
 test('every builtin and every program of the terminal is documented', () => {
   for (const b of BUILTINS.keys()) assert.ok(BUILTIN_DOCS[b], `builtin ${b}`);
   for (const c of COREUTILS.keys()) assert.ok(UTIL_DOCS[c] || ALIASES.has(c), `programa ${c}`);
-  for (const c of ['ip', 'ping', 'dig', 'nslookup', 'host', 'curl', 'wget', 'ssh', 'dhclient', 'systemctl', 'service', 'journalctl', 'ss']) assert.ok(UTIL_DOCS[c], c);
+  for (const c of ['ip', 'ping', 'dig', 'nslookup', 'host', 'curl', 'wget', 'ssh', 'dhclient', 'systemctl', 'service', 'journalctl', 'ss', 'a2ensite', 'a2enmod', 'a2enconf', 'apache2ctl']) assert.ok(UTIL_DOCS[c], c);
 });
 
 test('search ignores accents and case and ranks titles first', () => {

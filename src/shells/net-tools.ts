@@ -1,6 +1,6 @@
 /** Network operations shared by the Linux and Windows shells and the desktop apps. */
 import type { Host } from '../devices/host.ts';
-import type { AppPayload, DnsMessage, DnsType } from '../net/packets.ts';
+import type { AppPayload, DnsMessage, DnsType, HttpHeaders, HttpMethod } from '../net/packets.ts';
 import type { DnsResult } from '../net/dns.ts';
 import { firstAddress, normalizeName, reverseName } from '../net/dns.ts';
 import type { TcpResult } from '../net/tcp.ts';
@@ -12,6 +12,7 @@ export type Resolved =
   | { readonly kind: 'error'; readonly reason: 'noserver' | 'timeout' | 'nxdomain' | 'nodata' };
 
 const DNS_WAIT_MS = 3000;
+const DEFAULT_HTTP_PORT = 80;
 const TCP_WAIT_MS = 6000;
 /** Remote commands may run network tools on the server (ping, dig, curl…). */
 export const SSH_WAIT_MS = 60_000;
@@ -55,13 +56,25 @@ export type HttpOutcome =
   | { readonly kind: 'ok'; readonly response: Extract<AppPayload, { app: 'HTTP'; kind: 'response' }>; readonly ip: number }
   | { readonly kind: 'error'; readonly code: number; readonly message: string };
 
+export interface HttpOptions {
+  readonly method?: HttpMethod;
+  readonly headers?: HttpHeaders;
+  readonly body?: string;
+}
+
 /** Resolves and fetches a URL. Errors use curl's exit codes and messages. */
-export function httpGet(host: Host, url: string, method: 'GET' | 'HEAD' = 'GET'): HttpOutcome {
+export function httpGet(host: Host, url: string, method: HttpMethod = 'GET'): HttpOutcome {
+  return httpRequest(host, url, { method });
+}
+
+/** One HTTP request (no redirects followed); the Host header carries the port when it is not 80. */
+export function httpRequest(host: Host, url: string, opts: HttpOptions = {}): HttpOutcome {
   const parts = parseUrl(url);
   if (!parts) return { kind: 'error', code: 3, message: `URL rejected: Malformed input to a URL function (solo se admite http://)` };
   const target = resolveHost(host, parts.host);
   if (target.kind === 'error') return { kind: 'error', code: 6, message: `Could not resolve host: ${parts.host}` };
-  const r = tcpCall(host, target.ip, parts.port, { app: 'HTTP', kind: 'request', method, host: parts.host, path: parts.path });
+  const headers: HttpHeaders = { host: `${parts.host}${parts.port !== DEFAULT_HTTP_PORT ? `:${parts.port}` : ''}`, 'user-agent': 'netsim', ...opts.headers };
+  const r = tcpCall(host, target.ip, parts.port, { app: 'HTTP', kind: 'request', method: opts.method ?? 'GET', host: parts.host, path: parts.path, headers, body: opts.body });
   if (r.kind === 'ok' && r.reply.app === 'HTTP' && r.reply.kind === 'response') return { kind: 'ok', response: r.reply, ip: target.ip };
   if (r.kind === 'refused') return { kind: 'error', code: 7, message: `Failed to connect to ${parts.host} port ${parts.port} after 0 ms: Couldn't connect to server` };
   if (r.kind === 'noroute') return { kind: 'error', code: 7, message: `Failed to connect to ${parts.host} port ${parts.port} after 0 ms: Network is unreachable` };

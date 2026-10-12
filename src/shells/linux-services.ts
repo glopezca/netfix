@@ -45,7 +45,7 @@ function listUnits(server: Server): string[] {
   return ['  UNIT                       LOAD   ACTIVE   SUB     DESCRIPTION', ...rows, '', `${UNITS.length} loaded units listed.`];
 }
 
-const NEEDS_ROOT = new Set(['start', 'stop', 'restart', 'reload', 'enable', 'disable']);
+const NEEDS_ROOT = new Set(['start', 'stop', 'restart', 'reload', 'force-reload', 'enable', 'disable']);
 
 export function systemctl(host: Host, args: string[], root: boolean): string[] {
   const server = asServer(host);
@@ -59,18 +59,32 @@ export function systemctl(host: Host, args: string[], root: boolean): string[] {
   return runVerb(server, unit, verb, args.includes('--now'));
 }
 
+function jobFailed(unit: UnitInfo): string[] {
+  return [`Job for ${unit.linux}.service failed because the control process exited with error code.`, `See "systemctl status ${unit.linux}.service" and "journalctl -xeu ${unit.linux}.service" for details.`];
+}
+
+function started(server: Server, unit: UnitInfo): string[] {
+  return unitActive(server.services, unit.id) ? [] : jobFailed(unit);
+}
+
+function restart(server: Server, unit: UnitInfo): string[] {
+  server.setUnit(unit.id, false);
+  server.setUnit(unit.id, true);
+  return started(server, unit);
+}
+
 function runVerb(server: Server, unit: UnitInfo, verb: string, now: boolean): string[] {
   const path = `/etc/systemd/system/multi-user.target.wants/${unit.linux}.service`;
   switch (verb) {
     case 'status': return status(server, unit);
     case 'is-active': return [unitActive(server.services, unit.id) ? 'active' : 'inactive'];
     case 'is-enabled': return [server.autostart[unit.id] ? 'enabled' : 'disabled'];
-    case 'start': server.setUnit(unit.id, true); return [];
+    case 'start': server.setUnit(unit.id, true); return started(server, unit);
     case 'stop': server.setUnit(unit.id, false); return [];
-    case 'restart': case 'reload':
-      server.setUnit(unit.id, false);
-      server.setUnit(unit.id, true);
-      return [];
+    case 'reload': case 'force-reload':
+      if (unit.id === 'http' && unitActive(server.services, 'http')) return server.reloadWeb() ? jobFailed(unit) : [];
+      return restart(server, unit);
+    case 'restart': return restart(server, unit);
     case 'enable':
       server.autostart = { ...server.autostart, [unit.id]: true };
       if (now) server.setUnit(unit.id, true);
@@ -107,7 +121,7 @@ export function ss(host: Host): string[] {
   const server = asServer(host);
   if (!server) return [header];
   const local = host.config.ip !== undefined ? '0.0.0.0' : '*';
-  return [header, ...openPorts(server.services).map((p) =>
+  return [header, ...openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).map((p) =>
     `${p.proto.padEnd(5)} ${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${'0.0.0.0:*'.padStart(15)}   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))`)];
 }
 

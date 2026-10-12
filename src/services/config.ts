@@ -48,6 +48,41 @@ export interface Account {
   readonly password: string;
 }
 
+/** How a web application is reached: a URL alias on Apache's ports, or a port of its own. */
+export interface WebAppAccess {
+  readonly enabled: boolean;
+  readonly mode: 'alias' | 'port';
+  /** "/roundcube" */
+  readonly alias: string;
+  readonly port: number;
+}
+
+export interface WebApps {
+  /** Roundcube webmail (needs Apache: alias on its ports or a VirtualHost on its own port). */
+  readonly roundcube: WebAppAccess;
+  /** Web management of the server (WRT300N style), with its own login. */
+  readonly admin: WebAppAccess & { readonly user: string; readonly password: string };
+}
+
+export const RESERVED_PORTS: readonly number[] = [22, 25, 53, 67, 110, 143];
+
+export function defaultWebApps(): WebApps {
+  return {
+    roundcube: { enabled: false, mode: 'alias', alias: '/roundcube', port: 8080 },
+    admin: { enabled: false, mode: 'port', alias: '/admin', port: 10000, user: 'admin', password: 'admin' },
+  };
+}
+
+/** Error message for an alias or port, or null. */
+export function validateAccess(a: WebAppAccess, other?: WebAppAccess): string | null {
+  if (!/^\/[A-Za-z0-9._~-]+(\/[A-Za-z0-9._~-]+)*$/.test(a.alias)) return 'El alias debe empezar por / y contener solo letras, números, punto, guion o guion bajo (por ejemplo /roundcube).';
+  if (!Number.isInteger(a.port) || a.port < 1 || a.port > 65535) return 'El puerto va de 1 a 65535.';
+  if (a.mode === 'port' && RESERVED_PORTS.includes(a.port)) return `El puerto ${a.port} lo usa otro servicio del servidor.`;
+  if (other?.enabled && a.enabled && a.mode === 'port' && other.mode === 'port' && other.port === a.port) return `El puerto ${a.port} ya lo usa la otra aplicación web.`;
+  if (other?.enabled && a.enabled && a.mode === 'alias' && other.mode === 'alias' && other.alias === a.alias) return `El alias ${a.alias} ya lo usa la otra aplicación web.`;
+  return null;
+}
+
 export interface ServerServices {
   readonly dhcp: { readonly enabled: boolean; readonly pools: readonly PtDhcpPool[] };
   /** `origin`: zone origin for relative names (BIND `$ORIGIN`); undefined = every name is absolute. */
@@ -61,6 +96,7 @@ export interface ServerServices {
     readonly users: readonly Account[];
   };
   readonly ssh: { readonly enabled: boolean; readonly users: readonly Account[] };
+  readonly webapps: WebApps;
 }
 
 export const DEFAULT_LEASE_MINUTES = 1440;
@@ -95,5 +131,6 @@ export function defaultServices(): ServerServices {
     http: { enabled: true, files: [{ name: 'index.html', content: DEFAULT_INDEX }, { name: 'ayuda.html', content: DEFAULT_HELP }] },
     mail: { smtp: false, pop3: false, imap: false, domain: '', users: [] },
     ssh: { enabled: false, users: [] },
+    webapps: defaultWebApps(),
   };
 }

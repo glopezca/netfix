@@ -53,12 +53,4 @@ export function renderHtml(html: string, onLink: (href: string) => void): Render
   return { title: doc.title, body: frag };
 }
 
-/** Resolves a link found in a page against the page's URL ("ayuda.html", "/x", "http://h/y"). */
-export function resolveLink(base: string, href: string): string {
-  if (/^https?:\/\//i.test(href)) return href;
-  const m = /^(https?:\/\/)?([^/]+)(\/.*)?$/i.exec(base);
-  const origin = `${m?.[1] ?? 'http://'}${m?.[2] ?? ''}`;
-  if (href.startsWith('/')) return `${origin}${href}`;
-  const dir = (m?.[3] ?? '/').replace(/[^/]*$/, '');
-  return `${origin}${dir}${href}`;
-}
+export { resolveLink } from '../web/url.ts';

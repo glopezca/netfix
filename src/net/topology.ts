@@ -200,6 +200,7 @@ function restore(device: AnyDevice, rec: DeviceRecord): void {
     if (pc.files !== undefined) restoreFiles(device, validFileRecords(pc.files));
     if (pc.mode === 'dhcp') device.config = { mode: 'dhcp' };
     else device.setStatic(parseStatic(pc));
+    if (device instanceof Server) device.web.reload();
     if (device instanceof Server && rec.server) restoreServer(device, rec.server);
     if (device instanceof Pc && pc.apps) restoreApps(device, pc.apps);
     return;

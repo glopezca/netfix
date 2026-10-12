@@ -97,6 +97,31 @@ export const SERVICE_DOCS: DocGroup = {
       ],
     },
     {
+      id: 'srv-apache',
+      title: 'Apache2 en /etc/apache2',
+      summary: 'Configuración real de Ubuntu: sitios, módulos, puertos, VirtualHost, Alias, permisos y recarga.',
+      blocks: [
+        p('En un Server-PT con Ubuntu, el servicio HTTP es Apache 2.4 y se configura como en Ubuntu, con los ficheros de /etc/apache2 (como root o con sudo). La pestaña Servicios → HTTP sigue editando /var/www/html, la carpeta del sitio por defecto. En Windows Server el servicio es IIS y sirve esa misma lista de ficheros.'),
+        table(['Fichero o carpeta', 'Para qué sirve'], [
+          ['apache2.conf', 'Configuración principal: incluye el resto y define los <Directory> permitidos (/var/www y /usr/share).'],
+          ['ports.conf', 'Puertos con Listen (80; 443 si se activa ssl).'],
+          ['sites-available/ · sites-enabled/', 'Sitios (VirtualHost). Se activan con a2ensite y se desactivan con a2dissite.'],
+          ['mods-available/ · mods-enabled/', 'Módulos (a2enmod / a2dismod): alias, dir, autoindex, rewrite, ssl, headers, userdir…'],
+          ['conf-available/ · conf-enabled/', 'Fragmentos de configuración (a2enconf / a2disconf): security.conf, charset.conf…'],
+        ]),
+        h('Ciclo de trabajo'),
+        code('admin@srv:~$ sudo mkdir -p /var/www/empresa\nadmin@srv:~$ echo "<h1>Empresa</h1>" | sudo tee /var/www/empresa/index.html\nadmin@srv:~$ sudo nano /etc/apache2/sites-available/empresa.conf\n<VirtualHost *:80>\n    ServerName empresa.aula.lab\n    DocumentRoot /var/www/empresa\n    Alias /docs /srv/docs\n    Redirect /antigua http://www.aula.lab/\n</VirtualHost>\nadmin@srv:~$ sudo a2ensite empresa\nadmin@srv:~$ sudo apache2ctl configtest\nSyntax OK\nadmin@srv:~$ sudo systemctl reload apache2\nalumno@pc0:~$ curl http://empresa.aula.lab/'),
+        list(
+          'Los cambios no se aplican hasta systemctl reload (sitios, conf) o restart (módulos, puertos). Si la configuración tiene errores, reload falla y Apache sigue con la anterior; restart lo deja parado.',
+          'apache2ctl configtest muestra el error con el fichero y la línea: «AH00526: Syntax error on line 16 of …: Invalid command \'DocumentRot\'…».',
+          'VirtualHost por nombre: Apache elige el sitio por la cabecera Host (ServerName o ServerAlias); si ninguno coincide, responde el primero de ese puerto. Necesitas el nombre en el DNS (o curl -H "Host: …").',
+          'Permisos: Apache lee como www-data. Un DocumentRoot fuera de /var/www o /usr/share da 403 Forbidden hasta añadir <Directory …> Require all granted </Directory>. Sin index.html, Options Indexes muestra el listado del directorio.',
+          'Directivas admitidas: Listen, VirtualHost, ServerName, ServerAlias, DocumentRoot, Alias, Redirect, DirectoryIndex, ErrorDocument, Options, Require, Include/IncludeOptional, IfModule, IfDefine… Las de un módulo desactivado dan «Invalid command».',
+          'Los cambios en /etc/apache2 (también los ficheros borrados, como un sitio desactivado) se guardan con la topología.',
+        ),
+      ],
+    },
+    {
       id: 'srv-mail',
       title: 'Correo',
       summary: 'SMTP, POP3 e IMAP, dominio, cuentas y reenvío entre dominios por MX.',

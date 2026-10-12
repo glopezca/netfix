@@ -95,6 +95,8 @@ export class Vfs {
   readonly root: FsNode & { kind: 'dir' };
   private readonly now: () => number;
   usedBytes = 0;
+  /** Paths of the base system (seeded, not user) removed by users: saved as deletions. */
+  readonly removedSeeded = new Set<string>();
 
   constructor(now: () => number = () => 0) {
     this.now = now;
@@ -283,6 +285,7 @@ export class Vfs {
       for (const c of [...node.children.keys()]) this.remove(`${p}/${c}`, cred, true, true);
     }
     if (node.kind === 'file') this.charge(-node.content.length);
+    if (!node.dirty) this.removedSeeded.add(p);
     parent.children.delete(name);
     parent.mtime = this.now();
   }
@@ -309,6 +312,8 @@ export class Vfs {
     if (existing?.kind === 'dir' && node.kind !== 'dir') throw new FsError('EISDIR');
     if (existing?.kind === 'file' && existing.generated) throw new FsError('EROFS');
     if (existing?.kind === 'file') this.charge(-existing.content.length);
+    if (!node.dirty) this.removedSeeded.add(src);
+    this.removedSeeded.delete(dst);
     parent.children.delete(basename(src));
     target.children.set(basename(dst), { ...node, dirty: true });
   }

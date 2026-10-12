@@ -171,7 +171,7 @@ export class WindowsShell extends BaseShell {
 
   private netstat(): string[] {
     const local = this.host.config.ip !== undefined ? formatIp(this.host.config.ip) : '0.0.0.0';
-    const ports = this.host.kind === 'server' ? openPorts((this.host as Server).services) : [];
+    const ports = this.host.kind === 'server' ? openPorts((this.host as Server).services, { http: (this.host as Server).web.httpPorts(), admin: (this.host as Server).web.adminPorts() }) : [];
     return ['', 'Active Connections', '', '  Proto  Local Address          Foreign Address        State',
       ...ports.map((p) => `  ${p.proto.toUpperCase().padEnd(7)}${`${p.proto === 'udp' ? '0.0.0.0' : local}:${p.port}`.padEnd(23)}${(p.proto === 'udp' ? '*:*' : '0.0.0.0:0').padEnd(23)}${p.proto === 'tcp' ? 'LISTENING' : ''}`)];
   }

@@ -4,7 +4,8 @@ import { MAX_FILE, MAX_TOTAL, dirname, normalize } from './vfs.ts';
 
 export interface FileRecord {
   readonly path: string;
-  readonly kind: 'file' | 'dir' | 'link';
+  /** 'deleted': a file of the base system removed by the user (a2dissite, rm…). */
+  readonly kind: 'file' | 'dir' | 'link' | 'deleted';
   readonly content?: string;
   readonly target?: string;
   readonly mode: number;
@@ -38,6 +39,9 @@ function walk(dir: Dir, path: string, out: FileRecord[]): void {
 export function exportFiles(fs: Vfs): FileRecord[] {
   const out: FileRecord[] = [];
   walk(fs.lookup('/') as Dir, '/', out);
+  for (const path of [...fs.removedSeeded].sort()) {
+    if (fs.tryLookup(path, undefined, false) === undefined) out.push({ path, kind: 'deleted', mode: 0, uid: 0, gid: 0 });
+  }
   return out;
 }
 
@@ -54,7 +58,7 @@ export function validFileRecords(data: unknown): FileRecord[] {
     if (typeof path !== 'string' || path.length > MAX_PATH || !path.startsWith('/') || normalize(path) !== path || path === '/') continue;
     if (!isId(uid) || !isId(gid) || typeof mode !== 'number' || !Number.isInteger(mode)) continue;
     const meta = { path, mode: mode & MODE_MASK, uid, gid };
-    if (kind === 'dir') out.push({ ...meta, kind });
+    if (kind === 'dir' || kind === 'deleted') out.push({ ...meta, kind });
     else if (kind === 'link' && typeof target === 'string' && target.length <= MAX_LINK_TARGET) out.push({ ...meta, kind, target });
     else if (kind === 'file' && typeof content === 'string' && content.length <= MAX_FILE && total + content.length <= MAX_TOTAL) {
       total += content.length;
@@ -91,6 +95,10 @@ export function importFiles(fs: Vfs, records: readonly FileRecord[]): void {
     if (!restorable(fs, r)) continue;
     const mode = r.mode & SAFE_MODE;
     try {
+      if (r.kind === 'deleted') {
+        if (fs.tryLookup(r.path, undefined, false) !== undefined) fs.remove(r.path, undefined, true, true);
+        continue;
+      }
       if (r.kind === 'dir') fs.seed(r.path, { kind: 'dir' }, mode, r.uid, r.gid);
       else if (r.kind === 'link') fs.seed(r.path, { kind: 'link', target: r.target ?? '' }, mode, r.uid, r.gid);
       else {

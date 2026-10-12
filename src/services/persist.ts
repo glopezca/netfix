@@ -1,6 +1,7 @@
 /** JSON (de)serialisation of Server-PT services with validation of untrusted files. */
 import type { ServerServices, PtDhcpPool, DnsRecord, Account, WebFile } from './config.ts';
-import { defaultServices, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } from './config.ts';
+import { defaultServices, defaultWebApps, validateAccess, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } from './config.ts';
+import type { WebAppAccess, WebApps } from './config.ts';
 import type { MailMessage } from '../net/packets.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { parseMac, parseHexId } from '../core/mac.ts';
@@ -18,6 +19,7 @@ export interface ServicesJson {
   readonly http: { enabled: boolean; files: WebFile[] };
   readonly mail: ServerServices['mail'];
   readonly ssh: ServerServices['ssh'];
+  readonly webapps?: ServerServices['webapps'];
 }
 
 const ip = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
@@ -37,6 +39,7 @@ export function servicesToJson(s: ServerServices): ServicesJson {
     http: { enabled: s.http.enabled, files: [...s.http.files] },
     mail: s.mail,
     ssh: s.ssh,
+    webapps: s.webapps,
   };
 }
 
@@ -124,6 +127,27 @@ function account(v: unknown): Account {
   return { name: str(v.name, 'usuario', 64), password: str(v.password, 'contraseña', 128) };
 }
 
+function access(v: unknown, dflt: WebAppAccess): WebAppAccess {
+  if (!isObj(v)) return dflt;
+  const a = {
+    enabled: bool(v.enabled), mode: v.mode === 'port' ? 'port' as const : 'alias' as const,
+    alias: v.alias === undefined ? dflt.alias : str(v.alias, 'alias web', 64), port: num(v.port, 'puerto web', 1, 65_535, dflt.port),
+  };
+  const err = validateAccess(a);
+  if (err) throw new Error(err);
+  return a;
+}
+
+function webapps(v: unknown): WebApps {
+  const d = defaultWebApps();
+  if (!isObj(v)) return d;
+  const admin = isObj(v.admin) ? v.admin : {};
+  return {
+    roundcube: access(v.roundcube, d.roundcube),
+    admin: { ...access(v.admin, d.admin), user: admin.user === undefined ? d.admin.user : str(admin.user, 'usuario de gestión web', 32), password: admin.password === undefined ? d.admin.password : str(admin.password, 'contraseña de gestión web', 128) },
+  };
+}
+
 export function servicesFromJson(v: unknown): ServerServices {
   if (v === undefined) return defaultServices();
   if (!isObj(v)) throw new Error('Servicios del servidor no válidos.');
@@ -138,6 +162,7 @@ export function servicesFromJson(v: unknown): ServerServices {
     http: { enabled: bool(h.enabled), files: arr(h.files, 'ficheros web').map((f) => { if (!isObj(f)) throw new Error('Fichero web no válido.'); return { name: str(f.name, 'fichero web', 128), content: str(f.content, 'contenido web', MAX_TEXT) }; }) },
     mail: { smtp: bool(m.smtp), pop3: bool(m.pop3), imap: bool(m.imap), domain: m.domain === undefined ? '' : str(m.domain, 'dominio de correo'), users: arr(m.users, 'usuarios de correo').map(account) },
     ssh: { enabled: bool(s.enabled), users: arr(s.users, 'usuarios SSH').map(account) },
+    webapps: webapps(v.webapps),
   };
 }
 

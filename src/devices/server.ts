@@ -11,7 +11,7 @@ import type { ServerServices } from '../services/config.ts';
 import { applyPtPools } from '../services/dhcp-pt.ts';
 import { answerQuery } from '../services/dns-service.ts';
 import { cleanOrigin, effectiveRecords } from '../services/dns-names.ts';
-import { serveHttp, SERVER_BANNER, IIS_BANNER } from '../services/http-service.ts';
+import { ServerWeb } from './server-web.ts';
 import { Mailboxes, handleSmtp, handleRetrieve } from '../services/mail-service.ts';
 import type { MailEnv } from '../services/mail-service.ts';
 import { findUnit, setUnitActive, unitActive, UNITS } from '../services/units.ts';
@@ -32,7 +32,6 @@ const MAX_LOG = 400;
 const SMTP_PORT = 25;
 const POP3_PORT = 110;
 const IMAP_PORT = 143;
-const HTTP_PORT = 80;
 const SSH_PORT = 22;
 
 export class Server extends Host {
@@ -45,6 +44,7 @@ export class Server extends Host {
   readonly mailboxes = new Mailboxes();
   readonly logs: LogEntry[] = [];
   readonly ssh: SshService;
+  readonly web: ServerWeb = new ServerWeb(this);
 
   constructor(id: string, name: string, clock: SimClock, seed: number) {
     super(id, name, clock, seed);
@@ -54,8 +54,9 @@ export class Server extends Host {
 
   // ------------------------------------------------------------ configuration
 
-  setServices(next: ServerServices): void {
+  setServices(requested: ServerServices): void {
     const before = this.services;
+    const next = !before.http.enabled && requested.http.enabled && !this.startWeb() ? { ...requested, http: { ...requested.http, enabled: false } } : requested;
     this.services = next;
     this.applyServices();
     for (const u of UNITS) {
@@ -64,6 +65,38 @@ export class Server extends Host {
       if (was !== now) this.log(u.id, now ? `Started ${u.description}.` : `Stopped ${u.description}.`);
     }
     this.changed();
+  }
+
+  /** Starting Apache reads /etc/apache2; a configuration error keeps it stopped (logged like systemd). */
+  private startWeb(): boolean {
+    if (this.os === 'windows') return true;
+    const err = this.web.reload();
+    if (!err) return true;
+    this.logWebError(err);
+    this.log('http', 'apache2.service: Control process exited, code=exited, status=1/FAILURE');
+    this.log('http', "apache2.service: Failed with result 'exit-code'.");
+    this.log('http', 'Failed to start apache2.service - The Apache HTTP Server.');
+    return false;
+  }
+
+  private logWebError(err: string): void {
+    for (const line of [...err.split('\n'), "Action 'start' failed.", 'The Apache error log may have more information.']) this.log('http', `apachectl[1123]: ${line}`);
+  }
+
+  /** systemctl reload apache2: applies the new configuration, or keeps the running one on error. */
+  reloadWeb(): string | null {
+    if (this.os === 'windows') return null;
+    const err = this.web.reload();
+    if (err) {
+      this.logWebError(err);
+      this.log('http', 'Reload failed for apache2.service - The Apache HTTP Server.');
+      return err;
+    }
+    this.log('http', 'Reloading apache2.service - The Apache HTTP Server...');
+    this.log('http', 'Reloaded apache2.service - The Apache HTTP Server.');
+    this.applyServices();
+    this.changed();
+    return null;
   }
 
   setUnit(id: UnitId, on: boolean): void {
@@ -77,7 +110,7 @@ export class Server extends Host {
   private applyServices(): void {
     const s = this.services;
     applyPtPools(this.dhcpEngine, s.dhcp.pools, s.dhcp.enabled);
-    this.toggle(HTTP_PORT, s.http.enabled, (req, peer) => this.onHttp(req, peer));
+    this.web.sync();
     this.toggle(SMTP_PORT, s.mail.smtp, (req, peer) => (req.app === 'SMTP' && req.kind === 'request' ? handleSmtp(this.mailEnv(), this.mailboxes, req, formatIp(peer.ip)) : null));
     this.toggle(POP3_PORT, s.mail.pop3, (req, peer) => (req.app === 'POP3' && req.kind === 'request' ? handleRetrieve(this.mailEnv(), this.mailboxes, req, formatIp(peer.ip)) : null));
     this.toggle(IMAP_PORT, s.mail.imap, (req, peer) => (req.app === 'IMAP' && req.kind === 'request' ? handleRetrieve(this.mailEnv(), this.mailboxes, req, formatIp(peer.ip)) : null));
@@ -97,15 +130,6 @@ export class Server extends Host {
 
   journal(unit: UnitId): LogEntry[] {
     return this.logs.filter((l) => l.unit === unit);
-  }
-
-  // ------------------------------------------------------------ HTTP
-
-  private onHttp(req: AppPayload, peer: Peer): AppPayload | null {
-    if (req.app !== 'HTTP' || req.kind !== 'request') return null;
-    const res = serveHttp(this.services.http.files, req, this.os === 'windows' ? IIS_BANNER : SERVER_BANNER);
-    this.log('http', `${formatIp(peer.ip)} - - "${req.method} ${req.path} HTTP/1.1" ${res.status} ${res.body.length}`);
-    return res;
   }
 
   // ------------------------------------------------------------ mail

@@ -5,10 +5,13 @@ import { httpGet } from './net-tools.ts';
 import { systemctl, journalctl, ss } from './linux-services.ts';
 import { ip, ping, dig, nslookup, hostCmd, dhclient } from './linux-net.ts';
 import { FsError } from '../bash/vfs.ts';
+import { APACHE_TOOLS } from '../services/apache/tools.ts';
+import { curl } from './curl.ts';
 
 const PACKAGES: Readonly<Record<string, string>> = {
   ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
   telnet: 'inetutils-telnet', nmap: 'nmap', htop: 'htop', tree: 'tree', zip: 'zip', unzip: 'unzip', php: 'php8.4-cli', python: 'python-is-python3',
+  a2ensite: 'apache2', a2dissite: 'apache2', a2enmod: 'apache2', a2dismod: 'apache2', a2enconf: 'apache2', a2disconf: 'apache2', apache2ctl: 'apache2', apachectl: 'apache2',
   emacs: 'emacs-nox', mysql: 'mysql-client-core-8.4', git: 'git', make: 'make', gcc: 'gcc', ftp: 'tnftp', whois: 'whois',
 };
 
@@ -17,7 +20,7 @@ const lines = (ctx: Ctx, list: readonly string[]): void => {
 };
 
 /** Messages of systemctl/journalctl that go to stderr with a failure status. */
-const FAILURE = /^(Failed to|Unit .* could not be found|Too few arguments|Unknown command verb)/;
+const FAILURE = /^(Failed to|Unit .* could not be found|Too few arguments|Unknown command verb|Job for)/;
 
 function systemd(host: Host, kind: 'systemctl' | 'service'): CommandFn {
   return (ctx: Ctx): number => {
@@ -49,26 +52,6 @@ function writeOut(ctx: Ctx, prog: string, file: string, body: string): boolean {
     ctx.err(`${prog}: ${file}: ${e instanceof FsError ? e.message : 'Cannot write'}\n`);
     return false;
   }
-}
-
-function curl(host: Host): CommandFn {
-  return (ctx: Ctx): number => {
-    const args = ctx.argv.slice(1);
-    const head = args.includes('-I') || args.includes('--head');
-    const oIdx = args.findIndex((a) => a === '-o' || a === '--output');
-    const remoteName = args.includes('-O') || args.includes('--remote-name');
-    const url = args.find((a, i) => !a.startsWith('-') && !(oIdx >= 0 && i === oIdx + 1));
-    if (!url) { ctx.err("curl: try 'curl --help' or 'curl --manual' for more information\n"); return 2; }
-    const r = httpGet(host, url, head ? 'HEAD' : 'GET');
-    if (r.kind === 'error') { ctx.err(`curl: (${r.code}) ${r.message}\n`); return r.code; }
-    const res = r.response;
-    const text = head
-      ? `HTTP/1.1 ${res.status} ${res.reason}\r\nServer: ${res.server}\r\nContent-Type: ${res.contentType}\r\nContent-Length: ${res.body.length}\r\n\r\n`.replace(/\r/g, '')
-      : res.body;
-    const target = oIdx >= 0 ? args[oIdx + 1] : remoteName ? url.split('/').filter(Boolean).slice(2).pop() ?? 'index.html' : undefined;
-    if (target === undefined) { ctx.out(text); return 0; }
-    return writeOut(ctx, 'curl', target, text) ? 0 : 23;
-  };
 }
 
 function wget(host: Host): CommandFn {
@@ -122,5 +105,6 @@ export function linuxPrograms(host: Host): Map<string, CommandFn> {
     ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
     ['ss', (ctx) => { lines(ctx, ss(host)); return 0; }],
     ['command-not-found', commandNotFound],
+    ...(host.kind === 'server' ? APACHE_TOOLS : []),
   ]);
 }

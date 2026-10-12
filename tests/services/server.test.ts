@@ -99,7 +99,7 @@ test('HTTP: curl, wget, HEAD, 404, stopped service and Windows IIS banner', () =
   t.settle();
   const sh = createShell(pc, 'linux');
   assert.match(sh.run('curl http://www.aula.lab/').join('\n'), /<h1>Servidor web de netsim<\/h1>/);
-  assert.match(sh.run('curl -I http://192.168.10.2/ayuda.html').join('\n'), /HTTP\/1\.1 200 OK\nServer: Apache\/2\.4\.62 \(Ubuntu\)/);
+  assert.match(sh.run('curl -I http://192.168.10.2/ayuda.html').join('\n'), /HTTP\/1\.1 200 OK\nDate: [^\n]+ GMT\nServer: Apache\/2\.4\.62 \(Ubuntu\)/);
   assert.match(sh.run('curl http://www.aula.lab/nada.html').join('\n'), /Not Found/);
   assert.match(sh.run('wget http://www.aula.lab/ayuda.html').join('\n'), /‘ayuda\.html’ saved/);
   assert.match(sh.run('curl http://nohay.aula.lab').join('\n'), /curl: \(6\) Could not resolve host: nohay\.aula\.lab/);

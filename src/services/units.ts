@@ -51,15 +51,23 @@ export function setUnitActive(s: ServerServices, id: UnitId, on: boolean): Serve
   }
 }
 
-/** Ports actually open on the server, for ss/netstat. */
-export function openPorts(s: ServerServices): { proto: 'udp' | 'tcp'; port: number; unit: UnitInfo }[] {
+/** The management GUI's own web server (port mode). */
+export const WEBUI_UNIT: UnitInfo = { id: 'http', linux: 'netsim-webui', aliases: [], process: 'netsim-webui', description: 'Gestión web de Server-PT', windows: 'netsim-webui', windowsDisplay: 'Gestión web', ports: [], pid: 1190 };
+
+/** Ports actually open on the server, for ss/netstat. `web` = the live web ports (Apache Listen, own ports). */
+export function openPorts(s: ServerServices, web?: { readonly http: readonly number[]; readonly admin: readonly number[] }): { proto: 'udp' | 'tcp'; port: number; unit: UnitInfo }[] {
   const out: { proto: 'udp' | 'tcp'; port: number; unit: UnitInfo }[] = [];
   for (const unit of UNITS) {
     if (!unitActive(s, unit.id)) continue;
+    if (unit.id === 'http' && web) {
+      out.push(...web.http.map((port) => ({ proto: 'tcp' as const, port, unit })));
+      continue;
+    }
     for (const p of unit.ports) {
       if (unit.id === 'mailbox' && ((p.port === 110 && !s.mail.pop3) || (p.port === 143 && !s.mail.imap))) continue;
       out.push({ ...p, unit });
     }
   }
-  return out;
+  if (web) out.push(...web.admin.map((port) => ({ proto: 'tcp' as const, port, unit: WEBUI_UNIT })));
+  return out.sort((a, b) => (a.proto === b.proto ? a.port - b.port : a.proto === 'udp' ? -1 : 1));
 }

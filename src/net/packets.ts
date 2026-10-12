@@ -75,6 +75,9 @@ export interface DnsMessage {
 
 export type TcpFlag = 'SYN' | 'ACK' | 'PSH' | 'FIN' | 'RST';
 
+export type HttpMethod = 'GET' | 'HEAD' | 'POST';
+export type HttpHeaders = Readonly<Record<string, string>>;
+
 export interface MailMessage {
   readonly from: string;
   readonly to: readonly string[];
@@ -87,8 +90,12 @@ export interface MailMessage {
 
 /** Application data carried in a TCP segment (one request and one response per connection). */
 export type AppPayload =
-  | { readonly app: 'HTTP'; readonly kind: 'request'; readonly method: 'GET' | 'HEAD'; readonly host: string; readonly path: string }
-  | { readonly app: 'HTTP'; readonly kind: 'response'; readonly status: number; readonly reason: string; readonly server: string; readonly contentType: string; readonly body: string }
+  | { readonly app: 'HTTP'; readonly kind: 'request'; readonly method: HttpMethod; readonly host: string; readonly path: string;
+    /** Lower-case header names: cookie, authorization, content-type… */
+    readonly headers?: HttpHeaders; readonly body?: string }
+  | { readonly app: 'HTTP'; readonly kind: 'response'; readonly status: number; readonly reason: string; readonly server: string; readonly contentType: string; readonly body: string;
+    /** Lower-case header names: location, set-cookie (one per line), www-authenticate… */
+    readonly headers?: HttpHeaders }
   | { readonly app: 'SMTP'; readonly kind: 'request'; readonly helo: string; readonly mail: MailMessage }
   | { readonly app: 'SMTP' | 'POP3' | 'IMAP'; readonly kind: 'reply'; readonly code: string; readonly text: string; readonly messages?: readonly MailMessage[] }
   | { readonly app: 'POP3' | 'IMAP'; readonly kind: 'request'; readonly user: string; readonly password: string }
