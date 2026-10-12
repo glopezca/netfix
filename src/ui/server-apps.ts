@@ -4,7 +4,9 @@ import { field, input, select, button, onOff, message, table, subnav } from './f
 import type { AfterChange } from './host-ip.ts';
 import { livePanel, dhcpPanel, dnsPanel } from './server-dhcp-dns.ts';
 import type { Server } from '../devices/server.ts';
-import type { Account } from '../services/config.ts';
+import type { Account, WebAppAccess } from '../services/config.ts';
+import { validateAccess } from '../services/config.ts';
+import { formatIp } from '../core/ip.ts';
 import { validateFileName } from '../services/http-service.ts';
 import { UNITS, unitActive } from '../services/units.ts';
 import { createShell } from '../shells/factory.ts';
@@ -42,8 +44,11 @@ function httpPanel(server: Server, app: AfterChange): HTMLElement {
       setFiles([...s.http.files, { name, content: `<!doctype html>\n<html><head><title>${name}</title></head>\n<body>\n<h1>${name}</h1>\n</body></html>` }]);
     };
     return [
-      onOff('Servicio HTTP (puerto 80)', s.http.enabled, (on) => { server.setUnit('http', on); app.afterCommand(); refresh(); }),
-      el('p', { class: 'muted' }, 'Pruébalo desde un PC con el navegador, curl o wget. HTTPS no está simulado.'),
+      onOff(`Servicio HTTP (${server.os === 'windows' ? 'IIS, puerto 80' : `Apache2, puertos ${server.web.httpPorts().join(', ') || '80'}`})`, s.http.enabled, (on) => { server.setUnit('http', on); app.afterCommand(); refresh(); }),
+      el('p', { class: 'muted' }, server.os === 'windows'
+        ? 'Pruébalo desde un PC con el navegador, curl o wget. HTTPS no está simulado.'
+        : 'Estos ficheros son /var/www/html. Apache se configura en /etc/apache2 desde la terminal (a2ensite, apache2ctl configtest, systemctl reload apache2). HTTPS no está simulado.'),
+      webAppsSection(server, app, refresh),
       el('div', { class: 'file-layout' },
         el('div', { class: 'file-list' }, table(s.http.files, [{ label: 'Fichero', value: (f) => f.name, mono: true }], {
           empty: 'Sin ficheros: el servidor responderá 404.', onSelect: (f) => { current = f.name; refresh(); }, selected: (f) => f.name === current,
@@ -54,6 +59,41 @@ function httpPanel(server: Server, app: AfterChange): HTMLElement {
       msg.el,
     ];
   });
+}
+
+/** Roundcube and the management GUI: on/off, alias or own port (and the GUI's login). */
+function webAppsSection(server: Server, app: AfterChange, refresh: () => void): HTMLElement {
+  const w = server.services.webapps;
+  const msg = message();
+  const accessForm = (title: string, a: WebAppAccess, extra: HTMLElement[], save: (next: WebAppAccess) => string | null): HTMLElement => {
+    const enabled = el('input', { type: 'checkbox', checked: a.enabled });
+    const mode = select([['alias', 'Alias URL en Apache'], ['port', 'Puerto propio']], a.mode);
+    const alias = input({ value: a.alias });
+    const port = input({ value: String(a.port), inputmode: 'numeric' });
+    const apply = (): void => {
+      const err = save({ enabled: enabled.checked, mode: mode.value === 'port' ? 'port' : 'alias', alias: alias.value.trim(), port: Number(port.value) });
+      if (err) { msg.error(err); return; }
+      app.afterCommand();
+      refresh();
+    };
+    return el('section', { class: 'subsection' }, el('h3', {}, title), el('label', { class: 'check' }, enabled, ' Activado'),
+      el('div', { class: 'grid3' }, field('Acceso', mode), field('Alias URL', alias), field('Puerto', port)), ...extra, el('div', { class: 'actions' }, button('Aplicar', apply)));
+  };
+  const host = server.config.ip !== undefined ? formatIp(server.config.ip) : 'IP-del-servidor';
+  const where = (a: WebAppAccess): string => (a.mode === 'port' ? `http://${host}:${a.port}/` : `http://${host}${a.alias}/`);
+  const user = input({ value: w.admin.user });
+  const pass = input({ value: w.admin.password, type: 'password' });
+  return el('div', {},
+    el('h3', {}, 'Aplicaciones web'),
+    el('p', { class: 'muted' }, `Roundcube: ${w.roundcube.enabled ? where(w.roundcube) : 'desactivado'} · Gestión web: ${w.admin.enabled ? where(w.admin) : 'desactivada'}`),
+    accessForm('Roundcube (correo web)', w.roundcube, [], (next) => validateAccess(next, server.services.webapps.admin) ?? (server.setServices({ ...server.services, webapps: { ...server.services.webapps, roundcube: next } }), null)),
+    accessForm('Gestión web del servidor (estilo WRT300N)', w.admin, [el('div', { class: 'grid2' }, field('Usuario', user), field('Contraseña', pass))], (next) => {
+      const err = validateAccess(next, server.services.webapps.roundcube) ?? (user.value.trim() && pass.value ? null : 'Escribe usuario y contraseña.');
+      if (err) return err;
+      server.setServices({ ...server.services, webapps: { ...server.services.webapps, admin: { ...next, user: user.value.trim(), password: pass.value } } });
+      return null;
+    }),
+    msg.el);
 }
 
 function accounts(list: readonly Account[], onChange: (next: readonly Account[]) => void, what: string): HTMLElement {

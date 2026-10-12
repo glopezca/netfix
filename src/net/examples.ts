@@ -232,7 +232,7 @@ interface GigabitEthernet0/1
   {
     id: 'servidores',
     title: 'Server-PT: DHCP, DNS, web, correo y SSH',
-    summary: 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave cisco).',
+    summary: 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave cisco), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/admin).',
     build: () => {
       const t = new Topology();
       const ip = (x: string): number => parseIp(x) ?? 0;
@@ -263,10 +263,15 @@ interface GigabitEthernet0/0
           { name: 'srv', type: 'A', value: '192.168.10.2', ttl: 86400 },
           { name: 'gw', type: 'A', value: '192.168.10.1', ttl: 86400 },
           { name: 'www', type: 'CNAME', value: 'srv', ttl: 86400 },
+          { name: 'webmail', type: 'CNAME', value: 'srv', ttl: 86400 },
           { name: '@', type: 'MX', value: 'srv.aula.lab.', priority: 10, ttl: 86400 },
         ] },
         mail: { smtp: true, pop3: true, imap: true, domain: 'aula.lab', users: [{ name: 'ana', password: 'ana1' }, { name: 'luis', password: 'luis1' }] },
         ssh: { enabled: true, users: [{ name: 'admin', password: 'cisco' }] },
+        webapps: {
+          roundcube: { enabled: true, mode: 'alias', alias: '/roundcube', port: 8080 },
+          admin: { enabled: true, mode: 'port', alias: '/admin', port: 10000, user: 'admin', password: 'admin' },
+        },
       });
       pc0.mailAccount = { name: 'Ana', address: 'ana@aula.lab', incoming: 'srv.aula.lab', outgoing: 'srv.aula.lab', protocol: 'IMAP', user: 'ana', password: 'ana1' };
       pc0.browserUrl = 'http://www.aula.lab';

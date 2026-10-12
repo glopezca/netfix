@@ -85,9 +85,25 @@ function zonesFor(s: ServerServices): string[] {
   return origin ? [origin, ...zones] : zones;
 }
 
+/** Apache snippets and settings of the web applications, as their Ubuntu packages install them. */
+function webAppFiles(s: ServerServices, files: Map<string, string>): void {
+  const rc = s.webapps.roundcube;
+  if (rc.enabled) {
+    files.set('/etc/apache2/conf-enabled/roundcube.conf', rc.mode === 'alias'
+      ? `# Generado por netsim (Servicios → HTTP → Roundcube)\nAlias ${rc.alias} /var/lib/roundcube/public_html\n\n<Directory /var/lib/roundcube/public_html/>\n  Options +FollowSymLinks\n  AllowOverride All\n  Require all granted\n</Directory>\n`
+      : `# Generado por netsim (Servicios → HTTP → Roundcube)\nListen ${rc.port}\n<VirtualHost *:${rc.port}>\n  DocumentRoot /var/lib/roundcube/public_html\n  <Directory /var/lib/roundcube/public_html/>\n    Require all granted\n  </Directory>\n</VirtualHost>\n`);
+    files.set('/etc/roundcube/config.inc.php', `<?php\n$config = [];\n$config['imap_host'] = 'localhost:143';\n$config['smtp_host'] = 'localhost:25';\n$config['product_name'] = 'Roundcube Webmail';\n$config['skin'] = 'elastic';\n$config['mail_domain'] = '${s.mail.domain}';\n`);
+  }
+  const ad = s.webapps.admin;
+  if (ad.enabled && ad.mode === 'alias') {
+    files.set('/etc/apache2/conf-enabled/netsim-admin.conf', `# Generado por netsim (Servicios → HTTP → Gestión web)\nAlias ${ad.alias} /usr/share/netsim-admin\n<Directory /usr/share/netsim-admin>\n  Require all granted\n</Directory>\n`);
+  }
+}
+
 function serverFiles(server: Server): Map<string, string> {
   const s = server.services;
   const files = new Map<string, string>();
+  webAppFiles(s, files);
   files.set('/etc/kea/kea-dhcp4.conf', keaConf(s));
   const zones = zonesFor(s);
   files.set('/etc/bind/named.conf.local', zones.map((z) => `zone "${z}" {\n    type master;\n    file "/etc/bind/db.${z}";\n};\n`).join('\n'));

@@ -353,6 +353,75 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display:
 .browser-status { margin: 0; font-size: 12px; color: var(--ink-2); min-height: 1.2em; }
 .browser-view { border: 1px solid var(--line); border-radius: var(--radius-ctl); background: #fff; color: #1b1b1b; padding: 16px 20px; min-height: 260px; overflow: auto; font-family: Georgia, "Times New Roman", serif; }
 .browser-view a { color: #1a4fd6; }
+.browser-view { position: relative; contain: paint; }
+.browser-view input, .browser-view select, .browser-view textarea, .browser-view button { font: 14px/1.3 var(--font-ui); }
+.browser-view input[type="text"], .browser-view input[type="password"], .browser-view select, .browser-view textarea { border: 1px solid #b9bec7; border-radius: 3px; padding: 4px 6px; background: #fff; color: #111; }
+.browser-view button { border: 1px solid #8a919c; border-radius: 3px; padding: 4px 12px; background: #eef0f3; color: #111; cursor: pointer; }
+.btn-icon { min-width: 34px; padding-inline: 8px; }
+.browser-auth { max-width: 340px; margin: 24px auto; font-family: var(--font-ui); display: grid; gap: 8px; }
+.browser-auth h2 { margin: 0; font-size: 18px; }
+/* Roundcube Webmail (Elastic) */
+.browser-view .web-rc { font-family: var(--font-ui); color: #2c363a; margin: -16px -20px; background: #f4f4f4; min-height: 300px; }
+.web-rc-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); min-height: 420px; }
+.web-rc-menu { background: #fff; border-right: 1px solid #ddd; padding: 14px 12px; display: flex; flex-direction: column; gap: 10px; }
+.web-rc-logo { font: 700 22px/1 var(--font-ui); color: #37beff; letter-spacing: -.5px; }
+.web-rc-logo::before { content: "✉ "; }
+.browser-view .web-rc-compose, .browser-view .web-rc-button { background: #37beff; color: #fff; border: 0; border-radius: 4px; padding: 8px 12px; text-decoration: none; font-weight: 700; text-align: center; }
+.web-rc-folders { list-style: none; margin: 0; padding: 0; }
+.web-rc-folders li a { display: flex; justify-content: space-between; padding: 6px 8px; border-radius: 4px; color: #2c363a; text-decoration: none; }
+.web-rc-folders li.web-rc-current a { background: #e2f6ff; color: #0083b9; font-weight: 700; }
+.web-rc-count { background: #37beff; color: #fff; border-radius: 9px; padding: 0 7px; font-size: 12px; }
+.browser-view .web-rc-logout { margin-top: auto; font-size: 13px; color: #5d6a70; }
+.web-rc-main { padding: 14px 18px; background: #fff; }
+.web-rc-main h1 { font: 700 18px/1.2 var(--font-ui); margin: 0 0 10px; }
+.web-rc-list { width: 100%; border-collapse: collapse; font-size: 14px; }
+.web-rc-list th { text-align: left; color: #5d6a70; border-bottom: 1px solid #ddd; padding: 4px 6px; }
+.web-rc-list td { border-bottom: 1px solid #eee; padding: 6px; }
+.web-rc-list tr.web-rc-selected td { background: #e2f6ff; }
+.web-rc-message { border-top: 2px solid #37beff; margin-top: 14px; padding-top: 8px; }
+.web-rc-toolbar { display: flex; gap: 14px; font-size: 14px; }
+.web-rc-meta { color: #5d6a70; font-size: 13px; }
+.web-rc-body { white-space: pre-wrap; font: 14px/1.5 var(--font-ui); }
+.web-rc-composeform label, .web-rc-loginbox label { display: grid; gap: 3px; margin-bottom: 8px; font-size: 13px; color: #5d6a70; }
+.web-rc-composeform textarea { width: 100%; }
+.web-rc-error { background: #fdecea; color: #b0281a; border-left: 3px solid #e03e2d; padding: 6px 10px; }
+.web-rc-empty { color: #5d6a70; }
+.browser-view .web-rc-login { display: grid; place-items: center; padding: 40px 0; }
+.web-rc-loginbox { background: #fff; border-radius: 6px; box-shadow: 0 2px 12px rgb(0 0 0 / .12); padding: 26px 30px; width: min(330px, 92%); display: grid; gap: 6px; }
+.web-rc-loginbox .web-rc-logo { text-align: center; font-size: 30px; margin-bottom: 8px; }
+.web-rc-footer { text-align: center; color: #8a969c; font-size: 12px; }
+/* Server-PT management GUI (WRT300N layout) */
+.browser-view .web-wrt { font: 13px/1.4 Arial, Helvetica, sans-serif; margin: -16px -20px; background: #fff; color: #000; }
+.web-wrt-top { display: flex; justify-content: space-between; background: #000; color: #fff; padding: 6px 12px; font-size: 11px; }
+.web-wrt-brand { font: italic 700 18px/1 Arial, sans-serif; }
+.web-wrt-title { display: flex; justify-content: space-between; align-items: end; background: #6666cc; color: #fff; padding: 10px 12px; }
+.web-wrt-product { font: 700 17px/1 Arial, sans-serif; }
+.web-wrt-model { font: 700 22px/1 Arial, sans-serif; }
+.web-wrt-tabs, .web-wrt-subtabs { list-style: none; margin: 0; padding: 0 0 0 150px; display: flex; flex-wrap: wrap; }
+.web-wrt-tabs { background: #000; }
+.web-wrt-tabs li a { display: block; color: #fff; padding: 7px 14px; text-decoration: none; font-weight: 700; }
+.web-wrt-tabs li.web-wrt-on a { background: #6666cc; }
+.web-wrt-subtabs { background: #6666cc; padding-top: 4px; padding-bottom: 4px; }
+.web-wrt-subtabs li a { color: #fff; padding: 0 10px; border-right: 1px solid #fff; text-decoration: none; }
+.web-wrt-subtabs li.web-wrt-on a { font-weight: 700; text-decoration: underline; }
+.web-wrt-page { width: 100%; border-collapse: collapse; }
+.web-wrt-page table { width: 100%; border-collapse: collapse; }
+.web-wrt-label { width: 140px; background: #000; color: #fff; text-align: right; vertical-align: top; padding: 10px; font-weight: 700; }
+.web-wrt-body { padding: 8px 14px; vertical-align: top; border-bottom: 1px solid #ccc; }
+.web-wrt-help { width: 170px; background: #6666cc; color: #fff; vertical-align: top; padding: 10px; font-size: 12px; }
+.web-wrt-row label { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 8px; align-items: center; margin: 4px 0; }
+.web-wrt-check { display: inline-flex; gap: 4px; margin-right: 12px; }
+.web-wrt-buttons { background: #000; padding: 8px 12px 8px 160px; display: flex; gap: 8px; }
+.browser-view .web-wrt-save { background: #6666cc; color: #fff; border-color: #fff; font-weight: 700; }
+.browser-view .web-wrt-small { padding: 1px 8px; font-size: 12px; }
+.web-wrt-grid { border-collapse: collapse; width: 100%; }
+.web-wrt-grid th, .web-wrt-grid td { border: 1px solid #ccc; padding: 3px 6px; text-align: left; }
+.web-wrt-grid th { background: #e6e6f5; }
+.web-wrt-ok { background: #e6f4e6; color: #145214; padding: 6px 12px; margin: 0; font-weight: 700; }
+.web-wrt-error { background: #fbe3e3; color: #8a1010; padding: 6px 12px; margin: 0; font-weight: 700; }
+.web-wrt-muted { color: #555; margin: 0; }
+.web-wrt-log { font: 12px/1.4 var(--font-mono); white-space: pre-wrap; margin: 0; }
+.web-wrt-foot { text-align: center; color: #555; font-size: 11px; padding: 8px; }
 .account summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
 .mail-read { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 10px 14px; }
 .mail-read h4 { margin: 0 0 4px; }

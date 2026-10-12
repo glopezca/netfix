@@ -3,36 +3,78 @@ import { el } from './dom.ts';
 import { field, input, select, button, message, table } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';
 import { livePanel } from './server-dhcp-dns.ts';
-import { renderHtml, resolveLink } from './html-render.ts';
+import { renderHtml } from './html-render.ts';
+import { resolveLink } from '../web/url.ts';
 import type { Pc } from '../devices/pc.ts';
-import { httpGet } from '../shells/net-tools.ts';
+import { BrowserEngine } from '../clients/browser.ts';
+import type { BrowseResult } from '../clients/browser.ts';
 import { sendMail, receiveMail } from '../clients/mail-client.ts';
 import type { MailAccount } from '../clients/mail-client.ts';
 import { formatIp } from '../core/ip.ts';
 import { formatLeaseTime } from '../core/clock.ts';
 
+const engines = new WeakMap<Pc, BrowserEngine>();
+
+function engineFor(pc: Pc): BrowserEngine {
+  const e = engines.get(pc) ?? new BrowserEngine(pc);
+  engines.set(pc, e);
+  return e;
+}
+
+/** HTTP Basic login box, like the browser's own dialog. */
+function authBox(url: string, realm: string, failed: boolean, onLogin: (user: string, password: string) => void): HTMLElement {
+  const user = input({ autocomplete: 'off', 'aria-label': 'Usuario' });
+  const pass = input({ type: 'password', 'aria-label': 'Contraseña' });
+  const form = el('form', { class: 'browser-auth' },
+    el('h2', {}, 'Iniciar sesión'),
+    el('p', {}, `${url.replace(/^https?:\/\//, '').split('/')[0] ?? url} solicita usuario y contraseña. Sitio: «${realm}»`),
+    failed ? el('p', { class: 'form-msg error' }, 'Usuario o contraseña incorrectos.') : null,
+    field('Usuario', user), field('Contraseña', pass), el('div', { class: 'actions' }, el('button', { type: 'submit', class: 'btn' }, 'Iniciar sesión')));
+  form.addEventListener('submit', (e) => { e.preventDefault(); onLogin(user.value, pass.value); });
+  return form;
+}
+
 export function browserApp(pc: Pc, app: AfterChange): HTMLElement {
+  const engine = engineFor(pc);
+  const history: string[] = [];
   const url = input({ value: pc.browserUrl || 'http://', 'aria-label': 'Dirección URL', class: 'url-bar' });
   const status = el('p', { class: 'browser-status', role: 'status' });
-  const view = el('div', { class: 'browser-view', 'aria-live': 'polite' }, el('p', { class: 'muted' }, 'Escribe una URL (http://IP o http://nombre) y pulsa Ir.'));
-  const go = (target: string): void => {
-    const text = /^https?:\/\//i.test(target) ? target : `http://${target}`;
-    url.value = text;
-    pc.browserUrl = text;
-    status.textContent = 'Cargando…';
-    const r = httpGet(pc, text);
+  const view = el('div', { class: 'browser-view', 'aria-live': 'polite' }, el('p', { class: 'muted' }, 'Escribe una URL (http://IP, http://nombre o http://nombre:puerto/ruta) y pulsa Ir.'));
+  const show = (r: BrowseResult): void => {
     app.afterCommand();
+    url.value = r.url;
+    pc.browserUrl = r.url;
+    if (history[history.length - 1] !== r.url) history.push(r.url);
     if (r.kind === 'error') {
       status.textContent = '';
-      view.replaceChildren(el('h2', {}, 'No se puede acceder a este sitio'), el('p', {}, r.message), el('p', { class: 'muted' }, r.code === 6 ? 'Comprueba el servidor DNS del PC y el registro en el servidor.' : 'Comprueba que el servicio HTTP está activo y que hay ruta hasta el servidor.'));
+      view.replaceChildren(el('h2', {}, 'No se puede acceder a este sitio'), el('p', {}, r.message), el('p', { class: 'muted' }, r.code === 6 ? 'Comprueba el servidor DNS del PC y el registro en el servidor.' : 'Comprueba que el servicio está activo en ese puerto y que hay ruta hasta el servidor.'));
       return;
     }
-    const page = renderHtml(r.response.body, (href) => go(resolveLink(text, href)));
-    status.textContent = `${r.response.status} ${r.response.reason} · ${formatIp(r.ip)} · ${r.response.server}${page.title ? ` · ${page.title}` : ''}`;
+    if (r.kind === 'auth') {
+      status.textContent = `401 Unauthorized · ${r.realm}`;
+      view.replaceChildren(authBox(r.url, r.realm, r.failed, (u, p) => show(engine.login(r.url, u, p))));
+      return;
+    }
+    const res = r.response;
+    const page = renderHtml(res.contentType.startsWith('text/html') ? res.body : `<pre>${res.body.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c)}</pre>`, {
+      link: (href) => go(resolveLink(r.url, href)),
+      submit: (action, method, fields) => show(engine.open(resolveLink(r.url, action || r.url), { method, form: fields })),
+    });
+    status.textContent = `${res.status} ${res.reason} · ${formatIp(r.ip)} · ${res.server}${page.title ? ` · ${page.title}` : ''}`;
     view.replaceChildren(page.body);
   };
-  url.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(url.value.trim()); });
-  return el('div', { class: 'pane browser' }, el('div', { class: 'browser-bar' }, url, button('Ir', () => go(url.value.trim()))), status, view);
+  const go = (target: string): void => {
+    status.textContent = 'Cargando…';
+    show(engine.open(target.trim()));
+  };
+  const back = button('←', () => {
+    history.pop();
+    const prev = history.pop();
+    if (prev) go(prev);
+  }, 'btn btn-icon');
+  back.setAttribute('aria-label', 'Atrás');
+  url.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(url.value); });
+  return el('div', { class: 'pane browser' }, el('div', { class: 'browser-bar' }, back, url, button('Ir', () => go(url.value)), button('⟳', () => go(url.value), 'btn btn-icon')), status, view);
 }
 
 const BLANK: MailAccount = { name: '', address: '', incoming: '', outgoing: '', protocol: 'POP3', user: '', password: '' };

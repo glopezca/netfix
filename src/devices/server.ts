@@ -145,6 +145,17 @@ export class Server extends Host {
     };
   }
 
+  /** Mail submitted by a local program (webmail): the same rules as SMTP from 127.0.0.1. */
+  submitMail(mail: MailMessage): { ok: boolean; text: string } {
+    const r = handleSmtp(this.mailEnv(), this.mailboxes, { app: 'SMTP', kind: 'request', helo: 'localhost', mail }, '127.0.0.1');
+    return { ok: r.code === '250', text: `${r.code} ${r.text}` };
+  }
+
+  /** Checks a mail account (Dovecot login), as webmail does through IMAP. */
+  mailLogin(user: string, password: string): boolean {
+    return this.services.mail.users.some((u) => u.name.toLowerCase() === user.toLowerCase() && u.password === password);
+  }
+
   /** MX lookup, then A lookup of the exchange, then SMTP to it. */
   private relayMail(domain: string, mail: MailMessage, done: (ok: boolean, reason: string) => void): void {
     this.lookup(domain, 'MX', (mx) => {

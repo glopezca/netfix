@@ -32,6 +32,15 @@ export class Mailboxes {
     this.boxes.set(key, [...(this.boxes.get(key) ?? []), mail]);
   }
 
+  /** Removes one message; returns it. */
+  removeAt(user: string, index: number): MailMessage | undefined {
+    const key = user.toLowerCase();
+    const list = [...(this.boxes.get(key) ?? [])];
+    const [gone] = list.splice(index, 1);
+    this.boxes.set(key, list);
+    return gone;
+  }
+
   take(user: string): readonly MailMessage[] {
     const key = user.toLowerCase();
     const all = this.boxes.get(key) ?? [];

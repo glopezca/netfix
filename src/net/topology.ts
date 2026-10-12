@@ -19,6 +19,9 @@ import type { MailAccount } from '../clients/mail-client.ts';
 import { applyConfig } from '../ios/session.ts';
 import { parseIp, formatIp, parseMask } from '../core/ip.ts';
 import { parseHexId } from '../core/mac.ts';
+import { registerWebApps } from '../web/apps.ts';
+
+registerWebApps();
 
 export type DeviceKind = 'router' | 'switch' | 'pc' | 'server';
 export type AnyDevice = Router | Switch | Pc | Server;
