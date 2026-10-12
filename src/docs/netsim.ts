@@ -14,7 +14,7 @@ export const NETSIM_DOCS: DocGroup = {
         p('netsim es un simulador de redes en el navegador con el aspecto y el comportamiento de Cisco Packet Tracer. Todo se ejecuta en tu equipo: no hay servidor ni se envía nada a Internet.'),
         h('Barra superior'),
         table(['Control', 'Qué hace'], [
-          ['Red / Documentación', 'Cambia entre el área de trabajo y esta documentación.'],
+          ['Red / Documentación / Acerca de', 'Cambia entre el área de trabajo, esta documentación y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
           ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S).'],
           ['Laboratorios…', 'Carga una práctica preparada (DHCP básico, reservas, relay, VLAN, snooping, router cliente, Server-PT).'],
           ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],

@@ -10,6 +10,9 @@ import { Topology } from '../net/topology.ts';
 import type { DeviceKind } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
 import { DocsView } from './docs-view.ts';
+import { aboutView } from './about-view.ts';
+
+type View = 'net' | 'docs' | 'about';
 
 const AUTOSAVE_KEY = 'netsim:workspace:v1';
 const TICK_MS = 250;
@@ -27,6 +30,7 @@ class App {
   private saveTimer = 0;
   private mode: 'realtime' | 'simulation' = 'realtime';
   private docs: DocsView | null = null;
+  private about: HTMLElement | null = null;
   private stageEl: HTMLElement | null = null;
   private paletteEl: HTMLElement | null = null;
   private docsHost: HTMLElement | null = null;
@@ -124,18 +128,18 @@ class App {
       el('div', { class: 'segmented', role: 'group', 'aria-label': 'Modo' }, modeRT, modeSim));
   }
 
-  /** Red / Documentación. */
+  /** Red / Documentación / Acerca de. */
   private viewSwitch(): HTMLElement {
-    const viewNet = el('button', { type: 'button', class: 'seg', 'aria-pressed': 'true' }, 'Red');
-    const viewDocs = el('button', { type: 'button', class: 'seg', 'aria-pressed': 'false' }, 'Documentación');
-    const setView = (docs: boolean): void => {
-      viewNet.setAttribute('aria-pressed', String(!docs));
-      viewDocs.setAttribute('aria-pressed', String(docs));
-      this.showDocs(docs);
-    };
-    viewNet.addEventListener('click', () => setView(false));
-    viewDocs.addEventListener('click', () => setView(true));
-    return el('div', { class: 'segmented', role: 'group', 'aria-label': 'Vista' }, viewNet, viewDocs);
+    const views: readonly [View, string][] = [['net', 'Red'], ['docs', 'Documentación'], ['about', 'Acerca de']];
+    const buttons = views.map(([v, label]) => {
+      const b = el('button', { type: 'button', class: 'seg', 'aria-pressed': String(v === 'net'), 'data-view': v }, label);
+      b.addEventListener('click', () => {
+        for (const x of buttons) x.setAttribute('aria-pressed', String(x === b));
+        this.showView(v);
+      });
+      return b;
+    });
+    return el('div', { class: 'segmented', role: 'group', 'aria-label': 'Vista' }, ...buttons);
   }
 
   private palette(): HTMLElement {
@@ -172,17 +176,17 @@ class App {
     this.canvas.root.focus({ preventScroll: true });
   }
 
-  /** Switches between the network workspace and the documentation (windows stay open but hidden). */
-  private showDocs(on: boolean): void {
-    if (on && !this.docs) {
-      this.docs = new DocsView();
-      this.docsHost?.appendChild(this.docs.root);
-    }
-    if (this.stageEl) this.stageEl.hidden = on;
-    if (this.paletteEl) this.paletteEl.hidden = on;
-    if (this.docsHost) this.docsHost.hidden = !on;
-    document.body.dataset.view = on ? 'docs' : 'net';
-    if (on) this.docs?.focus();
+  /** Switches between the workspace, the documentation and «Acerca de» (windows stay open but hidden). */
+  private showView(view: View): void {
+    if (view === 'docs' && !this.docs) this.docs = new DocsView();
+    if (view === 'about' && !this.about) this.about = aboutView();
+    const page = view === 'docs' ? this.docs?.root : view === 'about' ? this.about : undefined;
+    if (this.docsHost && page && page.parentElement !== this.docsHost) this.docsHost.replaceChildren(page);
+    if (this.stageEl) this.stageEl.hidden = view !== 'net';
+    if (this.paletteEl) this.paletteEl.hidden = view !== 'net';
+    if (this.docsHost) this.docsHost.hidden = view === 'net';
+    document.body.dataset.view = view;
+    if (view === 'docs') this.docs?.focus();
   }
 
   // ------------------------------------------------------------ behaviour

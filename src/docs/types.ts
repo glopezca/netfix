@@ -2,7 +2,7 @@
 
 export type DocBlock =
   | { readonly kind: 'p'; readonly text: string }
-  | { readonly kind: 'h'; readonly text: string }
+  | { readonly kind: 'h'; readonly text: string; readonly level?: 4 }
   | { readonly kind: 'code'; readonly text: string }
   | { readonly kind: 'list'; readonly items: readonly string[] }
   | { readonly kind: 'table'; readonly head: readonly string[]; readonly rows: readonly (readonly string[])[] }
@@ -13,6 +13,8 @@ export interface DocPage {
   readonly title: string;
   readonly summary: string;
   readonly blocks: readonly DocBlock[];
+  /** Texts use inline Markdown (links, **bold**, `code`), resolved against this base URL. */
+  readonly markdownBase?: string;
 }
 
 export interface DocGroup {

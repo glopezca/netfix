@@ -208,7 +208,7 @@ button, input, select { font: inherit; color: inherit; }
 .ed-cursor { background: var(--console-msg); color: var(--console); }
 
 /* ---------------------------------------------------------------- documentation */
-body[data-view="docs"] .win-layer { display: none; }
+body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display: none; }
 .docs-host { min-height: 0; grid-row: 2 / 4; overflow: hidden; }
 .docs { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); height: 100%; background: var(--panel); }
 .doc-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--panel-2); }
@@ -233,6 +233,17 @@ body[data-view="docs"] .win-layer { display: none; }
 .doc-table { border-collapse: collapse; width: 100%; font-size: 14px; }
 .doc-table th, .doc-table td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
 .doc-table thead th { background: var(--panel-2); }
+.about .about-page { grid-column: 1 / -1; }
+.about-hero { border-bottom: 1px solid var(--line); padding-bottom: 18px; margin-bottom: 8px; }
+.about-hero h1 small { font-size: 16px; color: var(--ink-2); font-weight: 600; }
+.about-facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 12px 0 0; }
+.about-facts dt { color: var(--ink-2); font-weight: 600; }
+.about-facts dd { margin: 0; overflow-wrap: anywhere; }
+.about-version { font: 600 13px/1.4 var(--font-mono); background: var(--accent-soft); border-radius: var(--radius-ctl); padding: 2px 8px; }
+.about-license h2 { font-size: 20px; margin: 22px 0 4px; }
+.doc-page a { color: var(--accent); overflow-wrap: anywhere; }
+.doc-page h4 { margin: 18px 0 6px; font-size: 16px; }
+.doc-page code { font-family: var(--font-mono); font-size: .92em; }
 .doc-table tbody th { font: 600 13px/1.45 var(--font-mono); white-space: pre-wrap; }
 @media (max-width: 720px) { .docs { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); } .doc-side { max-height: 40vh; border-right: 0; border-bottom: 1px solid var(--line); } }
 
@@ -5833,14 +5844,22 @@ function validateOrigin(origin) {
     const o = cleanOrigin(origin);
     return o === undefined || validLabels(o) ? null : 'Origen de zona no válido (por ejemplo aula.lab).';
 }
-/** Validates a name as typed in a record (owner or target). */
-function validateName(name, origin) {
+/**
+ * Validates a name as typed in a record. Owners may start with the wildcard label `*`
+ * (`*`, `*.dev`, `*.aula.lab.`); targets (CNAME, MX, NS values) may not.
+ */
+function validateName(name, origin, owner = true) {
     const n = name.trim();
     if (n === '@')
         return cleanOrigin(origin) ? null : '«@» necesita el origen de la zona (campo Dominio de la zona).';
     const body = n.endsWith('.') ? n.slice(0, -1) : n;
     if (!validLabels(body))
-        return `Nombre no válido: «${n}». Usa www (relativo), www.aula.lab. (absoluto) o @.`;
+        return `Nombre no válido: «${n}». Usa www (relativo), www.aula.lab. (absoluto), @ o un comodín *.`;
+    const stars = body.split('.').map((l, i) => (l === '*' ? i : -1)).filter((i) => i >= 0);
+    if (stars.length > 0 && !owner)
+        return `Un comodín «*» solo puede ser el nombre de un registro, no su valor: «${n}».`;
+    if (stars.some((i) => i > 0))
+        return `El comodín «*» solo puede ser la primera etiqueta del nombre: «${n}».`;
     const full = qualify(n, origin);
     return full !== null && full.length <= MAX_NAME ? null : `Nombre demasiado largo: «${n}».`;
 }
@@ -5898,13 +5917,40 @@ function ptrAnswers(qname, records) {
     if (ip === undefined)
         return [];
     const text = formatIp(ip);
-    return records.filter((r) => r.type === 'A' && r.value === text).map((r) => ({ name: qname, type: 'PTR', ttl: r.ttl, data: normalizeName(r.name) }));
+    return records.filter((r) => r.type === 'A' && r.value === text && !r.name.startsWith('*.'))
+        .map((r) => ({ name: qname, type: 'PTR', ttl: r.ttl, data: normalizeName(r.name) }));
+}
+/** A name exists when it owns records or is an ancestor of an owner (empty non-terminal). */
+function nodeExists(name, records) {
+    return records.some((r) => {
+        const owner = normalizeName(r.name);
+        return owner === name || owner.endsWith(`.${name}`);
+    });
+}
+/**
+ * RFC 4592: a name that does not exist is answered from `*.<closest encloser>`, the wildcard
+ * directly below its nearest existing ancestor. The records keep the queried name as owner.
+ */
+function wildcardRecords(name, records) {
+    const labels = name.split('.');
+    for (let i = 1; i < labels.length; i++) {
+        const encloser = labels.slice(i).join('.');
+        if (!nodeExists(encloser, records))
+            continue;
+        return records.filter((r) => normalizeName(r.name) === `*.${encloser}`).map((r) => ({ ...r, name }));
+    }
+    return [];
+}
+/** Records owned by `name`, synthesised from a wildcard when the name does not exist. */
+function recordsAt(name, records) {
+    const own = records.filter((r) => normalizeName(r.name) === name);
+    return own.length > 0 || nodeExists(name, records) ? own : wildcardRecords(name, records);
 }
 function lookup(qname, qtype, records) {
     const answers = [];
     let name = qname;
     for (let i = 0; i < MAX_CNAME_CHAIN; i++) {
-        const here = records.filter((r) => normalizeName(r.name) === name);
+        const here = recordsAt(name, records);
         const exact = here.filter((r) => r.type === qtype);
         if (exact.length > 0)
             return [...answers, ...exact.map(toAnswer)];
@@ -5927,7 +5973,7 @@ function answerQuery(query, records, origin) {
     if (!zone)
         return { ...base, rcode: 'REFUSED', answers: [] };
     const answers = lookup(qname, query.qtype, records);
-    const exists = records.some((r) => normalizeName(r.name) === qname) || qname === zone;
+    const exists = qname === zone || recordsAt(qname, records).length > 0 || nodeExists(qname, records);
     if (answers.length > 0)
         return { ...base, rcode: 'NOERROR', authoritative: true, answers };
     return { ...base, rcode: exists ? 'NOERROR' : 'NXDOMAIN', authoritative: true, answers: [], authority: [soaFor(zone, records)] };
@@ -5939,8 +5985,9 @@ function validateRecord(r, origin) {
         return nameErr;
     if (r.type === 'A' && parseIp(r.value) === null)
         return 'Un registro A necesita una dirección IPv4.';
-    if ((r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX') && validateName(r.value, origin))
-        return `Un registro ${r.type} necesita un nombre de host (relativo, absoluto con punto final o @): ${validateName(r.value, origin) ?? ''}`;
+    const targetErr = r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX' ? validateName(r.value, origin, false) : null;
+    if (targetErr)
+        return `Un registro ${r.type} necesita un nombre de host (relativo, absoluto con punto final o @): ${targetErr}`;
     if (r.type === 'MX' && (r.priority === undefined || r.priority < 0 || r.priority > 65535))
         return 'La prioridad MX va de 0 a 65535.';
     return r.value.trim() === '' ? 'El valor no puede estar vacío.' : null;
@@ -18686,8 +18733,13 @@ const SERVICE_DOCS = {
                     ['srv.aula.lab.', 'srv.aula.lab.', 'Absoluto: acaba en punto y no se toca.'],
                     ['ftp.otra.lab.', 'ftp.otra.lab.', 'Absoluto de otra zona: el servidor también la sirve.'],
                     ['srv.aula.lab', 'srv.aula.lab.aula.lab.', 'Error típico: sin punto final es relativo.'],
+                    ['*', '*.aula.lab.', 'Comodín: responde a cualquier nombre de la zona que no exista.'],
+                    ['*.dev', '*.dev.aula.lab.', 'Comodín de un subdominio: app.dev.aula.lab, api.dev.aula.lab…'],
                 ]),
-                p('Lo mismo vale para los valores de CNAME, MX y NS. El formulario muestra el nombre completo (FQDN) resultante antes de guardar. Sin dominio de la zona, todos los nombres se tratan como absolutos.'),
+                p('Lo mismo vale para los valores de CNAME, MX y NS: «www CNAME @» o «@ MX 10 @» apuntan al propio dominio. El formulario muestra el nombre completo (FQDN) resultante antes de guardar. Sin dominio de la zona, todos los nombres se tratan como absolutos.'),
+                h('Registros comodín'),
+                list('El comodín solo se usa si el nombre preguntado no existe: un nombre con registros propios (o con registros por debajo, como b.c.aula.lab si existe a.b.c.aula.lab) responde NOERROR sin datos para los tipos que no tiene.', 'Se busca en el «encerrador más cercano» (RFC 4592): con *.aula.lab y srv.aula.lab, la consulta x.srv.aula.lab da NXDOMAIN, porque srv.aula.lab existe y no tiene *.srv.aula.lab.', 'La respuesta lleva el nombre preguntado como propietario; un comodín CNAME se sigue como cualquier CNAME.', '«*» solo puede ser la primera etiqueta del nombre y nunca un valor; los comodines no generan PTR.'),
+                code('*      IN  A      192.168.10.80   ; cualquier.aula.lab → .80\n*.dev  IN  CNAME  srv             ; app.dev.aula.lab → srv.aula.lab\n@      IN  MX     10 @'),
                 code('$ORIGIN aula.lab.\n$TTL 86400\n@\tIN\tSOA\tsrv.aula.lab. hostmaster.aula.lab. ( … )\n@\tIN\tNS\tsrv\n@\tIN\tMX\t10 srv\nsrv\tIN\tA\t192.168.10.2\nwww\tIN\tCNAME\tsrv'),
                 note('Compruébalo desde un PC: dig www.aula.lab, dig +short aula.lab MX, dig -x 192.168.10.2, nslookup o host.'),
             ],
@@ -21981,7 +22033,7 @@ const TYPES = [['A', 'A · dirección'], ['CNAME', 'CNAME · alias'], ['MX', 'MX
 function recordForm(server, app, refresh) {
     const s = server.services;
     const origin = s.dns.origin;
-    const name = input({ placeholder: origin ? 'www  ·  @  ·  host.otro.dom.' : 'www.aula.lab' });
+    const name = input({ placeholder: origin ? 'www  ·  @  ·  *  ·  host.otro.dom.' : 'www.aula.lab' });
     const type = select(TYPES);
     const value = input({ placeholder: '192.168.1.10' });
     const prio = input({ value: '10', inputmode: 'numeric' });
@@ -21997,7 +22049,7 @@ function recordForm(server, app, refresh) {
     };
     type.addEventListener('change', () => {
         prioField.hidden = type.value !== 'MX';
-        value.placeholder = type.value === 'A' ? '192.168.1.10' : type.value === 'TXT' ? 'v=spf1 mx -all' : origin ? 'srv  ·  srv.otro.dom.' : 'srv.aula.lab';
+        value.placeholder = type.value === 'A' ? '192.168.1.10' : type.value === 'TXT' ? 'v=spf1 mx -all' : origin ? 'srv  ·  @  ·  srv.otro.dom.' : 'srv.aula.lab';
         showPreview();
     });
     name.addEventListener('input', showPreview);
@@ -22032,7 +22084,7 @@ function originForm(server, app, refresh) {
         refresh();
     };
     return [
-        el('div', { class: 'grid3' }, field('Dominio de la zona ($ORIGIN)', originIn, 'Con dominio: «www» = www.dominio, «@» = el dominio, «host.otro.» (con punto final) = absoluto.')),
+        el('div', { class: 'grid3' }, field('Dominio de la zona ($ORIGIN)', originIn, 'Con dominio: «www» = www.dominio, «@» = el dominio (también como valor), «*» o «*.sub» = comodín para nombres que no existen, «host.otro.» (con punto final) = absoluto.')),
         el('div', { class: 'actions' }, button('Guardar dominio', save, 'btn btn-quiet')), msg.el,
     ];
 }
@@ -25928,22 +25980,164 @@ interface GigabitEthernet0/0
 
 return { EXAMPLES };
 })();
+__m["docs/markdown.js"] = (() => {
+const FENCE = /^```/;
+const HEADING = /^(#{1,6})\s+(.*)$/;
+const LIST_ITEM = /^\s*[-*+]\s+(.*)$/;
+const TABLE_RULE = /^\s*\|?\s*:?-{2,}/;
+function splitRow(line) {
+    const cells = [];
+    let cur = '';
+    const body = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+    for (let i = 0; i < body.length; i++) {
+        const c = body[i];
+        if (c === '\\' && body[i + 1] === '|') {
+            cur += '|';
+            i++;
+        }
+        else if (c === '|') {
+            cells.push(cur.trim());
+            cur = '';
+        }
+        else
+            cur += c;
+    }
+    cells.push(cur.trim());
+    return cells;
+}
+function isTableStart(lines, i) {
+    return (lines[i] ?? '').trim().startsWith('|') && TABLE_RULE.test(lines[i + 1] ?? '');
+}
+/** Reads the block starting at line i; returns it (or null for a skipped title) and the next line. */
+function readBlock(lines, i) {
+    const line = lines[i] ?? '';
+    if (FENCE.test(line)) {
+        const end = lines.findIndex((l, j) => j > i && FENCE.test(l));
+        const stop = end < 0 ? lines.length : end;
+        return { block: { kind: 'code', text: lines.slice(i + 1, stop).join('\n') }, next: stop + 1 };
+    }
+    const h = HEADING.exec(line);
+    if (h) {
+        const level = (h[1] ?? '').length;
+        const text = (h[2] ?? '').trim();
+        if (level === 1)
+            return { block: null, next: i + 1 };
+        return { block: level === 2 ? { kind: 'h', text } : { kind: 'h', text, level: 4 }, next: i + 1 };
+    }
+    if (isTableStart(lines, i)) {
+        let j = i + 2;
+        while (j < lines.length && (lines[j] ?? '').trim().startsWith('|'))
+            j++;
+        return { block: { kind: 'table', head: splitRow(line), rows: lines.slice(i + 2, j).map(splitRow) }, next: j };
+    }
+    const collect = (test, strip) => {
+        let j = i;
+        const out = [];
+        while (j < lines.length && (lines[j] ?? '').trim() !== '' && test(lines[j] ?? ''))
+            out.push(strip(lines[j++] ?? '').trim());
+        return { text: out, next: j };
+    };
+    if (LIST_ITEM.test(line)) {
+        const r = collect((l) => LIST_ITEM.test(l), (l) => LIST_ITEM.exec(l)?.[1] ?? l);
+        return { block: { kind: 'list', items: r.text }, next: r.next };
+    }
+    if (line.trimStart().startsWith('>')) {
+        const r = collect((l) => l.trimStart().startsWith('>'), (l) => l.trimStart().replace(/^>\s?/, ''));
+        return { block: { kind: 'note', text: r.text.join(' ') }, next: r.next };
+    }
+    const r = collect((l) => !FENCE.test(l) && !HEADING.test(l) && !LIST_ITEM.test(l) && !l.trimStart().startsWith('>'), (l) => l);
+    return { block: { kind: 'p', text: r.text.join(' ') }, next: Math.max(r.next, i + 1) };
+}
+/** Markdown → blocks. The level-1 heading (the page title) is left to the caller. */
+function markdownBlocks(markdown) {
+    const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
+    const blocks = [];
+    let i = 0;
+    while (i < lines.length) {
+        if ((lines[i] ?? '').trim() === '') {
+            i++;
+            continue;
+        }
+        const { block, next } = readBlock(lines, i);
+        if (block)
+            blocks.push(block);
+        i = next;
+    }
+    return blocks;
+}
+const INLINE = /`([^`]+)`|\*\*([^*]+)\*\*|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)|<(https?:\/\/[^>\s]+)>/g;
+const SAFE_RELATIVE = /^[\w./#-]+$/;
+/** http(s) URLs as they are; relative paths resolved against `base`; anything else is refused. */
+function safeHref(url, base) {
+    if (/^https?:\/\/[^\s"'<>]+$/i.test(url))
+        return url;
+    if (/^[a-z][\w+.-]*:/i.test(url) || !SAFE_RELATIVE.test(url))
+        return undefined;
+    return `${base}${url.replace(/^\.\//, '')}`;
+}
+/** Inline Markdown → spans. `base` resolves relative links (files of the repository). */
+function inlineMarkdown(text, base) {
+    const spans = [];
+    let last = 0;
+    for (const m of text.matchAll(INLINE)) {
+        const at = m.index ?? 0;
+        if (at > last)
+            spans.push({ text: text.slice(last, at) });
+        last = at + m[0].length;
+        if (m[1] !== undefined)
+            spans.push({ text: m[1], code: true });
+        else if (m[2] !== undefined)
+            spans.push({ text: m[2], bold: true });
+        else if (m[5] !== undefined)
+            spans.push({ text: m[5], href: m[5] });
+        else {
+            const label = m[3] ?? '';
+            const code = /^`[^`]+`$/.test(label);
+            const shown = code ? label.slice(1, -1) : label;
+            const href = safeHref(m[4] ?? '', base);
+            spans.push(href ? { text: shown, href, ...(code ? { code } : {}) } : { text: shown });
+        }
+    }
+    if (last < text.length)
+        spans.push({ text: text.slice(last) });
+    return spans;
+}
+
+return { markdownBlocks, safeHref, inlineMarkdown };
+})();
+__m["ui/doc-blocks.js"] = (() => {
+/** Renders documentation blocks as DOM (text through textContent; links only http/https). */
+const { el } = __m["ui/dom.js"];
+const { inlineMarkdown } = __m["docs/markdown.js"];
+/** Plain text, or inline Markdown when the page declares a base URL for its links. */
+function inline(text, markdownBase) {
+    if (markdownBase === undefined)
+        return [text];
+    return inlineMarkdown(text, markdownBase).map((s) => {
+        const body = s.code ? el('code', {}, s.text) : s.bold ? el('strong', {}, s.text) : s.text;
+        return s.href ? el('a', { href: s.href, target: '_blank', rel: 'noopener noreferrer' }, body) : body;
+    });
+}
+function docBlock(b, md) {
+    switch (b.kind) {
+        case 'p': return el('p', {}, ...inline(b.text, md));
+        case 'h': return b.level === 4 ? el('h4', {}, ...inline(b.text, md)) : el('h3', {}, ...inline(b.text, md));
+        case 'code': return el('pre', { class: 'doc-code' }, el('code', {}, b.text));
+        case 'note': return el('p', { class: 'doc-note' }, ...inline(b.text, md));
+        case 'list': return el('ul', {}, ...b.items.map((i) => el('li', {}, ...inline(i, md))));
+        case 'table':
+            return el('div', { class: 'doc-table-wrap' }, el('table', { class: 'doc-table' }, el('thead', {}, el('tr', {}, ...b.head.map((c) => el('th', { scope: 'col' }, ...inline(c, md))))), el('tbody', {}, ...b.rows.map((r) => el('tr', {}, ...r.map((c, i) => (i === 0 ? el('th', { scope: 'row' }, ...inline(c, md)) : el('td', {}, ...inline(c, md)))))))));
+    }
+}
+
+return { inline, docBlock };
+})();
 __m["ui/docs-view.js"] = (() => {
 /** The Documentación tab: table of contents, search and pages (all text through textContent). */
 const { el, clear } = __m["ui/dom.js"];
 const { DOC_GROUPS, findPage, searchDocs } = __m["docs/index.js"];
+const { docBlock } = __m["ui/doc-blocks.js"];
 const FIRST_PAGE = 'inicio';
-function block(b) {
-    switch (b.kind) {
-        case 'p': return el('p', {}, b.text);
-        case 'h': return el('h3', {}, b.text);
-        case 'code': return el('pre', { class: 'doc-code' }, el('code', {}, b.text));
-        case 'note': return el('p', { class: 'doc-note' }, b.text);
-        case 'list': return el('ul', {}, ...b.items.map((i) => el('li', {}, i)));
-        case 'table':
-            return el('div', { class: 'doc-table-wrap' }, el('table', { class: 'doc-table' }, el('thead', {}, el('tr', {}, ...b.head.map((c) => el('th', { scope: 'col' }, c)))), el('tbody', {}, ...b.rows.map((r) => el('tr', {}, ...r.map((c, i) => (i === 0 ? el('th', { scope: 'row' }, c) : el('td', {}, c))))))));
-    }
-}
 class DocsView {
     root;
     toc;
@@ -25990,11 +26184,61 @@ class DocsView {
     renderPage(page) {
         clear(this.article);
         const group = DOC_GROUPS.find((g) => g.pages.includes(page));
-        this.article.append(el('p', { class: 'doc-crumb' }, group?.title ?? ''), el('h1', {}, page.title), el('p', { class: 'doc-summary' }, page.summary), ...page.blocks.map(block));
+        this.article.append(el('p', { class: 'doc-crumb' }, group?.title ?? ''), el('h1', {}, page.title), el('p', { class: 'doc-summary' }, page.summary), ...page.blocks.map((b) => docBlock(b, page.markdownBase)));
     }
 }
 
 return { DocsView };
+})();
+__m["docs/about-data.js"] = (() => {
+const ABOUT = {
+    "name": "netsim",
+    "version": "0.3.0",
+    "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
+    "license": "GPL-3.0-or-later",
+    "repository": "https://github.com/glopezca/netsim",
+    "licenseMarkdown": "# Licencia y atribuciones\n\n- **Autoría:** Germán López Castro\n- **Repositorio:** <https://github.com/glopezca/netsim>\n\nnetsim usa dos licencias según el tipo de material, las dos con la misma idea de\n«compartir igual»: quien distribuya versiones modificadas debe publicarlas con la misma licencia.\n\n| Material | Licencia |\n|---|---|\n| Código fuente: `src/`, `tests/`, `scripts/`, configuración del proyecto y los archivos que genera el build | [GNU GPL v3.0 o posterior](https://www.gnu.org/licenses/gpl-3.0.html) (`GPL-3.0-or-later`) — texto completo en [`LICENSE`](LICENSE) |\n| Documentación e imágenes: `README.md`, `docs/`, capturas y textos de los laboratorios | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es) — [texto legal](https://creativecommons.org/licenses/by-sa/4.0/legalcode.es) |\n| `.claude/` (reglas y agentes de Everything Claude Code) | MIT, de sus autores (ver más abajo) |\n\nLa GPL es una licencia pensada para software: exige entregar el código fuente junto con\ncualquier versión distribuida (también la página HTML compilada) y protege el derecho de\nuso, estudio, modificación y redistribución. Creative Commons recomienda no usar sus licencias\npara código, por eso CC BY-SA 4.0 queda solo para la documentación. Las dos licencias son\ncompatibles en un sentido: el material CC BY-SA 4.0 puede incorporarse a obras GPLv3.\n\n## Aviso de copyright del código\n\n```\nnetsim — simulador de redes con CLI de Cisco IOS y servidor DHCP\nCopyright (C) 2026 Germán López Castro\n\nThis program is free software: you can redistribute it and/or modify\nit under the terms of the GNU General Public License as published by\nthe Free Software Foundation, either version 3 of the License, or\n(at your option) any later version.\n\nThis program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\nMERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\nGNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License\nalong with this program.  If not, see <https://www.gnu.org/licenses/>.\n```\n\n## Atribución recomendada\n\nPara la documentación o las capturas:\n\n> «netsim», de Germán López Castro (<https://github.com/glopezca/netsim>),\n> distribuido bajo licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).\n\nPara el software o una obra derivada:\n\n> Basado en «netsim», de Germán López Castro (<https://github.com/glopezca/netsim>),\n> GPL-3.0-or-later. Cambios: …\n\n## Componentes de terceros\n\n### Everything Claude Code (ECC)\n\nLas reglas y los agentes de la carpeta `.claude/` (`.claude/rules/`, `.claude/agents/`,\n`.claude/commands/`) proceden de\n[Everything Claude Code](https://github.com/affaan-m/everything-claude-code)\ny se mantienen bajo su licencia original **MIT**, © 2026 Affaan Mustafa.\nEl texto completo está en [`.claude/ECC-LICENSE`](.claude/ECC-LICENSE).\nLa licencia MIT es compatible con la GPLv3; la GPL y la CC BY-SA de este repositorio no se\naplican a esos archivos.\n\n### Marcas\n\nCisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc. netsim es un proyecto\neducativo independiente, sin relación con Cisco ni respaldado por ella. Los símbolos de red\nde la interfaz son dibujos propios de este proyecto.\n"
+};
+
+return { ABOUT };
+})();
+__m["docs/about.js"] = (() => {
+/** «Acerca de»: version, authorship, licences and attributions, from package.json and LICENSE.md. */
+const { ABOUT } = __m["docs/about-data.js"];
+const { markdownBlocks } = __m["docs/markdown.js"];
+const AUTHOR_LINE = /^\s*-\s*\*\*Autoría:\*\*\s*(.+?)\s*$/m;
+function aboutInfo() {
+    const author = AUTHOR_LINE.exec(ABOUT.licenseMarkdown)?.[1] ?? '';
+    return {
+        name: ABOUT.name,
+        version: ABOUT.version,
+        description: ABOUT.description,
+        license: ABOUT.license,
+        repository: ABOUT.repository,
+        author,
+        fileBase: `${ABOUT.repository}/blob/main/`,
+        blocks: markdownBlocks(ABOUT.licenseMarkdown),
+    };
+}
+
+return { aboutInfo };
+})();
+__m["ui/about-view.js"] = (() => {
+/** The «Acerca de» tab: version, authorship, licences and attributions (generated from the repository root). */
+const { el } = __m["ui/dom.js"];
+const { docBlock } = __m["ui/doc-blocks.js"];
+const { aboutInfo } = __m["docs/about.js"];
+const LICENSE_URL = 'https://www.gnu.org/licenses/gpl-3.0.html';
+function aboutView() {
+    const a = aboutInfo();
+    const link = (href, text) => el('a', { href, target: '_blank', rel: 'noopener noreferrer' }, text);
+    const facts = el('dl', { class: 'about-facts' }, el('dt', {}, 'Versión'), el('dd', {}, el('span', { class: 'about-version' }, a.version)), el('dt', {}, 'Autoría'), el('dd', {}, a.author || '—'), el('dt', {}, 'Repositorio'), el('dd', {}, link(a.repository, a.repository.replace(/^https:\/\//, ''))), el('dt', {}, 'Licencia del código'), el('dd', {}, link(LICENSE_URL, a.license)), el('dt', {}, 'Ejecución'), el('dd', {}, 'Todo funciona en tu navegador: sin servidor, sin dependencias y sin enviar datos.'));
+    const hero = el('header', { class: 'about-hero' }, el('p', { class: 'doc-crumb' }, 'Acerca de'), el('h1', {}, a.name, ' ', el('small', {}, `v${a.version}`)), el('p', { class: 'doc-summary' }, a.description), facts);
+    const license = el('section', { class: 'about-license', 'aria-label': 'Licencia y atribuciones' }, el('h2', {}, 'Licencia y atribuciones'), el('p', { class: 'muted' }, 'Contenido de LICENSE.md, en la raíz del repositorio.'), ...a.blocks.map((b) => docBlock(b, a.fileBase)));
+    return el('section', { class: 'docs about', 'aria-label': 'Acerca de netsim' }, el('article', { class: 'doc-page about-page', tabindex: '-1' }, hero, license));
+}
+
+return { aboutView };
 })();
 __m["ui/main.js"] = (() => {
 /** netsim application shell: toolbar, workspace, palette, windows and simulation panel. */
@@ -26007,6 +26251,7 @@ const { ICONS, MODEL_LABEL } = __m["ui/icons.js"];
 const { Topology } = __m["net/topology.js"];
 const { EXAMPLES } = __m["net/examples.js"];
 const { DocsView } = __m["ui/docs-view.js"];
+const { aboutView } = __m["ui/about-view.js"];
 const AUTOSAVE_KEY = 'netsim:workspace:v1';
 const TICK_MS = 250;
 const AUTOSAVE_DELAY_MS = 800;
@@ -26022,6 +26267,7 @@ class App {
     saveTimer = 0;
     mode = 'realtime';
     docs = null;
+    about = null;
     stageEl = null;
     paletteEl = null;
     docsHost = null;
@@ -26104,18 +26350,19 @@ class App {
         modeSim.addEventListener('click', () => setMode('simulation'));
         return el('header', { class: 'topbar' }, el('h1', { class: 'brand' }, 'netsim'), this.viewSwitch(), el('nav', { class: 'file-actions', 'aria-label': 'Archivo' }, btn('Nuevo', () => this.load(new Topology(), 'Área de trabajo vacía.')), btn('Abrir…', () => fileInput.click()), btn('Guardar', () => void this.save(), { title: 'Guardar la topología en un archivo .json (Ctrl+S)' }), examples, fileInput), el('div', { class: 'time' }, this.clockEl, advance), el('div', { class: 'segmented', role: 'group', 'aria-label': 'Modo' }, modeRT, modeSim));
     }
-    /** Red / Documentación. */
+    /** Red / Documentación / Acerca de. */
     viewSwitch() {
-        const viewNet = el('button', { type: 'button', class: 'seg', 'aria-pressed': 'true' }, 'Red');
-        const viewDocs = el('button', { type: 'button', class: 'seg', 'aria-pressed': 'false' }, 'Documentación');
-        const setView = (docs) => {
-            viewNet.setAttribute('aria-pressed', String(!docs));
-            viewDocs.setAttribute('aria-pressed', String(docs));
-            this.showDocs(docs);
-        };
-        viewNet.addEventListener('click', () => setView(false));
-        viewDocs.addEventListener('click', () => setView(true));
-        return el('div', { class: 'segmented', role: 'group', 'aria-label': 'Vista' }, viewNet, viewDocs);
+        const views = [['net', 'Red'], ['docs', 'Documentación'], ['about', 'Acerca de']];
+        const buttons = views.map(([v, label]) => {
+            const b = el('button', { type: 'button', class: 'seg', 'aria-pressed': String(v === 'net'), 'data-view': v }, label);
+            b.addEventListener('click', () => {
+                for (const x of buttons)
+                    x.setAttribute('aria-pressed', String(x === b));
+                this.showView(v);
+            });
+            return b;
+        });
+        return el('div', { class: 'segmented', role: 'group', 'aria-label': 'Vista' }, ...buttons);
     }
     palette() {
         const deviceBtn = (kind, name) => {
@@ -26141,20 +26388,23 @@ class App {
         this.canvas.setTool(next);
         this.canvas.root.focus({ preventScroll: true });
     }
-    /** Switches between the network workspace and the documentation (windows stay open but hidden). */
-    showDocs(on) {
-        if (on && !this.docs) {
+    /** Switches between the workspace, the documentation and «Acerca de» (windows stay open but hidden). */
+    showView(view) {
+        if (view === 'docs' && !this.docs)
             this.docs = new DocsView();
-            this.docsHost?.appendChild(this.docs.root);
-        }
+        if (view === 'about' && !this.about)
+            this.about = aboutView();
+        const page = view === 'docs' ? this.docs?.root : view === 'about' ? this.about : undefined;
+        if (this.docsHost && page && page.parentElement !== this.docsHost)
+            this.docsHost.replaceChildren(page);
         if (this.stageEl)
-            this.stageEl.hidden = on;
+            this.stageEl.hidden = view !== 'net';
         if (this.paletteEl)
-            this.paletteEl.hidden = on;
+            this.paletteEl.hidden = view !== 'net';
         if (this.docsHost)
-            this.docsHost.hidden = !on;
-        document.body.dataset.view = on ? 'docs' : 'net';
-        if (on)
+            this.docsHost.hidden = view === 'net';
+        document.body.dataset.view = view;
+        if (view === 'docs')
             this.docs?.focus();
     }
     // ------------------------------------------------------------ behaviour

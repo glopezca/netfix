@@ -197,7 +197,7 @@ button, input, select { font: inherit; color: inherit; }
 .ed-cursor { background: var(--console-msg); color: var(--console); }
 
 /* ---------------------------------------------------------------- documentation */
-body[data-view="docs"] .win-layer { display: none; }
+body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display: none; }
 .docs-host { min-height: 0; grid-row: 2 / 4; overflow: hidden; }
 .docs { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); height: 100%; background: var(--panel); }
 .doc-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--panel-2); }
@@ -222,6 +222,18 @@ body[data-view="docs"] .win-layer { display: none; }
 .doc-table { border-collapse: collapse; width: 100%; font-size: 14px; }
 .doc-table th, .doc-table td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
 .doc-table thead th { background: var(--panel-2); }
+.about .about-page { grid-column: 1 / -1; }
+.about-hero { border-bottom: 1px solid var(--line); padding-bottom: 18px; margin-bottom: 8px; }
+.about-hero h1 small { font-size: 16px; color: var(--ink-2); font-weight: 600; }
+.about-facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 12px 0 0; }
+.about-facts dt { color: var(--ink-2); font-weight: 600; }
+.about-facts dd { margin: 0; overflow-wrap: anywhere; }
+.about-version { font: 600 13px/1.4 var(--font-mono); background: var(--accent-soft); border-radius: var(--radius-ctl); padding: 2px 8px; }
+.about .doc-table tbody th { font: 600 14px/1.45 inherit; font-family: inherit; }
+.about-license h2 { font-size: 20px; margin: 22px 0 4px; }
+.doc-page a { color: var(--accent); overflow-wrap: anywhere; }
+.doc-page h4 { margin: 18px 0 6px; font-size: 16px; }
+.doc-page code { font-family: var(--font-mono); font-size: .92em; }
 .doc-table tbody th { font: 600 13px/1.45 var(--font-mono); white-space: pre-wrap; }
 @media (max-width: 720px) { .docs { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); } .doc-side { max-height: 40vh; border-right: 0; border-bottom: 1px solid var(--line); } }
 

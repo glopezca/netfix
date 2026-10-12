@@ -1,23 +1,10 @@
 /** The Documentación tab: table of contents, search and pages (all text through textContent). */
 import { el, clear } from './dom.ts';
 import { DOC_GROUPS, findPage, searchDocs } from '../docs/index.ts';
-import type { DocBlock, DocPage } from '../docs/index.ts';
+import type { DocPage } from '../docs/index.ts';
+import { docBlock } from './doc-blocks.ts';
 
 const FIRST_PAGE = 'inicio';
-
-function block(b: DocBlock): HTMLElement {
-  switch (b.kind) {
-    case 'p': return el('p', {}, b.text);
-    case 'h': return el('h3', {}, b.text);
-    case 'code': return el('pre', { class: 'doc-code' }, el('code', {}, b.text));
-    case 'note': return el('p', { class: 'doc-note' }, b.text);
-    case 'list': return el('ul', {}, ...b.items.map((i) => el('li', {}, i)));
-    case 'table':
-      return el('div', { class: 'doc-table-wrap' }, el('table', { class: 'doc-table' },
-        el('thead', {}, el('tr', {}, ...b.head.map((c) => el('th', { scope: 'col' }, c)))),
-        el('tbody', {}, ...b.rows.map((r) => el('tr', {}, ...r.map((c, i) => (i === 0 ? el('th', { scope: 'row' }, c) : el('td', {}, c))))))));
-  }
-}
 
 export class DocsView {
   readonly root: HTMLElement;
@@ -70,6 +57,6 @@ export class DocsView {
   private renderPage(page: DocPage): void {
     clear(this.article);
     const group = DOC_GROUPS.find((g) => g.pages.includes(page));
-    this.article.append(el('p', { class: 'doc-crumb' }, group?.title ?? ''), el('h1', {}, page.title), el('p', { class: 'doc-summary' }, page.summary), ...page.blocks.map(block));
+    this.article.append(el('p', { class: 'doc-crumb' }, group?.title ?? ''), el('h1', {}, page.title), el('p', { class: 'doc-summary' }, page.summary), ...page.blocks.map((b) => docBlock(b, page.markdownBase)));
   }
 }
