@@ -69,7 +69,8 @@ class PublicDns implements VirtualHost {
     const dns = p.udp?.dns;
     if (!dns || !p.udp) return;
     if (dns.response) return this.onUpstream(p.udp.dport, dns);
-    if (p.udp.dport === DNS_PORT) this.resolve(p, dns);
+    // never answer the emulated Internet itself (a domain delegated to 8.8.8.8 would loop forever)
+    if (p.udp.dport === DNS_PORT && !this.core.isVirtual(p.src)) this.resolve(p, dns);
   }
 
   private reply(via: number, to: number, port: number, msg: DnsMessage): void {
@@ -91,6 +92,7 @@ class PublicDns implements VirtualHost {
 
   /** Recursion: asks the domain's own name server and relays the answer. */
   private forward(p: IpPacket, q: DnsMessage, server: number): void {
+    if (this.core.isVirtual(server)) return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { id: q.id, response: true, qname: q.qname, qtype: q.qtype, rcode: 'SERVFAIL', answers: [] });
     const sport = FIRST_QUERY_PORT + (this.nextPort++ % QUERY_PORTS);
     const entry = { client: p.src, port: p.udp?.sport ?? 0, id: q.id, via: p.dst, done: false };
     this.pending.set(sport, entry);

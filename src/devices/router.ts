@@ -115,7 +115,7 @@ export class Router extends IosDevice implements NetDevice {
     this.acls = new Map();
     this.aclHits.clear();
     this.nat = EMPTY_NAT;
-    this.natTable.clear();
+    this.natTable.reset();
     this.debugNat = false;
     this.dhcp = new DhcpServer();
     this.plane = new RouterPlane(this);
@@ -206,10 +206,10 @@ export class Router extends IosDevice implements NetDevice {
       '!',
       '!',
       ...interfaceSection(this),
+      ...httpLines(this),
       ...natConfigLines(this.nat),
       'ip classless',
       ...this.staticRoutes.map(routeLine),
-      ...httpLines(this),
       '!',
       'ip flow-export version 9',
       ...(acl.named.length + acl.numbered.length ? ['!', ...acl.named, ...acl.numbered] : []),

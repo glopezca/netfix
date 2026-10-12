@@ -105,7 +105,8 @@ export class RouterPlane implements StackHost {
       this.icmpError(packet, src, 'unreachable');
       return;
     }
-    this.stack.sendVia(egress, natForward(this.router, inIface, egress.iface, { ...packet, ttl: packet.ttl - 1 }));
+    const out = natForward(this.router, inIface, egress.iface, { ...packet, ttl: packet.ttl - 1 });
+    if (out) this.stack.sendVia(egress, out);
   }
 
   prerouting(iface: string, packet: IpPacket): IpPacket {

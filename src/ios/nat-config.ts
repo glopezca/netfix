@@ -94,7 +94,7 @@ export function showNatStatistics(i: NatStatsInput): string[] {
     '-- Inside Source',
   ];
   i.nat.dynamic.forEach((d, n) => {
-    const refs = dyn.filter((e) => (d.iface ? true : i.nat.pools.some((p) => p.name === d.pool && e.insideGlobal >= p.start && e.insideGlobal <= p.end))).length;
+    const refs = dyn.filter((e) => e.rule === n).length;
     lines.push(`[Id: ${n + 1}] access-list ${d.acl} ${d.iface ? `interface ${d.iface}` : `pool ${d.pool ?? ''}`} refcount ${refs}`);
     const pool = i.nat.pools.find((p) => p.name === d.pool);
     if (!pool) return;

@@ -21,6 +21,9 @@ import type { Transcript } from './ios-web-pages.ts';
 import { deviceManager, portSettings } from './ios-dm.ts';
 import { formatIp } from '../core/ip.ts';
 
+/** User names come from the request: no control characters in the logs. */
+const printable = (text: string): string => text.replace(/[\x00-\x1f\x7f]/g, '?').slice(0, 64);
+
 export const IOS_BANNER = 'cisco-IOS';
 const MAX_COMMAND = 512;
 const MAX_CONFIG_LINES = 200;
@@ -59,7 +62,7 @@ export function runConfig(device: IosDevice, lines: readonly string[], who: Who)
     if (mode === 'exec' || mode === 'user') break;
     out.push({ prompt: s.prompt(), command: line, output: s.input(line) });
   }
-  if (out.length) device.log(`%SYS-5-CONFIG_I: Configured from console by ${who.user} on vty0 (${formatIp(who.peer.ip)})`);
+  if (out.length) device.log(`%SYS-5-CONFIG_I: Configured from console by ${printable(who.user)} on vty0 (${formatIp(who.peer.ip)})`);
   return out;
 }
 
@@ -102,12 +105,12 @@ function levelPage(device: IosDevice, req: HttpRequest, who: Who, route: NonNull
 export function iosWeb(device: IosDevice, req: HttpRequest, peer: Peer): HttpResponse {
   const route = pathOnly(req.path) === '/' ? null : parseLevelPath(req.path);
   if (!route && pathOnly(req.path) !== '/') return respond(IOS_BANNER, 404, page('404 Not Found', '', h('h1', {}, 'Not Found')));
-  const need = route?.level ?? MAX_PRIVILEGE;
+  const need = route?.level ?? 0;
   const cred = basicAuth(req);
   const level = cred ? httpPrivilege(device, cred.user, cred.password) : null;
   if (!cred || level === null || level < need) {
-    if (cred) device.log(`%SEC_LOGIN-4-LOGIN_FAILED: Login failed [user: ${cred.user}] [Source: ${formatIp(peer.ip)}] [localport: ${device.http.port}] [Reason: Login Authentication Failed]`);
-    return denied(need);
+    if (cred) device.log(`%SEC_LOGIN-4-LOGIN_FAILED: Login failed [user: ${printable(cred.user)}] [Source: ${formatIp(peer.ip)}] [localport: ${device.http.port}] [Reason: Login Authentication Failed]`);
+    return denied(route?.level ?? MAX_PRIVILEGE);
   }
   const who = { user: cred.user, level, peer };
   if (!route) return forMethod(req, respond(IOS_BANNER, 200, frame(device, `${device.hostname} Home Page`, [homePage(device, level)])));

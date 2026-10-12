@@ -35,22 +35,22 @@ function permitted(r: Router, acl: string, src: number): boolean {
   return entry?.action === 'permit';
 }
 
-function poolTarget(r: Router, poolName: string | undefined, overload: boolean): DynamicTarget {
+function poolTarget(r: Router, poolName: string | undefined, overload: boolean, rule: number): DynamicTarget {
   const pool = r.nat.pools.find((p) => p.name === poolName);
-  if (!pool) return null;
-  if (overload) return { global: pool.start, overload: true };
-  for (let ip = pool.start; ip <= pool.end; ip++) if (!r.natTable.globalInUse(ip)) return { global: ip, overload: false };
-  return null;
+  if (!pool) return 'exhausted';
+  if (overload) return { global: pool.start, overload: true, rule };
+  for (let ip = pool.start; ip <= pool.end; ip++) if (!r.natTable.globalInUse(ip)) return { global: ip, overload: false, rule };
+  return 'exhausted';
 }
 
 function dynamicTarget(r: Router, p: IpPacket): DynamicTarget {
-  for (const d of r.nat.dynamic) {
+  for (const [rule, d] of r.nat.dynamic.entries()) {
     if (!permitted(r, d.acl, p.src)) continue;
     if (d.iface) {
       const ip = ifaceIp(r, d.iface);
-      return ip === undefined ? null : { global: ip, overload: true };
+      return ip === undefined ? 'exhausted' : { global: ip, overload: true, rule };
     }
-    return poolTarget(r, d.pool, d.overload);
+    return poolTarget(r, d.pool, d.overload, rule);
   }
   return null;
 }
@@ -71,10 +71,14 @@ export function natPrerouting(r: Router, iface: string, p: IpPacket): IpPacket {
   return out;
 }
 
-/** Inside → outside, once the egress interface is known. */
-export function natForward(r: Router, inIface: string, outIface: string, p: IpPacket): IpPacket {
+/** Inside → outside, once the egress interface is known; null = drop (pool exhausted). */
+export function natForward(r: Router, inIface: string, outIface: string, p: IpPacket): IpPacket | null {
   if (natRole(r, inIface) !== 'inside' || natRole(r, outIface) !== 'outside') return p;
   const out = r.natTable.inside(p, resolvedStatics(r), (pk) => dynamicTarget(r, pk));
+  if (out === 'drop') {
+    if (r.debugNat) r.log(`NAT: translation failed (A), dropping packet s=${formatIp(p.src)} d=${formatIp(p.dst)}`);
+    return null;
+  }
   if (!out) return p;
   debug(r, p, out, false);
   return out;

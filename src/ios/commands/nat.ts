@@ -33,6 +33,7 @@ function removeList(cli: Cli<Router>, name: string): void {
   const next = new Map(cli.device.acls);
   next.delete(name);
   cli.device.acls = next;
+  for (const key of [...cli.device.aclHits.keys()]) if (key.startsWith(`${name}:`)) cli.device.aclHits.delete(key);
 }
 
 function setNat(cli: Cli<Router>, change: (n: NatConfig) => NatConfig): void {
@@ -60,9 +61,10 @@ function dynamicRule(cli: Cli<Router>, m: Match): void {
   const iface = m.get('iface') ? ifaceName(cli, m.get('iface')) : undefined;
   if (m.get('iface') && !iface) return;
   const pool = m.get('pool');
-  if (pool && !cli.device.nat.pools.some((p) => p.name === pool)) cli.out(`%Pool ${pool} does not exist`);
+  if (pool && !cli.device.nat.pools.some((p) => p.name === pool)) return cli.out(`%Pool ${pool} not found`);
   const rule = { acl, iface, pool, overload: m.has('overload') || iface !== undefined };
-  setNat(cli, (n) => ({ ...n, dynamic: [...n.dynamic.filter((d) => d.acl !== acl), rule] }));
+  // a rule for the same list is replaced in place: the order of evaluation does not change
+  setNat(cli, (n) => ({ ...n, dynamic: n.dynamic.some((d) => d.acl === acl) ? n.dynamic.map((d) => (d.acl === acl ? rule : d)) : [...n.dynamic, rule] }));
 }
 
 function addPool(cli: Cli<Router>, m: Match): void {

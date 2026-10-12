@@ -79,6 +79,14 @@ export class Cloud implements NetDevice, InternetEdge {
 
   // ------------------------------------------------------------ InternetEdge
 
+  publicBlock(): number {
+    return this.settings.block;
+  }
+
+  otherBlocks(): number[] {
+    return this.core.otherBlocks(this);
+  }
+
   coreHop(): number {
     return ispHop(this.settings.block);
   }

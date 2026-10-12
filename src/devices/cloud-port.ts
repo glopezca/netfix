@@ -44,6 +44,7 @@ export class CloudPort implements StackHost {
   settings: CloudPortSettings;
   private readonly owner: PortOwner;
   private readonly core: InternetCore;
+  private appliedNet = -1;
 
   constructor(owner: PortOwner, core: InternetCore, name: string, settings: CloudPortSettings) {
     this.owner = owner;
@@ -59,10 +60,13 @@ export class CloudPort implements StackHost {
     return lineSubnet(this.owner.block(), this.name);
   }
 
+  /** Reconfigures the line; a new mode, LAN or public block drops ARP, NAT and leases. */
   apply(settings: CloudPortSettings): void {
     const modeChanged = settings.mode !== this.settings.mode || settings.lanIp !== this.settings.lanIp || settings.lanPrefix !== this.settings.lanPrefix;
+    const blockChanged = this.line().net !== this.appliedNet;
     this.settings = settings;
-    if (modeChanged) {
+    this.appliedNet = this.line().net;
+    if (modeChanged || blockChanged) {
       this.stack.flushArp();
       this.nat.clear();
       this.dhcp = new DhcpServer();
@@ -134,7 +138,9 @@ export class CloudPort implements StackHost {
     let out: IpPacket = { ...packet, ttl: packet.ttl - 1 };
     if (this.settings.mode === 'router') {
       if (!inSubnet(packet.src, g.ip, g.prefix)) return;
-      out = this.nat.inside(out, this.forwards(), () => ({ global: this.wan(), overload: true })) ?? out;
+      const translated = this.nat.inside(out, this.forwards(), () => ({ global: this.wan(), overload: true }));
+      if (translated === 'drop') return;
+      out = translated ?? out;
     }
     this.core.send(out);
   }

@@ -58,7 +58,7 @@ export function browserApp(pc: Pc, app: AfterChange): HTMLElement {
     const res = r.response;
     const page = renderHtml(res.contentType.startsWith('text/html') ? res.body : `<pre>${res.body.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c)}</pre>`, {
       link: (href) => go(resolveLink(r.url, href)),
-      submit: (action, method, fields) => show(engine.open(resolveLink(r.url, action || r.url), { method, form: fields })),
+      submit: (action, method, fields) => show(engine.open(resolveLink(r.url, action || r.url), { method, form: fields, initiator: r.url })),
     });
     status.textContent = `${res.status} ${res.reason} · ${formatIp(r.ip)} · ${res.server}${page.title ? ` · ${page.title}` : ''}`;
     view.replaceChildren(page.body);

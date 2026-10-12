@@ -14,7 +14,7 @@ const ALLOWED = new Set([
 const SKIP = new Set(['script', 'style', 'iframe', 'object', 'embed', 'noscript', 'template', 'svg', 'math', 'link', 'meta', 'head', 'frame', 'frameset', 'base']);
 const INPUT_TYPES = new Set(['text', 'password', 'hidden', 'checkbox', 'radio', 'submit', 'email', 'number', 'search', 'url', 'tel', 'reset']);
 const ATTRS: Readonly<Record<string, readonly string[]>> = {
-  input: ['name', 'value', 'placeholder', 'size', 'maxlength', 'min', 'max', 'autocomplete'],
+  input: ['name', 'value', 'placeholder', 'size', 'maxlength', 'min', 'max'],
   select: ['name'], option: ['value'], textarea: ['name', 'rows', 'cols', 'placeholder'], button: ['name', 'value'],
   td: ['colspan', 'rowspan'], th: ['colspan', 'rowspan', 'scope'],
 };
@@ -45,6 +45,8 @@ function copyAttributes(src: Element, out: HTMLElement, tag: string): void {
   if (tag === 'input') {
     const type = (src.getAttribute('type') ?? 'text').toLowerCase();
     out.setAttribute('type', INPUT_TYPES.has(type) ? type : 'text');
+    // simulated logins must not reach the real browser's password manager
+    out.setAttribute('autocomplete', type === 'password' ? 'new-password' : 'off');
   }
   if (tag === 'button') out.setAttribute('type', (src.getAttribute('type') ?? 'submit').toLowerCase() === 'button' ? 'button' : 'submit');
 }

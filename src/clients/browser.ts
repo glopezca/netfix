@@ -19,6 +19,8 @@ export interface Navigation {
   readonly method?: HttpMethod;
   /** Form fields: sent as the query string (GET) or the body (POST). */
   readonly form?: readonly (readonly [string, string])[];
+  /** URL of the page that started the navigation (a link or a form); absent when the user typed it. */
+  readonly initiator?: string;
 }
 
 interface Cookie {
@@ -56,14 +58,19 @@ export class BrowserEngine {
       if (method === 'POST') body = encoded;
       else url = `${url.split('?')[0] ?? url}?${encoded}`;
     }
+    // Saved passwords and cookies go with what the user does (typed URL, link, GET form, same-site POST),
+    // not with a cross-site POST or a redirect to another site: a page cannot drive a router behind the user's back.
+    let credentials = !nav.initiator || method === 'GET' || originOf(nav.initiator) === originOf(url);
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-      const r = this.fetch(url, method, body);
+      const r = this.fetch(url, method, body, credentials);
       if (r.kind === 'error') return { kind: 'error', url, code: r.code, message: r.message };
       const res = r.response;
       this.storeCookies(url, res);
       const location = res.headers?.location;
       if (location && [301, 302, 303, 307, 308].includes(res.status)) {
-        url = resolveLink(url, location);
+        const next = resolveLink(url, location);
+        if (originOf(next) !== originOf(url)) credentials = false;
+        url = next;
         if (res.status !== 307 && res.status !== 308) { method = 'GET'; body = undefined; }
         continue;
       }
@@ -89,11 +96,11 @@ export class BrowserEngine {
     return list.filter(([, c]) => path.startsWith(c.path)).map(([k, c]) => `${k}=${c.value}`).join('; ');
   }
 
-  private fetch(url: string, method: HttpMethod, body: string | undefined): HttpOutcome {
+  private fetch(url: string, method: HttpMethod, body: string | undefined, credentials: boolean): HttpOutcome {
     const headers: Record<string, string> = { 'user-agent': 'Mozilla/5.0 (netsim)' };
-    const cookie = this.cookieHeader(url);
+    const cookie = credentials ? this.cookieHeader(url) : '';
     if (cookie) headers.cookie = cookie;
-    const auth = this.credentials.get(originOf(url));
+    const auth = credentials ? this.credentials.get(originOf(url)) : undefined;
     if (auth) headers.authorization = auth;
     if (body !== undefined) headers['content-type'] = 'application/x-www-form-urlencoded';
     return httpRequest(this.host, url, { method, headers, body });

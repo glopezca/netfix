@@ -14,6 +14,8 @@ export interface InternetEdge {
   owns(ip: number): boolean;
   /** A packet arrives from the Internet. */
   fromInternet(packet: IpPacket): void;
+  /** The ISP's public /16. */
+  publicBlock(): number;
 }
 
 export interface VirtualHost {
@@ -34,7 +36,7 @@ export const HOP_MS = 2;
 const ERROR_TTL = 250;
 const FIRST_BLOCK = ip('81.32.0.0');
 const BLOCK_STEP = 1 << 16;
-const MAX_BLOCKS = 64;
+const MAX_BLOCKS = 200;
 
 export class InternetCore implements DomainSource {
   private readonly edges = new Set<InternetEdge>();
@@ -68,6 +70,16 @@ export class InternetCore implements DomainSource {
 
   domains(): readonly { name: string; kind: 'a' | 'ns'; ip: number }[] {
     return this.sources.flatMap((s) => s.domains());
+  }
+
+  /** Public blocks of the other ISP clouds. */
+  otherBlocks(edge: InternetEdge): number[] {
+    return [...this.edges].filter((e) => e !== edge).map((e) => e.publicBlock());
+  }
+
+  /** Addresses of the emulated Internet itself (virtual hosts and routers). */
+  isVirtual(addr: number): boolean {
+    return this.hostFor(addr) !== undefined || BACKBONE.includes(addr as (typeof BACKBONE)[number]);
   }
 
   /** First /16 public block not used by another ISP cloud. */

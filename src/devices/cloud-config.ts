@@ -83,6 +83,17 @@ export function ispHop(block: number): number {
   return (block + 1) >>> 0;
 }
 
+/** Ranges a cloud cannot use as public block or delegate a domain to (private, special, emulated Internet). */
+const RESERVED: readonly (readonly [string, number])[] = [
+  ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16], ['172.16.0.0', 12],
+  ['192.168.0.0', 16], ['224.0.0.0', 3], ['8.8.0.0', 16], ['34.160.0.0', 16], ['93.184.0.0', 16], ['142.250.0.0', 15],
+  ['198.51.100.0', 24], ['203.0.113.0', 24],
+];
+
+export function reservedAddress(ip: number): boolean {
+  return RESERVED.some(([net, prefix]) => inSubnet(ip, parseIp(net) ?? 0, prefix));
+}
+
 export function validDomain(name: string): string | null {
   if (!/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(name)) return 'Dominio no válido: usa nombres como sede2.es o empresa.com.';
   return null;
@@ -102,13 +113,16 @@ export function validatePort(p: CloudPortSettings): string | null {
   return dup ? `El puerto ${dup.proto.toUpperCase()} ${dup.port} ya está redirigido.` : null;
 }
 
-export function validateCloud(s: CloudSettings): string | null {
+export function validateCloud(s: CloudSettings, otherBlocks: readonly number[] = []): string | null {
   if (!s.isp.trim() || s.isp.length > 40) return 'Escribe el nombre del ISP (máximo 40 caracteres).';
   if (networkOf(s.block, BLOCK_PREFIX) !== s.block) return 'El bloque público debe ser una red /16 (por ejemplo 81.32.0.0).';
+  if (reservedAddress(s.block)) return `${formatIp(s.block)}/16 es privada, especial o de la Internet emulada: elige otro bloque público.`;
+  if (otherBlocks.includes(s.block)) return `${formatIp(s.block)}/16 ya lo usa otra nube.`;
   if (s.domains.length > MAX_DOMAINS) return 'Demasiados dominios registrados.';
   for (const d of s.domains) {
     const bad = validDomain(d.name);
     if (bad) return bad;
+    if (reservedAddress(d.ip)) return `${d.name}: ${formatIp(d.ip)} no es una dirección pública de un cliente.`;
   }
   for (const p of CLOUD_PORTS) {
     const bad = validatePort(s.ports[p]);
@@ -141,12 +155,13 @@ function portFromJson(port: string, v: unknown): CloudPortSettings {
   return validatePort(p) ? d : p;
 }
 
+/** Settings from an untrusted file; anything invalid falls back to the defaults. */
 export function cloudFromJson(v: unknown, fallback: CloudSettings): CloudSettings {
   const o = obj(v);
   const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, portFromJson(p, obj(o.ports)[p])])) as Record<CloudPortName, CloudPortSettings>;
   const domains = (Array.isArray(o.domains) ? o.domains : []).slice(0, MAX_DOMAINS).map(obj)
     .map((d) => ({ name: String(d.name ?? '').toLowerCase(), kind: d.kind === 'ns' ? 'ns' as const : 'a' as const, ip: ipOf(d.ip, 0) }))
-    .filter((d) => validDomain(d.name) === null);
+    .filter((d) => validDomain(d.name) === null && !reservedAddress(d.ip));
   const s = { isp: typeof o.isp === 'string' ? o.isp.slice(0, 40) : fallback.isp, block: ipOf(o.block, fallback.block), ports, domains };
   return validateCloud(s) ? { ...fallback, ports, domains } : s;
 }

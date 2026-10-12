@@ -56,6 +56,7 @@ function addPool(server: Server, f: Fields): Outcome {
 function addRecord(server: Server, f: Fields): Outcome {
   const type = (f.get('type') ?? 'A') as DnsRecord['type'];
   const r: DnsRecord = { name: (f.get('name') ?? '').trim(), type, value: (f.get('value') ?? '').trim(), ttl: DEFAULT_TTL, priority: type === 'MX' ? Number(f.get('priority') ?? 10) : undefined };
+  if (type === 'MX' && !Number.isInteger(r.priority)) return { error: 'La prioridad MX va de 0 a 65535.' };
   const err = ['A', 'CNAME', 'MX', 'NS', 'TXT'].includes(type) ? validateRecord(r, server.services.dns.origin) : 'Tipo de registro no válido.';
   return err ? { error: err } : set(server, (s) => ({ ...s, dns: { ...s.dns, records: [...s.dns.records, r] } }));
 }

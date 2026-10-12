@@ -108,8 +108,56 @@ export function patternRegex(pattern: string, opts: GlobOptions = {}, anchored =
   return re;
 }
 
+type Token = { readonly kind: 'star' } | { readonly kind: 'one'; readonly test: (c: string) => boolean };
+
+/** Tokens of a pattern without extglob, or null when it has one (then the regex path is used). */
+function simpleTokens(p: string, opts: GlobOptions): Token[] | null {
+  const fold = (c: string): string => (opts.nocase ? c.toLowerCase() : c);
+  const tokens: Token[] = [];
+  for (let i = 0; i < p.length; i++) {
+    const c = p[i] ?? '';
+    if ('?*+@!'.includes(c) && p[i + 1] === '(') return null;
+    if (c === '*') {
+      if (tokens.at(-1)?.kind !== 'star') tokens.push({ kind: 'star' });
+    } else if (c === '?') tokens.push({ kind: 'one', test: (x) => !opts.pathname || x !== '/' });
+    else if (c === '[' && bracket(p, i, Boolean(opts.pathname))) {
+      const [re, end] = bracket(p, i, Boolean(opts.pathname)) ?? ['', i + 1];
+      const rx = new RegExp(`^${re}$`, opts.nocase ? 'i' : '');
+      tokens.push({ kind: 'one', test: (x) => rx.test(x) });
+      i = end - 1;
+    } else {
+      const lit = c === '\\' && i + 1 < p.length ? p[++i] ?? '' : c;
+      tokens.push({ kind: 'one', test: (x) => fold(x) === fold(lit) });
+    }
+  }
+  return tokens;
+}
+
+/**
+ * Wildcard matching in O(pattern × text) with the classic "last star" backtracking: plain * ? [...]
+ * patterns cannot freeze the page however many stars they have (a regex would backtrack exponentially).
+ */
+function linearMatch(tokens: readonly Token[], text: readonly string[], pathname: boolean): boolean {
+  let t = 0;
+  let k = 0;
+  let star = -1;
+  let mark = 0;
+  while (t < text.length) {
+    const tok = tokens[k];
+    if (tok && tok.kind === 'one' && tok.test(text[t] ?? '')) { t++; k++; continue; }
+    if (tok && tok.kind === 'star') { star = k++; mark = t; continue; }
+    if (star < 0 || (pathname && text[mark] === '/')) return false;
+    k = star + 1;
+    t = ++mark;
+  }
+  while (tokens[k]?.kind === 'star') k++;
+  return k === tokens.length;
+}
+
 export function matchPattern(pattern: string, text: string, opts: GlobOptions = {}): boolean {
   try {
+    const tokens = simpleTokens(pattern, opts);
+    if (tokens) return linearMatch(tokens, Array.from(text), Boolean(opts.pathname));
     return patternRegex(pattern, opts).test(text);
   } catch {
     return pattern === text;

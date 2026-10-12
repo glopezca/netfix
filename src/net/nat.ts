@@ -25,10 +25,15 @@ export interface NatEntry {
   readonly outside?: number;
   readonly outsidePort?: number;
   readonly static: boolean;
+  /** Index of the dynamic rule that created it (show ip nat statistics refcount). */
+  readonly rule?: number;
 }
 
-/** Where a dynamic rule translates an inside source to (null = no rule matches). */
-export type DynamicTarget = { readonly global: number; readonly overload: boolean } | null;
+/** Where a dynamic rule translates an inside source to: null = no rule matches, 'exhausted' = drop. */
+export type DynamicTarget = { readonly global: number; readonly overload: boolean; readonly rule?: number } | null | 'exhausted';
+
+/** Result of an inside → outside translation: a packet, null (no rule: forward untranslated) or 'drop'. */
+export type InsideResult = IpPacket | null | 'drop';
 
 const FIRST_PAT_PORT = 1024;
 const LAST_PORT = 65535;
@@ -74,8 +79,8 @@ export class NatTable {
   hits = 0;
   misses = 0;
 
-  /** Inside → outside: translates the source, or returns null when no rule applies. */
-  inside(p: IpPacket, statics: readonly StaticNat[], target: (p: IpPacket) => DynamicTarget): IpPacket | null {
+  /** Inside → outside: translates the source; null when no rule applies, 'drop' when the rule cannot. */
+  inside(p: IpPacket, statics: readonly StaticNat[], target: (p: IpPacket) => DynamicTarget): InsideResult {
     const f = flowOf(p);
     const st = statics.find((s) => staticMatchesOut(s, p, f));
     if (st) return this.hit(rewriteSrc(p, st.global, st.proto ? st.globalPort : undefined));
@@ -84,9 +89,13 @@ export class NatTable {
     const t = target(p);
     if (!t) return null;
     this.misses += 1;
-    const entry = t.overload
-      ? { proto: f.proto, insideLocal: p.src, insideGlobal: t.global, localPort: f.sport, globalPort: this.freePort(f.proto, t.global, f.sport), outside: p.dst, outsidePort: f.dport, static: false }
-      : { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false };
+    if (t === 'exhausted') return 'drop';
+    const reserved = new Set(statics.filter((s) => s.global === t.global && s.proto === f.proto).map((s) => s.globalPort));
+    const port = t.overload ? this.freePort(f.proto, t.global, f.sport, reserved) : 0;
+    if (port === null) return 'drop';
+    const entry: NatEntry = t.overload
+      ? { proto: f.proto, insideLocal: p.src, insideGlobal: t.global, localPort: f.sport, globalPort: port, outside: p.dst, outsidePort: f.dport, static: false, rule: t.rule }
+      : { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false, rule: t.rule };
     this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
     return rewriteSrc(p, entry.insideGlobal, entry.proto ? entry.globalPort : undefined);
   }
@@ -94,10 +103,12 @@ export class NatTable {
   /** Outside → inside: translates the destination, or returns null when nothing maps it. */
   outside(p: IpPacket, statics: readonly StaticNat[]): IpPacket | null {
     const f = flowOf(p);
+    const port = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f));
+    if (port) return this.hit(rewriteDst(p, port.local, port.localPort));
     const known = this.dynamic.find((e) => e.insideGlobal === p.dst && (e.proto === null || (e.proto === f.proto && e.globalPort === f.dport)));
     if (known) return this.hit(rewriteDst(p, known.insideLocal, known.proto ? known.localPort : undefined));
-    const st = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f)) ?? statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
-    return st ? this.hit(rewriteDst(p, st.local, st.proto ? st.localPort : undefined)) : null;
+    const whole = statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
+    return whole ? this.hit(rewriteDst(p, whole.local)) : null;
   }
 
   /** Is this global address (and pool member) taken by a 1:1 dynamic translation? */
@@ -109,8 +120,16 @@ export class NatTable {
     return this.dynamic;
   }
 
+  /** clear ip nat translation * (statistics are kept, like IOS). */
   clear(): void {
     this.dynamic = [];
+  }
+
+  /** Factory state (reload): no translations and zeroed statistics. */
+  reset(): void {
+    this.dynamic = [];
+    this.hits = 0;
+    this.misses = 0;
   }
 
   private hit(p: IpPacket): IpPacket {
@@ -118,10 +137,12 @@ export class NatTable {
     return p;
   }
 
-  private freePort(proto: NatProto, global: number, wanted: number): number {
+  /** The inside port itself when free, else the first free one; null when every port is taken. */
+  private freePort(proto: NatProto, global: number, wanted: number, reserved: ReadonlySet<number | undefined>): number | null {
     const used = new Set(this.dynamic.filter((e) => e.proto === proto && e.insideGlobal === global).map((e) => e.globalPort));
-    if (!used.has(wanted) && wanted > 0) return wanted;
-    for (let port = FIRST_PAT_PORT; port <= LAST_PORT; port++) if (!used.has(port)) return port;
-    return wanted;
+    const free = (port: number): boolean => !used.has(port) && !reserved.has(port);
+    if (wanted > 0 && free(wanted)) return wanted;
+    for (let port = FIRST_PAT_PORT; port <= LAST_PORT; port++) if (free(port)) return port;
+    return null;
   }
 }

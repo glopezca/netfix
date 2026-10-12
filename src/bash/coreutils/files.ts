@@ -197,6 +197,7 @@ function cp(ctx: Ctx): number {
       if (node.kind === 'dir' && !recursive) { ctx.err(`cp: -r not specified; omitting directory ${q(shown)}\n`); status = 1; continue; }
       if (normalize(to) === normalize(from)) { ctx.err(`cp: ${q(shown)} and ${q(shown)} are the same file\n`); status = 1; continue; }
       if (p.opts.has('n') && fs.exists(to)) continue;
+      if (node.kind === 'dir' && normalize(to).startsWith(`${normalize(from)}/`)) { ctx.err(`cp: cannot copy a directory, ${q(shown)}, into itself, ${q(to)}\n`); status = 1; continue; }
       copyTree(ctx, from, to, p.opts.has('a') || p.opts.has('p'));
       if (p.opts.has('v')) ctx.out(`${q(shown)} -> ${q(to)}\n`);
     } catch (e) {

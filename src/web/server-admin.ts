@@ -10,6 +10,9 @@ import type { Child } from './html.ts';
 import { runAction } from './admin-actions.ts';
 import { formatIp } from '../core/ip.ts';
 
+/** User names come from the request: no control characters in the logs. */
+const printable = (text: string): string => text.replace(/[\x00-\x1f\x7f]/g, '?').slice(0, 64);
+
 const BANNER = 'netsim-webui/0.4';
 const REALM = 'Server-PT';
 
@@ -38,7 +41,7 @@ export function serverAdmin(server: Server, req: HttpRequest, peer: Peer, base: 
   const a = server.services.webapps.admin;
   const cred = basicAuth(req);
   if (!cred || cred.user !== a.user || cred.password !== a.password) {
-    if (cred) server.log('http', `netsim-webui: acceso denegado para «${cred.user}» desde ${formatIp(peer.ip)}`);
+    if (cred) server.log('http', `netsim-webui: acceso denegado para «${printable(cred.user)}» desde ${formatIp(peer.ip)}`);
     return unauthorized(BANNER, REALM, page('401 Unauthorized', '', h('h1', {}, 'Unauthorized'), h('p', {}, 'Se necesita usuario y contraseña.')));
   }
   const q = query(req);
@@ -46,7 +49,7 @@ export function serverAdmin(server: Server, req: HttpRequest, peer: Peer, base: 
   if (!current) return respond(BANNER, 404, 'Not Found');
   if (req.method === 'POST') {
     const result = runAction(server, current.id, formFields(req));
-    server.log('http', `netsim-webui: ${cred.user} desde ${formatIp(peer.ip)} → ${current.id}: ${result.error ?? 'guardado'}`);
+    server.log('http', `netsim-webui: ${printable(cred.user)} desde ${formatIp(peer.ip)} → ${current.id}: ${result.error ?? 'guardado'}`);
     if (result.error) return respond(BANNER, 200, frame(server, base, current, { error: result.error }, body(server, base, current.id)));
     return redirect(BANNER, result.moved ? newHome(server, req) : `${base}/?page=${current.id}&saved=1`, {}, 303);
   }

@@ -16,7 +16,7 @@ export interface CloudHost {
 }
 
 function save(cloud: Cloud, next: Cloud['settings'], msg: ReturnType<typeof message>, app: CloudHost, refresh: () => void): void {
-  const err = validateCloud(next);
+  const err = validateCloud(next, cloud.otherBlocks());
   if (err) return msg.error(err);
   cloud.setSettings(next);
   app.afterCommand();

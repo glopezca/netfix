@@ -116,6 +116,17 @@ export class Topology {
     return new Cloud({ id, name: label, clock: this.clock, seed, core: this.internet, block: this.internet.freeBlock(used) });
   }
 
+  /** A file may give two clouds the same public block: the later ones move to a free block. */
+  private separateClouds(): void {
+    const seen: number[] = [];
+    for (const p of this.placed.values()) {
+      const c = p.device;
+      if (!(c instanceof Cloud)) continue;
+      if (seen.includes(c.settings.block)) c.setSettings({ ...c.settings, block: this.internet.freeBlock([...seen, ...c.otherBlocks()]) });
+      seen.push(c.settings.block);
+    }
+  }
+
   private nextLabel(kind: DeviceKind): string {
     const used = new Set([...this.placed.values()].map((p) => p.label));
     for (let i = 0; ; i++) if (!used.has(`${PREFIX[kind]}${i}`)) return `${PREFIX[kind]}${i}`;
@@ -164,6 +175,7 @@ export class Topology {
       const n = Number(/^d(\d+)$/.exec(d.id)?.[1] ?? 0);
       topo.nextId = Math.max(topo.nextId, n + 1);
     }
+    topo.separateClouds();
     for (const l of file.links) topo.connect(l.a, l.b, l.cable);
     for (const p of topo.placed.values()) if (p.device instanceof Host && p.device.config.mode === 'dhcp') p.device.useDhcp();
     topo.settle();

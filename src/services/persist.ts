@@ -127,13 +127,13 @@ function account(v: unknown): Account {
   return { name: str(v.name, 'usuario', 64), password: str(v.password, 'contraseña', 128) };
 }
 
-function access(v: unknown, dflt: WebAppAccess): WebAppAccess {
+function access(v: unknown, dflt: WebAppAccess, other?: WebAppAccess): WebAppAccess {
   if (!isObj(v)) return dflt;
   const a = {
     enabled: bool(v.enabled), mode: v.mode === 'port' ? 'port' as const : 'alias' as const,
     alias: v.alias === undefined ? dflt.alias : str(v.alias, 'alias web', 64), port: num(v.port, 'puerto web', 1, 65_535, dflt.port),
   };
-  const err = validateAccess(a);
+  const err = validateAccess(a, other);
   if (err) throw new Error(err);
   return a;
 }
@@ -142,9 +142,10 @@ function webapps(v: unknown): WebApps {
   const d = defaultWebApps();
   if (!isObj(v)) return d;
   const admin = isObj(v.admin) ? v.admin : {};
+  const roundcube = access(v.roundcube, d.roundcube);
   return {
-    roundcube: access(v.roundcube, d.roundcube),
-    admin: { ...access(v.admin, d.admin), user: admin.user === undefined ? d.admin.user : str(admin.user, 'usuario de gestión web', 32), password: admin.password === undefined ? d.admin.password : str(admin.password, 'contraseña de gestión web', 128) },
+    roundcube,
+    admin: { ...access(v.admin, d.admin, roundcube), user: admin.user === undefined ? d.admin.user : str(admin.user, 'usuario de gestión web', 32), password: admin.password === undefined ? d.admin.password : str(admin.password, 'contraseña de gestión web', 128) },
   };
 }
 
