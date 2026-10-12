@@ -174,7 +174,7 @@ export class SimPanel {
 function appSummary(p: AppPayload): string {
   switch (p.app) {
     case 'HTTP': return p.kind === 'request' ? `${p.method} ${p.path}` : `${p.status} ${p.reason}`;
-    case 'SSH': return p.kind === 'auth' ? 'auth' : p.kind === 'command' ? 'datos cifrados →' : 'datos cifrados ←';
+    case 'SSH': return p.kind === 'auth' ? 'auth' : p.kind === 'output' ? 'datos cifrados ←' : 'datos cifrados →';
     default: return p.kind === 'reply' ? p.code : p.kind === 'request' && 'mail' in p ? 'MAIL/RCPT/DATA' : 'USER/PASS';
   }
 }

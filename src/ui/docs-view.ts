@@ -1,0 +1,75 @@
+/** The Documentación tab: table of contents, search and pages (all text through textContent). */
+import { el, clear } from './dom.ts';
+import { DOC_GROUPS, findPage, searchDocs } from '../docs/index.ts';
+import type { DocBlock, DocPage } from '../docs/index.ts';
+
+const FIRST_PAGE = 'inicio';
+
+function block(b: DocBlock): HTMLElement {
+  switch (b.kind) {
+    case 'p': return el('p', {}, b.text);
+    case 'h': return el('h3', {}, b.text);
+    case 'code': return el('pre', { class: 'doc-code' }, el('code', {}, b.text));
+    case 'note': return el('p', { class: 'doc-note' }, b.text);
+    case 'list': return el('ul', {}, ...b.items.map((i) => el('li', {}, i)));
+    case 'table':
+      return el('div', { class: 'doc-table-wrap' }, el('table', { class: 'doc-table' },
+        el('thead', {}, el('tr', {}, ...b.head.map((c) => el('th', { scope: 'col' }, c)))),
+        el('tbody', {}, ...b.rows.map((r) => el('tr', {}, ...r.map((c, i) => (i === 0 ? el('th', { scope: 'row' }, c) : el('td', {}, c))))))));
+  }
+}
+
+export class DocsView {
+  readonly root: HTMLElement;
+  private readonly toc: HTMLElement;
+  private readonly article: HTMLElement;
+  private readonly search: HTMLInputElement;
+  private current = FIRST_PAGE;
+
+  constructor() {
+    this.search = el('input', { type: 'search', class: 'doc-search', placeholder: 'Buscar: dhcp, ${var%%pat}, nano, ssh…', 'aria-label': 'Buscar en la documentación' });
+    this.search.addEventListener('input', () => this.renderToc());
+    this.toc = el('nav', { class: 'doc-toc', 'aria-label': 'Índice de la documentación' });
+    this.article = el('article', { class: 'doc-page', tabindex: '-1' });
+    this.root = el('section', { class: 'docs', 'aria-label': 'Documentación' }, el('aside', { class: 'doc-side' }, this.search, this.toc), this.article);
+    this.renderToc();
+    this.show(FIRST_PAGE);
+  }
+
+  focus(): void {
+    this.search.focus({ preventScroll: true });
+  }
+
+  show(id: string): void {
+    const page = findPage(id) ?? findPage(FIRST_PAGE);
+    if (!page) return;
+    this.current = page.id;
+    this.renderPage(page);
+    for (const a of this.toc.querySelectorAll('button[data-page]')) a.setAttribute('aria-current', String(a.getAttribute('data-page') === page.id));
+  }
+
+  private link(page: DocPage, extra?: string): HTMLElement {
+    const b = el('button', { type: 'button', class: 'doc-link', 'data-page': page.id, 'aria-current': String(page.id === this.current) },
+      el('span', { class: 'doc-link-title' }, page.title), extra ? el('span', { class: 'doc-link-snippet' }, extra) : null);
+    b.addEventListener('click', () => { this.show(page.id); this.article.focus({ preventScroll: true }); this.article.scrollTop = 0; });
+    return b;
+  }
+
+  private renderToc(): void {
+    clear(this.toc);
+    const q = this.search.value.trim();
+    if (q) {
+      const hits = searchDocs(q);
+      this.toc.append(el('p', { class: 'doc-count', role: 'status' }, hits.length ? `${hits.length} página${hits.length === 1 ? '' : 's'}` : 'Sin resultados'),
+        ...hits.map((h) => this.link(h.page, h.snippet)));
+      return;
+    }
+    for (const g of DOC_GROUPS) this.toc.append(el('h2', { class: 'doc-group' }, g.title), ...g.pages.map((p) => this.link(p)));
+  }
+
+  private renderPage(page: DocPage): void {
+    clear(this.article);
+    const group = DOC_GROUPS.find((g) => g.pages.includes(page));
+    this.article.append(el('p', { class: 'doc-crumb' }, group?.title ?? ''), el('h1', {}, page.title), el('p', { class: 'doc-summary' }, page.summary), ...page.blocks.map(block));
+  }
+}

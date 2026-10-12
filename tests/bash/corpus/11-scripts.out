@@ -1,0 +1,24 @@
+ana    1001 profes   interactivo
+luis   1002 alumnos  interactivo
+eva    1003 alumnos  sin acceso
+alumnos: 2
+profes: 1
+192.168.10.1 válida
+192.168.10.64 válida
+10.0.0.300 NO válida
+abc NO válida
+192.168.10.0/24
+      2 10.0.0.5
+      1 10.0.0.9
+ana,root
+media: 5 resto: 1
+0 Lunes
+1 Martes
+2 Miércoles
+[ERROR] disco lleno
+copiados 3 elementos
+falta nada
+status=2
+fin del script
+limpieza al salir
+[status 0]

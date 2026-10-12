@@ -99,6 +99,52 @@ try {
   assert.match(await page.locator('.terminal:visible').innerText(), /admin@srv:~\$ systemctl is-active apache2\nactive/);
   if (shots) await page.screenshot({ path: `${shots}/ssh.png` });
 
+  // 5. bash 5.3 + editors: nano through SSH, vim locally, colours and completion.
+  await type('nano prueba.txt');
+  await page.waitForSelector('.term-editor:visible');
+  assert.match(await page.locator('.term-editor:visible').innerText(), /GNU nano 8\.4[\s\S]*\^X Exit/);
+  await page.keyboard.type('hola desde nano');
+  await page.keyboard.press('Control+o');
+  await page.keyboard.press('Enter');
+  assert.match(await page.locator('.term-editor:visible').innerText(), /\[ Wrote 1 line \]/);
+  if (shots) await page.screenshot({ path: `${shots}/nano.png` });
+  await page.keyboard.press('Control+x');
+  await page.waitForSelector('.term-input:visible');
+  await type('cat prueba.txt; exit');
+  assert.match(await page.locator('.terminal:visible').innerText(), /hola desde nano\nlogout\nConnection to srv\.aula\.lab closed\./);
+  await type('vim notas.txt');
+  await page.waitForSelector('.term-editor:visible');
+  await page.keyboard.type('iecho $BASH_VERSION');
+  await page.keyboard.press('Escape');
+  if (shots) await page.screenshot({ path: `${shots}/vim.png` });
+  await page.keyboard.type(':wq');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.term-input:visible');
+  await type('bash notas.txt && ls --color=auto /usr');
+  const term = page.locator('.terminal:visible');
+  assert.match(await term.innerText(), /5\.3\.20\(1\)-release\nbin\s+lib\s+local/);
+  assert.equal(await term.locator('.term-row .ansi-fg4.ansi-bold', { hasText: 'local' }).count(), 1, 'directories are coloured');
+  await page.keyboard.type('ech');
+  await page.keyboard.press('Tab');
+  assert.equal(await page.locator('.term-input:visible').inputValue(), 'echo ');
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Backspace');
+  if (shots) await page.screenshot({ path: `${shots}/bash.png` });
+
+  // 6. Documentación tab: table of contents, search and back to the network.
+  await page.click('button.seg:has-text("Documentación")');
+  await page.waitForSelector('.docs:visible');
+  assert.match(await page.locator('.doc-page').innerText(), /Primeros pasos/);
+  await page.fill('.doc-search', 'nombres relativos');
+  await page.click('.doc-link >> nth=0');
+  assert.match(await page.locator('.doc-page').innerText(), /DNS de Server-PT[\s\S]*srv\.aula\.lab\.aula\.lab\./);
+  await page.fill('.doc-search', '');
+  await page.click('.doc-link:has-text("bash: expansiones")');
+  assert.match(await page.locator('.doc-page').innerText(), /\$\{v%%pat\}|\$\{v%pat\}/);
+  if (shots) await page.screenshot({ path: `${shots}/docs.png` });
+  await page.click('button.seg:has-text("Red")');
+  await page.waitForSelector('.workspace:visible');
+
   assert.deepEqual(errors, []);
   console.log('e2e: ok');
 } finally {

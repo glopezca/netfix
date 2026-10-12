@@ -92,7 +92,6 @@ function serverFiles(server: Server): Map<string, string> {
   const zones = zonesFor(s);
   files.set('/etc/bind/named.conf.local', zones.map((z) => `zone "${z}" {\n    type master;\n    file "/etc/bind/db.${z}";\n};\n`).join('\n'));
   for (const z of zones) files.set(`/etc/bind/db.${z}`, zoneFile(s, z));
-  for (const f of s.http.files) files.set(`/var/www/html/${f.name}`, f.content);
   files.set('/etc/postfix/main.cf', `myhostname = ${server.name.toLowerCase()}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
   files.set('/etc/dovecot/dovecot.conf', `protocols = ${[s.mail.pop3 ? 'pop3' : '', s.mail.imap ? 'imap' : ''].filter(Boolean).join(' ') || 'none'}\nmail_location = maildir:~/Maildir\n`);
   files.set('/etc/ssh/sshd_config', `Port 22\nPermitRootLogin prohibit-password\nPasswordAuthentication yes\n# Usuarios permitidos (netsim): ${s.ssh.users.map((u) => u.name).join(' ') || '(ninguno)'}\n`);
@@ -115,16 +114,6 @@ export function linuxFiles(host: Host): Map<string, string> {
   ]);
   if (host.kind === 'server') for (const [k, v] of serverFiles(host as Server)) files.set(k, v);
   return files;
-}
-
-export function listDir(files: Map<string, string>, dir: string): string[] | null {
-  const d = dir.replace(/\/+$/, '') || '/';
-  const names = new Set<string>();
-  for (const path of files.keys()) {
-    if (!path.startsWith(`${d}/`)) continue;
-    names.add(path.slice(d.length + 1).split('/')[0] ?? '');
-  }
-  return names.size ? [...names].sort() : null;
 }
 
 export function describeAddress(host: Host): { inet: string; brd: string; scope: string } | undefined {

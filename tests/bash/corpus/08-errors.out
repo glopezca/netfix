@@ -1,0 +1,6 @@
+script.sh: line 2: noexiste_cmd: command not found
+status=127
+script.sh: line 3: cd: /no/existe: No such file or directory
+status=1
+script.sh: line 4: 1/0: division by 0 (error token is "0")
+[status 1]

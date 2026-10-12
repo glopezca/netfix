@@ -1,0 +1,11 @@
+5.3.20(1)-release 5.3
+cur:2 2
+sub:3 2
+valor 2 [unset]
+salida 3
+desde lib
+beta
+a_peq b_grande
+b_grande a_peq
+monosegundos
+[status 0]

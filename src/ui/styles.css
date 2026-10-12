@@ -176,6 +176,54 @@ button, input, select { font: inherit; color: inherit; }
 .term-prompt { white-space: pre; }
 .term-input { flex: 1; min-width: 4ch; border: 0; outline: none; background: transparent; color: var(--console-ink); font: inherit; padding: 0; caret-color: var(--console-msg); }
 .term-secret { -webkit-text-security: disc; color: transparent; }
+.term-probe { position: absolute; visibility: hidden; white-space: pre; }
+/* ANSI colours (Ubuntu's terminal palette, tuned for the console background) */
+.ansi-fg0 { color: #3b4a52; } .ansi-fg1 { color: #e0605a; } .ansi-fg2 { color: #7cc36e; } .ansi-fg3 { color: #e9c46a; }
+.ansi-fg4 { color: #6aa7e8; } .ansi-fg5 { color: #c88fd8; } .ansi-fg6 { color: #5fc4c4; } .ansi-fg7 { color: #d3e6df; }
+.ansi-fg8 { color: #6d7f87; } .ansi-fg9 { color: #ff7b72; } .ansi-fg10 { color: #8ee07c; } .ansi-fg11 { color: #ffd479; }
+.ansi-fg12 { color: #8cc2ff; } .ansi-fg13 { color: #e3a6f2; } .ansi-fg14 { color: #7fe0e0; } .ansi-fg15 { color: #ffffff; }
+.ansi-bg0 { background: #3b4a52; } .ansi-bg1 { background: #a8352f; } .ansi-bg2 { background: #3f7a35; } .ansi-bg3 { background: #9c7a1d; }
+.ansi-bg4 { background: #2c5f96; } .ansi-bg5 { background: #7d4791; } .ansi-bg6 { background: #2b7f80; } .ansi-bg7 { background: #d3e6df; }
+.ansi-fg-bg { color: var(--console); } .ansi-bg-fg { background: var(--console-ink); }
+.ansi-bold { font-weight: 700; } .ansi-dim { opacity: .7; } .ansi-italic { font-style: italic; } .ansi-underline { text-decoration: underline; }
+/* full-screen editors (nano, vim) */
+.term-editor { flex: 1; padding: 8px 12px; white-space: pre; overflow: hidden; outline: none; }
+.term-editor:focus-visible { box-shadow: inset 0 0 0 2px var(--console-msg); }
+.ed-row { min-height: 1.5em; }
+.ed-inverse { background: var(--console-ink); color: var(--console); }
+.ed-bold { font-weight: 700; }
+.ed-accent { color: #6aa7e8; }
+.ed-error { background: #a8352f; color: #ffffff; }
+.ed-cursor { background: var(--console-msg); color: var(--console); }
+
+/* ---------------------------------------------------------------- documentation */
+body[data-view="docs"] .win-layer { display: none; }
+.docs-host { min-height: 0; grid-row: 2 / 4; overflow: hidden; }
+.docs { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); height: 100%; background: var(--panel); }
+.doc-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--panel-2); }
+.doc-search { margin: 12px; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--panel); }
+.doc-toc { overflow: auto; padding: 0 8px 16px; }
+.doc-group { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 16px 8px 4px; }
+.doc-count { margin: 4px 8px; color: var(--ink-2); font-size: 13px; }
+.doc-link { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 5px 8px; border-radius: var(--radius-ctl); cursor: pointer; }
+.doc-link:hover { background: var(--accent-soft); }
+.doc-link[aria-current="true"] { background: var(--accent); color: var(--accent-ink); }
+.doc-link-snippet { display: block; font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
+.doc-link[aria-current="true"] .doc-link-snippet { color: inherit; }
+.doc-page { overflow: auto; padding: 24px clamp(16px, 4vw, 48px) 48px; outline: none; }
+.doc-page > * { max-width: 920px; }
+.doc-page h1 { margin: 0 0 6px; font-size: 28px; }
+.doc-page h3 { margin: 26px 0 8px; font-size: 18px; }
+.doc-crumb { margin: 0; color: var(--accent); font-weight: 700; font-size: 13px; }
+.doc-summary { color: var(--ink-2); font-size: 17px; margin: 0 0 18px; }
+.doc-note { border-left: 4px solid var(--console-msg); background: var(--panel-2); padding: 8px 12px; border-radius: 0 var(--radius-ctl) var(--radius-ctl) 0; }
+.doc-code { background: var(--console); color: var(--console-ink); padding: 12px 14px; border-radius: var(--radius-ctl); overflow: auto; font: 13px/1.5 var(--font-mono); }
+.doc-table-wrap { overflow: auto; margin: 10px 0; }
+.doc-table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.doc-table th, .doc-table td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+.doc-table thead th { background: var(--panel-2); }
+.doc-table tbody th { font: 600 13px/1.45 var(--font-mono); white-space: pre-wrap; }
+@media (max-width: 720px) { .docs { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); } .doc-side { max-height: 40vh; border-right: 0; border-bottom: 1px solid var(--line); } }
 
 /* ---------------------------------------------------------------- PC desktop */
 .pc-ip { padding: 16px 20px; max-width: 640px; }

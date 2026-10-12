@@ -1,4 +1,5 @@
 /** Wire-level data structures exchanged between simulated devices. */
+import type { EditSpec } from '../bash/types.ts';
 
 export type DhcpType = 'DISCOVER' | 'OFFER' | 'REQUEST' | 'DECLINE' | 'ACK' | 'NAK' | 'RELEASE' | 'INFORM';
 
@@ -92,7 +93,17 @@ export type AppPayload =
   | { readonly app: 'POP3' | 'IMAP'; readonly kind: 'request'; readonly user: string; readonly password: string }
   | { readonly app: 'SSH'; readonly kind: 'auth'; readonly user: string; readonly password: string; readonly clientOs: string }
   | { readonly app: 'SSH'; readonly kind: 'command'; readonly session: string; readonly line: string }
-  | { readonly app: 'SSH'; readonly kind: 'output'; readonly ok: boolean; readonly lines: readonly string[]; readonly session?: string; readonly prompt?: string; readonly closed?: boolean; readonly secret?: boolean };
+  /** Ctrl+C / Ctrl+D typed in the remote terminal. */
+  | { readonly app: 'SSH'; readonly kind: 'key'; readonly session: string; readonly key: 'int' | 'eof' }
+  /** Remote editor: save the buffer, or close the editor (the remote command continues). */
+  | { readonly app: 'SSH'; readonly kind: 'edit'; readonly session: string; readonly action: 'save' | 'close'; readonly path?: string; readonly content?: string }
+  | { readonly app: 'SSH'; readonly kind: 'output'; readonly ok: boolean; readonly lines: readonly string[]; readonly session?: string; readonly prompt?: string; readonly closed?: boolean; readonly secret?: boolean;
+    /** A remote program opened an editor (nano/vim): the client shows it full screen. */
+    readonly edit?: EditSpec;
+    /** Result of an edit/save request: null when written. */
+    readonly saveError?: string | null;
+    /** Exit status of the remote shell when the session closes. */
+    readonly status?: number };
 
 export interface TcpSegment {
   readonly sport: number;

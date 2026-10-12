@@ -1,0 +1,51 @@
+0
+1
+2
+uno
+uno
+uno
+script.sh: line 6: saluda: command not found
+alias saluda='echo hola'
+not found
+trap -- 'echo atrapado' SIGUSR1
+atrapado
+fin-trap
+function
+builtin
+file
+keyword
+echo is a shell builtin
+file
+builtin
+cv
+c
+y
+w
+/a/b
+/
+a.txt
+X/enl
+a.txt 3 regular file
+uno 4096 directory
+symbolic link
+regular file
+a.txt:ASCII text, with no line terminators
+uno:directory
+enl:symbolic link to a.txt
+uno
+0027
+u=rwx,g=rx,o=
+12 13
+times-ok
+b val 3
+2 l2
+r
+003.1
+no-caller
+alfa
+alma
+1
+0 1 0
+waited
+jobs-ok
+[status 0]

@@ -1,5 +1,4 @@
 /** Cisco IOS DHCP server: pools, exclusions, bindings, conflicts and statistics. */
-import type { IpWithPrefix } from '../core/ip.ts';
 import { inSubnet, formatIp, BROADCAST_IP } from '../core/ip.ts';
 import { formatHexId, formatMacCisco } from '../core/mac.ts';
 import type { DhcpMessage, DhcpOptions, DhcpType } from '../net/packets.ts';
@@ -7,53 +6,10 @@ import type { PoolConfig } from './pool.ts';
 import { poolNetworks, usableRange, effectiveParams, leaseSeconds, INFINITE_LEASE, NETBIOS_NODE_TYPES, totalAddresses } from './pool.ts';
 import { selectPool, findManualPool, findReservation } from './match.ts';
 import type { ClientIdentity } from './match.ts';
+import { RECEIVED, SENT, zeroCounters, bump } from './server-types.ts';
+import type { Binding, Conflict, ExcludedRange, ServerContext, ServerReply, ReceivedCounter, SentCounter } from './server-types.ts';
 
-export interface Binding {
-  readonly ip: number;
-  readonly pool: string;
-  readonly clientId?: string;
-  readonly mac: string;
-  readonly type: 'Automatic' | 'Manual';
-  /** null = infinite lease. */
-  readonly expiresAt: number | null;
-  readonly iface: string;
-  readonly hostname?: string;
-}
-
-export interface Conflict {
-  readonly ip: number;
-  readonly method: 'Ping' | 'Gratuitous ARP';
-  readonly detectedAt: number;
-}
-
-export interface ExcludedRange {
-  readonly low: number;
-  readonly high: number;
-}
-
-export interface ServerContext {
-  readonly ifaceName: string;
-  /** Addresses of the interface the request arrived on (primary first). */
-  readonly ifaceAddrs: readonly IpWithPrefix[];
-  /** Every address configured on the router: never handed out. */
-  readonly ownIps: readonly number[];
-  readonly now: number;
-  ipInUse(ip: number): boolean;
-  log(line: string): void;
-  /** `ip dhcp relay information trusted` on the receiving interface. */
-  readonly relayTrusted?: boolean;
-}
-
-export interface ServerReply {
-  readonly msg: DhcpMessage;
-  /** Where the router must send the reply. */
-  readonly via: 'broadcast' | 'unicast' | 'relay';
-}
-
-const RECEIVED = ['BOOTREQUEST', 'DHCPDISCOVER', 'DHCPREQUEST', 'DHCPDECLINE', 'DHCPRELEASE', 'DHCPINFORM'] as const;
-const SENT = ['BOOTREPLY', 'DHCPOFFER', 'DHCPACK', 'DHCPNAK'] as const;
-export type ReceivedCounter = (typeof RECEIVED)[number];
-export type SentCounter = (typeof SENT)[number];
+export type { Binding, Conflict, ExcludedRange, ServerContext, ServerReply, ReceivedCounter, SentCounter };
 
 const OFFER_HOLD_MS = 60_000;
 const MS = 1000;
@@ -414,16 +370,6 @@ export class DhcpServer {
   private eventLog(ctx: ServerContext, lines: readonly string[]): void {
     if (this.debugEvents) lines.forEach((l) => ctx.log(l));
   }
-}
-
-function zeroCounters<K extends string>(keys: readonly K[]): Record<K, number> {
-  return Object.fromEntries(keys.map((k) => [k, 0])) as Record<K, number>;
-}
-
-function bump<K extends string>(counters: Readonly<Record<K, number>>, key: NoInfer<K>): Record<K, number> {
-  const next: Record<K, number> = { ...counters };
-  next[key] = (counters[key] ?? 0) + 1;
-  return next;
 }
 
 export function identity(msg: DhcpMessage): ClientIdentity {

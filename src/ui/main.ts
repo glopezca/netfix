@@ -9,6 +9,7 @@ import { ICONS, MODEL_LABEL } from './icons.ts';
 import { Topology } from '../net/topology.ts';
 import type { DeviceKind } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
+import { DocsView } from './docs-view.ts';
 
 const AUTOSAVE_KEY = 'netsim:workspace:v1';
 const TICK_MS = 250;
@@ -25,6 +26,10 @@ class App {
   private readonly toolButtons = new Map<string, HTMLButtonElement>();
   private saveTimer = 0;
   private mode: 'realtime' | 'simulation' = 'realtime';
+  private docs: DocsView | null = null;
+  private stageEl: HTMLElement | null = null;
+  private paletteEl: HTMLElement | null = null;
+  private docsHost: HTMLElement | null = null;
 
   constructor(root: HTMLElement) {
     this.topo = this.initialTopology();
@@ -39,7 +44,10 @@ class App {
     const winLayer = el('div', { class: 'win-layer' });
     this.windows = new WindowManager(winLayer);
     this.sim = new SimPanel(this.topo, this.canvas);
-    root.append(this.toolbar(), el('main', { class: 'stage' }, this.canvas.root, this.sim.root), this.palette(), winLayer);
+    this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.sim.root);
+    this.paletteEl = this.palette();
+    this.docsHost = el('main', { class: 'docs-host', hidden: true });
+    root.append(this.toolbar(), this.stageEl, this.docsHost, this.paletteEl, winLayer);
     this.canvas.setTool({ kind: 'select' });
     this.canvas.render();
     window.setInterval(() => this.tick(), TICK_MS);
@@ -106,6 +114,7 @@ class App {
     modeSim.addEventListener('click', () => setMode('simulation'));
     return el('header', { class: 'topbar' },
       el('h1', { class: 'brand' }, 'netsim'),
+      this.viewSwitch(),
       el('nav', { class: 'file-actions', 'aria-label': 'Archivo' },
         btn('Nuevo', () => this.load(new Topology(), 'Área de trabajo vacía.')),
         btn('Abrir…', () => fileInput.click()),
@@ -113,6 +122,20 @@ class App {
         examples, fileInput),
       el('div', { class: 'time' }, this.clockEl, advance),
       el('div', { class: 'segmented', role: 'group', 'aria-label': 'Modo' }, modeRT, modeSim));
+  }
+
+  /** Red / Documentación. */
+  private viewSwitch(): HTMLElement {
+    const viewNet = el('button', { type: 'button', class: 'seg', 'aria-pressed': 'true' }, 'Red');
+    const viewDocs = el('button', { type: 'button', class: 'seg', 'aria-pressed': 'false' }, 'Documentación');
+    const setView = (docs: boolean): void => {
+      viewNet.setAttribute('aria-pressed', String(!docs));
+      viewDocs.setAttribute('aria-pressed', String(docs));
+      this.showDocs(docs);
+    };
+    viewNet.addEventListener('click', () => setView(false));
+    viewDocs.addEventListener('click', () => setView(true));
+    return el('div', { class: 'segmented', role: 'group', 'aria-label': 'Vista' }, viewNet, viewDocs);
   }
 
   private palette(): HTMLElement {
@@ -147,6 +170,19 @@ class App {
     for (const [k, b] of this.toolButtons) b.setAttribute('aria-pressed', String(k === nextKey));
     this.canvas.setTool(next);
     this.canvas.root.focus({ preventScroll: true });
+  }
+
+  /** Switches between the network workspace and the documentation (windows stay open but hidden). */
+  private showDocs(on: boolean): void {
+    if (on && !this.docs) {
+      this.docs = new DocsView();
+      this.docsHost?.appendChild(this.docs.root);
+    }
+    if (this.stageEl) this.stageEl.hidden = on;
+    if (this.paletteEl) this.paletteEl.hidden = on;
+    if (this.docsHost) this.docsHost.hidden = !on;
+    document.body.dataset.view = on ? 'docs' : 'net';
+    if (on) this.docs?.focus();
   }
 
   // ------------------------------------------------------------ behaviour

@@ -1,0 +1,39 @@
+<uno>
+<dos>
+<uno   dos>
+<$a>
+<$a>
+<tab	here>
+<xyz>
+[a][b][:d]
+1: x,y,,z|||
+3
+[a b]
+[c]
+<a>
+<b>
+<c>
+a b c a b c
+a b-c
+args: 0
+args: 1
+ab
+\ \\ " a\nb a\nb
+HOME
+a1 a2 b1 b2 1 4 7 10 a b c xyz xz
+{a,b} {a,b} {a,b}
+a.txt b.txt
+a.txt b.txt c.log
+.h
+a.txt b.txt
+nada*
+fin
+.h a.txt b.txt c.log
+c.log
+a.txt c.log
+a$
+b
+x$ y
+hola
+$'x'
+[status 0]

@@ -1,0 +1,20 @@
+Hola, mundo (0)
+Hola, Ana (2)
+5! = 120
+dentro: local
+fuera: global fuga
+ve: outer
+ret=7
+3
+f2 llamada desde g2
+saluda () 
+{ 
+    echo "Hola, ${1:-mundo} ($#)"
+}
+function
+builtin
+keyword
+not found
+3 3 4
+81
+[status 0]

@@ -1,4 +1,7 @@
 /** A workspace: devices with positions and labels, links, and JSON persistence. */
+import { savedFiles, restoreFiles } from '../shells/host-system.ts';
+import { validFileRecords } from '../bash/vfs-persist.ts';
+import type { FileRecord } from '../bash/vfs-persist.ts';
 import { Network } from './network.ts';
 import type { CableKind, Endpoint, Link } from './network.ts';
 import { SimClock } from '../core/clock.ts';
@@ -39,6 +42,8 @@ export interface PcRecord {
   readonly os?: HostOs;
   /** PC apps: e-mail account, inbox and last browser URL. */
   readonly apps?: { readonly mail?: MailAccount; readonly inbox?: readonly MailMessage[]; readonly url?: string };
+  /** Files created or changed from the Linux terminal (home directories, /etc, /var/www…). */
+  readonly files?: readonly FileRecord[];
 }
 
 export interface ServerRecord {
@@ -173,9 +178,10 @@ function hostRecord(d: Host): PcRecord {
   const c = d.config;
   const os = d.os;
   const clientId = d.clientIdOverride;
-  if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os };
+  const files = savedFiles(d);
+  if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files };
   const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
-  return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os };
+  return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files };
 }
 
 function restore(device: AnyDevice, rec: DeviceRecord): void {
@@ -184,6 +190,7 @@ function restore(device: AnyDevice, rec: DeviceRecord): void {
     device.sendClientId = pc.sendClientId ?? true;
     device.clientIdOverride = typeof pc.clientId === 'string' ? parseHexId(pc.clientId) ?? undefined : undefined;
     if (pc.os === 'linux' || pc.os === 'windows') device.os = pc.os;
+    if (pc.files !== undefined) restoreFiles(device, validFileRecords(pc.files));
     if (pc.mode === 'dhcp') device.config = { mode: 'dhcp' };
     else device.setStatic(parseStatic(pc));
     if (device instanceof Server && rec.server) restoreServer(device, rec.server);

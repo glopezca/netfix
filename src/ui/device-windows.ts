@@ -51,7 +51,7 @@ function cliTerminal(placed: Placed, host: WindowHost): Terminal {
     const session = new Session(device, { initialDialog: device.kind === 'router' });
     const intro = [...iosIntro(device), ...session.banner()];
     if (device.kind !== 'router') intro.push('Press RETURN to get started!', '');
-    term = new Terminal(iosBackend(device, session), { intro, label: `Consola de ${placed.label}`, afterRun: () => host.afterCommand() });
+    term = new Terminal(iosBackend(device, session), { intro, label: `Consola de ${placed.label}`, afterRun: () => host.afterCommand(), iosMessages: true });
     terminals.set(placed.device.id, term);
   }
   return term;
@@ -86,8 +86,14 @@ function shellTerminal(placed: Placed, h: Host, os: HostOs, app: WindowHost): Te
     const shell = createShell(h, os);
     const intro = os === 'windows'
       ? ['Microsoft Windows (netsim) · escribe help para ver los comandos.', '']
-      : ['Ubuntu 26.04 LTS (netsim) · escribe help para ver los comandos.', ''];
-    term = new Terminal({ prompt: () => shell.prompt(), run: (l) => shell.run(l), secret: () => shell.secret() }, {
+      : ['Ubuntu 26.04 LTS (GNU/Linux 6.17.0-14-generic x86_64) · GNU bash 5.3 en netsim', 'Ayuda: help, man <orden> o la pestaña Documentación. Editores: nano y vim.', ''];
+    const backend: ConsoleBackend = {
+      prompt: () => shell.prompt(), run: (l) => shell.run(l), secret: () => shell.secret(),
+      complete: (l) => shell.complete?.(l) ?? null, interrupt: () => shell.interrupt?.() ?? [], eof: () => shell.eof?.() ?? [],
+      editRequest: () => shell.editRequest?.() ?? null, saveEdit: (p, c) => (shell.saveEdit ? shell.saveEdit(p, c) : 'No disponible'),
+      closeEdit: () => shell.closeEdit?.() ?? [],
+    };
+    term = new Terminal(backend, {
       intro, label: `${os === 'windows' ? 'Símbolo del sistema' : 'Terminal'} de ${placed.label}`, afterRun: () => app.afterCommand(),
     });
     terminals.set(key, term);

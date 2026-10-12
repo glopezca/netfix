@@ -15,6 +15,9 @@ import { pcCommand } from '../../src/devices/pc-console.ts';
 
 const ip = (s: string): number => parseIp(s)!;
 
+/** The prompt without its ANSI colours. */
+const plain = (text: string): string => text.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
+
 function services(base: ServerServices, extra: Partial<ServerServices> = {}): ServerServices {
   return {
     ...base,
@@ -105,6 +108,9 @@ test('HTTP: curl, wget, HEAD, 404, stopped service and Windows IIS banner', () =
   const ssrv = createShell(srv, 'linux');
   assert.match(ssrv.run('systemctl stop apache2').join('\n'), /Interactive authentication required/);
   assert.deepEqual(ssrv.run('sudo systemctl stop apache2'), []);
+  assert.equal(ssrv.prompt(), '[sudo] password for admin: ');
+  assert.equal(ssrv.secret(), true);
+  assert.deepEqual(ssrv.run('cisco'), []);
   assert.deepEqual(ssrv.run('systemctl is-active apache2'), ['inactive']);
   assert.match(sh.run('curl http://www.aula.lab').join('\n'), /curl: \(7\) Failed to connect to www\.aula\.lab port 80 .*Couldn't connect to server/);
   ssrv.run('sudo systemctl start apache2');
@@ -175,12 +181,12 @@ test('SSH: login from Linux and Windows clients, remote commands, wrong password
   assert.equal(sh.secret(), true);
   assert.deepEqual(sh.run('mal'), ['Permission denied, please try again.']);
   assert.match(sh.run('cisco').join('\n'), /Welcome to Ubuntu 26\.04 LTS/);
-  assert.equal(sh.prompt(), `admin@${srv.name.toLowerCase()}:~$ `);
+  assert.equal(plain(sh.prompt()), `admin@${srv.name.toLowerCase()}:~$ `);
   assert.match(sh.run('systemctl status ssh').join('\n'), /● ssh\.service - OpenBSD Secure Shell server[\s\S]*Active: active \(running\)[\s\S]*Accepted password for admin/);
   assert.match(sh.run('hostname -I').join(''), /192\.168\.10\.2/);
   assert.match(sh.run('ping -c 1 192.168.10.1').join('\n'), /1 packets transmitted/, 'remote ping runs on the server');
   assert.deepEqual(sh.run('exit'), ['logout', 'Connection to srv.aula.lab closed.']);
-  assert.match(sh.prompt(), /^alumno@pc0:~\$ $/);
+  assert.match(plain(sh.prompt()), /^alumno@pc0:~\$ $/);
   const win = createShell(pc, 'windows');
   win.run('ssh admin@192.168.10.2');
   assert.match(win.run('cisco').join('\n'), /Welcome to Ubuntu/);

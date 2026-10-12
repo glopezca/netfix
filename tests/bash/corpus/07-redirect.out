@@ -1,0 +1,21 @@
+uno
+dos
+[out]
+[err]
+out err
+t: todo
+t: err
+Hola Ana
+sangría 2
+Literal $nombre
+[sin tabulador]
+cadena aquí
+b c
+pipefail: 1
+sin: 0
+0 1 0
+ps: desde-proceso
+script.sh: line 22: f.txt: cannot overwrite existing file
+noclobber
+visible
+[status 0]

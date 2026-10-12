@@ -23,37 +23,58 @@ const IDENTIFY: readonly (readonly [string, string])[] = [['client-id', 'Client-
 
 const ipOrEmpty = (n: number | undefined): string => (n === undefined ? '' : formatIp(n));
 
+type PoolFields = ReturnType<typeof poolFields>;
+
+function poolFields(server: Server, pool: PtDhcpPool | undefined) {
+  const s = server.services;
+  return {
+    name: input({ value: pool?.name ?? (s.dhcp.pools.length ? '' : 'serverPool') }),
+    start: input({ value: ipOrEmpty(pool?.start), placeholder: '192.168.1.100', inputmode: 'decimal' }),
+    mask: input({ value: pool ? formatMask(pool.prefix) : '255.255.255.0', inputmode: 'decimal' }),
+    max: input({ value: String(pool?.maxUsers ?? DEFAULT_MAX_USERS), inputmode: 'numeric' }),
+    gw: input({ value: ipOrEmpty(pool?.gateway), inputmode: 'decimal' }),
+    dns: input({ value: ipOrEmpty(pool?.dns ?? (s.dns.enabled ? server.config.ip : undefined)), inputmode: 'decimal' }),
+    domain: input({ value: pool?.domain ?? '' }),
+    tftp: input({ value: ipOrEmpty(pool?.tftp), inputmode: 'decimal' }),
+    lease: input({ value: String(pool?.leaseMinutes ?? DEFAULT_LEASE_MINUTES), inputmode: 'numeric' }),
+    identify: select(IDENTIFY, pool?.identifyBy ?? 'client-id'),
+  };
+}
+
+function readPool(f: PoolFields, pool: PtDhcpPool | undefined): PtDhcpPool | string {
+  const opt = (i: HTMLInputElement): number | undefined | null => (i.value.trim() ? parseIp(i.value.trim()) : undefined);
+  const start = parseIp(f.start.value.trim());
+  const prefix = parseMask(f.mask.value.trim());
+  const vals = { gw: opt(f.gw), dns: opt(f.dns), tftp: opt(f.tftp) };
+  if (start === null) return 'La IP inicial no es válida.';
+  if (prefix === null) return 'La máscara no es válida.';
+  if (Object.values(vals).some((v) => v === null)) return 'Revisa la puerta de enlace, el DNS o el TFTP (formato 192.168.1.1).';
+  const maxUsers = Number(f.max.value);
+  const lease = Number(f.lease.value);
+  if (!Number.isInteger(maxUsers) || !Number.isInteger(lease) || lease < 1) return 'Usuarios máximos y concesión deben ser números enteros.';
+  return { name: f.name.value.trim(), start, prefix, maxUsers, gateway: vals.gw ?? undefined, dns: vals.dns ?? undefined, tftp: vals.tftp ?? undefined, domain: f.domain.value.trim() || undefined, leaseMinutes: lease, reservations: pool?.reservations ?? [], identifyBy: f.identify.value === 'mac' ? 'mac' : undefined };
+}
+
+function poolsTable(pools: readonly PtDhcpPool[], editing: string | null, onSelect: (p: PtDhcpPool) => void, onDelete: (p: PtDhcpPool) => void): HTMLElement {
+  return table(pools, [
+    { label: 'Nombre', value: (p) => p.name },
+    { label: 'Red', value: (p) => `${formatIp(networkOf(p.start, p.prefix))}/${p.prefix}`, mono: true },
+    { label: 'Rango', value: (p) => `${formatIp(p.start)} – ${formatIp(p.start + p.maxUsers - 1)}`, mono: true },
+    { label: 'Gateway', value: (p) => ipOrEmpty(p.gateway), mono: true },
+    { label: 'DNS', value: (p) => ipOrEmpty(p.dns), mono: true },
+    { label: 'Reservas', value: (p) => String(p.reservations.length) },
+    { label: 'Concesiones por', value: (p) => (p.identifyBy === 'mac' ? 'MAC' : 'Client-ID') },
+  ], { empty: 'No hay pools. Añade uno con la IP inicial y el número de usuarios.', onSelect, onDelete, selected: (p) => p.name === editing });
+}
+
 export function dhcpPanel(server: Server, app: AfterChange): HTMLElement {
   let editing: string | null = null;
   return livePanel((refresh) => {
     const s = server.services;
     const pool = s.dhcp.pools.find((p) => p.name === editing);
-    const f = {
-      name: input({ value: pool?.name ?? (s.dhcp.pools.length ? '' : 'serverPool') }),
-      start: input({ value: ipOrEmpty(pool?.start), placeholder: '192.168.1.100', inputmode: 'decimal' }),
-      mask: input({ value: pool ? formatMask(pool.prefix) : '255.255.255.0', inputmode: 'decimal' }),
-      max: input({ value: String(pool?.maxUsers ?? DEFAULT_MAX_USERS), inputmode: 'numeric' }),
-      gw: input({ value: ipOrEmpty(pool?.gateway), inputmode: 'decimal' }),
-      dns: input({ value: ipOrEmpty(pool?.dns ?? (s.dns.enabled ? server.config.ip : undefined)), inputmode: 'decimal' }),
-      domain: input({ value: pool?.domain ?? '' }),
-      tftp: input({ value: ipOrEmpty(pool?.tftp), inputmode: 'decimal' }),
-      lease: input({ value: String(pool?.leaseMinutes ?? DEFAULT_LEASE_MINUTES), inputmode: 'numeric' }),
-      identify: select(IDENTIFY, pool?.identifyBy ?? 'client-id'),
-    };
+    const f = poolFields(server, pool);
     const msg = message();
-    const read = (): PtDhcpPool | string => {
-      const opt = (i: HTMLInputElement): number | undefined | null => (i.value.trim() ? parseIp(i.value.trim()) : undefined);
-      const start = parseIp(f.start.value.trim());
-      const prefix = parseMask(f.mask.value.trim());
-      const vals = { gw: opt(f.gw), dns: opt(f.dns), tftp: opt(f.tftp) };
-      if (start === null) return 'La IP inicial no es válida.';
-      if (prefix === null) return 'La máscara no es válida.';
-      if (Object.values(vals).some((v) => v === null)) return 'Revisa la puerta de enlace, el DNS o el TFTP (formato 192.168.1.1).';
-      const maxUsers = Number(f.max.value);
-      const lease = Number(f.lease.value);
-      if (!Number.isInteger(maxUsers) || !Number.isInteger(lease) || lease < 1) return 'Usuarios máximos y concesión deben ser números enteros.';
-      return { name: f.name.value.trim(), start, prefix, maxUsers, gateway: vals.gw ?? undefined, dns: vals.dns ?? undefined, tftp: vals.tftp ?? undefined, domain: f.domain.value.trim() || undefined, leaseMinutes: lease, reservations: pool?.reservations ?? [], identifyBy: f.identify.value === 'mac' ? 'mac' : undefined };
-    };
+    const read = (): PtDhcpPool | string => readPool(f, pool);
     const save = (): void => {
       const p = read();
       if (typeof p === 'string') return msg.error(p);
@@ -82,15 +103,7 @@ export function dhcpPanel(server: Server, app: AfterChange): HTMLElement {
       el('div', { class: 'actions' }, button(pool ? 'Guardar cambios' : 'Añadir pool', save), pool ? button('Nuevo pool', () => { editing = null; refresh(); }, 'btn btn-quiet') : null),
       msg.el,
       el('h3', {}, 'Pools'),
-      table(s.dhcp.pools, [
-        { label: 'Nombre', value: (p) => p.name },
-        { label: 'Red', value: (p) => `${formatIp(networkOf(p.start, p.prefix))}/${p.prefix}`, mono: true },
-        { label: 'Rango', value: (p) => `${formatIp(p.start)} – ${formatIp(p.start + p.maxUsers - 1)}`, mono: true },
-        { label: 'Gateway', value: (p) => ipOrEmpty(p.gateway), mono: true },
-        { label: 'DNS', value: (p) => ipOrEmpty(p.dns), mono: true },
-        { label: 'Reservas', value: (p) => String(p.reservations.length) },
-        { label: 'Concesiones por', value: (p) => (p.identifyBy === 'mac' ? 'MAC' : 'Client-ID') },
-      ], { empty: 'No hay pools. Añade uno con la IP inicial y el número de usuarios.', onSelect: (p) => { editing = p.name; refresh(); }, onDelete: remove, selected: (p) => p.name === editing }),
+      poolsTable(s.dhcp.pools, editing, (p) => { editing = p.name; refresh(); }, remove),
       pool ? reservationsPanel(server, pool, app, refresh) : el('p', { class: 'muted' }, 'Selecciona un pool para gestionar sus reservas por MAC o Client-ID.'),
       leasesPanel(server, app, refresh),
     ];
