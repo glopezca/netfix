@@ -128,6 +128,13 @@ function bashManual(): string {
     ...section('SHELL BUILTIN COMMANDS', `${builtins}\nUsa «help orden» para ver cada una.`), ''].join('\n');
 }
 
+/** Section of the manual page of a program (whereis), or undefined. */
+export function manSection(name: string): number | undefined {
+  if (name === 'bash' || name === 'sh') return 1;
+  const doc = UTIL_DOCS[name];
+  return doc ? doc.section ?? 1 : undefined;
+}
+
 /** man -k: programs whose name or summary contains the word. */
 export function apropos(word: string): string[] {
   const w = fold(word);

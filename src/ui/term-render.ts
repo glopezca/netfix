@@ -5,6 +5,21 @@ import type { AnsiRun, AnsiStyle } from '../core/ansi.ts';
 import type { Frame, KeyInput } from '../editors/index.ts';
 
 const PALETTE_SIZE = 16;
+const CUBE_START = 16;
+const GRAY_START = 232;
+const CUBE_LEVELS = [0, 95, 135, 175, 215, 255] as const;
+
+/** xterm 256-colour palette entry (16-231 colour cube, 232-255 grey ramp) as #rrggbb, computed from the number. */
+export function xterm256(n: number): string {
+  const hex = (v: number): string => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+  if (n >= GRAY_START) {
+    const g = 8 + (Math.min(n, 255) - GRAY_START) * 10;
+    return `#${hex(g)}${hex(g)}${hex(g)}`;
+  }
+  const i = Math.max(0, n - CUBE_START);
+  const level = (k: number): number => CUBE_LEVELS[k] ?? 0;
+  return `#${hex(level(Math.floor(i / 36) % 6))}${hex(level(Math.floor(i / 6) % 6))}${hex(level(i % 6))}`;
+}
 
 function runClasses(r: AnsiStyle): string {
   const c: string[] = [];
@@ -21,7 +36,11 @@ function runClasses(r: AnsiStyle): string {
 
 function runNode(r: AnsiRun): Node {
   const cls = runClasses(r);
-  return cls ? el('span', { class: cls }, r.text) : document.createTextNode(r.text);
+  const fg = r.inverse ? r.bg : r.fg;
+  const bg = r.inverse ? r.fg : r.bg;
+  const style = [fg !== undefined && fg >= PALETTE_SIZE ? `color:${xterm256(fg)}` : '', bg !== undefined && bg >= PALETTE_SIZE ? `background:${xterm256(bg)}` : ''].filter(Boolean).join(';');
+  if (!cls && !style) return document.createTextNode(r.text);
+  return el('span', { class: cls || undefined, style: style || undefined }, r.text);
 }
 
 /** One output row; returns the SGR state for the next row (colours may span lines). */

@@ -14,8 +14,9 @@ import { SHELLPROG } from './shellprog.ts';
 import { EDITORS } from './editors.ts';
 import { EXTRA } from './extra.ts';
 import { HOSTNAME_TOOLS } from './hostnamectl.ts';
+import { BAT_TOOLS } from './bat.ts';
 
 export const COREUTILS: ReadonlyMap<string, CommandFn> = new Map<string, CommandFn>([
-  ...FILES, ...FILEINFO, ...TEXT, ...SYSINFO, ...TOOLS, ...SHELLPROG, ...EDITORS, ...EXTRA, ...HOSTNAME_TOOLS,
+  ...FILES, ...FILEINFO, ...TEXT, ...SYSINFO, ...TOOLS, ...SHELLPROG, ...EDITORS, ...EXTRA, ...HOSTNAME_TOOLS, ...BAT_TOOLS,
   ['ls', ls], ['dir', ls], ['grep', grep], ['egrep', grep], ['fgrep', grep], ['sed', sed], ['awk', awk], ['mawk', awk], ['find', find],
 ]);
