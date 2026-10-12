@@ -143,7 +143,7 @@ export class Canvas {
 
   private drawDevice(id: string, p: Placed): SVGGElement {
     const d = p.device;
-    const name = d.kind === 'pc' || d.kind === 'server' ? '' : d.hostname;
+    const name = d.kind === 'router' || d.kind === 'switch' ? d.hostname : d.kind === 'cloud' ? d.settings.isp : '';
     const g = svg('g', {
       class: `device device-${d.kind}${this.selected === id ? ' is-selected' : ''}${this.pendingEnd?.device === id ? ' is-pending' : ''}`,
       transform: `translate(${p.x} ${p.y})`, tabindex: '0', 'data-id': id, role: 'button', 'aria-label': `${p.label} (${MODEL_LABEL[d.kind]})`,
@@ -155,7 +155,7 @@ export class Canvas {
     g.appendChild(icon);
     g.appendChild(svg('text', { class: 'device-model', x: 0, y: -ICON_H / 2 - 12 }, MODEL_LABEL[d.kind]));
     g.appendChild(svg('text', { class: 'device-label', x: 0, y: ICON_H / 2 + 18 }, p.label));
-    if (name && name !== 'Router' && name !== 'Switch') g.appendChild(svg('text', { class: 'device-host', x: 0, y: ICON_H / 2 + 33 }, name));
+    if (name && name !== 'Router' && name !== 'Switch' && name !== p.label) g.appendChild(svg('text', { class: 'device-host', x: 0, y: ICON_H / 2 + 33 }, name));
     g.addEventListener('pointerdown', (e) => this.onDevicePointer(e, id, g));
     g.addEventListener('dblclick', () => this.events.open(id));
     g.addEventListener('keydown', (e) => {

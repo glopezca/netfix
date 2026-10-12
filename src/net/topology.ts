@@ -20,11 +20,15 @@ import { applyConfig } from '../ios/session.ts';
 import { parseIp, formatIp, parseMask } from '../core/ip.ts';
 import { parseHexId } from '../core/mac.ts';
 import { registerWebApps } from '../web/apps.ts';
+import { Cloud } from '../devices/cloud.ts';
+import { cloudFromJson, cloudToJson } from '../devices/cloud-config.ts';
+import { InternetCore } from './internet.ts';
+import { populateInternet } from './internet-hosts.ts';
 
 registerWebApps();
 
-export type DeviceKind = 'router' | 'switch' | 'pc' | 'server';
-export type AnyDevice = Router | Switch | Pc | Server;
+export type DeviceKind = 'router' | 'switch' | 'pc' | 'server' | 'cloud';
+export type AnyDevice = Router | Switch | Pc | Server | Cloud;
 
 export interface Placed {
   readonly device: AnyDevice;
@@ -69,6 +73,8 @@ export interface DeviceRecord {
   readonly startup?: readonly string[] | null;
   readonly pc?: PcRecord;
   readonly server?: ServerRecord;
+  /** ISP cloud settings (lines, public block, registered domains). */
+  readonly cloud?: unknown;
 }
 
 export interface TopologyFile {
@@ -78,7 +84,7 @@ export interface TopologyFile {
   readonly links: readonly { readonly a: Endpoint; readonly b: Endpoint; readonly cable: CableKind }[];
 }
 
-const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server' };
+const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', cloud: 'Cloud' };
 export const FILE_VERSION = 2;
 const SETTLE_MS = 30_000;
 const MAX_PRETTY = 256;
@@ -87,6 +93,8 @@ export class Topology {
   readonly clock = new SimClock();
   readonly net = new Network(this.clock);
   readonly placed = new Map<string, Placed>();
+  /** The emulated Internet shared by every ISP cloud of this workspace. */
+  readonly internet = makeInternet(this.net);
   private nextSeed = 1;
   private nextId = 1;
 
@@ -95,12 +103,17 @@ export class Topology {
     const seed = opts.seed ?? this.nextSeed++;
     this.nextSeed = Math.max(this.nextSeed, seed + 1);
     const label = opts.label ?? this.nextLabel(kind);
-    const device = createDevice(kind, id, seed, this.clock, label);
+    const device = kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind, id, seed, this.clock, label);
     seeds.set(device, seed);
     this.net.addDevice(device);
     const placed: Placed = { device, label, x, y };
     this.placed.set(id, placed);
     return placed;
+  }
+
+  private newCloud(id: string, seed: number, label: string): Cloud {
+    const used = [...this.placed.values()].flatMap((p) => (p.device instanceof Cloud ? [p.device.settings.block] : []));
+    return new Cloud({ id, name: label, clock: this.clock, seed, core: this.internet, block: this.internet.freeBlock(used) });
   }
 
   private nextLabel(kind: DeviceKind): string {
@@ -109,6 +122,8 @@ export class Topology {
   }
 
   remove(id: string): void {
+    const d = this.placed.get(id)?.device;
+    if (d instanceof Cloud) d.detach();
     this.net.removeDevice(id);
     this.placed.delete(id);
   }
@@ -156,7 +171,15 @@ export class Topology {
   }
 }
 
-function createDevice(kind: DeviceKind, id: string, seed: number, clock: SimClock, label: string): AnyDevice {
+function makeInternet(net: Network): InternetCore {
+  const core = new InternetCore((ms, fn) => net.schedule(ms, fn));
+  populateInternet(core);
+  const VIRTUAL_MAC = '000000000000';
+  core.observer = (a, b, ip) => net.recordVirtual({ device: a, port: 'Internet' }, { device: b, port: 'Internet' }, { src: VIRTUAL_MAC, dst: VIRTUAL_MAC, ip });
+  return core;
+}
+
+function createDevice(kind: Exclude<DeviceKind, 'cloud'>, id: string, seed: number, clock: SimClock, label: string): AnyDevice {
   if (kind === 'router') return new Router({ id, clock, seed });
   if (kind === 'switch') return new Switch({ id, clock, seed });
   if (kind === 'server') return new Server(id, label, clock, seed);
@@ -167,6 +190,7 @@ function record(id: string, p: Placed): DeviceRecord {
   const d = p.device;
   const seed = deviceSeed(d);
   const base = { id, kind: d.kind, label: p.label, x: Math.round(p.x), y: Math.round(p.y), seed };
+  if (d instanceof Cloud) return { ...base, cloud: cloudToJson(d.settings) };
   if (d instanceof Host) {
     const pc = hostRecord(d);
     if (d instanceof Pc) return { ...base, pc: { ...pc, apps: { mail: d.mailAccount, inbox: d.inbox, url: d.browserUrl || undefined } } };
@@ -193,6 +217,10 @@ function hostRecord(d: Host): PcRecord {
 }
 
 function restore(device: AnyDevice, rec: DeviceRecord): void {
+  if (device instanceof Cloud) {
+    device.setSettings(cloudFromJson(rec.cloud, device.settings));
+    return;
+  }
   if (device instanceof Host) {
     const pc = rec.pc ?? { mode: 'static' as const };
     device.sendClientId = pc.sendClientId ?? true;
@@ -243,7 +271,7 @@ export function validateFile(data: unknown): TopologyFile {
   const { devices, links } = data;
   if (!Array.isArray(devices) || !Array.isArray(links)) throw new Error('Archivo incompleto: faltan dispositivos o enlaces.');
   for (const d of devices) {
-    if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server'].includes(String(d.kind))) throw new Error('Dispositivo no válido en el archivo.');
+    if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'cloud'].includes(String(d.kind))) throw new Error('Dispositivo no válido en el archivo.');
     if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string') throw new Error(`Datos incompletos para ${d.id}.`);
     if (d.config !== undefined && (!Array.isArray(d.config) || d.config.some((l) => typeof l !== 'string'))) throw new Error(`Configuración no válida en ${d.id}.`);
   }

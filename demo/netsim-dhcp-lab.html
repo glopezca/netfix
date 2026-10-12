@@ -581,9 +581,16 @@ const SERVER = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" widt
   </g>
   <circle cx="25" cy="39" r="1.6" fill="var(--dev-mark)"/><path d="M29 39 h7" stroke="var(--dev-mark)" stroke-width="1.6" stroke-linecap="round"/>
 </svg>`;
-const ICONS = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER };
-const MODEL_LABEL = { router: '2911', switch: '2960-24TT', pc: 'PC-PT', server: 'Server-PT' };
-const KIND_NAME = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Servidor' };
+const CLOUD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="64" height="48">
+  <path d="M16 40 h34 a10 10 0 0 0 1 -19.9 a14 14 0 0 0 -26.5 -4.6 a10.5 10.5 0 0 0 -8.5 24.5 z" fill="var(--dev-side)" stroke="var(--dev-edge)" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M22 18 a9 9 0 0 1 9 -6" fill="none" stroke="var(--dev-top)" stroke-width="2" stroke-linecap="round"/>
+  <g stroke="var(--dev-mark)" stroke-width="1.6" fill="none" stroke-linecap="round">
+    <circle cx="32" cy="29" r="7"/><path d="M25 29 h14 M32 22 c-3 4 -3 10 0 14 M32 22 c3 4 3 10 0 14"/>
+  </g>
+</svg>`;
+const ICONS = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, cloud: CLOUD };
+const MODEL_LABEL = { router: '2911', switch: '2960-24TT', pc: 'PC-PT', server: 'Server-PT', cloud: 'Nube ISP' };
+const KIND_NAME = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Servidor', cloud: 'Nube' };
 
 return { ICON_W, ICON_H, ICONS, MODEL_LABEL, KIND_NAME };
 })();
@@ -770,7 +777,7 @@ class Canvas {
     }
     drawDevice(id, p) {
         const d = p.device;
-        const name = d.kind === 'pc' || d.kind === 'server' ? '' : d.hostname;
+        const name = d.kind === 'router' || d.kind === 'switch' ? d.hostname : d.kind === 'cloud' ? d.settings.isp : '';
         const g = svg('g', {
             class: `device device-${d.kind}${this.selected === id ? ' is-selected' : ''}${this.pendingEnd?.device === id ? ' is-pending' : ''}`,
             transform: `translate(${p.x} ${p.y})`, tabindex: '0', 'data-id': id, role: 'button', 'aria-label': `${p.label} (${MODEL_LABEL[d.kind]})`,
@@ -782,7 +789,7 @@ class Canvas {
         g.appendChild(icon);
         g.appendChild(svg('text', { class: 'device-model', x: 0, y: -ICON_H / 2 - 12 }, MODEL_LABEL[d.kind]));
         g.appendChild(svg('text', { class: 'device-label', x: 0, y: ICON_H / 2 + 18 }, p.label));
-        if (name && name !== 'Router' && name !== 'Switch')
+        if (name && name !== 'Router' && name !== 'Switch' && name !== p.label)
             g.appendChild(svg('text', { class: 'device-host', x: 0, y: ICON_H / 2 + 33 }, name));
         g.addEventListener('pointerdown', (e) => this.onDevicePointer(e, id, g));
         g.addEventListener('dblclick', () => this.events.open(id));
@@ -25812,6 +25819,847 @@ function iosWebSettings(device, afterCommand) {
 
 return { iosWebSettings };
 })();
+__m["net/nat.js"] = (() => {
+const FIRST_PAT_PORT = 1024;
+const LAST_PORT = 65535;
+const MAX_ENTRIES = 4096;
+function flowOf(p) {
+    if (p.tcp)
+        return { proto: 'tcp', sport: p.tcp.sport, dport: p.tcp.dport };
+    if (p.udp)
+        return { proto: 'udp', sport: p.udp.sport, dport: p.udp.dport };
+    const id = p.icmp?.id ?? 0;
+    return { proto: 'icmp', sport: id, dport: id };
+}
+function rewriteSrc(p, ip, port) {
+    if (port === undefined)
+        return { ...p, src: ip };
+    if (p.tcp)
+        return { ...p, src: ip, tcp: { ...p.tcp, sport: port } };
+    if (p.udp)
+        return { ...p, src: ip, udp: { ...p.udp, sport: port } };
+    return p.icmp ? { ...p, src: ip, icmp: { ...p.icmp, id: port } } : { ...p, src: ip };
+}
+function rewriteDst(p, ip, port) {
+    if (port === undefined)
+        return { ...p, dst: ip };
+    if (p.tcp)
+        return { ...p, dst: ip, tcp: { ...p.tcp, dport: port } };
+    if (p.udp)
+        return { ...p, dst: ip, udp: { ...p.udp, dport: port } };
+    return p.icmp ? { ...p, dst: ip, icmp: { ...p.icmp, id: port } } : { ...p, dst: ip };
+}
+function staticMatchesOut(s, p, f) {
+    return s.local === p.src && (s.proto === undefined || (s.proto === f.proto && s.localPort === f.sport));
+}
+function staticMatchesIn(s, p, f) {
+    return s.global === p.dst && (s.proto === undefined || (s.proto === f.proto && s.globalPort === f.dport));
+}
+class NatTable {
+    dynamic = [];
+    hits = 0;
+    misses = 0;
+    /** Inside → outside: translates the source, or returns null when no rule applies. */
+    inside(p, statics, target) {
+        const f = flowOf(p);
+        const st = statics.find((s) => staticMatchesOut(s, p, f));
+        if (st)
+            return this.hit(rewriteSrc(p, st.global, st.proto ? st.globalPort : undefined));
+        const known = this.dynamic.find((e) => e.insideLocal === p.src && (e.proto === null || (e.proto === f.proto && e.localPort === f.sport)));
+        if (known)
+            return this.hit(rewriteSrc(p, known.insideGlobal, known.proto ? known.globalPort : undefined));
+        const t = target(p);
+        if (!t)
+            return null;
+        this.misses += 1;
+        const entry = t.overload
+            ? { proto: f.proto, insideLocal: p.src, insideGlobal: t.global, localPort: f.sport, globalPort: this.freePort(f.proto, t.global, f.sport), outside: p.dst, outsidePort: f.dport, static: false }
+            : { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false };
+        this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
+        return rewriteSrc(p, entry.insideGlobal, entry.proto ? entry.globalPort : undefined);
+    }
+    /** Outside → inside: translates the destination, or returns null when nothing maps it. */
+    outside(p, statics) {
+        const f = flowOf(p);
+        const known = this.dynamic.find((e) => e.insideGlobal === p.dst && (e.proto === null || (e.proto === f.proto && e.globalPort === f.dport)));
+        if (known)
+            return this.hit(rewriteDst(p, known.insideLocal, known.proto ? known.localPort : undefined));
+        const st = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f)) ?? statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
+        return st ? this.hit(rewriteDst(p, st.local, st.proto ? st.localPort : undefined)) : null;
+    }
+    /** Is this global address (and pool member) taken by a 1:1 dynamic translation? */
+    globalInUse(global) {
+        return this.dynamic.some((e) => e.proto === null && e.insideGlobal === global);
+    }
+    entries() {
+        return this.dynamic;
+    }
+    clear() {
+        this.dynamic = [];
+    }
+    hit(p) {
+        this.hits += 1;
+        return p;
+    }
+    freePort(proto, global, wanted) {
+        const used = new Set(this.dynamic.filter((e) => e.proto === proto && e.insideGlobal === global).map((e) => e.globalPort));
+        if (!used.has(wanted) && wanted > 0)
+            return wanted;
+        for (let port = FIRST_PAT_PORT; port <= LAST_PORT; port++)
+            if (!used.has(port))
+                return port;
+        return wanted;
+    }
+}
+
+return { flowOf, rewriteSrc, rewriteDst, NatTable };
+})();
+__m["net/internet-hosts.js"] = (() => {
+const { DNS_PORT } = __m["net/packets.js"];
+const { TcpLayer } = __m["net/tcp.js"];
+const { answerQuery } = __m["services/dns-service.js"];
+const { normalizeName } = __m["net/dns.js"];
+const { formatIp, parseIp } = __m["core/ip.js"];
+const { page, h } = __m["web/html.js"];
+const { respond } = __m["web/http.js"];
+const ip = (t) => parseIp(t) ?? 0;
+const GOOGLE_DNS = [ip('8.8.8.8'), ip('8.8.4.4')];
+const GOOGLE_HOP = ip('142.250.0.1');
+const EDGE_HOP = ip('203.0.113.1');
+const HOST_TTL = 64;
+const RECORD_TTL = 300;
+const FORWARD_TIMEOUT_MS = 2000;
+const FIRST_QUERY_PORT = 30000;
+const QUERY_PORTS = 20000;
+const SITES = [
+    { name: 'www.google.com', ip: ip('142.250.184.4') },
+    { name: 'example.com', ip: ip('93.184.215.14') },
+    { name: 'ifconfig.me', ip: ip('34.160.111.145'), plain: true },
+];
+const A = (name, value) => ({ name, type: 'A', value, ttl: RECORD_TTL });
+/** Built-in public zones (origin → records). */
+const ZONES = [
+    { origin: 'google.com', records: [A('google.com', '142.250.184.4'), A('www.google.com', '142.250.184.4')] },
+    { origin: 'dns.google', records: [A('dns.google', '8.8.8.8'), A('dns.google', '8.8.4.4')] },
+    { origin: 'example.com', records: [A('example.com', '93.184.215.14'), A('www.example.com', '93.184.215.14')] },
+    { origin: 'ifconfig.me', records: [A('ifconfig.me', '34.160.111.145')] },
+];
+function inZone(qname, origin) {
+    return qname === origin || qname.endsWith(`.${origin}`);
+}
+/** 8.8.8.8 and 8.8.4.4: echo, and DNS over UDP. */
+class PublicDns {
+    ips = GOOGLE_DNS;
+    hop = GOOGLE_HOP;
+    core;
+    pending = new Map();
+    nextPort = 0;
+    constructor(core) {
+        this.core = core;
+    }
+    receive(p) {
+        if (p.icmp?.type === 'echo-request')
+            return this.core.send({ src: p.dst, dst: p.src, ttl: HOST_TTL, protocol: 'icmp', icmp: { ...p.icmp, type: 'echo-reply' } });
+        const dns = p.udp?.dns;
+        if (!dns || !p.udp)
+            return;
+        if (dns.response)
+            return this.onUpstream(p.udp.dport, dns);
+        if (p.udp.dport === DNS_PORT)
+            this.resolve(p, dns);
+    }
+    reply(via, to, port, msg) {
+        this.core.send({ src: via, dst: to, ttl: HOST_TTL, protocol: 'udp', udp: { sport: DNS_PORT, dport: port, dns: msg } });
+    }
+    resolve(p, q) {
+        const qname = normalizeName(q.qname);
+        const zone = ZONES.find((z) => inZone(qname, z.origin));
+        if (zone)
+            return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { ...answerQuery(q, zone.records, zone.origin), authoritative: false });
+        const reg = this.core.domains().filter((d) => inZone(qname, d.name)).sort((a, b) => b.name.length - a.name.length)[0];
+        if (!reg)
+            return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { id: q.id, response: true, qname, qtype: q.qtype, rcode: 'NXDOMAIN', answers: [] });
+        if (reg.kind === 'a') {
+            const records = [A(reg.name, formatIp(reg.ip)), A(`*.${reg.name}`, formatIp(reg.ip))];
+            return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { ...answerQuery(q, records, reg.name), authoritative: false });
+        }
+        this.forward(p, q, reg.ip);
+    }
+    /** Recursion: asks the domain's own name server and relays the answer. */
+    forward(p, q, server) {
+        const sport = FIRST_QUERY_PORT + (this.nextPort++ % QUERY_PORTS);
+        const entry = { client: p.src, port: p.udp?.sport ?? 0, id: q.id, via: p.dst, done: false };
+        this.pending.set(sport, entry);
+        this.core.send({ src: p.dst, dst: server, ttl: HOST_TTL, protocol: 'udp', udp: { sport, dport: DNS_PORT, dns: { ...q, id: sport } } });
+        this.core.later(FORWARD_TIMEOUT_MS, () => {
+            if (entry.done)
+                return;
+            this.pending.delete(sport);
+            this.reply(entry.via, entry.client, entry.port, { id: entry.id, response: true, qname: q.qname, qtype: q.qtype, rcode: 'SERVFAIL', answers: [] });
+        });
+    }
+    onUpstream(port, answer) {
+        const entry = this.pending.get(port);
+        if (!entry)
+            return;
+        entry.done = true;
+        this.pending.delete(port);
+        this.reply(entry.via, entry.client, entry.port, { ...answer, id: entry.id, authoritative: false });
+    }
+}
+function sitePage(site, req, peer) {
+    const you = formatIp(peer.ip);
+    if (site.plain)
+        return `${you}\n`;
+    return page(site.name, '', h('h1', {}, site.name), h('p', {}, 'Servidor web de la Internet emulada de netsim.'), h('p', {}, 'Tu dirección IP pública: ', h('strong', {}, you)), h('p', {}, `Host solicitado: ${req.headers?.host ?? req.host} · ruta: ${req.path}`), h('p', {}, 'Si tu equipo tiene una IP privada (192.168.x.x, 10.x.x.x), lo que ves aquí es la dirección que le ha puesto el NAT del router.'));
+}
+class WebSite {
+    ips;
+    hop = EDGE_HOP;
+    tcp;
+    core;
+    constructor(core, site) {
+        this.core = core;
+        this.ips = [site.ip];
+        this.tcp = new TcpLayer({ send: (p) => { core.send(p); return true; }, sourceFor: () => site.ip, schedule: (d, fn) => core.later(d, fn), ttl: HOST_TTL });
+        this.tcp.listen(80, (req, peer) => {
+            if (req.app !== 'HTTP' || req.kind !== 'request')
+                return null;
+            const body = sitePage(site, req, peer);
+            return respond('ECS (netsim)', 200, req.method === 'HEAD' ? '' : body, {}, site.plain ? 'text/plain; charset=UTF-8' : 'text/html; charset=UTF-8');
+        });
+    }
+    receive(p) {
+        if (p.icmp?.type === 'echo-request')
+            return this.core.send({ src: p.dst, dst: p.src, ttl: HOST_TTL, protocol: 'icmp', icmp: { ...p.icmp, type: 'echo-reply' } });
+        if (p.tcp)
+            this.tcp.receive(p);
+    }
+}
+function populateInternet(core) {
+    core.addHost(new PublicDns(core));
+    for (const s of SITES)
+        core.addHost(new WebSite(core, s));
+}
+
+return { GOOGLE_DNS, populateInternet };
+})();
+__m["devices/cloud-config.js"] = (() => {
+/**
+ * Settings of the ISP cloud: each port is a customer line (cable, xDSL or FTTx) that either hands a
+ * public /29 to the customer's router (DHCP) or acts as the operator's router (LAN, DHCP, NAT, port
+ * forwarding). Domains registered at the ISP are published by the public DNS servers 8.8.8.8/8.8.4.4.
+ */
+const { formatIp, inSubnet, networkOf, parseIp } = __m["core/ip.js"];
+const CLOUD_PORTS = ['Coaxial0', 'Coaxial1', 'DSL0', 'DSL1', 'Fibra0', 'Fibra1'];
+const BLOCK_PREFIX = 16;
+const LINE_PREFIX = 29;
+const LAN_DEFAULT = parseIp('192.168.1.1') ?? 0;
+const LAN_PREFIX = 24;
+const MAX_FORWARDS = 32;
+const MAX_DOMAINS = 32;
+const MAX_SPEED = 100_000;
+function accessOf(port) {
+    if (port.startsWith('Coaxial'))
+        return 'cable';
+    if (port.startsWith('DSL'))
+        return 'xdsl';
+    return 'fttx';
+}
+const ACCESS_LABEL = { cable: 'Cable (DOCSIS 3.1)', xdsl: 'xDSL (VDSL2)', fttx: 'FTTH (GPON)' };
+const SPEEDS = { cable: [600, 60], xdsl: [100, 10], fttx: [1000, 1000] };
+function defaultPort(port) {
+    const [down, up] = SPEEDS[accessOf(port)];
+    return { mode: 'router', down, up, lanIp: LAN_DEFAULT, lanPrefix: LAN_PREFIX, forwards: [] };
+}
+function defaultCloud(isp, block) {
+    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, defaultPort(p)]));
+    return { isp, block, ports, domains: [] };
+}
+/** Customer /29 of a port: network, gateway (.1) and first customer address (.2). */
+function lineSubnet(block, port) {
+    const i = Math.max(0, CLOUD_PORTS.indexOf(port));
+    const net = (block + (i + 1) * 256) >>> 0;
+    return { net, gw: net + 1, customer: net + 2 };
+}
+/** The ISP's own router in the core: x.y.0.1. */
+function ispHop(block) {
+    return (block + 1) >>> 0;
+}
+function validDomain(name) {
+    if (!/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(name))
+        return 'Dominio no válido: usa nombres como sede2.es o empresa.com.';
+    return null;
+}
+function validatePort(p) {
+    if (!Number.isInteger(p.down) || !Number.isInteger(p.up) || p.down < 1 || p.up < 1 || p.down > MAX_SPEED || p.up > MAX_SPEED)
+        return 'Las velocidades deben estar entre 1 y 100000 Mbit/s.';
+    if (p.lanPrefix < 8 || p.lanPrefix > 30)
+        return 'La máscara de la LAN debe estar entre /8 y /30.';
+    const net = networkOf(p.lanIp, p.lanPrefix);
+    if (p.lanIp === net || p.lanIp === (net | (0xffffffff >>> p.lanPrefix)) >>> 0)
+        return 'La IP del router no puede ser la de red ni la de difusión.';
+    if (p.forwards.length > MAX_FORWARDS)
+        return 'Demasiadas redirecciones de puertos.';
+    for (const f of p.forwards) {
+        if (![f.port, f.toPort].every((n) => Number.isInteger(n) && n >= 1 && n <= 65535))
+            return 'Los puertos deben estar entre 1 y 65535.';
+        if (!inSubnet(f.ip, p.lanIp, p.lanPrefix) || f.ip === p.lanIp)
+            return `La redirección a ${formatIp(f.ip)} debe ir a un equipo de la LAN.`;
+    }
+    const dup = p.forwards.find((f, i) => p.forwards.findIndex((g) => g.proto === f.proto && g.port === f.port) !== i);
+    return dup ? `El puerto ${dup.proto.toUpperCase()} ${dup.port} ya está redirigido.` : null;
+}
+function validateCloud(s) {
+    if (!s.isp.trim() || s.isp.length > 40)
+        return 'Escribe el nombre del ISP (máximo 40 caracteres).';
+    if (networkOf(s.block, BLOCK_PREFIX) !== s.block)
+        return 'El bloque público debe ser una red /16 (por ejemplo 81.32.0.0).';
+    if (s.domains.length > MAX_DOMAINS)
+        return 'Demasiados dominios registrados.';
+    for (const d of s.domains) {
+        const bad = validDomain(d.name);
+        if (bad)
+            return bad;
+    }
+    for (const p of CLOUD_PORTS) {
+        const bad = validatePort(s.ports[p]);
+        if (bad)
+            return `${p}: ${bad}`;
+    }
+    return null;
+}
+// ------------------------------------------------------------ JSON
+const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+const ipOf = (v, d) => (typeof v === 'string' ? parseIp(v) ?? d : d);
+const obj = (v) => (typeof v === 'object' && v !== null ? v : {});
+function cloudToJson(s) {
+    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => {
+        const c = s.ports[p];
+        return [p, { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })) }];
+    }));
+    return { isp: s.isp, block: formatIp(s.block), ports, domains: s.domains.map((d) => ({ ...d, ip: formatIp(d.ip) })) };
+}
+function portFromJson(port, v) {
+    const d = defaultPort(port);
+    const o = obj(v);
+    const forwards = (Array.isArray(o.forwards) ? o.forwards : []).slice(0, MAX_FORWARDS).map(obj).map((f) => ({
+        proto: f.proto === 'udp' ? 'udp' : 'tcp', port: num(f.port, 0), ip: ipOf(f.ip, 0), toPort: num(f.toPort, 0),
+    }));
+    const p = { mode: o.mode === 'public' ? 'public' : 'router', down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards };
+    return validatePort(p) ? d : p;
+}
+function cloudFromJson(v, fallback) {
+    const o = obj(v);
+    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, portFromJson(p, obj(o.ports)[p])]));
+    const domains = (Array.isArray(o.domains) ? o.domains : []).slice(0, MAX_DOMAINS).map(obj)
+        .map((d) => ({ name: String(d.name ?? '').toLowerCase(), kind: d.kind === 'ns' ? 'ns' : 'a', ip: ipOf(d.ip, 0) }))
+        .filter((d) => validDomain(d.name) === null);
+    const s = { isp: typeof o.isp === 'string' ? o.isp.slice(0, 40) : fallback.isp, block: ipOf(o.block, fallback.block), ports, domains };
+    return validateCloud(s) ? { ...fallback, ports, domains } : s;
+}
+
+return { CLOUD_PORTS, BLOCK_PREFIX, LINE_PREFIX, accessOf, ACCESS_LABEL, defaultPort, defaultCloud, lineSubnet, ispHop, validDomain, validatePort, validateCloud, cloudToJson, cloudFromJson };
+})();
+__m["devices/cloud-port.js"] = (() => {
+/**
+ * One customer line of the ISP cloud, with its own IP plane (so every line can use 192.168.1.0/24):
+ *  - public: the ISP gateway x.y.n.1/29; DHCP hands x.y.n.2 to the customer's router.
+ *  - router: the operator's router (CPE): LAN gateway, DHCP .33-.199, NAT to x.y.n.2 and port forwarding.
+ */
+const { IpStack } = __m["net/ipstack.js"];
+const { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DEFAULT_TTL } = __m["net/packets.js"];
+const { DhcpServer } = __m["dhcp/server.js"];
+const { ptPoolToIos, ptExclusions } = __m["services/dhcp-pt.js"];
+const { NatTable } = __m["net/nat.js"];
+const { GOOGLE_DNS } = __m["net/internet-hosts.js"];
+const { BROADCAST_IP, inSubnet, networkOf } = __m["core/ip.js"];
+const { LINE_PREFIX, lineSubnet } = __m["devices/cloud-config.js"];
+const DHCP_FIRST_HOST = 33;
+const DHCP_LAST_HOST = 199;
+const LEASE_MINUTES = 1440;
+const SMALL_LAN = 64;
+const ERROR_TTL = 255;
+class CloudPort {
+    stack;
+    dropOnArpMiss = false;
+    ttl = DEFAULT_TTL;
+    dhcp = new DhcpServer();
+    nat = new NatTable();
+    name;
+    settings;
+    owner;
+    core;
+    constructor(owner, core, name, settings) {
+        this.owner = owner;
+        this.core = core;
+        this.name = name;
+        this.settings = settings;
+        this.stack = new IpStack(this, () => owner.now());
+        this.apply(settings);
+    }
+    /** Public /29 of the line: gateway and the customer's (or the CPE's WAN) address. */
+    line() {
+        return lineSubnet(this.owner.block(), this.name);
+    }
+    apply(settings) {
+        const modeChanged = settings.mode !== this.settings.mode || settings.lanIp !== this.settings.lanIp || settings.lanPrefix !== this.settings.lanPrefix;
+        this.settings = settings;
+        if (modeChanged) {
+            this.stack.flushArp();
+            this.nat.clear();
+            this.dhcp = new DhcpServer();
+        }
+        const { net, gw } = this.line();
+        const lan = settings.mode === 'router';
+        const prefix = lan ? settings.lanPrefix : LINE_PREFIX;
+        const gateway = lan ? settings.lanIp : gw;
+        const base = networkOf(gateway, prefix);
+        const hosts = 2 ** (32 - prefix) - 2;
+        const offset = hosts > SMALL_LAN ? DHCP_FIRST_HOST : 2;
+        const start = lan ? base + offset : net + 2;
+        const max = lan ? Math.min(DHCP_LAST_HOST - DHCP_FIRST_HOST + 1, hosts - offset + 1) : 1;
+        const pool = { name: this.name, start, prefix, maxUsers: Math.max(1, max), gateway, dns: GOOGLE_DNS[0], leaseMinutes: LEASE_MINUTES, reservations: [] };
+        this.dhcp.pools = [{ ...ptPoolToIos(pool), dnsServers: [...GOOGLE_DNS] }];
+        this.dhcp.excluded = ptExclusions(pool);
+        this.dhcp.pingPackets = 0;
+    }
+    gatewayAddr() {
+        return this.settings.mode === 'router' ? { ip: this.settings.lanIp, prefix: this.settings.lanPrefix } : { ip: this.line().gw, prefix: LINE_PREFIX };
+    }
+    /** DHCP leases handed out on this line. */
+    leases() {
+        return this.dhcp.allBindings(this.owner.now());
+    }
+    /** WAN address of the operator router (router mode). */
+    wan() {
+        return this.line().customer;
+    }
+    // ------------------------------------------------------------ StackHost
+    l3Iface(name) {
+        if (name !== this.name)
+            return undefined;
+        return { name, mac: this.owner.mac(name), addrs: [this.gatewayAddr()], up: this.owner.peerUp(name) };
+    }
+    l3Ifaces() {
+        const i = this.l3Iface(this.name);
+        return i ? [i] : [];
+    }
+    emit(_iface, frame) {
+        this.owner.transmit(this.name, frame);
+    }
+    schedule(delayMs, fn) {
+        this.owner.schedule(delayMs, fn);
+    }
+    route(dst) {
+        const g = this.gatewayAddr();
+        return dst !== BROADCAST_IP && inSubnet(dst, g.ip, g.prefix) ? { iface: this.name, nextHop: dst } : null;
+    }
+    deliver(_iface, packet) {
+        const msg = packet.udp?.dhcp;
+        if (msg && packet.udp?.dport === DHCP_SERVER_PORT)
+            this.onDhcp(msg);
+    }
+    /** Customer side → Internet. */
+    forward(_iface, packet) {
+        if (packet.dst === BROADCAST_IP)
+            return;
+        const g = this.gatewayAddr();
+        if (packet.ttl <= 1)
+            return this.icmpError(packet, g.ip, 'ttl-exceeded');
+        let out = { ...packet, ttl: packet.ttl - 1 };
+        if (this.settings.mode === 'router') {
+            if (!inSubnet(packet.src, g.ip, g.prefix))
+                return;
+            out = this.nat.inside(out, this.forwards(), () => ({ global: this.wan(), overload: true })) ?? out;
+        }
+        this.core.send(out);
+    }
+    forwards() {
+        const wan = this.wan();
+        return this.settings.forwards.map((f) => ({ local: f.ip, global: wan, proto: f.proto, localPort: f.toPort, globalPort: f.port }));
+    }
+    icmpError(packet, src, type) {
+        if (packet.icmp?.type !== 'echo-request')
+            return;
+        this.stack.send({ src, dst: packet.src, ttl: ERROR_TTL, protocol: 'icmp', icmp: { ...packet.icmp, type } });
+    }
+    // ------------------------------------------------------------ Internet side
+    owns(ip) {
+        if (this.settings.mode === 'router')
+            return ip === this.wan();
+        return inSubnet(ip, this.line().net, LINE_PREFIX);
+    }
+    fromInternet(p) {
+        const own = this.settings.mode === 'router' ? this.wan() : this.line().gw;
+        if (this.settings.mode === 'router') {
+            const inside = this.nat.outside(p, this.forwards());
+            if (inside)
+                return this.toCustomer(inside);
+        }
+        else if (p.dst !== own)
+            return this.toCustomer(p);
+        this.answerLocally(p, own);
+    }
+    toCustomer(p) {
+        if (p.ttl <= 1)
+            return;
+        this.stack.send({ ...p, ttl: p.ttl - 1 });
+    }
+    /** Echo to the line's own public address, TCP reset for closed ports. */
+    answerLocally(p, own) {
+        if (p.icmp?.type === 'echo-request') {
+            this.core.send({ src: own, dst: p.src, ttl: ERROR_TTL, protocol: 'icmp', icmp: { ...p.icmp, type: 'echo-reply' } });
+        }
+        else if (p.tcp && p.tcp.flags.includes('SYN')) {
+            this.core.send({ src: own, dst: p.src, ttl: ERROR_TTL, protocol: 'tcp', tcp: { sport: p.tcp.dport, dport: p.tcp.sport, flags: ['RST', 'ACK'], seq: 0, ack: p.tcp.seq + 1 } });
+        }
+    }
+    // ------------------------------------------------------------ DHCP
+    onDhcp(msg) {
+        const g = this.gatewayAddr();
+        const reply = this.dhcp.handle(msg, { ifaceName: this.name, ifaceAddrs: [g], ownIps: [g.ip], now: this.owner.now(), ipInUse: () => false, log: () => undefined });
+        if (reply)
+            this.sendDhcp(reply, g.ip);
+    }
+    sendDhcp(reply, src) {
+        const m = reply.msg;
+        const packet = { src, dst: reply.via === 'unicast' ? m.ciaddr : BROADCAST_IP, ttl: this.ttl, protocol: 'udp', udp: { sport: DHCP_SERVER_PORT, dport: DHCP_CLIENT_PORT, dhcp: m } };
+        if (packet.dst === BROADCAST_IP)
+            this.stack.broadcast(this.name, packet);
+        else
+            this.stack.send(packet);
+    }
+}
+
+return { CloudPort };
+})();
+__m["devices/cloud.js"] = (() => {
+const { macFromSeed } = __m["core/mac.js"];
+const { DETACHED, macPlus } = __m["devices/hooks.js"];
+const { CloudPort } = __m["devices/cloud-port.js"];
+const { CLOUD_PORTS, defaultCloud, ispHop } = __m["devices/cloud-config.js"];
+class Cloud {
+    kind = 'cloud';
+    id;
+    hooks = DETACHED;
+    name;
+    settings;
+    lines = new Map();
+    baseMac;
+    clock;
+    core;
+    constructor(opts) {
+        this.id = opts.id;
+        this.name = opts.name;
+        this.clock = opts.clock;
+        this.core = opts.core;
+        this.baseMac = macFromSeed(opts.seed + 104_729);
+        this.settings = defaultCloud(`ISP ${opts.name}`, opts.block);
+        const owner = {
+            id: this.id,
+            block: () => this.settings.block,
+            mac: (port) => macPlus(this.baseMac, CLOUD_PORTS.indexOf(port) + 1),
+            peerUp: (port) => this.hooks.peerUp(port),
+            transmit: (port, frame) => this.hooks.transmit(port, frame),
+            schedule: (d, fn) => this.hooks.schedule(d, fn),
+            now: () => this.clock.now(),
+        };
+        for (const p of CLOUD_PORTS)
+            this.lines.set(p, new CloudPort(owner, opts.core, p, this.settings.ports[p]));
+        opts.core.attach(this);
+    }
+    /** Replaces the settings (already validated) and reconfigures every line. */
+    setSettings(next) {
+        this.settings = next;
+        for (const [name, line] of this.lines)
+            line.apply(next.ports[name]);
+    }
+    detach() {
+        this.core.detach(this);
+    }
+    // ------------------------------------------------------------ NetDevice
+    displayName() {
+        return this.name;
+    }
+    portNames() {
+        return CLOUD_PORTS;
+    }
+    portAdminUp() {
+        return true;
+    }
+    receive(port, frame) {
+        this.lines.get(port)?.stack.receiveFrame(port, frame);
+    }
+    onLinkEvent(port, up) {
+        if (!up)
+            this.lines.get(port)?.stack.flushArp();
+    }
+    ownsIp(ip) {
+        return [...this.lines.values()].some((l) => l.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip)));
+    }
+    // ------------------------------------------------------------ InternetEdge
+    coreHop() {
+        return ispHop(this.settings.block);
+    }
+    owns(ip) {
+        return [...this.lines.values()].some((l) => l.owns(ip));
+    }
+    fromInternet(packet) {
+        [...this.lines.values()].find((l) => l.owns(packet.dst))?.fromInternet(packet);
+    }
+    domains() {
+        return this.settings.domains;
+    }
+}
+
+return { Cloud };
+})();
+__m["net/internet.js"] = (() => {
+const { parseIp } = __m["core/ip.js"];
+const ip = (t) => parseIp(t) ?? 0;
+const BACKBONE = [ip('198.51.100.1'), ip('198.51.100.2')];
+const HOP_MS = 2;
+const ERROR_TTL = 250;
+const FIRST_BLOCK = ip('81.32.0.0');
+const BLOCK_STEP = 1 << 16;
+const MAX_BLOCKS = 64;
+class InternetCore {
+    edges = new Set();
+    hosts = [];
+    schedule;
+    sources = [];
+    /** Simulation-mode hook: a packet goes from one edge (cloud) to another through the Internet. */
+    observer;
+    constructor(schedule) {
+        this.schedule = schedule;
+    }
+    attach(edge) {
+        this.edges.add(edge);
+        if (edge.domains)
+            this.sources.push(edge);
+    }
+    detach(edge) {
+        this.edges.delete(edge);
+        this.sources = this.sources.filter((s) => s !== edge);
+    }
+    addHost(host) {
+        this.hosts.push(host);
+    }
+    later(ms, fn) {
+        this.schedule(ms, fn);
+    }
+    domains() {
+        return this.sources.flatMap((s) => s.domains());
+    }
+    /** First /16 public block not used by another ISP cloud. */
+    freeBlock(used) {
+        for (let i = 0; i < MAX_BLOCKS; i++) {
+            const b = (FIRST_BLOCK + i * BLOCK_STEP) >>> 0;
+            if (!used.includes(b))
+                return b;
+        }
+        return FIRST_BLOCK;
+    }
+    edgeFor(addr) {
+        for (const e of this.edges)
+            if (e.owns(addr))
+                return e;
+        return undefined;
+    }
+    hostFor(addr) {
+        return this.hosts.find((h) => h.ips.includes(addr));
+    }
+    hopFor(addr) {
+        const e = this.edgeFor(addr);
+        if (e)
+            return e.coreHop();
+        const h = this.hostFor(addr);
+        if (h)
+            return h.hop;
+        for (const x of this.edges)
+            if (x.coreHop() === addr)
+                return addr;
+        return BACKBONE.includes(addr) ? addr : undefined;
+    }
+    /** Routers crossed between two public addresses. */
+    path(src, dst) {
+        const a = this.hopFor(src);
+        const b = this.hopFor(dst);
+        const hops = a !== undefined && a === b ? [a] : [a, ...BACKBONE, b];
+        return hops.filter((h, i) => h !== undefined && hops.indexOf(h) === i && h !== src && h !== dst);
+    }
+    /** Sends a packet into the Internet (from an ISP edge or a virtual host). */
+    send(packet) {
+        const hops = this.path(packet.src, packet.dst);
+        let ttl = packet.ttl;
+        for (const hop of hops) {
+            if (ttl <= 1) {
+                this.icmpError(packet, hop, 'ttl-exceeded');
+                return;
+            }
+            ttl -= 1;
+        }
+        const p = { ...packet, ttl };
+        const delay = HOP_MS * (hops.length + 1);
+        const edge = this.edgeFor(p.dst);
+        const origin = this.edgeFor(p.src)?.id ?? edge?.id;
+        if (origin)
+            this.observer?.(origin, edge?.id ?? origin, p);
+        if (edge)
+            return this.schedule(delay, () => edge.fromInternet(p));
+        const host = this.hostFor(p.dst);
+        if (host)
+            return this.schedule(delay, () => host.receive(p));
+        if (this.hopFor(p.dst) === p.dst) {
+            if (p.icmp?.type === 'echo-request')
+                this.schedule(delay, () => this.send({ src: p.dst, dst: p.src, ttl: ERROR_TTL, protocol: 'icmp', icmp: { ...p.icmp, type: 'echo-reply' } }));
+            return;
+        }
+        this.icmpError(packet, hops.at(-1) ?? BACKBONE[1], 'unreachable');
+    }
+    icmpError(packet, from, type) {
+        if (packet.icmp?.type !== 'echo-request')
+            return;
+        const err = { src: from, dst: packet.src, ttl: ERROR_TTL, protocol: 'icmp', icmp: { ...packet.icmp, type } };
+        this.schedule(HOP_MS, () => this.send(err));
+    }
+}
+
+return { BACKBONE, HOP_MS, InternetCore };
+})();
+__m["ui/cloud-window.js"] = (() => {
+/** ISP cloud window: provider, public block and domains; per-line mode, speeds, LAN, port forwarding. */
+const { el } = __m["ui/dom.js"];
+const { field, input, button, message, select, table, subnav } = __m["ui/forms.js"];
+const { livePanel } = __m["ui/server-dhcp-dns.js"];
+const { ACCESS_LABEL, CLOUD_PORTS, LINE_PREFIX, accessOf, ispHop, lineSubnet, validateCloud, validDomain } = __m["devices/cloud-config.js"];
+const { formatIp, formatMask, parseIp, parseMask } = __m["core/ip.js"];
+const { BACKBONE } = __m["net/internet.js"];
+function save(cloud, next, msg, app, refresh) {
+    const err = validateCloud(next);
+    if (err)
+        return msg.error(err);
+    cloud.setSettings(next);
+    app.afterCommand();
+    refresh();
+    msg.ok('Guardado.');
+}
+function ispTab(cloud, app) {
+    const msg = message();
+    return livePanel((refresh) => {
+        const s = cloud.settings;
+        const isp = input({ value: s.isp, maxlength: '40' });
+        const block = input({ value: formatIp(s.block) });
+        const apply = () => {
+            const b = parseIp(block.value.trim());
+            if (b === null)
+                return msg.error('Escribe el bloque como 81.32.0.0.');
+            save(cloud, { ...s, isp: isp.value.trim(), block: b }, msg, app, refresh);
+        };
+        const dName = input({ placeholder: 'sede2.es' });
+        const dKind = select([['a', 'A: el dominio y *.dominio apuntan a la IP'], ['ns', 'NS: delegado en el servidor DNS de esa IP']]);
+        const dIp = input({ placeholder: 'IP pública (p. ej. la WAN de una línea)' });
+        const addDomain = () => {
+            const name = dName.value.trim().toLowerCase();
+            const bad = validDomain(name);
+            const addr = parseIp(dIp.value.trim());
+            if (bad)
+                return msg.error(bad);
+            if (addr === null)
+                return msg.error('Escribe una dirección IP pública.');
+            if (s.domains.some((d) => d.name === name))
+                return msg.error(`${name} ya está registrado.`);
+            save(cloud, { ...s, domains: [...s.domains, { name, kind: dKind.value === 'ns' ? 'ns' : 'a', ip: addr }] }, msg, app, refresh);
+        };
+        return [
+            el('h3', {}, 'Proveedor'),
+            el('div', { class: 'grid2' }, field('Nombre del ISP', isp), field('Bloque público (/16)', block, `Cada línea usa un /29: ${formatIp(lineSubnet(s.block, 'Coaxial0').net)}, ${formatIp(lineSubnet(s.block, 'Coaxial1').net)}…`)),
+            el('div', { class: 'actions' }, button('Guardar', apply)),
+            msg.el,
+            el('h3', {}, 'Dominios registrados'),
+            el('p', { class: 'muted' }, 'Los publican los DNS públicos 8.8.8.8 y 8.8.4.4 para todas las nubes.'),
+            table(s.domains, [
+                { label: 'Dominio', value: (d) => d.name, mono: true },
+                { label: 'Tipo', value: (d) => (d.kind === 'ns' ? 'NS (delegado)' : 'A') },
+                { label: 'IP', value: (d) => formatIp(d.ip), mono: true },
+            ], { empty: 'Sin dominios.', onDelete: (d) => save(cloud, { ...s, domains: s.domains.filter((x) => x !== d) }, msg, app, refresh) }),
+            el('div', { class: 'grid2' }, field('Dominio', dName), field('Dirección IP', dIp)),
+            field('Tipo', dKind),
+            el('div', { class: 'actions' }, button('Registrar dominio', addDomain)),
+            el('h3', {}, 'Internet emulada'),
+            el('ul', { class: 'muted' }, el('li', {}, `Router del ISP: ${formatIp(ispHop(s.block))}; troncal: ${BACKBONE.map(formatIp).join(', ')}.`), el('li', {}, 'DNS públicos 8.8.8.8 y 8.8.4.4 (google.com, dns.google, example.com, ifconfig.me y los dominios registrados).'), el('li', {}, 'Webs: www.google.com, example.com y ifconfig.me muestran la IP pública con la que llegas (curl ifconfig.me).')),
+        ];
+    });
+}
+function forwardsSection(line, change) {
+    const proto = select([['tcp', 'TCP'], ['udp', 'UDP']]);
+    const port = input({ placeholder: '80', inputmode: 'numeric' });
+    const to = input({ placeholder: '192.168.1.10' });
+    const toPort = input({ placeholder: '80', inputmode: 'numeric' });
+    const add = () => change([...line.settings.forwards, { proto: proto.value === 'udp' ? 'udp' : 'tcp', port: Number(port.value), ip: parseIp(to.value.trim()) ?? 0, toPort: Number(toPort.value || port.value) }]);
+    return [
+        el('h3', {}, 'Redirección de puertos (NAT)'),
+        table(line.settings.forwards, [
+            { label: 'Protocolo', value: (f) => f.proto.toUpperCase() },
+            { label: 'Puerto público', value: (f) => String(f.port) },
+            { label: 'Destino', value: (f) => `${formatIp(f.ip)}:${f.toPort}`, mono: true },
+        ], { empty: 'Sin redirecciones: desde Internet solo responde el router (ping).', onDelete: (f) => change(line.settings.forwards.filter((x) => x !== f)) }),
+        el('div', { class: 'grid2' }, field('Protocolo', proto), field('Puerto público', port)),
+        el('div', { class: 'grid2' }, field('IP de la LAN', to), field('Puerto interno', toPort)),
+        el('div', { class: 'actions' }, button('Añadir redirección', add)),
+    ];
+}
+function linePanel(cloud, name, app) {
+    const msg = message();
+    return livePanel((refresh) => {
+        const line = cloud.lines.get(name);
+        if (!line)
+            return [];
+        const c = line.settings;
+        const sub = line.line();
+        const put = (next) => save(cloud, { ...cloud.settings, ports: { ...cloud.settings.ports, [name]: next } }, msg, app, refresh);
+        const mode = select([['router', 'Router del operador'], ['public', 'IP pública (/29)']], c.mode);
+        const down = input({ value: String(c.down), inputmode: 'numeric' });
+        const up = input({ value: String(c.up), inputmode: 'numeric' });
+        const lan = input({ value: formatIp(c.lanIp) });
+        const mask = input({ value: formatMask(c.lanPrefix) });
+        const apply = () => {
+            const ip = parseIp(lan.value.trim());
+            const prefix = parseMask(mask.value.trim());
+            if (ip === null || prefix === null)
+                return msg.error('Revisa la IP y la máscara de la LAN.');
+            put({ ...c, mode: mode.value === 'public' ? 'public' : 'router', down: Number(down.value), up: Number(up.value), lanIp: ip, lanPrefix: prefix });
+        };
+        const peer = app.connected(name);
+        const leases = line.leases().map((b) => `${formatIp(b.ip)} → ${b.hostname ?? b.mac}`);
+        const nat = line.nat.entries().slice(-8).map((e) => `${e.proto ?? 'ip'} ${formatIp(e.insideLocal)}:${e.localPort ?? ''} → ${formatIp(e.insideGlobal)}:${e.globalPort ?? ''}`);
+        return [
+            el('h3', {}, `${name} · ${ACCESS_LABEL[accessOf(name)]}`),
+            el('p', { class: 'muted' }, peer ? `Conectado a ${peer}.` : 'Sin cable: conecta aquí un router o un PC.'),
+            el('div', { class: 'grid2' }, field('Modo de la línea', mode, 'Router del operador: LAN, DHCP y NAT. IP pública: tu router recibe x.y.n.2 por DHCP.'), field('Bajada / subida (Mbit/s)', el('div', { class: 'grid2' }, down, up))),
+            c.mode === 'router' ? el('div', { class: 'grid2' }, field('IP del router (LAN)', lan), field('Máscara de la LAN', mask)) : el('div', {}),
+            el('div', { class: 'actions' }, button('Guardar', apply)),
+            msg.el,
+            el('h3', {}, 'Direcciones'),
+            el('ul', { class: 'muted' }, ...(c.mode === 'router'
+                ? [el('li', {}, `IP pública (WAN): ${formatIp(line.wan())}`), el('li', {}, `LAN ${formatIp(c.lanIp)}/${c.lanPrefix}; DHCP desde .33; DNS 8.8.8.8 y 8.8.4.4.`)]
+                : [el('li', {}, `Subred pública ${formatIp(sub.net)}/${LINE_PREFIX}; puerta de enlace ${formatIp(sub.gw)}`), el('li', {}, `DHCP entrega ${formatIp(sub.customer)}; ${formatIp(sub.customer + 1)}–${formatIp(sub.customer + 4)} libres para NAT estático.`)])),
+            el('p', { class: 'muted' }, `Concesiones: ${leases.join(' · ') || 'ninguna'}`),
+            c.mode === 'router' ? el('p', { class: 'muted mono' }, `NAT: ${nat.join(' · ') || 'sin traducciones'}`) : el('div', {}),
+            ...(c.mode === 'router' ? forwardsSection(line, (forwards) => put({ ...c, forwards })) : []),
+        ];
+    });
+}
+function cloudTabs(cloud, app) {
+    return [
+        { id: 'isp', label: 'ISP', render: () => ispTab(cloud, app) },
+        { id: 'lines', label: 'Líneas', render: () => subnav(CLOUD_PORTS.map((p) => ({ id: p, label: p, render: () => linePanel(cloud, p, app) }))) },
+    ];
+}
+
+return { cloudTabs };
+})();
 __m["ui/device-windows.js"] = (() => {
 /** Window contents: IOS CLI for routers/switches; desktop tabs for PCs and Server-PT. */
 const { el } = __m["ui/dom.js"];
@@ -25826,6 +26674,8 @@ const { hostSettings } = __m["ui/host-settings.js"];
 const { servicesTab } = __m["ui/server-apps.js"];
 const { browserApp, mailApp } = __m["ui/pc-apps.js"];
 const { iosWebSettings } = __m["ui/ios-web-settings.js"];
+const { Cloud } = __m["devices/cloud.js"];
+const { cloudTabs } = __m["ui/cloud-window.js"];
 const terminals = new Map();
 function iosBackend(device, session) {
     return {
@@ -25874,6 +26724,10 @@ function openDeviceWindow(placed, host) {
     const d = placed.device;
     if (d instanceof Host) {
         openHostWindow(placed, d, host);
+        return;
+    }
+    if (d instanceof Cloud) {
+        host.windows.show(d.id, `${placed.label} · Nube ISP`, cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) }));
         return;
     }
     const term = cliTerminal(placed, host);
@@ -26053,6 +26907,10 @@ class Network {
             this.record(event);
             this.devices.get(to.device)?.receive(to.port, frame);
         });
+    }
+    /** A packet that crossed the emulated Internet (between ISP clouds): shown in simulation mode. */
+    recordVirtual(from, to, frame) {
+        this.record({ seq: ++this.seq, time: this.clock.elapsed(), linkId: 'internet', from, to, protocol: frameProtocol(frame), frame });
     }
     record(event) {
         this.history.push(event);
@@ -28117,101 +28975,6 @@ const routerModeTable = {
 
 return { routerModeTable };
 })();
-__m["net/nat.js"] = (() => {
-const FIRST_PAT_PORT = 1024;
-const LAST_PORT = 65535;
-const MAX_ENTRIES = 4096;
-function flowOf(p) {
-    if (p.tcp)
-        return { proto: 'tcp', sport: p.tcp.sport, dport: p.tcp.dport };
-    if (p.udp)
-        return { proto: 'udp', sport: p.udp.sport, dport: p.udp.dport };
-    const id = p.icmp?.id ?? 0;
-    return { proto: 'icmp', sport: id, dport: id };
-}
-function rewriteSrc(p, ip, port) {
-    if (port === undefined)
-        return { ...p, src: ip };
-    if (p.tcp)
-        return { ...p, src: ip, tcp: { ...p.tcp, sport: port } };
-    if (p.udp)
-        return { ...p, src: ip, udp: { ...p.udp, sport: port } };
-    return p.icmp ? { ...p, src: ip, icmp: { ...p.icmp, id: port } } : { ...p, src: ip };
-}
-function rewriteDst(p, ip, port) {
-    if (port === undefined)
-        return { ...p, dst: ip };
-    if (p.tcp)
-        return { ...p, dst: ip, tcp: { ...p.tcp, dport: port } };
-    if (p.udp)
-        return { ...p, dst: ip, udp: { ...p.udp, dport: port } };
-    return p.icmp ? { ...p, dst: ip, icmp: { ...p.icmp, id: port } } : { ...p, dst: ip };
-}
-function staticMatchesOut(s, p, f) {
-    return s.local === p.src && (s.proto === undefined || (s.proto === f.proto && s.localPort === f.sport));
-}
-function staticMatchesIn(s, p, f) {
-    return s.global === p.dst && (s.proto === undefined || (s.proto === f.proto && s.globalPort === f.dport));
-}
-class NatTable {
-    dynamic = [];
-    hits = 0;
-    misses = 0;
-    /** Inside → outside: translates the source, or returns null when no rule applies. */
-    inside(p, statics, target) {
-        const f = flowOf(p);
-        const st = statics.find((s) => staticMatchesOut(s, p, f));
-        if (st)
-            return this.hit(rewriteSrc(p, st.global, st.proto ? st.globalPort : undefined));
-        const known = this.dynamic.find((e) => e.insideLocal === p.src && (e.proto === null || (e.proto === f.proto && e.localPort === f.sport)));
-        if (known)
-            return this.hit(rewriteSrc(p, known.insideGlobal, known.proto ? known.globalPort : undefined));
-        const t = target(p);
-        if (!t)
-            return null;
-        this.misses += 1;
-        const entry = t.overload
-            ? { proto: f.proto, insideLocal: p.src, insideGlobal: t.global, localPort: f.sport, globalPort: this.freePort(f.proto, t.global, f.sport), outside: p.dst, outsidePort: f.dport, static: false }
-            : { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false };
-        this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
-        return rewriteSrc(p, entry.insideGlobal, entry.proto ? entry.globalPort : undefined);
-    }
-    /** Outside → inside: translates the destination, or returns null when nothing maps it. */
-    outside(p, statics) {
-        const f = flowOf(p);
-        const known = this.dynamic.find((e) => e.insideGlobal === p.dst && (e.proto === null || (e.proto === f.proto && e.globalPort === f.dport)));
-        if (known)
-            return this.hit(rewriteDst(p, known.insideLocal, known.proto ? known.localPort : undefined));
-        const st = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f)) ?? statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
-        return st ? this.hit(rewriteDst(p, st.local, st.proto ? st.localPort : undefined)) : null;
-    }
-    /** Is this global address (and pool member) taken by a 1:1 dynamic translation? */
-    globalInUse(global) {
-        return this.dynamic.some((e) => e.proto === null && e.insideGlobal === global);
-    }
-    entries() {
-        return this.dynamic;
-    }
-    clear() {
-        this.dynamic = [];
-    }
-    hit(p) {
-        this.hits += 1;
-        return p;
-    }
-    freePort(proto, global, wanted) {
-        const used = new Set(this.dynamic.filter((e) => e.proto === proto && e.insideGlobal === global).map((e) => e.globalPort));
-        if (!used.has(wanted) && wanted > 0)
-            return wanted;
-        for (let port = FIRST_PAT_PORT; port <= LAST_PORT; port++)
-            if (!used.has(port))
-                return port;
-        return wanted;
-    }
-}
-
-return { flowOf, rewriteSrc, rewriteDst, NatTable };
-})();
 __m["ios/runconfig.js"] = (() => {
 const { isSubinterface, parseIfaceName } = __m["ios/interfaces.js"];
 const { formatIp, formatMask } = __m["core/ip.js"];
@@ -30210,8 +30973,12 @@ const { applyConfig } = __m["ios/session.js"];
 const { parseIp, formatIp, parseMask } = __m["core/ip.js"];
 const { parseHexId } = __m["core/mac.js"];
 const { registerWebApps } = __m["web/apps.js"];
+const { Cloud } = __m["devices/cloud.js"];
+const { cloudFromJson, cloudToJson } = __m["devices/cloud-config.js"];
+const { InternetCore } = __m["net/internet.js"];
+const { populateInternet } = __m["net/internet-hosts.js"];
 registerWebApps();
-const PREFIX = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server' };
+const PREFIX = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', cloud: 'Cloud' };
 const FILE_VERSION = 2;
 const SETTLE_MS = 30_000;
 const MAX_PRETTY = 256;
@@ -30219,6 +30986,8 @@ class Topology {
     clock = new SimClock();
     net = new Network(this.clock);
     placed = new Map();
+    /** The emulated Internet shared by every ISP cloud of this workspace. */
+    internet = makeInternet(this.net);
     nextSeed = 1;
     nextId = 1;
     add(kind, x, y, opts = {}) {
@@ -30226,12 +30995,16 @@ class Topology {
         const seed = opts.seed ?? this.nextSeed++;
         this.nextSeed = Math.max(this.nextSeed, seed + 1);
         const label = opts.label ?? this.nextLabel(kind);
-        const device = createDevice(kind, id, seed, this.clock, label);
+        const device = kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind, id, seed, this.clock, label);
         seeds.set(device, seed);
         this.net.addDevice(device);
         const placed = { device, label, x, y };
         this.placed.set(id, placed);
         return placed;
+    }
+    newCloud(id, seed, label) {
+        const used = [...this.placed.values()].flatMap((p) => (p.device instanceof Cloud ? [p.device.settings.block] : []));
+        return new Cloud({ id, name: label, clock: this.clock, seed, core: this.internet, block: this.internet.freeBlock(used) });
     }
     nextLabel(kind) {
         const used = new Set([...this.placed.values()].map((p) => p.label));
@@ -30240,6 +31013,9 @@ class Topology {
                 return `${PREFIX[kind]}${i}`;
     }
     remove(id) {
+        const d = this.placed.get(id)?.device;
+        if (d instanceof Cloud)
+            d.detach();
         this.net.removeDevice(id);
         this.placed.delete(id);
     }
@@ -30282,6 +31058,13 @@ class Topology {
         return topo;
     }
 }
+function makeInternet(net) {
+    const core = new InternetCore((ms, fn) => net.schedule(ms, fn));
+    populateInternet(core);
+    const VIRTUAL_MAC = '000000000000';
+    core.observer = (a, b, ip) => net.recordVirtual({ device: a, port: 'Internet' }, { device: b, port: 'Internet' }, { src: VIRTUAL_MAC, dst: VIRTUAL_MAC, ip });
+    return core;
+}
 function createDevice(kind, id, seed, clock, label) {
     if (kind === 'router')
         return new Router({ id, clock, seed });
@@ -30295,6 +31078,8 @@ function record(id, p) {
     const d = p.device;
     const seed = deviceSeed(d);
     const base = { id, kind: d.kind, label: p.label, x: Math.round(p.x), y: Math.round(p.y), seed };
+    if (d instanceof Cloud)
+        return { ...base, cloud: cloudToJson(d.settings) };
     if (d instanceof Host) {
         const pc = hostRecord(d);
         if (d instanceof Pc)
@@ -30321,6 +31106,10 @@ function hostRecord(d) {
     return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
 }
 function restore(device, rec) {
+    if (device instanceof Cloud) {
+        device.setSettings(cloudFromJson(rec.cloud, device.settings));
+        return;
+    }
     if (device instanceof Host) {
         const pc = rec.pc ?? { mode: 'static' };
         device.sendClientId = pc.sendClientId ?? true;
@@ -30382,7 +31171,7 @@ function validateFile(data) {
     if (!Array.isArray(devices) || !Array.isArray(links))
         throw new Error('Archivo incompleto: faltan dispositivos o enlaces.');
     for (const d of devices) {
-        if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server'].includes(String(d.kind)))
+        if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'cloud'].includes(String(d.kind)))
             throw new Error('Dispositivo no válido en el archivo.');
         if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string')
             throw new Error(`Datos incompletos para ${d.id}.`);
@@ -30398,6 +31187,96 @@ function validateFile(data) {
 
 return { FILE_VERSION, Topology, parseStatic, validateFile };
 })();
+__m["net/example-internet.js"] = (() => {
+const { Topology } = __m["net/topology.js"];
+const { applyConfig } = __m["ios/session.js"];
+const { parseIp } = __m["core/ip.js"];
+const ip = (x) => parseIp(x) ?? 0;
+function link(t, a, ap, b, bp) {
+    t.connect({ device: a, port: ap }, { device: b, port: bp });
+}
+const SEDE1 = `
+hostname SEDE1
+no ip domain-lookup
+ip dhcp excluded-address 192.168.10.1 192.168.10.9
+ip dhcp pool LAN
+ network 192.168.10.0 255.255.255.0
+ default-router 192.168.10.1
+ dns-server 8.8.8.8 8.8.4.4
+interface GigabitEthernet0/0
+ description LAN de la sede 1
+ ip address 192.168.10.1 255.255.255.0
+ ip nat inside
+ no shutdown
+interface GigabitEthernet0/1
+ description Fibra ISP-Norte
+ ip address dhcp
+ ip nat outside
+ no shutdown
+access-list 1 permit 192.168.10.0 0.0.0.255
+ip nat inside source list 1 interface GigabitEthernet0/1 overload`;
+function sede1(t, isp) {
+    const r = t.add('router', 240, 260, { label: 'SEDE1' }).device;
+    const s = t.add('switch', 240, 420).device;
+    link(t, r.id, 'GigabitEthernet0/1', isp.id, 'Fibra0');
+    link(t, r.id, 'GigabitEthernet0/0', s.id, 'GigabitEthernet0/1');
+    applyConfig(r, SEDE1.trim().split('\n'));
+    return [0, 1].map((i) => {
+        const pc = t.add('pc', 120 + i * 240, 580).device;
+        link(t, pc.id, 'FastEthernet0', s.id, `FastEthernet0/${i + 1}`);
+        if (i === 1)
+            pc.os = 'linux';
+        pc.browserUrl = 'http://www.sede2.es';
+        return pc;
+    });
+}
+function sede2(t, isp) {
+    const s = t.add('switch', 780, 420).device;
+    const srv = t.add('server', 900, 580, { label: 'SRV-SEDE2' }).device;
+    const pc = t.add('pc', 660, 580).device;
+    link(t, s.id, 'GigabitEthernet0/1', isp.id, 'DSL0');
+    link(t, srv.id, 'FastEthernet0', s.id, 'FastEthernet0/24');
+    link(t, pc.id, 'FastEthernet0', s.id, 'FastEthernet0/1');
+    srv.name = 'srv';
+    srv.setStatic({ ip: ip('192.168.1.10'), prefix: 24, gateway: ip('192.168.1.1'), dns: ip('8.8.8.8') });
+    srv.setServices({
+        ...srv.services,
+        dhcp: { ...srv.services.dhcp, enabled: false },
+        dns: { enabled: true, origin: 'sede2.es', records: [
+                { name: '@', type: 'NS', value: 'srv', ttl: 3600 },
+                { name: 'srv', type: 'A', value: '81.33.3.2', ttl: 3600 },
+                { name: '@', type: 'A', value: '81.33.3.2', ttl: 3600 },
+                { name: 'www', type: 'CNAME', value: 'srv', ttl: 3600 },
+            ] },
+    });
+    const tcp = (port) => ({ proto: 'tcp', port, ip: ip('192.168.1.10'), toPort: port });
+    isp.setSettings({
+        ...isp.settings,
+        isp: 'ISP-Sur',
+        ports: { ...isp.settings.ports, DSL0: { ...isp.settings.ports.DSL0, forwards: [tcp(80), tcp(22), { proto: 'udp', port: 53, ip: ip('192.168.1.10'), toPort: 53 }] } },
+        domains: [{ name: 'sede2.es', kind: 'ns', ip: ip('81.33.3.2') }],
+    });
+    return pc;
+}
+const internetExample = {
+    id: 'internet',
+    title: 'Internet: dos sedes y DNS públicos',
+    summary: 'SEDE1 sale por fibra (ISP-Norte, IP pública por DHCP) con NAT overload; la sede 2 usa el router del operador de ISP-Sur (ADSL) y publica su servidor (80, 22, 53/udp). sede2.es está delegado en SRV-SEDE2. Prueba: navegador http://www.sede2.es, tracert 8.8.8.8, curl ifconfig.me, show ip nat translations.',
+    build: () => {
+        const t = new Topology();
+        const norte = t.add('cloud', 240, 90, { label: 'ISP-Norte' }).device;
+        const sur = t.add('cloud', 780, 90, { label: 'ISP-Sur' }).device;
+        norte.setSettings({ ...norte.settings, isp: 'ISP-Norte', ports: { ...norte.settings.ports, Fibra0: { ...norte.settings.ports.Fibra0, mode: 'public' } } });
+        const pcs = [...sede1(t, norte), sede2(t, sur)];
+        for (const p of pcs)
+            p.useDhcp();
+        t.settle();
+        return t;
+    },
+};
+
+return { internetExample };
+})();
 __m["net/examples.js"] = (() => {
 /** Ready-made labs that show each DHCP feature working. */
 const { Topology } = __m["net/topology.js"];
@@ -30408,6 +31287,7 @@ const { Server } = __m["devices/server.js"];
 const { parseIp } = __m["core/ip.js"];
 const { applyConfig } = __m["ios/session.js"];
 const { formatHexId, formatMacCisco, clientIdFromMac } = __m["core/mac.js"];
+const { internetExample } = __m["net/example-internet.js"];
 function conf(dev, text) {
     applyConfig(dev, text.trim().split('\n'));
 }
@@ -30667,6 +31547,7 @@ interface GigabitEthernet0/0
             return startDhcp(t, p);
         },
     },
+    internetExample,
     {
         id: 'blanco',
         title: 'Área de trabajo en blanco',
@@ -31062,7 +31943,7 @@ class App {
             this.toolButtons.set(key, b);
             return b;
         };
-        return el('footer', { class: 'palette' }, el('div', { class: 'pal-group', role: 'group', 'aria-label': 'Dispositivos' }, deviceBtn('router', 'Router'), deviceBtn('switch', 'Switch'), deviceBtn('pc', 'PC'), deviceBtn('server', 'Servidor')), el('div', { class: 'pal-group', role: 'group', 'aria-label': 'Herramientas' }, toolBtn('select', 'Seleccionar', { kind: 'select' }, '↖'), toolBtn('cable', 'Cable', { kind: 'cable' }, '⌇'), toolBtn('delete', 'Eliminar', { kind: 'delete' }, '✕')), this.hintEl);
+        return el('footer', { class: 'palette' }, el('div', { class: 'pal-group', role: 'group', 'aria-label': 'Dispositivos' }, deviceBtn('router', 'Router'), deviceBtn('switch', 'Switch'), deviceBtn('pc', 'PC'), deviceBtn('server', 'Servidor'), deviceBtn('cloud', 'Nube')), el('div', { class: 'pal-group', role: 'group', 'aria-label': 'Herramientas' }, toolBtn('select', 'Seleccionar', { kind: 'select' }, '↖'), toolBtn('cable', 'Cable', { kind: 'cable' }, '⌇'), toolBtn('delete', 'Eliminar', { kind: 'delete' }, '✕')), this.hintEl);
     }
     selectTool(tool, key) {
         const same = this.toolButtons.get(key)?.getAttribute('aria-pressed') === 'true' && key !== 'select';
@@ -31097,6 +31978,11 @@ class App {
         const placed = this.topo.get(id);
         if (placed)
             openDeviceWindow(placed, this);
+    }
+    /** "PC0 (FastEthernet0)" at the far end of a cable, for the device windows. */
+    peerLabel(device, port) {
+        const peer = this.topo.net.peerOf({ device, port });
+        return peer ? `${this.topo.get(peer.device)?.label ?? peer.device} (${peer.port})` : undefined;
     }
     afterCommand() {
         this.topo.net.runFor(20);

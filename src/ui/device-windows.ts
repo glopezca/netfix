@@ -17,10 +17,13 @@ import { hostSettings } from './host-settings.ts';
 import { servicesTab } from './server-apps.ts';
 import { browserApp, mailApp } from './pc-apps.ts';
 import { iosWebSettings } from './ios-web-settings.ts';
+import { Cloud } from '../devices/cloud.ts';
+import { cloudTabs } from './cloud-window.ts';
 
 export interface WindowHost {
   readonly windows: WindowManager;
   afterCommand(): void;
+  peerLabel?(device: string, port: string): string | undefined;
 }
 
 const terminals = new Map<string, Terminal>();
@@ -75,6 +78,10 @@ export function openDeviceWindow(placed: Placed, host: WindowHost): void {
   const d = placed.device;
   if (d instanceof Host) {
     openHostWindow(placed, d, host);
+    return;
+  }
+  if (d instanceof Cloud) {
+    host.windows.show(d.id, `${placed.label} · Nube ISP`, cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) }));
     return;
   }
   const term = cliTerminal(placed, host);

@@ -159,7 +159,7 @@ class App {
     };
     return el('footer', { class: 'palette' },
       el('div', { class: 'pal-group', role: 'group', 'aria-label': 'Dispositivos' },
-        deviceBtn('router', 'Router'), deviceBtn('switch', 'Switch'), deviceBtn('pc', 'PC'), deviceBtn('server', 'Servidor')),
+        deviceBtn('router', 'Router'), deviceBtn('switch', 'Switch'), deviceBtn('pc', 'PC'), deviceBtn('server', 'Servidor'), deviceBtn('cloud', 'Nube')),
       el('div', { class: 'pal-group', role: 'group', 'aria-label': 'Herramientas' },
         toolBtn('select', 'Seleccionar', { kind: 'select' }, '↖'),
         toolBtn('cable', 'Cable', { kind: 'cable' }, '⌇'),
@@ -194,6 +194,12 @@ class App {
   private open(id: string): void {
     const placed = this.topo.get(id);
     if (placed) openDeviceWindow(placed, this);
+  }
+
+  /** "PC0 (FastEthernet0)" at the far end of a cable, for the device windows. */
+  peerLabel(device: string, port: string): string | undefined {
+    const peer = this.topo.net.peerOf({ device, port });
+    return peer ? `${this.topo.get(peer.device)?.label ?? peer.device} (${peer.port})` : undefined;
   }
 
   afterCommand(): void {

@@ -7,6 +7,7 @@ import { Server } from '../devices/server.ts';
 import { parseIp } from '../core/ip.ts';
 import { applyConfig } from '../ios/session.ts';
 import { formatHexId, formatMacCisco, clientIdFromMac } from '../core/mac.ts';
+import { internetExample } from './example-internet.ts';
 
 export interface Example {
   readonly id: string;
@@ -279,6 +280,7 @@ interface GigabitEthernet0/0
       return startDhcp(t, p);
     },
   },
+  internetExample,
   {
     id: 'blanco',
     title: 'Área de trabajo en blanco',

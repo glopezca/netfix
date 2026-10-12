@@ -21,7 +21,7 @@ export interface Link {
 /** What the network needs from a device. */
 export interface NetDevice {
   readonly id: string;
-  readonly kind: 'router' | 'switch' | 'pc' | 'server';
+  readonly kind: 'router' | 'switch' | 'pc' | 'server' | 'cloud';
   hooks: DeviceHooks;
   displayName(): string;
   portNames(): readonly string[];
@@ -179,6 +179,11 @@ export class Network {
       this.record(event);
       this.devices.get(to.device)?.receive(to.port, frame);
     });
+  }
+
+  /** A packet that crossed the emulated Internet (between ISP clouds): shown in simulation mode. */
+  recordVirtual(from: Endpoint, to: Endpoint, frame: Frame): void {
+    this.record({ seq: ++this.seq, time: this.clock.elapsed(), linkId: 'internet', from, to, protocol: frameProtocol(frame), frame });
   }
 
   private record(event: SimEvent): void {
