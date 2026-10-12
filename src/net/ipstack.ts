@@ -26,6 +26,10 @@ export interface StackHost {
   deliver(iface: string, packet: IpPacket, frame: Frame): void;
   /** Routers forward transit packets; hosts drop them. */
   forward?(iface: string, packet: IpPacket): void;
+  /** Destination NAT before the routing decision (IOS `ip nat outside`). */
+  prerouting?(iface: string, packet: IpPacket): IpPacket;
+  /** Extra addresses answered by ARP on an interface (static NAT globals). */
+  answersArp?(iface: string, ip: number): boolean;
   /** Hosts may want to drop the packet that triggered ARP (IOS behaviour). */
   readonly dropOnArpMiss: boolean;
   readonly ttl: number;
@@ -72,7 +76,7 @@ export class IpStack {
 
   private onArp(iface: L3Iface, frame: Frame): void {
     const arp = frame.arp!;
-    const targetsMe = iface.addrs.some((a) => a.ip === arp.targetIp);
+    const targetsMe = iface.addrs.some((a) => a.ip === arp.targetIp) || (this.host.answersArp?.(iface.name, arp.targetIp) ?? false);
     if (targetsMe || this.arp.has(arp.senderIp)) this.learn(arp.senderIp, arp.senderMac, iface.name);
     if (arp.op === 'request' && targetsMe) {
       this.host.emit(iface.name, {
@@ -90,7 +94,8 @@ export class IpStack {
     for (const p of waiting.packets) this.emitIp(waiting.iface, mac, p);
   }
 
-  private onIp(iface: L3Iface, packet: IpPacket, frame: Frame): void {
+  private onIp(iface: L3Iface, arrived: IpPacket, frame: Frame): void {
+    const packet = this.host.prerouting?.(iface.name, arrived) ?? arrived;
     const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst);
     if (!forMe) {
       this.host.forward?.(iface.name, packet);
@@ -117,7 +122,7 @@ export class IpStack {
   }
 
   /** Sends an ICMP echo request; the callback fires on reply/error (never on timeout). */
-  echo(dst: number, id: number, seq: number, src: number | undefined, onResult: (r: EchoResult) => void): boolean {
+  echo(dst: number, id: number, seq: number, src: number | undefined, onResult: (r: EchoResult) => void, ttl = this.host.ttl): boolean {
     const egress = this.host.route(dst);
     if (!egress) return false;
     const srcIp = src ?? this.host.l3Iface(egress.iface)?.addrs[0]?.ip;
@@ -127,7 +132,7 @@ export class IpStack {
       this.host.schedule(0, () => onResult({ kind: 'reply', from: dst, ttl: this.host.ttl }));
       return true;
     }
-    this.sendVia(egress, { src: srcIp, dst, ttl: this.host.ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
+    this.sendVia(egress, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
     return true;
   }
 

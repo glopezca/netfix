@@ -2,6 +2,25 @@
 import type { HelpMap } from './parser.ts';
 
 export const HELP: HelpMap = {
+  // NAT, ACL, HTTP server, local users
+  nat: 'NAT configuration commands',
+  'access-list': 'Add an access list entry',
+  'access-lists': 'List access lists',
+  standard: 'Standard Access List',
+  translations: 'Translation entries',
+  translation: 'Clear dynamic translation',
+  inside: 'Inside address translation',
+  outside: 'Translate outside addresses',
+  overload: 'Overload an address translation',
+  netmask: 'Specify the network mask',
+  permit: 'Specify packets to forward',
+  remark: 'Access list entry comment',
+  any: 'Any source host',
+  http: 'HTTP server configuration',
+  authentication: 'Set http server authentication method',
+  local: 'Use local username and passwords',
+  username: 'Establish User Name Authentication',
+  privilege: 'Set user privilege level',
   // exec
   enable: 'Turn on privileged commands',
   disable: 'Turn off privileged commands',

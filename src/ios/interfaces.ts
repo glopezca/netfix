@@ -66,6 +66,8 @@ export interface IfaceConfig {
   readonly speed?: string;
   readonly duplex?: string;
   readonly relayInfoTrusted: boolean;
+  /** `ip nat inside` / `ip nat outside`. */
+  readonly nat?: 'inside' | 'outside';
   /** true for L2 switch ports (no IP processing). */
   readonly switchport: boolean;
 }

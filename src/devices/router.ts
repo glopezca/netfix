@@ -14,6 +14,11 @@ import type { Frame } from '../net/packets.ts';
 import type { DeviceHooks } from './hooks.ts';
 import { routerModeTable } from '../ios/commands/router-modes.ts';
 import { httpLines } from '../ios/http.ts';
+import { NatTable } from '../net/nat.ts';
+import { EMPTY_NAT, natConfigLines } from '../ios/nat-config.ts';
+import type { NatConfig } from '../ios/nat-config.ts';
+import { aclConfigLines } from '../ios/acl.ts';
+import type { AccessLists } from '../ios/acl.ts';
 import { headerLines, globalIpLines, interfaceSection, trailerLines } from '../ios/runconfig.ts';
 import { formatIp, formatMask } from '../core/ip.ts';
 import { DhcpServer } from '../dhcp/server.ts';
@@ -39,6 +44,11 @@ export class Router extends IosDevice implements NetDevice {
   dhcp = new DhcpServer();
   plane: RouterPlane;
   readonly web: IosWeb;
+  acls: AccessLists = new Map();
+  readonly aclHits = new Map<string, number>();
+  nat: NatConfig = EMPTY_NAT;
+  readonly natTable = new NatTable();
+  debugNat = false;
   private readonly macs = new Map<string, string>();
 
   constructor(opts: { id?: string; clock?: SimClock; seed?: number } = {}) {
@@ -102,6 +112,11 @@ export class Router extends IosDevice implements NetDevice {
   resetConfig(): void {
     this.resetGlobals('Router');
     this.staticRoutes = [];
+    this.acls = new Map();
+    this.aclHits.clear();
+    this.nat = EMPTY_NAT;
+    this.natTable.clear();
+    this.debugNat = false;
     this.dhcp = new DhcpServer();
     this.plane = new RouterPlane(this);
     this.ifaces.clear();
@@ -180,6 +195,7 @@ export class Router extends IosDevice implements NetDevice {
   }
 
   runningConfig(): string[] {
+    const acl = aclConfigLines(this.acls);
     return [
       ...headerLines(this, '15.1'),
       ...dhcpRunningConfig(this.dhcp),
@@ -190,11 +206,13 @@ export class Router extends IosDevice implements NetDevice {
       '!',
       '!',
       ...interfaceSection(this),
+      ...natConfigLines(this.nat),
       'ip classless',
       ...this.staticRoutes.map(routeLine),
       ...httpLines(this),
       '!',
       'ip flow-export version 9',
+      ...(acl.named.length + acl.numbered.length ? ['!', ...acl.named, ...acl.numbered] : []),
       ...trailerLines(this),
     ];
   }

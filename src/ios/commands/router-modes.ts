@@ -11,6 +11,7 @@ import { DHCP_GLOBAL } from './dhcp-global.ts';
 import { DHCP_POOL, DHCP_CLASS } from './dhcp-pool.ts';
 import { DHCP_EXEC_USER, DHCP_EXEC_PRIV } from './dhcp-exec.ts';
 import { ROUTER_NET_EXEC, ROUTER_NET_PRIV } from './net-exec.ts';
+import { NAT_GLOBAL, NAT_IF, ACL_MODE, NAT_EXEC, NAT_PRIV } from './nat.ts';
 
 type Def = CommandDef<Cli<Router>>;
 
@@ -49,12 +50,13 @@ const ROUTER_GLOBAL: readonly Def[] = [
 ];
 
 export const routerModeTable: ModeTable<Router> = {
-  user: [...EXEC_USER, ...DHCP_EXEC_USER, ...ROUTER_NET_EXEC],
-  exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV, ...ROUTER_NET_PRIV],
-  config: [...GLOBAL, ...ROUTER_GLOBAL, ...DHCP_GLOBAL],
-  'config-if': [...ROUTER_IF],
-  'config-subif': [...ROUTER_SUBIF],
-  'config-if-range': [...ROUTER_IF],
+  user: [...EXEC_USER, ...DHCP_EXEC_USER, ...ROUTER_NET_EXEC, ...NAT_EXEC],
+  exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV, ...ROUTER_NET_PRIV, ...NAT_PRIV],
+  config: [...GLOBAL, ...ROUTER_GLOBAL, ...DHCP_GLOBAL, ...NAT_GLOBAL],
+  'config-if': [...ROUTER_IF, ...NAT_IF],
+  'config-subif': [...ROUTER_SUBIF, ...NAT_IF],
+  'config-if-range': [...ROUTER_IF, ...NAT_IF],
+  'config-std-nacl': [...ACL_MODE],
   'config-line': [...LINE_MODE],
   'dhcp-config': [...DHCP_POOL],
   'dhcp-class': [...DHCP_CLASS],

@@ -63,6 +63,7 @@ export function interfaceBlock(cfg: IfaceConfig, extra: readonly string[] = []):
   else lines.push(...addressLines(cfg));
   for (const h of cfg.helpers) lines.push(` ip helper-address ${formatIp(h)}`);
   if (cfg.relayInfoTrusted) lines.push(' ip dhcp relay information trusted');
+  if (cfg.nat) lines.push(` ip nat ${cfg.nat}`);
   lines.push(...extra);
   if (cfg.switchport) {
     if (cfg.duplex) lines.push(` duplex ${cfg.duplex}`);

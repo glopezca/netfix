@@ -4,6 +4,7 @@ import type { Host } from '../devices/host.ts';
 import { httpGet } from './net-tools.ts';
 import { systemctl, journalctl, ss } from './linux-services.ts';
 import { ip, ping, dig, nslookup, hostCmd, dhclient } from './linux-net.ts';
+import { traceroute } from './trace-cmds.ts';
 import { FsError } from '../bash/vfs.ts';
 import { APACHE_TOOLS } from '../services/apache/tools.ts';
 import { curl } from './curl.ts';
@@ -99,7 +100,7 @@ function commandNotFound(ctx: Ctx): number {
 
 export function linuxPrograms(host: Host): Map<string, CommandFn> {
   return new Map<string, CommandFn>([
-    ['ip', ip(host)], ['ping', ping(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)],
+    ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)],
     ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh],
     ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
     ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],

@@ -103,6 +103,7 @@ export const UTIL_DOCS: Readonly<Record<string, UtilDoc>> = {
   less: { group: 'editores', synopsis: 'less [FICHERO]...', summary: 'Paginador: en netsim muestra el texto completo (usa la barra de desplazamiento).' },
   more: { group: 'editores', synopsis: 'more [FICHERO]...', summary: 'Paginador sencillo (igual que less en netsim).' },
   ip: { group: 'red', section: 8, synopsis: 'ip [-br] [-c] {address | route | neigh | link} [show]', summary: 'Direcciones, rutas y vecinos (iproute2). Abreviable: ip a, ip r, ip n.' },
+  traceroute: { group: 'red', synopsis: 'traceroute [-n] [-m SALTOS] DESTINO', summary: 'Ruta hasta el destino: sondas ICMP con TTL 1, 2, 3… (como traceroute -I); cada router responde «tiempo excedido». -n sin nombres, -m máximo de saltos (30).' },
   ping: { group: 'red', synopsis: 'ping [-c N] DESTINO', summary: 'Eco ICMP (sin -c, 4 paquetes en netsim). Estado 0 si responde, 1 si no, 2 si el nombre no se resuelve.' },
   dig: { group: 'red', synopsis: 'dig [@SERVIDOR] NOMBRE [TIPO] [+short] | dig -x IP', summary: 'Consulta DNS con la salida de BIND 9 (secciones QUESTION, ANSWER, AUTHORITY; status NOERROR/NXDOMAIN/REFUSED).' },
   nslookup: { group: 'red', synopsis: 'nslookup NOMBRE [SERVIDOR]', summary: 'Consulta DNS sencilla.' },

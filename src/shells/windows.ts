@@ -7,6 +7,7 @@ import { HOST_PORT } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import { findUnit, unitActive, openPorts, UNITS } from '../services/units.ts';
 import { runPing } from '../net/ping.ts';
+import { tracert } from './trace-cmds.ts';
 import { formatIp, formatMask, parseIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
 import { formatLeaseTime } from '../core/clock.ts';
@@ -28,6 +29,7 @@ const HELP = [
   '  netstat -an              Listening ports and connections',
   '  nslookup <name> [srv]    DNS lookup',
   '  ping [-n N] <host>       Send ICMP echo requests',
+  '  tracert [-h N] <host>    Trace the route to a host',
   '  ssh user@host            SSH client',
   '  sc query [svc] | sc start|stop <svc> | net start [svc] | net stop <svc>   (Server-PT)',
 ];
@@ -89,6 +91,7 @@ export class WindowsShell extends BaseShell {
     switch (cmd.toLowerCase()) {
       case 'ipconfig': return this.ipconfig(arg);
       case 'ping': return this.ping(args);
+      case 'tracert': return tracert(this.host, args);
       case 'arp': return this.arp(arg);
       case 'nslookup': return args[0] ? nslookupOutput(args[0], dnsQuery(this.host, args[0], 'A', args[1] ? parseIp(args[1]) ?? undefined : undefined), true) : ['Usage: nslookup <name> [server]'];
       case 'netstat': return this.netstat();

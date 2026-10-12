@@ -53,6 +53,7 @@ export const DHCP_EXEC_PRIV: readonly Def[] = [
     run: (cli) => {
       cli.device.dhcp.debugEvents = false;
       cli.device.dhcp.debugPacket = false;
+      cli.device.debugNat = false;
       cli.out('All possible debugging has been turned off');
     },
   },

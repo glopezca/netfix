@@ -7,6 +7,9 @@ import type { DeviceHooks } from '../../devices/hooks.ts';
 import { parseIp, formatIp, formatMask } from '../../core/ip.ts';
 import { formatMacCisco } from '../../core/mac.ts';
 import { runPing } from '../../net/ping.ts';
+import { runTrace, iosTraceLines, DEFAULT_MAX_HOPS } from '../../net/trace.ts';
+
+const TRACE_TIMEOUT_MS = 3000;
 import { parseIfaceName } from '../interfaces.ts';
 
 const PING_TIMEOUT_MS = 2000;
@@ -103,6 +106,18 @@ export const ROUTER_NET_EXEC: readonly Def[] = [
     syntax: 'ping <WORD:target> [repeat <1-2147483647:n>] [source <WORD:src>]',
     help: { target: 'Ping destination address or hostname', n: 'specify repeat count', src: 'specify source address or name' },
     run: (cli, m) => iosPing(cli, routerPingHost(cli.device), m.get('target') ?? '', Number(m.get('n') ?? DEFAULT_COUNT), m.get('src')),
+  },
+  {
+    syntax: 'traceroute <WORD:target>',
+    help: { target: 'Trace route to destination address or hostname' },
+    run: (cli, m) => {
+      const target = m.get('target') ?? '';
+      const dst = parseIp(target);
+      if (dst === null) return cli.out('% Unrecognized host or address, or protocol not running.', '');
+      const r = cli.device;
+      const res = runTrace(r.plane.stack, r.hooks, dst, { maxHops: DEFAULT_MAX_HOPS, probes: 3, timeoutMs: TRACE_TIMEOUT_MS, now: () => r.clock.elapsed() });
+      cli.out(...iosTraceLines(target, res));
+    },
   },
   { syntax: 'show {arp | ip arp}', run: (cli) => cli.out(...showArp(cli.device.plane.stack, ownArp(cli.device), cli.device.clock.now())) },
   { syntax: 'show dhcp lease', run: (cli) => cli.out(...showDhcpLease(cli.device)) },

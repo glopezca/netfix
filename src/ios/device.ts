@@ -8,7 +8,7 @@ import type { IosHttpConfig, LocalUser } from './http.ts';
 
 export type ModeName =
   | 'user' | 'exec' | 'config' | 'config-if' | 'config-subif' | 'config-if-range'
-  | 'dhcp-config' | 'dhcp-class' | 'config-line' | 'config-vlan';
+  | 'dhcp-config' | 'dhcp-class' | 'config-line' | 'config-vlan' | 'config-std-nacl';
 
 export interface Cli<D extends IosDevice = IosDevice> {
   readonly device: D;
@@ -23,6 +23,8 @@ export interface SessionApi {
   pool: string | undefined;
   poolClass: string | undefined;
   vlan: number | undefined;
+  /** Named access list being edited (`ip access-list standard NAME`). */
+  acl: string | undefined;
   enterMode(mode: ModeName): void;
   runExec(line: string): void;
   requestPassword(onOk: () => void): void;

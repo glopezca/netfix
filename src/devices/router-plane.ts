@@ -15,6 +15,7 @@ import { DhcpClient } from '../dhcp/client.ts';
 import type { Lease } from '../dhcp/client.ts';
 import { selectPool, findManualPool } from '../dhcp/match.ts';
 import { identity } from '../dhcp/server.ts';
+import { natAnswersArp, natForward, natPrerouting } from './router-nat.ts';
 import type { ServerReply } from '../dhcp/server.ts';
 
 const DHCP_DEFAULT_ROUTE_AD = 254;
@@ -104,7 +105,15 @@ export class RouterPlane implements StackHost {
       this.icmpError(packet, src, 'unreachable');
       return;
     }
-    this.stack.sendVia(egress, { ...packet, ttl: packet.ttl - 1 });
+    this.stack.sendVia(egress, natForward(this.router, inIface, egress.iface, { ...packet, ttl: packet.ttl - 1 }));
+  }
+
+  prerouting(iface: string, packet: IpPacket): IpPacket {
+    return natPrerouting(this.router, iface, packet);
+  }
+
+  answersArp(iface: string, ip: number): boolean {
+    return natAnswersArp(this.router, iface, ip);
   }
 
   private icmpError(packet: IpPacket, src: number, type: 'unreachable' | 'ttl-exceeded'): void {

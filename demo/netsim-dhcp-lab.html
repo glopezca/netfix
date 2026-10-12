@@ -4066,6 +4066,25 @@ return { Match, expandSyntax, buildTrie, tokenize, matchLine, helpFor, completeT
 })();
 __m["ios/help.js"] = (() => {
 const HELP = {
+    // NAT, ACL, HTTP server, local users
+    nat: 'NAT configuration commands',
+    'access-list': 'Add an access list entry',
+    'access-lists': 'List access lists',
+    standard: 'Standard Access List',
+    translations: 'Translation entries',
+    translation: 'Clear dynamic translation',
+    inside: 'Inside address translation',
+    outside: 'Translate outside addresses',
+    overload: 'Overload an address translation',
+    netmask: 'Specify the network mask',
+    permit: 'Specify packets to forward',
+    remark: 'Access list entry comment',
+    any: 'Any source host',
+    http: 'HTTP server configuration',
+    authentication: 'Set http server authentication method',
+    local: 'Use local username and passwords',
+    username: 'Establish User Name Authentication',
+    privilege: 'Set user privilege level',
     // exec
     enable: 'Turn on privileged commands',
     disable: 'Turn off privileged commands',
@@ -4233,6 +4252,7 @@ const PROMPT_SUFFIX = {
     'dhcp-class': '(config-dhcp-pool-class)#',
     'config-line': '(config-line)#',
     'config-vlan': '(config-vlan)#',
+    'config-std-nacl': '(config-std-nacl)#',
 };
 const EXEC_MODES = new Set(['user', 'exec']);
 const MAX_PASSWORD_TRIES = 3;
@@ -4245,6 +4265,7 @@ class Session {
     pool;
     poolClass;
     vlan;
+    acl;
     state = { kind: 'normal' };
     output = [];
     constructor(device, opts = {}) {
@@ -4337,6 +4358,7 @@ class Session {
         this.ifaces = [];
         this.pool = undefined;
         this.poolClass = undefined;
+        this.acl = undefined;
         this.vlan = undefined;
         this.device.log('%SYS-5-CONFIG_I: Configured from console by console');
     }
@@ -4557,7 +4579,7 @@ class IpStack {
     }
     onArp(iface, frame) {
         const arp = frame.arp;
-        const targetsMe = iface.addrs.some((a) => a.ip === arp.targetIp);
+        const targetsMe = iface.addrs.some((a) => a.ip === arp.targetIp) || (this.host.answersArp?.(iface.name, arp.targetIp) ?? false);
         if (targetsMe || this.arp.has(arp.senderIp))
             this.learn(arp.senderIp, arp.senderMac, iface.name);
         if (arp.op === 'request' && targetsMe) {
@@ -4576,7 +4598,8 @@ class IpStack {
         for (const p of waiting.packets)
             this.emitIp(waiting.iface, mac, p);
     }
-    onIp(iface, packet, frame) {
+    onIp(iface, arrived, frame) {
+        const packet = this.host.prerouting?.(iface.name, arrived) ?? arrived;
         const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst);
         if (!forMe) {
             this.host.forward?.(iface.name, packet);
@@ -4605,7 +4628,7 @@ class IpStack {
             waiter({ kind: 'ttl', from: packet.src });
     }
     /** Sends an ICMP echo request; the callback fires on reply/error (never on timeout). */
-    echo(dst, id, seq, src, onResult) {
+    echo(dst, id, seq, src, onResult, ttl = this.host.ttl) {
         const egress = this.host.route(dst);
         if (!egress)
             return false;
@@ -4617,7 +4640,7 @@ class IpStack {
             this.host.schedule(0, () => onResult({ kind: 'reply', from: dst, ttl: this.host.ttl }));
             return true;
         }
-        this.sendVia(egress, { src: srcIp, dst, ttl: this.host.ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
+        this.sendVia(egress, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
         return true;
     }
     /** Routes and sends a packet originated (or forwarded) by this host. */
@@ -20201,6 +20224,7 @@ const UTIL_DOCS = {
     less: { group: 'editores', synopsis: 'less [FICHERO]...', summary: 'Paginador: en netsim muestra el texto completo (usa la barra de desplazamiento).' },
     more: { group: 'editores', synopsis: 'more [FICHERO]...', summary: 'Paginador sencillo (igual que less en netsim).' },
     ip: { group: 'red', section: 8, synopsis: 'ip [-br] [-c] {address | route | neigh | link} [show]', summary: 'Direcciones, rutas y vecinos (iproute2). Abreviable: ip a, ip r, ip n.' },
+    traceroute: { group: 'red', synopsis: 'traceroute [-n] [-m SALTOS] DESTINO', summary: 'Ruta hasta el destino: sondas ICMP con TTL 1, 2, 3… (como traceroute -I); cada router responde «tiempo excedido». -n sin nombres, -m máximo de saltos (30).' },
     ping: { group: 'red', synopsis: 'ping [-c N] DESTINO', summary: 'Eco ICMP (sin -c, 4 paquetes en netsim). Estado 0 si responde, 1 si no, 2 si el nombre no se resuelve.' },
     dig: { group: 'red', synopsis: 'dig [@SERVIDOR] NOMBRE [TIPO] [+short] | dig -x IP', summary: 'Consulta DNS con la salida de BIND 9 (secciones QUESTION, ANSWER, AUTHORITY; status NOERROR/NXDOMAIN/REFUSED).' },
     nslookup: { group: 'red', synopsis: 'nslookup NOMBRE [SERVIDOR]', summary: 'Consulta DNS sencilla.' },
@@ -22417,6 +22441,144 @@ function dhclient(host) {
 
 return { ip, ping, dig, nslookup, hostCmd, dhclient };
 })();
+__m["net/trace.js"] = (() => {
+const { formatIp } = __m["core/ip.js"];
+const DEFAULT_MAX_HOPS = 30;
+let traceId = 0x5000;
+function runTrace(stack, hooks, dst, o) {
+    const id = traceId++ & 0xffff;
+    const hops = [];
+    let seq = 0;
+    for (let ttl = 1; ttl <= o.maxHops; ttl++) {
+        const probes = [];
+        let done = false;
+        for (let p = 0; p < o.probes; p++) {
+            const start = o.now();
+            let result;
+            const sent = stack.echo(dst, id, seq++, undefined, (r) => { result = r; }, ttl);
+            if (!sent)
+                return { hops, reached: false, noroute: true };
+            hooks.runUntil(() => result !== undefined, o.timeoutMs);
+            probes.push(result ? { from: result.from, ms: o.now() - start } : null);
+            if (result && result.kind !== 'ttl')
+                done = true;
+        }
+        hops.push({ ttl, probes });
+        if (done)
+            return { hops, reached: true, noroute: false };
+    }
+    return { hops, reached: false, noroute: false };
+}
+/** A believable fraction of a millisecond for times that the simulator measures in whole ms. */
+function fineMs(ms, hop, probe) {
+    return (ms + ((hop * 7 + probe * 3) % 10) / 37 + 0.211).toFixed(3);
+}
+function firstFrom(h) {
+    return h.probes.find((p) => p !== null)?.from;
+}
+/** GNU/Linux traceroute (inetutils/traceroute 2.1 layout). */
+function linuxTraceLines(target, dst, r, o) {
+    const lines = [`traceroute to ${target} (${formatIp(dst)}), ${o.maxHops} hops max, 60 byte packets`];
+    for (const h of r.hops) {
+        let last;
+        const parts = h.probes.map((p, i) => {
+            if (!p)
+                return '*';
+            const who = p.from === last ? '' : o.numeric ? `${formatIp(p.from)}  ` : `${p.from === o.gateway ? '_gateway' : formatIp(p.from)} (${formatIp(p.from)})  `;
+            last = p.from;
+            return `${who}${fineMs(p.ms, h.ttl, i)} ms`;
+        });
+        lines.push(`${String(h.ttl).padStart(2)}${parts.map((t, i) => (t === '*' && i > 0 ? ` ${t}` : `  ${t}`)).join('')}`);
+    }
+    return lines;
+}
+/** Windows tracert. */
+function windowsTraceLines(shown, r, maxHops) {
+    const lines = ['', `Tracing route to ${shown} over a maximum of ${maxHops} hops`, ''];
+    for (const h of r.hops) {
+        const cols = h.probes.map((p) => (p ? `${(p.ms < 1 ? '<1' : String(p.ms)).padStart(6)} ms` : '     *   ')).join('');
+        const from = firstFrom(h);
+        lines.push(`${String(h.ttl).padStart(3)}${cols}  ${from === undefined ? 'Request timed out.' : formatIp(from)}`);
+    }
+    lines.push('', 'Trace complete.', '');
+    return lines;
+}
+/** IOS traceroute. */
+function iosTraceLines(target, r) {
+    const lines = ['Type escape sequence to abort.', `Tracing the route to ${target}`, ''];
+    for (const h of r.hops) {
+        const from = firstFrom(h);
+        if (from === undefined) {
+            lines.push(`${String(h.ttl).padStart(3)}  *    *    * `);
+            continue;
+        }
+        lines.push(`${String(h.ttl).padStart(3)} ${formatIp(from)} ${h.probes.map((p) => (p ? `${p.ms} msec` : '*')).join(' ')}`);
+    }
+    return lines;
+}
+
+return { DEFAULT_MAX_HOPS, runTrace, fineMs, linuxTraceLines, windowsTraceLines, iosTraceLines };
+})();
+__m["shells/trace-cmds.js"] = (() => {
+const { resolveHost } = __m["shells/net-tools.js"];
+const { DEFAULT_MAX_HOPS, linuxTraceLines, runTrace, windowsTraceLines } = __m["net/trace.js"];
+const { formatIp } = __m["core/ip.js"];
+const LINUX_TIMEOUT_MS = 5000;
+const WINDOWS_TIMEOUT_MS = 4000;
+const PROBES = 3;
+const MAX_TTL = 255;
+function maxHopsArg(args, flag) {
+    const i = args.indexOf(flag);
+    if (i < 0)
+        return DEFAULT_MAX_HOPS;
+    const n = Number(args[i + 1]);
+    return Number.isInteger(n) && n >= 1 && n <= MAX_TTL ? n : null;
+}
+function traceroute(host) {
+    return (ctx) => {
+        const args = ctx.argv.slice(1);
+        const maxHops = maxHopsArg(args, '-m');
+        if (maxHops === null) {
+            ctx.err('first hop out of range\n');
+            return 2;
+        }
+        const target = args.filter((a, i) => !a.startsWith('-') && args[i - 1] !== '-m').at(0);
+        if (!target) {
+            ctx.err('Usage:\n  traceroute [ -46dFITnreAUDV ] [ -m max_ttl ] host [ packetlen ]\n');
+            return 2;
+        }
+        const r = resolveHost(host, target);
+        if (r.kind === 'error') {
+            ctx.err(`${target}: Name or service not known\nCannot handle "host" cmdline arg \`${target}' on position 1 (argc 1)\n`);
+            return 2;
+        }
+        const res = runTrace(host.stack, host.hooks, r.ip, { maxHops, probes: PROBES, timeoutMs: LINUX_TIMEOUT_MS, now: () => host.clock.elapsed() });
+        if (res.noroute) {
+            ctx.err('connect: Network is unreachable\n');
+            return 1;
+        }
+        const lines = linuxTraceLines(target, r.ip, res, { numeric: args.includes('-n'), gateway: host.config.gateway, maxHops });
+        ctx.out(`${lines.join('\n')}\n`);
+        return 0;
+    };
+}
+function tracert(host, args) {
+    const lower = args.map((a) => a.toLowerCase());
+    const maxHops = maxHopsArg(lower, '-h');
+    const target = args.filter((a, i) => !a.startsWith('-') && lower[i - 1] !== '-h').at(-1);
+    if (!target || maxHops === null)
+        return ['', 'Usage: tracert [-d] [-h maximum_hops] target_name', ''];
+    const r = resolveHost(host, target);
+    if (r.kind === 'error')
+        return [`Unable to resolve target system name ${target}.`];
+    const res = runTrace(host.stack, host.hooks, r.ip, { maxHops, probes: PROBES, timeoutMs: WINDOWS_TIMEOUT_MS, now: () => host.clock.elapsed() });
+    if (res.noroute)
+        return ['', `Unable to contact IP driver. General failure.`, ''];
+    return windowsTraceLines(r.viaDns ? `${target} [${formatIp(r.ip)}]` : formatIp(r.ip), res, maxHops);
+}
+
+return { traceroute, tracert };
+})();
 __m["services/apache/tools.js"] = (() => {
 const { errMsg } = __m["bash/coreutils/common.js"];
 const { APACHE_ROOT, MODULE_DEPS } = __m["services/apache/defaults.js"];
@@ -22806,6 +22968,7 @@ __m["shells/linux-programs.js"] = (() => {
 const { httpGet } = __m["shells/net-tools.js"];
 const { systemctl, journalctl, ss } = __m["shells/linux-services.js"];
 const { ip, ping, dig, nslookup, hostCmd, dhclient } = __m["shells/linux-net.js"];
+const { traceroute } = __m["shells/trace-cmds.js"];
 const { FsError } = __m["bash/vfs.js"];
 const { APACHE_TOOLS } = __m["services/apache/tools.js"];
 const { curl } = __m["shells/curl.js"];
@@ -22920,7 +23083,7 @@ function commandNotFound(ctx) {
 }
 function linuxPrograms(host) {
     return new Map([
-        ['ip', ip(host)], ['ping', ping(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)],
+        ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)],
         ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh],
         ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
         ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
@@ -23792,6 +23955,7 @@ const { nslookupOutput } = __m["shells/dns-format.js"];
 const { HOST_PORT } = __m["devices/host.js"];
 const { findUnit, unitActive, openPorts, UNITS } = __m["services/units.js"];
 const { runPing } = __m["net/ping.js"];
+const { tracert } = __m["shells/trace-cmds.js"];
 const { formatIp, formatMask, parseIp } = __m["core/ip.js"];
 const { formatMacCisco } = __m["core/mac.js"];
 const { formatLeaseTime } = __m["core/clock.js"];
@@ -23811,6 +23975,7 @@ const HELP = [
     '  netstat -an              Listening ports and connections',
     '  nslookup <name> [srv]    DNS lookup',
     '  ping [-n N] <host>       Send ICMP echo requests',
+    '  tracert [-h N] <host>    Trace the route to a host',
     '  ssh user@host            SSH client',
     '  sc query [svc] | sc start|stop <svc> | net start [svc] | net stop <svc>   (Server-PT)',
 ];
@@ -23858,6 +24023,7 @@ class WindowsShell extends BaseShell {
         switch (cmd.toLowerCase()) {
             case 'ipconfig': return this.ipconfig(arg);
             case 'ping': return this.ping(args);
+            case 'tracert': return tracert(this.host, args);
             case 'arp': return this.arp(arg);
             case 'nslookup': return args[0] ? nslookupOutput(args[0], dnsQuery(this.host, args[0], 'A', args[1] ? parseIp(args[1]) ?? undefined : undefined), true) : ['Usage: nslookup <name> [server]'];
             case 'netstat': return this.netstat();
@@ -26130,6 +26296,167 @@ function showIpRoute(table) {
 
 return { connectedRoutes, buildRoutingTable, lookupRoute, resolveEgress, showIpRoute };
 })();
+__m["ios/acl.js"] = (() => {
+/** Standard IP access lists (numbered 1-99 and named), used by NAT to select inside sources. */
+const { formatIp, parseIp } = __m["core/ip.js"];
+const ANY_WILDCARD = 0xffffffff;
+const SEQ_STEP = 10;
+function isNumberedStandard(name) {
+    return /^\d+$/.test(name) && Number(name) >= 1 && Number(name) <= 99;
+}
+/** "any" | "host A.B.C.D" | "A.B.C.D [wildcard]" → address and wildcard, or an IOS error. */
+function parseSource(words) {
+    const [first, second] = words;
+    if (first === 'any')
+        return { ip: 0, wildcard: ANY_WILDCARD };
+    if (first === 'host') {
+        const ip = parseIp(second ?? '');
+        return ip === null ? '% Invalid input detected.' : { ip, wildcard: 0 };
+    }
+    const ip = parseIp(first ?? '');
+    const wildcard = second === undefined ? 0 : parseIp(second);
+    if (ip === null || wildcard === null)
+        return '% Invalid input detected.';
+    return { ip: (ip & ~wildcard) >>> 0, wildcard };
+}
+function aclEntryMatches(e, ip) {
+    return e.action !== 'remark' && ((ip & ~e.wildcard) >>> 0) === ((e.ip & ~e.wildcard) >>> 0);
+}
+/** First matching entry (implicit deny when none). */
+function aclFirstMatch(entries, ip) {
+    return entries?.find((e) => aclEntryMatches(e, ip));
+}
+function aclPermits(entries, ip) {
+    return aclFirstMatch(entries, ip)?.action === 'permit';
+}
+function nextSeq(entries) {
+    return (entries.reduce((m, e) => Math.max(m, e.seq), 0) + SEQ_STEP);
+}
+function sourceText(e, style) {
+    if (e.wildcard === ANY_WILDCARD)
+        return 'any';
+    if (e.wildcard === 0)
+        return style === 'config' ? `host ${formatIp(e.ip)}` : formatIp(e.ip);
+    return style === 'config' ? `${formatIp(e.ip)} ${formatIp(e.wildcard)}` : `${formatIp(e.ip)}, wildcard bits ${formatIp(e.wildcard)}`;
+}
+function entryBody(e) {
+    return e.action === 'remark' ? `remark ${e.remark ?? ''}` : `${e.action} ${sourceText(e, 'config')}`;
+}
+/** Running-config lines: numbered lists as `access-list N …`, named ones as blocks. */
+function aclConfigLines(lists) {
+    const numbered = [];
+    const named = [];
+    for (const [name, entries] of [...lists.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }))) {
+        if (isNumberedStandard(name))
+            numbered.push(...entries.map((e) => `access-list ${name} ${entryBody(e)}`));
+        else
+            named.push(`ip access-list standard ${name}`, ...entries.map((e) => ` ${entryBody(e)}`));
+    }
+    return { numbered, named };
+}
+function showAccessLists(lists, hits) {
+    const out = [];
+    for (const [name, entries] of [...lists.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }))) {
+        out.push(`Standard IP access list ${name}`);
+        for (const e of entries) {
+            if (e.action === 'remark')
+                continue;
+            const n = hits.get(`${name}:${e.seq}`) ?? 0;
+            out.push(`    ${e.seq} ${e.action} ${sourceText(e, 'show')}${n ? ` (${n} match(es))` : ''}`);
+        }
+    }
+    return out;
+}
+
+return { isNumberedStandard, parseSource, aclEntryMatches, aclFirstMatch, aclPermits, nextSeq, sourceText, aclConfigLines, showAccessLists };
+})();
+__m["devices/router-nat.js"] = (() => {
+const { aclFirstMatch } = __m["ios/acl.js"];
+const { effectiveAddress } = __m["ios/commands/show-iface.js"];
+const { formatIp } = __m["core/ip.js"];
+function natRole(r, iface) {
+    return r.iface(iface)?.nat;
+}
+function ifaceIp(r, name) {
+    const cfg = r.iface(name);
+    return cfg ? effectiveAddress(r, cfg).ip : undefined;
+}
+/** Static rules with `interface X` resolved to the interface's current address. */
+function resolvedStatics(r) {
+    return r.nat.statics.flatMap((s) => {
+        const global = s.globalIface ? ifaceIp(r, s.globalIface) : s.global;
+        return global === undefined ? [] : [{ local: s.local, global, proto: s.proto, localPort: s.localPort, globalPort: s.globalPort }];
+    });
+}
+/** Addresses of a pool already bound 1:1. */
+function poolInUse(r, pool) {
+    return r.natTable.entries().filter((e) => e.proto === null && e.insideGlobal >= pool.start && e.insideGlobal <= pool.end).length;
+}
+function permitted(r, acl, src) {
+    const entry = aclFirstMatch(r.acls.get(acl), src);
+    if (entry)
+        r.aclHits.set(`${acl}:${entry.seq}`, (r.aclHits.get(`${acl}:${entry.seq}`) ?? 0) + 1);
+    return entry?.action === 'permit';
+}
+function poolTarget(r, poolName, overload) {
+    const pool = r.nat.pools.find((p) => p.name === poolName);
+    if (!pool)
+        return null;
+    if (overload)
+        return { global: pool.start, overload: true };
+    for (let ip = pool.start; ip <= pool.end; ip++)
+        if (!r.natTable.globalInUse(ip))
+            return { global: ip, overload: false };
+    return null;
+}
+function dynamicTarget(r, p) {
+    for (const d of r.nat.dynamic) {
+        if (!permitted(r, d.acl, p.src))
+            continue;
+        if (d.iface) {
+            const ip = ifaceIp(r, d.iface);
+            return ip === undefined ? null : { global: ip, overload: true };
+        }
+        return poolTarget(r, d.pool, d.overload);
+    }
+    return null;
+}
+function debug(r, before, after, inbound) {
+    if (!r.debugNat)
+        return;
+    const s = inbound ? `${formatIp(before.src)}` : `${formatIp(before.src)}->${formatIp(after.src)}`;
+    const d = inbound ? `${formatIp(before.dst)}->${formatIp(after.dst)}` : formatIp(before.dst);
+    r.log(`NAT: s=${s}, d=${d} [${r.natTable.hits + r.natTable.misses}]`);
+}
+/** Outside → inside, before the routing decision. */
+function natPrerouting(r, iface, p) {
+    if (natRole(r, iface) !== 'outside')
+        return p;
+    const out = r.natTable.outside(p, resolvedStatics(r));
+    if (!out)
+        return p;
+    debug(r, p, out, true);
+    return out;
+}
+/** Inside → outside, once the egress interface is known. */
+function natForward(r, inIface, outIface, p) {
+    if (natRole(r, inIface) !== 'inside' || natRole(r, outIface) !== 'outside')
+        return p;
+    const out = r.natTable.inside(p, resolvedStatics(r), (pk) => dynamicTarget(r, pk));
+    if (!out)
+        return p;
+    debug(r, p, out, false);
+    return out;
+}
+/** Static and pool global addresses answer ARP on outside interfaces (IOS "alias"). */
+function natAnswersArp(r, iface, ip) {
+    if (natRole(r, iface) !== 'outside')
+        return false;
+    return resolvedStatics(r).some((s) => s.global === ip) || r.nat.pools.some((p) => ip >= p.start && ip <= p.end);
+}
+
+return { natRole, resolvedStatics, poolInUse, natPrerouting, natForward, natAnswersArp };
+})();
 __m["devices/router-plane.js"] = (() => {
 const { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DEFAULT_TTL } = __m["net/packets.js"];
 const { IpStack } = __m["net/ipstack.js"];
@@ -26141,6 +26468,7 @@ const { formatHexId, formatMacCisco, clientIdFromMac, asciiToHex } = __m["core/m
 const { DhcpClient } = __m["dhcp/client.js"];
 const { selectPool, findManualPool } = __m["dhcp/match.js"];
 const { identity } = __m["dhcp/server.js"];
+const { natAnswersArp, natForward, natPrerouting } = __m["devices/router-nat.js"];
 const DHCP_DEFAULT_ROUTE_AD = 254;
 class RouterPlane {
     stack;
@@ -26217,7 +26545,13 @@ class RouterPlane {
             this.icmpError(packet, src, 'unreachable');
             return;
         }
-        this.stack.sendVia(egress, { ...packet, ttl: packet.ttl - 1 });
+        this.stack.sendVia(egress, natForward(this.router, inIface, egress.iface, { ...packet, ttl: packet.ttl - 1 }));
+    }
+    prerouting(iface, packet) {
+        return natPrerouting(this.router, iface, packet);
+    }
+    answersArp(iface, ip) {
+        return natAnswersArp(this.router, iface, ip);
     }
     icmpError(packet, src, type) {
         if (!packet.icmp || packet.icmp.type !== 'echo-request')
@@ -27333,6 +27667,7 @@ const DHCP_EXEC_PRIV = [
         run: (cli) => {
             cli.device.dhcp.debugEvents = false;
             cli.device.dhcp.debugPacket = false;
+            cli.device.debugNat = false;
             cli.out('All possible debugging has been turned off');
         },
     },
@@ -27356,6 +27691,8 @@ __m["ios/commands/net-exec.js"] = (() => {
 const { parseIp, formatIp, formatMask } = __m["core/ip.js"];
 const { formatMacCisco } = __m["core/mac.js"];
 const { runPing } = __m["net/ping.js"];
+const { runTrace, iosTraceLines, DEFAULT_MAX_HOPS } = __m["net/trace.js"];
+const TRACE_TIMEOUT_MS = 3000;
 const { parseIfaceName } = __m["ios/interfaces.js"];
 const PING_TIMEOUT_MS = 2000;
 const DEFAULT_COUNT = 5;
@@ -27435,6 +27772,19 @@ const ROUTER_NET_EXEC = [
         help: { target: 'Ping destination address or hostname', n: 'specify repeat count', src: 'specify source address or name' },
         run: (cli, m) => iosPing(cli, routerPingHost(cli.device), m.get('target') ?? '', Number(m.get('n') ?? DEFAULT_COUNT), m.get('src')),
     },
+    {
+        syntax: 'traceroute <WORD:target>',
+        help: { target: 'Trace route to destination address or hostname' },
+        run: (cli, m) => {
+            const target = m.get('target') ?? '';
+            const dst = parseIp(target);
+            if (dst === null)
+                return cli.out('% Unrecognized host or address, or protocol not running.', '');
+            const r = cli.device;
+            const res = runTrace(r.plane.stack, r.hooks, dst, { maxHops: DEFAULT_MAX_HOPS, probes: 3, timeoutMs: TRACE_TIMEOUT_MS, now: () => r.clock.elapsed() });
+            cli.out(...iosTraceLines(target, res));
+        },
+    },
     { syntax: 'show {arp | ip arp}', run: (cli) => cli.out(...showArp(cli.device.plane.stack, ownArp(cli.device), cli.device.clock.now())) },
     { syntax: 'show dhcp lease', run: (cli) => cli.out(...showDhcpLease(cli.device)) },
 ];
@@ -27469,6 +27819,245 @@ const ROUTER_NET_PRIV = [
 
 return { iosPing, showArp, ROUTER_NET_EXEC, ROUTER_NET_PRIV };
 })();
+__m["ios/nat-config.js"] = (() => {
+/** IOS NAT configuration (pools, dynamic and static rules) and its show/running-config output. */
+const { formatIp, formatMask } = __m["core/ip.js"];
+const EMPTY_NAT = { pools: [], dynamic: [], statics: [] };
+function sameStatic(a, b) {
+    return a.local === b.local && a.proto === b.proto && a.localPort === b.localPort;
+}
+function staticLine(s) {
+    const global = s.globalIface ? `interface ${s.globalIface}` : formatIp(s.global ?? 0);
+    if (!s.proto)
+        return `ip nat inside source static ${formatIp(s.local)} ${global}`;
+    return `ip nat inside source static ${s.proto} ${formatIp(s.local)} ${s.localPort ?? 0} ${global} ${s.globalPort ?? 0}`;
+}
+function natConfigLines(nat) {
+    return [
+        ...nat.pools.map((p) => `ip nat pool ${p.name} ${formatIp(p.start)} ${formatIp(p.end)} netmask ${formatMask(p.prefix)}`),
+        ...nat.dynamic.map((d) => `ip nat inside source list ${d.acl} ${d.iface ? `interface ${d.iface}` : `pool ${d.pool ?? ''}`}${d.overload ? ' overload' : ''}`),
+        ...nat.statics.map(staticLine),
+    ];
+}
+const W = 21;
+const ep = (ip, port) => (ip === undefined ? '---' : port === undefined ? formatIp(ip) : `${formatIp(ip)}:${port}`);
+function row(pro, ig, il, ol, og) {
+    return `${pro.padEnd(4)} ${ig.padEnd(W)} ${il.padEnd(W)} ${ol.padEnd(W)} ${og}`;
+}
+function showNatTranslations(dynamic, statics) {
+    const lines = [row('Pro', 'Inside global', 'Inside local', 'Outside local', 'Outside global')];
+    for (const e of dynamic) {
+        const out = ep(e.outside, e.outsidePort);
+        lines.push(row(e.proto ?? '---', ep(e.insideGlobal, e.globalPort), ep(e.insideLocal, e.localPort), e.proto ? out : '---', e.proto ? out : '---'));
+    }
+    for (const s of statics) {
+        lines.push(row(s.proto ?? '---', ep(s.global, s.globalPort), ep(s.local, s.localPort), '---', '---'));
+    }
+    return lines;
+}
+function showNatStatistics(i) {
+    const dyn = i.table.entries();
+    const extended = dyn.filter((e) => e.proto !== null).length + i.statics.filter((s) => s.proto).length;
+    const lines = [
+        `Total active translations: ${dyn.length + i.statics.length} (${i.statics.length} static, ${dyn.length} dynamic; ${extended} extended)`,
+        'Outside interfaces:', ...i.outside.map((n) => `  ${n}`),
+        'Inside interfaces: ', ...i.inside.map((n) => `  ${n}`),
+        `Hits: ${i.table.hits}  Misses: ${i.table.misses}`,
+        `CEF Translated packets: ${i.table.hits + i.table.misses}, CEF Punted packets: 0`,
+        'Expired translations: 0',
+        'Dynamic mappings:',
+        '-- Inside Source',
+    ];
+    i.nat.dynamic.forEach((d, n) => {
+        const refs = dyn.filter((e) => (d.iface ? true : i.nat.pools.some((p) => p.name === d.pool && e.insideGlobal >= p.start && e.insideGlobal <= p.end))).length;
+        lines.push(`[Id: ${n + 1}] access-list ${d.acl} ${d.iface ? `interface ${d.iface}` : `pool ${d.pool ?? ''}`} refcount ${refs}`);
+        const pool = i.nat.pools.find((p) => p.name === d.pool);
+        if (!pool)
+            return;
+        const total = pool.end - pool.start + 1;
+        const used = i.poolUse(pool);
+        lines.push(` pool ${pool.name}: netmask ${formatMask(pool.prefix)}`, `\tstart ${formatIp(pool.start)} end ${formatIp(pool.end)}`, `\ttype generic, total addresses ${total}, allocated ${used} (${Math.round((used * 100) / Math.max(total, 1))}%), misses 0`);
+    });
+    return lines;
+}
+
+return { EMPTY_NAT, sameStatic, natConfigLines, showNatTranslations, showNatStatistics };
+})();
+__m["ios/commands/nat.js"] = (() => {
+const { parseIp, parseMask } = __m["core/ip.js"];
+const { parseIfaceName } = __m["ios/interfaces.js"];
+const { nextSeq, parseSource, showAccessLists } = __m["ios/acl.js"];
+const { sameStatic, showNatStatistics, showNatTranslations } = __m["ios/nat-config.js"];
+const { poolInUse, resolvedStatics } = __m["devices/router-nat.js"];
+const SOURCE = '{any | host <A.B.C.D:host> | <A.B.C.D:src> [<A.B.C.D:wc>]}';
+function sourceWords(m) {
+    if (m.has('any'))
+        return ['any'];
+    if (m.get('host'))
+        return ['host', m.get('host') ?? ''];
+    return [m.get('src') ?? '', ...(m.get('wc') ? [m.get('wc') ?? ''] : [])];
+}
+function addEntry(cli, name, action, m, seq) {
+    const src = parseSource(sourceWords(m));
+    if (typeof src === 'string')
+        return cli.out(src);
+    const list = cli.device.acls.get(name) ?? [];
+    const entry = { seq: seq ?? nextSeq(list), action, ...src };
+    const rest = list.filter((e) => e.seq !== entry.seq);
+    cli.device.acls = new Map([...cli.device.acls, [name, [...rest, entry].sort((a, b) => a.seq - b.seq)]]);
+}
+function removeList(cli, name) {
+    const next = new Map(cli.device.acls);
+    next.delete(name);
+    cli.device.acls = next;
+}
+function setNat(cli, change) {
+    cli.device.nat = change(cli.device.nat);
+}
+function ifaceName(cli, text) {
+    const full = parseIfaceName(text ?? '')?.full;
+    if (full && cli.device.iface(full))
+        return full;
+    cli.out('% Invalid input detected.');
+    return undefined;
+}
+function staticRule(cli, m) {
+    const local = parseIp(m.get('local') ?? '');
+    const global = m.get('global') ? parseIp(m.get('global') ?? '') ?? undefined : undefined;
+    const globalIface = m.get('gif') ? ifaceName(cli, m.get('gif')) : undefined;
+    if (local === null || (global === undefined && globalIface === undefined))
+        return undefined;
+    const proto = m.has('tcp') ? 'tcp' : m.has('udp') ? 'udp' : undefined;
+    return { local, global, globalIface, proto, localPort: proto ? Number(m.get('lport')) : undefined, globalPort: proto ? Number(m.get('gport')) : undefined };
+}
+function dynamicRule(cli, m) {
+    const acl = m.get('acl') ?? '';
+    const iface = m.get('iface') ? ifaceName(cli, m.get('iface')) : undefined;
+    if (m.get('iface') && !iface)
+        return;
+    const pool = m.get('pool');
+    if (pool && !cli.device.nat.pools.some((p) => p.name === pool))
+        cli.out(`%Pool ${pool} does not exist`);
+    const rule = { acl, iface, pool, overload: m.has('overload') || iface !== undefined };
+    setNat(cli, (n) => ({ ...n, dynamic: [...n.dynamic.filter((d) => d.acl !== acl), rule] }));
+}
+function addPool(cli, m) {
+    const start = parseIp(m.get('start') ?? '');
+    const end = parseIp(m.get('end') ?? '');
+    const prefix = m.get('mask') ? parseMask(m.get('mask') ?? '') : Number(m.get('len'));
+    if (start === null || end === null || prefix === null || end < start)
+        return cli.out('%End address less than start address');
+    const pool = { name: m.get('name') ?? '', start, end, prefix };
+    setNat(cli, (n) => ({ ...n, pools: [...n.pools.filter((p) => p.name !== pool.name), pool] }));
+}
+const NAT_GLOBAL = [
+    { syntax: `access-list <1-99:n> {permit | deny} ${SOURCE}`, run: (cli, m) => addEntry(cli, m.get('n') ?? '', m.has('permit') ? 'permit' : 'deny', m), noRun: (cli, m) => removeList(cli, m.get('n') ?? '') },
+    {
+        syntax: 'access-list <1-99:n> remark <LINE:text>',
+        run: (cli, m) => {
+            const name = m.get('n') ?? '';
+            const list = cli.device.acls.get(name) ?? [];
+            cli.device.acls = new Map([...cli.device.acls, [name, [...list, { seq: nextSeq(list), action: 'remark', ip: 0, wildcard: 0, remark: m.get('text') }]]]);
+        },
+    },
+    { syntax: 'access-list <1-99:n>', run: (cli) => cli.out('% Incomplete command.'), noRun: (cli, m) => removeList(cli, m.get('n') ?? ''), hidden: true },
+    {
+        syntax: 'ip access-list standard <WORD:name>',
+        run: (cli, m) => {
+            const name = m.get('name') ?? '';
+            if (!cli.device.acls.has(name))
+                cli.device.acls = new Map([...cli.device.acls, [name, []]]);
+            cli.session.acl = name;
+            cli.session.enterMode('config-std-nacl');
+        },
+        noRun: (cli, m) => removeList(cli, m.get('name') ?? ''),
+    },
+    { syntax: 'ip nat pool <WORD:name> <A.B.C.D:start> <A.B.C.D:end> {netmask <A.B.C.D:mask> | prefix-length <1-32:len>}', run: addPool, noRun: (cli, m) => setNat(cli, (n) => ({ ...n, pools: n.pools.filter((p) => p.name !== m.get('name')) })) },
+    {
+        syntax: 'ip nat inside source list <WORD:acl> {interface <IFACE:iface> | pool <WORD:pool>} [overload]',
+        run: dynamicRule,
+        noRun: (cli, m) => setNat(cli, (n) => ({ ...n, dynamic: n.dynamic.filter((d) => d.acl !== m.get('acl')) })),
+    },
+    {
+        syntax: 'ip nat inside source static <A.B.C.D:local> {<A.B.C.D:global> | interface <IFACE:gif>}',
+        run: (cli, m) => { const r = staticRule(cli, m); if (r)
+            setNat(cli, (n) => ({ ...n, statics: [...n.statics.filter((s) => !sameStatic(s, r)), r] })); },
+        noRun: (cli, m) => { const r = staticRule(cli, m); if (r)
+            setNat(cli, (n) => ({ ...n, statics: n.statics.filter((s) => !sameStatic(s, r)) })); },
+    },
+    {
+        syntax: 'ip nat inside source static {tcp | udp} <A.B.C.D:local> <1-65535:lport> {<A.B.C.D:global> | interface <IFACE:gif>} <1-65535:gport>',
+        run: (cli, m) => { const r = staticRule(cli, m); if (r)
+            setNat(cli, (n) => ({ ...n, statics: [...n.statics.filter((s) => !sameStatic(s, r)), r] })); },
+        noRun: (cli, m) => { const r = staticRule(cli, m); if (r)
+            setNat(cli, (n) => ({ ...n, statics: n.statics.filter((s) => !sameStatic(s, r)) })); },
+    },
+];
+const NAT_IF = [
+    {
+        syntax: 'ip nat {inside | outside}',
+        run: (cli, m) => cli.session.ifaces.forEach((n) => cli.device.updateIface(n, (c) => ({ ...c, nat: m.has('inside') ? 'inside' : 'outside' }))),
+        noRun: (cli) => cli.session.ifaces.forEach((n) => cli.device.updateIface(n, (c) => ({ ...c, nat: undefined }))),
+    },
+];
+function aclName(cli) {
+    return cli.session.acl ?? '';
+}
+const ACL_MODE = [
+    { syntax: `{permit | deny} ${SOURCE}`, run: (cli, m) => addEntry(cli, aclName(cli), m.has('permit') ? 'permit' : 'deny', m) },
+    { syntax: `<1-2147483647:seq> {permit | deny} ${SOURCE}`, run: (cli, m) => addEntry(cli, aclName(cli), m.has('permit') ? 'permit' : 'deny', m, Number(m.get('seq'))) },
+    {
+        syntax: '<1-2147483647:seq>',
+        run: (cli) => cli.out('% Incomplete command.'),
+        noRun: (cli, m) => { cli.device.acls = new Map([...cli.device.acls, [aclName(cli), (cli.device.acls.get(aclName(cli)) ?? []).filter((e) => e.seq !== Number(m.get('seq')))]]); },
+    },
+    {
+        syntax: 'remark <LINE:text>',
+        run: (cli, m) => {
+            const list = cli.device.acls.get(aclName(cli)) ?? [];
+            cli.device.acls = new Map([...cli.device.acls, [aclName(cli), [...list, { seq: nextSeq(list), action: 'remark', ip: 0, wildcard: 0, remark: m.get('text') }]]]);
+        },
+    },
+    { syntax: 'exit', run: (cli) => { cli.session.acl = undefined; cli.session.enterMode('config'); } },
+    { syntax: 'end', run: (cli) => cli.session.endConfig() },
+    { syntax: 'do <LINE:cmd>', run: (cli, m) => cli.session.runExec(m.get('cmd') ?? '') },
+];
+function natStatistics(cli) {
+    const r = cli.device;
+    const by = (role) => r.sortedIfaceNames().filter((n) => r.iface(n)?.nat === role);
+    return showNatStatistics({ table: r.natTable, statics: resolvedStatics(r), inside: by('inside'), outside: by('outside'), nat: r.nat, poolUse: (p) => poolInUse(r, p) });
+}
+const NAT_EXEC = [
+    { syntax: 'show ip nat translations [verbose]', run: (cli) => cli.out(...showNatTranslations(cli.device.natTable.entries(), resolvedStatics(cli.device))) },
+    { syntax: 'show ip nat statistics', run: (cli) => cli.out(...natStatistics(cli)) },
+    {
+        syntax: 'show {access-lists | ip access-lists} [<WORD:name>]',
+        run: (cli, m) => {
+            const name = m.get('name');
+            const lists = name ? new Map([...cli.device.acls].filter(([n]) => n === name)) : cli.device.acls;
+            cli.out(...showAccessLists(lists, cli.device.aclHits));
+        },
+    },
+];
+const NAT_PRIV = [
+    ...NAT_EXEC,
+    {
+        syntax: 'clear ip nat translation <WORD:all>',
+        run: (cli, m) => {
+            if (m.get('all') === '*')
+                cli.device.natTable.clear();
+            else
+                cli.out("% Invalid input detected at '^' marker.");
+        },
+    },
+    { syntax: 'clear ip nat statistics', run: (cli) => { cli.device.natTable.hits = 0; cli.device.natTable.misses = 0; } },
+    { syntax: 'clear access-list counters', run: (cli) => cli.device.aclHits.clear() },
+    { syntax: 'debug ip nat', run: (cli) => { cli.device.debugNat = true; cli.out('IP NAT debugging is on'); } },
+    { syntax: '{no debug ip nat | undebug ip nat}', run: (cli) => { cli.device.debugNat = false; cli.out('IP NAT debugging is off'); } },
+];
+
+return { NAT_GLOBAL, NAT_IF, ACL_MODE, NAT_EXEC, NAT_PRIV };
+})();
 __m["ios/commands/router-modes.js"] = (() => {
 const { EXEC_USER, EXEC_PRIV, GLOBAL, LINE_MODE } = __m["ios/commands/common.js"];
 const { ROUTER_IF, ROUTER_SUBIF } = __m["ios/commands/iface.js"];
@@ -27479,6 +28068,7 @@ const { DHCP_GLOBAL } = __m["ios/commands/dhcp-global.js"];
 const { DHCP_POOL, DHCP_CLASS } = __m["ios/commands/dhcp-pool.js"];
 const { DHCP_EXEC_USER, DHCP_EXEC_PRIV } = __m["ios/commands/dhcp-exec.js"];
 const { ROUTER_NET_EXEC, ROUTER_NET_PRIV } = __m["ios/commands/net-exec.js"];
+const { NAT_GLOBAL, NAT_IF, ACL_MODE, NAT_EXEC, NAT_PRIV } = __m["ios/commands/nat.js"];
 const DEFAULT_STATIC_DISTANCE = 1;
 const ROUTER_EXEC = [
     { syntax: 'show ip route', run: (cli) => cli.out(...showIpRoute(cli.device.plane.table())) },
@@ -27513,18 +28103,114 @@ const ROUTER_GLOBAL = [
     { syntax: 'ip routing', run: () => undefined, noRun: () => undefined },
 ];
 const routerModeTable = {
-    user: [...EXEC_USER, ...DHCP_EXEC_USER, ...ROUTER_NET_EXEC],
-    exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV, ...ROUTER_NET_PRIV],
-    config: [...GLOBAL, ...ROUTER_GLOBAL, ...DHCP_GLOBAL],
-    'config-if': [...ROUTER_IF],
-    'config-subif': [...ROUTER_SUBIF],
-    'config-if-range': [...ROUTER_IF],
+    user: [...EXEC_USER, ...DHCP_EXEC_USER, ...ROUTER_NET_EXEC, ...NAT_EXEC],
+    exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV, ...ROUTER_NET_PRIV, ...NAT_PRIV],
+    config: [...GLOBAL, ...ROUTER_GLOBAL, ...DHCP_GLOBAL, ...NAT_GLOBAL],
+    'config-if': [...ROUTER_IF, ...NAT_IF],
+    'config-subif': [...ROUTER_SUBIF, ...NAT_IF],
+    'config-if-range': [...ROUTER_IF, ...NAT_IF],
+    'config-std-nacl': [...ACL_MODE],
     'config-line': [...LINE_MODE],
     'dhcp-config': [...DHCP_POOL],
     'dhcp-class': [...DHCP_CLASS],
 };
 
 return { routerModeTable };
+})();
+__m["net/nat.js"] = (() => {
+const FIRST_PAT_PORT = 1024;
+const LAST_PORT = 65535;
+const MAX_ENTRIES = 4096;
+function flowOf(p) {
+    if (p.tcp)
+        return { proto: 'tcp', sport: p.tcp.sport, dport: p.tcp.dport };
+    if (p.udp)
+        return { proto: 'udp', sport: p.udp.sport, dport: p.udp.dport };
+    const id = p.icmp?.id ?? 0;
+    return { proto: 'icmp', sport: id, dport: id };
+}
+function rewriteSrc(p, ip, port) {
+    if (port === undefined)
+        return { ...p, src: ip };
+    if (p.tcp)
+        return { ...p, src: ip, tcp: { ...p.tcp, sport: port } };
+    if (p.udp)
+        return { ...p, src: ip, udp: { ...p.udp, sport: port } };
+    return p.icmp ? { ...p, src: ip, icmp: { ...p.icmp, id: port } } : { ...p, src: ip };
+}
+function rewriteDst(p, ip, port) {
+    if (port === undefined)
+        return { ...p, dst: ip };
+    if (p.tcp)
+        return { ...p, dst: ip, tcp: { ...p.tcp, dport: port } };
+    if (p.udp)
+        return { ...p, dst: ip, udp: { ...p.udp, dport: port } };
+    return p.icmp ? { ...p, dst: ip, icmp: { ...p.icmp, id: port } } : { ...p, dst: ip };
+}
+function staticMatchesOut(s, p, f) {
+    return s.local === p.src && (s.proto === undefined || (s.proto === f.proto && s.localPort === f.sport));
+}
+function staticMatchesIn(s, p, f) {
+    return s.global === p.dst && (s.proto === undefined || (s.proto === f.proto && s.globalPort === f.dport));
+}
+class NatTable {
+    dynamic = [];
+    hits = 0;
+    misses = 0;
+    /** Inside → outside: translates the source, or returns null when no rule applies. */
+    inside(p, statics, target) {
+        const f = flowOf(p);
+        const st = statics.find((s) => staticMatchesOut(s, p, f));
+        if (st)
+            return this.hit(rewriteSrc(p, st.global, st.proto ? st.globalPort : undefined));
+        const known = this.dynamic.find((e) => e.insideLocal === p.src && (e.proto === null || (e.proto === f.proto && e.localPort === f.sport)));
+        if (known)
+            return this.hit(rewriteSrc(p, known.insideGlobal, known.proto ? known.globalPort : undefined));
+        const t = target(p);
+        if (!t)
+            return null;
+        this.misses += 1;
+        const entry = t.overload
+            ? { proto: f.proto, insideLocal: p.src, insideGlobal: t.global, localPort: f.sport, globalPort: this.freePort(f.proto, t.global, f.sport), outside: p.dst, outsidePort: f.dport, static: false }
+            : { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false };
+        this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
+        return rewriteSrc(p, entry.insideGlobal, entry.proto ? entry.globalPort : undefined);
+    }
+    /** Outside → inside: translates the destination, or returns null when nothing maps it. */
+    outside(p, statics) {
+        const f = flowOf(p);
+        const known = this.dynamic.find((e) => e.insideGlobal === p.dst && (e.proto === null || (e.proto === f.proto && e.globalPort === f.dport)));
+        if (known)
+            return this.hit(rewriteDst(p, known.insideLocal, known.proto ? known.localPort : undefined));
+        const st = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f)) ?? statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
+        return st ? this.hit(rewriteDst(p, st.local, st.proto ? st.localPort : undefined)) : null;
+    }
+    /** Is this global address (and pool member) taken by a 1:1 dynamic translation? */
+    globalInUse(global) {
+        return this.dynamic.some((e) => e.proto === null && e.insideGlobal === global);
+    }
+    entries() {
+        return this.dynamic;
+    }
+    clear() {
+        this.dynamic = [];
+    }
+    hit(p) {
+        this.hits += 1;
+        return p;
+    }
+    freePort(proto, global, wanted) {
+        const used = new Set(this.dynamic.filter((e) => e.proto === proto && e.insideGlobal === global).map((e) => e.globalPort));
+        if (!used.has(wanted) && wanted > 0)
+            return wanted;
+        for (let port = FIRST_PAT_PORT; port <= LAST_PORT; port++)
+            if (!used.has(port))
+                return port;
+        return wanted;
+    }
+}
+
+return { flowOf, rewriteSrc, rewriteDst, NatTable };
 })();
 __m["ios/runconfig.js"] = (() => {
 const { isSubinterface, parseIfaceName } = __m["ios/interfaces.js"];
@@ -27599,6 +28285,8 @@ function interfaceBlock(cfg, extra = []) {
         lines.push(` ip helper-address ${formatIp(h)}`);
     if (cfg.relayInfoTrusted)
         lines.push(' ip dhcp relay information trusted');
+    if (cfg.nat)
+        lines.push(` ip nat ${cfg.nat}`);
     lines.push(...extra);
     if (cfg.switchport) {
         if (cfg.duplex)
@@ -27780,6 +28468,9 @@ const { IosWeb } = __m["devices/ios-web.js"];
 const { DEFAULT_TTL } = __m["net/packets.js"];
 const { routerModeTable } = __m["ios/commands/router-modes.js"];
 const { httpLines } = __m["ios/http.js"];
+const { NatTable } = __m["net/nat.js"];
+const { EMPTY_NAT, natConfigLines } = __m["ios/nat-config.js"];
+const { aclConfigLines } = __m["ios/acl.js"];
 const { headerLines, globalIpLines, interfaceSection, trailerLines } = __m["ios/runconfig.js"];
 const { formatIp, formatMask } = __m["core/ip.js"];
 const { DhcpServer } = __m["dhcp/server.js"];
@@ -27795,6 +28486,11 @@ class Router extends IosDevice {
     dhcp = new DhcpServer();
     plane;
     web;
+    acls = new Map();
+    aclHits = new Map();
+    nat = EMPTY_NAT;
+    natTable = new NatTable();
+    debugNat = false;
     macs = new Map();
     constructor(opts = {}) {
         super('Router', opts.clock ?? new SimClock());
@@ -27848,6 +28544,11 @@ class Router extends IosDevice {
     resetConfig() {
         this.resetGlobals('Router');
         this.staticRoutes = [];
+        this.acls = new Map();
+        this.aclHits.clear();
+        this.nat = EMPTY_NAT;
+        this.natTable.clear();
+        this.debugNat = false;
         this.dhcp = new DhcpServer();
         this.plane = new RouterPlane(this);
         this.ifaces.clear();
@@ -27932,6 +28633,7 @@ class Router extends IosDevice {
         this.syncClients(port);
     }
     runningConfig() {
+        const acl = aclConfigLines(this.acls);
         return [
             ...headerLines(this, '15.1'),
             ...dhcpRunningConfig(this.dhcp),
@@ -27942,11 +28644,13 @@ class Router extends IosDevice {
             '!',
             '!',
             ...interfaceSection(this),
+            ...natConfigLines(this.nat),
             'ip classless',
             ...this.staticRoutes.map(routeLine),
             ...httpLines(this),
             '!',
             'ip flow-export version 9',
+            ...(acl.named.length + acl.numbered.length ? ['!', ...acl.named, ...acl.numbered] : []),
             ...trailerLines(this),
         ];
     }

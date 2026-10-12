@@ -17,6 +17,7 @@ const PROMPT_SUFFIX: Readonly<Record<ModeName, string>> = {
   'dhcp-class': '(config-dhcp-pool-class)#',
   'config-line': '(config-line)#',
   'config-vlan': '(config-vlan)#',
+  'config-std-nacl': '(config-std-nacl)#',
 };
 
 const EXEC_MODES: ReadonlySet<ModeName> = new Set(['user', 'exec']);
@@ -39,6 +40,7 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
   pool: string | undefined;
   poolClass: string | undefined;
   vlan: number | undefined;
+  acl: string | undefined;
   private state: InputState = { kind: 'normal' };
   private output: string[] = [];
 
@@ -138,6 +140,7 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
     this.ifaces = [];
     this.pool = undefined;
     this.poolClass = undefined;
+    this.acl = undefined;
     this.vlan = undefined;
     this.device.log('%SYS-5-CONFIG_I: Configured from console by console');
   }
