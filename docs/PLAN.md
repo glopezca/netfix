@@ -142,3 +142,52 @@ en lugar de usuario y contraseña.
 - security-reviewer: la firma simulada solo usaba datos públicos (se podía entrar con el `.pub` ajeno) y el servidor no probaba su clave de host → firmas Schnorr, prueba de host con *nonce* del cliente, ficheros privados que deben corresponder a su semilla; reto aleatorio de un solo uso por conexión ligado a la IP y a la clave de host (sin *replay*); `AllowUsers/DenyUsers/AllowGroups/DenyGroups` acumulativos con patrones `usuario@ip`, también para cuentas sin usuario Linux; `PermitRootLogin` y `MaxAuthTries` aplicados; opciones de `authorized_keys` (`from=` aplicado, el resto rechazado); `Match`, `ForceCommand`… rechazados en vez de ignorados; presupuesto de `Include`; cupo de inicios de sesión pendientes por IP; `StrictModes` hasta `/`.
 - code-reviewer: rutas relativas de `-i` desde el directorio de trabajo, palabras de la orden remota que no son opciones de `ssh`, `ssh-copy-id` sin romper un `authorized_keys` sin salto final, `-q` que ya no sobrescribe, `ssh-keygen -A`, `StrictHostKeyChecking=no` con clave cambiada, `touch` y `umask` (también de root, 022), `chown -R` recursivo.
 Fuera de alcance (documentado): los datos viajan sin cifrar en los paquetes simulados; grupo de 256 bits.
+
+## Fase 11 · Netfix internacional, router Linux, VPN y apps de PC (v0.7)
+
+Petición: aplicación internacionalizable (es-ES y en-GB); pestaña «Donaciones / Donations» con PayPal sin
+servidor (paypal.me/infogerman, 5/10/15/20 € u otro importe); router «Linux · 2911» (mismo hardware que el
+2911 y el software de Server) con `net.ipv4.ip_forward` por sysctl y cortafuegos nftables, configurables desde
+la CLI, la pestaña Servicios y una WebGUI estilo WRT300N; en los PC, apps de cliente SSH (claves y
+known_hosts) y SFTP estilo FileZilla; bind9 resuelve nombres públicos reenviando a 8.8.8.8/8.8.4.4 a través de
+las nubes; sucursales unidas por VPN; documentación y laboratorios (conectividad y bastionado); la GUI refleja
+lo que se cambia en la terminal Linux (red y nombre de host); créditos en mc; interfaz fluida en móvil,
+tableta y touchpad.
+
+Decisiones confirmadas con el usuario: se traduce todo (UI, WebGUI, laboratorios y documentación); la salida de
+IOS, Linux y Windows sigue literal en inglés como en el equipo real; WireGuard (`wg`, `wg-quick`,
+`/etc/wireguard/wg0.conf`) en el router Linux e IPsec site-to-site en el 2911, cada uno con los de su tipo;
+paypal.me/infogerman; una única versión v0.7.0, por fases internas con TDD.
+
+Decisiones de diseño (por defecto, revisables):
+- El idioma es estado de presentación (`src/i18n`, hoja sin dependencias). Las webs simuladas eligen idioma por
+  `Accept-Language` del navegador de Netfix. `man`, `help` y las pistas propias de Netfix siguen el idioma; los
+  mensajes de los programas, no.
+- Router Linux: `LinuxRouter extends Server`, `kind: 'linuxrouter'`, puertos `GigabitEthernet0/0-2` ↔ `eth0-2`.
+  Lo persistente son ficheros (netplan, `sysctl.conf`, `nftables.conf`, `wg0.conf`) y unidades habilitadas:
+  al abrir un `.json` «arranca»; lo hecho solo con `ip`, `nft` o `sysctl -w` sin guardar se pierde.
+- IPsec con ESP entre IP públicas (sin NAT-T; nube en modo IP pública); WireGuard (UDP) atraviesa el NAT del
+  operador. Claves de WireGuard e IKE con el grupo didáctico de `core/schnorr.ts`. Sin licencia securityk9.
+- Texto de donaciones: «Si quieres apoyar este proyecto para que siga mejorando y pueda hacer frente a los
+  gastos de desarrollo, puedes hacer una donación.»
+
+| Paso | Entregable | Riesgo / decisión |
+|---|---|---|
+| 11.1 | Base i18n: `src/i18n` (locale, `t()`, catálogos es-ES/en-GB con paridad de tipos), selector ES/EN, `<html lang>`, cambio sin recargar | `src/i18n` no importa nada de `src/`; guardián de literales que solo puede menguar |
+| 11.2 | Interfaz adaptable: `dvh`, barra plegable, ventanas a pantalla completa en móvil, zoom y desplazamiento del lienzo (pellizco, touchpad, botones), toque/doble toque, barra de teclas de terminal | Teclados virtuales sin `key`; no romper escritorio |
+| 11.3 | Pestaña Donaciones: `paypalMeUrl(importe)` validado, 5/10/15/20 € y otro | Solo enlace pulsado por el usuario; sin SDK ni datos |
+| 11.4 | Créditos en mc (F1 y menús → «Acerca de Netfix») | También por SSH |
+| 11.5 | `ip addr/route/link` de escritura, netplan real (`netplan apply/try`), `dhclient -r` y `hostnamectl` notifican; paneles en vivo | Estado en ejecución vs persistente |
+| 11.6 | DNS recursivo: forwarders, recursión, caché, RD/RA, `named.conf.options`, 8.8.8.8 ampliado | Sin bucles; recursión solo `localnets` |
+| 11.7 | sysctl y nftables: motor puro (tablas, cadenas, ganchos, conntrack, NAT), `sysctl`, `nft`, `nftables.service` | Parser con presupuesto |
+| 11.8 | Router Linux (hardware 2911, software de Server, varias NIC, reenvío por `ip_forward`) | `Host` de una sola NIC: generalizar tras `nicsOf` |
+| 11.9 | Paneles sysctl/cortafuegos/VPN en Servicios y WebGUI WRT300N del router Linux | Sesión y escape como en la gestión web |
+| 11.10 | ACL extendidas IOS y `ip access-group` | Compatibilidad de ACL estándar |
+| 11.11 | IPsec site-to-site en el 2911 (isakmp, transform-set, crypto map, `show crypto …`) | La PSK no viaja |
+| 11.12 | WireGuard (`wg`, `wg-quick`, `wg0.conf`, AllowedIPs, keepalive) | Solo entre routers Linux |
+| 11.13 | Subsistema SFTP en sshd | Credenciales del usuario en el VFS |
+| 11.14 | Apps del PC: cliente SSH (perfiles, claves, known_hosts) y SFTP tipo FileZilla | Lógica fuera de `src/ui` |
+| 11.15 | Laboratorios: VPN IPsec y WireGuard, DNS que reenvía, router Linux con NAT/DMZ, SSH/SFTP; bastionado (sshd, nftables, ACL) | Cada lab comprueba lo permitido y lo bloqueado |
+| 11.16 | Traducción del resto (webs simuladas, validaciones, ventanas) | Guardián a cero |
+| 11.17 | Documentación en los dos idiomas y páginas nuevas | Bloques `code` idénticos |
+| 11.18 | Revisión ECC (code, typescript, security, network-config), e2e escritorio y táctil, v0.7.0 | — |

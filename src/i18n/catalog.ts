@@ -1,0 +1,20 @@
+/**
+ * Message catalogues. Spanish (es-ES) is the source: its keys define `MessageKey`, and every English file is
+ * typed `Record<…Key, string>`, so a missing or extra translation is a compile error.
+ */
+import type { Locale } from './locale.ts';
+import { APP_ES } from './es-ES/app.ts';
+import { APP_EN } from './en-GB/app.ts';
+import { CANVAS_ES } from './es-ES/canvas.ts';
+import { CANVAS_EN } from './en-GB/canvas.ts';
+import { PAGES_ES } from './es-ES/pages.ts';
+import { PAGES_EN } from './en-GB/pages.ts';
+
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES };
+
+export type MessageKey = keyof typeof ES;
+
+export const CATALOGS: Readonly<Record<Locale, Readonly<Record<MessageKey, string>>>> = {
+  'es-ES': ES,
+  'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN },
+};

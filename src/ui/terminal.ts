@@ -4,6 +4,7 @@ import { ansiRow, columns, drawFrame, editorKey, fillAnsi } from './term-render.
 import { clearRequest } from '../core/ansi.ts';
 import type { AnsiStyle } from '../core/ansi.ts';
 import { createEditor } from '../editors/index.ts';
+import { keybar } from './keybar.ts';
 import type { Frame, KeyInput } from '../editors/index.ts';
 
 /** A full-screen program shown instead of the scrollback. */
@@ -55,6 +56,9 @@ export class Terminal {
   private style: AnsiStyle = {};
   private full: FullScreen | null = null;
   private lastTab = '';
+  /** Hidden text field that receives typing for full-screen programs (virtual keyboards need a field). */
+  private readonly ime: HTMLTextAreaElement;
+  private ctrl = false;
 
   /** IOS consoles show lines starting with % (messages) in their own colour. */
   private readonly iosMessages: boolean;
@@ -70,11 +74,15 @@ export class Terminal {
     });
     this.lineEl = el('label', { class: 'term-line' }, this.promptEl, this.input);
     this.editorEl = el('div', { class: 'term-editor', tabindex: '0', role: 'application', 'aria-label': `Editor · ${opts.label}`, hidden: true });
-    this.root = el('div', { class: 'terminal' }, this.screen, this.lineEl, this.editorEl);
+    this.ime = el('textarea', { class: 'term-ime', autocapitalize: 'off', autocomplete: 'off', spellcheck: 'false', 'aria-hidden': 'true', tabindex: '-1' });
+    this.root = el('div', { class: 'terminal' }, this.screen, this.lineEl, this.editorEl, this.ime, keybar(this));
     this.root.addEventListener('click', (e) => {
       if (window.getSelection()?.toString() !== '') return;
-      if (this.full) this.editorEl.focus(); else if (e.target !== this.input) this.input.focus();
+      if ((e.target as HTMLElement).closest('.term-keys')) return;
+      if (this.full) this.focusFull(); else if (e.target !== this.input) this.input.focus();
     });
+    this.ime.addEventListener('keydown', (e) => this.onEditorKey(e));
+    this.ime.addEventListener('input', (e) => this.onImeInput(e as InputEvent));
     this.input.addEventListener('keydown', (e) => this.onKey(e));
     this.input.addEventListener('input', () => this.onInput());
     this.editorEl.addEventListener('keydown', (e) => this.onEditorKey(e));
@@ -85,7 +93,61 @@ export class Terminal {
   }
 
   focus(): void {
-    (this.full ? this.editorEl : this.input).focus({ preventScroll: true });
+    if (this.full) this.focusFull();
+    else this.input.focus({ preventScroll: true });
+  }
+
+  /** Full-screen programs: a fine pointer keeps the editor focused; touch screens type into the hidden field. */
+  private focusFull(): void {
+    if (window.matchMedia('(pointer: coarse)').matches) {
+      this.ime.value = ' ';
+      this.ime.focus({ preventScroll: true });
+    } else this.editorEl.focus({ preventScroll: true });
+  }
+
+  ctrlArmed(): boolean {
+    return this.ctrl;
+  }
+
+  /** A key of the touch key bar. */
+  virtualKey(key: string): void {
+    if (key === 'Ctrl') { this.ctrl = !this.ctrl; return; }
+    const ctrl = this.ctrl;
+    this.ctrl = false;
+    if (this.full) {
+      const k = key === '^C' ? { key: 'c', ctrl: true } : key === '^D' ? { key: 'd', ctrl: true } : { key, ctrl };
+      this.feed([k]);
+      return;
+    }
+    if (key === 'Tab') this.complete();
+    else if (key === 'ArrowUp' || key === 'ArrowDown') this.browseHistory(key === 'ArrowUp' ? -1 : 1);
+    else if (key === 'ArrowLeft' || key === 'ArrowRight') this.moveCaret(key === 'ArrowLeft' ? -1 : 1);
+    else if (key === '^C') this.ctrlKey('c');
+    else if (key === '^D') this.ctrlKey('d');
+    this.input.focus({ preventScroll: true });
+  }
+
+  private moveCaret(delta: number): void {
+    const pos = Math.max(0, Math.min(this.input.value.length, (this.input.selectionStart ?? 0) + delta));
+    this.input.setSelectionRange(pos, pos);
+  }
+
+  /** Text typed on a virtual keyboard into the hidden field (" " is a sentinel so Backspace is seen). */
+  private onImeInput(e: InputEvent): void {
+    const value = this.ime.value;
+    const keys: KeyInput[] = [];
+    if (value === '' || e.inputType === 'deleteContentBackward') keys.push({ key: 'Backspace' });
+    else for (const ch of value.slice(1)) keys.push(ch === '\n' ? { key: 'Enter' } : { key: ch, ctrl: this.ctrl });
+    this.ctrl = false;
+    this.ime.value = ' ';
+    this.feed(keys);
+  }
+
+  private feed(keys: readonly KeyInput[]): void {
+    const full = this.full;
+    if (!full) return;
+    for (const k of keys) full.key(k);
+    if (!this.redrawEditor()) this.closeFullScreen();
   }
 
   dispose(): void {
@@ -140,6 +202,14 @@ export class Terminal {
 
   /** IOS shows help as soon as `?` is typed, keeping the rest of the line. */
   private onInput(): void {
+    if (this.ctrl) {
+      // Sticky Ctrl from the key bar: the letter just typed is the control key.
+      const ch = this.input.value.slice(-1).toLowerCase();
+      this.input.value = this.input.value.slice(0, -1);
+      this.ctrl = false;
+      this.ctrlKey(ch);
+      return;
+    }
     const v = this.input.value;
     if (!v.endsWith('?') || !this.backend.help) return;
     const before = v.slice(0, -1);
@@ -155,25 +225,29 @@ export class Terminal {
     if (e.key === 'Enter') { e.preventDefault(); this.submit(); }
     else if (e.key === 'Tab') { e.preventDefault(); this.complete(); }
     else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); this.browseHistory(e.key === 'ArrowUp' ? -1 : 1); }
-    else if (ctrl && k === 'z' && this.backend.ctrlZ) {
-      e.preventDefault();
+    else if (ctrl && ['z', 'c', 'd', 'l'].includes(k) && !(k === 'c' && this.input.selectionStart !== this.input.selectionEnd)) {
+      if (this.ctrlKey(k)) e.preventDefault();
+    }
+    if (e.key !== 'Tab') this.lastTab = '';
+  }
+
+  /** Ctrl+Z, Ctrl+C, Ctrl+D and Ctrl+L on the command line; true when handled. */
+  private ctrlKey(k: string): boolean {
+    if (k === 'z' && this.backend.ctrlZ) {
       this.echo(`${this.input.value}^Z`);
       this.input.value = '';
       this.after(this.backend.ctrlZ());
-    } else if (ctrl && k === 'c' && this.input.selectionStart === this.input.selectionEnd) {
-      e.preventDefault();
+    } else if (k === 'c') {
       this.echo(`${this.input.value}^C`);
       this.input.value = '';
       this.after(this.backend.interrupt?.() ?? []);
-    } else if (ctrl && k === 'd' && this.input.value === '' && this.backend.eof) {
-      e.preventDefault();
+    } else if (k === 'd' && this.input.value === '' && this.backend.eof) {
       this.echo('');
       this.after(this.backend.eof());
-    } else if (ctrl && k === 'l') {
-      e.preventDefault();
+    } else if (k === 'l') {
       this.screen.textContent = '';
-    }
-    if (e.key !== 'Tab') this.lastTab = '';
+    } else return false;
+    return true;
   }
 
   private complete(): void {
@@ -214,13 +288,15 @@ export class Terminal {
     this.screen.hidden = true;
     this.lineEl.hidden = true;
     this.editorEl.hidden = false;
+    this.root.dataset.full = 'true';
     this.redrawEditor();
-    this.editorEl.focus({ preventScroll: true });
+    this.focusFull();
   }
 
   private closeFullScreen(): void {
     const finish = this.full?.finish;
     this.full = null;
+    delete this.root.dataset.full;
     this.editorEl.hidden = true;
     this.screen.hidden = false;
     this.lineEl.hidden = false;
@@ -252,12 +328,13 @@ export class Terminal {
 
   private onEditorKey(e: KeyboardEvent): void {
     const k = editorKey(e);
-    if (!k || !this.full) return;
+    // Virtual keyboards report "Unidentified"/"Process": their text arrives through the input event.
+    if (!k || !this.full || k.key === 'Unidentified' || k.key === 'Process') return;
     if (k.ctrl && ['v', 'c'].includes(k.key.toLowerCase()) && window.getSelection()?.toString()) return;
     e.preventDefault();
     e.stopPropagation();
-    this.full.key(k);
-    if (!this.redrawEditor()) this.closeFullScreen();
+    this.feed([this.ctrl ? { ...k, ctrl: true } : k]);
+    this.ctrl = false;
   }
 
   private onEditorPaste(e: ClipboardEvent): void {

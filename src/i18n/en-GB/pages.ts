@@ -1,0 +1,32 @@
+/** English (UK): Donations and About views. */
+import type { PagesKey } from '../es-ES/pages.ts';
+
+export const PAGES_EN: Readonly<Record<PagesKey, string>> = {
+  'donate.crumb': 'Donations',
+  'donate.title': 'Support Netfix',
+  'donate.lead': 'If you would like to support this project so that it keeps improving and can cover its development costs, you can make a donation.',
+  'donate.free': 'Netfix is free software at no cost (donationware): use it in class and at home without limits. Donations are voluntary.',
+  'donate.choose': 'Choose an amount',
+  'donate.other': 'Other amount',
+  'donate.otherLabel': 'Other amount in euros',
+  'donate.otherPlaceholder': 'e.g. 25',
+  'donate.button': 'Donate {amount} with PayPal',
+  'donate.buttonNone': 'Choose an amount',
+  'donate.err.empty': 'Enter an amount.',
+  'donate.err.format': 'Use a number with up to two decimal places (e.g. 12.50).',
+  'donate.err.range': 'The amount must be between {min} and {max}.',
+  'donate.privacy': 'The button opens paypal.me/infogerman in a new tab. Netfix loads nothing from PayPal and sends no data: the payment happens entirely on PayPal.',
+  'donate.copy': 'If the tab does not open, copy the link:',
+  'donate.thanks': 'Thank you for helping Netfix keep growing.',
+  'about.label': 'About Netfix',
+  'about.crumb': 'About',
+  'about.version': 'Version',
+  'about.release': 'Version {version}',
+  'about.author': 'Author',
+  'about.repo': 'Repository',
+  'about.license': 'Code licence',
+  'about.runs': 'Runs',
+  'about.runsText': 'Everything runs in your browser: no server, no dependencies and no data sent anywhere.',
+  'about.licenseTitle': 'Licence and attributions',
+  'about.licenseFrom': 'Contents of LICENSE.md, at the root of the repository.',
+};

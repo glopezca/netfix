@@ -16,7 +16,7 @@ await new Promise((r) => setTimeout(r, 600));
 const shots = process.env.SHOTS_DIR;
 const browser = await playwright.chromium.launch();
 try {
-  const page = await browser.newPage({ viewport: { width: 1400, height: 860 } });
+  const page = await browser.newPage({ viewport: { width: 1400, height: 860 }, locale: 'es-ES' });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(`http://localhost:${port}/`);
@@ -165,8 +165,67 @@ try {
   assert.match(await page.locator('.window').innerText(), /ip http server/);
   await page.click('.win-close');
   await page.click('button.seg:has-text("Acerca de")');
-  assert.match(await page.locator('#app').innerText(), /0\.6\.0/);
+  assert.match(await page.locator('#app').innerText(), /0\.6\.0|0\.7\.0/);
   await page.click('button.seg:has-text("Red")');
+
+  // 9. Donations: suggested amounts build the PayPal.Me link; other amounts are validated.
+  await page.click('button.seg:has-text("Donaciones")');
+  assert.equal(await page.locator('.donate-go').getAttribute('href'), 'https://paypal.me/infogerman/10EUR');
+  await page.click('.donate-amount[data-amount="20"]');
+  assert.equal(await page.locator('.donate-go').getAttribute('href'), 'https://paypal.me/infogerman/20EUR');
+  await page.click('.donate-amount[data-amount="other"]');
+  await page.fill('.donate-other-input', '7,5');
+  assert.equal(await page.locator('.donate-go').getAttribute('href'), 'https://paypal.me/infogerman/7.50EUR');
+  await page.fill('.donate-other-input', '0');
+  assert.equal(await page.locator('.donate-go').getAttribute('href'), null);
+  await page.click('button.seg:has-text("Red")');
+
+  // 10. Language: English (UK) rebuilds the interface, keeps the topology and is remembered.
+  const devicesBefore = await page.locator('g.device').count();
+  await page.selectOption('.select-lang', 'en-GB');
+  await page.waitForSelector('button.seg:has-text("Network")');
+  assert.equal(await page.getAttribute('html', 'lang'), 'en-GB');
+  assert.equal(await page.locator('g.device').count(), devicesBefore);
+  await page.reload();
+  await page.waitForSelector('button.seg:has-text("Documentation")');
+  await page.selectOption('.select-lang', 'es-ES');
+  await page.waitForSelector('button.seg:has-text("Red")');
+  assert.deepEqual(errors, []);
+  await page.close();
+
+  // 11. Phone (touch, 390×844): no horizontal overflow, menu, zoom, tap-to-place, double-tap to open, key bar.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, locale: 'es-ES' });
+  const phone = await ctx.newPage();
+  phone.on('pageerror', (e) => errors.push(e.message));
+  await phone.goto(`http://localhost:${port}/`);
+  await phone.evaluate(() => localStorage.clear());
+  await phone.reload();
+  await phone.waitForSelector('g.device-router');
+  assert.ok(await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'no horizontal page scroll');
+  await phone.tap('.menu-toggle');
+  assert.ok(await phone.locator('.topbar-menu').isVisible());
+  await phone.tap('.menu-toggle');
+  await phone.tap('.zoom-btn[aria-label="Ajustar a la red"]');
+  const zoom = Number(await phone.getAttribute('.workspace', 'data-zoom'));
+  assert.ok(zoom > 0 && zoom < 100, `fit zooms out on a phone (${zoom})`);
+  const before = await phone.locator('g.device').count();
+  await phone.tap('.pal-item:has-text("PC")');
+  const box = await phone.locator('.workspace').boundingBox();
+  await phone.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+  assert.equal(await phone.locator('g.device').count(), before + 1);
+  const pcBox = await phone.locator('g.device-pc').last().boundingBox();
+  const cx = pcBox.x + pcBox.width / 2;
+  const cy = pcBox.y + pcBox.height / 2;
+  await phone.touchscreen.tap(cx, cy);
+  assert.equal(await phone.locator('.window').count(), 0, 'one tap only selects');
+  await phone.touchscreen.tap(cx, cy);
+  await phone.waitForSelector('.window');
+  const win = await phone.locator('.window').boundingBox();
+  assert.ok(win.width >= 389 && win.x <= 1, 'windows are full-screen sheets on phones');
+  await phone.tap('.win-tab:has-text("Terminal")');
+  assert.ok(await phone.locator('.terminal:visible .term-keys').isVisible(), 'touch key bar');
+  if (shots) await phone.screenshot({ path: `${shots}/phone.png` });
+  await ctx.close();
 
   assert.deepEqual(errors, []);
   console.log('e2e: ok');

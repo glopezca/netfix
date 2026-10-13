@@ -4,6 +4,10 @@ import { ICONS, ICON_W, ICON_H, MODEL_LABEL } from './icons.ts';
 import type { Topology, DeviceKind, Placed } from '../net/topology.ts';
 import type { Endpoint, Link } from '../net/network.ts';
 import { shortIfaceName } from '../ios/interfaces.ts';
+import { Viewport } from './viewport.ts';
+import { placeInside } from './viewport-math.ts';
+import { t } from '../i18n/t.ts';
+import type { MessageKey } from '../i18n/catalog.ts';
 
 export type Tool = { kind: 'select' } | { kind: 'cable' } | { kind: 'delete' } | { kind: 'place'; device: DeviceKind };
 
@@ -19,12 +23,11 @@ export const WORLD_H = 1600;
 const LIGHT_OFFSET = 36;
 const LABEL_OFFSET = 62;
 const DRAG_THRESHOLD = 4;
+const DOUBLE_TAP_MS = 350;
+const LONG_PRESS_MS = 550;
 
-const HINTS: Readonly<Record<Tool['kind'], string>> = {
-  select: 'Arrastra para mover. Doble clic para abrir la consola o el escritorio.',
-  cable: 'Cable: haz clic en el primer dispositivo y elige un puerto.',
-  delete: 'Eliminar: haz clic en un dispositivo o en un cable.',
-  place: 'Haz clic en el área de trabajo para colocar el dispositivo.',
+const HINTS: Readonly<Record<Tool['kind'], MessageKey>> = {
+  select: 'canvas.hint.select', cable: 'canvas.hint.cable', delete: 'canvas.hint.delete', place: 'canvas.hint.place',
 };
 
 export class Canvas {
@@ -40,6 +43,11 @@ export class Canvas {
   private pendingEnd: Endpoint | null = null;
   private readonly events: CanvasEvents;
   private frame = 0;
+  readonly viewport: Viewport;
+  private lastTap: { id: string; time: number } | null = null;
+  /** A drag or tap on a device is in progress: periodic redraws wait so its element stays in the DOM. */
+  private gesture = false;
+  private lastPointer = 'mouse';
 
   constructor(topo: Topology, events: CanvasEvents) {
     this.topo = topo;
@@ -47,12 +55,14 @@ export class Canvas {
     this.linkLayer = svg('g', { class: 'links' });
     this.deviceLayer = svg('g', { class: 'devices' });
     this.packetLayer = svg('g', { class: 'packets' });
-    this.svgEl = svg('svg', { class: 'world', width: WORLD_W, height: WORLD_H, viewBox: `0 0 ${WORLD_W} ${WORLD_H}`, role: 'application', 'aria-label': 'Área de trabajo lógica' },
+    this.svgEl = svg('svg', { class: 'world', width: WORLD_W, height: WORLD_H, viewBox: `0 0 ${WORLD_W} ${WORLD_H}`, role: 'application', 'aria-label': t('canvas.label') },
       svg('rect', { class: 'world-bg', x: 0, y: 0, width: WORLD_W, height: WORLD_H }), this.linkLayer, this.deviceLayer, this.packetLayer);
     this.menu = el('div', { class: 'port-menu', role: 'menu', hidden: true });
     this.root = el('div', { class: 'workspace', tabindex: '0' }, this.svgEl, this.menu);
+    this.svgEl.addEventListener('pointerdown', (e) => { this.lastPointer = e.pointerType; }, { capture: true });
     this.svgEl.addEventListener('pointerdown', (e) => this.onBackground(e));
     this.root.addEventListener('keydown', (e) => this.onKey(e));
+    this.viewport = new Viewport(this.root, this.svgEl, WORLD_W, WORLD_H);
   }
 
   setTopology(topo: Topology): void {
@@ -60,6 +70,7 @@ export class Canvas {
     this.selected = null;
     this.pendingEnd = null;
     this.render();
+    this.frameContent();
   }
 
   setTool(tool: Tool): void {
@@ -67,7 +78,7 @@ export class Canvas {
     this.pendingEnd = null;
     this.hideMenu();
     this.root.dataset.tool = tool.kind;
-    this.events.hint(HINTS[tool.kind]);
+    this.events.hint(t(HINTS[tool.kind]));
     this.render();
   }
 
@@ -80,9 +91,18 @@ export class Canvas {
     return p ? { x: p.x, y: p.y } : undefined;
   }
 
+  zoom(action: 'in' | 'out' | 'fit'): void {
+    this.viewport.zoom(action, [...this.topo.placed.values()]);
+  }
+
+  /** Shows the whole network if it does not fit (after the layout has a size). */
+  frameContent(): void {
+    requestAnimationFrame(() => this.viewport.fitIfNeeded([...this.topo.placed.values()]));
+  }
+
   /** Coalesces renders to one per animation frame. */
   requestRender(): void {
-    if (this.frame) return;
+    if (this.frame || this.gesture) return;
     this.frame = requestAnimationFrame(() => {
       this.frame = 0;
       this.render();
@@ -157,7 +177,8 @@ export class Canvas {
     g.appendChild(svg('text', { class: 'device-label', x: 0, y: ICON_H / 2 + 18 }, p.label));
     if (name && name !== 'Router' && name !== 'Switch' && name !== p.label) g.appendChild(svg('text', { class: 'device-host', x: 0, y: ICON_H / 2 + 33 }, name));
     g.addEventListener('pointerdown', (e) => this.onDevicePointer(e, id, g));
-    g.addEventListener('dblclick', () => this.events.open(id));
+    // Touch double-taps are handled in tapped(): browsers also synthesise dblclick from any two quick taps.
+    g.addEventListener('dblclick', () => { if (this.lastPointer === 'mouse') this.events.open(id); });
     g.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this.events.open(id);
     });
@@ -185,6 +206,7 @@ export class Canvas {
       this.selected = null;
       this.markSelection();
     }
+    if (e.button === 0 || e.pointerType !== 'mouse') this.viewport.beginPan(e);
   }
 
   private onDevicePointer(e: PointerEvent, id: string, g: SVGGElement): void {
@@ -204,30 +226,53 @@ export class Canvas {
     this.dragDevice(e, id, g);
   }
 
+  /** Touch and pen: a second tap within DOUBLE_TAP_MS opens the device (dblclick is unreliable on phones). */
+  private tapped(id: string, e: PointerEvent): void {
+    if (e.pointerType === 'mouse') return;
+    const now = performance.now();
+    if (this.lastTap?.id === id && now - this.lastTap.time < DOUBLE_TAP_MS) {
+      this.lastTap = null;
+      this.events.open(id);
+      return;
+    }
+    this.lastTap = { id, time: now };
+  }
+
   private dragDevice(e: PointerEvent, id: string, g: SVGGElement): void {
     const placed = this.topo.get(id);
     if (!placed) return;
     const start = this.toWorld(e);
     const origin = { x: placed.x, y: placed.y };
     let moved = false;
+    this.gesture = true;
     g.setPointerCapture(e.pointerId);
+    const press = e.pointerType === 'mouse' ? 0 : window.setTimeout(() => { if (!moved) { moved = true; this.events.open(id); } }, LONG_PRESS_MS);
     const move = (ev: PointerEvent): void => {
+      if (this.viewport.pinching()) return;
       const p = this.toWorld(ev);
-      if (!moved && Math.hypot(p.x - start.x, p.y - start.y) < DRAG_THRESHOLD) return;
+      if (!moved && Math.hypot(p.x - start.x, p.y - start.y) < DRAG_THRESHOLD / this.viewport.scale) return;
+      window.clearTimeout(press);
       moved = true;
       placed.x = clamp(origin.x + p.x - start.x, 40, WORLD_W - 40);
       placed.y = clamp(origin.y + p.y - start.y, 40, WORLD_H - 40);
       g.setAttribute('transform', `translate(${placed.x} ${placed.y})`);
       this.renderLinks();
     };
-    const up = (): void => {
+    const up = (ev: PointerEvent): void => {
+      this.gesture = false;
+      window.clearTimeout(press);
       g.removeEventListener('pointermove', move);
       g.removeEventListener('pointerup', up);
+      g.removeEventListener('pointercancel', up);
       if (moved) this.events.changed();
-      else this.markSelection();
+      else {
+        this.markSelection();
+        if (ev.type === 'pointerup') this.tapped(id, ev);
+      }
     };
     g.addEventListener('pointermove', move);
     g.addEventListener('pointerup', up);
+    g.addEventListener('pointercancel', up);
   }
 
   private showPortMenu(id: string, e: PointerEvent): void {
@@ -241,12 +286,13 @@ export class Canvas {
       b.addEventListener('click', () => this.pickPort({ device: id, port }));
       return b;
     });
-    const title = this.pendingEnd ? `Conectar a ${placed.label}` : `Desde ${placed.label}`;
+    const title = t(this.pendingEnd ? 'canvas.connectTo' : 'canvas.from', { name: placed.label });
     this.menu.replaceChildren(el('p', { class: 'port-menu-title' }, title), ...items);
-    const host = this.root.getBoundingClientRect();
-    this.menu.style.left = `${e.clientX - host.left + this.root.scrollLeft + 8}px`;
-    this.menu.style.top = `${e.clientY - host.top + this.root.scrollTop + 8}px`;
     this.menu.hidden = false;
+    const host = this.root.getBoundingClientRect();
+    const pos = placeInside(e.clientX - host.left + 8, e.clientY - host.top + 8, this.menu.offsetWidth, this.menu.offsetHeight, this.root.clientWidth, this.root.clientHeight);
+    this.menu.style.left = `${pos.x + this.root.scrollLeft}px`;
+    this.menu.style.top = `${pos.y + this.root.scrollTop}px`;
     (items.find((b) => !b.disabled) ?? items[0])?.focus();
   }
 
@@ -254,15 +300,15 @@ export class Canvas {
     this.hideMenu();
     if (!this.pendingEnd) {
       this.pendingEnd = ep;
-      this.events.hint(`Cable desde ${this.topo.get(ep.device)?.label} ${ep.port}: elige el otro extremo.`);
+      this.events.hint(t('canvas.cableFrom', { name: this.topo.get(ep.device)?.label ?? ep.device, port: ep.port }));
       this.render();
       return;
     }
     try {
       this.topo.connect(this.pendingEnd, ep);
-      this.events.hint(HINTS.cable);
+      this.events.hint(t(HINTS.cable));
     } catch (err) {
-      this.events.hint(`No se pudo conectar: ${err instanceof Error ? err.message : 'error desconocido'}.`);
+      this.events.hint(t('canvas.connectFailed', { error: err instanceof Error ? err.message : t('canvas.unknownError') }));
     }
     this.pendingEnd = null;
     this.events.changed();

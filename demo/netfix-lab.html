@@ -70,7 +70,7 @@
 [hidden] { display: none !important; }
 html, body { height: 100%; margin: 0; }
 body { background: var(--ws); color: var(--ink); font: 15px/1.45 var(--font-ui); }
-#app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+#app { height: 100%; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
 button, input, select { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -222,7 +222,7 @@ button, input, select { font: inherit; color: inherit; }
 .ed-viewer { background: #1d3f8f; color: #d6dcef; }
 
 /* ---------------------------------------------------------------- documentation */
-body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display: none; }
+body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data-view="donate"] .win-layer { display: none; }
 .docs-host { min-height: 0; grid-row: 2 / 4; overflow: hidden; }
 .docs { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); height: 100%; background: var(--panel); }
 .doc-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--panel-2); }
@@ -247,7 +247,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display:
 .doc-table { border-collapse: collapse; width: 100%; font-size: 14px; }
 .doc-table th, .doc-table td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
 .doc-table thead th { background: var(--panel-2); }
-.about .about-page { grid-column: 1 / -1; }
+.about .about-page, .donate .donate-page { grid-column: 1 / -1; }
 .about-hero { border-bottom: 1px solid var(--line); padding-bottom: 18px; margin-bottom: 8px; }
 .about-hero { display: grid; grid-template-columns: 1fr auto; column-gap: 24px; }
 .about-hero > * { grid-column: 1; }
@@ -492,11 +492,105 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer { display:
 .browser-view .web-brand-ison { background-image: var(--brand-isologo-n); width: 72px; height: 68px; }
 .browser-view .web-brand-foot { display: flex; align-items: center; justify-content: center; gap: 6px; font: 11px/1.4 Arial, sans-serif; color: #666; margin: 12px 0 0; }
 
+/* ---------------------------------------------------------------- v0.7: responsive, touch and new views */
+.topbar-menu { display: contents; }
+.menu-toggle { display: none; align-items: center; gap: 6px; }
+.select-lang { max-width: 9rem; }
+.workspace { overscroll-behavior: contain; }
+.zoom-group { display: flex; gap: 4px; align-items: center; padding-right: 16px; border-right: 1px solid var(--line); }
+.zoom-btn { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--panel); cursor: pointer; font-size: 18px; line-height: 1; }
+.zoom-btn:hover { border-color: var(--accent); }
+.win-actions { display: flex; align-items: center; gap: 2px; }
+.win-btn { border: 0; background: none; font-size: 16px; line-height: 1; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; }
+.win-btn:hover { background: var(--accent-soft); }
+.win-btn[aria-pressed="true"] { background: var(--accent-soft); }
+.window[data-max="true"] { left: 8px !important; top: 8px !important; width: calc(100vw - 16px); height: calc(100dvh - 16px); resize: none; }
+.window[data-max="true"] .win-head { cursor: default; }
+.win-tabs { overflow-x: auto; scrollbar-width: thin; }
+.win-tab { white-space: nowrap; flex: none; }
+
+/* terminal on touch screens */
+.term-ime { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; resize: none; }
+.terminal { position: relative; }
+.term-keys { display: none; gap: 4px; padding: 6px 8px; overflow-x: auto; background: #0b171d; border-top: 1px solid #22343c; flex: none; }
+.term-key { flex: none; min-width: 44px; height: 38px; padding: 0 8px; border: 1px solid #2e4650; border-radius: 6px; background: #142a33; color: var(--console-ink); font: 600 13px var(--font-mono); touch-action: manipulation; }
+.term-key[aria-pressed="true"] { background: var(--console-msg); color: var(--console); }
+.term-fn { display: none; }
+.terminal[data-full="true"] .term-fn { display: inline-block; }
+
+/* donations */
+.donate-box { border: 1px solid var(--line); border-radius: var(--radius-win); padding: 14px 16px 16px; margin: 16px 0; display: grid; gap: 12px; max-width: 560px; }
+.donate-box legend { font-weight: 700; padding: 0 6px; }
+.donate-amounts { display: flex; flex-wrap: wrap; gap: 8px; }
+.donate-amount { min-width: 76px; min-height: 44px; padding: 6px 14px; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--panel); font-weight: 700; cursor: pointer; }
+.donate-amount[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.donate-other-input { max-width: 12rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--panel); font-family: var(--font-mono); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; justify-self: start; }
+.donate-page a.btn-primary { color: var(--accent-ink); }
+.btn-primary[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.donate-url { overflow-wrap: anywhere; }
+.form-msg.is-error { color: var(--err); margin: 0; }
+
+/* coarse pointers (phones, tablets): bigger targets */
+@media (pointer: coarse) {
+  .btn, .select, .seg { min-height: 44px; }
+  .win-tab { padding: 11px 14px; }
+  .win-close, .win-btn { width: 44px; height: 44px; }
+  .port-item { padding: 11px 10px; font-size: 15px; }
+  .pal-item { min-height: 56px; }
+  .zoom-btn { width: 44px; height: 44px; }
+  .term-keys { display: flex; }
+  .term-input { font-size: 16px; }
+  .field input, .field select, .field textarea, .pane textarea { font-size: 16px; min-height: 40px; }
+}
+
+/* phones */
+@media (max-width: 760px) {
+  .topbar { position: relative; flex-wrap: nowrap; gap: 8px; padding: 6px 10px; }
+  .brand-logo { height: 24px; }
+  .topbar > .segmented { overflow-x: auto; flex: 1 1 auto; min-width: 0; }
+  .topbar > .segmented .seg { padding: 5px 10px; white-space: nowrap; }
+  .menu-toggle { display: inline-flex; margin-left: auto; flex: none; }
+  .menu-toggle-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .topbar-menu { display: none; }
+  .topbar[data-open="true"] .topbar-menu {
+    display: flex; flex-direction: column; align-items: stretch; gap: 10px; position: absolute; z-index: 30; top: 100%; left: 0; right: 0;
+    padding: 12px; background: var(--panel); border-bottom: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .topbar-menu .file-actions, .topbar-menu .time { flex-wrap: wrap; }
+  .topbar-menu .select, .topbar .select { max-width: none; }
+  .palette { gap: 8px; padding: 6px 8px; }
+  .pal-group, .zoom-group { padding-right: 8px; gap: 4px; }
+  .pal-item { min-width: 56px; padding: 2px 4px; }
+  .pal-item svg { width: 36px; height: 27px; }
+  .pal-model { display: none; }
+  .window { left: 0 !important; top: 0 !important; width: 100vw; height: 100dvh; border-radius: 0; border: 0; resize: none; min-width: 0; min-height: 0; }
+  .win-head { cursor: default; }
+  .win-max { display: none; }
+  .about-hero { grid-template-columns: 1fr; }
+}
+
+.palette { align-items: center; }
+.palette .hint { flex: 1 1 18rem; min-width: 14rem; font-size: 14px; }
+.pal-group, .zoom-group { flex: none; }
+@media (max-width: 760px) {
+  .topbar[data-open="true"] .topbar-menu .select, .topbar-menu .file-actions .select { width: 100%; max-width: 100%; }
+  .topbar-menu .file-actions { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .topbar-menu .file-actions .select { grid-column: 1 / -1; }
+  .topbar-menu .time { display: grid; grid-template-columns: auto 1fr; }
+  .topbar-menu > .segmented { display: flex; }
+  .topbar-menu > .segmented .seg { flex: 1; }
+}
+@media (min-width: 761px) and (max-width: 1100px) {
+  .palette { flex-wrap: wrap; row-gap: 4px; }
+  .palette .hint { flex-basis: 100%; }
+}
+
 </style>
 </head>
 <body data-mode="realtime">
   <div id="app"></div>
-  <noscript>Netfix necesita JavaScript para simular la red.</noscript>
+  <noscript lang="es">Netfix necesita JavaScript para simular la red.</noscript><noscript lang="en-GB">Netfix needs JavaScript to simulate the network.</noscript>
   <script>(() => {
 "use strict";
 const __m = {};
@@ -706,21 +800,568 @@ function compareIfaces(a, b) {
 
 return { IFACE_TYPES, parseIfaceName, shortIfaceName, isSubinterface, parentOf, defaultIface, ifaceSortKey, compareIfaces };
 })();
+__m["ui/viewport-math.js"] = (() => {
+/** Pure geometry of the zoomable workspace: scale limits, zoom around a point and fit-to-content. */
+const MIN_SCALE = 0.35;
+const MAX_SCALE = 2.5;
+const ZOOM_STEP = 1.25;
+function clampScale(s) {
+    if (!Number.isFinite(s))
+        return 1;
+    return Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
+}
+/**
+ * New scroll offsets so that the world point under `at` (pixels from the viewport's top-left corner) stays
+ * under it when the scale changes from `from` to `to`.
+ */
+function zoomAt(from, to, at, scroll) {
+    const worldX = (scroll.left + at.x) / from;
+    const worldY = (scroll.top + at.y) / from;
+    return { left: Math.max(0, worldX * to - at.x), top: Math.max(0, worldY * to - at.y) };
+}
+/** World coordinates of a viewport point. */
+function toWorld(scale, at, scroll) {
+    return { x: (scroll.left + at.x) / scale, y: (scroll.top + at.y) / scale };
+}
+/** Scale and scroll that show `box` (plus a margin) centred in a viewport of `w`×`h`. */
+function fitBox(box, w, h, margin = 80) {
+    if (!box || w <= 0 || h <= 0)
+        return { scale: 1, scroll: { left: 0, top: 0 } };
+    const bw = box.maxX - box.minX + 2 * margin;
+    const bh = box.maxY - box.minY + 2 * margin;
+    const scale = clampScale(Math.min(w / bw, h / bh, 1.5));
+    const cx = (box.minX + box.maxX) / 2;
+    const cy = (box.minY + box.maxY) / 2;
+    return { scale, scroll: { left: Math.max(0, cx * scale - w / 2), top: Math.max(0, cy * scale - h / 2) } };
+}
+/** Bounding box of the points, or null when there are none. */
+function boundsOf(points) {
+    let box = null;
+    for (const p of points) {
+        box = box ? { minX: Math.min(box.minX, p.x), minY: Math.min(box.minY, p.y), maxX: Math.max(box.maxX, p.x), maxY: Math.max(box.maxY, p.y) } : { minX: p.x, minY: p.y, maxX: p.x, maxY: p.y };
+    }
+    return box;
+}
+/** Scale after a pinch: the ratio of the distances between two pointers. */
+function pinchScale(startScale, startDistance, distance) {
+    return startDistance > 0 ? clampScale(startScale * (distance / startDistance)) : startScale;
+}
+/** Keeps a floating menu of `w`×`h` inside a container of `cw`×`ch` (all in container pixels). */
+function placeInside(x, y, w, h, cw, ch, pad = 8) {
+    return { x: Math.max(pad, Math.min(x, cw - w - pad)), y: Math.max(pad, Math.min(y, ch - h - pad)) };
+}
+
+return { MIN_SCALE, MAX_SCALE, ZOOM_STEP, clampScale, zoomAt, toWorld, fitBox, boundsOf, pinchScale, placeInside };
+})();
+__m["ui/viewport.js"] = (() => {
+/**
+ * Zoom and pan of the workspace: Ctrl+wheel (and touchpad pinch, which browsers send as Ctrl+wheel), two-finger
+ * pinch, dragging the background to pan (finger, pen or mouse), and fit-to-content. The SVG keeps its viewBox
+ * and is resized, so the scroll container does the panning.
+ */
+const { clampScale, zoomAt, fitBox, boundsOf, pinchScale, ZOOM_STEP } = __m["ui/viewport-math.js"];
+const WHEEL_ZOOM_SPEED = 0.0025;
+class Viewport {
+    scale = 1;
+    root;
+    svgEl;
+    worldW;
+    worldH;
+    touches = new Map();
+    pinch = null;
+    constructor(root, svgEl, worldW, worldH) {
+        this.root = root;
+        this.svgEl = svgEl;
+        this.worldW = worldW;
+        this.worldH = worldH;
+        root.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+        root.addEventListener('pointerdown', (e) => this.trackTouch(e), { capture: true });
+        root.addEventListener('pointermove', (e) => this.onTouchMove(e), { capture: true });
+        for (const type of ['pointerup', 'pointercancel'])
+            root.addEventListener(type, (e) => this.untrack(e), { capture: true });
+        this.apply();
+    }
+    /** True while two fingers are on the workspace (device drags should stop). */
+    pinching() {
+        return this.pinch !== null;
+    }
+    apply() {
+        this.svgEl.setAttribute('width', String(Math.round(this.worldW * this.scale)));
+        this.svgEl.setAttribute('height', String(Math.round(this.worldH * this.scale)));
+        this.root.dataset.zoom = String(Math.round(this.scale * 100));
+    }
+    /** Point of the viewport (relative to its top-left corner) for a client position. */
+    local(clientX, clientY) {
+        const r = this.root.getBoundingClientRect();
+        return { x: clientX - r.left, y: clientY - r.top };
+    }
+    /** Sets the scale keeping `at` (viewport pixels; default: the centre) fixed. */
+    zoomTo(scale, at) {
+        const next = clampScale(scale);
+        if (next === this.scale)
+            return;
+        const point = at ?? { x: this.root.clientWidth / 2, y: this.root.clientHeight / 2 };
+        const scroll = zoomAt(this.scale, next, point, { left: this.root.scrollLeft, top: this.root.scrollTop });
+        this.scale = next;
+        this.apply();
+        this.root.scrollLeft = scroll.left;
+        this.root.scrollTop = scroll.top;
+    }
+    zoom(action, points = []) {
+        if (action === 'in')
+            this.zoomTo(this.scale * ZOOM_STEP);
+        else if (action === 'out')
+            this.zoomTo(this.scale / ZOOM_STEP);
+        else
+            this.fit(points);
+    }
+    fit(points) {
+        const f = fitBox(boundsOf(points), this.root.clientWidth, this.root.clientHeight);
+        this.scale = f.scale;
+        this.apply();
+        this.root.scrollLeft = f.scroll.left;
+        this.root.scrollTop = f.scroll.top;
+    }
+    /** Fits when the content does not fit at the current scale (first view on phones and tablets). */
+    fitIfNeeded(points) {
+        const box = boundsOf(points);
+        if (!box || this.root.clientWidth === 0)
+            return;
+        const margin = 60;
+        const fits = (box.maxX - box.minX + 2 * margin) * this.scale <= this.root.clientWidth && (box.maxY - box.minY + 2 * margin) * this.scale <= this.root.clientHeight;
+        if (fits) {
+            this.root.scrollLeft = Math.max(0, box.minX * this.scale - margin);
+            this.root.scrollTop = Math.max(0, box.minY * this.scale - margin);
+        }
+        else
+            this.fit([{ x: box.minX, y: box.minY }, { x: box.maxX, y: box.maxY }]);
+    }
+    onWheel(e) {
+        if (!e.ctrlKey && !e.metaKey)
+            return;
+        e.preventDefault();
+        this.zoomTo(this.scale * Math.exp(-e.deltaY * WHEEL_ZOOM_SPEED), this.local(e.clientX, e.clientY));
+    }
+    // ------------------------------------------------------------ pan (background) and pinch
+    /** Drags the view with a finger, pen or mouse on the empty background. */
+    beginPan(e) {
+        const start = { x: e.clientX, y: e.clientY, left: this.root.scrollLeft, top: this.root.scrollTop };
+        const target = e.target instanceof Element ? e.target : this.svgEl;
+        target.setPointerCapture?.(e.pointerId);
+        const move = (ev) => {
+            if (ev.pointerId !== e.pointerId || this.pinch)
+                return;
+            this.root.scrollLeft = start.left - (ev.clientX - start.x);
+            this.root.scrollTop = start.top - (ev.clientY - start.y);
+        };
+        const end = (ev) => {
+            if (ev.pointerId !== e.pointerId)
+                return;
+            target.removeEventListener('pointermove', move);
+            target.removeEventListener('pointerup', end);
+            target.removeEventListener('pointercancel', end);
+        };
+        target.addEventListener('pointermove', move);
+        target.addEventListener('pointerup', end);
+        target.addEventListener('pointercancel', end);
+    }
+    trackTouch(e) {
+        if (e.pointerType !== 'touch')
+            return;
+        this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (this.touches.size === 2)
+            this.pinch = { startScale: this.scale, startDistance: this.distance() };
+    }
+    distance() {
+        const [a, b] = [...this.touches.values()];
+        return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+    }
+    onTouchMove(e) {
+        if (!this.touches.has(e.pointerId))
+            return;
+        this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (!this.pinch || this.touches.size < 2)
+            return;
+        const [a, b] = [...this.touches.values()];
+        if (!a || !b)
+            return;
+        e.preventDefault();
+        this.zoomTo(pinchScale(this.pinch.startScale, this.pinch.startDistance, this.distance()), this.local((a.x + b.x) / 2, (a.y + b.y) / 2));
+    }
+    untrack(e) {
+        this.touches.delete(e.pointerId);
+        if (this.touches.size < 2)
+            this.pinch = null;
+    }
+}
+
+return { Viewport };
+})();
+__m["i18n/locale.js"] = (() => {
+/**
+ * Current language of Netfix (presentation state). A leaf module: it imports nothing from src/, so any layer
+ * can ask for the locale without import cycles. Program output (IOS, bash, cmd) never depends on it.
+ */
+const LOCALES = ['es-ES', 'en-GB'];
+const DEFAULT_LOCALE = 'es-ES';
+const LOCALE_STORAGE_KEY = 'netfix:locale';
+/** Name of each language in its own language (for the selector). */
+const LOCALE_NAMES = { 'es-ES': 'Español (España)', 'en-GB': 'English (UK)' };
+/** Short label for compact selectors. */
+const LOCALE_SHORT = { 'es-ES': 'ES', 'en-GB': 'EN' };
+let current = DEFAULT_LOCALE;
+const listeners = new Set();
+function isLocale(value) {
+    return typeof value === 'string' && LOCALES.includes(value);
+}
+function getLocale() {
+    return current;
+}
+/** Changes the language and notifies the listeners (only when it really changes). */
+function setLocale(locale) {
+    if (locale === current)
+        return;
+    current = locale;
+    for (const fn of [...listeners])
+        fn(locale);
+}
+/** Subscribes to language changes; returns the function that unsubscribes. */
+function onLocaleChange(fn) {
+    listeners.add(fn);
+    return () => { listeners.delete(fn); };
+}
+/** The saved choice, else the first browser language we have (es-* → es-ES, en-* → en-GB), else Spanish. */
+function detectLocale(saved, languages) {
+    if (isLocale(saved))
+        return saved;
+    for (const lang of languages) {
+        const base = lang.toLowerCase().split('-')[0];
+        if (base === 'es')
+            return 'es-ES';
+        if (base === 'en')
+            return 'en-GB';
+    }
+    return DEFAULT_LOCALE;
+}
+/** Locale for an HTTP Accept-Language header (simulated web servers); null when it names neither language. */
+function localeFromAcceptLanguage(header) {
+    if (!header)
+        return null;
+    const ranked = header.split(',').map((part, i) => {
+        const [tag = '', ...params] = part.trim().split(';');
+        const q = params.map((p) => /^\s*q=([\d.]+)/.exec(p)?.[1]).find((v) => v !== undefined);
+        return { tag: tag.trim(), q: q === undefined ? 1 : Number(q), i };
+    }).filter((x) => x.tag && x.q > 0).sort((a, b) => b.q - a.q || a.i - b.i);
+    for (const { tag } of ranked) {
+        const base = tag.toLowerCase().split('-')[0];
+        if (base === 'es')
+            return 'es-ES';
+        if (base === 'en')
+            return 'en-GB';
+    }
+    return null;
+}
+
+return { LOCALES, DEFAULT_LOCALE, LOCALE_STORAGE_KEY, LOCALE_NAMES, LOCALE_SHORT, isLocale, getLocale, setLocale, onLocaleChange, detectLocale, localeFromAcceptLanguage };
+})();
+__m["i18n/es-ES/app.js"] = (() => {
+/** Español (España): barra superior, paleta, vistas y mensajes generales de la aplicación. */
+const APP_ES = {
+    'app.title': 'Netfix — laboratorio de redes',
+    'app.description': 'Simulador de redes estilo Packet Tracer con CLI de Cisco IOS, servidores Linux y Windows y laboratorios.',
+    'app.noscript': 'Netfix necesita JavaScript para simular la red.',
+    'top.examples': 'Laboratorios…',
+    'top.examplesLabel': 'Abrir un laboratorio de ejemplo',
+    'top.advance': 'Avanzar reloj…',
+    'top.advanceLabel': 'Avanzar el reloj de la simulación',
+    'top.plusMinute': '+1 minuto',
+    'top.plusHour': '+1 hora',
+    'top.plusDay': '+1 día',
+    'top.realtime': 'Tiempo real',
+    'top.simulation': 'Simulación',
+    'top.mode': 'Modo',
+    'top.file': 'Archivo',
+    'top.new': 'Nuevo',
+    'top.open': 'Abrir…',
+    'top.save': 'Guardar',
+    'top.saveTitle': 'Guardar la topología en un archivo .json (Ctrl+S)',
+    'top.view': 'Vista',
+    'top.menu': 'Menú',
+    'top.language': 'Idioma',
+    'view.net': 'Red',
+    'view.docs': 'Documentación',
+    'view.about': 'Acerca de',
+    'view.donate': 'Donaciones',
+    'pal.devices': 'Dispositivos',
+    'pal.tools': 'Herramientas',
+    'pal.select': 'Seleccionar',
+    'pal.cable': 'Cable',
+    'pal.delete': 'Eliminar',
+    'pal.zoomIn': 'Acercar',
+    'pal.zoomOut': 'Alejar',
+    'pal.zoomFit': 'Ajustar a la red',
+    'kind.router': 'Router',
+    'kind.linuxrouter': 'Router Linux',
+    'kind.switch': 'Switch',
+    'kind.pc': 'PC',
+    'kind.server': 'Servidor',
+    'kind.cloud': 'Nube',
+    'hint.simulation': 'Simulación: lo que hagas (ipconfig /renew, ping, DHCP) queda en la lista de eventos. Pulsa Reproducir.',
+    'hint.realtime': 'Tiempo real: la red funciona sola; los cambios se aplican al instante.',
+    'hint.advanced': 'Reloj adelantado: las concesiones se renuevan o caducan como en un equipo real.',
+    'hint.empty': 'Área de trabajo vacía.',
+    'hint.copied': 'Topología copiada al portapapeles: pégala en un archivo .json para guardarla.',
+    'hint.copyFailed': 'No se pudo copiar. Usa la versión descargable de Netfix para guardar archivos.',
+    'hint.saved': 'Topología guardada.',
+    'hint.downloaded': 'Descargado {name}. Ábrelo luego con Abrir….',
+    'hint.opened': 'Abierto {name}.',
+    'hint.openFailed': 'No se pudo abrir {name}: {error}',
+    'hint.unknownFormat': 'formato desconocido',
+    'hint.language': 'Idioma: español (España).',
+    'file.description': 'Topología de Netfix',
+    'file.prefix': 'topologia',
+    'clock.utc': '{time} UTC',
+    'term.keys': 'Teclas',
+    'win.close': 'Cerrar {title}',
+    'win.maximize': 'Maximizar',
+    'win.restore': 'Restaurar',
+    'win.next': 'Siguiente ventana ({count} abiertas)',
+};
+
+return { APP_ES };
+})();
+__m["i18n/en-GB/app.js"] = (() => {
+const APP_EN = {
+    'app.title': 'Netfix — network lab',
+    'app.description': 'Packet Tracer-style network simulator with the Cisco IOS CLI, Linux and Windows servers, and labs.',
+    'app.noscript': 'Netfix needs JavaScript to simulate the network.',
+    'top.examples': 'Labs…',
+    'top.examplesLabel': 'Open an example lab',
+    'top.advance': 'Advance clock…',
+    'top.advanceLabel': 'Advance the simulation clock',
+    'top.plusMinute': '+1 minute',
+    'top.plusHour': '+1 hour',
+    'top.plusDay': '+1 day',
+    'top.realtime': 'Realtime',
+    'top.simulation': 'Simulation',
+    'top.mode': 'Mode',
+    'top.file': 'File',
+    'top.new': 'New',
+    'top.open': 'Open…',
+    'top.save': 'Save',
+    'top.saveTitle': 'Save the topology to a .json file (Ctrl+S)',
+    'top.view': 'View',
+    'top.menu': 'Menu',
+    'top.language': 'Language',
+    'view.net': 'Network',
+    'view.docs': 'Documentation',
+    'view.about': 'About',
+    'view.donate': 'Donations',
+    'pal.devices': 'Devices',
+    'pal.tools': 'Tools',
+    'pal.select': 'Select',
+    'pal.cable': 'Cable',
+    'pal.delete': 'Delete',
+    'pal.zoomIn': 'Zoom in',
+    'pal.zoomOut': 'Zoom out',
+    'pal.zoomFit': 'Fit to network',
+    'kind.router': 'Router',
+    'kind.linuxrouter': 'Linux router',
+    'kind.switch': 'Switch',
+    'kind.pc': 'PC',
+    'kind.server': 'Server',
+    'kind.cloud': 'Cloud',
+    'hint.simulation': 'Simulation: whatever you do (ipconfig /renew, ping, DHCP) is added to the event list. Press Play.',
+    'hint.realtime': 'Realtime: the network runs by itself; changes apply immediately.',
+    'hint.advanced': 'Clock advanced: leases renew or expire as on real equipment.',
+    'hint.empty': 'Empty workspace.',
+    'hint.copied': 'Topology copied to the clipboard: paste it into a .json file to keep it.',
+    'hint.copyFailed': 'Could not copy. Use the downloadable version of Netfix to save files.',
+    'hint.saved': 'Topology saved.',
+    'hint.downloaded': 'Downloaded {name}. Open it later with Open….',
+    'hint.opened': 'Opened {name}.',
+    'hint.openFailed': 'Could not open {name}: {error}',
+    'hint.unknownFormat': 'unknown format',
+    'hint.language': 'Language: English (UK).',
+    'file.description': 'Netfix topology',
+    'file.prefix': 'topology',
+    'clock.utc': '{time} UTC',
+    'term.keys': 'Keys',
+    'win.close': 'Close {title}',
+    'win.maximize': 'Maximise',
+    'win.restore': 'Restore',
+    'win.next': 'Next window ({count} open)',
+};
+
+return { APP_EN };
+})();
+__m["i18n/es-ES/canvas.js"] = (() => {
+/** Español (España): área de trabajo (lienzo, cables, puertos). */
+const CANVAS_ES = {
+    'canvas.label': 'Área de trabajo lógica',
+    'canvas.hint.select': 'Arrastra para mover; arrastra el fondo para desplazarte. Doble clic, doble toque o pulsación larga para abrir.',
+    'canvas.hint.cable': 'Cable: toca el primer dispositivo y elige un puerto.',
+    'canvas.hint.delete': 'Eliminar: toca un dispositivo o un cable.',
+    'canvas.hint.place': 'Toca el área de trabajo para colocar el dispositivo.',
+    'canvas.connectTo': 'Conectar a {name}',
+    'canvas.from': 'Desde {name}',
+    'canvas.cableFrom': 'Cable desde {name} {port}: elige el otro extremo.',
+    'canvas.connectFailed': 'No se pudo conectar: {error}.',
+    'canvas.unknownError': 'error desconocido',
+};
+
+return { CANVAS_ES };
+})();
+__m["i18n/en-GB/canvas.js"] = (() => {
+const CANVAS_EN = {
+    'canvas.label': 'Logical workspace',
+    'canvas.hint.select': 'Drag to move; drag the background to pan. Double-click, double-tap or long-press to open.',
+    'canvas.hint.cable': 'Cable: tap the first device and choose a port.',
+    'canvas.hint.delete': 'Delete: tap a device or a cable.',
+    'canvas.hint.place': 'Tap the workspace to place the device.',
+    'canvas.connectTo': 'Connect to {name}',
+    'canvas.from': 'From {name}',
+    'canvas.cableFrom': 'Cable from {name} {port}: choose the other end.',
+    'canvas.connectFailed': 'Could not connect: {error}.',
+    'canvas.unknownError': 'unknown error',
+};
+
+return { CANVAS_EN };
+})();
+__m["i18n/es-ES/pages.js"] = (() => {
+/** Español (España): vistas Donaciones y Acerca de. */
+const PAGES_ES = {
+    'donate.crumb': 'Donaciones',
+    'donate.title': 'Apoya Netfix',
+    'donate.lead': 'Si quieres apoyar este proyecto para que siga mejorando y pueda hacer frente a los gastos de desarrollo, puedes hacer una donación.',
+    'donate.free': 'Netfix es software libre y gratuito (donationware): úsalo en clase y en casa sin límites. Las donaciones son voluntarias.',
+    'donate.choose': 'Elige un importe',
+    'donate.other': 'Otro importe',
+    'donate.otherLabel': 'Otro importe en euros',
+    'donate.otherPlaceholder': 'p. ej. 25',
+    'donate.button': 'Donar {amount} con PayPal',
+    'donate.buttonNone': 'Elige un importe',
+    'donate.err.empty': 'Escribe un importe.',
+    'donate.err.format': 'Usa un número con hasta dos decimales (p. ej. 12,50).',
+    'donate.err.range': 'El importe debe estar entre {min} y {max}.',
+    'donate.privacy': 'El botón abre paypal.me/infogerman en una pestaña nueva. Netfix no carga nada de PayPal ni envía datos: el pago se hace por completo en PayPal.',
+    'donate.copy': 'Si no se abre la pestaña, copia el enlace:',
+    'donate.thanks': 'Gracias por ayudar a que Netfix siga creciendo.',
+    'about.label': 'Acerca de Netfix',
+    'about.crumb': 'Acerca de',
+    'about.version': 'Versión',
+    'about.release': 'Versión {version}',
+    'about.author': 'Autoría',
+    'about.repo': 'Repositorio',
+    'about.license': 'Licencia del código',
+    'about.runs': 'Ejecución',
+    'about.runsText': 'Todo funciona en tu navegador: sin servidor, sin dependencias y sin enviar datos.',
+    'about.licenseTitle': 'Licencia y atribuciones',
+    'about.licenseFrom': 'Contenido de LICENSE.md, en la raíz del repositorio.',
+};
+
+return { PAGES_ES };
+})();
+__m["i18n/en-GB/pages.js"] = (() => {
+const PAGES_EN = {
+    'donate.crumb': 'Donations',
+    'donate.title': 'Support Netfix',
+    'donate.lead': 'If you would like to support this project so that it keeps improving and can cover its development costs, you can make a donation.',
+    'donate.free': 'Netfix is free software at no cost (donationware): use it in class and at home without limits. Donations are voluntary.',
+    'donate.choose': 'Choose an amount',
+    'donate.other': 'Other amount',
+    'donate.otherLabel': 'Other amount in euros',
+    'donate.otherPlaceholder': 'e.g. 25',
+    'donate.button': 'Donate {amount} with PayPal',
+    'donate.buttonNone': 'Choose an amount',
+    'donate.err.empty': 'Enter an amount.',
+    'donate.err.format': 'Use a number with up to two decimal places (e.g. 12.50).',
+    'donate.err.range': 'The amount must be between {min} and {max}.',
+    'donate.privacy': 'The button opens paypal.me/infogerman in a new tab. Netfix loads nothing from PayPal and sends no data: the payment happens entirely on PayPal.',
+    'donate.copy': 'If the tab does not open, copy the link:',
+    'donate.thanks': 'Thank you for helping Netfix keep growing.',
+    'about.label': 'About Netfix',
+    'about.crumb': 'About',
+    'about.version': 'Version',
+    'about.release': 'Version {version}',
+    'about.author': 'Author',
+    'about.repo': 'Repository',
+    'about.license': 'Code licence',
+    'about.runs': 'Runs',
+    'about.runsText': 'Everything runs in your browser: no server, no dependencies and no data sent anywhere.',
+    'about.licenseTitle': 'Licence and attributions',
+    'about.licenseFrom': 'Contents of LICENSE.md, at the root of the repository.',
+};
+
+return { PAGES_EN };
+})();
+__m["i18n/catalog.js"] = (() => {
+const { APP_ES } = __m["i18n/es-ES/app.js"];
+const { APP_EN } = __m["i18n/en-GB/app.js"];
+const { CANVAS_ES } = __m["i18n/es-ES/canvas.js"];
+const { CANVAS_EN } = __m["i18n/en-GB/canvas.js"];
+const { PAGES_ES } = __m["i18n/es-ES/pages.js"];
+const { PAGES_EN } = __m["i18n/en-GB/pages.js"];
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES };
+const CATALOGS = {
+    'es-ES': ES,
+    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN },
+};
+
+return { CATALOGS };
+})();
+__m["i18n/t.js"] = (() => {
+/** Translation and locale-aware formatting. */
+const { getLocale } = __m["i18n/locale.js"];
+const { CATALOGS } = __m["i18n/catalog.js"];
+/** Replaces {name} placeholders; unknown placeholders stay visible so a missing parameter is noticed. */
+function format(template, params = {}) {
+    return template.replace(/\{(\w+)\}/g, (all, name) => (name in params ? String(params[name]) : all));
+}
+/** The message `key` in the current language (or in `locale`). */
+function t(key, params, locale = getLocale()) {
+    return format(CATALOGS[locale][key], params);
+}
+/** Like t(), for keys built at run time (unknown keys return the key itself). */
+function tDynamic(key, params, locale = getLocale()) {
+    const table = CATALOGS[locale];
+    const msg = table[key];
+    return msg === undefined ? key : format(msg, params);
+}
+function hasMessage(key) {
+    return key in CATALOGS['es-ES'];
+}
+function fmtNumber(n, opts = {}, locale = getLocale()) {
+    return new Intl.NumberFormat(locale, opts).format(n);
+}
+/** Money in euros, e.g. "5 €" / "€5". */
+function fmtEuros(amount, locale = getLocale()) {
+    const whole = Number.isInteger(amount);
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR', minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 }).format(amount);
+}
+function fmtDateTime(ms, locale = getLocale()) {
+    return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'medium', timeZone: 'UTC' }).format(new Date(ms));
+}
+
+return { format, t, tDynamic, hasMessage, fmtNumber, fmtEuros, fmtDateTime };
+})();
 __m["ui/canvas.js"] = (() => {
 /** Logical workspace: devices, cables with link lights, placing, moving, cabling, deleting. */
 const { el, svg, clear, staticSvg } = __m["ui/dom.js"];
 const { ICONS, ICON_W, ICON_H, MODEL_LABEL } = __m["ui/icons.js"];
 const { shortIfaceName } = __m["ios/interfaces.js"];
+const { Viewport } = __m["ui/viewport.js"];
+const { placeInside } = __m["ui/viewport-math.js"];
+const { t } = __m["i18n/t.js"];
 const WORLD_W = 2400;
 const WORLD_H = 1600;
 const LIGHT_OFFSET = 36;
 const LABEL_OFFSET = 62;
 const DRAG_THRESHOLD = 4;
+const DOUBLE_TAP_MS = 350;
+const LONG_PRESS_MS = 550;
 const HINTS = {
-    select: 'Arrastra para mover. Doble clic para abrir la consola o el escritorio.',
-    cable: 'Cable: haz clic en el primer dispositivo y elige un puerto.',
-    delete: 'Eliminar: haz clic en un dispositivo o en un cable.',
-    place: 'Haz clic en el área de trabajo para colocar el dispositivo.',
+    select: 'canvas.hint.select', cable: 'canvas.hint.cable', delete: 'canvas.hint.delete', place: 'canvas.hint.place',
 };
 class Canvas {
     root;
@@ -735,30 +1376,38 @@ class Canvas {
     pendingEnd = null;
     events;
     frame = 0;
+    viewport;
+    lastTap = null;
+    /** A drag or tap on a device is in progress: periodic redraws wait so its element stays in the DOM. */
+    gesture = false;
+    lastPointer = 'mouse';
     constructor(topo, events) {
         this.topo = topo;
         this.events = events;
         this.linkLayer = svg('g', { class: 'links' });
         this.deviceLayer = svg('g', { class: 'devices' });
         this.packetLayer = svg('g', { class: 'packets' });
-        this.svgEl = svg('svg', { class: 'world', width: WORLD_W, height: WORLD_H, viewBox: `0 0 ${WORLD_W} ${WORLD_H}`, role: 'application', 'aria-label': 'Área de trabajo lógica' }, svg('rect', { class: 'world-bg', x: 0, y: 0, width: WORLD_W, height: WORLD_H }), this.linkLayer, this.deviceLayer, this.packetLayer);
+        this.svgEl = svg('svg', { class: 'world', width: WORLD_W, height: WORLD_H, viewBox: `0 0 ${WORLD_W} ${WORLD_H}`, role: 'application', 'aria-label': t('canvas.label') }, svg('rect', { class: 'world-bg', x: 0, y: 0, width: WORLD_W, height: WORLD_H }), this.linkLayer, this.deviceLayer, this.packetLayer);
         this.menu = el('div', { class: 'port-menu', role: 'menu', hidden: true });
         this.root = el('div', { class: 'workspace', tabindex: '0' }, this.svgEl, this.menu);
+        this.svgEl.addEventListener('pointerdown', (e) => { this.lastPointer = e.pointerType; }, { capture: true });
         this.svgEl.addEventListener('pointerdown', (e) => this.onBackground(e));
         this.root.addEventListener('keydown', (e) => this.onKey(e));
+        this.viewport = new Viewport(this.root, this.svgEl, WORLD_W, WORLD_H);
     }
     setTopology(topo) {
         this.topo = topo;
         this.selected = null;
         this.pendingEnd = null;
         this.render();
+        this.frameContent();
     }
     setTool(tool) {
         this.tool = tool;
         this.pendingEnd = null;
         this.hideMenu();
         this.root.dataset.tool = tool.kind;
-        this.events.hint(HINTS[tool.kind]);
+        this.events.hint(t(HINTS[tool.kind]));
         this.render();
     }
     currentTool() {
@@ -768,9 +1417,16 @@ class Canvas {
         const p = this.topo.get(id);
         return p ? { x: p.x, y: p.y } : undefined;
     }
+    zoom(action) {
+        this.viewport.zoom(action, [...this.topo.placed.values()]);
+    }
+    /** Shows the whole network if it does not fit (after the layout has a size). */
+    frameContent() {
+        requestAnimationFrame(() => this.viewport.fitIfNeeded([...this.topo.placed.values()]));
+    }
     /** Coalesces renders to one per animation frame. */
     requestRender() {
-        if (this.frame)
+        if (this.frame || this.gesture)
             return;
         this.frame = requestAnimationFrame(() => {
             this.frame = 0;
@@ -843,7 +1499,9 @@ class Canvas {
         if (name && name !== 'Router' && name !== 'Switch' && name !== p.label)
             g.appendChild(svg('text', { class: 'device-host', x: 0, y: ICON_H / 2 + 33 }, name));
         g.addEventListener('pointerdown', (e) => this.onDevicePointer(e, id, g));
-        g.addEventListener('dblclick', () => this.events.open(id));
+        // Touch double-taps are handled in tapped(): browsers also synthesise dblclick from any two quick taps.
+        g.addEventListener('dblclick', () => { if (this.lastPointer === 'mouse')
+            this.events.open(id); });
         g.addEventListener('keydown', (e) => {
             if (e.key === 'Enter')
                 this.events.open(id);
@@ -869,6 +1527,8 @@ class Canvas {
             this.selected = null;
             this.markSelection();
         }
+        if (e.button === 0 || e.pointerType !== 'mouse')
+            this.viewport.beginPan(e);
     }
     onDevicePointer(e, id, g) {
         e.stopPropagation();
@@ -886,6 +1546,18 @@ class Canvas {
         this.selected = id;
         this.dragDevice(e, id, g);
     }
+    /** Touch and pen: a second tap within DOUBLE_TAP_MS opens the device (dblclick is unreliable on phones). */
+    tapped(id, e) {
+        if (e.pointerType === 'mouse')
+            return;
+        const now = performance.now();
+        if (this.lastTap?.id === id && now - this.lastTap.time < DOUBLE_TAP_MS) {
+            this.lastTap = null;
+            this.events.open(id);
+            return;
+        }
+        this.lastTap = { id, time: now };
+    }
     dragDevice(e, id, g) {
         const placed = this.topo.get(id);
         if (!placed)
@@ -893,27 +1565,42 @@ class Canvas {
         const start = this.toWorld(e);
         const origin = { x: placed.x, y: placed.y };
         let moved = false;
+        this.gesture = true;
         g.setPointerCapture(e.pointerId);
+        const press = e.pointerType === 'mouse' ? 0 : window.setTimeout(() => { if (!moved) {
+            moved = true;
+            this.events.open(id);
+        } }, LONG_PRESS_MS);
         const move = (ev) => {
-            const p = this.toWorld(ev);
-            if (!moved && Math.hypot(p.x - start.x, p.y - start.y) < DRAG_THRESHOLD)
+            if (this.viewport.pinching())
                 return;
+            const p = this.toWorld(ev);
+            if (!moved && Math.hypot(p.x - start.x, p.y - start.y) < DRAG_THRESHOLD / this.viewport.scale)
+                return;
+            window.clearTimeout(press);
             moved = true;
             placed.x = clamp(origin.x + p.x - start.x, 40, WORLD_W - 40);
             placed.y = clamp(origin.y + p.y - start.y, 40, WORLD_H - 40);
             g.setAttribute('transform', `translate(${placed.x} ${placed.y})`);
             this.renderLinks();
         };
-        const up = () => {
+        const up = (ev) => {
+            this.gesture = false;
+            window.clearTimeout(press);
             g.removeEventListener('pointermove', move);
             g.removeEventListener('pointerup', up);
+            g.removeEventListener('pointercancel', up);
             if (moved)
                 this.events.changed();
-            else
+            else {
                 this.markSelection();
+                if (ev.type === 'pointerup')
+                    this.tapped(id, ev);
+            }
         };
         g.addEventListener('pointermove', move);
         g.addEventListener('pointerup', up);
+        g.addEventListener('pointercancel', up);
     }
     showPortMenu(id, e) {
         const placed = this.topo.get(id);
@@ -928,28 +1615,29 @@ class Canvas {
             b.addEventListener('click', () => this.pickPort({ device: id, port }));
             return b;
         });
-        const title = this.pendingEnd ? `Conectar a ${placed.label}` : `Desde ${placed.label}`;
+        const title = t(this.pendingEnd ? 'canvas.connectTo' : 'canvas.from', { name: placed.label });
         this.menu.replaceChildren(el('p', { class: 'port-menu-title' }, title), ...items);
-        const host = this.root.getBoundingClientRect();
-        this.menu.style.left = `${e.clientX - host.left + this.root.scrollLeft + 8}px`;
-        this.menu.style.top = `${e.clientY - host.top + this.root.scrollTop + 8}px`;
         this.menu.hidden = false;
+        const host = this.root.getBoundingClientRect();
+        const pos = placeInside(e.clientX - host.left + 8, e.clientY - host.top + 8, this.menu.offsetWidth, this.menu.offsetHeight, this.root.clientWidth, this.root.clientHeight);
+        this.menu.style.left = `${pos.x + this.root.scrollLeft}px`;
+        this.menu.style.top = `${pos.y + this.root.scrollTop}px`;
         (items.find((b) => !b.disabled) ?? items[0])?.focus();
     }
     pickPort(ep) {
         this.hideMenu();
         if (!this.pendingEnd) {
             this.pendingEnd = ep;
-            this.events.hint(`Cable desde ${this.topo.get(ep.device)?.label} ${ep.port}: elige el otro extremo.`);
+            this.events.hint(t('canvas.cableFrom', { name: this.topo.get(ep.device)?.label ?? ep.device, port: ep.port }));
             this.render();
             return;
         }
         try {
             this.topo.connect(this.pendingEnd, ep);
-            this.events.hint(HINTS.cable);
+            this.events.hint(t(HINTS.cable));
         }
         catch (err) {
-            this.events.hint(`No se pudo conectar: ${err instanceof Error ? err.message : 'error desconocido'}.`);
+            this.events.hint(t('canvas.connectFailed', { error: err instanceof Error ? err.message : t('canvas.unknownError') }));
         }
         this.pendingEnd = null;
         this.events.changed();
@@ -1010,11 +1698,14 @@ return { WORLD_W, WORLD_H, Canvas };
 __m["ui/windows.js"] = (() => {
 /** Floating device windows: draggable, stackable, with tabs (like Packet Tracer). */
 const { el } = __m["ui/dom.js"];
+const { t } = __m["i18n/t.js"];
 class WindowManager {
     layer;
     open = new Map();
     z = 10;
     cascade = 0;
+    /** Keys from the bottom to the top of the stack. */
+    order = [];
     constructor(layer) {
         this.layer = layer;
     }
@@ -1028,6 +1719,28 @@ class WindowManager {
         for (const w of [...this.open.values()])
             w.close();
     }
+    /** Brings the window at the bottom of the stack to the top (full-screen sheets on phones). */
+    cycle() {
+        const bottom = this.order[0];
+        if (bottom !== undefined && this.order.length > 1)
+            this.open.get(bottom)?.focus();
+    }
+    focusTop() {
+        const top = this.order[this.order.length - 1];
+        if (top !== undefined)
+            this.open.get(top)?.root.querySelector('.win-tab[aria-selected="true"], .win-close')?.focus({ preventScroll: true });
+    }
+    updateCounts() {
+        const n = this.open.size;
+        for (const w of this.open.values()) {
+            const b = w.root.querySelector('.win-next');
+            if (!b)
+                continue;
+            b.hidden = n < 2;
+            b.setAttribute('aria-label', t('win.next', { count: n }));
+            b.title = t('win.next', { count: n });
+        }
+    }
     close(key) {
         this.open.get(key)?.close();
     }
@@ -1038,8 +1751,10 @@ class WindowManager {
             return existing;
         }
         const titleEl = el('h2', { class: 'win-title', id: `wt-${key}` }, title);
-        const closeBtn = el('button', { class: 'win-close', type: 'button', 'aria-label': `Cerrar ${title}` }, '×');
-        const header = el('header', { class: 'win-head' }, titleEl, closeBtn);
+        const closeBtn = el('button', { class: 'win-close', type: 'button', 'aria-label': t('win.close', { title }) }, '×');
+        const maxBtn = el('button', { class: 'win-btn win-max', type: 'button', 'aria-label': t('win.maximize'), title: t('win.maximize'), 'aria-pressed': 'false' }, '□');
+        const nextBtn = el('button', { class: 'win-btn win-next', type: 'button' }, '⧉');
+        const header = el('header', { class: 'win-head' }, titleEl, el('div', { class: 'win-actions' }, nextBtn, maxBtn, closeBtn));
         const tabBar = el('div', { class: 'win-tabs', role: 'tablist' });
         const body = el('div', { class: 'win-body' });
         const root = el('section', { class: 'window', role: 'dialog', 'aria-labelledby': `wt-${key}` }, header, tabBar, body);
@@ -1069,15 +1784,30 @@ class WindowManager {
         const handle = {
             root,
             setTitle: (text) => { titleEl.textContent = text; },
-            focus: () => { root.style.zIndex = String(++this.z); },
+            focus: () => {
+                root.style.zIndex = String(++this.z);
+                this.order = [...this.order.filter((k) => k !== key), key];
+                this.updateCounts();
+            },
             close: () => {
                 root.remove();
                 this.open.delete(key);
+                this.order = this.order.filter((k) => k !== key);
+                this.updateCounts();
+                this.focusTop();
                 onClose();
             },
             cleanup: onClose,
         };
         closeBtn.addEventListener('click', handle.close);
+        maxBtn.addEventListener('click', () => {
+            const on = root.dataset.max !== 'true';
+            root.dataset.max = String(on);
+            maxBtn.setAttribute('aria-pressed', String(on));
+            maxBtn.setAttribute('aria-label', t(on ? 'win.restore' : 'win.maximize'));
+            maxBtn.title = t(on ? 'win.restore' : 'win.maximize');
+        });
+        nextBtn.addEventListener('click', () => this.cycle());
         root.addEventListener('pointerdown', handle.focus);
         root.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !(e.target instanceof HTMLInputElement))
             handle.close(); });
@@ -1097,6 +1827,8 @@ function makeDraggable(win, handle) {
         const startX = e.clientX - win.offsetLeft;
         const startY = e.clientY - win.offsetTop;
         handle.setPointerCapture(e.pointerId);
+        if (win.dataset.max === 'true' || window.matchMedia('(max-width: 760px)').matches)
+            return;
         const move = (ev) => {
             win.style.left = `${Math.max(0, Math.min(window.innerWidth - 80, ev.clientX - startX))}px`;
             win.style.top = `${Math.max(0, Math.min(window.innerHeight - 40, ev.clientY - startY))}px`;
@@ -1107,6 +1839,7 @@ function makeDraggable(win, handle) {
         };
         handle.addEventListener('pointermove', move);
         handle.addEventListener('pointerup', up);
+        handle.addEventListener('pointercancel', up);
     });
 }
 
@@ -3466,12 +4199,44 @@ function createEditor(spec, io) {
 
 return { createEditor };
 })();
+__m["ui/keybar.js"] = (() => {
+/**
+ * Extra keys for touch screens (shown with CSS on coarse pointers): Esc, Tab, a sticky Ctrl, arrows,
+ * ^C/^D and, for full-screen programs, F1–F10. Buttons never take the focus away from the terminal.
+ */
+const { el } = __m["ui/dom.js"];
+const { t } = __m["i18n/t.js"];
+const LINE_KEYS = [
+    ['Escape', 'Esc'], ['Tab', 'Tab'], ['Ctrl', 'Ctrl'], ['ArrowUp', '↑'], ['ArrowDown', '↓'], ['ArrowLeft', '←'], ['ArrowRight', '→'], ['^C', '^C'], ['^D', '^D'],
+];
+const FN_KEYS = Array.from({ length: 10 }, (_, i) => `F${i + 1}`);
+function keybar(target) {
+    const make = (key, label, fn = false) => {
+        const b = el('button', { type: 'button', class: `term-key${fn ? ' term-fn' : ''}`, 'data-key': key, tabindex: '-1' }, label);
+        // pointerdown + preventDefault keeps the virtual keyboard open and the focus where it was.
+        b.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            target.virtualKey(key);
+            for (const c of bar.querySelectorAll('[data-key="Ctrl"]'))
+                c.setAttribute('aria-pressed', String(target.ctrlArmed()));
+        });
+        return b;
+    };
+    const bar = el('div', { class: 'term-keys', role: 'toolbar', 'aria-label': t('term.keys') }, ...LINE_KEYS.map(([k, l]) => make(k, l)), ...FN_KEYS.map((k) => make(k, k, true)));
+    for (const c of bar.querySelectorAll('[data-key="Ctrl"]'))
+        c.setAttribute('aria-pressed', 'false');
+    return bar;
+}
+
+return { keybar };
+})();
 __m["ui/terminal.js"] = (() => {
 /** Console widget for the IOS CLI, cmd.exe and bash: ANSI colours, Tab completion, Ctrl+C/D/L and full-screen editors. */
 const { el } = __m["ui/dom.js"];
 const { ansiRow, columns, drawFrame, editorKey, fillAnsi } = __m["ui/term-render.js"];
 const { clearRequest } = __m["core/ansi.js"];
 const { createEditor } = __m["editors/index.js"];
+const { keybar } = __m["ui/keybar.js"];
 const MAX_LINES = 3000;
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
@@ -3490,6 +4255,9 @@ class Terminal {
     style = {};
     full = null;
     lastTab = '';
+    /** Hidden text field that receives typing for full-screen programs (virtual keyboards need a field). */
+    ime;
+    ctrl = false;
     /** IOS consoles show lines starting with % (messages) in their own colour. */
     iosMessages;
     constructor(backend, opts) {
@@ -3503,15 +4271,20 @@ class Terminal {
         });
         this.lineEl = el('label', { class: 'term-line' }, this.promptEl, this.input);
         this.editorEl = el('div', { class: 'term-editor', tabindex: '0', role: 'application', 'aria-label': `Editor · ${opts.label}`, hidden: true });
-        this.root = el('div', { class: 'terminal' }, this.screen, this.lineEl, this.editorEl);
+        this.ime = el('textarea', { class: 'term-ime', autocapitalize: 'off', autocomplete: 'off', spellcheck: 'false', 'aria-hidden': 'true', tabindex: '-1' });
+        this.root = el('div', { class: 'terminal' }, this.screen, this.lineEl, this.editorEl, this.ime, keybar(this));
         this.root.addEventListener('click', (e) => {
             if (window.getSelection()?.toString() !== '')
                 return;
+            if (e.target.closest('.term-keys'))
+                return;
             if (this.full)
-                this.editorEl.focus();
+                this.focusFull();
             else if (e.target !== this.input)
                 this.input.focus();
         });
+        this.ime.addEventListener('keydown', (e) => this.onEditorKey(e));
+        this.ime.addEventListener('input', (e) => this.onImeInput(e));
         this.input.addEventListener('keydown', (e) => this.onKey(e));
         this.input.addEventListener('input', () => this.onInput());
         this.editorEl.addEventListener('keydown', (e) => this.onEditorKey(e));
@@ -3521,7 +4294,73 @@ class Terminal {
         this.refreshPrompt();
     }
     focus() {
-        (this.full ? this.editorEl : this.input).focus({ preventScroll: true });
+        if (this.full)
+            this.focusFull();
+        else
+            this.input.focus({ preventScroll: true });
+    }
+    /** Full-screen programs: a fine pointer keeps the editor focused; touch screens type into the hidden field. */
+    focusFull() {
+        if (window.matchMedia('(pointer: coarse)').matches) {
+            this.ime.value = ' ';
+            this.ime.focus({ preventScroll: true });
+        }
+        else
+            this.editorEl.focus({ preventScroll: true });
+    }
+    ctrlArmed() {
+        return this.ctrl;
+    }
+    /** A key of the touch key bar. */
+    virtualKey(key) {
+        if (key === 'Ctrl') {
+            this.ctrl = !this.ctrl;
+            return;
+        }
+        const ctrl = this.ctrl;
+        this.ctrl = false;
+        if (this.full) {
+            const k = key === '^C' ? { key: 'c', ctrl: true } : key === '^D' ? { key: 'd', ctrl: true } : { key, ctrl };
+            this.feed([k]);
+            return;
+        }
+        if (key === 'Tab')
+            this.complete();
+        else if (key === 'ArrowUp' || key === 'ArrowDown')
+            this.browseHistory(key === 'ArrowUp' ? -1 : 1);
+        else if (key === 'ArrowLeft' || key === 'ArrowRight')
+            this.moveCaret(key === 'ArrowLeft' ? -1 : 1);
+        else if (key === '^C')
+            this.ctrlKey('c');
+        else if (key === '^D')
+            this.ctrlKey('d');
+        this.input.focus({ preventScroll: true });
+    }
+    moveCaret(delta) {
+        const pos = Math.max(0, Math.min(this.input.value.length, (this.input.selectionStart ?? 0) + delta));
+        this.input.setSelectionRange(pos, pos);
+    }
+    /** Text typed on a virtual keyboard into the hidden field (" " is a sentinel so Backspace is seen). */
+    onImeInput(e) {
+        const value = this.ime.value;
+        const keys = [];
+        if (value === '' || e.inputType === 'deleteContentBackward')
+            keys.push({ key: 'Backspace' });
+        else
+            for (const ch of value.slice(1))
+                keys.push(ch === '\n' ? { key: 'Enter' } : { key: ch, ctrl: this.ctrl });
+        this.ctrl = false;
+        this.ime.value = ' ';
+        this.feed(keys);
+    }
+    feed(keys) {
+        const full = this.full;
+        if (!full)
+            return;
+        for (const k of keys)
+            full.key(k);
+        if (!this.redrawEditor())
+            this.closeFullScreen();
     }
     dispose() {
         this.unsubscribe?.();
@@ -3576,6 +4415,14 @@ class Terminal {
     }
     /** IOS shows help as soon as `?` is typed, keeping the rest of the line. */
     onInput() {
+        if (this.ctrl) {
+            // Sticky Ctrl from the key bar: the letter just typed is the control key.
+            const ch = this.input.value.slice(-1).toLowerCase();
+            this.input.value = this.input.value.slice(0, -1);
+            this.ctrl = false;
+            this.ctrlKey(ch);
+            return;
+        }
         const v = this.input.value;
         if (!v.endsWith('?') || !this.backend.help)
             return;
@@ -3600,29 +4447,35 @@ class Terminal {
             e.preventDefault();
             this.browseHistory(e.key === 'ArrowUp' ? -1 : 1);
         }
-        else if (ctrl && k === 'z' && this.backend.ctrlZ) {
-            e.preventDefault();
+        else if (ctrl && ['z', 'c', 'd', 'l'].includes(k) && !(k === 'c' && this.input.selectionStart !== this.input.selectionEnd)) {
+            if (this.ctrlKey(k))
+                e.preventDefault();
+        }
+        if (e.key !== 'Tab')
+            this.lastTab = '';
+    }
+    /** Ctrl+Z, Ctrl+C, Ctrl+D and Ctrl+L on the command line; true when handled. */
+    ctrlKey(k) {
+        if (k === 'z' && this.backend.ctrlZ) {
             this.echo(`${this.input.value}^Z`);
             this.input.value = '';
             this.after(this.backend.ctrlZ());
         }
-        else if (ctrl && k === 'c' && this.input.selectionStart === this.input.selectionEnd) {
-            e.preventDefault();
+        else if (k === 'c') {
             this.echo(`${this.input.value}^C`);
             this.input.value = '';
             this.after(this.backend.interrupt?.() ?? []);
         }
-        else if (ctrl && k === 'd' && this.input.value === '' && this.backend.eof) {
-            e.preventDefault();
+        else if (k === 'd' && this.input.value === '' && this.backend.eof) {
             this.echo('');
             this.after(this.backend.eof());
         }
-        else if (ctrl && k === 'l') {
-            e.preventDefault();
+        else if (k === 'l') {
             this.screen.textContent = '';
         }
-        if (e.key !== 'Tab')
-            this.lastTab = '';
+        else
+            return false;
+        return true;
     }
     complete() {
         const value = this.input.value;
@@ -3668,12 +4521,14 @@ class Terminal {
         this.screen.hidden = true;
         this.lineEl.hidden = true;
         this.editorEl.hidden = false;
+        this.root.dataset.full = 'true';
         this.redrawEditor();
-        this.editorEl.focus({ preventScroll: true });
+        this.focusFull();
     }
     closeFullScreen() {
         const finish = this.full?.finish;
         this.full = null;
+        delete this.root.dataset.full;
         this.editorEl.hidden = true;
         this.screen.hidden = false;
         this.lineEl.hidden = false;
@@ -3705,15 +4560,15 @@ class Terminal {
     }
     onEditorKey(e) {
         const k = editorKey(e);
-        if (!k || !this.full)
+        // Virtual keyboards report "Unidentified"/"Process": their text arrives through the input event.
+        if (!k || !this.full || k.key === 'Unidentified' || k.key === 'Process')
             return;
         if (k.ctrl && ['v', 'c'].includes(k.key.toLowerCase()) && window.getSelection()?.toString())
             return;
         e.preventDefault();
         e.stopPropagation();
-        this.full.key(k);
-        if (!this.redrawEditor())
-            this.closeFullScreen();
+        this.feed([this.ctrl ? { ...k, ctrl: true } : k]);
+        this.ctrl = false;
     }
     onEditorPaste(e) {
         const text = e.clipboardData?.getData('text/plain') ?? '';
@@ -34398,37 +35253,283 @@ const { el } = __m["ui/dom.js"];
 const { docBlock } = __m["ui/doc-blocks.js"];
 const { aboutInfo } = __m["docs/about.js"];
 const { brandImage } = __m["ui/brand.js"];
+const { t } = __m["i18n/t.js"];
 const LICENSE_URL = 'https://www.gnu.org/licenses/gpl-3.0.html';
 function aboutView() {
     const a = aboutInfo();
     const link = (href, text) => el('a', { href, target: '_blank', rel: 'noopener noreferrer' }, text);
-    const facts = el('dl', { class: 'about-facts' }, el('dt', {}, 'Versión'), el('dd', {}, el('span', { class: 'about-version' }, a.version)), el('dt', {}, 'Autoría'), el('dd', {}, a.author || '—'), el('dt', {}, 'Repositorio'), el('dd', {}, link(a.repository, a.repository.replace(/^https:\/\//, ''))), el('dt', {}, 'Licencia del código'), el('dd', {}, link(LICENSE_URL, a.license)), el('dt', {}, 'Ejecución'), el('dd', {}, 'Todo funciona en tu navegador: sin servidor, sin dependencias y sin enviar datos.'));
-    const hero = el('header', { class: 'about-hero' }, brandImage('isologoN', 'about-isologo', ''), el('p', { class: 'doc-crumb' }, 'Acerca de'), brandImage('logo', 'about-logo', a.name), el('h1', { class: 'visually-hidden' }, a.name), el('p', { class: 'about-release' }, `Versión ${a.version}`), el('p', { class: 'doc-summary' }, a.description), facts);
-    const license = el('section', { class: 'about-license', 'aria-label': 'Licencia y atribuciones' }, el('h2', {}, 'Licencia y atribuciones'), el('p', { class: 'muted' }, 'Contenido de LICENSE.md, en la raíz del repositorio.'), ...a.blocks.map((b) => docBlock(b, a.fileBase)));
-    return el('section', { class: 'docs about', 'aria-label': 'Acerca de Netfix' }, el('article', { class: 'doc-page about-page', tabindex: '-1' }, hero, license));
+    const facts = el('dl', { class: 'about-facts' }, el('dt', {}, t('about.version')), el('dd', {}, el('span', { class: 'about-version' }, a.version)), el('dt', {}, t('about.author')), el('dd', {}, a.author || '—'), el('dt', {}, t('about.repo')), el('dd', {}, link(a.repository, a.repository.replace(/^https:\/\//, ''))), el('dt', {}, t('about.license')), el('dd', {}, link(LICENSE_URL, a.license)), el('dt', {}, t('about.runs')), el('dd', {}, t('about.runsText')));
+    const hero = el('header', { class: 'about-hero' }, brandImage('isologoN', 'about-isologo', ''), el('p', { class: 'doc-crumb' }, t('about.crumb')), brandImage('logo', 'about-logo', a.name), el('h1', { class: 'visually-hidden' }, a.name), el('p', { class: 'about-release' }, t('about.release', { version: a.version })), el('p', { class: 'doc-summary' }, a.description), facts);
+    const license = el('section', { class: 'about-license', 'aria-label': t('about.licenseTitle') }, el('h2', {}, t('about.licenseTitle')), el('p', { class: 'muted' }, t('about.licenseFrom')), ...a.blocks.map((b) => docBlock(b, a.fileBase)));
+    return el('section', { class: 'docs about', 'aria-label': t('about.label') }, el('article', { class: 'doc-page about-page', tabindex: '-1' }, hero, license));
 }
 
 return { aboutView };
 })();
+__m["docs/donate.js"] = (() => {
+/**
+ * Donations through PayPal.Me (serverless): Netfix only builds a link that the user opens; no SDK, no
+ * script from PayPal and no data leaves the browser until the user clicks it.
+ */
+const PAYPAL_ME_USER = 'infogerman';
+const PAYPAL_ME_BASE = `https://paypal.me/${PAYPAL_ME_USER}`;
+const SUGGESTED_AMOUNTS = [5, 10, 15, 20];
+const MIN_AMOUNT = 1;
+const MAX_AMOUNT = 1000;
+/** Parses "7", "7.5", "7,50" (one decimal separator, up to two decimals) within MIN_AMOUNT..MAX_AMOUNT. */
+function parseAmount(text) {
+    const s = text.trim().replace(/\s*€\s*/g, '');
+    if (!s)
+        return { ok: false, reason: 'empty' };
+    if (!/^\d{1,4}(?:[.,]\d{1,2})?$/.test(s))
+        return { ok: false, reason: 'format' };
+    const amount = Number(s.replace(',', '.'));
+    if (!Number.isFinite(amount) || amount < MIN_AMOUNT || amount > MAX_AMOUNT)
+        return { ok: false, reason: 'range' };
+    return { ok: true, amount };
+}
+/** https://paypal.me/infogerman/10EUR (decimals as 7.50); null for an invalid amount. */
+function paypalMeUrl(amount) {
+    if (!Number.isFinite(amount) || amount < MIN_AMOUNT || amount > MAX_AMOUNT)
+        return null;
+    const cents = Math.round(amount * 100);
+    const text = cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2);
+    return `${PAYPAL_ME_BASE}/${text}EUR`;
+}
+
+return { PAYPAL_ME_USER, PAYPAL_ME_BASE, SUGGESTED_AMOUNTS, MIN_AMOUNT, MAX_AMOUNT, parseAmount, paypalMeUrl };
+})();
+__m["ui/donate-view.js"] = (() => {
+/** The «Donaciones / Donations» tab: suggested amounts, another amount and the PayPal.Me link. */
+const { el } = __m["ui/dom.js"];
+const { brandImage } = __m["ui/brand.js"];
+const { t, fmtEuros } = __m["i18n/t.js"];
+const { parseAmount, paypalMeUrl, SUGGESTED_AMOUNTS, MIN_AMOUNT, MAX_AMOUNT } = __m["docs/donate.js"];
+const DEFAULT_AMOUNT = 10;
+const ERRORS = { empty: 'donate.err.empty', format: 'donate.err.format', range: 'donate.err.range' };
+function donateView() {
+    let amount = DEFAULT_AMOUNT;
+    const otherInput = el('input', { type: 'text', inputmode: 'decimal', class: 'donate-other-input', 'aria-label': t('donate.otherLabel'), placeholder: t('donate.otherPlaceholder'), autocomplete: 'off', hidden: true });
+    const error = el('p', { class: 'form-msg is-error', role: 'alert', hidden: true });
+    const link = el('a', { class: 'btn btn-primary donate-go', target: '_blank', rel: 'noopener noreferrer' });
+    const copy = el('code', { class: 'donate-url' });
+    const update = () => {
+        const url = amount === null ? null : paypalMeUrl(amount);
+        link.textContent = amount === null ? t('donate.buttonNone') : t('donate.button', { amount: fmtEuros(amount) });
+        if (url)
+            link.setAttribute('href', url);
+        else
+            link.removeAttribute('href');
+        link.setAttribute('aria-disabled', String(!url));
+        copy.textContent = url ?? '';
+    };
+    const choices = [...SUGGESTED_AMOUNTS.map((a) => [String(a), fmtEuros(a)]), ['other', t('donate.other')]].map(([value, label]) => {
+        const b = el('button', { type: 'button', class: 'donate-amount', 'aria-pressed': String(value === String(DEFAULT_AMOUNT)), 'data-amount': value }, label);
+        b.addEventListener('click', () => {
+            for (const x of choices)
+                x.setAttribute('aria-pressed', String(x === b));
+            otherInput.hidden = value !== 'other';
+            error.hidden = true;
+            amount = value === 'other' ? null : Number(value);
+            if (value === 'other') {
+                otherInput.value = '';
+                otherInput.focus();
+            }
+            update();
+        });
+        return b;
+    });
+    otherInput.addEventListener('input', () => {
+        const r = parseAmount(otherInput.value);
+        amount = r.ok ? r.amount : null;
+        error.hidden = r.ok || r.reason === 'empty';
+        error.textContent = r.ok ? '' : t(ERRORS[r.reason], { min: fmtEuros(MIN_AMOUNT), max: fmtEuros(MAX_AMOUNT) });
+        update();
+    });
+    link.addEventListener('click', (e) => { if (!link.getAttribute('href'))
+        e.preventDefault(); });
+    update();
+    const page = el('article', { class: 'doc-page donate-page', tabindex: '-1' }, el('header', { class: 'about-hero' }, brandImage('isologoN', 'about-isologo', ''), el('p', { class: 'doc-crumb' }, t('donate.crumb')), el('h1', {}, t('donate.title')), el('p', { class: 'doc-summary' }, t('donate.lead'))), el('p', {}, t('donate.free')), el('fieldset', { class: 'donate-box' }, el('legend', {}, t('donate.choose')), el('div', { class: 'donate-amounts', role: 'group' }, ...choices), otherInput, error, link), el('p', { class: 'muted' }, t('donate.privacy')), el('p', { class: 'muted donate-copy' }, t('donate.copy'), ' ', copy), el('p', {}, t('donate.thanks')));
+    return el('section', { class: 'docs donate', 'aria-label': t('donate.crumb') }, page);
+}
+
+return { donateView };
+})();
+__m["ui/lab-text.js"] = (() => {
+const { hasMessage, tDynamic } = __m["i18n/t.js"];
+function labText(e) {
+    const key = `lab.${e.id}`;
+    return {
+        title: hasMessage(`${key}.title`) ? tDynamic(`${key}.title`) : e.title,
+        summary: hasMessage(`${key}.summary`) ? tDynamic(`${key}.summary`) : e.summary,
+    };
+}
+
+return { labText };
+})();
+__m["ui/topbar.js"] = (() => {
+/** Top bar: brand, views, file actions, labs, clock, mode and language. Folds into a menu on phones. */
+const { brandImage } = __m["ui/brand.js"];
+const { el } = __m["ui/dom.js"];
+const { EXAMPLES } = __m["net/examples.js"];
+const { labText } = __m["ui/lab-text.js"];
+const { t } = __m["i18n/t.js"];
+const { getLocale, LOCALES, LOCALE_NAMES, LOCALE_SHORT, isLocale } = __m["i18n/locale.js"];
+const MINUTE = 60_000;
+const VIEWS = [['net', 'view.net'], ['docs', 'view.docs'], ['donate', 'view.donate'], ['about', 'view.about']];
+function button(label, fn, attrs = {}) {
+    const b = el('button', { type: 'button', class: 'btn', ...attrs }, label);
+    b.addEventListener('click', fn);
+    return b;
+}
+/** A <select> that runs `fn` with the chosen value and goes back to its placeholder. */
+function actionSelect(label, placeholder, options, fn) {
+    const s = el('select', { class: 'select', 'aria-label': label }, el('option', { value: '' }, placeholder), ...options.map(([v, l]) => el('option', { value: v }, l)));
+    s.addEventListener('change', () => {
+        const v = s.value;
+        s.value = '';
+        if (v)
+            fn(v);
+    });
+    return s;
+}
+function segmented(label, items, current, fn, attr = 'data-value') {
+    const buttons = items.map(([v, text]) => {
+        const b = el('button', { type: 'button', class: 'seg', 'aria-pressed': String(v === current), [attr]: v }, text);
+        b.addEventListener('click', () => {
+            for (const x of buttons)
+                x.setAttribute('aria-pressed', String(x === b));
+            fn(v);
+        });
+        return b;
+    });
+    return el('div', { class: 'segmented', role: 'group', 'aria-label': label }, ...buttons);
+}
+function languageSelect(actions) {
+    const s = el('select', { class: 'select select-lang', 'aria-label': t('top.language'), title: t('top.language') }, ...LOCALES.map((l) => el('option', { value: l, selected: l === getLocale(), lang: l }, `${LOCALE_SHORT[l]} · ${LOCALE_NAMES[l]}`)));
+    s.addEventListener('change', () => { if (isLocale(s.value))
+        actions.setLocale(s.value); });
+    return s;
+}
+function topbar(actions, clockEl, mode) {
+    const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), EXAMPLES.map((e) => [e.id, labText(e).title]), (id) => actions.loadExample(id));
+    const advance = actionSelect(t('top.advanceLabel'), t('top.advance'), [[String(MINUTE), t('top.plusMinute')], [String(60 * MINUTE), t('top.plusHour')], [String(24 * 60 * MINUTE), t('top.plusDay')]], (v) => actions.advance(Number(v)));
+    const menuId = 'topbar-menu';
+    const toggle = el('button', { type: 'button', class: 'btn menu-toggle', 'aria-expanded': 'false', 'aria-controls': menuId }, el('span', { 'aria-hidden': 'true' }, '☰'), el('span', { class: 'menu-toggle-label' }, t('top.menu')));
+    const menu = el('div', { class: 'topbar-menu', id: menuId }, el('nav', { class: 'file-actions', 'aria-label': t('top.file') }, button(t('top.new'), () => actions.newWorkspace()), button(t('top.open'), () => actions.openFile()), button(t('top.save'), () => actions.save(), { title: t('top.saveTitle') }), labs), el('div', { class: 'time' }, clockEl, advance), segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime')), languageSelect(actions));
+    const bar = el('header', { class: 'topbar', 'data-open': 'false' }, el('h1', { class: 'brand' }, brandImage('logo', 'brand-logo', 'Netfix')), segmented(t('top.view'), VIEWS.map(([v, k]) => [v, t(k)]), 'net', (v) => {
+        actions.showView(v);
+        setOpen(false);
+    }, 'data-view'), toggle, menu);
+    const setOpen = (open) => {
+        bar.dataset.open = String(open);
+        toggle.setAttribute('aria-expanded', String(open));
+    };
+    toggle.addEventListener('click', () => setOpen(bar.dataset.open !== 'true'));
+    menu.addEventListener('click', (e) => { if (e.target.closest('button.btn'))
+        setOpen(false); });
+    menu.addEventListener('change', () => setOpen(false));
+    return bar;
+}
+
+return { topbar };
+})();
+__m["ui/palette.js"] = (() => {
+/** Bottom palette: devices to place, editing tools, zoom controls and the hint line. */
+const { el, staticSvg } = __m["ui/dom.js"];
+const { ICONS, MODEL_LABEL } = __m["ui/icons.js"];
+const { t } = __m["i18n/t.js"];
+const PLACEABLE = [
+    ['router', 'kind.router'], ['switch', 'kind.switch'], ['pc', 'kind.pc'], ['server', 'kind.server'], ['cloud', 'kind.cloud'],
+];
+function palette(actions, buttons, hintEl) {
+    const deviceBtn = (kind, name) => {
+        const b = el('button', { type: 'button', class: 'pal-item', 'aria-pressed': 'false' }, staticSvg(ICONS[kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, MODEL_LABEL[kind]));
+        b.addEventListener('click', () => actions.selectTool({ kind: 'place', device: kind }, `place-${kind}`));
+        buttons.set(`place-${kind}`, b);
+        return b;
+    };
+    const toolBtn = (key, name, tool, glyph) => {
+        const b = el('button', { type: 'button', class: `pal-item pal-tool pal-${key}`, 'aria-pressed': 'false' }, el('span', { class: 'pal-glyph', 'aria-hidden': 'true' }, glyph), el('span', { class: 'pal-name' }, name));
+        b.addEventListener('click', () => actions.selectTool(tool, key));
+        buttons.set(key, b);
+        return b;
+    };
+    const zoomBtn = (action, glyph, label) => {
+        const b = el('button', { type: 'button', class: 'zoom-btn', 'aria-label': label, title: label }, glyph);
+        b.addEventListener('click', () => actions.zoom(action));
+        return b;
+    };
+    return el('footer', { class: 'palette' }, el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...PLACEABLE.map(([k, name]) => deviceBtn(k, t(name)))), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')), el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))), hintEl);
+}
+
+return { PLACEABLE, palette };
+})();
+__m["ui/save-file.js"] = (() => {
+/** Saving the topology: clipboard in the embedded artifact, file picker when available, download otherwise. */
+const { el } = __m["ui/dom.js"];
+const { t } = __m["i18n/t.js"];
+function copyToClipboard(json) {
+    const clip = navigator.clipboard;
+    if (!clip)
+        return Promise.resolve(t('hint.copyFailed'));
+    return clip.writeText(json).then(() => t('hint.copied'), () => t('hint.copyFailed'));
+}
+/** Saves and returns the message for the status line ('' when the user cancelled). */
+async function saveTopology(topo) {
+    const json = JSON.stringify(topo.toJSON(), null, 2);
+    if (document.getElementById('app')?.dataset.embed === 'artifact')
+        return copyToClipboard(json);
+    const name = `${t('file.prefix')}-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.netfix.json`;
+    const picker = window.showSaveFilePicker;
+    if (picker) {
+        try {
+            const handle = await picker({ suggestedName: name, types: [{ description: t('file.description'), accept: { 'application/json': ['.json'] } }] });
+            const w = await handle.createWritable();
+            await w.write(json);
+            await w.close();
+            return t('hint.saved');
+        }
+        catch (err) {
+            if (err instanceof DOMException && err.name === 'AbortError')
+                return '';
+        }
+    }
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = el('a', { href: URL.createObjectURL(blob), download: name });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    return t('hint.downloaded', { name });
+}
+
+return { saveTopology };
+})();
 __m["ui/main.js"] = (() => {
-/** Netfix application shell: toolbar, workspace, palette, windows and simulation panel. */
-const { applyBrand, brandImage } = __m["ui/brand.js"];
-const { el, staticSvg, safeStorageGet, safeStorageSet } = __m["ui/dom.js"];
+/** Netfix application shell: top bar, workspace, palette, views, windows and simulation panel. */
+const { applyBrand } = __m["ui/brand.js"];
+const { el, safeStorageGet, safeStorageSet } = __m["ui/dom.js"];
 const { Canvas } = __m["ui/canvas.js"];
 const { WindowManager } = __m["ui/windows.js"];
 const { SimPanel } = __m["ui/simpanel.js"];
 const { openDeviceWindow, forgetDevice, forgetAll } = __m["ui/device-windows.js"];
-const { ICONS, MODEL_LABEL } = __m["ui/icons.js"];
 const { Topology } = __m["net/topology.js"];
 const { EXAMPLES } = __m["net/examples.js"];
 const { DocsView } = __m["ui/docs-view.js"];
 const { aboutView } = __m["ui/about-view.js"];
+const { donateView } = __m["ui/donate-view.js"];
+const { topbar } = __m["ui/topbar.js"];
+const { palette } = __m["ui/palette.js"];
+const { labText } = __m["ui/lab-text.js"];
+const { saveTopology } = __m["ui/save-file.js"];
+const { t } = __m["i18n/t.js"];
+const { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } = __m["i18n/locale.js"];
 const AUTOSAVE_KEY = 'netfix:workspace:v1';
 /** Workspace autosaved before the rename (netsim ≤ 0.4.0). */
 const LEGACY_AUTOSAVE_KEY = 'netsim:workspace:v1';
 const TICK_MS = 250;
 const AUTOSAVE_DELAY_MS = 800;
-const MINUTE = 60_000;
 class App {
     topo;
     canvas;
@@ -34437,40 +35538,54 @@ class App {
     hintEl;
     clockEl;
     toolButtons = new Map();
-    saveTimer = 0;
-    mode = 'realtime';
+    fileInput;
+    stageEl;
+    paletteEl;
+    pageHost;
+    pages = new Map();
     docs = null;
-    about = null;
-    stageEl = null;
-    paletteEl = null;
-    docsHost = null;
-    constructor(root) {
-        this.topo = this.initialTopology();
+    saveTimer = 0;
+    interval;
+    mode = 'realtime';
+    onKeyDown = (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            void this.save();
+        }
+    };
+    constructor(root, topo) {
+        this.topo = topo ?? this.initialTopology();
         this.hintEl = el('p', { class: 'hint', role: 'status' });
         this.clockEl = el('time', { class: 'clock' });
         this.canvas = new Canvas(this.topo, {
             open: (id) => this.open(id),
             changed: () => this.afterCommand(),
-            hint: (t) => { this.hintEl.textContent = t; },
+            hint: (text) => { this.hintEl.textContent = text; },
             removed: (id) => { this.windows.close(id); forgetDevice(id); },
         });
         const winLayer = el('div', { class: 'win-layer' });
         this.windows = new WindowManager(winLayer);
         this.sim = new SimPanel(this.topo, this.canvas);
         this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.sim.root);
-        this.paletteEl = this.palette();
-        this.docsHost = el('main', { class: 'docs-host', hidden: true });
-        root.append(this.toolbar(), this.stageEl, this.docsHost, this.paletteEl, winLayer);
+        this.paletteEl = palette({ selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a) }, this.toolButtons, this.hintEl);
+        this.pageHost = el('main', { class: 'docs-host', hidden: true });
+        this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
+        this.fileInput.addEventListener('change', () => void this.openFile());
+        root.replaceChildren(this.topbar(), this.stageEl, this.pageHost, this.paletteEl, winLayer, this.fileInput);
         this.canvas.setTool({ kind: 'select' });
         this.canvas.render();
-        window.setInterval(() => this.tick(), TICK_MS);
-        window.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-                e.preventDefault();
-                void this.save();
-            }
-        });
+        this.canvas.frameContent();
+        this.interval = window.setInterval(() => this.tick(), TICK_MS);
+        window.addEventListener('keydown', this.onKeyDown);
         this.tick();
+    }
+    /** Stops timers and listeners (before rebuilding the interface in another language). */
+    dispose() {
+        window.clearInterval(this.interval);
+        window.removeEventListener('keydown', this.onKeyDown);
+        this.flushSave();
+        this.windows.closeAll();
+        forgetAll();
     }
     initialTopology() {
         const saved = safeStorageGet(AUTOSAVE_KEY) ?? safeStorageGet(LEGACY_AUTOSAVE_KEY);
@@ -34484,73 +35599,27 @@ class App {
         }
         return EXAMPLES[0].build();
     }
-    // ------------------------------------------------------------ chrome
-    toolbar() {
-        const fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
-        fileInput.addEventListener('change', () => void this.openFile(fileInput));
-        const btn = (label, fn, attrs = {}) => {
-            const b = el('button', { type: 'button', class: 'btn', ...attrs }, label);
-            b.addEventListener('click', fn);
-            return b;
-        };
-        const examples = el('select', { class: 'select', 'aria-label': 'Abrir un laboratorio de ejemplo' }, el('option', { value: '' }, 'Laboratorios…'), ...EXAMPLES.map((e) => el('option', { value: e.id }, e.title)));
-        examples.addEventListener('change', () => {
-            const ex = EXAMPLES.find((e) => e.id === examples.value);
-            examples.value = '';
-            if (ex)
-                this.load(ex.build(), ex.summary);
-        });
-        const advance = el('select', { class: 'select', 'aria-label': 'Avanzar el reloj de la simulación' }, el('option', { value: '' }, 'Avanzar reloj…'), el('option', { value: String(MINUTE) }, '+1 minuto'), el('option', { value: String(60 * MINUTE) }, '+1 hora'), el('option', { value: String(24 * 60 * MINUTE) }, '+1 día'));
-        advance.addEventListener('change', () => {
-            const ms = Number(advance.value);
-            advance.value = '';
-            if (ms > 0)
-                this.advance(ms);
-        });
-        const modeRT = el('button', { type: 'button', class: 'seg', 'aria-pressed': 'true' }, 'Tiempo real');
-        const modeSim = el('button', { type: 'button', class: 'seg', 'aria-pressed': 'false' }, 'Simulación');
-        const setMode = (m) => {
-            this.mode = m;
-            modeRT.setAttribute('aria-pressed', String(m === 'realtime'));
-            modeSim.setAttribute('aria-pressed', String(m === 'simulation'));
-            this.sim.setActive(m === 'simulation');
-            document.body.dataset.mode = m;
-            this.hintEl.textContent = m === 'simulation'
-                ? 'Simulación: lo que hagas (ipconfig /renew, ping, DHCP) queda en la lista de eventos. Pulsa Reproducir.'
-                : 'Tiempo real: la red funciona sola; los cambios se aplican al instante.';
-        };
-        modeRT.addEventListener('click', () => setMode('realtime'));
-        modeSim.addEventListener('click', () => setMode('simulation'));
-        return el('header', { class: 'topbar' }, el('h1', { class: 'brand' }, brandImage('logo', 'brand-logo', 'Netfix')), this.viewSwitch(), el('nav', { class: 'file-actions', 'aria-label': 'Archivo' }, btn('Nuevo', () => this.load(new Topology(), 'Área de trabajo vacía.')), btn('Abrir…', () => fileInput.click()), btn('Guardar', () => void this.save(), { title: 'Guardar la topología en un archivo .json (Ctrl+S)' }), examples, fileInput), el('div', { class: 'time' }, this.clockEl, advance), el('div', { class: 'segmented', role: 'group', 'aria-label': 'Modo' }, modeRT, modeSim));
+    topbar() {
+        return topbar({
+            newWorkspace: () => this.load(new Topology(), t('hint.empty')),
+            openFile: () => this.fileInput.click(),
+            save: () => void this.save(),
+            loadExample: (id) => {
+                const ex = EXAMPLES.find((e) => e.id === id);
+                if (ex)
+                    this.load(ex.build(), labText(ex).summary);
+            },
+            advance: (ms) => this.advance(ms),
+            setMode: (m) => this.setMode(m),
+            showView: (v) => this.showView(v),
+            setLocale: (l) => changeLocale(l),
+        }, this.clockEl, this.mode);
     }
-    /** Red / Documentación / Acerca de. */
-    viewSwitch() {
-        const views = [['net', 'Red'], ['docs', 'Documentación'], ['about', 'Acerca de']];
-        const buttons = views.map(([v, label]) => {
-            const b = el('button', { type: 'button', class: 'seg', 'aria-pressed': String(v === 'net'), 'data-view': v }, label);
-            b.addEventListener('click', () => {
-                for (const x of buttons)
-                    x.setAttribute('aria-pressed', String(x === b));
-                this.showView(v);
-            });
-            return b;
-        });
-        return el('div', { class: 'segmented', role: 'group', 'aria-label': 'Vista' }, ...buttons);
-    }
-    palette() {
-        const deviceBtn = (kind, name) => {
-            const b = el('button', { type: 'button', class: 'pal-item', 'aria-pressed': 'false' }, staticSvg(ICONS[kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, MODEL_LABEL[kind]));
-            b.addEventListener('click', () => this.selectTool({ kind: 'place', device: kind }, `place-${kind}`));
-            this.toolButtons.set(`place-${kind}`, b);
-            return b;
-        };
-        const toolBtn = (key, name, tool, glyph) => {
-            const b = el('button', { type: 'button', class: `pal-item pal-tool pal-${key}`, 'aria-pressed': 'false' }, el('span', { class: 'pal-glyph', 'aria-hidden': 'true' }, glyph), el('span', { class: 'pal-name' }, name));
-            b.addEventListener('click', () => this.selectTool(tool, key));
-            this.toolButtons.set(key, b);
-            return b;
-        };
-        return el('footer', { class: 'palette' }, el('div', { class: 'pal-group', role: 'group', 'aria-label': 'Dispositivos' }, deviceBtn('router', 'Router'), deviceBtn('switch', 'Switch'), deviceBtn('pc', 'PC'), deviceBtn('server', 'Servidor'), deviceBtn('cloud', 'Nube')), el('div', { class: 'pal-group', role: 'group', 'aria-label': 'Herramientas' }, toolBtn('select', 'Seleccionar', { kind: 'select' }, '↖'), toolBtn('cable', 'Cable', { kind: 'cable' }, '⌇'), toolBtn('delete', 'Eliminar', { kind: 'delete' }, '✕')), this.hintEl);
+    setMode(m) {
+        this.mode = m;
+        this.sim.setActive(m === 'simulation');
+        document.body.dataset.mode = m;
+        this.hintEl.textContent = t(m === 'simulation' ? 'hint.simulation' : 'hint.realtime');
     }
     selectTool(tool, key) {
         const same = this.toolButtons.get(key)?.getAttribute('aria-pressed') === 'true' && key !== 'select';
@@ -34561,26 +35630,30 @@ class App {
         this.canvas.setTool(next);
         this.canvas.root.focus({ preventScroll: true });
     }
-    /** Switches between the workspace, the documentation and «Acerca de» (windows stay open but hidden). */
-    showView(view) {
-        if (view === 'docs' && !this.docs)
+    page(view) {
+        const known = this.pages.get(view);
+        if (known)
+            return known;
+        if (view === 'docs')
             this.docs = new DocsView();
-        if (view === 'about' && !this.about)
-            this.about = aboutView();
-        const page = view === 'docs' ? this.docs?.root : view === 'about' ? this.about : undefined;
-        if (this.docsHost && page && page.parentElement !== this.docsHost)
-            this.docsHost.replaceChildren(page);
-        if (this.stageEl)
-            this.stageEl.hidden = view !== 'net';
-        if (this.paletteEl)
-            this.paletteEl.hidden = view !== 'net';
-        if (this.docsHost)
-            this.docsHost.hidden = view === 'net';
+        const made = view === 'docs' ? this.docs.root : view === 'about' ? aboutView() : donateView();
+        this.pages.set(view, made);
+        return made;
+    }
+    /** Switches between the workspace and the pages (windows stay open but hidden). */
+    showView(view) {
+        if (view !== 'net') {
+            const page = this.page(view);
+            if (page.parentElement !== this.pageHost)
+                this.pageHost.replaceChildren(page);
+        }
+        this.stageEl.hidden = view !== 'net';
+        this.paletteEl.hidden = view !== 'net';
+        this.pageHost.hidden = view === 'net';
         document.body.dataset.view = view;
         if (view === 'docs')
             this.docs?.focus();
     }
-    // ------------------------------------------------------------ behaviour
     open(id) {
         const placed = this.topo.get(id);
         if (placed)
@@ -34600,13 +35673,13 @@ class App {
         if (this.mode === 'realtime' || this.topo.net.pending() > 0)
             this.topo.net.runFor(TICK_MS);
         const now = new Date(this.topo.clock.now());
-        this.clockEl.textContent = `${now.toISOString().slice(11, 19)} UTC`;
+        this.clockEl.textContent = t('clock.utc', { time: now.toISOString().slice(11, 19) });
         this.clockEl.setAttribute('datetime', now.toISOString());
         this.canvas.requestRender();
     }
     advance(ms) {
         this.topo.net.runFor(ms);
-        this.hintEl.textContent = 'Reloj adelantado: las concesiones se renuevan o caducan como en un equipo real.';
+        this.hintEl.textContent = t('hint.advanced');
         this.afterCommand();
     }
     load(topo, message) {
@@ -34620,57 +35693,58 @@ class App {
     }
     scheduleSave() {
         window.clearTimeout(this.saveTimer);
-        this.saveTimer = window.setTimeout(() => safeStorageSet(AUTOSAVE_KEY, JSON.stringify(this.topo.toJSON())), AUTOSAVE_DELAY_MS);
+        this.saveTimer = window.setTimeout(() => this.flushSave(), AUTOSAVE_DELAY_MS);
     }
-    /** Saves the topology as .json: file picker when the browser has one, download otherwise. */
+    flushSave() {
+        window.clearTimeout(this.saveTimer);
+        safeStorageSet(AUTOSAVE_KEY, JSON.stringify(this.topo.toJSON()));
+    }
     async save() {
-        const json = JSON.stringify(this.topo.toJSON(), null, 2);
-        if (document.getElementById('app')?.dataset.embed === 'artifact') {
-            navigator.clipboard?.writeText(json).then(() => { this.hintEl.textContent = 'Topología copiada al portapapeles: pégala en un archivo .json para guardarla.'; }, () => { this.hintEl.textContent = 'No se pudo copiar. Usa la versión descargable de Netfix para guardar archivos.'; });
-            return;
-        }
-        const name = `topologia-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.netfix.json`;
-        const picker = window.showSaveFilePicker;
-        if (picker) {
-            try {
-                const handle = await picker({ suggestedName: name, types: [{ description: 'Topología de Netfix', accept: { 'application/json': ['.json'] } }] });
-                const w = await handle.createWritable();
-                await w.write(json);
-                await w.close();
-                this.hintEl.textContent = 'Topología guardada.';
-                return;
-            }
-            catch (err) {
-                if (err instanceof DOMException && err.name === 'AbortError')
-                    return;
-            }
-        }
-        const blob = new Blob([json], { type: 'application/json' });
-        const a = el('a', { href: URL.createObjectURL(blob), download: name });
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-        this.hintEl.textContent = `Descargado ${name}. Ábrelo luego con Abrir….`;
+        this.hintEl.textContent = await saveTopology(this.topo);
     }
-    async openFile(input) {
-        const file = input.files?.[0];
-        input.value = '';
+    async openFile() {
+        const file = this.fileInput.files?.[0];
+        this.fileInput.value = '';
         if (!file)
             return;
         try {
-            const topo = Topology.fromJSON(JSON.parse(await file.text()));
-            this.load(topo, `Abierto ${file.name}.`);
+            this.load(Topology.fromJSON(JSON.parse(await file.text())), t('hint.opened', { name: file.name }));
         }
         catch (err) {
-            this.hintEl.textContent = `No se pudo abrir ${file.name}: ${err instanceof Error ? err.message : 'formato desconocido'}`;
+            this.hintEl.textContent = t('hint.openFailed', { name: file.name, error: err instanceof Error ? err.message : t('hint.unknownFormat') });
         }
     }
+    /** Message for the status line after a language change. */
+    announce(text) {
+        this.hintEl.textContent = text;
+    }
+}
+let app = null;
+let mountEl = null;
+function applyDocumentLanguage() {
+    document.documentElement.lang = getLocale();
+    document.title = t('app.title');
+    document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.description'));
+}
+/** Rebuilds the interface in another language, keeping the topology (open windows are closed). */
+function changeLocale(locale) {
+    safeStorageSet(LOCALE_STORAGE_KEY, locale);
+    if (!mountEl || !app)
+        return;
+    const topo = app.topo;
+    app.dispose();
+    setLocale(locale);
+    applyDocumentLanguage();
+    app = new App(mountEl, topo);
+    app.announce(t('hint.language'));
 }
 const mount = document.getElementById('app');
 if (mount) {
+    mountEl = mount;
+    setLocale(detectLocale(safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
+    applyDocumentLanguage();
     applyBrand();
-    new App(mount);
+    app = new App(mount);
 }
 
 return {  };
