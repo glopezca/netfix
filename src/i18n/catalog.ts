@@ -9,12 +9,14 @@ import { CANVAS_ES } from './es-ES/canvas.ts';
 import { CANVAS_EN } from './en-GB/canvas.ts';
 import { PAGES_ES } from './es-ES/pages.ts';
 import { PAGES_EN } from './en-GB/pages.ts';
+import { MC_ES } from './es-ES/mc.ts';
+import { MC_EN } from './en-GB/mc.ts';
 
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES };
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES };
 
 export type MessageKey = keyof typeof ES;
 
 export const CATALOGS: Readonly<Record<Locale, Readonly<Record<MessageKey, string>>>> = {
   'es-ES': ES,
-  'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN },
+  'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN },
 };

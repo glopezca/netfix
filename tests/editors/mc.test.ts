@@ -9,6 +9,8 @@ import { hostSystem } from '../../src/shells/host-system.ts';
 import type { ShellSession } from '../../src/shells/base.ts';
 import type { KeyInput } from '../../src/editors/buffer.ts';
 import { parseIp } from '../../src/core/ip.ts';
+import { setLocale } from '../../src/i18n/locale.ts';
+import { aboutInfo } from '../../src/docs/about.ts';
 
 const W = 80;
 const H = 24;
@@ -116,4 +118,23 @@ test('mc works through SSH: frames and keys travel in the session', () => {
   assert.equal(sh.screenFrame?.(W, H), null);
   assert.deepEqual(sh.run('ls --color=never'), ['otro  remoto']);
   assert.equal(hostSystem(srv).fs.tryLookup('/home/admin/otro')?.kind, 'dir');
+});
+
+test('mc shows the authorship credits of Netfix (F1 help, F2/F9 About), in the interface language', () => {
+  const { sh } = pc();
+  const a = aboutInfo();
+  sh.run('mc');
+  press(sh, 'F1');
+  assert.ok(screen(sh).some((r) => r.includes(`Netfix ${a.version} · © ${a.author}`)), 'help footer');
+  press(sh, 'Enter', 'F9');
+  const about = screen(sh).join('\n');
+  for (const text of [`Netfix ${a.version}`, `Autoría: ${a.author}`, 'GPL-3.0-or-later', 'github.com/glopezca/netfix', 'GNU Midnight Commander', 'Free Software Foundation']) assert.ok(about.includes(text), text);
+  press(sh, 'Enter');
+  setLocale('en-GB');
+  try {
+    press(sh, 'Escape', '2');
+    assert.ok(screen(sh).join('\n').includes(`Author: ${a.author}`));
+  } finally {
+    setLocale('es-ES');
+  }
 });

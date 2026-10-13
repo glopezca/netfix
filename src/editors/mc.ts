@@ -10,10 +10,24 @@ import { Panel } from './mc-panel.ts';
 import { dialogKey, drawDialog } from './mc-dialog.ts';
 import type { Dialog } from './mc-dialog.ts';
 import { NanoEditor } from './nano.ts';
+import { t } from '../i18n/t.ts';
+import { aboutInfo } from '../docs/about.ts';
 
 const KEYS: readonly [string, string][] = [['1', 'Help'], ['2', 'Menu'], ['3', 'View'], ['4', 'Edit'], ['5', 'Copy'], ['6', 'RenMov'], ['7', 'Mkdir'], ['8', 'Delete'], ['9', 'PullDn'], ['10', 'Quit']];
 const MENU = '  Left     File     Command     Options     Right';
-const HELP = ['Tab: cambiar de panel   Insert / Ctrl+T: marcar', 'Intro: entrar en el directorio   Ctrl+R: releer', 'F3 ver · F4 editar · F5 copiar · F6 mover/renombrar', 'F7 crear directorio · F8 borrar · F10 salir', 'Sin teclas de función: Esc y el número (Esc 5 = F5)'];
+function help(): string[] {
+  const a = aboutInfo();
+  return [t('mc.help.1'), t('mc.help.2'), t('mc.help.3'), t('mc.help.4'), t('mc.help.5'), t('mc.help.about'), '', t('mc.footer', { version: a.version, author: a.author })];
+}
+
+/** Credits of Netfix and of GNU Midnight Commander, whose interface this program reproduces. */
+export function mcCredits(): string[] {
+  const a = aboutInfo();
+  return [
+    t('mc.about.app', { version: a.version }), t('mc.about.author', { author: a.author }), t('mc.about.license', { license: a.license }),
+    a.repository.replace(/^https:\/\//, ''), '', t('mc.about.mc'), t('mc.about.mcCopy'), '', t('mc.about.menus'),
+  ];
+}
 
 interface Viewer {
   readonly name: string;
@@ -92,14 +106,14 @@ export class McApp implements Editor {
     const p = this.panel;
     const cur = p.current();
     switch (n) {
-      case 1: this.dialog = { kind: 'message', title: 'Ayuda', lines: HELP, error: false }; break;
+      case 1: this.dialog = { kind: 'message', title: t('mc.help.title'), lines: help(), error: false }; break;
       case 3: if (cur && !cur.dir) this.view(joinPath(p.dir, cur.name)); break;
       case 4: if (cur && !cur.dir) this.edit(joinPath(p.dir, cur.name)); break;
       case 5: this.transfer('copy'); break;
       case 6: this.transfer('move'); break;
       case 7: this.dialog = { kind: 'input', title: 'Create a new Directory', label: 'Enter directory name:', value: '', onOk: (v) => this.mkdir(v) }; break;
       case 8: this.remove(); break;
-      case 2: case 9: this.dialog = { kind: 'message', title: 'Menú', lines: ['Los menús no están disponibles en Netfix.'], error: false }; break;
+      case 2: case 9: this.dialog = { kind: 'message', title: t('mc.about.title'), lines: mcCredits(), error: false }; break;
       case 10: this.dialog = { kind: 'confirm', title: 'The Midnight Commander', text: 'Do you really want to quit the Midnight Commander?', yes: true, onYes: () => { this.closed = true; } }; break;
       default: break;
     }
