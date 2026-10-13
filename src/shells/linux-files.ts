@@ -15,15 +15,6 @@ export function linuxMac(mac: string): string {
   return (mac.match(/../g) ?? []).join(':');
 }
 
-function netplan(host: Host): string {
-  const c = host.config;
-  if (c.mode === 'dhcp') return `network:\n  version: 2\n  ethernets:\n    ${IFACE}:\n      dhcp4: true\n`;
-  const addr = c.ip !== undefined && c.prefix !== undefined ? `\n      addresses:\n        - ${formatIp(c.ip)}/${c.prefix}` : '';
-  const gw = c.gateway !== undefined ? `\n      routes:\n        - to: default\n          via: ${formatIp(c.gateway)}` : '';
-  const dns = c.dns !== undefined ? `\n      nameservers:\n        addresses: [${formatIp(c.dns)}]` : '';
-  return `network:\n  version: 2\n  ethernets:\n    ${IFACE}:\n      dhcp4: false${addr}${gw}${dns}\n`;
-}
-
 function keaConf(s: ServerServices): string {
   const subnets = s.dhcp.pools.map((p, i) => {
     const net = networkOf(p.start, p.prefix);
@@ -125,7 +116,6 @@ export function linuxFiles(host: Host): Map<string, string> {
     ['/etc/hostname', `${host.name.toLowerCase()}\n`],
     ['/etc/hosts', `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`],
     ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n`],
-    ['/etc/netplan/50-cloud-init.yaml', netplan(host)],
   ]);
   if (host.kind === 'server') for (const [k, v] of serverFiles(host as Server)) files.set(k, v);
   return files;

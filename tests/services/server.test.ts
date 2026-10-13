@@ -243,7 +243,7 @@ test('Linux shell basics on a PC and service commands where no service exists', 
   assert.match(sh.run('ip neigh').join('\n'), /192\.168\.10\.2 dev eth0 lladdr .* REACHABLE/);
   assert.match(sh.run('ifconfig').join('\n'), /sudo apt install net-tools/);
   assert.match(sh.run('cat /etc/resolv.conf').join('\n'), /nameserver 192\.168\.10\.2/);
-  assert.match(sh.run('cat /etc/netplan/50-cloud-init.yaml').join('\n'), /dhcp4: true/);
+  assert.match(sh.run('sudo cat /etc/netplan/50-cloud-init.yaml').join('\n'), /dhcp4: true/);
   assert.deepEqual(sh.run('cat /no'), ['cat: /no: No such file or directory']);
   assert.match(sh.run('systemctl status apache2').join(''), /could not be found/);
   assert.deepEqual(sh.run('journalctl -u apache2'), ['-- No entries --']);

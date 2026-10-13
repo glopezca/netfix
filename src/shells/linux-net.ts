@@ -8,6 +8,8 @@ import { runPing } from '../net/ping.ts';
 import { reverseName } from '../net/dns.ts';
 import type { DnsType } from '../net/packets.ts';
 import { formatIp, networkOf, parseIp } from '../core/ip.ts';
+import { ipWrite } from './linux-ip.ts';
+import type { IpWrite } from './linux-ip.ts';
 
 const PING_TIMEOUT_MS = 1000;
 const DEFAULT_PING_COUNT = 4;
@@ -59,6 +61,9 @@ export function ip(host: Host) {
     const args = ctx.argv.slice(1).filter((a) => !/^-(4|c|color|br|brief)$/.test(a));
     const obj = args[0] ?? '';
     const is = (full: string, ...short: string[]): boolean => obj !== '' && (full.startsWith(obj) || short.includes(obj));
+    const kind: IpWrite | undefined = is('address', 'a', 'addr') ? 'address' : is('route', 'r') ? 'route' : is('link', 'l') ? 'link' : undefined;
+    const written = kind ? ipWrite(ctx, host, kind, args.slice(1)) : undefined;
+    if (written !== undefined) return written;
     if (brief && (is('address', 'a', 'addr') || is('link', 'l'))) lines(ctx, ipBrief(host, is('link', 'l')));
     else if (is('address', 'a', 'addr')) lines(ctx, ipAddress(host));
     else if (is('route', 'r')) lines(ctx, ipRoute(host));
@@ -155,10 +160,7 @@ export function dhclient(host: Host) {
   return (ctx: Ctx): number => {
     if (ctx.cred.uid !== 0) { ctx.err('dhclient: Permission denied (are you root?)\n'); return 1; }
     if (ctx.argv.includes('-r')) {
-      host.dhcpClient.release();
-      host.hooks.runUntil(() => false, 10);
-      host.config = { mode: 'dhcp' };
-      host.dhcpStatus = 'idle';
+      host.releaseDhcp();
       return 0;
     }
     host.useDhcp();

@@ -11,6 +11,7 @@ import { curl } from './curl.ts';
 import { sshKeygen } from './ssh-keygen.ts';
 import { SSH_USAGE, SSH_WITH_VALUE } from './ssh-client.ts';
 import { sshCopyId } from './ssh-copy-id.ts';
+import { netplanProgram } from './netplan.ts';
 
 const PACKAGES: Readonly<Record<string, string>> = {
   ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
@@ -113,7 +114,7 @@ function commandNotFound(ctx: Ctx): number {
 
 export function linuxPrograms(host: Host): Map<string, CommandFn> {
   return new Map<string, CommandFn>([
-    ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)],
+    ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)], ['netplan', netplanProgram(host)],
     ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId],
     ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
     ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],

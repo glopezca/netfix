@@ -124,7 +124,11 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost): void {
   const order: HostOs[] = h.os === 'linux' ? ['linux', 'windows'] : ['windows', 'linux'];
   const model = h instanceof Server ? 'Server' : 'PC';
   let handle: { setTitle(t: string): void } | undefined;
-  const settingsTab: Tab = { id: 'host', label: 'Equipo', render: () => hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) }) };
+  const settingsTab: Tab = { id: 'host', label: 'Equipo', render: () => {
+    const v = hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) });
+    disposers.push(v.dispose);
+    return v.root;
+  } };
   const tabs: Tab[] = h instanceof Server
     ? [{ id: 'svc', label: 'Servicios', render: () => servicesTab(h, app) }, ipTab, settingsTab, ...order.map(terminal)]
     : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: 'Navegador', render: () => browserApp(h, app) }, { id: 'mail', label: 'Correo', render: () => mailApp(h, app) }] : []), settingsTab, ...order.map(terminal)];

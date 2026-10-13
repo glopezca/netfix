@@ -1,4 +1,5 @@
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
+import { NETPLAN_FILE, netplanFileContent, writeNetplanFile } from './netplan.ts';
 import { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } from '../services/sshd-config.ts';
 import { hostKeyFiles } from '../services/ssh-hostkeys.ts';
 import type { Host } from '../devices/host.ts';
@@ -83,20 +84,26 @@ function webRoot(server: Server): DirMount {
 
 /** Generated files that root may edit: writing them changes the device configuration. */
 const WRITERS: Readonly<Record<string, (host: Host, content: string) => void>> = {
+  [NETPLAN_FILE]: (host, content) => writeNetplanFile(host, content),
   '/etc/hostname': (host, content) => {
     const name = content.trim().split('\n')[0]?.trim() ?? '';
     if (validHostname(name) === null) host.setHostname(name);
   },
 };
 
+/** Generated files readable only by root (like Ubuntu's 600 netplan files). */
+const PRIVATE_MODE: Readonly<Record<string, number>> = { [NETPLAN_FILE]: 0o600 };
+
 /** Generated configuration files follow the live device config (zones, pools, netplan…). */
 function refreshMounts(host: Host, e: Entry): void {
   const now = linuxFiles(host);
+  now.set(NETPLAN_FILE, '');
+  const read = (p: string): string => (p === NETPLAN_FILE ? netplanFileContent(host) : linuxFiles(host).get(p) ?? '');
   for (const p of e.mounted) if (!now.has(p)) e.fs.unmountFile(p);
   for (const p of now.keys()) {
     if (e.mounted.has(p)) continue;
     const writer = WRITERS[p];
-    e.fs.mountFile(p, () => linuxFiles(host).get(p) ?? '', 0o644, writer ? (c) => writer(host, c) : undefined);
+    e.fs.mountFile(p, () => read(p), PRIVATE_MODE[p] ?? 0o644, writer ? (c) => writer(host, c) : undefined);
   }
   e.mounted = new Set(now.keys());
 }
@@ -111,11 +118,11 @@ function refreshUsers(host: Host, e: Entry): void {
 
 function setName(host: Host, kind: 'static' | 'transient' | 'pretty', value: string): string | null {
   if (kind === 'pretty') {
-    host.prettyName = value === '' ? undefined : value.slice(0, MAX_PRETTY);
+    host.setPrettyName(value === '' ? undefined : value.slice(0, MAX_PRETTY));
     return null;
   }
   if (validHostname(value) !== null) return `Invalid ${kind} hostname '${value}'`;
-  if (kind === 'transient') host.transientName = value;
+  if (kind === 'transient') host.setTransientName(value);
   else host.setHostname(value);
   return null;
 }

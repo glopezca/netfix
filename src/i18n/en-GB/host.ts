@@ -1,0 +1,28 @@
+/** English (UK): PC and Server tabs (Device, IP Configuration) and device windows. */
+import type { HostKey } from '../es-ES/host.ts';
+
+export const HOST_EN: Readonly<Record<HostKey, string>> = {
+  'host.nameTitle': 'Device name',
+  'host.label': 'Display name (workspace)',
+  'host.labelHint': 'Only labels the icon; it does not change the network.',
+  'host.hostname': 'Host name',
+  'host.hostnameHint': 'Sent by the DHCP client (option 12) and shown by the prompt, /etc/hostname and hostname.',
+  'host.pretty': 'Pretty host name',
+  'host.prettyHint': 'GNU/Linux only: shown by hostnamectl.',
+  'host.prettyPlaceholder': 'Optional, free text',
+  'host.save': 'Save',
+  'host.useLabel': 'Use the display name',
+  'host.labelEmpty': 'The display name cannot be empty.',
+  'host.saved': 'Saved. Host name: {name}.',
+  'host.equivalents': 'Equivalents',
+  'host.eqLinux': 'GNU/Linux: sudo hostnamectl set-hostname NAME (persistent) or sudo hostname NAME (until reboot). bash shows the new name in a new shell (exec bash).',
+  'host.eqWindows': 'Windows: Settings → System → Rename this PC.',
+  'host.now': 'Right now: static “{static}”',
+  'host.nowTransient': ', transient “{name}”',
+  'host.nowPretty': ', pretty “{name}”',
+  'host.live': 'These fields update by themselves when you change the name or the network from the terminal.',
+  'host.err.empty': 'The host name cannot be empty.',
+  'host.err.long': 'The host name allows at most {max} characters.',
+  'host.err.label': 'Each part of the name allows at most {max} characters.',
+  'host.err.chars': 'Use only unaccented letters, digits and hyphens (no spaces; it cannot start or end with a hyphen).',
+};

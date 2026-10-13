@@ -1,4 +1,5 @@
 /** End host with one NIC (PC, Server): IP config, DHCP client, TCP, DNS resolver. */
+import { t } from '../i18n/t.ts';
 import type { NetDevice } from '../net/network.ts';
 import type { Frame, IpPacket, UdpDatagram, AppPayload, DnsType } from '../net/packets.ts';
 import { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DNS_PORT, PC_TTL } from '../net/packets.ts';
@@ -33,11 +34,11 @@ const LABEL = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
 
 /** RFC 1123 host name (letters, digits and hyphens; dot-separated labels). Returns an error or null. */
 export function validHostname(name: string): string | null {
-  if (name.trim() === '') return 'El nombre de host no puede estar vacío.';
-  if (name.length > MAX_HOSTNAME) return `El nombre de host admite como máximo ${MAX_HOSTNAME} caracteres.`;
+  if (name.trim() === '') return t('host.err.empty');
+  if (name.length > MAX_HOSTNAME) return t('host.err.long', { max: MAX_HOSTNAME });
   const labels = name.split('.');
-  if (labels.some((l) => l.length > MAX_LABEL)) return `Cada parte del nombre admite como máximo ${MAX_LABEL} caracteres.`;
-  if (!labels.every((l) => LABEL.test(l))) return 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).';
+  if (labels.some((l) => l.length > MAX_LABEL)) return t('host.err.label', { max: MAX_LABEL });
+  if (!labels.every((l) => LABEL.test(l))) return t('host.err.chars');
   return null;
 }
 
@@ -113,6 +114,35 @@ export abstract class Host implements NetDevice, StackHost {
     if (err) throw new Error(err);
     this.name = name;
     this.transientName = undefined;
+    this.changed();
+  }
+
+  /** hostnamectl --pretty (undefined clears it). */
+  setPrettyName(name: string | undefined): void {
+    this.prettyName = name;
+    this.changed();
+  }
+
+  /** `hostname NAME` / hostnamectl --transient (undefined = back to the static name). */
+  setTransientName(name: string | undefined): void {
+    this.transientName = name;
+    this.changed();
+  }
+
+  /** `ip link set dev eth0 up|down`: administrative state of the NIC. */
+  setPortUp(up: boolean): void {
+    if (this.portUp === up) return;
+    this.portUp = up;
+    this.hooks.portChanged(HOST_PORT);
+    this.changed();
+  }
+
+  /** dhclient -r: releases the lease and leaves the interface without an address. */
+  releaseDhcp(): void {
+    this.dhcpClient.release();
+    this.hooks.runUntil(() => false, 10);
+    this.config = { mode: 'dhcp' };
+    this.dhcpStatus = 'idle';
     this.changed();
   }
 
