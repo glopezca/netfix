@@ -83,6 +83,7 @@ function runVerb(server: Server, unit: UnitInfo, verb: string, now: boolean): st
     case 'stop': server.setUnit(unit.id, false); return [];
     case 'reload': case 'force-reload':
       if (unit.id === 'http' && unitActive(server.services, 'http')) return server.reloadWeb() ? jobFailed(unit) : [];
+      if (unit.id === 'ssh' && unitActive(server.services, 'ssh')) return server.reloadSsh() ? jobFailed(unit) : [];
       return restart(server, unit);
     case 'restart': return restart(server, unit);
     case 'enable':

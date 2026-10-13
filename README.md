@@ -87,7 +87,7 @@ Coloca un **Servidor** desde la paleta y haz doble clic. Pestañas:
 | **DNS** | Registros A, CNAME, MX, NS y TXT; dominio de la zona (`$ORIGIN`) con nombres **relativos** (`www`, `@`) que se autocompletan y **absolutos** acabados en punto (`srv.aula.lab.`); PTR automáticos; servidor autoritativo (NOERROR, NXDOMAIN, REFUSED) | `bind9` · `/etc/bind/db.<zona>` |
 | **HTTP** | Ficheros editables (`index.html`, `ayuda.html`, …) también desde la terminal (`sudo nano /var/www/html/index.html`), 404, banner Apache o IIS según el SO | `apache2` · `/var/www/html` |
 | **Correo** | SMTP, POP3 e IMAP por separado, dominio y usuarios; **reenvío entre dominios por MX** | `postfix` + `dovecot` |
-| **SSH** | Usuarios y contraseñas; las sesiones abren la shell Linux o Windows del servidor | `ssh` · `/etc/ssh/sshd_config` |
+| **SSH** | Usuarios y contraseñas y/o **pares de claves** (interruptores que editan `sshd_config`); claves de host, `~/.ssh/authorized_keys` con `StrictModes` y opción `from=`; `AllowUsers`, `DenyUsers`, `PermitRootLogin`, `MaxAuthTries`; las sesiones abren la shell Linux o Windows del servidor | `ssh` · `/etc/ssh/sshd_config` · `sshd_config.d` |
 | **Registros** | `journalctl -u <servicio>` de cada servicio | `journalctl` |
 
 El servidor DHCP de Server usa el mismo motor que el router IOS, así que funciona también a
@@ -111,7 +111,8 @@ través de un relay (`ip helper-address` apuntando al servidor).
 - Apache2: `/etc/apache2` real (`sites-*`, `mods-*`, `conf-*`, `<VirtualHost>`, `Alias`, `Redirect`…),
   `a2ensite/a2dissite/a2enmod/a2dismod/a2enconf/a2disconf`, `apache2ctl configtest|-S|-M`.
 - Red: `ip a|r|neigh` (`-br`), `ping`, `traceroute`, `dig`, `nslookup`, `host`, `curl` (`-I -i -L -v -X -d -u -b -H -o -O`), `wget` (guarda el fichero),
-  `ssh` (devuelve el estado remoto), `sudo dhclient [-r] eth0`, `hostname -I`.
+  `ssh` al estilo OpenSSH (`~/.ssh/known_hosts`, claves `~/.ssh/id_*` con frase de paso, `-i -p -l -o`, orden remota),
+  `ssh-keygen` (`-t -b -f -N -C -q -l -y -p -F -R -A`) y `ssh-copy-id`, `sudo dhclient [-r] eth0`, `hostname -I`.
 - Servicios: `systemctl status|start|stop|restart|enable|disable|is-active`, `service`, `journalctl -u`, `ss -tulpn`.
 - Ficheros generados de solo lectura que siguen la configuración: `/etc/resolv.conf`, `/etc/netplan/…`,
   `/etc/kea/kea-dhcp4.conf`, `/etc/bind/…`, `/etc/postfix/main.cf`…; `/var/www/html` es la carpeta del servidor web.
@@ -148,7 +149,8 @@ El laboratorio **«Server: DHCP, DNS, web, correo y SSH»** lo trae todo configu
   `username … privilege 15 secret …`, o la pestaña *Gestión web* del router/switch. Desde el navegador de un PC:
   inicio, Monitor (`/level/15/exec/-`), Configure y Device Manager.
 - **Server**: Servicios → HTTP → Aplicaciones web activa **Roundcube** (alias `/roundcube` o puerto 8080) y la
-  **gestión web** del servidor (puerto 10000 o alias `/admin`, `admin`/`admin`).
+  **gestión web** del servidor (puerto 10000 o alias `/admin`, `admin`/`admin`): DHCP con **reservas por MAC o
+  Client-ID** (y «Reservar» desde las concesiones), DNS, web, correo y SSH con sus métodos de autenticación.
 
 ### Usuarios y contraseñas de ejemplo
 

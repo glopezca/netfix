@@ -28,7 +28,7 @@ export type Interaction =
   /** Full-screen program (mc): resumed with "0" when it closes. */
   | { readonly kind: 'screen'; readonly app: ScreenApp }
   /** ssh client session, handled by the terminal adapter; resumed with its exit status. */
-  | { readonly kind: 'ssh'; readonly args: readonly string[] };
+  | { readonly kind: 'ssh'; readonly args: readonly string[]; readonly cwd?: string };
 
 export type Gen<T = number> = Generator<Interaction, T, string | null>;
 

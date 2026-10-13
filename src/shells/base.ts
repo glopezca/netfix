@@ -1,6 +1,8 @@
 /** Shell skeleton shared by Linux and Windows: prompt, password input and SSH client sessions (with remote editors). */
 import type { Host } from '../devices/host.ts';
-import { resolveHost, tcpCall, SSH_WAIT_MS } from './net-tools.ts';
+import { tcpCall, SSH_WAIT_MS } from './net-tools.ts';
+import { SshLogin, parseSshArgs } from './ssh-client.ts';
+import type { SshClientStore, LoginResult } from './ssh-client.ts';
 import type { AppPayload } from '../net/packets.ts';
 import type { EditSpec } from '../bash/types.ts';
 import type { Frame, KeyInput } from '../editors/buffer.ts';
@@ -38,7 +40,6 @@ export interface ShellSession {
 export const DEFAULT_SCREEN = { width: 80, height: 24 } as const;
 
 export const SSH_PORT = 22;
-const MAX_SSH_ATTEMPTS = 3;
 /** Exit status of ssh when the connection fails. */
 export const SSH_FAILED = 255;
 
@@ -48,8 +49,10 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 
 type State =
   | { kind: 'local' }
-  | { kind: 'password'; user: string; target: string; ip: number; attempts: number }
-  | { kind: 'remote'; target: string; ip: number; session: string; prompt: string; secret: boolean; edit: EditSpec | null; screen: Frame | null; size: { width: number; height: number } };
+  | { kind: 'login'; login: SshLogin }
+  | { kind: 'remote'; target: string; ip: number; port: number; session: string; prompt: string; secret: boolean; edit: EditSpec | null; screen: Frame | null; size: { width: number; height: number };
+      /** `ssh host command`: no banner and no "Connection closed" line. */
+      quiet: boolean };
 
 export abstract class BaseShell implements ShellSession {
   readonly host: Host;
@@ -72,18 +75,21 @@ export abstract class BaseShell implements ShellSession {
     return [];
   }
 
+  /** The user's ~/.ssh (known_hosts and keys). */
+  protected abstract sshStore(cwd?: string): SshClientStore;
+
   prompt(): string {
-    if (this.state.kind === 'password') return `${this.state.user}@${this.state.target}'s password: `;
+    if (this.state.kind === 'login') return this.state.login.prompt();
     if (this.state.kind === 'remote') return this.state.prompt;
     return this.localPrompt();
   }
 
   secret(): boolean {
-    return this.state.kind === 'password' || (this.state.kind === 'remote' && this.state.secret);
+    return (this.state.kind === 'login' && this.state.login.secret()) || (this.state.kind === 'remote' && this.state.secret);
   }
 
   run(line: string): string[] {
-    if (this.state.kind === 'password') return this.sendPassword(line);
+    if (this.state.kind === 'login') return this.loginStep(this.state.login, this.state.login.input(line));
     if (this.state.kind === 'remote') return this.remoteRequest({ kind: 'command', line });
     return this.runLocalLine(line);
   }
@@ -103,13 +109,13 @@ export abstract class BaseShell implements ShellSession {
 
   interrupt(): string[] {
     if (this.state.kind === 'remote') return this.remoteRequest({ kind: 'key', key: 'int' });
-    if (this.state.kind === 'password') return this.endSsh([], SSH_FAILED);
+    if (this.state.kind === 'login') return this.endSsh([], SSH_FAILED);
     return this.localInterrupt();
   }
 
   eof(): string[] {
     if (this.state.kind === 'remote') return this.remoteRequest({ kind: 'key', key: 'eof' });
-    if (this.state.kind === 'password') return this.endSsh([], SSH_FAILED);
+    if (this.state.kind === 'login') return this.endSsh([], SSH_FAILED);
     return this.localEof();
   }
 
@@ -128,7 +134,7 @@ export abstract class BaseShell implements ShellSession {
   saveEdit(path: string, content: string): string | null {
     if (this.state.kind !== 'remote') return this.localSaveEdit(path, content);
     const st = this.state;
-    const r = tcpCall(this.host, st.ip, SSH_PORT, { app: 'SSH', kind: 'edit', session: st.session, action: 'save', path, content });
+    const r = tcpCall(this.host, st.ip, st.port, { app: 'SSH', kind: 'edit', session: st.session, action: 'save', path, content });
     const out = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
     return out ? out.saveError ?? null : 'Connection lost';
   }
@@ -175,20 +181,12 @@ export abstract class BaseShell implements ShellSession {
 
   // ------------------------------------------------------------ ssh client
 
-  protected startSsh(args: readonly string[]): string[] {
-    const lIdx = args.indexOf('-l');
-    const spec = args.find((a, i) => !a.startsWith('-') && !(lIdx >= 0 && i === lIdx + 1));
-    if (!spec) return this.endSsh(['usage: ssh [-l login_name] [user@]hostname'], SSH_FAILED);
-    const at = spec.lastIndexOf('@');
-    const user = at >= 0 ? spec.slice(0, at) : (lIdx >= 0 ? args[lIdx + 1] : undefined) ?? this.user;
-    const target = at >= 0 ? spec.slice(at + 1) : spec;
-    const resolved = resolveHost(this.host, target);
-    if (resolved.kind === 'error') return this.endSsh([`ssh: Could not resolve hostname ${target}: Name or service not known`], SSH_FAILED);
-    const probe = tcpCall(this.host, resolved.ip, SSH_PORT, { app: 'SSH', kind: 'auth', user: '', password: '', clientOs: this.osName });
-    if (probe.kind === 'refused') return this.endSsh([`ssh: connect to host ${target} port 22: Connection refused`], SSH_FAILED);
-    if (probe.kind !== 'ok') return this.endSsh([`ssh: connect to host ${target} port 22: ${probe.kind === 'noroute' ? 'Network is unreachable' : 'Connection timed out'}`], SSH_FAILED);
-    this.state = { kind: 'password', user, target, ip: resolved.ip, attempts: 0 };
-    return [];
+  protected startSsh(args: readonly string[], cwd?: string): string[] {
+    const opts = parseSshArgs(args, this.user);
+    if (typeof opts === 'string') return this.endSsh(opts.split('\n'), SSH_FAILED);
+    const login = new SshLogin(this.host, this.osName, this.sshStore(cwd), opts);
+    this.state = { kind: 'login', login };
+    return this.loginStep(login, login.begin());
   }
 
   private endSsh(lines: string[], status: number): string[] {
@@ -196,28 +194,28 @@ export abstract class BaseShell implements ShellSession {
     return [...lines, ...this.sshEnded(status)];
   }
 
-  private sendPassword(password: string): string[] {
-    if (this.state.kind !== 'password') return [];
-    const st = this.state;
-    const r = tcpCall(this.host, st.ip, SSH_PORT, { app: 'SSH', kind: 'auth', user: st.user, password, clientOs: this.osName });
-    const out = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
-    if (!out) return this.endSsh([`Connection to ${st.target} closed by remote host.`], SSH_FAILED);
-    if (!out.ok || !out.session) {
-      const attempts = st.attempts + 1;
-      if (attempts >= MAX_SSH_ATTEMPTS) return this.endSsh([`${st.user}@${st.target}: Permission denied (publickey,password).`], SSH_FAILED);
-      this.state = { ...st, attempts };
-      return ['Permission denied, please try again.'];
-    }
-    this.state = { kind: 'remote', target: st.target, ip: st.ip, session: out.session, prompt: out.prompt ?? '$ ', secret: false, edit: null, screen: null, size: { ...DEFAULT_SCREEN } };
-    return [...out.lines];
+  /** Output of a login step; once authenticated, an interactive session or the remote command. */
+  private loginStep(login: SshLogin, r: LoginResult): string[] {
+    if (r.failed) return this.endSsh(r.lines, SSH_FAILED);
+    if (!r.session) return r.lines;
+    const { target, port, command } = login.opts;
+    const quiet = command !== undefined;
+    this.state = { kind: 'remote', target, ip: r.session.ip, port, session: r.session.id, prompt: r.session.prompt, secret: false, edit: null, screen: null, size: { ...DEFAULT_SCREEN }, quiet };
+    if (!quiet) return [...r.lines, ...r.session.banner];
+    const out = [...r.lines, ...this.remoteRequest({ kind: 'command', line: command })];
+    if (this.state.kind !== 'remote') return out;
+    // `ssh host command` runs no login shell: the remote "logout" is not shown.
+    const end = this.remoteRequest({ kind: 'command', line: 'exit $?' });
+    return [...out, ...(end[0] === 'logout' ? end.slice(1) : end)];
   }
 
   private remoteRequest(req: DistributiveOmit<SshRequest, 'app' | 'session'>): string[] {
     if (this.state.kind !== 'remote') return [];
     const st = this.state;
-    const r = tcpCall(this.host, st.ip, SSH_PORT, { ...req, app: 'SSH', session: st.session } as SshRequest, SSH_WAIT_MS);
+    const r = tcpCall(this.host, st.ip, st.port, { ...req, app: 'SSH', session: st.session } as SshRequest, SSH_WAIT_MS);
     const out: SshOutput | undefined = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
-    if (!out || out.closed) return this.endSsh([...(out?.lines ?? []), `Connection to ${st.target} closed.`], out ? out.status ?? 0 : SSH_FAILED);
+    const closing = st.quiet && out ? [] : [`Connection to ${st.target} closed.`];
+    if (!out || out.closed) return this.endSsh([...(out?.lines ?? []), ...closing], out ? out.status ?? 0 : SSH_FAILED);
     this.state = { ...st, prompt: out.prompt ?? st.prompt, secret: out.secret ?? false, edit: out.edit ?? null, screen: out.screen ?? null };
     return [...out.lines];
   }

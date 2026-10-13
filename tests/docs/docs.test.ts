@@ -6,9 +6,11 @@ import { BUILTIN_DOCS } from '../../src/docs/bash-builtins.ts';
 import { COREUTILS } from '../../src/bash/coreutils/index.ts';
 import { BUILTINS } from '../../src/bash/builtins/index.ts';
 import { runScript } from '../bash/harness.ts';
+import { Topology } from '../../src/net/topology.ts';
+import { linuxPrograms } from '../../src/shells/linux-programs.ts';
 
 /** Programs that are another name of a documented one. */
-const ALIASES = new Set(['[', 'dir', 'egrep', 'fgrep', 'mawk', 'sh', 'rbash', 'vi', 'view', 'command-not-found']);
+const ALIASES = new Set(['[', 'dir', 'egrep', 'fgrep', 'mawk', 'sh', 'rbash', 'vi', 'view', 'command-not-found', 'a2dissite', 'a2dismod', 'a2disconf', 'apachectl']);
 
 test('every page has a unique id, a title, a summary and content', () => {
   const pages = DOC_GROUPS.flatMap((g) => g.pages);
@@ -20,7 +22,8 @@ test('every page has a unique id, a title, a summary and content', () => {
 test('every builtin and every program of the terminal is documented', () => {
   for (const b of BUILTINS.keys()) assert.ok(BUILTIN_DOCS[b], `builtin ${b}`);
   for (const c of COREUTILS.keys()) assert.ok(UTIL_DOCS[c] || ALIASES.has(c), `programa ${c}`);
-  for (const c of ['ip', 'ping', 'dig', 'nslookup', 'host', 'curl', 'wget', 'ssh', 'dhclient', 'systemctl', 'service', 'journalctl', 'ss', 'a2ensite', 'a2enmod', 'a2enconf', 'apache2ctl']) assert.ok(UTIL_DOCS[c], c);
+  const server = new Topology().add('server', 0, 0).device;
+  for (const c of linuxPrograms(server).keys()) assert.ok(UTIL_DOCS[c] || ALIASES.has(c), `programa de red/servicio ${c}`);
 });
 
 test('search ignores accents and case and ranks titles first', () => {

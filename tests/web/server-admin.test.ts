@@ -102,3 +102,21 @@ test('DHCP page: reservations by MAC, hexadecimal and ASCII client-id, and from 
   post(web, 'dhcp', [['action', 'res-del'], ['key', `LAN|${formatIp(parseIp('10.0.0.50')!)}`]]);
   assert.equal(pool().reservations.length, 3);
 });
+
+test('SSH page: authentication methods edit sshd_config and reload ssh', () => {
+  const { srv, web } = lab();
+  web.login('http://10.0.0.2:10000/', 'admin', 'admin');
+  srv.setUnit('ssh', true);
+  const page = body(web.open('http://10.0.0.2:10000/?page=ssh'));
+  assert.match(page, /name="password" value="1" checked/);
+  assert.match(page, /name="pubkey" value="1" checked/);
+  assert.match(body(post(web, 'ssh', [['action', 'ssh'], ['enabled', '1'], ['auth', '1'], ['pubkey', '1']])), /guardado correctamente/);
+  const conf = createShell(srv, 'linux', 'root').run('grep --color=never -E "^(Password|Pubkey)Authentication" /etc/ssh/sshd_config');
+  assert.deepEqual(conf, ['PubkeyAuthentication yes', 'PasswordAuthentication no']);
+  assert.equal(srv.ssh.settings.passwordAuth, false);
+  assert.match(createShell(srv, 'linux', 'root').run('journalctl -u ssh').join('\n'), /Reloaded ssh\.service/);
+  assert.match(body(post(web, 'ssh', [['action', 'ssh'], ['enabled', '1'], ['auth', '1']])), /al menos un método/);
+  // A drop-in file wins over the main file: the page says so.
+  createShell(srv, 'linux', 'root').run("echo 'PasswordAuthentication no' > /etc/ssh/sshd_config.d/50-cloud-init.conf");
+  assert.match(body(post(web, 'ssh', [['action', 'ssh'], ['enabled', '1'], ['auth', '1'], ['pubkey', '1'], ['password', '1']])), /sshd_config\.d define antes/);
+});

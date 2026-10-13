@@ -1,6 +1,6 @@
 {
   "name": "netfix",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
   "type": "module",
   "private": true,

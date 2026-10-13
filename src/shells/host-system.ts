@@ -1,4 +1,6 @@
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
+import { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } from '../services/sshd-config.ts';
+import { hostKeyFiles } from '../services/ssh-hostkeys.ts';
 import type { Host } from '../devices/host.ts';
 import { validHostname } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
@@ -118,6 +120,31 @@ function setName(host: Host, kind: 'static' | 'transient' | 'pretty', value: str
   return null;
 }
 
+const SSH_CLIENT_CONFIG = `# This is the ssh client system-wide configuration file.  See ssh_config(5).
+
+Include /etc/ssh/ssh_config.d/*.conf
+
+Host *
+#   StrictHostKeyChecking ask
+#   IdentityFile ~/.ssh/id_rsa
+#   IdentityFile ~/.ssh/id_ecdsa
+#   IdentityFile ~/.ssh/id_ed25519
+    SendEnv LANG LC_* COLORTERM NO_COLOR
+    HashKnownHosts no
+    GSSAPIAuthentication yes
+`;
+
+/** OpenSSH client config on every host; sshd config and host keys on servers. */
+function seedSsh(fs: Vfs, host: Host): void {
+  fs.seed('/etc/ssh', { kind: 'dir' }, 0o755);
+  fs.seed('/etc/ssh/ssh_config', { kind: 'file', content: SSH_CLIENT_CONFIG }, 0o644);
+  fs.seed('/etc/ssh/ssh_config.d', { kind: 'dir' }, 0o755);
+  if (!asServer(host)) return;
+  fs.seed(SSHD_CONFIG, { kind: 'file', content: DEFAULT_SSHD_CONFIG }, 0o644);
+  fs.seed('/etc/ssh/sshd_config.d', { kind: 'dir' }, 0o755);
+  for (const f of hostKeyFiles(host.mac, host.name.toLowerCase())) fs.seed(f.path, { kind: 'file', content: f.content }, f.mode);
+}
+
 function createSystem(host: Host): Entry {
   const fs = new Vfs(() => host.clock.now());
   const programs = new Map<string, CommandFn>([...COREUTILS, ...linuxPrograms(host)]);
@@ -125,6 +152,7 @@ function createSystem(host: Host): Entry {
   seedRootfs(fs, { hostname: host.name.toLowerCase(), users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
   fs.seed('/usr/lib/command-not-found', { kind: 'file', content: `${BINARY_MARK}command-not-found\n` }, 0o755);
   const server = asServer(host);
+  seedSsh(fs, host);
   if (server) {
     seedApache(fs);
     fs.mountDir(WWW, webRoot(server));

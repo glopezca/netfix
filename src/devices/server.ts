@@ -56,7 +56,8 @@ export class Server extends Host {
 
   setServices(requested: ServerServices): void {
     const before = this.services;
-    const next = !before.http.enabled && requested.http.enabled && !this.startWeb() ? { ...requested, http: { ...requested.http, enabled: false } } : requested;
+    let next = !before.http.enabled && requested.http.enabled && !this.startWeb() ? { ...requested, http: { ...requested.http, enabled: false } } : requested;
+    if (!before.ssh.enabled && next.ssh.enabled && !this.startSsh()) next = { ...next, ssh: { ...next.ssh, enabled: false } };
     this.services = next;
     this.applyServices();
     for (const u of UNITS) {
@@ -65,6 +66,29 @@ export class Server extends Host {
       if (was !== now) this.log(u.id, now ? `Started ${u.description}.` : `Stopped ${u.description}.`);
     }
     this.changed();
+  }
+
+  /** Starting sshd reads /etc/ssh/sshd_config and the host key; an error keeps it stopped. */
+  private startSsh(): boolean {
+    const err = this.ssh.reload();
+    if (!err) return true;
+    this.log('ssh', `sshd[701]: ${err}`);
+    this.log('ssh', 'ssh.service: Main process exited, code=exited, status=255/EXCEPTION');
+    this.log('ssh', 'Failed to start ssh.service - OpenBSD Secure Shell server.');
+    return false;
+  }
+
+  /** systemctl reload ssh: new sshd_config for new connections, or the running one on error. */
+  reloadSsh(): string | null {
+    const err = this.ssh.reload();
+    if (err) {
+      this.log('ssh', `sshd[701]: ${err}`);
+      this.log('ssh', 'Reload failed for ssh.service - OpenBSD Secure Shell server.');
+      return err;
+    }
+    this.log('ssh', 'Reloading ssh.service - OpenBSD Secure Shell server...');
+    this.log('ssh', 'Reloaded ssh.service - OpenBSD Secure Shell server.');
+    return null;
   }
 
   /** Starting Apache reads /etc/apache2; a configuration error keeps it stopped (logged like systemd). */

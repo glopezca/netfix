@@ -7237,7 +7237,8 @@ class Vfs {
         return this.contentOf(n);
     }
     /** Creates or replaces (or appends to) a regular file. */
-    writeFile(path, content, cred = ROOT, append = false, mode = 0o664) {
+    /** `mode` applies when the file is created (default: 644 for root, 664 for users). */
+    writeFile(path, content, cred = ROOT, append = false, mode) {
         const p = normalize(path);
         const existing = this.tryLookup(p, cred);
         if (existing?.kind === 'dev')
@@ -7256,7 +7257,7 @@ class Vfs {
         if (!canAccess(parent, cred, 2) || !canAccess(parent, cred, 1))
             throw new FsError('EACCES');
         this.charge(content.length);
-        parent.children.set(name, { kind: 'file', content, mode: cred.uid === 0 ? 0o644 : mode, uid: cred.uid, gid: cred.gid, mtime: this.now(), dirty: true });
+        parent.children.set(name, { kind: 'file', content, mode: mode ?? (cred.uid === 0 ? 0o644 : 0o664), uid: cred.uid, gid: cred.gid, mtime: this.now(), dirty: true });
         parent.mtime = this.now();
     }
     overwrite(node, content, cred, append) {
@@ -7425,10 +7426,10 @@ class Vfs {
         n.gid = gid;
         n.dirty = true;
     }
-    touch(path, cred = ROOT) {
+    touch(path, cred = ROOT, mode) {
         const n = this.tryLookup(path, cred);
         if (!n)
-            return this.writeFile(path, '', cred);
+            return this.writeFile(path, '', cred, false, mode);
         if (cred.uid !== 0 && n.uid !== cred.uid && !canAccess(n, cred, 2))
             throw new FsError('EACCES');
         n.mtime = this.now();
@@ -8305,11 +8306,890 @@ function splitArgs(line) {
 
 return { SSH_WAIT_MS, dnsQuery, resolveHost, tcpCall, parseUrl, httpGet, httpRequest, reverseLookup, dateLine, splitArgs };
 })();
+__m["core/sha256.js"] = (() => {
+/** SHA-256 (FIPS 180-4) and base64 over bytes: fingerprints and key files of the simulated OpenSSH. */
+const K = new Uint32Array([
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+]);
+const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+function block(h, w) {
+    for (let i = 16; i < 64; i++) {
+        const a = w[i - 15] ?? 0;
+        const b = w[i - 2] ?? 0;
+        const s0 = rotr(a, 7) ^ rotr(a, 18) ^ (a >>> 3);
+        const s1 = rotr(b, 17) ^ rotr(b, 19) ^ (b >>> 10);
+        w[i] = ((w[i - 16] ?? 0) + s0 + (w[i - 7] ?? 0) + s1) >>> 0;
+    }
+    let [a, b, c, d, e, f, g, hh] = [h[0] ?? 0, h[1] ?? 0, h[2] ?? 0, h[3] ?? 0, h[4] ?? 0, h[5] ?? 0, h[6] ?? 0, h[7] ?? 0];
+    for (let i = 0; i < 64; i++) {
+        const t1 = (hh + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + (K[i] ?? 0) + (w[i] ?? 0)) >>> 0;
+        const t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+        [hh, g, f, e, d, c, b, a] = [g, f, e, (d + t1) >>> 0, c, b, a, (t1 + t2) >>> 0];
+    }
+    [a, b, c, d, e, f, g, hh].forEach((v, i) => { h[i] = ((h[i] ?? 0) + v) >>> 0; });
+}
+function sha256(data) {
+    const h = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
+    const total = Math.ceil((data.length + 9) / 64) * 64;
+    const msg = new Uint8Array(total);
+    msg.set(data);
+    msg[data.length] = 0x80;
+    const view = new DataView(msg.buffer);
+    view.setUint32(total - 8, Math.floor((data.length * 8) / 2 ** 32));
+    view.setUint32(total - 4, (data.length * 8) >>> 0);
+    const w = new Uint32Array(64);
+    for (let off = 0; off < total; off += 64) {
+        for (let i = 0; i < 16; i++)
+            w[i] = view.getUint32(off + i * 4);
+        block(h, w);
+    }
+    const out = new Uint8Array(32);
+    const ov = new DataView(out.buffer);
+    h.forEach((v, i) => ov.setUint32(i * 4, v));
+    return out;
+}
+function concatBytes(...parts) {
+    const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let off = 0;
+    for (const p of parts) {
+        out.set(p, off);
+        off += p.length;
+    }
+    return out;
+}
+const utf8 = (text) => new TextEncoder().encode(text);
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+function toBase64(bytes, pad = true) {
+    let out = '';
+    for (let i = 0; i < bytes.length; i += 3) {
+        const n = ((bytes[i] ?? 0) << 16) | ((bytes[i + 1] ?? 0) << 8) | (bytes[i + 2] ?? 0);
+        const chars = Math.min(4, Math.ceil(((bytes.length - i) * 8) / 6));
+        for (let j = 0; j < chars; j++)
+            out += B64[(n >>> (18 - 6 * j)) & 63];
+    }
+    return pad ? out.padEnd(Math.ceil(out.length / 4) * 4, '=') : out;
+}
+/** Decodes base64 (padding optional); null when the text is not base64. */
+function fromBase64(text) {
+    const clean = text.replace(/=+$/, '');
+    if (!/^[A-Za-z0-9+/]*$/.test(clean) || clean.length % 4 === 1)
+        return null;
+    const out = new Uint8Array(Math.floor((clean.length * 6) / 8));
+    let bits = 0;
+    let acc = 0;
+    let o = 0;
+    for (const ch of clean) {
+        acc = (acc << 6) | B64.indexOf(ch);
+        bits += 6;
+        if (bits >= 8) {
+            bits -= 8;
+            out[o++] = (acc >>> bits) & 0xff;
+        }
+    }
+    return out;
+}
+
+return { sha256, concatBytes, utf8, toBase64, fromBase64 };
+})();
+__m["core/schnorr.js"] = (() => {
+/**
+ * Schnorr signatures over the order-q subgroup of Z_p*, with p = 2q + 1 a 256-bit safe prime (BigInt).
+ * Teaching-sized, synchronous and dependency-free: it makes a public key useless for forging a signature
+ * inside the simulator. It is NOT meant to protect real data.
+ *
+ * p was found by searching upward from SHA-256("netfix-ssh-group"); p and q were checked prime with
+ * `openssl prime`. g = 4 is a quadratic residue, so it generates the subgroup of prime order q.
+ */
+const { sha256, concatBytes, utf8 } = __m["core/sha256.js"];
+const P = 0xebc05ac8af3d023451260aaa746477f47d48a25b91de18237962e63f1fc99157n;
+const Q = 0x75e02d64579e811a289305553a323bfa3ea4512dc8ef0c11bcb1731f8fe4c8abn;
+const G = 4n;
+/** Size of a group element or exponent in bytes. */
+const SCHNORR_BYTES = 32;
+function toInt(bytes) {
+    let v = 0n;
+    for (const b of bytes)
+        v = (v << 8n) | BigInt(b);
+    return v;
+}
+function toBytes(v) {
+    const out = new Uint8Array(SCHNORR_BYTES);
+    let x = v;
+    for (let i = SCHNORR_BYTES - 1; i >= 0; i--) {
+        out[i] = Number(x & 0xffn);
+        x >>= 8n;
+    }
+    return out;
+}
+function modPow(base, exp, mod) {
+    let result = 1n;
+    let b = base % mod;
+    for (let e = exp; e > 0n; e >>= 1n) {
+        if (e & 1n)
+            result = (result * b) % mod;
+        b = (b * b) % mod;
+    }
+    return result;
+}
+/** Hash to an exponent in [1, q-1]. */
+function hashToScalar(label, ...parts) {
+    return (toInt(sha256(concatBytes(utf8(label), ...parts))) % (Q - 1n)) + 1n;
+}
+function secret(seed) {
+    return hashToScalar('netfix-schnorr-x', seed);
+}
+/** Public value y = g^x of the key derived from `seed` (32 bytes). */
+function schnorrPublic(seed) {
+    return toBytes(modPow(G, secret(seed), P));
+}
+function challenge(r, y, message) {
+    return toInt(sha256(concatBytes(utf8('netfix-schnorr-e'), r, y, message))) % Q;
+}
+/** Signature (R ‖ s, 64 bytes); the nonce is derived from the key and the message (no RNG needed). */
+function schnorrSign(seed, message) {
+    const x = secret(seed);
+    const y = toBytes(modPow(G, x, P));
+    const k = hashToScalar('netfix-schnorr-k', seed, message);
+    const r = toBytes(modPow(G, k, P));
+    const s = (k + challenge(r, y, message) * x) % Q;
+    return concatBytes(r, toBytes(s));
+}
+/** g^s = R · y^e (mod p), with R and y in the subgroup. */
+function schnorrVerify(publicValue, message, signature) {
+    if (publicValue.length !== SCHNORR_BYTES || signature.length !== 2 * SCHNORR_BYTES)
+        return false;
+    const y = toInt(publicValue);
+    const rBytes = signature.slice(0, SCHNORR_BYTES);
+    const r = toInt(rBytes);
+    const s = toInt(signature.slice(SCHNORR_BYTES));
+    const inGroup = (v) => v > 1n && v < P && modPow(v, Q, P) === 1n;
+    if (!inGroup(y) || !inGroup(r) || s >= Q)
+        return false;
+    return modPow(G, s, P) === (r * modPow(y, challenge(rBytes, publicValue, message), P)) % P;
+}
+
+return { SCHNORR_BYTES, schnorrPublic, schnorrSign, schnorrVerify };
+})();
+__m["net/ssh-keys.js"] = (() => {
+/**
+ * OpenSSH key formats: public key lines with real wire-format blobs ("ssh-ed25519 AAAAC3Nza…"),
+ * openssh-key-v1 private files (optionally protected by a passphrase), SHA256 fingerprints and the
+ * randomart box. Every key type carries the same teaching-sized Schnorr key (see schnorr.ts) inside its
+ * wire format: there is no Ed25519, ECDSA or RSA arithmetic, but only the holder of the private file
+ * can sign, and the public blob is useless to forge a signature.
+ */
+const { sha256, concatBytes, utf8, toBase64, fromBase64 } = __m["core/sha256.js"];
+const { schnorrPublic, schnorrSign, schnorrVerify, SCHNORR_BYTES } = __m["core/schnorr.js"];
+const WIRE_NAME = { ed25519: 'ssh-ed25519', ecdsa: 'ecdsa-sha2-nistp256', rsa: 'ssh-rsa' };
+const LABEL = { ed25519: 'ED25519', ecdsa: 'ECDSA', rsa: 'RSA' };
+const SEED_BYTES = 32;
+const RSA_E = Uint8Array.of(1, 0, 1);
+const MAGIC = utf8('openssh-key-v1\0');
+const KDF_ROUNDS = 16;
+const cryptoRandom = (n) => {
+    const out = new Uint8Array(n);
+    globalThis.crypto.getRandomValues(out);
+    return out;
+};
+// ------------------------------------------------------------ wire encoding
+const u32 = (n) => Uint8Array.of(n >>> 24 & 0xff, n >>> 16 & 0xff, n >>> 8 & 0xff, n & 0xff);
+const str = (b) => {
+    const bytes = typeof b === 'string' ? utf8(b) : b;
+    return concatBytes(u32(bytes.length), bytes);
+};
+class Reader {
+    off = 0;
+    b;
+    constructor(b) {
+        this.b = b;
+    }
+    u32() {
+        if (this.off + 4 > this.b.length)
+            throw new Error('short');
+        const v = ((this.b[this.off] ?? 0) << 24 | (this.b[this.off + 1] ?? 0) << 16 | (this.b[this.off + 2] ?? 0) << 8 | (this.b[this.off + 3] ?? 0)) >>> 0;
+        this.off += 4;
+        return v;
+    }
+    bytes() {
+        const n = this.u32();
+        if (this.off + n > this.b.length)
+            throw new Error('short');
+        const out = this.b.slice(this.off, this.off + n);
+        this.off += n;
+        return out;
+    }
+    text() {
+        return new TextDecoder().decode(this.bytes());
+    }
+    rest() {
+        return this.b.slice(this.off);
+    }
+}
+/** Expands a seed into `n` bytes (SHA-256 in counter mode). */
+function expand(seed, label, n) {
+    const parts = [];
+    for (let i = 0; parts.length * 32 < n; i++)
+        parts.push(sha256(concatBytes(utf8(label), seed, u32(i))));
+    return concatBytes(...parts).slice(0, n);
+}
+const RSA_TOP = 0xc5;
+function deriveBlob(type, bits, seed) {
+    const y = schnorrPublic(seed);
+    if (type === 'ed25519')
+        return concatBytes(str(WIRE_NAME.ed25519), str(y));
+    if (type === 'ecdsa')
+        return concatBytes(str(WIRE_NAME.ecdsa), str('nistp256'), str(concatBytes(Uint8Array.of(4), y, expand(y, 'ecdsa', SCHNORR_BYTES))));
+    const n = concatBytes(Uint8Array.of(RSA_TOP), y, expand(y, 'rsa', bits / 8 - 1 - SCHNORR_BYTES));
+    return concatBytes(str(WIRE_NAME.rsa), str(RSA_E), str(concatBytes(Uint8Array.of(0), n)));
+}
+/** The Schnorr public value inside a blob, or null when the blob was not made by deriveBlob. */
+function publicValue(blob) {
+    try {
+        const r = new Reader(blob);
+        const name = r.text();
+        if (name === WIRE_NAME.ed25519)
+            return r.bytes();
+        if (name === WIRE_NAME.ecdsa) {
+            r.text();
+            const point = r.bytes();
+            const y = point.slice(1, 1 + SCHNORR_BYTES);
+            return sameBlob(point.slice(1 + SCHNORR_BYTES), expand(y, 'ecdsa', SCHNORR_BYTES)) ? y : null;
+        }
+        r.bytes();
+        const n = r.bytes().slice(1);
+        const y = n.slice(1, 1 + SCHNORR_BYTES);
+        return n[0] === RSA_TOP && sameBlob(n.slice(1 + SCHNORR_BYTES), expand(y, 'rsa', n.length - 1 - SCHNORR_BYTES)) ? y : null;
+    }
+    catch {
+        return null;
+    }
+}
+function generateKey(type, bits, comment, random = cryptoRandom) {
+    const seed = random(SEED_BYTES);
+    return { type, bits, blob: deriveBlob(type, bits, seed), seed, comment };
+}
+/** Deterministic key (host keys derived from the device). */
+function keyFromSeed(type, bits, seedText, comment) {
+    const seed = sha256(utf8(seedText));
+    return { type, bits, blob: deriveBlob(type, bits, seed), seed, comment };
+}
+function typeOfBlob(blob) {
+    try {
+        const r = new Reader(blob);
+        const name = r.text();
+        if (name === WIRE_NAME.ed25519)
+            return r.bytes().length === 32 ? { type: 'ed25519', bits: 256 } : null;
+        if (name === WIRE_NAME.ecdsa)
+            return r.text() === 'nistp256' && r.bytes().length === 65 ? { type: 'ecdsa', bits: 256 } : null;
+        if (name === WIRE_NAME.rsa) {
+            r.bytes();
+            const n = r.bytes();
+            return { type: 'rsa', bits: (n.length - (n[0] === 0 ? 1 : 0)) * 8 };
+        }
+    }
+    catch { /* malformed */ }
+    return null;
+}
+// ------------------------------------------------------------ public keys
+function publicLine(kp) {
+    return `${WIRE_NAME[kp.type]} ${toBase64(kp.blob)}${kp.comment ? ` ${kp.comment}` : ''}`;
+}
+/** "ssh-ed25519 AAAA… comment": the key type must be the first word (authorized-keys.ts handles options). */
+function parsePublicLine(line) {
+    const words = line.trim().split(/\s+/);
+    if (!Object.values(WIRE_NAME).includes(words[0] ?? ''))
+        return null;
+    const blob = fromBase64(words[1] ?? '');
+    const kind = blob ? typeOfBlob(blob) : null;
+    if (!blob || !kind || WIRE_NAME[kind.type] !== words[0])
+        return null;
+    return { ...kind, blob, comment: words.slice(2).join(' ') };
+}
+function sameBlob(a, b) {
+    return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+function fingerprint(blob) {
+    return `SHA256:${toBase64(sha256(blob), false)}`;
+}
+// ------------------------------------------------------------ private files
+function keystream(pass, salt, n) {
+    return expand(concatBytes(utf8(pass), salt), 'aes256-ctr', n);
+}
+function xor(data, key) {
+    return data.map((v, i) => v ^ (key[i] ?? 0));
+}
+function wrap(b64) {
+    return (b64.match(/.{1,70}/g) ?? []).join('\n');
+}
+function privateFile(kp, passphrase, random = cryptoRandom) {
+    const check = random(4);
+    const blockSize = passphrase ? 16 : 8;
+    let section = concatBytes(check, check, str(WIRE_NAME[kp.type]), str(kp.blob), str(kp.seed), str(kp.comment));
+    const pad = (blockSize - (section.length % blockSize)) % blockSize;
+    section = concatBytes(section, Uint8Array.from({ length: pad }, (_, i) => i + 1));
+    const salt = random(16);
+    const kdf = passphrase ? concatBytes(str(salt), u32(KDF_ROUNDS)) : new Uint8Array();
+    const body = passphrase ? xor(section, keystream(passphrase, salt, section.length)) : section;
+    const all = concatBytes(MAGIC, str(passphrase ? 'aes256-ctr' : 'none'), str(passphrase ? 'bcrypt' : 'none'), str(kdf), u32(1), str(kp.blob), str(body));
+    return `-----BEGIN OPENSSH PRIVATE KEY-----\n${wrap(toBase64(all))}\n-----END OPENSSH PRIVATE KEY-----\n`;
+}
+function decodeFile(text) {
+    const m = /-----BEGIN OPENSSH PRIVATE KEY-----([\s\S]*?)-----END OPENSSH PRIVATE KEY-----/.exec(text);
+    const all = m ? fromBase64((m[1] ?? '').replace(/\s+/g, '')) : null;
+    if (!all || !sameBlob(all.slice(0, MAGIC.length), MAGIC))
+        return null;
+    try {
+        const r = new Reader(all.slice(MAGIC.length));
+        const cipher = r.text();
+        r.text();
+        const kdf = r.bytes();
+        if (r.u32() !== 1)
+            return null;
+        r.bytes();
+        return { cipher, kdf, body: r.bytes() };
+    }
+    catch {
+        return null;
+    }
+}
+function isEncrypted(text) {
+    return decodeFile(text)?.cipher !== 'none' && decodeFile(text) !== null;
+}
+/** The key of a private file; 'invalid' (not a key) or 'bad-passphrase' (wrong or missing passphrase). */
+function parsePrivateFile(text, passphrase) {
+    const file = decodeFile(text);
+    if (!file)
+        return 'invalid';
+    let body = file.body;
+    if (file.cipher !== 'none') {
+        try {
+            body = xor(body, keystream(passphrase, new Reader(file.kdf).bytes(), body.length));
+        }
+        catch {
+            return 'invalid';
+        }
+    }
+    try {
+        const r = new Reader(body);
+        if (r.u32() !== r.u32())
+            return file.cipher === 'none' ? 'invalid' : 'bad-passphrase';
+        r.text();
+        const blob = r.bytes();
+        const seed = r.bytes();
+        const comment = r.text();
+        const kind = typeOfBlob(blob);
+        // The public half must come from the private seed: a file with someone else's public key is not a key.
+        return kind && sameBlob(blob, deriveBlob(kind.type, kind.bits, seed)) ? { ...kind, blob, seed, comment } : 'invalid';
+    }
+    catch {
+        return file.cipher === 'none' ? 'invalid' : 'bad-passphrase';
+    }
+}
+// ------------------------------------------------------------ randomart and signatures
+const ART = ' .o+=*BOX@%&#/^SE';
+const W = 17;
+const H = 9;
+function center(text, fill) {
+    const left = Math.floor((W - text.length) / 2);
+    return `${fill.repeat(left)}${text}${fill.repeat(W - text.length - left)}`;
+}
+/** The "drunken bishop" picture that ssh-keygen prints. */
+function randomart(kp) {
+    const field = Array.from({ length: H }, () => new Array(W).fill(0));
+    let x = Math.floor(W / 2);
+    let y = Math.floor(H / 2);
+    for (const byte of sha256(kp.blob)) {
+        for (let s = 0; s < 8; s += 2) {
+            const step = (byte >> s) & 3;
+            x = Math.max(0, Math.min(W - 1, x + (step & 1 ? 1 : -1)));
+            y = Math.max(0, Math.min(H - 1, y + (step & 2 ? 1 : -1)));
+            const row = field[y];
+            if (row)
+                row[x] = Math.min((row[x] ?? 0) + 1, ART.length - 3);
+        }
+    }
+    const startRow = field[Math.floor(H / 2)];
+    if (startRow)
+        startRow[Math.floor(W / 2)] = ART.length - 2;
+    const endRow = field[y];
+    if (endRow)
+        endRow[x] = ART.length - 1;
+    return [`+${center(`[${LABEL[kp.type]} ${kp.bits}]`, '-')}+`, ...field.map((r) => `|${r.map((v) => ART[v]).join('')}|`), `+${center('[SHA256]', '-')}+`];
+}
+/** Signature of `message` (an authentication challenge) with the private key. */
+function signChallenge(kp, message) {
+    return toBase64(schnorrSign(kp.seed, message));
+}
+/** True when `signature` was made over `message` by the private key of `blob`. */
+function verifySignature(blob, message, signature) {
+    const y = publicValue(blob);
+    const sig = fromBase64(signature);
+    return y !== null && sig !== null && schnorrVerify(y, message, sig);
+}
+
+return { WIRE_NAME, LABEL, cryptoRandom, generateKey, keyFromSeed, publicLine, parsePublicLine, sameBlob, fingerprint, privateFile, isEncrypted, parsePrivateFile, randomart, signChallenge, verifySignature };
+})();
+__m["services/ssh-handshake.js"] = (() => {
+/**
+ * Per-connection state of sshd before login: a random one-time challenge (the "session identifier"),
+ * bound to the client address, with its failed attempts and the LoginGraceTime deadline.
+ */
+const { sha256, concatBytes, utf8, toBase64 } = __m["core/sha256.js"];
+const { cryptoRandom } = __m["net/ssh-keys.js"];
+const CHALLENGE_BYTES = 32;
+const MAX_PENDING = 64;
+/** Pending logins per client address: one client cannot push out the logins of others. */
+const MAX_PER_IP = 8;
+const GRACE_MS = 120_000;
+/** What the server signs with its host key: the client's nonce and the challenge (host authentication). */
+function hostProofMessage(nonce, challenge) {
+    return sha256(concatBytes(utf8('netfix-ssh-hostproof\0'), utf8(nonce), utf8('\0'), utf8(challenge)));
+}
+/**
+ * What a client signs with its key: the challenge, the server's host key, the user and the key (like
+ * SSH's userauth signature over the session id): a signature made for one server is useless at another.
+ */
+function userAuthMessage(challenge, hostBlob, user, keyLine) {
+    return sha256(concatBytes(utf8('netfix-ssh-userauth\0'), utf8(challenge), utf8('\0'), sha256(hostBlob), utf8(user), utf8('\0'), utf8(keyLine)));
+}
+class PendingLogins {
+    map = new Map();
+    random;
+    constructor(random = cryptoRandom) {
+        this.random = random;
+    }
+    /** New challenge for a connection from `ip`; null when the table is full of other clients' logins (MaxStartups). */
+    issue(ip, now) {
+        for (const [k, p] of this.map)
+            if (now - p.created > GRACE_MS)
+                this.map.delete(k);
+        const own = [...this.map].filter(([, p]) => p.ip === ip).map(([k]) => k);
+        // Over its quota, a client replaces its own oldest login; when the table is full, also its own.
+        const victim = own.length >= MAX_PER_IP || this.map.size >= MAX_PENDING ? own[0] : undefined;
+        if (victim !== undefined)
+            this.map.delete(victim);
+        else if (this.map.size >= MAX_PENDING)
+            return null;
+        const challenge = toBase64(this.random(CHALLENGE_BYTES));
+        this.map.set(challenge, { ip, created: now, failures: 0 });
+        return challenge;
+    }
+    /** The connection of `challenge` if it belongs to `ip` and is within LoginGraceTime. */
+    check(challenge, ip, now) {
+        const p = this.map.get(challenge);
+        if (!p || p.ip !== ip)
+            return { ok: false, reason: 'unknown' };
+        if (now - p.created > GRACE_MS) {
+            this.map.delete(challenge);
+            return { ok: false, reason: 'expired' };
+        }
+        return { ok: true, failures: p.failures };
+    }
+    /** Counts a failed attempt; returns the total. */
+    fail(challenge) {
+        const p = this.map.get(challenge);
+        if (!p)
+            return Number.MAX_SAFE_INTEGER;
+        p.failures += 1;
+        return p.failures;
+    }
+    /** Ends the connection's pre-login state (logged in, or disconnected). */
+    close(challenge) {
+        this.map.delete(challenge);
+    }
+}
+
+return { hostProofMessage, userAuthMessage, PendingLogins };
+})();
+__m["shells/ssh-messages.js"] = (() => {
+/** OpenSSH client warnings, word for word. */
+const BAR = '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@';
+function hostKeyChanged(type, fp, knownHosts, line, target) {
+    return [
+        BAR,
+        '@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @',
+        BAR,
+        'IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!',
+        'Someone could be eavesdropping on you right now (man-in-the-middle attack)!',
+        'It is also possible that a host key has just been changed.',
+        `The fingerprint for the ${type} key sent by the remote host is`,
+        `${fp}.`,
+        'Please contact your system administrator.',
+        `Add correct host key in ${knownHosts} to get rid of this message.`,
+        `Offending ${type} key in ${knownHosts}:${line}`,
+        '  remove with:',
+        `  ssh-keygen -f '${knownHosts}' -R '${target}'`,
+        `Host key for ${target} has changed and you have requested strict checking.`,
+        'Host key verification failed.',
+    ];
+}
+function unprotectedKey(mode, path) {
+    return [
+        BAR,
+        '@         WARNING: UNPROTECTED PRIVATE KEY FILE!          @',
+        BAR,
+        `Permissions 0${(mode & 0o777).toString(8)} for '${path}' are too open.`,
+        'It is required that your private key files are NOT accessible by others.',
+        'This private key will be ignored.',
+        `Load key "${path}": bad permissions`,
+    ];
+}
+/** StrictHostKeyChecking=no with a changed key: OpenSSH connects, but never sends a password. */
+function mitmPasswordDisabled() {
+    return [
+        'Password authentication is disabled to avoid man-in-the-middle attacks.',
+        'Keyboard-interactive authentication is disabled to avoid man-in-the-middle attacks.',
+    ];
+}
+
+return { hostKeyChanged, unprotectedKey, mitmPasswordDisabled };
+})();
+__m["shells/known-hosts.js"] = (() => {
+/** known_hosts lines: "name[,name…] keytype base64", with "[host]:port" for ports other than 22. */
+/** Whether a known_hosts host field names `host` (or "[host]:port"). */
+function knownHostsMatches(field, host) {
+    const wanted = host.toLowerCase();
+    return field.split(',').some((n) => n.toLowerCase() === wanted);
+}
+function knownHostsFind(text, host) {
+    return text.split('\n').flatMap((l, i) => {
+        const t = l.trim();
+        const field = t.split(/\s+/)[0] ?? '';
+        return t && !t.startsWith('#') && knownHostsMatches(field, host) ? [{ line: i + 1, text: t }] : [];
+    });
+}
+/** known_hosts without the lines of `host`; `removed` = their line numbers. */
+function knownHostsRemove(text, host) {
+    const found = new Set(knownHostsFind(text, host).map((f) => f.line));
+    const kept = text.split('\n').filter((_, i) => !found.has(i + 1));
+    return { text: kept.join('\n'), removed: [...found] };
+}
+
+return { knownHostsMatches, knownHostsFind, knownHostsRemove };
+})();
+__m["shells/ssh-client.js"] = (() => {
+const { resolveHost, tcpCall } = __m["shells/net-tools.js"];
+const { toBase64 } = __m["core/sha256.js"];
+const { formatIp } = __m["core/ip.js"];
+const { parsePublicLine, parsePrivateFile, isEncrypted, sameBlob, fingerprint, signChallenge, verifySignature, publicLine, cryptoRandom, LABEL } = __m["net/ssh-keys.js"];
+const { hostProofMessage, userAuthMessage } = __m["services/ssh-handshake.js"];
+const { hostKeyChanged, mitmPasswordDisabled, unprotectedKey } = __m["shells/ssh-messages.js"];
+const { knownHostsFind } = __m["shells/known-hosts.js"];
+const SSH_PORT = 22;
+const MAX_PASSWORD_TRIES = 3;
+const MAX_PASSPHRASE_TRIES = 3;
+const PRIVATE_KEY_BAD_MODES = 0o077;
+const NONCE_BYTES = 16;
+const SSH_USAGE = 'usage: ssh [-46AaCfGgKkMNnqsTtVvXxYy] [-i identity_file] [-l login_name] [-o option] [-p port] destination [command [argument ...]]';
+const SSH_WITH_VALUE = new Set(['-i', '-l', '-o', '-p', '-F', '-E', '-c', '-m', '-b', '-J', '-L', '-R', '-D', '-W', '-S', '-O', '-Q', '-B', '-e', '-w']);
+function yes(v) {
+    return /^(yes|true)$/i.test(v);
+}
+function applyOption(o, text) {
+    const m = /^(\w+)\s*[= ]\s*(.+)$/.exec(text.trim());
+    if (!m)
+        return `command-line line 0: missing argument.`;
+    const key = (m[1] ?? '').toLowerCase();
+    const value = (m[2] ?? '').trim();
+    if (key === 'stricthostkeychecking')
+        o.strict = /^(yes|true)$/i.test(value) ? 'yes' : /^(no|off|false)$/i.test(value) ? 'no' : value.toLowerCase() === 'accept-new' ? 'accept-new' : 'ask';
+    else if (key === 'passwordauthentication')
+        o.password = yes(value);
+    else if (key === 'pubkeyauthentication')
+        o.pubkey = yes(value);
+    else if (key === 'batchmode')
+        o.batch = yes(value);
+    else if (key === 'userknownhostsfile')
+        o.knownHostsFile = value;
+    else if (key === 'identityfile')
+        o.identities.push(value);
+    else if (key === 'user')
+        o.user = value;
+    else if (key === 'port')
+        o.port = Number(value);
+    return null;
+}
+/** ssh's command line → options, or the error/usage text. */
+function parseSshArgs(args, defaultUser) {
+    const o = { identities: [] };
+    let i = 0;
+    for (; i < args.length; i++) {
+        const a = args[i] ?? '';
+        if (!a.startsWith('-') || a === '-')
+            break;
+        const flag = a.slice(0, 2);
+        const value = a.length > 2 ? a.slice(2) : SSH_WITH_VALUE.has(flag) ? args[++i] : undefined;
+        if (SSH_WITH_VALUE.has(flag) && value === undefined)
+            return `option requires an argument -- ${flag.slice(1)}\n${SSH_USAGE}`;
+        if (flag === '-i')
+            o.identities.push(value ?? '');
+        else if (flag === '-l')
+            o.user = value;
+        else if (flag === '-p')
+            o.port = Number(value);
+        else if (flag === '-o') {
+            const err = applyOption(o, value ?? '');
+            if (err)
+                return err;
+        }
+    }
+    const dest = args[i];
+    if (!dest)
+        return SSH_USAGE;
+    const at = dest.lastIndexOf('@');
+    const command = args.slice(i + 1).join(' ');
+    const port = o.port ?? SSH_PORT;
+    if (!Number.isInteger(port) || port < 1 || port > 65535)
+        return `Bad port '${String(o.port)}'`;
+    return {
+        user: at >= 0 ? dest.slice(0, at) : o.user ?? defaultUser, target: at >= 0 ? dest.slice(at + 1) : dest, port,
+        command: command || undefined, identities: o.identities, strict: o.strict ?? 'ask', password: o.password ?? true,
+        pubkey: o.pubkey ?? true, batch: o.batch ?? false, knownHostsFile: o.knownHostsFile,
+    };
+}
+class SshLogin {
+    opts;
+    host;
+    osName;
+    store;
+    step = { kind: 'idle' };
+    ip = 0;
+    hostKey = null;
+    challenge = '';
+    /** Host key changed but StrictHostKeyChecking=no: OpenSSH goes on with keys only. */
+    passwordBlocked = false;
+    methods = [];
+    queue = [];
+    constructor(host, osName, store, opts) {
+        this.host = host;
+        this.osName = osName;
+        this.store = store;
+        this.opts = opts;
+    }
+    prompt() {
+        const s = this.step;
+        if (s.kind === 'hostkey')
+            return 'Are you sure you want to continue connecting (yes/no/[fingerprint])? ';
+        if (s.kind === 'passphrase')
+            return `Enter passphrase for key '${s.path}': `;
+        return `${this.opts.user}@${this.opts.target}'s password: `;
+    }
+    secret() {
+        return this.step.kind === 'passphrase' || this.step.kind === 'password';
+    }
+    call(payload) {
+        const r = tcpCall(this.host, this.ip, this.opts.port, { app: 'SSH', kind: 'auth', clientOs: this.osName, challenge: this.challenge, ...payload });
+        return r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
+    }
+    fail(lines) {
+        return { lines, failed: true };
+    }
+    /** Like OpenSSH, missing -i files are reported before connecting. */
+    begin() {
+        const explicit = this.opts.identities.map((p) => this.store.resolve(p));
+        const missing = this.opts.identities.filter((p) => this.store.readIdentity(this.store.resolve(p)) === 'missing');
+        this.queue = explicit.filter((p) => this.store.readIdentity(p) !== 'missing');
+        const warnings = missing.map((p) => `Warning: Identity file ${p} not accessible: No such file or directory.`);
+        const r = this.connect();
+        return { ...r, lines: [...warnings, ...r.lines] };
+    }
+    connect() {
+        const { target, port } = this.opts;
+        const resolved = resolveHost(this.host, target);
+        if (resolved.kind === 'error')
+            return this.fail([`ssh: Could not resolve hostname ${target}: Name or service not known`]);
+        this.ip = resolved.ip;
+        const nonce = toBase64(cryptoRandom(NONCE_BYTES));
+        const probe = tcpCall(this.host, this.ip, port, { app: 'SSH', kind: 'auth', method: 'none', nonce, user: this.opts.user, password: '', clientOs: this.osName });
+        if (probe.kind === 'refused')
+            return this.fail([`ssh: connect to host ${target} port ${port}: Connection refused`]);
+        if (probe.kind !== 'ok')
+            return this.fail([`ssh: connect to host ${target} port ${port}: ${probe.kind === 'noroute' ? 'Network is unreachable' : 'Connection timed out'}`]);
+        const out = probe.reply.app === 'SSH' && probe.reply.kind === 'output' ? probe.reply : undefined;
+        this.hostKey = out?.hostKey ? parsePublicLine(out.hostKey) : null;
+        if (!out || !this.hostKey)
+            return this.fail([out?.lines[0] ?? `kex_exchange_identification: Connection closed by remote host`, `Connection closed by ${formatIp(this.ip)} port ${port}`]);
+        this.challenge = out.challenge ?? '';
+        // The server proves it holds the private host key: otherwise anyone could present a copied public key.
+        if (!verifySignature(this.hostKey.blob, hostProofMessage(nonce, this.challenge), out.hostSignature ?? '')) {
+            return this.fail([`ssh_dispatch_run_fatal: Connection to ${formatIp(this.ip)} port ${port}: incorrect signature`]);
+        }
+        this.methods = out.methods ?? [];
+        return this.checkHostKey();
+    }
+    // ------------------------------------------------------------ host key
+    knownName() {
+        return this.opts.port === SSH_PORT ? this.opts.target.toLowerCase() : `[${this.opts.target.toLowerCase()}]:${this.opts.port}`;
+    }
+    knownHostsPath() {
+        return this.opts.knownHostsFile ? this.store.resolve(this.opts.knownHostsFile) : this.store.knownHostsPath;
+    }
+    known() {
+        if (this.opts.knownHostsFile === '/dev/null')
+            return [];
+        return knownHostsFind(this.store.knownHosts(this.knownHostsPath()), this.knownName()).flatMap((f) => {
+            const key = parsePublicLine(f.text.split(/\s+/).slice(1).join(' '));
+            return key ? [{ line: f.line, key }] : [];
+        });
+    }
+    checkHostKey() {
+        const key = this.hostKey;
+        if (!key)
+            return this.fail(['Host key verification failed.']);
+        const same = this.known().filter((k) => k.key.type === key.type);
+        if (same.some((k) => sameBlob(k.key.blob, key.blob)))
+            return this.authenticate([]);
+        const changed = same[0];
+        if (changed) {
+            const warning = hostKeyChanged(LABEL[key.type], fingerprint(key.blob), this.knownHostsPath(), changed.line, this.opts.target);
+            if (this.opts.strict !== 'no')
+                return this.fail(warning);
+            this.passwordBlocked = true;
+            return this.authenticate([...warning.slice(0, -2), ...mitmPasswordDisabled()]);
+        }
+        const fp = fingerprint(key.blob);
+        if (this.opts.strict === 'no' || this.opts.strict === 'accept-new')
+            return this.authenticate(this.remember());
+        if (this.opts.strict === 'yes' || this.opts.batch)
+            return this.fail([`No ${LABEL[key.type]} host key is known for ${this.opts.target} and you have requested strict checking.`, 'Host key verification failed.']);
+        this.step = { kind: 'hostkey' };
+        const shown = this.opts.target === formatIp(this.ip) ? this.opts.target : `${this.opts.target} (${formatIp(this.ip)})`;
+        return { lines: [`The authenticity of host '${shown}' can't be established.`, `${LABEL[key.type]} key fingerprint is ${fp}.`, 'This key is not known by any other names.'] };
+    }
+    remember() {
+        const key = this.hostKey;
+        if (!key || this.opts.knownHostsFile === '/dev/null')
+            return key ? [`Warning: Permanently added '${this.opts.target}' (${LABEL[key.type]}) to the list of known hosts.`] : [];
+        this.store.addKnownHost(this.knownHostsPath(), `${this.knownName()} ${publicLine({ ...key, comment: '' })}`);
+        return [`Warning: Permanently added '${this.opts.target}' (${LABEL[key.type]}) to the list of known hosts.`];
+    }
+    answerHostKey(line) {
+        const a = line.trim();
+        const fp = this.hostKey ? fingerprint(this.hostKey.blob) : '';
+        if (a === 'yes' || (a !== '' && a === fp)) {
+            this.step = { kind: 'idle' };
+            return this.authenticate(this.remember());
+        }
+        if (a === 'no')
+            return this.fail(['Host key verification failed.']);
+        return { lines: ["Please type 'yes', 'no' or the fingerprint: "] };
+    }
+    // ------------------------------------------------------------ authentication
+    authenticate(lines) {
+        const pubkey = this.opts.pubkey && this.methods.includes('publickey');
+        this.queue = pubkey ? [...new Set([...this.queue, ...this.store.defaultIdentities()])] : [];
+        return this.nextIdentity(lines);
+    }
+    nextIdentity(lines) {
+        for (let path = this.queue.shift(); path !== undefined; path = this.queue.shift()) {
+            const file = this.store.readIdentity(path);
+            if (typeof file === 'string')
+                continue;
+            if ((file.mode & PRIVATE_KEY_BAD_MODES) !== 0) {
+                lines.push(...unprotectedKey(file.mode, path));
+                continue;
+            }
+            if (isEncrypted(file.text)) {
+                if (this.opts.batch)
+                    continue;
+                this.step = { kind: 'passphrase', path, text: file.text, tries: 0 };
+                return { lines };
+            }
+            const kp = parsePrivateFile(file.text, '');
+            if (typeof kp === 'string') {
+                lines.push(`Load key "${path}": invalid format`);
+                continue;
+            }
+            const r = this.tryKey(kp, lines);
+            if (r)
+                return r;
+        }
+        return this.passwordStep(lines);
+    }
+    tryKey(kp, lines) {
+        const key = publicLine(kp);
+        const out = this.call({ method: 'publickey', user: this.opts.user, password: '', key, signature: signChallenge(kp, userAuthMessage(this.challenge, this.hostKey?.blob ?? new Uint8Array(), this.opts.user, key)) });
+        if (out?.ok && out.session)
+            return this.opened(out, lines);
+        if (out?.closed)
+            return this.fail([...lines, ...out.lines]);
+        return null;
+    }
+    answerPassphrase(line) {
+        const s = this.step;
+        if (s.kind !== 'passphrase')
+            return { lines: [] };
+        if (line === '') {
+            this.step = { kind: 'idle' };
+            return this.nextIdentity([]);
+        }
+        const kp = parsePrivateFile(s.text, line);
+        if (typeof kp === 'string') {
+            if (s.tries + 1 >= MAX_PASSPHRASE_TRIES) {
+                this.step = { kind: 'idle' };
+                return this.nextIdentity([]);
+            }
+            this.step = { ...s, tries: s.tries + 1 };
+            return { lines: [] };
+        }
+        this.step = { kind: 'idle' };
+        return this.tryKey(kp, []) ?? this.nextIdentity([]);
+    }
+    passwordStep(lines) {
+        if (this.opts.password && !this.passwordBlocked && !this.opts.batch && this.methods.includes('password')) {
+            this.step = { kind: 'password', tries: 0 };
+            return { lines };
+        }
+        return this.fail([...lines, this.denied()]);
+    }
+    denied() {
+        return `${this.opts.user}@${this.opts.target}: Permission denied (${this.methods.join(',') || 'none'}).`;
+    }
+    answerPassword(line) {
+        const s = this.step;
+        if (s.kind !== 'password')
+            return { lines: [] };
+        const out = this.call({ method: 'password', user: this.opts.user, password: line });
+        if (!out)
+            return this.fail([`Connection to ${this.opts.target} closed by remote host.`]);
+        if (out.ok && out.session)
+            return this.opened(out, []);
+        if (out.closed)
+            return this.fail([...out.lines]);
+        if (s.tries + 1 >= MAX_PASSWORD_TRIES)
+            return this.fail([this.denied()]);
+        this.step = { kind: 'password', tries: s.tries + 1 };
+        return { lines: ['Permission denied, please try again.'] };
+    }
+    opened(out, lines) {
+        this.step = { kind: 'idle' };
+        return { lines, session: { id: out.session ?? '', prompt: out.prompt ?? '$ ', banner: [...out.lines], ip: this.ip } };
+    }
+    input(line) {
+        if (this.step.kind === 'hostkey')
+            return this.answerHostKey(line);
+        if (this.step.kind === 'passphrase')
+            return this.answerPassphrase(line);
+        if (this.step.kind === 'password')
+            return this.answerPassword(line);
+        return { lines: [] };
+    }
+}
+
+return { SSH_PORT, SSH_USAGE, SSH_WITH_VALUE, parseSshArgs, SshLogin };
+})();
 __m["shells/base.js"] = (() => {
-const { resolveHost, tcpCall, SSH_WAIT_MS } = __m["shells/net-tools.js"];
+const { tcpCall, SSH_WAIT_MS } = __m["shells/net-tools.js"];
+const { SshLogin, parseSshArgs } = __m["shells/ssh-client.js"];
 const DEFAULT_SCREEN = { width: 80, height: 24 };
 const SSH_PORT = 22;
-const MAX_SSH_ATTEMPTS = 3;
 /** Exit status of ssh when the connection fails. */
 const SSH_FAILED = 255;
 class BaseShell {
@@ -8326,18 +9206,18 @@ class BaseShell {
         return [];
     }
     prompt() {
-        if (this.state.kind === 'password')
-            return `${this.state.user}@${this.state.target}'s password: `;
+        if (this.state.kind === 'login')
+            return this.state.login.prompt();
         if (this.state.kind === 'remote')
             return this.state.prompt;
         return this.localPrompt();
     }
     secret() {
-        return this.state.kind === 'password' || (this.state.kind === 'remote' && this.state.secret);
+        return (this.state.kind === 'login' && this.state.login.secret()) || (this.state.kind === 'remote' && this.state.secret);
     }
     run(line) {
-        if (this.state.kind === 'password')
-            return this.sendPassword(line);
+        if (this.state.kind === 'login')
+            return this.loginStep(this.state.login, this.state.login.input(line));
         if (this.state.kind === 'remote')
             return this.remoteRequest({ kind: 'command', line });
         return this.runLocalLine(line);
@@ -8358,14 +9238,14 @@ class BaseShell {
     interrupt() {
         if (this.state.kind === 'remote')
             return this.remoteRequest({ kind: 'key', key: 'int' });
-        if (this.state.kind === 'password')
+        if (this.state.kind === 'login')
             return this.endSsh([], SSH_FAILED);
         return this.localInterrupt();
     }
     eof() {
         if (this.state.kind === 'remote')
             return this.remoteRequest({ kind: 'key', key: 'eof' });
-        if (this.state.kind === 'password')
+        if (this.state.kind === 'login')
             return this.endSsh([], SSH_FAILED);
         return this.localEof();
     }
@@ -8382,7 +9262,7 @@ class BaseShell {
         if (this.state.kind !== 'remote')
             return this.localSaveEdit(path, content);
         const st = this.state;
-        const r = tcpCall(this.host, st.ip, SSH_PORT, { app: 'SSH', kind: 'edit', session: st.session, action: 'save', path, content });
+        const r = tcpCall(this.host, st.ip, st.port, { app: 'SSH', kind: 'edit', session: st.session, action: 'save', path, content });
         const out = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
         return out ? out.saveError ?? null : 'Connection lost';
     }
@@ -8422,55 +9302,45 @@ class BaseShell {
         return [];
     }
     // ------------------------------------------------------------ ssh client
-    startSsh(args) {
-        const lIdx = args.indexOf('-l');
-        const spec = args.find((a, i) => !a.startsWith('-') && !(lIdx >= 0 && i === lIdx + 1));
-        if (!spec)
-            return this.endSsh(['usage: ssh [-l login_name] [user@]hostname'], SSH_FAILED);
-        const at = spec.lastIndexOf('@');
-        const user = at >= 0 ? spec.slice(0, at) : (lIdx >= 0 ? args[lIdx + 1] : undefined) ?? this.user;
-        const target = at >= 0 ? spec.slice(at + 1) : spec;
-        const resolved = resolveHost(this.host, target);
-        if (resolved.kind === 'error')
-            return this.endSsh([`ssh: Could not resolve hostname ${target}: Name or service not known`], SSH_FAILED);
-        const probe = tcpCall(this.host, resolved.ip, SSH_PORT, { app: 'SSH', kind: 'auth', user: '', password: '', clientOs: this.osName });
-        if (probe.kind === 'refused')
-            return this.endSsh([`ssh: connect to host ${target} port 22: Connection refused`], SSH_FAILED);
-        if (probe.kind !== 'ok')
-            return this.endSsh([`ssh: connect to host ${target} port 22: ${probe.kind === 'noroute' ? 'Network is unreachable' : 'Connection timed out'}`], SSH_FAILED);
-        this.state = { kind: 'password', user, target, ip: resolved.ip, attempts: 0 };
-        return [];
+    startSsh(args, cwd) {
+        const opts = parseSshArgs(args, this.user);
+        if (typeof opts === 'string')
+            return this.endSsh(opts.split('\n'), SSH_FAILED);
+        const login = new SshLogin(this.host, this.osName, this.sshStore(cwd), opts);
+        this.state = { kind: 'login', login };
+        return this.loginStep(login, login.begin());
     }
     endSsh(lines, status) {
         this.state = { kind: 'local' };
         return [...lines, ...this.sshEnded(status)];
     }
-    sendPassword(password) {
-        if (this.state.kind !== 'password')
-            return [];
-        const st = this.state;
-        const r = tcpCall(this.host, st.ip, SSH_PORT, { app: 'SSH', kind: 'auth', user: st.user, password, clientOs: this.osName });
-        const out = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
-        if (!out)
-            return this.endSsh([`Connection to ${st.target} closed by remote host.`], SSH_FAILED);
-        if (!out.ok || !out.session) {
-            const attempts = st.attempts + 1;
-            if (attempts >= MAX_SSH_ATTEMPTS)
-                return this.endSsh([`${st.user}@${st.target}: Permission denied (publickey,password).`], SSH_FAILED);
-            this.state = { ...st, attempts };
-            return ['Permission denied, please try again.'];
-        }
-        this.state = { kind: 'remote', target: st.target, ip: st.ip, session: out.session, prompt: out.prompt ?? '$ ', secret: false, edit: null, screen: null, size: { ...DEFAULT_SCREEN } };
-        return [...out.lines];
+    /** Output of a login step; once authenticated, an interactive session or the remote command. */
+    loginStep(login, r) {
+        if (r.failed)
+            return this.endSsh(r.lines, SSH_FAILED);
+        if (!r.session)
+            return r.lines;
+        const { target, port, command } = login.opts;
+        const quiet = command !== undefined;
+        this.state = { kind: 'remote', target, ip: r.session.ip, port, session: r.session.id, prompt: r.session.prompt, secret: false, edit: null, screen: null, size: { ...DEFAULT_SCREEN }, quiet };
+        if (!quiet)
+            return [...r.lines, ...r.session.banner];
+        const out = [...r.lines, ...this.remoteRequest({ kind: 'command', line: command })];
+        if (this.state.kind !== 'remote')
+            return out;
+        // `ssh host command` runs no login shell: the remote "logout" is not shown.
+        const end = this.remoteRequest({ kind: 'command', line: 'exit $?' });
+        return [...out, ...(end[0] === 'logout' ? end.slice(1) : end)];
     }
     remoteRequest(req) {
         if (this.state.kind !== 'remote')
             return [];
         const st = this.state;
-        const r = tcpCall(this.host, st.ip, SSH_PORT, { ...req, app: 'SSH', session: st.session }, SSH_WAIT_MS);
+        const r = tcpCall(this.host, st.ip, st.port, { ...req, app: 'SSH', session: st.session }, SSH_WAIT_MS);
         const out = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
+        const closing = st.quiet && out ? [] : [`Connection to ${st.target} closed.`];
         if (!out || out.closed)
-            return this.endSsh([...(out?.lines ?? []), `Connection to ${st.target} closed.`], out ? out.status ?? 0 : SSH_FAILED);
+            return this.endSsh([...(out?.lines ?? []), ...closing], out ? out.status ?? 0 : SSH_FAILED);
         this.state = { ...st, prompt: out.prompt ?? st.prompt, secret: out.secret ?? false, edit: out.edit ?? null, screen: out.screen ?? null };
         return [...out.lines];
     }
@@ -8481,6 +9351,244 @@ class BaseShell {
 }
 
 return { DEFAULT_SCREEN, SSH_PORT, SSH_FAILED, BaseShell };
+})();
+__m["services/sshd-config.js"] = (() => {
+/**
+ * /etc/ssh/sshd_config of a Ubuntu Server (OpenSSH 10): the file is real and editable; `systemctl
+ * reload|restart ssh` reads it. Like sshd, the first value of a keyword wins (AllowUsers, DenyUsers,
+ * AllowGroups and DenyGroups accumulate) and `Include` expands globs. Security directives that Netfix
+ * does not implement (Match, ForceCommand, ChrootDirectory…) are rejected instead of silently ignored.
+ */
+const { matchPattern } = __m["bash/glob.js"];
+const SSHD_CONFIG = '/etc/ssh/sshd_config';
+const SSHD_CONFIG_DIR = '/etc/ssh/sshd_config.d';
+const DEFAULT_SSHD = {
+    permitRootLogin: 'prohibit-password', passwordAuth: true, pubkeyAuth: true, strictModes: true, permitEmptyPasswords: false,
+    authorizedKeysFiles: ['.ssh/authorized_keys', '.ssh/authorized_keys2'], allowUsers: [], denyUsers: [], allowGroups: [], denyGroups: [], maxAuthTries: 6,
+};
+const DEFAULT_SSHD_CONFIG = `
+# This is the sshd server system-wide configuration file.  See
+# sshd_config(5) for more information.
+
+# The strategy used for options in the default sshd_config shipped with
+# OpenSSH is to specify options with their default value where
+# possible, but leave them commented.  Uncommented options override the
+# default value.
+
+Include /etc/ssh/sshd_config.d/*.conf
+
+#Port 22
+#ListenAddress 0.0.0.0
+
+#PermitRootLogin prohibit-password
+#StrictModes yes
+#MaxAuthTries 6
+
+#PubkeyAuthentication yes
+
+# Expect .ssh/authorized_keys2 to be disregarded by default in future.
+#AuthorizedKeysFile	.ssh/authorized_keys .ssh/authorized_keys2
+
+# To disable tunneled clear text passwords, change to "no" here!
+#PasswordAuthentication yes
+#PermitEmptyPasswords no
+
+KbdInteractiveAuthentication no
+UsePAM yes
+
+X11Forwarding yes
+PrintMotd no
+
+# Allow client to pass locale environment variables
+AcceptEnv LANG LC_* COLORTERM NO_COLOR
+
+# override default of no subsystems
+Subsystem	sftp	/usr/lib/openssh/sftp-server
+`.trimStart();
+/** Keywords accepted without effect in the simulation: none of them can grant or restrict access. */
+const ACCEPTED = new Set([
+    'port', 'listenaddress', 'addressfamily', 'hostkey', 'logingracetime', 'maxsessions', 'kbdinteractiveauthentication',
+    'challengeresponseauthentication', 'usepam', 'x11forwarding', 'printmotd', 'printlastlog', 'acceptenv', 'subsystem', 'usedns', 'banner',
+    'clientaliveinterval', 'clientalivecountmax', 'tcpkeepalive', 'allowtcpforwarding', 'gatewayports', 'permittunnel', 'syslogfacility',
+    'loglevel', 'hostbasedauthentication', 'ignorerhosts', 'kerberosauthentication', 'gssapiauthentication', 'pubkeyacceptedalgorithms',
+    'compression', 'permituserenvironment', 'allowagentforwarding', 'x11uselocalhost', 'maxstartups', 'pidfile', 'debianbanner',
+]);
+/** Real sshd keywords that would change who may log in or what runs: refused, so a lab never trusts a no-op. */
+const UNSUPPORTED = new Set(['match', 'forcecommand', 'chrootdirectory', 'authorizedprincipalsfile', 'authorizedkeyscommand', 'trustedusercakeys', 'revokedkeys', 'authenticationmethods']);
+/** Keywords whose values add up over several lines. */
+const CUMULATIVE = new Set(['allowusers', 'denyusers', 'allowgroups', 'denygroups']);
+const ROOT_LOGIN = new Map([['yes', 'yes'], ['no', 'no'], ['prohibit-password', 'prohibit-password'], ['without-password', 'prohibit-password'], ['forced-commands-only', 'forced-commands-only']]);
+const MAX_INCLUDE_DEPTH = 4;
+/** Files read in one parse, all levels together (protects the browser tab from Include fan-out). */
+const MAX_FILES_TOTAL = 64;
+/** Patterns on one Include line. */
+const MAX_INCLUDE_PATTERNS = 16;
+function yesNo(v) {
+    if (v === undefined)
+        return null;
+    const t = v.toLowerCase();
+    return t === 'yes' ? true : t === 'no' ? false : null;
+}
+function include(src, pattern) {
+    const path = pattern.startsWith('/') ? pattern : `/etc/ssh/${pattern}`;
+    const slash = path.lastIndexOf('/');
+    const dir = path.slice(0, slash) || '/';
+    const base = path.slice(slash + 1);
+    return src.list(dir).filter((n) => matchPattern(base, n)).sort().map((n) => `${dir}/${n}`);
+}
+/** Keyword and argument of a line without its trailing comment; null for blank and comment lines. */
+function splitLine(raw) {
+    const line = raw.replace(/\s+#.*$/, '').trim();
+    if (!line || line.startsWith('#'))
+        return null;
+    const m = /^(\S+?)(?:\s*=\s*|\s+)(.*)$/.exec(line);
+    return { word: m?.[1] ?? line, arg: (m?.[2] ?? '').trim() };
+}
+function checkValue(key, arg, where) {
+    if (BOOLEAN.has(key) && yesNo(arg) === null)
+        return `${where}: unsupported option "${arg}".`;
+    if (key === 'permitrootlogin' && !ROOT_LOGIN.has(arg.toLowerCase()))
+        return `${where}: unsupported option "${arg}".`;
+    return null;
+}
+/** Reads one file into the state; returns an error in sshd's words, or null. */
+function readFile(src, path, st, depth) {
+    const text = src.read(path);
+    if (text === null)
+        return depth === 0 ? `${path}: No such file or directory` : null;
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+        const parsed = splitLine(lines[i] ?? '');
+        if (!parsed)
+            continue;
+        const key = parsed.word.toLowerCase();
+        const where = `${path} line ${i + 1}`;
+        if (key === 'include') {
+            const err = includeFiles(src, parsed.arg, st, depth, where);
+            if (err)
+                return err;
+            continue;
+        }
+        if (UNSUPPORTED.has(key))
+            return `${where}: Unsupported option ${parsed.word} (no disponible en Netfix)`;
+        if (!parsed.arg)
+            return `${where}: Missing argument.`;
+        if (!ACCEPTED.has(key) && !KNOWN.has(key))
+            return `${path}: line ${i + 1}: Bad configuration option: ${parsed.word}`;
+        const bad = checkValue(key, parsed.arg, where);
+        if (bad)
+            return bad;
+        const words = parsed.arg.split(/\s+/);
+        if (CUMULATIVE.has(key))
+            st.values.set(key, [...(st.values.get(key) ?? []), ...words]);
+        else if (!st.values.has(key))
+            st.values.set(key, words);
+    }
+    return null;
+}
+function includeFiles(src, arg, st, depth, where) {
+    const tooMany = `${where}: Too many recursive configuration includes`;
+    const patterns = [...new Set(arg.split(/\s+/))];
+    if (depth >= MAX_INCLUDE_DEPTH || patterns.length > MAX_INCLUDE_PATTERNS)
+        return tooMany;
+    for (const pattern of patterns) {
+        for (const f of include(src, pattern)) {
+            if (st.seen.has(f))
+                continue;
+            if (st.seen.size >= MAX_FILES_TOTAL)
+                return tooMany;
+            st.seen.add(f);
+            const r = readFile(src, f, st, depth + 1);
+            if (r)
+                return r;
+        }
+    }
+    return null;
+}
+const BOOLEAN = new Set(['passwordauthentication', 'pubkeyauthentication', 'strictmodes', 'permitemptypasswords']);
+const KNOWN = new Set([...BOOLEAN, ...CUMULATIVE, 'authorizedkeysfile', 'maxauthtries', 'permitrootlogin']);
+function parseSshdConfig(src) {
+    const values = new Map();
+    const r = readFile(src, SSHD_CONFIG, { values, seen: new Set([SSHD_CONFIG]) }, 0);
+    if (r)
+        return { ok: false, error: r };
+    const bool = (k, d) => yesNo(values.get(k)?.[0]) ?? d;
+    const tries = Number(values.get('maxauthtries')?.[0] ?? DEFAULT_SSHD.maxAuthTries);
+    if (!Number.isInteger(tries) || tries < 1)
+        return { ok: false, error: `${SSHD_CONFIG}: invalid MaxAuthTries` };
+    return {
+        ok: true,
+        settings: {
+            permitRootLogin: ROOT_LOGIN.get((values.get('permitrootlogin')?.[0] ?? '').toLowerCase()) ?? DEFAULT_SSHD.permitRootLogin,
+            passwordAuth: bool('passwordauthentication', DEFAULT_SSHD.passwordAuth),
+            pubkeyAuth: bool('pubkeyauthentication', DEFAULT_SSHD.pubkeyAuth),
+            strictModes: bool('strictmodes', DEFAULT_SSHD.strictModes),
+            permitEmptyPasswords: bool('permitemptypasswords', DEFAULT_SSHD.permitEmptyPasswords),
+            authorizedKeysFiles: (values.get('authorizedkeysfile') ?? DEFAULT_SSHD.authorizedKeysFiles).filter((f) => f.toLowerCase() !== 'none'),
+            allowUsers: values.get('allowusers') ?? [],
+            denyUsers: values.get('denyusers') ?? [],
+            allowGroups: values.get('allowgroups') ?? [],
+            denyGroups: values.get('denygroups') ?? [],
+            maxAuthTries: tries,
+        },
+    };
+}
+/**
+ * Sets `Keyword value` in the main file the way an administrator would: replaces the first active line,
+ * or uncomments the default "#Keyword …" line, or appends it.
+ */
+function setDirective(text, keyword, value) {
+    const lines = text.split('\n');
+    const active = lines.findIndex((l) => new RegExp(`^\\s*${keyword}\\b`, 'i').test(l));
+    const commented = lines.findIndex((l) => new RegExp(`^\\s*#\\s*${keyword}\\b`, 'i').test(l));
+    const line = `${keyword} ${value}`;
+    if (active >= 0)
+        lines[active] = line;
+    else if (commented >= 0)
+        lines.splice(commented + 1, 0, line);
+    else
+        lines.push(line);
+    return lines.join('\n');
+}
+
+return { SSHD_CONFIG, SSHD_CONFIG_DIR, DEFAULT_SSHD, DEFAULT_SSHD_CONFIG, parseSshdConfig, setDirective };
+})();
+__m["services/ssh-hostkeys.js"] = (() => {
+/** Host keys of a server's sshd: /etc/ssh/ssh_host_*_key(.pub), derived from the device so they are stable. */
+const { keyFromSeed, privateFile, publicLine, parsePrivateFile } = __m["net/ssh-keys.js"];
+const { sha256, concatBytes, utf8 } = __m["core/sha256.js"];
+const HOST_KEY_PATH = '/etc/ssh/ssh_host_ed25519_key';
+const HOST_KEYS = [['ed25519', 256], ['ecdsa', 256], ['rsa', 3072]];
+/** Deterministic bytes, so the seeded files are identical every time the workspace is opened. */
+function seededRandom(seed) {
+    let counter = 0;
+    return (n) => {
+        const out = new Uint8Array(n);
+        for (let i = 0; i < n; i += 32)
+            out.set(sha256(concatBytes(utf8(seed), Uint8Array.of(counter++ & 0xff))).slice(0, Math.min(32, n - i)), i);
+        return out;
+    };
+}
+/** Files to seed in a server: private keys (0600) and public keys (0644). */
+function hostKeyFiles(identity, hostname) {
+    return HOST_KEYS.flatMap(([type, bits]) => {
+        const kp = keyFromSeed(type, bits, `${identity}:ssh-host-${type}`, `root@${hostname}`);
+        const base = `/etc/ssh/ssh_host_${type}_key`;
+        return [
+            { path: base, content: privateFile(kp, '', seededRandom(`${identity}:${type}`)), mode: 0o600 },
+            { path: `${base}.pub`, content: `${publicLine(kp)}\n`, mode: 0o644 },
+        ];
+    });
+}
+/** The ED25519 host key sshd offers, read from its private file. */
+function loadHostKey(text) {
+    if (text === null)
+        return null;
+    const kp = parsePrivateFile(text, '');
+    return typeof kp === 'string' ? null : kp;
+}
+
+return { HOST_KEY_PATH, hostKeyFiles, loadHostKey };
 })();
 __m["bash/path.js"] = (() => {
 const { canAccess, normalize } = __m["bash/vfs.js"];
@@ -8839,7 +9947,7 @@ function touch(ctx) {
         if (p.opts.has('c') && !ctx.sh.env.fs.exists(path))
             continue;
         try {
-            ctx.sh.env.fs.touch(path, ctx.cred);
+            ctx.sh.env.fs.touch(path, ctx.cred, 0o666 & ~ctx.sh.umask);
         }
         catch (e) {
             ctx.err(`touch: cannot touch ${q(f)}: ${errMsg(e)}\n`);
@@ -9150,8 +10258,18 @@ function chmod(ctx) {
     }
     return status;
 }
+/** Changes owner and group of `path` (and, with -R, of everything below it). */
+function chownTree(ctx, path, uid, gid, recursive) {
+    const fs = ctx.sh.env.fs;
+    const st = fs.stat(path, ctx.cred, !recursive);
+    fs.chown(path, uid ?? st.uid, gid ?? st.gid, ctx.cred);
+    if (recursive && st.kind === 'dir')
+        for (const n of fs.readdir(path, ctx.cred))
+            chownTree(ctx, normalize(n, path), uid, gid, true);
+}
 function chown(groupOnly) {
     return (ctx) => {
+        const recursive = ctx.argv.slice(1).includes('-R');
         const args = ctx.argv.slice(1).filter((a) => !['-R', '-v', '-h', '-f'].includes(a));
         const [spec, ...files] = args;
         const name = groupOnly ? 'chgrp' : 'chown';
@@ -9172,8 +10290,7 @@ function chown(groupOnly) {
         let status = 0;
         for (const f of files) {
             try {
-                const st = ctx.sh.env.fs.stat(ctx.resolve(f), ctx.cred);
-                ctx.sh.env.fs.chown(ctx.resolve(f), uid ?? st.uid, gid ?? st.gid, ctx.cred);
+                chownTree(ctx, ctx.resolve(f), uid, gid, recursive);
             }
             catch (e) {
                 ctx.err(e instanceof FsError && e.code === 'ENOENT' ? `${name}: cannot access ${q(f)}: ${errMsg(e)}\n` : `${name}: changing ${groupOnly ? 'group' : 'ownership'} of ${q(f)}: ${errMsg(e)}\n`);
@@ -18639,6 +19756,9 @@ class Interp {
     constructor(env, user, o) {
         this.env = env;
         this.user = user;
+        // Ubuntu: 002 for users with their own group (pam_umask USERGROUPS_ENAB), 022 for root.
+        if (user.uid === 0)
+            this.umask = 0o022;
         this.interactive = o.interactive;
         this.term = o.term;
         this.budget = o.budget ?? freshBudget();
@@ -20170,11 +21290,11 @@ const SERVICE_DOCS = {
         {
             id: 'srv-ssh',
             title: 'SSH',
-            summary: 'Cuentas, sesiones remotas con bash y editores a través de SSH.',
+            summary: 'Cuentas, sesiones remotas con bash y editores a través de SSH; clave del servidor en known_hosts.',
             blocks: [
                 p('Las cuentas SSH se definen en el panel (usuario y contraseña). Cada sesión abre una shell de inicio de sesión del servidor: bash en Ubuntu (lee ~/.profile y ~/.bashrc) o cmd en Windows. Las cuentas existen también en el sistema Linux del servidor (/etc/passwd y /home/<usuario>).'),
-                code('alumno@pc0:~$ ssh admin@srv.aula.lab\nadmin@srv.aula.lab\'s password:\nWelcome to Ubuntu 26.04 LTS (GNU/Linux 6.17.0-generic x86_64)\nadmin@srv:~$ nano notas.txt        # el editor se abre a pantalla completa\nadmin@srv:~$ exit 3\nlogout\nConnection to srv.aula.lab closed.\nalumno@pc0:~$ echo $?\n3'),
-                list('Tres contraseñas erróneas: «Permission denied (publickey,password).»', 'Servicio parado: «Connection refused»; nombre inexistente: «Could not resolve hostname».', 'Ctrl+C y Ctrl+D se envían a la sesión remota.', 'El servidor registra cada intento en journalctl -u ssh (Accepted / Failed password).'),
+                code('alumno@pc0:~$ ssh admin@srv.aula.lab\nThe authenticity of host \'srv.aula.lab (192.168.10.2)\' can\'t be established.\n…\nAre you sure you want to continue connecting (yes/no/[fingerprint])? yes\nadmin@srv.aula.lab\'s password:\nWelcome to Ubuntu 26.04 LTS (GNU/Linux 6.17.0-generic x86_64)\nadmin@srv:~$ nano notas.txt        # el editor se abre a pantalla completa\nadmin@srv:~$ exit 3\nlogout\nConnection to srv.aula.lab closed.\nalumno@pc0:~$ echo $?\n3'),
+                list('Tres contraseñas erróneas: «Permission denied (publickey,password).»', 'Servicio parado: «Connection refused»; nombre inexistente: «Could not resolve hostname».', 'Ctrl+C y Ctrl+D se envían a la sesión remota.', 'El servidor registra cada intento en journalctl -u ssh (Accepted password / Accepted publickey / Failed password).', 'Para entrar sin contraseña, con pares de claves, consulta «SSH con pares de claves».'),
             ],
         },
     ],
@@ -20358,7 +21478,9 @@ const UTIL_DOCS = {
     host: { group: 'red', synopsis: 'host [-t TIPO] NOMBRE [SERVIDOR]', summary: 'Consulta DNS en una línea por registro.' },
     curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X MÉTODO] [-d DATOS] [-u USUARIO:CLAVE] [-b COOKIES] [-H "Cabecera: valor"] [-o FICHERO | -O] URL', summary: 'Cliente HTTP. Errores con su código: (6) no resuelve, (7) conexión rechazada, (3) URL no válida, (22) error HTTP con -f.', options: '-I  solo cabeceras (HEAD)        -i  incluye las cabeceras\n-L  sigue las redirecciones       -v  muestra la petición y la respuesta\n-X  método (GET, POST, HEAD)      -d  datos de formulario (POST)\n-u  usuario:clave (Basic)         -b  cookies «a=1; b=2»\n-H  cabecera extra («Host: www.aula.lab» para probar un VirtualHost)\n-s  silencioso (-S muestra los errores)   -f  falla con los errores HTTP' },
     wget: { group: 'red', synopsis: 'wget [-q] [-O FICHERO] URL', summary: 'Descarga a un fichero del directorio actual (nombre.1, nombre.2… si ya existe).' },
-    ssh: { group: 'red', synopsis: 'ssh [-l USUARIO] [USUARIO@]HOST', summary: 'Sesión remota. Devuelve el estado de salida del shell remoto (255 si falla la conexión).' },
+    ssh: { group: 'red', synopsis: 'ssh [-i CLAVE] [-l USUARIO] [-p PUERTO] [-o OPCIÓN=VALOR] [USUARIO@]HOST [ORDEN]', summary: 'Cliente OpenSSH: comprueba la clave del servidor en ~/.ssh/known_hosts, se autentica con ~/.ssh/id_* y, si no, con contraseña. Con ORDEN la ejecuta y vuelve. Opciones -o: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Devuelve el estado remoto (255 si falla).' },
+    'ssh-keygen': { group: 'red', synopsis: 'ssh-keygen [-t ed25519|ecdsa|rsa] [-b BITS] [-f FICHERO] [-N FRASE] [-C COMENTARIO] [-q] | -l|-y|-p [-f FICHERO] | -F|-R HOST [-f known_hosts] | -A', summary: 'Genera pares de claves OpenSSH (privada 600 y .pub 644), muestra la huella (-l), obtiene la pública (-y), cambia la frase de paso (-p), busca (-F) o borra (-R) equipos de known_hosts y crea las claves de host que falten (-A).' },
+    'ssh-copy-id': { group: 'red', synopsis: 'ssh-copy-id [-i FICHERO.pub] [-p PUERTO] [-o OPCIÓN] [-f] [-n] [USUARIO@]HOST', summary: 'Instala la clave pública en ~/.ssh/authorized_keys del servidor (crea ~/.ssh con 700 y el fichero con 600) sin duplicarla.' },
     dhclient: { group: 'red', section: 8, synopsis: 'dhclient [-r] [eth0]', summary: 'Pide (o con -r libera) la concesión DHCP. Requiere root: sudo dhclient.' },
     ss: { group: 'red', section: 8, synopsis: 'ss -tulpn', summary: 'Sockets a la escucha y el proceso de cada uno.' },
     systemctl: { group: 'servicios', synopsis: 'systemctl [status|start|stop|restart|reload|enable [--now]|disable [--now]|is-active|is-enabled|list-units] [UNIDAD]', summary: 'Controla los servicios del servidor (apache2, bind9, kea-dhcp4-server, postfix, dovecot, ssh). Los cambios requieren sudo.' },
@@ -20921,10 +22043,10 @@ const WEBAPP_DOCS = [
             code('Navegador del PC:  http://srv.aula.lab:10000/\nTerminal:          curl -u admin:admin "http://192.168.10.2:10000/?page=status"'),
             table(['Página', 'Qué cambia'], [
                 ['Configuración', 'Nombre de host, IP estática o DHCP, puerta de enlace y DNS.'],
-                ['DHCP', 'Activar el servidor, añadir y borrar pools.'],
+                ['DHCP', 'Activar el servidor, añadir y borrar pools (concesiones por MAC o por Client-ID), direcciones reservadas por MAC o identificador (hex 01… o texto) y «Reservar» una concesión activa.'],
                 ['DNS', 'Activar bind9, dominio de la zona y registros (A, CNAME, MX, NS, TXT; @ y * admitidos).'],
                 ['Web', 'Apache y el acceso a Roundcube.'],
-                ['Correo · SSH', 'Servicios y usuarios.'],
+                ['Correo · SSH', 'Servicios y usuarios; en SSH, los métodos de autenticación (contraseña y/o par de claves) de sshd_config.'],
                 ['Administración', 'Usuario/contraseña de la interfaz y su puerto o alias (al cambiarlo, el navegador pasa a la nueva dirección).'],
                 ['Estado · Registros', 'Datos del equipo, servicios, concesiones y últimos mensajes (journalctl).'],
             ]),
@@ -20935,6 +22057,69 @@ const WEBAPP_DOCS = [
 ];
 
 return { WEBAPP_DOCS };
+})();
+__m["docs/ssh.js"] = (() => {
+const { code, h, list, note, p, table } = __m["docs/types.js"];
+const SSH_DOCS = [
+    {
+        id: 'srv-ssh-claves',
+        title: 'SSH con pares de claves',
+        summary: 'known_hosts, ssh-keygen, ssh-copy-id, authorized_keys y frases de paso, como en OpenSSH.',
+        blocks: [
+            p('El cliente ssh de los equipos Ubuntu guarda en ~/.ssh lo mismo que OpenSSH: la clave de cada servidor en known_hosts y las claves del usuario en id_ed25519 / id_ecdsa / id_rsa (privada) con su .pub (pública). El servidor acepta la clave si su línea está en ~/.ssh/authorized_keys del usuario remoto.'),
+            h('Primera conexión: la clave del servidor'),
+            code("alumno@pc0:~$ ssh admin@srv.aula.lab\nThe authenticity of host 'srv.aula.lab (192.168.10.2)' can't be established.\nED25519 key fingerprint is SHA256:lcQmKtMREqLLbRRWefrD17pEjPrj25sOLsaZTYE4m38.\nThis key is not known by any other names.\nAre you sure you want to continue connecting (yes/no/[fingerprint])? yes\nWarning: Permanently added 'srv.aula.lab' (ED25519) to the list of known hosts.\nadmin@srv.aula.lab's password:"),
+            p('La huella se comprueba en el servidor con ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub. Si la clave del servidor cambia (se regenera o es otro equipo con la misma IP), ssh muestra «REMOTE HOST IDENTIFICATION HAS CHANGED!» y no conecta hasta borrar la línea antigua con ssh-keygen -R.'),
+            h('Crear e instalar un par de claves'),
+            code("alumno@pc0:~$ ssh-keygen                      # Intro acepta ~/.ssh/id_ed25519\nalumno@pc0:~$ ssh-copy-id admin@srv.aula.lab   # pide la contraseña una sola vez\nNumber of key(s) added: 1\nalumno@pc0:~$ ssh admin@srv.aula.lab           # ya no pide contraseña\nadmin@srv:~$ cat ~/.ssh/authorized_keys\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI… alumno@pc0"),
+            table(['Orden', 'Qué hace'], [
+                ['ssh-keygen -t rsa -b 4096 -C "comentario"', 'Otro tipo o tamaño de clave (ed25519 por defecto; ecdsa de 256 bits; rsa de 1024 a 16384).'],
+                ['ssh-keygen -f clave -N ""', 'Sin preguntas: fichero y frase de paso en la orden (-q calla la salida).'],
+                ['ssh-keygen -p -f ~/.ssh/id_ed25519', 'Pone, cambia o quita la frase de paso.'],
+                ['ssh-keygen -l -f fichero / -y -f privada', 'Huella SHA256 / clave pública derivada de la privada.'],
+                ['ssh-keygen -F host / -R host', 'Busca o borra un equipo de known_hosts (deja copia en known_hosts.old).'],
+                ['ssh -i clave usuario@host', 'Usa esa clave privada además de las de ~/.ssh.'],
+                ['ssh usuario@host orden', 'Ejecuta la orden remota y devuelve su estado de salida.'],
+            ]),
+            h('Permisos que se comprueban'),
+            list('Cliente: la clave privada no puede ser legible por otros (chmod 600). Con 644 aparece «WARNING: UNPROTECTED PRIVATE KEY FILE!» y la clave se ignora.', 'Servidor (StrictModes yes): el home, ~/.ssh y authorized_keys no pueden tener escritura para grupo u otros; si la tienen, el registro dice «Authentication refused: bad ownership or modes».', 'Con frase de paso, ssh la pide («Enter passphrase for key …»); Intro vacío pasa a la siguiente clave o a la contraseña.'),
+            table(['Opción -o', 'Efecto'], [
+                ['StrictHostKeyChecking=yes|no|accept-new', 'No conectar a equipos desconocidos / aceptar sin preguntar / aceptar solo los nuevos.'],
+                ['UserKnownHostsFile=/dev/null', 'No leer ni guardar known_hosts.'],
+                ['PasswordAuthentication=no · PubkeyAuthentication=no', 'Desactiva un método en el cliente.'],
+                ['BatchMode=yes', 'Nunca pregunta (scripts): falla si haría falta contraseña o frase de paso.'],
+            ]),
+            p('Con StrictHostKeyChecking=no y una clave de servidor cambiada, ssh avisa y conecta, pero desactiva la contraseña («Password authentication is disabled to avoid man-in-the-middle attacks.»): solo entra con par de claves.'),
+            h('Opciones en authorized_keys'),
+            code('from="192.168.10.*,!192.168.10.66" ssh-ed25519 AAAAC3Nza… alumno@pc0\nrestrict ssh-ed25519 AAAAC3Nza… copias@srv2'),
+            list('from="patrones": la clave solo vale desde esas IP (* y ? como comodines, ! niega). Si no coincide: «not from a permitted host» en journalctl.', 'restrict, no-pty, no-port-forwarding, no-agent-forwarding, no-X11-forwarding y no-user-rc se aceptan (Netfix no tiene esas funciones).', 'command=, environment=, principals=, cert-authority y el resto no están implementados: la línea se rechaza («bad key options») en vez de dar acceso sin la restricción.'),
+            note('Netfix usa los formatos reales (ssh-ed25519 AAAA…, «-----BEGIN OPENSSH PRIVATE KEY-----», SHA256:…). Dentro van claves Schnorr de 256 bits: la firma prueba de verdad la posesión de la clave privada (la pública no sirve para firmar) y el servidor firma con su clave de host, pero no son claves Ed25519/RSA reales ni sirven fuera del simulador.'),
+        ],
+    },
+    {
+        id: 'srv-sshd-config',
+        title: 'Configuración de sshd',
+        summary: '/etc/ssh/sshd_config y sshd_config.d: métodos de autenticación, usuarios permitidos y recarga del servicio.',
+        blocks: [
+            p('El servidor Ubuntu lee /etc/ssh/sshd_config al arrancar ssh y con systemctl reload|restart ssh. Como en OpenSSH, el primer valor de cada opción es el que vale y los ficheros de /etc/ssh/sshd_config.d/*.conf se incluyen al principio, así que mandan sobre lo que venga después en el fichero principal.'),
+            table(['Opción', 'Por defecto', 'Efecto'], [
+                ['PasswordAuthentication', 'yes', 'Acceso con usuario y contraseña.'],
+                ['PubkeyAuthentication', 'yes', 'Acceso con par de claves (~/.ssh/authorized_keys).'],
+                ['AuthorizedKeysFile', '.ssh/authorized_keys .ssh/authorized_keys2', 'Ficheros de claves (relativos al home; admite %h y %u).'],
+                ['StrictModes', 'yes', 'Rechaza claves si los permisos del home o de ~/.ssh son inseguros.'],
+                ['PermitEmptyPasswords', 'no', 'Contraseñas vacías.'],
+                ['PermitRootLogin', 'prohibit-password', 'root: yes, no o solo con claves (prohibit-password).'],
+                ['AllowUsers / DenyUsers', '—', 'Usuarios que pueden (o no) entrar: usuario o usuario@IP, con * y ?. Varias líneas se suman.'],
+                ['AllowGroups / DenyGroups', '—', 'Lo mismo por grupo (/etc/group).'],
+                ['MaxAuthTries', '6', 'Intentos fallidos por conexión; después: «Too many authentication failures».'],
+            ]),
+            code("root@srv:~# echo 'PasswordAuthentication no' > /etc/ssh/sshd_config.d/10-solo-claves.conf\nroot@srv:~# systemctl reload ssh\nalumno@pc0:~$ ssh ana@srv.aula.lab\nana@srv.aula.lab: Permission denied (publickey)."),
+            list('Una opción desconocida o mal escrita hace fallar el reload («Bad configuration option» en journalctl -u ssh) y el servicio sigue con la configuración anterior.', 'Match, ForceCommand, ChrootDirectory, AuthenticationMethods y otras opciones de control de acceso no están implementadas: sshd las rechaza («Unsupported option») para que una práctica nunca crea protegido algo que no lo está.', 'La clave del servidor está en /etc/ssh/ssh_host_ed25519_key (y las ecdsa y rsa). Si se borra, ssh no arranca: «sshd: no hostkeys available -- exiting.»; ssh-keygen -A crea las que falten.', 'En la ventana del servidor (Servicios → SSH) y en la gestión web los interruptores de autenticación escriben PasswordAuthentication y PubkeyAuthentication en sshd_config y recargan ssh.'),
+        ],
+    },
+];
+
+return { SSH_DOCS };
 })();
 __m["docs/index.js"] = (() => {
 const { NETFIX_DOCS } = __m["docs/netfix.js"];
@@ -20949,10 +22134,11 @@ const { UTIL_DOCS } = __m["docs/utils.js"];
 const { BUILTIN_DOCS } = __m["docs/bash-builtins.js"];
 const { INTERNET_DOCS } = __m["docs/internet.js"];
 const { WEBAPP_DOCS } = __m["docs/webapps.js"];
+const { SSH_DOCS } = __m["docs/ssh.js"];
 const DOC_GROUPS = [
     NETFIX_DOCS,
     IOS_DOCS,
-    { ...SERVICE_DOCS, pages: [...SERVICE_DOCS.pages, ...WEBAPP_DOCS] },
+    { ...SERVICE_DOCS, pages: [...SERVICE_DOCS.pages, ...SSH_DOCS, ...WEBAPP_DOCS] },
     INTERNET_DOCS,
     CLIENT_DOCS,
     { id: 'linux', title: 'Terminal Linux', pages: [...LINUX_DOCS, ...EDITOR_DOCS] },
@@ -22261,7 +23447,6 @@ function serverFiles(server) {
         files.set(`/etc/bind/db.${z}`, zoneFile(s, z));
     files.set('/etc/postfix/main.cf', `myhostname = ${server.name.toLowerCase()}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
     files.set('/etc/dovecot/dovecot.conf', `protocols = ${[s.mail.pop3 ? 'pop3' : '', s.mail.imap ? 'imap' : ''].filter(Boolean).join(' ') || 'none'}\nmail_location = maildir:~/Maildir\n`);
-    files.set('/etc/ssh/sshd_config', `Port 22\nPermitRootLogin prohibit-password\nPasswordAuthentication yes\n# Usuarios permitidos (Netfix): ${s.ssh.users.map((u) => u.name).join(' ') || '(ninguno)'}\n`);
     const excl = s.dhcp.pools.flatMap(ptExclusions).length;
     files.set('/var/lib/kea/kea-leases4.csv', ['address,hwaddr,client_id,valid_lifetime,expire,subnet_id,hostname',
         ...server.dhcpEngine.allBindings(server.clock.now()).filter((b) => b.type === 'Automatic').map((b) => `${formatIp(b.ip)},${linuxMac(b.mac)},${b.clientId ?? ''},0,${Math.floor((b.expiresAt ?? 0) / 1000)},1,${b.hostname ?? ''}`),
@@ -22376,6 +23561,8 @@ function runVerb(server, unit, verb, now) {
         case 'force-reload':
             if (unit.id === 'http' && unitActive(server.services, 'http'))
                 return server.reloadWeb() ? jobFailed(unit) : [];
+            if (unit.id === 'ssh' && unitActive(server.services, 'ssh'))
+                return server.reloadSsh() ? jobFailed(unit) : [];
             return restart(server, unit);
         case 'restart': return restart(server, unit);
         case 'enable':
@@ -23253,6 +24440,532 @@ function curl(host) {
 
 return { curl };
 })();
+__m["services/authorized-keys.js"] = (() => {
+/**
+ * authorized_keys lines: `[options] keytype base64 [comment]` (sshd(8) AUTHORIZED_KEYS FILE FORMAT).
+ * Options are tokenised with their quotes. from="…" is enforced; options that only restrict features
+ * the simulator lacks (forwarding, pty, rc) are accepted; any option that would change what runs or who
+ * may log in (command=, principals=, cert-authority…) makes the line unusable, as the key cannot be honoured.
+ */
+const { parsePublicLine, WIRE_NAME } = __m["net/ssh-keys.js"];
+const { matchPattern } = __m["bash/glob.js"];
+const HARMLESS = new Set([
+    'restrict', 'no-pty', 'pty', 'no-port-forwarding', 'port-forwarding', 'no-agent-forwarding', 'agent-forwarding',
+    'no-x11-forwarding', 'x11-forwarding', 'no-user-rc', 'user-rc',
+]);
+const KEY_TYPES = new Set(Object.values(WIRE_NAME));
+const MAX_OPTIONS = 32;
+/** Splits "opt1,opt2=\"a,b\"" at commas outside quotes; null when a quote is not closed. */
+function splitOptions(text) {
+    const out = [];
+    let cur = '';
+    let quoted = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i] ?? '';
+        if (c === '\\' && quoted && text[i + 1] === '"') {
+            cur += '"';
+            i++;
+            continue;
+        }
+        if (c === '"') {
+            quoted = !quoted;
+            continue;
+        }
+        if (c === ',' && !quoted) {
+            out.push(cur);
+            cur = '';
+            continue;
+        }
+        cur += c;
+    }
+    if (quoted)
+        return null;
+    out.push(cur);
+    return out;
+}
+/** Options and the rest of the line: the options field ends at the first space outside quotes. */
+function cutOptions(line) {
+    const first = line.split(/\s/, 1)[0] ?? '';
+    if (KEY_TYPES.has(first))
+        return { options: '', rest: line };
+    let quoted = false;
+    for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"' && line[i - 1] !== '\\')
+            quoted = !quoted;
+        else if (!quoted && (c === ' ' || c === '\t'))
+            return { options: line.slice(0, i), rest: line.slice(i + 1).trim() };
+    }
+    return { options: line, rest: '' };
+}
+/** from="pattern-list": a negated match denies, otherwise one positive match is needed. */
+function fromMatcher(patterns) {
+    return (ip) => {
+        if (patterns.some((p) => p.startsWith('!') && matchPattern(p.slice(1), ip)))
+            return false;
+        return patterns.some((p) => !p.startsWith('!') && matchPattern(p, ip));
+    };
+}
+function readOptions(options) {
+    if (!options)
+        return { from: [] };
+    const list = splitOptions(options);
+    if (!list || list.length > MAX_OPTIONS)
+        return { from: [], error: 'invalid quotes' };
+    const from = [];
+    for (const opt of list) {
+        const eq = opt.indexOf('=');
+        const name = (eq >= 0 ? opt.slice(0, eq) : opt).toLowerCase();
+        if (name === 'from' && eq >= 0)
+            from.push(...opt.slice(eq + 1).split(',').filter(Boolean));
+        else if (!HARMLESS.has(name))
+            return { from, error: `${name} no está soportado en Netfix` };
+    }
+    return { from };
+}
+function parseAuthorizedLine(raw) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#'))
+        return null;
+    const { options, rest } = cutOptions(line);
+    const key = parsePublicLine(rest);
+    if (!key)
+        return null;
+    const opts = readOptions(options);
+    const allowsFrom = opts.from.length ? fromMatcher(opts.from) : () => true;
+    return opts.error ? { key, error: opts.error, allowsFrom } : { key, allowsFrom };
+}
+
+return { parseAuthorizedLine };
+})();
+__m["shells/ssh-keygen.js"] = (() => {
+const { generateKey, privateFile, parsePrivateFile, parsePublicLine, publicLine, fingerprint, randomart, isEncrypted, LABEL } = __m["net/ssh-keys.js"];
+const { readLineFrom } = __m["bash/io.js"];
+const { FsError } = __m["bash/vfs.js"];
+const { knownHostsFind, knownHostsRemove } = __m["shells/known-hosts.js"];
+const { parseAuthorizedLine } = __m["services/authorized-keys.js"];
+const USAGE = [
+    'usage: ssh-keygen [-q] [-a rounds] [-b bits] [-C comment] [-f output_keyfile]',
+    '                  [-m format] [-N new_passphrase] [-O option]',
+    '                  [-t ecdsa | ecdsa-sk | ed25519 | ed25519-sk | rsa]',
+    '                  [-w provider] [-Z cipher]',
+    '       ssh-keygen -p [-a rounds] [-f keyfile] [-m format] [-N new_passphrase]',
+    '                   [-P old_passphrase] [-Z cipher]',
+    '       ssh-keygen -l [-v] [-E fingerprint_hash] [-f input_keyfile]',
+    '       ssh-keygen -y [-f input_keyfile]',
+    '       ssh-keygen -F hostname [-lv] [-f known_hosts_file]',
+    '       ssh-keygen -R hostname [-f known_hosts_file]',
+].join('\n');
+const WITH_VALUE = new Set(['a', 'b', 'C', 'f', 'm', 'N', 'O', 'P', 't', 'w', 'Z', 'E', 'F', 'R']);
+const FLAGS = new Set(['q', 'l', 'y', 'p', 'v', 'A']);
+const DEFAULT_BITS = { ed25519: 256, ecdsa: 256, rsa: 3072 };
+const RSA_MIN = 1024;
+const RSA_MAX = 16384;
+const PRIVATE_MODE = 0o600;
+const PUBLIC_MODE = 0o644;
+const DIR_MODE = 0o700;
+const EXIT_USAGE = 255;
+function parseOpts(argv) {
+    const values = new Map();
+    const flags = new Set();
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i] ?? '';
+        if (!a.startsWith('-') || a === '-')
+            return USAGE;
+        for (let j = 1; j < a.length; j++) {
+            const c = a[j] ?? '';
+            if (WITH_VALUE.has(c)) {
+                const v = j + 1 < a.length ? a.slice(j + 1) : argv[++i];
+                if (v === undefined)
+                    return `ssh-keygen: option requires an argument -- ${c}\n${USAGE}`;
+                values.set(c, v);
+                break;
+            }
+            if (!FLAGS.has(c))
+                return `ssh-keygen: invalid option -- '${c}'\n${USAGE}`;
+            flags.add(c);
+        }
+    }
+    return { values, flags };
+}
+// ------------------------------------------------------------ files
+function home(ctx) {
+    return ctx.sh.user.home === '/' ? '' : ctx.sh.user.home;
+}
+function readText(ctx, path) {
+    try {
+        return ctx.sh.env.fs.readFile(path, ctx.cred);
+    }
+    catch (e) {
+        ctx.err(`${path}: ${e instanceof FsError ? e.message : 'No such file or directory'}\n`);
+        return null;
+    }
+}
+function write(ctx, path, text, mode) {
+    const fs = ctx.sh.env.fs;
+    try {
+        if (fs.tryLookup(path, ctx.cred))
+            fs.writeFile(path, '', ctx.cred);
+        fs.writeFile(path, text, ctx.cred, false, mode);
+        fs.chmod(path, mode, ctx.cred);
+        return true;
+    }
+    catch (e) {
+        ctx.err(`Saving key "${path}" failed: ${e instanceof FsError ? e.message.replace(/^.*: /, '') : 'Permission denied'}\n`);
+        return false;
+    }
+}
+function* ask(prompt, secret) {
+    const r = yield* readLineFrom({ kind: 'tty' }, prompt, secret);
+    return r === null ? null : r.text;
+}
+/** Asks twice for a new passphrase (until both match); null = Ctrl+D. */
+function* newPassphrase(ctx, first) {
+    for (;;) {
+        const a = yield* ask(first, true);
+        if (a === null)
+            return null;
+        const b = yield* ask('Enter same passphrase again: ', true);
+        if (b === null)
+            return null;
+        if (a === b)
+            return a;
+        ctx.err('Passphrases do not match.  Try again.\n');
+    }
+}
+// ------------------------------------------------------------ generation
+function keyType(ctx, o) {
+    const t = (o.values.get('t') ?? 'ed25519').toLowerCase();
+    if (t !== 'ed25519' && t !== 'ecdsa' && t !== 'rsa') {
+        ctx.err(`unknown key type ${t}\n`);
+        return null;
+    }
+    const text = o.values.get('b');
+    const bits = text === undefined ? DEFAULT_BITS[t] : /^\d+$/.test(text) ? Number(text) : NaN;
+    if (Number.isNaN(bits)) {
+        ctx.err(`Bits has bad value ${text ?? ''} (invalid)\n`);
+        return null;
+    }
+    if (t === 'rsa' && (bits < RSA_MIN || bits > RSA_MAX || bits % 8 !== 0)) {
+        ctx.err(bits > RSA_MAX ? `Invalid RSA key length: maximum is ${RSA_MAX} bits\n` : `Invalid RSA key length: minimum is ${RSA_MIN} bits\n`);
+        return null;
+    }
+    if (t === 'ecdsa' && bits !== 256) {
+        ctx.err(bits === 384 || bits === 521 ? 'Invalid ECDSA key length: Netfix only generates 256-bit keys (nistp256)\n' : 'Invalid ECDSA key length: valid lengths are 256, 384 or 521 bits\n');
+        return null;
+    }
+    return { type: t, bits: t === 'ed25519' ? 256 : bits };
+}
+/** Output file, asked when -f is missing; creates ~/.ssh when needed. Null = abort. */
+function* outputPath(ctx, o, type) {
+    const fs = ctx.sh.env.fs;
+    const dflt = `${home(ctx)}/.ssh/id_${type}`;
+    let path = o.values.get('f');
+    if (path === undefined) {
+        const answer = yield* ask(`Enter file in which to save the key (${dflt}): `, false);
+        if (answer === null)
+            return null;
+        path = answer.trim() || dflt;
+    }
+    path = ctx.resolve(path.replace(/^~(?=\/|$)/, ctx.sh.user.home));
+    const dir = path.slice(0, path.lastIndexOf('/')) || '/';
+    if (path === dflt && !fs.tryLookup(dir, ctx.cred)) {
+        try {
+            fs.mkdir(dir, ctx.cred, false, DIR_MODE);
+            ctx.out(`Created directory '${dir}'.\n`);
+        }
+        catch {
+            ctx.err(`Could not create directory '${dir}'.\n`);
+        }
+    }
+    if (!fs.tryLookup(path, ctx.cred))
+        return path;
+    ctx.out(`${path} already exists.\n`);
+    const yes = yield* ask('Overwrite (y/n)? ', false);
+    return yes !== null && /^y/i.test(yes.trim()) ? path : null;
+}
+function* generate(ctx, o) {
+    const kind = keyType(ctx, o);
+    if (!kind)
+        return 1;
+    const quiet = o.flags.has('q');
+    if (!quiet)
+        ctx.out(`Generating public/private ${kind.type} key pair.\n`);
+    const path = yield* outputPath(ctx, o, kind.type);
+    if (path === null)
+        return 1;
+    const pass = o.values.get('N') ?? (yield* newPassphrase(ctx, `Enter passphrase for "${path}" (empty for no passphrase): `));
+    if (pass === null)
+        return 1;
+    const kp = generateKey(kind.type, kind.bits, o.values.get('C') ?? `${ctx.sh.user.name}@${ctx.sh.env.hostname}`);
+    if (!write(ctx, path, privateFile(kp, pass), PRIVATE_MODE))
+        return 1;
+    if (!write(ctx, `${path}.pub`, `${publicLine(kp)}\n`, PUBLIC_MODE))
+        return 1;
+    if (quiet)
+        return 0;
+    ctx.out([
+        `Your identification has been saved in ${path}`,
+        `Your public key has been saved in ${path}.pub`,
+        'The key fingerprint is:',
+        `${fingerprint(kp.blob)} ${kp.comment}`,
+        "The key's randomart image is:",
+        ...randomart(kp),
+    ].join('\n') + '\n');
+    return 0;
+}
+// ------------------------------------------------------------ existing keys
+function* keyPath(ctx, o, prompt) {
+    const given = o.values.get('f');
+    if (given !== undefined)
+        return ctx.resolve(given);
+    const dflt = `${home(ctx)}/.ssh/id_ed25519`;
+    const answer = yield* ask(`${prompt} (${dflt}): `, false);
+    return answer === null ? null : ctx.resolve(answer.trim() || dflt);
+}
+/** The private key of `path`, asking for its passphrase (with -P as the answer) when needed. */
+function* loadPrivate(ctx, path, text, given) {
+    let pass = given ?? '';
+    if (given === undefined && isEncrypted(text)) {
+        const answer = yield* ask('Enter passphrase: ', true);
+        if (answer === null)
+            return null;
+        pass = answer;
+    }
+    const kp = parsePrivateFile(text, pass);
+    if (kp === 'invalid')
+        ctx.err(`Load key "${path}": invalid format\n`);
+    if (kp === 'bad-passphrase')
+        ctx.err(`Load key "${path}": incorrect passphrase supplied to decrypt private key\n`);
+    return typeof kp === 'string' ? null : kp;
+}
+function* listFingerprint(ctx, o) {
+    const path = yield* keyPath(ctx, o, 'Enter file in which the key is');
+    if (path === null)
+        return 1;
+    const fs = ctx.sh.env.fs;
+    const pub = path.endsWith('.pub') || !fs.tryLookup(`${path}.pub`, ctx.cred) ? path : `${path}.pub`;
+    const text = readText(ctx, pub);
+    if (text === null)
+        return 1;
+    const keys = text.split('\n').map((l) => parsePublicLine(l) ?? parseAuthorizedLine(l)?.key ?? null).filter((k) => k !== null);
+    if (!keys.length) {
+        const kp = parsePrivateFile(text, '');
+        if (typeof kp === 'string') {
+            ctx.err(`${path} is not a key file.\n`);
+            return 1;
+        }
+        keys.push(kp);
+    }
+    ctx.out(keys.map((k) => `${k.bits} ${fingerprint(k.blob)} ${k.comment || 'no comment'} (${LABEL[k.type]})`).join('\n') + '\n');
+    return 0;
+}
+function* printPublic(ctx, o) {
+    const path = yield* keyPath(ctx, o, 'Enter file in which the key is');
+    const text = path === null ? null : readText(ctx, path);
+    if (path === null || text === null)
+        return 1;
+    const kp = yield* loadPrivate(ctx, path, text, o.values.get('P'));
+    if (!kp)
+        return 1;
+    ctx.out(`${publicLine(kp)}\n`);
+    return 0;
+}
+function* changePassphrase(ctx, o) {
+    const path = yield* keyPath(ctx, o, 'Enter file in which the key is');
+    const text = path === null ? null : readText(ctx, path);
+    if (path === null || text === null)
+        return 1;
+    const kp = yield* loadPrivate(ctx, path, text, o.values.get('P') ?? (isEncrypted(text) ? undefined : ''));
+    if (!kp)
+        return 1;
+    if (!o.values.has('N'))
+        ctx.out(`Key has comment '${kp.comment}'\n`);
+    const pass = o.values.get('N') ?? (yield* newPassphrase(ctx, 'Enter new passphrase (empty for no passphrase): '));
+    if (pass === null || !write(ctx, path, privateFile(kp, pass), PRIVATE_MODE))
+        return 1;
+    ctx.out('Your identification has been saved with the new passphrase.\n');
+    return 0;
+}
+// ------------------------------------------------------------ known_hosts
+function knownHostsFile(ctx, o) {
+    return ctx.resolve(o.values.get('f') ?? `${home(ctx)}/.ssh/known_hosts`);
+}
+function findHost(ctx, o, name) {
+    const path = knownHostsFile(ctx, o);
+    const fs = ctx.sh.env.fs;
+    const text = fs.tryLookup(path, ctx.cred) ? readText(ctx, path) : '';
+    if (text === null)
+        return 1;
+    const found = knownHostsFind(text, name);
+    for (const f of found)
+        ctx.out(`# Host ${name} found: line ${f.line} \n${f.text}\n`);
+    return found.length ? 0 : 1;
+}
+function removeHost(ctx, o, name) {
+    const path = knownHostsFile(ctx, o);
+    const fs = ctx.sh.env.fs;
+    if (!fs.tryLookup(path, ctx.cred)) {
+        ctx.err(`Cannot stat ${path}: No such file or directory\n`);
+        return EXIT_USAGE;
+    }
+    const text = readText(ctx, path);
+    if (text === null)
+        return 1;
+    const r = knownHostsRemove(text, name);
+    if (!r.removed.length) {
+        ctx.out(`Host ${name} not found in ${path}\n`);
+        return 0;
+    }
+    const mode = fs.stat(path, ctx.cred).mode & 0o777;
+    if (!write(ctx, `${path}.old`, text, mode) || !write(ctx, path, r.text, mode))
+        return 1;
+    ctx.out(`${r.removed.map((n) => `# Host ${name} found: line ${n}`).join('\n')}\n${path} updated.\nOriginal contents retained as ${path}.old\n`);
+    return 0;
+}
+const HOST_KEY_TYPES = ['rsa', 'ecdsa', 'ed25519'];
+/** -A: creates the host keys missing from /etc/ssh (as Ubuntu's postinst does). */
+function hostKeys(ctx) {
+    const fs = ctx.sh.env.fs;
+    const missing = HOST_KEY_TYPES.filter((t) => !fs.tryLookup(`/etc/ssh/ssh_host_${t}_key`, ctx.cred));
+    if (!missing.length)
+        return 0;
+    ctx.out(`ssh-keygen: generating new host keys: ${missing.map((t) => LABEL[t]).join(' ')} \n`);
+    for (const t of missing) {
+        const kp = generateKey(t, DEFAULT_BITS[t], `root@${ctx.sh.env.hostname}`);
+        const path = `/etc/ssh/ssh_host_${t}_key`;
+        if (!write(ctx, path, privateFile(kp, ''), PRIVATE_MODE) || !write(ctx, `${path}.pub`, `${publicLine(kp)}\n`, PUBLIC_MODE))
+            return 1;
+    }
+    return 0;
+}
+function* sshKeygen(ctx) {
+    const o = parseOpts(ctx.argv.slice(1));
+    if (typeof o === 'string') {
+        ctx.err(`${o}\n`);
+        return 1;
+    }
+    const host = o.values.get('F') ?? o.values.get('R');
+    if (o.values.has('F') && host !== undefined)
+        return findHost(ctx, o, host);
+    if (o.values.has('R') && host !== undefined)
+        return removeHost(ctx, o, host);
+    if (o.flags.has('A'))
+        return hostKeys(ctx);
+    if (o.flags.has('l'))
+        return yield* listFingerprint(ctx, o);
+    if (o.flags.has('y'))
+        return yield* printPublic(ctx, o);
+    if (o.flags.has('p'))
+        return yield* changePassphrase(ctx, o);
+    return yield* generate(ctx, o);
+}
+
+return { sshKeygen };
+})();
+__m["shells/ssh-copy-id.js"] = (() => {
+const { parsePublicLine } = __m["net/ssh-keys.js"];
+const PROG = '/usr/bin/ssh-copy-id';
+const DEFAULT_KEYS = ['id_ed25519.pub', 'id_ecdsa.pub', 'id_rsa.pub'];
+/** Remote exit status meaning "every key was already there". */
+const ALREADY = 7;
+const USAGE = `Usage: ${PROG} [-h|-?|-f|-n|-s|-x] [-i [identity_file]] [-t target_path] [-F ssh_config] [[-o <ssh -o options>] ...] [-p port] [user@]hostname
+\t-f: force mode -- copy keys without trying to check if they are already installed
+\t-n: dry run    -- no keys are actually copied
+\t-h|-?: print this help`;
+function parse(argv) {
+    const sshArgs = [];
+    let identity;
+    let force = false;
+    let dryRun = false;
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i] ?? '';
+        if (a === '-i')
+            identity = argv[++i];
+        else if (a.startsWith('-i'))
+            identity = a.slice(2);
+        else if (a === '-p' || a === '-o')
+            sshArgs.push(a, argv[++i] ?? '');
+        else if (/^-[po]./.test(a))
+            sshArgs.push(a.slice(0, 2), a.slice(2));
+        else if (a === '-f')
+            force = true;
+        else if (a === '-n')
+            dryRun = true;
+        else if (a.startsWith('-'))
+            return null;
+        else
+            return argv.length === i + 1 ? { identity, sshArgs, force, dryRun, dest: a } : null;
+    }
+    return null;
+}
+/** Quotes for the remote shell. */
+function quote(text) {
+    return `'${text.replace(/'/g, `'\\''`)}'`;
+}
+function identityFile(ctx, given) {
+    const fs = ctx.sh.env.fs;
+    const home = ctx.sh.user.home === '/' ? '' : ctx.sh.user.home;
+    if (given !== undefined) {
+        const path = ctx.resolve(given.replace(/^~(?=\/)/, ctx.sh.user.home));
+        return path.endsWith('.pub') ? path : `${path}.pub`;
+    }
+    return DEFAULT_KEYS.map((n) => `${home}/.ssh/${n}`).find((p) => fs.tryLookup(p, ctx.cred)?.kind === 'file') ?? null;
+}
+/**
+ * Remote command: creates ~/.ssh and authorized_keys (umask 077), stops with ALREADY when the key (type and
+ * base64, whatever its comment) is there, adds a missing final newline and appends the key line.
+ */
+function remoteScript(keyLine, force) {
+    const [type = '', blob = ''] = keyLine.split(/\s+/);
+    const file = '.ssh/authorized_keys';
+    const check = force ? '' : `{ grep -v '^#' ${file} | grep -qF -- ${quote(`${type} ${blob}`)} && exit ${ALREADY}; true; } && `;
+    return `cd && umask 077 && mkdir -p .ssh && touch ${file} && ${check}{ [ -z "$(tail -c1 ${file})" ] || echo >> ${file}; } && echo ${quote(keyLine)} >> ${file}`;
+}
+function* sshCopyId(ctx) {
+    const o = parse(ctx.argv.slice(1));
+    if (!o) {
+        ctx.err(`${USAGE}\n`);
+        return 1;
+    }
+    const path = identityFile(ctx, o.identity);
+    const text = path === null ? null : (() => { try {
+        return ctx.sh.env.fs.readFile(path, ctx.cred);
+    }
+    catch {
+        return null;
+    } })();
+    if (path === null || text === null) {
+        ctx.err(`${PROG}: ERROR: ${path === null ? 'No identities found' : `failed to open ID file '${path}': No such file or directory`}\n`);
+        return 1;
+    }
+    const key = text.split('\n').find((l) => parsePublicLine(l) !== null)?.trim();
+    if (!key) {
+        ctx.err(`${PROG}: ERROR: ${path} is not a public key\n`);
+        return 1;
+    }
+    ctx.err(`${PROG}: INFO: Source of key(s) to be installed: "${path}"\n`);
+    if (o.dryRun) {
+        ctx.out(`=-=-=-=-=-=-=-=\nWould have added the following key(s):\n\n${key}\n=-=-=-=-=-=-=-=\n`);
+        return 0;
+    }
+    if (!o.force)
+        ctx.err(`${PROG}: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys\n`);
+    const status = Number((yield { kind: 'ssh', args: [...o.sshArgs, o.dest, remoteScript(key, o.force)], cwd: ctx.cwd }) ?? 255);
+    if (status === ALREADY) {
+        ctx.err(`\n${PROG}: WARNING: All keys were skipped because they already exist on the remote system.\n\t\t(if you think this is a mistake, you may want to use -f option)\n\n`);
+        return 0;
+    }
+    if (status !== 0)
+        return 1;
+    const port = o.sshArgs.indexOf('-p');
+    const how = [...(port >= 0 ? [`-p '${o.sshArgs[port + 1] ?? ''}'`] : []), `'${o.dest}'`].join(' ');
+    ctx.out(`\nNumber of key(s) added: 1\n\nNow try logging into the machine, with: "ssh ${how}"\nand check to make sure that only the key(s) you wanted were added.\n\n`);
+    return 0;
+}
+
+return { sshCopyId };
+})();
 __m["shells/linux-programs.js"] = (() => {
 const { httpGet } = __m["shells/net-tools.js"];
 const { systemctl, journalctl, ss } = __m["shells/linux-services.js"];
@@ -23261,6 +24974,9 @@ const { traceroute } = __m["shells/trace-cmds.js"];
 const { FsError } = __m["bash/vfs.js"];
 const { APACHE_TOOLS } = __m["services/apache/tools.js"];
 const { curl } = __m["shells/curl.js"];
+const { sshKeygen } = __m["shells/ssh-keygen.js"];
+const { SSH_USAGE, SSH_WITH_VALUE } = __m["shells/ssh-client.js"];
+const { sshCopyId } = __m["shells/ssh-copy-id.js"];
 const PACKAGES = {
     ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
     telnet: 'inetutils-telnet', nmap: 'nmap', htop: 'htop', tree: 'tree', zip: 'zip', unzip: 'unzip', php: 'php8.4-cli', python: 'python-is-python3',
@@ -23347,17 +25063,31 @@ function wget(host) {
         return 0;
     };
 }
+/** Options before the destination (the remote command's words are not options of ssh). */
+function sshOptions(args) {
+    const out = [];
+    for (let i = 0; i < args.length; i++) {
+        const a = args[i] ?? '';
+        if (!a.startsWith('-') || a === '-')
+            break;
+        out.push(a);
+        if (a.length === 2 && SSH_WITH_VALUE.has(a))
+            i++;
+    }
+    return out;
+}
 function* ssh(ctx) {
     const args = ctx.argv.slice(1);
-    if (!args.length || args.includes('-h')) {
-        ctx.err('usage: ssh [-46AaCfGgKkMNnqsTtVvXxYy] [-l login_name] [-p port] destination [command [argument ...]]\n');
-        return 255;
-    }
-    if (args.includes('-V')) {
+    const opts = sshOptions(args);
+    if (opts.includes('-V')) {
         ctx.err('OpenSSH_10.0p2 Ubuntu-5ubuntu2, OpenSSL 3.5.3 16 Sep 2025\n');
         return 0;
     }
-    const status = yield { kind: 'ssh', args };
+    if (!args.length || opts.includes('-h')) {
+        ctx.err(`${SSH_USAGE}\n`);
+        return 255;
+    }
+    const status = yield { kind: 'ssh', args, cwd: ctx.cwd };
     return Number(status ?? 255);
 }
 function commandNotFound(ctx) {
@@ -23373,7 +25103,7 @@ function commandNotFound(ctx) {
 function linuxPrograms(host) {
     return new Map([
         ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)],
-        ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh],
+        ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId],
         ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
         ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
         ['ss', (ctx) => { lines(ctx, ss(host)); return 0; }],
@@ -23500,6 +25230,9 @@ function importFiles(fs, records) {
 return { exportFiles, validFileRecords, importFiles };
 })();
 __m["shells/host-system.js"] = (() => {
+/** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
+const { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } = __m["services/sshd-config.js"];
+const { hostKeyFiles } = __m["services/ssh-hostkeys.js"];
 const { validHostname } = __m["devices/host.js"];
 const { Vfs } = __m["bash/vfs.js"];
 const { seedRootfs, seedUsers } = __m["bash/rootfs.js"];
@@ -23604,6 +25337,31 @@ function setName(host, kind, value) {
         host.setHostname(value);
     return null;
 }
+const SSH_CLIENT_CONFIG = `# This is the ssh client system-wide configuration file.  See ssh_config(5).
+
+Include /etc/ssh/ssh_config.d/*.conf
+
+Host *
+#   StrictHostKeyChecking ask
+#   IdentityFile ~/.ssh/id_rsa
+#   IdentityFile ~/.ssh/id_ecdsa
+#   IdentityFile ~/.ssh/id_ed25519
+    SendEnv LANG LC_* COLORTERM NO_COLOR
+    HashKnownHosts no
+    GSSAPIAuthentication yes
+`;
+/** OpenSSH client config on every host; sshd config and host keys on servers. */
+function seedSsh(fs, host) {
+    fs.seed('/etc/ssh', { kind: 'dir' }, 0o755);
+    fs.seed('/etc/ssh/ssh_config', { kind: 'file', content: SSH_CLIENT_CONFIG }, 0o644);
+    fs.seed('/etc/ssh/ssh_config.d', { kind: 'dir' }, 0o755);
+    if (!asServer(host))
+        return;
+    fs.seed(SSHD_CONFIG, { kind: 'file', content: DEFAULT_SSHD_CONFIG }, 0o644);
+    fs.seed('/etc/ssh/sshd_config.d', { kind: 'dir' }, 0o755);
+    for (const f of hostKeyFiles(host.mac, host.name.toLowerCase()))
+        fs.seed(f.path, { kind: 'file', content: f.content }, f.mode);
+}
 function createSystem(host) {
     const fs = new Vfs(() => host.clock.now());
     const programs = new Map([...COREUTILS, ...linuxPrograms(host)]);
@@ -23611,6 +25369,7 @@ function createSystem(host) {
     seedRootfs(fs, { hostname: host.name.toLowerCase(), users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
     fs.seed('/usr/lib/command-not-found', { kind: 'file', content: `${BINARY_MARK}command-not-found\n` }, 0o755);
     const server = asServer(host);
+    seedSsh(fs, host);
     if (server) {
         seedApache(fs);
         fs.mountDir(WWW, webRoot(server));
@@ -23656,6 +25415,67 @@ function restoreFiles(host, files) {
 registerHostFs((host) => hostSystem(host).fs);
 
 return { defaultLinuxUser, hostUsers, hostSystem, savedFiles, restoreFiles };
+})();
+__m["shells/ssh-stores.js"] = (() => {
+const DEFAULT_IDENTITIES = ['id_ed25519', 'id_ecdsa', 'id_rsa'];
+const SSH_DIR_MODE = 0o700;
+const KNOWN_HOSTS_MODE = 0o644;
+/** ~/.ssh of a Linux account, with that account's permissions. */
+function linuxSshStore(fs, acct, cwd = acct.home) {
+    const cred = { uid: acct.uid, gid: acct.gid, groups: acct.groups };
+    const dir = `${acct.home === '/' ? '' : acct.home}/.ssh`;
+    const base = cwd === '/' ? '' : cwd;
+    const resolve = (p) => (p === '~' ? acct.home : p.startsWith('~/') ? `${acct.home}${p.slice(1)}` : p.startsWith('/') ? p : `${base}/${p}`);
+    const isFile = (p) => fs.tryLookup(p, cred)?.kind === 'file';
+    return {
+        knownHostsPath: `${dir}/known_hosts`,
+        knownHosts: (path) => {
+            try {
+                return isFile(path) ? fs.readFile(path, cred) : '';
+            }
+            catch {
+                return '';
+            }
+        },
+        addKnownHost: (path, line) => {
+            try {
+                if (path === `${dir}/known_hosts` && !fs.tryLookup(dir, cred))
+                    fs.mkdir(dir, cred, false, SSH_DIR_MODE);
+                fs.writeFile(path, `${line}\n`, cred, true, KNOWN_HOSTS_MODE);
+            }
+            catch { /* not writable: OpenSSH also goes on without saving */ }
+        },
+        defaultIdentities: () => DEFAULT_IDENTITIES.map((n) => `${dir}/${n}`).filter(isFile),
+        readIdentity: (path) => {
+            if (!fs.tryLookup(path, cred))
+                return 'missing';
+            try {
+                return { text: fs.readFile(path, cred), mode: fs.stat(path, cred).mode };
+            }
+            catch {
+                return 'denied';
+            }
+        },
+        resolve,
+    };
+}
+const windowsKnownHosts = new WeakMap();
+/** Windows' OpenSSH client: known_hosts kept in memory per equipment, no key files. */
+function windowsSshStore(host, user) {
+    const files = windowsKnownHosts.get(host) ?? new Map();
+    windowsKnownHosts.set(host, files);
+    const home = `C:\\Users\\${user}`;
+    return {
+        knownHostsPath: `${home}\\.ssh\\known_hosts`,
+        knownHosts: (path) => files.get(path) ?? '',
+        addKnownHost: (path, line) => { files.set(path, `${files.get(path) ?? ''}${line}\n`); },
+        defaultIdentities: () => [],
+        readIdentity: () => 'missing',
+        resolve: (p) => (/^[A-Za-z]:\\/.test(p) || p === '/dev/null' ? p : `${home}\\${p.replace(/^~[\\/]/, '').replace(/\//g, '\\')}`),
+    };
+}
+
+return { linuxSshStore, windowsSshStore };
 })();
 __m["bash/complete.js"] = (() => {
 const { normalize } = __m["bash/vfs.js"];
@@ -24075,6 +25895,7 @@ __m["shells/linux.js"] = (() => {
 const { BaseShell } = __m["shells/base.js"];
 const { splitArgs } = __m["shells/net-tools.js"];
 const { hostSystem } = __m["shells/host-system.js"];
+const { linuxSshStore } = __m["shells/ssh-stores.js"];
 const { BashSession } = __m["bash/shell.js"];
 const FALLBACK_UID = 1999;
 /** Splits terminal text into lines (a final line without newline is kept). */
@@ -24099,6 +25920,9 @@ class LinuxShell extends BaseShell {
     account() {
         const found = hostSystem(this.host).env.users().find((u) => u.name === this.user);
         return found ?? { name: this.user, uid: FALLBACK_UID, gid: FALLBACK_UID, home: '/', shell: '/bin/bash', groups: [FALLBACK_UID] };
+    }
+    sshStore(cwd) {
+        return linuxSshStore(hostSystem(this.host).env.fs, this.account(), cwd);
     }
     newSession() {
         return new BashSession(hostSystem(this.host).env, this.account(), { login: this.remoteSession });
@@ -24128,7 +25952,7 @@ class LinuxShell extends BaseShell {
         const out = textLines(text);
         const pending = this.session.pending();
         if (pending?.kind === 'ssh')
-            out.push(...this.startSsh(pending.args));
+            out.push(...this.startSsh(pending.args, pending.cwd));
         if (this.session.closed) {
             this.exitCode = this.session.exitCode;
             if (this.remoteSession)
@@ -24238,6 +26062,7 @@ return { SimClock, formatShowClock, formatLeaseTime, parseClockSet, MONTH_NAMES 
 })();
 __m["shells/windows.js"] = (() => {
 /** Windows Command Prompt: ipconfig, ping, nslookup, netstat, arp, curl, ssh, sc / net (servers). */
+const { windowsSshStore } = __m["shells/ssh-stores.js"];
 const { BaseShell } = __m["shells/base.js"];
 const { resolveHost, dnsQuery, httpGet } = __m["shells/net-tools.js"];
 const { nslookupOutput } = __m["shells/dns-format.js"];
@@ -24300,6 +26125,9 @@ class WindowsShell extends BaseShell {
     constructor(host, user, remote = false) {
         super(host, user);
         this.remote = remote;
+    }
+    sshStore(_cwd) {
+        return windowsSshStore(this.host, this.user);
     }
     localPrompt() {
         return this.remote ? `${this.user.toLowerCase()}@${this.host.name.toUpperCase()} C:\\Users\\${this.user}>` : 'C:\\>';
@@ -24485,16 +26313,137 @@ function createShell(host, os, user = defaultUser(host, os), remote = false) {
 
 return { defaultUser, createShell };
 })();
+__m["services/ssh-auth.js"] = (() => {
+const { sameBlob, verifySignature, fingerprint, LABEL, parsePublicLine } = __m["net/ssh-keys.js"];
+const { matchPattern } = __m["bash/glob.js"];
+const { formatIp } = __m["core/ip.js"];
+const { parseAuthorizedLine } = __m["services/authorized-keys.js"];
+const GROUP_OTHER_WRITE = 0o022;
+const MAX_KEYS_FILE = 256 * 1024;
+function matches(pattern, user, ip) {
+    const at = pattern.indexOf('@');
+    const userPart = at >= 0 ? pattern.slice(0, at) : pattern;
+    return matchPattern(userPart, user) && (at < 0 || matchPattern(pattern.slice(at + 1), formatIp(ip)));
+}
+/** sshd's "User x from y not allowed because …" reason, or null when the user may log in. */
+function accessDenied(s, u, ip) {
+    const from = `User ${u.name} from ${formatIp(ip)} not allowed because`;
+    const groups = u.groupNames ?? [];
+    if (s.denyUsers.some((p) => matches(p, u.name, ip)))
+        return `${from} listed in DenyUsers`;
+    if (s.allowUsers.length > 0 && !s.allowUsers.some((p) => matches(p, u.name, ip)))
+        return `${from} not listed in AllowUsers`;
+    if (s.denyGroups.some((p) => groups.some((g) => matchPattern(p, g))))
+        return `${from} a group is listed in DenyGroups`;
+    if (s.allowGroups.length > 0 && !s.allowGroups.some((p) => groups.some((g) => matchPattern(p, g))))
+        return `${from} none of user's groups are listed in AllowGroups`;
+    return null;
+}
+/** PermitRootLogin for a method: root may log in with keys by default, never with a password. */
+function rootRefused(s, user, method) {
+    if (user !== 'root')
+        return false;
+    return s.permitRootLogin === 'no' || s.permitRootLogin === 'forced-commands-only' || (s.permitRootLogin === 'prohibit-password' && method === 'password');
+}
+/** Group names of `gids` from /etc/group. */
+function groupNames(fs, gids) {
+    const text = fs.tryLookup('/etc/group')?.kind === 'file' ? fs.readFile('/etc/group') : '';
+    const byGid = new Map(text.split('\n').map((l) => l.split(':')).filter((f) => f.length >= 3).map((f) => [Number(f[2]), f[0] ?? '']));
+    return gids.map((g) => byGid.get(g) ?? '').filter(Boolean);
+}
+function keyFiles(s, u) {
+    return s.authorizedKeysFiles.map((f) => {
+        const p = f.replace(/%h/g, u.home).replace(/%u/g, u.name).replace(/%%/g, '%');
+        return p.startsWith('/') ? p : `${u.home}/${p}`;
+    });
+}
+const inside = (p, dir) => dir === '/' || p === dir || p.startsWith(`${dir}/`);
+/**
+ * StrictModes: the file and every directory up to the home (or up to / for a file outside the home)
+ * must belong to the user (or root) and not be writable by group or others.
+ */
+function badModes(fs, u, path) {
+    const stop = inside(path, u.home) ? u.home : '/';
+    const dirs = [];
+    for (let p = path;; p = p.slice(0, p.lastIndexOf('/')) || '/') {
+        dirs.push(p);
+        if (p === stop || p === '/')
+            break;
+    }
+    for (const p of dirs) {
+        const st = fs.tryLookup(p) ? fs.stat(p) : null;
+        if (!st)
+            continue;
+        if ((st.uid !== u.uid && st.uid !== 0) || (st.mode & GROUP_OTHER_WRITE) !== 0) {
+            return `Authentication refused: bad ownership or modes for ${st.kind === 'dir' ? 'directory' : 'file'} ${p}`;
+        }
+    }
+    return null;
+}
+/** The key's line in one authorized_keys file: found and usable from `ip`, found but refused, or absent. */
+function lookupKey(text, key, ip, path) {
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+        const entry = parseAuthorizedLine(lines[i] ?? '');
+        if (!entry || entry.key.type !== key.type || !sameBlob(entry.key.blob, key.blob))
+            continue;
+        if (entry.error)
+            return `${path}:${i + 1}: bad key options: ${entry.error}`;
+        if (!entry.allowsFrom(formatIp(ip)))
+            return `Authentication tried for ${'%u'} with correct key but not from a permitted host (host=${formatIp(ip)}, ip=${formatIp(ip)}).`;
+        return 'ok';
+    }
+    return 'absent';
+}
+/** Public key authentication: `signature` must be valid over `message` and the key listed for `u`. */
+function checkPublicKey(fs, s, u, ip, keyLine, signature, message) {
+    const key = parsePublicLine(keyLine);
+    if (!key)
+        return { ok: false, log: 'userauth_pubkey: cannot decode key' };
+    const fp = `${LABEL[key.type]} ${fingerprint(key.blob)}`;
+    for (const path of keyFiles(s, u)) {
+        if (fs.tryLookup(path)?.kind !== 'file')
+            continue;
+        const bad = s.strictModes ? badModes(fs, u, path) : null;
+        if (bad)
+            return { ok: false, log: bad };
+        const found = lookupKey(fs.readFile(path).slice(0, MAX_KEYS_FILE), key, ip, path);
+        if (found === 'absent')
+            continue;
+        if (found !== 'ok')
+            return { ok: false, log: found.replace('%u', u.name) };
+        if (!verifySignature(key.blob, message, signature))
+            return { ok: false, log: `Failed publickey for ${u.name}: bad signature ${fp}` };
+        return { ok: true, log: `publickey for ${u.name}: ${fp} (${path})` };
+    }
+    return { ok: false, log: null };
+}
+
+return { accessDenied, rootRefused, groupNames, checkPublicKey };
+})();
 __m["services/ssh-service.js"] = (() => {
 const { createShell } = __m["shells/factory.js"];
 const { DEFAULT_SCREEN } = __m["shells/base.js"];
+const { hostUsers } = __m["shells/host-system.js"];
+const { hostFs } = __m["devices/host-fs.js"];
 const { formatIp } = __m["core/ip.js"];
+const { toBase64 } = __m["core/sha256.js"];
+const { publicLine, signChallenge, cryptoRandom } = __m["net/ssh-keys.js"];
+const { DEFAULT_SSHD, parseSshdConfig } = __m["services/sshd-config.js"];
+const { HOST_KEY_PATH, loadHostKey } = __m["services/ssh-hostkeys.js"];
+const { accessDenied, checkPublicKey, groupNames, rootRefused } = __m["services/ssh-auth.js"];
+const { PendingLogins, hostProofMessage, userAuthMessage } = __m["services/ssh-handshake.js"];
 const MAX_SESSIONS = 16;
 const IDLE_LIMIT_MS = 30 * 60_000;
+const SESSION_ID_BYTES = 12;
 class SshService {
     server;
     sessions = new Map();
     counter = 0;
+    settings = DEFAULT_SSHD;
+    hostKey = null;
+    loaded = false;
+    pending = new PendingLogins();
     constructor(server) {
         this.server = server;
     }
@@ -24503,6 +26452,31 @@ class SshService {
     }
     closeAll() {
         this.sessions.clear();
+    }
+    /** Reads sshd_config and the host key (sshd start, restart, reload, `sshd -t`); returns sshd's error or null. */
+    reload(apply = true) {
+        const fs = hostFs(this.server);
+        if (!fs) {
+            this.loaded = true;
+            return null;
+        }
+        const read = (p) => (fs.tryLookup(p)?.kind === 'file' ? fs.readFile(p) : null);
+        const parsed = parseSshdConfig({ read, list: (d) => (fs.tryLookup(d)?.kind === 'dir' ? fs.readdir(d) : []) });
+        if (!parsed.ok)
+            return parsed.error;
+        const key = loadHostKey(read(HOST_KEY_PATH));
+        if (!key)
+            return 'sshd: no hostkeys available -- exiting.';
+        if (apply) {
+            this.settings = parsed.settings;
+            this.hostKey = key;
+            this.loaded = true;
+        }
+        return null;
+    }
+    ensureLoaded() {
+        if (!this.loaded)
+            this.reload();
     }
     handle(req, peer) {
         if (req.app !== 'SSH')
@@ -24513,24 +26487,105 @@ class SshService {
             return this.command(req, peer);
         return null;
     }
-    auth(req, peer) {
-        const from = `${formatIp(peer.ip)} port ${peer.port}`;
-        if (req.user === '')
-            return { app: 'SSH', kind: 'output', ok: false, lines: [] };
-        const account = this.server.services.ssh.users.find((u) => u.name === req.user);
-        if (!account || account.password !== req.password) {
-            this.server.log('ssh', `Failed password for ${account ? '' : 'invalid user '}${req.user} from ${from} ssh2`);
-            return { app: 'SSH', kind: 'output', ok: false, lines: [] };
+    methods() {
+        return [this.settings.pubkeyAuth ? 'publickey' : '', this.settings.passwordAuth ? 'password' : ''].filter(Boolean);
+    }
+    refuse(extra = {}) {
+        return { app: 'SSH', kind: 'output', ok: false, lines: [], methods: this.methods(), ...extra };
+    }
+    serverIp() {
+        return formatIp(this.server.config.ip ?? 0);
+    }
+    /** Handshake: host key, methods, a fresh challenge and the proof that this server holds the host key. */
+    handshake(req, peer, hostKey) {
+        const challenge = this.pending.issue(peer.ip, this.server.clock.now());
+        if (challenge === null) {
+            this.server.log('ssh', `drop connection #64 from [${formatIp(peer.ip)}]:${peer.port} on [${this.serverIp()}]:22 past MaxStartups`);
+            return this.refuse({ lines: ['kex_exchange_identification: read: Connection reset by peer'] });
         }
+        const hostSignature = signChallenge(hostKey, hostProofMessage(req.nonce ?? '', challenge));
+        return this.refuse({ hostKey: publicLine({ ...hostKey, comment: '' }), challenge, hostSignature });
+    }
+    auth(req, peer) {
+        this.ensureLoaded();
+        const from = `${formatIp(peer.ip)} port ${peer.port}`;
+        if (!this.hostKey)
+            return this.refuse({ lines: ['kex_exchange_identification: read: Connection reset by peer'] });
+        const method = req.method ?? 'password';
+        if (method === 'none')
+            return this.handshake(req, peer, this.hostKey);
+        const challenge = req.challenge ?? '';
+        const conn = this.pending.check(challenge, peer.ip, this.server.clock.now());
+        if (!conn.ok) {
+            if (conn.reason === 'expired')
+                this.server.log('ssh', `Timeout before authentication for ${from}`);
+            return this.refuse({ closed: true, lines: [`Connection closed by ${this.serverIp()} port 22`] });
+        }
+        const ok = this.allowed(req.user, peer, from, method) ? (method === 'publickey' ? this.publickey(req, peer, from) : this.password(req, from)) : null;
+        if (ok) {
+            this.pending.close(challenge);
+            return this.open(req.user, peer, from, ok);
+        }
+        return this.failed(challenge, req.user, from);
+    }
+    /** AllowUsers/DenyUsers/AllowGroups/DenyGroups and PermitRootLogin. */
+    allowed(name, peer, from, method) {
+        // Every name goes through the rules, also accounts without a Linux user (names like "Bob" or "john.doe").
+        const user = hostUsers(this.server).find((u) => u.name === name);
+        const fs = hostFs(this.server);
+        const subject = user ? { ...user, groupNames: fs ? groupNames(fs, user.groups) : [] } : { name, uid: -1, home: '', groupNames: [] };
+        const reason = accessDenied(this.settings, subject, peer.ip);
+        if (reason) {
+            this.server.log('ssh', reason);
+            return false;
+        }
+        // PermitRootLogin only matters when root is an SSH account (otherwise it is an invalid user).
+        if (this.server.services.ssh.users.some((u) => u.name === name) && rootRefused(this.settings, name, method)) {
+            this.server.log('ssh', `ROOT LOGIN REFUSED FROM ${from}`);
+            return false;
+        }
+        return true;
+    }
+    /** A failed attempt; MaxAuthTries ends the connection. */
+    failed(challenge, user, from) {
+        if (this.pending.fail(challenge) < this.settings.maxAuthTries)
+            return this.refuse();
+        this.pending.close(challenge);
+        const invalid = this.server.services.ssh.users.some((u) => u.name === user) ? '' : 'invalid user ';
+        this.server.log('ssh', `error: maximum authentication attempts exceeded for ${invalid}${user} from ${from} ssh2 [preauth]`);
+        return this.refuse({ closed: true, lines: [`Received disconnect from ${this.serverIp()} port 22:2: Too many authentication failures`, `Disconnected from ${this.serverIp()} port 22`] });
+    }
+    password(req, from) {
+        const account = this.server.services.ssh.users.find((u) => u.name === req.user);
+        const emptyOk = this.settings.permitEmptyPasswords || req.password !== '';
+        if (this.settings.passwordAuth && account && account.password === req.password && emptyOk)
+            return 'password';
+        this.server.log('ssh', `Failed password for ${account ? '' : 'invalid user '}${req.user} from ${from} ssh2`);
+        return null;
+    }
+    publickey(req, peer, from) {
+        const fs = hostFs(this.server);
+        const user = hostUsers(this.server).find((u) => u.name === req.user);
+        const account = this.server.services.ssh.users.find((u) => u.name === req.user);
+        if (!this.settings.pubkeyAuth || !fs || !user || !account)
+            return null;
+        const key = req.key ?? '';
+        const r = checkPublicKey(fs, this.settings, user, peer.ip, key, req.signature ?? '', userAuthMessage(req.challenge ?? '', this.hostKey?.blob ?? new Uint8Array(), req.user, key));
+        if (r.log && !r.ok)
+            this.server.log('ssh', `${r.log} [${from}]`);
+        return r.ok ? `publickey ${r.log.replace(/^publickey for \S+: /, '').replace(/ \(.*\)$/, '')}` : null;
+    }
+    open(user, peer, from, how) {
         this.expireIdle();
         if (this.sessions.size >= MAX_SESSIONS)
-            return { app: 'SSH', kind: 'output', ok: false, lines: ['Too many sessions'] };
-        const id = `s${++this.counter}-${peer.port}`;
-        const shell = createShell(this.server, this.server.os, req.user, true);
-        this.sessions.set(id, { user: req.user, shell, ip: peer.ip, lastUsed: this.server.clock.now() });
-        this.server.log('ssh', `Accepted password for ${req.user} from ${from} ssh2`);
-        this.server.log('ssh', `pam_unix(sshd:session): session opened for user ${req.user}`);
-        return { app: 'SSH', kind: 'output', ok: true, session: id, prompt: shell.prompt(), lines: this.banner(req.user) };
+            return this.refuse({ lines: ['Too many sessions'] });
+        const id = `s${++this.counter}-${toBase64(cryptoRandom(SESSION_ID_BYTES), false).replace(/[+/]/g, 'x')}`;
+        const shell = createShell(this.server, this.server.os, user, true);
+        this.sessions.set(id, { user, shell, ip: peer.ip, lastUsed: this.server.clock.now() });
+        const [method, ...detail] = how.split(' ');
+        this.server.log('ssh', `Accepted ${method} for ${user} from ${from} ssh2${detail.length ? `: ${detail.join(' ')}` : ''}`);
+        this.server.log('ssh', `pam_unix(sshd:session): session opened for user ${user}`);
+        return { app: 'SSH', kind: 'output', ok: true, session: id, prompt: shell.prompt(), lines: this.banner(user) };
     }
     expireIdle() {
         const now = this.server.clock.now();
@@ -24615,7 +26670,9 @@ class Server extends Host {
     // ------------------------------------------------------------ configuration
     setServices(requested) {
         const before = this.services;
-        const next = !before.http.enabled && requested.http.enabled && !this.startWeb() ? { ...requested, http: { ...requested.http, enabled: false } } : requested;
+        let next = !before.http.enabled && requested.http.enabled && !this.startWeb() ? { ...requested, http: { ...requested.http, enabled: false } } : requested;
+        if (!before.ssh.enabled && next.ssh.enabled && !this.startSsh())
+            next = { ...next, ssh: { ...next.ssh, enabled: false } };
         this.services = next;
         this.applyServices();
         for (const u of UNITS) {
@@ -24625,6 +26682,28 @@ class Server extends Host {
                 this.log(u.id, now ? `Started ${u.description}.` : `Stopped ${u.description}.`);
         }
         this.changed();
+    }
+    /** Starting sshd reads /etc/ssh/sshd_config and the host key; an error keeps it stopped. */
+    startSsh() {
+        const err = this.ssh.reload();
+        if (!err)
+            return true;
+        this.log('ssh', `sshd[701]: ${err}`);
+        this.log('ssh', 'ssh.service: Main process exited, code=exited, status=255/EXCEPTION');
+        this.log('ssh', 'Failed to start ssh.service - OpenBSD Secure Shell server.');
+        return false;
+    }
+    /** systemctl reload ssh: new sshd_config for new connections, or the running one on error. */
+    reloadSsh() {
+        const err = this.ssh.reload();
+        if (err) {
+            this.log('ssh', `sshd[701]: ${err}`);
+            this.log('ssh', 'Reload failed for ssh.service - OpenBSD Secure Shell server.');
+            return err;
+        }
+        this.log('ssh', 'Reloading ssh.service - OpenBSD Secure Shell server...');
+        this.log('ssh', 'Reloaded ssh.service - OpenBSD Secure Shell server.');
+        return null;
     }
     /** Starting Apache reads /etc/apache2; a configuration error keeps it stopped (logged like systemd). */
     startWeb() {
@@ -25335,6 +27414,46 @@ function hostSettings(placed, h, app) {
 
 return { hostSettings };
 })();
+__m["services/ssh-auth-settings.js"] = (() => {
+const { hostFs } = __m["devices/host-fs.js"];
+const { parseSshdConfig, setDirective, SSHD_CONFIG, DEFAULT_SSHD } = __m["services/sshd-config.js"];
+/** What /etc/ssh/sshd_config says now (null when the file cannot be parsed or the server is not Ubuntu). */
+function sshAuthMethods(server) {
+    const fs = server.os === 'linux' ? hostFs(server) : undefined;
+    if (!fs)
+        return null;
+    const parsed = parseSshdConfig({
+        read: (p) => (fs.tryLookup(p)?.kind === 'file' ? fs.readFile(p) : null),
+        list: (d) => (fs.tryLookup(d)?.kind === 'dir' ? fs.readdir(d) : []),
+    });
+    return parsed.ok ? { password: parsed.settings.passwordAuth, pubkey: parsed.settings.pubkeyAuth } : null;
+}
+const yesNo = (on) => (on ? 'yes' : 'no');
+/**
+ * Writes the methods into sshd_config and reloads ssh when it is running. Returns an error (or a warning
+ * when a file of sshd_config.d overrides the main file), or null.
+ */
+function setSshAuthMethods(server, want) {
+    const fs = server.os === 'linux' ? hostFs(server) : undefined;
+    if (!fs)
+        return 'Solo los servidores Ubuntu tienen /etc/ssh/sshd_config.';
+    if (!want.password && !want.pubkey)
+        return 'Deja al menos un método de autenticación.';
+    const before = fs.tryLookup(SSHD_CONFIG)?.kind === 'file' ? fs.readFile(SSHD_CONFIG) : '';
+    const text = setDirective(setDirective(before, 'PasswordAuthentication', yesNo(want.password)), 'PubkeyAuthentication', yesNo(want.pubkey));
+    if (text !== before)
+        fs.writeFile(SSHD_CONFIG, text);
+    const err = server.services.ssh.enabled ? server.reloadSsh() : server.ssh.reload();
+    if (err)
+        return `sshd_config tiene errores: ${err}`;
+    const now = sshAuthMethods(server) ?? { password: DEFAULT_SSHD.passwordAuth, pubkey: DEFAULT_SSHD.pubkeyAuth };
+    if (now.password !== want.password || now.pubkey !== want.pubkey)
+        return 'Un fichero de /etc/ssh/sshd_config.d define antes la misma opción y es el que vale.';
+    return null;
+}
+
+return { sshAuthMethods, setSshAuthMethods };
+})();
 __m["ui/server-apps.js"] = (() => {
 /** Server → Servicios → HTTP, Correo, SSH and Registros panels. */
 const { el } = __m["ui/dom.js"];
@@ -25345,6 +27464,7 @@ const { formatIp } = __m["core/ip.js"];
 const { validateFileName } = __m["services/http-service.js"];
 const { UNITS, unitActive } = __m["services/units.js"];
 const { createShell } = __m["shells/factory.js"];
+const { sshAuthMethods, setSshAuthMethods } = __m["services/ssh-auth-settings.js"];
 function servicesTab(server, app) {
     return subnav([
         { id: 'dhcp', label: 'DHCP', render: () => dhcpPanel(server, app) },
@@ -25462,12 +27582,36 @@ function mailPanel(server, app) {
         ];
     });
 }
+/** PasswordAuthentication / PubkeyAuthentication switches (Ubuntu servers only). */
+function sshAuthControls(server, app, refresh, notice) {
+    const auth = sshAuthMethods(server);
+    if (!auth)
+        return [];
+    const msg = message();
+    if (notice.error)
+        msg.error(notice.error);
+    notice.error = '';
+    const change = (want) => {
+        notice.error = setSshAuthMethods(server, want) ?? '';
+        app.afterCommand();
+        refresh();
+    };
+    return [
+        el('h3', {}, 'Autenticación'),
+        onOff('Usuario y contraseña (PasswordAuthentication)', auth.password, (on) => change({ ...auth, password: on })),
+        onOff('Par de claves (PubkeyAuthentication)', auth.pubkey, (on) => change({ ...auth, pubkey: on })),
+        el('p', { class: 'muted' }, 'Se guarda en /etc/ssh/sshd_config y se recarga ssh. En el PC: ssh-keygen y ssh-copy-id usuario@servidor; la clave queda en ~/.ssh/authorized_keys.'),
+        msg.el,
+    ];
+}
 function sshPanel(server, app) {
+    const notice = { error: '' };
     return livePanel((refresh) => {
         const s = server.services;
         return [
             onOff('Servicio SSH (puerto 22)', s.ssh.enabled, (on) => { server.setUnit('ssh', on); app.afterCommand(); refresh(); }),
             el('p', { class: 'muted' }, `Desde un PC: ssh usuario@${server.config.ip !== undefined ? 'IP-del-servidor' : 'servidor'} en el Terminal o en el Símbolo del sistema. La sesión abre la shell ${server.os === 'windows' ? 'de Windows' : 'de Ubuntu'} de este servidor.`),
+            ...sshAuthControls(server, app, refresh, notice),
             accounts(s.ssh.users, (users) => { server.setServices({ ...server.services, ssh: { ...server.services.ssh, users } }); app.afterCommand(); refresh(); }, 'SSH'),
             el('h3', {}, 'Sesiones abiertas'),
             table(server.ssh.activeSessions(), [{ label: 'Sesión', value: (x) => x.id, mono: true }, { label: 'Usuario', value: (x) => x.user }], { empty: 'Ninguna.' }),
@@ -30775,7 +32919,7 @@ return { roundcube };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -30831,6 +32975,8 @@ function frame(server, base, current, notice, body) {
 return { TABS, PAGES, section, row, text, check, choose, form, buttons, frame };
 })();
 __m["web/admin-pages.js"] = (() => {
+/** Pages of the Server management GUI (forms filled with the live configuration). */
+const { sshAuthMethods } = __m["services/ssh-auth-settings.js"];
 const { h } = __m["web/html.js"];
 const { section, row, text, check, choose, form, buttons } = __m["web/admin-layout.js"];
 const { formatIp, formatMask } = __m["core/ip.js"];
@@ -30905,7 +33051,9 @@ function mailPage(server, base) {
 }
 function sshPage(server, base) {
     const s = server.services.ssh;
-    return [form(base, 'ssh', 'ssh', h('table', {}, section('SSH', 'OpenSSH: shell remota del servidor.', check('enabled', s.enabled, 'Activado'))), buttons()), accounts(base, 'ssh', s.users)];
+    const auth = sshAuthMethods(server);
+    const methods = auth ? [section('Autenticación', 'Métodos de /etc/ssh/sshd_config. Las claves públicas van en ~/.ssh/authorized_keys de cada usuario.', h('input', { type: 'hidden', name: 'auth', value: '1' }), check('password', auth.password, 'Usuario y contraseña (PasswordAuthentication)'), check('pubkey', auth.pubkey, 'Par de claves (PubkeyAuthentication)'))] : [];
+    return [form(base, 'ssh', 'ssh', h('table', {}, section('SSH', 'OpenSSH: shell remota del servidor.', check('enabled', s.enabled, 'Activado')), ...methods), buttons()), accounts(base, 'ssh', s.users)];
 }
 function adminPage(server, base) {
     const a = server.services.webapps.admin;
@@ -30930,6 +33078,7 @@ const { parseIp, parseMask } = __m["core/ip.js"];
 const { validatePool } = __m["services/dhcp-pt.js"];
 const { readIdentifier, reserveLease, setReservations } = __m["services/dhcp-reservations.js"];
 const { validateRecord } = __m["services/dns-service.js"];
+const { setSshAuthMethods } = __m["services/ssh-auth-settings.js"];
 const { validateOrigin, cleanOrigin } = __m["services/dns-names.js"];
 const { validateAccess, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } = __m["services/config.js"];
 const SAVED = { ok: 'Los cambios se han guardado correctamente.' };
@@ -31050,6 +33199,15 @@ function admin(server, f) {
     set(server, (s) => ({ ...s, webapps: { ...s.webapps, admin: next } }));
     return { ...SAVED, moved: next.mode !== cur.mode || next.port !== cur.port || next.alias !== cur.alias };
 }
+/** SSH on/off and, on Ubuntu, the authentication methods of sshd_config. */
+function ssh(server, f) {
+    const want = { password: on(f, 'password'), pubkey: on(f, 'pubkey') };
+    if (f.has('auth') && !want.password && !want.pubkey)
+        return { error: 'Deja al menos un método de autenticación.' };
+    const saved = set(server, (s) => ({ ...s, ssh: { ...s.ssh, enabled: on(f, 'enabled') } }));
+    const err = server.os === 'linux' && f.has('auth') ? setSshAuthMethods(server, want) : null;
+    return err ? { error: err } : saved;
+}
 /** Runs a form action of a page. */
 function runAction(server, pageId, f) {
     const action = f.get('action') ?? '';
@@ -31066,7 +33224,7 @@ function runAction(server, pageId, f) {
         case 'record-del': return set(server, (s) => ({ ...s, dns: { ...s.dns, records: s.dns.records.filter((_, i) => String(i) !== f.get('key')) } }));
         case 'web': return web(server, f);
         case 'mail': return set(server, (s) => ({ ...s, mail: { ...s.mail, smtp: on(f, 'smtp'), pop3: on(f, 'pop3'), imap: on(f, 'imap'), domain: (f.get('domain') ?? '').trim().toLowerCase() } }));
-        case 'ssh': return set(server, (s) => ({ ...s, ssh: { ...s.ssh, enabled: on(f, 'enabled') } }));
+        case 'ssh': return ssh(server, f);
         case 'user-add':
         case 'user-del': return users(server, pageId === 'ssh' ? 'ssh' : 'mail', f, action === 'user-add');
         case 'admin': return admin(server, f);

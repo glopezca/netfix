@@ -12,13 +12,14 @@ import { UTIL_DOCS } from './utils.ts';
 import { BUILTIN_DOCS } from './bash-builtins.ts';
 import { INTERNET_DOCS } from './internet.ts';
 import { WEBAPP_DOCS } from './webapps.ts';
+import { SSH_DOCS } from './ssh.ts';
 
 export type { DocBlock, DocGroup, DocPage } from './types.ts';
 
 export const DOC_GROUPS: readonly DocGroup[] = [
   NETFIX_DOCS,
   IOS_DOCS,
-  { ...SERVICE_DOCS, pages: [...SERVICE_DOCS.pages, ...WEBAPP_DOCS] },
+  { ...SERVICE_DOCS, pages: [...SERVICE_DOCS.pages, ...SSH_DOCS, ...WEBAPP_DOCS] },
   INTERNET_DOCS,
   CLIENT_DOCS,
   { id: 'linux', title: 'Terminal Linux', pages: [...LINUX_DOCS, ...EDITOR_DOCS] },

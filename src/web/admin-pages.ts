@@ -1,4 +1,5 @@
 /** Pages of the Server management GUI (forms filled with the live configuration). */
+import { sshAuthMethods } from '../services/ssh-auth-settings.ts';
 import type { Server } from '../devices/server.ts';
 import { h } from './html.ts';
 import type { Child, Markup } from './html.ts';
@@ -105,7 +106,11 @@ export function mailPage(server: Server, base: string): Child {
 
 export function sshPage(server: Server, base: string): Child {
   const s = server.services.ssh;
-  return [form(base, 'ssh', 'ssh', h('table', {}, section('SSH', 'OpenSSH: shell remota del servidor.', check('enabled', s.enabled, 'Activado'))), buttons()), accounts(base, 'ssh', s.users)];
+  const auth = sshAuthMethods(server);
+  const methods = auth ? [section('Autenticación', 'Métodos de /etc/ssh/sshd_config. Las claves públicas van en ~/.ssh/authorized_keys de cada usuario.',
+    h('input', { type: 'hidden', name: 'auth', value: '1' }), check('password', auth.password, 'Usuario y contraseña (PasswordAuthentication)'),
+    check('pubkey', auth.pubkey, 'Par de claves (PubkeyAuthentication)'))] : [];
+  return [form(base, 'ssh', 'ssh', h('table', {}, section('SSH', 'OpenSSH: shell remota del servidor.', check('enabled', s.enabled, 'Activado')), ...methods), buttons()), accounts(base, 'ssh', s.users)];
 }
 
 export function adminPage(server: Server, base: string): Child {

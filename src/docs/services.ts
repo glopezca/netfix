@@ -138,15 +138,16 @@ export const SERVICE_DOCS: DocGroup = {
     {
       id: 'srv-ssh',
       title: 'SSH',
-      summary: 'Cuentas, sesiones remotas con bash y editores a través de SSH.',
+      summary: 'Cuentas, sesiones remotas con bash y editores a través de SSH; clave del servidor en known_hosts.',
       blocks: [
         p('Las cuentas SSH se definen en el panel (usuario y contraseña). Cada sesión abre una shell de inicio de sesión del servidor: bash en Ubuntu (lee ~/.profile y ~/.bashrc) o cmd en Windows. Las cuentas existen también en el sistema Linux del servidor (/etc/passwd y /home/<usuario>).'),
-        code('alumno@pc0:~$ ssh admin@srv.aula.lab\nadmin@srv.aula.lab\'s password:\nWelcome to Ubuntu 26.04 LTS (GNU/Linux 6.17.0-generic x86_64)\nadmin@srv:~$ nano notas.txt        # el editor se abre a pantalla completa\nadmin@srv:~$ exit 3\nlogout\nConnection to srv.aula.lab closed.\nalumno@pc0:~$ echo $?\n3'),
+        code('alumno@pc0:~$ ssh admin@srv.aula.lab\nThe authenticity of host \'srv.aula.lab (192.168.10.2)\' can\'t be established.\n…\nAre you sure you want to continue connecting (yes/no/[fingerprint])? yes\nadmin@srv.aula.lab\'s password:\nWelcome to Ubuntu 26.04 LTS (GNU/Linux 6.17.0-generic x86_64)\nadmin@srv:~$ nano notas.txt        # el editor se abre a pantalla completa\nadmin@srv:~$ exit 3\nlogout\nConnection to srv.aula.lab closed.\nalumno@pc0:~$ echo $?\n3'),
         list(
           'Tres contraseñas erróneas: «Permission denied (publickey,password).»',
           'Servicio parado: «Connection refused»; nombre inexistente: «Could not resolve hostname».',
           'Ctrl+C y Ctrl+D se envían a la sesión remota.',
-          'El servidor registra cada intento en journalctl -u ssh (Accepted / Failed password).',
+          'El servidor registra cada intento en journalctl -u ssh (Accepted password / Accepted publickey / Failed password).',
+          'Para entrar sin contraseña, con pares de claves, consulta «SSH con pares de claves».',
         ),
       ],
     },

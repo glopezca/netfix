@@ -8,6 +8,9 @@ import { traceroute } from './trace-cmds.ts';
 import { FsError } from '../bash/vfs.ts';
 import { APACHE_TOOLS } from '../services/apache/tools.ts';
 import { curl } from './curl.ts';
+import { sshKeygen } from './ssh-keygen.ts';
+import { SSH_USAGE, SSH_WITH_VALUE } from './ssh-client.ts';
+import { sshCopyId } from './ssh-copy-id.ts';
 
 const PACKAGES: Readonly<Record<string, string>> = {
   ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
@@ -79,14 +82,24 @@ function wget(host: Host): CommandFn {
   };
 }
 
+/** Options before the destination (the remote command's words are not options of ssh). */
+function sshOptions(args: readonly string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i] ?? '';
+    if (!a.startsWith('-') || a === '-') break;
+    out.push(a);
+    if (a.length === 2 && SSH_WITH_VALUE.has(a)) i++;
+  }
+  return out;
+}
+
 function* ssh(ctx: Ctx): Gen<number> {
   const args = ctx.argv.slice(1);
-  if (!args.length || args.includes('-h')) {
-    ctx.err('usage: ssh [-46AaCfGgKkMNnqsTtVvXxYy] [-l login_name] [-p port] destination [command [argument ...]]\n');
-    return 255;
-  }
-  if (args.includes('-V')) { ctx.err('OpenSSH_10.0p2 Ubuntu-5ubuntu2, OpenSSL 3.5.3 16 Sep 2025\n'); return 0; }
-  const status = yield { kind: 'ssh', args };
+  const opts = sshOptions(args);
+  if (opts.includes('-V')) { ctx.err('OpenSSH_10.0p2 Ubuntu-5ubuntu2, OpenSSL 3.5.3 16 Sep 2025\n'); return 0; }
+  if (!args.length || opts.includes('-h')) { ctx.err(`${SSH_USAGE}\n`); return 255; }
+  const status = yield { kind: 'ssh', args, cwd: ctx.cwd };
   return Number(status ?? 255);
 }
 
@@ -101,7 +114,7 @@ function commandNotFound(ctx: Ctx): number {
 export function linuxPrograms(host: Host): Map<string, CommandFn> {
   return new Map<string, CommandFn>([
     ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)],
-    ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh],
+    ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId],
     ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
     ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
     ['ss', (ctx) => { lines(ctx, ss(host)); return 0; }],

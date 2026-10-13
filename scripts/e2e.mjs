@@ -94,6 +94,8 @@ try {
   assert.match(await page.locator('.grid-table').last().innerText(), /Prueba e2e/);
   await page.click('.win-tab:has-text("Terminal Linux")');
   await type('ssh admin@srv.aula.lab');
+  assert.match(await page.locator('.terminal:visible').innerText(), /ED25519 key fingerprint is SHA256:/);
+  await type('yes');
   await type('cisco');
   await type('systemctl is-active apache2');
   assert.match(await page.locator('.terminal:visible').innerText(), /admin@srv:~\$ systemctl is-active apache2\nactive/);
@@ -163,7 +165,7 @@ try {
   assert.match(await page.locator('.window').innerText(), /ip http server/);
   await page.click('.win-close');
   await page.click('button.seg:has-text("Acerca de")');
-  assert.match(await page.locator('#app').innerText(), /0\.5\.0/);
+  assert.match(await page.locator('#app').innerText(), /0\.6\.0/);
   await page.click('button.seg:has-text("Red")');
 
   assert.deepEqual(errors, []);

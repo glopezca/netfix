@@ -31,10 +31,10 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       code('Navegador del PC:  http://srv.aula.lab:10000/\nTerminal:          curl -u admin:admin "http://192.168.10.2:10000/?page=status"'),
       table(['Página', 'Qué cambia'], [
         ['Configuración', 'Nombre de host, IP estática o DHCP, puerta de enlace y DNS.'],
-        ['DHCP', 'Activar el servidor, añadir y borrar pools.'],
+        ['DHCP', 'Activar el servidor, añadir y borrar pools (concesiones por MAC o por Client-ID), direcciones reservadas por MAC o identificador (hex 01… o texto) y «Reservar» una concesión activa.'],
         ['DNS', 'Activar bind9, dominio de la zona y registros (A, CNAME, MX, NS, TXT; @ y * admitidos).'],
         ['Web', 'Apache y el acceso a Roundcube.'],
-        ['Correo · SSH', 'Servicios y usuarios.'],
+        ['Correo · SSH', 'Servicios y usuarios; en SSH, los métodos de autenticación (contraseña y/o par de claves) de sshd_config.'],
         ['Administración', 'Usuario/contraseña de la interfaz y su puerto o alias (al cambiarlo, el navegador pasa a la nueva dirección).'],
         ['Estado · Registros', 'Datos del equipo, servicios, concesiones y últimos mensajes (journalctl).'],
       ]),

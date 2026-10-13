@@ -100,6 +100,7 @@ test('SSH: remote bash login shell, remote editor, Ctrl+C and logout', () => {
   t.settle();
   const sh = createShell(pc, 'linux');
   sh.run('ssh admin@10.0.0.2');
+  sh.run('yes');
   assert.match(sh.run('cisco').join('\n'), /Welcome to Ubuntu/);
   assert.equal(plain(sh.prompt()), 'admin@server0:~$ ');
   assert.deepEqual(sh.run('shopt -q login_shell && echo login; whoami'), ['login', 'admin']);

@@ -10,6 +10,7 @@ import { formatIp } from '../core/ip.ts';
 import { validateFileName } from '../services/http-service.ts';
 import { UNITS, unitActive } from '../services/units.ts';
 import { createShell } from '../shells/factory.ts';
+import { sshAuthMethods, setSshAuthMethods } from '../services/ssh-auth-settings.ts';
 
 export function servicesTab(server: Server, app: AfterChange): HTMLElement {
   return subnav([
@@ -136,12 +137,35 @@ function mailPanel(server: Server, app: AfterChange): HTMLElement {
   });
 }
 
+/** PasswordAuthentication / PubkeyAuthentication switches (Ubuntu servers only). */
+function sshAuthControls(server: Server, app: AfterChange, refresh: () => void, notice: { error: string }): HTMLElement[] {
+  const auth = sshAuthMethods(server);
+  if (!auth) return [];
+  const msg = message();
+  if (notice.error) msg.error(notice.error);
+  notice.error = '';
+  const change = (want: { password: boolean; pubkey: boolean }): void => {
+    notice.error = setSshAuthMethods(server, want) ?? '';
+    app.afterCommand();
+    refresh();
+  };
+  return [
+    el('h3', {}, 'Autenticación'),
+    onOff('Usuario y contraseña (PasswordAuthentication)', auth.password, (on) => change({ ...auth, password: on })),
+    onOff('Par de claves (PubkeyAuthentication)', auth.pubkey, (on) => change({ ...auth, pubkey: on })),
+    el('p', { class: 'muted' }, 'Se guarda en /etc/ssh/sshd_config y se recarga ssh. En el PC: ssh-keygen y ssh-copy-id usuario@servidor; la clave queda en ~/.ssh/authorized_keys.'),
+    msg.el,
+  ];
+}
+
 function sshPanel(server: Server, app: AfterChange): HTMLElement {
+  const notice = { error: '' };
   return livePanel((refresh) => {
     const s = server.services;
     return [
       onOff('Servicio SSH (puerto 22)', s.ssh.enabled, (on) => { server.setUnit('ssh', on); app.afterCommand(); refresh(); }),
       el('p', { class: 'muted' }, `Desde un PC: ssh usuario@${server.config.ip !== undefined ? 'IP-del-servidor' : 'servidor'} en el Terminal o en el Símbolo del sistema. La sesión abre la shell ${server.os === 'windows' ? 'de Windows' : 'de Ubuntu'} de este servidor.`),
+      ...sshAuthControls(server, app, refresh, notice),
       accounts(s.ssh.users, (users) => { server.setServices({ ...server.services, ssh: { ...server.services.ssh, users } }); app.afterCommand(); refresh(); }, 'SSH'),
       el('h3', {}, 'Sesiones abiertas'),
       table(server.ssh.activeSessions(), [{ label: 'Sesión', value: (x) => x.id, mono: true }, { label: 'Usuario', value: (x) => x.user }], { empty: 'Ninguna.' }),

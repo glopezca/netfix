@@ -110,7 +110,6 @@ function serverFiles(server: Server): Map<string, string> {
   for (const z of zones) files.set(`/etc/bind/db.${z}`, zoneFile(s, z));
   files.set('/etc/postfix/main.cf', `myhostname = ${server.name.toLowerCase()}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
   files.set('/etc/dovecot/dovecot.conf', `protocols = ${[s.mail.pop3 ? 'pop3' : '', s.mail.imap ? 'imap' : ''].filter(Boolean).join(' ') || 'none'}\nmail_location = maildir:~/Maildir\n`);
-  files.set('/etc/ssh/sshd_config', `Port 22\nPermitRootLogin prohibit-password\nPasswordAuthentication yes\n# Usuarios permitidos (Netfix): ${s.ssh.users.map((u) => u.name).join(' ') || '(ninguno)'}\n`);
   const excl = s.dhcp.pools.flatMap(ptExclusions).length;
   files.set('/var/lib/kea/kea-leases4.csv', ['address,hwaddr,client_id,valid_lifetime,expire,subnet_id,hostname',
     ...server.dhcpEngine.allBindings(server.clock.now()).filter((b) => b.type === 'Automatic').map((b) =>

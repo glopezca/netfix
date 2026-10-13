@@ -99,7 +99,16 @@ export type AppPayload =
   | { readonly app: 'SMTP'; readonly kind: 'request'; readonly helo: string; readonly mail: MailMessage }
   | { readonly app: 'SMTP' | 'POP3' | 'IMAP'; readonly kind: 'reply'; readonly code: string; readonly text: string; readonly messages?: readonly MailMessage[] }
   | { readonly app: 'POP3' | 'IMAP'; readonly kind: 'request'; readonly user: string; readonly password: string }
-  | { readonly app: 'SSH'; readonly kind: 'auth'; readonly user: string; readonly password: string; readonly clientOs: string }
+  | { readonly app: 'SSH'; readonly kind: 'auth'; readonly user: string; readonly password: string; readonly clientOs: string;
+    /** none = handshake only (host key, methods, challenge); absent = password (older clients). */
+    readonly method?: 'none' | 'password' | 'publickey';
+    /** none: random nonce the server must sign with its host key. */
+    readonly nonce?: string;
+    /** password/publickey: the challenge received in the handshake (identifies the connection). */
+    readonly challenge?: string;
+    /** publickey: the public key line and its signature over the challenge, user and key. */
+    readonly key?: string;
+    readonly signature?: string }
   | { readonly app: 'SSH'; readonly kind: 'command'; readonly session: string; readonly line: string }
   /** Ctrl+C / Ctrl+D typed in the remote terminal. */
   | { readonly app: 'SSH'; readonly kind: 'key'; readonly session: string; readonly key: 'int' | 'eof' }
@@ -108,6 +117,12 @@ export type AppPayload =
   /** Full-screen remote program (mc): a key (or only a redraw) and the terminal size. */
   | { readonly app: 'SSH'; readonly kind: 'screen'; readonly session: string; readonly key?: KeyInput; readonly width: number; readonly height: number }
   | { readonly app: 'SSH'; readonly kind: 'output'; readonly ok: boolean; readonly lines: readonly string[]; readonly session?: string; readonly prompt?: string; readonly closed?: boolean; readonly secret?: boolean;
+    /** Handshake: the server's host key (public line), the authentication methods it accepts and the challenge (base64). */
+    readonly hostKey?: string;
+    readonly methods?: readonly string[];
+    readonly challenge?: string;
+    /** Handshake: signature of the client's nonce and the challenge with the host key. */
+    readonly hostSignature?: string;
     /** A remote program opened an editor (nano/vim): the client shows it full screen. */
     readonly edit?: EditSpec;
     /** Result of an edit/save request: null when written. */

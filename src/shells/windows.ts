@@ -1,4 +1,6 @@
 /** Windows Command Prompt: ipconfig, ping, nslookup, netstat, arp, curl, ssh, sc / net (servers). */
+import { windowsSshStore } from './ssh-stores.ts';
+import type { SshClientStore } from './ssh-client.ts';
 import { BaseShell } from './base.ts';
 import { resolveHost, dnsQuery, httpGet } from './net-tools.ts';
 import { nslookupOutput } from './dns-format.ts';
@@ -76,6 +78,10 @@ export class WindowsShell extends BaseShell {
   constructor(host: Host, user: string, remote = false) {
     super(host, user);
     this.remote = remote;
+  }
+
+  protected sshStore(_cwd?: string): SshClientStore {
+    return windowsSshStore(this.host, this.user);
   }
 
   protected localPrompt(): string {

@@ -3,6 +3,8 @@ import { BaseShell } from './base.ts';
 import type { Completion } from './base.ts';
 import { splitArgs } from './net-tools.ts';
 import { hostSystem } from './host-system.ts';
+import { linuxSshStore } from './ssh-stores.ts';
+import type { SshClientStore } from './ssh-client.ts';
 import { BashSession } from '../bash/shell.ts';
 import type { EditSpec, UserInfo } from '../bash/types.ts';
 import type { Frame, KeyInput } from '../editors/buffer.ts';
@@ -33,6 +35,10 @@ export class LinuxShell extends BaseShell {
   private account(): UserInfo {
     const found = hostSystem(this.host).env.users().find((u) => u.name === this.user);
     return found ?? { name: this.user, uid: FALLBACK_UID, gid: FALLBACK_UID, home: '/', shell: '/bin/bash', groups: [FALLBACK_UID] };
+  }
+
+  protected sshStore(cwd?: string): SshClientStore {
+    return linuxSshStore(hostSystem(this.host).env.fs, this.account(), cwd);
   }
 
   private newSession(): BashSession {
@@ -69,7 +75,7 @@ export class LinuxShell extends BaseShell {
   private after(text: string): string[] {
     const out = textLines(text);
     const pending = this.session.pending();
-    if (pending?.kind === 'ssh') out.push(...this.startSsh(pending.args));
+    if (pending?.kind === 'ssh') out.push(...this.startSsh(pending.args, pending.cwd));
     if (this.session.closed) {
       this.exitCode = this.session.exitCode;
       if (this.remoteSession) this.closed = true;

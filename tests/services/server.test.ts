@@ -176,7 +176,11 @@ test('SSH: login from Linux and Windows clients, remote commands, wrong password
   pc.useDhcp();
   t.settle();
   const sh = createShell(pc, 'linux');
-  assert.deepEqual(sh.run('ssh admin@srv.aula.lab'), []);
+  const first = sh.run('ssh admin@srv.aula.lab');
+  assert.equal(first[0], "The authenticity of host 'srv.aula.lab (192.168.10.2)' can't be established.");
+  assert.match(first[1] ?? '', /^ED25519 key fingerprint is SHA256:[A-Za-z0-9+/]{43}\.$/);
+  assert.equal(sh.prompt(), 'Are you sure you want to continue connecting (yes/no/[fingerprint])? ');
+  assert.deepEqual(sh.run('yes'), ["Warning: Permanently added 'srv.aula.lab' (ED25519) to the list of known hosts."]);
   assert.equal(sh.prompt(), "admin@srv.aula.lab's password: ");
   assert.equal(sh.secret(), true);
   assert.deepEqual(sh.run('mal'), ['Permission denied, please try again.']);
@@ -189,10 +193,12 @@ test('SSH: login from Linux and Windows clients, remote commands, wrong password
   assert.match(plain(sh.prompt()), /^alumno@pc0:~\$ $/);
   const win = createShell(pc, 'windows');
   win.run('ssh admin@192.168.10.2');
+  win.run('yes');
   assert.match(win.run('cisco').join('\n'), /Welcome to Ubuntu/);
   win.run('exit');
   const bad = createShell(pc, 'linux');
   bad.run('ssh root@192.168.10.2');
+  bad.run('yes');
   bad.run('a'); bad.run('b');
   assert.deepEqual(bad.run('c'), ['root@192.168.10.2: Permission denied (publickey,password).']);
   assert.match(createShell(srv, 'linux').run('journalctl -u ssh').join('\n'), /Failed password for invalid user root/);
@@ -218,6 +224,7 @@ test('Windows Server: sc, net start/stop, netstat; ssh session into Windows', ()
   assert.match(cmd.run('foo').join('\n'), /is not recognized/);
   const sh = createShell(pc, 'linux');
   sh.run('ssh admin@192.168.10.2');
+  sh.run('yes');
   assert.match(sh.run('cisco').join('\n'), /Microsoft Windows/);
   assert.equal(sh.prompt(), `admin@${srv.name.toUpperCase()} C:\\Users\\admin>`);
   assert.match(sh.run('hostname').join(''), new RegExp(srv.name));
@@ -304,6 +311,7 @@ test('review regressions: malformed URL, relay loop guard, SSH session bound to 
   assert.match(createShell(srv, 'linux').run('journalctl -u postfix').join('\n'), /status=bounced \(mail for other\.lab loops back to myself\)/);
   // SSH session ids are bound to the client address.
   sh.run('ssh -l admin srv.aula.lab');
+  sh.run('yes');
   assert.equal(sh.prompt(), "admin@srv.aula.lab's password: ");
   sh.run('cisco');
   const session = srv.ssh.activeSessions()[0]!.id;

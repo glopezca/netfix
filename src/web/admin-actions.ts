@@ -5,6 +5,7 @@ import { parseIp, parseMask } from '../core/ip.ts';
 import { validatePool } from '../services/dhcp-pt.ts';
 import { readIdentifier, reserveLease, setReservations } from '../services/dhcp-reservations.ts';
 import { validateRecord } from '../services/dns-service.ts';
+import { setSshAuthMethods } from '../services/ssh-auth-settings.ts';
 import { validateOrigin, cleanOrigin } from '../services/dns-names.ts';
 import { validateAccess, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } from '../services/config.ts';
 import type { Account, DnsRecord, ServerServices, WebAppAccess } from '../services/config.ts';
@@ -129,6 +130,15 @@ function admin(server: Server, f: Fields): Outcome & { readonly moved?: boolean 
   return { ...SAVED, moved: next.mode !== cur.mode || next.port !== cur.port || next.alias !== cur.alias };
 }
 
+/** SSH on/off and, on Ubuntu, the authentication methods of sshd_config. */
+function ssh(server: Server, f: Fields): Outcome {
+  const want = { password: on(f, 'password'), pubkey: on(f, 'pubkey') };
+  if (f.has('auth') && !want.password && !want.pubkey) return { error: 'Deja al menos un método de autenticación.' };
+  const saved = set(server, (s) => ({ ...s, ssh: { ...s.ssh, enabled: on(f, 'enabled') } }));
+  const err = server.os === 'linux' && f.has('auth') ? setSshAuthMethods(server, want) : null;
+  return err ? { error: err } : saved;
+}
+
 /** Runs a form action of a page. */
 export function runAction(server: Server, pageId: string, f: Fields): Outcome & { readonly moved?: boolean } {
   const action = f.get('action') ?? '';
@@ -145,7 +155,7 @@ export function runAction(server: Server, pageId: string, f: Fields): Outcome & 
     case 'record-del': return set(server, (s) => ({ ...s, dns: { ...s.dns, records: s.dns.records.filter((_, i) => String(i) !== f.get('key')) } }));
     case 'web': return web(server, f);
     case 'mail': return set(server, (s) => ({ ...s, mail: { ...s.mail, smtp: on(f, 'smtp'), pop3: on(f, 'pop3'), imap: on(f, 'imap'), domain: (f.get('domain') ?? '').trim().toLowerCase() } }));
-    case 'ssh': return set(server, (s) => ({ ...s, ssh: { ...s.ssh, enabled: on(f, 'enabled') } }));
+    case 'ssh': return ssh(server, f);
     case 'user-add': case 'user-del': return users(server, pageId === 'ssh' ? 'ssh' : 'mail', f, action === 'user-add');
     case 'admin': return admin(server, f);
     default: return { error: 'Acción desconocida.' };

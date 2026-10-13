@@ -105,6 +105,7 @@ test('mc works through SSH: frames and keys travel in the session', () => {
   t.settle();
   const sh = createShell(client, 'linux');
   sh.run('ssh admin@10.0.0.2');
+  sh.run('yes');
   sh.run('cisco');
   sh.run('mkdir remoto; mc');
   assert.match(screen(sh)[H - 2] ?? '', /^admin@server0:~\$/);
