@@ -105,6 +105,8 @@ export class Interp {
   constructor(env: HostEnv, user: UserInfo, o: { interactive: boolean; term: (t: string) => void; budget?: Budget }) {
     this.env = env;
     this.user = user;
+    // Ubuntu: 002 for users with their own group (pam_umask USERGROUPS_ENAB), 022 for root.
+    if (user.uid === 0) this.umask = 0o022;
     this.interactive = o.interactive;
     this.term = o.term;
     this.budget = o.budget ?? freshBudget();

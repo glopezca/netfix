@@ -192,7 +192,8 @@ export class Vfs {
   }
 
   /** Creates or replaces (or appends to) a regular file. */
-  writeFile(path: string, content: string, cred: Cred = ROOT, append = false, mode = 0o664): void {
+  /** `mode` applies when the file is created (default: 644 for root, 664 for users). */
+  writeFile(path: string, content: string, cred: Cred = ROOT, append = false, mode?: number): void {
     const p = normalize(path);
     const existing = this.tryLookup(p, cred);
     if (existing?.kind === 'dev') return;
@@ -205,7 +206,7 @@ export class Vfs {
     if (existing?.kind === 'file') return this.overwrite(existing, content, cred, append);
     if (!canAccess(parent, cred, 2) || !canAccess(parent, cred, 1)) throw new FsError('EACCES');
     this.charge(content.length);
-    parent.children.set(name, { kind: 'file', content, mode: cred.uid === 0 ? 0o644 : mode, uid: cred.uid, gid: cred.gid, mtime: this.now(), dirty: true });
+    parent.children.set(name, { kind: 'file', content, mode: mode ?? (cred.uid === 0 ? 0o644 : 0o664), uid: cred.uid, gid: cred.gid, mtime: this.now(), dirty: true });
     parent.mtime = this.now();
   }
 
@@ -343,9 +344,9 @@ export class Vfs {
     n.dirty = true;
   }
 
-  touch(path: string, cred: Cred = ROOT): void {
+  touch(path: string, cred: Cred = ROOT, mode?: number): void {
     const n = this.tryLookup(path, cred);
-    if (!n) return this.writeFile(path, '', cred);
+    if (!n) return this.writeFile(path, '', cred, false, mode);
     if (cred.uid !== 0 && n.uid !== cred.uid && !canAccess(n, cred, 2)) throw new FsError('EACCES');
     n.mtime = this.now();
   }

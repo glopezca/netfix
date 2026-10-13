@@ -45,7 +45,7 @@ function touch(ctx: Ctx): number {
     const path = ctx.resolve(f);
     if (p.opts.has('c') && !ctx.sh.env.fs.exists(path)) continue;
     try {
-      ctx.sh.env.fs.touch(path, ctx.cred);
+      ctx.sh.env.fs.touch(path, ctx.cred, 0o666 & ~ctx.sh.umask);
     } catch (e) {
       ctx.err(`touch: cannot touch ${q(f)}: ${errMsg(e)}\n`);
       status = 1;
@@ -285,8 +285,17 @@ function chmod(ctx: Ctx): number {
   return status;
 }
 
+/** Changes owner and group of `path` (and, with -R, of everything below it). */
+function chownTree(ctx: Ctx, path: string, uid: number | undefined, gid: number | undefined, recursive: boolean): void {
+  const fs = ctx.sh.env.fs;
+  const st = fs.stat(path, ctx.cred, !recursive);
+  fs.chown(path, uid ?? st.uid, gid ?? st.gid, ctx.cred);
+  if (recursive && st.kind === 'dir') for (const n of fs.readdir(path, ctx.cred)) chownTree(ctx, normalize(n, path), uid, gid, true);
+}
+
 function chown(groupOnly: boolean): CommandFn {
   return (ctx) => {
+    const recursive = ctx.argv.slice(1).includes('-R');
     const args = ctx.argv.slice(1).filter((a) => !['-R', '-v', '-h', '-f'].includes(a));
     const [spec, ...files] = args;
     const name = groupOnly ? 'chgrp' : 'chown';
@@ -300,8 +309,7 @@ function chown(groupOnly: boolean): CommandFn {
     let status = 0;
     for (const f of files) {
       try {
-        const st = ctx.sh.env.fs.stat(ctx.resolve(f), ctx.cred);
-        ctx.sh.env.fs.chown(ctx.resolve(f), uid ?? st.uid, gid ?? st.gid, ctx.cred);
+        chownTree(ctx, ctx.resolve(f), uid, gid, recursive);
       } catch (e) {
         ctx.err(e instanceof FsError && e.code === 'ENOENT' ? `${name}: cannot access ${q(f)}: ${errMsg(e)}\n` : `${name}: changing ${groupOnly ? 'group' : 'ownership'} of ${q(f)}: ${errMsg(e)}\n`);
         status = 1;
