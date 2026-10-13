@@ -6,6 +6,7 @@ import { validatePool } from '../services/dhcp-pt.ts';
 import { readIdentifier, reserveLease, setReservations } from '../services/dhcp-reservations.ts';
 import { validateRecord } from '../services/dns-service.ts';
 import { setSshAuthMethods } from '../services/ssh-auth-settings.ts';
+import { applyRecursion } from '../services/dns-recursion.ts';
 import { validateOrigin, cleanOrigin } from '../services/dns-names.ts';
 import { validateAccess, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } from '../services/config.ts';
 import type { Account, DnsRecord, ServerServices, WebAppAccess } from '../services/config.ts';
@@ -96,6 +97,13 @@ function dns(server: Server, f: Fields): Outcome {
   return err ? { error: err } : set(server, (s) => ({ ...s, dns: { ...s.dns, enabled: on(f, 'enabled'), origin: cleanOrigin(origin) } }));
 }
 
+function recursion(server: Server, f: Fields): Outcome {
+  const next = applyRecursion(server.services.dns, { forwarders: f.get('forwarders') ?? '', forwardOnly: f.get('forward') !== 'first', allowRecursion: f.get('allow') === 'any' ? 'any' : 'localnets' });
+  if ('error' in next) return { error: next.error };
+  server.dns.forwarder.flush();
+  return set(server, (s) => ({ ...s, dns: next }));
+}
+
 function access(f: Fields, prefix: string, current: WebAppAccess, enabled: boolean): WebAppAccess {
   return { enabled, mode: f.get(`${prefix}mode`) === 'port' ? 'port' : 'alias', alias: (f.get(`${prefix}alias`) ?? current.alias).trim(), port: Number(f.get(`${prefix}port`) ?? current.port) };
 }
@@ -151,6 +159,7 @@ export function runAction(server: Server, pageId: string, f: Fields): Outcome & 
     case 'res-del': return deleteReservation(server, f);
     case 'lease-reserve': return reserveFromLease(server, f);
     case 'dns': return dns(server, f);
+    case 'dns-recursion': return recursion(server, f);
     case 'record-add': return addRecord(server, f);
     case 'record-del': return set(server, (s) => ({ ...s, dns: { ...s.dns, records: s.dns.records.filter((_, i) => String(i) !== f.get('key')) } }));
     case 'web': return web(server, f);

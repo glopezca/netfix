@@ -1,4 +1,5 @@
 /** ISP cloud window: provider, public block and domains; per-line mode, speeds, LAN, port forwarding. */
+import { t } from '../i18n/t.ts';
 import { el } from './dom.ts';
 import { field, input, button, message, select, table, subnav } from './forms.ts';
 import { livePanel } from './server-dhcp-dns.ts';
@@ -103,11 +104,12 @@ function linePanel(cloud: Cloud, name: CloudPortName, app: CloudHost): HTMLEleme
     const up = input({ value: String(c.up), inputmode: 'numeric' });
     const lan = input({ value: formatIp(c.lanIp) });
     const mask = input({ value: formatMask(c.lanPrefix) });
+    const relay = el('input', { type: 'checkbox', checked: c.dnsRelay === true });
     const apply = (): void => {
       const ip = parseIp(lan.value.trim());
       const prefix = parseMask(mask.value.trim());
       if (ip === null || prefix === null) return msg.error('Revisa la IP y la máscara de la LAN.');
-      put({ ...c, mode: mode.value === 'public' ? 'public' : 'router', down: Number(down.value), up: Number(up.value), lanIp: ip, lanPrefix: prefix });
+      put({ ...c, mode: mode.value === 'public' ? 'public' : 'router', down: Number(down.value), up: Number(up.value), lanIp: ip, lanPrefix: prefix, dnsRelay: relay.checked });
     };
     const peer = app.connected(name);
     const leases = line.leases().map((b) => `${formatIp(b.ip)} → ${b.hostname ?? b.mac}`);
@@ -117,11 +119,13 @@ function linePanel(cloud: Cloud, name: CloudPortName, app: CloudHost): HTMLEleme
       el('p', { class: 'muted' }, peer ? `Conectado a ${peer}.` : 'Sin cable: conecta aquí un router o un PC.'),
       el('div', { class: 'grid2' }, field('Modo de la línea', mode, 'Router del operador: LAN, DHCP y NAT. IP pública: tu router recibe x.y.n.2 por DHCP.'), field('Bajada / subida (Mbit/s)', el('div', { class: 'grid2' }, down, up))),
       c.mode === 'router' ? el('div', { class: 'grid2' }, field('IP del router (LAN)', lan), field('Máscara de la LAN', mask)) : el('div', {}),
+      c.mode === 'router' ? el('label', { class: 'check' }, relay, ` ${t('dns.relay')}`) : el('div', {}),
+      c.mode === 'router' ? el('p', { class: 'field-hint' }, t('dns.relayHint')) : el('div', {}),
       el('div', { class: 'actions' }, button('Guardar', apply)),
       msg.el,
       el('h3', {}, 'Direcciones'),
       el('ul', { class: 'muted' }, ...(c.mode === 'router'
-        ? [el('li', {}, `IP pública (WAN): ${formatIp(line.wan())}`), el('li', {}, `LAN ${formatIp(c.lanIp)}/${c.lanPrefix}; DHCP desde .33; DNS 8.8.8.8 y 8.8.4.4.`)]
+        ? [el('li', {}, `IP pública (WAN): ${formatIp(line.wan())}`), el('li', {}, `LAN ${formatIp(c.lanIp)}/${c.lanPrefix}; DHCP desde .33.`), el('li', {}, c.dnsRelay ? t('dns.relayOn', { ip: formatIp(c.lanIp) }) : 'DNS 8.8.8.8 y 8.8.4.4.')]
         : [el('li', {}, `Subred pública ${formatIp(sub.net)}/${LINE_PREFIX}; puerta de enlace ${formatIp(sub.gw)}`), el('li', {}, `DHCP entrega ${formatIp(sub.customer)}; ${formatIp(sub.customer + 1)}–${formatIp(sub.customer + 4)} libres para NAT estático.`)])),
       el('p', { class: 'muted' }, `Concesiones: ${leases.join(' · ') || 'ninguna'}`),
       c.mode === 'router' ? el('p', { class: 'muted mono' }, `NAT: ${nat.join(' · ') || 'sin traducciones'}`) : el('div', {}),

@@ -12,6 +12,7 @@ import { sshKeygen } from './ssh-keygen.ts';
 import { SSH_USAGE, SSH_WITH_VALUE } from './ssh-client.ts';
 import { sshCopyId } from './ssh-copy-id.ts';
 import { netplanProgram } from './netplan.ts';
+import { rndc } from './rndc.ts';
 
 const PACKAGES: Readonly<Record<string, string>> = {
   ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
@@ -120,6 +121,6 @@ export function linuxPrograms(host: Host): Map<string, CommandFn> {
     ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
     ['ss', (ctx) => { lines(ctx, ss(host)); return 0; }],
     ['command-not-found', commandNotFound],
-    ...(host.kind === 'server' ? APACHE_TOOLS : []),
+    ...(host.kind === 'server' ? [...APACHE_TOOLS, ['rndc', rndc(host)] as const] : []),
   ]);
 }

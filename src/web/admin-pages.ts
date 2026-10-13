@@ -1,4 +1,6 @@
 /** Pages of the Server management GUI (forms filled with the live configuration). */
+import { forwardersText } from '../services/dns-recursion.ts';
+import { t } from '../i18n/t.ts';
 import { sshAuthMethods } from '../services/ssh-auth-settings.ts';
 import type { Server } from '../devices/server.ts';
 import { h } from './html.ts';
@@ -72,6 +74,10 @@ export function dnsPage(server: Server, base: string): Child {
   return [
     form(base, 'dns', 'dns', h('table', {}, section('Servidor DNS', 'bind9. Dominio de la zona para nombres relativos (@, www, *).',
       check('enabled', d.enabled, 'Activado'), row('Dominio de la zona', text('origin', d.origin ?? '')))), buttons()),
+    form(base, 'dns', 'dns-recursion', h('table', {}, section(t('dns.rec.title'), t('dns.rec.help'),
+      row(t('dns.rec.forwarders'), text('forwarders', forwardersText(d))),
+      row(t('dns.rec.mode'), choose('forward', d.forwardOnly === false ? 'first' : 'only', [['only', t('dns.rec.only')], ['first', t('dns.rec.first')]])),
+      row(t('dns.rec.allow'), choose('allow', d.allowRecursion ?? 'localnets', [['localnets', t('dns.rec.localnets')], ['any', t('dns.rec.any')]])))), buttons()),
     h('table', {}, section('Registros', 'Registros de la zona.', table(['Nombre', 'Tipo', 'Valor', 'TTL', ''], rows, 'Sin registros.'))),
     form(base, 'dns', 'record-add', h('table', {}, section('Nuevo registro', 'A, CNAME, MX, NS o TXT. Prioridad solo para MX.',
       row('Nombre', text('name', '')), row('Tipo', choose('type', 'A', [['A', 'A'], ['CNAME', 'CNAME'], ['MX', 'MX'], ['NS', 'NS'], ['TXT', 'TXT']])),

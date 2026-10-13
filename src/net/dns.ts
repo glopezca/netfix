@@ -15,7 +15,7 @@ export interface ResolverEnv {
 
 const RESOLVER_PORT_BASE = 50_000;
 const RESOLVER_PORTS = 1000;
-const DEFAULT_TIMEOUT_MS = 2000;
+const DEFAULT_TIMEOUT_MS = 5000;
 const MAX_CNAME_CHAIN = 8;
 
 export class DnsResolver {
@@ -39,7 +39,7 @@ export class DnsResolver {
     }
     const id = this.nextId = (this.nextId + 1) & 0xffff;
     const sport = RESOLVER_PORT_BASE + (id % RESOLVER_PORTS);
-    const msg: DnsMessage = { id, response: false, qname: normalizeName(name), qtype: type };
+    const msg: DnsMessage = { id, response: false, qname: normalizeName(name), qtype: type, rd: true };
     let settled = false;
     const finish = (r: DnsResult): void => {
       if (settled) return;

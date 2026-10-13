@@ -15,7 +15,7 @@ const RECORD_TYPES = new Set(['A', 'CNAME', 'MX', 'NS', 'TXT']);
 
 export interface ServicesJson {
   readonly dhcp: { enabled: boolean; pools: Json[] };
-  readonly dns: { enabled: boolean; origin?: string; records: DnsRecord[] };
+  readonly dns: { enabled: boolean; origin?: string; records: DnsRecord[]; forwarders?: string[]; forwardOnly?: boolean; allowRecursion?: 'localnets' | 'any' };
   readonly http: { enabled: boolean; files: WebFile[] };
   readonly mail: ServerServices['mail'];
   readonly ssh: ServerServices['ssh'];
@@ -35,7 +35,10 @@ export function servicesToJson(s: ServerServices): ServicesJson {
         identifyBy: p.identifyBy,
       })),
     },
-    dns: { enabled: s.dns.enabled, origin: s.dns.origin, records: [...s.dns.records] },
+    dns: {
+      enabled: s.dns.enabled, origin: s.dns.origin, records: [...s.dns.records],
+      ...(s.dns.forwarders?.length ? { forwarders: s.dns.forwarders.map(formatIp), forwardOnly: s.dns.forwardOnly, allowRecursion: s.dns.allowRecursion } : {}),
+    },
     http: { enabled: s.http.enabled, files: [...s.http.files] },
     mail: s.mail,
     ssh: s.ssh,
@@ -149,6 +152,15 @@ function webapps(v: unknown): WebApps {
   };
 }
 
+const MAX_FORWARDERS = 8;
+
+function dnsFromJson(n: Record<string, unknown>): ServerServices['dns'] {
+  const base = { enabled: bool(n.enabled), origin: origin(n.origin), records: arr(n.records, 'registros').map(record) };
+  const fwd = arr(n.forwarders, 'reenviadores DNS').slice(0, MAX_FORWARDERS).map((x) => optIp(x, 'reenviador DNS')).filter((x): x is number => x !== undefined);
+  if (!fwd.length) return base;
+  return { ...base, forwarders: fwd, forwardOnly: n.forwardOnly !== false, allowRecursion: n.allowRecursion === 'any' ? 'any' : 'localnets' };
+}
+
 export function servicesFromJson(v: unknown): ServerServices {
   if (v === undefined) return defaultServices();
   if (!isObj(v)) throw new Error('Servicios del servidor no válidos.');
@@ -159,7 +171,7 @@ export function servicesFromJson(v: unknown): ServerServices {
   const s = isObj(v.ssh) ? v.ssh : {};
   return {
     dhcp: { enabled: bool(d.enabled), pools: arr(d.pools, 'pools').map(pool) },
-    dns: { enabled: bool(n.enabled), origin: origin(n.origin), records: arr(n.records, 'registros').map(record) },
+    dns: dnsFromJson(n),
     http: { enabled: bool(h.enabled), files: arr(h.files, 'ficheros web').map((f) => { if (!isObj(f)) throw new Error('Fichero web no válido.'); return { name: str(f.name, 'fichero web', 128), content: str(f.content, 'contenido web', MAX_TEXT) }; }) },
     mail: { smtp: bool(m.smtp), pop3: bool(m.pop3), imap: bool(m.imap), domain: m.domain === undefined ? '' : str(m.domain, 'dominio de correo'), users: arr(m.users, 'usuarios de correo').map(account) },
     ssh: { enabled: bool(s.enabled), users: arr(s.users, 'usuarios SSH').map(account) },

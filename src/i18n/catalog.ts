@@ -13,12 +13,14 @@ import { MC_ES } from './es-ES/mc.ts';
 import { MC_EN } from './en-GB/mc.ts';
 import { HOST_ES } from './es-ES/host.ts';
 import { HOST_EN } from './en-GB/host.ts';
+import { DNS_ES } from './es-ES/dns.ts';
+import { DNS_EN } from './en-GB/dns.ts';
 
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES };
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES };
 
 export type MessageKey = keyof typeof ES;
 
 export const CATALOGS: Readonly<Record<Locale, Readonly<Record<MessageKey, string>>>> = {
   'es-ES': ES,
-  'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN },
+  'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN },
 };

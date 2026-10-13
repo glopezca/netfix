@@ -7,6 +7,7 @@ import type { PtDhcpPool, DnsRecord, DnsRecordType } from '../services/config.ts
 import { DEFAULT_LEASE_MINUTES, DEFAULT_MAX_USERS, DEFAULT_TTL } from '../services/config.ts';
 import { validatePool } from '../services/dhcp-pt.ts';
 import { reservationsPanel, leasesPanel } from './server-dhcp-res.ts';
+import { recursionForm } from './server-dns-recursion.ts';
 import { validateRecord } from '../services/dns-service.ts';
 import { cleanOrigin, displayName, validateOrigin } from '../services/dns-names.ts';
 import { formatIp, formatMask, parseIp, parseMask, networkOf } from '../core/ip.ts';
@@ -178,7 +179,8 @@ export function dnsPanel(server: Server, app: AfterChange): HTMLElement {
       onOff('Servicio DNS', s.dns.enabled, (on) => { server.setUnit('dns', on); app.afterCommand(); refresh(); }),
       ...originForm(server, app, refresh),
       ...recordForm(server, app, refresh),
-      el('p', { class: 'muted' }, 'Los registros PTR se generan solos a partir de los A (prueba dig -x IP). El servidor es autoritativo: no resuelve nombres de Internet.'),
+      el('p', { class: 'muted' }, 'Los registros PTR se generan solos a partir de los A (prueba dig -x IP).'),
+      ...recursionForm(server, app, refresh),
       el('h3', {}, 'Registros'),
       table(s.dns.records, [
         { label: 'Nombre', value: (r) => r.name, mono: true },

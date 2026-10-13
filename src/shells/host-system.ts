@@ -1,4 +1,5 @@
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
+import { NAMED_OPTIONS, parseNamedOptions } from '../services/named-options.ts';
 import { NETPLAN_FILE, netplanFileContent, writeNetplanFile } from './netplan.ts';
 import { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } from '../services/sshd-config.ts';
 import { hostKeyFiles } from '../services/ssh-hostkeys.ts';
@@ -85,6 +86,13 @@ function webRoot(server: Server): DirMount {
 /** Generated files that root may edit: writing them changes the device configuration. */
 const WRITERS: Readonly<Record<string, (host: Host, content: string) => void>> = {
   [NETPLAN_FILE]: (host, content) => writeNetplanFile(host, content),
+  [NAMED_OPTIONS]: (host, content) => {
+    const srv = asServer(host);
+    if (!srv) return;
+    const next = parseNamedOptions(content, srv.services.dns);
+    if ('error' in next) srv.log('dns', `named-checkconf: ${next.error}`);
+    else srv.setServices({ ...srv.services, dns: next });
+  },
   '/etc/hostname': (host, content) => {
     const name = content.trim().split('\n')[0]?.trim() ?? '';
     if (validHostname(name) === null) host.setHostname(name);

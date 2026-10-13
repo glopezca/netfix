@@ -83,10 +83,23 @@ export function validateAccess(a: WebAppAccess, other?: WebAppAccess): string | 
   return null;
 }
 
+/** bind9: zones, plus recursion through forwarders (none = authoritative only, like v0.6). */
+export interface DnsSettings {
+  readonly enabled: boolean;
+  readonly origin?: string;
+  readonly records: readonly DnsRecord[];
+  /** Upstream resolvers (forwarders { … }); empty or absent = no recursion. */
+  readonly forwarders?: readonly number[];
+  /** forward only (true, default) or forward first. */
+  readonly forwardOnly?: boolean;
+  /** allow-recursion: localnets (default) or any. */
+  readonly allowRecursion?: 'localnets' | 'any';
+}
+
 export interface ServerServices {
   readonly dhcp: { readonly enabled: boolean; readonly pools: readonly PtDhcpPool[] };
   /** `origin`: zone origin for relative names (BIND `$ORIGIN`); undefined = every name is absolute. */
-  readonly dns: { readonly enabled: boolean; readonly origin?: string; readonly records: readonly DnsRecord[] };
+  readonly dns: DnsSettings;
   readonly http: { readonly enabled: boolean; readonly files: readonly WebFile[] };
   readonly mail: {
     readonly smtp: boolean;

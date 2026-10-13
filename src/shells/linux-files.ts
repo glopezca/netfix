@@ -8,6 +8,7 @@ import { normalizeName } from '../net/dns.ts';
 import { ptExclusions } from '../services/dhcp-pt.ts';
 import type { DnsRecord, ServerServices } from '../services/config.ts';
 import { cleanOrigin, effectiveRecords, qualify } from '../services/dns-names.ts';
+import { NAMED_OPTIONS, namedOptions } from '../services/named-options.ts';
 
 export const IFACE = 'eth0';
 
@@ -97,6 +98,7 @@ function serverFiles(server: Server): Map<string, string> {
   webAppFiles(s, files);
   files.set('/etc/kea/kea-dhcp4.conf', keaConf(s));
   const zones = zonesFor(s);
+  files.set(NAMED_OPTIONS, namedOptions(s.dns));
   files.set('/etc/bind/named.conf.local', zones.map((z) => `zone "${z}" {\n    type master;\n    file "/etc/bind/db.${z}";\n};\n`).join('\n'));
   for (const z of zones) files.set(`/etc/bind/db.${z}`, zoneFile(s, z));
   files.set('/etc/postfix/main.cf', `myhostname = ${server.name.toLowerCase()}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);

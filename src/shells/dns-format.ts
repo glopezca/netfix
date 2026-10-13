@@ -19,13 +19,14 @@ export function digOutput(name: string, type: DnsType, r: DnsResult, short: bool
   const m = r.msg;
   const answers = m.answers ?? [];
   if (short) return answers.map((a) => (a.type === 'A' || a.type === 'TXT' ? a.data : a.type === 'MX' ? `${a.priority ?? 10} ${a.data}.` : `${a.data}.`));
-  const flags = ['qr', m.authoritative ? 'aa' : '', 'rd'].filter(Boolean).join(' ');
+  const flags = ['qr', m.authoritative ? 'aa' : '', 'rd', m.ra ? 'ra' : ''].filter(Boolean).join(' ');
   const out = [
     `; <<>> DiG ${DIG_VERSION} <<>> ${name}${type !== 'A' ? ` ${type}` : ''}`,
     ';; global options: +cmd',
     ';; Got answer:',
     `;; ->>HEADER<<- opcode: QUERY, status: ${m.rcode ?? 'NOERROR'}, id: ${m.id}`,
     `;; flags: ${flags}; QUERY: 1, ANSWER: ${answers.length}, AUTHORITY: ${m.authority?.length ?? 0}, ADDITIONAL: 0`,
+    ...(m.ra ? [] : [';; WARNING: recursion requested but not available']),
     '',
     ';; QUESTION SECTION:',
     `;${`${m.qname}.`.padEnd(23)}\tIN\t${m.qtype}`,
@@ -54,9 +55,9 @@ export function nslookupOutput(name: string, r: DnsResult, windows: boolean): st
   if (m.qtype === 'MX') return [...head, ...addrs.map((a) => `${a.name}\tmail exchanger = ${a.priority ?? 10} ${a.data}.`)];
   if (windows) {
     const final = addrs[0]?.name ?? name;
-    return [...head, `Name:    ${final}`, `Address${addrs.length > 1 ? 'es' : ''}:  ${addrs.map((a) => a.data).join('\n          ')}`, ...(aliases.length ? [`Aliases:  ${aliases.map((a) => a.name).join(', ')}`] : []), ''];
+    return [...head, ...(m.authoritative ? [] : ['Non-authoritative answer:']), `Name:    ${final}`, `Address${addrs.length > 1 ? 'es' : ''}:  ${addrs.map((a) => a.data).join('\n          ')}`, ...(aliases.length ? [`Aliases:  ${aliases.map((a) => a.name).join(', ')}`] : []), ''];
   }
-  return [...head, ...aliases.map((a) => `${a.name}\tcanonical name = ${a.data}.`), ...addrs.flatMap((a) => [`Name:\t${a.name}`, `Address: ${a.data}`]), ''];
+  return [...head, ...(m.authoritative ? [] : ['Non-authoritative answer:']), ...aliases.map((a) => `${a.name}\tcanonical name = ${a.data}.`), ...addrs.flatMap((a) => [`Name:\t${a.name}`, `Address: ${a.data}`]), ''];
 }
 
 export function hostOutput(name: string, r: DnsResult): string[] {

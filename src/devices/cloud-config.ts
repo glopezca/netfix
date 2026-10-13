@@ -26,6 +26,8 @@ export interface CloudPortSettings {
   readonly lanIp: number;
   readonly lanPrefix: number;
   readonly forwards: readonly PortForward[];
+  /** Router mode: the gateway is the customers' DNS and relays to Google (dnsmasq-style). */
+  readonly dnsRelay?: boolean;
 }
 
 export interface CloudDomain {
@@ -140,7 +142,7 @@ const obj = (v: unknown): Record<string, unknown> => (typeof v === 'object' && v
 export function cloudToJson(s: CloudSettings): unknown {
   const ports = Object.fromEntries(CLOUD_PORTS.map((p) => {
     const c = s.ports[p];
-    return [p, { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })) }];
+    return [p, { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}) }];
   }));
   return { isp: s.isp, block: formatIp(s.block), ports, domains: s.domains.map((d) => ({ ...d, ip: formatIp(d.ip) })) };
 }
@@ -151,7 +153,7 @@ function portFromJson(port: string, v: unknown): CloudPortSettings {
   const forwards = (Array.isArray(o.forwards) ? o.forwards : []).slice(0, MAX_FORWARDS).map(obj).map((f) => ({
     proto: f.proto === 'udp' ? 'udp' as const : 'tcp' as const, port: num(f.port, 0), ip: ipOf(f.ip, 0), toPort: num(f.toPort, 0),
   }));
-  const p = { mode: o.mode === 'public' ? 'public' as const : 'router' as const, down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards };
+  const p = { mode: o.mode === 'public' ? 'public' as const : 'router' as const, down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards, ...(o.dnsRelay === true ? { dnsRelay: true } : {}) };
   return validatePort(p) ? d : p;
 }
 

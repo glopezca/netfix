@@ -1,0 +1,59 @@
+/** bind9 on Server: authoritative answers for its zones and, with forwarders, recursion for allowed clients. */
+import type { DnsMessage, IpPacket } from '../net/packets.ts';
+import { DNS_PORT } from '../net/packets.ts';
+import type { DnsSettings } from './config.ts';
+import { answerQuery } from './dns-service.ts';
+import { cleanOrigin, effectiveRecords } from './dns-names.ts';
+import { DnsForwarder, recursionAllowed } from './dns-forwarder.ts';
+import { formatIp } from '../core/ip.ts';
+
+export interface DnsHost {
+  readonly services: { readonly dns: DnsSettings };
+  readonly config: { readonly ip?: number; readonly prefix?: number };
+  sendUdp(dst: number, sport: number, dport: number, body: { dns: DnsMessage }): boolean;
+  log(unit: 'dns', line: string): void;
+  readonly hooks: { schedule(delayMs: number, fn: () => void): void };
+  readonly clock: { now(): number };
+}
+
+export class ServerDns {
+  private readonly host: DnsHost;
+  readonly forwarder: DnsForwarder;
+
+  constructor(host: DnsHost) {
+    this.host = host;
+    this.forwarder = new DnsForwarder({
+      send: (dst, sport, msg) => { host.sendUdp(dst, sport, DNS_PORT, { dns: msg }); },
+      reply: (to, port, msg) => { host.sendUdp(to, DNS_PORT, port, { dns: msg }); },
+      schedule: (d, fn) => host.hooks.schedule(d, fn),
+      now: () => host.clock.now(),
+      log: (l) => host.log('dns', l),
+    });
+  }
+
+  /** Handles a DNS datagram; false when it is not for bind (another service may want it). */
+  handle(packet: IpPacket): boolean {
+    const udp = packet.udp;
+    const dns = udp?.dns;
+    if (!udp || !dns) return false;
+    if (dns.response) return this.forwarder.onResponse(udp.dport, dns);
+    if (udp.dport !== DNS_PORT || !this.host.services.dns.enabled) return false;
+    this.query(packet.src, udp.sport, packet.dst, dns);
+    return true;
+  }
+
+  private query(src: number, sport: number, dst: number, q: DnsMessage): void {
+    const s = this.host.services.dns;
+    const forwarders = s.forwarders ?? [];
+    const recursion = forwarders.length > 0 && recursionAllowed(s.allowRecursion ?? 'localnets', src, this.host.config);
+    const answer = answerQuery(q, effectiveRecords(s), cleanOrigin(s.origin));
+    const head = `client ${formatIp(src)}#${sport} (${q.qname}): query: ${q.qname} IN ${q.qtype} ${q.rd === false ? '-' : '+'} (${formatIp(dst)})`;
+    if (answer.rcode === 'REFUSED' && recursion && q.rd !== false) {
+      this.host.log('dns', `${head} → forwarding to ${forwarders.map(formatIp).join(', ')}`);
+      this.forwarder.resolve(q, src, sport, forwarders);
+      return;
+    }
+    this.host.log('dns', `${head} → ${answer.rcode}`);
+    this.host.sendUdp(src, DNS_PORT, sport, { dns: { ...answer, rd: q.rd, ra: recursion } });
+  }
+}

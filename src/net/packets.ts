@@ -67,6 +67,10 @@ export interface DnsMessage {
   readonly qtype: DnsType;
   readonly rcode?: DnsRcode;
   readonly authoritative?: boolean;
+  /** Recursion desired (queries) / echoed in answers. */
+  readonly rd?: boolean;
+  /** Recursion available (answers from a recursive server). */
+  readonly ra?: boolean;
   readonly answers?: readonly DnsAnswer[];
   readonly authority?: readonly DnsAnswer[];
 }

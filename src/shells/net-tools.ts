@@ -11,7 +11,7 @@ export type Resolved =
   | { readonly kind: 'ip'; readonly ip: number; readonly name: string; readonly viaDns: boolean }
   | { readonly kind: 'error'; readonly reason: 'noserver' | 'timeout' | 'nxdomain' | 'nodata' };
 
-const DNS_WAIT_MS = 3000;
+const DNS_WAIT_MS = 6000;
 const DEFAULT_HTTP_PORT = 80;
 const TCP_WAIT_MS = 6000;
 /** Remote commands may run network tools on the server (ping, dig, curl…). */

@@ -15,6 +15,8 @@ import type { StaticNat } from '../net/nat.ts';
 import type { InternetCore } from '../net/internet.ts';
 import { GOOGLE_DNS } from '../net/internet-hosts.ts';
 import { BROADCAST_IP, inSubnet, networkOf } from '../core/ip.ts';
+import { DnsForwarder } from '../services/dns-forwarder.ts';
+import { DNS_PORT } from '../net/packets.ts';
 import type { CloudPortSettings } from './cloud-config.ts';
 import { LINE_PREFIX, lineSubnet } from './cloud-config.ts';
 
@@ -45,6 +47,8 @@ export class CloudPort implements StackHost {
   private readonly owner: PortOwner;
   private readonly core: InternetCore;
   private appliedNet = -1;
+  /** ISP DNS relay (router mode with dnsRelay): customers' queries to the gateway, relayed to Google. */
+  readonly relay: DnsForwarder;
 
   constructor(owner: PortOwner, core: InternetCore, name: string, settings: CloudPortSettings) {
     this.owner = owner;
@@ -52,6 +56,13 @@ export class CloudPort implements StackHost {
     this.name = name;
     this.settings = settings;
     this.stack = new IpStack(this, () => owner.now());
+    this.relay = new DnsForwarder({
+      send: (dst, sport, msg) => this.core.send({ src: this.wan(), dst, ttl: DEFAULT_TTL, protocol: 'udp', udp: { sport, dport: DNS_PORT, dns: msg } }),
+      reply: (to, port, msg) => { this.stack.send({ src: this.gatewayAddr().ip, dst: to, ttl: DEFAULT_TTL, protocol: 'udp', udp: { sport: DNS_PORT, dport: port, dns: msg } }); },
+      schedule: (d, fn) => owner.schedule(d, fn),
+      now: () => owner.now(),
+      log: () => undefined,
+    });
     this.apply(settings);
   }
 
@@ -80,8 +91,10 @@ export class CloudPort implements StackHost {
     const offset = hosts > SMALL_LAN ? DHCP_FIRST_HOST : 2;
     const start = lan ? base + offset : net + 2;
     const max = lan ? Math.min(DHCP_LAST_HOST - DHCP_FIRST_HOST + 1, hosts - offset + 1) : 1;
-    const pool = { name: this.name, start, prefix, maxUsers: Math.max(1, max), gateway, dns: GOOGLE_DNS[0], leaseMinutes: LEASE_MINUTES, reservations: [] };
-    this.dhcp.pools = [{ ...ptPoolToIos(pool), dnsServers: [...GOOGLE_DNS] }];
+    const relay = lan && settings.dnsRelay === true;
+    const pool = { name: this.name, start, prefix, maxUsers: Math.max(1, max), gateway, dns: relay ? gateway : GOOGLE_DNS[0], leaseMinutes: LEASE_MINUTES, reservations: [] };
+    this.dhcp.pools = [{ ...ptPoolToIos(pool), dnsServers: relay ? [gateway] : [...GOOGLE_DNS] }];
+    if (!relay) this.relay.flush();
     this.dhcp.excluded = ptExclusions(pool);
     this.dhcp.pingPackets = 0;
   }
@@ -126,8 +139,13 @@ export class CloudPort implements StackHost {
   }
 
   deliver(_iface: string, packet: IpPacket): void {
-    const msg = packet.udp?.dhcp;
-    if (msg && packet.udp?.dport === DHCP_SERVER_PORT) this.onDhcp(msg);
+    const udp = packet.udp;
+    if (udp?.dhcp && udp.dport === DHCP_SERVER_PORT) this.onDhcp(udp.dhcp);
+    else if (udp?.dns && !udp.dns.response && udp.dport === DNS_PORT && this.relaying()) this.relay.resolve(udp.dns, packet.src, udp.sport, GOOGLE_DNS);
+  }
+
+  private relaying(): boolean {
+    return this.settings.mode === 'router' && this.settings.dnsRelay === true;
   }
 
   /** Customer side → Internet. */
@@ -165,6 +183,7 @@ export class CloudPort implements StackHost {
   fromInternet(p: IpPacket): void {
     const own = this.settings.mode === 'router' ? this.wan() : this.line().gw;
     if (this.settings.mode === 'router') {
+      if (p.dst === own && p.udp?.dns?.response && this.relay.onResponse(p.udp.dport, p.udp.dns)) return;
       const inside = this.nat.outside(p, this.forwards());
       if (inside) return this.toCustomer(inside);
     } else if (p.dst !== own) return this.toCustomer(p);
