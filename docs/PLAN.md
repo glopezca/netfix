@@ -191,3 +191,27 @@ Decisiones de diseño (por defecto, revisables):
 | 11.16 | Traducción del resto (webs simuladas, validaciones, ventanas) | Guardián a cero |
 | 11.17 | Documentación en los dos idiomas y páginas nuevas | Bloques `code` idénticos |
 | 11.18 | Revisión ECC (code, typescript, security, network-config), e2e escritorio y táctil, v0.7.0 | — |
+
+**Estado:** 11.1–11.6 completadas (commits `98afa8a`…`e5e3d9b`, 334 pruebas). En curso: 11.7.
+
+Diseño detallado de 11.7–11.14 (revisión del agente planner):
+- Ganchos opcionales en `StackHost` (`net/ipstack.ts`): `input?` (tras decidir que el paquete es para el
+  equipo, antes del eco ICMP y de `deliver`), `output?` (en `send`/`echo`), `postrouting?` (en `sendVia`),
+  `prerouting?` (ya existe; dnat y deshacer NAT) y `L3Iface.pointToPoint?` (sin ARP, para `wg0`). Sin
+  implementar no cambian nada (`RouterPlane`, `CloudPort`).
+- `net/conntrack.ts` puro (5-tupla en los dos sentidos; NEW/ESTABLISHED/RELATED/INVALID; plazos con el reloj
+  simulado; límite de entradas). Motor nft puro en `src/net/nft/` (`model`, `lexer`, `parse`, `format`, `eval`,
+  `nat`), con presupuesto de análisis. `masquerade`/`snat`/`dnat` reutilizan `NatTable` de `net/nat.ts`.
+- El cortafuegos (cadenas `input`/`output`) y `sysctl` también van en Server, para los laboratorios de
+  bastionado; el router Linux añade `forward` y NAT.
+- Los tipos de equipo se consultan con `devices/kinds.ts` (hoja), nunca con `instanceof Server` desde
+  `shells/` (ciclo `server → ssh-service → host-system`). `Host` generaliza la NIC tras `nics()`; PC y Server
+  siguen usando la NIC 0.
+- La GUI (Servicios) y la WebGUI aplican **y guardan** (`/etc/nftables.conf`, `/etc/sysctl.d/99-netfix.conf`);
+  la CLI cambia el estado en ejecución hasta que se guarda, como en el equipo real.
+- IPsec: la NAT de salida va antes del crypto map; la exención (`deny ip LAN1 LAN2`) necesita ACL extendidas
+  (11.10). ESP entre IP públicas; la PAT descarta el ESP crudo. La PSK no viaja (`sha256(psk‖Ni‖Nr)`).
+- SFTP: petición/respuesta sobre la sesión SSH autenticada, con el `Cred` del usuario en el VFS (única
+  autoridad de permisos); `Subsystem sftp` en `sshd_config`. La app PuTTY reutiliza la terminal y `~/.ssh`.
+- Otras decisiones: web sin `Accept-Language` → es-ES; `nc` y un subconjunto de `nmap` (`-sT -sU -sn -p -Pn`)
+  solo para verificar el filtrado; IPsec solo 2911↔2911 y WireGuard solo Linux↔Linux.
