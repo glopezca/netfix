@@ -19,6 +19,7 @@ export interface ServicesJson {
   readonly http: { enabled: boolean; files: WebFile[] };
   readonly mail: ServerServices['mail'];
   readonly ssh: ServerServices['ssh'];
+  readonly firewall?: ServerServices['firewall'];
   readonly webapps?: ServerServices['webapps'];
 }
 
@@ -42,6 +43,7 @@ export function servicesToJson(s: ServerServices): ServicesJson {
     http: { enabled: s.http.enabled, files: [...s.http.files] },
     mail: s.mail,
     ssh: s.ssh,
+    ...(s.firewall.enabled ? { firewall: s.firewall } : {}),
     webapps: s.webapps,
   };
 }
@@ -175,6 +177,7 @@ export function servicesFromJson(v: unknown): ServerServices {
     http: { enabled: bool(h.enabled), files: arr(h.files, 'ficheros web').map((f) => { if (!isObj(f)) throw new Error('Fichero web no válido.'); return { name: str(f.name, 'fichero web', 128), content: str(f.content, 'contenido web', MAX_TEXT) }; }) },
     mail: { smtp: bool(m.smtp), pop3: bool(m.pop3), imap: bool(m.imap), domain: m.domain === undefined ? '' : str(m.domain, 'dominio de correo'), users: arr(m.users, 'usuarios de correo').map(account) },
     ssh: { enabled: bool(s.enabled), users: arr(s.users, 'usuarios SSH').map(account) },
+    firewall: { enabled: isObj(v.firewall) ? bool(v.firewall.enabled) : false },
     webapps: webapps(v.webapps),
   };
 }

@@ -10,7 +10,7 @@ import { Topology } from '../../src/net/topology.ts';
 import { linuxPrograms } from '../../src/shells/linux-programs.ts';
 
 /** Programs that are another name of a documented one. */
-const ALIASES = new Set(['[', 'dir', 'egrep', 'fgrep', 'mawk', 'sh', 'rbash', 'vi', 'view', 'command-not-found', 'a2dissite', 'a2dismod', 'a2disconf', 'apachectl']);
+const ALIASES = new Set(['[', 'dir', 'egrep', 'fgrep', 'mawk', 'sh', 'rbash', 'vi', 'view', 'command-not-found', 'a2dissite', 'a2dismod', 'a2disconf', 'apachectl', 'netcat']);
 
 test('every page has a unique id, a title, a summary and content', () => {
   const pages = DOC_GROUPS.flatMap((g) => g.pages);

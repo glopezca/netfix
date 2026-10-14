@@ -1,5 +1,5 @@
 /** A workspace: devices with positions and labels, links, and JSON persistence. */
-import { savedFiles, restoreFiles } from '../shells/host-system.ts';
+import { savedFiles, restoreFiles, bootKernel } from '../shells/host-system.ts';
 import { validFileRecords } from '../bash/vfs-persist.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
 import { Network } from './network.ts';
@@ -247,6 +247,7 @@ function restore(device: AnyDevice, rec: DeviceRecord): void {
     if (device instanceof Server) device.web.reload();
     if (device instanceof Server && rec.server) restoreServer(device, rec.server);
     if (device instanceof Pc && pc.apps) restoreApps(device, pc.apps);
+    if (pc.files !== undefined) bootKernel(device, validFileRecords(pc.files));
     return;
   }
   if (rec.config) applyConfig(device, rec.config);

@@ -5625,6 +5625,8 @@ __m["net/ipstack.js"] = (() => {
 const { inSubnet, broadcastOf, BROADCAST_IP } = __m["core/ip.js"];
 const { BROADCAST_MAC } = __m["core/mac.js"];
 const ARP_TIMEOUT_MS = 1000;
+/** Interface name the hooks see for traffic to the host's own addresses. */
+const LOOPBACK = 'lo';
 const MAX_PENDING = 4;
 class IpStack {
     arp = new Map();
@@ -5675,17 +5677,30 @@ class IpStack {
             this.emitIp(waiting.iface, mac, p);
     }
     onIp(iface, arrived, frame) {
-        const packet = this.host.prerouting?.(iface.name, arrived) ?? arrived;
+        const packet = this.host.prerouting ? this.host.prerouting(iface.name, arrived) : arrived;
+        if (!packet)
+            return;
         const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst);
         if (!forMe) {
             this.host.forward?.(iface.name, packet);
             return;
         }
+        this.localIn(iface.name, packet, frame);
+    }
+    /** Local delivery: input hook, then ICMP echo handling or the host's protocols. */
+    localIn(ifaceName, arrived, frame) {
+        const packet = this.host.input ? this.host.input(ifaceName, arrived) : arrived;
+        if (!packet)
+            return;
         if (packet.icmp) {
             this.onIcmp(packet, packet.icmp);
             return;
         }
-        this.host.deliver(iface.name, packet, frame);
+        this.host.deliver(ifaceName, packet, frame);
+    }
+    /** Output hook for a locally generated packet; null = dropped by the firewall. */
+    outbound(iface, packet) {
+        return this.host.output ? this.host.output(iface, packet) : packet;
     }
     onIcmp(packet, icmp) {
         if (icmp.type === 'echo-request') {
@@ -5716,7 +5731,9 @@ class IpStack {
             this.host.schedule(0, () => onResult({ kind: 'reply', from: dst, ttl: this.host.ttl }));
             return true;
         }
-        this.sendVia(egress, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
+        const out = this.outbound(egress.iface, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
+        if (out)
+            this.sendVia(egress, out);
         return true;
     }
     /** Routes and sends a packet originated (or forwarded) by this host. */
@@ -5726,12 +5743,17 @@ class IpStack {
         const egress = this.host.route(packet.dst);
         if (!egress)
             return false;
-        this.sendVia(egress, packet);
+        const out = this.outbound(egress.iface, packet);
+        if (out)
+            this.sendVia(egress, out);
         return true;
     }
-    sendVia(egress, packet) {
+    sendVia(egress, original) {
         const iface = this.host.l3Iface(egress.iface);
         if (!iface?.up)
+            return;
+        const packet = this.host.postrouting ? this.host.postrouting(egress.iface, original) : original;
+        if (!packet)
             return;
         if (this.isLocalBroadcast(iface, packet.dst)) {
             this.emitIp(egress.iface, BROADCAST_MAC, packet);
@@ -5749,12 +5771,10 @@ class IpStack {
         const iface = this.host.l3Ifaces().find((i) => i.addrs.some((a) => a.ip === packet.dst));
         if (!iface)
             return false;
-        this.host.schedule(0, () => {
-            if (packet.icmp)
-                this.onIp(iface, packet, { src: iface.mac, dst: iface.mac, ip: packet });
-            else
-                this.host.deliver(iface.name, packet, { src: iface.mac, dst: iface.mac, ip: packet });
-        });
+        const out = this.outbound(LOOPBACK, packet);
+        if (!out)
+            return true;
+        this.host.schedule(0, () => this.localIn(LOOPBACK, out, { src: iface.mac, dst: iface.mac, ip: out }));
         return true;
     }
     /** Sends a frame on an interface to the broadcast MAC (DHCP, etc.). */
@@ -5794,7 +5814,7 @@ class IpStack {
     }
 }
 
-return { IpStack };
+return { LOOPBACK, IpStack };
 })();
 __m["net/tcp.js"] = (() => {
 const FIRST_EPHEMERAL = 49152;
@@ -5838,6 +5858,23 @@ class TcpLayer {
                 this.finish(sport, { kind: 'timeout' });
         });
     }
+    /** Connect scan of one port (nc -z, nmap -sT): open, closed or filtered. */
+    probe(dst, dport, done, timeoutMs = DEFAULT_TIMEOUT_MS) {
+        const localIp = this.env.sourceFor(dst);
+        if (localIp === undefined) {
+            done('noroute');
+            return;
+        }
+        const sport = this.allocatePort();
+        const map = (r) => (r.kind === 'refused' ? 'closed' : r.kind === 'timeout' ? 'filtered' : 'noroute');
+        const conn = { remote: { ip: dst, port: dport }, localIp, done: (r) => done(map(r)), opened: () => done('open'), seq: this.nextIsn(), finished: false };
+        this.conns.set(sport, conn);
+        this.emit(localIp, dst, { sport, dport, flags: ['SYN'], seq: conn.seq, ack: 0 });
+        this.env.schedule(timeoutMs, () => {
+            if (this.conns.get(sport) === conn)
+                this.finish(sport, { kind: 'timeout' });
+        });
+    }
     receive(packet) {
         const seg = packet.tcp;
         if (!seg)
@@ -5857,6 +5894,13 @@ class TcpLayer {
         }
         if (has(seg, 'SYN') && has(seg, 'ACK')) {
             conn.seq += 1;
+            if (!conn.payload) {
+                this.emit(conn.localIp, conn.remote.ip, { sport, dport: conn.remote.port, flags: ['RST', 'ACK'], seq: conn.seq, ack: seg.seq + 1 });
+                conn.finished = true;
+                this.conns.delete(sport);
+                conn.opened?.();
+                return;
+            }
             this.emit(conn.localIp, conn.remote.ip, { sport, dport: conn.remote.port, flags: ['ACK', 'PSH'], seq: conn.seq, ack: seg.seq + 1, data: conn.payload });
             return;
         }
@@ -6176,6 +6220,759 @@ function macPlus(mac, n) {
 
 return { DETACHED, macPlus };
 })();
+__m["net/nft/model.js"] = (() => {
+/**
+ * nftables ruleset as immutable records: tables (family ip|inet) with chains, base chains with
+ * type/hook/priority/policy, and rules made of matches and one statement list ending in a verdict.
+ */
+const EMPTY_RULESET = { tables: [], nextHandle: 1 };
+/** Standard priorities by name (nft prints the name when the value matches). */
+const PRIORITY_NAMES = {
+    raw: -300, mangle: -150, dstnat: -100, filter: 0, security: 50, srcnat: 100,
+};
+/** Limits that protect the browser tab from huge rule files. */
+const NFT_LIMITS = { tables: 64, chainsPerTable: 64, rulesPerChain: 512, setItems: 256, jumpDepth: 16 };
+function findTable(rs, family, name) {
+    return rs.tables.find((t) => t.family === family && t.name === name);
+}
+function findChain(t, name) {
+    return t.chains.find((c) => c.name === name);
+}
+/** Returns a ruleset where `table` is replaced (or added). */
+function withTable(rs, table) {
+    const i = rs.tables.findIndex((t) => t.family === table.family && t.name === table.name);
+    const tables = i < 0 ? [...rs.tables, table] : rs.tables.map((t, j) => (j === i ? table : t));
+    return { ...rs, tables };
+}
+function withChain(t, chain) {
+    const i = t.chains.findIndex((c) => c.name === chain.name);
+    const chains = i < 0 ? [...t.chains, chain] : t.chains.map((c, j) => (j === i ? chain : c));
+    return { ...t, chains };
+}
+
+return { EMPTY_RULESET, PRIORITY_NAMES, NFT_LIMITS, findTable, findChain, withTable, withChain };
+})();
+__m["net/nft/eval.js"] = (() => {
+const { NFT_LIMITS, findChain } = __m["net/nft/model.js"];
+const { inSubnet } = __m["core/ip.js"];
+const ICMP_NAMES = { 'echo-request': 'echo-request', 'echo-reply': 'echo-reply', unreachable: 'destination-unreachable', 'ttl-exceeded': 'time-exceeded' };
+const PACKET_OVERHEAD = 40;
+function ports(p) {
+    const l4 = p.tcp ?? p.udp;
+    return l4 ? { sport: l4.sport, dport: l4.dport } : {};
+}
+function fieldValue(m, p, meta) {
+    const pt = ports(p);
+    switch (m.field) {
+        case 'ip saddr': return p.src;
+        case 'ip daddr': return p.dst;
+        case 'ip protocol':
+        case 'meta l4proto': return p.protocol;
+        case 'tcp dport': return p.tcp?.dport;
+        case 'tcp sport': return p.tcp?.sport;
+        case 'udp dport': return p.udp?.dport;
+        case 'udp sport': return p.udp?.sport;
+        case 'th dport': return pt.dport;
+        case 'th sport': return pt.sport;
+        case 'ct state': return meta.ct;
+        case 'iif':
+        case 'iifname': return meta.iif;
+        case 'oif':
+        case 'oifname': return meta.oif;
+        case 'icmp type': return p.icmp ? ICMP_NAMES[p.icmp.type] : undefined;
+    }
+}
+function valueMatches(v, x) {
+    switch (v.kind) {
+        case 'addr': return typeof x === 'number' && inSubnet(x, v.ip, v.prefix);
+        case 'num': return x === v.n;
+        case 'range': return typeof x === 'number' && x >= v.from && x <= v.to;
+        case 'word': return x === v.w;
+        case 'set': return v.items.some((i) => valueMatches(i, x));
+    }
+}
+/** A match on a field the packet does not have (tcp dport on UDP) never matches, even negated. */
+function matches(m, p, meta) {
+    const x = fieldValue(m, p, meta);
+    if (x === undefined)
+        return false;
+    return valueMatches(m.value, x) !== m.negate;
+}
+function count(env, r) {
+    if (!r.counter)
+        return;
+    const c = env.counters.get(r.handle) ?? { packets: 0, bytes: 0 };
+    c.packets += 1;
+    c.bytes += PACKET_OVERHEAD;
+    env.counters.set(r.handle, c);
+}
+function runChain(t, ch, p, meta, env, depth) {
+    if (depth > NFT_LIMITS.jumpDepth)
+        return { kind: 'final', verdict: { kind: 'drop' } };
+    for (const r of ch.rules) {
+        if (!r.matches.every((m) => matches(m, p, meta)))
+            continue;
+        count(env, r);
+        if (r.log !== undefined)
+            env.log?.(r.log, p, meta);
+        const v = r.verdict;
+        if (!v)
+            continue;
+        if (v.kind === 'return')
+            return { kind: 'return' };
+        if (v.kind === 'jump' || v.kind === 'goto') {
+            const target = findChain(t, v.chain);
+            const sub = target ? runChain(t, target, p, meta, env, depth + 1) : { kind: 'continue' };
+            if (sub.kind === 'final')
+                return sub;
+            if (v.kind === 'goto')
+                return { kind: 'return' };
+            continue;
+        }
+        return { kind: 'final', verdict: v };
+    }
+    return { kind: 'continue' };
+}
+function baseChains(rs, hook, type) {
+    return rs.tables
+        .flatMap((table) => table.chains.filter((c) => c.base?.hook === hook && c.base.type === type).map((chain) => ({ table, chain })))
+        .sort((a, b) => (a.chain.base?.priority ?? 0) - (b.chain.base?.priority ?? 0));
+}
+/** Filter chains of `hook`: accept, drop or reject. */
+function filterHook(rs, hook, p, meta, env) {
+    for (const { table, chain } of baseChains(rs, hook, 'filter')) {
+        const o = runChain(table, chain, p, meta, env, 0);
+        const v = o.kind === 'final' ? o.verdict : { kind: chain.base?.policy ?? 'accept' };
+        if (v.kind === 'drop')
+            return { verdict: 'drop' };
+        if (v.kind === 'reject')
+            return { verdict: 'reject', with: v.with };
+    }
+    return { verdict: 'accept' };
+}
+/** NAT chains of `hook` (only for the first packet of a connection): the translation, if any. */
+function natHook(rs, hook, p, meta, env) {
+    for (const { table, chain } of baseChains(rs, hook, 'nat')) {
+        const o = runChain(table, chain, p, meta, env, 0);
+        if (o.kind !== 'final') {
+            if (chain.base?.policy === 'drop')
+                return 'drop';
+            continue;
+        }
+        const v = o.verdict;
+        if (v.kind === 'masquerade' || v.kind === 'snat' || v.kind === 'dnat')
+            return v;
+        if (v.kind === 'drop' || v.kind === 'reject')
+            return 'drop';
+        if (v.kind === 'accept')
+            return null;
+    }
+    return null;
+}
+/** Hooks that have at least one base chain (to skip work when the ruleset is empty). */
+function activeHooks(rs) {
+    return new Set(rs.tables.flatMap((t) => t.chains.flatMap((c) => (c.base ? [c.base.hook] : []))));
+}
+
+return { filterHook, natHook, activeHooks };
+})();
+__m["net/conntrack.js"] = (() => {
+const CT_MAX = 4096;
+const TIMEOUT_MS = { tcp: 7_200_000, udp: 120_000, icmp: 30_000 };
+const UNREPLIED_MS = 30_000;
+const CLOSING_MS = 10_000;
+function tupleOf(p) {
+    if (p.tcp)
+        return { proto: 'tcp', src: p.src, dst: p.dst, sport: p.tcp.sport, dport: p.tcp.dport };
+    if (p.udp)
+        return { proto: 'udp', src: p.src, dst: p.dst, sport: p.udp.sport, dport: p.udp.dport };
+    if (p.icmp && (p.icmp.type === 'echo-request' || p.icmp.type === 'echo-reply'))
+        return { proto: 'icmp', src: p.src, dst: p.dst, sport: p.icmp.id, dport: p.icmp.id };
+    return null;
+}
+const key = (t) => `${t.proto}|${t.src}|${t.sport}|${t.dst}|${t.dport}`;
+const swap = (t) => ({ ...t, src: t.dst, dst: t.src, sport: t.dport, dport: t.sport });
+/** The tuples a connection shows in the original direction, after DNAT, and after DNAT + SNAT. */
+function origStages(e) {
+    const afterDnat = e.dnat ? { ...e.orig, dst: e.dnat.ip, dport: e.dnat.port ?? e.orig.dport } : e.orig;
+    const afterAll = e.snat ? { ...afterDnat, src: e.snat.ip, sport: e.snat.port ?? afterDnat.sport } : afterDnat;
+    return [e.orig, afterDnat, afterAll];
+}
+/** Reply tuples: as it arrives (swap of the final original), after undoing SNAT, after undoing both. */
+function replyStages(e) {
+    const [, afterDnat, afterAll] = origStages(e);
+    const arrives = swap(afterAll);
+    return [arrives, { ...arrives, dst: e.orig.src, dport: e.orig.sport }, swap(e.orig), swap(afterDnat)];
+}
+class Conntrack {
+    index = new Map();
+    entries = new Set();
+    now;
+    constructor(now) {
+        this.now = now;
+    }
+    get size() {
+        return this.entries.size;
+    }
+    list() {
+        this.expire();
+        return [...this.entries];
+    }
+    lookup(p) {
+        const t = tupleOf(p);
+        const hit = t ? this.index.get(key(t)) : undefined;
+        if (!hit || this.expired(hit.entry))
+            return null;
+        return hit;
+    }
+    /** State of `p` and the connection it belongs to (a new, unconfirmed one when unknown). */
+    classify(p) {
+        const hit = this.lookup(p);
+        if (hit) {
+            const established = hit.dir === 'reply' || hit.entry.seenReply;
+            return { state: established ? 'established' : 'new', entry: hit.entry, dir: hit.dir };
+        }
+        if (p.icmp && (p.icmp.type === 'unreachable' || p.icmp.type === 'ttl-exceeded'))
+            return { state: this.related(p) ? 'related' : 'invalid', entry: null, dir: 'orig' };
+        const t = tupleOf(p);
+        if (!t)
+            return { state: 'untracked', entry: null, dir: 'orig' };
+        if (t.proto === 'tcp' && !p.tcp?.flags.includes('SYN'))
+            return { state: 'invalid', entry: null, dir: 'orig' };
+        if (p.icmp?.type === 'echo-reply')
+            return { state: 'invalid', entry: null, dir: 'orig' };
+        return { state: 'new', entry: { orig: t, seenReply: false, confirmed: false, closing: false, lastSeen: this.now(), packets: 0 }, dir: 'orig' };
+    }
+    /** An ICMP error about a known connection between the same hosts. */
+    related(p) {
+        for (const e of this.entries) {
+            if ([...origStages(e), ...replyStages(e)].some((t) => t.src === p.dst || t.dst === p.dst))
+                return true;
+        }
+        return false;
+    }
+    /** Records a packet of `entry` (and confirms a new connection); false when the table is full. */
+    see(entry, dir, p) {
+        if (!entry.confirmed) {
+            this.expire();
+            if (this.entries.size >= CT_MAX)
+                return false;
+            entry.confirmed = true;
+            this.entries.add(entry);
+        }
+        if (dir === 'reply')
+            entry.seenReply = true;
+        if (p.tcp?.flags.includes('FIN') || p.tcp?.flags.includes('RST'))
+            entry.closing = true;
+        entry.lastSeen = this.now();
+        entry.packets += 1;
+        this.reindex(entry);
+        return true;
+    }
+    /** (Re)indexes all the tuples of a confirmed connection, e.g. after NAT was decided. */
+    reindex(entry) {
+        if (!entry.confirmed)
+            return;
+        for (const t of origStages(entry))
+            this.index.set(key(t), { entry, dir: 'orig' });
+        for (const t of replyStages(entry))
+            this.index.set(key(t), { entry, dir: 'reply' });
+    }
+    /** Is a translated tuple (in the reply direction) already used by another connection? */
+    replyTaken(t) {
+        const hit = this.index.get(key(swap(t)));
+        return hit !== undefined && !this.expired(hit.entry);
+    }
+    flush() {
+        this.index.clear();
+        this.entries.clear();
+    }
+    expired(e) {
+        const limit = e.closing ? CLOSING_MS : e.seenReply ? TIMEOUT_MS[e.orig.proto] : Math.min(UNREPLIED_MS, TIMEOUT_MS[e.orig.proto]);
+        return this.now() - e.lastSeen > limit;
+    }
+    expire() {
+        for (const e of this.entries) {
+            if (!this.expired(e))
+                continue;
+            this.entries.delete(e);
+            for (const [k, v] of this.index)
+                if (v.entry === e)
+                    this.index.delete(k);
+        }
+    }
+}
+
+return { CT_MAX, tupleOf, origStages, replyStages, Conntrack };
+})();
+__m["net/nat.js"] = (() => {
+const FIRST_PAT_PORT = 1024;
+const LAST_PORT = 65535;
+const MAX_ENTRIES = 4096;
+function flowOf(p) {
+    if (p.tcp)
+        return { proto: 'tcp', sport: p.tcp.sport, dport: p.tcp.dport };
+    if (p.udp)
+        return { proto: 'udp', sport: p.udp.sport, dport: p.udp.dport };
+    const id = p.icmp?.id ?? 0;
+    return { proto: 'icmp', sport: id, dport: id };
+}
+function rewriteSrc(p, ip, port) {
+    if (port === undefined)
+        return { ...p, src: ip };
+    if (p.tcp)
+        return { ...p, src: ip, tcp: { ...p.tcp, sport: port } };
+    if (p.udp)
+        return { ...p, src: ip, udp: { ...p.udp, sport: port } };
+    return p.icmp ? { ...p, src: ip, icmp: { ...p.icmp, id: port } } : { ...p, src: ip };
+}
+function rewriteDst(p, ip, port) {
+    if (port === undefined)
+        return { ...p, dst: ip };
+    if (p.tcp)
+        return { ...p, dst: ip, tcp: { ...p.tcp, dport: port } };
+    if (p.udp)
+        return { ...p, dst: ip, udp: { ...p.udp, dport: port } };
+    return p.icmp ? { ...p, dst: ip, icmp: { ...p.icmp, id: port } } : { ...p, dst: ip };
+}
+function staticMatchesOut(s, p, f) {
+    return s.local === p.src && (s.proto === undefined || (s.proto === f.proto && s.localPort === f.sport));
+}
+function staticMatchesIn(s, p, f) {
+    return s.global === p.dst && (s.proto === undefined || (s.proto === f.proto && s.globalPort === f.dport));
+}
+class NatTable {
+    dynamic = [];
+    hits = 0;
+    misses = 0;
+    /** Inside → outside: translates the source; null when no rule applies, 'drop' when the rule cannot. */
+    inside(p, statics, target) {
+        const f = flowOf(p);
+        const st = statics.find((s) => staticMatchesOut(s, p, f));
+        if (st)
+            return this.hit(rewriteSrc(p, st.global, st.proto ? st.globalPort : undefined));
+        const known = this.dynamic.find((e) => e.insideLocal === p.src && (e.proto === null || (e.proto === f.proto && e.localPort === f.sport)));
+        if (known)
+            return this.hit(rewriteSrc(p, known.insideGlobal, known.proto ? known.globalPort : undefined));
+        const t = target(p);
+        if (!t)
+            return null;
+        this.misses += 1;
+        if (t === 'exhausted')
+            return 'drop';
+        const reserved = new Set(statics.filter((s) => s.global === t.global && s.proto === f.proto).map((s) => s.globalPort));
+        const port = t.overload ? this.freePort(f.proto, t.global, f.sport, reserved) : 0;
+        if (port === null)
+            return 'drop';
+        const entry = t.overload
+            ? { proto: f.proto, insideLocal: p.src, insideGlobal: t.global, localPort: f.sport, globalPort: port, outside: p.dst, outsidePort: f.dport, static: false, rule: t.rule }
+            : { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false, rule: t.rule };
+        this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
+        return rewriteSrc(p, entry.insideGlobal, entry.proto ? entry.globalPort : undefined);
+    }
+    /** Outside → inside: translates the destination, or returns null when nothing maps it. */
+    outside(p, statics) {
+        const f = flowOf(p);
+        const port = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f));
+        if (port)
+            return this.hit(rewriteDst(p, port.local, port.localPort));
+        const known = this.dynamic.find((e) => e.insideGlobal === p.dst && (e.proto === null || (e.proto === f.proto && e.globalPort === f.dport)));
+        if (known)
+            return this.hit(rewriteDst(p, known.insideLocal, known.proto ? known.localPort : undefined));
+        const whole = statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
+        return whole ? this.hit(rewriteDst(p, whole.local)) : null;
+    }
+    /** Is this global address (and pool member) taken by a 1:1 dynamic translation? */
+    globalInUse(global) {
+        return this.dynamic.some((e) => e.proto === null && e.insideGlobal === global);
+    }
+    entries() {
+        return this.dynamic;
+    }
+    /** clear ip nat translation * (statistics are kept, like IOS). */
+    clear() {
+        this.dynamic = [];
+    }
+    /** Factory state (reload): no translations and zeroed statistics. */
+    reset() {
+        this.dynamic = [];
+        this.hits = 0;
+        this.misses = 0;
+    }
+    hit(p) {
+        this.hits += 1;
+        return p;
+    }
+    /** The inside port itself when free, else the first free one; null when every port is taken. */
+    freePort(proto, global, wanted, reserved) {
+        const used = new Set(this.dynamic.filter((e) => e.proto === proto && e.insideGlobal === global).map((e) => e.globalPort));
+        const free = (port) => !used.has(port) && !reserved.has(port);
+        if (wanted > 0 && free(wanted))
+            return wanted;
+        for (let port = FIRST_PAT_PORT; port <= LAST_PORT; port++)
+            if (free(port))
+                return port;
+        return null;
+    }
+}
+
+return { flowOf, rewriteSrc, rewriteDst, NatTable };
+})();
+__m["net/netfilter.js"] = (() => {
+const { EMPTY_RULESET } = __m["net/nft/model.js"];
+const { activeHooks, filterHook, natHook } = __m["net/nft/eval.js"];
+const { Conntrack, tupleOf } = __m["net/conntrack.js"];
+const { rewriteDst, rewriteSrc } = __m["net/nat.js"];
+const { formatIp } = __m["core/ip.js"];
+const FIRST_NAT_PORT = 32768;
+const LAST_NAT_PORT = 60999;
+class Netfilter {
+    ruleset = EMPTY_RULESET;
+    counters = new Map();
+    ct;
+    env;
+    ctx = new WeakMap();
+    hooks = new Set();
+    constructor(env) {
+        this.env = env;
+        this.ct = new Conntrack(() => env.now());
+    }
+    /** Replaces the ruleset (nft commands, nftables.service); counters of removed rules go away. */
+    setRuleset(rs) {
+        this.ruleset = rs;
+        this.hooks = activeHooks(rs);
+        const live = new Set(rs.tables.flatMap((t) => t.chains.flatMap((c) => c.rules.map((r) => r.handle))));
+        for (const h of this.counters.keys())
+            if (!live.has(h))
+                this.counters.delete(h);
+    }
+    /** Nothing to do when no base chain exists (the common case: no firewall). */
+    get active() {
+        return this.hooks.size > 0;
+    }
+    /** Keeps the conntrack context when a packet is copied (TTL decrement while forwarding). */
+    carry(from, to) {
+        const c = this.ctx.get(from);
+        if (c)
+            this.ctx.set(to, c);
+        return to;
+    }
+    evalEnv() {
+        return {
+            counters: this.counters,
+            log: (prefix, p, meta) => {
+                const l4 = p.tcp ?? p.udp;
+                const ports = l4 ? ` SPT=${l4.sport} DPT=${l4.dport}` : '';
+                this.env.log(`${prefix}IN=${meta.iif ?? ''} OUT=${meta.oif ?? ''} SRC=${formatIp(p.src)} DST=${formatIp(p.dst)} LEN=60 TTL=${p.ttl} PROTO=${p.protocol.toUpperCase()}${ports}`);
+            },
+        };
+    }
+    context(p) {
+        const known = this.ctx.get(p);
+        if (known)
+            return known;
+        const c = this.ct.classify(p);
+        return { entry: c.entry, dir: c.dir, state: c.state };
+    }
+    keep(p, c) {
+        this.ctx.set(p, c);
+        return p;
+    }
+    filter(hook, p, meta) {
+        if (!this.hooks.has(hook))
+            return true;
+        const r = filterHook(this.ruleset, hook, p, meta, this.evalEnv());
+        if (r.verdict === 'reject')
+            this.env.reject(p, r.with);
+        return r.verdict === 'accept';
+    }
+    /** Incoming packet before routing: undo SNAT of replies, apply or decide DNAT, filter prerouting. */
+    prerouting(iif, p) {
+        if (!this.active)
+            return p;
+        const c = this.context(p);
+        let out = p;
+        if (c.entry?.confirmed) {
+            if (c.dir === 'orig' && c.entry.dnat)
+                out = rewriteDst(p, c.entry.dnat.ip, c.entry.dnat.port);
+            if (c.dir === 'reply' && c.entry.snat)
+                out = rewriteDst(p, c.entry.orig.src, c.entry.orig.sport);
+        }
+        else if (c.entry && this.hooks.has('prerouting')) {
+            const d = natHook(this.ruleset, 'prerouting', p, { iif, ct: c.state }, this.evalEnv());
+            if (d === 'drop')
+                return null;
+            if (d?.kind === 'dnat') {
+                c.entry.dnat = { ip: d.ip, port: d.port };
+                out = rewriteDst(p, d.ip, d.port);
+            }
+        }
+        if (!this.filter('prerouting', out, { iif, ct: c.state }))
+            return null;
+        return this.keep(out, c);
+    }
+    /** Packet for this host: filter input and confirm the connection. */
+    input(iif, p) {
+        if (!this.active)
+            return p;
+        const c = this.context(p);
+        if (!this.filter('input', p, { iif, ct: c.state }))
+            return null;
+        if (c.entry && !this.ct.see(c.entry, c.dir, p))
+            return null;
+        return p;
+    }
+    /** Transit packet (router): filter forward. */
+    forward(iif, oif, p) {
+        if (!this.active)
+            return p;
+        const c = this.context(p);
+        return this.filter('forward', p, { iif, oif, ct: c.state }) ? this.keep(p, c) : null;
+    }
+    /** Locally generated packet: conntrack, DNAT of the output nat chain, filter output. */
+    output(oif, p) {
+        if (!this.active)
+            return p;
+        const c = this.context(p);
+        let out = p;
+        if (c.entry && !c.entry.confirmed && this.hooks.has('output')) {
+            const d = natHook(this.ruleset, 'output', p, { oif, ct: c.state }, this.evalEnv());
+            if (d === 'drop')
+                return null;
+            if (d?.kind === 'dnat') {
+                c.entry.dnat = { ip: d.ip, port: d.port };
+                out = rewriteDst(p, d.ip, d.port);
+            }
+        }
+        if (!this.filter('output', out, { oif, ct: c.state }))
+            return null;
+        return this.keep(out, c);
+    }
+    /** Leaving packet: apply or decide SNAT/masquerade, undo DNAT of replies, confirm. */
+    postrouting(oif, p, iif) {
+        if (!this.active)
+            return p;
+        const c = this.context(p);
+        let out = p;
+        if (c.entry?.confirmed) {
+            if (c.dir === 'orig' && c.entry.snat)
+                out = rewriteSrc(p, c.entry.snat.ip, c.entry.snat.port);
+            if (c.dir === 'reply' && c.entry.dnat)
+                out = rewriteSrc(p, c.entry.orig.dst, c.entry.orig.dport);
+        }
+        else if (c.entry && this.hooks.has('postrouting')) {
+            const d = natHook(this.ruleset, 'postrouting', p, { iif, oif, ct: c.state }, this.evalEnv());
+            if (d === 'drop')
+                return null;
+            const to = d && d.kind !== 'dnat' ? this.snatTarget(p, d.kind === 'masquerade' ? this.env.ifaceIp(oif) : d.ip, d.kind === 'snat' ? d.port : undefined) : null;
+            if (to) {
+                c.entry.snat = to;
+                out = rewriteSrc(p, to.ip, to.port);
+            }
+        }
+        if (!this.filter('postrouting', out, { iif, oif, ct: c.state }))
+            return null;
+        if (c.entry && !this.ct.see(c.entry, c.dir, p))
+            return null;
+        return out;
+    }
+    /** Source after SNAT, keeping the port unless another connection already uses it (like the kernel). */
+    snatTarget(p, ip, port) {
+        const t = tupleOf(p);
+        if (ip === undefined || !t)
+            return null;
+        if (port !== undefined)
+            return { ip, port };
+        const free = (sport) => !this.ct.replyTaken({ ...t, src: ip, sport, dport: t.proto === 'icmp' ? sport : t.dport });
+        if (free(t.sport))
+            return { ip, port: t.sport };
+        for (let n = FIRST_NAT_PORT; n <= LAST_NAT_PORT; n++)
+            if (free(n))
+                return { ip, port: n };
+        return null;
+    }
+    /** `systemctl stop nftables` / `nft flush ruleset`. */
+    flush() {
+        this.setRuleset(EMPTY_RULESET);
+        this.counters.clear();
+    }
+}
+
+return { Netfilter };
+})();
+__m["net/sysctl.js"] = (() => {
+/**
+ * Kernel parameters (sysctl) of a simulated Linux host, with Ubuntu's defaults. A few have effects in
+ * Netfix (forwarding, ignoring pings, the host name); the rest are accepted and kept, as a lab expects.
+ */
+const BOOL = ['0', '1'];
+const SYSCTL_KEYS = [
+    { name: 'kernel.domainname', value: '(none)', accepts: 'text', effect: false },
+    { name: 'kernel.hostname', value: '', accepts: 'text', effect: true },
+    { name: 'kernel.sysrq', value: '176', accepts: 'int', effect: false },
+    { name: 'net.ipv4.conf.all.accept_source_route', value: '0', accepts: BOOL, effect: false },
+    { name: 'net.ipv4.conf.all.secure_redirects', value: '1', accepts: BOOL, effect: false },
+    { name: 'net.ipv6.conf.all.accept_redirects', value: '1', accepts: BOOL, effect: false },
+    { name: 'net.ipv6.conf.all.accept_source_route', value: '0', accepts: BOOL, effect: false },
+    { name: 'net.ipv4.conf.all.accept_redirects', value: '1', accepts: BOOL, effect: false },
+    { name: 'net.ipv4.conf.all.forwarding', value: '0', accepts: BOOL, effect: true },
+    { name: 'net.ipv4.conf.all.log_martians', value: '0', accepts: BOOL, effect: false },
+    { name: 'net.ipv4.conf.all.rp_filter', value: '2', accepts: ['0', '1', '2'], effect: false },
+    { name: 'net.ipv4.conf.all.send_redirects', value: '1', accepts: BOOL, effect: false },
+    { name: 'net.ipv4.conf.default.rp_filter', value: '2', accepts: ['0', '1', '2'], effect: false },
+    { name: 'net.ipv4.icmp_echo_ignore_all', value: '0', accepts: BOOL, effect: true },
+    { name: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1', accepts: BOOL, effect: true },
+    { name: 'net.ipv4.ip_default_ttl', value: '64', accepts: 'int', effect: false },
+    { name: 'net.ipv4.ip_forward', value: '0', accepts: BOOL, effect: true },
+    { name: 'net.ipv4.tcp_syncookies', value: '1', accepts: BOOL, effect: false },
+    { name: 'net.ipv6.conf.all.disable_ipv6', value: '0', accepts: BOOL, effect: false },
+    { name: 'net.ipv6.conf.all.forwarding', value: '0', accepts: BOOL, effect: false },
+    { name: 'net.netfilter.nf_conntrack_max', value: '4096', accepts: 'int', effect: false },
+    { name: 'vm.swappiness', value: '60', accepts: 'int', effect: false },
+];
+/** `net/ipv4/ip_forward` (a /proc/sys path) or `net/ipv4/ip_forward` typed with slashes → dotted name. */
+function sysctlName(text) {
+    return text.replace(/^\/proc\/sys\//, '').replace(/\//g, '.');
+}
+function sysctlPath(name) {
+    return `/proc/sys/${name.replace(/\./g, '/')}`;
+}
+/** Keys that mirror each other (ip_forward and conf.all.forwarding are the same switch). */
+const MIRRORS = {
+    'net.ipv4.ip_forward': 'net.ipv4.conf.all.forwarding',
+    'net.ipv4.conf.all.forwarding': 'net.ipv4.ip_forward',
+};
+const MAX_TEXT = 64;
+class Sysctl {
+    values = new Map(SYSCTL_KEYS.map((k) => [k.name, k.value]));
+    listeners = new Set();
+    /** kernel.hostname reads the running name of the host. */
+    hostname;
+    constructor(hostname) {
+        this.hostname = hostname;
+    }
+    has(name) {
+        return this.values.has(name);
+    }
+    get(name) {
+        return name === 'kernel.hostname' ? this.hostname.get() : this.values.get(name);
+    }
+    /** All keys, sorted (sysctl -a). */
+    names() {
+        return [...this.values.keys()].sort();
+    }
+    enabled(name) {
+        return this.get(name) === '1';
+    }
+    /** Sets a value; returns 'unknown', 'invalid' or null when applied. */
+    set(name, raw) {
+        const key = SYSCTL_KEYS.find((k) => k.name === name);
+        if (!key)
+            return 'unknown';
+        const value = raw.trim();
+        if (key.accepts === 'int' ? !/^\d{1,9}$/.test(value) : key.accepts === 'text' ? value.length === 0 || value.length > MAX_TEXT : !key.accepts.includes(value))
+            return 'invalid';
+        if (name === 'kernel.hostname')
+            return this.hostname.set(value) ? 'invalid' : null;
+        this.values.set(name, value);
+        const mirror = MIRRORS[name];
+        if (mirror)
+            this.values.set(mirror, value);
+        for (const l of this.listeners)
+            l(name, value);
+        return null;
+    }
+    onChange(listener) {
+        this.listeners.add(listener);
+        return () => this.listeners.delete(listener);
+    }
+    /** Boot: back to the defaults (before /etc/sysctl.conf is applied). */
+    reset() {
+        for (const k of SYSCTL_KEYS)
+            if (k.name !== 'kernel.hostname')
+                this.values.set(k.name, k.value);
+        for (const l of this.listeners)
+            l('*', '');
+    }
+}
+/** `key = value` lines of a sysctl.conf file (comments with # or ;, `-key` ignores errors). */
+function parseSysctlConf(text) {
+    return text.split('\n').flatMap((raw, i) => {
+        const line = raw.trim();
+        if (!line || line.startsWith('#') || line.startsWith(';'))
+            return [];
+        const m = /^(-?)([\w./-]+)\s*=\s*(.*)$/.exec(line);
+        return m ? [{ key: sysctlName(m[2] ?? ''), value: (m[3] ?? '').trim(), quiet: m[1] === '-', line: i + 1 }] : [];
+    });
+}
+
+return { SYSCTL_KEYS, sysctlName, sysctlPath, Sysctl, parseSysctlConf };
+})();
+__m["devices/host-kernel.js"] = (() => {
+const { Netfilter } = __m["net/netfilter.js"];
+const { Sysctl } = __m["net/sysctl.js"];
+const { LOOPBACK } = __m["net/ipstack.js"];
+const MAX_KERNEL_LOG = 200;
+class Kernel {
+    sysctl;
+    netfilter;
+    log = [];
+    host;
+    constructor(host) {
+        this.host = host;
+        this.sysctl = new Sysctl({
+            get: () => host.runtimeName(),
+            set: (name) => {
+                host.setTransientName(name);
+                return null;
+            },
+        });
+        this.netfilter = new Netfilter({
+            now: () => host.clock.now(),
+            log: (line) => this.printk(line),
+            ifaceIp: (name) => host.linuxIfIp(name),
+            reject: (p, kind) => this.reject(p, kind),
+        });
+    }
+    printk(text) {
+        this.log.push({ time: this.host.clock.now(), text });
+        if (this.log.length > MAX_KERNEL_LOG)
+            this.log.splice(0, this.log.length - MAX_KERNEL_LOG);
+    }
+    name(port) {
+        return port === LOOPBACK ? LOOPBACK : this.host.linuxIfName(port);
+    }
+    prerouting(port, p) {
+        return this.netfilter.prerouting(this.name(port), p);
+    }
+    input(port, p) {
+        if (p.icmp?.type === 'echo-request' && this.sysctl.enabled('net.ipv4.icmp_echo_ignore_all'))
+            return null;
+        return this.netfilter.input(this.name(port), p);
+    }
+    output(port, p) {
+        return this.netfilter.output(this.name(port), p);
+    }
+    postrouting(port, p, iif) {
+        return this.netfilter.postrouting(this.name(port), p, iif);
+    }
+    /** `reject`: TCP RST for TCP (unless an ICMP type was asked), ICMP port unreachable otherwise. */
+    reject(p, kind) {
+        if (p.icmp && p.icmp.type !== 'echo-request')
+            return;
+        const ttl = 64;
+        if (p.tcp && (kind === undefined || kind === 'tcp reset')) {
+            this.host.sendRaw({ src: p.dst, dst: p.src, ttl, protocol: 'tcp', tcp: { sport: p.tcp.dport, dport: p.tcp.sport, flags: ['RST', 'ACK'], seq: 0, ack: p.tcp.seq + 1 } });
+            return;
+        }
+        const id = p.icmp?.id ?? 0;
+        const seq = p.icmp?.seq ?? 0;
+        this.host.sendRaw({ src: p.dst, dst: p.src, ttl, protocol: 'icmp', icmp: { type: 'unreachable', id, seq } });
+    }
+}
+
+return { Kernel };
+})();
 __m["devices/host.js"] = (() => {
 /** End host with one NIC (PC, Server): IP config, DHCP client, TCP, DNS resolver. */
 const { t } = __m["i18n/t.js"];
@@ -6187,8 +6984,11 @@ const { DnsResolver } = __m["net/dns.js"];
 const { DhcpClient } = __m["dhcp/client.js"];
 const { DETACHED } = __m["devices/hooks.js"];
 const { macFromSeed, clientIdFromMac } = __m["core/mac.js"];
+const { Kernel } = __m["devices/host-kernel.js"];
 const { inSubnet, BROADCAST_IP } = __m["core/ip.js"];
 const HOST_PORT = 'FastEthernet0';
+/** Linux name of the NIC (ip, nft iif/oif, netplan). */
+const HOST_LINUX_IF = 'eth0';
 const APIPA_NET = 0xa9fe0000;
 const APIPA_PREFIX = 16;
 const APIPA_HOST_SPACE = 0xfe00;
@@ -6232,6 +7032,8 @@ class Host {
     tcp;
     resolver;
     clock;
+    /** sysctl, netfilter (nftables) and the kernel log. */
+    kernel;
     statusListeners = new Set();
     dropOnArpMiss = false;
     ttl = PC_TTL;
@@ -6240,6 +7042,18 @@ class Host {
         this.name = name;
         this.clock = clock;
         this.mac = macFromSeed(seed);
+        this.kernel = new Kernel({
+            clock,
+            runtimeName: () => this.runtimeName(),
+            setTransientName: (n) => this.setTransientName(n),
+            linuxIfName: (port) => this.linuxIfName(port),
+            linuxIfIp: (name) => (name === this.linuxIfName(HOST_PORT) ? this.config.ip : undefined),
+            sendRaw: (p) => {
+                const egress = this.route(p.dst);
+                if (egress)
+                    this.stack.sendVia(egress, p);
+            },
+        });
         this.stack = new IpStack(this, () => clock.now());
         this.dhcpClient = this.createDhcpClient();
         this.tcp = new TcpLayer({
@@ -6427,13 +7241,30 @@ class Host {
         else
             this.onUdp(packet);
     }
+    /** Linux name of a NIC port (eth0 for the only NIC of a PC or Server). */
+    linuxIfName(port) {
+        return port === HOST_PORT ? HOST_LINUX_IF : port;
+    }
+    // ------------------------------------------------------------ netfilter hooks
+    prerouting(iface, packet) {
+        return this.kernel.prerouting(iface, packet);
+    }
+    input(iface, packet) {
+        return this.kernel.input(iface, packet);
+    }
+    output(iface, packet) {
+        return this.kernel.output(iface, packet);
+    }
+    postrouting(iface, packet) {
+        return this.kernel.postrouting(iface, packet);
+    }
     /** Server-side UDP services (DHCP on 67, DNS on 53). Plain hosts ignore them. */
     onUdp(_packet) {
         // A PC runs no UDP services.
     }
 }
 
-return { DHCP_SERVER_PORT, DNS_PORT, HOST_PORT, validHostname, Host };
+return { DHCP_SERVER_PORT, DNS_PORT, HOST_PORT, HOST_LINUX_IF, validHostname, Host };
 })();
 __m["devices/pc.js"] = (() => {
 /** Packet Tracer-style PC: a host with client applications (browser, mail, SSH, terminals). */
@@ -7062,6 +7893,7 @@ function defaultServices() {
         http: { enabled: true, files: [{ name: 'index.html', content: DEFAULT_INDEX }, { name: 'ayuda.html', content: DEFAULT_HELP }] },
         mail: { smtp: false, pop3: false, imap: false, domain: '', users: [] },
         ssh: { enabled: false, users: [] },
+        firewall: { enabled: false },
         webapps: defaultWebApps(),
     };
 }
@@ -9340,6 +10172,7 @@ const UNITS = [
     { id: 'smtp', linux: 'postfix', aliases: ['smtp'], process: 'master', description: 'Postfix Mail Transport Agent', windows: 'SMTPSVC', windowsDisplay: 'Protocolo simple de transferencia de correo (SMTP)', ports: [{ proto: 'tcp', port: 25 }], pid: 1021 },
     { id: 'mailbox', linux: 'dovecot', aliases: ['pop3', 'imap'], process: 'dovecot', description: 'Dovecot IMAP/POP3 email server', windows: 'POP3Svc', windowsDisplay: 'Servicio POP3/IMAP', ports: [{ proto: 'tcp', port: 110 }, { proto: 'tcp', port: 143 }], pid: 1088 },
     { id: 'ssh', linux: 'ssh', aliases: ['sshd', 'openssh-server'], process: 'sshd', description: 'OpenBSD Secure Shell server', windows: 'sshd', windowsDisplay: 'OpenSSH SSH Server', ports: [{ proto: 'tcp', port: 22 }], pid: 701 },
+    { id: 'firewall', linux: 'nftables', aliases: ['nft'], process: 'nft', description: 'nftables', windows: 'MpsSvc', windowsDisplay: 'Windows Defender Firewall', ports: [], pid: 655, oneshot: true },
 ];
 function findUnit(name) {
     const n = name.trim().toLowerCase().replace(/\.service$/, '');
@@ -9353,6 +10186,7 @@ function unitActive(s, id) {
         case 'smtp': return s.mail.smtp;
         case 'mailbox': return s.mail.pop3 || s.mail.imap;
         case 'ssh': return s.ssh.enabled;
+        case 'firewall': return s.firewall.enabled;
     }
 }
 function setUnitActive(s, id, on) {
@@ -9363,6 +10197,7 @@ function setUnitActive(s, id, on) {
         case 'smtp': return { ...s, mail: { ...s.mail, smtp: on } };
         case 'mailbox': return { ...s, mail: { ...s.mail, pop3: on, imap: on } };
         case 'ssh': return { ...s, ssh: { ...s.ssh, enabled: on } };
+        case 'firewall': return { ...s, firewall: { enabled: on } };
     }
 }
 /** The management GUI's own web server (port mode). */
@@ -23185,6 +24020,11 @@ const UTIL_DOCS = {
     wget: { group: 'red', synopsis: 'wget [-q] [-O FICHERO] URL', summary: 'Descarga a un fichero del directorio actual (nombre.1, nombre.2… si ya existe).' },
     ssh: { group: 'red', synopsis: 'ssh [-i CLAVE] [-l USUARIO] [-p PUERTO] [-o OPCIÓN=VALOR] [USUARIO@]HOST [ORDEN]', summary: 'Cliente OpenSSH: comprueba la clave del servidor en ~/.ssh/known_hosts, se autentica con ~/.ssh/id_* y, si no, con contraseña. Con ORDEN la ejecuta y vuelve. Opciones -o: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Devuelve el estado remoto (255 si falla).' },
     'ssh-keygen': { group: 'red', synopsis: 'ssh-keygen [-t ed25519|ecdsa|rsa] [-b BITS] [-f FICHERO] [-N FRASE] [-C COMENTARIO] [-q] | -l|-y|-p [-f FICHERO] | -F|-R HOST [-f known_hosts] | -A', summary: 'Genera pares de claves OpenSSH (privada 600 y .pub 644), muestra la huella (-l), obtiene la pública (-y), cambia la frase de paso (-p), busca (-F) o borra (-R) equipos de known_hosts y crea las claves de host que falten (-A).' },
+    sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] CLAVE... | [-w] CLAVE=VALOR | -p [FICHERO] | --system | -a', summary: 'Parámetros del núcleo (también en /proc/sys): net.ipv4.ip_forward activa el reenvío en el router Linux, net.ipv4.icmp_echo_ignore_all ignora los ping. Los cambios con -w se pierden al reiniciar; para que duren, en /etc/sysctl.conf o /etc/sysctl.d/*.conf (sysctl --system los aplica). Cambiar requiere root.' },
+    nft: { group: 'red', section: 8, synopsis: 'nft [-a] [-c] [-s] [-f FICHERO] ORDEN...', summary: 'Cortafuegos nftables: add/insert/replace/delete rule, add chain con type/hook/priority/policy, list ruleset, flush ruleset; -f carga un fichero (atómico), -c solo lo comprueba, -a muestra los handles. Lo hecho con nft dura hasta reiniciar: se guarda en /etc/nftables.conf y lo carga nftables.service. Requiere root.' },
+    nc: { group: 'red', section: 1, synopsis: 'nc -z [-v] [-u] [-w SEG] HOST PUERTO[-PUERTO]...', summary: 'netcat (OpenBSD): comprueba si un puerto TCP acepta conexiones: «succeeded!» (abierto), «Connection refused» (cerrado o reject) o «timed out» (filtrado con drop). En Netfix solo el modo -z.' },
+    nmap: { group: 'red', section: 1, synopsis: 'nmap [-sn] [-Pn] [-p PUERTOS] DESTINO|RED/24|A.B.C.D-E', summary: 'Escaneo de puertos TCP por conexión (open, closed, filtered) y descubrimiento de equipos (-sn: ping y TCP 80/443). Sin -p revisa los puertos habituales. Para comprobar el cortafuegos de tus propios equipos del laboratorio.' },
+    dmesg: { group: 'red', section: 1, synopsis: 'dmesg', summary: 'Registro del núcleo: incluye las líneas de las reglas nft con log prefix "…". En Ubuntu solo lo puede leer root (sudo dmesg).' },
     'ssh-copy-id': { group: 'red', synopsis: 'ssh-copy-id [-i FICHERO.pub] [-p PUERTO] [-o OPCIÓN] [-f] [-n] [USUARIO@]HOST', summary: 'Instala la clave pública en ~/.ssh/authorized_keys del servidor (crea ~/.ssh con 700 y el fichero con 600) sin duplicarla.' },
     dhclient: { group: 'red', section: 8, synopsis: 'dhclient [-r] [eth0]', summary: 'Pide (o con -r libera) la concesión DHCP. Requiere root: sudo dhclient.' },
     ss: { group: 'red', section: 8, synopsis: 'ss -tulpn', summary: 'Sockets a la escucha y el proceso de cada uno.' },
@@ -25246,9 +26086,11 @@ function status(server, unit) {
     const lines = [
         `${active ? '●' : '○'} ${unit.linux}.service - ${unit.description}`,
         `     Loaded: loaded (/usr/lib/systemd/system/${unit.linux}.service; ${enabled}; preset: enabled)`,
-        active ? `     Active: active (running)` : '     Active: inactive (dead)',
+        active ? `     Active: active (${unit.oneshot ? 'exited' : 'running'})` : '     Active: inactive (dead)',
     ];
-    if (active)
+    if (active && unit.oneshot)
+        lines.push(`    Process: ${unit.pid} ExecStart=/usr/sbin/nft -f /etc/nftables.conf (code=exited, status=0/SUCCESS)`, `   Main PID: ${unit.pid} (code=exited, status=0/SUCCESS)`);
+    else if (active)
         lines.push(`   Main PID: ${unit.pid} (${unit.process})`, `     CGroup: /system.slice/${unit.linux}.service`, `             └─${unit.pid} /usr/sbin/${unit.process}`);
     const log = journalLines(server, unit, STATUS_LOG_LINES);
     return log.length ? [...lines, '', ...log] : lines;
@@ -25256,7 +26098,7 @@ function status(server, unit) {
 function listUnits(server) {
     const rows = UNITS.map((u) => {
         const on = unitActive(server.services, u.id);
-        return `  ${`${u.linux}.service`.padEnd(26)} loaded ${on ? 'active   running' : 'inactive dead   '} ${u.description}`;
+        return `  ${`${u.linux}.service`.padEnd(26)} loaded ${on ? `active   ${u.oneshot ? 'exited ' : 'running'}` : 'inactive dead   '} ${u.description}`;
     });
     return ['  UNIT                       LOAD   ACTIVE   SUB     DESCRIPTION', ...rows, '', `${UNITS.length} loaded units listed.`];
 }
@@ -25303,6 +26145,8 @@ function runVerb(server, unit, verb, now) {
         case 'force-reload':
             if (unit.id === 'http' && unitActive(server.services, 'http'))
                 return server.reloadWeb() ? jobFailed(unit) : [];
+            if (unit.id === 'firewall' && unitActive(server.services, 'firewall'))
+                return server.reloadFirewall() ? jobFailed(unit) : [];
             if (unit.id === 'ssh' && unitActive(server.services, 'ssh'))
                 return server.reloadSsh() ? jobFailed(unit) : [];
             return restart(server, unit);
@@ -25671,10 +26515,24 @@ function ip(host) {
         return 0;
     };
 }
+/** ping options that take a value (`-c 3`, `-W1`…); only -c changes what Netfix does. */
+const PING_WITH_VALUE = new Set(['-c', '-W', '-w', '-i', '-t', '-s', '-I', '-l', '-p', '-Q']);
 function pingCount(args) {
-    const cIdx = args.indexOf('-c');
-    const count = cIdx >= 0 ? Math.min(MAX_PING_COUNT, Math.max(1, Number(args[cIdx + 1]) || DEFAULT_PING_COUNT)) : DEFAULT_PING_COUNT;
-    const target = args.filter((_, i) => cIdx < 0 || (i !== cIdx && i !== cIdx + 1)).find((a) => !a.startsWith('-'));
+    let count = DEFAULT_PING_COUNT;
+    let target;
+    for (let i = 0; i < args.length; i++) {
+        const a = args[i] ?? '';
+        const flag = a.slice(0, 2);
+        if (!a.startsWith('-')) {
+            target ??= a;
+            continue;
+        }
+        if (!PING_WITH_VALUE.has(flag))
+            continue;
+        const value = a.length > 2 ? a.slice(2) : args[++i];
+        if (flag === '-c')
+            count = Math.min(MAX_PING_COUNT, Math.max(1, Number(value) || DEFAULT_PING_COUNT));
+    }
     return { count, target };
 }
 function ping(host) {
@@ -26735,6 +27593,1432 @@ function* sshKeygen(ctx) {
 
 return { sshKeygen };
 })();
+__m["net/nft/lexer.js"] = (() => {
+/** Tokens of the nft language (command line and rule files), with positions for nft's ^^^ error marks. */
+const PUNCT = new Set(['{', '}', ';', ',']);
+/** Characters that may appear inside a word: names, addresses, ranges, prefixes, ports, $variables. */
+const WORD = /[A-Za-z0-9_.\-/:$@*!=<>+]/;
+/** Longest source accepted (a big nftables.conf is a few KB). */
+const MAX_SOURCE = 256 * 1024;
+/** Splits `src` into tokens; `#` starts a comment until the end of the line (outside strings). */
+function lex(src) {
+    if (src.length > MAX_SOURCE)
+        return { ok: false, error: 'Error: input too large', line: 1, col: 0, len: 1 };
+    const tokens = [];
+    let line = 1;
+    let lineStart = 0;
+    let i = 0;
+    while (i < src.length) {
+        const c = src[i] ?? '';
+        const col = i - lineStart;
+        if (c === '\n') {
+            tokens.push({ kind: 'newline', text: '\n', col, line });
+            line++;
+            lineStart = ++i;
+        }
+        else if (c === ' ' || c === '\t' || c === '\r')
+            i++;
+        else if (c === '\\' && src[i + 1] === '\n') {
+            line++;
+            i += 2;
+            lineStart = i;
+        }
+        else if (c === '#') {
+            while (i < src.length && src[i] !== '\n')
+                i++;
+        }
+        else if (c === '"') {
+            const end = src.indexOf('"', i + 1);
+            if (end < 0 || src.slice(i + 1, end).includes('\n'))
+                return { ok: false, error: 'Error: syntax error, unterminated string', line, col, len: 1 };
+            tokens.push({ kind: 'string', text: src.slice(i + 1, end), col, line });
+            i = end + 1;
+        }
+        else if (PUNCT.has(c)) {
+            tokens.push({ kind: 'punct', text: c, col, line });
+            i++;
+        }
+        else if (WORD.test(c)) {
+            let j = i;
+            while (j < src.length && WORD.test(src[j] ?? ''))
+                j++;
+            tokens.push({ kind: 'word', text: src.slice(i, j), col, line });
+            i = j;
+        }
+        else {
+            return { ok: false, error: `Error: syntax error, unexpected junk`, line, col, len: 1 };
+        }
+    }
+    return { ok: true, tokens };
+}
+/** nft's error block: message, the source line and carets under the culprit. */
+function errorBlock(message, sourceLine, col, len) {
+    return `${message}\n${sourceLine}\n${' '.repeat(Math.max(0, col))}${'^'.repeat(Math.max(1, len))}`;
+}
+
+return { MAX_SOURCE, lex, errorBlock };
+})();
+__m["net/nft/parse-rule.js"] = (() => {
+const { NFT_LIMITS } = __m["net/nft/model.js"];
+const { parseIp } = __m["core/ip.js"];
+class Cursor {
+    i = 0;
+    tokens;
+    /** Variables from `define NAME = value`. */
+    vars;
+    constructor(tokens, vars = new Map()) {
+        this.tokens = tokens;
+        this.vars = vars;
+    }
+    peek(offset = 0) {
+        return this.tokens[this.i + offset];
+    }
+    next() {
+        return this.tokens[this.i++];
+    }
+    /** True (and consumes) when the next token is `text`. */
+    eat(text) {
+        if (this.peek()?.text !== text || this.peek()?.kind === 'string')
+            return false;
+        this.i++;
+        return true;
+    }
+    atEnd() {
+        const t = this.peek();
+        return !t || t.kind === 'newline' || (t.kind === 'punct' && (t.text === ';' || t.text === '}'));
+    }
+    get pos() {
+        return this.i;
+    }
+}
+class NftSyntaxError extends Error {
+    token;
+    constructor(message, token) {
+        super(message);
+        this.token = token;
+    }
+}
+const unexpected = (t) => new NftSyntaxError(`Error: syntax error, unexpected ${t ? (t.kind === 'newline' ? 'newline' : t.kind === 'string' ? 'quoted string' : t.text) : 'end of file'}`, t);
+const SERVICES = {
+    ftp: 21, ssh: 22, telnet: 23, smtp: 25, domain: 53, bootps: 67, bootpc: 68, http: 80, pop3: 110, ntp: 123, imap: 143,
+    https: 443, submission: 587, imaps: 993, pop3s: 995, wireguard: 51820, isakmp: 500, 'ipsec-nat-t': 4500,
+};
+const CT_STATES = ['new', 'established', 'related', 'invalid', 'untracked'];
+const ICMP_TYPES = ['echo-reply', 'destination-unreachable', 'echo-request', 'time-exceeded'];
+const PROTOCOLS = ['tcp', 'udp', 'icmp', 'esp'];
+const FIELD_KIND = {
+    'ip saddr': 'addr', 'ip daddr': 'addr', 'ip protocol': 'proto', 'meta l4proto': 'proto',
+    'tcp dport': 'port', 'tcp sport': 'port', 'udp dport': 'port', 'udp sport': 'port', 'th dport': 'port', 'th sport': 'port',
+    'ct state': 'state', iif: 'iface', oif: 'iface', iifname: 'iface', oifname: 'iface', 'icmp type': 'icmp',
+};
+function scalar(kind, t) {
+    const w = t.text;
+    if (kind === 'iface')
+        return { kind: 'word', w };
+    if (t.kind === 'string')
+        throw unexpected(t);
+    if (kind === 'addr') {
+        const [ip, prefix] = w.split('/');
+        const addr = parseIp(ip ?? '');
+        const p = prefix === undefined ? 32 : Number(prefix);
+        if (addr === null || !Number.isInteger(p) || p < 0 || p > 32)
+            throw new NftSyntaxError(`Error: Could not resolve hostname: Name or service not known`, t);
+        return { kind: 'addr', ip: addr, prefix: p };
+    }
+    if (kind === 'port') {
+        const range = /^(\w+)-(\w+)$/.exec(w);
+        const port = (s) => (/^\d+$/.test(s) ? Number(s) : SERVICES[s] ?? NaN);
+        const [a, b] = range ? [port(range[1] ?? ''), port(range[2] ?? '')] : [port(w), port(w)];
+        if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b > 65535 || a > b)
+            throw new NftSyntaxError(`Error: Could not resolve service: Servname not supported for ai_socktype`, t);
+        return range ? { kind: 'range', from: a, to: b } : { kind: 'num', n: a };
+    }
+    const allowed = kind === 'proto' ? PROTOCOLS : kind === 'state' ? CT_STATES : ICMP_TYPES;
+    if (!allowed.includes(w))
+        throw unexpected(t);
+    return { kind: 'word', w };
+}
+/** A value, an anonymous set `{ a, b }` or a comma list (`established,related`). */
+function value(c, kind) {
+    if (c.eat('{')) {
+        const items = [];
+        while (!c.eat('}')) {
+            const t = c.next();
+            if (!t || t.kind === 'newline' || t.text === ';')
+                throw unexpected(t);
+            if (t.text !== ',')
+                items.push(scalar(kind, t));
+            if (items.length > NFT_LIMITS.setItems)
+                throw new NftSyntaxError('Error: set too large', t);
+        }
+        return { kind: 'set', items };
+    }
+    const t = c.next();
+    if (!t || t.kind === 'newline' || t.kind === 'punct')
+        throw unexpected(t);
+    const items = [scalar(kind, t)];
+    // `ct state established,related`: a comma list without braces.
+    while (c.peek()?.text === ',' && c.peek()?.kind === 'punct') {
+        c.next();
+        const n = c.next();
+        if (!n || n.kind === 'newline' || n.kind === 'punct')
+            throw unexpected(n);
+        items.push(scalar(kind, n));
+        if (items.length > NFT_LIMITS.setItems)
+            throw new NftSyntaxError('Error: set too large', n);
+    }
+    return items.length === 1 ? items[0] : { kind: 'set', items };
+}
+/** The field a match starts with, or null when the token starts a statement. */
+function field(c) {
+    const a = c.peek()?.text ?? '';
+    const b = c.peek(1)?.text ?? '';
+    const two = `${a} ${b}`;
+    if (a === 'meta' && (b === 'iifname' || b === 'oifname' || b === 'iif' || b === 'oif')) {
+        c.next();
+        c.next();
+        return b;
+    }
+    if (two in FIELD_KIND) {
+        c.next();
+        c.next();
+        return two;
+    }
+    if (a === 'iif' || a === 'oif' || a === 'iifname' || a === 'oifname') {
+        c.next();
+        return a;
+    }
+    return null;
+}
+function address(c) {
+    const t = c.next();
+    const [ip, port] = (t?.text ?? '').split(':');
+    const addr = parseIp(ip ?? '');
+    const p = port === undefined ? undefined : Number(port);
+    if (!t || addr === null || (p !== undefined && (!Number.isInteger(p) || p < 1 || p > 65535)))
+        throw unexpected(t);
+    return p === undefined ? { ip: addr } : { ip: addr, port: p };
+}
+function reject(c) {
+    if (!c.eat('with'))
+        return { kind: 'reject' };
+    if (c.eat('tcp')) {
+        if (!c.eat('reset'))
+            throw unexpected(c.peek());
+        return { kind: 'reject', with: 'tcp reset' };
+    }
+    if (!c.eat('icmp') && !c.eat('icmpx'))
+        throw unexpected(c.peek());
+    c.eat('type');
+    const t = c.next();
+    const map = {
+        'port-unreachable': 'icmp port-unreachable', 'host-unreachable': 'icmp host-unreachable', 'admin-prohibited': 'icmp admin-prohibited',
+    };
+    const w = map[t?.text ?? ''];
+    if (!w)
+        throw unexpected(t);
+    return { kind: 'reject', with: w };
+}
+function verdict(c, word) {
+    if (word === 'accept' || word === 'drop' || word === 'return' || word === 'masquerade')
+        return { kind: word };
+    if (word === 'reject')
+        return reject(c);
+    if (word === 'jump' || word === 'goto') {
+        const t = c.next();
+        if (!t || t.kind !== 'word')
+            throw unexpected(t);
+        return { kind: word, chain: t.text };
+    }
+    if (word === 'snat' || word === 'dnat') {
+        c.eat('ip');
+        if (!c.eat('to'))
+            throw unexpected(c.peek());
+        return { kind: word, ...address(c) };
+    }
+    return null;
+}
+/** Statements after the matches: counter, log, comment and the final verdict. */
+function statement(c, draft) {
+    const t = c.next();
+    const w = t?.text ?? '';
+    if (draft.verdict)
+        throw unexpected(t);
+    if (w === 'counter') {
+        draft.counter = true;
+        if (c.eat('packets')) {
+            c.next();
+            if (!c.eat('bytes'))
+                throw unexpected(c.peek());
+            c.next();
+        }
+    }
+    else if (w === 'log') {
+        draft.log = '';
+        if (c.eat('prefix'))
+            draft.log = c.next()?.text ?? '';
+        if (c.eat('level'))
+            c.next();
+    }
+    else if (w === 'comment') {
+        const s = c.next();
+        if (!s || s.kind !== 'string')
+            throw unexpected(s);
+        draft.comment = s.text;
+    }
+    else {
+        const v = t?.kind === 'word' ? verdict(c, w) : null;
+        if (!v)
+            throw unexpected(t);
+        draft.verdict = v;
+    }
+}
+/** Parses a rule body up to the end of the statement (newline, `;` or `}`); the handle is assigned later. */
+function parseRuleBody(c) {
+    const matches = [];
+    const draft = { counter: false };
+    if (c.atEnd())
+        throw unexpected(c.peek());
+    while (!c.atEnd()) {
+        const f = draft.verdict || draft.counter || draft.log !== undefined || draft.comment !== undefined ? null : field(c);
+        if (!f) {
+            statement(c, draft);
+            continue;
+        }
+        const negate = c.eat('!=');
+        matches.push({ field: f, negate, value: value(c, FIELD_KIND[f]) });
+    }
+    return { matches, counter: draft.counter, log: draft.log, verdict: draft.verdict, comment: draft.comment };
+}
+
+return { Cursor, NftSyntaxError, SERVICES, CT_STATES, ICMP_TYPES, parseRuleBody };
+})();
+__m["net/nft/parse.js"] = (() => {
+const { PRIORITY_NAMES } = __m["net/nft/model.js"];
+const { lex } = __m["net/nft/lexer.js"];
+const { Cursor, NftSyntaxError, parseRuleBody } = __m["net/nft/parse-rule.js"];
+const FAMILIES = new Set(['ip', 'inet']);
+const HOOKS = new Set(['prerouting', 'input', 'forward', 'output', 'postrouting']);
+const MAX_DEFINES = 64;
+function word(c) {
+    const t = c.next();
+    if (!t || t.kind === 'newline' || t.kind === 'punct')
+        throw new NftSyntaxError(`Error: syntax error, unexpected ${t?.kind === 'newline' || !t ? 'newline' : t.text}`, t);
+    return t;
+}
+function target(c, withChain) {
+    const first = c.peek();
+    const family = first && FAMILIES.has(first.text) && c.peek(1) && c.peek(1)?.kind === 'word' ? (c.next(), first.text) : 'ip';
+    if (first && ['ip6', 'arp', 'bridge', 'netdev'].includes(first.text))
+        throw new NftSyntaxError(`Error: Could not process rule: Operation not supported (familia ${first.text} no disponible en Netfix)`, first);
+    const t = word(c);
+    if (!withChain)
+        return { family, table: t.text, at: t };
+    const ch = word(c);
+    return { family, table: t.text, chain: ch.text, at: t };
+}
+function priority(c) {
+    const t = word(c);
+    const base = /^-?\d+$/.test(t.text) ? Number(t.text) : PRIORITY_NAMES[t.text];
+    if (base === undefined)
+        throw new NftSyntaxError(`Error: '${t.text}' is not a valid priority in this context`, t);
+    const op = c.peek()?.text;
+    if (op !== '+' && op !== '-')
+        return base;
+    c.next();
+    const n = Number(word(c).text);
+    return op === '+' ? base + n : base - n;
+}
+/** `type filter hook input priority 0; policy drop;` inside a chain block. */
+function chainSpec(c, spec) {
+    if (c.eat('type')) {
+        const type = word(c);
+        if (type.text !== 'filter' && type.text !== 'nat')
+            throw new NftSyntaxError(`Error: unknown chain type`, type);
+        if (!c.eat('hook'))
+            throw new NftSyntaxError('Error: syntax error, unexpected newline, expecting hook', c.peek());
+        const hook = word(c);
+        if (!HOOKS.has(hook.text))
+            throw new NftSyntaxError(`Error: unknown chain hook`, hook);
+        if (!c.eat('priority'))
+            throw new NftSyntaxError('Error: syntax error, expecting priority', c.peek());
+        const prio = priority(c);
+        spec.base = { type: type.text, hook: hook.text, priority: prio, policy: spec.base?.policy ?? 'accept' };
+        return true;
+    }
+    if (c.eat('policy')) {
+        const p = word(c);
+        if (p.text !== 'accept' && p.text !== 'drop')
+            throw new NftSyntaxError(`Error: syntax error, unexpected ${p.text}`, p);
+        if (!spec.base)
+            throw new NftSyntaxError('Error: policy requires a base chain', p);
+        spec.base = { ...spec.base, policy: p.text };
+        return true;
+    }
+    return false;
+}
+function separators(c) {
+    while (c.peek()?.kind === 'newline' || c.peek()?.text === ';')
+        c.next();
+}
+function chainBlock(c, t, out) {
+    const spec = {};
+    const rules = [];
+    separators(c);
+    while (!c.eat('}')) {
+        if (!c.peek())
+            throw new NftSyntaxError('Error: syntax error, unexpected end of file', undefined);
+        if (!chainSpec(c, spec))
+            rules.push(parseRuleBody(c));
+        separators(c);
+    }
+    out.push({ op: 'add-chain', target: t, base: spec.base });
+    for (const rule of rules)
+        out.push({ op: 'add-rule', target: t, rule });
+}
+function tableBlock(c, t, out) {
+    out.push({ op: 'add-table', target: t });
+    separators(c);
+    while (!c.eat('}')) {
+        const kw = word(c);
+        if (kw.text === 'flags' || kw.text === 'comment') {
+            c.next();
+            separators(c);
+            continue;
+        }
+        if (kw.text !== 'chain')
+            throw new NftSyntaxError(`Error: syntax error, unexpected ${kw.text}`, kw);
+        const name = word(c);
+        if (!c.eat('{'))
+            throw new NftSyntaxError('Error: syntax error, expecting {', c.peek());
+        chainBlock(c, { ...t, chain: name.text }, out);
+        separators(c);
+    }
+}
+function ruleOp(c, op) {
+    const t = target(c, true);
+    if (op === 'delete' || op === 'replace') {
+        if (!c.eat('handle'))
+            throw new NftSyntaxError('Error: syntax error, expecting handle', c.peek());
+        const h = Number(word(c).text);
+        if (op === 'delete')
+            return { op: 'delete-rule', target: t, handle: h };
+        return { op: 'replace-rule', target: t, handle: h, rule: parseRuleBody(c) };
+    }
+    let position;
+    let index;
+    if (c.eat('position') || c.eat('handle'))
+        position = Number(word(c).text);
+    else if (c.eat('index'))
+        index = Number(word(c).text);
+    return { op: op === 'add' ? 'add-rule' : 'insert-rule', target: t, rule: parseRuleBody(c), position, index };
+}
+function objectOp(c, verb, out) {
+    const what = word(c);
+    if (what.text === 'ruleset' && verb === 'flush') {
+        out.push({ op: 'flush-ruleset' });
+        return;
+    }
+    if (what.text === 'table') {
+        const t = target(c, false);
+        if (verb === 'add' || verb === 'create') {
+            if (c.eat('{'))
+                tableBlock(c, t, out);
+            else
+                out.push({ op: 'add-table', target: t, create: verb === 'create' });
+        }
+        else if (verb === 'delete' || verb === 'destroy' || verb === 'flush')
+            out.push(verb === 'flush' ? { op: 'flush-table', target: t } : { op: 'delete-table', target: t });
+        else
+            throw new NftSyntaxError(`Error: syntax error, unexpected ${verb}`, what);
+        return;
+    }
+    if (what.text === 'chain') {
+        const t = target(c, true);
+        if (verb === 'add' || verb === 'create') {
+            if (c.eat('{')) {
+                chainBlock(c, t, out);
+                return;
+            }
+            out.push({ op: 'add-chain', target: t, create: verb === 'create' });
+        }
+        else if (verb === 'delete' || verb === 'flush')
+            out.push({ op: verb === 'flush' ? 'flush-chain' : 'delete-chain', target: t });
+        else
+            throw new NftSyntaxError(`Error: syntax error, unexpected ${verb}`, what);
+        return;
+    }
+    if (what.text === 'rule' && (verb === 'add' || verb === 'insert' || verb === 'replace' || verb === 'delete')) {
+        out.push(ruleOp(c, verb));
+        return;
+    }
+    throw new NftSyntaxError(`Error: syntax error, unexpected ${what.text}`, what);
+}
+function listOp(c, out) {
+    const what = word(c);
+    if (what.text === 'ruleset' || what.text === 'tables' || what.text === 'chains') {
+        if (what.text !== 'chains' && c.peek() && FAMILIES.has(c.peek()?.text ?? ''))
+            c.next();
+        out.push({ op: 'list', what: what.text });
+        return;
+    }
+    if (what.text === 'table') {
+        out.push({ op: 'list', what: 'table', target: target(c, false) });
+        return;
+    }
+    if (what.text === 'chain') {
+        out.push({ op: 'list', what: 'chain', target: target(c, true) });
+        return;
+    }
+    throw new NftSyntaxError(`Error: syntax error, unexpected ${what.text}`, what);
+}
+function statement(c, out) {
+    const t = word(c);
+    const w = t.text;
+    if (w === 'table') {
+        const tg = target(c, false);
+        if (!c.eat('{'))
+            throw new NftSyntaxError('Error: syntax error, expecting {', c.peek());
+        tableBlock(c, tg, out);
+    }
+    else if (w === 'include') {
+        const p = c.next();
+        if (!p || p.kind !== 'string')
+            throw new NftSyntaxError('Error: syntax error, expecting string', p);
+        out.push({ op: 'include', path: p.text, at: p });
+    }
+    else if (w === 'list')
+        listOp(c, out);
+    else if (['add', 'create', 'insert', 'replace', 'delete', 'destroy', 'flush'].includes(w))
+        objectOp(c, w, out);
+    else
+        throw new NftSyntaxError(`Error: syntax error, unexpected ${w}`, t);
+}
+/** Replaces `$NAME` tokens with the tokens of its definition (definitions must come first). */
+function expand(tokens) {
+    const vars = new Map();
+    const out = [];
+    for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (t.text === 'define' && tokens[i + 2]?.text === '=') {
+            const end = tokens.findIndex((x, j) => j > i && (x.kind === 'newline' || x.text === ';'));
+            const stop = end < 0 ? tokens.length : end;
+            if (vars.size >= MAX_DEFINES)
+                throw new NftSyntaxError('Error: too many definitions', t);
+            vars.set(tokens[i + 1]?.text ?? '', expand(tokens.slice(i + 3, stop)).map((x) => ({ ...x, col: t.col, line: t.line })));
+            i = stop;
+            continue;
+        }
+        if (t.kind === 'word' && t.text.startsWith('$')) {
+            const v = vars.get(t.text.slice(1));
+            if (!v)
+                throw new NftSyntaxError(`Error: unknown identifier '${t.text.slice(1)}'`, t);
+            out.push(...v.map((x) => ({ ...x, col: t.col, line: t.line })));
+        }
+        else
+            out.push(t);
+    }
+    return out;
+}
+/** Parses nft source (one command line or a whole file). */
+function parseNft(src) {
+    const lexed = lex(src);
+    if (!lexed.ok)
+        return lexed;
+    try {
+        const c = new Cursor(expand(lexed.tokens));
+        const out = [];
+        separators(c);
+        while (c.peek()) {
+            statement(c, out);
+            if (c.peek() && c.peek()?.kind !== 'newline' && c.peek()?.text !== ';')
+                throw new NftSyntaxError(`Error: syntax error, unexpected ${c.peek()?.text}`, c.peek());
+            separators(c);
+        }
+        return { ok: true, commands: out };
+    }
+    catch (e) {
+        if (!(e instanceof NftSyntaxError))
+            throw e;
+        const t = e.token;
+        return { ok: false, error: e.message, line: t?.line ?? 1, col: t?.col ?? src.length, len: t ? Math.max(1, t.text.length + (t.kind === 'string' ? 2 : 0)) : 1 };
+    }
+}
+
+return { parseNft };
+})();
+__m["net/nft/format.js"] = (() => {
+const { PRIORITY_NAMES } = __m["net/nft/model.js"];
+const { formatIp } = __m["core/ip.js"];
+function priorityText(p) {
+    const named = Object.entries(PRIORITY_NAMES).find(([, v]) => v === p);
+    if (named)
+        return named[0];
+    const near = Object.entries(PRIORITY_NAMES).find(([, v]) => Math.abs(p - v) <= 10 && p !== v);
+    if (near)
+        return `${near[0]} ${p > near[1] ? '+' : '-'} ${Math.abs(p - near[1])}`;
+    return String(p);
+}
+function baseLine(b) {
+    return `type ${b.type} hook ${b.hook} priority ${priorityText(b.priority)}; policy ${b.policy};`;
+}
+function valueText(v, field) {
+    switch (v.kind) {
+        case 'addr': return v.prefix === 32 ? formatIp(v.ip) : `${formatIp(v.ip)}/${v.prefix}`;
+        case 'num': return String(v.n);
+        case 'range': return `${v.from}-${v.to}`;
+        case 'word': return field.startsWith('iif') || field.startsWith('oif') ? `"${v.w}"` : v.w;
+        case 'set': {
+            const items = v.items.map((i) => valueText(i, field));
+            return field === 'ct state' ? items.join(',') : `{ ${items.join(', ')} }`;
+        }
+    }
+}
+function matchText(m) {
+    return `${m.field} ${m.negate ? '!= ' : ''}${valueText(m.value, m.field)}`;
+}
+function verdictText(v, family) {
+    const ip = family === 'inet' ? ' ip' : '';
+    switch (v.kind) {
+        case 'jump':
+        case 'goto': return `${v.kind} ${v.chain}`;
+        case 'reject': return v.with ? `reject with ${family === 'inet' && v.with.startsWith('icmp ') ? v.with.replace('icmp ', 'icmpx ') : v.with}` : 'reject';
+        case 'snat':
+        case 'dnat': return `${v.kind}${ip} to ${formatIp(v.ip)}${v.port !== undefined ? `:${v.port}` : ''}`;
+        default: return v.kind;
+    }
+}
+function ruleText(r, family, counters) {
+    const parts = r.matches.map(matchText);
+    if (r.counter) {
+        const c = counters?.get(r.handle) ?? { packets: 0, bytes: 0 };
+        parts.push(`counter packets ${c.packets} bytes ${c.bytes}`);
+    }
+    if (r.log !== undefined)
+        parts.push(r.log ? `log prefix "${r.log}"` : 'log');
+    if (r.verdict)
+        parts.push(verdictText(r.verdict, family));
+    if (r.comment !== undefined)
+        parts.push(`comment "${r.comment}"`);
+    return parts.join(' ');
+}
+const handle = (o, h) => (o.handles ? ` # handle ${h}` : '');
+function chainText(c, family, o, indent = '\t') {
+    const lines = [`${indent}chain ${c.name} {${handle(o, c.handle)}`];
+    if (c.base)
+        lines.push(`${indent}\t${baseLine(c.base)}`);
+    for (const r of c.rules)
+        lines.push(`${indent}\t${ruleText(r, family, o.counters)}${handle(o, r.handle)}`);
+    lines.push(`${indent}}`);
+    return lines;
+}
+function tableText(t, o) {
+    const lines = [`table ${t.family} ${t.name} {${handle(o, t.handle)}`];
+    t.chains.forEach((c, i) => {
+        if (i > 0)
+            lines.push('');
+        lines.push(...chainText(c, t.family, o));
+    });
+    lines.push('}');
+    return lines;
+}
+function rulesetText(rs, o = {}) {
+    return rs.tables.flatMap((t) => tableText(t, o));
+}
+/** A chain listed alone (`nft list chain inet filter input`) is wrapped in its table. */
+function singleChainText(t, c, o) {
+    return [`table ${t.family} ${t.name} {`, ...chainText(c, t.family, o), '}'];
+}
+
+return { ruleText, chainText, tableText, rulesetText, singleChainText };
+})();
+__m["net/nft/apply.js"] = (() => {
+const { NFT_LIMITS, findChain, findTable, withChain, withTable } = __m["net/nft/model.js"];
+const { parseNft } = __m["net/nft/parse.js"];
+const { errorBlock } = __m["net/nft/lexer.js"];
+const { rulesetText, singleChainText, tableText } = __m["net/nft/format.js"];
+const MAX_INCLUDE_DEPTH = 8;
+class ApplyError extends Error {
+    at;
+    constructor(message, at) {
+        super(message);
+        this.at = at;
+    }
+}
+const notFound = (at) => new ApplyError('Error: Could not process rule: No such file or directory', at);
+function table(rs, t) {
+    const found = findTable(rs, t.family, t.table);
+    if (!found)
+        throw notFound(t.at);
+    return found;
+}
+function chainOf(tb, t) {
+    const found = findChain(tb, t.chain ?? '');
+    if (!found)
+        throw notFound(t.at);
+    return found;
+}
+/** NAT statements only in nat chains, at the hooks where the kernel accepts them. */
+function checkVerdict(tb, ch, v, at) {
+    if (!v)
+        return;
+    const hook = ch.base?.hook;
+    const natOk = (hooks) => !ch.base || (ch.base.type === 'nat' && hooks.includes(hook ?? ''));
+    if ((v.kind === 'masquerade' || v.kind === 'snat') && !natOk(['postrouting', 'input']))
+        throw new ApplyError('Error: Could not process rule: Operation not supported', at);
+    if (v.kind === 'dnat' && !natOk(['prerouting', 'output']))
+        throw new ApplyError('Error: Could not process rule: Operation not supported', at);
+    if ((v.kind === 'jump' || v.kind === 'goto') && !findChain(tb, v.chain))
+        throw notFound(at);
+}
+function addRule(rs, c) {
+    const tb = table(rs, c.target);
+    const ch = chainOf(tb, c.target);
+    if (ch.rules.length >= NFT_LIMITS.rulesPerChain)
+        throw new ApplyError('Error: Could not process rule: Too many rules (límite de Netfix)', c.target.at);
+    checkVerdict(tb, ch, c.rule.verdict, c.target.at);
+    const rule = { ...c.rule, handle: rs.nextHandle };
+    const rules = [...ch.rules];
+    let at = c.op === 'insert-rule' ? 0 : rules.length;
+    if (c.position !== undefined) {
+        const i = rules.findIndex((r) => r.handle === c.position);
+        if (i < 0)
+            throw notFound(c.target.at);
+        at = c.op === 'insert-rule' ? i : i + 1;
+    }
+    else if (c.index !== undefined) {
+        if (c.index < 0 || c.index > rules.length)
+            throw notFound(c.target.at);
+        at = c.op === 'insert-rule' ? c.index : c.index + 1;
+    }
+    rules.splice(at, 0, rule);
+    return { ...withTable(rs, withChain(tb, { ...ch, rules })), nextHandle: rs.nextHandle + 1 };
+}
+function changeRule(rs, t, handle, body) {
+    const tb = table(rs, t);
+    const ch = chainOf(tb, t);
+    if (!ch.rules.some((r) => r.handle === handle))
+        throw notFound(t.at);
+    if (body)
+        checkVerdict(tb, ch, body.verdict, t.at);
+    const rules = body ? ch.rules.map((r) => (r.handle === handle ? { ...body, handle } : r)) : ch.rules.filter((r) => r.handle !== handle);
+    return withTable(rs, withChain(tb, { ...ch, rules }));
+}
+function addTable(rs, c) {
+    if (findTable(rs, c.target.family, c.target.table)) {
+        if (c.create)
+            throw new ApplyError('Error: Could not process rule: File exists', c.target.at);
+        return rs;
+    }
+    if (rs.tables.length >= NFT_LIMITS.tables)
+        throw new ApplyError('Error: Could not process rule: Too many tables (límite de Netfix)', c.target.at);
+    return { tables: [...rs.tables, { family: c.target.family, name: c.target.table, handle: rs.nextHandle, chains: [] }], nextHandle: rs.nextHandle + 1 };
+}
+function addChain(rs, c) {
+    const tb = table(rs, c.target);
+    const existing = findChain(tb, c.target.chain ?? '');
+    if (existing) {
+        if (c.create)
+            throw new ApplyError('Error: Could not process rule: File exists', c.target.at);
+        if (c.base && existing.base && (c.base.hook !== existing.base.hook || c.base.type !== existing.base.type))
+            throw new ApplyError('Error: Could not process rule: Operation not supported', c.target.at);
+        return c.base ? withTable(rs, withChain(tb, { ...existing, base: c.base })) : rs;
+    }
+    if (tb.chains.length >= NFT_LIMITS.chainsPerTable)
+        throw new ApplyError('Error: Could not process rule: Too many chains (límite de Netfix)', c.target.at);
+    const chain = { name: c.target.chain ?? '', handle: rs.nextHandle, base: c.base, rules: [] };
+    return { ...withTable(rs, withChain(tb, chain)), nextHandle: rs.nextHandle + 1 };
+}
+function deleteChain(rs, t) {
+    const tb = table(rs, t);
+    const ch = chainOf(tb, t);
+    const referenced = tb.chains.some((x) => x.rules.some((r) => (r.verdict?.kind === 'jump' || r.verdict?.kind === 'goto') && r.verdict.chain === ch.name));
+    if (ch.rules.length > 0 || referenced)
+        throw new ApplyError('Error: Could not process rule: Device or resource busy', t.at);
+    return withTable(rs, { ...tb, chains: tb.chains.filter((x) => x !== ch) });
+}
+function list(rs, c, o) {
+    if (c.what === 'ruleset')
+        return rulesetText(rs, o);
+    if (c.what === 'tables')
+        return rs.tables.map((t) => `table ${t.family} ${t.name}`);
+    if (c.what === 'chains')
+        return rs.tables.flatMap((t) => [`table ${t.family} ${t.name} {`, ...t.chains.flatMap((ch) => [`\tchain ${ch.name} {`, ...(ch.base ? [`\t\ttype ${ch.base.type} hook ${ch.base.hook} priority ${ch.base.priority}; policy ${ch.base.policy};`] : []), '\t}']), '}']);
+    const t = c.target;
+    const tb = table(rs, t);
+    return c.what === 'table' ? tableText(tb, o) : singleChainText(tb, chainOf(tb, t), o);
+}
+function step(rs, c, out, env, depth) {
+    switch (c.op) {
+        case 'flush-ruleset': return { tables: [], nextHandle: rs.nextHandle };
+        case 'add-table': return addTable(rs, c);
+        case 'delete-table': {
+            table(rs, c.target);
+            return { ...rs, tables: rs.tables.filter((t) => !(t.family === c.target.family && t.name === c.target.table)) };
+        }
+        case 'flush-table': {
+            const tb = table(rs, c.target);
+            return withTable(rs, { ...tb, chains: tb.chains.map((ch) => ({ ...ch, rules: [] })) });
+        }
+        case 'add-chain': return addChain(rs, c);
+        case 'delete-chain': return deleteChain(rs, c.target);
+        case 'flush-chain': {
+            const tb = table(rs, c.target);
+            return withTable(rs, withChain(tb, { ...chainOf(tb, c.target), rules: [] }));
+        }
+        case 'add-rule':
+        case 'insert-rule': return addRule(rs, c);
+        case 'replace-rule': return changeRule(rs, c.target, c.handle, c.rule);
+        case 'delete-rule': return changeRule(rs, c.target, c.handle, null);
+        case 'list':
+            out.push(...list(rs, c, env.format ?? {}));
+            return rs;
+        case 'include': return include(rs, c, out, env, depth);
+    }
+}
+function include(rs, c, out, env, depth) {
+    if (depth >= MAX_INCLUDE_DEPTH)
+        throw new ApplyError('Error: Include nested too deeply, max 8 levels', c.at);
+    const text = env.read?.(c.path) ?? null;
+    if (text === null)
+        throw new ApplyError(`Error: File not found: ${c.path}`, c.at);
+    const parsed = parseNft(text);
+    if (!parsed.ok)
+        throw new ApplyError(`${parsed.error} (${c.path}:${parsed.line})`, c.at);
+    return parsed.commands.reduce((acc, cmd) => step(acc, cmd, out, env, depth + 1), rs);
+}
+/** Parses and applies `src`; errors come as nft prints them (message, line, carets). */
+function runNft(rs, src, env = {}) {
+    const lines = src.split('\n');
+    const parsed = parseNft(src);
+    if (!parsed.ok)
+        return { ok: false, error: errorBlock(parsed.error, lines[parsed.line - 1] ?? '', parsed.col, parsed.len) };
+    const out = [];
+    try {
+        const next = parsed.commands.reduce((acc, c) => step(acc, c, out, env, 0), rs);
+        return { ok: true, ruleset: next, output: out };
+    }
+    catch (e) {
+        if (!(e instanceof ApplyError))
+            throw e;
+        const at = e.at;
+        return { ok: false, error: at ? errorBlock(e.message, lines[at.line - 1] ?? '', at.col, at.text.length) : e.message };
+    }
+}
+/** The text `nft list ruleset` prints, also used to write /etc/nftables.conf from the GUI. */
+function rulesetFile(rs) {
+    return ['#!/usr/sbin/nft -f', '', 'flush ruleset', '', ...rulesetText(rs), ''].join('\n');
+}
+
+return { runNft, rulesetFile };
+})();
+__m["devices/server-firewall.js"] = (() => {
+const { hostFs } = __m["devices/host-fs.js"];
+const { runNft } = __m["net/nft/apply.js"];
+const { EMPTY_RULESET } = __m["net/nft/model.js"];
+const NFTABLES_CONF = '/etc/nftables.conf';
+/** Ubuntu's default /etc/nftables.conf (an empty, accepting inet filter table). */
+const DEFAULT_NFTABLES_CONF = `#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet filter {
+	chain input {
+		type filter hook input priority filter;
+	}
+	chain forward {
+		type filter hook forward priority filter;
+	}
+	chain output {
+		type filter hook output priority filter;
+	}
+}
+`;
+/** Reads a file of the host as root (null when missing or not a file). */
+function readHostFile(host, path) {
+    const fs = hostFs(host);
+    return fs && fs.tryLookup(path)?.kind === 'file' ? fs.readFile(path) : null;
+}
+/** Loads /etc/nftables.conf into the kernel; returns nft's error text or null. Atomic: on error nothing changes. */
+function loadNftablesConf(host) {
+    const text = readHostFile(host, NFTABLES_CONF);
+    if (text === null)
+        return `Error: Could not open file "${NFTABLES_CONF}": No such file or directory`;
+    const r = runNft(EMPTY_RULESET, text, { read: (p) => readHostFile(host, p) });
+    if (!r.ok)
+        return r.error.split('\n').map((l, i) => (i === 0 ? `${NFTABLES_CONF}: ${l}` : l)).join('\n');
+    host.kernel.netfilter.setRuleset(r.ruleset);
+    return null;
+}
+
+return { NFTABLES_CONF, DEFAULT_NFTABLES_CONF, readHostFile, loadNftablesConf };
+})();
+__m["shells/kernel-files.js"] = (() => {
+const { FsError } = __m["bash/vfs.js"];
+const { SYSCTL_KEYS, parseSysctlConf, sysctlPath } = __m["net/sysctl.js"];
+const { DEFAULT_NFTABLES_CONF, NFTABLES_CONF } = __m["devices/server-firewall.js"];
+const SYSCTL_CONF = '/etc/sysctl.conf';
+const SYSCTL_DIR = '/etc/sysctl.d';
+/** Where the Server window and the web GUI save kernel parameters. */
+const NETFIX_SYSCTL = '/etc/sysctl.d/99-netfix.conf';
+const DEFAULT_SYSCTL_CONF = `#
+# /etc/sysctl.conf - Configuration file for setting system variables
+# See /etc/sysctl.d/ for additional system variables.
+# See sysctl.conf (5) for information.
+#
+
+#kernel.domainname = example.com
+
+###################################################################
+# Functions previously found in netbase
+#
+
+# Uncomment the next two lines to enable Spoof protection (reverse-path filter)
+# Turn on Source Address Verification in all interfaces to
+# prevent some spoofing attacks
+#net.ipv4.conf.default.rp_filter=1
+#net.ipv4.conf.all.rp_filter=1
+
+# Uncomment the next line to enable TCP/IP SYN cookies
+# See http://lwn.net/Articles/277146/
+# Note: This may impact IPv6 TCP sessions too
+#net.ipv4.tcp_syncookies=1
+
+# Uncomment the next line to enable packet forwarding for IPv4
+#net.ipv4.ip_forward=1
+
+# Uncomment the next line to enable packet forwarding for IPv6
+#  Enabling this option disables Stateless Address Autoconfiguration
+#  based on Router Advertisements for this host
+#net.ipv6.conf.all.forwarding=1
+
+###################################################################
+# Additional settings - these settings can improve the network
+# security of the host and prevent against some network attacks
+# including spoofing attacks and man in the middle attacks through
+# redirection. Some network environments, however, require that these
+# settings are disabled so review and enable them as needed.
+#
+# Do not accept ICMP redirects (prevent MITM attacks)
+#net.ipv4.conf.all.accept_redirects = 0
+#net.ipv6.conf.all.accept_redirects = 0
+# _or_
+# Accept ICMP redirects only for gateways listed in our default
+# gateway list (enabled by default)
+# net.ipv4.conf.all.secure_redirects = 1
+#
+# Do not send ICMP redirects (we are not a router)
+#net.ipv4.conf.all.send_redirects = 0
+#
+# Do not accept IP source route packets (we are not a router)
+#net.ipv4.conf.all.accept_source_route = 0
+#net.ipv6.conf.all.accept_source_route = 0
+#
+# Log Martian Packets
+#net.ipv4.conf.all.log_martians = 1
+#
+
+###################################################################
+# Magic system request Key
+# 0=disable, 1=enable all, >1 bitmask of sysrq functions
+# See https://www.kernel.org/doc/html/latest/admin-guide/sysrq.html
+# for what other values do
+#kernel.sysrq=438
+`;
+const NETWORK_SECURITY = `
+# Turn on Source Address Verification in all interfaces to
+# prevent some spoofing attacks.
+net.ipv4.conf.default.rp_filter=2
+net.ipv4.conf.all.rp_filter=2
+`;
+const README = `Kernel system variables configuration files
+
+Files found under the /etc/sysctl.d directory that end with .conf are
+parsed within sysctl(8) at boot time.  If you want to set kernel variables
+you can either edit /etc/sysctl.conf or make a new file.
+
+The filename isn't important, but don't make it a package name as it may clash
+with something the package builder needs later. It must end with .conf though.
+
+My personal preference would be for local system settings to go into
+/etc/sysctl.d/local.conf but as long as you follow the rules for the names
+of the file, anything will work. See sysctl.conf(8) man page for details
+of the format.
+
+After making any changes, please run "service procps force-reload" (or, from
+a Debian package maintainer script "deb-systemd-invoke restart procps.service").
+`;
+/** Seeds the configuration files and mounts /proc/sys on the live parameters. */
+function seedKernel(fs, host) {
+    fs.seed(SYSCTL_CONF, { kind: 'file', content: DEFAULT_SYSCTL_CONF }, 0o644);
+    fs.seed(SYSCTL_DIR, { kind: 'dir' }, 0o755);
+    fs.seed(`${SYSCTL_DIR}/10-network-security.conf`, { kind: 'file', content: NETWORK_SECURITY }, 0o644);
+    fs.seed(`${SYSCTL_DIR}/README.sysctl`, { kind: 'file', content: README }, 0o644);
+    fs.seed(NFTABLES_CONF, { kind: 'file', content: DEFAULT_NFTABLES_CONF }, 0o755);
+    const sysctl = host.kernel.sysctl;
+    for (const key of SYSCTL_KEYS) {
+        fs.mountFile(sysctlPath(key.name), () => `${sysctl.get(key.name) ?? ''}\n`, 0o644, (content) => {
+            // A redirection truncates and then appends (old value + new one): the last line is what was written.
+            const value = content.split('\n').filter((l) => l.trim() !== '').at(-1) ?? '';
+            if (value !== '' && sysctl.set(key.name, value) !== null)
+                throw new FsError('EINVAL');
+        });
+    }
+}
+/** The files `sysctl --system` reads, in order: /etc/sysctl.d/*.conf, then /etc/sysctl.conf. */
+function sysctlFiles(fs) {
+    const dir = fs.tryLookup(SYSCTL_DIR)?.kind === 'dir' ? fs.readdir(SYSCTL_DIR).filter((n) => n.endsWith('.conf')).sort().map((n) => `${SYSCTL_DIR}/${n}`) : [];
+    return [...dir, ...(fs.tryLookup(SYSCTL_CONF)?.kind === 'file' ? [SYSCTL_CONF] : [])];
+}
+/** Applies a sysctl.conf file; returns the applied `key = value` lines and the errors. */
+function applySysctlFile(fs, host, path) {
+    const applied = [];
+    const errors = [];
+    const text = fs.tryLookup(path)?.kind === 'file' ? fs.readFile(path) : null;
+    if (text === null)
+        return { applied, errors: [`sysctl: cannot open "${path}": No such file or directory`] };
+    for (const e of parseSysctlConf(text)) {
+        const r = host.kernel.sysctl.set(e.key, e.value);
+        if (r === null)
+            applied.push(`${e.key} = ${host.kernel.sysctl.get(e.key) ?? e.value}`);
+        else if (!e.quiet)
+            errors.push(r === 'unknown' ? `sysctl: cannot stat ${sysctlPath(e.key)}: No such file or directory` : `sysctl: setting key "${e.key}": Invalid argument`);
+    }
+    return { applied, errors };
+}
+
+return { SYSCTL_CONF, SYSCTL_DIR, NETFIX_SYSCTL, seedKernel, sysctlFiles, applySysctlFile };
+})();
+__m["shells/kernel-cmds.js"] = (() => {
+const { sysctlName, sysctlPath } = __m["net/sysctl.js"];
+const { applySysctlFile, sysctlFiles, SYSCTL_CONF } = __m["shells/kernel-files.js"];
+const EXIT_ERROR = 255;
+const USAGE = `
+Usage:
+ sysctl [options] [variable[=value] ...]
+
+Options:
+  -a, --all            display all variables
+  -n, --values         print only values of the given variable(s)
+  -e, --ignore         ignore unknown variables errors
+  -q, --quiet          do not echo variable set
+  -w, --write          enable writing a value to variable
+  -p, --load[=<file>]  read values from file
+      --system         read values from all system directories
+`;
+function parse(argv) {
+    const o = { values: false, ignore: false, quiet: false, all: false, system: false, args: [] };
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i] ?? '';
+        if (a === '--system')
+            o.system = true;
+        else if (a === '-a' || a === '--all' || a === '-A' || a === '-X')
+            o.all = true;
+        else if (a === '-p' || a === '--load')
+            o.load = argv[i + 1] && !argv[i + 1]?.startsWith('-') ? argv[++i] : SYSCTL_CONF;
+        else if (a.startsWith('--load='))
+            o.load = a.slice(7);
+        else if (a.startsWith('-p') && a.length > 2)
+            o.load = a.slice(2);
+        else if (/^-[nweq]+$/.test(a)) {
+            if (a.includes('n'))
+                o.values = true;
+            if (a.includes('e'))
+                o.ignore = true;
+            if (a.includes('q'))
+                o.quiet = true;
+        }
+        else if (a.startsWith('-'))
+            return null;
+        else
+            o.args.push(a);
+    }
+    return o;
+}
+function show(ctx, host, o, name) {
+    const v = host.kernel.sysctl.get(name);
+    if (v === undefined) {
+        if (!o.ignore)
+            ctx.err(`sysctl: cannot stat ${sysctlPath(name)}: No such file or directory\n`);
+        return o.ignore ? 0 : EXIT_ERROR;
+    }
+    ctx.out(o.values ? `${v}\n` : `${name} = ${v}\n`);
+    return 0;
+}
+function write(ctx, host, o, arg) {
+    const eq = arg.indexOf('=');
+    const name = sysctlName(arg.slice(0, eq).trim());
+    const value = arg.slice(eq + 1).trim();
+    if (!host.kernel.sysctl.has(name)) {
+        if (!o.ignore)
+            ctx.err(`sysctl: cannot stat ${sysctlPath(name)}: No such file or directory\n`);
+        return o.ignore ? 0 : EXIT_ERROR;
+    }
+    if (ctx.cred.uid !== 0) {
+        ctx.err(`sysctl: permission denied on key "${name}"\n`);
+        return EXIT_ERROR;
+    }
+    if (host.kernel.sysctl.set(name, value) !== null) {
+        ctx.err(`sysctl: setting key "${name}": Invalid argument\n`);
+        return EXIT_ERROR;
+    }
+    if (!o.quiet)
+        ctx.out(`${name} = ${host.kernel.sysctl.get(name) ?? value}\n`);
+    return 0;
+}
+function load(ctx, host, files, announce, quiet) {
+    if (ctx.cred.uid !== 0) {
+        ctx.err(`sysctl: permission denied on key "${host.kernel.sysctl.names()[0] ?? ''}"\n`);
+        return EXIT_ERROR;
+    }
+    let status = 0;
+    for (const f of files) {
+        if (announce)
+            ctx.out(`* Applying ${f} ...\n`);
+        const r = applySysctlFile(ctx.sh.env.fs, host, ctx.resolve(f));
+        if (!quiet && r.applied.length)
+            ctx.out(`${r.applied.join('\n')}\n`);
+        if (r.errors.length) {
+            ctx.err(`${r.errors.join('\n')}\n`);
+            status = EXIT_ERROR;
+        }
+    }
+    return status;
+}
+function sysctl(host) {
+    return (ctx) => {
+        const o = parse(ctx.argv.slice(1));
+        if (!o) {
+            ctx.err(`sysctl: invalid option\n${USAGE}`);
+            return 1;
+        }
+        if (o.system)
+            return load(ctx, host, sysctlFiles(ctx.sh.env.fs), true, o.quiet);
+        if (o.load !== undefined)
+            return load(ctx, host, [o.load], false, o.quiet);
+        if (o.all) {
+            ctx.out(host.kernel.sysctl.names().map((n) => (o.values ? host.kernel.sysctl.get(n) : `${n} = ${host.kernel.sysctl.get(n)}`)).join('\n') + '\n');
+            return 0;
+        }
+        if (!o.args.length) {
+            ctx.err(USAGE.trimStart());
+            return 1;
+        }
+        let status = 0;
+        for (const a of o.args)
+            status = Math.max(status, a.includes('=') ? write(ctx, host, o, a) : show(ctx, host, o, sysctlName(a)));
+        return status;
+    };
+}
+/** dmesg: kernel log since boot ("[   12.345678] …"); Ubuntu restricts it to root. */
+function dmesg(host) {
+    return (ctx) => {
+        if (ctx.cred.uid !== 0) {
+            ctx.err('dmesg: read kernel buffer failed: Operation not permitted\n');
+            return 1;
+        }
+        const lines = host.kernel.log.map((l) => `[${(l.time / 1000 % 100000).toFixed(6).padStart(12)}] ${l.text}`);
+        if (lines.length)
+            ctx.out(`${lines.join('\n')}\n`);
+        return 0;
+    };
+}
+
+return { sysctl, dmesg };
+})();
+__m["shells/nft-cmd.js"] = (() => {
+const { runNft } = __m["net/nft/apply.js"];
+const { FsError } = __m["bash/vfs.js"];
+const VERSION = 'nftables v1.1.1 (Commodore Bullseye 2)';
+const USAGE = `Usage: nft [ options ] [ cmds... ]
+
+Options (general):
+  -h, --help                      Show this help
+  -v, --version                   Show version information
+  -V                              Show extended version information
+
+Options (ruleset input handling):
+  -f, --file <filename>           Read input from <filename>
+  -c, --check                     Check commands validity without actually applying the changes.
+
+Options (ruleset list formatting):
+  -a, --handle                    Output rule handle.
+  -s, --stateless                 Omit stateful information of ruleset.
+  -n, --numeric                   Print fully numerical output.
+`;
+function parse(argv) {
+    const o = { check: false, handles: false, stateless: false, words: [] };
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i] ?? '';
+        if (o.words.length || !a.startsWith('-')) {
+            o.words.push(a);
+            continue;
+        }
+        if (a === '-f' || a === '--file') {
+            o.file = argv[++i];
+            if (o.file === undefined)
+                return 'nft: option requires an argument -- \'f\'';
+            continue;
+        }
+        if (a === '-j' || a === '--json')
+            return 'Error: JSON support not compiled-in';
+        if (a === '-i' || a === '--interactive')
+            return 'Error: interactive CLI not supported in this build';
+        for (const f of a.replace(/^--?/, '').split(a.startsWith('--') ? /$/ : '')) {
+            if (f === 'a' || f === 'handle')
+                o.handles = true;
+            else if (f === 'c' || f === 'check')
+                o.check = true;
+            else if (f === 's' || f === 'stateless')
+                o.stateless = true;
+            else if (!['n', 'numeric', 'N', 'S', 'y', 'e', 'echo', 't', 'terse'].includes(f))
+                return `nft: unrecognized option '${a}'\n${USAGE}`;
+        }
+    }
+    return o;
+}
+function readAs(ctx, path) {
+    try {
+        return ctx.sh.env.fs.readFile(ctx.resolve(path), ctx.cred);
+    }
+    catch (e) {
+        if (e instanceof FsError && e.code === 'ENOENT')
+            return null;
+        throw e;
+    }
+}
+function nft(host) {
+    return function* run(ctx) {
+        const args = ctx.argv.slice(1);
+        if (args[0] === '-v' || args[0] === '--version' || args[0] === '-V') {
+            ctx.out(`${VERSION}\n`);
+            return 0;
+        }
+        if (args[0] === '-h' || args[0] === '--help') {
+            ctx.out(USAGE);
+            return 0;
+        }
+        const o = parse(args);
+        if (typeof o === 'string') {
+            ctx.err(`${o}\n`);
+            return 1;
+        }
+        if (ctx.cred.uid !== 0) {
+            ctx.err('netlink: Error: cache initialization failed: Operation not permitted\n');
+            return 1;
+        }
+        let src = o.words.join(' ');
+        if (o.file !== undefined) {
+            const text = o.file === '-' || o.file === '/dev/stdin' ? yield* ctx.readAll() : readAs(ctx, o.file);
+            if (text === null) {
+                ctx.err(`Error: Could not open file "${o.file}": No such file or directory\n`);
+                return 1;
+            }
+            src = text;
+        }
+        if (!src.trim()) {
+            ctx.err(USAGE);
+            return 1;
+        }
+        const nf = host.kernel.netfilter;
+        const r = runNft(nf.ruleset, src, {
+            read: (p) => readAs(ctx, p),
+            format: { handles: o.handles, counters: o.stateless ? new Map() : nf.counters },
+        });
+        if (!r.ok) {
+            ctx.err(`${o.file !== undefined ? `${o.file}: ` : ''}${r.error}\n`);
+            return 1;
+        }
+        if (!o.check)
+            nf.setRuleset(r.ruleset);
+        const out = o.stateless ? r.output.map((l) => l.replace(/ counter packets \d+ bytes \d+/, ' counter')) : r.output;
+        if (out.length)
+            ctx.out(`${out.join('\n')}\n`);
+        return 0;
+    };
+}
+
+return { nft };
+})();
+__m["shells/scan-tools.js"] = (() => {
+const { resolveHost } = __m["shells/net-tools.js"];
+const { formatIp, parseIp } = __m["core/ip.js"];
+const SERVICES = {
+    21: 'ftp', 22: 'ssh', 23: 'telnet', 25: 'smtp', 53: 'domain', 80: 'http', 110: 'pop3', 111: 'rpcbind', 135: 'msrpc', 139: 'netbios-ssn',
+    143: 'imap', 443: 'https', 445: 'microsoft-ds', 587: 'submission', 993: 'imaps', 995: 'pop3s', 1723: 'pptp', 2222: 'EtherNetIP-1',
+    3000: 'ppp', 3306: 'mysql', 3389: 'ms-wbt-server', 5000: 'upnp', 5432: 'postgresql', 5900: 'vnc', 8000: 'http-alt', 8008: 'http',
+    8080: 'http-proxy', 8081: 'blackice-icecap', 8443: 'https-alt', 8888: 'sun-answerbook', 9000: 'cslistener', 10000: 'snet-sensor-mgmt',
+};
+/** Ports scanned without -p (Netfix stands in for nmap's top 1000 with the ones a lab can open). */
+const TOP_PORTS = Object.keys(SERVICES).map(Number);
+const TOP_TOTAL = 1000;
+const MAX_PORTS = 1024;
+const MAX_HOSTS = 256;
+const PROBE_MS = 1500;
+const COLLAPSE = 25;
+const NMAP_VERSION = 'Nmap 7.94SVN';
+/** Runs every probe in parallel and waits (simulated time) until all have answered or timed out. */
+function probeAll(host, targets, timeoutMs) {
+    const results = targets.map(() => undefined);
+    targets.forEach((t, i) => host.tcp.probe(t.ip, t.port, (r) => { results[i] = r; }, timeoutMs));
+    host.hooks.runUntil(() => results.every((r) => r !== undefined), timeoutMs + 500);
+    return results.map((r) => r ?? 'filtered');
+}
+function parsePorts(spec) {
+    if (spec === '-')
+        return null;
+    const out = new Set();
+    for (const part of spec.split(',')) {
+        const m = /^(\d+)(?:-(\d+))?$/.exec(part.trim());
+        const a = Number(m?.[1]);
+        const b = Number(m?.[2] ?? m?.[1]);
+        if (!m || a < 1 || b > 65535 || a > b)
+            return [];
+        for (let p = a; p <= b && out.size <= MAX_PORTS; p++)
+            out.add(p);
+    }
+    return [...out].sort((x, y) => x - y);
+}
+// ------------------------------------------------------------ nc
+function nc(host) {
+    return (ctx) => {
+        const args = ctx.argv.slice(1);
+        const flags = args.filter((a) => a.startsWith('-')).join('');
+        const wIdx = args.indexOf('-w');
+        const timeout = wIdx >= 0 ? Math.max(1, Number(args[wIdx + 1]) || 1) * 1000 : 5000;
+        const rest = args.filter((a, i) => !a.startsWith('-') && i !== wIdx + 1);
+        const [target, ...portSpecs] = rest;
+        if (!target || !portSpecs.length) {
+            ctx.err('usage: nc [-46CDdFhklNnrStUuvZz] [-I length] [-i interval] [-M ttl]\n\t  [-m minttl] [-O length] [-P proxy_username] [-p source_port]\n\t  [-q seconds] [-s sourceaddr] [-T keyword] [-V rtable] [-W recvlimit]\n\t  [-w timeout] [-X proxy_protocol] [-x proxy_address[:port]]\n\t  [destination] [port]\n');
+            return 1;
+        }
+        if (!flags.includes('z')) {
+            ctx.err('nc: solo está disponible el modo de comprobación de puertos (-z) en Netfix\n');
+            return 1;
+        }
+        const r = resolveHost(host, target);
+        if (r.kind === 'error') {
+            ctx.err(`nc: getaddrinfo for host "${target}" port ${portSpecs[0]}: Name or service not known\n`);
+            return 1;
+        }
+        const ports = portSpecs.flatMap((p) => parsePorts(p) ?? []);
+        const verbose = flags.includes('v');
+        const udp = flags.includes('u');
+        const results = udp ? ports.map(() => 'open') : probeAll(host, ports.map((port) => ({ ip: r.ip, port })), timeout);
+        let ok = false;
+        ports.forEach((port, i) => {
+            const proto = udp ? 'udp' : 'tcp';
+            const res = results[i];
+            if (res === 'open') {
+                ok = true;
+                if (verbose)
+                    ctx.err(`Connection to ${target} ${port} port [${proto}/${SERVICES[port] ?? '*'}] succeeded!\n`);
+            }
+            else if (verbose || ports.length === 1) {
+                ctx.err(res === 'closed' ? `nc: connect to ${target} port ${port} (${proto}) failed: Connection refused\n` : res === 'noroute' ? `nc: connect to ${target} port ${port} (${proto}) failed: Network is unreachable\n` : `nc: connect to ${target} port ${port} (${proto}) timed out: Operation now in progress\n`);
+            }
+        });
+        return ok ? 0 : 1;
+    };
+}
+// ------------------------------------------------------------ nmap
+function targets(host, spec) {
+    const cidr = /^(\d+\.\d+\.\d+\.\d+)\/(\d+)$/.exec(spec);
+    if (cidr) {
+        const base = parseIp(cidr[1] ?? '');
+        const prefix = Number(cidr[2]);
+        if (base === null || prefix < 24 || prefix > 32)
+            return `Netfix: rango demasiado grande (máximo /24, ${MAX_HOSTS} direcciones)`;
+        const size = 2 ** (32 - prefix);
+        const net = (base & ~(size - 1)) >>> 0;
+        return Array.from({ length: size }, (_, i) => ({ ip: (net + i) >>> 0 }));
+    }
+    const range = /^(\d+\.\d+\.\d+)\.(\d+)-(\d+)$/.exec(spec);
+    if (range) {
+        const from = Number(range[2]);
+        const to = Math.min(255, Number(range[3]));
+        return Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => ({ ip: parseIp(`${range[1]}.${from + i}`) ?? 0 }));
+    }
+    const r = resolveHost(host, spec);
+    return r.kind === 'error' ? `Failed to resolve "${spec}".` : [{ ip: r.ip, name: r.viaDns ? spec : undefined }];
+}
+/** Host discovery: ICMP echo, or any answer on TCP 80/443 (a host that drops pings can still be up). */
+function hostsUp(host, list) {
+    const echo = list.map(() => false);
+    list.forEach((t, i) => host.stack.echo(t.ip, 0x4e4d, i, undefined, (r) => { if (r.kind === 'reply')
+        echo[i] = true; }));
+    const tcp = probeAll(host, list.flatMap((t) => [{ ip: t.ip, port: 80 }, { ip: t.ip, port: 443 }]), PROBE_MS);
+    return list.map((_, i) => echo[i] === true || tcp[i * 2] === 'open' || tcp[i * 2] === 'closed' || tcp[i * 2 + 1] === 'open' || tcp[i * 2 + 1] === 'closed');
+}
+const stateOf = (r) => (r === 'open' ? 'open' : r === 'closed' ? 'closed' : 'filtered');
+/**
+ * The PORT/STATE/SERVICE table. Like nmap, the non-open state with most ports is collapsed into
+ * "Not shown" when it has more than 25; ports of the default list that Netfix does not probe count there.
+ */
+function portTable(name, ports, results, total) {
+    const states = results.map(stateOf);
+    const count = (s) => states.filter((x) => x === s).length;
+    const majority = count('closed') >= count('filtered') ? 'closed' : 'filtered';
+    const hiddenCount = count(majority) + Math.max(0, total - ports.length);
+    const hidden = hiddenCount > COLLAPSE ? majority : null;
+    const reason = majority === 'closed' ? 'closed tcp ports (conn-refused)' : 'filtered tcp ports (no-response)';
+    const notShown = hidden ? [`Not shown: ${hiddenCount} ${reason}`] : [];
+    const shown = ports.map((p, i) => ({ p, s: states[i] ?? 'filtered' })).filter((x) => x.s !== hidden);
+    if (!shown.length)
+        return [`All ${total} scanned ports on ${name} are in ignored states.`, ...notShown];
+    const pw = Math.max(4, ...shown.map((x) => `${x.p}/tcp`.length));
+    const sw = Math.max(5, ...shown.map((x) => x.s.length));
+    return [...notShown, `${'PORT'.padEnd(pw)} ${'STATE'.padEnd(sw)} SERVICE`, ...shown.map((x) => `${`${x.p}/tcp`.padEnd(pw)} ${x.s.padEnd(sw)} ${SERVICES[x.p] ?? 'unknown'}`)];
+}
+function stamp(ms) {
+    return new Date(ms).toISOString().slice(0, 16).replace('T', ' ');
+}
+function nmap(host) {
+    return (ctx) => {
+        const args = ctx.argv.slice(1);
+        const pIdx = args.findIndex((a) => a === '-p' || (a.startsWith('-p') && a.length > 2 && a !== '-Pn'));
+        const pSpec = pIdx < 0 ? undefined : args[pIdx] === '-p' ? args[pIdx + 1] : args[pIdx]?.slice(2);
+        const spec = args.filter((a, i) => !a.startsWith('-') && !(pIdx >= 0 && args[pIdx] === '-p' && i === pIdx + 1))[0];
+        if (!spec) {
+            ctx.out(`${NMAP_VERSION} ( https://nmap.org )\nUsage: nmap [Scan Type(s)] [Options] {target specification}\n`);
+            return 0;
+        }
+        const ports = pSpec === undefined ? TOP_PORTS : parsePorts(pSpec) ?? parsePorts(`1-${MAX_PORTS}`) ?? [];
+        if (!ports.length) {
+            ctx.err(`Your port specifications are illegal.  Example of proper form: "-100,200-1024,T:3000-4000,U:60000-"\nQUITTING!\n`);
+            return 1;
+        }
+        const list = targets(host, spec);
+        if (typeof list === 'string') {
+            ctx.err(`${list}\nWARNING: No targets were specified, so 0 hosts scanned.\n`);
+            return 1;
+        }
+        const started = host.clock.now();
+        const out = [`Starting ${NMAP_VERSION} ( https://nmap.org ) at ${stamp(started)} UTC`];
+        const up = args.includes('-Pn') ? list.map(() => true) : hostsUp(host, list);
+        const pingOnly = args.includes('-sn') || args.includes('-sP');
+        list.forEach((t, i) => {
+            if (!up[i])
+                return;
+            const name = t.name ? `${t.name} (${formatIp(t.ip)})` : formatIp(t.ip);
+            out.push(`Nmap scan report for ${name}`, 'Host is up (0.00042s latency).');
+            if (pingOnly)
+                return;
+            const states = probeAll(host, ports.map((port) => ({ ip: t.ip, port })), PROBE_MS);
+            out.push(...portTable(name, ports, states, pSpec === undefined ? TOP_TOTAL : ports.length), '');
+        });
+        const count = up.filter(Boolean).length;
+        if (list.length === 1 && !count)
+            out.push('Note: Host seems down. If it is really up, but blocking our ping probes, try -Pn');
+        const secs = ((host.clock.now() - started) / 1000 + 0.05).toFixed(2);
+        out.push(`Nmap done: ${list.length} IP address${list.length === 1 ? '' : 'es'} (${count} host${count === 1 ? '' : 's'} up) scanned in ${secs} seconds`);
+        ctx.out(`${out.join('\n')}\n`);
+        return 0;
+    };
+}
+
+return { nc, nmap };
+})();
 __m["shells/ssh-copy-id.js"] = (() => {
 const { parsePublicLine } = __m["net/ssh-keys.js"];
 const PROG = '/usr/bin/ssh-copy-id';
@@ -26890,13 +29174,16 @@ const { FsError } = __m["bash/vfs.js"];
 const { APACHE_TOOLS } = __m["services/apache/tools.js"];
 const { curl } = __m["shells/curl.js"];
 const { sshKeygen } = __m["shells/ssh-keygen.js"];
+const { sysctl, dmesg } = __m["shells/kernel-cmds.js"];
+const { nft } = __m["shells/nft-cmd.js"];
+const { nc, nmap } = __m["shells/scan-tools.js"];
 const { SSH_USAGE, SSH_WITH_VALUE } = __m["shells/ssh-client.js"];
 const { sshCopyId } = __m["shells/ssh-copy-id.js"];
 const { netplanProgram } = __m["shells/netplan.js"];
 const { rndc } = __m["shells/rndc.js"];
 const PACKAGES = {
     ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
-    telnet: 'inetutils-telnet', nmap: 'nmap', htop: 'htop', tree: 'tree', zip: 'zip', unzip: 'unzip', php: 'php8.4-cli', python: 'python-is-python3',
+    telnet: 'inetutils-telnet', conntrack: 'conntrack', htop: 'htop', tree: 'tree', zip: 'zip', unzip: 'unzip', php: 'php8.4-cli', python: 'python-is-python3',
     a2ensite: 'apache2', a2dissite: 'apache2', a2enmod: 'apache2', a2dismod: 'apache2', a2enconf: 'apache2', a2disconf: 'apache2', apache2ctl: 'apache2', apachectl: 'apache2',
     emacs: 'emacs-nox', mysql: 'mysql-client-core-8.4', git: 'git', make: 'make', gcc: 'gcc', ftp: 'tnftp', whois: 'whois',
 };
@@ -27020,7 +29307,7 @@ function commandNotFound(ctx) {
 function linuxPrograms(host) {
     return new Map([
         ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)], ['netplan', netplanProgram(host)],
-        ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId],
+        ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['sysctl', sysctl(host)], ['dmesg', dmesg(host)], ['nft', nft(host)], ['nc', nc(host)], ['netcat', nc(host)], ['nmap', nmap(host)], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId],
         ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
         ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
         ['ss', (ctx) => { lines(ctx, ss(host)); return 0; }],
@@ -27163,6 +29450,7 @@ const { formatIp } = __m["core/ip.js"];
 const { exportFiles, importFiles } = __m["bash/vfs-persist.js"];
 const { seedApache } = __m["services/apache/defaults.js"];
 const { registerHostFs } = __m["devices/host-fs.js"];
+const { seedKernel, sysctlFiles, applySysctlFile } = __m["shells/kernel-files.js"];
 const FIRST_UID = 1000;
 const UID_SPAN = 8999;
 const ADM = 4;
@@ -27304,6 +29592,7 @@ function createSystem(host) {
     fs.seed('/usr/lib/command-not-found', { kind: 'file', content: `${BINARY_MARK}command-not-found\n` }, 0o755);
     const server = asServer(host);
     seedSsh(fs, host);
+    seedKernel(fs, host);
     if (server) {
         seedApache(fs);
         fs.mountDir(WWW, webRoot(server));
@@ -27346,9 +29635,20 @@ function restoreFiles(host, files) {
     else
         pendingFiles.set(host, files);
 }
+/**
+ * Boot of a host loaded from a topology: if its saved files change kernel parameters, `sysctl --system`
+ * applies them (systemd-sysctl). Hosts without such files keep the defaults and no system is created.
+ */
+function bootKernel(host, files) {
+    if (!files.some((f) => f.path === '/etc/sysctl.conf' || f.path.startsWith('/etc/sysctl.d/')))
+        return;
+    const fs = hostSystem(host).fs;
+    for (const path of sysctlFiles(fs))
+        applySysctlFile(fs, host, path);
+}
 registerHostFs((host) => hostSystem(host).fs);
 
-return { defaultLinuxUser, hostUsers, hostSystem, savedFiles, restoreFiles };
+return { defaultLinuxUser, hostUsers, hostSystem, savedFiles, restoreFiles, bootKernel };
 })();
 __m["shells/ssh-stores.js"] = (() => {
 const DEFAULT_IDENTITIES = ['id_ed25519', 'id_ecdsa', 'id_rsa'];
@@ -28576,6 +30876,7 @@ const { ServerWeb } = __m["devices/server-web.js"];
 const { Mailboxes, handleSmtp, handleRetrieve } = __m["services/mail-service.js"];
 const { findUnit, setUnitActive, unitActive, UNITS } = __m["services/units.js"];
 const { SshService } = __m["services/ssh-service.js"];
+const { loadNftablesConf } = __m["devices/server-firewall.js"];
 const { firstAddress } = __m["net/dns.js"];
 const { BROADCAST_IP, formatIp } = __m["core/ip.js"];
 const { formatMacCisco } = __m["core/mac.js"];
@@ -28589,7 +30890,7 @@ class Server extends Host {
     os = 'linux';
     services = defaultServices();
     /** Units enabled at boot (`systemctl enable`, Windows "Automatic"). */
-    autostart = { dhcp: true, dns: true, http: true, smtp: true, mailbox: true, ssh: true };
+    autostart = { dhcp: true, dns: true, http: true, smtp: true, mailbox: true, ssh: true, firewall: false };
     dhcpEngine = new DhcpServer();
     mailboxes = new Mailboxes();
     logs = [];
@@ -28608,6 +30909,10 @@ class Server extends Host {
         let next = !before.http.enabled && requested.http.enabled && !this.startWeb() ? { ...requested, http: { ...requested.http, enabled: false } } : requested;
         if (!before.ssh.enabled && next.ssh.enabled && !this.startSsh())
             next = { ...next, ssh: { ...next.ssh, enabled: false } };
+        if (!before.firewall.enabled && next.firewall.enabled && !this.startFirewall())
+            next = { ...next, firewall: { enabled: false } };
+        if (before.firewall.enabled && !next.firewall.enabled)
+            this.kernel.netfilter.flush();
         this.services = next;
         this.applyServices();
         for (const u of UNITS) {
@@ -28627,6 +30932,35 @@ class Server extends Host {
         this.log('ssh', 'ssh.service: Main process exited, code=exited, status=255/EXCEPTION');
         this.log('ssh', 'Failed to start ssh.service - OpenBSD Secure Shell server.');
         return false;
+    }
+    /** nftables.service start: `nft -f /etc/nftables.conf`; an error keeps it stopped (logged like systemd). */
+    startFirewall() {
+        if (this.os === 'windows')
+            return true;
+        const err = loadNftablesConf(this);
+        if (!err)
+            return true;
+        this.logFirewallError(err);
+        this.log('firewall', 'Failed to start nftables.service - nftables.');
+        return false;
+    }
+    logFirewallError(err) {
+        for (const line of err.split('\n'))
+            this.log('firewall', `nft[655]: ${line}`);
+        this.log('firewall', 'nftables.service: Main process exited, code=exited, status=1/FAILURE');
+        this.log('firewall', "nftables.service: Failed with result 'exit-code'.");
+    }
+    /** systemctl reload nftables: loads the file again; on error the running ruleset stays. */
+    reloadFirewall() {
+        const err = this.os === 'windows' ? null : loadNftablesConf(this);
+        if (err) {
+            this.logFirewallError(err);
+            this.log('firewall', 'Reload failed for nftables.service - nftables.');
+            return err;
+        }
+        this.log('firewall', 'Reloading nftables.service - nftables...');
+        this.log('firewall', 'Reloaded nftables.service - nftables.');
+        return null;
     }
     /** systemctl reload ssh: new sshd_config for new connections, or the running one on error. */
     reloadSsh() {
@@ -30290,119 +32624,6 @@ function iosWebSettings(device, afterCommand) {
 }
 
 return { iosWebSettings };
-})();
-__m["net/nat.js"] = (() => {
-const FIRST_PAT_PORT = 1024;
-const LAST_PORT = 65535;
-const MAX_ENTRIES = 4096;
-function flowOf(p) {
-    if (p.tcp)
-        return { proto: 'tcp', sport: p.tcp.sport, dport: p.tcp.dport };
-    if (p.udp)
-        return { proto: 'udp', sport: p.udp.sport, dport: p.udp.dport };
-    const id = p.icmp?.id ?? 0;
-    return { proto: 'icmp', sport: id, dport: id };
-}
-function rewriteSrc(p, ip, port) {
-    if (port === undefined)
-        return { ...p, src: ip };
-    if (p.tcp)
-        return { ...p, src: ip, tcp: { ...p.tcp, sport: port } };
-    if (p.udp)
-        return { ...p, src: ip, udp: { ...p.udp, sport: port } };
-    return p.icmp ? { ...p, src: ip, icmp: { ...p.icmp, id: port } } : { ...p, src: ip };
-}
-function rewriteDst(p, ip, port) {
-    if (port === undefined)
-        return { ...p, dst: ip };
-    if (p.tcp)
-        return { ...p, dst: ip, tcp: { ...p.tcp, dport: port } };
-    if (p.udp)
-        return { ...p, dst: ip, udp: { ...p.udp, dport: port } };
-    return p.icmp ? { ...p, dst: ip, icmp: { ...p.icmp, id: port } } : { ...p, dst: ip };
-}
-function staticMatchesOut(s, p, f) {
-    return s.local === p.src && (s.proto === undefined || (s.proto === f.proto && s.localPort === f.sport));
-}
-function staticMatchesIn(s, p, f) {
-    return s.global === p.dst && (s.proto === undefined || (s.proto === f.proto && s.globalPort === f.dport));
-}
-class NatTable {
-    dynamic = [];
-    hits = 0;
-    misses = 0;
-    /** Inside → outside: translates the source; null when no rule applies, 'drop' when the rule cannot. */
-    inside(p, statics, target) {
-        const f = flowOf(p);
-        const st = statics.find((s) => staticMatchesOut(s, p, f));
-        if (st)
-            return this.hit(rewriteSrc(p, st.global, st.proto ? st.globalPort : undefined));
-        const known = this.dynamic.find((e) => e.insideLocal === p.src && (e.proto === null || (e.proto === f.proto && e.localPort === f.sport)));
-        if (known)
-            return this.hit(rewriteSrc(p, known.insideGlobal, known.proto ? known.globalPort : undefined));
-        const t = target(p);
-        if (!t)
-            return null;
-        this.misses += 1;
-        if (t === 'exhausted')
-            return 'drop';
-        const reserved = new Set(statics.filter((s) => s.global === t.global && s.proto === f.proto).map((s) => s.globalPort));
-        const port = t.overload ? this.freePort(f.proto, t.global, f.sport, reserved) : 0;
-        if (port === null)
-            return 'drop';
-        const entry = t.overload
-            ? { proto: f.proto, insideLocal: p.src, insideGlobal: t.global, localPort: f.sport, globalPort: port, outside: p.dst, outsidePort: f.dport, static: false, rule: t.rule }
-            : { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false, rule: t.rule };
-        this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
-        return rewriteSrc(p, entry.insideGlobal, entry.proto ? entry.globalPort : undefined);
-    }
-    /** Outside → inside: translates the destination, or returns null when nothing maps it. */
-    outside(p, statics) {
-        const f = flowOf(p);
-        const port = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f));
-        if (port)
-            return this.hit(rewriteDst(p, port.local, port.localPort));
-        const known = this.dynamic.find((e) => e.insideGlobal === p.dst && (e.proto === null || (e.proto === f.proto && e.globalPort === f.dport)));
-        if (known)
-            return this.hit(rewriteDst(p, known.insideLocal, known.proto ? known.localPort : undefined));
-        const whole = statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
-        return whole ? this.hit(rewriteDst(p, whole.local)) : null;
-    }
-    /** Is this global address (and pool member) taken by a 1:1 dynamic translation? */
-    globalInUse(global) {
-        return this.dynamic.some((e) => e.proto === null && e.insideGlobal === global);
-    }
-    entries() {
-        return this.dynamic;
-    }
-    /** clear ip nat translation * (statistics are kept, like IOS). */
-    clear() {
-        this.dynamic = [];
-    }
-    /** Factory state (reload): no translations and zeroed statistics. */
-    reset() {
-        this.dynamic = [];
-        this.hits = 0;
-        this.misses = 0;
-    }
-    hit(p) {
-        this.hits += 1;
-        return p;
-    }
-    /** The inside port itself when free, else the first free one; null when every port is taken. */
-    freePort(proto, global, wanted, reserved) {
-        const used = new Set(this.dynamic.filter((e) => e.proto === proto && e.insideGlobal === global).map((e) => e.globalPort));
-        const free = (port) => !used.has(port) && !reserved.has(port);
-        if (wanted > 0 && free(wanted))
-            return wanted;
-        for (let port = FIRST_PAT_PORT; port <= LAST_PORT; port++)
-            if (free(port))
-                return port;
-        return null;
-    }
-}
-
-return { flowOf, rewriteSrc, rewriteDst, NatTable };
 })();
 __m["net/internet-hosts.js"] = (() => {
 const { DNS_PORT } = __m["net/packets.js"];
@@ -34692,6 +36913,7 @@ function servicesToJson(s) {
         http: { enabled: s.http.enabled, files: [...s.http.files] },
         mail: s.mail,
         ssh: s.ssh,
+        ...(s.firewall.enabled ? { firewall: s.firewall } : {}),
         webapps: s.webapps,
     };
 }
@@ -34832,6 +37054,7 @@ function servicesFromJson(v) {
                 throw new Error('Fichero web no válido.'); return { name: str(f.name, 'fichero web', 128), content: str(f.content, 'contenido web', MAX_TEXT) }; }) },
         mail: { smtp: bool(m.smtp), pop3: bool(m.pop3), imap: bool(m.imap), domain: m.domain === undefined ? '' : str(m.domain, 'dominio de correo'), users: arr(m.users, 'usuarios de correo').map(account) },
         ssh: { enabled: bool(s.enabled), users: arr(s.users, 'usuarios SSH').map(account) },
+        firewall: { enabled: isObj(v.firewall) ? bool(v.firewall.enabled) : false },
         webapps: webapps(v.webapps),
     };
 }
@@ -35645,7 +37868,7 @@ return { registerWebApps };
 })();
 __m["net/topology.js"] = (() => {
 /** A workspace: devices with positions and labels, links, and JSON persistence. */
-const { savedFiles, restoreFiles } = __m["shells/host-system.js"];
+const { savedFiles, restoreFiles, bootKernel } = __m["shells/host-system.js"];
 const { validFileRecords } = __m["bash/vfs-persist.js"];
 const { Network } = __m["net/network.js"];
 const { SimClock } = __m["core/clock.js"];
@@ -35831,6 +38054,8 @@ function restore(device, rec) {
             restoreServer(device, rec.server);
         if (device instanceof Pc && pc.apps)
             restoreApps(device, pc.apps);
+        if (pc.files !== undefined)
+            bootKernel(device, validFileRecords(pc.files));
         return;
     }
     if (rec.config)

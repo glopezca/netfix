@@ -30,9 +30,10 @@ function status(server: Server, unit: UnitInfo): string[] {
   const lines = [
     `${active ? '●' : '○'} ${unit.linux}.service - ${unit.description}`,
     `     Loaded: loaded (/usr/lib/systemd/system/${unit.linux}.service; ${enabled}; preset: enabled)`,
-    active ? `     Active: active (running)` : '     Active: inactive (dead)',
+    active ? `     Active: active (${unit.oneshot ? 'exited' : 'running'})` : '     Active: inactive (dead)',
   ];
-  if (active) lines.push(`   Main PID: ${unit.pid} (${unit.process})`, `     CGroup: /system.slice/${unit.linux}.service`, `             └─${unit.pid} /usr/sbin/${unit.process}`);
+  if (active && unit.oneshot) lines.push(`    Process: ${unit.pid} ExecStart=/usr/sbin/nft -f /etc/nftables.conf (code=exited, status=0/SUCCESS)`, `   Main PID: ${unit.pid} (code=exited, status=0/SUCCESS)`);
+  else if (active) lines.push(`   Main PID: ${unit.pid} (${unit.process})`, `     CGroup: /system.slice/${unit.linux}.service`, `             └─${unit.pid} /usr/sbin/${unit.process}`);
   const log = journalLines(server, unit, STATUS_LOG_LINES);
   return log.length ? [...lines, '', ...log] : lines;
 }
@@ -40,7 +41,7 @@ function status(server: Server, unit: UnitInfo): string[] {
 function listUnits(server: Server): string[] {
   const rows = UNITS.map((u) => {
     const on = unitActive(server.services, u.id);
-    return `  ${`${u.linux}.service`.padEnd(26)} loaded ${on ? 'active   running' : 'inactive dead   '} ${u.description}`;
+    return `  ${`${u.linux}.service`.padEnd(26)} loaded ${on ? `active   ${u.oneshot ? 'exited ' : 'running'}` : 'inactive dead   '} ${u.description}`;
   });
   return ['  UNIT                       LOAD   ACTIVE   SUB     DESCRIPTION', ...rows, '', `${UNITS.length} loaded units listed.`];
 }
@@ -83,6 +84,7 @@ function runVerb(server: Server, unit: UnitInfo, verb: string, now: boolean): st
     case 'stop': server.setUnit(unit.id, false); return [];
     case 'reload': case 'force-reload':
       if (unit.id === 'http' && unitActive(server.services, 'http')) return server.reloadWeb() ? jobFailed(unit) : [];
+      if (unit.id === 'firewall' && unitActive(server.services, 'firewall')) return server.reloadFirewall() ? jobFailed(unit) : [];
       if (unit.id === 'ssh' && unitActive(server.services, 'ssh')) return server.reloadSsh() ? jobFailed(unit) : [];
       return restart(server, unit);
     case 'restart': return restart(server, unit);

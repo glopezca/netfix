@@ -1,7 +1,7 @@
 /** Service units as seen by systemctl (Ubuntu) and sc/net (Windows Server). */
 import type { ServerServices } from './config.ts';
 
-export type UnitId = 'dhcp' | 'dns' | 'http' | 'smtp' | 'mailbox' | 'ssh';
+export type UnitId = 'dhcp' | 'dns' | 'http' | 'smtp' | 'mailbox' | 'ssh' | 'firewall';
 
 export interface UnitInfo {
   readonly id: UnitId;
@@ -13,6 +13,8 @@ export interface UnitInfo {
   readonly windowsDisplay: string;
   readonly ports: readonly { readonly proto: 'udp' | 'tcp'; readonly port: number }[];
   readonly pid: number;
+  /** Type=oneshot with RemainAfterExit (nftables): "active (exited)", no main process. */
+  readonly oneshot?: boolean;
 }
 
 export const UNITS: readonly UnitInfo[] = [
@@ -22,6 +24,7 @@ export const UNITS: readonly UnitInfo[] = [
   { id: 'smtp', linux: 'postfix', aliases: ['smtp'], process: 'master', description: 'Postfix Mail Transport Agent', windows: 'SMTPSVC', windowsDisplay: 'Protocolo simple de transferencia de correo (SMTP)', ports: [{ proto: 'tcp', port: 25 }], pid: 1021 },
   { id: 'mailbox', linux: 'dovecot', aliases: ['pop3', 'imap'], process: 'dovecot', description: 'Dovecot IMAP/POP3 email server', windows: 'POP3Svc', windowsDisplay: 'Servicio POP3/IMAP', ports: [{ proto: 'tcp', port: 110 }, { proto: 'tcp', port: 143 }], pid: 1088 },
   { id: 'ssh', linux: 'ssh', aliases: ['sshd', 'openssh-server'], process: 'sshd', description: 'OpenBSD Secure Shell server', windows: 'sshd', windowsDisplay: 'OpenSSH SSH Server', ports: [{ proto: 'tcp', port: 22 }], pid: 701 },
+  { id: 'firewall', linux: 'nftables', aliases: ['nft'], process: 'nft', description: 'nftables', windows: 'MpsSvc', windowsDisplay: 'Windows Defender Firewall', ports: [], pid: 655, oneshot: true },
 ];
 
 export function findUnit(name: string): UnitInfo | undefined {
@@ -37,6 +40,7 @@ export function unitActive(s: ServerServices, id: UnitId): boolean {
     case 'smtp': return s.mail.smtp;
     case 'mailbox': return s.mail.pop3 || s.mail.imap;
     case 'ssh': return s.ssh.enabled;
+    case 'firewall': return s.firewall.enabled;
   }
 }
 
@@ -48,6 +52,7 @@ export function setUnitActive(s: ServerServices, id: UnitId, on: boolean): Serve
     case 'smtp': return { ...s, mail: { ...s.mail, smtp: on } };
     case 'mailbox': return { ...s, mail: { ...s.mail, pop3: on, imap: on } };
     case 'ssh': return { ...s, ssh: { ...s.ssh, enabled: on } };
+    case 'firewall': return { ...s, firewall: { enabled: on } };
   }
 }
 

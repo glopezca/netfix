@@ -35,11 +35,17 @@ export interface TcpEnv {
   readonly ttl: number;
 }
 
+/** Result of a port probe (connect scan): SYN-ACK, RST, or nothing before the timeout. */
+export type ProbeResult = 'open' | 'closed' | 'filtered' | 'noroute';
+
 interface ClientConn {
   readonly remote: Peer;
   readonly localIp: number;
-  readonly payload: AppPayload;
+  /** Absent for a probe: the handshake is closed with RST as soon as it succeeds. */
+  readonly payload?: AppPayload;
   readonly done: (r: TcpResult) => void;
+  /** Probe: the handshake succeeded. */
+  readonly opened?: () => void;
   seq: number;
   finished: boolean;
 }
@@ -92,6 +98,23 @@ export class TcpLayer {
     });
   }
 
+  /** Connect scan of one port (nc -z, nmap -sT): open, closed or filtered. */
+  probe(dst: number, dport: number, done: (r: ProbeResult) => void, timeoutMs = DEFAULT_TIMEOUT_MS): void {
+    const localIp = this.env.sourceFor(dst);
+    if (localIp === undefined) {
+      done('noroute');
+      return;
+    }
+    const sport = this.allocatePort();
+    const map = (r: TcpResult): ProbeResult => (r.kind === 'refused' ? 'closed' : r.kind === 'timeout' ? 'filtered' : 'noroute');
+    const conn: ClientConn = { remote: { ip: dst, port: dport }, localIp, done: (r) => done(map(r)), opened: () => done('open'), seq: this.nextIsn(), finished: false };
+    this.conns.set(sport, conn);
+    this.emit(localIp, dst, { sport, dport, flags: ['SYN'], seq: conn.seq, ack: 0 });
+    this.env.schedule(timeoutMs, () => {
+      if (this.conns.get(sport) === conn) this.finish(sport, { kind: 'timeout' });
+    });
+  }
+
   receive(packet: IpPacket): void {
     const seg = packet.tcp;
     if (!seg) return;
@@ -112,6 +135,13 @@ export class TcpLayer {
     }
     if (has(seg, 'SYN') && has(seg, 'ACK')) {
       conn.seq += 1;
+      if (!conn.payload) {
+        this.emit(conn.localIp, conn.remote.ip, { sport, dport: conn.remote.port, flags: ['RST', 'ACK'], seq: conn.seq, ack: seg.seq + 1 });
+        conn.finished = true;
+        this.conns.delete(sport);
+        conn.opened?.();
+        return;
+      }
       this.emit(conn.localIp, conn.remote.ip, { sport, dport: conn.remote.port, flags: ['ACK', 'PSH'], seq: conn.seq, ack: seg.seq + 1, data: conn.payload });
       return;
     }

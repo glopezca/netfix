@@ -18,6 +18,7 @@ import { formatIp } from '../core/ip.ts';
 import { exportFiles, importFiles } from '../bash/vfs-persist.ts';
 import { seedApache } from '../services/apache/defaults.ts';
 import { registerHostFs } from '../devices/host-fs.ts';
+import { seedKernel, sysctlFiles, applySysctlFile } from './kernel-files.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
 
 export interface HostSystem {
@@ -168,6 +169,7 @@ function createSystem(host: Host): Entry {
   fs.seed('/usr/lib/command-not-found', { kind: 'file', content: `${BINARY_MARK}command-not-found\n` }, 0o755);
   const server = asServer(host);
   seedSsh(fs, host);
+  seedKernel(fs, host);
   if (server) {
     seedApache(fs);
     fs.mountDir(WWW, webRoot(server));
@@ -210,6 +212,16 @@ export function restoreFiles(host: Host, files: readonly FileRecord[]): void {
   const e = systems.get(host);
   if (e) importFiles(e.fs, files);
   else pendingFiles.set(host, files);
+}
+
+/**
+ * Boot of a host loaded from a topology: if its saved files change kernel parameters, `sysctl --system`
+ * applies them (systemd-sysctl). Hosts without such files keep the defaults and no system is created.
+ */
+export function bootKernel(host: Host, files: readonly FileRecord[]): void {
+  if (!files.some((f) => f.path === '/etc/sysctl.conf' || f.path.startsWith('/etc/sysctl.d/'))) return;
+  const fs = hostSystem(host).fs;
+  for (const path of sysctlFiles(fs)) applySysctlFile(fs, host, path);
 }
 
 registerHostFs((host) => hostSystem(host).fs);

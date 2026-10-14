@@ -9,6 +9,9 @@ import { FsError } from '../bash/vfs.ts';
 import { APACHE_TOOLS } from '../services/apache/tools.ts';
 import { curl } from './curl.ts';
 import { sshKeygen } from './ssh-keygen.ts';
+import { sysctl, dmesg } from './kernel-cmds.ts';
+import { nft } from './nft-cmd.ts';
+import { nc, nmap } from './scan-tools.ts';
 import { SSH_USAGE, SSH_WITH_VALUE } from './ssh-client.ts';
 import { sshCopyId } from './ssh-copy-id.ts';
 import { netplanProgram } from './netplan.ts';
@@ -16,7 +19,7 @@ import { rndc } from './rndc.ts';
 
 const PACKAGES: Readonly<Record<string, string>> = {
   ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
-  telnet: 'inetutils-telnet', nmap: 'nmap', htop: 'htop', tree: 'tree', zip: 'zip', unzip: 'unzip', php: 'php8.4-cli', python: 'python-is-python3',
+  telnet: 'inetutils-telnet', conntrack: 'conntrack', htop: 'htop', tree: 'tree', zip: 'zip', unzip: 'unzip', php: 'php8.4-cli', python: 'python-is-python3',
   a2ensite: 'apache2', a2dissite: 'apache2', a2enmod: 'apache2', a2dismod: 'apache2', a2enconf: 'apache2', a2disconf: 'apache2', apache2ctl: 'apache2', apachectl: 'apache2',
   emacs: 'emacs-nox', mysql: 'mysql-client-core-8.4', git: 'git', make: 'make', gcc: 'gcc', ftp: 'tnftp', whois: 'whois',
 };
@@ -116,7 +119,7 @@ function commandNotFound(ctx: Ctx): number {
 export function linuxPrograms(host: Host): Map<string, CommandFn> {
   return new Map<string, CommandFn>([
     ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)], ['netplan', netplanProgram(host)],
-    ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId],
+    ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['sysctl', sysctl(host)], ['dmesg', dmesg(host)], ['nft', nft(host)], ['nc', nc(host)], ['netcat', nc(host)], ['nmap', nmap(host)], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId],
     ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
     ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
     ['ss', (ctx) => { lines(ctx, ss(host)); return 0; }],

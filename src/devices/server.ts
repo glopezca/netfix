@@ -16,6 +16,7 @@ import type { MailEnv } from '../services/mail-service.ts';
 import { findUnit, setUnitActive, unitActive, UNITS } from '../services/units.ts';
 import type { UnitId } from '../services/units.ts';
 import { SshService } from '../services/ssh-service.ts';
+import { loadNftablesConf } from './server-firewall.ts';
 import { firstAddress } from '../net/dns.ts';
 import { BROADCAST_IP, formatIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
@@ -38,7 +39,7 @@ export class Server extends Host {
   override os: HostOs = 'linux';
   services: ServerServices = defaultServices();
   /** Units enabled at boot (`systemctl enable`, Windows "Automatic"). */
-  autostart: Record<UnitId, boolean> = { dhcp: true, dns: true, http: true, smtp: true, mailbox: true, ssh: true };
+  autostart: Record<UnitId, boolean> = { dhcp: true, dns: true, http: true, smtp: true, mailbox: true, ssh: true, firewall: false };
   readonly dhcpEngine = new DhcpServer();
   readonly mailboxes = new Mailboxes();
   readonly logs: LogEntry[] = [];
@@ -59,6 +60,8 @@ export class Server extends Host {
     const before = this.services;
     let next = !before.http.enabled && requested.http.enabled && !this.startWeb() ? { ...requested, http: { ...requested.http, enabled: false } } : requested;
     if (!before.ssh.enabled && next.ssh.enabled && !this.startSsh()) next = { ...next, ssh: { ...next.ssh, enabled: false } };
+    if (!before.firewall.enabled && next.firewall.enabled && !this.startFirewall()) next = { ...next, firewall: { enabled: false } };
+    if (before.firewall.enabled && !next.firewall.enabled) this.kernel.netfilter.flush();
     this.services = next;
     this.applyServices();
     for (const u of UNITS) {
@@ -77,6 +80,35 @@ export class Server extends Host {
     this.log('ssh', 'ssh.service: Main process exited, code=exited, status=255/EXCEPTION');
     this.log('ssh', 'Failed to start ssh.service - OpenBSD Secure Shell server.');
     return false;
+  }
+
+  /** nftables.service start: `nft -f /etc/nftables.conf`; an error keeps it stopped (logged like systemd). */
+  private startFirewall(): boolean {
+    if (this.os === 'windows') return true;
+    const err = loadNftablesConf(this);
+    if (!err) return true;
+    this.logFirewallError(err);
+    this.log('firewall', 'Failed to start nftables.service - nftables.');
+    return false;
+  }
+
+  private logFirewallError(err: string): void {
+    for (const line of err.split('\n')) this.log('firewall', `nft[655]: ${line}`);
+    this.log('firewall', 'nftables.service: Main process exited, code=exited, status=1/FAILURE');
+    this.log('firewall', "nftables.service: Failed with result 'exit-code'.");
+  }
+
+  /** systemctl reload nftables: loads the file again; on error the running ruleset stays. */
+  reloadFirewall(): string | null {
+    const err = this.os === 'windows' ? null : loadNftablesConf(this);
+    if (err) {
+      this.logFirewallError(err);
+      this.log('firewall', 'Reload failed for nftables.service - nftables.');
+      return err;
+    }
+    this.log('firewall', 'Reloading nftables.service - nftables...');
+    this.log('firewall', 'Reloaded nftables.service - nftables.');
+    return null;
   }
 
   /** systemctl reload ssh: new sshd_config for new connections, or the running one on error. */

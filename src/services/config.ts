@@ -109,6 +109,8 @@ export interface ServerServices {
     readonly users: readonly Account[];
   };
   readonly ssh: { readonly enabled: boolean; readonly users: readonly Account[] };
+  /** nftables.service: loads /etc/nftables.conf at boot and on start/restart/reload. */
+  readonly firewall: { readonly enabled: boolean };
   readonly webapps: WebApps;
 }
 
@@ -145,6 +147,7 @@ export function defaultServices(): ServerServices {
     http: { enabled: true, files: [{ name: 'index.html', content: DEFAULT_INDEX }, { name: 'ayuda.html', content: DEFAULT_HELP }] },
     mail: { smtp: false, pop3: false, imap: false, domain: '', users: [] },
     ssh: { enabled: false, users: [] },
+    firewall: { enabled: false },
     webapps: defaultWebApps(),
   };
 }

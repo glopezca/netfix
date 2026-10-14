@@ -15,7 +15,13 @@ export interface SysctlKey {
 const BOOL = ['0', '1'];
 
 export const SYSCTL_KEYS: readonly SysctlKey[] = [
+  { name: 'kernel.domainname', value: '(none)', accepts: 'text', effect: false },
   { name: 'kernel.hostname', value: '', accepts: 'text', effect: true },
+  { name: 'kernel.sysrq', value: '176', accepts: 'int', effect: false },
+  { name: 'net.ipv4.conf.all.accept_source_route', value: '0', accepts: BOOL, effect: false },
+  { name: 'net.ipv4.conf.all.secure_redirects', value: '1', accepts: BOOL, effect: false },
+  { name: 'net.ipv6.conf.all.accept_redirects', value: '1', accepts: BOOL, effect: false },
+  { name: 'net.ipv6.conf.all.accept_source_route', value: '0', accepts: BOOL, effect: false },
   { name: 'net.ipv4.conf.all.accept_redirects', value: '1', accepts: BOOL, effect: false },
   { name: 'net.ipv4.conf.all.forwarding', value: '0', accepts: BOOL, effect: true },
   { name: 'net.ipv4.conf.all.log_martians', value: '0', accepts: BOOL, effect: false },

@@ -75,10 +75,20 @@ export function ip(host: Host) {
   };
 }
 
+/** ping options that take a value (`-c 3`, `-W1`…); only -c changes what Netfix does. */
+const PING_WITH_VALUE = new Set(['-c', '-W', '-w', '-i', '-t', '-s', '-I', '-l', '-p', '-Q']);
+
 function pingCount(args: readonly string[]): { count: number; target?: string } {
-  const cIdx = args.indexOf('-c');
-  const count = cIdx >= 0 ? Math.min(MAX_PING_COUNT, Math.max(1, Number(args[cIdx + 1]) || DEFAULT_PING_COUNT)) : DEFAULT_PING_COUNT;
-  const target = args.filter((_, i) => cIdx < 0 || (i !== cIdx && i !== cIdx + 1)).find((a) => !a.startsWith('-'));
+  let count = DEFAULT_PING_COUNT;
+  let target: string | undefined;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i] ?? '';
+    const flag = a.slice(0, 2);
+    if (!a.startsWith('-')) { target ??= a; continue; }
+    if (!PING_WITH_VALUE.has(flag)) continue;
+    const value = a.length > 2 ? a.slice(2) : args[++i];
+    if (flag === '-c') count = Math.min(MAX_PING_COUNT, Math.max(1, Number(value) || DEFAULT_PING_COUNT));
+  }
   return { count, target };
 }
 
