@@ -599,3 +599,24 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 .fw-form summary { cursor: pointer; font-weight: 600; padding: 6px 0; min-height: 32px; }
 .btn.danger { color: var(--err, #b42318); border-color: currentColor; }
 label.inline { display: inline-flex; gap: 6px; align-items: center; }
+
+/* PC apps: SSH client and file transfer (SFTP) */
+.ssh-term:empty { display: none; }
+.ssh-term { min-height: 260px; height: 46vh; display: flex; border: 1px solid var(--line); border-radius: var(--radius-ctl); overflow: hidden; }
+.ssh-term > * { flex: 1; min-width: 0; }
+.ft-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.ft-field { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.ft-field input { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 6px 8px; background: var(--panel); font: inherit; min-width: 0; width: 150px; }
+.ft-field .ft-port { width: 64px; }
+.ft-log { font: 12px/1.45 var(--mono, ui-monospace, monospace); background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 6px 8px; height: 96px; overflow: auto; }
+.ft-error { color: var(--danger, #b42318); }
+.ft-command { color: var(--accent); }
+.ft-panes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ft-pane { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-ctl); display: flex; flex-direction: column; max-height: 48vh; }
+.ft-pane .table-wrap { overflow: auto; }
+.ft-path { display: flex; gap: 8px; align-items: baseline; padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--panel-2); overflow-x: auto; white-space: nowrap; }
+.ft-list tbody tr { cursor: pointer; }
+.ft-list td.num { text-align: right; white-space: nowrap; }
+@media (max-width: 760px) { .ft-panes { grid-template-columns: 1fr; } .ft-field input { width: 100%; } .ft-field { flex: 1 1 140px; } }
+@media (pointer: coarse) { .ft-list td { padding-block: 10px; } }
+.pane-part { display: flex; flex-direction: column; gap: 10px; min-width: 0; }

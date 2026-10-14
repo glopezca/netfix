@@ -19,6 +19,8 @@ import { hostIpConfig } from './host-ip.ts';
 import { hostSettings } from './host-settings.ts';
 import { servicesTab } from './server-apps.ts';
 import { browserApp, mailApp } from './pc-apps.ts';
+import { sshApp } from './ssh-app.ts';
+import { sftpApp } from './sftp-app.ts';
 import { iosWebSettings } from './ios-web-settings.ts';
 import { Cloud } from '../devices/cloud.ts';
 import { cloudTabs } from './cloud-window.ts';
@@ -139,6 +141,7 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost): void {
   ];
   const tabs: Tab[] = h instanceof LinuxRouter ? routerTabs(h) : h instanceof Server
     ? [{ id: 'svc', label: 'Servicios', render: () => servicesTab(h, app) }, ipTab, settingsTab, ...order.map(terminal)]
-    : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: 'Navegador', render: () => browserApp(h, app) }, { id: 'mail', label: 'Correo', render: () => mailApp(h, app) }] : []), settingsTab, ...order.map(terminal)];
+    : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: 'Navegador', render: () => browserApp(h, app) }, { id: 'mail', label: 'Correo', render: () => mailApp(h, app) },
+      { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : []), settingsTab, ...order.map(terminal)];
   handle = app.windows.show(h.id, `${placed.label} · ${model}`, tabs, () => disposers.forEach((f) => f()));
 }

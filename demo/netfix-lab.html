@@ -611,6 +611,27 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 .btn.danger { color: var(--err, #b42318); border-color: currentColor; }
 label.inline { display: inline-flex; gap: 6px; align-items: center; }
 
+/* PC apps: SSH client and file transfer (SFTP) */
+.ssh-term:empty { display: none; }
+.ssh-term { min-height: 260px; height: 46vh; display: flex; border: 1px solid var(--line); border-radius: var(--radius-ctl); overflow: hidden; }
+.ssh-term > * { flex: 1; min-width: 0; }
+.ft-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.ft-field { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.ft-field input { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 6px 8px; background: var(--panel); font: inherit; min-width: 0; width: 150px; }
+.ft-field .ft-port { width: 64px; }
+.ft-log { font: 12px/1.45 var(--mono, ui-monospace, monospace); background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 6px 8px; height: 96px; overflow: auto; }
+.ft-error { color: var(--danger, #b42318); }
+.ft-command { color: var(--accent); }
+.ft-panes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ft-pane { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-ctl); display: flex; flex-direction: column; max-height: 48vh; }
+.ft-pane .table-wrap { overflow: auto; }
+.ft-path { display: flex; gap: 8px; align-items: baseline; padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--panel-2); overflow-x: auto; white-space: nowrap; }
+.ft-list tbody tr { cursor: pointer; }
+.ft-list td.num { text-align: right; white-space: nowrap; }
+@media (max-width: 760px) { .ft-panes { grid-template-columns: 1fr; } .ft-field input { width: 100%; } .ft-field { flex: 1 1 140px; } }
+@media (pointer: coarse) { .ft-list td { padding-block: 10px; } }
+.pane-part { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
 </style>
 </head>
 <body data-mode="realtime">
@@ -1748,6 +1769,133 @@ const VPN_EN = {
 
 return { VPN_EN };
 })();
+__m["i18n/es-ES/apps.js"] = (() => {
+/** Español (España): aplicaciones del PC «Cliente SSH» y «Transferencia de archivos (SFTP)». */
+const APPS_ES = {
+    'ssh.tab': 'Cliente SSH',
+    'ssh.session': 'Sesión',
+    'ssh.keys': 'Claves',
+    'ssh.known': 'Hosts conocidos',
+    'ssh.host': 'Servidor (IP o nombre)',
+    'ssh.port': 'Puerto',
+    'ssh.user': 'Usuario',
+    'ssh.identity': 'Clave privada',
+    'ssh.defaultKeys': 'Las de ~/.ssh y luego contraseña',
+    'ssh.open': 'Abrir',
+    'ssh.close': 'Cerrar sesión',
+    'ssh.saved': 'Sesiones guardadas',
+    'ssh.noSaved': 'Ninguna sesión guardada.',
+    'ssh.name': 'Nombre de la sesión',
+    'ssh.save': 'Guardar sesión',
+    'ssh.load': 'Cargar',
+    'ssh.badProfile': 'Revisa el nombre (letras, números, . _ -), el servidor y el puerto.',
+    'ssh.intro': 'Como PuTTY: abre una terminal SSH con el usuario «alumno» del PC. Las claves y los hosts conocidos son los de ~/.ssh, los mismos que usa la orden ssh.',
+    'ssh.keysIntro': 'Pares de claves en ~/.ssh. Copia la pública al servidor (~/.ssh/authorized_keys) o usa ssh-copy-id en la terminal.',
+    'ssh.noKeys': 'No hay claves: genera una.',
+    'ssh.keyType': 'Tipo',
+    'ssh.keyName': 'Fichero',
+    'ssh.passphrase': 'Frase de paso (opcional)',
+    'ssh.generate': 'Generar clave',
+    'ssh.fingerprint': 'Huella',
+    'ssh.copy': 'Copiar pública',
+    'ssh.copied': 'Clave pública copiada.',
+    'ssh.keyExists': 'Ya existe una clave con ese nombre.',
+    'ssh.keyBadName': 'Nombre de fichero no válido.',
+    'ssh.keyWrite': 'No se ha podido escribir en ~/.ssh.',
+    'ssh.encrypted': 'con frase',
+    'ssh.knownIntro': 'Huellas de los servidores aceptados (~/.ssh/known_hosts). Si un servidor cambia de clave, ssh se niega a conectar: borra aquí su entrada solo si sabes por qué cambió.',
+    'ssh.noKnown': 'Todavía no se ha aceptado ningún servidor.',
+    'ssh.forget': 'Olvidar',
+    'sftp.tab': 'Archivos (SFTP)',
+    'sftp.connect': 'Conexión rápida',
+    'sftp.disconnect': 'Desconectar',
+    'sftp.password': 'Contraseña',
+    'sftp.local': 'Equipo local',
+    'sftp.remote': 'Servidor',
+    'sftp.notConnected': 'Sin conexión.',
+    'sftp.upload': 'Subir →',
+    'sftp.download': '← Descargar',
+    'sftp.mkdir': 'Nueva carpeta',
+    'sftp.delete': 'Borrar',
+    'sftp.rename': 'Renombrar',
+    'sftp.refresh': 'Actualizar',
+    'sftp.name': 'Nombre',
+    'sftp.size': 'Tamaño',
+    'sftp.modified': 'Modificado',
+    'sftp.perms': 'Permisos',
+    'sftp.up': 'Subir un nivel',
+    'sftp.select': 'Selecciona un archivo primero.',
+    'sftp.hostKey': 'El servidor {host} no es conocido.\nHuella de su clave: {fp}\n¿Confías en él y quieres guardarla en known_hosts?',
+    'sftp.askName': 'Nombre:',
+    'sftp.confirmDelete': '¿Borrar «{name}» del servidor?',
+    'sftp.log': 'Mensajes',
+};
+
+return { APPS_ES };
+})();
+__m["i18n/en-GB/apps.js"] = (() => {
+const APPS_EN = {
+    'ssh.tab': 'SSH client',
+    'ssh.session': 'Session',
+    'ssh.keys': 'Keys',
+    'ssh.known': 'Known hosts',
+    'ssh.host': 'Server (IP or name)',
+    'ssh.port': 'Port',
+    'ssh.user': 'User',
+    'ssh.identity': 'Private key',
+    'ssh.defaultKeys': 'Those in ~/.ssh, then password',
+    'ssh.open': 'Open',
+    'ssh.close': 'Close session',
+    'ssh.saved': 'Saved sessions',
+    'ssh.noSaved': 'No saved sessions.',
+    'ssh.name': 'Session name',
+    'ssh.save': 'Save session',
+    'ssh.load': 'Load',
+    'ssh.badProfile': 'Check the name (letters, digits, . _ -), the server and the port.',
+    'ssh.intro': 'Like PuTTY: opens an SSH terminal as the PC user “alumno”. Keys and known hosts are those in ~/.ssh, the same the ssh command uses.',
+    'ssh.keysIntro': 'Key pairs in ~/.ssh. Copy the public key to the server (~/.ssh/authorized_keys) or use ssh-copy-id in the terminal.',
+    'ssh.noKeys': 'No keys yet: generate one.',
+    'ssh.keyType': 'Type',
+    'ssh.keyName': 'File',
+    'ssh.passphrase': 'Passphrase (optional)',
+    'ssh.generate': 'Generate key',
+    'ssh.fingerprint': 'Fingerprint',
+    'ssh.copy': 'Copy public key',
+    'ssh.copied': 'Public key copied.',
+    'ssh.keyExists': 'A key with that name already exists.',
+    'ssh.keyBadName': 'Invalid file name.',
+    'ssh.keyWrite': 'Could not write to ~/.ssh.',
+    'ssh.encrypted': 'passphrase',
+    'ssh.knownIntro': 'Fingerprints of the servers you accepted (~/.ssh/known_hosts). If a server changes its key, ssh refuses to connect: forget its entry here only if you know why it changed.',
+    'ssh.noKnown': 'No server accepted yet.',
+    'ssh.forget': 'Forget',
+    'sftp.tab': 'Files (SFTP)',
+    'sftp.connect': 'Quickconnect',
+    'sftp.disconnect': 'Disconnect',
+    'sftp.password': 'Password',
+    'sftp.local': 'Local site',
+    'sftp.remote': 'Remote site',
+    'sftp.notConnected': 'Not connected.',
+    'sftp.upload': 'Upload →',
+    'sftp.download': '← Download',
+    'sftp.mkdir': 'New folder',
+    'sftp.delete': 'Delete',
+    'sftp.rename': 'Rename',
+    'sftp.refresh': 'Refresh',
+    'sftp.name': 'Name',
+    'sftp.size': 'Size',
+    'sftp.modified': 'Modified',
+    'sftp.perms': 'Permissions',
+    'sftp.up': 'Up one level',
+    'sftp.select': 'Select a file first.',
+    'sftp.hostKey': 'The server {host} is unknown.\nKey fingerprint: {fp}\nDo you trust it and want to save it in known_hosts?',
+    'sftp.askName': 'Name:',
+    'sftp.confirmDelete': 'Delete “{name}” from the server?',
+    'sftp.log': 'Messages',
+};
+
+return { APPS_EN };
+})();
 __m["i18n/catalog.js"] = (() => {
 const { APP_ES } = __m["i18n/es-ES/app.js"];
 const { APP_EN } = __m["i18n/en-GB/app.js"];
@@ -1767,10 +1915,12 @@ const { FIREWALL_ES } = __m["i18n/es-ES/firewall.js"];
 const { FIREWALL_EN } = __m["i18n/en-GB/firewall.js"];
 const { VPN_ES } = __m["i18n/es-ES/vpn.js"];
 const { VPN_EN } = __m["i18n/en-GB/vpn.js"];
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES };
+const { APPS_ES } = __m["i18n/es-ES/apps.js"];
+const { APPS_EN } = __m["i18n/en-GB/apps.js"];
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES };
 const CATALOGS = {
     'es-ES': ES,
-    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN },
+    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN },
 };
 
 return { CATALOGS };
@@ -35802,6 +35952,537 @@ function mailApp(pc, app) {
 
 return { browserApp, mailApp };
 })();
+__m["clients/ssh-keyring.js"] = (() => {
+const { fingerprint, generateKey, isEncrypted, parsePublicLine, privateFile, publicLine } = __m["net/ssh-keys.js"];
+const SSH_DIR_MODE = 0o700;
+const PRIVATE_MODE = 0o600;
+const PUBLIC_MODE = 0o644;
+const MAX_PROFILES = 50;
+const NAME = /^[A-Za-z0-9_.-]{1,40}$/;
+const BITS = { ed25519: 256, ecdsa: 256, rsa: 3072 };
+class SshKeyring {
+    fs;
+    acct;
+    cred;
+    hostname;
+    constructor(fs, acct, hostname) {
+        this.fs = fs;
+        this.acct = acct;
+        this.cred = { uid: acct.uid, gid: acct.gid, groups: acct.groups };
+        this.hostname = hostname;
+    }
+    get dir() {
+        return `${this.acct.home === '/' ? '' : this.acct.home}/.ssh`;
+    }
+    read(path) {
+        try {
+            return this.fs.tryLookup(path, this.cred)?.kind === 'file' ? this.fs.readFile(path, this.cred) : null;
+        }
+        catch {
+            return null;
+        }
+    }
+    ensureDir(path, mode) {
+        if (!this.fs.tryLookup(path, this.cred))
+            this.fs.mkdir(path, this.cred, true, mode);
+    }
+    keys() {
+        if (this.fs.tryLookup(this.dir, this.cred)?.kind !== 'dir')
+            return [];
+        let names = [];
+        try {
+            names = this.fs.readdir(this.dir, this.cred);
+        }
+        catch {
+            return [];
+        }
+        return names.filter((n) => n.endsWith('.pub')).flatMap((pub) => {
+            const line = this.read(`${this.dir}/${pub}`)?.trim() ?? '';
+            const key = parsePublicLine(line);
+            const name = pub.slice(0, -4);
+            const priv = this.read(`${this.dir}/${name}`);
+            return key && priv !== null ? [{ name, path: `${this.dir}/${name}`, type: line.split(/\s+/)[0] ?? '', fingerprint: fingerprint(key.blob), publicLine: line, encrypted: isEncrypted(priv) }] : [];
+        });
+    }
+    /** New key pair ~/.ssh/NAME (600) + NAME.pub (644); returns an error or null. */
+    generate(type, name, passphrase) {
+        if (!NAME.test(name))
+            return 'name';
+        const path = `${this.dir}/${name}`;
+        if (this.fs.tryLookup(path, this.cred))
+            return 'exists';
+        try {
+            this.ensureDir(this.dir, SSH_DIR_MODE);
+            const kp = generateKey(type, BITS[type], `${this.acct.name}@${this.hostname}`);
+            this.fs.writeFile(path, privateFile(kp, passphrase), this.cred, false, PRIVATE_MODE);
+            this.fs.chmod(path, PRIVATE_MODE, this.cred);
+            this.fs.writeFile(`${path}.pub`, `${publicLine(kp)}\n`, this.cred, false, PUBLIC_MODE);
+            return null;
+        }
+        catch {
+            return 'write';
+        }
+    }
+    deleteKey(name) {
+        if (!NAME.test(name))
+            return;
+        for (const p of [`${this.dir}/${name}`, `${this.dir}/${name}.pub`]) {
+            try {
+                if (this.fs.tryLookup(p, this.cred))
+                    this.fs.remove(p, this.cred);
+            }
+            catch { /* not ours */ }
+        }
+    }
+    knownHosts() {
+        const text = this.read(`${this.dir}/known_hosts`) ?? '';
+        return text.split('\n').flatMap((l, i) => {
+            const [host = '', ...rest] = l.trim().split(/\s+/);
+            const key = parsePublicLine(rest.join(' '));
+            return l.trim() && !l.trim().startsWith('#') && key ? [{ line: i + 1, host, type: rest[0] ?? '', fingerprint: fingerprint(key.blob) }] : [];
+        });
+    }
+    /** Forgets one known_hosts line (like `ssh-keygen -R`, but for that entry only). */
+    forgetHost(line) {
+        const path = `${this.dir}/known_hosts`;
+        const text = this.read(path);
+        if (text === null)
+            return;
+        this.fs.writeFile(path, text.split('\n').filter((_, i) => i + 1 !== line).join('\n'), this.cred);
+    }
+    // ------------------------------------------------------------ saved sessions
+    get profilesPath() {
+        return `${this.acct.home === '/' ? '' : this.acct.home}/.config/netfix/ssh-sessions`;
+    }
+    profiles() {
+        const text = this.read(this.profilesPath) ?? '';
+        return text.split('\n').flatMap((l) => {
+            const [name = '', host = '', port = '22', user = '', identity = ''] = l.split('\t');
+            return NAME.test(name) && host ? [{ name, host, port: Number(port) || 22, user, identity }] : [];
+        });
+    }
+    saveProfile(p) {
+        const clean = (v) => v.replace(/[\t\n\r]/g, '').trim().slice(0, 100);
+        if (!NAME.test(p.name) || !clean(p.host) || !(p.port >= 1 && p.port <= 65535))
+            return 'profile';
+        const rest = this.profiles().filter((x) => x.name !== p.name).slice(0, MAX_PROFILES - 1);
+        const lines = [...rest, p].map((x) => [x.name, clean(x.host), x.port, clean(x.user), clean(x.identity)].join('\t'));
+        try {
+            this.ensureDir(this.profilesPath.replace(/\/[^/]+$/, ''), SSH_DIR_MODE);
+            this.fs.writeFile(this.profilesPath, `${lines.join('\n')}\n`, this.cred, false, PRIVATE_MODE);
+            return null;
+        }
+        catch {
+            return 'write';
+        }
+    }
+    deleteProfile(name) {
+        const lines = this.profiles().filter((x) => x.name !== name).map((x) => [x.name, x.host, x.port, x.user, x.identity].join('\t'));
+        try {
+            this.fs.writeFile(this.profilesPath, lines.length ? `${lines.join('\n')}\n` : '', this.cred);
+        }
+        catch { /* not writable */ }
+    }
+}
+
+return { SshKeyring };
+})();
+__m["ui/ssh-app.js"] = (() => {
+/** PC app "SSH client" (PuTTY-like): saved sessions, a terminal per session, key pairs and known hosts. */
+const { el } = __m["ui/dom.js"];
+const { button, field, input, message, select, subnav, table } = __m["ui/forms.js"];
+const { Terminal } = __m["ui/terminal.js"];
+const { createShell } = __m["shells/factory.js"];
+const { hostSystem, hostUsers } = __m["shells/host-system.js"];
+const { SshKeyring } = __m["clients/ssh-keyring.js"];
+const { t } = __m["i18n/t.js"];
+const USER = 'alumno';
+/** A pane that draws itself again after each change (keys, known hosts, sessions live in files). */
+function redrawable(render, cls = 'pane-part') {
+    const root = el('div', { class: cls });
+    const draw = () => { root.replaceChildren(...render(draw)); };
+    draw();
+    return root;
+}
+function keyring(pc) {
+    const acct = hostUsers(pc).find((u) => u.name === USER);
+    return acct ? new SshKeyring(hostSystem(pc).fs, acct, pc.runtimeName().toLowerCase()) : null;
+}
+/** `ssh` command line of a session (values come from validated fields, quoted for bash). */
+function sshLine(p) {
+    const q = (v) => `'${v.replace(/'/g, `'\\''`)}'`;
+    return ['ssh', ...(p.port !== 22 ? ['-p', String(p.port)] : []), ...(p.identity ? ['-i', q(`~/.ssh/${p.identity}`)] : []), q(`${p.user || USER}@${p.host}`)].join(' ');
+}
+function terminalFor(pc, p, app) {
+    const shell = createShell(pc, 'linux', USER);
+    const first = shell.run(sshLine(p));
+    const backend = {
+        prompt: () => shell.prompt(), run: (l) => shell.run(l),
+        secret: () => shell.secret(), complete: (l) => shell.complete?.(l) ?? null,
+        interrupt: () => shell.interrupt?.() ?? [], eof: () => shell.eof?.() ?? [],
+        editRequest: () => shell.editRequest?.() ?? null, saveEdit: (path, c) => (shell.saveEdit ? shell.saveEdit(path, c) : 'No disponible'),
+        closeEdit: () => shell.closeEdit?.() ?? [],
+        screenFrame: (w, h) => shell.screenFrame?.(w, h) ?? null, screenKey: (k) => shell.screenKey?.(k) ?? [],
+    };
+    return new Terminal(backend, { intro: first, label: `SSH ${p.user || USER}@${p.host}`, afterRun: () => app.afterCommand() });
+}
+function sessionPane(pc, ring, app) {
+    const msg = message();
+    const host = input({ placeholder: '10.0.0.2', 'aria-label': t('ssh.host') });
+    const port = input({ value: '22', inputmode: 'numeric', 'aria-label': t('ssh.port') });
+    const user = input({ value: USER, 'aria-label': t('ssh.user') });
+    const ident = select([['', t('ssh.defaultKeys')], ...ring.keys().map((k) => [k.name, k.name])], '');
+    const name = input({ placeholder: 'servidor-web', 'aria-label': t('ssh.name') });
+    const term = el('div', { class: 'ssh-term' });
+    const profile = () => ({ host: host.value.trim(), port: Number(port.value) || 22, user: user.value.trim(), identity: ident.value });
+    const close = button(t('ssh.close'), () => { term.replaceChildren(); close.hidden = true; }, 'btn btn-small');
+    close.hidden = true;
+    const open = () => {
+        const p = profile();
+        if (!/^[\w.-]{1,253}$/.test(p.host) || !(p.port >= 1 && p.port <= 65535) || !/^[\w.-]{0,32}$/.test(p.user))
+            return msg.error(t('ssh.badProfile'));
+        msg.clear();
+        const tm = terminalFor(pc, p, app);
+        term.replaceChildren(tm.root);
+        close.hidden = false;
+        tm.focus();
+    };
+    const fill = (p) => { host.value = p.host; port.value = String(p.port); user.value = p.user; ident.value = p.identity; name.value = p.name; };
+    const saved = redrawable((redraw) => [
+        el('h3', {}, t('ssh.saved')),
+        table(ring.profiles(), [{ label: t('ssh.name'), value: (p) => p.name }, { label: t('ssh.host'), value: (p) => `${p.user}@${p.host}:${p.port}`, mono: true }], {
+            empty: t('ssh.noSaved'), onSelect: fill, onDelete: (p) => { ring.deleteProfile(p.name); app.afterCommand(); redraw(); },
+        }),
+        el('div', { class: 'row-actions' }, name, button(t('ssh.save'), () => {
+            if (ring.saveProfile({ ...profile(), name: name.value.trim() }))
+                return msg.error(t('ssh.badProfile'));
+            app.afterCommand();
+            redraw();
+        }, 'btn btn-small')),
+    ]);
+    return el('div', { class: 'pane' }, el('p', { class: 'muted' }, t('ssh.intro')), msg.el, el('div', { class: 'grid2' }, field(t('ssh.host'), host), field(t('ssh.port'), port), field(t('ssh.user'), user), field(t('ssh.identity'), ident)), el('div', { class: 'row-actions' }, button(t('ssh.open'), open), close), term, saved);
+}
+function keysPane(ring, app) {
+    const msg = message();
+    const type = select([['ed25519', 'ed25519'], ['ecdsa', 'ecdsa'], ['rsa', 'rsa 3072']], 'ed25519');
+    const file = input({ value: 'id_ed25519', 'aria-label': t('ssh.keyName') });
+    type.addEventListener('change', () => { file.value = `id_${type.value}`; });
+    const pass = input({ type: 'password', autocomplete: 'new-password', 'aria-label': t('ssh.passphrase') });
+    const copy = (k) => { void globalThis.navigator?.clipboard?.writeText(k.publicLine).then(() => msg.ok(t('ssh.copied'))); };
+    let refresh = () => undefined;
+    const list = redrawable((redraw) => {
+        refresh = redraw;
+        return [table(ring.keys(), [
+                { label: t('ssh.keyName'), value: (k) => `${k.name}${k.encrypted ? ` (${t('ssh.encrypted')})` : ''}` },
+                { label: t('ssh.keyType'), value: (k) => k.type, mono: true },
+                { label: t('ssh.fingerprint'), value: (k) => k.fingerprint, mono: true },
+            ], { empty: t('ssh.noKeys'), actions: (k) => [button(t('ssh.copy'), () => copy(k), 'btn btn-small')], onDelete: (k) => { ring.deleteKey(k.name); app.afterCommand(); redraw(); } })];
+    });
+    const gen = () => {
+        const err = ring.generate(type.value, file.value.trim(), pass.value);
+        if (err)
+            return msg.error(t(err === 'exists' ? 'ssh.keyExists' : err === 'name' ? 'ssh.keyBadName' : 'ssh.keyWrite'));
+        pass.value = '';
+        msg.clear();
+        app.afterCommand();
+        refresh();
+    };
+    return el('div', { class: 'pane' }, el('p', { class: 'muted' }, t('ssh.keysIntro')), msg.el, list, el('div', { class: 'grid2' }, field(t('ssh.keyType'), type), field(t('ssh.keyName'), file), field(t('ssh.passphrase'), pass)), el('div', { class: 'row-actions' }, button(t('ssh.generate'), gen)));
+}
+function knownPane(ring, app) {
+    return redrawable((redraw) => [el('p', { class: 'muted' }, t('ssh.knownIntro')), table(ring.knownHosts(), [
+            { label: t('ssh.host'), value: (k) => k.host, mono: true }, { label: t('ssh.keyType'), value: (k) => k.type, mono: true }, { label: t('ssh.fingerprint'), value: (k) => k.fingerprint, mono: true },
+        ], { empty: t('ssh.noKnown'), actions: (k) => [button(t('ssh.forget'), () => { ring.forgetHost(k.line); app.afterCommand(); redraw(); }, 'btn btn-small danger')] })], 'pane');
+}
+function sshApp(pc, app) {
+    const ring = keyring(pc);
+    if (!ring)
+        return el('p', { class: 'muted' }, 'alumno?');
+    return subnav([
+        { id: 'session', label: t('ssh.session'), render: () => sessionPane(pc, ring, app) },
+        { id: 'keys', label: t('ssh.keys'), render: () => keysPane(ring, app) },
+        { id: 'known', label: t('ssh.known'), render: () => knownPane(ring, app) },
+    ]);
+}
+
+return { sshApp };
+})();
+__m["clients/file-transfer.js"] = (() => {
+const { FsError } = __m["bash/vfs.js"];
+const { SshLogin } = __m["shells/ssh-client.js"];
+const { linuxSshStore } = __m["shells/ssh-stores.js"];
+const { baseName, joinPath, SftpSession } = __m["clients/sftp-client.js"];
+const MAX_LOG = 200;
+class FileTransfer {
+    host;
+    fs;
+    acct;
+    cred;
+    session = null;
+    target = '';
+    localDir;
+    log = [];
+    constructor(host, fs, acct) {
+        this.host = host;
+        this.fs = fs;
+        this.acct = acct;
+        this.cred = { uid: acct.uid, gid: acct.gid, groups: acct.groups };
+        this.localDir = acct.home;
+    }
+    add(kind, text) {
+        this.log = [...this.log.slice(-(MAX_LOG - 1)), { kind, text }];
+    }
+    loginLoop(login, p, ask) {
+        let r = login.begin();
+        let passwordSent = false;
+        for (;;) {
+            r.lines.filter((l) => l.trim()).forEach((l) => this.add(/denied|failed|closed|refused|timed out|Could not|incorrect|verification/i.test(l) ? 'error' : 'status', l));
+            if (r.failed)
+                return null;
+            if (r.session)
+                return new SftpSession(this.host, r.session.ip, p.port, r.session.id);
+            const waiting = login.waiting();
+            if (waiting === 'hostkey')
+                r = login.input(ask.hostKey(p.host, login.hostFingerprint()) ? 'yes' : 'no');
+            else if (waiting === 'passphrase')
+                r = login.input(ask.passphrase(login.prompt()) ?? '');
+            else if (waiting === 'password' && !passwordSent) {
+                passwordSent = true;
+                r = login.input(p.password);
+            }
+            else {
+                this.add('error', 'Error: Authentication failed.');
+                return null;
+            }
+        }
+    }
+    connect(p, ask) {
+        this.disconnect();
+        this.add('status', `Status: Connecting to ${p.host}:${p.port}...`);
+        const store = linuxSshStore(this.fs, this.acct);
+        const login = new SshLogin(this.host, 'Linux', store, {
+            user: p.user || this.acct.name, target: p.host, port: p.port, identities: p.identity ? [p.identity] : [],
+            strict: 'ask', password: true, pubkey: true, batch: false, subsystem: 'sftp',
+        });
+        const s = this.loginLoop(login, p, ask);
+        if (!s) {
+            this.add('error', 'Error: Could not connect to server');
+            return false;
+        }
+        s.start();
+        this.session = s;
+        this.target = `${p.user || this.acct.name}@${p.host}`;
+        this.add('status', `Status: Connected to ${p.host}`);
+        this.add('status', `Status: Directory listing of "${s.cwd}" successful`);
+        return true;
+    }
+    disconnect() {
+        if (this.session)
+            this.add('status', 'Status: Disconnected from server');
+        this.session = null;
+    }
+    // ------------------------------------------------------------ panes
+    localList() {
+        try {
+            return this.fs.readdir(this.localDir, this.cred).flatMap((name) => {
+                try {
+                    const st = this.fs.stat(joinPath(this.localDir, name), this.cred, false);
+                    const kind = st.kind === 'file' || st.kind === 'dir' || st.kind === 'link' ? st.kind : 'other';
+                    return [{ name, kind, size: st.size, mode: st.mode, mtime: st.mtime, owner: String(st.uid), group: String(st.gid) }];
+                }
+                catch {
+                    return [];
+                }
+            });
+        }
+        catch {
+            this.add('error', `Error: Directory ${this.localDir}: permission denied`);
+            return [];
+        }
+    }
+    remoteList() {
+        if (!this.session)
+            return [];
+        const r = this.session.request({ op: 'list', path: this.session.cwd });
+        if (r.status !== 'ok')
+            this.fail(`Directory ${this.session.cwd}`, r);
+        return r.entries ?? [];
+    }
+    localCd(name) {
+        const dir = joinPath(this.localDir, name);
+        if (this.fs.tryLookup(dir, this.cred)?.kind === 'dir')
+            this.localDir = dir;
+    }
+    remoteCd(name) {
+        if (!this.session)
+            return;
+        const r = this.session.cd(name);
+        if (r.status !== 'ok')
+            this.fail(`cd ${name}`, r);
+        else
+            this.add('status', `Status: Directory listing of "${this.session.cwd}" successful`);
+    }
+    fail(what, r) {
+        this.add('error', `Error: ${what}: ${r.status === 'permission-denied' ? 'permission denied' : r.status === 'no-such-file' ? 'no such file or directory' : r.message ?? 'failure'}`);
+    }
+    upload(name) {
+        if (!this.session)
+            return false;
+        const src = joinPath(this.localDir, name);
+        let data;
+        try {
+            data = this.fs.readFile(src, this.cred);
+        }
+        catch (e) {
+            if (!(e instanceof FsError))
+                throw e;
+            this.add('error', `Error: ${src}: ${e.code === 'EACCES' ? 'permission denied' : 'cannot read'}`);
+            return false;
+        }
+        const dst = joinPath(this.session.cwd, baseName(src));
+        this.add('command', `Command: put "${src}" "${dst}"`);
+        const r = this.session.request({ op: 'write', path: dst, data });
+        if (r.status !== 'ok') {
+            this.fail(`put ${dst}`, r);
+            return false;
+        }
+        this.add('status', `Status: File transfer successful, transferred ${data.length} bytes`);
+        return true;
+    }
+    download(name) {
+        if (!this.session)
+            return false;
+        const src = joinPath(this.session.cwd, name);
+        this.add('command', `Command: get "${src}" "${joinPath(this.localDir, name)}"`);
+        const r = this.session.request({ op: 'read', path: src });
+        if (r.status !== 'ok') {
+            this.fail(`get ${src}`, r);
+            return false;
+        }
+        try {
+            this.fs.writeFile(joinPath(this.localDir, name), r.data ?? '', this.cred);
+        }
+        catch {
+            this.add('error', `Error: ${joinPath(this.localDir, name)}: permission denied`);
+            return false;
+        }
+        this.add('status', `Status: File transfer successful, transferred ${(r.data ?? '').length} bytes`);
+        return true;
+    }
+    /** mkdir / delete / rename on the remote side. */
+    remote(op, name, to) {
+        if (!this.session)
+            return false;
+        const path = joinPath(this.session.cwd, name);
+        const entry = this.session.request({ op: 'stat', path }).entry;
+        const r = op === 'mkdir' ? this.session.request({ op: 'mkdir', path })
+            : op === 'rename' ? this.session.request({ op: 'rename', path, to: joinPath(this.session.cwd, to ?? name) })
+                : this.session.request({ op: entry?.kind === 'dir' ? 'rmdir' : 'remove', path });
+        this.add('command', `Command: ${op === 'delete' ? (entry?.kind === 'dir' ? 'rmdir' : 'rm') : op} "${path}"${to ? ` "${to}"` : ''}`);
+        if (r.status !== 'ok') {
+            this.fail(`${op} ${path}`, r);
+            return false;
+        }
+        return true;
+    }
+}
+
+return { FileTransfer };
+})();
+__m["ui/sftp-app.js"] = (() => {
+/** PC app "Files (SFTP)" (FileZilla-like): quick connect bar, message log, local and remote panes. */
+const { el } = __m["ui/dom.js"];
+const { button, input } = __m["ui/forms.js"];
+const { hostSystem, hostUsers } = __m["shells/host-system.js"];
+const { FileTransfer } = __m["clients/file-transfer.js"];
+const { t } = __m["i18n/t.js"];
+const USER = 'alumno';
+const engines = new WeakMap();
+const KIB = 1024;
+function engineFor(pc) {
+    const found = engines.get(pc);
+    if (found)
+        return found;
+    const acct = hostUsers(pc).find((u) => u.name === USER);
+    if (!acct)
+        return null;
+    const e = new FileTransfer(pc, hostSystem(pc).fs, acct);
+    engines.set(pc, e);
+    return e;
+}
+const size = (e) => (e.kind === 'dir' ? '' : e.size < KIB ? `${e.size} B` : `${(e.size / KIB).toFixed(1)} KiB`);
+const perms = (e) => `${e.kind === 'dir' ? 'd' : '-'}${'rwxrwxrwx'.split('').map((c, i) => ((e.mode >> (8 - i)) & 1 ? c : '-')).join('')}`;
+const date = (ms) => new Date(ms).toISOString().replace('T', ' ').slice(0, 16);
+function pane(o) {
+    const sorted = [...o.entries].sort((a, b) => Number(b.kind === 'dir') - Number(a.kind === 'dir') || a.name.localeCompare(b.name));
+    const row = (e) => {
+        const tr = el('tr', { class: e.name === o.selected ? 'is-current' : '', tabindex: '0', 'aria-selected': String(e.name === o.selected) }, el('td', {}, `${e.kind === 'dir' ? '📁 ' : '📄 '}${e.name}`), el('td', { class: 'num' }, size(e)), el('td', { class: 'mono' }, perms(e)), el('td', {}, date(e.mtime)));
+        tr.addEventListener('click', () => o.select(e.name));
+        tr.addEventListener('dblclick', () => { if (e.kind === 'dir')
+            o.open(e.name); });
+        tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') {
+            if (e.kind === 'dir')
+                o.open(e.name);
+            else
+                o.select(e.name);
+        } });
+        return tr;
+    };
+    const up = el('tr', { tabindex: '0' }, el('td', { colspan: '4' }, `⬑ .. (${t('sftp.up')})`));
+    up.addEventListener('click', () => o.open('..'));
+    up.addEventListener('keydown', (ev) => { if (ev.key === 'Enter')
+        o.open('..'); });
+    return el('section', { class: 'ft-pane', 'aria-label': o.title }, el('div', { class: 'ft-path' }, el('strong', {}, o.title), el('code', { class: 'mono' }, o.path)), el('div', { class: 'table-wrap' }, el('table', { class: 'grid-table ft-list' }, el('thead', {}, el('tr', {}, el('th', {}, t('sftp.name')), el('th', {}, t('sftp.size')), el('th', {}, t('sftp.perms')), el('th', {}, t('sftp.modified')))), el('tbody', {}, ...(o.path !== '/' ? [up] : []), ...sorted.map(row)))));
+}
+function connectBar(ft, redraw) {
+    const host = input({ placeholder: '10.0.0.2', 'aria-label': t('ssh.host') });
+    const user = input({ value: 'admin', 'aria-label': t('ssh.user') });
+    const pass = input({ type: 'password', autocomplete: 'off', 'aria-label': t('sftp.password') });
+    const port = input({ value: '22', inputmode: 'numeric', class: 'ft-port', 'aria-label': t('ssh.port') });
+    const go = () => {
+        ft.connect({ host: host.value.trim(), port: Number(port.value) || 22, user: user.value.trim(), password: pass.value }, {
+            hostKey: (h, fp) => globalThis.confirm(t('sftp.hostKey', { host: h, fp })),
+            passphrase: (prompt) => globalThis.prompt(prompt) ?? null,
+        });
+        pass.value = '';
+        redraw();
+    };
+    pass.addEventListener('keydown', (e) => { if (e.key === 'Enter')
+        go(); });
+    const labelled = (text, ctrl) => el('label', { class: 'ft-field' }, el('span', {}, text), ctrl);
+    return el('div', { class: 'ft-bar' }, labelled(t('ssh.host'), host), labelled(t('ssh.user'), user), labelled(t('sftp.password'), pass), labelled(t('ssh.port'), port), button(t('sftp.connect'), go), ...(ft.session ? [button(t('sftp.disconnect'), () => { ft.disconnect(); redraw(); }, 'btn btn-small')] : []));
+}
+function sftpApp(pc, app) {
+    const ft = engineFor(pc);
+    const root = el('div', { class: 'pane ft' });
+    if (!ft)
+        return root;
+    let localSel = null;
+    let remoteSel = null;
+    const redraw = () => {
+        app.afterCommand();
+        const need = (sel, fn) => { if (sel)
+            fn(sel);
+        else
+            globalThis.alert(t('sftp.select')); redraw(); };
+        const log = el('div', { class: 'ft-log', role: 'log', 'aria-label': t('sftp.log') }, ...ft.log.slice(-60).map((l) => el('div', { class: `ft-${l.kind}` }, l.text)));
+        const local = pane({ title: t('sftp.local'), path: ft.localDir, entries: ft.localList(), selected: localSel, select: (n) => { localSel = n; redraw(); }, open: (n) => { ft.localCd(n); localSel = null; redraw(); } });
+        const remote = ft.session
+            ? pane({ title: `${t('sftp.remote')} · ${ft.target}`, path: ft.session.cwd, entries: ft.remoteList(), selected: remoteSel, select: (n) => { remoteSel = n; redraw(); }, open: (n) => { ft.remoteCd(n); remoteSel = null; redraw(); } })
+            : el('section', { class: 'ft-pane' }, el('p', { class: 'muted' }, t('sftp.notConnected')));
+        const actions = el('div', { class: 'row-actions ft-actions' }, button(t('sftp.upload'), () => need(localSel, (n) => ft.upload(n))), button(t('sftp.download'), () => need(remoteSel, (n) => ft.download(n))), button(t('sftp.mkdir'), () => { const n = globalThis.prompt(t('sftp.askName')); if (n)
+            ft.remote('mkdir', n); redraw(); }, 'btn btn-small'), button(t('sftp.rename'), () => need(remoteSel, (n) => { const to = globalThis.prompt(t('sftp.askName'), n); if (to)
+            ft.remote('rename', n, to); }), 'btn btn-small'), button(t('sftp.delete'), () => need(remoteSel, (n) => { if (globalThis.confirm(t('sftp.confirmDelete', { name: n })))
+            ft.remote('delete', n); }), 'btn btn-small danger'), button(t('sftp.refresh'), redraw, 'btn btn-small'));
+        root.replaceChildren(connectBar(ft, redraw), log, el('div', { class: 'ft-panes' }, local, remote), ...(ft.session ? [actions] : []));
+        log.scrollTop = log.scrollHeight;
+    };
+    redraw();
+    return root;
+}
+
+return { sftpApp };
+})();
 __m["ios/http.js"] = (() => {
 const { secretHash } = __m["core/hash.js"];
 const DEFAULT_HTTP_PORT = 80;
@@ -36894,6 +37575,8 @@ const { hostIpConfig } = __m["ui/host-ip.js"];
 const { hostSettings } = __m["ui/host-settings.js"];
 const { servicesTab } = __m["ui/server-apps.js"];
 const { browserApp, mailApp } = __m["ui/pc-apps.js"];
+const { sshApp } = __m["ui/ssh-app.js"];
+const { sftpApp } = __m["ui/sftp-app.js"];
 const { iosWebSettings } = __m["ui/ios-web-settings.js"];
 const { Cloud } = __m["devices/cloud.js"];
 const { cloudTabs } = __m["ui/cloud-window.js"];
@@ -37001,7 +37684,8 @@ function openHostWindow(placed, h, app) {
     ];
     const tabs = h instanceof LinuxRouter ? routerTabs(h) : h instanceof Server
         ? [{ id: 'svc', label: 'Servicios', render: () => servicesTab(h, app) }, ipTab, settingsTab, ...order.map(terminal)]
-        : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: 'Navegador', render: () => browserApp(h, app) }, { id: 'mail', label: 'Correo', render: () => mailApp(h, app) }] : []), settingsTab, ...order.map(terminal)];
+        : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: 'Navegador', render: () => browserApp(h, app) }, { id: 'mail', label: 'Correo', render: () => mailApp(h, app) },
+                { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : []), settingsTab, ...order.map(terminal)];
     handle = app.windows.show(h.id, `${placed.label} · ${model}`, tabs, () => disposers.forEach((f) => f()));
 }
 
