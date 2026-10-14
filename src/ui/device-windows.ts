@@ -1,4 +1,5 @@
 /** Window contents: IOS CLI for routers/switches; desktop tabs for PCs and Server. */
+import { iosDeviceSettings } from './ios-device-settings.ts';
 import { t } from '../i18n/t.ts';
 import { LinuxRouter } from '../devices/linux-router.ts';
 import { routerInterfaces } from './router-ip.ts';
@@ -90,7 +91,10 @@ export function openDeviceWindow(placed: Placed, host: WindowHost): void {
     return;
   }
   const term = cliTerminal(placed, host);
-  host.windows.show(d.id, `${placed.label} · ${d.hostname}`, [
+  let handle: { setTitle(t: string): void } | undefined;
+  const device = iosDeviceSettings(placed, d, { afterCommand: () => host.afterCommand(), retitle: (title) => handle?.setTitle(title) });
+  handle = host.windows.show(d.id, `${placed.label} · ${d.hostname}`, [
+    { id: 'host', label: t('win.host'), render: () => device.root, onShow: () => device.refresh() },
     { id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() },
     { id: 'web', label: t('win.webAdmin'), render: () => iosWebSettings(d, () => host.afterCommand()) },
   ]);
@@ -127,21 +131,23 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost): void {
   });
   const ipTab: Tab = { id: 'ip', label: t('win.ip'), render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
   const order: HostOs[] = h.os === 'linux' ? ['linux', 'windows'] : ['windows', 'linux'];
-  const model = h instanceof LinuxRouter ? '2911 Linux' : h instanceof Server ? 'Server' : 'PC';
+  const model = h instanceof LinuxRouter ? 'Ubuntu' : h instanceof Server ? 'Server' : 'PC';
   let handle: { setTitle(t: string): void } | undefined;
   const settingsTab: Tab = { id: 'host', label: t('win.host'), render: () => {
     const v = hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) });
     disposers.push(v.dispose);
     return v.root;
   } };
+  // «Equipo» is always the first tab (as in the IOS devices).
   const routerTabs = (r: LinuxRouter): Tab[] => [
+    settingsTab,
     { id: 'svc', label: t('win.services'), render: () => servicesTab(r, app) },
     { id: 'ifaces', label: t('router.ifaces'), render: () => { const v = routerInterfaces(r, app); disposers.push(v.dispose); return v.root; } },
-    settingsTab, terminal('linux'),
+    terminal('linux'),
   ];
   const tabs: Tab[] = h instanceof LinuxRouter ? routerTabs(h) : h instanceof Server
-    ? [{ id: 'svc', label: t('win.services'), render: () => servicesTab(h, app) }, ipTab, settingsTab, ...order.map(terminal)]
-    : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
-      { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : []), settingsTab, ...order.map(terminal)];
+    ? [settingsTab, { id: 'svc', label: t('win.services'), render: () => servicesTab(h, app) }, ipTab, ...order.map(terminal)]
+    : [settingsTab, ipTab, ...(h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
+      { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : []), ...order.map(terminal)];
   handle = app.windows.show(h.id, `${placed.label} · ${model}`, tabs, () => disposers.forEach((f) => f()));
 }

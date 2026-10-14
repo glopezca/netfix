@@ -50,7 +50,7 @@ function readStatic(inputs: IpInputs): { ip?: number; prefix?: number; gateway?:
   const dns = read(inputs.dns);
   const mask = inputs.mask.value.trim() === '' ? undefined : parseMask(inputs.mask.value.trim());
   const bad = ip === null ? t('ip.field.ip') : mask === null ? t('ip.field.mask') : gw === null ? t('ip.field.gw') : dns === null ? t('ip.field.dns') : '';
-  if (bad) return t('ip.check', { field: bad });
+  if (bad) return mask === null && ip !== null ? t('ip.checkMask') : t('ip.check', { field: bad });
   const prefix = mask ?? (ip !== undefined && ip !== null ? classfulPrefix(ip) : undefined);
   return { ip: ip ?? undefined, prefix, gateway: gw ?? undefined, dns: dns ?? undefined };
 }

@@ -23,6 +23,16 @@ export const HOST_ES = {
   'host.err.long': 'El nombre de host admite como máximo {max} caracteres.',
   'host.err.label': 'Cada parte del nombre admite como máximo {max} caracteres.',
   'host.err.chars': 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).',
+  'iosdev.hostnameHint': 'Es el «hostname» de IOS: aparece en el prompt (Router#) y en show running-config.',
+  'iosdev.badHostname': 'Nombre de host IOS no válido: una sola palabra que empiece por una letra (máximo 63 caracteres).',
+  'iosdev.ifaces': 'Interfaces',
+  'iosdev.iface': 'Interfaz',
+  'iosdev.address': 'Dirección y máscara',
+  'iosdev.state': 'Estado',
+  'iosdev.up': 'activa (no shutdown)',
+  'iosdev.down': 'apagada (shutdown)',
+  'iosdev.eq': 'CLI: configure terminal → hostname NOMBRE (se guarda con copy running-config startup-config).',
+  'iosdev.eqIfaces': 'Las direcciones se cambian en la pestaña CLI (interface … → ip address IP MÁSCARA) o en la Gestión web.',
 } as const;
 
 export type HostKey = keyof typeof HOST_ES;

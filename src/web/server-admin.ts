@@ -7,7 +7,7 @@ import type { Peer } from '../net/tcp.ts';
 import type { HttpRequest, HttpResponse } from './http.ts';
 import { basicAuth, formFields, query, redirect, respond, unauthorized, forMethod } from './http.ts';
 import { h, page } from './html.ts';
-import { PAGES, frame } from './admin-layout.ts';
+import { PAGES, frame, pagesOf } from './admin-layout.ts';
 import { setupPage, dhcpPage, dnsPage, webPage, mailPage, sshPage, adminPage, statusPage, logPage } from './admin-pages.ts';
 import type { Child } from './html.ts';
 import { runAction } from './admin-actions.ts';
@@ -58,7 +58,7 @@ function adminResponse(server: Server, req: HttpRequest, peer: Peer, base: strin
     return unauthorized(BANNER, REALM, page('401 Unauthorized', '', h('h1', {}, 'Unauthorized'), h('p', {}, t('wa.needLogin'))));
   }
   const q = query(req);
-  const current = PAGES.find((p) => p.id === q.get('page')) ?? PAGES[0];
+  const current = pagesOf(server).find((p) => p.id === q.get('page')) ?? PAGES[0];
   if (!current) return respond(BANNER, 404, 'Not Found');
   if (req.method === 'POST') {
     const result = runAction(server, current.id, formFields(req));

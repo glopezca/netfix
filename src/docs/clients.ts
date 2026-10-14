@@ -1,4 +1,4 @@
-/** Documentación: equipos cliente (configuración IP, aplicaciones y Símbolo del sistema de Windows). */
+/** Documentación: equipos cliente (configuración IP, aplicaciones y Terminal Windows). */
 import type { DocGroup } from './types.ts';
 import { code, h, list, p, table } from './types.ts';
 
@@ -58,7 +58,7 @@ export const CLIENT_DOCS: DocGroup = {
     },
     {
       id: 'windows-cmd',
-      title: 'Símbolo del sistema (Windows)',
+      title: 'Terminal Windows (cmd)',
       summary: 'Órdenes de cmd.exe disponibles en PCs y servidores Windows.',
       blocks: [
         table(['Orden', 'Uso'], [

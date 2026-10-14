@@ -850,9 +850,9 @@ const APP_ES = {
     'pal.zoomIn': 'Acercar',
     'pal.zoomOut': 'Alejar',
     'pal.zoomFit': 'Ajustar a la red',
-    'kind.router': 'Router',
+    'kind.router': 'Router IOS',
     'kind.linuxrouter': 'Router Linux',
-    'kind.switch': 'Switch',
+    'kind.switch': 'Switch IOS',
     'kind.pc': 'PC',
     'kind.server': 'Servidor',
     'kind.cloud': 'Nube',
@@ -915,9 +915,9 @@ const APP_EN = {
     'pal.zoomIn': 'Zoom in',
     'pal.zoomOut': 'Zoom out',
     'pal.zoomFit': 'Fit to network',
-    'kind.router': 'Router',
+    'kind.router': 'IOS router',
     'kind.linuxrouter': 'Linux router',
-    'kind.switch': 'Switch',
+    'kind.switch': 'IOS switch',
     'kind.pc': 'PC',
     'kind.server': 'Server',
     'kind.cloud': 'Cloud',
@@ -1114,6 +1114,16 @@ const HOST_ES = {
     'host.err.long': 'El nombre de host admite como máximo {max} caracteres.',
     'host.err.label': 'Cada parte del nombre admite como máximo {max} caracteres.',
     'host.err.chars': 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).',
+    'iosdev.hostnameHint': 'Es el «hostname» de IOS: aparece en el prompt (Router#) y en show running-config.',
+    'iosdev.badHostname': 'Nombre de host IOS no válido: una sola palabra que empiece por una letra (máximo 63 caracteres).',
+    'iosdev.ifaces': 'Interfaces',
+    'iosdev.iface': 'Interfaz',
+    'iosdev.address': 'Dirección y máscara',
+    'iosdev.state': 'Estado',
+    'iosdev.up': 'activa (no shutdown)',
+    'iosdev.down': 'apagada (shutdown)',
+    'iosdev.eq': 'CLI: configure terminal → hostname NOMBRE (se guarda con copy running-config startup-config).',
+    'iosdev.eqIfaces': 'Las direcciones se cambian en la pestaña CLI (interface … → ip address IP MÁSCARA) o en la Gestión web.',
 };
 
 return { HOST_ES };
@@ -1143,6 +1153,16 @@ const HOST_EN = {
     'host.err.long': 'The host name allows at most {max} characters.',
     'host.err.label': 'Each part of the name allows at most {max} characters.',
     'host.err.chars': 'Use only unaccented letters, digits and hyphens (no spaces; it cannot start or end with a hyphen).',
+    'iosdev.hostnameHint': 'The IOS “hostname”: it appears in the prompt (Router#) and in show running-config.',
+    'iosdev.badHostname': 'Invalid IOS host name: a single word starting with a letter (63 characters at most).',
+    'iosdev.ifaces': 'Interfaces',
+    'iosdev.iface': 'Interface',
+    'iosdev.address': 'Address and mask',
+    'iosdev.state': 'State',
+    'iosdev.up': 'enabled (no shutdown)',
+    'iosdev.down': 'administratively down (shutdown)',
+    'iosdev.eq': 'CLI: configure terminal → hostname NAME (saved with copy running-config startup-config).',
+    'iosdev.eqIfaces': 'Addresses are changed in the CLI tab (interface … → ip address IP MASK) or in Web management.',
 };
 
 return { HOST_EN };
@@ -1270,8 +1290,8 @@ return { ROUTER_EN };
 __m["i18n/es-ES/firewall.js"] = (() => {
 /** Español (España): cortafuegos nftables y parámetros sysctl en la ventana del equipo. */
 const FIREWALL_ES = {
-    'fw.tab': 'Cortafuegos',
-    'fw.service': 'Cortafuegos nftables (nftables.service)',
+    'fw.tab': 'Firewall',
+    'fw.service': 'Firewall nftables (nftables.service)',
     'fw.intro': 'Lo que cambias aquí se aplica y se guarda en /etc/nftables.conf (y nftables.service se habilita). Con «nft» en la terminal solo cambias lo que está en marcha hasta que lo guardes.',
     'fw.saved': 'Lo que está en marcha coincide con /etc/nftables.conf.',
     'fw.unsaved': 'Hay cambios hechos con «nft» que no están en /etc/nftables.conf: se perderán al reiniciar.',
@@ -1321,7 +1341,7 @@ const FIREWALL_ES = {
     'fw.preview': 'nft list ruleset',
     'fw.badField': 'Revisa el campo «{field}».',
     'fw.notLinux': 'El cortafuegos nftables solo está en los equipos Ubuntu.',
-    'sysctl.tab': 'sysctl',
+    'sysctl.tab': 'Parámetros',
     'sysctl.intro': 'Parámetros del núcleo. Se aplican y se guardan en /etc/sysctl.d/99-netfix.conf; con «sysctl -w» en la terminal solo duran hasta reiniciar.',
     'sysctl.key': 'Parámetro',
     'sysctl.value': 'Valor',
@@ -1386,7 +1406,7 @@ const FIREWALL_EN = {
     'fw.preview': 'nft list ruleset',
     'fw.badField': 'Check the “{field}” field.',
     'fw.notLinux': 'The nftables firewall is only available on Ubuntu devices.',
-    'sysctl.tab': 'sysctl',
+    'sysctl.tab': 'Parameters',
     'sysctl.intro': 'Kernel parameters. They are applied and saved in /etc/sysctl.d/99-netfix.conf; with “sysctl -w” in the terminal they only last until a restart.',
     'sysctl.key': 'Parameter',
     'sysctl.value': 'Value',
@@ -1614,15 +1634,15 @@ const LABS_ES = {
     'lab.vpn-ipsec.title': 'VPN IPsec entre dos sedes (2911)',
     'lab.vpn-ipsec.summary': 'SEDE-A y SEDE-B salen a Internet por ISPs distintos con NAT overload; el tráfico entre sus LAN va cifrado (crypto map con IKE y ESP) y no se traduce. El primer ping se pierde mientras sube el túnel. Prueba: ping entre PCs, show crypto isakmp sa, show crypto ipsec sa, show ip nat translations.',
     'lab.vpn-wireguard.title': 'VPN WireGuard: central y sucursal tras NAT',
-    'lab.vpn-wireguard.summary': 'CENTRAL (router Linux) tiene IP pública; SUCURSAL sale por el router del operador (NAT) y llama a la central con PersistentKeepalive: la central aprende su endpoint. nftables solo abre UDP 51820 y SSH desde dentro. Prueba: ping 10.1.0.10 desde la sucursal, sudo wg show, nc -z a la IP pública (filtrado) y por el túnel.',
+    'lab.vpn-wireguard.summary': 'CENTRAL (router Linux) tiene IP pública; SUCURSAL sale por el router del operador (NAT) y llama a la central con PersistentKeepalive: la central aprende su endpoint. Los dos tienen net.ipv4.ip_forward = 1 (Servicios → Parámetros), imprescindible para enrutar; nftables (Servicios → Firewall) solo abre UDP 51820 y SSH desde dentro. Prueba: ping 10.1.0.10 desde la sucursal, sudo wg show, nc -z a la IP pública (filtrado) y por el túnel.',
     'lab.linux-dmz.title': 'Router Linux con NAT y DMZ (nftables)',
-    'lab.linux-dmz.summary': 'FW (router Linux) separa LAN (eth1), DMZ (eth2, servidor web) e Internet (eth0, IP pública). nftables: la LAN sale a todas partes, la DMZ solo a Internet, desde fuera solo se llega a la web (dnat 80). Prueba: curl a la IP pública desde CLIENTE-EXT, ping de la DMZ a la LAN (bloqueado), sudo nft list ruleset y sudo dmesg.',
+    'lab.linux-dmz.summary': 'FW (router Linux) separa LAN (eth1), DMZ (eth2, servidor web) e Internet (eth0, IP pública). Enruta porque tiene net.ipv4.ip_forward = 1 (Servicios → Parámetros; prueba a desactivarlo). nftables (Servicios → Firewall): la LAN sale a todas partes, la DMZ solo a Internet, desde fuera solo se llega a la web (dnat 80). Prueba: curl a la IP pública desde CLIENTE-EXT, ping de la DMZ a la LAN (bloqueado), sudo nft list ruleset y sudo dmesg.',
     'lab.dns-reenvio.title': 'DNS de empresa que reenvía a Internet',
     'lab.dns-reenvio.summary': 'ns1 (bind9) responde la zona empresa.lan y reenvía el resto a 8.8.8.8/8.8.4.4 con caché; solo hace recursión para sus redes (localnets). El PC de invitados (otra red) obtiene empresa.lan pero REFUSED para nombres de Internet. Prueba: dig www.empresa.lan, dig www.google.com (ra), sudo rndc dumpdb y los registros de bind9.',
     'lab.ssh-sftp.title': 'SSH y SFTP con claves',
     'lab.ssh-sftp.summary': 'srv.aula.lab acepta SSH y SFTP (ana/ana1, admin/cisco). En PC1: pestaña Cliente SSH → Claves (genera ed25519), ssh-copy-id ana@srv.aula.lab, Archivos (SFTP) para subir y bajar. Después pon «PasswordAuthentication no» en un fichero de /etc/ssh/sshd_config.d/ y recarga: solo entra quien tiene clave. Los permisos son los de cada usuario en el servidor.',
     'lab.bastionado.title': 'Bastionado: ACL, nftables y sshd',
-    'lab.bastionado.summary': 'Defensa en profundidad: la ACL extendida A-SERVIDORES de GW deja la web a todos y SSH/ping solo a ADMINISTRACION (deny … log); el servidor repite la política con nftables (input drop, log NFT-DROP) y sshd_config.d (sin root, AllowUsers admin, MaxAuthTries 3). Prueba desde ADMIN y ALUMNO: ssh admin@172.20.0.10, curl, ping, nmap; en GW show access-lists.',
+    'lab.bastionado.summary': 'Defensa en profundidad: la ACL extendida A-SERVIDORES de GW deja la web a todos y SSH/ping solo a ADMINISTRACION (deny … log); el servidor repite la política con nftables desde su terminal (/etc/nftables.conf: input drop, log NFT-DROP) y sshd_config.d (sin root, AllowUsers admin, MaxAuthTries 3). Prueba desde ADMIN y ALUMNO: ssh admin@172.20.0.10, curl, ping, nmap; en GW show access-lists.',
 };
 
 return { LABS_ES };
@@ -1638,9 +1658,9 @@ const LABS_EN = {
     'lab.vlans.title': 'Router-on-a-stick: one pool per VLAN',
     'lab.vlans.summary': '802.1Q subinterfaces on the router, a trunk on the switch and the pools VENTAS and SOPORTE.',
     'lab.snooping.title': 'DHCP snooping against a rogue server',
-    'lab.snooping.summary': 'ROGUE offers a fake gateway; the switch only trusts Gig0/1. Note «ip dhcp relay information trusted» on GW.',
+    'lab.snooping.summary': 'ROGUE offers a fake gateway; the switch only trusts Gig0/1. Note “ip dhcp relay information trusted” on GW.',
     'lab.cliente.title': 'Router as a DHCP client',
-    'lab.cliente.summary': 'CPE gets its WAN address with «ip address dhcp»; ISP pins it with a host pool and its cisco-… client-identifier.',
+    'lab.cliente.summary': 'CPE gets its WAN address with “ip address dhcp”; ISP pins it with a host pool and its cisco-… client-identifier.',
     'lab.servidores.title': 'Server: DHCP, DNS, web, mail and SSH',
     'lab.servidores.summary': 'SRV0 (Ubuntu) provides DHCP, DNS (aula.lab), web, mail and SSH. Try: browser http://www.aula.lab, mail ana/ana1 (PC0, IMAP) and luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (password cisco), webmail http://webmail.aula.lab/roundcube and web admin http://srv.aula.lab:10000 (admin/admin).',
     'lab.blanco.title': 'Blank workspace',
@@ -1650,15 +1670,15 @@ const LABS_EN = {
     'lab.vpn-ipsec.title': 'IPsec VPN between two sites (2911)',
     'lab.vpn-ipsec.summary': 'SEDE-A and SEDE-B reach the Internet through different ISPs with NAT overload; traffic between their LANs is encrypted (crypto map with IKE and ESP) and not translated. The first ping is lost while the tunnel comes up. Try: ping between PCs, show crypto isakmp sa, show crypto ipsec sa, show ip nat translations.',
     'lab.vpn-wireguard.title': 'WireGuard VPN: hub and branch behind NAT',
-    'lab.vpn-wireguard.summary': 'CENTRAL (Linux router) has a public address; SUCURSAL goes out through the operator router (NAT) and calls the hub with PersistentKeepalive: the hub learns its endpoint. nftables only opens UDP 51820 and SSH from inside. Try: ping 10.1.0.10 from the branch, sudo wg show, nc -z to the public address (filtered) and through the tunnel.',
+    'lab.vpn-wireguard.summary': 'CENTRAL (Linux router) has a public address; SUCURSAL goes out through the operator router (NAT) and calls the hub with PersistentKeepalive: the hub learns its endpoint. Both have net.ipv4.ip_forward = 1 (Services → Parameters), essential for routing; nftables (Services → Firewall) only opens UDP 51820 and SSH from inside. Try: ping 10.1.0.10 from the branch, sudo wg show, nc -z to the public address (filtered) and through the tunnel.',
     'lab.linux-dmz.title': 'Linux router with NAT and a DMZ (nftables)',
-    'lab.linux-dmz.summary': 'FW (Linux router) separates LAN (eth1), DMZ (eth2, web server) and Internet (eth0, public address). nftables: the LAN goes everywhere, the DMZ only to the Internet, and from outside only the web is reachable (dnat 80). Try: curl to the public address from CLIENTE-EXT, ping from the DMZ to the LAN (blocked), sudo nft list ruleset and sudo dmesg.',
+    'lab.linux-dmz.summary': 'FW (Linux router) separates LAN (eth1), DMZ (eth2, web server) and Internet (eth0, public address). It routes because net.ipv4.ip_forward = 1 (Services → Parameters; try turning it off). nftables (Services → Firewall): the LAN goes everywhere, the DMZ only to the Internet, and from outside only the web is reachable (dnat 80). Try: curl to the public address from CLIENTE-EXT, ping from the DMZ to the LAN (blocked), sudo nft list ruleset and sudo dmesg.',
     'lab.dns-reenvio.title': 'Company DNS forwarding to the Internet',
     'lab.dns-reenvio.summary': 'ns1 (bind9) answers the empresa.lan zone and forwards everything else to 8.8.8.8/8.8.4.4 with a cache; it only recurses for its own networks (localnets). The guest PC (another network) gets empresa.lan but REFUSED for Internet names. Try: dig www.empresa.lan, dig www.google.com (ra), sudo rndc dumpdb and the bind9 logs.',
     'lab.ssh-sftp.title': 'SSH and SFTP with keys',
-    'lab.ssh-sftp.summary': 'srv.aula.lab accepts SSH and SFTP (ana/ana1, admin/cisco). On PC1: SSH client tab → Keys (generate ed25519), ssh-copy-id ana@srv.aula.lab, Files (SFTP) to upload and download. Then put «PasswordAuthentication no» in a file under /etc/ssh/sshd_config.d/ and reload: only users with a key get in. Permissions are each user\'s on the server.',
+    'lab.ssh-sftp.summary': 'srv.aula.lab accepts SSH and SFTP (ana/ana1, admin/cisco). On PC1: SSH client tab → Keys (generate ed25519), ssh-copy-id ana@srv.aula.lab, Files (SFTP) to upload and download. Then put “PasswordAuthentication no” in a file under /etc/ssh/sshd_config.d/ and reload: only users with a key get in. Permissions are each user\'s on the server.',
     'lab.bastionado.title': 'Hardening: ACL, nftables and sshd',
-    'lab.bastionado.summary': 'Defence in depth: GW\'s extended ACL A-SERVIDORES lets everyone use the web and only ADMINISTRACION use SSH/ping (deny … log); the server repeats the policy with nftables (input drop, NFT-DROP log) and sshd_config.d (no root, AllowUsers admin, MaxAuthTries 3). Try from ADMIN and ALUMNO: ssh admin@172.20.0.10, curl, ping, nmap; on GW show access-lists.',
+    'lab.bastionado.summary': 'Defence in depth: GW\'s extended ACL A-SERVIDORES lets everyone use the web and only ADMINISTRACION use SSH/ping (deny … log); the server repeats the policy with nftables from its terminal (/etc/nftables.conf: input drop, NFT-DROP log) and sshd_config.d (no root, AllowUsers admin, MaxAuthTries 3). Try from ADMIN and ALUMNO: ssh admin@172.20.0.10, curl, ping, nmap; on GW show access-lists.',
 };
 
 return { LABS_EN };
@@ -1816,9 +1836,9 @@ const UI_ES = {
     'win.linuxIntro': 'Ubuntu 26.04 LTS (GNU/Linux 6.17.0-14-generic x86_64) · GNU bash 5.3 en Netfix',
     'win.linuxHelp': 'Ayuda: help, man <orden> o la pestaña Documentación. Editores: nano y vim.',
     'common.unavailable': 'No disponible',
-    'win.cmd': 'Símbolo del sistema',
+    'win.cmd': 'Terminal Windows',
     'win.linuxTerm': 'Terminal Linux',
-    'win.cmdOf': 'Símbolo del sistema de {name}',
+    'win.cmdOf': 'Terminal Windows de {name}',
     'win.termOf': 'Terminal de {name}',
     'win.ip': 'Configuración IP',
     'win.host': 'Equipo',
@@ -1839,7 +1859,7 @@ const UI_ES = {
     'docs.onePage': '1 página',
     'docs.pages': '{n} páginas',
     'docs.noResults': 'Sin resultados',
-    'model.cloud': 'Nube ISP',
+    'model.cloud': 'ISP → Internet',
     'ip.customPlaceholder': 'vacío = 01 + MAC',
     'ip.idFormat': 'Formato del Client-ID',
     'ip.hex': 'Hexadecimal',
@@ -1856,6 +1876,7 @@ const UI_ES = {
     'ip.field.gw': 'la puerta de enlace',
     'ip.field.dns': 'el servidor DNS',
     'ip.check': 'Revisa {field}: usa el formato 192.168.1.10.',
+    'ip.checkMask': 'Revisa la máscara de subred: usa una máscara válida como 255.255.255.0 (o /24), con los unos seguidos.',
     'ip.requesting': 'Solicitando dirección IP…',
     'ip.dhcpOk': 'Solicitud DHCP correcta.',
     'ip.dhcpFailed': 'La solicitud DHCP ha fallado. Se usa APIPA.',
@@ -2006,9 +2027,9 @@ const UI_EN = {
     'win.linuxIntro': 'Ubuntu 26.04 LTS (GNU/Linux 6.17.0-14-generic x86_64) · GNU bash 5.3 on Netfix',
     'win.linuxHelp': 'Help: help, man <command> or the Documentation tab. Editors: nano and vim.',
     'common.unavailable': 'Not available',
-    'win.cmd': 'Command Prompt',
+    'win.cmd': 'Windows terminal',
     'win.linuxTerm': 'Linux terminal',
-    'win.cmdOf': '{name} Command Prompt',
+    'win.cmdOf': '{name} Windows terminal',
     'win.termOf': '{name} terminal',
     'win.ip': 'IP Configuration',
     'win.host': 'Device',
@@ -2029,7 +2050,7 @@ const UI_EN = {
     'docs.onePage': '1 page',
     'docs.pages': '{n} pages',
     'docs.noResults': 'No results',
-    'model.cloud': 'ISP cloud',
+    'model.cloud': 'ISP → Internet',
     'ip.customPlaceholder': 'empty = 01 + MAC',
     'ip.idFormat': 'Client-ID format',
     'ip.hex': 'Hexadecimal',
@@ -2046,6 +2067,7 @@ const UI_EN = {
     'ip.field.gw': 'the default gateway',
     'ip.field.dns': 'the DNS server',
     'ip.check': 'Check {field}: use the format 192.168.1.10.',
+    'ip.checkMask': 'Check the subnet mask: use a valid mask such as 255.255.255.0 (or /24), with contiguous ones.',
     'ip.requesting': 'Requesting an IP address…',
     'ip.dhcpOk': 'DHCP request successful.',
     'ip.dhcpFailed': 'The DHCP request failed. APIPA is used.',
@@ -2243,8 +2265,8 @@ const SRV_ES = {
     'srv.authPubkey': 'Par de claves (PubkeyAuthentication)',
     'srv.authHint': 'Se guarda en /etc/ssh/sshd_config y se recarga ssh. En el PC: ssh-keygen y ssh-copy-id usuario@servidor; la clave queda en ~/.ssh/authorized_keys.',
     'srv.sshService': 'Servicio SSH (puerto 22)',
-    'srv.sshWin': 'Desde un PC: ssh usuario@{host} en el Terminal o en el Símbolo del sistema. La sesión abre la shell de Windows de este servidor.',
-    'srv.sshLinux': 'Desde un PC: ssh usuario@{host} en el Terminal o en el Símbolo del sistema. La sesión abre la shell de Ubuntu de este servidor.',
+    'srv.sshWin': 'Desde un PC: ssh usuario@{host} en la Terminal Linux o en la Terminal Windows. La sesión abre la shell de Windows de este servidor.',
+    'srv.sshLinux': 'Desde un PC: ssh usuario@{host} en la Terminal Linux o en la Terminal Windows. La sesión abre la shell de Ubuntu de este servidor.',
     'srv.server': 'servidor',
     'srv.sessions': 'Sesiones abiertas',
     'srv.session': 'Sesión',
@@ -2257,7 +2279,7 @@ const SRV_ES = {
     'dhcp.byClientId': 'Client-ID (opción 61) o, si no la envía, MAC',
     'dhcp.byMac': 'Dirección MAC',
     'dhcp.badStart': 'La IP inicial no es válida.',
-    'dhcp.badMask': 'La máscara no es válida.',
+    'dhcp.badMask': 'La máscara no es válida: usa una como 255.255.255.0 (o /24).',
     'dhcp.badOptions': 'Revisa la puerta de enlace, el DNS o el TFTP (formato 192.168.1.1).',
     'dhcp.badNumbers': 'Usuarios máximos y concesión deben ser números enteros.',
     'dhcp.name': 'Nombre',
@@ -2421,8 +2443,8 @@ const SRV_EN = {
     'srv.authPubkey': 'Key pair (PubkeyAuthentication)',
     'srv.authHint': 'It is saved in /etc/ssh/sshd_config and ssh is reloaded. On the PC: ssh-keygen and ssh-copy-id user@server; the key ends up in ~/.ssh/authorized_keys.',
     'srv.sshService': 'SSH service (port 22)',
-    'srv.sshWin': 'From a PC: ssh user@{host} in the Terminal or the Command Prompt. The session opens this server’s Windows shell.',
-    'srv.sshLinux': 'From a PC: ssh user@{host} in the Terminal or the Command Prompt. The session opens this server’s Ubuntu shell.',
+    'srv.sshWin': 'From a PC: ssh user@{host} in the Linux terminal or the Windows terminal. The session opens this server’s Windows shell.',
+    'srv.sshLinux': 'From a PC: ssh user@{host} in the Linux terminal or the Windows terminal. The session opens this server’s Ubuntu shell.',
     'srv.server': 'server',
     'srv.sessions': 'Open sessions',
     'srv.session': 'Session',
@@ -2435,7 +2457,7 @@ const SRV_EN = {
     'dhcp.byClientId': 'Client-ID (option 61) or, if not sent, MAC',
     'dhcp.byMac': 'MAC address',
     'dhcp.badStart': 'The start address is not valid.',
-    'dhcp.badMask': 'The mask is not valid.',
+    'dhcp.badMask': 'The mask is not valid: use one such as 255.255.255.0 (or /24).',
     'dhcp.badOptions': 'Check the gateway, DNS or TFTP (format 192.168.1.1).',
     'dhcp.badNumbers': 'Maximum users and lease must be whole numbers.',
     'dhcp.name': 'Name',
@@ -2558,7 +2580,7 @@ const WEB_ES = {
     'wa.page.web': 'Web y correo web',
     'wa.page.mail': 'Correo',
     'wa.page.ssh': 'SSH',
-    'wa.page.firewall': 'Cortafuegos',
+    'wa.page.firewall': 'Firewall',
     'wa.page.routing': 'Enrutamiento',
     'wa.page.vpn': 'VPN',
     'wa.page.admin': 'Gestión',
@@ -2696,7 +2718,7 @@ const WEB_ES = {
     'fwa.counter': 'Contador',
     'fwa.top': 'Al principio',
     'fwa.ubuntuOnly': 'El cortafuegos nftables solo está en los equipos Ubuntu.',
-    'fwa.firewall': 'Cortafuegos',
+    'fwa.firewall': 'Firewall',
     'fwa.serviceHelp': 'nftables.service carga /etc/nftables.conf al arrancar. Los cambios de esta página se aplican y se guardan.',
     'fwa.enabled': 'Activado',
     'fwa.unsaved': 'Hay cambios hechos con «nft» sin guardar.',
@@ -3338,7 +3360,7 @@ const CLOUD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width
   </g>
 </svg>`;
 const ICONS = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, linuxrouter: LINUX_ROUTER, cloud: CLOUD };
-const MODEL_LABEL = { router: '2911', switch: '2960-24TT', pc: 'PC', server: 'Server', linuxrouter: '2911 Linux', cloud: 'ISP' };
+const MODEL_LABEL = { router: '2911', switch: '2960-24TT', pc: 'PC', server: 'Server', linuxrouter: 'Ubuntu', cloud: 'ISP' };
 /** Model label shown under the icon (the cloud is translated). */
 function modelLabel(kind) {
     return kind === 'cloud' ? t('model.cloud') : MODEL_LABEL[kind];
@@ -4544,6 +4566,1039 @@ function pduView(e, from, to) {
 }
 
 return { SimPanel };
+})();
+__m["ui/forms.js"] = (() => {
+/** Small form and table builders for the device windows. All text goes through textContent. */
+const { t } = __m["i18n/t.js"];
+const { el } = __m["ui/dom.js"];
+let uid = 0;
+function nextId(prefix) {
+    uid += 1;
+    return `${prefix}-${uid}`;
+}
+function input(attrs = {}) {
+    return el('input', { type: 'text', autocomplete: 'off', spellcheck: 'false', ...attrs });
+}
+function field(label, control, hint) {
+    const id = control.id || nextId('f');
+    control.id = id;
+    return el('label', { class: 'field', for: id }, el('span', { class: 'field-label' }, label), control, hint ? el('span', { class: 'field-hint' }, hint) : null);
+}
+function select(options, value) {
+    const s = el('select', { class: 'select' }, ...options.map(([v, label]) => el('option', { value: v }, label)));
+    if (value !== undefined)
+        s.value = value;
+    return s;
+}
+function button(label, onClick, cls = 'btn') {
+    const b = el('button', { type: 'button', class: cls }, label);
+    b.addEventListener('click', onClick);
+    return b;
+}
+/** On/Off switch like Packet Tracer's service panels. */
+function onOff(label, on, change) {
+    const box = el('input', { type: 'checkbox', role: 'switch', checked: on });
+    box.addEventListener('change', () => change(box.checked));
+    return el('label', { class: 'switch-row' }, box, el('span', { class: 'switch-label' }, label), el('span', { class: 'switch-state' }, on ? t('common.on') : t('common.off')));
+}
+function message() {
+    const p = el('p', { class: 'form-msg', role: 'status' });
+    return {
+        el: p,
+        ok: (t) => { p.dataset.kind = 'ok'; p.textContent = t; },
+        error: (t) => { p.dataset.kind = 'error'; p.textContent = t; },
+        clear: () => { p.textContent = ''; delete p.dataset.kind; },
+    };
+}
+/** Table with optional row selection, per-row action buttons and a delete button. */
+function table(rows, cols, opts) {
+    if (rows.length === 0)
+        return el('p', { class: 'muted' }, opts.empty);
+    const hasActions = Boolean(opts.onDelete || opts.actions);
+    const head = el('tr', {}, ...cols.map((c) => el('th', {}, c.label)), hasActions ? el('th', {}, '') : null);
+    const body = rows.map((r) => {
+        const tr = el('tr', { class: opts.selected?.(r) ? 'is-current' : '' }, ...cols.map((c) => el('td', { class: c.mono ? 'mono' : '' }, c.value(r))));
+        if (opts.onSelect) {
+            tr.tabIndex = 0;
+            tr.addEventListener('click', () => opts.onSelect?.(r));
+            tr.addEventListener('keydown', (e) => { if (e.key === 'Enter')
+                opts.onSelect?.(r); });
+        }
+        if (hasActions) {
+            const buttons = [...(opts.actions?.(r) ?? []), ...(opts.onDelete ? [button(t('common.delete'), () => opts.onDelete?.(r), 'btn btn-quiet btn-small')] : [])];
+            buttons.forEach((b) => b.addEventListener('click', (e) => e.stopPropagation()));
+            tr.appendChild(el('td', { class: 'row-actions' }, ...buttons));
+        }
+        return tr;
+    });
+    return el('div', { class: 'table-wrap' }, el('table', { class: 'grid-table' }, el('thead', {}, head), el('tbody', {}, ...body)));
+}
+function copyRow(label, value, help) {
+    const btn = button(t('common.copy'), () => {
+        void navigator.clipboard?.writeText(value).then(() => { btn.textContent = t('common.copied'); }, () => { btn.textContent = t('common.unavailable'); });
+    }, 'btn btn-quiet');
+    btn.setAttribute('aria-label', t('common.copyX', { label }));
+    return el('div', { class: 'id-row' }, el('div', {}, el('span', { class: 'field-label' }, label), el('code', { class: 'id-value' }, value), el('p', { class: 'id-help' }, help)), btn);
+}
+/** Vertical sub-navigation used inside a window tab (Servicios → DHCP / DNS / …). */
+/** Side navigation of a pane; items with `keep` are drawn once and kept (an open terminal survives a visit to another item). */
+function subnav(items) {
+    const content = el('div', { class: 'subnav-content' });
+    const kept = new Map();
+    const buttons = items.map((it) => {
+        const b = el('button', { type: 'button', class: 'subnav-item', 'aria-pressed': 'false' }, it.label);
+        b.addEventListener('click', () => show(it.id));
+        return b;
+    });
+    const show = (id) => {
+        items.forEach((it, i) => buttons[i]?.setAttribute('aria-pressed', String(it.id === id)));
+        const item = items.find((it) => it.id === id);
+        if (!item)
+            return void content.replaceChildren(el('p', {}, ''));
+        const view = kept.get(item.id) ?? item.render();
+        if (item.keep)
+            kept.set(item.id, view);
+        content.replaceChildren(view);
+    };
+    if (items[0])
+        show(items[0].id);
+    return el('div', { class: 'subnav' }, el('nav', { class: 'subnav-list', 'aria-label': t('win.services') }, ...buttons), content);
+}
+
+return { nextId, input, field, select, button, onOff, message, table, copyRow, subnav };
+})();
+__m["ios/pipe.js"] = (() => {
+/**
+ * Output modifiers of `show` commands: `| include`, `| exclude`, `| begin`, `| section`.
+ * Keywords accept IOS abbreviations (`i`, `inc`, `e`, `b`, `sec`); the argument is a
+ * regular expression with the IOS `_` delimiter; invalid or catastrophic patterns
+ * (nested quantifiers) are matched literally so the simulator never hangs.
+ */
+const FILTERS = ['include', 'exclude', 'begin', 'section'];
+/** Splits `cmd | filter regex`; null when the line has no pipe. */
+function splitPipe(line) {
+    const bar = line.indexOf('|');
+    if (bar < 0)
+        return null;
+    const command = line.slice(0, bar).trimEnd();
+    const afterBar = line.slice(bar + 1);
+    const lead = afterBar.length - afterBar.trimStart().length;
+    const offset = bar + 1 + lead;
+    const m = /^(\S+)\s*(.*)$/.exec(afterBar.trimStart());
+    const word = (m?.[1] ?? '').toLowerCase();
+    const filter = word ? FILTERS.find((f) => f.startsWith(word)) : undefined;
+    return { command, filter, regex: (m?.[2] ?? '').trim(), offset };
+}
+/** IOS `_` matches a delimiter: comma, braces, parentheses, space, start or end of line. */
+const IOS_UNDERSCORE = '(?:^|$|[,{}()\\s])';
+/** A quantified group that is quantified again, e.g. `(a+)+`: catastrophic backtracking. */
+const NESTED_QUANTIFIER = /\((?:[^()\\]|\\.)*[+*}](?:[^()\\]|\\.)*\)\s*[+*{]/;
+function matcher(regex) {
+    const literal = (line) => line.includes(regex);
+    if (NESTED_QUANTIFIER.test(regex))
+        return literal;
+    try {
+        const re = new RegExp(regex.replace(/(\\.)|_/g, (m, escaped) => escaped ?? IOS_UNDERSCORE));
+        return (line) => re.test(line);
+    }
+    catch {
+        return literal;
+    }
+}
+/** Groups lines into sections: a line without indentation followed by its indented children. */
+function sections(lines) {
+    const out = [];
+    for (const line of lines) {
+        const last = out[out.length - 1];
+        if (last && /^\s/.test(line))
+            last.push(line);
+        else
+            out.push([line]);
+    }
+    return out;
+}
+function applyFilter(lines, filter, regex) {
+    const hit = matcher(regex);
+    switch (filter) {
+        case 'include':
+            return lines.filter(hit);
+        case 'exclude':
+            return lines.filter((l) => !hit(l));
+        case 'begin': {
+            const first = lines.findIndex(hit);
+            return first < 0 ? [] : lines.slice(first);
+        }
+        case 'section':
+            return sections(lines).filter((block) => block.some(hit)).flat();
+    }
+}
+const FILTER_HELP = {
+    begin: 'Begin with the line that matches',
+    exclude: 'Exclude lines that match',
+    include: 'Include lines that match',
+    section: 'Filter a section of output',
+};
+/** `?` after the bar: filter keywords, or the regular expression placeholder. */
+function pipeHelp(afterBar) {
+    const text = afterBar.trimStart();
+    if (/^\S+\s/.test(text))
+        return ['  LINE  Regular Expression'];
+    const word = text.toLowerCase();
+    const names = Object.keys(FILTER_HELP).sort().filter((f) => f.startsWith(word));
+    if (names.length === 0)
+        return ['% Unrecognized command'];
+    const width = Math.max(...names.map((f) => f.length)) + 2;
+    return names.map((f) => `  ${f.padEnd(width)}${FILTER_HELP[f]}`);
+}
+/** Adds the `|` entry in front of `<cr>` in the help of a complete `show` command. */
+function withPipeEntry(help) {
+    const cr = help.indexOf('  <cr>');
+    if (cr < 0)
+        return [...help];
+    const width = Math.max(1, ...help.filter((l) => l !== '  <cr>').map((l) => (/^ {2}(\S+)/.exec(l)?.[1]?.length ?? 0)));
+    return [...help.slice(0, cr), `  ${'|'.padEnd(width + 2)}Output modifiers`, ...help.slice(cr)];
+}
+
+return { splitPipe, applyFilter, pipeHelp, withPipeEntry };
+})();
+__m["ios/parser.js"] = (() => {
+/**
+ * IOS-style command grammar: syntax strings are expanded into variants and merged into a
+ * trie that supports keyword abbreviation, typed parameters, `?` help and Tab completion.
+ *
+ * Syntax DSL:  keyword  <TYPE:name>  [optional]  {alt-a | alt-b}  <TYPE...:name> (1-8 repeats)
+ * TYPE: A.B.C.D, MASK, WORD, LINE, H.H.H, HEX, HWTYPE, IFACE, n-m (integer range)
+ */
+const { parseIp, parseMask } = __m["core/ip.js"];
+const { parseMac, parseHexId } = __m["core/mac.js"];
+class Match {
+    values;
+    keywords;
+    constructor(values, keywords) {
+        this.values = values;
+        this.keywords = keywords;
+    }
+    get(name) {
+        return this.values.get(name)?.[0];
+    }
+    all(name) {
+        return this.values.get(name) ?? [];
+    }
+    has(keyword) {
+        return this.keywords.has(keyword);
+    }
+}
+const MAX_REPEAT = 8;
+const HW_TYPES = ['ethernet', 'ieee802'];
+const MAX_HW_TYPE = 255;
+const DEFAULT_PARAM_HELP = {
+    'A.B.C.D': 'IP address',
+    MASK: 'Network mask or prefix length',
+    WORD: 'WORD',
+    LINE: 'LINE',
+    'H.H.H': 'MAC address',
+    HEX: 'Hex string',
+    HWTYPE: 'Hardware type',
+    IFACE: 'Interface name',
+};
+const PARAM_DISPLAY = {
+    MASK: '/nn or A.B.C.D',
+    HEX: 'H.H.H',
+    HWTYPE: '<0-255>',
+};
+function lexSyntax(syntax) {
+    return syntax.replace(/([[\]{}|])/g, ' $1 ').trim().split(/\s+/);
+}
+function parseSeq(tokens, pos, stops) {
+    const seq = [];
+    while (pos.i < tokens.length && !stops.has(tokens[pos.i] ?? '')) {
+        const tok = tokens[pos.i++] ?? '';
+        if (tok === '[') {
+            seq.push({ type: 'opt', body: parseSeq(tokens, pos, new Set([']'])) });
+            pos.i++;
+        }
+        else if (tok === '{') {
+            const options = [];
+            do {
+                options.push(parseSeq(tokens, pos, new Set(['|', '}'])));
+            } while (tokens[pos.i++] === '|');
+            seq.push({ type: 'alt', options });
+        }
+        else {
+            seq.push({ type: 'tok', text: tok });
+        }
+    }
+    return seq;
+}
+function expandElements(elements) {
+    let results = [[]];
+    for (const el of elements) {
+        let tails;
+        if (el.type === 'tok')
+            tails = expandToken(el.text);
+        else if (el.type === 'opt')
+            tails = [[], ...expandElements(el.body)];
+        else
+            tails = el.options.flatMap((opt) => expandElements(opt));
+        results = results.flatMap((head) => tails.map((tail) => [...head, ...tail]));
+    }
+    return results;
+}
+function expandToken(text) {
+    if (!text.includes('...'))
+        return [[text]];
+    return Array.from({ length: MAX_REPEAT }, (_, n) => Array.from({ length: n + 1 }, () => text));
+}
+function expandSyntax(syntax) {
+    return expandElements(parseSeq(lexSyntax(syntax), { i: 0 }, new Set()));
+}
+function toSpec(token) {
+    const param = /^<([^:>]+?)(\.\.\.)?:([^>]+)>$/.exec(token);
+    if (!param)
+        return { kind: 'kw', text: token.toLowerCase(), name: token.toLowerCase(), repeat: false };
+    const type = param[1] ?? 'WORD';
+    const range = /^(\d+)-(\d+)$/.exec(type);
+    const base = { kind: 'param', text: type, name: param[3] ?? type, repeat: Boolean(param[2]) };
+    return range ? { ...base, min: Number(range[1]), max: Number(range[2]) } : base;
+}
+// ---------------------------------------------------------------- trie construction
+function sameSpec(a, b) {
+    return a.kind === b.kind && a.text === b.text;
+}
+function newNode() {
+    return { edges: [], terminal: null };
+}
+function specHelp(spec, help) {
+    if (spec.kind === 'kw')
+        return help[spec.text] ?? '';
+    return help[spec.name] ?? DEFAULT_PARAM_HELP[spec.text] ?? '';
+}
+function insert(root, specs, def, help) {
+    let node = root;
+    for (const spec of specs) {
+        let edge = node.edges.find((e) => sameSpec(e.spec, spec));
+        if (!edge) {
+            edge = { spec, help: specHelp(spec, help), hidden: Boolean(def.hidden), node: newNode() };
+            node.edges.push(edge);
+        }
+        node = edge.node;
+    }
+    node.terminal = { def, specs };
+}
+/** `no` forms accept the keyword prefix and any longer prefix of the full syntax. */
+function noVariants(variants) {
+    const out = [];
+    for (const v of variants) {
+        const firstParam = v.findIndex((s) => s.kind === 'param');
+        const start = firstParam === -1 ? v.length : Math.max(firstParam, 1);
+        for (let len = start; len <= v.length; len++)
+            out.push(v.slice(0, len));
+    }
+    return out;
+}
+function buildTrie(defs, help, noForm = false) {
+    const root = newNode();
+    for (const def of defs) {
+        if (noForm && !def.noRun)
+            continue;
+        const merged = { ...help, ...def.help };
+        const variants = expandSyntax(def.syntax).map((v) => v.map(toSpec));
+        const all = noForm ? noVariants(variants) : variants;
+        for (const specs of all)
+            insert(root, specs, def, merged);
+    }
+    return root;
+}
+// ---------------------------------------------------------------- matching
+function tokenize(line) {
+    const tokens = [];
+    const re = /\S+/g;
+    let m;
+    while ((m = re.exec(line)) !== null)
+        tokens.push({ text: m[0], start: m.index });
+    return tokens;
+}
+function paramAccepts(spec, text) {
+    switch (spec.text) {
+        case 'A.B.C.D': return parseIp(text) !== null;
+        case 'MASK': return parseMask(text) !== null;
+        case 'H.H.H': return parseMac(text) !== null;
+        case 'HEX': return parseHexId(text) !== null;
+        case 'HWTYPE': return acceptsHwType(text);
+        case 'IFACE': return /^[a-z]+[\d/.:]*$/i.test(text);
+        case 'WORD':
+        case 'LINE': return true;
+        default: return acceptsRange(spec, text);
+    }
+}
+function acceptsHwType(text) {
+    const lower = text.toLowerCase();
+    if (/^\d+$/.test(text))
+        return Number(text) <= MAX_HW_TYPE;
+    return HW_TYPES.some((t) => t.startsWith(lower));
+}
+function acceptsRange(spec, text) {
+    if (spec.min === undefined || spec.max === undefined || !/^\d+$/.test(text))
+        return false;
+    const n = Number(text);
+    return n >= spec.min && n <= spec.max;
+}
+function stepToken(node, text, includeHidden = true) {
+    const lower = text.toLowerCase();
+    const edges = includeHidden ? node.edges : node.edges.filter((e) => !e.hidden);
+    const kws = edges.filter((e) => e.spec.kind === 'kw' && e.spec.text.startsWith(lower));
+    const exact = kws.find((e) => e.spec.text === lower);
+    if (exact)
+        return { edge: exact };
+    if (kws.length === 1 && kws[0])
+        return { edge: kws[0] };
+    const param = edges.find((e) => e.spec.kind === 'param' && paramAccepts(e.spec, text));
+    if (param)
+        return { edge: param };
+    return { error: kws.length > 1 ? 'ambiguous' : 'invalid' };
+}
+function walk(root, line, tokens) {
+    let node = root;
+    const path = [];
+    for (let i = 0; i < tokens.length; i++) {
+        const tok = tokens[i];
+        if (!tok)
+            break;
+        const step = stepToken(node, tok.text);
+        if ('error' in step)
+            return { error: step.error, position: tok.start };
+        const { spec } = step.edge;
+        if (spec.text === 'LINE') {
+            path.push({ spec, value: line.slice(tok.start).trimEnd() });
+            return { ok: { node: step.edge.node, path } };
+        }
+        path.push({ spec, value: spec.kind === 'kw' ? spec.text : tok.text });
+        node = step.edge.node;
+    }
+    return { ok: { node, path } };
+}
+function buildMatch(terminal, path) {
+    const values = new Map();
+    const keywords = new Set();
+    path.forEach((step, i) => {
+        const spec = terminal.specs[i] ?? step.spec;
+        if (spec.kind === 'kw') {
+            keywords.add(spec.text);
+            return;
+        }
+        values.set(spec.name, [...(values.get(spec.name) ?? []), step.value]);
+    });
+    return new Match(values, keywords);
+}
+function matchLine(root, line, _strict) {
+    const tokens = tokenize(line);
+    if (tokens.length === 0)
+        return { kind: 'empty' };
+    const result = walk(root, line, tokens);
+    if ('error' in result) {
+        return result.error === 'ambiguous' ? { kind: 'ambiguous' } : { kind: 'invalid', position: result.position };
+    }
+    const terminal = result.ok.node.terminal;
+    if (!terminal)
+        return { kind: 'incomplete' };
+    return { kind: 'ok', def: terminal.def, match: buildMatch(terminal, result.ok.path) };
+}
+// ---------------------------------------------------------------- help & completion
+function edgeLabel(spec) {
+    if (spec.kind === 'kw')
+        return spec.text;
+    if (spec.min !== undefined)
+        return `<${spec.min}-${spec.max}>`;
+    return PARAM_DISPLAY[spec.text] ?? spec.text;
+}
+function formatHelpRows(rows) {
+    const width = Math.max(...rows.map(([label]) => label.length));
+    return rows.map(([label, help]) => `  ${label.padEnd(width)}  ${help}`.trimEnd());
+}
+/** Output for a line ending in `?`. `line` is the text before the `?`. */
+function helpFor(root, line) {
+    const tokens = tokenize(line);
+    const partial = line.length > 0 && !/\s$/.test(line) ? tokens.pop() : undefined;
+    const result = walk(root, line, tokens);
+    if ('error' in result)
+        return ['% Unrecognized command'];
+    const { node } = result.ok;
+    const visible = node.edges.filter((e) => !e.hidden);
+    if (partial) {
+        const lower = partial.text.toLowerCase();
+        const words = visible.filter((e) => e.spec.kind === 'kw' && e.spec.text.startsWith(lower)).map((e) => e.spec.text).sort();
+        return words.length > 0 ? [words.join('  ')] : ['% Unrecognized command'];
+    }
+    const params = visible.filter((e) => e.spec.kind === 'param');
+    const kws = visible.filter((e) => e.spec.kind === 'kw').sort((a, b) => a.spec.text.localeCompare(b.spec.text));
+    const rows = [...params, ...kws].map((e) => [edgeLabel(e.spec), e.help]);
+    if (node.terminal)
+        rows.push(['<cr>', '']);
+    return rows.length > 0 ? formatHelpRows(rows) : ['% Unrecognized command'];
+}
+/** Tab completion: returns the completed line or null when the prefix is not unique. */
+function completeToken(root, line) {
+    const tokens = tokenize(line);
+    const last = tokens.pop();
+    if (!last || /\s$/.test(line))
+        return null;
+    const result = walk(root, line, tokens);
+    if ('error' in result)
+        return null;
+    const lower = last.text.toLowerCase();
+    const kws = result.ok.node.edges.filter((e) => e.spec.kind === 'kw' && !e.hidden && e.spec.text.startsWith(lower));
+    const exact = kws.find((e) => e.spec.text === lower);
+    const pick = exact ?? (kws.length === 1 ? kws[0] : undefined);
+    return pick ? `${line.slice(0, last.start)}${pick.spec.text} ` : null;
+}
+/** Expands abbreviated keywords of a valid line to their full names (used by `show run`). */
+function canonicalKeyword(root, word) {
+    const step = stepToken(root, word, false);
+    return 'edge' in step && step.edge.spec.kind === 'kw' ? step.edge.spec.text : null;
+}
+
+return { Match, expandSyntax, buildTrie, tokenize, matchLine, helpFor, completeToken, canonicalKeyword };
+})();
+__m["ios/help.js"] = (() => {
+const HELP = {
+    // NAT, ACL, HTTP server, local users
+    nat: 'NAT configuration commands',
+    'access-list': 'Add an access list entry',
+    'access-lists': 'List access lists',
+    standard: 'Standard Access List',
+    translations: 'Translation entries',
+    translation: 'Clear dynamic translation',
+    inside: 'Inside address translation',
+    outside: 'Translate outside addresses',
+    overload: 'Overload an address translation',
+    netmask: 'Specify the network mask',
+    permit: 'Specify packets to forward',
+    remark: 'Access list entry comment',
+    any: 'Any source host',
+    http: 'HTTP server configuration',
+    authentication: 'Set http server authentication method',
+    local: 'Use local username and passwords',
+    username: 'Establish User Name Authentication',
+    privilege: 'Set user privilege level',
+    // exec
+    enable: 'Turn on privileged commands',
+    disable: 'Turn off privileged commands',
+    exit: 'Exit from the EXEC',
+    logout: 'Exit from the EXEC',
+    configure: 'Enter configuration mode',
+    terminal: 'Configure from the terminal',
+    show: 'Show running system information',
+    ping: 'Send echo messages',
+    traceroute: 'Trace route to destination',
+    copy: 'Copy from one file to another',
+    write: 'Write running configuration to memory, network, or terminal',
+    memory: 'Write to NV memory',
+    erase: 'Erase a filesystem',
+    reload: 'Halt and perform a cold restart',
+    clear: 'Reset functions',
+    debug: 'Debugging functions (see also \'undebug\')',
+    undebug: 'Disable debugging functions (see also \'debug\')',
+    clock: 'Manage the system clock',
+    set: 'Set the time and date',
+    release: 'Release a resource',
+    renew: 'Renew a resource',
+    'running-config': 'Current operating configuration',
+    'startup-config': 'Contents of startup configuration',
+    version: 'System hardware and software status',
+    interfaces: 'Interface status and configuration',
+    brief: 'Brief summary of IP status and configuration',
+    route: 'IP routing table',
+    arp: 'ARP table',
+    history: 'Display the session command history',
+    'mac-address-table': 'MAC forwarding table',
+    'mac': 'MAC configuration',
+    'address-table': 'MAC forwarding table',
+    vlan: 'VTP VLAN status',
+    all: 'Enable all debugging',
+    // global config
+    hostname: 'Set system\'s network name',
+    interface: 'Select an interface to configure',
+    ip: 'Global IP configuration subcommands',
+    no: 'Negate a command or set its defaults',
+    default: 'Set a command to its defaults',
+    end: 'Exit from configure mode',
+    do: 'To run exec commands in config mode',
+    banner: 'Define a login banner',
+    motd: 'Set Message of the Day banner',
+    secret: 'Assign the privileged level secret',
+    password: 'Assign the privileged level password',
+    service: 'Modify use of network based services',
+    line: 'Configure a terminal line',
+    'domain-name': 'Define the default domain name',
+    'domain-lookup': 'Enable IP Domain Name System hostname translation',
+    'name-server': 'Specify address of name server to use',
+    'default-gateway': 'Specify default gateway (if not routing IP)',
+    routing: 'Enable IP routing',
+    // dhcp global
+    dhcp: 'Configure DHCP server and relay parameters',
+    pool: 'Configure DHCP address pools',
+    'excluded-address': 'Prevent DHCP from assigning certain addresses',
+    conflict: 'DHCP address conflict parameters',
+    logging: 'Enable/disable logging',
+    database: 'Configure DHCP database agents',
+    bootp: 'BOOTP specific configuration',
+    ignore: 'Ignore BOOTP requests',
+    relay: 'DHCP relay agent parameters',
+    information: 'Relay agent information option',
+    option: 'Insert relay information in BOOTREQUEST',
+    'trust-all': 'Received DHCP packets may contain relay info option with zero giaddr',
+    'smart-relay': 'Enable Smart Relay feature',
+    use: 'Configure use of certain parameters during allocation',
+    // dhcp pool config
+    network: 'Network number and mask',
+    host: 'Client IP address and mask',
+    'client-identifier': 'Client identifier',
+    'hardware-address': 'Client hardware address',
+    'client-name': 'Client name',
+    address: 'Configure a reserved address',
+    'client-id': 'Client identifier',
+    ascii: 'Use ASCII string',
+    'reserved-only': 'Allocate addresses only from reserved addresses',
+    'default-router': 'Default routers',
+    'dns-server': 'DNS servers',
+    'netbios-name-server': 'NetBIOS (WINS) name servers',
+    'netbios-node-type': 'NetBIOS node type',
+    lease: 'Address lease time',
+    infinite: 'Infinite lease',
+    bootfile: 'Boot file name',
+    'next-server': 'Next server in boot process',
+    class: 'Specify a DHCP class',
+    origin: 'Configure the origin of the pool',
+    import: 'Programmatically importing DHCP option parameters',
+    update: 'Dynamic updates',
+    'renew-deny': 'Configure renew policy',
+    utilization: 'Configure various utilization parameters',
+    mark: 'Configure upper/lower utilization marks',
+    high: 'Configure high utilization mark',
+    low: 'Configure low utilization mark',
+    subnet: 'Subnet allocation commands',
+    'prefix-length': 'Sets subnet size',
+    vrf: 'Associate this pool with a VRF',
+    accounting: 'Send Accounting Start/Stop messages',
+    secondary: 'Make this a secondary subnet',
+    hex: 'Raw hex value',
+    instance: 'Specify the option instance',
+    range: 'Configure a range of addresses',
+    source: 'Configure relay source',
+    destination: 'Configure relay destination',
+    ethernet: 'Ethernet (10Mb)',
+    ieee802: 'IEEE 802 networks',
+    'b-node': 'Broadcast node',
+    'p-node': 'Peer-to-peer node',
+    'm-node': 'Mixed node',
+    'h-node': 'Hybrid node',
+    unknown: 'Deny renewal of unknown clients',
+    deny: 'Deny',
+    // interface
+    description: 'Interface specific description',
+    shutdown: 'Shutdown the selected interface',
+    'helper-address': 'Specify a destination address for UDP broadcasts',
+    encapsulation: 'Set encapsulation type for an interface',
+    dot1q: 'IEEE 802.1Q Virtual LAN',
+    duplex: 'Configure duplex operation.',
+    speed: 'Configure speed operation.',
+    switchport: 'Set switching mode characteristics',
+    mode: 'Set trunking mode of the interface',
+    access: 'Set access mode characteristics of the interface',
+    trunk: 'Set trunking characteristics of the interface',
+    client: 'DHCP client configuration',
+    trusted: 'Received DHCP packets may contain relay info option with zero giaddr',
+    // show dhcp
+    binding: 'DHCP address bindings',
+    server: 'Miscellaneous DHCP server information',
+    statistics: 'DHCP server statistics',
+    events: 'Report address assignments, lease expirations, etc.',
+    packet: 'Decode message receptions and transmissions',
+    '*': 'Clear all',
+};
+
+return { HELP };
+})();
+__m["core/hash.js"] = (() => {
+/** Deterministic, non-cryptographic stand-in for IOS type-5 secrets (simulation only). */
+function secretHash(text) {
+    let h = 5381;
+    for (const ch of text)
+        h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0;
+    return `$1$mERr$${h.toString(36).padStart(7, '0')}${text.length}`;
+}
+
+return { secretHash };
+})();
+__m["ios/session.js"] = (() => {
+/** A console session on an IOS device: modes, prompts, dispatch, help and errors. */
+const { applyFilter, pipeHelp, splitPipe, withPipeEntry } = __m["ios/pipe.js"];
+const { buildTrie, matchLine, helpFor, completeToken, tokenize } = __m["ios/parser.js"];
+const { HELP } = __m["ios/help.js"];
+const { secretHash } = __m["core/hash.js"];
+const PROMPT_SUFFIX = {
+    user: '>',
+    exec: '#',
+    config: '(config)#',
+    'config-if': '(config-if)#',
+    'config-subif': '(config-subif)#',
+    'config-if-range': '(config-if-range)#',
+    'dhcp-config': '(dhcp-config)#',
+    'dhcp-class': '(config-dhcp-pool-class)#',
+    'config-line': '(config-line)#',
+    'config-vlan': '(config-vlan)#',
+    'config-std-nacl': '(config-std-nacl)#',
+    'config-ext-nacl': '(config-ext-nacl)#',
+    'config-isakmp': '(config-isakmp)#',
+    'config-crypto-map': '(config-crypto-map)#',
+    'cfg-crypto-trans': '(cfg-crypto-trans)#',
+};
+const EXEC_MODES = new Set(['user', 'exec']);
+const MAX_PASSWORD_TRIES = 3;
+const MAX_HISTORY = 50;
+const trieCache = new WeakMap();
+class Session {
+    device;
+    mode = 'user';
+    ifaces = [];
+    pool;
+    poolClass;
+    vlan;
+    acl;
+    /** Sub-mode being edited: ISAKMP policy, crypto map entry ("MAP seq") or transform set. */
+    crypto;
+    state = { kind: 'normal' };
+    output = [];
+    constructor(device, opts = {}) {
+        this.device = device;
+        if (opts.initialDialog)
+            this.state = { kind: 'dialog' };
+    }
+    banner() {
+        if (this.state.kind !== 'dialog')
+            return [];
+        return ['         --- System Configuration Dialog ---', ''];
+    }
+    prompt() {
+        if (this.state.kind === 'password')
+            return 'Password: ';
+        if (this.state.kind === 'dialog')
+            return 'Continue with configuration dialog? [yes/no]: ';
+        return `${this.device.hostname}${PROMPT_SUFFIX[this.mode]}`;
+    }
+    /** True when the current prompt expects hidden input. */
+    isSecretInput() {
+        return this.state.kind === 'password';
+    }
+    enterMode(mode) {
+        this.mode = mode;
+    }
+    requestPassword(onOk) {
+        this.state = { kind: 'password', tries: 0, onOk };
+    }
+    /** Executes one line and returns the output lines (the echoed command is not included). */
+    input(line) {
+        this.output = [];
+        if (this.state.kind === 'dialog')
+            this.handleDialog(line);
+        else if (this.state.kind === 'password')
+            this.handlePassword(line);
+        else
+            this.dispatch(line);
+        return this.output;
+    }
+    help(lineBeforeQuestion) {
+        const first = tokenize(lineBeforeQuestion)[0]?.text.toLowerCase() ?? '';
+        const isShow = EXEC_MODES.has(this.mode) && first.length >= 2 && 'show'.startsWith(first);
+        const bar = lineBeforeQuestion.indexOf('|');
+        if (isShow && bar >= 0)
+            return pipeHelp(lineBeforeQuestion.slice(bar + 1));
+        const help = this.plainHelp(lineBeforeQuestion);
+        return isShow ? withPipeEntry(help) : help;
+    }
+    plainHelp(lineBeforeQuestion) {
+        const tries = this.tries(this.mode);
+        const isNo = /^\s*no\s+/i.test(lineBeforeQuestion) && !EXEC_MODES.has(this.mode);
+        const rest = isNo ? lineBeforeQuestion.replace(/^\s*no\s+/i, '') : lineBeforeQuestion;
+        return helpFor(isNo ? tries.no : tries.normal, rest);
+    }
+    complete(line) {
+        const tries = this.tries(this.mode);
+        const m = /^(\s*no\s+)(.*)$/i.exec(line);
+        if (m && !EXEC_MODES.has(this.mode)) {
+            const done = completeToken(tries.no, m[2] ?? '');
+            return done === null ? null : `${m[1]}${done}`;
+        }
+        return completeToken(tries.normal, line);
+    }
+    /** Ctrl+Z */
+    ctrlZ() {
+        this.output = [];
+        if (!EXEC_MODES.has(this.mode))
+            this.endConfig();
+        return this.output;
+    }
+    // ------------------------------------------------------------ internals
+    out(...lines) {
+        this.output.push(...lines);
+    }
+    cli() {
+        return { device: this.device, session: this, out: (...l) => this.out(...l) };
+    }
+    tries(mode) {
+        const defs = this.device.modeTable()[mode] ?? [];
+        let cached = trieCache.get(defs);
+        if (!cached) {
+            cached = { normal: buildTrie(defs, HELP), no: buildTrie(defs, HELP, true) };
+            trieCache.set(defs, cached);
+        }
+        return cached;
+    }
+    endConfig() {
+        this.mode = 'exec';
+        this.ifaces = [];
+        this.pool = undefined;
+        this.poolClass = undefined;
+        this.acl = undefined;
+        this.crypto = undefined;
+        this.vlan = undefined;
+        this.device.log('%SYS-5-CONFIG_I: Configured from console by console');
+    }
+    dispatch(line) {
+        if (line.trim() === '' || line.trim().startsWith('!'))
+            return;
+        this.remember(line);
+        if (EXEC_MODES.has(this.mode) && this.piped(line, 0, (cmd) => this.dispatchCommand(cmd)))
+            return;
+        this.dispatchCommand(line);
+    }
+    /**
+     * `show … | include|exclude|begin|section <regex>`. Returns false when the line is not a
+     * piped `show`, so the normal parser reports the error where IOS would.
+     */
+    piped(line, base, run) {
+        const split = splitPipe(line);
+        const first = tokenize(line)[0]?.text.toLowerCase() ?? '';
+        if (!split || first.length < 2 || !'show'.startsWith(first))
+            return false;
+        if (!split.filter) {
+            this.out(`${' '.repeat(this.prompt().length + base + split.offset)}^`, "% Invalid input detected at '^' marker.", '');
+            return true;
+        }
+        if (!split.regex) {
+            this.out('% Incomplete command.', '');
+            return true;
+        }
+        const outer = this.output;
+        this.output = [];
+        let lines;
+        try {
+            run(split.command);
+        }
+        finally {
+            lines = this.output;
+            this.output = outer;
+        }
+        this.out(...(lines.some((l) => l.startsWith('% ')) ? lines : applyFilter(lines, split.filter, split.regex)));
+        return true;
+    }
+    dispatchCommand(line) {
+        const isNo = !EXEC_MODES.has(this.mode) && /^\s*(no|default)\s/i.test(line);
+        const body = isNo ? line.replace(/^\s*(no|default)\s+/i, '') : line;
+        const offset = line.length - body.length;
+        const result = this.match(this.mode, body, isNo);
+        if (result.kind === 'ok') {
+            this.execute(result, isNo);
+            return;
+        }
+        if (this.tryParentMode(body, isNo))
+            return;
+        this.reportError(result, line, offset);
+    }
+    match(mode, body, isNo) {
+        const tries = this.tries(mode);
+        return matchLine(isNo ? tries.no : tries.normal, body, false);
+    }
+    execute(result, isNo) {
+        const handler = isNo ? result.def.noRun : result.def.run;
+        handler?.(this.cli(), result.match);
+    }
+    /** Config sub-modes fall back to global configuration commands, like IOS does. */
+    tryParentMode(body, isNo) {
+        if (EXEC_MODES.has(this.mode) || this.mode === 'config')
+            return false;
+        const parent = this.mode === 'dhcp-class' ? 'dhcp-config' : 'config';
+        const candidates = parent === 'dhcp-config' ? ['dhcp-config', 'config'] : ['config'];
+        for (const mode of candidates) {
+            const result = this.match(mode, body, isNo);
+            if (result.kind !== 'ok')
+                continue;
+            this.mode = mode;
+            if (mode === 'config')
+                this.ifaces = [];
+            this.execute(result, isNo);
+            return true;
+        }
+        return false;
+    }
+    reportError(result, line, offset) {
+        if (result.kind === 'ambiguous') {
+            this.out(`% Ambiguous command:  "${line.trim()}"`);
+            return;
+        }
+        if (result.kind === 'incomplete') {
+            this.out('% Incomplete command.', '');
+            return;
+        }
+        if (result.kind !== 'invalid')
+            return;
+        const firstWord = tokenize(line)[0]?.text ?? '';
+        if (EXEC_MODES.has(this.mode) && result.position + offset === tokenize(line)[0]?.start) {
+            this.unknownExecCommand(firstWord, line);
+            return;
+        }
+        const caret = ' '.repeat(this.prompt().length + offset + result.position);
+        this.out(`${caret}^`, "% Invalid input detected at '^' marker.", '');
+    }
+    unknownExecCommand(word, line) {
+        if (tokenize(line).length > 1) {
+            const caret = ' '.repeat(this.prompt().length + (tokenize(line)[0]?.start ?? 0));
+            this.out(`${caret}^`, "% Invalid input detected at '^' marker.", '');
+            return;
+        }
+        if (this.device.domainLookup)
+            this.out(`Translating "${word}"...domain server (255.255.255.255)`);
+        this.out('% Unknown command or computer name, or unable to find computer address');
+    }
+    remember(line) {
+        this.device.history.push(line.trim());
+        if (this.device.history.length > MAX_HISTORY)
+            this.device.history.shift();
+    }
+    handleDialog(line) {
+        const answer = line.trim().toLowerCase();
+        if (answer.startsWith('y')) {
+            this.out('% Configuration dialog is not supported in this simulator. Entering CLI.');
+        }
+        this.state = { kind: 'normal' };
+        this.out('', '', 'Press RETURN to get started!', '');
+    }
+    handlePassword(line) {
+        if (this.state.kind !== 'password')
+            return;
+        const d = this.device;
+        const ok = d.enableSecret ? secretHash(line) === d.enableSecret : line === d.enablePassword;
+        if (ok) {
+            const { onOk } = this.state;
+            this.state = { kind: 'normal' };
+            onOk();
+            return;
+        }
+        const tries = this.state.tries + 1;
+        if (tries >= MAX_PASSWORD_TRIES) {
+            this.state = { kind: 'normal' };
+            this.out('% Bad secrets', '');
+            return;
+        }
+        this.state = { ...this.state, tries };
+    }
+    runExec(line) {
+        if (this.piped(line, 3, (cmd) => this.runExecCommand(cmd)))
+            return;
+        this.runExecCommand(line);
+    }
+    runExecCommand(line) {
+        const saved = this.mode;
+        const result = this.match('exec', line, false);
+        if (result.kind === 'ok') {
+            this.mode = 'exec';
+            this.execute(result, false);
+            if (this.mode === 'exec')
+                this.mode = saved;
+            return;
+        }
+        this.reportError(result, `do ${line}`, 3);
+    }
+}
+/** Replays configuration text (running-config format) on a device. Returns error lines. */
+function applyConfig(device, lines) {
+    const session = new Session(device);
+    session.mode = 'config';
+    const errors = [];
+    for (const raw of lines) {
+        const line = raw.replace(/\r$/, '');
+        if (shouldSkipConfigLine(line))
+            continue;
+        if (!line.startsWith(' ') && session.mode !== 'config')
+            session.mode = 'config';
+        const out = session.input(line);
+        // In a saved configuration an interface without "shutdown" is enabled.
+        if (/^interface /.test(line))
+            session.ifaces.forEach((n) => device.updateIface(n, (c) => ({ ...c, shutdown: false })));
+        if (out.some((l) => l.startsWith('%')))
+            errors.push(`${line.trim()}: ${out.filter((l) => l.startsWith('%')).join(' ')}`);
+    }
+    return errors;
+}
+const SKIP_RE = /^(!|end$|version |Building configuration|Current configuration|no service timestamps|service timestamps|no service password-encryption|ip cef|no ipv6 cef|ip classless|ip flow-export|spanning-tree mode|\s*$)/;
+function shouldSkipConfigLine(line) {
+    return SKIP_RE.test(line);
+}
+
+return { Session, applyConfig };
+})();
+__m["ui/ios-device-settings.js"] = (() => {
+/** IOS router / switch → «Equipo»: name in the workspace and `hostname` of the running configuration. */
+const { el } = __m["ui/dom.js"];
+const { field, input, button, message, table } = __m["ui/forms.js"];
+const { applyConfig } = __m["ios/session.js"];
+const { formatIp, formatMask } = __m["core/ip.js"];
+const { t } = __m["i18n/t.js"];
+const MAX_LABEL = 40;
+/** Same rule as the CLI `hostname`: a leading letter, one word, at most 63 characters. */
+const IOS_HOSTNAME = /^[A-Za-z]\S{0,62}$/;
+function ifaceRows(d) {
+    return [...d.ifaces.values()].map((c) => ({
+        name: c.name,
+        address: c.address ? `${formatIp(c.address.ip)} ${formatMask(c.address.prefix)}` : '—',
+        state: c.shutdown ? t('iosdev.down') : t('iosdev.up'),
+    }));
+}
+function iosDeviceSettings(placed, d, app) {
+    const msg = message();
+    const root = el('div', { class: 'pane' });
+    const refresh = () => {
+        // The CLI may have renamed the device since the last visit.
+        app.retitle(`${placed.label} · ${d.hostname}`);
+        const label = input({ value: placed.label, maxlength: String(MAX_LABEL) });
+        const hostname = input({ value: d.hostname, maxlength: '63' });
+        const save = () => {
+            const name = hostname.value.trim();
+            const shown = label.value.trim();
+            // Only a changed hostname is checked: one set from the CLI or a saved file is kept as it is.
+            if (name !== d.hostname && !IOS_HOSTNAME.test(name))
+                return msg.error(t('iosdev.badHostname'));
+            if (!shown)
+                return msg.error(t('host.labelEmpty'));
+            const errors = name !== d.hostname ? applyConfig(d, [`hostname ${name}`]) : [];
+            if (errors.length)
+                return msg.error(errors.join(' '));
+            placed.label = shown.slice(0, MAX_LABEL);
+            app.afterCommand();
+            refresh();
+            msg.ok(t('host.saved', { name: d.hostname }));
+        };
+        root.replaceChildren(el('h3', {}, t('host.nameTitle')), el('div', { class: 'grid2' }, field(t('host.label'), label, t('host.labelHint')), field(t('host.hostname'), hostname, t('iosdev.hostnameHint'))), el('div', { class: 'actions' }, button(t('host.save'), save)), msg.el, el('h3', {}, t('iosdev.ifaces')), table(ifaceRows(d), [
+            { label: t('iosdev.iface'), value: (r) => r.name, mono: true },
+            { label: t('iosdev.address'), value: (r) => r.address, mono: true },
+            { label: t('iosdev.state'), value: (r) => r.state },
+        ], { empty: '—' }), el('h3', {}, t('host.equivalents')), el('ul', { class: 'muted' }, el('li', {}, t('iosdev.eq')), el('li', {}, t('iosdev.eqIfaces'))));
+    };
+    refresh();
+    return { root, refresh: () => { msg.clear(); refresh(); } };
+}
+
+return { iosDeviceSettings };
 })();
 __m["net/ipstack.js"] = (() => {
 const { inSubnet, broadcastOf, BROADCAST_IP } = __m["core/ip.js"];
@@ -16032,14 +17087,14 @@ const NETFIX_DOCS = {
                     ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la documentación y las páginas web simuladas sin recargar.'],
                 ]),
                 h('Paleta y herramientas'),
-                list('Router 2911, Switch 2960-24TT, PC, Server, Router Linux y Nube ISP: elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.', 'Seleccionar: arrastra equipos; doble clic abre su ventana.', 'Eliminar: borra equipos o cables.'),
+                list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.', 'Seleccionar: arrastra equipos; doble clic abre su ventana.', 'Eliminar: borra equipos o cables.'),
                 h('Ventanas de los equipos'),
                 table(['Equipo', 'Pestañas'], [
-                    ['Router / Switch', 'CLI (Cisco IOS 15) y Gestión web (ip http server).'],
+                    ['Router IOS / Switch IOS', 'Equipo (nombre visible, hostname e interfaces), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
                     ['Nube ISP', 'ISP (proveedor, bloque público, dominios) y Líneas (modo, LAN, NAT, redirección de puertos).'],
-                    ['PC', 'Configuración IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Equipo, Símbolo del sistema y Terminal Linux.'],
-                    ['Router Linux', 'Servicios (cortafuegos, sysctl, VPN…), Interfaces, Equipo y Terminal Linux.'],
-                    ['Server', 'Servicios, Configuración IP, Equipo, Terminal Linux y Símbolo del sistema.'],
+                    ['PC', 'Equipo, Configuración IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Terminal Windows y Terminal Linux.'],
+                    ['Router Linux', 'Equipo, Servicios (Parámetros, Firewall, VPN, y los servicios de Server), Interfaces y Terminal Linux.'],
+                    ['Server', 'Equipo, Servicios (DHCP, DNS, HTTP, correo, SSH), Configuración IP, Terminal Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router Linux (en su terminal siguen sysctl y nft).'],
                 ]),
                 note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim). En móvil y tableta las ventanas ocupan la pantalla, el lienzo se mueve con un dedo y se amplía pellizcando, una pulsación larga abre un equipo y la terminal tiene una barra de teclas (Esc, Tab, Ctrl, flechas).'),
             ],
@@ -16087,7 +17142,7 @@ const NETFIX_DOCS = {
                 p('En Tiempo real la red funciona sola. En Simulación, cada paquete queda en la lista de eventos y se puede reproducir paso a paso, como en Packet Tracer.'),
                 list('Reproducir / Pausa / Paso: avanzan la simulación.', 'Filtros: DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP y SSH.', 'Al elegir un evento se ve la PDU por capas (Ethernet II, IPv4, UDP/TCP y el mensaje de aplicación).', 'SSH aparece como «datos cifrados»: su contenido no se puede leer en tránsito.'),
                 h('Ejemplo: ver el DORA de DHCP'),
-                code('1. Pulsa «Simulación».\n2. En un PC: Símbolo del sistema → ipconfig /release y ipconfig /renew\n   (o Terminal Linux → sudo dhclient -r eth0 && sudo dhclient eth0).\n3. Pulsa «Paso» y observa DISCOVER, OFFER, REQUEST y ACK.'),
+                code('1. Pulsa «Simulación».\n2. En un PC: Terminal Windows → ipconfig /release y ipconfig /renew\n   (o Terminal Linux → sudo dhclient -r eth0 && sudo dhclient eth0).\n3. Pulsa «Paso» y observa DISCOVER, OFFER, REQUEST y ACK.'),
             ],
         },
     ],
@@ -16417,7 +17472,7 @@ const CLIENT_DOCS = {
         },
         {
             id: 'windows-cmd',
-            title: 'Símbolo del sistema (Windows)',
+            title: 'Terminal Windows (cmd)',
             summary: 'Órdenes de cmd.exe disponibles en PCs y servidores Windows.',
             blocks: [
                 table(['Orden', 'Uso'], [
@@ -17198,7 +18253,7 @@ const WEBAPP_DOCS = [
                 ['Estado · Registros', 'Datos del equipo, servicios, concesiones y últimos mensajes (journalctl).'],
             ]),
             h('Seguridad'),
-            list('Autenticación HTTP Basic (realm «Server»); los intentos fallidos quedan en journalctl -u apache2.', 'Cada cambio se valida igual que en la ventana del servidor y se registra con el usuario y la IP del PC.'),
+            list('Autenticación HTTP Basic (realm «Server»); los intentos fallidos quedan en journalctl -u apache2.', 'Cada cambio se valida igual que en la ventana del servidor y se registra con el usuario y la IP del PC.', 'La pestaña Seguridad de la interfaz (Firewall, Enrutamiento, VPN) solo aparece en el Router Linux; en un Server no existe.'),
         ],
     },
 ];
@@ -17320,10 +18375,11 @@ const SECURITY_DOCS = {
             summary: 'Hardware de un 2911 con Ubuntu: eth0-eth2, ip_forward, rutas, NAT con nftables y gestión web.',
             blocks: [
                 p('El Router Linux tiene los puertos de un 2911 (GigabitEthernet0/0-2) y el software de Server: los puertos se llaman eth0, eth1 y eth2 en la terminal. Solo reenvía paquetes entre interfaces si net.ipv4.ip_forward = 1.'),
+                note('Imprescindible: sin net.ipv4.ip_forward = 1 el Router Linux no enruta. Responde a ping en sus propias direcciones, pero descarta todo lo que tenga que pasar de una interfaz a otra. Actívalo en Servicios → Parámetros (aplica y guarda en /etc/sysctl.d) o con sysctl en la terminal.'),
                 code('root@linuxrouter0:~# ip addr add 192.168.1.1/24 dev eth1\nroot@linuxrouter0:~# ip route add 10.20.0.0/16 via 192.168.1.254\nroot@linuxrouter0:~# sysctl -w net.ipv4.ip_forward=1\nroot@linuxrouter0:~# echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-router.conf'),
                 table(['Dónde', 'Qué se configura'], [
                     ['Pestaña Interfaces', 'Dirección de cada eth, DHCP en eth0, rutas estáticas y reenvío.'],
-                    ['Servicios → Cortafuegos y sysctl', 'nftables (tablas, cadenas, reglas, plantillas) y parámetros del núcleo; se aplica y se guarda.'],
+                    ['Servicios → Parámetros y Firewall', 'Parámetros del núcleo (sysctl: net.ipv4.ip_forward…) y nftables (tablas, cadenas, reglas, plantillas); se aplica y se guarda.'],
                     ['Servicios → VPN', 'Túnel WireGuard wg0.'],
                     ['Gestión web (Seguridad)', 'Las mismas opciones en páginas al estilo WRT300N.'],
                     ['Terminal', 'ip, sysctl, nft, wg, wg-quick, systemctl, journalctl, dmesg, nc, nmap.'],
@@ -17411,14 +18467,14 @@ const NETFIX_DOCS = {
                     ['Language', 'Español (España) or English (UK): changes the whole interface, the documentation and the simulated web pages without reloading.'],
                 ]),
                 h('Palette and tools'),
-                list('2911 Router, 2960-24TT Switch, PC, Server, Linux router and ISP Cloud: pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.', 'Select: drag devices; double-click opens their window.', 'Delete: removes devices or cables.'),
+                list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.', 'Select: drag devices; double-click opens their window.', 'Delete: removes devices or cables.'),
                 h('Device windows'),
                 table(['Device', 'Tabs'], [
-                    ['Router / Switch', 'CLI (Cisco IOS 15) and Web management (ip http server).'],
+                    ['IOS router / IOS switch', 'Device (workspace name, hostname and interfaces), CLI (Cisco IOS 15) and Web management (ip http server).'],
                     ['ISP Cloud', 'ISP (provider, public block, domains) and Lines (mode, LAN, NAT, port forwarding).'],
-                    ['PC', 'IP Config, Web Browser, Mail, SSH client, Files (SFTP), Device, Command Prompt and Linux Terminal.'],
-                    ['Linux router', 'Services (firewall, sysctl, VPN…), Interfaces, Device and Linux Terminal.'],
-                    ['Server', 'Services, IP Config, Device, Linux Terminal and Command Prompt.'],
+                    ['PC', 'Device, IP Config, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and Linux terminal.'],
+                    ['Linux router', 'Device, Services (Parameters, Firewall, VPN, and the Server services), Interfaces and Linux terminal.'],
+                    ['Server', 'Device, Services (DHCP, DNS, HTTP, mail, SSH), IP Config, Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the Linux router (sysctl and nft remain in its terminal).'],
                 ]),
                 note('Windows are moved by their title bar and resized from the corner. Escape closes the active window (except inside nano or vim). On phones and tablets windows fill the screen, the canvas is panned with one finger and zoomed by pinching, a long press opens a device and the terminal has a key bar (Esc, Tab, Ctrl, arrows).'),
             ],
@@ -17466,7 +18522,7 @@ const NETFIX_DOCS = {
                 p('In Realtime the network runs on its own. In Simulation, every packet stays in the event list and can be replayed step by step, as in Packet Tracer.'),
                 list('Play / Pause / Step: advance the simulation.', 'Filters: DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP and SSH.', 'Choosing an event shows the PDU by layers (Ethernet II, IPv4, UDP/TCP and the application message).', 'SSH appears as “encrypted data”: its content cannot be read in transit.'),
                 h('Example: watching the DHCP DORA'),
-                code('1. Click “Simulation”.\n2. On a PC: Command Prompt → ipconfig /release and ipconfig /renew\n   (or Linux Terminal → sudo dhclient -r eth0 && sudo dhclient eth0).\n3. Click “Step” and watch DISCOVER, OFFER, REQUEST and ACK.'),
+                code('1. Click “Simulation”.\n2. On a PC: Windows terminal → ipconfig /release and ipconfig /renew\n   (or Linux Terminal → sudo dhclient -r eth0 && sudo dhclient eth0).\n3. Click “Step” and watch DISCOVER, OFFER, REQUEST and ACK.'),
             ],
         },
     ],
@@ -17796,7 +18852,7 @@ const CLIENT_DOCS = {
         },
         {
             id: 'windows-cmd',
-            title: 'Command Prompt (Windows)',
+            title: 'Windows terminal (cmd)',
             summary: 'cmd.exe commands available on Windows PCs and servers.',
             blocks: [
                 table(['Command', 'Usage'], [
@@ -18577,7 +19633,7 @@ const WEBAPP_DOCS = [
                 ['Status · Logs', 'Device data, services, leases and latest messages (journalctl).'],
             ]),
             h('Security'),
-            list('HTTP Basic authentication (realm “Server”); failed attempts are logged in journalctl -u apache2.', 'Every change is validated exactly as in the server window and logged with the user and the PC’s IP.'),
+            list('HTTP Basic authentication (realm “Server”); failed attempts are logged in journalctl -u apache2.', 'Every change is validated exactly as in the server window and logged with the user and the PC’s IP.', 'The Security tab of the interface (Firewall, Routing, VPN) only appears on the Linux router; a Server has none.'),
         ],
     },
 ];
@@ -18699,10 +19755,11 @@ const SECURITY_DOCS = {
             summary: '2911 hardware running Ubuntu: eth0-eth2, ip_forward, routes, NAT with nftables and web management.',
             blocks: [
                 p('The Linux Router has the ports of a 2911 (GigabitEthernet0/0-2) and the Server software: in the terminal the ports are called eth0, eth1 and eth2. It only forwards packets between interfaces if net.ipv4.ip_forward = 1.'),
+                note('Essential: without net.ipv4.ip_forward = 1 the Linux router does not route. It answers ping on its own addresses but drops everything that has to go from one interface to another. Turn it on in Services → Parameters (applies and saves to /etc/sysctl.d) or with sysctl in the terminal.'),
                 code('root@linuxrouter0:~# ip addr add 192.168.1.1/24 dev eth1\nroot@linuxrouter0:~# ip route add 10.20.0.0/16 via 192.168.1.254\nroot@linuxrouter0:~# sysctl -w net.ipv4.ip_forward=1\nroot@linuxrouter0:~# echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-router.conf'),
                 table(['Where', 'What is configured'], [
                     ['Interfaces tab', 'Address of each eth, DHCP on eth0, static routes and forwarding.'],
-                    ['Services → Firewall and sysctl', 'nftables (tables, chains, rules, templates) and kernel parameters; applied and saved.'],
+                    ['Services → Parameters and Firewall', 'Kernel parameters (sysctl: net.ipv4.ip_forward…) and nftables (tables, chains, rules, templates); applied and saved.'],
                     ['Services → VPN', 'WireGuard tunnel wg0.'],
                     ['Web management (Security)', 'The same options in WRT300N-style pages.'],
                     ['Terminal', 'ip, sysctl, nft, wg, wg-quick, systemctl, journalctl, dmesg, nc, nmap.'],
@@ -26839,7 +27896,7 @@ return { NanoEditor };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -34809,106 +35866,6 @@ class LinuxRouter extends Server {
 
 return { LINUX_ROUTER_PORTS, LinuxRouter };
 })();
-__m["ui/forms.js"] = (() => {
-/** Small form and table builders for the device windows. All text goes through textContent. */
-const { t } = __m["i18n/t.js"];
-const { el } = __m["ui/dom.js"];
-let uid = 0;
-function nextId(prefix) {
-    uid += 1;
-    return `${prefix}-${uid}`;
-}
-function input(attrs = {}) {
-    return el('input', { type: 'text', autocomplete: 'off', spellcheck: 'false', ...attrs });
-}
-function field(label, control, hint) {
-    const id = control.id || nextId('f');
-    control.id = id;
-    return el('label', { class: 'field', for: id }, el('span', { class: 'field-label' }, label), control, hint ? el('span', { class: 'field-hint' }, hint) : null);
-}
-function select(options, value) {
-    const s = el('select', { class: 'select' }, ...options.map(([v, label]) => el('option', { value: v }, label)));
-    if (value !== undefined)
-        s.value = value;
-    return s;
-}
-function button(label, onClick, cls = 'btn') {
-    const b = el('button', { type: 'button', class: cls }, label);
-    b.addEventListener('click', onClick);
-    return b;
-}
-/** On/Off switch like Packet Tracer's service panels. */
-function onOff(label, on, change) {
-    const box = el('input', { type: 'checkbox', role: 'switch', checked: on });
-    box.addEventListener('change', () => change(box.checked));
-    return el('label', { class: 'switch-row' }, box, el('span', { class: 'switch-label' }, label), el('span', { class: 'switch-state' }, on ? t('common.on') : t('common.off')));
-}
-function message() {
-    const p = el('p', { class: 'form-msg', role: 'status' });
-    return {
-        el: p,
-        ok: (t) => { p.dataset.kind = 'ok'; p.textContent = t; },
-        error: (t) => { p.dataset.kind = 'error'; p.textContent = t; },
-        clear: () => { p.textContent = ''; delete p.dataset.kind; },
-    };
-}
-/** Table with optional row selection, per-row action buttons and a delete button. */
-function table(rows, cols, opts) {
-    if (rows.length === 0)
-        return el('p', { class: 'muted' }, opts.empty);
-    const hasActions = Boolean(opts.onDelete || opts.actions);
-    const head = el('tr', {}, ...cols.map((c) => el('th', {}, c.label)), hasActions ? el('th', {}, '') : null);
-    const body = rows.map((r) => {
-        const tr = el('tr', { class: opts.selected?.(r) ? 'is-current' : '' }, ...cols.map((c) => el('td', { class: c.mono ? 'mono' : '' }, c.value(r))));
-        if (opts.onSelect) {
-            tr.tabIndex = 0;
-            tr.addEventListener('click', () => opts.onSelect?.(r));
-            tr.addEventListener('keydown', (e) => { if (e.key === 'Enter')
-                opts.onSelect?.(r); });
-        }
-        if (hasActions) {
-            const buttons = [...(opts.actions?.(r) ?? []), ...(opts.onDelete ? [button(t('common.delete'), () => opts.onDelete?.(r), 'btn btn-quiet btn-small')] : [])];
-            buttons.forEach((b) => b.addEventListener('click', (e) => e.stopPropagation()));
-            tr.appendChild(el('td', { class: 'row-actions' }, ...buttons));
-        }
-        return tr;
-    });
-    return el('div', { class: 'table-wrap' }, el('table', { class: 'grid-table' }, el('thead', {}, head), el('tbody', {}, ...body)));
-}
-function copyRow(label, value, help) {
-    const btn = button(t('common.copy'), () => {
-        void navigator.clipboard?.writeText(value).then(() => { btn.textContent = t('common.copied'); }, () => { btn.textContent = t('common.unavailable'); });
-    }, 'btn btn-quiet');
-    btn.setAttribute('aria-label', t('common.copyX', { label }));
-    return el('div', { class: 'id-row' }, el('div', {}, el('span', { class: 'field-label' }, label), el('code', { class: 'id-value' }, value), el('p', { class: 'id-help' }, help)), btn);
-}
-/** Vertical sub-navigation used inside a window tab (Servicios → DHCP / DNS / …). */
-/** Side navigation of a pane; items with `keep` are drawn once and kept (an open terminal survives a visit to another item). */
-function subnav(items) {
-    const content = el('div', { class: 'subnav-content' });
-    const kept = new Map();
-    const buttons = items.map((it) => {
-        const b = el('button', { type: 'button', class: 'subnav-item', 'aria-pressed': 'false' }, it.label);
-        b.addEventListener('click', () => show(it.id));
-        return b;
-    });
-    const show = (id) => {
-        items.forEach((it, i) => buttons[i]?.setAttribute('aria-pressed', String(it.id === id)));
-        const item = items.find((it) => it.id === id);
-        if (!item)
-            return void content.replaceChildren(el('p', {}, ''));
-        const view = kept.get(item.id) ?? item.render();
-        if (item.keep)
-            kept.set(item.id, view);
-        content.replaceChildren(view);
-    };
-    if (items[0])
-        show(items[0].id);
-    return el('div', { class: 'subnav' }, el('nav', { class: 'subnav-list', 'aria-label': t('win.services') }, ...buttons), content);
-}
-
-return { nextId, input, field, select, button, onOff, message, table, copyRow, subnav };
-})();
 __m["ui/live.js"] = (() => {
 /** Panels that follow their device: they redraw when it changes (from the terminal, DHCP…) unless you are typing in them. */
 const { el } = __m["ui/dom.js"];
@@ -36690,886 +37647,6 @@ class Terminal {
 
 return { Terminal };
 })();
-__m["ios/pipe.js"] = (() => {
-/**
- * Output modifiers of `show` commands: `| include`, `| exclude`, `| begin`, `| section`.
- * Keywords accept IOS abbreviations (`i`, `inc`, `e`, `b`, `sec`); the argument is a
- * regular expression with the IOS `_` delimiter; invalid or catastrophic patterns
- * (nested quantifiers) are matched literally so the simulator never hangs.
- */
-const FILTERS = ['include', 'exclude', 'begin', 'section'];
-/** Splits `cmd | filter regex`; null when the line has no pipe. */
-function splitPipe(line) {
-    const bar = line.indexOf('|');
-    if (bar < 0)
-        return null;
-    const command = line.slice(0, bar).trimEnd();
-    const afterBar = line.slice(bar + 1);
-    const lead = afterBar.length - afterBar.trimStart().length;
-    const offset = bar + 1 + lead;
-    const m = /^(\S+)\s*(.*)$/.exec(afterBar.trimStart());
-    const word = (m?.[1] ?? '').toLowerCase();
-    const filter = word ? FILTERS.find((f) => f.startsWith(word)) : undefined;
-    return { command, filter, regex: (m?.[2] ?? '').trim(), offset };
-}
-/** IOS `_` matches a delimiter: comma, braces, parentheses, space, start or end of line. */
-const IOS_UNDERSCORE = '(?:^|$|[,{}()\\s])';
-/** A quantified group that is quantified again, e.g. `(a+)+`: catastrophic backtracking. */
-const NESTED_QUANTIFIER = /\((?:[^()\\]|\\.)*[+*}](?:[^()\\]|\\.)*\)\s*[+*{]/;
-function matcher(regex) {
-    const literal = (line) => line.includes(regex);
-    if (NESTED_QUANTIFIER.test(regex))
-        return literal;
-    try {
-        const re = new RegExp(regex.replace(/(\\.)|_/g, (m, escaped) => escaped ?? IOS_UNDERSCORE));
-        return (line) => re.test(line);
-    }
-    catch {
-        return literal;
-    }
-}
-/** Groups lines into sections: a line without indentation followed by its indented children. */
-function sections(lines) {
-    const out = [];
-    for (const line of lines) {
-        const last = out[out.length - 1];
-        if (last && /^\s/.test(line))
-            last.push(line);
-        else
-            out.push([line]);
-    }
-    return out;
-}
-function applyFilter(lines, filter, regex) {
-    const hit = matcher(regex);
-    switch (filter) {
-        case 'include':
-            return lines.filter(hit);
-        case 'exclude':
-            return lines.filter((l) => !hit(l));
-        case 'begin': {
-            const first = lines.findIndex(hit);
-            return first < 0 ? [] : lines.slice(first);
-        }
-        case 'section':
-            return sections(lines).filter((block) => block.some(hit)).flat();
-    }
-}
-const FILTER_HELP = {
-    begin: 'Begin with the line that matches',
-    exclude: 'Exclude lines that match',
-    include: 'Include lines that match',
-    section: 'Filter a section of output',
-};
-/** `?` after the bar: filter keywords, or the regular expression placeholder. */
-function pipeHelp(afterBar) {
-    const text = afterBar.trimStart();
-    if (/^\S+\s/.test(text))
-        return ['  LINE  Regular Expression'];
-    const word = text.toLowerCase();
-    const names = Object.keys(FILTER_HELP).sort().filter((f) => f.startsWith(word));
-    if (names.length === 0)
-        return ['% Unrecognized command'];
-    const width = Math.max(...names.map((f) => f.length)) + 2;
-    return names.map((f) => `  ${f.padEnd(width)}${FILTER_HELP[f]}`);
-}
-/** Adds the `|` entry in front of `<cr>` in the help of a complete `show` command. */
-function withPipeEntry(help) {
-    const cr = help.indexOf('  <cr>');
-    if (cr < 0)
-        return [...help];
-    const width = Math.max(1, ...help.filter((l) => l !== '  <cr>').map((l) => (/^ {2}(\S+)/.exec(l)?.[1]?.length ?? 0)));
-    return [...help.slice(0, cr), `  ${'|'.padEnd(width + 2)}Output modifiers`, ...help.slice(cr)];
-}
-
-return { splitPipe, applyFilter, pipeHelp, withPipeEntry };
-})();
-__m["ios/parser.js"] = (() => {
-/**
- * IOS-style command grammar: syntax strings are expanded into variants and merged into a
- * trie that supports keyword abbreviation, typed parameters, `?` help and Tab completion.
- *
- * Syntax DSL:  keyword  <TYPE:name>  [optional]  {alt-a | alt-b}  <TYPE...:name> (1-8 repeats)
- * TYPE: A.B.C.D, MASK, WORD, LINE, H.H.H, HEX, HWTYPE, IFACE, n-m (integer range)
- */
-const { parseIp, parseMask } = __m["core/ip.js"];
-const { parseMac, parseHexId } = __m["core/mac.js"];
-class Match {
-    values;
-    keywords;
-    constructor(values, keywords) {
-        this.values = values;
-        this.keywords = keywords;
-    }
-    get(name) {
-        return this.values.get(name)?.[0];
-    }
-    all(name) {
-        return this.values.get(name) ?? [];
-    }
-    has(keyword) {
-        return this.keywords.has(keyword);
-    }
-}
-const MAX_REPEAT = 8;
-const HW_TYPES = ['ethernet', 'ieee802'];
-const MAX_HW_TYPE = 255;
-const DEFAULT_PARAM_HELP = {
-    'A.B.C.D': 'IP address',
-    MASK: 'Network mask or prefix length',
-    WORD: 'WORD',
-    LINE: 'LINE',
-    'H.H.H': 'MAC address',
-    HEX: 'Hex string',
-    HWTYPE: 'Hardware type',
-    IFACE: 'Interface name',
-};
-const PARAM_DISPLAY = {
-    MASK: '/nn or A.B.C.D',
-    HEX: 'H.H.H',
-    HWTYPE: '<0-255>',
-};
-function lexSyntax(syntax) {
-    return syntax.replace(/([[\]{}|])/g, ' $1 ').trim().split(/\s+/);
-}
-function parseSeq(tokens, pos, stops) {
-    const seq = [];
-    while (pos.i < tokens.length && !stops.has(tokens[pos.i] ?? '')) {
-        const tok = tokens[pos.i++] ?? '';
-        if (tok === '[') {
-            seq.push({ type: 'opt', body: parseSeq(tokens, pos, new Set([']'])) });
-            pos.i++;
-        }
-        else if (tok === '{') {
-            const options = [];
-            do {
-                options.push(parseSeq(tokens, pos, new Set(['|', '}'])));
-            } while (tokens[pos.i++] === '|');
-            seq.push({ type: 'alt', options });
-        }
-        else {
-            seq.push({ type: 'tok', text: tok });
-        }
-    }
-    return seq;
-}
-function expandElements(elements) {
-    let results = [[]];
-    for (const el of elements) {
-        let tails;
-        if (el.type === 'tok')
-            tails = expandToken(el.text);
-        else if (el.type === 'opt')
-            tails = [[], ...expandElements(el.body)];
-        else
-            tails = el.options.flatMap((opt) => expandElements(opt));
-        results = results.flatMap((head) => tails.map((tail) => [...head, ...tail]));
-    }
-    return results;
-}
-function expandToken(text) {
-    if (!text.includes('...'))
-        return [[text]];
-    return Array.from({ length: MAX_REPEAT }, (_, n) => Array.from({ length: n + 1 }, () => text));
-}
-function expandSyntax(syntax) {
-    return expandElements(parseSeq(lexSyntax(syntax), { i: 0 }, new Set()));
-}
-function toSpec(token) {
-    const param = /^<([^:>]+?)(\.\.\.)?:([^>]+)>$/.exec(token);
-    if (!param)
-        return { kind: 'kw', text: token.toLowerCase(), name: token.toLowerCase(), repeat: false };
-    const type = param[1] ?? 'WORD';
-    const range = /^(\d+)-(\d+)$/.exec(type);
-    const base = { kind: 'param', text: type, name: param[3] ?? type, repeat: Boolean(param[2]) };
-    return range ? { ...base, min: Number(range[1]), max: Number(range[2]) } : base;
-}
-// ---------------------------------------------------------------- trie construction
-function sameSpec(a, b) {
-    return a.kind === b.kind && a.text === b.text;
-}
-function newNode() {
-    return { edges: [], terminal: null };
-}
-function specHelp(spec, help) {
-    if (spec.kind === 'kw')
-        return help[spec.text] ?? '';
-    return help[spec.name] ?? DEFAULT_PARAM_HELP[spec.text] ?? '';
-}
-function insert(root, specs, def, help) {
-    let node = root;
-    for (const spec of specs) {
-        let edge = node.edges.find((e) => sameSpec(e.spec, spec));
-        if (!edge) {
-            edge = { spec, help: specHelp(spec, help), hidden: Boolean(def.hidden), node: newNode() };
-            node.edges.push(edge);
-        }
-        node = edge.node;
-    }
-    node.terminal = { def, specs };
-}
-/** `no` forms accept the keyword prefix and any longer prefix of the full syntax. */
-function noVariants(variants) {
-    const out = [];
-    for (const v of variants) {
-        const firstParam = v.findIndex((s) => s.kind === 'param');
-        const start = firstParam === -1 ? v.length : Math.max(firstParam, 1);
-        for (let len = start; len <= v.length; len++)
-            out.push(v.slice(0, len));
-    }
-    return out;
-}
-function buildTrie(defs, help, noForm = false) {
-    const root = newNode();
-    for (const def of defs) {
-        if (noForm && !def.noRun)
-            continue;
-        const merged = { ...help, ...def.help };
-        const variants = expandSyntax(def.syntax).map((v) => v.map(toSpec));
-        const all = noForm ? noVariants(variants) : variants;
-        for (const specs of all)
-            insert(root, specs, def, merged);
-    }
-    return root;
-}
-// ---------------------------------------------------------------- matching
-function tokenize(line) {
-    const tokens = [];
-    const re = /\S+/g;
-    let m;
-    while ((m = re.exec(line)) !== null)
-        tokens.push({ text: m[0], start: m.index });
-    return tokens;
-}
-function paramAccepts(spec, text) {
-    switch (spec.text) {
-        case 'A.B.C.D': return parseIp(text) !== null;
-        case 'MASK': return parseMask(text) !== null;
-        case 'H.H.H': return parseMac(text) !== null;
-        case 'HEX': return parseHexId(text) !== null;
-        case 'HWTYPE': return acceptsHwType(text);
-        case 'IFACE': return /^[a-z]+[\d/.:]*$/i.test(text);
-        case 'WORD':
-        case 'LINE': return true;
-        default: return acceptsRange(spec, text);
-    }
-}
-function acceptsHwType(text) {
-    const lower = text.toLowerCase();
-    if (/^\d+$/.test(text))
-        return Number(text) <= MAX_HW_TYPE;
-    return HW_TYPES.some((t) => t.startsWith(lower));
-}
-function acceptsRange(spec, text) {
-    if (spec.min === undefined || spec.max === undefined || !/^\d+$/.test(text))
-        return false;
-    const n = Number(text);
-    return n >= spec.min && n <= spec.max;
-}
-function stepToken(node, text, includeHidden = true) {
-    const lower = text.toLowerCase();
-    const edges = includeHidden ? node.edges : node.edges.filter((e) => !e.hidden);
-    const kws = edges.filter((e) => e.spec.kind === 'kw' && e.spec.text.startsWith(lower));
-    const exact = kws.find((e) => e.spec.text === lower);
-    if (exact)
-        return { edge: exact };
-    if (kws.length === 1 && kws[0])
-        return { edge: kws[0] };
-    const param = edges.find((e) => e.spec.kind === 'param' && paramAccepts(e.spec, text));
-    if (param)
-        return { edge: param };
-    return { error: kws.length > 1 ? 'ambiguous' : 'invalid' };
-}
-function walk(root, line, tokens) {
-    let node = root;
-    const path = [];
-    for (let i = 0; i < tokens.length; i++) {
-        const tok = tokens[i];
-        if (!tok)
-            break;
-        const step = stepToken(node, tok.text);
-        if ('error' in step)
-            return { error: step.error, position: tok.start };
-        const { spec } = step.edge;
-        if (spec.text === 'LINE') {
-            path.push({ spec, value: line.slice(tok.start).trimEnd() });
-            return { ok: { node: step.edge.node, path } };
-        }
-        path.push({ spec, value: spec.kind === 'kw' ? spec.text : tok.text });
-        node = step.edge.node;
-    }
-    return { ok: { node, path } };
-}
-function buildMatch(terminal, path) {
-    const values = new Map();
-    const keywords = new Set();
-    path.forEach((step, i) => {
-        const spec = terminal.specs[i] ?? step.spec;
-        if (spec.kind === 'kw') {
-            keywords.add(spec.text);
-            return;
-        }
-        values.set(spec.name, [...(values.get(spec.name) ?? []), step.value]);
-    });
-    return new Match(values, keywords);
-}
-function matchLine(root, line, _strict) {
-    const tokens = tokenize(line);
-    if (tokens.length === 0)
-        return { kind: 'empty' };
-    const result = walk(root, line, tokens);
-    if ('error' in result) {
-        return result.error === 'ambiguous' ? { kind: 'ambiguous' } : { kind: 'invalid', position: result.position };
-    }
-    const terminal = result.ok.node.terminal;
-    if (!terminal)
-        return { kind: 'incomplete' };
-    return { kind: 'ok', def: terminal.def, match: buildMatch(terminal, result.ok.path) };
-}
-// ---------------------------------------------------------------- help & completion
-function edgeLabel(spec) {
-    if (spec.kind === 'kw')
-        return spec.text;
-    if (spec.min !== undefined)
-        return `<${spec.min}-${spec.max}>`;
-    return PARAM_DISPLAY[spec.text] ?? spec.text;
-}
-function formatHelpRows(rows) {
-    const width = Math.max(...rows.map(([label]) => label.length));
-    return rows.map(([label, help]) => `  ${label.padEnd(width)}  ${help}`.trimEnd());
-}
-/** Output for a line ending in `?`. `line` is the text before the `?`. */
-function helpFor(root, line) {
-    const tokens = tokenize(line);
-    const partial = line.length > 0 && !/\s$/.test(line) ? tokens.pop() : undefined;
-    const result = walk(root, line, tokens);
-    if ('error' in result)
-        return ['% Unrecognized command'];
-    const { node } = result.ok;
-    const visible = node.edges.filter((e) => !e.hidden);
-    if (partial) {
-        const lower = partial.text.toLowerCase();
-        const words = visible.filter((e) => e.spec.kind === 'kw' && e.spec.text.startsWith(lower)).map((e) => e.spec.text).sort();
-        return words.length > 0 ? [words.join('  ')] : ['% Unrecognized command'];
-    }
-    const params = visible.filter((e) => e.spec.kind === 'param');
-    const kws = visible.filter((e) => e.spec.kind === 'kw').sort((a, b) => a.spec.text.localeCompare(b.spec.text));
-    const rows = [...params, ...kws].map((e) => [edgeLabel(e.spec), e.help]);
-    if (node.terminal)
-        rows.push(['<cr>', '']);
-    return rows.length > 0 ? formatHelpRows(rows) : ['% Unrecognized command'];
-}
-/** Tab completion: returns the completed line or null when the prefix is not unique. */
-function completeToken(root, line) {
-    const tokens = tokenize(line);
-    const last = tokens.pop();
-    if (!last || /\s$/.test(line))
-        return null;
-    const result = walk(root, line, tokens);
-    if ('error' in result)
-        return null;
-    const lower = last.text.toLowerCase();
-    const kws = result.ok.node.edges.filter((e) => e.spec.kind === 'kw' && !e.hidden && e.spec.text.startsWith(lower));
-    const exact = kws.find((e) => e.spec.text === lower);
-    const pick = exact ?? (kws.length === 1 ? kws[0] : undefined);
-    return pick ? `${line.slice(0, last.start)}${pick.spec.text} ` : null;
-}
-/** Expands abbreviated keywords of a valid line to their full names (used by `show run`). */
-function canonicalKeyword(root, word) {
-    const step = stepToken(root, word, false);
-    return 'edge' in step && step.edge.spec.kind === 'kw' ? step.edge.spec.text : null;
-}
-
-return { Match, expandSyntax, buildTrie, tokenize, matchLine, helpFor, completeToken, canonicalKeyword };
-})();
-__m["ios/help.js"] = (() => {
-const HELP = {
-    // NAT, ACL, HTTP server, local users
-    nat: 'NAT configuration commands',
-    'access-list': 'Add an access list entry',
-    'access-lists': 'List access lists',
-    standard: 'Standard Access List',
-    translations: 'Translation entries',
-    translation: 'Clear dynamic translation',
-    inside: 'Inside address translation',
-    outside: 'Translate outside addresses',
-    overload: 'Overload an address translation',
-    netmask: 'Specify the network mask',
-    permit: 'Specify packets to forward',
-    remark: 'Access list entry comment',
-    any: 'Any source host',
-    http: 'HTTP server configuration',
-    authentication: 'Set http server authentication method',
-    local: 'Use local username and passwords',
-    username: 'Establish User Name Authentication',
-    privilege: 'Set user privilege level',
-    // exec
-    enable: 'Turn on privileged commands',
-    disable: 'Turn off privileged commands',
-    exit: 'Exit from the EXEC',
-    logout: 'Exit from the EXEC',
-    configure: 'Enter configuration mode',
-    terminal: 'Configure from the terminal',
-    show: 'Show running system information',
-    ping: 'Send echo messages',
-    traceroute: 'Trace route to destination',
-    copy: 'Copy from one file to another',
-    write: 'Write running configuration to memory, network, or terminal',
-    memory: 'Write to NV memory',
-    erase: 'Erase a filesystem',
-    reload: 'Halt and perform a cold restart',
-    clear: 'Reset functions',
-    debug: 'Debugging functions (see also \'undebug\')',
-    undebug: 'Disable debugging functions (see also \'debug\')',
-    clock: 'Manage the system clock',
-    set: 'Set the time and date',
-    release: 'Release a resource',
-    renew: 'Renew a resource',
-    'running-config': 'Current operating configuration',
-    'startup-config': 'Contents of startup configuration',
-    version: 'System hardware and software status',
-    interfaces: 'Interface status and configuration',
-    brief: 'Brief summary of IP status and configuration',
-    route: 'IP routing table',
-    arp: 'ARP table',
-    history: 'Display the session command history',
-    'mac-address-table': 'MAC forwarding table',
-    'mac': 'MAC configuration',
-    'address-table': 'MAC forwarding table',
-    vlan: 'VTP VLAN status',
-    all: 'Enable all debugging',
-    // global config
-    hostname: 'Set system\'s network name',
-    interface: 'Select an interface to configure',
-    ip: 'Global IP configuration subcommands',
-    no: 'Negate a command or set its defaults',
-    default: 'Set a command to its defaults',
-    end: 'Exit from configure mode',
-    do: 'To run exec commands in config mode',
-    banner: 'Define a login banner',
-    motd: 'Set Message of the Day banner',
-    secret: 'Assign the privileged level secret',
-    password: 'Assign the privileged level password',
-    service: 'Modify use of network based services',
-    line: 'Configure a terminal line',
-    'domain-name': 'Define the default domain name',
-    'domain-lookup': 'Enable IP Domain Name System hostname translation',
-    'name-server': 'Specify address of name server to use',
-    'default-gateway': 'Specify default gateway (if not routing IP)',
-    routing: 'Enable IP routing',
-    // dhcp global
-    dhcp: 'Configure DHCP server and relay parameters',
-    pool: 'Configure DHCP address pools',
-    'excluded-address': 'Prevent DHCP from assigning certain addresses',
-    conflict: 'DHCP address conflict parameters',
-    logging: 'Enable/disable logging',
-    database: 'Configure DHCP database agents',
-    bootp: 'BOOTP specific configuration',
-    ignore: 'Ignore BOOTP requests',
-    relay: 'DHCP relay agent parameters',
-    information: 'Relay agent information option',
-    option: 'Insert relay information in BOOTREQUEST',
-    'trust-all': 'Received DHCP packets may contain relay info option with zero giaddr',
-    'smart-relay': 'Enable Smart Relay feature',
-    use: 'Configure use of certain parameters during allocation',
-    // dhcp pool config
-    network: 'Network number and mask',
-    host: 'Client IP address and mask',
-    'client-identifier': 'Client identifier',
-    'hardware-address': 'Client hardware address',
-    'client-name': 'Client name',
-    address: 'Configure a reserved address',
-    'client-id': 'Client identifier',
-    ascii: 'Use ASCII string',
-    'reserved-only': 'Allocate addresses only from reserved addresses',
-    'default-router': 'Default routers',
-    'dns-server': 'DNS servers',
-    'netbios-name-server': 'NetBIOS (WINS) name servers',
-    'netbios-node-type': 'NetBIOS node type',
-    lease: 'Address lease time',
-    infinite: 'Infinite lease',
-    bootfile: 'Boot file name',
-    'next-server': 'Next server in boot process',
-    class: 'Specify a DHCP class',
-    origin: 'Configure the origin of the pool',
-    import: 'Programmatically importing DHCP option parameters',
-    update: 'Dynamic updates',
-    'renew-deny': 'Configure renew policy',
-    utilization: 'Configure various utilization parameters',
-    mark: 'Configure upper/lower utilization marks',
-    high: 'Configure high utilization mark',
-    low: 'Configure low utilization mark',
-    subnet: 'Subnet allocation commands',
-    'prefix-length': 'Sets subnet size',
-    vrf: 'Associate this pool with a VRF',
-    accounting: 'Send Accounting Start/Stop messages',
-    secondary: 'Make this a secondary subnet',
-    hex: 'Raw hex value',
-    instance: 'Specify the option instance',
-    range: 'Configure a range of addresses',
-    source: 'Configure relay source',
-    destination: 'Configure relay destination',
-    ethernet: 'Ethernet (10Mb)',
-    ieee802: 'IEEE 802 networks',
-    'b-node': 'Broadcast node',
-    'p-node': 'Peer-to-peer node',
-    'm-node': 'Mixed node',
-    'h-node': 'Hybrid node',
-    unknown: 'Deny renewal of unknown clients',
-    deny: 'Deny',
-    // interface
-    description: 'Interface specific description',
-    shutdown: 'Shutdown the selected interface',
-    'helper-address': 'Specify a destination address for UDP broadcasts',
-    encapsulation: 'Set encapsulation type for an interface',
-    dot1q: 'IEEE 802.1Q Virtual LAN',
-    duplex: 'Configure duplex operation.',
-    speed: 'Configure speed operation.',
-    switchport: 'Set switching mode characteristics',
-    mode: 'Set trunking mode of the interface',
-    access: 'Set access mode characteristics of the interface',
-    trunk: 'Set trunking characteristics of the interface',
-    client: 'DHCP client configuration',
-    trusted: 'Received DHCP packets may contain relay info option with zero giaddr',
-    // show dhcp
-    binding: 'DHCP address bindings',
-    server: 'Miscellaneous DHCP server information',
-    statistics: 'DHCP server statistics',
-    events: 'Report address assignments, lease expirations, etc.',
-    packet: 'Decode message receptions and transmissions',
-    '*': 'Clear all',
-};
-
-return { HELP };
-})();
-__m["core/hash.js"] = (() => {
-/** Deterministic, non-cryptographic stand-in for IOS type-5 secrets (simulation only). */
-function secretHash(text) {
-    let h = 5381;
-    for (const ch of text)
-        h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0;
-    return `$1$mERr$${h.toString(36).padStart(7, '0')}${text.length}`;
-}
-
-return { secretHash };
-})();
-__m["ios/session.js"] = (() => {
-/** A console session on an IOS device: modes, prompts, dispatch, help and errors. */
-const { applyFilter, pipeHelp, splitPipe, withPipeEntry } = __m["ios/pipe.js"];
-const { buildTrie, matchLine, helpFor, completeToken, tokenize } = __m["ios/parser.js"];
-const { HELP } = __m["ios/help.js"];
-const { secretHash } = __m["core/hash.js"];
-const PROMPT_SUFFIX = {
-    user: '>',
-    exec: '#',
-    config: '(config)#',
-    'config-if': '(config-if)#',
-    'config-subif': '(config-subif)#',
-    'config-if-range': '(config-if-range)#',
-    'dhcp-config': '(dhcp-config)#',
-    'dhcp-class': '(config-dhcp-pool-class)#',
-    'config-line': '(config-line)#',
-    'config-vlan': '(config-vlan)#',
-    'config-std-nacl': '(config-std-nacl)#',
-    'config-ext-nacl': '(config-ext-nacl)#',
-    'config-isakmp': '(config-isakmp)#',
-    'config-crypto-map': '(config-crypto-map)#',
-    'cfg-crypto-trans': '(cfg-crypto-trans)#',
-};
-const EXEC_MODES = new Set(['user', 'exec']);
-const MAX_PASSWORD_TRIES = 3;
-const MAX_HISTORY = 50;
-const trieCache = new WeakMap();
-class Session {
-    device;
-    mode = 'user';
-    ifaces = [];
-    pool;
-    poolClass;
-    vlan;
-    acl;
-    /** Sub-mode being edited: ISAKMP policy, crypto map entry ("MAP seq") or transform set. */
-    crypto;
-    state = { kind: 'normal' };
-    output = [];
-    constructor(device, opts = {}) {
-        this.device = device;
-        if (opts.initialDialog)
-            this.state = { kind: 'dialog' };
-    }
-    banner() {
-        if (this.state.kind !== 'dialog')
-            return [];
-        return ['         --- System Configuration Dialog ---', ''];
-    }
-    prompt() {
-        if (this.state.kind === 'password')
-            return 'Password: ';
-        if (this.state.kind === 'dialog')
-            return 'Continue with configuration dialog? [yes/no]: ';
-        return `${this.device.hostname}${PROMPT_SUFFIX[this.mode]}`;
-    }
-    /** True when the current prompt expects hidden input. */
-    isSecretInput() {
-        return this.state.kind === 'password';
-    }
-    enterMode(mode) {
-        this.mode = mode;
-    }
-    requestPassword(onOk) {
-        this.state = { kind: 'password', tries: 0, onOk };
-    }
-    /** Executes one line and returns the output lines (the echoed command is not included). */
-    input(line) {
-        this.output = [];
-        if (this.state.kind === 'dialog')
-            this.handleDialog(line);
-        else if (this.state.kind === 'password')
-            this.handlePassword(line);
-        else
-            this.dispatch(line);
-        return this.output;
-    }
-    help(lineBeforeQuestion) {
-        const first = tokenize(lineBeforeQuestion)[0]?.text.toLowerCase() ?? '';
-        const isShow = EXEC_MODES.has(this.mode) && first.length >= 2 && 'show'.startsWith(first);
-        const bar = lineBeforeQuestion.indexOf('|');
-        if (isShow && bar >= 0)
-            return pipeHelp(lineBeforeQuestion.slice(bar + 1));
-        const help = this.plainHelp(lineBeforeQuestion);
-        return isShow ? withPipeEntry(help) : help;
-    }
-    plainHelp(lineBeforeQuestion) {
-        const tries = this.tries(this.mode);
-        const isNo = /^\s*no\s+/i.test(lineBeforeQuestion) && !EXEC_MODES.has(this.mode);
-        const rest = isNo ? lineBeforeQuestion.replace(/^\s*no\s+/i, '') : lineBeforeQuestion;
-        return helpFor(isNo ? tries.no : tries.normal, rest);
-    }
-    complete(line) {
-        const tries = this.tries(this.mode);
-        const m = /^(\s*no\s+)(.*)$/i.exec(line);
-        if (m && !EXEC_MODES.has(this.mode)) {
-            const done = completeToken(tries.no, m[2] ?? '');
-            return done === null ? null : `${m[1]}${done}`;
-        }
-        return completeToken(tries.normal, line);
-    }
-    /** Ctrl+Z */
-    ctrlZ() {
-        this.output = [];
-        if (!EXEC_MODES.has(this.mode))
-            this.endConfig();
-        return this.output;
-    }
-    // ------------------------------------------------------------ internals
-    out(...lines) {
-        this.output.push(...lines);
-    }
-    cli() {
-        return { device: this.device, session: this, out: (...l) => this.out(...l) };
-    }
-    tries(mode) {
-        const defs = this.device.modeTable()[mode] ?? [];
-        let cached = trieCache.get(defs);
-        if (!cached) {
-            cached = { normal: buildTrie(defs, HELP), no: buildTrie(defs, HELP, true) };
-            trieCache.set(defs, cached);
-        }
-        return cached;
-    }
-    endConfig() {
-        this.mode = 'exec';
-        this.ifaces = [];
-        this.pool = undefined;
-        this.poolClass = undefined;
-        this.acl = undefined;
-        this.crypto = undefined;
-        this.vlan = undefined;
-        this.device.log('%SYS-5-CONFIG_I: Configured from console by console');
-    }
-    dispatch(line) {
-        if (line.trim() === '' || line.trim().startsWith('!'))
-            return;
-        this.remember(line);
-        if (EXEC_MODES.has(this.mode) && this.piped(line, 0, (cmd) => this.dispatchCommand(cmd)))
-            return;
-        this.dispatchCommand(line);
-    }
-    /**
-     * `show … | include|exclude|begin|section <regex>`. Returns false when the line is not a
-     * piped `show`, so the normal parser reports the error where IOS would.
-     */
-    piped(line, base, run) {
-        const split = splitPipe(line);
-        const first = tokenize(line)[0]?.text.toLowerCase() ?? '';
-        if (!split || first.length < 2 || !'show'.startsWith(first))
-            return false;
-        if (!split.filter) {
-            this.out(`${' '.repeat(this.prompt().length + base + split.offset)}^`, "% Invalid input detected at '^' marker.", '');
-            return true;
-        }
-        if (!split.regex) {
-            this.out('% Incomplete command.', '');
-            return true;
-        }
-        const outer = this.output;
-        this.output = [];
-        let lines;
-        try {
-            run(split.command);
-        }
-        finally {
-            lines = this.output;
-            this.output = outer;
-        }
-        this.out(...(lines.some((l) => l.startsWith('% ')) ? lines : applyFilter(lines, split.filter, split.regex)));
-        return true;
-    }
-    dispatchCommand(line) {
-        const isNo = !EXEC_MODES.has(this.mode) && /^\s*(no|default)\s/i.test(line);
-        const body = isNo ? line.replace(/^\s*(no|default)\s+/i, '') : line;
-        const offset = line.length - body.length;
-        const result = this.match(this.mode, body, isNo);
-        if (result.kind === 'ok') {
-            this.execute(result, isNo);
-            return;
-        }
-        if (this.tryParentMode(body, isNo))
-            return;
-        this.reportError(result, line, offset);
-    }
-    match(mode, body, isNo) {
-        const tries = this.tries(mode);
-        return matchLine(isNo ? tries.no : tries.normal, body, false);
-    }
-    execute(result, isNo) {
-        const handler = isNo ? result.def.noRun : result.def.run;
-        handler?.(this.cli(), result.match);
-    }
-    /** Config sub-modes fall back to global configuration commands, like IOS does. */
-    tryParentMode(body, isNo) {
-        if (EXEC_MODES.has(this.mode) || this.mode === 'config')
-            return false;
-        const parent = this.mode === 'dhcp-class' ? 'dhcp-config' : 'config';
-        const candidates = parent === 'dhcp-config' ? ['dhcp-config', 'config'] : ['config'];
-        for (const mode of candidates) {
-            const result = this.match(mode, body, isNo);
-            if (result.kind !== 'ok')
-                continue;
-            this.mode = mode;
-            if (mode === 'config')
-                this.ifaces = [];
-            this.execute(result, isNo);
-            return true;
-        }
-        return false;
-    }
-    reportError(result, line, offset) {
-        if (result.kind === 'ambiguous') {
-            this.out(`% Ambiguous command:  "${line.trim()}"`);
-            return;
-        }
-        if (result.kind === 'incomplete') {
-            this.out('% Incomplete command.', '');
-            return;
-        }
-        if (result.kind !== 'invalid')
-            return;
-        const firstWord = tokenize(line)[0]?.text ?? '';
-        if (EXEC_MODES.has(this.mode) && result.position + offset === tokenize(line)[0]?.start) {
-            this.unknownExecCommand(firstWord, line);
-            return;
-        }
-        const caret = ' '.repeat(this.prompt().length + offset + result.position);
-        this.out(`${caret}^`, "% Invalid input detected at '^' marker.", '');
-    }
-    unknownExecCommand(word, line) {
-        if (tokenize(line).length > 1) {
-            const caret = ' '.repeat(this.prompt().length + (tokenize(line)[0]?.start ?? 0));
-            this.out(`${caret}^`, "% Invalid input detected at '^' marker.", '');
-            return;
-        }
-        if (this.device.domainLookup)
-            this.out(`Translating "${word}"...domain server (255.255.255.255)`);
-        this.out('% Unknown command or computer name, or unable to find computer address');
-    }
-    remember(line) {
-        this.device.history.push(line.trim());
-        if (this.device.history.length > MAX_HISTORY)
-            this.device.history.shift();
-    }
-    handleDialog(line) {
-        const answer = line.trim().toLowerCase();
-        if (answer.startsWith('y')) {
-            this.out('% Configuration dialog is not supported in this simulator. Entering CLI.');
-        }
-        this.state = { kind: 'normal' };
-        this.out('', '', 'Press RETURN to get started!', '');
-    }
-    handlePassword(line) {
-        if (this.state.kind !== 'password')
-            return;
-        const d = this.device;
-        const ok = d.enableSecret ? secretHash(line) === d.enableSecret : line === d.enablePassword;
-        if (ok) {
-            const { onOk } = this.state;
-            this.state = { kind: 'normal' };
-            onOk();
-            return;
-        }
-        const tries = this.state.tries + 1;
-        if (tries >= MAX_PASSWORD_TRIES) {
-            this.state = { kind: 'normal' };
-            this.out('% Bad secrets', '');
-            return;
-        }
-        this.state = { ...this.state, tries };
-    }
-    runExec(line) {
-        if (this.piped(line, 3, (cmd) => this.runExecCommand(cmd)))
-            return;
-        this.runExecCommand(line);
-    }
-    runExecCommand(line) {
-        const saved = this.mode;
-        const result = this.match('exec', line, false);
-        if (result.kind === 'ok') {
-            this.mode = 'exec';
-            this.execute(result, false);
-            if (this.mode === 'exec')
-                this.mode = saved;
-            return;
-        }
-        this.reportError(result, `do ${line}`, 3);
-    }
-}
-/** Replays configuration text (running-config format) on a device. Returns error lines. */
-function applyConfig(device, lines) {
-    const session = new Session(device);
-    session.mode = 'config';
-    const errors = [];
-    for (const raw of lines) {
-        const line = raw.replace(/\r$/, '');
-        if (shouldSkipConfigLine(line))
-            continue;
-        if (!line.startsWith(' ') && session.mode !== 'config')
-            session.mode = 'config';
-        const out = session.input(line);
-        // In a saved configuration an interface without "shutdown" is enabled.
-        if (/^interface /.test(line))
-            session.ifaces.forEach((n) => device.updateIface(n, (c) => ({ ...c, shutdown: false })));
-        if (out.some((l) => l.startsWith('%')))
-            errors.push(`${line.trim()}: ${out.filter((l) => l.startsWith('%')).join(' ')}`);
-    }
-    return errors;
-}
-const SKIP_RE = /^(!|end$|version |Building configuration|Current configuration|no service timestamps|service timestamps|no service password-encryption|ip cef|no ipv6 cef|ip classless|ip flow-export|spanning-tree mode|\s*$)/;
-function shouldSkipConfigLine(line) {
-    return SKIP_RE.test(line);
-}
-
-return { Session, applyConfig };
-})();
 __m["devices/pc.js"] = (() => {
 /** Packet Tracer-style PC: a host with client applications (browser, mail, SSH, terminals). */
 const { Host, HOST_PORT } = __m["devices/host.js"];
@@ -37625,7 +37702,7 @@ function readStatic(inputs) {
     const mask = inputs.mask.value.trim() === '' ? undefined : parseMask(inputs.mask.value.trim());
     const bad = ip === null ? t('ip.field.ip') : mask === null ? t('ip.field.mask') : gw === null ? t('ip.field.gw') : dns === null ? t('ip.field.dns') : '';
     if (bad)
-        return t('ip.check', { field: bad });
+        return mask === null && ip !== null ? t('ip.checkMask') : t('ip.check', { field: bad });
     const prefix = mask ?? (ip !== undefined && ip !== null ? classfulPrefix(ip) : undefined);
     return { ip: ip ?? undefined, prefix, gateway: gw ?? undefined, dns: dns ?? undefined };
 }
@@ -38730,17 +38807,20 @@ const { UNITS, unitActive } = __m["services/units.js"];
 const { createShell } = __m["shells/factory.js"];
 const { sshAuthMethods, setSshAuthMethods } = __m["services/ssh-auth-settings.js"];
 function servicesTab(server, app) {
+    // A Linux router starts with its own panels (kernel parameters, firewall, VPN); a Server has none of them:
+    // sysctl and nft are still there in its terminal, but tuning the kernel belongs to the router.
+    const router = server.kind === 'linuxrouter' ? [
+        { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root },
+        { id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root },
+        { id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root },
+    ] : [];
     return subnav([
+        ...router,
         { id: 'dhcp', label: 'DHCP', render: () => dhcpPanel(server, app) },
         { id: 'dns', label: 'DNS', render: () => dnsPanel(server, app) },
         { id: 'http', label: 'HTTP', render: () => httpPanel(server, app) },
         { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
         { id: 'ssh', label: 'SSH', render: () => sshPanel(server, app) },
-        ...(server.os === 'linux' ? [
-            { id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root },
-            { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root },
-        ] : []),
-        ...(server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
         { id: 'log', label: t('srv.log'), render: () => logPanel(server) },
     ]);
 }
@@ -40946,6 +41026,7 @@ return { cloudTabs };
 })();
 __m["ui/device-windows.js"] = (() => {
 /** Window contents: IOS CLI for routers/switches; desktop tabs for PCs and Server. */
+const { iosDeviceSettings } = __m["ui/ios-device-settings.js"];
 const { t } = __m["i18n/t.js"];
 const { LinuxRouter } = __m["devices/linux-router.js"];
 const { routerInterfaces } = __m["ui/router-ip.js"];
@@ -41020,7 +41101,10 @@ function openDeviceWindow(placed, host) {
         return;
     }
     const term = cliTerminal(placed, host);
-    host.windows.show(d.id, `${placed.label} · ${d.hostname}`, [
+    let handle;
+    const device = iosDeviceSettings(placed, d, { afterCommand: () => host.afterCommand(), retitle: (title) => handle?.setTitle(title) });
+    handle = host.windows.show(d.id, `${placed.label} · ${d.hostname}`, [
+        { id: 'host', label: t('win.host'), render: () => device.root, onShow: () => device.refresh() },
         { id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() },
         { id: 'web', label: t('win.webAdmin'), render: () => iosWebSettings(d, () => host.afterCommand()) },
     ]);
@@ -41055,22 +41139,24 @@ function openHostWindow(placed, h, app) {
     });
     const ipTab = { id: 'ip', label: t('win.ip'), render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
     const order = h.os === 'linux' ? ['linux', 'windows'] : ['windows', 'linux'];
-    const model = h instanceof LinuxRouter ? '2911 Linux' : h instanceof Server ? 'Server' : 'PC';
+    const model = h instanceof LinuxRouter ? 'Ubuntu' : h instanceof Server ? 'Server' : 'PC';
     let handle;
     const settingsTab = { id: 'host', label: t('win.host'), render: () => {
             const v = hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) });
             disposers.push(v.dispose);
             return v.root;
         } };
+    // «Equipo» is always the first tab (as in the IOS devices).
     const routerTabs = (r) => [
+        settingsTab,
         { id: 'svc', label: t('win.services'), render: () => servicesTab(r, app) },
         { id: 'ifaces', label: t('router.ifaces'), render: () => { const v = routerInterfaces(r, app); disposers.push(v.dispose); return v.root; } },
-        settingsTab, terminal('linux'),
+        terminal('linux'),
     ];
     const tabs = h instanceof LinuxRouter ? routerTabs(h) : h instanceof Server
-        ? [{ id: 'svc', label: t('win.services'), render: () => servicesTab(h, app) }, ipTab, settingsTab, ...order.map(terminal)]
-        : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
-                { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : []), settingsTab, ...order.map(terminal)];
+        ? [settingsTab, { id: 'svc', label: t('win.services'), render: () => servicesTab(h, app) }, ipTab, ...order.map(terminal)]
+        : [settingsTab, ipTab, ...(h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
+                { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : []), ...order.map(terminal)];
     handle = app.windows.show(h.id, `${placed.label} · ${model}`, tabs, () => disposers.forEach((f) => f()));
 }
 
@@ -42852,6 +42938,10 @@ function setAddress(cli, m) {
     const ip = parseIp(m.get('ip') ?? '');
     const prefix = parseMask(m.get('mask') ?? '');
     const name = cli.session.ifaces[0];
+    const raw = parseIp(m.get('mask') ?? '');
+    // A dotted mask whose ones are not contiguous (255.255.0.255, 192.168.1.0): IOS shows it in hex.
+    if (ip !== null && prefix === null && raw !== null)
+        return cli.out(`Bad mask 0x${raw.toString(16).toUpperCase().padStart(8, '0')} for address ${formatIp(ip)}`);
     if (ip === null || prefix === null || !name)
         return;
     if (rejectOnSwitchport(cli))
@@ -45798,6 +45888,10 @@ const PAGES = [
     { id: 'admin', tab: 'admin' },
     { id: 'status', tab: 'status' }, { id: 'log', tab: 'status' },
 ];
+/** Pages of a device: the Security tab (firewall, routes, VPN) only exists on a Linux router. */
+function pagesOf(server) {
+    return server.kind === 'linuxrouter' ? PAGES : PAGES.filter((p) => p.tab !== 'security');
+}
 /** One section row: dark label column, form column, help column. */
 function section(title, help, ...body) {
     return h('tr', {}, h('th', { class: 'web-wrt-label' }, title), h('td', { class: 'web-wrt-body' }, ...body), h('td', { class: 'web-wrt-help' }, help));
@@ -45823,16 +45917,17 @@ function buttons() {
 }
 function frame(server, base, current, notice, body) {
     const link = (id) => `${base}/?page=${id}`;
-    const tabs = TABS.map((id) => {
+    const pages = pagesOf(server);
+    const tabs = TABS.filter((id) => pages.some((p) => p.tab === id)).map((id) => {
         const label = tabLabel(id);
-        const first = PAGES.find((p) => p.tab === id)?.id ?? id;
+        const first = pages.find((p) => p.tab === id)?.id ?? id;
         return h('li', { class: id === current.tab ? 'web-wrt-tab web-wrt-on' : 'web-wrt-tab' }, h('a', { href: link(first) }, label));
     });
-    const subs = PAGES.filter((p) => p.tab === current.tab).map((p) => h('li', { class: p.id === current.id ? 'web-wrt-on' : undefined }, h('a', { href: link(p.id) }, pageLabel(p.id))));
+    const subs = pages.filter((p) => p.tab === current.tab).map((p) => h('li', { class: p.id === current.id ? 'web-wrt-on' : undefined }, h('a', { href: link(p.id) }, pageLabel(p.id))));
     return page(`Server · ${pageLabel(current.id)}`, 'web-wrt', h('div', { class: 'web-wrt-top' }, h('span', { class: 'web-brand-logo', title: 'Netfix' }, 'Netfix'), h('span', {}, t('wa.firmware', { version: ABOUT.version }))), h('div', { class: 'web-wrt-title' }, h('span', { class: 'web-wrt-product' }, t('wa.product')), h('span', { class: 'web-wrt-model' }, server.name)), h('ul', { class: 'web-wrt-tabs' }, tabs), h('ul', { class: 'web-wrt-subtabs' }, subs), notice.ok ? h('p', { class: 'web-wrt-ok' }, notice.ok) : null, notice.error ? h('p', { class: 'web-wrt-error' }, notice.error) : null, h('table', { class: 'web-wrt-page' }, body), h('p', { class: 'web-wrt-foot web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), t('wa.foot')));
 }
 
-return { pageLabel, TABS, PAGES, section, row, text, check, choose, form, buttons, frame };
+return { pageLabel, TABS, PAGES, pagesOf, section, row, text, check, choose, form, buttons, frame };
 })();
 __m["web/admin-pages.js"] = (() => {
 /** Pages of the Server management GUI (forms filled with the live configuration). */
@@ -46379,7 +46474,8 @@ function runAction(server, pageId, f) {
         case 'user-add':
         case 'user-del': return users(server, pageId === 'ssh' ? 'ssh' : 'mail', f, action === 'user-add');
         case 'admin': return admin(server, f);
-        default: return vpnAction(server, f) ?? securityAction(server, f) ?? { error: t('wa.unknownAction') };
+        // Firewall, routes and VPN are pages of the Linux router only.
+        default: return (server.kind === 'linuxrouter' ? vpnAction(server, f) ?? securityAction(server, f) : undefined) ?? { error: t('wa.unknownAction') };
     }
 }
 
@@ -46392,7 +46488,7 @@ const { withLocale } = __m["i18n/locale.js"];
 const { requestLocale } = __m["web/html.js"];
 const { basicAuth, formFields, query, redirect, respond, unauthorized, forMethod } = __m["web/http.js"];
 const { h, page } = __m["web/html.js"];
-const { PAGES, frame } = __m["web/admin-layout.js"];
+const { PAGES, frame, pagesOf } = __m["web/admin-layout.js"];
 const { setupPage, dhcpPage, dnsPage, webPage, mailPage, sshPage, adminPage, statusPage, logPage } = __m["web/admin-pages.js"];
 const { runAction } = __m["web/admin-actions.js"];
 const { firewallPage, routingPage } = __m["web/admin-firewall.js"];
@@ -46437,7 +46533,7 @@ function adminResponse(server, req, peer, base) {
         return unauthorized(BANNER, REALM, page('401 Unauthorized', '', h('h1', {}, 'Unauthorized'), h('p', {}, t('wa.needLogin'))));
     }
     const q = query(req);
-    const current = PAGES.find((p) => p.id === q.get('page')) ?? PAGES[0];
+    const current = pagesOf(server).find((p) => p.id === q.get('page')) ?? PAGES[0];
     if (!current)
         return respond(BANNER, 404, 'Not Found');
     if (req.method === 'POST') {
@@ -48109,11 +48205,13 @@ const { el, staticSvg } = __m["ui/dom.js"];
 const { ICONS, modelLabel } = __m["ui/icons.js"];
 const { t } = __m["i18n/t.js"];
 const PLACEABLE = [
-    ['router', 'kind.router'], ['switch', 'kind.switch'], ['pc', 'kind.pc'], ['server', 'kind.server'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
+    ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
 ];
 function palette(actions, buttons, hintEl) {
     const deviceBtn = (kind, name) => {
-        const b = el('button', { type: 'button', class: 'pal-item', 'aria-pressed': 'false' }, staticSvg(ICONS[kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, modelLabel(kind)));
+        const b = el('button', { type: 'button', class: 'pal-item', 'aria-pressed': 'false' }, 
+        // Both routers share the router symbol here; the model line tells them apart (2911 / Ubuntu).
+        staticSvg(ICONS[kind === 'linuxrouter' ? 'router' : kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, modelLabel(kind)));
         b.addEventListener('click', () => actions.selectTool({ kind: 'place', device: kind }, `place-${kind}`));
         buttons.set(`place-${kind}`, b);
         return b;

@@ -170,6 +170,7 @@ export function runAction(server: Server, pageId: string, f: Fields): Outcome & 
     case 'ssh': return ssh(server, f);
     case 'user-add': case 'user-del': return users(server, pageId === 'ssh' ? 'ssh' : 'mail', f, action === 'user-add');
     case 'admin': return admin(server, f);
-    default: return vpnAction(server, f) ?? securityAction(server, f) ?? { error: t('wa.unknownAction') };
+    // Firewall, routes and VPN are pages of the Linux router only.
+    default: return (server.kind === 'linuxrouter' ? vpnAction(server, f) ?? securityAction(server, f) : undefined) ?? { error: t('wa.unknownAction') };
   }
 }

@@ -61,10 +61,11 @@ export const SECURITY_DOCS: DocGroup = {
       summary: 'Hardware de un 2911 con Ubuntu: eth0-eth2, ip_forward, rutas, NAT con nftables y gestión web.',
       blocks: [
         p('El Router Linux tiene los puertos de un 2911 (GigabitEthernet0/0-2) y el software de Server: los puertos se llaman eth0, eth1 y eth2 en la terminal. Solo reenvía paquetes entre interfaces si net.ipv4.ip_forward = 1.'),
+        note('Imprescindible: sin net.ipv4.ip_forward = 1 el Router Linux no enruta. Responde a ping en sus propias direcciones, pero descarta todo lo que tenga que pasar de una interfaz a otra. Actívalo en Servicios → Parámetros (aplica y guarda en /etc/sysctl.d) o con sysctl en la terminal.'),
         code('root@linuxrouter0:~# ip addr add 192.168.1.1/24 dev eth1\nroot@linuxrouter0:~# ip route add 10.20.0.0/16 via 192.168.1.254\nroot@linuxrouter0:~# sysctl -w net.ipv4.ip_forward=1\nroot@linuxrouter0:~# echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-router.conf'),
         table(['Dónde', 'Qué se configura'], [
           ['Pestaña Interfaces', 'Dirección de cada eth, DHCP en eth0, rutas estáticas y reenvío.'],
-          ['Servicios → Cortafuegos y sysctl', 'nftables (tablas, cadenas, reglas, plantillas) y parámetros del núcleo; se aplica y se guarda.'],
+          ['Servicios → Parámetros y Firewall', 'Parámetros del núcleo (sysctl: net.ipv4.ip_forward…) y nftables (tablas, cadenas, reglas, plantillas); se aplica y se guarda.'],
           ['Servicios → VPN', 'Túnel WireGuard wg0.'],
           ['Gestión web (Seguridad)', 'Las mismas opciones en páginas al estilo WRT300N.'],
           ['Terminal', 'ip, sysctl, nft, wg, wg-quick, systemctl, journalctl, dmesg, nc, nmap.'],

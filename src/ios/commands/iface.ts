@@ -38,6 +38,9 @@ function setAddress(cli: Cli, m: Match): void {
   const ip = parseIp(m.get('ip') ?? '');
   const prefix = parseMask(m.get('mask') ?? '');
   const name = cli.session.ifaces[0];
+  const raw = parseIp(m.get('mask') ?? '');
+  // A dotted mask whose ones are not contiguous (255.255.0.255, 192.168.1.0): IOS shows it in hex.
+  if (ip !== null && prefix === null && raw !== null) return cli.out(`Bad mask 0x${raw.toString(16).toUpperCase().padStart(8, '0')} for address ${formatIp(ip)}`);
   if (ip === null || prefix === null || !name) return;
   if (rejectOnSwitchport(cli)) return;
   const addr = { ip, prefix };

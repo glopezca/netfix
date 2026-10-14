@@ -89,6 +89,9 @@ test('interface addressing validation', () => {
   c.run('int g0/0', 'ip address 192.168.1.1 255.255.255.0');
   assert.deepEqual(c.run('int g0/1', 'ip address 192.168.1.2 255.255.255.0'), ['% 192.168.1.0 overlaps with GigabitEthernet0/0']);
   assert.deepEqual(c.run('ip address 10.0.0.0 255.255.255.0'), ['Bad mask 0xFFFFFF00 for address 10.0.0.0']);
+  // A mask whose ones are not contiguous (or an address typed as mask) is reported as a mask, in hex.
+  assert.deepEqual(c.run('ip address 10.0.0.1 255.255.0.255'), ['Bad mask 0xFFFF00FF for address 10.0.0.1']);
+  assert.deepEqual(c.run('ip address 10.0.0.1 10.0.0.0'), ['Bad mask 0x0A000000 for address 10.0.0.1']);
   assert.deepEqual(c.run('int g9/9'), ['%Invalid interface type and number']);
 });
 

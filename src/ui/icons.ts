@@ -67,7 +67,7 @@ const CLOUD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width
 
 export const ICONS: Readonly<Record<DeviceKind, string>> = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, linuxrouter: LINUX_ROUTER, cloud: CLOUD };
 
-export const MODEL_LABEL: Readonly<Record<DeviceKind, string>> = { router: '2911', switch: '2960-24TT', pc: 'PC', server: 'Server', linuxrouter: '2911 Linux', cloud: 'ISP' };
+export const MODEL_LABEL: Readonly<Record<DeviceKind, string>> = { router: '2911', switch: '2960-24TT', pc: 'PC', server: 'Server', linuxrouter: 'Ubuntu', cloud: 'ISP' };
 
 /** Model label shown under the icon (the cloud is translated). */
 export function modelLabel(kind: DeviceKind): string {

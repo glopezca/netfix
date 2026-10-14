@@ -1,4 +1,4 @@
-/** Documentation: client devices (IP configuration, applications and the Windows Command Prompt). */
+/** Documentation: client devices (IP configuration, applications and the Windows terminal). */
 import type { DocGroup } from '../types.ts';
 import { code, h, list, p, table } from '../types.ts';
 
@@ -58,7 +58,7 @@ export const CLIENT_DOCS: DocGroup = {
     },
     {
       id: 'windows-cmd',
-      title: 'Command Prompt (Windows)',
+      title: 'Windows terminal (cmd)',
       summary: 'cmd.exe commands available on Windows PCs and servers.',
       blocks: [
         table(['Command', 'Usage'], [

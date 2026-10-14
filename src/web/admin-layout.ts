@@ -25,6 +25,11 @@ export const PAGES: readonly AdminPage[] = [
   { id: 'status', tab: 'status' }, { id: 'log', tab: 'status' },
 ];
 
+/** Pages of a device: the Security tab (firewall, routes, VPN) only exists on a Linux router. */
+export function pagesOf(server: Server): readonly AdminPage[] {
+  return server.kind === 'linuxrouter' ? PAGES : PAGES.filter((p) => p.tab !== 'security');
+}
+
 /** One section row: dark label column, form column, help column. */
 export function section(title: string, help: string, ...body: Child[]): Markup {
   return h('tr', {}, h('th', { class: 'web-wrt-label' }, title), h('td', { class: 'web-wrt-body' }, ...body), h('td', { class: 'web-wrt-help' }, help));
@@ -57,12 +62,13 @@ export function buttons(): Markup {
 
 export function frame(server: Server, base: string, current: AdminPage, notice: { ok?: string; error?: string }, body: Child): string {
   const link = (id: string): string => `${base}/?page=${id}`;
-  const tabs = TABS.map((id) => {
+  const pages = pagesOf(server);
+  const tabs = TABS.filter((id) => pages.some((p) => p.tab === id)).map((id) => {
     const label = tabLabel(id);
-    const first = PAGES.find((p) => p.tab === id)?.id ?? id;
+    const first = pages.find((p) => p.tab === id)?.id ?? id;
     return h('li', { class: id === current.tab ? 'web-wrt-tab web-wrt-on' : 'web-wrt-tab' }, h('a', { href: link(first) }, label));
   });
-  const subs = PAGES.filter((p) => p.tab === current.tab).map((p) => h('li', { class: p.id === current.id ? 'web-wrt-on' : undefined }, h('a', { href: link(p.id) }, pageLabel(p.id))));
+  const subs = pages.filter((p) => p.tab === current.tab).map((p) => h('li', { class: p.id === current.id ? 'web-wrt-on' : undefined }, h('a', { href: link(p.id) }, pageLabel(p.id))));
   return page(`Server · ${pageLabel(current.id)}`, 'web-wrt',
     h('div', { class: 'web-wrt-top' }, h('span', { class: 'web-brand-logo', title: 'Netfix' }, 'Netfix'), h('span', {}, t('wa.firmware', { version: ABOUT.version }))),
     h('div', { class: 'web-wrt-title' }, h('span', { class: 'web-wrt-product' }, t('wa.product')), h('span', { class: 'web-wrt-model' }, server.name)),

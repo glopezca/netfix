@@ -16,17 +16,20 @@ import { createShell } from '../shells/factory.ts';
 import { sshAuthMethods, setSshAuthMethods } from '../services/ssh-auth-settings.ts';
 
 export function servicesTab(server: Server, app: AfterChange): HTMLElement {
+  // A Linux router starts with its own panels (kernel parameters, firewall, VPN); a Server has none of them:
+  // sysctl and nft are still there in its terminal, but tuning the kernel belongs to the router.
+  const router = server.kind === 'linuxrouter' ? [
+    { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root },
+    { id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root },
+    { id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root },
+  ] : [];
   return subnav([
+    ...router,
     { id: 'dhcp', label: 'DHCP', render: () => dhcpPanel(server, app) },
     { id: 'dns', label: 'DNS', render: () => dnsPanel(server, app) },
     { id: 'http', label: 'HTTP', render: () => httpPanel(server, app) },
     { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
     { id: 'ssh', label: 'SSH', render: () => sshPanel(server, app) },
-    ...(server.os === 'linux' ? [
-      { id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root },
-      { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root },
-    ] : []),
-    ...(server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
     { id: 'log', label: t('srv.log'), render: () => logPanel(server) },
   ]);
 }

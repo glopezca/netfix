@@ -42,6 +42,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       list(
         'Autenticación HTTP Basic (realm «Server»); los intentos fallidos quedan en journalctl -u apache2.',
         'Cada cambio se valida igual que en la ventana del servidor y se registra con el usuario y la IP del PC.',
+        'La pestaña Seguridad de la interfaz (Firewall, Enrutamiento, VPN) solo aparece en el Router Linux; en un Server no existe.',
       ),
     ],
   },

@@ -26,6 +26,8 @@ try {
 
   // 1. CLI: configure a manual binding for PC0 through the console.
   await page.dblclick('g.device-router');
+  assert.equal(await page.locator('.win-tab').first().innerText(), 'Equipo', 'Equipo is the first tab of an IOS router');
+  await page.click('.win-tab:has-text("CLI")');
   const type = async (line) => { await page.keyboard.type(line); await page.keyboard.press('Enter'); };
   await type('no');
   await type('');
@@ -47,7 +49,7 @@ try {
   // 2. PC desktop: renew via DHCP in simulation mode and replay the DORA.
   await page.click('button.seg:has-text("Simulación")');
   await page.dblclick('g.device-pc >> nth=0');
-  await page.click('.win-tab:has-text("Símbolo del sistema")');
+  await page.click('.win-tab:has-text("Terminal Windows")');
   await type('ipconfig /release');
   await type('ipconfig /renew');
   await page.waitForTimeout(200);
@@ -79,6 +81,8 @@ try {
   // 4. Server lab: services panel, web browser, mail and SSH from a PC.
   await page.selectOption('select.select >> nth=0', 'servidores');
   await page.dblclick('g.device-server');
+  await page.click('.win-tab:has-text("Servicios")');
+  assert.equal(await page.locator('.subnav-item:has-text("Parámetros"), .subnav-item:has-text("Firewall")').count(), 0, 'a Server has no kernel panels');
   await page.click('.subnav-item:has-text("DNS")');
   assert.match(await page.locator('.subnav-content').innerText(), /www\.aula\.lab/);
   await page.click('.win-close');
@@ -165,7 +169,8 @@ try {
   assert.match(await page.locator('.window').innerText(), /ip http server/);
   await page.click('.win-close');
   await page.click('button.seg:has-text("Acerca de")');
-  assert.match(await page.locator('#app').innerText(), /0\.6\.0|0\.7\.0/);
+  const { version } = JSON.parse(await import('node:fs').then((fs) => fs.readFileSync(join(root, 'package.json'), 'utf8')));
+  assert.ok((await page.locator('#app').innerText()).includes(version), `About shows ${version}`);
   await page.click('button.seg:has-text("Red")');
 
   // 9. Donations: suggested amounts build the PayPal.Me link; other amounts are validated.

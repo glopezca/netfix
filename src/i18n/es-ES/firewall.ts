@@ -1,7 +1,7 @@
 /** Español (España): cortafuegos nftables y parámetros sysctl en la ventana del equipo. */
 export const FIREWALL_ES = {
-  'fw.tab': 'Cortafuegos',
-  'fw.service': 'Cortafuegos nftables (nftables.service)',
+  'fw.tab': 'Firewall',
+  'fw.service': 'Firewall nftables (nftables.service)',
   'fw.intro': 'Lo que cambias aquí se aplica y se guarda en /etc/nftables.conf (y nftables.service se habilita). Con «nft» en la terminal solo cambias lo que está en marcha hasta que lo guardes.',
   'fw.saved': 'Lo que está en marcha coincide con /etc/nftables.conf.',
   'fw.unsaved': 'Hay cambios hechos con «nft» que no están en /etc/nftables.conf: se perderán al reiniciar.',
@@ -51,7 +51,7 @@ export const FIREWALL_ES = {
   'fw.preview': 'nft list ruleset',
   'fw.badField': 'Revisa el campo «{field}».',
   'fw.notLinux': 'El cortafuegos nftables solo está en los equipos Ubuntu.',
-  'sysctl.tab': 'sysctl',
+  'sysctl.tab': 'Parámetros',
   'sysctl.intro': 'Parámetros del núcleo. Se aplican y se guardan en /etc/sysctl.d/99-netfix.conf; con «sysctl -w» en la terminal solo duran hasta reiniciar.',
   'sysctl.key': 'Parámetro',
   'sysctl.value': 'Valor',

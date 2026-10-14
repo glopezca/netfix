@@ -32,7 +32,7 @@ Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado par
 - **Gestión web**: servidor HTTP de IOS en routers y switches (`ip http server`, Device Manager),
   **Roundcube** y una consola de administración web en Server; Apache2 configurable en `/etc/apache2`.
 - **v0.7**: interfaz y documentación en **español (es-ES) e inglés (en-GB)**, cambio de idioma sin recargar.
-  **Router Linux** (hardware 2911 con Ubuntu): `sysctl net.ipv4.ip_forward`, cortafuegos **nftables** (tablas,
+  **Router Linux** (hardware 2911 con Ubuntu; solo enruta con `net.ipv4.ip_forward = 1`, en Servicios → Parámetros), **Firewall** **nftables** (tablas,
   cadenas, conntrack, masquerade, dnat), configurable desde la terminal, la pestaña Servicios y una WebGUI tipo
   WRT300N. **VPN** entre sedes: WireGuard (`wg`, `wg-quick`) en Linux e IPsec site-to-site en el 2911 (isakmp,
   transform-set, crypto map, `show crypto`). ACL extendidas de IOS. DNS de empresa que reenvía a los DNS de Google
@@ -82,13 +82,14 @@ en `hardware-address` o `client-identifier`.
 
 ## Servidores Server
 
-Coloca un **Servidor** desde la paleta y haz doble clic. Pestañas:
+La paleta va en este orden: PC, Servidor, Switch IOS, Router IOS, Router Linux y Nube. Coloca un **Servidor** y haz doble clic. Pestañas:
 
 | Pestaña | Qué hace |
 |---|---|
-| **Servicios** | Activa y configura cada servicio. Cada uno tiene su interruptor y su panel. |
+| **Equipo** | Nombre visible en el área de trabajo y nombre de host (sigue a la terminal). Es la primera pestaña de todos los equipos, también del Router IOS y del Switch IOS. |
+| **Servicios** | Activa y configura cada servicio. Cada uno tiene su interruptor y su panel. Los paneles de núcleo (Parámetros) y Firewall solo están en el Router Linux; en un Server, `sysctl` y `nft` siguen disponibles en la terminal. |
 | **Configuración IP** | IP estática o por DHCP, sistema operativo (Ubuntu o Windows Server), MAC y Client-ID. |
-| **Terminal Linux** / **Símbolo del sistema** | Shell local del servidor. |
+| **Terminal Linux** / **Terminal Windows** | Shell local del servidor. |
 
 | Servicio | Configuración | Equivalente en el servidor real |
 |---|---|---|
@@ -149,7 +150,7 @@ El laboratorio **«Server: DHCP, DNS, web, correo y SSH»** lo trae todo configu
 
 ### Internet, NAT y gestión web
 
-- **Nube ISP** (paleta → Nube): seis líneas (`Coaxial0-1`, `DSL0-1`, `Fibra0-1`). En modo *router del operador*
+- **Nube ISP** (paleta → Nube, «ISP → Internet»): seis líneas (`Coaxial0-1`, `DSL0-1`, `Fibra0-1`). En modo *router del operador*
   la línea es la LAN `192.168.1.1/24` con DHCP, NAT y redirección de puertos; en modo *IP pública* entrega
   `x.y.n.2/29` por DHCP a tu router Cisco para que hagas tú el NAT. En la pestaña ISP se registran dominios
   (A o delegación NS) que publican `8.8.8.8` y `8.8.4.4`. `curl ifconfig.me` muestra la IP pública con que sales.

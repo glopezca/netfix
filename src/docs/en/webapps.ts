@@ -42,6 +42,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       list(
         'HTTP Basic authentication (realm “Server”); failed attempts are logged in journalctl -u apache2.',
         'Every change is validated exactly as in the server window and logged with the user and the PC’s IP.',
+        'The Security tab of the interface (Firewall, Routing, VPN) only appears on the Linux router; a Server has none.',
       ),
     ],
   },

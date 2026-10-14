@@ -220,3 +220,17 @@ Diseño detallado de 11.7–11.14 (revisión del agente planner):
   autoridad de permisos); `Subsystem sftp` en `sshd_config`. La app PuTTY reutiliza la terminal y `~/.ssh`.
 - Otras decisiones: web sin `Accept-Language` → es-ES; `nc` y un subconjunto de `nmap` (`-sT -sU -sn -p -Pn`)
   solo para verificar el filtrado; IPsec solo 2911↔2911 y WireGuard solo Linux↔Linux.
+
+## Fase 12 · Coherencia de la interfaz (v0.7.1)
+
+| Paso | Entregable | Riesgo / decisión |
+|---|---|---|
+| 12.1 | Máscara no válida: `Bad mask 0x… for address …` en IOS (máscaras no contiguas) y mensaje propio de máscara en Configuración IP | Formato literal de IOS |
+| 12.2 | Paleta: PC, Servidor, Switch IOS, Router IOS (2911), Router Linux (Ubuntu, mismo símbolo de router), Nube (ISP → Internet) | Solo nombres y orden; el tipo guardado no cambia |
+| 12.3 | Router Linux → Servicios empieza por Parámetros (sysctl), Firewall y VPN; la documentación insiste en `net.ipv4.ip_forward = 1` | — |
+| 12.4 | Server sin paneles de núcleo ni cortafuegos (ventana y pestaña Seguridad de la gestión web); `sysctl`/`nft` siguen en su terminal | Topologías guardadas con cortafuegos en un Server lo conservan |
+| 12.5 | «Equipo» primera pestaña en todos los equipos; panel nuevo para Router IOS y Switch IOS (nombre visible, `hostname`, interfaces) | Validación del hostname igual que la CLI |
+| 12.6 | «Símbolo del sistema» → «Terminal Windows»; documentación, laboratorios y traducciones coherentes | Paridad es/en comprobada por prueba |
+
+**Estado:** completada. Revisión ECC (code-reviewer): sin hallazgos críticos ni altos; corregidos los dos medios
+(validación del hostname IOS y título de la ventana tras un cambio desde la CLI).

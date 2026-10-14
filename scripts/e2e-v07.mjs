@@ -65,6 +65,7 @@ try {
   await page.waitForTimeout(300);
   assert.match(await page.locator('.terminal:visible').innerText(), /2 received/);
   await page.click('.win-tab:has-text("Services")');
+  assert.deepEqual((await page.locator('.subnav-item').allInnerTexts()).slice(0, 3), ['Parameters', 'Firewall', 'VPN'], 'router panels first');
   await page.click('.subnav-item:has-text("VPN")');
   await page.waitForSelector('.window :text("AllowedIPs")');
   await page.click('.win-close');
@@ -96,7 +97,7 @@ try {
   await tablet.waitForSelector('.window');
   const tw = await tablet.locator('.window').boundingBox();
   assert.ok(tw.x >= 0 && tw.x + tw.width <= 820, 'the window fits the tablet width');
-  await tablet.tap('.win-tab:has-text("Command Prompt"), .win-tab:has-text("Linux terminal")');
+  await tablet.tap('.win-tab:has-text("Windows terminal"), .win-tab:has-text("Linux terminal")');
   const ctrl = tablet.locator('.terminal:visible .term-keys [data-key="Ctrl"]');
   await ctrl.dispatchEvent('pointerdown');
   assert.equal(await ctrl.getAttribute('aria-pressed'), 'true');
