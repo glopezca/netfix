@@ -192,7 +192,12 @@ Decisiones de diseño (por defecto, revisables):
 | 11.17 | Documentación en los dos idiomas (`src/docs/en`, `docs/sets.ts`; man/help siguen el idioma) y grupo Seguridad y VPN | Paridad comprobada por `tests/docs/docs-en.test.ts` (órdenes de los bloques `code` intactas) |
 | 11.18 | Revisión ECC (code, typescript, security, network-config), e2e escritorio y táctil, v0.7.0 | — |
 
-**Estado:** 11.1–11.17 completadas (395 pruebas). En curso: 11.18.
+**Estado (v0.7.0):** fases 11.1–11.18 completadas, 406 pruebas, cobertura del núcleo 95 % líneas / 89 % funciones,
+e2e en escritorio (1400 px), móvil y tableta en los dos idiomas. Revisión ECC (code, typescript, security,
+network-config): sin hallazgos críticos; corregidos los altos (iifname en postrouting, ACL crypto con varias líneas,
+vista y modo al cambiar de idioma, mensajes de paneles) y la mayoría de los medios. Pendientes, documentados como
+límites: autenticación real de los mensajes de WireGuard (réplica de la iniciación), errores ICMP «related» sin NAT
+inversa y `reject with` que siempre envía «unreachable».
 
 Diseño detallado de 11.7–11.14 (revisión del agente planner):
 - Ganchos opcionales en `StackHost` (`net/ipstack.ts`): `input?` (tras decidir que el paquete es para el

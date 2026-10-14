@@ -31,6 +31,15 @@ Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado par
   (`ip nat inside/outside`, PAT, pools, NAT estático con puertos, ACL estándar).
 - **Gestión web**: servidor HTTP de IOS en routers y switches (`ip http server`, Device Manager),
   **Roundcube** y una consola de administración web en Server; Apache2 configurable en `/etc/apache2`.
+- **v0.7**: interfaz y documentación en **español (es-ES) e inglés (en-GB)**, cambio de idioma sin recargar.
+  **Router Linux** (hardware 2911 con Ubuntu): `sysctl net.ipv4.ip_forward`, cortafuegos **nftables** (tablas,
+  cadenas, conntrack, masquerade, dnat), configurable desde la terminal, la pestaña Servicios y una WebGUI tipo
+  WRT300N. **VPN** entre sedes: WireGuard (`wg`, `wg-quick`) en Linux e IPsec site-to-site en el 2911 (isakmp,
+  transform-set, crypto map, `show crypto`). ACL extendidas de IOS. DNS de empresa que reenvía a los DNS de Google
+  emulados a través de las nubes ISP. Apps del PC **Cliente SSH** (sesiones, claves, known_hosts) y **Archivos
+  (SFTP)** tipo FileZilla. Laboratorios de conectividad, seguridad y bastionado. Lo que se cambia en la terminal
+  se ve en los paneles. Pestaña **Donaciones** (PayPal.Me) y créditos en Midnight Commander. Mejor uso en móvil,
+  tableta y touchpad (pellizco, barra de teclas táctil).
 - Modo simulación con lista de eventos (DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP, SSH),
   animación paso a paso y la PDU de cada paquete.
 - Guardar y abrir topologías completas en archivos `.json` (también la configuración de los servicios).
@@ -129,6 +138,8 @@ través de un relay (`ip helper-address` apuntando al servidor).
 
 - **Navegador**: `http://IP` o `http://nombre`. Resuelve por DNS y sigue los enlaces. La página se dibuja de forma segura, sin ejecutar scripts.
 - **Correo**: cuenta con servidor entrante (POP3 o IMAP) y saliente (SMTP). Para redactar, enviar y recibir. POP3 borra del servidor; IMAP deja copia.
+- **Cliente SSH**: sesiones guardadas, una terminal por sesión, generación de claves (ed25519, ecdsa, rsa) y gestión de `known_hosts`.
+- **Archivos (SFTP)**: dos paneles (local y remoto) para subir, bajar, renombrar y borrar, con la misma verificación de la clave del servidor que `ssh`.
 - **Terminales** Linux y Windows, con cliente SSH.
 
 El laboratorio **«Server: DHCP, DNS, web, correo y SSH»** lo trae todo configurado:
@@ -275,7 +286,7 @@ network-config-reviewer, security-reviewer), plan por fases en `docs/PLAN.md` y 
 npm test               # node:test con type-stripping nativo (Node ≥ 22.18)
 npm run test:coverage  # umbrales: 80 % líneas y funciones, 70 % ramas (núcleo)
 npm run typecheck
-npm run e2e            # Playwright sobre dist/ (requiere playwright instalado)
+npm run e2e            # Playwright sobre dist/: escritorio, móvil y tableta, en los dos idiomas
 npm run check          # typecheck + tests + build
 scripts/gen-bash-corpus.sh   # regenera tests/bash/corpus/*.out con el bash del sistema
 ```
@@ -301,9 +312,10 @@ src/devices   router (plano de datos, relay), switch (VLAN, snooping), Host → 
 src/services  DHCP (pools PT sobre el motor IOS), DNS, HTTP, correo, SSH, unidades, persistencia
 src/bash      intérprete GNU bash 5.3, VFS con permisos, builtins y utilidades GNU
 src/editors   motores de nano y vim
-src/docs      documentación (pestaña Documentación, man, help)
+src/docs      documentación es-ES (y en-GB en src/docs/en): pestaña Documentación, man, help
+src/i18n      idioma actual, t() y catálogos es-ES / en-GB
 src/shells    sistema Ubuntu de cada equipo, programas de red, cmd de Windows, cliente SSH
-src/clients   cliente de correo (SMTP, POP3, IMAP)
+src/clients   cliente de correo (SMTP, POP3, IMAP), llavero SSH y transferencia SFTP
 src/ui        interfaz (SVG + DOM, sin frameworks)
 ```
 
@@ -311,7 +323,7 @@ src/ui        interfaz (SVG + DOM, sin frameworks)
 
 Sin STP (los bucles de capa 2 se cortan por un límite de saltos), sin IPv6, sin enrutamiento
 dinámico, un único modelo de cada dispositivo. TCP está simplificado: cada conexión lleva una
-petición y una respuesta. No hay HTTPS, FTP ni DNS recursivo. SSH no cifra de verdad: en modo
+petición y una respuesta. No hay HTTPS ni FTP; el DNS recursivo solo reenvía (forwarders). WireGuard e IPsec usan criptografía didáctica, no la real. SSH no cifra de verdad: en modo
 simulación se muestra como «datos cifrados». Los ficheros de configuración generados en Linux se
 leen pero se cambian desde la pestaña Servicios (salvo `/var/www/html`). La terminal no tiene procesos
 reales ni `apt`; los modos visual y reemplazo de vim no están. Los comandos de DHCP poco habituales
