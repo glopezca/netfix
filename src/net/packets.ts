@@ -50,6 +50,40 @@ export interface UdpDatagram {
   readonly wg?: WgMessage;
 }
 
+// ---------------------------------------------------------------- SFTP
+
+/** SFTP requests (OpenSSH sftp-server), paths absolute or relative to the login directory. */
+export type SftpOp =
+  | { readonly op: 'realpath'; readonly path: string }
+  | { readonly op: 'list'; readonly path: string }
+  | { readonly op: 'stat'; readonly path: string }
+  | { readonly op: 'read'; readonly path: string }
+  | { readonly op: 'write'; readonly path: string; readonly data: string }
+  | { readonly op: 'mkdir'; readonly path: string }
+  | { readonly op: 'rmdir'; readonly path: string }
+  | { readonly op: 'remove'; readonly path: string }
+  | { readonly op: 'rename'; readonly path: string; readonly to: string }
+  | { readonly op: 'chmod'; readonly path: string; readonly mode: number };
+
+export interface SftpEntry {
+  readonly name: string;
+  readonly kind: 'file' | 'dir' | 'link' | 'other';
+  readonly size: number;
+  readonly mode: number;
+  readonly mtime: number;
+  readonly owner: string;
+  readonly group: string;
+}
+
+export interface SftpResult {
+  readonly status: 'ok' | 'no-such-file' | 'permission-denied' | 'failure';
+  readonly message?: string;
+  readonly path?: string;
+  readonly entries?: readonly SftpEntry[];
+  readonly entry?: SftpEntry;
+  readonly data?: string;
+}
+
 // ---------------------------------------------------------------- VPN
 
 /**
@@ -158,8 +192,12 @@ export type AppPayload =
     readonly challenge?: string;
     /** publickey: the public key line and its signature over the challenge, user and key. */
     readonly key?: string;
-    readonly signature?: string }
+    readonly signature?: string;
+    /** `sftp`/`scp`: open the sftp subsystem instead of a shell. */
+    readonly subsystem?: 'sftp' }
   | { readonly app: 'SSH'; readonly kind: 'command'; readonly session: string; readonly line: string }
+  /** One SFTP request on an sftp session. */
+  | { readonly app: 'SSH'; readonly kind: 'sftp'; readonly session: string; readonly req: SftpOp }
   /** Ctrl+C / Ctrl+D typed in the remote terminal. */
   | { readonly app: 'SSH'; readonly kind: 'key'; readonly session: string; readonly key: 'int' | 'eof' }
   /** Remote editor: save the buffer, or close the editor (the remote command continues). */
@@ -168,6 +206,8 @@ export type AppPayload =
   | { readonly app: 'SSH'; readonly kind: 'screen'; readonly session: string; readonly key?: KeyInput; readonly width: number; readonly height: number }
   | { readonly app: 'SSH'; readonly kind: 'output'; readonly ok: boolean; readonly lines: readonly string[]; readonly session?: string; readonly prompt?: string; readonly closed?: boolean; readonly secret?: boolean;
     /** Handshake: the server's host key (public line), the authentication methods it accepts and the challenge (base64). */
+    /** sftp session: the answer to the request. */
+    readonly sftp?: SftpResult;
     readonly hostKey?: string;
     readonly methods?: readonly string[];
     readonly challenge?: string;

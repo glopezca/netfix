@@ -43,6 +43,8 @@ export interface SshOptions {
   readonly pubkey: boolean;
   readonly batch: boolean;
   readonly knownHostsFile?: string;
+  /** sftp/scp: ask for the sftp subsystem instead of a shell. */
+  readonly subsystem?: 'sftp';
 }
 
 export const SSH_USAGE = 'usage: ssh [-46AaCfGgKkMNnqsTtVvXxYy] [-i identity_file] [-l login_name] [-o option] [-p port] destination [command [argument ...]]';
@@ -142,8 +144,18 @@ export class SshLogin {
     return this.step.kind === 'passphrase' || this.step.kind === 'password';
   }
 
+  /** What the login waits for (graphical clients ask with their own dialogs). */
+  waiting(): 'hostkey' | 'passphrase' | 'password' | 'nothing' {
+    return this.step.kind === 'idle' ? 'nothing' : this.step.kind;
+  }
+
+  /** SHA256 fingerprint of the server's host key (for a graphical "unknown host" dialog). */
+  hostFingerprint(): string {
+    return this.hostKey ? fingerprint(this.hostKey.blob) : '';
+  }
+
   private call(payload: Omit<Extract<AppPayload, { app: 'SSH'; kind: 'auth' }>, 'app' | 'kind' | 'clientOs' | 'challenge'>): SshOut | undefined {
-    const r = tcpCall(this.host, this.ip, this.opts.port, { app: 'SSH', kind: 'auth', clientOs: this.osName, challenge: this.challenge, ...payload });
+    const r = tcpCall(this.host, this.ip, this.opts.port, { app: 'SSH', kind: 'auth', clientOs: this.osName, challenge: this.challenge, subsystem: this.opts.subsystem, ...payload });
     return r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
   }
 

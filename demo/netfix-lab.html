@@ -8203,8 +8203,16 @@ class SshLogin {
     secret() {
         return this.step.kind === 'passphrase' || this.step.kind === 'password';
     }
+    /** What the login waits for (graphical clients ask with their own dialogs). */
+    waiting() {
+        return this.step.kind === 'idle' ? 'nothing' : this.step.kind;
+    }
+    /** SHA256 fingerprint of the server's host key (for a graphical "unknown host" dialog). */
+    hostFingerprint() {
+        return this.hostKey ? fingerprint(this.hostKey.blob) : '';
+    }
     call(payload) {
-        const r = tcpCall(this.host, this.ip, this.opts.port, { app: 'SSH', kind: 'auth', clientOs: this.osName, challenge: this.challenge, ...payload });
+        const r = tcpCall(this.host, this.ip, this.opts.port, { app: 'SSH', kind: 'auth', clientOs: this.osName, challenge: this.challenge, subsystem: this.opts.subsystem, ...payload });
         return r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
     }
     fail(lines) {
@@ -9147,7 +9155,7 @@ const SSHD_CONFIG = '/etc/ssh/sshd_config';
 const SSHD_CONFIG_DIR = '/etc/ssh/sshd_config.d';
 const DEFAULT_SSHD = {
     permitRootLogin: 'prohibit-password', passwordAuth: true, pubkeyAuth: true, strictModes: true, permitEmptyPasswords: false,
-    authorizedKeysFiles: ['.ssh/authorized_keys', '.ssh/authorized_keys2'], allowUsers: [], denyUsers: [], allowGroups: [], denyGroups: [], maxAuthTries: 6,
+    authorizedKeysFiles: ['.ssh/authorized_keys', '.ssh/authorized_keys2'], allowUsers: [], denyUsers: [], allowGroups: [], denyGroups: [], maxAuthTries: 6, sftp: true,
 };
 const DEFAULT_SSHD_CONFIG = `
 # This is the sshd server system-wide configuration file.  See
@@ -9313,6 +9321,7 @@ function parseSshdConfig(src) {
             allowGroups: values.get('allowgroups') ?? [],
             denyGroups: values.get('denygroups') ?? [],
             maxAuthTries: tries,
+            sftp: (values.get('subsystem')?.[0] ?? '').toLowerCase() === 'sftp',
         },
     };
 }
@@ -21164,6 +21173,8 @@ const UTIL_DOCS = {
     'wg-quick': { group: 'red', section: 8, synopsis: 'wg-quick up|down|strip|save IFACE|FICHERO.conf', summary: 'Levanta o baja wg0 a partir de /etc/wireguard/wg0.conf: crea la interfaz, aplica claves y pares, pone Address, añade una ruta por cada AllowedIPs (0.0.0.0/0 = túnel completo) y ejecuta PreUp/PostUp/PreDown/PostDown con bash (%i = interfaz). systemctl enable wg-quick@wg0 lo levanta al arrancar.' },
     dmesg: { group: 'red', section: 1, synopsis: 'dmesg', summary: 'Registro del núcleo: incluye las líneas de las reglas nft con log prefix "…". En Ubuntu solo lo puede leer root (sudo dmesg).' },
     'ssh-copy-id': { group: 'red', synopsis: 'ssh-copy-id [-i FICHERO.pub] [-p PUERTO] [-o OPCIÓN] [-f] [-n] [USUARIO@]HOST', summary: 'Instala la clave pública en ~/.ssh/authorized_keys del servidor (crea ~/.ssh con 700 y el fichero con 600) sin duplicarla.' },
+    sftp: { group: 'red', synopsis: 'sftp [-P PUERTO] [-i CLAVE] [-b FICHERO] [USUARIO@]HOST[:DIR]', summary: 'Transferencia de ficheros sobre SSH (subsistema sftp de sshd): ls [-l], cd, pwd, get, put, mkdir, rmdir, rm, rename, chmod y sus versiones locales lcd, lls, lpwd, lmkdir. Los permisos son los del usuario en el servidor. -b ejecuta las órdenes de un fichero.' },
+    scp: { group: 'red', synopsis: 'scp [-P PUERTO] [-i CLAVE] [-q] ORIGEN... DESTINO', summary: 'Copia ficheros con un extremo remoto [usuario@]host:ruta (protocolo SFTP, como OpenSSH 9+). Si el destino es un directorio, conserva el nombre. Sin -r: copia los ficheros uno a uno.' },
     dhclient: { group: 'red', section: 8, synopsis: 'dhclient [-r] [eth0]', summary: 'Pide (o con -r libera) la concesión DHCP. Requiere root: sudo dhclient.' },
     ss: { group: 'red', section: 8, synopsis: 'ss -tulpn', summary: 'Sockets a la escucha y el proceso de cada uno.' },
     systemctl: { group: 'servicios', synopsis: 'systemctl [status|start|stop|restart|reload|enable [--now]|disable [--now]|is-active|is-enabled|list-units] [UNIDAD]', summary: 'Controla los servicios del servidor (apache2, bind9, kea-dhcp4-server, postfix, dovecot, ssh). Los cambios requieren sudo.' },
@@ -24058,6 +24069,586 @@ function maskOf(prefix) {
 
 
 return { formatMacCisco, IFACE, linuxMac, linuxFiles, describeAddress, maskOf };
+})();
+__m["clients/sftp-client.js"] = (() => {
+const { tcpCall, SSH_WAIT_MS } = __m["shells/net-tools.js"];
+const CLOSED = { status: 'failure', message: 'Connection closed' };
+function joinPath(dir, path) {
+    if (path.startsWith('/'))
+        return normalizePath(path);
+    return normalizePath(`${dir}/${path}`);
+}
+function normalizePath(path) {
+    const out = [];
+    for (const part of path.split('/')) {
+        if (!part || part === '.')
+            continue;
+        if (part === '..')
+            out.pop();
+        else
+            out.push(part);
+    }
+    return `/${out.join('/')}`;
+}
+const baseName = (path) => path.replace(/\/+$/, '').split('/').pop() || '/';
+class SftpSession {
+    host;
+    ip;
+    port;
+    id;
+    /** Remote working directory (absolute). */
+    cwd = '/';
+    closed = false;
+    constructor(host, ip, port, id) {
+        this.host = host;
+        this.ip = ip;
+        this.port = port;
+        this.id = id;
+    }
+    /** Asks the server for the login directory (realpath "."), like OpenSSH right after connecting. */
+    start() {
+        const r = this.request({ op: 'realpath', path: '.' });
+        if (r.status === 'ok' && r.path)
+            this.cwd = r.path;
+        return r;
+    }
+    abs(path) {
+        return joinPath(this.cwd, path || '.');
+    }
+    request(req) {
+        if (this.closed)
+            return CLOSED;
+        const r = tcpCall(this.host, this.ip, this.port, { app: 'SSH', kind: 'sftp', session: this.id, req }, SSH_WAIT_MS);
+        const out = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
+        if (!out?.sftp) {
+            this.closed = true;
+            return CLOSED;
+        }
+        return out.sftp;
+    }
+    /** cd: the target must exist and be a directory. */
+    cd(path) {
+        const target = this.abs(path);
+        const r = this.request({ op: 'stat', path: target });
+        if (r.status !== 'ok')
+            return r;
+        if (r.entry?.kind !== 'dir')
+            return { status: 'failure', message: `"${target}" is not a directory` };
+        this.cwd = target;
+        return { status: 'ok', path: target };
+    }
+}
+
+return { joinPath, normalizePath, baseName, SftpSession };
+})();
+__m["shells/sftp-format.js"] = (() => {
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const SIX_MONTHS_MS = 182 * 86_400_000;
+const TERM_WIDTH = 80;
+const KIB = 1024;
+function modeString(e) {
+    const type = e.kind === 'dir' ? 'd' : e.kind === 'link' ? 'l' : '-';
+    const bits = 'rwxrwxrwx'.split('').map((c, i) => ((e.mode >> (8 - i)) & 1 ? c : '-')).join('');
+    return `${type}${bits}`;
+}
+function when(mtime, now) {
+    const d = new Date(mtime);
+    const p = (n) => String(n).padStart(2, '0');
+    const day = `${MONTHS[d.getUTCMonth()]} ${p(d.getUTCDate())}`;
+    return Math.abs(now - mtime) < SIX_MONTHS_MS ? `${day} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}` : `${day}  ${d.getUTCFullYear()}`;
+}
+/** `-rw-r--r--    1 alice    alice          12 Oct 14 10:00 notes.txt` */
+function longLine(e, now) {
+    return `${modeString(e)}    1 ${e.owner.padEnd(8)} ${e.group.padEnd(8)} ${String(e.size).padStart(8)} ${when(e.mtime, now)} ${e.name}`;
+}
+/** Names in columns, like sftp's `ls` without -l. */
+function columns(names) {
+    if (!names.length)
+        return [];
+    const width = Math.max(...names.map((n) => n.length)) + 2;
+    const perRow = Math.max(1, Math.floor(TERM_WIDTH / width));
+    const rows = [];
+    for (let i = 0; i < names.length; i += perRow)
+        rows.push(names.slice(i, i + perRow).map((n) => n.padEnd(width)).join('').trimEnd());
+    return rows;
+}
+function amount(n) {
+    if (n < KIB)
+        return String(n);
+    return n < KIB * KIB ? `${(n / KIB).toFixed(1)}KB` : `${(n / KIB / KIB).toFixed(1)}MB`;
+}
+/** `notes.txt                       100%   12     0.0KB/s   00:00` */
+function progress(name, size) {
+    return `${name.padEnd(46)} 100% ${amount(size).padStart(5)} ${`${(size / KIB).toFixed(1)}KB/s`.padStart(9)}   00:00`;
+}
+/** OpenSSH's text for an SFTP status. */
+function statusText(r) {
+    if (r.status === 'no-such-file')
+        return 'No such file or directory';
+    if (r.status === 'permission-denied')
+        return 'Permission denied';
+    return r.message ?? 'Failure';
+}
+
+return { longLine, columns, progress, statusText };
+})();
+__m["shells/ssh-stores.js"] = (() => {
+const DEFAULT_IDENTITIES = ['id_ed25519', 'id_ecdsa', 'id_rsa'];
+const SSH_DIR_MODE = 0o700;
+const KNOWN_HOSTS_MODE = 0o644;
+/** ~/.ssh of a Linux account, with that account's permissions. */
+function linuxSshStore(fs, acct, cwd = acct.home) {
+    const cred = { uid: acct.uid, gid: acct.gid, groups: acct.groups };
+    const dir = `${acct.home === '/' ? '' : acct.home}/.ssh`;
+    const base = cwd === '/' ? '' : cwd;
+    const resolve = (p) => (p === '~' ? acct.home : p.startsWith('~/') ? `${acct.home}${p.slice(1)}` : p.startsWith('/') ? p : `${base}/${p}`);
+    const isFile = (p) => fs.tryLookup(p, cred)?.kind === 'file';
+    return {
+        knownHostsPath: `${dir}/known_hosts`,
+        knownHosts: (path) => {
+            try {
+                return isFile(path) ? fs.readFile(path, cred) : '';
+            }
+            catch {
+                return '';
+            }
+        },
+        addKnownHost: (path, line) => {
+            try {
+                if (path === `${dir}/known_hosts` && !fs.tryLookup(dir, cred))
+                    fs.mkdir(dir, cred, false, SSH_DIR_MODE);
+                fs.writeFile(path, `${line}\n`, cred, true, KNOWN_HOSTS_MODE);
+            }
+            catch { /* not writable: OpenSSH also goes on without saving */ }
+        },
+        defaultIdentities: () => DEFAULT_IDENTITIES.map((n) => `${dir}/${n}`).filter(isFile),
+        readIdentity: (path) => {
+            if (!fs.tryLookup(path, cred))
+                return 'missing';
+            try {
+                return { text: fs.readFile(path, cred), mode: fs.stat(path, cred).mode };
+            }
+            catch {
+                return 'denied';
+            }
+        },
+        resolve,
+    };
+}
+const windowsKnownHosts = new WeakMap();
+/** Windows' OpenSSH client: known_hosts kept in memory per equipment, no key files. */
+function windowsSshStore(host, user) {
+    const files = windowsKnownHosts.get(host) ?? new Map();
+    windowsKnownHosts.set(host, files);
+    const home = `C:\\Users\\${user}`;
+    return {
+        knownHostsPath: `${home}\\.ssh\\known_hosts`,
+        knownHosts: (path) => files.get(path) ?? '',
+        addKnownHost: (path, line) => { files.set(path, `${files.get(path) ?? ''}${line}\n`); },
+        defaultIdentities: () => [],
+        readIdentity: () => 'missing',
+        resolve: (p) => (/^[A-Za-z]:\\/.test(p) || p === '/dev/null' ? p : `${home}\\${p.replace(/^~[\\/]/, '').replace(/\//g, '\\')}`),
+    };
+}
+
+return { linuxSshStore, windowsSshStore };
+})();
+__m["shells/sftp-login.js"] = (() => {
+const { parseSshArgs, SshLogin } = __m["shells/ssh-client.js"];
+const { linuxSshStore } = __m["shells/ssh-stores.js"];
+const { SftpSession } = __m["clients/sftp-client.js"];
+/** sftp/scp options: -P is the port (ssh's -p); -b batch file (sftp); -r recursive (scp). */
+function transferArgs(argv) {
+    const ssh = [];
+    let batch;
+    let recursive = false;
+    let quiet = false;
+    let i = 0;
+    for (; i < argv.length; i++) {
+        const a = argv[i] ?? '';
+        if (!a.startsWith('-') || a === '-')
+            break;
+        const value = () => (a.length > 2 ? a.slice(2) : argv[++i]);
+        if (a.startsWith('-P'))
+            ssh.push('-p', value() ?? '');
+        else if (a.startsWith('-i'))
+            ssh.push('-i', value() ?? '');
+        else if (a.startsWith('-o'))
+            ssh.push('-o', value() ?? '');
+        else if (a.startsWith('-b'))
+            batch = value();
+        else if (a === '-r')
+            recursive = true;
+        else if (a === '-q')
+            quiet = true;
+        else if (!['-4', '-C', '-p', '-v', '-T', '-O', '-s'].includes(a))
+            return `unknown option -- ${a.replace(/^-+/, '')}`;
+    }
+    return { ssh, rest: argv.slice(i), batch, recursive, quiet };
+}
+/** Options for the login of `[user@]host` (port and identities from the command line). */
+function loginOptions(ctx, t, dest) {
+    const user = ctx.sh.env.users().find((u) => u.uid === ctx.cred.uid)?.name ?? 'root';
+    const opts = parseSshArgs([...t.ssh, dest], user);
+    return typeof opts === 'string' ? opts : { ...opts, subsystem: 'sftp', batch: opts.batch || t.batch !== undefined };
+}
+function show(ctx, r) {
+    if (r.lines.length)
+        ctx.err(`${r.lines.join('\n')}\n`);
+}
+/** Logs in and opens the sftp subsystem; a number is the exit status when it fails. */
+function* sftpLogin(ctx, host, opts) {
+    const acct = ctx.sh.env.users().find((u) => u.uid === ctx.cred.uid);
+    if (!acct)
+        return 255;
+    const login = new SshLogin(host, 'Linux', linuxSshStore(ctx.sh.env.fs, acct, ctx.cwd), opts);
+    let r = login.begin();
+    for (;;) {
+        show(ctx, r);
+        if (r.failed)
+            return 255;
+        if (r.session)
+            break;
+        const line = yield* ctx.readLine(login.prompt(), login.secret());
+        if (line === null)
+            return 255;
+        r = login.input(line.text);
+    }
+    const session = new SftpSession(host, r.session.ip, opts.port, r.session.id);
+    session.start();
+    return session;
+}
+
+return { transferArgs, loginOptions, sftpLogin };
+})();
+__m["shells/sftp-cmd.js"] = (() => {
+const { baseName, joinPath } = __m["clients/sftp-client.js"];
+const { columns, longLine, progress, statusText } = __m["shells/sftp-format.js"];
+const { loginOptions, sftpLogin, transferArgs } = __m["shells/sftp-login.js"];
+const { FsError } = __m["bash/vfs.js"];
+const USAGE = 'usage: sftp [-46AaCfNpqrv] [-B buffer_size] [-b batchfile] [-c cipher]\n          [-D sftp_server_command] [-F ssh_config] [-i identity_file]\n          [-J destination] [-l limit] [-o ssh_option] [-P port]\n          [-R num_requests] [-S program] [-s subsystem | sftp_server]\n          destination\n';
+const HELP = `Available commands:
+bye                                Quit sftp
+cd path                            Change remote directory to 'path'
+chmod mode path                    Change permissions of file 'path' to 'mode'
+exit                               Quit sftp
+get remote [local]                 Download file
+help                               Display this help text
+lcd path                           Change local directory to 'path'
+lls [ls-options [path]]            Display local directory listing
+lmkdir path                        Create local directory
+lpwd                               Print local working directory
+ls [-la] [path]                    Display remote directory listing
+mkdir path                         Create remote directory
+put local [remote]                 Upload file
+pwd                                Display remote working directory
+quit                               Quit sftp
+rename oldpath newpath             Rename remote file
+rm path                            Delete remote file
+rmdir path                         Remove remote directory
+?                                  Synonym for help`;
+const say = (ctx, text) => ctx.out(`${text}\n`);
+const warn = (ctx, text) => ctx.err(`${text}\n`);
+function ls(ctx, st, args) {
+    const flags = args.filter((a) => a.startsWith('-')).join('');
+    const given = args.find((a) => !a.startsWith('-'));
+    const target = st.s.abs(given ?? '.');
+    const one = st.s.request({ op: 'stat', path: target });
+    if (one.status !== 'ok')
+        return warn(ctx, `Can't ls: "${target}" not found`);
+    const r = one.entry?.kind === 'dir' ? st.s.request({ op: 'list', path: target }) : { ...one, entries: one.entry ? [{ ...one.entry, name: given ?? one.entry.name }] : [] };
+    if (r.status !== 'ok')
+        return warn(ctx, `remote readdir("${target}"): ${statusText(r)}`);
+    const entries = (r.entries ?? []).filter((e) => flags.includes('a') || !e.name.startsWith('.'));
+    if (flags.includes('l'))
+        entries.forEach((e) => say(ctx, longLine(e, ctx.sh.env.now())));
+    else
+        columns(entries.map((e) => e.name)).forEach((l) => say(ctx, l));
+}
+function get(ctx, st, remote, local) {
+    if (!remote)
+        return warn(ctx, 'You must specify at least one path after a get command.');
+    const src = st.s.abs(remote);
+    const r = st.s.request({ op: 'read', path: src });
+    if (r.status === 'no-such-file')
+        return warn(ctx, `File "${src}" not found.`);
+    if (r.status !== 'ok')
+        return warn(ctx, `remote open("${src}"): ${statusText(r)}`);
+    const dst = joinPath(st.lcwd, local ?? baseName(src));
+    const finalDst = ctx.sh.env.fs.tryLookup(dst, ctx.cred)?.kind === 'dir' ? `${dst}/${baseName(src)}` : dst;
+    say(ctx, `Fetching ${src} to ${local ?? baseName(src)}`);
+    try {
+        ctx.sh.env.fs.writeFile(finalDst, r.data ?? '', ctx.cred);
+        say(ctx, progress(baseName(src), (r.data ?? '').length));
+    }
+    catch (e) {
+        if (!(e instanceof FsError))
+            throw e;
+        warn(ctx, `Couldn't open local file "${finalDst}" for writing: ${e.code === 'EACCES' ? 'Permission denied' : 'No such file or directory'}`);
+    }
+}
+function put(ctx, st, local, remote) {
+    if (!local)
+        return warn(ctx, 'You must specify at least one path after a put command.');
+    const src = joinPath(st.lcwd, local);
+    let data;
+    try {
+        data = ctx.sh.env.fs.readFile(src, ctx.cred);
+    }
+    catch (e) {
+        if (!(e instanceof FsError))
+            throw e;
+        return warn(ctx, `stat ${local}: ${e.code === 'EACCES' ? 'Permission denied' : e.code === 'EISDIR' ? 'Is a directory' : 'No such file or directory'}`);
+    }
+    let dst = st.s.abs(remote ?? baseName(src));
+    if (st.s.request({ op: 'stat', path: dst }).entry?.kind === 'dir')
+        dst = `${dst}/${baseName(src)}`;
+    say(ctx, `Uploading ${local} to ${dst}`);
+    const r = st.s.request({ op: 'write', path: dst, data });
+    if (r.status !== 'ok')
+        return warn(ctx, `dest open "${dst}": ${statusText(r)}`);
+    say(ctx, progress(baseName(src), data.length));
+}
+function simple(ctx, st, cmd, args) {
+    const [a, b] = args;
+    if (a === undefined)
+        return warn(ctx, `You must specify a path after a ${cmd} command.`);
+    const path = st.s.abs(a);
+    if (cmd === 'mkdir' || cmd === 'rmdir') {
+        const r = st.s.request({ op: cmd, path });
+        if (r.status !== 'ok')
+            warn(ctx, `remote ${cmd} "${path}": ${statusText(r)}`);
+    }
+    else if (cmd === 'rm') {
+        say(ctx, `Removing ${path}`);
+        const r = st.s.request({ op: 'remove', path });
+        if (r.status !== 'ok')
+            warn(ctx, `Couldn't delete file: ${statusText(r)}`);
+    }
+    else if (cmd === 'rename') {
+        if (b === undefined)
+            return warn(ctx, 'You must specify two paths after a rename command.');
+        const r = st.s.request({ op: 'rename', path, to: st.s.abs(b) });
+        if (r.status !== 'ok')
+            warn(ctx, `Couldn't rename file "${path}" to "${st.s.abs(b)}": ${statusText(r)}`);
+    }
+}
+function chmod(ctx, st, args) {
+    const [mode, file] = args;
+    if (!mode || !/^[0-7]{1,4}$/.test(mode) || !file)
+        return warn(ctx, "You must supply a numeric argument to the chmod command.");
+    const path = st.s.abs(file);
+    say(ctx, `Changing mode on ${path}`);
+    const r = st.s.request({ op: 'chmod', path, mode: parseInt(mode, 8) });
+    if (r.status !== 'ok')
+        warn(ctx, `Couldn't setstat on "${path}": ${statusText(r)}`);
+}
+function* local(ctx, st, cmd, args) {
+    if (cmd === 'lpwd')
+        return say(ctx, `Local working directory: ${st.lcwd}`);
+    if (cmd === 'lcd') {
+        const dir = joinPath(st.lcwd, args[0] ?? (ctx.env.get('HOME') ?? '/'));
+        if (ctx.sh.env.fs.tryLookup(dir, ctx.cred)?.kind !== 'dir')
+            return warn(ctx, `Couldn't change local directory to "${dir}": No such file or directory`);
+        st.lcwd = dir;
+        return;
+    }
+    if (cmd === 'lmkdir') {
+        try {
+            ctx.sh.env.fs.mkdir(joinPath(st.lcwd, args[0] ?? ''), ctx.cred, false, 0o755);
+        }
+        catch {
+            warn(ctx, `Couldn't create local directory "${args[0] ?? ''}": Failure`);
+        }
+        return;
+    }
+    yield* ctx.sh.invoke(['ls', ...args.map((a) => (a.startsWith('-') ? a : joinPath(st.lcwd, a))), ...(args.some((a) => !a.startsWith('-')) ? [] : [st.lcwd])], ctx.fds);
+}
+/** One sftp command; false = quit. */
+function* command(ctx, st, line) {
+    const [cmd = '', ...args] = line.trim().split(/\s+/);
+    if (!cmd)
+        return true;
+    if (['bye', 'exit', 'quit'].includes(cmd))
+        return false;
+    if (cmd === 'help' || cmd === '?')
+        say(ctx, HELP);
+    else if (cmd === 'pwd')
+        say(ctx, `Remote working directory: ${st.s.cwd}`);
+    else if (cmd === 'cd') {
+        const r = st.s.cd(args[0] ?? st.home);
+        if (r.status !== 'ok')
+            warn(ctx, r.status === 'failure' ? `Can't change directory: ${r.message ?? ''}` : `Can't change directory: Can't check target`);
+    }
+    else if (cmd === 'ls' || cmd === 'dir')
+        ls(ctx, st, args);
+    else if (cmd === 'get')
+        get(ctx, st, args[0], args[1]);
+    else if (cmd === 'put')
+        put(ctx, st, args[0], args[1]);
+    else if (['mkdir', 'rmdir', 'rm', 'rename'].includes(cmd))
+        simple(ctx, st, cmd, args);
+    else if (cmd === 'chmod')
+        chmod(ctx, st, args);
+    else if (['lpwd', 'lcd', 'lls', 'lmkdir'].includes(cmd))
+        yield* local(ctx, st, cmd, args);
+    else
+        warn(ctx, 'Invalid command.');
+    return !st.s.closed;
+}
+function sftp(host) {
+    return function* run(ctx) {
+        const t = transferArgs(ctx.argv.slice(1));
+        if (typeof t === 'string' || t.rest.length !== 1) {
+            ctx.err(typeof t === 'string' ? `${t}\n${USAGE}` : USAGE);
+            return 1;
+        }
+        const [dest = '', startDir] = (t.rest[0] ?? '').split(/:(.*)$/s);
+        const opts = loginOptions(ctx, t, dest);
+        if (typeof opts === 'string') {
+            ctx.err(`${opts}\n`);
+            return 255;
+        }
+        const session = yield* sftpLogin(ctx, host, opts);
+        if (typeof session === 'number') {
+            ctx.err('Connection closed\n');
+            return session;
+        }
+        say(ctx, `Connected to ${opts.target}.`);
+        const st = { s: session, home: session.cwd, lcwd: ctx.cwd };
+        if (startDir)
+            session.cd(startDir);
+        const script = t.batch !== undefined ? readBatch(ctx, t.batch) : null;
+        if (script !== null) {
+            for (const line of script) {
+                say(ctx, `sftp> ${line}`);
+                if (!(yield* command(ctx, st, line)))
+                    break;
+            }
+            return 0;
+        }
+        for (;;) {
+            const line = yield* ctx.readLine('sftp> ');
+            if (line === null)
+                return 0;
+            if (!(yield* command(ctx, st, line.text)))
+                return 0;
+        }
+    };
+}
+function readBatch(ctx, path) {
+    try {
+        return ctx.sh.env.fs.readFile(ctx.resolve(path), ctx.cred).split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+    }
+    catch {
+        ctx.err(`${path} (No such file or directory)\n`);
+        return [];
+    }
+}
+
+return { sftp };
+})();
+__m["shells/scp-cmd.js"] = (() => {
+const { baseName, joinPath } = __m["clients/sftp-client.js"];
+const { progress, statusText } = __m["shells/sftp-format.js"];
+const { loginOptions, sftpLogin, transferArgs } = __m["shells/sftp-login.js"];
+const { FsError } = __m["bash/vfs.js"];
+const USAGE = 'usage: scp [-346ABCOpqRrsTv] [-c cipher] [-D sftp_server_path] [-F ssh_config]\n           [-i identity_file] [-J destination] [-l limit] [-o ssh_option]\n           [-P port] [-S program] [-X sftp_option] source ... target\n';
+/** `user@host:path` (remote) or a local path; a colon after a slash is part of a local name. */
+function spec(arg) {
+    const m = /^([^/:]+):(.*)$/s.exec(arg);
+    return m ? { remote: m[1], path: m[2] ?? '' } : { path: arg };
+}
+function fsText(e) {
+    if (!(e instanceof FsError))
+        throw e;
+    return e.code === 'EACCES' ? 'Permission denied' : e.code === 'EISDIR' ? 'Is a directory' : 'No such file or directory';
+}
+function upload(ctx, s, src, dst, quiet) {
+    let data;
+    try {
+        data = ctx.sh.env.fs.readFile(ctx.resolve(src), ctx.cred);
+    }
+    catch (e) {
+        ctx.err(`scp: ${src}: ${fsText(e)}\n`);
+        return false;
+    }
+    let target = s.abs(dst);
+    if (!dst || s.request({ op: 'stat', path: target }).entry?.kind === 'dir')
+        target = joinPath(target, baseName(src));
+    const r = s.request({ op: 'write', path: target, data });
+    if (r.status !== 'ok') {
+        ctx.err(`scp: dest open "${target}": ${statusText(r)}\nscp: failed to upload file ${src} to ${dst}\n`);
+        return false;
+    }
+    if (!quiet)
+        ctx.out(`${progress(baseName(src), data.length)}\n`);
+    return true;
+}
+function download(ctx, s, src, dst, quiet) {
+    const path = s.abs(src);
+    const r = s.request({ op: 'read', path });
+    if (r.status !== 'ok') {
+        ctx.err(`scp: ${path}: ${statusText(r)}\n`);
+        return false;
+    }
+    let target = ctx.resolve(dst);
+    if (ctx.sh.env.fs.tryLookup(target, ctx.cred)?.kind === 'dir')
+        target = joinPath(target, baseName(path));
+    try {
+        ctx.sh.env.fs.writeFile(target, r.data ?? '', ctx.cred);
+    }
+    catch (e) {
+        ctx.err(`scp: ${dst}: ${fsText(e)}\n`);
+        return false;
+    }
+    if (!quiet)
+        ctx.out(`${progress(baseName(path), (r.data ?? '').length)}\n`);
+    return true;
+}
+function scp(host) {
+    return function* run(ctx) {
+        const t = transferArgs(ctx.argv.slice(1));
+        if (typeof t === 'string' || t.rest.length < 2) {
+            ctx.err(typeof t === 'string' ? `${t}\n${USAGE}` : USAGE);
+            return 1;
+        }
+        const specs = t.rest.map(spec);
+        const target = specs[specs.length - 1] ?? { path: '' };
+        const sources = specs.slice(0, -1);
+        const remote = target.remote ?? sources.find((x) => x.remote)?.remote;
+        if (!remote) {
+            yield* ctx.sh.invoke(['cp', ...t.rest], ctx.fds);
+            return 0;
+        }
+        if (target.remote && sources.some((x) => x.remote)) {
+            ctx.err('scp: remote to remote copies are not available in Netfix\n');
+            return 1;
+        }
+        if (t.recursive) {
+            ctx.err('scp: -r is not available in Netfix: copy the files one by one or use sftp\n');
+            return 1;
+        }
+        const opts = loginOptions(ctx, t, remote);
+        if (typeof opts === 'string') {
+            ctx.err(`${opts}\n`);
+            return 255;
+        }
+        const session = yield* sftpLogin(ctx, host, opts);
+        if (typeof session === 'number') {
+            ctx.err('scp: Connection closed\n');
+            return session;
+        }
+        let ok = true;
+        for (const src of sources) {
+            const done = target.remote ? upload(ctx, session, src.path, target.path, t.quiet) : download(ctx, session, src.path, target.path, t.quiet);
+            ok = ok && done;
+        }
+        return ok ? 0 : 1;
+    };
+}
+
+return { scp };
 })();
 __m["shells/wg-unit.js"] = (() => {
 const WANTS_DIR = '/etc/systemd/system/multi-user.target.wants';
@@ -28536,6 +29127,8 @@ return { rndc };
 })();
 __m["shells/linux-programs.js"] = (() => {
 /** The Netfix programs of an Ubuntu host: network clients, systemd tools, ssh and command-not-found. */
+const { sftp } = __m["shells/sftp-cmd.js"];
+const { scp } = __m["shells/scp-cmd.js"];
 const { wgUnit, wgUnitName } = __m["shells/wg-unit.js"];
 const { wg } = __m["shells/wg-cmd.js"];
 const { wgQuick } = __m["shells/wg-quick.js"];
@@ -28685,7 +29278,7 @@ function commandNotFound(ctx) {
 function linuxPrograms(host) {
     return new Map([
         ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)], ['netplan', netplanProgram(host)],
-        ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['sysctl', sysctl(host)], ['dmesg', dmesg(host)], ['nft', nft(host)], ['nc', nc(host)], ['netcat', nc(host)], ['nmap', nmap(host)], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId],
+        ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['sysctl', sysctl(host)], ['dmesg', dmesg(host)], ['nft', nft(host)], ['nc', nc(host)], ['netcat', nc(host)], ['nmap', nmap(host)], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId], ['sftp', sftp(host)], ['scp', scp(host)],
         ...(host.kind === 'linuxrouter' ? [['wg', wg(host)], ['wg-quick', wgQuick(host)]] : []),
         ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
         ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
@@ -29029,67 +29622,6 @@ function bootKernel(host, files) {
 registerHostFs((host) => hostSystem(host).fs);
 
 return { defaultLinuxUser, hostUsers, hostSystem, savedFiles, restoreFiles, bootKernel };
-})();
-__m["shells/ssh-stores.js"] = (() => {
-const DEFAULT_IDENTITIES = ['id_ed25519', 'id_ecdsa', 'id_rsa'];
-const SSH_DIR_MODE = 0o700;
-const KNOWN_HOSTS_MODE = 0o644;
-/** ~/.ssh of a Linux account, with that account's permissions. */
-function linuxSshStore(fs, acct, cwd = acct.home) {
-    const cred = { uid: acct.uid, gid: acct.gid, groups: acct.groups };
-    const dir = `${acct.home === '/' ? '' : acct.home}/.ssh`;
-    const base = cwd === '/' ? '' : cwd;
-    const resolve = (p) => (p === '~' ? acct.home : p.startsWith('~/') ? `${acct.home}${p.slice(1)}` : p.startsWith('/') ? p : `${base}/${p}`);
-    const isFile = (p) => fs.tryLookup(p, cred)?.kind === 'file';
-    return {
-        knownHostsPath: `${dir}/known_hosts`,
-        knownHosts: (path) => {
-            try {
-                return isFile(path) ? fs.readFile(path, cred) : '';
-            }
-            catch {
-                return '';
-            }
-        },
-        addKnownHost: (path, line) => {
-            try {
-                if (path === `${dir}/known_hosts` && !fs.tryLookup(dir, cred))
-                    fs.mkdir(dir, cred, false, SSH_DIR_MODE);
-                fs.writeFile(path, `${line}\n`, cred, true, KNOWN_HOSTS_MODE);
-            }
-            catch { /* not writable: OpenSSH also goes on without saving */ }
-        },
-        defaultIdentities: () => DEFAULT_IDENTITIES.map((n) => `${dir}/${n}`).filter(isFile),
-        readIdentity: (path) => {
-            if (!fs.tryLookup(path, cred))
-                return 'missing';
-            try {
-                return { text: fs.readFile(path, cred), mode: fs.stat(path, cred).mode };
-            }
-            catch {
-                return 'denied';
-            }
-        },
-        resolve,
-    };
-}
-const windowsKnownHosts = new WeakMap();
-/** Windows' OpenSSH client: known_hosts kept in memory per equipment, no key files. */
-function windowsSshStore(host, user) {
-    const files = windowsKnownHosts.get(host) ?? new Map();
-    windowsKnownHosts.set(host, files);
-    const home = `C:\\Users\\${user}`;
-    return {
-        knownHostsPath: `${home}\\.ssh\\known_hosts`,
-        knownHosts: (path) => files.get(path) ?? '',
-        addKnownHost: (path, line) => { files.set(path, `${files.get(path) ?? ''}${line}\n`); },
-        defaultIdentities: () => [],
-        readIdentity: () => 'missing',
-        resolve: (p) => (/^[A-Za-z]:\\/.test(p) || p === '/dev/null' ? p : `${home}\\${p.replace(/^~[\\/]/, '').replace(/\//g, '\\')}`),
-    };
-}
-
-return { linuxSshStore, windowsSshStore };
 })();
 __m["bash/complete.js"] = (() => {
 const { normalize } = __m["bash/vfs.js"];
@@ -30038,6 +30570,106 @@ function checkPublicKey(fs, s, u, ip, keyLine, signature, message) {
 
 return { accessDenied, rootRefused, groupNames, checkPublicKey };
 })();
+__m["services/sftp-server.js"] = (() => {
+const { FsError } = __m["bash/vfs.js"];
+const FILE_MODE = 0o644;
+const DIR_MODE = 0o755;
+const MAX_ENTRIES = 2000;
+function normalize(path) {
+    const out = [];
+    for (const part of path.split('/')) {
+        if (!part || part === '.')
+            continue;
+        if (part === '..')
+            out.pop();
+        else
+            out.push(part);
+    }
+    return `/${out.join('/')}`;
+}
+function resolveSftp(home, path) {
+    const p = path.trim() || '.';
+    return normalize(p.startsWith('/') ? p : `${home}/${p}`);
+}
+function failure(e) {
+    if (!(e instanceof FsError))
+        throw e;
+    if (e.code === 'ENOENT')
+        return { status: 'no-such-file', message: 'No such file or directory' };
+    if (e.code === 'EACCES' || e.code === 'EPERM' || e.code === 'EROFS')
+        return { status: 'permission-denied', message: 'Permission denied' };
+    if (e.code === 'ENOTEMPTY')
+        return { status: 'failure', message: 'Directory not empty' };
+    if (e.code === 'EEXIST')
+        return { status: 'failure', message: 'File exists' };
+    if (e.code === 'EISDIR')
+        return { status: 'failure', message: 'Is a directory' };
+    if (e.code === 'ENOTDIR')
+        return { status: 'failure', message: 'Not a directory' };
+    return { status: 'failure', message: 'Failure' };
+}
+function entryOf(name, st, u) {
+    const kind = st.kind === 'file' || st.kind === 'dir' || st.kind === 'link' ? st.kind : 'other';
+    return { name, kind, size: st.size, mode: st.mode, mtime: st.mtime, owner: u.names.user(st.uid), group: u.names.group(st.gid) };
+}
+function list(fs, u, path) {
+    const names = fs.readdir(path, u.cred).slice(0, MAX_ENTRIES);
+    const entries = names.flatMap((n) => {
+        try {
+            return [entryOf(n, fs.stat(`${path === '/' ? '' : path}/${n}`, u.cred, false), u)];
+        }
+        catch {
+            return [];
+        }
+    });
+    return { status: 'ok', path, entries };
+}
+function run(fs, u, req) {
+    const path = resolveSftp(u.home, req.path);
+    switch (req.op) {
+        case 'realpath': {
+            const st = fs.stat(path, u.cred);
+            return { status: 'ok', path, entry: entryOf(path, st, u) };
+        }
+        case 'list': return list(fs, u, path);
+        case 'stat': return { status: 'ok', path, entry: entryOf(path.split('/').pop() || '/', fs.stat(path, u.cred), u) };
+        case 'read': return { status: 'ok', path, data: fs.readFile(path, u.cred) };
+        case 'write':
+            fs.writeFile(path, req.data, u.cred, false, FILE_MODE);
+            return { status: 'ok', path };
+        case 'mkdir':
+            fs.mkdir(path, u.cred, false, DIR_MODE);
+            return { status: 'ok', path };
+        case 'rmdir':
+            if (fs.stat(path, u.cred, false).kind !== 'dir')
+                return { status: 'failure', message: 'Not a directory' };
+            fs.remove(path, u.cred, false, true);
+            return { status: 'ok', path };
+        case 'remove':
+            if (fs.stat(path, u.cred, false).kind === 'dir')
+                return { status: 'failure', message: 'Is a directory' };
+            fs.remove(path, u.cred);
+            return { status: 'ok', path };
+        case 'rename':
+            fs.rename(path, resolveSftp(u.home, req.to), u.cred);
+            return { status: 'ok', path };
+        case 'chmod':
+            fs.chmod(path, req.mode & 0o7777, u.cred);
+            return { status: 'ok', path };
+    }
+}
+/** Runs one request; file system errors become SFTP status codes. */
+function sftpRequest(fs, u, req) {
+    try {
+        return run(fs, u, req);
+    }
+    catch (e) {
+        return failure(e);
+    }
+}
+
+return { resolveSftp, sftpRequest };
+})();
 __m["services/ssh-service.js"] = (() => {
 const { createShell } = __m["shells/factory.js"];
 const { DEFAULT_SCREEN } = __m["shells/base.js"];
@@ -30050,11 +30682,13 @@ const { DEFAULT_SSHD, parseSshdConfig } = __m["services/sshd-config.js"];
 const { HOST_KEY_PATH, loadHostKey } = __m["services/ssh-hostkeys.js"];
 const { accessDenied, checkPublicKey, groupNames, rootRefused } = __m["services/ssh-auth.js"];
 const { PendingLogins, hostProofMessage, userAuthMessage } = __m["services/ssh-handshake.js"];
+const { sftpRequest } = __m["services/sftp-server.js"];
 const MAX_SESSIONS = 16;
 const IDLE_LIMIT_MS = 30 * 60_000;
 const SESSION_ID_BYTES = 12;
 class SshService {
     server;
+    /** Shell sessions, or sftp subsystem sessions (no shell). */
     sessions = new Map();
     counter = 0;
     settings = DEFAULT_SSHD;
@@ -30102,6 +30736,8 @@ class SshService {
             return this.auth(req, peer);
         if (req.kind === 'command' || req.kind === 'key' || req.kind === 'edit' || req.kind === 'screen')
             return this.command(req, peer);
+        if (req.kind === 'sftp')
+            return this.sftp(req, peer);
         return null;
     }
     methods() {
@@ -30141,7 +30777,7 @@ class SshService {
         const ok = this.allowed(req.user, peer, from, method) ? (method === 'publickey' ? this.publickey(req, peer, from) : this.password(req, from)) : null;
         if (ok) {
             this.pending.close(challenge);
-            return this.open(req.user, peer, from, ok);
+            return req.subsystem === 'sftp' ? this.openSftp(req.user, peer, from, ok) : this.open(req.user, peer, from, ok);
         }
         return this.failed(challenge, req.user, from);
     }
@@ -30196,13 +30832,46 @@ class SshService {
         this.expireIdle();
         if (this.sessions.size >= MAX_SESSIONS)
             return this.refuse({ lines: ['Too many sessions'] });
-        const id = `s${++this.counter}-${toBase64(cryptoRandom(SESSION_ID_BYTES), false).replace(/[+/]/g, 'x')}`;
+        const id = this.newId();
         const shell = createShell(this.server, this.server.os, user, true);
         this.sessions.set(id, { user, shell, ip: peer.ip, lastUsed: this.server.clock.now() });
-        const [method, ...detail] = how.split(' ');
-        this.server.log('ssh', `Accepted ${method} for ${user} from ${from} ssh2${detail.length ? `: ${detail.join(' ')}` : ''}`);
+        this.logAccepted(user, from, how);
         this.server.log('ssh', `pam_unix(sshd:session): session opened for user ${user}`);
         return { app: 'SSH', kind: 'output', ok: true, session: id, prompt: shell.prompt(), lines: this.banner(user) };
+    }
+    /** `Subsystem sftp …` in sshd_config: an sftp session with the user's credentials on the server's files. */
+    openSftp(user, peer, from, how) {
+        const fs = hostFs(this.server);
+        const info = hostUsers(this.server).find((u) => u.name === user);
+        this.logAccepted(user, from, how);
+        if (!this.settings.sftp || !fs || !info || this.server.os === 'windows') {
+            this.server.log('ssh', `subsystem request for sftp by user ${user} failed, subsystem not found`);
+            return this.refuse({ closed: true, lines: ['subsystem request failed on channel 0', 'Connection closed'] });
+        }
+        this.expireIdle();
+        if (this.sessions.size >= MAX_SESSIONS)
+            return this.refuse({ closed: true, lines: ['Too many sessions'] });
+        const id = this.newId();
+        const users = hostUsers(this.server);
+        const names = { user: (uid) => users.find((u) => u.uid === uid)?.name ?? String(uid), group: (gid) => groupNames(fs, [gid])[0] ?? String(gid) };
+        this.sessions.set(id, { user, sftp: { cred: { uid: info.uid, gid: info.gid, groups: info.groups }, home: info.home, names }, ip: peer.ip, lastUsed: this.server.clock.now() });
+        this.server.log('ssh', `subsystem request for sftp by user ${user}`);
+        return { app: 'SSH', kind: 'output', ok: true, session: id, lines: [] };
+    }
+    sftp(req, peer) {
+        const s = this.sessions.get(req.session);
+        const fs = hostFs(this.server);
+        if (!s?.sftp || s.ip !== peer.ip || !fs)
+            return { app: 'SSH', kind: 'output', ok: false, closed: true, lines: ['Connection closed'] };
+        s.lastUsed = this.server.clock.now();
+        return { app: 'SSH', kind: 'output', ok: true, lines: [], sftp: sftpRequest(fs, s.sftp, req.req) };
+    }
+    newId() {
+        return `s${++this.counter}-${toBase64(cryptoRandom(SESSION_ID_BYTES), false).replace(/[+/]/g, 'x')}`;
+    }
+    logAccepted(user, from, how) {
+        const [method, ...detail] = how.split(' ');
+        this.server.log('ssh', `Accepted ${method} for ${user} from ${from} ssh2${detail.length ? `: ${detail.join(' ')}` : ''}`);
     }
     expireIdle() {
         const now = this.server.clock.now();
@@ -30213,7 +30882,7 @@ class SshService {
     command(req, peer) {
         const found = this.sessions.get(req.session);
         const s = found && found.ip === peer.ip ? found : undefined;
-        if (!s)
+        if (!s?.shell)
             return { app: 'SSH', kind: 'output', ok: false, closed: true, lines: ['Connection closed by remote host.'] };
         s.lastUsed = this.server.clock.now();
         const sh = s.shell;

@@ -19,6 +19,8 @@ import type { SshdSettings } from './sshd-config.ts';
 import { HOST_KEY_PATH, loadHostKey } from './ssh-hostkeys.ts';
 import { accessDenied, checkPublicKey, groupNames, rootRefused } from './ssh-auth.ts';
 import { PendingLogins, hostProofMessage, userAuthMessage } from './ssh-handshake.ts';
+import { sftpRequest } from './sftp-server.ts';
+import type { SftpUser } from './sftp-server.ts';
 
 type SshOutput = Extract<AppPayload, { app: 'SSH'; kind: 'output' }>;
 type SshAuth = Extract<AppPayload, { app: 'SSH'; kind: 'auth' }>;
@@ -29,7 +31,8 @@ const SESSION_ID_BYTES = 12;
 
 export class SshService {
   private readonly server: Server;
-  private readonly sessions = new Map<string, { user: string; shell: ShellSession; ip: number; lastUsed: number }>();
+  /** Shell sessions, or sftp subsystem sessions (no shell). */
+  private readonly sessions = new Map<string, { user: string; shell?: ShellSession; sftp?: SftpUser; ip: number; lastUsed: number }>();
   private counter = 0;
   settings: SshdSettings = DEFAULT_SSHD;
   private hostKey: KeyPair | null = null;
@@ -73,6 +76,7 @@ export class SshService {
     if (req.app !== 'SSH') return null;
     if (req.kind === 'auth') return this.auth(req, peer);
     if (req.kind === 'command' || req.kind === 'key' || req.kind === 'edit' || req.kind === 'screen') return this.command(req, peer);
+    if (req.kind === 'sftp') return this.sftp(req, peer);
     return null;
   }
 
@@ -114,7 +118,7 @@ export class SshService {
     const ok = this.allowed(req.user, peer, from, method) ? (method === 'publickey' ? this.publickey(req, peer, from) : this.password(req, from)) : null;
     if (ok) {
       this.pending.close(challenge);
-      return this.open(req.user, peer, from, ok);
+      return req.subsystem === 'sftp' ? this.openSftp(req.user, peer, from, ok) : this.open(req.user, peer, from, ok);
     }
     return this.failed(challenge, req.user, from);
   }
@@ -169,13 +173,48 @@ export class SshService {
   private open(user: string, peer: Peer, from: string, how: string): SshOutput {
     this.expireIdle();
     if (this.sessions.size >= MAX_SESSIONS) return this.refuse({ lines: ['Too many sessions'] });
-    const id = `s${++this.counter}-${toBase64(cryptoRandom(SESSION_ID_BYTES), false).replace(/[+/]/g, 'x')}`;
+    const id = this.newId();
     const shell = createShell(this.server, this.server.os, user, true);
     this.sessions.set(id, { user, shell, ip: peer.ip, lastUsed: this.server.clock.now() });
-    const [method, ...detail] = how.split(' ');
-    this.server.log('ssh', `Accepted ${method} for ${user} from ${from} ssh2${detail.length ? `: ${detail.join(' ')}` : ''}`);
+    this.logAccepted(user, from, how);
     this.server.log('ssh', `pam_unix(sshd:session): session opened for user ${user}`);
     return { app: 'SSH', kind: 'output', ok: true, session: id, prompt: shell.prompt(), lines: this.banner(user) };
+  }
+
+  /** `Subsystem sftp …` in sshd_config: an sftp session with the user's credentials on the server's files. */
+  private openSftp(user: string, peer: Peer, from: string, how: string): SshOutput {
+    const fs = hostFs(this.server);
+    const info = hostUsers(this.server).find((u) => u.name === user);
+    this.logAccepted(user, from, how);
+    if (!this.settings.sftp || !fs || !info || this.server.os === 'windows') {
+      this.server.log('ssh', `subsystem request for sftp by user ${user} failed, subsystem not found`);
+      return this.refuse({ closed: true, lines: ['subsystem request failed on channel 0', 'Connection closed'] });
+    }
+    this.expireIdle();
+    if (this.sessions.size >= MAX_SESSIONS) return this.refuse({ closed: true, lines: ['Too many sessions'] });
+    const id = this.newId();
+    const users = hostUsers(this.server);
+    const names = { user: (uid: number) => users.find((u) => u.uid === uid)?.name ?? String(uid), group: (gid: number) => groupNames(fs, [gid])[0] ?? String(gid) };
+    this.sessions.set(id, { user, sftp: { cred: { uid: info.uid, gid: info.gid, groups: info.groups }, home: info.home, names }, ip: peer.ip, lastUsed: this.server.clock.now() });
+    this.server.log('ssh', `subsystem request for sftp by user ${user}`);
+    return { app: 'SSH', kind: 'output', ok: true, session: id, lines: [] };
+  }
+
+  private sftp(req: Extract<AppPayload, { app: 'SSH'; kind: 'sftp' }>, peer: Peer): SshOutput {
+    const s = this.sessions.get(req.session);
+    const fs = hostFs(this.server);
+    if (!s?.sftp || s.ip !== peer.ip || !fs) return { app: 'SSH', kind: 'output', ok: false, closed: true, lines: ['Connection closed'] };
+    s.lastUsed = this.server.clock.now();
+    return { app: 'SSH', kind: 'output', ok: true, lines: [], sftp: sftpRequest(fs, s.sftp, req.req) };
+  }
+
+  private newId(): string {
+    return `s${++this.counter}-${toBase64(cryptoRandom(SESSION_ID_BYTES), false).replace(/[+/]/g, 'x')}`;
+  }
+
+  private logAccepted(user: string, from: string, how: string): void {
+    const [method, ...detail] = how.split(' ');
+    this.server.log('ssh', `Accepted ${method} for ${user} from ${from} ssh2${detail.length ? `: ${detail.join(' ')}` : ''}`);
   }
 
   private expireIdle(): void {
@@ -186,9 +225,9 @@ export class SshService {
   private command(req: Extract<AppPayload, { app: 'SSH'; kind: 'command' | 'key' | 'edit' | 'screen' }>, peer: Peer): SshOutput {
     const found = this.sessions.get(req.session);
     const s = found && found.ip === peer.ip ? found : undefined;
-    if (!s) return { app: 'SSH', kind: 'output', ok: false, closed: true, lines: ['Connection closed by remote host.'] };
+    if (!s?.shell) return { app: 'SSH', kind: 'output', ok: false, closed: true, lines: ['Connection closed by remote host.'] };
     s.lastUsed = this.server.clock.now();
-    const sh = s.shell;
+    const sh: ShellSession = s.shell;
     if (req.kind === 'edit' && req.action === 'save') {
       return { app: 'SSH', kind: 'output', ok: true, lines: [], prompt: sh.prompt(), edit: sh.editRequest?.() ?? undefined, saveError: sh.saveEdit ? sh.saveEdit(req.path ?? '', req.content ?? '') : 'No editor' };
     }

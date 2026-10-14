@@ -25,11 +25,13 @@ export interface SshdSettings {
   readonly allowGroups: readonly string[];
   readonly denyGroups: readonly string[];
   readonly maxAuthTries: number;
+  /** `Subsystem sftp …` is configured (sftp and scp work). */
+  readonly sftp: boolean;
 }
 
 export const DEFAULT_SSHD: SshdSettings = {
   permitRootLogin: 'prohibit-password', passwordAuth: true, pubkeyAuth: true, strictModes: true, permitEmptyPasswords: false,
-  authorizedKeysFiles: ['.ssh/authorized_keys', '.ssh/authorized_keys2'], allowUsers: [], denyUsers: [], allowGroups: [], denyGroups: [], maxAuthTries: 6,
+  authorizedKeysFiles: ['.ssh/authorized_keys', '.ssh/authorized_keys2'], allowUsers: [], denyUsers: [], allowGroups: [], denyGroups: [], maxAuthTries: 6, sftp: true,
 };
 
 export const DEFAULT_SSHD_CONFIG = `
@@ -200,6 +202,7 @@ export function parseSshdConfig(src: ConfigSource): { ok: true; settings: SshdSe
       allowGroups: values.get('allowgroups') ?? [],
       denyGroups: values.get('denygroups') ?? [],
       maxAuthTries: tries,
+      sftp: (values.get('subsystem')?.[0] ?? '').toLowerCase() === 'sftp',
     },
   };
 }
