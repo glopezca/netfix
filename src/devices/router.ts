@@ -46,6 +46,8 @@ export class Router extends IosDevice implements NetDevice {
   readonly web: IosWeb;
   acls: AccessLists = new Map();
   readonly aclHits = new Map<string, number>();
+  /** Named lists declared with `ip access-list extended`. */
+  readonly extendedAcls = new Set<string>();
   nat: NatConfig = EMPTY_NAT;
   readonly natTable = new NatTable();
   debugNat = false;
@@ -195,7 +197,7 @@ export class Router extends IosDevice implements NetDevice {
   }
 
   runningConfig(): string[] {
-    const acl = aclConfigLines(this.acls);
+    const acl = aclConfigLines(this.acls, this.extendedAcls);
     return [
       ...headerLines(this, '15.1'),
       ...dhcpRunningConfig(this.dhcp),

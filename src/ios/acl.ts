@@ -1,5 +1,12 @@
-/** Standard IP access lists (numbered 1-99 and named), used by NAT to select inside sources. */
-import { formatIp, parseIp } from '../core/ip.ts';
+/**
+ * IP access lists: standard (1-99, `ip access-list standard`) and extended (100-199, `ip access-list
+ * extended`); used by NAT, `ip access-group` and crypto maps.
+ */
+import { formatIp } from '../core/ip.ts';
+import type { IpPacket } from '../net/packets.ts';
+import { ANY_WILDCARD, parseSource } from './acl-addr.ts';
+import { extMatches, extText } from './acl-ext.ts';
+import type { ExtFields } from './acl-ext.ts';
 
 export interface AclEntry {
   readonly seq: number;
@@ -8,29 +15,27 @@ export interface AclEntry {
   readonly ip: number;
   readonly wildcard: number;
   readonly remark?: string;
+  /** Extended entries: protocol, destination, ports… (the source is ip/wildcard above). */
+  readonly ext?: ExtFields;
 }
 
 export type AccessLists = ReadonlyMap<string, readonly AclEntry[]>;
 
-const ANY_WILDCARD = 0xffffffff;
 const SEQ_STEP = 10;
+
+export { parseSource };
 
 export function isNumberedStandard(name: string): boolean {
   return /^\d+$/.test(name) && Number(name) >= 1 && Number(name) <= 99;
 }
 
-/** "any" | "host A.B.C.D" | "A.B.C.D [wildcard]" → address and wildcard, or an IOS error. */
-export function parseSource(words: readonly string[]): { ip: number; wildcard: number } | string {
-  const [first, second] = words;
-  if (first === 'any') return { ip: 0, wildcard: ANY_WILDCARD };
-  if (first === 'host') {
-    const ip = parseIp(second ?? '');
-    return ip === null ? '% Invalid input detected.' : { ip, wildcard: 0 };
-  }
-  const ip = parseIp(first ?? '');
-  const wildcard = second === undefined ? 0 : parseIp(second);
-  if (ip === null || wildcard === null) return '% Invalid input detected.';
-  return { ip: (ip & ~wildcard) >>> 0, wildcard };
+export function isNumberedExtended(name: string): boolean {
+  return /^\d+$/.test(name) && ((Number(name) >= 100 && Number(name) <= 199) || (Number(name) >= 2000 && Number(name) <= 2699));
+}
+
+/** An extended list: numbered 100-199/2000-2699, a named one declared extended, or one with extended entries. */
+export function isExtendedList(name: string, entries: readonly AclEntry[], named: ReadonlySet<string> = new Set()): boolean {
+  return isNumberedExtended(name) || named.has(name) || entries.some((e) => e.ext !== undefined);
 }
 
 export function aclEntryMatches(e: AclEntry, ip: number): boolean {
@@ -46,6 +51,11 @@ export function aclPermits(entries: readonly AclEntry[] | undefined, ip: number)
   return aclFirstMatch(entries, ip)?.action === 'permit';
 }
 
+/** First entry matching a whole packet (standard entries look at the source only). */
+export function aclPacketMatch(entries: readonly AclEntry[] | undefined, p: IpPacket): AclEntry | undefined {
+  return entries?.find((e) => e.action !== 'remark' && (e.ext ? extMatches(e, e.ext, p) : aclEntryMatches(e, p.src)));
+}
+
 export function nextSeq(entries: readonly AclEntry[]): number {
   return (entries.reduce((m, e) => Math.max(m, e.seq), 0) + SEQ_STEP);
 }
@@ -57,28 +67,33 @@ export function sourceText(e: AclEntry, style: 'config' | 'show'): string {
 }
 
 function entryBody(e: AclEntry): string {
-  return e.action === 'remark' ? `remark ${e.remark ?? ''}` : `${e.action} ${sourceText(e, 'config')}`;
+  if (e.action === 'remark') return `remark ${e.remark ?? ''}`;
+  return e.ext ? `${e.action} ${extText(e, e.ext)}` : `${e.action} ${sourceText(e, 'config')}`;
 }
 
+const byName = (lists: AccessLists): [string, readonly AclEntry[]][] => [...lists.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }));
+
 /** Running-config lines: numbered lists as `access-list N …`, named ones as blocks. */
-export function aclConfigLines(lists: AccessLists): { numbered: string[]; named: string[] } {
+export function aclConfigLines(lists: AccessLists, extendedNamed: ReadonlySet<string> = new Set()): { numbered: string[]; named: string[] } {
   const numbered: string[] = [];
   const named: string[] = [];
-  for (const [name, entries] of [...lists.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }))) {
-    if (isNumberedStandard(name)) numbered.push(...entries.map((e) => `access-list ${name} ${entryBody(e)}`));
-    else named.push(`ip access-list standard ${name}`, ...entries.map((e) => ` ${entryBody(e)}`));
+  for (const [name, entries] of byName(lists)) {
+    if (isNumberedStandard(name) || isNumberedExtended(name)) numbered.push(...entries.map((e) => `access-list ${name} ${entryBody(e)}`));
+    else named.push(`ip access-list ${isExtendedList(name, entries, extendedNamed) ? 'extended' : 'standard'} ${name}`, ...entries.map((e) => ` ${entryBody(e)}`));
   }
   return { numbered, named };
 }
 
-export function showAccessLists(lists: AccessLists, hits: ReadonlyMap<string, number>): string[] {
+export function showAccessLists(lists: AccessLists, hits: ReadonlyMap<string, number>, extendedNamed: ReadonlySet<string> = new Set()): string[] {
   const out: string[] = [];
-  for (const [name, entries] of [...lists.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }))) {
-    out.push(`Standard IP access list ${name}`);
+  for (const [name, entries] of byName(lists)) {
+    const ext = isExtendedList(name, entries, extendedNamed);
+    out.push(`${ext ? 'Extended' : 'Standard'} IP access list ${name}`);
     for (const e of entries) {
       if (e.action === 'remark') continue;
       const n = hits.get(`${name}:${e.seq}`) ?? 0;
-      out.push(`    ${e.seq} ${e.action} ${sourceText(e, 'show')}${n ? ` (${n} match(es))` : ''}`);
+      const body = e.ext ? extText(e, e.ext) : sourceText(e, 'show');
+      out.push(`    ${e.seq} ${e.action} ${body}${n ? ` (${n} match(es))` : ''}`);
     }
   }
   return out;

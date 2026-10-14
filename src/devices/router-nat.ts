@@ -2,7 +2,7 @@
 import type { Router } from './router.ts';
 import type { IpPacket } from '../net/packets.ts';
 import type { DynamicTarget, StaticNat } from '../net/nat.ts';
-import { aclFirstMatch } from '../ios/acl.ts';
+import { aclPacketMatch } from '../ios/acl.ts';
 import type { NatPool } from '../ios/nat-config.ts';
 import { effectiveAddress } from '../ios/commands/show-iface.ts';
 import { formatIp } from '../core/ip.ts';
@@ -29,8 +29,9 @@ export function poolInUse(r: Router, pool: NatPool): number {
   return r.natTable.entries().filter((e) => e.proto === null && e.insideGlobal >= pool.start && e.insideGlobal <= pool.end).length;
 }
 
-function permitted(r: Router, acl: string, src: number): boolean {
-  const entry = aclFirstMatch(r.acls.get(acl), src);
+/** The packet matches a permit of the NAT list (extended lists also look at the destination: NAT exemption). */
+function permitted(r: Router, acl: string, p: IpPacket): boolean {
+  const entry = aclPacketMatch(r.acls.get(acl), p);
   if (entry) r.aclHits.set(`${acl}:${entry.seq}`, (r.aclHits.get(`${acl}:${entry.seq}`) ?? 0) + 1);
   return entry?.action === 'permit';
 }
@@ -45,7 +46,7 @@ function poolTarget(r: Router, poolName: string | undefined, overload: boolean, 
 
 function dynamicTarget(r: Router, p: IpPacket): DynamicTarget {
   for (const [rule, d] of r.nat.dynamic.entries()) {
-    if (!permitted(r, d.acl, p.src)) continue;
+    if (!permitted(r, d.acl, p)) continue;
     if (d.iface) {
       const ip = ifaceIp(r, d.iface);
       return ip === undefined ? 'exhausted' : { global: ip, overload: true, rule };

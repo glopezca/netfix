@@ -31650,6 +31650,7 @@ const PROMPT_SUFFIX = {
     'config-line': '(config-line)#',
     'config-vlan': '(config-vlan)#',
     'config-std-nacl': '(config-std-nacl)#',
+    'config-ext-nacl': '(config-ext-nacl)#',
 };
 const EXEC_MODES = new Set(['user', 'exec']);
 const MAX_PASSWORD_TRIES = 3;
@@ -35102,15 +35103,10 @@ function showIpRoute(table) {
 
 return { connectedRoutes, buildRoutingTable, lookupRoute, resolveEgress, showIpRoute };
 })();
-__m["ios/acl.js"] = (() => {
-/** Standard IP access lists (numbered 1-99 and named), used by NAT to select inside sources. */
-const { formatIp, parseIp } = __m["core/ip.js"];
+__m["ios/acl-addr.js"] = (() => {
+/** Address and wildcard of an ACL entry: "any" | "host A.B.C.D" | "A.B.C.D [wildcard]". */
+const { parseIp } = __m["core/ip.js"];
 const ANY_WILDCARD = 0xffffffff;
-const SEQ_STEP = 10;
-function isNumberedStandard(name) {
-    return /^\d+$/.test(name) && Number(name) >= 1 && Number(name) <= 99;
-}
-/** "any" | "host A.B.C.D" | "A.B.C.D [wildcard]" → address and wildcard, or an IOS error. */
 function parseSource(words) {
     const [first, second] = words;
     if (first === 'any')
@@ -35125,6 +35121,161 @@ function parseSource(words) {
         return '% Invalid input detected.';
     return { ip: (ip & ~wildcard) >>> 0, wildcard };
 }
+
+return { ANY_WILDCARD, parseSource };
+})();
+__m["ios/acl-ext.js"] = (() => {
+const { parseSource } = __m["ios/acl-addr.js"];
+const { formatIp } = __m["core/ip.js"];
+/** IOS keywords for well-known ports (what show/running-config print instead of the number). */
+const TCP_NAMES = { bgp: 179, chargen: 19, cmd: 514, daytime: 13, discard: 9, domain: 53, echo: 7, exec: 512, finger: 79, ftp: 21, 'ftp-data': 20, gopher: 70, hostname: 101, ident: 113, irc: 194, klogin: 543, kshell: 544, login: 513, lpd: 515, nntp: 119, 'pim-auto-rp': 496, pop2: 109, pop3: 110, smtp: 25, sunrpc: 111, tacacs: 49, talk: 517, telnet: 23, time: 37, uucp: 540, whois: 43, www: 80 };
+const UDP_NAMES = { biff: 512, bootpc: 68, bootps: 67, discard: 9, dnsix: 195, domain: 53, echo: 7, isakmp: 500, 'mobile-ip': 434, nameserver: 42, 'netbios-dgm': 138, 'netbios-ns': 137, 'netbios-ss': 139, 'non500-isakmp': 4500, ntp: 123, 'pim-auto-rp': 496, rip: 520, snmp: 161, snmptrap: 162, sunrpc: 111, syslog: 514, tacacs: 49, talk: 517, tftp: 69, time: 37, who: 513, xdmcp: 177 };
+const ICMP_NAMES = ['echo', 'echo-reply', 'unreachable', 'time-exceeded', 'administratively-prohibited', 'host-unreachable', 'port-unreachable'];
+const ICMP_OF = { 'echo-request': 'echo', 'echo-reply': 'echo-reply', unreachable: 'unreachable', 'ttl-exceeded': 'time-exceeded' };
+const INVALID = '% Invalid input detected.';
+function names(proto) {
+    return proto === 'udp' ? UDP_NAMES : TCP_NAMES;
+}
+function port(proto, word) {
+    if (word === undefined)
+        return null;
+    if (/^\d+$/.test(word))
+        return Number(word) <= 65535 ? Number(word) : null;
+    return names(proto)[word] ?? null;
+}
+/** `eq www` / `range 1000 2000` at `words[i]`; returns the spec and how many words it used. */
+function portSpec(proto, words, i) {
+    const op = words[i];
+    if (op !== 'eq' && op !== 'gt' && op !== 'lt' && op !== 'neq' && op !== 'range')
+        return 'none';
+    if (proto !== 'tcp' && proto !== 'udp')
+        return null;
+    const a = port(proto, words[i + 1]);
+    if (a === null)
+        return null;
+    if (op !== 'range')
+        return { spec: { op, port: a }, used: 2 };
+    const b = port(proto, words[i + 2]);
+    return b === null || b < a ? null : { spec: { op, port: a, to: b }, used: 3 };
+}
+/** Address at `words[i]` (any | host A | A W): the spec and the words used. */
+function address(words, i) {
+    const w = words[i];
+    if (w === undefined)
+        return null;
+    const take = w === 'any' ? 1 : 2;
+    const r = parseSource(words.slice(i, i + take));
+    return typeof r === 'string' ? null : { spec: r, used: take };
+}
+/** Parses `SRC [port] DST [port] [established] [icmp-type] [log]` for a protocol. */
+function parseExtended(proto, words) {
+    const src = address(words, 0);
+    if (!src)
+        return INVALID;
+    let i = src.used;
+    const sp = portSpec(proto, words, i);
+    if (sp === null)
+        return INVALID;
+    if (sp !== 'none')
+        i += sp.used;
+    const dst = address(words, i);
+    if (!dst)
+        return words[i] === undefined ? '% Incomplete command.' : INVALID;
+    i += dst.used;
+    const dp = portSpec(proto, words, i);
+    if (dp === null)
+        return INVALID;
+    if (dp !== 'none')
+        i += dp.used;
+    let established = false;
+    let icmp;
+    let log = false;
+    for (const w of words.slice(i)) {
+        if (w === 'established' && proto === 'tcp')
+            established = true;
+        else if (proto === 'icmp' && ICMP_NAMES.includes(w) && icmp === undefined)
+            icmp = w;
+        else if (w === 'log' || w === 'log-input')
+            log = true;
+        else
+            return INVALID;
+    }
+    const ext = { proto, dst: dst.spec, ...(sp !== 'none' ? { sport: sp.spec } : {}), ...(dp !== 'none' ? { dport: dp.spec } : {}), ...(established ? { established } : {}), ...(icmp ? { icmp } : {}), ...(log ? { log } : {}) };
+    return { src: src.spec, ext };
+}
+const inAddr = (a, ip) => ((ip & ~a.wildcard) >>> 0) === ((a.ip & ~a.wildcard) >>> 0);
+function portMatches(s, p) {
+    if (!s)
+        return true;
+    if (p === undefined)
+        return false;
+    switch (s.op) {
+        case 'eq': return p === s.port;
+        case 'neq': return p !== s.port;
+        case 'gt': return p > s.port;
+        case 'lt': return p < s.port;
+        case 'range': return p >= s.port && p <= s.to;
+    }
+}
+function protoMatches(proto, p) {
+    if (proto === 'ip')
+        return true;
+    if (proto === 'esp')
+        return p.protocol === 'esp';
+    return p.protocol === proto;
+}
+function extMatches(src, e, p) {
+    if (!protoMatches(e.proto, p) || !inAddr(src, p.src) || !inAddr(e.dst, p.dst))
+        return false;
+    const l4 = p.tcp ?? p.udp;
+    if (!portMatches(e.sport, l4?.sport) || !portMatches(e.dport, l4?.dport))
+        return false;
+    if (e.established && !(p.tcp && (p.tcp.flags.includes('ACK') || p.tcp.flags.includes('RST'))))
+        return false;
+    if (e.icmp && (!p.icmp || ICMP_OF[p.icmp.type] !== e.icmp))
+        return false;
+    return true;
+}
+function addrText(a) {
+    if (a.wildcard === 0xffffffff)
+        return 'any';
+    if (a.wildcard === 0)
+        return `host ${formatIp(a.ip)}`;
+    return `${formatIp(a.ip)} ${formatIp(a.wildcard)}`;
+}
+function portText(proto, s) {
+    if (!s)
+        return '';
+    const name = (n) => Object.entries(names(proto)).find(([, v]) => v === n)?.[0] ?? String(n);
+    return s.op === 'range' ? ` range ${name(s.port)} ${name(s.to)}` : ` ${s.op} ${name(s.port)}`;
+}
+/** `tcp any host 10.0.0.2 eq www established log` (running-config and show use the same text). */
+function extText(src, e) {
+    return `${e.proto} ${addrText(src)}${portText(e.proto, e.sport)} ${addrText(e.dst)}${portText(e.proto, e.dport)}${e.icmp ? ` ${e.icmp}` : ''}${e.established ? ' established' : ''}${e.log ? ' log' : ''}`;
+}
+
+return { parseExtended, extMatches, extText };
+})();
+__m["ios/acl.js"] = (() => {
+/**
+ * IP access lists: standard (1-99, `ip access-list standard`) and extended (100-199, `ip access-list
+ * extended`); used by NAT, `ip access-group` and crypto maps.
+ */
+const { formatIp } = __m["core/ip.js"];
+const { ANY_WILDCARD, parseSource } = __m["ios/acl-addr.js"];
+const { extMatches, extText } = __m["ios/acl-ext.js"];
+const SEQ_STEP = 10;
+
+function isNumberedStandard(name) {
+    return /^\d+$/.test(name) && Number(name) >= 1 && Number(name) <= 99;
+}
+function isNumberedExtended(name) {
+    return /^\d+$/.test(name) && ((Number(name) >= 100 && Number(name) <= 199) || (Number(name) >= 2000 && Number(name) <= 2699));
+}
+/** An extended list: numbered 100-199/2000-2699, a named one declared extended, or one with extended entries. */
+function isExtendedList(name, entries, named = new Set()) {
+    return isNumberedExtended(name) || named.has(name) || entries.some((e) => e.ext !== undefined);
+}
 function aclEntryMatches(e, ip) {
     return e.action !== 'remark' && ((ip & ~e.wildcard) >>> 0) === ((e.ip & ~e.wildcard) >>> 0);
 }
@@ -35134,6 +35285,10 @@ function aclFirstMatch(entries, ip) {
 }
 function aclPermits(entries, ip) {
     return aclFirstMatch(entries, ip)?.action === 'permit';
+}
+/** First entry matching a whole packet (standard entries look at the source only). */
+function aclPacketMatch(entries, p) {
+    return entries?.find((e) => e.action !== 'remark' && (e.ext ? extMatches(e, e.ext, p) : aclEntryMatches(e, p.src)));
 }
 function nextSeq(entries) {
     return (entries.reduce((m, e) => Math.max(m, e.seq), 0) + SEQ_STEP);
@@ -35146,38 +35301,43 @@ function sourceText(e, style) {
     return style === 'config' ? `${formatIp(e.ip)} ${formatIp(e.wildcard)}` : `${formatIp(e.ip)}, wildcard bits ${formatIp(e.wildcard)}`;
 }
 function entryBody(e) {
-    return e.action === 'remark' ? `remark ${e.remark ?? ''}` : `${e.action} ${sourceText(e, 'config')}`;
+    if (e.action === 'remark')
+        return `remark ${e.remark ?? ''}`;
+    return e.ext ? `${e.action} ${extText(e, e.ext)}` : `${e.action} ${sourceText(e, 'config')}`;
 }
+const byName = (lists) => [...lists.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }));
 /** Running-config lines: numbered lists as `access-list N …`, named ones as blocks. */
-function aclConfigLines(lists) {
+function aclConfigLines(lists, extendedNamed = new Set()) {
     const numbered = [];
     const named = [];
-    for (const [name, entries] of [...lists.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }))) {
-        if (isNumberedStandard(name))
+    for (const [name, entries] of byName(lists)) {
+        if (isNumberedStandard(name) || isNumberedExtended(name))
             numbered.push(...entries.map((e) => `access-list ${name} ${entryBody(e)}`));
         else
-            named.push(`ip access-list standard ${name}`, ...entries.map((e) => ` ${entryBody(e)}`));
+            named.push(`ip access-list ${isExtendedList(name, entries, extendedNamed) ? 'extended' : 'standard'} ${name}`, ...entries.map((e) => ` ${entryBody(e)}`));
     }
     return { numbered, named };
 }
-function showAccessLists(lists, hits) {
+function showAccessLists(lists, hits, extendedNamed = new Set()) {
     const out = [];
-    for (const [name, entries] of [...lists.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }))) {
-        out.push(`Standard IP access list ${name}`);
+    for (const [name, entries] of byName(lists)) {
+        const ext = isExtendedList(name, entries, extendedNamed);
+        out.push(`${ext ? 'Extended' : 'Standard'} IP access list ${name}`);
         for (const e of entries) {
             if (e.action === 'remark')
                 continue;
             const n = hits.get(`${name}:${e.seq}`) ?? 0;
-            out.push(`    ${e.seq} ${e.action} ${sourceText(e, 'show')}${n ? ` (${n} match(es))` : ''}`);
+            const body = e.ext ? extText(e, e.ext) : sourceText(e, 'show');
+            out.push(`    ${e.seq} ${e.action} ${body}${n ? ` (${n} match(es))` : ''}`);
         }
     }
     return out;
 }
 
-return { isNumberedStandard, parseSource, aclEntryMatches, aclFirstMatch, aclPermits, nextSeq, sourceText, aclConfigLines, showAccessLists };
+return { parseSource, isNumberedStandard, isNumberedExtended, isExtendedList, aclEntryMatches, aclFirstMatch, aclPermits, aclPacketMatch, nextSeq, sourceText, aclConfigLines, showAccessLists };
 })();
 __m["devices/router-nat.js"] = (() => {
-const { aclFirstMatch } = __m["ios/acl.js"];
+const { aclPacketMatch } = __m["ios/acl.js"];
 const { effectiveAddress } = __m["ios/commands/show-iface.js"];
 const { formatIp } = __m["core/ip.js"];
 function natRole(r, iface) {
@@ -35198,8 +35358,9 @@ function resolvedStatics(r) {
 function poolInUse(r, pool) {
     return r.natTable.entries().filter((e) => e.proto === null && e.insideGlobal >= pool.start && e.insideGlobal <= pool.end).length;
 }
-function permitted(r, acl, src) {
-    const entry = aclFirstMatch(r.acls.get(acl), src);
+/** The packet matches a permit of the NAT list (extended lists also look at the destination: NAT exemption). */
+function permitted(r, acl, p) {
+    const entry = aclPacketMatch(r.acls.get(acl), p);
     if (entry)
         r.aclHits.set(`${acl}:${entry.seq}`, (r.aclHits.get(`${acl}:${entry.seq}`) ?? 0) + 1);
     return entry?.action === 'permit';
@@ -35217,7 +35378,7 @@ function poolTarget(r, poolName, overload, rule) {
 }
 function dynamicTarget(r, p) {
     for (const [rule, d] of r.nat.dynamic.entries()) {
-        if (!permitted(r, d.acl, p.src))
+        if (!permitted(r, d.acl, p))
             continue;
         if (d.iface) {
             const ip = ifaceIp(r, d.iface);
@@ -35268,6 +35429,37 @@ function natAnswersArp(r, iface, ip) {
 
 return { natRole, resolvedStatics, poolInUse, natPrerouting, natForward, natAnswersArp };
 })();
+__m["devices/router-acl.js"] = (() => {
+const { aclPacketMatch } = __m["ios/acl.js"];
+const { formatIp } = __m["core/ip.js"];
+/** Does `acl` let `p` through? A missing list permits everything, like IOS; the hit is counted and logged. */
+function aclAllows(r, acl, p) {
+    if (acl === undefined)
+        return true;
+    const entries = r.acls.get(acl);
+    if (!entries)
+        return true;
+    const hit = aclPacketMatch(entries, p);
+    if (!hit)
+        return false;
+    const key = `${acl}:${hit.seq}`;
+    r.aclHits.set(key, (r.aclHits.get(key) ?? 0) + 1);
+    if (hit.ext?.log) {
+        const l4 = p.tcp ?? p.udp;
+        const ports = (ip, port) => (port === undefined ? formatIp(ip) : `${formatIp(ip)}(${port})`);
+        r.log(`%SEC-6-IPACCESSLOGP: list ${acl} ${hit.action === 'permit' ? 'permitted' : 'denied'} ${p.protocol} ${ports(p.src, l4?.sport)} -> ${ports(p.dst, l4?.dport)}, 1 packet`);
+    }
+    return hit.action === 'permit';
+}
+function inboundAllowed(r, iface, p) {
+    return aclAllows(r, r.iface(iface)?.accessIn, p);
+}
+function outboundAllowed(r, iface, p) {
+    return aclAllows(r, r.iface(iface)?.accessOut, p);
+}
+
+return { aclAllows, inboundAllowed, outboundAllowed };
+})();
 __m["devices/router-plane.js"] = (() => {
 const { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DEFAULT_TTL } = __m["net/packets.js"];
 const { IpStack } = __m["net/ipstack.js"];
@@ -35280,6 +35472,7 @@ const { DhcpClient } = __m["dhcp/client.js"];
 const { selectPool, findManualPool } = __m["dhcp/match.js"];
 const { identity } = __m["dhcp/server.js"];
 const { natAnswersArp, natForward, natPrerouting } = __m["devices/router-nat.js"];
+const { inboundAllowed, outboundAllowed } = __m["devices/router-acl.js"];
 const DHCP_DEFAULT_ROUTE_AD = 254;
 class RouterPlane {
     stack;
@@ -35357,10 +35550,20 @@ class RouterPlane {
             return;
         }
         const out = natForward(this.router, inIface, egress.iface, { ...packet, ttl: packet.ttl - 1 });
-        if (out)
-            this.stack.sendVia(egress, out);
+        if (!out)
+            return;
+        if (!outboundAllowed(this.router, egress.iface, out)) {
+            this.icmpError(packet, src, 'unreachable');
+            return;
+        }
+        this.stack.sendVia(egress, out);
     }
+    /** Inbound access list, then NAT outside → inside (IOS order). */
     prerouting(iface, packet) {
+        if (!inboundAllowed(this.router, iface, packet)) {
+            this.icmpError(packet, this.l3Iface(iface)?.addrs[0]?.ip ?? 0, 'unreachable');
+            return null;
+        }
         return natPrerouting(this.router, iface, packet);
     }
     answersArp(iface, ip) {
@@ -36699,34 +36902,8 @@ return { EMPTY_NAT, sameStatic, natConfigLines, showNatTranslations, showNatStat
 __m["ios/commands/nat.js"] = (() => {
 const { parseIp, parseMask } = __m["core/ip.js"];
 const { parseIfaceName } = __m["ios/interfaces.js"];
-const { nextSeq, parseSource, showAccessLists } = __m["ios/acl.js"];
 const { sameStatic, showNatStatistics, showNatTranslations } = __m["ios/nat-config.js"];
 const { poolInUse, resolvedStatics } = __m["devices/router-nat.js"];
-const SOURCE = '{any | host <A.B.C.D:host> | <A.B.C.D:src> [<A.B.C.D:wc>]}';
-function sourceWords(m) {
-    if (m.has('any'))
-        return ['any'];
-    if (m.get('host'))
-        return ['host', m.get('host') ?? ''];
-    return [m.get('src') ?? '', ...(m.get('wc') ? [m.get('wc') ?? ''] : [])];
-}
-function addEntry(cli, name, action, m, seq) {
-    const src = parseSource(sourceWords(m));
-    if (typeof src === 'string')
-        return cli.out(src);
-    const list = cli.device.acls.get(name) ?? [];
-    const entry = { seq: seq ?? nextSeq(list), action, ...src };
-    const rest = list.filter((e) => e.seq !== entry.seq);
-    cli.device.acls = new Map([...cli.device.acls, [name, [...rest, entry].sort((a, b) => a.seq - b.seq)]]);
-}
-function removeList(cli, name) {
-    const next = new Map(cli.device.acls);
-    next.delete(name);
-    cli.device.acls = next;
-    for (const key of [...cli.device.aclHits.keys()])
-        if (key.startsWith(`${name}:`))
-            cli.device.aclHits.delete(key);
-}
 function setNat(cli, change) {
     cli.device.nat = change(cli.device.nat);
 }
@@ -36768,27 +36945,6 @@ function addPool(cli, m) {
     setNat(cli, (n) => ({ ...n, pools: [...n.pools.filter((p) => p.name !== pool.name), pool] }));
 }
 const NAT_GLOBAL = [
-    { syntax: `access-list <1-99:n> {permit | deny} ${SOURCE}`, run: (cli, m) => addEntry(cli, m.get('n') ?? '', m.has('permit') ? 'permit' : 'deny', m), noRun: (cli, m) => removeList(cli, m.get('n') ?? '') },
-    {
-        syntax: 'access-list <1-99:n> remark <LINE:text>',
-        run: (cli, m) => {
-            const name = m.get('n') ?? '';
-            const list = cli.device.acls.get(name) ?? [];
-            cli.device.acls = new Map([...cli.device.acls, [name, [...list, { seq: nextSeq(list), action: 'remark', ip: 0, wildcard: 0, remark: m.get('text') }]]]);
-        },
-    },
-    { syntax: 'access-list <1-99:n>', run: (cli) => cli.out('% Incomplete command.'), noRun: (cli, m) => removeList(cli, m.get('n') ?? ''), hidden: true },
-    {
-        syntax: 'ip access-list standard <WORD:name>',
-        run: (cli, m) => {
-            const name = m.get('name') ?? '';
-            if (!cli.device.acls.has(name))
-                cli.device.acls = new Map([...cli.device.acls, [name, []]]);
-            cli.session.acl = name;
-            cli.session.enterMode('config-std-nacl');
-        },
-        noRun: (cli, m) => removeList(cli, m.get('name') ?? ''),
-    },
     { syntax: 'ip nat pool <WORD:name> <A.B.C.D:start> <A.B.C.D:end> {netmask <A.B.C.D:mask> | prefix-length <1-32:len>}', run: addPool, noRun: (cli, m) => setNat(cli, (n) => ({ ...n, pools: n.pools.filter((p) => p.name !== m.get('name')) })) },
     {
         syntax: 'ip nat inside source list <WORD:acl> {interface <IFACE:iface> | pool <WORD:pool>} [overload]',
@@ -36817,28 +36973,6 @@ const NAT_IF = [
         noRun: (cli) => cli.session.ifaces.forEach((n) => cli.device.updateIface(n, (c) => ({ ...c, nat: undefined }))),
     },
 ];
-function aclName(cli) {
-    return cli.session.acl ?? '';
-}
-const ACL_MODE = [
-    { syntax: `{permit | deny} ${SOURCE}`, run: (cli, m) => addEntry(cli, aclName(cli), m.has('permit') ? 'permit' : 'deny', m) },
-    { syntax: `<1-2147483647:seq> {permit | deny} ${SOURCE}`, run: (cli, m) => addEntry(cli, aclName(cli), m.has('permit') ? 'permit' : 'deny', m, Number(m.get('seq'))) },
-    {
-        syntax: '<1-2147483647:seq>',
-        run: (cli) => cli.out('% Incomplete command.'),
-        noRun: (cli, m) => { cli.device.acls = new Map([...cli.device.acls, [aclName(cli), (cli.device.acls.get(aclName(cli)) ?? []).filter((e) => e.seq !== Number(m.get('seq')))]]); },
-    },
-    {
-        syntax: 'remark <LINE:text>',
-        run: (cli, m) => {
-            const list = cli.device.acls.get(aclName(cli)) ?? [];
-            cli.device.acls = new Map([...cli.device.acls, [aclName(cli), [...list, { seq: nextSeq(list), action: 'remark', ip: 0, wildcard: 0, remark: m.get('text') }]]]);
-        },
-    },
-    { syntax: 'exit', run: (cli) => { cli.session.acl = undefined; cli.session.enterMode('config'); } },
-    { syntax: 'end', run: (cli) => cli.session.endConfig() },
-    { syntax: 'do <LINE:cmd>', run: (cli, m) => cli.session.runExec(m.get('cmd') ?? '') },
-];
 function natStatistics(cli) {
     const r = cli.device;
     const by = (role) => r.sortedIfaceNames().filter((n) => r.iface(n)?.nat === role);
@@ -36847,14 +36981,6 @@ function natStatistics(cli) {
 const NAT_EXEC = [
     { syntax: 'show ip nat translations [verbose]', run: (cli) => cli.out(...showNatTranslations(cli.device.natTable.entries(), resolvedStatics(cli.device))) },
     { syntax: 'show ip nat statistics', run: (cli) => cli.out(...natStatistics(cli)) },
-    {
-        syntax: 'show {access-lists | ip access-lists} [<WORD:name>]',
-        run: (cli, m) => {
-            const name = m.get('name');
-            const lists = name ? new Map([...cli.device.acls].filter(([n]) => n === name)) : cli.device.acls;
-            cli.out(...showAccessLists(lists, cli.device.aclHits));
-        },
-    },
 ];
 const NAT_PRIV = [
     ...NAT_EXEC,
@@ -36868,12 +36994,125 @@ const NAT_PRIV = [
         },
     },
     { syntax: 'clear ip nat statistics', run: (cli) => { cli.device.natTable.hits = 0; cli.device.natTable.misses = 0; } },
-    { syntax: 'clear access-list counters', run: (cli) => cli.device.aclHits.clear() },
     { syntax: 'debug ip nat', run: (cli) => { cli.device.debugNat = true; cli.out('IP NAT debugging is on'); } },
     { syntax: '{no debug ip nat | undebug ip nat}', run: (cli) => { cli.device.debugNat = false; cli.out('IP NAT debugging is off'); } },
 ];
 
-return { NAT_GLOBAL, NAT_IF, ACL_MODE, NAT_EXEC, NAT_PRIV };
+return { NAT_GLOBAL, NAT_IF, NAT_EXEC, NAT_PRIV };
+})();
+__m["ios/commands/acl.js"] = (() => {
+const { isExtendedList, nextSeq, parseSource, showAccessLists } = __m["ios/acl.js"];
+const { parseExtended } = __m["ios/acl-ext.js"];
+const SOURCE = '{any | host <A.B.C.D:host> | <A.B.C.D:src> [<A.B.C.D:wc>]}';
+const PROTO = '{ip | tcp | udp | icmp | esp | gre}';
+const PROTO_HELP = { ip: 'Any Internet Protocol', tcp: 'Transmission Control Protocol', udp: 'User Datagram Protocol', icmp: 'Internet Control Message Protocol', esp: 'Encapsulation Security Payload', gre: 'Cisco\'s GRE tunneling', rest: 'Source address and the rest of the entry' };
+function sourceWords(m) {
+    if (m.has('any'))
+        return ['any'];
+    if (m.get('host'))
+        return ['host', m.get('host') ?? ''];
+    return [m.get('src') ?? '', ...(m.get('wc') ? [m.get('wc') ?? ''] : [])];
+}
+function protoOf(m) {
+    return ['tcp', 'udp', 'icmp', 'esp', 'gre'].find((p) => m.has(p)) ?? 'ip';
+}
+function store(cli, name, entry) {
+    const list = cli.device.acls.get(name) ?? [];
+    const rest = list.filter((e) => e.seq !== entry.seq);
+    cli.device.acls = new Map([...cli.device.acls, [name, [...rest, entry].sort((a, b) => a.seq - b.seq)]]);
+}
+function addStandard(cli, name, action, m, seq) {
+    const src = parseSource(sourceWords(m));
+    if (typeof src === 'string')
+        return cli.out(src);
+    store(cli, name, { seq: seq ?? nextSeq(cli.device.acls.get(name) ?? []), action, ...src });
+}
+function addExtended(cli, name, action, m, seq) {
+    const r = parseExtended(protoOf(m), (m.get('rest') ?? '').trim().split(/\s+/).filter(Boolean));
+    if (typeof r === 'string')
+        return cli.out(r);
+    store(cli, name, { seq: seq ?? nextSeq(cli.device.acls.get(name) ?? []), action, ...r.src, ext: r.ext });
+}
+function remark(cli, name, text) {
+    const list = cli.device.acls.get(name) ?? [];
+    cli.device.acls = new Map([...cli.device.acls, [name, [...list, { seq: nextSeq(list), action: 'remark', ip: 0, wildcard: 0, remark: text }]]]);
+}
+function removeList(cli, name) {
+    const next = new Map(cli.device.acls);
+    next.delete(name);
+    cli.device.acls = next;
+    cli.device.extendedAcls.delete(name);
+    for (const key of [...cli.device.aclHits.keys()])
+        if (key.startsWith(`${name}:`))
+            cli.device.aclHits.delete(key);
+}
+function enterNamed(cli, name, extended) {
+    const exists = cli.device.acls.get(name);
+    if (exists && isExtendedList(name, exists, cli.device.extendedAcls) !== extended) {
+        cli.out(`% A named ${extended ? 'standard' : 'extended'} IP access list with this name already exists`);
+        return;
+    }
+    if (!exists)
+        cli.device.acls = new Map([...cli.device.acls, [name, []]]);
+    if (extended)
+        cli.device.extendedAcls.add(name);
+    cli.session.acl = name;
+    cli.session.enterMode(extended ? 'config-ext-nacl' : 'config-std-nacl');
+}
+const action = (m) => (m.has('permit') ? 'permit' : 'deny');
+const ACL_GLOBAL = [
+    { syntax: `access-list <1-99:n> {permit | deny} ${SOURCE}`, run: (cli, m) => addStandard(cli, m.get('n') ?? '', action(m), m), noRun: (cli, m) => removeList(cli, m.get('n') ?? '') },
+    { syntax: `access-list <100-199:n> {permit | deny} ${PROTO} <LINE:rest>`, help: PROTO_HELP, run: (cli, m) => addExtended(cli, m.get('n') ?? '', action(m), m), noRun: (cli, m) => removeList(cli, m.get('n') ?? '') },
+    { syntax: 'access-list <1-199:n> remark <LINE:text>', run: (cli, m) => remark(cli, m.get('n') ?? '', m.get('text')) },
+    { syntax: 'access-list <1-199:n>', run: (cli) => cli.out('% Incomplete command.'), noRun: (cli, m) => removeList(cli, m.get('n') ?? ''), hidden: true },
+    { syntax: 'ip access-list standard <WORD:name>', run: (cli, m) => enterNamed(cli, m.get('name') ?? '', false), noRun: (cli, m) => removeList(cli, m.get('name') ?? '') },
+    { syntax: 'ip access-list extended <WORD:name>', run: (cli, m) => enterNamed(cli, m.get('name') ?? '', true), noRun: (cli, m) => removeList(cli, m.get('name') ?? '') },
+];
+const ACL_IF = [
+    {
+        syntax: 'ip access-group <WORD:acl> {in | out}',
+        run: (cli, m) => cli.session.ifaces.forEach((n) => cli.device.updateIface(n, (c) => (m.has('in') ? { ...c, accessIn: m.get('acl') } : { ...c, accessOut: m.get('acl') }))),
+        noRun: (cli, m) => cli.session.ifaces.forEach((n) => cli.device.updateIface(n, (c) => (m.has('in') ? { ...c, accessIn: undefined } : { ...c, accessOut: undefined }))),
+    },
+];
+const aclName = (cli) => cli.session.acl ?? '';
+const deleteSeq = {
+    syntax: '<1-2147483647:seq>',
+    run: (cli) => cli.out('% Incomplete command.'),
+    noRun: (cli, m) => { cli.device.acls = new Map([...cli.device.acls, [aclName(cli), (cli.device.acls.get(aclName(cli)) ?? []).filter((e) => e.seq !== Number(m.get('seq')))]]); },
+};
+const leave = [
+    { syntax: 'remark <LINE:text>', run: (cli, m) => remark(cli, aclName(cli), m.get('text')) },
+    { syntax: 'exit', run: (cli) => { cli.session.acl = undefined; cli.session.enterMode('config'); } },
+    { syntax: 'end', run: (cli) => cli.session.endConfig() },
+    { syntax: 'do <LINE:cmd>', run: (cli, m) => cli.session.runExec(m.get('cmd') ?? '') },
+];
+const ACL_MODE = [
+    { syntax: `{permit | deny} ${SOURCE}`, run: (cli, m) => addStandard(cli, aclName(cli), action(m), m) },
+    { syntax: `<1-2147483647:seq> {permit | deny} ${SOURCE}`, run: (cli, m) => addStandard(cli, aclName(cli), action(m), m, Number(m.get('seq'))) },
+    deleteSeq, ...leave,
+];
+const EXT_ACL_MODE = [
+    { syntax: `{permit | deny} ${PROTO} <LINE:rest>`, help: PROTO_HELP, run: (cli, m) => addExtended(cli, aclName(cli), action(m), m) },
+    { syntax: `<1-2147483647:seq> {permit | deny} ${PROTO} <LINE:rest>`, help: PROTO_HELP, run: (cli, m) => addExtended(cli, aclName(cli), action(m), m, Number(m.get('seq'))) },
+    deleteSeq, ...leave,
+];
+const ACL_EXEC = [
+    {
+        syntax: 'show {access-lists | ip access-lists} [<WORD:name>]',
+        run: (cli, m) => {
+            const name = m.get('name');
+            const lists = name ? new Map([...cli.device.acls].filter(([n]) => n === name)) : cli.device.acls;
+            cli.out(...showAccessLists(lists, cli.device.aclHits, cli.device.extendedAcls));
+        },
+    },
+];
+const ACL_PRIV = [
+    ...ACL_EXEC,
+    { syntax: 'clear access-list counters', run: (cli) => cli.device.aclHits.clear() },
+];
+
+return { ACL_GLOBAL, ACL_IF, ACL_MODE, EXT_ACL_MODE, ACL_EXEC, ACL_PRIV };
 })();
 __m["ios/commands/router-modes.js"] = (() => {
 const { EXEC_USER, EXEC_PRIV, GLOBAL, LINE_MODE } = __m["ios/commands/common.js"];
@@ -36885,7 +37124,8 @@ const { DHCP_GLOBAL } = __m["ios/commands/dhcp-global.js"];
 const { DHCP_POOL, DHCP_CLASS } = __m["ios/commands/dhcp-pool.js"];
 const { DHCP_EXEC_USER, DHCP_EXEC_PRIV } = __m["ios/commands/dhcp-exec.js"];
 const { ROUTER_NET_EXEC, ROUTER_NET_PRIV } = __m["ios/commands/net-exec.js"];
-const { NAT_GLOBAL, NAT_IF, ACL_MODE, NAT_EXEC, NAT_PRIV } = __m["ios/commands/nat.js"];
+const { NAT_GLOBAL, NAT_IF, NAT_EXEC, NAT_PRIV } = __m["ios/commands/nat.js"];
+const { ACL_GLOBAL, ACL_IF, ACL_MODE, EXT_ACL_MODE, ACL_EXEC, ACL_PRIV } = __m["ios/commands/acl.js"];
 const DEFAULT_STATIC_DISTANCE = 1;
 const ROUTER_EXEC = [
     { syntax: 'show ip route', run: (cli) => cli.out(...showIpRoute(cli.device.plane.table())) },
@@ -36920,13 +37160,14 @@ const ROUTER_GLOBAL = [
     { syntax: 'ip routing', run: () => undefined, noRun: () => undefined },
 ];
 const routerModeTable = {
-    user: [...EXEC_USER, ...DHCP_EXEC_USER, ...ROUTER_NET_EXEC, ...NAT_EXEC],
-    exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV, ...ROUTER_NET_PRIV, ...NAT_PRIV],
-    config: [...GLOBAL, ...ROUTER_GLOBAL, ...DHCP_GLOBAL, ...NAT_GLOBAL],
-    'config-if': [...ROUTER_IF, ...NAT_IF],
-    'config-subif': [...ROUTER_SUBIF, ...NAT_IF],
-    'config-if-range': [...ROUTER_IF, ...NAT_IF],
+    user: [...EXEC_USER, ...DHCP_EXEC_USER, ...ROUTER_NET_EXEC, ...NAT_EXEC, ...ACL_EXEC],
+    exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV, ...ROUTER_NET_PRIV, ...NAT_PRIV, ...ACL_PRIV],
+    config: [...GLOBAL, ...ROUTER_GLOBAL, ...DHCP_GLOBAL, ...ACL_GLOBAL, ...NAT_GLOBAL],
+    'config-if': [...ROUTER_IF, ...NAT_IF, ...ACL_IF],
+    'config-subif': [...ROUTER_SUBIF, ...NAT_IF, ...ACL_IF],
+    'config-if-range': [...ROUTER_IF, ...NAT_IF, ...ACL_IF],
     'config-std-nacl': [...ACL_MODE],
+    'config-ext-nacl': [...EXT_ACL_MODE],
     'config-line': [...LINE_MODE],
     'dhcp-config': [...DHCP_POOL],
     'dhcp-class': [...DHCP_CLASS],
@@ -37003,6 +37244,10 @@ function interfaceBlock(cfg, extra = []) {
         lines.push(...switchportLines(cfg));
     else
         lines.push(...addressLines(cfg));
+    if (cfg.accessIn)
+        lines.push(` ip access-group ${cfg.accessIn} in`);
+    if (cfg.accessOut)
+        lines.push(` ip access-group ${cfg.accessOut} out`);
     for (const h of cfg.helpers)
         lines.push(` ip helper-address ${formatIp(h)}`);
     if (cfg.relayInfoTrusted)
@@ -37019,6 +37264,8 @@ function interfaceBlock(cfg, extra = []) {
     else if (isPhysical(cfg.name) && parseIfaceName(cfg.name)?.type !== 'Serial') {
         lines.push(` duplex ${cfg.duplex ?? 'auto'}`, ` speed ${cfg.speed ?? 'auto'}`);
     }
+    if (cfg.cryptoMap)
+        lines.push(` crypto map ${cfg.cryptoMap}`);
     if (cfg.shutdown)
         lines.push(' shutdown');
     lines.push('!');
@@ -37210,6 +37457,8 @@ class Router extends IosDevice {
     web;
     acls = new Map();
     aclHits = new Map();
+    /** Named lists declared with `ip access-list extended`. */
+    extendedAcls = new Set();
     nat = EMPTY_NAT;
     natTable = new NatTable();
     debugNat = false;
@@ -37355,7 +37604,7 @@ class Router extends IosDevice {
         this.syncClients(port);
     }
     runningConfig() {
-        const acl = aclConfigLines(this.acls);
+        const acl = aclConfigLines(this.acls, this.extendedAcls);
         return [
             ...headerLines(this, '15.1'),
             ...dhcpRunningConfig(this.dhcp),

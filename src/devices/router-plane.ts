@@ -16,6 +16,7 @@ import type { Lease } from '../dhcp/client.ts';
 import { selectPool, findManualPool } from '../dhcp/match.ts';
 import { identity } from '../dhcp/server.ts';
 import { natAnswersArp, natForward, natPrerouting } from './router-nat.ts';
+import { inboundAllowed, outboundAllowed } from './router-acl.ts';
 import type { ServerReply } from '../dhcp/server.ts';
 
 const DHCP_DEFAULT_ROUTE_AD = 254;
@@ -106,10 +107,20 @@ export class RouterPlane implements StackHost {
       return;
     }
     const out = natForward(this.router, inIface, egress.iface, { ...packet, ttl: packet.ttl - 1 });
-    if (out) this.stack.sendVia(egress, out);
+    if (!out) return;
+    if (!outboundAllowed(this.router, egress.iface, out)) {
+      this.icmpError(packet, src, 'unreachable');
+      return;
+    }
+    this.stack.sendVia(egress, out);
   }
 
-  prerouting(iface: string, packet: IpPacket): IpPacket {
+  /** Inbound access list, then NAT outside → inside (IOS order). */
+  prerouting(iface: string, packet: IpPacket): IpPacket | null {
+    if (!inboundAllowed(this.router, iface, packet)) {
+      this.icmpError(packet, this.l3Iface(iface)?.addrs[0]?.ip ?? 0, 'unreachable');
+      return null;
+    }
     return natPrerouting(this.router, iface, packet);
   }
 

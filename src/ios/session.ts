@@ -18,6 +18,7 @@ const PROMPT_SUFFIX: Readonly<Record<ModeName, string>> = {
   'config-line': '(config-line)#',
   'config-vlan': '(config-vlan)#',
   'config-std-nacl': '(config-std-nacl)#',
+  'config-ext-nacl': '(config-ext-nacl)#',
 };
 
 const EXEC_MODES: ReadonlySet<ModeName> = new Set(['user', 'exec']);

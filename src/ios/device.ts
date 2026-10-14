@@ -8,7 +8,7 @@ import type { IosHttpConfig, LocalUser } from './http.ts';
 
 export type ModeName =
   | 'user' | 'exec' | 'config' | 'config-if' | 'config-subif' | 'config-if-range'
-  | 'dhcp-config' | 'dhcp-class' | 'config-line' | 'config-vlan' | 'config-std-nacl';
+  | 'dhcp-config' | 'dhcp-class' | 'config-line' | 'config-vlan' | 'config-std-nacl' | 'config-ext-nacl';
 
 export interface Cli<D extends IosDevice = IosDevice> {
   readonly device: D;

@@ -1,40 +1,14 @@
-/** NAT and standard ACL commands of the router (config, interface, ACL mode and EXEC). */
+/** NAT commands of the router (config, interface and EXEC); ACLs are in acl.ts. */
 import type { CommandDef, Match } from '../parser.ts';
 import type { Cli } from '../device.ts';
 import type { Router } from '../../devices/router.ts';
 import { parseIp, parseMask } from '../../core/ip.ts';
 import { parseIfaceName } from '../interfaces.ts';
-import { nextSeq, parseSource, showAccessLists } from '../acl.ts';
-import type { AclEntry } from '../acl.ts';
 import { sameStatic, showNatStatistics, showNatTranslations } from '../nat-config.ts';
 import type { NatConfig, NatStaticRule } from '../nat-config.ts';
 import { poolInUse, resolvedStatics } from '../../devices/router-nat.ts';
 
 type Def = CommandDef<Cli<Router>>;
-
-const SOURCE = '{any | host <A.B.C.D:host> | <A.B.C.D:src> [<A.B.C.D:wc>]}';
-
-function sourceWords(m: Match): string[] {
-  if (m.has('any')) return ['any'];
-  if (m.get('host')) return ['host', m.get('host') ?? ''];
-  return [m.get('src') ?? '', ...(m.get('wc') ? [m.get('wc') ?? ''] : [])];
-}
-
-function addEntry(cli: Cli<Router>, name: string, action: 'permit' | 'deny', m: Match, seq?: number): void {
-  const src = parseSource(sourceWords(m));
-  if (typeof src === 'string') return cli.out(src);
-  const list = cli.device.acls.get(name) ?? [];
-  const entry: AclEntry = { seq: seq ?? nextSeq(list), action, ...src };
-  const rest = list.filter((e) => e.seq !== entry.seq);
-  cli.device.acls = new Map([...cli.device.acls, [name, [...rest, entry].sort((a, b) => a.seq - b.seq)]]);
-}
-
-function removeList(cli: Cli<Router>, name: string): void {
-  const next = new Map(cli.device.acls);
-  next.delete(name);
-  cli.device.acls = next;
-  for (const key of [...cli.device.aclHits.keys()]) if (key.startsWith(`${name}:`)) cli.device.aclHits.delete(key);
-}
 
 function setNat(cli: Cli<Router>, change: (n: NatConfig) => NatConfig): void {
   cli.device.nat = change(cli.device.nat);
@@ -77,26 +51,6 @@ function addPool(cli: Cli<Router>, m: Match): void {
 }
 
 export const NAT_GLOBAL: readonly Def[] = [
-  { syntax: `access-list <1-99:n> {permit | deny} ${SOURCE}`, run: (cli, m) => addEntry(cli, m.get('n') ?? '', m.has('permit') ? 'permit' : 'deny', m), noRun: (cli, m) => removeList(cli, m.get('n') ?? '') },
-  {
-    syntax: 'access-list <1-99:n> remark <LINE:text>',
-    run: (cli, m) => {
-      const name = m.get('n') ?? '';
-      const list = cli.device.acls.get(name) ?? [];
-      cli.device.acls = new Map([...cli.device.acls, [name, [...list, { seq: nextSeq(list), action: 'remark', ip: 0, wildcard: 0, remark: m.get('text') }]]]);
-    },
-  },
-  { syntax: 'access-list <1-99:n>', run: (cli) => cli.out('% Incomplete command.'), noRun: (cli, m) => removeList(cli, m.get('n') ?? ''), hidden: true },
-  {
-    syntax: 'ip access-list standard <WORD:name>',
-    run: (cli, m) => {
-      const name = m.get('name') ?? '';
-      if (!cli.device.acls.has(name)) cli.device.acls = new Map([...cli.device.acls, [name, []]]);
-      cli.session.acl = name;
-      cli.session.enterMode('config-std-nacl');
-    },
-    noRun: (cli, m) => removeList(cli, m.get('name') ?? ''),
-  },
   { syntax: 'ip nat pool <WORD:name> <A.B.C.D:start> <A.B.C.D:end> {netmask <A.B.C.D:mask> | prefix-length <1-32:len>}', run: addPool, noRun: (cli, m) => setNat(cli, (n) => ({ ...n, pools: n.pools.filter((p) => p.name !== m.get('name')) })) },
   {
     syntax: 'ip nat inside source list <WORD:acl> {interface <IFACE:iface> | pool <WORD:pool>} [overload]',
@@ -123,30 +77,6 @@ export const NAT_IF: readonly Def[] = [
   },
 ];
 
-function aclName(cli: Cli<Router>): string {
-  return cli.session.acl ?? '';
-}
-
-export const ACL_MODE: readonly Def[] = [
-  { syntax: `{permit | deny} ${SOURCE}`, run: (cli, m) => addEntry(cli, aclName(cli), m.has('permit') ? 'permit' : 'deny', m) },
-  { syntax: `<1-2147483647:seq> {permit | deny} ${SOURCE}`, run: (cli, m) => addEntry(cli, aclName(cli), m.has('permit') ? 'permit' : 'deny', m, Number(m.get('seq'))) },
-  {
-    syntax: '<1-2147483647:seq>',
-    run: (cli) => cli.out('% Incomplete command.'),
-    noRun: (cli, m) => { cli.device.acls = new Map([...cli.device.acls, [aclName(cli), (cli.device.acls.get(aclName(cli)) ?? []).filter((e) => e.seq !== Number(m.get('seq')))]]); },
-  },
-  {
-    syntax: 'remark <LINE:text>',
-    run: (cli, m) => {
-      const list = cli.device.acls.get(aclName(cli)) ?? [];
-      cli.device.acls = new Map([...cli.device.acls, [aclName(cli), [...list, { seq: nextSeq(list), action: 'remark', ip: 0, wildcard: 0, remark: m.get('text') }]]]);
-    },
-  },
-  { syntax: 'exit', run: (cli) => { cli.session.acl = undefined; cli.session.enterMode('config'); } },
-  { syntax: 'end', run: (cli) => cli.session.endConfig() },
-  { syntax: 'do <LINE:cmd>', run: (cli, m) => cli.session.runExec(m.get('cmd') ?? '') },
-];
-
 function natStatistics(cli: Cli<Router>): string[] {
   const r = cli.device;
   const by = (role: 'inside' | 'outside'): string[] => r.sortedIfaceNames().filter((n) => r.iface(n)?.nat === role);
@@ -156,14 +86,6 @@ function natStatistics(cli: Cli<Router>): string[] {
 export const NAT_EXEC: readonly Def[] = [
   { syntax: 'show ip nat translations [verbose]', run: (cli) => cli.out(...showNatTranslations(cli.device.natTable.entries(), resolvedStatics(cli.device))) },
   { syntax: 'show ip nat statistics', run: (cli) => cli.out(...natStatistics(cli)) },
-  {
-    syntax: 'show {access-lists | ip access-lists} [<WORD:name>]',
-    run: (cli, m) => {
-      const name = m.get('name');
-      const lists = name ? new Map([...cli.device.acls].filter(([n]) => n === name)) : cli.device.acls;
-      cli.out(...showAccessLists(lists, cli.device.aclHits));
-    },
-  },
 ];
 
 export const NAT_PRIV: readonly Def[] = [
@@ -176,7 +98,6 @@ export const NAT_PRIV: readonly Def[] = [
     },
   },
   { syntax: 'clear ip nat statistics', run: (cli) => { cli.device.natTable.hits = 0; cli.device.natTable.misses = 0; } },
-  { syntax: 'clear access-list counters', run: (cli) => cli.device.aclHits.clear() },
   { syntax: 'debug ip nat', run: (cli) => { cli.device.debugNat = true; cli.out('IP NAT debugging is on'); } },
   { syntax: '{no debug ip nat | undebug ip nat}', run: (cli) => { cli.device.debugNat = false; cli.out('IP NAT debugging is off'); } },
 ];

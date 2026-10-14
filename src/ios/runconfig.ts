@@ -61,6 +61,8 @@ export function interfaceBlock(cfg: IfaceConfig, extra: readonly string[] = []):
   if (cfg.encapsulationVlan !== undefined) lines.push(` encapsulation dot1Q ${cfg.encapsulationVlan}`);
   if (cfg.switchport) lines.push(...switchportLines(cfg));
   else lines.push(...addressLines(cfg));
+  if (cfg.accessIn) lines.push(` ip access-group ${cfg.accessIn} in`);
+  if (cfg.accessOut) lines.push(` ip access-group ${cfg.accessOut} out`);
   for (const h of cfg.helpers) lines.push(` ip helper-address ${formatIp(h)}`);
   if (cfg.relayInfoTrusted) lines.push(' ip dhcp relay information trusted');
   if (cfg.nat) lines.push(` ip nat ${cfg.nat}`);
@@ -71,6 +73,7 @@ export function interfaceBlock(cfg: IfaceConfig, extra: readonly string[] = []):
   } else if (isPhysical(cfg.name) && parseIfaceName(cfg.name)?.type !== 'Serial') {
     lines.push(` duplex ${cfg.duplex ?? 'auto'}`, ` speed ${cfg.speed ?? 'auto'}`);
   }
+  if (cfg.cryptoMap) lines.push(` crypto map ${cfg.cryptoMap}`);
   if (cfg.shutdown) lines.push(' shutdown');
   lines.push('!');
   return lines;

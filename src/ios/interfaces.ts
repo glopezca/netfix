@@ -68,6 +68,11 @@ export interface IfaceConfig {
   readonly relayInfoTrusted: boolean;
   /** `ip nat inside` / `ip nat outside`. */
   readonly nat?: 'inside' | 'outside';
+  /** `ip access-group ACL in|out`. */
+  readonly accessIn?: string;
+  readonly accessOut?: string;
+  /** `crypto map NAME` (IPsec site-to-site). */
+  readonly cryptoMap?: string;
   /** true for L2 switch ports (no IP processing). */
   readonly switchport: boolean;
 }
