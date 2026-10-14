@@ -177,4 +177,13 @@ export const UI_EN: Readonly<Record<UiKey, string>> = {
   'pdu.yes': 'yes',
   'pdu.answers': 'Answers',
   'pdu.authority': 'Authority',
+  'mailc.refused': 'The server {server} refused the {proto} connection (port {port}). Is the service running?',
+  'mailc.noroute': 'No route to {server}. Check the PC’s IP address and default gateway.',
+  'mailc.timeout': 'Timed out connecting to {server}.',
+  'mailc.noRecipient': 'Enter at least one recipient.',
+  'mailc.noOutgoing': 'Could not resolve the outgoing mail server {server}.',
+  'mailc.badSmtp': 'Unexpected SMTP reply.',
+  'mailc.noIncoming': 'Could not resolve the incoming mail server {server}.',
+  'mailc.badReply': 'Unexpected reply from the server.',
+  'cloud.err.dupForward': 'Port {proto} {port} is already forwarded.',
 };

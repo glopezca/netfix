@@ -175,6 +175,15 @@ export const UI_ES = {
   'pdu.yes': 'sí',
   'pdu.answers': 'Respuestas',
   'pdu.authority': 'Autoridad',
+  'mailc.refused': 'El servidor {server} rechazó la conexión {proto} (puerto {port}). ¿Está activo el servicio?',
+  'mailc.noroute': 'No hay ruta hacia {server}. Revisa la IP y la puerta de enlace del PC.',
+  'mailc.timeout': 'Tiempo de espera agotado conectando con {server}.',
+  'mailc.noRecipient': 'Indica al menos un destinatario.',
+  'mailc.noOutgoing': 'No se pudo resolver el servidor de correo saliente {server}.',
+  'mailc.badSmtp': 'Respuesta SMTP inesperada.',
+  'mailc.noIncoming': 'No se pudo resolver el servidor de correo entrante {server}.',
+  'mailc.badReply': 'Respuesta inesperada del servidor.',
+  'cloud.err.dupForward': 'El puerto {proto} {port} ya está redirigido.',
 } as const;
 
 export type UiKey = keyof typeof UI_ES;

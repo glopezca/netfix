@@ -21,8 +21,25 @@ export function isLocale(value: unknown): value is Locale {
   return typeof value === 'string' && (LOCALES as readonly string[]).includes(value);
 }
 
+/** Language of the page being rendered by a simulated web server (set only while it renders). */
+let rendering: Locale | null = null;
+
 export function getLocale(): Locale {
-  return current;
+  return rendering ?? current;
+}
+
+/**
+ * Runs `fn` with another language (a simulated server answering in the visitor's Accept-Language);
+ * rendering is synchronous, so the previous language is always restored.
+ */
+export function withLocale<T>(locale: Locale, fn: () => T): T {
+  const before = rendering;
+  rendering = locale;
+  try {
+    return fn();
+  } finally {
+    rendering = before;
+  }
 }
 
 /** Changes the language and notifies the listeners (only when it really changes). */

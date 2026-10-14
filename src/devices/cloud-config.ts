@@ -113,7 +113,7 @@ export function validatePort(p: CloudPortSettings): string | null {
     if (!inSubnet(f.ip, p.lanIp, p.lanPrefix) || f.ip === p.lanIp) return t('cloud.err.forwardLan', { ip: formatIp(f.ip) });
   }
   const dup = p.forwards.find((f, i) => p.forwards.findIndex((g) => g.proto === f.proto && g.port === f.port) !== i);
-  return dup ? `El puerto ${dup.proto.toUpperCase()} ${dup.port} ya está redirigido.` : null;
+  return dup ? t('cloud.err.dupForward', { proto: dup.proto.toUpperCase(), port: dup.port }) : null;
 }
 
 export function validateCloud(s: CloudSettings, otherBlocks: readonly number[] = []): string | null {

@@ -1,4 +1,5 @@
 /** Form actions of the Server management GUI: each one validates and applies to the live server. */
+import { t } from '../i18n/t.ts';
 import { securityAction } from './admin-firewall-actions.ts';
 import { vpnAction } from './admin-vpn.ts';
 import type { Server } from '../devices/server.ts';
@@ -19,13 +20,13 @@ export interface Outcome {
   readonly error?: string;
 }
 
-const SAVED: Outcome = { ok: 'Los cambios se han guardado correctamente.' };
+const saved = (): Outcome => ({ ok: t('wa.saved') });
 const on = (f: Fields, k: string): boolean => f.has(k);
 const optIp = (t: string | undefined): number | undefined | null => (t?.trim() ? parseIp(t.trim()) : undefined);
 
 function set(server: Server, change: (s: ServerServices) => ServerServices): Outcome {
   server.setServices(change(server.services));
-  return SAVED;
+  return saved();
 }
 
 function setup(server: Server, f: Fields): Outcome {
@@ -39,11 +40,11 @@ function setup(server: Server, f: Fields): Outcome {
     const prefix = parseMask((f.get('mask') ?? '').trim());
     const gateway = optIp(f.get('gateway'));
     const dns = optIp(f.get('dns'));
-    if (ip === null || ip === undefined || prefix === null || gateway === null || dns === null) return { error: 'Revisa la dirección IP, la máscara, la puerta de enlace y el DNS.' };
+    if (ip === null || ip === undefined || prefix === null || gateway === null || dns === null) return { error: t('wa.err.setup') };
     server.setStatic({ ip, prefix, gateway, dns });
   }
   server.setHostname(name);
-  return SAVED;
+  return saved();
 }
 
 function addPool(server: Server, f: Fields): Outcome {
@@ -52,19 +53,19 @@ function addPool(server: Server, f: Fields): Outcome {
   const gateway = optIp(f.get('gateway'));
   const dns = optIp(f.get('dns'));
   const max = Number(f.get('max'));
-  if (!start || prefix === null || gateway === null || dns === null || !Number.isInteger(max)) return { error: 'Revisa la IP inicial, la máscara, los usuarios, la puerta de enlace y el DNS.' };
+  if (!start || prefix === null || gateway === null || dns === null || !Number.isInteger(max)) return { error: t('wa.err.pool') };
   const pool = { name: (f.get('name') ?? '').trim(), start, prefix, maxUsers: max, gateway, dns, domain: (f.get('domain') ?? '').trim() || undefined, leaseMinutes: DEFAULT_LEASE_MINUTES, reservations: [], identifyBy: f.get('identify') === 'mac' ? 'mac' as const : undefined };
   const err = validatePool(pool, server.services.dhcp.pools);
   return err ? { error: err } : set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, pools: [...s.dhcp.pools, pool] } }));
 }
 
-const outcome = (err: string | null): Outcome => (err ? { error: err } : SAVED);
+const outcome = (err: string | null): Outcome => (err ? { error: err } : saved());
 
 function addReservation(server: Server, f: Fields): Outcome {
   const pool = server.services.dhcp.pools.find((p) => p.name === f.get('pool'));
-  if (!pool) return { error: 'Elige un pool.' };
+  if (!pool) return { error: t('wa.err.pickPool') };
   const ip = optIp(f.get('ip'));
-  if (!ip) return { error: 'Escribe la IP reservada.' };
+  if (!ip) return { error: t('wa.err.resIp') };
   const id = readIdentifier(f.get('kind') ?? 'mac', (f.get('id') ?? '').trim());
   if (typeof id === 'string') return { error: id };
   const name = (f.get('name') ?? '').trim().slice(0, 64) || undefined;
@@ -75,21 +76,21 @@ function deleteReservation(server: Server, f: Fields): Outcome {
   const [poolName = '', ipText = ''] = (f.get('key') ?? '').split('|');
   const pool = server.services.dhcp.pools.find((p) => p.name === poolName);
   const ip = parseIp(ipText);
-  if (!pool || ip === null) return { error: 'Esa reserva ya no existe.' };
+  if (!pool || ip === null) return { error: t('wa.err.noRes') };
   return outcome(setReservations(server, pool.name, pool.reservations.filter((r) => r.ip !== ip)));
 }
 
 function reserveFromLease(server: Server, f: Fields): Outcome {
   const ip = parseIp((f.get('ip') ?? '').trim());
-  if (ip === null) return { error: 'Esa concesión ya no existe.' };
+  if (ip === null) return { error: t('wa.err.noLease') };
   return outcome(reserveLease(server, ip, f.get('by') === 'client-id' ? 'client-id' : 'mac'));
 }
 
 function addRecord(server: Server, f: Fields): Outcome {
   const type = (f.get('type') ?? 'A') as DnsRecord['type'];
   const r: DnsRecord = { name: (f.get('name') ?? '').trim(), type, value: (f.get('value') ?? '').trim(), ttl: DEFAULT_TTL, priority: type === 'MX' ? Number(f.get('priority') ?? 10) : undefined };
-  if (type === 'MX' && !Number.isInteger(r.priority)) return { error: 'La prioridad MX va de 0 a 65535.' };
-  const err = ['A', 'CNAME', 'MX', 'NS', 'TXT'].includes(type) ? validateRecord(r, server.services.dns.origin) : 'Tipo de registro no válido.';
+  if (type === 'MX' && !Number.isInteger(r.priority)) return { error: t('wa.err.mx') };
+  const err = ['A', 'CNAME', 'MX', 'NS', 'TXT'].includes(type) ? validateRecord(r, server.services.dns.origin) : t('wa.err.type');
   return err ? { error: err } : set(server, (s) => ({ ...s, dns: { ...s.dns, records: [...s.dns.records, r] } }));
 }
 
@@ -123,9 +124,9 @@ function users(server: Server, which: 'mail' | 'ssh', f: Fields, add: boolean): 
   const name = (f.get(add ? 'name' : 'key') ?? '').trim();
   let next: Account[];
   if (add) {
-    if (!/^[a-z0-9._-]{1,32}$/i.test(name)) return { error: 'Usuario: letras, números, punto, guion o guion bajo.' };
-    if (!f.get('password')) return { error: 'Escribe una contraseña.' };
-    if (list.some((u) => u.name === name)) return { error: `Ya existe ${name}.` };
+    if (!/^[a-z0-9._-]{1,32}$/i.test(name)) return { error: t('wa.err.user') };
+    if (!f.get('password')) return { error: t('wa.err.pass') };
+    if (list.some((u) => u.name === name)) return { error: t('wa.err.exists', { name }) };
     next = [...list, { name, password: f.get('password') ?? '' }];
   } else next = list.filter((u) => u.name !== name);
   return set(server, (s) => (which === 'mail' ? { ...s, mail: { ...s.mail, users: next } } : { ...s, ssh: { ...s.ssh, users: next } }));
@@ -137,13 +138,13 @@ function admin(server: Server, f: Fields): Outcome & { readonly moved?: boolean 
   const err = validateAccess(next, server.services.webapps.roundcube);
   if (err) return { error: err };
   set(server, (s) => ({ ...s, webapps: { ...s.webapps, admin: next } }));
-  return { ...SAVED, moved: next.mode !== cur.mode || next.port !== cur.port || next.alias !== cur.alias };
+  return { ...saved(), moved: next.mode !== cur.mode || next.port !== cur.port || next.alias !== cur.alias };
 }
 
 /** SSH on/off and, on Ubuntu, the authentication methods of sshd_config. */
 function ssh(server: Server, f: Fields): Outcome {
   const want = { password: on(f, 'password'), pubkey: on(f, 'pubkey') };
-  if (f.has('auth') && !want.password && !want.pubkey) return { error: 'Deja al menos un método de autenticación.' };
+  if (f.has('auth') && !want.password && !want.pubkey) return { error: t('wa.err.auth') };
   const saved = set(server, (s) => ({ ...s, ssh: { ...s.ssh, enabled: on(f, 'enabled') } }));
   const err = server.os === 'linux' && f.has('auth') ? setSshAuthMethods(server, want) : null;
   return err ? { error: err } : saved;
@@ -169,6 +170,6 @@ export function runAction(server: Server, pageId: string, f: Fields): Outcome & 
     case 'ssh': return ssh(server, f);
     case 'user-add': case 'user-del': return users(server, pageId === 'ssh' ? 'ssh' : 'mail', f, action === 'user-add');
     case 'admin': return admin(server, f);
-    default: return vpnAction(server, f) ?? securityAction(server, f) ?? { error: 'Acción desconocida.' };
+    default: return vpnAction(server, f) ?? securityAction(server, f) ?? { error: t('wa.unknownAction') };
   }
 }

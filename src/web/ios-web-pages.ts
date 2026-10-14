@@ -1,4 +1,5 @@
 /** Pages of the IOS HTTP server: frame, home page, EXEC monitor (keyword help as links) and configure. */
+import { t } from '../i18n/t.ts';
 import type { IosDevice, ModeName } from '../ios/device.ts';
 import { Session } from '../ios/session.ts';
 import { MAX_PRIVILEGE } from '../ios/http.ts';
@@ -19,7 +20,7 @@ export function frame(device: IosDevice, title: string, body: readonly Child[]):
     h('div', { class: 'web-ios-top' }, h('span', { class: 'web-ios-logo' }, 'cisco'), h('span', { class: 'web-ios-host' }, `${device.hostname} · ${device.model}`)),
     h('div', { class: 'web-ios-nav' }, nav.map(([href, label]) => h('a', { href }, label))),
     h('div', { class: 'web-ios-main' }, body),
-    h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), 'Servidor HTTP de IOS emulado por Netfix'));
+    h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), t('ios.foot')));
 }
 
 export function homePage(device: IosDevice, level: number): Markup {

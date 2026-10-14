@@ -7,6 +7,8 @@
  *   /level/15/dm                      Device Manager: port panel and quick port settings
  * HTTP Basic: `ip http authentication enable` (enable secret/password) or `local` (username …).
  */
+import { withLocale } from '../i18n/locale.ts';
+import { requestLocale } from './html.ts';
 import type { IosDevice } from '../ios/device.ts';
 import { Session } from '../ios/session.ts';
 import type { ModeName } from '../ios/device.ts';
@@ -102,7 +104,12 @@ function levelPage(device: IosDevice, req: HttpRequest, who: Who, route: NonNull
   return respond(IOS_BANNER, 404, 'Not Found');
 }
 
+/** Answers in the visitor's language (Accept-Language). */
 export function iosWeb(device: IosDevice, req: HttpRequest, peer: Peer): HttpResponse {
+  return withLocale(requestLocale(req), () => iosResponse(device, req, peer));
+}
+
+function iosResponse(device: IosDevice, req: HttpRequest, peer: Peer): HttpResponse {
   const route = pathOnly(req.path) === '/' ? null : parseLevelPath(req.path);
   if (!route && pathOnly(req.path) !== '/') return respond(IOS_BANNER, 404, page('404 Not Found', '', h('h1', {}, 'Not Found')));
   const need = route?.level ?? 0;

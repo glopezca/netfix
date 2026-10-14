@@ -1,4 +1,5 @@
 /** The PC web browser's engine: navigation, forms, cookies, redirects and HTTP Basic authentication. */
+import { getLocale } from '../i18n/locale.ts';
 import type { Host } from '../devices/host.ts';
 import { httpRequest } from '../shells/net-tools.ts';
 import type { HttpOutcome } from '../shells/net-tools.ts';
@@ -97,7 +98,7 @@ export class BrowserEngine {
   }
 
   private fetch(url: string, method: HttpMethod, body: string | undefined, credentials: boolean): HttpOutcome {
-    const headers: Record<string, string> = { 'user-agent': 'Mozilla/5.0 (Netfix)' };
+    const headers: Record<string, string> = { 'user-agent': 'Mozilla/5.0 (Netfix)', 'accept-language': `${getLocale()},${getLocale().slice(0, 2)};q=0.9` };
     const cookie = credentials ? this.cookieHeader(url) : '';
     if (cookie) headers.cookie = cookie;
     const auth = credentials ? this.credentials.get(originOf(url)) : undefined;

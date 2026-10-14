@@ -1,4 +1,7 @@
 /** The Server management GUI: HTTP Basic login, pages and form actions (POST, then redirect). */
+import { t } from '../i18n/t.ts';
+import { withLocale } from '../i18n/locale.ts';
+import { requestLocale } from './html.ts';
 import type { Server } from '../devices/server.ts';
 import type { Peer } from '../net/tcp.ts';
 import type { HttpRequest, HttpResponse } from './http.ts';
@@ -42,22 +45,27 @@ function newHome(server: Server, req: HttpRequest): string {
   return a.mode === 'port' ? `http://${host}:${a.port}/?page=admin&saved=1` : `http://${host}${a.alias}/?page=admin&saved=1`;
 }
 
+/** Answers in the visitor's language (Accept-Language). */
 export function serverAdmin(server: Server, req: HttpRequest, peer: Peer, base: string): HttpResponse {
+  return withLocale(requestLocale(req), () => adminResponse(server, req, peer, base));
+}
+
+function adminResponse(server: Server, req: HttpRequest, peer: Peer, base: string): HttpResponse {
   const a = server.services.webapps.admin;
   const cred = basicAuth(req);
   if (!cred || cred.user !== a.user || cred.password !== a.password) {
-    if (cred) server.log('http', `netfix-webui: acceso denegado para «${printable(cred.user)}» desde ${formatIp(peer.ip)}`);
-    return unauthorized(BANNER, REALM, page('401 Unauthorized', '', h('h1', {}, 'Unauthorized'), h('p', {}, 'Se necesita usuario y contraseña.')));
+    if (cred) server.log('http', t('wa.denied', { user: printable(cred.user), ip: formatIp(peer.ip) }));
+    return unauthorized(BANNER, REALM, page('401 Unauthorized', '', h('h1', {}, 'Unauthorized'), h('p', {}, t('wa.needLogin'))));
   }
   const q = query(req);
   const current = PAGES.find((p) => p.id === q.get('page')) ?? PAGES[0];
   if (!current) return respond(BANNER, 404, 'Not Found');
   if (req.method === 'POST') {
     const result = runAction(server, current.id, formFields(req));
-    server.log('http', `netfix-webui: ${printable(cred.user)} desde ${formatIp(peer.ip)} → ${current.id}: ${result.error ?? 'guardado'}`);
+    server.log('http', t('wa.logAction', { user: printable(cred.user), ip: formatIp(peer.ip), page: current.id, result: result.error ?? t('wa.logSaved') }));
     if (result.error) return respond(BANNER, 200, frame(server, base, current, { error: result.error }, body(server, base, current.id)));
     return redirect(BANNER, result.moved ? newHome(server, req) : `${base}/?page=${current.id}&saved=1`, {}, 303);
   }
-  const notice = q.get('saved') ? { ok: 'Los cambios se han guardado correctamente.' } : {};
+  const notice = q.get('saved') ? { ok: t('wa.saved') } : {};
   return forMethod(req, respond(BANNER, 200, frame(server, base, current, notice, body(server, base, current.id))));
 }

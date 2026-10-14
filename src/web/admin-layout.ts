@@ -1,4 +1,5 @@
 /** Page frame of the Server management GUI, laid out like a Linksys WRT300N (no third-party marks). */
+import { t, tDynamic } from '../i18n/t.ts';
 import type { Server } from '../devices/server.ts';
 import { h, page } from './html.ts';
 import type { Child, Markup } from './html.ts';
@@ -7,18 +8,21 @@ import { ABOUT } from '../docs/about-data.ts';
 export interface AdminPage {
   readonly id: string;
   readonly tab: string;
-  readonly label: string;
 }
 
-export const TABS: readonly (readonly [string, string])[] = [['setup', 'Configuración'], ['services', 'Servicios'], ['security', 'Seguridad'], ['admin', 'Administración'], ['status', 'Estado']];
+/** Name of a page or tab in the current language. */
+export const pageLabel = (id: string): string => tDynamic(`wa.page.${id}`);
+const tabLabel = (id: string): string => tDynamic(`wa.tab.${id}`);
+
+export const TABS: readonly string[] = ['setup', 'services', 'security', 'admin', 'status'];
 
 export const PAGES: readonly AdminPage[] = [
-  { id: 'setup', tab: 'setup', label: 'Configuración básica' },
-  { id: 'dhcp', tab: 'services', label: 'DHCP' }, { id: 'dns', tab: 'services', label: 'DNS' }, { id: 'web', tab: 'services', label: 'Web y correo web' },
-  { id: 'mail', tab: 'services', label: 'Correo' }, { id: 'ssh', tab: 'services', label: 'SSH' },
-  { id: 'firewall', tab: 'security', label: 'Cortafuegos' }, { id: 'routing', tab: 'security', label: 'Enrutamiento' }, { id: 'vpn', tab: 'security', label: 'VPN' },
-  { id: 'admin', tab: 'admin', label: 'Gestión' },
-  { id: 'status', tab: 'status', label: 'Equipo' }, { id: 'log', tab: 'status', label: 'Registros' },
+  { id: 'setup', tab: 'setup' },
+  { id: 'dhcp', tab: 'services' }, { id: 'dns', tab: 'services' }, { id: 'web', tab: 'services' },
+  { id: 'mail', tab: 'services' }, { id: 'ssh', tab: 'services' },
+  { id: 'firewall', tab: 'security' }, { id: 'routing', tab: 'security' }, { id: 'vpn', tab: 'security' },
+  { id: 'admin', tab: 'admin' },
+  { id: 'status', tab: 'status' }, { id: 'log', tab: 'status' },
 ];
 
 /** One section row: dark label column, form column, help column. */
@@ -48,23 +52,24 @@ export function form(base: string, pageId: string, action: string, ...children: 
 }
 
 export function buttons(): Markup {
-  return h('div', { class: 'web-wrt-buttons' }, h('button', { type: 'submit', class: 'web-wrt-save' }, 'Guardar cambios'), h('button', { type: 'reset' }, 'Cancelar cambios'));
+  return h('div', { class: 'web-wrt-buttons' }, h('button', { type: 'submit', class: 'web-wrt-save' }, t('wa.save')), h('button', { type: 'reset' }, t('wa.cancel')));
 }
 
 export function frame(server: Server, base: string, current: AdminPage, notice: { ok?: string; error?: string }, body: Child): string {
   const link = (id: string): string => `${base}/?page=${id}`;
-  const tabs = TABS.map(([id, label]) => {
+  const tabs = TABS.map((id) => {
+    const label = tabLabel(id);
     const first = PAGES.find((p) => p.tab === id)?.id ?? id;
     return h('li', { class: id === current.tab ? 'web-wrt-tab web-wrt-on' : 'web-wrt-tab' }, h('a', { href: link(first) }, label));
   });
-  const subs = PAGES.filter((p) => p.tab === current.tab).map((p) => h('li', { class: p.id === current.id ? 'web-wrt-on' : undefined }, h('a', { href: link(p.id) }, p.label)));
-  return page(`Server · ${current.label}`, 'web-wrt',
-    h('div', { class: 'web-wrt-top' }, h('span', { class: 'web-brand-logo', title: 'Netfix' }, 'Netfix'), h('span', {}, `Versión del firmware: ${ABOUT.version}`)),
-    h('div', { class: 'web-wrt-title' }, h('span', { class: 'web-wrt-product' }, 'Server · Gestión web'), h('span', { class: 'web-wrt-model' }, server.name)),
+  const subs = PAGES.filter((p) => p.tab === current.tab).map((p) => h('li', { class: p.id === current.id ? 'web-wrt-on' : undefined }, h('a', { href: link(p.id) }, pageLabel(p.id))));
+  return page(`Server · ${pageLabel(current.id)}`, 'web-wrt',
+    h('div', { class: 'web-wrt-top' }, h('span', { class: 'web-brand-logo', title: 'Netfix' }, 'Netfix'), h('span', {}, t('wa.firmware', { version: ABOUT.version }))),
+    h('div', { class: 'web-wrt-title' }, h('span', { class: 'web-wrt-product' }, t('wa.product')), h('span', { class: 'web-wrt-model' }, server.name)),
     h('ul', { class: 'web-wrt-tabs' }, tabs),
     h('ul', { class: 'web-wrt-subtabs' }, subs),
     notice.ok ? h('p', { class: 'web-wrt-ok' }, notice.ok) : null,
     notice.error ? h('p', { class: 'web-wrt-error' }, notice.error) : null,
     h('table', { class: 'web-wrt-page' }, body),
-    h('p', { class: 'web-wrt-foot web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), 'Netfix · los cambios se aplican al momento en el servidor'));
+    h('p', { class: 'web-wrt-foot web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), t('wa.foot')));
 }

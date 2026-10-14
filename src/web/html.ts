@@ -2,6 +2,8 @@
  * HTML built as data: every text and attribute value is escaped when rendered, so pages made from
  * configuration or user input (mail, host names, files) cannot inject markup.
  */
+import { getLocale, localeFromAcceptLanguage } from '../i18n/locale.ts';
+import type { Locale } from '../i18n/locale.ts';
 
 export interface Markup {
   readonly html: string;
@@ -36,7 +38,12 @@ export function fragment(...children: Child[]): Markup {
   return { html: render(children) };
 }
 
+/** Language of a request: its Accept-Language, Spanish when absent or unsupported. */
+export function requestLocale(req: { readonly headers?: Readonly<Record<string, string>> }): Locale {
+  return localeFromAcceptLanguage(req.headers?.['accept-language']) ?? 'es-ES';
+}
+
 /** A whole document. */
 export function page(title: string, bodyClass: string, ...children: Child[]): string {
-  return `<!doctype html>\n<html lang="es"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head>\n${h('body', { class: bodyClass }, ...children).html}\n</html>\n`;
+  return `<!doctype html>\n<html lang="${getLocale().slice(0, 2)}"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head>\n${h('body', { class: bodyClass }, ...children).html}\n</html>\n`;
 }
