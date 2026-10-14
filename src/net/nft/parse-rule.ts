@@ -185,7 +185,8 @@ function verdict(c: Cursor, word: string): Verdict | null {
 function statement(c: Cursor, draft: { counter: boolean; log?: string; comment?: string; verdict?: Verdict }): void {
   const t = c.next();
   const w = t?.text ?? '';
-  if (draft.verdict) throw unexpected(t);
+  // Only a comment may follow the verdict (that is also where `nft list` prints it).
+  if (draft.verdict && w !== 'comment') throw unexpected(t);
   if (w === 'counter') {
     draft.counter = true;
     if (c.eat('packets')) { c.next(); if (!c.eat('bytes')) throw unexpected(c.peek()); c.next(); }

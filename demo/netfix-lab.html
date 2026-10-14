@@ -598,6 +598,19 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 }
 .nic-row input { width: 100%; min-width: 0; box-sizing: border-box; }
 
+/* Firewall (nftables) panel. */
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+.code-view { font-family: var(--mono, ui-monospace, monospace); font-size: 12.5px; background: var(--term-bg, #0f1b24); color: var(--term-fg, #d8e3ea); padding: 10px 12px; border-radius: 6px; overflow-x: auto; white-space: pre; max-height: 40vh; }
+.fw-table { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 10px 0; }
+.fw-table h4 { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin: 4px 0 8px; }
+.fw-chain { border-top: 1px dashed var(--line); padding: 8px 0; }
+.fw-chain-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 6px; }
+.fw-chain-head .btn { margin-left: auto; }
+.fw-form { margin: 10px 0; }
+.fw-form summary { cursor: pointer; font-weight: 600; padding: 6px 0; min-height: 32px; }
+.btn.danger { color: var(--err, #b42318); border-color: currentColor; }
+label.inline { display: inline-flex; gap: 6px; align-items: center; }
+
 </style>
 </head>
 <body data-mode="realtime">
@@ -1539,6 +1552,137 @@ const ROUTER_EN = {
 
 return { ROUTER_EN };
 })();
+__m["i18n/es-ES/firewall.js"] = (() => {
+/** Español (España): cortafuegos nftables y parámetros sysctl en la ventana del equipo. */
+const FIREWALL_ES = {
+    'fw.tab': 'Cortafuegos',
+    'fw.service': 'Cortafuegos nftables (nftables.service)',
+    'fw.intro': 'Lo que cambias aquí se aplica y se guarda en /etc/nftables.conf (y nftables.service se habilita). Con «nft» en la terminal solo cambias lo que está en marcha hasta que lo guardes.',
+    'fw.saved': 'Lo que está en marcha coincide con /etc/nftables.conf.',
+    'fw.unsaved': 'Hay cambios hechos con «nft» que no están en /etc/nftables.conf: se perderán al reiniciar.',
+    'fw.save': 'Guardar lo que está en marcha',
+    'fw.reload': 'Volver a cargar el fichero',
+    'fw.template': 'Plantilla',
+    'fw.tpl.none': 'Elige una plantilla…',
+    'fw.tpl.hardening': 'Servidor bastionado (input drop, SSH, ping)',
+    'fw.tpl.router': 'Router con NAT de salida por eth0',
+    'fw.tpl.open': 'Todo permitido (tablas vacías)',
+    'fw.loadTemplate': 'Cargar plantilla',
+    'fw.confirmTemplate': 'La plantilla sustituye todas las reglas. ¿Continuar?',
+    'fw.tables': 'Tablas',
+    'fw.noTables': 'Sin tablas: no se filtra nada.',
+    'fw.addTable': 'Añadir tabla',
+    'fw.family': 'Familia',
+    'fw.name': 'Nombre',
+    'fw.deleteTable': 'Borrar tabla',
+    'fw.chain': 'Cadena',
+    'fw.addChain': 'Añadir cadena',
+    'fw.chainType': 'Tipo',
+    'fw.hook': 'Gancho',
+    'fw.priority': 'Prioridad',
+    'fw.policy': 'Política',
+    'fw.regular': 'Cadena normal (para jump)',
+    'fw.deleteChain': 'Borrar cadena',
+    'fw.rules': 'Reglas',
+    'fw.noRules': 'Sin reglas: se aplica la política.',
+    'fw.counter': 'Contador',
+    'fw.up': 'Subir',
+    'fw.down': 'Bajar',
+    'fw.addRule': 'Añadir regla',
+    'fw.target': 'Cadena destino',
+    'fw.iif': 'Interfaz de entrada',
+    'fw.oif': 'Interfaz de salida',
+    'fw.saddr': 'Origen (IP o red)',
+    'fw.daddr': 'Destino (IP o red)',
+    'fw.proto': 'Protocolo',
+    'fw.any': 'Cualquiera',
+    'fw.dport': 'Puerto destino (22, 80,443 o 1000-2000)',
+    'fw.ct': 'Estado de la conexión (ct state)',
+    'fw.action': 'Acción',
+    'fw.to': 'Traducir a (IP o IP:puerto)',
+    'fw.log': 'Registrar con prefijo (dmesg)',
+    'fw.comment': 'Comentario',
+    'fw.atStart': 'Insertar al principio',
+    'fw.preview': 'nft list ruleset',
+    'fw.badField': 'Revisa el campo «{field}».',
+    'fw.notLinux': 'El cortafuegos nftables solo está en los equipos Ubuntu.',
+    'sysctl.tab': 'sysctl',
+    'sysctl.intro': 'Parámetros del núcleo. Se aplican y se guardan en /etc/sysctl.d/99-netfix.conf; con «sysctl -w» en la terminal solo duran hasta reiniciar.',
+    'sysctl.key': 'Parámetro',
+    'sysctl.value': 'Valor',
+    'sysctl.effect': 'Efecto en Netfix',
+    'sysctl.yes': 'Sí',
+    'sysctl.no': 'Se guarda, sin efecto',
+    'sysctl.apply': 'Aplicar y guardar',
+};
+
+return { FIREWALL_ES };
+})();
+__m["i18n/en-GB/firewall.js"] = (() => {
+const FIREWALL_EN = {
+    'fw.tab': 'Firewall',
+    'fw.service': 'nftables firewall (nftables.service)',
+    'fw.intro': 'What you change here is applied and saved in /etc/nftables.conf (and nftables.service is enabled). With “nft” in the terminal you only change the running ruleset until you save it.',
+    'fw.saved': 'The running ruleset matches /etc/nftables.conf.',
+    'fw.unsaved': 'Changes made with “nft” are not in /etc/nftables.conf: they will be lost on restart.',
+    'fw.save': 'Save the running ruleset',
+    'fw.reload': 'Reload the file',
+    'fw.template': 'Template',
+    'fw.tpl.none': 'Choose a template…',
+    'fw.tpl.hardening': 'Hardened server (input drop, SSH, ping)',
+    'fw.tpl.router': 'Router with outbound NAT on eth0',
+    'fw.tpl.open': 'Allow everything (empty tables)',
+    'fw.loadTemplate': 'Load template',
+    'fw.confirmTemplate': 'The template replaces every rule. Continue?',
+    'fw.tables': 'Tables',
+    'fw.noTables': 'No tables: nothing is filtered.',
+    'fw.addTable': 'Add table',
+    'fw.family': 'Family',
+    'fw.name': 'Name',
+    'fw.deleteTable': 'Delete table',
+    'fw.chain': 'Chain',
+    'fw.addChain': 'Add chain',
+    'fw.chainType': 'Type',
+    'fw.hook': 'Hook',
+    'fw.priority': 'Priority',
+    'fw.policy': 'Policy',
+    'fw.regular': 'Regular chain (for jump)',
+    'fw.deleteChain': 'Delete chain',
+    'fw.rules': 'Rules',
+    'fw.noRules': 'No rules: the policy applies.',
+    'fw.counter': 'Counter',
+    'fw.up': 'Up',
+    'fw.down': 'Down',
+    'fw.addRule': 'Add rule',
+    'fw.target': 'Target chain',
+    'fw.iif': 'Input interface',
+    'fw.oif': 'Output interface',
+    'fw.saddr': 'Source (IP or network)',
+    'fw.daddr': 'Destination (IP or network)',
+    'fw.proto': 'Protocol',
+    'fw.any': 'Any',
+    'fw.dport': 'Destination port (22, 80,443 or 1000-2000)',
+    'fw.ct': 'Connection state (ct state)',
+    'fw.action': 'Action',
+    'fw.to': 'Translate to (IP or IP:port)',
+    'fw.log': 'Log with prefix (dmesg)',
+    'fw.comment': 'Comment',
+    'fw.atStart': 'Insert at the top',
+    'fw.preview': 'nft list ruleset',
+    'fw.badField': 'Check the “{field}” field.',
+    'fw.notLinux': 'The nftables firewall is only available on Ubuntu devices.',
+    'sysctl.tab': 'sysctl',
+    'sysctl.intro': 'Kernel parameters. They are applied and saved in /etc/sysctl.d/99-netfix.conf; with “sysctl -w” in the terminal they only last until a restart.',
+    'sysctl.key': 'Parameter',
+    'sysctl.value': 'Value',
+    'sysctl.effect': 'Effect in Netfix',
+    'sysctl.yes': 'Yes',
+    'sysctl.no': 'Stored, no effect',
+    'sysctl.apply': 'Apply and save',
+};
+
+return { FIREWALL_EN };
+})();
 __m["i18n/catalog.js"] = (() => {
 const { APP_ES } = __m["i18n/es-ES/app.js"];
 const { APP_EN } = __m["i18n/en-GB/app.js"];
@@ -1554,10 +1698,12 @@ const { DNS_ES } = __m["i18n/es-ES/dns.js"];
 const { DNS_EN } = __m["i18n/en-GB/dns.js"];
 const { ROUTER_ES } = __m["i18n/es-ES/router.js"];
 const { ROUTER_EN } = __m["i18n/en-GB/router.js"];
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES };
+const { FIREWALL_ES } = __m["i18n/es-ES/firewall.js"];
+const { FIREWALL_EN } = __m["i18n/en-GB/firewall.js"];
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES };
 const CATALOGS = {
     'es-ES': ES,
-    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN },
+    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN },
 };
 
 return { CATALOGS };
@@ -4033,6 +4179,10 @@ class Host {
     onChange(listener) {
         this.statusListeners.add(listener);
         return () => this.statusListeners.delete(listener);
+    }
+    /** Tells open panels that something outside the device's own setters changed (nft, sysctl files…). */
+    notifyChange() {
+        this.changed();
     }
     changed() {
         for (const l of this.statusListeners)
@@ -25633,7 +25783,8 @@ function verdict(c, word) {
 function statement(c, draft) {
     const t = c.next();
     const w = t?.text ?? '';
-    if (draft.verdict)
+    // Only a comment may follow the verdict (that is also where `nft list` prints it).
+    if (draft.verdict && w !== 'comment')
         throw unexpected(t);
     if (w === 'counter') {
         draft.counter = true;
@@ -26620,8 +26771,10 @@ function nft(host) {
             ctx.err(`${o.file !== undefined ? `${o.file}: ` : ''}${r.error}\n`);
             return 1;
         }
-        if (!o.check)
+        if (!o.check) {
             nf.setRuleset(r.ruleset);
+            host.notifyChange();
+        }
         const out = o.stateless ? r.output.map((l) => l.replace(/ counter packets \d+ bytes \d+/, ' counter')) : r.output;
         if (out.length)
             ctx.out(`${out.join('\n')}\n`);
@@ -29162,7 +29315,15 @@ function liveHostPanel(host, render) {
         stale = false;
         root.replaceChildren(...render(refresh));
     };
+    let attached = false;
     const onChange = () => {
+        // A panel replaced by another tab (subnav) stops listening once it has left the document.
+        if (root.isConnected)
+            attached = true;
+        else if (attached) {
+            off();
+            return;
+        }
         if (root.contains(document.activeElement) && document.activeElement !== document.body && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? ''))
             stale = true;
         else
@@ -31946,6 +32107,372 @@ function hostSettings(placed, h, app) {
 
 return { hostSettings };
 })();
+__m["net/nft/edit.js"] = (() => {
+const { findChain, findTable, withChain, withTable } = __m["net/nft/model.js"];
+const { runNft } = __m["net/nft/apply.js"];
+const { parseIp } = __m["core/ip.js"];
+const IFACE = /^[a-z][a-z0-9.-]{0,14}$/i;
+const ADDR = /^\d+\.\d+\.\d+\.\d+(\/\d{1,2})?$/;
+const PORTS = /^\d{1,5}(-\d{1,5})?(,\d{1,5}(-\d{1,5})?)*$/;
+const STATES = new Set(['new', 'established', 'related', 'invalid']);
+const MAX_TEXT = 64;
+function quoted(text) {
+    return text.length <= MAX_TEXT && !/["\\\n]/.test(text) ? `"${text}"` : null;
+}
+/** nft text of a form, or the first invalid field. */
+function ruleFromForm(f) {
+    const parts = [];
+    const iface = (k, v) => {
+        if (!v)
+            return '';
+        return IFACE.test(v) ? `${k}name "${v}"` : null;
+    };
+    for (const [k, v] of [['iif', f.iif], ['oif', f.oif]]) {
+        const x = iface(k, v);
+        if (x === null)
+            return { error: k };
+        if (x)
+            parts.push(x);
+    }
+    for (const [k, v] of [['saddr', f.saddr], ['daddr', f.daddr]]) {
+        if (!v)
+            continue;
+        if (!ADDR.test(v) || parseIp(v.split('/')[0] ?? '') === null)
+            return { error: k };
+        parts.push(`ip ${k} ${v}`);
+    }
+    if (f.dport) {
+        if (f.proto !== 'tcp' && f.proto !== 'udp')
+            return { error: 'proto' };
+        if (!PORTS.test(f.dport))
+            return { error: 'dport' };
+        parts.push(`${f.proto} dport ${f.dport.includes(',') ? `{ ${f.dport.split(',').join(', ')} }` : f.dport}`);
+    }
+    else if (f.proto)
+        parts.push(f.proto === 'icmp' ? 'ip protocol icmp' : `meta l4proto ${f.proto}`);
+    if (f.ct?.length) {
+        if (!f.ct.every((s) => STATES.has(s)))
+            return { error: 'ct' };
+        parts.push(`ct state ${f.ct.join(',')}`);
+    }
+    if (f.counter)
+        parts.push('counter');
+    if (f.log) {
+        const q = quoted(f.log);
+        if (!q)
+            return { error: 'log' };
+        parts.push(`log prefix ${q}`);
+    }
+    if (f.action === 'snat' || f.action === 'dnat') {
+        if (!f.to || !/^\d+\.\d+\.\d+\.\d+(:\d{1,5})?$/.test(f.to))
+            return { error: 'to' };
+        parts.push(`${f.action} to ${f.to}`);
+    }
+    else
+        parts.push(f.action);
+    if (f.comment) {
+        const q = quoted(f.comment);
+        if (!q)
+            return { error: 'comment' };
+        parts.push(`comment ${q}`);
+    }
+    return parts.join(' ');
+}
+/** Runs one nft command against the ruleset (the GUI's only way to change it). */
+function nftEdit(rs, command) {
+    const r = runNft(rs, command);
+    return r.ok ? { ok: true, ruleset: r.ruleset } : { ok: false, error: r.error };
+}
+/** Moves a rule one place up or down inside its chain (nft has no move: the GUI rewrites the chain). */
+function moveRule(rs, family, table, chain, handle, delta) {
+    const t = findTable(rs, family, table);
+    const c = t ? findChain(t, chain) : undefined;
+    if (!t || !c)
+        return rs;
+    const i = c.rules.findIndex((r) => r.handle === handle);
+    const j = i + delta;
+    if (i < 0 || j < 0 || j >= c.rules.length)
+        return rs;
+    const rules = [...c.rules];
+    [rules[i], rules[j]] = [rules[j], rules[i]];
+    return withTable(rs, withChain(t, { ...c, rules }));
+}
+/** Starting points offered by the GUI (they replace the ruleset; WAN = eth0). */
+const NFT_TEMPLATES = {
+    hardening: `flush ruleset
+table inet filter {
+\tchain input {
+\t\ttype filter hook input priority filter; policy drop;
+\t\tct state established,related accept
+\t\tct state invalid drop
+\t\tiif "lo" accept
+\t\ticmp type echo-request accept
+\t\ttcp dport 22 accept
+\t}
+\tchain forward {
+\t\ttype filter hook forward priority filter; policy drop;
+\t}
+\tchain output {
+\t\ttype filter hook output priority filter; policy accept;
+\t}
+}`,
+    router: `flush ruleset
+table inet filter {
+\tchain input {
+\t\ttype filter hook input priority filter; policy drop;
+\t\tct state established,related accept
+\t\tiif "lo" accept
+\t\tiifname != "eth0" accept
+\t\ticmp type echo-request accept
+\t}
+\tchain forward {
+\t\ttype filter hook forward priority filter; policy drop;
+\t\tct state established,related accept
+\t\tiifname != "eth0" oifname "eth0" accept
+\t}
+}
+table ip nat {
+\tchain postrouting {
+\t\ttype nat hook postrouting priority srcnat; policy accept;
+\t\toifname "eth0" masquerade
+\t}
+}`,
+    open: `flush ruleset
+table inet filter {
+\tchain input {
+\t\ttype filter hook input priority filter; policy accept;
+\t}
+\tchain forward {
+\t\ttype filter hook forward priority filter; policy accept;
+\t}
+\tchain output {
+\t\ttype filter hook output priority filter; policy accept;
+\t}
+}`,
+};
+
+return { ruleFromForm, nftEdit, moveRule, NFT_TEMPLATES };
+})();
+__m["shells/firewall-save.js"] = (() => {
+const { EMPTY_RULESET } = __m["net/nft/model.js"];
+const { rulesetFile, runNft } = __m["net/nft/apply.js"];
+const { NFTABLES_CONF } = __m["devices/server-firewall.js"];
+const { hostSystem } = __m["shells/host-system.js"];
+function savedRuleset(server) {
+    const fs = hostSystem(server).fs;
+    const text = fs.tryLookup(NFTABLES_CONF)?.kind === 'file' ? fs.readFile(NFTABLES_CONF) : null;
+    if (text === null)
+        return null;
+    const r = runNft(EMPTY_RULESET, text, { read: (p) => (fs.tryLookup(p)?.kind === 'file' ? fs.readFile(p) : null) });
+    return r.ok ? r.ruleset : null;
+}
+function firewallStatus(server) {
+    const saved = savedRuleset(server);
+    const running = rulesetFile(server.kernel.netfilter.ruleset);
+    return {
+        active: server.services.firewall.enabled,
+        enabled: server.autostart.firewall,
+        saved: saved !== null && rulesetFile(saved) === running,
+    };
+}
+/** Applies `rs`, writes /etc/nftables.conf and makes sure nftables.service is enabled and running. */
+function applyAndSave(server, rs) {
+    hostSystem(server).fs.writeFile(NFTABLES_CONF, rulesetFile(rs), undefined, false, 0o755);
+    server.autostart = { ...server.autostart, firewall: true };
+    if (!server.services.firewall.enabled)
+        server.setServices({ ...server.services, firewall: { enabled: true } });
+    server.kernel.netfilter.setRuleset(rs);
+    server.notifyChange();
+}
+/** Turns nftables.service off (flushes the ruleset) or on (loads the file); keeps it enabled at boot accordingly. */
+function setFirewallActive(server, on) {
+    server.autostart = { ...server.autostart, firewall: on };
+    server.setServices({ ...server.services, firewall: { enabled: on } });
+}
+
+return { firewallStatus, applyAndSave, setFirewallActive };
+})();
+__m["ui/firewall-forms.js"] = (() => {
+/** Forms of the firewall panel: new table, new chain and new rule (built with nft/edit.ts). */
+const { el } = __m["ui/dom.js"];
+const { button, field, input, select } = __m["ui/forms.js"];
+const { ruleFromForm } = __m["net/nft/edit.js"];
+const { t } = __m["i18n/t.js"];
+const NAME = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/;
+const HOOKS = ['input', 'forward', 'output', 'prerouting', 'postrouting'];
+const FIELD_LABEL = {
+    iif: 'fw.iif', oif: 'fw.oif', saddr: 'fw.saddr', daddr: 'fw.daddr', proto: 'fw.proto', dport: 'fw.dport', ct: 'fw.ct', to: 'fw.to', log: 'fw.log', comment: 'fw.comment',
+};
+function tableForm(commit, fail) {
+    const family = select([['inet', 'inet'], ['ip', 'ip']], 'inet');
+    const name = input({ placeholder: 'filter', 'aria-label': t('fw.name') });
+    const add = () => {
+        if (!NAME.test(name.value.trim()))
+            return fail(t('fw.badField', { field: t('fw.name') }));
+        const err = commit(`add table ${family.value} ${name.value.trim()}`);
+        if (err)
+            fail(err);
+    };
+    return el('div', { class: 'fw-form' }, el('div', { class: 'grid2' }, field(t('fw.family'), family), field(t('fw.name'), name)), button(t('fw.addTable'), add));
+}
+function chainForm(family, table, commit, fail) {
+    const name = input({ placeholder: 'input', 'aria-label': t('fw.name') });
+    const type = select([['filter', 'filter'], ['nat', 'nat'], ['', t('fw.regular')]], 'filter');
+    const hook = select(HOOKS.map((h) => [h, h]), 'input');
+    const prio = input({ value: '0', inputmode: 'numeric', 'aria-label': t('fw.priority') });
+    const policy = select([['accept', 'accept'], ['drop', 'drop']], 'accept');
+    const add = () => {
+        const n = name.value.trim();
+        if (!NAME.test(n))
+            return fail(t('fw.badField', { field: t('fw.name') }));
+        if (type.value && !/^-?\d{1,4}$/.test(prio.value.trim()))
+            return fail(t('fw.badField', { field: t('fw.priority') }));
+        const spec = type.value ? ` { type ${type.value} hook ${hook.value} priority ${prio.value.trim()}; policy ${policy.value}; }` : '';
+        const err = commit(`add chain ${family} ${table} ${n}${spec}`);
+        if (err)
+            fail(err);
+    };
+    return el('details', { class: 'fw-form' }, el('summary', {}, t('fw.addChain')), el('div', { class: 'grid2' }, field(t('fw.name'), name), field(t('fw.chainType'), type), field(t('fw.hook'), hook), field(t('fw.priority'), prio), field(t('fw.policy'), policy)), button(t('fw.addChain'), add));
+}
+function readForm(i) {
+    const v = (k) => i.text[k].value.trim() || undefined;
+    return {
+        iif: v('iif'), oif: v('oif'), saddr: v('saddr'), daddr: v('daddr'), dport: v('dport'), to: v('to'), log: v('log'), comment: v('comment'),
+        proto: i.proto.value, action: i.action.value,
+        ct: i.ct.filter((c) => c.checked).map((c) => c.value), counter: i.counter.checked,
+    };
+}
+function ruleInputs(rs) {
+    const chains = rs.tables.flatMap((tb) => tb.chains.map((c) => [`${tb.family} ${tb.name} ${c.name}`, `${tb.family} ${tb.name} · ${c.name}`]));
+    const text = (k, ph) => input({ placeholder: ph, 'aria-label': k });
+    return {
+        target: select(chains, chains[0]?.[0] ?? ''),
+        text: { iif: text('iif', 'eth1'), oif: text('oif', 'eth0'), saddr: text('saddr', '192.168.1.0/24'), daddr: text('daddr', '10.0.0.2'), dport: text('dport', '22'), to: text('to', '172.16.0.80:80'), log: text('log', 'DROP '), comment: text('comment', '') },
+        proto: select([['', t('fw.any')], ['tcp', 'tcp'], ['udp', 'udp'], ['icmp', 'icmp']], ''),
+        action: select(['accept', 'drop', 'reject', 'masquerade', 'snat', 'dnat'].map((a) => [a, a]), 'accept'),
+        ct: ['new', 'established', 'related', 'invalid'].map((s) => el('input', { type: 'checkbox', value: s })),
+        counter: el('input', { type: 'checkbox', checked: true }),
+        top: el('input', { type: 'checkbox' }),
+    };
+}
+function ruleForm(rs, commit, fail) {
+    const i = ruleInputs(rs);
+    const add = () => {
+        const body = ruleFromForm(readForm(i));
+        if (typeof body !== 'string')
+            return fail(t('fw.badField', { field: t(FIELD_LABEL[body.error] ?? 'fw.action') }));
+        if (!i.target.value)
+            return fail(t('fw.badField', { field: t('fw.target') }));
+        const err = commit(`${i.top.checked ? 'insert' : 'add'} rule ${i.target.value} ${body}`);
+        if (err)
+            fail(err);
+    };
+    const tx = i.text;
+    return el('div', { class: 'fw-form' }, el('h3', {}, t('fw.addRule')), el('div', { class: 'grid2' }, field(t('fw.target'), i.target), field(t('fw.action'), i.action), field(t('fw.iif'), tx.iif), field(t('fw.oif'), tx.oif), field(t('fw.saddr'), tx.saddr), field(t('fw.daddr'), tx.daddr), field(t('fw.proto'), i.proto), field(t('fw.dport'), tx.dport), field(t('fw.to'), tx.to), field(t('fw.log'), tx.log), field(t('fw.comment'), tx.comment)), el('fieldset', { class: 'mode' }, el('legend', {}, t('fw.ct')), ...i.ct.map((c) => el('label', { class: 'check' }, c, c.value))), el('label', { class: 'check' }, i.counter, t('fw.counter')), el('label', { class: 'check' }, i.top, t('fw.atStart')), button(t('fw.addRule'), add));
+}
+
+return { tableForm, chainForm, ruleForm };
+})();
+__m["ui/firewall-panel.js"] = (() => {
+/** Services → Firewall (nftables) and Services → sysctl panels of Ubuntu servers and the Linux router. */
+const { el } = __m["ui/dom.js"];
+const { button, input, message, onOff, select, table } = __m["ui/forms.js"];
+const { liveHostPanel } = __m["ui/live.js"];
+const { EMPTY_RULESET } = __m["net/nft/model.js"];
+const { ruleText } = __m["net/nft/format.js"];
+const { runNft } = __m["net/nft/apply.js"];
+const { moveRule, nftEdit, NFT_TEMPLATES } = __m["net/nft/edit.js"];
+const { applyAndSave, firewallStatus, setFirewallActive } = __m["shells/firewall-save.js"];
+const { saveSysctl } = __m["shells/kernel-save.js"];
+const { SYSCTL_KEYS } = __m["net/sysctl.js"];
+const { chainForm, ruleForm, tableForm } = __m["ui/firewall-forms.js"];
+const { t } = __m["i18n/t.js"];
+function header(s, app, fail) {
+    const st = firewallStatus(s);
+    const tpl = select([['', t('fw.tpl.none')], ['hardening', t('fw.tpl.hardening')], ['router', t('fw.tpl.router')], ['open', t('fw.tpl.open')]], '');
+    const load = () => {
+        const text = NFT_TEMPLATES[tpl.value];
+        if (!text || !globalThis.confirm(t('fw.confirmTemplate')))
+            return;
+        const r = runNft(EMPTY_RULESET, text);
+        if (!r.ok)
+            return fail(r.error);
+        applyAndSave(s, r.ruleset);
+        app.afterCommand();
+    };
+    return [
+        el('p', { class: 'muted' }, t('fw.intro')),
+        onOff(t('fw.service'), st.active, (on) => { setFirewallActive(s, on); app.afterCommand(); }),
+        el('p', { class: 'status', 'data-state': st.saved ? 'ok' : 'failed' }, st.saved ? t('fw.saved') : t('fw.unsaved')),
+        ...(st.saved ? [] : [el('div', { class: 'row-actions' }, button(t('fw.save'), () => { applyAndSave(s, s.kernel.netfilter.ruleset); app.afterCommand(); }), button(t('fw.reload'), () => { const err = s.reloadFirewall(); if (err)
+                fail(err); app.afterCommand(); }))]),
+        el('div', { class: 'row-actions' }, tpl, button(t('fw.loadTemplate'), load)),
+    ];
+}
+function rulesOf(s, tb, ch, commit, app) {
+    const counters = s.kernel.netfilter.counters;
+    const move = (r, d) => {
+        applyAndSave(s, moveRule(s.kernel.netfilter.ruleset, tb.family, tb.name, ch.name, r.handle, d));
+        app.afterCommand();
+    };
+    return table(ch.rules, [{ label: t('fw.rules'), value: (r) => ruleText(r, tb.family, counters), mono: true }], {
+        empty: t('fw.noRules'),
+        actions: (r) => [button('↑', () => move(r, -1), 'btn btn-small'), button('↓', () => move(r, 1), 'btn btn-small')],
+        onDelete: (r) => { commit(`delete rule ${tb.family} ${tb.name} ${ch.name} handle ${r.handle}`); },
+    });
+}
+function chainView(s, tb, ch, commit, app) {
+    const b = ch.base;
+    const policy = b ? select([['accept', 'accept'], ['drop', 'drop']], b.policy) : undefined;
+    policy?.addEventListener('change', () => { if (b)
+        commit(`add chain ${tb.family} ${tb.name} ${ch.name} { type ${b.type} hook ${b.hook} priority ${b.priority}; policy ${policy.value}; }`); });
+    const del = button(t('fw.deleteChain'), () => { commit(`flush chain ${tb.family} ${tb.name} ${ch.name}\ndelete chain ${tb.family} ${tb.name} ${ch.name}`); }, 'btn btn-small danger');
+    return el('div', { class: 'fw-chain' }, el('div', { class: 'fw-chain-head' }, el('strong', { class: 'mono' }, `chain ${ch.name}`), el('span', { class: 'muted mono' }, b ? ` type ${b.type} hook ${b.hook} priority ${b.priority}` : ''), ...(policy ? [el('label', { class: 'inline' }, `${t('fw.policy')} `, policy)] : []), del), rulesOf(s, tb, ch, commit, app));
+}
+function tablesView(s, commit, app, fail) {
+    const rs = s.kernel.netfilter.ruleset;
+    const tables = rs.tables.map((tb) => el('section', { class: 'fw-table' }, el('h4', { class: 'mono' }, `table ${tb.family} ${tb.name}`, ' ', button(t('fw.deleteTable'), () => { commit(`delete table ${tb.family} ${tb.name}`); }, 'btn btn-small danger')), ...tb.chains.map((ch) => chainView(s, tb, ch, commit, app)), chainForm(tb.family, tb.name, commit, fail)));
+    return [el('h3', {}, t('fw.tables')), ...(tables.length ? tables : [el('p', { class: 'muted' }, t('fw.noTables'))]), tableForm(commit, fail), ruleForm(rs, commit, fail)];
+}
+function firewallPanel(s, app) {
+    return liveHostPanel(s, () => {
+        if (s.os !== 'linux')
+            return [el('p', { class: 'muted' }, t('fw.notLinux'))];
+        const msg = message();
+        const fail = (m) => msg.error(m);
+        const commit = (command) => {
+            const r = nftEdit(s.kernel.netfilter.ruleset, command);
+            if (!r.ok)
+                return r.error;
+            applyAndSave(s, r.ruleset);
+            app.afterCommand();
+            return null;
+        };
+        const listed = runNft(s.kernel.netfilter.ruleset, 'list ruleset', { format: { counters: s.kernel.netfilter.counters } });
+        return [
+            ...header(s, app, fail), msg.el, ...tablesView(s, commit, app, fail),
+            el('h3', {}, t('fw.preview')), el('pre', { class: 'code-view' }, listed.ok ? listed.output.join('\n') : ''),
+        ];
+    });
+}
+function sysctlPanel(s, app) {
+    return liveHostPanel(s, () => {
+        const msg = message();
+        const keys = [...SYSCTL_KEYS].sort((a, b) => Number(b.effect) - Number(a.effect) || a.name.localeCompare(b.name));
+        const rows = keys.map((k) => {
+            const current = s.kernel.sysctl.get(k.name) ?? '';
+            const ctrl = Array.isArray(k.accepts) ? select(k.accepts.map((v) => [v, v]), current) : input({ value: current, 'aria-label': k.name });
+            const apply = () => { const err = saveSysctl(s, k.name, ctrl.value.trim()); if (err)
+                msg.error(err); app.afterCommand(); };
+            return el('tr', {}, el('td', { class: 'mono' }, k.name), el('td', {}, ctrl), el('td', {}, k.effect ? t('sysctl.yes') : t('sysctl.no')), el('td', {}, button(t('sysctl.apply'), apply, 'btn btn-small')));
+        });
+        return [el('p', { class: 'muted' }, t('sysctl.intro')), msg.el,
+            el('table', { class: 'grid-table' }, el('thead', {}, el('tr', {}, el('th', {}, t('sysctl.key')), el('th', {}, t('sysctl.value')), el('th', {}, t('sysctl.effect')), el('th', {}))), el('tbody', {}, ...rows))];
+    });
+}
+
+return { firewallPanel, sysctlPanel };
+})();
 __m["services/dhcp-reservations.js"] = (() => {
 const { validatePool, leaseToReservation } = __m["services/dhcp-pt.js"];
 const { parseMac, parseHexId, asciiToHex, formatMacCisco, formatHexId } = __m["core/mac.js"];
@@ -32355,6 +32882,8 @@ return { sshAuthMethods, setSshAuthMethods };
 })();
 __m["ui/server-apps.js"] = (() => {
 /** Server → Servicios → HTTP, Correo, SSH and Registros panels. */
+const { t } = __m["i18n/t.js"];
+const { firewallPanel, sysctlPanel } = __m["ui/firewall-panel.js"];
 const { el } = __m["ui/dom.js"];
 const { field, input, select, button, onOff, message, table, subnav } = __m["ui/forms.js"];
 const { livePanel, dhcpPanel, dnsPanel } = __m["ui/server-dhcp-dns.js"];
@@ -32371,6 +32900,10 @@ function servicesTab(server, app) {
         { id: 'http', label: 'HTTP', render: () => httpPanel(server, app) },
         { id: 'mail', label: 'Correo', render: () => mailPanel(server, app) },
         { id: 'ssh', label: 'SSH', render: () => sshPanel(server, app) },
+        ...(server.os === 'linux' ? [
+            { id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root },
+            { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root },
+        ] : []),
         { id: 'log', label: 'Registros', render: () => logPanel(server) },
     ]);
 }
@@ -37840,11 +38373,12 @@ return { roundcube };
 __m["web/admin-layout.js"] = (() => {
 const { h, page } = __m["web/html.js"];
 const { ABOUT } = __m["docs/about-data.js"];
-const TABS = [['setup', 'Configuración'], ['services', 'Servicios'], ['admin', 'Administración'], ['status', 'Estado']];
+const TABS = [['setup', 'Configuración'], ['services', 'Servicios'], ['security', 'Seguridad'], ['admin', 'Administración'], ['status', 'Estado']];
 const PAGES = [
     { id: 'setup', tab: 'setup', label: 'Configuración básica' },
     { id: 'dhcp', tab: 'services', label: 'DHCP' }, { id: 'dns', tab: 'services', label: 'DNS' }, { id: 'web', tab: 'services', label: 'Web y correo web' },
     { id: 'mail', tab: 'services', label: 'Correo' }, { id: 'ssh', tab: 'services', label: 'SSH' },
+    { id: 'firewall', tab: 'security', label: 'Cortafuegos' }, { id: 'routing', tab: 'security', label: 'Enrutamiento' },
     { id: 'admin', tab: 'admin', label: 'Gestión' },
     { id: 'status', tab: 'status', label: 'Equipo' }, { id: 'log', tab: 'status', label: 'Registros' },
 ];
@@ -37984,7 +38518,217 @@ function logPage(server) {
 
 return { setupPage, dhcpPage, dnsPage, webPage, mailPage, sshPage, adminPage, statusPage, logPage };
 })();
+__m["web/admin-firewall.js"] = (() => {
+const { ruleText } = __m["net/nft/format.js"];
+const { runNft } = __m["net/nft/apply.js"];
+const { firewallStatus } = __m["shells/firewall-save.js"];
+const { SYSCTL_KEYS } = __m["net/sysctl.js"];
+const { formatIp } = __m["core/ip.js"];
+const { h } = __m["web/html.js"];
+const { buttons, check, choose, form, row, section, text } = __m["web/admin-layout.js"];
+const del = (base, pageId, action, key, label = 'Borrar') => form(base, pageId, action, h('input', { type: 'hidden', name: 'key', value: key }), h('button', { type: 'submit', class: 'web-wrt-small' }, label));
+/** Port the management GUI needs (its own port, or Apache's 80 when it lives under an alias). */
+function adminPort(server) {
+    const a = server.services.webapps.admin;
+    return a.mode === 'port' ? a.port : 80;
+}
+/** True when an input chain drops by default and no accepting rule names the GUI's port. */
+function locksOut(server, rs = server.kernel.netfilter.ruleset) {
+    const port = adminPort(server);
+    const names = (v) => (v.kind === 'num' ? v.n === port : v.kind === 'range' ? v.from <= port && port <= v.to : v.kind === 'set' && v.items.some(names));
+    return rs.tables.some((t) => t.chains.some((c) => c.base?.hook === 'input' && c.base.policy === 'drop'
+        && !c.rules.some((r) => r.verdict?.kind === 'accept' && r.matches.some((m) => m.field.endsWith('dport') && !m.negate && names(m.value)))));
+}
+function ruleRows(server, base, tb, ch) {
+    const key = (r) => `${tb.family} ${tb.name} ${ch.name} ${r.handle}`;
+    const rows = ch.rules.map((r) => h('tr', {}, h('td', { class: 'web-wrt-mono' }, ruleText(r, tb.family, server.kernel.netfilter.counters)), h('td', {}, del(base, 'firewall', 'fw-rule-up', key(r), '↑'), del(base, 'firewall', 'fw-rule-down', key(r), '↓'), del(base, 'firewall', 'fw-rule-del', key(r)))));
+    return h('table', { class: 'web-wrt-list' }, h('tr', {}, h('th', {}, 'Regla'), h('th', {}, '')), rows.length ? rows : h('tr', {}, h('td', { colspan: 2 }, 'Sin reglas: se aplica la política.')));
+}
+function chainSection(server, base, tb, ch) {
+    const b = ch.base;
+    const head = b ? `type ${b.type} hook ${b.hook} priority ${b.priority}` : 'cadena normal';
+    const policy = b ? form(base, 'firewall', 'fw-policy', h('input', { type: 'hidden', name: 'key', value: `${tb.family} ${tb.name} ${ch.name}` }), row('Política', choose('policy', b.policy, [['accept', 'accept'], ['drop', 'drop']])), h('button', { type: 'submit', class: 'web-wrt-small' }, 'Cambiar')) : null;
+    return section(`${tb.family} ${tb.name} · ${ch.name}`, head, policy, ruleRows(server, base, tb, ch), del(base, 'firewall', 'fw-chain-del', `${tb.family} ${tb.name} ${ch.name}`, 'Borrar cadena'));
+}
+function ruleForm(server, base) {
+    const chains = server.kernel.netfilter.ruleset.tables.flatMap((tb) => tb.chains.map((c) => [`${tb.family} ${tb.name} ${c.name}`, `${tb.family} ${tb.name} · ${c.name}`]));
+    return form(base, 'firewall', 'fw-rule-add', h('table', {}, section('Nueva regla', 'Se añade al final (o al principio) de la cadena elegida y se guarda en /etc/nftables.conf.', row('Cadena', choose('target', chains[0]?.[0] ?? '', chains)), row('Acción', choose('ruleAction', 'accept', ['accept', 'drop', 'reject', 'masquerade', 'snat', 'dnat'].map((a) => [a, a]))), row('Interfaz de entrada', text('iif', '', { placeholder: 'eth1' })), row('Interfaz de salida', text('oif', '', { placeholder: 'eth0' })), row('Origen', text('saddr', '', { placeholder: '192.168.1.0/24' })), row('Destino', text('daddr', '')), row('Protocolo', choose('proto', '', [['', 'Cualquiera'], ['tcp', 'tcp'], ['udp', 'udp'], ['icmp', 'icmp']])), row('Puerto destino', text('dport', '', { placeholder: '22' })), row('Traducir a', text('to', '', { placeholder: '172.16.0.80:80' })), row('Prefijo de log', text('log', '')), row('Comentario', text('comment', '')), check('ct_new', false, 'new'), check('ct_established', false, 'established'), check('ct_related', false, 'related'), check('ct_invalid', false, 'invalid'), check('counter', true, 'Contador'), check('top', false, 'Al principio'))), buttons());
+}
+function firewallPage(server, base) {
+    if (server.os !== 'linux')
+        return h('tr', {}, h('td', {}, 'El cortafuegos nftables solo está en los equipos Ubuntu.'));
+    const st = firewallStatus(server);
+    const rs = server.kernel.netfilter.ruleset;
+    const listed = runNft(rs, 'list ruleset');
+    return [
+        form(base, 'firewall', 'fw-service', h('table', {}, section('Cortafuegos', 'nftables.service carga /etc/nftables.conf al arrancar. Los cambios de esta página se aplican y se guardan.', check('enabled', st.active, 'Activado'), st.saved ? null : h('p', { class: 'web-wrt-error' }, 'Hay cambios hechos con «nft» sin guardar.'), locksOut(server) ? h('p', { class: 'web-wrt-error' }, 'Cuidado: la cadena input descarta por defecto y ninguna regla acepta el puerto de esta página: podrías perder el acceso.') : null)), buttons()),
+        form(base, 'firewall', 'fw-template', h('table', {}, section('Plantilla', 'Sustituye todas las reglas.', choose('template', '', [['', '—'], ['hardening', 'Servidor bastionado'], ['router', 'Router con NAT por eth0'], ['open', 'Todo permitido']]))), buttons()),
+        ...rs.tables.flatMap((tb) => [section(`table ${tb.family} ${tb.name}`, '', del(base, 'firewall', 'fw-table-del', `${tb.family} ${tb.name}`, 'Borrar tabla')), ...tb.chains.map((ch) => chainSection(server, base, tb, ch))]),
+        form(base, 'firewall', 'fw-table-add', h('table', {}, section('Nueva tabla', 'Familia inet (IPv4 e IPv6) o ip.', row('Familia', choose('family', 'inet', [['inet', 'inet'], ['ip', 'ip']])), row('Nombre', text('name', '', { placeholder: 'filter' })))), buttons()),
+        form(base, 'firewall', 'fw-chain-add', h('table', {}, section('Nueva cadena', 'Las cadenas base se enganchan a un punto del recorrido de los paquetes.', row('Tabla', choose('table', rs.tables[0] ? `${rs.tables[0].family} ${rs.tables[0].name}` : '', rs.tables.map((tb) => [`${tb.family} ${tb.name}`, `${tb.family} ${tb.name}`]))), row('Nombre', text('name', '')), row('Tipo', choose('type', 'filter', [['filter', 'filter'], ['nat', 'nat'], ['', 'normal']])), row('Gancho', choose('hook', 'input', ['input', 'forward', 'output', 'prerouting', 'postrouting'].map((x) => [x, x]))), row('Prioridad', text('priority', '0')), row('Política', choose('policy', 'accept', [['accept', 'accept'], ['drop', 'drop']])))), buttons()),
+        ruleForm(server, base),
+        section('nft list ruleset', '', h('pre', { class: 'web-wrt-log' }, listed.ok ? listed.output.join('\n') || '(vacío)' : '')),
+    ];
+}
+function routingPage(server, base) {
+    if (server.os !== 'linux')
+        return h('tr', {}, h('td', {}, 'Solo en los equipos Ubuntu.'));
+    const sysctl = server.kernel.sysctl;
+    const keys = SYSCTL_KEYS.filter((k) => k.effect || k.name.startsWith('net.ipv4.conf.all'));
+    const routes = server.staticRoutes.map((r) => h('tr', {}, h('td', { class: 'web-wrt-mono' }, `${formatIp(r.net)}/${r.prefix}`), h('td', { class: 'web-wrt-mono' }, formatIp(r.via)), h('td', {}, del(base, 'routing', 'route-del', `${formatIp(r.net)}/${r.prefix}`))));
+    return [
+        ...keys.map((k) => form(base, 'routing', 'sysctl-set', h('input', { type: 'hidden', name: 'key', value: k.name }), h('table', {}, section(k.name, k.effect ? 'Cambia el comportamiento en Netfix.' : 'Se guarda (sin efecto en Netfix).', Array.isArray(k.accepts) ? choose('value', sysctl.get(k.name) ?? '', k.accepts.map((v) => [v, v])) : text('value', sysctl.get(k.name) ?? ''))), buttons())),
+        section('Rutas estáticas', 'Redes que se alcanzan por otro router.', h('table', { class: 'web-wrt-list' }, h('tr', {}, h('th', {}, 'Red'), h('th', {}, 'Siguiente salto'), h('th', {}, '')), routes.length ? routes : h('tr', {}, h('td', { colspan: 3 }, 'Sin rutas.')))),
+        form(base, 'routing', 'route-add', h('table', {}, section('Nueva ruta', 'Red en formato CIDR y siguiente salto alcanzable.', row('Red', text('to', '', { placeholder: '10.0.0.0/8' })), row('Siguiente salto', text('via', '')))), buttons()),
+    ];
+}
+
+return { adminPort, locksOut, firewallPage, routingPage };
+})();
+__m["web/admin-firewall-actions.js"] = (() => {
+const { adminPort, locksOut } = __m["web/admin-firewall.js"];
+const { EMPTY_RULESET } = __m["net/nft/model.js"];
+const { runNft } = __m["net/nft/apply.js"];
+const { moveRule, nftEdit, NFT_TEMPLATES, ruleFromForm } = __m["net/nft/edit.js"];
+const { applyAndSave, setFirewallActive } = __m["shells/firewall-save.js"];
+const { saveSysctl } = __m["shells/kernel-save.js"];
+const { routeTo } = __m["devices/host-nics.js"];
+const { formatIp, inSubnet, parseIp } = __m["core/ip.js"];
+const SAVED = { ok: 'Los cambios se han guardado correctamente.' };
+const NAME = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/;
+const KEY = /^(inet|ip) ([A-Za-z][\w-]{0,31})(?: ([A-Za-z][\w-]{0,31}))?(?: (\d{1,6}))?$/;
+const LOCKOUT = 'Este cambio te dejaría sin acceso a esta página: la cadena input descartaría el puerto de la gestión web. Añade antes una regla que lo acepte.';
+function commit(server, command) {
+    const r = nftEdit(server.kernel.netfilter.ruleset, command);
+    if (!r.ok)
+        return { error: r.error };
+    if (locksOut(server, r.ruleset) && !locksOut(server))
+        return { error: LOCKOUT };
+    applyAndSave(server, r.ruleset);
+    return SAVED;
+}
+/** Keeps the GUI reachable after a template: accepts its port at the top of every dropping input chain. */
+function keepAccess(server, rs) {
+    if (!locksOut(server, rs))
+        return { ruleset: rs, added: false };
+    const port = adminPort(server);
+    const cmds = rs.tables.flatMap((t) => t.chains.filter((c) => c.base?.hook === 'input' && c.base.policy === 'drop')
+        .map((c) => `insert rule ${t.family} ${t.name} ${c.name} tcp dport ${port} accept comment "gestion web"`));
+    const r = nftEdit(rs, cmds.join('\n'));
+    return r.ok ? { ruleset: r.ruleset, added: true } : { ruleset: rs, added: false };
+}
+function parseKey(f) {
+    const m = KEY.exec((f.get('key') ?? f.get('table') ?? '').trim());
+    if (!m)
+        return null;
+    return { family: m[1], table: m[2] ?? '', chain: m[3], handle: m[4] === undefined ? undefined : Number(m[4]) };
+}
+function ruleAdd(server, f) {
+    const target = (f.get('target') ?? '').trim();
+    if (!KEY.test(target))
+        return { error: 'Elige la cadena.' };
+    const form = {
+        iif: f.get('iif')?.trim() || undefined, oif: f.get('oif')?.trim() || undefined, saddr: f.get('saddr')?.trim() || undefined, daddr: f.get('daddr')?.trim() || undefined,
+        proto: (['tcp', 'udp', 'icmp'].includes(f.get('proto') ?? '') ? f.get('proto') : ''), dport: f.get('dport')?.trim() || undefined,
+        ct: ['new', 'established', 'related', 'invalid'].filter((s) => f.has(`ct_${s}`)), action: (f.get('ruleAction') ?? 'accept'),
+        to: f.get('to')?.trim() || undefined, counter: f.has('counter'), log: f.get('log') || undefined, comment: f.get('comment') || undefined,
+    };
+    if (!['accept', 'drop', 'reject', 'masquerade', 'snat', 'dnat'].includes(form.action))
+        return { error: 'Acción no válida.' };
+    const body = ruleFromForm(form);
+    if (typeof body !== 'string')
+        return { error: `Revisa el campo «${body.error}».` };
+    return commit(server, `${f.has('top') ? 'insert' : 'add'} rule ${target} ${body}`);
+}
+function chainAdd(server, f) {
+    const k = parseKey(f);
+    const name = (f.get('name') ?? '').trim();
+    if (!k || !NAME.test(name))
+        return { error: 'Revisa la tabla y el nombre de la cadena.' };
+    const type = f.get('type') ?? '';
+    const prio = (f.get('priority') ?? '0').trim();
+    if (type && (!['filter', 'nat'].includes(type) || !/^-?\d{1,4}$/.test(prio)))
+        return { error: 'Revisa el tipo y la prioridad.' };
+    const spec = type ? ` { type ${type} hook ${f.get('hook') ?? 'input'} priority ${prio}; policy ${f.get('policy') === 'drop' ? 'drop' : 'accept'}; }` : '';
+    return commit(server, `add chain ${k.family} ${k.table} ${name}${spec}`);
+}
+function policy(server, f) {
+    const k = parseKey(f);
+    const t = k ? server.kernel.netfilter.ruleset.tables.find((x) => x.family === k.family && x.name === k.table) : undefined;
+    const b = t?.chains.find((c) => c.name === k?.chain)?.base;
+    if (!k || !b)
+        return { error: 'Cadena no encontrada.' };
+    return commit(server, `add chain ${k.family} ${k.table} ${k.chain ?? ''} { type ${b.type} hook ${b.hook} priority ${b.priority}; policy ${f.get('policy') === 'drop' ? 'drop' : 'accept'}; }`);
+}
+function template(server, f) {
+    const text = NFT_TEMPLATES[f.get('template') ?? ''];
+    if (!text)
+        return { error: 'Elige una plantilla.' };
+    const r = runNft(EMPTY_RULESET, text);
+    if (!r.ok)
+        return { error: r.error };
+    const kept = keepAccess(server, r.ruleset);
+    applyAndSave(server, kept.ruleset);
+    return kept.added ? { ok: `Plantilla aplicada. Se ha añadido una regla que acepta el puerto ${adminPort(server)} para no perder el acceso a esta página.` } : SAVED;
+}
+function move(server, f, delta) {
+    const k = parseKey(f);
+    if (!k?.chain || k.handle === undefined)
+        return { error: 'Regla no encontrada.' };
+    const next = moveRule(server.kernel.netfilter.ruleset, k.family, k.table, k.chain, k.handle, delta);
+    if (locksOut(server, next) && !locksOut(server))
+        return { error: LOCKOUT };
+    applyAndSave(server, next);
+    return SAVED;
+}
+function routeAdd(server, f) {
+    const m = /^(\d+\.\d+\.\d+\.\d+)\/(\d{1,2})$/.exec((f.get('to') ?? '').trim());
+    const net = m ? parseIp(m[1] ?? '') : null;
+    const via = parseIp((f.get('via') ?? '').trim());
+    const prefix = Number(m?.[2]);
+    const reachable = via !== null && server.nics().some((n) => n.ip !== undefined && n.prefix !== undefined && inSubnet(via, n.ip, n.prefix));
+    if (net === null || via === null || prefix > 32 || !reachable)
+        return { error: 'Ruta no válida: red CIDR y un siguiente salto alcanzable por una interfaz.' };
+    const r = routeTo(net, prefix, via);
+    server.setStaticRoutes([...server.staticRoutes.filter((x) => !(x.net === r.net && x.prefix === r.prefix)), r]);
+    return SAVED;
+}
+/** Runs a "Seguridad" action; null when `action` is not one of them. */
+function securityAction(server, f) {
+    const k = parseKey(f);
+    switch (f.get('action')) {
+        case 'fw-service':
+            setFirewallActive(server, f.has('enabled'));
+            return SAVED;
+        case 'fw-template': return template(server, f);
+        case 'fw-table-add': return NAME.test((f.get('name') ?? '').trim()) ? commit(server, `add table ${f.get('family') === 'ip' ? 'ip' : 'inet'} ${(f.get('name') ?? '').trim()}`) : { error: 'Nombre de tabla no válido.' };
+        case 'fw-table-del': return k ? commit(server, `delete table ${k.family} ${k.table}`) : { error: 'Tabla no encontrada.' };
+        case 'fw-chain-add': return chainAdd(server, f);
+        case 'fw-chain-del': return k?.chain ? commit(server, `flush chain ${k.family} ${k.table} ${k.chain}\ndelete chain ${k.family} ${k.table} ${k.chain}`) : { error: 'Cadena no encontrada.' };
+        case 'fw-policy': return policy(server, f);
+        case 'fw-rule-add': return ruleAdd(server, f);
+        case 'fw-rule-del': return k?.chain && k.handle !== undefined ? commit(server, `delete rule ${k.family} ${k.table} ${k.chain} handle ${k.handle}`) : { error: 'Regla no encontrada.' };
+        case 'fw-rule-up': return move(server, f, -1);
+        case 'fw-rule-down': return move(server, f, 1);
+        case 'sysctl-set': {
+            const err = saveSysctl(server, (f.get('key') ?? '').trim(), (f.get('value') ?? '').trim());
+            return err ? { error: err } : SAVED;
+        }
+        case 'route-add': return routeAdd(server, f);
+        case 'route-del': {
+            const to = (f.get('key') ?? '').trim();
+            server.setStaticRoutes(server.staticRoutes.filter((r) => `${formatIp(r.net)}/${r.prefix}` !== to));
+            return SAVED;
+        }
+        default: return null;
+    }
+}
+
+return { securityAction };
+})();
 __m["web/admin-actions.js"] = (() => {
+/** Form actions of the Server management GUI: each one validates and applies to the live server. */
+const { securityAction } = __m["web/admin-firewall-actions.js"];
 const { validHostname } = __m["devices/host.js"];
 const { parseIp, parseMask } = __m["core/ip.js"];
 const { validatePool } = __m["services/dhcp-pt.js"];
@@ -38149,7 +38893,7 @@ function runAction(server, pageId, f) {
         case 'user-add':
         case 'user-del': return users(server, pageId === 'ssh' ? 'ssh' : 'mail', f, action === 'user-add');
         case 'admin': return admin(server, f);
-        default: return { error: 'Acción desconocida.' };
+        default: return securityAction(server, f) ?? { error: 'Acción desconocida.' };
     }
 }
 
@@ -38161,6 +38905,7 @@ const { h, page } = __m["web/html.js"];
 const { PAGES, frame } = __m["web/admin-layout.js"];
 const { setupPage, dhcpPage, dnsPage, webPage, mailPage, sshPage, adminPage, statusPage, logPage } = __m["web/admin-pages.js"];
 const { runAction } = __m["web/admin-actions.js"];
+const { firewallPage, routingPage } = __m["web/admin-firewall.js"];
 const { formatIp } = __m["core/ip.js"];
 /** User names come from the request: no control characters in the logs. */
 const printable = (text) => text.replace(/[\x00-\x1f\x7f]/g, '?').slice(0, 64);
@@ -38173,6 +38918,8 @@ function body(server, base, id) {
         case 'web': return webPage(server, base);
         case 'mail': return mailPage(server, base);
         case 'ssh': return sshPage(server, base);
+        case 'firewall': return firewallPage(server, base);
+        case 'routing': return routingPage(server, base);
         case 'admin': return adminPage(server, base);
         case 'status': return statusPage(server);
         case 'log': return logPage(server);

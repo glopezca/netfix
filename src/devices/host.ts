@@ -173,6 +173,11 @@ export abstract class Host implements NetDevice, StackHost {
     return () => this.statusListeners.delete(listener);
   }
 
+  /** Tells open panels that something outside the device's own setters changed (nft, sysctl files…). */
+  notifyChange(): void {
+    this.changed();
+  }
+
   protected changed(): void {
     for (const l of this.statusListeners) l();
   }

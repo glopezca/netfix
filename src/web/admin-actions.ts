@@ -1,4 +1,5 @@
 /** Form actions of the Server management GUI: each one validates and applies to the live server. */
+import { securityAction } from './admin-firewall-actions.ts';
 import type { Server } from '../devices/server.ts';
 import { validHostname } from '../devices/host.ts';
 import { parseIp, parseMask } from '../core/ip.ts';
@@ -167,6 +168,6 @@ export function runAction(server: Server, pageId: string, f: Fields): Outcome & 
     case 'ssh': return ssh(server, f);
     case 'user-add': case 'user-del': return users(server, pageId === 'ssh' ? 'ssh' : 'mail', f, action === 'user-add');
     case 'admin': return admin(server, f);
-    default: return { error: 'Acción desconocida.' };
+    default: return securityAction(server, f) ?? { error: 'Acción desconocida.' };
   }
 }

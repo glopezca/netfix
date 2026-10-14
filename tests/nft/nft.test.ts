@@ -38,6 +38,13 @@ test('commands build a ruleset that lists like nft 1.1', () => {
   assert.match(list(rs, 'list ruleset', true), /^table inet filter \{ # handle 1\n\tchain input \{ # handle 2\n[\s\S]*ct state established,related accept # handle 3\n/);
 });
 
+test('comment after the verdict round-trips', () => {
+  const rs = run(EMPTY_RULESET, 'add table ip t\nadd chain ip t c\nadd rule ip t c tcp dport 22 counter accept comment "ssh admin"');
+  assert.match(list(rs), /tcp dport 22 counter packets 0 bytes 0 accept comment "ssh admin"/);
+  assert.equal(list(run(EMPTY_RULESET, list(rs))), list(rs));
+  assert.equal(runNft(EMPTY_RULESET, 'add table ip t\nadd chain ip t c\nadd rule ip t c accept drop').ok, false, 'two verdicts');
+});
+
 test('insert, position, replace and delete by handle', () => {
   let rs = run(EMPTY_RULESET, 'add table ip t\nadd chain ip t c');
   rs = run(rs, 'add rule ip t c tcp dport 22 accept');

@@ -8,6 +8,7 @@ import { PAGES, frame } from './admin-layout.ts';
 import { setupPage, dhcpPage, dnsPage, webPage, mailPage, sshPage, adminPage, statusPage, logPage } from './admin-pages.ts';
 import type { Child } from './html.ts';
 import { runAction } from './admin-actions.ts';
+import { firewallPage, routingPage } from './admin-firewall.ts';
 import { formatIp } from '../core/ip.ts';
 
 /** User names come from the request: no control characters in the logs. */
@@ -23,6 +24,8 @@ function body(server: Server, base: string, id: string): Child {
     case 'web': return webPage(server, base);
     case 'mail': return mailPage(server, base);
     case 'ssh': return sshPage(server, base);
+    case 'firewall': return firewallPage(server, base);
+    case 'routing': return routingPage(server, base);
     case 'admin': return adminPage(server, base);
     case 'status': return statusPage(server);
     case 'log': return logPage(server);

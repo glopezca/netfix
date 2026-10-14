@@ -81,7 +81,10 @@ export function nft(host: Host): CommandFn {
       ctx.err(`${o.file !== undefined ? `${o.file}: ` : ''}${r.error}\n`);
       return 1;
     }
-    if (!o.check) nf.setRuleset(r.ruleset);
+    if (!o.check) {
+      nf.setRuleset(r.ruleset);
+      host.notifyChange();
+    }
     const out = o.stateless ? r.output.map((l) => l.replace(/ counter packets \d+ bytes \d+/, ' counter')) : r.output;
     if (out.length) ctx.out(`${out.join('\n')}\n`);
     return 0;

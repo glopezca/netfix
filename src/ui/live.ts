@@ -14,7 +14,11 @@ export function liveHostPanel(host: Pick<Host, 'onChange'>, render: (refresh: ()
     stale = false;
     root.replaceChildren(...render(refresh));
   };
+  let attached = false;
   const onChange = (): void => {
+    // A panel replaced by another tab (subnav) stops listening once it has left the document.
+    if (root.isConnected) attached = true;
+    else if (attached) { off(); return; }
     if (root.contains(document.activeElement) && document.activeElement !== document.body && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? '')) stale = true;
     else refresh();
   };

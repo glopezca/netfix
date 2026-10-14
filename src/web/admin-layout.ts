@@ -10,12 +10,13 @@ export interface AdminPage {
   readonly label: string;
 }
 
-export const TABS: readonly (readonly [string, string])[] = [['setup', 'Configuración'], ['services', 'Servicios'], ['admin', 'Administración'], ['status', 'Estado']];
+export const TABS: readonly (readonly [string, string])[] = [['setup', 'Configuración'], ['services', 'Servicios'], ['security', 'Seguridad'], ['admin', 'Administración'], ['status', 'Estado']];
 
 export const PAGES: readonly AdminPage[] = [
   { id: 'setup', tab: 'setup', label: 'Configuración básica' },
   { id: 'dhcp', tab: 'services', label: 'DHCP' }, { id: 'dns', tab: 'services', label: 'DNS' }, { id: 'web', tab: 'services', label: 'Web y correo web' },
   { id: 'mail', tab: 'services', label: 'Correo' }, { id: 'ssh', tab: 'services', label: 'SSH' },
+  { id: 'firewall', tab: 'security', label: 'Cortafuegos' }, { id: 'routing', tab: 'security', label: 'Enrutamiento' },
   { id: 'admin', tab: 'admin', label: 'Gestión' },
   { id: 'status', tab: 'status', label: 'Equipo' }, { id: 'log', tab: 'status', label: 'Registros' },
 ];

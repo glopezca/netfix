@@ -17,12 +17,14 @@ import { DNS_ES } from './es-ES/dns.ts';
 import { DNS_EN } from './en-GB/dns.ts';
 import { ROUTER_ES } from './es-ES/router.ts';
 import { ROUTER_EN } from './en-GB/router.ts';
+import { FIREWALL_ES } from './es-ES/firewall.ts';
+import { FIREWALL_EN } from './en-GB/firewall.ts';
 
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES };
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES };
 
 export type MessageKey = keyof typeof ES;
 
 export const CATALOGS: Readonly<Record<Locale, Readonly<Record<MessageKey, string>>>> = {
   'es-ES': ES,
-  'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN },
+  'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN },
 };
