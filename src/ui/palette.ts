@@ -18,8 +18,7 @@ export const PLACEABLE: readonly (readonly [DeviceKind, MessageKey])[] = [
 export function palette(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, hintEl: HTMLElement): HTMLElement {
   const deviceBtn = (kind: DeviceKind, name: string): HTMLButtonElement => {
     const b = el('button', { type: 'button', class: 'pal-item', 'aria-pressed': 'false' },
-      // Both routers share the router symbol here; the model line tells them apart (2911 / Ubuntu).
-      staticSvg(ICONS[kind === 'linuxrouter' ? 'router' : kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, modelLabel(kind)));
+      staticSvg(ICONS[kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, modelLabel(kind)));
     b.addEventListener('click', () => actions.selectTool({ kind: 'place', device: kind }, `place-${kind}`));
     buttons.set(`place-${kind}`, b);
     return b;

@@ -3370,14 +3370,6 @@ const ROUTER = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" widt
     <path d="M22 22 l6 -4 M28 18 l-2.6 0 M28 18 l-0.9 2.3"/>
   </g>
 </svg>`;
-/** Linux router: the router cylinder with a terminal prompt on top. */
-const LINUX_ROUTER = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="64" height="48">
-  <path d="M4 16 v14 c0 6 12.5 11 28 11 s28-5 28-11 V16" fill="var(--dev-side)" stroke="var(--dev-edge)" stroke-width="1.5"/>
-  <ellipse cx="32" cy="16" rx="28" ry="11" fill="var(--dev-top)" stroke="var(--dev-edge)" stroke-width="1.5"/>
-  <g stroke="var(--dev-mark)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M21 11 l7 5 l-7 5"/><path d="M32 21 h11"/>
-  </g>
-</svg>`;
 const SWITCH = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="64" height="48">
   <path d="M4 18 l10 -10 h46 l-10 10 z" fill="var(--dev-top)" stroke="var(--dev-edge)" stroke-width="1.5" stroke-linejoin="round"/>
   <path d="M4 18 h46 v20 h-46 z" fill="var(--dev-side)" stroke="var(--dev-edge)" stroke-width="1.5"/>
@@ -3414,7 +3406,8 @@ const CLOUD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width
     <circle cx="32" cy="29" r="7"/><path d="M25 29 h14 M32 22 c-3 4 -3 10 0 14 M32 22 c3 4 3 10 0 14"/>
   </g>
 </svg>`;
-const ICONS = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, linuxrouter: LINUX_ROUTER, cloud: CLOUD };
+/** Both routers (IOS and Linux) share the router symbol; the model line («2911» / «Ubuntu») tells them apart. */
+const ICONS = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, linuxrouter: ROUTER, cloud: CLOUD };
 const MODEL_LABEL = { router: '2911', switch: '2960-24TT', pc: 'PC', server: 'Server', linuxrouter: 'Ubuntu', cloud: 'ISP' };
 /** Model label shown under the icon (the cloud is translated). */
 function modelLabel(kind) {
@@ -28139,7 +28132,7 @@ return { NanoEditor };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.7.2",
+    "version": "0.7.3",
     "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -48439,9 +48432,7 @@ const PLACEABLE = [
 ];
 function palette(actions, buttons, hintEl) {
     const deviceBtn = (kind, name) => {
-        const b = el('button', { type: 'button', class: 'pal-item', 'aria-pressed': 'false' }, 
-        // Both routers share the router symbol here; the model line tells them apart (2911 / Ubuntu).
-        staticSvg(ICONS[kind === 'linuxrouter' ? 'router' : kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, modelLabel(kind)));
+        const b = el('button', { type: 'button', class: 'pal-item', 'aria-pressed': 'false' }, staticSvg(ICONS[kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, modelLabel(kind)));
         b.addEventListener('click', () => actions.selectTool({ kind: 'place', device: kind }, `place-${kind}`));
         buttons.set(`place-${kind}`, b);
         return b;
