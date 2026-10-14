@@ -1,4 +1,5 @@
 /** Ready-made labs that show each DHCP feature working. */
+import { LABS_ES } from '../i18n/es-ES/labs.ts';
 import { Topology } from './topology.ts';
 import { Router } from '../devices/router.ts';
 import { Switch } from '../devices/switch.ts';
@@ -8,6 +9,9 @@ import { parseIp } from '../core/ip.ts';
 import { applyConfig } from '../ios/session.ts';
 import { formatHexId, formatMacCisco, clientIdFromMac } from '../core/mac.ts';
 import { internetExample } from './example-internet.ts';
+import { ipsecLab, wireguardLab } from './labs-vpn.ts';
+import { dmzLab, dnsForwardLab } from './labs-linux.ts';
+import { hardeningLab, sshLab } from './labs-security.ts';
 
 export interface Example {
   readonly id: string;
@@ -60,8 +64,8 @@ function startDhcp(t: Topology, pcs: readonly Pc[]): Topology {
 export const EXAMPLES: readonly Example[] = [
   {
     id: 'basico',
-    title: 'DHCP básico',
-    summary: 'Un pool con exclusiones, puerta de enlace, DNS y dominio. Los tres PCs obtienen IP por DORA.',
+    title: LABS_ES['lab.basico.title'],
+    summary: LABS_ES['lab.basico.summary'],
     build: () => {
       const t = new Topology();
       const { r, p } = lanBase(t, 3);
@@ -71,8 +75,8 @@ export const EXAMPLES: readonly Example[] = [
   },
   {
     id: 'reservas',
-    title: 'Reservas: host, client-identifier y hardware-address',
-    summary: 'PC0 por client-identifier (pool host), PC1 por hardware-address (pool host) y PC2 con address … client-id dentro del pool de red.',
+    title: LABS_ES['lab.reservas.title'],
+    summary: LABS_ES['lab.reservas.summary'],
     build: () => {
       const t = new Topology();
       const { r, p } = lanBase(t, 3);
@@ -92,8 +96,8 @@ ip dhcp pool PC1-FIJO
   },
   {
     id: 'relay',
-    title: 'Relay con ip helper-address',
-    summary: 'El servidor DHCP está en otra red. EDGE reenvía las peticiones con giaddr 10.20.0.1.',
+    title: LABS_ES['lab.relay.title'],
+    summary: LABS_ES['lab.relay.summary'],
     build: () => {
       const t = new Topology();
       const srv = t.add('router', 240, 140).device as Router;
@@ -131,8 +135,8 @@ interface GigabitEthernet0/1
   },
   {
     id: 'vlans',
-    title: 'Router-on-a-stick: un pool por VLAN',
-    summary: 'Subinterfaces 802.1Q en el router, trunk en el switch y pools VENTAS y SOPORTE.',
+    title: LABS_ES['lab.vlans.title'],
+    summary: LABS_ES['lab.vlans.summary'],
     build: () => {
       const t = new Topology();
       const { r, s, p } = lanBase(t, 4);
@@ -173,8 +177,8 @@ interface GigabitEthernet0/0.20
   },
   {
     id: 'snooping',
-    title: 'DHCP snooping frente a un servidor falso',
-    summary: 'ROGUE ofrece una puerta de enlace falsa; el switch solo confía en Gig0/1. Fíjate en «ip dhcp relay information trusted» en GW.',
+    title: LABS_ES['lab.snooping.title'],
+    summary: LABS_ES['lab.snooping.summary'],
     build: () => {
       const t = new Topology();
       const { r, s, p } = lanBase(t, 2);
@@ -202,8 +206,8 @@ interface GigabitEthernet0/1
   },
   {
     id: 'cliente',
-    title: 'Router como cliente DHCP',
-    summary: 'CPE obtiene su IP WAN con «ip address dhcp»; ISP la fija con un pool host y su client-identifier cisco-….',
+    title: LABS_ES['lab.cliente.title'],
+    summary: LABS_ES['lab.cliente.summary'],
     build: () => {
       const t = new Topology();
       const isp = t.add('router', 300, 200).device as Router;
@@ -232,8 +236,8 @@ interface GigabitEthernet0/1
   },
   {
     id: 'servidores',
-    title: 'Server: DHCP, DNS, web, correo y SSH',
-    summary: 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave cisco), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/admin).',
+    title: LABS_ES['lab.servidores.title'],
+    summary: LABS_ES['lab.servidores.summary'],
     build: () => {
       const t = new Topology();
       const ip = (x: string): number => parseIp(x) ?? 0;
@@ -281,10 +285,16 @@ interface GigabitEthernet0/0
     },
   },
   internetExample,
+  ipsecLab,
+  wireguardLab,
+  dmzLab,
+  dnsForwardLab,
+  sshLab,
+  hardeningLab,
   {
     id: 'blanco',
-    title: 'Área de trabajo en blanco',
-    summary: 'Empieza desde cero: coloca dispositivos y conéctalos con el cable.',
+    title: LABS_ES['lab.blanco.title'],
+    summary: LABS_ES['lab.blanco.summary'],
     build: () => new Topology(),
   },
 ];

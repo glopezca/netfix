@@ -12,7 +12,7 @@ function pcs(t: ReturnType<(typeof EXAMPLES)[number]['build']>): Pc[] {
 test('every example builds and its PCs obtain addresses', () => {
   for (const ex of EXAMPLES) {
     const t = ex.build();
-    for (const pc of pcs(t)) assert.equal(pc.dhcpStatus, 'ok', `${ex.id}: ${pc.name}`);
+    for (const pc of pcs(t).filter((p) => p.config.mode === 'dhcp')) assert.equal(pc.dhcpStatus, 'ok', `${ex.id}: ${pc.name}`);
     assert.ok(JSON.stringify(t.toJSON()).length > 0);
   }
 });

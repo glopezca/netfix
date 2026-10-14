@@ -1,4 +1,5 @@
 /** Lab "Internet: dos sedes": two ISP clouds, NAT on a Cisco router and a site published with a domain. */
+import { LABS_ES } from '../i18n/es-ES/labs.ts';
 import type { Example } from './examples.ts';
 import { Topology } from './topology.ts';
 import type { Router } from '../devices/router.ts';
@@ -82,8 +83,8 @@ function sede2(t: Topology, isp: Cloud): Pc {
 
 export const internetExample: Example = {
   id: 'internet',
-  title: 'Internet: dos sedes y DNS públicos',
-  summary: 'SEDE1 sale por fibra (ISP-Norte, IP pública por DHCP) con NAT overload; la sede 2 usa el router del operador de ISP-Sur (ADSL) y publica su servidor (80, 22, 53/udp). sede2.es está delegado en SRV-SEDE2. Prueba: navegador http://www.sede2.es, tracert 8.8.8.8, curl ifconfig.me, show ip nat translations.',
+  title: LABS_ES['lab.internet.title'],
+  summary: LABS_ES['lab.internet.summary'],
   build: () => {
     const t = new Topology();
     const norte = t.add('cloud', 240, 90, { label: 'ISP-Norte' }).device as Cloud;

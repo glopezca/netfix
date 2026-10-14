@@ -112,7 +112,7 @@ export abstract class Host implements NetDevice, StackHost {
     this.dhcpClient = this.createDhcpClient();
     this.tcp = new TcpLayer({
       send: (p) => this.stack.send(p),
-      sourceFor: (dst) => (this.route(dst) ? this.config.ip : undefined),
+      sourceFor: (dst) => this.sourceFor(dst),
       schedule: (d, fn) => this.hooks.schedule(d, fn),
       ttl: PC_TTL,
     });
@@ -120,6 +120,13 @@ export abstract class Host implements NetDevice, StackHost {
       sendQuery: (server, sport, msg) => this.sendUdp(server, sport, DNS_PORT, { dns: msg }),
       schedule: (d, fn) => this.hooks.schedule(d, fn),
     });
+  }
+
+  /** Source address towards `dst`: the address of the egress interface (routers with several NICs, wg0). */
+  sourceFor(dst: number): number | undefined {
+    const egress = this.route(dst);
+    if (!egress) return undefined;
+    return this.l3Iface(egress.iface)?.addrs[0]?.ip ?? this.config.ip;
   }
 
   displayName(): string {
@@ -239,7 +246,7 @@ export abstract class Host implements NetDevice, StackHost {
 
   /** Sends a UDP datagram; broadcasts go out of `port` (the main NIC by default) directly. */
   sendUdp(dst: number, sport: number, dport: number, body: Omit<UdpDatagram, 'sport' | 'dport'>, src?: number, port = this.primaryPort()): boolean {
-    const from = src ?? this.ifaceConfig(port)?.ip ?? this.config.ip ?? 0;
+    const from = src ?? (dst === BROADCAST_IP ? this.ifaceConfig(port)?.ip : this.sourceFor(dst)) ?? this.config.ip ?? 0;
     const packet: IpPacket = { src: from, dst, ttl: PC_TTL, protocol: 'udp', udp: { sport, dport, ...body } };
     if (dst === BROADCAST_IP) {
       this.stack.broadcast(port, packet);

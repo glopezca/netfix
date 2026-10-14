@@ -1896,6 +1896,79 @@ const APPS_EN = {
 
 return { APPS_EN };
 })();
+__m["i18n/es-ES/labs.js"] = (() => {
+/** Español (España): títulos y resúmenes de los laboratorios (fuente única: src/net los usa). */
+const LABS_ES = {
+    'lab.basico.title': 'DHCP básico',
+    'lab.basico.summary': 'Un pool con exclusiones, puerta de enlace, DNS y dominio. Los tres PCs obtienen IP por DORA.',
+    'lab.reservas.title': 'Reservas: host, client-identifier y hardware-address',
+    'lab.reservas.summary': 'PC0 por client-identifier (pool host), PC1 por hardware-address (pool host) y PC2 con address … client-id dentro del pool de red.',
+    'lab.relay.title': 'Relay con ip helper-address',
+    'lab.relay.summary': 'El servidor DHCP está en otra red. EDGE reenvía las peticiones con giaddr 10.20.0.1.',
+    'lab.vlans.title': 'Router-on-a-stick: un pool por VLAN',
+    'lab.vlans.summary': 'Subinterfaces 802.1Q en el router, trunk en el switch y pools VENTAS y SOPORTE.',
+    'lab.snooping.title': 'DHCP snooping frente a un servidor falso',
+    'lab.snooping.summary': 'ROGUE ofrece una puerta de enlace falsa; el switch solo confía en Gig0/1. Fíjate en «ip dhcp relay information trusted» en GW.',
+    'lab.cliente.title': 'Router como cliente DHCP',
+    'lab.cliente.summary': 'CPE obtiene su IP WAN con «ip address dhcp»; ISP la fija con un pool host y su client-identifier cisco-….',
+    'lab.servidores.title': 'Server: DHCP, DNS, web, correo y SSH',
+    'lab.servidores.summary': 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave cisco), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/admin).',
+    'lab.blanco.title': 'Área de trabajo en blanco',
+    'lab.blanco.summary': 'Empieza desde cero: coloca dispositivos y conéctalos con el cable.',
+    'lab.internet.title': 'Internet: dos sedes y DNS públicos',
+    'lab.internet.summary': 'SEDE1 sale por fibra (ISP-Norte, IP pública por DHCP) con NAT overload; la sede 2 usa el router del operador de ISP-Sur (ADSL) y publica su servidor (80, 22, 53/udp). sede2.es está delegado en SRV-SEDE2. Prueba: navegador http://www.sede2.es, tracert 8.8.8.8, curl ifconfig.me, show ip nat translations.',
+    'lab.vpn-ipsec.title': 'VPN IPsec entre dos sedes (2911)',
+    'lab.vpn-ipsec.summary': 'SEDE-A y SEDE-B salen a Internet por ISPs distintos con NAT overload; el tráfico entre sus LAN va cifrado (crypto map con IKE y ESP) y no se traduce. El primer ping se pierde mientras sube el túnel. Prueba: ping entre PCs, show crypto isakmp sa, show crypto ipsec sa, show ip nat translations.',
+    'lab.vpn-wireguard.title': 'VPN WireGuard: central y sucursal tras NAT',
+    'lab.vpn-wireguard.summary': 'CENTRAL (router Linux) tiene IP pública; SUCURSAL sale por el router del operador (NAT) y llama a la central con PersistentKeepalive: la central aprende su endpoint. nftables solo abre UDP 51820 y SSH desde dentro. Prueba: ping 10.1.0.10 desde la sucursal, sudo wg show, nc -z a la IP pública (filtrado) y por el túnel.',
+    'lab.linux-dmz.title': 'Router Linux con NAT y DMZ (nftables)',
+    'lab.linux-dmz.summary': 'FW (router Linux) separa LAN (eth1), DMZ (eth2, servidor web) e Internet (eth0, IP pública). nftables: la LAN sale a todas partes, la DMZ solo a Internet, desde fuera solo se llega a la web (dnat 80). Prueba: curl a la IP pública desde CLIENTE-EXT, ping de la DMZ a la LAN (bloqueado), sudo nft list ruleset y sudo dmesg.',
+    'lab.dns-reenvio.title': 'DNS de empresa que reenvía a Internet',
+    'lab.dns-reenvio.summary': 'ns1 (bind9) responde la zona empresa.lan y reenvía el resto a 8.8.8.8/8.8.4.4 con caché; solo hace recursión para sus redes (localnets). El PC de invitados (otra red) obtiene empresa.lan pero REFUSED para nombres de Internet. Prueba: dig www.empresa.lan, dig www.google.com (ra), sudo rndc dumpdb y los registros de bind9.',
+    'lab.ssh-sftp.title': 'SSH y SFTP con claves',
+    'lab.ssh-sftp.summary': 'srv.aula.lab acepta SSH y SFTP (ana/ana1, admin/cisco). En PC1: pestaña Cliente SSH → Claves (genera ed25519), ssh-copy-id ana@srv.aula.lab, Archivos (SFTP) para subir y bajar. Después pon «PasswordAuthentication no» en un fichero de /etc/ssh/sshd_config.d/ y recarga: solo entra quien tiene clave. Los permisos son los de cada usuario en el servidor.',
+    'lab.bastionado.title': 'Bastionado: ACL, nftables y sshd',
+    'lab.bastionado.summary': 'Defensa en profundidad: la ACL extendida A-SERVIDORES de GW deja la web a todos y SSH/ping solo a ADMINISTRACION (deny … log); el servidor repite la política con nftables (input drop, log NFT-DROP) y sshd_config.d (sin root, AllowUsers admin, MaxAuthTries 3). Prueba desde ADMIN y ALUMNO: ssh admin@172.20.0.10, curl, ping, nmap; en GW show access-lists.',
+};
+
+return { LABS_ES };
+})();
+__m["i18n/en-GB/labs.js"] = (() => {
+const LABS_EN = {
+    'lab.basico.title': 'Basic DHCP',
+    'lab.basico.summary': 'One pool with exclusions, default gateway, DNS and domain. The three PCs get an address through DORA.',
+    'lab.reservas.title': 'Reservations: host, client-identifier and hardware-address',
+    'lab.reservas.summary': 'PC0 by client-identifier (host pool), PC1 by hardware-address (host pool) and PC2 with address … client-id inside the network pool.',
+    'lab.relay.title': 'Relay with ip helper-address',
+    'lab.relay.summary': 'The DHCP server is on another network. EDGE relays the requests with giaddr 10.20.0.1.',
+    'lab.vlans.title': 'Router-on-a-stick: one pool per VLAN',
+    'lab.vlans.summary': '802.1Q subinterfaces on the router, a trunk on the switch and the pools VENTAS and SOPORTE.',
+    'lab.snooping.title': 'DHCP snooping against a rogue server',
+    'lab.snooping.summary': 'ROGUE offers a fake gateway; the switch only trusts Gig0/1. Note «ip dhcp relay information trusted» on GW.',
+    'lab.cliente.title': 'Router as a DHCP client',
+    'lab.cliente.summary': 'CPE gets its WAN address with «ip address dhcp»; ISP pins it with a host pool and its cisco-… client-identifier.',
+    'lab.servidores.title': 'Server: DHCP, DNS, web, mail and SSH',
+    'lab.servidores.summary': 'SRV0 (Ubuntu) provides DHCP, DNS (aula.lab), web, mail and SSH. Try: browser http://www.aula.lab, mail ana/ana1 (PC0, IMAP) and luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (password cisco), webmail http://webmail.aula.lab/roundcube and web admin http://srv.aula.lab:10000 (admin/admin).',
+    'lab.blanco.title': 'Blank workspace',
+    'lab.blanco.summary': 'Start from scratch: place devices and connect them with the cable tool.',
+    'lab.internet.title': 'Internet: two sites and public DNS',
+    'lab.internet.summary': 'SEDE1 goes out over fibre (ISP-Norte, public address by DHCP) with NAT overload; site 2 uses the ISP-Sur operator router (ADSL) and publishes its server (80, 22, 53/udp). sede2.es is delegated to SRV-SEDE2. Try: browser http://www.sede2.es, tracert 8.8.8.8, curl ifconfig.me, show ip nat translations.',
+    'lab.vpn-ipsec.title': 'IPsec VPN between two sites (2911)',
+    'lab.vpn-ipsec.summary': 'SEDE-A and SEDE-B reach the Internet through different ISPs with NAT overload; traffic between their LANs is encrypted (crypto map with IKE and ESP) and not translated. The first ping is lost while the tunnel comes up. Try: ping between PCs, show crypto isakmp sa, show crypto ipsec sa, show ip nat translations.',
+    'lab.vpn-wireguard.title': 'WireGuard VPN: hub and branch behind NAT',
+    'lab.vpn-wireguard.summary': 'CENTRAL (Linux router) has a public address; SUCURSAL goes out through the operator router (NAT) and calls the hub with PersistentKeepalive: the hub learns its endpoint. nftables only opens UDP 51820 and SSH from inside. Try: ping 10.1.0.10 from the branch, sudo wg show, nc -z to the public address (filtered) and through the tunnel.',
+    'lab.linux-dmz.title': 'Linux router with NAT and a DMZ (nftables)',
+    'lab.linux-dmz.summary': 'FW (Linux router) separates LAN (eth1), DMZ (eth2, web server) and Internet (eth0, public address). nftables: the LAN goes everywhere, the DMZ only to the Internet, and from outside only the web is reachable (dnat 80). Try: curl to the public address from CLIENTE-EXT, ping from the DMZ to the LAN (blocked), sudo nft list ruleset and sudo dmesg.',
+    'lab.dns-reenvio.title': 'Company DNS forwarding to the Internet',
+    'lab.dns-reenvio.summary': 'ns1 (bind9) answers the empresa.lan zone and forwards everything else to 8.8.8.8/8.8.4.4 with a cache; it only recurses for its own networks (localnets). The guest PC (another network) gets empresa.lan but REFUSED for Internet names. Try: dig www.empresa.lan, dig www.google.com (ra), sudo rndc dumpdb and the bind9 logs.',
+    'lab.ssh-sftp.title': 'SSH and SFTP with keys',
+    'lab.ssh-sftp.summary': 'srv.aula.lab accepts SSH and SFTP (ana/ana1, admin/cisco). On PC1: SSH client tab → Keys (generate ed25519), ssh-copy-id ana@srv.aula.lab, Files (SFTP) to upload and download. Then put «PasswordAuthentication no» in a file under /etc/ssh/sshd_config.d/ and reload: only users with a key get in. Permissions are each user\'s on the server.',
+    'lab.bastionado.title': 'Hardening: ACL, nftables and sshd',
+    'lab.bastionado.summary': 'Defence in depth: GW\'s extended ACL A-SERVIDORES lets everyone use the web and only ADMINISTRACION use SSH/ping (deny … log); the server repeats the policy with nftables (input drop, NFT-DROP log) and sshd_config.d (no root, AllowUsers admin, MaxAuthTries 3). Try from ADMIN and ALUMNO: ssh admin@172.20.0.10, curl, ping, nmap; on GW show access-lists.',
+};
+
+return { LABS_EN };
+})();
 __m["i18n/catalog.js"] = (() => {
 const { APP_ES } = __m["i18n/es-ES/app.js"];
 const { APP_EN } = __m["i18n/en-GB/app.js"];
@@ -1917,10 +1990,12 @@ const { VPN_ES } = __m["i18n/es-ES/vpn.js"];
 const { VPN_EN } = __m["i18n/en-GB/vpn.js"];
 const { APPS_ES } = __m["i18n/es-ES/apps.js"];
 const { APPS_EN } = __m["i18n/en-GB/apps.js"];
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES };
+const { LABS_ES } = __m["i18n/es-ES/labs.js"];
+const { LABS_EN } = __m["i18n/en-GB/labs.js"];
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES, ...LABS_ES };
 const CATALOGS = {
     'es-ES': ES,
-    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN },
+    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN, ...LABS_EN },
 };
 
 return { CATALOGS };
@@ -4380,7 +4455,7 @@ class Host {
         this.dhcpClient = this.createDhcpClient();
         this.tcp = new TcpLayer({
             send: (p) => this.stack.send(p),
-            sourceFor: (dst) => (this.route(dst) ? this.config.ip : undefined),
+            sourceFor: (dst) => this.sourceFor(dst),
             schedule: (d, fn) => this.hooks.schedule(d, fn),
             ttl: PC_TTL,
         });
@@ -4388,6 +4463,13 @@ class Host {
             sendQuery: (server, sport, msg) => this.sendUdp(server, sport, DNS_PORT, { dns: msg }),
             schedule: (d, fn) => this.hooks.schedule(d, fn),
         });
+    }
+    /** Source address towards `dst`: the address of the egress interface (routers with several NICs, wg0). */
+    sourceFor(dst) {
+        const egress = this.route(dst);
+        if (!egress)
+            return undefined;
+        return this.l3Iface(egress.iface)?.addrs[0]?.ip ?? this.config.ip;
     }
     displayName() {
         return this.name;
@@ -4492,7 +4574,7 @@ class Host {
     // ------------------------------------------------------------ transport helpers
     /** Sends a UDP datagram; broadcasts go out of `port` (the main NIC by default) directly. */
     sendUdp(dst, sport, dport, body, src, port = this.primaryPort()) {
-        const from = src ?? this.ifaceConfig(port)?.ip ?? this.config.ip ?? 0;
+        const from = src ?? (dst === BROADCAST_IP ? this.ifaceConfig(port)?.ip : this.sourceFor(dst)) ?? this.config.ip ?? 0;
         const packet = { src: from, dst, ttl: PC_TTL, protocol: 'udp', udp: { sport, dport, ...body } };
         if (dst === BROADCAST_IP) {
             this.stack.broadcast(port, packet);
@@ -43515,6 +43597,8 @@ function validateFile(data) {
 return { FILE_VERSION, Topology, parseStatic, validateFile };
 })();
 __m["net/example-internet.js"] = (() => {
+/** Lab "Internet: dos sedes": two ISP clouds, NAT on a Cisco router and a site published with a domain. */
+const { LABS_ES } = __m["i18n/es-ES/labs.js"];
 const { Topology } = __m["net/topology.js"];
 const { applyConfig } = __m["ios/session.js"];
 const { parseIp } = __m["core/ip.js"];
@@ -43587,8 +43671,8 @@ function sede2(t, isp) {
 }
 const internetExample = {
     id: 'internet',
-    title: 'Internet: dos sedes y DNS públicos',
-    summary: 'SEDE1 sale por fibra (ISP-Norte, IP pública por DHCP) con NAT overload; la sede 2 usa el router del operador de ISP-Sur (ADSL) y publica su servidor (80, 22, 53/udp). sede2.es está delegado en SRV-SEDE2. Prueba: navegador http://www.sede2.es, tracert 8.8.8.8, curl ifconfig.me, show ip nat translations.',
+    title: LABS_ES['lab.internet.title'],
+    summary: LABS_ES['lab.internet.summary'],
     build: () => {
         const t = new Topology();
         const norte = t.add('cloud', 240, 90, { label: 'ISP-Norte' }).device;
@@ -43604,8 +43688,467 @@ const internetExample = {
 
 return { internetExample };
 })();
+__m["net/labs-vpn.js"] = (() => {
+/**
+ * VPN labs: two Cisco 2911 branches joined by IPsec over two ISPs, and a Linux hub with a branch behind
+ * the operator's NAT joined by WireGuard (keepalive and endpoint learning).
+ */
+const { LABS_ES } = __m["i18n/es-ES/labs.js"];
+const { Topology } = __m["net/topology.js"];
+const { applyConfig } = __m["ios/session.js"];
+const { formatIp, parseIp } = __m["core/ip.js"];
+const { createShell } = __m["shells/factory.js"];
+const { genKey, pubKey } = __m["core/x25519.js"];
+const ip = (x) => parseIp(x) ?? 0;
+function link(t, a, ap, b, bp) {
+    t.connect({ device: a, port: ap }, { device: b, port: bp });
+}
+function cloud(t, label, x, port, mode) {
+    const c = t.add('cloud', x, 90, { label }).device;
+    c.setSettings({ ...c.settings, isp: label, ports: { ...c.settings.ports, [port]: { ...c.settings.ports[port], mode } } });
+    return c;
+}
+/** Switch and PCs of a branch LAN (`net` = "192.168.10"), static when `gateway` is given, else DHCP. */
+function branchLan(t, x, up, net, pcs, gateway) {
+    const s = t.add('switch', x, 420).device;
+    link(t, up.id, up.port, s.id, 'GigabitEthernet0/1');
+    return Array.from({ length: pcs }, (_, i) => {
+        const pc = t.add('pc', x - 110 + i * 220, 580).device;
+        link(t, pc.id, 'FastEthernet0', s.id, `FastEthernet0/${i + 1}`);
+        if (i === 1)
+            pc.os = 'linux';
+        if (gateway)
+            pc.setStatic({ ip: ip(`${net}.${10 + i}`), prefix: 24, gateway: ip(gateway), dns: ip('8.8.8.8') });
+        return pc;
+    });
+}
+// ------------------------------------------------------------ IPsec between two 2911
+function siteBase(name, lan, remote) {
+    return `
+hostname ${name}
+no ip domain-lookup
+ip dhcp excluded-address ${lan}.1 ${lan}.9
+ip dhcp pool LAN
+ network ${lan}.0 255.255.255.0
+ default-router ${lan}.1
+ dns-server 8.8.8.8
+interface GigabitEthernet0/0
+ ip address ${lan}.1 255.255.255.0
+ ip nat inside
+ no shutdown
+interface GigabitEthernet0/1
+ description Linea publica del ISP
+ ip address dhcp
+ ip nat outside
+ no shutdown
+ip access-list extended NAT
+ remark el trafico entre sedes va por el tunel, sin NAT
+ deny ip ${lan}.0 0.0.0.255 ${remote}.0 0.0.0.255
+ permit ip ${lan}.0 0.0.0.255 any
+ip nat inside source list NAT interface GigabitEthernet0/1 overload`;
+}
+function cryptoConf(lan, remote, peer) {
+    return `
+crypto isakmp policy 10
+ encryption aes 256
+ hash sha
+ authentication pre-share
+ group 5
+crypto isakmp key Netfix-VPN-2026 address ${formatIp(peer)}
+crypto ipsec transform-set TS-AES esp-aes 256 esp-sha-hmac
+ip access-list extended VPN
+ permit ip ${lan}.0 0.0.0.255 ${remote}.0 0.0.0.255
+crypto map VPN 10 ipsec-isakmp
+ set peer ${formatIp(peer)}
+ set transform-set TS-AES
+ match address VPN
+interface GigabitEthernet0/1
+ crypto map VPN`;
+}
+const ipsecLab = {
+    id: 'vpn-ipsec',
+    title: LABS_ES['lab.vpn-ipsec.title'],
+    summary: LABS_ES['lab.vpn-ipsec.summary'],
+    build: () => {
+        const t = new Topology();
+        const norte = cloud(t, 'ISP-Norte', 240, 'Fibra0', 'public');
+        const sur = cloud(t, 'ISP-Sur', 780, 'Fibra0', 'public');
+        const a = t.add('router', 240, 260, { label: 'SEDE-A' }).device;
+        const b = t.add('router', 780, 260, { label: 'SEDE-B' }).device;
+        link(t, a.id, 'GigabitEthernet0/1', norte.id, 'Fibra0');
+        link(t, b.id, 'GigabitEthernet0/1', sur.id, 'Fibra0');
+        applyConfig(a, siteBase('SEDE-A', '192.168.10', '192.168.20').trim().split('\n'));
+        applyConfig(b, siteBase('SEDE-B', '192.168.20', '192.168.10').trim().split('\n'));
+        const pcs = [...branchLan(t, 240, { id: a.id, port: 'GigabitEthernet0/0' }, '192.168.10', 2), ...branchLan(t, 780, { id: b.id, port: 'GigabitEthernet0/0' }, '192.168.20', 2)];
+        t.settle();
+        const wanA = a.dhcpLearned('GigabitEthernet0/1')?.ip ?? 0;
+        const wanB = b.dhcpLearned('GigabitEthernet0/1')?.ip ?? 0;
+        applyConfig(a, cryptoConf('192.168.10', '192.168.20', wanB).trim().split('\n'));
+        applyConfig(b, cryptoConf('192.168.20', '192.168.10', wanA).trim().split('\n'));
+        for (const p of pcs)
+            p.useDhcp();
+        t.settle();
+        return t;
+    },
+};
+// ------------------------------------------------------------ WireGuard: Linux hub and branch behind NAT
+function routerFirewall(wan, lan) {
+    return `#!/usr/sbin/nft -f
+flush ruleset
+
+table inet filter {
+  chain input {
+    type filter hook input priority filter; policy drop;
+    ct state established,related accept
+    iifname "lo" accept
+    icmp type echo-request accept
+    udp dport 51820 accept comment "WireGuard"
+    iifname { "${lan}", "wg0" } tcp dport 22 accept comment "SSH solo desde dentro"
+  }
+  chain forward {
+    type filter hook forward priority filter; policy drop;
+    ct state established,related accept
+    iifname "${lan}" accept
+    iifname "wg0" oifname "${lan}" accept
+  }
+}
+
+table ip nat {
+  chain postrouting {
+    type nat hook postrouting priority srcnat; policy accept;
+    oifname "${wan}" masquerade
+  }
+}
+`;
+}
+function wgConf(priv, addr, peer, allowed, extra) {
+    return `[Interface]\nAddress = ${addr}/24\nListenPort = 51820\nPrivateKey = ${priv}\n\n[Peer]\nPublicKey = ${peer}\nAllowedIPs = ${allowed}\n${extra}`;
+}
+/** Writes the router's files (sysctl, nftables, wg0.conf) and starts the units, as an admin would. */
+function setupLinux(lr, lanCidr, wg) {
+    const files = [
+        ["/etc/sysctl.d/99-router.conf", 'net.ipv4.ip_forward = 1\n'],
+        ['/etc/nftables.conf', routerFirewall('eth0', 'eth1')],
+        ['/etc/wireguard/wg0.conf', wg],
+    ];
+    const script = files.map(([path, text]) => `cat > ${path} <<'NETFIX_EOF'\n${text}\nNETFIX_EOF`).join('\n');
+    // set +H: the files contain «#!/usr/sbin/nft -f» and an interactive bash would expand «!».
+    const root = createShell(lr, 'linux', 'root');
+    root.run('set +H');
+    root.run(`ip addr add ${lanCidr} dev eth1\n${script}\nchmod 600 /etc/wireguard/wg0.conf\nsysctl -q --system\nsystemctl enable --now nftables\nsystemctl enable --now wg-quick@wg0`);
+}
+const wireguardLab = {
+    id: 'vpn-wireguard',
+    title: LABS_ES['lab.vpn-wireguard.title'],
+    summary: LABS_ES['lab.vpn-wireguard.summary'],
+    build: () => {
+        const t = new Topology();
+        const norte = cloud(t, 'ISP-Norte', 240, 'Fibra0', 'public');
+        const sur = cloud(t, 'ISP-Sur', 780, 'DSL0', 'router');
+        const hub = t.add('linuxrouter', 240, 260, { label: 'CENTRAL' }).device;
+        const branch = t.add('linuxrouter', 780, 260, { label: 'SUCURSAL' }).device;
+        link(t, hub.id, 'GigabitEthernet0/0', norte.id, 'Fibra0');
+        link(t, branch.id, 'GigabitEthernet0/0', sur.id, 'DSL0');
+        branchLan(t, 240, { id: hub.id, port: 'GigabitEthernet0/1' }, '10.1.0', 2, '10.1.0.1');
+        branchLan(t, 780, { id: branch.id, port: 'GigabitEthernet0/1' }, '10.2.0', 2, '10.2.0.1');
+        hub.useDhcp();
+        branch.useDhcp();
+        t.settle();
+        const [hubKey, branchKey] = [genKey(), genKey()];
+        const hubIp = formatIp(hub.config.ip ?? 0);
+        hub.setServices({ ...hub.services, ssh: { enabled: true, users: [{ name: 'admin', password: 'cisco' }] } });
+        setupLinux(hub, '10.1.0.1/24', wgConf(hubKey, '10.99.0.1', pubKey(branchKey) ?? '', '10.99.0.2/32, 10.2.0.0/24', ''));
+        setupLinux(branch, '10.2.0.1/24', wgConf(branchKey, '10.99.0.2', pubKey(hubKey) ?? '', '10.99.0.0/24, 10.1.0.0/24', `Endpoint = ${hubIp}:51820\nPersistentKeepalive = 25\n`));
+        t.settle();
+        return t;
+    },
+};
+
+return { cloud, branchLan, ipsecLab, wireguardLab };
+})();
+__m["net/labs-linux.js"] = (() => {
+/**
+ * Labs of the Linux router and of the company DNS: NAT + DMZ with nftables (what is published, what is
+ * kept apart) and a bind9 server that answers its zone and forwards the rest to 8.8.8.8 (localnets only).
+ */
+const { LABS_ES } = __m["i18n/es-ES/labs.js"];
+const { Topology } = __m["net/topology.js"];
+const { applyConfig } = __m["ios/session.js"];
+const { parseIp } = __m["core/ip.js"];
+const { createShell } = __m["shells/factory.js"];
+const { branchLan, cloud } = __m["net/labs-vpn.js"];
+const ip = (x) => parseIp(x) ?? 0;
+function link(t, a, ap, b, bp) {
+    t.connect({ device: a, port: ap }, { device: b, port: bp });
+}
+/** Runs an admin script as root (history expansion off: config files may contain «!»). */
+function rootScript(host, script) {
+    const root = createShell(host, 'linux', 'root');
+    root.run('set +H');
+    root.run(script.trim());
+}
+function fileCmd(path, text) {
+    return `cat > ${path} <<'NETFIX_EOF'\n${text.trim()}\nNETFIX_EOF`;
+}
+// ------------------------------------------------------------ Linux router: NAT and DMZ
+const DMZ_RULES = `
+flush ruleset
+
+table inet filter {
+  chain input {
+    type filter hook input priority filter; policy drop;
+    ct state established,related accept
+    iifname "lo" accept
+    iifname "eth1" tcp dport { 22, 10000 } accept comment "administracion solo desde la LAN"
+    icmp type echo-request accept
+  }
+  chain forward {
+    type filter hook forward priority filter; policy drop;
+    ct state established,related accept
+    iifname "eth1" accept comment "LAN a todas partes"
+    iifname "eth2" oifname "eth0" accept comment "DMZ solo a Internet"
+    iifname "eth0" oifname "eth2" ip daddr 172.16.0.80 tcp dport 80 accept comment "web publicada"
+    log prefix "FW-DROP " drop
+  }
+}
+
+table ip nat {
+  chain prerouting {
+    type nat hook prerouting priority dstnat; policy accept;
+    iifname "eth0" tcp dport 80 dnat to 172.16.0.80
+  }
+  chain postrouting {
+    type nat hook postrouting priority srcnat; policy accept;
+    oifname "eth0" masquerade
+  }
+}`;
+const dmzLab = {
+    id: 'linux-dmz',
+    title: LABS_ES['lab.linux-dmz.title'],
+    summary: LABS_ES['lab.linux-dmz.summary'],
+    build: () => {
+        const t = new Topology();
+        const norte = cloud(t, 'ISP-Norte', 240, 'Fibra0', 'public');
+        const sur = cloud(t, 'ISP-Sur', 780, 'DSL0', 'router');
+        const fw = t.add('linuxrouter', 240, 260, { label: 'FW' }).device;
+        link(t, fw.id, 'GigabitEthernet0/0', norte.id, 'Fibra0');
+        branchLan(t, 120, { id: fw.id, port: 'GigabitEthernet0/1' }, '192.168.1', 2, '192.168.1.1');
+        const web = t.add('server', 420, 420, { label: 'WEB-DMZ' }).device;
+        link(t, fw.id, 'GigabitEthernet0/2', web.id, 'FastEthernet0');
+        web.setStatic({ ip: ip('172.16.0.80'), prefix: 24, gateway: ip('172.16.0.1'), dns: ip('8.8.8.8') });
+        const ext = t.add('pc', 780, 420, { label: 'CLIENTE-EXT' }).device;
+        link(t, ext.id, 'FastEthernet0', sur.id, 'DSL0');
+        ext.os = 'linux';
+        fw.useDhcp();
+        ext.useDhcp();
+        t.settle();
+        rootScript(fw, `ip addr add 192.168.1.1/24 dev eth1
+ip addr add 172.16.0.1/24 dev eth2
+${fileCmd('/etc/sysctl.d/99-router.conf', 'net.ipv4.ip_forward = 1')}
+${fileCmd('/etc/nftables.conf', DMZ_RULES)}
+sysctl -q --system
+systemctl enable --now nftables`);
+        t.settle();
+        return t;
+    },
+};
+// ------------------------------------------------------------ company DNS with forwarders
+const GW_DNS = `
+hostname GW
+no ip domain-lookup
+interface GigabitEthernet0/0
+ description LAN de la empresa (servidor DNS)
+ ip address 192.168.50.1 255.255.255.0
+ ip nat inside
+ no shutdown
+interface GigabitEthernet0/2
+ description Red de invitados
+ ip address 192.168.60.1 255.255.255.0
+ ip nat inside
+ no shutdown
+interface GigabitEthernet0/1
+ ip address dhcp
+ ip nat outside
+ no shutdown
+access-list 1 permit 192.168.50.0 0.0.0.255
+access-list 1 permit 192.168.60.0 0.0.0.255
+ip nat inside source list 1 interface GigabitEthernet0/1 overload`;
+function dnsServer(srv, pcMac) {
+    srv.name = 'ns1';
+    srv.setStatic({ ip: ip('192.168.50.2'), prefix: 24, gateway: ip('192.168.50.1'), dns: ip('127.0.0.1') });
+    srv.setServices({
+        ...srv.services,
+        dhcp: { enabled: true, pools: [{ name: 'serverPool', start: ip('192.168.50.100'), prefix: 24, maxUsers: 50, gateway: ip('192.168.50.1'), dns: ip('192.168.50.2'), domain: 'empresa.lan', leaseMinutes: 1440, reservations: [{ ip: ip('192.168.50.50'), mac: pcMac, name: 'PC1' }] }] },
+        dns: {
+            enabled: true, origin: 'empresa.lan', forwarders: [ip('8.8.8.8'), ip('8.8.4.4')], forwardOnly: true, allowRecursion: 'localnets',
+            records: [
+                { name: '@', type: 'NS', value: 'ns1', ttl: 86400 },
+                { name: 'ns1', type: 'A', value: '192.168.50.2', ttl: 86400 },
+                { name: 'intranet', type: 'A', value: '192.168.50.2', ttl: 86400 },
+                { name: 'www', type: 'CNAME', value: 'intranet', ttl: 86400 },
+            ],
+        },
+    });
+}
+const dnsForwardLab = {
+    id: 'dns-reenvio',
+    title: LABS_ES['lab.dns-reenvio.title'],
+    summary: LABS_ES['lab.dns-reenvio.summary'],
+    build: () => {
+        const t = new Topology();
+        const norte = cloud(t, 'ISP-Norte', 460, 'Fibra0', 'public');
+        const gw = t.add('router', 460, 220, { label: 'GW' }).device;
+        link(t, gw.id, 'GigabitEthernet0/1', norte.id, 'Fibra0');
+        applyConfig(gw, GW_DNS.trim().split('\n'));
+        const pcs = branchLan(t, 300, { id: gw.id, port: 'GigabitEthernet0/0' }, '192.168.50', 2);
+        const sw = t.byLabel('Switch0');
+        const srv = t.add('server', 620, 420, { label: 'NS1' }).device;
+        link(t, srv.id, 'FastEthernet0', sw.id, 'FastEthernet0/24');
+        dnsServer(srv, pcs[1].mac);
+        const guest = t.add('pc', 760, 420, { label: 'INVITADO' }).device;
+        guest.os = 'linux';
+        link(t, guest.id, 'FastEthernet0', gw.id, 'GigabitEthernet0/2');
+        guest.setStatic({ ip: ip('192.168.60.10'), prefix: 24, gateway: ip('192.168.60.1'), dns: ip('192.168.50.2') });
+        t.settle();
+        for (const p of pcs)
+            p.useDhcp();
+        t.settle();
+        return t;
+    },
+};
+
+return { rootScript, fileCmd, dmzLab, dnsForwardLab };
+})();
+__m["net/labs-security.js"] = (() => {
+/**
+ * Security labs: SSH/SFTP with keys (and turning passwords off), and a hardened server segment with
+ * defence in depth (IOS extended ACL on the router, nftables and sshd_config on the server).
+ */
+const { LABS_ES } = __m["i18n/es-ES/labs.js"];
+const { Topology } = __m["net/topology.js"];
+const { applyConfig } = __m["ios/session.js"];
+const { parseIp } = __m["core/ip.js"];
+const { fileCmd, rootScript } = __m["net/labs-linux.js"];
+const ip = (x) => parseIp(x) ?? 0;
+function link(t, a, ap, b, bp) {
+    t.connect({ device: a, port: ap }, { device: b, port: bp });
+}
+function pcAt(t, x, label, sw, port, addr, gw) {
+    const pc = t.add('pc', x, 580, { label }).device;
+    link(t, pc.id, 'FastEthernet0', sw.id, port);
+    pc.os = 'linux';
+    pc.setStatic({ ip: ip(addr), prefix: 24, gateway: ip(gw), dns: ip('172.20.0.10') });
+    return pc;
+}
+function sshServer(srv, addr, gw, users) {
+    srv.name = 'srv';
+    srv.setStatic({ ip: ip(addr), prefix: 24, gateway: ip(gw), dns: ip('127.0.0.1') });
+    srv.setServices({
+        ...srv.services,
+        dhcp: { ...srv.services.dhcp, enabled: false },
+        ssh: { enabled: true, users },
+        dns: { enabled: true, origin: 'aula.lab', records: [{ name: '@', type: 'NS', value: 'srv', ttl: 86400 }, { name: 'srv', type: 'A', value: addr, ttl: 86400 }] },
+    });
+}
+// ------------------------------------------------------------ SSH and SFTP
+const sshLab = {
+    id: 'ssh-sftp',
+    title: LABS_ES['lab.ssh-sftp.title'],
+    summary: LABS_ES['lab.ssh-sftp.summary'],
+    build: () => {
+        const t = new Topology();
+        const sw = t.add('switch', 460, 380).device;
+        const srv = t.add('server', 760, 380, { label: 'SRV' }).device;
+        link(t, srv.id, 'FastEthernet0', sw.id, 'FastEthernet0/24');
+        sshServer(srv, '172.20.0.10', '172.20.0.1', [{ name: 'admin', password: 'cisco' }, { name: 'ana', password: 'ana1' }]);
+        pcAt(t, 220, 'PC0', sw, 'FastEthernet0/1', '172.20.0.21', '172.20.0.1');
+        pcAt(t, 460, 'PC1', sw, 'FastEthernet0/2', '172.20.0.22', '172.20.0.1');
+        t.settle();
+        rootScript(srv, `${fileCmd('/home/ana/bienvenida.txt', 'Hola Ana: sube aquí tus entregas con SFTP.')}
+chown ana:ana /home/ana/bienvenida.txt
+mkdir -p /srv/compartido && chown admin:admin /srv/compartido && chmod 755 /srv/compartido`);
+        return t;
+    },
+};
+// ------------------------------------------------------------ hardening and defence in depth
+const GW_ACL = `
+hostname GW
+no ip domain-lookup
+enable secret Netfix2026
+interface GigabitEthernet0/0
+ description ADMINISTRACION
+ ip address 192.168.10.1 255.255.255.0
+ no shutdown
+interface GigabitEthernet0/1
+ description ALUMNOS
+ ip address 192.168.20.1 255.255.255.0
+ no shutdown
+interface GigabitEthernet0/2
+ description SERVIDORES
+ ip address 172.20.0.1 255.255.255.0
+ ip access-group A-SERVIDORES out
+ no shutdown
+ip access-list extended A-SERVIDORES
+ remark la web es para todos; SSH y ping solo desde administracion
+ permit tcp any host 172.20.0.10 eq www
+ permit tcp 192.168.10.0 0.0.0.255 host 172.20.0.10 eq 22
+ permit icmp 192.168.10.0 0.0.0.255 any
+ permit udp any host 172.20.0.10 eq domain
+ deny ip any any log`;
+const SERVER_RULES = `
+flush ruleset
+
+table inet filter {
+  chain input {
+    type filter hook input priority filter; policy drop;
+    ct state established,related accept
+    ct state invalid drop
+    iifname "lo" accept
+    tcp dport 80 accept comment "web para todos"
+    udp dport 53 accept comment "DNS"
+    ip saddr 192.168.10.0/24 tcp dport 22 accept comment "SSH solo administracion"
+    ip saddr 192.168.10.0/24 icmp type echo-request accept
+    log prefix "NFT-DROP " drop
+  }
+}`;
+const SSHD_HARDENING = `
+# Bastionado del laboratorio
+PermitRootLogin no
+MaxAuthTries 3
+AllowUsers admin
+PermitEmptyPasswords no`;
+const hardeningLab = {
+    id: 'bastionado',
+    title: LABS_ES['lab.bastionado.title'],
+    summary: LABS_ES['lab.bastionado.summary'],
+    build: () => {
+        const t = new Topology();
+        const gw = t.add('router', 460, 140, { label: 'GW' }).device;
+        const swA = t.add('switch', 220, 380).device;
+        const swB = t.add('switch', 700, 380).device;
+        const srv = t.add('server', 460, 380, { label: 'SRV-INTRANET' }).device;
+        link(t, gw.id, 'GigabitEthernet0/0', swA.id, 'GigabitEthernet0/1');
+        link(t, gw.id, 'GigabitEthernet0/1', swB.id, 'GigabitEthernet0/1');
+        link(t, gw.id, 'GigabitEthernet0/2', srv.id, 'FastEthernet0');
+        applyConfig(gw, GW_ACL.trim().split('\n'));
+        sshServer(srv, '172.20.0.10', '172.20.0.1', [{ name: 'admin', password: 'cisco' }, { name: 'ana', password: 'ana1' }]);
+        pcAt(t, 220, 'ADMIN', swA, 'FastEthernet0/1', '192.168.10.10', '192.168.10.1');
+        pcAt(t, 700, 'ALUMNO', swB, 'FastEthernet0/1', '192.168.20.10', '192.168.20.1');
+        t.settle();
+        rootScript(srv, `${fileCmd('/etc/nftables.conf', SERVER_RULES)}
+${fileCmd('/etc/ssh/sshd_config.d/10-bastionado.conf', SSHD_HARDENING)}
+systemctl enable --now nftables
+systemctl reload ssh`);
+        t.settle();
+        return t;
+    },
+};
+
+return { sshLab, hardeningLab };
+})();
 __m["net/examples.js"] = (() => {
 /** Ready-made labs that show each DHCP feature working. */
+const { LABS_ES } = __m["i18n/es-ES/labs.js"];
 const { Topology } = __m["net/topology.js"];
 const { Router } = __m["devices/router.js"];
 const { Switch } = __m["devices/switch.js"];
@@ -43615,6 +44158,9 @@ const { parseIp } = __m["core/ip.js"];
 const { applyConfig } = __m["ios/session.js"];
 const { formatHexId, formatMacCisco, clientIdFromMac } = __m["core/mac.js"];
 const { internetExample } = __m["net/example-internet.js"];
+const { ipsecLab, wireguardLab } = __m["net/labs-vpn.js"];
+const { dmzLab, dnsForwardLab } = __m["net/labs-linux.js"];
+const { hardeningLab, sshLab } = __m["net/labs-security.js"];
 function conf(dev, text) {
     applyConfig(dev, text.trim().split('\n'));
 }
@@ -43654,8 +44200,8 @@ function startDhcp(t, pcs) {
 const EXAMPLES = [
     {
         id: 'basico',
-        title: 'DHCP básico',
-        summary: 'Un pool con exclusiones, puerta de enlace, DNS y dominio. Los tres PCs obtienen IP por DORA.',
+        title: LABS_ES['lab.basico.title'],
+        summary: LABS_ES['lab.basico.summary'],
         build: () => {
             const t = new Topology();
             const { r, p } = lanBase(t, 3);
@@ -43665,8 +44211,8 @@ const EXAMPLES = [
     },
     {
         id: 'reservas',
-        title: 'Reservas: host, client-identifier y hardware-address',
-        summary: 'PC0 por client-identifier (pool host), PC1 por hardware-address (pool host) y PC2 con address … client-id dentro del pool de red.',
+        title: LABS_ES['lab.reservas.title'],
+        summary: LABS_ES['lab.reservas.summary'],
         build: () => {
             const t = new Topology();
             const { r, p } = lanBase(t, 3);
@@ -43686,8 +44232,8 @@ ip dhcp pool PC1-FIJO
     },
     {
         id: 'relay',
-        title: 'Relay con ip helper-address',
-        summary: 'El servidor DHCP está en otra red. EDGE reenvía las peticiones con giaddr 10.20.0.1.',
+        title: LABS_ES['lab.relay.title'],
+        summary: LABS_ES['lab.relay.summary'],
         build: () => {
             const t = new Topology();
             const srv = t.add('router', 240, 140).device;
@@ -43725,8 +44271,8 @@ interface GigabitEthernet0/1
     },
     {
         id: 'vlans',
-        title: 'Router-on-a-stick: un pool por VLAN',
-        summary: 'Subinterfaces 802.1Q en el router, trunk en el switch y pools VENTAS y SOPORTE.',
+        title: LABS_ES['lab.vlans.title'],
+        summary: LABS_ES['lab.vlans.summary'],
         build: () => {
             const t = new Topology();
             const { r, s, p } = lanBase(t, 4);
@@ -43767,8 +44313,8 @@ interface GigabitEthernet0/0.20
     },
     {
         id: 'snooping',
-        title: 'DHCP snooping frente a un servidor falso',
-        summary: 'ROGUE ofrece una puerta de enlace falsa; el switch solo confía en Gig0/1. Fíjate en «ip dhcp relay information trusted» en GW.',
+        title: LABS_ES['lab.snooping.title'],
+        summary: LABS_ES['lab.snooping.summary'],
         build: () => {
             const t = new Topology();
             const { r, s, p } = lanBase(t, 2);
@@ -43796,8 +44342,8 @@ interface GigabitEthernet0/1
     },
     {
         id: 'cliente',
-        title: 'Router como cliente DHCP',
-        summary: 'CPE obtiene su IP WAN con «ip address dhcp»; ISP la fija con un pool host y su client-identifier cisco-….',
+        title: LABS_ES['lab.cliente.title'],
+        summary: LABS_ES['lab.cliente.summary'],
         build: () => {
             const t = new Topology();
             const isp = t.add('router', 300, 200).device;
@@ -43826,8 +44372,8 @@ interface GigabitEthernet0/1
     },
     {
         id: 'servidores',
-        title: 'Server: DHCP, DNS, web, correo y SSH',
-        summary: 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave cisco), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/admin).',
+        title: LABS_ES['lab.servidores.title'],
+        summary: LABS_ES['lab.servidores.summary'],
         build: () => {
             const t = new Topology();
             const ip = (x) => parseIp(x) ?? 0;
@@ -43875,10 +44421,16 @@ interface GigabitEthernet0/0
         },
     },
     internetExample,
+    ipsecLab,
+    wireguardLab,
+    dmzLab,
+    dnsForwardLab,
+    sshLab,
+    hardeningLab,
     {
         id: 'blanco',
-        title: 'Área de trabajo en blanco',
-        summary: 'Empieza desde cero: coloca dispositivos y conéctalos con el cable.',
+        title: LABS_ES['lab.blanco.title'],
+        summary: LABS_ES['lab.blanco.summary'],
         build: () => new Topology(),
     },
 ];
