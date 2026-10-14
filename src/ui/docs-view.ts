@@ -1,4 +1,5 @@
 /** The Documentación tab: table of contents, search and pages (all text through textContent). */
+import { t } from '../i18n/t.ts';
 import { el, clear } from './dom.ts';
 import { DOC_GROUPS, findPage, searchDocs } from '../docs/index.ts';
 import type { DocPage } from '../docs/index.ts';
@@ -14,11 +15,11 @@ export class DocsView {
   private current = FIRST_PAGE;
 
   constructor() {
-    this.search = el('input', { type: 'search', class: 'doc-search', placeholder: 'Buscar: dhcp, ${var%%pat}, nano, ssh…', 'aria-label': 'Buscar en la documentación' });
+    this.search = el('input', { type: 'search', class: 'doc-search', placeholder: t('docs.searchHint'), 'aria-label': t('docs.searchLabel') });
     this.search.addEventListener('input', () => this.renderToc());
-    this.toc = el('nav', { class: 'doc-toc', 'aria-label': 'Índice de la documentación' });
+    this.toc = el('nav', { class: 'doc-toc', 'aria-label': t('docs.toc') });
     this.article = el('article', { class: 'doc-page', tabindex: '-1' });
-    this.root = el('section', { class: 'docs', 'aria-label': 'Documentación' }, el('aside', { class: 'doc-side' }, this.search, this.toc), this.article);
+    this.root = el('section', { class: 'docs', 'aria-label': t('docs.title') }, el('aside', { class: 'doc-side' }, this.search, this.toc), this.article);
     this.renderToc();
     this.show(FIRST_PAGE);
   }
@@ -47,7 +48,7 @@ export class DocsView {
     const q = this.search.value.trim();
     if (q) {
       const hits = searchDocs(q);
-      this.toc.append(el('p', { class: 'doc-count', role: 'status' }, hits.length ? `${hits.length} página${hits.length === 1 ? '' : 's'}` : 'Sin resultados'),
+      this.toc.append(el('p', { class: 'doc-count', role: 'status' }, hits.length ? (hits.length === 1 ? t('docs.onePage') : t('docs.pages', { n: hits.length })) : t('docs.noResults')),
         ...hits.map((h) => this.link(h.page, h.snippet)));
       return;
     }

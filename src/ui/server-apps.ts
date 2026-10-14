@@ -20,14 +20,14 @@ export function servicesTab(server: Server, app: AfterChange): HTMLElement {
     { id: 'dhcp', label: 'DHCP', render: () => dhcpPanel(server, app) },
     { id: 'dns', label: 'DNS', render: () => dnsPanel(server, app) },
     { id: 'http', label: 'HTTP', render: () => httpPanel(server, app) },
-    { id: 'mail', label: 'Correo', render: () => mailPanel(server, app) },
+    { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
     { id: 'ssh', label: 'SSH', render: () => sshPanel(server, app) },
     ...(server.os === 'linux' ? [
       { id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root },
       { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root },
     ] : []),
     ...(server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
-    { id: 'log', label: 'Registros', render: () => logPanel(server) },
+    { id: 'log', label: t('srv.log'), render: () => logPanel(server) },
   ]);
 }
 
@@ -36,7 +36,7 @@ function httpPanel(server: Server, app: AfterChange): HTMLElement {
   return livePanel((refresh) => {
     const s = server.services;
     const file = s.http.files.find((f) => f.name === current);
-    const editor = el('textarea', { class: 'code-editor', rows: '14', spellcheck: 'false', 'aria-label': 'Contenido del fichero' });
+    const editor = el('textarea', { class: 'code-editor', rows: '14', spellcheck: 'false', 'aria-label': t('srv.fileContent') });
     editor.value = file?.content ?? '';
     const newName = input({ placeholder: 'contacto.html' });
     const msg = message();
@@ -53,18 +53,18 @@ function httpPanel(server: Server, app: AfterChange): HTMLElement {
       setFiles([...s.http.files, { name, content: `<!doctype html>\n<html><head><title>${name}</title></head>\n<body>\n<h1>${name}</h1>\n</body></html>` }]);
     };
     return [
-      onOff(`Servicio HTTP (${server.os === 'windows' ? 'IIS, puerto 80' : `Apache2, puertos ${server.web.httpPorts().join(', ') || '80'}`})`, s.http.enabled, (on) => { server.setUnit('http', on); app.afterCommand(); refresh(); }),
+      onOff(server.os === 'windows' ? t('srv.httpIis') : t('srv.httpApache', { ports: server.web.httpPorts().join(', ') || '80' }), s.http.enabled, (on) => { server.setUnit('http', on); app.afterCommand(); refresh(); }),
       el('p', { class: 'muted' }, server.os === 'windows'
-        ? 'Pruébalo desde un PC con el navegador, curl o wget. HTTPS no está simulado.'
-        : 'Estos ficheros son /var/www/html. Apache se configura en /etc/apache2 desde la terminal (a2ensite, apache2ctl configtest, systemctl reload apache2). HTTPS no está simulado.'),
+        ? t('srv.httpWin')
+        : t('srv.httpLinux')),
       webAppsSection(server, app, refresh),
       el('div', { class: 'file-layout' },
-        el('div', { class: 'file-list' }, table(s.http.files, [{ label: 'Fichero', value: (f) => f.name, mono: true }], {
-          empty: 'Sin ficheros: el servidor responderá 404.', onSelect: (f) => { current = f.name; refresh(); }, selected: (f) => f.name === current,
+        el('div', { class: 'file-list' }, table(s.http.files, [{ label: t('srv.file'), value: (f) => f.name, mono: true }], {
+          empty: t('srv.noFiles'), onSelect: (f) => { current = f.name; refresh(); }, selected: (f) => f.name === current,
           onDelete: (f) => { if (current === f.name) current = null; setFiles(s.http.files.filter((x) => x !== f)); },
-        }), el('div', { class: 'inline-form' }, field('Nuevo fichero', newName), button('Crear', create))),
-        el('div', { class: 'file-edit' }, file ? field(`Editar ${file.name}`, editor) : el('p', { class: 'muted' }, 'Selecciona o crea un fichero.'),
-          file ? el('div', { class: 'actions' }, button('Guardar', () => { setFiles(s.http.files.map((f) => (f.name === file.name ? { ...f, content: editor.value } : f))); })) : null)),
+        }), el('div', { class: 'inline-form' }, field(t('srv.newFile'), newName), button(t('srv.create'), create))),
+        el('div', { class: 'file-edit' }, file ? field(t('srv.edit', { name: file.name }), editor) : el('p', { class: 'muted' }, t('srv.pickFile')),
+          file ? el('div', { class: 'actions' }, button(t('srv.save'), () => { setFiles(s.http.files.map((f) => (f.name === file.name ? { ...f, content: editor.value } : f))); })) : null)),
       msg.el,
     ];
   });
@@ -76,7 +76,7 @@ function webAppsSection(server: Server, app: AfterChange, refresh: () => void): 
   const msg = message();
   const accessForm = (title: string, a: WebAppAccess, extra: HTMLElement[], save: (next: WebAppAccess) => string | null): HTMLElement => {
     const enabled = el('input', { type: 'checkbox', checked: a.enabled });
-    const mode = select([['alias', 'Alias URL en Apache'], ['port', 'Puerto propio']], a.mode);
+    const mode = select([['alias', t('srv.aliasMode')], ['port', t('srv.portMode')]], a.mode);
     const alias = input({ value: a.alias });
     const port = input({ value: String(a.port), inputmode: 'numeric' });
     const apply = (): void => {
@@ -85,19 +85,19 @@ function webAppsSection(server: Server, app: AfterChange, refresh: () => void): 
       app.afterCommand();
       refresh();
     };
-    return el('section', { class: 'subsection' }, el('h3', {}, title), el('label', { class: 'check' }, enabled, ' Activado'),
-      el('div', { class: 'grid3' }, field('Acceso', mode), field('Alias URL', alias), field('Puerto', port)), ...extra, el('div', { class: 'actions' }, button('Aplicar', apply)));
+    return el('section', { class: 'subsection' }, el('h3', {}, title), el('label', { class: 'check' }, enabled, ` ${t('srv.enabled')}`),
+      el('div', { class: 'grid3' }, field(t('srv.access'), mode), field(t('srv.alias'), alias), field(t('srv.port'), port)), ...extra, el('div', { class: 'actions' }, button(t('srv.apply'), apply)));
   };
-  const host = server.config.ip !== undefined ? formatIp(server.config.ip) : 'IP-del-servidor';
+  const host = server.config.ip !== undefined ? formatIp(server.config.ip) : t('srv.serverIp');
   const where = (a: WebAppAccess): string => (a.mode === 'port' ? `http://${host}:${a.port}/` : `http://${host}${a.alias}/`);
   const user = input({ value: w.admin.user });
   const pass = input({ value: w.admin.password, type: 'password' });
   return el('div', {},
-    el('h3', {}, 'Aplicaciones web'),
-    el('p', { class: 'muted' }, `Roundcube: ${w.roundcube.enabled ? where(w.roundcube) : 'desactivado'} · Gestión web: ${w.admin.enabled ? where(w.admin) : 'desactivada'}`),
-    accessForm('Roundcube (correo web)', w.roundcube, [], (next) => validateAccess(next, server.services.webapps.admin) ?? (server.setServices({ ...server.services, webapps: { ...server.services.webapps, roundcube: next } }), null)),
-    accessForm('Gestión web del servidor (estilo WRT300N)', w.admin, [el('div', { class: 'grid2' }, field('Usuario', user), field('Contraseña', pass))], (next) => {
-      const err = validateAccess(next, server.services.webapps.roundcube) ?? (user.value.trim() && pass.value ? null : 'Escribe usuario y contraseña.');
+    el('h3', {}, t('srv.webApps')),
+    el('p', { class: 'muted' }, t('srv.webAppsState', { rc: w.roundcube.enabled ? where(w.roundcube) : t('srv.disabled'), admin: w.admin.enabled ? where(w.admin) : t('srv.disabledF') })),
+    accessForm(t('srv.roundcube'), w.roundcube, [], (next) => validateAccess(next, server.services.webapps.admin) ?? (server.setServices({ ...server.services, webapps: { ...server.services.webapps, roundcube: next } }), null)),
+    accessForm(t('srv.admin'), w.admin, [el('div', { class: 'grid2' }, field(t('srv.user'), user), field(t('srv.password'), pass))], (next) => {
+      const err = validateAccess(next, server.services.webapps.roundcube) ?? (user.value.trim() && pass.value ? null : t('srv.needCreds'));
       if (err) return err;
       server.setServices({ ...server.services, webapps: { ...server.services.webapps, admin: { ...next, user: user.value.trim(), password: pass.value } } });
       return null;
@@ -106,20 +106,20 @@ function webAppsSection(server: Server, app: AfterChange, refresh: () => void): 
 }
 
 function accounts(list: readonly Account[], onChange: (next: readonly Account[]) => void, what: string): HTMLElement {
-  const user = input({ placeholder: 'usuario' });
-  const pass = input({ placeholder: 'contraseña', type: 'password' });
+  const user = input({ placeholder: t('srv.userPlaceholder') });
+  const pass = input({ placeholder: t('srv.passPlaceholder'), type: 'password' });
   const msg = message();
   const add = (): void => {
     const name = user.value.trim();
-    if (!/^[a-z0-9._-]{1,32}$/i.test(name)) return msg.error('Usuario: letras, números, punto, guion o guion bajo.');
-    if (!pass.value) return msg.error('Escribe una contraseña.');
-    if (list.some((u) => u.name === name)) return msg.error(`Ya existe ${name}.`);
+    if (!/^[a-z0-9._-]{1,32}$/i.test(name)) return msg.error(t('srv.badUser'));
+    if (!pass.value) return msg.error(t('srv.needPass'));
+    if (list.some((u) => u.name === name)) return msg.error(t('srv.exists', { name }));
     onChange([...list, { name, password: pass.value }]);
   };
   return el('section', { class: 'subsection' },
-    el('h3', {}, `Usuarios ${what}`),
-    el('div', { class: 'inline-form' }, field('Usuario', user), field('Contraseña', pass), button('Añadir', add)), msg.el,
-    table(list, [{ label: 'Usuario', value: (u) => u.name, mono: true }, { label: 'Contraseña', value: () => '••••••' }], { empty: 'Sin usuarios.', onDelete: (u) => onChange(list.filter((x) => x !== u)) }));
+    el('h3', {}, what),
+    el('div', { class: 'inline-form' }, field(t('srv.user'), user), field(t('srv.password'), pass), button(t('srv.add'), add)), msg.el,
+    table(list, [{ label: t('srv.user'), value: (u) => u.name, mono: true }, { label: t('srv.password'), value: () => '••••••' }], { empty: t('srv.noUsers'), onDelete: (u) => onChange(list.filter((x) => x !== u)) }));
 }
 
 function mailPanel(server: Server, app: AfterChange): HTMLElement {
@@ -134,13 +134,13 @@ function mailPanel(server: Server, app: AfterChange): HTMLElement {
     const domain = input({ value: m.domain, placeholder: 'aula.lab' });
     domain.addEventListener('change', () => set({ domain: domain.value.trim().toLowerCase() }));
     return [
-      onOff('SMTP (puerto 25 · postfix)', m.smtp, (on) => set({ smtp: on })),
-      onOff('POP3 (puerto 110 · dovecot)', m.pop3, (on) => set({ pop3: on })),
-      onOff('IMAP (puerto 143 · dovecot)', m.imap, (on) => set({ imap: on })),
-      field('Dominio de correo', domain, 'Las direcciones serán usuario@dominio. El correo a otros dominios se reenvía por su registro MX.'),
-      accounts(m.users, (users) => set({ users }), 'de correo'),
-      el('h3', {}, 'Buzones'),
-      table(m.users, [{ label: 'Usuario', value: (u) => `${u.name}@${m.domain || '…'}`, mono: true }, { label: 'Mensajes', value: (u) => String(server.mailboxes.list(u.name).length) }], { empty: 'Sin buzones.' }),
+      onOff(t('srv.smtp'), m.smtp, (on) => set({ smtp: on })),
+      onOff(t('srv.pop3'), m.pop3, (on) => set({ pop3: on })),
+      onOff(t('srv.imap'), m.imap, (on) => set({ imap: on })),
+      field(t('srv.mailDomain'), domain, t('srv.mailDomainHint')),
+      accounts(m.users, (users) => set({ users }), t('srv.mailUsers')),
+      el('h3', {}, t('srv.mailboxes')),
+      table(m.users, [{ label: t('srv.user'), value: (u) => `${u.name}@${m.domain || '…'}`, mono: true }, { label: t('srv.messages'), value: (u) => String(server.mailboxes.list(u.name).length) }], { empty: t('srv.noMailboxes') }),
     ];
   });
 }
@@ -158,10 +158,10 @@ function sshAuthControls(server: Server, app: AfterChange, refresh: () => void, 
     refresh();
   };
   return [
-    el('h3', {}, 'Autenticación'),
-    onOff('Usuario y contraseña (PasswordAuthentication)', auth.password, (on) => change({ ...auth, password: on })),
-    onOff('Par de claves (PubkeyAuthentication)', auth.pubkey, (on) => change({ ...auth, pubkey: on })),
-    el('p', { class: 'muted' }, 'Se guarda en /etc/ssh/sshd_config y se recarga ssh. En el PC: ssh-keygen y ssh-copy-id usuario@servidor; la clave queda en ~/.ssh/authorized_keys.'),
+    el('h3', {}, t('srv.auth')),
+    onOff(t('srv.authPassword'), auth.password, (on) => change({ ...auth, password: on })),
+    onOff(t('srv.authPubkey'), auth.pubkey, (on) => change({ ...auth, pubkey: on })),
+    el('p', { class: 'muted' }, t('srv.authHint')),
     msg.el,
   ];
 }
@@ -171,12 +171,12 @@ function sshPanel(server: Server, app: AfterChange): HTMLElement {
   return livePanel((refresh) => {
     const s = server.services;
     return [
-      onOff('Servicio SSH (puerto 22)', s.ssh.enabled, (on) => { server.setUnit('ssh', on); app.afterCommand(); refresh(); }),
-      el('p', { class: 'muted' }, `Desde un PC: ssh usuario@${server.config.ip !== undefined ? 'IP-del-servidor' : 'servidor'} en el Terminal o en el Símbolo del sistema. La sesión abre la shell ${server.os === 'windows' ? 'de Windows' : 'de Ubuntu'} de este servidor.`),
+      onOff(t('srv.sshService'), s.ssh.enabled, (on) => { server.setUnit('ssh', on); app.afterCommand(); refresh(); }),
+      el('p', { class: 'muted' }, t(server.os === 'windows' ? 'srv.sshWin' : 'srv.sshLinux', { host: server.config.ip !== undefined ? t('srv.serverIp') : t('srv.server') })),
       ...sshAuthControls(server, app, refresh, notice),
-      accounts(s.ssh.users, (users) => { server.setServices({ ...server.services, ssh: { ...server.services.ssh, users } }); app.afterCommand(); refresh(); }, 'SSH'),
-      el('h3', {}, 'Sesiones abiertas'),
-      table(server.ssh.activeSessions(), [{ label: 'Sesión', value: (x) => x.id, mono: true }, { label: 'Usuario', value: (x) => x.user }], { empty: 'Ninguna.' }),
+      accounts(s.ssh.users, (users) => { server.setServices({ ...server.services, ssh: { ...server.services.ssh, users } }); app.afterCommand(); refresh(); }, t('srv.sshUsers')),
+      el('h3', {}, t('srv.sessions')),
+      table(server.ssh.activeSessions(), [{ label: t('srv.session'), value: (x) => x.id, mono: true }, { label: t('srv.user'), value: (x) => x.user }], { empty: t('srv.none') }),
     ];
   });
 }
@@ -184,7 +184,7 @@ function sshPanel(server: Server, app: AfterChange): HTMLElement {
 function logPanel(server: Server): HTMLElement {
   let selected = UNITS[0]?.linux ?? 'ssh';
   return livePanel((refresh) => {
-    const unit = select(UNITS.map((u) => [u.linux, `${u.linux} (${unitActive(server.services, u.id) ? 'activo' : 'parado'})`] as const), selected);
+    const unit = select(UNITS.map((u) => [u.linux, `${u.linux} (${unitActive(server.services, u.id) ? t('srv.active') : t('srv.stopped')})`] as const), selected);
     const out = el('pre', { class: 'log-view' });
     const show = (): void => {
       selected = unit.value;
@@ -192,7 +192,7 @@ function logPanel(server: Server): HTMLElement {
     };
     unit.addEventListener('change', show);
     show();
-    return [el('div', { class: 'inline-form' }, field('Servicio', unit), button('Actualizar', () => { refresh(); })), out,
-      el('p', { class: 'muted' }, 'Equivale a journalctl -u <servicio> en el terminal del servidor.')];
+    return [el('div', { class: 'inline-form' }, field(t('srv.service'), unit), button(t('srv.refresh'), () => { refresh(); })), out,
+      el('p', { class: 'muted' }, t('srv.journalHint'))];
   });
 }

@@ -1,4 +1,5 @@
 /** Device artwork: generic network-diagram symbols drawn for this project. */
+import { t } from '../i18n/t.ts';
 import type { DeviceKind } from '../net/topology.ts';
 
 export const ICON_W = 64;
@@ -66,6 +67,10 @@ const CLOUD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width
 
 export const ICONS: Readonly<Record<DeviceKind, string>> = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, linuxrouter: LINUX_ROUTER, cloud: CLOUD };
 
-export const MODEL_LABEL: Readonly<Record<DeviceKind, string>> = { router: '2911', switch: '2960-24TT', pc: 'PC', server: 'Server', linuxrouter: '2911 Linux', cloud: 'Nube ISP' };
+export const MODEL_LABEL: Readonly<Record<DeviceKind, string>> = { router: '2911', switch: '2960-24TT', pc: 'PC', server: 'Server', linuxrouter: '2911 Linux', cloud: 'ISP' };
 
-export const KIND_NAME: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Servidor', linuxrouter: 'Router Linux', cloud: 'Nube' };
+/** Model label shown under the icon (the cloud is translated). */
+export function modelLabel(kind: DeviceKind): string {
+  return kind === 'cloud' ? t('model.cloud') : MODEL_LABEL[kind];
+}
+

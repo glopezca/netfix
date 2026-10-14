@@ -1,4 +1,5 @@
 /** Console widget for the IOS CLI, cmd.exe and bash: ANSI colours, Tab completion, Ctrl+C/D/L and full-screen editors. */
+import { t } from '../i18n/t.ts';
 import { el } from './dom.ts';
 import { ansiRow, columns, drawFrame, editorKey, fillAnsi } from './term-render.ts';
 import { clearRequest } from '../core/ansi.ts';
@@ -279,7 +280,7 @@ export class Terminal {
     const spec = this.backend.editRequest?.();
     const backend = this.backend;
     if (spec) {
-      const editor = createEditor(spec, { save: (path, content) => (backend.saveEdit ? backend.saveEdit(path, content) : 'No se puede guardar') });
+      const editor = createEditor(spec, { save: (path, content) => (backend.saveEdit ? backend.saveEdit(path, content) : t('term.cantSave')) });
       this.full = { key: (k) => editor.key(k), frame: (w, h) => (editor.closed ? null : editor.frame(w, h)), finish: () => backend.closeEdit?.() ?? [] };
     } else if (backend.screenFrame?.(DEFAULT_COLS, DEFAULT_ROWS)) {
       let pending: string[] = [];

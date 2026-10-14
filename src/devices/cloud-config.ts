@@ -3,6 +3,7 @@
  * public /29 to the customer's router (DHCP) or acts as the operator's router (LAN, DHCP, NAT, port
  * forwarding). Domains registered at the ISP are published by the public DNS servers 8.8.8.8/8.8.4.4.
  */
+import { t } from '../i18n/t.ts';
 import { formatIp, inSubnet, networkOf, parseIp } from '../core/ip.ts';
 
 export const CLOUD_PORTS = ['Coaxial0', 'Coaxial1', 'DSL0', 'DSL1', 'Fibra0', 'Fibra1'] as const;
@@ -97,34 +98,34 @@ export function reservedAddress(ip: number): boolean {
 }
 
 export function validDomain(name: string): string | null {
-  if (!/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(name)) return 'Dominio no válido: usa nombres como sede2.es o empresa.com.';
+  if (!/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(name)) return t('cloud.err.domain');
   return null;
 }
 
 export function validatePort(p: CloudPortSettings): string | null {
-  if (!Number.isInteger(p.down) || !Number.isInteger(p.up) || p.down < 1 || p.up < 1 || p.down > MAX_SPEED || p.up > MAX_SPEED) return 'Las velocidades deben estar entre 1 y 100000 Mbit/s.';
-  if (p.lanPrefix < 8 || p.lanPrefix > 30) return 'La máscara de la LAN debe estar entre /8 y /30.';
+  if (!Number.isInteger(p.down) || !Number.isInteger(p.up) || p.down < 1 || p.up < 1 || p.down > MAX_SPEED || p.up > MAX_SPEED) return t('cloud.err.speed');
+  if (p.lanPrefix < 8 || p.lanPrefix > 30) return t('cloud.err.lanMask');
   const net = networkOf(p.lanIp, p.lanPrefix);
-  if (p.lanIp === net || p.lanIp === (net | (0xffffffff >>> p.lanPrefix)) >>> 0) return 'La IP del router no puede ser la de red ni la de difusión.';
-  if (p.forwards.length > MAX_FORWARDS) return 'Demasiadas redirecciones de puertos.';
+  if (p.lanIp === net || p.lanIp === (net | (0xffffffff >>> p.lanPrefix)) >>> 0) return t('cloud.err.lanIp');
+  if (p.forwards.length > MAX_FORWARDS) return t('cloud.err.forwards');
   for (const f of p.forwards) {
-    if (![f.port, f.toPort].every((n) => Number.isInteger(n) && n >= 1 && n <= 65535)) return 'Los puertos deben estar entre 1 y 65535.';
-    if (!inSubnet(f.ip, p.lanIp, p.lanPrefix) || f.ip === p.lanIp) return `La redirección a ${formatIp(f.ip)} debe ir a un equipo de la LAN.`;
+    if (![f.port, f.toPort].every((n) => Number.isInteger(n) && n >= 1 && n <= 65535)) return t('cloud.err.ports');
+    if (!inSubnet(f.ip, p.lanIp, p.lanPrefix) || f.ip === p.lanIp) return t('cloud.err.forwardLan', { ip: formatIp(f.ip) });
   }
   const dup = p.forwards.find((f, i) => p.forwards.findIndex((g) => g.proto === f.proto && g.port === f.port) !== i);
   return dup ? `El puerto ${dup.proto.toUpperCase()} ${dup.port} ya está redirigido.` : null;
 }
 
 export function validateCloud(s: CloudSettings, otherBlocks: readonly number[] = []): string | null {
-  if (!s.isp.trim() || s.isp.length > 40) return 'Escribe el nombre del ISP (máximo 40 caracteres).';
-  if (networkOf(s.block, BLOCK_PREFIX) !== s.block) return 'El bloque público debe ser una red /16 (por ejemplo 81.32.0.0).';
-  if (reservedAddress(s.block)) return `${formatIp(s.block)}/16 es privada, especial o de la Internet emulada: elige otro bloque público.`;
-  if (otherBlocks.includes(s.block)) return `${formatIp(s.block)}/16 ya lo usa otra nube.`;
-  if (s.domains.length > MAX_DOMAINS) return 'Demasiados dominios registrados.';
+  if (!s.isp.trim() || s.isp.length > 40) return t('cloud.err.isp');
+  if (networkOf(s.block, BLOCK_PREFIX) !== s.block) return t('cloud.err.block');
+  if (reservedAddress(s.block)) return t('cloud.err.reserved', { net: formatIp(s.block) });
+  if (otherBlocks.includes(s.block)) return t('cloud.err.used', { net: formatIp(s.block) });
+  if (s.domains.length > MAX_DOMAINS) return t('cloud.err.domains');
   for (const d of s.domains) {
     const bad = validDomain(d.name);
     if (bad) return bad;
-    if (reservedAddress(d.ip)) return `${d.name}: ${formatIp(d.ip)} no es una dirección pública de un cliente.`;
+    if (reservedAddress(d.ip)) return t('cloud.err.domainIp', { name: d.name, ip: formatIp(d.ip) });
   }
   for (const p of CLOUD_PORTS) {
     const bad = validatePort(s.ports[p]);

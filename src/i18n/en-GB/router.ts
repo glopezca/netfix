@@ -2,7 +2,6 @@
 import type { RouterKey } from '../es-ES/router.ts';
 
 export const ROUTER_EN: Readonly<Record<RouterKey, string>> = {
-  'kind.linuxrouter': 'Linux router',
   'router.ifaces': 'Interfaces',
   'router.ifacesIntro': 'The hardware of a 2911 (GigabitEthernet0/0-2) running Ubuntu: eth0-2. eth0 is the WAN (static or DHCP). Changes here are the running configuration, like “ip addr”; they are kept in the topology file so they survive a restart of the simulated device.',
   'router.port': 'Port',

@@ -1,6 +1,6 @@
 /** Logical workspace: devices, cables with link lights, placing, moving, cabling, deleting. */
 import { el, svg, clear, staticSvg } from './dom.ts';
-import { ICONS, ICON_W, ICON_H, MODEL_LABEL } from './icons.ts';
+import { ICONS, ICON_W, ICON_H, modelLabel } from './icons.ts';
 import type { Topology, DeviceKind, Placed } from '../net/topology.ts';
 import type { Endpoint, Link } from '../net/network.ts';
 import { shortIfaceName } from '../ios/interfaces.ts';
@@ -166,14 +166,14 @@ export class Canvas {
     const name = d.kind === 'router' || d.kind === 'switch' ? d.hostname : d.kind === 'cloud' ? d.settings.isp : '';
     const g = svg('g', {
       class: `device device-${d.kind}${this.selected === id ? ' is-selected' : ''}${this.pendingEnd?.device === id ? ' is-pending' : ''}`,
-      transform: `translate(${p.x} ${p.y})`, tabindex: '0', 'data-id': id, role: 'button', 'aria-label': `${p.label} (${MODEL_LABEL[d.kind]})`,
+      transform: `translate(${p.x} ${p.y})`, tabindex: '0', 'data-id': id, role: 'button', 'aria-label': `${p.label} (${modelLabel(d.kind)})`,
     });
     g.appendChild(svg('rect', { class: 'device-halo', x: -ICON_W / 2 - 8, y: -ICON_H / 2 - 8, width: ICON_W + 16, height: ICON_H + 16, rx: 10 }));
     const icon = staticSvg(ICONS[d.kind]);
     icon.setAttribute('x', String(-ICON_W / 2));
     icon.setAttribute('y', String(-ICON_H / 2));
     g.appendChild(icon);
-    g.appendChild(svg('text', { class: 'device-model', x: 0, y: -ICON_H / 2 - 12 }, MODEL_LABEL[d.kind]));
+    g.appendChild(svg('text', { class: 'device-model', x: 0, y: -ICON_H / 2 - 12 }, modelLabel(d.kind)));
     g.appendChild(svg('text', { class: 'device-label', x: 0, y: ICON_H / 2 + 18 }, p.label));
     if (name && name !== 'Router' && name !== 'Switch' && name !== p.label) g.appendChild(svg('text', { class: 'device-host', x: 0, y: ICON_H / 2 + 33 }, name));
     g.addEventListener('pointerdown', (e) => this.onDevicePointer(e, id, g));

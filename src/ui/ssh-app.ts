@@ -39,7 +39,7 @@ function terminalFor(pc: Pc, p: Omit<SshProfile, 'name'>, app: AfterChange): Ter
     prompt: () => shell.prompt(), run: (l) => shell.run(l),
     secret: () => shell.secret(), complete: (l) => shell.complete?.(l) ?? null,
     interrupt: () => shell.interrupt?.() ?? [], eof: () => shell.eof?.() ?? [],
-    editRequest: () => shell.editRequest?.() ?? null, saveEdit: (path, c) => (shell.saveEdit ? shell.saveEdit(path, c) : 'No disponible'),
+    editRequest: () => shell.editRequest?.() ?? null, saveEdit: (path, c) => (shell.saveEdit ? shell.saveEdit(path, c) : t('common.unavailable')),
     closeEdit: () => shell.closeEdit?.() ?? [],
     screenFrame: (w, h) => shell.screenFrame?.(w, h) ?? null, screenKey: (k) => shell.screenKey?.(k) ?? [],
   };
@@ -118,7 +118,7 @@ function knownPane(ring: SshKeyring, app: AfterChange): HTMLElement {
 
 export function sshApp(pc: Pc, app: AfterChange): HTMLElement {
   const ring = keyring(pc);
-  if (!ring) return el('p', { class: 'muted' }, 'alumno?');
+  if (!ring) return el('p', { class: 'muted' }, t('common.unavailable'));
   return subnav([
     { id: 'session', label: t('ssh.session'), render: () => sessionPane(pc, ring, app) },
     { id: 'keys', label: t('ssh.keys'), render: () => keysPane(ring, app) },

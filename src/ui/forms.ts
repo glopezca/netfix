@@ -1,4 +1,5 @@
 /** Small form and table builders for the device windows. All text goes through textContent. */
+import { t } from '../i18n/t.ts';
 import { el } from './dom.ts';
 
 let uid = 0;
@@ -33,7 +34,7 @@ export function button(label: string, onClick: () => void, cls = 'btn'): HTMLBut
 export function onOff(label: string, on: boolean, change: (on: boolean) => void): HTMLElement {
   const box = el('input', { type: 'checkbox', role: 'switch', checked: on });
   box.addEventListener('change', () => change(box.checked));
-  return el('label', { class: 'switch-row' }, box, el('span', { class: 'switch-label' }, label), el('span', { class: 'switch-state' }, on ? 'Activado' : 'Desactivado'));
+  return el('label', { class: 'switch-row' }, box, el('span', { class: 'switch-label' }, label), el('span', { class: 'switch-state' }, on ? t('common.on') : t('common.off')));
 }
 
 export function message(): { el: HTMLElement; ok(text: string): void; error(text: string): void; clear(): void } {
@@ -65,7 +66,7 @@ export function table<T>(rows: readonly T[], cols: readonly Column<T>[], opts: {
       tr.addEventListener('keydown', (e) => { if (e.key === 'Enter') opts.onSelect?.(r); });
     }
     if (hasActions) {
-      const buttons = [...(opts.actions?.(r) ?? []), ...(opts.onDelete ? [button('Eliminar', () => opts.onDelete?.(r), 'btn btn-quiet btn-small')] : [])];
+      const buttons = [...(opts.actions?.(r) ?? []), ...(opts.onDelete ? [button(t('common.delete'), () => opts.onDelete?.(r), 'btn btn-quiet btn-small')] : [])];
       buttons.forEach((b) => b.addEventListener('click', (e) => e.stopPropagation()));
       tr.appendChild(el('td', { class: 'row-actions' }, ...buttons));
     }
@@ -75,10 +76,10 @@ export function table<T>(rows: readonly T[], cols: readonly Column<T>[], opts: {
 }
 
 export function copyRow(label: string, value: string, help: string): HTMLElement {
-  const btn = button('Copiar', () => {
-    void navigator.clipboard?.writeText(value).then(() => { btn.textContent = 'Copiado'; }, () => { btn.textContent = 'No disponible'; });
+  const btn = button(t('common.copy'), () => {
+    void navigator.clipboard?.writeText(value).then(() => { btn.textContent = t('common.copied'); }, () => { btn.textContent = t('common.unavailable'); });
   }, 'btn btn-quiet');
-  btn.setAttribute('aria-label', `Copiar ${label}`);
+  btn.setAttribute('aria-label', t('common.copyX', { label }));
   return el('div', { class: 'id-row' },
     el('div', {}, el('span', { class: 'field-label' }, label), el('code', { class: 'id-value' }, value), el('p', { class: 'id-help' }, help)), btn);
 }
@@ -97,5 +98,5 @@ export function subnav(items: readonly { id: string; label: string; render: () =
     content.replaceChildren(item ? item.render() : el('p', {}, ''));
   };
   if (items[0]) show(items[0].id);
-  return el('div', { class: 'subnav' }, el('nav', { class: 'subnav-list', 'aria-label': 'Servicios' }, ...buttons), content);
+  return el('div', { class: 'subnav' }, el('nav', { class: 'subnav-list', 'aria-label': t('win.services') }, ...buttons), content);
 }

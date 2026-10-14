@@ -1,4 +1,5 @@
 /** Server service configuration (immutable records, edited from the GUI or restored from JSON). */
+import { t } from '../i18n/t.ts';
 
 /** A reservation identifies the client by MAC (Kea `hw-address`) or by client-id (option 61). */
 export interface DhcpReservation {
@@ -75,11 +76,11 @@ export function defaultWebApps(): WebApps {
 
 /** Error message for an alias or port, or null. */
 export function validateAccess(a: WebAppAccess, other?: WebAppAccess): string | null {
-  if (!/^\/[A-Za-z0-9._~-]+(\/[A-Za-z0-9._~-]+)*$/.test(a.alias)) return 'El alias debe empezar por / y contener solo letras, números, punto, guion o guion bajo (por ejemplo /roundcube).';
-  if (!Number.isInteger(a.port) || a.port < 1 || a.port > 65535) return 'El puerto va de 1 a 65535.';
-  if (a.mode === 'port' && RESERVED_PORTS.includes(a.port)) return `El puerto ${a.port} lo usa otro servicio del servidor.`;
-  if (other?.enabled && a.enabled && a.mode === 'port' && other.mode === 'port' && other.port === a.port) return `El puerto ${a.port} ya lo usa la otra aplicación web.`;
-  if (other?.enabled && a.enabled && a.mode === 'alias' && other.mode === 'alias' && other.alias === a.alias) return `El alias ${a.alias} ya lo usa la otra aplicación web.`;
+  if (!/^\/[A-Za-z0-9._~-]+(\/[A-Za-z0-9._~-]+)*$/.test(a.alias)) return t('web.err.alias');
+  if (!Number.isInteger(a.port) || a.port < 1 || a.port > 65535) return t('web.err.port');
+  if (a.mode === 'port' && RESERVED_PORTS.includes(a.port)) return t('web.err.reserved', { port: a.port });
+  if (other?.enabled && a.enabled && a.mode === 'port' && other.mode === 'port' && other.port === a.port) return t('web.err.portUsed', { port: a.port });
+  if (other?.enabled && a.enabled && a.mode === 'alias' && other.mode === 'alias' && other.alias === a.alias) return t('web.err.aliasUsed', { alias: a.alias });
   return null;
 }
 

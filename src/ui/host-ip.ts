@@ -1,4 +1,5 @@
-/** "Configuración IP" tab for PCs and servers. */
+/** "IP Configuration" tab for PCs and servers. */
+import { t } from '../i18n/t.ts';
 import { el } from './dom.ts';
 import { field, copyRow, input, message } from './forms.ts';
 import type { Host } from '../devices/host.ts';
@@ -14,12 +15,12 @@ export interface AfterChange {
 /** Custom Client-ID (hex or ASCII) and the MAC / option 61 rows to copy into server configs. */
 function clientIdSection(h: Host, app: AfterChange, msg: ReturnType<typeof message>): { form: HTMLElement; box: HTMLElement; render: () => void } {
   const box = el('div', { class: 'ids' });
-  const customId = input({ placeholder: 'vacío = 01 + MAC', value: h.clientIdOverride ? formatHexId(h.clientIdOverride) : '' });
-  const customFmt = el('select', { class: 'select', 'aria-label': 'Formato del Client-ID' }, el('option', { value: 'hex' }, 'Hexadecimal'), el('option', { value: 'ascii' }, 'Texto ASCII'));
+  const customId = input({ placeholder: t('ip.customPlaceholder'), value: h.clientIdOverride ? formatHexId(h.clientIdOverride) : '' });
+  const customFmt = el('select', { class: 'select', 'aria-label': t('ip.idFormat') }, el('option', { value: 'hex' }, t('ip.hex')), el('option', { value: 'ascii' }, t('ip.ascii')));
   const applyCustomId = (): void => {
     const text = customId.value.trim();
     const hex = text === '' ? undefined : customFmt.value === 'ascii' ? asciiToHex(text) : parseHexId(text);
-    if (hex === null) return msg.error('Client-ID no válido: usa hexadecimal (0161.756c.61) o elige «Texto ASCII».');
+    if (hex === null) return msg.error(t('ip.badId'));
     msg.clear();
     h.clientIdOverride = hex;
     app.afterCommand();
@@ -30,12 +31,12 @@ function clientIdSection(h: Host, app: AfterChange, msg: ReturnType<typeof messa
 
   const render = (): void => {
     box.replaceChildren(
-      copyRow('MAC', formatMacCisco(h.mac), 'Para «hardware-address» y las reservas por MAC.'),
-      copyRow('Client-ID (opción 61)', formatHexId(h.clientId() ?? ''), h.sendClientId ? 'Para «client-identifier», «address … client-id» y las reservas por Client-ID.' : 'No se envía: el servidor identificará al equipo por su MAC.'),
+      copyRow('MAC', formatMacCisco(h.mac), t('ip.macHint')),
+      copyRow(t('ip.clientId'), formatHexId(h.clientId() ?? ''), h.sendClientId ? t('ip.idHint') : t('ip.idNotSent')),
     );
   };
 
-  const form = el('div', { class: 'grid2' }, field('Client-ID personalizado (como «send dhcp-client-identifier»)', customId), field('Formato', customFmt));
+  const form = el('div', { class: 'grid2' }, field(t('ip.customId'), customId), field(t('ip.format'), customFmt));
   return { form, box, render };
 }
 
@@ -48,13 +49,13 @@ function readStatic(inputs: IpInputs): { ip?: number; prefix?: number; gateway?:
   const gw = read(inputs.gw);
   const dns = read(inputs.dns);
   const mask = inputs.mask.value.trim() === '' ? undefined : parseMask(inputs.mask.value.trim());
-  const bad = ip === null ? 'la dirección IP' : mask === null ? 'la máscara' : gw === null ? 'la puerta de enlace' : dns === null ? 'el servidor DNS' : '';
-  if (bad) return `Revisa ${bad}: usa el formato 192.168.1.10.`;
+  const bad = ip === null ? t('ip.field.ip') : mask === null ? t('ip.field.mask') : gw === null ? t('ip.field.gw') : dns === null ? t('ip.field.dns') : '';
+  if (bad) return t('ip.check', { field: bad });
   const prefix = mask ?? (ip !== undefined && ip !== null ? classfulPrefix(ip) : undefined);
   return { ip: ip ?? undefined, prefix, gateway: gw ?? undefined, dns: dns ?? undefined };
 }
 
-const DHCP_TEXT: Readonly<Record<Host['dhcpStatus'], string>> = { idle: '', requesting: 'Solicitando dirección IP…', ok: 'Solicitud DHCP correcta.', failed: 'La solicitud DHCP ha fallado. Se usa APIPA.' };
+const dhcpText = (s: Host['dhcpStatus']): string => (s === 'idle' ? '' : t(s === 'requesting' ? 'ip.requesting' : s === 'ok' ? 'ip.dhcpOk' : 'ip.dhcpFailed'));
 
 interface Parts {
   readonly dhcpRadio: HTMLInputElement;
@@ -70,14 +71,14 @@ interface Parts {
 function layout(p: Parts): HTMLElement {
   const { dhcpRadio, staticRadio, status, inputs, sendId, osSel, ids } = p;
   return el('div', { class: 'pane' },
-    el('fieldset', { class: 'mode' }, el('legend', {}, 'Configuración IPv4'),
-      el('label', { class: 'radio' }, dhcpRadio, 'DHCP'), el('label', { class: 'radio' }, staticRadio, 'Estática')),
+    el('fieldset', { class: 'mode' }, el('legend', {}, t('ip.ipv4')),
+      el('label', { class: 'radio' }, dhcpRadio, 'DHCP'), el('label', { class: 'radio' }, staticRadio, t('ip.static'))),
     status,
-    el('div', { class: 'grid2' }, field('Dirección IPv4', inputs.ip), field('Máscara de subred', inputs.mask), field('Puerta de enlace', inputs.gw), field('Servidor DNS', inputs.dns)),
+    el('div', { class: 'grid2' }, field(t('ip.address'), inputs.ip), field(t('ip.mask'), inputs.mask), field(t('ip.gateway'), inputs.gw), field(t('ip.dns'), inputs.dns)),
     p.msg,
-    el('label', { class: 'check' }, sendId, 'Enviar identificador de cliente (opción 61), como Windows'),
+    el('label', { class: 'check' }, sendId, t('ip.sendId')),
     ids.form,
-    field('Sistema operativo (servicios y banner SSH)', osSel),
+    field(t('ip.os'), osSel),
     ids.box,
   );
 }
@@ -102,7 +103,7 @@ export function hostIpConfig(h: Host, app: AfterChange): { root: HTMLElement; di
     inputs.gw.value = c.gateway !== undefined ? formatIp(c.gateway) : '';
     inputs.dns.value = c.dns !== undefined ? formatIp(c.dns) : '';
     for (const i of Object.values(inputs)) i.disabled = c.mode === 'dhcp';
-    status.textContent = c.mode !== 'dhcp' ? '' : DHCP_TEXT[h.dhcpStatus];
+    status.textContent = c.mode !== 'dhcp' ? '' : dhcpText(h.dhcpStatus);
     status.dataset.state = h.dhcpStatus;
     ids.render();
   };

@@ -61,7 +61,7 @@ function cliTerminal(placed: Placed, host: WindowHost): Terminal {
     const session = new Session(device, { initialDialog: device.kind === 'router' });
     const intro = [...iosIntro(device), ...session.banner()];
     if (device.kind !== 'router') intro.push('Press RETURN to get started!', '');
-    term = new Terminal(iosBackend(device, session), { intro, label: `Consola de ${placed.label}`, afterRun: () => host.afterCommand(), iosMessages: true });
+    term = new Terminal(iosBackend(device, session), { intro, label: t('win.console', { name: placed.label }), afterRun: () => host.afterCommand(), iosMessages: true });
     terminals.set(placed.device.id, term);
   }
   return term;
@@ -86,13 +86,13 @@ export function openDeviceWindow(placed: Placed, host: WindowHost): void {
     return;
   }
   if (d instanceof Cloud) {
-    host.windows.show(d.id, `${placed.label} · Nube ISP`, cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) }));
+    host.windows.show(d.id, t('win.cloud', { name: placed.label }), cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) }));
     return;
   }
   const term = cliTerminal(placed, host);
   host.windows.show(d.id, `${placed.label} · ${d.hostname}`, [
     { id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() },
-    { id: 'web', label: 'Gestión web', render: () => iosWebSettings(d, () => host.afterCommand()) },
+    { id: 'web', label: t('win.webAdmin'), render: () => iosWebSettings(d, () => host.afterCommand()) },
   ]);
 }
 
@@ -102,17 +102,17 @@ function shellTerminal(placed: Placed, h: Host, os: HostOs, app: WindowHost): Te
   if (!term) {
     const shell = createShell(h, os);
     const intro = os === 'windows'
-      ? ['Microsoft Windows (Netfix) · escribe help para ver los comandos.', '']
-      : ['Ubuntu 26.04 LTS (GNU/Linux 6.17.0-14-generic x86_64) · GNU bash 5.3 en Netfix', 'Ayuda: help, man <orden> o la pestaña Documentación. Editores: nano y vim.', ''];
+      ? [t('win.windowsIntro'), '']
+      : [t('win.linuxIntro'), t('win.linuxHelp'), ''];
     const backend: ConsoleBackend = {
       prompt: () => shell.prompt(), run: (l) => shell.run(l), secret: () => shell.secret(),
       complete: (l) => shell.complete?.(l) ?? null, interrupt: () => shell.interrupt?.() ?? [], eof: () => shell.eof?.() ?? [],
-      editRequest: () => shell.editRequest?.() ?? null, saveEdit: (p, c) => (shell.saveEdit ? shell.saveEdit(p, c) : 'No disponible'),
+      editRequest: () => shell.editRequest?.() ?? null, saveEdit: (p, c) => (shell.saveEdit ? shell.saveEdit(p, c) : t('common.unavailable')),
       closeEdit: () => shell.closeEdit?.() ?? [],
       screenFrame: (w, h) => shell.screenFrame?.(w, h) ?? null, screenKey: (k) => shell.screenKey?.(k) ?? [],
     };
     term = new Terminal(backend, {
-      intro, label: `${os === 'windows' ? 'Símbolo del sistema' : 'Terminal'} de ${placed.label}`, afterRun: () => app.afterCommand(),
+      intro, label: t(os === 'windows' ? 'win.cmdOf' : 'win.termOf', { name: placed.label }), afterRun: () => app.afterCommand(),
     });
     terminals.set(key, term);
   }
@@ -122,26 +122,26 @@ function shellTerminal(placed: Placed, h: Host, os: HostOs, app: WindowHost): Te
 function openHostWindow(placed: Placed, h: Host, app: WindowHost): void {
   const disposers: (() => void)[] = [];
   const terminal = (os: HostOs): Tab => ({
-    id: os, label: os === 'windows' ? 'Símbolo del sistema' : 'Terminal Linux',
+    id: os, label: os === 'windows' ? t('win.cmd') : t('win.linuxTerm'),
     render: () => shellTerminal(placed, h, os, app).root, onShow: () => shellTerminal(placed, h, os, app).focus(),
   });
-  const ipTab: Tab = { id: 'ip', label: 'Configuración IP', render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
+  const ipTab: Tab = { id: 'ip', label: t('win.ip'), render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
   const order: HostOs[] = h.os === 'linux' ? ['linux', 'windows'] : ['windows', 'linux'];
   const model = h instanceof LinuxRouter ? '2911 Linux' : h instanceof Server ? 'Server' : 'PC';
   let handle: { setTitle(t: string): void } | undefined;
-  const settingsTab: Tab = { id: 'host', label: 'Equipo', render: () => {
+  const settingsTab: Tab = { id: 'host', label: t('win.host'), render: () => {
     const v = hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) });
     disposers.push(v.dispose);
     return v.root;
   } };
   const routerTabs = (r: LinuxRouter): Tab[] => [
-    { id: 'svc', label: 'Servicios', render: () => servicesTab(r, app) },
+    { id: 'svc', label: t('win.services'), render: () => servicesTab(r, app) },
     { id: 'ifaces', label: t('router.ifaces'), render: () => { const v = routerInterfaces(r, app); disposers.push(v.dispose); return v.root; } },
     settingsTab, terminal('linux'),
   ];
   const tabs: Tab[] = h instanceof LinuxRouter ? routerTabs(h) : h instanceof Server
-    ? [{ id: 'svc', label: 'Servicios', render: () => servicesTab(h, app) }, ipTab, settingsTab, ...order.map(terminal)]
-    : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: 'Navegador', render: () => browserApp(h, app) }, { id: 'mail', label: 'Correo', render: () => mailApp(h, app) },
+    ? [{ id: 'svc', label: t('win.services'), render: () => servicesTab(h, app) }, ipTab, settingsTab, ...order.map(terminal)]
+    : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
       { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : []), settingsTab, ...order.map(terminal)];
   handle = app.windows.show(h.id, `${placed.label} · ${model}`, tabs, () => disposers.forEach((f) => f()));
 }

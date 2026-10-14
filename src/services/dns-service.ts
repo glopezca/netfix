@@ -1,4 +1,5 @@
 /** Authoritative DNS server built from a flat list of records (BIND-like answers). */
+import { t } from '../i18n/t.ts';
 import type { DnsAnswer, DnsMessage, DnsType } from '../net/packets.ts';
 import { normalizeName, ipFromReverse } from '../net/dns.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
@@ -105,9 +106,9 @@ export function answerQuery(query: DnsMessage, records: readonly DnsRecord[], or
 export function validateRecord(r: DnsRecord, origin?: string): string | null {
   const nameErr = validateName(r.name, origin);
   if (nameErr) return nameErr;
-  if (r.type === 'A' && parseIp(r.value) === null) return 'Un registro A necesita una dirección IPv4.';
+  if (r.type === 'A' && parseIp(r.value) === null) return t('dnsv.a');
   const targetErr = r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX' ? validateName(r.value, origin, false) : null;
-  if (targetErr) return `Un registro ${r.type} necesita un nombre de host (relativo, absoluto con punto final o @): ${targetErr}`;
-  if (r.type === 'MX' && (r.priority === undefined || r.priority < 0 || r.priority > 65535)) return 'La prioridad MX va de 0 a 65535.';
-  return r.value.trim() === '' ? 'El valor no puede estar vacío.' : null;
+  if (targetErr) return t('dnsv.target', { type: r.type, error: targetErr });
+  if (r.type === 'MX' && (r.priority === undefined || r.priority < 0 || r.priority > 65535)) return t('dnsv.mx');
+  return r.value.trim() === '' ? t('dnsv.empty') : null;
 }

@@ -9,7 +9,7 @@ import { section, row, text, check, choose, form, buttons } from './admin-layout
 import { formatIp, formatMask } from '../core/ip.ts';
 import { UNITS, unitActive } from '../services/units.ts';
 import type { WebAppAccess } from '../services/config.ts';
-import { ID_KINDS, identifierText } from '../services/dhcp-reservations.ts';
+import { idKinds, identifierText } from '../services/dhcp-reservations.ts';
 import { formatMacCisco, formatHexId } from '../core/mac.ts';
 
 const ip = (n: number | undefined): string => (n === undefined ? '' : formatIp(n));
@@ -40,7 +40,7 @@ function reservations(server: Server, base: string): Child {
     h('table', {}, section('Reservas', 'Direcciones fijas para un cliente, identificado por su MAC o por su Client-ID (opción 61).', table(['Pool', 'IP', 'Identificador', 'Descripción', ''], rows, 'Sin reservas.'))),
     pools.length ? form(base, 'dhcp', 'res-add', h('table', {}, section('Nueva reserva', 'Por MAC: coincide aunque el cliente envíe otro Client-ID. Por Client-ID: coincide con la opción 61.',
       row('Pool', choose('pool', pools[0]?.name ?? '', pools.map((p) => [p.name, p.name]))), row('IP reservada', text('ip', '')),
-      row('Identificar por', choose('kind', 'mac', ID_KINDS.map(([v, l]) => [v, l]))), row('MAC o Client-ID', text('id', '')), row('Descripción', text('name', '')))), buttons()) : null,
+      row('Identificar por', choose('kind', 'mac', idKinds().map(([v, l]) => [v, l]))), row('MAC o Client-ID', text('id', '')), row('Descripción', text('name', '')))), buttons()) : null,
   ];
 }
 

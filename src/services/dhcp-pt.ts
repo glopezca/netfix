@@ -1,4 +1,5 @@
 /** Maps Packet Tracer-style DHCP pools onto the IOS DHCP engine (same allocation logic as routers). */
+import { t } from '../i18n/t.ts';
 import type { DhcpServer, ExcludedRange } from '../dhcp/server.ts';
 import type { PoolConfig } from '../dhcp/pool.ts';
 import { newPool, usableRange } from '../dhcp/pool.ts';
@@ -46,25 +47,25 @@ export function applyPtPools(engine: DhcpServer, pools: readonly PtDhcpPool[], e
 
 /** Validation used by the GUI. Returns an error message or null. */
 export function validatePool(p: PtDhcpPool, others: readonly PtDhcpPool[]): string | null {
-  if (!/^[\w.-]{1,32}$/.test(p.name)) return 'El nombre del pool solo admite letras, números, punto, guion y guion bajo.';
-  if (others.some((o) => o.name === p.name)) return `Ya existe un pool llamado ${p.name}.`;
-  if (p.prefix < 8 || p.prefix > 30) return 'La máscara debe estar entre /8 y /30.';
+  if (!/^[\w.-]{1,32}$/.test(p.name)) return t('pool.err.name');
+  if (others.some((o) => o.name === p.name)) return t('pool.err.exists', { name: p.name });
+  if (p.prefix < 8 || p.prefix > 30) return t('pool.err.mask');
   const { first, last } = usableRange({ ip: p.start, prefix: p.prefix });
-  if (p.start < first || p.start > last) return `La IP inicial ${formatIp(p.start)} no es una dirección de host de su subred.`;
-  if (p.maxUsers < 1) return 'El número máximo de usuarios debe ser al menos 1.';
-  if (p.gateway !== undefined && !inSubnet(p.gateway, p.start, p.prefix)) return 'La puerta de enlace debe estar en la misma subred que el pool.';
+  if (p.start < first || p.start > last) return t('pool.err.start', { ip: formatIp(p.start) });
+  if (p.maxUsers < 1) return t('pool.err.users');
+  if (p.gateway !== undefined && !inSubnet(p.gateway, p.start, p.prefix)) return t('pool.err.gateway');
   const net = networkOf(p.start, p.prefix);
-  if (others.some((o) => networkOf(o.start, o.prefix) === net && o.prefix === p.prefix)) return 'Ya hay un pool para esa subred.';
+  if (others.some((o) => networkOf(o.start, o.prefix) === net && o.prefix === p.prefix)) return t('pool.err.subnet');
   const bad = p.reservations.find((r) => !inSubnet(r.ip, p.start, p.prefix));
-  return bad ? `La reserva ${formatIp(bad.ip)} no está en la subred del pool.` : validateReservations(p.reservations);
+  return bad ? t('pool.err.resNet', { ip: formatIp(bad.ip) }) : validateReservations(p.reservations);
 }
 
 function validateReservations(list: readonly DhcpReservation[]): string | null {
-  if (list.some((r) => Boolean(r.mac) === Boolean(r.clientId))) return 'Cada reserva necesita una MAC o un Client-ID (solo uno de los dos).';
+  if (list.some((r) => Boolean(r.mac) === Boolean(r.clientId))) return t('pool.err.resId');
   const ips = list.map((r) => r.ip);
-  if (new Set(ips).size !== ips.length) return 'Hay una IP reservada repetida.';
+  if (new Set(ips).size !== ips.length) return t('pool.err.resIp');
   const ids = list.map((r) => (r.mac ? `mac:${r.mac}` : `id:${r.clientId ?? ''}`));
-  return new Set(ids).size === ids.length ? null : 'Hay una MAC o un Client-ID repetido en las reservas.';
+  return new Set(ids).size === ids.length ? null : t('pool.err.resDup');
 }
 
 /** Turns an automatic lease into a reservation keyed by its MAC or by its client-id. */

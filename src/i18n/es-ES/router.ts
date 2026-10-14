@@ -1,6 +1,5 @@
 /** Español (España): router Linux (interfaces y rutas). */
 export const ROUTER_ES = {
-  'kind.linuxrouter': 'Router Linux',
   'router.ifaces': 'Interfaces',
   'router.ifacesIntro': 'Hardware de un 2911 (GigabitEthernet0/0-2) con Ubuntu: eth0-2. eth0 es la WAN (estática o DHCP). Los cambios aquí son la configuración en ejecución, como «ip addr»; para que duren al reiniciar el equipo simulado se guardan en el archivo de la topología.',
   'router.port': 'Puerto',

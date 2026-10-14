@@ -3,6 +3,7 @@
  * name is relative and gets the origin appended. Without an origin (files from Netfix ≤ 0.2)
  * every name is taken as absolute.
  */
+import { t } from '../i18n/t.ts';
 import type { DnsRecord } from './config.ts';
 
 const LABEL = /^(?:\*|[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?)$/i;
@@ -30,7 +31,7 @@ function validLabels(name: string): boolean {
 
 export function validateOrigin(origin: string | undefined): string | null {
   const o = cleanOrigin(origin);
-  return o === undefined || validLabels(o) ? null : 'Origen de zona no válido (por ejemplo aula.lab).';
+  return o === undefined || validLabels(o) ? null : t('dnsv.origin');
 }
 
 /**
@@ -41,10 +42,10 @@ export function validateName(name: string, origin: string | undefined, owner = t
   const n = name.trim();
   if (n === '@') return cleanOrigin(origin) ? null : '«@» necesita el origen de la zona (campo Dominio de la zona).';
   const body = n.endsWith('.') ? n.slice(0, -1) : n;
-  if (!validLabels(body)) return `Nombre no válido: «${n}». Usa www (relativo), www.aula.lab. (absoluto), @ o un comodín *.`;
+  if (!validLabels(body)) return t('dnsv.name', { name: n });
   const stars = body.split('.').map((l, i) => (l === '*' ? i : -1)).filter((i) => i >= 0);
-  if (stars.length > 0 && !owner) return `Un comodín «*» solo puede ser el nombre de un registro, no su valor: «${n}».`;
-  if (stars.some((i) => i > 0)) return `El comodín «*» solo puede ser la primera etiqueta del nombre: «${n}».`;
+  if (stars.length > 0 && !owner) return t('dnsv.starValue', { name: n });
+  if (stars.some((i) => i > 0)) return t('dnsv.starFirst', { name: n });
   const full = qualify(n, origin);
   return full !== null && full.length <= MAX_NAME ? null : `Nombre demasiado largo: «${n}».`;
 }

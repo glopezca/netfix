@@ -2,6 +2,7 @@
  * Router/switch → «Gestión web»: turns the IOS HTTP server on/off, picks its port and how users log in.
  * Every change is applied as the equivalent IOS commands (shown in the tab), as if typed in the CLI.
  */
+import { t } from '../i18n/t.ts';
 import { el } from './dom.ts';
 import { field, input, button, message, select, table } from './forms.ts';
 import { livePanel } from './server-dhcp-dns.ts';
@@ -36,50 +37,50 @@ export function iosWebSettings(device: IosDevice, afterCommand: () => void): HTM
       afterCommand();
       refresh();
       if (errors.length) msg.error(errors.join(' '));
-      else msg.ok(`Aplicado: ${lines.map((l) => l.replace(/ (secret|password) \S+$/, ' $1 ****')).join(' · ')}`);
+      else msg.ok(t('iosweb.applied', { lines: lines.map((l) => l.replace(/ (secret|password) \S+$/, ' $1 ****')).join(' · ') }));
     };
     const on = el('input', { type: 'checkbox', checked: device.http.server });
     const port = input({ value: String(device.http.port), inputmode: 'numeric', maxlength: '5' });
-    const auth = select([['enable', 'enable secret / enable password'], ['local', 'usuarios locales (username)']], device.http.auth);
+    const auth = select([['enable', 'enable secret / enable password'], ['local', t('iosweb.authLocal')]], device.http.auth);
     const save = (): void => {
       const n = Number(port.value.trim());
-      if (!Number.isInteger(n) || n < 1 || n > MAX_PORT) return msg.error('El puerto debe ser un número de 1 a 65535.');
+      if (!Number.isInteger(n) || n < 1 || n > MAX_PORT) return msg.error(t('iosweb.badPort'));
       apply([on.checked ? 'ip http server' : 'no ip http server', n === DEFAULT_HTTP_PORT ? 'no ip http port' : `ip http port ${n}`, `ip http authentication ${auth.value === 'local' ? 'local' : 'enable'}`]);
     };
     const name = input({ placeholder: 'admin', maxlength: '32' });
-    const pass = input({ type: 'password', placeholder: 'contraseña' });
+    const pass = input({ type: 'password', placeholder: t('iosweb.passPlaceholder') });
     const addUser = (): void => {
-      if (!USER.test(name.value.trim())) return msg.error('Usuario: letras, números, punto, guion o guion bajo (máx. 32).');
-      if (!pass.value || /\s/.test(pass.value)) return msg.error('Escribe una contraseña sin espacios.');
+      if (!USER.test(name.value.trim())) return msg.error(t('iosweb.badUser'));
+      if (!pass.value || /\s/.test(pass.value)) return msg.error(t('iosweb.badPass'));
       apply([`username ${name.value.trim()} privilege ${MAX_PRIVILEGE} secret ${pass.value}`]);
     };
     const users = table<LocalUser>(device.users, [
-      { label: 'Usuario', value: (u) => u.name, mono: true },
-      { label: 'Privilegio', value: (u) => String(u.privilege) },
-      { label: 'Clave', value: (u) => (u.secret !== undefined ? 'secret (hash)' : 'password') },
-    ], { empty: 'Sin usuarios locales.', onDelete: (u) => apply([`no username ${u.name}`]) });
+      { label: t('iosweb.user'), value: (u) => u.name, mono: true },
+      { label: t('iosweb.privilege'), value: (u) => String(u.privilege) },
+      { label: t('iosweb.key'), value: (u) => (u.secret !== undefined ? 'secret (hash)' : 'password') },
+    ], { empty: t('iosweb.noUsers'), onDelete: (u) => apply([`no username ${u.name}`]) });
     const urls = addresses(device).map((ip) => urlOf(device, ip));
     const noEnable = device.http.auth === 'enable' && !device.enableSecret && !device.enablePassword;
     return [
-      el('h3', {}, 'Servidor HTTP del dispositivo'),
-      el('label', { class: 'switch-row' }, on, el('span', { class: 'switch-label' }, 'Gestión web (ip http server)')),
+      el('h3', {}, t('iosweb.server')),
+      el('label', { class: 'switch-row' }, on, el('span', { class: 'switch-label' }, t('iosweb.toggle'))),
       el('div', { class: 'grid2' },
-        field('Puerto', port, `Por defecto ${DEFAULT_HTTP_PORT} (ip http port).`),
-        field('Autenticación', auth, 'ip http authentication enable | local')),
-      el('div', { class: 'actions' }, button('Aplicar', save)),
+        field(t('iosweb.port'), port, t('iosweb.portHint', { port: DEFAULT_HTTP_PORT })),
+        field(t('iosweb.auth'), auth, 'ip http authentication enable | local')),
+      el('div', { class: 'actions' }, button(t('iosweb.apply'), save)),
       msg.el,
-      el('p', { class: 'form-msg', 'data-kind': noEnable ? 'error' : '' }, noEnable ? 'Sin enable secret nadie puede entrar: configúralo en la CLI o usa usuarios locales.' : ''),
-      el('h3', {}, 'Usuarios locales (privilegio 15)'),
+      el('p', { class: 'form-msg', 'data-kind': noEnable ? 'error' : '' }, noEnable ? t('iosweb.noEnable') : ''),
+      el('h3', {}, t('iosweb.users')),
       users,
-      el('div', { class: 'grid2' }, field('Usuario', name), field('Contraseña', pass)),
-      el('div', { class: 'actions' }, button('Añadir usuario', addUser)),
-      el('h3', {}, 'Cómo conectarse'),
+      el('div', { class: 'grid2' }, field(t('iosweb.user'), name), field(t('iosweb.password'), pass)),
+      el('div', { class: 'actions' }, button(t('iosweb.addUser'), addUser)),
+      el('h3', {}, t('iosweb.howTo')),
       el('ul', { class: 'muted' },
         el('li', {}, device.http.server
-          ? `Desde el navegador de un PC: ${urls.join(' · ') || '(asigna antes una IP a una interfaz' + (device.kind === 'switch' ? ' Vlan' : '') + ')'}`
-          : 'El servidor está apagado: no escucha en ningún puerto.'),
-        el('li', {}, 'Páginas: inicio, Monitor (/level/15/exec/-), Configure (/level/15/configure/-) y Device Manager (/level/15/dm).'),
-        el('li', {}, 'También con curl -u usuario:clave desde una terminal GNU/Linux.')),
+          ? t('iosweb.fromPc', { urls: urls.join(' · ') || t(device.kind === 'switch' ? 'iosweb.needIpVlan' : 'iosweb.needIp') })
+          : t('iosweb.off')),
+        el('li', {}, t('iosweb.pages')),
+        el('li', {}, t('iosweb.curl'))),
     ];
   });
 }

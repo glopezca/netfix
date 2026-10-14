@@ -1,4 +1,5 @@
 /** Static HTTP server: serves the files edited in Servicios → HTTP. */
+import { t } from '../i18n/t.ts';
 import type { AppPayload } from '../net/packets.ts';
 import type { WebFile } from './config.ts';
 
@@ -45,7 +46,7 @@ export function serveHttp(files: readonly WebFile[], req: HttpRequest, banner = 
 }
 
 export function validateFileName(name: string, existing: readonly WebFile[]): string | null {
-  if (!/^[\w.-]+(\/[\w.-]+)*$/.test(name)) return 'Usa un nombre como pagina.html o docs/guia.html (sin espacios).';
-  if (existing.some((f) => f.name.toLowerCase() === name.toLowerCase())) return `Ya existe ${name}.`;
+  if (!/^[\w.-]+(\/[\w.-]+)*$/.test(name)) return t('web.err.fileName');
+  if (existing.some((f) => f.name.toLowerCase() === name.toLowerCase())) return t('web.err.fileExists', { name });
   return null;
 }
