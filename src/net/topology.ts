@@ -1,4 +1,7 @@
 /** A workspace: devices with positions and labels, links, and JSON persistence. */
+import { nicsToJson, routesToJson, restoreNics, restoreRoutes } from './topology-nics.ts';
+import type { NicRecord, RouteRecord } from './topology-nics.ts';
+import { LinuxRouter } from '../devices/linux-router.ts';
 import { savedFiles, restoreFiles, bootKernel } from '../shells/host-system.ts';
 import { validFileRecords } from '../bash/vfs-persist.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
@@ -27,7 +30,7 @@ import { populateInternet } from './internet-hosts.ts';
 
 registerWebApps();
 
-export type DeviceKind = 'router' | 'switch' | 'pc' | 'server' | 'cloud';
+export type DeviceKind = 'router' | 'switch' | 'pc' | 'server' | 'linuxrouter' | 'cloud';
 export type AnyDevice = Router | Switch | Pc | Server | Cloud;
 
 export interface Placed {
@@ -54,6 +57,9 @@ export interface PcRecord {
   readonly apps?: { readonly mail?: MailAccount; readonly inbox?: readonly MailMessage[]; readonly url?: string };
   /** Files created or changed from the Linux terminal (home directories, /etc, /var/www…). */
   readonly files?: readonly FileRecord[];
+  /** Further NICs (Linux router) and static routes. */
+  readonly nics?: readonly NicRecord[];
+  readonly routes?: readonly RouteRecord[];
 }
 
 export interface ServerRecord {
@@ -85,7 +91,7 @@ export interface TopologyFile {
   readonly links: readonly { readonly a: Endpoint; readonly b: Endpoint; readonly cable: CableKind }[];
 }
 
-const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', cloud: 'Cloud' };
+const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'Cloud' };
 export const FILE_VERSION = 2;
 const SETTLE_MS = 30_000;
 const MAX_PRETTY = 256;
@@ -196,6 +202,7 @@ function createDevice(kind: Exclude<DeviceKind, 'cloud'>, id: string, seed: numb
   if (kind === 'router') return new Router({ id, clock, seed });
   if (kind === 'switch') return new Switch({ id, clock, seed });
   if (kind === 'server') return new Server(id, label, clock, seed);
+  if (kind === 'linuxrouter') return new LinuxRouter(id, label, clock, seed);
   return new Pc(id, label, clock, seed);
 }
 
@@ -223,7 +230,7 @@ function hostRecord(d: Host): PcRecord {
   const os = d.os;
   const clientId = d.clientIdOverride;
   const files = savedFiles(d);
-  const names = { hostname: d.name, prettyHostname: d.prettyName };
+  const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes) };
   if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
   const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
   return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
@@ -247,6 +254,8 @@ function restore(device: AnyDevice, rec: DeviceRecord): void {
     if (device instanceof Server) device.web.reload();
     if (device instanceof Server && rec.server) restoreServer(device, rec.server);
     if (device instanceof Pc && pc.apps) restoreApps(device, pc.apps);
+    restoreNics(device, pc.nics);
+    restoreRoutes(device, pc.routes);
     if (pc.files !== undefined) bootKernel(device, validFileRecords(pc.files));
     return;
   }
@@ -285,7 +294,7 @@ export function validateFile(data: unknown): TopologyFile {
   const { devices, links } = data;
   if (!Array.isArray(devices) || !Array.isArray(links)) throw new Error('Archivo incompleto: faltan dispositivos o enlaces.');
   for (const d of devices) {
-    if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'cloud'].includes(String(d.kind))) throw new Error('Dispositivo no válido en el archivo.');
+    if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'].includes(String(d.kind))) throw new Error('Dispositivo no válido en el archivo.');
     if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string') throw new Error(`Datos incompletos para ${d.id}.`);
     if (d.config !== undefined && (!Array.isArray(d.config) || d.config.some((l) => typeof l !== 'string'))) throw new Error(`Configuración no válida en ${d.id}.`);
   }

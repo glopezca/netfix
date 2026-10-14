@@ -1,0 +1,32 @@
+/** English (UK): Linux router (interfaces and routes). */
+import type { RouterKey } from '../es-ES/router.ts';
+
+export const ROUTER_EN: Readonly<Record<RouterKey, string>> = {
+  'kind.linuxrouter': 'Linux router',
+  'router.ifaces': 'Interfaces',
+  'router.ifacesIntro': 'The hardware of a 2911 (GigabitEthernet0/0-2) running Ubuntu: eth0-2. eth0 is the WAN (static or DHCP). Changes here are the running configuration, like “ip addr”; they are kept in the topology file so they survive a restart of the simulated device.',
+  'router.port': 'Port',
+  'router.linux': 'Linux',
+  'router.address': 'IPv4 address',
+  'router.mask': 'Mask',
+  'router.state': 'State',
+  'router.up': 'Up',
+  'router.down': 'Down',
+  'router.noCable': 'no cable',
+  'router.apply': 'Apply',
+  'router.dhcp': 'DHCP (client on the WAN)',
+  'router.gateway': 'Default gateway',
+  'router.dns': 'DNS server',
+  'router.routes': 'Static routes',
+  'router.routesIntro': 'Networks reached through another router (ip route add NET/N via GW).',
+  'router.dest': 'Destination network (CIDR)',
+  'router.via': 'Next hop',
+  'router.addRoute': 'Add route',
+  'router.delete': 'Delete',
+  'router.noRoutes': 'No static routes.',
+  'router.forwarding': 'IPv4 forwarding (net.ipv4.ip_forward)',
+  'router.forwardingOff': 'Without forwarding the device does not route: it is a server with three cards. Turn it on here, with “sysctl -w net.ipv4.ip_forward=1” or in /etc/sysctl.conf.',
+  'router.errAddress': 'Check the address and mask of {iface}: use the format 192.168.1.1 and 255.255.255.0 (or /24).',
+  'router.errRoute': 'Invalid route: a network such as 10.0.0.0/8 and a next hop reachable through an interface.',
+  'router.errGateway': 'The gateway must be on the network of an interface.',
+};

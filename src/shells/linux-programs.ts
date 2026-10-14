@@ -1,4 +1,5 @@
 /** The Netfix programs of an Ubuntu host: network clients, systemd tools, ssh and command-not-found. */
+import { runsServices } from '../devices/kinds.ts';
 import type { CommandFn, Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { httpGet } from './net-tools.ts';
@@ -124,6 +125,6 @@ export function linuxPrograms(host: Host): Map<string, CommandFn> {
     ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
     ['ss', (ctx) => { lines(ctx, ss(host)); return 0; }],
     ['command-not-found', commandNotFound],
-    ...(host.kind === 'server' ? [...APACHE_TOOLS, ['rndc', rndc(host)] as const] : []),
+    ...(runsServices(host.kind) ? [...APACHE_TOOLS, ['rndc', rndc(host)] as const] : []),
   ]);
 }

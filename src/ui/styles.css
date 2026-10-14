@@ -574,3 +574,15 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
   .palette { flex-wrap: wrap; row-gap: 4px; }
   .palette .hint { flex-basis: 100%; }
 }
+
+/* Linux router: one row per NIC (stacked on narrow screens). */
+.nic-row { display: grid; grid-template-columns: 11rem minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px 12px; align-items: end; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.nic-name { display: flex; flex-direction: column; gap: 2px; padding-bottom: 8px; }
+.nic-actions { display: flex; gap: 8px; align-items: center; }
+.nic-actions .switch-row { margin: 0; }
+.nic-dhcp { grid-column: 2 / -1; }
+@media (max-width: 760px) {
+  .nic-row { grid-template-columns: 1fr 1fr; }
+  .nic-name, .nic-actions, .nic-dhcp { grid-column: 1 / -1; }
+}
+.nic-row input { width: 100%; min-width: 0; box-sizing: border-box; }

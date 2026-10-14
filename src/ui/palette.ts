@@ -12,7 +12,7 @@ export interface PaletteActions {
 }
 
 export const PLACEABLE: readonly (readonly [DeviceKind, MessageKey])[] = [
-  ['router', 'kind.router'], ['switch', 'kind.switch'], ['pc', 'kind.pc'], ['server', 'kind.server'], ['cloud', 'kind.cloud'],
+  ['router', 'kind.router'], ['switch', 'kind.switch'], ['pc', 'kind.pc'], ['server', 'kind.server'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
 ];
 
 export function palette(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, hintEl: HTMLElement): HTMLElement {

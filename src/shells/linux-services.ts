@@ -1,4 +1,5 @@
 /** systemctl, journalctl and ss for the Linux shell. */
+import { runsServices } from '../devices/kinds.ts';
 import type { Host } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import { findUnit, unitActive, openPorts, UNITS } from '../services/units.ts';
@@ -10,7 +11,7 @@ const STATUS_LOG_LINES = 5;
 const DEFAULT_JOURNAL_LINES = 50;
 
 function asServer(host: Host): Server | undefined {
-  return host.kind === 'server' ? (host as Server) : undefined;
+  return runsServices(host.kind) ? (host as Server) : undefined;
 }
 
 function stamp(ms: number): string {

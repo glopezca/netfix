@@ -1,5 +1,5 @@
 /** Server: a host running DHCP, DNS, HTTP, SMTP/POP3/IMAP and SSH services. */
-import { Host, HOST_PORT, DHCP_SERVER_PORT, DNS_PORT } from './host.ts';
+import { Host, DHCP_SERVER_PORT, DNS_PORT } from './host.ts';
 import type { HostOs } from './host.ts';
 import type { IpPacket, AppPayload, DhcpMessage, MailMessage } from '../net/packets.ts';
 import { DHCP_CLIENT_PORT } from '../net/packets.ts';
@@ -35,7 +35,7 @@ const IMAP_PORT = 143;
 const SSH_PORT = 22;
 
 export class Server extends Host {
-  readonly kind = 'server' as const;
+  readonly kind: 'server' | 'linuxrouter' = 'server';
   override os: HostOs = 'linux';
   services: ServerServices = defaultServices();
   /** Units enabled at boot (`systemctl enable`, Windows "Automatic"). */
@@ -239,18 +239,20 @@ export class Server extends Host {
 
   // ------------------------------------------------------------ UDP services
 
-  protected onUdp(packet: IpPacket): void {
+  protected override onUdp(packet: IpPacket, iface: string): void {
     const udp = packet.udp;
     if (!udp) return;
-    if (udp.dport === DHCP_SERVER_PORT && udp.dhcp && udp.dhcp.op === 'BOOTREQUEST') this.onDhcp(udp.dhcp);
+    if (udp.dport === DHCP_SERVER_PORT && udp.dhcp && udp.dhcp.op === 'BOOTREQUEST') this.onDhcp(udp.dhcp, iface);
     else if (udp.dns) this.dns.handle(packet);
   }
 
-  private onDhcp(msg: DhcpMessage): void {
-    const { ip, prefix } = this.config;
+  /** DHCP on the NIC the request came in through (a relay's requests come to the main address). */
+  private onDhcp(msg: DhcpMessage, arrived: string): void {
+    const port = this.portNames().includes(arrived) ? arrived : this.primaryPort();
+    const { ip, prefix } = this.ifaceConfig(port) ?? {};
     if (ip === undefined || prefix === undefined) return;
     const reply = this.dhcpEngine.handle(msg, {
-      ifaceName: HOST_PORT,
+      ifaceName: port,
       ifaceAddrs: [{ ip, prefix }],
       ownIps: [ip],
       now: this.clock.now(),
@@ -262,7 +264,7 @@ export class Server extends Host {
       return;
     }
     this.logDhcp(msg, reply);
-    this.sendDhcpReply(reply);
+    this.sendDhcpReply(reply, port);
   }
 
   private logDhcp(req: DhcpMessage, reply: ServerReply): void {
@@ -274,10 +276,10 @@ export class Server extends Host {
     else if (type === 'NAK') this.log('dhcp', `DHCP4_PACKET_NAK [hwtype=1 ${hw}]: requested address rejected`);
   }
 
-  private sendDhcpReply(reply: ServerReply): void {
+  private sendDhcpReply(reply: ServerReply, port: string): void {
     const m = reply.msg;
     if (reply.via === 'relay') this.sendUdp(m.giaddr, DHCP_SERVER_PORT, DHCP_SERVER_PORT, { dhcp: m });
     else if (reply.via === 'unicast') this.sendUdp(m.ciaddr, DHCP_SERVER_PORT, DHCP_CLIENT_PORT, { dhcp: m });
-    else this.sendUdp(BROADCAST_IP, DHCP_SERVER_PORT, DHCP_CLIENT_PORT, { dhcp: m });
+    else this.sendUdp(BROADCAST_IP, DHCP_SERVER_PORT, DHCP_CLIENT_PORT, { dhcp: m }, undefined, port);
   }
 }

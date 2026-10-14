@@ -1,4 +1,5 @@
 /** Read-only view of the files a student would inspect on Ubuntu (generated from the live config). */
+import { runsServices } from '../devices/kinds.ts';
 import type { Host } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import { formatIp, formatMask, networkOf, broadcastOf } from '../core/ip.ts';
@@ -119,7 +120,7 @@ export function linuxFiles(host: Host): Map<string, string> {
     ['/etc/hosts', `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`],
     ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n`],
   ]);
-  if (host.kind === 'server') for (const [k, v] of serverFiles(host as Server)) files.set(k, v);
+  if (runsServices(host.kind)) for (const [k, v] of serverFiles(host as Server)) files.set(k, v);
   return files;
 }
 

@@ -2,13 +2,14 @@
 import type { Ctx } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { resolveHost, dnsQuery } from './net-tools.ts';
-import { describeAddress, linuxMac, IFACE } from './linux-files.ts';
+import { linuxMac } from './linux-files.ts';
 import { digOutput, nslookupOutput, hostOutput } from './dns-format.ts';
 import { runPing } from '../net/ping.ts';
 import { reverseName } from '../net/dns.ts';
 import type { DnsType } from '../net/packets.ts';
-import { formatIp, networkOf, parseIp } from '../core/ip.ts';
-import { ipWrite } from './linux-ip.ts';
+import { formatIp, broadcastOf, parseIp } from '../core/ip.ts';
+import { ipWrite, routeLines } from './linux-ip.ts';
+import type { NicInfo } from '../devices/host-nics.ts';
 import type { IpWrite } from './linux-ip.ts';
 
 const PING_TIMEOUT_MS = 1000;
@@ -21,36 +22,34 @@ const lines = (ctx: Ctx, list: readonly string[]): void => {
   if (list.length) ctx.out(`${list.join('\n')}\n`);
 };
 
+function nicAddress(n: NicInfo): { inet: string; brd: string; scope: string } | undefined {
+  if (n.ip === undefined || n.prefix === undefined) return undefined;
+  return { inet: `${formatIp(n.ip)}/${n.prefix}`, brd: formatIp(broadcastOf(n.ip, n.prefix)), scope: n.dhcp ? 'global dynamic' : 'global' };
+}
+
 function ipAddress(host: Host): string[] {
-  const addr = describeAddress(host);
-  const up = host.linkUp();
   const out = [
     '1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000',
     '    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00',
     '    inet 127.0.0.1/8 scope host lo',
     '       valid_lft forever preferred_lft forever',
-    `2: ${IFACE}: <BROADCAST,MULTICAST${up ? ',UP,LOWER_UP' : ''}> mtu 1500 qdisc fq_codel state ${up ? 'UP' : 'DOWN'} group default qlen 1000`,
-    `    link/ether ${linuxMac(host.mac)} brd ff:ff:ff:ff:ff:ff`,
   ];
-  if (addr) out.push(`    inet ${addr.inet} brd ${addr.brd} scope ${addr.scope} ${IFACE}`, '       valid_lft forever preferred_lft forever');
-  return out;
-}
-
-function ipRoute(host: Host): string[] {
-  const c = host.config;
-  if (c.ip === undefined || c.prefix === undefined) return [];
-  const proto = c.mode === 'dhcp' ? 'dhcp' : 'static';
-  const out = [`${formatIp(networkOf(c.ip, c.prefix))}/${c.prefix} dev ${IFACE} proto kernel scope link src ${formatIp(c.ip)}`];
-  if (c.gateway !== undefined) out.unshift(`default via ${formatIp(c.gateway)} dev ${IFACE} proto ${proto} metric 100`);
+  host.nics().forEach((n, i) => {
+    const addr = nicAddress(n);
+    out.push(
+      `${i + 2}: ${n.linux}: <BROADCAST,MULTICAST${n.adminUp ? ',UP' : ''}${n.up ? ',LOWER_UP' : ''}> mtu 1500 qdisc fq_codel state ${n.up ? 'UP' : 'DOWN'} group default qlen 1000`,
+      `    link/ether ${linuxMac(n.mac)} brd ff:ff:ff:ff:ff:ff`,
+    );
+    if (addr) out.push(`    inet ${addr.inet} brd ${addr.brd} scope ${addr.scope} ${n.linux}`, '       valid_lft forever preferred_lft forever');
+  });
   return out;
 }
 
 function ipBrief(host: Host, link: boolean): string[] {
-  const addr = describeAddress(host);
-  const up = host.linkUp() ? 'UP' : 'DOWN';
   const row = (name: string, state: string, rest: string): string => `${name.padEnd(16)} ${state.padEnd(14)} ${rest}`;
-  if (link) return [row('lo', 'UNKNOWN', '00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP> '), row(IFACE, up, `${linuxMac(host.mac)} <BROADCAST,MULTICAST${up === 'UP' ? ',UP,LOWER_UP' : ''}> `)];
-  return [row('lo', 'UNKNOWN', '127.0.0.1/8 '), row(IFACE, up, addr ? `${addr.inet} ` : '')];
+  const nics = host.nics();
+  if (link) return [row('lo', 'UNKNOWN', '00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP> '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', `${linuxMac(n.mac)} <BROADCAST,MULTICAST${n.adminUp ? ',UP' : ''}${n.up ? ',LOWER_UP' : ''}> `))];
+  return [row('lo', 'UNKNOWN', '127.0.0.1/8 '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', nicAddress(n) ? `${nicAddress(n)?.inet} ` : ''))];
 }
 
 const IP_USAGE = 'Usage: ip [ OPTIONS ] OBJECT { COMMAND | help }\nwhere  OBJECT := { address | route | neigh | link }\n       OPTIONS := { -4 | -br[ief] | -c[olor] }\n';
@@ -66,8 +65,8 @@ export function ip(host: Host) {
     if (written !== undefined) return written;
     if (brief && (is('address', 'a', 'addr') || is('link', 'l'))) lines(ctx, ipBrief(host, is('link', 'l')));
     else if (is('address', 'a', 'addr')) lines(ctx, ipAddress(host));
-    else if (is('route', 'r')) lines(ctx, ipRoute(host));
-    else if (is('neighbour', 'n', 'neigh')) lines(ctx, [...host.stack.arp.entries()].map(([a, e]) => `${formatIp(a)} dev ${IFACE} lladdr ${linuxMac(e.mac)} REACHABLE`));
+    else if (is('route', 'r')) lines(ctx, routeLines(host));
+    else if (is('neighbour', 'n', 'neigh')) lines(ctx, [...host.stack.arp.entries()].map(([a, e]) => `${formatIp(a)} dev ${host.linuxIfName(e.iface)} lladdr ${linuxMac(e.mac)} REACHABLE`));
     else if (is('link', 'l')) lines(ctx, ipAddress(host).filter((l) => !/^\s+inet|valid_lft/.test(l)));
     else if (obj === '' || obj === 'help') { ctx.err(IP_USAGE); return obj === '' ? 255 : 0; }
     else { ctx.err(`Object "${obj}" is unknown, try "ip help".\n`); return 1; }

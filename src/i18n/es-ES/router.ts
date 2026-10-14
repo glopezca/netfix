@@ -1,0 +1,32 @@
+/** Español (España): router Linux (interfaces y rutas). */
+export const ROUTER_ES = {
+  'kind.linuxrouter': 'Router Linux',
+  'router.ifaces': 'Interfaces',
+  'router.ifacesIntro': 'Hardware de un 2911 (GigabitEthernet0/0-2) con Ubuntu: eth0-2. eth0 es la WAN (estática o DHCP). Los cambios aquí son la configuración en ejecución, como «ip addr»; para que duren al reiniciar el equipo simulado se guardan en el archivo de la topología.',
+  'router.port': 'Puerto',
+  'router.linux': 'Linux',
+  'router.address': 'Dirección IPv4',
+  'router.mask': 'Máscara',
+  'router.state': 'Estado',
+  'router.up': 'Activa',
+  'router.down': 'Apagada',
+  'router.noCable': 'sin cable',
+  'router.apply': 'Aplicar',
+  'router.dhcp': 'DHCP (cliente en la WAN)',
+  'router.gateway': 'Puerta de enlace predeterminada',
+  'router.dns': 'Servidor DNS',
+  'router.routes': 'Rutas estáticas',
+  'router.routesIntro': 'Redes a las que se llega por otro router (ip route add RED/N via GW).',
+  'router.dest': 'Red destino (CIDR)',
+  'router.via': 'Siguiente salto',
+  'router.addRoute': 'Añadir ruta',
+  'router.delete': 'Borrar',
+  'router.noRoutes': 'Sin rutas estáticas.',
+  'router.forwarding': 'Reenvío IPv4 (net.ipv4.ip_forward)',
+  'router.forwardingOff': 'Sin reenvío el equipo no enruta: es un servidor con tres tarjetas. Actívalo aquí, con «sysctl -w net.ipv4.ip_forward=1» o en /etc/sysctl.conf.',
+  'router.errAddress': 'Revisa la dirección y la máscara de {iface}: usa el formato 192.168.1.1 y 255.255.255.0 (o /24).',
+  'router.errRoute': 'Ruta no válida: red en formato 10.0.0.0/8 y un siguiente salto alcanzable por una interfaz.',
+  'router.errGateway': 'La puerta de enlace debe estar en la red de una interfaz.',
+} as const;
+
+export type RouterKey = keyof typeof ROUTER_ES;

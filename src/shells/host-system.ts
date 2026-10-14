@@ -1,4 +1,5 @@
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
+import { runsServices } from '../devices/kinds.ts';
 import { NAMED_OPTIONS, parseNamedOptions } from '../services/named-options.ts';
 import { NETPLAN_FILE, netplanFileContent, writeNetplanFile } from './netplan.ts';
 import { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } from '../services/sshd-config.ts';
@@ -42,11 +43,11 @@ const systems = new WeakMap<Host, Entry>();
 /** Files loaded from a topology before the host's system was first used. */
 const pendingFiles = new WeakMap<Host, readonly FileRecord[]>();
 
-const asServer = (host: Host): Server | undefined => (host.kind === 'server' ? host as Server : undefined);
+const asServer = (host: Host): Server | undefined => (runsServices(host.kind) ? host as Server : undefined);
 
 /** The default console account of a host (alumno on PCs, admin on servers). */
 export function defaultLinuxUser(host: Host): string {
-  return host.kind === 'server' ? 'admin' : 'alumno';
+  return runsServices(host.kind) ? 'admin' : 'alumno';
 }
 
 /** UID derived from the account name, so that it does not change when other accounts are added or removed. */

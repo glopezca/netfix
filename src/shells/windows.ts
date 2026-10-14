@@ -1,4 +1,5 @@
 /** Windows Command Prompt: ipconfig, ping, nslookup, netstat, arp, curl, ssh, sc / net (servers). */
+import { runsServices } from '../devices/kinds.ts';
 import { windowsSshStore } from './ssh-stores.ts';
 import type { SshClientStore } from './ssh-client.ts';
 import { BaseShell } from './base.ts';
@@ -180,7 +181,7 @@ export class WindowsShell extends BaseShell {
 
   private netstat(): string[] {
     const local = this.host.config.ip !== undefined ? formatIp(this.host.config.ip) : '0.0.0.0';
-    const ports = this.host.kind === 'server' ? openPorts((this.host as Server).services, { http: (this.host as Server).web.httpPorts(), admin: (this.host as Server).web.adminPorts() }) : [];
+    const ports = runsServices(this.host.kind) ? openPorts((this.host as Server).services, { http: (this.host as Server).web.httpPorts(), admin: (this.host as Server).web.adminPorts() }) : [];
     return ['', 'Active Connections', '', '  Proto  Local Address          Foreign Address        State',
       ...ports.map((p) => `  ${p.proto.toUpperCase().padEnd(7)}${`${p.proto === 'udp' ? '0.0.0.0' : local}:${p.port}`.padEnd(23)}${(p.proto === 'udp' ? '*:*' : '0.0.0.0:0').padEnd(23)}${p.proto === 'tcp' ? 'LISTENING' : ''}`)];
   }
@@ -197,7 +198,7 @@ export class WindowsShell extends BaseShell {
   // ------------------------------------------------------------ services (Server)
 
   private server(): Server | undefined {
-    return this.host.kind === 'server' ? (this.host as Server) : undefined;
+    return runsServices(this.host.kind) ? (this.host as Server) : undefined;
   }
 
   private sc(args: string[]): string[] {

@@ -1,4 +1,5 @@
 /** End host with one NIC (PC, Server): IP config, DHCP client, TCP, DNS resolver. */
+import type { HostKind } from './kinds.ts';
 import { t } from '../i18n/t.ts';
 import type { NetDevice } from '../net/network.ts';
 import type { Frame, IpPacket, UdpDatagram, AppPayload, DnsType } from '../net/packets.ts';
@@ -17,6 +18,8 @@ import { DETACHED } from './hooks.ts';
 import type { DeviceHooks } from './hooks.ts';
 import { macFromSeed, clientIdFromMac } from '../core/mac.ts';
 import { Kernel } from './host-kernel.ts';
+import { lookupRoute, MAX_STATIC_ROUTES } from './host-nics.ts';
+import type { NicInfo, StaticRoute } from './host-nics.ts';
 import { inSubnet, BROADCAST_IP } from '../core/ip.ts';
 import type { SimClock } from '../core/clock.ts';
 
@@ -54,7 +57,7 @@ export interface HostIpConfig {
 }
 
 export abstract class Host implements NetDevice, StackHost {
-  abstract readonly kind: 'pc' | 'server';
+  abstract readonly kind: HostKind;
   readonly id: string;
   /** Static host name (hostnamectl, /etc/hostname, Windows computer name). */
   name: string;
@@ -80,10 +83,12 @@ export abstract class Host implements NetDevice, StackHost {
   readonly clock: SimClock;
   /** sysctl, netfilter (nftables) and the kernel log. */
   readonly kernel: Kernel;
+  /** Routes added with `ip route add NET via GW` (running configuration; the default route is `config.gateway`). */
+  staticRoutes: readonly StaticRoute[] = [];
   private readonly statusListeners = new Set<() => void>();
 
   readonly dropOnArpMiss = false;
-  readonly ttl = PC_TTL;
+  readonly ttl: number = PC_TTL;
 
   constructor(id: string, name: string, clock: SimClock, seed: number) {
     this.id = id;
@@ -95,12 +100,13 @@ export abstract class Host implements NetDevice, StackHost {
       runtimeName: () => this.runtimeName(),
       setTransientName: (n) => this.setTransientName(n),
       linuxIfName: (port) => this.linuxIfName(port),
-      linuxIfIp: (name) => (name === this.linuxIfName(HOST_PORT) ? this.config.ip : undefined),
+      linuxIfIp: (name) => this.linuxIfIp(name),
       sendRaw: (p) => {
         const egress = this.route(p.dst);
         if (egress) this.stack.sendVia(egress, p);
       },
     });
+    this.kernel.sysctl.onChange(() => this.changed());
     this.stack = new IpStack(this, () => clock.now());
     this.dhcpClient = this.createDhcpClient();
     this.tcp = new TcpLayer({
@@ -149,7 +155,7 @@ export abstract class Host implements NetDevice, StackHost {
   setPortUp(up: boolean): void {
     if (this.portUp === up) return;
     this.portUp = up;
-    this.hooks.portChanged(HOST_PORT);
+    this.hooks.portChanged(this.primaryPort());
     this.changed();
   }
 
@@ -225,12 +231,12 @@ export abstract class Host implements NetDevice, StackHost {
 
   // ------------------------------------------------------------ transport helpers
 
-  /** Sends a UDP datagram; broadcasts go out of the NIC directly. */
-  sendUdp(dst: number, sport: number, dport: number, body: Omit<UdpDatagram, 'sport' | 'dport'>, src?: number): boolean {
-    const from = src ?? this.config.ip ?? 0;
+  /** Sends a UDP datagram; broadcasts go out of `port` (the main NIC by default) directly. */
+  sendUdp(dst: number, sport: number, dport: number, body: Omit<UdpDatagram, 'sport' | 'dport'>, src?: number, port = this.primaryPort()): boolean {
+    const from = src ?? this.ifaceConfig(port)?.ip ?? this.config.ip ?? 0;
     const packet: IpPacket = { src: from, dst, ttl: PC_TTL, protocol: 'udp', udp: { sport, dport, ...body } };
     if (dst === BROADCAST_IP) {
-      this.stack.broadcast(HOST_PORT, packet);
+      this.stack.broadcast(port, packet);
       return true;
     }
     return this.stack.send(packet);
@@ -248,16 +254,26 @@ export abstract class Host implements NetDevice, StackHost {
 
   // ------------------------------------------------------------ NetDevice
 
+  /** The NIC that the IP configuration, DHCP client and hostname belong to. */
+  primaryPort(): string {
+    return HOST_PORT;
+  }
+
+  /** Address of a NIC (the main one uses `config`). */
+  ifaceConfig(port: string): { readonly ip?: number; readonly prefix?: number } | undefined {
+    return port === this.primaryPort() ? this.config : undefined;
+  }
+
   portNames(): readonly string[] {
     return [HOST_PORT];
   }
 
-  portAdminUp(): boolean {
+  portAdminUp(_port?: string): boolean {
     return this.portUp;
   }
 
   linkUp(): boolean {
-    return this.portUp && this.hooks.peerUp(HOST_PORT);
+    return this.portUp && this.hooks.peerUp(this.primaryPort());
   }
 
   receive(_port: string, frame: Frame): void {
@@ -294,13 +310,33 @@ export abstract class Host implements NetDevice, StackHost {
   }
 
   route(dst: number): Egress | null {
-    const { ip, prefix, gateway } = this.config;
-    if (ip === undefined || prefix === undefined) return null;
-    if (inSubnet(dst, ip, prefix) || dst === BROADCAST_IP) return { iface: HOST_PORT, nextHop: dst };
-    return gateway !== undefined ? { iface: HOST_PORT, nextHop: gateway } : null;
+    return lookupRoute(this.nics(), this.staticRoutes, this.config.gateway, dst);
   }
 
-  deliver(_iface: string, packet: IpPacket): void {
+  // ------------------------------------------------------------ NICs (ip addr / ip link / ip route)
+
+  /** The NICs as `ip` shows them (one on a PC or Server). */
+  nics(): NicInfo[] {
+    const { ip, prefix } = this.config;
+    return [{ port: HOST_PORT, linux: HOST_LINUX_IF, mac: this.mac, up: this.linkUp(), adminUp: this.portUp, ip, prefix, dhcp: this.config.mode === 'dhcp' }];
+  }
+
+  /** `ip addr add|del` on a NIC (undefined removes the address and the routes through it). */
+  setNicAddress(port: string, addr: { readonly ip: number; readonly prefix: number } | undefined): void {
+    if (port !== this.primaryPort()) return;
+    this.setStatic(addr ? { ...addr, gateway: undefined, dns: this.config.dns } : { dns: this.config.dns });
+  }
+
+  setNicUp(port: string, up: boolean): void {
+    if (port === this.primaryPort()) this.setPortUp(up);
+  }
+
+  setStaticRoutes(routes: readonly StaticRoute[]): void {
+    this.staticRoutes = routes.slice(0, MAX_STATIC_ROUTES);
+    this.changed();
+  }
+
+  deliver(iface: string, packet: IpPacket): void {
     if (packet.tcp) {
       this.tcp.receive(packet);
       return;
@@ -309,12 +345,18 @@ export abstract class Host implements NetDevice, StackHost {
     if (!udp) return;
     if (udp.dhcp && udp.dport === DHCP_CLIENT_PORT) this.dhcpClient.receive(udp.dhcp);
     else if (udp.dns?.response && this.resolver.ownsPort(udp.dport)) this.resolver.receive(udp.dns, packet.src);
-    else this.onUdp(packet);
+    else this.onUdp(packet, iface);
   }
 
   /** Linux name of a NIC port (eth0 for the only NIC of a PC or Server). */
   linuxIfName(port: string): string {
     return port === HOST_PORT ? HOST_LINUX_IF : port;
+  }
+
+  /** IPv4 address of a Linux interface name (masquerade, nft). */
+  linuxIfIp(name: string): number | undefined {
+    const port = this.portNames().find((p) => this.linuxIfName(p) === name);
+    return port === undefined ? undefined : this.ifaceConfig(port)?.ip;
   }
 
   // ------------------------------------------------------------ netfilter hooks
@@ -336,7 +378,7 @@ export abstract class Host implements NetDevice, StackHost {
   }
 
   /** Server-side UDP services (DHCP on 67, DNS on 53). Plain hosts ignore them. */
-  protected onUdp(_packet: IpPacket): void {
+  protected onUdp(_packet: IpPacket, _iface: string): void {
     // A PC runs no UDP services.
   }
 }

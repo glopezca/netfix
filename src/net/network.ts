@@ -21,7 +21,7 @@ export interface Link {
 /** What the network needs from a device. */
 export interface NetDevice {
   readonly id: string;
-  readonly kind: 'router' | 'switch' | 'pc' | 'server' | 'cloud';
+  readonly kind: 'router' | 'switch' | 'pc' | 'server' | 'linuxrouter' | 'cloud';
   hooks: DeviceHooks;
   displayName(): string;
   portNames(): readonly string[];

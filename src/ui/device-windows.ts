@@ -1,4 +1,7 @@
 /** Window contents: IOS CLI for routers/switches; desktop tabs for PCs and Server. */
+import { t } from '../i18n/t.ts';
+import { LinuxRouter } from '../devices/linux-router.ts';
+import { routerInterfaces } from './router-ip.ts';
 import { el } from './dom.ts';
 import { Terminal } from './terminal.ts';
 import type { ConsoleBackend } from './terminal.ts';
@@ -122,14 +125,19 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost): void {
   });
   const ipTab: Tab = { id: 'ip', label: 'Configuración IP', render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
   const order: HostOs[] = h.os === 'linux' ? ['linux', 'windows'] : ['windows', 'linux'];
-  const model = h instanceof Server ? 'Server' : 'PC';
+  const model = h instanceof LinuxRouter ? '2911 Linux' : h instanceof Server ? 'Server' : 'PC';
   let handle: { setTitle(t: string): void } | undefined;
   const settingsTab: Tab = { id: 'host', label: 'Equipo', render: () => {
     const v = hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) });
     disposers.push(v.dispose);
     return v.root;
   } };
-  const tabs: Tab[] = h instanceof Server
+  const routerTabs = (r: LinuxRouter): Tab[] => [
+    { id: 'svc', label: 'Servicios', render: () => servicesTab(r, app) },
+    { id: 'ifaces', label: t('router.ifaces'), render: () => { const v = routerInterfaces(r, app); disposers.push(v.dispose); return v.root; } },
+    settingsTab, terminal('linux'),
+  ];
+  const tabs: Tab[] = h instanceof LinuxRouter ? routerTabs(h) : h instanceof Server
     ? [{ id: 'svc', label: 'Servicios', render: () => servicesTab(h, app) }, ipTab, settingsTab, ...order.map(terminal)]
     : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: 'Navegador', render: () => browserApp(h, app) }, { id: 'mail', label: 'Correo', render: () => mailApp(h, app) }] : []), settingsTab, ...order.map(terminal)];
   handle = app.windows.show(h.id, `${placed.label} · ${model}`, tabs, () => disposers.forEach((f) => f()));
