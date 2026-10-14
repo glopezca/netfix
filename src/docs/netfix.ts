@@ -14,15 +14,16 @@ export const NETFIX_DOCS: DocGroup = {
         p('Netfix es un simulador de redes en el navegador con el aspecto y el comportamiento de Cisco Packet Tracer. Todo se ejecuta en tu equipo: no hay servidor ni se envía nada a Internet (la «Internet» de las nubes ISP también es simulada).'),
         h('Barra superior'),
         table(['Control', 'Qué hace'], [
-          ['Red / Documentación / Acerca de', 'Cambia entre el área de trabajo, esta documentación y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
+          ['Red / Documentación / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta documentación, la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
           ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S).'],
-          ['Laboratorios…', 'Carga una práctica preparada (DHCP básico, reservas, relay, VLAN, snooping, router cliente, Server, Internet con dos sedes).'],
+          ['Laboratorios…', 'Carga una práctica preparada: DHCP (básico, reservas, relay, VLAN, snooping, router cliente), Server, Internet con dos sedes, VPN IPsec y WireGuard, router Linux con DMZ, DNS que reenvía, SSH/SFTP y bastionado.'],
           ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
           ['Tiempo real / Simulación', 'Modo de ejecución (ver «Tiempo real y simulación»).'],
+          ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la documentación y las páginas web simuladas sin recargar.'],
         ]),
         h('Paleta y herramientas'),
         list(
-          'Router 2911, Switch 2960-24TT, PC, Server y Nube ISP: elige uno y haz clic en el área de trabajo.',
+          'Router 2911, Switch 2960-24TT, PC, Server, Router Linux y Nube ISP: elige uno y haz clic (o toca) en el área de trabajo.',
           'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.',
           'Seleccionar: arrastra equipos; doble clic abre su ventana.',
           'Eliminar: borra equipos o cables.',
@@ -31,10 +32,11 @@ export const NETFIX_DOCS: DocGroup = {
         table(['Equipo', 'Pestañas'], [
           ['Router / Switch', 'CLI (Cisco IOS 15) y Gestión web (ip http server).'],
           ['Nube ISP', 'ISP (proveedor, bloque público, dominios) y Líneas (modo, LAN, NAT, redirección de puertos).'],
-          ['PC', 'Configuración IP, Navegador, Correo, Equipo, Símbolo del sistema y Terminal Linux.'],
+          ['PC', 'Configuración IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Equipo, Símbolo del sistema y Terminal Linux.'],
+          ['Router Linux', 'Servicios (cortafuegos, sysctl, VPN…), Interfaces, Equipo y Terminal Linux.'],
           ['Server', 'Servicios, Configuración IP, Equipo, Terminal Linux y Símbolo del sistema.'],
         ]),
-        note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim).'),
+        note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim). En móvil y tableta las ventanas ocupan la pantalla, el lienzo se mueve con un dedo y se amplía pellizcando, una pulsación larga abre un equipo y la terminal tiene una barra de teclas (Esc, Tab, Ctrl, flechas).'),
       ],
     },
     {

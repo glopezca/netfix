@@ -13,6 +13,7 @@ import { BUILTIN_DOCS } from './bash-builtins.ts';
 import { INTERNET_DOCS } from './internet.ts';
 import { WEBAPP_DOCS } from './webapps.ts';
 import { SSH_DOCS } from './ssh.ts';
+import { SECURITY_DOCS } from './security.ts';
 
 export type { DocBlock, DocGroup, DocPage } from './types.ts';
 
@@ -21,6 +22,7 @@ export const DOC_GROUPS: readonly DocGroup[] = [
   IOS_DOCS,
   { ...SERVICE_DOCS, pages: [...SERVICE_DOCS.pages, ...SSH_DOCS, ...WEBAPP_DOCS] },
   INTERNET_DOCS,
+  SECURITY_DOCS,
   CLIENT_DOCS,
   { id: 'linux', title: 'Terminal Linux', pages: [...LINUX_DOCS, ...EDITOR_DOCS] },
   { id: 'bash', title: 'GNU bash 5.3', pages: [...BASH_LANGUAGE, ...BASH_REFERENCE] },
