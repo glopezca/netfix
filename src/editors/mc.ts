@@ -2,6 +2,7 @@
  * GNU Midnight Commander 4.8 (simplified): two panels, F3 viewer, F4 editor (nano, Ubuntu's default
  * editor), F5 copy, F6 rename/move, F7 mkdir, F8 delete, F10 quit. Esc + digit = F-key, as in mc.
  */
+import { mcCredits } from './mc-credits.ts';
 import type { Editor, Frame, KeyInput, Span } from './buffer.ts';
 import { fit, expandTabs } from './buffer.ts';
 import type { McFs } from './mc-fs.ts';
@@ -18,15 +19,6 @@ const MENU = '  Left     File     Command     Options     Right';
 function help(): string[] {
   const a = aboutInfo();
   return [t('mc.help.1'), t('mc.help.2'), t('mc.help.3'), t('mc.help.4'), t('mc.help.5'), t('mc.help.about'), '', t('mc.footer', { version: a.version, author: a.author })];
-}
-
-/** Credits of Netfix and of GNU Midnight Commander, whose interface this program reproduces. */
-export function mcCredits(): string[] {
-  const a = aboutInfo();
-  return [
-    t('mc.about.app', { version: a.version }), t('mc.about.author', { author: a.author }), t('mc.about.license', { license: a.license }),
-    a.repository.replace(/^https:\/\//, ''), '', t('mc.about.mc'), t('mc.about.mcCopy'), '', t('mc.about.menus'),
-  ];
 }
 
 interface Viewer {
@@ -113,7 +105,8 @@ export class McApp implements Editor {
       case 6: this.transfer('move'); break;
       case 7: this.dialog = { kind: 'input', title: 'Create a new Directory', label: 'Enter directory name:', value: '', onOk: (v) => this.mkdir(v) }; break;
       case 8: this.remove(); break;
-      case 2: case 9: this.dialog = { kind: 'message', title: t('mc.about.title'), lines: mcCredits(), error: false }; break;
+      // No user menu nor pull-down menus here: F2 / F9 show the credits in the (scrollable) viewer.
+      case 2: case 9: this.viewer = { name: t('mc.about.title'), lines: mcCredits(), top: 0 }; break;
       case 10: this.dialog = { kind: 'confirm', title: 'The Midnight Commander', text: 'Do you really want to quit the Midnight Commander?', yes: true, onYes: () => { this.closed = true; } }; break;
       default: break;
     }

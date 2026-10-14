@@ -247,3 +247,9 @@ Diseño detallado de 11.7–11.14 (revisión del agente planner):
 **Estado:** completada. Revisión ECC (code-reviewer): sin críticos ni altos; corregidos los cuatro medios (los valores rechazados
 se conservan y solo se redibuja la fila, subinterfaces/SVI/loopback sin cable ni MAC propios, sesión sin efectos en el historial,
 solo órdenes de lo que cambia) y los bajos (VLAN solo en modo access, «dúplex completo» traducido).
+
+## Fase 14 · Créditos de Midnight Commander (v0.7.4)
+
+F2/F9 en mc abren los créditos en el visor (con desplazamiento, cabe en cualquier pantalla): los de Netfix y los reales de
+GNU Midnight Commander 4.8.33 (copyright de la FSF, GPL v3+, sitio, fundador y mantenedores según midnight-commander.org),
+con la aclaración de que Netfix reproduce su interfaz sin incluir su código. `mc --version` usa la misma versión.

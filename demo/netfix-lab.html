@@ -1054,13 +1054,19 @@ const MC_ES = {
     'mc.help.3': 'F3 ver · F4 editar · F5 copiar · F6 mover/renombrar',
     'mc.help.4': 'F7 crear directorio · F8 borrar · F10 salir',
     'mc.help.5': 'Sin teclas de función: Esc y el número (Esc 5 = F5)',
-    'mc.help.about': 'F2 o F9: créditos de Netfix',
-    'mc.about.title': 'Acerca de',
+    'mc.help.about': 'F2 o F9: créditos de Netfix y de GNU Midnight Commander',
+    'mc.about.title': 'Acerca de · Netfix y GNU Midnight Commander',
     'mc.about.app': 'Netfix {version} · simulador de redes',
     'mc.about.author': 'Autoría: {author}',
     'mc.about.license': 'Licencia: {license}',
-    'mc.about.mc': 'Interfaz basada en GNU Midnight Commander 4.8',
-    'mc.about.mcCopy': '© Free Software Foundation, Inc. · GNU GPL v3+',
+    'mc.about.reproduces': 'Este gestor reproduce la interfaz de GNU Midnight Commander; no incluye su código.',
+    'mc.about.mcLicense': 'Licencia: GNU GPL v3 o posterior',
+    'mc.about.founded': 'Fundado en 1994 por {name}.',
+    'mc.about.maintainers': 'Mantenedores actuales:',
+    'mc.about.formerMaintainers': 'Mantenedores anteriores:',
+    'mc.about.formerTeam': 'Antiguos miembros del equipo:',
+    'mc.about.contributors': 'Y los demás colaboradores (historial de git).',
+    'mc.about.close': 'q, Esc o F10: volver a los paneles.',
     'mc.about.menus': 'Los menús desplegables no están disponibles en Netfix.',
     'mc.footer': 'Netfix {version} · © {author}',
 };
@@ -1075,13 +1081,19 @@ const MC_EN = {
     'mc.help.3': 'F3 view · F4 edit · F5 copy · F6 move/rename',
     'mc.help.4': 'F7 make directory · F8 delete · F10 quit',
     'mc.help.5': 'No function keys: Esc then the number (Esc 5 = F5)',
-    'mc.help.about': 'F2 or F9: Netfix credits',
-    'mc.about.title': 'About',
+    'mc.help.about': 'F2 or F9: credits of Netfix and GNU Midnight Commander',
+    'mc.about.title': 'About · Netfix and GNU Midnight Commander',
     'mc.about.app': 'Netfix {version} · network simulator',
     'mc.about.author': 'Author: {author}',
     'mc.about.license': 'Licence: {license}',
-    'mc.about.mc': 'Interface based on GNU Midnight Commander 4.8',
-    'mc.about.mcCopy': '© Free Software Foundation, Inc. · GNU GPL v3+',
+    'mc.about.reproduces': 'This file manager reproduces the interface of GNU Midnight Commander; it contains none of its code.',
+    'mc.about.mcLicense': 'Licence: GNU GPL v3 or later',
+    'mc.about.founded': 'Founded in 1994 by {name}.',
+    'mc.about.maintainers': 'Current maintainers:',
+    'mc.about.formerMaintainers': 'Former maintainers:',
+    'mc.about.formerTeam': 'Former team members:',
+    'mc.about.contributors': 'And all other contributors (see the git history).',
+    'mc.about.close': 'q, Esc or F10: back to the panels.',
     'mc.about.menus': 'Pull-down menus are not available in Netfix.',
     'mc.footer': 'Netfix {version} · © {author}',
 };
@@ -17824,7 +17836,7 @@ const UTIL_DOCS = {
     vim: { group: 'editores', synopsis: 'vim [+N] [-R] [FICHERO]   ·   vi   ·   view', summary: 'Vi IMproved 9.1 (ver la página vim). view abre en solo lectura.' },
     batcat: { group: 'texto', synopsis: 'batcat [-p|-pp] [-n] [-A] [-l LENGUAJE] [-r N:M] [--style=full|plain|numbers|grid|header] [--color=auto|always|never] [FICHERO]...', summary: 'cat con resaltado de sintaxis, números de línea y cabecera (bat; en Ubuntu se llama batcat). Si la salida no es la terminal se comporta como cat.', options: '-p, --plain      sin decoraciones (-pp: además sin paginar)\n-n, --number     solo números de línea\n-A, --show-all   muestra espacios (·), tabuladores (├──┤) y saltos de línea (␊)\n-l, --language   fuerza el lenguaje (bash, apache, html, json, yaml, python, dns, ini, markdown)\n-r, --line-range N:M   solo esas líneas\n--list-languages   lenguajes y extensiones reconocidos' },
     whereis: { group: 'ficheros', synopsis: 'whereis [-b|-m] [-l] NOMBRE...', summary: 'Busca el programa, sus directorios de configuración (/etc, /usr/lib, /usr/share) y su página de manual.', options: '-b  solo binarios y directorios\n-m  solo páginas de manual\n-l  muestra los directorios en los que busca' },
-    mc: { group: 'editores', synopsis: 'mc [DIR_IZQUIERDO [DIR_DERECHO]] | mc -V', summary: 'Midnight Commander: gestor de ficheros a pantalla completa con dos paneles (también por SSH).', options: 'Tab cambiar de panel · ↑↓ RePág AvPág Inicio Fin moverse · Intro entrar\nInsert / Ctrl+T marcar · Ctrl+R releer\nF3 ver · F4 editar (nano) · F5 copiar · F6 mover/renombrar · F7 crear directorio · F8 borrar · F10 salir\nSin teclas de función: Esc y el número (Esc 5 = F5, Esc 0 = F10)' },
+    mc: { group: 'editores', synopsis: 'mc [DIR_IZQUIERDO [DIR_DERECHO]] | mc -V', summary: 'Midnight Commander: gestor de ficheros a pantalla completa con dos paneles (también por SSH).', options: 'Tab cambiar de panel · ↑↓ RePág AvPág Inicio Fin moverse · Intro entrar\nInsert / Ctrl+T marcar · Ctrl+R releer\nF3 ver · F4 editar (nano) · F5 copiar · F6 mover/renombrar · F7 crear directorio · F8 borrar · F10 salir · F2/F9 créditos de Netfix y de GNU Midnight Commander\nSin teclas de función: Esc y el número (Esc 5 = F5, Esc 0 = F10)' },
     man: { group: 'editores', synopsis: 'man [SECCIÓN] PÁGINA', summary: 'Muestra la página de manual de un programa de esta lista.' },
     less: { group: 'editores', synopsis: 'less [FICHERO]...', summary: 'Paginador: en Netfix muestra el texto completo (usa la barra de desplazamiento).' },
     more: { group: 'editores', synopsis: 'more [FICHERO]...', summary: 'Paginador sencillo (igual que less en Netfix).' },
@@ -19204,7 +19216,7 @@ const UTIL_DOCS = {
     vim: { group: 'editores', synopsis: 'vim [+N] [-R] [FILE]   ·   vi   ·   view', summary: 'Vi IMproved 9.1 (see the vim page). view opens read-only.' },
     batcat: { group: 'texto', synopsis: 'batcat [-p|-pp] [-n] [-A] [-l LANGUAGE] [-r N:M] [--style=full|plain|numbers|grid|header] [--color=auto|always|never] [FILE]...', summary: 'cat with syntax highlighting, line numbers and a header (bat; on Ubuntu it is called batcat). If the output is not the terminal it behaves like cat.', options: '-p, --plain      no decorations (-pp: no paging either)\n-n, --number     line numbers only\n-A, --show-all   shows spaces (·), tabs (├──┤) and line breaks (␊)\n-l, --language   forces the language (bash, apache, html, json, yaml, python, dns, ini, markdown)\n-r, --line-range N:M   only those lines\n--list-languages   recognised languages and extensions' },
     whereis: { group: 'ficheros', synopsis: 'whereis [-b|-m] [-l] NAME...', summary: 'Finds the program, its configuration directories (/etc, /usr/lib, /usr/share) and its manual page.', options: '-b  binaries and directories only\n-m  manual pages only\n-l  shows the directories it searches' },
-    mc: { group: 'editores', synopsis: 'mc [LEFT_DIR [RIGHT_DIR]] | mc -V', summary: 'Midnight Commander: full-screen file manager with two panels (also over SSH).', options: 'Tab switch panel · ↑↓ PgUp PgDn Home End move · Enter open\nInsert / Ctrl+T select · Ctrl+R reread\nF3 view · F4 edit (nano) · F5 copy · F6 move/rename · F7 create directory · F8 delete · F10 quit\nWithout function keys: Esc and the number (Esc 5 = F5, Esc 0 = F10)' },
+    mc: { group: 'editores', synopsis: 'mc [LEFT_DIR [RIGHT_DIR]] | mc -V', summary: 'Midnight Commander: full-screen file manager with two panels (also over SSH).', options: 'Tab switch panel · ↑↓ PgUp PgDn Home End move · Enter open\nInsert / Ctrl+T select · Ctrl+R reread\nF3 view · F4 edit (nano) · F5 copy · F6 move/rename · F7 create directory · F8 delete · F10 quit · F2/F9 credits of Netfix and GNU Midnight Commander\nWithout function keys: Esc and the number (Esc 5 = F5, Esc 0 = F10)' },
     man: { group: 'editores', synopsis: 'man [SECTION] PAGE', summary: 'Shows the manual page of a program in this list.' },
     less: { group: 'editores', synopsis: 'less [FILE]...', summary: 'Pager: in Netfix it shows the full text (use the scroll bar).' },
     more: { group: 'editores', synopsis: 'more [FILE]...', summary: 'Simple pager (same as less in Netfix).' },
@@ -27171,6 +27183,238 @@ const BAT_TOOLS = new Map([['batcat', bat], ['whereis', whereis]]);
 
 return { BAT_TOOLS };
 })();
+__m["docs/about-data.js"] = (() => {
+const ABOUT = {
+    "name": "netfix",
+    "version": "0.7.4",
+    "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
+    "license": "GPL-3.0-or-later",
+    "repository": "https://github.com/glopezca/netfix",
+    "licenseMarkdown": "# Licencia y atribuciones\n\n- **Autoría:** Germán López Castro\n- **Repositorio:** <https://github.com/glopezca/netfix>\n\nNetfix usa dos licencias según el tipo de material, las dos con la misma idea de\n«compartir igual»: quien distribuya versiones modificadas debe publicarlas con la misma licencia.\n\n| Material | Licencia |\n|---|---|\n| Código fuente: `src/`, `tests/`, `scripts/`, configuración del proyecto y los archivos que genera el build | [GNU GPL v3.0 o posterior](https://www.gnu.org/licenses/gpl-3.0.html) (`GPL-3.0-or-later`) — texto completo en [`LICENSE`](LICENSE) |\n| Documentación e imágenes: `README.md`, `docs/`, capturas y textos de los laboratorios | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es) — [texto legal](https://creativecommons.org/licenses/by-sa/4.0/legalcode.es) |\n| `.claude/` (reglas y agentes de Everything Claude Code) | MIT, de sus autores (ver más abajo) |\n\nLa GPL es una licencia pensada para software: exige entregar el código fuente junto con\ncualquier versión distribuida (también la página HTML compilada) y protege el derecho de\nuso, estudio, modificación y redistribución. Creative Commons recomienda no usar sus licencias\npara código, por eso CC BY-SA 4.0 queda solo para la documentación. Las dos licencias son\ncompatibles en un sentido: el material CC BY-SA 4.0 puede incorporarse a obras GPLv3.\n\n## Aviso de copyright del código\n\n```\nNetfix — simulador de redes con CLI de Cisco IOS y servidor DHCP\nCopyright (C) 2026 Germán López Castro\n\nThis program is free software: you can redistribute it and/or modify\nit under the terms of the GNU General Public License as published by\nthe Free Software Foundation, either version 3 of the License, or\n(at your option) any later version.\n\nThis program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\nMERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\nGNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License\nalong with this program.  If not, see <https://www.gnu.org/licenses/>.\n```\n\n## Atribución recomendada\n\nPara la documentación o las capturas:\n\n> «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),\n> distribuido bajo licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).\n\nPara el software o una obra derivada:\n\n> Basado en «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),\n> GPL-3.0-or-later. Cambios: …\n\n## Componentes de terceros\n\n### Everything Claude Code (ECC)\n\nLas reglas y los agentes de la carpeta `.claude/` (`.claude/rules/`, `.claude/agents/`,\n`.claude/commands/`) proceden de\n[Everything Claude Code](https://github.com/affaan-m/everything-claude-code)\ny se mantienen bajo su licencia original **MIT**, © 2026 Affaan Mustafa.\nEl texto completo está en [`.claude/ECC-LICENSE`](.claude/ECC-LICENSE).\nLa licencia MIT es compatible con la GPLv3; la GPL y la CC BY-SA de este repositorio no se\naplican a esos archivos.\n\n### Marcas\n\nCisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc. Netfix es un proyecto\neducativo independiente, sin relación con Cisco ni respaldado por ella. Los símbolos de red\nde la interfaz son dibujos propios de este proyecto.\n"
+};
+
+return { ABOUT };
+})();
+__m["docs/markdown.js"] = (() => {
+const FENCE = /^```/;
+const HEADING = /^(#{1,6})\s+(.*)$/;
+const LIST_ITEM = /^\s*[-*+]\s+(.*)$/;
+const TABLE_RULE = /^\s*\|?\s*:?-{2,}/;
+function splitRow(line) {
+    const cells = [];
+    let cur = '';
+    const body = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+    for (let i = 0; i < body.length; i++) {
+        const c = body[i];
+        if (c === '\\' && body[i + 1] === '|') {
+            cur += '|';
+            i++;
+        }
+        else if (c === '|') {
+            cells.push(cur.trim());
+            cur = '';
+        }
+        else
+            cur += c;
+    }
+    cells.push(cur.trim());
+    return cells;
+}
+function isTableStart(lines, i) {
+    return (lines[i] ?? '').trim().startsWith('|') && TABLE_RULE.test(lines[i + 1] ?? '');
+}
+/** Reads the block starting at line i; returns it (or null for a skipped title) and the next line. */
+function readBlock(lines, i) {
+    const line = lines[i] ?? '';
+    if (FENCE.test(line)) {
+        const end = lines.findIndex((l, j) => j > i && FENCE.test(l));
+        const stop = end < 0 ? lines.length : end;
+        return { block: { kind: 'code', text: lines.slice(i + 1, stop).join('\n') }, next: stop + 1 };
+    }
+    const h = HEADING.exec(line);
+    if (h) {
+        const level = (h[1] ?? '').length;
+        const text = (h[2] ?? '').trim();
+        if (level === 1)
+            return { block: null, next: i + 1 };
+        return { block: level === 2 ? { kind: 'h', text } : { kind: 'h', text, level: 4 }, next: i + 1 };
+    }
+    if (isTableStart(lines, i)) {
+        let j = i + 2;
+        while (j < lines.length && (lines[j] ?? '').trim().startsWith('|'))
+            j++;
+        return { block: { kind: 'table', head: splitRow(line), rows: lines.slice(i + 2, j).map(splitRow) }, next: j };
+    }
+    const collect = (test, strip) => {
+        let j = i;
+        const out = [];
+        while (j < lines.length && (lines[j] ?? '').trim() !== '' && test(lines[j] ?? ''))
+            out.push(strip(lines[j++] ?? '').trim());
+        return { text: out, next: j };
+    };
+    if (LIST_ITEM.test(line)) {
+        const r = collect((l) => LIST_ITEM.test(l), (l) => LIST_ITEM.exec(l)?.[1] ?? l);
+        return { block: { kind: 'list', items: r.text }, next: r.next };
+    }
+    if (line.trimStart().startsWith('>')) {
+        const r = collect((l) => l.trimStart().startsWith('>'), (l) => l.trimStart().replace(/^>\s?/, ''));
+        return { block: { kind: 'note', text: r.text.join(' ') }, next: r.next };
+    }
+    const r = collect((l) => !FENCE.test(l) && !HEADING.test(l) && !LIST_ITEM.test(l) && !l.trimStart().startsWith('>'), (l) => l);
+    return { block: { kind: 'p', text: r.text.join(' ') }, next: Math.max(r.next, i + 1) };
+}
+/** Markdown → blocks. The level-1 heading (the page title) is left to the caller. */
+function markdownBlocks(markdown) {
+    const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
+    const blocks = [];
+    let i = 0;
+    while (i < lines.length) {
+        if ((lines[i] ?? '').trim() === '') {
+            i++;
+            continue;
+        }
+        const { block, next } = readBlock(lines, i);
+        if (block)
+            blocks.push(block);
+        i = next;
+    }
+    return blocks;
+}
+const INLINE = /`([^`]+)`|\*\*([^*]+)\*\*|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)|<(https?:\/\/[^>\s]+)>/g;
+const SAFE_RELATIVE = /^[\w./#-]+$/;
+/** http(s) URLs as they are; relative paths resolved against `base`; anything else is refused. */
+function safeHref(url, base) {
+    if (/^https?:\/\/[^\s"'<>]+$/i.test(url))
+        return url;
+    if (/^[a-z][\w+.-]*:/i.test(url) || !SAFE_RELATIVE.test(url))
+        return undefined;
+    return `${base}${url.replace(/^\.\//, '')}`;
+}
+/** Inline Markdown → spans. `base` resolves relative links (files of the repository). */
+function inlineMarkdown(text, base) {
+    const spans = [];
+    let last = 0;
+    for (const m of text.matchAll(INLINE)) {
+        const at = m.index ?? 0;
+        if (at > last)
+            spans.push({ text: text.slice(last, at) });
+        last = at + m[0].length;
+        if (m[1] !== undefined)
+            spans.push({ text: m[1], code: true });
+        else if (m[2] !== undefined)
+            spans.push({ text: m[2], bold: true });
+        else if (m[5] !== undefined)
+            spans.push({ text: m[5], href: m[5] });
+        else {
+            const label = m[3] ?? '';
+            const code = /^`[^`]+`$/.test(label);
+            const shown = code ? label.slice(1, -1) : label;
+            const href = safeHref(m[4] ?? '', base);
+            spans.push(href ? { text: shown, href, ...(code ? { code } : {}) } : { text: shown });
+        }
+    }
+    if (last < text.length)
+        spans.push({ text: text.slice(last) });
+    return spans;
+}
+
+return { markdownBlocks, safeHref, inlineMarkdown };
+})();
+__m["docs/about.js"] = (() => {
+/** «Acerca de»: version, authorship, licences and attributions, from package.json and LICENSE.md. */
+const { ABOUT } = __m["docs/about-data.js"];
+const { markdownBlocks } = __m["docs/markdown.js"];
+const AUTHOR_LINE = /^\s*-\s*\*\*Autoría:\*\*\s*(.+?)\s*$/m;
+function aboutInfo() {
+    const author = AUTHOR_LINE.exec(ABOUT.licenseMarkdown)?.[1] ?? '';
+    return {
+        name: ABOUT.name.charAt(0).toUpperCase() + ABOUT.name.slice(1),
+        version: ABOUT.version,
+        description: ABOUT.description,
+        license: ABOUT.license,
+        repository: ABOUT.repository,
+        author,
+        fileBase: `${ABOUT.repository}/blob/main/`,
+        blocks: markdownBlocks(ABOUT.licenseMarkdown),
+    };
+}
+
+return { aboutInfo };
+})();
+__m["editors/mc-credits.js"] = (() => {
+/**
+ * Credits shown by Netfix's Midnight Commander: those of Netfix, and those of GNU Midnight Commander, whose
+ * interface it reproduces (names as published on midnight-commander.org/maintainers; they are not translated).
+ */
+const { aboutInfo } = __m["docs/about.js"];
+const { t } = __m["i18n/t.js"];
+/** The release whose interface and `mc --version` Netfix reproduces. */
+const MC_RELEASE = '4.8.33';
+const MC_COPYRIGHT = 'Copyright (C) 1994-2025 Free Software Foundation, Inc.';
+const MC_SITE = 'https://midnight-commander.org';
+const MC_FOUNDER = 'Miguel de Icaza';
+const MC_MAINTAINERS = ['Andrew Borodin', 'Yury V. Zaytsev'];
+const MC_FORMER_MAINTAINERS = ['Pavel Tsekov', 'Pavel Roskin', 'Miguel de Icaza'];
+const MC_FORMER_TEAM = [
+    'Egmont Koblinger', 'Stan. S. Krupoderov', 'Ilia Maslakov', 'mooffie', 'Mikhail S. Pabalavets',
+    'Sergei Trofimovich', 'Enrico Weigelt', 'Patrick Winnertz', 'Slava Zanko',
+];
+const INDENT = '   ';
+const LINE = 44;
+/** The viewer cuts long lines (a phone terminal is narrow): texts are wrapped at this width. */
+const TEXT = 56;
+function wrapText(text) {
+    if (text.length <= TEXT)
+        return [text];
+    const out = [];
+    let line = '';
+    for (const word of text.split(' ')) {
+        if (line && line.length + 1 + word.length > TEXT) {
+            out.push(line);
+            line = word;
+        }
+        else
+            line = line ? `${line} ${word}` : word;
+    }
+    return line ? [...out, line] : out;
+}
+/** Names separated by commas, in lines of at most LINE characters. */
+function nameLines(names) {
+    const out = [];
+    let line = '';
+    for (const [i, n] of names.entries()) {
+        const piece = `${n}${i < names.length - 1 ? ',' : ''}`;
+        if (line && line.length + 1 + piece.length > LINE) {
+            out.push(INDENT + line);
+            line = piece;
+        }
+        else
+            line = line ? `${line} ${piece}` : piece;
+    }
+    if (line)
+        out.push(INDENT + line);
+    return out;
+}
+/** Credits of Netfix, then those of GNU Midnight Commander (shown in the viewer with F2 / F9). */
+function mcCredits() {
+    const a = aboutInfo();
+    const lines = [
+        t('mc.about.app', { version: a.version }), t('mc.about.author', { author: a.author }),
+        t('mc.about.license', { license: a.license }), a.repository.replace(/^https:\/\//, ''), '',
+        t('mc.about.reproduces'), '',
+        `GNU Midnight Commander ${MC_RELEASE}`, MC_COPYRIGHT, t('mc.about.mcLicense'), MC_SITE, '',
+        t('mc.about.founded', { name: MC_FOUNDER }), '',
+        t('mc.about.maintainers'), ...nameLines(MC_MAINTAINERS),
+        t('mc.about.formerMaintainers'), ...nameLines(MC_FORMER_MAINTAINERS),
+        t('mc.about.formerTeam'), ...nameLines(MC_FORMER_TEAM),
+        t('mc.about.contributors'), '',
+        t('mc.about.menus'), t('mc.about.close'),
+    ];
+    return lines.flatMap(wrapText);
+}
+
+return { MC_RELEASE, MC_COPYRIGHT, MC_SITE, MC_FOUNDER, MC_MAINTAINERS, MC_FORMER_MAINTAINERS, MC_FORMER_TEAM, mcCredits };
+})();
 __m["editors/buffer.js"] = (() => {
 /** Text buffer shared by the nano and vim engines: lines, cursor, undo snapshots and display helpers. */
 const TAB_WIDTH = 8;
@@ -28129,165 +28373,12 @@ class NanoEditor {
 
 return { NanoEditor };
 })();
-__m["docs/about-data.js"] = (() => {
-const ABOUT = {
-    "name": "netfix",
-    "version": "0.7.3",
-    "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
-    "license": "GPL-3.0-or-later",
-    "repository": "https://github.com/glopezca/netfix",
-    "licenseMarkdown": "# Licencia y atribuciones\n\n- **Autoría:** Germán López Castro\n- **Repositorio:** <https://github.com/glopezca/netfix>\n\nNetfix usa dos licencias según el tipo de material, las dos con la misma idea de\n«compartir igual»: quien distribuya versiones modificadas debe publicarlas con la misma licencia.\n\n| Material | Licencia |\n|---|---|\n| Código fuente: `src/`, `tests/`, `scripts/`, configuración del proyecto y los archivos que genera el build | [GNU GPL v3.0 o posterior](https://www.gnu.org/licenses/gpl-3.0.html) (`GPL-3.0-or-later`) — texto completo en [`LICENSE`](LICENSE) |\n| Documentación e imágenes: `README.md`, `docs/`, capturas y textos de los laboratorios | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es) — [texto legal](https://creativecommons.org/licenses/by-sa/4.0/legalcode.es) |\n| `.claude/` (reglas y agentes de Everything Claude Code) | MIT, de sus autores (ver más abajo) |\n\nLa GPL es una licencia pensada para software: exige entregar el código fuente junto con\ncualquier versión distribuida (también la página HTML compilada) y protege el derecho de\nuso, estudio, modificación y redistribución. Creative Commons recomienda no usar sus licencias\npara código, por eso CC BY-SA 4.0 queda solo para la documentación. Las dos licencias son\ncompatibles en un sentido: el material CC BY-SA 4.0 puede incorporarse a obras GPLv3.\n\n## Aviso de copyright del código\n\n```\nNetfix — simulador de redes con CLI de Cisco IOS y servidor DHCP\nCopyright (C) 2026 Germán López Castro\n\nThis program is free software: you can redistribute it and/or modify\nit under the terms of the GNU General Public License as published by\nthe Free Software Foundation, either version 3 of the License, or\n(at your option) any later version.\n\nThis program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\nMERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\nGNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License\nalong with this program.  If not, see <https://www.gnu.org/licenses/>.\n```\n\n## Atribución recomendada\n\nPara la documentación o las capturas:\n\n> «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),\n> distribuido bajo licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).\n\nPara el software o una obra derivada:\n\n> Basado en «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),\n> GPL-3.0-or-later. Cambios: …\n\n## Componentes de terceros\n\n### Everything Claude Code (ECC)\n\nLas reglas y los agentes de la carpeta `.claude/` (`.claude/rules/`, `.claude/agents/`,\n`.claude/commands/`) proceden de\n[Everything Claude Code](https://github.com/affaan-m/everything-claude-code)\ny se mantienen bajo su licencia original **MIT**, © 2026 Affaan Mustafa.\nEl texto completo está en [`.claude/ECC-LICENSE`](.claude/ECC-LICENSE).\nLa licencia MIT es compatible con la GPLv3; la GPL y la CC BY-SA de este repositorio no se\naplican a esos archivos.\n\n### Marcas\n\nCisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc. Netfix es un proyecto\neducativo independiente, sin relación con Cisco ni respaldado por ella. Los símbolos de red\nde la interfaz son dibujos propios de este proyecto.\n"
-};
-
-return { ABOUT };
-})();
-__m["docs/markdown.js"] = (() => {
-const FENCE = /^```/;
-const HEADING = /^(#{1,6})\s+(.*)$/;
-const LIST_ITEM = /^\s*[-*+]\s+(.*)$/;
-const TABLE_RULE = /^\s*\|?\s*:?-{2,}/;
-function splitRow(line) {
-    const cells = [];
-    let cur = '';
-    const body = line.trim().replace(/^\|/, '').replace(/\|$/, '');
-    for (let i = 0; i < body.length; i++) {
-        const c = body[i];
-        if (c === '\\' && body[i + 1] === '|') {
-            cur += '|';
-            i++;
-        }
-        else if (c === '|') {
-            cells.push(cur.trim());
-            cur = '';
-        }
-        else
-            cur += c;
-    }
-    cells.push(cur.trim());
-    return cells;
-}
-function isTableStart(lines, i) {
-    return (lines[i] ?? '').trim().startsWith('|') && TABLE_RULE.test(lines[i + 1] ?? '');
-}
-/** Reads the block starting at line i; returns it (or null for a skipped title) and the next line. */
-function readBlock(lines, i) {
-    const line = lines[i] ?? '';
-    if (FENCE.test(line)) {
-        const end = lines.findIndex((l, j) => j > i && FENCE.test(l));
-        const stop = end < 0 ? lines.length : end;
-        return { block: { kind: 'code', text: lines.slice(i + 1, stop).join('\n') }, next: stop + 1 };
-    }
-    const h = HEADING.exec(line);
-    if (h) {
-        const level = (h[1] ?? '').length;
-        const text = (h[2] ?? '').trim();
-        if (level === 1)
-            return { block: null, next: i + 1 };
-        return { block: level === 2 ? { kind: 'h', text } : { kind: 'h', text, level: 4 }, next: i + 1 };
-    }
-    if (isTableStart(lines, i)) {
-        let j = i + 2;
-        while (j < lines.length && (lines[j] ?? '').trim().startsWith('|'))
-            j++;
-        return { block: { kind: 'table', head: splitRow(line), rows: lines.slice(i + 2, j).map(splitRow) }, next: j };
-    }
-    const collect = (test, strip) => {
-        let j = i;
-        const out = [];
-        while (j < lines.length && (lines[j] ?? '').trim() !== '' && test(lines[j] ?? ''))
-            out.push(strip(lines[j++] ?? '').trim());
-        return { text: out, next: j };
-    };
-    if (LIST_ITEM.test(line)) {
-        const r = collect((l) => LIST_ITEM.test(l), (l) => LIST_ITEM.exec(l)?.[1] ?? l);
-        return { block: { kind: 'list', items: r.text }, next: r.next };
-    }
-    if (line.trimStart().startsWith('>')) {
-        const r = collect((l) => l.trimStart().startsWith('>'), (l) => l.trimStart().replace(/^>\s?/, ''));
-        return { block: { kind: 'note', text: r.text.join(' ') }, next: r.next };
-    }
-    const r = collect((l) => !FENCE.test(l) && !HEADING.test(l) && !LIST_ITEM.test(l) && !l.trimStart().startsWith('>'), (l) => l);
-    return { block: { kind: 'p', text: r.text.join(' ') }, next: Math.max(r.next, i + 1) };
-}
-/** Markdown → blocks. The level-1 heading (the page title) is left to the caller. */
-function markdownBlocks(markdown) {
-    const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
-    const blocks = [];
-    let i = 0;
-    while (i < lines.length) {
-        if ((lines[i] ?? '').trim() === '') {
-            i++;
-            continue;
-        }
-        const { block, next } = readBlock(lines, i);
-        if (block)
-            blocks.push(block);
-        i = next;
-    }
-    return blocks;
-}
-const INLINE = /`([^`]+)`|\*\*([^*]+)\*\*|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)|<(https?:\/\/[^>\s]+)>/g;
-const SAFE_RELATIVE = /^[\w./#-]+$/;
-/** http(s) URLs as they are; relative paths resolved against `base`; anything else is refused. */
-function safeHref(url, base) {
-    if (/^https?:\/\/[^\s"'<>]+$/i.test(url))
-        return url;
-    if (/^[a-z][\w+.-]*:/i.test(url) || !SAFE_RELATIVE.test(url))
-        return undefined;
-    return `${base}${url.replace(/^\.\//, '')}`;
-}
-/** Inline Markdown → spans. `base` resolves relative links (files of the repository). */
-function inlineMarkdown(text, base) {
-    const spans = [];
-    let last = 0;
-    for (const m of text.matchAll(INLINE)) {
-        const at = m.index ?? 0;
-        if (at > last)
-            spans.push({ text: text.slice(last, at) });
-        last = at + m[0].length;
-        if (m[1] !== undefined)
-            spans.push({ text: m[1], code: true });
-        else if (m[2] !== undefined)
-            spans.push({ text: m[2], bold: true });
-        else if (m[5] !== undefined)
-            spans.push({ text: m[5], href: m[5] });
-        else {
-            const label = m[3] ?? '';
-            const code = /^`[^`]+`$/.test(label);
-            const shown = code ? label.slice(1, -1) : label;
-            const href = safeHref(m[4] ?? '', base);
-            spans.push(href ? { text: shown, href, ...(code ? { code } : {}) } : { text: shown });
-        }
-    }
-    if (last < text.length)
-        spans.push({ text: text.slice(last) });
-    return spans;
-}
-
-return { markdownBlocks, safeHref, inlineMarkdown };
-})();
-__m["docs/about.js"] = (() => {
-/** «Acerca de»: version, authorship, licences and attributions, from package.json and LICENSE.md. */
-const { ABOUT } = __m["docs/about-data.js"];
-const { markdownBlocks } = __m["docs/markdown.js"];
-const AUTHOR_LINE = /^\s*-\s*\*\*Autoría:\*\*\s*(.+?)\s*$/m;
-function aboutInfo() {
-    const author = AUTHOR_LINE.exec(ABOUT.licenseMarkdown)?.[1] ?? '';
-    return {
-        name: ABOUT.name.charAt(0).toUpperCase() + ABOUT.name.slice(1),
-        version: ABOUT.version,
-        description: ABOUT.description,
-        license: ABOUT.license,
-        repository: ABOUT.repository,
-        author,
-        fileBase: `${ABOUT.repository}/blob/main/`,
-        blocks: markdownBlocks(ABOUT.licenseMarkdown),
-    };
-}
-
-return { aboutInfo };
-})();
 __m["editors/mc.js"] = (() => {
+/**
+ * GNU Midnight Commander 4.8 (simplified): two panels, F3 viewer, F4 editor (nano, Ubuntu's default
+ * editor), F5 copy, F6 rename/move, F7 mkdir, F8 delete, F10 quit. Esc + digit = F-key, as in mc.
+ */
+const { mcCredits } = __m["editors/mc-credits.js"];
 const { fit, expandTabs } = __m["editors/buffer.js"];
 const { joinPath } = __m["editors/mc-fs.js"];
 const { Panel } = __m["editors/mc-panel.js"];
@@ -28300,14 +28391,6 @@ const MENU = '  Left     File     Command     Options     Right';
 function help() {
     const a = aboutInfo();
     return [t('mc.help.1'), t('mc.help.2'), t('mc.help.3'), t('mc.help.4'), t('mc.help.5'), t('mc.help.about'), '', t('mc.footer', { version: a.version, author: a.author })];
-}
-/** Credits of Netfix and of GNU Midnight Commander, whose interface this program reproduces. */
-function mcCredits() {
-    const a = aboutInfo();
-    return [
-        t('mc.about.app', { version: a.version }), t('mc.about.author', { author: a.author }), t('mc.about.license', { license: a.license }),
-        a.repository.replace(/^https:\/\//, ''), '', t('mc.about.mc'), t('mc.about.mcCopy'), '', t('mc.about.menus'),
-    ];
 }
 class McApp {
     closed = false;
@@ -28439,9 +28522,10 @@ class McApp {
             case 8:
                 this.remove();
                 break;
+            // No user menu nor pull-down menus here: F2 / F9 show the credits in the (scrollable) viewer.
             case 2:
             case 9:
-                this.dialog = { kind: 'message', title: t('mc.about.title'), lines: mcCredits(), error: false };
+                this.viewer = { name: t('mc.about.title'), lines: mcCredits(), top: 0 };
                 break;
             case 10:
                 this.dialog = { kind: 'confirm', title: 'The Midnight Commander', text: 'Do you really want to quit the Midnight Commander?', yes: true, onYes: () => { this.closed = true; } };
@@ -28579,15 +28663,16 @@ class McApp {
     }
 }
 
-return { mcCredits, McApp };
+return { McApp };
 })();
 __m["bash/coreutils/mc.js"] = (() => {
 const { McApp } = __m["editors/mc.js"];
+const { MC_RELEASE } = __m["editors/mc-credits.js"];
 const { bufferSink } = __m["bash/io.js"];
 const { runSync } = __m["bash/run-sync.js"];
 const { errMsg } = __m["bash/coreutils/common.js"];
 const { normalize } = __m["bash/vfs.js"];
-const MC_VERSION = 'GNU Midnight Commander 4.8.33\nBuilt with GLib 2.84.1\nUsing the S-Lang library with terminfo database\nWith builtin Editor and Aspell support\n';
+const MC_VERSION = `GNU Midnight Commander ${MC_RELEASE}\nBuilt with GLib 2.84.1\nUsing the S-Lang library with terminfo database\nWith builtin Editor and Aspell support\n`;
 /** Runs a file utility (cp, mv, rm, mkdir) in a copy of the shell; returns its error text or null. */
 function run(ctx, argv) {
     const err = bufferSink();

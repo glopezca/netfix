@@ -2,12 +2,13 @@
 import type { CommandFn, Ctx, Gen } from '../types.ts';
 import type { McEntry, McFs } from '../../editors/mc-fs.ts';
 import { McApp } from '../../editors/mc.ts';
+import { MC_RELEASE } from '../../editors/mc-credits.ts';
 import { bufferSink } from '../io.ts';
 import { runSync } from '../run-sync.ts';
 import { errMsg } from './common.ts';
 import { normalize } from '../vfs.ts';
 
-const MC_VERSION = 'GNU Midnight Commander 4.8.33\nBuilt with GLib 2.84.1\nUsing the S-Lang library with terminfo database\nWith builtin Editor and Aspell support\n';
+const MC_VERSION = `GNU Midnight Commander ${MC_RELEASE}\nBuilt with GLib 2.84.1\nUsing the S-Lang library with terminfo database\nWith builtin Editor and Aspell support\n`;
 
 /** Runs a file utility (cp, mv, rm, mkdir) in a copy of the shell; returns its error text or null. */
 function run(ctx: Ctx, argv: readonly string[]): string | null {

@@ -1,4 +1,5 @@
 /** Midnight Commander: panels, operations through the user's shell, viewer, editor, and running over SSH. */
+import { mcCredits, MC_COPYRIGHT, MC_RELEASE, MC_SITE } from '../../src/editors/mc-credits.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
@@ -120,20 +121,32 @@ test('mc works through SSH: frames and keys travel in the session', () => {
   assert.equal(hostSystem(srv).fs.tryLookup('/home/admin/otro')?.kind, 'dir');
 });
 
-test('mc shows the authorship credits of Netfix (F1 help, F2/F9 About), in the interface language', () => {
+test('mc shows the credits of Netfix and the real ones of GNU Midnight Commander (F1 help, F2/F9), in the interface language', () => {
   const { sh } = pc();
   const a = aboutInfo();
   sh.run('mc');
   press(sh, 'F1');
   assert.ok(screen(sh).some((r) => r.includes(`Netfix ${a.version} · © ${a.author}`)), 'help footer');
   press(sh, 'Enter', 'F9');
-  const about = screen(sh).join('\n');
-  for (const text of [`Netfix ${a.version}`, `Autoría: ${a.author}`, 'GPL-3.0-or-later', 'github.com/glopezca/netfix', 'GNU Midnight Commander', 'Free Software Foundation']) assert.ok(about.includes(text), text);
-  press(sh, 'Enter');
+  const credits = mcCredits().join('\n');
+  for (const text of [`Netfix ${a.version}`, `Autoría: ${a.author}`, 'GPL-3.0-or-later', 'github.com/glopezca/netfix',
+    `GNU Midnight Commander ${MC_RELEASE}`, MC_COPYRIGHT, 'GNU GPL v3 o posterior', MC_SITE, 'Fundado en 1994 por Miguel de Icaza',
+    'Andrew Borodin', 'Yury V. Zaytsev', 'Pavel Roskin', 'Slava Zanko']) assert.ok(credits.includes(text), text);
+  // Shown in the scrollable viewer: the first screen and, after End, the last lines.
+  assert.ok(screen(sh).join('\n').includes(`Netfix ${a.version}`));
+  press(sh, 'End');
+  assert.ok(screen(sh).join('\n').includes('q, Esc o F10'));
+  assert.ok(mcCredits().every((l) => l.length <= 56), 'lines fit a narrow terminal');
+  press(sh, 'q');
+  press(sh, 'F10', 'Enter');
+  assert.match(sh.run('mc --version')[0] ?? '', new RegExp(`GNU Midnight Commander ${MC_RELEASE.replace(/\./g, '\\.')}`));
   setLocale('en-GB');
   try {
+    sh.run('mc');
     press(sh, 'Escape', '2');
-    assert.ok(screen(sh).join('\n').includes(`Author: ${a.author}`));
+    const en = screen(sh).join('\n');
+    assert.ok(en.includes(`Author: ${a.author}`));
+    assert.ok(mcCredits().join('\n').includes('Founded in 1994 by Miguel de Icaza'));
   } finally {
     setLocale('es-ES');
   }
