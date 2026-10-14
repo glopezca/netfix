@@ -1,7 +1,7 @@
-/** The Documentación tab: table of contents, search and pages (all text through textContent). */
+/** The Documentation tab: table of contents, search and pages (all text through textContent). */
 import { t } from '../i18n/t.ts';
 import { el, clear } from './dom.ts';
-import { DOC_GROUPS, findPage, searchDocs } from '../docs/index.ts';
+import { docGroups, findPage, searchDocs } from '../docs/index.ts';
 import type { DocPage } from '../docs/index.ts';
 import { docBlock } from './doc-blocks.ts';
 
@@ -52,12 +52,12 @@ export class DocsView {
         ...hits.map((h) => this.link(h.page, h.snippet)));
       return;
     }
-    for (const g of DOC_GROUPS) this.toc.append(el('h2', { class: 'doc-group' }, g.title), ...g.pages.map((p) => this.link(p)));
+    for (const g of docGroups()) this.toc.append(el('h2', { class: 'doc-group' }, g.title), ...g.pages.map((p) => this.link(p)));
   }
 
   private renderPage(page: DocPage): void {
     clear(this.article);
-    const group = DOC_GROUPS.find((g) => g.pages.includes(page));
+    const group = docGroups().find((g) => g.pages.includes(page));
     this.article.append(el('p', { class: 'doc-crumb' }, group?.title ?? ''), el('h1', {}, page.title), el('p', { class: 'doc-summary' }, page.summary), ...page.blocks.map((b) => docBlock(b, page.markdownBase)));
   }
 }

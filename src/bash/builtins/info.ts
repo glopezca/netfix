@@ -5,7 +5,7 @@ import { builtinError } from '../io.ts';
 import { findInPath } from '../path.ts';
 import { parseOpts, badOption } from './util.ts';
 import { functionText } from '../deparse.ts';
-import { BUILTIN_DOCS } from '../../docs/bash-builtins.ts';
+import { builtinDocs, helpIntro } from '../../docs/index.ts';
 
 export const KEYWORDS = new Set(['if', 'then', 'else', 'elif', 'fi', 'case', 'esac', 'for', 'select', 'while', 'until', 'do', 'done', 'in', 'function', 'time', '{', '}', '!', '[[', ']]', 'coproc']);
 
@@ -76,14 +76,15 @@ function help(ctx: Ctx): number {
   if (p.bad) return badOption(ctx, p.bad, 'help [-dms] [pattern ...]');
   if (!p.rest.length) {
     ctx.out('GNU bash, version 5.3.20(1)-release (x86_64-pc-linux-gnu) — Netfix\n');
-    ctx.out('Órdenes internas (builtins). Escribe `help nombre` para ver una, o abre la pestaña Documentación.\n\n');
-    const names = Object.keys(BUILTIN_DOCS).sort();
-    for (let i = 0; i < names.length; i += 2) ctx.out(`${(BUILTIN_DOCS[names[i] ?? '']?.synopsis ?? '').slice(0, 38).padEnd(40)}${BUILTIN_DOCS[names[i + 1] ?? '']?.synopsis.slice(0, 38) ?? ''}\n`);
+    ctx.out(`${helpIntro()}\n\n`);
+    const docs = builtinDocs();
+    const names = Object.keys(docs).sort();
+    for (let i = 0; i < names.length; i += 2) ctx.out(`${(docs[names[i] ?? '']?.synopsis ?? '').slice(0, 38).padEnd(40)}${docs[names[i + 1] ?? '']?.synopsis.slice(0, 38) ?? ''}\n`);
     return 0;
   }
   let status = 0;
   for (const pat of p.rest) {
-    const hits = Object.entries(BUILTIN_DOCS).filter(([n]) => n === pat || (pat.includes('*') && new RegExp(`^${pat.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`).test(n)));
+    const hits = Object.entries(builtinDocs()).filter(([n]) => n === pat || (pat.includes('*') && new RegExp(`^${pat.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`).test(n)));
     if (!hits.length) { builtinError(ctx, `no help topics match \`${pat}'.  Try \`help help' or \`man -k ${pat}' or \`info ${pat}'.`); status = 1; continue; }
     for (const [n, d] of hits) {
       if (p.flags.has('s')) ctx.out(`${n}: ${d.synopsis}\n`);

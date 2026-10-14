@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DOC_GROUPS, findPage, searchDocs, manPage, apropos, fold } from '../../src/docs/index.ts';
+import { docGroups, findPage, searchDocs, manPage, apropos, fold } from '../../src/docs/index.ts';
 import { UTIL_DOCS } from '../../src/docs/utils.ts';
 import { BUILTIN_DOCS } from '../../src/docs/bash-builtins.ts';
 import { COREUTILS } from '../../src/bash/coreutils/index.ts';
@@ -13,10 +13,10 @@ import { linuxPrograms } from '../../src/shells/linux-programs.ts';
 const ALIASES = new Set(['[', 'dir', 'egrep', 'fgrep', 'mawk', 'sh', 'rbash', 'vi', 'view', 'command-not-found', 'a2dissite', 'a2dismod', 'a2disconf', 'apachectl', 'netcat']);
 
 test('every page has a unique id, a title, a summary and content', () => {
-  const pages = DOC_GROUPS.flatMap((g) => g.pages);
+  const pages = docGroups().flatMap((g) => g.pages);
   assert.equal(new Set(pages.map((p) => p.id)).size, pages.length);
   for (const p of pages) assert.ok(p.title && p.summary && p.blocks.length > 0, p.id);
-  assert.ok(DOC_GROUPS.some((g) => g.id === 'bash') && DOC_GROUPS.some((g) => g.id === 'servicios'));
+  assert.ok(docGroups().some((g) => g.id === 'bash') && docGroups().some((g) => g.id === 'servicios'));
 });
 
 test('every builtin and every program of the terminal is documented', () => {

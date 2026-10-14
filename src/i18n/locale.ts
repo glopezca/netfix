@@ -1,6 +1,7 @@
 /**
  * Current language of Netfix (presentation state). A leaf module: it imports nothing from src/, so any layer
- * can ask for the locale without import cycles. Program output (IOS, bash, cmd) never depends on it.
+ * can ask for the locale without import cycles. Program output (IOS, bash, cmd) never
+ * depends on it; only the built-in manuals (man, help) follow it, because they are Netfix's documentation.
  */
 
 export type Locale = 'es-ES' | 'en-GB';

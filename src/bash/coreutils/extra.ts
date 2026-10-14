@@ -1,8 +1,7 @@
 /** man, less/more, shuf and tree. */
 import type { CommandFn, Ctx, Gen } from '../types.ts';
 import { gnuOpts, readInputs, usageError } from './common.ts';
-import { manPage, apropos } from '../../docs/index.ts';
-import { BUILTIN_DOCS } from '../../docs/bash-builtins.ts';
+import { manPage, apropos, builtinDocs, builtinHint } from '../../docs/index.ts';
 import { normalize } from '../vfs.ts';
 
 function man(ctx: Ctx): number {
@@ -20,7 +19,7 @@ function man(ctx: Ctx): number {
     const page = manPage(n);
     if (page) { ctx.out(page); continue; }
     ctx.err(`No manual entry for ${n}\n`);
-    if (BUILTIN_DOCS[n]) ctx.err(`(${n} es una orden interna de bash: prueba «help ${n}»)\n`);
+    if (builtinDocs()[n]) ctx.err(`${builtinHint(n)}\n`);
     status = 16;
   }
   return status;

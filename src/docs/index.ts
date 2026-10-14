@@ -1,35 +1,40 @@
-/** The whole documentation: groups for the Documentación tab, full-text search and man pages for the terminal. */
+/** The whole documentation: groups for the Documentation tab, full-text search and man pages for the terminal. */
 import type { DocBlock, DocGroup, DocPage } from './types.ts';
-import { NETFIX_DOCS } from './netfix.ts';
-import { IOS_DOCS } from './ios.ts';
-import { SERVICE_DOCS } from './services.ts';
-import { CLIENT_DOCS } from './clients.ts';
-import { LINUX_DOCS } from './linux.ts';
-import { BASH_LANGUAGE } from './bash-lang.ts';
-import { BASH_REFERENCE } from './bash-ref.ts';
-import { EDITOR_DOCS, NANO_KEYS, VIM_EX, VIM_KEYS } from './editors.ts';
-import { UTIL_DOCS } from './utils.ts';
-import { BUILTIN_DOCS } from './bash-builtins.ts';
-import { INTERNET_DOCS } from './internet.ts';
-import { WEBAPP_DOCS } from './webapps.ts';
-import { SSH_DOCS } from './ssh.ts';
-import { SECURITY_DOCS } from './security.ts';
+import type { UtilDoc } from './utils.ts';
+import type { BuiltinDoc } from './bash-builtins.ts';
+import { getLocale } from '../i18n/locale.ts';
+import type { Locale } from '../i18n/locale.ts';
+import { docSet } from './sets.ts';
 
 export type { DocBlock, DocGroup, DocPage } from './types.ts';
 
-export const DOC_GROUPS: readonly DocGroup[] = [
-  NETFIX_DOCS,
-  IOS_DOCS,
-  { ...SERVICE_DOCS, pages: [...SERVICE_DOCS.pages, ...SSH_DOCS, ...WEBAPP_DOCS] },
-  INTERNET_DOCS,
-  SECURITY_DOCS,
-  CLIENT_DOCS,
-  { id: 'linux', title: 'Terminal Linux', pages: [...LINUX_DOCS, ...EDITOR_DOCS] },
-  { id: 'bash', title: 'GNU bash 5.3', pages: [...BASH_LANGUAGE, ...BASH_REFERENCE] },
-];
+/** Groups of the Documentation tab in the current language. */
+export function docGroups(locale: Locale = getLocale()): readonly DocGroup[] {
+  return docSet(locale).groups;
+}
+
+/** Programs documented for man (in the current language). */
+export function utilDocs(locale: Locale = getLocale()): Readonly<Record<string, UtilDoc>> {
+  return docSet(locale).utils;
+}
+
+/** bash builtins documented for help (in the current language). */
+export function builtinDocs(locale: Locale = getLocale()): Readonly<Record<string, BuiltinDoc>> {
+  return docSet(locale).builtins;
+}
+
+/** First line of `help` without arguments. */
+export function helpIntro(): string {
+  return docSet(getLocale()).man.helpIntro;
+}
+
+/** man's note when the name is a bash builtin. */
+export function builtinHint(name: string): string {
+  return docSet(getLocale()).man.builtinHint(name);
+}
 
 export function findPage(id: string): DocPage | undefined {
-  return DOC_GROUPS.flatMap((g) => g.pages).find((p) => p.id === id);
+  return docGroups().flatMap((g) => g.pages).find((p) => p.id === id);
 }
 
 /** Lower case without accents, for searching. */
@@ -61,7 +66,7 @@ export function searchDocs(query: string): SearchHit[] {
   const words = fold(query).split(/\s+/).filter(Boolean);
   if (!words.length) return [];
   const hits: SearchHit[] = [];
-  for (const group of DOC_GROUPS) {
+  for (const group of docGroups()) {
     for (const page of group.pages) {
       const title = fold(`${page.title} ${page.summary}`);
       const lines = page.blocks.flatMap((b) => blockText(b).split('\n'));
@@ -105,45 +110,50 @@ function section(title: string, text: string): string[] {
   return [title, ...wrap(text), ''];
 }
 
-const KEY_TABLES: Readonly<Record<string, string>> = {
-  nano: NANO_KEYS.map(([k, d]) => `${k.padEnd(24)} ${d}`).join('\n'),
-  vim: [...VIM_KEYS, ...VIM_EX].map(([k, d]) => `${k.padEnd(28)} ${d}`).join('\n'),
-};
+function keyTable(key: string): string | null {
+  const set = docSet(getLocale());
+  if (key === 'nano') return set.nanoKeys.map(([k, d]) => `${k.padEnd(24)} ${d}`).join('\n');
+  if (key === 'vim') return set.vimKeys.map(([k, d]) => `${k.padEnd(28)} ${d}`).join('\n');
+  return null;
+}
 
 /** The manual page of a program (null when there is none, like man's «No manual entry»). */
 export function manPage(name: string): string | null {
   const key = name === 'vi' || name === 'view' ? 'vim' : name;
   if (key === 'bash' || key === 'sh') return bashManual();
-  const doc = UTIL_DOCS[key];
+  const doc = utilDocs()[key];
   if (!doc) return null;
   const sec = doc.section ?? 1;
   const lines = [header(key, sec), '', ...section('NAME', `${key} - ${doc.summary}`), ...section('SYNOPSIS', doc.synopsis)];
   if (doc.options) lines.push('OPTIONS', ...doc.options.split('\n').map((l) => INDENT + l), '');
-  if (KEY_TABLES[key]) lines.push('KEYS', ...(KEY_TABLES[key] ?? '').split('\n').map((l) => INDENT + l), '');
-  lines.push('SEE ALSO', `${INDENT}La pestaña Documentación de Netfix tiene ejemplos y la referencia completa.`, '', `Netfix${' '.repeat(WIDTH - 'Netfix'.length - `${key.toUpperCase()}(${sec})`.length)}${key.toUpperCase()}(${sec})`);
+  const keys = keyTable(key);
+  if (keys) lines.push('KEYS', ...keys.split('\n').map((l) => INDENT + l), '');
+  lines.push('SEE ALSO', `${INDENT}${docSet(getLocale()).man.seeAlso}`, '', `Netfix${' '.repeat(WIDTH - 'Netfix'.length - `${key.toUpperCase()}(${sec})`.length)}${key.toUpperCase()}(${sec})`);
   return `${lines.join('\n')}\n`;
 }
 
 function bashManual(): string {
-  const builtins = Object.keys(BUILTIN_DOCS).sort().join(' ');
-  const pages = [...BASH_LANGUAGE, ...BASH_REFERENCE].map((p) => `${p.title}: ${p.summary}`).join('\n');
-  return [header('bash', 1), '', ...section('NAME', 'bash - GNU Bourne-Again SHell (versión 5.3.20 en Netfix)'),
-    ...section('SYNOPSIS', 'bash [opciones] [orden_o_fichero ...]'),
-    ...section('DESCRIPTION', 'Intérprete de órdenes compatible con sh que ejecuta lo que se escribe en la terminal o se lee de un fichero. La referencia completa está en la pestaña Documentación:'),
+  const set = docSet(getLocale());
+  const builtins = Object.keys(set.builtins).sort().join(' ');
+  const pages = set.bashPages.map((p) => `${p.title}: ${p.summary}`).join('\n');
+  return [header('bash', 1), '', ...section('NAME', set.man.bashName),
+    ...section('SYNOPSIS', set.man.bashSynopsis),
+    ...section('DESCRIPTION', set.man.bashDescription),
     ...pages.split('\n').map((l) => INDENT + l), '',
-    ...section('SHELL BUILTIN COMMANDS', `${builtins}\nUsa «help orden» para ver cada una.`), ''].join('\n');
+    ...section('SHELL BUILTIN COMMANDS', `${builtins}\n${set.man.bashHelp}`), ''].join('\n');
 }
 
 /** Section of the manual page of a program (whereis), or undefined. */
 export function manSection(name: string): number | undefined {
   if (name === 'bash' || name === 'sh') return 1;
-  const doc = UTIL_DOCS[name];
+  const doc = utilDocs()[name];
   return doc ? doc.section ?? 1 : undefined;
 }
 
 /** man -k: programs whose name or summary contains the word. */
 export function apropos(word: string): string[] {
   const w = fold(word);
-  return Object.keys(UTIL_DOCS).sort().filter((n) => fold(`${n} ${UTIL_DOCS[n]?.summary ?? ''}`).includes(w))
-    .map((n) => `${`${n} (${UTIL_DOCS[n]?.section ?? 1})`.padEnd(20)}- ${UTIL_DOCS[n]?.summary ?? ''}`);
+  const docs = utilDocs();
+  return Object.keys(docs).sort().filter((n) => fold(`${n} ${docs[n]?.summary ?? ''}`).includes(w))
+    .map((n) => `${`${n} (${docs[n]?.section ?? 1})`.padEnd(20)}- ${docs[n]?.summary ?? ''}`);
 }

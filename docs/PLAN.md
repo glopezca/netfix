@@ -189,10 +189,10 @@ Decisiones de diseño (por defecto, revisables):
 | 11.14 | Apps del PC: cliente SSH (perfiles, claves, known_hosts) y SFTP tipo FileZilla | Lógica fuera de `src/ui` |
 | 11.15 | Laboratorios: VPN IPsec y WireGuard, DNS que reenvía, router Linux con NAT/DMZ, SSH/SFTP; bastionado (sshd, nftables, ACL) | Cada lab comprueba lo permitido y lo bloqueado |
 | 11.16 | Traducción del resto (webs simuladas, validaciones, ventanas) | Guardián a cero |
-| 11.17 | Documentación en los dos idiomas y páginas nuevas | Bloques `code` idénticos |
+| 11.17 | Documentación en los dos idiomas (`src/docs/en`, `docs/sets.ts`; man/help siguen el idioma) y grupo Seguridad y VPN | Paridad comprobada por `tests/docs/docs-en.test.ts` (órdenes de los bloques `code` intactas) |
 | 11.18 | Revisión ECC (code, typescript, security, network-config), e2e escritorio y táctil, v0.7.0 | — |
 
-**Estado:** 11.1–11.6 completadas (commits `98afa8a`…`e5e3d9b`, 334 pruebas). En curso: 11.7.
+**Estado:** 11.1–11.17 completadas (395 pruebas). En curso: 11.18.
 
 Diseño detallado de 11.7–11.14 (revisión del agente planner):
 - Ganchos opcionales en `StackHost` (`net/ipstack.ts`): `input?` (tras decidir que el paquete es para el
