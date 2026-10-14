@@ -1,4 +1,6 @@
 /** Cisco 2911-style router: routed interfaces, subinterfaces, static routes. */
+import { EMPTY_CRYPTO, cryptoConfigLines } from '../ios/crypto-config.ts';
+import type { CryptoConfig } from '../ios/crypto-config.ts';
 import { IosDevice } from '../ios/device.ts';
 import type { IfaceRuntime, ModeTable } from '../ios/device.ts';
 import type { IfaceConfig } from '../ios/interfaces.ts';
@@ -7,6 +9,7 @@ import { SimClock } from '../core/clock.ts';
 import { macFromSeed } from '../core/mac.ts';
 import { DETACHED, macPlus } from './hooks.ts';
 import { RouterPlane } from './router-plane.ts';
+import { IpsecEngine } from './router-ipsec.ts';
 import { IosWeb } from './ios-web.ts';
 import { DEFAULT_TTL } from '../net/packets.ts';
 import type { NetDevice } from '../net/network.ts';
@@ -48,6 +51,9 @@ export class Router extends IosDevice implements NetDevice {
   readonly aclHits = new Map<string, number>();
   /** Named lists declared with `ip access-list extended`. */
   readonly extendedAcls = new Set<string>();
+  /** IPsec configuration (crypto isakmp, transform sets, crypto maps). */
+  crypto: CryptoConfig = EMPTY_CRYPTO;
+  readonly ipsec = new IpsecEngine(this);
   nat: NatConfig = EMPTY_NAT;
   readonly natTable = new NatTable();
   debugNat = false;
@@ -116,6 +122,9 @@ export class Router extends IosDevice implements NetDevice {
     this.staticRoutes = [];
     this.acls = new Map();
     this.aclHits.clear();
+    this.extendedAcls.clear();
+    this.crypto = EMPTY_CRYPTO;
+    this.ipsec.clear('all');
     this.nat = EMPTY_NAT;
     this.natTable.reset();
     this.debugNat = false;
@@ -207,6 +216,7 @@ export class Router extends IosDevice implements NetDevice {
       'no ipv6 cef',
       '!',
       '!',
+      ...cryptoConfigLines(this.crypto),
       ...interfaceSection(this),
       ...httpLines(this),
       ...natConfigLines(this.nat),

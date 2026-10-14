@@ -13,6 +13,8 @@ import { DHCP_EXEC_USER, DHCP_EXEC_PRIV } from './dhcp-exec.ts';
 import { ROUTER_NET_EXEC, ROUTER_NET_PRIV } from './net-exec.ts';
 import { NAT_GLOBAL, NAT_IF, NAT_EXEC, NAT_PRIV } from './nat.ts';
 import { ACL_GLOBAL, ACL_IF, ACL_MODE, EXT_ACL_MODE, ACL_EXEC, ACL_PRIV } from './acl.ts';
+import { CRYPTO_EXEC } from './crypto-show.ts';
+import { CRYPTO_GLOBAL, CRYPTO_IF, CRYPTO_MAP_MODE, ISAKMP_MODE, TRANSFORM_MODE } from './crypto.ts';
 
 type Def = CommandDef<Cli<Router>>;
 
@@ -52,13 +54,16 @@ const ROUTER_GLOBAL: readonly Def[] = [
 
 export const routerModeTable: ModeTable<Router> = {
   user: [...EXEC_USER, ...DHCP_EXEC_USER, ...ROUTER_NET_EXEC, ...NAT_EXEC, ...ACL_EXEC],
-  exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV, ...ROUTER_NET_PRIV, ...NAT_PRIV, ...ACL_PRIV],
-  config: [...GLOBAL, ...ROUTER_GLOBAL, ...DHCP_GLOBAL, ...ACL_GLOBAL, ...NAT_GLOBAL],
-  'config-if': [...ROUTER_IF, ...NAT_IF, ...ACL_IF],
+  exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV, ...ROUTER_NET_PRIV, ...NAT_PRIV, ...ACL_PRIV, ...CRYPTO_EXEC],
+  config: [...GLOBAL, ...ROUTER_GLOBAL, ...DHCP_GLOBAL, ...ACL_GLOBAL, ...NAT_GLOBAL, ...CRYPTO_GLOBAL],
+  'config-if': [...ROUTER_IF, ...NAT_IF, ...ACL_IF, ...CRYPTO_IF],
   'config-subif': [...ROUTER_SUBIF, ...NAT_IF, ...ACL_IF],
   'config-if-range': [...ROUTER_IF, ...NAT_IF, ...ACL_IF],
   'config-std-nacl': [...ACL_MODE],
   'config-ext-nacl': [...EXT_ACL_MODE],
+  'config-isakmp': [...ISAKMP_MODE],
+  'config-crypto-map': [...CRYPTO_MAP_MODE],
+  'cfg-crypto-trans': [...TRANSFORM_MODE],
   'config-line': [...LINE_MODE],
   'dhcp-config': [...DHCP_POOL],
   'dhcp-class': [...DHCP_CLASS],

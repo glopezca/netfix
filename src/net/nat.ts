@@ -81,6 +81,7 @@ export class NatTable {
 
   /** Inside → outside: translates the source; null when no rule applies, 'drop' when the rule cannot. */
   inside(p: IpPacket, statics: readonly StaticNat[], target: (p: IpPacket) => DynamicTarget): InsideResult {
+    if (p.protocol === 'esp') return this.insideEsp(p, statics, target);
     const f = flowOf(p);
     const st = statics.find((s) => staticMatchesOut(s, p, f));
     if (st) return this.hit(rewriteSrc(p, st.global, st.proto ? st.globalPort : undefined));
@@ -100,8 +101,29 @@ export class NatTable {
     return rewriteSrc(p, entry.insideGlobal, entry.proto ? entry.globalPort : undefined);
   }
 
+  /**
+   * ESP has no ports: a 1:1 translation (static, or a dynamic one without overload) can carry it; PAT
+   * cannot, so the packet is dropped (that is why IPsec behind a NAT needs NAT-T or public addresses).
+   */
+  private insideEsp(p: IpPacket, statics: readonly StaticNat[], target: (p: IpPacket) => DynamicTarget): InsideResult {
+    const st = statics.find((s) => s.local === p.src && s.proto === undefined);
+    if (st) return this.hit({ ...p, src: st.global });
+    const known = this.dynamic.find((e) => e.insideLocal === p.src && e.proto === null);
+    if (known) return this.hit({ ...p, src: known.insideGlobal });
+    const t = target(p);
+    if (!t) return null;
+    if (t === 'exhausted' || t.overload) return 'drop';
+    const entry: NatEntry = { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false, rule: t.rule };
+    this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
+    return { ...p, src: t.global };
+  }
+
   /** Outside → inside: translates the destination, or returns null when nothing maps it. */
   outside(p: IpPacket, statics: readonly StaticNat[]): IpPacket | null {
+    if (p.protocol === 'esp') {
+      const whole = statics.find((s) => s.global === p.dst && s.proto === undefined) ?? this.dynamic.find((e) => e.proto === null && e.insideGlobal === p.dst);
+      return whole ? this.hit({ ...p, dst: 'local' in whole ? whole.local : whole.insideLocal }) : null;
+    }
     const f = flowOf(p);
     const port = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f));
     if (port) return this.hit(rewriteDst(p, port.local, port.localPort));

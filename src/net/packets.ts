@@ -44,7 +44,53 @@ export interface UdpDatagram {
   readonly dport: number;
   readonly dhcp?: DhcpMessage;
   readonly dns?: DnsMessage;
+  /** IKE (UDP 500) between IPsec peers. */
+  readonly isakmp?: IsakmpMessage;
+  /** WireGuard message (UDP 51820 by default). */
+  readonly wg?: WgMessage;
 }
+
+// ---------------------------------------------------------------- VPN
+
+/**
+ * IKE main mode + quick mode, condensed to four messages. The pre-shared key never travels: each side
+ * proves it with sha256(psk ‖ nonces ‖ role) (base64).
+ */
+export type IsakmpMessage =
+  | { readonly kind: 'mm1'; readonly ispi: string; readonly policies: readonly IkeProposal[]; readonly nonce: string }
+  | { readonly kind: 'mm2'; readonly ispi: string; readonly rspi: string; readonly policy: IkeProposal; readonly nonce: string; readonly auth: string }
+  | { readonly kind: 'mm3'; readonly ispi: string; readonly rspi: string; readonly auth: string; readonly qm: QuickModeOffer }
+  | { readonly kind: 'qm2'; readonly ispi: string; readonly spi: number; readonly transforms: readonly string[] }
+  | { readonly kind: 'notify'; readonly ispi: string; readonly reason: 'no-proposal' | 'auth' | 'qm' };
+
+export interface IkeProposal {
+  readonly encryption: string;
+  readonly hash: string;
+  readonly auth: string;
+  readonly group: number;
+}
+
+export interface QuickModeOffer {
+  /** Proxy identities: the initiator's local and remote networks (from its crypto ACL). */
+  readonly local: { readonly ip: number; readonly prefix: number };
+  readonly remote: { readonly ip: number; readonly prefix: number };
+  readonly transforms: readonly string[];
+  /** SPI the initiator wants to receive with. */
+  readonly spi: number;
+}
+
+/** ESP: the protected packet travels inside (the simulator does not encrypt the bytes). */
+export interface EspPayload {
+  readonly spi: number;
+  readonly seq: number;
+  readonly inner: IpPacket;
+}
+
+export type WgMessage =
+  | { readonly kind: 'initiation'; readonly sender: number; readonly publicKey: string; readonly proof: string }
+  | { readonly kind: 'response'; readonly sender: number; readonly receiver: number; readonly publicKey: string; readonly proof: string }
+  | { readonly kind: 'data'; readonly receiver: number; readonly counter: number; readonly inner: IpPacket }
+  | { readonly kind: 'keepalive'; readonly receiver: number; readonly counter: number };
 
 // ---------------------------------------------------------------- DNS
 
@@ -157,10 +203,11 @@ export interface IpPacket {
   readonly src: number;
   readonly dst: number;
   readonly ttl: number;
-  readonly protocol: 'icmp' | 'udp' | 'tcp';
+  readonly protocol: 'icmp' | 'udp' | 'tcp' | 'esp';
   readonly icmp?: IcmpMessage;
   readonly udp?: UdpDatagram;
   readonly tcp?: TcpSegment;
+  readonly esp?: EspPayload;
 }
 
 export interface ArpMessage {
@@ -196,6 +243,9 @@ export function frameProtocol(frame: Frame): string {
   if (!ip) return 'Ethernet';
   if (ip.udp?.dhcp) return 'DHCP';
   if (ip.udp?.dns) return 'DNS';
+  if (ip.udp?.isakmp) return 'ISAKMP';
+  if (ip.udp?.wg) return 'WireGuard';
+  if (ip.esp) return 'ESP';
   if (ip.icmp) return 'ICMP';
   if (ip.tcp) {
     if (ip.tcp.data) return ip.tcp.data.app;

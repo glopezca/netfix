@@ -112,16 +112,23 @@ export class RouterPlane implements StackHost {
       this.icmpError(packet, src, 'unreachable');
       return;
     }
-    this.stack.sendVia(egress, out);
+    const sealed = this.router.ipsec.outbound(egress.iface, out);
+    if (sealed) this.stack.sendVia(egress, sealed);
   }
 
-  /** Inbound access list, then NAT outside → inside (IOS order). */
+  /** Locally generated traffic also goes through the crypto map of its egress interface. */
+  output(iface: string, packet: IpPacket): IpPacket | null {
+    return this.router.ipsec.outbound(iface, packet);
+  }
+
+  /** Inbound access list, IPsec decapsulation, then NAT outside → inside (IOS order). */
   prerouting(iface: string, packet: IpPacket): IpPacket | null {
     if (!inboundAllowed(this.router, iface, packet)) {
       this.icmpError(packet, this.l3Iface(iface)?.addrs[0]?.ip ?? 0, 'unreachable');
       return null;
     }
-    return natPrerouting(this.router, iface, packet);
+    const opened = this.router.ipsec.inbound(iface, packet);
+    return opened ? natPrerouting(this.router, iface, opened) : null;
   }
 
   answersArp(iface: string, ip: number): boolean {
@@ -138,6 +145,10 @@ export class RouterPlane implements StackHost {
   deliver(iface: string, packet: IpPacket): void {
     if (packet.tcp) {
       this.router.web.tcp.receive(packet);
+      return;
+    }
+    if (packet.udp?.isakmp) {
+      this.router.ipsec.onIsakmp(iface, packet);
       return;
     }
     const dhcp = packet.udp?.dhcp;

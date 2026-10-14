@@ -19,6 +19,9 @@ const PROMPT_SUFFIX: Readonly<Record<ModeName, string>> = {
   'config-vlan': '(config-vlan)#',
   'config-std-nacl': '(config-std-nacl)#',
   'config-ext-nacl': '(config-ext-nacl)#',
+  'config-isakmp': '(config-isakmp)#',
+  'config-crypto-map': '(config-crypto-map)#',
+  'cfg-crypto-trans': '(cfg-crypto-trans)#',
 };
 
 const EXEC_MODES: ReadonlySet<ModeName> = new Set(['user', 'exec']);
@@ -42,6 +45,8 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
   poolClass: string | undefined;
   vlan: number | undefined;
   acl: string | undefined;
+  /** Sub-mode being edited: ISAKMP policy, crypto map entry ("MAP seq") or transform set. */
+  crypto: string | undefined;
   private state: InputState = { kind: 'normal' };
   private output: string[] = [];
 
@@ -142,6 +147,7 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
     this.pool = undefined;
     this.poolClass = undefined;
     this.acl = undefined;
+    this.crypto = undefined;
     this.vlan = undefined;
     this.device.log('%SYS-5-CONFIG_I: Configured from console by console');
   }

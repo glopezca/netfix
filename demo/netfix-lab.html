@@ -2263,6 +2263,12 @@ function frameProtocol(frame) {
         return 'DHCP';
     if (ip.udp?.dns)
         return 'DNS';
+    if (ip.udp?.isakmp)
+        return 'ISAKMP';
+    if (ip.udp?.wg)
+        return 'WireGuard';
+    if (ip.esp)
+        return 'ESP';
     if (ip.icmp)
         return 'ICMP';
     if (ip.tcp) {
@@ -3584,6 +3590,8 @@ class NatTable {
     misses = 0;
     /** Inside → outside: translates the source; null when no rule applies, 'drop' when the rule cannot. */
     inside(p, statics, target) {
+        if (p.protocol === 'esp')
+            return this.insideEsp(p, statics, target);
         const f = flowOf(p);
         const st = statics.find((s) => staticMatchesOut(s, p, f));
         if (st)
@@ -3607,8 +3615,32 @@ class NatTable {
         this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
         return rewriteSrc(p, entry.insideGlobal, entry.proto ? entry.globalPort : undefined);
     }
+    /**
+     * ESP has no ports: a 1:1 translation (static, or a dynamic one without overload) can carry it; PAT
+     * cannot, so the packet is dropped (that is why IPsec behind a NAT needs NAT-T or public addresses).
+     */
+    insideEsp(p, statics, target) {
+        const st = statics.find((s) => s.local === p.src && s.proto === undefined);
+        if (st)
+            return this.hit({ ...p, src: st.global });
+        const known = this.dynamic.find((e) => e.insideLocal === p.src && e.proto === null);
+        if (known)
+            return this.hit({ ...p, src: known.insideGlobal });
+        const t = target(p);
+        if (!t)
+            return null;
+        if (t === 'exhausted' || t.overload)
+            return 'drop';
+        const entry = { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false, rule: t.rule };
+        this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
+        return { ...p, src: t.global };
+    }
     /** Outside → inside: translates the destination, or returns null when nothing maps it. */
     outside(p, statics) {
+        if (p.protocol === 'esp') {
+            const whole = statics.find((s) => s.global === p.dst && s.proto === undefined) ?? this.dynamic.find((e) => e.proto === null && e.insideGlobal === p.dst);
+            return whole ? this.hit({ ...p, dst: 'local' in whole ? whole.local : whole.insideLocal }) : null;
+        }
         const f = flowOf(p);
         const port = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f));
         if (port)
@@ -31651,6 +31683,9 @@ const PROMPT_SUFFIX = {
     'config-vlan': '(config-vlan)#',
     'config-std-nacl': '(config-std-nacl)#',
     'config-ext-nacl': '(config-ext-nacl)#',
+    'config-isakmp': '(config-isakmp)#',
+    'config-crypto-map': '(config-crypto-map)#',
+    'cfg-crypto-trans': '(cfg-crypto-trans)#',
 };
 const EXEC_MODES = new Set(['user', 'exec']);
 const MAX_PASSWORD_TRIES = 3;
@@ -31664,6 +31699,8 @@ class Session {
     poolClass;
     vlan;
     acl;
+    /** Sub-mode being edited: ISAKMP policy, crypto map entry ("MAP seq") or transform set. */
+    crypto;
     state = { kind: 'normal' };
     output = [];
     constructor(device, opts = {}) {
@@ -31757,6 +31794,7 @@ class Session {
         this.pool = undefined;
         this.poolClass = undefined;
         this.acl = undefined;
+        this.crypto = undefined;
         this.vlan = undefined;
         this.device.log('%SYS-5-CONFIG_I: Configured from console by console');
     }
@@ -34908,6 +34946,65 @@ function sameEp(a, b) {
 
 return { LINK_DELAY_MS, Network, sameEp };
 })();
+__m["ios/crypto-config.js"] = (() => {
+/**
+ * IPsec configuration of the 2911 (IOS 15.1): ISAKMP policies, pre-shared keys, transform sets and
+ * crypto maps, as immutable records, and their running-config lines (defaults are not printed, as in IOS).
+ */
+const { formatIp, formatMask } = __m["core/ip.js"];
+const EMPTY_CRYPTO = { policies: [], keys: [], transformSets: [], maps: [] };
+/** IOS defaults of a new policy: des, sha, rsa-sig, group 1, one day. */
+function defaultPolicy(priority) {
+    return { priority, encryption: 'des', hash: 'sha', auth: 'rsa-sig', group: 1, lifetime: 86400 };
+}
+const ESP_ENCRYPTION = ['esp-aes', 'esp-aes 128', 'esp-aes 192', 'esp-aes 256', 'esp-des', 'esp-3des', 'esp-null', 'esp-seal'];
+const ESP_AUTH = ['esp-sha-hmac', 'esp-md5-hmac', 'esp-sha256-hmac'];
+function withPolicy(c, p) {
+    return { ...c, policies: [...c.policies.filter((x) => x.priority !== p.priority), p].sort((a, b) => a.priority - b.priority) };
+}
+function withMapEntry(c, e) {
+    return { ...c, maps: [...c.maps.filter((x) => !(x.map === e.map && x.seq === e.seq)), e].sort((a, b) => a.map.localeCompare(b.map) || a.seq - b.seq) };
+}
+/** Pre-shared key for a peer: the most specific `crypto isakmp key … address A [mask]`. */
+function keyFor(c, peer) {
+    return [...c.keys].filter((k) => ((peer & k.mask) >>> 0) === ((k.address & k.mask) >>> 0)).sort((a, b) => b.mask - a.mask)[0]?.key;
+}
+function policyLines(p) {
+    const d = defaultPolicy(p.priority);
+    return [
+        `crypto isakmp policy ${p.priority}`,
+        ...(p.encryption !== d.encryption ? [` encr ${p.encryption}`] : []),
+        ...(p.hash !== d.hash ? [` hash ${p.hash}`] : []),
+        ...(p.auth !== d.auth ? [` authentication ${p.auth}`] : []),
+        ...(p.group !== d.group ? [` group ${p.group}`] : []),
+        ...(p.lifetime !== d.lifetime ? [` lifetime ${p.lifetime}`] : []),
+    ];
+}
+/** The `crypto …` block of the running configuration. */
+function cryptoConfigLines(c) {
+    if (!c.policies.length && !c.keys.length && !c.transformSets.length && !c.maps.length)
+        return [];
+    const keys = c.keys.map((k) => `crypto isakmp key ${k.key} address ${formatIp(k.address)}${k.mask !== 0xffffffff ? ` ${formatMask(maskPrefix(k.mask))}` : ''}`);
+    const sets = c.transformSets.map((t) => [`crypto ipsec transform-set ${t.name} ${t.transforms.join(' ')}`, ...(t.mode === 'transport' ? [' mode transport'] : [])]).flat();
+    const maps = c.maps.flatMap((m) => [
+        `crypto map ${m.map} ${m.seq} ipsec-isakmp `,
+        ...(m.peer !== undefined ? [` set peer ${formatIp(m.peer)}`] : []),
+        ...(m.transformSet ? [` set transform-set ${m.transformSet} `] : []),
+        ...(m.pfs ? [` set pfs ${m.pfs}`] : []),
+        ...(m.acl ? [` match address ${m.acl}`] : []),
+        '!',
+    ]);
+    return [...c.policies.flatMap(policyLines), ...keys, '!', '!', ...sets, '!', ...maps];
+}
+function maskPrefix(mask) {
+    let n = 0;
+    for (let m = mask >>> 0; m & 0x80000000; m = (m << 1) >>> 0)
+        n++;
+    return n;
+}
+
+return { EMPTY_CRYPTO, defaultPolicy, ESP_ENCRYPTION, ESP_AUTH, withPolicy, withMapEntry, keyFor, cryptoConfigLines };
+})();
 __m["ios/device.js"] = (() => {
 /** Base class for devices managed through the IOS CLI (routers and switches). */
 const { SimClock } = __m["core/clock.js"];
@@ -35556,15 +35653,22 @@ class RouterPlane {
             this.icmpError(packet, src, 'unreachable');
             return;
         }
-        this.stack.sendVia(egress, out);
+        const sealed = this.router.ipsec.outbound(egress.iface, out);
+        if (sealed)
+            this.stack.sendVia(egress, sealed);
     }
-    /** Inbound access list, then NAT outside → inside (IOS order). */
+    /** Locally generated traffic also goes through the crypto map of its egress interface. */
+    output(iface, packet) {
+        return this.router.ipsec.outbound(iface, packet);
+    }
+    /** Inbound access list, IPsec decapsulation, then NAT outside → inside (IOS order). */
     prerouting(iface, packet) {
         if (!inboundAllowed(this.router, iface, packet)) {
             this.icmpError(packet, this.l3Iface(iface)?.addrs[0]?.ip ?? 0, 'unreachable');
             return null;
         }
-        return natPrerouting(this.router, iface, packet);
+        const opened = this.router.ipsec.inbound(iface, packet);
+        return opened ? natPrerouting(this.router, iface, opened) : null;
     }
     answersArp(iface, ip) {
         return natAnswersArp(this.router, iface, ip);
@@ -35578,6 +35682,10 @@ class RouterPlane {
     deliver(iface, packet) {
         if (packet.tcp) {
             this.router.web.tcp.receive(packet);
+            return;
+        }
+        if (packet.udp?.isakmp) {
+            this.router.ipsec.onIsakmp(iface, packet);
             return;
         }
         const dhcp = packet.udp?.dhcp;
@@ -35717,6 +35825,366 @@ class RouterPlane {
 }
 
 return { RouterPlane };
+})();
+__m["devices/router-ike.js"] = (() => {
+const { defaultPolicy } = __m["ios/crypto-config.js"];
+const { sha256, toBase64, utf8 } = __m["core/sha256.js"];
+const ISAKMP_PORT = 500;
+const ALL_ONES = 0xffffffff;
+const MAX_PREFIX = 32;
+/** 1-bits of a contiguous wildcard → prefix length (`0.0.0.255` → 24). */
+function wildcardPrefix(wildcard) {
+    let n = 0;
+    for (let m = (~wildcard) >>> 0; m & 0x80000000; m = (m << 1) >>> 0)
+        n++;
+    return n;
+}
+function netOf(ip, wildcard) {
+    const prefix = wildcardPrefix(wildcard);
+    const mask = prefix === 0 ? 0 : (ALL_ONES << (MAX_PREFIX - prefix)) >>> 0;
+    return { ip: (ip & mask) >>> 0, prefix };
+}
+/** The proxy identities a crypto map offers: the first `permit` of its access list. */
+function proxiesOf(entries) {
+    const e = entries?.find((x) => x.action === 'permit');
+    if (!e)
+        return undefined;
+    const remote = e.ext ? netOf(e.ext.dst.ip, e.ext.dst.wildcard) : { ip: 0, prefix: 0 };
+    return { local: netOf(e.ip, e.wildcard), remote };
+}
+function inNet(net, ip) {
+    const mask = net.prefix === 0 ? 0 : (ALL_ONES << (MAX_PREFIX - net.prefix)) >>> 0;
+    return ((ip & mask) >>> 0) === net.ip;
+}
+function sameNet(a, b) {
+    return a.ip === b.ip && a.prefix === b.prefix;
+}
+/** A complete crypto map entry: IOS keeps the others disabled. */
+function entryReady(e) {
+    return e.peer !== undefined && e.transformSet !== undefined && e.acl !== undefined;
+}
+/** Packets IPsec never wraps again: ESP and IKE themselves. */
+function isVpnControl(p) {
+    return p.protocol === 'esp' || p.udp?.dport === ISAKMP_PORT || p.udp?.sport === ISAKMP_PORT;
+}
+function proposalOf(p) {
+    return { encryption: p.encryption, hash: p.hash, auth: p.auth, group: p.group };
+}
+/** What the initiator offers: every configured policy (the IOS default suite when there is none). */
+function offeredProposals(c) {
+    const policies = c.policies.length ? c.policies : [defaultPolicy(65535)];
+    return policies.map(proposalOf);
+}
+/** The responder takes its own policies in priority order and the first offer that matches exactly. */
+function chooseProposal(c, offers) {
+    for (const p of c.policies) {
+        const mine = proposalOf(p);
+        const ok = offers.find((o) => o.encryption === mine.encryption && o.hash === mine.hash && o.auth === mine.auth && o.group === mine.group);
+        if (ok && ok.auth === 'pre-share')
+            return ok;
+    }
+    return undefined;
+}
+/** Proof of knowledge of the pre-shared key for one exchange and role. */
+function pskProof(psk, inonce, rnonce, role) {
+    return toBase64(sha256(utf8(`netfix-ike|${psk}|${inonce}|${rnonce}|${role}`)));
+}
+function randomU32() {
+    const out = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(out);
+    return out[0] ?? 1;
+}
+function randomCookie() {
+    return `${randomU32().toString(16).padStart(8, '0')}${randomU32().toString(16).padStart(8, '0')}`;
+}
+/** SPIs below 256 are reserved. */
+function randomSpi() {
+    return (randomU32() | 0x1000) >>> 0;
+}
+function sameTransforms(a, b) {
+    return a.length === b.length && a.every((t) => b.includes(t));
+}
+
+return { ISAKMP_PORT, proxiesOf, inNet, sameNet, entryReady, isVpnControl, proposalOf, offeredProposals, chooseProposal, pskProof, randomU32, randomCookie, randomSpi, sameTransforms };
+})();
+__m["devices/router-ipsec.js"] = (() => {
+const { formatIp } = __m["core/ip.js"];
+const { keyFor } = __m["ios/crypto-config.js"];
+const { aclPacketMatch } = __m["ios/acl.js"];
+const { chooseProposal, entryReady, inNet, isVpnControl, ISAKMP_PORT, offeredProposals, proxiesOf, pskProof, randomCookie, randomSpi, sameNet, sameTransforms, } = __m["devices/router-ike.js"];
+const IKE_RETRY_MS = 10_000;
+const FIRST_CONN_ID = 1001;
+const FIRST_SA_CONN = 2001;
+const MAX_SAS = 64;
+const saKey = (map, seq, peer) => `${map}|${seq}|${formatIp(peer)}`;
+class IpsecEngine {
+    r;
+    pending = new Map();
+    responding = new Map();
+    isakmp = [];
+    sas = [];
+    counters = new Map();
+    nextConn = FIRST_CONN_ID;
+    nextSaConn = FIRST_SA_CONN;
+    constructor(router) {
+        this.r = router;
+    }
+    isakmpSas() {
+        return this.isakmp;
+    }
+    ipsecSas() {
+        return this.sas;
+    }
+    /** The SA currently used to send for a map entry and peer. */
+    current(map, seq, peer) {
+        return [...this.sas].reverse().find((s) => s.map === map && s.seq === seq && s.peer === peer);
+    }
+    countersFor(map, seq, peer) {
+        const key = saKey(map, seq, peer);
+        const found = this.counters.get(key);
+        if (found)
+            return found;
+        const fresh = { encaps: 0, decaps: 0, sendErrors: 0, recvErrors: 0 };
+        this.counters.set(key, fresh);
+        return fresh;
+    }
+    /** clear crypto isakmp / clear crypto sa. */
+    clear(what) {
+        if (what !== 'sa')
+            this.isakmp = [];
+        if (what !== 'isakmp') {
+            this.sas = [];
+            this.counters.clear();
+        }
+        this.pending.clear();
+        this.responding.clear();
+    }
+    // ------------------------------------------------------------ outbound
+    entriesOn(iface) {
+        const map = this.r.iface(iface)?.cryptoMap;
+        return map ? this.r.crypto.maps.filter((e) => e.map === map) : [];
+    }
+    localAddr(iface) {
+        return this.r.plane.l3Iface(iface)?.addrs[0]?.ip ?? 0;
+    }
+    /**
+     * A packet leaving `iface`: wrapped in ESP when a crypto map entry permits it (null = sent here or
+     * dropped while IKE negotiates); anything else goes out unchanged.
+     */
+    outbound(iface, p) {
+        if (isVpnControl(p))
+            return p;
+        for (const entry of this.entriesOn(iface)) {
+            if (!entryReady(entry))
+                continue;
+            const hit = aclPacketMatch(this.r.acls.get(entry.acl), p);
+            if (!hit)
+                continue;
+            if (hit.action !== 'permit')
+                return p;
+            const sa = this.current(entry.map, entry.seq, entry.peer);
+            if (sa)
+                return this.encapsulate(sa, p);
+            this.countersFor(entry.map, entry.seq, entry.peer).sendErrors += 1;
+            this.initiate(entry, iface);
+            return null;
+        }
+        return p;
+    }
+    encapsulate(sa, inner) {
+        const c = this.countersFor(sa.map, sa.seq, sa.peer);
+        c.encaps += 1;
+        this.r.plane.stack.send({ src: sa.local, dst: sa.peer, ttl: this.r.plane.ttl, protocol: 'esp', esp: { spi: sa.outSpi, seq: c.encaps, inner } });
+        return null;
+    }
+    // ------------------------------------------------------------ inbound
+    /**
+     * Prerouting on a crypto-map interface: ESP for us is decapsulated (the inner packet carries on);
+     * cleartext that an SA should have protected is dropped.
+     */
+    inbound(iface, p) {
+        if (p.protocol === 'esp' && p.esp && this.r.plane.stack.isMine(p.dst))
+            return this.decapsulate(p);
+        if (isVpnControl(p) || !this.r.iface(iface)?.cryptoMap)
+            return p;
+        const sa = this.sas.find((s) => s.iface === iface && inNet(s.proxies.remote, p.src) && inNet(s.proxies.local, p.dst));
+        if (!sa)
+            return p;
+        this.countersFor(sa.map, sa.seq, sa.peer).recvErrors += 1;
+        this.r.log(`%CRYPTO-4-RECVD_PKT_NOT_IPSEC: Rec'd packet not an IPSEC packet. (ip) vrf/dest_addr= (none)/${formatIp(p.dst)}, src_addr= ${formatIp(p.src)}, prot= ${protoNumber(p)}`);
+        return null;
+    }
+    decapsulate(p) {
+        const esp = p.esp;
+        if (!esp)
+            return null;
+        const sa = this.sas.find((s) => s.inSpi === esp.spi && s.peer === p.src);
+        if (!sa) {
+            this.r.log(`%CRYPTO-4-RECVD_PKT_INV_SPI: decaps: rec'd IPSEC packet has invalid spi for destaddr=${formatIp(p.dst)}, prot=50, spi=0x${hex(esp.spi)}(${esp.spi}), srcaddr=${formatIp(p.src)}`);
+            return null;
+        }
+        const c = this.countersFor(sa.map, sa.seq, sa.peer);
+        const inner = esp.inner;
+        if (!inNet(sa.proxies.remote, inner.src) || !inNet(sa.proxies.local, inner.dst)) {
+            c.recvErrors += 1;
+            this.r.log(`%CRYPTO-4-RECVD_PKT_INV_IDENTITY_ACL: ipsec check access: identity not allowed by ACL policy. Packet src_addr=${formatIp(inner.src)}, dest_addr=${formatIp(inner.dst)}`);
+            return null;
+        }
+        c.decaps += 1;
+        return inner;
+    }
+    // ------------------------------------------------------------ IKE
+    sendIke(src, dst, msg) {
+        this.r.plane.stack.send({ src, dst, ttl: this.r.plane.ttl, protocol: 'udp', udp: { sport: ISAKMP_PORT, dport: ISAKMP_PORT, isakmp: msg } });
+    }
+    setIsakmp(dst, src, state) {
+        const old = this.isakmp.find((s) => s.dst === dst && s.src === src);
+        const connId = old?.connId ?? this.nextConn++;
+        this.isakmp = [...this.isakmp.filter((s) => s !== old), { dst, src, state, connId }];
+    }
+    initiate(entry, iface) {
+        const now = this.r.clock.now();
+        const busy = [...this.pending.values()].some((x) => x.entry.peer === entry.peer && now - x.started < IKE_RETRY_MS);
+        if (busy)
+            return;
+        const local = this.localAddr(iface);
+        const ispi = randomCookie();
+        const nonce = randomCookie();
+        this.pending.set(ispi, { ispi, entry, iface, local, nonce, started: now });
+        this.setIsakmp(entry.peer, local, 'MM_NO_STATE');
+        this.sendIke(local, entry.peer, { kind: 'mm1', ispi, policies: offeredProposals(this.r.crypto), nonce });
+    }
+    /** ISAKMP datagram delivered to the router (`deliver` on UDP 500). */
+    onIsakmp(iface, p) {
+        const msg = p.udp?.isakmp;
+        if (!msg)
+            return;
+        if (msg.kind === 'mm1')
+            this.onMm1(iface, p, msg);
+        else if (msg.kind === 'mm2')
+            this.onMm2(p, msg);
+        else if (msg.kind === 'mm3')
+            this.onMm3(p, msg);
+        else if (msg.kind === 'qm2')
+            this.onQm2(p, msg);
+        else
+            this.onNotify(p, msg);
+    }
+    modeFailure(mode, peer) {
+        this.r.log(`%CRYPTO-6-IKMP_MODE_FAILURE: Processing of ${mode} mode failed with peer at ${formatIp(peer)}`);
+    }
+    onMm1(iface, p, msg) {
+        if (!this.r.iface(iface)?.cryptoMap)
+            return;
+        const local = this.localAddr(iface);
+        const chosen = chooseProposal(this.r.crypto, msg.policies);
+        const psk = keyFor(this.r.crypto, p.src);
+        if (!chosen) {
+            this.modeFailure('Main', p.src);
+            this.sendIke(local, p.src, { kind: 'notify', ispi: msg.ispi, reason: 'no-proposal' });
+            return;
+        }
+        if (psk === undefined) {
+            this.sendIke(local, p.src, { kind: 'notify', ispi: msg.ispi, reason: 'auth' });
+            return;
+        }
+        const rnonce = randomCookie();
+        this.responding.set(msg.ispi, { iface, local, peer: p.src, inonce: msg.nonce, rnonce });
+        this.setIsakmp(local, p.src, 'MM_KEY_EXCH');
+        this.sendIke(local, p.src, { kind: 'mm2', ispi: msg.ispi, rspi: randomCookie(), policy: chosen, nonce: rnonce, auth: pskProof(psk, msg.nonce, rnonce, 'R') });
+    }
+    onMm2(p, msg) {
+        const pend = this.pending.get(msg.ispi);
+        if (!pend || pend.entry.peer !== p.src)
+            return;
+        const psk = keyFor(this.r.crypto, p.src);
+        if (psk === undefined || pskProof(psk, pend.nonce, msg.nonce, 'R') !== msg.auth) {
+            this.pending.delete(msg.ispi);
+            this.r.log(`%CRYPTO-4-IKMP_BAD_MESSAGE: IKE message from ${formatIp(p.src)} failed its sanity check or is malformed`);
+            return;
+        }
+        const proxies = proxiesOf(this.r.acls.get(pend.entry.acl));
+        const ts = this.r.crypto.transformSets.find((t) => t.name === pend.entry.transformSet);
+        if (!proxies || !ts)
+            return;
+        this.setIsakmp(p.src, pend.local, 'QM_IDLE');
+        const offer = { local: proxies.local, remote: proxies.remote, transforms: ts.transforms, spi: randomSpi() };
+        this.pending.set(msg.ispi, { ...pend, offer });
+        this.sendIke(pend.local, p.src, { kind: 'mm3', ispi: msg.ispi, rspi: msg.rspi, auth: pskProof(psk, pend.nonce, msg.nonce, 'I'), qm: offer });
+    }
+    onMm3(p, msg) {
+        const resp = this.responding.get(msg.ispi);
+        if (!resp || resp.peer !== p.src)
+            return;
+        this.responding.delete(msg.ispi);
+        const psk = keyFor(this.r.crypto, p.src) ?? '';
+        if (pskProof(psk, resp.inonce, resp.rnonce, 'I') !== msg.auth) {
+            this.r.log(`%CRYPTO-4-IKMP_BAD_MESSAGE: IKE message from ${formatIp(p.src)} failed its sanity check or is malformed`);
+            this.sendIke(resp.local, p.src, { kind: 'notify', ispi: msg.ispi, reason: 'auth' });
+            return;
+        }
+        this.setIsakmp(resp.local, p.src, 'QM_IDLE');
+        const match = this.matchOffer(resp.iface, p.src, msg.qm);
+        if (!match) {
+            this.modeFailure('Quick', p.src);
+            this.sendIke(resp.local, p.src, { kind: 'notify', ispi: msg.ispi, reason: 'qm' });
+            return;
+        }
+        const inSpi = randomSpi();
+        this.addSa({ ...match, iface: resp.iface, local: resp.local, peer: p.src, inSpi, outSpi: msg.qm.spi });
+        this.sendIke(resp.local, p.src, { kind: 'qm2', ispi: msg.ispi, spi: inSpi, transforms: msg.qm.transforms });
+    }
+    /** The responder's entry whose ACL mirrors the offer and whose transform set matches. */
+    matchOffer(iface, peer, qm) {
+        for (const e of this.entriesOn(iface)) {
+            if (!entryReady(e) || e.peer !== peer)
+                continue;
+            const proxies = proxiesOf(this.r.acls.get(e.acl));
+            const ts = this.r.crypto.transformSets.find((t) => t.name === e.transformSet);
+            if (!proxies || !ts || !sameTransforms(ts.transforms, qm.transforms))
+                continue;
+            if (sameNet(proxies.local, qm.remote) && sameNet(proxies.remote, qm.local))
+                return { map: e.map, seq: e.seq, proxies, transforms: ts.transforms, mode: ts.mode };
+        }
+        return undefined;
+    }
+    onQm2(p, msg) {
+        const pend = this.pending.get(msg.ispi);
+        if (!pend?.offer || pend.entry.peer !== p.src)
+            return;
+        this.pending.delete(msg.ispi);
+        const ts = this.r.crypto.transformSets.find((t) => t.name === pend.entry.transformSet);
+        const proxies = { local: pend.offer.local, remote: pend.offer.remote };
+        this.addSa({ map: pend.entry.map, seq: pend.entry.seq, iface: pend.iface, local: pend.local, peer: p.src, proxies, transforms: pend.offer.transforms, mode: ts?.mode ?? 'tunnel', inSpi: pend.offer.spi, outSpi: msg.spi });
+    }
+    onNotify(p, msg) {
+        const pend = this.pending.get(msg.ispi);
+        if (!pend || pend.entry.peer !== p.src)
+            return;
+        this.pending.delete(msg.ispi);
+        if (msg.reason === 'auth')
+            this.r.log(`%CRYPTO-4-IKMP_BAD_MESSAGE: IKE message from ${formatIp(p.src)} failed its sanity check or is malformed`);
+        else
+            this.modeFailure(msg.reason === 'qm' ? 'Quick' : 'Main', p.src);
+    }
+    addSa(sa) {
+        const connIn = this.nextSaConn;
+        this.nextSaConn += 2;
+        this.sas = [...this.sas.slice(-(MAX_SAS - 1)), { ...sa, connIn }];
+    }
+}
+function hex(n) {
+    return n.toString(16).toUpperCase();
+}
+function protoNumber(p) {
+    if (p.protocol === 'icmp')
+        return 1;
+    if (p.protocol === 'tcp')
+        return 6;
+    return p.protocol === 'udp' ? 17 : 50;
+}
+
+return { IpsecEngine, hex };
 })();
 __m["devices/ios-web.js"] = (() => {
 const { TcpLayer } = __m["net/tcp.js"];
@@ -37114,6 +37582,270 @@ const ACL_PRIV = [
 
 return { ACL_GLOBAL, ACL_IF, ACL_MODE, EXT_ACL_MODE, ACL_EXEC, ACL_PRIV };
 })();
+__m["ios/commands/crypto-show.js"] = (() => {
+const { hex } = __m["devices/router-ipsec.js"];
+const { entryReady, proxiesOf } = __m["devices/router-ike.js"];
+const { defaultPolicy } = __m["ios/crypto-config.js"];
+const { formatIp, formatMask } = __m["core/ip.js"];
+const { showAccessLists } = __m["ios/acl.js"];
+const ENCRYPTION_TEXT = {
+    des: 'DES - Data Encryption Standard (56 bit keys).',
+    '3des': 'Three key triple DES',
+    aes: 'AES - Advanced Encryption Standard (128 bit keys).',
+    'aes 192': 'AES - Advanced Encryption Standard (192 bit keys).',
+    'aes 256': 'AES - Advanced Encryption Standard (256 bit keys).',
+};
+const HASH_TEXT = { sha: 'Secure Hash Standard', md5: 'Message Digest 5' };
+const AUTH_TEXT = { 'pre-share': 'Pre-Shared Key', 'rsa-sig': 'Rivest-Shamir-Adleman Signature', 'rsa-encr': 'Rivest-Shamir-Adleman Encryption' };
+const GROUP_TEXT = { 1: '#1 (768 bit)', 2: '#2 (1024 bit)', 5: '#5 (1536 bit)' };
+const SA_LIFETIME = '(4525504/3593)';
+function policyBlock(title, p) {
+    return [
+        title,
+        `\tencryption algorithm:\t${ENCRYPTION_TEXT[p.encryption] ?? p.encryption}`,
+        `\thash algorithm:\t\t${HASH_TEXT[p.hash] ?? p.hash}`,
+        `\tauthentication method:\t${AUTH_TEXT[p.auth] ?? p.auth}`,
+        `\tDiffie-Hellman group:\t${GROUP_TEXT[p.group] ?? `#${p.group}`}`,
+        `\tlifetime:\t\t${p.lifetime} seconds, no volume limit`,
+    ];
+}
+function showIsakmpPolicy(r) {
+    return ['', 'Global IKE policy', ...r.crypto.policies.flatMap((p) => policyBlock(`Protection suite of priority ${p.priority}`, p)), ...policyBlock('Default protection suite', defaultPolicy(0))];
+}
+function showIsakmpSa(r) {
+    const rows = r.ipsec.isakmpSas().map((s) => `${formatIp(s.dst).padEnd(16)}${formatIp(s.src).padEnd(16)}${s.state.padEnd(15)}${String(s.connId).padStart(7)} ACTIVE`);
+    return ['IPv4 Crypto ISAKMP SA', 'dst             src             state          conn-id status', ...rows, '', 'IPv6 Crypto ISAKMP SA', ''];
+}
+const ident = (n) => `(${formatIp(n.ip)}/${formatMask(n.prefix)}/0/0)`;
+function espSas(sa, spi, conn) {
+    if (!sa)
+        return [];
+    return [
+        `      spi: 0x${hex(spi)}(${spi})`,
+        `        transform: ${sa.transforms.join(' ')} ,`,
+        `        in use settings ={${sa.mode === 'tunnel' ? 'Tunnel' : 'Transport'}, }`,
+        `        conn id: ${conn}, flow_id: FPGA:1, sibling_flags 80000046, crypto map: ${sa.map}`,
+        `        sa timing: remaining key lifetime (k/sec): ${SA_LIFETIME}`,
+        '        IV size: 16 bytes',
+        '        replay detection support: Y',
+        '        Status: ACTIVE',
+    ];
+}
+function entryBlock(r, iface, e) {
+    const sa = r.ipsec.current(e.map, e.seq, e.peer);
+    const proxies = sa?.proxies ?? proxiesOf(r.acls.get(e.acl)) ?? { local: { ip: 0, prefix: 0 }, remote: { ip: 0, prefix: 0 } };
+    const c = r.ipsec.countersFor(e.map, e.seq, e.peer);
+    const local = formatIp(r.plane.l3Iface(iface)?.addrs[0]?.ip ?? 0);
+    return [
+        '', `   protected vrf: (none)`,
+        `   local  ident (addr/mask/prot/port): ${ident(proxies.local)}`,
+        `   remote ident (addr/mask/prot/port): ${ident(proxies.remote)}`,
+        `   current_peer ${formatIp(e.peer)} port 500`,
+        '    PERMIT, flags={origin_is_acl,}',
+        `   #pkts encaps: ${c.encaps}, #pkts encrypt: ${c.encaps}, #pkts digest: ${c.encaps}`,
+        `   #pkts decaps: ${c.decaps}, #pkts decrypt: ${c.decaps}, #pkts verify: ${c.decaps}`,
+        '   #pkts compressed: 0, #pkts decompressed: 0',
+        '   #pkts not compressed: 0, #pkts compr. failed: 0',
+        '   #pkts not decompressed: 0, #pkts decompress failed: 0',
+        `   #send errors ${c.sendErrors}, #recv errors ${c.recvErrors}`,
+        '',
+        `     local crypto endpt.: ${local}, remote crypto endpt.:${formatIp(e.peer)}`,
+        `     path mtu 1500, ip mtu 1500, ip mtu idb ${iface}`,
+        `     current outbound spi: 0x${hex(sa?.outSpi ?? 0)}(${sa?.outSpi ?? 0})`,
+        `     current inbound spi : 0x${hex(sa?.inSpi ?? 0)}(${sa?.inSpi ?? 0})`,
+        '', '     inbound esp sas:', ...espSas(sa, sa?.inSpi ?? 0, sa?.connIn ?? 0),
+        '', '     inbound ah sas:', '', '     inbound pcp sas:',
+        '', '     outbound esp sas:', ...espSas(sa, sa?.outSpi ?? 0, (sa?.connIn ?? 0) + 1),
+        '', '     outbound ah sas:', '', '     outbound pcp sas:',
+    ];
+}
+function showIpsecSa(r) {
+    const out = [];
+    for (const iface of r.sortedIfaceNames()) {
+        const map = r.iface(iface)?.cryptoMap;
+        if (!map)
+            continue;
+        const local = formatIp(r.plane.l3Iface(iface)?.addrs[0]?.ip ?? 0);
+        out.push('', `interface: ${iface}`, `    Crypto map tag: ${map}, local addr ${local}`);
+        for (const e of r.crypto.maps.filter((x) => x.map === map))
+            if (entryReady(e))
+                out.push(...entryBlock(r, iface, e));
+    }
+    return out.length ? out : ['No SAs found'];
+}
+function showCryptoMap(r) {
+    return r.crypto.maps.flatMap((e) => {
+        const acl = e.acl ? showAccessLists(new Map([[e.acl, r.acls.get(e.acl) ?? []]]), new Map(), r.extendedAcls).map((l) => `\t${l.replace(/ \(\d+ match\(es\)\)$/, '')}`) : [];
+        const ifaces = r.sortedIfaceNames().filter((n) => r.iface(n)?.cryptoMap === e.map);
+        return [
+            `Crypto Map ${e.map} ${e.seq} ipsec-isakmp`,
+            ...(e.peer !== undefined ? [`\tPeer = ${formatIp(e.peer)}`] : []),
+            ...acl,
+            ...(e.peer !== undefined ? [`\tCurrent peer: ${formatIp(e.peer)}`] : []),
+            '\tSecurity association lifetime: 4608000 kilobytes/3600 seconds',
+            `\tPFS (Y/N): ${e.pfs ? 'Y' : 'N'}`,
+            '\tTransform sets={',
+            ...(e.transformSet ? [`\t\t${e.transformSet},`] : []),
+            '\t}',
+            `\tInterfaces using crypto map ${e.map}:`,
+            ...ifaces.map((n) => `\t\t${n}`),
+            '',
+        ];
+    });
+}
+const CRYPTO_EXEC = [
+    { syntax: 'show crypto isakmp sa', run: (cli) => cli.out(...showIsakmpSa(cli.device)) },
+    { syntax: 'show crypto isakmp policy', run: (cli) => cli.out(...showIsakmpPolicy(cli.device)) },
+    { syntax: 'show crypto ipsec sa', run: (cli) => cli.out(...showIpsecSa(cli.device)) },
+    { syntax: 'show crypto map', run: (cli) => cli.out(...showCryptoMap(cli.device)) },
+    { syntax: 'clear crypto isakmp', run: (cli) => cli.device.ipsec.clear('isakmp') },
+    { syntax: 'clear crypto sa', run: (cli) => cli.device.ipsec.clear('sa') },
+];
+
+return { showIsakmpPolicy, showIsakmpSa, showIpsecSa, showCryptoMap, CRYPTO_EXEC };
+})();
+__m["ios/commands/crypto.js"] = (() => {
+const { defaultPolicy, ESP_AUTH, ESP_ENCRYPTION, withMapEntry, withPolicy } = __m["ios/crypto-config.js"];
+const { parseIp } = __m["core/ip.js"];
+const INVALID = '% Invalid input detected.';
+const MAP_NOTE = ['% NOTE: This new crypto map will remain disabled until a peer', '        and a valid access list have been configured.'];
+function setCrypto(cli, change) {
+    cli.device.crypto = change(cli.device.crypto);
+}
+function policy(cli) {
+    const n = Number(cli.session.crypto);
+    return cli.device.crypto.policies.find((p) => p.priority === n);
+}
+function setPolicy(cli, change) {
+    const p = policy(cli);
+    if (p)
+        setCrypto(cli, (c) => withPolicy(c, { ...p, ...change }));
+}
+function mapEntry(cli) {
+    const [map, seq] = (cli.session.crypto ?? '').split(' ');
+    return cli.device.crypto.maps.find((m) => m.map === map && m.seq === Number(seq));
+}
+function setEntry(cli, change) {
+    const e = mapEntry(cli);
+    if (e)
+        setCrypto(cli, (c) => withMapEntry(c, change(e)));
+}
+/** `esp-aes 256 esp-sha-hmac` → transforms, or null when the combination is not valid. */
+function transforms(text) {
+    const words = text.trim().split(/\s+/);
+    const out = [];
+    for (let i = 0; i < words.length; i++) {
+        const w = words[i] ?? '';
+        const withBits = /^(128|192|256)$/.test(words[i + 1] ?? '') && w === 'esp-aes' ? `${w} ${words[++i]}` : w;
+        if (ESP_ENCRYPTION.includes(withBits) || ESP_AUTH.includes(withBits))
+            out.push(withBits);
+        else
+            return null;
+    }
+    const enc = out.filter((t) => ESP_ENCRYPTION.includes(t)).length;
+    const auth = out.filter((t) => ESP_AUTH.includes(t)).length;
+    return enc === 1 && auth <= 1 ? out : null;
+}
+function cryptoMap(cli, m) {
+    const map = m.get('map') ?? '';
+    const seq = Number(m.get('seq'));
+    if (!cli.device.crypto.maps.some((e) => e.map === map && e.seq === seq)) {
+        setCrypto(cli, (c) => withMapEntry(c, { map, seq }));
+        cli.out(...MAP_NOTE);
+    }
+    cli.session.crypto = `${map} ${seq}`;
+    cli.session.enterMode('config-crypto-map');
+}
+const CRYPTO_GLOBAL = [
+    {
+        syntax: 'crypto isakmp policy <1-10000:p>',
+        help: { p: 'Priority of protection suite' },
+        run: (cli, m) => {
+            const p = Number(m.get('p'));
+            if (!cli.device.crypto.policies.some((x) => x.priority === p))
+                setCrypto(cli, (c) => withPolicy(c, defaultPolicy(p)));
+            cli.session.crypto = String(p);
+            cli.session.enterMode('config-isakmp');
+        },
+        noRun: (cli, m) => setCrypto(cli, (c) => ({ ...c, policies: c.policies.filter((x) => x.priority !== Number(m.get('p'))) })),
+    },
+    {
+        syntax: 'crypto isakmp key <WORD:key> address <A.B.C.D:addr> [<A.B.C.D:mask>]',
+        help: { key: 'pre-shared key', addr: 'define shared key with IP address', mask: 'Peer IP subnet mask' },
+        run: (cli, m) => {
+            const address = parseIp(m.get('addr') ?? '');
+            const mask = m.get('mask') ? parseIp(m.get('mask') ?? '') : 0xffffffff;
+            if (address === null || mask === null)
+                return cli.out(INVALID);
+            setCrypto(cli, (c) => ({ ...c, keys: [...c.keys.filter((k) => k.address !== address), { key: m.get('key') ?? '', address, mask }] }));
+        },
+        noRun: (cli, m) => setCrypto(cli, (c) => ({ ...c, keys: c.keys.filter((k) => k.address !== parseIp(m.get('addr') ?? '')) })),
+    },
+    {
+        syntax: 'crypto ipsec transform-set <WORD:name> <LINE:transforms>',
+        help: { name: 'Transform set tag', transforms: 'esp-aes [128|192|256], esp-3des, esp-des, esp-sha-hmac, esp-md5-hmac…' },
+        run: (cli, m) => {
+            const list = transforms(m.get('transforms') ?? '');
+            if (!list)
+                return cli.out(INVALID);
+            const name = m.get('name') ?? '';
+            setCrypto(cli, (c) => ({ ...c, transformSets: [...c.transformSets.filter((t) => t.name !== name), { name, transforms: list, mode: 'tunnel' }] }));
+            cli.session.crypto = name;
+            cli.session.enterMode('cfg-crypto-trans');
+        },
+        noRun: (cli, m) => setCrypto(cli, (c) => ({ ...c, transformSets: c.transformSets.filter((t) => t.name !== m.get('name')) })),
+    },
+    {
+        syntax: 'crypto map <WORD:map> <1-65535:seq> ipsec-isakmp',
+        help: { map: 'Crypto map tag', seq: 'Sequence to insert into crypto map entry', 'ipsec-isakmp': 'IPSEC w/ISAKMP' },
+        run: cryptoMap,
+        noRun: (cli, m) => setCrypto(cli, (c) => ({ ...c, maps: c.maps.filter((e) => !(e.map === m.get('map') && e.seq === Number(m.get('seq')))) })),
+    },
+    { syntax: 'crypto map <WORD:map>', run: (cli) => cli.out('% Incomplete command.'), noRun: (cli, m) => setCrypto(cli, (c) => ({ ...c, maps: c.maps.filter((e) => e.map !== m.get('map')) })), hidden: true },
+];
+const LEAVE = [
+    { syntax: 'exit', run: (cli) => { cli.session.crypto = undefined; cli.session.enterMode('config'); } },
+    { syntax: 'end', run: (cli) => cli.session.endConfig() },
+    { syntax: 'do <LINE:cmd>', run: (cli, m) => cli.session.runExec(m.get('cmd') ?? '') },
+];
+const ISAKMP_MODE = [
+    { syntax: 'encryption {des | 3des | aes [{128 | 192 | 256}]}', run: (cli, m) => setPolicy(cli, { encryption: m.has('des') ? 'des' : m.has('3des') ? '3des' : `aes${['192', '256'].find((b) => m.has(b)) ? ` ${['192', '256'].find((b) => m.has(b))}` : ''}` }), noRun: (cli) => setPolicy(cli, { encryption: 'des' }) },
+    { syntax: 'hash {sha | md5}', run: (cli, m) => setPolicy(cli, { hash: m.has('md5') ? 'md5' : 'sha' }), noRun: (cli) => setPolicy(cli, { hash: 'sha' }) },
+    { syntax: 'authentication {pre-share | rsa-sig | rsa-encr}', run: (cli, m) => setPolicy(cli, { auth: m.has('pre-share') ? 'pre-share' : m.has('rsa-encr') ? 'rsa-encr' : 'rsa-sig' }), noRun: (cli) => setPolicy(cli, { auth: 'rsa-sig' }) },
+    { syntax: 'group {1 | 2 | 5}', run: (cli, m) => setPolicy(cli, { group: m.has('5') ? 5 : m.has('2') ? 2 : 1 }), noRun: (cli) => setPolicy(cli, { group: 1 }) },
+    { syntax: 'lifetime <60-86400:s>', run: (cli, m) => setPolicy(cli, { lifetime: Number(m.get('s')) }), noRun: (cli) => setPolicy(cli, { lifetime: 86400 }) },
+    ...LEAVE,
+];
+const CRYPTO_MAP_MODE = [
+    { syntax: 'set peer <A.B.C.D:peer>', run: (cli, m) => { const p = parseIp(m.get('peer') ?? ''); if (p !== null)
+            setEntry(cli, (e) => ({ ...e, peer: p })); }, noRun: (cli) => setEntry(cli, (e) => ({ ...e, peer: undefined })) },
+    { syntax: 'set transform-set <WORD:ts>', run: (cli, m) => setEntry(cli, (e) => ({ ...e, transformSet: m.get('ts') })), noRun: (cli) => setEntry(cli, (e) => ({ ...e, transformSet: undefined })) },
+    { syntax: 'set pfs {group1 | group2 | group5}', run: (cli, m) => setEntry(cli, (e) => ({ ...e, pfs: ['group1', 'group2', 'group5'].find((g) => m.has(g)) })), noRun: (cli) => setEntry(cli, (e) => ({ ...e, pfs: undefined })) },
+    { syntax: 'match address <WORD:acl>', run: (cli, m) => setEntry(cli, (e) => ({ ...e, acl: m.get('acl') })), noRun: (cli) => setEntry(cli, (e) => ({ ...e, acl: undefined })) },
+    ...LEAVE,
+];
+const TRANSFORM_MODE = [
+    {
+        syntax: 'mode {tunnel | transport}',
+        run: (cli, m) => setCrypto(cli, (c) => ({ ...c, transformSets: c.transformSets.map((t) => (t.name === cli.session.crypto ? { ...t, mode: m.has('transport') ? 'transport' : 'tunnel' } : t)) })),
+    },
+    ...LEAVE,
+];
+const CRYPTO_IF = [
+    {
+        syntax: 'crypto map <WORD:map>',
+        run: (cli, m) => {
+            const first = !cli.device.sortedIfaceNames().some((n) => cli.device.iface(n)?.cryptoMap);
+            cli.session.ifaces.forEach((n) => cli.device.updateIface(n, (c) => ({ ...c, cryptoMap: m.get('map') })));
+            if (first)
+                cli.device.log('%CRYPTO-6-ISAKMP_ON_OFF: ISAKMP is ON');
+        },
+        noRun: (cli) => cli.session.ifaces.forEach((n) => cli.device.updateIface(n, (c) => ({ ...c, cryptoMap: undefined }))),
+    },
+];
+
+return { CRYPTO_GLOBAL, ISAKMP_MODE, CRYPTO_MAP_MODE, TRANSFORM_MODE, CRYPTO_IF };
+})();
 __m["ios/commands/router-modes.js"] = (() => {
 const { EXEC_USER, EXEC_PRIV, GLOBAL, LINE_MODE } = __m["ios/commands/common.js"];
 const { ROUTER_IF, ROUTER_SUBIF } = __m["ios/commands/iface.js"];
@@ -37126,6 +37858,8 @@ const { DHCP_EXEC_USER, DHCP_EXEC_PRIV } = __m["ios/commands/dhcp-exec.js"];
 const { ROUTER_NET_EXEC, ROUTER_NET_PRIV } = __m["ios/commands/net-exec.js"];
 const { NAT_GLOBAL, NAT_IF, NAT_EXEC, NAT_PRIV } = __m["ios/commands/nat.js"];
 const { ACL_GLOBAL, ACL_IF, ACL_MODE, EXT_ACL_MODE, ACL_EXEC, ACL_PRIV } = __m["ios/commands/acl.js"];
+const { CRYPTO_EXEC } = __m["ios/commands/crypto-show.js"];
+const { CRYPTO_GLOBAL, CRYPTO_IF, CRYPTO_MAP_MODE, ISAKMP_MODE, TRANSFORM_MODE } = __m["ios/commands/crypto.js"];
 const DEFAULT_STATIC_DISTANCE = 1;
 const ROUTER_EXEC = [
     { syntax: 'show ip route', run: (cli) => cli.out(...showIpRoute(cli.device.plane.table())) },
@@ -37161,13 +37895,16 @@ const ROUTER_GLOBAL = [
 ];
 const routerModeTable = {
     user: [...EXEC_USER, ...DHCP_EXEC_USER, ...ROUTER_NET_EXEC, ...NAT_EXEC, ...ACL_EXEC],
-    exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV, ...ROUTER_NET_PRIV, ...NAT_PRIV, ...ACL_PRIV],
-    config: [...GLOBAL, ...ROUTER_GLOBAL, ...DHCP_GLOBAL, ...ACL_GLOBAL, ...NAT_GLOBAL],
-    'config-if': [...ROUTER_IF, ...NAT_IF, ...ACL_IF],
+    exec: [...EXEC_PRIV, ...ROUTER_EXEC, ...DHCP_EXEC_PRIV, ...ROUTER_NET_PRIV, ...NAT_PRIV, ...ACL_PRIV, ...CRYPTO_EXEC],
+    config: [...GLOBAL, ...ROUTER_GLOBAL, ...DHCP_GLOBAL, ...ACL_GLOBAL, ...NAT_GLOBAL, ...CRYPTO_GLOBAL],
+    'config-if': [...ROUTER_IF, ...NAT_IF, ...ACL_IF, ...CRYPTO_IF],
     'config-subif': [...ROUTER_SUBIF, ...NAT_IF, ...ACL_IF],
     'config-if-range': [...ROUTER_IF, ...NAT_IF, ...ACL_IF],
     'config-std-nacl': [...ACL_MODE],
     'config-ext-nacl': [...EXT_ACL_MODE],
+    'config-isakmp': [...ISAKMP_MODE],
+    'config-crypto-map': [...CRYPTO_MAP_MODE],
+    'cfg-crypto-trans': [...TRANSFORM_MODE],
     'config-line': [...LINE_MODE],
     'dhcp-config': [...DHCP_POOL],
     'dhcp-class': [...DHCP_CLASS],
@@ -37427,12 +38164,14 @@ return { poolLines, dhcpRunningConfig };
 })();
 __m["devices/router.js"] = (() => {
 /** Cisco 2911-style router: routed interfaces, subinterfaces, static routes. */
+const { EMPTY_CRYPTO, cryptoConfigLines } = __m["ios/crypto-config.js"];
 const { IosDevice } = __m["ios/device.js"];
 const { isSubinterface, parentOf, parseIfaceName } = __m["ios/interfaces.js"];
 const { SimClock } = __m["core/clock.js"];
 const { macFromSeed } = __m["core/mac.js"];
 const { DETACHED, macPlus } = __m["devices/hooks.js"];
 const { RouterPlane } = __m["devices/router-plane.js"];
+const { IpsecEngine } = __m["devices/router-ipsec.js"];
 const { IosWeb } = __m["devices/ios-web.js"];
 const { DEFAULT_TTL } = __m["net/packets.js"];
 const { routerModeTable } = __m["ios/commands/router-modes.js"];
@@ -37459,6 +38198,9 @@ class Router extends IosDevice {
     aclHits = new Map();
     /** Named lists declared with `ip access-list extended`. */
     extendedAcls = new Set();
+    /** IPsec configuration (crypto isakmp, transform sets, crypto maps). */
+    crypto = EMPTY_CRYPTO;
+    ipsec = new IpsecEngine(this);
     nat = EMPTY_NAT;
     natTable = new NatTable();
     debugNat = false;
@@ -37517,6 +38259,9 @@ class Router extends IosDevice {
         this.staticRoutes = [];
         this.acls = new Map();
         this.aclHits.clear();
+        this.extendedAcls.clear();
+        this.crypto = EMPTY_CRYPTO;
+        this.ipsec.clear('all');
         this.nat = EMPTY_NAT;
         this.natTable.reset();
         this.debugNat = false;
@@ -37614,6 +38359,7 @@ class Router extends IosDevice {
             'no ipv6 cef',
             '!',
             '!',
+            ...cryptoConfigLines(this.crypto),
             ...interfaceSection(this),
             ...httpLines(this),
             ...natConfigLines(this.nat),
