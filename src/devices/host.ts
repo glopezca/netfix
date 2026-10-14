@@ -16,10 +16,13 @@ import type { Lease } from '../dhcp/client.ts';
 import { DETACHED } from './hooks.ts';
 import type { DeviceHooks } from './hooks.ts';
 import { macFromSeed, clientIdFromMac } from '../core/mac.ts';
+import { Kernel } from './host-kernel.ts';
 import { inSubnet, BROADCAST_IP } from '../core/ip.ts';
 import type { SimClock } from '../core/clock.ts';
 
 export const HOST_PORT = 'FastEthernet0';
+/** Linux name of the NIC (ip, nft iif/oif, netplan). */
+export const HOST_LINUX_IF = 'eth0';
 const APIPA_NET = 0xa9fe0000;
 const APIPA_PREFIX = 16;
 const APIPA_HOST_SPACE = 0xfe00;
@@ -75,6 +78,8 @@ export abstract class Host implements NetDevice, StackHost {
   readonly tcp: TcpLayer;
   readonly resolver: DnsResolver;
   readonly clock: SimClock;
+  /** sysctl, netfilter (nftables) and the kernel log. */
+  readonly kernel: Kernel;
   private readonly statusListeners = new Set<() => void>();
 
   readonly dropOnArpMiss = false;
@@ -85,6 +90,17 @@ export abstract class Host implements NetDevice, StackHost {
     this.name = name;
     this.clock = clock;
     this.mac = macFromSeed(seed);
+    this.kernel = new Kernel({
+      clock,
+      runtimeName: () => this.runtimeName(),
+      setTransientName: (n) => this.setTransientName(n),
+      linuxIfName: (port) => this.linuxIfName(port),
+      linuxIfIp: (name) => (name === this.linuxIfName(HOST_PORT) ? this.config.ip : undefined),
+      sendRaw: (p) => {
+        const egress = this.route(p.dst);
+        if (egress) this.stack.sendVia(egress, p);
+      },
+    });
     this.stack = new IpStack(this, () => clock.now());
     this.dhcpClient = this.createDhcpClient();
     this.tcp = new TcpLayer({
@@ -294,6 +310,29 @@ export abstract class Host implements NetDevice, StackHost {
     if (udp.dhcp && udp.dport === DHCP_CLIENT_PORT) this.dhcpClient.receive(udp.dhcp);
     else if (udp.dns?.response && this.resolver.ownsPort(udp.dport)) this.resolver.receive(udp.dns, packet.src);
     else this.onUdp(packet);
+  }
+
+  /** Linux name of a NIC port (eth0 for the only NIC of a PC or Server). */
+  linuxIfName(port: string): string {
+    return port === HOST_PORT ? HOST_LINUX_IF : port;
+  }
+
+  // ------------------------------------------------------------ netfilter hooks
+
+  prerouting(iface: string, packet: IpPacket): IpPacket | null {
+    return this.kernel.prerouting(iface, packet);
+  }
+
+  input(iface: string, packet: IpPacket): IpPacket | null {
+    return this.kernel.input(iface, packet);
+  }
+
+  output(iface: string, packet: IpPacket): IpPacket | null {
+    return this.kernel.output(iface, packet);
+  }
+
+  postrouting(iface: string, packet: IpPacket): IpPacket | null {
+    return this.kernel.postrouting(iface, packet);
   }
 
   /** Server-side UDP services (DHCP on 67, DNS on 53). Plain hosts ignore them. */

@@ -1295,6 +1295,163 @@ const PAGES_EN = {
 
 return { PAGES_EN };
 })();
+__m["i18n/es-ES/mc.js"] = (() => {
+/** Español (España): textos propios de Netfix en Midnight Commander (ayuda y créditos). */
+const MC_ES = {
+    'mc.help.title': 'Ayuda',
+    'mc.help.1': 'Tab: cambiar de panel   Insert / Ctrl+T: marcar',
+    'mc.help.2': 'Intro: entrar en el directorio   Ctrl+R: releer',
+    'mc.help.3': 'F3 ver · F4 editar · F5 copiar · F6 mover/renombrar',
+    'mc.help.4': 'F7 crear directorio · F8 borrar · F10 salir',
+    'mc.help.5': 'Sin teclas de función: Esc y el número (Esc 5 = F5)',
+    'mc.help.about': 'F2 o F9: créditos de Netfix',
+    'mc.about.title': 'Acerca de',
+    'mc.about.app': 'Netfix {version} · simulador de redes',
+    'mc.about.author': 'Autoría: {author}',
+    'mc.about.license': 'Licencia: {license}',
+    'mc.about.mc': 'Interfaz basada en GNU Midnight Commander 4.8',
+    'mc.about.mcCopy': '© Free Software Foundation, Inc. · GNU GPL v3+',
+    'mc.about.menus': 'Los menús desplegables no están disponibles en Netfix.',
+    'mc.footer': 'Netfix {version} · © {author}',
+};
+
+return { MC_ES };
+})();
+__m["i18n/en-GB/mc.js"] = (() => {
+const MC_EN = {
+    'mc.help.title': 'Help',
+    'mc.help.1': 'Tab: switch panel   Insert / Ctrl+T: mark',
+    'mc.help.2': 'Enter: open directory   Ctrl+R: reread',
+    'mc.help.3': 'F3 view · F4 edit · F5 copy · F6 move/rename',
+    'mc.help.4': 'F7 make directory · F8 delete · F10 quit',
+    'mc.help.5': 'No function keys: Esc then the number (Esc 5 = F5)',
+    'mc.help.about': 'F2 or F9: Netfix credits',
+    'mc.about.title': 'About',
+    'mc.about.app': 'Netfix {version} · network simulator',
+    'mc.about.author': 'Author: {author}',
+    'mc.about.license': 'Licence: {license}',
+    'mc.about.mc': 'Interface based on GNU Midnight Commander 4.8',
+    'mc.about.mcCopy': '© Free Software Foundation, Inc. · GNU GPL v3+',
+    'mc.about.menus': 'Pull-down menus are not available in Netfix.',
+    'mc.footer': 'Netfix {version} · © {author}',
+};
+
+return { MC_EN };
+})();
+__m["i18n/es-ES/host.js"] = (() => {
+/** Español (España): pestañas de PC y Servidor (Equipo, Configuración IP) y ventanas de equipo. */
+const HOST_ES = {
+    'host.nameTitle': 'Nombre del equipo',
+    'host.label': 'Nombre visible (área de trabajo)',
+    'host.labelHint': 'Solo identifica el icono; no cambia la red.',
+    'host.hostname': 'Nombre de host',
+    'host.hostnameHint': 'Lo envía el cliente DHCP (opción 12) y lo muestran el prompt, /etc/hostname y hostname.',
+    'host.pretty': 'Nombre descriptivo (pretty hostname)',
+    'host.prettyHint': 'Solo en GNU/Linux: lo muestra hostnamectl.',
+    'host.prettyPlaceholder': 'Opcional, texto libre',
+    'host.save': 'Guardar',
+    'host.useLabel': 'Usar el nombre visible',
+    'host.labelEmpty': 'El nombre visible no puede estar vacío.',
+    'host.saved': 'Guardado. Nombre de host: {name}.',
+    'host.equivalents': 'Equivalencias',
+    'host.eqLinux': 'GNU/Linux: sudo hostnamectl set-hostname NOMBRE (persistente) o sudo hostname NOMBRE (solo hasta reiniciar). bash muestra el nombre nuevo en una shell nueva (exec bash).',
+    'host.eqWindows': 'Windows: Configuración → Sistema → Cambiar el nombre de este equipo.',
+    'host.now': 'Ahora mismo: estático «{static}»',
+    'host.nowTransient': ', transitorio «{name}»',
+    'host.nowPretty': ', descriptivo «{name}»',
+    'host.live': 'Estos campos se actualizan solos cuando cambias el nombre o la red desde la terminal.',
+    'host.err.empty': 'El nombre de host no puede estar vacío.',
+    'host.err.long': 'El nombre de host admite como máximo {max} caracteres.',
+    'host.err.label': 'Cada parte del nombre admite como máximo {max} caracteres.',
+    'host.err.chars': 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).',
+};
+
+return { HOST_ES };
+})();
+__m["i18n/en-GB/host.js"] = (() => {
+const HOST_EN = {
+    'host.nameTitle': 'Device name',
+    'host.label': 'Display name (workspace)',
+    'host.labelHint': 'Only labels the icon; it does not change the network.',
+    'host.hostname': 'Host name',
+    'host.hostnameHint': 'Sent by the DHCP client (option 12) and shown by the prompt, /etc/hostname and hostname.',
+    'host.pretty': 'Pretty host name',
+    'host.prettyHint': 'GNU/Linux only: shown by hostnamectl.',
+    'host.prettyPlaceholder': 'Optional, free text',
+    'host.save': 'Save',
+    'host.useLabel': 'Use the display name',
+    'host.labelEmpty': 'The display name cannot be empty.',
+    'host.saved': 'Saved. Host name: {name}.',
+    'host.equivalents': 'Equivalents',
+    'host.eqLinux': 'GNU/Linux: sudo hostnamectl set-hostname NAME (persistent) or sudo hostname NAME (until reboot). bash shows the new name in a new shell (exec bash).',
+    'host.eqWindows': 'Windows: Settings → System → Rename this PC.',
+    'host.now': 'Right now: static “{static}”',
+    'host.nowTransient': ', transient “{name}”',
+    'host.nowPretty': ', pretty “{name}”',
+    'host.live': 'These fields update by themselves when you change the name or the network from the terminal.',
+    'host.err.empty': 'The host name cannot be empty.',
+    'host.err.long': 'The host name allows at most {max} characters.',
+    'host.err.label': 'Each part of the name allows at most {max} characters.',
+    'host.err.chars': 'Use only unaccented letters, digits and hyphens (no spaces; it cannot start or end with a hyphen).',
+};
+
+return { HOST_EN };
+})();
+__m["i18n/es-ES/dns.js"] = (() => {
+/** Español (España): recursión y reenviadores de bind9 (GUI y gestión web). */
+const DNS_ES = {
+    'dns.rec.title': 'Reenvío de consultas (recursión)',
+    'dns.rec.help': 'Con reenviadores, el servidor resuelve también nombres de Internet: pregunta a esos servidores (por ejemplo 8.8.8.8 y 8.8.4.4 a través de la nube del ISP), guarda la respuesta en caché y responde a sus clientes. Sin reenviadores solo responde de sus zonas (REFUSED para el resto).',
+    'dns.rec.forwarders': 'Reenviadores (forwarders)',
+    'dns.rec.forwardersHint': 'Direcciones IPv4 separadas por comas. Vacío = sin recursión.',
+    'dns.rec.mode': 'Modo',
+    'dns.rec.only': 'forward only (solo reenviadores)',
+    'dns.rec.first': 'forward first (reenviadores y luego Internet)',
+    'dns.rec.allow': 'Clientes con recursión (allow-recursion)',
+    'dns.rec.localnets': 'Red local (localnets)',
+    'dns.rec.any': 'Cualquiera (any: resolvedor abierto, no recomendado)',
+    'dns.rec.save': 'Aplicar',
+    'dns.rec.google': 'Usar Google (8.8.8.8, 8.8.4.4)',
+    'dns.rec.flush': 'Vaciar caché (rndc flush)',
+    'dns.rec.cache': 'Entradas en caché: {count}',
+    'dns.rec.saved': 'Guardado. Se aplica también a /etc/bind/named.conf.options.',
+    'dns.rec.flushed': 'Caché vaciada.',
+    'dns.relay': 'DNS del operador (relé)',
+    'dns.relayHint': 'El DHCP de la línea entrega la IP del router como DNS y este reenvía las consultas a 8.8.8.8 y 8.8.4.4 (con caché), como el router de casa.',
+    'dns.relayOn': 'DNS: {ip} (relé del operador a 8.8.8.8 y 8.8.4.4).',
+    'dns.err.ip': '«{value}» no es una dirección IPv4.',
+    'dns.err.many': 'Como máximo {max} reenviadores.',
+};
+
+return { DNS_ES };
+})();
+__m["i18n/en-GB/dns.js"] = (() => {
+const DNS_EN = {
+    'dns.rec.title': 'Query forwarding (recursion)',
+    'dns.rec.help': 'With forwarders, the server also resolves Internet names: it asks those servers (for example 8.8.8.8 and 8.8.4.4 through the ISP cloud), caches the answer and replies to its clients. Without forwarders it only answers from its zones (REFUSED for the rest).',
+    'dns.rec.forwarders': 'Forwarders',
+    'dns.rec.forwardersHint': 'IPv4 addresses separated by commas. Empty = no recursion.',
+    'dns.rec.mode': 'Mode',
+    'dns.rec.only': 'forward only (forwarders only)',
+    'dns.rec.first': 'forward first (forwarders, then the Internet)',
+    'dns.rec.allow': 'Clients allowed to recurse (allow-recursion)',
+    'dns.rec.localnets': 'Local network (localnets)',
+    'dns.rec.any': 'Anyone (any: open resolver, not recommended)',
+    'dns.rec.save': 'Apply',
+    'dns.rec.google': 'Use Google (8.8.8.8, 8.8.4.4)',
+    'dns.rec.flush': 'Flush cache (rndc flush)',
+    'dns.rec.cache': 'Cached entries: {count}',
+    'dns.rec.saved': 'Saved. Also applied to /etc/bind/named.conf.options.',
+    'dns.rec.flushed': 'Cache flushed.',
+    'dns.relay': 'ISP DNS (relay)',
+    'dns.relayHint': 'The line’s DHCP hands out the router’s IP as DNS and the router relays queries to 8.8.8.8 and 8.8.4.4 (with a cache), like a home router.',
+    'dns.relayOn': 'DNS: {ip} (ISP relay to 8.8.8.8 and 8.8.4.4).',
+    'dns.err.ip': '“{value}” is not an IPv4 address.',
+    'dns.err.many': 'At most {max} forwarders.',
+};
+
+return { DNS_EN };
+})();
 __m["i18n/catalog.js"] = (() => {
 const { APP_ES } = __m["i18n/es-ES/app.js"];
 const { APP_EN } = __m["i18n/en-GB/app.js"];
@@ -1302,10 +1459,16 @@ const { CANVAS_ES } = __m["i18n/es-ES/canvas.js"];
 const { CANVAS_EN } = __m["i18n/en-GB/canvas.js"];
 const { PAGES_ES } = __m["i18n/es-ES/pages.js"];
 const { PAGES_EN } = __m["i18n/en-GB/pages.js"];
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES };
+const { MC_ES } = __m["i18n/es-ES/mc.js"];
+const { MC_EN } = __m["i18n/en-GB/mc.js"];
+const { HOST_ES } = __m["i18n/es-ES/host.js"];
+const { HOST_EN } = __m["i18n/en-GB/host.js"];
+const { DNS_ES } = __m["i18n/es-ES/dns.js"];
+const { DNS_EN } = __m["i18n/en-GB/dns.js"];
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES };
 const CATALOGS = {
     'es-ES': ES,
-    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN },
+    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN },
 };
 
 return { CATALOGS };
@@ -5758,7 +5921,7 @@ __m["net/dns.js"] = (() => {
 const { formatIp, parseIp } = __m["core/ip.js"];
 const RESOLVER_PORT_BASE = 50_000;
 const RESOLVER_PORTS = 1000;
-const DEFAULT_TIMEOUT_MS = 2000;
+const DEFAULT_TIMEOUT_MS = 5000;
 const MAX_CNAME_CHAIN = 8;
 class DnsResolver {
     env;
@@ -5778,7 +5941,7 @@ class DnsResolver {
         }
         const id = this.nextId = (this.nextId + 1) & 0xffff;
         const sport = RESOLVER_PORT_BASE + (id % RESOLVER_PORTS);
-        const msg = { id, response: false, qname: normalizeName(name), qtype: type };
+        const msg = { id, response: false, qname: normalizeName(name), qtype: type, rd: true };
         let settled = false;
         const finish = (r) => {
             if (settled)
@@ -6014,6 +6177,8 @@ function macPlus(mac, n) {
 return { DETACHED, macPlus };
 })();
 __m["devices/host.js"] = (() => {
+/** End host with one NIC (PC, Server): IP config, DHCP client, TCP, DNS resolver. */
+const { t } = __m["i18n/t.js"];
 const { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DNS_PORT, PC_TTL } = __m["net/packets.js"];
 
 const { IpStack } = __m["net/ipstack.js"];
@@ -6033,14 +6198,14 @@ const LABEL = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
 /** RFC 1123 host name (letters, digits and hyphens; dot-separated labels). Returns an error or null. */
 function validHostname(name) {
     if (name.trim() === '')
-        return 'El nombre de host no puede estar vacío.';
+        return t('host.err.empty');
     if (name.length > MAX_HOSTNAME)
-        return `El nombre de host admite como máximo ${MAX_HOSTNAME} caracteres.`;
+        return t('host.err.long', { max: MAX_HOSTNAME });
     const labels = name.split('.');
     if (labels.some((l) => l.length > MAX_LABEL))
-        return `Cada parte del nombre admite como máximo ${MAX_LABEL} caracteres.`;
+        return t('host.err.label', { max: MAX_LABEL });
     if (!labels.every((l) => LABEL.test(l)))
-        return 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).';
+        return t('host.err.chars');
     return null;
 }
 class Host {
@@ -6102,6 +6267,32 @@ class Host {
             throw new Error(err);
         this.name = name;
         this.transientName = undefined;
+        this.changed();
+    }
+    /** hostnamectl --pretty (undefined clears it). */
+    setPrettyName(name) {
+        this.prettyName = name;
+        this.changed();
+    }
+    /** `hostname NAME` / hostnamectl --transient (undefined = back to the static name). */
+    setTransientName(name) {
+        this.transientName = name;
+        this.changed();
+    }
+    /** `ip link set dev eth0 up|down`: administrative state of the NIC. */
+    setPortUp(up) {
+        if (this.portUp === up)
+            return;
+        this.portUp = up;
+        this.hooks.portChanged(HOST_PORT);
+        this.changed();
+    }
+    /** dhclient -r: releases the lease and leaves the interface without an address. */
+    releaseDhcp() {
+        this.dhcpClient.release();
+        this.hooks.runUntil(() => false, 10);
+        this.config = { mode: 'dhcp' };
+        this.dhcpStatus = 'idle';
         this.changed();
     }
     onChange(listener) {
@@ -7131,6 +7322,142 @@ function validateRecord(r, origin) {
 }
 
 return { zonesOf, answerQuery, validateRecord };
+})();
+__m["services/dns-forwarder.js"] = (() => {
+const { normalizeName } = __m["net/dns.js"];
+const { inSubnet } = __m["core/ip.js"];
+const FORWARD_TIMEOUT_MS = 1200;
+const FIRST_PORT = 40_000;
+const PORTS = 8000;
+const MAX_CACHE = 512;
+const MAX_PENDING = 256;
+const NEGATIVE_TTL_S = 60;
+/** Whether `client` may use recursion (localnets = same subnet as the server, or the server itself). */
+function recursionAllowed(allow, client, local) {
+    if (allow === 'any')
+        return true;
+    if (local.ip === undefined || local.prefix === undefined)
+        return false;
+    return client === local.ip || (client >>> 24) === 127 || inSubnet(client, local.ip, local.prefix);
+}
+class DnsForwarder {
+    env;
+    pending = new Map();
+    cache = new Map();
+    nextPort = 0;
+    constructor(env) {
+        this.env = env;
+    }
+    flush() {
+        this.cache.clear();
+    }
+    cacheSize() {
+        return this.cache.size;
+    }
+    /** Resolves `q` for the client through `servers`; answers from the cache when it can. */
+    resolve(q, client, port, servers) {
+        const key = `${normalizeName(q.qname)}/${q.qtype}`;
+        const hit = this.cache.get(key);
+        if (hit && hit.expires > this.env.now()) {
+            this.env.reply(client, port, { ...hit.msg, id: q.id, ra: true, rd: q.rd, authoritative: false });
+            return;
+        }
+        if (!servers.length || this.pending.size >= MAX_PENDING) {
+            this.env.reply(client, port, { id: q.id, response: true, qname: q.qname, qtype: q.qtype, rcode: 'SERVFAIL', answers: [], ra: true, rd: q.rd });
+            return;
+        }
+        this.ask({ client, port, query: q, servers, index: 0, done: false });
+    }
+    ask(p) {
+        const server = p.servers[p.index];
+        if (server === undefined) {
+            this.env.log(`client query ${p.query.qname}/${p.query.qtype}: all forwarders failed (SERVFAIL)`);
+            this.env.reply(p.client, p.port, { id: p.query.id, response: true, qname: p.query.qname, qtype: p.query.qtype, rcode: 'SERVFAIL', answers: [], ra: true, rd: p.query.rd });
+            return;
+        }
+        const sport = FIRST_PORT + (this.nextPort++ % PORTS);
+        this.pending.set(sport, p);
+        this.env.send(server, sport, { ...p.query, id: sport, rd: true });
+        this.env.schedule(FORWARD_TIMEOUT_MS, () => {
+            if (p.done || this.pending.get(sport) !== p)
+                return;
+            this.pending.delete(sport);
+            p.index += 1;
+            this.ask(p);
+        });
+    }
+    /** An upstream answer arriving on `port`; false when it is not one of ours. */
+    onResponse(port, answer) {
+        const p = this.pending.get(port);
+        if (!p)
+            return false;
+        this.pending.delete(port);
+        p.done = true;
+        this.store(p.query, answer);
+        this.env.reply(p.client, p.port, { ...answer, id: p.query.id, authoritative: false, ra: true, rd: p.query.rd });
+        return true;
+    }
+    store(q, answer) {
+        if (answer.rcode !== 'NOERROR' && answer.rcode !== 'NXDOMAIN')
+            return;
+        const ttl = Math.min(...(answer.answers ?? []).map((a) => a.ttl), answer.answers?.length ? Infinity : NEGATIVE_TTL_S);
+        if (this.cache.size >= MAX_CACHE)
+            this.cache.delete(this.cache.keys().next().value ?? '');
+        this.cache.set(`${normalizeName(q.qname)}/${q.qtype}`, { msg: answer, expires: this.env.now() + ttl * 1000 });
+    }
+}
+
+return { FORWARD_TIMEOUT_MS, recursionAllowed, DnsForwarder };
+})();
+__m["services/dns-server.js"] = (() => {
+const { DNS_PORT } = __m["net/packets.js"];
+const { answerQuery } = __m["services/dns-service.js"];
+const { cleanOrigin, effectiveRecords } = __m["services/dns-names.js"];
+const { DnsForwarder, recursionAllowed } = __m["services/dns-forwarder.js"];
+const { formatIp } = __m["core/ip.js"];
+class ServerDns {
+    host;
+    forwarder;
+    constructor(host) {
+        this.host = host;
+        this.forwarder = new DnsForwarder({
+            send: (dst, sport, msg) => { host.sendUdp(dst, sport, DNS_PORT, { dns: msg }); },
+            reply: (to, port, msg) => { host.sendUdp(to, DNS_PORT, port, { dns: msg }); },
+            schedule: (d, fn) => host.hooks.schedule(d, fn),
+            now: () => host.clock.now(),
+            log: (l) => host.log('dns', l),
+        });
+    }
+    /** Handles a DNS datagram; false when it is not for bind (another service may want it). */
+    handle(packet) {
+        const udp = packet.udp;
+        const dns = udp?.dns;
+        if (!udp || !dns)
+            return false;
+        if (dns.response)
+            return this.forwarder.onResponse(udp.dport, dns);
+        if (udp.dport !== DNS_PORT || !this.host.services.dns.enabled)
+            return false;
+        this.query(packet.src, udp.sport, packet.dst, dns);
+        return true;
+    }
+    query(src, sport, dst, q) {
+        const s = this.host.services.dns;
+        const forwarders = s.forwarders ?? [];
+        const recursion = forwarders.length > 0 && recursionAllowed(s.allowRecursion ?? 'localnets', src, this.host.config);
+        const answer = answerQuery(q, effectiveRecords(s), cleanOrigin(s.origin));
+        const head = `client ${formatIp(src)}#${sport} (${q.qname}): query: ${q.qname} IN ${q.qtype} ${q.rd === false ? '-' : '+'} (${formatIp(dst)})`;
+        if (answer.rcode === 'REFUSED' && recursion && q.rd !== false) {
+            this.host.log('dns', `${head} → forwarding to ${forwarders.map(formatIp).join(', ')}`);
+            this.forwarder.resolve(q, src, sport, forwarders);
+            return;
+        }
+        this.host.log('dns', `${head} → ${answer.rcode}`);
+        this.host.sendUdp(src, DNS_PORT, sport, { dns: { ...answer, rd: q.rd, ra: recursion } });
+    }
+}
+
+return { ServerDns };
 })();
 __m["devices/host-fs.js"] = (() => {
 let provider;
@@ -9089,7 +9416,7 @@ __m["shells/net-tools.js"] = (() => {
 const { firstAddress, normalizeName, reverseName } = __m["net/dns.js"];
 const { runSync } = __m["net/sync.js"];
 const { parseIp } = __m["core/ip.js"];
-const DNS_WAIT_MS = 3000;
+const DNS_WAIT_MS = 6000;
 const DEFAULT_HTTP_PORT = 80;
 const TCP_WAIT_MS = 6000;
 /** Remote commands may run network tools on the server (ping, dig, curl…). */
@@ -10207,6 +10534,636 @@ class BaseShell {
 
 return { DEFAULT_SCREEN, SSH_PORT, SSH_FAILED, BaseShell };
 })();
+__m["services/named-options.js"] = (() => {
+const { formatIp, parseIp } = __m["core/ip.js"];
+const NAMED_OPTIONS = '/etc/bind/named.conf.options';
+const MAX_FORWARDERS = 8;
+function namedOptions(s) {
+    const fwd = s.forwarders ?? [];
+    const lines = [
+        'options {',
+        '\tdirectory "/var/cache/bind";',
+        '',
+        '\t// Reenviadores / forwarders: consultas recursivas que esta zona no resuelve',
+        ...(fwd.length ? ['\tforwarders {', ...fwd.map((ip) => `\t\t${formatIp(ip)};`), '\t};', `\tforward ${s.forwardOnly === false ? 'first' : 'only'};`] : ['\t// forwarders {', '\t//\t8.8.8.8;', '\t// };']),
+        '',
+        `\trecursion ${fwd.length ? 'yes' : 'no'};`,
+        ...(fwd.length ? [`\tallow-recursion { ${s.allowRecursion === 'any' ? 'any' : 'localnets; localhost'}; };`] : []),
+        '\tdnssec-validation no;',
+        '\tlisten-on-v6 { any; };',
+        '};',
+        '',
+    ];
+    return lines.join('\n');
+}
+function block(text, name) {
+    const m = new RegExp(`\\b${name}\\s*\\{([^}]*)\\}\\s*;`).exec(text);
+    return m ? m[1] ?? '' : null;
+}
+/** The settings described by an edited file (only the recursion part); an error in named-checkconf words. */
+function parseNamedOptions(text, current) {
+    const clean = text.replace(/\/\/.*$/gm, '').replace(/#.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    if ((clean.match(/\{/g) ?? []).length !== (clean.match(/\}/g) ?? []).length)
+        return { error: `${NAMED_OPTIONS}: unexpected end of input` };
+    const fwdText = block(clean, 'forwarders');
+    const items = (fwdText ?? '').split(';').map((x) => x.trim()).filter(Boolean);
+    const forwarders = [];
+    for (const item of items) {
+        const ip = parseIp(item.split(/\s+/)[0] ?? '');
+        if (ip === null)
+            return { error: `${NAMED_OPTIONS}: '${item}': not a valid IPv4 address` };
+        forwarders.push(ip);
+    }
+    if (forwarders.length > MAX_FORWARDERS)
+        return { error: `${NAMED_OPTIONS}: too many forwarders` };
+    const recursion = /\brecursion\s+(yes|no)\s*;/.exec(clean)?.[1];
+    const forward = /\bforward\s+(only|first)\s*;/.exec(clean)?.[1];
+    const allow = block(clean, 'allow-recursion') ?? '';
+    return {
+        ...current,
+        forwarders: recursion === 'no' ? [] : forwarders,
+        forwardOnly: forward !== 'first',
+        allowRecursion: /\bany\b/.test(allow) ? 'any' : 'localnets',
+    };
+}
+
+return { NAMED_OPTIONS, namedOptions, parseNamedOptions };
+})();
+__m["core/yaml-lite.js"] = (() => {
+/**
+ * The YAML subset netplan files use: block mappings, block sequences ("- x" and "- key: value"), flow
+ * sequences ([a, b]), plain or quoted scalars and # comments. Linear and bounded; anchors, tags, multi-line
+ * strings and flow mappings are reported as errors.
+ */
+const MAX_YAML_LINES = 400;
+function stripComment(raw) {
+    let quote = '';
+    for (let i = 0; i < raw.length; i++) {
+        const c = raw[i];
+        if (quote) {
+            if (c === quote)
+                quote = '';
+            continue;
+        }
+        if (c === '"' || c === "'")
+            quote = c;
+        else if (c === '#' && (i === 0 || /\s/.test(raw[i - 1] ?? '')))
+            return raw.slice(0, i);
+    }
+    return raw;
+}
+function scalar(text, line, col) {
+    const t = text.trim();
+    if (/^["'].*["']$/.test(t) && t.length >= 2)
+        return t.slice(1, -1);
+    if (t.startsWith('[')) {
+        if (!t.endsWith(']'))
+            return { line, col, message: 'unterminated flow sequence' };
+        const inner = t.slice(1, -1).trim();
+        return inner ? inner.split(',').map((x) => x.trim().replace(/^["']|["']$/g, '')) : [];
+    }
+    if (/^[{&*!|>]/.test(t))
+        return { line, col, message: `unsupported YAML syntax "${t[0]}"` };
+    return t;
+}
+const isError = (v) => typeof v === 'object' && v !== null && 'message' in v && 'line' in v;
+class Parser {
+    i = 0;
+    lines;
+    constructor(lines) {
+        this.lines = lines;
+    }
+    block(indent) {
+        const first = this.lines[this.i];
+        if (!first || first.indent < indent)
+            return '';
+        return first.text.startsWith('- ') || first.text === '-' ? this.sequence(first.indent) : this.mapping(first.indent);
+    }
+    mapping(indent) {
+        const out = {};
+        for (let l = this.lines[this.i]; l && l.indent === indent && !l.text.startsWith('-'); l = this.lines[this.i]) {
+            const m = /^("[^"]*"|'[^']*'|[^:\s][^:]*?)\s*:(?:\s+(.*))?$/.exec(l.text);
+            if (!m)
+                return { line: l.no, col: l.indent + 1, message: 'could not find expected \':\'' };
+            const key = (m[1] ?? '').replace(/^["']|["']$/g, '');
+            if (key in out)
+                return { line: l.no, col: l.indent + 1, message: `duplicate key "${key}"` };
+            this.i++;
+            const value = m[2] !== undefined && m[2].trim() !== '' ? scalar(m[2], l.no, l.indent + key.length + 3) : this.child(indent);
+            if (isError(value))
+                return value;
+            out[key] = value;
+        }
+        const next = this.lines[this.i];
+        if (next && next.indent > indent)
+            return { line: next.no, col: next.indent + 1, message: 'bad indentation of a mapping entry' };
+        return out;
+    }
+    child(parent) {
+        const next = this.lines[this.i];
+        if (next && (next.indent > parent || (next.indent === parent && next.text.startsWith('- '))))
+            return this.block(next.indent);
+        return '';
+    }
+    sequence(indent) {
+        const out = [];
+        for (let l = this.lines[this.i]; l && l.indent === indent && (l.text.startsWith('- ') || l.text === '-'); l = this.lines[this.i]) {
+            const rest = l.text.slice(1).trimStart();
+            if (/^[^\s"'[][^:]*:(\s|$)/.test(rest)) {
+                // "- key: value" starts a mapping whose keys are indented like `key`.
+                const inner = indent + (l.text.length - rest.length);
+                this.lines[this.i] = { no: l.no, indent: inner, text: rest };
+                const m = this.mapping(inner);
+                if (isError(m))
+                    return m;
+                out.push(m);
+                continue;
+            }
+            this.i++;
+            const v = rest ? scalar(rest, l.no, indent + 3) : this.child(indent);
+            if (isError(v))
+                return v;
+            out.push(v);
+        }
+        return out;
+    }
+}
+/** Parses `text`; the result is a mapping (or an error with its 1-based line and column). */
+function parseYaml(text) {
+    const raw = text.split('\n');
+    if (raw.length > MAX_YAML_LINES)
+        return { line: MAX_YAML_LINES, col: 1, message: 'file too long' };
+    const lines = [];
+    raw.forEach((r, idx) => {
+        if (r.includes('\t'))
+            lines.push({ no: idx + 1, indent: -1, text: '\t' });
+        const body = stripComment(r).trimEnd();
+        if (!body.trim() || body.trim() === '---')
+            return;
+        lines.push({ no: idx + 1, indent: body.length - body.trimStart().length, text: body.trim() });
+    });
+    const tab = lines.find((l) => l.indent < 0);
+    if (tab)
+        return { line: tab.no, col: 1, message: 'found character that cannot start any token (tabs are not allowed)' };
+    if (!lines.length)
+        return {};
+    const p = new Parser(lines);
+    const v = p.block(lines[0]?.indent ?? 0);
+    if (isError(v))
+        return v;
+    if (typeof v === 'string' || Array.isArray(v))
+        return { line: lines[0]?.no ?? 1, col: 1, message: 'the document must be a mapping' };
+    return v;
+}
+function isYamlError(v) {
+    return isError(v);
+}
+
+return { MAX_YAML_LINES, parseYaml, isYamlError };
+})();
+__m["bash/io.js"] = (() => {
+const { FsError, normalize } = __m["bash/vfs.js"];
+function isGen(r) {
+    return typeof r === 'object';
+}
+/** A descriptor connected to a terminal (ls columns, grep colours, test -t, tty). */
+function isTty(fd) {
+    return (fd?.write?.kind === 'term' && !fd.write.notty) || fd?.read?.kind === 'tty';
+}
+function ttyFds() {
+    return new Map([[0, { read: { kind: 'tty' } }], [1, { write: { kind: 'term' } }], [2, { write: { kind: 'term' } }]]);
+}
+function bufferSink() {
+    return { kind: 'buf', chunks: [] };
+}
+function dataSource(data) {
+    return { kind: 'data', data, pos: 0 };
+}
+function writeSink(sh, sink, text) {
+    if (!sink || text === '')
+        return;
+    switch (sink.kind) {
+        case 'term':
+            sh.countOutput(text.length);
+            sh.term(text);
+            return;
+        case 'buf':
+            sh.countOutput(text.length);
+            sink.chunks.push(text);
+            return;
+        case 'file':
+            try {
+                sh.env.fs.writeFile(sink.path, text, sh.cred, true);
+            }
+            catch (e) {
+                if (e instanceof FsError)
+                    sh.term(`${sh.errPrefix()}write error: ${e.message}\n`);
+                else
+                    throw e;
+            }
+            return;
+        case 'null':
+            return;
+    }
+}
+function* readLineFrom(src, prompt = '', secret = false) {
+    if (!src || src.kind === 'null')
+        return null;
+    if (src.kind === 'tty') {
+        const line = yield { kind: 'line', prompt, secret };
+        return line === null ? null : { text: line, eof: false };
+    }
+    if (src.pos >= src.data.length)
+        return null;
+    const nl = src.data.indexOf('\n', src.pos);
+    if (nl < 0) {
+        const text = src.data.slice(src.pos);
+        src.pos = src.data.length;
+        return { text, eof: true };
+    }
+    const text = src.data.slice(src.pos, nl);
+    src.pos = nl + 1;
+    return { text, eof: false };
+}
+function* readAllFrom(src) {
+    if (!src || src.kind === 'null')
+        return '';
+    if (src.kind === 'data') {
+        const rest = src.data.slice(src.pos);
+        src.pos = src.data.length;
+        return rest;
+    }
+    const lines = [];
+    for (;;) {
+        const l = yield* readLineFrom(src);
+        if (l === null)
+            break;
+        lines.push(`${l.text}\n`);
+    }
+    return lines.join('');
+}
+function makeCtx(sh, argv, fds, env) {
+    const name = argv[0] ?? 'bash';
+    return {
+        sh,
+        argv,
+        fds,
+        env,
+        cred: sh.cred,
+        cwd: sh.cwd,
+        out: (t) => writeSink(sh, fds.get(1)?.write, t),
+        err: (t) => writeSink(sh, fds.get(2)?.write, t),
+        fail(msg, code = 1) {
+            writeSink(sh, fds.get(2)?.write, `${name}: ${msg}\n`);
+            return code;
+        },
+        readLine: (prompt, secret) => readLineFrom(fds.get(0)?.read, prompt, secret),
+        readAll: () => readAllFrom(fds.get(0)?.read),
+        resolve: (p) => normalize(p, sh.cwd),
+    };
+}
+/** Error from a builtin: `bash: name: msg` (interactive) or `script: line N: name: msg`. */
+function builtinError(ctx, msg, code = 1) {
+    ctx.err(`${ctx.sh.errPrefix()}${ctx.argv[0] ?? ''}: ${msg}\n`);
+    return code;
+}
+
+return { isGen, isTty, ttyFds, bufferSink, dataSource, writeSink, readLineFrom, readAllFrom, makeCtx, builtinError };
+})();
+__m["shells/linux-files.js"] = (() => {
+const { formatIp, formatMask, networkOf, broadcastOf } = __m["core/ip.js"];
+const { formatMacCisco } = __m["core/mac.js"];
+const { zonesOf } = __m["services/dns-service.js"];
+const { normalizeName } = __m["net/dns.js"];
+const { ptExclusions } = __m["services/dhcp-pt.js"];
+const { cleanOrigin, effectiveRecords, qualify } = __m["services/dns-names.js"];
+const { NAMED_OPTIONS, namedOptions } = __m["services/named-options.js"];
+const IFACE = 'eth0';
+function linuxMac(mac) {
+    return (mac.match(/../g) ?? []).join(':');
+}
+function keaConf(s) {
+    const subnets = s.dhcp.pools.map((p, i) => {
+        const net = networkOf(p.start, p.prefix);
+        const last = Math.min(broadcastOf(p.start, p.prefix) - 1, p.start + p.maxUsers - 1);
+        const opts = [
+            p.gateway !== undefined ? `{ "name": "routers", "data": "${formatIp(p.gateway)}" }` : '',
+            p.dns !== undefined ? `{ "name": "domain-name-servers", "data": "${formatIp(p.dns)}" }` : '',
+            p.domain ? `{ "name": "domain-name", "data": "${p.domain}" }` : '',
+        ].filter(Boolean).join(',\n          ');
+        const res = p.reservations.map((r) => `{ ${r.clientId ? `"client-id": "${linuxMac(r.clientId)}"` : `"hw-address": "${linuxMac(r.mac ?? '')}"`}, "ip-address": "${formatIp(r.ip)}" }`).join(',\n          ');
+        return `      {
+        "id": ${i + 1},
+        "subnet": "${formatIp(net)}/${p.prefix}",
+        "pools": [ { "pool": "${formatIp(p.start)} - ${formatIp(last)}" } ],
+        "valid-lifetime": ${p.leaseMinutes * 60},${p.identifyBy === 'mac' ? '\n        "match-client-id": false,' : ''}
+        "option-data": [
+          ${opts}
+        ],
+        "reservations": [
+          ${res}
+        ]
+      }`;
+    });
+    return `{
+  "Dhcp4": {
+    "interfaces-config": { "interfaces": [ "${IFACE}" ] },
+    "lease-database": { "type": "memfile", "persist": true, "name": "/var/lib/kea/kea-leases4.csv" },
+    "subnet4": [
+${subnets.join(',\n')}
+    ]
+  }
+}
+`;
+}
+function zoneLine(name, r, value) {
+    return `${name.padEnd(16)}${String(r.ttl).padEnd(8)}IN  ${r.type.padEnd(6)}${r.type === 'MX' ? `${r.priority ?? 10} ` : ''}${value}`;
+}
+const inZone = (name, zone) => name === zone || name.endsWith(`.${zone}`);
+/** Zone file: the origin zone keeps the names as typed (relative, @ or absolute); others are derived. */
+function zoneFile(s, zone) {
+    const origin = cleanOrigin(s.dns.origin);
+    const head = [`$TTL 86400`, ...(zone === origin ? [`$ORIGIN ${zone}.`] : []), `@   IN  SOA  ns.${zone}. admin.${zone}. ( 2026101101 604800 86400 2419200 3600 )`];
+    const typed = zone === origin
+        ? s.dns.records.filter((r) => inZone(qualify(r.name, origin) ?? '', zone)).map((r) => zoneLine(r.name.trim(), r, r.type === 'TXT' ? `"${r.value}"` : r.value.trim()))
+        : effectiveRecords(s.dns).filter((r) => inZone(normalizeName(r.name), zone)).map((r) => {
+            const name = normalizeName(r.name) === zone ? '@' : normalizeName(r.name).slice(0, -(zone.length + 1));
+            const value = r.type === 'A' ? r.value : r.type === 'TXT' ? `"${r.value}"` : `${normalizeName(r.value)}.`;
+            return zoneLine(name, r, value);
+        });
+    return [...head, ...typed, ''].join('\n');
+}
+function zonesFor(s) {
+    const origin = cleanOrigin(s.dns.origin);
+    const zones = zonesOf(effectiveRecords(s.dns)).filter((z) => !origin || !inZone(z, origin));
+    return origin ? [origin, ...zones] : zones;
+}
+/** Apache snippets and settings of the web applications, as their Ubuntu packages install them. */
+function webAppFiles(s, files) {
+    const rc = s.webapps.roundcube;
+    if (rc.enabled) {
+        files.set('/etc/apache2/conf-enabled/roundcube.conf', rc.mode === 'alias'
+            ? `# Generado por Netfix (Servicios → HTTP → Roundcube)\nAlias ${rc.alias} /var/lib/roundcube/public_html\n\n<Directory /var/lib/roundcube/public_html/>\n  Options +FollowSymLinks\n  AllowOverride All\n  Require all granted\n</Directory>\n`
+            : `# Generado por Netfix (Servicios → HTTP → Roundcube)\nListen ${rc.port}\n<VirtualHost *:${rc.port}>\n  DocumentRoot /var/lib/roundcube/public_html\n  <Directory /var/lib/roundcube/public_html/>\n    Require all granted\n  </Directory>\n</VirtualHost>\n`);
+        files.set('/etc/roundcube/config.inc.php', `<?php\n$config = [];\n$config['imap_host'] = 'localhost:143';\n$config['smtp_host'] = 'localhost:25';\n$config['product_name'] = 'Roundcube Webmail';\n$config['skin'] = 'elastic';\n$config['mail_domain'] = '${s.mail.domain}';\n`);
+    }
+    const ad = s.webapps.admin;
+    if (ad.enabled && ad.mode === 'alias') {
+        files.set('/etc/apache2/conf-enabled/netfix-admin.conf', `# Generado por Netfix (Servicios → HTTP → Gestión web)\nAlias ${ad.alias} /usr/share/netfix-admin\n<Directory /usr/share/netfix-admin>\n  Require all granted\n</Directory>\n`);
+    }
+}
+function serverFiles(server) {
+    const s = server.services;
+    const files = new Map();
+    webAppFiles(s, files);
+    files.set('/etc/kea/kea-dhcp4.conf', keaConf(s));
+    const zones = zonesFor(s);
+    files.set(NAMED_OPTIONS, namedOptions(s.dns));
+    files.set('/etc/bind/named.conf.local', zones.map((z) => `zone "${z}" {\n    type master;\n    file "/etc/bind/db.${z}";\n};\n`).join('\n'));
+    for (const z of zones)
+        files.set(`/etc/bind/db.${z}`, zoneFile(s, z));
+    files.set('/etc/postfix/main.cf', `myhostname = ${server.name.toLowerCase()}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
+    files.set('/etc/dovecot/dovecot.conf', `protocols = ${[s.mail.pop3 ? 'pop3' : '', s.mail.imap ? 'imap' : ''].filter(Boolean).join(' ') || 'none'}\nmail_location = maildir:~/Maildir\n`);
+    const excl = s.dhcp.pools.flatMap(ptExclusions).length;
+    files.set('/var/lib/kea/kea-leases4.csv', ['address,hwaddr,client_id,valid_lifetime,expire,subnet_id,hostname',
+        ...server.dhcpEngine.allBindings(server.clock.now()).filter((b) => b.type === 'Automatic').map((b) => `${formatIp(b.ip)},${linuxMac(b.mac)},${b.clientId ?? ''},0,${Math.floor((b.expiresAt ?? 0) / 1000)},1,${b.hostname ?? ''}`),
+        `# ${excl} rangos excluidos fuera de los pools`].join('\n'));
+    return files;
+}
+function linuxFiles(host) {
+    const c = host.config;
+    const files = new Map([
+        ['/etc/os-release', 'PRETTY_NAME="Ubuntu 26.04 LTS"\nNAME="Ubuntu"\nVERSION_ID="26.04"\nID=ubuntu\n'],
+        ['/etc/hostname', `${host.name.toLowerCase()}\n`],
+        ['/etc/hosts', `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`],
+        ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n`],
+    ]);
+    if (host.kind === 'server')
+        for (const [k, v] of serverFiles(host))
+            files.set(k, v);
+    return files;
+}
+function describeAddress(host) {
+    const { ip, prefix, mode } = host.config;
+    if (ip === undefined || prefix === undefined)
+        return undefined;
+    return { inet: `${formatIp(ip)}/${prefix}`, brd: formatIp(broadcastOf(ip, prefix)), scope: mode === 'dhcp' ? 'global dynamic' : 'global' };
+}
+function maskOf(prefix) {
+    return formatMask(prefix);
+}
+
+
+return { formatMacCisco, IFACE, linuxMac, linuxFiles, describeAddress, maskOf };
+})();
+__m["shells/netplan.js"] = (() => {
+const { parseYaml, isYamlError } = __m["core/yaml-lite.js"];
+const { formatIp, parseIp } = __m["core/ip.js"];
+const { readLineFrom } = __m["bash/io.js"];
+const { IFACE } = __m["shells/linux-files.js"];
+const NETPLAN_DIR = '/etc/netplan';
+const NETPLAN_FILE = `${NETPLAN_DIR}/50-cloud-init.yaml`;
+const DHCP_WAIT_MS = 20_000;
+const MAX_FILES = 16;
+const ETH_KEYS = new Set(['dhcp4', 'dhcp6', 'addresses', 'routes', 'gateway4', 'nameservers', 'optional', 'match', 'set-name', 'mtu', 'macaddress', 'renderer', 'link-local']);
+const stored = new WeakMap();
+/** The canonical file for the running configuration (what cloud-init would write). */
+function generatedNetplan(c) {
+    if (c.mode === 'dhcp')
+        return `network:\n  version: 2\n  ethernets:\n    ${IFACE}:\n      dhcp4: true\n`;
+    const addr = c.ip !== undefined && c.prefix !== undefined ? `\n      addresses:\n        - ${formatIp(c.ip)}/${c.prefix}` : '';
+    const gw = c.gateway !== undefined ? `\n      routes:\n        - to: default\n          via: ${formatIp(c.gateway)}` : '';
+    const dns = c.dns !== undefined ? `\n      nameservers:\n        addresses: [${formatIp(c.dns)}]` : '';
+    return `network:\n  version: 2\n  ethernets:\n    ${IFACE}:\n      dhcp4: false${addr}${gw}${dns}\n`;
+}
+// ------------------------------------------------------------ interpretation
+const map = (v) => (v !== undefined && typeof v === 'object' && !Array.isArray(v) ? v : undefined);
+const list = (v) => (Array.isArray(v) ? v : v === undefined || v === '' ? [] : [v]);
+const truthy = (v) => (v === undefined ? false : typeof v !== 'string' ? null : /^(true|yes|on)$/i.test(v) ? true : /^(false|no|off)$/i.test(v) ? false : null);
+/** Merges netplan documents: mappings key by key, sequences appended, scalars replaced. */
+function mergeNetplan(a, b) {
+    const out = { ...a };
+    for (const [k, v] of Object.entries(b)) {
+        const prev = out[k];
+        const pm = map(prev);
+        const vm = map(v);
+        out[k] = pm && vm ? mergeNetplan(pm, vm) : Array.isArray(prev) && Array.isArray(v) ? [...prev, ...v] : v;
+    }
+    return out;
+}
+function cidr(text) {
+    const m = typeof text === 'string' ? /^(\d+\.\d+\.\d+\.\d+)\/(\d{1,2})$/.exec(text) : null;
+    const ip = m ? parseIp(m[1] ?? '') : null;
+    return ip === null || Number(m?.[2]) > 32 ? null : { ip, prefix: Number(m?.[2]) };
+}
+function defaultVia(eth) {
+    let via;
+    for (const r of list(eth.routes)) {
+        const rm = map(r);
+        if (!rm)
+            return { error: 'expected mapping (routes)' };
+        if (rm.to !== 'default' && rm.to !== '0.0.0.0/0')
+            return { error: `Netfix hosts only use the default route (to: ${String(rm.to)})` };
+        const gw = typeof rm.via === 'string' ? parseIp(rm.via) : null;
+        if (gw === null)
+            return { error: `invalid IPv4 address '${String(rm.via)}'` };
+        via = gw;
+    }
+    if (typeof eth.gateway4 === 'string')
+        via = parseIp(eth.gateway4) ?? via;
+    return { via };
+}
+/** eth0's configuration in a merged document, an error, plus deprecation warnings. */
+function interpretNetplan(doc) {
+    const net = map(doc.network);
+    if (!net)
+        return { error: 'Error in network definition: expected mapping (check indentation)' };
+    if (net.version !== undefined && net.version !== '2')
+        return { error: `Error in network definition: Only version 2 is supported` };
+    const eths = map(net.ethernets) ?? {};
+    const eth = map(eths[IFACE]);
+    if (!eth)
+        return { wanted: { mode: 'static' }, warnings: [] };
+    const unknown = Object.keys(eth).find((k) => !ETH_KEYS.has(k));
+    if (unknown)
+        return { error: `Error in network definition: unknown key '${unknown}'` };
+    const dhcp = truthy(eth.dhcp4);
+    if (dhcp === null)
+        return { error: `Error in network definition: invalid boolean value '${String(eth.dhcp4)}'` };
+    const warnings = eth.gateway4 !== undefined ? ['`gateway4` has been deprecated, use default routes instead.\nSee the \'Default routes\' section of the documentation for more details.'] : [];
+    if (dhcp)
+        return { wanted: { mode: 'dhcp' }, warnings };
+    const addrs = list(eth.addresses).map(cidr);
+    if (addrs.some((a) => a === null))
+        return { error: `Error in network definition: malformed address '${String(list(eth.addresses)[addrs.indexOf(null)])}', must be X.X.X.X/NN or X:X:X:X:X:X:X:X/NN` };
+    if (addrs.length > 1)
+        return { error: `Netfix: one IPv4 address per interface (${IFACE} has ${addrs.length})` };
+    const route = defaultVia(eth);
+    if (route.error)
+        return { error: `Error in network definition: ${route.error}` };
+    const dnsText = list(map(eth.nameservers)?.addresses)[0];
+    const dns = typeof dnsText === 'string' ? parseIp(dnsText) ?? undefined : undefined;
+    const a = addrs[0];
+    return { wanted: { mode: 'static', ip: a?.ip, prefix: a?.prefix, gateway: route.via, dns }, warnings };
+}
+function sameAs(w, c) {
+    if (w.mode === 'dhcp' || c.mode === 'dhcp')
+        return w.mode === c.mode;
+    return w.ip === c.ip && w.prefix === c.prefix && w.gateway === c.gateway && w.dns === c.dns;
+}
+/** Content of /etc/netplan/50-cloud-init.yaml: the user's text while it matches (or awaits apply), else generated. */
+function netplanFileContent(host) {
+    const s = stored.get(host);
+    if (s) {
+        const doc = parseYaml(s.text);
+        const r = isYamlError(doc) ? null : interpretNetplan(doc);
+        if (!s.applied || (r && 'wanted' in r && sameAs(r.wanted, host.config)))
+            return s.text;
+        stored.delete(host);
+    }
+    return generatedNetplan(host.config);
+}
+function writeNetplanFile(host, content) {
+    stored.set(host, { text: content, applied: false });
+}
+// ------------------------------------------------------------ netplan program
+function yamlFiles(ctx) {
+    const fs = ctx.sh.env.fs;
+    if (fs.tryLookup(NETPLAN_DIR, ctx.cred)?.kind !== 'dir')
+        return [];
+    return fs.readdir(NETPLAN_DIR, ctx.cred).filter((n) => n.endsWith('.yaml')).sort().slice(0, MAX_FILES).map((n) => `${NETPLAN_DIR}/${n}`);
+}
+/** Reads and merges every file; prints errors like netplan (file:line:col). */
+function load(ctx) {
+    let doc = {};
+    for (const path of yamlFiles(ctx)) {
+        let text;
+        try {
+            text = ctx.sh.env.fs.readFile(path, ctx.cred);
+        }
+        catch {
+            ctx.err(`${path}: Permission denied\n`);
+            return null;
+        }
+        const parsed = parseYaml(text);
+        if (isYamlError(parsed)) {
+            ctx.err(`${path}:${parsed.line}:${parsed.col}: Invalid YAML: ${parsed.message}\n`);
+            return null;
+        }
+        doc = mergeNetplan(doc, parsed);
+    }
+    const r = interpretNetplan(doc);
+    if ('error' in r) {
+        ctx.err(`${NETPLAN_FILE}:1:1: ${r.error}\n`);
+        return null;
+    }
+    for (const w of r.warnings)
+        ctx.err(`\n** (generate:1481): WARNING **: ${new Date(ctx.sh.env.now()).toISOString().slice(11, 23)}: ${w}\n`);
+    return { ...r, doc };
+}
+function apply(host, w) {
+    if (w.mode === 'dhcp') {
+        if (host.config.mode !== 'dhcp' || host.dhcpStatus !== 'ok') {
+            host.useDhcp();
+            host.hooks.runUntil(() => host.dhcpStatus !== 'requesting', DHCP_WAIT_MS);
+        }
+    }
+    else
+        host.setStatic({ ip: w.ip, prefix: w.prefix, gateway: w.gateway, dns: w.dns });
+    const s = stored.get(host);
+    if (s)
+        s.applied = true;
+}
+function* tryConfig(ctx, host, w) {
+    const before = host.config;
+    apply(host, w);
+    ctx.out('Do you want to keep these settings?\n\n\nPress ENTER before the timeout to accept the new configuration\n\n\n');
+    const answer = yield* readLineFrom({ kind: 'tty' }, 'Changes will revert in 120 seconds', false);
+    if (answer !== null) {
+        ctx.out('Configuration accepted.\n');
+        return 0;
+    }
+    apply(host, before.mode === 'dhcp' ? { mode: 'dhcp' } : { ...before, mode: 'static' });
+    // The files keep the new text (it is the running config that goes back).
+    const s = stored.get(host);
+    if (s)
+        s.applied = false;
+    ctx.out('\nReverting.\n');
+    return 1;
+}
+function netplanProgram(host) {
+    return function* netplan(ctx) {
+        const verb = ctx.argv[1] ?? '';
+        if (!['apply', 'try', 'generate', 'get', 'info'].includes(verb)) {
+            ctx.err('usage: /usr/sbin/netplan  [-h] [--debug]  ...\n\nNetwork configuration in YAML\n\nAvailable commands:\n    help      Show this help message\n    apply     Apply current netplan config to running system\n    generate  Generate backend specific configuration files from /etc/netplan/*.yaml\n    get       Get a setting by specifying a nested key like "ethernets.eth0.addresses", or "all"\n    info      Show available features\n    try       Try to apply a new netplan config to running system, with automatic rollback\n');
+            return verb === '' ? 1 : 2;
+        }
+        if (verb === 'info') {
+            ctx.out('netplan.io:\n  website: https://netplan.io/\n  features:\n  - dhcp-use-domains\n  - default-routes\n');
+            return 0;
+        }
+        if (verb !== 'get' && ctx.cred.uid !== 0) {
+            ctx.err('Permission denied (you must run netplan as root)\n');
+            return 1;
+        }
+        const r = load(ctx);
+        if (!r)
+            return 78;
+        if (verb === 'generate')
+            return 0;
+        if (verb === 'get') {
+            ctx.out(r.wanted.mode === 'dhcp' ? generatedNetplan({ mode: 'dhcp' }) : generatedNetplan(r.wanted));
+            return 0;
+        }
+        if (verb === 'try')
+            return yield* tryConfig(ctx, host, r.wanted);
+        apply(host, r.wanted);
+        return 0;
+    };
+}
+
+return { NETPLAN_DIR, NETPLAN_FILE, generatedNetplan, mergeNetplan, interpretNetplan, netplanFileContent, writeNetplanFile, netplanProgram };
+})();
 __m["services/sshd-config.js"] = (() => {
 /**
  * /etc/ssh/sshd_config of a Ubuntu Server (OpenSSH 10): the file is real and editable; `systemctl
@@ -11161,115 +12118,6 @@ const FILES = new Map([
 ]);
 
 return { parseMode, FILES };
-})();
-__m["bash/io.js"] = (() => {
-const { FsError, normalize } = __m["bash/vfs.js"];
-function isGen(r) {
-    return typeof r === 'object';
-}
-/** A descriptor connected to a terminal (ls columns, grep colours, test -t, tty). */
-function isTty(fd) {
-    return (fd?.write?.kind === 'term' && !fd.write.notty) || fd?.read?.kind === 'tty';
-}
-function ttyFds() {
-    return new Map([[0, { read: { kind: 'tty' } }], [1, { write: { kind: 'term' } }], [2, { write: { kind: 'term' } }]]);
-}
-function bufferSink() {
-    return { kind: 'buf', chunks: [] };
-}
-function dataSource(data) {
-    return { kind: 'data', data, pos: 0 };
-}
-function writeSink(sh, sink, text) {
-    if (!sink || text === '')
-        return;
-    switch (sink.kind) {
-        case 'term':
-            sh.countOutput(text.length);
-            sh.term(text);
-            return;
-        case 'buf':
-            sh.countOutput(text.length);
-            sink.chunks.push(text);
-            return;
-        case 'file':
-            try {
-                sh.env.fs.writeFile(sink.path, text, sh.cred, true);
-            }
-            catch (e) {
-                if (e instanceof FsError)
-                    sh.term(`${sh.errPrefix()}write error: ${e.message}\n`);
-                else
-                    throw e;
-            }
-            return;
-        case 'null':
-            return;
-    }
-}
-function* readLineFrom(src, prompt = '', secret = false) {
-    if (!src || src.kind === 'null')
-        return null;
-    if (src.kind === 'tty') {
-        const line = yield { kind: 'line', prompt, secret };
-        return line === null ? null : { text: line, eof: false };
-    }
-    if (src.pos >= src.data.length)
-        return null;
-    const nl = src.data.indexOf('\n', src.pos);
-    if (nl < 0) {
-        const text = src.data.slice(src.pos);
-        src.pos = src.data.length;
-        return { text, eof: true };
-    }
-    const text = src.data.slice(src.pos, nl);
-    src.pos = nl + 1;
-    return { text, eof: false };
-}
-function* readAllFrom(src) {
-    if (!src || src.kind === 'null')
-        return '';
-    if (src.kind === 'data') {
-        const rest = src.data.slice(src.pos);
-        src.pos = src.data.length;
-        return rest;
-    }
-    const lines = [];
-    for (;;) {
-        const l = yield* readLineFrom(src);
-        if (l === null)
-            break;
-        lines.push(`${l.text}\n`);
-    }
-    return lines.join('');
-}
-function makeCtx(sh, argv, fds, env) {
-    const name = argv[0] ?? 'bash';
-    return {
-        sh,
-        argv,
-        fds,
-        env,
-        cred: sh.cred,
-        cwd: sh.cwd,
-        out: (t) => writeSink(sh, fds.get(1)?.write, t),
-        err: (t) => writeSink(sh, fds.get(2)?.write, t),
-        fail(msg, code = 1) {
-            writeSink(sh, fds.get(2)?.write, `${name}: ${msg}\n`);
-            return code;
-        },
-        readLine: (prompt, secret) => readLineFrom(fds.get(0)?.read, prompt, secret),
-        readAll: () => readAllFrom(fds.get(0)?.read),
-        resolve: (p) => normalize(p, sh.cwd),
-    };
-}
-/** Error from a builtin: `bash: name: msg` (interactive) or `script: line N: name: msg`. */
-function builtinError(ctx, msg, code = 1) {
-    ctx.err(`${ctx.sh.errPrefix()}${ctx.argv[0] ?? ''}: ${msg}\n`);
-    return code;
-}
-
-return { isGen, isTty, ttyFds, bufferSink, dataSource, writeSink, readLineFrom, readAllFrom, makeCtx, builtinError };
 })();
 __m["bash/coreutils/ls.js"] = (() => {
 const { normalize } = __m["bash/vfs.js"];
@@ -22325,7 +23173,9 @@ const UTIL_DOCS = {
     man: { group: 'editores', synopsis: 'man [SECCIÓN] PÁGINA', summary: 'Muestra la página de manual de un programa de esta lista.' },
     less: { group: 'editores', synopsis: 'less [FICHERO]...', summary: 'Paginador: en Netfix muestra el texto completo (usa la barra de desplazamiento).' },
     more: { group: 'editores', synopsis: 'more [FICHERO]...', summary: 'Paginador sencillo (igual que less en Netfix).' },
-    ip: { group: 'red', section: 8, synopsis: 'ip [-br] [-c] {address | route | neigh | link} [show]', summary: 'Direcciones, rutas y vecinos (iproute2). Abreviable: ip a, ip r, ip n.' },
+    ip: { group: 'red', section: 8, synopsis: 'ip [-br] [-c] {address | route | neigh | link} [show] | ip addr {add|del} IP/N dev eth0 | ip addr flush dev eth0 | ip route {add|replace|del} default [via GW] | ip link set dev eth0 {up|down}', summary: 'Direcciones, rutas y vecinos (iproute2). Abreviable: ip a, ip r, ip n. Con sudo cambia la configuración en ejecución (la que muestra la GUI), no netplan: se pierde al aplicar netplan. Una dirección IPv4 por interfaz.' },
+    rndc: { group: 'servicios', section: 8, synopsis: 'rndc {reload | flush | status}', summary: 'Controla bind9 (con sudo): reload relee la configuración, flush vacía la caché de la recursión y status muestra reenviadores y entradas en caché.' },
+    netplan: { group: 'red', section: 8, synopsis: 'netplan {apply | try | generate | get | info}', summary: 'Aplica /etc/netplan/*.yaml (unidos por orden de nombre) a la interfaz eth0: dhcp4, addresses, routes (to: default, via), nameservers. try revierte si no confirmas con Intro. Los errores indican fichero:línea:columna.' },
     traceroute: { group: 'red', synopsis: 'traceroute [-n] [-m SALTOS] DESTINO', summary: 'Ruta hasta el destino: sondas ICMP con TTL 1, 2, 3… (como traceroute -I); cada router responde «tiempo excedido». -n sin nombres, -m máximo de saltos (30).' },
     ping: { group: 'red', synopsis: 'ping [-c N] DESTINO', summary: 'Eco ICMP (sin -c, 4 paquetes en Netfix). Estado 0 si responde, 1 si no, 2 si el nombre no se resuelve.' },
     dig: { group: 'red', synopsis: 'dig [@SERVIDOR] NOMBRE [TIPO] [+short] | dig -x IP', summary: 'Consulta DNS con la salida de BIND 9 (secciones QUESTION, ANSWER, AUTHORITY; status NOERROR/NXDOMAIN/REFUSED).' },
@@ -23821,15 +24671,186 @@ function drawDialog(d, rows, width) {
 
 return { dialogKey, sliceSpans, drawDialog };
 })();
+__m["docs/about-data.js"] = (() => {
+const ABOUT = {
+    "name": "netfix",
+    "version": "0.6.0",
+    "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
+    "license": "GPL-3.0-or-later",
+    "repository": "https://github.com/glopezca/netfix",
+    "licenseMarkdown": "# Licencia y atribuciones\n\n- **Autoría:** Germán López Castro\n- **Repositorio:** <https://github.com/glopezca/netfix>\n\nNetfix usa dos licencias según el tipo de material, las dos con la misma idea de\n«compartir igual»: quien distribuya versiones modificadas debe publicarlas con la misma licencia.\n\n| Material | Licencia |\n|---|---|\n| Código fuente: `src/`, `tests/`, `scripts/`, configuración del proyecto y los archivos que genera el build | [GNU GPL v3.0 o posterior](https://www.gnu.org/licenses/gpl-3.0.html) (`GPL-3.0-or-later`) — texto completo en [`LICENSE`](LICENSE) |\n| Documentación e imágenes: `README.md`, `docs/`, capturas y textos de los laboratorios | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es) — [texto legal](https://creativecommons.org/licenses/by-sa/4.0/legalcode.es) |\n| `.claude/` (reglas y agentes de Everything Claude Code) | MIT, de sus autores (ver más abajo) |\n\nLa GPL es una licencia pensada para software: exige entregar el código fuente junto con\ncualquier versión distribuida (también la página HTML compilada) y protege el derecho de\nuso, estudio, modificación y redistribución. Creative Commons recomienda no usar sus licencias\npara código, por eso CC BY-SA 4.0 queda solo para la documentación. Las dos licencias son\ncompatibles en un sentido: el material CC BY-SA 4.0 puede incorporarse a obras GPLv3.\n\n## Aviso de copyright del código\n\n```\nNetfix — simulador de redes con CLI de Cisco IOS y servidor DHCP\nCopyright (C) 2026 Germán López Castro\n\nThis program is free software: you can redistribute it and/or modify\nit under the terms of the GNU General Public License as published by\nthe Free Software Foundation, either version 3 of the License, or\n(at your option) any later version.\n\nThis program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\nMERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\nGNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License\nalong with this program.  If not, see <https://www.gnu.org/licenses/>.\n```\n\n## Atribución recomendada\n\nPara la documentación o las capturas:\n\n> «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),\n> distribuido bajo licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).\n\nPara el software o una obra derivada:\n\n> Basado en «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),\n> GPL-3.0-or-later. Cambios: …\n\n## Componentes de terceros\n\n### Everything Claude Code (ECC)\n\nLas reglas y los agentes de la carpeta `.claude/` (`.claude/rules/`, `.claude/agents/`,\n`.claude/commands/`) proceden de\n[Everything Claude Code](https://github.com/affaan-m/everything-claude-code)\ny se mantienen bajo su licencia original **MIT**, © 2026 Affaan Mustafa.\nEl texto completo está en [`.claude/ECC-LICENSE`](.claude/ECC-LICENSE).\nLa licencia MIT es compatible con la GPLv3; la GPL y la CC BY-SA de este repositorio no se\naplican a esos archivos.\n\n### Marcas\n\nCisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc. Netfix es un proyecto\neducativo independiente, sin relación con Cisco ni respaldado por ella. Los símbolos de red\nde la interfaz son dibujos propios de este proyecto.\n"
+};
+
+return { ABOUT };
+})();
+__m["docs/markdown.js"] = (() => {
+const FENCE = /^```/;
+const HEADING = /^(#{1,6})\s+(.*)$/;
+const LIST_ITEM = /^\s*[-*+]\s+(.*)$/;
+const TABLE_RULE = /^\s*\|?\s*:?-{2,}/;
+function splitRow(line) {
+    const cells = [];
+    let cur = '';
+    const body = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+    for (let i = 0; i < body.length; i++) {
+        const c = body[i];
+        if (c === '\\' && body[i + 1] === '|') {
+            cur += '|';
+            i++;
+        }
+        else if (c === '|') {
+            cells.push(cur.trim());
+            cur = '';
+        }
+        else
+            cur += c;
+    }
+    cells.push(cur.trim());
+    return cells;
+}
+function isTableStart(lines, i) {
+    return (lines[i] ?? '').trim().startsWith('|') && TABLE_RULE.test(lines[i + 1] ?? '');
+}
+/** Reads the block starting at line i; returns it (or null for a skipped title) and the next line. */
+function readBlock(lines, i) {
+    const line = lines[i] ?? '';
+    if (FENCE.test(line)) {
+        const end = lines.findIndex((l, j) => j > i && FENCE.test(l));
+        const stop = end < 0 ? lines.length : end;
+        return { block: { kind: 'code', text: lines.slice(i + 1, stop).join('\n') }, next: stop + 1 };
+    }
+    const h = HEADING.exec(line);
+    if (h) {
+        const level = (h[1] ?? '').length;
+        const text = (h[2] ?? '').trim();
+        if (level === 1)
+            return { block: null, next: i + 1 };
+        return { block: level === 2 ? { kind: 'h', text } : { kind: 'h', text, level: 4 }, next: i + 1 };
+    }
+    if (isTableStart(lines, i)) {
+        let j = i + 2;
+        while (j < lines.length && (lines[j] ?? '').trim().startsWith('|'))
+            j++;
+        return { block: { kind: 'table', head: splitRow(line), rows: lines.slice(i + 2, j).map(splitRow) }, next: j };
+    }
+    const collect = (test, strip) => {
+        let j = i;
+        const out = [];
+        while (j < lines.length && (lines[j] ?? '').trim() !== '' && test(lines[j] ?? ''))
+            out.push(strip(lines[j++] ?? '').trim());
+        return { text: out, next: j };
+    };
+    if (LIST_ITEM.test(line)) {
+        const r = collect((l) => LIST_ITEM.test(l), (l) => LIST_ITEM.exec(l)?.[1] ?? l);
+        return { block: { kind: 'list', items: r.text }, next: r.next };
+    }
+    if (line.trimStart().startsWith('>')) {
+        const r = collect((l) => l.trimStart().startsWith('>'), (l) => l.trimStart().replace(/^>\s?/, ''));
+        return { block: { kind: 'note', text: r.text.join(' ') }, next: r.next };
+    }
+    const r = collect((l) => !FENCE.test(l) && !HEADING.test(l) && !LIST_ITEM.test(l) && !l.trimStart().startsWith('>'), (l) => l);
+    return { block: { kind: 'p', text: r.text.join(' ') }, next: Math.max(r.next, i + 1) };
+}
+/** Markdown → blocks. The level-1 heading (the page title) is left to the caller. */
+function markdownBlocks(markdown) {
+    const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
+    const blocks = [];
+    let i = 0;
+    while (i < lines.length) {
+        if ((lines[i] ?? '').trim() === '') {
+            i++;
+            continue;
+        }
+        const { block, next } = readBlock(lines, i);
+        if (block)
+            blocks.push(block);
+        i = next;
+    }
+    return blocks;
+}
+const INLINE = /`([^`]+)`|\*\*([^*]+)\*\*|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)|<(https?:\/\/[^>\s]+)>/g;
+const SAFE_RELATIVE = /^[\w./#-]+$/;
+/** http(s) URLs as they are; relative paths resolved against `base`; anything else is refused. */
+function safeHref(url, base) {
+    if (/^https?:\/\/[^\s"'<>]+$/i.test(url))
+        return url;
+    if (/^[a-z][\w+.-]*:/i.test(url) || !SAFE_RELATIVE.test(url))
+        return undefined;
+    return `${base}${url.replace(/^\.\//, '')}`;
+}
+/** Inline Markdown → spans. `base` resolves relative links (files of the repository). */
+function inlineMarkdown(text, base) {
+    const spans = [];
+    let last = 0;
+    for (const m of text.matchAll(INLINE)) {
+        const at = m.index ?? 0;
+        if (at > last)
+            spans.push({ text: text.slice(last, at) });
+        last = at + m[0].length;
+        if (m[1] !== undefined)
+            spans.push({ text: m[1], code: true });
+        else if (m[2] !== undefined)
+            spans.push({ text: m[2], bold: true });
+        else if (m[5] !== undefined)
+            spans.push({ text: m[5], href: m[5] });
+        else {
+            const label = m[3] ?? '';
+            const code = /^`[^`]+`$/.test(label);
+            const shown = code ? label.slice(1, -1) : label;
+            const href = safeHref(m[4] ?? '', base);
+            spans.push(href ? { text: shown, href, ...(code ? { code } : {}) } : { text: shown });
+        }
+    }
+    if (last < text.length)
+        spans.push({ text: text.slice(last) });
+    return spans;
+}
+
+return { markdownBlocks, safeHref, inlineMarkdown };
+})();
+__m["docs/about.js"] = (() => {
+/** «Acerca de»: version, authorship, licences and attributions, from package.json and LICENSE.md. */
+const { ABOUT } = __m["docs/about-data.js"];
+const { markdownBlocks } = __m["docs/markdown.js"];
+const AUTHOR_LINE = /^\s*-\s*\*\*Autoría:\*\*\s*(.+?)\s*$/m;
+function aboutInfo() {
+    const author = AUTHOR_LINE.exec(ABOUT.licenseMarkdown)?.[1] ?? '';
+    return {
+        name: ABOUT.name.charAt(0).toUpperCase() + ABOUT.name.slice(1),
+        version: ABOUT.version,
+        description: ABOUT.description,
+        license: ABOUT.license,
+        repository: ABOUT.repository,
+        author,
+        fileBase: `${ABOUT.repository}/blob/main/`,
+        blocks: markdownBlocks(ABOUT.licenseMarkdown),
+    };
+}
+
+return { aboutInfo };
+})();
 __m["editors/mc.js"] = (() => {
 const { fit, expandTabs } = __m["editors/buffer.js"];
 const { joinPath } = __m["editors/mc-fs.js"];
 const { Panel } = __m["editors/mc-panel.js"];
 const { dialogKey, drawDialog } = __m["editors/mc-dialog.js"];
 const { NanoEditor } = __m["editors/nano.js"];
+const { t } = __m["i18n/t.js"];
+const { aboutInfo } = __m["docs/about.js"];
 const KEYS = [['1', 'Help'], ['2', 'Menu'], ['3', 'View'], ['4', 'Edit'], ['5', 'Copy'], ['6', 'RenMov'], ['7', 'Mkdir'], ['8', 'Delete'], ['9', 'PullDn'], ['10', 'Quit']];
 const MENU = '  Left     File     Command     Options     Right';
-const HELP = ['Tab: cambiar de panel   Insert / Ctrl+T: marcar', 'Intro: entrar en el directorio   Ctrl+R: releer', 'F3 ver · F4 editar · F5 copiar · F6 mover/renombrar', 'F7 crear directorio · F8 borrar · F10 salir', 'Sin teclas de función: Esc y el número (Esc 5 = F5)'];
+function help() {
+    const a = aboutInfo();
+    return [t('mc.help.1'), t('mc.help.2'), t('mc.help.3'), t('mc.help.4'), t('mc.help.5'), t('mc.help.about'), '', t('mc.footer', { version: a.version, author: a.author })];
+}
+/** Credits of Netfix and of GNU Midnight Commander, whose interface this program reproduces. */
+function mcCredits() {
+    const a = aboutInfo();
+    return [
+        t('mc.about.app', { version: a.version }), t('mc.about.author', { author: a.author }), t('mc.about.license', { license: a.license }),
+        a.repository.replace(/^https:\/\//, ''), '', t('mc.about.mc'), t('mc.about.mcCopy'), '', t('mc.about.menus'),
+    ];
+}
 class McApp {
     closed = false;
     fs;
@@ -23938,7 +24959,7 @@ class McApp {
         const cur = p.current();
         switch (n) {
             case 1:
-                this.dialog = { kind: 'message', title: 'Ayuda', lines: HELP, error: false };
+                this.dialog = { kind: 'message', title: t('mc.help.title'), lines: help(), error: false };
                 break;
             case 3:
                 if (cur && !cur.dir)
@@ -23962,7 +24983,7 @@ class McApp {
                 break;
             case 2:
             case 9:
-                this.dialog = { kind: 'message', title: 'Menú', lines: ['Los menús no están disponibles en Netfix.'], error: false };
+                this.dialog = { kind: 'message', title: t('mc.about.title'), lines: mcCredits(), error: false };
                 break;
             case 10:
                 this.dialog = { kind: 'confirm', title: 'The Midnight Commander', text: 'Do you really want to quit the Midnight Commander?', yes: true, onYes: () => { this.closed = true; } };
@@ -24100,7 +25121,7 @@ class McApp {
     }
 }
 
-return { McApp };
+return { mcCredits, McApp };
 })();
 __m["bash/coreutils/mc.js"] = (() => {
 const { McApp } = __m["editors/mc.js"];
@@ -24200,140 +25221,6 @@ const COREUTILS = new Map([
 ]);
 
 return { COREUTILS };
-})();
-__m["shells/linux-files.js"] = (() => {
-const { formatIp, formatMask, networkOf, broadcastOf } = __m["core/ip.js"];
-const { formatMacCisco } = __m["core/mac.js"];
-const { zonesOf } = __m["services/dns-service.js"];
-const { normalizeName } = __m["net/dns.js"];
-const { ptExclusions } = __m["services/dhcp-pt.js"];
-const { cleanOrigin, effectiveRecords, qualify } = __m["services/dns-names.js"];
-const IFACE = 'eth0';
-function linuxMac(mac) {
-    return (mac.match(/../g) ?? []).join(':');
-}
-function netplan(host) {
-    const c = host.config;
-    if (c.mode === 'dhcp')
-        return `network:\n  version: 2\n  ethernets:\n    ${IFACE}:\n      dhcp4: true\n`;
-    const addr = c.ip !== undefined && c.prefix !== undefined ? `\n      addresses:\n        - ${formatIp(c.ip)}/${c.prefix}` : '';
-    const gw = c.gateway !== undefined ? `\n      routes:\n        - to: default\n          via: ${formatIp(c.gateway)}` : '';
-    const dns = c.dns !== undefined ? `\n      nameservers:\n        addresses: [${formatIp(c.dns)}]` : '';
-    return `network:\n  version: 2\n  ethernets:\n    ${IFACE}:\n      dhcp4: false${addr}${gw}${dns}\n`;
-}
-function keaConf(s) {
-    const subnets = s.dhcp.pools.map((p, i) => {
-        const net = networkOf(p.start, p.prefix);
-        const last = Math.min(broadcastOf(p.start, p.prefix) - 1, p.start + p.maxUsers - 1);
-        const opts = [
-            p.gateway !== undefined ? `{ "name": "routers", "data": "${formatIp(p.gateway)}" }` : '',
-            p.dns !== undefined ? `{ "name": "domain-name-servers", "data": "${formatIp(p.dns)}" }` : '',
-            p.domain ? `{ "name": "domain-name", "data": "${p.domain}" }` : '',
-        ].filter(Boolean).join(',\n          ');
-        const res = p.reservations.map((r) => `{ ${r.clientId ? `"client-id": "${linuxMac(r.clientId)}"` : `"hw-address": "${linuxMac(r.mac ?? '')}"`}, "ip-address": "${formatIp(r.ip)}" }`).join(',\n          ');
-        return `      {
-        "id": ${i + 1},
-        "subnet": "${formatIp(net)}/${p.prefix}",
-        "pools": [ { "pool": "${formatIp(p.start)} - ${formatIp(last)}" } ],
-        "valid-lifetime": ${p.leaseMinutes * 60},${p.identifyBy === 'mac' ? '\n        "match-client-id": false,' : ''}
-        "option-data": [
-          ${opts}
-        ],
-        "reservations": [
-          ${res}
-        ]
-      }`;
-    });
-    return `{
-  "Dhcp4": {
-    "interfaces-config": { "interfaces": [ "${IFACE}" ] },
-    "lease-database": { "type": "memfile", "persist": true, "name": "/var/lib/kea/kea-leases4.csv" },
-    "subnet4": [
-${subnets.join(',\n')}
-    ]
-  }
-}
-`;
-}
-function zoneLine(name, r, value) {
-    return `${name.padEnd(16)}${String(r.ttl).padEnd(8)}IN  ${r.type.padEnd(6)}${r.type === 'MX' ? `${r.priority ?? 10} ` : ''}${value}`;
-}
-const inZone = (name, zone) => name === zone || name.endsWith(`.${zone}`);
-/** Zone file: the origin zone keeps the names as typed (relative, @ or absolute); others are derived. */
-function zoneFile(s, zone) {
-    const origin = cleanOrigin(s.dns.origin);
-    const head = [`$TTL 86400`, ...(zone === origin ? [`$ORIGIN ${zone}.`] : []), `@   IN  SOA  ns.${zone}. admin.${zone}. ( 2026101101 604800 86400 2419200 3600 )`];
-    const typed = zone === origin
-        ? s.dns.records.filter((r) => inZone(qualify(r.name, origin) ?? '', zone)).map((r) => zoneLine(r.name.trim(), r, r.type === 'TXT' ? `"${r.value}"` : r.value.trim()))
-        : effectiveRecords(s.dns).filter((r) => inZone(normalizeName(r.name), zone)).map((r) => {
-            const name = normalizeName(r.name) === zone ? '@' : normalizeName(r.name).slice(0, -(zone.length + 1));
-            const value = r.type === 'A' ? r.value : r.type === 'TXT' ? `"${r.value}"` : `${normalizeName(r.value)}.`;
-            return zoneLine(name, r, value);
-        });
-    return [...head, ...typed, ''].join('\n');
-}
-function zonesFor(s) {
-    const origin = cleanOrigin(s.dns.origin);
-    const zones = zonesOf(effectiveRecords(s.dns)).filter((z) => !origin || !inZone(z, origin));
-    return origin ? [origin, ...zones] : zones;
-}
-/** Apache snippets and settings of the web applications, as their Ubuntu packages install them. */
-function webAppFiles(s, files) {
-    const rc = s.webapps.roundcube;
-    if (rc.enabled) {
-        files.set('/etc/apache2/conf-enabled/roundcube.conf', rc.mode === 'alias'
-            ? `# Generado por Netfix (Servicios → HTTP → Roundcube)\nAlias ${rc.alias} /var/lib/roundcube/public_html\n\n<Directory /var/lib/roundcube/public_html/>\n  Options +FollowSymLinks\n  AllowOverride All\n  Require all granted\n</Directory>\n`
-            : `# Generado por Netfix (Servicios → HTTP → Roundcube)\nListen ${rc.port}\n<VirtualHost *:${rc.port}>\n  DocumentRoot /var/lib/roundcube/public_html\n  <Directory /var/lib/roundcube/public_html/>\n    Require all granted\n  </Directory>\n</VirtualHost>\n`);
-        files.set('/etc/roundcube/config.inc.php', `<?php\n$config = [];\n$config['imap_host'] = 'localhost:143';\n$config['smtp_host'] = 'localhost:25';\n$config['product_name'] = 'Roundcube Webmail';\n$config['skin'] = 'elastic';\n$config['mail_domain'] = '${s.mail.domain}';\n`);
-    }
-    const ad = s.webapps.admin;
-    if (ad.enabled && ad.mode === 'alias') {
-        files.set('/etc/apache2/conf-enabled/netfix-admin.conf', `# Generado por Netfix (Servicios → HTTP → Gestión web)\nAlias ${ad.alias} /usr/share/netfix-admin\n<Directory /usr/share/netfix-admin>\n  Require all granted\n</Directory>\n`);
-    }
-}
-function serverFiles(server) {
-    const s = server.services;
-    const files = new Map();
-    webAppFiles(s, files);
-    files.set('/etc/kea/kea-dhcp4.conf', keaConf(s));
-    const zones = zonesFor(s);
-    files.set('/etc/bind/named.conf.local', zones.map((z) => `zone "${z}" {\n    type master;\n    file "/etc/bind/db.${z}";\n};\n`).join('\n'));
-    for (const z of zones)
-        files.set(`/etc/bind/db.${z}`, zoneFile(s, z));
-    files.set('/etc/postfix/main.cf', `myhostname = ${server.name.toLowerCase()}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
-    files.set('/etc/dovecot/dovecot.conf', `protocols = ${[s.mail.pop3 ? 'pop3' : '', s.mail.imap ? 'imap' : ''].filter(Boolean).join(' ') || 'none'}\nmail_location = maildir:~/Maildir\n`);
-    const excl = s.dhcp.pools.flatMap(ptExclusions).length;
-    files.set('/var/lib/kea/kea-leases4.csv', ['address,hwaddr,client_id,valid_lifetime,expire,subnet_id,hostname',
-        ...server.dhcpEngine.allBindings(server.clock.now()).filter((b) => b.type === 'Automatic').map((b) => `${formatIp(b.ip)},${linuxMac(b.mac)},${b.clientId ?? ''},0,${Math.floor((b.expiresAt ?? 0) / 1000)},1,${b.hostname ?? ''}`),
-        `# ${excl} rangos excluidos fuera de los pools`].join('\n'));
-    return files;
-}
-function linuxFiles(host) {
-    const c = host.config;
-    const files = new Map([
-        ['/etc/os-release', 'PRETTY_NAME="Ubuntu 26.04 LTS"\nNAME="Ubuntu"\nVERSION_ID="26.04"\nID=ubuntu\n'],
-        ['/etc/hostname', `${host.name.toLowerCase()}\n`],
-        ['/etc/hosts', `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`],
-        ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n`],
-        ['/etc/netplan/50-cloud-init.yaml', netplan(host)],
-    ]);
-    if (host.kind === 'server')
-        for (const [k, v] of serverFiles(host))
-            files.set(k, v);
-    return files;
-}
-function describeAddress(host) {
-    const { ip, prefix, mode } = host.config;
-    if (ip === undefined || prefix === undefined)
-        return undefined;
-    return { inet: `${formatIp(ip)}/${prefix}`, brd: formatIp(broadcastOf(ip, prefix)), scope: mode === 'dhcp' ? 'global dynamic' : 'global' };
-}
-function maskOf(prefix) {
-    return formatMask(prefix);
-}
-
-
-return { formatMacCisco, IFACE, linuxMac, linuxFiles, describeAddress, maskOf };
 })();
 __m["shells/linux-services.js"] = (() => {
 const { findUnit, unitActive, openPorts, UNITS } = __m["services/units.js"];
@@ -24486,13 +25373,14 @@ function digOutput(name, type, r, short, now) {
     const answers = m.answers ?? [];
     if (short)
         return answers.map((a) => (a.type === 'A' || a.type === 'TXT' ? a.data : a.type === 'MX' ? `${a.priority ?? 10} ${a.data}.` : `${a.data}.`));
-    const flags = ['qr', m.authoritative ? 'aa' : '', 'rd'].filter(Boolean).join(' ');
+    const flags = ['qr', m.authoritative ? 'aa' : '', 'rd', m.ra ? 'ra' : ''].filter(Boolean).join(' ');
     const out = [
         `; <<>> DiG ${DIG_VERSION} <<>> ${name}${type !== 'A' ? ` ${type}` : ''}`,
         ';; global options: +cmd',
         ';; Got answer:',
         `;; ->>HEADER<<- opcode: QUERY, status: ${m.rcode ?? 'NOERROR'}, id: ${m.id}`,
         `;; flags: ${flags}; QUERY: 1, ANSWER: ${answers.length}, AUTHORITY: ${m.authority?.length ?? 0}, ADDITIONAL: 0`,
+        ...(m.ra ? [] : [';; WARNING: recursion requested but not available']),
         '',
         ';; QUESTION SECTION:',
         `;${`${m.qname}.`.padEnd(23)}\tIN\t${m.qtype}`,
@@ -24527,9 +25415,9 @@ function nslookupOutput(name, r, windows) {
         return [...head, ...addrs.map((a) => `${a.name}\tmail exchanger = ${a.priority ?? 10} ${a.data}.`)];
     if (windows) {
         const final = addrs[0]?.name ?? name;
-        return [...head, `Name:    ${final}`, `Address${addrs.length > 1 ? 'es' : ''}:  ${addrs.map((a) => a.data).join('\n          ')}`, ...(aliases.length ? [`Aliases:  ${aliases.map((a) => a.name).join(', ')}`] : []), ''];
+        return [...head, ...(m.authoritative ? [] : ['Non-authoritative answer:']), `Name:    ${final}`, `Address${addrs.length > 1 ? 'es' : ''}:  ${addrs.map((a) => a.data).join('\n          ')}`, ...(aliases.length ? [`Aliases:  ${aliases.map((a) => a.name).join(', ')}`] : []), ''];
     }
-    return [...head, ...aliases.map((a) => `${a.name}\tcanonical name = ${a.data}.`), ...addrs.flatMap((a) => [`Name:\t${a.name}`, `Address: ${a.data}`]), ''];
+    return [...head, ...(m.authoritative ? [] : ['Non-authoritative answer:']), ...aliases.map((a) => `${a.name}\tcanonical name = ${a.data}.`), ...addrs.flatMap((a) => [`Name:\t${a.name}`, `Address: ${a.data}`]), ''];
 }
 function hostOutput(name, r) {
     if (r.kind !== 'answer')
@@ -24574,6 +25462,133 @@ function runPing(stack, hooks, dst, opts) {
 
 return { runPing };
 })();
+__m["shells/linux-ip.js"] = (() => {
+const { IFACE } = __m["shells/linux-files.js"];
+const { parseIp, inSubnet, networkOf } = __m["core/ip.js"];
+const EXIT_RTNL = 2;
+function devOf(args) {
+    const i = args.indexOf('dev');
+    return i >= 0 ? args[i + 1] : args.find((a) => /^(eth|lo|wg|ens|enp)\w*$/.test(a));
+}
+function badDevice(ctx, dev) {
+    if (dev === undefined || dev === IFACE)
+        return false;
+    ctx.err(`Cannot find device "${dev}"\n`);
+    return true;
+}
+function parseCidr(text) {
+    const m = /^(\d+\.\d+\.\d+\.\d+)(?:\/(\d{1,2}))?$/.exec(text ?? '');
+    const ip = m ? parseIp(m[1] ?? '') : null;
+    const prefix = m?.[2] === undefined ? 32 : Number(m[2]);
+    return ip === null || prefix > 32 ? null : { ip, prefix };
+}
+function address(ctx, host, verb, rest) {
+    const dev = devOf(rest);
+    if (badDevice(ctx, dev))
+        return 1;
+    const c = host.config;
+    if (verb === 'flush') {
+        host.setStatic({ dns: c.dns });
+        return 0;
+    }
+    const cidr = parseCidr(rest[0]);
+    if (!cidr) {
+        ctx.err(`Error: any valid prefix is expected rather than "${rest[0] ?? ''}".\n`);
+        return 1;
+    }
+    if (verb === 'add') {
+        if (c.ip === cidr.ip && c.prefix === cidr.prefix) {
+            ctx.err('RTNETLINK answers: File exists\n');
+            return EXIT_RTNL;
+        }
+        if (c.ip !== undefined) {
+            ctx.err(`Netfix: one IPv4 address per interface; remove ${IFACE}'s current address first (ip addr del … dev ${IFACE}).\n`);
+            return EXIT_RTNL;
+        }
+        host.setStatic({ ip: cidr.ip, prefix: cidr.prefix, dns: c.dns });
+        return 0;
+    }
+    if (c.ip !== cidr.ip || (rest[0]?.includes('/') && c.prefix !== cidr.prefix)) {
+        ctx.err('RTNETLINK answers: Cannot assign requested address\n');
+        return EXIT_RTNL;
+    }
+    // The kernel drops the routes through the removed address, the default route included.
+    host.setStatic({ dns: c.dns });
+    return 0;
+}
+function route(ctx, host, verb, rest) {
+    const dest = rest[0] ?? '';
+    if (dest !== 'default' && dest !== '0.0.0.0/0') {
+        ctx.err(`Netfix: hosts only keep the default route (ip route ${verb} default via …).\n`);
+        return EXIT_RTNL;
+    }
+    if (badDevice(ctx, devOf(rest)))
+        return 1;
+    const c = host.config;
+    if (verb === 'del' || verb === 'delete') {
+        if (c.gateway === undefined) {
+            ctx.err('RTNETLINK answers: No such process\n');
+            return EXIT_RTNL;
+        }
+        host.setStatic({ ip: c.ip, prefix: c.prefix, dns: c.dns });
+        return 0;
+    }
+    const viaIdx = rest.indexOf('via');
+    const gw = viaIdx >= 0 ? parseIp(rest[viaIdx + 1] ?? '') : null;
+    if (gw === null) {
+        ctx.err('Error: either "to" is duplicate, or "via" is a garbage.\n');
+        return 1;
+    }
+    if (verb === 'add' && c.gateway !== undefined) {
+        ctx.err('RTNETLINK answers: File exists\n');
+        return EXIT_RTNL;
+    }
+    if (c.ip === undefined || c.prefix === undefined || !inSubnet(gw, networkOf(c.ip, c.prefix), c.prefix)) {
+        ctx.err('Error: Nexthop has invalid gateway.\n');
+        return EXIT_RTNL;
+    }
+    host.setStatic({ ip: c.ip, prefix: c.prefix, gateway: gw, dns: c.dns });
+    return 0;
+}
+function link(ctx, host, rest) {
+    const dev = devOf(rest);
+    if (dev === 'lo')
+        return 0;
+    if (badDevice(ctx, dev) || dev === undefined) {
+        if (dev === undefined)
+            ctx.err('Not enough of information: "dev" argument is required.\n');
+        return 1;
+    }
+    if (rest.includes('down'))
+        host.setPortUp(false);
+    else if (rest.includes('up'))
+        host.setPortUp(true);
+    return 0;
+}
+const VERBS = {
+    address: ['add', 'del', 'delete', 'flush'],
+    route: ['add', 'del', 'delete', 'replace', 'change'],
+    link: ['set'],
+};
+/** Runs a writing `ip` command; undefined when `args` is not one (ip shows the object instead). */
+function ipWrite(ctx, host, object, args) {
+    const verb = args[0] ?? '';
+    if (!VERBS[object].includes(verb))
+        return undefined;
+    if (ctx.cred.uid !== 0) {
+        ctx.err('RTNETLINK answers: Operation not permitted\n');
+        return EXIT_RTNL;
+    }
+    const rest = args.slice(1);
+    if (object === 'address')
+        return address(ctx, host, verb === 'delete' ? 'del' : verb, rest);
+    if (object === 'route')
+        return route(ctx, host, verb === 'replace' || verb === 'change' ? 'replace' : verb, rest);
+    return link(ctx, host, rest);
+}
+
+return { ipWrite };
+})();
 __m["shells/linux-net.js"] = (() => {
 const { resolveHost, dnsQuery } = __m["shells/net-tools.js"];
 const { describeAddress, linuxMac, IFACE } = __m["shells/linux-files.js"];
@@ -24581,6 +25596,7 @@ const { digOutput, nslookupOutput, hostOutput } = __m["shells/dns-format.js"];
 const { runPing } = __m["net/ping.js"];
 const { reverseName } = __m["net/dns.js"];
 const { formatIp, networkOf, parseIp } = __m["core/ip.js"];
+const { ipWrite } = __m["shells/linux-ip.js"];
 const PING_TIMEOUT_MS = 1000;
 const DEFAULT_PING_COUNT = 4;
 const MAX_PING_COUNT = 100;
@@ -24630,6 +25646,10 @@ function ip(host) {
         const args = ctx.argv.slice(1).filter((a) => !/^-(4|c|color|br|brief)$/.test(a));
         const obj = args[0] ?? '';
         const is = (full, ...short) => obj !== '' && (full.startsWith(obj) || short.includes(obj));
+        const kind = is('address', 'a', 'addr') ? 'address' : is('route', 'r') ? 'route' : is('link', 'l') ? 'link' : undefined;
+        const written = kind ? ipWrite(ctx, host, kind, args.slice(1)) : undefined;
+        if (written !== undefined)
+            return written;
         if (brief && (is('address', 'a', 'addr') || is('link', 'l')))
             lines(ctx, ipBrief(host, is('link', 'l')));
         else if (is('address', 'a', 'addr'))
@@ -24755,10 +25775,7 @@ function dhclient(host) {
             return 1;
         }
         if (ctx.argv.includes('-r')) {
-            host.dhcpClient.release();
-            host.hooks.runUntil(() => false, 10);
-            host.config = { mode: 'dhcp' };
-            host.dhcpStatus = 'idle';
+            host.releaseDhcp();
             return 0;
         }
         host.useDhcp();
@@ -25821,6 +26838,49 @@ function* sshCopyId(ctx) {
 
 return { sshCopyId };
 })();
+__m["shells/rndc.js"] = (() => {
+const { formatIp } = __m["core/ip.js"];
+const USAGE = 'Usage: rndc [-b address] [-c config] [-s server] [-p port]\n\t[-k key-file ] [-y key] [-r] [-V] [-4 | -6] command\n\ncommand is one of the following:\n\n  flush\t\tFlushes all of the server\'s caches.\n  reload\tReload configuration file and zones.\n  status\tDisplay status of the server.\n';
+function rndc(host) {
+    return (ctx) => {
+        const server = host;
+        const verb = ctx.argv[1] ?? '';
+        if (!['flush', 'reload', 'status'].includes(verb)) {
+            ctx.err(USAGE);
+            return 1;
+        }
+        if (ctx.cred.uid !== 0) {
+            ctx.err('rndc: open: /etc/bind/rndc.key: permission denied\nrndc: could not load rndc configuration\n');
+            return 1;
+        }
+        if (!server.services.dns.enabled) {
+            ctx.err('rndc: connect failed: 127.0.0.1#953: connection refused\n');
+            return 1;
+        }
+        if (verb === 'flush') {
+            server.dns.forwarder.flush();
+            return 0;
+        }
+        if (verb === 'reload') {
+            ctx.out('server reload successful\n');
+            return 0;
+        }
+        const s = server.services.dns;
+        ctx.out([
+            'version: BIND 9.20.4-3ubuntu1-Ubuntu (Stable Release) <id:>',
+            'running on localhost: Linux x86_64 6.17.0-14-generic',
+            `number of zones: ${new Set(s.records.map((r) => r.name)).size > 0 ? 1 : 0} (99 automatic)`,
+            `recursive clients: 0/900/1000`,
+            `forwarders: ${(s.forwarders ?? []).map(formatIp).join(' ') || 'none'}`,
+            `cache entries: ${server.dns.forwarder.cacheSize()}`,
+            'server is up and running',
+        ].join('\n') + '\n');
+        return 0;
+    };
+}
+
+return { rndc };
+})();
 __m["shells/linux-programs.js"] = (() => {
 const { httpGet } = __m["shells/net-tools.js"];
 const { systemctl, journalctl, ss } = __m["shells/linux-services.js"];
@@ -25832,6 +26892,8 @@ const { curl } = __m["shells/curl.js"];
 const { sshKeygen } = __m["shells/ssh-keygen.js"];
 const { SSH_USAGE, SSH_WITH_VALUE } = __m["shells/ssh-client.js"];
 const { sshCopyId } = __m["shells/ssh-copy-id.js"];
+const { netplanProgram } = __m["shells/netplan.js"];
+const { rndc } = __m["shells/rndc.js"];
 const PACKAGES = {
     ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
     telnet: 'inetutils-telnet', nmap: 'nmap', htop: 'htop', tree: 'tree', zip: 'zip', unzip: 'unzip', php: 'php8.4-cli', python: 'python-is-python3',
@@ -25957,13 +27019,13 @@ function commandNotFound(ctx) {
 }
 function linuxPrograms(host) {
     return new Map([
-        ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)],
+        ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)], ['netplan', netplanProgram(host)],
         ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId],
         ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
         ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
         ['ss', (ctx) => { lines(ctx, ss(host)); return 0; }],
         ['command-not-found', commandNotFound],
-        ...(host.kind === 'server' ? APACHE_TOOLS : []),
+        ...(host.kind === 'server' ? [...APACHE_TOOLS, ['rndc', rndc(host)]] : []),
     ]);
 }
 
@@ -26086,6 +27148,8 @@ return { exportFiles, validFileRecords, importFiles };
 })();
 __m["shells/host-system.js"] = (() => {
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
+const { NAMED_OPTIONS, parseNamedOptions } = __m["services/named-options.js"];
+const { NETPLAN_FILE, netplanFileContent, writeNetplanFile } = __m["shells/netplan.js"];
 const { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } = __m["services/sshd-config.js"];
 const { hostKeyFiles } = __m["services/ssh-hostkeys.js"];
 const { validHostname } = __m["devices/host.js"];
@@ -26151,15 +27215,30 @@ function webRoot(server) {
 }
 /** Generated files that root may edit: writing them changes the device configuration. */
 const WRITERS = {
+    [NETPLAN_FILE]: (host, content) => writeNetplanFile(host, content),
+    [NAMED_OPTIONS]: (host, content) => {
+        const srv = asServer(host);
+        if (!srv)
+            return;
+        const next = parseNamedOptions(content, srv.services.dns);
+        if ('error' in next)
+            srv.log('dns', `named-checkconf: ${next.error}`);
+        else
+            srv.setServices({ ...srv.services, dns: next });
+    },
     '/etc/hostname': (host, content) => {
         const name = content.trim().split('\n')[0]?.trim() ?? '';
         if (validHostname(name) === null)
             host.setHostname(name);
     },
 };
+/** Generated files readable only by root (like Ubuntu's 600 netplan files). */
+const PRIVATE_MODE = { [NETPLAN_FILE]: 0o600 };
 /** Generated configuration files follow the live device config (zones, pools, netplan…). */
 function refreshMounts(host, e) {
     const now = linuxFiles(host);
+    now.set(NETPLAN_FILE, '');
+    const read = (p) => (p === NETPLAN_FILE ? netplanFileContent(host) : linuxFiles(host).get(p) ?? '');
     for (const p of e.mounted)
         if (!now.has(p))
             e.fs.unmountFile(p);
@@ -26167,7 +27246,7 @@ function refreshMounts(host, e) {
         if (e.mounted.has(p))
             continue;
         const writer = WRITERS[p];
-        e.fs.mountFile(p, () => linuxFiles(host).get(p) ?? '', 0o644, writer ? (c) => writer(host, c) : undefined);
+        e.fs.mountFile(p, () => read(p), PRIVATE_MODE[p] ?? 0o644, writer ? (c) => writer(host, c) : undefined);
     }
     e.mounted = new Set(now.keys());
 }
@@ -26181,13 +27260,13 @@ function refreshUsers(host, e) {
 }
 function setName(host, kind, value) {
     if (kind === 'pretty') {
-        host.prettyName = value === '' ? undefined : value.slice(0, MAX_PRETTY);
+        host.setPrettyName(value === '' ? undefined : value.slice(0, MAX_PRETTY));
         return null;
     }
     if (validHostname(value) !== null)
         return `Invalid ${kind} hostname '${value}'`;
     if (kind === 'transient')
-        host.transientName = value;
+        host.setTransientName(value);
     else
         host.setHostname(value);
     return null;
@@ -27492,8 +28571,7 @@ const { DHCP_CLIENT_PORT } = __m["net/packets.js"];
 const { DhcpServer } = __m["dhcp/server.js"];
 const { defaultServices } = __m["services/config.js"];
 const { applyPtPools } = __m["services/dhcp-pt.js"];
-const { answerQuery } = __m["services/dns-service.js"];
-const { cleanOrigin, effectiveRecords } = __m["services/dns-names.js"];
+const { ServerDns } = __m["services/dns-server.js"];
 const { ServerWeb } = __m["devices/server-web.js"];
 const { Mailboxes, handleSmtp, handleRetrieve } = __m["services/mail-service.js"];
 const { findUnit, setUnitActive, unitActive, UNITS } = __m["services/units.js"];
@@ -27516,10 +28594,12 @@ class Server extends Host {
     mailboxes = new Mailboxes();
     logs = [];
     ssh;
+    dns;
     web = new ServerWeb(this);
     constructor(id, name, clock, seed) {
         super(id, name, clock, seed);
         this.ssh = new SshService(this);
+        this.dns = new ServerDns(this);
         this.applyServices();
     }
     // ------------------------------------------------------------ configuration
@@ -27674,11 +28754,8 @@ class Server extends Host {
             return;
         if (udp.dport === DHCP_SERVER_PORT && udp.dhcp && udp.dhcp.op === 'BOOTREQUEST')
             this.onDhcp(udp.dhcp);
-        else if (udp.dport === DNS_PORT && udp.dns && !udp.dns.response && this.services.dns.enabled) {
-            const answer = answerQuery(udp.dns, effectiveRecords(this.services.dns), cleanOrigin(this.services.dns.origin));
-            this.log('dns', `client ${formatIp(packet.src)}#${udp.sport} (${udp.dns.qname}): query: ${udp.dns.qname} IN ${udp.dns.qtype} + (${formatIp(packet.dst)}) → ${answer.rcode}`);
-            this.sendUdp(packet.src, DNS_PORT, udp.sport, { dns: answer });
-        }
+        else if (udp.dns)
+            this.dns.handle(packet);
     }
     onDhcp(msg) {
         const { ip, prefix } = this.config;
@@ -27919,6 +28996,80 @@ function hostIpConfig(h, app) {
 
 return { hostIpConfig };
 })();
+__m["ui/live.js"] = (() => {
+/** Panels that follow their device: they redraw when it changes (from the terminal, DHCP…) unless you are typing in them. */
+const { el } = __m["ui/dom.js"];
+function liveHostPanel(host, render) {
+    const root = el('div', { class: 'pane' });
+    let stale = false;
+    const refresh = () => {
+        stale = false;
+        root.replaceChildren(...render(refresh));
+    };
+    const onChange = () => {
+        if (root.contains(document.activeElement) && document.activeElement !== document.body && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? ''))
+            stale = true;
+        else
+            refresh();
+    };
+    root.addEventListener('focusout', (e) => {
+        if (stale && !root.contains(e.relatedTarget))
+            refresh();
+    });
+    const off = host.onChange(onChange);
+    refresh();
+    return { root, dispose: off };
+}
+
+return { liveHostPanel };
+})();
+__m["ui/host-settings.js"] = (() => {
+/** PC / Server → «Equipo»: name shown in the workspace and the host name of the system (follows the terminal). */
+const { el } = __m["ui/dom.js"];
+const { field, input, button, message } = __m["ui/forms.js"];
+const { liveHostPanel } = __m["ui/live.js"];
+const { validHostname } = __m["devices/host.js"];
+const { t } = __m["i18n/t.js"];
+const MAX_LABEL = 40;
+function hostSettings(placed, h, app) {
+    return liveHostPanel(h, (refresh) => {
+        const label = input({ value: placed.label, maxlength: String(MAX_LABEL), 'aria-describedby': 'label-hint' });
+        const hostname = input({ value: h.name, maxlength: '253' });
+        const pretty = input({ value: h.prettyName ?? '', placeholder: t('host.prettyPlaceholder') });
+        const msg = message();
+        const save = () => {
+            const name = hostname.value.trim();
+            const err = validHostname(name);
+            if (err)
+                return msg.error(err);
+            const shown = label.value.trim();
+            if (!shown)
+                return msg.error(t('host.labelEmpty'));
+            placed.label = shown.slice(0, MAX_LABEL);
+            h.setPrettyName(pretty.value.trim() || undefined);
+            h.setHostname(name);
+            app.retitle?.(placed.label);
+            app.afterCommand();
+            refresh();
+            msg.ok(t('host.saved', { name }));
+        };
+        const same = button(t('host.useLabel'), () => { hostname.value = label.value.trim().replace(/[^a-z0-9-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase(); });
+        const now = t('host.now', { static: h.name }) + (h.transientName ? t('host.nowTransient', { name: h.transientName }) : '') + (h.prettyName ? t('host.nowPretty', { name: h.prettyName }) : '') + '.';
+        return [
+            el('h3', {}, t('host.nameTitle')),
+            el('div', { class: 'grid2' }, field(t('host.label'), label, t('host.labelHint')), field(t('host.hostname'), hostname, t('host.hostnameHint'))),
+            field(t('host.pretty'), pretty, t('host.prettyHint')),
+            el('div', { class: 'actions' }, button(t('host.save'), save), same),
+            msg.el,
+            el('p', { class: 'muted live-note' }, t('host.live')),
+            el('h3', {}, t('host.equivalents')),
+            el('ul', { class: 'muted' }, el('li', {}, t('host.eqLinux')), el('li', {}, t('host.eqWindows')), el('li', { class: 'host-now' }, now)),
+        ];
+    });
+}
+
+return { hostSettings };
+})();
 __m["services/dhcp-reservations.js"] = (() => {
 const { validatePool, leaseToReservation } = __m["services/dhcp-pt.js"];
 const { parseMac, parseHexId, asciiToHex, formatMacCisco, formatHexId } = __m["core/mac.js"];
@@ -28035,6 +29186,65 @@ function leasesPanel(server, app, refresh) {
 
 return { reservationsPanel, leasesPanel };
 })();
+__m["services/dns-recursion.js"] = (() => {
+const { parseIp, formatIp } = __m["core/ip.js"];
+const { t } = __m["i18n/t.js"];
+const MAX_FORWARDERS = 8;
+const GOOGLE_FORWARDERS = '8.8.8.8, 8.8.4.4';
+function forwardersText(s) {
+    return (s.forwarders ?? []).map(formatIp).join(', ');
+}
+/** New DNS settings, or a translated error. */
+function applyRecursion(s, input) {
+    const items = input.forwarders.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean);
+    if (items.length > MAX_FORWARDERS)
+        return { error: t('dns.err.many', { max: MAX_FORWARDERS }) };
+    const forwarders = [];
+    for (const item of items) {
+        const ip = parseIp(item);
+        if (ip === null)
+            return { error: t('dns.err.ip', { value: item }) };
+        if (!forwarders.includes(ip))
+            forwarders.push(ip);
+    }
+    return { ...s, forwarders, forwardOnly: input.forwardOnly, allowRecursion: input.allowRecursion };
+}
+
+return { MAX_FORWARDERS, GOOGLE_FORWARDERS, forwardersText, applyRecursion };
+})();
+__m["ui/server-dns-recursion.js"] = (() => {
+/** Server → Services → DNS: forwarders, forward only/first, allow-recursion and the cache. */
+const { el } = __m["ui/dom.js"];
+const { field, input, select, button, message } = __m["ui/forms.js"];
+const { applyRecursion, forwardersText, GOOGLE_FORWARDERS } = __m["services/dns-recursion.js"];
+const { t } = __m["i18n/t.js"];
+function recursionForm(server, app, refresh) {
+    const s = server.services.dns;
+    const fwd = input({ value: forwardersText(s), placeholder: GOOGLE_FORWARDERS, inputmode: 'decimal', autocomplete: 'off' });
+    const mode = select([['only', t('dns.rec.only')], ['first', t('dns.rec.first')]], s.forwardOnly === false ? 'first' : 'only');
+    const allow = select([['localnets', t('dns.rec.localnets')], ['any', t('dns.rec.any')]], s.allowRecursion ?? 'localnets');
+    const msg = message();
+    const save = () => {
+        const next = applyRecursion(server.services.dns, { forwarders: fwd.value, forwardOnly: mode.value !== 'first', allowRecursion: allow.value === 'any' ? 'any' : 'localnets' });
+        if ('error' in next)
+            return msg.error(next.error);
+        server.setServices({ ...server.services, dns: next });
+        server.dns.forwarder.flush();
+        app.afterCommand();
+        refresh();
+    };
+    return [
+        el('h3', {}, t('dns.rec.title')),
+        el('p', { class: 'muted' }, t('dns.rec.help')),
+        el('div', { class: 'grid3' }, field(t('dns.rec.forwarders'), fwd, t('dns.rec.forwardersHint')), field(t('dns.rec.mode'), mode), field(t('dns.rec.allow'), allow)),
+        el('div', { class: 'actions' }, button(t('dns.rec.save'), save), button(t('dns.rec.google'), () => { fwd.value = GOOGLE_FORWARDERS; save(); }), button(t('dns.rec.flush'), () => { server.dns.forwarder.flush(); refresh(); })),
+        msg.el,
+        el('p', { class: 'muted' }, t('dns.rec.cache', { count: server.dns.forwarder.cacheSize() })),
+    ];
+}
+
+return { recursionForm };
+})();
 __m["ui/server-dhcp-dns.js"] = (() => {
 /** Server → Servicios → DHCP and DNS panels. */
 const { el } = __m["ui/dom.js"];
@@ -28042,6 +29252,7 @@ const { field, input, select, button, onOff, message, table } = __m["ui/forms.js
 const { DEFAULT_LEASE_MINUTES, DEFAULT_MAX_USERS, DEFAULT_TTL } = __m["services/config.js"];
 const { validatePool } = __m["services/dhcp-pt.js"];
 const { reservationsPanel, leasesPanel } = __m["ui/server-dhcp-res.js"];
+const { recursionForm } = __m["ui/server-dns-recursion.js"];
 const { validateRecord } = __m["services/dns-service.js"];
 const { cleanOrigin, displayName, validateOrigin } = __m["services/dns-names.js"];
 const { formatIp, formatMask, parseIp, parseMask, networkOf } = __m["core/ip.js"];
@@ -28206,7 +29417,8 @@ function dnsPanel(server, app) {
             onOff('Servicio DNS', s.dns.enabled, (on) => { server.setUnit('dns', on); app.afterCommand(); refresh(); }),
             ...originForm(server, app, refresh),
             ...recordForm(server, app, refresh),
-            el('p', { class: 'muted' }, 'Los registros PTR se generan solos a partir de los A (prueba dig -x IP). El servidor es autoritativo: no resuelve nombres de Internet.'),
+            el('p', { class: 'muted' }, 'Los registros PTR se generan solos a partir de los A (prueba dig -x IP).'),
+            ...recursionForm(server, app, refresh),
             el('h3', {}, 'Registros'),
             table(s.dns.records, [
                 { label: 'Nombre', value: (r) => r.name, mono: true },
@@ -28224,50 +29436,6 @@ function dnsPanel(server, app) {
 }
 
 return { livePanel, dhcpPanel, dnsPanel };
-})();
-__m["ui/host-settings.js"] = (() => {
-/** PC / Server → «Equipo»: name shown in the workspace and the host name of the system. */
-const { el } = __m["ui/dom.js"];
-const { field, input, button, message } = __m["ui/forms.js"];
-const { livePanel } = __m["ui/server-dhcp-dns.js"];
-const { validHostname } = __m["devices/host.js"];
-const MAX_LABEL = 40;
-function hostSettings(placed, h, app) {
-    return livePanel((refresh) => {
-        const label = input({ value: placed.label, maxlength: String(MAX_LABEL), 'aria-describedby': 'label-hint' });
-        const hostname = input({ value: h.name, maxlength: '253' });
-        const pretty = input({ value: h.prettyName ?? '', placeholder: 'Opcional, texto libre' });
-        const msg = message();
-        const save = () => {
-            const name = hostname.value.trim();
-            const err = validHostname(name);
-            if (err)
-                return msg.error(err);
-            const shown = label.value.trim();
-            if (!shown)
-                return msg.error('El nombre visible no puede estar vacío.');
-            placed.label = shown.slice(0, MAX_LABEL);
-            h.prettyName = pretty.value.trim() || undefined;
-            h.setHostname(name);
-            app.retitle?.(placed.label);
-            app.afterCommand();
-            refresh();
-            msg.ok(`Guardado. Nombre de host: ${name}.`);
-        };
-        const same = button('Usar el nombre visible', () => { hostname.value = label.value.trim().replace(/[^a-z0-9-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase(); });
-        return [
-            el('h3', {}, 'Nombre del equipo'),
-            el('div', { class: 'grid2' }, field('Nombre visible (área de trabajo)', label, 'Solo identifica el icono; no cambia la red.'), field('Nombre de host', hostname, 'Lo envía el cliente DHCP (opción 12) y lo muestran el prompt, /etc/hostname y hostname.')),
-            field('Nombre descriptivo (pretty hostname)', pretty, 'Solo en GNU/Linux: lo muestra hostnamectl.'),
-            el('div', { class: 'actions' }, button('Guardar', save), same),
-            msg.el,
-            el('h3', {}, 'Equivalencias'),
-            el('ul', { class: 'muted' }, el('li', {}, 'GNU/Linux: sudo hostnamectl set-hostname NOMBRE (persistente) o sudo hostname NOMBRE (solo hasta reiniciar). bash muestra el nombre nuevo en una shell nueva (exec bash).'), el('li', {}, 'Windows: Configuración → Sistema → Cambiar el nombre de este equipo.'), el('li', {}, `Ahora mismo: estático «${h.name}»${h.transientName ? `, transitorio «${h.transientName}»` : ''}${h.prettyName ? `, descriptivo «${h.prettyName}»` : ''}.`)),
-        ];
-    });
-}
-
-return { hostSettings };
 })();
 __m["services/ssh-auth-settings.js"] = (() => {
 const { hostFs } = __m["devices/host-fs.js"];
@@ -29259,15 +30427,47 @@ const SITES = [
     { name: 'ifconfig.me', ip: ip('34.160.111.145'), plain: true },
 ];
 const A = (name, value) => ({ name, type: 'A', value, ttl: RECORD_TTL });
-/** Built-in public zones (origin → records). */
+const CNAME = (name, value) => ({ name, type: 'CNAME', value, ttl: RECORD_TTL });
+const MX = (name, value, priority) => ({ name, type: 'MX', value, priority, ttl: RECORD_TTL });
+const TXT = (name, value) => ({ name, type: 'TXT', value, ttl: RECORD_TTL });
+/** Built-in public zones (origin → records) that Google's emulated resolvers answer. */
 const ZONES = [
-    { origin: 'google.com', records: [A('google.com', '142.250.184.4'), A('www.google.com', '142.250.184.4')] },
+    { origin: 'google.com', records: [A('google.com', '142.250.184.4'), A('www.google.com', '142.250.184.4'), MX('google.com', 'smtp.google.com', 10), A('smtp.google.com', '142.250.153.27'), TXT('google.com', 'v=spf1 include:_spf.google.com ~all')] },
     { origin: 'dns.google', records: [A('dns.google', '8.8.8.8'), A('dns.google', '8.8.4.4')] },
+    // Reverse lookups (dig -x 8.8.8.8) are derived from the A records.
+    { origin: 'in-addr.arpa', records: [A('dns.google', '8.8.8.8'), A('dns.google', '8.8.4.4')] },
     { origin: 'example.com', records: [A('example.com', '93.184.215.14'), A('www.example.com', '93.184.215.14')] },
     { origin: 'ifconfig.me', records: [A('ifconfig.me', '34.160.111.145')] },
+    { origin: 'wikipedia.org', records: [A('wikipedia.org', '185.15.58.224'), CNAME('www.wikipedia.org', 'dyna.wikimedia.org'), CNAME('es.wikipedia.org', 'dyna.wikimedia.org')] },
+    { origin: 'wikimedia.org', records: [A('dyna.wikimedia.org', '185.15.58.224')] },
+    { origin: 'github.com', records: [A('github.com', '140.82.121.4'), CNAME('www.github.com', 'github.com')] },
+    { origin: 'ubuntu.com', records: [A('ubuntu.com', '185.125.190.20'), A('www.ubuntu.com', '185.125.190.20'), A('archive.ubuntu.com', '185.125.190.81'), A('security.ubuntu.com', '185.125.190.82')] },
+    { origin: 'debian.org', records: [A('debian.org', '151.101.2.132'), A('www.debian.org', '151.101.2.132'), A('deb.debian.org', '151.101.2.132')] },
+    { origin: 'cisco.com', records: [A('cisco.com', '72.163.4.185'), A('www.cisco.com', '23.212.248.9')] },
+    { origin: 'paypal.me', records: [A('paypal.me', '151.101.1.21')] },
+    { origin: 'pool.ntp.org', records: [A('pool.ntp.org', '162.159.200.1'), A('es.pool.ntp.org', '162.159.200.123')] },
 ];
 function inZone(qname, origin) {
     return qname === origin || qname.endsWith(`.${origin}`);
+}
+const MAX_CNAME_CHAIN = 8;
+/** A recursive resolver follows a CNAME into other zones (es.wikipedia.org → dyna.wikimedia.org → A). */
+function chase(q, first) {
+    let msg = first;
+    for (let i = 0; i < MAX_CNAME_CHAIN; i++) {
+        const last = msg.answers?.[msg.answers.length - 1];
+        if (!last || last.type !== 'CNAME' || q.qtype === 'CNAME')
+            return msg;
+        const target = normalizeName(last.data);
+        const zone = ZONES.find((z) => inZone(target, z.origin));
+        if (!zone)
+            return msg;
+        const next = answerQuery({ ...q, qname: target }, zone.records, zone.origin);
+        if (!next.answers?.length)
+            return msg;
+        msg = { ...msg, answers: [...(msg.answers ?? []), ...next.answers] };
+    }
+    return msg;
 }
 /** 8.8.8.8 and 8.8.4.4: echo, and DNS over UDP. */
 class PublicDns {
@@ -29298,29 +30498,30 @@ class PublicDns {
         const qname = normalizeName(q.qname);
         const zone = ZONES.find((z) => inZone(qname, z.origin));
         if (zone)
-            return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { ...answerQuery(q, zone.records, zone.origin), authoritative: false });
+            return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { ...chase(q, answerQuery(q, zone.records, zone.origin)), authoritative: false, rd: q.rd, ra: true });
         const reg = this.core.domains().filter((d) => inZone(qname, d.name)).sort((a, b) => b.name.length - a.name.length)[0];
         if (!reg)
-            return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { id: q.id, response: true, qname, qtype: q.qtype, rcode: 'NXDOMAIN', answers: [] });
+            return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { id: q.id, response: true, qname, qtype: q.qtype, rcode: 'NXDOMAIN', answers: [], rd: q.rd, ra: true });
         if (reg.kind === 'a') {
             const records = [A(reg.name, formatIp(reg.ip)), A(`*.${reg.name}`, formatIp(reg.ip))];
-            return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { ...answerQuery(q, records, reg.name), authoritative: false });
+            return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { ...answerQuery(q, records, reg.name), authoritative: false, rd: q.rd, ra: true });
         }
         this.forward(p, q, reg.ip);
     }
     /** Recursion: asks the domain's own name server and relays the answer. */
     forward(p, q, server) {
         if (this.core.isVirtual(server))
-            return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { id: q.id, response: true, qname: q.qname, qtype: q.qtype, rcode: 'SERVFAIL', answers: [] });
+            return this.reply(p.dst, p.src, p.udp?.sport ?? 0, { id: q.id, response: true, qname: q.qname, qtype: q.qtype, rcode: 'SERVFAIL', answers: [], ra: true });
         const sport = FIRST_QUERY_PORT + (this.nextPort++ % QUERY_PORTS);
-        const entry = { client: p.src, port: p.udp?.sport ?? 0, id: q.id, via: p.dst, done: false };
+        const entry = { client: p.src, port: p.udp?.sport ?? 0, id: q.id, rd: q.rd, via: p.dst, done: false };
         this.pending.set(sport, entry);
-        this.core.send({ src: p.dst, dst: server, ttl: HOST_TTL, protocol: 'udp', udp: { sport, dport: DNS_PORT, dns: { ...q, id: sport } } });
+        // Iterative query (RD=0): the delegated server answers for its zone and never forwards back here.
+        this.core.send({ src: p.dst, dst: server, ttl: HOST_TTL, protocol: 'udp', udp: { sport, dport: DNS_PORT, dns: { ...q, id: sport, rd: false } } });
         this.core.later(FORWARD_TIMEOUT_MS, () => {
             if (entry.done)
                 return;
             this.pending.delete(sport);
-            this.reply(entry.via, entry.client, entry.port, { id: entry.id, response: true, qname: q.qname, qtype: q.qtype, rcode: 'SERVFAIL', answers: [] });
+            this.reply(entry.via, entry.client, entry.port, { id: entry.id, response: true, qname: q.qname, qtype: q.qtype, rcode: 'SERVFAIL', answers: [], rd: entry.rd, ra: true });
         });
     }
     onUpstream(port, answer) {
@@ -29329,7 +30530,7 @@ class PublicDns {
             return;
         entry.done = true;
         this.pending.delete(port);
-        this.reply(entry.via, entry.client, entry.port, { ...answer, id: entry.id, authoritative: false });
+        this.reply(entry.via, entry.client, entry.port, { ...answer, id: entry.id, authoritative: false, rd: entry.rd, ra: true });
     }
 }
 function sitePage(site, req, peer) {
@@ -29476,7 +30677,7 @@ const obj = (v) => (typeof v === 'object' && v !== null ? v : {});
 function cloudToJson(s) {
     const ports = Object.fromEntries(CLOUD_PORTS.map((p) => {
         const c = s.ports[p];
-        return [p, { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })) }];
+        return [p, { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}) }];
     }));
     return { isp: s.isp, block: formatIp(s.block), ports, domains: s.domains.map((d) => ({ ...d, ip: formatIp(d.ip) })) };
 }
@@ -29486,7 +30687,7 @@ function portFromJson(port, v) {
     const forwards = (Array.isArray(o.forwards) ? o.forwards : []).slice(0, MAX_FORWARDS).map(obj).map((f) => ({
         proto: f.proto === 'udp' ? 'udp' : 'tcp', port: num(f.port, 0), ip: ipOf(f.ip, 0), toPort: num(f.toPort, 0),
     }));
-    const p = { mode: o.mode === 'public' ? 'public' : 'router', down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards };
+    const p = { mode: o.mode === 'public' ? 'public' : 'router', down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards, ...(o.dnsRelay === true ? { dnsRelay: true } : {}) };
     return validatePort(p) ? d : p;
 }
 /** Settings from an untrusted file; anything invalid falls back to the defaults. */
@@ -29515,6 +30716,8 @@ const { ptPoolToIos, ptExclusions } = __m["services/dhcp-pt.js"];
 const { NatTable } = __m["net/nat.js"];
 const { GOOGLE_DNS } = __m["net/internet-hosts.js"];
 const { BROADCAST_IP, inSubnet, networkOf } = __m["core/ip.js"];
+const { DnsForwarder } = __m["services/dns-forwarder.js"];
+const { DNS_PORT } = __m["net/packets.js"];
 const { LINE_PREFIX, lineSubnet } = __m["devices/cloud-config.js"];
 const DHCP_FIRST_HOST = 33;
 const DHCP_LAST_HOST = 199;
@@ -29532,12 +30735,21 @@ class CloudPort {
     owner;
     core;
     appliedNet = -1;
+    /** ISP DNS relay (router mode with dnsRelay): customers' queries to the gateway, relayed to Google. */
+    relay;
     constructor(owner, core, name, settings) {
         this.owner = owner;
         this.core = core;
         this.name = name;
         this.settings = settings;
         this.stack = new IpStack(this, () => owner.now());
+        this.relay = new DnsForwarder({
+            send: (dst, sport, msg) => this.core.send({ src: this.wan(), dst, ttl: DEFAULT_TTL, protocol: 'udp', udp: { sport, dport: DNS_PORT, dns: msg } }),
+            reply: (to, port, msg) => { this.stack.send({ src: this.gatewayAddr().ip, dst: to, ttl: DEFAULT_TTL, protocol: 'udp', udp: { sport: DNS_PORT, dport: port, dns: msg } }); },
+            schedule: (d, fn) => owner.schedule(d, fn),
+            now: () => owner.now(),
+            log: () => undefined,
+        });
         this.apply(settings);
     }
     /** Public /29 of the line: gateway and the customer's (or the CPE's WAN) address. */
@@ -29564,8 +30776,11 @@ class CloudPort {
         const offset = hosts > SMALL_LAN ? DHCP_FIRST_HOST : 2;
         const start = lan ? base + offset : net + 2;
         const max = lan ? Math.min(DHCP_LAST_HOST - DHCP_FIRST_HOST + 1, hosts - offset + 1) : 1;
-        const pool = { name: this.name, start, prefix, maxUsers: Math.max(1, max), gateway, dns: GOOGLE_DNS[0], leaseMinutes: LEASE_MINUTES, reservations: [] };
-        this.dhcp.pools = [{ ...ptPoolToIos(pool), dnsServers: [...GOOGLE_DNS] }];
+        const relay = lan && settings.dnsRelay === true;
+        const pool = { name: this.name, start, prefix, maxUsers: Math.max(1, max), gateway, dns: relay ? gateway : GOOGLE_DNS[0], leaseMinutes: LEASE_MINUTES, reservations: [] };
+        this.dhcp.pools = [{ ...ptPoolToIos(pool), dnsServers: relay ? [gateway] : [...GOOGLE_DNS] }];
+        if (!relay)
+            this.relay.flush();
         this.dhcp.excluded = ptExclusions(pool);
         this.dhcp.pingPackets = 0;
     }
@@ -29601,9 +30816,14 @@ class CloudPort {
         return dst !== BROADCAST_IP && inSubnet(dst, g.ip, g.prefix) ? { iface: this.name, nextHop: dst } : null;
     }
     deliver(_iface, packet) {
-        const msg = packet.udp?.dhcp;
-        if (msg && packet.udp?.dport === DHCP_SERVER_PORT)
-            this.onDhcp(msg);
+        const udp = packet.udp;
+        if (udp?.dhcp && udp.dport === DHCP_SERVER_PORT)
+            this.onDhcp(udp.dhcp);
+        else if (udp?.dns && !udp.dns.response && udp.dport === DNS_PORT && this.relaying())
+            this.relay.resolve(udp.dns, packet.src, udp.sport, GOOGLE_DNS);
+    }
+    relaying() {
+        return this.settings.mode === 'router' && this.settings.dnsRelay === true;
     }
     /** Customer side → Internet. */
     forward(_iface, packet) {
@@ -29641,6 +30861,8 @@ class CloudPort {
     fromInternet(p) {
         const own = this.settings.mode === 'router' ? this.wan() : this.line().gw;
         if (this.settings.mode === 'router') {
+            if (p.dst === own && p.udp?.dns?.response && this.relay.onResponse(p.udp.dport, p.udp.dns))
+                return;
             const inside = this.nat.outside(p, this.forwards());
             if (inside)
                 return this.toCustomer(inside);
@@ -29892,6 +31114,7 @@ return { BACKBONE, HOP_MS, InternetCore };
 })();
 __m["ui/cloud-window.js"] = (() => {
 /** ISP cloud window: provider, public block and domains; per-line mode, speeds, LAN, port forwarding. */
+const { t } = __m["i18n/t.js"];
 const { el } = __m["ui/dom.js"];
 const { field, input, button, message, select, table, subnav } = __m["ui/forms.js"];
 const { livePanel } = __m["ui/server-dhcp-dns.js"];
@@ -29986,12 +31209,13 @@ function linePanel(cloud, name, app) {
         const up = input({ value: String(c.up), inputmode: 'numeric' });
         const lan = input({ value: formatIp(c.lanIp) });
         const mask = input({ value: formatMask(c.lanPrefix) });
+        const relay = el('input', { type: 'checkbox', checked: c.dnsRelay === true });
         const apply = () => {
             const ip = parseIp(lan.value.trim());
             const prefix = parseMask(mask.value.trim());
             if (ip === null || prefix === null)
                 return msg.error('Revisa la IP y la máscara de la LAN.');
-            put({ ...c, mode: mode.value === 'public' ? 'public' : 'router', down: Number(down.value), up: Number(up.value), lanIp: ip, lanPrefix: prefix });
+            put({ ...c, mode: mode.value === 'public' ? 'public' : 'router', down: Number(down.value), up: Number(up.value), lanIp: ip, lanPrefix: prefix, dnsRelay: relay.checked });
         };
         const peer = app.connected(name);
         const leases = line.leases().map((b) => `${formatIp(b.ip)} → ${b.hostname ?? b.mac}`);
@@ -30001,11 +31225,13 @@ function linePanel(cloud, name, app) {
             el('p', { class: 'muted' }, peer ? `Conectado a ${peer}.` : 'Sin cable: conecta aquí un router o un PC.'),
             el('div', { class: 'grid2' }, field('Modo de la línea', mode, 'Router del operador: LAN, DHCP y NAT. IP pública: tu router recibe x.y.n.2 por DHCP.'), field('Bajada / subida (Mbit/s)', el('div', { class: 'grid2' }, down, up))),
             c.mode === 'router' ? el('div', { class: 'grid2' }, field('IP del router (LAN)', lan), field('Máscara de la LAN', mask)) : el('div', {}),
+            c.mode === 'router' ? el('label', { class: 'check' }, relay, ` ${t('dns.relay')}`) : el('div', {}),
+            c.mode === 'router' ? el('p', { class: 'field-hint' }, t('dns.relayHint')) : el('div', {}),
             el('div', { class: 'actions' }, button('Guardar', apply)),
             msg.el,
             el('h3', {}, 'Direcciones'),
             el('ul', { class: 'muted' }, ...(c.mode === 'router'
-                ? [el('li', {}, `IP pública (WAN): ${formatIp(line.wan())}`), el('li', {}, `LAN ${formatIp(c.lanIp)}/${c.lanPrefix}; DHCP desde .33; DNS 8.8.8.8 y 8.8.4.4.`)]
+                ? [el('li', {}, `IP pública (WAN): ${formatIp(line.wan())}`), el('li', {}, `LAN ${formatIp(c.lanIp)}/${c.lanPrefix}; DHCP desde .33.`), el('li', {}, c.dnsRelay ? t('dns.relayOn', { ip: formatIp(c.lanIp) }) : 'DNS 8.8.8.8 y 8.8.4.4.')]
                 : [el('li', {}, `Subred pública ${formatIp(sub.net)}/${LINE_PREFIX}; puerta de enlace ${formatIp(sub.gw)}`), el('li', {}, `DHCP entrega ${formatIp(sub.customer)}; ${formatIp(sub.customer + 1)}–${formatIp(sub.customer + 4)} libres para NAT estático.`)])),
             el('p', { class: 'muted' }, `Concesiones: ${leases.join(' · ') || 'ninguna'}`),
             c.mode === 'router' ? el('p', { class: 'muted mono' }, `NAT: ${nat.join(' · ') || 'sin traducciones'}`) : el('div', {}),
@@ -30130,7 +31356,11 @@ function openHostWindow(placed, h, app) {
     const order = h.os === 'linux' ? ['linux', 'windows'] : ['windows', 'linux'];
     const model = h instanceof Server ? 'Server' : 'PC';
     let handle;
-    const settingsTab = { id: 'host', label: 'Equipo', render: () => hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) }) };
+    const settingsTab = { id: 'host', label: 'Equipo', render: () => {
+            const v = hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) });
+            disposers.push(v.dispose);
+            return v.root;
+        } };
     const tabs = h instanceof Server
         ? [{ id: 'svc', label: 'Servicios', render: () => servicesTab(h, app) }, ipTab, settingsTab, ...order.map(terminal)]
         : [ipTab, ...(h instanceof Pc ? [{ id: 'web', label: 'Navegador', render: () => browserApp(h, app) }, { id: 'mail', label: 'Correo', render: () => mailApp(h, app) }] : []), settingsTab, ...order.map(terminal)];
@@ -33455,7 +34685,10 @@ function servicesToJson(s) {
                 identifyBy: p.identifyBy,
             })),
         },
-        dns: { enabled: s.dns.enabled, origin: s.dns.origin, records: [...s.dns.records] },
+        dns: {
+            enabled: s.dns.enabled, origin: s.dns.origin, records: [...s.dns.records],
+            ...(s.dns.forwarders?.length ? { forwarders: s.dns.forwarders.map(formatIp), forwardOnly: s.dns.forwardOnly, allowRecursion: s.dns.allowRecursion } : {}),
+        },
         http: { enabled: s.http.enabled, files: [...s.http.files] },
         mail: s.mail,
         ssh: s.ssh,
@@ -33574,6 +34807,14 @@ function webapps(v) {
         admin: { ...access(v.admin, d.admin, roundcube), user: admin.user === undefined ? d.admin.user : str(admin.user, 'usuario de gestión web', 32), password: admin.password === undefined ? d.admin.password : str(admin.password, 'contraseña de gestión web', 128) },
     };
 }
+const MAX_FORWARDERS = 8;
+function dnsFromJson(n) {
+    const base = { enabled: bool(n.enabled), origin: origin(n.origin), records: arr(n.records, 'registros').map(record) };
+    const fwd = arr(n.forwarders, 'reenviadores DNS').slice(0, MAX_FORWARDERS).map((x) => optIp(x, 'reenviador DNS')).filter((x) => x !== undefined);
+    if (!fwd.length)
+        return base;
+    return { ...base, forwarders: fwd, forwardOnly: n.forwardOnly !== false, allowRecursion: n.allowRecursion === 'any' ? 'any' : 'localnets' };
+}
 function servicesFromJson(v) {
     if (v === undefined)
         return defaultServices();
@@ -33586,7 +34827,7 @@ function servicesFromJson(v) {
     const s = isObj(v.ssh) ? v.ssh : {};
     return {
         dhcp: { enabled: bool(d.enabled), pools: arr(d.pools, 'pools').map(pool) },
-        dns: { enabled: bool(n.enabled), origin: origin(n.origin), records: arr(n.records, 'registros').map(record) },
+        dns: dnsFromJson(n),
         http: { enabled: bool(h.enabled), files: arr(h.files, 'ficheros web').map((f) => { if (!isObj(f))
                 throw new Error('Fichero web no válido.'); return { name: str(f.name, 'fichero web', 128), content: str(f.content, 'contenido web', MAX_TEXT) }; }) },
         mail: { smtp: bool(m.smtp), pop3: bool(m.pop3), imap: bool(m.imap), domain: m.domain === undefined ? '' : str(m.domain, 'dominio de correo'), users: arr(m.users, 'usuarios de correo').map(account) },
@@ -33771,18 +35012,6 @@ function roundcube(server, req, peer, base) {
 
 return { roundcube };
 })();
-__m["docs/about-data.js"] = (() => {
-const ABOUT = {
-    "name": "netfix",
-    "version": "0.6.0",
-    "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
-    "license": "GPL-3.0-or-later",
-    "repository": "https://github.com/glopezca/netfix",
-    "licenseMarkdown": "# Licencia y atribuciones\n\n- **Autoría:** Germán López Castro\n- **Repositorio:** <https://github.com/glopezca/netfix>\n\nNetfix usa dos licencias según el tipo de material, las dos con la misma idea de\n«compartir igual»: quien distribuya versiones modificadas debe publicarlas con la misma licencia.\n\n| Material | Licencia |\n|---|---|\n| Código fuente: `src/`, `tests/`, `scripts/`, configuración del proyecto y los archivos que genera el build | [GNU GPL v3.0 o posterior](https://www.gnu.org/licenses/gpl-3.0.html) (`GPL-3.0-or-later`) — texto completo en [`LICENSE`](LICENSE) |\n| Documentación e imágenes: `README.md`, `docs/`, capturas y textos de los laboratorios | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es) — [texto legal](https://creativecommons.org/licenses/by-sa/4.0/legalcode.es) |\n| `.claude/` (reglas y agentes de Everything Claude Code) | MIT, de sus autores (ver más abajo) |\n\nLa GPL es una licencia pensada para software: exige entregar el código fuente junto con\ncualquier versión distribuida (también la página HTML compilada) y protege el derecho de\nuso, estudio, modificación y redistribución. Creative Commons recomienda no usar sus licencias\npara código, por eso CC BY-SA 4.0 queda solo para la documentación. Las dos licencias son\ncompatibles en un sentido: el material CC BY-SA 4.0 puede incorporarse a obras GPLv3.\n\n## Aviso de copyright del código\n\n```\nNetfix — simulador de redes con CLI de Cisco IOS y servidor DHCP\nCopyright (C) 2026 Germán López Castro\n\nThis program is free software: you can redistribute it and/or modify\nit under the terms of the GNU General Public License as published by\nthe Free Software Foundation, either version 3 of the License, or\n(at your option) any later version.\n\nThis program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\nMERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\nGNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License\nalong with this program.  If not, see <https://www.gnu.org/licenses/>.\n```\n\n## Atribución recomendada\n\nPara la documentación o las capturas:\n\n> «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),\n> distribuido bajo licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).\n\nPara el software o una obra derivada:\n\n> Basado en «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),\n> GPL-3.0-or-later. Cambios: …\n\n## Componentes de terceros\n\n### Everything Claude Code (ECC)\n\nLas reglas y los agentes de la carpeta `.claude/` (`.claude/rules/`, `.claude/agents/`,\n`.claude/commands/`) proceden de\n[Everything Claude Code](https://github.com/affaan-m/everything-claude-code)\ny se mantienen bajo su licencia original **MIT**, © 2026 Affaan Mustafa.\nEl texto completo está en [`.claude/ECC-LICENSE`](.claude/ECC-LICENSE).\nLa licencia MIT es compatible con la GPLv3; la GPL y la CC BY-SA de este repositorio no se\naplican a esos archivos.\n\n### Marcas\n\nCisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc. Netfix es un proyecto\neducativo independiente, sin relación con Cisco ni respaldado por ella. Los símbolos de red\nde la interfaz son dibujos propios de este proyecto.\n"
-};
-
-return { ABOUT };
-})();
 __m["web/admin-layout.js"] = (() => {
 const { h, page } = __m["web/html.js"];
 const { ABOUT } = __m["docs/about-data.js"];
@@ -33831,6 +35060,8 @@ return { TABS, PAGES, section, row, text, check, choose, form, buttons, frame };
 })();
 __m["web/admin-pages.js"] = (() => {
 /** Pages of the Server management GUI (forms filled with the live configuration). */
+const { forwardersText } = __m["services/dns-recursion.js"];
+const { t } = __m["i18n/t.js"];
 const { sshAuthMethods } = __m["services/ssh-auth-settings.js"];
 const { h } = __m["web/html.js"];
 const { section, row, text, check, choose, form, buttons } = __m["web/admin-layout.js"];
@@ -33882,6 +35113,7 @@ function dnsPage(server, base) {
     const rows = d.records.map((r, i) => [r.name, r.type, `${r.priority !== undefined ? `${r.priority} ` : ''}${r.value}`, String(r.ttl), del(base, 'dns', 'record-del', String(i))]);
     return [
         form(base, 'dns', 'dns', h('table', {}, section('Servidor DNS', 'bind9. Dominio de la zona para nombres relativos (@, www, *).', check('enabled', d.enabled, 'Activado'), row('Dominio de la zona', text('origin', d.origin ?? '')))), buttons()),
+        form(base, 'dns', 'dns-recursion', h('table', {}, section(t('dns.rec.title'), t('dns.rec.help'), row(t('dns.rec.forwarders'), text('forwarders', forwardersText(d))), row(t('dns.rec.mode'), choose('forward', d.forwardOnly === false ? 'first' : 'only', [['only', t('dns.rec.only')], ['first', t('dns.rec.first')]])), row(t('dns.rec.allow'), choose('allow', d.allowRecursion ?? 'localnets', [['localnets', t('dns.rec.localnets')], ['any', t('dns.rec.any')]])))), buttons()),
         h('table', {}, section('Registros', 'Registros de la zona.', table(['Nombre', 'Tipo', 'Valor', 'TTL', ''], rows, 'Sin registros.'))),
         form(base, 'dns', 'record-add', h('table', {}, section('Nuevo registro', 'A, CNAME, MX, NS o TXT. Prioridad solo para MX.', row('Nombre', text('name', '')), row('Tipo', choose('type', 'A', [['A', 'A'], ['CNAME', 'CNAME'], ['MX', 'MX'], ['NS', 'NS'], ['TXT', 'TXT']])), row('Valor', text('value', '')), row('Prioridad (MX)', text('priority', '10')))), buttons()),
     ];
@@ -33934,6 +35166,7 @@ const { validatePool } = __m["services/dhcp-pt.js"];
 const { readIdentifier, reserveLease, setReservations } = __m["services/dhcp-reservations.js"];
 const { validateRecord } = __m["services/dns-service.js"];
 const { setSshAuthMethods } = __m["services/ssh-auth-settings.js"];
+const { applyRecursion } = __m["services/dns-recursion.js"];
 const { validateOrigin, cleanOrigin } = __m["services/dns-names.js"];
 const { validateAccess, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } = __m["services/config.js"];
 const SAVED = { ok: 'Los cambios se han guardado correctamente.' };
@@ -34017,6 +35250,13 @@ function dns(server, f) {
     const err = validateOrigin(origin);
     return err ? { error: err } : set(server, (s) => ({ ...s, dns: { ...s.dns, enabled: on(f, 'enabled'), origin: cleanOrigin(origin) } }));
 }
+function recursion(server, f) {
+    const next = applyRecursion(server.services.dns, { forwarders: f.get('forwarders') ?? '', forwardOnly: f.get('forward') !== 'first', allowRecursion: f.get('allow') === 'any' ? 'any' : 'localnets' });
+    if ('error' in next)
+        return { error: next.error };
+    server.dns.forwarder.flush();
+    return set(server, (s) => ({ ...s, dns: next }));
+}
 function access(f, prefix, current, enabled) {
     return { enabled, mode: f.get(`${prefix}mode`) === 'port' ? 'port' : 'alias', alias: (f.get(`${prefix}alias`) ?? current.alias).trim(), port: Number(f.get(`${prefix}port`) ?? current.port) };
 }
@@ -34075,6 +35315,7 @@ function runAction(server, pageId, f) {
         case 'res-del': return deleteReservation(server, f);
         case 'lease-reserve': return reserveFromLease(server, f);
         case 'dns': return dns(server, f);
+        case 'dns-recursion': return recursion(server, f);
         case 'record-add': return addRecord(server, f);
         case 'record-del': return set(server, (s) => ({ ...s, dns: { ...s.dns, records: s.dns.records.filter((_, i) => String(i) !== f.get('key')) } }));
         case 'web': return web(server, f);
@@ -35016,131 +36257,6 @@ interface GigabitEthernet0/0
 
 return { EXAMPLES };
 })();
-__m["docs/markdown.js"] = (() => {
-const FENCE = /^```/;
-const HEADING = /^(#{1,6})\s+(.*)$/;
-const LIST_ITEM = /^\s*[-*+]\s+(.*)$/;
-const TABLE_RULE = /^\s*\|?\s*:?-{2,}/;
-function splitRow(line) {
-    const cells = [];
-    let cur = '';
-    const body = line.trim().replace(/^\|/, '').replace(/\|$/, '');
-    for (let i = 0; i < body.length; i++) {
-        const c = body[i];
-        if (c === '\\' && body[i + 1] === '|') {
-            cur += '|';
-            i++;
-        }
-        else if (c === '|') {
-            cells.push(cur.trim());
-            cur = '';
-        }
-        else
-            cur += c;
-    }
-    cells.push(cur.trim());
-    return cells;
-}
-function isTableStart(lines, i) {
-    return (lines[i] ?? '').trim().startsWith('|') && TABLE_RULE.test(lines[i + 1] ?? '');
-}
-/** Reads the block starting at line i; returns it (or null for a skipped title) and the next line. */
-function readBlock(lines, i) {
-    const line = lines[i] ?? '';
-    if (FENCE.test(line)) {
-        const end = lines.findIndex((l, j) => j > i && FENCE.test(l));
-        const stop = end < 0 ? lines.length : end;
-        return { block: { kind: 'code', text: lines.slice(i + 1, stop).join('\n') }, next: stop + 1 };
-    }
-    const h = HEADING.exec(line);
-    if (h) {
-        const level = (h[1] ?? '').length;
-        const text = (h[2] ?? '').trim();
-        if (level === 1)
-            return { block: null, next: i + 1 };
-        return { block: level === 2 ? { kind: 'h', text } : { kind: 'h', text, level: 4 }, next: i + 1 };
-    }
-    if (isTableStart(lines, i)) {
-        let j = i + 2;
-        while (j < lines.length && (lines[j] ?? '').trim().startsWith('|'))
-            j++;
-        return { block: { kind: 'table', head: splitRow(line), rows: lines.slice(i + 2, j).map(splitRow) }, next: j };
-    }
-    const collect = (test, strip) => {
-        let j = i;
-        const out = [];
-        while (j < lines.length && (lines[j] ?? '').trim() !== '' && test(lines[j] ?? ''))
-            out.push(strip(lines[j++] ?? '').trim());
-        return { text: out, next: j };
-    };
-    if (LIST_ITEM.test(line)) {
-        const r = collect((l) => LIST_ITEM.test(l), (l) => LIST_ITEM.exec(l)?.[1] ?? l);
-        return { block: { kind: 'list', items: r.text }, next: r.next };
-    }
-    if (line.trimStart().startsWith('>')) {
-        const r = collect((l) => l.trimStart().startsWith('>'), (l) => l.trimStart().replace(/^>\s?/, ''));
-        return { block: { kind: 'note', text: r.text.join(' ') }, next: r.next };
-    }
-    const r = collect((l) => !FENCE.test(l) && !HEADING.test(l) && !LIST_ITEM.test(l) && !l.trimStart().startsWith('>'), (l) => l);
-    return { block: { kind: 'p', text: r.text.join(' ') }, next: Math.max(r.next, i + 1) };
-}
-/** Markdown → blocks. The level-1 heading (the page title) is left to the caller. */
-function markdownBlocks(markdown) {
-    const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
-    const blocks = [];
-    let i = 0;
-    while (i < lines.length) {
-        if ((lines[i] ?? '').trim() === '') {
-            i++;
-            continue;
-        }
-        const { block, next } = readBlock(lines, i);
-        if (block)
-            blocks.push(block);
-        i = next;
-    }
-    return blocks;
-}
-const INLINE = /`([^`]+)`|\*\*([^*]+)\*\*|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)|<(https?:\/\/[^>\s]+)>/g;
-const SAFE_RELATIVE = /^[\w./#-]+$/;
-/** http(s) URLs as they are; relative paths resolved against `base`; anything else is refused. */
-function safeHref(url, base) {
-    if (/^https?:\/\/[^\s"'<>]+$/i.test(url))
-        return url;
-    if (/^[a-z][\w+.-]*:/i.test(url) || !SAFE_RELATIVE.test(url))
-        return undefined;
-    return `${base}${url.replace(/^\.\//, '')}`;
-}
-/** Inline Markdown → spans. `base` resolves relative links (files of the repository). */
-function inlineMarkdown(text, base) {
-    const spans = [];
-    let last = 0;
-    for (const m of text.matchAll(INLINE)) {
-        const at = m.index ?? 0;
-        if (at > last)
-            spans.push({ text: text.slice(last, at) });
-        last = at + m[0].length;
-        if (m[1] !== undefined)
-            spans.push({ text: m[1], code: true });
-        else if (m[2] !== undefined)
-            spans.push({ text: m[2], bold: true });
-        else if (m[5] !== undefined)
-            spans.push({ text: m[5], href: m[5] });
-        else {
-            const label = m[3] ?? '';
-            const code = /^`[^`]+`$/.test(label);
-            const shown = code ? label.slice(1, -1) : label;
-            const href = safeHref(m[4] ?? '', base);
-            spans.push(href ? { text: shown, href, ...(code ? { code } : {}) } : { text: shown });
-        }
-    }
-    if (last < text.length)
-        spans.push({ text: text.slice(last) });
-    return spans;
-}
-
-return { markdownBlocks, safeHref, inlineMarkdown };
-})();
 __m["ui/doc-blocks.js"] = (() => {
 /** Renders documentation blocks as DOM (text through textContent; links only http/https). */
 const { el } = __m["ui/dom.js"];
@@ -35225,27 +36341,6 @@ class DocsView {
 }
 
 return { DocsView };
-})();
-__m["docs/about.js"] = (() => {
-/** «Acerca de»: version, authorship, licences and attributions, from package.json and LICENSE.md. */
-const { ABOUT } = __m["docs/about-data.js"];
-const { markdownBlocks } = __m["docs/markdown.js"];
-const AUTHOR_LINE = /^\s*-\s*\*\*Autoría:\*\*\s*(.+?)\s*$/m;
-function aboutInfo() {
-    const author = AUTHOR_LINE.exec(ABOUT.licenseMarkdown)?.[1] ?? '';
-    return {
-        name: ABOUT.name.charAt(0).toUpperCase() + ABOUT.name.slice(1),
-        version: ABOUT.version,
-        description: ABOUT.description,
-        license: ABOUT.license,
-        repository: ABOUT.repository,
-        author,
-        fileBase: `${ABOUT.repository}/blob/main/`,
-        blocks: markdownBlocks(ABOUT.licenseMarkdown),
-    };
-}
-
-return { aboutInfo };
 })();
 __m["ui/about-view.js"] = (() => {
 /** The «Acerca de» tab: version, authorship, licences and attributions (generated from the repository root). */

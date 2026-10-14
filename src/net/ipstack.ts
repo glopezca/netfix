@@ -26,8 +26,14 @@ export interface StackHost {
   deliver(iface: string, packet: IpPacket, frame: Frame): void;
   /** Routers forward transit packets; hosts drop them. */
   forward?(iface: string, packet: IpPacket): void;
-  /** Destination NAT before the routing decision (IOS `ip nat outside`). */
-  prerouting?(iface: string, packet: IpPacket): IpPacket;
+  /** Before the routing decision (IOS `ip nat outside`, netfilter prerouting); null = dropped. */
+  prerouting?(iface: string, packet: IpPacket): IpPacket | null;
+  /** Packet for this host, before ICMP echo and delivery (netfilter input); null = dropped. */
+  input?(iface: string, packet: IpPacket): IpPacket | null;
+  /** Locally generated packet once its egress is known (netfilter output); null = dropped. */
+  output?(iface: string, packet: IpPacket): IpPacket | null;
+  /** Every packet leaving an interface, generated or forwarded (netfilter postrouting); null = dropped. */
+  postrouting?(iface: string, packet: IpPacket): IpPacket | null;
   /** Extra addresses answered by ARP on an interface (static NAT globals). */
   answersArp?(iface: string, ip: number): boolean;
   /** Hosts may want to drop the packet that triggered ARP (IOS behaviour). */
@@ -44,6 +50,8 @@ export interface ArpEntry {
 export type EchoResult = { kind: 'reply'; from: number; ttl: number } | { kind: 'unreachable'; from: number } | { kind: 'ttl'; from: number };
 
 const ARP_TIMEOUT_MS = 1000;
+/** Interface name the hooks see for traffic to the host's own addresses. */
+export const LOOPBACK = 'lo';
 const MAX_PENDING = 4;
 
 export class IpStack {
@@ -95,17 +103,30 @@ export class IpStack {
   }
 
   private onIp(iface: L3Iface, arrived: IpPacket, frame: Frame): void {
-    const packet = this.host.prerouting?.(iface.name, arrived) ?? arrived;
+    const packet = this.host.prerouting ? this.host.prerouting(iface.name, arrived) : arrived;
+    if (!packet) return;
     const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst);
     if (!forMe) {
       this.host.forward?.(iface.name, packet);
       return;
     }
+    this.localIn(iface.name, packet, frame);
+  }
+
+  /** Local delivery: input hook, then ICMP echo handling or the host's protocols. */
+  private localIn(ifaceName: string, arrived: IpPacket, frame: Frame): void {
+    const packet = this.host.input ? this.host.input(ifaceName, arrived) : arrived;
+    if (!packet) return;
     if (packet.icmp) {
       this.onIcmp(packet, packet.icmp);
       return;
     }
-    this.host.deliver(iface.name, packet, frame);
+    this.host.deliver(ifaceName, packet, frame);
+  }
+
+  /** Output hook for a locally generated packet; null = dropped by the firewall. */
+  private outbound(iface: string, packet: IpPacket): IpPacket | null {
+    return this.host.output ? this.host.output(iface, packet) : packet;
   }
 
   private onIcmp(packet: IpPacket, icmp: IcmpMessage): void {
@@ -132,7 +153,8 @@ export class IpStack {
       this.host.schedule(0, () => onResult({ kind: 'reply', from: dst, ttl: this.host.ttl }));
       return true;
     }
-    this.sendVia(egress, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
+    const out = this.outbound(egress.iface, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
+    if (out) this.sendVia(egress, out);
     return true;
   }
 
@@ -141,13 +163,16 @@ export class IpStack {
     if (this.isMine(packet.dst)) return this.loopback(packet);
     const egress = this.host.route(packet.dst);
     if (!egress) return false;
-    this.sendVia(egress, packet);
+    const out = this.outbound(egress.iface, packet);
+    if (out) this.sendVia(egress, out);
     return true;
   }
 
-  sendVia(egress: Egress, packet: IpPacket): void {
+  sendVia(egress: Egress, original: IpPacket): void {
     const iface = this.host.l3Iface(egress.iface);
     if (!iface?.up) return;
+    const packet = this.host.postrouting ? this.host.postrouting(egress.iface, original) : original;
+    if (!packet) return;
     if (this.isLocalBroadcast(iface, packet.dst)) {
       this.emitIp(egress.iface, BROADCAST_MAC, packet);
       return;
@@ -164,10 +189,9 @@ export class IpStack {
   private loopback(packet: IpPacket): boolean {
     const iface = this.host.l3Ifaces().find((i) => i.addrs.some((a) => a.ip === packet.dst));
     if (!iface) return false;
-    this.host.schedule(0, () => {
-      if (packet.icmp) this.onIp(iface, packet, { src: iface.mac, dst: iface.mac, ip: packet });
-      else this.host.deliver(iface.name, packet, { src: iface.mac, dst: iface.mac, ip: packet });
-    });
+    const out = this.outbound(LOOPBACK, packet);
+    if (!out) return true;
+    this.host.schedule(0, () => this.localIn(LOOPBACK, out, { src: iface.mac, dst: iface.mac, ip: out }));
     return true;
   }
 
