@@ -9,6 +9,8 @@ export interface L3Iface {
   readonly mac: string;
   readonly addrs: readonly IpWithPrefix[];
   readonly up: boolean;
+  /** Point-to-point link without ARP (WireGuard): packets go straight to the interface. */
+  readonly pointToPoint?: boolean;
 }
 
 export interface Egress {
@@ -77,7 +79,7 @@ export class IpStack {
   receiveFrame(ifaceName: string, frame: Frame): void {
     const iface = this.host.l3Iface(ifaceName);
     if (!iface?.up) return;
-    if (frame.dst !== iface.mac && frame.dst !== BROADCAST_MAC) return;
+    if (!iface.pointToPoint && frame.dst !== iface.mac && frame.dst !== BROADCAST_MAC) return;
     if (frame.arp) this.onArp(iface, frame);
     else if (frame.ip) this.onIp(iface, frame.ip, frame);
   }
@@ -168,12 +170,18 @@ export class IpStack {
     return true;
   }
 
+  /** Sends a locally generated packet through a given egress (output hook included). */
+  sendRouted(egress: Egress, packet: IpPacket): void {
+    const out = this.outbound(egress.iface, packet);
+    if (out) this.sendVia(egress, out);
+  }
+
   sendVia(egress: Egress, original: IpPacket): void {
     const iface = this.host.l3Iface(egress.iface);
     if (!iface?.up) return;
     const packet = this.host.postrouting ? this.host.postrouting(egress.iface, original) : original;
     if (!packet) return;
-    if (this.isLocalBroadcast(iface, packet.dst)) {
+    if (iface.pointToPoint || this.isLocalBroadcast(iface, packet.dst)) {
       this.emitIp(egress.iface, BROADCAST_MAC, packet);
       return;
     }

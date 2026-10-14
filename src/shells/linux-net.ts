@@ -9,6 +9,7 @@ import { reverseName } from '../net/dns.ts';
 import type { DnsType } from '../net/packets.ts';
 import { formatIp, broadcastOf, parseIp } from '../core/ip.ts';
 import { ipWrite, routeLines } from './linux-ip.ts';
+import { virtualAddressLines, virtualBrief } from './linux-ip-wg.ts';
 import type { NicInfo } from '../devices/host-nics.ts';
 import type { IpWrite } from './linux-ip.ts';
 
@@ -42,14 +43,14 @@ function ipAddress(host: Host): string[] {
     );
     if (addr) out.push(`    inet ${addr.inet} brd ${addr.brd} scope ${addr.scope} ${n.linux}`, '       valid_lft forever preferred_lft forever');
   });
-  return out;
+  return [...out, ...virtualAddressLines(host, host.nics().length + 2)];
 }
 
 function ipBrief(host: Host, link: boolean): string[] {
   const row = (name: string, state: string, rest: string): string => `${name.padEnd(16)} ${state.padEnd(14)} ${rest}`;
   const nics = host.nics();
-  if (link) return [row('lo', 'UNKNOWN', '00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP> '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', `${linuxMac(n.mac)} <BROADCAST,MULTICAST${n.adminUp ? ',UP' : ''}${n.up ? ',LOWER_UP' : ''}> `))];
-  return [row('lo', 'UNKNOWN', '127.0.0.1/8 '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', nicAddress(n) ? `${nicAddress(n)?.inet} ` : ''))];
+  if (link) return [row('lo', 'UNKNOWN', '00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP> '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', `${linuxMac(n.mac)} <BROADCAST,MULTICAST${n.adminUp ? ',UP' : ''}${n.up ? ',LOWER_UP' : ''}> `)), ...virtualBrief(host, true)];
+  return [row('lo', 'UNKNOWN', '127.0.0.1/8 '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', nicAddress(n) ? `${nicAddress(n)?.inet} ` : '')), ...virtualBrief(host, false)];
 }
 
 const IP_USAGE = 'Usage: ip [ OPTIONS ] OBJECT { COMMAND | help }\nwhere  OBJECT := { address | route | neigh | link }\n       OPTIONS := { -4 | -br[ief] | -c[olor] }\n';

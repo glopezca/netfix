@@ -3,6 +3,7 @@ import { nicsToJson, routesToJson, restoreNics, restoreRoutes } from './topology
 import type { NicRecord, RouteRecord } from './topology-nics.ts';
 import { LinuxRouter } from '../devices/linux-router.ts';
 import { savedFiles, restoreFiles, bootKernel } from '../shells/host-system.ts';
+import { bootWireguard } from '../shells/wg-boot.ts';
 import { validFileRecords } from '../bash/vfs-persist.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
 import { Network } from './network.ts';
@@ -185,6 +186,7 @@ export class Topology {
     topo.separateClouds();
     for (const l of file.links) topo.connect(l.a, l.b, l.cable);
     for (const p of topo.placed.values()) if (p.device instanceof Host && p.device.config.mode === 'dhcp') p.device.useDhcp();
+    for (const p of topo.placed.values()) if (p.device instanceof LinuxRouter) bootWireguard(p.device);
     topo.settle();
     return topo;
   }

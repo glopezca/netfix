@@ -19,6 +19,7 @@ import type { DeviceHooks } from './hooks.ts';
 import { macFromSeed, clientIdFromMac } from '../core/mac.ts';
 import { Kernel } from './host-kernel.ts';
 import { lookupRoute, MAX_STATIC_ROUTES } from './host-nics.ts';
+import type { WgManager } from './wg-manager.ts';
 import type { NicInfo, StaticRoute } from './host-nics.ts';
 import { inSubnet, BROADCAST_IP } from '../core/ip.ts';
 import type { SimClock } from '../core/clock.ts';
@@ -380,6 +381,11 @@ export abstract class Host implements NetDevice, StackHost {
 
   postrouting(iface: string, packet: IpPacket): IpPacket | null {
     return this.kernel.postrouting(iface, packet);
+  }
+
+  /** WireGuard links (Linux router only). */
+  wgLinks(): WgManager | undefined {
+    return undefined;
   }
 
   /** Server-side UDP services (DHCP on 67, DNS on 53). Plain hosts ignore them. */

@@ -6,8 +6,9 @@
 import { Server } from './server.ts';
 import type { HostOs } from './host.ts';
 import type { NicInfo } from './host-nics.ts';
-import type { Frame, IpPacket } from '../net/packets.ts';
-import type { L3Iface } from '../net/ipstack.ts';
+import type { Frame, IpPacket, WgMessage } from '../net/packets.ts';
+import type { Egress, L3Iface } from '../net/ipstack.ts';
+import { WgManager } from './wg-manager.ts';
 import type { SimClock } from '../core/clock.ts';
 
 export const LINUX_ROUTER_PORTS = ['GigabitEthernet0/0', 'GigabitEthernet0/1', 'GigabitEthernet0/2'] as const;
@@ -26,14 +27,21 @@ function macPlus(mac: string, n: number): string {
 }
 
 export class LinuxRouter extends Server {
-  override readonly kind = 'linuxrouter' as const;
+  declare readonly kind: 'linuxrouter';
   override os: HostOs = 'linux';
   override readonly ttl = LINUX_TTL;
   /** NICs 1 and 2 (NIC 0 is the host's main configuration: `config`, DHCP client, `portUp`). */
   private readonly extra = new Map<string, Nic>();
+  /** WireGuard links (wg0…), their addresses and device routes. */
+  readonly wgm = new WgManager({
+    now: () => this.clock.now(),
+    schedule: (ms, fn) => this.hooks.schedule(ms, fn),
+    sendUdp: (dst, dport, sport, msg) => this.sendWg(dst, dport, sport, msg),
+    receiveInner: (iface, inner) => this.stack.receiveFrame(iface, { src: '', dst: '', ip: inner }),
+  }, () => this.changed());
 
   constructor(id: string, name: string, clock: SimClock, seed: number) {
-    super(id, name, clock, seed);
+    super(id, name, clock, seed, 'linuxrouter');
     LINUX_ROUTER_PORTS.slice(1).forEach((p, i) => this.extra.set(p, { adminUp: true, mac: macPlus(this.mac, i + 1) }));
   }
 
@@ -99,7 +107,34 @@ export class LinuxRouter extends Server {
   }
 
   override emit(iface: string, frame: Frame): void {
+    if (this.wgm.get(iface)) {
+      if (frame.ip) this.wgm.transmit(iface, frame.ip);
+      return;
+    }
     this.hooks.transmit(iface, frame);
+  }
+
+  override wgLinks(): WgManager {
+    return this.wgm;
+  }
+
+  override route(dst: number): Egress | null {
+    return this.wgm.route(dst, { nics: this.nics(), statics: this.staticRoutes, gateway: this.config.gateway }, 'all');
+  }
+
+  /** WireGuard's own datagrams use the main table (never the tunnel), through the output hook. */
+  private sendWg(dst: number, dport: number, sport: number, wg: WgMessage): void {
+    const egress = this.wgm.route(dst, { nics: this.nics(), statics: this.staticRoutes, gateway: this.config.gateway }, 'main');
+    const src = egress ? this.l3Iface(egress.iface)?.addrs[0]?.ip : undefined;
+    if (!egress || src === undefined) return;
+    this.stack.sendRouted(egress, { src, dst, ttl: LINUX_TTL, protocol: 'udp', udp: { sport, dport, wg } });
+  }
+
+  protected override onUdp(packet: IpPacket, iface: string): void {
+    const udp = packet.udp;
+    const link = udp?.wg ? [...this.wgm.links.values()].find((l) => l.up && l.listenPort === udp.dport) : undefined;
+    if (udp?.wg && link) link.receive(packet.src, udp.sport, udp.wg);
+    else super.onUdp(packet, iface);
   }
 
   override l3Iface(name: string): L3Iface | undefined {
@@ -107,11 +142,13 @@ export class LinuxRouter extends Server {
   }
 
   override l3Ifaces(): readonly L3Iface[] {
-    return this.nics().map((n) => ({ name: n.port, mac: n.mac, addrs: n.ip !== undefined && n.prefix !== undefined ? [{ ip: n.ip, prefix: n.prefix }] : [], up: n.up }));
+    const nics = this.nics().map((n) => ({ name: n.port, mac: n.mac, addrs: n.ip !== undefined && n.prefix !== undefined ? [{ ip: n.ip, prefix: n.prefix }] : [], up: n.up }));
+    // During Server's constructor the field is not initialised yet.
+    return this.wgm ? [...nics, ...this.wgm.l3Ifaces()] : nics;
   }
 
   override ownsIp(ip: number): boolean {
-    return this.nics().some((n) => n.ip === ip);
+    return this.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip));
   }
 
   override onLinkEvent(port: string, up: boolean): void {
@@ -139,7 +176,7 @@ export class LinuxRouter extends Server {
 
   /** ICMP time exceeded / destination unreachable from the address of the arrival interface. */
   private icmpError(iface: string, p: IpPacket, type: 'ttl-exceeded' | 'unreachable'): void {
-    const src = this.ifaceConfig(iface)?.ip;
+    const src = this.l3Iface(iface)?.addrs[0]?.ip;
     if (src === undefined || (p.icmp && p.icmp.type !== 'echo-request')) return;
     const back = this.route(p.src);
     if (!back) return;

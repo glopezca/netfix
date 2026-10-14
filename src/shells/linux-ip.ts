@@ -8,6 +8,7 @@ import type { Host } from '../devices/host.ts';
 import type { NicInfo, StaticRoute } from '../devices/host-nics.ts';
 import { routeTo, MAX_STATIC_ROUTES } from '../devices/host-nics.ts';
 import { parseIp, inSubnet, networkOf, formatIp } from '../core/ip.ts';
+import { virtualRoutes, virtualWrite } from './linux-ip-wg.ts';
 
 const EXIT_RTNL = 2;
 
@@ -116,7 +117,7 @@ function link(ctx: Ctx, host: Host, rest: readonly string[]): number {
 const VERBS: Readonly<Record<IpWrite, readonly string[]>> = {
   address: ['add', 'del', 'delete', 'flush'],
   route: ['add', 'del', 'delete', 'replace', 'change'],
-  link: ['set'],
+  link: ['set', 'add', 'del', 'delete'],
 };
 
 /** Runs a writing `ip` command; undefined when `args` is not one (ip shows the object instead). */
@@ -125,6 +126,9 @@ export function ipWrite(ctx: Ctx, host: Host, object: IpWrite, args: readonly st
   if (!VERBS[object].includes(verb)) return undefined;
   if (ctx.cred.uid !== 0) { ctx.err('RTNETLINK answers: Operation not permitted\n'); return EXIT_RTNL; }
   const rest = args.slice(1);
+  const virtual = virtualWrite(ctx, host, object, verb === 'delete' ? 'del' : verb === 'change' ? 'replace' : verb, rest);
+  if (virtual !== undefined) return virtual;
+  if (object === 'link' && verb !== 'set') { ctx.err(verb === 'add' ? 'Not enough information: "type" argument is required\n' : `Cannot find device "${rest.filter((a) => a !== 'dev')[0] ?? ''}"\n`); return 1; }
   if (object === 'address') return address(ctx, host, verb === 'delete' ? 'del' : verb, rest);
   if (object === 'route') return route(ctx, host, verb === 'replace' || verb === 'change' ? 'replace' : verb === 'delete' ? 'del' : verb, rest);
   return link(ctx, host, rest);
@@ -139,5 +143,5 @@ export function routeLines(host: Host): string[] {
   const out = gw !== undefined ? [`default via ${formatIp(gw)} dev ${devFor(gw)} proto ${primary?.dhcp ? 'dhcp' : 'static'} metric 100`] : [];
   const kernel = nics.map((n) => ({ net: networkOf(n.ip as number, n.prefix as number), line: `${formatIp(networkOf(n.ip as number, n.prefix as number))}/${n.prefix} dev ${n.linux} proto kernel scope link src ${formatIp(n.ip as number)}` }));
   const statics = host.staticRoutes.map((r) => ({ net: r.net, line: `${formatIp(r.net)}/${r.prefix} via ${formatIp(r.via)} dev ${devFor(r.via)}` }));
-  return [...out, ...[...kernel, ...statics].sort((a, b) => a.net - b.net).map((x) => x.line)];
+  return [...out, ...[...kernel, ...statics, ...virtualRoutes(host)].sort((a, b) => a.net - b.net).map((x) => x.line)];
 }

@@ -1,6 +1,7 @@
 /** Server → Servicios → HTTP, Correo, SSH and Registros panels. */
 import { t } from '../i18n/t.ts';
 import { firewallPanel, sysctlPanel } from './firewall-panel.ts';
+import { vpnPanel } from './vpn-panel.ts';
 import { el } from './dom.ts';
 import { field, input, select, button, onOff, message, table, subnav } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';
@@ -25,6 +26,7 @@ export function servicesTab(server: Server, app: AfterChange): HTMLElement {
       { id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root },
       { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root },
     ] : []),
+    ...(server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
     { id: 'log', label: 'Registros', render: () => logPanel(server) },
   ]);
 }

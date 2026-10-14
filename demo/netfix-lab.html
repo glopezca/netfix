@@ -1683,6 +1683,71 @@ const FIREWALL_EN = {
 
 return { FIREWALL_EN };
 })();
+__m["i18n/es-ES/vpn.js"] = (() => {
+/** Español (España): VPN WireGuard del router Linux (pestaña Servicios → VPN y gestión web). */
+const VPN_ES = {
+    'vpn.tab': 'VPN',
+    'vpn.service': 'Túnel WireGuard wg0 (wg-quick@wg0)',
+    'vpn.intro': 'Lo que guardas aquí se escribe en /etc/wireguard/wg0.conf y, si el túnel está en marcha, se reinicia. Activarlo también lo deja habilitado al arrancar. Con «wg set» en la terminal solo cambias lo que está en marcha.',
+    'vpn.notRouter': 'WireGuard solo está disponible en el router Linux.',
+    'vpn.interface': 'Interfaz',
+    'vpn.privateKey': 'Clave privada',
+    'vpn.publicKey': 'Clave pública (dásela a los pares)',
+    'vpn.generate': 'Generar claves',
+    'vpn.address': 'Dirección del túnel (CIDR)',
+    'vpn.listenPort': 'Puerto UDP de escucha',
+    'vpn.peers': 'Pares',
+    'vpn.noPeers': 'Sin pares: el túnel no llevará tráfico.',
+    'vpn.peerKey': 'Clave pública del par',
+    'vpn.allowedIps': 'AllowedIPs (redes que llegan por el par)',
+    'vpn.endpoint': 'Endpoint (IP:puerto, vacío si el par llama)',
+    'vpn.keepalive': 'Keepalive (s, para atravesar NAT)',
+    'vpn.addPeer': 'Añadir par',
+    'vpn.save': 'Guardar y aplicar',
+    'vpn.saved': 'Configuración guardada.',
+    'vpn.bad': 'Valor no válido: {field}',
+    'vpn.status': 'Estado de los pares',
+    'vpn.handshake': 'Último handshake',
+    'vpn.transfer': 'Tráfico',
+    'vpn.never': 'nunca',
+    'vpn.fileError': 'wg0.conf tiene un error y wg-quick no lo cargará:',
+    'vpn.confirmKeys': 'Generar claves nuevas obliga a cambiar la clave pública en todos los pares. ¿Continuar?',
+};
+
+return { VPN_ES };
+})();
+__m["i18n/en-GB/vpn.js"] = (() => {
+const VPN_EN = {
+    'vpn.tab': 'VPN',
+    'vpn.service': 'WireGuard tunnel wg0 (wg-quick@wg0)',
+    'vpn.intro': 'What you save here is written to /etc/wireguard/wg0.conf and, if the tunnel is running, it is restarted. Turning it on also enables it at boot. With “wg set” in the terminal you only change the running tunnel.',
+    'vpn.notRouter': 'WireGuard is only available on the Linux router.',
+    'vpn.interface': 'Interface',
+    'vpn.privateKey': 'Private key',
+    'vpn.publicKey': 'Public key (give it to the peers)',
+    'vpn.generate': 'Generate keys',
+    'vpn.address': 'Tunnel address (CIDR)',
+    'vpn.listenPort': 'UDP listen port',
+    'vpn.peers': 'Peers',
+    'vpn.noPeers': 'No peers: the tunnel will carry no traffic.',
+    'vpn.peerKey': 'Peer public key',
+    'vpn.allowedIps': 'AllowedIPs (networks reached through the peer)',
+    'vpn.endpoint': 'Endpoint (IP:port, empty if the peer calls in)',
+    'vpn.keepalive': 'Keepalive (s, to get through NAT)',
+    'vpn.addPeer': 'Add peer',
+    'vpn.save': 'Save and apply',
+    'vpn.saved': 'Configuration saved.',
+    'vpn.bad': 'Invalid value: {field}',
+    'vpn.status': 'Peer status',
+    'vpn.handshake': 'Latest handshake',
+    'vpn.transfer': 'Traffic',
+    'vpn.never': 'never',
+    'vpn.fileError': 'wg0.conf has an error and wg-quick will not load it:',
+    'vpn.confirmKeys': 'New keys mean changing the public key on every peer. Continue?',
+};
+
+return { VPN_EN };
+})();
 __m["i18n/catalog.js"] = (() => {
 const { APP_ES } = __m["i18n/es-ES/app.js"];
 const { APP_EN } = __m["i18n/en-GB/app.js"];
@@ -1700,10 +1765,12 @@ const { ROUTER_ES } = __m["i18n/es-ES/router.js"];
 const { ROUTER_EN } = __m["i18n/en-GB/router.js"];
 const { FIREWALL_ES } = __m["i18n/es-ES/firewall.js"];
 const { FIREWALL_EN } = __m["i18n/en-GB/firewall.js"];
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES };
+const { VPN_ES } = __m["i18n/es-ES/vpn.js"];
+const { VPN_EN } = __m["i18n/en-GB/vpn.js"];
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES };
 const CATALOGS = {
     'es-ES': ES,
-    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN },
+    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN },
 };
 
 return { CATALOGS };
@@ -2691,7 +2758,7 @@ class IpStack {
         const iface = this.host.l3Iface(ifaceName);
         if (!iface?.up)
             return;
-        if (frame.dst !== iface.mac && frame.dst !== BROADCAST_MAC)
+        if (!iface.pointToPoint && frame.dst !== iface.mac && frame.dst !== BROADCAST_MAC)
             return;
         if (frame.arp)
             this.onArp(iface, frame);
@@ -2791,6 +2858,12 @@ class IpStack {
             this.sendVia(egress, out);
         return true;
     }
+    /** Sends a locally generated packet through a given egress (output hook included). */
+    sendRouted(egress, packet) {
+        const out = this.outbound(egress.iface, packet);
+        if (out)
+            this.sendVia(egress, out);
+    }
     sendVia(egress, original) {
         const iface = this.host.l3Iface(egress.iface);
         if (!iface?.up)
@@ -2798,7 +2871,7 @@ class IpStack {
         const packet = this.host.postrouting ? this.host.postrouting(egress.iface, original) : original;
         if (!packet)
             return;
-        if (this.isLocalBroadcast(iface, packet.dst)) {
+        if (iface.pointToPoint || this.isLocalBroadcast(iface, packet.dst)) {
             this.emitIp(egress.iface, BROADCAST_MAC, packet);
             return;
         }
@@ -4388,6 +4461,10 @@ class Host {
     }
     postrouting(iface, packet) {
         return this.kernel.postrouting(iface, packet);
+    }
+    /** WireGuard links (Linux router only). */
+    wgLinks() {
+        return undefined;
     }
     /** Server-side UDP services (DHCP on 67, DNS on 53). Plain hosts ignore them. */
     onUdp(_packet, _iface) {
@@ -21083,6 +21160,8 @@ const UTIL_DOCS = {
     nft: { group: 'red', section: 8, synopsis: 'nft [-a] [-c] [-s] [-f FICHERO] ORDEN...', summary: 'Cortafuegos nftables: add/insert/replace/delete rule, add chain con type/hook/priority/policy, list ruleset, flush ruleset; -f carga un fichero (atómico), -c solo lo comprueba, -a muestra los handles. Lo hecho con nft dura hasta reiniciar: se guarda en /etc/nftables.conf y lo carga nftables.service. Requiere root.' },
     nc: { group: 'red', section: 1, synopsis: 'nc -z [-v] [-u] [-w SEG] HOST PUERTO[-PUERTO]...', summary: 'netcat (OpenBSD): comprueba si un puerto TCP acepta conexiones: «succeeded!» (abierto), «Connection refused» (cerrado o reject) o «timed out» (filtrado con drop). En Netfix solo el modo -z.' },
     nmap: { group: 'red', section: 1, synopsis: 'nmap [-sn] [-Pn] [-p PUERTOS] DESTINO|RED/24|A.B.C.D-E', summary: 'Escaneo de puertos TCP por conexión (open, closed, filtered) y descubrimiento de equipos (-sn: ping y TCP 80/443). Sin -p revisa los puertos habituales. Para comprobar el cortafuegos de tus propios equipos del laboratorio.' },
+    wg: { group: 'red', section: 8, synopsis: 'wg [show [IFACE|all] [CAMPO]] | showconf IFACE | set IFACE ... | setconf|addconf|syncconf IFACE FICHERO | genkey | genpsk | pubkey', summary: 'WireGuard (solo en el router Linux): genkey crea una clave privada y pubkey calcula su pública (X25519, las mismas que el wg real); show muestra el túnel (último handshake, bytes, endpoint aprendido); set cambia puerto, clave y pares (peer CLAVE allowed-ips … endpoint IP:PUERTO persistent-keepalive N | remove). Requiere root.' },
+    'wg-quick': { group: 'red', section: 8, synopsis: 'wg-quick up|down|strip|save IFACE|FICHERO.conf', summary: 'Levanta o baja wg0 a partir de /etc/wireguard/wg0.conf: crea la interfaz, aplica claves y pares, pone Address, añade una ruta por cada AllowedIPs (0.0.0.0/0 = túnel completo) y ejecuta PreUp/PostUp/PreDown/PostDown con bash (%i = interfaz). systemctl enable wg-quick@wg0 lo levanta al arrancar.' },
     dmesg: { group: 'red', section: 1, synopsis: 'dmesg', summary: 'Registro del núcleo: incluye las líneas de las reglas nft con log prefix "…". En Ubuntu solo lo puede leer root (sudo dmesg).' },
     'ssh-copy-id': { group: 'red', synopsis: 'ssh-copy-id [-i FICHERO.pub] [-p PUERTO] [-o OPCIÓN] [-f] [-n] [USUARIO@]HOST', summary: 'Instala la clave pública en ~/.ssh/authorized_keys del servidor (crea ~/.ssh con 700 y el fichero con 600) sin duplicarla.' },
     dhclient: { group: 'red', section: 8, synopsis: 'dhclient [-r] [eth0]', summary: 'Pide (o con -r libera) la concesión DHCP. Requiere root: sudo dhclient.' },
@@ -23980,6 +24059,1198 @@ function maskOf(prefix) {
 
 return { formatMacCisco, IFACE, linuxMac, linuxFiles, describeAddress, maskOf };
 })();
+__m["shells/wg-unit.js"] = (() => {
+const WANTS_DIR = '/etc/systemd/system/multi-user.target.wants';
+const TEMPLATE = '/usr/lib/systemd/system/wg-quick@.service';
+const QUIET = new Map([[1, { write: { kind: 'null' } }], [2, { write: { kind: 'null' } }]]);
+/** `wg-quick@wg0[.service]` → wg0. */
+function wgUnitName(arg) {
+    return /^wg-quick@([a-zA-Z0-9_=+.-]{1,15}?)(?:\.service)?$/.exec(arg ?? '')?.[1];
+}
+const wantsPath = (iface) => `${WANTS_DIR}/wg-quick@${iface}.service`;
+function wgUnitEnabled(fs, iface) {
+    return fs.tryLookup(wantsPath(iface), undefined, false) !== undefined;
+}
+/** Interfaces whose unit is enabled (brought up at boot). */
+function enabledWgUnits(fs) {
+    if (fs.tryLookup(WANTS_DIR)?.kind !== 'dir')
+        return [];
+    return fs.readdir(WANTS_DIR).map((n) => wgUnitName(n)).filter((n) => n !== undefined);
+}
+function status(ctx, host, iface) {
+    const active = host.wgLinks()?.get(iface) !== undefined;
+    ctx.out([
+        `${active ? '●' : '○'} wg-quick@${iface}.service - WireGuard via wg-quick(8) for ${iface}`,
+        `     Loaded: loaded (${TEMPLATE}; ${wgUnitEnabled(ctx.sh.env.fs, iface) ? 'enabled' : 'disabled'}; preset: enabled)`,
+        active ? '     Active: active (exited)' : '     Active: inactive (dead)',
+        '       Docs: man:wg-quick(8)',
+        '             man:wg(8)',
+    ].join('\n') + '\n');
+    return active ? 0 : 3;
+}
+function* start(ctx, host, iface) {
+    if (host.wgLinks()?.get(iface))
+        return 0;
+    const code = yield* ctx.sh.invoke(['wg-quick', 'up', iface], QUIET);
+    if (code === 0)
+        return 0;
+    ctx.err(`Job for wg-quick@${iface}.service failed because the control process exited with error code.\nSee "systemctl status wg-quick@${iface}.service" and "journalctl -xeu wg-quick@${iface}.service" for details.\n`);
+    return 1;
+}
+function* stop(ctx, host, iface) {
+    if (host.wgLinks()?.get(iface))
+        yield* ctx.sh.invoke(['wg-quick', 'down', iface], QUIET);
+    return 0;
+}
+function setEnabled(ctx, iface, on) {
+    const fs = ctx.sh.env.fs;
+    if (on) {
+        if (!wgUnitEnabled(fs, iface)) {
+            fs.mkdir(WANTS_DIR, ctx.cred, true, 0o755);
+            fs.symlink(TEMPLATE, wantsPath(iface), ctx.cred);
+        }
+        ctx.err(`Created symlink ${wantsPath(iface)} → ${TEMPLATE}.\n`);
+    }
+    else if (wgUnitEnabled(fs, iface)) {
+        fs.remove(wantsPath(iface), ctx.cred);
+        ctx.err(`Removed "${wantsPath(iface)}".\n`);
+    }
+}
+/** systemctl VERB wg-quick@IFACE. */
+function* wgUnit(ctx, host, verb, iface, now) {
+    const writes = ['start', 'stop', 'restart', 'reload', 'enable', 'disable'];
+    if (writes.includes(verb) && ctx.cred.uid !== 0) {
+        ctx.err(`Failed to ${verb} wg-quick@${iface}.service: Interactive authentication required.\nSee system logs and 'systemctl status wg-quick@${iface}.service' for details. (Prueba con sudo)\n`);
+        return 1;
+    }
+    switch (verb) {
+        case 'status': return status(ctx, host, iface);
+        case 'is-active':
+            ctx.out(host.wgLinks()?.get(iface) ? 'active\n' : 'inactive\n');
+            return host.wgLinks()?.get(iface) ? 0 : 3;
+        case 'is-enabled':
+            ctx.out(wgUnitEnabled(ctx.sh.env.fs, iface) ? 'enabled\n' : 'disabled\n');
+            return wgUnitEnabled(ctx.sh.env.fs, iface) ? 0 : 1;
+        case 'start': return yield* start(ctx, host, iface);
+        case 'stop': return yield* stop(ctx, host, iface);
+        case 'restart':
+        case 'reload':
+            yield* stop(ctx, host, iface);
+            return yield* start(ctx, host, iface);
+        case 'enable':
+            setEnabled(ctx, iface, true);
+            return now ? yield* start(ctx, host, iface) : 0;
+        case 'disable':
+            setEnabled(ctx, iface, false);
+            return now ? yield* stop(ctx, host, iface) : 0;
+        default:
+            ctx.err(`Unknown command verb '${verb}'.\n`);
+            return 1;
+    }
+}
+
+return { WANTS_DIR, wgUnitName, wgUnitEnabled, enabledWgUnits, wgUnit };
+})();
+__m["core/x25519.js"] = (() => {
+/**
+ * X25519 (RFC 7748) with BigInt: the key agreement WireGuard uses. `wg genkey`/`wg pubkey` therefore
+ * give the same keys as the real tools, and both peers derive the same shared secret.
+ * Constant time is not a goal here: keys only protect traffic inside the simulator.
+ */
+const { fromBase64, toBase64 } = __m["core/sha256.js"];
+const P = (1n << 255n) - 19n;
+const A24 = 121665n;
+const KEY_BYTES = 32;
+const BASE_POINT = 9n;
+const mod = (a) => {
+    const r = a % P;
+    return r >= 0n ? r : r + P;
+};
+function modPow(b, e) {
+    let result = 1n;
+    let base = mod(b);
+    for (let x = e; x > 0n; x >>= 1n) {
+        if (x & 1n)
+            result = (result * base) % P;
+        base = (base * base) % P;
+    }
+    return result;
+}
+function leToInt(bytes) {
+    let v = 0n;
+    for (let i = bytes.length - 1; i >= 0; i--)
+        v = (v << 8n) | BigInt(bytes[i] ?? 0);
+    return v;
+}
+function intToLe(v) {
+    const out = new Uint8Array(KEY_BYTES);
+    let x = v;
+    for (let i = 0; i < KEY_BYTES; i++) {
+        out[i] = Number(x & 0xffn);
+        x >>= 8n;
+    }
+    return out;
+}
+/** RFC 7748 clamping (what `wg genkey` applies to its random bytes). */
+function clamp(k) {
+    const b = Uint8Array.from(k);
+    b[0] = (b[0] ?? 0) & 248;
+    b[31] = ((b[31] ?? 0) & 127) | 64;
+    return b;
+}
+function ladder(k, u) {
+    let [x2, z2, x3, z3] = [1n, 0n, u, 1n];
+    let swap = 0n;
+    for (let t = 254n; t >= 0n; t--) {
+        const kt = (k >> t) & 1n;
+        if (swap ^ kt)
+            [x2, x3, z2, z3] = [x3, x2, z3, z2];
+        swap = kt;
+        const a = mod(x2 + z2);
+        const aa = (a * a) % P;
+        const b = mod(x2 - z2);
+        const bb = (b * b) % P;
+        const e = mod(aa - bb);
+        const da = (mod(x3 - z3) * a) % P;
+        const cb = (mod(x3 + z3) * b) % P;
+        x3 = modPow(da + cb, 2n);
+        z3 = (u * modPow(da - cb, 2n)) % P;
+        x2 = (aa * bb) % P;
+        z2 = (e * mod(aa + A24 * e)) % P;
+    }
+    if (swap)
+        [x2, z2] = [x3, z3];
+    return (x2 * modPow(z2, P - 2n)) % P;
+}
+/** X25519(k, u) on raw 32-byte strings. */
+function x25519(scalar, u) {
+    const uBytes = Uint8Array.from(u);
+    uBytes[31] = (uBytes[31] ?? 0) & 127;
+    return intToLe(ladder(leToInt(clamp(scalar)), mod(leToInt(uBytes))));
+}
+function publicKeyOf(priv) {
+    return x25519(priv, intToLe(BASE_POINT));
+}
+/** A WireGuard key in base64 (44 characters) → bytes, or null when it is not a valid key. */
+function decodeKey(text) {
+    if (!/^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw480]=$/.test(text.trim()))
+        return null;
+    const bytes = fromBase64(text.trim());
+    return bytes && bytes.length === KEY_BYTES ? bytes : null;
+}
+const encodeKey = (bytes) => toBase64(bytes);
+function randomKey() {
+    const out = new Uint8Array(KEY_BYTES);
+    globalThis.crypto.getRandomValues(out);
+    return out;
+}
+/** `wg genkey`: a clamped random private key. */
+const genKey = () => encodeKey(clamp(randomKey()));
+/** `wg pubkey`: null when the input is not a key. */
+function pubKey(privB64) {
+    const priv = decodeKey(privB64);
+    return priv ? encodeKey(publicKeyOf(priv)) : null;
+}
+
+return { clamp, x25519, publicKeyOf, decodeKey, encodeKey, randomKey, genKey, pubKey };
+})();
+__m["net/wg-config.js"] = (() => {
+/**
+ * WireGuard configuration: the `wg setconf` format ([Interface] PrivateKey/ListenPort, [Peer] PublicKey/
+ * PresharedKey/AllowedIPs/Endpoint/PersistentKeepalive) plus the keys wg-quick adds (Address, DNS, MTU,
+ * Table, PreUp/PostUp/PreDown/PostDown, SaveConfig). Immutable records; errors use wg's wording.
+ */
+const { formatIp, parseIp } = __m["core/ip.js"];
+const { decodeKey } = __m["core/x25519.js"];
+const WG_DEFAULT_PORT = 51820;
+const WG_MAX_PEERS = 64;
+const MAX_PORT = 65535;
+const MAX_KEEPALIVE = 65535;
+const MAX_PREFIX = 32;
+const PARSE_ERROR = 'Configuration parsing error';
+function parseCidr(text) {
+    const [addr, len] = text.trim().split('/');
+    const ip = parseIp(addr ?? '');
+    const prefix = len === undefined ? MAX_PREFIX : Number(len);
+    if (ip === null || !Number.isInteger(prefix) || prefix < 0 || prefix > MAX_PREFIX || (len !== undefined && !/^\d+$/.test(len)))
+        return null;
+    return { ip, prefix };
+}
+const cidrText = (c) => `${formatIp(c.ip)}/${c.prefix}`;
+function parseEndpoint(text) {
+    const m = /^(\d+\.\d+\.\d+\.\d+):(\d+)$/.exec(text.trim());
+    const ip = m ? parseIp(m[1] ?? '') : null;
+    const port = Number(m?.[2]);
+    return ip !== null && port >= 1 && port <= MAX_PORT ? { ip, port } : null;
+}
+const keyError = (v) => `Key is not the correct length or format: \`${v}'\n${PARSE_ERROR}`;
+function setPeer(d, change) {
+    const last = d.wg.peers[d.wg.peers.length - 1];
+    if (last)
+        d.wg = { ...d.wg, peers: [...d.wg.peers.slice(0, -1), change(last)] };
+}
+function interfaceKey(d, key, value, quick) {
+    const k = key.toLowerCase();
+    if (k === 'privatekey')
+        return decodeKey(value) ? ((d.wg = { ...d.wg, privateKey: value.trim() }), null) : keyError(value);
+    if (k === 'listenport') {
+        const port = Number(value);
+        return /^\d+$/.test(value) && port <= MAX_PORT ? ((d.wg = { ...d.wg, listenPort: port }), null) : `Listen port is invalid: \`${value}'\n${PARSE_ERROR}`;
+    }
+    if (!quick)
+        return null;
+    const hooks = d.quick.hooks;
+    if (k === 'address') {
+        const list = value.split(',').map((v) => v.trim()).filter(Boolean);
+        const parsed = list.map(parseCidr);
+        const bad = list.find((_, i) => parsed[i] === null);
+        if (bad !== undefined)
+            return `Error: any valid prefix is expected rather than "${bad}".`;
+        d.quick = { ...d.quick, addresses: [...d.quick.addresses, ...parsed.filter((c) => c !== null)] };
+    }
+    else if (k === 'dns')
+        d.quick = { ...d.quick, dns: [...d.quick.dns, ...value.split(',').map((v) => v.trim()).filter(Boolean)] };
+    else if (k === 'mtu')
+        d.quick = { ...d.quick, mtu: Number(value) };
+    else if (k === 'table')
+        d.quick = { ...d.quick, table: value };
+    else if (k === 'saveconfig')
+        d.quick = { ...d.quick, saveConfig: value === 'true' };
+    else if (k === 'preup')
+        d.quick = { ...d.quick, hooks: { ...hooks, preUp: [...hooks.preUp, value] } };
+    else if (k === 'postup')
+        d.quick = { ...d.quick, hooks: { ...hooks, postUp: [...hooks.postUp, value] } };
+    else if (k === 'predown')
+        d.quick = { ...d.quick, hooks: { ...hooks, preDown: [...hooks.preDown, value] } };
+    else if (k === 'postdown')
+        d.quick = { ...d.quick, hooks: { ...hooks, postDown: [...hooks.postDown, value] } };
+    return null;
+}
+const QUICK_KEYS = ['address', 'dns', 'mtu', 'table', 'saveconfig', 'preup', 'postup', 'predown', 'postdown'];
+function peerKey(d, key, value) {
+    const k = key.toLowerCase();
+    if (k === 'publickey')
+        return decodeKey(value) ? (setPeer(d, (p) => ({ ...p, publicKey: value.trim() })), null) : keyError(value);
+    if (k === 'presharedkey')
+        return decodeKey(value) ? (setPeer(d, (p) => ({ ...p, presharedKey: value.trim() })), null) : keyError(value);
+    if (k === 'allowedips') {
+        const list = value.split(',').map((v) => v.trim()).filter(Boolean);
+        const parsed = list.map(parseCidr);
+        const bad = list.find((_, i) => parsed[i] === null);
+        if (bad !== undefined)
+            return `Unable to parse IP address: \`${bad}'\n${PARSE_ERROR}`;
+        setPeer(d, (p) => ({ ...p, allowedIps: [...p.allowedIps, ...parsed.filter((c) => c !== null)] }));
+        return null;
+    }
+    if (k === 'endpoint') {
+        const ep = parseEndpoint(value);
+        return ep ? (setPeer(d, (p) => ({ ...p, endpoint: ep })), null) : `Name or service not known: \`${value}'\n${PARSE_ERROR}`;
+    }
+    if (k === 'persistentkeepalive') {
+        const n = value === 'off' ? 0 : Number(value);
+        if (!/^(\d+|off)$/.test(value) || n > MAX_KEEPALIVE)
+            return `Persistent keepalive interval is neither 0/off nor 1-65535: \`${value}'\n${PARSE_ERROR}`;
+        setPeer(d, (p) => ({ ...p, keepalive: n || undefined }));
+        return null;
+    }
+    return '';
+}
+function parseLine(d, section, raw, quick) {
+    const eq = raw.indexOf('=');
+    const key = eq < 0 ? '' : raw.slice(0, eq).trim();
+    const value = eq < 0 ? '' : raw.slice(eq + 1).trim();
+    if (eq < 0 || section === 'none')
+        return `Line unrecognized: \`${raw.replace(/\s+/g, '')}'\n${PARSE_ERROR}`;
+    const err = section === 'interface' ? interfaceKey(d, key, value, quick) : peerKey(d, key, value);
+    const known = section === 'interface' ? ['privatekey', 'listenport', 'fwmark', ...(quick ? QUICK_KEYS : [])] : null;
+    if (err === '' || (known && !known.includes(key.toLowerCase())))
+        return `Line unrecognized: \`${raw.replace(/\s+/g, '')}'\n${PARSE_ERROR}`;
+    return err;
+}
+/** Parses a wg-quick file (`quick`) or a `wg setconf` file; returns the config or the error text. */
+function parseWgConf(text, quick = true) {
+    const d = { wg: { peers: [] }, quick: { addresses: [], dns: [], hooks: { preUp: [], postUp: [], preDown: [], postDown: [] }, saveConfig: false } };
+    let section = 'none';
+    for (const line of text.split('\n')) {
+        const raw = line.replace(/#.*$/, '').trim();
+        if (!raw)
+            continue;
+        if (/^\[interface\]$/i.test(raw)) {
+            section = 'interface';
+            continue;
+        }
+        if (/^\[peer\]$/i.test(raw)) {
+            if (d.wg.peers.length >= WG_MAX_PEERS)
+                return `Too many peers\n${PARSE_ERROR}`;
+            section = 'peer';
+            d.wg = { ...d.wg, peers: [...d.wg.peers, { publicKey: '', allowedIps: [] }] };
+            continue;
+        }
+        const err = parseLine(d, section, raw, quick);
+        if (err)
+            return err;
+    }
+    if (d.wg.peers.some((p) => !p.publicKey))
+        return `A peer is missing a public key\n${PARSE_ERROR}`;
+    return { wg: d.wg, ...d.quick };
+}
+/** `wg showconf`: the running configuration in setconf format. */
+function formatWgConf(c) {
+    const head = ['[Interface]', ...(c.listenPort !== undefined ? [`ListenPort = ${c.listenPort}`] : []), ...(c.privateKey ? [`PrivateKey = ${c.privateKey}`] : [])];
+    const peers = c.peers.flatMap((p) => [
+        '', '[Peer]', `PublicKey = ${p.publicKey}`,
+        ...(p.presharedKey ? [`PresharedKey = ${p.presharedKey}`] : []),
+        ...(p.allowedIps.length ? [`AllowedIPs = ${p.allowedIps.map(cidrText).join(', ')}`] : []),
+        ...(p.endpoint ? [`Endpoint = ${formatIp(p.endpoint.ip)}:${p.endpoint.port}`] : []),
+        ...(p.keepalive ? [`PersistentKeepalive = ${p.keepalive}`] : []),
+    ]);
+    return [...head, ...peers];
+}
+function inCidr(c, ip) {
+    if (c.prefix === 0)
+        return true;
+    const mask = (0xffffffff << (MAX_PREFIX - c.prefix)) >>> 0;
+    return ((ip & mask) >>> 0) === ((c.ip & mask) >>> 0);
+}
+function networkCidr(c) {
+    const mask = c.prefix === 0 ? 0 : (0xffffffff << (MAX_PREFIX - c.prefix)) >>> 0;
+    return { ip: (c.ip & mask) >>> 0, prefix: c.prefix };
+}
+
+return { WG_DEFAULT_PORT, WG_MAX_PEERS, parseCidr, cidrText, parseEndpoint, parseWgConf, formatWgConf, inCidr, networkCidr };
+})();
+__m["shells/wg-format.js"] = (() => {
+const { cidrText } = __m["net/wg-config.js"];
+const { formatIp } = __m["core/ip.js"];
+const KIB = 1024;
+const UNITS = [[365 * 86400, 'year'], [86400, 'day'], [3600, 'hour'], [60, 'minute'], [1, 'second']];
+const MS = 1000;
+/** `1 minute, 5 seconds ago` (wg's ago()). */
+function ago(nowMs, thenMs) {
+    let left = Math.max(0, Math.floor((nowMs - thenMs) / MS));
+    if (left === 0)
+        return 'Now';
+    const parts = [];
+    for (const [size, name] of UNITS) {
+        const n = Math.floor(left / size);
+        left -= n * size;
+        if (n)
+            parts.push(`${n} ${name}${n === 1 ? '' : 's'}`);
+    }
+    return `${parts.join(', ')} ago`;
+}
+/** `92 B`, `1.24 KiB`… (wg's bytes()). */
+function bytes(n) {
+    if (n < KIB)
+        return `${n} B`;
+    const units = ['KiB', 'MiB', 'GiB', 'TiB'];
+    let v = n / KIB;
+    let i = 0;
+    while (v >= KIB && i < units.length - 1) {
+        v /= KIB;
+        i++;
+    }
+    return `${v.toFixed(2)} ${units[i]}`;
+}
+const endpointText = (link, p) => {
+    const ep = link.peers.get(p.publicKey)?.endpoint ?? p.endpoint;
+    return ep ? `${formatIp(ep.ip)}:${ep.port}` : undefined;
+};
+function peerBlock(link, p, now) {
+    const st = link.peers.get(p.publicKey);
+    const ep = endpointText(link, p);
+    return [
+        '',
+        `peer: ${p.publicKey}`,
+        ...(p.presharedKey ? ['  preshared key: (hidden)'] : []),
+        ...(ep ? [`  endpoint: ${ep}`] : []),
+        `  allowed ips: ${p.allowedIps.length ? p.allowedIps.map(cidrText).join(', ') : '(none)'}`,
+        ...(st?.lastHandshake ? [`  latest handshake: ${ago(now, st.lastHandshake)}`] : []),
+        ...(st && (st.rx || st.tx) ? [`  transfer: ${bytes(st.rx)} received, ${bytes(st.tx)} sent`] : []),
+        ...(p.keepalive ? [`  persistent keepalive: every ${p.keepalive} second${p.keepalive === 1 ? '' : 's'}`] : []),
+    ];
+}
+function showLink(link, now) {
+    const pub = link.publicKey();
+    return [
+        `interface: ${link.name}`,
+        ...(pub ? [`  public key: ${pub}`, '  private key: (hidden)'] : []),
+        `  listening port: ${link.listenPort}`,
+        ...link.config.peers.flatMap((p) => peerBlock(link, p, now)),
+    ];
+}
+const SHOW_FIELDS = ['public-key', 'private-key', 'listen-port', 'fwmark', 'peers', 'preshared-keys', 'endpoints', 'allowed-ips', 'latest-handshakes', 'transfer', 'persistent-keepalive', 'dump'];
+function peerField(link, p, field) {
+    const st = link.peers.get(p.publicKey);
+    switch (field) {
+        case 'preshared-keys': return `${p.publicKey}\t${p.presharedKey ?? '(none)'}`;
+        case 'endpoints': return `${p.publicKey}\t${endpointText(link, p) ?? '(none)'}`;
+        case 'allowed-ips': return `${p.publicKey}\t${p.allowedIps.length ? p.allowedIps.map(cidrText).join(' ') : '(none)'}`;
+        case 'latest-handshakes': return `${p.publicKey}\t${Math.floor((st?.lastHandshake ?? 0) / MS)}`;
+        case 'transfer': return `${p.publicKey}\t${st?.rx ?? 0}\t${st?.tx ?? 0}`;
+        case 'persistent-keepalive': return `${p.publicKey}\t${p.keepalive ?? 'off'}`;
+        case 'dump': return [p.publicKey, p.presharedKey ?? '(none)', endpointText(link, p) ?? '(none)', p.allowedIps.map(cidrText).join(',') || '(none)', Math.floor((st?.lastHandshake ?? 0) / MS), st?.rx ?? 0, st?.tx ?? 0, p.keepalive ?? 'off'].join('\t');
+        default: return p.publicKey;
+    }
+}
+/** `wg show IFACE FIELD` lines; `prefix` adds the interface name (wg show all FIELD). */
+function showField(link, field, prefix) {
+    const pre = prefix ? `${link.name}\t` : '';
+    if (field === 'public-key')
+        return [`${pre}${link.publicKey() ?? '(none)'}`];
+    if (field === 'private-key')
+        return [`${pre}${link.config.privateKey ?? '(none)'}`];
+    if (field === 'listen-port')
+        return [`${pre}${link.listenPort}`];
+    if (field === 'fwmark')
+        return [`${pre}off`];
+    const head = field === 'dump' ? [`${pre}${[link.config.privateKey ?? '(none)', link.publicKey() ?? '(none)', link.listenPort, 'off'].join('\t')}`] : [];
+    return [...head, ...link.config.peers.map((p) => `${pre}${peerField(link, p, field)}`)];
+}
+
+return { ago, bytes, showLink, SHOW_FIELDS, showField };
+})();
+__m["shells/wg-cmd.js"] = (() => {
+const { formatWgConf, parseCidr, parseEndpoint, parseWgConf, WG_MAX_PEERS } = __m["net/wg-config.js"];
+const { decodeKey, encodeKey, genKey, pubKey, randomKey } = __m["core/x25519.js"];
+const { SHOW_FIELDS, showField, showLink } = __m["shells/wg-format.js"];
+const { FsError } = __m["bash/vfs.js"];
+const USAGE = `Usage: wg <cmd> [<args>]
+
+Available subcommands:
+  show: Shows the current configuration and device information
+  showconf: Shows the current configuration of a given WireGuard interface, for use with \`setconf'
+  set: Change the current configuration, add peers, remove peers, or change peers
+  setconf: Applies a configuration file to a WireGuard interface
+  addconf: Appends a configuration file to a WireGuard interface
+  syncconf: Synchronizes a configuration file to a WireGuard interface
+  genkey: Generates a new private key and writes it to stdout
+  genpsk: Generates a new preshared key and writes it to stdout
+  pubkey: Reads a private key from stdin and writes a public key to stdout
+You may pass \`--help' to any of these subcommands to view usage.
+`;
+const SET_USAGE = 'Usage: wg set <interface> [listen-port <port>] [fwmark <mark>] [private-key <file path>] [peer <base64 public key> [remove] [preshared-key <file path>] [endpoint <ip>:<port>] [persistent-keepalive <interval seconds>] [allowed-ips <ip1>/<cidr1>[,<ip2>/<cidr2>]...] ]...\n';
+const out = (ctx, lines) => {
+    if (lines.length)
+        ctx.out(`${lines.join('\n')}\n`);
+};
+function readFileAs(ctx, path) {
+    try {
+        return ctx.sh.env.fs.readFile(ctx.resolve(path), ctx.cred);
+    }
+    catch (e) {
+        if (e instanceof FsError)
+            return null;
+        throw e;
+    }
+}
+/** The link, or null after printing wg's error (no device / not root). */
+function linkOf(ctx, host, name) {
+    if (ctx.cred.uid !== 0) {
+        ctx.err('Unable to access interface: Operation not permitted\n');
+        return null;
+    }
+    const link = name ? host.wgLinks()?.get(name) : undefined;
+    if (!link) {
+        ctx.err('Unable to access interface: No such device\n');
+        return null;
+    }
+    return link;
+}
+function show(ctx, host, args) {
+    const links = [...(host.wgLinks()?.links.values() ?? [])];
+    const target = args[0] ?? 'all';
+    const field = args[1];
+    if (field !== undefined && !SHOW_FIELDS.includes(field)) {
+        ctx.err(`Usage: wg show { <interface> | all | interfaces } [public-key | private-key | listen-port | fwmark | peers | preshared-keys | endpoints | allowed-ips | latest-handshakes | transfer | persistent-keepalive | dump]\n`);
+        return 1;
+    }
+    if (ctx.cred.uid !== 0) {
+        ctx.err('Unable to access interface: Operation not permitted\n');
+        return 1;
+    }
+    if (target === 'interfaces') {
+        out(ctx, links.length ? [links.map((l) => l.name).join(' ')] : []);
+        return 0;
+    }
+    const chosen = target === 'all' ? links : links.filter((l) => l.name === target);
+    if (target !== 'all' && !chosen.length) {
+        ctx.err('Unable to access interface: No such device\n');
+        return 1;
+    }
+    const now = ctx.sh.env.now();
+    const blocks = chosen.map((l) => (field ? showField(l, field, target === 'all') : showLink(l, now)));
+    out(ctx, field ? blocks.flat() : blocks.flatMap((b, i) => (i ? ['', ...b] : b)));
+    return 0;
+}
+function* pubkeyCmd(ctx) {
+    const text = (yield* ctx.readAll()).trim();
+    const pub = pubKey(text);
+    if (!pub) {
+        ctx.err('pubkey: Key is not the correct length or format\n');
+        return 1;
+    }
+    ctx.out(`${pub}\n`);
+    return 0;
+}
+function applyFile(ctx, link, verb, path) {
+    if (path === undefined) {
+        ctx.err(`Usage: wg ${verb} <interface> <configuration filename>\n`);
+        return 1;
+    }
+    const text = readFileAs(ctx, path);
+    if (text === null) {
+        ctx.err(`fopen: No such file or directory\n`);
+        return 1;
+    }
+    const parsed = parseWgConf(text, verb === 'syncconf' ? true : false);
+    if (typeof parsed === 'string') {
+        ctx.err(`${parsed}\n`);
+        return 1;
+    }
+    const next = parsed.wg;
+    if (verb === 'addconf') {
+        const keep = link.config.peers.filter((p) => !next.peers.some((n) => n.publicKey === p.publicKey));
+        link.setConfig({ privateKey: next.privateKey ?? link.config.privateKey, listenPort: next.listenPort ?? link.config.listenPort, peers: [...keep, ...next.peers].slice(0, WG_MAX_PEERS) });
+    }
+    else
+        link.setConfig(next);
+    return 0;
+}
+function updatePeer(s, change) {
+    s.cfg = { ...s.cfg, peers: s.cfg.peers.map((p) => (p.publicKey === s.peer ? change(p) : p)) };
+}
+/** One `wg set` keyword with its value; returns an error message or null. */
+function setWord(ctx, s, word, value) {
+    if (word === 'peer') {
+        if (!value || !decodeKey(value))
+            return `Key is not the correct length or format: \`${value ?? ''}'`;
+        s.peer = value;
+        if (!s.cfg.peers.some((p) => p.publicKey === value))
+            s.cfg = { ...s.cfg, peers: [...s.cfg.peers, { publicKey: value, allowedIps: [] }] };
+        return null;
+    }
+    if (value === undefined)
+        return SET_USAGE.trim();
+    if (word === 'listen-port')
+        return /^\d+$/.test(value) && Number(value) <= 65535 ? ((s.cfg = { ...s.cfg, listenPort: Number(value) }), null) : `Listen port is invalid: \`${value}'`;
+    if (word === 'fwmark')
+        return null;
+    if (word === 'private-key' || word === 'preshared-key') {
+        const key = readFileAs(ctx, value)?.trim();
+        if (key === undefined || !decodeKey(key))
+            return `Key is not the correct length or format: \`${value}'`;
+        if (word === 'private-key')
+            s.cfg = { ...s.cfg, privateKey: key };
+        else
+            updatePeer(s, (p) => ({ ...p, presharedKey: key }));
+        return null;
+    }
+    if (!s.peer)
+        return SET_USAGE.trim();
+    if (word === 'endpoint') {
+        const ep = parseEndpoint(value);
+        return ep ? (updatePeer(s, (p) => ({ ...p, endpoint: ep })), null) : `Name or service not known: \`${value}'`;
+    }
+    if (word === 'persistent-keepalive') {
+        const n = value === 'off' ? 0 : Number(value);
+        return /^(\d+|off)$/.test(value) && n <= 65535 ? (updatePeer(s, (p) => ({ ...p, keepalive: n || undefined })), null) : `Persistent keepalive interval is neither 0/off nor 1-65535: \`${value}'`;
+    }
+    if (word === 'allowed-ips') {
+        const list = value.split(',').map((x) => x.trim()).filter(Boolean).map(parseCidr);
+        if (list.some((c) => c === null))
+            return `Unable to parse IP address: \`${value}'`;
+        updatePeer(s, (p) => ({ ...p, allowedIps: list.filter((c) => c !== null) }));
+        return null;
+    }
+    return SET_USAGE.trim();
+}
+function setCmd(ctx, link, args) {
+    const s = { cfg: link.config };
+    for (let i = 0; i < args.length; i++) {
+        const word = args[i] ?? '';
+        if (word === 'remove') {
+            if (!s.peer) {
+                ctx.err(SET_USAGE);
+                return 1;
+            }
+            s.cfg = { ...s.cfg, peers: s.cfg.peers.filter((p) => p.publicKey !== s.peer) };
+            continue;
+        }
+        const err = setWord(ctx, s, word, args[i + 1]);
+        if (err) {
+            ctx.err(`${err}\n`);
+            return 1;
+        }
+        i++;
+    }
+    if (s.cfg.peers.length > WG_MAX_PEERS) {
+        ctx.err('Too many peers\n');
+        return 1;
+    }
+    link.setConfig(s.cfg);
+    return 0;
+}
+function wg(host) {
+    return function* run(ctx) {
+        const [cmd = 'show', ...args] = ctx.argv.slice(1);
+        if (cmd === 'genkey') {
+            ctx.out(`${genKey()}\n`);
+            return 0;
+        }
+        if (cmd === 'genpsk') {
+            ctx.out(`${encodeKey(randomKey())}\n`);
+            return 0;
+        }
+        if (cmd === 'pubkey')
+            return yield* pubkeyCmd(ctx);
+        if (cmd === 'show')
+            return show(ctx, host, args);
+        if (cmd === '--help' || cmd === '-h' || cmd === 'help') {
+            ctx.out(USAGE);
+            return 0;
+        }
+        if (!['showconf', 'set', 'setconf', 'addconf', 'syncconf'].includes(cmd)) {
+            ctx.err(`Invalid subcommand: \`${cmd}'\n${USAGE}`);
+            return 1;
+        }
+        const link = linkOf(ctx, host, args[0]);
+        if (!link)
+            return 1;
+        if (cmd === 'showconf') {
+            out(ctx, formatWgConf(link.config));
+            return 0;
+        }
+        if (cmd === 'set')
+            return setCmd(ctx, link, args.slice(1));
+        return applyFile(ctx, link, cmd, args[1]);
+    };
+}
+
+return { readFileAs, wg };
+})();
+__m["devices/wireguard.js"] = (() => {
+const { inCidr, WG_DEFAULT_PORT } = __m["net/wg-config.js"];
+const { decodeKey, encodeKey, publicKeyOf, x25519 } = __m["core/x25519.js"];
+const { sha256, toBase64, utf8 } = __m["core/sha256.js"];
+const REKEY_TIMEOUT_MS = 5_000;
+const REJECT_AFTER_MS = 180_000;
+const MAX_QUEUE = 16;
+const SIZE = { init: 148, resp: 92, keepalive: 32, overhead: 32 };
+const MS = 1000;
+/** Rough size of an IPv4 packet on the wire (for `transfer:`). */
+function packetSize(p) {
+    const IP = 20;
+    if (p.tcp)
+        return IP + 20 + (p.tcp.data ? 64 : 0);
+    if (p.udp)
+        return IP + 8 + 64;
+    return IP + 64;
+}
+function randomIndex() {
+    const out = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(out);
+    return (out[0] ?? 1) || 1;
+}
+class WgInterface {
+    name;
+    config = { peers: [] };
+    addresses = [];
+    mtu = 1420;
+    /** `ip link set wg0 up` (wg-quick does it after configuring). */
+    up = false;
+    peers = new Map();
+    host;
+    generation = 0;
+    constructor(name, host) {
+        this.name = name;
+        this.host = host;
+    }
+    get listenPort() {
+        return this.config.listenPort ?? WG_DEFAULT_PORT;
+    }
+    publicKey() {
+        const priv = this.config.privateKey ? decodeKey(this.config.privateKey) : null;
+        return priv ? encodeKey(publicKeyOf(priv)) : undefined;
+    }
+    /** `wg setconf`/`wg set`: new configuration; peers that stay keep their sessions. */
+    setConfig(next) {
+        this.config = next;
+        for (const key of [...this.peers.keys()])
+            if (!next.peers.some((p) => p.publicKey === key))
+                this.peers.delete(key);
+        for (const p of next.peers) {
+            const st = this.state(p.publicKey);
+            if (p.endpoint)
+                st.endpoint = p.endpoint;
+        }
+        this.startTimers();
+    }
+    state(key) {
+        const found = this.peers.get(key);
+        if (found)
+            return found;
+        const fresh = { queue: [], rx: 0, tx: 0, counter: 0 };
+        this.peers.set(key, fresh);
+        return fresh;
+    }
+    /** Stops keepalives and drops sessions (`wg-quick down`, `ip link del`). */
+    shutdown() {
+        this.generation++;
+        this.peers.clear();
+    }
+    /** Cryptokey routing: the peer whose AllowedIPs contains the address most specifically. */
+    peerFor(ip) {
+        let best;
+        for (const peer of this.config.peers) {
+            for (const c of peer.allowedIps)
+                if (inCidr(c, ip) && (!best || c.prefix > best.prefix))
+                    best = { peer, prefix: c.prefix };
+        }
+        return best?.peer;
+    }
+    /** Every AllowedIPs network (the routes wg-quick installs). */
+    allowedNets() {
+        return this.config.peers.flatMap((p) => p.allowedIps);
+    }
+    /** A packet routed into wg0. false = no peer for it (ENOKEY). */
+    send(inner) {
+        const peer = this.peerFor(inner.dst);
+        if (!peer)
+            return false;
+        const st = this.state(peer.publicKey);
+        if (this.fresh(st))
+            this.transmit(st, inner);
+        else {
+            st.queue = [...st.queue.slice(-(MAX_QUEUE - 1)), inner];
+            this.initiate(peer, st);
+        }
+        return true;
+    }
+    fresh(st) {
+        return st.session !== undefined && this.host.now() - st.session.established < REJECT_AFTER_MS;
+    }
+    transmit(st, inner) {
+        if (!st.session || !st.endpoint)
+            return;
+        st.counter += 1;
+        const msg = inner
+            ? { kind: 'data', receiver: st.session.remote, counter: st.counter, inner }
+            : { kind: 'keepalive', receiver: st.session.remote, counter: st.counter };
+        st.tx += inner ? SIZE.overhead + packetSize(inner) : SIZE.keepalive;
+        this.host.sendUdp(st.endpoint.ip, st.endpoint.port, this.listenPort, msg);
+    }
+    shared(peerKey) {
+        const priv = this.config.privateKey ? decodeKey(this.config.privateKey) : null;
+        const pub = decodeKey(peerKey);
+        return priv && pub ? toBase64(x25519(priv, pub)) : undefined;
+    }
+    proof(peer, kind, sender, receiver = 0) {
+        const shared = this.shared(peer.publicKey);
+        if (!shared)
+            return undefined;
+        return toBase64(sha256(utf8(`netfix-wg|${kind}|${shared}|${peer.presharedKey ?? ''}|${sender}|${receiver}`)));
+    }
+    initiate(peer, st) {
+        const now = this.host.now();
+        const me = this.publicKey();
+        if (!st.endpoint || !me || (st.pending && now - st.pending.at < REKEY_TIMEOUT_MS))
+            return;
+        const sender = randomIndex();
+        const proof = this.proof(peer, 'init', sender);
+        if (!proof)
+            return;
+        st.pending = { sender, at: now };
+        st.tx += SIZE.init;
+        this.host.sendUdp(st.endpoint.ip, st.endpoint.port, this.listenPort, { kind: 'initiation', sender, publicKey: me, proof });
+    }
+    /** A WireGuard datagram from `src:sport` to our listen port. */
+    receive(src, sport, msg) {
+        if (msg.kind === 'initiation')
+            this.onInitiation({ ip: src, port: sport }, msg);
+        else if (msg.kind === 'response')
+            this.onResponse({ ip: src, port: sport }, msg);
+        else
+            this.onData({ ip: src, port: sport }, msg);
+    }
+    onInitiation(from, msg) {
+        const peer = this.config.peers.find((p) => p.publicKey === msg.publicKey);
+        const me = this.publicKey();
+        if (!peer || !me || this.proof(peer, 'init', msg.sender) !== msg.proof)
+            return;
+        const st = this.state(peer.publicKey);
+        const local = randomIndex();
+        st.endpoint = from;
+        st.session = { local, remote: msg.sender, established: this.host.now() };
+        st.lastHandshake = this.host.now();
+        st.pending = undefined;
+        st.rx += SIZE.init;
+        st.tx += SIZE.resp;
+        this.host.sendUdp(from.ip, from.port, this.listenPort, { kind: 'response', sender: local, receiver: msg.sender, publicKey: me, proof: this.proof(peer, 'resp', local, msg.sender) ?? '' });
+        this.flush(st);
+    }
+    onResponse(from, msg) {
+        const peer = this.config.peers.find((p) => p.publicKey === msg.publicKey);
+        if (!peer)
+            return;
+        const st = this.state(peer.publicKey);
+        if (st.pending?.sender !== msg.receiver || this.proof(peer, 'resp', msg.sender, msg.receiver) !== msg.proof)
+            return;
+        st.endpoint = from;
+        st.session = { local: msg.receiver, remote: msg.sender, established: this.host.now() };
+        st.lastHandshake = this.host.now();
+        st.pending = undefined;
+        st.rx += SIZE.resp;
+        this.flush(st);
+        if (!st.queue.length)
+            this.transmit(st, undefined);
+    }
+    flush(st) {
+        const queued = st.queue;
+        st.queue = [];
+        for (const p of queued)
+            this.transmit(st, p);
+    }
+    onData(from, msg) {
+        const entry = [...this.peers.entries()].find(([, s]) => s.session?.local === msg.receiver);
+        const peer = entry && this.config.peers.find((p) => p.publicKey === entry[0]);
+        if (!entry || !peer)
+            return;
+        const st = entry[1];
+        st.endpoint = from;
+        if (msg.kind === 'keepalive') {
+            st.rx += SIZE.keepalive;
+            return;
+        }
+        st.rx += SIZE.overhead + packetSize(msg.inner);
+        if (!peer.allowedIps.some((c) => inCidr(c, msg.inner.src)))
+            return;
+        this.host.receiveInner(this.name, msg.inner);
+    }
+    // ------------------------------------------------------------ persistent keepalive
+    startTimers() {
+        const gen = ++this.generation;
+        for (const peer of this.config.peers) {
+            if (peer.keepalive)
+                this.keepaliveLoop(peer.publicKey, peer.keepalive * MS, gen, 0);
+        }
+    }
+    keepaliveLoop(key, every, gen, delay) {
+        this.host.schedule(delay, () => {
+            if (gen !== this.generation)
+                return;
+            const peer = this.config.peers.find((p) => p.publicKey === key);
+            if (!peer?.keepalive)
+                return;
+            const st = this.state(key);
+            if (this.fresh(st))
+                this.transmit(st, undefined);
+            else
+                this.initiate(peer, st);
+            this.keepaliveLoop(key, every, gen, every);
+        });
+    }
+}
+
+return { REKEY_TIMEOUT_MS, REJECT_AFTER_MS, packetSize, WgInterface };
+})();
+__m["devices/wg-manager.js"] = (() => {
+const { inCidr, networkCidr } = __m["net/wg-config.js"];
+const { lookupRoute } = __m["devices/host-nics.js"];
+const { WgInterface } = __m["devices/wireguard.js"];
+const { inSubnet } = __m["core/ip.js"];
+const WG_TABLE = 51820;
+const MAX_LINKS = 8;
+const MAX_DEV_ROUTES = 64;
+const EXISTS = 'RTNETLINK answers: File exists';
+class WgManager {
+    links = new Map();
+    devRoutes = [];
+    host;
+    changed;
+    constructor(host, changed) {
+        this.host = host;
+        this.changed = changed;
+    }
+    get(name) {
+        return this.links.get(name);
+    }
+    add(name) {
+        if (this.links.has(name))
+            return EXISTS;
+        if (!/^wg\d{1,2}$/.test(name))
+            return `Netfix: only WireGuard links named wgN can be created ("${name}").`;
+        if (this.links.size >= MAX_LINKS)
+            return 'RTNETLINK answers: No buffer space available';
+        this.links.set(name, new WgInterface(name, this.host));
+        this.changed();
+        return null;
+    }
+    remove(name) {
+        const link = this.links.get(name);
+        if (!link)
+            return `Cannot find device "${name}"`;
+        link.shutdown();
+        this.links.delete(name);
+        this.devRoutes = this.devRoutes.filter((r) => r.dev !== name);
+        this.changed();
+        return null;
+    }
+    setUp(name, up) {
+        const link = this.links.get(name);
+        if (!link || link.up === up)
+            return;
+        link.up = up;
+        this.changed();
+    }
+    addAddress(name, c) {
+        const link = this.links.get(name);
+        if (!link)
+            return `Cannot find device "${name}"`;
+        if (link.addresses.some((a) => a.ip === c.ip && a.prefix === c.prefix))
+            return EXISTS;
+        link.addresses = [...link.addresses, c];
+        this.changed();
+        return null;
+    }
+    delAddress(name, c) {
+        const link = this.links.get(name);
+        if (!link)
+            return `Cannot find device "${name}"`;
+        const keep = c ? link.addresses.filter((a) => a.ip !== c.ip) : [];
+        if (c && keep.length === link.addresses.length)
+            return 'RTNETLINK answers: Cannot assign requested address';
+        link.addresses = keep;
+        this.changed();
+        return null;
+    }
+    addRoute(r) {
+        if (!this.links.has(r.dev))
+            return `Cannot find device "${r.dev}"`;
+        const net = networkCidr({ ip: r.net, prefix: r.prefix });
+        if (this.devRoutes.some((x) => x.net === net.ip && x.prefix === r.prefix && (x.table ?? 0) === (r.table ?? 0)))
+            return EXISTS;
+        if (this.devRoutes.length >= MAX_DEV_ROUTES)
+            return 'RTNETLINK answers: No buffer space available';
+        this.devRoutes = [...this.devRoutes, { ...r, net: net.ip }];
+        this.changed();
+        return null;
+    }
+    delRoute(net, prefix, table) {
+        const before = this.devRoutes.length;
+        this.devRoutes = this.devRoutes.filter((x) => !(x.net === net && x.prefix === prefix && (table === undefined || (x.table ?? 0) === table)));
+        if (this.devRoutes.length === before)
+            return 'RTNETLINK answers: No such process';
+        this.changed();
+        return null;
+    }
+    virtualLinks() {
+        return [...this.links.values()].map((l) => ({ name: l.name, up: l.up, mtu: l.mtu, addresses: l.addresses }));
+    }
+    l3Ifaces() {
+        return [...this.links.values()].map((l) => ({ name: l.name, mac: '', addrs: l.addresses, up: l.up, pointToPoint: true }));
+    }
+    /** A packet routed into a wg link: false when no peer's AllowedIPs covers it. */
+    transmit(name, packet) {
+        const link = this.links.get(name);
+        return link?.up ? link.send(packet) : false;
+    }
+    liveRoutes(table) {
+        return this.devRoutes.filter((r) => this.links.get(r.dev)?.up && (table === 'all' || r.table === undefined));
+    }
+    /**
+     * Longest prefix over connected NICs, wg addresses, device routes and static routes; then wg-quick's
+     * full-tunnel table (unless `table` is 'main', as for WireGuard's own datagrams) and the gateway.
+     */
+    route(dst, inputs, table) {
+        const connected = lookupRoute(inputs.nics, [], undefined, dst);
+        if (connected)
+            return connected;
+        const wgNet = [...this.links.values()].find((l) => l.up && l.addresses.some((a) => inCidr(a, dst)));
+        if (wgNet)
+            return { iface: wgNet.name, nextHop: dst };
+        const dev = this.liveRoutes('main').filter((r) => r.prefix > 0 && inCidr({ ip: r.net, prefix: r.prefix }, dst)).sort((a, b) => b.prefix - a.prefix)[0];
+        const st = [...inputs.statics].filter((r) => inSubnet(dst, r.net, r.prefix)).sort((a, b) => b.prefix - a.prefix)[0];
+        if (dev && (!st || dev.prefix >= st.prefix))
+            return { iface: dev.dev, nextHop: dst };
+        if (st)
+            return lookupRoute(inputs.nics, [st], undefined, dst);
+        const full = table === 'all' ? this.liveRoutes('all').find((r) => r.prefix === 0) : undefined;
+        if (full)
+            return { iface: full.dev, nextHop: dst };
+        return lookupRoute(inputs.nics, [], inputs.gateway, dst);
+    }
+}
+
+return { WG_TABLE, WgManager };
+})();
+__m["shells/wg-quick.js"] = (() => {
+const { WG_TABLE } = __m["devices/wg-manager.js"];
+const { cidrText, formatWgConf, inCidr, networkCidr, parseWgConf } = __m["net/wg-config.js"];
+const { readFileAs } = __m["shells/wg-cmd.js"];
+const WG_DIR = '/etc/wireguard';
+const USAGE = `Usage: wg-quick [ up | down | save | strip ] [ CONFIG_FILE | INTERFACE ]
+
+  CONFIG_FILE is a configuration file, whose filename is the interface name
+  followed by \`.conf'. Otherwise, INTERFACE is an interface name, with
+  configuration found at ${WG_DIR}/INTERFACE.conf. It is to be readable
+  by wg(8)'s \`setconf' sub-command, with the exception of the following additions
+  to the [Interface] section, which are handled by wg-quick:
+
+  - Address: may be specified one or more times and contains one or more
+    IP addresses (with an optional CIDR mask) to be set for the interface.
+  - DNS: an optional DNS server to use while the device is up.
+  - MTU: an optional MTU for the interface; if unspecified, auto-calculated.
+  - Table: an optional routing table to which routes will be added.
+  - PreUp, PostUp, PreDown, PostDown: script snippets which will be executed
+    by bash(1) at the corresponding phases of the link, most commonly used
+    to configure DNS. The string \`%i' is expanded to INTERFACE.
+  - SaveConfig: if set to \`true', the configuration is saved from the current
+    state of the interface upon shutdown.
+`;
+function target(arg) {
+    if (/^[a-zA-Z0-9_=+.-]{1,15}$/.test(arg))
+        return { name: arg, path: `${WG_DIR}/${arg}.conf` };
+    const m = /(?:^|\/)([a-zA-Z0-9_=+.-]{1,15})\.conf$/.exec(arg);
+    return m ? { name: m[1] ?? '', path: arg } : null;
+}
+const step = (ctx, cmd) => ctx.err(`[#] ${cmd}\n`);
+function* hooks(ctx, list, name) {
+    for (const raw of list) {
+        const cmd = raw.replace(/%i/g, name);
+        step(ctx, cmd);
+        const status = yield* ctx.sh.runSource(cmd, ctx.fds);
+        if (status !== 0)
+            return status;
+    }
+    return 0;
+}
+/** Routes for AllowedIPs, most specific first, skipping networks already reachable through wg0. */
+function addRoutes(ctx, wgm, name, cfg) {
+    const nets = cfg.wg.peers.flatMap((p) => p.allowedIps).map(networkCidr).sort((a, b) => b.prefix - a.prefix);
+    const covered = (c) => cfg.addresses.some((a) => a.prefix <= c.prefix && inCidr(a, c.ip));
+    let full = false;
+    for (const c of nets) {
+        if (c.prefix === 0) {
+            full = true;
+            continue;
+        }
+        if (covered(c) || wgm.devRoutes.some((r) => r.dev === name && r.net === c.ip && r.prefix === c.prefix))
+            continue;
+        step(ctx, `ip -4 route add ${cidrText(c)} dev ${name}`);
+        wgm.addRoute({ net: c.ip, prefix: c.prefix, dev: name });
+    }
+    if (full) {
+        for (const line of [`wg set ${name} fwmark ${WG_TABLE}`, `ip -4 route add 0.0.0.0/0 dev ${name} table ${WG_TABLE}`, `ip -4 rule add not fwmark ${WG_TABLE} table ${WG_TABLE}`, 'ip -4 rule add table main suppress_prefixlength 0', 'sysctl -q net.ipv4.conf.all.src_valid_mark=1', 'nft -f /dev/fd/63'])
+            step(ctx, line);
+        wgm.addRoute({ net: 0, prefix: 0, dev: name, table: WG_TABLE });
+    }
+    return full;
+}
+function* up(ctx, wgm, t, cfg) {
+    if (wgm.get(t.name)) {
+        ctx.err(`wg-quick: \`${t.name}' already exists\n`);
+        return 1;
+    }
+    if ((yield* hooks(ctx, cfg.hooks.preUp, t.name)) !== 0)
+        return 1;
+    step(ctx, `ip link add ${t.name} type wireguard`);
+    const err = wgm.add(t.name);
+    if (err) {
+        ctx.err(`${err}\n`);
+        return 1;
+    }
+    step(ctx, `wg setconf ${t.name} /dev/fd/63`);
+    wgm.get(t.name)?.setConfig(cfg.wg);
+    for (const a of cfg.addresses) {
+        step(ctx, `ip -4 address add ${cidrText(a)} dev ${t.name}`);
+        wgm.addAddress(t.name, a);
+    }
+    const link = wgm.get(t.name);
+    if (link && cfg.mtu)
+        link.mtu = cfg.mtu;
+    step(ctx, `ip link set mtu ${link?.mtu ?? 1420} up dev ${t.name}`);
+    wgm.setUp(t.name, true);
+    addRoutes(ctx, wgm, t.name, cfg);
+    return (yield* hooks(ctx, cfg.hooks.postUp, t.name)) === 0 ? 0 : 1;
+}
+function* down(ctx, wgm, t, cfg) {
+    if (!wgm.get(t.name)) {
+        ctx.err(`wg-quick: \`${t.name}' is not a WireGuard interface\n`);
+        return 1;
+    }
+    yield* hooks(ctx, cfg?.hooks.preDown ?? [], t.name);
+    const full = wgm.devRoutes.some((r) => r.dev === t.name && r.prefix === 0);
+    step(ctx, `ip link delete dev ${t.name}`);
+    wgm.remove(t.name);
+    if (full)
+        step(ctx, 'nft -f /dev/fd/63');
+    yield* hooks(ctx, cfg?.hooks.postDown ?? [], t.name);
+    return 0;
+}
+/** `wg-quick save`: the running interface written back, keeping the wg-quick-only keys. */
+function save(ctx, wgm, t, cfg) {
+    const link = wgm.get(t.name);
+    if (!link) {
+        ctx.err(`wg-quick: \`${t.name}' is not a WireGuard interface\n`);
+        return 1;
+    }
+    const [head = '[Interface]', ...rest] = formatWgConf(link.config);
+    const extra = [
+        ...link.addresses.map((a) => `Address = ${cidrText(a)}`),
+        ...cfg.dns.map((d) => `DNS = ${d}`),
+        ...(cfg.mtu ? [`MTU = ${cfg.mtu}`] : []),
+        ...(cfg.saveConfig ? ['SaveConfig = true'] : []),
+        ...cfg.hooks.preUp.map((h) => `PreUp = ${h}`), ...cfg.hooks.postUp.map((h) => `PostUp = ${h}`),
+        ...cfg.hooks.preDown.map((h) => `PreDown = ${h}`), ...cfg.hooks.postDown.map((h) => `PostDown = ${h}`),
+    ];
+    ctx.sh.env.fs.writeFile(ctx.resolve(t.path), `${[head, ...extra, ...rest].join('\n')}\n`, ctx.cred, false, 0o600);
+    return 0;
+}
+function wgQuick(host) {
+    return function* run(ctx) {
+        const [verb, arg] = ctx.argv.slice(1);
+        if (!verb || !arg || !['up', 'down', 'save', 'strip'].includes(verb)) {
+            ctx.err(USAGE);
+            return 1;
+        }
+        if (ctx.cred.uid !== 0) {
+            ctx.err('wg-quick must be run as root.\n');
+            return 1;
+        }
+        const wgm = host.wgLinks();
+        const t = target(arg);
+        if (!wgm || !t) {
+            ctx.err(USAGE);
+            return 1;
+        }
+        const text = readFileAs(ctx, t.path);
+        if (text === null && verb !== 'down') {
+            ctx.err(`wg-quick: \`${t.path}' does not exist\n`);
+            return 1;
+        }
+        const cfg = text === null ? null : parseWgConf(text);
+        if (typeof cfg === 'string') {
+            ctx.err(`${cfg}\n`);
+            return 1;
+        }
+        if (verb === 'down')
+            return yield* down(ctx, wgm, t, cfg);
+        if (!cfg)
+            return 1;
+        if (verb === 'strip') {
+            const strip = /^\s*(Address|DNS|MTU|Table|PreUp|PostUp|PreDown|PostDown|SaveConfig)\s*=/i;
+            ctx.out(`${(text ?? '').split('\n').filter((l) => !strip.test(l)).join('\n').replace(/\n*$/, '\n')}`);
+            return 0;
+        }
+        if (verb === 'save')
+            return save(ctx, wgm, t, cfg);
+        return yield* up(ctx, wgm, t, cfg);
+    };
+}
+
+return { WG_DIR, wgQuick };
+})();
 __m["shells/linux-services.js"] = (() => {
 /** systemctl, journalctl and ss for the Linux shell. */
 const { runsServices } = __m["devices/kinds.js"];
@@ -24226,9 +25497,120 @@ function runPing(stack, hooks, dst, opts) {
 
 return { runPing };
 })();
+__m["shells/linux-ip-wg.js"] = (() => {
+const { WG_TABLE } = __m["devices/wg-manager.js"];
+const { cidrText, networkCidr, parseCidr } = __m["net/wg-config.js"];
+const { formatIp } = __m["core/ip.js"];
+const EXIT_RTNL = 2;
+function devName(rest) {
+    const i = rest.indexOf('dev');
+    return i >= 0 ? rest[i + 1] : rest.find((a) => /^wg\d+$/.test(a));
+}
+function report(ctx, err) {
+    if (!err)
+        return 0;
+    ctx.err(`${err}\n`);
+    return err.startsWith('RTNETLINK') ? EXIT_RTNL : 1;
+}
+function link(ctx, wgm, verb, rest) {
+    const name = devName(rest);
+    if (verb === 'add') {
+        const type = rest[rest.indexOf('type') + 1];
+        if (!rest.includes('type') || !name)
+            return undefined;
+        if (type !== 'wireguard') {
+            ctx.err(`Error: Unknown device type.\n`);
+            return EXIT_RTNL;
+        }
+        return report(ctx, wgm.add(name));
+    }
+    if (!name || !wgm.get(name))
+        return undefined;
+    if (verb === 'del' || verb === 'delete')
+        return report(ctx, wgm.remove(name));
+    if (rest.includes('up'))
+        wgm.setUp(name, true);
+    if (rest.includes('down'))
+        wgm.setUp(name, false);
+    const mtu = rest.indexOf('mtu');
+    const link = wgm.get(name);
+    if (mtu >= 0 && link)
+        link.mtu = Number(rest[mtu + 1]) || link.mtu;
+    return 0;
+}
+function address(ctx, wgm, verb, rest) {
+    const name = devName(rest);
+    if (!name || !wgm.get(name))
+        return undefined;
+    if (verb === 'flush')
+        return report(ctx, wgm.delAddress(name, undefined));
+    const c = parseCidr(rest[0] ?? '');
+    if (!c || !(rest[0] ?? '').includes('.')) {
+        ctx.err(`Error: any valid prefix is expected rather than "${rest[0] ?? ''}".\n`);
+        return 1;
+    }
+    return report(ctx, verb === 'add' ? wgm.addAddress(name, c) : wgm.delAddress(name, c));
+}
+function route(ctx, wgm, verb, rest) {
+    const name = devName(rest);
+    if (!name || !wgm.get(name) || rest.includes('via'))
+        return undefined;
+    const dest = rest[0] === 'default' ? { ip: 0, prefix: 0 } : parseCidr(rest[0] ?? '');
+    if (!dest) {
+        ctx.err(`Error: any valid prefix is expected rather than "${rest[0] ?? ''}".\n`);
+        return 1;
+    }
+    const net = networkCidr(dest);
+    const t = rest.indexOf('table');
+    const table = t >= 0 ? Number(rest[t + 1]) : undefined;
+    if (verb === 'del')
+        return report(ctx, wgm.delRoute(net.ip, net.prefix, table));
+    if (verb === 'replace')
+        wgm.delRoute(net.ip, net.prefix, table);
+    return report(ctx, wgm.addRoute({ net: net.ip, prefix: net.prefix, dev: name, table }));
+}
+/** Handles a writing `ip` command on a virtual link; undefined when it is about a NIC. */
+function virtualWrite(ctx, host, object, verb, rest) {
+    const wgm = host.wgLinks();
+    if (!wgm)
+        return undefined;
+    if (object === 'link')
+        return link(ctx, wgm, verb, rest);
+    if (object === 'address')
+        return address(ctx, wgm, verb, rest);
+    return route(ctx, wgm, verb, rest);
+}
+/** `ip a` blocks for wg links, numbered after the NICs. */
+function virtualAddressLines(host, first) {
+    return (host.wgLinks()?.virtualLinks() ?? []).flatMap((l, i) => [
+        `${first + i}: ${l.name}: <POINTOPOINT,NOARP${l.up ? ',UP,LOWER_UP' : ''}> mtu ${l.mtu} qdisc noqueue state ${l.up ? 'UNKNOWN' : 'DOWN'} group default qlen 1000`,
+        '    link/none ',
+        ...l.addresses.flatMap((a) => [`    inet ${cidrText(a)} scope global ${l.name}`, '       valid_lft forever preferred_lft forever']),
+    ]);
+}
+function virtualBrief(host, link) {
+    const row = (name, state, rest) => `${name.padEnd(16)} ${state.padEnd(14)} ${rest}`;
+    return (host.wgLinks()?.virtualLinks() ?? []).map((l) => row(l.name, l.up ? 'UNKNOWN' : 'DOWN', link ? `<POINTOPOINT,NOARP${l.up ? ',UP,LOWER_UP' : ''}> ` : l.addresses.map((a) => `${cidrText(a)} `).join('')));
+}
+/** Kernel routes of the wg addresses and device routes (main table). */
+function virtualRoutes(host) {
+    const wgm = host.wgLinks();
+    if (!wgm)
+        return [];
+    const kernel = wgm.virtualLinks().filter((l) => l.up).flatMap((l) => l.addresses.map((a) => {
+        const n = networkCidr(a);
+        return { net: n.ip, line: `${cidrText(n)} dev ${l.name} proto kernel scope link src ${formatIp(a.ip)}` };
+    }));
+    const dev = wgm.devRoutes.filter((r) => r.table === undefined || r.table !== WG_TABLE).map((r) => ({ net: r.net, line: `${formatIp(r.net)}/${r.prefix} dev ${r.dev} scope link` }));
+    return [...kernel, ...dev];
+}
+
+return { virtualWrite, virtualAddressLines, virtualBrief, virtualRoutes };
+})();
 __m["shells/linux-ip.js"] = (() => {
 const { routeTo, MAX_STATIC_ROUTES } = __m["devices/host-nics.js"];
 const { parseIp, inSubnet, networkOf, formatIp } = __m["core/ip.js"];
+const { virtualRoutes, virtualWrite } = __m["shells/linux-ip-wg.js"];
 const EXIT_RTNL = 2;
 function devOf(args) {
     const i = args.indexOf('dev');
@@ -24380,7 +25762,7 @@ function link(ctx, host, rest) {
 const VERBS = {
     address: ['add', 'del', 'delete', 'flush'],
     route: ['add', 'del', 'delete', 'replace', 'change'],
-    link: ['set'],
+    link: ['set', 'add', 'del', 'delete'],
 };
 /** Runs a writing `ip` command; undefined when `args` is not one (ip shows the object instead). */
 function ipWrite(ctx, host, object, args) {
@@ -24392,6 +25774,13 @@ function ipWrite(ctx, host, object, args) {
         return EXIT_RTNL;
     }
     const rest = args.slice(1);
+    const virtual = virtualWrite(ctx, host, object, verb === 'delete' ? 'del' : verb === 'change' ? 'replace' : verb, rest);
+    if (virtual !== undefined)
+        return virtual;
+    if (object === 'link' && verb !== 'set') {
+        ctx.err(verb === 'add' ? 'Not enough information: "type" argument is required\n' : `Cannot find device "${rest.filter((a) => a !== 'dev')[0] ?? ''}"\n`);
+        return 1;
+    }
     if (object === 'address')
         return address(ctx, host, verb === 'delete' ? 'del' : verb, rest);
     if (object === 'route')
@@ -24407,7 +25796,7 @@ function routeLines(host) {
     const out = gw !== undefined ? [`default via ${formatIp(gw)} dev ${devFor(gw)} proto ${primary?.dhcp ? 'dhcp' : 'static'} metric 100`] : [];
     const kernel = nics.map((n) => ({ net: networkOf(n.ip, n.prefix), line: `${formatIp(networkOf(n.ip, n.prefix))}/${n.prefix} dev ${n.linux} proto kernel scope link src ${formatIp(n.ip)}` }));
     const statics = host.staticRoutes.map((r) => ({ net: r.net, line: `${formatIp(r.net)}/${r.prefix} via ${formatIp(r.via)} dev ${devFor(r.via)}` }));
-    return [...out, ...[...kernel, ...statics].sort((a, b) => a.net - b.net).map((x) => x.line)];
+    return [...out, ...[...kernel, ...statics, ...virtualRoutes(host)].sort((a, b) => a.net - b.net).map((x) => x.line)];
 }
 
 return { ipWrite, routeLines };
@@ -24420,6 +25809,7 @@ const { runPing } = __m["net/ping.js"];
 const { reverseName } = __m["net/dns.js"];
 const { formatIp, broadcastOf, parseIp } = __m["core/ip.js"];
 const { ipWrite, routeLines } = __m["shells/linux-ip.js"];
+const { virtualAddressLines, virtualBrief } = __m["shells/linux-ip-wg.js"];
 const PING_TIMEOUT_MS = 1000;
 const DEFAULT_PING_COUNT = 4;
 const MAX_PING_COUNT = 100;
@@ -24447,14 +25837,14 @@ function ipAddress(host) {
         if (addr)
             out.push(`    inet ${addr.inet} brd ${addr.brd} scope ${addr.scope} ${n.linux}`, '       valid_lft forever preferred_lft forever');
     });
-    return out;
+    return [...out, ...virtualAddressLines(host, host.nics().length + 2)];
 }
 function ipBrief(host, link) {
     const row = (name, state, rest) => `${name.padEnd(16)} ${state.padEnd(14)} ${rest}`;
     const nics = host.nics();
     if (link)
-        return [row('lo', 'UNKNOWN', '00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP> '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', `${linuxMac(n.mac)} <BROADCAST,MULTICAST${n.adminUp ? ',UP' : ''}${n.up ? ',LOWER_UP' : ''}> `))];
-    return [row('lo', 'UNKNOWN', '127.0.0.1/8 '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', nicAddress(n) ? `${nicAddress(n)?.inet} ` : ''))];
+        return [row('lo', 'UNKNOWN', '00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP> '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', `${linuxMac(n.mac)} <BROADCAST,MULTICAST${n.adminUp ? ',UP' : ''}${n.up ? ',LOWER_UP' : ''}> `)), ...virtualBrief(host, true)];
+    return [row('lo', 'UNKNOWN', '127.0.0.1/8 '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', nicAddress(n) ? `${nicAddress(n)?.inet} ` : '')), ...virtualBrief(host, false)];
 }
 const IP_USAGE = 'Usage: ip [ OPTIONS ] OBJECT { COMMAND | help }\nwhere  OBJECT := { address | route | neigh | link }\n       OPTIONS := { -4 | -br[ief] | -c[olor] }\n';
 function ip(host) {
@@ -26529,6 +27919,9 @@ function seedKernel(fs, host) {
     fs.seed(`${SYSCTL_DIR}/10-network-security.conf`, { kind: 'file', content: NETWORK_SECURITY }, 0o644);
     fs.seed(`${SYSCTL_DIR}/README.sysctl`, { kind: 'file', content: README }, 0o644);
     fs.seed(NFTABLES_CONF, { kind: 'file', content: DEFAULT_NFTABLES_CONF }, 0o755);
+    // wireguard-tools creates /etc/wireguard readable by root only.
+    if (host.kind === 'linuxrouter')
+        fs.seed('/etc/wireguard', { kind: 'dir' }, 0o700);
     const sysctl = host.kernel.sysctl;
     for (const key of SYSCTL_KEYS) {
         fs.mountFile(sysctlPath(key.name), () => `${sysctl.get(key.name) ?? ''}\n`, 0o644, (content) => {
@@ -27143,6 +28536,9 @@ return { rndc };
 })();
 __m["shells/linux-programs.js"] = (() => {
 /** The Netfix programs of an Ubuntu host: network clients, systemd tools, ssh and command-not-found. */
+const { wgUnit, wgUnitName } = __m["shells/wg-unit.js"];
+const { wg } = __m["shells/wg-cmd.js"];
+const { wgQuick } = __m["shells/wg-quick.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { httpGet } = __m["shells/net-tools.js"];
 const { systemctl, journalctl, ss } = __m["shells/linux-services.js"];
@@ -27172,8 +28568,12 @@ const lines = (ctx, list) => {
 /** Messages of systemctl/journalctl that go to stderr with a failure status. */
 const FAILURE = /^(Failed to|Unit .* could not be found|Too few arguments|Unknown command verb|Job for)/;
 function systemd(host, kind) {
-    return (ctx) => {
+    return function* run(ctx) {
         const raw = ctx.argv.slice(1);
+        const named = kind === 'service' ? raw[0] : raw.filter((x) => !x.startsWith('-'))[1];
+        const wgIface = host.kind === 'linuxrouter' ? wgUnitName(named) : undefined;
+        if (wgIface)
+            return yield* wgUnit(ctx, host, (kind === 'service' ? raw[1] : raw[0]) ?? 'status', wgIface, raw.includes('--now'));
         if (kind === 'service' && raw.length < 2) {
             ctx.err(raw[0] === '--status-all' ? '' : 'Usage: service < option > | --status-all | [ service_name [ command | --full-restart ] ]\n');
             return raw[0] === '--status-all' ? 0 : 1;
@@ -27286,6 +28686,7 @@ function linuxPrograms(host) {
     return new Map([
         ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)], ['netplan', netplanProgram(host)],
         ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['sysctl', sysctl(host)], ['dmesg', dmesg(host)], ['nft', nft(host)], ['nc', nc(host)], ['netcat', nc(host)], ['nmap', nmap(host)], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId],
+        ...(host.kind === 'linuxrouter' ? [['wg', wg(host)], ['wg-quick', wgQuick(host)]] : []),
         ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
         ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
         ['ss', (ctx) => { lines(ctx, ss(host)); return 0; }],
@@ -28868,7 +30269,7 @@ const POP3_PORT = 110;
 const IMAP_PORT = 143;
 const SSH_PORT = 22;
 class Server extends Host {
-    kind = 'server';
+    kind;
     os = 'linux';
     services = defaultServices();
     /** Units enabled at boot (`systemctl enable`, Windows "Automatic"). */
@@ -28879,8 +30280,10 @@ class Server extends Host {
     ssh;
     dns;
     web = new ServerWeb(this);
-    constructor(id, name, clock, seed) {
+    /** `kind` is set before anything else so the lazily built system (programs, files) sees the right one. */
+    constructor(id, name, clock, seed, kind = 'server') {
         super(id, name, clock, seed);
+        this.kind = kind;
         this.ssh = new SshService(this);
         this.dns = new ServerDns(this);
         this.applyServices();
@@ -29126,6 +30529,7 @@ __m["devices/linux-router.js"] = (() => {
  * net.ipv4.ip_forward = 1; the nftables forward chain, conntrack and NAT apply to transit traffic.
  */
 const { Server } = __m["devices/server.js"];
+const { WgManager } = __m["devices/wg-manager.js"];
 const LINUX_ROUTER_PORTS = ['GigabitEthernet0/0', 'GigabitEthernet0/1', 'GigabitEthernet0/2'];
 const LINUX_TTL = 64;
 /** MAC of the n-th NIC: the base MAC plus n (like consecutive ports of one card). */
@@ -29133,13 +30537,19 @@ function macPlus(mac, n) {
     return ((parseInt(mac, 16) + n) % 0x1000000000000).toString(16).padStart(12, '0');
 }
 class LinuxRouter extends Server {
-    kind = 'linuxrouter';
     os = 'linux';
     ttl = LINUX_TTL;
     /** NICs 1 and 2 (NIC 0 is the host's main configuration: `config`, DHCP client, `portUp`). */
     extra = new Map();
+    /** WireGuard links (wg0…), their addresses and device routes. */
+    wgm = new WgManager({
+        now: () => this.clock.now(),
+        schedule: (ms, fn) => this.hooks.schedule(ms, fn),
+        sendUdp: (dst, dport, sport, msg) => this.sendWg(dst, dport, sport, msg),
+        receiveInner: (iface, inner) => this.stack.receiveFrame(iface, { src: '', dst: '', ip: inner }),
+    }, () => this.changed());
     constructor(id, name, clock, seed) {
-        super(id, name, clock, seed);
+        super(id, name, clock, seed, 'linuxrouter');
         LINUX_ROUTER_PORTS.slice(1).forEach((p, i) => this.extra.set(p, { adminUp: true, mac: macPlus(this.mac, i + 1) }));
     }
     primaryPort() {
@@ -29195,16 +30605,45 @@ class LinuxRouter extends Server {
         this.stack.receiveFrame(port, frame);
     }
     emit(iface, frame) {
+        if (this.wgm.get(iface)) {
+            if (frame.ip)
+                this.wgm.transmit(iface, frame.ip);
+            return;
+        }
         this.hooks.transmit(iface, frame);
+    }
+    wgLinks() {
+        return this.wgm;
+    }
+    route(dst) {
+        return this.wgm.route(dst, { nics: this.nics(), statics: this.staticRoutes, gateway: this.config.gateway }, 'all');
+    }
+    /** WireGuard's own datagrams use the main table (never the tunnel), through the output hook. */
+    sendWg(dst, dport, sport, wg) {
+        const egress = this.wgm.route(dst, { nics: this.nics(), statics: this.staticRoutes, gateway: this.config.gateway }, 'main');
+        const src = egress ? this.l3Iface(egress.iface)?.addrs[0]?.ip : undefined;
+        if (!egress || src === undefined)
+            return;
+        this.stack.sendRouted(egress, { src, dst, ttl: LINUX_TTL, protocol: 'udp', udp: { sport, dport, wg } });
+    }
+    onUdp(packet, iface) {
+        const udp = packet.udp;
+        const link = udp?.wg ? [...this.wgm.links.values()].find((l) => l.up && l.listenPort === udp.dport) : undefined;
+        if (udp?.wg && link)
+            link.receive(packet.src, udp.sport, udp.wg);
+        else
+            super.onUdp(packet, iface);
     }
     l3Iface(name) {
         return this.l3Ifaces().find((i) => i.name === name);
     }
     l3Ifaces() {
-        return this.nics().map((n) => ({ name: n.port, mac: n.mac, addrs: n.ip !== undefined && n.prefix !== undefined ? [{ ip: n.ip, prefix: n.prefix }] : [], up: n.up }));
+        const nics = this.nics().map((n) => ({ name: n.port, mac: n.mac, addrs: n.ip !== undefined && n.prefix !== undefined ? [{ ip: n.ip, prefix: n.prefix }] : [], up: n.up }));
+        // During Server's constructor the field is not initialised yet.
+        return this.wgm ? [...nics, ...this.wgm.l3Ifaces()] : nics;
     }
     ownsIp(ip) {
-        return this.nics().some((n) => n.ip === ip);
+        return this.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip));
     }
     onLinkEvent(port, up) {
         if (port === this.primaryPort())
@@ -29233,7 +30672,7 @@ class LinuxRouter extends Server {
     }
     /** ICMP time exceeded / destination unreachable from the address of the arrival interface. */
     icmpError(iface, p, type) {
-        const src = this.ifaceConfig(iface)?.ip;
+        const src = this.l3Iface(iface)?.addrs[0]?.ip;
         if (src === undefined || (p.icmp && p.icmp.type !== 'echo-request'))
             return;
         const back = this.route(p.src);
@@ -32512,6 +33951,191 @@ function sysctlPanel(s, app) {
 
 return { firewallPanel, sysctlPanel };
 })();
+__m["shells/vpn-save.js"] = (() => {
+const { formatIp } = __m["core/ip.js"];
+const { cidrText, parseCidr, parseEndpoint, parseWgConf } = __m["net/wg-config.js"];
+const { decodeKey, genKey, pubKey } = __m["core/x25519.js"];
+const { hostSystem } = __m["shells/host-system.js"];
+const { createShell } = __m["shells/factory.js"];
+const { wgUnitEnabled } = __m["shells/wg-unit.js"];
+const { ago, bytes } = __m["shells/wg-format.js"];
+const VPN_IFACE = 'wg0';
+const VPN_CONF = `/etc/wireguard/${VPN_IFACE}.conf`;
+const MAX_FIELD = 200;
+const EMPTY_VPN = { privateKey: '', address: '10.10.0.1/24', listenPort: '51820', peers: [] };
+function readConf(host) {
+    const fs = hostSystem(host).fs;
+    return fs.tryLookup(VPN_CONF)?.kind === 'file' ? fs.readFile(VPN_CONF) : null;
+}
+function formOf(c) {
+    return {
+        privateKey: c.wg.privateKey ?? '',
+        address: c.addresses.map(cidrText).join(', '),
+        listenPort: String(c.wg.listenPort ?? ''),
+        peers: c.wg.peers.map((p) => ({ publicKey: p.publicKey, allowedIps: p.allowedIps.map(cidrText).join(', '), endpoint: p.endpoint ? `${formatIp(p.endpoint.ip)}:${p.endpoint.port}` : '', keepalive: p.keepalive ? String(p.keepalive) : '' })),
+    };
+}
+function vpnStatus(host) {
+    const text = readConf(host);
+    const parsed = text === null ? null : parseWgConf(text);
+    const link = host.wgLinks()?.get(VPN_IFACE);
+    const now = host.clock.now();
+    const peers = link ? link.config.peers.map((p) => {
+        const st = link.peers.get(p.publicKey);
+        const ep = st?.endpoint;
+        return { publicKey: p.publicKey, endpoint: ep ? `${formatIp(ep.ip)}:${ep.port}` : undefined, handshake: st?.lastHandshake ? ago(now, st.lastHandshake) : undefined, transfer: st && (st.rx || st.tx) ? `${bytes(st.rx)} ↓ / ${bytes(st.tx)} ↑` : undefined };
+    }) : [];
+    const form = parsed && typeof parsed !== 'string' ? formOf(parsed) : EMPTY_VPN;
+    return {
+        active: link !== undefined,
+        enabled: wgUnitEnabled(hostSystem(host).fs, VPN_IFACE),
+        form,
+        publicKey: pubKey(form.privateKey) ?? undefined,
+        error: typeof parsed === 'string' ? parsed : undefined,
+        peers,
+    };
+}
+const clean = (v) => v.replace(/[\r\n#]/g, '').trim().slice(0, MAX_FIELD);
+function peerLines(p, i) {
+    const n = i + 1;
+    if (!decodeKey(clean(p.publicKey)))
+        return `peer ${n}: public key`;
+    const ips = clean(p.allowedIps).split(',').map((x) => x.trim()).filter(Boolean);
+    if (!ips.length || ips.some((x) => !parseCidr(x)))
+        return `peer ${n}: AllowedIPs`;
+    if (clean(p.endpoint) && !parseEndpoint(clean(p.endpoint)))
+        return `peer ${n}: Endpoint`;
+    const ka = clean(p.keepalive);
+    if (ka && !(/^\d+$/.test(ka) && Number(ka) <= 65535))
+        return `peer ${n}: PersistentKeepalive`;
+    return ['', '[Peer]', `PublicKey = ${clean(p.publicKey)}`, `AllowedIPs = ${ips.join(', ')}`, ...(clean(p.endpoint) ? [`Endpoint = ${clean(p.endpoint)}`] : []), ...(ka && ka !== '0' ? [`PersistentKeepalive = ${ka}`] : [])];
+}
+/** The wg0.conf text of a form (hooks, DNS and MTU of the current file are kept); a string error otherwise. */
+function vpnFileText(form, current) {
+    if (!decodeKey(clean(form.privateKey)))
+        return { error: 'PrivateKey' };
+    const addrs = clean(form.address).split(',').map((x) => x.trim()).filter(Boolean);
+    if (!addrs.length || addrs.some((a) => !parseCidr(a) || !a.includes('/')))
+        return { error: 'Address' };
+    const port = clean(form.listenPort);
+    if (port && !(/^\d+$/.test(port) && Number(port) >= 1 && Number(port) <= 65535))
+        return { error: 'ListenPort' };
+    const peers = form.peers.map(peerLines);
+    const bad = peers.find((p) => typeof p === 'string');
+    if (bad)
+        return { error: bad };
+    const h = current?.hooks;
+    const keep = [
+        ...(current?.dns.length ? [`DNS = ${current.dns.join(', ')}`] : []), ...(current?.mtu ? [`MTU = ${current.mtu}`] : []),
+        ...(h?.preUp ?? []).map((x) => `PreUp = ${x}`), ...(h?.postUp ?? []).map((x) => `PostUp = ${x}`),
+        ...(h?.preDown ?? []).map((x) => `PreDown = ${x}`), ...(h?.postDown ?? []).map((x) => `PostDown = ${x}`),
+    ];
+    const head = ['[Interface]', `Address = ${addrs.join(', ')}`, ...(port ? [`ListenPort = ${port}`] : []), `PrivateKey = ${clean(form.privateKey)}`, ...keep];
+    return { text: `${[...head, ...peers.flatMap((p) => (typeof p === 'string' ? [] : p))].join('\n')}\n` };
+}
+const root = (host) => createShell(host, 'linux', 'root');
+/** Writes wg0.conf from the form and restarts the tunnel if it was up; returns an error or null. */
+function saveVpn(host, form) {
+    const text = readConf(host);
+    const parsed = text === null ? null : parseWgConf(text);
+    const built = vpnFileText(form, parsed && typeof parsed !== 'string' ? parsed : null);
+    if ('error' in built)
+        return built.error;
+    const fs = hostSystem(host).fs;
+    fs.writeFile(VPN_CONF, built.text, undefined, false, 0o600);
+    fs.chmod(VPN_CONF, 0o600);
+    if (!host.wgLinks()?.get(VPN_IFACE))
+        return null;
+    const out = root(host).run(`systemctl restart wg-quick@${VPN_IFACE} 2>&1`);
+    host.notifyChange();
+    return out.length ? out.join('\n') : null;
+}
+/** Turns the tunnel on (and on at boot) or off; returns the failure text or null. */
+function setVpnActive(host, on) {
+    const out = root(host).run(`systemctl ${on ? 'enable' : 'disable'} --now wg-quick@${VPN_IFACE} 2>&1`).filter((l) => !/^(Created symlink|Removed)/.test(l));
+    host.notifyChange();
+    return out.length ? out.join('\n') : null;
+}
+const newPrivateKey = genKey;
+
+return { VPN_IFACE, VPN_CONF, EMPTY_VPN, vpnStatus, vpnFileText, saveVpn, setVpnActive, newPrivateKey };
+})();
+__m["ui/vpn-panel.js"] = (() => {
+/** Services → VPN of the Linux router: wg0.conf as a form (interface, peers), on/off and peer status. */
+const { el } = __m["ui/dom.js"];
+const { button, field, input, message, onOff, table } = __m["ui/forms.js"];
+const { liveHostPanel } = __m["ui/live.js"];
+const { newPrivateKey, saveVpn, setVpnActive, vpnStatus } = __m["shells/vpn-save.js"];
+const { pubKey } = __m["core/x25519.js"];
+const { t } = __m["i18n/t.js"];
+const short = (key) => (key.length > 16 ? `${key.slice(0, 12)}…` : key);
+function peerForm(add) {
+    const key = input({ class: 'mono', 'aria-label': t('vpn.peerKey') });
+    const ips = input({ placeholder: '10.10.0.2/32, 192.168.2.0/24', 'aria-label': t('vpn.allowedIps') });
+    const ep = input({ placeholder: '203.0.113.2:51820', 'aria-label': t('vpn.endpoint') });
+    const ka = input({ placeholder: '25', inputmode: 'numeric', 'aria-label': t('vpn.keepalive') });
+    return el('div', { class: 'fw-form' }, field(t('vpn.peerKey'), key), el('div', { class: 'grid2' }, field(t('vpn.allowedIps'), ips), field(t('vpn.endpoint'), ep)), field(t('vpn.keepalive'), ka), button(t('vpn.addPeer'), () => add({ publicKey: key.value, allowedIps: ips.value, endpoint: ep.value, keepalive: ka.value })));
+}
+function statusTable(peers) {
+    return table(peers, [
+        { label: t('vpn.peerKey'), value: (p) => short(p.publicKey), mono: true },
+        { label: 'Endpoint', value: (p) => p.endpoint ?? '—', mono: true },
+        { label: t('vpn.handshake'), value: (p) => p.handshake ?? t('vpn.never') },
+        { label: t('vpn.transfer'), value: (p) => p.transfer ?? '—' },
+    ], { empty: t('vpn.noPeers') });
+}
+function vpnPanel(s, app) {
+    return liveHostPanel(s, () => {
+        if (s.kind !== 'linuxrouter')
+            return [el('p', { class: 'muted' }, t('vpn.notRouter'))];
+        const st = vpnStatus(s);
+        const msg = message();
+        const priv = input({ value: st.form.privateKey, class: 'mono', type: 'password', autocomplete: 'off', 'aria-label': t('vpn.privateKey') });
+        const pub = el('code', { class: 'mono' }, st.publicKey ?? '—');
+        priv.addEventListener('input', () => { pub.textContent = pubKey(priv.value.trim()) ?? '—'; });
+        const addr = input({ value: st.form.address, 'aria-label': t('vpn.address') });
+        const port = input({ value: st.form.listenPort, inputmode: 'numeric', 'aria-label': t('vpn.listenPort') });
+        const form = (peers) => ({ privateKey: priv.value, address: addr.value, listenPort: port.value, peers });
+        const save = (peers) => {
+            const err = saveVpn(s, form(peers));
+            if (err)
+                msg.error(t('vpn.bad', { field: err }));
+            else {
+                msg.ok(t('vpn.saved'));
+                app.afterCommand();
+            }
+        };
+        const generate = () => {
+            if (st.form.privateKey && !globalThis.confirm(t('vpn.confirmKeys')))
+                return;
+            priv.value = newPrivateKey();
+            pub.textContent = pubKey(priv.value) ?? '—';
+        };
+        const peers = table(st.form.peers, [
+            { label: t('vpn.peerKey'), value: (p) => short(p.publicKey), mono: true },
+            { label: 'AllowedIPs', value: (p) => p.allowedIps, mono: true },
+            { label: 'Endpoint', value: (p) => p.endpoint || '—', mono: true },
+            { label: 'Keepalive', value: (p) => p.keepalive || '—' },
+        ], { empty: t('vpn.noPeers'), onDelete: (p) => save(st.form.peers.filter((x) => x !== p)) });
+        return [
+            el('p', { class: 'muted' }, t('vpn.intro')),
+            onOff(t('vpn.service'), st.active, (on) => { const err = setVpnActive(s, on); if (err)
+                msg.error(err); app.afterCommand(); }),
+            ...(st.error ? [el('p', { class: 'status', 'data-state': 'failed' }, `${t('vpn.fileError')} ${st.error}`)] : []),
+            msg.el,
+            el('h3', {}, t('vpn.interface')),
+            field(t('vpn.privateKey'), priv), el('div', { class: 'row-actions' }, button(t('vpn.generate'), generate, 'btn btn-small')),
+            field(t('vpn.publicKey'), pub),
+            el('div', { class: 'grid2' }, field(t('vpn.address'), addr), field(t('vpn.listenPort'), port)),
+            el('div', { class: 'row-actions' }, button(t('vpn.save'), () => save(st.form.peers))),
+            el('h3', {}, t('vpn.peers')), peers, peerForm((p) => save([...st.form.peers, p])),
+            el('h3', {}, t('vpn.status')), statusTable(st.peers),
+        ];
+    });
+}
+
+return { vpnPanel };
+})();
 __m["services/dhcp-reservations.js"] = (() => {
 const { validatePool, leaseToReservation } = __m["services/dhcp-pt.js"];
 const { parseMac, parseHexId, asciiToHex, formatMacCisco, formatHexId } = __m["core/mac.js"];
@@ -32923,6 +34547,7 @@ __m["ui/server-apps.js"] = (() => {
 /** Server → Servicios → HTTP, Correo, SSH and Registros panels. */
 const { t } = __m["i18n/t.js"];
 const { firewallPanel, sysctlPanel } = __m["ui/firewall-panel.js"];
+const { vpnPanel } = __m["ui/vpn-panel.js"];
 const { el } = __m["ui/dom.js"];
 const { field, input, select, button, onOff, message, table, subnav } = __m["ui/forms.js"];
 const { livePanel, dhcpPanel, dnsPanel } = __m["ui/server-dhcp-dns.js"];
@@ -32943,6 +34568,7 @@ function servicesTab(server, app) {
             { id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root },
             { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root },
         ] : []),
+        ...(server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
         { id: 'log', label: 'Registros', render: () => logPanel(server) },
     ]);
 }
@@ -34763,6 +36389,23 @@ function restoreRoutes(host, value) {
 }
 
 return { nicsToJson, routesToJson, restoreNics, restoreRoutes };
+})();
+__m["shells/wg-boot.js"] = (() => {
+const { createShell } = __m["shells/factory.js"];
+const { hostSystem } = __m["shells/host-system.js"];
+const { enabledWgUnits } = __m["shells/wg-unit.js"];
+function bootWireguard(host) {
+    if (host.kind !== 'linuxrouter')
+        return;
+    const units = enabledWgUnits(hostSystem(host).fs);
+    if (!units.length)
+        return;
+    const root = createShell(host, 'linux', 'root');
+    for (const iface of units)
+        root.run(`systemctl start wg-quick@${iface}`);
+}
+
+return { bootWireguard };
 })();
 __m["net/network.js"] = (() => {
 /** Topology and discrete-event engine. Every frame on a cable is recorded for simulation mode. */
@@ -39373,7 +41016,7 @@ const PAGES = [
     { id: 'setup', tab: 'setup', label: 'Configuración básica' },
     { id: 'dhcp', tab: 'services', label: 'DHCP' }, { id: 'dns', tab: 'services', label: 'DNS' }, { id: 'web', tab: 'services', label: 'Web y correo web' },
     { id: 'mail', tab: 'services', label: 'Correo' }, { id: 'ssh', tab: 'services', label: 'SSH' },
-    { id: 'firewall', tab: 'security', label: 'Cortafuegos' }, { id: 'routing', tab: 'security', label: 'Enrutamiento' },
+    { id: 'firewall', tab: 'security', label: 'Cortafuegos' }, { id: 'routing', tab: 'security', label: 'Enrutamiento' }, { id: 'vpn', tab: 'security', label: 'VPN' },
     { id: 'admin', tab: 'admin', label: 'Gestión' },
     { id: 'status', tab: 'status', label: 'Equipo' }, { id: 'log', tab: 'status', label: 'Registros' },
 ];
@@ -39721,9 +41364,60 @@ function securityAction(server, f) {
 
 return { securityAction };
 })();
+__m["web/admin-vpn.js"] = (() => {
+const { newPrivateKey, saveVpn, setVpnActive, vpnStatus } = __m["shells/vpn-save.js"];
+const { h } = __m["web/html.js"];
+const { buttons, check, form, row, section, text } = __m["web/admin-layout.js"];
+const SAVED = { ok: 'Los cambios se han guardado correctamente.' };
+function peerRows(server, base) {
+    const st = vpnStatus(server);
+    const live = new Map(st.peers.map((p) => [p.publicKey, p]));
+    const rows = st.form.peers.map((p) => h('tr', {}, h('td', { class: 'web-wrt-mono' }, p.publicKey), h('td', { class: 'web-wrt-mono' }, p.allowedIps), h('td', { class: 'web-wrt-mono' }, live.get(p.publicKey)?.endpoint ?? (p.endpoint || '—')), h('td', {}, live.get(p.publicKey)?.handshake ?? 'nunca'), h('td', {}, live.get(p.publicKey)?.transfer ?? '—'), h('td', {}, form(base, 'vpn', 'vpn-peer-del', h('input', { type: 'hidden', name: 'key', value: p.publicKey }), h('button', { type: 'submit', class: 'web-wrt-small' }, 'Borrar')))));
+    return h('table', { class: 'web-wrt-list' }, h('tr', {}, ...['Clave pública', 'AllowedIPs', 'Endpoint', 'Último handshake', 'Tráfico', ''].map((c) => h('th', {}, c))), rows.length ? rows : h('tr', {}, h('td', { colspan: 6 }, 'Sin pares.')));
+}
+function vpnPage(server, base) {
+    if (server.kind !== 'linuxrouter')
+        return h('tr', {}, h('td', {}, 'WireGuard solo está en el router Linux.'));
+    const st = vpnStatus(server);
+    return [
+        form(base, 'vpn', 'vpn-service', h('table', {}, section('Túnel wg0', 'wg-quick@wg0: al activarlo también arranca con el equipo. Abre el puerto UDP en el cortafuegos si la cadena input descarta.', check('enabled', st.active, 'Activado'), st.error ? h('p', { class: 'web-wrt-error' }, `wg0.conf tiene un error: ${st.error}`) : null)), buttons()),
+        form(base, 'vpn', 'vpn-iface', h('table', {}, section('Interfaz', 'Se guarda en /etc/wireguard/wg0.conf (600). Deja la clave privada vacía para conservarla.', row('Clave pública', h('code', { class: 'web-wrt-mono' }, st.publicKey ?? '—')), row('Clave privada', h('input', { type: 'password', name: 'privateKey', value: '', autocomplete: 'off' })), check('genkey', false, 'Generar claves nuevas'), row('Dirección (CIDR)', text('address', st.form.address)), row('Puerto UDP', text('listenPort', st.form.listenPort)))), buttons()),
+        section('Pares', 'Cada par: su clave pública, las redes que llegan por él (AllowedIPs) y, si se le puede llamar, su IP:puerto.', peerRows(server, base)),
+        form(base, 'vpn', 'vpn-peer-add', h('table', {}, section('Nuevo par', 'Keepalive (25 s) mantiene abierto el NAT cuando el par está detrás de un router con PAT.', row('Clave pública', text('publicKey', '')), row('AllowedIPs', text('allowedIps', '', { placeholder: '10.10.0.2/32, 192.168.2.0/24' })), row('Endpoint', text('endpoint', '', { placeholder: '203.0.113.2:51820' })), row('Keepalive', text('keepalive', '', { placeholder: '25' })))), buttons()),
+    ];
+}
+function withForm(server, change) {
+    const err = saveVpn(server, change(vpnStatus(server).form));
+    return err ? { error: `Valor no válido: ${err}` } : SAVED;
+}
+/** Form actions of the VPN page; null when the action is not one of them. */
+function vpnAction(server, f) {
+    if (!(f.get('action') ?? '').startsWith('vpn-'))
+        return null;
+    if (server.kind !== 'linuxrouter')
+        return { error: 'WireGuard solo está en el router Linux.' };
+    switch (f.get('action')) {
+        case 'vpn-service': {
+            const err = setVpnActive(server, f.has('enabled'));
+            return err ? { error: err } : SAVED;
+        }
+        case 'vpn-iface': return withForm(server, (cur) => ({
+            ...cur,
+            privateKey: f.has('genkey') ? newPrivateKey() : (f.get('privateKey') ?? '').trim() || cur.privateKey,
+            address: f.get('address') ?? cur.address, listenPort: f.get('listenPort') ?? cur.listenPort,
+        }));
+        case 'vpn-peer-add': return withForm(server, (cur) => ({ ...cur, peers: [...cur.peers.filter((p) => p.publicKey !== (f.get('publicKey') ?? '').trim()), { publicKey: f.get('publicKey') ?? '', allowedIps: f.get('allowedIps') ?? '', endpoint: f.get('endpoint') ?? '', keepalive: f.get('keepalive') ?? '' }] }));
+        case 'vpn-peer-del': return withForm(server, (cur) => ({ ...cur, peers: cur.peers.filter((p) => p.publicKey !== f.get('key')) }));
+        default: return { error: 'Acción desconocida.' };
+    }
+}
+
+return { vpnPage, vpnAction };
+})();
 __m["web/admin-actions.js"] = (() => {
 /** Form actions of the Server management GUI: each one validates and applies to the live server. */
 const { securityAction } = __m["web/admin-firewall-actions.js"];
+const { vpnAction } = __m["web/admin-vpn.js"];
 const { validHostname } = __m["devices/host.js"];
 const { parseIp, parseMask } = __m["core/ip.js"];
 const { validatePool } = __m["services/dhcp-pt.js"];
@@ -39888,7 +41582,7 @@ function runAction(server, pageId, f) {
         case 'user-add':
         case 'user-del': return users(server, pageId === 'ssh' ? 'ssh' : 'mail', f, action === 'user-add');
         case 'admin': return admin(server, f);
-        default: return securityAction(server, f) ?? { error: 'Acción desconocida.' };
+        default: return vpnAction(server, f) ?? securityAction(server, f) ?? { error: 'Acción desconocida.' };
     }
 }
 
@@ -39901,6 +41595,7 @@ const { PAGES, frame } = __m["web/admin-layout.js"];
 const { setupPage, dhcpPage, dnsPage, webPage, mailPage, sshPage, adminPage, statusPage, logPage } = __m["web/admin-pages.js"];
 const { runAction } = __m["web/admin-actions.js"];
 const { firewallPage, routingPage } = __m["web/admin-firewall.js"];
+const { vpnPage } = __m["web/admin-vpn.js"];
 const { formatIp } = __m["core/ip.js"];
 /** User names come from the request: no control characters in the logs. */
 const printable = (text) => text.replace(/[\x00-\x1f\x7f]/g, '?').slice(0, 64);
@@ -39915,6 +41610,7 @@ function body(server, base, id) {
         case 'ssh': return sshPage(server, base);
         case 'firewall': return firewallPage(server, base);
         case 'routing': return routingPage(server, base);
+        case 'vpn': return vpnPage(server, base);
         case 'admin': return adminPage(server, base);
         case 'status': return statusPage(server);
         case 'log': return logPage(server);
@@ -40215,6 +41911,7 @@ __m["net/topology.js"] = (() => {
 const { nicsToJson, routesToJson, restoreNics, restoreRoutes } = __m["net/topology-nics.js"];
 const { LinuxRouter } = __m["devices/linux-router.js"];
 const { savedFiles, restoreFiles, bootKernel } = __m["shells/host-system.js"];
+const { bootWireguard } = __m["shells/wg-boot.js"];
 const { validFileRecords } = __m["bash/vfs-persist.js"];
 const { Network } = __m["net/network.js"];
 const { SimClock } = __m["core/clock.js"];
@@ -40322,6 +42019,9 @@ class Topology {
         for (const p of topo.placed.values())
             if (p.device instanceof Host && p.device.config.mode === 'dhcp')
                 p.device.useDhcp();
+        for (const p of topo.placed.values())
+            if (p.device instanceof LinuxRouter)
+                bootWireguard(p.device);
         topo.settle();
         return topo;
     }

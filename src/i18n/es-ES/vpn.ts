@@ -1,0 +1,31 @@
+/** Español (España): VPN WireGuard del router Linux (pestaña Servicios → VPN y gestión web). */
+export const VPN_ES = {
+  'vpn.tab': 'VPN',
+  'vpn.service': 'Túnel WireGuard wg0 (wg-quick@wg0)',
+  'vpn.intro': 'Lo que guardas aquí se escribe en /etc/wireguard/wg0.conf y, si el túnel está en marcha, se reinicia. Activarlo también lo deja habilitado al arrancar. Con «wg set» en la terminal solo cambias lo que está en marcha.',
+  'vpn.notRouter': 'WireGuard solo está disponible en el router Linux.',
+  'vpn.interface': 'Interfaz',
+  'vpn.privateKey': 'Clave privada',
+  'vpn.publicKey': 'Clave pública (dásela a los pares)',
+  'vpn.generate': 'Generar claves',
+  'vpn.address': 'Dirección del túnel (CIDR)',
+  'vpn.listenPort': 'Puerto UDP de escucha',
+  'vpn.peers': 'Pares',
+  'vpn.noPeers': 'Sin pares: el túnel no llevará tráfico.',
+  'vpn.peerKey': 'Clave pública del par',
+  'vpn.allowedIps': 'AllowedIPs (redes que llegan por el par)',
+  'vpn.endpoint': 'Endpoint (IP:puerto, vacío si el par llama)',
+  'vpn.keepalive': 'Keepalive (s, para atravesar NAT)',
+  'vpn.addPeer': 'Añadir par',
+  'vpn.save': 'Guardar y aplicar',
+  'vpn.saved': 'Configuración guardada.',
+  'vpn.bad': 'Valor no válido: {field}',
+  'vpn.status': 'Estado de los pares',
+  'vpn.handshake': 'Último handshake',
+  'vpn.transfer': 'Tráfico',
+  'vpn.never': 'nunca',
+  'vpn.fileError': 'wg0.conf tiene un error y wg-quick no lo cargará:',
+  'vpn.confirmKeys': 'Generar claves nuevas obliga a cambiar la clave pública en todos los pares. ¿Continuar?',
+} as const;
+
+export type VpnKey = keyof typeof VPN_ES;

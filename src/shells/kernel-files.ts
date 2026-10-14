@@ -110,6 +110,8 @@ export function seedKernel(fs: Vfs, host: Host): void {
   fs.seed(`${SYSCTL_DIR}/10-network-security.conf`, { kind: 'file', content: NETWORK_SECURITY }, 0o644);
   fs.seed(`${SYSCTL_DIR}/README.sysctl`, { kind: 'file', content: README }, 0o644);
   fs.seed(NFTABLES_CONF, { kind: 'file', content: DEFAULT_NFTABLES_CONF }, 0o755);
+  // wireguard-tools creates /etc/wireguard readable by root only.
+  if (host.kind === 'linuxrouter') fs.seed('/etc/wireguard', { kind: 'dir' }, 0o700);
   const sysctl = host.kernel.sysctl;
   for (const key of SYSCTL_KEYS) {
     fs.mountFile(sysctlPath(key.name), () => `${sysctl.get(key.name) ?? ''}\n`, 0o644, (content) => {

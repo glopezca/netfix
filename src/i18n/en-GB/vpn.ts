@@ -1,0 +1,31 @@
+/** English (UK): WireGuard VPN of the Linux router (Services → VPN tab and web admin). */
+import type { VpnKey } from '../es-ES/vpn.ts';
+
+export const VPN_EN: Readonly<Record<VpnKey, string>> = {
+  'vpn.tab': 'VPN',
+  'vpn.service': 'WireGuard tunnel wg0 (wg-quick@wg0)',
+  'vpn.intro': 'What you save here is written to /etc/wireguard/wg0.conf and, if the tunnel is running, it is restarted. Turning it on also enables it at boot. With “wg set” in the terminal you only change the running tunnel.',
+  'vpn.notRouter': 'WireGuard is only available on the Linux router.',
+  'vpn.interface': 'Interface',
+  'vpn.privateKey': 'Private key',
+  'vpn.publicKey': 'Public key (give it to the peers)',
+  'vpn.generate': 'Generate keys',
+  'vpn.address': 'Tunnel address (CIDR)',
+  'vpn.listenPort': 'UDP listen port',
+  'vpn.peers': 'Peers',
+  'vpn.noPeers': 'No peers: the tunnel will carry no traffic.',
+  'vpn.peerKey': 'Peer public key',
+  'vpn.allowedIps': 'AllowedIPs (networks reached through the peer)',
+  'vpn.endpoint': 'Endpoint (IP:port, empty if the peer calls in)',
+  'vpn.keepalive': 'Keepalive (s, to get through NAT)',
+  'vpn.addPeer': 'Add peer',
+  'vpn.save': 'Save and apply',
+  'vpn.saved': 'Configuration saved.',
+  'vpn.bad': 'Invalid value: {field}',
+  'vpn.status': 'Peer status',
+  'vpn.handshake': 'Latest handshake',
+  'vpn.transfer': 'Traffic',
+  'vpn.never': 'never',
+  'vpn.fileError': 'wg0.conf has an error and wg-quick will not load it:',
+  'vpn.confirmKeys': 'New keys mean changing the public key on every peer. Continue?',
+};

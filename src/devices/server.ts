@@ -35,7 +35,7 @@ const IMAP_PORT = 143;
 const SSH_PORT = 22;
 
 export class Server extends Host {
-  readonly kind: 'server' | 'linuxrouter' = 'server';
+  readonly kind: 'server' | 'linuxrouter';
   override os: HostOs = 'linux';
   services: ServerServices = defaultServices();
   /** Units enabled at boot (`systemctl enable`, Windows "Automatic"). */
@@ -47,8 +47,10 @@ export class Server extends Host {
   readonly dns: ServerDns;
   readonly web: ServerWeb = new ServerWeb(this);
 
-  constructor(id: string, name: string, clock: SimClock, seed: number) {
+  /** `kind` is set before anything else so the lazily built system (programs, files) sees the right one. */
+  constructor(id: string, name: string, clock: SimClock, seed: number, kind: 'server' | 'linuxrouter' = 'server') {
     super(id, name, clock, seed);
+    this.kind = kind;
     this.ssh = new SshService(this);
     this.dns = new ServerDns(this);
     this.applyServices();
