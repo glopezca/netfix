@@ -253,3 +253,7 @@ solo órdenes de lo que cambia) y los bajos (VLAN solo en modo access, «dúplex
 F2/F9 en mc abren los créditos en el visor (con desplazamiento, cabe en cualquier pantalla): los de Netfix y los reales de
 GNU Midnight Commander 4.8.33 (copyright de la FSF, GPL v3+, sitio, fundador y mantenedores según midnight-commander.org),
 con la aclaración de que Netfix reproduce su interfaz sin incluir su código. `mc --version` usa la misma versión.
+
+**v0.7.5:** los créditos añaden a los traductores de mc al español (David Martin, Ismael Olea, Slava Zanko, Yury V. Zaytsev)
+y al inglés británico (Andi Chandler, Yury V. Zaytsev), según las cabeceras de `po/es.po` y `po/en_GB.po`, sin correos,
+y una referencia a los equipos de Transifex del resto de idiomas.

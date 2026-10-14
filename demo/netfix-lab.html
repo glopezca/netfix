@@ -1066,6 +1066,9 @@ const MC_ES = {
     'mc.about.formerMaintainers': 'Mantenedores anteriores:',
     'mc.about.formerTeam': 'Antiguos miembros del equipo:',
     'mc.about.contributors': 'Y los demás colaboradores (historial de git).',
+    'mc.about.translatorsEs': 'Traducción al español de mc:',
+    'mc.about.translatorsEnGb': 'Traducción al inglés británico de mc:',
+    'mc.about.translatorsAll': 'Y los equipos de traducción de los demás idiomas ({site}).',
     'mc.about.close': 'q, Esc o F10: volver a los paneles.',
     'mc.about.menus': 'Los menús desplegables no están disponibles en Netfix.',
     'mc.footer': 'Netfix {version} · © {author}',
@@ -1093,6 +1096,9 @@ const MC_EN = {
     'mc.about.formerMaintainers': 'Former maintainers:',
     'mc.about.formerTeam': 'Former team members:',
     'mc.about.contributors': 'And all other contributors (see the git history).',
+    'mc.about.translatorsEs': 'Spanish translation of mc:',
+    'mc.about.translatorsEnGb': 'British English translation of mc:',
+    'mc.about.translatorsAll': 'And the translation teams of the other languages ({site}).',
     'mc.about.close': 'q, Esc or F10: back to the panels.',
     'mc.about.menus': 'Pull-down menus are not available in Netfix.',
     'mc.footer': 'Netfix {version} · © {author}',
@@ -27186,7 +27192,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.7.4",
+    "version": "0.7.5",
     "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -27359,8 +27365,12 @@ const MC_FORMER_TEAM = [
     'Egmont Koblinger', 'Stan. S. Krupoderov', 'Ilia Maslakov', 'mooffie', 'Mikhail S. Pabalavets',
     'Sergei Trofimovich', 'Enrico Weigelt', 'Patrick Winnertz', 'Slava Zanko',
 ];
+/** Translators named in the headers of mc's po/es.po and po/en_GB.po (Transifex teams); no e-mail addresses. */
+const MC_TRANSLATORS_ES = ['David Martin (2011-2013)', 'Ismael Olea (2000)', 'Slava Zanko (2011)', 'Yury V. Zaytsev (2025)'];
+const MC_TRANSLATORS_EN_GB = ['Andi Chandler (2016-2025)', 'Yury V. Zaytsev (2025)'];
+const MC_TRANSLATIONS_SITE = 'app.transifex.com/mc/mc';
 const INDENT = '   ';
-const LINE = 44;
+const LINE = 50;
 /** The viewer cuts long lines (a phone terminal is narrow): texts are wrapped at this width. */
 const TEXT = 56;
 function wrapText(text) {
@@ -27408,12 +27418,15 @@ function mcCredits() {
         t('mc.about.formerMaintainers'), ...nameLines(MC_FORMER_MAINTAINERS),
         t('mc.about.formerTeam'), ...nameLines(MC_FORMER_TEAM),
         t('mc.about.contributors'), '',
+        t('mc.about.translatorsEs'), ...nameLines(MC_TRANSLATORS_ES),
+        t('mc.about.translatorsEnGb'), ...nameLines(MC_TRANSLATORS_EN_GB),
+        t('mc.about.translatorsAll', { site: MC_TRANSLATIONS_SITE }), '',
         t('mc.about.menus'), t('mc.about.close'),
     ];
     return lines.flatMap(wrapText);
 }
 
-return { MC_RELEASE, MC_COPYRIGHT, MC_SITE, MC_FOUNDER, MC_MAINTAINERS, MC_FORMER_MAINTAINERS, MC_FORMER_TEAM, mcCredits };
+return { MC_RELEASE, MC_COPYRIGHT, MC_SITE, MC_FOUNDER, MC_MAINTAINERS, MC_FORMER_MAINTAINERS, MC_FORMER_TEAM, MC_TRANSLATORS_ES, MC_TRANSLATORS_EN_GB, MC_TRANSLATIONS_SITE, mcCredits };
 })();
 __m["editors/buffer.js"] = (() => {
 /** Text buffer shared by the nano and vim engines: lines, cursor, undo snapshots and display helpers. */

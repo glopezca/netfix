@@ -17,8 +17,13 @@ export const MC_FORMER_TEAM: readonly string[] = [
   'Sergei Trofimovich', 'Enrico Weigelt', 'Patrick Winnertz', 'Slava Zanko',
 ];
 
+/** Translators named in the headers of mc's po/es.po and po/en_GB.po (Transifex teams); no e-mail addresses. */
+export const MC_TRANSLATORS_ES: readonly string[] = ['David Martin (2011-2013)', 'Ismael Olea (2000)', 'Slava Zanko (2011)', 'Yury V. Zaytsev (2025)'];
+export const MC_TRANSLATORS_EN_GB: readonly string[] = ['Andi Chandler (2016-2025)', 'Yury V. Zaytsev (2025)'];
+export const MC_TRANSLATIONS_SITE = 'app.transifex.com/mc/mc';
+
 const INDENT = '   ';
-const LINE = 44;
+const LINE = 50;
 /** The viewer cuts long lines (a phone terminal is narrow): texts are wrapped at this width. */
 const TEXT = 56;
 
@@ -57,6 +62,9 @@ export function mcCredits(): string[] {
     t('mc.about.formerMaintainers'), ...nameLines(MC_FORMER_MAINTAINERS),
     t('mc.about.formerTeam'), ...nameLines(MC_FORMER_TEAM),
     t('mc.about.contributors'), '',
+    t('mc.about.translatorsEs'), ...nameLines(MC_TRANSLATORS_ES),
+    t('mc.about.translatorsEnGb'), ...nameLines(MC_TRANSLATORS_EN_GB),
+    t('mc.about.translatorsAll', { site: MC_TRANSLATIONS_SITE }), '',
     t('mc.about.menus'), t('mc.about.close'),
   ];
   return lines.flatMap(wrapText);

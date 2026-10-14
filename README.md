@@ -38,7 +38,7 @@ Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado par
   transform-set, crypto map, `show crypto`). ACL extendidas de IOS. DNS de empresa que reenvía a los DNS de Google
   emulados a través de las nubes ISP. Apps del PC **Cliente SSH** (sesiones, claves, known_hosts) y **Archivos
   (SFTP)** tipo FileZilla. Laboratorios de conectividad, seguridad y bastionado. Lo que se cambia en la terminal
-  se ve en los paneles. Pestaña **Donaciones** (PayPal.Me) y créditos en Midnight Commander (F2/F9: los de Netfix y los reales de GNU Midnight Commander). Mejor uso en móvil,
+  se ve en los paneles. Pestaña **Donaciones** (PayPal.Me) y créditos en Midnight Commander (F2/F9: los de Netfix y los reales de GNU Midnight Commander, con sus traductores). Mejor uso en móvil,
   tableta y touchpad (pellizco, barra de teclas táctil).
 - Modo simulación con lista de eventos (DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP, SSH),
   animación paso a paso y la PDU de cada paquete.
