@@ -160,7 +160,8 @@ function setupLinux(lr: LinuxRouter, lanCidr: string, wg: string): void {
   // set +H: the files contain «#!/usr/sbin/nft -f» and an interactive bash would expand «!».
   const root = createShell(lr, 'linux', 'root');
   root.run('set +H');
-  root.run(`ip addr add ${lanCidr} dev eth1\n${script}\nchmod 600 /etc/wireguard/wg0.conf\nsysctl -q --system\nsystemctl enable --now nftables\nsystemctl enable --now wg-quick@wg0`);
+  // umask 077 first: the private key in wg0.conf is never readable by others, not even for a moment.
+  root.run(`umask 077\nip addr add ${lanCidr} dev eth1\n${script}\nchmod 600 /etc/wireguard/wg0.conf\nsysctl -q --system\nsystemctl enable --now nftables\nsystemctl enable --now wg-quick@wg0`);
 }
 
 export const wireguardLab: Example = {

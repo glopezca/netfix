@@ -128,7 +128,7 @@ export function natHook(rs: Ruleset, hook: Hook, p: IpPacket, meta: PacketMeta, 
     const v = o.verdict;
     if (v.kind === 'masquerade' || v.kind === 'snat' || v.kind === 'dnat') return v;
     if (v.kind === 'drop' || v.kind === 'reject') return 'drop';
-    if (v.kind === 'accept') return null;
+    // accept ends this chain only: a nat chain of another table may still translate.
   }
   return null;
 }

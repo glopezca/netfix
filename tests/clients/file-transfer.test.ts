@@ -71,3 +71,17 @@ test('file transfer: host key question, password, panes, upload/download and err
   assert.match(ft.log.at(-1)?.text ?? '', /permission denied/);
   assert.ok(new SshKeyring(fs, alumno(pc), 'pc').knownHosts().some((k) => k.host === '10.0.0.2'));
 });
+
+test('keyring: forgetting a known host removes that key even if the file changed meanwhile', () => {
+  const { pc } = lab();
+  const fs = hostSystem(pc).fs;
+  const sh = createShell(pc, 'linux');
+  sh.run('ssh -o StrictHostKeyChecking=accept-new admin@10.0.0.2 true');
+  const ring = new SshKeyring(fs, alumno(pc), 'pc0');
+  const [entry] = ring.knownHosts();
+  assert.ok(entry);
+  fs.writeFile('/home/alumno/.ssh/known_hosts', `# added by hand\n${fs.readFile('/home/alumno/.ssh/known_hosts')}`, { uid: 0, gid: 0, groups: [] });
+  ring.forgetHost(entry);
+  assert.deepEqual(ring.knownHosts(), []);
+  assert.match(fs.readFile('/home/alumno/.ssh/known_hosts'), /# added by hand/);
+});

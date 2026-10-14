@@ -70,6 +70,12 @@ const MAX_SAS = 64;
 
 const saKey = (map: string, seq: number, peer: number): string => `${map}|${seq}|${formatIp(peer)}`;
 
+/** The same packet in the other direction (addresses and ports swapped), to test it against our ACL. */
+function mirror(p: IpPacket): IpPacket {
+  const swap = <T extends { sport: number; dport: number }>(l4: T | undefined): T | undefined => (l4 ? { ...l4, sport: l4.dport, dport: l4.sport } : undefined);
+  return { ...p, src: p.dst, dst: p.src, tcp: swap(p.tcp), udp: swap(p.udp) };
+}
+
 export class IpsecEngine {
   private readonly r: Router;
   private readonly pending = new Map<string, Pending>();
@@ -137,8 +143,8 @@ export class IpsecEngine {
     for (const entry of this.entriesOn(iface)) {
       if (!entryReady(entry)) continue;
       const hit = aclPacketMatch(this.r.acls.get(entry.acl), p);
-      if (!hit) continue;
-      if (hit.action !== 'permit') return p;
+      // A deny only means «not this entry»: IOS carries on with the next sequence number.
+      if (hit?.action !== 'permit') continue;
       const sa = this.current(entry.map, entry.seq, entry.peer);
       if (sa) return this.encapsulate(sa, p);
       this.countersFor(entry.map, entry.seq, entry.peer).sendErrors += 1;
@@ -181,13 +187,21 @@ export class IpsecEngine {
     }
     const c = this.countersFor(sa.map, sa.seq, sa.peer);
     const inner = esp.inner;
-    if (!inNet(sa.proxies.remote, inner.src) || !inNet(sa.proxies.local, inner.dst)) {
+    if (!this.identityAllowed(sa, inner)) {
       c.recvErrors += 1;
       this.r.log(`%CRYPTO-4-RECVD_PKT_INV_IDENTITY_ACL: ipsec check access: identity not allowed by ACL policy. Packet src_addr=${formatIp(inner.src)}, dest_addr=${formatIp(inner.dst)}`);
       return null;
     }
     c.decaps += 1;
     return inner;
+  }
+
+  /** The inner packet, seen from our side, is permitted by the crypto ACL (any of its permit lines). */
+  private identityAllowed(sa: IpsecSa, inner: IpPacket): boolean {
+    const entry = this.r.crypto.maps.find((e) => e.map === sa.map && e.seq === sa.seq);
+    const acl = entry?.acl === undefined ? undefined : this.r.acls.get(entry.acl);
+    if (!acl) return inNet(sa.proxies.remote, inner.src) && inNet(sa.proxies.local, inner.dst);
+    return aclPacketMatch(acl, mirror(inner))?.action === 'permit';
   }
 
   // ------------------------------------------------------------ IKE

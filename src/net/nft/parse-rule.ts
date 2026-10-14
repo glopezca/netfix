@@ -81,7 +81,7 @@ function scalar(kind: Kind, t: Token): Value {
   }
   if (kind === 'port') {
     const range = /^(\w+)-(\w+)$/.exec(w);
-    const port = (s: string): number => (/^\d+$/.test(s) ? Number(s) : SERVICES[s] ?? NaN);
+    const port = (s: string): number => (/^\d+$/.test(s) ? Number(s) : Object.hasOwn(SERVICES, s) ? SERVICES[s] ?? NaN : NaN);
     const [a, b] = range ? [port(range[1] ?? ''), port(range[2] ?? '')] : [port(w), port(w)];
     if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b > 65535 || a > b) throw new NftSyntaxError(`Error: Could not resolve service: Servname not supported for ai_socktype`, t);
     return range ? { kind: 'range', from: a, to: b } : { kind: 'num', n: a };
@@ -97,7 +97,8 @@ function value(c: Cursor, kind: Kind): Value {
     const items: Value[] = [];
     while (!c.eat('}')) {
       const t = c.next();
-      if (!t || t.kind === 'newline' || t.text === ';') throw unexpected(t);
+      if (t?.kind === 'newline') continue; // sets may span lines, as in most nftables.conf files
+      if (!t || t.text === ';') throw unexpected(t);
       if (t.text !== ',') items.push(scalar(kind, t));
       if (items.length > NFT_LIMITS.setItems) throw new NftSyntaxError('Error: set too large', t);
     }
@@ -160,7 +161,7 @@ function reject(c: Cursor): Verdict {
   const map: Readonly<Record<string, 'icmp port-unreachable' | 'icmp host-unreachable' | 'icmp admin-prohibited'>> = {
     'port-unreachable': 'icmp port-unreachable', 'host-unreachable': 'icmp host-unreachable', 'admin-prohibited': 'icmp admin-prohibited',
   };
-  const w = map[t?.text ?? ''];
+  const w = t && Object.hasOwn(map, t.text) ? map[t.text] : undefined;
   if (!w) throw unexpected(t);
   return { kind: 'reject', with: w };
 }

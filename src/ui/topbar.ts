@@ -61,7 +61,7 @@ function languageSelect(actions: TopbarActions): HTMLSelectElement {
   return s;
 }
 
-export function topbar(actions: TopbarActions, clockEl: HTMLElement, mode: Mode): HTMLElement {
+export function topbar(actions: TopbarActions, clockEl: HTMLElement, mode: Mode, view: View = 'net'): HTMLElement {
   const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), EXAMPLES.map((e) => [e.id, labText(e).title] as const), (id) => actions.loadExample(id));
   const advance = actionSelect(t('top.advanceLabel'), t('top.advance'),
     [[String(MINUTE), t('top.plusMinute')], [String(60 * MINUTE), t('top.plusHour')], [String(24 * 60 * MINUTE), t('top.plusDay')]], (v) => actions.advance(Number(v)));
@@ -76,7 +76,7 @@ export function topbar(actions: TopbarActions, clockEl: HTMLElement, mode: Mode)
     languageSelect(actions));
   const bar = el('header', { class: 'topbar', 'data-open': 'false' },
     el('h1', { class: 'brand' }, brandImage('logo', 'brand-logo', 'Netfix')),
-    segmented(t('top.view'), VIEWS.map(([v, k]) => [v, t(k)] as const), 'net', (v) => {
+    segmented(t('top.view'), VIEWS.map(([v, k]) => [v, t(k)] as const), view, (v) => {
       actions.showView(v as View);
       setOpen(false);
     }, 'data-view'),

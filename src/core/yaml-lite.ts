@@ -16,6 +16,8 @@ export interface YamlError {
 }
 
 export const MAX_YAML_LINES = 400;
+/** Longer lines are refused (the key regex would take quadratic time on a huge line without «:»). */
+export const MAX_YAML_LINE = 1024;
 
 interface Line {
   readonly no: number;
@@ -68,7 +70,8 @@ class Parser {
       const m = /^("[^"]*"|'[^']*'|[^:\s][^:]*?)\s*:(?:\s+(.*))?$/.exec(l.text);
       if (!m) return { line: l.no, col: l.indent + 1, message: 'could not find expected \':\'' };
       const key = (m[1] ?? '').replace(/^["']|["']$/g, '');
-      if (key in out) return { line: l.no, col: l.indent + 1, message: `duplicate key "${key}"` };
+      if (key === '__proto__') return { line: l.no, col: l.indent + 1, message: `invalid key "${key}"` };
+      if (Object.hasOwn(out, key)) return { line: l.no, col: l.indent + 1, message: `duplicate key "${key}"` };
       this.i++;
       const value = m[2] !== undefined && m[2].trim() !== '' ? scalar(m[2], l.no, l.indent + key.length + 3) : this.child(indent);
       if (isError(value)) return value;
@@ -111,6 +114,8 @@ class Parser {
 export function parseYaml(text: string): YamlMap | YamlError {
   const raw = text.split('\n');
   if (raw.length > MAX_YAML_LINES) return { line: MAX_YAML_LINES, col: 1, message: 'file too long' };
+  const long = raw.findIndex((r) => r.length > MAX_YAML_LINE);
+  if (long >= 0) return { line: long + 1, col: MAX_YAML_LINE + 1, message: 'line too long' };
   const lines: Line[] = [];
   raw.forEach((r, idx) => {
     if (r.includes('\t')) lines.push({ no: idx + 1, indent: -1, text: '\t' });

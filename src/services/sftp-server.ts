@@ -33,7 +33,8 @@ export function resolveSftp(home: string, path: string): string {
 }
 
 function failure(e: unknown): SftpResult {
-  if (!(e instanceof FsError)) throw e;
+  // A malformed request must not escape into the network loop: it is a plain SSH_FX_FAILURE.
+  if (!(e instanceof FsError)) return { status: 'failure', message: 'Failure' };
   if (e.code === 'ENOENT') return { status: 'no-such-file', message: 'No such file or directory' };
   if (e.code === 'EACCES' || e.code === 'EPERM' || e.code === 'EROFS') return { status: 'permission-denied', message: 'Permission denied' };
   if (e.code === 'ENOTEMPTY') return { status: 'failure', message: 'Directory not empty' };

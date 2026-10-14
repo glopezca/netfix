@@ -22,12 +22,13 @@ const saved = (): Outcome => ({ ok: t('wa.saved') });
 const NAME = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/;
 const KEY = /^(inet|ip) ([A-Za-z][\w-]{0,31})(?: ([A-Za-z][\w-]{0,31}))?(?: (\d{1,6}))?$/;
 
-const LOCKOUT = t('fwa.lockout');
+const HOOKS: ReadonlySet<string> = new Set(['prerouting', 'input', 'forward', 'output', 'postrouting']);
+const lockout = (): string => t('fwa.lockout');
 
 function commit(server: Server, command: string): Outcome {
   const r = nftEdit(server.kernel.netfilter.ruleset, command);
   if (!r.ok) return { error: r.error };
-  if (locksOut(server, r.ruleset) && !locksOut(server)) return { error: LOCKOUT };
+  if (locksOut(server, r.ruleset) && !locksOut(server)) return { error: lockout() };
   applyAndSave(server, r.ruleset);
   return saved();
 }
@@ -70,7 +71,9 @@ function chainAdd(server: Server, f: Fields): Outcome {
   const type = f.get('type') ?? '';
   const prio = (f.get('priority') ?? '0').trim();
   if (type && (!['filter', 'nat'].includes(type) || !/^-?\d{1,4}$/.test(prio))) return { error: t('fwa.badType') };
-  const spec = type ? ` { type ${type} hook ${f.get('hook') ?? 'input'} priority ${prio}; policy ${f.get('policy') === 'drop' ? 'drop' : 'accept'}; }` : '';
+  const hook = f.get('hook') ?? 'input';
+  if (type && !HOOKS.has(hook)) return { error: t('fwa.badType') };
+  const spec = type ? ` { type ${type} hook ${hook} priority ${prio}; policy ${f.get('policy') === 'drop' ? 'drop' : 'accept'}; }` : '';
   return commit(server, `add chain ${k.family} ${k.table} ${name}${spec}`);
 }
 
@@ -96,7 +99,7 @@ function move(server: Server, f: Fields, delta: -1 | 1): Outcome {
   const k = parseKey(f);
   if (!k?.chain || k.handle === undefined) return { error: t('fwa.noRule') };
   const next = moveRule(server.kernel.netfilter.ruleset, k.family, k.table, k.chain, k.handle, delta);
-  if (locksOut(server, next) && !locksOut(server)) return { error: LOCKOUT };
+  if (locksOut(server, next) && !locksOut(server)) return { error: lockout() };
   applyAndSave(server, next);
   return saved();
 }

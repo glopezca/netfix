@@ -95,6 +95,8 @@ export class SshKeyring {
       this.fs.writeFile(`${path}.pub`, `${publicLine(kp)}\n`, this.cred, false, PUBLIC_MODE);
       return null;
     } catch {
+      // No half pair left behind: a retry would otherwise always find «exists».
+      this.deleteKey(name);
       return 'write';
     }
   }
@@ -115,12 +117,14 @@ export class SshKeyring {
     });
   }
 
-  /** Forgets one known_hosts line (like `ssh-keygen -R`, but for that entry only). */
-  forgetHost(line: number): void {
+  /** Forgets one known host (like `ssh-keygen -R`, but for that key only), wherever its line is now. */
+  forgetHost(entry: Pick<KnownHost, 'host' | 'fingerprint'>): void {
     const path = `${this.dir}/known_hosts`;
     const text = this.read(path);
     if (text === null) return;
-    this.fs.writeFile(path, text.split('\n').filter((_, i) => i + 1 !== line).join('\n'), this.cred);
+    const lines = text.split('\n');
+    const gone = new Set(this.knownHosts().filter((k) => k.host === entry.host && k.fingerprint === entry.fingerprint).map((k) => k.line));
+    if (gone.size) this.fs.writeFile(path, lines.filter((_, i) => !gone.has(i + 1)).join('\n'), this.cred);
   }
 
   // ------------------------------------------------------------ saved sessions

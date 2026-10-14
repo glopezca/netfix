@@ -43,6 +43,7 @@ class App {
   private saveTimer = 0;
   private readonly interval: number;
   private mode: Mode = 'realtime';
+  private view: View = 'net';
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
@@ -50,7 +51,9 @@ class App {
     }
   };
 
-  constructor(root: HTMLElement, topo?: Topology) {
+  constructor(root: HTMLElement, topo?: Topology, initial: { readonly view: View; readonly mode: Mode } = { view: 'net', mode: 'realtime' }) {
+    this.mode = initial.mode;
+    this.view = initial.view;
     this.topo = topo ?? this.initialTopology();
     this.hintEl = el('p', { class: 'hint', role: 'status' });
     this.clockEl = el('time', { class: 'clock' });
@@ -74,7 +77,14 @@ class App {
     this.canvas.frameContent();
     this.interval = window.setInterval(() => this.tick(), TICK_MS);
     window.addEventListener('keydown', this.onKeyDown);
+    this.setMode(this.mode, false);
+    this.showView(this.view);
     this.tick();
+  }
+
+  /** Where the user is (kept when the interface is rebuilt in another language). */
+  where(): { readonly view: View; readonly mode: Mode } {
+    return { view: this.view, mode: this.mode };
   }
 
   /** Stops timers and listeners (before rebuilding the interface in another language). */
@@ -83,6 +93,7 @@ class App {
     window.removeEventListener('keydown', this.onKeyDown);
     this.flushSave();
     this.windows.closeAll();
+    this.sim.dispose();
     forgetAll();
   }
 
@@ -111,14 +122,14 @@ class App {
       setMode: (m) => this.setMode(m),
       showView: (v) => this.showView(v),
       setLocale: (l) => changeLocale(l),
-    }, this.clockEl, this.mode);
+    }, this.clockEl, this.mode, this.view);
   }
 
-  private setMode(m: Mode): void {
+  private setMode(m: Mode, hint = true): void {
     this.mode = m;
     this.sim.setActive(m === 'simulation');
     document.body.dataset.mode = m;
-    this.hintEl.textContent = t(m === 'simulation' ? 'hint.simulation' : 'hint.realtime');
+    if (hint) this.hintEl.textContent = t(m === 'simulation' ? 'hint.simulation' : 'hint.realtime');
   }
 
   private selectTool(tool: Tool, key: string): void {
@@ -149,6 +160,7 @@ class App {
     this.paletteEl.hidden = view !== 'net';
     this.pageHost.hidden = view === 'net';
     document.body.dataset.view = view;
+    this.view = view;
     if (view === 'docs') this.docs?.focus();
   }
 
@@ -238,10 +250,11 @@ function changeLocale(locale: Locale): void {
   safeStorageSet(LOCALE_STORAGE_KEY, locale);
   if (!mountEl || !app) return;
   const topo = app.topo;
+  const where = app.where();
   app.dispose();
   setLocale(locale);
   applyDocumentLanguage();
-  app = new App(mountEl, topo);
+  app = new App(mountEl, topo, where);
   app.announce(t('hint.language'));
 }
 

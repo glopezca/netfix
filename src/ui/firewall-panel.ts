@@ -73,13 +73,15 @@ function tablesView(s: Server, commit: Commit, app: AfterChange, fail: (m: strin
 }
 
 export function firewallPanel(s: Server, app: AfterChange): LivePanel {
+  // Outside the redraw: an action that changes the device redraws the panel before reporting.
+  const msg = message();
   return liveHostPanel(s, () => {
     if (s.os !== 'linux') return [el('p', { class: 'muted' }, t('fw.notLinux'))];
-    const msg = message();
     const fail = (m: string): void => msg.error(m);
     const commit: Commit = (command) => {
       const r = nftEdit(s.kernel.netfilter.ruleset, command);
-      if (!r.ok) return r.error;
+      // Every edit reports its error here (also the delete and policy buttons, which ignore the result).
+      if (!r.ok) { fail(r.error); return r.error; }
       applyAndSave(s, r.ruleset);
       app.afterCommand();
       return null;
@@ -93,8 +95,9 @@ export function firewallPanel(s: Server, app: AfterChange): LivePanel {
 }
 
 export function sysctlPanel(s: Server, app: AfterChange): LivePanel {
+  // Outside the redraw: an action that changes the device redraws the panel before reporting.
+  const msg = message();
   return liveHostPanel(s, () => {
-    const msg = message();
     const keys = [...SYSCTL_KEYS].sort((a, b) => Number(b.effect) - Number(a.effect) || a.name.localeCompare(b.name));
     const rows = keys.map((k) => {
       const current = s.kernel.sysctl.get(k.name) ?? '';

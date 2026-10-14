@@ -11,6 +11,7 @@ import type { Parsed } from './vim-keys.ts';
 import { fileInfo, runEx } from './vim-ex.ts';
 import type { ExTarget } from './vim-ex.ts';
 import { ruler, statusLine, textRows } from './vim-view.ts';
+import { isCatastrophic } from '../bash/regex-guard.ts';
 import type { VimView } from './vim-view.ts';
 
 type Mode = { kind: 'normal' } | { kind: 'insert' } | { kind: 'cmdline'; prefix: ':' | '/' | '?'; text: string };
@@ -259,7 +260,10 @@ export class VimEditor implements Editor, ExTarget {
   private regex(): RegExp | null {
     if (!this.search?.pattern) return null;
     try {
-      return new RegExp(this.search.pattern.replace(/\\</g, '\\b').replace(/\\>/g, '\\b'));
+      const src = this.search.pattern.replace(/\\</g, '\\b').replace(/\\>/g, '\\b');
+      // A pattern that would backtrack forever is searched as literal text instead.
+      if (isCatastrophic(src)) throw new Error('catastrophic');
+      return new RegExp(src);
     } catch {
       return new RegExp(this.search.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     }

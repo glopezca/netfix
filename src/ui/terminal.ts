@@ -106,15 +106,21 @@ export class Terminal {
     } else this.editorEl.focus({ preventScroll: true });
   }
 
+  /** The sticky Ctrl of the touch key bar; its button shows the state however the key gets used. */
+  private setCtrl(on: boolean): void {
+    this.ctrl = on;
+    for (const b of this.root?.querySelectorAll('.term-keys [data-key="Ctrl"]') ?? []) b.setAttribute('aria-pressed', String(on));
+  }
+
   ctrlArmed(): boolean {
     return this.ctrl;
   }
 
   /** A key of the touch key bar. */
   virtualKey(key: string): void {
-    if (key === 'Ctrl') { this.ctrl = !this.ctrl; return; }
+    if (key === 'Ctrl') { this.setCtrl(!this.ctrl); return; }
     const ctrl = this.ctrl;
-    this.ctrl = false;
+    this.setCtrl(false);
     if (this.full) {
       const k = key === '^C' ? { key: 'c', ctrl: true } : key === '^D' ? { key: 'd', ctrl: true } : { key, ctrl };
       this.feed([k]);
@@ -139,7 +145,7 @@ export class Terminal {
     const keys: KeyInput[] = [];
     if (value === '' || e.inputType === 'deleteContentBackward') keys.push({ key: 'Backspace' });
     else for (const ch of value.slice(1)) keys.push(ch === '\n' ? { key: 'Enter' } : { key: ch, ctrl: this.ctrl });
-    this.ctrl = false;
+    this.setCtrl(false);
     this.ime.value = ' ';
     this.feed(keys);
   }
@@ -207,7 +213,7 @@ export class Terminal {
       // Sticky Ctrl from the key bar: the letter just typed is the control key.
       const ch = this.input.value.slice(-1).toLowerCase();
       this.input.value = this.input.value.slice(0, -1);
-      this.ctrl = false;
+      this.setCtrl(false);
       this.ctrlKey(ch);
       return;
     }
@@ -335,7 +341,7 @@ export class Terminal {
     e.preventDefault();
     e.stopPropagation();
     this.feed([this.ctrl ? { ...k, ctrl: true } : k]);
-    this.ctrl = false;
+    this.setCtrl(false);
   }
 
   private onEditorPaste(e: ClipboardEvent): void {

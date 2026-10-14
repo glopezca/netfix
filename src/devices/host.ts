@@ -374,21 +374,11 @@ export abstract class Host implements NetDevice, StackHost {
 
   // ------------------------------------------------------------ netfilter hooks
 
-  prerouting(iface: string, packet: IpPacket): IpPacket | null {
-    return this.kernel.prerouting(iface, packet);
-  }
-
-  input(iface: string, packet: IpPacket): IpPacket | null {
-    return this.kernel.input(iface, packet);
-  }
-
-  output(iface: string, packet: IpPacket): IpPacket | null {
-    return this.kernel.output(iface, packet);
-  }
-
-  postrouting(iface: string, packet: IpPacket): IpPacket | null {
-    return this.kernel.postrouting(iface, packet);
-  }
+  // The kernel (sysctl + nftables) decides; each hook returns the packet, rewritten, or null when dropped.
+  prerouting = (iface: string, packet: IpPacket): IpPacket | null => this.kernel.prerouting(iface, packet);
+  input = (iface: string, packet: IpPacket): IpPacket | null => this.kernel.input(iface, packet);
+  output = (iface: string, packet: IpPacket): IpPacket | null => this.kernel.output(iface, packet);
+  postrouting = (iface: string, packet: IpPacket): IpPacket | null => this.kernel.postrouting(iface, packet);
 
   /** WireGuard links (Linux router only). */
   wgLinks(): WgManager | undefined {

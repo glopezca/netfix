@@ -7,6 +7,8 @@ import { parseOpts, badOption } from './util.ts';
 import { functionText } from '../deparse.ts';
 import { builtinDocs, helpIntro } from '../../docs/index.ts';
 
+const MAX_HELP_PATTERN = 64;
+
 export const KEYWORDS = new Set(['if', 'then', 'else', 'elif', 'fi', 'case', 'esac', 'for', 'select', 'while', 'until', 'do', 'done', 'in', 'function', 'time', '{', '}', '!', '[[', ']]', 'coproc']);
 
 export interface Description {
@@ -83,7 +85,8 @@ function help(ctx: Ctx): number {
     return 0;
   }
   let status = 0;
-  for (const pat of p.rest) {
+  // Runs of * collapse to one (a long ****…x would otherwise backtrack for ever); patterns are short.
+  for (const pat of p.rest.map((x) => x.replace(/\*+/g, '*').slice(0, MAX_HELP_PATTERN))) {
     const hits = Object.entries(builtinDocs()).filter(([n]) => n === pat || (pat.includes('*') && new RegExp(`^${pat.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`).test(n)));
     if (!hits.length) { builtinError(ctx, `no help topics match \`${pat}'.  Try \`help help' or \`man -k ${pat}' or \`info ${pat}'.`); status = 1; continue; }
     for (const [n, d] of hits) {

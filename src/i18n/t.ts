@@ -19,12 +19,12 @@ export function t(key: MessageKey, params?: Params, locale: Locale = getLocale()
 /** Like t(), for keys built at run time (unknown keys return the key itself). */
 export function tDynamic(key: string, params?: Params, locale: Locale = getLocale()): string {
   const table = CATALOGS[locale] as Readonly<Record<string, string>>;
-  const msg = table[key];
+  const msg = Object.hasOwn(table, key) ? table[key] : undefined;
   return msg === undefined ? key : format(msg, params);
 }
 
 export function hasMessage(key: string): key is MessageKey {
-  return key in CATALOGS['es-ES'];
+  return Object.hasOwn(CATALOGS['es-ES'], key);
 }
 
 export function fmtNumber(n: number, opts: Intl.NumberFormatOptions = {}, locale: Locale = getLocale()): string {

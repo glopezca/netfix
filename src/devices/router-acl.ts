@@ -8,7 +8,8 @@ import { formatIp } from '../core/ip.ts';
 export function aclAllows(r: Router, acl: string | undefined, p: IpPacket): boolean {
   if (acl === undefined) return true;
   const entries = r.acls.get(acl);
-  if (!entries) return true;
+  // A missing or still empty list (only remarks) permits everything, like IOS.
+  if (!entries?.some((e) => e.action !== 'remark')) return true;
   const hit = aclPacketMatch(entries, p);
   if (!hit) return false;
   const key = `${acl}:${hit.seq}`;

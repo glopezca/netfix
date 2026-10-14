@@ -95,3 +95,9 @@ test('runaway recursion is stopped and the session keeps working', () => {
   assert.equal(s.input('x=$(f); echo "[$x] $?"'), 'bash: f: maximum function nesting level exceeded (200)\n[] 1\n');
   assert.match(s.input('return'), /can only `return'/);
 });
+
+test('help with a long run of * answers at once (no catastrophic backtracking)', () => {
+  const started = Date.now();
+  assert.match(session().input(`help ${'*'.repeat(40)}zzz`), /no help topics match/);
+  assert.ok(Date.now() - started < 1000);
+});

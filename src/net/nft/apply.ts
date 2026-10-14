@@ -13,6 +13,8 @@ import type { FormatOptions } from './format.ts';
 import { rulesetText, singleChainText, tableText } from './format.ts';
 
 const MAX_INCLUDE_DEPTH = 8;
+/** Files read in one run (a file that includes itself many times would otherwise fan out exponentially). */
+const MAX_INCLUDES = 64;
 
 export type ApplyResult = { ok: true; ruleset: Ruleset; output: string[] } | { ok: false; error: string };
 
@@ -20,6 +22,8 @@ export interface ApplyEnv {
   /** Reads an included file (absolute path); null when it does not exist. */
   read?(path: string): string | null;
   readonly format?: FormatOptions;
+  /** Includes read so far in this run (set by runNft). */
+  readonly includes?: { n: number };
 }
 
 class ApplyError extends Error {
@@ -142,6 +146,7 @@ function step(rs: Ruleset, c: Command, out: string[], env: ApplyEnv, depth: numb
 
 function include(rs: Ruleset, c: Extract<Command, { op: 'include' }>, out: string[], env: ApplyEnv, depth: number): Ruleset {
   if (depth >= MAX_INCLUDE_DEPTH) throw new ApplyError('Error: Include nested too deeply, max 8 levels', c.at);
+  if (env.includes && ++env.includes.n > MAX_INCLUDES) throw new ApplyError(`Error: too many included files (max ${MAX_INCLUDES})`, c.at);
   const text = env.read?.(c.path) ?? null;
   if (text === null) throw new ApplyError(`Error: File not found: ${c.path}`, c.at);
   const parsed = parseNft(text);
@@ -150,7 +155,8 @@ function include(rs: Ruleset, c: Extract<Command, { op: 'include' }>, out: strin
 }
 
 /** Parses and applies `src`; errors come as nft prints them (message, line, carets). */
-export function runNft(rs: Ruleset, src: string, env: ApplyEnv = {}): ApplyResult {
+export function runNft(rs: Ruleset, src: string, given: ApplyEnv = {}): ApplyResult {
+  const env: ApplyEnv = { ...given, includes: { n: 0 } };
   const lines = src.split('\n');
   const parsed = parseNft(src);
   if (!parsed.ok) return { ok: false, error: errorBlock(parsed.error, lines[parsed.line - 1] ?? '', parsed.col, parsed.len) };

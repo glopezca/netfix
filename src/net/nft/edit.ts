@@ -33,6 +33,9 @@ const ADDR = /^\d+\.\d+\.\d+\.\d+(\/\d{1,2})?$/;
 const PORTS = /^\d{1,5}(-\d{1,5})?(,\d{1,5}(-\d{1,5})?)*$/;
 const STATES = new Set(['new', 'established', 'related', 'invalid']);
 const MAX_TEXT = 64;
+/** Checked at run time too: the forms of the web GUI send any text. */
+const PROTOS: ReadonlySet<string> = new Set(['tcp', 'udp', 'icmp']);
+const ACTIONS: ReadonlySet<string> = new Set(['accept', 'drop', 'reject', 'masquerade', 'snat', 'dnat']);
 
 function quoted(text: string): string | null {
   return text.length <= MAX_TEXT && !/["\\\n]/.test(text) ? `"${text}"` : null;
@@ -40,6 +43,7 @@ function quoted(text: string): string | null {
 
 /** nft text of a form, or the first invalid field. */
 export function ruleFromForm(f: RuleForm): string | { error: string } {
+  if ((f.proto && !PROTOS.has(f.proto)) || !ACTIONS.has(f.action)) return { error: f.proto && !PROTOS.has(f.proto) ? 'proto' : 'action' };
   const parts: string[] = [];
   const iface = (k: 'iif' | 'oif', v?: string): string | null => {
     if (!v) return '';

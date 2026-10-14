@@ -1,6 +1,7 @@
 /** vim command-line (ex) commands: :w :q :wq :x :e! :set :N :s :%s :d :noh :help… with vim's messages. */
 import type { TextBuffer } from './buffer.ts';
 import { byteLength } from './buffer.ts';
+import { isCatastrophic } from '../bash/regex-guard.ts';
 
 /** What the ex commands need from the editor. */
 export interface ExTarget {
@@ -58,7 +59,9 @@ function substitute(t: ExTarget, all: boolean, body: string): void {
   const [pattern = '', replacement = '', flags = ''] = parts;
   let re: RegExp;
   try {
-    re = new RegExp(pattern.replace(/\\</g, '\\b').replace(/\\>/g, '\\b').replace(/\\\(/g, '(').replace(/\\\)/g, ')').replace(/\\\|/g, '|'), flags.includes('g') ? 'g' : '');
+    const src = pattern.replace(/\\</g, '\\b').replace(/\\>/g, '\\b').replace(/\\\(/g, '(').replace(/\\\)/g, ')').replace(/\\\|/g, '|');
+    if (isCatastrophic(src)) throw new Error('catastrophic');
+    re = new RegExp(src, flags.includes('g') ? 'g' : '');
   } catch {
     t.message(`E486: Pattern not found: ${pattern}`, true);
     return;

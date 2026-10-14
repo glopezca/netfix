@@ -85,8 +85,10 @@ export function copyRow(label: string, value: string, help: string): HTMLElement
 }
 
 /** Vertical sub-navigation used inside a window tab (Servicios → DHCP / DNS / …). */
-export function subnav(items: readonly { id: string; label: string; render: () => HTMLElement }[]): HTMLElement {
+/** Side navigation of a pane; items with `keep` are drawn once and kept (an open terminal survives a visit to another item). */
+export function subnav(items: readonly { id: string; label: string; render: () => HTMLElement; keep?: boolean }[]): HTMLElement {
   const content = el('div', { class: 'subnav-content' });
+  const kept = new Map<string, HTMLElement>();
   const buttons = items.map((it) => {
     const b = el('button', { type: 'button', class: 'subnav-item', 'aria-pressed': 'false' }, it.label);
     b.addEventListener('click', () => show(it.id));
@@ -95,7 +97,10 @@ export function subnav(items: readonly { id: string; label: string; render: () =
   const show = (id: string): void => {
     items.forEach((it, i) => buttons[i]?.setAttribute('aria-pressed', String(it.id === id)));
     const item = items.find((it) => it.id === id);
-    content.replaceChildren(item ? item.render() : el('p', {}, ''));
+    if (!item) return void content.replaceChildren(el('p', {}, ''));
+    const view = kept.get(item.id) ?? item.render();
+    if (item.keep) kept.set(item.id, view);
+    content.replaceChildren(view);
   };
   if (items[0]) show(items[0].id);
   return el('div', { class: 'subnav' }, el('nav', { class: 'subnav-list', 'aria-label': t('win.services') }, ...buttons), content);

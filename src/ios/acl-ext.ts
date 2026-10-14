@@ -41,7 +41,8 @@ function names(proto: AclProto): Readonly<Record<string, number>> {
 function port(proto: AclProto, word: string | undefined): number | null {
   if (word === undefined) return null;
   if (/^\d+$/.test(word)) return Number(word) <= 65535 ? Number(word) : null;
-  return names(proto)[word] ?? null;
+  const table = names(proto);
+  return Object.hasOwn(table, word) ? table[word] ?? null : null;
 }
 
 /** `eq www` / `range 1000 2000` at `words[i]`; returns the spec and how many words it used. */

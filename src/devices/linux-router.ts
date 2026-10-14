@@ -137,6 +137,11 @@ export class LinuxRouter extends Server {
     else super.onUdp(packet, iface);
   }
 
+  /** Also the WireGuard links: masquerade with oifname "wg0" uses the tunnel address. */
+  override linuxIfIp(name: string): number | undefined {
+    return super.linuxIfIp(name) ?? this.wgm?.get(name)?.addresses[0]?.ip;
+  }
+
   override l3Iface(name: string): L3Iface | undefined {
     return this.l3Ifaces().find((i) => i.name === name);
   }

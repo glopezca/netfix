@@ -12,11 +12,12 @@ import { t } from '../i18n/t.ts';
 const MAX_LABEL = 40;
 
 export function hostSettings(placed: Placed, h: Host, app: AfterChange & { retitle?: (title: string) => void }): LivePanel {
+  // Outside the redraw: an action that changes the device redraws the panel before reporting.
+  const msg = message();
   return liveHostPanel(h, (refresh) => {
     const label = input({ value: placed.label, maxlength: String(MAX_LABEL), 'aria-describedby': 'label-hint' });
     const hostname = input({ value: h.name, maxlength: '253' });
     const pretty = input({ value: h.prettyName ?? '', placeholder: t('host.prettyPlaceholder') });
-    const msg = message();
     const save = (): void => {
       const name = hostname.value.trim();
       const err = validHostname(name);

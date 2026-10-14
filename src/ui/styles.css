@@ -560,7 +560,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 }
 
 .palette { align-items: center; }
-.palette .hint { flex: 1 1 18rem; min-width: 14rem; font-size: 14px; }
+.palette .hint { flex: 1 1 18rem; min-width: 14rem; font-size: 14px; max-height: 4.6em; overflow-y: auto; }
 .pal-group, .zoom-group { flex: none; }
 @media (max-width: 760px) {
   .topbar[data-open="true"] .topbar-menu .select, .topbar-menu .file-actions .select { width: 100%; max-width: 100%; }

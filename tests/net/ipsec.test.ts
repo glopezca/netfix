@@ -142,3 +142,25 @@ test('the crypto block survives a running-config replay (save/load)', () => {
   assert.deepEqual(fresh.crypto, r1.crypto);
   assert.equal(fresh.iface('GigabitEthernet0/1')?.cryptoMap, 'VPN');
 });
+
+test('a crypto ACL with several permit lines protects all of them', () => {
+  const { t, r1, r2 } = lab();
+  const pc3 = t.add('pc', 0, 0).device as Pc;
+  t.connect({ device: r1.id, port: 'GigabitEthernet0/2' }, { device: pc3.id, port: 'FastEthernet0' });
+  cli(r1, 'config', 'interface g0/2', 'ip address 192.168.3.1 255.255.255.0', 'no shutdown');
+  pc3.setStatic({ ip: ip('192.168.3.10'), prefix: 24, gateway: ip('192.168.3.1') });
+  t.settle();
+  vpn(r1, { local: '192.168.1.0', remote: '192.168.2.0', peer: '10.0.0.2', key: 'k' });
+  vpn(r2, { local: '192.168.2.0', remote: '192.168.1.0', peer: '10.0.0.1', key: 'k' });
+  cli(r1, 'config', 'access-list 110 permit ip 192.168.3.0 0.0.0.255 192.168.2.0 0.0.0.255');
+  cli(r2, 'config', 'access-list 110 permit ip 192.168.2.0 0.0.0.255 192.168.3.0 0.0.0.255');
+  const out = ping(pc3, '192.168.2.10');
+  assert.ok(received(out) >= 3, out);
+  assert.match(cli(r2, 'exec', 'show crypto ipsec sa').join('\n'), /#pkts decaps: [1-9]/);
+});
+
+test('an empty access list applied to an interface permits everything (IOS)', () => {
+  const { r1, pc1 } = lab();
+  cli(r1, 'config', 'ip access-list extended VACIA', 'remark aun sin reglas', 'exit', 'interface g0/0', 'ip access-group VACIA in');
+  assert.match(ping(pc1, '192.168.1.1', 2), / 0% packet loss/);
+});

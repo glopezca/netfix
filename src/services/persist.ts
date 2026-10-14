@@ -1,4 +1,5 @@
 /** JSON (de)serialisation of Server services with validation of untrusted files. */
+import { hasMessage, t, tDynamic } from '../i18n/t.ts';
 import type { ServerServices, PtDhcpPool, DnsRecord, Account, WebFile } from './config.ts';
 import { defaultServices, defaultWebApps, validateAccess, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } from './config.ts';
 import type { WebAppAccess, WebApps } from './config.ts';
@@ -52,14 +53,20 @@ function isObj(v: unknown): v is Json {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
+/** Name of a field in the reader's language (`what` is the Spanish label used in the code). */
+function label(what: string): string {
+  const key = `load.what.${what.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()}`;
+  return hasMessage(key) ? tDynamic(key) : what;
+}
+
 function arr(v: unknown, what: string): unknown[] {
   if (v === undefined) return [];
-  if (!Array.isArray(v) || v.length > MAX_ITEMS) throw new Error(`Lista no válida: ${what}.`);
+  if (!Array.isArray(v) || v.length > MAX_ITEMS) throw new Error(t('load.list', { what: label(what) }));
   return v;
 }
 
 function str(v: unknown, what: string, max = 253): string {
-  if (typeof v !== 'string' || v.length > max) throw new Error(`Texto no válido: ${what}.`);
+  if (typeof v !== 'string' || v.length > max) throw new Error(t('load.text', { what: label(what) }));
   return v;
 }
 
@@ -70,20 +77,20 @@ function bool(v: unknown): boolean {
 function optIp(v: unknown, what: string): number | undefined {
   if (v === undefined || v === null || v === '') return undefined;
   const n = parseIp(str(v, what));
-  if (n === null) throw new Error(`Dirección IP no válida en ${what}.`);
+  if (n === null) throw new Error(t('load.ip', { what: label(what) }));
   return n;
 }
 
 function num(v: unknown, what: string, min: number, max: number, dflt?: number): number {
   if (v === undefined && dflt !== undefined) return dflt;
-  if (typeof v !== 'number' || !Number.isInteger(v) || v < min || v > max) throw new Error(`Número no válido: ${what}.`);
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < min || v > max) throw new Error(t('load.number', { what: label(what) }));
   return v;
 }
 
 function pool(v: unknown): PtDhcpPool {
-  if (!isObj(v)) throw new Error('Pool DHCP no válido.');
+  if (!isObj(v)) throw new Error(t('load.pool'));
   const start = optIp(v.start, 'pool DHCP');
-  if (start === undefined) throw new Error('Pool DHCP sin IP inicial.');
+  if (start === undefined) throw new Error(t('load.poolStart'));
   return {
     name: str(v.name, 'nombre de pool', 32), start, prefix: num(v.prefix, 'máscara de pool', 8, 30), maxUsers: num(v.maxUsers, 'usuarios del pool', 1, 65_534),
     gateway: optIp(v.gateway, 'puerta de enlace'), dns: optIp(v.dns, 'DNS del pool'), domain: v.domain === undefined ? undefined : str(v.domain, 'dominio'),
@@ -95,40 +102,40 @@ function pool(v: unknown): PtDhcpPool {
 
 function identifyBy(v: unknown): 'mac' | 'client-id' {
   if (v === 'mac' || v === 'client-id') return v;
-  throw new Error('Identificación de concesiones no válida (mac o client-id).');
+  throw new Error(t('load.leaseId'));
 }
 
 const MAX_CLIENT_ID_HEX = 510;
 
 function reservation(r: unknown): PtDhcpPool['reservations'][number] {
-  if (!isObj(r)) throw new Error('Reserva no válida.');
+  if (!isObj(r)) throw new Error(t('load.reservation'));
   const rip = optIp(r.ip, 'reserva');
   const name = r.name === undefined ? undefined : str(r.name, 'nombre de reserva', 64);
-  if (rip === undefined) throw new Error('Reserva DHCP incompleta.');
+  if (rip === undefined) throw new Error(t('load.reservationIncomplete'));
   if (r.clientId !== undefined) {
     const id = parseHexId(str(r.clientId, 'Client-ID', MAX_CLIENT_ID_HEX));
-    if (!id) throw new Error('Client-ID de reserva no válido (hexadecimal).');
+    if (!id) throw new Error(t('load.reservationId'));
     return { ip: rip, clientId: id, name };
   }
   const mac = parseMac(str(r.mac, 'MAC'));
-  if (!mac) throw new Error('Reserva DHCP incompleta.');
+  if (!mac) throw new Error(t('load.reservationIncomplete'));
   return { ip: rip, mac, name };
 }
 
 function origin(v: unknown): string | undefined {
   if (v === undefined || v === null || v === '') return undefined;
   const o = str(v, 'origen de zona', 253);
-  if (validateOrigin(o)) throw new Error('Origen de zona DNS no válido.');
+  if (validateOrigin(o)) throw new Error(t('load.origin'));
   return cleanOrigin(o);
 }
 
 function record(v: unknown): DnsRecord {
-  if (!isObj(v) || !RECORD_TYPES.has(String(v.type))) throw new Error('Registro DNS no válido.');
+  if (!isObj(v) || !RECORD_TYPES.has(String(v.type))) throw new Error(t('load.record'));
   return { name: str(v.name, 'nombre DNS'), type: v.type as DnsRecord['type'], value: str(v.value, 'valor DNS', 1024), priority: v.priority === undefined ? undefined : num(v.priority, 'prioridad MX', 0, 65_535), ttl: num(v.ttl, 'TTL', 0, 2_147_483_647, DEFAULT_TTL) };
 }
 
 function account(v: unknown): Account {
-  if (!isObj(v)) throw new Error('Cuenta no válida.');
+  if (!isObj(v)) throw new Error(t('load.account'));
   return { name: str(v.name, 'usuario', 64), password: str(v.password, 'contraseña', 128) };
 }
 
@@ -165,7 +172,7 @@ function dnsFromJson(n: Record<string, unknown>): ServerServices['dns'] {
 
 export function servicesFromJson(v: unknown): ServerServices {
   if (v === undefined) return defaultServices();
-  if (!isObj(v)) throw new Error('Servicios del servidor no válidos.');
+  if (!isObj(v)) throw new Error(t('load.services'));
   const d = isObj(v.dhcp) ? v.dhcp : {};
   const n = isObj(v.dns) ? v.dns : {};
   const h = isObj(v.http) ? v.http : {};
@@ -174,7 +181,7 @@ export function servicesFromJson(v: unknown): ServerServices {
   return {
     dhcp: { enabled: bool(d.enabled), pools: arr(d.pools, 'pools').map(pool) },
     dns: dnsFromJson(n),
-    http: { enabled: bool(h.enabled), files: arr(h.files, 'ficheros web').map((f) => { if (!isObj(f)) throw new Error('Fichero web no válido.'); return { name: str(f.name, 'fichero web', 128), content: str(f.content, 'contenido web', MAX_TEXT) }; }) },
+    http: { enabled: bool(h.enabled), files: arr(h.files, 'ficheros web').map((f) => { if (!isObj(f)) throw new Error(t('load.webFile')); return { name: str(f.name, 'fichero web', 128), content: str(f.content, 'contenido web', MAX_TEXT) }; }) },
     mail: { smtp: bool(m.smtp), pop3: bool(m.pop3), imap: bool(m.imap), domain: m.domain === undefined ? '' : str(m.domain, 'dominio de correo'), users: arr(m.users, 'usuarios de correo').map(account) },
     ssh: { enabled: bool(s.enabled), users: arr(s.users, 'usuarios SSH').map(account) },
     firewall: { enabled: isObj(v.firewall) ? bool(v.firewall.enabled) : false },
@@ -184,11 +191,12 @@ export function servicesFromJson(v: unknown): ServerServices {
 
 export function mailboxesFromJson(v: unknown): Record<string, MailMessage[]> {
   if (v === undefined) return {};
-  if (!isObj(v)) throw new Error('Buzones no válidos.');
+  if (!isObj(v)) throw new Error(t('load.mailboxes'));
   const out: Record<string, MailMessage[]> = {};
   for (const [user, list] of Object.entries(v)) {
+    if (user === '__proto__') throw new Error(t('load.mailboxes'));
     out[user] = arr(list, 'buzón').map((mm) => {
-      if (!isObj(mm)) throw new Error('Mensaje no válido.');
+      if (!isObj(mm)) throw new Error(t('load.message'));
       return { from: str(mm.from, 'remitente'), to: arr(mm.to, 'destinatarios').map((t) => str(t, 'destinatario')), subject: str(mm.subject, 'asunto', 998), body: str(mm.body, 'cuerpo', MAX_TEXT), date: num(mm.date, 'fecha', 0, Number.MAX_SAFE_INTEGER) };
     });
   }

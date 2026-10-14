@@ -28,6 +28,18 @@ function urlOf(device: IosDevice, ip: string): string {
   return device.http.port === DEFAULT_HTTP_PORT ? `http://${ip}/` : `http://${ip}:${device.http.port}/`;
 }
 
+/** How to reach the web interface from a PC. */
+function howTo(device: IosDevice): HTMLElement[] {
+  const urls = addresses(device).map((ip) => urlOf(device, ip));
+  return [el('h3', {}, t('iosweb.howTo')),
+    el('ul', { class: 'muted' },
+      el('li', {}, device.http.server
+        ? t('iosweb.fromPc', { urls: urls.join(' · ') || t(device.kind === 'switch' ? 'iosweb.needIpVlan' : 'iosweb.needIp') })
+        : t('iosweb.off')),
+      el('li', {}, t('iosweb.pages')),
+      el('li', {}, t('iosweb.curl')))];
+}
+
 export function iosWebSettings(device: IosDevice, afterCommand: () => void): HTMLElement {
   const msg = message();
   return livePanel((refresh) => {
@@ -59,7 +71,6 @@ export function iosWebSettings(device: IosDevice, afterCommand: () => void): HTM
       { label: t('iosweb.privilege'), value: (u) => String(u.privilege) },
       { label: t('iosweb.key'), value: (u) => (u.secret !== undefined ? 'secret (hash)' : 'password') },
     ], { empty: t('iosweb.noUsers'), onDelete: (u) => apply([`no username ${u.name}`]) });
-    const urls = addresses(device).map((ip) => urlOf(device, ip));
     const noEnable = device.http.auth === 'enable' && !device.enableSecret && !device.enablePassword;
     return [
       el('h3', {}, t('iosweb.server')),
@@ -74,13 +85,7 @@ export function iosWebSettings(device: IosDevice, afterCommand: () => void): HTM
       users,
       el('div', { class: 'grid2' }, field(t('iosweb.user'), name), field(t('iosweb.password'), pass)),
       el('div', { class: 'actions' }, button(t('iosweb.addUser'), addUser)),
-      el('h3', {}, t('iosweb.howTo')),
-      el('ul', { class: 'muted' },
-        el('li', {}, device.http.server
-          ? t('iosweb.fromPc', { urls: urls.join(' · ') || t(device.kind === 'switch' ? 'iosweb.needIpVlan' : 'iosweb.needIp') })
-          : t('iosweb.off')),
-        el('li', {}, t('iosweb.pages')),
-        el('li', {}, t('iosweb.curl'))),
+      ...howTo(device),
     ];
   });
 }

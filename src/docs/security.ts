@@ -12,7 +12,7 @@ export const SECURITY_DOCS: DocGroup = {
       summary: 'access-list 100-199, ip access-list extended, puertos, established, log e ip access-group in|out.',
       blocks: [
         p('Una ACL extendida filtra por protocolo, origen, destino y puertos. Se aplica a una interfaz con ip access-group NOMBRE in|out. Las entradas se recorren en orden y al final hay un deny any implícito.'),
-        code('Router(config)# ip access-list extended A-SERVIDORES\nRouter(config-ext-nacl)# permit tcp any host 172.20.0.10 eq www\nRouter(config-ext-nacl)# permit tcp 192.168.10.0 0.0.0.255 host 172.20.0.10 eq 22\nRouter(config-ext-nacl)# permit icmp 192.168.10.0 0.0.0.255 any\nRouter(config-ext-nacl)# deny ip any any log\nRouter(config-ext-nacl)# exit\nRouter(config)# interface g0/2\nRouter(config-if)# ip access-group A-SERVIDORES out'),
+        code('Router(config)# ip access-list extended A-SERVIDORES\nRouter(config-ext-nacl)# permit tcp any host 172.20.0.10 eq www\nRouter(config-ext-nacl)# permit tcp 192.168.10.0 0.0.0.255 host 172.20.0.10 eq 22\nRouter(config-ext-nacl)# permit icmp 192.168.10.0 0.0.0.255 any\nRouter(config-ext-nacl)# permit udp any host 172.20.0.10 eq domain\nRouter(config-ext-nacl)# deny ip any any log\nRouter(config-ext-nacl)# exit\nRouter(config)# interface g0/2\nRouter(config-if)# ip access-group A-SERVIDORES out'),
         table(['Elemento', 'Ejemplos'], [
           ['Protocolo', 'ip, tcp, udp, icmp, esp, gre'],
           ['Origen / destino', 'any · host 10.0.0.2 · 192.168.10.0 0.0.0.255 (wildcard)'],
@@ -21,7 +21,7 @@ export const SECURITY_DOCS: DocGroup = {
           ['Opciones', 'established (TCP con ACK o RST) · log (%SEC-6-IPACCESSLOGP)'],
         ]),
         list(
-          'in filtra lo que entra por la interfaz antes de la NAT y del enrutamiento; out filtra lo que sale en tránsito.',
+          'in filtra lo que entra por la interfaz antes de la NAT y del enrutamiento; out filtra lo que sale en tránsito (ni las respuestas que entran por esa interfaz ni el tráfico del propio router).',
           'Una ACL extendida también sirve para la NAT: deny ip LAN1 LAN2 deja ese tráfico sin traducir (exención para una VPN).',
           'show access-lists muestra cada entrada con sus «(N match(es))»; clear access-list counters los pone a cero.',
           'En ACL con nombre, «15 permit …» inserta con número de secuencia y «no 15» borra esa entrada.',
@@ -81,7 +81,7 @@ export const SECURITY_DOCS: DocGroup = {
         code('table inet filter {\n  chain input {\n    type filter hook input priority filter; policy drop;\n    ct state established,related accept\n    iifname "lo" accept\n    tcp dport 22 ip saddr 192.168.10.0/24 accept\n    log prefix "NFT-DROP " drop\n  }\n}\ntable ip nat {\n  chain prerouting {\n    type nat hook prerouting priority dstnat; policy accept;\n    iifname "eth0" tcp dport 80 dnat to 172.16.0.80\n  }\n  chain postrouting {\n    type nat hook postrouting priority srcnat; policy accept;\n    oifname "eth0" masquerade\n  }\n}'),
         table(['Orden', 'Efecto'], [
           ['sudo nft list ruleset', 'Reglas en marcha (con -a, los handles).'],
-          ['sudo nft add rule inet filter input tcp dport 80 accept', 'Añade una regla al final (insert: al principio).'],
+          ['sudo nft add rule inet filter input tcp dport 80 accept', 'Añade una regla al final, detrás de un «log … drop» no se alcanzaría (insert: al principio).'],
           ['sudo nft delete rule inet filter input handle 7', 'Borra una regla por su handle.'],
           ['sudo nft -f /etc/nftables.conf · nft -c -f …', 'Carga un fichero de forma atómica / solo lo comprueba.'],
           ['sudo systemctl enable --now nftables', 'Carga /etc/nftables.conf al arrancar.'],

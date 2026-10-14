@@ -94,8 +94,9 @@ function routesSection(r: LinuxRouter, app: AfterChange, msg: ReturnType<typeof 
 }
 
 export function routerInterfaces(r: LinuxRouter, app: AfterChange): LivePanel {
+  // Outside the redraw: an action that changes the device redraws the panel before reporting.
+  const msg = message();
   return liveHostPanel(r, () => {
-    const msg = message();
     const forwarding = r.kernel.sysctl.enabled('net.ipv4.ip_forward');
     return [
       el('p', { class: 'muted' }, t('router.ifacesIntro')),

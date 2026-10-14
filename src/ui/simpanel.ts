@@ -61,6 +61,11 @@ export class SimPanel {
     this.attach(topo);
   }
 
+  /** Stops listening to the network (the interface is rebuilt in another language). */
+  dispose(): void {
+    this.unsubscribe();
+  }
+
   attach(topo: Topology): void {
     this.unsubscribe();
     this.topo = topo;

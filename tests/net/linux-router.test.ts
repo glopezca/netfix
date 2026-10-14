@@ -102,3 +102,19 @@ test('the router saves its NICs and routes; ip route add on hosts', () => {
   assert.deepEqual(pcRoot.run('ip route add 10.0.0.0/8 via 9.9.9.9'), ['Error: Nexthop has invalid gateway.']);
   assert.deepEqual(pcRoot.run('ip addr add 1.2.3.4/8 dev eth3'), ['Cannot find device "eth3"']);
 });
+
+test('iifname matches in the postrouting nat chain (masquerade only the LAN)', () => {
+  const { lr, pc, dmz } = lab();
+  const root = createShell(lr, 'linux', 'root');
+  root.run('sysctl -w net.ipv4.ip_forward=1');
+  root.run(`nft -f - <<'EOF'
+table ip nat {
+  chain postrouting {
+    type nat hook postrouting priority srcnat;
+    iifname "eth1" oifname "eth0" masquerade
+  }
+}
+EOF`);
+  assert.match(all(createShell(pc, 'linux').run('ping -c 1 203.0.113.20')), / 0% packet loss/, 'LAN → WAN masqueraded');
+  assert.match(all(createShell(dmz, 'linux').run('ping -c 1 203.0.113.20')), /100% packet loss/, 'DMZ → WAN not masqueraded: the WAN has no route back');
+});

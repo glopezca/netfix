@@ -1,4 +1,5 @@
 /** A workspace: devices with positions and labels, links, and JSON persistence. */
+import { t } from '../i18n/t.ts';
 import { nicsToJson, routesToJson, restoreNics, restoreRoutes } from './topology-nics.ts';
 import type { NicRecord, RouteRecord } from './topology-nics.ts';
 import { LinuxRouter } from '../devices/linux-router.ts';
@@ -94,6 +95,8 @@ export interface TopologyFile {
 
 const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'Cloud' };
 export const FILE_VERSION = 2;
+/** A larger file would freeze the tab while it is built and settled. */
+const MAX_DEVICES = 500;
 const SETTLE_MS = 30_000;
 const MAX_PRETTY = 256;
 
@@ -292,16 +295,17 @@ function isObject(v: unknown): v is Record<string, unknown> {
 
 /** Validates untrusted JSON before building a topology from it. */
 export function validateFile(data: unknown): TopologyFile {
-  if (!isObject(data) || (data.format !== 'netfix' && data.format !== 'netsim') || (data.version !== 1 && data.version !== FILE_VERSION)) throw new Error('No es un archivo de Netfix válido.');
+  if (!isObject(data) || (data.format !== 'netfix' && data.format !== 'netsim') || (data.version !== 1 && data.version !== FILE_VERSION)) throw new Error(t('load.notNetfix'));
   const { devices, links } = data;
-  if (!Array.isArray(devices) || !Array.isArray(links)) throw new Error('Archivo incompleto: faltan dispositivos o enlaces.');
+  if (!Array.isArray(devices) || !Array.isArray(links)) throw new Error(t('load.incomplete'));
+  if (devices.length > MAX_DEVICES || links.length > MAX_DEVICES * 2) throw new Error(t('load.tooBig', { max: MAX_DEVICES }));
   for (const d of devices) {
-    if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'].includes(String(d.kind))) throw new Error('Dispositivo no válido en el archivo.');
-    if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string') throw new Error(`Datos incompletos para ${d.id}.`);
-    if (d.config !== undefined && (!Array.isArray(d.config) || d.config.some((l) => typeof l !== 'string'))) throw new Error(`Configuración no válida en ${d.id}.`);
+    if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'].includes(String(d.kind))) throw new Error(t('load.badDevice'));
+    if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string') throw new Error(t('load.deviceData', { id: d.id }));
+    if (d.config !== undefined && (!Array.isArray(d.config) || d.config.some((l) => typeof l !== 'string'))) throw new Error(t('load.deviceConfig', { id: d.id }));
   }
   for (const l of links) {
-    if (!isObject(l) || !isObject(l.a) || !isObject(l.b) || [l.a.device, l.a.port, l.b.device, l.b.port].some((x) => typeof x !== 'string')) throw new Error('Enlace no válido en el archivo.');
+    if (!isObject(l) || !isObject(l.a) || !isObject(l.b) || [l.a.device, l.a.port, l.b.device, l.b.port].some((x) => typeof x !== 'string')) throw new Error(t('load.badLink'));
   }
   return data as unknown as TopologyFile;
 }

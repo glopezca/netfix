@@ -32,7 +32,8 @@ function sshLine(p: Omit<SshProfile, 'name'>): string {
   return ['ssh', ...(p.port !== 22 ? ['-p', String(p.port)] : []), ...(p.identity ? ['-i', q(`~/.ssh/${p.identity}`)] : []), q(`${p.user || USER}@${p.host}`)].join(' ');
 }
 
-function terminalFor(pc: Pc, p: Omit<SshProfile, 'name'>, app: AfterChange): Terminal {
+/** A terminal running `ssh`; `end` logs out of the remote session and frees the terminal. */
+function terminalFor(pc: Pc, p: Omit<SshProfile, 'name'>, app: AfterChange): { term: Terminal; end: () => void } {
   const shell = createShell(pc, 'linux', USER);
   const first = shell.run(sshLine(p));
   const backend: ConsoleBackend = {
@@ -43,7 +44,8 @@ function terminalFor(pc: Pc, p: Omit<SshProfile, 'name'>, app: AfterChange): Ter
     closeEdit: () => shell.closeEdit?.() ?? [],
     screenFrame: (w, h) => shell.screenFrame?.(w, h) ?? null, screenKey: (k) => shell.screenKey?.(k) ?? [],
   };
-  return new Terminal(backend, { intro: first, label: `SSH ${p.user || USER}@${p.host}`, afterRun: () => app.afterCommand() });
+  const term = new Terminal(backend, { intro: first, label: `SSH ${p.user || USER}@${p.host}`, afterRun: () => app.afterCommand() });
+  return { term, end: () => { shell.interrupt?.(); shell.run('exit'); term.dispose(); app.afterCommand(); } };
 }
 
 function sessionPane(pc: Pc, ring: SshKeyring, app: AfterChange): HTMLElement {
@@ -55,16 +57,25 @@ function sessionPane(pc: Pc, ring: SshKeyring, app: AfterChange): HTMLElement {
   const name = input({ placeholder: 'servidor-web', 'aria-label': t('ssh.name') });
   const term = el('div', { class: 'ssh-term' });
   const profile = (): Omit<SshProfile, 'name'> => ({ host: host.value.trim(), port: Number(port.value) || 22, user: user.value.trim(), identity: ident.value });
-  const close = button(t('ssh.close'), () => { term.replaceChildren(); close.hidden = true; }, 'btn btn-small');
+  // Kept between visits to the other tabs: the key list may have changed meanwhile.
+  ident.addEventListener('focus', () => {
+    const v = ident.value;
+    ident.replaceChildren(...[['', t('ssh.defaultKeys')], ...ring.keys().map((k) => [k.name, k.name])].map(([val = '', label = '']) => el('option', { value: val }, label)));
+    ident.value = v;
+  });
+  let session: { end: () => void } | null = null;
+  const close = button(t('ssh.close'), () => { session?.end(); session = null; term.replaceChildren(); close.hidden = true; }, 'btn btn-small');
   close.hidden = true;
   const open = (): void => {
     const p = profile();
     if (!/^[\w.-]{1,253}$/.test(p.host) || !(p.port >= 1 && p.port <= 65535) || !/^[\w.-]{0,32}$/.test(p.user)) return msg.error(t('ssh.badProfile'));
     msg.clear();
-    const tm = terminalFor(pc, p, app);
-    term.replaceChildren(tm.root);
+    session?.end();
+    const opened = terminalFor(pc, p, app);
+    session = opened;
+    term.replaceChildren(opened.term.root);
     close.hidden = false;
-    tm.focus();
+    opened.term.focus();
   };
   const fill = (p: SshProfile): void => { host.value = p.host; port.value = String(p.port); user.value = p.user; ident.value = p.identity; name.value = p.name; };
   const saved = redrawable((redraw) => [
@@ -113,14 +124,14 @@ function keysPane(ring: SshKeyring, app: AfterChange): HTMLElement {
 function knownPane(ring: SshKeyring, app: AfterChange): HTMLElement {
   return redrawable((redraw) => [el('p', { class: 'muted' }, t('ssh.knownIntro')), table<KnownHost>(ring.knownHosts(), [
     { label: t('ssh.host'), value: (k) => k.host, mono: true }, { label: t('ssh.keyType'), value: (k) => k.type, mono: true }, { label: t('ssh.fingerprint'), value: (k) => k.fingerprint, mono: true },
-  ], { empty: t('ssh.noKnown'), actions: (k) => [button(t('ssh.forget'), () => { ring.forgetHost(k.line); app.afterCommand(); redraw(); }, 'btn btn-small danger')] })], 'pane');
+  ], { empty: t('ssh.noKnown'), actions: (k) => [button(t('ssh.forget'), () => { ring.forgetHost(k); app.afterCommand(); redraw(); }, 'btn btn-small danger')] })], 'pane');
 }
 
 export function sshApp(pc: Pc, app: AfterChange): HTMLElement {
   const ring = keyring(pc);
   if (!ring) return el('p', { class: 'muted' }, t('common.unavailable'));
   return subnav([
-    { id: 'session', label: t('ssh.session'), render: () => sessionPane(pc, ring, app) },
+    { id: 'session', label: t('ssh.session'), render: () => sessionPane(pc, ring, app), keep: true },
     { id: 'keys', label: t('ssh.keys'), render: () => keysPane(ring, app) },
     { id: 'known', label: t('ssh.known'), render: () => knownPane(ring, app) },
   ]);

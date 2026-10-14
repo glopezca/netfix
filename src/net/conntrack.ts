@@ -151,11 +151,12 @@ export class Conntrack {
     return this.now() - e.lastSeen > limit;
   }
 
+  /** Drops expired connections: one pass over the entries and one over the index. */
   private expire(): void {
-    for (const e of this.entries) {
-      if (!this.expired(e)) continue;
-      this.entries.delete(e);
-      for (const [k, v] of this.index) if (v.entry === e) this.index.delete(k);
-    }
+    const gone = new Set<CtEntry>();
+    for (const e of this.entries) if (this.expired(e)) gone.add(e);
+    if (!gone.size) return;
+    for (const e of gone) this.entries.delete(e);
+    for (const [k, v] of this.index) if (gone.has(v.entry)) this.index.delete(k);
   }
 }

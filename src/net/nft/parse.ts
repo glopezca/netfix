@@ -55,7 +55,7 @@ function target(c: Cursor, withChain: boolean): Target {
 
 function priority(c: Cursor): number {
   const t = word(c);
-  const base = /^-?\d+$/.test(t.text) ? Number(t.text) : PRIORITY_NAMES[t.text];
+  const base = /^-?\d+$/.test(t.text) ? Number(t.text) : Object.hasOwn(PRIORITY_NAMES, t.text) ? PRIORITY_NAMES[t.text] : undefined;
   if (base === undefined) throw new NftSyntaxError(`Error: '${t.text}' is not a valid priority in this context`, t);
   const op = c.peek()?.text;
   if (op !== '+' && op !== '-') return base;
@@ -187,16 +187,15 @@ function statement(c: Cursor, out: Command[]): void {
 }
 
 /** Replaces `$NAME` tokens with the tokens of its definition (definitions must come first). */
-function expand(tokens: readonly Token[]): Token[] {
-  const vars = new Map<string, Token[]>();
+function expand(tokens: readonly Token[], vars = new Map<string, Token[]>()): Token[] {
   const out: Token[] = [];
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i] as Token;
-    if (t.text === 'define' && tokens[i + 2]?.text === '=') {
+    if (t.kind === 'word' && t.text === 'define' && tokens[i + 2]?.text === '=') {
       const end = tokens.findIndex((x, j) => j > i && (x.kind === 'newline' || x.text === ';'));
       const stop = end < 0 ? tokens.length : end;
       if (vars.size >= MAX_DEFINES) throw new NftSyntaxError('Error: too many definitions', t);
-      vars.set(tokens[i + 1]?.text ?? '', expand(tokens.slice(i + 3, stop)).map((x) => ({ ...x, col: t.col, line: t.line })));
+      vars.set(tokens[i + 1]?.text ?? '', expand(tokens.slice(i + 3, stop), vars).map((x) => ({ ...x, col: t.col, line: t.line })));
       i = stop;
       continue;
     }

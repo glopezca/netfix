@@ -32,10 +32,11 @@ function statusTable(peers: readonly VpnPeerStatus[]): HTMLElement {
 }
 
 export function vpnPanel(s: Server, app: AfterChange): LivePanel {
+  // Outside the redraw: an action that changes the device redraws the panel before reporting.
+  const msg = message();
   return liveHostPanel(s, () => {
     if (s.kind !== 'linuxrouter') return [el('p', { class: 'muted' }, t('vpn.notRouter'))];
     const st = vpnStatus(s);
-    const msg = message();
     const priv = input({ value: st.form.privateKey, class: 'mono', type: 'password', autocomplete: 'off', 'aria-label': t('vpn.privateKey') });
     const pub = el('code', { class: 'mono' }, st.publicKey ?? '—');
     priv.addEventListener('input', () => { pub.textContent = pubKey(priv.value.trim()) ?? '—'; });

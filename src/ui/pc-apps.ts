@@ -80,25 +80,35 @@ export function browserApp(pc: Pc, app: AfterChange): HTMLElement {
 
 const BLANK: MailAccount = { name: '', address: '', incoming: '', outgoing: '', protocol: 'POP3', user: '', password: '' };
 
+/** The mail account (collapsed once it is set up). */
+function accountBox(pc: Pc, app: AfterChange): HTMLElement {
+  const acc = pc.mailAccount ?? BLANK;
+  const f = {
+    name: input({ value: acc.name }), address: input({ value: acc.address, placeholder: 'ana@aula.lab' }),
+    incoming: input({ value: acc.incoming, placeholder: t('mail.addrPlaceholder') }), outgoing: input({ value: acc.outgoing, placeholder: t('mail.addrPlaceholder') }),
+    protocol: select([['POP3', t('mail.pop3')], ['IMAP', t('mail.imap')]], acc.protocol),
+    user: input({ value: acc.user }), password: input({ value: acc.password, type: 'password' }),
+  };
+  const accMsg = message();
+  const saveAccount = (): void => {
+    const next: MailAccount = { name: f.name.value.trim(), address: f.address.value.trim(), incoming: f.incoming.value.trim(), outgoing: f.outgoing.value.trim(), protocol: f.protocol.value === 'IMAP' ? 'IMAP' : 'POP3', user: f.user.value.trim(), password: f.password.value };
+    if (!/^[^@\s]+@[^@\s]+$/.test(next.address)) return accMsg.error(t('mail.badAddress'));
+    if (!next.incoming || !next.outgoing || !next.user) return accMsg.error(t('mail.incomplete'));
+    pc.mailAccount = next;
+    app.afterCommand();
+    accMsg.ok(t('mail.saved'));
+  };
+  return el('details', { class: 'account', open: !pc.mailAccount },
+    el('summary', {}, pc.mailAccount ? t('mail.account', { address: pc.mailAccount.address, protocol: pc.mailAccount.protocol }) : t('mail.setup')),
+    el('div', { class: 'grid3' }, field(t('mail.yourName'), f.name), field(t('mail.address'), f.address), field(t('mail.protocol'), f.protocol),
+      field(t('mail.incoming'), f.incoming), field(t('mail.outgoing'), f.outgoing), field(t('pc.user'), f.user), field(t('pc.password'), f.password)),
+    el('div', { class: 'actions' }, button(t('mail.saveAccount'), saveAccount)), accMsg.el);
+}
+
 export function mailApp(pc: Pc, app: AfterChange): HTMLElement {
   let reading = -1;
   return livePanel((refresh) => {
-    const acc = pc.mailAccount ?? BLANK;
-    const f = {
-      name: input({ value: acc.name }), address: input({ value: acc.address, placeholder: 'ana@aula.lab' }),
-      incoming: input({ value: acc.incoming, placeholder: t('mail.addrPlaceholder') }), outgoing: input({ value: acc.outgoing, placeholder: t('mail.addrPlaceholder') }),
-      protocol: select([['POP3', t('mail.pop3')], ['IMAP', t('mail.imap')]], acc.protocol),
-      user: input({ value: acc.user }), password: input({ value: acc.password, type: 'password' }),
-    };
-    const accMsg = message();
-    const saveAccount = (): void => {
-      const next: MailAccount = { name: f.name.value.trim(), address: f.address.value.trim(), incoming: f.incoming.value.trim(), outgoing: f.outgoing.value.trim(), protocol: f.protocol.value === 'IMAP' ? 'IMAP' : 'POP3', user: f.user.value.trim(), password: f.password.value };
-      if (!/^[^@\s]+@[^@\s]+$/.test(next.address)) return accMsg.error(t('mail.badAddress'));
-      if (!next.incoming || !next.outgoing || !next.user) return accMsg.error(t('mail.incomplete'));
-      pc.mailAccount = next;
-      app.afterCommand();
-      accMsg.ok(t('mail.saved'));
-    };
+    const account = accountBox(pc, app);
     const to = input({ placeholder: 'luis@aula.lab, …' });
     const subject = input();
     const body = el('textarea', { rows: '5', 'aria-label': t('mail.message') });
@@ -121,11 +131,7 @@ export function mailApp(pc: Pc, app: AfterChange): HTMLElement {
     };
     const open = pc.inbox[reading];
     return [
-      el('details', { class: 'account', open: !pc.mailAccount },
-        el('summary', {}, pc.mailAccount ? t('mail.account', { address: pc.mailAccount.address, protocol: pc.mailAccount.protocol }) : t('mail.setup')),
-        el('div', { class: 'grid3' }, field(t('mail.yourName'), f.name), field(t('mail.address'), f.address), field(t('mail.protocol'), f.protocol),
-          field(t('mail.incoming'), f.incoming), field(t('mail.outgoing'), f.outgoing), field(t('pc.user'), f.user), field(t('pc.password'), f.password)),
-        el('div', { class: 'actions' }, button(t('mail.saveAccount'), saveAccount)), accMsg.el),
+      account,
       el('h3', {}, t('mail.compose')),
       el('div', { class: 'grid2' }, field(t('mail.to'), to), field(t('mail.subject'), subject)), field(t('mail.message'), body),
       el('div', { class: 'actions' }, button(t('mail.send'), send)), sendMsg.el,

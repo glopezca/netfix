@@ -28,6 +28,8 @@ interface Ctx {
   readonly entry: CtEntry | null;
   readonly dir: Direction;
   readonly state: CtState;
+  /** Arrival interface of a transit packet (for iifname in postrouting). */
+  readonly iif?: string;
 }
 
 const FIRST_NAT_PORT = 32768;
@@ -129,7 +131,7 @@ export class Netfilter {
   forward(iif: string, oif: string, p: IpPacket): IpPacket | null {
     if (!this.active) return p;
     const c = this.context(p);
-    return this.filter('forward', p, { iif, oif, ct: c.state }) ? this.keep(p, c) : null;
+    return this.filter('forward', p, { iif, oif, ct: c.state }) ? this.keep(p, { ...c, iif }) : null;
   }
 
   /** Locally generated packet: conntrack, DNAT of the output nat chain, filter output. */
@@ -150,9 +152,10 @@ export class Netfilter {
   }
 
   /** Leaving packet: apply or decide SNAT/masquerade, undo DNAT of replies, confirm. */
-  postrouting(oif: string, p: IpPacket, iif?: string): IpPacket | null {
+  postrouting(oif: string, p: IpPacket, arrival?: string): IpPacket | null {
     if (!this.active) return p;
     const c = this.context(p);
+    const iif = arrival ?? c.iif;
     let out = p;
     if (c.entry?.confirmed) {
       if (c.dir === 'orig' && c.entry.snat) out = rewriteSrc(p, c.entry.snat.ip, c.entry.snat.port);
@@ -161,6 +164,8 @@ export class Netfilter {
       const d = natHook(this.ruleset, 'postrouting', p, { iif, oif, ct: c.state }, this.evalEnv());
       if (d === 'drop') return null;
       const to = d && d.kind !== 'dnat' ? this.snatTarget(p, d.kind === 'masquerade' ? this.env.ifaceIp(oif) : d.ip, d.kind === 'snat' ? d.port : undefined) : null;
+      // No address on the interface or no free port: the kernel drops it rather than leak the private source.
+      if (d && d.kind !== 'dnat' && !to) return null;
       if (to) {
         c.entry.snat = to;
         out = rewriteSrc(p, to.ip, to.port);
