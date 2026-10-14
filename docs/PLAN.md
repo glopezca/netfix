@@ -234,3 +234,16 @@ Diseño detallado de 11.7–11.14 (revisión del agente planner):
 
 **Estado:** completada. Revisión ECC (code-reviewer): sin hallazgos críticos ni altos; corregidos los dos medios
 (validación del hostname IOS y título de la ventana tras un cambio desde la CLI).
+
+## Fase 13 · Pestaña Interfaces en todos los equipos (v0.7.2)
+
+| Paso | Entregable | Riesgo / decisión |
+|---|---|---|
+| 13.1 | Router IOS y Switch IOS: estado, MAC y extremo del cable de cada interfaz; descripción, dirección (puertos enrutados y SVI), modo switchport y VLAN de acceso, shutdown | Se teclean en una sesión de la CLI (no applyConfig: entrar en la interfaz no la enciende); solo se envía lo que cambia; no entra en `show history`; registra %SYS-5-CONFIG_I |
+| 13.2 | PC y Server: tarjetas de red (MAC, enlace, dirección, velocidad, extremo) y estado del puerto (`ip link set`) | La dirección sigue en Configuración IP |
+| 13.3 | Router Linux: su pestaña Interfaces pasa a segunda y muestra MAC y extremo del cable | — |
+| 13.4 | Nube ISP: resumen de las seis líneas (acceso, modo, lado del cliente, extremo) | Solo lectura; se configuran en Líneas |
+
+**Estado:** completada. Revisión ECC (code-reviewer): sin críticos ni altos; corregidos los cuatro medios (los valores rechazados
+se conservan y solo se redibuja la fila, subinterfaces/SVI/loopback sin cable ni MAC propios, sesión sin efectos en el historial,
+solo órdenes de lo que cambia) y los bajos (VLAN solo en modo access, «dúplex completo» traducido).

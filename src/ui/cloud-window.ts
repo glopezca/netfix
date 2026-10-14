@@ -134,9 +134,32 @@ function linePanel(cloud: Cloud, name: CloudPortName, app: CloudHost): HTMLEleme
   });
 }
 
+interface PortRow {
+  readonly name: CloudPortName;
+  readonly line: CloudPort;
+}
+
+/** «Interfaces»: the six lines at a glance (access, mode, address on the customer side and far end). */
+function interfacesTab(cloud: Cloud, app: CloudHost): HTMLElement {
+  return livePanel(() => {
+    const rows: PortRow[] = CLOUD_PORTS.flatMap((name) => { const line = cloud.lines.get(name); return line ? [{ name, line }] : []; });
+    return [
+      el('p', { class: 'muted' }, t('cloudif.intro')),
+      table<PortRow>(rows, [
+        { label: t('iosif.iface'), value: (r) => r.name, mono: true },
+        { label: t('cloudif.access'), value: (r) => ACCESS_LABEL[accessOf(r.name)] },
+        { label: t('cloud.mode'), value: (r) => (r.line.settings.mode === 'router' ? t('cloud.modeRouter') : t('cloud.modePublic')) },
+        { label: t('cloudif.customer'), value: (r) => (r.line.settings.mode === 'router' ? `WAN ${formatIp(r.line.wan())} · LAN ${formatIp(r.line.settings.lanIp)}/${r.line.settings.lanPrefix}` : `${formatIp(r.line.line().net)}/${LINE_PREFIX}`), mono: true },
+        { label: t('hostif.peer'), value: (r) => app.connected(r.name) ?? t('cloud.noCable') },
+      ], { empty: '—' }),
+    ];
+  });
+}
+
 export function cloudTabs(cloud: Cloud, app: CloudHost): Tab[] {
   return [
     { id: 'isp', label: 'ISP', render: () => ispTab(cloud, app) },
+    { id: 'ifaces', label: t('win.ifaces'), render: () => interfacesTab(cloud, app) },
     { id: 'lines', label: t('cloud.lines'), render: () => subnav(CLOUD_PORTS.map((p) => ({ id: p, label: p, render: () => linePanel(cloud, p, app) }))) },
   ];
 }

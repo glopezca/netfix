@@ -1,0 +1,31 @@
+/** Español (España): pestaña Interfaces de todos los equipos. */
+export const IFACES_ES = {
+  'win.ifaces': 'Interfaces',
+  'iosif.intro': 'Cada cambio se aplica como órdenes de la CLI (interface …, description, ip address, switchport, shutdown): lo verás en show running-config y en la consola.',
+  'iosif.iface': 'Interfaz',
+  'iosif.state': 'Estado',
+  'iosif.port': 'Puerto',
+  'iosif.nothing': 'Sin cambios en {name}.',
+  'hostif.speedValue': '{speed} · dúplex completo',
+  'iosif.description': 'Descripción',
+  'iosif.mode': 'Modo switchport',
+  'iosif.up': 'up / up',
+  'iosif.down': 'down / down (sin enlace)',
+  'iosif.adminDown': 'administratively down',
+  'iosif.peer': 'Conectada a {peer}',
+  'iosif.badVlan': 'La VLAN debe ser un número entre 1 y 4094.',
+  'iosif.applied': 'Aplicado en {name}.',
+  'hostif.intro': 'Tarjetas de red del equipo. La dirección se cambia en Configuración IP; aquí se ve el enlace y se enciende o apaga cada puerto.',
+  'hostif.address': 'Dirección y máscara',
+  'hostif.speed': 'Velocidad',
+  'hostif.peer': 'Conectada a',
+  'hostif.portStatus': 'Estado del puerto',
+  'hostif.eqLinux': 'GNU/Linux: ip link show, ip -br a y sudo ip link set dev eth0 down|up.',
+  'hostif.eqWindows': 'Windows: ipconfig /all (MAC en «Dirección física»).',
+  'hostif.eqIp': 'Apagar el puerto corta el enlace: el otro extremo lo ve caído, como al desconectar el cable.',
+  'cloudif.intro': 'Las seis líneas de la nube. Cada una se configura en la pestaña Líneas.',
+  'cloudif.access': 'Acceso',
+  'cloudif.customer': 'Lado del cliente',
+} as const;
+
+export type IfacesKey = keyof typeof IFACES_ES;

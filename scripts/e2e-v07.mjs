@@ -95,6 +95,8 @@ try {
   await tablet.touchscreen.tap(pc.x + pc.width / 2, pc.y + pc.height / 2);
   await tablet.touchscreen.tap(pc.x + pc.width / 2, pc.y + pc.height / 2);
   await tablet.waitForSelector('.window');
+  await tablet.tap('.win-tab:has-text("Interfaces")');
+  assert.match(await tablet.locator('.window').innerText(), /FastEthernet0 · eth0[\s\S]*Switch0/, 'PC interfaces with the far end');
   const tw = await tablet.locator('.window').boundingBox();
   assert.ok(tw.x >= 0 && tw.x + tw.width <= 820, 'the window fits the tablet width');
   await tablet.tap('.win-tab:has-text("Windows terminal"), .win-tab:has-text("Linux terminal")');

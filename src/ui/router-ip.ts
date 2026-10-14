@@ -20,7 +20,7 @@ function readAddress(ipText: string, maskText: string): { ip: number; prefix: nu
   return ip === null || prefix === null ? null : { ip, prefix };
 }
 
-function nicRow(r: LinuxRouter, n: NicInfo, app: AfterChange, msg: ReturnType<typeof message>): HTMLElement {
+function nicRow(r: LinuxRouter, n: NicInfo, app: AfterChange, msg: ReturnType<typeof message>, peer?: string): HTMLElement {
   const ip = input({ inputmode: 'decimal', value: n.ip !== undefined ? formatIp(n.ip) : '', 'aria-label': `${t('router.address')} ${n.linux}` });
   const mask = input({ inputmode: 'decimal', value: n.prefix !== undefined ? formatMask(n.prefix) : '', 'aria-label': `${t('router.mask')} ${n.linux}` });
   const isWan = n.port === r.primaryPort();
@@ -44,7 +44,8 @@ function nicRow(r: LinuxRouter, n: NicInfo, app: AfterChange, msg: ReturnType<ty
   const state = n.adminUp ? (n.up ? t('router.up') : `${t('router.up')} (${t('router.noCable')})`) : t('router.down');
   const toggle = onOff(state, n.adminUp, (on) => { r.setNicUp(n.port, on); app.afterCommand(); });
   return el('div', { class: 'nic-row' },
-    el('div', { class: 'nic-name' }, el('strong', {}, n.port), el('span', { class: 'mono muted' }, n.linux)),
+    el('div', { class: 'nic-name' }, el('strong', {}, n.port), el('span', { class: 'mono muted' }, `${n.linux} · ${n.mac}`),
+      el('span', { class: 'muted' }, peer ? t('iosif.peer', { peer }) : t('router.noCable'))),
     field(t('router.address'), ip), field(t('router.mask'), mask),
     el('div', { class: 'nic-actions' }, toggle, button(t('router.apply'), apply)),
     ...(isWan ? [el('label', { class: 'check nic-dhcp' }, dhcp, t('router.dhcp'))] : []),
@@ -93,7 +94,7 @@ function routesSection(r: LinuxRouter, app: AfterChange, msg: ReturnType<typeof 
     el('div', { class: 'grid2' }, field(t('router.dest'), dest), field(t('router.via'), via)), button(t('router.addRoute'), add)];
 }
 
-export function routerInterfaces(r: LinuxRouter, app: AfterChange): LivePanel {
+export function routerInterfaces(r: LinuxRouter, app: AfterChange, peer: (port: string) => string | undefined = () => undefined): LivePanel {
   // Outside the redraw: an action that changes the device redraws the panel before reporting.
   const msg = message();
   return liveHostPanel(r, () => {
@@ -107,7 +108,7 @@ export function routerInterfaces(r: LinuxRouter, app: AfterChange): LivePanel {
       }),
       ...(forwarding ? [] : [el('p', { class: 'status', 'data-state': 'failed' }, t('router.forwardingOff'))]),
       el('h3', {}, t('router.ifaces')),
-      ...r.nics().map((n) => nicRow(r, n, app, msg)),
+      ...r.nics().map((n) => nicRow(r, n, app, msg, peer(n.port))),
       gatewaySection(r, app, msg),
       msg.el,
       ...routesSection(r, app, msg),

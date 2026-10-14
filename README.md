@@ -87,6 +87,7 @@ La paleta va en este orden: PC, Servidor, Switch IOS, Router IOS, Router Linux y
 | Pestaña | Qué hace |
 |---|---|
 | **Equipo** | Nombre visible en el área de trabajo y nombre de host (sigue a la terminal). Es la primera pestaña de todos los equipos, también del Router IOS y del Switch IOS. |
+| **Interfaces** | Cada tarjeta de red con su MAC, enlace, velocidad, dirección y equipo al otro lado del cable; enciende o apaga el puerto. Todos los equipos la tienen: en el Router IOS y el Switch IOS también edita descripción, dirección, VLAN y `shutdown` (como órdenes de la CLI). |
 | **Servicios** | Activa y configura cada servicio. Cada uno tiene su interruptor y su panel. Los paneles de núcleo (Parámetros) y Firewall solo están en el Router Linux; en un Server, `sysctl` y `nft` siguen disponibles en la terminal. |
 | **Configuración IP** | IP estática o por DHCP, sistema operativo (Ubuntu o Windows Server), MAC y Client-ID. |
 | **Terminal Linux** / **Terminal Windows** | Shell local del servidor. |

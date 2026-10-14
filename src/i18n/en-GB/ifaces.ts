@@ -1,0 +1,31 @@
+/** English (UK): pestaña Interfaces de todos los equipos. */
+import type { IfacesKey } from '../es-ES/ifaces.ts';
+
+export const IFACES_EN: Readonly<Record<IfacesKey, string>> = {
+  'win.ifaces': 'Interfaces',
+  'iosif.intro': 'Every change is applied as CLI commands (interface …, description, ip address, switchport, shutdown): you will see it in show running-config and on the console.',
+  'iosif.iface': 'Interface',
+  'iosif.state': 'State',
+  'iosif.port': 'Port',
+  'iosif.nothing': 'No changes on {name}.',
+  'hostif.speedValue': '{speed} · full duplex',
+  'iosif.description': 'Description',
+  'iosif.mode': 'Switchport mode',
+  'iosif.up': 'up / up',
+  'iosif.down': 'down / down (no link)',
+  'iosif.adminDown': 'administratively down',
+  'iosif.peer': 'Connected to {peer}',
+  'iosif.badVlan': 'The VLAN must be a number from 1 to 4094.',
+  'iosif.applied': 'Applied to {name}.',
+  'hostif.intro': 'Network cards of the device. The address is changed in IP Configuration; here you see the link and turn each port on or off.',
+  'hostif.address': 'Address and mask',
+  'hostif.speed': 'Speed',
+  'hostif.peer': 'Connected to',
+  'hostif.portStatus': 'Port status',
+  'hostif.eqLinux': 'GNU/Linux: ip link show, ip -br a and sudo ip link set dev eth0 down|up.',
+  'hostif.eqWindows': 'Windows: ipconfig /all (MAC under “Physical Address”).',
+  'hostif.eqIp': 'Turning the port off cuts the link: the far end sees it down, as if the cable were unplugged.',
+  'cloudif.intro': 'The six lines of the cloud. Each one is configured in the Lines tab.',
+  'cloudif.access': 'Access',
+  'cloudif.customer': 'Customer side',
+};

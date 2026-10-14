@@ -1,33 +1,18 @@
 /** IOS router / switch → «Equipo»: name in the workspace and `hostname` of the running configuration. */
 import { el } from './dom.ts';
-import { field, input, button, message, table } from './forms.ts';
+import { field, input, button, message } from './forms.ts';
 import type { IosDevice } from '../ios/device.ts';
 import type { Placed } from '../net/topology.ts';
 import { applyConfig } from '../ios/session.ts';
-import { formatIp, formatMask } from '../core/ip.ts';
 import { t } from '../i18n/t.ts';
 
 const MAX_LABEL = 40;
 /** Same rule as the CLI `hostname`: a leading letter, one word, at most 63 characters. */
 const IOS_HOSTNAME = /^[A-Za-z]\S{0,62}$/;
 
-interface IosIfaceRow {
-  readonly name: string;
-  readonly address: string;
-  readonly state: string;
-}
-
-function ifaceRows(d: IosDevice): IosIfaceRow[] {
-  return [...d.ifaces.values()].map((c) => ({
-    name: c.name,
-    address: c.address ? `${formatIp(c.address.ip)} ${formatMask(c.address.prefix)}` : '—',
-    state: c.shutdown ? t('iosdev.down') : t('iosdev.up'),
-  }));
-}
-
 export interface IosDevicePanel {
   readonly root: HTMLElement;
-  /** Draws the panel again (the CLI may have changed the hostname or the interfaces). */
+  /** Draws the panel again (the CLI may have changed the hostname). */
   refresh(): void;
 }
 
@@ -59,12 +44,6 @@ export function iosDeviceSettings(placed: Placed, d: IosDevice, app: { afterComm
         field(t('host.hostname'), hostname, t('iosdev.hostnameHint'))),
       el('div', { class: 'actions' }, button(t('host.save'), save)),
       msg.el,
-      el('h3', {}, t('iosdev.ifaces')),
-      table<IosIfaceRow>(ifaceRows(d), [
-        { label: t('iosdev.iface'), value: (r) => r.name, mono: true },
-        { label: t('iosdev.address'), value: (r) => r.address, mono: true },
-        { label: t('iosdev.state'), value: (r) => r.state },
-      ], { empty: '—' }),
       el('h3', {}, t('host.equivalents')),
       el('ul', { class: 'muted' }, el('li', {}, t('iosdev.eq')), el('li', {}, t('iosdev.eqIfaces'))),
     );

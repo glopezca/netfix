@@ -1116,14 +1116,8 @@ const HOST_ES = {
     'host.err.chars': 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).',
     'iosdev.hostnameHint': 'Es el «hostname» de IOS: aparece en el prompt (Router#) y en show running-config.',
     'iosdev.badHostname': 'Nombre de host IOS no válido: una sola palabra que empiece por una letra (máximo 63 caracteres).',
-    'iosdev.ifaces': 'Interfaces',
-    'iosdev.iface': 'Interfaz',
-    'iosdev.address': 'Dirección y máscara',
-    'iosdev.state': 'Estado',
-    'iosdev.up': 'activa (no shutdown)',
-    'iosdev.down': 'apagada (shutdown)',
     'iosdev.eq': 'CLI: configure terminal → hostname NOMBRE (se guarda con copy running-config startup-config).',
-    'iosdev.eqIfaces': 'Las direcciones se cambian en la pestaña CLI (interface … → ip address IP MÁSCARA) o en la Gestión web.',
+    'iosdev.eqIfaces': 'Las interfaces (descripción, dirección, VLAN, shutdown) se cambian en la pestaña Interfaces, en la CLI o en la Gestión web.',
 };
 
 return { HOST_ES };
@@ -1155,14 +1149,8 @@ const HOST_EN = {
     'host.err.chars': 'Use only unaccented letters, digits and hyphens (no spaces; it cannot start or end with a hyphen).',
     'iosdev.hostnameHint': 'The IOS “hostname”: it appears in the prompt (Router#) and in show running-config.',
     'iosdev.badHostname': 'Invalid IOS host name: a single word starting with a letter (63 characters at most).',
-    'iosdev.ifaces': 'Interfaces',
-    'iosdev.iface': 'Interface',
-    'iosdev.address': 'Address and mask',
-    'iosdev.state': 'State',
-    'iosdev.up': 'enabled (no shutdown)',
-    'iosdev.down': 'administratively down (shutdown)',
     'iosdev.eq': 'CLI: configure terminal → hostname NAME (saved with copy running-config startup-config).',
-    'iosdev.eqIfaces': 'Addresses are changed in the CLI tab (interface … → ip address IP MASK) or in Web management.',
+    'iosdev.eqIfaces': 'Interfaces (description, address, VLAN, shutdown) are changed in the Interfaces tab, in the CLI or in Web management.',
 };
 
 return { HOST_EN };
@@ -3224,6 +3212,71 @@ const LOAD_EN = {
 
 return { LOAD_EN };
 })();
+__m["i18n/es-ES/ifaces.js"] = (() => {
+/** Español (España): pestaña Interfaces de todos los equipos. */
+const IFACES_ES = {
+    'win.ifaces': 'Interfaces',
+    'iosif.intro': 'Cada cambio se aplica como órdenes de la CLI (interface …, description, ip address, switchport, shutdown): lo verás en show running-config y en la consola.',
+    'iosif.iface': 'Interfaz',
+    'iosif.state': 'Estado',
+    'iosif.port': 'Puerto',
+    'iosif.nothing': 'Sin cambios en {name}.',
+    'hostif.speedValue': '{speed} · dúplex completo',
+    'iosif.description': 'Descripción',
+    'iosif.mode': 'Modo switchport',
+    'iosif.up': 'up / up',
+    'iosif.down': 'down / down (sin enlace)',
+    'iosif.adminDown': 'administratively down',
+    'iosif.peer': 'Conectada a {peer}',
+    'iosif.badVlan': 'La VLAN debe ser un número entre 1 y 4094.',
+    'iosif.applied': 'Aplicado en {name}.',
+    'hostif.intro': 'Tarjetas de red del equipo. La dirección se cambia en Configuración IP; aquí se ve el enlace y se enciende o apaga cada puerto.',
+    'hostif.address': 'Dirección y máscara',
+    'hostif.speed': 'Velocidad',
+    'hostif.peer': 'Conectada a',
+    'hostif.portStatus': 'Estado del puerto',
+    'hostif.eqLinux': 'GNU/Linux: ip link show, ip -br a y sudo ip link set dev eth0 down|up.',
+    'hostif.eqWindows': 'Windows: ipconfig /all (MAC en «Dirección física»).',
+    'hostif.eqIp': 'Apagar el puerto corta el enlace: el otro extremo lo ve caído, como al desconectar el cable.',
+    'cloudif.intro': 'Las seis líneas de la nube. Cada una se configura en la pestaña Líneas.',
+    'cloudif.access': 'Acceso',
+    'cloudif.customer': 'Lado del cliente',
+};
+
+return { IFACES_ES };
+})();
+__m["i18n/en-GB/ifaces.js"] = (() => {
+const IFACES_EN = {
+    'win.ifaces': 'Interfaces',
+    'iosif.intro': 'Every change is applied as CLI commands (interface …, description, ip address, switchport, shutdown): you will see it in show running-config and on the console.',
+    'iosif.iface': 'Interface',
+    'iosif.state': 'State',
+    'iosif.port': 'Port',
+    'iosif.nothing': 'No changes on {name}.',
+    'hostif.speedValue': '{speed} · full duplex',
+    'iosif.description': 'Description',
+    'iosif.mode': 'Switchport mode',
+    'iosif.up': 'up / up',
+    'iosif.down': 'down / down (no link)',
+    'iosif.adminDown': 'administratively down',
+    'iosif.peer': 'Connected to {peer}',
+    'iosif.badVlan': 'The VLAN must be a number from 1 to 4094.',
+    'iosif.applied': 'Applied to {name}.',
+    'hostif.intro': 'Network cards of the device. The address is changed in IP Configuration; here you see the link and turn each port on or off.',
+    'hostif.address': 'Address and mask',
+    'hostif.speed': 'Speed',
+    'hostif.peer': 'Connected to',
+    'hostif.portStatus': 'Port status',
+    'hostif.eqLinux': 'GNU/Linux: ip link show, ip -br a and sudo ip link set dev eth0 down|up.',
+    'hostif.eqWindows': 'Windows: ipconfig /all (MAC under “Physical Address”).',
+    'hostif.eqIp': 'Turning the port off cuts the link: the far end sees it down, as if the cable were unplugged.',
+    'cloudif.intro': 'The six lines of the cloud. Each one is configured in the Lines tab.',
+    'cloudif.access': 'Access',
+    'cloudif.customer': 'Customer side',
+};
+
+return { IFACES_EN };
+})();
 __m["i18n/catalog.js"] = (() => {
 const { APP_ES } = __m["i18n/es-ES/app.js"];
 const { APP_EN } = __m["i18n/en-GB/app.js"];
@@ -3257,10 +3310,12 @@ const { WEB_ES } = __m["i18n/es-ES/web.js"];
 const { WEB_EN } = __m["i18n/en-GB/web.js"];
 const { LOAD_ES } = __m["i18n/es-ES/load.js"];
 const { LOAD_EN } = __m["i18n/en-GB/load.js"];
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES, ...LABS_ES, ...UI_ES, ...CLOUD_ES, ...SRV_ES, ...WEB_ES, ...LOAD_ES };
+const { IFACES_ES } = __m["i18n/es-ES/ifaces.js"];
+const { IFACES_EN } = __m["i18n/en-GB/ifaces.js"];
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES, ...LABS_ES, ...UI_ES, ...CLOUD_ES, ...SRV_ES, ...WEB_ES, ...LOAD_ES, ...IFACES_ES };
 const CATALOGS = {
     'es-ES': ES,
-    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN, ...LABS_EN, ...UI_EN, ...CLOUD_EN, ...SRV_EN, ...WEB_EN, ...LOAD_EN },
+    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN, ...LABS_EN, ...UI_EN, ...CLOUD_EN, ...SRV_EN, ...WEB_EN, ...LOAD_EN, ...IFACES_EN },
 };
 
 return { CATALOGS };
@@ -5550,20 +5605,12 @@ return { Session, applyConfig };
 __m["ui/ios-device-settings.js"] = (() => {
 /** IOS router / switch → «Equipo»: name in the workspace and `hostname` of the running configuration. */
 const { el } = __m["ui/dom.js"];
-const { field, input, button, message, table } = __m["ui/forms.js"];
+const { field, input, button, message } = __m["ui/forms.js"];
 const { applyConfig } = __m["ios/session.js"];
-const { formatIp, formatMask } = __m["core/ip.js"];
 const { t } = __m["i18n/t.js"];
 const MAX_LABEL = 40;
 /** Same rule as the CLI `hostname`: a leading letter, one word, at most 63 characters. */
 const IOS_HOSTNAME = /^[A-Za-z]\S{0,62}$/;
-function ifaceRows(d) {
-    return [...d.ifaces.values()].map((c) => ({
-        name: c.name,
-        address: c.address ? `${formatIp(c.address.ip)} ${formatMask(c.address.prefix)}` : '—',
-        state: c.shutdown ? t('iosdev.down') : t('iosdev.up'),
-    }));
-}
 function iosDeviceSettings(placed, d, app) {
     const msg = message();
     const root = el('div', { class: 'pane' });
@@ -5588,17 +5635,213 @@ function iosDeviceSettings(placed, d, app) {
             refresh();
             msg.ok(t('host.saved', { name: d.hostname }));
         };
-        root.replaceChildren(el('h3', {}, t('host.nameTitle')), el('div', { class: 'grid2' }, field(t('host.label'), label, t('host.labelHint')), field(t('host.hostname'), hostname, t('iosdev.hostnameHint'))), el('div', { class: 'actions' }, button(t('host.save'), save)), msg.el, el('h3', {}, t('iosdev.ifaces')), table(ifaceRows(d), [
-            { label: t('iosdev.iface'), value: (r) => r.name, mono: true },
-            { label: t('iosdev.address'), value: (r) => r.address, mono: true },
-            { label: t('iosdev.state'), value: (r) => r.state },
-        ], { empty: '—' }), el('h3', {}, t('host.equivalents')), el('ul', { class: 'muted' }, el('li', {}, t('iosdev.eq')), el('li', {}, t('iosdev.eqIfaces'))));
+        root.replaceChildren(el('h3', {}, t('host.nameTitle')), el('div', { class: 'grid2' }, field(t('host.label'), label, t('host.labelHint')), field(t('host.hostname'), hostname, t('iosdev.hostnameHint'))), el('div', { class: 'actions' }, button(t('host.save'), save)), msg.el, el('h3', {}, t('host.equivalents')), el('ul', { class: 'muted' }, el('li', {}, t('iosdev.eq')), el('li', {}, t('iosdev.eqIfaces'))));
     };
     refresh();
     return { root, refresh: () => { msg.clear(); refresh(); } };
 }
 
 return { iosDeviceSettings };
+})();
+__m["ui/ios-interfaces.js"] = (() => {
+/**
+ * IOS router / switch → «Interfaces»: state, MAC and far end of every interface, with description, address
+ * (routed ports and SVIs), switchport mode and VLAN, and shutdown. Every change is applied as CLI commands,
+ * so the running-config and the messages are those of IOS.
+ */
+const { el } = __m["ui/dom.js"];
+const { button, field, input, message, onOff, select } = __m["ui/forms.js"];
+const { isSubinterface } = __m["ios/interfaces.js"];
+const { Session } = __m["ios/session.js"];
+const { formatIp, formatMask, parseIp, parseMask } = __m["core/ip.js"];
+const { formatMacCisco } = __m["core/mac.js"];
+const { t } = __m["i18n/t.js"];
+const MAX_DESCRIPTION = 200;
+const MAX_VLAN = 4094;
+function stateText(d, c) {
+    if (c.shutdown)
+        return t('iosif.adminDown');
+    const rt = d.ifaceRuntime(c.name);
+    return rt.protocolUp ? t('iosif.up') : t('iosif.down');
+}
+/** Commands for the address of a routed port or SVI; a string is a local validation error. */
+function addressCommands(c, ipText, maskText) {
+    if (ipText === '' && maskText === '')
+        return c.address ? ['no ip address'] : [];
+    const ip = parseIp(ipText);
+    if (ip === null)
+        return t('ip.check', { field: t('ip.field.ip') });
+    const prefix = parseMask(maskText);
+    // A dotted mask with holes goes to IOS as typed: it answers «Bad mask 0x…» like the real one.
+    if (prefix === null && parseIp(maskText) === null)
+        return t('ip.checkMask');
+    return [`ip address ${formatIp(ip)} ${prefix === null ? maskText : formatMask(prefix)}`];
+}
+function switchportCommands(c, mode, vlanText) {
+    const out = mode !== c.switchportMode ? [`switchport mode ${mode}`] : [];
+    if (mode !== 'access')
+        return out;
+    // The access VLAN only matters (and is only checked) in access mode.
+    const vlan = Number(vlanText);
+    if (!Number.isInteger(vlan) || vlan < 1 || vlan > MAX_VLAN)
+        return t('iosif.badVlan');
+    return vlan !== c.accessVlan ? [...out, `switchport access vlan ${vlan}`] : out;
+}
+/** Only the commands for what changed (each one makes IOS redo work: ARP flush, «Creating vlan»…). */
+function changedCommands(c, f) {
+    const text = f.description.replace(/[\r\n]+/g, ' ').trim();
+    const desc = text === (c.description ?? '') ? [] : [text ? `description ${text}` : 'no description'];
+    if (c.switchport) {
+        const sw = switchportCommands(c, f.mode, f.vlan.trim());
+        return typeof sw === 'string' ? sw : [...desc, ...sw];
+    }
+    const same = c.address ? f.ip.trim() === formatIp(c.address.ip) && parseMask(f.mask.trim()) === c.address.prefix : f.ip.trim() === '' && f.mask.trim() === '';
+    const addr = same ? [] : addressCommands(c, f.ip.trim(), f.mask.trim());
+    return typeof addr === 'string' ? addr : [...desc, ...addr];
+}
+/** Real IOS errors among the CLI answers (informational «%» lines such as «Creating vlan 20» are not). */
+const IOS_ERROR = /^(%\s?(Invalid|Incomplete|Ambiguous|Unrecognized|Inconsistent)|Bad mask|% .* overlaps with)/;
+/**
+ * Types the commands in a configuration session, as at the console: unlike applyConfig (which reads a
+ * saved configuration), entering an interface does not turn it on. The lines do not go to `show history`
+ * (the user did not type them) and leaving logs %SYS-5-CONFIG_I like `end`. Returns what IOS answered.
+ */
+function configureIface(d, name, sub) {
+    const history = [...d.history];
+    const session = new Session(d);
+    session.mode = 'config';
+    const output = [`interface ${name}`, ...sub].flatMap((l) => session.input(l)).filter((l) => l.trim() !== '' && !/^\s+\^$/.test(l));
+    session.endConfig();
+    d.history.splice(0, d.history.length, ...history);
+    return { output, failed: output.some((l) => IOS_ERROR.test(l)) };
+}
+/** Cabled ports only: subinterfaces, SVIs and loopbacks have no cable nor MAC of their own here. */
+function physical(name) {
+    return !isSubinterface(name) && !/^(Vlan|Loopback|Tunnel)/.test(name);
+}
+function ifaceRow(x, c) {
+    const { d, host, msg } = x;
+    const desc = input({ value: c.description ?? '', maxlength: String(MAX_DESCRIPTION), 'aria-label': `${t('iosif.description')} ${c.name}` });
+    const ip = input({ inputmode: 'decimal', value: c.address ? formatIp(c.address.ip) : '', 'aria-label': `${t('router.address')} ${c.name}` });
+    const mask = input({ inputmode: 'decimal', value: c.address ? formatMask(c.address.prefix) : '', 'aria-label': `${t('router.mask')} ${c.name}` });
+    const mode = select([['access', 'access'], ['trunk', 'trunk'], ['dynamic auto', 'dynamic auto']], c.switchportMode);
+    const vlan = input({ inputmode: 'numeric', value: String(c.accessVlan), 'aria-label': `VLAN ${c.name}` });
+    // Only this row is drawn again, and only when IOS accepted the change: a rejected value stays as typed.
+    const send = (sub) => {
+        if (!sub.length)
+            return msg.ok(t('iosif.nothing', { name: c.name }));
+        const r = configureIface(d, c.name, sub);
+        host.afterCommand();
+        if (r.failed)
+            return msg.error(r.output.join(' '));
+        const fresh = d.iface(c.name);
+        if (fresh)
+            row.replaceWith(ifaceRow(x, fresh));
+        msg.ok([t('iosif.applied', { name: c.name }), ...r.output].join(' '));
+    };
+    const apply = () => {
+        const cmds = changedCommands(c, { description: desc.value, ip: ip.value, mask: mask.value, mode: mode.value, vlan: vlan.value });
+        if (typeof cmds === 'string')
+            return msg.error(cmds);
+        send(cmds);
+    };
+    const peer = physical(c.name) ? host.peer(c.name) : undefined;
+    const details = physical(c.name) ? `${stateText(d, c)} · ${formatMacCisco(d.ifaceRuntime(c.name).mac)}` : stateText(d, c);
+    const row = el('div', { class: 'nic-row' }, el('div', { class: 'nic-name' }, el('strong', { class: 'mono' }, c.name), el('span', { class: 'mono muted' }, details), ...(physical(c.name) ? [el('span', { class: 'muted' }, peer ? t('iosif.peer', { peer }) : t('router.noCable'))] : [])), field(t('iosif.description'), desc), ...(c.switchport
+        ? [el('div', { class: 'grid2' }, field(t('iosif.mode'), mode), field('VLAN', vlan))]
+        : [el('div', { class: 'grid2' }, field(t('router.address'), ip), field(t('router.mask'), mask))]), el('div', { class: 'nic-actions' }, onOff(t('iosif.port'), !c.shutdown, (on) => send([on ? 'no shutdown' : 'shutdown'])), button(t('router.apply'), apply)));
+    return row;
+}
+function iosInterfaces(d, host) {
+    const msg = message();
+    const list = el('div', { class: 'nic-list' });
+    const draw = () => {
+        list.replaceChildren(...[...d.ifaces.values()].map((c) => ifaceRow({ d, host, msg }, c)));
+    };
+    draw();
+    const root = el('div', { class: 'pane' }, el('p', { class: 'muted' }, t('iosif.intro')), msg.el, list);
+    return { root, refresh: () => { msg.clear(); draw(); } };
+}
+
+return { addressCommands, switchportCommands, changedCommands, configureIface, iosInterfaces };
+})();
+__m["ui/live.js"] = (() => {
+/** Panels that follow their device: they redraw when it changes (from the terminal, DHCP…) unless you are typing in them. */
+const { el } = __m["ui/dom.js"];
+function liveHostPanel(host, render) {
+    const root = el('div', { class: 'pane' });
+    let stale = false;
+    const refresh = () => {
+        stale = false;
+        root.replaceChildren(...render(refresh));
+    };
+    let attached = false;
+    const onChange = () => {
+        // A panel replaced by another tab (subnav) stops listening once it has left the document.
+        if (root.isConnected)
+            attached = true;
+        else if (attached) {
+            off();
+            return;
+        }
+        if (root.contains(document.activeElement) && document.activeElement !== document.body && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? ''))
+            stale = true;
+        else
+            refresh();
+    };
+    root.addEventListener('focusout', (e) => {
+        if (stale && !root.contains(e.relatedTarget))
+            refresh();
+    });
+    const off = host.onChange(onChange);
+    refresh();
+    return { root, dispose: off };
+}
+
+return { liveHostPanel };
+})();
+__m["ui/host-interfaces.js"] = (() => {
+/**
+ * PC / Server → «Interfaces»: every NIC with its Linux name, MAC, cable (far end), address and administrative
+ * state (the same as `ip link set dev eth0 up|down` and the «Port Status» switch of Packet Tracer).
+ */
+const { el } = __m["ui/dom.js"];
+const { onOff, table } = __m["ui/forms.js"];
+const { liveHostPanel } = __m["ui/live.js"];
+const { formatIp, formatMask } = __m["core/ip.js"];
+const { t } = __m["i18n/t.js"];
+/** FastEthernet ports run at 100 Mb/s, GigabitEthernet ones at 1 Gb/s (full duplex, autonegotiated). */
+function speedOf(port) {
+    return port.startsWith('Gigabit') ? '1000 Mb/s' : '100 Mb/s';
+}
+function linkText(n) {
+    if (!n.adminUp)
+        return t('router.down');
+    return n.up ? t('router.up') : `${t('router.up')} (${t('router.noCable')})`;
+}
+function hostInterfaces(h, app, peer) {
+    return liveHostPanel(h, () => {
+        const nics = h.nics();
+        const toggles = nics.map((n) => onOff(`${n.port} (${n.linux})`, n.adminUp, (on) => { h.setNicUp(n.port, on); app.afterCommand(); }));
+        return [
+            el('p', { class: 'muted' }, t('hostif.intro')),
+            table(nics, [
+                { label: t('iosif.iface'), value: (n) => `${n.port} · ${n.linux}`, mono: true },
+                { label: 'MAC', value: (n) => n.mac, mono: true },
+                { label: t('iosif.state'), value: linkText },
+                { label: t('hostif.address'), value: (n) => (n.ip !== undefined && n.prefix !== undefined ? `${formatIp(n.ip)} ${formatMask(n.prefix)}${n.dhcp ? ' (DHCP)' : ''}` : '—'), mono: true },
+                { label: t('hostif.speed'), value: (n) => t('hostif.speedValue', { speed: speedOf(n.port) }) },
+                { label: t('hostif.peer'), value: (n) => peer(n.port) ?? t('router.noCable') },
+            ], { empty: '—' }),
+            el('h3', {}, t('hostif.portStatus')),
+            ...toggles,
+            el('h3', {}, t('host.equivalents')),
+            el('ul', { class: 'muted' }, el('li', {}, t('hostif.eqLinux')), el('li', {}, t('hostif.eqWindows')), el('li', {}, t('hostif.eqIp'))),
+        ];
+    });
+}
+
+return { hostInterfaces };
 })();
 __m["net/ipstack.js"] = (() => {
 const { inSubnet, broadcastOf, BROADCAST_IP } = __m["core/ip.js"];
@@ -17090,11 +17333,11 @@ const NETFIX_DOCS = {
                 list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.', 'Seleccionar: arrastra equipos; doble clic abre su ventana.', 'Eliminar: borra equipos o cables.'),
                 h('Ventanas de los equipos'),
                 table(['Equipo', 'Pestañas'], [
-                    ['Router IOS / Switch IOS', 'Equipo (nombre visible, hostname e interfaces), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
-                    ['Nube ISP', 'ISP (proveedor, bloque público, dominios) y Líneas (modo, LAN, NAT, redirección de puertos).'],
-                    ['PC', 'Equipo, Configuración IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Terminal Windows y Terminal Linux.'],
-                    ['Router Linux', 'Equipo, Servicios (Parámetros, Firewall, VPN, y los servicios de Server), Interfaces y Terminal Linux.'],
-                    ['Server', 'Equipo, Servicios (DHCP, DNS, HTTP, correo, SSH), Configuración IP, Terminal Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router Linux (en su terminal siguen sysctl y nft).'],
+                    ['Router IOS / Switch IOS', 'Equipo (nombre visible y hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
+                    ['Nube ISP', 'ISP (proveedor, bloque público, dominios), Interfaces (resumen de las seis líneas) y Líneas (modo, LAN, NAT, redirección de puertos).'],
+                    ['PC', 'Equipo, Interfaces (MAC, enlace, velocidad, extremo del cable y estado del puerto), Configuración IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Terminal Windows y Terminal Linux.'],
+                    ['Router Linux', 'Equipo, Interfaces (dirección de eth0-eth2, MAC, extremo del cable, reenvío y rutas), Servicios (Parámetros, Firewall, VPN, y los servicios de Server) y Terminal Linux.'],
+                    ['Server', 'Equipo, Interfaces, Servicios (DHCP, DNS, HTTP, correo, SSH), Configuración IP, Terminal Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router Linux (en su terminal siguen sysctl y nft).'],
                 ]),
                 note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim). En móvil y tableta las ventanas ocupan la pantalla, el lienzo se mueve con un dedo y se amplía pellizcando, una pulsación larga abre un equipo y la terminal tiene una barra de teclas (Esc, Tab, Ctrl, flechas).'),
             ],
@@ -18470,11 +18713,11 @@ const NETFIX_DOCS = {
                 list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.', 'Select: drag devices; double-click opens their window.', 'Delete: removes devices or cables.'),
                 h('Device windows'),
                 table(['Device', 'Tabs'], [
-                    ['IOS router / IOS switch', 'Device (workspace name, hostname and interfaces), CLI (Cisco IOS 15) and Web management (ip http server).'],
-                    ['ISP Cloud', 'ISP (provider, public block, domains) and Lines (mode, LAN, NAT, port forwarding).'],
-                    ['PC', 'Device, IP Config, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and Linux terminal.'],
-                    ['Linux router', 'Device, Services (Parameters, Firewall, VPN, and the Server services), Interfaces and Linux terminal.'],
-                    ['Server', 'Device, Services (DHCP, DNS, HTTP, mail, SSH), IP Config, Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the Linux router (sysctl and nft remain in its terminal).'],
+                    ['IOS router / IOS switch', 'Device (workspace name and hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
+                    ['ISP Cloud', 'ISP (provider, public block, domains), Interfaces (summary of the six lines) and Lines (mode, LAN, NAT, port forwarding).'],
+                    ['PC', 'Device, Interfaces (MAC, link, speed, far end of the cable and port status), IP Config, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and Linux terminal.'],
+                    ['Linux router', 'Device, Interfaces (address of eth0-eth2, MAC, far end of the cable, forwarding and routes), Services (Parameters, Firewall, VPN, and the Server services) and Linux terminal.'],
+                    ['Server', 'Device, Interfaces, Services (DHCP, DNS, HTTP, mail, SSH), IP Config, Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the Linux router (sysctl and nft remain in its terminal).'],
                 ]),
                 note('Windows are moved by their title bar and resized from the corner. Escape closes the active window (except inside nano or vim). On phones and tablets windows fill the screen, the canvas is panned with one finger and zoomed by pinching, a long press opens a device and the terminal has a key bar (Esc, Tab, Ctrl, arrows).'),
             ],
@@ -27896,7 +28139,7 @@ return { NanoEditor };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.7.1",
+    "version": "0.7.2",
     "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -35866,41 +36109,6 @@ class LinuxRouter extends Server {
 
 return { LINUX_ROUTER_PORTS, LinuxRouter };
 })();
-__m["ui/live.js"] = (() => {
-/** Panels that follow their device: they redraw when it changes (from the terminal, DHCP…) unless you are typing in them. */
-const { el } = __m["ui/dom.js"];
-function liveHostPanel(host, render) {
-    const root = el('div', { class: 'pane' });
-    let stale = false;
-    const refresh = () => {
-        stale = false;
-        root.replaceChildren(...render(refresh));
-    };
-    let attached = false;
-    const onChange = () => {
-        // A panel replaced by another tab (subnav) stops listening once it has left the document.
-        if (root.isConnected)
-            attached = true;
-        else if (attached) {
-            off();
-            return;
-        }
-        if (root.contains(document.activeElement) && document.activeElement !== document.body && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? ''))
-            stale = true;
-        else
-            refresh();
-    };
-    root.addEventListener('focusout', (e) => {
-        if (stale && !root.contains(e.relatedTarget))
-            refresh();
-    });
-    const off = host.onChange(onChange);
-    refresh();
-    return { root, dispose: off };
-}
-
-return { liveHostPanel };
-})();
 __m["shells/kernel-save.js"] = (() => {
 const { hostSystem } = __m["shells/host-system.js"];
 const { NETFIX_SYSCTL } = __m["shells/kernel-files.js"];
@@ -35940,7 +36148,7 @@ function readAddress(ipText, maskText) {
     const prefix = parseMask(maskText.trim());
     return ip === null || prefix === null ? null : { ip, prefix };
 }
-function nicRow(r, n, app, msg) {
+function nicRow(r, n, app, msg, peer) {
     const ip = input({ inputmode: 'decimal', value: n.ip !== undefined ? formatIp(n.ip) : '', 'aria-label': `${t('router.address')} ${n.linux}` });
     const mask = input({ inputmode: 'decimal', value: n.prefix !== undefined ? formatMask(n.prefix) : '', 'aria-label': `${t('router.mask')} ${n.linux}` });
     const isWan = n.port === r.primaryPort();
@@ -35968,7 +36176,7 @@ function nicRow(r, n, app, msg) {
     });
     const state = n.adminUp ? (n.up ? t('router.up') : `${t('router.up')} (${t('router.noCable')})`) : t('router.down');
     const toggle = onOff(state, n.adminUp, (on) => { r.setNicUp(n.port, on); app.afterCommand(); });
-    return el('div', { class: 'nic-row' }, el('div', { class: 'nic-name' }, el('strong', {}, n.port), el('span', { class: 'mono muted' }, n.linux)), field(t('router.address'), ip), field(t('router.mask'), mask), el('div', { class: 'nic-actions' }, toggle, button(t('router.apply'), apply)), ...(isWan ? [el('label', { class: 'check nic-dhcp' }, dhcp, t('router.dhcp'))] : []));
+    return el('div', { class: 'nic-row' }, el('div', { class: 'nic-name' }, el('strong', {}, n.port), el('span', { class: 'mono muted' }, `${n.linux} · ${n.mac}`), el('span', { class: 'muted' }, peer ? t('iosif.peer', { peer }) : t('router.noCable'))), field(t('router.address'), ip), field(t('router.mask'), mask), el('div', { class: 'nic-actions' }, toggle, button(t('router.apply'), apply)), ...(isWan ? [el('label', { class: 'check nic-dhcp' }, dhcp, t('router.dhcp'))] : []));
 }
 function gatewaySection(r, app, msg) {
     const c = r.config;
@@ -36012,7 +36220,7 @@ function routesSection(r, app, msg) {
     return [el('h3', {}, t('router.routes')), el('p', { class: 'muted' }, t('router.routesIntro')), rows,
         el('div', { class: 'grid2' }, field(t('router.dest'), dest), field(t('router.via'), via)), button(t('router.addRoute'), add)];
 }
-function routerInterfaces(r, app) {
+function routerInterfaces(r, app, peer = () => undefined) {
     // Outside the redraw: an action that changes the device redraws the panel before reporting.
     const msg = message();
     return liveHostPanel(r, () => {
@@ -36027,7 +36235,7 @@ function routerInterfaces(r, app) {
             }),
             ...(forwarding ? [] : [el('p', { class: 'status', 'data-state': 'failed' }, t('router.forwardingOff'))]),
             el('h3', {}, t('router.ifaces')),
-            ...r.nics().map((n) => nicRow(r, n, app, msg)),
+            ...r.nics().map((n) => nicRow(r, n, app, msg, peer(n.port))),
             gatewaySection(r, app, msg),
             msg.el,
             ...routesSection(r, app, msg),
@@ -41015,9 +41223,26 @@ function linePanel(cloud, name, app) {
         ];
     });
 }
+/** «Interfaces»: the six lines at a glance (access, mode, address on the customer side and far end). */
+function interfacesTab(cloud, app) {
+    return livePanel(() => {
+        const rows = CLOUD_PORTS.flatMap((name) => { const line = cloud.lines.get(name); return line ? [{ name, line }] : []; });
+        return [
+            el('p', { class: 'muted' }, t('cloudif.intro')),
+            table(rows, [
+                { label: t('iosif.iface'), value: (r) => r.name, mono: true },
+                { label: t('cloudif.access'), value: (r) => ACCESS_LABEL[accessOf(r.name)] },
+                { label: t('cloud.mode'), value: (r) => (r.line.settings.mode === 'router' ? t('cloud.modeRouter') : t('cloud.modePublic')) },
+                { label: t('cloudif.customer'), value: (r) => (r.line.settings.mode === 'router' ? `WAN ${formatIp(r.line.wan())} · LAN ${formatIp(r.line.settings.lanIp)}/${r.line.settings.lanPrefix}` : `${formatIp(r.line.line().net)}/${LINE_PREFIX}`), mono: true },
+                { label: t('hostif.peer'), value: (r) => app.connected(r.name) ?? t('cloud.noCable') },
+            ], { empty: '—' }),
+        ];
+    });
+}
 function cloudTabs(cloud, app) {
     return [
         { id: 'isp', label: 'ISP', render: () => ispTab(cloud, app) },
+        { id: 'ifaces', label: t('win.ifaces'), render: () => interfacesTab(cloud, app) },
         { id: 'lines', label: t('cloud.lines'), render: () => subnav(CLOUD_PORTS.map((p) => ({ id: p, label: p, render: () => linePanel(cloud, p, app) }))) },
     ];
 }
@@ -41027,6 +41252,8 @@ return { cloudTabs };
 __m["ui/device-windows.js"] = (() => {
 /** Window contents: IOS CLI for routers/switches; desktop tabs for PCs and Server. */
 const { iosDeviceSettings } = __m["ui/ios-device-settings.js"];
+const { iosInterfaces } = __m["ui/ios-interfaces.js"];
+const { hostInterfaces } = __m["ui/host-interfaces.js"];
 const { t } = __m["i18n/t.js"];
 const { LinuxRouter } = __m["devices/linux-router.js"];
 const { routerInterfaces } = __m["ui/router-ip.js"];
@@ -41103,8 +41330,10 @@ function openDeviceWindow(placed, host) {
     const term = cliTerminal(placed, host);
     let handle;
     const device = iosDeviceSettings(placed, d, { afterCommand: () => host.afterCommand(), retitle: (title) => handle?.setTitle(title) });
+    const ifaces = iosInterfaces(d, { afterCommand: () => host.afterCommand(), peer: (port) => host.peerLabel?.(d.id, port) });
     handle = host.windows.show(d.id, `${placed.label} · ${d.hostname}`, [
         { id: 'host', label: t('win.host'), render: () => device.root, onShow: () => device.refresh() },
+        { id: 'ifaces', label: t('win.ifaces'), render: () => ifaces.root, onShow: () => ifaces.refresh() },
         { id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() },
         { id: 'web', label: t('win.webAdmin'), render: () => iosWebSettings(d, () => host.afterCommand()) },
     ]);
@@ -41137,6 +41366,7 @@ function openHostWindow(placed, h, app) {
         id: os, label: os === 'windows' ? t('win.cmd') : t('win.linuxTerm'),
         render: () => shellTerminal(placed, h, os, app).root, onShow: () => shellTerminal(placed, h, os, app).focus(),
     });
+    const nicTab = { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = hostInterfaces(h, app, (port) => app.peerLabel?.(h.id, port)); disposers.push(v.dispose); return v.root; } };
     const ipTab = { id: 'ip', label: t('win.ip'), render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
     const order = h.os === 'linux' ? ['linux', 'windows'] : ['windows', 'linux'];
     const model = h instanceof LinuxRouter ? 'Ubuntu' : h instanceof Server ? 'Server' : 'PC';
@@ -41149,13 +41379,13 @@ function openHostWindow(placed, h, app) {
     // «Equipo» is always the first tab (as in the IOS devices).
     const routerTabs = (r) => [
         settingsTab,
+        { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = routerInterfaces(r, app, (port) => app.peerLabel?.(r.id, port)); disposers.push(v.dispose); return v.root; } },
         { id: 'svc', label: t('win.services'), render: () => servicesTab(r, app) },
-        { id: 'ifaces', label: t('router.ifaces'), render: () => { const v = routerInterfaces(r, app); disposers.push(v.dispose); return v.root; } },
         terminal('linux'),
     ];
     const tabs = h instanceof LinuxRouter ? routerTabs(h) : h instanceof Server
-        ? [settingsTab, { id: 'svc', label: t('win.services'), render: () => servicesTab(h, app) }, ipTab, ...order.map(terminal)]
-        : [settingsTab, ipTab, ...(h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
+        ? [settingsTab, nicTab, { id: 'svc', label: t('win.services'), render: () => servicesTab(h, app) }, ipTab, ...order.map(terminal)]
+        : [settingsTab, nicTab, ipTab, ...(h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
                 { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : []), ...order.map(terminal)];
     handle = app.windows.show(h.id, `${placed.label} · ${model}`, tabs, () => disposers.forEach((f) => f()));
 }

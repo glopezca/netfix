@@ -27,6 +27,13 @@ try {
   // 1. CLI: configure a manual binding for PC0 through the console.
   await page.dblclick('g.device-router');
   assert.equal(await page.locator('.win-tab').first().innerText(), 'Equipo', 'Equipo is the first tab of an IOS router');
+  // Interfaces tab: describe and shut down Gi0/2 from the form; the CLI shows it.
+  await page.click('.win-tab:has-text("Interfaces")');
+  const gi2 = page.locator('.nic-row:has-text("GigabitEthernet0/2")');
+  await gi2.locator('input').first().fill('Enlace de pruebas');
+  await gi2.locator('button:has-text("Aplicar")').click();
+  await page.waitForSelector('.form-msg[data-kind="ok"]');
+  assert.match(await page.locator('.window .form-msg[data-kind="ok"]').innerText(), /GigabitEthernet0\/2/);
   await page.click('.win-tab:has-text("CLI")');
   const type = async (line) => { await page.keyboard.type(line); await page.keyboard.press('Enter'); };
   await type('no');

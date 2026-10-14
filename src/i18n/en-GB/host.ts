@@ -27,12 +27,6 @@ export const HOST_EN: Readonly<Record<HostKey, string>> = {
   'host.err.chars': 'Use only unaccented letters, digits and hyphens (no spaces; it cannot start or end with a hyphen).',
   'iosdev.hostnameHint': 'The IOS “hostname”: it appears in the prompt (Router#) and in show running-config.',
   'iosdev.badHostname': 'Invalid IOS host name: a single word starting with a letter (63 characters at most).',
-  'iosdev.ifaces': 'Interfaces',
-  'iosdev.iface': 'Interface',
-  'iosdev.address': 'Address and mask',
-  'iosdev.state': 'State',
-  'iosdev.up': 'enabled (no shutdown)',
-  'iosdev.down': 'administratively down (shutdown)',
   'iosdev.eq': 'CLI: configure terminal → hostname NAME (saved with copy running-config startup-config).',
-  'iosdev.eqIfaces': 'Addresses are changed in the CLI tab (interface … → ip address IP MASK) or in Web management.',
+  'iosdev.eqIfaces': 'Interfaces (description, address, VLAN, shutdown) are changed in the Interfaces tab, in the CLI or in Web management.',
 };
