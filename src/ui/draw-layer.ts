@@ -91,14 +91,19 @@ export class DrawLayer {
 
   deselect(): void {
     if (this.selected === null) return;
-    this.selected = null;
+    this.setSelected(null);
     this.render();
   }
 
   /** Another topology: nothing of the old one stays selected (drawing ids restart in each one). */
   reset(): void {
-    this.selected = null;
+    this.setSelected(null);
     this.render(true);
+  }
+
+  private setSelected(id: string | null): void {
+    this.selected = id;
+    this.state.select(id);
   }
 
   /** Draws again only when the drawings or the selection changed (the workspace redraws often). */
@@ -119,7 +124,19 @@ export class DrawLayer {
   deleteSelected(): boolean {
     if (this.selected === null) return false;
     this.host.topo().removeAnnotation(this.selected);
-    this.selected = null;
+    this.setSelected(null);
+    this.host.changed();
+    return true;
+  }
+
+  count(): number {
+    return this.host.topo().annotations.length;
+  }
+
+  /** Removes every drawing of the workspace; false when there were none. */
+  deleteAll(): boolean {
+    this.setSelected(null);
+    if (!this.host.topo().clearAnnotations()) return false;
     this.host.changed();
     return true;
   }
@@ -140,12 +157,12 @@ export class DrawLayer {
     if (e.button !== 0 || this.dragging) return;
     if (this.host.deleting()) {
       this.host.topo().removeAnnotation(id);
-      if (this.selected === id) this.selected = null;
+      if (this.selected === id) this.setSelected(null);
       this.host.changed();
       return;
     }
     this.host.selectedDrawing();
-    this.selected = id;
+    this.setSelected(id);
     this.drawnSelection = id;
     for (const n of this.layer.querySelectorAll('[data-drawing]')) n.classList.toggle('is-selected', n.getAttribute('data-drawing') === id);
     this.drag(e, (dx, dy) => g.setAttribute('transform', `translate(${dx} ${dy})`), (dx, dy) => {

@@ -105,6 +105,31 @@ try {
   await page.waitForSelector('g.drawing-free');
   assert.ok((await texts()).includes('Lab notes'), 'drawings are saved with the topology');
 
+  // 3c. Deleting drawings: the bar button removes the selected one, the Delete tool removes an area tapped inside,
+  // and «Delete all» (confirmed) removes the rest, lab areas included; the devices stay.
+  const drawings = () => page.locator('g.drawing').count();
+  const devices = await page.locator('g.device').count();
+  await page.click('.pal-draw');
+  assert.equal(await page.locator('.draw-delete').isDisabled(), true, 'nothing selected yet');
+  await page.click('.pal-item:has-text("Select")');
+  await page.getByText('10.99.0.0/24', { exact: true }).click();
+  let n = await drawings();
+  await page.click('.draw-delete');
+  assert.equal(await drawings(), n - 1, 'Delete drawing');
+  assert.ok(!(await texts()).includes('10.99.0.0/24'));
+  await page.click('.pal-item:has-text("Delete")');
+  const notes = await page.locator('g.drawing-rect').last().boundingBox();
+  n = await drawings();
+  await page.mouse.click(notes.x + notes.width / 2, notes.y + notes.height - 12);
+  assert.equal(await drawings(), n - 1, 'Delete tool inside an area');
+  assert.ok(!(await texts()).includes('Lab notes'));
+  await page.click('.pal-item:has-text("Select")');
+  page.once('dialog', (d) => d.accept());
+  await page.click('.draw-delete-all');
+  await page.waitForFunction(() => document.querySelectorAll('g.drawing').length === 0);
+  assert.equal(await page.locator('g.device').count(), devices, 'devices are kept');
+  await page.click('.pal-draw');
+
   // 4. SSH client app of a PC: generate a key, then the open session survives a visit to the Keys tab.
   await page.click('button.seg:has-text("Network")');
   await page.dblclick('g.device-pc >> nth=0');

@@ -297,3 +297,8 @@ la demo y `artifact.html` los llevan como data URI), de modo que se ven antes de
 
 **Estado:** completada (v0.9.0). Las áreas de los laboratorios se ensanchan para que quepa su nombre (en el de bastionado se
 separan los switches para que no se solapen).
+
+**v0.9.1:** borrar dibujos. La barra de dibujo tiene «Borrar dibujo» (activo con un dibujo seleccionado; también Supr) y
+«Borrar todos» (con confirmación; quita también las áreas del laboratorio, nunca equipos ni cables). Con la herramienta
+Eliminar basta tocar el interior de un área. `Topology.clearAnnotations()`; la selección de la capa de dibujo se notifica
+a `DrawState` (un solo punto, `setSelected`) y se pierde al cerrar la barra. Revisión ECC: sin críticos ni altos.

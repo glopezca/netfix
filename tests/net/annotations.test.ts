@@ -64,3 +64,15 @@ test('the topology keeps its drawings and saves them in the file', () => {
   const { annotations: _omit, ...old } = file;
   assert.deepEqual(Topology.fromJSON(JSON.parse(JSON.stringify(old))).annotations, []);
 });
+
+test('all the drawings can be removed at once (the lab areas too); the network is untouched', () => {
+  const t = new Topology();
+  t.add('pc', 100, 100);
+  t.addAnnotation({ kind: 'rect', points: [{ x: 0, y: 0 }, { x: 200, y: 200 }], color: '#388e3c', fill: true, width: 2, text: 'LAN' });
+  t.addAnnotation({ kind: 'text', points: [{ x: 10, y: 10 }], color: '#000000', fill: false, width: 1, text: '10.0.0.0/24' });
+  assert.equal(t.clearAnnotations(), 2);
+  assert.deepEqual(t.annotations, []);
+  assert.equal(t.placed.size, 1);
+  assert.equal(t.clearAnnotations(), 0);
+  assert.equal(t.toJSON().annotations, undefined);
+});

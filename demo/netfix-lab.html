@@ -661,6 +661,8 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 }
 .drawing-hit { stroke: transparent; stroke-width: 14px; pointer-events: stroke; cursor: move; }
 .workspace[data-tool="delete"] .drawing-hit { cursor: not-allowed; }
+/* With the Delete tool, a tap anywhere inside an area removes it (devices and cables above it still win). */
+.workspace[data-tool="delete"] .drawing-rect .drawing-shape, .workspace[data-tool="delete"] .drawing-ellipse .drawing-shape { pointer-events: visible; }
 
 </style>
 </head>
@@ -984,7 +986,7 @@ const CANVAS_ES = {
     'canvas.label': 'Área de trabajo lógica',
     'canvas.hint.select': 'Arrastra para mover; arrastra el fondo para desplazarte. Doble clic, doble toque o pulsación larga para abrir.',
     'canvas.hint.cable': 'Cable: toca el primer dispositivo y elige un puerto.',
-    'canvas.hint.delete': 'Eliminar: toca un dispositivo o un cable.',
+    'canvas.hint.delete': 'Eliminar: toca un dispositivo, un cable o un dibujo (también el interior de un área).',
     'canvas.hint.place': 'Toca el área de trabajo para colocar el dispositivo.',
     'canvas.connectTo': 'Conectar a {name}',
     'canvas.from': 'Desde {name}',
@@ -1000,7 +1002,7 @@ const CANVAS_EN = {
     'canvas.label': 'Logical workspace',
     'canvas.hint.select': 'Drag to move; drag the background to pan. Double-click, double-tap or long-press to open.',
     'canvas.hint.cable': 'Cable: tap the first device and choose a port.',
-    'canvas.hint.delete': 'Delete: tap a device or a cable.',
+    'canvas.hint.delete': 'Delete: tap a device, a cable or a drawing (inside an area works too).',
     'canvas.hint.place': 'Tap the workspace to place the device.',
     'canvas.connectTo': 'Connect to {name}',
     'canvas.from': 'From {name}',
@@ -3346,7 +3348,11 @@ const DRAW_ES = {
     'draw.fill': 'Relleno',
     'draw.width': 'Grosor del trazo',
     'draw.textPrompt': 'Texto (Intro para aceptar)',
-    'canvas.hint.draw': 'Arrastra para dibujar; en Etiqueta, haz clic donde va el texto. Doble clic en un área o etiqueta: cambiar su texto. Seleccionar mueve los dibujos; Eliminar o Supr los borra.',
+    'draw.delete': 'Borrar dibujo',
+    'draw.deleteHint': 'Borrar el dibujo seleccionado (también Supr, o la herramienta Eliminar tocando el área)',
+    'draw.deleteAll': 'Borrar todos',
+    'draw.confirmDeleteAll': '¿Borrar todos los dibujos del área de trabajo, incluidas las áreas del laboratorio? Los equipos y los cables no cambian.',
+    'canvas.hint.draw': 'Arrastra para dibujar; en Etiqueta, haz clic donde va el texto. Doble clic en un área o etiqueta: cambiar su texto. Seleccionar mueve los dibujos; Supr, Borrar dibujo o la herramienta Eliminar (tocando el área) los borran.',
     'area.internet': 'Internet · red pública',
     'area.lan': '{name} · red privada {net}',
     'area.dmz': 'DMZ · {net}',
@@ -3383,7 +3389,11 @@ const DRAW_EN = {
     'draw.fill': 'Fill',
     'draw.width': 'Stroke width',
     'draw.textPrompt': 'Text (Enter to accept)',
-    'canvas.hint.draw': 'Drag to draw; with Text label, click where the text goes. Double-click an area or label: change its text. Select moves drawings; Delete or the Del key removes them.',
+    'draw.delete': 'Delete drawing',
+    'draw.deleteHint': 'Delete the selected drawing (also the Del key, or the Delete tool tapping the area)',
+    'draw.deleteAll': 'Delete all',
+    'draw.confirmDeleteAll': 'Delete every drawing on the workspace, including the lab areas? Devices and cables are not changed.',
+    'canvas.hint.draw': 'Drag to draw; with Text label, click where the text goes. Double-click an area or label: change its text. Select moves drawings; the Del key, Delete drawing or the Delete tool (tapping the area) removes them.',
     'area.internet': 'Internet · public network',
     'area.lan': '{name} · private network {net}',
     'area.dmz': 'DMZ · {net}',
@@ -4028,13 +4038,17 @@ class DrawLayer {
     deselect() {
         if (this.selected === null)
             return;
-        this.selected = null;
+        this.setSelected(null);
         this.render();
     }
     /** Another topology: nothing of the old one stays selected (drawing ids restart in each one). */
     reset() {
-        this.selected = null;
+        this.setSelected(null);
         this.render(true);
+    }
+    setSelected(id) {
+        this.selected = id;
+        this.state.select(id);
     }
     /** Draws again only when the drawings or the selection changed (the workspace redraws often). */
     render(force = false) {
@@ -4055,7 +4069,18 @@ class DrawLayer {
         if (this.selected === null)
             return false;
         this.host.topo().removeAnnotation(this.selected);
-        this.selected = null;
+        this.setSelected(null);
+        this.host.changed();
+        return true;
+    }
+    count() {
+        return this.host.topo().annotations.length;
+    }
+    /** Removes every drawing of the workspace; false when there were none. */
+    deleteAll() {
+        this.setSelected(null);
+        if (!this.host.topo().clearAnnotations())
+            return false;
         this.host.changed();
         return true;
     }
@@ -4078,12 +4103,12 @@ class DrawLayer {
         if (this.host.deleting()) {
             this.host.topo().removeAnnotation(id);
             if (this.selected === id)
-                this.selected = null;
+                this.setSelected(null);
             this.host.changed();
             return;
         }
         this.host.selectedDrawing();
-        this.selected = id;
+        this.setSelected(id);
         this.drawnSelection = id;
         for (const n of this.layer.querySelectorAll('[data-drawing]'))
             n.classList.toggle('is-selected', n.getAttribute('data-drawing') === id);
@@ -4215,7 +4240,8 @@ return { drawingNode, DrawLayer };
 __m["ui/draw-bar.js"] = (() => {
 /**
  * Drawing bar: shapes (rectangle, ellipse, line, freehand, text), basic colours, an RGB picker, fill and stroke
- * width. It floats over the workspace and opens from the palette's «Dibujo» button.
+ * width, and buttons to delete the selected drawing or all of them. It floats over the workspace and opens from the
+ * palette's «Dibujo» button.
  */
 const { el } = __m["ui/dom.js"];
 const { t } = __m["i18n/t.js"];
@@ -4226,7 +4252,10 @@ class DrawState {
     color = BASIC_COLORS[5] ?? '#1976d2';
     fill = true;
     width = 2;
+    /** Id of the selected drawing (set by the drawing layer). */
+    selected = null;
     listeners = new Set();
+    selectListeners = new Set();
     style() {
         return { color: this.color, fill: this.fill, width: this.width };
     }
@@ -4243,10 +4272,29 @@ class DrawState {
     onChange(f) {
         this.listeners.add(f);
     }
+    select(id) {
+        if (id === this.selected)
+            return;
+        this.selected = id;
+        for (const f of this.selectListeners)
+            f(id);
+    }
+    onSelect(f) {
+        this.selectListeners.add(f);
+    }
 }
 const SHAPES = [
     ['rect', 'draw.rect', '▭'], ['ellipse', 'draw.ellipse', '◯'], ['line', 'draw.line', '╱'], ['free', 'draw.free', '✎'], ['text', 'draw.text', 'T'],
 ];
+/** «Borrar dibujo» (enabled while a drawing is selected) and «Borrar todos». */
+function deleteButtons(state, actions) {
+    const one = el('button', { type: 'button', class: 'btn btn-small draw-delete', disabled: true, title: t('draw.deleteHint') }, t('draw.delete'));
+    one.addEventListener('click', () => actions.deleteSelected());
+    state.onSelect((id) => { one.disabled = id === null; });
+    const all = el('button', { type: 'button', class: 'btn btn-small danger draw-delete-all' }, t('draw.deleteAll'));
+    all.addEventListener('click', () => actions.deleteAll());
+    return el('div', { class: 'draw-group' }, one, all);
+}
 function swatch(state, color, picker) {
     const b = el('button', { type: 'button', class: 'draw-swatch', 'data-color': color, 'aria-label': t('draw.color', { color }), title: color });
     b.style.backgroundColor = color;
@@ -4272,7 +4320,7 @@ function drawBar(state, actions, buttons) {
     const paint = () => { current.style.backgroundColor = state.color; picker.value = state.color; };
     state.onChange(paint);
     paint();
-    return el('div', { class: 'draw-bar', role: 'toolbar', 'aria-label': t('draw.title'), hidden: true }, el('div', { class: 'draw-group' }, ...shapes), el('div', { class: 'draw-group draw-colors' }, current, ...BASIC_COLORS.map((c) => swatch(state, c, picker)), picker), el('label', { class: 'check draw-fill' }, fill, ` ${t('draw.fill')}`), width);
+    return el('div', { class: 'draw-bar', role: 'toolbar', 'aria-label': t('draw.title'), hidden: true }, el('div', { class: 'draw-group' }, ...shapes), el('div', { class: 'draw-group draw-colors' }, current, ...BASIC_COLORS.map((c) => swatch(state, c, picker)), picker), el('label', { class: 'check draw-fill' }, fill, ` ${t('draw.fill')}`), width, deleteButtons(state, actions));
 }
 
 return { DrawState, SHAPES, drawBar };
@@ -17979,7 +18027,7 @@ const NETFIX_DOCS = {
                     ['Colores', 'Nueve colores básicos y un selector RGB para cualquier otro; el actual se ve a la izquierda.'],
                     ['Relleno · grosor', 'Las áreas pueden llevar un relleno suave de su color; el grosor del trazo va de 1 a 6 px.'],
                 ]),
-                list('Con Seleccionar, arrastra un dibujo por su borde o su texto para moverlo; el interior de un área deja pasar los clics al fondo y a los equipos.', 'Doble clic en un área o etiqueta: cambiar su texto. Con un dibujo seleccionado, elegir otro color, relleno o grosor lo cambia.', 'Eliminar (o Supr) borra el dibujo seleccionado.', 'Los laboratorios ya traen áreas para las redes privadas, Internet, la DMZ, los invitados, los servidores, las VLAN y los túneles VPN.'),
+                list('Con Seleccionar, arrastra un dibujo por su borde o su texto para moverlo; el interior de un área deja pasar los clics al fondo y a los equipos.', 'Doble clic en un área o etiqueta: cambiar su texto. Con un dibujo seleccionado, elegir otro color, relleno o grosor lo cambia.', 'Para borrar un dibujo: selecciónalo y pulsa Borrar dibujo en la barra (o Supr), o elige la herramienta Eliminar y toca el dibujo; con ella basta tocar el interior de un área.', 'Borrar todos (en la barra, tras confirmar) quita todos los dibujos, también las áreas que trae un laboratorio; los equipos y los cables no cambian.', 'Los laboratorios ya traen áreas para las redes privadas, Internet, la DMZ, los invitados, los servidores, las VLAN y los túneles VPN.'),
                 note('Los dibujos van debajo de los cables y de los equipos, y «Ajustar a la red» también los tiene en cuenta.'),
             ],
         },
@@ -19376,7 +19424,7 @@ const NETFIX_DOCS = {
                     ['Colours', 'Nine basic colours and an RGB picker for any other; the current one is shown on the left.'],
                     ['Fill · width', 'Areas can have a light fill of their colour; the stroke width goes from 1 to 6 px.'],
                 ]),
-                list('With Select, drag a drawing by its border or its text to move it; the inside of an area lets clicks through to the background and the devices.', 'Double-click an area or label: change its text. With a drawing selected, picking another colour, fill or width changes it.', 'Delete (or the Del key) removes the selected drawing.', 'The labs already come with areas for the private networks, the Internet, the DMZ, guests, servers, VLANs and VPN tunnels.'),
+                list('With Select, drag a drawing by its border or its text to move it; the inside of an area lets clicks through to the background and the devices.', 'Double-click an area or label: change its text. With a drawing selected, picking another colour, fill or width changes it.', 'To delete a drawing: select it and press Delete drawing on the bar (or the Del key), or choose the Delete tool and tap the drawing; with it, tapping inside an area is enough.', 'Delete all (on the bar, after confirming) removes every drawing, the areas that come with a lab too; devices and cables are not changed.', 'The labs already come with areas for the private networks, the Internet, the DMZ, guests, servers, VLANs and VPN tunnels.'),
                 note('Drawings go below cables and devices, and “Fit to network” takes them into account too.'),
             ],
         },
@@ -27815,7 +27863,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -47885,6 +47933,13 @@ class Topology {
     removeAnnotation(id) {
         this.annotations = this.annotations.filter((a) => a.id !== id);
     }
+    /** Removes every drawing (the lab areas too); returns how many there were. */
+    clearAnnotations() {
+        const n = this.annotations.length;
+        if (n)
+            this.annotations = [];
+        return n;
+    }
     settle(ms = SETTLE_MS) {
         this.net.runFor(ms);
     }
@@ -49425,7 +49480,15 @@ class App {
         const winLayer = el('div', { class: 'win-layer' });
         this.windows = new WindowManager(winLayer);
         this.sim = new SimPanel(this.topo, this.canvas);
-        this.drawBarEl = drawBar(this.drawState, { pick: (shape) => this.selectTool({ kind: 'draw', shape }, `draw-${shape}`) }, this.toolButtons);
+        this.drawBarEl = drawBar(this.drawState, {
+            pick: (shape) => this.selectTool({ kind: 'draw', shape }, `draw-${shape}`),
+            deleteSelected: () => { this.canvas.draw.deleteSelected(); this.canvas.root.focus({ preventScroll: true }); },
+            deleteAll: () => {
+                if (this.canvas.draw.count() === 0 || !globalThis.confirm(t('draw.confirmDeleteAll')))
+                    return;
+                this.canvas.draw.deleteAll();
+            },
+        }, this.toolButtons);
         this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.sim.root);
         this.paletteEl = palette({ selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw() }, this.toolButtons, this.hintEl);
         this.pageHost = el('main', { class: 'docs-host', hidden: true });
@@ -49492,6 +49555,9 @@ class App {
     /** Opens or closes the drawing bar; closing it goes back to the Select tool. */
     toggleDraw() {
         this.drawBarEl.hidden = !this.drawBarEl.hidden;
+        // A hidden bar leaves nothing selected: Del must not remove a drawing the user no longer sees as chosen.
+        if (this.drawBarEl.hidden)
+            this.canvas.draw.deselect();
         if (this.drawBarEl.hidden && this.canvas.currentTool().kind === 'draw')
             this.selectTool({ kind: 'select' }, 'select');
         return !this.drawBarEl.hidden;

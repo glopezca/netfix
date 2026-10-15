@@ -80,7 +80,8 @@ export const NETFIX_DOCS: DocGroup = {
         list(
           'With Select, drag a drawing by its border or its text to move it; the inside of an area lets clicks through to the background and the devices.',
           'Double-click an area or label: change its text. With a drawing selected, picking another colour, fill or width changes it.',
-          'Delete (or the Del key) removes the selected drawing.',
+          'To delete a drawing: select it and press Delete drawing on the bar (or the Del key), or choose the Delete tool and tap the drawing; with it, tapping inside an area is enough.',
+          'Delete all (on the bar, after confirming) removes every drawing, the areas that come with a lab too; devices and cables are not changed.',
           'The labs already come with areas for the private networks, the Internet, the DMZ, guests, servers, VLANs and VPN tunnels.',
         ),
         note('Drawings go below cables and devices, and “Fit to network” takes them into account too.'),

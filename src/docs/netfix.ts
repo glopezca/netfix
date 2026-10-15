@@ -80,7 +80,8 @@ export const NETFIX_DOCS: DocGroup = {
         list(
           'Con Seleccionar, arrastra un dibujo por su borde o su texto para moverlo; el interior de un área deja pasar los clics al fondo y a los equipos.',
           'Doble clic en un área o etiqueta: cambiar su texto. Con un dibujo seleccionado, elegir otro color, relleno o grosor lo cambia.',
-          'Eliminar (o Supr) borra el dibujo seleccionado.',
+          'Para borrar un dibujo: selecciónalo y pulsa Borrar dibujo en la barra (o Supr), o elige la herramienta Eliminar y toca el dibujo; con ella basta tocar el interior de un área.',
+          'Borrar todos (en la barra, tras confirmar) quita todos los dibujos, también las áreas que trae un laboratorio; los equipos y los cables no cambian.',
           'Los laboratorios ya traen áreas para las redes privadas, Internet, la DMZ, los invitados, los servidores, las VLAN y los túneles VPN.',
         ),
         note('Los dibujos van debajo de los cables y de los equipos, y «Ajustar a la red» también los tiene en cuenta.'),

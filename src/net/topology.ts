@@ -195,6 +195,13 @@ export class Topology {
     this.annotations = this.annotations.filter((a) => a.id !== id);
   }
 
+  /** Removes every drawing (the lab areas too); returns how many there were. */
+  clearAnnotations(): number {
+    const n = this.annotations.length;
+    if (n) this.annotations = [];
+    return n;
+  }
+
   settle(ms = SETTLE_MS): void {
     this.net.runFor(ms);
   }

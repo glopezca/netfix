@@ -1,6 +1,7 @@
 /**
  * Drawing bar: shapes (rectangle, ellipse, line, freehand, text), basic colours, an RGB picker, fill and stroke
- * width. It floats over the workspace and opens from the palette's «Dibujo» button.
+ * width, and buttons to delete the selected drawing or all of them. It floats over the workspace and opens from the
+ * palette's «Dibujo» button.
  */
 import { el } from './dom.ts';
 import { t } from '../i18n/t.ts';
@@ -15,7 +16,10 @@ export class DrawState {
   color = BASIC_COLORS[5] ?? '#1976d2';
   fill = true;
   width = 2;
+  /** Id of the selected drawing (set by the drawing layer). */
+  selected: string | null = null;
   private readonly listeners = new Set<(s: AnnotationStyle) => void>();
+  private readonly selectListeners = new Set<(id: string | null) => void>();
 
   style(): AnnotationStyle {
     return { color: this.color, fill: this.fill, width: this.width };
@@ -31,6 +35,16 @@ export class DrawState {
   onChange(f: (s: AnnotationStyle) => void): void {
     this.listeners.add(f);
   }
+
+  select(id: string | null): void {
+    if (id === this.selected) return;
+    this.selected = id;
+    for (const f of this.selectListeners) f(id);
+  }
+
+  onSelect(f: (id: string | null) => void): void {
+    this.selectListeners.add(f);
+  }
 }
 
 export const SHAPES: readonly (readonly [ShapeKind, MessageKey, string])[] = [
@@ -39,6 +53,19 @@ export const SHAPES: readonly (readonly [ShapeKind, MessageKey, string])[] = [
 
 export interface DrawBarActions {
   pick(shape: ShapeKind): void;
+  deleteSelected(): void;
+  /** Asks first; nothing happens when the workspace has no drawings. */
+  deleteAll(): void;
+}
+
+/** «Borrar dibujo» (enabled while a drawing is selected) and «Borrar todos». */
+function deleteButtons(state: DrawState, actions: DrawBarActions): HTMLElement {
+  const one = el('button', { type: 'button', class: 'btn btn-small draw-delete', disabled: true, title: t('draw.deleteHint') }, t('draw.delete'));
+  one.addEventListener('click', () => actions.deleteSelected());
+  state.onSelect((id) => { one.disabled = id === null; });
+  const all = el('button', { type: 'button', class: 'btn btn-small danger draw-delete-all' }, t('draw.deleteAll'));
+  all.addEventListener('click', () => actions.deleteAll());
+  return el('div', { class: 'draw-group' }, one, all);
 }
 
 function swatch(state: DrawState, color: string, picker: HTMLInputElement): HTMLButtonElement {
@@ -71,5 +98,6 @@ export function drawBar(state: DrawState, actions: DrawBarActions, buttons: Map<
     el('div', { class: 'draw-group' }, ...shapes),
     el('div', { class: 'draw-group draw-colors' }, current, ...BASIC_COLORS.map((c) => swatch(state, c, picker)), picker),
     el('label', { class: 'check draw-fill' }, fill, ` ${t('draw.fill')}`),
-    width);
+    width,
+    deleteButtons(state, actions));
 }

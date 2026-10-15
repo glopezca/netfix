@@ -69,7 +69,14 @@ class App {
     const winLayer = el('div', { class: 'win-layer' });
     this.windows = new WindowManager(winLayer);
     this.sim = new SimPanel(this.topo, this.canvas);
-    this.drawBarEl = drawBar(this.drawState, { pick: (shape) => this.selectTool({ kind: 'draw', shape }, `draw-${shape}`) }, this.toolButtons);
+    this.drawBarEl = drawBar(this.drawState, {
+      pick: (shape) => this.selectTool({ kind: 'draw', shape }, `draw-${shape}`),
+      deleteSelected: () => { this.canvas.draw.deleteSelected(); this.canvas.root.focus({ preventScroll: true }); },
+      deleteAll: () => {
+        if (this.canvas.draw.count() === 0 || !globalThis.confirm(t('draw.confirmDeleteAll'))) return;
+        this.canvas.draw.deleteAll();
+      },
+    }, this.toolButtons);
     this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.sim.root);
     this.paletteEl = palette({ selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw() }, this.toolButtons, this.hintEl);
     this.pageHost = el('main', { class: 'docs-host', hidden: true });
@@ -139,6 +146,8 @@ class App {
   /** Opens or closes the drawing bar; closing it goes back to the Select tool. */
   private toggleDraw(): boolean {
     this.drawBarEl.hidden = !this.drawBarEl.hidden;
+    // A hidden bar leaves nothing selected: Del must not remove a drawing the user no longer sees as chosen.
+    if (this.drawBarEl.hidden) this.canvas.draw.deselect();
     if (this.drawBarEl.hidden && this.canvas.currentTool().kind === 'draw') this.selectTool({ kind: 'select' }, 'select');
     return !this.drawBarEl.hidden;
   }
