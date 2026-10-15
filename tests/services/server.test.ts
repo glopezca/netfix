@@ -226,7 +226,7 @@ test('Windows Server: sc, net start/stop, netstat; ssh session into Windows', ()
   sh.run('ssh admin@192.168.10.2');
   sh.run('yes');
   assert.match(sh.run('cisco').join('\n'), /Microsoft Windows/);
-  assert.equal(sh.prompt(), `admin@${srv.name.toUpperCase()} C:\\Users\\admin>`);
+  assert.equal(sh.prompt(), `admin@${srv.name.toUpperCase()} C:\\home\\admin>`, 'a remote Windows session also starts in the account\'s Linux home');
   assert.match(sh.run('hostname').join(''), new RegExp(srv.name));
   sh.run('exit');
 });

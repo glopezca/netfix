@@ -189,6 +189,28 @@ try {
   await page.click('.subnav-item:has-text("Session")');
   assert.equal(await page.locator('.ssh-term .terminal').count(), 1, 'the session pane is kept');
   if (shots) await page.screenshot({ path: `${shots}/ssh-en.png` });
+  await page.click('.win-close');
+
+  // 4b. The Windows terminal works on the Linux files of the PC: echo >, edit (Microsoft Edit), type, then cat in Linux.
+  await page.dblclick('g.device-pc >> nth=0');
+  await page.click('.win-tab:has-text("Windows terminal")');
+  const typeLine = async (line) => { await page.keyboard.type(line); await page.keyboard.press('Enter'); };
+  await typeLine('echo first line> notes.txt');
+  await typeLine('edit notes.txt');
+  await page.waitForSelector('.term-editor:visible');
+  assert.match(await page.locator('.term-editor:visible').innerText(), /File {2}Edit {2}View {2}Help[\s\S]*notes\.txt - Microsoft Edit[\s\S]*first line/);
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type('from edit');
+  await page.keyboard.press('Control+s');
+  assert.match(await page.locator('.term-editor:visible').innerText(), /Saved notes\.txt/);
+  if (shots) await page.screenshot({ path: `${shots}/msedit-en.png` });
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.term-input:visible');
+  await typeLine('type notes.txt');
+  assert.match(await page.locator('.terminal:visible').innerText(), /C:\\home\\alumno>type notes\.txt\nfirst line\nfrom edit/);
+  await page.click('.win-tab:has-text("Linux terminal")');
+  await typeLine('cat ~/notes.txt');
+  assert.match(await page.locator('.terminal:visible').innerText(), /first line\nfrom edit/);
   await desk.close();
 
   // 5. Tablet (touch, 820×1180, English): the sticky Ctrl key shows its state and releases after use.

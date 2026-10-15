@@ -59,8 +59,9 @@ export const CLIENT_DOCS: DocGroup = {
     {
       id: 'windows-cmd',
       title: 'Terminal Windows (cmd)',
-      summary: 'Órdenes de cmd.exe disponibles en PCs y servidores Windows.',
+      summary: 'Órdenes de cmd.exe disponibles en PCs y servidores Windows, también sobre los archivos del equipo.',
       blocks: [
+        p('La Terminal Windows trabaja sobre el mismo sistema de archivos que la Terminal Linux del equipo: la unidad C:\\ es la raíz /, las carpetas se separan con \\ (o /) y los nombres no distinguen mayúsculas. Empieza en la carpeta personal de la cuenta Linux (C:\\home\\alumno en los PC, C:\\home\\admin en los servidores) y respeta sus permisos: lo que esa cuenta no puede escribir da «Access is denied.».'),
         table(['Orden', 'Uso'], [
           ['ipconfig [/all]', 'Configuración IP; /all añade MAC, servidor DHCP, DNS y fechas de la concesión.'],
           ['ipconfig /release · ipconfig /renew', 'Libera o renueva la concesión DHCP.'],
@@ -74,8 +75,16 @@ export const CLIENT_DOCS: DocGroup = {
           ['sc query [svc] · sc start|stop svc', 'Servicios de Windows Server (W3SVC, DNS, DHCPServer, SMTPSVC, POP3Svc, sshd).'],
           ['net start [svc] · net stop svc', 'Igual que sc, con los mensajes de net.'],
           ['hostname · whoami · ver · cls · help', 'Sistema y ayuda.'],
+          ['cd [carpeta] · cd ..', 'Cambia de carpeta; sin argumento muestra la actual.'],
+          ['dir [ruta] [/b]', 'Lista una carpeta (admite * y ?); /b solo los nombres.'],
+          ['md carpeta · rd [/s] [/q] carpeta', 'Crea carpetas (también las intermedias) o las borra; /s con su contenido, tras preguntar «Are you sure (Y/N)?» salvo con /q.'],
+          ['del [/q] archivo · copy [/y] origen destino · move [/y] origen destino · ren archivo nombre', 'Borra, copia, mueve o renombra archivos (admiten * y ?; *.* es todo). del de una carpeta o de *.* pregunta antes salvo /q; copy y move preguntan antes de sobrescribir salvo /y; copy de varios archivos sobre uno los une; move también mueve o renombra carpetas.'],
+          ['type archivo', 'Muestra el contenido de un archivo.'],
+          ['edit archivo', 'Editor a pantalla completa (Microsoft Edit): Ctrl+S guarda, Ctrl+Q o Esc sale y pregunta si hay cambios, Ctrl+F busca (F3 siguiente), Ctrl+G va a una línea, Ctrl+Z/Ctrl+Y deshacen y rehacen. Un archivo que la cuenta no puede escribir se abre en solo lectura.'],
+          ['echo texto · orden > archivo · orden >> archivo', 'echo imprime el texto (echo. una línea en blanco); > guarda la salida de cualquier orden en un archivo, >> la añade al final y > nul la descarta.'],
         ]),
-        code('C:\\> ipconfig /renew\nC:\\> nslookup www.aula.lab\nC:\\> ssh admin@192.168.10.2'),
+        code('C:\\home\\alumno> ipconfig /all > red.txt\nC:\\home\\alumno> type red.txt\nC:\\home\\alumno> edit notas.txt\nC:\\home\\alumno> copy notas.txt \\tmp\nC:\\home\\alumno> ssh admin@192.168.10.2'),
+        p('Lo que se crea aquí aparece en la Terminal Linux (cat ~/red.txt, nano ~/notas.txt) y al revés.'),
         p('Los errores imitan Windows: «… is not recognized as an internal or external command», «Request timed out.», «FAILED 1060»…'),
       ],
     },

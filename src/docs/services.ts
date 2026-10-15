@@ -21,7 +21,7 @@ export const SERVICE_DOCS: DocGroup = {
           ['SSH', '22/tcp', 'ssh', 'sshd', '/etc/ssh/sshd_config'],
         ]),
         h('Gestionar los servicios desde la terminal'),
-        code('admin@srv:~$ systemctl status apache2\nadmin@srv:~$ sudo systemctl stop apache2\nadmin@srv:~$ sudo systemctl enable --now bind9\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 20\nadmin@srv:~$ ss -tulpn\n\nC:\\> sc query W3SVC\nC:\\> net stop DNS'),
+        code('admin@srv:~$ systemctl status apache2\nadmin@srv:~$ sudo systemctl stop apache2\nadmin@srv:~$ sudo systemctl enable --now bind9\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 20\nadmin@srv:~$ ss -tulpn\n\nC:\\home\\admin> sc query W3SVC\nC:\\home\\admin> net stop DNS'),
         note('Sin sudo, systemctl start/stop/restart/enable/disable responde «Interactive authentication required», como en Ubuntu.'),
       ],
     },

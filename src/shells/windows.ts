@@ -1,4 +1,7 @@
-/** Windows Command Prompt: ipconfig, ping, nslookup, netstat, arp, curl, ssh, sc / net (servers). */
+/**
+ * Windows Command Prompt: ipconfig, ping, nslookup, netstat, arp, curl, ssh, sc / net (servers) and the file
+ * commands (dir, cd, md, rd, del, copy, move, ren, type, echo, edit) on the device's Linux file system.
+ */
 import { runsServices } from '../devices/kinds.ts';
 import { windowsSshStore } from './ssh-stores.ts';
 import type { SshClientStore } from './ssh-client.ts';
@@ -14,6 +17,10 @@ import { tracert } from './trace-cmds.ts';
 import { formatIp, formatMask, parseIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
 import { formatLeaseTime } from '../core/clock.ts';
+import { hostSystem, hostUsers, defaultLinuxUser } from './host-system.ts';
+import { WinFiles } from './win-files.ts';
+import { splitCmdLine } from './win-path.ts';
+import type { EditSpec } from '../bash/types.ts';
 
 const PING_TIMEOUT_MS = 1000;
 const DEFAULT_PING_COUNT = 4;
@@ -24,6 +31,11 @@ const MS = 1000;
 const HELP = [
   'Available commands:',
   '  arp -a | arp -d          Show / delete the ARP cache',
+  '  cd | dir | md | rd | del Folders and files (C:\\ is the Linux root /)',
+  '  copy | move | ren        Copy, move or rename files',
+  '  type <file>              Show a file',
+  '  edit <file>              Edit a file full screen',
+  '  echo <text> [> file]     Print text (> and >> write it to a file)',
   '  curl [-I] <url>          HTTP client',
   '  help | ?                 This help',
   '  hostname | whoami | ver  System information',
@@ -75,10 +87,22 @@ const NOT_PERMITTED = ['', 'The operation failed as no adapter is in the state p
 export class WindowsShell extends BaseShell {
   protected readonly osName = 'Windows';
   private readonly remote: boolean;
+  private fileCmds: WinFiles | null = null;
 
   constructor(host: Host, user: string, remote = false) {
     super(host, user);
     this.remote = remote;
+  }
+
+  /** The file commands, as the Linux account of the device this terminal works as (created on first use). */
+  private files(): WinFiles {
+    if (this.fileCmds) return this.fileCmds;
+    const users = hostUsers(this.host);
+    const name = users.some((u) => u.name === this.user.toLowerCase()) ? this.user.toLowerCase() : defaultLinuxUser(this.host);
+    const account = users.find((u) => u.name === name) ?? users[0];
+    const cred = { uid: account?.uid ?? 0, gid: account?.gid ?? 0, groups: account?.groups ?? [] };
+    this.fileCmds = new WinFiles(hostSystem(this.host).fs, cred, account?.home ?? '/');
+    return this.fileCmds;
   }
 
   protected sshStore(_cwd?: string): SshClientStore {
@@ -86,15 +110,46 @@ export class WindowsShell extends BaseShell {
   }
 
   protected localPrompt(): string {
-    return this.remote ? `${this.user.toLowerCase()}@${this.host.name.toUpperCase()} C:\\Users\\${this.user}>` : 'C:\\>';
+    const here = this.files().prompt();
+    return this.remote ? `${this.user.toLowerCase()}@${this.host.name.toUpperCase()} ${here}` : here;
   }
 
   protected notFound(cmd: string): string[] {
     return this.host.kind === 'pc' && !this.remote ? ['Invalid Command.'] : [`'${cmd}' is not recognized as an internal or external command,`, 'operable program or batch file.'];
   }
 
-  protected runLocal(cmd: string, args: string[]): string[] {
+  /** One cmd.exe line: quoted words, and > or >> sending the output to a file. */
+  protected override runLocalLine(line: string): string[] {
+    const files = this.files();
+    if (files.pending) return files.answer(line);
+    const parsed = splitCmdLine(line.trim());
+    if (parsed.error) return ['The syntax of the command is incorrect.'];
+    const [first, ...args] = parsed.words;
+    if (!first) return [];
+    // echo. and echo: print what follows (a blank line when nothing does).
+    const cmd = /^echo[.:(]/i.test(first) ? 'echo' : first;
+    if (cmd.toLowerCase() === 'ssh') return this.startSsh(args);
+    const out = this.runLocal(cmd, args, parsed.text);
+    return parsed.redirect ? files.redirect(parsed.redirect, out) : out;
+  }
+
+  protected override localEditRequest(): EditSpec | null {
+    return this.fileCmds?.editing ?? null;
+  }
+
+  protected override localSaveEdit(path: string, content: string): string | null {
+    return this.fileCmds ? this.fileCmds.saveEdit(path, content) : 'No editor is open';
+  }
+
+  protected override localCloseEdit(): string[] {
+    if (this.fileCmds) this.fileCmds.editing = null;
+    return [];
+  }
+
+  protected runLocal(cmd: string, args: string[], text = ''): string[] {
     const arg = (args[0] ?? '').toLowerCase();
+    const file = this.files().run(cmd.toLowerCase(), args, text);
+    if (file) return file;
     switch (cmd.toLowerCase()) {
       case 'ipconfig': return this.ipconfig(arg);
       case 'ping': return this.ping(args);

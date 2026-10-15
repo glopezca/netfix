@@ -8,7 +8,8 @@ export type ScreenApp = Editor;
 
 /** What the editor needs to open a file (the UI or an SSH client builds the editor from it). */
 export interface EditSpec {
-  readonly editor: 'nano' | 'vim';
+  /** msedit: the Windows terminal's edit (Microsoft Edit). */
+  readonly editor: 'nano' | 'vim' | 'msedit';
   /** Absolute path. */
   readonly path: string;
   readonly content: string;

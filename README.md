@@ -25,8 +25,9 @@ La página se genera con `npm run site` a partir de `site/` y la publica el job 
 - Terminal **GNU/Linux** con **GNU bash 5.3** de verdad (sintaxis, expansiones, funciones, arrays,
   redirecciones, historial, trabajos, scripts) sobre un sistema de ficheros Ubuntu con permisos y usuarios,
   utilidades GNU (`grep`, `sed`, `awk`, `find`, `sort`…) y los editores **nano** y **vim** a pantalla completa,
-  también a través de SSH. Terminal **Windows** (cmd) en PCs y servidores; navegador web, cliente de correo
-  y cliente SSH en los PCs.
+  también a través de SSH. Terminal **Windows** (cmd) en PCs y servidores, sobre el mismo sistema de ficheros
+  (`C:\` es `/`): `dir`, `cd`, `md`, `rd`, `del`, `copy`, `move`, `ren`, `type`, `edit` y redirección `>`/`>>`;
+  navegador web, cliente de correo y cliente SSH en los PCs.
 - Pestaña **Documentación** con búsqueda: IOS, servicios de Server, PC/Windows, Terminal Linux,
   nano, vim y la referencia de bash 5.3 (también `man` y `help` en la terminal).
 - **Internet emulada** (v0.4): nube ISP con líneas de cable, xDSL y fibra (IP pública o router del operador

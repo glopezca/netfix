@@ -334,3 +334,19 @@ legal de que Netfix no tiene relación con Cisco.
 
 **v0.9.7:** el apartado «Marcas» de `LICENSE.md` (y el pie de la página de presentación) recoge también Microsoft y
 Windows como marcas de Microsoft Corporation, con la misma aclaración de independencia que para Cisco.
+
+## Fase 18 · Terminal Windows sobre el sistema de archivos del equipo (v0.10.0)
+
+| Paso | Entregable | Riesgo / decisión |
+|---|---|---|
+| 18.1 | `shells/win-path.ts`: C:\ es la raíz /, \ o / como separador, nombres sin distinguir mayúsculas (se busca la entrada real), línea de cmd con comillas y `>`/`>>`, comodines * ? | Otras unidades: «The system cannot find the drive specified.» |
+| 18.2 | `shells/win-files.ts`: cd/chdir, dir [/b], md/mkdir, rd/rmdir [/s], del/erase, copy, move, ren, type, echo y redirección de cualquier orden, con los mensajes de cmd.exe | La terminal actúa como la cuenta Linux del equipo (alumno en PC, admin en Server) y respeta sus permisos («Access is denied.»); empieza en su carpeta personal (C:\home\alumno) |
+| 18.3 | `edit`: motor `editors/msedit.ts` (Microsoft Edit: barra de menús y de estado, Ctrl+S, Ctrl+Q con confirmación, Ctrl+F/F3, Ctrl+G, Ctrl+Z/Y); solo lectura si la cuenta no puede escribir | `EditSpec.editor` admite `msedit`; también a través de SSH |
+| 18.4 | Documentación es/en (Terminal Windows), README, ayuda `help`, pruebas | El prompt local pasa de `C:\>` a la carpeta actual |
+
+**Estado:** completada (v0.10.0, 450 pruebas; e2e de edit en la Terminal Windows y lectura del archivo desde Linux).
+Revisión ECC: sin críticos; corregidos los dos altos (move de una carpeta movía su contenido y podía perder archivos; dir
+fallaba con un enlace roto) y los medios (. y .. solo al listar una carpeta entera; carpeta vacía; *.*; preguntas de rd /s,
+del de carpeta o *.*, y de sobrescritura en copy y move, con /q y /y; copy sobre sí mismo; varios archivos sobre uno;
+redirección con una sola palabra de destino, > nul, 2> y > sin nombre; echo.). edit sale también con Esc (algunos
+navegadores se quedan Ctrl+Q) y solo guarda el archivo que abrió.
