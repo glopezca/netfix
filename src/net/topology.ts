@@ -5,6 +5,7 @@ import type { NicRecord, RouteRecord } from './topology-nics.ts';
 import { LinuxRouter } from '../devices/linux-router.ts';
 import { savedFiles, restoreFiles, bootKernel } from '../shells/host-system.ts';
 import { bootWireguard } from '../shells/wg-boot.ts';
+import { searchList } from '../shells/netplan-model.ts';
 import { validFileRecords } from '../bash/vfs-persist.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
 import { Network } from './network.ts';
@@ -64,6 +65,8 @@ export interface PcRecord {
   /** Further NICs (Linux router) and static routes. */
   readonly nics?: readonly NicRecord[];
   readonly routes?: readonly RouteRecord[];
+  /** netplan's nameservers.search (omitted when empty). */
+  readonly search?: readonly string[];
 }
 
 export interface ServerRecord {
@@ -290,7 +293,7 @@ function hostRecord(d: Host): PcRecord {
   const os = d.os;
   const clientId = d.clientIdOverride;
   const files = savedFiles(d);
-  const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes) };
+  const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
   if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
   const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
   return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
@@ -316,6 +319,8 @@ function restore(device: AnyDevice, rec: DeviceRecord): void {
     if (device instanceof Pc && pc.apps) restoreApps(device, pc.apps);
     restoreNics(device, pc.nics);
     restoreRoutes(device, pc.routes);
+    const search = Array.isArray(pc.search) ? searchList(pc.search) : { ok: [] };
+    device.dnsSearch = 'ok' in search ? search.ok : [];
     if (pc.files !== undefined) bootKernel(device, validFileRecords(pc.files));
     return;
   }

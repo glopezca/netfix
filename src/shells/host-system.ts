@@ -18,7 +18,7 @@ import { linuxPrograms } from './linux-programs.ts';
 import { formatIp } from '../core/ip.ts';
 import { exportFiles, importFiles } from '../bash/vfs-persist.ts';
 import { seedApache } from '../services/apache/defaults.ts';
-import { registerHostFs } from '../devices/host-fs.ts';
+import { registerHostFs, registerHostFileReader } from '../devices/host-fs.ts';
 import { seedKernel, sysctlFiles, applySysctlFile } from './kernel-files.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
 
@@ -167,6 +167,8 @@ function createSystem(host: Host): Entry {
   const programs = new Map<string, CommandFn>([...COREUTILS, ...linuxPrograms(host)]);
   const users = hostUsers(host);
   seedRootfs(fs, { hostname: host.name.toLowerCase(), users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
+  // An ordinary file, as in Ubuntu: root edits it, it is saved with the topology and the resolver reads it first.
+  fs.seed('/etc/hosts', { kind: 'file', content: `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n` }, 0o644);
   fs.seed('/usr/lib/command-not-found', { kind: 'file', content: `${BINARY_MARK}command-not-found\n` }, 0o755);
   const server = asServer(host);
   seedSsh(fs, host);
@@ -226,3 +228,10 @@ export function bootKernel(host: Host, files: readonly FileRecord[]): void {
 }
 
 registerHostFs((host) => hostSystem(host).fs);
+registerHostFileReader((host, path) => {
+  try {
+    return systems.get(host)?.fs.readFile(path);
+  } catch {
+    return undefined;
+  }
+});

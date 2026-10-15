@@ -69,6 +69,8 @@ export abstract class Host implements NetDevice, StackHost {
   readonly mac: string;
   hooks: DeviceHooks = DETACHED;
   config: HostIpConfig = { mode: 'static' };
+  /** DNS search domains of netplan's `nameservers.search` (the DHCP domain is added while the lease lasts). */
+  dnsSearch: readonly string[] = [];
   /** Operating system of the default terminal (both terminals are always available). */
   os: HostOs = 'windows';
   /** Windows-style clients send option 61 = 01 + MAC. */

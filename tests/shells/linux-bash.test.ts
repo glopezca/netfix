@@ -123,12 +123,12 @@ test('user files are saved in the topology JSON and restored, never over generat
   const json = JSON.parse(JSON.stringify(t.toJSON())) as { devices: { id: string; pc?: { files?: unknown[] } }[] };
   const rec = json.devices.find((d) => d.id === pc.id)?.pc;
   assert.ok(rec?.files?.some((f) => (f as { path: string }).path === '/home/alumno/proyectos/a.txt'));
-  rec?.files?.push({ path: '/etc/hosts', kind: 'file', content: 'malicioso', mode: 0o644, uid: 0, gid: 0 }, { path: '/../x', kind: 'file', content: '', mode: 0, uid: 0, gid: 0 });
+  rec?.files?.push({ path: '/etc/resolv.conf', kind: 'file', content: 'malicioso', mode: 0o644, uid: 0, gid: 0 }, { path: '/../x', kind: 'file', content: '', mode: 0, uid: 0, gid: 0 });
   const t2 = Topology.fromJSON(json);
   const pc2 = t2.get(pc.id)?.device as Pc;
   const sh = createShell(pc2, 'linux');
   assert.deepEqual(sh.run('cat enlace; ls -ld proyectos | cut -c1'), ['datos', 'd']);
-  assert.match(sh.run('cat /etc/hosts').join('\n'), /127\.0\.0\.1 localhost/);
+  assert.match(sh.run('cat /etc/resolv.conf').join('\n'), /^nameserver /m, 'a generated file is never replaced (/etc/hosts is an ordinary file since v0.10.3)');
   assert.equal(validFileRecords([{ path: '/a', kind: 'file', content: 'x'.repeat(300_000), mode: 0, uid: 0, gid: 0 }, 'x', null]).length, 0);
   assert.ok(exportFiles(hostSystem(pc2).fs).length >= 3);
 });

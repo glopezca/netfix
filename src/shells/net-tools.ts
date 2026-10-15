@@ -6,6 +6,7 @@ import { firstAddress, normalizeName, reverseName } from '../net/dns.ts';
 import type { TcpResult } from '../net/tcp.ts';
 import { runSync } from '../net/sync.ts';
 import { parseIp } from '../core/ip.ts';
+import { peekHostFile } from '../devices/host-fs.ts';
 
 export type Resolved =
   | { readonly kind: 'ip'; readonly ip: number; readonly name: string; readonly viaDns: boolean }
@@ -22,10 +23,23 @@ export function dnsQuery(host: Host, name: string, type: DnsType, server?: numbe
   return runSync<DnsResult>(host.hooks, (done) => host.lookup(target, type, done, server ?? host.config.dns), DNS_WAIT_MS) ?? { kind: 'timeout', server: server ?? 0 };
 }
 
-/** The search domains of the host: the DHCP domain name (option 15) while the lease lasts. */
+/** The search domains of the host: netplan's `nameservers.search`, then the DHCP domain (option 15) while the lease lasts. */
 export function searchDomains(host: Host): readonly string[] {
   const domain = host.config.mode === 'dhcp' ? host.dhcpClient.lease?.domainName : undefined;
-  return domain ? [normalizeName(domain)] : [];
+  return [...new Set([...host.dnsSearch.map(normalizeName), ...(domain ? [normalizeName(domain)] : [])])];
+}
+
+/** The address /etc/hosts gives a name (first matching line, IPv4), as the `files` source of nsswitch. */
+export function hostsLookup(host: Host, name: string): number | undefined {
+  // A device whose Linux system was never used still has the default file (no need to build the system for it).
+  const text = peekHostFile(host, '/etc/hosts') ?? `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`;
+  const wanted = normalizeName(name.replace(/\.$/, ''));
+  for (const line of text.split('\n')) {
+    const [addr, ...names] = line.replace(/#.*/, '').trim().split(/\s+/);
+    const ip = addr ? parseIp(addr) : null;
+    if (ip !== null && names.some((n) => normalizeName(n.replace(/\.$/, '')) === wanted)) return ip;
+  }
+  return undefined;
 }
 
 /**
@@ -60,11 +74,14 @@ export function dnsSearch(host: Host, name: string, type: DnsType, server?: numb
   return { result: nodata ?? last ?? dnsQuery(host, name, type, server), name };
 }
 
-/** IP literal, the host's own name, or a DNS A lookup (through the search list). */
+/** IP literal, the host's own name, /etc/hosts, or a DNS A lookup (through the search list), as nsswitch `files dns`. */
 export function resolveHost(host: Host, target: string): Resolved {
   const literal = parseIp(target);
   if (literal !== null) return { kind: 'ip', ip: literal, name: target, viaDns: false };
+  // The host's own name answers with its network address (its hosts line, 127.0.1.1, is the loopback).
   if (normalizeName(target) === host.name.toLowerCase() && host.config.ip !== undefined) return { kind: 'ip', ip: host.config.ip, name: target, viaDns: false };
+  const local = hostsLookup(host, target);
+  if (local !== undefined) return { kind: 'ip', ip: local, name: target, viaDns: false };
   const { result: r, name } = dnsSearch(host, target, 'A');
   if (r.kind !== 'answer') return { kind: 'error', reason: r.kind };
   if (r.msg.rcode === 'NXDOMAIN' || r.msg.rcode === 'REFUSED' || r.msg.rcode === 'SERVFAIL') return { kind: 'error', reason: 'nxdomain' };

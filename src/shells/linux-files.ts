@@ -118,7 +118,6 @@ export function linuxFiles(host: Host): Map<string, string> {
   const files = new Map<string, string>([
     ['/etc/os-release', 'PRETTY_NAME="Ubuntu 26.04 LTS"\nNAME="Ubuntu"\nVERSION_ID="26.04"\nID=ubuntu\n'],
     ['/etc/hostname', `${host.name.toLowerCase()}\n`],
-    ['/etc/hosts', `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`],
     ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n${searchDomains(host).length ? `search ${searchDomains(host).join(' ')}\n` : ''}`],
   ]);
   if (runsServices(host.kind)) for (const [k, v] of serverFiles(host as Server)) files.set(k, v);

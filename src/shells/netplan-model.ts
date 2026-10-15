@@ -22,6 +22,24 @@ export interface Wanted {
   readonly gateway?: number;
   readonly dns?: number;
   readonly routes: readonly StaticRoute[];
+  /** nameservers.search of the interfaces, in order and without repeats. */
+  readonly search: readonly string[];
+}
+
+/** Up to 6 search domains, as glibc's resolver (MAXDNSRCH). */
+const MAX_SEARCH = 6;
+const DOMAIN_RE = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*\.?$/i;
+
+/** Valid search domains (lower case, no final dot), or the first invalid one. */
+export function searchList(values: readonly unknown[]): { ok: string[] } | { bad: string } {
+  const out: string[] = [];
+  for (const v of values.slice(0, MAX_SEARCH * 4)) {
+    if (out.length >= MAX_SEARCH) break;
+    if (typeof v !== 'string' || !DOMAIN_RE.test(v)) return { bad: String(v).slice(0, 80) };
+    const d = v.toLowerCase().replace(/\.$/, '');
+    if (!out.includes(d)) out.push(d);
+  }
+  return { ok: out.slice(0, MAX_SEARCH) };
 }
 
 /** The configuration a host is running now. */
@@ -29,18 +47,24 @@ export function currentWanted(host: Host): Wanted {
   const nics: Record<string, NicWanted> = {};
   for (const n of host.nics()) nics[n.linux] = n.dhcp ? { dhcp: true } : { dhcp: false, ip: n.ip, prefix: n.prefix };
   const c = host.config;
-  return { nics, gateway: c.mode === 'dhcp' ? undefined : c.gateway, dns: c.mode === 'dhcp' ? undefined : c.dns, routes: host.staticRoutes };
+  return { nics, gateway: c.mode === 'dhcp' ? undefined : c.gateway, dns: c.mode === 'dhcp' ? undefined : c.dns, routes: host.staticRoutes, search: host.dnsSearch };
+}
+
+/** The nameservers block of the first interface (addresses and search). */
+function nameservers(w: Wanted, dhcp: boolean): string {
+  const lines = [...(!dhcp && w.dns !== undefined ? [`        addresses: [${formatIp(w.dns)}]`] : []), ...(w.search.length ? [`        search: [${w.search.join(', ')}]`] : [])];
+  return lines.length ? `\n      nameservers:\n${lines.join('\n')}` : '';
 }
 
 function nicBlock(name: string, n: NicWanted, w: Wanted, first: boolean, inNic: (gw: number) => boolean): string {
-  if (n.dhcp) return `    ${name}:\n      dhcp4: true\n`;
+  if (n.dhcp) return `    ${name}:\n      dhcp4: true${first ? nameservers(w, true) : ''}\n`;
   const addr = n.ip !== undefined && n.prefix !== undefined ? `\n      addresses:\n        - ${formatIp(n.ip)}/${n.prefix}` : '';
   const routes = [
     ...(w.gateway !== undefined && inNic(w.gateway) ? [`        - to: default\n          via: ${formatIp(w.gateway)}`] : []),
     ...w.routes.filter((r) => inNic(r.via)).map((r) => `        - to: ${formatIp(r.net)}/${r.prefix}\n          via: ${formatIp(r.via)}`),
   ];
   const rt = routes.length ? `\n      routes:\n${routes.join('\n')}` : '';
-  const dns = first && w.dns !== undefined ? `\n      nameservers:\n        addresses: [${formatIp(w.dns)}]` : '';
+  const dns = first ? nameservers(w, false) : '';
   return `    ${name}:\n      dhcp4: false${addr}${rt}${dns}\n`;
 }
 
@@ -119,6 +143,7 @@ export function interpretNetplan(doc: YamlMap, nicNames: readonly string[]): { w
   const acc: Routes = { routes: [] };
   const warnings: string[] = [];
   let dns: number | undefined;
+  const search: unknown[] = [];
   for (const name of nicNames) {
     const eth = map(eths[name]);
     if (!eth) { nics[name] = { dhcp: false }; continue; }
@@ -129,10 +154,13 @@ export function interpretNetplan(doc: YamlMap, nicNames: readonly string[]): { w
     if (eth.gateway4 !== undefined) warnings.push('`gateway4` has been deprecated, use default routes instead.\nSee the \'Default routes\' section of the documentation for more details.');
     if (!n.dhcp) routesOf(eth, acc);
     if (acc.error) return { error: `Error in network definition: ${acc.error}` };
+    search.push(...list(map(eth.nameservers)?.search));
     const dnsText = list(map(eth.nameservers)?.addresses)[0];
     if (dns === undefined && typeof dnsText === 'string') dns = parseIp(dnsText) ?? undefined;
   }
-  return { wanted: { nics, gateway: acc.gateway, dns, routes: acc.routes }, warnings };
+  const domains = searchList(search);
+  if ('bad' in domains) return { error: `Error in network definition: invalid search domain '${domains.bad}'` };
+  return { wanted: { nics, gateway: acc.gateway, dns, routes: acc.routes, search: domains.ok }, warnings };
 }
 
 export function sameWanted(a: Wanted, b: Wanted): boolean {

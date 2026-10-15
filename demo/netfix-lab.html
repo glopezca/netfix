@@ -8204,6 +8204,8 @@ class Host {
     mac;
     hooks = DETACHED;
     config = { mode: 'static' };
+    /** DNS search domains of netplan's `nameservers.search` (the DHCP domain is added while the lease lasts). */
+    dnsSearch = [];
     /** Operating system of the default terminal (both terminals are always available). */
     os = 'windows';
     /** Windows-style clients send option 61 = 01 + MAC. */
@@ -9516,12 +9518,21 @@ let provider;
 function registerHostFs(p) {
     provider = p;
 }
+let reader;
+/** Reads a file of a host's system only if it already exists (no system is built, no generated file refreshed). */
+function registerHostFileReader(r) {
+    reader = r;
+}
+/** The content of a file in the host's system, or undefined when the system has not been created yet. */
+function peekHostFile(host, path) {
+    return reader?.(host, path);
+}
 /** The host's file system, or undefined when no shell layer is loaded (pure device tests). */
 function hostFs(host) {
     return provider?.(host);
 }
 
-return { registerHostFs, hostFs };
+return { registerHostFs, registerHostFileReader, peekHostFile, hostFs };
 })();
 __m["services/apache/defaults.js"] = (() => {
 /** /etc/apache2 as installed by Ubuntu's apache2 package (comments shortened). */
@@ -11487,6 +11498,7 @@ __m["shells/net-tools.js"] = (() => {
 const { firstAddress, normalizeName, reverseName } = __m["net/dns.js"];
 const { runSync } = __m["net/sync.js"];
 const { parseIp } = __m["core/ip.js"];
+const { peekHostFile } = __m["devices/host-fs.js"];
 const DNS_WAIT_MS = 6000;
 const DEFAULT_HTTP_PORT = 80;
 const TCP_WAIT_MS = 6000;
@@ -11496,10 +11508,23 @@ function dnsQuery(host, name, type, server) {
     const target = type === 'PTR' ? name : normalizeName(name);
     return runSync(host.hooks, (done) => host.lookup(target, type, done, server ?? host.config.dns), DNS_WAIT_MS) ?? { kind: 'timeout', server: server ?? 0 };
 }
-/** The search domains of the host: the DHCP domain name (option 15) while the lease lasts. */
+/** The search domains of the host: netplan's `nameservers.search`, then the DHCP domain (option 15) while the lease lasts. */
 function searchDomains(host) {
     const domain = host.config.mode === 'dhcp' ? host.dhcpClient.lease?.domainName : undefined;
-    return domain ? [normalizeName(domain)] : [];
+    return [...new Set([...host.dnsSearch.map(normalizeName), ...(domain ? [normalizeName(domain)] : [])])];
+}
+/** The address /etc/hosts gives a name (first matching line, IPv4), as the `files` source of nsswitch. */
+function hostsLookup(host, name) {
+    // A device whose Linux system was never used still has the default file (no need to build the system for it).
+    const text = peekHostFile(host, '/etc/hosts') ?? `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`;
+    const wanted = normalizeName(name.replace(/\.$/, ''));
+    for (const line of text.split('\n')) {
+        const [addr, ...names] = line.replace(/#.*/, '').trim().split(/\s+/);
+        const ip = addr ? parseIp(addr) : null;
+        if (ip !== null && names.some((n) => normalizeName(n.replace(/\.$/, '')) === wanted))
+            return ip;
+    }
+    return undefined;
 }
 /**
  * The names the resolver tries, as glibc with ndots:1 (and Windows with its DNS suffix): a name without dots goes
@@ -11534,13 +11559,17 @@ function dnsSearch(host, name, type, server) {
     }
     return { result: nodata ?? last ?? dnsQuery(host, name, type, server), name };
 }
-/** IP literal, the host's own name, or a DNS A lookup (through the search list). */
+/** IP literal, the host's own name, /etc/hosts, or a DNS A lookup (through the search list), as nsswitch `files dns`. */
 function resolveHost(host, target) {
     const literal = parseIp(target);
     if (literal !== null)
         return { kind: 'ip', ip: literal, name: target, viaDns: false };
+    // The host's own name answers with its network address (its hosts line, 127.0.1.1, is the loopback).
     if (normalizeName(target) === host.name.toLowerCase() && host.config.ip !== undefined)
         return { kind: 'ip', ip: host.config.ip, name: target, viaDns: false };
+    const local = hostsLookup(host, target);
+    if (local !== undefined)
+        return { kind: 'ip', ip: local, name: target, viaDns: false };
     const { result: r, name } = dnsSearch(host, target, 'A');
     if (r.kind !== 'answer')
         return { kind: 'error', reason: r.kind };
@@ -11595,7 +11624,7 @@ function splitArgs(line) {
     return line.trim().split(/\s+/).filter(Boolean);
 }
 
-return { SSH_WAIT_MS, dnsQuery, searchDomains, resolutionCandidates, dnsSearch, resolveHost, tcpCall, parseUrl, httpGet, httpRequest, reverseLookup, dateLine, splitArgs };
+return { SSH_WAIT_MS, dnsQuery, searchDomains, hostsLookup, resolutionCandidates, dnsSearch, resolveHost, tcpCall, parseUrl, httpGet, httpRequest, reverseLookup, dateLine, splitArgs };
 })();
 __m["core/sha256.js"] = (() => {
 /** SHA-256 (FIPS 180-4) and base64 over bytes: fingerprints and key files of the simulated OpenSSH. */
@@ -12958,24 +12987,46 @@ __m["shells/netplan-model.js"] = (() => {
 const { routeTo } = __m["devices/host-nics.js"];
 const { formatIp, inSubnet, parseIp } = __m["core/ip.js"];
 const ETH_KEYS = new Set(['dhcp4', 'dhcp6', 'addresses', 'routes', 'gateway4', 'nameservers', 'optional', 'match', 'set-name', 'mtu', 'macaddress', 'renderer', 'link-local']);
+/** Up to 6 search domains, as glibc's resolver (MAXDNSRCH). */
+const MAX_SEARCH = 6;
+const DOMAIN_RE = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*\.?$/i;
+/** Valid search domains (lower case, no final dot), or the first invalid one. */
+function searchList(values) {
+    const out = [];
+    for (const v of values.slice(0, MAX_SEARCH * 4)) {
+        if (out.length >= MAX_SEARCH)
+            break;
+        if (typeof v !== 'string' || !DOMAIN_RE.test(v))
+            return { bad: String(v).slice(0, 80) };
+        const d = v.toLowerCase().replace(/\.$/, '');
+        if (!out.includes(d))
+            out.push(d);
+    }
+    return { ok: out.slice(0, MAX_SEARCH) };
+}
 /** The configuration a host is running now. */
 function currentWanted(host) {
     const nics = {};
     for (const n of host.nics())
         nics[n.linux] = n.dhcp ? { dhcp: true } : { dhcp: false, ip: n.ip, prefix: n.prefix };
     const c = host.config;
-    return { nics, gateway: c.mode === 'dhcp' ? undefined : c.gateway, dns: c.mode === 'dhcp' ? undefined : c.dns, routes: host.staticRoutes };
+    return { nics, gateway: c.mode === 'dhcp' ? undefined : c.gateway, dns: c.mode === 'dhcp' ? undefined : c.dns, routes: host.staticRoutes, search: host.dnsSearch };
+}
+/** The nameservers block of the first interface (addresses and search). */
+function nameservers(w, dhcp) {
+    const lines = [...(!dhcp && w.dns !== undefined ? [`        addresses: [${formatIp(w.dns)}]`] : []), ...(w.search.length ? [`        search: [${w.search.join(', ')}]`] : [])];
+    return lines.length ? `\n      nameservers:\n${lines.join('\n')}` : '';
 }
 function nicBlock(name, n, w, first, inNic) {
     if (n.dhcp)
-        return `    ${name}:\n      dhcp4: true\n`;
+        return `    ${name}:\n      dhcp4: true${first ? nameservers(w, true) : ''}\n`;
     const addr = n.ip !== undefined && n.prefix !== undefined ? `\n      addresses:\n        - ${formatIp(n.ip)}/${n.prefix}` : '';
     const routes = [
         ...(w.gateway !== undefined && inNic(w.gateway) ? [`        - to: default\n          via: ${formatIp(w.gateway)}`] : []),
         ...w.routes.filter((r) => inNic(r.via)).map((r) => `        - to: ${formatIp(r.net)}/${r.prefix}\n          via: ${formatIp(r.via)}`),
     ];
     const rt = routes.length ? `\n      routes:\n${routes.join('\n')}` : '';
-    const dns = first && w.dns !== undefined ? `\n      nameservers:\n        addresses: [${formatIp(w.dns)}]` : '';
+    const dns = first ? nameservers(w, false) : '';
     return `    ${name}:\n      dhcp4: false${addr}${rt}${dns}\n`;
 }
 /** The canonical file for a configuration (what cloud-init would write). */
@@ -13061,6 +13112,7 @@ function interpretNetplan(doc, nicNames) {
     const acc = { routes: [] };
     const warnings = [];
     let dns;
+    const search = [];
     for (const name of nicNames) {
         const eth = map(eths[name]);
         if (!eth) {
@@ -13079,17 +13131,21 @@ function interpretNetplan(doc, nicNames) {
             routesOf(eth, acc);
         if (acc.error)
             return { error: `Error in network definition: ${acc.error}` };
+        search.push(...list(map(eth.nameservers)?.search));
         const dnsText = list(map(eth.nameservers)?.addresses)[0];
         if (dns === undefined && typeof dnsText === 'string')
             dns = parseIp(dnsText) ?? undefined;
     }
-    return { wanted: { nics, gateway: acc.gateway, dns, routes: acc.routes }, warnings };
+    const domains = searchList(search);
+    if ('bad' in domains)
+        return { error: `Error in network definition: invalid search domain '${domains.bad}'` };
+    return { wanted: { nics, gateway: acc.gateway, dns, routes: acc.routes, search: domains.ok }, warnings };
 }
 function sameWanted(a, b) {
     return JSON.stringify(a) === JSON.stringify(b);
 }
 
-return { currentWanted, generatedNetplan, mergeNetplan, interpretNetplan, sameWanted };
+return { searchList, currentWanted, generatedNetplan, mergeNetplan, interpretNetplan, sameWanted };
 })();
 __m["shells/netplan.js"] = (() => {
 const { parseYaml, isYamlError } = __m["core/yaml-lite.js"];
@@ -13168,6 +13224,7 @@ function apply(host, w) {
         host.setNicAddress(n.port, want?.ip !== undefined && want.prefix !== undefined ? { ip: want.ip, prefix: want.prefix } : undefined);
     }
     host.setStaticRoutes(w.routes);
+    host.dnsSearch = w.search;
     const s = stored.get(host);
     if (s)
         s.applied = true;
@@ -18564,7 +18621,7 @@ const SERVICE_DOCS = {
                 code('*      IN  A      192.168.10.80   ; cualquier.aula.lab → .80\n*.dev  IN  CNAME  srv             ; app.dev.aula.lab → srv.aula.lab\n@      IN  MX     10 @'),
                 code('$ORIGIN aula.lab.\n$TTL 86400\n@\tIN\tSOA\tsrv.aula.lab. hostmaster.aula.lab. ( … )\n@\tIN\tNS\tsrv\n@\tIN\tMX\t10 srv\nsrv\tIN\tA\t192.168.10.2\nwww\tIN\tCNAME\tsrv'),
                 note('Compruébalo desde un PC: dig www.aula.lab, dig +short aula.lab MX, dig -x 192.168.10.2, nslookup o host.'),
-                note('Dominio de búsqueda: si el pool DHCP lleva domain-name (opción 15), el PC lo añade a /etc/resolv.conf («search aula.lab») y a «Connection-specific DNS Suffix» en Windows. Así ping, nslookup, host, curl, ssh y el navegador completan un nombre sin puntos (www → www.aula.lab), como glibc con ndots:1: primero con el dominio y después tal cual; un nombre con puntos va primero tal cual; un punto final («www.») evita la búsqueda. dig no usa la búsqueda salvo con +search, como el dig real. hostname -f da el nombre canónico de /etc/hosts (en Ubuntu no incluye el dominio de DHCP).'),
+                note('Dominio de búsqueda: si el pool DHCP lleva domain-name (opción 15), el PC lo añade a /etc/resolv.conf («search aula.lab») y a «Connection-specific DNS Suffix» en Windows. Así ping, nslookup, host, curl, ssh y el navegador completan un nombre sin puntos (www → www.aula.lab), como glibc con ndots:1: primero con el dominio y después tal cual; un nombre con puntos va primero tal cual; un punto final («www.») evita la búsqueda. dig no usa la búsqueda salvo con +search, como el dig real. Con IP estática, los dominios se ponen en netplan (nameservers: search: [aula.lab]). hostname -f da el nombre canónico de /etc/hosts (en Ubuntu no incluye el dominio de DHCP).'),
             ],
         },
         {
@@ -18800,7 +18857,7 @@ const UTIL_DOCS = {
     more: { group: 'editores', synopsis: 'more [FICHERO]...', summary: 'Paginador sencillo (igual que less en Netfix).' },
     ip: { group: 'red', section: 8, synopsis: 'ip [-br] [-c] {address | route | neigh | link} [show] | ip addr {add|del} IP/N dev eth0 | ip addr flush dev eth0 | ip route {add|replace|del} default [via GW] | ip link set dev eth0 {up|down}', summary: 'Direcciones, rutas y vecinos (iproute2). Abreviable: ip a, ip r, ip n. Con sudo cambia la configuración en ejecución (la que muestra la GUI), no netplan: se pierde al aplicar netplan. Una dirección IPv4 por interfaz.' },
     rndc: { group: 'servicios', section: 8, synopsis: 'rndc {reload | flush | status}', summary: 'Controla bind9 (con sudo): reload relee la configuración, flush vacía la caché de la recursión y status muestra reenviadores y entradas en caché.' },
-    netplan: { group: 'red', section: 8, synopsis: 'netplan {apply | try | generate | get | info}', summary: 'Aplica /etc/netplan/*.yaml (unidos por orden de nombre) a la interfaz eth0: dhcp4, addresses, routes (to: default, via), nameservers. try revierte si no confirmas con Intro. Los errores indican fichero:línea:columna.' },
+    netplan: { group: 'red', section: 8, synopsis: 'netplan {apply | try | generate | get | info}', summary: 'Aplica /etc/netplan/*.yaml (unidos por orden de nombre) a la interfaz eth0: dhcp4, addresses, routes (to: default, via), nameservers (addresses y search: dominios de búsqueda, también con DHCP). try revierte si no confirmas con Intro. Los errores indican fichero:línea:columna.' },
     traceroute: { group: 'red', synopsis: 'traceroute [-n] [-m SALTOS] DESTINO', summary: 'Ruta hasta el destino: sondas ICMP con TTL 1, 2, 3… (como traceroute -I); cada router responde «tiempo excedido». -n sin nombres, -m máximo de saltos (30).' },
     ping: { group: 'red', synopsis: 'ping [-c N] DESTINO', summary: 'Eco ICMP (sin -c, 4 paquetes en Netfix). Estado 0 si responde, 1 si no, 2 si el nombre no se resuelve.' },
     dig: { group: 'red', synopsis: 'dig [@SERVIDOR] NOMBRE [TIPO] [+short] [+search] | dig -x IP', summary: 'Consulta DNS con la salida de BIND 9 (secciones QUESTION, ANSWER, AUTHORITY; status NOERROR/NXDOMAIN/REFUSED).' },
@@ -18870,7 +18927,8 @@ const LINUX_DOCS = [
             table(['Ruta', 'Contenido'], [
                 ['/home/alumno · /home/admin · /root', 'Directorios personales (.bashrc, .profile, .bash_history)'],
                 ['/etc/passwd · /etc/group · /etc/shadow', 'Cuentas del equipo, generadas a partir de las cuentas SSH (shadow solo para root)'],
-                ['/etc/hostname · /etc/hosts · /etc/resolv.conf · /etc/netplan/50-cloud-init.yaml', 'Generados: siguen la configuración IP del equipo'],
+                ['/etc/hostname · /etc/resolv.conf · /etc/netplan/50-cloud-init.yaml', 'Generados: siguen la configuración IP del equipo (resolv.conf incluye «search» con los dominios de netplan y de DHCP)'],
+                ['/etc/hosts', 'Archivo normal que edita root (sudo nano /etc/hosts): ping, ssh, curl, el navegador y la Terminal Windows (que comparte el sistema de archivos Linux) lo consultan antes que el DNS; nslookup, host y dig preguntan solo al servidor DNS. hostname -f da el primer nombre de la línea del equipo. Se guarda con la topología.'],
                 ['/etc/kea · /etc/bind · /etc/postfix · /etc/dovecot · /etc/ssh/sshd_config', 'Generados en servidores: siguen la pestaña Servicios'],
                 ['/var/lib/kea/kea-leases4.csv', 'Concesiones DHCP actuales'],
                 ['/var/www/html', 'Las páginas del servidor web (lectura y escritura con sudo)'],
@@ -19972,7 +20030,7 @@ const SERVICE_DOCS = {
                 code('*      IN  A      192.168.10.80   ; anything.aula.lab → .80\n*.dev  IN  CNAME  srv             ; app.dev.aula.lab → srv.aula.lab\n@      IN  MX     10 @'),
                 code('$ORIGIN aula.lab.\n$TTL 86400\n@\tIN\tSOA\tsrv.aula.lab. hostmaster.aula.lab. ( … )\n@\tIN\tNS\tsrv\n@\tIN\tMX\t10 srv\nsrv\tIN\tA\t192.168.10.2\nwww\tIN\tCNAME\tsrv'),
                 note('Check it from a PC: dig www.aula.lab, dig +short aula.lab MX, dig -x 192.168.10.2, nslookup or host.'),
-                note('Search domain: when the DHCP pool has a domain-name (option 15), the PC adds it to /etc/resolv.conf (“search aula.lab”) and to Windows’ “Connection-specific DNS Suffix”. So ping, nslookup, host, curl, ssh and the browser complete a name without dots (www → www.aula.lab), as glibc with ndots:1: first with the domain, then as typed; a name with dots goes as typed first; a final dot (“www.”) skips the search. dig does not use the search list unless +search, as the real dig. hostname -f gives the canonical name from /etc/hosts (on Ubuntu it does not include the DHCP domain).'),
+                note('Search domain: when the DHCP pool has a domain-name (option 15), the PC adds it to /etc/resolv.conf (“search aula.lab”) and to Windows’ “Connection-specific DNS Suffix”. So ping, nslookup, host, curl, ssh and the browser complete a name without dots (www → www.aula.lab), as glibc with ndots:1: first with the domain, then as typed; a name with dots goes as typed first; a final dot (“www.”) skips the search. dig does not use the search list unless +search, as the real dig. With a static IP, the domains go in netplan (nameservers: search: [aula.lab]). hostname -f gives the canonical name from /etc/hosts (on Ubuntu it does not include the DHCP domain).'),
             ],
         },
         {
@@ -20208,7 +20266,7 @@ const UTIL_DOCS = {
     more: { group: 'editores', synopsis: 'more [FILE]...', summary: 'Simple pager (same as less in Netfix).' },
     ip: { group: 'red', section: 8, synopsis: 'ip [-br] [-c] {address | route | neigh | link} [show] | ip addr {add|del} IP/N dev eth0 | ip addr flush dev eth0 | ip route {add|replace|del} default [via GW] | ip link set dev eth0 {up|down}', summary: 'Addresses, routes and neighbours (iproute2). Can be abbreviated: ip a, ip r, ip n. With sudo it changes the running configuration (the one the GUI shows), not netplan: it is lost when netplan is applied. One IPv4 address per interface.' },
     rndc: { group: 'servicios', section: 8, synopsis: 'rndc {reload | flush | status}', summary: 'Controls bind9 (with sudo): reload rereads the configuration, flush empties the recursion cache and status shows forwarders and cached entries.' },
-    netplan: { group: 'red', section: 8, synopsis: 'netplan {apply | try | generate | get | info}', summary: 'Applies /etc/netplan/*.yaml (merged in name order) to the eth0 interface: dhcp4, addresses, routes (to: default, via), nameservers. try reverts if you do not confirm with Enter. Errors show file:line:column.' },
+    netplan: { group: 'red', section: 8, synopsis: 'netplan {apply | try | generate | get | info}', summary: 'Applies /etc/netplan/*.yaml (merged in name order) to the eth0 interface: dhcp4, addresses, routes (to: default, via), nameservers (addresses and search: search domains, with DHCP too). try reverts if you do not confirm with Enter. Errors show file:line:column.' },
     traceroute: { group: 'red', synopsis: 'traceroute [-n] [-m HOPS] DEST', summary: 'Route to the destination: ICMP probes with TTL 1, 2, 3… (like traceroute -I); each router replies “time exceeded”. -n without names, -m maximum hops (30).' },
     ping: { group: 'red', synopsis: 'ping [-c N] DEST', summary: 'ICMP echo (without -c, 4 packets in Netfix). Status 0 if it replies, 1 if not, 2 if the name does not resolve.' },
     dig: { group: 'red', synopsis: 'dig [@SERVER] NAME [TYPE] [+short] [+search] | dig -x IP', summary: 'DNS query with BIND 9 output (QUESTION, ANSWER, AUTHORITY sections; status NOERROR/NXDOMAIN/REFUSED).' },
@@ -20278,7 +20336,8 @@ const LINUX_DOCS = [
             table(['Path', 'Contents'], [
                 ['/home/alumno · /home/admin · /root', 'Home directories (.bashrc, .profile, .bash_history)'],
                 ['/etc/passwd · /etc/group · /etc/shadow', 'The device’s accounts, generated from the SSH accounts (shadow for root only)'],
-                ['/etc/hostname · /etc/hosts · /etc/resolv.conf · /etc/netplan/50-cloud-init.yaml', 'Generated: they follow the device’s IP configuration'],
+                ['/etc/hostname · /etc/resolv.conf · /etc/netplan/50-cloud-init.yaml', 'Generated: they follow the device’s IP configuration (resolv.conf has a “search” line with the netplan and DHCP domains)'],
+                ['/etc/hosts', 'An ordinary file that root edits (sudo nano /etc/hosts): ping, ssh, curl, the browser and the Windows terminal (which shares the Linux file system) check it before DNS; nslookup, host and dig ask the DNS server only. hostname -f gives the first name on the device’s line. It is saved with the topology.'],
                 ['/etc/kea · /etc/bind · /etc/postfix · /etc/dovecot · /etc/ssh/sshd_config', 'Generated on servers: they follow the Services tab'],
                 ['/var/lib/kea/kea-leases4.csv', 'Current DHCP leases'],
                 ['/var/www/html', 'The web server’s pages (read and write with sudo)'],
@@ -28191,7 +28250,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.10.2",
+    "version": "0.10.3",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -29885,7 +29944,6 @@ function linuxFiles(host) {
     const files = new Map([
         ['/etc/os-release', 'PRETTY_NAME="Ubuntu 26.04 LTS"\nNAME="Ubuntu"\nVERSION_ID="26.04"\nID=ubuntu\n'],
         ['/etc/hostname', `${host.name.toLowerCase()}\n`],
-        ['/etc/hosts', `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`],
         ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n${searchDomains(host).length ? `search ${searchDomains(host).join(' ')}\n` : ''}`],
     ]);
     if (runsServices(host.kind))
@@ -32348,7 +32406,7 @@ function ping(host) {
         const out = [`PING ${shown} (${addr}) 56(84) bytes of data.`];
         results.forEach((x, i) => {
             if (x.kind === 'reply')
-                out.push(`64 bytes from ${r.viaDns ? `${shown} (${addr})` : addr}: icmp_seq=${i + 1} ttl=${x.ttl} time=0.${400 + i * 37} ms`);
+                out.push(`64 bytes from ${parseIp(target) === null ? `${shown} (${addr})` : addr}: icmp_seq=${i + 1} ttl=${x.ttl} time=0.${400 + i * 37} ms`);
             else if (x.kind === 'unreachable')
                 out.push(`From ${formatIp(x.from)} icmp_seq=${i + 1} Destination Host Unreachable`);
             else if (x.kind === 'ttl')
@@ -35268,7 +35326,7 @@ const { linuxPrograms } = __m["shells/linux-programs.js"];
 const { formatIp } = __m["core/ip.js"];
 const { exportFiles, importFiles } = __m["bash/vfs-persist.js"];
 const { seedApache } = __m["services/apache/defaults.js"];
-const { registerHostFs } = __m["devices/host-fs.js"];
+const { registerHostFs, registerHostFileReader } = __m["devices/host-fs.js"];
 const { seedKernel, sysctlFiles, applySysctlFile } = __m["shells/kernel-files.js"];
 const FIRST_UID = 1000;
 const UID_SPAN = 8999;
@@ -35408,6 +35466,8 @@ function createSystem(host) {
     const programs = new Map([...COREUTILS, ...linuxPrograms(host)]);
     const users = hostUsers(host);
     seedRootfs(fs, { hostname: host.name.toLowerCase(), users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
+    // An ordinary file, as in Ubuntu: root edits it, it is saved with the topology and the resolver reads it first.
+    fs.seed('/etc/hosts', { kind: 'file', content: `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n` }, 0o644);
     fs.seed('/usr/lib/command-not-found', { kind: 'file', content: `${BINARY_MARK}command-not-found\n` }, 0o755);
     const server = asServer(host);
     seedSsh(fs, host);
@@ -35466,6 +35526,14 @@ function bootKernel(host, files) {
         applySysctlFile(fs, host, path);
 }
 registerHostFs((host) => hostSystem(host).fs);
+registerHostFileReader((host, path) => {
+    try {
+        return systems.get(host)?.fs.readFile(path);
+    }
+    catch {
+        return undefined;
+    }
+});
 
 return { defaultLinuxUser, hostUsers, hostSystem, savedFiles, restoreFiles, bootKernel };
 })();
@@ -36888,7 +36956,8 @@ class WindowsShell extends BaseShell {
         if (r.kind === 'error')
             return [`Ping request could not find host ${target}. Please check the name and try again.`];
         const ip = formatIp(r.ip);
-        const lines = ['', `Pinging ${r.viaDns ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
+        // A name (from DNS or the hosts file) shows with its address; an address alone shows bare.
+        const lines = ['', `Pinging ${parseIp(target) === null ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
         const results = runPing(this.host.stack, this.host.hooks, r.ip, { count, timeoutMs: PING_TIMEOUT_MS });
         for (const x of results) {
             if (x.kind === 'reply')
@@ -49250,6 +49319,7 @@ const { nicsToJson, routesToJson, restoreNics, restoreRoutes } = __m["net/topolo
 const { LinuxRouter } = __m["devices/linux-router.js"];
 const { savedFiles, restoreFiles, bootKernel } = __m["shells/host-system.js"];
 const { bootWireguard } = __m["shells/wg-boot.js"];
+const { searchList } = __m["shells/netplan-model.js"];
 const { validFileRecords } = __m["bash/vfs-persist.js"];
 const { Network } = __m["net/network.js"];
 const { annotationsFromJson, drawable, makeAnnotation, MAX_ANNOTATIONS } = __m["net/annotations.js"];
@@ -49462,7 +49532,7 @@ function hostRecord(d) {
     const os = d.os;
     const clientId = d.clientIdOverride;
     const files = savedFiles(d);
-    const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes) };
+    const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
     if (c.mode === 'dhcp')
         return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
     const opt = (n) => (n === undefined ? undefined : formatIp(n));
@@ -49497,6 +49567,8 @@ function restore(device, rec) {
             restoreApps(device, pc.apps);
         restoreNics(device, pc.nics);
         restoreRoutes(device, pc.routes);
+        const search = Array.isArray(pc.search) ? searchList(pc.search) : { ok: [] };
+        device.dnsSearch = 'ok' in search ? search.ok : [];
         if (pc.files !== undefined)
             bootKernel(device, validFileRecords(pc.files));
         return;

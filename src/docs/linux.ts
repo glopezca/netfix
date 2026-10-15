@@ -44,7 +44,8 @@ export const LINUX_DOCS: readonly DocPage[] = [
       table(['Ruta', 'Contenido'], [
         ['/home/alumno · /home/admin · /root', 'Directorios personales (.bashrc, .profile, .bash_history)'],
         ['/etc/passwd · /etc/group · /etc/shadow', 'Cuentas del equipo, generadas a partir de las cuentas SSH (shadow solo para root)'],
-        ['/etc/hostname · /etc/hosts · /etc/resolv.conf · /etc/netplan/50-cloud-init.yaml', 'Generados: siguen la configuración IP del equipo'],
+        ['/etc/hostname · /etc/resolv.conf · /etc/netplan/50-cloud-init.yaml', 'Generados: siguen la configuración IP del equipo (resolv.conf incluye «search» con los dominios de netplan y de DHCP)'],
+        ['/etc/hosts', 'Archivo normal que edita root (sudo nano /etc/hosts): ping, ssh, curl, el navegador y la Terminal Windows (que comparte el sistema de archivos Linux) lo consultan antes que el DNS; nslookup, host y dig preguntan solo al servidor DNS. hostname -f da el primer nombre de la línea del equipo. Se guarda con la topología.'],
         ['/etc/kea · /etc/bind · /etc/postfix · /etc/dovecot · /etc/ssh/sshd_config', 'Generados en servidores: siguen la pestaña Servicios'],
         ['/var/lib/kea/kea-leases4.csv', 'Concesiones DHCP actuales'],
         ['/var/www/html', 'Las páginas del servidor web (lectura y escritura con sudo)'],

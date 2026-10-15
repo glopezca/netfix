@@ -373,3 +373,13 @@ correo, traceroute, nmap y la Terminal Windows) sigue glibc con ndots:1; `dig` s
 Revisión ECC: sin críticos ni altos; corregidos los medios (una dirección IP o un nombre inverso no se buscan con el
 dominio, para no dar respuestas falsas con comodines; REFUSED y los tiempos agotados terminan la búsqueda; sin respuesta,
 se informa NODATA antes que un NXDOMAIN posterior) y añadidas pruebas de IP estática, concesión liberada y direcciones.
+
+**v0.10.3:** `/etc/hosts` pasa a ser un archivo normal (root lo edita, se guarda con la topología) y la resolución del
+equipo lo consulta antes que el DNS (nsswitch `files dns`: ping, ssh, curl, navegador, correo, Terminal Windows; nslookup,
+host y dig siguen preguntando solo al servidor). `hostname -f` sale de él. netplan admite `nameservers.search` (hasta 6
+dominios validados, también con dhcp4) para dar dominio de búsqueda a un equipo con IP estática; se guarda en el archivo
+de topología (`search`) y aparece en `/etc/resolv.conf` y en el netplan generado.
+Revisión ECC: sin críticos ni altos; corregidos los medios (leer /etc/hosts no construye ni refresca el sistema Linux
+del equipo: `peekHostFile`, con el contenido por defecto si aún no existe; la lista de búsqueda de un archivo se acota
+antes de validarla; se documenta que la Terminal Windows usa el mismo /etc/hosts) y un bajo (nombres con punto final en
+/etc/hosts).

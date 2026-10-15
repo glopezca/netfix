@@ -207,7 +207,8 @@ export class WindowsShell extends BaseShell {
     const r = resolveHost(this.host, target);
     if (r.kind === 'error') return [`Ping request could not find host ${target}. Please check the name and try again.`];
     const ip = formatIp(r.ip);
-    const lines = ['', `Pinging ${r.viaDns ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
+    // A name (from DNS or the hosts file) shows with its address; an address alone shows bare.
+    const lines = ['', `Pinging ${parseIp(target) === null ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
     const results = runPing(this.host.stack, this.host.hooks, r.ip, { count, timeoutMs: PING_TIMEOUT_MS });
     for (const x of results) {
       if (x.kind === 'reply') lines.push(`Reply from ${formatIp(x.from)}: bytes=32 time<1ms TTL=${x.ttl}`);

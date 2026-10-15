@@ -105,7 +105,7 @@ export function ping(host: Host) {
     const shown = r.viaDns ? r.name : target;
     const out = [`PING ${shown} (${addr}) 56(84) bytes of data.`];
     results.forEach((x, i) => {
-      if (x.kind === 'reply') out.push(`64 bytes from ${r.viaDns ? `${shown} (${addr})` : addr}: icmp_seq=${i + 1} ttl=${x.ttl} time=0.${400 + i * 37} ms`);
+      if (x.kind === 'reply') out.push(`64 bytes from ${parseIp(target) === null ? `${shown} (${addr})` : addr}: icmp_seq=${i + 1} ttl=${x.ttl} time=0.${400 + i * 37} ms`);
       else if (x.kind === 'unreachable') out.push(`From ${formatIp(x.from)} icmp_seq=${i + 1} Destination Host Unreachable`);
       else if (x.kind === 'ttl') out.push(`From ${formatIp(x.from)} icmp_seq=${i + 1} Time to live exceeded`);
     });

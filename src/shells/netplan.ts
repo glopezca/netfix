@@ -80,6 +80,7 @@ function apply(host: Host, w: Wanted): void {
     host.setNicAddress(n.port, want?.ip !== undefined && want.prefix !== undefined ? { ip: want.ip, prefix: want.prefix } : undefined);
   }
   host.setStaticRoutes(w.routes);
+  host.dnsSearch = w.search;
   const s = stored.get(host);
   if (s) s.applied = true;
 }
