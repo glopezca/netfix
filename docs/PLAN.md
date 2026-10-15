@@ -285,3 +285,15 @@ suave y color recuperado, se recortan y se escalan a los tamaños de `assets/bra
 **v0.8.2:** favicon a partir del isotipo de la N, recortado sin margen (legible a 16 px), y `apple-touch-icon` de 180 px
 con la N sobre el negro del original. Se declaran en el HTML (`dist/index.html` los sirve como ficheros; `netfix.html`,
 la demo y `artifact.html` los llevan como data URI), de modo que se ven antes de ejecutar el script.
+
+## Fase 17 · Página de presentación en GitHub Pages (v0.9.0)
+
+| Paso | Entregable | Riesgo / decisión |
+|---|---|---|
+| 17.1 | Capturas reales de la app en cada idioma (`site/img/`, WebP): área de trabajo con el laboratorio DMZ, CLI IOS, cortafuegos del router Linux y terminal en un móvil | Ligeras (< 90 KB cada una) |
+| 17.2 | `site/index.template.html` + `site/i18n/{en-GB,es-ES}.json` + `site/site.css`; `scripts/site-render.mjs` (puro, escapa todo el texto) y `scripts/build-site.mjs` → `_site/` (inglés británico en la raíz, español en `es/`, la app en `app/`) | Una clave ausente rompe el build; `hreflang` y conmutador de idioma |
+| 17.3 | Estructura AIDA: promesa y CTA, cifras verificables, problema → solución, funciones con capturas, laboratorios, públicos, donaciones (área discontinua como los dibujos de la app, importes de PayPal.Me), preguntas frecuentes, CTA final, aviso de marcas de Cisco | Sin testimonios inventados ni cifras infladas |
+| 17.4 | CI: el job `pages` construye y publica `_site`; pruebas `tests/site/` (paridad de claves, enlaces a la app, al repositorio y a PayPal, escape) | En el repositorio, Settings → Pages → Source: «GitHub Actions» |
+
+**Estado:** completada (v0.9.0). Las áreas de los laboratorios se ensanchan para que quepa su nombre (en el de bastionado se
+separan los switches para que no se solapen).

@@ -1,0 +1,174 @@
+/* Netfix landing page. Same palette and type as the app: paper, the workspace dot grid, brand red for
+   the call to action and the donations area only, and the zone colours of the lab drawings. */
+:root {
+  --paper: #f6f8f7;
+  --ws: #e3e9e6;
+  --dot: #c5cfca;
+  --ink: #14232b;
+  --ink-2: #4a5a62;
+  --line: #cfd8d4;
+  --red: #e10a1e;
+  --red-ink: #b00818;
+  --red-wash: rgba(225, 10, 30, .06);
+  --teal: #1f6f8b;
+  --lan: #388e3c;
+  --dmz: #f57c00;
+  --font: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --measure: 66ch;
+  --gutter: clamp(16px, 4vw, 40px);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 18px/1.55 var(--font); -webkit-text-size-adjust: 100%; }
+img { max-width: 100%; height: auto; display: block; }
+a { color: var(--teal); text-underline-offset: .18em; }
+a:hover { color: var(--ink); }
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; border-radius: 4px; }
+h1, h2, h3 { line-height: 1.15; margin: 0 0 .5em; text-wrap: balance; }
+h1 { font-size: clamp(2.1rem, 5.2vw, 3.6rem); letter-spacing: -.02em; max-width: 20ch; }
+h2 { font-size: clamp(1.6rem, 3.2vw, 2.25rem); letter-spacing: -.01em; }
+h3 { font-size: 1.2rem; }
+p { margin: 0 0 1em; max-width: var(--measure); }
+.wrap { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 var(--gutter); }
+.lead { font-size: 1.2rem; color: var(--ink-2); }
+.small { font-size: .9rem; color: var(--ink-2); }
+.skip { position: absolute; left: -999px; top: 8px; background: var(--ink); color: #fff; padding: 8px 12px; z-index: 10; }
+.skip:focus { left: 8px; }
+
+/* Buttons: one primary action per screen, in brand red. */
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 22px; border-radius: 8px; font-weight: 700; text-decoration: none; border: 2px solid transparent; }
+.btn-primary { background: var(--red); color: #fff; }
+.btn-primary:hover { background: var(--red-ink); color: #fff; }
+.btn-quiet { color: var(--ink); border-color: var(--line); background: #fff; }
+.btn-quiet:hover { border-color: var(--ink-2); }
+.btn-outline { color: var(--red-ink); border-color: var(--red); background: #fff; }
+.btn-outline:hover { background: var(--red-wash); color: var(--red-ink); }
+.btn-small { min-height: 40px; padding: 6px 16px; font-size: .95rem; }
+.btn-wide { width: 100%; }
+
+/* Header */
+.top { position: sticky; top: 0; z-index: 5; background: rgba(246, 248, 247, .94); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+.top-row { display: flex; align-items: center; gap: 24px; min-height: 68px; }
+.brand img { width: 132px; height: auto; }
+.nav { display: flex; gap: 22px; margin-left: auto; }
+.nav a, .lang { color: var(--ink); text-decoration: none; font-weight: 700; font-size: .98rem; }
+.nav a:hover, .lang:hover { color: var(--teal); text-decoration: underline; }
+.lang { color: var(--ink-2); font-weight: 400; }
+
+/* Hero: the workspace dot grid, as in the app. */
+.hero { background-color: var(--ws); background-image: radial-gradient(var(--dot) 1.2px, transparent 1.3px); background-size: 22px 22px; padding: clamp(40px, 7vw, 88px) 0 0; border-bottom: 1px solid var(--line); overflow: hidden; }
+.hero .lead { max-width: 58ch; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 14px; }
+.note { font-size: .95rem; color: var(--ink-2); }
+.hero-shot { margin-top: 36px; }
+.hero-shot img, .shot { border-radius: 12px 12px 0 0; border: 1px solid var(--line); box-shadow: 0 18px 48px -18px rgba(20, 35, 43, .35); background: #fff; }
+.hero-shot img { border-bottom: 0; }
+
+/* Facts */
+.facts { border-bottom: 1px solid var(--line); background: #fff; }
+.facts-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 0 auto; }
+.facts-list div { padding: 28px 24px 28px 0; }
+.facts-list div + div { padding-left: 24px; border-left: 1px solid var(--line); }
+.facts-list dt { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+.facts-list dd { margin: 6px 0 0; color: var(--ink-2); font-size: .98rem; }
+
+/* Problem and solution */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(28px, 5vw, 72px); padding-top: clamp(56px, 8vw, 104px); padding-bottom: clamp(24px, 4vw, 48px); }
+.pair > div:first-child h2 { color: var(--ink-2); }
+
+/* Features */
+.section-title { margin-bottom: .4em; }
+.section-lead { color: var(--ink-2); margin-bottom: 28px; }
+.features { padding-top: clamp(40px, 6vw, 80px); padding-bottom: clamp(40px, 6vw, 80px); }
+.feature { display: grid; grid-template-columns: 5fr 7fr; gap: clamp(24px, 4vw, 56px); align-items: center; padding: clamp(28px, 4vw, 48px) 0; }
+.feature-flip .feature-text { order: 2; }
+.feature .shot { border-radius: 12px; }
+.shot-narrow { width: min(460px, 100%); justify-self: center; }
+.feature-phone { grid-template-columns: 7fr 5fr; }
+.shot-phone { width: min(300px, 80%); justify-self: center; border-radius: 28px; border: 8px solid var(--ink); }
+.more { border-top: 1px solid var(--line); padding-top: 32px; margin-top: 16px; }
+.more ul { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 40px; padding: 0; margin: 0; list-style: none; }
+.more li { padding-left: 22px; position: relative; color: var(--ink-2); }
+.more li::before { content: ""; position: absolute; left: 0; top: .6em; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--teal); }
+
+/* Labs: numbered in the order of the app's Labs menu (roughly from basic to advanced). */
+.labs { background: #fff; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: clamp(48px, 7vw, 88px) 0; }
+.lab-list { columns: 2; column-gap: 48px; margin: 0; padding-left: 1.6em; }
+.lab-list li { break-inside: avoid; padding: 7px 0 7px 4px; border-bottom: 1px dashed var(--line); }
+.lab-list li::marker { color: var(--ink-2); }
+
+/* Audiences */
+.who { padding-top: clamp(56px, 8vw, 96px); padding-bottom: clamp(40px, 6vw, 72px); }
+.who-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(24px, 4vw, 48px); margin-top: 20px; }
+.who-grid h3 { padding-top: 14px; border-top: 3px solid var(--lan); }
+.who-grid div:nth-child(2) h3 { border-top-color: var(--teal); }
+.who-grid div:nth-child(3) h3 { border-top-color: var(--dmz); }
+.who-grid p { color: var(--ink-2); }
+
+/* Donations: drawn as a named area of the workspace (dashed border, light fill, name in the corner). */
+#donate { padding-top: clamp(32px, 5vw, 64px); padding-bottom: clamp(48px, 7vw, 88px); }
+.area { position: relative; border: 2.5px dashed var(--red); border-radius: 16px; background: var(--red-wash); padding: clamp(48px, 6vw, 72px) clamp(20px, 4vw, 56px) clamp(28px, 4vw, 48px); }
+.area-name { position: absolute; top: 14px; left: 18px; color: var(--red-ink); font-weight: 700; font-size: .95rem; }
+.donate-grid { display: grid; grid-template-columns: 7fr 4fr; gap: clamp(28px, 5vw, 64px); align-items: start; }
+.donate-grid h2 { max-width: 22ch; }
+.funds { margin: 0 0 8px; padding-left: 1.2em; }
+.funds li { margin: 6px 0; }
+.funds li::marker { color: var(--red); }
+.give { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
+.amounts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.amounts .btn { font-size: 1.15rem; }
+.give .small { margin: 14px 0 0; }
+
+/* FAQ */
+.faq { padding-bottom: clamp(56px, 8vw, 96px); }
+.faq details { max-width: 820px; border-bottom: 1px solid var(--line); }
+.faq summary { cursor: pointer; padding: 18px 0; font-weight: 700; font-size: 1.08rem; list-style-position: inside; }
+.faq details p { color: var(--ink-2); }
+
+/* Closing call to action */
+.final { background-color: var(--ws); background-image: radial-gradient(var(--dot) 1.2px, transparent 1.3px); background-size: 22px 22px; padding: clamp(56px, 8vw, 96px) 0; text-align: center; border-top: 1px solid var(--line); }
+.final p { margin: 0 auto 24px; color: var(--ink-2); }
+.final h2 { margin-left: auto; margin-right: auto; }
+
+/* Footer */
+.foot { background: var(--ink); color: #dfe7e3; padding: 40px 0; }
+.foot-row { display: grid; grid-template-columns: auto 1fr; gap: 12px 24px; align-items: center; }
+.foot ul { display: flex; flex-wrap: wrap; gap: 8px 28px; list-style: none; margin: 0; padding: 0; }
+.foot a { color: #fff; }
+.foot .small { grid-column: 1 / -1; color: #a9b7b1; margin: 8px 0 0; max-width: none; }
+
+@media (max-width: 900px) {
+  /* Only the donations link stays in the header. */
+  .nav a:not(.nav-donate) { display: none; }
+  .facts-list { grid-template-columns: 1fr 1fr; }
+  .facts-list div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .facts-list div:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .pair, .feature, .feature-phone, .donate-grid, .who-grid { grid-template-columns: 1fr; }
+  .feature-flip .feature-text { order: 0; }
+  .lab-list { columns: 1; }
+  .more ul { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 520px) {
+  body { font-size: 17px; }
+  .top-row { gap: 12px; }
+  .brand img { width: 108px; }
+  .btn-small { padding: 6px 12px; }
+  .nav { margin-left: auto; }
+  .actions .btn { width: 100%; }
+  .facts-list { grid-template-columns: 1fr; }
+  .facts-list div, .facts-list div + div { padding: 18px 0; border-left: 0; }
+  .facts-list div + div { border-top: 1px solid var(--line); }
+  .hero-shot { padding-right: 0; }
+  .hero-shot img { border-radius: 12px 0 0 0; border-right: 0; width: 160%; max-width: none; }
+}
+
+@media (max-width: 400px) {
+  .top .btn-small { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

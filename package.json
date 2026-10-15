@@ -1,6 +1,6 @@
 {
   "name": "netfix",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
   "type": "module",
   "private": true,
@@ -22,7 +22,8 @@
     "e2e": "npm run build && node scripts/e2e.mjs && node scripts/e2e-v07.mjs",
     "check": "npm run typecheck && npm test && npm run build",
     "about": "node scripts/gen-about.mjs",
-    "brand": "node scripts/gen-brand.mjs"
+    "brand": "node scripts/gen-brand.mjs",
+    "site": "npm run build && node scripts/build-site.mjs"
   },
   "devDependencies": {
     "typescript": "^5.8.0"

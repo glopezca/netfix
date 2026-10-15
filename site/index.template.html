@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="{{@lang}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{meta.title}}</title>
+  <meta name="description" content="{{meta.description}}">
+  <link rel="canonical" href="{{@canonical}}">
+  <link rel="alternate" hreflang="en-GB" href="{{@urlEn}}">
+  <link rel="alternate" hreflang="es-ES" href="{{@urlEs}}">
+  <link rel="alternate" hreflang="x-default" href="{{@urlEn}}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{meta.title}}">
+  <meta property="og:description" content="{{meta.description}}">
+  <meta property="og:url" content="{{@canonical}}">
+  <meta property="og:image" content="{{@ogImage}}">
+  <meta property="og:locale" content="{{meta.ogLocale}}">
+  <meta property="og:site_name" content="Netfix">
+  <meta property="og:image:alt" content="{{hero.alt}}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#f6f8f7">
+  <link rel="icon" type="image/png" href="{{@root}}favicon.png">
+  <link rel="apple-touch-icon" href="{{@root}}apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+  <link rel="stylesheet" href="{{@root}}site.css">
+</head>
+<body>
+<a class="skip" href="#main">{{skip}}</a>
+<header class="top">
+  <div class="wrap top-row">
+    <a class="brand" href="{{@home}}"><img src="{{@root}}logo.webp" alt="Netfix" width="148" height="40"></a>
+    <nav class="nav" aria-label="{{nav.label}}">
+      <a href="#features">{{nav.features}}</a>
+      <a href="#labs">{{nav.labs}}</a>
+      <a class="nav-donate" href="#donate">{{nav.donate}}</a>
+      <a href="#faq">{{nav.faq}}</a>
+    </nav>
+    <a class="lang" href="{{@otherHome}}" hreflang="{{@otherLang}}" lang="{{@otherLang}}" aria-label="{{nav.langLabel}}">{{nav.lang}}</a>
+    <a class="btn btn-primary btn-small" href="{{@app}}">{{cta.open}}</a>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap hero-text">
+      <h1>{{hero.title}}</h1>
+      <p class="lead">{{hero.lead}}</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="{{@app}}">{{cta.open}}</a>
+        <a class="btn btn-quiet" href="{{@repo}}">{{cta.source}}</a>
+      </div>
+      <p class="note">{{hero.note}}</p>
+    </div>
+    <div class="wrap hero-shot">
+      <img src="{{@root}}img/workspace-{{@code}}.webp" width="1600" height="983" alt="{{hero.alt}}" fetchpriority="high">
+    </div>
+  </section>
+
+  <section class="facts" aria-label="{{facts.label}}">
+    <dl class="wrap facts-list">
+      <div><dt>{{facts.1.value}}</dt><dd>{{facts.1.text}}</dd></div>
+      <div><dt>{{facts.2.value}}</dt><dd>{{facts.2.text}}</dd></div>
+      <div><dt>{{facts.3.value}}</dt><dd>{{facts.3.text}}</dd></div>
+      <div><dt>{{facts.4.value}}</dt><dd>{{facts.4.text}}</dd></div>
+    </dl>
+  </section>
+
+  <section class="wrap pair">
+    <div>
+      <h2>{{problem.title}}</h2>
+      <p>{{problem.text}}</p>
+    </div>
+    <div>
+      <h2>{{solution.title}}</h2>
+      <p>{{solution.text}}</p>
+    </div>
+  </section>
+
+  <section id="features" class="wrap features">
+    <h2 class="section-title">{{features.title}}</h2>
+    <article class="feature">
+      <div class="feature-text">
+        <h3>{{features.ios.title}}</h3>
+        <p>{{features.ios.text}}</p>
+      </div>
+      <img class="shot" src="{{@root}}img/cli-{{@code}}.webp" width="1200" height="853" alt="{{features.ios.alt}}" loading="lazy">
+    </article>
+    <article class="feature feature-flip">
+      <div class="feature-text">
+        <h3>{{features.linux.title}}</h3>
+        <p>{{features.linux.text}}</p>
+      </div>
+      <img class="shot shot-narrow" src="{{@root}}img/firewall-{{@code}}.webp" width="780" height="1011" alt="{{features.linux.alt}}" loading="lazy">
+    </article>
+    <article class="feature feature-phone">
+      <div class="feature-text">
+        <h3>{{features.touch.title}}</h3>
+        <p>{{features.touch.text}}</p>
+      </div>
+      <img class="shot shot-phone" src="{{@root}}img/phone-{{@code}}.webp" width="585" height="1266" alt="{{features.touch.alt}}" loading="lazy">
+    </article>
+    <div class="more">
+      <h3>{{features.more.title}}</h3>
+      <ul>
+        <li>{{features.more.1}}</li>
+        <li>{{features.more.2}}</li>
+        <li>{{features.more.3}}</li>
+        <li>{{features.more.4}}</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="labs" class="labs">
+    <div class="wrap">
+      <h2 class="section-title">{{labs.title}}</h2>
+      <p class="section-lead">{{labs.lead}}</p>
+      <ol class="lab-list">
+        <li>{{labs.basico}}</li>
+        <li>{{labs.reservas}}</li>
+        <li>{{labs.relay}}</li>
+        <li>{{labs.vlans}}</li>
+        <li>{{labs.snooping}}</li>
+        <li>{{labs.cliente}}</li>
+        <li>{{labs.servidores}}</li>
+        <li>{{labs.internet}}</li>
+        <li>{{labs.vpn-ipsec}}</li>
+        <li>{{labs.vpn-wireguard}}</li>
+        <li>{{labs.linux-dmz}}</li>
+        <li>{{labs.dns-reenvio}}</li>
+        <li>{{labs.ssh-sftp}}</li>
+        <li>{{labs.bastionado}}</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="wrap who">
+    <h2 class="section-title">{{who.title}}</h2>
+    <div class="who-grid">
+      <div><h3>{{who.teachers.title}}</h3><p>{{who.teachers.text}}</p></div>
+      <div><h3>{{who.students.title}}</h3><p>{{who.students.text}}</p></div>
+      <div><h3>{{who.self.title}}</h3><p>{{who.self.text}}</p></div>
+    </div>
+  </section>
+
+  <section id="donate" class="wrap">
+    <div class="area" aria-labelledby="donate-title">
+      <span class="area-name" aria-hidden="true">{{donate.area}}</span>
+      <div class="donate-grid">
+        <div>
+          <h2 id="donate-title">{{donate.title}}</h2>
+          <p class="lead">{{donate.lead}}</p>
+          <p>{{donate.why}}</p>
+          <h3>{{donate.funds.title}}</h3>
+          <ul class="funds">
+            <li>{{donate.funds.1}}</li>
+            <li>{{donate.funds.2}}</li>
+            <li>{{donate.funds.3}}</li>
+            <li>{{donate.funds.4}}</li>
+          </ul>
+        </div>
+        <div class="give">
+          <h3>{{donate.choose}}</h3>
+          <div class="amounts">
+{{@amounts}}
+          </div>
+          <a class="btn btn-outline btn-wide" href="{{@paypal}}">{{donate.other}}</a>
+          <p class="small">{{donate.paypal}}</p>
+          <p class="small">{{donate.school}}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" class="wrap faq">
+    <h2 class="section-title">{{faq.title}}</h2>
+    <details><summary>{{faq.free.q}}</summary><p>{{faq.free.a}}</p></details>
+    <details><summary>{{faq.account.q}}</summary><p>{{faq.account.a}}</p></details>
+    <details><summary>{{faq.pt.q}}</summary><p>{{faq.pt.a}}</p></details>
+    <details><summary>{{faq.browsers.q}}</summary><p>{{faq.browsers.a}}</p></details>
+    <details><summary>{{faq.offline.q}}</summary><p>{{faq.offline.a}} <a href="{{@offline}}" download>{{faq.offline.link}}</a></p></details>
+    <details><summary>{{faq.licence.q}}</summary><p>{{faq.licence.a}}</p></details>
+  </section>
+
+  <section class="final">
+    <div class="wrap">
+      <h2>{{final.title}}</h2>
+      <p>{{final.text}}</p>
+      <a class="btn btn-primary" href="{{@app}}">{{cta.open}}</a>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-row">
+    <img src="{{@root}}isologo-n.webp" alt="" width="40" height="40">
+    <ul>
+      <li><a href="{{@repo}}">{{footer.repo}}</a></li>
+      <li><a href="{{@repo}}/blob/main/LICENSE.md">{{footer.licence}}</a></li>
+      <li>{{footer.author}}</li>
+    </ul>
+    <p class="small">{{footer.trademark}}</p>
+  </div>
+</footer>
+</body>
+</html>

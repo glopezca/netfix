@@ -16,7 +16,9 @@ const PAD_TOP = 96;
 const PAD_BOTTOM = 66;
 const MIN_COORD = 4;
 const AREA_TEXT = 14;
-const CHAR_W = 7;
+const CHAR_W = 7.6;
+/** Inner margin of the area name (same as the drawing layer). */
+const LABEL_PAD = 8;
 
 function centres(topo: Topology, labels: readonly string[]): Point[] | null {
   const pts = labels.map((l) => [...topo.placed.values()].find((p) => p.label === l));
@@ -30,7 +32,8 @@ function area(topo: Topology, labels: readonly string[], color: string, text: st
   const xs = pts.map((p) => p.x);
   const ys = pts.map((p) => p.y);
   const a = { x: Math.max(MIN_COORD, Math.min(...xs) - PAD_X), y: Math.max(MIN_COORD, Math.min(...ys) - PAD_TOP) };
-  const b = { x: Math.max(...xs) + PAD_X, y: Math.max(...ys) + PAD_BOTTOM };
+  // Wide enough for its name (written in the top-left corner).
+  const b = { x: Math.max(Math.max(...xs) + PAD_X, a.x + text.length * CHAR_W + 2 * LABEL_PAD), y: Math.max(...ys) + PAD_BOTTOM };
   topo.addAnnotation({ kind: 'rect', points: [a, b], color, fill: true, width: 2, text, size: AREA_TEXT });
 }
 
