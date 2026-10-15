@@ -281,3 +281,7 @@ Logotipo «NETFIX» con letras dibujadas como trazados de red y nodos, isotipo p
 documentación y marcas pequeñas de las webs simuladas). Los originales en fondo negro se pasan a transparencia con borde
 suave y color recuperado, se recortan y se escalan a los tamaños de `assets/brand/`; `npm run brand` regenera
 `src/ui/brand-data.ts` (cada imagen por debajo de 40 000 caracteres en base64, comprobado por prueba).
+
+**v0.8.2:** favicon a partir del isotipo de la N, recortado sin margen (legible a 16 px), y `apple-touch-icon` de 180 px
+con la N sobre el negro del original. Se declaran en el HTML (`dist/index.html` los sirve como ficheros; `netfix.html`,
+la demo y `artifact.html` los llevan como data URI), de modo que se ven antes de ejecutar el script.

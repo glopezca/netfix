@@ -16,6 +16,10 @@ if (!skipTsc) {
 mkdirSync(dist, { recursive: true });
 copyFileSync(join(root, 'src/ui/index.html'), join(dist, 'index.html'));
 copyFileSync(join(root, 'src/ui/styles.css'), join(dist, 'styles.css'));
+// Favicon (the N isotype) and the home-screen icon, declared in the HTML so they show before any script runs.
+const ICONS = ['favicon.png', 'apple-touch-icon.png'];
+for (const f of ICONS) copyFileSync(join(root, 'assets/brand', f), join(dist, f));
+const dataUri = (f) => `data:image/png;base64,${readFileSync(join(root, 'assets/brand', f)).toString('base64')}`;
 
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {
@@ -77,7 +81,9 @@ const inlineScript = bundle.replace(/<\/script/gi, '<\\/script');
 const css = readFileSync(join(root, 'src/ui/styles.css'), 'utf8');
 const single = readFileSync(join(root, 'src/ui/index.html'), 'utf8')
   .replace('<link rel="stylesheet" href="styles.css">', () => `<style>\n${css}\n</style>`)
-  .replace('<script type="module" src="js/ui/main.js"></script>', () => `<script>${inlineScript}</script>`);
+  .replace('<script type="module" src="js/ui/main.js"></script>', () => `<script>${inlineScript}</script>`)
+  .replace('href="favicon.png"', () => `href="${dataUri('favicon.png')}"`)
+  .replace('href="apple-touch-icon.png"', () => `href="${dataUri('apple-touch-icon.png')}"`);
 writeFileSync(join(dist, 'netfix.html'), single);
 // Committed standalone page (served online via raw.githack.com, also opens from file://).
 mkdirSync(join(root, 'demo'), { recursive: true });

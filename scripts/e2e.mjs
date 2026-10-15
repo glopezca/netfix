@@ -23,6 +23,9 @@ try {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('g.device-router');
+  // Favicon: the N isotype, declared in the HTML and served next to it.
+  assert.equal((await page.request.get(`http://localhost:${port}/favicon.png`)).status(), 200);
+  assert.match(await page.getAttribute('link[rel="icon"]', 'href') ?? '', /^data:image\/png|favicon\.png$/);
 
   // 1. CLI: configure a manual binding for PC0 through the console.
   await page.dblclick('g.device-router');

@@ -11,6 +11,8 @@ export function applyBrand(doc: Document = document): void {
   root.setProperty('--brand-isologo', `url("${BRAND.isologo}")`);
   const icon = doc.querySelector('link[rel="icon"]') ?? doc.head.appendChild(el('link', { rel: 'icon', type: 'image/png' }));
   icon.setAttribute('href', BRAND.favicon);
+  const touch = doc.querySelector('link[rel="apple-touch-icon"]') ?? doc.head.appendChild(el('link', { rel: 'apple-touch-icon' }));
+  touch.setAttribute('href', BRAND.appleTouchIcon);
 }
 
 export function brandImage(kind: keyof BrandImages, cls: string, alt: string): HTMLImageElement {

@@ -5,7 +5,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const FILES = { logo: 'logo.webp', isologoN: 'isologo-n.webp', isologo: 'isologo.png', favicon: 'favicon.png' };
+const FILES = { logo: 'logo.webp', isologoN: 'isologo-n.webp', isologo: 'isologo.png', favicon: 'favicon.png', appleTouchIcon: 'apple-touch-icon.png' };
 const TYPES = { webp: 'image/webp', png: 'image/png' };
 
 const entries = Object.entries(FILES).map(([key, file]) => {
@@ -22,7 +22,10 @@ export interface BrandImages {
   readonly isologoN: string;
   /** Secondary isotype: an X of four nodes around a diamond (documentation bullets, small marks of the simulated webs). */
   readonly isologo: string;
+  /** Tab icon: the N isotype, tightly cropped (64 px with transparency). */
   readonly favicon: string;
+  /** Home-screen icon (iOS/Android): the N on black, 180 px. */
+  readonly appleTouchIcon: string;
 }
 
 export const BRAND: BrandImages = {

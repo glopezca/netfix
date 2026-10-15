@@ -18,3 +18,14 @@ test('logo, isologos and favicon are small images', () => {
     assert.ok(uri.length < 40_000, `${name} is ${uri.length} bytes`);
   }
 });
+
+test('the page declares the favicon (the N isotype) and the home-screen icon before any script runs', () => {
+  const html = readFileSync(new URL('src/ui/index.html', root), 'utf8');
+  assert.match(html, /<link rel="icon" type="image\/png" href="favicon\.png">/);
+  assert.match(html, /<link rel="apple-touch-icon" href="apple-touch-icon\.png">/);
+  const png = readFileSync(new URL('assets/brand/favicon.png', root));
+  // PNG header: width and height (big-endian) at bytes 16-23.
+  assert.equal(png.readUInt32BE(16), 64);
+  assert.equal(png.readUInt32BE(20), 64);
+  assert.ok(BRAND.favicon.startsWith('data:image/png') && BRAND.appleTouchIcon.startsWith('data:image/png'));
+});
