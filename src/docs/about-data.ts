@@ -10,7 +10,7 @@ export interface AboutData {
 
 export const ABOUT: AboutData = {
   "name": "netfix",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
   "license": "GPL-3.0-or-later",
   "repository": "https://github.com/glopezca/netfix",

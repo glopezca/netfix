@@ -9,6 +9,8 @@ import { placeInside } from './viewport-math.ts';
 import { along, clamp, perpendicular, triangle } from './canvas-geometry.ts';
 import { DrawLayer } from './draw-layer.ts';
 import { DrawState } from './draw-bar.ts';
+import { historyFor } from '../net/edit-history.ts';
+import type { EditHistory } from '../net/edit-history.ts';
 import type { ShapeKind } from '../net/annotations.ts';
 import { t } from '../i18n/t.ts';
 import type { MessageKey } from '../i18n/catalog.ts';
@@ -83,6 +85,18 @@ export class Canvas {
     this.draw.reset();
     this.render();
     this.frameContent();
+  }
+
+  /** Undo and redo of this workspace's edits. */
+  edits(): EditHistory {
+    return historyFor(this.topo);
+  }
+
+  /** After an undo or redo: what was selected may be gone. */
+  clearSelection(): void {
+    this.selected = null;
+    this.pendingEnd = null;
+    this.draw.reset();
   }
 
   setTool(tool: Tool): void {
@@ -176,7 +190,7 @@ export class Canvas {
     g.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       if (this.tool.kind === 'delete') {
-        this.topo.net.disconnect(link.id);
+        this.edits().disconnect(link.id);
         this.events.changed();
         return;
       }
@@ -233,7 +247,7 @@ export class Canvas {
     }
     if (this.tool.kind === 'place') {
       const { x, y } = this.toWorld(e);
-      this.topo.add(this.tool.device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
+      this.edits().addDevice(this.tool.device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
       this.setTool({ kind: 'select' });
       this.events.changed();
       return;
@@ -251,7 +265,7 @@ export class Canvas {
     this.hideMenu();
     this.draw.deselect();
     if (this.tool.kind === 'delete') {
-      this.topo.remove(id);
+      this.edits().removeDevice(id);
       this.events.removed(id);
       this.events.changed();
       return;
@@ -302,8 +316,10 @@ export class Canvas {
       g.removeEventListener('pointermove', move);
       g.removeEventListener('pointerup', up);
       g.removeEventListener('pointercancel', up);
-      if (moved) this.events.changed();
-      else {
+      if (moved) {
+        this.edits().moved(id, origin);
+        this.events.changed();
+      } else {
         this.markSelection();
         if (ev.type === 'pointerup') this.tapped(id, ev);
       }
@@ -343,7 +359,7 @@ export class Canvas {
       return;
     }
     try {
-      this.topo.connect(this.pendingEnd, ep);
+      this.edits().connect(this.pendingEnd, ep);
       this.events.hint(t(HINTS.cable));
     } catch (err) {
       this.events.hint(t('canvas.connectFailed', { error: err instanceof Error ? err.message : t('canvas.unknownError') }));
@@ -356,10 +372,7 @@ export class Canvas {
     this.menu.hidden = true;
   }
 
-  /**
-   * Keys of the workspace: Escape goes back to Select; Supr (Delete) or Backspace removes the selected drawing,
-   * device (with its cables) or cable. Also called by the app when nothing has the focus.
-   */
+  /** Escape: back to Select; Supr or Backspace: delete the selected drawing, device (with its cables) or cable. */
   handleKey(e: KeyboardEvent): void {
     const target = e.target;
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
@@ -372,10 +385,10 @@ export class Canvas {
     if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected) {
       const id = this.selected;
       if (this.topo.get(id)) {
-        this.topo.remove(id);
+        this.edits().removeDevice(id);
         this.events.removed(id);
       } else {
-        this.topo.net.disconnect(id);
+        this.edits().disconnect(id);
       }
       this.selected = null;
       e.preventDefault();

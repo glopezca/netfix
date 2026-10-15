@@ -53,6 +53,7 @@ class App {
       void this.save();
       return;
     }
+    if (this.undoKey(e)) return;
     // Nothing focused after the last click was on the workspace (its element was redrawn): its keys still apply.
     // A click anywhere else (a window, the bars) ends that, so Backspace there never deletes a device.
     const idle = document.activeElement === null || document.activeElement === document.body;
@@ -88,7 +89,9 @@ class App {
       },
     }, this.toolButtons);
     this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.sim.root);
-    this.paletteEl = palette({ selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw() }, this.toolButtons, this.hintEl);
+    this.paletteEl = palette({
+      selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw(), undo: (redo) => this.undo(redo),
+    }, this.toolButtons, this.hintEl);
     this.pageHost = el('main', { class: 'docs-host', hidden: true });
     this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
     this.fileInput.addEventListener('change', () => void this.openFile());
@@ -101,6 +104,7 @@ class App {
     window.addEventListener('pointerdown', this.onPointerDown, { capture: true });
     this.setMode(this.mode, false);
     this.showView(this.view);
+    this.markUndo();
     this.tick();
   }
 
@@ -209,8 +213,45 @@ class App {
 
   afterCommand(): void {
     this.topo.net.runFor(20);
+    this.canvas.edits().syncDrawings(performance.now());
     this.canvas.render();
+    this.markUndo();
     this.scheduleSave();
+  }
+
+  /** Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z on the network view, except while typing or inside a window (its own undo). */
+  private undoKey(e: KeyboardEvent): boolean {
+    const key = e.key.toLowerCase();
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || (key !== 'z' && key !== 'y') || this.view !== 'net') return false;
+    const target = e.target;
+    if (target instanceof Element && target.closest('input, textarea, select, .win-layer')) return false;
+    if (target instanceof HTMLElement && target.isContentEditable) return false;
+    e.preventDefault();
+    this.undo(key === 'y' || e.shiftKey);
+    return true;
+  }
+
+  private undo(redo: boolean): void {
+    const edits = this.canvas.edits();
+    const done = redo ? edits.redo() : edits.undo();
+    if (!done) {
+      this.hintEl.textContent = t(redo ? 'undo.nothingRedo' : 'undo.nothingUndo');
+      return;
+    }
+    for (const id of done.removed) { this.windows.close(id); forgetDevice(id); }
+    this.canvas.clearSelection();
+    this.afterCommand();
+    const left = done.skipped ? ` ${t('undo.cablesLeft', { n: String(done.skipped) })}` : '';
+    this.hintEl.textContent = t(redo ? 'undo.redone' : 'undo.undone', { what: t(`undo.${done.kind}`) }) + left;
+  }
+
+  /** The undo and redo buttons are enabled only when there is something to undo or redo. */
+  private markUndo(): void {
+    const edits = this.canvas.edits();
+    const undo = this.paletteEl.querySelector<HTMLButtonElement>('.undo-btn');
+    const redo = this.paletteEl.querySelector<HTMLButtonElement>('.redo-btn');
+    if (undo) undo.disabled = !edits.canUndo();
+    if (redo) redo.disabled = !edits.canRedo();
   }
 
   private tick(): void {
@@ -233,6 +274,7 @@ class App {
     this.topo = topo;
     this.canvas.setTopology(topo);
     this.sim.attach(topo);
+    this.markUndo();
     this.hintEl.textContent = message;
     this.scheduleSave();
   }

@@ -489,6 +489,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 .zoom-group { display: flex; gap: 4px; align-items: center; padding-right: 16px; border-right: 1px solid var(--line); }
 .zoom-btn { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--panel); cursor: pointer; font-size: 18px; line-height: 1; }
 .zoom-btn:hover { border-color: var(--accent); }
+.zoom-btn:disabled { opacity: .4; cursor: default; border-color: var(--line); }
 .win-actions { display: flex; align-items: center; gap: 2px; }
 .win-btn { border: 0; background: none; font-size: 16px; line-height: 1; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; }
 .win-btn:hover { background: var(--accent-soft); }

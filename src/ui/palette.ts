@@ -11,6 +11,8 @@ export interface PaletteActions {
   zoom(action: 'in' | 'out' | 'fit'): void;
   /** Shows or hides the drawing bar; returns whether it is now open. */
   toggleDraw(): boolean;
+  /** Undo (false) or redo (true) the last workspace edit. */
+  undo(redo: boolean): void;
 }
 
 export const PLACEABLE: readonly (readonly [DeviceKind, MessageKey])[] = [
@@ -49,6 +51,11 @@ export function palette(actions: PaletteActions, buttons: Map<string, HTMLButton
     b.addEventListener('click', () => actions.zoom(action));
     return b;
   };
+  const undoBtn = (redo: boolean, glyph: string, label: string): HTMLButtonElement => {
+    const b = el('button', { type: 'button', class: `zoom-btn ${redo ? 'redo-btn' : 'undo-btn'}`, 'aria-label': label, title: label, disabled: true }, glyph);
+    b.addEventListener('click', () => actions.undo(redo));
+    return b;
+  };
   return el('footer', { class: 'palette' },
     el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...PLACEABLE.map(([k, name]) => deviceBtn(k, t(name)))),
     el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') },
@@ -56,6 +63,7 @@ export function palette(actions: PaletteActions, buttons: Map<string, HTMLButton
       toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'),
       toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕'),
       drawToggle(actions)),
+    el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))),
     el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))),
     hintEl);
 }

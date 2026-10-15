@@ -70,6 +70,20 @@ try {
   await page.keyboard.press('Backspace');
   assert.deepEqual(await census(), [devs - 1, links - 2], 'Backspace on a window does not delete the selected device');
   await page.click('.win-close');
+  // Ctrl+Z brings back the cable, then the device with its cable; Ctrl+Y and the redo button delete them again.
+  await page.locator('.workspace').focus();
+  await page.keyboard.press('Control+z');
+  assert.deepEqual(await census(), [devs - 1, links - 1], 'Ctrl+Z restores the cable');
+  await page.keyboard.press('Control+z');
+  assert.deepEqual(await census(), [devs, links], 'Ctrl+Z restores the device and its cable');
+  await page.keyboard.press('Control+y');
+  assert.deepEqual(await census(), [devs - 1, links - 1], 'Ctrl+Y deletes the device again');
+  await page.click('.redo-btn');
+  assert.deepEqual(await census(), [devs - 1, links - 2], 'the redo button');
+  await page.click('.undo-btn');
+  await page.click('.undo-btn');
+  assert.deepEqual(await census(), [devs, links]);
+  assert.equal(await page.locator('.undo-btn').isDisabled(), true, 'nothing left to undo');
 
   // 2. Changing language while reading the docs keeps the docs open, now in the other language.
   await page.click('button.seg:has-text("Documentation")');

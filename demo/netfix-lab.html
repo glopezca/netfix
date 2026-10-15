@@ -502,6 +502,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 .zoom-group { display: flex; gap: 4px; align-items: center; padding-right: 16px; border-right: 1px solid var(--line); }
 .zoom-btn { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--panel); cursor: pointer; font-size: 18px; line-height: 1; }
 .zoom-btn:hover { border-color: var(--accent); }
+.zoom-btn:disabled { opacity: .4; cursor: default; border-color: var(--line); }
 .win-actions { display: flex; align-items: center; gap: 2px; }
 .win-btn { border: 0; background: none; font-size: 16px; line-height: 1; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; }
 .win-btn:hover { background: var(--accent-soft); }
@@ -3415,6 +3416,47 @@ const DRAW_EN = {
 
 return { DRAW_EN };
 })();
+__m["i18n/es-ES/undo.js"] = (() => {
+/** Español (España): deshacer y rehacer cambios del área de trabajo. */
+const UNDO_ES = {
+    'undo.group': 'Deshacer y rehacer',
+    'undo.cablesLeft': 'Cables sin reconectar (puerto ocupado): {n}.',
+    'undo.undo': 'Deshacer (Ctrl+Z)',
+    'undo.redo': 'Rehacer (Ctrl+Y)',
+    'undo.undone': 'Deshecho: {what}.',
+    'undo.redone': 'Rehecho: {what}.',
+    'undo.nothingUndo': 'No hay nada que deshacer en el área de trabajo.',
+    'undo.nothingRedo': 'No hay nada que rehacer.',
+    'undo.add': 'añadir un equipo',
+    'undo.remove': 'borrar un equipo',
+    'undo.connect': 'conectar un cable',
+    'undo.disconnect': 'quitar un cable',
+    'undo.move': 'mover un equipo',
+    'undo.drawings': 'cambio en los dibujos',
+};
+
+return { UNDO_ES };
+})();
+__m["i18n/en-GB/undo.js"] = (() => {
+const UNDO_EN = {
+    'undo.group': 'Undo and redo',
+    'undo.cablesLeft': 'Cables not reconnected (port in use): {n}.',
+    'undo.undo': 'Undo (Ctrl+Z)',
+    'undo.redo': 'Redo (Ctrl+Y)',
+    'undo.undone': 'Undone: {what}.',
+    'undo.redone': 'Redone: {what}.',
+    'undo.nothingUndo': 'Nothing to undo on the workspace.',
+    'undo.nothingRedo': 'Nothing to redo.',
+    'undo.add': 'adding a device',
+    'undo.remove': 'deleting a device',
+    'undo.connect': 'connecting a cable',
+    'undo.disconnect': 'removing a cable',
+    'undo.move': 'moving a device',
+    'undo.drawings': 'change to the drawings',
+};
+
+return { UNDO_EN };
+})();
 __m["i18n/catalog.js"] = (() => {
 const { APP_ES } = __m["i18n/es-ES/app.js"];
 const { APP_EN } = __m["i18n/en-GB/app.js"];
@@ -3452,10 +3494,12 @@ const { IFACES_ES } = __m["i18n/es-ES/ifaces.js"];
 const { IFACES_EN } = __m["i18n/en-GB/ifaces.js"];
 const { DRAW_ES } = __m["i18n/es-ES/draw.js"];
 const { DRAW_EN } = __m["i18n/en-GB/draw.js"];
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES, ...LABS_ES, ...UI_ES, ...CLOUD_ES, ...SRV_ES, ...WEB_ES, ...LOAD_ES, ...IFACES_ES, ...DRAW_ES };
+const { UNDO_ES } = __m["i18n/es-ES/undo.js"];
+const { UNDO_EN } = __m["i18n/en-GB/undo.js"];
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES, ...LABS_ES, ...UI_ES, ...CLOUD_ES, ...SRV_ES, ...WEB_ES, ...LOAD_ES, ...IFACES_ES, ...DRAW_ES, ...UNDO_ES };
 const CATALOGS = {
     'es-ES': ES,
-    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN, ...LABS_EN, ...UI_EN, ...CLOUD_EN, ...SRV_EN, ...WEB_EN, ...LOAD_EN, ...IFACES_EN, ...DRAW_EN },
+    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN, ...LABS_EN, ...UI_EN, ...CLOUD_EN, ...SRV_EN, ...WEB_EN, ...LOAD_EN, ...IFACES_EN, ...DRAW_EN, ...UNDO_EN },
 };
 
 return { CATALOGS };
@@ -4325,6 +4369,173 @@ function drawBar(state, actions, buttons) {
 
 return { DrawState, SHAPES, drawBar };
 })();
+__m["net/edit-history.js"] = (() => {
+const MAX_EDITS = 100;
+/** Drawing changes closer than this (the RGB picker fires on every frame) are one step. */
+const MERGE_MS = 800;
+const histories = new WeakMap();
+/** The history of a workspace (kept while the topology lives, so rebuilding the interface does not lose it). */
+function historyFor(topo) {
+    let h = histories.get(topo);
+    if (!h) {
+        h = new EditHistory(topo);
+        histories.set(topo, h);
+    }
+    return h;
+}
+const cableOf = (l) => ({ a: l.a, b: l.b, cable: l.cable });
+const sameEp = (x, y) => x.device === y.device && x.port === y.port;
+class EditHistory {
+    topo;
+    skipped = 0;
+    done = [];
+    undone = [];
+    /** The drawings as the history last saw them. */
+    seen;
+    constructor(topo) {
+        this.topo = topo;
+        this.seen = topo.annotations;
+    }
+    canUndo() {
+        return this.done.length > 0;
+    }
+    canRedo() {
+        return this.undone.length > 0;
+    }
+    addDevice(kind, x, y) {
+        const placed = this.topo.add(kind, x, y);
+        this.record({ kind: 'add', id: placed.device.id, placed });
+        return placed;
+    }
+    removeDevice(id) {
+        const placed = this.topo.get(id);
+        if (!placed)
+            return false;
+        const cables = this.topo.net.links.filter((l) => l.a.device === id || l.b.device === id).map(cableOf);
+        this.topo.remove(id);
+        this.record({ kind: 'remove', id, placed, cables });
+        return true;
+    }
+    connect(a, b) {
+        const link = this.topo.connect(a, b);
+        this.record({ kind: 'connect', cable: cableOf(link) });
+        return link;
+    }
+    disconnect(linkId) {
+        const link = this.topo.net.links.find((l) => l.id === linkId);
+        if (!link)
+            return;
+        this.topo.net.disconnect(linkId);
+        this.record({ kind: 'disconnect', cable: cableOf(link) });
+    }
+    /** A device was dragged from `from` to where it is now. */
+    moved(id, from) {
+        const p = this.topo.get(id);
+        if (p && (p.x !== from.x || p.y !== from.y))
+            this.record({ kind: 'move', id, from, to: { x: p.x, y: p.y } });
+    }
+    /** Records the drawings changed since the last call (drawings are immutable lists, so a change is a new list). */
+    syncDrawings(now) {
+        const after = this.topo.annotations;
+        if (after === this.seen)
+            return;
+        const last = this.done[this.done.length - 1];
+        const merge = last?.kind === 'drawings' && now - last.at < MERGE_MS && this.undone.length === 0;
+        const before = merge ? last.before : this.seen;
+        if (merge)
+            this.done.pop();
+        this.seen = after;
+        this.push({ kind: 'drawings', before, after, at: now });
+    }
+    undo() {
+        const e = this.done.pop();
+        if (!e)
+            return null;
+        this.undone.push(e);
+        return this.apply(e, true);
+    }
+    redo() {
+        const e = this.undone.pop();
+        if (!e)
+            return null;
+        this.done.push(e);
+        return this.apply(e, false);
+    }
+    record(e) {
+        this.syncDrawings(Number.NEGATIVE_INFINITY);
+        this.push(e);
+    }
+    push(e) {
+        this.done = [...this.done.slice(-(MAX_EDITS - 1)), e];
+        this.undone = [];
+    }
+    /** Runs an edit backwards (undo) or forwards (redo). */
+    apply(e, back) {
+        const removed = [];
+        this.skipped = 0;
+        switch (e.kind) {
+            case 'add':
+            case 'remove':
+                if ((e.kind === 'add') !== back)
+                    this.restore(e);
+                else {
+                    this.topo.remove(e.id);
+                    removed.push(e.id);
+                }
+                break;
+            case 'connect':
+            case 'disconnect':
+                if ((e.kind === 'connect') !== back)
+                    this.plug(e.cable);
+                else
+                    this.unplug(e.cable);
+                break;
+            case 'move':
+                this.place(e.id, back ? e.from : e.to);
+                break;
+            case 'drawings':
+                this.topo.annotations = back ? e.before : e.after;
+                this.seen = this.topo.annotations;
+        }
+        return { kind: e.kind, removed, skipped: this.skipped };
+    }
+    place(id, to) {
+        const p = this.topo.get(id);
+        if (!p)
+            return;
+        p.x = to.x;
+        p.y = to.y;
+    }
+    restore(e) {
+        this.topo.restorePlaced(e.id, e.placed);
+        if (e.kind === 'remove')
+            for (const c of e.cables)
+                this.plug(c);
+    }
+    /** Connects a cable again if both ports are still there and free (a later file or lab may have taken them). */
+    plug(c) {
+        const net = this.topo.net;
+        if (!net.devices.has(c.a.device) || !net.devices.has(c.b.device) || net.linkAt(c.a) || net.linkAt(c.b)) {
+            this.skipped++;
+            return;
+        }
+        try {
+            this.topo.connect(c.a, c.b, c.cable);
+        }
+        catch {
+            // A port that no longer exists: the cable is left out.
+            this.skipped++;
+        }
+    }
+    unplug(c) {
+        const link = this.topo.net.links.find((l) => sameEp(l.a, c.a) && sameEp(l.b, c.b));
+        if (link)
+            this.topo.net.disconnect(link.id);
+    }
+}
+
+return { MAX_EDITS, historyFor, EditHistory };
+})();
 __m["ui/canvas.js"] = (() => {
 /** Logical workspace: devices, cables with link lights, placing, moving, cabling, deleting. */
 const { el, svg, clear, staticSvg } = __m["ui/dom.js"];
@@ -4335,6 +4546,7 @@ const { placeInside } = __m["ui/viewport-math.js"];
 const { along, clamp, perpendicular, triangle } = __m["ui/canvas-geometry.js"];
 const { DrawLayer } = __m["ui/draw-layer.js"];
 const { DrawState } = __m["ui/draw-bar.js"];
+const { historyFor } = __m["net/edit-history.js"];
 const { t } = __m["i18n/t.js"];
 const WORLD_W = 2400;
 const WORLD_H = 1600;
@@ -4392,6 +4604,16 @@ class Canvas {
         this.draw.reset();
         this.render();
         this.frameContent();
+    }
+    /** Undo and redo of this workspace's edits. */
+    edits() {
+        return historyFor(this.topo);
+    }
+    /** After an undo or redo: what was selected may be gone. */
+    clearSelection() {
+        this.selected = null;
+        this.pendingEnd = null;
+        this.draw.reset();
     }
     setTool(tool) {
         this.tool = tool;
@@ -4476,7 +4698,7 @@ class Canvas {
         g.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
             if (this.tool.kind === 'delete') {
-                this.topo.net.disconnect(link.id);
+                this.edits().disconnect(link.id);
                 this.events.changed();
                 return;
             }
@@ -4531,7 +4753,7 @@ class Canvas {
         }
         if (this.tool.kind === 'place') {
             const { x, y } = this.toWorld(e);
-            this.topo.add(this.tool.device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
+            this.edits().addDevice(this.tool.device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
             this.setTool({ kind: 'select' });
             this.events.changed();
             return;
@@ -4549,7 +4771,7 @@ class Canvas {
         this.hideMenu();
         this.draw.deselect();
         if (this.tool.kind === 'delete') {
-            this.topo.remove(id);
+            this.edits().removeDevice(id);
             this.events.removed(id);
             this.events.changed();
             return;
@@ -4605,8 +4827,10 @@ class Canvas {
             g.removeEventListener('pointermove', move);
             g.removeEventListener('pointerup', up);
             g.removeEventListener('pointercancel', up);
-            if (moved)
+            if (moved) {
+                this.edits().moved(id, origin);
                 this.events.changed();
+            }
             else {
                 this.markSelection();
                 if (ev.type === 'pointerup')
@@ -4648,7 +4872,7 @@ class Canvas {
             return;
         }
         try {
-            this.topo.connect(this.pendingEnd, ep);
+            this.edits().connect(this.pendingEnd, ep);
             this.events.hint(t(HINTS.cable));
         }
         catch (err) {
@@ -4660,10 +4884,7 @@ class Canvas {
     hideMenu() {
         this.menu.hidden = true;
     }
-    /**
-     * Keys of the workspace: Escape goes back to Select; Supr (Delete) or Backspace removes the selected drawing,
-     * device (with its cables) or cable. Also called by the app when nothing has the focus.
-     */
+    /** Escape: back to Select; Supr or Backspace: delete the selected drawing, device (with its cables) or cable. */
     handleKey(e) {
         const target = e.target;
         if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)
@@ -4679,11 +4900,11 @@ class Canvas {
         if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected) {
             const id = this.selected;
             if (this.topo.get(id)) {
-                this.topo.remove(id);
+                this.edits().removeDevice(id);
                 this.events.removed(id);
             }
             else {
-                this.topo.net.disconnect(id);
+                this.edits().disconnect(id);
             }
             this.selected = null;
             e.preventDefault();
@@ -17993,7 +18214,7 @@ const NETFIX_DOCS = {
                     ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la documentación y las páginas web simuladas sin recargar.'],
                 ]),
                 h('Paleta y herramientas'),
-                list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.', 'Seleccionar: arrastra equipos; doble clic abre su ventana. Con un equipo o un cable seleccionado, Supr o Retroceso lo borra (un equipo se lleva sus cables).', 'Eliminar: borra equipos o cables.', 'Dibujo: abre la barra para delimitar áreas, trazar líneas y escribir etiquetas (ver «Dibujo»).'),
+                list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.', 'Seleccionar: arrastra equipos; doble clic abre su ventana. Con un equipo o un cable seleccionado, Supr o Retroceso lo borra (un equipo se lleva sus cables).', 'Eliminar: borra equipos o cables.', 'Deshacer (Ctrl+Z, ↶) y Rehacer (Ctrl+Y o Ctrl+Mayús+Z, ↷): añadir, borrar o mover equipos, cables y dibujos (hasta 100 pasos). Un equipo borrado vuelve con sus cables y su configuración; lo escrito dentro de un equipo (CLI, paneles) no se deshace desde aquí.', 'Dibujo: abre la barra para delimitar áreas, trazar líneas y escribir etiquetas (ver «Dibujo»).'),
                 h('Ventanas de los equipos'),
                 table(['Equipo', 'Pestañas'], [
                     ['Router IOS / Switch IOS', 'Equipo (nombre visible y hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
@@ -19390,7 +19611,7 @@ const NETFIX_DOCS = {
                     ['Language', 'Español (España) or English (UK): changes the whole interface, the documentation and the simulated web pages without reloading.'],
                 ]),
                 h('Palette and tools'),
-                list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.', 'Select: drag devices; double-click opens their window. With a device or a cable selected, Del or Backspace removes it (a device takes its cables with it).', 'Delete: removes devices or cables.', 'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).'),
+                list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.', 'Select: drag devices; double-click opens their window. With a device or a cable selected, Del or Backspace removes it (a device takes its cables with it).', 'Delete: removes devices or cables.', 'Undo (Ctrl+Z, ↶) and Redo (Ctrl+Y or Ctrl+Shift+Z, ↷): adding, deleting or moving devices, cables and drawings (up to 100 steps). A deleted device comes back with its cables and its configuration; what is typed inside a device (CLI, panels) is not undone from here.', 'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).'),
                 h('Device windows'),
                 table(['Device', 'Tabs'], [
                     ['IOS router / IOS switch', 'Device (workspace name and hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
@@ -27878,7 +28099,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.9.2",
+    "version": "0.9.3",
     "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -41706,6 +41927,10 @@ class Cloud {
         for (const [name, line] of this.lines)
             line.apply(next.ports[name]);
     }
+    /** Back on the Internet after detach() (undoing the deletion of the cloud). */
+    attach() {
+        this.core.attach(this);
+    }
     detach() {
         this.core.detach(this);
     }
@@ -47917,6 +48142,26 @@ class Topology {
         this.net.removeDevice(id);
         this.placed.delete(id);
     }
+    /**
+     * Puts back a device taken off with remove() (undo): the same object, so its configuration, files and tunnels
+     * return (its timers kept running meanwhile). A name or public block given to another device since then is not
+     * shared: the restored one takes a free one.
+     */
+    restorePlaced(id, placed) {
+        if (this.placed.has(id))
+            return;
+        const d = placed.device;
+        if ([...this.placed.values()].some((p) => p.label === placed.label))
+            placed.label = this.nextLabel(d.kind);
+        if (d instanceof Cloud) {
+            const used = [...this.placed.values()].flatMap((p) => (p.device instanceof Cloud ? [p.device.settings.block] : []));
+            if (used.includes(d.settings.block))
+                d.setSettings({ ...d.settings, block: this.internet.freeBlock([...used, ...d.otherBlocks()]) });
+            d.attach();
+        }
+        this.net.addDevice(d);
+        this.placed.set(id, placed);
+    }
     get(id) {
         return this.placed.get(id);
     }
@@ -49383,7 +49628,12 @@ function palette(actions, buttons, hintEl) {
         b.addEventListener('click', () => actions.zoom(action));
         return b;
     };
-    return el('footer', { class: 'palette' }, el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...PLACEABLE.map(([k, name]) => deviceBtn(k, t(name)))), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕'), drawToggle(actions)), el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))), hintEl);
+    const undoBtn = (redo, glyph, label) => {
+        const b = el('button', { type: 'button', class: `zoom-btn ${redo ? 'redo-btn' : 'undo-btn'}`, 'aria-label': label, title: label, disabled: true }, glyph);
+        b.addEventListener('click', () => actions.undo(redo));
+        return b;
+    };
+    return el('footer', { class: 'palette' }, el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...PLACEABLE.map(([k, name]) => deviceBtn(k, t(name)))), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕'), drawToggle(actions)), el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))), el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))), hintEl);
 }
 
 return { PLACEABLE, palette };
@@ -49480,6 +49730,8 @@ class App {
             void this.save();
             return;
         }
+        if (this.undoKey(e))
+            return;
         // Nothing focused after the last click was on the workspace (its element was redrawn): its keys still apply.
         // A click anywhere else (a window, the bars) ends that, so Backspace there never deletes a device.
         const idle = document.activeElement === null || document.activeElement === document.body;
@@ -49516,7 +49768,9 @@ class App {
             },
         }, this.toolButtons);
         this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.sim.root);
-        this.paletteEl = palette({ selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw() }, this.toolButtons, this.hintEl);
+        this.paletteEl = palette({
+            selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw(), undo: (redo) => this.undo(redo),
+        }, this.toolButtons, this.hintEl);
         this.pageHost = el('main', { class: 'docs-host', hidden: true });
         this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
         this.fileInput.addEventListener('change', () => void this.openFile());
@@ -49529,6 +49783,7 @@ class App {
         window.addEventListener('pointerdown', this.onPointerDown, { capture: true });
         this.setMode(this.mode, false);
         this.showView(this.view);
+        this.markUndo();
         this.tick();
     }
     /** Where the user is (kept when the interface is rebuilt in another language). */
@@ -49636,8 +49891,50 @@ class App {
     }
     afterCommand() {
         this.topo.net.runFor(20);
+        this.canvas.edits().syncDrawings(performance.now());
         this.canvas.render();
+        this.markUndo();
         this.scheduleSave();
+    }
+    /** Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z on the network view, except while typing or inside a window (its own undo). */
+    undoKey(e) {
+        const key = e.key.toLowerCase();
+        if (!(e.ctrlKey || e.metaKey) || e.altKey || (key !== 'z' && key !== 'y') || this.view !== 'net')
+            return false;
+        const target = e.target;
+        if (target instanceof Element && target.closest('input, textarea, select, .win-layer'))
+            return false;
+        if (target instanceof HTMLElement && target.isContentEditable)
+            return false;
+        e.preventDefault();
+        this.undo(key === 'y' || e.shiftKey);
+        return true;
+    }
+    undo(redo) {
+        const edits = this.canvas.edits();
+        const done = redo ? edits.redo() : edits.undo();
+        if (!done) {
+            this.hintEl.textContent = t(redo ? 'undo.nothingRedo' : 'undo.nothingUndo');
+            return;
+        }
+        for (const id of done.removed) {
+            this.windows.close(id);
+            forgetDevice(id);
+        }
+        this.canvas.clearSelection();
+        this.afterCommand();
+        const left = done.skipped ? ` ${t('undo.cablesLeft', { n: String(done.skipped) })}` : '';
+        this.hintEl.textContent = t(redo ? 'undo.redone' : 'undo.undone', { what: t(`undo.${done.kind}`) }) + left;
+    }
+    /** The undo and redo buttons are enabled only when there is something to undo or redo. */
+    markUndo() {
+        const edits = this.canvas.edits();
+        const undo = this.paletteEl.querySelector('.undo-btn');
+        const redo = this.paletteEl.querySelector('.redo-btn');
+        if (undo)
+            undo.disabled = !edits.canUndo();
+        if (redo)
+            redo.disabled = !edits.canRedo();
     }
     tick() {
         if (this.mode === 'realtime' || this.topo.net.pending() > 0)
@@ -49658,6 +49955,7 @@ class App {
         this.topo = topo;
         this.canvas.setTopology(topo);
         this.sim.attach(topo);
+        this.markUndo();
         this.hintEl.textContent = message;
         this.scheduleSave();
     }

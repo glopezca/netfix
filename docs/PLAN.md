@@ -309,3 +309,11 @@ perdía: ahora `Canvas.render()` devuelve el foco al equipo redibujado y, si nad
 `Canvas.handleKey()` (nunca desde campos de texto, selectores ni editables). e2e con espera tras seleccionar.
 Revisión ECC: corregido el alto (con la ventana de un equipo abierta y el foco en `body`, Retroceso borraba el equipo
 seleccionado): la app solo reenvía las teclas si el último clic fue en el área de trabajo; e2e del caso.
+
+**v0.9.3:** deshacer y rehacer (Ctrl+Z; Ctrl+Y o Ctrl+Mayús+Z; botones ↶ ↷ de la paleta) de los cambios del área de
+trabajo: añadir, borrar y mover equipos, conectar y quitar cables, y dibujos (los cambios rápidos de color se agrupan).
+`net/edit-history.ts` (100 pasos, uno por topología): un equipo borrado se guarda como objeto y vuelve igual (configuración,
+archivos, túneles) con sus cables si los puertos siguen libres; si su nombre o su bloque público se dieron a otro
+equipo, toma uno libre. La configuración escrita en un equipo (CLI, paneles) no entra, como en Packet Tracer; dentro de
+ventanas y campos de texto Ctrl+Z sigue siendo de ellos. Revisión ECC: corregidos los dos altos (nombre y bloque
+público repetidos al deshacer) y los cables que no se pueden reconectar se indican en la pista.

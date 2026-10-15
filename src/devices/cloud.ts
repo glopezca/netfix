@@ -47,6 +47,11 @@ export class Cloud implements NetDevice, InternetEdge {
     for (const [name, line] of this.lines) line.apply(next.ports[name]);
   }
 
+  /** Back on the Internet after detach() (undoing the deletion of the cloud). */
+  attach(): void {
+    this.core.attach(this);
+  }
+
   detach(): void {
     this.core.detach(this);
   }

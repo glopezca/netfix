@@ -159,6 +159,24 @@ export class Topology {
     this.placed.delete(id);
   }
 
+  /**
+   * Puts back a device taken off with remove() (undo): the same object, so its configuration, files and tunnels
+   * return (its timers kept running meanwhile). A name or public block given to another device since then is not
+   * shared: the restored one takes a free one.
+   */
+  restorePlaced(id: string, placed: Placed): void {
+    if (this.placed.has(id)) return;
+    const d = placed.device;
+    if ([...this.placed.values()].some((p) => p.label === placed.label)) placed.label = this.nextLabel(d.kind);
+    if (d instanceof Cloud) {
+      const used = [...this.placed.values()].flatMap((p) => (p.device instanceof Cloud ? [p.device.settings.block] : []));
+      if (used.includes(d.settings.block)) d.setSettings({ ...d.settings, block: this.internet.freeBlock([...used, ...d.otherBlocks()]) });
+      d.attach();
+    }
+    this.net.addDevice(d);
+    this.placed.set(id, placed);
+  }
+
   get(id: string): Placed | undefined {
     return this.placed.get(id);
   }
