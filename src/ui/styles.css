@@ -464,7 +464,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 }
 
 /* ---------------------------------------------------------------- Netfix brand */
-/* Bullets of the documentation: the isologo without the N. */
+/* Bullets of the documentation: the secondary isotype (the X of four nodes). */
 .doc-page ul { list-style: none; padding-left: 1.5em; }
 .doc-page ul > li { position: relative; }
 .doc-page ul > li::before {
@@ -476,7 +476,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
   display: inline-block; vertical-align: middle; color: transparent; font-size: 0; overflow: hidden;
   background: no-repeat center / contain;
 }
-.browser-view .web-brand-logo { background-image: var(--brand-logo); width: 101px; height: 30px; }
+.browser-view .web-brand-logo { background-image: var(--brand-logo); width: 111px; height: 30px; }
 .browser-view .web-brand-iso { background-image: var(--brand-isologo); width: 18px; height: 18px; }
 .browser-view .web-brand-ison { background-image: var(--brand-isologo-n); width: 72px; height: 68px; }
 .browser-view .web-brand-foot { display: flex; align-items: center; justify-content: center; gap: 6px; font: 11px/1.4 Arial, sans-serif; color: #666; margin: 12px 0 0; }

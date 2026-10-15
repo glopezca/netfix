@@ -273,3 +273,11 @@ arrastre de un dibujo; un trazo «punto» hacía ilegible el archivo y el autogu
 topología, un solo puntero y nada durante el pellizco, cancelación sin mover, color RGB agrupado por fotograma, el dibujo
 nuevo no queda seleccionado, el servidor DHCP falso dentro del área de su LAN) y bajos (ids únicos y acotados, límite de
 500 sin falsos positivos, trazos de hasta 1000 puntos). Un dibujo malformado en un archivo se omite; el archivo se abre.
+
+## Fase 16 · Nueva identidad visual (v0.8.1)
+
+Logotipo «NETFIX» con letras dibujadas como trazados de red y nodos, isotipo principal de la N (dos nodos y un rombo:
+«Acerca de», donaciones y favicon) e isotipo secundario de la X (cuatro nodos alrededor de un rombo: viñetas de la
+documentación y marcas pequeñas de las webs simuladas). Los originales en fondo negro se pasan a transparencia con borde
+suave y color recuperado, se recortan y se escalan a los tamaños de `assets/brand/`; `npm run brand` regenera
+`src/ui/brand-data.ts` (cada imagen por debajo de 40 000 caracteres en base64, comprobado por prueba).
