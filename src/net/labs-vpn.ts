@@ -183,7 +183,7 @@ export const wireguardLab: Example = {
     t.settle();
     const [hubKey, branchKey] = [genKey(), genKey()];
     const hubIp = formatIp(hub.config.ip ?? 0);
-    hub.setServices({ ...hub.services, ssh: { enabled: true, users: [{ name: 'admin', password: 'cisco' }] } });
+    hub.setServices({ ...hub.services, ssh: { enabled: true, users: [{ name: 'admin', password: 'netfix' }] } });
     setupLinux(hub, '10.1.0.1/24', wgConf(hubKey, '10.99.0.1', pubKey(branchKey) ?? '', '10.99.0.2/32, 10.2.0.0/24', ''));
     setupLinux(branch, '10.2.0.1/24', wgConf(branchKey, '10.99.0.2', pubKey(hubKey) ?? '', '10.99.0.0/24, 10.1.0.0/24', `Endpoint = ${hubIp}:51820\nPersistentKeepalive = 25\n`));
     t.settle();

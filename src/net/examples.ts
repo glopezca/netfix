@@ -273,7 +273,7 @@ interface GigabitEthernet0/0
           { name: '@', type: 'MX', value: 'srv.aula.lab.', priority: 10, ttl: 86400 },
         ] },
         mail: { smtp: true, pop3: true, imap: true, domain: 'aula.lab', users: [{ name: 'ana', password: 'ana1' }, { name: 'luis', password: 'luis1' }] },
-        ssh: { enabled: true, users: [{ name: 'admin', password: 'cisco' }] },
+        ssh: { enabled: true, users: [{ name: 'admin', password: 'netfix' }] },
         webapps: {
           roundcube: { enabled: true, mode: 'alias', alias: '/roundcube', port: 8080 },
           admin: { enabled: true, mode: 'port', alias: '/admin', port: 10000, user: 'admin', password: 'admin' },

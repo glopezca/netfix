@@ -22,7 +22,7 @@ export function aboutView(): HTMLElement {
     brandImage('logo', 'about-logo', a.name),
     el('h1', { class: 'visually-hidden' }, a.name),
     el('p', { class: 'about-release' }, t('about.release', { version: a.version })),
-    el('p', { class: 'doc-summary' }, a.description), facts);
+    el('p', { class: 'doc-summary' }, t('about.description')), facts);
   const license = el('section', { class: 'about-license', 'aria-label': t('about.licenseTitle') },
     el('h2', {}, t('about.licenseTitle')),
     el('p', { class: 'muted' }, t('about.licenseFrom')),

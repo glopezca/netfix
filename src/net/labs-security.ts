@@ -49,7 +49,7 @@ export const sshLab: Example = {
     const sw = t.add('switch', 460, 380).device as Switch;
     const srv = t.add('server', 760, 380, { label: 'SRV' }).device as Server;
     link(t, srv.id, 'FastEthernet0', sw.id, 'FastEthernet0/24');
-    sshServer(srv, '172.20.0.10', '172.20.0.1', [{ name: 'admin', password: 'cisco' }, { name: 'ana', password: 'ana1' }]);
+    sshServer(srv, '172.20.0.10', '172.20.0.1', [{ name: 'admin', password: 'netfix' }, { name: 'ana', password: 'ana1' }]);
     pcAt(t, 220, 'PC0', sw, 'FastEthernet0/1', '172.20.0.21', '172.20.0.1');
     pcAt(t, 460, 'PC1', sw, 'FastEthernet0/2', '172.20.0.22', '172.20.0.1');
     t.settle();
@@ -125,7 +125,7 @@ export const hardeningLab: Example = {
     link(t, gw.id, 'GigabitEthernet0/1', swB.id, 'GigabitEthernet0/1');
     link(t, gw.id, 'GigabitEthernet0/2', srv.id, 'FastEthernet0');
     applyConfig(gw, GW_ACL.trim().split('\n'));
-    sshServer(srv, '172.20.0.10', '172.20.0.1', [{ name: 'admin', password: 'cisco' }, { name: 'ana', password: 'ana1' }]);
+    sshServer(srv, '172.20.0.10', '172.20.0.1', [{ name: 'admin', password: 'netfix' }, { name: 'ana', password: 'ana1' }]);
     pcAt(t, 190, 'ADMIN', swA, 'FastEthernet0/1', '192.168.10.10', '192.168.10.1');
     pcAt(t, 730, 'ALUMNO', swB, 'FastEthernet0/1', '192.168.20.10', '192.168.20.1');
     t.settle();

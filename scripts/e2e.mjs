@@ -110,7 +110,7 @@ try {
   await type('ssh admin@srv.aula.lab');
   assert.match(await page.locator('.terminal:visible').innerText(), /ED25519 key fingerprint is SHA256:/);
   await type('yes');
-  await type('cisco');
+  await type('netfix');
   await type('systemctl is-active apache2');
   assert.match(await page.locator('.terminal:visible').innerText(), /admin@srv:~\$ systemctl is-active apache2\nactive/);
   if (shots) await page.screenshot({ path: `${shots}/ssh.png` });

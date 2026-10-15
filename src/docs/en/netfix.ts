@@ -51,7 +51,7 @@ export const NETFIX_DOCS: DocGroup = {
         table(['Use', 'User', 'Password', 'Where'], [
           ['Mail (IMAP)', 'ana → ana@aula.lab', 'ana1', 'Mailbox on srv; account set up in PC0’s Mail'],
           ['Mail (POP3)', 'luis → luis@aula.lab', 'luis1', 'Mailbox on srv; account set up in PC1’s Mail'],
-          ['SSH', 'admin', 'cisco', 'ssh admin@srv.aula.lab or ssh admin@192.168.10.2'],
+          ['SSH', 'admin', 'netfix', 'ssh admin@srv.aula.lab or ssh admin@192.168.10.2'],
         ]),
         h('Terminal accounts'),
         table(['Device', 'GNU/Linux', 'Windows'], [['PC', 'alumno', 'user'], ['Server', 'admin', 'Administrator']]),
@@ -61,7 +61,7 @@ export const NETFIX_DOCS: DocGroup = {
           ['alumno (PC) / admin (server)', '1000', 'alumno|admin, adm, sudo, users', 'Local terminal user. Can use sudo.'],
           ['Server SSH accounts', '1001–9999 (fixed per name)', 'own group, users', 'One per SSH user; they are not in the sudo group.'],
         ]),
-        p('sudo asks for the account’s password when an SSH account with that name exists (admin/cisco in the lab) and remembers it for 15 minutes, as Ubuntu does. PCs have no SSH accounts, so sudo does not ask for a password.'),
+        p('sudo asks for the account’s password when an SSH account with that name exists (admin/netfix in the lab) and remembers it for 15 minutes, as Ubuntu does. PCs have no SSH accounts, so sudo does not ask for a password.'),
         code('admin@srv:~$ sudo systemctl restart apache2\n[sudo] password for admin:\nadmin@srv:~$ sudo -i\nroot@srv:~#'),
       ],
     },

@@ -53,3 +53,14 @@ test('inline markdown: links (http/https and relative to the repository), bold, 
   assert.deepEqual(inlineMarkdown('[mal](javascript:alert(1)) <img src=x>', base), [{ text: 'mal' }, { text: ' <img src=x>' }]);
   assert.deepEqual(inlineMarkdown('2 * 3 y `a*b`', base), [{ text: '2 * 3 y ' }, { text: 'a*b', code: true }]);
 });
+
+test('the About description is translated; the Spanish one is the package description', async () => {
+  const { setLocale } = await import('../../src/i18n/locale.ts');
+  const { t } = await import('../../src/i18n/t.ts');
+  setLocale('es-ES');
+  assert.equal(t('about.description'), pkg.description);
+  assert.match(pkg.description, /servicios en red e Internet/);
+  setLocale('en-GB');
+  assert.match(t('about.description'), /^Network simulator focused on network and Internet services/);
+  setLocale('es-ES');
+});

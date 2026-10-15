@@ -317,3 +317,9 @@ archivos, túneles) con sus cables si los puertos siguen libres; si su nombre o 
 equipo, toma uno libre. La configuración escrita en un equipo (CLI, paneles) no entra, como en Packet Tracer; dentro de
 ventanas y campos de texto Ctrl+Z sigue siendo de ellos. Revisión ECC: corregidos los dos altos (nombre y bloque
 público repetidos al deshacer) y los cables que no se pueden reconectar se indican en la pista.
+
+**v0.9.4:** «Acerca de» describe Netfix como simulador orientado a los servicios en red e Internet y a las tareas
+desde sistemas operativos reales emulados (traducido: `about.description`; el español es la descripción de
+`package.json`). La cuenta SSH `admin` de los laboratorios (servidores, WireGuard, SSH/SFTP, bastionado) pasa de
+`cisco` a `netfix`, también en el ejemplo `username admin … secret` de la gestión web de IOS, la documentación, los
+enunciados y el README.

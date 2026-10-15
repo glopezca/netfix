@@ -20,6 +20,7 @@ export const PAGES_EN: Readonly<Record<PagesKey, string>> = {
   'donate.thanks': 'Thank you for helping Netfix keep growing.',
   'about.label': 'About Netfix',
   'about.crumb': 'About',
+  'about.description': 'Network simulator focused on network and Internet services, with special emphasis on the tasks carried out from emulated real operating systems. Runs in a web browser.',
   'about.version': 'Version',
   'about.release': 'Version {version}',
   'about.author': 'Author',

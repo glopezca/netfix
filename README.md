@@ -154,7 +154,7 @@ través de un relay (`ip helper-address` apuntando al servidor).
 El laboratorio **«Server: DHCP, DNS, web, correo y SSH»** lo trae todo configurado:
 - Abre `http://www.aula.lab` en el navegador de PC0.
 - Lee el correo de `ana` en PC0 (IMAP) y el de `luis` en PC1 (POP3).
-- Entra al servidor con `ssh admin@srv.aula.lab` (contraseña `cisco`).
+- Entra al servidor con `ssh admin@srv.aula.lab` (contraseña `netfix`).
 
 ### Internet, NAT y gestión web
 
@@ -180,10 +180,10 @@ Todas son credenciales de laboratorio, ficticias. Se cambian en la pestaña **Se
 |---|---|---|---|
 | Correo (IMAP) | `ana` → `ana@aula.lab` | `ana1` | Buzón en `srv`; cuenta configurada en el Correo de **PC0** |
 | Correo (POP3) | `luis` → `luis@aula.lab` | `luis1` | Buzón en `srv`; cuenta configurada en el Correo de **PC1** |
-| SSH | `admin` | `cisco` | `ssh admin@srv.aula.lab` o `ssh admin@192.168.10.2` desde cualquier terminal |
+| SSH | `admin` | `netfix` | `ssh admin@srv.aula.lab` o `ssh admin@192.168.10.2` desde cualquier terminal |
 
 Usuarios de las terminales locales (entran sin contraseña). En Linux están en el grupo `sudo`: en el
-servidor, `sudo` pide la contraseña SSH de la cuenta (`cisco` para `admin`); en los PCs no la pide.
+servidor, `sudo` pide la contraseña SSH de la cuenta (`netfix` para `admin`); en los PCs no la pide.
 `root` no tiene contraseña, así que `su` falla: usa `sudo -i`.
 
 | Equipo | GNU/Linux | Windows |

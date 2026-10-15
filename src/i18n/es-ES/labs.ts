@@ -13,7 +13,7 @@ export const LABS_ES = {
   'lab.cliente.title': 'Router como cliente DHCP',
   'lab.cliente.summary': 'CPE obtiene su IP WAN con «ip address dhcp»; ISP la fija con un pool host y su client-identifier cisco-….',
   'lab.servidores.title': 'Server: DHCP, DNS, web, correo y SSH',
-  'lab.servidores.summary': 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave cisco), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/admin).',
+  'lab.servidores.summary': 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave netfix), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/admin).',
   'lab.blanco.title': 'Área de trabajo en blanco',
   'lab.blanco.summary': 'Empieza desde cero: coloca dispositivos y conéctalos con el cable.',
   'lab.internet.title': 'Internet: dos sedes y DNS públicos',
@@ -27,7 +27,7 @@ export const LABS_ES = {
   'lab.dns-reenvio.title': 'DNS de empresa que reenvía a Internet',
   'lab.dns-reenvio.summary': 'ns1 (bind9) responde la zona empresa.lan y reenvía el resto a 8.8.8.8/8.8.4.4 con caché; solo hace recursión para sus redes (localnets). El PC de invitados (otra red) obtiene empresa.lan pero REFUSED para nombres de Internet. Prueba: dig www.empresa.lan, dig www.google.com (ra), sudo rndc dumpdb y los registros de bind9.',
   'lab.ssh-sftp.title': 'SSH y SFTP con claves',
-  'lab.ssh-sftp.summary': 'srv.aula.lab acepta SSH y SFTP (ana/ana1, admin/cisco). En PC1: pestaña Cliente SSH → Claves (genera ed25519), ssh-copy-id ana@srv.aula.lab, Archivos (SFTP) para subir y bajar. Después pon «PasswordAuthentication no» en un fichero de /etc/ssh/sshd_config.d/ y recarga: solo entra quien tiene clave. Los permisos son los de cada usuario en el servidor.',
+  'lab.ssh-sftp.summary': 'srv.aula.lab acepta SSH y SFTP (ana/ana1, admin/netfix). En PC1: pestaña Cliente SSH → Claves (genera ed25519), ssh-copy-id ana@srv.aula.lab, Archivos (SFTP) para subir y bajar. Después pon «PasswordAuthentication no» en un fichero de /etc/ssh/sshd_config.d/ y recarga: solo entra quien tiene clave. Los permisos son los de cada usuario en el servidor.',
   'lab.bastionado.title': 'Bastionado: ACL, nftables y sshd',
   'lab.bastionado.summary': 'Defensa en profundidad: la ACL extendida A-SERVIDORES de GW deja la web a todos y SSH/ping solo a ADMINISTRACION (deny … log); el servidor repite la política con nftables desde su terminal (/etc/nftables.conf: input drop, log NFT-DROP) y sshd_config.d (sin root, AllowUsers admin, MaxAuthTries 3). Prueba desde ADMIN y ALUMNO: ssh admin@172.20.0.10, curl, ping, nmap; en GW show access-lists.',
 } as const;

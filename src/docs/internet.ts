@@ -87,7 +87,7 @@ export const INTERNET_DOCS: DocGroup = {
       summary: 'ip http server, puerto, autenticación enable o local, usuarios y páginas del servidor HTTP de IOS.',
       blocks: [
         p('Routers 2911 y switches 2960 (en una SVI, interface Vlan1) tienen el servidor HTTP de IOS. Se activa en la CLI o en la pestaña «Gestión web» de su ventana (casilla, puerto y usuarios).'),
-        code('Router(config)# ip http server\nRouter(config)# ip http port 8080\nRouter(config)# ip http authentication local\nRouter(config)# username admin privilege 15 secret cisco'),
+        code('Router(config)# ip http server\nRouter(config)# ip http port 8080\nRouter(config)# ip http authentication local\nRouter(config)# username admin privilege 15 secret netfix'),
         table(['Orden', 'Uso'], [
           ['ip http server', 'Escucha en el puerto 80 (o el de ip http port).'],
           ['ip http port N', 'Cambia el puerto (1-65535).'],

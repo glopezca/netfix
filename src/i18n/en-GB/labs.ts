@@ -15,7 +15,7 @@ export const LABS_EN: Readonly<Record<LabsKey, string>> = {
   'lab.cliente.title': 'Router as a DHCP client',
   'lab.cliente.summary': 'CPE gets its WAN address with “ip address dhcp”; ISP pins it with a host pool and its cisco-… client-identifier.',
   'lab.servidores.title': 'Server: DHCP, DNS, web, mail and SSH',
-  'lab.servidores.summary': 'SRV0 (Ubuntu) provides DHCP, DNS (aula.lab), web, mail and SSH. Try: browser http://www.aula.lab, mail ana/ana1 (PC0, IMAP) and luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (password cisco), webmail http://webmail.aula.lab/roundcube and web admin http://srv.aula.lab:10000 (admin/admin).',
+  'lab.servidores.summary': 'SRV0 (Ubuntu) provides DHCP, DNS (aula.lab), web, mail and SSH. Try: browser http://www.aula.lab, mail ana/ana1 (PC0, IMAP) and luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (password netfix), webmail http://webmail.aula.lab/roundcube and web admin http://srv.aula.lab:10000 (admin/admin).',
   'lab.blanco.title': 'Blank workspace',
   'lab.blanco.summary': 'Start from scratch: place devices and connect them with the cable tool.',
   'lab.internet.title': 'Internet: two sites and public DNS',
@@ -29,7 +29,7 @@ export const LABS_EN: Readonly<Record<LabsKey, string>> = {
   'lab.dns-reenvio.title': 'Company DNS forwarding to the Internet',
   'lab.dns-reenvio.summary': 'ns1 (bind9) answers the empresa.lan zone and forwards everything else to 8.8.8.8/8.8.4.4 with a cache; it only recurses for its own networks (localnets). The guest PC (another network) gets empresa.lan but REFUSED for Internet names. Try: dig www.empresa.lan, dig www.google.com (ra), sudo rndc dumpdb and the bind9 logs.',
   'lab.ssh-sftp.title': 'SSH and SFTP with keys',
-  'lab.ssh-sftp.summary': 'srv.aula.lab accepts SSH and SFTP (ana/ana1, admin/cisco). On PC1: SSH client tab → Keys (generate ed25519), ssh-copy-id ana@srv.aula.lab, Files (SFTP) to upload and download. Then put “PasswordAuthentication no” in a file under /etc/ssh/sshd_config.d/ and reload: only users with a key get in. Permissions are each user\'s on the server.',
+  'lab.ssh-sftp.summary': 'srv.aula.lab accepts SSH and SFTP (ana/ana1, admin/netfix). On PC1: SSH client tab → Keys (generate ed25519), ssh-copy-id ana@srv.aula.lab, Files (SFTP) to upload and download. Then put “PasswordAuthentication no” in a file under /etc/ssh/sshd_config.d/ and reload: only users with a key get in. Permissions are each user\'s on the server.',
   'lab.bastionado.title': 'Hardening: ACL, nftables and sshd',
   'lab.bastionado.summary': 'Defence in depth: GW\'s extended ACL A-SERVIDORES lets everyone use the web and only ADMINISTRACION use SSH/ping (deny … log); the server repeats the policy with nftables from its terminal (/etc/nftables.conf: input drop, NFT-DROP log) and sshd_config.d (no root, AllowUsers admin, MaxAuthTries 3). Try from ADMIN and ALUMNO: ssh admin@172.20.0.10, curl, ping, nmap; on GW show access-lists.',
 };

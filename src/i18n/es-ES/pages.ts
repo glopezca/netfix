@@ -18,6 +18,7 @@ export const PAGES_ES = {
   'donate.thanks': 'Gracias por ayudar a que Netfix siga creciendo.',
   'about.label': 'Acerca de Netfix',
   'about.crumb': 'Acerca de',
+  'about.description': 'Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.',
   'about.version': 'Versión',
   'about.release': 'Versión {version}',
   'about.author': 'Autoría',

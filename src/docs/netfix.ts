@@ -51,7 +51,7 @@ export const NETFIX_DOCS: DocGroup = {
         table(['Uso', 'Usuario', 'Contraseña', 'Dónde'], [
           ['Correo (IMAP)', 'ana → ana@aula.lab', 'ana1', 'Buzón en srv; cuenta configurada en el Correo de PC0'],
           ['Correo (POP3)', 'luis → luis@aula.lab', 'luis1', 'Buzón en srv; cuenta configurada en el Correo de PC1'],
-          ['SSH', 'admin', 'cisco', 'ssh admin@srv.aula.lab o ssh admin@192.168.10.2'],
+          ['SSH', 'admin', 'netfix', 'ssh admin@srv.aula.lab o ssh admin@192.168.10.2'],
         ]),
         h('Cuentas de las terminales'),
         table(['Equipo', 'GNU/Linux', 'Windows'], [['PC', 'alumno', 'user'], ['Server', 'admin', 'Administrator']]),
@@ -61,7 +61,7 @@ export const NETFIX_DOCS: DocGroup = {
           ['alumno (PC) / admin (servidor)', '1000', 'alumno|admin, adm, sudo, users', 'Usuario de la terminal local. Puede usar sudo.'],
           ['Cuentas SSH del servidor', '1001–9999 (fijo por nombre)', 'propio, users', 'Una por cada usuario SSH; no están en el grupo sudo.'],
         ]),
-        p('sudo pide la contraseña de la cuenta cuando existe una cuenta SSH con ese nombre (admin/cisco en el laboratorio) y la recuerda 15 minutos, como Ubuntu. En los PC no hay cuentas SSH, así que sudo no pide contraseña.'),
+        p('sudo pide la contraseña de la cuenta cuando existe una cuenta SSH con ese nombre (admin/netfix en el laboratorio) y la recuerda 15 minutos, como Ubuntu. En los PC no hay cuentas SSH, así que sudo no pide contraseña.'),
         code('admin@srv:~$ sudo systemctl restart apache2\n[sudo] password for admin:\nadmin@srv:~$ sudo -i\nroot@srv:~#'),
       ],
     },

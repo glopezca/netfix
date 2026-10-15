@@ -40,7 +40,7 @@ test('hardening lab: admin gets SSH and ping, students only the web; ACL and nft
   const student = createShell(t.byLabel('ALUMNO') as Pc, 'linux');
   assert.match(all(admin.run('ping -c 2 172.20.0.10')), /[12] received/);
   admin.run('ssh -o StrictHostKeyChecking=accept-new admin@172.20.0.10');
-  admin.run('cisco');
+  admin.run('netfix');
   assert.equal(all(admin.run('whoami')), 'admin');
   admin.run('exit');
   assert.match(all(student.run('curl -s http://172.20.0.10/')), /Servidor web de Netfix/);
