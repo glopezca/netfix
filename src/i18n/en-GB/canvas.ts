@@ -3,7 +3,7 @@ import type { CanvasKey } from '../es-ES/canvas.ts';
 
 export const CANVAS_EN: Readonly<Record<CanvasKey, string>> = {
   'canvas.label': 'Logical workspace',
-  'canvas.hint.select': 'Drag to move; drag the background to pan. Double-click, double-tap or long-press to open.',
+  'canvas.hint.select': 'Drag to move; drag the background to pan. Double-click, double-tap or long-press to open. Del or Backspace removes the selected device or cable.',
   'canvas.hint.cable': 'Cable: tap the first device and choose a port.',
   'canvas.hint.delete': 'Delete: tap a device, a cable or a drawing (inside an area works too).',
   'canvas.hint.place': 'Tap the workspace to place the device.',

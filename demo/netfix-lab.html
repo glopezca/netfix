@@ -984,7 +984,7 @@ __m["i18n/es-ES/canvas.js"] = (() => {
 /** Español (España): área de trabajo (lienzo, cables, puertos). */
 const CANVAS_ES = {
     'canvas.label': 'Área de trabajo lógica',
-    'canvas.hint.select': 'Arrastra para mover; arrastra el fondo para desplazarte. Doble clic, doble toque o pulsación larga para abrir.',
+    'canvas.hint.select': 'Arrastra para mover; arrastra el fondo para desplazarte. Doble clic, doble toque o pulsación larga para abrir. Supr o Retroceso borra el equipo o cable seleccionado.',
     'canvas.hint.cable': 'Cable: toca el primer dispositivo y elige un puerto.',
     'canvas.hint.delete': 'Eliminar: toca un dispositivo, un cable o un dibujo (también el interior de un área).',
     'canvas.hint.place': 'Toca el área de trabajo para colocar el dispositivo.',
@@ -1000,7 +1000,7 @@ return { CANVAS_ES };
 __m["i18n/en-GB/canvas.js"] = (() => {
 const CANVAS_EN = {
     'canvas.label': 'Logical workspace',
-    'canvas.hint.select': 'Drag to move; drag the background to pan. Double-click, double-tap or long-press to open.',
+    'canvas.hint.select': 'Drag to move; drag the background to pan. Double-click, double-tap or long-press to open. Del or Backspace removes the selected device or cable.',
     'canvas.hint.cable': 'Cable: tap the first device and choose a port.',
     'canvas.hint.delete': 'Delete: tap a device, a cable or a drawing (inside an area works too).',
     'canvas.hint.place': 'Tap the workspace to place the device.',
@@ -4382,7 +4382,7 @@ class Canvas {
         this.linkLayer.before(this.draw.layer);
         this.svgEl.addEventListener('pointerdown', (e) => { this.lastPointer = e.pointerType; }, { capture: true });
         this.svgEl.addEventListener('pointerdown', (e) => this.onBackground(e));
-        this.root.addEventListener('keydown', (e) => this.onKey(e));
+        this.root.addEventListener('keydown', (e) => this.handleKey(e));
         this.viewport = new Viewport(this.root, this.svgEl, WORLD_W, WORLD_H);
     }
     setTopology(topo) {
@@ -4431,9 +4431,16 @@ class Canvas {
     render() {
         this.draw.render();
         this.renderLinks();
+        // The redraw replaces the device elements: the focused one gets its focus back, or Supr would stop working.
+        const active = document.activeElement;
+        const focused = active instanceof Element && this.deviceLayer.contains(active) ? active.getAttribute('data-id') : null;
         clear(this.deviceLayer);
-        for (const [id, p] of this.topo.placed)
-            this.deviceLayer.appendChild(this.drawDevice(id, p));
+        for (const [id, p] of this.topo.placed) {
+            const g = this.drawDevice(id, p);
+            this.deviceLayer.appendChild(g);
+            if (id === focused)
+                g.focus({ preventScroll: true });
+        }
     }
     markSelection() {
         for (const node of this.svgEl.querySelectorAll('[data-id], [data-link]')) {
@@ -4653,8 +4660,15 @@ class Canvas {
     hideMenu() {
         this.menu.hidden = true;
     }
-    onKey(e) {
-        if (e.target instanceof HTMLInputElement)
+    /**
+     * Keys of the workspace: Escape goes back to Select; Supr (Delete) or Backspace removes the selected drawing,
+     * device (with its cables) or cable. Also called by the app when nothing has the focus.
+     */
+    handleKey(e) {
+        const target = e.target;
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)
+            return;
+        if (target instanceof HTMLElement && target.isContentEditable)
             return;
         if (e.key === 'Escape') {
             this.setTool({ kind: 'select' });
@@ -4672,6 +4686,7 @@ class Canvas {
                 this.topo.net.disconnect(id);
             }
             this.selected = null;
+            e.preventDefault();
             this.events.changed();
         }
     }
@@ -17978,7 +17993,7 @@ const NETFIX_DOCS = {
                     ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la documentación y las páginas web simuladas sin recargar.'],
                 ]),
                 h('Paleta y herramientas'),
-                list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.', 'Seleccionar: arrastra equipos; doble clic abre su ventana.', 'Eliminar: borra equipos o cables.', 'Dibujo: abre la barra para delimitar áreas, trazar líneas y escribir etiquetas (ver «Dibujo»).'),
+                list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.', 'Seleccionar: arrastra equipos; doble clic abre su ventana. Con un equipo o un cable seleccionado, Supr o Retroceso lo borra (un equipo se lleva sus cables).', 'Eliminar: borra equipos o cables.', 'Dibujo: abre la barra para delimitar áreas, trazar líneas y escribir etiquetas (ver «Dibujo»).'),
                 h('Ventanas de los equipos'),
                 table(['Equipo', 'Pestañas'], [
                     ['Router IOS / Switch IOS', 'Equipo (nombre visible y hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
@@ -19375,7 +19390,7 @@ const NETFIX_DOCS = {
                     ['Language', 'Español (España) or English (UK): changes the whole interface, the documentation and the simulated web pages without reloading.'],
                 ]),
                 h('Palette and tools'),
-                list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.', 'Select: drag devices; double-click opens their window.', 'Delete: removes devices or cables.', 'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).'),
+                list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.', 'Select: drag devices; double-click opens their window. With a device or a cable selected, Del or Backspace removes it (a device takes its cables with it).', 'Delete: removes devices or cables.', 'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).'),
                 h('Device windows'),
                 table(['Device', 'Tabs'], [
                     ['IOS router / IOS switch', 'Device (workspace name and hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
@@ -27863,7 +27878,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.9.1",
+    "version": "0.9.2",
     "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -49463,7 +49478,18 @@ class App {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
             e.preventDefault();
             void this.save();
+            return;
         }
+        // Nothing focused after the last click was on the workspace (its element was redrawn): its keys still apply.
+        // A click anywhere else (a window, the bars) ends that, so Backspace there never deletes a device.
+        const idle = document.activeElement === null || document.activeElement === document.body;
+        if (idle && this.workspaceActive && this.view === 'net' && !e.defaultPrevented && !e.ctrlKey && !e.metaKey && !e.altKey)
+            this.canvas.handleKey(e);
+    };
+    /** The last pointer went down on the workspace (not on a window, a bar or a page). */
+    workspaceActive = false;
+    onPointerDown = (e) => {
+        this.workspaceActive = e.target instanceof Node && this.canvas.root.contains(e.target);
     };
     constructor(root, topo, initial = { view: 'net', mode: 'realtime' }) {
         this.mode = initial.mode;
@@ -49500,6 +49526,7 @@ class App {
         this.canvas.frameContent();
         this.interval = window.setInterval(() => this.tick(), TICK_MS);
         window.addEventListener('keydown', this.onKeyDown);
+        window.addEventListener('pointerdown', this.onPointerDown, { capture: true });
         this.setMode(this.mode, false);
         this.showView(this.view);
         this.tick();
@@ -49512,6 +49539,7 @@ class App {
     dispose() {
         window.clearInterval(this.interval);
         window.removeEventListener('keydown', this.onKeyDown);
+        window.removeEventListener('pointerdown', this.onPointerDown, { capture: true });
         this.flushSave();
         this.windows.closeAll();
         this.sim.dispose();

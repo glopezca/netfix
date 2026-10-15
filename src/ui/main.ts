@@ -51,7 +51,17 @@ class App {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
       void this.save();
+      return;
     }
+    // Nothing focused after the last click was on the workspace (its element was redrawn): its keys still apply.
+    // A click anywhere else (a window, the bars) ends that, so Backspace there never deletes a device.
+    const idle = document.activeElement === null || document.activeElement === document.body;
+    if (idle && this.workspaceActive && this.view === 'net' && !e.defaultPrevented && !e.ctrlKey && !e.metaKey && !e.altKey) this.canvas.handleKey(e);
+  };
+  /** The last pointer went down on the workspace (not on a window, a bar or a page). */
+  private workspaceActive = false;
+  private readonly onPointerDown = (e: PointerEvent): void => {
+    this.workspaceActive = e.target instanceof Node && this.canvas.root.contains(e.target);
   };
 
   constructor(root: HTMLElement, topo?: Topology, initial: { readonly view: View; readonly mode: Mode } = { view: 'net', mode: 'realtime' }) {
@@ -88,6 +98,7 @@ class App {
     this.canvas.frameContent();
     this.interval = window.setInterval(() => this.tick(), TICK_MS);
     window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('pointerdown', this.onPointerDown, { capture: true });
     this.setMode(this.mode, false);
     this.showView(this.view);
     this.tick();
@@ -102,6 +113,7 @@ class App {
   dispose(): void {
     window.clearInterval(this.interval);
     window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('pointerdown', this.onPointerDown, { capture: true });
     this.flushSave();
     this.windows.closeAll();
     this.sim.dispose();

@@ -41,6 +41,36 @@ try {
   if (shots) await page.screenshot({ path: `${shots}/desk-en.png` });
   await page.click('.win-close');
 
+  // 1b. Del (Supr) or Backspace removes the selected device (with its cables) or the selected cable, even after the
+  // periodic redraws of the workspace have replaced the selected element.
+  const census = () => page.evaluate(() => [document.querySelectorAll('g.device').length, document.querySelectorAll('g.link').length]);
+  const [devs, links] = await census();
+  await page.click('g.device-pc >> nth=1');
+  await page.waitForTimeout(1500);
+  await page.keyboard.press('Delete');
+  assert.deepEqual(await census(), [devs - 1, links - 1], 'Del removes the selected device and its cable');
+  // Middle of the first cable on screen (a vertical cable has no width, so no bounding box to click).
+  const mid = await page.locator('g.link .cable-hit').first().evaluate((l) => {
+    const m = l.getScreenCTM();
+    const p = (x, y) => new DOMPoint(x, y).matrixTransform(m);
+    const a = p(l.x1.baseVal.value, l.y1.baseVal.value);
+    const b = p(l.x2.baseVal.value, l.y2.baseVal.value);
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  });
+  await page.mouse.click(mid.x, mid.y);
+  await page.waitForTimeout(1500);
+  await page.keyboard.press('Backspace');
+  assert.deepEqual(await census(), [devs - 1, links - 2], 'Backspace removes the selected cable');
+  // With a device selected and its window open, Backspace after clicking the window (focus on body) deletes nothing.
+  await page.click('g.device-pc >> nth=0');
+  await page.dblclick('g.device-pc >> nth=0');
+  await page.waitForSelector('.window');
+  await page.click('.window .win-title');
+  await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+  await page.keyboard.press('Backspace');
+  assert.deepEqual(await census(), [devs - 1, links - 2], 'Backspace on a window does not delete the selected device');
+  await page.click('.win-close');
+
   // 2. Changing language while reading the docs keeps the docs open, now in the other language.
   await page.click('button.seg:has-text("Documentation")');
   await page.waitForSelector('.doc-group:has-text("Linux Terminal")');

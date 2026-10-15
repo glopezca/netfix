@@ -302,3 +302,10 @@ separan los switches para que no se solapen).
 «Borrar todos» (con confirmación; quita también las áreas del laboratorio, nunca equipos ni cables). Con la herramienta
 Eliminar basta tocar el interior de un área. `Topology.clearAnnotations()`; la selección de la capa de dibujo se notifica
 a `DrawState` (un solo punto, `setSelected`) y se pierde al cerrar la barra. Revisión ECC: sin críticos ni altos.
+
+**v0.9.2:** Supr o Retroceso borran el equipo (con sus cables) o el cable seleccionado. Ya existía el atajo, pero el
+redibujo periódico del área de trabajo sustituía el elemento enfocado y el foco caía en `body`, con lo que la tecla se
+perdía: ahora `Canvas.render()` devuelve el foco al equipo redibujado y, si nada tiene el foco, la app pasa las teclas a
+`Canvas.handleKey()` (nunca desde campos de texto, selectores ni editables). e2e con espera tras seleccionar.
+Revisión ECC: corregido el alto (con la ventana de un equipo abierta y el foco en `body`, Retroceso borraba el equipo
+seleccionado): la app solo reenvía las teclas si el último clic fue en el área de trabajo; e2e del caso.

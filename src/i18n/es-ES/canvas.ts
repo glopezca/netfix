@@ -1,7 +1,7 @@
 /** Español (España): área de trabajo (lienzo, cables, puertos). */
 export const CANVAS_ES = {
   'canvas.label': 'Área de trabajo lógica',
-  'canvas.hint.select': 'Arrastra para mover; arrastra el fondo para desplazarte. Doble clic, doble toque o pulsación larga para abrir.',
+  'canvas.hint.select': 'Arrastra para mover; arrastra el fondo para desplazarte. Doble clic, doble toque o pulsación larga para abrir. Supr o Retroceso borra el equipo o cable seleccionado.',
   'canvas.hint.cable': 'Cable: toca el primer dispositivo y elige un puerto.',
   'canvas.hint.delete': 'Eliminar: toca un dispositivo, un cable o un dibujo (también el interior de un área).',
   'canvas.hint.place': 'Toca el área de trabajo para colocar el dispositivo.',

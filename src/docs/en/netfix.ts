@@ -25,7 +25,7 @@ export const NETFIX_DOCS: DocGroup = {
         list(
           'In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.',
           'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.',
-          'Select: drag devices; double-click opens their window.',
+          'Select: drag devices; double-click opens their window. With a device or a cable selected, Del or Backspace removes it (a device takes its cables with it).',
           'Delete: removes devices or cables.',
           'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).',
         ),

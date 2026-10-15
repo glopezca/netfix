@@ -72,7 +72,7 @@ export class Canvas {
     this.linkLayer.before(this.draw.layer);
     this.svgEl.addEventListener('pointerdown', (e) => { this.lastPointer = e.pointerType; }, { capture: true });
     this.svgEl.addEventListener('pointerdown', (e) => this.onBackground(e));
-    this.root.addEventListener('keydown', (e) => this.onKey(e));
+    this.root.addEventListener('keydown', (e) => this.handleKey(e));
     this.viewport = new Viewport(this.root, this.svgEl, WORLD_W, WORLD_H);
   }
 
@@ -129,8 +129,15 @@ export class Canvas {
   render(): void {
     this.draw.render();
     this.renderLinks();
+    // The redraw replaces the device elements: the focused one gets its focus back, or Supr would stop working.
+    const active = document.activeElement;
+    const focused = active instanceof Element && this.deviceLayer.contains(active) ? active.getAttribute('data-id') : null;
     clear(this.deviceLayer);
-    for (const [id, p] of this.topo.placed) this.deviceLayer.appendChild(this.drawDevice(id, p));
+    for (const [id, p] of this.topo.placed) {
+      const g = this.drawDevice(id, p);
+      this.deviceLayer.appendChild(g);
+      if (id === focused) g.focus({ preventScroll: true });
+    }
   }
 
   private markSelection(): void {
@@ -349,8 +356,14 @@ export class Canvas {
     this.menu.hidden = true;
   }
 
-  private onKey(e: KeyboardEvent): void {
-    if (e.target instanceof HTMLInputElement) return;
+  /**
+   * Keys of the workspace: Escape goes back to Select; Supr (Delete) or Backspace removes the selected drawing,
+   * device (with its cables) or cable. Also called by the app when nothing has the focus.
+   */
+  handleKey(e: KeyboardEvent): void {
+    const target = e.target;
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
+    if (target instanceof HTMLElement && target.isContentEditable) return;
     if (e.key === 'Escape') {
       this.setTool({ kind: 'select' });
       return;
@@ -365,6 +378,7 @@ export class Canvas {
         this.topo.net.disconnect(id);
       }
       this.selected = null;
+      e.preventDefault();
       this.events.changed();
     }
   }
