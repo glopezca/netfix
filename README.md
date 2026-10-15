@@ -8,7 +8,7 @@ Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado par
 **DHCP en Cisco IOS** con la sintaxis, la ayuda contextual y las salidas del equipo real, y
 **servicios de red en servidores** (DHCP, DNS, HTTP, correo y SSH) con terminales Linux y Windows.
 
-![Área de trabajo de Netfix con el laboratorio «DHCP básico»: Router0 (GW) conectado a Switch0 y a tres PCs, con luces de enlace verdes y la paleta de dispositivos abajo](docs/img/netfix-workspace.png)
+![Área de trabajo de Netfix con el laboratorio «Router Linux con NAT y DMZ»: áreas de color para Internet (red pública), la LAN 192.168.1.0/24, la DMZ 172.16.0.0/24 y el cliente externo alrededor del router Linux FW; a la derecha, su ventana Servicios → Firewall con la cadena forward de nftables (LAN a todas partes, DMZ solo a Internet, web publicada) y abajo la paleta de dispositivos](docs/img/netfix-workspace.png)
 
 - Área de trabajo lógica con routers 2911, switches 2960, PCs y **servidores** (Server), cables y luces de enlace.
 - CLI de IOS completa para DHCP: pools de red y de host, `client-identifier`,
