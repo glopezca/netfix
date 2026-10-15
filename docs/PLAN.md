@@ -359,3 +359,8 @@ de los editores a pantalla completa se mide en su propia caja: en móvil la barr
 Revisión ECC: sin críticos ni altos; corregidos los medios (Alt+letra por la tecla física, para que Option en Mac
 funcione, y Cmd se deja al navegador; la ayuda de teclas cabe en la barra) y los bajos (el menú se recorta en pantallas
 estrechas; F10 va junto a Esc en la barra táctil; las pistas de la barra de estado caben enteras).
+
+**Modelos por fase (ECC):** regla propia en `.claude/rules/project/model-selection.md`, resumida en `CLAUDE.md`. opus
+para planificar, implementar lo que cruza módulos, seguridad y diseño visual; sonnet para tareas acotadas, revisión y
+salida IOS; haiku para búsquedas, textos y resúmenes. `security-reviewer` pasa a opus (los demás agentes ya tenían su
+modelo: `planner` opus, el resto sonnet).

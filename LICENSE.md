@@ -62,7 +62,8 @@ Las reglas y los agentes de la carpeta `.claude/` (`.claude/rules/`, `.claude/ag
 y se mantienen bajo su licencia original **MIT**, © 2026 Affaan Mustafa.
 El texto completo está en [`.claude/ECC-LICENSE`](.claude/ECC-LICENSE).
 La licencia MIT es compatible con la GPLv3; la GPL y la CC BY-SA de este repositorio no se
-aplican a esos archivos.
+aplican a esos archivos. Excepción: `.claude/rules/project/` contiene reglas propias de Netfix (por ejemplo, el modelo
+recomendado para cada fase) y es documentación del proyecto, bajo CC BY-SA 4.0.
 
 ### Marcas
 

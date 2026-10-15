@@ -4,7 +4,7 @@ Netfix (antes netsim): simulador de redes en el navegador, clon funcional de Cis
 la CLI de Cisco IOS y su servidor DHCP. TypeScript sin dependencias de ejecución.
 
 Este proyecto sigue **Everything Claude Code (ECC)** v2.2.x. Las reglas están en
-`.claude/rules/` (common + typescript) y los agentes en `.claude/agents/`
+`.claude/rules/` (common + typescript, y `project/` con las reglas propias) y los agentes en `.claude/agents/`
 (planner, tdd-guide, code-reviewer, typescript-reviewer, network-config-reviewer,
 security-reviewer). Licencia de ECC en `.claude/ECC-LICENSE` (MIT).
 
@@ -16,6 +16,12 @@ security-reviewer). Licencia de ECC en `.claude/ECC-LICENSE` (MIT).
    con `network-config-reviewer`.
 4. **Commit** convencional (`feat:`, `fix:`, `test:`, `docs:`, `chore:`, `ci:`), una fase por bloque.
 5. `npm run check` (typecheck + tests + build) debe pasar antes de cada commit.
+
+## Modelos por fase
+
+Detalle en `.claude/rules/project/model-selection.md`. Resumen: **opus** para planificar, implementar lo que cruza
+módulos, seguridad y diseño visual; **sonnet** para tareas acotadas, revisión e IOS; **haiku** para búsquedas, textos y
+resúmenes. Los agentes de `.claude/agents/` ya fijan su modelo (`planner` y `security-reviewer`: opus; el resto: sonnet).
 
 ## Comandos
 
