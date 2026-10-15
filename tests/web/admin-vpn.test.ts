@@ -30,7 +30,7 @@ const post = (web: BrowserEngine, form: [string, string][]): string => body(web.
 
 test('Seguridad → VPN: keys, interface, peers and on/off; the private key never reaches the page', () => {
   const { lr, web } = lab();
-  web.login(URL, 'admin', 'admin');
+  web.login(URL, 'admin', 'netfix');
   assert.match(body(web.open(`${URL}?page=vpn`)), /Túnel wg0[\s\S]*Sin pares\./);
   post(web, [['action', 'vpn-iface'], ['genkey', '1'], ['address', '10.10.0.1/24'], ['listenPort', '51820']]);
   const st = vpnStatus(lr);

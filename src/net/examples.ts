@@ -276,7 +276,7 @@ interface GigabitEthernet0/0
         ssh: { enabled: true, users: [{ name: 'admin', password: 'netfix' }] },
         webapps: {
           roundcube: { enabled: true, mode: 'alias', alias: '/roundcube', port: 8080 },
-          admin: { enabled: true, mode: 'port', alias: '/admin', port: 10000, user: 'admin', password: 'admin' },
+          admin: { enabled: true, mode: 'port', alias: '/admin', port: 10000, user: 'admin', password: 'netfix' },
         },
       });
       pc0.mailAccount = { name: 'Ana', address: 'ana@aula.lab', incoming: 'srv.aula.lab', outgoing: 'srv.aula.lab', protocol: 'IMAP', user: 'ana', password: 'ana1' };

@@ -13,7 +13,7 @@ export const LABS_ES = {
   'lab.cliente.title': 'Router como cliente DHCP',
   'lab.cliente.summary': 'CPE obtiene su IP WAN con «ip address dhcp»; ISP la fija con un pool host y su client-identifier cisco-….',
   'lab.servidores.title': 'Server: DHCP, DNS, web, correo y SSH',
-  'lab.servidores.summary': 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave netfix), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/admin).',
+  'lab.servidores.summary': 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave netfix), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/netfix).',
   'lab.blanco.title': 'Área de trabajo en blanco',
   'lab.blanco.summary': 'Empieza desde cero: coloca dispositivos y conéctalos con el cable.',
   'lab.internet.title': 'Internet: dos sedes y DNS públicos',

@@ -323,3 +323,7 @@ desde sistemas operativos reales emulados (traducido: `about.description`; el es
 `package.json`). La cuenta SSH `admin` de los laboratorios (servidores, WireGuard, SSH/SFTP, bastionado) pasa de
 `cisco` a `netfix`, también en el ejemplo `username admin … secret` de la gestión web de IOS, la documentación, los
 enunciados y el README.
+
+**v0.9.5:** la gestión web de Server y Router Linux usa por defecto la misma cuenta que el SSH de los laboratorios,
+`admin`/`netfix` (antes `admin`/`admin`), por simplicidad; documentación es/en (tabla de credenciales y página de la
+gestión web), enunciado del laboratorio de servidores, README y pruebas.

@@ -52,6 +52,7 @@ export const NETFIX_DOCS: DocGroup = {
           ['Mail (IMAP)', 'ana → ana@aula.lab', 'ana1', 'Mailbox on srv; account set up in PC0’s Mail'],
           ['Mail (POP3)', 'luis → luis@aula.lab', 'luis1', 'Mailbox on srv; account set up in PC1’s Mail'],
           ['SSH', 'admin', 'netfix', 'ssh admin@srv.aula.lab or ssh admin@192.168.10.2'],
+          ['Web management', 'admin', 'netfix', 'http://srv.aula.lab:10000 (the default on any Server or Linux router once enabled)'],
         ]),
         h('Terminal accounts'),
         table(['Device', 'GNU/Linux', 'Windows'], [['PC', 'alumno', 'user'], ['Server', 'admin', 'Administrator']]),

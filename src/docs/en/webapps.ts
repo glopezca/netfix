@@ -27,8 +27,8 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
     title: 'Server web management',
     summary: 'Home-router-style administration interface: basic settings, DHCP, DNS, web, email, SSH, status and logs.',
     blocks: [
-      p('Services → HTTP → Web applications → Web management. It is disabled by default; once enabled it listens on port 10000 (or on an Apache alias such as /admin) with user admin and password admin.'),
-      code('PC Web Browser:    http://srv.aula.lab:10000/\nTerminal:          curl -u admin:admin "http://192.168.10.2:10000/?page=status"'),
+      p('Services → HTTP → Web applications → Web management. It is disabled by default; once enabled it listens on port 10000 (or on an Apache alias such as /admin) with user admin and password netfix (the same account as the SSH of the labs).'),
+      code('PC Web Browser:    http://srv.aula.lab:10000/\nTerminal:          curl -u admin:netfix "http://192.168.10.2:10000/?page=status"'),
       table(['Page', 'What it changes'], [
         ['Config', 'Host name, static or DHCP IP, default gateway and DNS.'],
         ['DHCP', 'Enable the server, add and delete pools (leases by MAC or by Client-ID), addresses reserved by MAC or identifier (hex 01… or text) and “Reserve” an active lease.'],

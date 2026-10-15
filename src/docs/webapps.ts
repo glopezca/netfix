@@ -27,8 +27,8 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
     title: 'Gestión web de Server',
     summary: 'Interfaz de administración tipo router doméstico: configuración básica, DHCP, DNS, web, correo, SSH, estado y registros.',
     blocks: [
-      p('Servicios → HTTP → Aplicaciones web → Gestión web. Por defecto está desactivada; al activarla escucha en el puerto 10000 (o en un alias de Apache como /admin) con usuario admin y contraseña admin.'),
-      code('Navegador del PC:  http://srv.aula.lab:10000/\nTerminal:          curl -u admin:admin "http://192.168.10.2:10000/?page=status"'),
+      p('Servicios → HTTP → Aplicaciones web → Gestión web. Por defecto está desactivada; al activarla escucha en el puerto 10000 (o en un alias de Apache como /admin) con usuario admin y contraseña netfix (la misma cuenta que el SSH de los laboratorios).'),
+      code('Navegador del PC:  http://srv.aula.lab:10000/\nTerminal:          curl -u admin:netfix "http://192.168.10.2:10000/?page=status"'),
       table(['Página', 'Qué cambia'], [
         ['Configuración', 'Nombre de host, IP estática o DHCP, puerta de enlace y DNS.'],
         ['DHCP', 'Activar el servidor, añadir y borrar pools (concesiones por MAC o por Client-ID), direcciones reservadas por MAC o identificador (hex 01… o texto) y «Reservar» una concesión activa.'],

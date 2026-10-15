@@ -27,7 +27,7 @@ const post = (web: BrowserEngine, page: string, form: [string, string][]): Brows
 test('Seguridad → Firewall needs the login and applies templates and rules', () => {
   const { srv, web } = lab();
   assert.equal(web.open('http://10.0.0.2:10000/?page=firewall').kind, 'auth');
-  web.login('http://10.0.0.2:10000/', 'admin', 'admin');
+  web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
   assert.match(body(web.open('http://10.0.0.2:10000/?page=firewall')), /Firewall[\s\S]*Plantilla/);
   post(web, 'firewall', [['action', 'fw-template'], ['template', 'hardening']]);
   assert.equal(srv.services.firewall.enabled, true);
@@ -48,7 +48,7 @@ test('Seguridad → Firewall needs the login and applies templates and rules', (
 
 test('Seguridad → Enrutamiento changes sysctl (saved) and static routes', () => {
   const { srv, web } = lab();
-  web.login('http://10.0.0.2:10000/', 'admin', 'admin');
+  web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
   post(web, 'routing', [['action', 'sysctl-set'], ['key', 'net.ipv4.ip_forward'], ['value', '1']]);
   assert.equal(srv.kernel.sysctl.get('net.ipv4.ip_forward'), '1');
   assert.match(createShell(srv, 'linux', 'root').run('cat /etc/sysctl.d/99-netfix.conf').join('\n'), /^# Netfix[\s\S]*net\.ipv4\.ip_forward = 1$/);
@@ -70,7 +70,7 @@ test('a Server has no Seguridad tab in its management GUI (it belongs to the Lin
   srv.setServices({ ...srv.services, webapps: { ...srv.services.webapps, admin: { ...srv.services.webapps.admin, enabled: true } } });
   t.settle();
   const web = new BrowserEngine(pc);
-  web.login('http://10.0.0.2:10000/', 'admin', 'admin');
+  web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
   const page = body(web.open('http://10.0.0.2:10000/?page=firewall'));
   assert.doesNotMatch(page, /Plantilla|page=firewall/);
   assert.match(body(post(web, 'firewall', [['action', 'fw-template'], ['template', 'hardening']])), /.+/);

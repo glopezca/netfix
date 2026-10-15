@@ -70,7 +70,7 @@ export const RESERVED_PORTS: readonly number[] = [22, 25, 53, 67, 110, 143];
 export function defaultWebApps(): WebApps {
   return {
     roundcube: { enabled: false, mode: 'alias', alias: '/roundcube', port: 8080 },
-    admin: { enabled: false, mode: 'port', alias: '/admin', port: 10000, user: 'admin', password: 'admin' },
+    admin: { enabled: false, mode: 'port', alias: '/admin', port: 10000, user: 'admin', password: 'netfix' },
   };
 }
 

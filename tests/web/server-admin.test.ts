@@ -30,7 +30,7 @@ test('asks for credentials (HTTP Basic) on port 10000 and shows the Setup page',
   assert.deepEqual(first.kind === 'auth' ? [first.realm, first.failed] : first.kind, ['Server', false]);
   const wrong = web.login('http://10.0.0.2:10000/', 'admin', 'x');
   assert.equal(wrong.kind === 'auth' && wrong.failed, true);
-  const ok = web.login('http://10.0.0.2:10000/', 'admin', 'admin');
+  const ok = web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
   assert.match(body(ok), /<title>Server · Configuración básica<\/title>/);
   assert.match(body(ok), /class="web-wrt-tab web-wrt-on"><a href="\/\?page=setup">Configuración/);
   assert.match(body(ok), /name="hostname" value="server0"/i);
@@ -38,7 +38,7 @@ test('asks for credentials (HTTP Basic) on port 10000 and shows the Setup page',
 
 test('changes made in the GUI apply to the server: hostname, DNS records, mail users, SSH', () => {
   const { srv, web } = lab();
-  web.login('http://10.0.0.2:10000/', 'admin', 'admin');
+  web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
   const saved = post(web, 'setup', [['action', 'setup'], ['hostname', 'srv-web'], ['mode', 'static'], ['ip', '10.0.0.2'], ['mask', '255.255.255.0'], ['gateway', '10.0.0.1'], ['dns', '10.0.0.2']]);
   assert.match(body(saved), /Los cambios se han guardado correctamente/);
   assert.equal(srv.name, 'srv-web');
@@ -59,7 +59,7 @@ test('changes made in the GUI apply to the server: hostname, DNS records, mail u
 
 test('moving the GUI to an alias on Apache redirects the browser there', () => {
   const { srv, web, pc } = lab();
-  web.login('http://10.0.0.2:10000/', 'admin', 'admin');
+  web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
   const moved = post(web, 'admin', [['action', 'admin'], ['user', 'admin'], ['password', 'nueva'], ['mode', 'alias'], ['alias', '/gestion'], ['port', '10000']]);
   assert.equal(moved.kind, 'auth', 'new location, new credentials');
   assert.equal(moved.url, 'http://10.0.0.2/gestion/?page=admin&saved=1');
@@ -73,12 +73,12 @@ test('status and log pages, and curl with -u', () => {
   const { pc } = lab();
   const sh = createShell(pc, 'linux');
   assert.match(sh.run('curl -s -o /dev/null -w "%{http_code}" http://10.0.0.2:10000/; curl -si http://10.0.0.2:10000/ | head -1').join('\n'), /HTTP\/1\.1 401 Unauthorized/);
-  assert.match(sh.run('curl -s -u admin:admin "http://10.0.0.2:10000/?page=status"').join('\n'), /Ubuntu 26\.04 LTS[\s\S]*kea-dhcp4-server/);
+  assert.match(sh.run('curl -s -u admin:netfix "http://10.0.0.2:10000/?page=status"').join('\n'), /Ubuntu 26\.04 LTS[\s\S]*kea-dhcp4-server/);
 });
 
 test('DHCP page: reservations by MAC, hexadecimal and ASCII client-id, and from the lease table', () => {
   const { srv, pc, web, t } = lab();
-  web.login('http://10.0.0.2:10000/', 'admin', 'admin');
+  web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
   post(web, 'dhcp', [['action', 'dhcp'], ['enabled', '1']]);
   post(web, 'dhcp', [['action', 'pool-add'], ['name', 'LAN'], ['start', '10.0.0.100'], ['mask', '255.255.255.0'], ['max', '20'], ['gateway', '10.0.0.1'], ['dns', '10.0.0.2'], ['domain', '']]);
   const byMac = post(web, 'dhcp', [['action', 'res-add'], ['pool', 'LAN'], ['ip', '10.0.0.50'], ['kind', 'mac'], ['id', '0001.42ab.cdef'], ['name', 'impresora']]);
@@ -105,7 +105,7 @@ test('DHCP page: reservations by MAC, hexadecimal and ASCII client-id, and from 
 
 test('SSH page: authentication methods edit sshd_config and reload ssh', () => {
   const { srv, web } = lab();
-  web.login('http://10.0.0.2:10000/', 'admin', 'admin');
+  web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
   srv.setUnit('ssh', true);
   const page = body(web.open('http://10.0.0.2:10000/?page=ssh'));
   assert.match(page, /name="password" value="1" checked/);

@@ -1670,7 +1670,7 @@ const LABS_ES = {
     'lab.cliente.title': 'Router como cliente DHCP',
     'lab.cliente.summary': 'CPE obtiene su IP WAN con «ip address dhcp»; ISP la fija con un pool host y su client-identifier cisco-….',
     'lab.servidores.title': 'Server: DHCP, DNS, web, correo y SSH',
-    'lab.servidores.summary': 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave netfix), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/admin).',
+    'lab.servidores.summary': 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave netfix), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/netfix).',
     'lab.blanco.title': 'Área de trabajo en blanco',
     'lab.blanco.summary': 'Empieza desde cero: coloca dispositivos y conéctalos con el cable.',
     'lab.internet.title': 'Internet: dos sedes y DNS públicos',
@@ -1706,7 +1706,7 @@ const LABS_EN = {
     'lab.cliente.title': 'Router as a DHCP client',
     'lab.cliente.summary': 'CPE gets its WAN address with “ip address dhcp”; ISP pins it with a host pool and its cisco-… client-identifier.',
     'lab.servidores.title': 'Server: DHCP, DNS, web, mail and SSH',
-    'lab.servidores.summary': 'SRV0 (Ubuntu) provides DHCP, DNS (aula.lab), web, mail and SSH. Try: browser http://www.aula.lab, mail ana/ana1 (PC0, IMAP) and luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (password netfix), webmail http://webmail.aula.lab/roundcube and web admin http://srv.aula.lab:10000 (admin/admin).',
+    'lab.servidores.summary': 'SRV0 (Ubuntu) provides DHCP, DNS (aula.lab), web, mail and SSH. Try: browser http://www.aula.lab, mail ana/ana1 (PC0, IMAP) and luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (password netfix), webmail http://webmail.aula.lab/roundcube and web admin http://srv.aula.lab:10000 (admin/netfix).',
     'lab.blanco.title': 'Blank workspace',
     'lab.blanco.summary': 'Start from scratch: place devices and connect them with the cable tool.',
     'lab.internet.title': 'Internet: two sites and public DNS',
@@ -9045,7 +9045,7 @@ const RESERVED_PORTS = [22, 25, 53, 67, 110, 143];
 function defaultWebApps() {
     return {
         roundcube: { enabled: false, mode: 'alias', alias: '/roundcube', port: 8080 },
-        admin: { enabled: false, mode: 'port', alias: '/admin', port: 10000, user: 'admin', password: 'admin' },
+        admin: { enabled: false, mode: 'port', alias: '/admin', port: 10000, user: 'admin', password: 'netfix' },
     };
 }
 /** Error message for an alias or port, or null. */
@@ -18239,6 +18239,7 @@ const NETFIX_DOCS = {
                     ['Correo (IMAP)', 'ana → ana@aula.lab', 'ana1', 'Buzón en srv; cuenta configurada en el Correo de PC0'],
                     ['Correo (POP3)', 'luis → luis@aula.lab', 'luis1', 'Buzón en srv; cuenta configurada en el Correo de PC1'],
                     ['SSH', 'admin', 'netfix', 'ssh admin@srv.aula.lab o ssh admin@192.168.10.2'],
+                    ['Gestión web', 'admin', 'netfix', 'http://srv.aula.lab:10000 (por defecto en todo Server o Router Linux al activarla)'],
                 ]),
                 h('Cuentas de las terminales'),
                 table(['Equipo', 'GNU/Linux', 'Windows'], [['PC', 'alumno', 'user'], ['Server', 'admin', 'Administrator']]),
@@ -19387,8 +19388,8 @@ const WEBAPP_DOCS = [
         title: 'Gestión web de Server',
         summary: 'Interfaz de administración tipo router doméstico: configuración básica, DHCP, DNS, web, correo, SSH, estado y registros.',
         blocks: [
-            p('Servicios → HTTP → Aplicaciones web → Gestión web. Por defecto está desactivada; al activarla escucha en el puerto 10000 (o en un alias de Apache como /admin) con usuario admin y contraseña admin.'),
-            code('Navegador del PC:  http://srv.aula.lab:10000/\nTerminal:          curl -u admin:admin "http://192.168.10.2:10000/?page=status"'),
+            p('Servicios → HTTP → Aplicaciones web → Gestión web. Por defecto está desactivada; al activarla escucha en el puerto 10000 (o en un alias de Apache como /admin) con usuario admin y contraseña netfix (la misma cuenta que el SSH de los laboratorios).'),
+            code('Navegador del PC:  http://srv.aula.lab:10000/\nTerminal:          curl -u admin:netfix "http://192.168.10.2:10000/?page=status"'),
             table(['Página', 'Qué cambia'], [
                 ['Configuración', 'Nombre de host, IP estática o DHCP, puerta de enlace y DNS.'],
                 ['DHCP', 'Activar el servidor, añadir y borrar pools (concesiones por MAC o por Client-ID), direcciones reservadas por MAC o identificador (hex 01… o texto) y «Reservar» una concesión activa.'],
@@ -19636,6 +19637,7 @@ const NETFIX_DOCS = {
                     ['Mail (IMAP)', 'ana → ana@aula.lab', 'ana1', 'Mailbox on srv; account set up in PC0’s Mail'],
                     ['Mail (POP3)', 'luis → luis@aula.lab', 'luis1', 'Mailbox on srv; account set up in PC1’s Mail'],
                     ['SSH', 'admin', 'netfix', 'ssh admin@srv.aula.lab or ssh admin@192.168.10.2'],
+                    ['Web management', 'admin', 'netfix', 'http://srv.aula.lab:10000 (the default on any Server or Linux router once enabled)'],
                 ]),
                 h('Terminal accounts'),
                 table(['Device', 'GNU/Linux', 'Windows'], [['PC', 'alumno', 'user'], ['Server', 'admin', 'Administrator']]),
@@ -20784,8 +20786,8 @@ const WEBAPP_DOCS = [
         title: 'Server web management',
         summary: 'Home-router-style administration interface: basic settings, DHCP, DNS, web, email, SSH, status and logs.',
         blocks: [
-            p('Services → HTTP → Web applications → Web management. It is disabled by default; once enabled it listens on port 10000 (or on an Apache alias such as /admin) with user admin and password admin.'),
-            code('PC Web Browser:    http://srv.aula.lab:10000/\nTerminal:          curl -u admin:admin "http://192.168.10.2:10000/?page=status"'),
+            p('Services → HTTP → Web applications → Web management. It is disabled by default; once enabled it listens on port 10000 (or on an Apache alias such as /admin) with user admin and password netfix (the same account as the SSH of the labs).'),
+            code('PC Web Browser:    http://srv.aula.lab:10000/\nTerminal:          curl -u admin:netfix "http://192.168.10.2:10000/?page=status"'),
             table(['Page', 'What it changes'], [
                 ['Config', 'Host name, static or DHCP IP, default gateway and DNS.'],
                 ['DHCP', 'Enable the server, add and delete pools (leases by MAC or by Client-ID), addresses reserved by MAC or identifier (hex 01… or text) and “Reserve” an active lease.'],
@@ -28101,7 +28103,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.9.4",
+    "version": "0.9.5",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -49293,7 +49295,7 @@ interface GigabitEthernet0/0
                 ssh: { enabled: true, users: [{ name: 'admin', password: 'netfix' }] },
                 webapps: {
                     roundcube: { enabled: true, mode: 'alias', alias: '/roundcube', port: 8080 },
-                    admin: { enabled: true, mode: 'port', alias: '/admin', port: 10000, user: 'admin', password: 'admin' },
+                    admin: { enabled: true, mode: 'port', alias: '/admin', port: 10000, user: 'admin', password: 'netfix' },
                 },
             });
             pc0.mailAccount = { name: 'Ana', address: 'ana@aula.lab', incoming: 'srv.aula.lab', outgoing: 'srv.aula.lab', protocol: 'IMAP', user: 'ana', password: 'ana1' };

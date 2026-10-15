@@ -169,7 +169,7 @@ El laboratorio **«Server: DHCP, DNS, web, correo y SSH»** lo trae todo configu
   `username … privilege 15 secret …`, o la pestaña *Gestión web* del router/switch. Desde el navegador de un PC:
   inicio, Monitor (`/level/15/exec/-`), Configure y Device Manager.
 - **Server**: Servicios → HTTP → Aplicaciones web activa **Roundcube** (alias `/roundcube` o puerto 8080) y la
-  **gestión web** del servidor (puerto 10000 o alias `/admin`, `admin`/`admin`): DHCP con **reservas por MAC o
+  **gestión web** del servidor (puerto 10000 o alias `/admin`, `admin`/`netfix`): DHCP con **reservas por MAC o
   Client-ID** (y «Reservar» desde las concesiones), DNS, web, correo y SSH con sus métodos de autenticación.
 
 ### Usuarios y contraseñas de ejemplo
@@ -181,6 +181,7 @@ Todas son credenciales de laboratorio, ficticias. Se cambian en la pestaña **Se
 | Correo (IMAP) | `ana` → `ana@aula.lab` | `ana1` | Buzón en `srv`; cuenta configurada en el Correo de **PC0** |
 | Correo (POP3) | `luis` → `luis@aula.lab` | `luis1` | Buzón en `srv`; cuenta configurada en el Correo de **PC1** |
 | SSH | `admin` | `netfix` | `ssh admin@srv.aula.lab` o `ssh admin@192.168.10.2` desde cualquier terminal |
+| Gestión web | `admin` | `netfix` | `http://srv.aula.lab:10000` (por defecto en todo Server o Router Linux al activarla) |
 
 Usuarios de las terminales locales (entran sin contraseña). En Linux están en el grupo `sudo`: en el
 servidor, `sudo` pide la contraseña SSH de la cuenta (`netfix` para `admin`); en los PCs no la pide.

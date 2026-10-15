@@ -22,7 +22,7 @@ test('the web admin follows the browser language; curl without Accept-Language g
   srv.setServices({ ...srv.services, webapps: { ...srv.services.webapps, admin: { ...srv.services.webapps.admin, enabled: true } } });
   t.settle();
   const web = new BrowserEngine(pc);
-  web.login('http://10.0.0.2:10000/', 'admin', 'admin');
+  web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
   assert.match(body(web.open('http://10.0.0.2:10000/?page=dhcp')), /<html lang="es">[\s\S]*Guardar cambios/);
   setLocale('en-GB');
   try {
@@ -30,9 +30,9 @@ test('the web admin follows the browser language; curl without Accept-Language g
     assert.match(page, /<html lang="en">[\s\S]*DHCP server[\s\S]*Save settings/);
     assert.doesNotMatch(page, /Guardar cambios/);
     pc.os = 'linux';
-    const curl = createShell(pc, 'linux').run("curl -s -u admin:admin 'http://10.0.0.2:10000/?page=dhcp'").join('\n');
+    const curl = createShell(pc, 'linux').run("curl -s -u admin:netfix 'http://10.0.0.2:10000/?page=dhcp'").join('\n');
     assert.match(curl, /Guardar cambios/, 'no Accept-Language → Spanish');
-    const en = createShell(pc, 'linux').run("curl -s -u admin:admin -H 'Accept-Language: en-GB,en;q=0.9' 'http://10.0.0.2:10000/?page=dhcp'").join('\n');
+    const en = createShell(pc, 'linux').run("curl -s -u admin:netfix -H 'Accept-Language: en-GB,en;q=0.9' 'http://10.0.0.2:10000/?page=dhcp'").join('\n');
     assert.match(en, /Save settings/);
   } finally {
     setLocale('es-ES');
