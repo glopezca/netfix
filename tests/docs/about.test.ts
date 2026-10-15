@@ -71,3 +71,10 @@ test('the copyright notice describes Netfix as the About page does, without nami
   assert.match(notice.replace(/\s+/g, ' '), /orientado a los servicios en red e Internet, con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados\. Ejecutable desde un navegador\./);
   assert.doesNotMatch(notice, /Cisco|IOS/);
 });
+
+test('the trademarks section names Cisco and Microsoft, and says Netfix is not related to either', () => {
+  const marks = /### Marcas\n\n([\s\S]*)$/.exec(readFileSync(new URL('LICENSE.md', root), 'utf8'))?.[1]?.replace(/\s+/g, ' ') ?? '';
+  assert.match(marks, /Cisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc\./);
+  assert.match(marks, /Microsoft y Windows son marcas de Microsoft Corporation\./);
+  assert.match(marks, /sin relación con Cisco ni con Microsoft ni respaldado por ellas/);
+});

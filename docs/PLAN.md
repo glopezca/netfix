@@ -331,3 +331,6 @@ gestión web), enunciado del laboratorio de servidores, README y pruebas.
 **v0.9.6:** el aviso de copyright del código (`LICENSE.md`, visible en «Acerca de») describe Netfix como la página
 «Acerca de», sin mencionar Cisco ni IOS (lo comprueba una prueba). El apartado «Marcas» se mantiene: es el aviso
 legal de que Netfix no tiene relación con Cisco.
+
+**v0.9.7:** el apartado «Marcas» de `LICENSE.md` (y el pie de la página de presentación) recoge también Microsoft y
+Windows como marcas de Microsoft Corporation, con la misma aclaración de independencia que para Cisco.

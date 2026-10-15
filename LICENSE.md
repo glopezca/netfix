@@ -66,6 +66,7 @@ aplican a esos archivos.
 
 ### Marcas
 
-Cisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc. Netfix es un proyecto
-educativo independiente, sin relación con Cisco ni respaldado por ella. Los símbolos de red
-de la interfaz son dibujos propios de este proyecto.
+Cisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc. Microsoft y Windows son
+marcas de Microsoft Corporation. Netfix es un proyecto educativo independiente, sin relación
+con Cisco ni con Microsoft ni respaldado por ellas. Los símbolos de red de la interfaz son
+dibujos propios de este proyecto.
