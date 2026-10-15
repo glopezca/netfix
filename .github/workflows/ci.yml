@@ -29,6 +29,10 @@ jobs:
     permissions:
       pages: write
       id-token: write
+    # One deployment at a time; a newer push waits instead of cancelling one in progress.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
