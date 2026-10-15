@@ -226,6 +226,7 @@ try {
   const tw = await tablet.locator('.window').boundingBox();
   assert.ok(tw.x >= 0 && tw.x + tw.width <= 820, 'the window fits the tablet width');
   await tablet.tap('.win-tab:has-text("Windows terminal"), .win-tab:has-text("Linux terminal")');
+  assert.deepEqual(await tablet.locator('.terminal:visible .term-keys [data-key="Home"], .terminal:visible .term-keys [data-key="PageDown"]').allInnerTexts(), ['Home', 'PgDn'], 'navigation keys on the key bar');
   const ctrl = tablet.locator('.terminal:visible .term-keys [data-key="Ctrl"]');
   await ctrl.dispatchEvent('pointerdown');
   assert.equal(await ctrl.getAttribute('aria-pressed'), 'true');

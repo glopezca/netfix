@@ -209,6 +209,9 @@ button, input, select { font: inherit; color: inherit; }
 .ed-dialog { background: #c9ccd2; color: #121417; }
 .ed-dialogFocus { background: #2f9fa8; color: #071d20; }
 .ed-viewer { background: #1d3f8f; color: #d6dcef; }
+.ed-hotkey { background: var(--console-ink); color: #b00818; font-weight: 700; text-decoration: underline; }
+.ed-menuSel { background: var(--console-msg); color: var(--console); }
+.ed-hotkeySel { background: var(--console-msg); color: var(--console); font-weight: 700; text-decoration: underline; }
 
 /* ---------------------------------------------------------------- documentation */
 body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data-view="donate"] .win-layer { display: none; }

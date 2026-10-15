@@ -51,3 +51,45 @@ test('find, go to line, undo and a read-only file', () => {
   w.key({ key: 'n' });
   assert.equal(w.closed, true);
 });
+
+const spans = (e: MsEditEditor, row: number): { text: string; style?: string }[] => [...(e.frame(60, 10).rows[row] ?? [])];
+
+test('the menu bar highlights the access letter of each menu; F10 or Alt+letter opens it', () => {
+  const e = new MsEditEditor({ editor: 'msedit', path: '/home/alumno/a.txt', content: 'uno\ndos\ntres\n', exists: true, readOnly: false }, { save: () => null });
+  assert.deepEqual(spans(e, 0).filter((s) => s.style === 'hotkey').map((s) => s.text), ['F', 'E', 'V', 'H']);
+  e.key({ key: 'F10' });
+  assert.match(screen(e)[1] ?? '', /^u Save +Ctrl\+S /, 'File menu over the text, under its title');
+  assert.match(screen(e)[2] ?? '', /^d Exit +Ctrl\+Q /);
+  assert.deepEqual(spans(e, 1).filter((s) => s.style === 'hotkeySel').map((s) => s.text), ['S'], 'the selected item shows its letter too');
+  assert.deepEqual(spans(e, 2).filter((s) => s.style === 'hotkey').map((s) => s.text), ['x']);
+  assert.equal(e.frame(60, 10).cursor, null);
+  e.key({ key: 'ArrowRight' });
+  assert.match(screen(e)[1] ?? '', /Undo +Ctrl\+Z/);
+  e.key({ key: 'Escape' });
+  assert.match(screen(e)[1] ?? '', /^uno/, 'Esc closes the menu, not the editor');
+  assert.equal(e.closed, false);
+  e.key({ key: 'v', alt: true });
+  e.key({ key: 'e' });
+  assert.match(screen(e)[9] ?? '', /Ln 4, Col 1/, 'View > End of file by its letter');
+  e.key({ key: 'h', alt: true });
+  e.key({ key: 'k' });
+  assert.match(screen(e)[9] ?? '', /F10\/Alt menus/);
+  e.key({ key: 'f', alt: true });
+  e.key({ key: 'ArrowDown' });
+  e.key({ key: 'Enter' });
+  assert.equal(e.closed, true, 'File > Exit with no changes');
+});
+
+test('Alt shortcuts go by the physical key (Option+F types ƒ on a Mac); Cmd+V is left to the browser; menus fit narrow screens', () => {
+  const e = new MsEditEditor({ editor: 'msedit', path: '/tmp/a', content: 'x\n', exists: true, readOnly: false }, { save: () => null });
+  e.key({ key: 'ƒ', alt: true, code: 'KeyF' });
+  assert.match(screen(e)[1] ?? '', /Save/);
+  e.key({ key: 'Escape' });
+  e.key({ key: 'v', alt: true, meta: true, code: 'KeyV' });
+  assert.doesNotMatch(screen(e)[1] ?? '', /Go to line/);
+  e.key({ key: 'h', alt: true, code: 'KeyH' });
+  const narrow = e.frame(24, 8).rows.map((r) => r.map((s) => s.text).join(''));
+  assert.ok(narrow.every((r) => r.length <= 24), 'no row wider than the screen');
+  e.key({ key: 'k' });
+  assert.match(e.frame(80, 10).rows[9]?.map((s) => s.text).join('') ?? '', /\^Z\/\^Y undo/, 'the whole help fits an 80-column bar');
+});

@@ -6,11 +6,17 @@ export interface KeyInput {
   readonly ctrl?: boolean;
   readonly alt?: boolean;
   readonly shift?: boolean;
+  /** The Cmd key (macOS); `alt` is also set, for the programs that treat it as Meta. */
+  readonly meta?: boolean;
+  /** KeyboardEvent.code ("KeyF"): the physical key, for Alt shortcuts that Option turns into other characters. */
+  readonly code?: string;
 }
 
 export type SpanStyle = 'inverse' | 'bold' | 'dim' | 'accent' | 'error'
   /** Midnight Commander skin. */
-  | 'panel' | 'panelHead' | 'cursor' | 'marked' | 'dir' | 'exec' | 'link' | 'menu' | 'keynum' | 'keylabel' | 'dialog' | 'dialogFocus' | 'viewer';
+  | 'panel' | 'panelHead' | 'cursor' | 'marked' | 'dir' | 'exec' | 'link' | 'menu' | 'keynum' | 'keylabel' | 'dialog' | 'dialogFocus' | 'viewer'
+  /** Microsoft Edit: access letters of the menus and the selected menu item. */
+  | 'hotkey' | 'hotkeySel' | 'menuSel';
 
 export interface Span {
   readonly text: string;

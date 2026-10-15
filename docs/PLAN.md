@@ -350,3 +350,12 @@ fallaba con un enlace roto) y los medios (. y .. solo al listar una carpeta ente
 del de carpeta o *.*, y de sobrescritura en copy y move, con /q y /y; copy sobre sí mismo; varios archivos sobre uno;
 redirección con una sola palabra de destino, > nul, 2> y > sin nombre; echo.). edit sale también con Esc (algunos
 navegadores se quedan Ctrl+Q) y solo guarda el archivo que abrió.
+
+**v0.10.1:** la barra de teclas táctil de todas las terminales añade Inicio, Fin, RePág y AvPág (en los editores pasan
+al programa; en la línea de órdenes mueven el cursor o desplazan la salida). En edit, el menú (File, Edit, View, Help)
+funciona con F10 o Alt+letra y resalta la letra de acceso de cada menú y opción (`editors/msedit-menu.ts`). El tamaño
+de los editores a pantalla completa se mide en su propia caja: en móvil la barra de teclas ya no tapa sus últimas filas
+(la barra de estado de edit y los atajos de nano).
+Revisión ECC: sin críticos ni altos; corregidos los medios (Alt+letra por la tecla física, para que Option en Mac
+funcione, y Cmd se deja al navegador; la ayuda de teclas cabe en la barra) y los bajos (el menú se recorta en pantallas
+estrechas; F10 va junto a Esc en la barra táctil; las pistas de la barra de estado caben enteras).

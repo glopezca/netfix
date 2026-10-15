@@ -81,7 +81,7 @@ export function drawFrame(target: HTMLElement, f: Frame): void {
 /** KeyboardEvent → editor key (null for modifier-only presses). */
 export function editorKey(e: KeyboardEvent): KeyInput | null {
   if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) return null;
-  return { key: e.key, ctrl: e.ctrlKey, alt: e.altKey || e.metaKey, shift: e.shiftKey };
+  return { key: e.key, ctrl: e.ctrlKey, alt: e.altKey || e.metaKey, shift: e.shiftKey, meta: e.metaKey, code: e.code };
 }
 
 /** Lays out completion candidates in columns, like bash after a second Tab. */

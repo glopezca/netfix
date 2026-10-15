@@ -41,6 +41,8 @@ export interface ConsoleBackend {
 const MAX_LINES = 3000;
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
+/** Page Up / Page Down of the key bar scroll most of a screen, keeping a line or two in view. */
+const PAGE_FRACTION = 0.9;
 
 export class Terminal {
   readonly root: HTMLElement;
@@ -129,6 +131,8 @@ export class Terminal {
     if (key === 'Tab') this.complete();
     else if (key === 'ArrowUp' || key === 'ArrowDown') this.browseHistory(key === 'ArrowUp' ? -1 : 1);
     else if (key === 'ArrowLeft' || key === 'ArrowRight') this.moveCaret(key === 'ArrowLeft' ? -1 : 1);
+    else if (key === 'Home' || key === 'End') this.moveCaret(key === 'Home' ? -this.input.value.length : this.input.value.length);
+    else if (key === 'PageUp' || key === 'PageDown') this.screen.scrollBy({ top: (key === 'PageUp' ? -1 : 1) * this.screen.clientHeight * PAGE_FRACTION });
     else if (key === '^C') this.ctrlKey('c');
     else if (key === '^D') this.ctrlKey('d');
     this.input.focus({ preventScroll: true });
@@ -327,7 +331,9 @@ export class Terminal {
     this.editorEl.appendChild(probe);
     const lineHeight = probe.getBoundingClientRect().height;
     probe.remove();
-    const rows = lineHeight > 0 ? Math.max(6, Math.floor((this.root.clientHeight - 16) / lineHeight)) : DEFAULT_ROWS;
+    // The editor's own box: on touch screens the key bar takes part of the terminal, and the last rows must stay visible.
+    const room = (this.editorEl.clientHeight || this.root.clientHeight) - 16;
+    const rows = lineHeight > 0 ? Math.max(6, Math.floor(room / lineHeight)) : DEFAULT_ROWS;
     const frame = this.full.frame(this.cols(), rows);
     if (frame) drawFrame(this.editorEl, frame);
     return frame !== null;

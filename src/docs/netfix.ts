@@ -38,7 +38,7 @@ export const NETFIX_DOCS: DocGroup = {
           ['Router Linux', 'Equipo, Interfaces (dirección de eth0-eth2, MAC, extremo del cable, reenvío y rutas), Servicios (Parámetros, Firewall, VPN, y los servicios de Server) y Terminal Linux.'],
           ['Server', 'Equipo, Interfaces, Servicios (DHCP, DNS, HTTP, correo, SSH), Configuración IP, Terminal Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router Linux (en su terminal siguen sysctl y nft).'],
         ]),
-        note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim). En móvil y tableta las ventanas ocupan la pantalla, el lienzo se mueve con un dedo y se amplía pellizcando, una pulsación larga abre un equipo y la terminal tiene una barra de teclas (Esc, Tab, Ctrl, flechas).'),
+        note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim). En móvil y tableta las ventanas ocupan la pantalla, el lienzo se mueve con un dedo y se amplía pellizcando, una pulsación larga abre un equipo y la terminal tiene una barra de teclas: Esc, Tab, Ctrl (se queda pulsada para la tecla siguiente), flechas, Inicio, Fin, RePág, AvPág, ^C y ^D, y con un editor abierto F1-F10. Fuera de los editores, Inicio y Fin van al principio o al final de la línea, y RePág y AvPág desplazan la salida.'),
       ],
     },
     {

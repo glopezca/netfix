@@ -38,7 +38,7 @@ export const NETFIX_DOCS: DocGroup = {
           ['Linux router', 'Device, Interfaces (address of eth0-eth2, MAC, far end of the cable, forwarding and routes), Services (Parameters, Firewall, VPN, and the Server services) and Linux terminal.'],
           ['Server', 'Device, Interfaces, Services (DHCP, DNS, HTTP, mail, SSH), IP Config, Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the Linux router (sysctl and nft remain in its terminal).'],
         ]),
-        note('Windows are moved by their title bar and resized from the corner. Escape closes the active window (except inside nano or vim). On phones and tablets windows fill the screen, the canvas is panned with one finger and zoomed by pinching, a long press opens a device and the terminal has a key bar (Esc, Tab, Ctrl, arrows).'),
+        note('Windows are moved by their title bar and resized from the corner. Escape closes the active window (except inside nano or vim). On phones and tablets windows fill the screen, the canvas is panned with one finger and zoomed by pinching, a long press opens a device and the terminal has a key bar: Esc, Tab, Ctrl (held for the next key), arrows, Home, End, PgUp, PgDn, ^C and ^D, plus F1-F10 while an editor is open. Outside the editors, Home and End go to the start or end of the line, and PgUp and PgDn scroll the output.'),
       ],
     },
     {
