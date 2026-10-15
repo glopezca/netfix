@@ -327,3 +327,7 @@ enunciados y el README.
 **v0.9.5:** la gestión web de Server y Router Linux usa por defecto la misma cuenta que el SSH de los laboratorios,
 `admin`/`netfix` (antes `admin`/`admin`), por simplicidad; documentación es/en (tabla de credenciales y página de la
 gestión web), enunciado del laboratorio de servidores, README y pruebas.
+
+**v0.9.6:** el aviso de copyright del código (`LICENSE.md`, visible en «Acerca de») describe Netfix como la página
+«Acerca de», sin mencionar Cisco ni IOS (lo comprueba una prueba). El apartado «Marcas» se mantiene: es el aviso
+legal de que Netfix no tiene relación con Cisco.

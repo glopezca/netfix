@@ -21,7 +21,9 @@ compatibles en un sentido: el material CC BY-SA 4.0 puede incorporarse a obras G
 ## Aviso de copyright del código
 
 ```
-Netfix — simulador de redes con CLI de Cisco IOS y servidor DHCP
+Netfix — simulador de redes orientado a los servicios en red e Internet,
+con un enfoque especial en las tareas realizadas desde sistemas operativos
+reales emulados. Ejecutable desde un navegador.
 Copyright (C) 2026 Germán López Castro
 
 This program is free software: you can redistribute it and/or modify

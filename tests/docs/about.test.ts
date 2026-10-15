@@ -64,3 +64,10 @@ test('the About description is translated; the Spanish one is the package descri
   assert.match(t('about.description'), /^Network simulator focused on network and Internet services/);
   setLocale('es-ES');
 });
+
+test('the copyright notice describes Netfix as the About page does, without naming Cisco or IOS', () => {
+  const notice = /## Aviso de copyright del código\n\n```\n([\s\S]*?)```/.exec(readFileSync(new URL('LICENSE.md', root), 'utf8'))?.[1] ?? '';
+  assert.match(notice, /Copyright \(C\) 2026 Germán López Castro/);
+  assert.match(notice.replace(/\s+/g, ' '), /orientado a los servicios en red e Internet, con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados\. Ejecutable desde un navegador\./);
+  assert.doesNotMatch(notice, /Cisco|IOS/);
+});
