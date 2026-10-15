@@ -22,16 +22,54 @@ export function dnsQuery(host: Host, name: string, type: DnsType, server?: numbe
   return runSync<DnsResult>(host.hooks, (done) => host.lookup(target, type, done, server ?? host.config.dns), DNS_WAIT_MS) ?? { kind: 'timeout', server: server ?? 0 };
 }
 
-/** IP literal, the host's own name, or a DNS A lookup. */
+/** The search domains of the host: the DHCP domain name (option 15) while the lease lasts. */
+export function searchDomains(host: Host): readonly string[] {
+  const domain = host.config.mode === 'dhcp' ? host.dhcpClient.lease?.domainName : undefined;
+  return domain ? [normalizeName(domain)] : [];
+}
+
+/**
+ * The names the resolver tries, as glibc with ndots:1 (and Windows with its DNS suffix): a name without dots goes
+ * with each search domain first, a name with dots goes as typed first, and a final dot means only as typed.
+ */
+export function resolutionCandidates(name: string, search: readonly string[]): string[] {
+  if (name.endsWith('.')) return [name.slice(0, -1)];
+  const withDomains = search.map((d) => `${name}.${d}`);
+  return name.includes('.') ? [name, ...withDomains] : [...withDomains, name];
+}
+
+const found = (r: DnsResult): boolean => r.kind === 'answer' && r.msg.rcode === 'NOERROR' && (r.msg.answers?.length ?? 0) > 0;
+
+/**
+ * A lookup through the search list: the first name that has an answer. As glibc, a timeout or a REFUSED reply ends
+ * the search, an address or a reverse name (PTR) is never searched, and with no answer a NODATA reply (the name
+ * exists without that record) is reported before a later NXDOMAIN.
+ */
+export function dnsSearch(host: Host, name: string, type: DnsType, server?: number): { readonly result: DnsResult; readonly name: string } {
+  const literal = parseIp(name) !== null || type === 'PTR' || /\.arpa\.?$/i.test(name);
+  const candidates = literal ? [name] : resolutionCandidates(name, searchDomains(host));
+  let nodata: DnsResult | null = null;
+  let last: DnsResult | null = null;
+  for (const candidate of candidates) {
+    const result = dnsQuery(host, candidate, type, server);
+    if (found(result)) return { result, name: candidate };
+    if (result.kind !== 'answer' || result.msg.rcode === 'REFUSED') return { result, name };
+    if (result.msg.rcode === 'NOERROR') nodata ??= result;
+    last = result;
+  }
+  return { result: nodata ?? last ?? dnsQuery(host, name, type, server), name };
+}
+
+/** IP literal, the host's own name, or a DNS A lookup (through the search list). */
 export function resolveHost(host: Host, target: string): Resolved {
   const literal = parseIp(target);
   if (literal !== null) return { kind: 'ip', ip: literal, name: target, viaDns: false };
   if (normalizeName(target) === host.name.toLowerCase() && host.config.ip !== undefined) return { kind: 'ip', ip: host.config.ip, name: target, viaDns: false };
-  const r = dnsQuery(host, target, 'A');
+  const { result: r, name } = dnsSearch(host, target, 'A');
   if (r.kind !== 'answer') return { kind: 'error', reason: r.kind };
   if (r.msg.rcode === 'NXDOMAIN' || r.msg.rcode === 'REFUSED' || r.msg.rcode === 'SERVFAIL') return { kind: 'error', reason: 'nxdomain' };
   const ip = firstAddress(r.msg);
-  return ip === undefined ? { kind: 'error', reason: 'nodata' } : { kind: 'ip', ip, name: normalizeName(target), viaDns: true };
+  return ip === undefined ? { kind: 'error', reason: 'nodata' } : { kind: 'ip', ip, name: normalizeName(name), viaDns: true };
 }
 
 export function tcpCall(host: Host, ip: number, port: number, payload: AppPayload, waitMs = TCP_WAIT_MS): TcpResult {

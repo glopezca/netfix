@@ -1,7 +1,7 @@
 /** iproute2, ping, dig/nslookup/host and dhclient as programs of the bash core (Ubuntu output). */
 import type { Ctx } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
-import { resolveHost, dnsQuery } from './net-tools.ts';
+import { resolveHost, dnsQuery, dnsSearch } from './net-tools.ts';
 import { linuxMac } from './linux-files.ts';
 import { digOutput, nslookupOutput, hostOutput } from './dns-format.ts';
 import { runPing } from '../net/ping.ts';
@@ -101,14 +101,16 @@ export function ping(host: Host) {
     const results = runPing(host.stack, host.hooks, r.ip, { count, timeoutMs: PING_TIMEOUT_MS });
     if (results.every((x) => x.kind === 'noroute')) { ctx.err('ping: connect: Network is unreachable\n'); return 2; }
     const addr = formatIp(r.ip);
-    const out = [`PING ${target} (${addr}) 56(84) bytes of data.`];
+    // The name as resolved (www → www.empresa.lan with the search domain), as ping shows it.
+    const shown = r.viaDns ? r.name : target;
+    const out = [`PING ${shown} (${addr}) 56(84) bytes of data.`];
     results.forEach((x, i) => {
-      if (x.kind === 'reply') out.push(`64 bytes from ${r.viaDns ? `${target} (${addr})` : addr}: icmp_seq=${i + 1} ttl=${x.ttl} time=0.${400 + i * 37} ms`);
+      if (x.kind === 'reply') out.push(`64 bytes from ${r.viaDns ? `${shown} (${addr})` : addr}: icmp_seq=${i + 1} ttl=${x.ttl} time=0.${400 + i * 37} ms`);
       else if (x.kind === 'unreachable') out.push(`From ${formatIp(x.from)} icmp_seq=${i + 1} Destination Host Unreachable`);
       else if (x.kind === 'ttl') out.push(`From ${formatIp(x.from)} icmp_seq=${i + 1} Time to live exceeded`);
     });
     const ok = results.filter((x) => x.kind === 'reply').length;
-    out.push('', `--- ${target} ping statistics ---`, `${count} packets transmitted, ${ok} received, ${Math.round(((count - ok) * 100) / count)}% packet loss, time ${(count - 1) * 1001}ms`);
+    out.push('', `--- ${shown} ping statistics ---`, `${count} packets transmitted, ${ok} received, ${Math.round(((count - ok) * 100) / count)}% packet loss, time ${(count - 1) * 1001}ms`);
     if (ok) out.push('rtt min/avg/max/mdev = 0.400/0.455/0.511/0.040 ms');
     lines(ctx, out);
     return ok ? 0 : 1;
@@ -132,8 +134,10 @@ export function dig(host: Host) {
     if (!name) { ctx.err('Usage:  dig [@global-server] [domain] [q-type] [q-class] {q-opt}\n        dig -x addr   |   dig +short name\n'); return 1; }
     const qtype: DnsType = rest.includes('-x') ? 'PTR' : type ?? 'A';
     const srv = server ? parseIp(server.slice(1)) ?? undefined : undefined;
-    const res = dnsQuery(host, name, qtype, srv);
-    lines(ctx, digOutput(name, qtype, res, args.includes('+short'), host.clock.now()));
+    // dig does not use the search list unless +search (its default is +nosearch).
+    const search = args.includes('+search') && qtype !== 'PTR' ? dnsSearch(host, name, qtype, srv) : { result: dnsQuery(host, name, qtype, srv), name };
+    const res = search.result;
+    lines(ctx, digOutput(search.name, qtype, res, args.includes('+short'), host.clock.now()));
     return res.kind === 'timeout' ? 9 : 0;
   };
 }
@@ -146,7 +150,7 @@ export function nslookup(host: Host) {
   return (ctx: Ctx): number => {
     const [name, srv] = ctx.argv.slice(1).filter((a) => !a.startsWith('-'));
     if (!name) { ctx.err('Usage: nslookup <name> [server]\n'); return 1; }
-    const res = dnsQuery(host, name, 'A', serverArg(srv));
+    const { result: res } = dnsSearch(host, name, 'A', serverArg(srv));
     lines(ctx, nslookupOutput(name, res, false));
     return res.kind === 'answer' && res.msg.rcode === 'NOERROR' && (res.msg.answers?.length ?? 0) > 0 ? 0 : 1;
   };
@@ -160,7 +164,7 @@ export function hostCmd(host: Host) {
     const [name, srv] = args.filter((a, i) => !a.startsWith('-') && !(tIdx >= 0 && i === tIdx + 1));
     if (!name) { ctx.err('Usage: host [-t type] name [server]\n'); return 1; }
     const qtype = (DNS_TYPES as readonly string[]).includes(type) ? type as DnsType : 'A';
-    const res = dnsQuery(host, name, qtype, serverArg(srv));
+    const { result: res } = dnsSearch(host, name, qtype, serverArg(srv));
     lines(ctx, hostOutput(name, res));
     return res.kind === 'answer' && res.msg.rcode === 'NOERROR' && (res.msg.answers?.length ?? 0) > 0 ? 0 : 1;
   };

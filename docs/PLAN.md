@@ -364,3 +364,12 @@ estrechas; F10 va junto a Esc en la barra táctil; las pistas de la barra de est
 para planificar, implementar lo que cruza módulos, seguridad y diseño visual; sonnet para tareas acotadas, revisión y
 salida IOS; haiku para búsquedas, textos y resúmenes. `security-reviewer` pasa a opus (los demás agentes ya tenían su
 modelo: `planner` opus, el resto sonnet).
+
+**v0.10.2 (corrección):** el dominio de DHCP (opción 15, `domain-name` del pool) no se usaba al resolver: un PC del
+laboratorio «DNS de empresa» no completaba `www` a `www.empresa.lan`, y `hostname -f` inventaba `.localdomain`. Ahora
+`/etc/resolv.conf` lleva `search <dominio>`, y la resolución del host (ping, nslookup, host, curl, ssh, navegador,
+correo, traceroute, nmap y la Terminal Windows) sigue glibc con ndots:1; `dig` solo con `+search`, como el real.
+`hostname -f` devuelve el nombre canónico de `/etc/hosts`. Pruebas en `tests/shells/dns-search.test.ts`.
+Revisión ECC: sin críticos ni altos; corregidos los medios (una dirección IP o un nombre inverso no se buscan con el
+dominio, para no dar respuestas falsas con comodines; REFUSED y los tiempos agotados terminan la búsqueda; sin respuesta,
+se informa NODATA antes que un NXDOMAIN posterior) y añadidas pruebas de IP estática, concesión liberada y direcciones.

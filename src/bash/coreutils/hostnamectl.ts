@@ -77,6 +77,24 @@ function* hostnamectl(ctx: Ctx): Gen<number> {
   return 1;
 }
 
+/**
+ * hostname -f: the canonical name of the host as /etc/hosts gives it (the first name of the line that lists it), as
+ * glibc resolves it; Ubuntu does not add the DHCP domain to /etc/hosts, so it is usually the short name.
+ */
+function canonicalName(ctx: Ctx, name: string): string {
+  let hosts = '';
+  try {
+    hosts = ctx.sh.env.fs.readFile('/etc/hosts', ctx.cred);
+  } catch {
+    return name;
+  }
+  for (const line of hosts.split('\n')) {
+    const fields = line.replace(/#.*/, '').trim().split(/\s+/).slice(1);
+    if (fields.some((f) => f.toLowerCase() === name.toLowerCase())) return fields[0] ?? name;
+  }
+  return name;
+}
+
 /** hostname [-I|-f|-s] [NAME]: setting it (root only) changes the transient name. */
 function hostname(ctx: Ctx): number {
   const args = ctx.argv.slice(1);
@@ -89,7 +107,7 @@ function hostname(ctx: Ctx): number {
     return 0;
   }
   const name = names(ctx).transient;
-  ctx.out(`${args.includes('-f') ? `${name}.localdomain` : args.includes('-s') ? name.split('.')[0] ?? name : name}\n`);
+  ctx.out(`${args.includes('-f') ? canonicalName(ctx, name) : args.includes('-s') ? name.split('.')[0] ?? name : name}\n`);
   return 0;
 }
 

@@ -6,7 +6,7 @@ import { runsServices } from '../devices/kinds.ts';
 import { windowsSshStore } from './ssh-stores.ts';
 import type { SshClientStore } from './ssh-client.ts';
 import { BaseShell } from './base.ts';
-import { resolveHost, dnsQuery, httpGet } from './net-tools.ts';
+import { resolveHost, dnsSearch, httpGet } from './net-tools.ts';
 import { nslookupOutput } from './dns-format.ts';
 import type { Host } from '../devices/host.ts';
 import { HOST_PORT } from '../devices/host.ts';
@@ -155,7 +155,7 @@ export class WindowsShell extends BaseShell {
       case 'ping': return this.ping(args);
       case 'tracert': return tracert(this.host, args);
       case 'arp': return this.arp(arg);
-      case 'nslookup': return args[0] ? nslookupOutput(args[0], dnsQuery(this.host, args[0], 'A', args[1] ? parseIp(args[1]) ?? undefined : undefined), true) : ['Usage: nslookup <name> [server]'];
+      case 'nslookup': return args[0] ? nslookupOutput(args[0], dnsSearch(this.host, args[0], 'A', args[1] ? parseIp(args[1]) ?? undefined : undefined).result, true) : ['Usage: nslookup <name> [server]'];
       case 'netstat': return this.netstat();
       case 'curl': return this.curl(args);
       case 'hostname': return [this.host.name];
@@ -207,7 +207,7 @@ export class WindowsShell extends BaseShell {
     const r = resolveHost(this.host, target);
     if (r.kind === 'error') return [`Ping request could not find host ${target}. Please check the name and try again.`];
     const ip = formatIp(r.ip);
-    const lines = ['', `Pinging ${r.viaDns ? `${target} [${ip}]` : ip} with 32 bytes of data:`, ''];
+    const lines = ['', `Pinging ${r.viaDns ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
     const results = runPing(this.host.stack, this.host.hooks, r.ip, { count, timeoutMs: PING_TIMEOUT_MS });
     for (const x of results) {
       if (x.kind === 'reply') lines.push(`Reply from ${formatIp(x.from)}: bytes=32 time<1ms TTL=${x.ttl}`);

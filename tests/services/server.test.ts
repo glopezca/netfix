@@ -86,7 +86,9 @@ test('DNS: dig, nslookup, host, PTR, NXDOMAIN, REFUSED and ping by name', () => 
   assert.match(pcCommand(pc, 'ping www.aula.lab').join('\n'), /Pinging www\.aula\.lab \[192\.168\.10\.2\][\s\S]*Received = 4/);
   assert.match(sh.run('ping -c 2 www.aula.lab').join('\n'), /2 packets transmitted, 2 received, 0% packet loss/);
   assert.match(sh.run('ping noexiste.aula.lab').join('\n'), /Name or service not known/);
-  assert.match(createShell(srv, 'linux').run('journalctl -u bind9 -n 1').join('\n'), /named\[845\]: client 192\.168\.10\.\d+#\d+ \(noexiste\.aula\.lab\): query: noexiste\.aula\.lab IN A .*NXDOMAIN/);
+  // As glibc: the name with dots goes as typed first, then with the DHCP search domain (aula.lab).
+  const log = createShell(srv, 'linux').run('journalctl -u bind9 -n 2').join('\n');
+  assert.match(log, /named\[845\]: client 192\.168\.10\.\d+#\d+ \(noexiste\.aula\.lab\): query: noexiste\.aula\.lab IN A .*NXDOMAIN\n.*query: noexiste\.aula\.lab\.aula\.lab IN A .*NXDOMAIN/);
   assert.ok(t.net.history.some((e) => e.protocol === 'DNS'));
   srv.setUnit('dns', false);
   assert.match(sh.run('dig www.aula.lab').join('\n'), /communications error to 192\.168\.10\.2#53: timed out/);

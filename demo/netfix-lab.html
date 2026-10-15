@@ -11496,20 +11496,58 @@ function dnsQuery(host, name, type, server) {
     const target = type === 'PTR' ? name : normalizeName(name);
     return runSync(host.hooks, (done) => host.lookup(target, type, done, server ?? host.config.dns), DNS_WAIT_MS) ?? { kind: 'timeout', server: server ?? 0 };
 }
-/** IP literal, the host's own name, or a DNS A lookup. */
+/** The search domains of the host: the DHCP domain name (option 15) while the lease lasts. */
+function searchDomains(host) {
+    const domain = host.config.mode === 'dhcp' ? host.dhcpClient.lease?.domainName : undefined;
+    return domain ? [normalizeName(domain)] : [];
+}
+/**
+ * The names the resolver tries, as glibc with ndots:1 (and Windows with its DNS suffix): a name without dots goes
+ * with each search domain first, a name with dots goes as typed first, and a final dot means only as typed.
+ */
+function resolutionCandidates(name, search) {
+    if (name.endsWith('.'))
+        return [name.slice(0, -1)];
+    const withDomains = search.map((d) => `${name}.${d}`);
+    return name.includes('.') ? [name, ...withDomains] : [...withDomains, name];
+}
+const found = (r) => r.kind === 'answer' && r.msg.rcode === 'NOERROR' && (r.msg.answers?.length ?? 0) > 0;
+/**
+ * A lookup through the search list: the first name that has an answer. As glibc, a timeout or a REFUSED reply ends
+ * the search, an address or a reverse name (PTR) is never searched, and with no answer a NODATA reply (the name
+ * exists without that record) is reported before a later NXDOMAIN.
+ */
+function dnsSearch(host, name, type, server) {
+    const literal = parseIp(name) !== null || type === 'PTR' || /\.arpa\.?$/i.test(name);
+    const candidates = literal ? [name] : resolutionCandidates(name, searchDomains(host));
+    let nodata = null;
+    let last = null;
+    for (const candidate of candidates) {
+        const result = dnsQuery(host, candidate, type, server);
+        if (found(result))
+            return { result, name: candidate };
+        if (result.kind !== 'answer' || result.msg.rcode === 'REFUSED')
+            return { result, name };
+        if (result.msg.rcode === 'NOERROR')
+            nodata ??= result;
+        last = result;
+    }
+    return { result: nodata ?? last ?? dnsQuery(host, name, type, server), name };
+}
+/** IP literal, the host's own name, or a DNS A lookup (through the search list). */
 function resolveHost(host, target) {
     const literal = parseIp(target);
     if (literal !== null)
         return { kind: 'ip', ip: literal, name: target, viaDns: false };
     if (normalizeName(target) === host.name.toLowerCase() && host.config.ip !== undefined)
         return { kind: 'ip', ip: host.config.ip, name: target, viaDns: false };
-    const r = dnsQuery(host, target, 'A');
+    const { result: r, name } = dnsSearch(host, target, 'A');
     if (r.kind !== 'answer')
         return { kind: 'error', reason: r.kind };
     if (r.msg.rcode === 'NXDOMAIN' || r.msg.rcode === 'REFUSED' || r.msg.rcode === 'SERVFAIL')
         return { kind: 'error', reason: 'nxdomain' };
     const ip = firstAddress(r.msg);
-    return ip === undefined ? { kind: 'error', reason: 'nodata' } : { kind: 'ip', ip, name: normalizeName(target), viaDns: true };
+    return ip === undefined ? { kind: 'error', reason: 'nodata' } : { kind: 'ip', ip, name: normalizeName(name), viaDns: true };
 }
 function tcpCall(host, ip, port, payload, waitMs = TCP_WAIT_MS) {
     return runSync(host.hooks, (done) => host.connect(ip, port, payload, done, waitMs), waitMs + 1000) ?? { kind: 'timeout' };
@@ -11557,7 +11595,7 @@ function splitArgs(line) {
     return line.trim().split(/\s+/).filter(Boolean);
 }
 
-return { SSH_WAIT_MS, dnsQuery, resolveHost, tcpCall, parseUrl, httpGet, httpRequest, reverseLookup, dateLine, splitArgs };
+return { SSH_WAIT_MS, dnsQuery, searchDomains, resolutionCandidates, dnsSearch, resolveHost, tcpCall, parseUrl, httpGet, httpRequest, reverseLookup, dateLine, splitArgs };
 })();
 __m["core/sha256.js"] = (() => {
 /** SHA-256 (FIPS 180-4) and base64 over bytes: fingerprints and key files of the simulated OpenSSH. */
@@ -18526,6 +18564,7 @@ const SERVICE_DOCS = {
                 code('*      IN  A      192.168.10.80   ; cualquier.aula.lab → .80\n*.dev  IN  CNAME  srv             ; app.dev.aula.lab → srv.aula.lab\n@      IN  MX     10 @'),
                 code('$ORIGIN aula.lab.\n$TTL 86400\n@\tIN\tSOA\tsrv.aula.lab. hostmaster.aula.lab. ( … )\n@\tIN\tNS\tsrv\n@\tIN\tMX\t10 srv\nsrv\tIN\tA\t192.168.10.2\nwww\tIN\tCNAME\tsrv'),
                 note('Compruébalo desde un PC: dig www.aula.lab, dig +short aula.lab MX, dig -x 192.168.10.2, nslookup o host.'),
+                note('Dominio de búsqueda: si el pool DHCP lleva domain-name (opción 15), el PC lo añade a /etc/resolv.conf («search aula.lab») y a «Connection-specific DNS Suffix» en Windows. Así ping, nslookup, host, curl, ssh y el navegador completan un nombre sin puntos (www → www.aula.lab), como glibc con ndots:1: primero con el dominio y después tal cual; un nombre con puntos va primero tal cual; un punto final («www.») evita la búsqueda. dig no usa la búsqueda salvo con +search, como el dig real. hostname -f da el nombre canónico de /etc/hosts (en Ubuntu no incluye el dominio de DHCP).'),
             ],
         },
         {
@@ -18764,7 +18803,7 @@ const UTIL_DOCS = {
     netplan: { group: 'red', section: 8, synopsis: 'netplan {apply | try | generate | get | info}', summary: 'Aplica /etc/netplan/*.yaml (unidos por orden de nombre) a la interfaz eth0: dhcp4, addresses, routes (to: default, via), nameservers. try revierte si no confirmas con Intro. Los errores indican fichero:línea:columna.' },
     traceroute: { group: 'red', synopsis: 'traceroute [-n] [-m SALTOS] DESTINO', summary: 'Ruta hasta el destino: sondas ICMP con TTL 1, 2, 3… (como traceroute -I); cada router responde «tiempo excedido». -n sin nombres, -m máximo de saltos (30).' },
     ping: { group: 'red', synopsis: 'ping [-c N] DESTINO', summary: 'Eco ICMP (sin -c, 4 paquetes en Netfix). Estado 0 si responde, 1 si no, 2 si el nombre no se resuelve.' },
-    dig: { group: 'red', synopsis: 'dig [@SERVIDOR] NOMBRE [TIPO] [+short] | dig -x IP', summary: 'Consulta DNS con la salida de BIND 9 (secciones QUESTION, ANSWER, AUTHORITY; status NOERROR/NXDOMAIN/REFUSED).' },
+    dig: { group: 'red', synopsis: 'dig [@SERVIDOR] NOMBRE [TIPO] [+short] [+search] | dig -x IP', summary: 'Consulta DNS con la salida de BIND 9 (secciones QUESTION, ANSWER, AUTHORITY; status NOERROR/NXDOMAIN/REFUSED).' },
     nslookup: { group: 'red', synopsis: 'nslookup NOMBRE [SERVIDOR]', summary: 'Consulta DNS sencilla.' },
     host: { group: 'red', synopsis: 'host [-t TIPO] NOMBRE [SERVIDOR]', summary: 'Consulta DNS en una línea por registro.' },
     curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X MÉTODO] [-d DATOS] [-u USUARIO:CLAVE] [-b COOKIES] [-H "Cabecera: valor"] [-o FICHERO | -O] URL', summary: 'Cliente HTTP. Errores con su código: (6) no resuelve, (7) conexión rechazada, (3) URL no válida, (22) error HTTP con -f.', options: '-I  solo cabeceras (HEAD)        -i  incluye las cabeceras\n-L  sigue las redirecciones       -v  muestra la petición y la respuesta\n-X  método (GET, POST, HEAD)      -d  datos de formulario (POST)\n-u  usuario:clave (Basic)         -b  cookies «a=1; b=2»\n-H  cabecera extra («Host: www.aula.lab» para probar un VirtualHost)\n-s  silencioso (-S muestra los errores)   -f  falla con los errores HTTP' },
@@ -19933,6 +19972,7 @@ const SERVICE_DOCS = {
                 code('*      IN  A      192.168.10.80   ; anything.aula.lab → .80\n*.dev  IN  CNAME  srv             ; app.dev.aula.lab → srv.aula.lab\n@      IN  MX     10 @'),
                 code('$ORIGIN aula.lab.\n$TTL 86400\n@\tIN\tSOA\tsrv.aula.lab. hostmaster.aula.lab. ( … )\n@\tIN\tNS\tsrv\n@\tIN\tMX\t10 srv\nsrv\tIN\tA\t192.168.10.2\nwww\tIN\tCNAME\tsrv'),
                 note('Check it from a PC: dig www.aula.lab, dig +short aula.lab MX, dig -x 192.168.10.2, nslookup or host.'),
+                note('Search domain: when the DHCP pool has a domain-name (option 15), the PC adds it to /etc/resolv.conf (“search aula.lab”) and to Windows’ “Connection-specific DNS Suffix”. So ping, nslookup, host, curl, ssh and the browser complete a name without dots (www → www.aula.lab), as glibc with ndots:1: first with the domain, then as typed; a name with dots goes as typed first; a final dot (“www.”) skips the search. dig does not use the search list unless +search, as the real dig. hostname -f gives the canonical name from /etc/hosts (on Ubuntu it does not include the DHCP domain).'),
             ],
         },
         {
@@ -20171,7 +20211,7 @@ const UTIL_DOCS = {
     netplan: { group: 'red', section: 8, synopsis: 'netplan {apply | try | generate | get | info}', summary: 'Applies /etc/netplan/*.yaml (merged in name order) to the eth0 interface: dhcp4, addresses, routes (to: default, via), nameservers. try reverts if you do not confirm with Enter. Errors show file:line:column.' },
     traceroute: { group: 'red', synopsis: 'traceroute [-n] [-m HOPS] DEST', summary: 'Route to the destination: ICMP probes with TTL 1, 2, 3… (like traceroute -I); each router replies “time exceeded”. -n without names, -m maximum hops (30).' },
     ping: { group: 'red', synopsis: 'ping [-c N] DEST', summary: 'ICMP echo (without -c, 4 packets in Netfix). Status 0 if it replies, 1 if not, 2 if the name does not resolve.' },
-    dig: { group: 'red', synopsis: 'dig [@SERVER] NAME [TYPE] [+short] | dig -x IP', summary: 'DNS query with BIND 9 output (QUESTION, ANSWER, AUTHORITY sections; status NOERROR/NXDOMAIN/REFUSED).' },
+    dig: { group: 'red', synopsis: 'dig [@SERVER] NAME [TYPE] [+short] [+search] | dig -x IP', summary: 'DNS query with BIND 9 output (QUESTION, ANSWER, AUTHORITY sections; status NOERROR/NXDOMAIN/REFUSED).' },
     nslookup: { group: 'red', synopsis: 'nslookup NAME [SERVER]', summary: 'Simple DNS query.' },
     host: { group: 'red', synopsis: 'host [-t TYPE] NAME [SERVER]', summary: 'DNS query, one line per record.' },
     curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X METHOD] [-d DATA] [-u USER:PASSWORD] [-b COOKIES] [-H "Header: value"] [-o FILE | -O] URL', summary: 'HTTP client. Errors with their code: (6) cannot resolve, (7) connection refused, (3) invalid URL, (22) HTTP error with -f.', options: '-I  headers only (HEAD)          -i  includes the headers\n-L  follows redirects            -v  shows the request and the response\n-X  method (GET, POST, HEAD)      -d  form data (POST)\n-u  user:password (Basic)         -b  cookies “a=1; b=2”\n-H  extra header (“Host: www.aula.lab” to test a VirtualHost)\n-s  silent (-S shows errors)      -f  fails on HTTP errors' },
@@ -27860,6 +27900,25 @@ function* hostnamectl(ctx) {
     ctx.err(`Unknown command verb '${verb}'.\n`);
     return 1;
 }
+/**
+ * hostname -f: the canonical name of the host as /etc/hosts gives it (the first name of the line that lists it), as
+ * glibc resolves it; Ubuntu does not add the DHCP domain to /etc/hosts, so it is usually the short name.
+ */
+function canonicalName(ctx, name) {
+    let hosts = '';
+    try {
+        hosts = ctx.sh.env.fs.readFile('/etc/hosts', ctx.cred);
+    }
+    catch {
+        return name;
+    }
+    for (const line of hosts.split('\n')) {
+        const fields = line.replace(/#.*/, '').trim().split(/\s+/).slice(1);
+        if (fields.some((f) => f.toLowerCase() === name.toLowerCase()))
+            return fields[0] ?? name;
+    }
+    return name;
+}
 /** hostname [-I|-f|-s] [NAME]: setting it (root only) changes the transient name. */
 function hostname(ctx) {
     const args = ctx.argv.slice(1);
@@ -27881,7 +27940,7 @@ function hostname(ctx) {
         return 0;
     }
     const name = names(ctx).transient;
-    ctx.out(`${args.includes('-f') ? `${name}.localdomain` : args.includes('-s') ? name.split('.')[0] ?? name : name}\n`);
+    ctx.out(`${args.includes('-f') ? canonicalName(ctx, name) : args.includes('-s') ? name.split('.')[0] ?? name : name}\n`);
     return 0;
 }
 const HOSTNAME_TOOLS = new Map([['hostnamectl', hostnamectl], ['hostname', hostname]]);
@@ -28132,7 +28191,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.10.1",
+    "version": "0.10.2",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -29725,6 +29784,7 @@ const { formatIp, formatMask, networkOf, broadcastOf } = __m["core/ip.js"];
 const { formatMacCisco } = __m["core/mac.js"];
 const { zonesOf } = __m["services/dns-service.js"];
 const { normalizeName } = __m["net/dns.js"];
+const { searchDomains } = __m["shells/net-tools.js"];
 const { ptExclusions } = __m["services/dhcp-pt.js"];
 const { cleanOrigin, effectiveRecords, qualify } = __m["services/dns-names.js"];
 const { NAMED_OPTIONS, namedOptions } = __m["services/named-options.js"];
@@ -29826,7 +29886,7 @@ function linuxFiles(host) {
         ['/etc/os-release', 'PRETTY_NAME="Ubuntu 26.04 LTS"\nNAME="Ubuntu"\nVERSION_ID="26.04"\nID=ubuntu\n'],
         ['/etc/hostname', `${host.name.toLowerCase()}\n`],
         ['/etc/hosts', `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`],
-        ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n`],
+        ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n${searchDomains(host).length ? `search ${searchDomains(host).join(' ')}\n` : ''}`],
     ]);
     if (runsServices(host.kind))
         for (const [k, v] of serverFiles(host))
@@ -32169,7 +32229,7 @@ function routeLines(host) {
 return { ipWrite, routeLines };
 })();
 __m["shells/linux-net.js"] = (() => {
-const { resolveHost, dnsQuery } = __m["shells/net-tools.js"];
+const { resolveHost, dnsQuery, dnsSearch } = __m["shells/net-tools.js"];
 const { linuxMac } = __m["shells/linux-files.js"];
 const { digOutput, nslookupOutput, hostOutput } = __m["shells/dns-format.js"];
 const { runPing } = __m["net/ping.js"];
@@ -32283,17 +32343,19 @@ function ping(host) {
             return 2;
         }
         const addr = formatIp(r.ip);
-        const out = [`PING ${target} (${addr}) 56(84) bytes of data.`];
+        // The name as resolved (www → www.empresa.lan with the search domain), as ping shows it.
+        const shown = r.viaDns ? r.name : target;
+        const out = [`PING ${shown} (${addr}) 56(84) bytes of data.`];
         results.forEach((x, i) => {
             if (x.kind === 'reply')
-                out.push(`64 bytes from ${r.viaDns ? `${target} (${addr})` : addr}: icmp_seq=${i + 1} ttl=${x.ttl} time=0.${400 + i * 37} ms`);
+                out.push(`64 bytes from ${r.viaDns ? `${shown} (${addr})` : addr}: icmp_seq=${i + 1} ttl=${x.ttl} time=0.${400 + i * 37} ms`);
             else if (x.kind === 'unreachable')
                 out.push(`From ${formatIp(x.from)} icmp_seq=${i + 1} Destination Host Unreachable`);
             else if (x.kind === 'ttl')
                 out.push(`From ${formatIp(x.from)} icmp_seq=${i + 1} Time to live exceeded`);
         });
         const ok = results.filter((x) => x.kind === 'reply').length;
-        out.push('', `--- ${target} ping statistics ---`, `${count} packets transmitted, ${ok} received, ${Math.round(((count - ok) * 100) / count)}% packet loss, time ${(count - 1) * 1001}ms`);
+        out.push('', `--- ${shown} ping statistics ---`, `${count} packets transmitted, ${ok} received, ${Math.round(((count - ok) * 100) / count)}% packet loss, time ${(count - 1) * 1001}ms`);
         if (ok)
             out.push('rtt min/avg/max/mdev = 0.400/0.455/0.511/0.040 ms');
         lines(ctx, out);
@@ -32320,8 +32382,10 @@ function dig(host) {
         }
         const qtype = rest.includes('-x') ? 'PTR' : type ?? 'A';
         const srv = server ? parseIp(server.slice(1)) ?? undefined : undefined;
-        const res = dnsQuery(host, name, qtype, srv);
-        lines(ctx, digOutput(name, qtype, res, args.includes('+short'), host.clock.now()));
+        // dig does not use the search list unless +search (its default is +nosearch).
+        const search = args.includes('+search') && qtype !== 'PTR' ? dnsSearch(host, name, qtype, srv) : { result: dnsQuery(host, name, qtype, srv), name };
+        const res = search.result;
+        lines(ctx, digOutput(search.name, qtype, res, args.includes('+short'), host.clock.now()));
         return res.kind === 'timeout' ? 9 : 0;
     };
 }
@@ -32335,7 +32399,7 @@ function nslookup(host) {
             ctx.err('Usage: nslookup <name> [server]\n');
             return 1;
         }
-        const res = dnsQuery(host, name, 'A', serverArg(srv));
+        const { result: res } = dnsSearch(host, name, 'A', serverArg(srv));
         lines(ctx, nslookupOutput(name, res, false));
         return res.kind === 'answer' && res.msg.rcode === 'NOERROR' && (res.msg.answers?.length ?? 0) > 0 ? 0 : 1;
     };
@@ -32351,7 +32415,7 @@ function hostCmd(host) {
             return 1;
         }
         const qtype = DNS_TYPES.includes(type) ? type : 'A';
-        const res = dnsQuery(host, name, qtype, serverArg(srv));
+        const { result: res } = dnsSearch(host, name, qtype, serverArg(srv));
         lines(ctx, hostOutput(name, res));
         return res.kind === 'answer' && res.msg.rcode === 'NOERROR' && (res.msg.answers?.length ?? 0) > 0 ? 0 : 1;
     };
@@ -36635,7 +36699,7 @@ __m["shells/windows.js"] = (() => {
 const { runsServices } = __m["devices/kinds.js"];
 const { windowsSshStore } = __m["shells/ssh-stores.js"];
 const { BaseShell } = __m["shells/base.js"];
-const { resolveHost, dnsQuery, httpGet } = __m["shells/net-tools.js"];
+const { resolveHost, dnsSearch, httpGet } = __m["shells/net-tools.js"];
 const { nslookupOutput } = __m["shells/dns-format.js"];
 const { HOST_PORT } = __m["devices/host.js"];
 const { findUnit, unitActive, openPorts, UNITS } = __m["services/units.js"];
@@ -36766,7 +36830,7 @@ class WindowsShell extends BaseShell {
             case 'ping': return this.ping(args);
             case 'tracert': return tracert(this.host, args);
             case 'arp': return this.arp(arg);
-            case 'nslookup': return args[0] ? nslookupOutput(args[0], dnsQuery(this.host, args[0], 'A', args[1] ? parseIp(args[1]) ?? undefined : undefined), true) : ['Usage: nslookup <name> [server]'];
+            case 'nslookup': return args[0] ? nslookupOutput(args[0], dnsSearch(this.host, args[0], 'A', args[1] ? parseIp(args[1]) ?? undefined : undefined).result, true) : ['Usage: nslookup <name> [server]'];
             case 'netstat': return this.netstat();
             case 'curl': return this.curl(args);
             case 'hostname': return [this.host.name];
@@ -36824,7 +36888,7 @@ class WindowsShell extends BaseShell {
         if (r.kind === 'error')
             return [`Ping request could not find host ${target}. Please check the name and try again.`];
         const ip = formatIp(r.ip);
-        const lines = ['', `Pinging ${r.viaDns ? `${target} [${ip}]` : ip} with 32 bytes of data:`, ''];
+        const lines = ['', `Pinging ${r.viaDns ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
         const results = runPing(this.host.stack, this.host.hooks, r.ip, { count, timeoutMs: PING_TIMEOUT_MS });
         for (const x of results) {
             if (x.kind === 'reply')

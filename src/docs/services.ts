@@ -82,6 +82,7 @@ export const SERVICE_DOCS: DocGroup = {
         code('*      IN  A      192.168.10.80   ; cualquier.aula.lab → .80\n*.dev  IN  CNAME  srv             ; app.dev.aula.lab → srv.aula.lab\n@      IN  MX     10 @'),
         code('$ORIGIN aula.lab.\n$TTL 86400\n@\tIN\tSOA\tsrv.aula.lab. hostmaster.aula.lab. ( … )\n@\tIN\tNS\tsrv\n@\tIN\tMX\t10 srv\nsrv\tIN\tA\t192.168.10.2\nwww\tIN\tCNAME\tsrv'),
         note('Compruébalo desde un PC: dig www.aula.lab, dig +short aula.lab MX, dig -x 192.168.10.2, nslookup o host.'),
+        note('Dominio de búsqueda: si el pool DHCP lleva domain-name (opción 15), el PC lo añade a /etc/resolv.conf («search aula.lab») y a «Connection-specific DNS Suffix» en Windows. Así ping, nslookup, host, curl, ssh y el navegador completan un nombre sin puntos (www → www.aula.lab), como glibc con ndots:1: primero con el dominio y después tal cual; un nombre con puntos va primero tal cual; un punto final («www.») evita la búsqueda. dig no usa la búsqueda salvo con +search, como el dig real. hostname -f da el nombre canónico de /etc/hosts (en Ubuntu no incluye el dominio de DHCP).'),
       ],
     },
     {

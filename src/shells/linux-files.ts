@@ -6,6 +6,7 @@ import { formatIp, formatMask, networkOf, broadcastOf } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
 import { zonesOf } from '../services/dns-service.ts';
 import { normalizeName } from '../net/dns.ts';
+import { searchDomains } from './net-tools.ts';
 import { ptExclusions } from '../services/dhcp-pt.ts';
 import type { DnsRecord, ServerServices } from '../services/config.ts';
 import { cleanOrigin, effectiveRecords, qualify } from '../services/dns-names.ts';
@@ -118,7 +119,7 @@ export function linuxFiles(host: Host): Map<string, string> {
     ['/etc/os-release', 'PRETTY_NAME="Ubuntu 26.04 LTS"\nNAME="Ubuntu"\nVERSION_ID="26.04"\nID=ubuntu\n'],
     ['/etc/hostname', `${host.name.toLowerCase()}\n`],
     ['/etc/hosts', `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`],
-    ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n`],
+    ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n${searchDomains(host).length ? `search ${searchDomains(host).join(' ')}\n` : ''}`],
   ]);
   if (runsServices(host.kind)) for (const [k, v] of serverFiles(host as Server)) files.set(k, v);
   return files;
