@@ -9,11 +9,25 @@ import type { MessageKey } from '../i18n/catalog.ts';
 export interface PaletteActions {
   selectTool(tool: Tool, key: string): void;
   zoom(action: 'in' | 'out' | 'fit'): void;
+  /** Shows or hides the drawing bar; returns whether it is now open. */
+  toggleDraw(): boolean;
 }
 
 export const PLACEABLE: readonly (readonly [DeviceKind, MessageKey])[] = [
   ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
 ];
+
+/** «Dibujo»: opens the bar with shapes, colours and labels (it is not a tool by itself). */
+function drawToggle(actions: PaletteActions): HTMLButtonElement {
+  const b = el('button', { type: 'button', class: 'pal-item pal-tool pal-draw', 'aria-pressed': 'false', 'aria-expanded': 'false', title: t('draw.openHint') },
+    el('span', { class: 'pal-glyph', 'aria-hidden': 'true' }, '✎'), el('span', { class: 'pal-name' }, t('draw.open')));
+  b.addEventListener('click', () => {
+    const open = actions.toggleDraw();
+    b.setAttribute('aria-pressed', String(open));
+    b.setAttribute('aria-expanded', String(open));
+  });
+  return b;
+}
 
 export function palette(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, hintEl: HTMLElement): HTMLElement {
   const deviceBtn = (kind: DeviceKind, name: string): HTMLButtonElement => {
@@ -40,7 +54,8 @@ export function palette(actions: PaletteActions, buttons: Map<string, HTMLButton
     el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') },
       toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'),
       toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'),
-      toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')),
+      toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕'),
+      drawToggle(actions)),
     el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))),
     hintEl);
 }

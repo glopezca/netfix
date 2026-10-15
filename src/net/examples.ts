@@ -1,4 +1,5 @@
 /** Ready-made labs that show each DHCP feature working. */
+import { decorateLab } from './lab-areas.ts';
 import { LABS_ES } from '../i18n/es-ES/labs.ts';
 import { Topology } from './topology.ts';
 import { Router } from '../devices/router.ts';
@@ -61,7 +62,7 @@ function startDhcp(t: Topology, pcs: readonly Pc[]): Topology {
   return t;
 }
 
-export const EXAMPLES: readonly Example[] = [
+const LABS: readonly Example[] = [
   {
     id: 'basico',
     title: LABS_ES['lab.basico.title'],
@@ -298,3 +299,6 @@ interface GigabitEthernet0/0
     build: () => new Topology(),
   },
 ];
+
+/** The labs, with areas drawn around their networks where they help to read the diagram. */
+export const EXAMPLES: readonly Example[] = LABS.map((ex) => ({ ...ex, build: () => decorateLab(ex.id, ex.build()) }));

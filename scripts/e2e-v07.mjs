@@ -70,6 +70,41 @@ try {
   await page.waitForSelector('.window :text("AllowedIPs")');
   await page.click('.win-close');
 
+  // 3b. The lab comes with areas; draw a named area, a label and a freehand stroke, move the area, and they survive a reload.
+  assert.ok(await page.locator('g.drawing-rect').count() >= 3, 'lab areas');
+  await page.click('.pal-draw');
+  await page.click('.draw-swatch[data-color="#f57c00"]');
+  await page.click('.draw-tool[aria-label="Rectangle (area)"]');
+  const wsb = await page.locator('.workspace').boundingBox();
+  await page.mouse.move(wsb.x + 1050, wsb.y + 300); await page.mouse.down();
+  await page.mouse.move(wsb.x + 1250, wsb.y + 450, { steps: 5 }); await page.mouse.up();
+  await page.waitForSelector('.draw-text-input');
+  await page.keyboard.type('Lab notes'); await page.keyboard.press('Enter');
+  await page.click('.draw-tool[aria-label="Text label"]');
+  await page.mouse.click(wsb.x + 1060, wsb.y + 500);
+  await page.waitForSelector('.draw-text-input');
+  await page.keyboard.type('10.99.0.0/24'); await page.keyboard.press('Enter');
+  await page.click('.draw-tool[aria-label="Freehand"]');
+  await page.mouse.move(wsb.x + 1060, wsb.y + 540); await page.mouse.down();
+  for (let i = 0; i < 12; i++) await page.mouse.move(wsb.x + 1060 + i * 10, wsb.y + 540 + (i % 2) * 12);
+  await page.mouse.up();
+  const texts = async () => page.locator('.drawing-label, .drawing-text').evaluateAll((ns) => ns.map((n) => n.textContent));
+  assert.ok((await texts()).includes('Lab notes') && (await texts()).includes('10.99.0.0/24'), 'named area and label');
+  // Drag the new area by its border with the Select tool; the periodic redraw must not cancel the move.
+  await page.click('.pal-item:has-text("Select")');
+  const area = page.locator('g.drawing-rect').last();
+  const before = await area.boundingBox();
+  await page.mouse.move(before.x + 2, before.y + before.height / 2); await page.mouse.down();
+  for (let i = 1; i <= 8; i++) { await page.mouse.move(before.x + 2 + i * 8, before.y + before.height / 2 + i * 4); await page.waitForTimeout(60); }
+  await page.mouse.up();
+  const after = await area.boundingBox();
+  assert.ok(Math.abs(after.x - before.x - 64) < 6 && Math.abs(after.y - before.y - 32) < 6, `area moved (${after.x - before.x}, ${after.y - before.y})`);
+  await page.click('.pal-draw');
+  await page.waitForTimeout(1200);
+  await page.reload();
+  await page.waitForSelector('g.drawing-free');
+  assert.ok((await texts()).includes('Lab notes'), 'drawings are saved with the topology');
+
   // 4. SSH client app of a PC: generate a key, then the open session survives a visit to the Keys tab.
   await page.click('button.seg:has-text("Network")');
   await page.dblclick('g.device-pc >> nth=0');

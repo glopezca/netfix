@@ -5,6 +5,7 @@ export const LOAD_ES = {
   'load.badDevice': 'Dispositivo no válido en el archivo.',
   'load.deviceData': 'Datos incompletos para {id}.',
   'load.deviceConfig': 'Configuración no válida en {id}.',
+  'load.drawings': 'Dibujos no válidos en el archivo.',
   'load.badLink': 'Enlace no válido en el archivo.',
   'load.tooBig': 'El archivo tiene demasiados dispositivos o enlaces (máximo {max}).',
   'load.list': 'Lista no válida: {what}.',

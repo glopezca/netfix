@@ -7,6 +7,7 @@ export const LOAD_EN: Readonly<Record<LoadKey, string>> = {
   'load.badDevice': 'Invalid device in the file.',
   'load.deviceData': 'Incomplete data for {id}.',
   'load.deviceConfig': 'Invalid configuration in {id}.',
+  'load.drawings': 'Invalid drawings in the file.',
   'load.badLink': 'Invalid link in the file.',
   'load.tooBig': 'The file has too many devices or links (maximum {max}).',
   'load.list': 'Invalid list: {what}.',

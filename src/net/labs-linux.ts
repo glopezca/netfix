@@ -76,7 +76,7 @@ export const dmzLab: Example = {
     const sur = cloud(t, 'ISP-Sur', 780, 'DSL0', 'router');
     const fw = t.add('linuxrouter', 240, 260, { label: 'FW' }).device as LinuxRouter;
     link(t, fw.id, 'GigabitEthernet0/0', norte.id, 'Fibra0');
-    branchLan(t, 120, { id: fw.id, port: 'GigabitEthernet0/1' }, '192.168.1', 2, '192.168.1.1');
+    branchLan(t, 160, { id: fw.id, port: 'GigabitEthernet0/1' }, '192.168.1', 2, '192.168.1.1');
     const web = t.add('server', 420, 420, { label: 'WEB-DMZ' }).device as Server;
     link(t, fw.id, 'GigabitEthernet0/2', web.id, 'FastEthernet0');
     web.setStatic({ ip: ip('172.16.0.80'), prefix: 24, gateway: ip('172.16.0.1'), dns: ip('8.8.8.8') });

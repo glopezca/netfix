@@ -40,6 +40,9 @@ Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado par
   (SFTP)** tipo FileZilla. Laboratorios de conectividad, seguridad y bastionado. Lo que se cambia en la terminal
   se ve en los paneles. Pestaña **Donaciones** (PayPal.Me) y créditos en Midnight Commander (F2/F9: los de Netfix y los reales de GNU Midnight Commander, con sus traductores). Mejor uso en móvil,
   tableta y touchpad (pellizco, barra de teclas táctil).
+- **Dibujo** (v0.8): barra flotante para delimitar redes con áreas de color (rectángulo, elipse), trazar líneas o a mano
+  alzada y escribir etiquetas, con nueve colores básicos y selector RGB, relleno y grosor. Los dibujos se guardan con la
+  topología; los laboratorios traen áreas para redes privadas, Internet, DMZ, invitados, servidores, VLAN y túneles VPN.
 - Modo simulación con lista de eventos (DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP, SSH),
   animación paso a paso y la PDU de cada paquete.
 - Guardar y abrir topologías completas en archivos `.json` (también la configuración de los servicios).

@@ -27,6 +27,7 @@ export const NETFIX_DOCS: DocGroup = {
           'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.',
           'Seleccionar: arrastra equipos; doble clic abre su ventana.',
           'Eliminar: borra equipos o cables.',
+          'Dibujo: abre la barra para delimitar áreas, trazar líneas y escribir etiquetas (ver «Dibujo»).',
         ),
         h('Ventanas de los equipos'),
         table(['Equipo', 'Pestañas'], [
@@ -61,6 +62,28 @@ export const NETFIX_DOCS: DocGroup = {
         ]),
         p('sudo pide la contraseña de la cuenta cuando existe una cuenta SSH con ese nombre (admin/cisco en el laboratorio) y la recuerda 15 minutos, como Ubuntu. En los PC no hay cuentas SSH, así que sudo no pide contraseña.'),
         code('admin@srv:~$ sudo systemctl restart apache2\n[sudo] password for admin:\nadmin@srv:~$ sudo -i\nroot@srv:~#'),
+      ],
+    },
+    {
+      id: 'dibujo',
+      title: 'Dibujo: áreas, líneas y etiquetas',
+      summary: 'Delimitar redes con áreas de color, trazar líneas o a mano alzada y escribir etiquetas sobre el área de trabajo.',
+      blocks: [
+        p('El botón Dibujo de la paleta abre una barra flotante para anotar el diagrama: marcar la red privada, la DMZ o Internet, escribir la dirección de red o señalar un túnel. Los dibujos no cambian la red simulada y se guardan con la topología.'),
+        table(['Herramienta', 'Uso'], [
+          ['▭ Rectángulo · ◯ Elipse', 'Arrastra para delimitar un área. Al soltar pide su nombre (por ejemplo «LAN · 192.168.1.0/24»); Escape lo deja sin nombre.'],
+          ['╱ Línea · ✎ Mano alzada', 'Arrastra para trazar una línea recta o libre (un túnel, un flujo de tráfico, un subrayado).'],
+          ['T Etiqueta de texto', 'Haz clic donde va el texto y escríbelo; Intro acepta.'],
+          ['Colores', 'Nueve colores básicos y un selector RGB para cualquier otro; el actual se ve a la izquierda.'],
+          ['Relleno · grosor', 'Las áreas pueden llevar un relleno suave de su color; el grosor del trazo va de 1 a 6 px.'],
+        ]),
+        list(
+          'Con Seleccionar, arrastra un dibujo por su borde o su texto para moverlo; el interior de un área deja pasar los clics al fondo y a los equipos.',
+          'Doble clic en un área o etiqueta: cambiar su texto. Con un dibujo seleccionado, elegir otro color, relleno o grosor lo cambia.',
+          'Eliminar (o Supr) borra el dibujo seleccionado.',
+          'Los laboratorios ya traen áreas para las redes privadas, Internet, la DMZ, los invitados, los servidores, las VLAN y los túneles VPN.',
+        ),
+        note('Los dibujos van debajo de los cables y de los equipos, y «Ajustar a la red» también los tiene en cuenta.'),
       ],
     },
     {

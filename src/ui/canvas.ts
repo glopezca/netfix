@@ -6,10 +6,14 @@ import type { Endpoint, Link } from '../net/network.ts';
 import { shortIfaceName } from '../ios/interfaces.ts';
 import { Viewport } from './viewport.ts';
 import { placeInside } from './viewport-math.ts';
+import { along, clamp, perpendicular, triangle } from './canvas-geometry.ts';
+import { DrawLayer } from './draw-layer.ts';
+import { DrawState } from './draw-bar.ts';
+import type { ShapeKind } from '../net/annotations.ts';
 import { t } from '../i18n/t.ts';
 import type { MessageKey } from '../i18n/catalog.ts';
 
-export type Tool = { kind: 'select' } | { kind: 'cable' } | { kind: 'delete' } | { kind: 'place'; device: DeviceKind };
+export type Tool = { kind: 'select' } | { kind: 'cable' } | { kind: 'delete' } | { kind: 'place'; device: DeviceKind } | { kind: 'draw'; shape: ShapeKind };
 
 export interface CanvasEvents {
   open(id: string): void;
@@ -27,7 +31,7 @@ const DOUBLE_TAP_MS = 350;
 const LONG_PRESS_MS = 550;
 
 const HINTS: Readonly<Record<Tool['kind'], MessageKey>> = {
-  select: 'canvas.hint.select', cable: 'canvas.hint.cable', delete: 'canvas.hint.delete', place: 'canvas.hint.place',
+  select: 'canvas.hint.select', cable: 'canvas.hint.cable', delete: 'canvas.hint.delete', place: 'canvas.hint.place', draw: 'canvas.hint.draw',
 };
 
 export class Canvas {
@@ -48,8 +52,10 @@ export class Canvas {
   /** A drag or tap on a device is in progress: periodic redraws wait so its element stays in the DOM. */
   private gesture = false;
   private lastPointer = 'mouse';
+  /** Areas, lines and labels drawn over the network. */
+  readonly draw: DrawLayer;
 
-  constructor(topo: Topology, events: CanvasEvents) {
+  constructor(topo: Topology, events: CanvasEvents, drawState = new DrawState()) {
     this.topo = topo;
     this.events = events;
     this.linkLayer = svg('g', { class: 'links' });
@@ -59,6 +65,11 @@ export class Canvas {
       svg('rect', { class: 'world-bg', x: 0, y: 0, width: WORLD_W, height: WORLD_H }), this.linkLayer, this.deviceLayer, this.packetLayer);
     this.menu = el('div', { class: 'port-menu', role: 'menu', hidden: true });
     this.root = el('div', { class: 'workspace', tabindex: '0' }, this.svgEl, this.menu);
+    this.draw = new DrawLayer({
+      topo: () => this.topo, toWorld: (e) => this.toWorld(e), toScreen: (p) => this.toScreen(p), changed: () => this.events.changed(),
+      deleting: () => this.tool.kind === 'delete', selectedDrawing: () => { this.selected = null; this.markSelection(); }, pinching: () => this.viewport.pinching(), overlay: this.root,
+    }, drawState);
+    this.linkLayer.before(this.draw.layer);
     this.svgEl.addEventListener('pointerdown', (e) => { this.lastPointer = e.pointerType; }, { capture: true });
     this.svgEl.addEventListener('pointerdown', (e) => this.onBackground(e));
     this.root.addEventListener('keydown', (e) => this.onKey(e));
@@ -69,6 +80,7 @@ export class Canvas {
     this.topo = topo;
     this.selected = null;
     this.pendingEnd = null;
+    this.draw.reset();
     this.render();
     this.frameContent();
   }
@@ -92,12 +104,17 @@ export class Canvas {
   }
 
   zoom(action: 'in' | 'out' | 'fit'): void {
-    this.viewport.zoom(action, [...this.topo.placed.values()]);
+    this.viewport.zoom(action, this.contentPoints());
+  }
+
+  /** Devices and drawings: what «fit» and the first view must show. */
+  private contentPoints(): { x: number; y: number }[] {
+    return [...this.topo.placed.values(), ...this.topo.annotations.flatMap((a) => a.points)];
   }
 
   /** Shows the whole network if it does not fit (after the layout has a size). */
   frameContent(): void {
-    requestAnimationFrame(() => this.viewport.fitIfNeeded([...this.topo.placed.values()]));
+    requestAnimationFrame(() => this.viewport.fitIfNeeded(this.contentPoints()));
   }
 
   /** Coalesces renders to one per animation frame. */
@@ -110,6 +127,7 @@ export class Canvas {
   }
 
   render(): void {
+    this.draw.render();
     this.renderLinks();
     clear(this.deviceLayer);
     for (const [id, p] of this.topo.placed) this.deviceLayer.appendChild(this.drawDevice(id, p));
@@ -192,8 +210,20 @@ export class Canvas {
     return { x: ((e.clientX - r.left) * WORLD_W) / r.width, y: ((e.clientY - r.top) * WORLD_H) / r.height };
   }
 
+  /** Position of a workspace point inside the (scrolling) workspace element. */
+  private toScreen(p: { x: number; y: number }): { x: number; y: number } {
+    const r = this.svgEl.getBoundingClientRect();
+    const host = this.root.getBoundingClientRect();
+    return { x: r.left - host.left + this.root.scrollLeft + (p.x * r.width) / WORLD_W, y: r.top - host.top + this.root.scrollTop + (p.y * r.height) / WORLD_H };
+  }
+
   private onBackground(e: PointerEvent): void {
     this.hideMenu();
+    this.draw.deselect();
+    if (this.tool.kind === 'draw') {
+      this.draw.begin(e, this.tool.shape);
+      return;
+    }
     if (this.tool.kind === 'place') {
       const { x, y } = this.toWorld(e);
       this.topo.add(this.tool.device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
@@ -212,6 +242,7 @@ export class Canvas {
   private onDevicePointer(e: PointerEvent, id: string, g: SVGGElement): void {
     e.stopPropagation();
     this.hideMenu();
+    this.draw.deselect();
     if (this.tool.kind === 'delete') {
       this.topo.remove(id);
       this.events.removed(id);
@@ -324,6 +355,7 @@ export class Canvas {
       this.setTool({ kind: 'select' });
       return;
     }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && this.draw.deleteSelected()) return;
     if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected) {
       const id = this.selected;
       if (this.topo.get(id)) {
@@ -336,31 +368,4 @@ export class Canvas {
       this.events.changed();
     }
   }
-}
-
-function clamp(v: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, v));
-}
-
-function along(from: { x: number; y: number }, to: { x: number; y: number }, dist: number): { x: number; y: number } {
-  const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
-  const d = Math.min(dist, len / 2 - 4);
-  return { x: from.x + ((to.x - from.x) * d) / len, y: from.y + ((to.y - from.y) * d) / len };
-}
-
-/** Offset vector perpendicular to the cable, always pointing right (or up for horizontal cables). */
-function perpendicular(from: { x: number; y: number }, to: { x: number; y: number }, dist: number): { x: number; y: number } {
-  const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
-  let nx = -(to.y - from.y) / len;
-  let ny = (to.x - from.x) / len;
-  if (nx < 0 || (nx === 0 && ny > 0)) { nx = -nx; ny = -ny; }
-  return { x: nx * dist, y: ny * dist };
-}
-
-/** Link light: a small triangle pointing along the cable, like Packet Tracer. */
-function triangle(c: { x: number; y: number }, from: { x: number; y: number }, to: { x: number; y: number }): string {
-  const ang = Math.atan2(to.y - from.y, to.x - from.x);
-  const s = 6;
-  const pts = [0, 2.1, 4.2].map((o) => [c.x + Math.cos(ang + o) * s, c.y + Math.sin(ang + o) * s]);
-  return `M${pts.map((p) => p.map((n) => n.toFixed(1)).join(' ')).join(' L')} Z`;
 }

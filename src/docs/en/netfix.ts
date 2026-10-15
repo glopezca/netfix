@@ -27,6 +27,7 @@ export const NETFIX_DOCS: DocGroup = {
           'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.',
           'Select: drag devices; double-click opens their window.',
           'Delete: removes devices or cables.',
+          'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).',
         ),
         h('Device windows'),
         table(['Device', 'Tabs'], [
@@ -61,6 +62,28 @@ export const NETFIX_DOCS: DocGroup = {
         ]),
         p('sudo asks for the account’s password when an SSH account with that name exists (admin/cisco in the lab) and remembers it for 15 minutes, as Ubuntu does. PCs have no SSH accounts, so sudo does not ask for a password.'),
         code('admin@srv:~$ sudo systemctl restart apache2\n[sudo] password for admin:\nadmin@srv:~$ sudo -i\nroot@srv:~#'),
+      ],
+    },
+    {
+      id: 'dibujo',
+      title: 'Drawing: areas, lines and labels',
+      summary: 'Mark networks with coloured areas, draw straight or freehand lines and write labels on the workspace.',
+      blocks: [
+        p('The Drawing button of the palette opens a floating bar to annotate the diagram: mark the private network, the DMZ or the Internet, write the network address or show a tunnel. Drawings do not change the simulated network and are saved with the topology.'),
+        table(['Tool', 'Use'], [
+          ['▭ Rectangle · ◯ Ellipse', 'Drag to mark an area. When released it asks for its name (for example “LAN · 192.168.1.0/24”); Escape leaves it unnamed.'],
+          ['╱ Line · ✎ Freehand', 'Drag to draw a straight or free line (a tunnel, a traffic flow, an underline).'],
+          ['T Text label', 'Click where the text goes and type it; Enter accepts.'],
+          ['Colours', 'Nine basic colours and an RGB picker for any other; the current one is shown on the left.'],
+          ['Fill · width', 'Areas can have a light fill of their colour; the stroke width goes from 1 to 6 px.'],
+        ]),
+        list(
+          'With Select, drag a drawing by its border or its text to move it; the inside of an area lets clicks through to the background and the devices.',
+          'Double-click an area or label: change its text. With a drawing selected, picking another colour, fill or width changes it.',
+          'Delete (or the Del key) removes the selected drawing.',
+          'The labs already come with areas for the private networks, the Internet, the DMZ, guests, servers, VLANs and VPN tunnels.',
+        ),
+        note('Drawings go below cables and devices, and “Fit to network” takes them into account too.'),
       ],
     },
     {

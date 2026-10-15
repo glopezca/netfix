@@ -620,3 +620,31 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 @media (max-width: 760px) { .ft-panes { grid-template-columns: 1fr; } .ft-field input { width: 100%; } .ft-field { flex: 1 1 140px; } }
 @media (pointer: coarse) { .ft-list td { padding-block: 10px; } }
 .pane-part { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+/* Drawing: areas, lines, freehand strokes and labels over the network (below cables and devices). */
+.drawing-shape { stroke-linecap: round; stroke-linejoin: round; pointer-events: visibleStroke; cursor: move; }
+.drawing-rect .drawing-shape, .drawing-ellipse .drawing-shape { stroke-dasharray: 10 6; }
+.drawing-text, .drawing-label { font-weight: 600; paint-order: stroke; stroke: var(--ws); stroke-width: 4px; stroke-linejoin: round; cursor: move; user-select: none; }
+.drawing.is-selected .drawing-shape { filter: drop-shadow(0 0 3px var(--accent)); }
+.drawing.is-selected .drawing-text, .drawing.is-selected .drawing-label { text-decoration: underline; }
+.workspace[data-tool="draw"] { cursor: crosshair; }
+.workspace[data-tool="delete"] .drawing { cursor: not-allowed; }
+.draw-bar {
+  position: absolute; left: 12px; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  max-width: calc(100% - 24px); padding: 8px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+}
+.draw-bar[hidden] { display: none; }
+.draw-group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.draw-tool { min-width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); color: var(--ink); font-size: 18px; cursor: pointer; }
+.draw-tool[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.draw-swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--panel); outline: 1px solid var(--line); cursor: pointer; padding: 0; }
+.draw-current { width: 28px; height: 28px; border-radius: 6px; border: 2px solid var(--ink); }
+.draw-picker { width: 36px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
+.draw-width { max-width: 6rem; }
+.draw-text-input { position: absolute; z-index: 6; min-width: 14rem; padding: 4px 8px; border: 2px solid var(--accent); border-radius: 6px; background: var(--panel); color: var(--ink); font: inherit; }
+@media (pointer: coarse) {
+  .draw-tool { min-width: 44px; height: 44px; }
+  .draw-swatch { width: 30px; height: 30px; }
+}
+.drawing-hit { stroke: transparent; stroke-width: 14px; pointer-events: stroke; cursor: move; }
+.workspace[data-tool="delete"] .drawing-hit { cursor: not-allowed; }

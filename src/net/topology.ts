@@ -8,6 +8,8 @@ import { bootWireguard } from '../shells/wg-boot.ts';
 import { validFileRecords } from '../bash/vfs-persist.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
 import { Network } from './network.ts';
+import { annotationsFromJson, drawable, makeAnnotation, MAX_ANNOTATIONS } from './annotations.ts';
+import type { Annotation, AnnotationInit } from './annotations.ts';
 import type { CableKind, Endpoint, Link } from './network.ts';
 import { SimClock } from '../core/clock.ts';
 import { Router } from '../devices/router.ts';
@@ -91,12 +93,16 @@ export interface TopologyFile {
   readonly version: 1 | 2;
   readonly devices: readonly DeviceRecord[];
   readonly links: readonly { readonly a: Endpoint; readonly b: Endpoint; readonly cable: CableKind }[];
+  /** Drawings of the workspace (areas, lines, labels); missing in files before v0.8. */
+  readonly annotations?: readonly Annotation[];
 }
 
 const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'Cloud' };
 export const FILE_VERSION = 2;
 /** A larger file would freeze the tab while it is built and settled. */
 const MAX_DEVICES = 500;
+/** Drawing ids stay short (aN) even after a crafted file. */
+const MAX_DRAWING_ID = 999_999_999;
 const SETTLE_MS = 30_000;
 const MAX_PRETTY = 256;
 
@@ -108,6 +114,9 @@ export class Topology {
   readonly internet = makeInternet(this.net);
   private nextSeed = 1;
   private nextId = 1;
+  /** Drawings of the workspace (replaced, never mutated). */
+  annotations: readonly Annotation[] = [];
+  private nextDrawing = 1;
 
   add(kind: DeviceKind, x: number, y: number, opts: { id?: string; seed?: number; label?: string } = {}): Placed {
     const id = opts.id ?? `d${this.nextId++}`;
@@ -168,13 +177,32 @@ export class Topology {
     return dev?.portNames().find((p) => !this.net.linkAt({ device: id, port: p }));
   }
 
+  /** Adds a drawing; undefined when it cannot be shown (a freehand dot) or the workspace already has MAX_ANNOTATIONS. */
+  addAnnotation(init: AnnotationInit): Annotation | undefined {
+    if (this.annotations.length >= MAX_ANNOTATIONS) return undefined;
+    const a = makeAnnotation(`a${this.nextDrawing}`, init);
+    if (!drawable(a)) return undefined;
+    this.nextDrawing++;
+    this.annotations = [...this.annotations, a];
+    return a;
+  }
+
+  updateAnnotation(id: string, change: (a: Annotation) => Annotation): void {
+    this.annotations = this.annotations.map((a) => (a.id === id ? { ...change(a), id } : a));
+  }
+
+  removeAnnotation(id: string): void {
+    this.annotations = this.annotations.filter((a) => a.id !== id);
+  }
+
   settle(ms = SETTLE_MS): void {
     this.net.runFor(ms);
   }
 
   toJSON(): TopologyFile {
     const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
-    return { format: 'netfix', version: FILE_VERSION, devices, links: this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable })) };
+    const links = this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable }));
+    return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}) };
   }
 
   static fromJSON(data: unknown): Topology {
@@ -187,6 +215,8 @@ export class Topology {
       topo.nextId = Math.max(topo.nextId, n + 1);
     }
     topo.separateClouds();
+    topo.annotations = file.annotations ?? [];
+    topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
     for (const l of file.links) topo.connect(l.a, l.b, l.cable);
     for (const p of topo.placed.values()) if (p.device instanceof Host && p.device.config.mode === 'dhcp') p.device.useDhcp();
     for (const p of topo.placed.values()) if (p.device instanceof LinuxRouter) bootWireguard(p.device);
@@ -307,5 +337,11 @@ export function validateFile(data: unknown): TopologyFile {
   for (const l of links) {
     if (!isObject(l) || !isObject(l.a) || !isObject(l.b) || [l.a.device, l.a.port, l.b.device, l.b.port].some((x) => typeof x !== 'string')) throw new Error(t('load.badLink'));
   }
-  return data as unknown as TopologyFile;
+  let annotations: Annotation[];
+  try {
+    annotations = annotationsFromJson(data.annotations);
+  } catch {
+    throw new Error(t('load.drawings'));
+  }
+  return { ...(data as unknown as TopologyFile), annotations };
 }

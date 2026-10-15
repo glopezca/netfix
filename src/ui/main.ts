@@ -17,6 +17,7 @@ import { palette } from './palette.ts';
 import { labText } from './lab-text.ts';
 import { saveTopology } from './save-file.ts';
 import { t } from '../i18n/t.ts';
+import { DrawState, drawBar } from './draw-bar.ts';
 import { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
 
@@ -43,6 +44,8 @@ class App {
   private saveTimer = 0;
   private readonly interval: number;
   private mode: Mode = 'realtime';
+  private readonly drawState = new DrawState();
+  private readonly drawBarEl: HTMLElement;
   private view: View = 'net';
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -62,12 +65,13 @@ class App {
       changed: () => this.afterCommand(),
       hint: (text) => { this.hintEl.textContent = text; },
       removed: (id) => { this.windows.close(id); forgetDevice(id); },
-    });
+    }, this.drawState);
     const winLayer = el('div', { class: 'win-layer' });
     this.windows = new WindowManager(winLayer);
     this.sim = new SimPanel(this.topo, this.canvas);
-    this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.sim.root);
-    this.paletteEl = palette({ selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a) }, this.toolButtons, this.hintEl);
+    this.drawBarEl = drawBar(this.drawState, { pick: (shape) => this.selectTool({ kind: 'draw', shape }, `draw-${shape}`) }, this.toolButtons);
+    this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.sim.root);
+    this.paletteEl = palette({ selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw() }, this.toolButtons, this.hintEl);
     this.pageHost = el('main', { class: 'docs-host', hidden: true });
     this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
     this.fileInput.addEventListener('change', () => void this.openFile());
@@ -130,6 +134,13 @@ class App {
     this.sim.setActive(m === 'simulation');
     document.body.dataset.mode = m;
     if (hint) this.hintEl.textContent = t(m === 'simulation' ? 'hint.simulation' : 'hint.realtime');
+  }
+
+  /** Opens or closes the drawing bar; closing it goes back to the Select tool. */
+  private toggleDraw(): boolean {
+    this.drawBarEl.hidden = !this.drawBarEl.hidden;
+    if (this.drawBarEl.hidden && this.canvas.currentTool().kind === 'draw') this.selectTool({ kind: 'select' }, 'select');
+    return !this.drawBarEl.hidden;
   }
 
   private selectTool(tool: Tool, key: string): void {

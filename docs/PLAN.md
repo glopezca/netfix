@@ -257,3 +257,19 @@ con la aclaración de que Netfix reproduce su interfaz sin incluir su código. `
 **v0.7.5:** los créditos añaden a los traductores de mc al español (David Martin, Ismael Olea, Slava Zanko, Yury V. Zaytsev)
 y al inglés británico (Andi Chandler, Yury V. Zaytsev), según las cabeceras de `po/es.po` y `po/en_GB.po`, sin correos,
 y una referencia a los equipos de Transifex del resto de idiomas.
+
+## Fase 15 · Dibujo sobre el área de trabajo (v0.8.0)
+
+| Paso | Entregable | Riesgo / decisión |
+|---|---|---|
+| 15.1 | `net/annotations.ts`: rectángulo, elipse, línea, mano alzada y texto; color #rrggbb, relleno, grosor, nombre del área; inmutables; JSON validado (límites de número, puntos, texto y coordenadas); `Topology.annotations`, campo opcional del archivo v2 | Archivos anteriores sin dibujos siguen abriéndose |
+| 15.2 | Capa SVG bajo cables y equipos (`ui/draw-layer.ts`), barra flotante (`ui/draw-bar.ts`) con nueve colores, RGB, relleno y grosor; seleccionar, mover, borrar, renombrar con doble clic | El interior de un área no captura el puntero (solo borde y texto, con trazo de impacto ancho); redibujo solo si cambian los dibujos |
+| 15.3 | Áreas de los laboratorios calculadas a partir de los equipos (`net/lab-areas.ts`): privadas, Internet, DMZ, invitados, servidores, VLAN, túneles | Textos en el idioma de la interfaz; prueba de que no se solapan |
+| 15.4 | Documentación es/en (página «Dibujo»), README, e2e | — |
+
+**Estado:** completada (v0.8.0, 420 pruebas, cobertura del núcleo 95 % líneas / 89 % funciones; e2e de dibujo, arrastre,
+guardado y móvil). Revisión ECC (code-reviewer): sin críticos; corregidos los dos altos (el redibujo periódico cancelaba el
+arrastre de un dibujo; un trazo «punto» hacía ilegible el archivo y el autoguardado) y los medios (selección al cambiar de
+topología, un solo puntero y nada durante el pellizco, cancelación sin mover, color RGB agrupado por fotograma, el dibujo
+nuevo no queda seleccionado, el servidor DHCP falso dentro del área de su LAN) y bajos (ids únicos y acotados, límite de
+500 sin falsos positivos, trazos de hasta 1000 puntos). Un dibujo malformado en un archivo se omite; el archivo se abre.

@@ -632,6 +632,34 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 @media (pointer: coarse) { .ft-list td { padding-block: 10px; } }
 .pane-part { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 
+/* Drawing: areas, lines, freehand strokes and labels over the network (below cables and devices). */
+.drawing-shape { stroke-linecap: round; stroke-linejoin: round; pointer-events: visibleStroke; cursor: move; }
+.drawing-rect .drawing-shape, .drawing-ellipse .drawing-shape { stroke-dasharray: 10 6; }
+.drawing-text, .drawing-label { font-weight: 600; paint-order: stroke; stroke: var(--ws); stroke-width: 4px; stroke-linejoin: round; cursor: move; user-select: none; }
+.drawing.is-selected .drawing-shape { filter: drop-shadow(0 0 3px var(--accent)); }
+.drawing.is-selected .drawing-text, .drawing.is-selected .drawing-label { text-decoration: underline; }
+.workspace[data-tool="draw"] { cursor: crosshair; }
+.workspace[data-tool="delete"] .drawing { cursor: not-allowed; }
+.draw-bar {
+  position: absolute; left: 12px; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  max-width: calc(100% - 24px); padding: 8px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+}
+.draw-bar[hidden] { display: none; }
+.draw-group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.draw-tool { min-width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); color: var(--ink); font-size: 18px; cursor: pointer; }
+.draw-tool[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.draw-swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--panel); outline: 1px solid var(--line); cursor: pointer; padding: 0; }
+.draw-current { width: 28px; height: 28px; border-radius: 6px; border: 2px solid var(--ink); }
+.draw-picker { width: 36px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
+.draw-width { max-width: 6rem; }
+.draw-text-input { position: absolute; z-index: 6; min-width: 14rem; padding: 4px 8px; border: 2px solid var(--accent); border-radius: 6px; background: var(--panel); color: var(--ink); font: inherit; }
+@media (pointer: coarse) {
+  .draw-tool { min-width: 44px; height: 44px; }
+  .draw-swatch { width: 30px; height: 30px; }
+}
+.drawing-hit { stroke: transparent; stroke-width: 14px; pointer-events: stroke; cursor: move; }
+.workspace[data-tool="delete"] .drawing-hit { cursor: not-allowed; }
+
 </style>
 </head>
 <body data-mode="realtime">
@@ -3105,6 +3133,7 @@ const LOAD_ES = {
     'load.badDevice': 'Dispositivo no válido en el archivo.',
     'load.deviceData': 'Datos incompletos para {id}.',
     'load.deviceConfig': 'Configuración no válida en {id}.',
+    'load.drawings': 'Dibujos no válidos en el archivo.',
     'load.badLink': 'Enlace no válido en el archivo.',
     'load.tooBig': 'El archivo tiene demasiados dispositivos o enlaces (máximo {max}).',
     'load.list': 'Lista no válida: {what}.',
@@ -3171,6 +3200,7 @@ const LOAD_EN = {
     'load.badDevice': 'Invalid device in the file.',
     'load.deviceData': 'Incomplete data for {id}.',
     'load.deviceConfig': 'Invalid configuration in {id}.',
+    'load.drawings': 'Invalid drawings in the file.',
     'load.badLink': 'Invalid link in the file.',
     'load.tooBig': 'The file has too many devices or links (maximum {max}).',
     'load.list': 'Invalid list: {what}.',
@@ -3295,6 +3325,81 @@ const IFACES_EN = {
 
 return { IFACES_EN };
 })();
+__m["i18n/es-ES/draw.js"] = (() => {
+/** Español (España): dibujo sobre el área de trabajo (áreas, líneas, etiquetas) y áreas de los laboratorios. */
+const DRAW_ES = {
+    'draw.title': 'Dibujo',
+    'draw.open': 'Dibujo',
+    'draw.openHint': 'Mostrar u ocultar la barra de dibujo',
+    'draw.rect': 'Rectángulo (área)',
+    'draw.ellipse': 'Elipse (área)',
+    'draw.line': 'Línea',
+    'draw.free': 'Mano alzada',
+    'draw.text': 'Etiqueta de texto',
+    'draw.color': 'Color {color}',
+    'draw.rgb': 'Color personalizado (RGB)',
+    'draw.fill': 'Relleno',
+    'draw.width': 'Grosor del trazo',
+    'draw.textPrompt': 'Texto (Intro para aceptar)',
+    'canvas.hint.draw': 'Arrastra para dibujar; en Etiqueta, haz clic donde va el texto. Doble clic en un área o etiqueta: cambiar su texto. Seleccionar mueve los dibujos; Eliminar o Supr los borra.',
+    'area.internet': 'Internet · red pública',
+    'area.lan': '{name} · red privada {net}',
+    'area.dmz': 'DMZ · {net}',
+    'area.guests': 'Invitados · {net}',
+    'area.servers': 'Servidores · {net}',
+    'area.admin': 'Administración · {net}',
+    'area.students': 'Alumnos · {net}',
+    'area.tunnel': 'Túnel {kind} · {net}',
+    'area.vlan': 'VLAN {id} · {net}',
+    'area.external': 'Cliente externo (otra red)',
+    'area.name.lan': 'LAN',
+    'area.name.remote': 'LAN remota',
+    'area.name.classroom': 'Aula',
+    'area.name.company': 'Empresa',
+    'area.name.site': 'Sede {n}',
+    'area.name.hq': 'Central',
+    'area.name.branch': 'Sucursal',
+};
+
+return { DRAW_ES };
+})();
+__m["i18n/en-GB/draw.js"] = (() => {
+const DRAW_EN = {
+    'draw.title': 'Drawing',
+    'draw.open': 'Drawing',
+    'draw.openHint': 'Show or hide the drawing bar',
+    'draw.rect': 'Rectangle (area)',
+    'draw.ellipse': 'Ellipse (area)',
+    'draw.line': 'Line',
+    'draw.free': 'Freehand',
+    'draw.text': 'Text label',
+    'draw.color': 'Colour {color}',
+    'draw.rgb': 'Custom colour (RGB)',
+    'draw.fill': 'Fill',
+    'draw.width': 'Stroke width',
+    'draw.textPrompt': 'Text (Enter to accept)',
+    'canvas.hint.draw': 'Drag to draw; with Text label, click where the text goes. Double-click an area or label: change its text. Select moves drawings; Delete or the Del key removes them.',
+    'area.internet': 'Internet · public network',
+    'area.lan': '{name} · private network {net}',
+    'area.dmz': 'DMZ · {net}',
+    'area.guests': 'Guests · {net}',
+    'area.servers': 'Servers · {net}',
+    'area.admin': 'Administration · {net}',
+    'area.students': 'Students · {net}',
+    'area.tunnel': '{kind} tunnel · {net}',
+    'area.vlan': 'VLAN {id} · {net}',
+    'area.external': 'External client (another network)',
+    'area.name.lan': 'LAN',
+    'area.name.remote': 'Remote LAN',
+    'area.name.classroom': 'Classroom',
+    'area.name.company': 'Company',
+    'area.name.site': 'Site {n}',
+    'area.name.hq': 'Head office',
+    'area.name.branch': 'Branch',
+};
+
+return { DRAW_EN };
+})();
 __m["i18n/catalog.js"] = (() => {
 const { APP_ES } = __m["i18n/es-ES/app.js"];
 const { APP_EN } = __m["i18n/en-GB/app.js"];
@@ -3330,10 +3435,12 @@ const { LOAD_ES } = __m["i18n/es-ES/load.js"];
 const { LOAD_EN } = __m["i18n/en-GB/load.js"];
 const { IFACES_ES } = __m["i18n/es-ES/ifaces.js"];
 const { IFACES_EN } = __m["i18n/en-GB/ifaces.js"];
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES, ...LABS_ES, ...UI_ES, ...CLOUD_ES, ...SRV_ES, ...WEB_ES, ...LOAD_ES, ...IFACES_ES };
+const { DRAW_ES } = __m["i18n/es-ES/draw.js"];
+const { DRAW_EN } = __m["i18n/en-GB/draw.js"];
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES, ...LABS_ES, ...UI_ES, ...CLOUD_ES, ...SRV_ES, ...WEB_ES, ...LOAD_ES, ...IFACES_ES, ...DRAW_ES };
 const CATALOGS = {
     'es-ES': ES,
-    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN, ...LABS_EN, ...UI_EN, ...CLOUD_EN, ...SRV_EN, ...WEB_EN, ...LOAD_EN, ...IFACES_EN },
+    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN, ...LABS_EN, ...UI_EN, ...CLOUD_EN, ...SRV_EN, ...WEB_EN, ...LOAD_EN, ...IFACES_EN, ...DRAW_EN },
 };
 
 return { CATALOGS };
@@ -3692,6 +3799,479 @@ class Viewport {
 
 return { Viewport };
 })();
+__m["ui/canvas-geometry.js"] = (() => {
+/** Geometry of the workspace drawing: clamping, points along a cable, the side of its labels and link lights. */
+function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+}
+function along(from, to, dist) {
+    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+    const d = Math.min(dist, len / 2 - 4);
+    return { x: from.x + ((to.x - from.x) * d) / len, y: from.y + ((to.y - from.y) * d) / len };
+}
+/** Offset vector perpendicular to the cable, always pointing right (or up for horizontal cables). */
+function perpendicular(from, to, dist) {
+    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+    let nx = -(to.y - from.y) / len;
+    let ny = (to.x - from.x) / len;
+    if (nx < 0 || (nx === 0 && ny > 0)) {
+        nx = -nx;
+        ny = -ny;
+    }
+    return { x: nx * dist, y: ny * dist };
+}
+/** Link light: a small triangle pointing along the cable, like Packet Tracer. */
+function triangle(c, from, to) {
+    const ang = Math.atan2(to.y - from.y, to.x - from.x);
+    const s = 6;
+    const pts = [0, 2.1, 4.2].map((o) => [c.x + Math.cos(ang + o) * s, c.y + Math.sin(ang + o) * s]);
+    return `M${pts.map((p) => p.map((n) => n.toFixed(1)).join(' ')).join(' L')} Z`;
+}
+
+return { clamp, along, perpendicular, triangle };
+})();
+__m["net/annotations.js"] = (() => {
+/**
+ * Drawings of the workspace (vector annotations): areas (rectangles and ellipses, optionally filled and named),
+ * lines, freehand strokes and text labels. Immutable records: every change returns a new one. They have no effect
+ * on the simulated network; they are saved in the topology file.
+ */
+/** Basic colours of the drawing bar (any other one is picked with the RGB selector). */
+const BASIC_COLORS = ['#d32f2f', '#f57c00', '#fbc02d', '#388e3c', '#0097a7', '#1976d2', '#7b1fa2', '#455a64', '#000000'];
+const KINDS = ['rect', 'ellipse', 'line', 'free', 'text'];
+const MAX_ANNOTATIONS = 500;
+const MAX_TEXT = 200;
+const MAX_POINTS = 1000;
+const MIN_STEP = 2;
+const MAX_WIDTH = 16;
+const MIN_SIZE = 8;
+const MAX_SIZE = 72;
+const DEFAULT_SIZE = 16;
+const MAX_COORD = 100_000;
+/** #rgb or #rrggbb in lower case, or null. */
+function normaliseColor(text) {
+    const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(text.trim());
+    if (!m)
+        return null;
+    const hex = (m[1] ?? '').toLowerCase();
+    return `#${hex.length === 3 ? [...hex].map((c) => c + c).join('') : hex}`;
+}
+/** A freehand stroke without points closer than MIN_STEP and with at most MAX_POINTS points. */
+function simplifyStroke(points) {
+    const out = [];
+    for (const p of points) {
+        const last = out[out.length - 1];
+        if (!last || Math.hypot(p.x - last.x, p.y - last.y) >= MIN_STEP)
+            out.push({ x: Math.round(p.x), y: Math.round(p.y) });
+    }
+    if (out.length <= MAX_POINTS)
+        return out;
+    const step = out.length / MAX_POINTS;
+    return Array.from({ length: MAX_POINTS }, (_, i) => out[Math.floor(i * step)]);
+}
+function makeAnnotation(id, init) {
+    const points = init.kind === 'free' ? simplifyStroke(init.points) : init.points.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }));
+    const text = init.text?.replace(/[\r\n\t]+/g, ' ').slice(0, MAX_TEXT);
+    return {
+        id, kind: init.kind, points, color: normaliseColor(init.color) ?? '#000000', fill: init.fill && (init.kind === 'rect' || init.kind === 'ellipse'),
+        width: Math.min(MAX_WIDTH, Math.max(1, Math.round(init.width))),
+        ...(text ? { text } : {}),
+        ...(init.kind === 'text' || text ? { size: Math.min(MAX_SIZE, Math.max(MIN_SIZE, Math.round(init.size ?? DEFAULT_SIZE))) } : {}),
+    };
+}
+function moveAnnotation(a, dx, dy) {
+    return { ...a, points: a.points.map((p) => ({ x: Math.round(p.x + dx), y: Math.round(p.y + dy) })) };
+}
+function restyle(a, style) {
+    return makeAnnotation(a.id, { ...a, ...style });
+}
+/** Bounding box of the points (for text, a box from the anchor). */
+function boundsOf(a) {
+    const xs = a.points.map((p) => p.x);
+    const ys = a.points.map((p) => p.y);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+}
+// ------------------------------------------------------------ JSON (untrusted)
+function isRecord(v) {
+    return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+function pointFrom(v) {
+    if (!isRecord(v) || typeof v.x !== 'number' || typeof v.y !== 'number' || !Number.isFinite(v.x) || !Number.isFinite(v.y) || Math.abs(v.x) > MAX_COORD || Math.abs(v.y) > MAX_COORD)
+        throw new Error('point');
+    return { x: v.x, y: v.y };
+}
+function annotationFrom(v) {
+    if (!isRecord(v) || typeof v.id !== 'string' || !/^[\w-]{1,32}$/.test(v.id))
+        throw new Error('annotation');
+    const kind = KINDS.find((k) => k === v.kind);
+    const color = typeof v.color === 'string' ? normaliseColor(v.color) : null;
+    if (!kind || !color || !Array.isArray(v.points) || typeof v.width !== 'number' || !Number.isFinite(v.width))
+        throw new Error('annotation');
+    const need = kind === 'text' ? 1 : 2;
+    if (v.points.length < need || v.points.length > (kind === 'free' ? MAX_POINTS * 2 : need))
+        throw new Error('annotation points');
+    if (v.text !== undefined && (typeof v.text !== 'string' || v.text.length > MAX_TEXT))
+        throw new Error('annotation text');
+    if (v.size !== undefined && (typeof v.size !== 'number' || !Number.isFinite(v.size)))
+        throw new Error('annotation size');
+    return makeAnnotation(v.id, { kind, color, fill: v.fill === true, width: v.width, points: v.points.map(pointFrom), text: v.text, size: v.size });
+}
+/** A drawing that can be shown: a freehand stroke needs two points after simplification. */
+function drawable(a) {
+    return a.kind === 'text' ? Boolean(a.text) : a.points.length >= 2;
+}
+/**
+ * The drawings of a file (none in files saved before v0.8). The list itself must be sane (or the file is
+ * refused); a single malformed or repeated drawing is left out, so a lab is never lost because of a doodle.
+ */
+function annotationsFromJson(v) {
+    if (v === undefined)
+        return [];
+    if (!Array.isArray(v) || v.length > MAX_ANNOTATIONS)
+        throw new Error('annotations');
+    const seen = new Set();
+    return v.flatMap((item) => {
+        try {
+            const a = annotationFrom(item);
+            if (seen.has(a.id) || !drawable(a))
+                return [];
+            seen.add(a.id);
+            return [a];
+        }
+        catch {
+            return [];
+        }
+    });
+}
+
+return { BASIC_COLORS, KINDS, MAX_ANNOTATIONS, MAX_TEXT, normaliseColor, simplifyStroke, makeAnnotation, moveAnnotation, restyle, boundsOf, drawable, annotationsFromJson };
+})();
+__m["ui/draw-layer.js"] = (() => {
+/**
+ * Drawings layer of the workspace (below cables and devices): draws the annotations of the topology and handles
+ * drawing new ones, selecting, moving, deleting and editing their text. Filled areas only catch the pointer on
+ * their border and their name, so the background (pan, placing devices) keeps working inside them.
+ */
+const { el, svg, clear } = __m["ui/dom.js"];
+const { boundsOf, moveAnnotation, restyle, MAX_TEXT } = __m["net/annotations.js"];
+const { t } = __m["i18n/t.js"];
+const MIN_SIZE = 6;
+const FILL_OPACITY = '0.12';
+const LABEL_PAD = 8;
+function shapePath(kind, a, b, pts) {
+    const x = Math.min(a.x, b.x);
+    const y = Math.min(a.y, b.y);
+    const w = Math.abs(b.x - a.x);
+    const h = Math.abs(b.y - a.y);
+    if (kind === 'rect')
+        return svg('rect', { x, y, width: w, height: h, rx: 12 });
+    if (kind === 'ellipse')
+        return svg('ellipse', { cx: x + w / 2, cy: y + h / 2, rx: w / 2, ry: h / 2 });
+    if (kind === 'line')
+        return svg('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+    return svg('polyline', { points: pts.map((p) => `${p.x},${p.y}`).join(' ') });
+}
+/** The SVG of one drawing (shape, plus its name for areas). */
+function drawingNode(a, selected) {
+    const g = svg('g', { class: `drawing drawing-${a.kind}${selected ? ' is-selected' : ''}`, 'data-drawing': a.id });
+    const [p0 = { x: 0, y: 0 }, p1 = p0] = a.points;
+    if (a.kind === 'text') {
+        g.appendChild(svg('text', { class: 'drawing-text', x: p0.x, y: p0.y, fill: a.color, 'font-size': a.size ?? 16 }, a.text ?? ''));
+        return g;
+    }
+    const shape = shapePath(a.kind, p0, p1, a.points);
+    shape.setAttribute('class', 'drawing-shape');
+    shape.setAttribute('stroke', a.color);
+    shape.setAttribute('stroke-width', String(a.width));
+    shape.setAttribute('fill', a.fill ? a.color : 'none');
+    if (a.fill)
+        shape.setAttribute('fill-opacity', FILL_OPACITY);
+    // A wide invisible stroke makes thin borders and lines easy to grab (like cables).
+    const hit = shape.cloneNode();
+    hit.setAttribute('class', 'drawing-hit');
+    hit.removeAttribute('stroke');
+    hit.setAttribute('fill', 'none');
+    hit.removeAttribute('fill-opacity');
+    g.append(hit, shape);
+    if (a.text && (a.kind === 'rect' || a.kind === 'ellipse')) {
+        const box = boundsOf(a);
+        g.appendChild(svg('text', { class: 'drawing-label', x: box.x + LABEL_PAD, y: box.y + LABEL_PAD + (a.size ?? 16), fill: a.color, 'font-size': a.size ?? 16 }, a.text));
+    }
+    return g;
+}
+class DrawLayer {
+    layer;
+    selected = null;
+    drawn = null;
+    drawnSelection = null;
+    /** A drawing is being drawn or dragged: redraws wait so its element and pointer capture survive. */
+    dragging = false;
+    restylePending = false;
+    host;
+    state;
+    constructor(host, state) {
+        this.host = host;
+        this.state = state;
+        this.layer = svg('g', { class: 'drawings' });
+        state.onChange((s) => this.restyleSelected(s));
+    }
+    selection() {
+        return this.selected;
+    }
+    deselect() {
+        if (this.selected === null)
+            return;
+        this.selected = null;
+        this.render();
+    }
+    /** Another topology: nothing of the old one stays selected (drawing ids restart in each one). */
+    reset() {
+        this.selected = null;
+        this.render(true);
+    }
+    /** Draws again only when the drawings or the selection changed (the workspace redraws often). */
+    render(force = false) {
+        const list = this.host.topo().annotations;
+        if (this.dragging || (!force && list === this.drawn && this.selected === this.drawnSelection))
+            return;
+        this.drawn = list;
+        this.drawnSelection = this.selected;
+        clear(this.layer);
+        for (const a of list) {
+            const g = drawingNode(a, a.id === this.selected);
+            g.addEventListener('pointerdown', (e) => this.onPointer(e, a.id, g));
+            g.addEventListener('dblclick', (e) => { e.stopPropagation(); this.editText(a.id); });
+            this.layer.appendChild(g);
+        }
+    }
+    deleteSelected() {
+        if (this.selected === null)
+            return false;
+        this.host.topo().removeAnnotation(this.selected);
+        this.selected = null;
+        this.host.changed();
+        return true;
+    }
+    /** A new colour, fill or width applies to the selected drawing (once per frame: the RGB picker fires often). */
+    restyleSelected(s) {
+        const id = this.selected;
+        if (id === null)
+            return;
+        this.host.topo().updateAnnotation(id, (a) => restyle(a, s));
+        if (this.restylePending)
+            return;
+        this.restylePending = true;
+        requestAnimationFrame(() => { this.restylePending = false; this.host.changed(); });
+    }
+    /** Pointer on a drawing: delete it, or select it and drag it (main button, one pointer). */
+    onPointer(e, id, g) {
+        e.stopPropagation();
+        if (e.button !== 0 || this.dragging)
+            return;
+        if (this.host.deleting()) {
+            this.host.topo().removeAnnotation(id);
+            if (this.selected === id)
+                this.selected = null;
+            this.host.changed();
+            return;
+        }
+        this.host.selectedDrawing();
+        this.selected = id;
+        this.drawnSelection = id;
+        for (const n of this.layer.querySelectorAll('[data-drawing]'))
+            n.classList.toggle('is-selected', n.getAttribute('data-drawing') === id);
+        this.drag(e, (dx, dy) => g.setAttribute('transform', `translate(${dx} ${dy})`), (dx, dy) => {
+            if (dx === 0 && dy === 0)
+                return g.removeAttribute('transform');
+            this.host.topo().updateAnnotation(id, (a) => moveAnnotation(a, dx, dy));
+            this.host.changed();
+        }, g);
+    }
+    /**
+     * Follows one pointer (others are ignored) while redraws wait; `end` gets the total move, or 0,0 when the
+     * gesture was cancelled or turned into a pinch.
+     */
+    drag(e, step, end, target) {
+        const id = e.pointerId;
+        const start = this.host.toWorld(e);
+        let last = start;
+        this.dragging = true;
+        target.setPointerCapture?.(id);
+        const move = (ev) => {
+            if (ev.pointerId !== id || this.host.pinching())
+                return;
+            last = this.host.toWorld(ev);
+            step(last.x - start.x, last.y - start.y, last);
+        };
+        const up = (ev) => {
+            if (ev.pointerId !== id)
+                return;
+            target.removeEventListener('pointermove', move);
+            target.removeEventListener('pointerup', up);
+            target.removeEventListener('pointercancel', up);
+            this.dragging = false;
+            const ok = ev.type === 'pointerup' && !this.host.pinching();
+            end(ok ? last.x - start.x : 0, ok ? last.y - start.y : 0);
+        };
+        target.addEventListener('pointermove', move);
+        target.addEventListener('pointerup', up);
+        target.addEventListener('pointercancel', up);
+    }
+    /** Draws a new shape from a pointer on the background; text asks for its content where it was placed. */
+    begin(e, kind) {
+        if (e.button !== 0 || this.dragging || this.host.pinching())
+            return;
+        const a = this.host.toWorld(e);
+        if (kind === 'text') {
+            // The box opens once the click is over, or the click itself would take the focus away from it.
+            e.preventDefault();
+            requestAnimationFrame(() => this.askText(a, '', (text) => {
+                if (text && this.host.topo().addAnnotation({ kind: 'text', points: [a], text, ...this.state.style() }))
+                    this.host.changed();
+            }));
+            return;
+        }
+        const points = [a];
+        let preview = null;
+        const target = e.currentTarget instanceof Element ? e.currentTarget : this.layer;
+        this.drag(e, (_dx, _dy, p) => {
+            if (kind === 'free')
+                points.push(p);
+            else
+                points[1] = p;
+            preview?.remove();
+            preview = drawingNode({ id: 'preview', kind, points: [...points], ...this.state.style() }, false);
+            this.layer.appendChild(preview);
+        }, (dx, dy) => {
+            preview?.remove();
+            if (dx !== 0 || dy !== 0 || kind === 'free')
+                this.commit(kind, points);
+        }, target);
+    }
+    /** Keeps the new drawing (not selected: the next colour picked is for the next drawing). */
+    commit(kind, points) {
+        const [a, b] = [points[0], points[points.length - 1]];
+        if (!a || !b || points.length < 2 || (kind !== 'free' && Math.hypot(b.x - a.x, b.y - a.y) < MIN_SIZE))
+            return;
+        const added = this.host.topo().addAnnotation({ kind, points: kind === 'free' ? points : [a, b], ...this.state.style() });
+        if (!added)
+            return;
+        this.host.changed();
+        // A new area asks for its name at once (Escape or an empty name leaves it unnamed).
+        if (kind === 'rect' || kind === 'ellipse')
+            requestAnimationFrame(() => this.editText(added.id));
+    }
+    /** Double click: the text of a label, or the name of an area. */
+    editText(id) {
+        const a = this.host.topo().annotations.find((x) => x.id === id);
+        if (!a || a.kind === 'line' || a.kind === 'free')
+            return;
+        const box = boundsOf(a);
+        const at = a.kind === 'text' ? a.points[0] ?? { x: 0, y: 0 } : { x: box.x + LABEL_PAD, y: box.y + LABEL_PAD + (a.size ?? 16) };
+        this.askText(at, a.text ?? '', (text) => {
+            this.host.topo().updateAnnotation(id, (x) => restyle(x, { text }));
+            if (a.kind === 'text' && !text)
+                this.host.topo().removeAnnotation(id);
+            this.host.changed();
+        });
+    }
+    /** A small text box over the workspace; Enter accepts, Escape cancels. */
+    askText(at, value, done) {
+        const box = el('input', { type: 'text', class: 'draw-text-input', value, maxlength: String(MAX_TEXT), 'aria-label': t('draw.textPrompt'), placeholder: t('draw.textPrompt') });
+        const pos = this.host.toScreen(at);
+        box.style.left = `${pos.x}px`;
+        box.style.top = `${pos.y - 24}px`;
+        let finished = false;
+        const finish = (ok) => {
+            if (finished)
+                return;
+            finished = true;
+            box.remove();
+            if (ok)
+                done(box.value.trim());
+        };
+        box.addEventListener('keydown', (e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter')
+                finish(true);
+            else if (e.key === 'Escape')
+                finish(false);
+        });
+        box.addEventListener('blur', () => finish(true));
+        this.host.overlay.appendChild(box);
+        box.focus();
+    }
+}
+
+return { drawingNode, DrawLayer };
+})();
+__m["ui/draw-bar.js"] = (() => {
+/**
+ * Drawing bar: shapes (rectangle, ellipse, line, freehand, text), basic colours, an RGB picker, fill and stroke
+ * width. It floats over the workspace and opens from the palette's «Dibujo» button.
+ */
+const { el } = __m["ui/dom.js"];
+const { t } = __m["i18n/t.js"];
+const { BASIC_COLORS, normaliseColor } = __m["net/annotations.js"];
+const WIDTHS = [1, 2, 4, 6];
+/** Current drawing style; the canvas also applies a change to the selected drawing. */
+class DrawState {
+    color = BASIC_COLORS[5] ?? '#1976d2';
+    fill = true;
+    width = 2;
+    listeners = new Set();
+    style() {
+        return { color: this.color, fill: this.fill, width: this.width };
+    }
+    set(change) {
+        if (change.color !== undefined)
+            this.color = normaliseColor(change.color) ?? this.color;
+        if (change.fill !== undefined)
+            this.fill = change.fill;
+        if (change.width !== undefined)
+            this.width = change.width;
+        for (const f of this.listeners)
+            f(this.style());
+    }
+    onChange(f) {
+        this.listeners.add(f);
+    }
+}
+const SHAPES = [
+    ['rect', 'draw.rect', '▭'], ['ellipse', 'draw.ellipse', '◯'], ['line', 'draw.line', '╱'], ['free', 'draw.free', '✎'], ['text', 'draw.text', 'T'],
+];
+function swatch(state, color, picker) {
+    const b = el('button', { type: 'button', class: 'draw-swatch', 'data-color': color, 'aria-label': t('draw.color', { color }), title: color });
+    b.style.backgroundColor = color;
+    b.addEventListener('click', () => { picker.value = color; state.set({ color }); });
+    return b;
+}
+/** The bar; `buttons` receives the shape buttons (keys draw-rect…) so the palette can mark the active tool. */
+function drawBar(state, actions, buttons) {
+    const shapes = SHAPES.map(([shape, key, glyph]) => {
+        const b = el('button', { type: 'button', class: 'draw-tool', 'aria-pressed': 'false', 'aria-label': t(key), title: t(key) }, glyph);
+        b.addEventListener('click', () => actions.pick(shape));
+        buttons.set(`draw-${shape}`, b);
+        return b;
+    });
+    const picker = el('input', { type: 'color', class: 'draw-picker', value: state.color, 'aria-label': t('draw.rgb'), title: t('draw.rgb') });
+    picker.addEventListener('input', () => state.set({ color: picker.value }));
+    const fill = el('input', { type: 'checkbox', checked: state.fill });
+    fill.addEventListener('change', () => state.set({ fill: fill.checked }));
+    const width = el('select', { class: 'select draw-width', 'aria-label': t('draw.width') }, ...WIDTHS.map((w) => el('option', { value: String(w) }, `${w} px`)));
+    width.value = String(state.width);
+    width.addEventListener('change', () => state.set({ width: Number(width.value) }));
+    const current = el('span', { class: 'draw-current', 'aria-hidden': 'true' });
+    const paint = () => { current.style.backgroundColor = state.color; picker.value = state.color; };
+    state.onChange(paint);
+    paint();
+    return el('div', { class: 'draw-bar', role: 'toolbar', 'aria-label': t('draw.title'), hidden: true }, el('div', { class: 'draw-group' }, ...shapes), el('div', { class: 'draw-group draw-colors' }, current, ...BASIC_COLORS.map((c) => swatch(state, c, picker)), picker), el('label', { class: 'check draw-fill' }, fill, ` ${t('draw.fill')}`), width);
+}
+
+return { DrawState, SHAPES, drawBar };
+})();
 __m["ui/canvas.js"] = (() => {
 /** Logical workspace: devices, cables with link lights, placing, moving, cabling, deleting. */
 const { el, svg, clear, staticSvg } = __m["ui/dom.js"];
@@ -3699,6 +4279,9 @@ const { ICONS, ICON_W, ICON_H, modelLabel } = __m["ui/icons.js"];
 const { shortIfaceName } = __m["ios/interfaces.js"];
 const { Viewport } = __m["ui/viewport.js"];
 const { placeInside } = __m["ui/viewport-math.js"];
+const { along, clamp, perpendicular, triangle } = __m["ui/canvas-geometry.js"];
+const { DrawLayer } = __m["ui/draw-layer.js"];
+const { DrawState } = __m["ui/draw-bar.js"];
 const { t } = __m["i18n/t.js"];
 const WORLD_W = 2400;
 const WORLD_H = 1600;
@@ -3708,7 +4291,7 @@ const DRAG_THRESHOLD = 4;
 const DOUBLE_TAP_MS = 350;
 const LONG_PRESS_MS = 550;
 const HINTS = {
-    select: 'canvas.hint.select', cable: 'canvas.hint.cable', delete: 'canvas.hint.delete', place: 'canvas.hint.place',
+    select: 'canvas.hint.select', cable: 'canvas.hint.cable', delete: 'canvas.hint.delete', place: 'canvas.hint.place', draw: 'canvas.hint.draw',
 };
 class Canvas {
     root;
@@ -3728,7 +4311,9 @@ class Canvas {
     /** A drag or tap on a device is in progress: periodic redraws wait so its element stays in the DOM. */
     gesture = false;
     lastPointer = 'mouse';
-    constructor(topo, events) {
+    /** Areas, lines and labels drawn over the network. */
+    draw;
+    constructor(topo, events, drawState = new DrawState()) {
         this.topo = topo;
         this.events = events;
         this.linkLayer = svg('g', { class: 'links' });
@@ -3737,6 +4322,11 @@ class Canvas {
         this.svgEl = svg('svg', { class: 'world', width: WORLD_W, height: WORLD_H, viewBox: `0 0 ${WORLD_W} ${WORLD_H}`, role: 'application', 'aria-label': t('canvas.label') }, svg('rect', { class: 'world-bg', x: 0, y: 0, width: WORLD_W, height: WORLD_H }), this.linkLayer, this.deviceLayer, this.packetLayer);
         this.menu = el('div', { class: 'port-menu', role: 'menu', hidden: true });
         this.root = el('div', { class: 'workspace', tabindex: '0' }, this.svgEl, this.menu);
+        this.draw = new DrawLayer({
+            topo: () => this.topo, toWorld: (e) => this.toWorld(e), toScreen: (p) => this.toScreen(p), changed: () => this.events.changed(),
+            deleting: () => this.tool.kind === 'delete', selectedDrawing: () => { this.selected = null; this.markSelection(); }, pinching: () => this.viewport.pinching(), overlay: this.root,
+        }, drawState);
+        this.linkLayer.before(this.draw.layer);
         this.svgEl.addEventListener('pointerdown', (e) => { this.lastPointer = e.pointerType; }, { capture: true });
         this.svgEl.addEventListener('pointerdown', (e) => this.onBackground(e));
         this.root.addEventListener('keydown', (e) => this.onKey(e));
@@ -3746,6 +4336,7 @@ class Canvas {
         this.topo = topo;
         this.selected = null;
         this.pendingEnd = null;
+        this.draw.reset();
         this.render();
         this.frameContent();
     }
@@ -3765,11 +4356,15 @@ class Canvas {
         return p ? { x: p.x, y: p.y } : undefined;
     }
     zoom(action) {
-        this.viewport.zoom(action, [...this.topo.placed.values()]);
+        this.viewport.zoom(action, this.contentPoints());
+    }
+    /** Devices and drawings: what «fit» and the first view must show. */
+    contentPoints() {
+        return [...this.topo.placed.values(), ...this.topo.annotations.flatMap((a) => a.points)];
     }
     /** Shows the whole network if it does not fit (after the layout has a size). */
     frameContent() {
-        requestAnimationFrame(() => this.viewport.fitIfNeeded([...this.topo.placed.values()]));
+        requestAnimationFrame(() => this.viewport.fitIfNeeded(this.contentPoints()));
     }
     /** Coalesces renders to one per animation frame. */
     requestRender() {
@@ -3781,6 +4376,7 @@ class Canvas {
         });
     }
     render() {
+        this.draw.render();
         this.renderLinks();
         clear(this.deviceLayer);
         for (const [id, p] of this.topo.placed)
@@ -3860,8 +4456,19 @@ class Canvas {
         const r = this.svgEl.getBoundingClientRect();
         return { x: ((e.clientX - r.left) * WORLD_W) / r.width, y: ((e.clientY - r.top) * WORLD_H) / r.height };
     }
+    /** Position of a workspace point inside the (scrolling) workspace element. */
+    toScreen(p) {
+        const r = this.svgEl.getBoundingClientRect();
+        const host = this.root.getBoundingClientRect();
+        return { x: r.left - host.left + this.root.scrollLeft + (p.x * r.width) / WORLD_W, y: r.top - host.top + this.root.scrollTop + (p.y * r.height) / WORLD_H };
+    }
     onBackground(e) {
         this.hideMenu();
+        this.draw.deselect();
+        if (this.tool.kind === 'draw') {
+            this.draw.begin(e, this.tool.shape);
+            return;
+        }
         if (this.tool.kind === 'place') {
             const { x, y } = this.toWorld(e);
             this.topo.add(this.tool.device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
@@ -3880,6 +4487,7 @@ class Canvas {
     onDevicePointer(e, id, g) {
         e.stopPropagation();
         this.hideMenu();
+        this.draw.deselect();
         if (this.tool.kind === 'delete') {
             this.topo.remove(id);
             this.events.removed(id);
@@ -3999,6 +4607,8 @@ class Canvas {
             this.setTool({ kind: 'select' });
             return;
         }
+        if ((e.key === 'Delete' || e.key === 'Backspace') && this.draw.deleteSelected())
+            return;
         if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected) {
             const id = this.selected;
             if (this.topo.get(id)) {
@@ -4012,32 +4622,6 @@ class Canvas {
             this.events.changed();
         }
     }
-}
-function clamp(v, lo, hi) {
-    return Math.max(lo, Math.min(hi, v));
-}
-function along(from, to, dist) {
-    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
-    const d = Math.min(dist, len / 2 - 4);
-    return { x: from.x + ((to.x - from.x) * d) / len, y: from.y + ((to.y - from.y) * d) / len };
-}
-/** Offset vector perpendicular to the cable, always pointing right (or up for horizontal cables). */
-function perpendicular(from, to, dist) {
-    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
-    let nx = -(to.y - from.y) / len;
-    let ny = (to.x - from.x) / len;
-    if (nx < 0 || (nx === 0 && ny > 0)) {
-        nx = -nx;
-        ny = -ny;
-    }
-    return { x: nx * dist, y: ny * dist };
-}
-/** Link light: a small triangle pointing along the cable, like Packet Tracer. */
-function triangle(c, from, to) {
-    const ang = Math.atan2(to.y - from.y, to.x - from.x);
-    const s = 6;
-    const pts = [0, 2.1, 4.2].map((o) => [c.x + Math.cos(ang + o) * s, c.y + Math.sin(ang + o) * s]);
-    return `M${pts.map((p) => p.map((n) => n.toFixed(1)).join(' ')).join(' L')} Z`;
 }
 
 return { WORLD_W, WORLD_H, Canvas };
@@ -17341,7 +17925,7 @@ const NETFIX_DOCS = {
                     ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la documentación y las páginas web simuladas sin recargar.'],
                 ]),
                 h('Paleta y herramientas'),
-                list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.', 'Seleccionar: arrastra equipos; doble clic abre su ventana.', 'Eliminar: borra equipos o cables.'),
+                list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.', 'Seleccionar: arrastra equipos; doble clic abre su ventana.', 'Eliminar: borra equipos o cables.', 'Dibujo: abre la barra para delimitar áreas, trazar líneas y escribir etiquetas (ver «Dibujo»).'),
                 h('Ventanas de los equipos'),
                 table(['Equipo', 'Pestañas'], [
                     ['Router IOS / Switch IOS', 'Equipo (nombre visible y hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
@@ -17375,6 +17959,23 @@ const NETFIX_DOCS = {
                 ]),
                 p('sudo pide la contraseña de la cuenta cuando existe una cuenta SSH con ese nombre (admin/cisco en el laboratorio) y la recuerda 15 minutos, como Ubuntu. En los PC no hay cuentas SSH, así que sudo no pide contraseña.'),
                 code('admin@srv:~$ sudo systemctl restart apache2\n[sudo] password for admin:\nadmin@srv:~$ sudo -i\nroot@srv:~#'),
+            ],
+        },
+        {
+            id: 'dibujo',
+            title: 'Dibujo: áreas, líneas y etiquetas',
+            summary: 'Delimitar redes con áreas de color, trazar líneas o a mano alzada y escribir etiquetas sobre el área de trabajo.',
+            blocks: [
+                p('El botón Dibujo de la paleta abre una barra flotante para anotar el diagrama: marcar la red privada, la DMZ o Internet, escribir la dirección de red o señalar un túnel. Los dibujos no cambian la red simulada y se guardan con la topología.'),
+                table(['Herramienta', 'Uso'], [
+                    ['▭ Rectángulo · ◯ Elipse', 'Arrastra para delimitar un área. Al soltar pide su nombre (por ejemplo «LAN · 192.168.1.0/24»); Escape lo deja sin nombre.'],
+                    ['╱ Línea · ✎ Mano alzada', 'Arrastra para trazar una línea recta o libre (un túnel, un flujo de tráfico, un subrayado).'],
+                    ['T Etiqueta de texto', 'Haz clic donde va el texto y escríbelo; Intro acepta.'],
+                    ['Colores', 'Nueve colores básicos y un selector RGB para cualquier otro; el actual se ve a la izquierda.'],
+                    ['Relleno · grosor', 'Las áreas pueden llevar un relleno suave de su color; el grosor del trazo va de 1 a 6 px.'],
+                ]),
+                list('Con Seleccionar, arrastra un dibujo por su borde o su texto para moverlo; el interior de un área deja pasar los clics al fondo y a los equipos.', 'Doble clic en un área o etiqueta: cambiar su texto. Con un dibujo seleccionado, elegir otro color, relleno o grosor lo cambia.', 'Eliminar (o Supr) borra el dibujo seleccionado.', 'Los laboratorios ya traen áreas para las redes privadas, Internet, la DMZ, los invitados, los servidores, las VLAN y los túneles VPN.'),
+                note('Los dibujos van debajo de los cables y de los equipos, y «Ajustar a la red» también los tiene en cuenta.'),
             ],
         },
         {
@@ -18721,7 +19322,7 @@ const NETFIX_DOCS = {
                     ['Language', 'Español (España) or English (UK): changes the whole interface, the documentation and the simulated web pages without reloading.'],
                 ]),
                 h('Palette and tools'),
-                list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.', 'Select: drag devices; double-click opens their window.', 'Delete: removes devices or cables.'),
+                list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.', 'Select: drag devices; double-click opens their window.', 'Delete: removes devices or cables.', 'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).'),
                 h('Device windows'),
                 table(['Device', 'Tabs'], [
                     ['IOS router / IOS switch', 'Device (workspace name and hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
@@ -18755,6 +19356,23 @@ const NETFIX_DOCS = {
                 ]),
                 p('sudo asks for the account’s password when an SSH account with that name exists (admin/cisco in the lab) and remembers it for 15 minutes, as Ubuntu does. PCs have no SSH accounts, so sudo does not ask for a password.'),
                 code('admin@srv:~$ sudo systemctl restart apache2\n[sudo] password for admin:\nadmin@srv:~$ sudo -i\nroot@srv:~#'),
+            ],
+        },
+        {
+            id: 'dibujo',
+            title: 'Drawing: areas, lines and labels',
+            summary: 'Mark networks with coloured areas, draw straight or freehand lines and write labels on the workspace.',
+            blocks: [
+                p('The Drawing button of the palette opens a floating bar to annotate the diagram: mark the private network, the DMZ or the Internet, write the network address or show a tunnel. Drawings do not change the simulated network and are saved with the topology.'),
+                table(['Tool', 'Use'], [
+                    ['▭ Rectangle · ◯ Ellipse', 'Drag to mark an area. When released it asks for its name (for example “LAN · 192.168.1.0/24”); Escape leaves it unnamed.'],
+                    ['╱ Line · ✎ Freehand', 'Drag to draw a straight or free line (a tunnel, a traffic flow, an underline).'],
+                    ['T Text label', 'Click where the text goes and type it; Enter accepts.'],
+                    ['Colours', 'Nine basic colours and an RGB picker for any other; the current one is shown on the left.'],
+                    ['Fill · width', 'Areas can have a light fill of their colour; the stroke width goes from 1 to 6 px.'],
+                ]),
+                list('With Select, drag a drawing by its border or its text to move it; the inside of an area lets clicks through to the background and the devices.', 'Double-click an area or label: change its text. With a drawing selected, picking another colour, fill or width changes it.', 'Delete (or the Del key) removes the selected drawing.', 'The labs already come with areas for the private networks, the Internet, the DMZ, guests, servers, VLANs and VPN tunnels.'),
+                note('Drawings go below cables and devices, and “Fit to network” takes them into account too.'),
             ],
         },
         {
@@ -27192,7 +27810,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.7.5",
+    "version": "0.8.0",
     "description": "Simulador de redes estilo Cisco Packet Tracer con CLI IOS y servidor DHCP completo, en el navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -47154,6 +47772,7 @@ const { savedFiles, restoreFiles, bootKernel } = __m["shells/host-system.js"];
 const { bootWireguard } = __m["shells/wg-boot.js"];
 const { validFileRecords } = __m["bash/vfs-persist.js"];
 const { Network } = __m["net/network.js"];
+const { annotationsFromJson, drawable, makeAnnotation, MAX_ANNOTATIONS } = __m["net/annotations.js"];
 const { SimClock } = __m["core/clock.js"];
 const { Router } = __m["devices/router.js"];
 const { Switch } = __m["devices/switch.js"];
@@ -47174,6 +47793,8 @@ const PREFIX = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server',
 const FILE_VERSION = 2;
 /** A larger file would freeze the tab while it is built and settled. */
 const MAX_DEVICES = 500;
+/** Drawing ids stay short (aN) even after a crafted file. */
+const MAX_DRAWING_ID = 999_999_999;
 const SETTLE_MS = 30_000;
 const MAX_PRETTY = 256;
 class Topology {
@@ -47184,6 +47805,9 @@ class Topology {
     internet = makeInternet(this.net);
     nextSeed = 1;
     nextId = 1;
+    /** Drawings of the workspace (replaced, never mutated). */
+    annotations = [];
+    nextDrawing = 1;
     add(kind, x, y, opts = {}) {
         const id = opts.id ?? `d${this.nextId++}`;
         const seed = opts.seed ?? this.nextSeed++;
@@ -47239,12 +47863,30 @@ class Topology {
         const dev = this.net.devices.get(id);
         return dev?.portNames().find((p) => !this.net.linkAt({ device: id, port: p }));
     }
+    /** Adds a drawing; undefined when it cannot be shown (a freehand dot) or the workspace already has MAX_ANNOTATIONS. */
+    addAnnotation(init) {
+        if (this.annotations.length >= MAX_ANNOTATIONS)
+            return undefined;
+        const a = makeAnnotation(`a${this.nextDrawing}`, init);
+        if (!drawable(a))
+            return undefined;
+        this.nextDrawing++;
+        this.annotations = [...this.annotations, a];
+        return a;
+    }
+    updateAnnotation(id, change) {
+        this.annotations = this.annotations.map((a) => (a.id === id ? { ...change(a), id } : a));
+    }
+    removeAnnotation(id) {
+        this.annotations = this.annotations.filter((a) => a.id !== id);
+    }
     settle(ms = SETTLE_MS) {
         this.net.runFor(ms);
     }
     toJSON() {
         const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
-        return { format: 'netfix', version: FILE_VERSION, devices, links: this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable })) };
+        const links = this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable }));
+        return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}) };
     }
     static fromJSON(data) {
         const file = validateFile(data);
@@ -47256,6 +47898,8 @@ class Topology {
             topo.nextId = Math.max(topo.nextId, n + 1);
         }
         topo.separateClouds();
+        topo.annotations = file.annotations ?? [];
+        topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
         for (const l of file.links)
             topo.connect(l.a, l.b, l.cable);
         for (const p of topo.placed.values())
@@ -47400,10 +48044,112 @@ function validateFile(data) {
         if (!isObject(l) || !isObject(l.a) || !isObject(l.b) || [l.a.device, l.a.port, l.b.device, l.b.port].some((x) => typeof x !== 'string'))
             throw new Error(t('load.badLink'));
     }
-    return data;
+    let annotations;
+    try {
+        annotations = annotationsFromJson(data.annotations);
+    }
+    catch {
+        throw new Error(t('load.drawings'));
+    }
+    return { ...data, annotations };
 }
 
 return { FILE_VERSION, Topology, parseStatic, validateFile };
+})();
+__m["net/lab-areas.js"] = (() => {
+const { t } = __m["i18n/t.js"];
+const COLOR = {
+    internet: '#455a64', lan: '#388e3c', lan2: '#0097a7', dmz: '#f57c00', guests: '#7b1fa2', servers: '#1976d2', external: '#455a64', tunnel: '#d32f2f',
+};
+const PAD_X = 70;
+/** Room above the devices (their model line and the port labels of incoming cables) for the name of the area. */
+const PAD_TOP = 96;
+const PAD_BOTTOM = 66;
+const MIN_COORD = 4;
+const AREA_TEXT = 14;
+const CHAR_W = 7;
+function centres(topo, labels) {
+    const pts = labels.map((l) => [...topo.placed.values()].find((p) => p.label === l));
+    return pts.every((p) => p) ? pts.map((p) => ({ x: p?.x ?? 0, y: p?.y ?? 0 })) : null;
+}
+/** A named, lightly filled rectangle around some devices (nothing if one of them is missing). */
+function area(topo, labels, color, text) {
+    const pts = centres(topo, labels);
+    if (!pts)
+        return;
+    const xs = pts.map((p) => p.x);
+    const ys = pts.map((p) => p.y);
+    const a = { x: Math.max(MIN_COORD, Math.min(...xs) - PAD_X), y: Math.max(MIN_COORD, Math.min(...ys) - PAD_TOP) };
+    const b = { x: Math.max(...xs) + PAD_X, y: Math.max(...ys) + PAD_BOTTOM };
+    topo.addAnnotation({ kind: 'rect', points: [a, b], color, fill: true, width: 2, text, size: AREA_TEXT });
+}
+/** A tunnel: a line between two routers with its name over the middle. */
+function tunnel(topo, from, to, text) {
+    const pts = centres(topo, [from, to]);
+    if (!pts)
+        return;
+    const [a, b] = pts;
+    topo.addAnnotation({ kind: 'line', points: [a, b], color: COLOR.tunnel, fill: false, width: 3 });
+    const mid = { x: (a.x + b.x) / 2 - (text.length * CHAR_W) / 2, y: (a.y + b.y) / 2 - 14 };
+    topo.addAnnotation({ kind: 'text', points: [mid], color: COLOR.tunnel, fill: false, width: 1, text, size: AREA_TEXT });
+}
+const lan = (name, net) => t('area.lan', { name, net });
+const internet = (topo, clouds) => area(topo, clouds, COLOR.internet, t('area.internet'));
+const LAB_AREAS = {
+    basico: (o) => area(o, ['Switch0', 'PC0', 'PC1', 'PC2'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
+    reservas: (o) => area(o, ['Switch0', 'PC0', 'PC1', 'PC2'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
+    relay: (o) => area(o, ['Switch0', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.remote'), '10.20.0.0/24')),
+    vlans: (o) => {
+        area(o, ['PC0', 'PC1'], COLOR.lan, t('area.vlan', { id: '10', net: '172.16.10.0/24' }));
+        area(o, ['PC2', 'PC3'], COLOR.lan2, t('area.vlan', { id: '20', net: '172.16.20.0/24' }));
+    },
+    // The rogue DHCP server (Router1, 192.168.10.66) is inside: it shares the broadcast domain, which is the point.
+    snooping: (o) => area(o, ['Switch0', 'PC0', 'PC1', 'Router1'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
+    servidores: (o) => area(o, ['Switch0', 'SRV0', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.classroom'), '192.168.10.0/24')),
+    internet: (o) => {
+        internet(o, ['ISP-Norte', 'ISP-Sur']);
+        area(o, ['Switch0', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.site', { n: '1' }), '192.168.10.0/24'));
+        area(o, ['Switch1', 'SRV-SEDE2', 'PC2'], COLOR.lan2, lan(t('area.name.site', { n: '2' }), '192.168.1.0/24'));
+    },
+    'vpn-ipsec': (o) => {
+        internet(o, ['ISP-Norte', 'ISP-Sur']);
+        area(o, ['Switch0', 'PC0', 'PC1'], COLOR.lan, lan('SEDE-A', '192.168.10.0/24'));
+        area(o, ['Switch1', 'PC2', 'PC3'], COLOR.lan2, lan('SEDE-B', '192.168.20.0/24'));
+        tunnel(o, 'SEDE-A', 'SEDE-B', t('area.tunnel', { kind: 'IPsec', net: '192.168.10.0/24 ↔ 192.168.20.0/24' }));
+    },
+    'vpn-wireguard': (o) => {
+        internet(o, ['ISP-Norte', 'ISP-Sur']);
+        area(o, ['Switch0', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.hq'), '10.1.0.0/24'));
+        area(o, ['Switch1', 'PC2', 'PC3'], COLOR.lan2, lan(t('area.name.branch'), '10.2.0.0/24'));
+        tunnel(o, 'CENTRAL', 'SUCURSAL', t('area.tunnel', { kind: 'WireGuard', net: 'wg0 10.99.0.0/24' }));
+    },
+    'linux-dmz': (o) => {
+        internet(o, ['ISP-Norte', 'ISP-Sur']);
+        area(o, ['Switch0', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.lan'), '192.168.1.0/24'));
+        area(o, ['WEB-DMZ'], COLOR.dmz, t('area.dmz', { net: '172.16.0.0/24' }));
+        area(o, ['CLIENTE-EXT'], COLOR.external, t('area.external'));
+    },
+    'dns-reenvio': (o) => {
+        internet(o, ['ISP-Norte']);
+        area(o, ['Switch0', 'PC0', 'PC1', 'NS1'], COLOR.lan, lan(t('area.name.company'), '192.168.50.0/24'));
+        area(o, ['INVITADO'], COLOR.guests, t('area.guests', { net: '192.168.60.0/24' }));
+    },
+    'ssh-sftp': (o) => area(o, ['Switch0', 'SRV', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.classroom'), '172.20.0.0/24')),
+    bastionado: (o) => {
+        area(o, ['Switch0', 'ADMIN'], COLOR.lan, t('area.admin', { net: '192.168.10.0/24' }));
+        area(o, ['SRV-INTRANET'], COLOR.servers, t('area.servers', { net: '172.20.0.0/24' }));
+        area(o, ['Switch1', 'ALUMNO'], COLOR.guests, t('area.students', { net: '192.168.20.0/24' }));
+    },
+};
+/** The lab with its areas drawn (labs without areas are returned as they are). */
+function decorateLab(id, topo) {
+    LAB_AREAS[id]?.(topo);
+    return topo;
+}
+/** Labs that have areas (for the tests). */
+const LABS_WITH_AREAS = Object.keys(LAB_AREAS);
+
+return { decorateLab, LABS_WITH_AREAS };
 })();
 __m["net/example-internet.js"] = (() => {
 /** Lab "Internet: dos sedes": two ISP clouds, NAT on a Cisco router and a site published with a domain. */
@@ -47742,7 +48488,7 @@ const dmzLab = {
         const sur = cloud(t, 'ISP-Sur', 780, 'DSL0', 'router');
         const fw = t.add('linuxrouter', 240, 260, { label: 'FW' }).device;
         link(t, fw.id, 'GigabitEthernet0/0', norte.id, 'Fibra0');
-        branchLan(t, 120, { id: fw.id, port: 'GigabitEthernet0/1' }, '192.168.1', 2, '192.168.1.1');
+        branchLan(t, 160, { id: fw.id, port: 'GigabitEthernet0/1' }, '192.168.1', 2, '192.168.1.1');
         const web = t.add('server', 420, 420, { label: 'WEB-DMZ' }).device;
         link(t, fw.id, 'GigabitEthernet0/2', web.id, 'FastEthernet0');
         web.setStatic({ ip: ip('172.16.0.80'), prefix: 24, gateway: ip('172.16.0.1'), dns: ip('8.8.8.8') });
@@ -47958,6 +48704,7 @@ return { sshLab, hardeningLab };
 })();
 __m["net/examples.js"] = (() => {
 /** Ready-made labs that show each DHCP feature working. */
+const { decorateLab } = __m["net/lab-areas.js"];
 const { LABS_ES } = __m["i18n/es-ES/labs.js"];
 const { Topology } = __m["net/topology.js"];
 const { Router } = __m["devices/router.js"];
@@ -48007,7 +48754,7 @@ function startDhcp(t, pcs) {
     t.settle();
     return t;
 }
-const EXAMPLES = [
+const LABS = [
     {
         id: 'basico',
         title: LABS_ES['lab.basico.title'],
@@ -48244,6 +48991,8 @@ interface GigabitEthernet0/0
         build: () => new Topology(),
     },
 ];
+/** The labs, with areas drawn around their networks where they help to read the diagram. */
+const EXAMPLES = LABS.map((ex) => ({ ...ex, build: () => decorateLab(ex.id, ex.build()) }));
 
 return { EXAMPLES };
 })();
@@ -48528,6 +49277,16 @@ const { t } = __m["i18n/t.js"];
 const PLACEABLE = [
     ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
 ];
+/** «Dibujo»: opens the bar with shapes, colours and labels (it is not a tool by itself). */
+function drawToggle(actions) {
+    const b = el('button', { type: 'button', class: 'pal-item pal-tool pal-draw', 'aria-pressed': 'false', 'aria-expanded': 'false', title: t('draw.openHint') }, el('span', { class: 'pal-glyph', 'aria-hidden': 'true' }, '✎'), el('span', { class: 'pal-name' }, t('draw.open')));
+    b.addEventListener('click', () => {
+        const open = actions.toggleDraw();
+        b.setAttribute('aria-pressed', String(open));
+        b.setAttribute('aria-expanded', String(open));
+    });
+    return b;
+}
 function palette(actions, buttons, hintEl) {
     const deviceBtn = (kind, name) => {
         const b = el('button', { type: 'button', class: 'pal-item', 'aria-pressed': 'false' }, staticSvg(ICONS[kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, modelLabel(kind)));
@@ -48546,7 +49305,7 @@ function palette(actions, buttons, hintEl) {
         b.addEventListener('click', () => actions.zoom(action));
         return b;
     };
-    return el('footer', { class: 'palette' }, el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...PLACEABLE.map(([k, name]) => deviceBtn(k, t(name)))), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')), el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))), hintEl);
+    return el('footer', { class: 'palette' }, el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...PLACEABLE.map(([k, name]) => deviceBtn(k, t(name)))), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕'), drawToggle(actions)), el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))), hintEl);
 }
 
 return { PLACEABLE, palette };
@@ -48610,6 +49369,7 @@ const { palette } = __m["ui/palette.js"];
 const { labText } = __m["ui/lab-text.js"];
 const { saveTopology } = __m["ui/save-file.js"];
 const { t } = __m["i18n/t.js"];
+const { DrawState, drawBar } = __m["ui/draw-bar.js"];
 const { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } = __m["i18n/locale.js"];
 const AUTOSAVE_KEY = 'netfix:workspace:v1';
 /** Workspace autosaved before the rename (netsim ≤ 0.4.0). */
@@ -48633,6 +49393,8 @@ class App {
     saveTimer = 0;
     interval;
     mode = 'realtime';
+    drawState = new DrawState();
+    drawBarEl;
     view = 'net';
     onKeyDown = (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -48651,12 +49413,13 @@ class App {
             changed: () => this.afterCommand(),
             hint: (text) => { this.hintEl.textContent = text; },
             removed: (id) => { this.windows.close(id); forgetDevice(id); },
-        });
+        }, this.drawState);
         const winLayer = el('div', { class: 'win-layer' });
         this.windows = new WindowManager(winLayer);
         this.sim = new SimPanel(this.topo, this.canvas);
-        this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.sim.root);
-        this.paletteEl = palette({ selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a) }, this.toolButtons, this.hintEl);
+        this.drawBarEl = drawBar(this.drawState, { pick: (shape) => this.selectTool({ kind: 'draw', shape }, `draw-${shape}`) }, this.toolButtons);
+        this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.sim.root);
+        this.paletteEl = palette({ selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw() }, this.toolButtons, this.hintEl);
         this.pageHost = el('main', { class: 'docs-host', hidden: true });
         this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
         this.fileInput.addEventListener('change', () => void this.openFile());
@@ -48717,6 +49480,13 @@ class App {
         document.body.dataset.mode = m;
         if (hint)
             this.hintEl.textContent = t(m === 'simulation' ? 'hint.simulation' : 'hint.realtime');
+    }
+    /** Opens or closes the drawing bar; closing it goes back to the Select tool. */
+    toggleDraw() {
+        this.drawBarEl.hidden = !this.drawBarEl.hidden;
+        if (this.drawBarEl.hidden && this.canvas.currentTool().kind === 'draw')
+            this.selectTool({ kind: 'select' }, 'select');
+        return !this.drawBarEl.hidden;
     }
     selectTool(tool, key) {
         const same = this.toolButtons.get(key)?.getAttribute('aria-pressed') === 'true' && key !== 'select';
