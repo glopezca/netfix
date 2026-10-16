@@ -77,7 +77,7 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
     this.defaultGateway = undefined;
     this.vlans = new Map(DEFAULT_VLANS);
     this.snooping.reset();
-    this.ifaces.clear();
+    this.clearIfaces();
     this.macTable.clear();
     for (const p of SWITCH_PORTS) this.addIface(p, { shutdown: false, switchport: true });
     this.addIface('Vlan1', { shutdown: true, switchport: false });

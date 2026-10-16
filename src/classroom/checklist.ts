@@ -31,7 +31,10 @@ const MAX_TEXT = 500;
 const MAX_LINES = 50;
 const MAX_PREFIX = 32;
 const ID_RE = /^[A-Za-z0-9._-]{1,64}$/;
-const LABEL_RE = /^[^\u0000-\u001f]{1,64}$/;
+/** Text without control or format characters (bidi overrides, zero width…) or line separators: shown to students. */
+const VISIBLE = '[^\\p{Cc}\\p{Cf}\\u2028\\u2029]';
+const LABEL_RE = new RegExp(`^${VISIBLE}{1,64}$`, 'u');
+const LINE_RE = new RegExp(`^${VISIBLE}+$`, 'u');
 const NAME_RE = /^[A-Za-z0-9.-]{1,253}$/;
 
 type Field = (v: unknown, at: string) => unknown;
@@ -66,14 +69,14 @@ const status: Field = (v, at) => {
   if (!Number.isInteger(v) || (v as number) < 100 || (v as number) > 599) invalid(`${at} debe ser un código HTTP`);
   return v;
 };
-const configLine = text(/^[^\u0000-\u001f]+$/);
+const configLine = text(LINE_RE);
 const lines: Field = (v, at) => {
   if (!Array.isArray(v) || v.length === 0 || v.length > MAX_LINES) invalid(`${at} debe tener entre 1 y ${MAX_LINES} líneas`);
   return Object.freeze(v.map((l, i) => configLine(l, `${at}[${i}]`)));
 };
 
 const label = text(LABEL_RE);
-const plain = text(/^[^\u0000-\u001f]+$/, 200);
+const plain = text(LINE_RE, 200);
 /** A DNS name to look up: an IP literal would "resolve" without asking any server. */
 const dnsName: Field = (v, at) => {
   if (typeof v === 'string' && parseIp(v) !== null) invalid(`${at} debe ser un nombre, no una dirección IP`);

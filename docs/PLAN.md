@@ -425,3 +425,10 @@ Fase 2 del plan de Netfix Classroom; todo es genérico y público (GPL), sin nad
   `title` sin caracteres de control, instalación de la API con `Object.hasOwn`, montaje validado). Documentado en
   `docs/EMBED.md` que las restricciones son de interfaz y la nota válida es la del servidor.
 - Pruebas: `tests/classroom/*.test.ts` y `scripts/e2e-embed.mjs` (incluido en `npm run e2e`).
+
+**v0.11.1 (Classroom, fase 4):** la revisión de seguridad de Classroom midió que cargar una topología pequeña podía
+costar segundos: un router con 1000 interfaces tardaba 2,3 s (las interfaces se reordenaban en cada cambio; ahora se
+insertan en orden: 0,2 s) y 500 servidores, 4,6 s y 160 MB. `src/classroom/budget.ts` rechaza antes de cargar más de
+60 equipos o 6000 líneas de configuración IOS (`evaluate` lo aplica). Los textos de la lista de comprobación no admiten
+caracteres de formato (dirección, ancho cero) y un error interno al cargar ya no se describe al llamante.
+

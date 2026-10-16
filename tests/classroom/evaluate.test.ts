@@ -142,3 +142,22 @@ test('a switching loop is refused in bounded time instead of hanging the marking
   assert.throws(() => evaluate({ format: 'netfix', version: 2, devices, links }, parseChecklist([{ id: 'a', check: { type: 'device', device: 'PC0' } }])), /tráfico/);
   assert.ok(performance.now() - start < 5000);
 });
+
+test('checklist texts cannot hide characters (direction overrides, zero width) that students would see', () => {
+  for (const bad of ['PC‮0', 'PC​0', 'a b']) {
+    assert.throws(() => parseChecklist([{ id: 'a', check: { type: 'device', device: bad } }]), /comprobación/, JSON.stringify(bad));
+    assert.throws(() => parseChecklist([{ id: 'a', title: bad, check: { type: 'device', device: 'PC0' } }]), /comprobación/);
+  }
+  assert.doesNotThrow(() => parseChecklist([{ id: 'a', title: 'Configuración del PC «aula» ñ', check: { type: 'config', device: 'R', lines: [' ip address 10.0.0.1 255.0.0.0'] } }]));
+});
+
+test('an internal error while loading is not described to the caller', () => {
+  const broken = { format: 'netfix', version: 2, devices: [{ id: 'p', kind: 'pc', x: 0, y: 0, seed: 1, label: 'PC0', pc: 42 }], links: [] };
+  let message = '';
+  try {
+    evaluate(broken, parseChecklist([{ id: 'a', check: { type: 'device', device: 'PC0' } }]));
+  } catch (e) {
+    message = e instanceof Error ? e.message : '';
+  }
+  assert.doesNotMatch(message, /Cannot read|undefined|TypeError/);
+});

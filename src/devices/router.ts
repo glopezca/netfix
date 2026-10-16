@@ -130,7 +130,7 @@ export class Router extends IosDevice implements NetDevice {
     this.debugNat = false;
     this.dhcp = new DhcpServer();
     this.plane = new RouterPlane(this);
-    this.ifaces.clear();
+    this.clearIfaces();
     ROUTER_PORTS.forEach((p, i) => {
       this.addIface(p, { shutdown: true, switchport: false });
       this.macs.set(p, macPlus(this.baseMac, i + 1));

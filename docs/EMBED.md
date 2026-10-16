@@ -79,6 +79,12 @@ entero de 0 a 100 (1 por defecto). Una comprobación nunca lanza excepción: fal
 la etiqueta del equipo es ambigua). Las comprobaciones que no generan tráfico se ejecutan primero y después `ping`,
 `dns` y `http`, así que el orden de la lista no cambia la nota; los resultados salen en el orden de la lista.
 
+Antes de cargar, `evaluate` mira el archivo (`src/classroom/budget.ts`): más de 60 equipos o de 6000 líneas de
+configuración IOS en total se rechazan, porque arrancar equipos y aplicar configuración cuesta CPU y memoria que el
+límite de la simulación no cuenta (`checkMarkingBudget` se puede llamar por separado, p. ej. al subir una topología).
+Los textos de la lista (etiquetas, títulos, líneas) no admiten caracteres de control, de formato (cambios de dirección,
+ancho cero) ni separadores de línea. Un error interno al cargar no se describe al llamante.
+
 `evaluate` lanza una excepción si el archivo no es una topología válida o si simularlo supera el límite de cálculo
 (`WORK_LIMIT`, 50 000 tareas; un laboratorio completo usa unos cientos): así un bucle entre switches, que sin árbol de
 expansión inunda la red sin fin, se rechaza en menos de un segundo. `ip`, `link`, `file` y `config` leen el archivo

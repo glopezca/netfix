@@ -61,6 +61,7 @@ export abstract class IosDevice {
   startupConfig: readonly string[] | null = null;
   readonly history: string[] = [];
   readonly ifaces = new Map<string, IfaceConfig>();
+  private ifaceOrder: string[] | null = null;
   clock: SimClock;
   private readonly listeners = new Set<ConsoleListener>();
 
@@ -120,11 +121,24 @@ export abstract class IosDevice {
     return this.ifaces.get(name);
   }
 
+  /**
+   * Interface names in IOS order. Cached: routing asks for them on every interface change, and sorting each time made
+   * loading a configuration with many interfaces quadratic. Names are only added (addIface: inserted in order) or all
+   * cleared (the length no longer matches: sorted again).
+   */
   sortedIfaceNames(): string[] {
-    return [...this.ifaces.keys()].sort(compareIfaces);
+    if (!this.ifaceOrder || this.ifaceOrder.length !== this.ifaces.size) this.ifaceOrder = [...this.ifaces.keys()].sort(compareIfaces);
+    return [...this.ifaceOrder];
+  }
+
+  /** Removes every interface (a reset); the subclass adds its ports again. */
+  protected clearIfaces(): void {
+    this.ifaces.clear();
+    this.ifaceOrder = null;
   }
 
   addIface(name: string, opts: { shutdown: boolean; switchport: boolean }): IfaceConfig {
+    if (!this.ifaces.has(name) && this.ifaceOrder?.length === this.ifaces.size) insertSorted(this.ifaceOrder, name);
     const cfg = defaultIface(name, opts);
     this.ifaces.set(name, cfg);
     return cfg;
@@ -137,4 +151,16 @@ export abstract class IosDevice {
     this.ifaces.set(name, after);
     this.onIfaceChanged(name, before);
   }
+}
+
+/** Inserts `name` into the IOS-ordered list (binary search: a new interface costs a copy, not a sort). */
+function insertSorted(list: string[], name: string): void {
+  let lo = 0;
+  let hi = list.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (compareIfaces(list[mid] ?? '', name) <= 0) lo = mid + 1;
+    else hi = mid;
+  }
+  list.splice(lo, 0, name);
 }

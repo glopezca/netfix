@@ -28255,7 +28255,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.11.0",
+    "version": "0.11.1",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -44069,6 +44069,7 @@ class IosDevice {
     startupConfig = null;
     history = [];
     ifaces = new Map();
+    ifaceOrder = null;
     clock;
     listeners = new Set();
     constructor(hostname, clock) {
@@ -44110,10 +44111,24 @@ class IosDevice {
     iface(name) {
         return this.ifaces.get(name);
     }
+    /**
+     * Interface names in IOS order. Cached: routing asks for them on every interface change, and sorting each time made
+     * loading a configuration with many interfaces quadratic. Names are only added (addIface: inserted in order) or all
+     * cleared (the length no longer matches: sorted again).
+     */
     sortedIfaceNames() {
-        return [...this.ifaces.keys()].sort(compareIfaces);
+        if (!this.ifaceOrder || this.ifaceOrder.length !== this.ifaces.size)
+            this.ifaceOrder = [...this.ifaces.keys()].sort(compareIfaces);
+        return [...this.ifaceOrder];
+    }
+    /** Removes every interface (a reset); the subclass adds its ports again. */
+    clearIfaces() {
+        this.ifaces.clear();
+        this.ifaceOrder = null;
     }
     addIface(name, opts) {
+        if (!this.ifaces.has(name) && this.ifaceOrder?.length === this.ifaces.size)
+            insertSorted(this.ifaceOrder, name);
         const cfg = defaultIface(name, opts);
         this.ifaces.set(name, cfg);
         return cfg;
@@ -44126,6 +44141,19 @@ class IosDevice {
         this.ifaces.set(name, after);
         this.onIfaceChanged(name, before);
     }
+}
+/** Inserts `name` into the IOS-ordered list (binary search: a new interface costs a copy, not a sort). */
+function insertSorted(list, name) {
+    let lo = 0;
+    let hi = list.length;
+    while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (compareIfaces(list[mid] ?? '', name) <= 0)
+            lo = mid + 1;
+        else
+            hi = mid;
+    }
+    list.splice(lo, 0, name);
 }
 
 return { IosDevice };
@@ -47331,7 +47359,7 @@ class Router extends IosDevice {
         this.debugNat = false;
         this.dhcp = new DhcpServer();
         this.plane = new RouterPlane(this);
-        this.ifaces.clear();
+        this.clearIfaces();
         ROUTER_PORTS.forEach((p, i) => {
             this.addIface(p, { shutdown: true, switchport: false });
             this.macs.set(p, macPlus(this.baseMac, i + 1));
@@ -47823,7 +47851,7 @@ class Switch extends IosDevice {
         this.defaultGateway = undefined;
         this.vlans = new Map(DEFAULT_VLANS);
         this.snooping.reset();
-        this.ifaces.clear();
+        this.clearIfaces();
         this.macTable.clear();
         for (const p of SWITCH_PORTS)
             this.addIface(p, { shutdown: false, switchport: true });
@@ -51147,7 +51175,10 @@ const MAX_TEXT = 500;
 const MAX_LINES = 50;
 const MAX_PREFIX = 32;
 const ID_RE = /^[A-Za-z0-9._-]{1,64}$/;
-const LABEL_RE = /^[^\u0000-\u001f]{1,64}$/;
+/** Text without control or format characters (bidi overrides, zero width…) or line separators: shown to students. */
+const VISIBLE = '[^\\p{Cc}\\p{Cf}\\u2028\\u2029]';
+const LABEL_RE = new RegExp(`^${VISIBLE}{1,64}$`, 'u');
+const LINE_RE = new RegExp(`^${VISIBLE}+$`, 'u');
 const NAME_RE = /^[A-Za-z0-9.-]{1,253}$/;
 function invalid(why) {
     throw new Error(`Lista de comprobación no válida: ${why}`);
@@ -51184,14 +51215,14 @@ const status = (v, at) => {
         invalid(`${at} debe ser un código HTTP`);
     return v;
 };
-const configLine = text(/^[^\u0000-\u001f]+$/);
+const configLine = text(LINE_RE);
 const lines = (v, at) => {
     if (!Array.isArray(v) || v.length === 0 || v.length > MAX_LINES)
         invalid(`${at} debe tener entre 1 y ${MAX_LINES} líneas`);
     return Object.freeze(v.map((l, i) => configLine(l, `${at}[${i}]`)));
 };
 const label = text(LABEL_RE);
-const plain = text(/^[^\u0000-\u001f]+$/, 200);
+const plain = text(LINE_RE, 200);
 /** A DNS name to look up: an IP literal would "resolve" without asking any server. */
 const dnsName = (v, at) => {
     if (typeof v === 'string' && parseIp(v) !== null)
@@ -51265,6 +51296,30 @@ function parseChecklist(input) {
 
 return { MAX_ITEMS, parseChecklist };
 })();
+__m["classroom/budget.js"] = (() => {
+/**
+ * The marking budget: a cheap look at an untrusted topology file before simulating it. Loading costs grow with the
+ * devices (each host boots a Linux system) and with the IOS configuration replayed line by line, which the work
+ * limit of the simulation does not count; a file far beyond any classroom lab is refused here, with a reason.
+ */
+const MARK_MAX_DEVICES = 60;
+const MARK_MAX_CONFIG_LINES = 6000;
+function isRecord(v) {
+    return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+const lines = (v) => (Array.isArray(v) ? v.length : 0);
+/** Throws when `file` is clearly beyond what marking should load (it is validated in full when loaded). */
+function checkMarkingBudget(file) {
+    const devices = isRecord(file) && Array.isArray(file.devices) ? file.devices : [];
+    if (devices.length > MARK_MAX_DEVICES)
+        throw new Error(`Demasiados equipos para corregir (${devices.length}; máximo ${MARK_MAX_DEVICES}).`);
+    const total = devices.reduce((n, d) => n + (isRecord(d) ? lines(d.config) + lines(d.startup) : 0), 0);
+    if (total > MARK_MAX_CONFIG_LINES)
+        throw new Error(`Demasiadas líneas de configuración para corregir (${total}; máximo ${MARK_MAX_CONFIG_LINES}).`);
+}
+
+return { MARK_MAX_DEVICES, MARK_MAX_CONFIG_LINES, checkMarkingBudget };
+})();
 __m["classroom/evaluate.js"] = (() => {
 /**
  * Headless marking: loads a topology file (as `Topology.fromJSON`, which settles the network) and runs each check
@@ -51273,6 +51328,7 @@ __m["classroom/evaluate.js"] = (() => {
  */
 const { Topology } = __m["net/topology.js"];
 const { withWorkLimit, WorkLimitError } = __m["net/network.js"];
+const { checkMarkingBudget } = __m["classroom/budget.js"];
 const { Host } = __m["devices/host.js"];
 const { Router } = __m["devices/router.js"];
 const { Switch } = __m["devices/switch.js"];
@@ -51293,13 +51349,15 @@ const TOO_COSTLY = 'La topología genera demasiado tráfico para corregirla (¿u
 const pass = (detail) => ({ passed: true, detail });
 const fail = (detail) => ({ passed: false, detail });
 function load(file) {
+    checkMarkingBudget(file);
     try {
         return Topology.fromJSON(file);
     }
     catch (e) {
         if (e instanceof WorkLimitError)
             throw new Error(TOO_COSTLY);
-        throw new Error(`Topología no válida: ${e instanceof Error ? e.message : String(e)}`);
+        // Only the file's own validation messages are told; an internal error (TypeError…) says nothing about the code.
+        throw new Error(`Topología no válida: ${e instanceof Error && e.constructor === Error ? e.message : 'formato inesperado'}`);
     }
 }
 function find(t, label) {

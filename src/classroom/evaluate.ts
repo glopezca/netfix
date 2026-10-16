@@ -5,6 +5,7 @@
  */
 import { Topology } from '../net/topology.ts';
 import { withWorkLimit, WorkLimitError } from '../net/network.ts';
+import { checkMarkingBudget } from './budget.ts';
 import type { AnyDevice } from '../net/topology.ts';
 import { Host } from '../devices/host.ts';
 import { Router } from '../devices/router.ts';
@@ -47,11 +48,13 @@ const pass = (detail: string): Outcome => ({ passed: true, detail });
 const fail = (detail: string): Outcome => ({ passed: false, detail });
 
 function load(file: unknown): Topology {
+  checkMarkingBudget(file);
   try {
     return Topology.fromJSON(file);
   } catch (e) {
     if (e instanceof WorkLimitError) throw new Error(TOO_COSTLY);
-    throw new Error(`Topología no válida: ${e instanceof Error ? e.message : String(e)}`);
+    // Only the file's own validation messages are told; an internal error (TypeError…) says nothing about the code.
+    throw new Error(`Topología no válida: ${e instanceof Error && e.constructor === Error ? e.message : 'formato inesperado'}`);
   }
 }
 
