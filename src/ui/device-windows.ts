@@ -15,7 +15,7 @@ import { Host } from '../devices/host.ts';
 import type { HostOs } from '../devices/host.ts';
 import { Pc } from '../devices/pc.ts';
 import { Server } from '../devices/server.ts';
-import type { Placed } from '../net/topology.ts';
+import type { Placed, DeviceKind } from '../net/topology.ts';
 import { createShell } from '../shells/factory.ts';
 import type { Tab } from './windows.ts';
 import { hostIpConfig } from './host-ip.ts';
@@ -32,6 +32,12 @@ export interface WindowHost {
   readonly windows: WindowManager;
   afterCommand(): void;
   peerLabel?(device: string, port: string): string | undefined;
+  /** Classroom restrictions: whether a tab of a device kind is shown (all are, when absent). */
+  allowsTab?(kind: DeviceKind, tab: string): boolean;
+}
+
+function allowed(host: WindowHost, kind: DeviceKind, tabs: readonly Tab[]): Tab[] {
+  return tabs.filter((tab) => host.allowsTab?.(kind, tab.id) ?? true);
 }
 
 const terminals = new Map<string, Terminal>();
@@ -89,19 +95,19 @@ export function openDeviceWindow(placed: Placed, host: WindowHost): void {
     return;
   }
   if (d instanceof Cloud) {
-    host.windows.show(d.id, t('win.cloud', { name: placed.label }), cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) }));
+    host.windows.show(d.id, t('win.cloud', { name: placed.label }), allowed(host, d.kind, cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) })));
     return;
   }
   const term = cliTerminal(placed, host);
   let handle: { setTitle(t: string): void } | undefined;
   const device = iosDeviceSettings(placed, d, { afterCommand: () => host.afterCommand(), retitle: (title) => handle?.setTitle(title) });
   const ifaces = iosInterfaces(d, { afterCommand: () => host.afterCommand(), peer: (port) => host.peerLabel?.(d.id, port) });
-  handle = host.windows.show(d.id, `${placed.label} · ${d.hostname}`, [
+  handle = host.windows.show(d.id, `${placed.label} · ${d.hostname}`, allowed(host, d.kind, [
     { id: 'host', label: t('win.host'), render: () => device.root, onShow: () => device.refresh() },
     { id: 'ifaces', label: t('win.ifaces'), render: () => ifaces.root, onShow: () => ifaces.refresh() },
     { id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() },
     { id: 'web', label: t('win.webAdmin'), render: () => iosWebSettings(d, () => host.afterCommand()) },
-  ]);
+  ]));
 }
 
 function shellTerminal(placed: Placed, h: Host, os: HostOs, app: WindowHost): Terminal {
@@ -154,5 +160,5 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost): void {
     ? [settingsTab, nicTab, { id: 'svc', label: t('win.services'), render: () => servicesTab(h, app) }, ipTab, ...order.map(terminal)]
     : [settingsTab, nicTab, ipTab, ...(h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
       { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : []), ...order.map(terminal)];
-  handle = app.windows.show(h.id, `${placed.label} · ${model}`, tabs, () => disposers.forEach((f) => f()));
+  handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()));
 }

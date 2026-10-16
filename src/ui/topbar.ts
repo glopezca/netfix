@@ -7,6 +7,8 @@ import { t } from '../i18n/t.ts';
 import type { MessageKey } from '../i18n/catalog.ts';
 import { getLocale, LOCALES, LOCALE_NAMES, LOCALE_SHORT, isLocale } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
+import { NO_RESTRICTIONS, allowsLab } from '../classroom/restrictions.ts';
+import type { Restrictions } from '../classroom/restrictions.ts';
 
 export type View = 'net' | 'docs' | 'donate' | 'about';
 export type Mode = 'realtime' | 'simulation';
@@ -61,22 +63,28 @@ function languageSelect(actions: TopbarActions): HTMLSelectElement {
   return s;
 }
 
-export function topbar(actions: TopbarActions, clockEl: HTMLElement, mode: Mode, view: View = 'net'): HTMLElement {
-  const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), EXAMPLES.map((e) => [e.id, labText(e).title] as const), (id) => actions.loadExample(id));
+/** What the classroom restrictions leave of a list: the items whose flag is on. */
+function only(items: readonly (readonly [boolean, HTMLElement])[]): HTMLElement[] {
+  return items.filter(([on]) => on).map(([, x]) => x);
+}
+
+export function topbar(actions: TopbarActions, clockEl: HTMLElement, mode: Mode, view: View = 'net', policy: Restrictions = NO_RESTRICTIONS): HTMLElement {
+  const allowed = EXAMPLES.filter((e) => allowsLab(policy, e.id));
+  const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), allowed.map((e) => [e.id, labText(e).title] as const), (id) => actions.loadExample(id));
   const advance = actionSelect(t('top.advanceLabel'), t('top.advance'),
     [[String(MINUTE), t('top.plusMinute')], [String(60 * MINUTE), t('top.plusHour')], [String(24 * 60 * MINUTE), t('top.plusDay')]], (v) => actions.advance(Number(v)));
   const menuId = 'topbar-menu';
   const toggle = el('button', { type: 'button', class: 'btn menu-toggle', 'aria-expanded': 'false', 'aria-controls': menuId }, el('span', { 'aria-hidden': 'true' }, '☰'), el('span', { class: 'menu-toggle-label' }, t('top.menu')));
   const menu = el('div', { class: 'topbar-menu', id: menuId },
-    el('nav', { class: 'file-actions', 'aria-label': t('top.file') },
-      button(t('top.new'), () => actions.newWorkspace()), button(t('top.open'), () => actions.openFile()),
-      button(t('top.save'), () => actions.save(), { title: t('top.saveTitle') }), labs),
-    el('div', { class: 'time' }, clockEl, advance),
-    segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime')),
+    el('nav', { class: 'file-actions', 'aria-label': t('top.file') }, ...only([
+      [policy.fileNew, button(t('top.new'), () => actions.newWorkspace())], [policy.fileOpen, button(t('top.open'), () => actions.openFile())],
+      [policy.fileSave, button(t('top.save'), () => actions.save(), { title: t('top.saveTitle') })], [allowed.length > 0, labs]])),
+    el('div', { class: 'time' }, clockEl, ...only([[policy.clock, advance]])),
+    ...only([[policy.simulation, segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime'))]]),
     languageSelect(actions));
   const bar = el('header', { class: 'topbar', 'data-open': 'false' },
     el('h1', { class: 'brand' }, brandImage('logo', 'brand-logo', 'Netfix')),
-    segmented(t('top.view'), VIEWS.map(([v, k]) => [v, t(k)] as const), view, (v) => {
+    segmented(t('top.view'), VIEWS.filter(([v]) => v !== 'docs' || policy.docs).map(([v, k]) => [v, t(k)] as const), view, (v) => {
       actions.showView(v as View);
       setOpen(false);
     }, 'data-view'),

@@ -124,3 +124,13 @@ test('operator router with a small LAN (/29) hands out addresses inside it', () 
   assert.equal(formatIp(pc.config.ip ?? 0), '192.168.5.2');
   assert.equal(formatIp(pc.config.gateway ?? 0), '192.168.5.6');
 });
+
+test('a topology file bounds labels and IOS configuration (lines and their length)', () => {
+  const base = { id: 'r', kind: 'router', x: 0, y: 0, seed: 1, label: 'R' };
+  const file = (d: object): unknown => ({ format: 'netfix', version: 2, devices: [{ ...base, ...d }], links: [] });
+  assert.throws(() => Topology.fromJSON(file({ label: 'x'.repeat(200) })));
+  assert.throws(() => Topology.fromJSON(file({ config: Array.from({ length: 20_001 }, () => '!') })));
+  assert.throws(() => Topology.fromJSON(file({ config: ['x'.repeat(5000)] })));
+  assert.throws(() => Topology.fromJSON(file({ startup: 'hostname X' })));
+  assert.equal(Topology.fromJSON(file({ config: ['hostname Aula'], startup: ['hostname Aula'] })).placed.size, 1);
+});

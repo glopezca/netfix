@@ -1,4 +1,5 @@
 /** Topology and discrete-event engine. Every frame on a cable is recorded for simulation mode. */
+import { TaskQueue } from './task-queue.ts';
 import { SimClock } from '../core/clock.ts';
 import type { Frame } from './packets.ts';
 import { frameProtocol } from './packets.ts';
@@ -46,22 +47,37 @@ export interface SimEvent {
   readonly frame: Frame;
 }
 
-interface Task {
-  readonly time: number;
-  readonly seq: number;
-  readonly run: () => void;
-}
-
 export const LINK_DELAY_MS = 1;
 const MAX_HISTORY = 5000;
+const HISTORY_SLACK = 1000;
 const MAX_TASKS_PER_RUN = 200_000;
+/** Frames in flight beyond this are dropped (congestion): a switching loop saturates instead of growing forever. */
+const MAX_IN_FLIGHT = 20_000;
+
+/** The work limit ran out (headless marking of an untrusted topology). */
+export class WorkLimitError extends Error {}
+
+let workLeft = Infinity;
+
+/** Runs `fn` allowing at most `tasks` simulation tasks in all; beyond that, WorkLimitError. */
+export function withWorkLimit<T>(tasks: number, fn: () => T): T {
+  const previous = workLeft;
+  workLeft = tasks;
+  try {
+    return fn();
+  } finally {
+    workLeft = previous;
+  }
+}
 
 export class Network {
   readonly clock: SimClock;
   readonly devices = new Map<string, NetDevice>();
   links: readonly Link[] = [];
   readonly history: SimEvent[] = [];
-  private queue: Task[] = [];
+  private readonly queue = new TaskQueue<() => void>();
+  /** The cable on each port ("device|port"), looked up for every frame. */
+  private readonly byPort = new Map<string, Link>();
   private seq = 0;
   private readonly listeners = new Set<(e: SimEvent) => void>();
 
@@ -83,7 +99,7 @@ export class Network {
   }
 
   linkAt(ep: Endpoint): Link | undefined {
-    return this.links.find((l) => sameEp(l.a, ep) || sameEp(l.b, ep));
+    return this.byPort.get(epKey(ep));
   }
 
   peerOf(ep: Endpoint): Endpoint | undefined {
@@ -101,6 +117,7 @@ export class Network {
     if (a.device === b.device) throw new Error('Cannot connect a device to itself');
     const link: Link = { id: `L${++this.seq}`, a, b, cable };
     this.links = [...this.links, link];
+    this.byPort.set(epKey(a), link).set(epKey(b), link);
     this.notifyLink(a, b);
     return link;
   }
@@ -110,6 +127,8 @@ export class Network {
     if (!link) return;
     const wasUp = this.endUp(link.a) && this.endUp(link.b);
     this.links = this.links.filter((l) => l.id !== linkId);
+    this.byPort.delete(epKey(link.a));
+    this.byPort.delete(epKey(link.b));
     if (!wasUp) return;
     this.devices.get(link.a.device)?.onLinkEvent(link.a.port, false);
     this.devices.get(link.b.device)?.onLinkEvent(link.b.port, false);
@@ -162,17 +181,14 @@ export class Network {
   }
 
   schedule(delayMs: number, run: () => void): void {
-    const task: Task = { time: this.clock.elapsed() + Math.max(0, delayMs), seq: ++this.seq, run };
-    const idx = this.queue.findIndex((t) => t.time > task.time);
-    if (idx === -1) this.queue.push(task);
-    else this.queue.splice(idx, 0, task);
+    this.queue.push({ time: this.clock.elapsed() + Math.max(0, delayMs), seq: ++this.seq, value: run });
   }
 
   transmit(from: Endpoint, frame: Frame): void {
     if (!this.linkUp(from)) return;
     const link = this.linkAt(from);
     const to = this.peerOf(from);
-    if (!link || !to) return;
+    if (!link || !to || this.queue.size >= MAX_IN_FLIGHT) return;
     this.schedule(LINK_DELAY_MS, () => {
       if (!this.linkUp(from)) return;
       const event: SimEvent = { seq: ++this.seq, time: this.clock.elapsed(), linkId: link.id, from, to, protocol: frameProtocol(frame), frame };
@@ -188,20 +204,22 @@ export class Network {
 
   private record(event: SimEvent): void {
     this.history.push(event);
-    if (this.history.length > MAX_HISTORY) this.history.splice(0, this.history.length - MAX_HISTORY);
+    // Trimmed in batches: cutting one event at a time copies the whole history on every frame (a storm took seconds).
+    if (this.history.length > MAX_HISTORY + HISTORY_SLACK) this.history.splice(0, this.history.length - MAX_HISTORY);
     for (const l of this.listeners) l(event);
   }
 
   pending(): number {
-    return this.queue.length;
+    return this.queue.size;
   }
 
   /** Runs the next task. Returns false when the queue is empty. */
   step(): boolean {
-    const task = this.queue.shift();
+    const task = this.queue.pop();
     if (!task) return false;
+    if (--workLeft < 0) throw new WorkLimitError('Límite de cálculo de la simulación agotado');
     this.clock.advanceTo(task.time);
-    task.run();
+    task.value();
     return true;
   }
 
@@ -215,7 +233,7 @@ export class Network {
     const deadline = this.clock.elapsed() + maxMs;
     let budget = MAX_TASKS_PER_RUN;
     while (!done()) {
-      const next = this.queue[0];
+      const next = this.queue.peek();
       if (!next || next.time > deadline || budget-- <= 0) {
         this.clock.advanceTo(deadline);
         return done();
@@ -228,6 +246,10 @@ export class Network {
   clearHistory(): void {
     this.history.length = 0;
   }
+}
+
+function epKey(ep: Endpoint): string {
+  return `${ep.device}|${ep.port}`;
 }
 
 export function sameEp(a: Endpoint, b: Endpoint): boolean {

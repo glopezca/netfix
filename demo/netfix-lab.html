@@ -4076,6 +4076,8 @@ function drawingNode(a, selected) {
 class DrawLayer {
     layer;
     selected = null;
+    /** Classroom restrictions without drawing: the drawings (lab areas, notes) cannot be selected, moved or edited. */
+    locked = false;
     drawn = null;
     drawnSelection = null;
     /** A drawing is being drawn or dragged: redraws wait so its element and pointer capture survive. */
@@ -4117,13 +4119,15 @@ class DrawLayer {
         clear(this.layer);
         for (const a of list) {
             const g = drawingNode(a, a.id === this.selected);
-            g.addEventListener('pointerdown', (e) => this.onPointer(e, a.id, g));
-            g.addEventListener('dblclick', (e) => { e.stopPropagation(); this.editText(a.id); });
+            g.addEventListener('pointerdown', (e) => { if (!this.locked)
+                this.onPointer(e, a.id, g); });
+            g.addEventListener('dblclick', (e) => { if (this.locked)
+                return; e.stopPropagation(); this.editText(a.id); });
             this.layer.appendChild(g);
         }
     }
     deleteSelected() {
-        if (this.selected === null)
+        if (this.selected === null || this.locked)
             return false;
         this.host.topo().removeAnnotation(this.selected);
         this.setSelected(null);
@@ -4581,6 +4585,8 @@ class Canvas {
     topo;
     tool = { kind: 'select' };
     selected = null;
+    /** False when classroom restrictions lock the topology (Del removes no device or cable). */
+    editable = true;
     pendingEnd = null;
     events;
     frame = 0;
@@ -4688,7 +4694,6 @@ class Canvas {
         for (const link of this.topo.net.links)
             this.linkLayer.appendChild(this.drawLink(link));
     }
-    // ------------------------------------------------------------ drawing
     endState(ep) {
         return this.topo.net.linkUp(ep) ? 'up' : 'down';
     }
@@ -4910,7 +4915,7 @@ class Canvas {
         }
         if ((e.key === 'Delete' || e.key === 'Backspace') && this.draw.deleteSelected())
             return;
-        if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected) {
+        if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected && this.editable) {
             const id = this.selected;
             if (this.topo.get(id)) {
                 this.edits().removeDevice(id);
@@ -28250,7 +28255,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.10.3",
+    "version": "0.11.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -35526,9 +35531,13 @@ function bootKernel(host, files) {
         applySysctlFile(fs, host, path);
 }
 registerHostFs((host) => hostSystem(host).fs);
+// Before the system exists, a file saved with the topology is read from the pending records (same result either way).
 registerHostFileReader((host, path) => {
+    const e = systems.get(host);
+    if (!e)
+        return pendingFiles.get(host)?.find((f) => f.path === path && f.kind === 'file')?.content;
     try {
-        return systems.get(host)?.fs.readFile(path);
+        return e.fs.readFile(path);
     }
     catch {
         return undefined;
@@ -43531,6 +43540,9 @@ const { sftpApp } = __m["ui/sftp-app.js"];
 const { iosWebSettings } = __m["ui/ios-web-settings.js"];
 const { Cloud } = __m["devices/cloud.js"];
 const { cloudTabs } = __m["ui/cloud-window.js"];
+function allowed(host, kind, tabs) {
+    return tabs.filter((tab) => host.allowsTab?.(kind, tab.id) ?? true);
+}
 const terminals = new Map();
 function iosBackend(device, session) {
     return {
@@ -43582,19 +43594,19 @@ function openDeviceWindow(placed, host) {
         return;
     }
     if (d instanceof Cloud) {
-        host.windows.show(d.id, t('win.cloud', { name: placed.label }), cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) }));
+        host.windows.show(d.id, t('win.cloud', { name: placed.label }), allowed(host, d.kind, cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) })));
         return;
     }
     const term = cliTerminal(placed, host);
     let handle;
     const device = iosDeviceSettings(placed, d, { afterCommand: () => host.afterCommand(), retitle: (title) => handle?.setTitle(title) });
     const ifaces = iosInterfaces(d, { afterCommand: () => host.afterCommand(), peer: (port) => host.peerLabel?.(d.id, port) });
-    handle = host.windows.show(d.id, `${placed.label} · ${d.hostname}`, [
+    handle = host.windows.show(d.id, `${placed.label} · ${d.hostname}`, allowed(host, d.kind, [
         { id: 'host', label: t('win.host'), render: () => device.root, onShow: () => device.refresh() },
         { id: 'ifaces', label: t('win.ifaces'), render: () => ifaces.root, onShow: () => ifaces.refresh() },
         { id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() },
         { id: 'web', label: t('win.webAdmin'), render: () => iosWebSettings(d, () => host.afterCommand()) },
-    ]);
+    ]));
 }
 function shellTerminal(placed, h, os, app) {
     const key = `${h.id}:${os}`;
@@ -43645,7 +43657,7 @@ function openHostWindow(placed, h, app) {
         ? [settingsTab, nicTab, { id: 'svc', label: t('win.services'), render: () => servicesTab(h, app) }, ipTab, ...order.map(terminal)]
         : [settingsTab, nicTab, ipTab, ...(h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
                 { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : []), ...order.map(terminal)];
-    handle = app.windows.show(h.id, `${placed.label} · ${model}`, tabs, () => disposers.forEach((f) => f()));
+    handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()));
 }
 
 return { forgetDevice, forgetAll, openDeviceWindow };
@@ -43719,19 +43731,94 @@ function bootWireguard(host) {
 
 return { bootWireguard };
 })();
+__m["net/task-queue.js"] = (() => {
+const before = (a, b) => a.time < b.time || (a.time === b.time && a.seq < b.seq);
+class TaskQueue {
+    heap = [];
+    get size() {
+        return this.heap.length;
+    }
+    peek() {
+        return this.heap[0];
+    }
+    push(item) {
+        const h = this.heap;
+        let i = h.push(item) - 1;
+        while (i > 0) {
+            const parent = (i - 1) >> 1;
+            if (!before(item, h[parent]))
+                break;
+            h[i] = h[parent];
+            i = parent;
+        }
+        h[i] = item;
+    }
+    pop() {
+        const h = this.heap;
+        const top = h[0];
+        const last = h.pop();
+        if (top === undefined || last === undefined || h.length === 0)
+            return top;
+        let i = 0;
+        for (;;) {
+            const l = 2 * i + 1;
+            const r = l + 1;
+            let m = i;
+            let best = last;
+            if (l < h.length && before(h[l], best)) {
+                m = l;
+                best = h[l];
+            }
+            if (r < h.length && before(h[r], best)) {
+                m = r;
+                best = h[r];
+            }
+            if (m === i)
+                break;
+            h[i] = best;
+            i = m;
+        }
+        h[i] = last;
+        return top;
+    }
+}
+
+return { TaskQueue };
+})();
 __m["net/network.js"] = (() => {
 /** Topology and discrete-event engine. Every frame on a cable is recorded for simulation mode. */
+const { TaskQueue } = __m["net/task-queue.js"];
 const { SimClock } = __m["core/clock.js"];
 const { frameProtocol } = __m["net/packets.js"];
 const LINK_DELAY_MS = 1;
 const MAX_HISTORY = 5000;
+const HISTORY_SLACK = 1000;
 const MAX_TASKS_PER_RUN = 200_000;
+/** Frames in flight beyond this are dropped (congestion): a switching loop saturates instead of growing forever. */
+const MAX_IN_FLIGHT = 20_000;
+/** The work limit ran out (headless marking of an untrusted topology). */
+class WorkLimitError extends Error {
+}
+let workLeft = Infinity;
+/** Runs `fn` allowing at most `tasks` simulation tasks in all; beyond that, WorkLimitError. */
+function withWorkLimit(tasks, fn) {
+    const previous = workLeft;
+    workLeft = tasks;
+    try {
+        return fn();
+    }
+    finally {
+        workLeft = previous;
+    }
+}
 class Network {
     clock;
     devices = new Map();
     links = [];
     history = [];
-    queue = [];
+    queue = new TaskQueue();
+    /** The cable on each port ("device|port"), looked up for every frame. */
+    byPort = new Map();
     seq = 0;
     listeners = new Set();
     constructor(clock = new SimClock()) {
@@ -43750,7 +43837,7 @@ class Network {
         this.devices.delete(id);
     }
     linkAt(ep) {
-        return this.links.find((l) => sameEp(l.a, ep) || sameEp(l.b, ep));
+        return this.byPort.get(epKey(ep));
     }
     peerOf(ep) {
         const link = this.linkAt(ep);
@@ -43771,6 +43858,7 @@ class Network {
             throw new Error('Cannot connect a device to itself');
         const link = { id: `L${++this.seq}`, a, b, cable };
         this.links = [...this.links, link];
+        this.byPort.set(epKey(a), link).set(epKey(b), link);
         this.notifyLink(a, b);
         return link;
     }
@@ -43780,6 +43868,8 @@ class Network {
             return;
         const wasUp = this.endUp(link.a) && this.endUp(link.b);
         this.links = this.links.filter((l) => l.id !== linkId);
+        this.byPort.delete(epKey(link.a));
+        this.byPort.delete(epKey(link.b));
         if (!wasUp)
             return;
         this.devices.get(link.a.device)?.onLinkEvent(link.a.port, false);
@@ -43828,19 +43918,14 @@ class Network {
         return () => this.listeners.delete(listener);
     }
     schedule(delayMs, run) {
-        const task = { time: this.clock.elapsed() + Math.max(0, delayMs), seq: ++this.seq, run };
-        const idx = this.queue.findIndex((t) => t.time > task.time);
-        if (idx === -1)
-            this.queue.push(task);
-        else
-            this.queue.splice(idx, 0, task);
+        this.queue.push({ time: this.clock.elapsed() + Math.max(0, delayMs), seq: ++this.seq, value: run });
     }
     transmit(from, frame) {
         if (!this.linkUp(from))
             return;
         const link = this.linkAt(from);
         const to = this.peerOf(from);
-        if (!link || !to)
+        if (!link || !to || this.queue.size >= MAX_IN_FLIGHT)
             return;
         this.schedule(LINK_DELAY_MS, () => {
             if (!this.linkUp(from))
@@ -43856,21 +43941,24 @@ class Network {
     }
     record(event) {
         this.history.push(event);
-        if (this.history.length > MAX_HISTORY)
+        // Trimmed in batches: cutting one event at a time copies the whole history on every frame (a storm took seconds).
+        if (this.history.length > MAX_HISTORY + HISTORY_SLACK)
             this.history.splice(0, this.history.length - MAX_HISTORY);
         for (const l of this.listeners)
             l(event);
     }
     pending() {
-        return this.queue.length;
+        return this.queue.size;
     }
     /** Runs the next task. Returns false when the queue is empty. */
     step() {
-        const task = this.queue.shift();
+        const task = this.queue.pop();
         if (!task)
             return false;
+        if (--workLeft < 0)
+            throw new WorkLimitError('Límite de cálculo de la simulación agotado');
         this.clock.advanceTo(task.time);
-        task.run();
+        task.value();
         return true;
     }
     /** Processes every task due within the next `ms` of simulated time. */
@@ -43882,7 +43970,7 @@ class Network {
         const deadline = this.clock.elapsed() + maxMs;
         let budget = MAX_TASKS_PER_RUN;
         while (!done()) {
-            const next = this.queue[0];
+            const next = this.queue.peek();
             if (!next || next.time > deadline || budget-- <= 0) {
                 this.clock.advanceTo(deadline);
                 return done();
@@ -43895,11 +43983,14 @@ class Network {
         this.history.length = 0;
     }
 }
+function epKey(ep) {
+    return `${ep.device}|${ep.port}`;
+}
 function sameEp(a, b) {
     return a.device === b.device && a.port === b.port;
 }
 
-return { LINK_DELAY_MS, Network, sameEp };
+return { LINK_DELAY_MS, WorkLimitError, withWorkLimit, Network, sameEp };
 })();
 __m["ios/crypto-config.js"] = (() => {
 /**
@@ -49343,6 +49434,9 @@ const PREFIX = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server',
 const FILE_VERSION = 2;
 /** A larger file would freeze the tab while it is built and settled. */
 const MAX_DEVICES = 500;
+const MAX_LABEL = 64;
+const MAX_CONFIG_LINES = 20_000;
+const MAX_CONFIG_LINE = 4096;
 /** Drawing ids stay short (aN) even after a crafted file. */
 const MAX_DRAWING_ID = 999_999_999;
 const SETTLE_MS = 30_000;
@@ -49603,6 +49697,10 @@ function isObject(v) {
     return typeof v === 'object' && v !== null;
 }
 /** Validates untrusted JSON before building a topology from it. */
+/** IOS configuration of a file: absent, or a bounded list of bounded lines (the IOS parser reads every one). */
+function configLines(v) {
+    return v === undefined || (Array.isArray(v) && v.length <= MAX_CONFIG_LINES && v.every((l) => typeof l === 'string' && l.length <= MAX_CONFIG_LINE));
+}
 function validateFile(data) {
     if (!isObject(data) || (data.format !== 'netfix' && data.format !== 'netsim') || (data.version !== 1 && data.version !== FILE_VERSION))
         throw new Error(t('load.notNetfix'));
@@ -49616,7 +49714,9 @@ function validateFile(data) {
             throw new Error(t('load.badDevice'));
         if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string')
             throw new Error(t('load.deviceData', { id: d.id }));
-        if (d.config !== undefined && (!Array.isArray(d.config) || d.config.some((l) => typeof l !== 'string')))
+        if (d.label.length > MAX_LABEL)
+            throw new Error(t('load.deviceData', { id: d.id }));
+        if (!configLines(d.config) || !(d.startup === null || configLines(d.startup)))
             throw new Error(t('load.deviceConfig', { id: d.id }));
     }
     for (const l of links) {
@@ -50784,6 +50884,93 @@ function labText(e) {
 
 return { labText };
 })();
+__m["classroom/restrictions.js"] = (() => {
+const DEVICE_KINDS = ['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'];
+const TAB_IDS = ['host', 'ifaces', 'cli', 'web', 'ip', 'svc', 'mail', 'ssh', 'sftp', 'linux', 'windows', 'isp', 'lines'];
+/** The first tab of each window (Device; ISP for the cloud): kept even when a list leaves it out, so a window is never empty. */
+const firstTab = (k) => (k === 'cloud' ? 'isp' : 'host');
+const FLAGS = ['docs', 'fileOpen', 'fileSave', 'fileNew', 'simulation', 'clock', 'drawing', 'editTopology'];
+const MAX_LABS = 100;
+const MAX_ID = 64;
+const ID_RE = /^[A-Za-z0-9._-]+$/;
+const NO_RESTRICTIONS = Object.freeze({
+    labs: null, devices: null, tabs: Object.freeze({}),
+    docs: true, fileOpen: true, fileSave: true, fileNew: true, simulation: true, clock: true, drawing: true, editTopology: true,
+});
+function invalid(why) {
+    throw new Error(`Restricciones no válidas: ${why}`);
+}
+function isRecord(v) {
+    return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+function stringList(v, field, max) {
+    if (!Array.isArray(v) || v.length > max)
+        invalid(`${field} debe ser una lista de hasta ${max} elementos`);
+    return v.map((x) => {
+        if (typeof x !== 'string' || x.length === 0 || x.length > MAX_ID || !ID_RE.test(x))
+            invalid(`${field}: identificador no válido`);
+        return x;
+    });
+}
+function kind(v, field) {
+    const k = DEVICE_KINDS.find((d) => d === v);
+    if (!k)
+        invalid(`${field}: tipo de equipo desconocido «${v}»`);
+    return k;
+}
+function tabList(v, field) {
+    return stringList(v, field, TAB_IDS.length).map((x) => {
+        const id = TAB_IDS.find((t) => t === x);
+        if (!id)
+            invalid(`${field}: pestaña desconocida «${x}»`);
+        return id;
+    });
+}
+function parseTabs(v) {
+    if (!isRecord(v))
+        invalid('tabs debe ser un objeto');
+    const out = {};
+    for (const [k, list] of Object.entries(v))
+        out[kind(k, 'tabs')] = Object.freeze(tabList(list, `tabs.${k}`));
+    return Object.freeze(out);
+}
+/** The policy in `input` (JSON already parsed), validated; undefined or {} means no restrictions. */
+function parseRestrictions(input) {
+    if (input === undefined || input === null)
+        return NO_RESTRICTIONS;
+    if (!isRecord(input))
+        invalid('se esperaba un objeto');
+    const known = new Set(['labs', 'devices', 'tabs', ...FLAGS]);
+    const extra = Object.keys(input).find((k) => !known.has(k));
+    if (extra)
+        invalid(`campo desconocido «${extra}»`);
+    const flags = {};
+    for (const f of FLAGS) {
+        const v = input[f];
+        if (v !== undefined && typeof v !== 'boolean')
+            invalid(`${f} debe ser true o false`);
+        flags[f] = v ?? true;
+    }
+    return Object.freeze({
+        labs: input.labs === undefined ? null : Object.freeze(stringList(input.labs, 'labs', MAX_LABS)),
+        devices: input.devices === undefined ? null : Object.freeze(stringList(input.devices, 'devices', DEVICE_KINDS.length).map((d) => kind(d, 'devices'))),
+        tabs: input.tabs === undefined ? NO_RESTRICTIONS.tabs : parseTabs(input.tabs),
+        ...flags,
+    });
+}
+function allowsLab(r, id) {
+    return r.labs === null || r.labs.includes(id);
+}
+function allowsDevice(r, k) {
+    return r.devices === null || r.devices.includes(k);
+}
+function allowsTab(r, k, tab) {
+    const list = r.tabs[k];
+    return !list || tab === firstTab(k) || list.some((t) => t === tab);
+}
+
+return { DEVICE_KINDS, TAB_IDS, NO_RESTRICTIONS, parseRestrictions, allowsLab, allowsDevice, allowsTab };
+})();
 __m["ui/topbar.js"] = (() => {
 /** Top bar: brand, views, file actions, labs, clock, mode and language. Folds into a menu on phones. */
 const { brandImage } = __m["ui/brand.js"];
@@ -50792,6 +50979,7 @@ const { EXAMPLES } = __m["net/examples.js"];
 const { labText } = __m["ui/lab-text.js"];
 const { t } = __m["i18n/t.js"];
 const { getLocale, LOCALES, LOCALE_NAMES, LOCALE_SHORT, isLocale } = __m["i18n/locale.js"];
+const { NO_RESTRICTIONS, allowsLab } = __m["classroom/restrictions.js"];
 const MINUTE = 60_000;
 const VIEWS = [['net', 'view.net'], ['docs', 'view.docs'], ['donate', 'view.donate'], ['about', 'view.about']];
 function button(label, fn, attrs = {}) {
@@ -50828,13 +51016,21 @@ function languageSelect(actions) {
         actions.setLocale(s.value); });
     return s;
 }
-function topbar(actions, clockEl, mode, view = 'net') {
-    const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), EXAMPLES.map((e) => [e.id, labText(e).title]), (id) => actions.loadExample(id));
+/** What the classroom restrictions leave of a list: the items whose flag is on. */
+function only(items) {
+    return items.filter(([on]) => on).map(([, x]) => x);
+}
+function topbar(actions, clockEl, mode, view = 'net', policy = NO_RESTRICTIONS) {
+    const allowed = EXAMPLES.filter((e) => allowsLab(policy, e.id));
+    const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), allowed.map((e) => [e.id, labText(e).title]), (id) => actions.loadExample(id));
     const advance = actionSelect(t('top.advanceLabel'), t('top.advance'), [[String(MINUTE), t('top.plusMinute')], [String(60 * MINUTE), t('top.plusHour')], [String(24 * 60 * MINUTE), t('top.plusDay')]], (v) => actions.advance(Number(v)));
     const menuId = 'topbar-menu';
     const toggle = el('button', { type: 'button', class: 'btn menu-toggle', 'aria-expanded': 'false', 'aria-controls': menuId }, el('span', { 'aria-hidden': 'true' }, '☰'), el('span', { class: 'menu-toggle-label' }, t('top.menu')));
-    const menu = el('div', { class: 'topbar-menu', id: menuId }, el('nav', { class: 'file-actions', 'aria-label': t('top.file') }, button(t('top.new'), () => actions.newWorkspace()), button(t('top.open'), () => actions.openFile()), button(t('top.save'), () => actions.save(), { title: t('top.saveTitle') }), labs), el('div', { class: 'time' }, clockEl, advance), segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime')), languageSelect(actions));
-    const bar = el('header', { class: 'topbar', 'data-open': 'false' }, el('h1', { class: 'brand' }, brandImage('logo', 'brand-logo', 'Netfix')), segmented(t('top.view'), VIEWS.map(([v, k]) => [v, t(k)]), view, (v) => {
+    const menu = el('div', { class: 'topbar-menu', id: menuId }, el('nav', { class: 'file-actions', 'aria-label': t('top.file') }, ...only([
+        [policy.fileNew, button(t('top.new'), () => actions.newWorkspace())], [policy.fileOpen, button(t('top.open'), () => actions.openFile())],
+        [policy.fileSave, button(t('top.save'), () => actions.save(), { title: t('top.saveTitle') })], [allowed.length > 0, labs]
+    ])), el('div', { class: 'time' }, clockEl, ...only([[policy.clock, advance]])), ...only([[policy.simulation, segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime'))]]), languageSelect(actions));
+    const bar = el('header', { class: 'topbar', 'data-open': 'false' }, el('h1', { class: 'brand' }, brandImage('logo', 'brand-logo', 'Netfix')), segmented(t('top.view'), VIEWS.filter(([v]) => v !== 'docs' || policy.docs).map(([v, k]) => [v, t(k)]), view, (v) => {
         actions.showView(v);
         setOpen(false);
     }, 'data-view'), toggle, menu);
@@ -50856,6 +51052,7 @@ __m["ui/palette.js"] = (() => {
 const { el, staticSvg } = __m["ui/dom.js"];
 const { ICONS, modelLabel } = __m["ui/icons.js"];
 const { t } = __m["i18n/t.js"];
+const { NO_RESTRICTIONS, allowsDevice } = __m["classroom/restrictions.js"];
 const PLACEABLE = [
     ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
 ];
@@ -50869,7 +51066,8 @@ function drawToggle(actions) {
     });
     return b;
 }
-function palette(actions, buttons, hintEl) {
+/** The palette; classroom restrictions leave out devices, the editing tools (topology locked) and drawing. */
+function palette(actions, buttons, hintEl, policy = NO_RESTRICTIONS) {
     const deviceBtn = (kind, name) => {
         const b = el('button', { type: 'button', class: 'pal-item', 'aria-pressed': 'false' }, staticSvg(ICONS[kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, modelLabel(kind)));
         b.addEventListener('click', () => actions.selectTool({ kind: 'place', device: kind }, `place-${kind}`));
@@ -50892,7 +51090,9 @@ function palette(actions, buttons, hintEl) {
         b.addEventListener('click', () => actions.undo(redo));
         return b;
     };
-    return el('footer', { class: 'palette' }, el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...PLACEABLE.map(([k, name]) => deviceBtn(k, t(name)))), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕'), drawToggle(actions)), el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))), el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))), hintEl);
+    const edit = policy.editTopology;
+    const devices = edit ? PLACEABLE.filter(([k]) => allowsDevice(policy, k)) : [];
+    return el('footer', { class: 'palette' }, ...(devices.length ? [el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...devices.map(([k, name]) => deviceBtn(k, t(name))))] : []), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), ...(edit ? [toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')] : []), ...(policy.drawing ? [drawToggle(actions)] : [])), el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))), el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))), hintEl);
 }
 
 return { PLACEABLE, palette };
@@ -50938,6 +51138,413 @@ async function saveTopology(topo) {
 
 return { saveTopology };
 })();
+__m["classroom/checklist.js"] = (() => {
+const { parseIp } = __m["core/ip.js"];
+const { DEVICE_KINDS } = __m["classroom/restrictions.js"];
+const MAX_ITEMS = 200;
+const MAX_WEIGHT = 100;
+const MAX_TEXT = 500;
+const MAX_LINES = 50;
+const MAX_PREFIX = 32;
+const ID_RE = /^[A-Za-z0-9._-]{1,64}$/;
+const LABEL_RE = /^[^\u0000-\u001f]{1,64}$/;
+const NAME_RE = /^[A-Za-z0-9.-]{1,253}$/;
+function invalid(why) {
+    throw new Error(`Lista de comprobación no válida: ${why}`);
+}
+const text = (re, max = MAX_TEXT) => (v, at) => {
+    if (typeof v !== 'string' || v.length === 0 || v.length > max || (re && !re.test(v)))
+        invalid(`${at} no es válido`);
+    return v;
+};
+const oneOf = (values) => (v, at) => {
+    if (typeof v !== 'string' || !values.includes(v))
+        invalid(`${at} debe ser ${values.join(' o ')}`);
+    return v;
+};
+const ipText = (v, at) => {
+    if (typeof v !== 'string' || parseIp(v) === null)
+        invalid(`${at} no es una dirección IPv4`);
+    return v;
+};
+const cidr = (v, at) => {
+    const [addr, len, ...rest] = typeof v === 'string' ? v.split('/') : [];
+    const n = Number(len);
+    if (rest.length || addr === undefined || parseIp(addr) === null || !/^\d{1,2}$/.test(len ?? '') || n > MAX_PREFIX)
+        invalid(`${at} debe ser red/prefijo`);
+    return v;
+};
+const httpUrl = (v, at) => {
+    if (typeof v !== 'string' || v.length > MAX_TEXT || !/^http:\/\/[^\s/]+(\/\S*)?$/.test(v))
+        invalid(`${at} debe ser una URL http://`);
+    return v;
+};
+const status = (v, at) => {
+    if (!Number.isInteger(v) || v < 100 || v > 599)
+        invalid(`${at} debe ser un código HTTP`);
+    return v;
+};
+const configLine = text(/^[^\u0000-\u001f]+$/);
+const lines = (v, at) => {
+    if (!Array.isArray(v) || v.length === 0 || v.length > MAX_LINES)
+        invalid(`${at} debe tener entre 1 y ${MAX_LINES} líneas`);
+    return Object.freeze(v.map((l, i) => configLine(l, `${at}[${i}]`)));
+};
+const label = text(LABEL_RE);
+const plain = text(/^[^\u0000-\u001f]+$/, 200);
+/** A DNS name to look up: an IP literal would "resolve" without asking any server. */
+const dnsName = (v, at) => {
+    if (typeof v === 'string' && parseIp(v) !== null)
+        invalid(`${at} debe ser un nombre, no una dirección IP`);
+    return text(NAME_RE)(v, at);
+};
+const path = text(/^\/[^\u0000-\u001f]*$/, 256);
+/** Fields of each check type: required (no `?`) and optional (`?` suffix). */
+const SCHEMAS = {
+    device: { device: label, 'kind?': oneOf(DEVICE_KINDS) },
+    link: { a: label, b: label },
+    ip: { device: label, 'mode?': oneOf(['static', 'dhcp']), 'ip?': ipText, 'network?': cidr, 'gateway?': ipText, 'dns?': ipText },
+    ping: { from: label, to: text(NAME_RE), 'expect?': oneOf(['success', 'fail']) },
+    dns: { from: label, name: dnsName, 'ip?': ipText },
+    http: { from: label, url: httpUrl, 'status?': status, 'contains?': text(null) },
+    file: { device: label, path, 'contains?': text(null) },
+    config: { device: label, 'section?': configLine, lines },
+};
+function isRecord(v) {
+    return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+function isType(v) {
+    return typeof v === 'string' && Object.hasOwn(SCHEMAS, v);
+}
+function parseCheck(v, at) {
+    if (!isRecord(v) || !isType(v.type))
+        invalid(`${at}.type desconocido`);
+    const schema = SCHEMAS[v.type];
+    const out = { type: v.type };
+    const names = new Set(Object.keys(schema).map((k) => k.replace(/\?$/, '')));
+    const extra = Object.keys(v).find((k) => k !== 'type' && !names.has(k));
+    if (extra)
+        invalid(`${at}: campo desconocido «${extra}»`);
+    for (const [key, field] of Object.entries(schema)) {
+        const name = key.replace(/\?$/, '');
+        if (v[name] === undefined) {
+            if (!key.endsWith('?'))
+                invalid(`${at}.${name} es obligatorio`);
+            continue;
+        }
+        out[name] = field(v[name], `${at}.${name}`);
+    }
+    if (v.type === 'ping')
+        out.expect ??= 'success';
+    return Object.freeze(out);
+}
+function parseItem(v, i, seen) {
+    const at = `[${i}]`;
+    if (!isRecord(v))
+        invalid(`${at} debe ser un objeto`);
+    const extra = Object.keys(v).find((k) => !['id', 'title', 'weight', 'check'].includes(k));
+    if (extra)
+        invalid(`${at}: campo desconocido «${extra}»`);
+    const id = text(ID_RE)(v.id, `${at}.id`);
+    if (seen.has(id))
+        invalid(`id repetido «${id}»`);
+    seen.add(id);
+    const weight = v.weight ?? 1;
+    if (!Number.isInteger(weight) || weight < 0 || weight > MAX_WEIGHT)
+        invalid(`${at}.weight debe ser un entero de 0 a ${MAX_WEIGHT}`);
+    const title = v.title === undefined ? undefined : plain(v.title, `${at}.title`);
+    return Object.freeze({ id, weight: weight, check: parseCheck(v.check, `${at}.check`), ...(title ? { title } : {}) });
+}
+/** The checklist in `input` (JSON already parsed), validated: a list of 1 to 200 items with unique ids. */
+function parseChecklist(input) {
+    if (!Array.isArray(input) || input.length === 0 || input.length > MAX_ITEMS)
+        invalid(`se esperaba una lista de 1 a ${MAX_ITEMS} elementos`);
+    const seen = new Set();
+    return Object.freeze(input.map((v, i) => parseItem(v, i, seen)));
+}
+
+return { MAX_ITEMS, parseChecklist };
+})();
+__m["classroom/evaluate.js"] = (() => {
+/**
+ * Headless marking: loads a topology file (as `Topology.fromJSON`, which settles the network) and runs each check
+ * of a validated checklist inside the simulation (pings, DNS and HTTP really travel through the network). Needs no
+ * DOM, so the classroom server can run it in a Worker. A check never throws: it fails with a reason.
+ */
+const { Topology } = __m["net/topology.js"];
+const { withWorkLimit, WorkLimitError } = __m["net/network.js"];
+const { Host } = __m["devices/host.js"];
+const { Router } = __m["devices/router.js"];
+const { Switch } = __m["devices/switch.js"];
+const { IosDevice } = __m["ios/device.js"];
+const { parseIp, formatIp } = __m["core/ip.js"];
+const { runPing } = __m["net/ping.js"];
+const { resolveHost, httpRequest } = __m["shells/net-tools.js"];
+const { hostSystem } = __m["shells/host-system.js"];
+const PING_COUNT = 3;
+const PING_TIMEOUT_MS = 2000;
+const HTTP_ERROR = 400;
+/**
+ * Simulation tasks for one whole marking. A lab with every check needs a few hundred; a switching loop (no spanning
+ * tree) floods without end, and the limit keeps it to well under a second of CPU.
+ */
+const WORK_LIMIT = 50_000;
+const TOO_COSTLY = 'La topología genera demasiado tráfico para corregirla (¿un bucle entre switches?).';
+const pass = (detail) => ({ passed: true, detail });
+const fail = (detail) => ({ passed: false, detail });
+function load(file) {
+    try {
+        return Topology.fromJSON(file);
+    }
+    catch (e) {
+        if (e instanceof WorkLimitError)
+            throw new Error(TOO_COSTLY);
+        throw new Error(`Topología no válida: ${e instanceof Error ? e.message : String(e)}`);
+    }
+}
+function find(t, label) {
+    const found = [...t.placed.values()].filter((p) => p.label === label);
+    if (found.length > 1)
+        return fail(`Hay varios equipos llamados «${label}».`);
+    return found[0]?.device ?? fail(`No existe el equipo «${label}».`);
+}
+function host(t, label) {
+    const d = find(t, label);
+    if (!(d instanceof Host))
+        return 'passed' in d ? d : fail(`«${label}» no es un PC ni un servidor.`);
+    return d;
+}
+function deviceCheck(t, c) {
+    const d = find(t, c.device);
+    if ('passed' in d)
+        return d;
+    if (c.kind && d.kind !== c.kind)
+        return fail(`«${c.device}» es de tipo ${d.kind}, no ${c.kind}.`);
+    return pass(`Existe «${c.device}».`);
+}
+function linkCheck(t, c) {
+    const a = find(t, c.a);
+    const b = find(t, c.b);
+    if ('passed' in a)
+        return a;
+    if ('passed' in b)
+        return b;
+    const joined = t.net.links.some((l) => (l.a.device === a.id && l.b.device === b.id) || (l.a.device === b.id && l.b.device === a.id));
+    return joined ? pass(`«${c.a}» y «${c.b}» están conectados.`) : fail(`No hay cable entre «${c.a}» y «${c.b}».`);
+}
+function inNetwork(ip, cidr) {
+    const [addr = '', len = '0'] = cidr.split('/');
+    const prefix = Number(len);
+    const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0;
+    const net = (parseIp(addr) ?? 0) & mask;
+    return { net, prefix, inside: ((ip & mask) >>> 0) === net >>> 0 };
+}
+function ipCheck(t, c) {
+    const h = host(t, c.device);
+    if (!(h instanceof Host))
+        return h;
+    const cfg = h.config;
+    if (c.mode && cfg.mode !== c.mode)
+        return fail(`«${c.device}» usa configuración ${cfg.mode === 'dhcp' ? 'DHCP' : 'estática'}.`);
+    if (cfg.ip === undefined)
+        return fail(`«${c.device}» no tiene dirección IP.`);
+    const shown = `${formatIp(cfg.ip)}/${cfg.prefix ?? '?'}`;
+    if (c.ip && cfg.ip !== parseIp(c.ip))
+        return fail(`«${c.device}» tiene ${shown}, no ${c.ip}.`);
+    if (c.network) {
+        const n = inNetwork(cfg.ip, c.network);
+        if (!n.inside || cfg.prefix !== n.prefix)
+            return fail(`«${c.device}» tiene ${shown}, fuera de ${c.network}.`);
+    }
+    if (c.gateway && cfg.gateway !== parseIp(c.gateway))
+        return fail(`La puerta de enlace de «${c.device}» no es ${c.gateway}.`);
+    if (c.dns && cfg.dns !== parseIp(c.dns))
+        return fail(`El servidor DNS de «${c.device}» no es ${c.dns}.`);
+    return pass(`«${c.device}» tiene ${shown}.`);
+}
+function pingTarget(d, to) {
+    if (d instanceof Host) {
+        const r = resolveHost(d, to);
+        return r.kind === 'ip' ? r.ip : `No se resuelve «${to}» desde «${d.name}».`;
+    }
+    return parseIp(to) ?? `Desde un equipo IOS se hace ping a direcciones IP, no a «${to}».`;
+}
+function pingCheck(t, c) {
+    const d = find(t, c.from);
+    if ('passed' in d)
+        return d;
+    const pinger = d instanceof Host || d instanceof Switch ? d : d instanceof Router ? { stack: d.plane.stack, hooks: d.hooks } : null;
+    if (!pinger)
+        return fail(`No se puede hacer ping desde «${c.from}».`);
+    const dst = pingTarget(d, c.to);
+    if (typeof dst === 'string')
+        return fail(dst);
+    const outcomes = runPing(pinger.stack, pinger.hooks, dst, { count: PING_COUNT, timeoutMs: PING_TIMEOUT_MS });
+    const replies = outcomes.filter((r) => r.kind === 'reply').length;
+    // A block is a probe that left and got no answer: with no address or route nothing left, and that is no block.
+    if (outcomes.every((r) => r.kind === 'noroute'))
+        return fail(`«${c.from}» no puede enviar a ${c.to}: no tiene dirección o ruta.`);
+    const what = replies > 0 ? `«${c.from}» llega a ${c.to} (${replies}/${PING_COUNT}).` : `«${c.from}» no llega a ${c.to}.`;
+    return (c.expect === 'success') === (replies > 0) ? pass(what) : fail(what);
+}
+function dnsCheck(t, c) {
+    const h = host(t, c.from);
+    if (!(h instanceof Host))
+        return h;
+    const r = resolveHost(h, c.name);
+    if (r.kind !== 'ip')
+        return fail(`«${c.from}» no resuelve ${c.name}.`);
+    // /etc/hosts answers too, but the check is about the DNS service.
+    if (!r.viaDns)
+        return fail(`«${c.from}» resuelve ${c.name} sin DNS (por /etc/hosts).`);
+    if (c.ip && r.ip !== parseIp(c.ip))
+        return fail(`«${c.from}» resuelve ${c.name} como ${formatIp(r.ip)}, no ${c.ip}.`);
+    return pass(`«${c.from}» resuelve ${c.name} como ${formatIp(r.ip)}.`);
+}
+function httpCheck(t, c) {
+    const h = host(t, c.from);
+    if (!(h instanceof Host))
+        return h;
+    const r = httpRequest(h, c.url);
+    if (r.kind !== 'ok')
+        return fail(`«${c.from}» no obtiene ${c.url}: ${r.message}`);
+    const st = r.response.status;
+    if (c.status !== undefined ? st !== c.status : st >= HTTP_ERROR)
+        return fail(`${c.url} responde ${st} ${r.response.reason}.`);
+    if (c.contains && !r.response.body.includes(c.contains))
+        return fail(`La página ${c.url} no contiene «${c.contains}».`);
+    return pass(`${c.url} responde ${st}.`);
+}
+function fileCheck(t, c) {
+    const h = host(t, c.device);
+    if (!(h instanceof Host))
+        return h;
+    let content;
+    try {
+        content = hostSystem(h).fs.readFile(c.path);
+    }
+    catch {
+        return fail(`No existe el archivo ${c.path} en «${c.device}».`);
+    }
+    if (c.contains && !content.includes(c.contains))
+        return fail(`${c.path} no contiene «${c.contains}».`);
+    return pass(`Existe ${c.path} en «${c.device}».`);
+}
+/** The indented lines under the unindented line `head` (undefined when it is not there). */
+function section(lines, head) {
+    const at = lines.findIndex((l) => l.trim() === head.trim() && !/^\s/.test(l));
+    if (at < 0)
+        return undefined;
+    const end = lines.findIndex((l, i) => i > at && !/^\s/.test(l));
+    return lines.slice(at + 1, end < 0 ? undefined : end);
+}
+function configCheck(t, c) {
+    const d = find(t, c.device);
+    if ('passed' in d)
+        return d;
+    if (!(d instanceof IosDevice))
+        return fail(`«${c.device}» no es un router ni un switch.`);
+    const scope = c.section === undefined ? d.runningConfig() : section(d.runningConfig(), c.section);
+    if (!scope)
+        return fail(`No hay «${c.section}» en la configuración de «${c.device}».`);
+    const running = new Set(scope.map((l) => l.trim()));
+    const missing = c.lines.filter((l) => !running.has(l.trim()));
+    return missing.length ? fail(`Falta en la configuración de «${c.device}»: ${missing.map((l) => l.trim()).join(' | ')}`) : pass(`La configuración de «${c.device}» es correcta.`);
+}
+function run(t, c) {
+    switch (c.type) {
+        case 'device': return deviceCheck(t, c);
+        case 'link': return linkCheck(t, c);
+        case 'ip': return ipCheck(t, c);
+        case 'ping': return pingCheck(t, c);
+        case 'dns': return dnsCheck(t, c);
+        case 'http': return httpCheck(t, c);
+        case 'file': return fileCheck(t, c);
+        case 'config': return configCheck(t, c);
+    }
+}
+function safeRun(t, c) {
+    try {
+        return run(t, c);
+    }
+    catch (e) {
+        return fail(e instanceof WorkLimitError ? TOO_COSTLY : 'No se pudo comprobar este elemento.');
+    }
+}
+/** Marks `file` (a topology file, untrusted) against a checklist already validated with `parseChecklist`, within a work limit. */
+function evaluate(file, checklist, workLimit = WORK_LIMIT) {
+    return withWorkLimit(workLimit, () => mark(file, checklist));
+}
+/** Checks that send traffic and advance the simulated time; they run after the rest, so order never changes a mark. */
+const ACTIVE = new Set(['ping', 'dns', 'http']);
+function mark(file, checklist) {
+    const t = load(file);
+    const outcomes = new Map();
+    for (const it of checklist)
+        if (!ACTIVE.has(it.check.type))
+            outcomes.set(it, safeRun(t, it.check));
+    for (const it of checklist)
+        if (ACTIVE.has(it.check.type))
+            outcomes.set(it, safeRun(t, it.check));
+    const items = checklist.map((it) => ({ id: it.id, ...(it.title ? { title: it.title } : {}), weight: it.weight, ...(outcomes.get(it) ?? fail('')) }));
+    return {
+        score: items.reduce((n, i) => n + (i.passed ? i.weight : 0), 0),
+        max: items.reduce((n, i) => n + i.weight, 0),
+        items,
+    };
+}
+
+return { WORK_LIMIT, evaluate };
+})();
+__m["classroom/embed.js"] = (() => {
+/**
+ * Embedding Netfix in another page (the classroom): the page loads the single-file build with
+ * `<div id="app" data-embed>` (so it does not start by itself) and calls `netfix.embed(mount, options)` with the
+ * starting topology, the restriction policy and a change callback. Embedded, nothing is autosaved in the browser:
+ * the host page receives each change and can export the topology at any time. `netfix.evaluate` marks a topology
+ * file against a checklist, as the classroom server does.
+ */
+const { Topology } = __m["net/topology.js"];
+const { NO_RESTRICTIONS, parseRestrictions } = __m["classroom/restrictions.js"];
+const { parseChecklist } = __m["classroom/checklist.js"];
+const { evaluate } = __m["classroom/evaluate.js"];
+const STANDALONE = Object.freeze({ policy: NO_RESTRICTIONS, embedded: false, onChange: null });
+function isRecord(v) {
+    return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+/** The session and starting topology of `netfix.embed` options (untrusted: validated, errors thrown). */
+function embedSession(options) {
+    const o = options ?? {};
+    if (!isRecord(o))
+        throw new Error('netfix.embed: las opciones deben ser un objeto');
+    const extra = Object.keys(o).find((k) => !['topology', 'restrictions', 'onChange'].includes(k));
+    if (extra)
+        throw new Error(`netfix.embed: opción desconocida «${extra}»`);
+    if (o.onChange !== undefined && typeof o.onChange !== 'function')
+        throw new Error('netfix.embed: onChange debe ser una función');
+    const listener = o.onChange;
+    const session = Object.freeze({ policy: parseRestrictions(o.restrictions), embedded: true, onChange: listener ?? null });
+    return { session, topology: o.topology === undefined ? new Topology() : Topology.fromJSON(o.topology) };
+}
+/** The element `netfix.embed` mounts on (the host page may pass anything). */
+function checkMount(mount) {
+    if (typeof HTMLElement === 'undefined' || !(mount instanceof HTMLElement))
+        throw new Error('netfix.embed: falta el elemento donde montar Netfix');
+}
+/** `netfix.evaluate`: the checklist is validated before marking. */
+function evaluateFile(topology, checklist) {
+    return evaluate(topology, parseChecklist(checklist));
+}
+/** Publishes the API as `globalThis.netfix` (read-only, so a page script cannot swap it). */
+function installApi(api) {
+    // Own property only: an element with id="netfix" also shows up as a (named) property of window.
+    if (Object.hasOwn(globalThis, 'netfix'))
+        throw new Error('netfix: la API ya está instalada (¿Netfix cargado dos veces?)');
+    Object.defineProperty(globalThis, 'netfix', { value: Object.freeze(api), enumerable: false, writable: false, configurable: false });
+}
+
+return { STANDALONE, embedSession, checkMount, evaluateFile, installApi };
+})();
 __m["ui/main.js"] = (() => {
 /** Netfix application shell: top bar, workspace, palette, views, windows and simulation panel. */
 const { applyBrand } = __m["ui/brand.js"];
@@ -50958,6 +51565,8 @@ const { saveTopology } = __m["ui/save-file.js"];
 const { t } = __m["i18n/t.js"];
 const { DrawState, drawBar } = __m["ui/draw-bar.js"];
 const { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } = __m["i18n/locale.js"];
+const { allowsLab, allowsTab } = __m["classroom/restrictions.js"];
+const { STANDALONE, checkMount, embedSession, evaluateFile, installApi } = __m["classroom/embed.js"];
 const AUTOSAVE_KEY = 'netfix:workspace:v1';
 /** Workspace autosaved before the rename (netsim ≤ 0.4.0). */
 const LEGACY_AUTOSAVE_KEY = 'netsim:workspace:v1';
@@ -50983,10 +51592,12 @@ class App {
     drawState = new DrawState();
     drawBarEl;
     view = 'net';
+    session;
     onKeyDown = (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
             e.preventDefault();
-            void this.save();
+            if (this.session.policy.fileSave)
+                void this.save();
             return;
         }
         if (this.undoKey(e))
@@ -51002,9 +51613,10 @@ class App {
     onPointerDown = (e) => {
         this.workspaceActive = e.target instanceof Node && this.canvas.root.contains(e.target);
     };
-    constructor(root, topo, initial = { view: 'net', mode: 'realtime' }) {
-        this.mode = initial.mode;
-        this.view = initial.view;
+    constructor(root, session, topo, initial = { view: 'net', mode: 'realtime' }) {
+        this.session = session;
+        this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
+        this.view = initial.view === 'docs' && !this.session.policy.docs ? 'net' : initial.view;
         this.topo = topo ?? this.initialTopology();
         this.hintEl = el('p', { class: 'hint', role: 'status' });
         this.clockEl = el('time', { class: 'clock' });
@@ -51014,6 +51626,8 @@ class App {
             hint: (text) => { this.hintEl.textContent = text; },
             removed: (id) => { this.windows.close(id); forgetDevice(id); },
         }, this.drawState);
+        this.canvas.editable = this.session.policy.editTopology;
+        this.canvas.draw.locked = !this.session.policy.drawing;
         const winLayer = el('div', { class: 'win-layer' });
         this.windows = new WindowManager(winLayer);
         this.sim = new SimPanel(this.topo, this.canvas);
@@ -51029,7 +51643,7 @@ class App {
         this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.sim.root);
         this.paletteEl = palette({
             selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw(), undo: (redo) => this.undo(redo),
-        }, this.toolButtons, this.hintEl);
+        }, this.toolButtons, this.hintEl, this.session.policy);
         this.pageHost = el('main', { class: 'docs-host', hidden: true });
         this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
         this.fileInput.addEventListener('change', () => void this.openFile());
@@ -51054,7 +51668,8 @@ class App {
         window.clearInterval(this.interval);
         window.removeEventListener('keydown', this.onKeyDown);
         window.removeEventListener('pointerdown', this.onPointerDown, { capture: true });
-        this.flushSave();
+        if (!this.session.embedded || this.saveTimer)
+            this.flushSave();
         this.windows.closeAll();
         this.sim.dispose();
         forgetAll();
@@ -51077,7 +51692,7 @@ class App {
             openFile: () => this.fileInput.click(),
             save: () => void this.save(),
             loadExample: (id) => {
-                const ex = EXAMPLES.find((e) => e.id === id);
+                const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
                 if (ex)
                     this.load(ex.build(), labText(ex).summary);
             },
@@ -51085,7 +51700,7 @@ class App {
             setMode: (m) => this.setMode(m),
             showView: (v) => this.showView(v),
             setLocale: (l) => changeLocale(l),
-        }, this.clockEl, this.mode, this.view);
+        }, this.clockEl, this.mode, this.view, this.session.policy);
     }
     setMode(m, hint = true) {
         this.mode = m;
@@ -51142,6 +51757,10 @@ class App {
         const placed = this.topo.get(id);
         if (placed)
             openDeviceWindow(placed, this);
+    }
+    /** Tabs of the device windows left by the classroom restrictions. */
+    allowsTab(kind, tab) {
+        return allowsTab(this.session.policy, kind, tab);
     }
     /** "PC0 (FastEthernet0)" at the far end of a cable, for the device windows. */
     peerLabel(device, port) {
@@ -51222,9 +51841,14 @@ class App {
         window.clearTimeout(this.saveTimer);
         this.saveTimer = window.setTimeout(() => this.flushSave(), AUTOSAVE_DELAY_MS);
     }
+    /** Autosave in the browser or, embedded, the change sent to the host page (never stored here). */
     flushSave() {
         window.clearTimeout(this.saveTimer);
-        safeStorageSet(AUTOSAVE_KEY, JSON.stringify(this.topo.toJSON()));
+        this.saveTimer = 0;
+        if (!this.session.embedded)
+            safeStorageSet(AUTOSAVE_KEY, JSON.stringify(this.topo.toJSON()));
+        else
+            notify(this.session, this.topo);
     }
     async save() {
         this.hintEl.textContent = await saveTopology(this.topo);
@@ -51246,8 +51870,18 @@ class App {
         this.hintEl.textContent = text;
     }
 }
+/** The change sent to the host page; an error there must not break the simulator. */
+function notify(s, topo) {
+    try {
+        s.onChange?.(topo.toJSON());
+    }
+    catch {
+        // The host page's own error: nothing to undo here.
+    }
+}
 let app = null;
 let mountEl = null;
+let session = STANDALONE;
 function applyDocumentLanguage() {
     document.documentElement.lang = getLocale();
     document.title = t('app.title');
@@ -51255,7 +51889,8 @@ function applyDocumentLanguage() {
 }
 /** Rebuilds the interface in another language, keeping the topology (open windows are closed). */
 function changeLocale(locale) {
-    safeStorageSet(LOCALE_STORAGE_KEY, locale);
+    if (!session.embedded)
+        safeStorageSet(LOCALE_STORAGE_KEY, locale);
     if (!mountEl || !app)
         return;
     const topo = app.topo;
@@ -51263,17 +51898,48 @@ function changeLocale(locale) {
     app.dispose();
     setLocale(locale);
     applyDocumentLanguage();
-    app = new App(mountEl, topo, where);
+    app = new App(mountEl, session, topo, where);
     app.announce(t('hint.language'));
 }
-const mount = document.getElementById('app');
-if (mount) {
+/** Starts the interface in `mount` (one per page: a new start replaces the previous one). */
+function start(mount, s, topo) {
+    app?.dispose();
+    app = null;
+    if (mountEl && mountEl !== mount)
+        mountEl.replaceChildren();
     mountEl = mount;
-    setLocale(detectLocale(safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
+    session = s;
+    setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
     applyDocumentLanguage();
     applyBrand();
-    app = new App(mount);
+    app = new App(mount, s, topo);
+    return app;
 }
+installApi({
+    embed: (mount, options) => {
+        checkMount(mount);
+        const { session: s, topology } = embedSession(options);
+        let last = start(mount, s, topology);
+        // A language change rebuilds the App with the same session: the handle follows the current one.
+        const current = () => (session === s ? app : null);
+        return {
+            exportTopology: () => (last = current() ?? last).topo.toJSON(),
+            destroy: () => {
+                const live = current();
+                if (!live)
+                    return;
+                last = live;
+                live.dispose();
+                app = null;
+                mount.replaceChildren();
+            },
+        };
+    },
+    evaluate: evaluateFile,
+});
+const mount = document.getElementById('app');
+if (mount && mount.dataset.embed === undefined)
+    start(mount, STANDALONE);
 
 return {  };
 })();

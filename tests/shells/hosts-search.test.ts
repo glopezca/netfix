@@ -5,7 +5,7 @@ import { EXAMPLES } from '../../src/net/examples.ts';
 import { Topology } from '../../src/net/topology.ts';
 import { createShell } from '../../src/shells/factory.ts';
 import { hostSystem } from '../../src/shells/host-system.ts';
-import { searchDomains } from '../../src/shells/net-tools.ts';
+import { searchDomains, resolveHost } from '../../src/shells/net-tools.ts';
 import type { Pc } from '../../src/devices/pc.ts';
 
 const all = (lines: readonly string[]): string => lines.join('\n').replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
@@ -54,4 +54,14 @@ test('netplan nameservers.search: a static host gets its search list, in resolv.
   assert.deepEqual(searchDomains(back.byLabel('PC0') as Pc), ['empresa.lan', 'aula.lan']);
   fs.writeFile('/etc/netplan/50-cloud-init.yaml', 'network:\n  version: 2\n  ethernets:\n    eth0:\n      dhcp4: true\n      nameservers:\n        search: [bad_domain!]\n');
   assert.match(all(root.run('netplan apply; echo $?')), /search domain.*bad_domain!/);
+});
+
+test('a saved /etc/hosts applies as soon as the topology loads, before the Linux system of the host is first used', () => {
+  const t = new Topology();
+  const pc = t.add('pc', 0, 0).device as Pc;
+  pc.setStatic({ ip: 0x0a000001, prefix: 24 });
+  hostSystem(pc).fs.writeFile('/etc/hosts', '10.0.0.9 nas\n', undefined, true);
+  const loaded = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
+  const again = loaded.byLabel('PC0') as Pc;
+  assert.deepEqual(resolveHost(again, 'nas'), { kind: 'ip', ip: 0x0a000009, name: 'nas', viaDns: false });
 });

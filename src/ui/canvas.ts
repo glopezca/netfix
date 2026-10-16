@@ -46,6 +46,8 @@ export class Canvas {
   private topo: Topology;
   private tool: Tool = { kind: 'select' };
   private selected: string | null = null;
+  /** False when classroom restrictions lock the topology (Del removes no device or cable). */
+  editable = true;
   private pendingEnd: Endpoint | null = null;
   private readonly events: CanvasEvents;
   private frame = 0;
@@ -165,8 +167,6 @@ export class Canvas {
     clear(this.linkLayer);
     for (const link of this.topo.net.links) this.linkLayer.appendChild(this.drawLink(link));
   }
-
-  // ------------------------------------------------------------ drawing
 
   private endState(ep: Endpoint): 'up' | 'down' {
     return this.topo.net.linkUp(ep) ? 'up' : 'down';
@@ -382,7 +382,7 @@ export class Canvas {
       return;
     }
     if ((e.key === 'Delete' || e.key === 'Backspace') && this.draw.deleteSelected()) return;
-    if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected) {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected && this.editable) {
       const id = this.selected;
       if (this.topo.get(id)) {
         this.edits().removeDevice(id);

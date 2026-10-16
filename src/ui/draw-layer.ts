@@ -70,6 +70,8 @@ export function drawingNode(a: Annotation, selected: boolean): SVGGElement {
 export class DrawLayer {
   readonly layer: SVGGElement;
   private selected: string | null = null;
+  /** Classroom restrictions without drawing: the drawings (lab areas, notes) cannot be selected, moved or edited. */
+  locked = false;
   private drawn: readonly Annotation[] | null = null;
   private drawnSelection: string | null = null;
   /** A drawing is being drawn or dragged: redraws wait so its element and pointer capture survive. */
@@ -115,14 +117,14 @@ export class DrawLayer {
     clear(this.layer);
     for (const a of list) {
       const g = drawingNode(a, a.id === this.selected);
-      g.addEventListener('pointerdown', (e) => this.onPointer(e, a.id, g));
-      g.addEventListener('dblclick', (e) => { e.stopPropagation(); this.editText(a.id); });
+      g.addEventListener('pointerdown', (e) => { if (!this.locked) this.onPointer(e, a.id, g); });
+      g.addEventListener('dblclick', (e) => { if (this.locked) return; e.stopPropagation(); this.editText(a.id); });
       this.layer.appendChild(g);
     }
   }
 
   deleteSelected(): boolean {
-    if (this.selected === null) return false;
+    if (this.selected === null || this.locked) return false;
     this.host.topo().removeAnnotation(this.selected);
     this.setSelected(null);
     this.host.changed();

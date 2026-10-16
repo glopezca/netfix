@@ -387,3 +387,41 @@ antes de validarla; se documenta que la Terminal Windows usa el mismo /etc/hosts
 **Licencias (doble licencia):** el autor licencia también Netfix con términos privativos en Netfix Classroom
 (repositorio privado `glopezca/netfix-classroom`). Para conservar esa posibilidad, `CONTRIBUTING.md` exige cesión de
 derechos (CLA) a quien aporte código, y `LICENSE.md` lo explica en «Otras licencias y aportaciones».
+
+## Fase 19 · Ganchos para Netfix Classroom: restricciones, modo incrustado y corrección sin interfaz (v0.11.0)
+
+Fase 2 del plan de Netfix Classroom; todo es genérico y público (GPL), sin nada propio del aula. Referencia de uso en
+`docs/EMBED.md`.
+
+- **Restricciones** (`src/classroom/restrictions.ts`): JSON no fiable validado estrictamente (campos y valores conocidos,
+  listas acotadas); lo que no se indica queda permitido. Laboratorios, equipos de la paleta, pestañas por tipo de equipo
+  (la primera pestaña del equipo nunca se quita), documentación, Nuevo/Abrir/Guardar, modo simulación, adelantar el
+  reloj, dibujo y edición de la topología (sin colocar, cablear ni borrar equipos o cables).
+- **Modo incrustado** (`src/classroom/embed.ts`): con `<div id="app" data-embed>` Netfix no arranca solo; la página llama a
+  `netfix.embed(elemento, { topology, restrictions, onChange })`. No guarda nada en el navegador: cada cambio llega a
+  `onChange` con el archivo de topología, y el objeto devuelto ofrece `exportTopology()` y `destroy()`. `globalThis.netfix`
+  es de solo lectura.
+- **Corrección sin interfaz** (`src/classroom/checklist.ts`, `evaluate.ts`): lista de comprobación validada (hasta 200
+  elementos con id único y peso 0-100) con comprobaciones `device`, `link`, `ip`, `ping`, `dns`, `http`, `file` y
+  `config` (líneas literales de la configuración IOS, sin expresiones regulares). `evaluate(archivo, lista)` carga la
+  topología (asienta 30 s simulados) y ejecuta cada comprobación dentro de la simulación; ninguna lanza excepción:
+  falla con un motivo. También como `netfix.evaluate` en el navegador.
+- **CPU** (`npm run bench:evaluate`, mediana de 5): cargar y corregir cada laboratorio con todas las comprobaciones lleva
+  1-45 ms en Node 22 (el mayor, «VPN WireGuard»: 10 equipos, 41 comprobaciones). No cabe en los 10 ms del plan gratuito
+  de Workers; sí, con holgura, en el de pago (30 s por defecto). Un archivo con bucles entre switches se rechaza por el
+  límite de cálculo (50 000 tareas) en menos de 1 s.
+- **Motor de eventos:** la cola es un montículo binario (`src/net/task-queue.ts`, antes inserción ordenada lineal), los
+  cables se buscan por puerto en un `Map`, el historial de simulación se recorta por lotes (recortar de uno en uno
+  copiaba 5000 eventos por trama), más de 20 000 tramas en vuelo se descartan (congestión) y `withWorkLimit` acota el
+  trabajo total. Un bucle entre switches sigue saturando la red, como sin STP; el árbol de expansión queda pendiente.
+- **Archivos de topología:** etiquetas de hasta 64 caracteres, configuración IOS (`config`, `startup`) de hasta 20 000
+  líneas de 4096 caracteres; `startup` se valida. Un `/etc/hosts` guardado se usa desde la carga (antes, solo después
+  de abrir la terminal del equipo).
+- **Revisión ECC** (seguridad en opus, código en sonnet): corregido el crítico (un bucle entre switches colgaba la
+  corrección y la pestaña: límite de cálculo y motor más rápido), los altos (`dns` aprobaba por /etc/hosts; la nota
+  dependía del orden: archivos guardados aplicados desde la carga y comprobaciones pasivas primero) y los medios
+  (`ping` con `expect: fail` aprobaba sin dirección; `config` sin contexto: `section`; dibujos editables con `drawing:
+  false`; errores en `onChange`; idioma guardado en modo incrustado; límites del archivo) y bajos (etiquetas ambiguas,
+  `title` sin caracteres de control, instalación de la API con `Object.hasOwn`, montaje validado). Documentado en
+  `docs/EMBED.md` que las restricciones son de interfaz y la nota válida es la del servidor.
+- Pruebas: `tests/classroom/*.test.ts` y `scripts/e2e-embed.mjs` (incluido en `npm run e2e`).

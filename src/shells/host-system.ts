@@ -228,9 +228,12 @@ export function bootKernel(host: Host, files: readonly FileRecord[]): void {
 }
 
 registerHostFs((host) => hostSystem(host).fs);
+// Before the system exists, a file saved with the topology is read from the pending records (same result either way).
 registerHostFileReader((host, path) => {
+  const e = systems.get(host);
+  if (!e) return pendingFiles.get(host)?.find((f) => f.path === path && f.kind === 'file')?.content;
   try {
-    return systems.get(host)?.fs.readFile(path);
+    return e.fs.readFile(path);
   } catch {
     return undefined;
   }

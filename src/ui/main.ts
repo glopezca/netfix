@@ -20,6 +20,10 @@ import { t } from '../i18n/t.ts';
 import { DrawState, drawBar } from './draw-bar.ts';
 import { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
+import { allowsLab, allowsTab } from '../classroom/restrictions.ts';
+import type { DeviceKind } from '../net/topology.ts';
+import { STANDALONE, checkMount, embedSession, evaluateFile, installApi } from '../classroom/embed.ts';
+import type { AppSession, EmbedHandle } from '../classroom/embed.ts';
 
 const AUTOSAVE_KEY = 'netfix:workspace:v1';
 /** Workspace autosaved before the rename (netsim ≤ 0.4.0). */
@@ -47,10 +51,11 @@ class App {
   private readonly drawState = new DrawState();
   private readonly drawBarEl: HTMLElement;
   private view: View = 'net';
+  private readonly session: AppSession;
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
-      void this.save();
+      if (this.session.policy.fileSave) void this.save();
       return;
     }
     if (this.undoKey(e)) return;
@@ -65,9 +70,10 @@ class App {
     this.workspaceActive = e.target instanceof Node && this.canvas.root.contains(e.target);
   };
 
-  constructor(root: HTMLElement, topo?: Topology, initial: { readonly view: View; readonly mode: Mode } = { view: 'net', mode: 'realtime' }) {
-    this.mode = initial.mode;
-    this.view = initial.view;
+  constructor(root: HTMLElement, session: AppSession, topo?: Topology, initial: { readonly view: View; readonly mode: Mode } = { view: 'net', mode: 'realtime' }) {
+    this.session = session;
+    this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
+    this.view = initial.view === 'docs' && !this.session.policy.docs ? 'net' : initial.view;
     this.topo = topo ?? this.initialTopology();
     this.hintEl = el('p', { class: 'hint', role: 'status' });
     this.clockEl = el('time', { class: 'clock' });
@@ -77,6 +83,8 @@ class App {
       hint: (text) => { this.hintEl.textContent = text; },
       removed: (id) => { this.windows.close(id); forgetDevice(id); },
     }, this.drawState);
+    this.canvas.editable = this.session.policy.editTopology;
+    this.canvas.draw.locked = !this.session.policy.drawing;
     const winLayer = el('div', { class: 'win-layer' });
     this.windows = new WindowManager(winLayer);
     this.sim = new SimPanel(this.topo, this.canvas);
@@ -91,7 +99,7 @@ class App {
     this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.sim.root);
     this.paletteEl = palette({
       selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw(), undo: (redo) => this.undo(redo),
-    }, this.toolButtons, this.hintEl);
+    }, this.toolButtons, this.hintEl, this.session.policy);
     this.pageHost = el('main', { class: 'docs-host', hidden: true });
     this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
     this.fileInput.addEventListener('change', () => void this.openFile());
@@ -118,7 +126,7 @@ class App {
     window.clearInterval(this.interval);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('pointerdown', this.onPointerDown, { capture: true });
-    this.flushSave();
+    if (!this.session.embedded || this.saveTimer) this.flushSave();
     this.windows.closeAll();
     this.sim.dispose();
     forgetAll();
@@ -142,14 +150,14 @@ class App {
       openFile: () => this.fileInput.click(),
       save: () => void this.save(),
       loadExample: (id) => {
-        const ex = EXAMPLES.find((e) => e.id === id);
+        const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
         if (ex) this.load(ex.build(), labText(ex).summary);
       },
       advance: (ms) => this.advance(ms),
       setMode: (m) => this.setMode(m),
       showView: (v) => this.showView(v),
       setLocale: (l) => changeLocale(l),
-    }, this.clockEl, this.mode, this.view);
+    }, this.clockEl, this.mode, this.view, this.session.policy);
   }
 
   private setMode(m: Mode, hint = true): void {
@@ -203,6 +211,11 @@ class App {
   private open(id: string): void {
     const placed = this.topo.get(id);
     if (placed) openDeviceWindow(placed, this);
+  }
+
+  /** Tabs of the device windows left by the classroom restrictions. */
+  allowsTab(kind: DeviceKind, tab: string): boolean {
+    return allowsTab(this.session.policy, kind, tab);
   }
 
   /** "PC0 (FastEthernet0)" at the far end of a cable, for the device windows. */
@@ -284,9 +297,12 @@ class App {
     this.saveTimer = window.setTimeout(() => this.flushSave(), AUTOSAVE_DELAY_MS);
   }
 
+  /** Autosave in the browser or, embedded, the change sent to the host page (never stored here). */
   private flushSave(): void {
     window.clearTimeout(this.saveTimer);
-    safeStorageSet(AUTOSAVE_KEY, JSON.stringify(this.topo.toJSON()));
+    this.saveTimer = 0;
+    if (!this.session.embedded) safeStorageSet(AUTOSAVE_KEY, JSON.stringify(this.topo.toJSON()));
+    else notify(this.session, this.topo);
   }
 
   private async save(): Promise<void> {
@@ -310,8 +326,18 @@ class App {
   }
 }
 
+/** The change sent to the host page; an error there must not break the simulator. */
+function notify(s: AppSession, topo: Topology): void {
+  try {
+    s.onChange?.(topo.toJSON());
+  } catch {
+    // The host page's own error: nothing to undo here.
+  }
+}
+
 let app: App | null = null;
 let mountEl: HTMLElement | null = null;
+let session: AppSession = STANDALONE;
 
 function applyDocumentLanguage(): void {
   document.documentElement.lang = getLocale();
@@ -321,22 +347,52 @@ function applyDocumentLanguage(): void {
 
 /** Rebuilds the interface in another language, keeping the topology (open windows are closed). */
 function changeLocale(locale: Locale): void {
-  safeStorageSet(LOCALE_STORAGE_KEY, locale);
+  if (!session.embedded) safeStorageSet(LOCALE_STORAGE_KEY, locale);
   if (!mountEl || !app) return;
   const topo = app.topo;
   const where = app.where();
   app.dispose();
   setLocale(locale);
   applyDocumentLanguage();
-  app = new App(mountEl, topo, where);
+  app = new App(mountEl, session, topo, where);
   app.announce(t('hint.language'));
 }
 
-const mount = document.getElementById('app');
-if (mount) {
+/** Starts the interface in `mount` (one per page: a new start replaces the previous one). */
+function start(mount: HTMLElement, s: AppSession, topo?: Topology): App {
+  app?.dispose();
+  app = null;
+  if (mountEl && mountEl !== mount) mountEl.replaceChildren();
   mountEl = mount;
-  setLocale(detectLocale(safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
+  session = s;
+  setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
   applyDocumentLanguage();
   applyBrand();
-  app = new App(mount);
+  app = new App(mount, s, topo);
+  return app;
 }
+
+installApi({
+  embed: (mount, options): EmbedHandle => {
+    checkMount(mount);
+    const { session: s, topology } = embedSession(options);
+    let last = start(mount, s, topology);
+    // A language change rebuilds the App with the same session: the handle follows the current one.
+    const current = (): App | null => (session === s ? app : null);
+    return {
+      exportTopology: () => (last = current() ?? last).topo.toJSON(),
+      destroy: () => {
+        const live = current();
+        if (!live) return;
+        last = live;
+        live.dispose();
+        app = null;
+        mount.replaceChildren();
+      },
+    };
+  },
+  evaluate: evaluateFile,
+});
+
+const mount = document.getElementById('app');
+if (mount && mount.dataset.embed === undefined) start(mount, STANDALONE);
