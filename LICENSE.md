@@ -52,6 +52,12 @@ Para el software o una obra derivada:
 > Basado en «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),
 > GPL-3.0-or-later. Cambios: …
 
+## Otras licencias y aportaciones
+
+El autor puede licenciar Netfix con otros términos en productos propios (doble licencia); la versión pública sigue
+siendo software libre con las licencias anteriores. Por eso las aportaciones de terceros solo se integran con un
+acuerdo de cesión de derechos: ver [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Componentes de terceros
 
 ### Everything Claude Code (ECC)

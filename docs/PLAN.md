@@ -383,3 +383,7 @@ Revisión ECC: sin críticos ni altos; corregidos los medios (leer /etc/hosts no
 del equipo: `peekHostFile`, con el contenido por defecto si aún no existe; la lista de búsqueda de un archivo se acota
 antes de validarla; se documenta que la Terminal Windows usa el mismo /etc/hosts) y un bajo (nombres con punto final en
 /etc/hosts).
+
+**Licencias (doble licencia):** el autor licencia también Netfix con términos privativos en Netfix Classroom
+(repositorio privado `glopezca/netfix-classroom`). Para conservar esa posibilidad, `CONTRIBUTING.md` exige cesión de
+derechos (CLA) a quien aporte código, y `LICENSE.md` lo explica en «Otras licencias y aportaciones».

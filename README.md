@@ -349,4 +349,5 @@ aparecen en `show running-config`, pero no cambian la asignación.
   [Everything Claude Code](https://github.com/affaan-m/everything-claude-code), licencia MIT (© Affaan Mustafa).
 
 Autoría: Germán López Castro · <https://github.com/glopezca/netfix>.
-Detalles y atribución recomendada en [LICENSE.md](LICENSE.md).
+Detalles y atribución recomendada en [LICENSE.md](LICENSE.md). Para aportar código, ver [CONTRIBUTING.md](CONTRIBUTING.md)
+(se requiere cesión de derechos, porque el autor también licencia Netfix con otros términos).
