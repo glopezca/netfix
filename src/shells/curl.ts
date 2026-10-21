@@ -35,7 +35,8 @@ const WITH_ARG = new Set(['-X', '--request', '-d', '--data', '--data-raw', '-u',
 
 /** Letters of a combined short option (-sSL, -sI…). */
 function flag(c: string): Partial<CurlOpts> {
-  const map: Readonly<Record<string, Partial<CurlOpts>>> = { s: { silent: true }, S: { showError: true }, L: { follow: true }, I: { head: true }, i: { include: true }, k: {} };
+  const map: Readonly<Record<string, Partial<CurlOpts>>> = { s: { silent: true }, S: { showError: true }, L: { follow: true }, I: { head: true }, i: { include: true }, k: {},
+    f: { fail: true }, v: { verbose: true }, O: { remoteName: true } };
   return map[c] ?? {};
 }
 
@@ -61,7 +62,7 @@ function parse(args: readonly string[]): CurlOpts {
       case '-o': case '--output': o.output = v; break;
       case '-w': case '--write-out': o.writeOut = v; break;
       default:
-        if (/^-[sSkLIi]+$/.test(a) && a.length > 2) { for (const c of a.slice(1)) Object.assign(o, flag(c)); break; }
+        if (/^-[sSkLIifvO]+$/.test(a) && a.length > 2) { for (const c of a.slice(1)) Object.assign(o, flag(c)); break; }
         if (a === '-s' || a === '--silent') { o.silent = true; break; }
         if (a === '-S' || a === '--show-error') { o.showError = true; break; }
         if (a.startsWith('-') && !WITH_ARG.has(a) && a !== '-k' && a !== '--insecure') return { ...o, error: `option ${a}: is unknown` };
@@ -82,13 +83,16 @@ function headerBlock(res: Response, date: string): string {
   return [`HTTP/1.1 ${res.status} ${res.reason}`, `Date: ${date}`, `Server: ${res.server}`, ...extra, `Content-Length: ${contentLength(res)}`, `Content-Type: ${res.contentType}`, '', ''].join('\n');
 }
 
-/** The -w format with the transfer's values (escapes \n and \t as curl does). */
-function writeOutText(format: string, res: Response, url: string): string {
+const ESCAPES: Record<string, string> = { n: '\n', r: '\r', t: '\t', '\\': '\\' };
+
+/** The -w format with the transfer's values in one pass (a failed transfer has no response: code 000). Unknown variables print nothing. */
+function writeOutText(format: string, res: Response | undefined, url: string): string {
   const vars: Record<string, string> = {
-    http_code: String(res.status).padStart(3, '0'), response_code: String(res.status), size_download: String(new TextEncoder().encode(res.body).length),
-    content_type: res.contentType, url_effective: url,
+    http_code: String(res?.status ?? 0).padStart(3, '0'), response_code: String(res?.status ?? 0),
+    size_download: String(res ? new TextEncoder().encode(res.body).length : 0), content_type: res?.contentType ?? '', url_effective: url,
   };
-  return format.replace(/%\{(\w+)\}/g, (m, k: string) => vars[k] ?? m).replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+  return format.replace(/%\{(\w+)\}|%%|\\([nrt\\])/g, (m, k: string | undefined, e: string | undefined) =>
+    (k !== undefined ? vars[k] ?? '' : e !== undefined ? ESCAPES[e] ?? m : '%'));
 }
 
 function verboseRequest(ctx: Ctx, url: string, method: string, headers: HttpHeaders, ip: number, port: number): void {
@@ -124,6 +128,7 @@ export function curl(host: Host): CommandFn {
       const r = httpRequest(host, url, { method, headers, body });
       if (r.kind === 'error') {
         if (!o.silent || o.showError) ctx.err(`curl: (${r.code}) ${r.message}\n`);
+        if (o.writeOut !== undefined) ctx.out(writeOutText(o.writeOut, undefined, url));
         return r.code;
       }
       const res = r.response;
@@ -138,6 +143,7 @@ export function curl(host: Host): CommandFn {
       }
       if (o.fail && res.status >= 400) {
         if (!o.silent || o.showError) ctx.err(`curl: (22) The requested URL returned error: ${res.status}\n`);
+        if (o.writeOut !== undefined) ctx.out(writeOutText(o.writeOut, res, url));
         return 22;
       }
       if (!o.head) out += res.body;

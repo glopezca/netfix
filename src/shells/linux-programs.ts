@@ -8,6 +8,7 @@ import { runsServices } from '../devices/kinds.ts';
 import type { CommandFn, Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { httpGet } from './net-tools.ts';
+import { byteLength } from '../web/http.ts';
 import { systemctl, journalctl, ss } from './linux-services.ts';
 import { ip, ping, dig, nslookup, hostCmd, dhclient } from './linux-net.ts';
 import { traceroute } from './trace-cmds.ts';
@@ -72,15 +73,22 @@ function writeOut(ctx: Ctx, prog: string, file: string, body: string): boolean {
   }
 }
 
-/** wget's short options split as getopt does: -qO- is -q -O -, -qO file is -q -O file. */
+/** wget's short options that take a value (the rest of the cluster, or the next word). */
+const WGET_WITH_VALUE = new Set('OoPTteUwiaBlQ');
+
+/** The word after this one is its value, not the URL. */
+const takesValue = (a: string | undefined): boolean =>
+  a === '--output-document' || (a !== undefined && /^-[a-zA-Z]$/.test(a) && WGET_WITH_VALUE.has(a.slice(1)));
+
+/** wget's short options split as getopt does: -qO- is -q -O -, -O/tmp/x is -O /tmp/x, -T10 is -T 10. */
 function wgetArgs(argv: readonly string[]): string[] {
   return argv.flatMap((a) => {
-    if (!/^-[a-zA-Z]{2,}/.test(a)) return [a];
+    if (!/^-[a-zA-Z]./.test(a)) return [a];
     const out: string[] = [];
     for (let i = 1; i < a.length; i++) {
       const c = a[i] ?? '';
       out.push(`-${c}`);
-      if (c === 'O' || c === 'o') {
+      if (WGET_WITH_VALUE.has(c)) {
         if (i + 1 < a.length) out.push(a.slice(i + 1));
         break;
       }
@@ -94,7 +102,7 @@ function wget(host: Host): CommandFn {
     const args = wgetArgs(ctx.argv.slice(1));
     const quiet = args.includes('-q') || args.includes('--quiet');
     const oIdx = args.findIndex((a) => a === '-O' || a === '--output-document');
-    const url = args.find((a, i) => !a.startsWith('-') && !(oIdx >= 0 && i === oIdx + 1));
+    const url = args.find((a, i) => !a.startsWith('-') && !takesValue(args[i - 1]));
     if (!url) { ctx.err("wget: missing URL\nUsage: wget [OPTION]... [URL]...\n\nTry `wget --help' for more options.\n"); return 1; }
     const say = (t: string): void => { if (!quiet) ctx.err(t); };
     const stamp = new Date(host.clock.now()).toISOString().slice(0, 19).replace('T', ' ');
@@ -105,10 +113,10 @@ function wget(host: Host): CommandFn {
     say(`Connecting to ${url.replace(/^\w+:\/\//, '').split('/')[0]}... connected.\nHTTP request sent, awaiting response... ${res.status} ${res.reason}\n`);
     if (res.status !== 200) { say(`${stamp} ERROR ${res.status}: ${res.reason}.\n\n`); return 8; }
     const name = oIdx >= 0 ? args[oIdx + 1] ?? 'index.html' : freeName(ctx, url.split('/').filter(Boolean).slice(2).pop() ?? 'index.html');
-    say(`Length: ${res.body.length} [${res.contentType.split(';')[0]}]\nSaving to: ‘${name}’\n\n`);
+    say(`Length: ${byteLength(res.body)} [${res.contentType.split(';')[0]}]\nSaving to: ‘${name}’\n\n`);
     if (name === '-') { ctx.out(res.body); return 0; }
     if (!writeOut(ctx, 'wget', name, res.body)) return 3;
-    say(`‘${name}’ saved [${res.body.length}/${res.body.length}]\n\n`);
+    say(`‘${name}’ saved [${byteLength(res.body)}/${byteLength(res.body)}]\n\n`);
     return 0;
   };
 }

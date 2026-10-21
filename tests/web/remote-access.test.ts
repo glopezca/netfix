@@ -175,3 +175,20 @@ test('ss shows Apache listening on every address, as on Ubuntu', () => {
   assert.match(root('ss -tln'), /\*:8080\s+\*:\*/);
 });
 
+test('curl -w also reports failed transfers (000, and the status with -f); wget -O- and -O/path split like getopt', () => {
+  const { srv, pc } = lab('server');
+  enable(srv, 'roundcube', 'port');
+  const sh = createShell(pc, 'linux');
+  const run = (c: string): string => plain(sh.run(c).join('\n'));
+  assert.equal(run("curl -s -o /dev/null -w '%{http_code}' http://10.0.0.99/"), '000');
+  assert.equal(run("curl -sf -o /dev/null -w '%{http_code}' http://10.0.0.2/no-such-page"), '404');
+  assert.match(run('curl -fsSL http://10.0.0.2:8080/'), /^<!doctype html>/, 'the -fsSL cluster');
+  assert.equal(run("curl -s -o /dev/null -w '100%%\\r' http://10.0.0.2:8080/"), '100%\r');
+  assert.match(run('wget -O- http://10.0.0.2:8080/ 2>/dev/null'), /^<!doctype html>/);
+  assert.match(run('wget -T10 -qO- http://10.0.0.2:8080/'), /^<!doctype html>/);
+  run('wget -q -O/tmp/rc.html http://10.0.0.2:8080/');
+  assert.match(run('head -c 15 /tmp/rc.html'), /^<!doctype html>/);
+  assert.doesNotMatch(run('ls'), /index\.html/, 'no stray index.html');
+  const bytes = run('curl -s http://10.0.0.2:8080/ | wc -c').trim();
+  assert.match(run('wget -O /tmp/b.html http://10.0.0.2:8080/ 2>&1'), new RegExp(`Length: ${bytes} .*saved \\[${bytes}/${bytes}\\]`, 's'));
+});

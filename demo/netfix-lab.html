@@ -32867,7 +32867,8 @@ const USER_AGENT = 'curl/8.14.1';
 const WITH_ARG = new Set(['-X', '--request', '-d', '--data', '--data-raw', '-u', '--user', '-b', '--cookie', '-H', '--header', '-o', '--output', '-A', '--user-agent', '-e', '--referer', '-w', '--write-out', '-m', '--max-time', '--connect-timeout']);
 /** Letters of a combined short option (-sSL, -sI…). */
 function flag(c) {
-    const map = { s: { silent: true }, S: { showError: true }, L: { follow: true }, I: { head: true }, i: { include: true }, k: {} };
+    const map = { s: { silent: true }, S: { showError: true }, L: { follow: true }, I: { head: true }, i: { include: true }, k: {},
+        f: { fail: true }, v: { verbose: true }, O: { remoteName: true } };
     return map[c] ?? {};
 }
 function parse(args) {
@@ -32941,7 +32942,7 @@ function parse(args) {
                 o.writeOut = v;
                 break;
             default:
-                if (/^-[sSkLIi]+$/.test(a) && a.length > 2) {
+                if (/^-[sSkLIifvO]+$/.test(a) && a.length > 2) {
                     for (const c of a.slice(1))
                         Object.assign(o, flag(c));
                     break;
@@ -32969,13 +32970,14 @@ function headerBlock(res, date) {
         .flatMap(([k, v]) => v.split('\n').map((line) => `${k.replace(/(^|-)\w/g, (c) => c.toUpperCase())}: ${line}`));
     return [`HTTP/1.1 ${res.status} ${res.reason}`, `Date: ${date}`, `Server: ${res.server}`, ...extra, `Content-Length: ${contentLength(res)}`, `Content-Type: ${res.contentType}`, '', ''].join('\n');
 }
-/** The -w format with the transfer's values (escapes \n and \t as curl does). */
+const ESCAPES = { n: '\n', r: '\r', t: '\t', '\\': '\\' };
+/** The -w format with the transfer's values in one pass (a failed transfer has no response: code 000). Unknown variables print nothing. */
 function writeOutText(format, res, url) {
     const vars = {
-        http_code: String(res.status).padStart(3, '0'), response_code: String(res.status), size_download: String(new TextEncoder().encode(res.body).length),
-        content_type: res.contentType, url_effective: url,
+        http_code: String(res?.status ?? 0).padStart(3, '0'), response_code: String(res?.status ?? 0),
+        size_download: String(res ? new TextEncoder().encode(res.body).length : 0), content_type: res?.contentType ?? '', url_effective: url,
     };
-    return format.replace(/%\{(\w+)\}/g, (m, k) => vars[k] ?? m).replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+    return format.replace(/%\{(\w+)\}|%%|\\([nrt\\])/g, (m, k, e) => (k !== undefined ? vars[k] ?? '' : e !== undefined ? ESCAPES[e] ?? m : '%'));
 }
 function verboseRequest(ctx, url, method, headers, ip, port) {
     const m = /^(?:https?:\/\/)?([^/:]+)/.exec(url);
@@ -33016,6 +33018,8 @@ function curl(host) {
             if (r.kind === 'error') {
                 if (!o.silent || o.showError)
                     ctx.err(`curl: (${r.code}) ${r.message}\n`);
+                if (o.writeOut !== undefined)
+                    ctx.out(writeOutText(o.writeOut, undefined, url));
                 return r.code;
             }
             const res = r.response;
@@ -33037,6 +33041,8 @@ function curl(host) {
             if (o.fail && res.status >= 400) {
                 if (!o.silent || o.showError)
                     ctx.err(`curl: (22) The requested URL returned error: ${res.status}\n`);
+                if (o.writeOut !== undefined)
+                    ctx.out(writeOutText(o.writeOut, res, url));
                 return 22;
             }
             if (!o.head)
@@ -35074,6 +35080,7 @@ const { wg } = __m["shells/wg-cmd.js"];
 const { wgQuick } = __m["shells/wg-quick.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { httpGet } = __m["shells/net-tools.js"];
+const { byteLength } = __m["web/http.js"];
 const { systemctl, journalctl, ss } = __m["shells/linux-services.js"];
 const { ip, ping, dig, nslookup, hostCmd, dhclient } = __m["shells/linux-net.js"];
 const { traceroute } = __m["shells/trace-cmds.js"];
@@ -35141,16 +35148,20 @@ function writeOut(ctx, prog, file, body) {
         return false;
     }
 }
-/** wget's short options split as getopt does: -qO- is -q -O -, -qO file is -q -O file. */
+/** wget's short options that take a value (the rest of the cluster, or the next word). */
+const WGET_WITH_VALUE = new Set('OoPTteUwiaBlQ');
+/** The word after this one is its value, not the URL. */
+const takesValue = (a) => a === '--output-document' || (a !== undefined && /^-[a-zA-Z]$/.test(a) && WGET_WITH_VALUE.has(a.slice(1)));
+/** wget's short options split as getopt does: -qO- is -q -O -, -O/tmp/x is -O /tmp/x, -T10 is -T 10. */
 function wgetArgs(argv) {
     return argv.flatMap((a) => {
-        if (!/^-[a-zA-Z]{2,}/.test(a))
+        if (!/^-[a-zA-Z]./.test(a))
             return [a];
         const out = [];
         for (let i = 1; i < a.length; i++) {
             const c = a[i] ?? '';
             out.push(`-${c}`);
-            if (c === 'O' || c === 'o') {
+            if (WGET_WITH_VALUE.has(c)) {
                 if (i + 1 < a.length)
                     out.push(a.slice(i + 1));
                 break;
@@ -35164,7 +35175,7 @@ function wget(host) {
         const args = wgetArgs(ctx.argv.slice(1));
         const quiet = args.includes('-q') || args.includes('--quiet');
         const oIdx = args.findIndex((a) => a === '-O' || a === '--output-document');
-        const url = args.find((a, i) => !a.startsWith('-') && !(oIdx >= 0 && i === oIdx + 1));
+        const url = args.find((a, i) => !a.startsWith('-') && !takesValue(args[i - 1]));
         if (!url) {
             ctx.err("wget: missing URL\nUsage: wget [OPTION]... [URL]...\n\nTry `wget --help' for more options.\n");
             return 1;
@@ -35185,14 +35196,14 @@ function wget(host) {
             return 8;
         }
         const name = oIdx >= 0 ? args[oIdx + 1] ?? 'index.html' : freeName(ctx, url.split('/').filter(Boolean).slice(2).pop() ?? 'index.html');
-        say(`Length: ${res.body.length} [${res.contentType.split(';')[0]}]\nSaving to: ‘${name}’\n\n`);
+        say(`Length: ${byteLength(res.body)} [${res.contentType.split(';')[0]}]\nSaving to: ‘${name}’\n\n`);
         if (name === '-') {
             ctx.out(res.body);
             return 0;
         }
         if (!writeOut(ctx, 'wget', name, res.body))
             return 3;
-        say(`‘${name}’ saved [${res.body.length}/${res.body.length}]\n\n`);
+        say(`‘${name}’ saved [${byteLength(res.body)}/${byteLength(res.body)}]\n\n`);
         return 0;
     };
 }
