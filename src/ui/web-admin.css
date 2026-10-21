@@ -51,7 +51,10 @@
 .web-adm-mono, .web-adm-soa { font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; }
 .web-adm-list, .web-adm-grid { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 13px; }
 .web-adm-list th, .web-adm-grid th { text-align: left; color: var(--adm-muted); font-weight: 700; border-bottom: 1px solid var(--adm-line); padding: 6px; }
-.web-adm-list td, .web-adm-grid td { border-bottom: 1px solid #edf1f5; padding: 6px; vertical-align: top; }
+.web-adm-list td, .web-adm-grid td { border-bottom: 1px solid #edf1f5; padding: 6px; vertical-align: middle; }
+/* A button in its own form inside a cell: no form or button margins, so it lines up with the row. */
+.web-adm-list td form, .web-adm-grid td form { margin: 0; display: inline-block; }
+.browser-view .web-adm-list .web-adm-small, .browser-view .web-adm-grid .web-adm-small { margin: 0; }
 .web-adm-list tr.web-adm-selected td { background: #eef4fe; }
 .web-adm-muted { color: var(--adm-muted); margin: 4px 0; }
 .web-adm-log { font: 12px/1.4 var(--font-mono); white-space: pre-wrap; margin: 0; }

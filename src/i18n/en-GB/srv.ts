@@ -144,6 +144,7 @@ export const SRV_EN: Readonly<Record<SrvKey, string>> = {
   'dnsv.name': 'Invalid name: “{name}”. Use www (relative), www.aula.lab. (absolute), @ or a * wildcard.',
   'dnsv.starValue': 'A “*” wildcard can only be a record name, not its value: “{name}”.',
   'dnsv.starFirst': 'The “*” wildcard can only be the first label of the name: “{name}”.',
+  'dnsv.control': 'Name and value cannot contain control characters (line breaks, tabs…).',
   'dnsv.a': 'An A record needs an IPv4 address.',
   'dnsv.target': 'A {type} record needs a host name (relative, absolute with a final dot, or @): {error}',
   'dnsv.mx': 'The MX priority goes from 0 to 65535.',

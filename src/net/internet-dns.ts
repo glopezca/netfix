@@ -33,7 +33,8 @@ const GENERIC_TLD_IP = '192.0.47.53';
 const REGISTRAR: Server = { name: 'ns1.registro-isp.net', ip: '203.0.113.53' };
 
 const tldOf = (name: string): string => name.split('.').pop() ?? '';
-const tldServer = (tld: string): Server => TLDS[tld] ?? { name: `a.nic.${tld}`, ip: GENERIC_TLD_IP };
+const knownTld = (tld: string): boolean => Object.hasOwn(TLDS, tld);
+const tldServer = (tld: string): Server => (knownTld(tld) ? TLDS[tld] : undefined) ?? { name: `a.nic.${tld}`, ip: GENERIC_TLD_IP };
 const ns = (zone: string, s: Server): DnsAnswer => ({ name: zone, type: 'NS', ttl: REFERRAL_TTL, data: s.name });
 const glue = (s: Server): DnsAnswer => ({ name: s.name, type: 'A', ttl: REFERRAL_TTL, data: s.ip });
 const soa = (zone: string, mname: string): DnsAnswer => ({ name: zone, type: 'SOA', ttl: SOA_TTL, data: `${mname} hostmaster.${zone || 'root-servers.net'} 2026102100 1800 900 604800 ${SOA_TTL}` });
@@ -73,7 +74,7 @@ class RootDns extends DnsHost {
   protected answer(q: DnsMessage, qname: string): Partial<DnsMessage> {
     if (qname === '') return q.qtype === 'NS' ? { rcode: 'NOERROR', authoritative: true, answers: ROOT_SERVERS.map((r) => ns('', r)) } : { rcode: 'NOERROR', authoritative: true, answers: [], authority: [soa('', 'a.root-servers.net')] };
     const tld = tldOf(qname);
-    const exists = TLDS[tld] !== undefined || this.known().some((d) => tldOf(d.name) === tld);
+    const exists = knownTld(tld) || this.known().some((d) => tldOf(d.name) === tld);
     if (!exists) return { rcode: 'NXDOMAIN', authoritative: true, answers: [], authority: [soa('', 'a.root-servers.net')] };
     const server = tldServer(tld);
     return { rcode: 'NOERROR', authoritative: false, answers: [], authority: [ns(tld, server)], additional: [glue(server)] };

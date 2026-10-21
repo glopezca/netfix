@@ -7,7 +7,8 @@ import type { MailMessage } from '../net/packets.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { parseMac, parseHexId } from '../core/mac.ts';
 import { cleanOrigin, validateOrigin } from './dns-names.ts';
-import { defaultSoa, validateZone, zonesFromLegacy } from './dns-zones.ts';
+import { MAX_ZONES, defaultSoa, recordTypesFor, validateZone, zonesFromLegacy } from './dns-zones.ts';
+import { validateRecord } from './dns-service.ts';
 import { normalizeName } from '../net/dns.ts';
 
 type Json = Record<string, unknown>;
@@ -16,7 +17,6 @@ const MAX_ITEMS = 500;
 const MAX_TEXT = 200_000;
 const RECORD_TYPES = new Set(['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR']);
 const MAX_TIMER = 2_147_483_647;
-const MAX_ZONES = 64;
 
 export interface ServicesJson {
   readonly dhcp: { enabled: boolean; pools: Json[] };
@@ -182,11 +182,18 @@ function zone(v: unknown, before: readonly DnsZone[]): DnsZone {
   return z;
 }
 
+/** Records the zone admits and BIND can write (invalid ones are dropped, as Netfix ≤ 0.11 skipped them). */
+const cleanZone = (z: DnsZone): DnsZone => ({ ...z, records: z.records.filter((r) => recordTypesFor(z.kind).includes(r.type) && validateRecord(r, z.name) === null) });
+
 function zones(n: Json): DnsZone[] {
-  if (n.zones === undefined) return zonesFromLegacy(origin(n.origin), arr(n.records, 'registros').map(record));
+  if (n.zones === undefined) {
+    // A legacy name becomes a zone (and a file name): only valid zones are kept.
+    const legacy = zonesFromLegacy(origin(n.origin), arr(n.records, 'registros').map(record));
+    return legacy.reduce<DnsZone[]>((acc, z) => (acc.length < MAX_ZONES && validateZone(z, acc) === null ? [...acc, cleanZone(z)] : acc), []);
+  }
   const list = arr(n.zones, 'zonas DNS');
   if (list.length > MAX_ZONES) throw new Error(t('load.list', { what: label('zonas DNS') }));
-  return list.reduce<DnsZone[]>((acc, z) => [...acc, zone(z, acc)], []);
+  return list.reduce<DnsZone[]>((acc, z) => [...acc, cleanZone(zone(z, acc))], []);
 }
 
 const MAX_FORWARDERS = 8;
@@ -201,7 +208,8 @@ function dnsFromJson(n: Json): DnsSettings {
     ...(n.authoritative === false ? { authoritative: false } : {}),
     ...(n.recursion !== undefined || recursion ? { recursion } : {}),
     ...(n.maxCacheTtl !== undefined ? { maxCacheTtl: num(n.maxCacheTtl, 'max-cache-ttl', 0, MAX_TIMER) } : {}),
-    ...(fwd.length ? { forwarders: fwd, forwardOnly: n.forwardOnly !== false } : {}),
+    ...(fwd.length ? { forwarders: fwd } : {}),
+    ...(fwd.length || n.forwardOnly !== undefined ? { forwardOnly: n.forwardOnly !== false } : {}),
     ...(n.allowRecursion !== undefined ? { allowRecursion: n.allowRecursion === 'any' ? 'any' as const : 'localnets' as const } : {}),
   };
 }

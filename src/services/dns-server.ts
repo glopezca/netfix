@@ -38,7 +38,7 @@ export class ServerDns {
     const udp = packet.udp;
     const dns = udp?.dns;
     if (!udp || !dns) return false;
-    if (dns.response) return this.forwarder.onResponse(udp.dport, dns);
+    if (dns.response) return this.forwarder.onResponse(udp.dport, dns, packet.src);
     if (udp.dport !== DNS_PORT || !this.host.services.dns.enabled) return false;
     this.query(packet.src, udp.sport, packet.dst, dns);
     return true;

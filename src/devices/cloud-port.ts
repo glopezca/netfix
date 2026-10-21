@@ -183,7 +183,7 @@ export class CloudPort implements StackHost {
   fromInternet(p: IpPacket): void {
     const own = this.settings.mode === 'router' ? this.wan() : this.line().gw;
     if (this.settings.mode === 'router') {
-      if (p.dst === own && p.udp?.dns?.response && this.relay.onResponse(p.udp.dport, p.udp.dns)) return;
+      if (p.dst === own && p.udp?.dns?.response && this.relay.onResponse(p.udp.dport, p.udp.dns, p.src)) return;
       const inside = this.nat.outside(p, this.forwards());
       if (inside) return this.toCustomer(inside);
     } else if (p.dst !== own) return this.toCustomer(p);

@@ -50,15 +50,15 @@ export const SERVICE_DOCS: DocGroup = {
     {
       id: 'srv-dns',
       title: 'Server DNS',
-      summary: 'bind9 by operating mode (cache, forwarder, authoritative, iterative, recursive), zones step by step and automatic reverse zones.',
+      summary: 'bind9 by operating mode (cache, forwarder, authoritative, recursive, iterative), zones step by step and automatic reverse zones.',
       blocks: [
         p('Services → DNS groups the options of bind9 in one block per operating mode, always in this order (also in the web management, as cards). Several can be combined: the usual classroom setup is authoritative for its own zone and recursive with cache for the computers of the network.'),
         table(['Mode', 'What it does', 'In BIND'], [
           ['Cache', 'Keeps what it gets through recursion for its TTL; 0 = keeps nothing. Shows the contents and is emptied with rndc flush.', 'max-cache-ttl'],
           ['Forwarder', 'Passes the queries it cannot answer to other servers (the ISP\'s DNS, 8.8.8.8…).', 'forwarders { … };'],
           ['Authoritative', 'Answers with authority (aa flag) for its zones. Off, the zones are kept but not loaded.', 'zone "…" { type master; }; in named.conf.local'],
-          ['Iterative', 'Resolves by itself: root server → top-level domain → the domain\'s servers. It is not a BIND option: it is what recursion does without forwarders or, with them, with forward first.', 'forward first | only; zone "." { type hint; };'],
           ['Recursive', 'Accepts recursive queries and returns the full answer. Without it the server only answers for its zones (REFUSED for the rest), even with forwarders.', 'recursion yes | no; allow-recursion'],
+          ['Iterative', 'Resolves by itself: root server → top-level domain → the domain\'s servers. It is not a BIND option: it is what recursion does without forwarders or, with them, with forward first.', 'forward first | only; zone "." { type hint; };'],
         ]),
         note('Iterative depends on the others: without Recursive it is off; with Recursive and no forwarders it is always on; with forwarders, its switch chooses forward first (on: if the forwarders do not answer, it iterates) or forward only (off: SERVFAIL). The block says why it cannot be changed when that is the case.'),
         h('Iterative resolution in the emulated Internet'),

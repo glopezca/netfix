@@ -32,7 +32,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       table(['Página', 'Qué cambia'], [
         ['Configuración', 'Nombre de host, IP estática o DHCP, puerta de enlace y DNS.'],
         ['DHCP', 'Activar el servidor, añadir y borrar pools (concesiones por MAC o por Client-ID), direcciones reservadas por MAC o identificador (hex 01… o texto) y «Reservar» una concesión activa.'],
-        ['DNS', 'Tarjetas de los cinco modos (Caché, Agente de reenvío, Autoritativo, Iterativo, Recursivo) con su interruptor y usos, una pestaña de opciones por modo (el asistente de zonas SOA → NS → tipo → registros en Autoritativo) y, al lado, la configuración de BIND generada (named.conf.options, zonas, archivos) explicada.'],
+        ['DNS', 'Tarjetas de los cinco modos (Caché, Agente de reenvío, Autoritativo, Recursivo, Iterativo) con su interruptor y usos, una pestaña de opciones por modo (el asistente de zonas SOA → NS → tipo → registros en Autoritativo) y, al lado, la configuración de BIND generada (named.conf.options, zonas, archivos) explicada.'],
         ['Web', 'Apache y el acceso a Roundcube.'],
         ['Enrutamiento (Router Linux)', 'Casilla «Activar router» (net.ipv4.ip_forward), parámetros del núcleo y rutas estáticas.'],
         ['Correo · SSH', 'Servicios y usuarios; en SSH, los métodos de autenticación (contraseña y/o par de claves) de sshd_config.'],

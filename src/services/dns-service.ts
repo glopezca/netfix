@@ -123,11 +123,13 @@ export function answerFromZones(query: DnsMessage, zones: readonly ServedZone[])
 
 /** Validation used by the GUI. Returns an error message or null. */
 export function validateRecord(r: DnsRecord, origin?: string): string | null {
+  // Control characters would break the lines of the zone file.
+  if (/[\x00-\x1f\x7f]/.test(r.name + r.value)) return t('dnsv.control');
   const nameErr = validateName(r.name, origin);
   if (nameErr) return nameErr;
   if (r.type === 'A' && parseIp(r.value) === null) return t('dnsv.a');
   const targetErr = r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX' || r.type === 'PTR' ? validateName(r.value, origin, false) : null;
   if (targetErr) return t('dnsv.target', { type: r.type, error: targetErr });
-  if (r.type === 'MX' && (r.priority === undefined || r.priority < 0 || r.priority > 65535)) return t('dnsv.mx');
+  if (r.type === 'MX' && (r.priority === undefined || !Number.isInteger(r.priority) || r.priority < 0 || r.priority > 65535)) return t('dnsv.mx');
   return r.value.trim() === '' ? t('dnsv.empty') : null;
 }

@@ -50,15 +50,15 @@ export const SERVICE_DOCS: DocGroup = {
     {
       id: 'srv-dns',
       title: 'DNS de Server',
-      summary: 'bind9 por modos de funcionamiento (caché, reenvío, autoritativo, iterativo, recursivo), zonas paso a paso y zonas inversas automáticas.',
+      summary: 'bind9 por modos de funcionamiento (caché, reenvío, autoritativo, recursivo, iterativo), zonas paso a paso y zonas inversas automáticas.',
       blocks: [
         p('Servicios → DNS agrupa las opciones de bind9 en un bloque por modo de funcionamiento, siempre en este orden (también en la gestión web, como tarjetas). Se pueden combinar varios: lo habitual en un aula es autoritativo para la zona propia y recursivo con caché para los equipos de la red.'),
         table(['Modo', 'Qué hace', 'En BIND'], [
           ['Caché', 'Guarda durante su TTL lo que obtiene por recursión; 0 = no guarda nada. Muestra el contenido y se vacía con rndc flush.', 'max-cache-ttl'],
           ['Agente de reenvío', 'Pasa las consultas que no sabe responder a otros servidores (el DNS del operador, 8.8.8.8…).', 'forwarders { … };'],
           ['Autoritativo', 'Responde con autoridad (flag aa) por sus zonas. Apagado, las zonas se conservan pero no se cargan.', 'zone "…" { type master; }; en named.conf.local'],
-          ['Iterativo', 'Resuelve él mismo: servidor raíz → dominio de primer nivel → servidores del dominio. No es una opción de BIND: es lo que hace la recursión sin reenviadores o, con ellos, con forward first.', 'forward first | only; zone "." { type hint; };'],
           ['Recursivo', 'Acepta consultas recursivas y devuelve la respuesta completa. Sin él, el servidor solo responde por sus zonas (REFUSED para el resto), aunque tenga reenviadores.', 'recursion yes | no; allow-recursion'],
+          ['Iterativo', 'Resuelve él mismo: servidor raíz → dominio de primer nivel → servidores del dominio. No es una opción de BIND: es lo que hace la recursión sin reenviadores o, con ellos, con forward first.', 'forward first | only; zone "." { type hint; };'],
         ]),
         note('Iterativo depende de los otros: sin Recursivo está apagado; con Recursivo y sin reenviadores está siempre encendido; con reenviadores, su casilla elige forward first (encendido: si los reenviadores no responden, itera) o forward only (apagado: SERVFAIL). El bloque explica por qué no se puede cambiar cuando es así.'),
         h('Resolución iterativa en la Internet emulada'),

@@ -575,6 +575,9 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 
 /* Firewall (nftables) panel. */
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+/* In a table the actions stay a table cell, centred on the row like the other cells. */
+td.row-actions { display: table-cell; margin: 0; vertical-align: middle; white-space: nowrap; }
+td.row-actions > .btn + .btn { margin-left: 8px; }
 .code-view { font-family: var(--mono, ui-monospace, monospace); font-size: 12.5px; background: var(--term-bg, #0f1b24); color: var(--term-fg, #d8e3ea); padding: 10px 12px; border-radius: 6px; overflow-x: auto; white-space: pre; max-height: 40vh; }
 .fw-table { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 10px 0; }
 .fw-table h4 { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin: 4px 0 8px; }
@@ -719,7 +722,10 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .web-adm-mono, .web-adm-soa { font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; }
 .web-adm-list, .web-adm-grid { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 13px; }
 .web-adm-list th, .web-adm-grid th { text-align: left; color: var(--adm-muted); font-weight: 700; border-bottom: 1px solid var(--adm-line); padding: 6px; }
-.web-adm-list td, .web-adm-grid td { border-bottom: 1px solid #edf1f5; padding: 6px; vertical-align: top; }
+.web-adm-list td, .web-adm-grid td { border-bottom: 1px solid #edf1f5; padding: 6px; vertical-align: middle; }
+/* A button in its own form inside a cell: no form or button margins, so it lines up with the row. */
+.web-adm-list td form, .web-adm-grid td form { margin: 0; display: inline-block; }
+.browser-view .web-adm-list .web-adm-small, .browser-view .web-adm-grid .web-adm-small { margin: 0; }
 .web-adm-list tr.web-adm-selected td { background: #eef4fe; }
 .web-adm-muted { color: var(--adm-muted); margin: 4px 0; }
 .web-adm-log { font: 12px/1.4 var(--font-mono); white-space: pre-wrap; margin: 0; }
@@ -2494,6 +2500,7 @@ const SRV_ES = {
     'dnsv.name': 'Nombre no válido: «{name}». Usa www (relativo), www.aula.lab. (absoluto), @ o un comodín *.',
     'dnsv.starValue': 'Un comodín «*» solo puede ser el nombre de un registro, no su valor: «{name}».',
     'dnsv.starFirst': 'El comodín «*» solo puede ser la primera etiqueta del nombre: «{name}».',
+    'dnsv.control': 'El nombre y el valor no pueden llevar caracteres de control (saltos de línea, tabuladores…).',
     'dnsv.a': 'Un registro A necesita una dirección IPv4.',
     'dnsv.target': 'Un registro {type} necesita un nombre de host (relativo, absoluto con punto final o @): {error}',
     'dnsv.mx': 'La prioridad MX va de 0 a 65535.',
@@ -2658,6 +2665,7 @@ const SRV_EN = {
     'dnsv.name': 'Invalid name: “{name}”. Use www (relative), www.aula.lab. (absolute), @ or a * wildcard.',
     'dnsv.starValue': 'A “*” wildcard can only be a record name, not its value: “{name}”.',
     'dnsv.starFirst': 'The “*” wildcard can only be the first label of the name: “{name}”.',
+    'dnsv.control': 'Name and value cannot contain control characters (line breaks, tabs…).',
     'dnsv.a': 'An A record needs an IPv4 address.',
     'dnsv.target': 'A {type} record needs a host name (relative, absolute with a final dot, or @): {error}',
     'dnsv.mx': 'The MX priority goes from 0 to 65535.',
@@ -3590,6 +3598,9 @@ const DNSUI_ES = {
     'dnsm.lock.needsRecursion': 'Necesita el modo Recursivo: sin recursión el servidor no resuelve nombres ajenos.',
     'dnsm.lock.noForwarders': 'Sin reenviadores, la recursión siempre es iterativa (empieza en los servidores raíz).',
     'dnsm.err.ttl': 'max-cache-ttl es un número entero de segundos (0 a 2147483647).',
+    'dnsm.err.noRecord': 'Ese registro no existe.',
+    'dnsm.err.maxZones': 'Como máximo {max} zonas.',
+    'dnsm.err.maxRecords': 'Como máximo {max} registros por zona.',
     'dnsm.err.noZone': 'No existe la zona «{name}».',
     'wad.modesTitle': 'Modo de funcionamiento del servidor',
     'wad.modesHelp': 'Elige las funciones que cumple este servidor DNS; se pueden combinar varias. Guarda para aplicar los cambios.',
@@ -3724,6 +3735,9 @@ const DNSUI_EN = {
     'dnsm.lock.needsRecursion': 'Needs the Recursive mode: without recursion the server does not resolve other names.',
     'dnsm.lock.noForwarders': 'Without forwarders, recursion is always iterative (it starts at the root servers).',
     'dnsm.err.ttl': 'max-cache-ttl is a whole number of seconds (0 to 2147483647).',
+    'dnsm.err.noRecord': 'That record does not exist.',
+    'dnsm.err.maxZones': 'At most {max} zones.',
+    'dnsm.err.maxRecords': 'At most {max} records per zone.',
     'dnsm.err.noZone': 'Zone «{name}» does not exist.',
     'wad.modesTitle': 'Server operating mode',
     'wad.modesHelp': 'Choose the roles of this DNS server; several can be combined. Save to apply the changes.',
@@ -9675,6 +9689,12 @@ const REVERSE = /\.in-addr\.arpa$/;
 const FORWARD_TYPES = ['A', 'CNAME', 'MX', 'NS', 'TXT'];
 const REVERSE_TYPES = ['PTR'];
 const TARGET_TYPES = new Set(['CNAME', 'MX', 'NS', 'PTR']);
+/** Mailbox part: the characters RFC 5322 allows unquoted (and \. for a dot), then a domain. */
+const RNAME = /^(?:[a-z0-9!#%&'*+/=?^_`{|}~-]|\\\.)+\.[a-z0-9-]+(?:\.[a-z0-9-]+)*$/i;
+/** A zone name that is safe as part of a file name (/etc/bind/db.<zone>). */
+const SAFE_ZONE = /^[a-z0-9_-]+(?:\.[a-z0-9_-]+)*$/i;
+const MAX_ZONES = 64;
+const MAX_RECORDS = 500;
 const isReverseZone = (name) => REVERSE.test(normalizeName(name));
 const recordTypesFor = (kind) => (kind === 'reverse' ? REVERSE_TYPES : FORWARD_TYPES);
 function defaultSoa(zone, serial = FIRST_SERIAL) {
@@ -9726,20 +9746,20 @@ function zoneRecords(zone) {
 const inZone = (name, zone) => name === zone || name.endsWith(`.${zone}`);
 /** Reverse zones generated from the A records of the forward zones (wildcards have no PTR). */
 function autoReverseZones(zones) {
+    // Collected in place and sorted once: thousands of A records stay cheap (this runs on every query).
     const out = new Map();
     for (const z of zones.filter((x) => x.kind === 'forward')) {
         for (const r of zoneRecords(z).filter((x) => x.type === 'A' && !x.name.startsWith('*.') && inZone(x.name, z.name))) {
-            const octets = r.value.split('.');
             const name = reverseZoneName(r.value);
             if (name === null)
                 continue;
-            const zone = out.get(name) ?? { ...newZone(name, 'reverse', z.ns, z.soa), name };
-            const ptr = { name: octets[3] ?? '', type: 'PTR', value: `${r.name}.`, ttl: r.ttl };
-            const serial = Math.max(zone.soa.serial, z.soa.serial);
-            out.set(name, { ...zone, soa: { ...zone.soa, serial }, records: [...zone.records, ptr].sort((a, b) => Number(a.name) - Number(b.name)) });
+            const entry = out.get(name) ?? { zone: newZone(name, 'reverse', z.ns, z.soa), serial: 0, ptrs: [] };
+            entry.serial = Math.max(entry.serial, z.soa.serial);
+            entry.ptrs.push({ name: r.value.split('.')[3] ?? '', type: 'PTR', value: `${r.name}.`, ttl: r.ttl });
+            out.set(name, entry);
         }
     }
-    return [...out.values()];
+    return [...out.values()].map((e) => ({ ...e.zone, soa: { ...e.zone.soa, serial: e.serial }, records: e.ptrs.sort((a, b) => Number(a.name) - Number(b.name)) }));
 }
 /** The zones bind loads: none when it is not authoritative; a hand-made zone wins over a generated one. */
 function servedZones(dns) {
@@ -9751,7 +9771,7 @@ function servedZones(dns) {
 function validateSoa(s) {
     if (validateName(`${s.mname}.`, undefined, false))
         return t('zone.err.mname', { name: s.mname });
-    if (!/^(?:[^.\\\s@]|\\.)+\.[a-z0-9.-]+$/i.test(s.rname))
+    if (!RNAME.test(s.rname))
         return t('zone.err.rname', { value: rnameToEmail(s.rname) });
     const timers = [s.serial, s.refresh, s.retry, s.expire, s.minimum];
     return timers.every((n) => Number.isInteger(n) && n >= 0 && n <= MAX_TIMER) ? null : t('zone.err.timer');
@@ -9785,9 +9805,9 @@ function zoneProblems(zone) {
     return [...glue, ...types, ...cname, ...out];
 }
 /** Zone of a legacy absolute name: an NS owner is a zone; otherwise the parent domain (www.aula.lab → aula.lab). */
-function legacyZoneOf(r) {
+function legacyZoneOf(r, nsOwners = new Set()) {
     const labels = r.name.split('.');
-    return r.type === 'NS' || labels.length < 3 ? r.name : labels.slice(1).join('.');
+    return r.type === 'NS' || nsOwners.has(r.name) || labels.length < 3 ? r.name : labels.slice(1).join('.');
 }
 /** Name relative to its zone (`@` for the apex), as a zone file would write it. */
 const relative = (name, zone) => (name === zone ? '@' : name.slice(0, -(zone.length + 1)));
@@ -9796,14 +9816,16 @@ function zonesFromLegacy(origin, records) {
     const o = cleanOrigin(origin);
     const absolute = records.map((r) => ({ typed: r, name: qualify(r.name, o), value: TARGET_TYPES.has(r.type) ? qualify(r.value, o) : r.value }))
         .filter((x) => x.name !== null && x.value !== null);
+    const nsOwners = new Set(absolute.filter((x) => x.typed.type === 'NS').map((x) => x.name));
+    const zoneOf = (x) => legacyZoneOf({ ...x.typed, name: x.name }, nsOwners);
     const names = o ? [o] : [];
     for (const x of absolute) {
-        const owner = o && inZone(x.name, o) ? o : legacyZoneOf({ ...x.typed, name: x.name });
+        const owner = o && inZone(x.name, o) ? o : zoneOf(x);
         if (!names.includes(owner))
             names.push(owner);
     }
     return names.map((zone) => {
-        const mine = absolute.filter((x) => (o && zone === o ? inZone(x.name, o) : !(o && inZone(x.name, o)) && legacyZoneOf({ ...x.typed, name: x.name }) === zone));
+        const mine = absolute.filter((x) => (o && zone === o ? inZone(x.name, o) : !(o && inZone(x.name, o)) && zoneOf(x) === zone));
         const ns = mine.filter((x) => x.typed.type === 'NS' && x.name === zone).map((x) => x.value);
         const rest = mine.filter((x) => !(x.typed.type === 'NS' && x.name === zone));
         const recs = rest.map((x) => (zone === o ? x.typed : { ...x.typed, name: relative(x.name, zone), value: TARGET_TYPES.has(x.typed.type) ? `${x.value}.` : x.value }));
@@ -9811,7 +9833,7 @@ function zonesFromLegacy(origin, records) {
     });
 }
 
-return { isReverseZone, recordTypesFor, defaultSoa, newZone, soaText, emailToRname, rnameToEmail, nextSerial, reverseZoneName, zoneRecords, autoReverseZones, servedZones, validateZone, zoneProblems, zonesFromLegacy };
+return { SAFE_ZONE, MAX_ZONES, MAX_RECORDS, isReverseZone, recordTypesFor, defaultSoa, newZone, soaText, emailToRname, rnameToEmail, nextSerial, reverseZoneName, zoneRecords, autoReverseZones, servedZones, validateZone, zoneProblems, zonesFromLegacy };
 })();
 __m["services/dns-service.js"] = (() => {
 /** Authoritative DNS server built from a flat list of records (BIND-like answers). */
@@ -9932,6 +9954,9 @@ function answerFromZones(query, zones) {
 }
 /** Validation used by the GUI. Returns an error message or null. */
 function validateRecord(r, origin) {
+    // Control characters would break the lines of the zone file.
+    if (/[\x00-\x1f\x7f]/.test(r.name + r.value))
+        return t('dnsv.control');
     const nameErr = validateName(r.name, origin);
     if (nameErr)
         return nameErr;
@@ -9940,7 +9965,7 @@ function validateRecord(r, origin) {
     const targetErr = r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX' || r.type === 'PTR' ? validateName(r.value, origin, false) : null;
     if (targetErr)
         return t('dnsv.target', { type: r.type, error: targetErr });
-    if (r.type === 'MX' && (r.priority === undefined || r.priority < 0 || r.priority > 65535))
+    if (r.type === 'MX' && (r.priority === undefined || !Number.isInteger(r.priority) || r.priority < 0 || r.priority > 65535))
         return t('dnsv.mx');
     return r.value.trim() === '' ? t('dnsv.empty') : null;
 }
@@ -9983,6 +10008,12 @@ function namedOptions(s) {
     ];
     return lines.join('\n');
 }
+/** A BIND duration: seconds, or a number with s, m, h, d or w. */
+const UNITS = { s: 1, m: 60, h: 3600, d: 86400, w: 604800 };
+function seconds(text) {
+    const unit = text.slice(-1).toLowerCase();
+    return Object.hasOwn(UNITS, unit) ? Number(text.slice(0, -1)) * (UNITS[unit] ?? 1) : Number(text);
+}
 function block(text, name) {
     const m = new RegExp(`\\b${name}\\s*\\{([^}]*)\\}\\s*;`).exec(text);
     return m ? m[1] ?? '' : null;
@@ -10005,7 +10036,7 @@ function parseNamedOptions(text, current) {
         return { error: `${NAMED_OPTIONS}: too many forwarders` };
     const recursion = /\brecursion\s+(yes|no)\s*;/.exec(clean)?.[1];
     const forward = /\bforward\s+(only|first)\s*;/.exec(clean)?.[1];
-    const ttl = /\bmax-cache-ttl\s+(\d+)\s*;/.exec(clean)?.[1];
+    const ttl = /\bmax-cache-ttl\s+(\d+[smhdw]?)\s*;/i.exec(clean)?.[1];
     const allow = block(clean, 'allow-recursion') ?? '';
     return {
         ...current,
@@ -10013,7 +10044,7 @@ function parseNamedOptions(text, current) {
         recursion: recursion !== 'no',
         forwarders,
         forwardOnly: forward === 'only',
-        maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(Number(ttl), MAX_TTL),
+        maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(seconds(ttl), MAX_TTL),
         allowRecursion: /\bany\b/.test(allow) ? 'any' : 'localnets',
     };
 }
@@ -10046,9 +10077,12 @@ return { ROOT_SERVERS, ROOT_IPS, ROOT_HINTS_FILE, rootHints };
 __m["services/dns-iterate.js"] = (() => {
 const { normalizeName } = __m["net/dns.js"];
 const { parseIp } = __m["core/ip.js"];
-const inZone = (name, zone) => zone === '' || name === zone || name.endsWith(`.${zone}`);
-/** Classifies the answer of a server asked for `qname`/`qtype` while iterating. */
-function iterStep(msg, qname, qtype) {
+const inZone = (name, zone) => zone === '' || zone === '.' || name === zone || name.endsWith(`.${zone}`);
+/**
+ * Classifies the answer of a server of `current` (the zone it was asked as, '' = root) for `qname`/`qtype`. A referral
+ * only counts if it goes down from that zone (a server of evil.com cannot speak for com) and all its NS share one owner.
+ */
+function iterStep(msg, qname, qtype, current = '') {
     if (msg.rcode === 'NXDOMAIN')
         return { kind: 'answer', msg };
     if (msg.rcode !== 'NOERROR')
@@ -10065,7 +10099,8 @@ function iterStep(msg, qname, qtype) {
     if (ns.length === 0)
         return msg.authoritative ? { kind: 'answer', msg } : { kind: 'lame' };
     const zone = normalizeName(ns[0]?.name ?? '');
-    if (!inZone(qname, zone))
+    const below = zone !== current && inZone(zone, current);
+    if (!below || !inZone(qname, zone) || ns.some((a) => normalizeName(a.name) !== zone))
         return { kind: 'lame' };
     const names = ns.map((a) => normalizeName(a.data));
     const glue = (msg.additional ?? []).filter((a) => a.type === 'A' && names.includes(normalizeName(a.name)));
@@ -10146,7 +10181,7 @@ class DnsForwarder {
         }
         if ((!p.forwarders.length && !p.iterate) || this.pending.size >= MAX_PENDING)
             return this.fail(client, port, q);
-        const job = { client, port, query: q, plan: p, phase: 'forward', servers: p.forwarders, index: 0, qname: normalizeName(q.qname), prefix: [], steps: 0, done: false };
+        const job = { client, port, query: q, plan: p, phase: 'forward', zone: '', server: 0, retried: false, servers: p.forwarders, index: 0, qname: normalizeName(q.qname), prefix: [], steps: 0, done: false };
         if (!p.forwarders.length)
             this.startIteration(job);
         else
@@ -10158,6 +10193,7 @@ class DnsForwarder {
     startIteration(p) {
         const from = closestServers(p.qname, this.delegations, this.env.now(), p.plan.roots ?? []);
         p.phase = 'iterate';
+        p.zone = from.zone === '.' ? '' : from.zone;
         p.servers = from.servers.slice(0, TRIES_PER_ZONE);
         p.index = 0;
         this.env.log(`resolving ${p.qname}/${p.query.qtype}: iterative, starting at ${from.zone === '.' ? 'the root servers' : `${from.zone} (cached)`}`);
@@ -10168,10 +10204,17 @@ class DnsForwarder {
         if (server === undefined || p.steps >= MAX_STEPS) {
             if (p.phase === 'forward' && p.plan.iterate)
                 return this.startIteration(p);
+            if (p.phase === 'iterate' && p.zone !== '' && !p.retried && this.delegations.has(p.zone) && p.steps < MAX_STEPS) {
+                // The servers of a cached delegation do not answer: forget it and go down from the root again.
+                this.delegations.delete(p.zone);
+                p.retried = true;
+                return this.startIteration(p);
+            }
             this.env.log(`client query ${p.query.qname}/${p.query.qtype}: ${p.phase === 'forward' ? 'all forwarders' : 'all servers'} failed (SERVFAIL)`);
             return this.fail(p.client, p.port, p.query);
         }
         p.steps += 1;
+        p.server = server;
         const sport = FIRST_PORT + (this.nextPort++ % PORTS);
         this.pending.set(sport, p);
         this.env.send(server, sport, { ...p.query, qname: p.qname, id: sport, rd: p.phase === 'forward' });
@@ -10183,15 +10226,22 @@ class DnsForwarder {
             this.ask(p);
         });
     }
-    /** An upstream answer arriving on `port`; false when it is not one of ours. */
-    onResponse(port, answer) {
+    /** An upstream answer from `from` arriving on `port`; false when it is not the answer to one of our questions. */
+    onResponse(port, answer, from) {
         const p = this.pending.get(port);
-        if (!p)
+        if (!p || (from !== undefined && from !== p.server) || normalizeName(answer.qname) !== p.qname || answer.qtype !== p.query.qtype)
             return false;
         this.pending.delete(port);
+        const failed = answer.rcode !== 'NOERROR' && answer.rcode !== 'NXDOMAIN';
+        // forward first: a forwarder that refuses or fails is like one that does not answer.
+        if (p.phase === 'forward' && failed && p.plan.iterate) {
+            p.index += 1;
+            this.ask(p);
+            return true;
+        }
         if (p.phase === 'forward')
             return this.finish(p, answer);
-        const step = iterStep(answer, p.qname, p.query.qtype);
+        const step = iterStep(answer, p.qname, p.query.qtype, p.zone);
         if (step.kind === 'answer')
             return this.finish(p, answer);
         if (step.kind === 'lame') {
@@ -10207,11 +10257,13 @@ class DnsForwarder {
         }
         this.remember(step.zone, step.servers, Math.min(step.ttl, p.plan.maxTtl ?? DEFAULT_MAX_TTL));
         this.env.log(`  ${p.qname}: referral to ${step.zone}. (${step.names.slice(0, 2).join(', ')})`);
+        p.zone = step.zone;
         p.servers = step.servers.slice(0, TRIES_PER_ZONE);
         p.index = 0;
         this.ask(p);
         return true;
     }
+    /** Caches the servers of a zone for `ttl` seconds (also used by tests to plant a stale delegation). */
     remember(zone, servers, ttl) {
         if (ttl <= 0)
             return;
@@ -10268,7 +10320,7 @@ class ServerDns {
         if (!udp || !dns)
             return false;
         if (dns.response)
-            return this.forwarder.onResponse(udp.dport, dns);
+            return this.forwarder.onResponse(udp.dport, dns, packet.src);
         if (udp.dport !== DNS_PORT || !this.host.services.dns.enabled)
             return false;
         this.query(packet.src, udp.sport, packet.dst, dns);
@@ -19324,15 +19376,15 @@ const SERVICE_DOCS = {
         {
             id: 'srv-dns',
             title: 'DNS de Server',
-            summary: 'bind9 por modos de funcionamiento (caché, reenvío, autoritativo, iterativo, recursivo), zonas paso a paso y zonas inversas automáticas.',
+            summary: 'bind9 por modos de funcionamiento (caché, reenvío, autoritativo, recursivo, iterativo), zonas paso a paso y zonas inversas automáticas.',
             blocks: [
                 p('Servicios → DNS agrupa las opciones de bind9 en un bloque por modo de funcionamiento, siempre en este orden (también en la gestión web, como tarjetas). Se pueden combinar varios: lo habitual en un aula es autoritativo para la zona propia y recursivo con caché para los equipos de la red.'),
                 table(['Modo', 'Qué hace', 'En BIND'], [
                     ['Caché', 'Guarda durante su TTL lo que obtiene por recursión; 0 = no guarda nada. Muestra el contenido y se vacía con rndc flush.', 'max-cache-ttl'],
                     ['Agente de reenvío', 'Pasa las consultas que no sabe responder a otros servidores (el DNS del operador, 8.8.8.8…).', 'forwarders { … };'],
                     ['Autoritativo', 'Responde con autoridad (flag aa) por sus zonas. Apagado, las zonas se conservan pero no se cargan.', 'zone "…" { type master; }; en named.conf.local'],
-                    ['Iterativo', 'Resuelve él mismo: servidor raíz → dominio de primer nivel → servidores del dominio. No es una opción de BIND: es lo que hace la recursión sin reenviadores o, con ellos, con forward first.', 'forward first | only; zone "." { type hint; };'],
                     ['Recursivo', 'Acepta consultas recursivas y devuelve la respuesta completa. Sin él, el servidor solo responde por sus zonas (REFUSED para el resto), aunque tenga reenviadores.', 'recursion yes | no; allow-recursion'],
+                    ['Iterativo', 'Resuelve él mismo: servidor raíz → dominio de primer nivel → servidores del dominio. No es una opción de BIND: es lo que hace la recursión sin reenviadores o, con ellos, con forward first.', 'forward first | only; zone "." { type hint; };'],
                 ]),
                 note('Iterativo depende de los otros: sin Recursivo está apagado; con Recursivo y sin reenviadores está siempre encendido; con reenviadores, su casilla elige forward first (encendido: si los reenviadores no responden, itera) o forward only (apagado: SERVFAIL). El bloque explica por qué no se puede cambiar cuando es así.'),
                 h('Resolución iterativa en la Internet emulada'),
@@ -20266,7 +20318,7 @@ const WEBAPP_DOCS = [
             table(['Página', 'Qué cambia'], [
                 ['Configuración', 'Nombre de host, IP estática o DHCP, puerta de enlace y DNS.'],
                 ['DHCP', 'Activar el servidor, añadir y borrar pools (concesiones por MAC o por Client-ID), direcciones reservadas por MAC o identificador (hex 01… o texto) y «Reservar» una concesión activa.'],
-                ['DNS', 'Tarjetas de los cinco modos (Caché, Agente de reenvío, Autoritativo, Iterativo, Recursivo) con su interruptor y usos, una pestaña de opciones por modo (el asistente de zonas SOA → NS → tipo → registros en Autoritativo) y, al lado, la configuración de BIND generada (named.conf.options, zonas, archivos) explicada.'],
+                ['DNS', 'Tarjetas de los cinco modos (Caché, Agente de reenvío, Autoritativo, Recursivo, Iterativo) con su interruptor y usos, una pestaña de opciones por modo (el asistente de zonas SOA → NS → tipo → registros en Autoritativo) y, al lado, la configuración de BIND generada (named.conf.options, zonas, archivos) explicada.'],
                 ['Web', 'Apache y el acceso a Roundcube.'],
                 ['Enrutamiento (Router Linux)', 'Casilla «Activar router» (net.ipv4.ip_forward), parámetros del núcleo y rutas estáticas.'],
                 ['Correo · SSH', 'Servicios y usuarios; en SSH, los métodos de autenticación (contraseña y/o par de claves) de sshd_config.'],
@@ -20761,15 +20813,15 @@ const SERVICE_DOCS = {
         {
             id: 'srv-dns',
             title: 'Server DNS',
-            summary: 'bind9 by operating mode (cache, forwarder, authoritative, iterative, recursive), zones step by step and automatic reverse zones.',
+            summary: 'bind9 by operating mode (cache, forwarder, authoritative, recursive, iterative), zones step by step and automatic reverse zones.',
             blocks: [
                 p('Services → DNS groups the options of bind9 in one block per operating mode, always in this order (also in the web management, as cards). Several can be combined: the usual classroom setup is authoritative for its own zone and recursive with cache for the computers of the network.'),
                 table(['Mode', 'What it does', 'In BIND'], [
                     ['Cache', 'Keeps what it gets through recursion for its TTL; 0 = keeps nothing. Shows the contents and is emptied with rndc flush.', 'max-cache-ttl'],
                     ['Forwarder', 'Passes the queries it cannot answer to other servers (the ISP\'s DNS, 8.8.8.8…).', 'forwarders { … };'],
                     ['Authoritative', 'Answers with authority (aa flag) for its zones. Off, the zones are kept but not loaded.', 'zone "…" { type master; }; in named.conf.local'],
-                    ['Iterative', 'Resolves by itself: root server → top-level domain → the domain\'s servers. It is not a BIND option: it is what recursion does without forwarders or, with them, with forward first.', 'forward first | only; zone "." { type hint; };'],
                     ['Recursive', 'Accepts recursive queries and returns the full answer. Without it the server only answers for its zones (REFUSED for the rest), even with forwarders.', 'recursion yes | no; allow-recursion'],
+                    ['Iterative', 'Resolves by itself: root server → top-level domain → the domain\'s servers. It is not a BIND option: it is what recursion does without forwarders or, with them, with forward first.', 'forward first | only; zone "." { type hint; };'],
                 ]),
                 note('Iterative depends on the others: without Recursive it is off; with Recursive and no forwarders it is always on; with forwarders, its switch chooses forward first (on: if the forwarders do not answer, it iterates) or forward only (off: SERVFAIL). The block says why it cannot be changed when that is the case.'),
                 h('Iterative resolution in the emulated Internet'),
@@ -21703,7 +21755,7 @@ const WEBAPP_DOCS = [
             table(['Page', 'What it changes'], [
                 ['Config', 'Host name, static or DHCP IP, default gateway and DNS.'],
                 ['DHCP', 'Enable the server, add and delete pools (leases by MAC or by Client-ID), addresses reserved by MAC or identifier (hex 01… or text) and “Reserve” an active lease.'],
-                ['DNS', 'Cards for the five modes (Cache, Forwarder, Authoritative, Iterative, Recursive) with their switch and uses, one tab of options per mode (the zone wizard SOA → NS → kind → records in Authoritative) and, beside them, the generated BIND configuration (named.conf.options, zones, files) explained.'],
+                ['DNS', 'Cards for the five modes (Cache, Forwarder, Authoritative, Recursive, Iterative) with their switch and uses, one tab of options per mode (the zone wizard SOA → NS → kind → records in Authoritative) and, beside them, the generated BIND configuration (named.conf.options, zones, files) explained.'],
                 ['Web', 'Apache and access to Roundcube.'],
                 ['Routing (Linux router)', '«Enable router» checkbox (net.ipv4.ip_forward), kernel parameters and static routes.'],
                 ['Email · SSH', 'Services and users; for SSH, the authentication methods (password and/or key pair) in sshd_config.'],
@@ -30624,14 +30676,14 @@ return { COREUTILS };
 })();
 __m["services/bind-files.js"] = (() => {
 const { DEFAULT_TTL } = __m["services/config.js"];
-const { servedZones } = __m["services/dns-zones.js"];
+const { SAFE_ZONE, servedZones } = __m["services/dns-zones.js"];
 const { NAMED_OPTIONS, namedOptions } = __m["services/named-options.js"];
 const { ROOT_HINTS_FILE, rootHints } = __m["net/dns-roots.js"];
 const NAMED_LOCAL = '/etc/bind/named.conf.local';
 const NAMED_DEFAULT_ZONES = '/etc/bind/named.conf.default-zones';
 const zoneFilePath = (zone) => `/etc/bind/db.${zone}`;
 function zoneLine(r) {
-    const value = r.type === 'TXT' ? `"${r.value}"` : r.value.trim();
+    const value = r.type === 'TXT' ? `"${r.value.replace(/[\\"]/g, (c) => `\\${c}`)}"` : r.value.trim();
     return `${r.name.trim().padEnd(16)}${String(r.ttl).padEnd(8)}IN  ${r.type.padEnd(6)}${r.type === 'MX' ? `${r.priority ?? 10} ` : ''}${value}`;
 }
 /** A zone file with the SOA first, then the NS list, then the records as typed (relative to `$ORIGIN`). */
@@ -30695,7 +30747,8 @@ include "/etc/bind/named.conf.local";
 include "/etc/bind/named.conf.default-zones";
 `;
 function bindFiles(dns) {
-    const zones = servedZones(dns);
+    // A zone name is part of a file name: never one that could leave /etc/bind.
+    const zones = servedZones(dns).filter((z) => SAFE_ZONE.test(z.zone.name));
     const files = new Map([
         ['/etc/bind/named.conf', NAMED_CONF],
         [NAMED_OPTIONS, namedOptions(dns)],
@@ -42010,14 +42063,14 @@ __m["services/dns-edit.js"] = (() => {
 const { t } = __m["i18n/t.js"];
 const { applyRecursion } = __m["services/dns-recursion.js"];
 const { DEFAULT_MAX_CACHE_TTL, iterates } = __m["services/named-options.js"];
-const { emailToRname, isReverseZone, newZone, nextSerial, recordTypesFor, reverseZoneName, validateZone } = __m["services/dns-zones.js"];
+const { MAX_RECORDS, MAX_ZONES, emailToRname, isReverseZone, newZone, nextSerial, recordTypesFor, reverseZoneName, validateZone } = __m["services/dns-zones.js"];
 const { validateRecord } = __m["services/dns-service.js"];
 const { validateName } = __m["services/dns-names.js"];
 const { normalizeName } = __m["net/dns.js"];
 const MAX_TTL = 2_147_483_647;
 const MAX_NS = 8;
-/** The order of the mode blocks everywhere: Services tab, web GUI and documentation. */
-const DNS_MODES = ['cache', 'forwarder', 'authoritative', 'iterative', 'recursive'];
+/** The order of the mode blocks everywhere: Services tab, web GUI and documentation (iterative after recursive: it depends on it). */
+const DNS_MODES = ['cache', 'forwarder', 'authoritative', 'recursive', 'iterative'];
 /** What each mode looks like in named.conf. */
 const MODE_DIRECTIVES = {
     cache: 'max-cache-ttl', forwarder: 'forwarders { … };', authoritative: 'zone "…" { type master; };',
@@ -42074,12 +42127,14 @@ function draftStep(d, step, others = []) {
     const z = draftZone(d, 0);
     const soaOnly = validateZone({ ...z, kind: isReverseZone(z.name) ? 'reverse' : 'forward', ns: ['ns.invalid'] }, others);
     if (step === 1)
-        return d.kind === 'reverse' && reverseZoneName(d.name) !== null ? null : validateName(`${normalizeName(d.name)}.`, undefined, false) ? t('zone.err.name', { name: d.name }) : soaOnly;
+        return reverseZoneName(d.name) !== null && /^[\d./]+$/.test(d.name.trim()) ? null : validateName(`${normalizeName(d.name)}.`, undefined, false) ? t('zone.err.name', { name: d.name }) : soaOnly;
     if (step === 2)
         return nsList(d.ns).length === 0 ? t('zone.err.ns') : validateZone({ ...z, kind: isReverseZone(z.name) ? 'reverse' : 'forward' }, others);
     return validateZone(z, others);
 }
 function addZone(s, d, ymd) {
+    if (s.zones.length >= MAX_ZONES)
+        return { error: t('dnsm.err.maxZones', { max: MAX_ZONES }) };
     const err = draftStep(d, 3, s.zones);
     return err ? { error: err } : { ...s, zones: [...s.zones, draftZone(d, ymd)] };
 }
@@ -42097,12 +42152,14 @@ function withZone(s, name, ymd, change) {
 }
 function addRecord(s, zoneName, rec, ymd) {
     return withZone(s, zoneName, ymd, (z) => {
+        if (z.records.length >= MAX_RECORDS)
+            return t('dnsm.err.maxRecords', { max: MAX_RECORDS });
         if (!recordTypesFor(z.kind).includes(rec.type))
             return t('zone.err.type', { kind: t(z.kind === 'reverse' ? 'zone.kind.reverse' : 'zone.kind.forward'), type: rec.type });
         return validateRecord(rec, z.name) ?? { ...z, records: [...z.records, rec] };
     });
 }
-const removeRecord = (s, zoneName, index, ymd) => withZone(s, zoneName, ymd, (z) => ({ ...z, records: z.records.filter((_, i) => i !== index) }));
+const removeRecord = (s, zoneName, index, ymd) => withZone(s, zoneName, ymd, (z) => (Number.isInteger(index) && index >= 0 && index < z.records.length ? { ...z, records: z.records.filter((_, i) => i !== index) } : t('dnsm.err.noRecord')));
 function setZoneNs(s, zoneName, text, ymd) {
     return withZone(s, zoneName, ymd, (z) => {
         const next = { ...z, ns: nsList(text).slice(0, MAX_NS) };
@@ -42275,7 +42332,7 @@ return { setAuthoritativeMode, authoritativeBody };
 __m["ui/server-dns.js"] = (() => {
 /**
  * Server → Servicios → DNS: bind9 by operating mode, one labelled block per mode in this order: Caché, Agente de
- * reenvío, Autoritativo, Iterativo, Recursivo. Each block has its switch, what it is for and its options.
+ * reenvío, Autoritativo, Recursivo, Iterativo (iterative depends on recursive). Each block has its switch, what it is for and its options.
  */
 const { t, tDynamic } = __m["i18n/t.js"];
 const { el } = __m["ui/dom.js"];
@@ -42354,8 +42411,8 @@ function dnsPanel(server, app) {
             cacheBlock(server, after, msg),
             forwarderBlock(server, after, msg),
             modeBlock('authoritative', dnsModes(s).authoritative, (on) => setAuthoritativeMode(server, after, msg, on), authoritativeBody(server, after, msg, ui)),
-            iterativeBlock(server, after, msg),
             recursiveBlock(server, after, msg),
+            iterativeBlock(server, after, msg),
         ];
     });
 }
@@ -43867,7 +43924,8 @@ const GENERIC_TLD_IP = '192.0.47.53';
 /** DNS of the registrar that publishes the domains registered with an address (no server of their own). */
 const REGISTRAR = { name: 'ns1.registro-isp.net', ip: '203.0.113.53' };
 const tldOf = (name) => name.split('.').pop() ?? '';
-const tldServer = (tld) => TLDS[tld] ?? { name: `a.nic.${tld}`, ip: GENERIC_TLD_IP };
+const knownTld = (tld) => Object.hasOwn(TLDS, tld);
+const tldServer = (tld) => (knownTld(tld) ? TLDS[tld] : undefined) ?? { name: `a.nic.${tld}`, ip: GENERIC_TLD_IP };
 const ns = (zone, s) => ({ name: zone, type: 'NS', ttl: REFERRAL_TTL, data: s.name });
 const glue = (s) => ({ name: s.name, type: 'A', ttl: REFERRAL_TTL, data: s.ip });
 const soa = (zone, mname) => ({ name: zone, type: 'SOA', ttl: SOA_TTL, data: `${mname} hostmaster.${zone || 'root-servers.net'} 2026102100 1800 900 604800 ${SOA_TTL}` });
@@ -43900,7 +43958,7 @@ class RootDns extends DnsHost {
         if (qname === '')
             return q.qtype === 'NS' ? { rcode: 'NOERROR', authoritative: true, answers: ROOT_SERVERS.map((r) => ns('', r)) } : { rcode: 'NOERROR', authoritative: true, answers: [], authority: [soa('', 'a.root-servers.net')] };
         const tld = tldOf(qname);
-        const exists = TLDS[tld] !== undefined || this.known().some((d) => tldOf(d.name) === tld);
+        const exists = knownTld(tld) || this.known().some((d) => tldOf(d.name) === tld);
         if (!exists)
             return { rcode: 'NXDOMAIN', authoritative: true, answers: [], authority: [soa('', 'a.root-servers.net')] };
         const server = tldServer(tld);
@@ -44362,7 +44420,7 @@ class CloudPort {
     fromInternet(p) {
         const own = this.settings.mode === 'router' ? this.wan() : this.line().gw;
         if (this.settings.mode === 'router') {
-            if (p.dst === own && p.udp?.dns?.response && this.relay.onResponse(p.udp.dport, p.udp.dns))
+            if (p.dst === own && p.udp?.dns?.response && this.relay.onResponse(p.udp.dport, p.udp.dns, p.src))
                 return;
             const inside = this.nat.outside(p, this.forwards());
             if (inside)
@@ -49369,13 +49427,13 @@ const { defaultServices, defaultWebApps, validateAccess, DEFAULT_LEASE_MINUTES, 
 const { formatIp, parseIp } = __m["core/ip.js"];
 const { parseMac, parseHexId } = __m["core/mac.js"];
 const { cleanOrigin, validateOrigin } = __m["services/dns-names.js"];
-const { defaultSoa, validateZone, zonesFromLegacy } = __m["services/dns-zones.js"];
+const { MAX_ZONES, defaultSoa, recordTypesFor, validateZone, zonesFromLegacy } = __m["services/dns-zones.js"];
+const { validateRecord } = __m["services/dns-service.js"];
 const { normalizeName } = __m["net/dns.js"];
 const MAX_ITEMS = 500;
 const MAX_TEXT = 200_000;
 const RECORD_TYPES = new Set(['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR']);
 const MAX_TIMER = 2_147_483_647;
-const MAX_ZONES = 64;
 const ip = (n) => (n === undefined ? undefined : formatIp(n));
 function servicesToJson(s) {
     return {
@@ -49534,13 +49592,18 @@ function zone(v, before) {
         throw new Error(t('load.zone', { name, error: err }));
     return z;
 }
+/** Records the zone admits and BIND can write (invalid ones are dropped, as Netfix ≤ 0.11 skipped them). */
+const cleanZone = (z) => ({ ...z, records: z.records.filter((r) => recordTypesFor(z.kind).includes(r.type) && validateRecord(r, z.name) === null) });
 function zones(n) {
-    if (n.zones === undefined)
-        return zonesFromLegacy(origin(n.origin), arr(n.records, 'registros').map(record));
+    if (n.zones === undefined) {
+        // A legacy name becomes a zone (and a file name): only valid zones are kept.
+        const legacy = zonesFromLegacy(origin(n.origin), arr(n.records, 'registros').map(record));
+        return legacy.reduce((acc, z) => (acc.length < MAX_ZONES && validateZone(z, acc) === null ? [...acc, cleanZone(z)] : acc), []);
+    }
     const list = arr(n.zones, 'zonas DNS');
     if (list.length > MAX_ZONES)
         throw new Error(t('load.list', { what: label('zonas DNS') }));
-    return list.reduce((acc, z) => [...acc, zone(z, acc)], []);
+    return list.reduce((acc, z) => [...acc, cleanZone(zone(z, acc))], []);
 }
 const MAX_FORWARDERS = 8;
 function dnsFromJson(n) {
@@ -49553,7 +49616,8 @@ function dnsFromJson(n) {
         ...(n.authoritative === false ? { authoritative: false } : {}),
         ...(n.recursion !== undefined || recursion ? { recursion } : {}),
         ...(n.maxCacheTtl !== undefined ? { maxCacheTtl: num(n.maxCacheTtl, 'max-cache-ttl', 0, MAX_TIMER) } : {}),
-        ...(fwd.length ? { forwarders: fwd, forwardOnly: n.forwardOnly !== false } : {}),
+        ...(fwd.length ? { forwarders: fwd } : {}),
+        ...(fwd.length || n.forwardOnly !== undefined ? { forwardOnly: n.forwardOnly !== false } : {}),
         ...(n.allowRecursion !== undefined ? { allowRecursion: n.allowRecursion === 'any' ? 'any' : 'localnets' } : {}),
     };
 }
@@ -50231,12 +50295,14 @@ const { draftStep } = __m["services/dns-edit.js"];
 const { recordTypesFor, rnameToEmail, servedZones, soaText, zoneProblems } = __m["services/dns-zones.js"];
 const { DEFAULT_TTL } = __m["services/config.js"];
 const { dnsLink, keepMode } = __m["web/admin-dns-links.js"];
+/** Up to 8 name servers of 253 characters, with separators. */
+const MAX_NS_TEXT = 2100;
 const DRAFT_KEYS = ['name', 'mname', 'email', 'refresh', 'retry', 'expire', 'minimum', 'ns', 'kind'];
 const DEFAULTS = { name: '', mname: '', email: '', refresh: '604800', retry: '86400', expire: '2419200', minimum: '3600', ns: '', kind: 'forward' };
 const hidden = (name, value) => h('input', { type: 'hidden', name, value });
 /** The draft carried by the wizard (z_* fields), with the usual defaults filled from the zone name. */
 function draftFrom(q) {
-    const get = (k, d) => (q.get(`z_${k}`) ?? d).slice(0, 253);
+    const get = (k, d) => (q.get(`z_${k}`) ?? d).slice(0, k === 'ns' ? MAX_NS_TEXT : 253);
     const name = get('name', '').trim().toLowerCase();
     return {
         name, mname: get('mname', '').trim() || (name ? `ns.${name}` : ''), email: get('email', '').trim() || (name ? `admin@${name}` : ''),
@@ -50351,9 +50417,10 @@ function chain(s, ...steps) {
 /** The mode cards: one form with a switch per mode (a locked iterative switch is not sent and not changed). */
 function modes(server, f) {
     const on = (m) => f.has(m);
-    server.setUnit('dns', f.has('enabled'));
     const s = server.services.dns;
-    return chain(s, (x) => setRecursion(x, on('recursive'), x.allowRecursion ?? 'localnets'), (x) => (on('forwarder') === dnsModes(x).forwarder.on ? x : setForwarders(x, on('forwarder') ? GOOGLE_FORWARDERS : '')), (x) => (on('cache') === dnsModes(x).cache.on ? x : setCache(x, on('cache'))), (x) => setAuthoritative(x, on('authoritative')), (x) => (dnsModes(x).iterative.locked || on('iterative') === dnsModes(x).iterative.on ? x : setIterative(x, on('iterative'))));
+    // A switch that was locked on the page was not sent: it is not a request to turn iteration off.
+    const iterativeSent = dnsModes(s).iterative.locked === undefined;
+    return chain(s, (x) => setRecursion(x, on('recursive'), x.allowRecursion ?? 'localnets'), (x) => (on('forwarder') === dnsModes(x).forwarder.on ? x : setForwarders(x, on('forwarder') ? GOOGLE_FORWARDERS : '')), (x) => (on('cache') === dnsModes(x).cache.on ? x : setCache(x, on('cache'))), (x) => setAuthoritative(x, on('authoritative')), (x) => (!iterativeSent || dnsModes(x).iterative.locked || on('iterative') === dnsModes(x).iterative.on ? x : setIterative(x, on('iterative'))));
 }
 function record(f) {
     const type = (f.get('type') ?? 'A');
@@ -50403,6 +50470,9 @@ function dnsAction(server, f) {
     if ('error' in next)
         return { error: next.error };
     server.setServices({ ...server.services, dns: next });
+    // The service switch of the mode cards only applies once the whole form is valid.
+    if (action === 'dns-modes' && server.services.dns.enabled !== f.has('enabled'))
+        server.setUnit('dns', f.has('enabled'));
     if (action.startsWith('dns-') || forwardersText(next) !== before)
         server.dns.forwarder.flush();
     return { ok: t('wa.saved'), next: nextOf(server, f, action) };
@@ -50749,7 +50819,7 @@ function adminResponse(server, req, peer, base) {
     if (req.method === 'POST') {
         const fields = formFields(req);
         const result = runAction(server, current.id, fields);
-        server.log('http', t('wa.logAction', { user: printable(cred.user), ip: formatIp(peer.ip), page: current.id, result: result.error ?? t('wa.logSaved') }));
+        server.log('http', t('wa.logAction', { user: printable(cred.user), ip: formatIp(peer.ip), page: current.id, result: result.error === undefined ? t('wa.logSaved') : result.error.replace(/[\x00-\x1f\x7f]/g, '?') }));
         // The page is drawn again with what was sent, so a failed step keeps its tab and what was typed.
         if (result.error)
             return respond(BANNER, 200, frame(server, base, current, { error: result.error }, body(server, base, current.id, new Map([...q, ...fields]))));

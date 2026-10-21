@@ -38,9 +38,9 @@ for (const kind of ['server', 'linuxrouter'] as const) {
     const { web } = lab(kind);
     const page = open(web, '');
     const cards = [...page.matchAll(/class="web-adm-mode web-adm-mode-(\w+)/g)].map((m) => m[1]);
-    assert.deepEqual(cards, ['cache', 'forwarder', 'authoritative', 'iterative', 'recursive']);
+    assert.deepEqual(cards, ['cache', 'forwarder', 'authoritative', 'recursive', 'iterative']);
     const tabs = [...page.matchAll(/class="web-adm-tab web-adm-tab-(\w+)"/g)].map((m) => m[1]);
-    assert.deepEqual(tabs, ['cache', 'forwarder', 'authoritative', 'iterative', 'recursive']);
+    assert.deepEqual(tabs, ['cache', 'forwarder', 'authoritative', 'recursive', 'iterative']);
     assert.match(page, /Configuración generada[\s\S]*<span class="web-adm-line">options \{<\/span>/);
     assert.match(page, /Explicación de la configuración[\s\S]*recursion no: solo responde por sus zonas/);
     assert.match(page, /Necesita el modo Recursivo/, 'the iterative card says why it is locked');

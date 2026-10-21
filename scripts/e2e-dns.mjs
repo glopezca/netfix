@@ -29,12 +29,20 @@ try {
   await page.click('.win-tab:has-text("Servicios")');
   await page.click('.subnav-item:has-text("DNS")');
   const modes = await page.locator('.dns-mode').evaluateAll((els) => els.map((e) => e.getAttribute('data-mode')));
-  assert.deepEqual(modes, ['cache', 'forwarder', 'authoritative', 'iterative', 'recursive']);
+  assert.deepEqual(modes, ['cache', 'forwarder', 'authoritative', 'recursive', 'iterative'], 'iterative after recursive: it depends on it');
   assert.equal(await page.locator('.dns-mode[data-mode="iterative"] input[role="switch"]').isDisabled(), true, 'iterative follows recursion');
   const zones = page.locator('.dns-mode[data-mode="authoritative"] .grid-table');
   assert.match(await zones.innerText(), /aula\.lab[\s\S]*10\.168\.192\.in-addr\.arpa\s+Inversa[\s\S]*Automática/);
   await zones.locator('tr:has-text("aula.lab") >> nth=0').click();
   assert.match(await page.locator('.dns-zone-editor').innerText(), /Paso 4 · Registros[\s\S]*www[\s\S]*CNAME/);
+  // The delete button of each zone and record row is centred on its row (it used to sit a few pixels lower).
+  const offsets = await page.locator('.dns-mode[data-mode="authoritative"] tbody tr').evaluateAll((rows) => rows.map((tr) => {
+    const b = tr.querySelector('button');
+    if (!b) return 0;
+    const r = tr.getBoundingClientRect(), x = b.getBoundingClientRect();
+    return Math.abs((x.top + x.bottom) / 2 - (r.top + r.bottom) / 2);
+  }));
+  assert.ok(offsets.length >= 5 && offsets.every((d) => d <= 1), `button offsets ${offsets}`);
   await page.click('button:has-text("Nueva zona…")');
   assert.match(await page.locator('.dns-steps li.is-current').innerText(), /Paso 1 · Registro SOA/);
   await page.getByLabel('Nombre de la zona').fill('otra.lab');

@@ -16,6 +16,8 @@ import { dnsLink, keepMode } from './admin-dns-links.ts';
 import type { Query } from './admin-dns-links.ts';
 
 type Step = 1 | 2 | 3;
+/** Up to 8 name servers of 253 characters, with separators. */
+const MAX_NS_TEXT = 2100;
 const DRAFT_KEYS = ['name', 'mname', 'email', 'refresh', 'retry', 'expire', 'minimum', 'ns', 'kind'] as const;
 const DEFAULTS: ZoneDraft = { name: '', mname: '', email: '', refresh: '604800', retry: '86400', expire: '2419200', minimum: '3600', ns: '', kind: 'forward' };
 
@@ -23,7 +25,7 @@ const hidden = (name: string, value: string): Markup => h('input', { type: 'hidd
 
 /** The draft carried by the wizard (z_* fields), with the usual defaults filled from the zone name. */
 export function draftFrom(q: Query): ZoneDraft {
-  const get = (k: string, d: string): string => (q.get(`z_${k}`) ?? d).slice(0, 253);
+  const get = (k: string, d: string): string => (q.get(`z_${k}`) ?? d).slice(0, k === 'ns' ? MAX_NS_TEXT : 253);
   const name = get('name', '').trim().toLowerCase();
   return {
     name, mname: get('mname', '').trim() || (name ? `ns.${name}` : ''), email: get('email', '').trim() || (name ? `admin@${name}` : ''),

@@ -99,3 +99,11 @@ test('the old settings (origin + flat records) become zones: NS at the apex go t
   assert.deepEqual(noOrigin.map((z) => z.name), ['aula.lab']);
   assert.deepEqual(zoneRecords(noOrigin[0]!).map((r) => `${r.name} ${r.type}`), ['aula.lab NS', 'www.aula.lab A']);
 });
+
+test('review: MX priority must be an integer; legacy owners with NS keep their own records', () => {
+  assert.match(validateRecord(rec('@', 'MX', 'mail', 1.5), 'aula.lab') ?? '', /MX/);
+  assert.match(validateRecord({ name: '@', type: 'MX', value: 'mail', ttl: 60, priority: Number.NaN }, 'aula.lab') ?? '', /MX/);
+  const zones = zonesFromLegacy(undefined, [rec('sub.aula.lab', 'A', '1.2.3.4'), rec('sub.aula.lab', 'NS', 'ns.sub.aula.lab')]);
+  const sub = zones.find((z) => z.name === 'sub.aula.lab');
+  assert.deepEqual(sub?.records.map((r) => `${r.name} ${r.type}`), ['@ A']);
+});

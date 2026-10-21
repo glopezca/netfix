@@ -97,3 +97,14 @@ test('end to end: dig resolves relative records and the zone file shows $ORIGIN'
   assert.match(zone, /^www +3600 +IN +CNAME +srv$/m);
   assert.match(zone, /^@ +3600 +IN +MX +10 srv$/m);
 });
+
+test('review: forward first without forwarders and max-cache-ttl with units survive', async () => {
+  const { servicesFromJson: from, servicesToJson: to } = await import('../../src/services/persist.ts');
+  const { parseNamedOptions } = await import('../../src/services/named-options.ts');
+  const s = { ...defaultServices(), dns: { enabled: true, zones: [], forwardOnly: false } };
+  assert.equal(from(JSON.parse(JSON.stringify(to(s)))).dns.forwardOnly, false);
+  const p = parseNamedOptions('options { max-cache-ttl 1d; };', s.dns);
+  assert.ok(!('error' in p) && p.maxCacheTtl === 86400);
+  const w = parseNamedOptions('options { max-cache-ttl 2w; };', s.dns);
+  assert.ok(!('error' in w) && w.maxCacheTtl === 1209600);
+});

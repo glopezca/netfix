@@ -6,7 +6,7 @@ import { t } from '../i18n/t.ts';
 import type { DnsRecord, DnsSettings, DnsZone } from './config.ts';
 import { applyRecursion } from './dns-recursion.ts';
 import { DEFAULT_MAX_CACHE_TTL, iterates } from './named-options.ts';
-import { emailToRname, isReverseZone, newZone, nextSerial, recordTypesFor, reverseZoneName, validateZone } from './dns-zones.ts';
+import { MAX_RECORDS, MAX_ZONES, emailToRname, isReverseZone, newZone, nextSerial, recordTypesFor, reverseZoneName, validateZone } from './dns-zones.ts';
 import { validateRecord } from './dns-service.ts';
 import { validateName } from './dns-names.ts';
 import { normalizeName } from '../net/dns.ts';
@@ -18,8 +18,8 @@ export type Edited = DnsSettings | { readonly error: string };
 
 export type DnsMode = 'cache' | 'forwarder' | 'authoritative' | 'iterative' | 'recursive';
 
-/** The order of the mode blocks everywhere: Services tab, web GUI and documentation. */
-export const DNS_MODES: readonly DnsMode[] = ['cache', 'forwarder', 'authoritative', 'iterative', 'recursive'];
+/** The order of the mode blocks everywhere: Services tab, web GUI and documentation (iterative after recursive: it depends on it). */
+export const DNS_MODES: readonly DnsMode[] = ['cache', 'forwarder', 'authoritative', 'recursive', 'iterative'];
 
 /** What each mode looks like in named.conf. */
 export const MODE_DIRECTIVES: Readonly<Record<DnsMode, string>> = {
@@ -113,12 +113,13 @@ function draftZone(d: ZoneDraft, ymd: number): DnsZone {
 export function draftStep(d: ZoneDraft, step: 1 | 2 | 3, others: readonly DnsZone[] = []): string | null {
   const z = draftZone(d, 0);
   const soaOnly = validateZone({ ...z, kind: isReverseZone(z.name) ? 'reverse' : 'forward', ns: ['ns.invalid'] }, others);
-  if (step === 1) return d.kind === 'reverse' && reverseZoneName(d.name) !== null ? null : validateName(`${normalizeName(d.name)}.`, undefined, false) ? t('zone.err.name', { name: d.name }) : soaOnly;
+  if (step === 1) return reverseZoneName(d.name) !== null && /^[\d./]+$/.test(d.name.trim()) ? null : validateName(`${normalizeName(d.name)}.`, undefined, false) ? t('zone.err.name', { name: d.name }) : soaOnly;
   if (step === 2) return nsList(d.ns).length === 0 ? t('zone.err.ns') : validateZone({ ...z, kind: isReverseZone(z.name) ? 'reverse' : 'forward' }, others);
   return validateZone(z, others);
 }
 
 export function addZone(s: DnsSettings, d: ZoneDraft, ymd: number): Edited {
+  if (s.zones.length >= MAX_ZONES) return { error: t('dnsm.err.maxZones', { max: MAX_ZONES }) };
   const err = draftStep(d, 3, s.zones);
   return err ? { error: err } : { ...s, zones: [...s.zones, draftZone(d, ymd)] };
 }
@@ -137,13 +138,14 @@ function withZone(s: DnsSettings, name: string, ymd: number, change: (z: DnsZone
 
 export function addRecord(s: DnsSettings, zoneName: string, rec: DnsRecord, ymd: number): Edited {
   return withZone(s, zoneName, ymd, (z) => {
+    if (z.records.length >= MAX_RECORDS) return t('dnsm.err.maxRecords', { max: MAX_RECORDS });
     if (!recordTypesFor(z.kind).includes(rec.type)) return t('zone.err.type', { kind: t(z.kind === 'reverse' ? 'zone.kind.reverse' : 'zone.kind.forward'), type: rec.type });
     return validateRecord(rec, z.name) ?? { ...z, records: [...z.records, rec] };
   });
 }
 
 export const removeRecord = (s: DnsSettings, zoneName: string, index: number, ymd: number): Edited =>
-  withZone(s, zoneName, ymd, (z) => ({ ...z, records: z.records.filter((_, i) => i !== index) }));
+  withZone(s, zoneName, ymd, (z) => (Number.isInteger(index) && index >= 0 && index < z.records.length ? { ...z, records: z.records.filter((_, i) => i !== index) } : t('dnsm.err.noRecord')));
 
 export function setZoneNs(s: DnsSettings, zoneName: string, text: string, ymd: number): Edited {
   return withZone(s, zoneName, ymd, (z) => {

@@ -142,6 +142,7 @@ export const SRV_ES = {
   'dnsv.name': 'Nombre no válido: «{name}». Usa www (relativo), www.aula.lab. (absoluto), @ o un comodín *.',
   'dnsv.starValue': 'Un comodín «*» solo puede ser el nombre de un registro, no su valor: «{name}».',
   'dnsv.starFirst': 'El comodín «*» solo puede ser la primera etiqueta del nombre: «{name}».',
+  'dnsv.control': 'El nombre y el valor no pueden llevar caracteres de control (saltos de línea, tabuladores…).',
   'dnsv.a': 'Un registro A necesita una dirección IPv4.',
   'dnsv.target': 'Un registro {type} necesita un nombre de host (relativo, absoluto con punto final o @): {error}',
   'dnsv.mx': 'La prioridad MX va de 0 a 65535.',

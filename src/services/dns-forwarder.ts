@@ -51,6 +51,11 @@ interface Pending {
   readonly query: DnsMessage;
   readonly plan: ResolvePlan;
   phase: 'forward' | 'iterate';
+  /** Zone whose servers are being asked ('' = root) and the server asked last. */
+  zone: string;
+  server: number;
+  /** The cached delegation was tried and failed: start again from the root. */
+  retried: boolean;
   servers: readonly number[];
   index: number;
   qname: string;
@@ -109,7 +114,7 @@ export class DnsForwarder {
       return;
     }
     if ((!p.forwarders.length && !p.iterate) || this.pending.size >= MAX_PENDING) return this.fail(client, port, q);
-    const job: Pending = { client, port, query: q, plan: p, phase: 'forward', servers: p.forwarders, index: 0, qname: normalizeName(q.qname), prefix: [], steps: 0, done: false };
+    const job: Pending = { client, port, query: q, plan: p, phase: 'forward', zone: '', server: 0, retried: false, servers: p.forwarders, index: 0, qname: normalizeName(q.qname), prefix: [], steps: 0, done: false };
     if (!p.forwarders.length) this.startIteration(job);
     else this.ask(job);
   }
@@ -121,6 +126,7 @@ export class DnsForwarder {
   private startIteration(p: Pending): void {
     const from = closestServers(p.qname, this.delegations, this.env.now(), p.plan.roots ?? []);
     p.phase = 'iterate';
+    p.zone = from.zone === '.' ? '' : from.zone;
     p.servers = from.servers.slice(0, TRIES_PER_ZONE);
     p.index = 0;
     this.env.log(`resolving ${p.qname}/${p.query.qtype}: iterative, starting at ${from.zone === '.' ? 'the root servers' : `${from.zone} (cached)`}`);
@@ -131,10 +137,17 @@ export class DnsForwarder {
     const server = p.servers[p.index];
     if (server === undefined || p.steps >= MAX_STEPS) {
       if (p.phase === 'forward' && p.plan.iterate) return this.startIteration(p);
+      if (p.phase === 'iterate' && p.zone !== '' && !p.retried && this.delegations.has(p.zone) && p.steps < MAX_STEPS) {
+        // The servers of a cached delegation do not answer: forget it and go down from the root again.
+        this.delegations.delete(p.zone);
+        p.retried = true;
+        return this.startIteration(p);
+      }
       this.env.log(`client query ${p.query.qname}/${p.query.qtype}: ${p.phase === 'forward' ? 'all forwarders' : 'all servers'} failed (SERVFAIL)`);
       return this.fail(p.client, p.port, p.query);
     }
     p.steps += 1;
+    p.server = server;
     const sport = FIRST_PORT + (this.nextPort++ % PORTS);
     this.pending.set(sport, p);
     this.env.send(server, sport, { ...p.query, qname: p.qname, id: sport, rd: p.phase === 'forward' });
@@ -146,13 +159,16 @@ export class DnsForwarder {
     });
   }
 
-  /** An upstream answer arriving on `port`; false when it is not one of ours. */
-  onResponse(port: number, answer: DnsMessage): boolean {
+  /** An upstream answer from `from` arriving on `port`; false when it is not the answer to one of our questions. */
+  onResponse(port: number, answer: DnsMessage, from?: number): boolean {
     const p = this.pending.get(port);
-    if (!p) return false;
+    if (!p || (from !== undefined && from !== p.server) || normalizeName(answer.qname) !== p.qname || answer.qtype !== p.query.qtype) return false;
     this.pending.delete(port);
+    const failed = answer.rcode !== 'NOERROR' && answer.rcode !== 'NXDOMAIN';
+    // forward first: a forwarder that refuses or fails is like one that does not answer.
+    if (p.phase === 'forward' && failed && p.plan.iterate) { p.index += 1; this.ask(p); return true; }
     if (p.phase === 'forward') return this.finish(p, answer);
-    const step = iterStep(answer, p.qname, p.query.qtype);
+    const step = iterStep(answer, p.qname, p.query.qtype, p.zone);
     if (step.kind === 'answer') return this.finish(p, answer);
     if (step.kind === 'lame') { p.index += 1; this.ask(p); return true; }
     if (step.kind === 'cname') {
@@ -163,13 +179,15 @@ export class DnsForwarder {
     }
     this.remember(step.zone, step.servers, Math.min(step.ttl, p.plan.maxTtl ?? DEFAULT_MAX_TTL));
     this.env.log(`  ${p.qname}: referral to ${step.zone}. (${step.names.slice(0, 2).join(', ')})`);
+    p.zone = step.zone;
     p.servers = step.servers.slice(0, TRIES_PER_ZONE);
     p.index = 0;
     this.ask(p);
     return true;
   }
 
-  private remember(zone: string, servers: readonly number[], ttl: number): void {
+  /** Caches the servers of a zone for `ttl` seconds (also used by tests to plant a stale delegation). */
+  remember(zone: string, servers: readonly number[], ttl: number): void {
     if (ttl <= 0) return;
     if (this.delegations.size >= MAX_CACHE) this.delegations.delete(this.delegations.keys().next().value ?? '');
     this.delegations.set(zone, { servers, expires: this.env.now() + ttl * 1000 });

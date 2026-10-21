@@ -110,3 +110,17 @@ test('named.conf.options carries every mode and edits come back to the settings'
   assert.match(all(root.run('grep -c "IN\\|NS\\| A " /usr/share/dns/root.hints')), /^\d+$/);
   assert.match(all(root.run('cat /usr/share/dns/root.hints')), /A\.ROOT-SERVERS\.NET\.\s+3600000\s+A\s+198\.41\.0\.4/);
 });
+
+test('review: odd TLDs do not crash; forward first iterates on a refusing forwarder; stale delegations are retried from the root', () => {
+  const { dig } = lab({ recursion: true });
+  assert.match(dig('www.constructor'), /status: NXDOMAIN/);
+  assert.match(dig('www.__proto__'), /status: NXDOMAIN/);
+  // 8.8.8.8 answers; a forwarder that refuses (a non-recursive bind) must not stop forward first.
+  const refusing = lab({ recursion: true, forwarders: [ip('192.168.1.10')], forwardOnly: false });
+  assert.match(refusing.dig('github.com'), /status: NOERROR[\s\S]*140\.82\.121\.4/);
+  const { srv, dig: dig2 } = lab({ recursion: true });
+  dig2('www.google.com');
+  srv.dns.forwarder.flush();
+  srv.dns.forwarder.remember('google.com', [ip('10.99.99.99')], 3600);
+  assert.match(dig2('smtp.google.com'), /status: NOERROR[\s\S]*142\.250\.153\.27/);
+});

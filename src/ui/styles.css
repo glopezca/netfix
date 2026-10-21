@@ -562,6 +562,9 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 
 /* Firewall (nftables) panel. */
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+/* In a table the actions stay a table cell, centred on the row like the other cells. */
+td.row-actions { display: table-cell; margin: 0; vertical-align: middle; white-space: nowrap; }
+td.row-actions > .btn + .btn { margin-left: 8px; }
 .code-view { font-family: var(--mono, ui-monospace, monospace); font-size: 12.5px; background: var(--term-bg, #0f1b24); color: var(--term-fg, #d8e3ea); padding: 10px 12px; border-radius: 6px; overflow-x: auto; white-space: pre; max-height: 40vh; }
 .fw-table { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 10px 0; }
 .fw-table h4 { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin: 4px 0 8px; }

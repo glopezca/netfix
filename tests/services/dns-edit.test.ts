@@ -86,3 +86,11 @@ test('records: only the types of the zone kind, validated, and every change rais
   assert.deepEqual(ok(setRecursion(s, true, 'any')).allowRecursion, 'any');
   assert.deepEqual(ok(setForwarders(s, '1.1.1.1')).forwarders, [parseIp('1.1.1.1')]);
 });
+
+test('review: a network typed at step 1 is fine; NS lists longer than a name survive the wizard', () => {
+  assert.equal(draftStep({ ...draft, name: '192.168.1', kind: 'forward' }, 1), null);
+  const long = Array.from({ length: 6 }, (_, i) => `servidor-de-nombres-${i}.departamento.instituto.aula.lab`).join(', ');
+  const s = ok(addZone(base, { ...draft, ns: long }, DAY));
+  assert.equal(s.zones[0]?.ns.length, 6);
+  assert.ok('error' in removeRecord(s, 'aula.lab', Number.NaN, DAY));
+});

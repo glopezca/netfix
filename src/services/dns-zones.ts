@@ -20,6 +20,12 @@ const REVERSE = /\.in-addr\.arpa$/;
 const FORWARD_TYPES: readonly DnsRecordType[] = ['A', 'CNAME', 'MX', 'NS', 'TXT'];
 const REVERSE_TYPES: readonly DnsRecordType[] = ['PTR'];
 const TARGET_TYPES: ReadonlySet<DnsRecordType> = new Set(['CNAME', 'MX', 'NS', 'PTR']);
+/** Mailbox part: the characters RFC 5322 allows unquoted (and \. for a dot), then a domain. */
+const RNAME = /^(?:[a-z0-9!#%&'*+/=?^_`{|}~-]|\\\.)+\.[a-z0-9-]+(?:\.[a-z0-9-]+)*$/i;
+/** A zone name that is safe as part of a file name (/etc/bind/db.<zone>). */
+export const SAFE_ZONE = /^[a-z0-9_-]+(?:\.[a-z0-9_-]+)*$/i;
+export const MAX_ZONES = 64;
+export const MAX_RECORDS = 500;
 
 /** A zone that bind loads: hand-made, or generated from the A records of forward zones. */
 export interface ServedZone {
@@ -86,19 +92,19 @@ const inZone = (name: string, zone: string): boolean => name === zone || name.en
 
 /** Reverse zones generated from the A records of the forward zones (wildcards have no PTR). */
 export function autoReverseZones(zones: readonly DnsZone[]): DnsZone[] {
-  const out = new Map<string, DnsZone>();
+  // Collected in place and sorted once: thousands of A records stay cheap (this runs on every query).
+  const out = new Map<string, { zone: DnsZone; serial: number; ptrs: DnsRecord[] }>();
   for (const z of zones.filter((x) => x.kind === 'forward')) {
     for (const r of zoneRecords(z).filter((x) => x.type === 'A' && !x.name.startsWith('*.') && inZone(x.name, z.name))) {
-      const octets = r.value.split('.');
       const name = reverseZoneName(r.value);
       if (name === null) continue;
-      const zone = out.get(name) ?? { ...newZone(name, 'reverse', z.ns, z.soa), name };
-      const ptr: DnsRecord = { name: octets[3] ?? '', type: 'PTR', value: `${r.name}.`, ttl: r.ttl };
-      const serial = Math.max(zone.soa.serial, z.soa.serial);
-      out.set(name, { ...zone, soa: { ...zone.soa, serial }, records: [...zone.records, ptr].sort((a, b) => Number(a.name) - Number(b.name)) });
+      const entry = out.get(name) ?? { zone: newZone(name, 'reverse', z.ns, z.soa), serial: 0, ptrs: [] };
+      entry.serial = Math.max(entry.serial, z.soa.serial);
+      entry.ptrs.push({ name: r.value.split('.')[3] ?? '', type: 'PTR', value: `${r.name}.`, ttl: r.ttl });
+      out.set(name, entry);
     }
   }
-  return [...out.values()];
+  return [...out.values()].map((e) => ({ ...e.zone, soa: { ...e.zone.soa, serial: e.serial }, records: e.ptrs.sort((a, b) => Number(a.name) - Number(b.name)) }));
 }
 
 /** The zones bind loads: none when it is not authoritative; a hand-made zone wins over a generated one. */
@@ -110,7 +116,7 @@ export function servedZones(dns: Pick<DnsSettings, 'zones' | 'authoritative'>): 
 
 function validateSoa(s: DnsSoa): string | null {
   if (validateName(`${s.mname}.`, undefined, false)) return t('zone.err.mname', { name: s.mname });
-  if (!/^(?:[^.\\\s@]|\\.)+\.[a-z0-9.-]+$/i.test(s.rname)) return t('zone.err.rname', { value: rnameToEmail(s.rname) });
+  if (!RNAME.test(s.rname)) return t('zone.err.rname', { value: rnameToEmail(s.rname) });
   const timers = [s.serial, s.refresh, s.retry, s.expire, s.minimum];
   return timers.every((n) => Number.isInteger(n) && n >= 0 && n <= MAX_TIMER) ? null : t('zone.err.timer');
 }
@@ -141,9 +147,9 @@ export function zoneProblems(zone: DnsZone): string[] {
 }
 
 /** Zone of a legacy absolute name: an NS owner is a zone; otherwise the parent domain (www.aula.lab → aula.lab). */
-function legacyZoneOf(r: DnsRecord): string {
+function legacyZoneOf(r: DnsRecord, nsOwners: ReadonlySet<string> = new Set()): string {
   const labels = r.name.split('.');
-  return r.type === 'NS' || labels.length < 3 ? r.name : labels.slice(1).join('.');
+  return r.type === 'NS' || nsOwners.has(r.name) || labels.length < 3 ? r.name : labels.slice(1).join('.');
 }
 
 /** Name relative to its zone (`@` for the apex), as a zone file would write it. */
@@ -154,13 +160,15 @@ export function zonesFromLegacy(origin: string | undefined, records: readonly Dn
   const o = cleanOrigin(origin);
   const absolute = records.map((r) => ({ typed: r, name: qualify(r.name, o), value: TARGET_TYPES.has(r.type) ? qualify(r.value, o) : r.value }))
     .filter((x): x is { typed: DnsRecord; name: string; value: string } => x.name !== null && x.value !== null);
+  const nsOwners = new Set(absolute.filter((x) => x.typed.type === 'NS').map((x) => x.name));
+  const zoneOf = (x: { typed: DnsRecord; name: string }): string => legacyZoneOf({ ...x.typed, name: x.name }, nsOwners);
   const names: string[] = o ? [o] : [];
   for (const x of absolute) {
-    const owner = o && inZone(x.name, o) ? o : legacyZoneOf({ ...x.typed, name: x.name });
+    const owner = o && inZone(x.name, o) ? o : zoneOf(x);
     if (!names.includes(owner)) names.push(owner);
   }
   return names.map((zone) => {
-    const mine = absolute.filter((x) => (o && zone === o ? inZone(x.name, o) : !(o && inZone(x.name, o)) && legacyZoneOf({ ...x.typed, name: x.name }) === zone));
+    const mine = absolute.filter((x) => (o && zone === o ? inZone(x.name, o) : !(o && inZone(x.name, o)) && zoneOf(x) === zone));
     const ns = mine.filter((x) => x.typed.type === 'NS' && x.name === zone).map((x) => x.value);
     const rest = mine.filter((x) => !(x.typed.type === 'NS' && x.name === zone));
     const recs = rest.map((x) => (zone === o ? x.typed : { ...x.typed, name: relative(x.name, zone), value: TARGET_TYPES.has(x.typed.type) ? `${x.value}.` : x.value }));

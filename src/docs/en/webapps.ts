@@ -32,7 +32,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       table(['Page', 'What it changes'], [
         ['Config', 'Host name, static or DHCP IP, default gateway and DNS.'],
         ['DHCP', 'Enable the server, add and delete pools (leases by MAC or by Client-ID), addresses reserved by MAC or identifier (hex 01… or text) and “Reserve” an active lease.'],
-        ['DNS', 'Cards for the five modes (Cache, Forwarder, Authoritative, Iterative, Recursive) with their switch and uses, one tab of options per mode (the zone wizard SOA → NS → kind → records in Authoritative) and, beside them, the generated BIND configuration (named.conf.options, zones, files) explained.'],
+        ['DNS', 'Cards for the five modes (Cache, Forwarder, Authoritative, Recursive, Iterative) with their switch and uses, one tab of options per mode (the zone wizard SOA → NS → kind → records in Authoritative) and, beside them, the generated BIND configuration (named.conf.options, zones, files) explained.'],
         ['Web', 'Apache and access to Roundcube.'],
         ['Routing (Linux router)', '«Enable router» checkbox (net.ipv4.ip_forward), kernel parameters and static routes.'],
         ['Email · SSH', 'Services and users; for SSH, the authentication methods (password and/or key pair) in sshd_config.'],

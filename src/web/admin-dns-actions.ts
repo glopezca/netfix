@@ -34,14 +34,15 @@ function chain(s: DnsSettings, ...steps: ((x: DnsSettings) => Edited)[]): Edited
 /** The mode cards: one form with a switch per mode (a locked iterative switch is not sent and not changed). */
 function modes(server: Server, f: Fields): Edited {
   const on = (m: DnsMode): boolean => f.has(m);
-  server.setUnit('dns', f.has('enabled'));
   const s = server.services.dns;
+  // A switch that was locked on the page was not sent: it is not a request to turn iteration off.
+  const iterativeSent = dnsModes(s).iterative.locked === undefined;
   return chain(s,
     (x) => setRecursion(x, on('recursive'), x.allowRecursion ?? 'localnets'),
     (x) => (on('forwarder') === dnsModes(x).forwarder.on ? x : setForwarders(x, on('forwarder') ? GOOGLE_FORWARDERS : '')),
     (x) => (on('cache') === dnsModes(x).cache.on ? x : setCache(x, on('cache'))),
     (x) => setAuthoritative(x, on('authoritative')),
-    (x) => (dnsModes(x).iterative.locked || on('iterative') === dnsModes(x).iterative.on ? x : setIterative(x, on('iterative'))));
+    (x) => (!iterativeSent || dnsModes(x).iterative.locked || on('iterative') === dnsModes(x).iterative.on ? x : setIterative(x, on('iterative'))));
 }
 
 function record(f: Fields): DnsRecord {
@@ -93,6 +94,8 @@ export function dnsAction(server: Server, f: Fields): DnsOutcome | undefined {
   if (next === undefined) return undefined;
   if ('error' in next) return { error: next.error };
   server.setServices({ ...server.services, dns: next });
+  // The service switch of the mode cards only applies once the whole form is valid.
+  if (action === 'dns-modes' && server.services.dns.enabled !== f.has('enabled')) server.setUnit('dns', f.has('enabled'));
   if (action.startsWith('dns-') || forwardersText(next) !== before) server.dns.forwarder.flush();
   return { ok: t('wa.saved'), next: nextOf(server, f, action) };
 }

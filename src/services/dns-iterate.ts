@@ -13,10 +13,13 @@ export type IterStep =
   | { readonly kind: 'referral'; readonly zone: string; readonly servers: readonly number[]; readonly names: readonly string[]; readonly ttl: number }
   | { readonly kind: 'lame' };
 
-const inZone = (name: string, zone: string): boolean => zone === '' || name === zone || name.endsWith(`.${zone}`);
+const inZone = (name: string, zone: string): boolean => zone === '' || zone === '.' || name === zone || name.endsWith(`.${zone}`);
 
-/** Classifies the answer of a server asked for `qname`/`qtype` while iterating. */
-export function iterStep(msg: DnsMessage, qname: string, qtype: DnsType): IterStep {
+/**
+ * Classifies the answer of a server of `current` (the zone it was asked as, '' = root) for `qname`/`qtype`. A referral
+ * only counts if it goes down from that zone (a server of evil.com cannot speak for com) and all its NS share one owner.
+ */
+export function iterStep(msg: DnsMessage, qname: string, qtype: DnsType, current = ''): IterStep {
   if (msg.rcode === 'NXDOMAIN') return { kind: 'answer', msg };
   if (msg.rcode !== 'NOERROR') return { kind: 'lame' };
   const answers = msg.answers ?? [];
@@ -29,7 +32,8 @@ export function iterStep(msg: DnsMessage, qname: string, qtype: DnsType): IterSt
   const ns = (msg.authority ?? []).filter((a) => a.type === 'NS');
   if (ns.length === 0) return msg.authoritative ? { kind: 'answer', msg } : { kind: 'lame' };
   const zone = normalizeName(ns[0]?.name ?? '');
-  if (!inZone(qname, zone)) return { kind: 'lame' };
+  const below = zone !== current && inZone(zone, current);
+  if (!below || !inZone(qname, zone) || ns.some((a) => normalizeName(a.name) !== zone)) return { kind: 'lame' };
   const names = ns.map((a) => normalizeName(a.data));
   const glue = (msg.additional ?? []).filter((a) => a.type === 'A' && names.includes(normalizeName(a.name)));
   const servers = glue.map((a) => parseIp(a.data)).filter((x): x is number => x !== null);

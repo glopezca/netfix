@@ -458,6 +458,7 @@ Mejora pedagógica pedida para Server y router Linux. Interpretación de la peti
    - **Caché**: `max-cache-ttl` (0 = no guarda nada), contenido de la caché con su TTL restante y `rndc flush`.
    - **Agente de reenvío**: `forwarders { … }` y `forward only|first`.
    - **Autoritativo**: sirve las zonas (`named.conf.local`); apagado, las zonas se conservan pero no se cargan.
+   - **Recursivo** e **Iterativo** van en este orden porque el iterativo depende del recursivo.
    - **Iterativo**: lo que hace BIND cuando recurre sin `forward only`: pregunta desde los servidores raíz
      (`/usr/share/dns/root.hints`) bajando por TLD y servidores autoritativos. No es una opción de BIND: se deriva
      (recursión activa y, si hay reenviadores, `forward first`); con reenviadores la casilla cambia `forward first/only`.
@@ -471,6 +472,6 @@ Mejora pedagógica pedida para Server y router Linux. Interpretación de la peti
    interfaz; `named.conf.local`, `named.conf.default-zones` (sugerencias raíz) y los archivos de zona siguen al panel.
    Prueba de ida y vuelta: lo que muestra el panel = lo que dice el archivo = lo que responde el servidor.
 5. **Gestión web** con aspecto nuevo (barra lateral, tarjetas, avisos), común a Server y router Linux. Página DNS como la
-   imagen de referencia: tarjetas de modo (en el orden anterior) con interruptor, descripción y usos; pestañas de
+   imagen de referencia: tarjetas de modo (Caché, Agente de reenvío, Autoritativo, Recursivo, Iterativo) con interruptor, descripción y usos; pestañas de
    configuración por modo; configuración BIND generada y explicada al lado.
 6. Documentación es/en (servicio DNS, modos, zonas automáticas, casilla «Activar router»).

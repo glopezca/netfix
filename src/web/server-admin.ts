@@ -64,7 +64,7 @@ function adminResponse(server: Server, req: HttpRequest, peer: Peer, base: strin
   if (req.method === 'POST') {
     const fields = formFields(req);
     const result = runAction(server, current.id, fields);
-    server.log('http', t('wa.logAction', { user: printable(cred.user), ip: formatIp(peer.ip), page: current.id, result: result.error ?? t('wa.logSaved') }));
+    server.log('http', t('wa.logAction', { user: printable(cred.user), ip: formatIp(peer.ip), page: current.id, result: result.error === undefined ? t('wa.logSaved') : result.error.replace(/[\x00-\x1f\x7f]/g, '?') }));
     // The page is drawn again with what was sent, so a failed step keeps its tab and what was typed.
     if (result.error) return respond(BANNER, 200, frame(server, base, current, { error: result.error }, body(server, base, current.id, new Map([...q, ...fields]))));
     return redirect(BANNER, result.moved ? newHome(server, req) : `${base}/?page=${current.id}${result.next ?? ''}&saved=1`, {}, 303);

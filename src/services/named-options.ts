@@ -43,6 +43,13 @@ export function namedOptions(s: DnsSettings): string {
   return lines.join('\n');
 }
 
+/** A BIND duration: seconds, or a number with s, m, h, d or w. */
+const UNITS: Readonly<Record<string, number>> = { s: 1, m: 60, h: 3600, d: 86400, w: 604800 };
+function seconds(text: string): number {
+  const unit = text.slice(-1).toLowerCase();
+  return Object.hasOwn(UNITS, unit) ? Number(text.slice(0, -1)) * (UNITS[unit] ?? 1) : Number(text);
+}
+
 function block(text: string, name: string): string | null {
   const m = new RegExp(`\\b${name}\\s*\\{([^}]*)\\}\\s*;`).exec(text);
   return m ? m[1] ?? '' : null;
@@ -63,7 +70,7 @@ export function parseNamedOptions(text: string, current: DnsSettings): DnsSettin
   if (forwarders.length > MAX_FORWARDERS) return { error: `${NAMED_OPTIONS}: too many forwarders` };
   const recursion = /\brecursion\s+(yes|no)\s*;/.exec(clean)?.[1];
   const forward = /\bforward\s+(only|first)\s*;/.exec(clean)?.[1];
-  const ttl = /\bmax-cache-ttl\s+(\d+)\s*;/.exec(clean)?.[1];
+  const ttl = /\bmax-cache-ttl\s+(\d+[smhdw]?)\s*;/i.exec(clean)?.[1];
   const allow = block(clean, 'allow-recursion') ?? '';
   return {
     ...current,
@@ -71,7 +78,7 @@ export function parseNamedOptions(text: string, current: DnsSettings): DnsSettin
     recursion: recursion !== 'no',
     forwarders,
     forwardOnly: forward === 'only',
-    maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(Number(ttl), MAX_TTL),
+    maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(seconds(ttl), MAX_TTL),
     allowRecursion: /\bany\b/.test(allow) ? 'any' : 'localnets',
   };
 }

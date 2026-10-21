@@ -1,6 +1,6 @@
 /**
  * Server → Servicios → DNS: bind9 by operating mode, one labelled block per mode in this order: Caché, Agente de
- * reenvío, Autoritativo, Iterativo, Recursivo. Each block has its switch, what it is for and its options.
+ * reenvío, Autoritativo, Recursivo, Iterativo (iterative depends on recursive). Each block has its switch, what it is for and its options.
  */
 import { t, tDynamic } from '../i18n/t.ts';
 import { el } from './dom.ts';
@@ -96,8 +96,8 @@ export function dnsPanel(server: Server, app: AfterChange): HTMLElement {
       cacheBlock(server, after, msg),
       forwarderBlock(server, after, msg),
       modeBlock('authoritative', dnsModes(s).authoritative, (on) => setAuthoritativeMode(server, after, msg, on), authoritativeBody(server, after, msg, ui)),
-      iterativeBlock(server, after, msg),
       recursiveBlock(server, after, msg),
+      iterativeBlock(server, after, msg),
     ];
   });
 }
