@@ -135,8 +135,9 @@ for (const kind of ['server', 'linuxrouter'] as const) {
         const outside = (html.match(/(?:href|action)="\/[^"]*"/g) ?? []).filter((l) => !l.includes(`"${prefix('admin')}/`));
         assert.deepEqual(outside, [], `${page}: every link under ${prefix('admin') || '/'}`);
       }
-      admin.open(`${a}?page=dns`, { method: 'POST', form: [['action', 'record-add'], ['name', 'www'], ['type', 'A'], ['value', '10.0.0.2'], ['ttl', '3600']] });
-      assert.ok(srv.services.dns.records.some((r) => r.name === 'www'), 'the form was saved');
+      admin.open(`${a}?page=dns`, { method: 'POST', form: [['action', 'zone-add'], ['z_name', 'aula.lab'], ['z_ns', 'ns.aula.lab'], ['z_kind', 'forward']] });
+      admin.open(`${a}?page=dns`, { method: 'POST', form: [['action', 'zone-record-add'], ['zone', 'aula.lab'], ['name', 'www'], ['type', 'A'], ['value', '10.0.0.2'], ['ttl', '3600']] });
+      assert.ok(srv.services.dns.zones.some((z) => z.records.some((r) => r.name === 'www')), 'the form was saved');
       const rc = new BrowserEngine(pc);
       const r = urlOf(srv, 'roundcube');
       rc.open(`${r}?_task=login`, { method: 'POST', form: [['_action', 'login'], ['_user', 'ana'], ['_pass', 'ana1']] });

@@ -1,5 +1,5 @@
 /**
- * /etc/bind/named.conf.options: generated from the DNS settings and editable (root): forwarders,
+ * /etc/bind/named.conf.options: generated from the DNS settings and editable (root): `max-cache-ttl`, forwarders,
  * `forward only|first`, `recursion yes|no` and `allow-recursion { localnets; | any; }` change the server.
  */
 import type { DnsSettings } from './config.ts';
@@ -7,6 +7,14 @@ import { formatIp, parseIp } from '../core/ip.ts';
 
 export const NAMED_OPTIONS = '/etc/bind/named.conf.options';
 const MAX_FORWARDERS = 8;
+const MAX_TTL = 2_147_483_647;
+
+export const DEFAULT_MAX_CACHE_TTL = 604800;
+
+/** Iterative resolution happens when bind recurses and is not limited to its forwarders (`forward only`). */
+export function iterates(s: DnsSettings): boolean {
+  return s.recursion === true && !((s.forwarders ?? []).length > 0 && s.forwardOnly !== false);
+}
 
 export function namedOptions(s: DnsSettings): string {
   const fwd = s.forwarders ?? [];
@@ -14,11 +22,19 @@ export function namedOptions(s: DnsSettings): string {
     'options {',
     '\tdirectory "/var/cache/bind";',
     '',
-    '\t// Reenviadores / forwarders: consultas recursivas que esta zona no resuelve',
-    ...(fwd.length ? ['\tforwarders {', ...fwd.map((ip) => `\t\t${formatIp(ip)};`), '\t};', `\tforward ${s.forwardOnly === false ? 'first' : 'only'};`] : ['\t// forwarders {', '\t//\t8.8.8.8;', '\t// };']),
+    '\t// Caché: tiempo máximo que se guarda una respuesta obtenida por recursión (0 = no se guarda)',
+    `\tmax-cache-ttl ${s.maxCacheTtl ?? DEFAULT_MAX_CACHE_TTL};`,
     '',
-    `\trecursion ${fwd.length ? 'yes' : 'no'};`,
-    ...(fwd.length ? [`\tallow-recursion { ${s.allowRecursion === 'any' ? 'any' : 'localnets; localhost'}; };`] : []),
+    '\t// Agente de reenvío: servidores a los que se pasan las consultas recursivas',
+    ...(fwd.length ? ['\tforwarders {', ...fwd.map((ip) => `\t\t${formatIp(ip)};`), '\t};'] : ['\t// forwarders {', '\t//\t8.8.8.8;', '\t// };']),
+    '\t// Iterativo: "first" = si los reenviadores no responden, resuelve desde los servidores raíz; "only" = nunca',
+    '\t// (sin reenviadores, la recursión siempre es iterativa)',
+    `\tforward ${s.forwardOnly === false ? 'first' : 'only'};`,
+    '',
+    '\t// Recursivo: resuelve cualquier nombre para los clientes permitidos',
+    `\trecursion ${s.recursion === true ? 'yes' : 'no'};`,
+    `\tallow-recursion { ${s.allowRecursion === 'any' ? 'any' : 'localnets; localhost'}; };`,
+    '',
     '\tdnssec-validation no;',
     '\tlisten-on-v6 { any; };',
     '};',
@@ -32,7 +48,7 @@ function block(text: string, name: string): string | null {
   return m ? m[1] ?? '' : null;
 }
 
-/** The settings described by an edited file (only the recursion part); an error in named-checkconf words. */
+/** The settings described by an edited file (cache, forwarding, recursion); an error in named-checkconf words. */
 export function parseNamedOptions(text: string, current: DnsSettings): DnsSettings | { error: string } {
   const clean = text.replace(/\/\/.*$/gm, '').replace(/#.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
   if ((clean.match(/\{/g) ?? []).length !== (clean.match(/\}/g) ?? []).length) return { error: `${NAMED_OPTIONS}: unexpected end of input` };
@@ -47,11 +63,15 @@ export function parseNamedOptions(text: string, current: DnsSettings): DnsSettin
   if (forwarders.length > MAX_FORWARDERS) return { error: `${NAMED_OPTIONS}: too many forwarders` };
   const recursion = /\brecursion\s+(yes|no)\s*;/.exec(clean)?.[1];
   const forward = /\bforward\s+(only|first)\s*;/.exec(clean)?.[1];
+  const ttl = /\bmax-cache-ttl\s+(\d+)\s*;/.exec(clean)?.[1];
   const allow = block(clean, 'allow-recursion') ?? '';
   return {
     ...current,
-    forwarders: recursion === 'no' ? [] : forwarders,
-    forwardOnly: forward !== 'first',
+    // BIND's defaults when a statement is missing: recursion yes, forward first, max-cache-ttl one week.
+    recursion: recursion !== 'no',
+    forwarders,
+    forwardOnly: forward === 'only',
+    maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(Number(ttl), MAX_TTL),
     allowRecursion: /\bany\b/.test(allow) ? 'any' : 'localnets',
   };
 }

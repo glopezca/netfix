@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { zonesFromLegacy } from '../../src/services/dns-zones.ts';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
 import { Server } from '../../src/devices/server.ts';
@@ -22,12 +23,12 @@ function services(base: ServerServices, extra: Partial<ServerServices> = {}): Se
   return {
     ...base,
     dhcp: { enabled: true, pools: [{ name: 'serverPool', start: ip('192.168.10.100'), prefix: 24, maxUsers: 50, gateway: ip('192.168.10.1'), dns: ip('192.168.10.2'), domain: 'aula.lab', leaseMinutes: 60, reservations: [] }] },
-    dns: { enabled: true, records: [
+    dns: { enabled: true, zones: zonesFromLegacy(undefined, [
       { name: 'srv.aula.lab', type: 'A', value: '192.168.10.2', ttl: 86400 },
       { name: 'www.aula.lab', type: 'CNAME', value: 'srv.aula.lab', ttl: 86400 },
       { name: 'aula.lab', type: 'MX', value: 'srv.aula.lab', priority: 10, ttl: 86400 },
       { name: 'aula.lab', type: 'NS', value: 'srv.aula.lab', ttl: 86400 },
-    ] },
+    ]) },
     mail: { smtp: true, pop3: true, imap: true, domain: 'aula.lab', users: [{ name: 'ana', password: 'ana1' }, { name: 'luis', password: 'luis1' }] },
     ssh: { enabled: true, users: [{ name: 'admin', password: 'cisco' }] },
     ...extra,
@@ -157,10 +158,10 @@ test('Mail relay between two domains through MX records', () => {
   a.setStatic({ ip: ip('10.0.0.1'), prefix: 24, dns: ip('10.0.0.1') });
   b.setStatic({ ip: ip('10.0.0.2'), prefix: 24, dns: ip('10.0.0.1') });
   pc.setStatic({ ip: ip('10.0.0.10'), prefix: 24, dns: ip('10.0.0.1') });
-  a.setServices({ ...a.services, dns: { enabled: true, records: [
+  a.setServices({ ...a.services, dns: { enabled: true, zones: zonesFromLegacy(undefined, [
     { name: 'mail.uno.lab', type: 'A', value: '10.0.0.1', ttl: 60 }, { name: 'uno.lab', type: 'MX', value: 'mail.uno.lab', priority: 10, ttl: 60 },
     { name: 'mail.dos.lab', type: 'A', value: '10.0.0.2', ttl: 60 }, { name: 'dos.lab', type: 'MX', value: 'mail.dos.lab', priority: 10, ttl: 60 },
-  ] }, mail: { smtp: true, pop3: true, imap: false, domain: 'uno.lab', users: [{ name: 'ana', password: '1' }] } });
+  ]) }, mail: { smtp: true, pop3: true, imap: false, domain: 'uno.lab', users: [{ name: 'ana', password: '1' }] } });
   b.setServices({ ...b.services, mail: { smtp: true, pop3: true, imap: false, domain: 'dos.lab', users: [{ name: 'bea', password: '2' }] } });
   const acc: MailAccount = { name: 'Ana', address: 'ana@uno.lab', incoming: 'mail.uno.lab', outgoing: 'mail.uno.lab', protocol: 'POP3', user: 'ana', password: '1' };
   assert.equal(sendMail(pc, acc, ['bea@dos.lab'], 'Entre dominios', 'Hola Bea').ok, true);
@@ -306,7 +307,7 @@ test('review regressions: malformed URL, relay loop guard, SSH session bound to 
   const sh = createShell(a, 'linux');
   assert.match(sh.run('curl http://192.168.10.2/%').join('\n'), /Not Found/, 'malformed escape does not crash the server');
   // Relay loop: the server's MX for other.lab points back to itself.
-  srv.setServices({ ...srv.services, dns: { ...srv.services.dns, records: [...srv.services.dns.records, { name: 'other.lab', type: 'MX', value: 'srv.aula.lab', priority: 5, ttl: 60 }] } });
+  srv.setServices({ ...srv.services, dns: { ...srv.services.dns, zones: [...srv.services.dns.zones, ...zonesFromLegacy(undefined, [{ name: 'other.lab', type: 'MX', value: 'srv.aula.lab', priority: 5, ttl: 60 }])] } });
   const acc: MailAccount = { name: 'Ana', address: 'ana@aula.lab', incoming: 'srv.aula.lab', outgoing: 'srv.aula.lab', protocol: 'POP3', user: 'ana', password: 'ana1' };
   assert.equal(sendMail(a, acc, ['x@other.lab'], 'loop', 'b').ok, true);
   t.settle(10_000);

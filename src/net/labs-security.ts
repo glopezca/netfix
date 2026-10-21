@@ -2,6 +2,7 @@
  * Security labs: SSH/SFTP with keys (and turning passwords off), and a hardened server segment with
  * defence in depth (IOS extended ACL on the router, nftables and sshd_config on the server).
  */
+import { newZone } from '../services/dns-zones.ts';
 import { LABS_ES } from '../i18n/es-ES/labs.ts';
 import type { Example } from './examples.ts';
 import { Topology } from './topology.ts';
@@ -34,7 +35,7 @@ function sshServer(srv: Server, addr: string, gw: string, users: readonly { name
     ...srv.services,
     dhcp: { ...srv.services.dhcp, enabled: false },
     ssh: { enabled: true, users },
-    dns: { enabled: true, origin: 'aula.lab', records: [{ name: '@', type: 'NS', value: 'srv', ttl: 86400 }, { name: 'srv', type: 'A', value: addr, ttl: 86400 }] },
+    dns: { enabled: true, zones: [{ ...newZone('aula.lab', 'forward', ['srv.aula.lab']), records: [{ name: 'srv', type: 'A', value: addr, ttl: 86400 }] }] },
   });
 }
 

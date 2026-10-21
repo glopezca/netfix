@@ -1,11 +1,10 @@
 /** Pages of the Server management GUI (forms filled with the live configuration). */
-import { forwardersText } from '../services/dns-recursion.ts';
 import { t } from '../i18n/t.ts';
 import { sshAuthMethods } from '../services/ssh-auth-settings.ts';
 import type { Server } from '../devices/server.ts';
 import { h } from './html.ts';
 import type { Child, Markup } from './html.ts';
-import { section, row, text, check, choose, form, buttons } from './admin-layout.ts';
+import { cards, section, row, text, check, choose, form, buttons } from './admin-layout.ts';
 import { formatIp, formatMask } from '../core/ip.ts';
 import { UNITS, unitActive } from '../services/units.ts';
 import type { WebAppAccess } from '../services/config.ts';
@@ -15,12 +14,12 @@ import { formatMacCisco, formatHexId } from '../core/mac.ts';
 const ip = (n: number | undefined): string => (n === undefined ? '' : formatIp(n));
 
 function del(base: string, pageId: string, action: string, key: string): Markup {
-  return form(base, pageId, action, h('input', { type: 'hidden', name: 'key', value: key }), h('button', { type: 'submit', class: 'web-wrt-small' }, t('wa.remove')));
+  return form(base, pageId, action, h('input', { type: 'hidden', name: 'key', value: key }), h('button', { type: 'submit', class: 'web-adm-small' }, t('wa.remove')));
 }
 
 function table(head: readonly string[], rows: readonly (readonly Child[])[], empty: string): Markup {
-  if (!rows.length) return h('p', { class: 'web-wrt-muted' }, empty);
-  return h('table', { class: 'web-wrt-grid' }, h('tr', {}, head.map((c) => h('th', {}, c))), rows.map((r) => h('tr', {}, r.map((c) => h('td', {}, c)))));
+  if (!rows.length) return h('p', { class: 'web-adm-muted' }, empty);
+  return h('table', { class: 'web-adm-grid' }, h('tr', {}, head.map((c) => h('th', {}, c))), rows.map((r) => h('tr', {}, r.map((c) => h('td', {}, c)))));
 }
 
 export function setupPage(server: Server, base: string): Child {
@@ -37,8 +36,8 @@ function reservations(server: Server, base: string): Child {
   const pools = server.services.dhcp.pools;
   const rows = pools.flatMap((p) => p.reservations.map((r) => [p.name, formatIp(r.ip), identifierText(r), r.name ?? '', del(base, 'dhcp', 'res-del', `${p.name}|${formatIp(r.ip)}`)]));
   return [
-    h('table', {}, section(t('wa.reservations'), t('wa.resHelp'), table(['Pool', 'IP', t('wa.identifier'), t('wa.description'), ''], rows, t('wa.noRes')))),
-    pools.length ? form(base, 'dhcp', 'res-add', h('table', {}, section(t('wa.newRes'), t('wa.newResHelp'),
+    cards(section(t('wa.reservations'), t('wa.resHelp'), table(['Pool', 'IP', t('wa.identifier'), t('wa.description'), ''], rows, t('wa.noRes')))),
+    pools.length ? form(base, 'dhcp', 'res-add', cards(section(t('wa.newRes'), t('wa.newResHelp'),
       row('Pool', choose('pool', pools[0]?.name ?? '', pools.map((p) => [p.name, p.name]))), row(t('wa.reservedIp'), text('ip', '')),
       row(t('wa.identifyBy'), choose('kind', 'mac', idKinds().map(([v, l]) => [v, l]))), row(t('wa.macOrId'), text('id', '')), row(t('wa.description'), text('name', '')))), buttons()) : null,
   ];
@@ -47,41 +46,24 @@ function reservations(server: Server, base: string): Child {
 function leases(server: Server, base: string): Child {
   const list = server.dhcpEngine.allBindings(server.clock.now()).filter((b) => b.type === 'Automatic');
   const reserve = (ipText: string, by: 'mac' | 'client-id', label: string): Child => form(base, 'dhcp', 'lease-reserve',
-    h('input', { type: 'hidden', name: 'ip', value: ipText }), h('input', { type: 'hidden', name: 'by', value: by }), h('button', { type: 'submit', class: 'web-wrt-small' }, label));
+    h('input', { type: 'hidden', name: 'ip', value: ipText }), h('input', { type: 'hidden', name: 'by', value: by }), h('button', { type: 'submit', class: 'web-adm-small' }, label));
   const rows = list.map((b) => [formatIp(b.ip), formatMacCisco(b.mac), b.clientId ? formatHexId(b.clientId) : '—', b.hostname ?? '',
     [reserve(formatIp(b.ip), 'mac', t('wa.reserveMac')), b.clientId ? reserve(formatIp(b.ip), 'client-id', t('wa.reserveId')) : null]]);
-  return h('table', {}, section(t('wa.leases'), t('wa.leasesHelp'), table(['IP', 'MAC', 'Client-ID', t('wa.device'), ''], rows, t('wa.noLeases'))));
+  return cards(section(t('wa.leases'), t('wa.leasesHelp'), table(['IP', 'MAC', 'Client-ID', t('wa.device'), ''], rows, t('wa.noLeases'))));
 }
 
 export function dhcpPage(server: Server, base: string): Child {
   const d = server.services.dhcp;
   const rows = d.pools.map((p) => [p.name, formatIp(p.start), String(p.maxUsers), ip(p.gateway), ip(p.dns), del(base, 'dhcp', 'pool-del', p.name)]);
   return [
-    form(base, 'dhcp', 'dhcp', h('table', {}, section(t('wa.dhcpServer'), t('wa.dhcpHelp'), check('enabled', d.enabled, t('wa.enabled')))), buttons()),
-    h('table', {}, section(t('wa.pools'), t('wa.poolsHelp'), table([t('wa.name'), t('wa.start'), t('wa.users'), t('wa.gateway'), 'DNS', ''], rows, t('wa.noPools')))),
-    form(base, 'dhcp', 'pool-add', h('table', {}, section(t('wa.newPool'), t('wa.newPoolHelp'),
+    form(base, 'dhcp', 'dhcp', cards(section(t('wa.dhcpServer'), t('wa.dhcpHelp'), check('enabled', d.enabled, t('wa.enabled')))), buttons()),
+    cards(section(t('wa.pools'), t('wa.poolsHelp'), table([t('wa.name'), t('wa.start'), t('wa.users'), t('wa.gateway'), 'DNS', ''], rows, t('wa.noPools')))),
+    form(base, 'dhcp', 'pool-add', cards(section(t('wa.newPool'), t('wa.newPoolHelp'),
       row(t('wa.name'), text('name', '')), row(t('wa.start'), text('start', '')), row(t('wa.maskShort'), text('mask', '255.255.255.0')), row(t('wa.maxUsers'), text('max', '50')),
       row(t('wa.gateway'), text('gateway', '')), row('DNS', text('dns', '')), row(t('wa.domain'), text('domain', '')),
       row(t('wa.leasesBy'), choose('identify', 'client-id', [['client-id', t('wa.byIdOrMac')], ['mac', 'MAC']])))), buttons()),
     reservations(server, base),
     leases(server, base),
-  ];
-}
-
-export function dnsPage(server: Server, base: string): Child {
-  const d = server.services.dns;
-  const rows = d.records.map((r, i) => [r.name, r.type, `${r.priority !== undefined ? `${r.priority} ` : ''}${r.value}`, String(r.ttl), del(base, 'dns', 'record-del', String(i))]);
-  return [
-    form(base, 'dns', 'dns', h('table', {}, section(t('wa.dnsServer'), t('wa.dnsHelp'),
-      check('enabled', d.enabled, t('wa.enabled')), row(t('wa.zone'), text('origin', d.origin ?? '')))), buttons()),
-    form(base, 'dns', 'dns-recursion', h('table', {}, section(t('dns.rec.title'), t('dns.rec.help'),
-      row(t('dns.rec.forwarders'), text('forwarders', forwardersText(d))),
-      row(t('dns.rec.mode'), choose('forward', d.forwardOnly === false ? 'first' : 'only', [['only', t('dns.rec.only')], ['first', t('dns.rec.first')]])),
-      row(t('dns.rec.allow'), choose('allow', d.allowRecursion ?? 'localnets', [['localnets', t('dns.rec.localnets')], ['any', t('dns.rec.any')]])))), buttons()),
-    h('table', {}, section(t('wa.records'), t('wa.recordsHelp'), table([t('wa.name'), t('wa.type'), t('wa.value'), 'TTL', ''], rows, t('wa.noRecords')))),
-    form(base, 'dns', 'record-add', h('table', {}, section(t('wa.newRecord'), t('wa.newRecordHelp'),
-      row(t('wa.name'), text('name', '')), row(t('wa.type'), choose('type', 'A', [['A', 'A'], ['CNAME', 'CNAME'], ['MX', 'MX'], ['NS', 'NS'], ['TXT', 'TXT']])),
-      row(t('wa.value'), text('value', '')), row(t('wa.priority'), text('priority', '10')))), buttons()),
   ];
 }
 
@@ -99,14 +81,14 @@ export function webPage(server: Server, base: string): Child {
 
 function accounts(base: string, pageId: string, list: readonly { name: string }[]): Child {
   return [
-    h('table', {}, section(t('wa.users'), t('wa.accountsHelp'), table([t('wa.user'), ''], list.map((u) => [u.name, del(base, pageId, 'user-del', u.name)]), t('wa.noUsers')))),
-    form(base, pageId, 'user-add', h('table', {}, section(t('wa.newUser'), t('wa.userRule'), row(t('wa.user'), text('name', '')), row(t('wa.password'), h('input', { type: 'password', name: 'password' })))), buttons()),
+    cards(section(t('wa.users'), t('wa.accountsHelp'), table([t('wa.user'), ''], list.map((u) => [u.name, del(base, pageId, 'user-del', u.name)]), t('wa.noUsers')))),
+    form(base, pageId, 'user-add', cards(section(t('wa.newUser'), t('wa.userRule'), row(t('wa.user'), text('name', '')), row(t('wa.password'), h('input', { type: 'password', name: 'password' })))), buttons()),
   ];
 }
 
 export function mailPage(server: Server, base: string): Child {
   const m = server.services.mail;
-  return [form(base, 'mail', 'mail', h('table', {}, section(t('wa.mail'), t('wa.mailHelp'),
+  return [form(base, 'mail', 'mail', cards(section(t('wa.mail'), t('wa.mailHelp'),
     check('smtp', m.smtp, 'SMTP (25)'), check('pop3', m.pop3, 'POP3 (110)'), check('imap', m.imap, 'IMAP (143)'), row(t('wa.domain'), text('domain', m.domain)))), buttons()), accounts(base, 'mail', m.users)];
 }
 
@@ -116,7 +98,7 @@ export function sshPage(server: Server, base: string): Child {
   const methods = auth ? [section(t('wa.auth'), t('wa.authHelp'),
     h('input', { type: 'hidden', name: 'auth', value: '1' }), check('password', auth.password, t('wa.authPassword')),
     check('pubkey', auth.pubkey, t('wa.authPubkey')))] : [];
-  return [form(base, 'ssh', 'ssh', h('table', {}, section('SSH', t('wa.sshHelp'), check('enabled', s.enabled, t('wa.enabled'))), ...methods), buttons()), accounts(base, 'ssh', s.users)];
+  return [form(base, 'ssh', 'ssh', cards(section('SSH', t('wa.sshHelp'), check('enabled', s.enabled, t('wa.enabled'))), ...methods), buttons()), accounts(base, 'ssh', s.users)];
 }
 
 export function adminPage(server: Server, base: string): Child {
@@ -139,5 +121,5 @@ export function statusPage(server: Server): Child {
 
 export function logPage(server: Server): Child {
   const lines = server.logs.slice(-40).map((l) => `${new Date(l.time).toISOString().slice(11, 19)} ${l.unit}: ${l.line}`);
-  return h('table', {}, section(t('wa.records'), t('wa.logHelp'), h('pre', { class: 'web-wrt-log' }, lines.join('\n') || t('wa.empty'))));
+  return cards(section(t('wa.records'), t('wa.logHelp'), h('pre', { class: 'web-adm-log' }, lines.join('\n') || t('wa.empty'))));
 }

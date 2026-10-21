@@ -25,15 +25,16 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
   {
     id: 'srv-webadmin',
     title: 'Server web management',
-    summary: 'Home-router-style administration interface: basic settings, DHCP, DNS, web, email, SSH, status and logs.',
+    summary: 'Administration interface with a side menu and cards: basic settings, DHCP, DNS by mode, web, email, SSH, status and logs.',
     blocks: [
       p('Services → HTTP → Web applications → Web management. It is disabled by default; once enabled it listens on port 10000 (or on an Apache alias such as /admin) with user admin and password netfix (the same account as the SSH of the labs).'),
       code('PC Web Browser:    http://srv.aula.lab:10000/\nTerminal:          curl -u admin:netfix "http://192.168.10.2:10000/?page=status"'),
       table(['Page', 'What it changes'], [
         ['Config', 'Host name, static or DHCP IP, default gateway and DNS.'],
         ['DHCP', 'Enable the server, add and delete pools (leases by MAC or by Client-ID), addresses reserved by MAC or identifier (hex 01… or text) and “Reserve” an active lease.'],
-        ['DNS', 'Enable bind9, zone domain and records (A, CNAME, MX, NS, TXT; @ and * allowed).'],
+        ['DNS', 'Cards for the five modes (Cache, Forwarder, Authoritative, Iterative, Recursive) with their switch and uses, one tab of options per mode (the zone wizard SOA → NS → kind → records in Authoritative) and, beside them, the generated BIND configuration (named.conf.options, zones, files) explained.'],
         ['Web', 'Apache and access to Roundcube.'],
+        ['Routing (Linux router)', '«Enable router» checkbox (net.ipv4.ip_forward), kernel parameters and static routes.'],
         ['Email · SSH', 'Services and users; for SSH, the authentication methods (password and/or key pair) in sshd_config.'],
         ['Administration', 'Interface user/password and its port or alias (when changed, the browser moves to the new address).'],
         ['Status · Logs', 'Device data, services, leases and latest messages (journalctl).'],
@@ -42,7 +43,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       list(
         'HTTP Basic authentication (realm “Server”); failed attempts are logged in journalctl -u apache2.',
         'Every change is validated exactly as in the server window and logged with the user and the PC’s IP.',
-        'The Security tab of the interface (Firewall, Routing, VPN) only appears on the Linux router; a Server has none.',
+        'The Security section of the menu (Firewall, Routing, VPN) only appears on the Linux router; a Server has none.',
       ),
     ],
   },

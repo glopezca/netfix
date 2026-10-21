@@ -3,6 +3,7 @@ import type { CommandFn, Ctx } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import { formatIp } from '../core/ip.ts';
+import { servedZones } from '../services/dns-zones.ts';
 
 const USAGE = 'Usage: rndc [-b address] [-c config] [-s server] [-p port]\n\t[-k key-file ] [-y key] [-r] [-V] [-4 | -6] command\n\ncommand is one of the following:\n\n  flush\t\tFlushes all of the server\'s caches.\n  reload\tReload configuration file and zones.\n  status\tDisplay status of the server.\n';
 
@@ -19,7 +20,7 @@ export function rndc(host: Host): CommandFn {
     ctx.out([
       'version: BIND 9.20.4-3ubuntu1-Ubuntu (Stable Release) <id:>',
       'running on localhost: Linux x86_64 6.17.0-14-generic',
-      `number of zones: ${new Set(s.records.map((r) => r.name)).size > 0 ? 1 : 0} (99 automatic)`,
+      `number of zones: ${servedZones(s).length} (99 automatic)`,
       `recursive clients: 0/900/1000`,
       `forwarders: ${(s.forwarders ?? []).map(formatIp).join(' ') || 'none'}`,
       `cache entries: ${server.dns.forwarder.cacheSize()}`,

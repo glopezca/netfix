@@ -3,6 +3,7 @@
  * UT2 practice 1 (Arnor, Server DHCP with MAC reservations outside the dynamic range),
  * UT2 practice 2 (Mordor, IOS pool + `show running-config | section dhcp`) and UT3 (Lothlorien DNS).
  */
+import { zonesFromLegacy } from '../../src/services/dns-zones.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
@@ -57,12 +58,12 @@ interface GigabitEthernet0/1
 const A = (name: string, value: string): DnsRecord => ({ name, type: 'A', value, ttl: 86400 });
 
 function configureLothlorien(lothlorien: Server): void {
-  lothlorien.setServices({ ...lothlorien.services, dns: { enabled: true, records: [
+  lothlorien.setServices({ ...lothlorien.services, dns: { enabled: true, zones: zonesFromLegacy(undefined, [
     A('mordor.tierramedia.jc', '192.168.10.254'), A('hobbiton.tierramedia.jc', '10.0.32.64'),
     A('gondor.tierramedia.jc', '192.168.10.64'), A('rohan.tierramedia.jc', '192.168.10.65'),
     A('lothlorien.tierramedia.jc', '192.168.20.192'), A('rivendel.tierramedia.jc', '192.168.20.193'),
     { name: 'dns.tierramedia.jc', type: 'CNAME', value: 'lothlorien.tierramedia.jc', ttl: 86400 },
-  ] } });
+  ]) } });
 }
 
 test('UT2 practice 1: Arnor (Server) pool .1–.32 and MAC reservations .64/.65 outside the range', () => {

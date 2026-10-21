@@ -1,9 +1,11 @@
-/** bind9 on Server: authoritative answers for its zones and, with forwarders, recursion for allowed clients. */
+/** bind9 on Server: authoritative answers for its zones and, with recursion on, forwarding and/or iteration for allowed clients. */
 import type { DnsMessage, IpPacket } from '../net/packets.ts';
 import { DNS_PORT } from '../net/packets.ts';
 import type { DnsSettings } from './config.ts';
-import { answerQuery } from './dns-service.ts';
-import { cleanOrigin, effectiveRecords } from './dns-names.ts';
+import { answerFromZones } from './dns-service.ts';
+import { servedZones } from './dns-zones.ts';
+import { DEFAULT_MAX_CACHE_TTL, iterates } from './named-options.ts';
+import { ROOT_IPS } from '../net/dns-roots.ts';
 import { DnsForwarder, recursionAllowed } from './dns-forwarder.ts';
 import { formatIp } from '../core/ip.ts';
 
@@ -45,12 +47,13 @@ export class ServerDns {
   private query(src: number, sport: number, dst: number, q: DnsMessage): void {
     const s = this.host.services.dns;
     const forwarders = s.forwarders ?? [];
-    const recursion = forwarders.length > 0 && recursionAllowed(s.allowRecursion ?? 'localnets', src, this.host.config);
-    const answer = answerQuery(q, effectiveRecords(s), cleanOrigin(s.origin));
+    const recursion = s.recursion === true && recursionAllowed(s.allowRecursion ?? 'localnets', src, this.host.config);
+    const answer = answerFromZones(q, servedZones(s));
     const head = `client ${formatIp(src)}#${sport} (${q.qname}): query: ${q.qname} IN ${q.qtype} ${q.rd === false ? '-' : '+'} (${formatIp(dst)})`;
     if (answer.rcode === 'REFUSED' && recursion && q.rd !== false) {
-      this.host.log('dns', `${head} → forwarding to ${forwarders.map(formatIp).join(', ')}`);
-      this.forwarder.resolve(q, src, sport, forwarders);
+      const iterate = iterates(s);
+      this.host.log('dns', `${head} → ${forwarders.length ? `forwarding to ${forwarders.map(formatIp).join(', ')}${iterate ? ' (then iterative)' : ''}` : 'iterative resolution'}`);
+      this.forwarder.resolve(q, src, sport, { forwarders, iterate, roots: ROOT_IPS, maxTtl: s.maxCacheTtl ?? DEFAULT_MAX_CACHE_TTL });
       return;
     }
     this.host.log('dns', `${head} → ${answer.rcode}`);

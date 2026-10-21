@@ -42,11 +42,15 @@ import { DRAW_ES } from './es-ES/draw.ts';
 import { DRAW_EN } from './en-GB/draw.ts';
 import { UNDO_ES } from './es-ES/undo.ts';
 import { UNDO_EN } from './en-GB/undo.ts';
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES, ...LABS_ES, ...UI_ES, ...CLOUD_ES, ...SRV_ES, ...WEB_ES, ...LOAD_ES, ...IFACES_ES, ...DRAW_ES, ...UNDO_ES };
+import { ZONES_ES } from './es-ES/zones.ts';
+import { ZONES_EN } from './en-GB/zones.ts';
+import { DNSUI_ES } from './es-ES/dnsui.ts';
+import { DNSUI_EN } from './en-GB/dnsui.ts';
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES, ...LABS_ES, ...UI_ES, ...CLOUD_ES, ...SRV_ES, ...WEB_ES, ...LOAD_ES, ...IFACES_ES, ...DRAW_ES, ...UNDO_ES, ...ZONES_ES, ...DNSUI_ES };
 
 export type MessageKey = keyof typeof ES;
 
 export const CATALOGS: Readonly<Record<Locale, Readonly<Record<MessageKey, string>>>> = {
   'es-ES': ES,
-  'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN, ...LABS_EN, ...UI_EN, ...CLOUD_EN, ...SRV_EN, ...WEB_EN, ...LOAD_EN, ...IFACES_EN, ...DRAW_EN, ...UNDO_EN },
+  'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN, ...LABS_EN, ...UI_EN, ...CLOUD_EN, ...SRV_EN, ...WEB_EN, ...LOAD_EN, ...IFACES_EN, ...DRAW_EN, ...UNDO_EN, ...ZONES_EN, ...DNSUI_EN },
 };

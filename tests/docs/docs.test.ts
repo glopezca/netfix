@@ -31,7 +31,8 @@ test('search ignores accents and case and ranks titles first', () => {
   const hits = searchDocs('NANO');
   assert.equal(hits[0]?.page.id, 'nano');
   assert.ok(searchDocs('client-identifier').some((h) => h.page.id === 'ios-reservas'));
-  assert.ok(searchDocs('origin relativo').some((h) => h.page.id === 'srv-dns'));
+  assert.ok(searchDocs('origin relativo').some((h) => h.page.id === 'srv-dns-names'));
+  assert.ok(searchDocs('zona inversa automática').some((h) => h.page.id === 'srv-dns'));
   assert.deepEqual(searchDocs('   '), []);
   assert.deepEqual(searchDocs('zzzqqq'), []);
   assert.equal(findPage('vim')?.title, 'vim');

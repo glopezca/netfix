@@ -25,15 +25,16 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
   {
     id: 'srv-webadmin',
     title: 'Gestión web de Server',
-    summary: 'Interfaz de administración tipo router doméstico: configuración básica, DHCP, DNS, web, correo, SSH, estado y registros.',
+    summary: 'Interfaz de administración con menú lateral y tarjetas: configuración básica, DHCP, DNS por modos, web, correo, SSH, estado y registros.',
     blocks: [
       p('Servicios → HTTP → Aplicaciones web → Gestión web. Por defecto está desactivada; al activarla escucha en el puerto 10000 (o en un alias de Apache como /admin) con usuario admin y contraseña netfix (la misma cuenta que el SSH de los laboratorios).'),
       code('Navegador del PC:  http://srv.aula.lab:10000/\nTerminal:          curl -u admin:netfix "http://192.168.10.2:10000/?page=status"'),
       table(['Página', 'Qué cambia'], [
         ['Configuración', 'Nombre de host, IP estática o DHCP, puerta de enlace y DNS.'],
         ['DHCP', 'Activar el servidor, añadir y borrar pools (concesiones por MAC o por Client-ID), direcciones reservadas por MAC o identificador (hex 01… o texto) y «Reservar» una concesión activa.'],
-        ['DNS', 'Activar bind9, dominio de la zona y registros (A, CNAME, MX, NS, TXT; @ y * admitidos).'],
+        ['DNS', 'Tarjetas de los cinco modos (Caché, Agente de reenvío, Autoritativo, Iterativo, Recursivo) con su interruptor y usos, una pestaña de opciones por modo (el asistente de zonas SOA → NS → tipo → registros en Autoritativo) y, al lado, la configuración de BIND generada (named.conf.options, zonas, archivos) explicada.'],
         ['Web', 'Apache y el acceso a Roundcube.'],
+        ['Enrutamiento (Router Linux)', 'Casilla «Activar router» (net.ipv4.ip_forward), parámetros del núcleo y rutas estáticas.'],
         ['Correo · SSH', 'Servicios y usuarios; en SSH, los métodos de autenticación (contraseña y/o par de claves) de sshd_config.'],
         ['Administración', 'Usuario/contraseña de la interfaz y su puerto o alias (al cambiarlo, el navegador pasa a la nueva dirección).'],
         ['Estado · Registros', 'Datos del equipo, servicios, concesiones y últimos mensajes (journalctl).'],
@@ -42,7 +43,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       list(
         'Autenticación HTTP Basic (realm «Server»); los intentos fallidos quedan en journalctl -u apache2.',
         'Cada cambio se valida igual que en la ventana del servidor y se registra con el usuario y la IP del PC.',
-        'La pestaña Seguridad de la interfaz (Firewall, Enrutamiento, VPN) solo aparece en el Router Linux; en un Server no existe.',
+        'El apartado Seguridad del menú (Firewall, Enrutamiento, VPN) solo aparece en el Router Linux; en un Server no existe.',
       ),
     ],
   },

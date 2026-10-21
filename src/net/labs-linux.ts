@@ -2,6 +2,7 @@
  * Labs of the Linux router and of the company DNS: NAT + DMZ with nftables (what is published, what is
  * kept apart) and a bind9 server that answers its zone and forwards the rest to 8.8.8.8 (localnets only).
  */
+import { newZone } from '../services/dns-zones.ts';
 import { LABS_ES } from '../i18n/es-ES/labs.ts';
 import type { Example } from './examples.ts';
 import { Topology } from './topology.ts';
@@ -127,13 +128,12 @@ function dnsServer(srv: Server, pcMac: string): void {
     ...srv.services,
     dhcp: { enabled: true, pools: [{ name: 'serverPool', start: ip('192.168.50.100'), prefix: 24, maxUsers: 50, gateway: ip('192.168.50.1'), dns: ip('192.168.50.2'), domain: 'empresa.lan', leaseMinutes: 1440, reservations: [{ ip: ip('192.168.50.50'), mac: pcMac, name: 'PC1' }] }] },
     dns: {
-      enabled: true, origin: 'empresa.lan', forwarders: [ip('8.8.8.8'), ip('8.8.4.4')], forwardOnly: true, allowRecursion: 'localnets',
-      records: [
-        { name: '@', type: 'NS', value: 'ns1', ttl: 86400 },
+      enabled: true, recursion: true, forwarders: [ip('8.8.8.8'), ip('8.8.4.4')], forwardOnly: true, allowRecursion: 'localnets',
+      zones: [{ ...newZone('empresa.lan', 'forward', ['ns1.empresa.lan']), records: [
         { name: 'ns1', type: 'A', value: '192.168.50.2', ttl: 86400 },
         { name: 'intranet', type: 'A', value: '192.168.50.2', ttl: 86400 },
         { name: 'www', type: 'CNAME', value: 'intranet', ttl: 86400 },
-      ],
+      ] }],
     },
   });
 }

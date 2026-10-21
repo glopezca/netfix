@@ -62,12 +62,13 @@ export const SECURITY_DOCS: DocGroup = {
       blocks: [
         p('El Router Linux tiene los puertos de un 2911 (GigabitEthernet0/0-2) y el software de Server: los puertos se llaman eth0, eth1 y eth2 en la terminal. Solo reenvía paquetes entre interfaces si net.ipv4.ip_forward = 1.'),
         note('Imprescindible: sin net.ipv4.ip_forward = 1 el Router Linux no enruta. Responde a ping en sus propias direcciones, pero descarta todo lo que tenga que pasar de una interfaz a otra. Actívalo en Servicios → Parámetros (aplica y guarda en /etc/sysctl.d) o con sysctl en la terminal.'),
+        note('Casilla «Activar router»: en Servicios → Parámetros está marcada cuando net.ipv4.ip_forward = 1 y desmarcada cuando vale 0. Allí no se puede pulsar: solo refleja el parámetro, que se cambia en la tabla o con sysctl. En la gestión web (Seguridad → Enrutamiento) la misma casilla sí se puede marcar y desmarcar: al guardar cambia ip_forward y lo guarda en /etc/sysctl.d/99-netfix.conf.'),
         code('root@linuxrouter0:~# ip addr add 192.168.1.1/24 dev eth1\nroot@linuxrouter0:~# ip route add 10.20.0.0/16 via 192.168.1.254\nroot@linuxrouter0:~# sysctl -w net.ipv4.ip_forward=1\nroot@linuxrouter0:~# echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-router.conf'),
         table(['Dónde', 'Qué se configura'], [
           ['Pestaña Interfaces', 'Dirección de cada eth, DHCP en eth0, rutas estáticas y reenvío.'],
           ['Servicios → Parámetros y Firewall', 'Parámetros del núcleo (sysctl: net.ipv4.ip_forward…) y nftables (tablas, cadenas, reglas, plantillas); se aplica y se guarda.'],
           ['Servicios → VPN', 'Túnel WireGuard wg0.'],
-          ['Gestión web (Seguridad)', 'Las mismas opciones en páginas al estilo WRT300N.'],
+          ['Gestión web (Seguridad)', 'Las mismas opciones en la gestión web (menú lateral y tarjetas), con la casilla «Activar router» en Enrutamiento.'],
           ['Terminal', 'ip, sysctl, nft, wg, wg-quick, systemctl, journalctl, dmesg, nc, nmap.'],
         ]),
         note('Lo hecho con ip, sysctl -w o nft cambia lo que está en marcha; para que dure, guárdalo en /etc/sysctl.d, /etc/nftables.conf o con los paneles, que aplican y guardan.'),

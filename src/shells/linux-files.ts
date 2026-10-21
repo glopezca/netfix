@@ -4,13 +4,10 @@ import type { Host } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import { formatIp, formatMask, networkOf, broadcastOf } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
-import { zonesOf } from '../services/dns-service.ts';
-import { normalizeName } from '../net/dns.ts';
 import { searchDomains } from './net-tools.ts';
 import { ptExclusions } from '../services/dhcp-pt.ts';
-import type { DnsRecord, ServerServices } from '../services/config.ts';
-import { cleanOrigin, effectiveRecords, qualify } from '../services/dns-names.ts';
-import { NAMED_OPTIONS, namedOptions } from '../services/named-options.ts';
+import type { ServerServices } from '../services/config.ts';
+import { bindFiles } from '../services/bind-files.ts';
 
 export const IFACE = 'eth0';
 
@@ -53,32 +50,6 @@ ${subnets.join(',\n')}
 `;
 }
 
-function zoneLine(name: string, r: DnsRecord, value: string): string {
-  return `${name.padEnd(16)}${String(r.ttl).padEnd(8)}IN  ${r.type.padEnd(6)}${r.type === 'MX' ? `${r.priority ?? 10} ` : ''}${value}`;
-}
-
-const inZone = (name: string, zone: string): boolean => name === zone || name.endsWith(`.${zone}`);
-
-/** Zone file: the origin zone keeps the names as typed (relative, @ or absolute); others are derived. */
-function zoneFile(s: ServerServices, zone: string): string {
-  const origin = cleanOrigin(s.dns.origin);
-  const head = [`$TTL 86400`, ...(zone === origin ? [`$ORIGIN ${zone}.`] : []), `@   IN  SOA  ns.${zone}. admin.${zone}. ( 2026101101 604800 86400 2419200 3600 )`];
-  const typed = zone === origin
-    ? s.dns.records.filter((r) => inZone(qualify(r.name, origin) ?? '', zone)).map((r) => zoneLine(r.name.trim(), r, r.type === 'TXT' ? `"${r.value}"` : r.value.trim()))
-    : effectiveRecords(s.dns).filter((r) => inZone(normalizeName(r.name), zone)).map((r) => {
-      const name = normalizeName(r.name) === zone ? '@' : normalizeName(r.name).slice(0, -(zone.length + 1));
-      const value = r.type === 'A' ? r.value : r.type === 'TXT' ? `"${r.value}"` : `${normalizeName(r.value)}.`;
-      return zoneLine(name, r, value);
-    });
-  return [...head, ...typed, ''].join('\n');
-}
-
-function zonesFor(s: ServerServices): string[] {
-  const origin = cleanOrigin(s.dns.origin);
-  const zones = zonesOf(effectiveRecords(s.dns)).filter((z) => !origin || !inZone(z, origin));
-  return origin ? [origin, ...zones] : zones;
-}
-
 /** Apache snippets and settings of the web applications, as their Ubuntu packages install them. */
 function webAppFiles(s: ServerServices, files: Map<string, string>): void {
   const rc = s.webapps.roundcube;
@@ -99,10 +70,7 @@ function serverFiles(server: Server): Map<string, string> {
   const files = new Map<string, string>();
   webAppFiles(s, files);
   files.set('/etc/kea/kea-dhcp4.conf', keaConf(s));
-  const zones = zonesFor(s);
-  files.set(NAMED_OPTIONS, namedOptions(s.dns));
-  files.set('/etc/bind/named.conf.local', zones.map((z) => `zone "${z}" {\n    type master;\n    file "/etc/bind/db.${z}";\n};\n`).join('\n'));
-  for (const z of zones) files.set(`/etc/bind/db.${z}`, zoneFile(s, z));
+  for (const [path, content] of bindFiles(s.dns)) files.set(path, content);
   files.set('/etc/postfix/main.cf', `myhostname = ${server.name.toLowerCase()}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
   files.set('/etc/dovecot/dovecot.conf', `protocols = ${[s.mail.pop3 ? 'pop3' : '', s.mail.imap ? 'imap' : ''].filter(Boolean).join(' ') || 'none'}\nmail_location = maildir:~/Maildir\n`);
   const excl = s.dhcp.pools.flatMap(ptExclusions).length;

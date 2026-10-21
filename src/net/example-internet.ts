@@ -1,4 +1,5 @@
 /** Lab "Internet: dos sedes": two ISP clouds, NAT on a Cisco router and a site published with a domain. */
+import { newZone } from '../services/dns-zones.ts';
 import { LABS_ES } from '../i18n/es-ES/labs.ts';
 import type { Example } from './examples.ts';
 import { Topology } from './topology.ts';
@@ -64,12 +65,11 @@ function sede2(t: Topology, isp: Cloud): Pc {
   srv.setServices({
     ...srv.services,
     dhcp: { ...srv.services.dhcp, enabled: false },
-    dns: { enabled: true, origin: 'sede2.es', records: [
-      { name: '@', type: 'NS', value: 'srv', ttl: 3600 },
+    dns: { enabled: true, zones: [{ ...newZone('sede2.es', 'forward', ['srv.sede2.es']), records: [
       { name: 'srv', type: 'A', value: '81.33.3.2', ttl: 3600 },
       { name: '@', type: 'A', value: '81.33.3.2', ttl: 3600 },
       { name: 'www', type: 'CNAME', value: 'srv', ttl: 3600 },
-    ] },
+    ] }] },
   });
   const tcp = (port: number) => ({ proto: 'tcp' as const, port, ip: ip('192.168.1.10'), toPort: port });
   isp.setSettings({

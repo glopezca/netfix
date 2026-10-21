@@ -1,4 +1,5 @@
 /** Roundcube webmail on a Server, used from a PC browser (alias or own port), plus the browser engine. */
+import { zonesFromLegacy } from '../../src/services/dns-zones.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
@@ -19,7 +20,7 @@ function lab(mode: 'alias' | 'port' = 'alias'): { t: Topology; srv: Server; pc: 
   pc.setStatic({ ip: parseIp('10.0.0.10')!, prefix: 24, dns: parseIp('10.0.0.2')! });
   srv.setServices({
     ...srv.services,
-    dns: { enabled: true, origin: 'aula.lab', records: [{ name: 'webmail', type: 'A', value: '10.0.0.2', ttl: 60 }, { name: 'www', type: 'A', value: '10.0.0.2', ttl: 60 }] },
+    dns: { enabled: true, zones: zonesFromLegacy('aula.lab', [{ name: 'webmail', type: 'A', value: '10.0.0.2', ttl: 60 }, { name: 'www', type: 'A', value: '10.0.0.2', ttl: 60 }]) },
     mail: { smtp: true, pop3: true, imap: true, domain: 'aula.lab', users: [{ name: 'ana', password: 'ana1' }, { name: 'luis', password: 'luis1' }] },
     webapps: { ...srv.services.webapps, roundcube: { enabled: true, mode, alias: '/roundcube', port: 8080 } },
   });

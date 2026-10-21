@@ -1,4 +1,5 @@
 /** Apache2 configured in /etc/apache2: virtual hosts, aliases, permissions, a2ensite/a2enmod, configtest and reload. */
+import { zonesFromLegacy } from '../../src/services/dns-zones.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
@@ -16,9 +17,9 @@ function lab(): { t: Topology; srv: Server; pc: Pc; root: ShellSession; client: 
   t.connect({ device: srv.id, port: 'FastEthernet0' }, { device: pc.id, port: 'FastEthernet0' });
   srv.setStatic({ ip: parseIp('10.0.0.2')!, prefix: 24, dns: parseIp('10.0.0.2')! });
   pc.setStatic({ ip: parseIp('10.0.0.10')!, prefix: 24, dns: parseIp('10.0.0.2')! });
-  srv.setServices({ ...srv.services, dns: { enabled: true, origin: 'aula.lab', records: [
+  srv.setServices({ ...srv.services, dns: { enabled: true, zones: zonesFromLegacy('aula.lab', [
     { name: '@', type: 'A', value: '10.0.0.2', ttl: 60 }, { name: 'www', type: 'A', value: '10.0.0.2', ttl: 60 }, { name: 'empresa', type: 'A', value: '10.0.0.2', ttl: 60 },
-  ] } });
+  ]) } });
   t.settle();
   return { t, srv, pc, root: createShell(srv, 'linux', 'root'), client: createShell(pc, 'linux') };
 }

@@ -26,7 +26,7 @@ function lab(): { t: Topology; srv: Server; local: Pc; remote: Pc } {
 }
 
 function withForwarders(srv: Server, forwarders: string[], allow: 'localnets' | 'any' = 'localnets'): void {
-  srv.setServices({ ...srv.services, dns: { ...srv.services.dns, forwarders: forwarders.map(ip), forwardOnly: true, allowRecursion: allow } });
+  srv.setServices({ ...srv.services, dns: { ...srv.services.dns, recursion: true, forwarders: forwarders.map(ip), forwardOnly: true, allowRecursion: allow } });
 }
 
 test('without forwarders bind only answers its zones (REFUSED, no ra)', () => {
@@ -100,7 +100,10 @@ test('named.conf.options shows and changes the recursion; settings survive save 
   assert.deepEqual(srv.services.dns.forwarders, [ip('8.8.4.4')]);
   assert.equal(srv.services.dns.forwardOnly, false);
   assert.equal(srv.services.dns.allowRecursion, 'any');
-  assert.match(all(root.run('cat /etc/bind/named.conf.options')), /forwarders \{\n\t\t8\.8\.4\.4;\n\t\};\n\tforward first;\n\n\trecursion yes;\n\tallow-recursion \{ any; \};/);
+  const conf = all(root.run('cat /etc/bind/named.conf.options'));
+  assert.match(conf, /forwarders \{\n\t\t8\.8\.4\.4;\n\t\};/);
+  assert.match(conf, /\tforward first;/);
+  assert.match(conf, /\trecursion yes;\n\tallow-recursion \{ any; \};/, 'a file without «recursion» gets BIND\'s default: yes');
   assert.match(all(createShell(local, 'linux').run('dig +short @192.168.1.10 ubuntu.com')), /185\.125\.190\.20/);
   assert.match(all(root.run('rndc status')), /forwarders: 8\.8\.4\.4\ncache entries: 1/);
   root.run('rndc flush');

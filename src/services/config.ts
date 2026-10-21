@@ -29,7 +29,7 @@ export interface PtDhcpPool {
   readonly identifyBy?: LeaseIdentity;
 }
 
-export type DnsRecordType = 'A' | 'CNAME' | 'MX' | 'NS' | 'TXT';
+export type DnsRecordType = 'A' | 'CNAME' | 'MX' | 'NS' | 'TXT' | 'PTR';
 
 export interface DnsRecord {
   readonly name: string;
@@ -84,12 +84,42 @@ export function validateAccess(a: WebAppAccess, other?: WebAppAccess): string | 
   return null;
 }
 
-/** bind9: zones, plus recursion through forwarders (none = authoritative only, like v0.6). */
+/** SOA of a zone: primary server, responsible mailbox (BIND form, `admin.aula.lab`) and the timers in seconds. */
+export interface DnsSoa {
+  readonly mname: string;
+  readonly rname: string;
+  readonly serial: number;
+  readonly refresh: number;
+  readonly retry: number;
+  readonly expire: number;
+  /** Negative-answer TTL (the last SOA field). */
+  readonly minimum: number;
+}
+
+/** A zone of bind9: SOA, name servers (absolute names), forward or reverse (`*.in-addr.arpa`) and its records. */
+export interface DnsZone {
+  readonly name: string;
+  readonly kind: 'forward' | 'reverse';
+  readonly soa: DnsSoa;
+  readonly ns: readonly string[];
+  /** Owners as typed in the zone file: `@`, relative to the zone, or absolute with a final dot. */
+  readonly records: readonly DnsRecord[];
+}
+
+/**
+ * bind9 by operating mode: cache (max-cache-ttl), forwarder (forwarders, forward only|first), authoritative (zones),
+ * iterative (derived: recursion without `forward only`) and recursive (recursion, allow-recursion).
+ */
 export interface DnsSettings {
   readonly enabled: boolean;
-  readonly origin?: string;
-  readonly records: readonly DnsRecord[];
-  /** Upstream resolvers (forwarders { … }); empty or absent = no recursion. */
+  readonly zones: readonly DnsZone[];
+  /** Zones are loaded (named.conf.local); false keeps them but serves none. Default true. */
+  readonly authoritative?: boolean;
+  /** recursion yes|no. Default false (a new server is authoritative only). */
+  readonly recursion?: boolean;
+  /** max-cache-ttl in seconds; 0 caches nothing. Default 604800 (BIND's). */
+  readonly maxCacheTtl?: number;
+  /** Upstream resolvers (forwarders { … }). */
   readonly forwarders?: readonly number[];
   /** forward only (true, default) or forward first. */
   readonly forwardOnly?: boolean;
@@ -99,7 +129,6 @@ export interface DnsSettings {
 
 export interface ServerServices {
   readonly dhcp: { readonly enabled: boolean; readonly pools: readonly PtDhcpPool[] };
-  /** `origin`: zone origin for relative names (BIND `$ORIGIN`); undefined = every name is absolute. */
   readonly dns: DnsSettings;
   readonly http: { readonly enabled: boolean; readonly files: readonly WebFile[] };
   readonly mail: {
@@ -144,7 +173,7 @@ export const DEFAULT_HELP = `<!doctype html>
 export function defaultServices(): ServerServices {
   return {
     dhcp: { enabled: false, pools: [] },
-    dns: { enabled: false, records: [] },
+    dns: { enabled: false, zones: [] },
     http: { enabled: true, files: [{ name: 'index.html', content: DEFAULT_INDEX }, { name: 'ayuda.html', content: DEFAULT_HELP }] },
     mail: { smtp: false, pop3: false, imap: false, domain: '', users: [] },
     ssh: { enabled: false, users: [] },

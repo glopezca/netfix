@@ -7,12 +7,10 @@ import { validHostname } from '../devices/host.ts';
 import { parseIp, parseMask } from '../core/ip.ts';
 import { validatePool } from '../services/dhcp-pt.ts';
 import { readIdentifier, reserveLease, setReservations } from '../services/dhcp-reservations.ts';
-import { validateRecord } from '../services/dns-service.ts';
 import { setSshAuthMethods } from '../services/ssh-auth-settings.ts';
-import { applyRecursion } from '../services/dns-recursion.ts';
-import { validateOrigin, cleanOrigin } from '../services/dns-names.ts';
-import { validateAccess, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } from '../services/config.ts';
-import type { Account, DnsRecord, ServerServices, WebAppAccess } from '../services/config.ts';
+import { dnsAction } from './admin-dns-actions.ts';
+import { validateAccess, DEFAULT_LEASE_MINUTES } from '../services/config.ts';
+import type { Account, ServerServices, WebAppAccess } from '../services/config.ts';
 
 export type Fields = ReadonlyMap<string, string>;
 export interface Outcome {
@@ -86,27 +84,6 @@ function reserveFromLease(server: Server, f: Fields): Outcome {
   return outcome(reserveLease(server, ip, f.get('by') === 'client-id' ? 'client-id' : 'mac'));
 }
 
-function addRecord(server: Server, f: Fields): Outcome {
-  const type = (f.get('type') ?? 'A') as DnsRecord['type'];
-  const r: DnsRecord = { name: (f.get('name') ?? '').trim(), type, value: (f.get('value') ?? '').trim(), ttl: DEFAULT_TTL, priority: type === 'MX' ? Number(f.get('priority') ?? 10) : undefined };
-  if (type === 'MX' && !Number.isInteger(r.priority)) return { error: t('wa.err.mx') };
-  const err = ['A', 'CNAME', 'MX', 'NS', 'TXT'].includes(type) ? validateRecord(r, server.services.dns.origin) : t('wa.err.type');
-  return err ? { error: err } : set(server, (s) => ({ ...s, dns: { ...s.dns, records: [...s.dns.records, r] } }));
-}
-
-function dns(server: Server, f: Fields): Outcome {
-  const origin = (f.get('origin') ?? '').trim();
-  const err = validateOrigin(origin);
-  return err ? { error: err } : set(server, (s) => ({ ...s, dns: { ...s.dns, enabled: on(f, 'enabled'), origin: cleanOrigin(origin) } }));
-}
-
-function recursion(server: Server, f: Fields): Outcome {
-  const next = applyRecursion(server.services.dns, { forwarders: f.get('forwarders') ?? '', forwardOnly: f.get('forward') !== 'first', allowRecursion: f.get('allow') === 'any' ? 'any' : 'localnets' });
-  if ('error' in next) return { error: next.error };
-  server.dns.forwarder.flush();
-  return set(server, (s) => ({ ...s, dns: next }));
-}
-
 function access(f: Fields, prefix: string, current: WebAppAccess, enabled: boolean): WebAppAccess {
   return { enabled, mode: f.get(`${prefix}mode`) === 'port' ? 'port' : 'alias', alias: (f.get(`${prefix}alias`) ?? current.alias).trim(), port: Number(f.get(`${prefix}port`) ?? current.port) };
 }
@@ -151,8 +128,10 @@ function ssh(server: Server, f: Fields): Outcome {
 }
 
 /** Runs a form action of a page. */
-export function runAction(server: Server, pageId: string, f: Fields): Outcome & { readonly moved?: boolean } {
+export function runAction(server: Server, pageId: string, f: Fields): Outcome & { readonly moved?: boolean; readonly next?: string } {
   const action = f.get('action') ?? '';
+  const dns = pageId === 'dns' ? dnsAction(server, f) : undefined;
+  if (dns) return dns;
   switch (action) {
     case 'setup': return setup(server, f);
     case 'dhcp': return set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, enabled: on(f, 'enabled') } }));
@@ -161,10 +140,6 @@ export function runAction(server: Server, pageId: string, f: Fields): Outcome & 
     case 'res-add': return addReservation(server, f);
     case 'res-del': return deleteReservation(server, f);
     case 'lease-reserve': return reserveFromLease(server, f);
-    case 'dns': return dns(server, f);
-    case 'dns-recursion': return recursion(server, f);
-    case 'record-add': return addRecord(server, f);
-    case 'record-del': return set(server, (s) => ({ ...s, dns: { ...s.dns, records: s.dns.records.filter((_, i) => String(i) !== f.get('key')) } }));
     case 'web': return web(server, f);
     case 'mail': return set(server, (s) => ({ ...s, mail: { ...s.mail, smtp: on(f, 'smtp'), pop3: on(f, 'pop3'), imap: on(f, 'imap'), domain: (f.get('domain') ?? '').trim().toLowerCase() } }));
     case 'ssh': return ssh(server, f);

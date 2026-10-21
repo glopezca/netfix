@@ -153,6 +153,8 @@ export interface DnsMessage {
   readonly ra?: boolean;
   readonly answers?: readonly DnsAnswer[];
   readonly authority?: readonly DnsAnswer[];
+  /** Glue: addresses of the name servers named in a referral. */
+  readonly additional?: readonly DnsAnswer[];
 }
 
 // ---------------------------------------------------------------- TCP + applications

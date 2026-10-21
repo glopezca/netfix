@@ -5,6 +5,8 @@ import { normalizeName, ipFromReverse } from '../net/dns.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { validateName } from './dns-names.ts';
 import type { DnsRecord } from './config.ts';
+import type { ServedZone } from './dns-zones.ts';
+import { soaText, zoneRecords } from './dns-zones.ts';
 
 const MAX_CNAME_CHAIN = 8;
 const SOA_SERIAL = 2026101101;
@@ -102,12 +104,29 @@ export function answerQuery(query: DnsMessage, records: readonly DnsRecord[], or
   return { ...base, rcode: exists ? 'NOERROR' : 'NXDOMAIN', authoritative: true, answers: [], authority: [soaFor(zone, records)] };
 }
 
+const inZone = (name: string, zone: string): boolean => name === zone || name.endsWith(`.${zone}`);
+
+/** bind9 answering from its zones: the closest zone that contains the name, its SOA in negative answers. */
+export function answerFromZones(query: DnsMessage, zones: readonly ServedZone[]): DnsMessage {
+  const qname = normalizeName(query.qname);
+  const base = { id: query.id, response: true, qname, qtype: query.qtype };
+  const zone = [...zones].map((z) => z.zone).sort((a, b) => b.name.length - a.name.length).find((z) => inZone(qname, z.name));
+  if (!zone) return { ...base, rcode: 'REFUSED', answers: [] };
+  const soa: DnsAnswer = { name: zone.name, type: 'SOA', ttl: zone.soa.minimum, data: soaText(zone.soa).replace(/\. /g, ' ') };
+  if (query.qtype === 'SOA' && qname === zone.name) return { ...base, rcode: 'NOERROR', authoritative: true, answers: [soa] };
+  const records = zoneRecords(zone);
+  const answers = lookup(qname, query.qtype, records);
+  if (answers.length > 0) return { ...base, rcode: 'NOERROR', authoritative: true, answers };
+  const exists = qname === zone.name || recordsAt(qname, records).length > 0 || nodeExists(qname, records);
+  return { ...base, rcode: exists ? 'NOERROR' : 'NXDOMAIN', authoritative: true, answers: [], authority: [soa] };
+}
+
 /** Validation used by the GUI. Returns an error message or null. */
 export function validateRecord(r: DnsRecord, origin?: string): string | null {
   const nameErr = validateName(r.name, origin);
   if (nameErr) return nameErr;
   if (r.type === 'A' && parseIp(r.value) === null) return t('dnsv.a');
-  const targetErr = r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX' ? validateName(r.value, origin, false) : null;
+  const targetErr = r.type === 'CNAME' || r.type === 'NS' || r.type === 'MX' || r.type === 'PTR' ? validateName(r.value, origin, false) : null;
   if (targetErr) return t('dnsv.target', { type: r.type, error: targetErr });
   if (r.type === 'MX' && (r.priority === undefined || r.priority < 0 || r.priority > 65535)) return t('dnsv.mx');
   return r.value.trim() === '' ? t('dnsv.empty') : null;

@@ -1,4 +1,5 @@
 /** DNS zone origin: '@', relative names completed with the origin and absolute names ending in '.'. */
+import { zonesFromLegacy } from '../../src/services/dns-zones.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { qualify, effectiveRecords, validateName, displayName } from '../../src/services/dns-names.ts';
@@ -67,12 +68,13 @@ test('validation accepts @, relative and absolute names; display shows the FQDN'
   assert.equal(displayName('x.org.', 'aula.lab'), 'x.org.');
 });
 
-test('origin is saved in JSON and files without it keep working', () => {
-  const s = { ...defaultServices(), dns: { enabled: true, origin: 'aula.lab', records: [rec('www', 'A', '10.0.0.9')] } };
+test('zones are saved in JSON and files of Netfix ≤ 0.11 (origin + records) are converted', () => {
+  const s = { ...defaultServices(), dns: { enabled: true, zones: zonesFromLegacy('aula.lab', [rec('www', 'A', '10.0.0.9')]) } };
   const back = servicesFromJson(JSON.parse(JSON.stringify(servicesToJson(s))));
-  assert.equal(back.dns.origin, 'aula.lab');
+  assert.deepEqual(back.dns.zones, s.dns.zones);
   const legacy = servicesFromJson({ ...servicesToJson(s), dns: { enabled: true, records: [rec('www.aula.lab', 'A', '10.0.0.9')] } });
-  assert.equal(legacy.dns.origin, undefined);
+  assert.deepEqual(legacy.dns.zones.map((z) => z.name), ['aula.lab']);
+  assert.deepEqual(legacy.dns.zones[0]?.records.map((r) => r.name), ['www']);
   assert.throws(() => servicesFromJson({ ...servicesToJson(s), dns: { enabled: true, origin: 'mal..origen', records: [] } }), /origen/i);
 });
 
@@ -85,7 +87,7 @@ test('end to end: dig resolves relative records and the zone file shows $ORIGIN'
   t.connect({ device: pc.id, port: 'FastEthernet0' }, { device: sw.id, port: 'FastEthernet0/1' });
   srv.setStatic({ ip: parseIp('10.0.0.2')!, prefix: 24, dns: parseIp('10.0.0.2')! });
   pc.setStatic({ ip: parseIp('10.0.0.10')!, prefix: 24, dns: parseIp('10.0.0.2')! });
-  srv.setServices({ ...srv.services, dns: { enabled: true, origin: 'aula.lab', records: [rec('@', 'NS', 'srv'), rec('srv', 'A', '10.0.0.2'), rec('www', 'CNAME', 'srv'), rec('@', 'MX', 'srv', 10)] } });
+  srv.setServices({ ...srv.services, dns: { enabled: true, zones: zonesFromLegacy('aula.lab', [rec('@', 'NS', 'srv'), rec('srv', 'A', '10.0.0.2'), rec('www', 'CNAME', 'srv'), rec('@', 'MX', 'srv', 10)]) } });
   t.settle();
   const sh = createShell(pc, 'linux');
   assert.deepEqual(sh.run('dig +short www.aula.lab'), ['srv.aula.lab.', '10.0.0.2']);

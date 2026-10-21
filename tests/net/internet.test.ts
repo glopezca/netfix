@@ -1,4 +1,5 @@
 /** ISP clouds and the emulated Internet: operator router, public lines, public DNS, two sites. */
+import { zonesFromLegacy } from '../../src/services/dns-zones.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
@@ -70,7 +71,7 @@ function twoSites(kind: 'a' | 'ns'): { a: Pc; srv: Server; b: Cloud } {
   const forwards = [{ proto: 'tcp' as const, port: 80, ip: ip('192.168.1.10'), toPort: 80 }, { proto: 'udp' as const, port: 53, ip: ip('192.168.1.10'), toPort: 53 }];
   cb.setSettings({ ...cb.settings, ports: { ...cb.settings.ports, DSL0: { ...cb.settings.ports.DSL0, forwards } }, domains: [{ name: 'sede2.es', kind, ip: wan }] });
   srv.setStatic({ ip: ip('192.168.1.10'), prefix: 24, gateway: ip('192.168.1.1'), dns: ip('8.8.8.8') });
-  srv.setServices({ ...srv.services, dns: { ...srv.services.dns, enabled: true, origin: 'sede2.es', records: [{ name: '@', type: 'A', value: '81.33.3.2', ttl: 3600 }, { name: 'intranet', type: 'A', value: '81.33.3.2', ttl: 3600 }] } });
+  srv.setServices({ ...srv.services, dns: { ...srv.services.dns, enabled: true, zones: zonesFromLegacy('sede2.es', [{ name: '@', type: 'A', value: '81.33.3.2', ttl: 3600 }, { name: 'intranet', type: 'A', value: '81.33.3.2', ttl: 3600 }]) } });
   a.useDhcp();
   t.settle();
   return { a, srv, b: cb };

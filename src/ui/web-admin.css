@@ -1,0 +1,110 @@
+/* Management GUI of Server and Linux router, as the simulated browser shows it (classes web-adm-*).
+   Web pages keep a light look whatever the app theme, like real sites. */
+.browser-view .web-adm {
+  --adm-top: #1d2b3f; --adm-side: #22324a; --adm-side-ink: #c9d4e2; --adm-blue: #1a6fe0; --adm-bg: #f3f5f8;
+  --adm-card: #ffffff; --adm-line: #dbe2ea; --adm-ink: #1c2633; --adm-muted: #5b6b7c; --adm-danger: #b42318;
+  font: 14px/1.45 var(--font-ui); color: var(--adm-ink); background: var(--adm-bg); margin: -16px -20px; min-height: 100%;
+}
+.web-adm-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: var(--adm-top); color: #fff; padding: 10px 16px; }
+.web-adm-top .web-brand-logo { filter: brightness(0) invert(1); }
+.web-adm-product { font-size: 17px; font-weight: 700; }
+.web-adm-device { color: #b8c6d8; }
+.web-adm-version { margin-left: auto; color: #8ea1b8; font-size: 12px; }
+.web-adm-layout { display: grid; grid-template-columns: 190px minmax(0, 1fr); min-height: 420px; }
+.web-adm-menu { background: var(--adm-side); padding: 12px 8px; }
+.web-adm-menu ul { list-style: none; margin: 0; padding: 0; }
+.web-adm-group { margin-bottom: 10px; }
+.web-adm-group-name { display: block; color: #8ea1b8; font-size: 12px; padding: 4px 10px; }
+.browser-view .web-adm-nav { display: flex; align-items: center; gap: 10px; color: var(--adm-side-ink); text-decoration: none; padding: 7px 10px; border-radius: 7px; }
+.browser-view .web-adm-nav:hover { background: rgb(255 255 255 / .07); color: #fff; }
+.web-adm-menu li.web-adm-on .web-adm-nav { background: var(--adm-blue); color: #fff; }
+.web-adm-nav::before { width: 18px; text-align: center; font-size: 15px; opacity: .9; }
+.web-adm-nav-setup::before { content: "⚙"; } .web-adm-nav-dhcp::before { content: "⇅"; } .web-adm-nav-dns::before { content: "◎"; }
+.web-adm-nav-web::before { content: "◫"; } .web-adm-nav-mail::before { content: "✉"; } .web-adm-nav-ssh::before { content: "›"; }
+.web-adm-nav-firewall::before { content: "▦"; } .web-adm-nav-routing::before { content: "⇄"; } .web-adm-nav-vpn::before { content: "⛓"; }
+.web-adm-nav-admin::before { content: "⚿"; } .web-adm-nav-status::before { content: "◔"; } .web-adm-nav-log::before { content: "☰"; }
+.web-adm-main { padding: 16px 20px 20px; container-type: inline-size; min-width: 0; }
+.web-adm-title h1 { font-size: 22px; margin: 0; }
+.web-adm-help { color: var(--adm-muted); margin: 2px 0 8px; font-size: 13px; }
+.web-adm-ok, .web-adm-error { border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-weight: 700; }
+.web-adm-ok { background: #e7f6ec; color: #17603a; border: 1px solid #b7e1c6; }
+.web-adm-error { background: #fdecea; color: var(--adm-danger); border: 1px solid #f5c2bd; }
+.web-adm-cards { display: grid; gap: 12px; margin: 0 0 12px; }
+.web-adm-card { background: var(--adm-card); border: 1px solid var(--adm-line); border-radius: 10px; padding: 12px 16px; }
+.web-adm-card-head h2 { font-size: 16px; margin: 0; }
+.web-adm-card-body { margin-top: 6px; }
+.web-adm-row label { display: grid; grid-template-columns: minmax(130px, 34%) minmax(0, 1fr); gap: 10px; align-items: center; margin: 6px 0; }
+.web-adm-field { color: var(--adm-muted); font-size: 13px; }
+.web-adm-check { display: inline-flex; align-items: center; gap: 8px; margin: 4px 14px 4px 0; cursor: pointer; }
+.browser-view .web-adm-check input { appearance: none; width: 36px; height: 20px; border-radius: 999px; background: #c3ccd7; position: relative; margin: 0; cursor: pointer; transition: background .15s; flex: none; }
+.browser-view .web-adm-check input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.browser-view .web-adm-check input:checked { background: var(--adm-blue); }
+.browser-view .web-adm-check input:checked::after { transform: translateX(16px); }
+.browser-view .web-adm-check input:disabled { opacity: .5; cursor: not-allowed; }
+.browser-view .web-adm-check input:focus-visible { outline: 2px solid var(--adm-blue); outline-offset: 2px; }
+.web-adm-buttons { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.browser-view .web-adm-save, .browser-view .web-adm-button { background: var(--adm-blue); color: #fff; border: 0; border-radius: 7px; padding: 7px 14px; font-weight: 700; text-decoration: none; display: inline-block; cursor: pointer; }
+.browser-view .web-adm-reset, .browser-view .web-adm-small { background: #fff; color: var(--adm-ink); border: 1px solid var(--adm-line); border-radius: 7px; padding: 4px 10px; cursor: pointer; }
+.browser-view .web-adm-small { font-size: 12px; margin: 4px 0; }
+.browser-view .web-adm-danger { color: var(--adm-danger); border-color: #f0b8b2; }
+.browser-view .web-adm-link { color: var(--adm-blue); }
+.web-adm-mono, .web-adm-soa { font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; }
+.web-adm-list, .web-adm-grid { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 13px; }
+.web-adm-list th, .web-adm-grid th { text-align: left; color: var(--adm-muted); font-weight: 700; border-bottom: 1px solid var(--adm-line); padding: 6px; }
+.web-adm-list td, .web-adm-grid td { border-bottom: 1px solid #edf1f5; padding: 6px; vertical-align: top; }
+.web-adm-list tr.web-adm-selected td { background: #eef4fe; }
+.web-adm-muted { color: var(--adm-muted); margin: 4px 0; }
+.web-adm-log { font: 12px/1.4 var(--font-mono); white-space: pre-wrap; margin: 0; }
+.web-adm-note { background: #f1f5fb; border-left: 3px solid var(--adm-blue); border-radius: 6px; padding: 8px 10px; font-size: 13px; color: var(--adm-ink); }
+.web-adm-badge { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 12px; background: #eef1f5; }
+.web-adm-badge-auto { background: #e9f6ec; color: #17603a; }
+.web-adm-foot { padding: 10px; }
+
+/* DNS: mode cards, per-mode tabs, generated configuration beside them. */
+.web-adm-dns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.web-adm-dns > *, .web-adm-dns-side > * { min-width: 0; }
+@container (min-width: 900px) { .web-adm-dns { grid-template-columns: minmax(0, 1fr) minmax(280px, 36%); } }
+.web-adm-intro h2 { font-size: 18px; margin: 0; }
+.web-adm-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px; margin: 10px 0 0; }
+.web-adm-mode { --mode: #1a6fe0; --mode-bg: #f5f8fc; border: 1px solid color-mix(in srgb, var(--mode) 35%, #fff); background: var(--mode-bg); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.web-adm-mode-cache { --mode: #8455c4; --mode-bg: #f6effc; }
+.web-adm-mode-forwarder { --mode: #b9800e; --mode-bg: #fff8e5; }
+.web-adm-mode-authoritative { --mode: #2e8a4f; --mode-bg: #ecf7ef; }
+.web-adm-mode-iterative { --mode: #cc5a1f; --mode-bg: #fff1e8; }
+.web-adm-mode-recursive { --mode: #1f6fc0; --mode-bg: #eaf2fd; }
+.web-adm-mode-off { --mode-bg: #f7f8fa; }
+.web-adm-mode-off .web-adm-mode-ico { background: #9aa6b4; }
+.web-adm-mode h3 { margin: 0; font-size: 15px; }
+.web-adm-mode p { margin: 0; font-size: 13px; color: var(--adm-muted); }
+.web-adm-mode-ico { width: 34px; height: 34px; border-radius: 10px; background: var(--mode); color: #fff; display: grid; place-items: center; font-size: 18px; }
+.web-adm-mode-cache .web-adm-mode-ico::before { content: "≡"; } .web-adm-mode-forwarder .web-adm-mode-ico::before { content: "⇄"; }
+.web-adm-mode-authoritative .web-adm-mode-ico::before { content: "◎"; } .web-adm-mode-iterative .web-adm-mode-ico::before { content: "⇣"; }
+.web-adm-mode-recursive .web-adm-mode-ico::before { content: "↻"; }
+.web-adm-mode .web-adm-mode-lock { background: #fff; border: 1px solid var(--adm-line); border-radius: 8px; padding: 6px 8px; color: var(--adm-ink); }
+.web-adm-mode-uses { background: rgb(255 255 255 / .7); border-radius: 8px; padding: 6px 8px; font-size: 12px; }
+.web-adm-mode-uses strong { color: var(--mode); }
+.web-adm-mode-uses ul { margin: 4px 0 0; padding-left: 16px; }
+.web-adm-mode-directive { font: 11px/1.3 var(--font-mono); color: var(--adm-muted); margin-top: auto; overflow-wrap: anywhere; }
+.web-adm-specific h2 { font-size: 18px; margin: 14px 0 8px; }
+.web-adm-tabs, .web-adm-filetabs { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.browser-view .web-adm-tabs a, .browser-view .web-adm-filetabs a { display: block; border: 1px solid var(--adm-line); border-radius: 8px; padding: 6px 12px; text-decoration: none; color: var(--adm-ink); background: #fff; }
+.browser-view .web-adm-tabs li.web-adm-on a { background: #1f7a45; border-color: #1f7a45; color: #fff; font-weight: 700; }
+.browser-view .web-adm-filetabs li.web-adm-on a { background: var(--adm-blue); border-color: var(--adm-blue); color: #fff; }
+.web-adm-steps { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 6px 0 10px; }
+.web-adm-steps li { border: 1px solid var(--adm-line); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--adm-muted); background: #fff; }
+.web-adm-steps li.web-adm-on { border-color: var(--adm-blue); color: var(--adm-blue); font-weight: 700; }
+.web-adm-steps li.web-adm-done { background: #ecf7ef; color: #17603a; }
+.web-adm-wizard, .web-adm-zone { border-top: 1px dashed var(--adm-line); margin-top: 12px; padding-top: 6px; }
+.web-adm-problems { color: var(--adm-danger); font-size: 13px; padding-left: 18px; }
+.web-adm-dns-side { display: grid; gap: 12px; align-content: start; }
+.web-adm-code { background: #f8fafc; border: 1px solid var(--adm-line); border-radius: 8px; margin: 0; padding: 8px 0; font: 12px/1.55 var(--font-mono); white-space: pre; overflow: auto; max-height: 420px; counter-reset: line; }
+.web-adm-line { display: block; padding: 0 10px 0 0; color: #1d3557; }
+.web-adm-line::before { counter-increment: line; content: counter(line); display: inline-block; width: 30px; margin-right: 10px; text-align: right; color: #9aa6b4; }
+.web-adm-cm { color: #5a7f62; }
+.web-adm-explain-item { border-bottom: 1px solid #edf1f5; padding: 6px 0; }
+.web-adm-explain-item summary { cursor: pointer; font-weight: 700; font-size: 13px; }
+.web-adm-explain-item p { margin: 4px 0 2px; font-size: 13px; color: var(--adm-muted); }
+.web-adm-compat { background: #fff8e1; border: 1px solid #f1d98a; border-radius: 10px; padding: 10px 14px; }
+.web-adm-compat h2 { font-size: 14px; margin: 0 0 4px; }
+.web-adm-compat p { margin: 0; font-size: 13px; }
+@container (max-width: 560px) { .web-adm-row label { grid-template-columns: minmax(0, 1fr); gap: 2px; } }

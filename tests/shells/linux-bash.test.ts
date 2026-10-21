@@ -1,4 +1,5 @@
 /** The Ubuntu terminal of Netfix hosts: bash on the host file system, network programs, editors, SSH and saving. */
+import { zonesFromLegacy } from '../../src/services/dns-zones.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
@@ -24,7 +25,7 @@ function lab(): { t: Topology; srv: Server; pc: Pc } {
   srv.setStatic({ ip: ip('10.0.0.2'), prefix: 24, dns: ip('10.0.0.2') });
   pc.setStatic({ ip: ip('10.0.0.10'), prefix: 24, dns: ip('10.0.0.2') });
   srv.setServices({ ...srv.services, ssh: { enabled: true, users: [{ name: 'admin', password: 'cisco' }, { name: 'ana', password: 'ana1' }] },
-    dns: { enabled: true, records: [{ name: 'www.aula.lab', type: 'A', value: '10.0.0.2', ttl: 3600 }] } });
+    dns: { enabled: true, zones: zonesFromLegacy(undefined, [{ name: 'www.aula.lab', type: 'A', value: '10.0.0.2', ttl: 3600 }]) } });
   return { t, srv, pc };
 }
 

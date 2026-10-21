@@ -1,4 +1,5 @@
 /** `@` in every field and wildcard records (`*`), with BIND/RFC 4592 semantics. */
+import { zonesFromLegacy } from '../../src/services/dns-zones.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { effectiveRecords, validateName } from '../../src/services/dns-names.ts';
@@ -74,7 +75,7 @@ test('end to end: dig and nslookup resolve through a wildcard', async () => {
   t.connect({ device: srv.id, port: 'FastEthernet0' }, { device: pc.id, port: 'FastEthernet0' });
   srv.setStatic({ ip: parseIp('10.0.0.2')!, prefix: 24 });
   pc.setStatic({ ip: parseIp('10.0.0.10')!, prefix: 24, dns: parseIp('10.0.0.2')! });
-  srv.setServices({ ...srv.services, dns: { enabled: true, origin: ORIGIN, records: [rec('@', 'NS', '@'), rec('@', 'A', '10.0.0.2'), rec('*', 'CNAME', '@')] } });
+  srv.setServices({ ...srv.services, dns: { enabled: true, zones: zonesFromLegacy(ORIGIN, [rec('@', 'NS', '@'), rec('@', 'A', '10.0.0.2'), rec('*', 'CNAME', '@')]) } });
   t.settle();
   assert.deepEqual(createShell(pc, 'linux').run('dig +short loquesea.aula.lab'), ['aula.lab.', '10.0.0.2']);
   assert.match(createShell(srv, 'linux').run('cat /etc/bind/db.aula.lab').join('\n'), /^\* +3600 +IN +CNAME +@$/m);

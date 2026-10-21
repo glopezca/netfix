@@ -94,7 +94,7 @@ try {
   await page.click('.win-tab:has-text("Servicios")');
   assert.equal(await page.locator('.subnav-item:has-text("Parámetros"), .subnav-item:has-text("Firewall")').count(), 0, 'a Server has no kernel panels');
   await page.click('.subnav-item:has-text("DNS")');
-  assert.match(await page.locator('.subnav-content').innerText(), /www\.aula\.lab/);
+  assert.match(await page.locator(".subnav-content").innerText(), /Autoritativo[\s\S]*aula\.lab/);
   await page.click('.win-close');
   await page.dblclick('g.device-pc >> nth=0');
   await page.click('.win-tab:has-text("Navegador")');
@@ -153,7 +153,7 @@ try {
   assert.match(await page.locator('.doc-page').innerText(), /Primeros pasos/);
   await page.fill('.doc-search', 'nombres relativos');
   await page.click('.doc-link >> nth=0');
-  assert.match(await page.locator('.doc-page').innerText(), /DNS de Server[\s\S]*srv\.aula\.lab\.aula\.lab\./);
+  assert.match(await page.locator('.doc-page').innerText(), /DNS: nombres y comodines[\s\S]*srv\.aula\.lab\.aula\.lab\./);
   await page.fill('.doc-search', '');
   await page.click('.doc-link:has-text("bash: expansiones")');
   assert.match(await page.locator('.doc-page').innerText(), /\$\{v%%pat\}|\$\{v%pat\}/);

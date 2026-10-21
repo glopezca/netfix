@@ -62,12 +62,13 @@ export const SECURITY_DOCS: DocGroup = {
       blocks: [
         p('The Linux Router has the ports of a 2911 (GigabitEthernet0/0-2) and the Server software: in the terminal the ports are called eth0, eth1 and eth2. It only forwards packets between interfaces if net.ipv4.ip_forward = 1.'),
         note('Essential: without net.ipv4.ip_forward = 1 the Linux router does not route. It answers ping on its own addresses but drops everything that has to go from one interface to another. Turn it on in Services → Parameters (applies and saves to /etc/sysctl.d) or with sysctl in the terminal.'),
+        note('«Enable router» checkbox: in Services → Parameters it is ticked when net.ipv4.ip_forward = 1 and clear when it is 0. There it cannot be clicked: it only shows the parameter, which is changed in the table or with sysctl. In the web management (Security → Routing) the same checkbox can be ticked and cleared: saving changes ip_forward and stores it in /etc/sysctl.d/99-netfix.conf.'),
         code('root@linuxrouter0:~# ip addr add 192.168.1.1/24 dev eth1\nroot@linuxrouter0:~# ip route add 10.20.0.0/16 via 192.168.1.254\nroot@linuxrouter0:~# sysctl -w net.ipv4.ip_forward=1\nroot@linuxrouter0:~# echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-router.conf'),
         table(['Where', 'What is configured'], [
           ['Interfaces tab', 'Address of each eth, DHCP on eth0, static routes and forwarding.'],
           ['Services → Parameters and Firewall', 'Kernel parameters (sysctl: net.ipv4.ip_forward…) and nftables (tables, chains, rules, templates); applied and saved.'],
           ['Services → VPN', 'WireGuard tunnel wg0.'],
-          ['Web management (Security)', 'The same options in WRT300N-style pages.'],
+          ['Web management (Security)', 'The same options in the web management (side menu and cards), with the «Enable router» checkbox in Routing.'],
           ['Terminal', 'ip, sysctl, nft, wg, wg-quick, systemctl, journalctl, dmesg, nc, nmap.'],
         ]),
         note('What you do with ip, sysctl -w or nft changes the running state; to make it persist, save it in /etc/sysctl.d, /etc/nftables.conf or use the panels, which apply and save.'),

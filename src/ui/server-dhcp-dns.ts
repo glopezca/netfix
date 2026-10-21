@@ -1,16 +1,13 @@
-/** Server → Servicios → DHCP and DNS panels. */
+/** Server → Servicios → DHCP panel (the DNS panel is in server-dns.ts). */
 import { t } from '../i18n/t.ts';
 import { el } from './dom.ts';
 import { field, input, select, button, onOff, message, table } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';
 import type { Server } from '../devices/server.ts';
-import type { PtDhcpPool, DnsRecord, DnsRecordType } from '../services/config.ts';
-import { DEFAULT_LEASE_MINUTES, DEFAULT_MAX_USERS, DEFAULT_TTL } from '../services/config.ts';
+import type { PtDhcpPool } from '../services/config.ts';
+import { DEFAULT_LEASE_MINUTES, DEFAULT_MAX_USERS } from '../services/config.ts';
 import { validatePool } from '../services/dhcp-pt.ts';
 import { reservationsPanel, leasesPanel } from './server-dhcp-res.ts';
-import { recursionForm } from './server-dns-recursion.ts';
-import { validateRecord } from '../services/dns-service.ts';
-import { cleanOrigin, displayName, validateOrigin } from '../services/dns-names.ts';
 import { formatIp, formatMask, parseIp, parseMask, networkOf } from '../core/ip.ts';
 
 /** A panel that rebuilds itself after each change. */
@@ -108,92 +105,6 @@ export function dhcpPanel(server: Server, app: AfterChange): HTMLElement {
       poolsTable(s.dhcp.pools, editing, (p) => { editing = p.name; refresh(); }, remove),
       pool ? reservationsPanel(server, pool, app, refresh) : el('p', { class: 'muted' }, t('dhcp.pickPool')),
       leasesPanel(server, app, refresh),
-    ];
-  });
-}
-
-const recordTypes = (): readonly (readonly [DnsRecordType, string])[] => [['A', t('dns.typeA')], ['CNAME', t('dns.typeCname')], ['MX', t('dns.typeMx')], ['NS', t('dns.typeNs')], ['TXT', t('dns.typeTxt')]];
-
-function recordForm(server: Server, app: AfterChange, refresh: () => void): HTMLElement[] {
-  const s = server.services;
-  const origin = s.dns.origin;
-  const name = input({ placeholder: origin ? 'www  ·  @  ·  *  ·  host.otro.dom.' : 'www.aula.lab' });
-  const type = select(recordTypes());
-  const value = input({ placeholder: '192.168.1.10' });
-  const prio = input({ value: '10', inputmode: 'numeric' });
-  const ttl = input({ value: String(DEFAULT_TTL), inputmode: 'numeric' });
-  const preview = el('p', { class: 'muted', 'aria-live': 'polite' });
-  const prioField = field(t('dns.priority'), prio);
-  prioField.hidden = true;
-  const showPreview = (): void => {
-    const target = type.value === 'CNAME' || type.value === 'MX' || type.value === 'NS';
-    const owner = name.value.trim() ? displayName(name.value, origin) : '';
-    const dest = target && value.value.trim() ? displayName(value.value, origin) : '';
-    preview.textContent = owner ? t('dns.fullName', { name: `${owner}${dest ? `  →  ${dest}` : ''}` }) : '';
-  };
-  type.addEventListener('change', () => {
-    prioField.hidden = type.value !== 'MX';
-    value.placeholder = type.value === 'A' ? '192.168.1.10' : type.value === 'TXT' ? 'v=spf1 mx -all' : origin ? 'srv  ·  @  ·  srv.otro.dom.' : 'srv.aula.lab';
-    showPreview();
-  });
-  name.addEventListener('input', showPreview);
-  value.addEventListener('input', showPreview);
-  const msg = message();
-  const add = (): void => {
-    const rec: DnsRecord = { name: name.value.trim().toLowerCase(), type: type.value as DnsRecordType, value: value.value.trim(), priority: type.value === 'MX' ? Number(prio.value) : undefined, ttl: Number(ttl.value) || DEFAULT_TTL };
-    const err = validateRecord(rec, origin);
-    if (err) return msg.error(err);
-    server.setServices({ ...s, dns: { ...s.dns, records: [...s.dns.records, rec] } });
-    app.afterCommand();
-    refresh();
-  };
-  return [
-    el('h3', {}, t('dns.newRecord')),
-    el('div', { class: 'grid3' }, field(t('dns.name'), name), field(t('dns.type'), type), field(t('dns.value'), value), prioField, field('TTL (s)', ttl)),
-    preview,
-    el('div', { class: 'actions' }, button(t('dns.addRecord'), add)), msg.el,
-  ];
-}
-
-function originForm(server: Server, app: AfterChange, refresh: () => void): HTMLElement[] {
-  const s = server.services;
-  const originIn = input({ value: s.dns.origin ?? '', placeholder: 'aula.lab' });
-  const msg = message();
-  const save = (): void => {
-    const err = validateOrigin(originIn.value);
-    if (err) return msg.error(err);
-    server.setServices({ ...s, dns: { ...s.dns, origin: cleanOrigin(originIn.value) } });
-    app.afterCommand();
-    refresh();
-  };
-  return [
-    el('div', { class: 'grid3' }, field(t('dns.origin'), originIn, t('dns.originHint'))),
-    el('div', { class: 'actions' }, button(t('dns.saveOrigin'), save, 'btn btn-quiet')), msg.el,
-  ];
-}
-
-export function dnsPanel(server: Server, app: AfterChange): HTMLElement {
-  return livePanel((refresh) => {
-    const s = server.services;
-    const origin = s.dns.origin;
-    return [
-      onOff(t('dns.service'), s.dns.enabled, (on) => { server.setUnit('dns', on); app.afterCommand(); refresh(); }),
-      ...originForm(server, app, refresh),
-      ...recordForm(server, app, refresh),
-      el('p', { class: 'muted' }, t('dns.ptrHint')),
-      ...recursionForm(server, app, refresh),
-      el('h3', {}, t('dns.records')),
-      table(s.dns.records, [
-        { label: t('dns.name'), value: (r) => r.name, mono: true },
-        { label: t('dns.fullNameCol'), value: (r) => displayName(r.name, origin), mono: true },
-        { label: t('dns.type'), value: (r) => r.type },
-        { label: t('dns.value'), value: (r) => (r.type === 'MX' ? `${r.priority ?? 10} ${r.value}` : r.value), mono: true },
-        { label: 'TTL', value: (r) => String(r.ttl) },
-      ], { empty: t('dns.noRecords'), onDelete: (r) => {
-        server.setServices({ ...s, dns: { ...s.dns, records: s.dns.records.filter((x) => x !== r) } });
-        app.afterCommand();
-        refresh();
-      } }),
     ];
   });
 }

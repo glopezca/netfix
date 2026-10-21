@@ -1,4 +1,4 @@
-/** Server management GUI (WRT300N style) used from a PC browser. */
+/** Server management GUI (side menu and cards) used from a PC browser. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
@@ -31,8 +31,8 @@ test('asks for credentials (HTTP Basic) on port 10000 and shows the Setup page',
   const wrong = web.login('http://10.0.0.2:10000/', 'admin', 'x');
   assert.equal(wrong.kind === 'auth' && wrong.failed, true);
   const ok = web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
-  assert.match(body(ok), /<title>Server · Configuración básica<\/title>/);
-  assert.match(body(ok), /class="web-wrt-tab web-wrt-on"><a href="\/\?page=setup">Configuración/);
+  assert.match(body(ok), /<title>Server0 · Configuración básica<\/title>/i);
+  assert.match(body(ok), /<li class="web-adm-on"><a href="\/\?page=setup" class="web-adm-nav web-adm-nav-setup">Configuración básica/);
   assert.match(body(ok), /name="hostname" value="server0"/i);
 });
 
@@ -43,11 +43,12 @@ test('changes made in the GUI apply to the server: hostname, DNS records, mail u
   assert.match(body(saved), /Los cambios se han guardado correctamente/);
   assert.equal(srv.name, 'srv-web');
   assert.equal(srv.config.gateway, parseIp('10.0.0.1'));
-  post(web, 'dns', [['action', 'dns'], ['enabled', '1'], ['origin', 'aula.lab']]);
-  post(web, 'dns', [['action', 'record-add'], ['name', 'www'], ['type', 'A'], ['value', '10.0.0.2']]);
-  const bad = post(web, 'dns', [['action', 'record-add'], ['name', 'mal nombre'], ['type', 'A'], ['value', '10.0.0.2']]);
-  assert.match(body(bad), /web-wrt-error/);
-  assert.deepEqual(srv.services.dns.records.map((r) => r.name), ['www']);
+  post(web, 'dns', [['action', 'dns-modes'], ['enabled', '1'], ['authoritative', '1'], ['cache', '1']]);
+  post(web, 'dns', [['action', 'zone-add'], ['z_name', 'aula.lab'], ['z_ns', 'ns.aula.lab'], ['z_kind', 'forward']]);
+  post(web, 'dns', [['action', 'zone-record-add'], ['zone', 'aula.lab'], ['name', 'www'], ['type', 'A'], ['value', '10.0.0.2']]);
+  const bad = post(web, 'dns', [['action', 'zone-record-add'], ['zone', 'aula.lab'], ['name', 'mal nombre'], ['type', 'A'], ['value', '10.0.0.2']]);
+  assert.match(body(bad), /web-adm-error/);
+  assert.deepEqual(srv.services.dns.zones[0]?.records.map((r) => r.name), ['www']);
   assert.equal(srv.services.dns.enabled, true);
   post(web, 'mail', [['action', 'user-add'], ['name', 'eva'], ['password', 'eva1']]);
   assert.deepEqual(srv.services.mail.users.map((u) => u.name), ['eva']);
@@ -86,7 +87,7 @@ test('DHCP page: reservations by MAC, hexadecimal and ASCII client-id, and from 
   post(web, 'dhcp', [['action', 'res-add'], ['pool', 'LAN'], ['ip', '10.0.0.51'], ['kind', 'hex'], ['id', '0100.0142.abcd.e0'], ['name', '']]);
   post(web, 'dhcp', [['action', 'res-add'], ['pool', 'LAN'], ['ip', '10.0.0.52'], ['kind', 'ascii'], ['id', 'aula-pc-01'], ['name', '']]);
   const bad = post(web, 'dhcp', [['action', 'res-add'], ['pool', 'LAN'], ['ip', '10.0.1.9'], ['kind', 'mac'], ['id', '0001.42ab.0000'], ['name', '']]);
-  assert.match(body(bad), /web-wrt-error/);
+  assert.match(body(bad), /web-adm-error/);
   const pool = () => srv.services.dhcp.pools.find((p) => p.name === 'LAN')!;
   assert.deepEqual(pool().reservations.map((r) => [r.ip, r.mac ?? r.clientId]), [[parseIp('10.0.0.50'), '000142abcdef'], [parseIp('10.0.0.51'), '01000142abcde0'], [parseIp('10.0.0.52'), '61756c612d70632d3031']]);
   const page = body(web.open('http://10.0.0.2:10000/?page=dhcp'));

@@ -1,22 +1,26 @@
 /** JSON (de)serialisation of Server services with validation of untrusted files. */
 import { hasMessage, t, tDynamic } from '../i18n/t.ts';
-import type { ServerServices, PtDhcpPool, DnsRecord, Account, WebFile } from './config.ts';
+import type { ServerServices, PtDhcpPool, DnsRecord, DnsSettings, DnsSoa, DnsZone, Account, WebFile } from './config.ts';
 import { defaultServices, defaultWebApps, validateAccess, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } from './config.ts';
 import type { WebAppAccess, WebApps } from './config.ts';
 import type { MailMessage } from '../net/packets.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { parseMac, parseHexId } from '../core/mac.ts';
 import { cleanOrigin, validateOrigin } from './dns-names.ts';
+import { defaultSoa, validateZone, zonesFromLegacy } from './dns-zones.ts';
+import { normalizeName } from '../net/dns.ts';
 
 type Json = Record<string, unknown>;
 
 const MAX_ITEMS = 500;
 const MAX_TEXT = 200_000;
-const RECORD_TYPES = new Set(['A', 'CNAME', 'MX', 'NS', 'TXT']);
+const RECORD_TYPES = new Set(['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR']);
+const MAX_TIMER = 2_147_483_647;
+const MAX_ZONES = 64;
 
 export interface ServicesJson {
   readonly dhcp: { enabled: boolean; pools: Json[] };
-  readonly dns: { enabled: boolean; origin?: string; records: DnsRecord[]; forwarders?: string[]; forwardOnly?: boolean; allowRecursion?: 'localnets' | 'any' };
+  readonly dns: Omit<DnsSettings, 'forwarders'> & { forwarders?: string[] };
   readonly http: { enabled: boolean; files: WebFile[] };
   readonly mail: ServerServices['mail'];
   readonly ssh: ServerServices['ssh'];
@@ -37,10 +41,7 @@ export function servicesToJson(s: ServerServices): ServicesJson {
         identifyBy: p.identifyBy,
       })),
     },
-    dns: {
-      enabled: s.dns.enabled, origin: s.dns.origin, records: [...s.dns.records],
-      ...(s.dns.forwarders?.length ? { forwarders: s.dns.forwarders.map(formatIp), forwardOnly: s.dns.forwardOnly, allowRecursion: s.dns.allowRecursion } : {}),
-    },
+    dns: { ...s.dns, ...(s.dns.forwarders?.length ? { forwarders: s.dns.forwarders.map(formatIp) } : { forwarders: undefined }) },
     http: { enabled: s.http.enabled, files: [...s.http.files] },
     mail: s.mail,
     ssh: s.ssh,
@@ -161,13 +162,48 @@ function webapps(v: unknown): WebApps {
   };
 }
 
+function soa(v: unknown, zone: string): DnsSoa {
+  const d = defaultSoa(zone);
+  if (!isObj(v)) return d;
+  const timer = (x: unknown, what: string, dflt: number): number => num(x, what, 0, MAX_TIMER, dflt);
+  return {
+    mname: v.mname === undefined ? d.mname : normalizeName(str(v.mname, 'servidor primario SOA')), rname: v.rname === undefined ? d.rname : str(v.rname, 'correo SOA'),
+    serial: timer(v.serial, 'serie SOA', d.serial), refresh: timer(v.refresh, 'refresh SOA', d.refresh), retry: timer(v.retry, 'retry SOA', d.retry),
+    expire: timer(v.expire, 'expire SOA', d.expire), minimum: timer(v.minimum, 'TTL negativo SOA', d.minimum),
+  };
+}
+
+function zone(v: unknown, before: readonly DnsZone[]): DnsZone {
+  if (!isObj(v)) throw new Error(t('load.record'));
+  const name = normalizeName(str(v.name, 'nombre de zona'));
+  const z: DnsZone = { name, kind: v.kind === 'reverse' ? 'reverse' : 'forward', soa: soa(v.soa, name), ns: arr(v.ns, 'servidores de nombres').map((x) => normalizeName(str(x, 'servidor de nombres'))), records: arr(v.records, 'registros').map(record) };
+  const err = validateZone(z, before);
+  if (err) throw new Error(t('load.zone', { name, error: err }));
+  return z;
+}
+
+function zones(n: Json): DnsZone[] {
+  if (n.zones === undefined) return zonesFromLegacy(origin(n.origin), arr(n.records, 'registros').map(record));
+  const list = arr(n.zones, 'zonas DNS');
+  if (list.length > MAX_ZONES) throw new Error(t('load.list', { what: label('zonas DNS') }));
+  return list.reduce<DnsZone[]>((acc, z) => [...acc, zone(z, acc)], []);
+}
+
 const MAX_FORWARDERS = 8;
 
-function dnsFromJson(n: Record<string, unknown>): ServerServices['dns'] {
-  const base = { enabled: bool(n.enabled), origin: origin(n.origin), records: arr(n.records, 'registros').map(record) };
+function dnsFromJson(n: Json): DnsSettings {
   const fwd = arr(n.forwarders, 'reenviadores DNS').slice(0, MAX_FORWARDERS).map((x) => optIp(x, 'reenviador DNS')).filter((x): x is number => x !== undefined);
-  if (!fwd.length) return base;
-  return { ...base, forwarders: fwd, forwardOnly: n.forwardOnly !== false, allowRecursion: n.allowRecursion === 'any' ? 'any' : 'localnets' };
+  // ≤ 0.11 had no recursion switch: forwarders meant recursion.
+  const recursion = n.recursion === undefined ? fwd.length > 0 : bool(n.recursion);
+  // Only what the file says (defaults stay implicit), so a saved topology loads back identical.
+  return {
+    enabled: bool(n.enabled), zones: zones(n),
+    ...(n.authoritative === false ? { authoritative: false } : {}),
+    ...(n.recursion !== undefined || recursion ? { recursion } : {}),
+    ...(n.maxCacheTtl !== undefined ? { maxCacheTtl: num(n.maxCacheTtl, 'max-cache-ttl', 0, MAX_TIMER) } : {}),
+    ...(fwd.length ? { forwarders: fwd, forwardOnly: n.forwardOnly !== false } : {}),
+    ...(n.allowRecursion !== undefined ? { allowRecursion: n.allowRecursion === 'any' ? 'any' as const : 'localnets' as const } : {}),
+  };
 }
 
 export function servicesFromJson(v: unknown): ServerServices {

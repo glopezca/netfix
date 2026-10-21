@@ -20,6 +20,7 @@ export const LOAD_ES = {
   'load.reservationId': 'Client-ID de reserva no válido (hexadecimal).',
   'load.origin': 'Origen de zona DNS no válido.',
   'load.record': 'Registro DNS no válido.',
+  'load.zone': 'Zona DNS «{name}» no válida: {error}',
   'load.account': 'Cuenta no válida.',
   'load.services': 'Servicios del servidor no válidos.',
   'load.webFile': 'Fichero web no válido.',
