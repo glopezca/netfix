@@ -72,9 +72,26 @@ function writeOut(ctx: Ctx, prog: string, file: string, body: string): boolean {
   }
 }
 
+/** wget's short options split as getopt does: -qO- is -q -O -, -qO file is -q -O file. */
+function wgetArgs(argv: readonly string[]): string[] {
+  return argv.flatMap((a) => {
+    if (!/^-[a-zA-Z]{2,}/.test(a)) return [a];
+    const out: string[] = [];
+    for (let i = 1; i < a.length; i++) {
+      const c = a[i] ?? '';
+      out.push(`-${c}`);
+      if (c === 'O' || c === 'o') {
+        if (i + 1 < a.length) out.push(a.slice(i + 1));
+        break;
+      }
+    }
+    return out;
+  });
+}
+
 function wget(host: Host): CommandFn {
   return (ctx: Ctx): number => {
-    const args = ctx.argv.slice(1);
+    const args = wgetArgs(ctx.argv.slice(1));
     const quiet = args.includes('-q') || args.includes('--quiet');
     const oIdx = args.findIndex((a) => a === '-O' || a === '--output-document');
     const url = args.find((a, i) => !a.startsWith('-') && !(oIdx >= 0 && i === oIdx + 1));

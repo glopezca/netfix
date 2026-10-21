@@ -26,6 +26,8 @@ interface CurlOpts {
   headers: Record<string, string>;
   output?: string;
   remoteName: boolean;
+  /** -w: printed after the transfer, with %{http_code}, %{size_download}, %{content_type}, %{url_effective}. */
+  writeOut?: string;
   error?: string;
 }
 
@@ -57,6 +59,7 @@ function parse(args: readonly string[]): CurlOpts {
       case '-A': case '--user-agent': o.headers['user-agent'] = v ?? ''; break;
       case '-H': case '--header': { const m = /^([^:]+):\s*(.*)$/.exec(v ?? ''); if (m) o.headers[(m[1] ?? '').toLowerCase()] = m[2] ?? ''; break; }
       case '-o': case '--output': o.output = v; break;
+      case '-w': case '--write-out': o.writeOut = v; break;
       default:
         if (/^-[sSkLIi]+$/.test(a) && a.length > 2) { for (const c of a.slice(1)) Object.assign(o, flag(c)); break; }
         if (a === '-s' || a === '--silent') { o.silent = true; break; }
@@ -68,9 +71,24 @@ function parse(args: readonly string[]): CurlOpts {
   return o;
 }
 
-function headerBlock(res: Extract<HttpOutcome, { kind: 'ok' }>['response'], date: string): string {
-  const extra = Object.entries(res.headers ?? {}).flatMap(([k, v]) => v.split('\n').map((line) => `${k.replace(/(^|-)\w/g, (c) => c.toUpperCase())}: ${line}`));
-  return [`HTTP/1.1 ${res.status} ${res.reason}`, `Date: ${date}`, `Server: ${res.server}`, ...extra, `Content-Length: ${res.body.length}`, `Content-Type: ${res.contentType}`, '', ''].join('\n');
+type Response = Extract<HttpOutcome, { kind: 'ok' }>['response'];
+
+/** Content-Length as the server sent it (a HEAD answer gives the size of the page it did not send). */
+const contentLength = (res: Response): number => Number(res.headers?.['content-length'] ?? new TextEncoder().encode(res.body).length);
+
+function headerBlock(res: Response, date: string): string {
+  const extra = Object.entries(res.headers ?? {}).filter(([k]) => k !== 'content-length')
+    .flatMap(([k, v]) => v.split('\n').map((line) => `${k.replace(/(^|-)\w/g, (c) => c.toUpperCase())}: ${line}`));
+  return [`HTTP/1.1 ${res.status} ${res.reason}`, `Date: ${date}`, `Server: ${res.server}`, ...extra, `Content-Length: ${contentLength(res)}`, `Content-Type: ${res.contentType}`, '', ''].join('\n');
+}
+
+/** The -w format with the transfer's values (escapes \n and \t as curl does). */
+function writeOutText(format: string, res: Response, url: string): string {
+  const vars: Record<string, string> = {
+    http_code: String(res.status).padStart(3, '0'), response_code: String(res.status), size_download: String(new TextEncoder().encode(res.body).length),
+    content_type: res.contentType, url_effective: url,
+  };
+  return format.replace(/%\{(\w+)\}/g, (m, k: string) => vars[k] ?? m).replace(/\\n/g, '\n').replace(/\\t/g, '\t');
 }
 
 function verboseRequest(ctx: Ctx, url: string, method: string, headers: HttpHeaders, ip: number, port: number): void {
@@ -100,6 +118,7 @@ export function curl(host: Host): CommandFn {
     let method: HttpMethod = o.method ?? (o.head ? 'HEAD' : o.data.length ? 'POST' : 'GET');
     let body = o.data.length ? o.data.join('&') : undefined;
     let out = '';
+    let written = '';
     for (let hop = 0; ; hop++) {
       const headers: Record<string, string> = { 'user-agent': USER_AGENT, accept: '*/*', ...(body !== undefined ? { 'content-type': 'application/x-www-form-urlencoded' } : {}), ...o.headers };
       const r = httpRequest(host, url, { method, headers, body });
@@ -122,10 +141,14 @@ export function curl(host: Host): CommandFn {
         return 22;
       }
       if (!o.head) out += res.body;
+      written = o.writeOut === undefined ? '' : writeOutText(o.writeOut, res, url);
       break;
     }
     const target = o.output ?? (o.remoteName ? url.split('/').filter(Boolean).slice(2).pop() ?? 'index.html' : undefined);
-    if (target === undefined) { ctx.out(out); return 0; }
-    return writeOut(ctx, target, out) ? 0 : 23;
+    let saved = true;
+    if (target === undefined) ctx.out(out);
+    else if (target !== '/dev/null') saved = writeOut(ctx, target, out);
+    if (written) ctx.out(written);
+    return saved ? 0 : 23;
   };
 }

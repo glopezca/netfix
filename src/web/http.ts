@@ -83,7 +83,12 @@ export function unauthorized(server: string, realm: string, body: string): HttpR
   return respond(server, 401, body, { 'www-authenticate': `Basic realm="${realm.replace(/"/g, '')}"` });
 }
 
-/** Strips the body of a HEAD answer. */
+/** Bytes of a body (UTF-8), as Content-Length counts them. */
+export function byteLength(body: string): number {
+  return new TextEncoder().encode(body).length;
+}
+
+/** Strips the body of a HEAD answer; its Content-Length still tells the size of the GET answer, as a real server's. */
 export function forMethod(req: HttpRequest, res: HttpResponse): HttpResponse {
-  return req.method === 'HEAD' ? { ...res, body: '' } : res;
+  return req.method === 'HEAD' ? { ...res, body: '', headers: { ...res.headers, 'content-length': String(byteLength(res.body)) } } : res;
 }

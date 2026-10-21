@@ -124,9 +124,14 @@ export function ss(host: Host): string[] {
   const header = 'Netid State  Recv-Q Send-Q Local Address:Port  Peer Address:Port Process';
   const server = asServer(host);
   if (!server) return [header];
-  const local = host.config.ip !== undefined ? '0.0.0.0' : '*';
-  return [header, ...openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).map((p) =>
-    `${p.proto.padEnd(5)} ${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${'0.0.0.0:*'.padStart(15)}   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))`)];
+  const v4 = host.config.ip !== undefined ? '0.0.0.0' : '*';
+  return [header, ...openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).map((p) => {
+    // Apache and the web GUI bind the IPv6 wildcard (dual stack): Ubuntu's ss shows them as *:port, *:*.
+    const dual = p.unit.id === 'http';
+    const local = dual ? '*' : v4;
+    const peer = dual ? '*:*' : '0.0.0.0:*';
+    return `${p.proto.padEnd(5)} ${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${peer.padStart(15)}   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))`;
+  })];
 }
 
 export function serverAddress(host: Host): string {

@@ -13,7 +13,7 @@ import { answerQuery } from '../services/dns-service.ts';
 import { normalizeName } from './dns.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { page, h } from '../web/html.ts';
-import { respond } from '../web/http.ts';
+import { forMethod, respond } from '../web/http.ts';
 import type { HttpRequest } from '../web/http.ts';
 
 const ip = (t: string): number => parseIp(t) ?? 0;
@@ -170,7 +170,7 @@ class WebSite implements VirtualHost {
     this.tcp.listen(80, (req, peer) => {
       if (req.app !== 'HTTP' || req.kind !== 'request') return null;
       const body = sitePage(site, req, peer);
-      return respond('ECS (Netfix)', 200, req.method === 'HEAD' ? '' : body, {}, site.plain ? 'text/plain; charset=UTF-8' : 'text/html; charset=UTF-8');
+      return forMethod(req, respond('ECS (Netfix)', 200, body, {}, site.plain ? 'text/plain; charset=UTF-8' : 'text/html; charset=UTF-8'));
     });
   }
 

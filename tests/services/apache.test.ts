@@ -96,7 +96,7 @@ test('modules: a2enmod with dependencies, directives of disabled modules, ports.
   assert.match(root.run('apache2ctl -t 2>&1').join('\n'), /Invalid command 'RewriteEngine'/);
   root.run('a2enmod rewrite >/dev/null; sed -i "s/^Listen 80$/Listen 80\\nListen 8081/" /etc/apache2/ports.conf; systemctl restart apache2');
   assert.match(client.run('curl -s http://10.0.0.2:8081/').join(''), /Servidor web de Netfix/);
-  assert.match(root.run('ss -tln').join('\n'), /0\.0\.0\.0:8081/);
+  assert.match(root.run('ss -tln').join('\n'), /\*:8081/);
   assert.deepEqual(root.run('a2dismod nada'), ['ERROR: Module nada does not exist!']);
 });
 

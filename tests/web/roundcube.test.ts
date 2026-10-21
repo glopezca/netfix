@@ -79,7 +79,7 @@ test('own port mode: Roundcube on :8080, Apache keeps the alias free; generated 
   assert.match(body(web.open('http://webmail.aula.lab/roundcube/')), /Not Found/);
   const conf = createShell(srv, 'linux', 'root').run('cat /etc/apache2/conf-enabled/roundcube.conf').join('\n');
   assert.match(conf, /^Listen 8080$/m);
-  assert.match(createShell(srv, 'linux', 'root').run('ss -tln').join('\n'), /0\.0\.0\.0:8080/);
+  assert.match(createShell(srv, 'linux', 'root').run('ss -tln').join('\n'), /\*:8080/);
   assert.match(createShell(pc, 'linux').run('curl -s http://webmail.aula.lab:8080/ | grep --color=never -o "Roundcube Webmail ::[^<]*"').join(''), /Bienvenido/);
   srv.setUnit('http', false);
   assert.equal(new BrowserEngine(pc).open('http://webmail.aula.lab:8080/').kind, 'error', 'Roundcube needs Apache');

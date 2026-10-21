@@ -2,6 +2,7 @@
 import { t } from '../i18n/t.ts';
 import type { AppPayload } from '../net/packets.ts';
 import type { WebFile } from './config.ts';
+import { forMethod } from '../web/http.ts';
 
 export const SERVER_BANNER = 'Apache/2.4.62 (Ubuntu)';
 export const IIS_BANNER = 'Microsoft-IIS/10.0';
@@ -41,8 +42,8 @@ export function findFile(files: readonly WebFile[], path: string): WebFile | und
 export function serveHttp(files: readonly WebFile[], req: HttpRequest, banner = SERVER_BANNER): HttpResponse {
   const file = findFile(files, req.path);
   const base = { app: 'HTTP' as const, kind: 'response' as const, server: banner };
-  if (!file) return { ...base, status: 404, reason: 'Not Found', contentType: 'text/html; charset=iso-8859-1', body: req.method === 'HEAD' ? '' : NOT_FOUND_BODY(req.path) };
-  return { ...base, status: 200, reason: 'OK', contentType: contentType(file.name), body: req.method === 'HEAD' ? '' : file.content };
+  if (!file) return forMethod(req, { ...base, status: 404, reason: 'Not Found', contentType: 'text/html; charset=iso-8859-1', body: NOT_FOUND_BODY(req.path) });
+  return forMethod(req, { ...base, status: 200, reason: 'OK', contentType: contentType(file.name), body: file.content });
 }
 
 export function validateFileName(name: string, existing: readonly WebFile[]): string | null {

@@ -10147,12 +10147,16 @@ function redirect(server, location, extra = {}, status = 302) {
 function unauthorized(server, realm, body) {
     return respond(server, 401, body, { 'www-authenticate': `Basic realm="${realm.replace(/"/g, '')}"` });
 }
-/** Strips the body of a HEAD answer. */
+/** Bytes of a body (UTF-8), as Content-Length counts them. */
+function byteLength(body) {
+    return new TextEncoder().encode(body).length;
+}
+/** Strips the body of a HEAD answer; its Content-Length still tells the size of the GET answer, as a real server's. */
 function forMethod(req, res) {
-    return req.method === 'HEAD' ? { ...res, body: '' } : res;
+    return req.method === 'HEAD' ? { ...res, body: '', headers: { ...res.headers, 'content-length': String(byteLength(res.body)) } } : res;
 }
 
-return { REASONS, pathOnly, parseForm, encodeForm, query, formFields, cookies, basicAuth, basicHeader, respond, redirect, unauthorized, forMethod };
+return { REASONS, pathOnly, parseForm, encodeForm, query, formFields, cookies, basicAuth, basicHeader, respond, redirect, unauthorized, byteLength, forMethod };
 })();
 __m["web/html.js"] = (() => {
 /**
@@ -11139,6 +11143,7 @@ return { WWW_DATA, confReader, webFs };
 __m["services/http-service.js"] = (() => {
 /** Static HTTP server: serves the files edited in Servicios → HTTP. */
 const { t } = __m["i18n/t.js"];
+const { forMethod } = __m["web/http.js"];
 const SERVER_BANNER = 'Apache/2.4.62 (Ubuntu)';
 const IIS_BANNER = 'Microsoft-IIS/10.0';
 const NOT_FOUND_BODY = (path) => `<!doctype html>
@@ -11174,8 +11179,8 @@ function serveHttp(files, req, banner = SERVER_BANNER) {
     const file = findFile(files, req.path);
     const base = { app: 'HTTP', kind: 'response', server: banner };
     if (!file)
-        return { ...base, status: 404, reason: 'Not Found', contentType: 'text/html; charset=iso-8859-1', body: req.method === 'HEAD' ? '' : NOT_FOUND_BODY(req.path) };
-    return { ...base, status: 200, reason: 'OK', contentType: contentType(file.name), body: req.method === 'HEAD' ? '' : file.content };
+        return forMethod(req, { ...base, status: 404, reason: 'Not Found', contentType: 'text/html; charset=iso-8859-1', body: NOT_FOUND_BODY(req.path) });
+    return forMethod(req, { ...base, status: 200, reason: 'OK', contentType: contentType(file.name), body: file.content });
 }
 function validateFileName(name, existing) {
     if (!/^[\w.-]+(\/[\w.-]+)*$/.test(name))
@@ -18868,8 +18873,8 @@ const UTIL_DOCS = {
     dig: { group: 'red', synopsis: 'dig [@SERVIDOR] NOMBRE [TIPO] [+short] [+search] | dig -x IP', summary: 'Consulta DNS con la salida de BIND 9 (secciones QUESTION, ANSWER, AUTHORITY; status NOERROR/NXDOMAIN/REFUSED).' },
     nslookup: { group: 'red', synopsis: 'nslookup NOMBRE [SERVIDOR]', summary: 'Consulta DNS sencilla.' },
     host: { group: 'red', synopsis: 'host [-t TIPO] NOMBRE [SERVIDOR]', summary: 'Consulta DNS en una línea por registro.' },
-    curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X MÉTODO] [-d DATOS] [-u USUARIO:CLAVE] [-b COOKIES] [-H "Cabecera: valor"] [-o FICHERO | -O] URL', summary: 'Cliente HTTP. Errores con su código: (6) no resuelve, (7) conexión rechazada, (3) URL no válida, (22) error HTTP con -f.', options: '-I  solo cabeceras (HEAD)        -i  incluye las cabeceras\n-L  sigue las redirecciones       -v  muestra la petición y la respuesta\n-X  método (GET, POST, HEAD)      -d  datos de formulario (POST)\n-u  usuario:clave (Basic)         -b  cookies «a=1; b=2»\n-H  cabecera extra («Host: www.aula.lab» para probar un VirtualHost)\n-s  silencioso (-S muestra los errores)   -f  falla con los errores HTTP' },
-    wget: { group: 'red', synopsis: 'wget [-q] [-O FICHERO] URL', summary: 'Descarga a un fichero del directorio actual (nombre.1, nombre.2… si ya existe).' },
+    curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X MÉTODO] [-d DATOS] [-u USUARIO:CLAVE] [-b COOKIES] [-H "Cabecera: valor"] [-o FICHERO | -O] [-w FORMATO] URL', summary: 'Cliente HTTP. Errores con su código: (6) no resuelve, (7) conexión rechazada, (3) URL no válida, (22) error HTTP con -f.', options: '-I  solo cabeceras (HEAD)        -i  incluye las cabeceras\n-L  sigue las redirecciones       -v  muestra la petición y la respuesta\n-X  método (GET, POST, HEAD)      -d  datos de formulario (POST)\n-u  usuario:clave (Basic)         -b  cookies «a=1; b=2»\n-H  cabecera extra («Host: www.aula.lab» para probar un VirtualHost)\n-s  silencioso (-S muestra los errores)   -f  falla con los errores HTTP\n-w  escribe al final: %{http_code}, %{size_download}, %{content_type}, %{url_effective} («-s -o /dev/null -w \'%{http_code}\'» da solo el código)' },
+    wget: { group: 'red', synopsis: 'wget [-q] [-O FICHERO] URL', summary: 'Descarga a un fichero del directorio actual (nombre.1, nombre.2… si ya existe). «-qO-» escribe la página en la salida.' },
     ssh: { group: 'red', synopsis: 'ssh [-i CLAVE] [-l USUARIO] [-p PUERTO] [-o OPCIÓN=VALOR] [USUARIO@]HOST [ORDEN]', summary: 'Cliente OpenSSH: comprueba la clave del servidor en ~/.ssh/known_hosts, se autentica con ~/.ssh/id_* y, si no, con contraseña. Con ORDEN la ejecuta y vuelve. Opciones -o: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Devuelve el estado remoto (255 si falla).' },
     'ssh-keygen': { group: 'red', synopsis: 'ssh-keygen [-t ed25519|ecdsa|rsa] [-b BITS] [-f FICHERO] [-N FRASE] [-C COMENTARIO] [-q] | -l|-y|-p [-f FICHERO] | -F|-R HOST [-f known_hosts] | -A', summary: 'Genera pares de claves OpenSSH (privada 600 y .pub 644), muestra la huella (-l), obtiene la pública (-y), cambia la frase de paso (-p), busca (-F) o borra (-R) equipos de known_hosts y crea las claves de host que falten (-A).' },
     sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] CLAVE... | [-w] CLAVE=VALOR | -p [FICHERO] | --system | -a', summary: 'Parámetros del núcleo (también en /proc/sys): net.ipv4.ip_forward activa el reenvío en el router Linux, net.ipv4.icmp_echo_ignore_all ignora los ping. Los cambios con -w se pierden al reiniciar; para que duren, en /etc/sysctl.conf o /etc/sysctl.d/*.conf (sysctl --system los aplica). Cambiar requiere root.' },
@@ -20277,8 +20282,8 @@ const UTIL_DOCS = {
     dig: { group: 'red', synopsis: 'dig [@SERVER] NAME [TYPE] [+short] [+search] | dig -x IP', summary: 'DNS query with BIND 9 output (QUESTION, ANSWER, AUTHORITY sections; status NOERROR/NXDOMAIN/REFUSED).' },
     nslookup: { group: 'red', synopsis: 'nslookup NAME [SERVER]', summary: 'Simple DNS query.' },
     host: { group: 'red', synopsis: 'host [-t TYPE] NAME [SERVER]', summary: 'DNS query, one line per record.' },
-    curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X METHOD] [-d DATA] [-u USER:PASSWORD] [-b COOKIES] [-H "Header: value"] [-o FILE | -O] URL', summary: 'HTTP client. Errors with their code: (6) cannot resolve, (7) connection refused, (3) invalid URL, (22) HTTP error with -f.', options: '-I  headers only (HEAD)          -i  includes the headers\n-L  follows redirects            -v  shows the request and the response\n-X  method (GET, POST, HEAD)      -d  form data (POST)\n-u  user:password (Basic)         -b  cookies “a=1; b=2”\n-H  extra header (“Host: www.aula.lab” to test a VirtualHost)\n-s  silent (-S shows errors)      -f  fails on HTTP errors' },
-    wget: { group: 'red', synopsis: 'wget [-q] [-O FILE] URL', summary: 'Downloads to a file in the current directory (name.1, name.2… if it already exists).' },
+    curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X METHOD] [-d DATA] [-u USER:PASSWORD] [-b COOKIES] [-H "Header: value"] [-o FILE | -O] [-w FORMAT] URL', summary: 'HTTP client. Errors with their code: (6) cannot resolve, (7) connection refused, (3) invalid URL, (22) HTTP error with -f.', options: '-I  headers only (HEAD)          -i  includes the headers\n-L  follows redirects            -v  shows the request and the response\n-X  method (GET, POST, HEAD)      -d  form data (POST)\n-u  user:password (Basic)         -b  cookies “a=1; b=2”\n-H  extra header (“Host: www.aula.lab” to test a VirtualHost)\n-s  silent (-S shows errors)      -f  fails on HTTP errors\n-w  writes at the end: %{http_code}, %{size_download}, %{content_type}, %{url_effective} (“-s -o /dev/null -w \'%{http_code}\'” gives just the code)' },
+    wget: { group: 'red', synopsis: 'wget [-q] [-O FILE] URL', summary: 'Downloads to a file in the current directory (name.1, name.2… if it already exists). “-qO-” writes the page to the output.' },
     ssh: { group: 'red', synopsis: 'ssh [-i KEY] [-l USER] [-p PORT] [-o OPTION=VALUE] [USER@]HOST [COMMAND]', summary: 'OpenSSH client: checks the server key in ~/.ssh/known_hosts, authenticates with ~/.ssh/id_* and, failing that, with a password. With COMMAND it runs it and returns. -o options: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Returns the remote status (255 on failure).' },
     'ssh-keygen': { group: 'red', synopsis: 'ssh-keygen [-t ed25519|ecdsa|rsa] [-b BITS] [-f FILE] [-N PASSPHRASE] [-C COMMENT] [-q] | -l|-y|-p [-f FILE] | -F|-R HOST [-f known_hosts] | -A', summary: 'Generates OpenSSH key pairs (private 600 and .pub 644), shows the fingerprint (-l), derives the public key (-y), changes the passphrase (-p), finds (-F) or removes (-R) hosts in known_hosts and creates any missing host keys (-A).' },
     sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] KEY... | [-w] KEY=VALUE | -p [FILE] | --system | -a', summary: 'Kernel parameters (also in /proc/sys): net.ipv4.ip_forward enables forwarding on the Linux router, net.ipv4.icmp_echo_ignore_all ignores pings. Changes made with -w are lost on reboot; to make them last, put them in /etc/sysctl.conf or /etc/sysctl.d/*.conf (sysctl --system applies them). Changing requires root.' },
@@ -28255,7 +28260,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.11.1",
+    "version": "0.11.2",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -31870,8 +31875,14 @@ function ss(host) {
     const server = asServer(host);
     if (!server)
         return [header];
-    const local = host.config.ip !== undefined ? '0.0.0.0' : '*';
-    return [header, ...openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).map((p) => `${p.proto.padEnd(5)} ${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${'0.0.0.0:*'.padStart(15)}   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))`)];
+    const v4 = host.config.ip !== undefined ? '0.0.0.0' : '*';
+    return [header, ...openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).map((p) => {
+            // Apache and the web GUI bind the IPv6 wildcard (dual stack): Ubuntu's ss shows them as *:port, *:*.
+            const dual = p.unit.id === 'http';
+            const local = dual ? '*' : v4;
+            const peer = dual ? '*:*' : '0.0.0.0:*';
+            return `${p.proto.padEnd(5)} ${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${peer.padStart(15)}   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))`;
+        })];
 }
 function serverAddress(host) {
     return host.config.ip !== undefined ? formatIp(host.config.ip) : '0.0.0.0';
@@ -32925,6 +32936,10 @@ function parse(args) {
             case '--output':
                 o.output = v;
                 break;
+            case '-w':
+            case '--write-out':
+                o.writeOut = v;
+                break;
             default:
                 if (/^-[sSkLIi]+$/.test(a) && a.length > 2) {
                     for (const c of a.slice(1))
@@ -32947,9 +32962,20 @@ function parse(args) {
     }
     return o;
 }
+/** Content-Length as the server sent it (a HEAD answer gives the size of the page it did not send). */
+const contentLength = (res) => Number(res.headers?.['content-length'] ?? new TextEncoder().encode(res.body).length);
 function headerBlock(res, date) {
-    const extra = Object.entries(res.headers ?? {}).flatMap(([k, v]) => v.split('\n').map((line) => `${k.replace(/(^|-)\w/g, (c) => c.toUpperCase())}: ${line}`));
-    return [`HTTP/1.1 ${res.status} ${res.reason}`, `Date: ${date}`, `Server: ${res.server}`, ...extra, `Content-Length: ${res.body.length}`, `Content-Type: ${res.contentType}`, '', ''].join('\n');
+    const extra = Object.entries(res.headers ?? {}).filter(([k]) => k !== 'content-length')
+        .flatMap(([k, v]) => v.split('\n').map((line) => `${k.replace(/(^|-)\w/g, (c) => c.toUpperCase())}: ${line}`));
+    return [`HTTP/1.1 ${res.status} ${res.reason}`, `Date: ${date}`, `Server: ${res.server}`, ...extra, `Content-Length: ${contentLength(res)}`, `Content-Type: ${res.contentType}`, '', ''].join('\n');
+}
+/** The -w format with the transfer's values (escapes \n and \t as curl does). */
+function writeOutText(format, res, url) {
+    const vars = {
+        http_code: String(res.status).padStart(3, '0'), response_code: String(res.status), size_download: String(new TextEncoder().encode(res.body).length),
+        content_type: res.contentType, url_effective: url,
+    };
+    return format.replace(/%\{(\w+)\}/g, (m, k) => vars[k] ?? m).replace(/\\n/g, '\n').replace(/\\t/g, '\t');
 }
 function verboseRequest(ctx, url, method, headers, ip, port) {
     const m = /^(?:https?:\/\/)?([^/:]+)/.exec(url);
@@ -32983,6 +33009,7 @@ function curl(host) {
         let method = o.method ?? (o.head ? 'HEAD' : o.data.length ? 'POST' : 'GET');
         let body = o.data.length ? o.data.join('&') : undefined;
         let out = '';
+        let written = '';
         for (let hop = 0;; hop++) {
             const headers = { 'user-agent': USER_AGENT, accept: '*/*', ...(body !== undefined ? { 'content-type': 'application/x-www-form-urlencoded' } : {}), ...o.headers };
             const r = httpRequest(host, url, { method, headers, body });
@@ -33014,14 +33041,18 @@ function curl(host) {
             }
             if (!o.head)
                 out += res.body;
+            written = o.writeOut === undefined ? '' : writeOutText(o.writeOut, res, url);
             break;
         }
         const target = o.output ?? (o.remoteName ? url.split('/').filter(Boolean).slice(2).pop() ?? 'index.html' : undefined);
-        if (target === undefined) {
+        let saved = true;
+        if (target === undefined)
             ctx.out(out);
-            return 0;
-        }
-        return writeOut(ctx, target, out) ? 0 : 23;
+        else if (target !== '/dev/null')
+            saved = writeOut(ctx, target, out);
+        if (written)
+            ctx.out(written);
+        return saved ? 0 : 23;
     };
 }
 
@@ -35110,9 +35141,27 @@ function writeOut(ctx, prog, file, body) {
         return false;
     }
 }
+/** wget's short options split as getopt does: -qO- is -q -O -, -qO file is -q -O file. */
+function wgetArgs(argv) {
+    return argv.flatMap((a) => {
+        if (!/^-[a-zA-Z]{2,}/.test(a))
+            return [a];
+        const out = [];
+        for (let i = 1; i < a.length; i++) {
+            const c = a[i] ?? '';
+            out.push(`-${c}`);
+            if (c === 'O' || c === 'o') {
+                if (i + 1 < a.length)
+                    out.push(a.slice(i + 1));
+                break;
+            }
+        }
+        return out;
+    });
+}
 function wget(host) {
     return (ctx) => {
-        const args = ctx.argv.slice(1);
+        const args = wgetArgs(ctx.argv.slice(1));
         const quiet = args.includes('-q') || args.includes('--quiet');
         const oIdx = args.findIndex((a) => a === '-O' || a === '--output-document');
         const url = args.find((a, i) => !a.startsWith('-') && !(oIdx >= 0 && i === oIdx + 1));
@@ -42657,7 +42706,7 @@ const { answerQuery } = __m["services/dns-service.js"];
 const { normalizeName } = __m["net/dns.js"];
 const { formatIp, parseIp } = __m["core/ip.js"];
 const { page, h } = __m["web/html.js"];
-const { respond } = __m["web/http.js"];
+const { forMethod, respond } = __m["web/http.js"];
 const ip = (t) => parseIp(t) ?? 0;
 const GOOGLE_DNS = [ip('8.8.8.8'), ip('8.8.4.4')];
 const GOOGLE_HOP = ip('142.250.0.1');
@@ -42798,7 +42847,7 @@ class WebSite {
             if (req.app !== 'HTTP' || req.kind !== 'request')
                 return null;
             const body = sitePage(site, req, peer);
-            return respond('ECS (Netfix)', 200, req.method === 'HEAD' ? '' : body, {}, site.plain ? 'text/plain; charset=UTF-8' : 'text/html; charset=UTF-8');
+            return forMethod(req, respond('ECS (Netfix)', 200, body, {}, site.plain ? 'text/plain; charset=UTF-8' : 'text/html; charset=UTF-8'));
         });
     }
     receive(p) {
