@@ -89,6 +89,8 @@ export function routingPage(server: Server, base: string): Child {
   const routes = server.staticRoutes.map((r) => h('tr', {}, h('td', { class: 'web-wrt-mono' }, `${formatIp(r.net)}/${r.prefix}`), h('td', { class: 'web-wrt-mono' }, formatIp(r.via)),
     h('td', {}, del(base, 'routing', 'route-del', `${formatIp(r.net)}/${r.prefix}`))));
   return [
+    form(base, 'routing', 'router-enable', h('table', {}, section(t('fwa.routerTitle'), t('fwa.routerHelp'),
+      check('enabled', sysctl.enabled('net.ipv4.ip_forward'), t('fwa.router')))), buttons()),
     ...keys.map((k) => form(base, 'routing', 'sysctl-set', h('input', { type: 'hidden', name: 'key', value: k.name }),
       h('table', {}, section(k.name, k.effect ? t('fwa.effect') : t('fwa.noEffect'),
         Array.isArray(k.accepts) ? choose('value', sysctl.get(k.name) ?? '', k.accepts.map((v) => [v, v] as const)) : text('value', sysctl.get(k.name) ?? ''))), buttons())),

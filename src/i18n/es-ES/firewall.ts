@@ -59,6 +59,8 @@ export const FIREWALL_ES = {
   'sysctl.yes': 'Sí',
   'sysctl.no': 'Se guarda, sin efecto',
   'sysctl.apply': 'Aplicar y guardar',
+  'sysctl.router': 'Activar router',
+  'sysctl.routerHelp': 'Refleja net.ipv4.ip_forward: marcada cuando vale 1 (el equipo reenvía paquetes de una red a otra, es un router) y desmarcada cuando vale 0. No cambia al pulsarla: cambia el parámetro en la tabla de abajo o con «sysctl -w net.ipv4.ip_forward=1».',
 } as const;
 
 export type FirewallKey = keyof typeof FIREWALL_ES;

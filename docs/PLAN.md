@@ -432,3 +432,45 @@ insertan en orden: 0,2 s) y 500 servidores, 4,6 s y 160 MB. `src/classroom/budge
 60 equipos o 6000 líneas de configuración IOS (`evaluate` lo aplica). Los textos de la lista de comprobación no admiten
 caracteres de formato (dirección, ancho cero) y un error interno al cargar ya no se describe al llamante.
 
+
+## Fase 20 · DNS por modos de funcionamiento, zonas guiadas y casilla «Activar router» (v0.12.0)
+
+Mejora pedagógica pedida para Server y router Linux. Interpretación de la petición: la casilla «Activar router» está
+**marcada** cuando `net.ipv4.ip_forward = 1` y desmarcada cuando vale 0 (el texto original repetía «desactivada»).
+
+1. **Casilla «Activar router»** (solo router Linux). Pestaña Servicios → Parámetros: casilla de solo lectura, ligada a
+   `net.ipv4.ip_forward`, con una etiqueta que explica que refleja ese parámetro y que se cambia en la tabla (o con
+   `sysctl`). Gestión web (Seguridad → Enrutamiento): la misma casilla, aquí sí editable (guarda `ip_forward` como el
+   formulario sysctl).
+2. **Modelo de zonas** (`DnsSettings.zones`): cada zona tiene nombre, SOA (servidor primario, correo del responsable,
+   serie, refresh, retry, expire, TTL negativo), lista de NS, tipo `forward` (por defecto) o `reverse` y registros.
+   Zona directa: A, CNAME, MX, NS (delegación) y TXT; zona inversa (`*.in-addr.arpa`): solo PTR. Orden obligatorio en la
+   interfaz: SOA → NS → tipo → registros (no se pueden añadir registros a una zona que no existe).
+   - **Zonas inversas automáticas:** cada zona directa genera, por cada red /24 de sus registros A, la zona
+     `c.b.a.in-addr.arpa` con sus PTR (mismo SOA y NS). Se listan como «automáticas», no se editan y aparecen en
+     `named.conf.local` y en `/etc/bind/db.*`. Si el usuario crea a mano una zona inversa con ese nombre, manda la suya.
+   - **Compatibilidad:** los archivos con `origin` + `records` (≤ 0.11) se convierten al cargar en una zona directa (los
+     registros fuera del origen, en zonas por su dominio padre, como hacía `zonesOf`); los NS del ápice pasan a la lista
+     NS y, si no había, se usa `ns.<zona>`.
+   - Avisos de coherencia como `named-checkzone`: NS dentro de la zona sin registro A, zona inversa con nombre que no
+     termina en `in-addr.arpa`, CNAME con otros datos.
+3. **Modos de funcionamiento** (en este orden en todas las interfaces):
+   - **Caché**: `max-cache-ttl` (0 = no guarda nada), contenido de la caché con su TTL restante y `rndc flush`.
+   - **Agente de reenvío**: `forwarders { … }` y `forward only|first`.
+   - **Autoritativo**: sirve las zonas (`named.conf.local`); apagado, las zonas se conservan pero no se cargan.
+   - **Iterativo**: lo que hace BIND cuando recurre sin `forward only`: pregunta desde los servidores raíz
+     (`/usr/share/dns/root.hints`) bajando por TLD y servidores autoritativos. No es una opción de BIND: se deriva
+     (recursión activa y, si hay reenviadores, `forward first`); con reenviadores la casilla cambia `forward first/only`.
+   - **Recursivo**: `recursion yes|no` y `allow-recursion { localnets; localhost; } | { any; }`. Por defecto, no
+     (como hasta ahora: un servidor nuevo solo es autoritativo).
+   - Internet emulada: servidores raíz (las 13 direcciones IPv4 reales), servidores de TLD (com, net, org, es, me,
+     google, arpa y uno genérico para los dominios registrados en las nubes) y servidores autoritativos de las zonas
+     incorporadas. Los dominios registrados en una nube con servidor propio se delegan a ese servidor, así que la
+     iteración llega al servidor DNS del alumno. Cada salto es un paquete visible en el modo simulación.
+4. **Coherencia GUI ↔ BIND**: `named.conf.options` (recursión, reenvío, caché) se puede editar como root y vuelve a la
+   interfaz; `named.conf.local`, `named.conf.default-zones` (sugerencias raíz) y los archivos de zona siguen al panel.
+   Prueba de ida y vuelta: lo que muestra el panel = lo que dice el archivo = lo que responde el servidor.
+5. **Gestión web** con aspecto nuevo (barra lateral, tarjetas, avisos), común a Server y router Linux. Página DNS como la
+   imagen de referencia: tarjetas de modo (en el orden anterior) con interruptor, descripción y usos; pestañas de
+   configuración por modo; configuración BIND generada y explicada al lado.
+6. Documentación es/en (servicio DNS, modos, zonas automáticas, casilla «Activar router»).

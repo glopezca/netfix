@@ -94,6 +94,14 @@ export function firewallPanel(s: Server, app: AfterChange): LivePanel {
   });
 }
 
+/** «Activar router»: mirrors net.ipv4.ip_forward and cannot be clicked (the parameter is what changes it). */
+function routerFlag(s: Server): HTMLElement[] {
+  if (s.kind !== 'linuxrouter') return [];
+  const box = el('input', { type: 'checkbox', checked: s.kernel.sysctl.enabled('net.ipv4.ip_forward'), disabled: true });
+  return [el('label', { class: 'router-flag' }, box,
+    el('span', {}, el('strong', {}, t('sysctl.router')), el('span', { class: 'muted router-flag-help' }, t('sysctl.routerHelp'))))];
+}
+
 export function sysctlPanel(s: Server, app: AfterChange): LivePanel {
   // Outside the redraw: an action that changes the device redraws the panel before reporting.
   const msg = message();
@@ -105,7 +113,7 @@ export function sysctlPanel(s: Server, app: AfterChange): LivePanel {
       const apply = (): void => { const err = saveSysctl(s, k.name, ctrl.value.trim()); if (err) msg.error(err); app.afterCommand(); };
       return el('tr', {}, el('td', { class: 'mono' }, k.name), el('td', {}, ctrl), el('td', {}, k.effect ? t('sysctl.yes') : t('sysctl.no')), el('td', {}, button(t('sysctl.apply'), apply, 'btn btn-small')));
     });
-    return [el('p', { class: 'muted' }, t('sysctl.intro')), msg.el,
+    return [...routerFlag(s), el('p', { class: 'muted' }, t('sysctl.intro')), msg.el,
       el('table', { class: 'grid-table' }, el('thead', {}, el('tr', {}, el('th', {}, t('sysctl.key')), el('th', {}, t('sysctl.value')), el('th', {}, t('sysctl.effect')), el('th', {}))), el('tbody', {}, ...rows))];
   });
 }

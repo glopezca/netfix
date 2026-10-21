@@ -60,6 +60,21 @@ test('Seguridad → Enrutamiento changes sysctl (saved) and static routes', () =
   assert.equal(srv.staticRoutes.length, 0);
 });
 
+test('Seguridad → Enrutamiento: the «Activar router» checkbox shows and changes net.ipv4.ip_forward', () => {
+  const { srv, web } = lab();
+  web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
+  srv.kernel.sysctl.set('net.ipv4.ip_forward', '0');
+  const off = body(web.open('http://10.0.0.2:10000/?page=routing'));
+  assert.match(off, /name="action" value="router-enable"[\s\S]*<input type="checkbox" name="enabled" value="1">[\s\S]*Activar router/);
+  assert.match(off, /net\.ipv4\.ip_forward/, 'the label explains which parameter it is');
+  post(web, 'routing', [['action', 'router-enable'], ['enabled', '1']]);
+  assert.equal(srv.kernel.sysctl.get('net.ipv4.ip_forward'), '1');
+  assert.match(body(web.open('http://10.0.0.2:10000/?page=routing')), /<input type="checkbox" name="enabled" value="1" checked>[\s\S]*Activar router/);
+  post(web, 'routing', [['action', 'router-enable']]);
+  assert.equal(srv.kernel.sysctl.get('net.ipv4.ip_forward'), '0', 'an unticked box turns forwarding off');
+  assert.match(createShell(srv, 'linux', 'root').run('sysctl net.ipv4.ip_forward').join('\n'), /= 0/);
+});
+
 test('a Server has no Seguridad tab in its management GUI (it belongs to the Linux router)', () => {
   const t = new Topology();
   const srv = t.add('server', 0, 0).device as Server;

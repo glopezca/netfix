@@ -667,6 +667,10 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .workspace[data-tool="delete"] .drawing-hit { cursor: not-allowed; }
 /* With the Delete tool, a tap anywhere inside an area removes it (devices and cables above it still win). */
 .workspace[data-tool="delete"] .drawing-rect .drawing-shape, .workspace[data-tool="delete"] .drawing-ellipse .drawing-shape { pointer-events: visible; }
+.router-flag { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; }
+.router-flag input { margin-top: 3px; }
+.router-flag input:disabled { opacity: 1; cursor: not-allowed; }
+.router-flag-help { display: block; font-size: 13px; margin-top: 2px; }
 
 </style>
 </head>
@@ -1404,6 +1408,8 @@ const FIREWALL_ES = {
     'sysctl.yes': 'Sí',
     'sysctl.no': 'Se guarda, sin efecto',
     'sysctl.apply': 'Aplicar y guardar',
+    'sysctl.router': 'Activar router',
+    'sysctl.routerHelp': 'Refleja net.ipv4.ip_forward: marcada cuando vale 1 (el equipo reenvía paquetes de una red a otra, es un router) y desmarcada cuando vale 0. No cambia al pulsarla: cambia el parámetro en la tabla de abajo o con «sysctl -w net.ipv4.ip_forward=1».',
 };
 
 return { FIREWALL_ES };
@@ -1469,6 +1475,8 @@ const FIREWALL_EN = {
     'sysctl.yes': 'Yes',
     'sysctl.no': 'Stored, no effect',
     'sysctl.apply': 'Apply and save',
+    'sysctl.router': 'Enable router',
+    'sysctl.routerHelp': 'Shows net.ipv4.ip_forward: ticked when it is 1 (the device forwards packets from one network to another, it is a router) and clear when it is 0. Clicking it does nothing: change the parameter in the table below or with «sysctl -w net.ipv4.ip_forward=1».',
 };
 
 return { FIREWALL_EN };
@@ -2799,6 +2807,9 @@ const WEB_ES = {
     'fwa.effect': 'Cambia el comportamiento en Netfix.',
     'fwa.noEffect': 'Se guarda (sin efecto en Netfix).',
     'fwa.routes': 'Rutas estáticas',
+    'fwa.router': 'Activar router',
+    'fwa.routerTitle': 'Router',
+    'fwa.routerHelp': 'Marcada = net.ipv4.ip_forward = 1: el equipo reenvía paquetes entre sus redes. Al guardar se cambia ese parámetro (y se guarda en /etc/sysctl.d/99-netfix.conf).',
     'fwa.routesHelp': 'Redes que se alcanzan por otro router.',
     'fwa.net': 'Red',
     'fwa.via': 'Siguiente salto',
@@ -3061,6 +3072,9 @@ const WEB_EN = {
     'fwa.effect': 'It changes the behaviour in Netfix.',
     'fwa.noEffect': 'It is saved (no effect in Netfix).',
     'fwa.routes': 'Static routes',
+    'fwa.router': 'Enable router',
+    'fwa.routerTitle': 'Router',
+    'fwa.routerHelp': 'Ticked = net.ipv4.ip_forward = 1: the device forwards packets between its networks. Saving changes that parameter (and stores it in /etc/sysctl.d/99-netfix.conf).',
     'fwa.routesHelp': 'Networks reached through another router.',
     'fwa.net': 'Network',
     'fwa.via': 'Next hop',
@@ -40702,6 +40716,13 @@ function firewallPanel(s, app) {
         ];
     });
 }
+/** «Activar router»: mirrors net.ipv4.ip_forward and cannot be clicked (the parameter is what changes it). */
+function routerFlag(s) {
+    if (s.kind !== 'linuxrouter')
+        return [];
+    const box = el('input', { type: 'checkbox', checked: s.kernel.sysctl.enabled('net.ipv4.ip_forward'), disabled: true });
+    return [el('label', { class: 'router-flag' }, box, el('span', {}, el('strong', {}, t('sysctl.router')), el('span', { class: 'muted router-flag-help' }, t('sysctl.routerHelp'))))];
+}
 function sysctlPanel(s, app) {
     // Outside the redraw: an action that changes the device redraws the panel before reporting.
     const msg = message();
@@ -40714,7 +40735,7 @@ function sysctlPanel(s, app) {
                 msg.error(err); app.afterCommand(); };
             return el('tr', {}, el('td', { class: 'mono' }, k.name), el('td', {}, ctrl), el('td', {}, k.effect ? t('sysctl.yes') : t('sysctl.no')), el('td', {}, button(t('sysctl.apply'), apply, 'btn btn-small')));
         });
-        return [el('p', { class: 'muted' }, t('sysctl.intro')), msg.el,
+        return [...routerFlag(s), el('p', { class: 'muted' }, t('sysctl.intro')), msg.el,
             el('table', { class: 'grid-table' }, el('thead', {}, el('tr', {}, el('th', {}, t('sysctl.key')), el('th', {}, t('sysctl.value')), el('th', {}, t('sysctl.effect')), el('th', {}))), el('tbody', {}, ...rows))];
     });
 }
@@ -48761,6 +48782,7 @@ function routingPage(server, base) {
     const keys = SYSCTL_KEYS.filter((k) => k.effect || k.name.startsWith('net.ipv4.conf.all'));
     const routes = server.staticRoutes.map((r) => h('tr', {}, h('td', { class: 'web-wrt-mono' }, `${formatIp(r.net)}/${r.prefix}`), h('td', { class: 'web-wrt-mono' }, formatIp(r.via)), h('td', {}, del(base, 'routing', 'route-del', `${formatIp(r.net)}/${r.prefix}`))));
     return [
+        form(base, 'routing', 'router-enable', h('table', {}, section(t('fwa.routerTitle'), t('fwa.routerHelp'), check('enabled', sysctl.enabled('net.ipv4.ip_forward'), t('fwa.router')))), buttons()),
         ...keys.map((k) => form(base, 'routing', 'sysctl-set', h('input', { type: 'hidden', name: 'key', value: k.name }), h('table', {}, section(k.name, k.effect ? t('fwa.effect') : t('fwa.noEffect'), Array.isArray(k.accepts) ? choose('value', sysctl.get(k.name) ?? '', k.accepts.map((v) => [v, v])) : text('value', sysctl.get(k.name) ?? ''))), buttons())),
         section(t('fwa.routes'), t('fwa.routesHelp'), h('table', { class: 'web-wrt-list' }, h('tr', {}, h('th', {}, t('fwa.net')), h('th', {}, t('fwa.via')), h('th', {}, '')), routes.length ? routes : h('tr', {}, h('td', { colspan: 3 }, t('fwa.noRoutes'))))),
         form(base, 'routing', 'route-add', h('table', {}, section(t('fwa.newRoute'), t('fwa.newRouteHelp'), row(t('fwa.net'), text('to', '', { placeholder: '10.0.0.0/8' })), row(t('fwa.via'), text('via', '')))), buttons()),
@@ -48900,6 +48922,10 @@ function securityAction(server, f) {
         case 'fw-rule-del': return k?.chain && k.handle !== undefined ? commit(server, `delete rule ${k.family} ${k.table} ${k.chain} handle ${k.handle}`) : { error: t('fwa.noRule') };
         case 'fw-rule-up': return move(server, f, -1);
         case 'fw-rule-down': return move(server, f, 1);
+        case 'router-enable': {
+            const err = saveSysctl(server, 'net.ipv4.ip_forward', f.get('enabled') === '1' ? '1' : '0');
+            return err ? { error: err } : saved();
+        }
         case 'sysctl-set': {
             const err = saveSysctl(server, (f.get('key') ?? '').trim(), (f.get('value') ?? '').trim());
             return err ? { error: err } : saved();

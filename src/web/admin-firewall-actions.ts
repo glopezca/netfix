@@ -131,6 +131,7 @@ export function securityAction(server: Server, f: Fields): Outcome | null {
     case 'fw-rule-del': return k?.chain && k.handle !== undefined ? commit(server, `delete rule ${k.family} ${k.table} ${k.chain} handle ${k.handle}`) : { error: t('fwa.noRule') };
     case 'fw-rule-up': return move(server, f, -1);
     case 'fw-rule-down': return move(server, f, 1);
+    case 'router-enable': { const err = saveSysctl(server, 'net.ipv4.ip_forward', f.get('enabled') === '1' ? '1' : '0'); return err ? { error: err } : saved(); }
     case 'sysctl-set': { const err = saveSysctl(server, (f.get('key') ?? '').trim(), (f.get('value') ?? '').trim()); return err ? { error: err } : saved(); }
     case 'route-add': return routeAdd(server, f);
     case 'route-del': { const to = (f.get('key') ?? '').trim(); server.setStaticRoutes(server.staticRoutes.filter((r) => `${formatIp(r.net)}/${r.prefix}` !== to)); return saved(); }

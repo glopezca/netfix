@@ -654,3 +654,7 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .workspace[data-tool="delete"] .drawing-hit { cursor: not-allowed; }
 /* With the Delete tool, a tap anywhere inside an area removes it (devices and cables above it still win). */
 .workspace[data-tool="delete"] .drawing-rect .drawing-shape, .workspace[data-tool="delete"] .drawing-ellipse .drawing-shape { pointer-events: visible; }
+.router-flag { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; }
+.router-flag input { margin-top: 3px; }
+.router-flag input:disabled { opacity: 1; cursor: not-allowed; }
+.router-flag-help { display: block; font-size: 13px; margin-top: 2px; }

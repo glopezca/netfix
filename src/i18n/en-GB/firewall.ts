@@ -61,4 +61,6 @@ export const FIREWALL_EN: Readonly<Record<FirewallKey, string>> = {
   'sysctl.yes': 'Yes',
   'sysctl.no': 'Stored, no effect',
   'sysctl.apply': 'Apply and save',
+  'sysctl.router': 'Enable router',
+  'sysctl.routerHelp': 'Shows net.ipv4.ip_forward: ticked when it is 1 (the device forwards packets from one network to another, it is a router) and clear when it is 0. Clicking it does nothing: change the parameter in the table below or with «sysctl -w net.ipv4.ip_forward=1».',
 };
