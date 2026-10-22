@@ -50,7 +50,6 @@ const SERVER = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" widt
 
 const CLOUD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="64" height="48">
   <path d="M16 40 h34 a10 10 0 0 0 1 -19.9 a14 14 0 0 0 -26.5 -4.6 a10.5 10.5 0 0 0 -8.5 24.5 z" fill="var(--dev-side)" stroke="var(--dev-edge)" stroke-width="1.6" stroke-linejoin="round"/>
-  <path d="M22 18 a9 9 0 0 1 9 -6" fill="none" stroke="var(--dev-top)" stroke-width="2" stroke-linecap="round"/>
   <g stroke="var(--dev-mark)" stroke-width="1.6" fill="none" stroke-linecap="round">
     <circle cx="32" cy="29" r="7"/><path d="M25 29 h14 M32 22 c-3 4 -3 10 0 14 M32 22 c3 4 3 10 0 14"/>
   </g>
