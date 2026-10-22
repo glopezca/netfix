@@ -27,6 +27,8 @@ import { sftpApp } from './sftp-app.ts';
 import { iosWebSettings } from './ios-web-settings.ts';
 import { Cloud } from '../devices/cloud.ts';
 import { cloudTabs } from './cloud-window.ts';
+import { promptToggle } from './prompt-toggle.ts';
+import type { PromptToggle } from './prompt-toggle.ts';
 
 export interface WindowHost {
   readonly windows: WindowManager;
@@ -34,6 +36,8 @@ export interface WindowHost {
   peerLabel?(device: string, port: string): string | undefined;
   /** Classroom restrictions: whether a tab of a device kind is shown (all are, when absent). */
   allowsTab?(kind: DeviceKind, tab: string): boolean;
+  /** Classroom lock of the timestamp prompt: true/false forces it; undefined lets each device decide. */
+  promptLock?(): boolean | undefined;
 }
 
 function allowed(host: WindowHost, kind: DeviceKind, tabs: readonly Tab[]): Tab[] {
@@ -41,6 +45,7 @@ function allowed(host: WindowHost, kind: DeviceKind, tabs: readonly Tab[]): Tab[
 }
 
 const terminals = new Map<string, Terminal>();
+const footers = new Map<string, PromptToggle>();
 
 function iosBackend(device: IosDevice, session: Session): ConsoleBackend {
   return {
@@ -80,12 +85,14 @@ export function forgetDevice(id: string): void {
   for (const key of [id, `${id}:linux`, `${id}:windows`]) {
     terminals.get(key)?.dispose();
     terminals.delete(key);
+    footers.delete(key);
   }
 }
 
 export function forgetAll(): void {
   for (const t of terminals.values()) t.dispose();
   terminals.clear();
+  footers.clear();
 }
 
 export function openDeviceWindow(placed: Placed, host: WindowHost): void {
@@ -110,6 +117,14 @@ export function openDeviceWindow(placed: Placed, host: WindowHost): void {
   ]));
 }
 
+/** Both terminals of a device follow its timestamp-prompt setting (and their footer boxes show it). */
+function syncPrompts(h: Host): void {
+  for (const os of ['linux', 'windows'] as const) {
+    terminals.get(`${h.id}:${os}`)?.syncPrompt();
+    footers.get(`${h.id}:${os}`)?.refresh();
+  }
+}
+
 function shellTerminal(placed: Placed, h: Host, os: HostOs, app: WindowHost): Terminal {
   const key = `${h.id}:${os}`;
   let term = terminals.get(key);
@@ -124,9 +139,12 @@ function shellTerminal(placed: Placed, h: Host, os: HostOs, app: WindowHost): Te
       editRequest: () => shell.editRequest?.() ?? null, saveEdit: (p, c) => (shell.saveEdit ? shell.saveEdit(p, c) : t('common.unavailable')),
       closeEdit: () => shell.closeEdit?.() ?? [],
       screenFrame: (w, h) => shell.screenFrame?.(w, h) ?? null, screenKey: (k) => shell.screenKey?.(k) ?? [],
+      applyPrompt: () => shell.applyTimestampPrompt?.(),
     };
+    const footer = promptToggle(h, app.promptLock?.(), () => { syncPrompts(h); app.afterCommand(); });
+    footers.set(key, footer);
     term = new Terminal(backend, {
-      intro, label: t(os === 'windows' ? 'win.cmdOf' : 'win.termOf', { name: placed.label }), afterRun: () => app.afterCommand(),
+      intro, label: t(os === 'windows' ? 'win.cmdOf' : 'win.termOf', { name: placed.label }), afterRun: () => app.afterCommand(), footer: footer.root,
     });
     terminals.set(key, term);
   }
@@ -137,7 +155,8 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost): void {
   const disposers: (() => void)[] = [];
   const terminal = (os: HostOs): Tab => ({
     id: os, label: os === 'windows' ? t('win.cmd') : t('win.linuxTerm'),
-    render: () => shellTerminal(placed, h, os, app).root, onShow: () => shellTerminal(placed, h, os, app).focus(),
+    render: () => shellTerminal(placed, h, os, app).root,
+    onShow: () => { syncPrompts(h); shellTerminal(placed, h, os, app).focus(); },
   });
   const nicTab: Tab = { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = hostInterfaces(h, app, (port) => app.peerLabel?.(h.id, port)); disposers.push(v.dispose); return v.root; } };
   const ipTab: Tab = { id: 'ip', label: t('win.ip'), render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };

@@ -58,6 +58,8 @@ export interface PcRecord {
   /** Static host name (when it differs from the label) and hostnamectl's pretty name. */
   readonly hostname?: string;
   readonly prettyHostname?: string;
+  /** «Prompt con marca de fecha y hora» in its terminals. */
+  readonly timestampPrompt?: boolean;
   /** PC apps: e-mail account, inbox and last browser URL. */
   readonly apps?: { readonly mail?: MailAccount; readonly inbox?: readonly MailMessage[]; readonly url?: string };
   /** Files created or changed from the Linux terminal (home directories, /etc, /var/www…). */
@@ -296,7 +298,7 @@ function hostRecord(d: Host): PcRecord {
   const os = d.os;
   const clientId = d.clientIdOverride;
   const files = savedFiles(d);
-  const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
+  const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}), ...(d.timestampPrompt ? { timestampPrompt: true } : {}) };
   if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
   const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
   return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
@@ -324,6 +326,7 @@ function restore(device: AnyDevice, rec: DeviceRecord): void {
     restoreRoutes(device, pc.routes);
     const search = Array.isArray(pc.search) ? searchList(pc.search) : { ok: [] };
     device.dnsSearch = 'ok' in search ? search.ok : [];
+    device.timestampPrompt = pc.timestampPrompt === true;
     if (pc.files !== undefined) bootKernel(device, validFileRecords(pc.files));
     return;
   }

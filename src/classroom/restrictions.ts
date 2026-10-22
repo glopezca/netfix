@@ -1,6 +1,7 @@
 /**
  * Restriction policy for embedding Netfix in a classroom: which labs, palette devices and window tabs the student
- * may use, and whether the documentation, files, simulation mode, clock, drawing and topology editing are on.
+ * may use, whether the documentation, files, simulation mode, clock, drawing and topology editing are on, and whether
+ * the timestamp prompt of the terminals is locked on or off.
  * It arrives as untrusted JSON, so it is validated strictly; anything left out stays allowed.
  */
 import type { DeviceKind } from '../net/topology.ts';
@@ -13,6 +14,9 @@ export type TabId = (typeof TAB_IDS)[number];
 const firstTab = (k: DeviceKind): TabId => (k === 'cloud' ? 'isp' : 'host');
 const FLAGS = ['docs', 'fileOpen', 'fileSave', 'fileNew', 'simulation', 'clock', 'drawing', 'editTopology'] as const;
 type Flag = (typeof FLAGS)[number];
+/** «Prompt con marca de fecha y hora»: each device decides (free), or the teacher locks it on or off. */
+export const PROMPT_MODES = ['free', 'on', 'off'] as const;
+export type PromptMode = (typeof PROMPT_MODES)[number];
 const MAX_LABS = 100;
 const MAX_ID = 64;
 const ID_RE = /^[A-Za-z0-9._-]+$/;
@@ -24,10 +28,11 @@ export type Restrictions = {
   readonly devices: readonly DeviceKind[] | null;
   /** Tabs per device kind; a kind left out keeps all its tabs. */
   readonly tabs: Readonly<Partial<Record<DeviceKind, readonly TabId[]>>>;
+  readonly timestampPrompt: PromptMode;
 } & { readonly [F in Flag]: boolean };
 
 export const NO_RESTRICTIONS: Restrictions = Object.freeze({
-  labs: null, devices: null, tabs: Object.freeze({}),
+  labs: null, devices: null, tabs: Object.freeze({}), timestampPrompt: 'free',
   docs: true, fileOpen: true, fileSave: true, fileNew: true, simulation: true, clock: true, drawing: true, editTopology: true,
 });
 
@@ -72,7 +77,7 @@ function parseTabs(v: unknown): Partial<Record<DeviceKind, readonly TabId[]>> {
 export function parseRestrictions(input: unknown): Restrictions {
   if (input === undefined || input === null) return NO_RESTRICTIONS;
   if (!isRecord(input)) invalid('se esperaba un objeto');
-  const known = new Set<string>(['labs', 'devices', 'tabs', ...FLAGS]);
+  const known = new Set<string>(['labs', 'devices', 'tabs', 'timestampPrompt', ...FLAGS]);
   const extra = Object.keys(input).find((k) => !known.has(k));
   if (extra) invalid(`campo desconocido «${extra}»`);
   const flags = {} as Record<Flag, boolean>;
@@ -85,8 +90,21 @@ export function parseRestrictions(input: unknown): Restrictions {
     labs: input.labs === undefined ? null : Object.freeze(stringList(input.labs, 'labs', MAX_LABS)),
     devices: input.devices === undefined ? null : Object.freeze(stringList(input.devices, 'devices', DEVICE_KINDS.length).map((d) => kind(d, 'devices'))),
     tabs: input.tabs === undefined ? NO_RESTRICTIONS.tabs : parseTabs(input.tabs),
+    timestampPrompt: promptMode(input.timestampPrompt),
     ...flags,
   });
+}
+
+function promptMode(v: unknown): PromptMode {
+  if (v === undefined) return 'free';
+  const mode = PROMPT_MODES.find((m) => m === v);
+  if (!mode) invalid('timestampPrompt debe ser "free", "on" u "off"');
+  return mode;
+}
+
+/** The forced value of the timestamp prompt (true/false), or undefined when each device decides. */
+export function lockedPrompt(r: Restrictions): boolean | undefined {
+  return r.timestampPrompt === 'free' ? undefined : r.timestampPrompt === 'on';
 }
 
 export function allowsLab(r: Restrictions, id: string): boolean {

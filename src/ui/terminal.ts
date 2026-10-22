@@ -36,6 +36,8 @@ export interface ConsoleBackend {
   closeEdit?(): string[];
   screenFrame?(width: number, height: number): Frame | null;
   screenKey?(key: KeyInput): string[];
+  /** Applies the device's timestamp-prompt setting to the shell (Linux: PS1). */
+  applyPrompt?(): void;
 }
 
 const MAX_LINES = 3000;
@@ -66,7 +68,7 @@ export class Terminal {
   /** IOS consoles show lines starting with % (messages) in their own colour. */
   private readonly iosMessages: boolean;
 
-  constructor(backend: ConsoleBackend, opts: { intro?: string[]; label: string; afterRun?: () => void; iosMessages?: boolean }) {
+  constructor(backend: ConsoleBackend, opts: { intro?: string[]; label: string; afterRun?: () => void; iosMessages?: boolean; footer?: HTMLElement }) {
     this.backend = backend;
     this.iosMessages = opts.iosMessages ?? false;
     this.afterRun = opts.afterRun ?? (() => undefined);
@@ -78,7 +80,7 @@ export class Terminal {
     this.lineEl = el('label', { class: 'term-line' }, this.promptEl, this.input);
     this.editorEl = el('div', { class: 'term-editor', tabindex: '0', role: 'application', 'aria-label': `Editor · ${opts.label}`, hidden: true });
     this.ime = el('textarea', { class: 'term-ime', autocapitalize: 'off', autocomplete: 'off', spellcheck: 'false', 'aria-hidden': 'true', tabindex: '-1' });
-    this.root = el('div', { class: 'terminal' }, this.screen, this.lineEl, this.editorEl, this.ime, keybar(this));
+    this.root = el('div', { class: 'terminal' }, this.screen, this.lineEl, this.editorEl, this.ime, keybar(this), opts.footer);
     this.root.addEventListener('click', (e) => {
       if (window.getSelection()?.toString() !== '') return;
       if ((e.target as HTMLElement).closest('.term-keys')) return;
@@ -92,6 +94,12 @@ export class Terminal {
     this.editorEl.addEventListener('paste', (e) => this.onEditorPaste(e));
     this.unsubscribe = backend.onAsync?.((l) => this.print([l]));
     this.print(opts.intro ?? []);
+    this.refreshPrompt();
+  }
+
+  /** The prompt setting of the device changed: apply it to the shell and draw the prompt again. */
+  syncPrompt(): void {
+    this.backend.applyPrompt?.();
     this.refreshPrompt();
   }
 

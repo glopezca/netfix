@@ -1,6 +1,6 @@
 /** Documentación: equipos cliente (configuración IP, aplicaciones y Terminal Windows). */
 import type { DocGroup } from './types.ts';
-import { code, h, list, p, table } from './types.ts';
+import { code, h, list, note, p, table } from './types.ts';
 
 export const CLIENT_DOCS: DocGroup = {
   id: 'clientes',
@@ -62,6 +62,7 @@ export const CLIENT_DOCS: DocGroup = {
       summary: 'Órdenes de cmd.exe disponibles en PCs y servidores Windows, también sobre los archivos del equipo.',
       blocks: [
         p('La Terminal Windows trabaja sobre el mismo sistema de archivos que la Terminal Linux del equipo: la unidad C:\\ es la raíz /, las carpetas se separan con \\ (o /) y los nombres no distinguen mayúsculas. Empieza en la carpeta personal de la cuenta Linux (C:\\home\\alumno en los PC, C:\\home\\admin en los servidores) y respeta sus permisos: lo que esa cuenta no puede escribir da «Access is denied.».'),
+        note('Casilla «Prompt con marca de fecha y hora» (al pie de la terminal): el prompt pasa a ser el de esta función prompt de PowerShell: fecha y hora (Get-Date "ddd MMM dd" y "HH:mm:ss") en cian oscuro, usuario@equipo en verde, la ruta en amarillo y $ (# si la cuenta es de administrador). Por ejemplo: Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$. La comparte con la Terminal Linux del equipo.'),
         table(['Orden', 'Uso'], [
           ['ipconfig [/all]', 'Configuración IP; /all añade MAC, servidor DHCP, DNS y fechas de la concesión.'],
           ['ipconfig /release · ipconfig /renew', 'Libera o renueva la concesión DHCP.'],

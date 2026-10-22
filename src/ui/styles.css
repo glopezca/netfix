@@ -653,3 +653,9 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .dns-soa { font-size: 12px; overflow-wrap: anywhere; }
 .dns-problems { color: var(--err); font-size: 13px; padding-left: 20px; }
 .dns-auto-info { font-size: 13px; }
+/* Footer of the Linux and Windows terminals: the timestamp prompt box. */
+.term-foot { flex: none; display: flex; align-items: center; padding: 4px 10px; background: #0b171d; border-top: 1px solid #22343c; font: 12px/1.4 var(--font-ui); color: var(--console-ink); }
+.term-foot-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.term-foot-check:has(input:disabled) { cursor: not-allowed; }
+.term-foot-box { margin: 0; accent-color: #5fb0cc; }
+.term-foot-lock { color: #9fb3ba; }

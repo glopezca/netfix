@@ -475,3 +475,18 @@ Mejora pedagógica pedida para Server y router Linux. Interpretación de la peti
    imagen de referencia: tarjetas de modo (Caché, Agente de reenvío, Autoritativo, Recursivo, Iterativo) con interruptor, descripción y usos; pestañas de
    configuración por modo; configuración BIND generada y explicada al lado.
 6. Documentación es/en (servicio DNS, modos, zonas automáticas, casilla «Activar router»).
+
+## Fase 21 · Prompt con marca de fecha y hora (v0.13.0)
+
+Casilla «Prompt con marca de fecha y hora» al pie de las terminales Linux y Windows de PC, Server y router Linux.
+Es un ajuste **del equipo** (lo comparten sus dos terminales y se guarda con la topología); útil para que las capturas
+de una práctica o un examen lleven la fecha y la hora simuladas.
+
+- **Terminal Linux:** como si se ejecutara `PS1="\[\e[32m\]\d \[\e[36m\]\A \[\e[33m\]\u@\h:\w\$ \[\e[0m\]"` en la
+  sesión (también en las sesiones nuevas del equipo, incluidas las que abre SSH). Al desmarcarla vuelve el PS1 que había.
+  Un `bash` o `su` anidado lee su `.bashrc`, como en Ubuntu.
+- **Terminal Windows:** el prompt que daría en PowerShell la función `prompt` del enunciado: fecha `ddd MMM dd` y hora
+  `HH:mm:ss` (DarkCyan), `usuario@equipo` (Green), ruta (Yellow) y `$` (o `#` para el administrador).
+- **Bloqueo para Netfix Classroom:** restricción `timestampPrompt`: `"free"` (por defecto), `"on"` u `"off"`. Con
+  `"on"`/`"off"` la casilla queda fija y desactivada («bloqueado por el profesor») y el valor se aplica a todos los
+  equipos y a las sesiones SSH. El control de bloqueo del profesor en Classroom queda para su despliegue.

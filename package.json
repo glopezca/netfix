@@ -1,6 +1,6 @@
 {
   "name": "netfix",
-  "version": "0.12.1",
+  "version": "0.13.0",
   "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
   "type": "module",
   "private": true,
@@ -19,7 +19,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "build": "node scripts/gen-about.mjs && node scripts/gen-brand.mjs && node scripts/build.mjs",
     "serve": "node scripts/serve.mjs",
-    "e2e": "npm run build && node scripts/e2e.mjs && node scripts/e2e-v07.mjs && node scripts/e2e-embed.mjs && node scripts/e2e-dns.mjs",
+    "e2e": "npm run build && node scripts/e2e.mjs && node scripts/e2e-v07.mjs && node scripts/e2e-embed.mjs && node scripts/e2e-dns.mjs && node scripts/e2e-prompt.mjs",
     "check": "npm run typecheck && npm test && npm run build",
     "about": "node scripts/gen-about.mjs",
     "bench:evaluate": "node scripts/bench-evaluate.ts",

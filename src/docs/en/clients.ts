@@ -1,6 +1,6 @@
 /** Documentation: client devices (IP configuration, applications and the Windows terminal). */
 import type { DocGroup } from '../types.ts';
-import { code, h, list, p, table } from '../types.ts';
+import { code, h, list, note, p, table } from '../types.ts';
 
 export const CLIENT_DOCS: DocGroup = {
   id: 'clientes',
@@ -62,6 +62,7 @@ export const CLIENT_DOCS: DocGroup = {
       summary: 'cmd.exe commands available on Windows PCs and servers, files included.',
       blocks: [
         p('The Windows terminal works on the same file system as the device’s Linux terminal: drive C:\\ is the root /, folders are separated by \\ (or /) and names are not case-sensitive. It starts in the home folder of the Linux account (C:\\home\\alumno on PCs, C:\\home\\admin on servers) and keeps its permissions: whatever that account cannot write gives “Access is denied.”.'),
+        note('«Date and time stamped prompt» checkbox (at the foot of the terminal): the prompt becomes the one of this PowerShell prompt function: date and time (Get-Date "ddd MMM dd" and "HH:mm:ss") in dark cyan, user@host in green, the path in yellow and $ (# for an administrator account). For example: Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$. It is shared with the Linux terminal of the device.'),
         table(['Command', 'Usage'], [
           ['ipconfig [/all]', 'IP configuration; /all adds MAC, DHCP server, DNS and lease dates.'],
           ['ipconfig /release · ipconfig /renew', 'Releases or renews the DHCP lease.'],

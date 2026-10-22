@@ -1,7 +1,7 @@
 /** Restriction policy for embedding Netfix (classroom): validated JSON, permissive by default. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NO_RESTRICTIONS, parseRestrictions, allowsLab, allowsDevice, allowsTab } from '../../src/classroom/restrictions.ts';
+import { NO_RESTRICTIONS, parseRestrictions, allowsLab, allowsDevice, allowsTab, lockedPrompt } from '../../src/classroom/restrictions.ts';
 
 test('no restrictions allow everything', () => {
   assert.equal(allowsLab(NO_RESTRICTIONS, 'basico'), true);
@@ -38,4 +38,17 @@ test('untrusted JSON is validated: unknown kinds, tabs, keys or types are reject
     'x', [], { devices: ['toaster'] }, { tabs: { pc: ['root-shell'] } }, { tabs: { fridge: ['ip'] } },
     { labs: ['x'.repeat(100)] }, { labs: Array.from({ length: 200 }, (_, i) => `l${i}`) }, { docs: 'no' }, { unknown: true },
   ]) assert.throws(() => parseRestrictions(bad), /restricciones|restrictions/i, JSON.stringify(bad).slice(0, 60));
+});
+
+test('timestampPrompt: free by default; "on"/"off" lock the timestamp prompt of every device', () => {
+  assert.equal(NO_RESTRICTIONS.timestampPrompt, 'free');
+  assert.equal(parseRestrictions({}).timestampPrompt, 'free');
+  assert.equal(parseRestrictions({ timestampPrompt: 'on' }).timestampPrompt, 'on');
+  assert.equal(parseRestrictions({ timestampPrompt: 'off' }).timestampPrompt, 'off');
+  assert.equal(parseRestrictions({ timestampPrompt: 'free' }).timestampPrompt, 'free');
+  assert.equal(lockedPrompt(parseRestrictions({ timestampPrompt: 'on' })), true);
+  assert.equal(lockedPrompt(parseRestrictions({ timestampPrompt: 'off' })), false);
+  assert.equal(lockedPrompt(NO_RESTRICTIONS), undefined);
+  assert.throws(() => parseRestrictions({ timestampPrompt: true }), /timestampPrompt/);
+  assert.throws(() => parseRestrictions({ timestampPrompt: 'yes' }), /timestampPrompt/);
 });

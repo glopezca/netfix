@@ -9,6 +9,7 @@ import { BashSession } from '../bash/shell.ts';
 import type { EditSpec, UserInfo } from '../bash/types.ts';
 import type { Frame, KeyInput } from '../editors/buffer.ts';
 import type { Host } from '../devices/host.ts';
+import { LINUX_TIMESTAMP_PS1, timestampPromptOn } from './prompt-clock.ts';
 
 const FALLBACK_UID = 1999;
 
@@ -24,6 +25,8 @@ export class LinuxShell extends BaseShell {
   protected readonly osName = 'Linux';
   private readonly remoteSession: boolean;
   private session: BashSession;
+  /** The PS1 that the timestamp prompt replaced, to give it back when unticked. */
+  private plainPs1: string | undefined;
   exitCode = 0;
 
   constructor(host: Host, user: string, remote = false) {
@@ -42,7 +45,26 @@ export class LinuxShell extends BaseShell {
   }
 
   private newSession(): BashSession {
-    return new BashSession(hostSystem(this.host).env, this.account(), { login: this.remoteSession });
+    const session = new BashSession(hostSystem(this.host).env, this.account(), { login: this.remoteSession });
+    this.plainPs1 = undefined;
+    this.timestamp(session);
+    return session;
+  }
+
+  /** As if PS1="…" were typed (ticked) or the previous PS1 restored (unticked); a PS1 set by hand is left alone. */
+  private timestamp(session: BashSession): void {
+    const current = session.variable('PS1');
+    if (timestampPromptOn(this.host)) {
+      if (current === LINUX_TIMESTAMP_PS1) return;
+      this.plainPs1 = current;
+      session.assign('PS1', LINUX_TIMESTAMP_PS1);
+    } else if (current === LINUX_TIMESTAMP_PS1 && this.plainPs1 !== undefined) {
+      session.assign('PS1', this.plainPs1);
+    }
+  }
+
+  applyTimestampPrompt(): void {
+    this.timestamp(this.session);
   }
 
   /** The interpreter (tests and the documentation tab use it). */

@@ -45,6 +45,7 @@ Todo lo que no se indica queda permitido.
 | `clock` | `true` / `false` | Adelantar el reloj |
 | `drawing` | `true` / `false` | Barra de dibujo |
 | `editTopology` | `true` / `false` | Colocar, cablear y borrar equipos o cables |
+| `timestampPrompt` | `"free"` / `"on"` / `"off"` | Casilla «Prompt con marca de fecha y hora» de las terminales: `"free"` (por defecto) la deja a cada equipo; `"on"`/`"off"` la fija marcada o desmarcada en todos los equipos y sesiones SSH, desactivada y con el aviso «bloqueado por el profesor» |
 
 Pestañas: `host`, `ifaces`, `cli`, `web` (gestión web IOS o navegador del PC), `ip`, `svc`, `mail`, `ssh`, `sftp`,
 `linux`, `windows`, `isp`, `lines`.

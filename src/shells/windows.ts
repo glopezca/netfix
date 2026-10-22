@@ -2,6 +2,7 @@
  * Windows Command Prompt: ipconfig, ping, nslookup, netstat, arp, curl, ssh, sc / net (servers) and the file
  * commands (dir, cd, md, rd, del, copy, move, ren, type, echo, edit) on the device's Linux file system.
  */
+import { timestampPromptOn, windowsTimestampPrompt } from './prompt-clock.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { windowsSshStore } from './ssh-stores.ts';
 import type { SshClientStore } from './ssh-client.ts';
@@ -88,6 +89,8 @@ export class WindowsShell extends BaseShell {
   protected readonly osName = 'Windows';
   private readonly remote: boolean;
   private fileCmds: WinFiles | null = null;
+  /** The Linux account behind this terminal is root: PowerShell would run as Administrator (prompt ends in #). */
+  private admin = false;
 
   constructor(host: Host, user: string, remote = false) {
     super(host, user);
@@ -101,6 +104,7 @@ export class WindowsShell extends BaseShell {
     const name = users.some((u) => u.name === this.user.toLowerCase()) ? this.user.toLowerCase() : defaultLinuxUser(this.host);
     const account = users.find((u) => u.name === name) ?? users[0];
     const cred = { uid: account?.uid ?? 0, gid: account?.gid ?? 0, groups: account?.groups ?? [] };
+    this.admin = cred.uid === 0;
     this.fileCmds = new WinFiles(hostSystem(this.host).fs, cred, account?.home ?? '/');
     return this.fileCmds;
   }
@@ -110,7 +114,12 @@ export class WindowsShell extends BaseShell {
   }
 
   protected localPrompt(): string {
-    const here = this.files().prompt();
+    const files = this.files();
+    if (timestampPromptOn(this.host) && !files.pending) {
+      const path = files.prompt().replace(/>$/, '');
+      return windowsTimestampPrompt(this.host.clock.now(), this.user.toLowerCase(), this.host.runtimeName(), path, this.admin);
+    }
+    const here = files.prompt();
     return this.remote ? `${this.user.toLowerCase()}@${this.host.name.toUpperCase()} ${here}` : here;
   }
 

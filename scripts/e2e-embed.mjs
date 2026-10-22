@@ -23,7 +23,7 @@ try {
   await page.evaluate(() => {
     globalThis.changes = 0;
     globalThis.handle = netfix.embed(document.getElementById('app'), {
-      restrictions: { labs: ['basico'], devices: ['pc', 'switch'], tabs: { pc: ['ip', 'windows'] }, docs: false, fileOpen: false, clock: false, simulation: false, drawing: false },
+      restrictions: { labs: ['basico'], devices: ['pc', 'switch'], tabs: { pc: ['ip', 'windows'] }, docs: false, fileOpen: false, clock: false, simulation: false, drawing: false, timestampPrompt: 'on' },
       onChange: () => { globalThis.changes++; },
     });
   });
@@ -42,6 +42,13 @@ try {
   await page.waitForTimeout(1200);
   assert.ok(await page.evaluate(() => globalThis.changes) > 0, 'changes reach the host page');
   assert.equal(await page.evaluate(() => localStorage.getItem('netfix:workspace:v1')), null, 'nothing autosaved in the browser');
+  // The teacher locked the timestamp prompt on: the box is ticked and greyed, and the prompt carries the date.
+  await page.click('.win-tab:has-text("Terminal Windows")');
+  const box = page.locator('.terminal:visible .term-foot-box');
+  assert.equal(await box.isChecked(), true);
+  assert.equal(await box.isDisabled(), true);
+  assert.match(await page.locator('.terminal:visible .term-foot').innerText(), /Prompt con marca de fecha y hora\s*\(bloqueado por el profesor\)/);
+  assert.match(await page.locator('.terminal:visible .term-prompt').innerText(), /^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{2}:\d{2}:\d{2} \w+@pc\d+ C:\\.*\$ $/);
   // Lab areas cannot be touched with drawing off; a language change keeps the restrictions and stores nothing.
   await page.click('.win-close');
   assert.equal(await page.locator('.pal-draw').count(), 0, 'no drawing bar');

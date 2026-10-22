@@ -10,7 +10,7 @@ export interface AboutData {
 
 export const ABOUT: AboutData = {
   "name": "netfix",
-  "version": "0.12.1",
+  "version": "0.13.0",
   "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
   "license": "GPL-3.0-or-later",
   "repository": "https://github.com/glopezca/netfix",

@@ -8,6 +8,8 @@ export const UI_ES = {
   'win.linuxHelp': 'Ayuda: help, man <orden> o la pestaña Documentación. Editores: nano y vim.',
   'common.unavailable': 'No disponible',
   'win.cmd': 'Terminal Windows',
+  'term.timestampPrompt': 'Prompt con marca de fecha y hora',
+  'term.timestampLocked': '(bloqueado por el profesor)',
   'win.linuxTerm': 'Terminal Linux',
   'win.cmdOf': 'Terminal Windows de {name}',
   'win.termOf': 'Terminal de {name}',

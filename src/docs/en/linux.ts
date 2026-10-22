@@ -34,6 +34,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
         'There is no package manager (apt) and there are no real processes: background jobs finish immediately.',
       ),
       note('Everything written to the device’s disk (home, scripts, changes in /etc) is saved with the topology.'),
+      note('«Date and time stamped prompt» checkbox (at the foot of the terminal): like running PS1="\\[\\e[32m\\]\\d \\[\\e[36m\\]\\A \\[\\e[33m\\]\\u@\\h:\\w\\$ \\[\\e[0m\\]": the date in green, the time in cyan and user@host:path in yellow, with the simulated time. It is a setting of the device (it also applies to its Windows terminal and to the SSH sessions opened on it) and it is saved with the topology; unticking it brings back the previous PS1. A nested bash or su reads its .bashrc, as on Ubuntu. In a classroom the teacher may lock it.'),
     ],
   },
   {

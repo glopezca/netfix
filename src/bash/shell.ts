@@ -66,6 +66,16 @@ export class BashSession {
 
   // ------------------------------------------------------------ prompt and state
 
+  /** A shell variable of the session (not of a nested shell), as `echo "$NAME"` would show it. */
+  variable(name: string): string | undefined {
+    return this.sh.getVar(name);
+  }
+
+  /** NAME=value in the session (not in a nested shell). */
+  assign(name: string, value: string): void {
+    this.sh.setVar(name, value);
+  }
+
   prompt(): string {
     if (this.child) return this.child.prompt();
     if (this.waiting?.kind === 'line') return this.promptPrefix + this.waiting.prompt;

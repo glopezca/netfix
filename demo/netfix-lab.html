@@ -666,6 +666,12 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .dns-soa { font-size: 12px; overflow-wrap: anywhere; }
 .dns-problems { color: var(--err); font-size: 13px; padding-left: 20px; }
 .dns-auto-info { font-size: 13px; }
+/* Footer of the Linux and Windows terminals: the timestamp prompt box. */
+.term-foot { flex: none; display: flex; align-items: center; padding: 4px 10px; background: #0b171d; border-top: 1px solid #22343c; font: 12px/1.4 var(--font-ui); color: var(--console-ink); }
+.term-foot-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.term-foot-check:has(input:disabled) { cursor: not-allowed; }
+.term-foot-box { margin: 0; accent-color: #5fb0cc; }
+.term-foot-lock { color: #9fb3ba; }
 
 </style>
   <style>
@@ -1983,6 +1989,8 @@ const UI_ES = {
     'win.linuxHelp': 'Ayuda: help, man <orden> o la pestaña Documentación. Editores: nano y vim.',
     'common.unavailable': 'No disponible',
     'win.cmd': 'Terminal Windows',
+    'term.timestampPrompt': 'Prompt con marca de fecha y hora',
+    'term.timestampLocked': '(bloqueado por el profesor)',
     'win.linuxTerm': 'Terminal Linux',
     'win.cmdOf': 'Terminal Windows de {name}',
     'win.termOf': 'Terminal de {name}',
@@ -2174,6 +2182,8 @@ const UI_EN = {
     'win.linuxHelp': 'Help: help, man <command> or the Documentation tab. Editors: nano and vim.',
     'common.unavailable': 'Not available',
     'win.cmd': 'Windows terminal',
+    'term.timestampPrompt': 'Date and time stamped prompt',
+    'term.timestampLocked': '(locked by the teacher)',
     'win.linuxTerm': 'Linux terminal',
     'win.cmdOf': '{name} Windows terminal',
     'win.termOf': '{name} terminal',
@@ -8616,6 +8626,8 @@ class Host {
     os = 'windows';
     /** Windows-style clients send option 61 = 01 + MAC. */
     sendClientId = true;
+    /** «Prompt con marca de fecha y hora» in this device's terminals (saved with the topology). */
+    timestampPrompt = false;
     /** Option 61 to send instead of 01 + MAC (lowercase hex), like dhclient's `send dhcp-client-identifier`. */
     clientIdOverride = undefined;
     portUp = true;
@@ -19487,7 +19499,7 @@ const SERVICE_DOCS = {
 return { SERVICE_DOCS };
 })();
 __m["docs/clients.js"] = (() => {
-const { code, h, list, p, table } = __m["docs/types.js"];
+const { code, h, list, note, p, table } = __m["docs/types.js"];
 const CLIENT_DOCS = {
     id: 'clientes',
     title: 'PC y Windows',
@@ -19538,6 +19550,7 @@ const CLIENT_DOCS = {
             summary: 'Órdenes de cmd.exe disponibles en PCs y servidores Windows, también sobre los archivos del equipo.',
             blocks: [
                 p('La Terminal Windows trabaja sobre el mismo sistema de archivos que la Terminal Linux del equipo: la unidad C:\\ es la raíz /, las carpetas se separan con \\ (o /) y los nombres no distinguen mayúsculas. Empieza en la carpeta personal de la cuenta Linux (C:\\home\\alumno en los PC, C:\\home\\admin en los servidores) y respeta sus permisos: lo que esa cuenta no puede escribir da «Access is denied.».'),
+                note('Casilla «Prompt con marca de fecha y hora» (al pie de la terminal): el prompt pasa a ser el de esta función prompt de PowerShell: fecha y hora (Get-Date "ddd MMM dd" y "HH:mm:ss") en cian oscuro, usuario@equipo en verde, la ruta en amarillo y $ (# si la cuenta es de administrador). Por ejemplo: Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$. La comparte con la Terminal Linux del equipo.'),
                 table(['Orden', 'Uso'], [
                     ['ipconfig [/all]', 'Configuración IP; /all añade MAC, servidor DHCP, DNS y fechas de la concesión.'],
                     ['ipconfig /release · ipconfig /renew', 'Libera o renueva la concesión DHCP.'],
@@ -19725,6 +19738,7 @@ const LINUX_DOCS = [
             h('Qué conviene saber'),
             list('El shell es interactivo: lee /etc/bash.bashrc y ~/.bashrc, guarda el historial y muestra el prompt en color de Ubuntu.', 'Los scripts funcionan: nano script.sh, chmod +x script.sh y ./script.sh (con #!/bin/bash), o bash script.sh.', 'help muestra las órdenes internas y man la ayuda de cada programa; esta pestaña tiene la referencia completa.', 'exit en la terminal local abre una sesión nueva; en una sesión SSH, la cierra.', 'No hay gestor de paquetes (apt) ni procesos reales: los trabajos en segundo plano terminan al momento.'),
             note('Todo lo que se escribe en el disco del equipo (home, scripts, cambios en /etc) se guarda con la topología.'),
+            note('Casilla «Prompt con marca de fecha y hora» (al pie de la terminal): es como ejecutar PS1="\\[\\e[32m\\]\\d \\[\\e[36m\\]\\A \\[\\e[33m\\]\\u@\\h:\\w\\$ \\[\\e[0m\\]": fecha en verde, hora en cian y usuario@equipo:ruta en amarillo, con la hora simulada. Es un ajuste del equipo (vale también para su Terminal Windows y para las sesiones SSH que se abren en él) y se guarda con la topología; al desmarcarla vuelve el PS1 que había. Un bash o su anidado lee su .bashrc, como en Ubuntu. En un aula puede estar bloqueada por el profesor.'),
         ],
     },
     {
@@ -20924,7 +20938,7 @@ const SERVICE_DOCS = {
 return { SERVICE_DOCS };
 })();
 __m["docs/en/clients.js"] = (() => {
-const { code, h, list, p, table } = __m["docs/types.js"];
+const { code, h, list, note, p, table } = __m["docs/types.js"];
 const CLIENT_DOCS = {
     id: 'clientes',
     title: 'PC and Windows',
@@ -20975,6 +20989,7 @@ const CLIENT_DOCS = {
             summary: 'cmd.exe commands available on Windows PCs and servers, files included.',
             blocks: [
                 p('The Windows terminal works on the same file system as the device’s Linux terminal: drive C:\\ is the root /, folders are separated by \\ (or /) and names are not case-sensitive. It starts in the home folder of the Linux account (C:\\home\\alumno on PCs, C:\\home\\admin on servers) and keeps its permissions: whatever that account cannot write gives “Access is denied.”.'),
+                note('«Date and time stamped prompt» checkbox (at the foot of the terminal): the prompt becomes the one of this PowerShell prompt function: date and time (Get-Date "ddd MMM dd" and "HH:mm:ss") in dark cyan, user@host in green, the path in yellow and $ (# for an administrator account). For example: Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$. It is shared with the Linux terminal of the device.'),
                 table(['Command', 'Usage'], [
                     ['ipconfig [/all]', 'IP configuration; /all adds MAC, DHCP server, DNS and lease dates.'],
                     ['ipconfig /release · ipconfig /renew', 'Releases or renews the DHCP lease.'],
@@ -21162,6 +21177,7 @@ const LINUX_DOCS = [
             h('Worth knowing'),
             list('The shell is interactive: it reads /etc/bash.bashrc and ~/.bashrc, keeps the history and shows Ubuntu’s coloured prompt.', 'Scripts work: nano script.sh, chmod +x script.sh and ./script.sh (with #!/bin/bash), or bash script.sh.', 'help shows the built-in commands and man the help for each program; this tab has the complete reference.', 'exit in the local terminal opens a new session; in an SSH session, it closes it.', 'There is no package manager (apt) and there are no real processes: background jobs finish immediately.'),
             note('Everything written to the device’s disk (home, scripts, changes in /etc) is saved with the topology.'),
+            note('«Date and time stamped prompt» checkbox (at the foot of the terminal): like running PS1="\\[\\e[32m\\]\\d \\[\\e[36m\\]\\A \\[\\e[33m\\]\\u@\\h:\\w\\$ \\[\\e[0m\\]": the date in green, the time in cyan and user@host:path in yellow, with the simulated time. It is a setting of the device (it also applies to its Windows terminal and to the SSH sessions opened on it) and it is saved with the topology; unticking it brings back the previous PS1. A nested bash or su reads its .bashrc, as on Ubuntu. In a classroom the teacher may lock it.'),
         ],
     },
     {
@@ -29088,7 +29104,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.12.0",
+    "version": "0.13.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -36612,6 +36628,14 @@ class BashSession {
         }
     }
     // ------------------------------------------------------------ prompt and state
+    /** A shell variable of the session (not of a nested shell), as `echo "$NAME"` would show it. */
+    variable(name) {
+        return this.sh.getVar(name);
+    }
+    /** NAME=value in the session (not in a nested shell). */
+    assign(name, value) {
+        this.sh.setVar(name, value);
+    }
     prompt() {
         if (this.child)
             return this.child.prompt();
@@ -36909,6 +36933,39 @@ class BashSession {
 
 return { BashSession };
 })();
+__m["shells/prompt-clock.js"] = (() => {
+const { strftime } = __m["bash/prompt.js"];
+/** PS1="\[\e[32m\]\d \[\e[36m\]\A \[\e[33m\]\u@\h:\w\$ \[\e[0m\]" */
+const LINUX_TIMESTAMP_PS1 = '\\[\\e[32m\\]\\d \\[\\e[36m\\]\\A \\[\\e[33m\\]\\u@\\h:\\w\\$ \\[\\e[0m\\]';
+// PowerShell console colours as ANSI: DarkCyan, Green, White, Yellow; then the default colour.
+const DARK_CYAN = '\x1b[36m';
+const GREEN = '\x1b[92m';
+const WHITE = '\x1b[97m';
+const YELLOW = '\x1b[93m';
+const RESET = '\x1b[0m';
+/** The classroom lock: true/false forces the prompt on every device; undefined leaves each device's setting. */
+let forced;
+function forceTimestampPrompt(value) {
+    forced = value;
+}
+function timestampPromptLocked() {
+    return forced !== undefined;
+}
+/** Whether `host`'s terminals show the date and time in the prompt. */
+function timestampPromptOn(host) {
+    return forced ?? host.timestampPrompt;
+}
+function setTimestampPrompt(host, on) {
+    host.timestampPrompt = on;
+}
+/** What the PowerShell prompt function prints: "Thu Oct 22 18:28:05 ana@pc0 C:\home\ana$ " in its colours. */
+function windowsTimestampPrompt(now, user, computer, path, admin) {
+    const stamp = `${strftime('%a %b %d', now)} ${strftime('%H:%M:%S', now)} `;
+    return `${DARK_CYAN}${stamp}${GREEN}${user}@${computer.toLowerCase()}${WHITE} ${YELLOW}${path}${RESET}${admin ? '#' : '$'} `;
+}
+
+return { LINUX_TIMESTAMP_PS1, forceTimestampPrompt, timestampPromptLocked, timestampPromptOn, setTimestampPrompt, windowsTimestampPrompt };
+})();
 __m["shells/linux.js"] = (() => {
 /** Ubuntu terminal: a GNU bash 5.3 session on the host's system, plus the ssh client of BaseShell. */
 const { BaseShell } = __m["shells/base.js"];
@@ -36916,6 +36973,7 @@ const { splitArgs } = __m["shells/net-tools.js"];
 const { hostSystem } = __m["shells/host-system.js"];
 const { linuxSshStore } = __m["shells/ssh-stores.js"];
 const { BashSession } = __m["bash/shell.js"];
+const { LINUX_TIMESTAMP_PS1, timestampPromptOn } = __m["shells/prompt-clock.js"];
 const FALLBACK_UID = 1999;
 /** Splits terminal text into lines (a final line without newline is kept). */
 function textLines(text) {
@@ -36930,6 +36988,8 @@ class LinuxShell extends BaseShell {
     osName = 'Linux';
     remoteSession;
     session;
+    /** The PS1 that the timestamp prompt replaced, to give it back when unticked. */
+    plainPs1;
     exitCode = 0;
     constructor(host, user, remote = false) {
         super(host, user);
@@ -36944,7 +37004,26 @@ class LinuxShell extends BaseShell {
         return linuxSshStore(hostSystem(this.host).env.fs, this.account(), cwd);
     }
     newSession() {
-        return new BashSession(hostSystem(this.host).env, this.account(), { login: this.remoteSession });
+        const session = new BashSession(hostSystem(this.host).env, this.account(), { login: this.remoteSession });
+        this.plainPs1 = undefined;
+        this.timestamp(session);
+        return session;
+    }
+    /** As if PS1="…" were typed (ticked) or the previous PS1 restored (unticked); a PS1 set by hand is left alone. */
+    timestamp(session) {
+        const current = session.variable('PS1');
+        if (timestampPromptOn(this.host)) {
+            if (current === LINUX_TIMESTAMP_PS1)
+                return;
+            this.plainPs1 = current;
+            session.assign('PS1', LINUX_TIMESTAMP_PS1);
+        }
+        else if (current === LINUX_TIMESTAMP_PS1 && this.plainPs1 !== undefined) {
+            session.assign('PS1', this.plainPs1);
+        }
+    }
+    applyTimestampPrompt() {
+        this.timestamp(this.session);
     }
     /** The interpreter (tests and the documentation tab use it). */
     bash() {
@@ -37723,6 +37802,7 @@ __m["shells/windows.js"] = (() => {
  * Windows Command Prompt: ipconfig, ping, nslookup, netstat, arp, curl, ssh, sc / net (servers) and the file
  * commands (dir, cd, md, rd, del, copy, move, ren, type, echo, edit) on the device's Linux file system.
  */
+const { timestampPromptOn, windowsTimestampPrompt } = __m["shells/prompt-clock.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { windowsSshStore } = __m["shells/ssh-stores.js"];
 const { BaseShell } = __m["shells/base.js"];
@@ -37793,6 +37873,8 @@ class WindowsShell extends BaseShell {
     osName = 'Windows';
     remote;
     fileCmds = null;
+    /** The Linux account behind this terminal is root: PowerShell would run as Administrator (prompt ends in #). */
+    admin = false;
     constructor(host, user, remote = false) {
         super(host, user);
         this.remote = remote;
@@ -37805,6 +37887,7 @@ class WindowsShell extends BaseShell {
         const name = users.some((u) => u.name === this.user.toLowerCase()) ? this.user.toLowerCase() : defaultLinuxUser(this.host);
         const account = users.find((u) => u.name === name) ?? users[0];
         const cred = { uid: account?.uid ?? 0, gid: account?.gid ?? 0, groups: account?.groups ?? [] };
+        this.admin = cred.uid === 0;
         this.fileCmds = new WinFiles(hostSystem(this.host).fs, cred, account?.home ?? '/');
         return this.fileCmds;
     }
@@ -37812,7 +37895,12 @@ class WindowsShell extends BaseShell {
         return windowsSshStore(this.host, this.user);
     }
     localPrompt() {
-        const here = this.files().prompt();
+        const files = this.files();
+        if (timestampPromptOn(this.host) && !files.pending) {
+            const path = files.prompt().replace(/>$/, '');
+            return windowsTimestampPrompt(this.host.clock.now(), this.user.toLowerCase(), this.host.runtimeName(), path, this.admin);
+        }
+        const here = files.prompt();
         return this.remote ? `${this.user.toLowerCase()}@${this.host.name.toUpperCase()} ${here}` : here;
     }
     notFound(cmd) {
@@ -40743,7 +40831,7 @@ class Terminal {
         this.lineEl = el('label', { class: 'term-line' }, this.promptEl, this.input);
         this.editorEl = el('div', { class: 'term-editor', tabindex: '0', role: 'application', 'aria-label': `Editor · ${opts.label}`, hidden: true });
         this.ime = el('textarea', { class: 'term-ime', autocapitalize: 'off', autocomplete: 'off', spellcheck: 'false', 'aria-hidden': 'true', tabindex: '-1' });
-        this.root = el('div', { class: 'terminal' }, this.screen, this.lineEl, this.editorEl, this.ime, keybar(this));
+        this.root = el('div', { class: 'terminal' }, this.screen, this.lineEl, this.editorEl, this.ime, keybar(this), opts.footer);
         this.root.addEventListener('click', (e) => {
             if (window.getSelection()?.toString() !== '')
                 return;
@@ -40762,6 +40850,11 @@ class Terminal {
         this.editorEl.addEventListener('paste', (e) => this.onEditorPaste(e));
         this.unsubscribe = backend.onAsync?.((l) => this.print([l]));
         this.print(opts.intro ?? []);
+        this.refreshPrompt();
+    }
+    /** The prompt setting of the device changed: apply it to the shell and draw the prompt again. */
+    syncPrompt() {
+        this.backend.applyPrompt?.();
         this.refreshPrompt();
     }
     focus() {
@@ -44828,6 +44921,30 @@ function cloudTabs(cloud, app) {
 
 return { cloudTabs };
 })();
+__m["ui/prompt-toggle.js"] = (() => {
+/**
+ * Footer of the Linux and Windows terminals of a PC, Server or Linux router: «Prompt con marca de fecha y hora».
+ * It is a device setting, so the two terminals of the device show the same box; a classroom lock fixes and greys it.
+ */
+const { t } = __m["i18n/t.js"];
+const { el } = __m["ui/dom.js"];
+const { setTimestampPrompt, timestampPromptOn } = __m["shells/prompt-clock.js"];
+/** `locked`: the classroom forces the value (true/false); `changed`: the device setting changed, redraw the prompts. */
+function promptToggle(host, locked, changed) {
+    const box = el('input', { type: 'checkbox', class: 'term-foot-box' });
+    box.disabled = locked !== undefined;
+    box.addEventListener('change', () => {
+        setTimestampPrompt(host, box.checked);
+        changed();
+    });
+    const label = el('label', { class: 'term-foot-check' }, box, el('span', {}, t('term.timestampPrompt')), locked === undefined ? null : el('span', { class: 'term-foot-lock' }, t('term.timestampLocked')));
+    const refresh = () => { box.checked = timestampPromptOn(host); };
+    refresh();
+    return { root: el('div', { class: 'term-foot' }, label), refresh };
+}
+
+return { promptToggle };
+})();
 __m["ui/device-windows.js"] = (() => {
 /** Window contents: IOS CLI for routers/switches; desktop tabs for PCs and Server. */
 const { iosDeviceSettings } = __m["ui/ios-device-settings.js"];
@@ -44852,10 +44969,12 @@ const { sftpApp } = __m["ui/sftp-app.js"];
 const { iosWebSettings } = __m["ui/ios-web-settings.js"];
 const { Cloud } = __m["devices/cloud.js"];
 const { cloudTabs } = __m["ui/cloud-window.js"];
+const { promptToggle } = __m["ui/prompt-toggle.js"];
 function allowed(host, kind, tabs) {
     return tabs.filter((tab) => host.allowsTab?.(kind, tab.id) ?? true);
 }
 const terminals = new Map();
+const footers = new Map();
 function iosBackend(device, session) {
     return {
         prompt: () => session.prompt(),
@@ -44892,12 +45011,14 @@ function forgetDevice(id) {
     for (const key of [id, `${id}:linux`, `${id}:windows`]) {
         terminals.get(key)?.dispose();
         terminals.delete(key);
+        footers.delete(key);
     }
 }
 function forgetAll() {
     for (const t of terminals.values())
         t.dispose();
     terminals.clear();
+    footers.clear();
 }
 function openDeviceWindow(placed, host) {
     const d = placed.device;
@@ -44920,6 +45041,13 @@ function openDeviceWindow(placed, host) {
         { id: 'web', label: t('win.webAdmin'), render: () => iosWebSettings(d, () => host.afterCommand()) },
     ]));
 }
+/** Both terminals of a device follow its timestamp-prompt setting (and their footer boxes show it). */
+function syncPrompts(h) {
+    for (const os of ['linux', 'windows']) {
+        terminals.get(`${h.id}:${os}`)?.syncPrompt();
+        footers.get(`${h.id}:${os}`)?.refresh();
+    }
+}
 function shellTerminal(placed, h, os, app) {
     const key = `${h.id}:${os}`;
     let term = terminals.get(key);
@@ -44934,9 +45062,12 @@ function shellTerminal(placed, h, os, app) {
             editRequest: () => shell.editRequest?.() ?? null, saveEdit: (p, c) => (shell.saveEdit ? shell.saveEdit(p, c) : t('common.unavailable')),
             closeEdit: () => shell.closeEdit?.() ?? [],
             screenFrame: (w, h) => shell.screenFrame?.(w, h) ?? null, screenKey: (k) => shell.screenKey?.(k) ?? [],
+            applyPrompt: () => shell.applyTimestampPrompt?.(),
         };
+        const footer = promptToggle(h, app.promptLock?.(), () => { syncPrompts(h); app.afterCommand(); });
+        footers.set(key, footer);
         term = new Terminal(backend, {
-            intro, label: t(os === 'windows' ? 'win.cmdOf' : 'win.termOf', { name: placed.label }), afterRun: () => app.afterCommand(),
+            intro, label: t(os === 'windows' ? 'win.cmdOf' : 'win.termOf', { name: placed.label }), afterRun: () => app.afterCommand(), footer: footer.root,
         });
         terminals.set(key, term);
     }
@@ -44946,7 +45077,8 @@ function openHostWindow(placed, h, app) {
     const disposers = [];
     const terminal = (os) => ({
         id: os, label: os === 'windows' ? t('win.cmd') : t('win.linuxTerm'),
-        render: () => shellTerminal(placed, h, os, app).root, onShow: () => shellTerminal(placed, h, os, app).focus(),
+        render: () => shellTerminal(placed, h, os, app).root,
+        onShow: () => { syncPrompts(h); shellTerminal(placed, h, os, app).focus(); },
     });
     const nicTab = { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = hostInterfaces(h, app, (port) => app.peerLabel?.(h.id, port)); disposers.push(v.dispose); return v.root; } };
     const ipTab = { id: 'ip', label: t('win.ip'), render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
@@ -51329,7 +51461,7 @@ function hostRecord(d) {
     const os = d.os;
     const clientId = d.clientIdOverride;
     const files = savedFiles(d);
-    const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
+    const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}), ...(d.timestampPrompt ? { timestampPrompt: true } : {}) };
     if (c.mode === 'dhcp')
         return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
     const opt = (n) => (n === undefined ? undefined : formatIp(n));
@@ -51366,6 +51498,7 @@ function restore(device, rec) {
         restoreRoutes(device, pc.routes);
         const search = Array.isArray(pc.search) ? searchList(pc.search) : { ok: [] };
         device.dnsSearch = 'ok' in search ? search.ok : [];
+        device.timestampPrompt = pc.timestampPrompt === true;
         if (pc.files !== undefined)
             bootKernel(device, validFileRecords(pc.files));
         return;
@@ -52594,11 +52727,13 @@ const TAB_IDS = ['host', 'ifaces', 'cli', 'web', 'ip', 'svc', 'mail', 'ssh', 'sf
 /** The first tab of each window (Device; ISP for the cloud): kept even when a list leaves it out, so a window is never empty. */
 const firstTab = (k) => (k === 'cloud' ? 'isp' : 'host');
 const FLAGS = ['docs', 'fileOpen', 'fileSave', 'fileNew', 'simulation', 'clock', 'drawing', 'editTopology'];
+/** «Prompt con marca de fecha y hora»: each device decides (free), or the teacher locks it on or off. */
+const PROMPT_MODES = ['free', 'on', 'off'];
 const MAX_LABS = 100;
 const MAX_ID = 64;
 const ID_RE = /^[A-Za-z0-9._-]+$/;
 const NO_RESTRICTIONS = Object.freeze({
-    labs: null, devices: null, tabs: Object.freeze({}),
+    labs: null, devices: null, tabs: Object.freeze({}), timestampPrompt: 'free',
     docs: true, fileOpen: true, fileSave: true, fileNew: true, simulation: true, clock: true, drawing: true, editTopology: true,
 });
 function invalid(why) {
@@ -52644,7 +52779,7 @@ function parseRestrictions(input) {
         return NO_RESTRICTIONS;
     if (!isRecord(input))
         invalid('se esperaba un objeto');
-    const known = new Set(['labs', 'devices', 'tabs', ...FLAGS]);
+    const known = new Set(['labs', 'devices', 'tabs', 'timestampPrompt', ...FLAGS]);
     const extra = Object.keys(input).find((k) => !known.has(k));
     if (extra)
         invalid(`campo desconocido «${extra}»`);
@@ -52659,8 +52794,21 @@ function parseRestrictions(input) {
         labs: input.labs === undefined ? null : Object.freeze(stringList(input.labs, 'labs', MAX_LABS)),
         devices: input.devices === undefined ? null : Object.freeze(stringList(input.devices, 'devices', DEVICE_KINDS.length).map((d) => kind(d, 'devices'))),
         tabs: input.tabs === undefined ? NO_RESTRICTIONS.tabs : parseTabs(input.tabs),
+        timestampPrompt: promptMode(input.timestampPrompt),
         ...flags,
     });
+}
+function promptMode(v) {
+    if (v === undefined)
+        return 'free';
+    const mode = PROMPT_MODES.find((m) => m === v);
+    if (!mode)
+        invalid('timestampPrompt debe ser "free", "on" u "off"');
+    return mode;
+}
+/** The forced value of the timestamp prompt (true/false), or undefined when each device decides. */
+function lockedPrompt(r) {
+    return r.timestampPrompt === 'free' ? undefined : r.timestampPrompt === 'on';
 }
 function allowsLab(r, id) {
     return r.labs === null || r.labs.includes(id);
@@ -52673,7 +52821,7 @@ function allowsTab(r, k, tab) {
     return !list || tab === firstTab(k) || list.some((t) => t === tab);
 }
 
-return { DEVICE_KINDS, TAB_IDS, NO_RESTRICTIONS, parseRestrictions, allowsLab, allowsDevice, allowsTab };
+return { DEVICE_KINDS, TAB_IDS, PROMPT_MODES, NO_RESTRICTIONS, parseRestrictions, lockedPrompt, allowsLab, allowsDevice, allowsTab };
 })();
 __m["ui/topbar.js"] = (() => {
 /** Top bar: brand, views, file actions, labs, clock, mode and language. Folds into a menu on phones. */
@@ -53299,7 +53447,8 @@ const { saveTopology } = __m["ui/save-file.js"];
 const { t } = __m["i18n/t.js"];
 const { DrawState, drawBar } = __m["ui/draw-bar.js"];
 const { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } = __m["i18n/locale.js"];
-const { allowsLab, allowsTab } = __m["classroom/restrictions.js"];
+const { allowsLab, allowsTab, lockedPrompt } = __m["classroom/restrictions.js"];
+const { forceTimestampPrompt } = __m["shells/prompt-clock.js"];
 const { STANDALONE, checkMount, embedSession, evaluateFile, installApi } = __m["classroom/embed.js"];
 const AUTOSAVE_KEY = 'netfix:workspace:v1';
 /** Workspace autosaved before the rename (netsim ≤ 0.4.0). */
@@ -53496,6 +53645,10 @@ class App {
     allowsTab(kind, tab) {
         return allowsTab(this.session.policy, kind, tab);
     }
+    /** Timestamp prompt locked by the classroom (true/false) or left to each device (undefined). */
+    promptLock() {
+        return lockedPrompt(this.session.policy);
+    }
     /** "PC0 (FastEthernet0)" at the far end of a cable, for the device windows. */
     peerLabel(device, port) {
         const peer = this.topo.net.peerOf({ device, port });
@@ -53646,6 +53799,8 @@ function start(mount, s, topo) {
     setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
     applyDocumentLanguage();
     applyBrand();
+    // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
+    forceTimestampPrompt(lockedPrompt(s.policy));
     app = new App(mount, s, topo);
     return app;
 }
@@ -53665,6 +53820,7 @@ installApi({
                 last = live;
                 live.dispose();
                 app = null;
+                forceTimestampPrompt(undefined);
                 mount.replaceChildren();
             },
         };

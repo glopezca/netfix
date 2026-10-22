@@ -22,6 +22,8 @@ export interface ShellSession {
   readonly exitCode?: number;
   /** Ctrl+C */
   interrupt?(): string[];
+  /** Applies the device's «Prompt con marca de fecha y hora» setting to the running session (Linux: PS1). */
+  applyTimestampPrompt?(): void;
   /** Ctrl+D */
   eof?(): string[];
   complete?(line: string): Completion | null;

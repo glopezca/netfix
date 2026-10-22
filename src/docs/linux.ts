@@ -34,6 +34,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
         'No hay gestor de paquetes (apt) ni procesos reales: los trabajos en segundo plano terminan al momento.',
       ),
       note('Todo lo que se escribe en el disco del equipo (home, scripts, cambios en /etc) se guarda con la topología.'),
+      note('Casilla «Prompt con marca de fecha y hora» (al pie de la terminal): es como ejecutar PS1="\\[\\e[32m\\]\\d \\[\\e[36m\\]\\A \\[\\e[33m\\]\\u@\\h:\\w\\$ \\[\\e[0m\\]": fecha en verde, hora en cian y usuario@equipo:ruta en amarillo, con la hora simulada. Es un ajuste del equipo (vale también para su Terminal Windows y para las sesiones SSH que se abren en él) y se guarda con la topología; al desmarcarla vuelve el PS1 que había. Un bash o su anidado lee su .bashrc, como en Ubuntu. En un aula puede estar bloqueada por el profesor.'),
     ],
   },
   {

@@ -10,6 +10,8 @@ export const UI_EN: Readonly<Record<UiKey, string>> = {
   'win.linuxHelp': 'Help: help, man <command> or the Documentation tab. Editors: nano and vim.',
   'common.unavailable': 'Not available',
   'win.cmd': 'Windows terminal',
+  'term.timestampPrompt': 'Date and time stamped prompt',
+  'term.timestampLocked': '(locked by the teacher)',
   'win.linuxTerm': 'Linux terminal',
   'win.cmdOf': '{name} Windows terminal',
   'win.termOf': '{name} terminal',

@@ -20,7 +20,8 @@ import { t } from '../i18n/t.ts';
 import { DrawState, drawBar } from './draw-bar.ts';
 import { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
-import { allowsLab, allowsTab } from '../classroom/restrictions.ts';
+import { allowsLab, allowsTab, lockedPrompt } from '../classroom/restrictions.ts';
+import { forceTimestampPrompt } from '../shells/prompt-clock.ts';
 import type { DeviceKind } from '../net/topology.ts';
 import { STANDALONE, checkMount, embedSession, evaluateFile, installApi } from '../classroom/embed.ts';
 import type { AppSession, EmbedHandle } from '../classroom/embed.ts';
@@ -218,6 +219,11 @@ class App {
     return allowsTab(this.session.policy, kind, tab);
   }
 
+  /** Timestamp prompt locked by the classroom (true/false) or left to each device (undefined). */
+  promptLock(): boolean | undefined {
+    return lockedPrompt(this.session.policy);
+  }
+
   /** "PC0 (FastEthernet0)" at the far end of a cable, for the device windows. */
   peerLabel(device: string, port: string): string | undefined {
     const peer = this.topo.net.peerOf({ device, port });
@@ -368,6 +374,8 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology): App {
   setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
   applyDocumentLanguage();
   applyBrand();
+  // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
+  forceTimestampPrompt(lockedPrompt(s.policy));
   app = new App(mount, s, topo);
   return app;
 }
@@ -387,6 +395,7 @@ installApi({
         last = live;
         live.dispose();
         app = null;
+        forceTimestampPrompt(undefined);
         mount.replaceChildren();
       },
     };
