@@ -23,10 +23,6 @@ export function forceTimestampPrompt(value: boolean | undefined): void {
   forced = value;
 }
 
-export function timestampPromptLocked(): boolean {
-  return forced !== undefined;
-}
-
 /** Whether `host`'s terminals show the date and time in the prompt. */
 export function timestampPromptOn(host: Host): boolean {
   return forced ?? host.timestampPrompt;

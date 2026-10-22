@@ -71,9 +71,10 @@ export class BashSession {
     return this.sh.getVar(name);
   }
 
-  /** NAME=value in the session (not in a nested shell). */
-  assign(name: string, value: string): void {
-    this.sh.setVar(name, value);
+  /** NAME=value in the session (not in a nested shell); undefined is `unset NAME`. */
+  assign(name: string, value: string | undefined): void {
+    if (value === undefined) this.sh.vars.unset(name);
+    else this.sh.setVar(name, value);
   }
 
   prompt(): string {

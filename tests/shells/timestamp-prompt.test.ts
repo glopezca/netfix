@@ -104,3 +104,15 @@ test('a classroom lock forces it on every device, also in SSH sessions; off wins
   assert.doesNotMatch(plain(createShell(srv, 'linux').prompt()), DATE);
   assert.doesNotMatch(plain(createShell(srv, 'windows').prompt()), DATE);
 });
+
+test('review: after «unset PS1», unticking leaves PS1 unset again', () => {
+  const { pc } = lab();
+  const sh = createShell(pc, 'linux');
+  sh.run('unset PS1');
+  setTimestampPrompt(pc, true);
+  sh.applyTimestampPrompt?.();
+  assert.match(plain(sh.prompt()), DATE);
+  setTimestampPrompt(pc, false);
+  sh.applyTimestampPrompt?.();
+  assert.equal(sh.run('echo "${PS1-unset}"').join('\n'), 'unset');
+});

@@ -25,8 +25,8 @@ export class LinuxShell extends BaseShell {
   protected readonly osName = 'Linux';
   private readonly remoteSession: boolean;
   private session: BashSession;
-  /** The PS1 that the timestamp prompt replaced, to give it back when unticked. */
-  private plainPs1: string | undefined;
+  /** The PS1 that the timestamp prompt replaced (undefined: PS1 was unset), to give it back when unticked. */
+  private plainPs1: { readonly value: string | undefined } | undefined;
   exitCode = 0;
 
   constructor(host: Host, user: string, remote = false) {
@@ -56,10 +56,10 @@ export class LinuxShell extends BaseShell {
     const current = session.variable('PS1');
     if (timestampPromptOn(this.host)) {
       if (current === LINUX_TIMESTAMP_PS1) return;
-      this.plainPs1 = current;
+      this.plainPs1 = { value: current };
       session.assign('PS1', LINUX_TIMESTAMP_PS1);
     } else if (current === LINUX_TIMESTAMP_PS1 && this.plainPs1 !== undefined) {
-      session.assign('PS1', this.plainPs1);
+      session.assign('PS1', this.plainPs1.value);
     }
   }
 

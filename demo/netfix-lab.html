@@ -36632,9 +36632,12 @@ class BashSession {
     variable(name) {
         return this.sh.getVar(name);
     }
-    /** NAME=value in the session (not in a nested shell). */
+    /** NAME=value in the session (not in a nested shell); undefined is `unset NAME`. */
     assign(name, value) {
-        this.sh.setVar(name, value);
+        if (value === undefined)
+            this.sh.vars.unset(name);
+        else
+            this.sh.setVar(name, value);
     }
     prompt() {
         if (this.child)
@@ -36948,9 +36951,6 @@ let forced;
 function forceTimestampPrompt(value) {
     forced = value;
 }
-function timestampPromptLocked() {
-    return forced !== undefined;
-}
 /** Whether `host`'s terminals show the date and time in the prompt. */
 function timestampPromptOn(host) {
     return forced ?? host.timestampPrompt;
@@ -36964,7 +36964,7 @@ function windowsTimestampPrompt(now, user, computer, path, admin) {
     return `${DARK_CYAN}${stamp}${GREEN}${user}@${computer.toLowerCase()}${WHITE} ${YELLOW}${path}${RESET}${admin ? '#' : '$'} `;
 }
 
-return { LINUX_TIMESTAMP_PS1, forceTimestampPrompt, timestampPromptLocked, timestampPromptOn, setTimestampPrompt, windowsTimestampPrompt };
+return { LINUX_TIMESTAMP_PS1, forceTimestampPrompt, timestampPromptOn, setTimestampPrompt, windowsTimestampPrompt };
 })();
 __m["shells/linux.js"] = (() => {
 /** Ubuntu terminal: a GNU bash 5.3 session on the host's system, plus the ssh client of BaseShell. */
@@ -36988,7 +36988,7 @@ class LinuxShell extends BaseShell {
     osName = 'Linux';
     remoteSession;
     session;
-    /** The PS1 that the timestamp prompt replaced, to give it back when unticked. */
+    /** The PS1 that the timestamp prompt replaced (undefined: PS1 was unset), to give it back when unticked. */
     plainPs1;
     exitCode = 0;
     constructor(host, user, remote = false) {
@@ -37015,11 +37015,11 @@ class LinuxShell extends BaseShell {
         if (timestampPromptOn(this.host)) {
             if (current === LINUX_TIMESTAMP_PS1)
                 return;
-            this.plainPs1 = current;
+            this.plainPs1 = { value: current };
             session.assign('PS1', LINUX_TIMESTAMP_PS1);
         }
         else if (current === LINUX_TIMESTAMP_PS1 && this.plainPs1 !== undefined) {
-            session.assign('PS1', this.plainPs1);
+            session.assign('PS1', this.plainPs1.value);
         }
     }
     applyTimestampPrompt() {
