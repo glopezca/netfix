@@ -31,6 +31,7 @@ export const WEB_EN: Readonly<Record<WebKey, string>> = {
   'wa.desc.vpn': 'WireGuard VPN: interface and peers.',
   'wa.desc.admin': 'User, password and access to this web management.',
   'wa.desc.status': 'Device state, services and DHCP leases.',
+  'wa.desc.files': 'Configuration files of each service as they are on disk, highlighted as in vim.',
   'wa.desc.log': 'Latest lines of the services log.',
   'wa.save': 'Save settings',
   'wa.cancel': 'Cancel changes',

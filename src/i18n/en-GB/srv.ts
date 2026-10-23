@@ -26,7 +26,7 @@ export const SRV_EN: Readonly<Record<SrvKey, string>> = {
   'srv.apply': 'Apply',
   'srv.serverIp': 'server-IP',
   'srv.webApps': 'Web applications',
-  'srv.webAppsState': 'Roundcube: {rc} · Web admin: {admin}',
+  'srv.webAppsState': 'Web admin: {admin} · Roundcube: {rc}',
   'srv.disabled': 'disabled',
   'srv.disabledF': 'disabled',
   'srv.roundcube': 'Roundcube (webmail)',

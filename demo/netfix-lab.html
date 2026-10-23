@@ -730,7 +730,8 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .web-adm-nav-setup::before { content: "⚙"; } .web-adm-nav-dhcp::before { content: "⇅"; } .web-adm-nav-dns::before { content: "◎"; }
 .web-adm-nav-web::before { content: "◫"; } .web-adm-nav-mail::before { content: "✉"; } .web-adm-nav-ssh::before { content: "›"; }
 .web-adm-nav-firewall::before { content: "▦"; } .web-adm-nav-routing::before { content: "⇄"; } .web-adm-nav-vpn::before { content: "⛓"; }
-.web-adm-nav-admin::before { content: "⚿"; } .web-adm-nav-status::before { content: "◔"; } .web-adm-nav-log::before { content: "☰"; }
+.web-adm-nav-admin::before { content: "⚿"; } .web-adm-nav-status::before { content: "◔"; } .web-adm-nav-files::before { content: "🔧"; }
+.web-adm-nav-log::before { content: "☰"; }
 .web-adm-main { padding: 16px 20px 20px; container-type: inline-size; min-width: 0; }
 .web-adm-title h1 { font-size: 22px; margin: 0; }
 .web-adm-help { color: var(--adm-muted); margin: 2px 0 8px; font-size: 13px; }
@@ -822,17 +823,18 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 
 /* DNS → Nombres públicos: the RPZ file. */
 .browser-view .web-adm-file { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--font-mono); }
-/* Configuration files as vim shows them (default colour scheme, background=light) */
-.web-adm-log.syn-view { white-space: pre; overflow: auto; tab-size: 8; }
-.web-adm-log.syn-view .syn-comment { color: #0000ff; }
-.web-adm-log.syn-view .syn-constant, .web-adm-log.syn-view .syn-string, .web-adm-log.syn-view .syn-number { color: #ff00ff; }
-.web-adm-log.syn-view .syn-identifier { color: #008b8b; }
-.web-adm-log.syn-view .syn-statement { color: #a52a2a; font-weight: 700; }
-.web-adm-log.syn-view .syn-preproc { color: #a020f0; }
-.web-adm-log.syn-view .syn-type { color: #2e8b57; font-weight: 700; }
-.web-adm-log.syn-view .syn-special { color: #6a5acd; }
-.web-adm-log.syn-view .syn-error { color: #ffffff; background: #ff0000; }
-.web-adm-log.syn-view[data-filetype="messages"] { white-space: pre-wrap; }
+/* Configuration files and logs as vim shows them (default colour scheme, background=light). The simulated browser
+   keeps only web-* classes, so the groups are web-syn-*. */
+.web-syn-view { white-space: pre; overflow: auto; tab-size: 8; }
+.web-syn-view.web-syn-messages { white-space: pre-wrap; }
+.web-syn-comment { color: #0000ff; }
+.web-syn-constant, .web-syn-string, .web-syn-number { color: #ff00ff; }
+.web-syn-identifier { color: #008b8b; }
+.web-syn-statement { color: #a52a2a; font-weight: 700; }
+.web-syn-preproc { color: #a020f0; }
+.web-syn-type { color: #2e8b57; font-weight: 700; }
+.web-syn-special { color: #6a5acd; }
+.web-syn-error { color: #ffffff; background: #ff0000; }
 
 </style>
 </head>
@@ -2457,7 +2459,7 @@ const SRV_ES = {
     'srv.apply': 'Aplicar',
     'srv.serverIp': 'IP-del-servidor',
     'srv.webApps': 'Aplicaciones web',
-    'srv.webAppsState': 'Roundcube: {rc} · Gestión web: {admin}',
+    'srv.webAppsState': 'Gestión web: {admin} · Roundcube: {rc}',
     'srv.disabled': 'desactivado',
     'srv.disabledF': 'desactivada',
     'srv.roundcube': 'Roundcube (correo web)',
@@ -2630,7 +2632,7 @@ const SRV_EN = {
     'srv.apply': 'Apply',
     'srv.serverIp': 'server-IP',
     'srv.webApps': 'Web applications',
-    'srv.webAppsState': 'Roundcube: {rc} · Web admin: {admin}',
+    'srv.webAppsState': 'Web admin: {admin} · Roundcube: {rc}',
     'srv.disabled': 'disabled',
     'srv.disabledF': 'disabled',
     'srv.roundcube': 'Roundcube (webmail)',
@@ -2809,6 +2811,7 @@ const WEB_ES = {
     'wa.desc.vpn': 'VPN WireGuard: interfaz y pares.',
     'wa.desc.admin': 'Usuario, contraseña y acceso a esta gestión web.',
     'wa.desc.status': 'Estado del equipo, servicios y concesiones DHCP.',
+    'wa.desc.files': 'Ficheros de configuración de cada servicio tal como están en el disco, resaltados como en vim.',
     'wa.desc.log': 'Últimas líneas del registro de los servicios.',
     'wa.save': 'Guardar cambios',
     'wa.cancel': 'Cancelar cambios',
@@ -3077,6 +3080,7 @@ const WEB_EN = {
     'wa.desc.vpn': 'WireGuard VPN: interface and peers.',
     'wa.desc.admin': 'User, password and access to this web management.',
     'wa.desc.status': 'Device state, services and DHCP leases.',
+    'wa.desc.files': 'Configuration files of each service as they are on disk, highlighted as in vim.',
     'wa.desc.log': 'Latest lines of the services log.',
     'wa.save': 'Save settings',
     'wa.cancel': 'Cancel changes',
@@ -27352,7 +27356,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.19.6",
+    "version": "0.19.7",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -44090,12 +44094,15 @@ function highlight(text, filetype) {
 return { SYNMAXCOL, filetypeOf, highlight };
 })();
 __m["web/syntax-html.js"] = (() => {
-/** A <pre> of the simulated web pages with vim's highlight groups as spans (h() escapes every text). */
+/**
+ * A <pre> of the simulated web pages with vim's highlight groups as spans (h() escapes every text). The simulated
+ * browser keeps only `web-*` classes (ui/html-render.ts), so the groups and the filetype are `web-syn-*` classes.
+ */
 const { h } = __m["web/html.js"];
 const { highlight } = __m["editors/vim-syntax.js"];
 function syntaxPre(text, filetype, cls = 'web-adm-log') {
-    const lines = highlight(text, filetype).map((line, i) => [i ? '\n' : '', ...line.map((s) => (s.group ? h('span', { class: `syn-${s.group.toLowerCase()}` }, s.text) : s.text))]);
-    return h('pre', { class: `${cls} syn-view`, 'data-filetype': filetype }, lines);
+    const lines = highlight(text, filetype).map((line, i) => [i ? '\n' : '', ...line.map((s) => (s.group ? h('span', { class: `web-syn-${s.group.toLowerCase()}` }, s.text) : s.text))]);
+    return h('pre', { class: `${cls} web-syn-view web-syn-${filetype}` }, lines);
 }
 
 return { syntaxPre };
@@ -52704,13 +52711,13 @@ function webAppsSection(server, app, refresh) {
     const where = (a) => (a.mode === 'port' ? `http://${host}:${a.port}/` : `http://${host}${a.alias}/`);
     const user = input({ value: w.admin.user });
     const pass = input({ value: w.admin.password, type: 'password' });
-    return el('div', {}, el('h3', {}, t('srv.webApps')), el('p', { class: 'muted' }, t('srv.webAppsState', { rc: w.roundcube.enabled ? where(w.roundcube) : t('srv.disabled'), admin: w.admin.enabled ? where(w.admin) : t('srv.disabledF') })), accessForm(t('srv.roundcube'), w.roundcube, [], (next) => validateAccess(next, server.services.webapps.admin) ?? (server.setServices({ ...server.services, webapps: { ...server.services.webapps, roundcube: next } }), null)), accessForm(t('srv.admin'), w.admin, [el('div', { class: 'grid2' }, field(t('srv.user'), user), field(t('srv.password'), pass))], (next) => {
+    return el('div', {}, el('h3', {}, t('srv.webApps')), el('p', { class: 'muted' }, t('srv.webAppsState', { rc: w.roundcube.enabled ? where(w.roundcube) : t('srv.disabled'), admin: w.admin.enabled ? where(w.admin) : t('srv.disabledF') })), accessForm(t('srv.admin'), w.admin, [el('div', { class: 'grid2' }, field(t('srv.user'), user), field(t('srv.password'), pass))], (next) => {
         const err = validateAccess(next, server.services.webapps.roundcube) ?? (user.value.trim() && pass.value ? null : t('srv.needCreds'));
         if (err)
             return err;
         server.setServices({ ...server.services, webapps: { ...server.services.webapps, admin: { ...next, user: user.value.trim(), password: pass.value } } });
         return null;
-    }), msg.el);
+    }), accessForm(t('srv.roundcube'), w.roundcube, [], (next) => validateAccess(next, server.services.webapps.admin) ?? (server.setServices({ ...server.services, webapps: { ...server.services.webapps, roundcube: next } }), null)), msg.el);
 }
 function accounts(list, onChange, what) {
     const user = input({ placeholder: t('srv.userPlaceholder') });

@@ -22,7 +22,8 @@
 .web-adm-nav-setup::before { content: "⚙"; } .web-adm-nav-dhcp::before { content: "⇅"; } .web-adm-nav-dns::before { content: "◎"; }
 .web-adm-nav-web::before { content: "◫"; } .web-adm-nav-mail::before { content: "✉"; } .web-adm-nav-ssh::before { content: "›"; }
 .web-adm-nav-firewall::before { content: "▦"; } .web-adm-nav-routing::before { content: "⇄"; } .web-adm-nav-vpn::before { content: "⛓"; }
-.web-adm-nav-admin::before { content: "⚿"; } .web-adm-nav-status::before { content: "◔"; } .web-adm-nav-log::before { content: "☰"; }
+.web-adm-nav-admin::before { content: "⚿"; } .web-adm-nav-status::before { content: "◔"; } .web-adm-nav-files::before { content: "🔧"; }
+.web-adm-nav-log::before { content: "☰"; }
 .web-adm-main { padding: 16px 20px 20px; container-type: inline-size; min-width: 0; }
 .web-adm-title h1 { font-size: 22px; margin: 0; }
 .web-adm-help { color: var(--adm-muted); margin: 2px 0 8px; font-size: 13px; }
@@ -114,14 +115,15 @@
 
 /* DNS → Nombres públicos: the RPZ file. */
 .browser-view .web-adm-file { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--font-mono); }
-/* Configuration files as vim shows them (default colour scheme, background=light) */
-.web-adm-log.syn-view { white-space: pre; overflow: auto; tab-size: 8; }
-.web-adm-log.syn-view .syn-comment { color: #0000ff; }
-.web-adm-log.syn-view .syn-constant, .web-adm-log.syn-view .syn-string, .web-adm-log.syn-view .syn-number { color: #ff00ff; }
-.web-adm-log.syn-view .syn-identifier { color: #008b8b; }
-.web-adm-log.syn-view .syn-statement { color: #a52a2a; font-weight: 700; }
-.web-adm-log.syn-view .syn-preproc { color: #a020f0; }
-.web-adm-log.syn-view .syn-type { color: #2e8b57; font-weight: 700; }
-.web-adm-log.syn-view .syn-special { color: #6a5acd; }
-.web-adm-log.syn-view .syn-error { color: #ffffff; background: #ff0000; }
-.web-adm-log.syn-view[data-filetype="messages"] { white-space: pre-wrap; }
+/* Configuration files and logs as vim shows them (default colour scheme, background=light). The simulated browser
+   keeps only web-* classes, so the groups are web-syn-*. */
+.web-syn-view { white-space: pre; overflow: auto; tab-size: 8; }
+.web-syn-view.web-syn-messages { white-space: pre-wrap; }
+.web-syn-comment { color: #0000ff; }
+.web-syn-constant, .web-syn-string, .web-syn-number { color: #ff00ff; }
+.web-syn-identifier { color: #008b8b; }
+.web-syn-statement { color: #a52a2a; font-weight: 700; }
+.web-syn-preproc { color: #a020f0; }
+.web-syn-type { color: #2e8b57; font-weight: 700; }
+.web-syn-special { color: #6a5acd; }
+.web-syn-error { color: #ffffff; background: #ff0000; }

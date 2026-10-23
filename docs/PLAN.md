@@ -844,3 +844,18 @@ vim o porque no tienen efecto visible:
 - **`(?<=: )`.** Encaja con cualquier `: ` de la línea, no solo con el que sigue al programa.
 - **Reglas duplicadas.** Las reglas globales de `.syn-error` coinciden con las de la gestión web.
 
+## Fase 34 · Resaltado visible en la WebGUI, icono de Configuración y orden de HTTP (v0.19.7)
+
+- **Fallo corregido.** En la WebGUI no se veía el resaltado: el navegador simulado (`ui/html-render.ts`) solo conserva
+  las clases `web-*` y descartaba las `syn-*` y `data-filetype`, así que el texto quedaba negro. Ahora las páginas web
+  usan `web-syn-<grupo>` y `web-syn-<tipo de archivo>`, con los colores de vim para `background=light` en
+  `web-admin.css`. La ventana del equipo sigue con `syn-*` y fondo oscuro, así que las dos no se mezclan.
+- **Por qué no se detectó.** Las pruebas unitarias miraban el HTML generado, no lo que pinta el navegador. El nuevo
+  `e2e-webgui` abre la WebGUI desde el navegador de un PC y comprueba los colores calculados de Statement, Comment,
+  Constant y Type.
+- **Icono.** «Configuración» lleva 🔧 en el menú Estado de la WebGUI.
+- **Descripción.** Se añadió la que le faltaba (`wa.desc.files`). Hay una prueba que exige descripción en los dos
+  idiomas para todas las páginas.
+- **Orden en Servicios → HTTP de servidores y routers Linux.** «Gestión web del servidor» va antes de Roundcube, también
+  en la línea de estado.
+

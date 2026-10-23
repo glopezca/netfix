@@ -29,6 +29,7 @@ export const WEB_ES = {
   'wa.desc.vpn': 'VPN WireGuard: interfaz y pares.',
   'wa.desc.admin': 'Usuario, contraseña y acceso a esta gestión web.',
   'wa.desc.status': 'Estado del equipo, servicios y concesiones DHCP.',
+  'wa.desc.files': 'Ficheros de configuración de cada servicio tal como están en el disco, resaltados como en vim.',
   'wa.desc.log': 'Últimas líneas del registro de los servicios.',
   'wa.save': 'Guardar cambios',
   'wa.cancel': 'Cancelar cambios',

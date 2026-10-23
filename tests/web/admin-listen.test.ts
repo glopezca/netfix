@@ -63,9 +63,9 @@ test('Services lists SSH first; Estado → Configuración (before Registros) sho
   assert.match(files, /web-adm-on"><a href="\/\?page=files&amp;svc=sysctl"/, 'the router\'s first service by default');
   srv.setServices({ ...srv.services, dns: { ...srv.services.dns, listenOn: ['lo'] } });
   const dns = body(web.open(`${URL}?page=files&svc=dns`));
-  const text = dns.replace(/<span class="syn-\w+">|<\/span>/g, '');
+  const text = dns.replace(/<span class="web-syn-\w+">|<\/span>/g, '');
   assert.match(text, /\/etc\/bind\/named\.conf\.options[\s\S]*listen-on \{ 127\.0\.0\.1; \};/);
-  assert.match(dns, /<pre class="web-adm-log syn-view" data-filetype="named"><span class="syn-statement">options<\/span> \{/, 'vim\'s groups');
+  assert.match(dns, /<pre class="web-adm-log web-syn-view web-syn-named"><span class="web-syn-statement">options<\/span> \{/, 'vim\'s groups');
   assert.ok(menu.indexOf('?page=files"') < menu.indexOf('?page=log"'), 'Configuración before Registros');
   assert.match(menu, /<footer class="web-adm-foot web-brand-foot"><span class="web-brand-n">/, 'the N isotype in the footer credit');
   createShell(srv, 'linux', 'root').run('echo "<b>hola</b>" > /etc/bind/db.prueba');
@@ -113,6 +113,16 @@ test('Registros in the web GUI: the journal highlighted as vim shows logs (messa
   const { srv, web } = lab();
   srv.log('ssh', 'error: <b>bad</b> key from 192.168.20.10');
   const page = body(web.open(`${URL}?page=log`));
-  assert.match(page, /<pre class="web-adm-log syn-view" data-filetype="messages"><span class="syn-type">\d\d:\d\d:\d\d<\/span>/);
-  assert.match(page, /<span class="syn-error">error: &lt;b&gt;bad&lt;\/b&gt; key from 192\.168\.20\.10<\/span>/);
+  assert.match(page, /<pre class="web-adm-log web-syn-view web-syn-messages"><span class="web-syn-type">\d\d:\d\d:\d\d<\/span>/);
+  assert.match(page, /<span class="web-syn-error">error: &lt;b&gt;bad&lt;\/b&gt; key from 192\.168\.20\.10<\/span>/);
+});
+
+test('every page of the web GUI has its description in both languages (no raw wa.desc.* keys)', async () => {
+  const { PAGES } = await import('../../src/web/admin-layout.ts');
+  const { WEB_ES } = await import('../../src/i18n/es-ES/web.ts');
+  const { WEB_EN } = await import('../../src/i18n/en-GB/web.ts');
+  for (const p of PAGES) {
+    assert.ok(`wa.desc.${p.id}` in WEB_ES, `es: wa.desc.${p.id}`);
+    assert.ok(`wa.desc.${p.id}` in WEB_EN, `en: wa.desc.${p.id}`);
+  }
 });

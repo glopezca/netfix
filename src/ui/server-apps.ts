@@ -103,13 +103,13 @@ function webAppsSection(server: Server, app: AfterChange, refresh: () => void): 
   return el('div', {},
     el('h3', {}, t('srv.webApps')),
     el('p', { class: 'muted' }, t('srv.webAppsState', { rc: w.roundcube.enabled ? where(w.roundcube) : t('srv.disabled'), admin: w.admin.enabled ? where(w.admin) : t('srv.disabledF') })),
-    accessForm(t('srv.roundcube'), w.roundcube, [], (next) => validateAccess(next, server.services.webapps.admin) ?? (server.setServices({ ...server.services, webapps: { ...server.services.webapps, roundcube: next } }), null)),
     accessForm(t('srv.admin'), w.admin, [el('div', { class: 'grid2' }, field(t('srv.user'), user), field(t('srv.password'), pass))], (next) => {
       const err = validateAccess(next, server.services.webapps.roundcube) ?? (user.value.trim() && pass.value ? null : t('srv.needCreds'));
       if (err) return err;
       server.setServices({ ...server.services, webapps: { ...server.services.webapps, admin: { ...next, user: user.value.trim(), password: pass.value } } });
       return null;
     }),
+    accessForm(t('srv.roundcube'), w.roundcube, [], (next) => validateAccess(next, server.services.webapps.admin) ?? (server.setServices({ ...server.services, webapps: { ...server.services.webapps, roundcube: next } }), null)),
     msg.el);
 }
 

@@ -24,7 +24,7 @@ export const SRV_ES = {
   'srv.apply': 'Aplicar',
   'srv.serverIp': 'IP-del-servidor',
   'srv.webApps': 'Aplicaciones web',
-  'srv.webAppsState': 'Roundcube: {rc} · Gestión web: {admin}',
+  'srv.webAppsState': 'Gestión web: {admin} · Roundcube: {rc}',
   'srv.disabled': 'desactivado',
   'srv.disabledF': 'desactivada',
   'srv.roundcube': 'Roundcube (correo web)',
