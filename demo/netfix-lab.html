@@ -10397,6 +10397,15 @@ function setUnitActive(s, id, on) {
     }
 }
 /** The management GUI's own web server (port mode). */
+/**
+ * The units of Servicios → Registros: SSH first (the first thing to check when administering remotely), then nftables
+ * on a Linux router (a Server has no firewall panel), then the rest in the order of UNITS (Kea … Dovecot).
+ */
+function logUnits(kind) {
+    const first = ['ssh', ...(kind === 'linuxrouter' ? ['firewall'] : [])];
+    const pick = (id) => UNITS.filter((u) => u.id === id);
+    return [...first.flatMap(pick), ...UNITS.filter((u) => u.id !== 'ssh' && u.id !== 'firewall')];
+}
 const WEBUI_UNIT = { id: 'http', linux: 'netfix-webui', aliases: [], process: 'netfix-webui', description: 'Gestión web de Server', windows: 'netfix-webui', windowsDisplay: 'Gestión web', ports: [], pid: 1190 };
 /** Ports actually open on the server, for ss/netstat. `web` = the live web ports (Apache Listen, own ports). */
 function openPorts(s, web) {
@@ -10419,7 +10428,7 @@ function openPorts(s, web) {
     return out.sort((a, b) => (a.proto === b.proto ? a.port - b.port : a.proto === 'udp' ? -1 : 1));
 }
 
-return { UNITS, findUnit, unitActive, setUnitActive, WEBUI_UNIT, openPorts };
+return { UNITS, findUnit, unitActive, setUnitActive, logUnits, WEBUI_UNIT, openPorts };
 })();
 __m["devices/kinds.js"] = (() => {
 /** Kinds of end devices and what they run (a leaf module: shells use it instead of importing Server). */
@@ -27338,7 +27347,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.19.4",
+    "version": "0.19.5",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -52571,7 +52580,7 @@ const { filesPanel } = __m["ui/files-panel.js"];
 const { validateAccess } = __m["services/config.js"];
 const { formatIp } = __m["core/ip.js"];
 const { validateFileName } = __m["services/http-service.js"];
-const { UNITS, unitActive } = __m["services/units.js"];
+const { logUnits, unitActive } = __m["services/units.js"];
 const { createShell } = __m["shells/factory.js"];
 const { sshAuthMethods, setSshAuthMethods } = __m["services/ssh-auth-settings.js"];
 function servicesTab(server, app) {
@@ -52738,9 +52747,10 @@ function sshPanel(server, app) {
     });
 }
 function logPanel(server) {
-    let selected = UNITS[0]?.linux ?? 'ssh';
+    const units = logUnits(server.kind);
+    let selected = units[0]?.linux ?? 'ssh';
     return livePanel((refresh) => {
-        const unit = select(UNITS.map((u) => [u.linux, `${u.linux} (${unitActive(server.services, u.id) ? t('srv.active') : t('srv.stopped')})`]), selected);
+        const unit = select(units.map((u) => [u.linux, `${u.linux} (${unitActive(server.services, u.id) ? t('srv.active') : t('srv.stopped')})`]), selected);
         const out = el('pre', { class: 'log-view' });
         const show = () => {
             selected = unit.value;

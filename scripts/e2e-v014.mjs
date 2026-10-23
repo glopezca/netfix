@@ -68,6 +68,10 @@ try {
     [['options', 'rgb(255, 255, 96)'], ['directory', 'rgb(255, 255, 96)']], 'statements in vim yellow');
   assert.ok(await conf.locator('.syn-comment').count() > 0, 'comments highlighted');
   if (shots) await page.screenshot({ path: `${shots}/files.png` });
+  // Registros (v0.19.5): SSH first, then Kea … Dovecot (no nftables on a Server).
+  await page.click('.subnav-item:has-text("Registros")');
+  const units = (await page.locator('.window:visible select').first().locator('option').allTextContents()).map((o) => o.split(' ')[0]);
+  assert.deepEqual(units, ['ssh', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot']);
   await page.click('.win-close');
 
   // Linux router: the NIC address applies on change (no «Aplicar»), its panels first and then SSH.
@@ -76,6 +80,9 @@ try {
   await page.click('.win-tab:has-text("Servicios")');
   const routerItems = await page.locator('.window:visible .subnav-item').allInnerTexts();
   assert.equal(routerItems[3], 'SSH', routerItems.join(' | '));
+  await page.click('.window:visible .subnav-item:has-text("Registros")');
+  const routerUnits = (await page.locator('.window:visible select').first().locator('option').allTextContents()).map((o) => o.split(' ')[0]);
+  assert.deepEqual(routerUnits, ['ssh', 'nftables', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot'], 'a Linux router: nftables second');
   await page.click('.win-tab:has-text("Interfaces")');
   const eth2 = page.locator('.window:visible .nic-row:has-text("GigabitEthernet0/2")');
   assert.equal(await eth2.locator('button:has-text("Aplicar")').count(), 0);

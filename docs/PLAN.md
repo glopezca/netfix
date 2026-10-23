@@ -792,3 +792,18 @@ listas de comprobación que nombren «Router0», «Router1» o «Switch» de lab
 
 **Aviso bajo.** Un hostname antiguo con caracteres que IOS no admite aquí (como `R_1`) pasa a `R-1`.
 
+## Fase 32 · Orden de Registros (v0.19.5)
+
+En Servicios → Registros de servidores y routers Linux, el desplegable de unidades va en este orden:
+
+1. `ssh`.
+2. `nftables`, solo en los routers Linux.
+3. El resto en su orden habitual: `kea-dhcp4-server`, `bind9`, `apache2`, `postfix` y `dovecot`.
+
+El orden lo da `logUnits(kind)` en `src/services/units.ts`, una función pura. `UNITS` no cambia, porque también la
+usan `systemctl` y la gestión web. La página «Registros» de la gestión web muestra todas las unidades juntas, sin
+selector.
+
+Pruebas: `tests/services/log-units.test.ts` y `e2e-v014`, que recorre las opciones del desplegable en un Server y en un
+router Linux.
+

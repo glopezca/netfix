@@ -57,6 +57,16 @@ export function setUnitActive(s: ServerServices, id: UnitId, on: boolean): Serve
 }
 
 /** The management GUI's own web server (port mode). */
+/**
+ * The units of Servicios → Registros: SSH first (the first thing to check when administering remotely), then nftables
+ * on a Linux router (a Server has no firewall panel), then the rest in the order of UNITS (Kea … Dovecot).
+ */
+export function logUnits(kind: string): UnitInfo[] {
+  const first = ['ssh', ...(kind === 'linuxrouter' ? ['firewall'] : [])];
+  const pick = (id: string): UnitInfo[] => UNITS.filter((u) => u.id === id);
+  return [...first.flatMap(pick), ...UNITS.filter((u) => u.id !== 'ssh' && u.id !== 'firewall')];
+}
+
 export const WEBUI_UNIT: UnitInfo = { id: 'http', linux: 'netfix-webui', aliases: [], process: 'netfix-webui', description: 'Gestión web de Server', windows: 'netfix-webui', windowsDisplay: 'Gestión web', ports: [], pid: 1190 };
 
 /** Ports actually open on the server, for ss/netstat. `web` = the live web ports (Apache Listen, own ports). */

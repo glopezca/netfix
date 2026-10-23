@@ -13,7 +13,7 @@ import type { Account, WebAppAccess } from '../services/config.ts';
 import { validateAccess } from '../services/config.ts';
 import { formatIp } from '../core/ip.ts';
 import { validateFileName } from '../services/http-service.ts';
-import { UNITS, unitActive } from '../services/units.ts';
+import { logUnits, unitActive } from '../services/units.ts';
 import { createShell } from '../shells/factory.ts';
 import { sshAuthMethods, setSshAuthMethods } from '../services/ssh-auth-settings.ts';
 
@@ -189,9 +189,10 @@ function sshPanel(server: Server, app: AfterChange): HTMLElement {
 }
 
 function logPanel(server: Server): HTMLElement {
-  let selected = UNITS[0]?.linux ?? 'ssh';
+  const units = logUnits(server.kind);
+  let selected = units[0]?.linux ?? 'ssh';
   return livePanel((refresh) => {
-    const unit = select(UNITS.map((u) => [u.linux, `${u.linux} (${unitActive(server.services, u.id) ? t('srv.active') : t('srv.stopped')})`] as const), selected);
+    const unit = select(units.map((u) => [u.linux, `${u.linux} (${unitActive(server.services, u.id) ? t('srv.active') : t('srv.stopped')})`] as const), selected);
     const out = el('pre', { class: 'log-view' });
     const show = (): void => {
       selected = unit.value;
