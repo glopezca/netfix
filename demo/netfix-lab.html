@@ -1151,7 +1151,7 @@ __m["i18n/es-ES/canvas.js"] = (() => {
 /** Español (España): área de trabajo (lienzo, cables, puertos). */
 const CANVAS_ES = {
     'canvas.label': 'Área de trabajo lógica',
-    'canvas.hint.select': 'Arrastra para mover; arrastra el fondo para seleccionar con un recuadro (Mayús añade) y desplázate con la rueda, el botón central o derecho, Espacio+arrastrar o un dedo. Doble clic, doble toque o pulsación larga para abrir. Supr borra la selección; Ctrl+C, Ctrl+V y Ctrl+D copian, pegan y duplican.',
+    'canvas.hint.select': 'Arrastra para mover; arrastra el fondo para seleccionar con un recuadro (Mayús añade; en pantallas táctiles, mantén pulsado el fondo y arrastra) y desplázate con la rueda, el botón central o derecho, Espacio+arrastrar o un dedo. Doble clic, doble toque o pulsación larga para abrir. Supr borra la selección; Ctrl+C, Ctrl+V y Ctrl+D copian, pegan y duplican.',
     'canvas.hint.cable': 'Cable: toca el primer dispositivo y elige un puerto.',
     'canvas.hint.delete': 'Eliminar: toca un dispositivo, un cable o un dibujo (también el interior de un área).',
     'canvas.hint.place': 'Toca el área de trabajo para colocar el dispositivo.',
@@ -1167,7 +1167,7 @@ return { CANVAS_ES };
 __m["i18n/en-GB/canvas.js"] = (() => {
 const CANVAS_EN = {
     'canvas.label': 'Logical workspace',
-    'canvas.hint.select': 'Drag to move; drag the background to select with a box (Shift adds) and pan with the wheel, the middle or right button, Space+drag or one finger. Double-click, double-tap or long-press to open. Del deletes the selection; Ctrl+C, Ctrl+V and Ctrl+D copy, paste and duplicate.',
+    'canvas.hint.select': 'Drag to move; drag the background to select with a box (Shift adds; on touch screens, press and hold the background, then drag) and pan with the wheel, the middle or right button, Space+drag or one finger. Double-click, double-tap or long-press to open. Del deletes the selection; Ctrl+C, Ctrl+V and Ctrl+D copy, paste and duplicate.',
     'canvas.hint.cable': 'Cable: tap the first device and choose a port.',
     'canvas.hint.delete': 'Delete: tap a device, a cable or a drawing (inside an area works too).',
     'canvas.hint.place': 'Tap the workspace to place the device.',
@@ -3600,6 +3600,7 @@ const UNDO_ES = {
     'undo.batch': 'varios elementos a la vez',
     'clip.group': 'Copiar, pegar y duplicar',
     'clip.copy': 'Copiar la selección (Ctrl+C)',
+    'clip.delete': 'Borrar la selección (Supr)',
     'clip.paste': 'Pegar (Ctrl+V)',
     'clip.duplicate': 'Duplicar la selección (Ctrl+D)',
     'clip.copied': 'Copiado: {n} equipos y {d} dibujos.',
@@ -3631,6 +3632,7 @@ const UNDO_EN = {
     'undo.batch': 'several items at once',
     'clip.group': 'Copy, paste and duplicate',
     'clip.copy': 'Copy the selection (Ctrl+C)',
+    'clip.delete': 'Delete the selection (Del)',
     'clip.paste': 'Paste (Ctrl+V)',
     'clip.duplicate': 'Duplicate the selection (Ctrl+D)',
     'clip.copied': 'Copied: {n} devices and {d} drawings.',
@@ -4288,7 +4290,7 @@ class Viewport {
         this.zoomTo(this.scale * Math.exp(-e.deltaY * WHEEL_ZOOM_SPEED), this.local(e.clientX, e.clientY));
     }
     // ------------------------------------------------------------ pan (background) and pinch
-    /** Drags the view with a finger, pen or mouse on the empty background. */
+    /** Drags the view with a finger, pen or mouse on the empty background; returns a function that stops it. */
     beginPan(e) {
         const start = { x: e.clientX, y: e.clientY, left: this.root.scrollLeft, top: this.root.scrollTop };
         const target = e.target instanceof Element ? e.target : this.svgEl;
@@ -4309,6 +4311,7 @@ class Viewport {
         target.addEventListener('pointermove', move);
         target.addEventListener('pointerup', end);
         target.addEventListener('pointercancel', end);
+        return () => end(e);
     }
     trackTouch(e) {
         if (e.pointerType !== 'touch')
@@ -17214,7 +17217,7 @@ const NETFIX_DOCS = {
                     ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la documentación y las páginas web simuladas sin recargar.'],
                 ]),
                 h('Paleta y herramientas'),
-                list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo. En cada extremo se ven la luz del enlace, el nombre corto de la interfaz (Gig0/0, Fa0) y debajo su dirección IP/CIDR (también la aprendida por DHCP; en un trunk de router, las de sus subinterfaces).', 'Seleccionar: arrastra equipos; doble clic abre su ventana. Con un equipo o un cable seleccionado, Supr o Retroceso lo borra (un equipo se lleva sus cables).', 'Selección múltiple: arrastra un recuadro sobre el fondo para seleccionar los equipos y dibujos que queden dentro (Mayús añade a la selección; Mayús+clic añade o quita uno). Arrastrar uno de ellos mueve todo el grupo; Supr lo borra y Escape quita la selección. Para desplazar la vista usa la rueda, el botón central o derecho, Espacio+arrastrar o un dedo.', 'Copiar (Ctrl+C, ⧉), Pegar (Ctrl+V, ⎘) y Duplicar (Ctrl+D, ⊕; ⌘ en Mac): copian los equipos con su configuración, los cables entre ellos y los dibujos. Cada copia recibe un nombre libre (y su nombre de host), MAC nuevas y, si es una nube, otro bloque público; aparece desplazada y queda seleccionada. Lo copiado sirve también en otro laboratorio. Pegar o duplicar se deshace de una vez.', 'Eliminar: borra equipos o cables.', 'Deshacer (Ctrl+Z, ↶) y Rehacer (Ctrl+Y o Ctrl+Mayús+Z, ↷): añadir, borrar o mover equipos, cables y dibujos (hasta 100 pasos). Un equipo borrado vuelve con sus cables y su configuración; lo escrito dentro de un equipo (CLI, paneles) no se deshace desde aquí.', 'Dibujo: abre la barra para delimitar áreas, trazar líneas y escribir etiquetas (ver «Dibujo»).'),
+                list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo. En cada extremo se ven la luz del enlace, el nombre corto de la interfaz (Gig0/0, Fa0) y debajo su dirección IP/CIDR (también la aprendida por DHCP; en un trunk de router, las de sus subinterfaces).', 'Seleccionar: arrastra equipos; doble clic abre su ventana. Con un equipo o un cable seleccionado, Supr o Retroceso lo borra (un equipo se lleva sus cables).', 'Selección múltiple: arrastra un recuadro sobre el fondo para seleccionar los equipos y dibujos que queden dentro (Mayús añade a la selección; Mayús+clic añade o quita uno). Arrastrar uno de ellos mueve todo el grupo; Supr lo borra y Escape quita la selección. Para desplazar la vista usa la rueda, el botón central o derecho, Espacio+arrastrar o un dedo.', 'En pantallas táctiles: arrastrar el fondo desplaza la vista; mantenerlo pulsado medio segundo y después arrastrar dibuja el recuadro (añade a la selección). Tocar el fondo quita la selección, arrastrar un elemento seleccionado mueve el grupo, el doble toque abre un equipo y el botón 🗑 de la barra borra la selección.', 'Copiar (Ctrl+C, ⧉), Pegar (Ctrl+V, ⎘), Duplicar (Ctrl+D, ⊕; ⌘ en Mac) y Borrar la selección (Supr, 🗑): copian los equipos con su configuración, los cables entre ellos y los dibujos. Cada copia recibe un nombre libre (y su nombre de host), MAC nuevas y, si es una nube, otro bloque público; aparece desplazada y queda seleccionada. Lo copiado sirve también en otro laboratorio. Pegar o duplicar se deshace de una vez.', 'Eliminar: borra equipos o cables.', 'Deshacer (Ctrl+Z, ↶) y Rehacer (Ctrl+Y o Ctrl+Mayús+Z, ↷): añadir, borrar o mover equipos, cables y dibujos (hasta 100 pasos). Un equipo borrado vuelve con sus cables y su configuración; lo escrito dentro de un equipo (CLI, paneles) no se deshace desde aquí.', 'Dibujo: abre la barra para delimitar áreas, trazar líneas y escribir etiquetas (ver «Dibujo»).'),
                 h('Ventanas de los equipos'),
                 table(['Equipo', 'Pestañas'], [
                     ['Router IOS / Switch IOS', 'Equipo (nombre visible y hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
@@ -18691,7 +18694,7 @@ const NETFIX_DOCS = {
                     ['Language', 'Español (España) or English (UK): changes the whole interface, the documentation and the simulated web pages without reloading.'],
                 ]),
                 h('Palette and tools'),
-                list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically. Each end shows the link light, the short interface name (Gig0/0, Fa0) and its IP/CIDR below (also one learnt by DHCP; on a router trunk, those of its subinterfaces).', 'Select: drag devices; double-click opens their window. With a device or a cable selected, Del or Backspace removes it (a device takes its cables with it).', 'Multiple selection: drag a box over the background to select the devices and drawings inside it (Shift adds to the selection; Shift+click adds or removes one). Dragging one of them moves the whole group; Del deletes it and Escape clears the selection. To pan the view use the wheel, the middle or right button, Space+drag or one finger.', 'Copy (Ctrl+C, ⧉), Paste (Ctrl+V, ⎘) and Duplicate (Ctrl+D, ⊕; ⌘ on a Mac): copy the devices with their configuration, the cables between them and the drawings. Each copy gets a free name (and its host name), new MACs and, for a cloud, another public block; it appears offset and stays selected. What was copied can be pasted in another lab too. A paste or duplicate is undone in one step.', 'Delete: removes devices or cables.', 'Undo (Ctrl+Z, ↶) and Redo (Ctrl+Y or Ctrl+Shift+Z, ↷): adding, deleting or moving devices, cables and drawings (up to 100 steps). A deleted device comes back with its cables and its configuration; what is typed inside a device (CLI, panels) is not undone from here.', 'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).'),
+                list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically. Each end shows the link light, the short interface name (Gig0/0, Fa0) and its IP/CIDR below (also one learnt by DHCP; on a router trunk, those of its subinterfaces).', 'Select: drag devices; double-click opens their window. With a device or a cable selected, Del or Backspace removes it (a device takes its cables with it).', 'Multiple selection: drag a box over the background to select the devices and drawings inside it (Shift adds to the selection; Shift+click adds or removes one). Dragging one of them moves the whole group; Del deletes it and Escape clears the selection. To pan the view use the wheel, the middle or right button, Space+drag or one finger.', 'On touch screens: dragging the background pans the view; pressing and holding it for half a second and then dragging draws the box (adding to the selection). A tap on the background clears the selection, dragging a selected item moves the group, a double tap opens a device and the 🗑 button on the bar deletes the selection.', 'Copy (Ctrl+C, ⧉), Paste (Ctrl+V, ⎘), Duplicate (Ctrl+D, ⊕; ⌘ on a Mac) and Delete the selection (Del, 🗑): copy the devices with their configuration, the cables between them and the drawings. Each copy gets a free name (and its host name), new MACs and, for a cloud, another public block; it appears offset and stays selected. What was copied can be pasted in another lab too. A paste or duplicate is undone in one step.', 'Delete: removes devices or cables.', 'Undo (Ctrl+Z, ↶) and Redo (Ctrl+Y or Ctrl+Shift+Z, ↷): adding, deleting or moving devices, cables and drawings (up to 100 steps). A deleted device comes back with its cables and its configuration; what is typed inside a device (CLI, panels) is not undone from here.', 'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).'),
                 h('Device windows'),
                 table(['Device', 'Tabs'], [
                     ['IOS router / IOS switch', 'Device (workspace name and hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
@@ -27278,7 +27281,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.19.0",
+    "version": "0.19.1",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -46800,6 +46803,11 @@ const { boundsOf, moveAnnotation } = __m["net/annotations.js"];
 const { copyClip, onlyKinds, PASTE_OFFSET } = __m["net/topology-clip.js"];
 const { t } = __m["i18n/t.js"];
 const DRAG_THRESHOLD = 4;
+/** Touch or pen held still this long on the background starts a selection box (a quick drag pans). */
+const BOX_PRESS_MS = 450;
+/** Screen pixels a finger may wander while it is held still. */
+const TOUCH_SLOP = 10;
+const BUZZ_MS = 15;
 /** Devices keep this far from the edge of the workspace. */
 const MARGIN = 40;
 /** Pastes in a row move further each time, and start again after this many. */
@@ -46828,6 +46836,8 @@ class GroupSelection {
     drawings = new Set();
     layer;
     host;
+    /** What was selected on its own when the pointer went down on the background (that click deselects it). */
+    remembered = {};
     constructor(host) {
         this.host = host;
         this.layer = svg('g', { class: 'marquee-layer' });
@@ -46864,7 +46874,7 @@ class GroupSelection {
             return true;
         }
         if (set.has(id) && this.size() > 1) {
-            this.drag(e);
+            this.drag(e, item);
             return true;
         }
         this.clear();
@@ -46881,9 +46891,15 @@ class GroupSelection {
             if (!drawings.has(id))
                 this.drawings.delete(id);
     }
-    /** The item selected with a plain click joins a group started with Shift. */
+    /** Called before a pointer on the background deselects the single item: an additive box keeps it. */
+    remember() {
+        this.remembered = this.host.single();
+    }
+    /** The item selected with a plain click joins a group started with Shift (or a long press). */
     absorbSingle() {
-        const s = this.host.single();
+        const now = this.host.single();
+        const s = now.device !== undefined || now.drawing !== undefined ? now : this.remembered;
+        this.remembered = {};
         if (s.device !== undefined)
             this.devices.add(s.device);
         if (s.drawing !== undefined)
@@ -46895,9 +46911,55 @@ class GroupSelection {
         if (this.size())
             this.host.hint(t('clip.selected', { n: String(this.devices.size), d: String(this.drawings.size) }));
     }
-    /** A box dragged with the mouse over the background selects what is fully inside it. */
-    marquee(e) {
-        if (e.shiftKey)
+    /**
+     * Touch or pen on the background: a drag pans the view; held still for BOX_PRESS_MS it starts a selection box that
+     * adds to the selection (there is no Shift key); a short tap clears the selection.
+     */
+    touchBackground(e, pan) {
+        const stopPan = pan(e);
+        const target = this.host.svgEl;
+        // A second finger (pinch zoom) makes the whole gesture a zoom: no box and no clearing when the fingers lift.
+        let still = !this.host.pinching();
+        let boxing = false;
+        const done = () => {
+            window.clearTimeout(timer);
+            target.removeEventListener('pointermove', move);
+            target.removeEventListener('pointerup', up);
+            target.removeEventListener('pointercancel', up);
+            target.removeEventListener('pointerdown', other);
+        };
+        const other = (ev) => { if (ev.pointerId !== e.pointerId)
+            still = false; };
+        const timer = window.setTimeout(() => {
+            if (!still || this.host.pinching())
+                return;
+            boxing = true;
+            done();
+            stopPan();
+            globalThis.navigator?.vibrate?.(BUZZ_MS);
+            this.marquee(e, true);
+        }, BOX_PRESS_MS);
+        const move = (ev) => {
+            if (this.host.pinching())
+                still = false;
+            else if (ev.pointerId === e.pointerId && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) > TOUCH_SLOP)
+                still = false;
+        };
+        const up = (ev) => {
+            if (ev.pointerId !== e.pointerId)
+                return;
+            done();
+            if (still && !boxing && ev.type === 'pointerup' && !this.host.pinching())
+                this.clear();
+        };
+        target.addEventListener('pointermove', move);
+        target.addEventListener('pointerup', up);
+        target.addEventListener('pointercancel', up);
+        target.addEventListener('pointerdown', other);
+    }
+    /** A box dragged over the background selects what is fully inside it (Shift, or a long press, adds to the selection). */
+    marquee(e, additive = e.shiftKey) {
+        if (additive)
             this.absorbSingle();
         else
             this.clear();
@@ -46949,7 +47011,7 @@ class GroupSelection {
         target.addEventListener('pointercancel', up);
     }
     /** Drags the whole group; on release the move is one undo step (devices and drawings together). */
-    drag(e) {
+    drag(e, item) {
         const topo = this.host.topo();
         const start = this.host.toWorld(e);
         const items = [...this.devices].flatMap((id) => { const p = topo.get(id); return p ? [{ id, p, from: { x: p.x, y: p.y } }] : []; });
@@ -46981,8 +47043,11 @@ class GroupSelection {
             this.host.redraw();
         }, (ok) => {
             this.host.gesture(false);
-            if (!moved)
+            if (!moved) {
+                if (ok)
+                    this.host.tapped(item, e);
                 return;
+            }
             place({ x: 0, y: 0 }, before);
             if (ok)
                 this.commitMove(items, last, shifted(last));
@@ -47034,6 +47099,11 @@ class GroupSelection {
         return true;
     }
     run(action) {
+        if (action === 'delete') {
+            if (!this.remove() && !this.host.deleteSingle())
+                this.host.hint(t('clip.nothing'));
+            return;
+        }
         if (action === 'paste') {
             if (!clipboard)
                 return this.host.hint(t('clip.empty'));
@@ -47083,7 +47153,7 @@ class GroupSelection {
     }
 }
 
-return { spaceHeld, GroupSelection };
+return { BOX_PRESS_MS, spaceHeld, GroupSelection };
 })();
 __m["classroom/restrictions.js"] = (() => {
 const DEVICE_KINDS = ['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'];
@@ -48031,7 +48101,9 @@ class Canvas {
         this.group = new GroupSelection({
             topo: () => this.topo, edits: () => this.edits(), toWorld: (e) => this.toWorld(e), svgEl: this.svgEl, world: { w: WORLD_W, h: WORLD_H },
             single: () => ({ device: this.selected && this.topo.get(this.selected) ? this.selected : undefined, drawing: this.draw.selection() ?? undefined }),
-            clearSingle: () => { this.selected = null; this.draw.deselect(); }, marked: () => { this.markSelection(); this.draw.render(true); }, redraw: () => this.render(),
+            clearSingle: () => { this.selected = null; this.draw.deselect(); }, deleteSingle: () => this.deleteSingle(),
+            tapped: (item, ev) => { if (item.device !== undefined)
+                this.tapped(item.device, ev); }, marked: () => { this.markSelection(); this.draw.render(true); }, redraw: () => this.render(),
             gesture: (on) => { this.gesture = on; }, scale: () => this.viewport.scale, pinching: () => this.viewport.pinching(),
             changed: () => this.events.changed(), removed: (id) => this.events.removed(id), hint: (text) => this.events.hint(text),
             editable: () => this.editable, drawingLocked: () => this.draw.locked, allows: (k) => allowsDevice(this.policy, k),
@@ -48198,6 +48270,7 @@ class Canvas {
         return { x: r.left - host.left + this.root.scrollLeft + (p.x * r.width) / WORLD_W, y: r.top - host.top + this.root.scrollTop + (p.y * r.height) / WORLD_H };
     }
     onBackground(e) {
+        this.group.remember();
         this.hideMenu();
         this.draw.deselect();
         if (this.tool.kind === 'draw') {
@@ -48218,6 +48291,8 @@ class Canvas {
         }
         if (this.tool.kind === 'select' && e.pointerType === 'mouse' && e.button === 0 && !spaceHeld())
             this.group.marquee(e);
+        else if (this.tool.kind === 'select' && e.pointerType !== 'mouse')
+            this.group.touchBackground(e, (ev) => this.viewport.beginPan(ev));
         else
             this.viewport.beginPan(e);
     }
@@ -48315,32 +48390,33 @@ class Canvas {
     /** Escape: back to Select; Supr or Backspace: delete the selected drawing, device (with its cables) or cable. */
     handleKey(e) {
         const target = e.target;
-        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)
-            return;
-        if (target instanceof HTMLElement && target.isContentEditable)
+        const typing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+        if (typing || (target instanceof HTMLElement && target.isContentEditable))
             return;
         if (e.key === 'Escape') {
             this.group.clear();
             this.setTool({ kind: 'select' });
             return;
         }
-        if ((e.key === 'Delete' || e.key === 'Backspace') && this.group.remove())
-            return;
-        if ((e.key === 'Delete' || e.key === 'Backspace') && this.draw.deleteSelected())
-            return;
-        if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected && this.editable) {
-            const id = this.selected;
-            if (this.topo.get(id)) {
-                this.edits().removeDevice(id);
-                this.events.removed(id);
-            }
-            else {
-                this.edits().disconnect(id);
-            }
-            this.selected = null;
+        if ((e.key === 'Delete' || e.key === 'Backspace') && (this.group.remove() || this.deleteSingle()))
             e.preventDefault();
-            this.events.changed();
+    }
+    /** Deletes the drawing, device (with its cables) or cable selected on its own; false if there is none. */
+    deleteSingle() {
+        if (this.draw.deleteSelected())
+            return true;
+        const id = this.selected;
+        if (!id || !this.editable)
+            return false;
+        if (this.topo.get(id)) {
+            this.edits().removeDevice(id);
+            this.events.removed(id);
         }
+        else
+            this.edits().disconnect(id);
+        this.selected = null;
+        this.events.changed();
+        return true;
     }
 }
 
@@ -55170,7 +55246,7 @@ function palette(actions, buttons, hintEl, policy = NO_RESTRICTIONS) {
     };
     const edit = policy.editTopology;
     const devices = edit ? PLACEABLE.filter(([k]) => allowsDevice(policy, k)) : [];
-    return el('footer', { class: 'palette' }, ...(devices.length ? [el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...devices.map(([k, name]) => deviceBtn(k, t(name))))] : []), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), ...(edit ? [toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')] : []), ...(policy.drawing ? [drawToggle(actions)] : [])), el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))), ...(edit ? [el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('clip.group') }, clipBtn('copy', '⧉'), clipBtn('paste', '⎘'), clipBtn('duplicate', '⊕'))] : []), el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))), hintEl);
+    return el('footer', { class: 'palette' }, ...(devices.length ? [el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...devices.map(([k, name]) => deviceBtn(k, t(name))))] : []), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), ...(edit ? [toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')] : []), ...(policy.drawing ? [drawToggle(actions)] : [])), el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))), ...(edit ? [el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('clip.group') }, clipBtn('copy', '⧉'), clipBtn('paste', '⎘'), clipBtn('duplicate', '⊕'), clipBtn('delete', '🗑︎'))] : []), el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))), hintEl);
 }
 
 return { PLACEABLE, palette };

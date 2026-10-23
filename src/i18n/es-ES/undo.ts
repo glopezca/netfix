@@ -17,6 +17,7 @@ export const UNDO_ES = {
   'undo.batch': 'varios elementos a la vez',
   'clip.group': 'Copiar, pegar y duplicar',
   'clip.copy': 'Copiar la selección (Ctrl+C)',
+  'clip.delete': 'Borrar la selección (Supr)',
   'clip.paste': 'Pegar (Ctrl+V)',
   'clip.duplicate': 'Duplicar la selección (Ctrl+D)',
   'clip.copied': 'Copiado: {n} equipos y {d} dibujos.',

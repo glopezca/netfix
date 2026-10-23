@@ -83,7 +83,8 @@ export class Canvas {
     this.group = new GroupSelection({
       topo: () => this.topo, edits: () => this.edits(), toWorld: (e) => this.toWorld(e), svgEl: this.svgEl, world: { w: WORLD_W, h: WORLD_H },
       single: () => ({ device: this.selected && this.topo.get(this.selected) ? this.selected : undefined, drawing: this.draw.selection() ?? undefined }),
-      clearSingle: () => { this.selected = null; this.draw.deselect(); }, marked: () => { this.markSelection(); this.draw.render(true); }, redraw: () => this.render(),
+      clearSingle: () => { this.selected = null; this.draw.deselect(); }, deleteSingle: () => this.deleteSingle(),
+      tapped: (item, ev) => { if (item.device !== undefined) this.tapped(item.device, ev); }, marked: () => { this.markSelection(); this.draw.render(true); }, redraw: () => this.render(),
       gesture: (on) => { this.gesture = on; }, scale: () => this.viewport.scale, pinching: () => this.viewport.pinching(),
       changed: () => this.events.changed(), removed: (id) => this.events.removed(id), hint: (text) => this.events.hint(text),
       editable: () => this.editable, drawingLocked: () => this.draw.locked, allows: (k) => allowsDevice(this.policy, k),
@@ -265,6 +266,7 @@ export class Canvas {
   }
 
   private onBackground(e: PointerEvent): void {
+    this.group.remember();
     this.hideMenu();
     this.draw.deselect();
     if (this.tool.kind === 'draw') {
@@ -284,6 +286,7 @@ export class Canvas {
       this.markSelection();
     }
     if (this.tool.kind === 'select' && e.pointerType === 'mouse' && e.button === 0 && !spaceHeld()) this.group.marquee(e);
+    else if (this.tool.kind === 'select' && e.pointerType !== 'mouse') this.group.touchBackground(e, (ev) => this.viewport.beginPan(ev));
     else this.viewport.beginPan(e);
   }
 
@@ -373,26 +376,24 @@ export class Canvas {
   /** Escape: back to Select; Supr or Backspace: delete the selected drawing, device (with its cables) or cable. */
   handleKey(e: KeyboardEvent): void {
     const target = e.target;
-    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
-    if (target instanceof HTMLElement && target.isContentEditable) return;
+    const typing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+    if (typing || (target instanceof HTMLElement && target.isContentEditable)) return;
     if (e.key === 'Escape') {
       this.group.clear();
       this.setTool({ kind: 'select' });
       return;
     }
-    if ((e.key === 'Delete' || e.key === 'Backspace') && this.group.remove()) return;
-    if ((e.key === 'Delete' || e.key === 'Backspace') && this.draw.deleteSelected()) return;
-    if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected && this.editable) {
-      const id = this.selected;
-      if (this.topo.get(id)) {
-        this.edits().removeDevice(id);
-        this.events.removed(id);
-      } else {
-        this.edits().disconnect(id);
-      }
-      this.selected = null;
-      e.preventDefault();
-      this.events.changed();
-    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && (this.group.remove() || this.deleteSingle())) e.preventDefault();
+  }
+
+  /** Deletes the drawing, device (with its cables) or cable selected on its own; false if there is none. */
+  private deleteSingle(): boolean {
+    if (this.draw.deleteSelected()) return true;
+    const id = this.selected;
+    if (!id || !this.editable) return false;
+    if (this.topo.get(id)) { this.edits().removeDevice(id); this.events.removed(id); } else this.edits().disconnect(id);
+    this.selected = null;
+    this.events.changed();
+    return true;
   }
 }

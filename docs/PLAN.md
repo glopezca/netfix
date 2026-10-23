@@ -658,3 +658,41 @@ corregidos los pegados fuera del área, copiar con la topología bloqueada, ids 
 recuadro cancelado y el id del equipo arrastrado. security-reviewer (opus) sin críticos ni altos; corregido el límite de
 cables al pegar (mismo que al abrir un archivo, para que lo guardado se pueda abrir). Los routers y switches pegados
 conservan su `hostname` de IOS, como en Packet Tracer.
+
+## Fase 28 · Selección por recuadro en pantallas táctiles (v0.19.1)
+
+**Diagnóstico.** En pantallas táctiles, arrastrar el fondo solo desplaza la vista, así que no había forma de dibujar
+el recuadro. Tampoco se podía borrar un grupo, porque no hay tecla Supr. Y el doble toque sobre un equipo de un grupo
+no lo abría.
+
+**Cambios:**
+
+- **Recuadro.** Con dedo o lápiz, un arrastre rápido sigue desplazando la vista. Mantener el fondo pulsado 450 ms, sin
+  moverse más de 10 px, para el desplazamiento, vibra si el dispositivo puede y empieza el recuadro. Ese recuadro añade
+  a la selección, como Mayús con el ratón. Si entra un segundo dedo (pellizco), no se activa.
+- **Quitar la selección.** Un toque corto en el fondo la quita.
+- **Abrir un equipo del grupo.** Un toque sin arrastre sobre un elemento del grupo cuenta como toque, así que el doble
+  toque abre el equipo.
+- **Borrar.** Botón 🗑 «Borrar la selección» en la barra, junto a copiar, pegar y duplicar. Borra el grupo o, si no
+  hay grupo, el elemento seleccionado; Supr hace lo mismo con teclado.
+- **Código.** `Viewport.beginPan` devuelve una función para parar el desplazamiento. `Canvas.deleteSingle` reúne el
+  borrado individual.
+
+**Pruebas.** `scripts/e2e-touch.mjs` usa eventos táctiles reales a través de CDP y comprueba que:
+
+- un arrastre rápido desplaza la vista y no selecciona;
+- una pulsación larga seguida de arrastre selecciona;
+- arrastrar el grupo con un dedo lo mueve y se deshace en un paso;
+- el doble toque abre un equipo del grupo;
+- un toque en el fondo quita la selección;
+- el botón 🗑 borra el grupo y se deshace.
+
+**Revisión ECC (code-reviewer, sonnet).** No hay fallos críticos ni altos. Se corrigieron dos:
+
+- **Pellizco.** Un toque o pellizco con dos dedos ya no quita la selección: cualquier otro dedo en el fondo marca el
+  gesto como zoom.
+- **Elemento suelto.** El recuadro de la pulsación larga (y el de Mayús con el ratón) conserva el elemento que estaba
+  seleccionado por separado, que antes se perdía con el clic en el fondo.
+
+Ambos casos tienen su prueba en `e2e-touch`.
+

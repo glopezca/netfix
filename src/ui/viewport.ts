@@ -96,8 +96,8 @@ export class Viewport {
 
   // ------------------------------------------------------------ pan (background) and pinch
 
-  /** Drags the view with a finger, pen or mouse on the empty background. */
-  beginPan(e: PointerEvent): void {
+  /** Drags the view with a finger, pen or mouse on the empty background; returns a function that stops it. */
+  beginPan(e: PointerEvent): () => void {
     const start = { x: e.clientX, y: e.clientY, left: this.root.scrollLeft, top: this.root.scrollTop };
     const target = e.target instanceof Element ? e.target : this.svgEl;
     target.setPointerCapture?.(e.pointerId);
@@ -115,6 +115,7 @@ export class Viewport {
     target.addEventListener('pointermove', move as EventListener);
     target.addEventListener('pointerup', end as EventListener);
     target.addEventListener('pointercancel', end as EventListener);
+    return () => end(e);
   }
 
   private trackTouch(e: PointerEvent): void {

@@ -19,7 +19,7 @@ export interface PaletteActions {
   clip(action: ClipAction): void;
 }
 
-export type ClipAction = 'copy' | 'paste' | 'duplicate';
+export type ClipAction = 'copy' | 'paste' | 'duplicate' | 'delete';
 
 export const PLACEABLE: readonly (readonly [DeviceKind, MessageKey])[] = [
   ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
@@ -78,7 +78,7 @@ export function palette(actions: PaletteActions, buttons: Map<string, HTMLButton
       ...(edit ? [toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')] : []),
       ...(policy.drawing ? [drawToggle(actions)] : [])),
     el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))),
-    ...(edit ? [el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('clip.group') }, clipBtn('copy', '⧉'), clipBtn('paste', '⎘'), clipBtn('duplicate', '⊕'))] : []),
+    ...(edit ? [el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('clip.group') }, clipBtn('copy', '⧉'), clipBtn('paste', '⎘'), clipBtn('duplicate', '⊕'), clipBtn('delete', '🗑︎'))] : []),
     el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))),
     hintEl);
 }

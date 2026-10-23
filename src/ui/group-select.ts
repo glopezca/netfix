@@ -25,6 +25,10 @@ export interface GroupHost {
   clearSingle(): void;
   /** The selection changed: mark it on the devices and drawings. */
   marked(): void;
+  /** A tap (no move) on a member of the group: a double tap opens a device, as without a group. */
+  tapped(item: Item, e: PointerEvent): void;
+  /** Deletes the device, cable or drawing selected on its own (toolbar button); false if none. */
+  deleteSingle(): boolean;
   /** Draws the workspace again (while a group is dragged). */
   redraw(): void;
   gesture(on: boolean): void;
@@ -39,6 +43,16 @@ export interface GroupHost {
 }
 
 const DRAG_THRESHOLD = 4;
+/** Touch or pen held still this long on the background starts a selection box (a quick drag pans). */
+export const BOX_PRESS_MS = 450;
+/** Screen pixels a finger may wander while it is held still. */
+const TOUCH_SLOP = 10;
+const BUZZ_MS = 15;
+
+export interface Item {
+  readonly device?: string;
+  readonly drawing?: string;
+}
 /** Devices keep this far from the edge of the workspace. */
 const MARGIN = 40;
 /** Pastes in a row move further each time, and start again after this many. */
@@ -71,6 +85,8 @@ export class GroupSelection {
   readonly drawings = new Set<string>();
   readonly layer: SVGGElement;
   private readonly host: GroupHost;
+  /** What was selected on its own when the pointer went down on the background (that click deselects it). */
+  private remembered: Item = {};
 
   constructor(host: GroupHost) {
     this.host = host;
@@ -98,7 +114,7 @@ export class GroupSelection {
   }
 
   /** Pointer on a device or drawing: Shift toggles it; on a member of a group it drags the group. True when handled. */
-  grab(e: PointerEvent, item: { readonly device?: string; readonly drawing?: string }): boolean {
+  grab(e: PointerEvent, item: Item): boolean {
     this.prune();
     const id = item.device ?? item.drawing ?? '';
     const set = item.device !== undefined ? this.devices : this.drawings;
@@ -110,7 +126,7 @@ export class GroupSelection {
       return true;
     }
     if (set.has(id) && this.size() > 1) {
-      this.drag(e);
+      this.drag(e, item);
       return true;
     }
     this.clear();
@@ -125,9 +141,16 @@ export class GroupSelection {
     for (const id of this.drawings) if (!drawings.has(id)) this.drawings.delete(id);
   }
 
-  /** The item selected with a plain click joins a group started with Shift. */
+  /** Called before a pointer on the background deselects the single item: an additive box keeps it. */
+  remember(): void {
+    this.remembered = this.host.single();
+  }
+
+  /** The item selected with a plain click joins a group started with Shift (or a long press). */
   private absorbSingle(): void {
-    const s = this.host.single();
+    const now = this.host.single();
+    const s = now.device !== undefined || now.drawing !== undefined ? now : this.remembered;
+    this.remembered = {};
     if (s.device !== undefined) this.devices.add(s.device);
     if (s.drawing !== undefined) this.drawings.add(s.drawing);
   }
@@ -138,9 +161,50 @@ export class GroupSelection {
     if (this.size()) this.host.hint(t('clip.selected', { n: String(this.devices.size), d: String(this.drawings.size) }));
   }
 
-  /** A box dragged with the mouse over the background selects what is fully inside it. */
-  marquee(e: PointerEvent): void {
-    if (e.shiftKey) this.absorbSingle();
+  /**
+   * Touch or pen on the background: a drag pans the view; held still for BOX_PRESS_MS it starts a selection box that
+   * adds to the selection (there is no Shift key); a short tap clears the selection.
+   */
+  touchBackground(e: PointerEvent, pan: (e: PointerEvent) => () => void): void {
+    const stopPan = pan(e);
+    const target = this.host.svgEl;
+    // A second finger (pinch zoom) makes the whole gesture a zoom: no box and no clearing when the fingers lift.
+    let still = !this.host.pinching();
+    let boxing = false;
+    const done = (): void => {
+      window.clearTimeout(timer);
+      target.removeEventListener('pointermove', move);
+      target.removeEventListener('pointerup', up);
+      target.removeEventListener('pointercancel', up);
+      target.removeEventListener('pointerdown', other);
+    };
+    const other = (ev: PointerEvent): void => { if (ev.pointerId !== e.pointerId) still = false; };
+    const timer = window.setTimeout(() => {
+      if (!still || this.host.pinching()) return;
+      boxing = true;
+      done();
+      stopPan();
+      globalThis.navigator?.vibrate?.(BUZZ_MS);
+      this.marquee(e, true);
+    }, BOX_PRESS_MS);
+    const move = (ev: PointerEvent): void => {
+      if (this.host.pinching()) still = false;
+      else if (ev.pointerId === e.pointerId && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) > TOUCH_SLOP) still = false;
+    };
+    const up = (ev: PointerEvent): void => {
+      if (ev.pointerId !== e.pointerId) return;
+      done();
+      if (still && !boxing && ev.type === 'pointerup' && !this.host.pinching()) this.clear();
+    };
+    target.addEventListener('pointermove', move);
+    target.addEventListener('pointerup', up);
+    target.addEventListener('pointercancel', up);
+    target.addEventListener('pointerdown', other);
+  }
+
+  /** A box dragged over the background selects what is fully inside it (Shift, or a long press, adds to the selection). */
+  marquee(e: PointerEvent, additive = e.shiftKey): void {
+    if (additive) this.absorbSingle();
     else this.clear();
     const start = this.host.toWorld(e);
     let box = { x: start.x, y: start.y, w: 0, h: 0 };
@@ -186,7 +250,7 @@ export class GroupSelection {
   }
 
   /** Drags the whole group; on release the move is one undo step (devices and drawings together). */
-  private drag(e: PointerEvent): void {
+  private drag(e: PointerEvent, item: Item): void {
     const topo = this.host.topo();
     const start = this.host.toWorld(e);
     const items = [...this.devices].flatMap((id) => { const p = topo.get(id); return p ? [{ id, p, from: { x: p.x, y: p.y } }] : []; });
@@ -214,7 +278,10 @@ export class GroupSelection {
       this.host.redraw();
     }, (ok) => {
       this.host.gesture(false);
-      if (!moved) return;
+      if (!moved) {
+        if (ok) this.host.tapped(item, e);
+        return;
+      }
       place({ x: 0, y: 0 }, before);
       if (ok) this.commitMove(items, last, shifted(last));
       this.host.changed();
@@ -262,6 +329,10 @@ export class GroupSelection {
   }
 
   run(action: ClipAction): void {
+    if (action === 'delete') {
+      if (!this.remove() && !this.host.deleteSingle()) this.host.hint(t('clip.nothing'));
+      return;
+    }
     if (action === 'paste') {
       if (!clipboard) return this.host.hint(t('clip.empty'));
       pastes = (pastes % MAX_PASTES) + 1;

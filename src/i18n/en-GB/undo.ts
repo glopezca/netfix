@@ -19,6 +19,7 @@ export const UNDO_EN: Readonly<Record<UndoKey, string>> = {
   'undo.batch': 'several items at once',
   'clip.group': 'Copy, paste and duplicate',
   'clip.copy': 'Copy the selection (Ctrl+C)',
+  'clip.delete': 'Delete the selection (Del)',
   'clip.paste': 'Paste (Ctrl+V)',
   'clip.duplicate': 'Duplicate the selection (Ctrl+D)',
   'clip.copied': 'Copied: {n} devices and {d} drawings.',
