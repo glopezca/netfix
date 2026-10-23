@@ -100,6 +100,6 @@ function specific(server: Server, base: string, q: Query, mode: DnsMode): Markup
 export function dnsPage(server: Server, base: string, q: Query): Child {
   const mode = modeOf(q);
   return h('div', { class: 'web-adm-dns' },
-    h('div', { class: 'web-adm-dns-main' }, modesForm(server, base, mode), listenForm(server, base, 'dns'), specific(server, base, q, mode), rpzForm(server, base)),
+    h('div', { class: 'web-adm-dns-main' }, listenForm(server, base, 'dns'), modesForm(server, base, mode), specific(server, base, q, mode), rpzForm(server, base)),
     dnsSide(server, base, q, mode));
 }

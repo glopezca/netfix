@@ -11,6 +11,7 @@ import type { WebAppAccess } from '../services/config.ts';
 import { idKinds, identifierText } from '../services/dhcp-reservations.ts';
 import { formatMacCisco, formatHexId } from '../core/mac.ts';
 import { listenForm } from './admin-listen.ts';
+import { syntaxPre } from './syntax-html.ts';
 
 const ip = (n: number | undefined): string => (n === undefined ? '' : formatIp(n));
 
@@ -123,5 +124,5 @@ export function statusPage(server: Server): Child {
 
 export function logPage(server: Server): Child {
   const lines = server.logs.slice(-40).map((l) => `${new Date(l.time).toISOString().slice(11, 19)} ${l.unit}: ${l.line}`);
-  return cards(section(t('wa.records'), t('wa.logHelp'), h('pre', { class: 'web-adm-log' }, lines.join('\n') || t('wa.empty'))));
+  return cards(section(t('wa.records'), t('wa.logHelp'), lines.length ? syntaxPre(lines.join('\n'), 'messages') : h('pre', { class: 'web-adm-log' }, t('wa.empty'))));
 }

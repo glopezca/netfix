@@ -123,3 +123,5 @@
 .web-adm-log.syn-view .syn-preproc { color: #a020f0; }
 .web-adm-log.syn-view .syn-type { color: #2e8b57; font-weight: 700; }
 .web-adm-log.syn-view .syn-special { color: #6a5acd; }
+.web-adm-log.syn-view .syn-error { color: #ffffff; background: #ff0000; }
+.web-adm-log.syn-view[data-filetype="messages"] { white-space: pre-wrap; }

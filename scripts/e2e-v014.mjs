@@ -72,6 +72,11 @@ try {
   await page.click('.subnav-item:has-text("Registros")');
   const units = (await page.locator('.window:visible select').first().locator('option').allTextContents()).map((o) => o.split(' ')[0]);
   assert.deepEqual(units, ['ssh', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot']);
+  // Logs highlighted as vim shows them (filetype messages): time in Type green, program in Statement yellow.
+  const log = page.locator('.window:visible pre.syn-view[data-filetype="messages"]');
+  assert.equal(await log.locator('.syn-type').first().evaluate((n) => getComputedStyle(n).color), 'rgb(96, 255, 96)');
+  assert.equal(await log.locator('.syn-statement').first().textContent(), 'sshd');
+  if (shots) await page.screenshot({ path: `${shots}/logs.png` });
   await page.click('.win-close');
 
   // Linux router: the NIC address applies on change (no «Aplicar»), its panels first and then SSH.

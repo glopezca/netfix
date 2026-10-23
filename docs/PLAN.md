@@ -807,3 +807,40 @@ selector.
 Pruebas: `tests/services/log-units.test.ts` y `e2e-v014`, que recorre las opciones del desplegable en un Server y en un
 router Linux.
 
+## Fase 33 · Orden de la WebGUI y registros resaltados como en vim (v0.19.6)
+
+- **Menú de Seguridad de la WebGUI del router Linux.** Ahora va Enrutamiento, Firewall, VPN (antes, Firewall primero).
+- **DNS en la WebGUI de servidores y routers Linux.** «Interfaces de escucha» va antes de «Modo de funcionamiento del
+  servidor».
+- **Registros resaltados.** Se resaltan como vim muestra los logs, con el tipo de archivo `messages` de vim (syslog y
+  journalctl):
+
+  | Parte | Grupo de vim |
+  |---|---|
+  | Fecha | Constant |
+  | Hora | Type |
+  | Equipo | Identifier |
+  | Programa | Statement |
+  | `[PID]` | Constant |
+  | Direcciones IPv4 | Constant |
+  | Línea con `error`, `failed`, `failure` o `fatal` | Error (ErrorMsg: blanco sobre rojo) |
+
+  Funciona en la pestaña Registros de la ventana del equipo y en la página Registros de la gestión web, con el formato
+  `HH:MM:SS unidad: texto`. Los registros se ajustan a la anchura, como hace vim por defecto.
+- **Código.** Hay ayudantes compartidos: `src/ui/syntax-view.ts` (`fillSyntax` y `syntaxView`, con `textContent`) y
+  `src/web/syntax-html.ts` (`syntaxPre`, escapado por `h()`). Los ficheros de configuración de la gestión web ya se
+  resaltaban desde la fase 29.
+- **Rendimiento.** Las búsquedas hacia atrás están ancladas al principio de la línea. Hay pruebas con líneas hostiles
+  de `messages`.
+- **Pruebas.** Las de `vim-syntax`, `admin-listen` (orden, escapado y grupos) y `e2e-v014` (colores calculados en el
+  navegador).
+
+**Revisión ECC (code-reviewer, sonnet).** Aprobado, sin fallos altos. Comprobó el escapado y el rendimiento: con 200
+líneas hostiles de 1 000 caracteres tarda menos de 100 ms. Quedan tres avisos bajos, aceptados porque así se comporta
+vim o porque no tienen efecto visible:
+
+- **Error demasiado amplio.** Una línea que contiene «error» se pone en rojo aunque sea un nombre de usuario. vim hace
+  lo mismo con `messagesError`.
+- **`(?<=: )`.** Encaja con cualquier `: ` de la línea, no solo con el que sigue al programa.
+- **Reglas duplicadas.** Las reglas globales de `.syn-error` coinciden con las de la gestión web.
+

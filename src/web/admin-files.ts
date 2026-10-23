@@ -6,14 +6,8 @@ import type { Child } from './html.ts';
 import { cards, section } from './admin-layout.ts';
 import { hostFs } from '../devices/host-fs.ts';
 import { configFiles, configSources } from '../services/config-files.ts';
-import { filetypeOf, highlight } from '../editors/vim-syntax.ts';
-
-/** The file with vim's highlight groups as spans (h() escapes every text). */
-function syntaxPre(path: string, content: string): Child {
-  const ft = filetypeOf(path);
-  const lines = highlight(content, ft).map((line, i) => [i ? '\n' : '', ...line.map((s) => (s.group ? h('span', { class: `syn-${s.group.toLowerCase()}` }, s.text) : s.text))]);
-  return h('pre', { class: 'web-adm-log syn-view', 'data-filetype': ft }, lines);
-}
+import { filetypeOf } from '../editors/vim-syntax.ts';
+import { syntaxPre } from './syntax-html.ts';
 
 export function filesPage(server: Server, base: string, q: ReadonlyMap<string, string>): Child {
   const sources = configSources(server);
@@ -26,6 +20,6 @@ export function filesPage(server: Server, base: string, q: ReadonlyMap<string, s
   return [
     h('ul', { class: 'web-adm-tabs' }, tabs),
     cards(section(tDynamic(current.label), t('files.hint'),
-      files.length ? files.map((f) => [h('h3', { class: 'web-adm-mono' }, f.path), syntaxPre(f.path, f.content)]) : t('files.none'))),
+      files.length ? files.map((f) => [h('h3', { class: 'web-adm-mono' }, f.path), syntaxPre(f.content, filetypeOf(f.path))]) : t('files.none'))),
   ];
 }

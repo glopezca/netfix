@@ -9,18 +9,7 @@ import { livePanel } from './server-dhcp-dns.ts';
 import type { Server } from '../devices/server.ts';
 import { hostFs } from '../devices/host-fs.ts';
 import { configFiles, configSources } from '../services/config-files.ts';
-import { filetypeOf, highlight } from '../editors/vim-syntax.ts';
-
-/** The file with vim's highlight groups (textContent only: the content is never parsed as HTML). */
-export function syntaxView(path: string, content: string): HTMLElement {
-  const ft = filetypeOf(path);
-  const pre = el('pre', { class: 'log-view syn-view', 'data-filetype': ft });
-  highlight(content, ft).forEach((line, i) => {
-    if (i) pre.append('\n');
-    for (const s of line) pre.append(s.group ? el('span', { class: `syn-${s.group.toLowerCase()}` }, s.text) : s.text);
-  });
-  return pre;
-}
+import { syntaxView } from './syntax-view.ts';
 
 export function filesPanel(server: Server, first = 'ssh'): HTMLElement {
   const sources = configSources(server);

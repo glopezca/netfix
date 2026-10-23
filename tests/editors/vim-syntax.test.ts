@@ -64,7 +64,7 @@ test('a huge one-line file is highlighted in linear time (no slicing per token)'
 
 test('hostile lines do not backtrack: long names, words and dotted labels stay fast; past SYNMAXCOL the text is plain', () => {
   const cases: [string, Parameters<typeof highlight>[1]][] = [
-    ['a'.repeat(200_000), 'dovecot'], ['a.'.repeat(100_000), 'bindzone'], [`${'a'.repeat(100_000)} {`, 'dovecot'], ['1.'.repeat(100_000), 'named'],
+    ['a'.repeat(200_000), 'dovecot'], ['a.'.repeat(100_000), 'bindzone'], [`${'a'.repeat(100_000)} {`, 'dovecot'], ['1.'.repeat(100_000), 'named'], ['a: '.repeat(70_000), 'messages'], [`Oct 23 22:32:26 ${'h'.repeat(100_000)}`, 'messages'],
   ];
   for (const [text, ft] of cases) {
     const start = performance.now();
@@ -79,4 +79,17 @@ test('hostile lines do not backtrack: long names, words and dotted labels stay f
 test('a hostname starting with a record type is a name, not a type', () => {
   const [l] = highlight('@  IN  NS  NS.aula.lab.', 'bindzone');
   assert.deepEqual(groups(l!), ['Special:@', 'Statement:IN', 'Type:NS', 'Identifier:NS.aula.lab.']);
+});
+
+test('logs (vim «messages», as journalctl and syslog): date, time, host, program, PID, addresses and errors', () => {
+  assert.equal(filetypeOf('/var/log/syslog'), 'messages');
+  const [a, b, c] = highlight([
+    'Oct 23 22:32:26 srv kea-dhcp4[812]: DHCP4_LEASE_ALLOC lease 192.168.10.100 has been allocated for 86400 seconds',
+    'Oct 23 22:40:01 srv sshd[701]: error: maximum authentication attempts exceeded for admin from 192.168.20.10',
+    '22:40:01 ssh: Accepted password for admin',
+  ].join('\n'), 'messages');
+  assert.deepEqual(groups(a!), ['Constant:Oct 23', 'Type:22:32:26', 'Identifier:srv', 'Statement:kea-dhcp4', 'Constant:[812]', 'Constant:192.168.10.100']);
+  assert.deepEqual(groups(b!), ['Constant:Oct 23', 'Type:22:40:01', 'Identifier:srv', 'Statement:sshd', 'Constant:[701]',
+    'Error:error: maximum authentication attempts exceeded for admin from 192.168.20.10']);
+  assert.deepEqual(groups(c!), ['Type:22:40:01', 'Statement:ssh'], 'the web GUI format: time and unit');
 });

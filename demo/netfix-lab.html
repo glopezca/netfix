@@ -700,6 +700,9 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .syn-preproc { color: #ff80ff; }
 .syn-type { color: #60ff60; font-weight: 700; }
 .syn-special { color: #ffa500; }
+.syn-error { color: #ffffff; background: #ff0000; }
+/* Logs wrap, as vim wraps long lines by default (configuration files keep their columns). */
+.syn-view[data-filetype="messages"] { white-space: pre-wrap; }
 
 </style>
   <style>
@@ -828,6 +831,8 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .web-adm-log.syn-view .syn-preproc { color: #a020f0; }
 .web-adm-log.syn-view .syn-type { color: #2e8b57; font-weight: 700; }
 .web-adm-log.syn-view .syn-special { color: #6a5acd; }
+.web-adm-log.syn-view .syn-error { color: #ffffff; background: #ff0000; }
+.web-adm-log.syn-view[data-filetype="messages"] { white-space: pre-wrap; }
 
 </style>
 </head>
@@ -17520,7 +17525,7 @@ const SERVICE_DOCS = {
             title: 'Server',
             summary: 'Pestañas del servidor, sistema operativo y nombres de los servicios.',
             blocks: [
-                p('Un Server es un equipo con servicios de red. Cada servicio tiene su interruptor y su panel en la pestaña Servicios; los cambios se aplican al momento y se reflejan en los ficheros de configuración que ve la Terminal Linux. El menú empieza por SSH (lo primero para administrar el equipo a distancia) y termina con Configuración y Registros (journalctl). Configuración muestra los ficheros de configuración del servicio elegido tal como están ahora en el disco, como cat ejecutado por root, con la sintaxis resaltada con los colores de vim (comentarios, directivas, cadenas, números y direcciones, tipos de registro…).'),
+                p('Un Server es un equipo con servicios de red. Cada servicio tiene su interruptor y su panel en la pestaña Servicios; los cambios se aplican al momento y se reflejan en los ficheros de configuración que ve la Terminal Linux. El menú empieza por SSH (lo primero para administrar el equipo a distancia) y termina con Configuración y Registros (journalctl). Configuración muestra los ficheros de configuración del servicio elegido tal como están ahora en el disco, como cat ejecutado por root, con la sintaxis resaltada con los colores de vim (comentarios, directivas, cadenas, números y direcciones, tipos de registro…). Registros (SSH primero; nftables en el router Linux) se resalta como vim muestra los logs: fecha, hora, equipo, programa, PID, direcciones y, en rojo, las líneas con error.'),
                 table(['Servicio', 'Puerto', 'Unidad systemd (Ubuntu)', 'Servicio de Windows', 'Configuración en Linux'], [
                     ['DHCP', '67/udp', 'kea-dhcp4-server', 'DHCPServer', '/etc/kea/kea-dhcp4.conf, /var/lib/kea/kea-leases4.csv'],
                     ['DNS', '53/udp', 'bind9 (named)', 'DNS', '/etc/bind/named.conf.options, /etc/bind/named.conf.local, /etc/bind/db.<zona>'],
@@ -18545,7 +18550,7 @@ const WEBAPP_DOCS = [
                 ['Estado · Configuración · Registros', 'Datos del equipo, servicios, concesiones, los ficheros de configuración de cada servicio tal como están, con la sintaxis resaltada como en vim (solo Linux), y los últimos mensajes (journalctl).'],
             ]),
             h('Seguridad'),
-            list('Autenticación HTTP Basic (realm «Server»); los intentos fallidos quedan en journalctl -u apache2.', 'Cada cambio se valida igual que en la ventana del servidor y se registra con el usuario y la IP del PC.', 'El apartado Seguridad del menú (Firewall, Enrutamiento, VPN) solo aparece en el Router Linux; en un Server no existe.'),
+            list('Autenticación HTTP Basic (realm «Server»); los intentos fallidos quedan en journalctl -u apache2.', 'Cada cambio se valida igual que en la ventana del servidor y se registra con el usuario y la IP del PC.', 'El apartado Seguridad del menú (Enrutamiento, Firewall, VPN) solo aparece en el Router Linux; en un Server no existe.'),
         ],
     },
 ];
@@ -18997,7 +19002,7 @@ const SERVICE_DOCS = {
             title: 'Server',
             summary: 'Server tabs, operating system and service names.',
             blocks: [
-                p('A Server is a device that provides network services. Each service has its own switch and panel in the Services tab; changes take effect immediately and are reflected in the configuration files seen by the Linux Terminal. The menu starts with SSH (the first thing to manage the device remotely) and ends with Configuration and Logs (journalctl). Configuration shows the configuration files of the chosen service as they are on disk right now, as cat run by root shows them, with the syntax highlighted in vim\'s colours (comments, directives, strings, numbers and addresses, record types…).'),
+                p('A Server is a device that provides network services. Each service has its own switch and panel in the Services tab; changes take effect immediately and are reflected in the configuration files seen by the Linux Terminal. The menu starts with SSH (the first thing to manage the device remotely) and ends with Configuration and Logs (journalctl). Configuration shows the configuration files of the chosen service as they are on disk right now, as cat run by root shows them, with the syntax highlighted in vim\'s colours (comments, directives, strings, numbers and addresses, record types…). Logs (SSH first; nftables on the Linux router) are highlighted as vim shows logs: date, time, host, program, PID, addresses and, in red, the lines with an error.'),
                 table(['Service', 'Port', 'systemd unit (Ubuntu)', 'Windows service', 'Configuration on Linux'], [
                     ['DHCP', '67/udp', 'kea-dhcp4-server', 'DHCPServer', '/etc/kea/kea-dhcp4.conf, /var/lib/kea/kea-leases4.csv'],
                     ['DNS', '53/udp', 'bind9 (named)', 'DNS', '/etc/bind/named.conf.options, /etc/bind/named.conf.local, /etc/bind/db.<zone>'],
@@ -20022,7 +20027,7 @@ const WEBAPP_DOCS = [
                 ['Status · Configuration · Logs', 'Device data, services, leases, the configuration files of each service as they are, with the syntax highlighted as in vim (Linux only), and the latest messages (journalctl).'],
             ]),
             h('Security'),
-            list('HTTP Basic authentication (realm “Server”); failed attempts are logged in journalctl -u apache2.', 'Every change is validated exactly as in the server window and logged with the user and the PC’s IP.', 'The Security section of the menu (Firewall, Routing, VPN) only appears on the Linux router; a Server has none.'),
+            list('HTTP Basic authentication (realm “Server”); failed attempts are logged in journalctl -u apache2.', 'Every change is validated exactly as in the server window and logged with the user and the PC’s IP.', 'The Security section of the menu (Routing, Firewall, VPN) only appears on the Linux router; a Server has none.'),
         ],
     },
 ];
@@ -27347,7 +27352,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.19.5",
+    "version": "0.19.6",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -43759,7 +43764,7 @@ const PAGES = [
     { id: 'setup', tab: 'setup' },
     { id: 'ssh', tab: 'services' }, { id: 'dhcp', tab: 'services' }, { id: 'dns', tab: 'services' },
     { id: 'web', tab: 'services' }, { id: 'mail', tab: 'services' },
-    { id: 'firewall', tab: 'security' }, { id: 'routing', tab: 'security' }, { id: 'vpn', tab: 'security' },
+    { id: 'routing', tab: 'security' }, { id: 'firewall', tab: 'security' }, { id: 'vpn', tab: 'security' },
     { id: 'admin', tab: 'admin' },
     { id: 'status', tab: 'status' }, { id: 'files', tab: 'status' }, { id: 'log', tab: 'status' },
 ];
@@ -43925,6 +43930,176 @@ function listenAction(server, service, f) {
 
 return { listenForm, listenAction };
 })();
+__m["editors/vim-syntax.js"] = (() => {
+/**
+ * Syntax highlighting of configuration files as vim shows them: the filetype vim detects from the path and the
+ * highlight groups of its syntax files (Comment, Constant, String, Number, Identifier, Statement, PreProc, Type,
+ * Special, and ErrorMsg as Error). Pure: the interface paints the groups with vim's default colours. A small rule set
+ * per filetype, not a port of vim's syntax engine: enough for the configuration files and logs the interface shows.
+ */
+/** A sticky regular expression (it must match exactly where the scan is). */
+const re = (source, flags = '') => new RegExp(source, `y${flags}`);
+/** Whole words of a list (longest first, so «allow-query» wins over «allow»). */
+const words = (list, flags = '') => re(`(?:${list.split(/\s+/).sort((a, b) => b.length - a.length).map((w) => w.replace(/[.$]/g, '\\$&')).join('|')})(?![\\w.-])`, flags);
+/** Like vim's 'synmaxcol': columns beyond this are not highlighted (a hostile one-line file stays fast). */
+const SYNMAXCOL = 1000;
+const HASH = { re: re('#.*'), group: 'Comment' };
+const SLASHES = { re: re('//.*'), group: 'Comment' };
+const STRING = { re: re('"(?:[^"\\\\]|\\\\.)*"?'), group: 'String' };
+/** Numbers, IPv4 addresses and prefixes (10, 8.8.8.8, 192.168.1.0/24). */
+const NUMBER = { re: re('\\d+(?:\\.\\d+){0,3}(?:/\\d+)?(?![\\w.])'), group: 'Number' };
+const BOOL = (extra = '') => ({ re: words(`yes no on off true false ${extra}`.trim(), 'i'), group: 'Constant' });
+const NAMED_WORDS = 'options zone type file directory forwarders forward allow-query allow-recursion allow-transfer '
+    + 'allow-update recursion listen-on listen-on-v6 acl view key masters primaries also-notify notify include logging '
+    + 'channel category severity response-policy dnssec-validation querylog auth-nxdomain controls server '
+    + 'master slave primary secondary hint only first max-cache-ttl max-ncache-ttl version minimal-responses';
+const SYNTAX = {
+    sshdconfig: { rules: [HASH, { re: re('[A-Za-z]\\w*'), group: 'Statement', bol: true }, BOOL('prohibit-password without-password forced-commands-only any none'), NUMBER] },
+    json: {
+        block: true,
+        rules: [SLASHES, HASH, { re: re('"(?:[^"\\\\]|\\\\.)*"(?=\\s*:)'), group: 'Statement' }, STRING, { re: words('true false null'), group: 'Constant' },
+            { re: re('-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?(?![\\w.])'), group: 'Number' }],
+    },
+    named: { block: true, rules: [SLASHES, HASH, STRING, { re: words(NAMED_WORDS), group: 'Statement' }, BOOL('none any localhost localnets auto'), NUMBER] },
+    bindzone: {
+        rules: [{ re: re(';.*'), group: 'Comment' }, { re: re('\\$(?:TTL|ORIGIN|INCLUDE|GENERATE)(?![\\w])'), group: 'PreProc' },
+            { re: words('IN CH HS'), group: 'Statement' }, { re: words('SOA NS A AAAA MX CNAME TXT PTR SRV CAA DNAME SPF NAPTR DS DNSKEY'), group: 'Type' },
+            // (?=(…))\\1 is an atomic group: no backtracking over the labels of a long name.
+            { re: re('(?=((?:[\\w-]+\\.)+))\\1(?![\\w-])'), group: 'Identifier' }, { re: re('@'), group: 'Special' }, STRING, NUMBER],
+    },
+    apache: {
+        rules: [HASH, { re: re('</?[A-Za-z]+'), group: 'Type' }, { re: re('>'), group: 'Type' }, { re: re('[A-Za-z]\\w*'), group: 'Identifier', bol: true },
+            { re: re('\\$\\{\\w+\\}'), group: 'Special' }, STRING, BOOL('all none granted denied')],
+    },
+    pfmain: { rules: [HASH, { re: re('\\w+(?=\\s*=)'), group: 'Statement', bol: true }, { re: re('\\$(?:\\{\\w+\\}|\\w+)'), group: 'Identifier' }, BOOL()] },
+    dovecot: {
+        rules: [HASH, { re: re('(?=([a-z_]+))\\1(?=[^={]*\\{)'), group: 'Type', bol: true }, { re: re('[\\w-]+(?=\\s*=)'), group: 'Statement', bol: true },
+            STRING, BOOL(), NUMBER],
+    },
+    sysctl: { rules: [HASH, { re: re(';.*'), group: 'Comment' }, { re: re('[\\w./-]+(?=\\s*=)'), group: 'Identifier', bol: true }, NUMBER] },
+    nftables: {
+        rules: [HASH, STRING, { re: words('inet ip ip6 arp bridge netdev'), group: 'Type' },
+            { re: words('table chain type hook priority policy accept drop reject counter log prefix ct state established related '
+                    + 'invalid new iifname oifname iif oif saddr daddr tcp udp icmp icmpv6 dport sport flush ruleset define masquerade snat dnat '
+                    + 'to jump goto return comment filter nat route input output forward prerouting postrouting limit rate set map elements '
+                    + 'meta l4proto th echo-request echo-reply'), group: 'Statement' },
+            { re: re('\\$\\w+'), group: 'Identifier' }, { re: re('@\\w+'), group: 'Special' }, NUMBER],
+    },
+    dosini: { rules: [HASH, { re: re(';.*'), group: 'Comment' }, { re: re('\\[[^\\]]*\\]'), group: 'Special', bol: true }, { re: re('[\\w.-]+(?=\\s*=)'), group: 'Identifier', bol: true }, NUMBER] },
+    // vim's syntax/messages.vim (syslog, journalctl): date, time, host, program and PID; a line with an error word is
+    // ErrorMsg from its text on. The time and the program also match the web GUI's «HH:MM:SS unit: text».
+    messages: {
+        rules: [
+            { re: re(String.raw `[A-Z][a-z]{2} [ \d]\d(?= \d\d:)`), group: 'Constant', bol: true },
+            { re: re(String.raw `(?<=^(?:[A-Z][a-z]{2} [ \d]\d )?)\d\d:\d\d:\d\d(?:\.\d+)?`), group: 'Type' },
+            { re: re(String.raw `(?<=^[A-Z][a-z]{2} [ \d]\d \d\d:\d\d:\d\d(?:\.\d+)? )[\w.-]+(?= [\w./@-]+(?:\[\d+\])?: )`), group: 'Identifier' },
+            { re: re(String.raw `(?<=^(?:[A-Z][a-z]{2} [ \d]\d )?\d\d:\d\d:\d\d(?:\.\d+)? (?:[\w.-]+ )?)[\w./@-]+(?=(?:\[\d+\])?: )`), group: 'Statement' },
+            { re: re(String.raw `\[\d+\](?=: )`), group: 'Constant' },
+            { re: re(String.raw `(?<=: )(?=.*\b(?:fatal|errors?|failed|failure)\b).*`, 'i'), group: 'Error' },
+            { re: re(String.raw `\d{1,3}(?:\.\d{1,3}){3}(?![\w.])`), group: 'Constant' },
+        ],
+    },
+    conf: { rules: [HASH, STRING, NUMBER] },
+};
+/** vim's filetype for a configuration file (from its path, as filetype.vim does). */
+function filetypeOf(path) {
+    const name = path.slice(path.lastIndexOf('/') + 1);
+    if (path.startsWith('/etc/ssh/sshd_config'))
+        return 'sshdconfig';
+    if (path.startsWith('/etc/kea/') || name.endsWith('.json'))
+        return 'json';
+    if (path.startsWith('/etc/bind/'))
+        return name.startsWith('named.conf') ? 'named' : 'bindzone';
+    if (path.startsWith('/etc/apache2/'))
+        return 'apache';
+    if (name === 'main.cf')
+        return 'pfmain';
+    if (path.startsWith('/etc/dovecot/'))
+        return 'dovecot';
+    if (name === 'sysctl.conf' || path.startsWith('/etc/sysctl.d/'))
+        return 'sysctl';
+    if (name === 'nftables.conf' || name.endsWith('.nft'))
+        return 'nftables';
+    if (path.startsWith('/etc/wireguard/') || name.endsWith('.ini'))
+        return 'dosini';
+    if (path.startsWith('/var/log/'))
+        return 'messages';
+    return 'conf';
+}
+const WORD = /[A-Za-z0-9_]+/y;
+/** Appends a span, joining it to the previous one when it has the same group. */
+function push(out, text, group) {
+    if (!text)
+        return;
+    const last = out[out.length - 1];
+    if (last && last.group === group)
+        out[out.length - 1] = { text: last.text + text, group };
+    else
+        out.push({ text, group });
+}
+function ruleAt(syntax, line, i, bol) {
+    for (const r of syntax.rules) {
+        if (r.bol && !bol)
+            continue;
+        r.re.lastIndex = i;
+        const m = r.re.exec(line);
+        if (m && m[0])
+            return { text: m[0], group: r.group };
+    }
+    return null;
+}
+/** One line; `open` says whether a block comment is still open from the previous lines. Returns the new state. */
+function line(syntax, text, open, out) {
+    let i = 0;
+    let inBlock = open;
+    /** Only blanks so far (kept as the scan goes: slicing the line at every token would be quadratic). */
+    let bol = true;
+    while (i < text.length) {
+        if (inBlock || (syntax.block && text.startsWith('/*', i))) {
+            const end = text.indexOf('*/', inBlock ? i : i + 2);
+            const stop = end < 0 ? text.length : end + 2;
+            push(out, text.slice(i, stop), 'Comment');
+            inBlock = end < 0;
+            i = stop;
+            bol = false;
+            continue;
+        }
+        const hit = ruleAt(syntax, text, i, bol);
+        // Normal text: a whole word at once, so no rule matches inside a word («no» in «nothing»).
+        WORD.lastIndex = i;
+        const token = hit ?? { text: WORD.exec(text)?.[0] ?? text[i] ?? '', group: null };
+        push(out, token.text, token.group);
+        if (bol && token.text.trim() !== '')
+            bol = false;
+        i += token.text.length;
+    }
+    return inBlock;
+}
+/** The spans of each line of `text` (the lines of `text.split('\n')`, every character kept). */
+function highlight(text, filetype) {
+    const syntax = SYNTAX[filetype];
+    let open = false;
+    return text.split('\n').map((l) => {
+        const out = [];
+        open = line(syntax, l.slice(0, SYNMAXCOL), open, out);
+        push(out, l.slice(SYNMAXCOL), null);
+        return out;
+    });
+}
+
+return { SYNMAXCOL, filetypeOf, highlight };
+})();
+__m["web/syntax-html.js"] = (() => {
+/** A <pre> of the simulated web pages with vim's highlight groups as spans (h() escapes every text). */
+const { h } = __m["web/html.js"];
+const { highlight } = __m["editors/vim-syntax.js"];
+function syntaxPre(text, filetype, cls = 'web-adm-log') {
+    const lines = highlight(text, filetype).map((line, i) => [i ? '\n' : '', ...line.map((s) => (s.group ? h('span', { class: `syn-${s.group.toLowerCase()}` }, s.text) : s.text))]);
+    return h('pre', { class: `${cls} syn-view`, 'data-filetype': filetype }, lines);
+}
+
+return { syntaxPre };
+})();
 __m["web/admin-pages.js"] = (() => {
 /** Pages of the Server management GUI (forms filled with the live configuration). */
 const { t } = __m["i18n/t.js"];
@@ -43936,6 +44111,7 @@ const { UNITS, unitActive } = __m["services/units.js"];
 const { idKinds, identifierText } = __m["services/dhcp-reservations.js"];
 const { formatMacCisco, formatHexId } = __m["core/mac.js"];
 const { listenForm } = __m["web/admin-listen.js"];
+const { syntaxPre } = __m["web/syntax-html.js"];
 const ip = (n) => (n === undefined ? '' : formatIp(n));
 function del(base, pageId, action, key) {
     return form(base, pageId, action, h('input', { type: 'hidden', name: 'key', value: key }), h('button', { type: 'submit', class: 'web-adm-small' }, t('wa.remove')));
@@ -44012,7 +44188,7 @@ function statusPage(server) {
 }
 function logPage(server) {
     const lines = server.logs.slice(-40).map((l) => `${new Date(l.time).toISOString().slice(11, 19)} ${l.unit}: ${l.line}`);
-    return cards(section(t('wa.records'), t('wa.logHelp'), h('pre', { class: 'web-adm-log' }, lines.join('\n') || t('wa.empty'))));
+    return cards(section(t('wa.records'), t('wa.logHelp'), lines.length ? syntaxPre(lines.join('\n'), 'messages') : h('pre', { class: 'web-adm-log' }, t('wa.empty'))));
 }
 
 return { setupPage, dhcpPage, webPage, mailPage, sshPage, adminPage, statusPage, logPage };
@@ -45273,7 +45449,7 @@ function specific(server, base, q, mode) {
 }
 function dnsPage(server, base, q) {
     const mode = modeOf(q);
-    return h('div', { class: 'web-adm-dns' }, h('div', { class: 'web-adm-dns-main' }, modesForm(server, base, mode), listenForm(server, base, 'dns'), specific(server, base, q, mode), rpzForm(server, base)), dnsSide(server, base, q, mode));
+    return h('div', { class: 'web-adm-dns' }, h('div', { class: 'web-adm-dns-main' }, listenForm(server, base, 'dns'), modesForm(server, base, mode), specific(server, base, q, mode), rpzForm(server, base)), dnsSide(server, base, q, mode));
 }
 
 return { dnsPage };
@@ -45336,150 +45512,6 @@ function configFiles(fs, id) {
 
 return { configSources, configFiles };
 })();
-__m["editors/vim-syntax.js"] = (() => {
-/**
- * Syntax highlighting of configuration files as vim shows them: the filetype vim detects from the path and the
- * highlight groups of its syntax files (Comment, Constant, String, Number, Identifier, Statement, PreProc, Type,
- * Special). Pure: the interface paints the groups with vim's default colours. A small rule set per filetype, not a
- * port of vim's syntax engine: enough for the files the Services tab shows.
- */
-/** A sticky regular expression (it must match exactly where the scan is). */
-const re = (source, flags = '') => new RegExp(source, `y${flags}`);
-/** Whole words of a list (longest first, so «allow-query» wins over «allow»). */
-const words = (list, flags = '') => re(`(?:${list.split(/\s+/).sort((a, b) => b.length - a.length).map((w) => w.replace(/[.$]/g, '\\$&')).join('|')})(?![\\w.-])`, flags);
-/** Like vim's 'synmaxcol': columns beyond this are not highlighted (a hostile one-line file stays fast). */
-const SYNMAXCOL = 1000;
-const HASH = { re: re('#.*'), group: 'Comment' };
-const SLASHES = { re: re('//.*'), group: 'Comment' };
-const STRING = { re: re('"(?:[^"\\\\]|\\\\.)*"?'), group: 'String' };
-/** Numbers, IPv4 addresses and prefixes (10, 8.8.8.8, 192.168.1.0/24). */
-const NUMBER = { re: re('\\d+(?:\\.\\d+){0,3}(?:/\\d+)?(?![\\w.])'), group: 'Number' };
-const BOOL = (extra = '') => ({ re: words(`yes no on off true false ${extra}`.trim(), 'i'), group: 'Constant' });
-const NAMED_WORDS = 'options zone type file directory forwarders forward allow-query allow-recursion allow-transfer '
-    + 'allow-update recursion listen-on listen-on-v6 acl view key masters primaries also-notify notify include logging '
-    + 'channel category severity response-policy dnssec-validation querylog auth-nxdomain controls server '
-    + 'master slave primary secondary hint only first max-cache-ttl max-ncache-ttl version minimal-responses';
-const SYNTAX = {
-    sshdconfig: { rules: [HASH, { re: re('[A-Za-z]\\w*'), group: 'Statement', bol: true }, BOOL('prohibit-password without-password forced-commands-only any none'), NUMBER] },
-    json: {
-        block: true,
-        rules: [SLASHES, HASH, { re: re('"(?:[^"\\\\]|\\\\.)*"(?=\\s*:)'), group: 'Statement' }, STRING, { re: words('true false null'), group: 'Constant' },
-            { re: re('-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?(?![\\w.])'), group: 'Number' }],
-    },
-    named: { block: true, rules: [SLASHES, HASH, STRING, { re: words(NAMED_WORDS), group: 'Statement' }, BOOL('none any localhost localnets auto'), NUMBER] },
-    bindzone: {
-        rules: [{ re: re(';.*'), group: 'Comment' }, { re: re('\\$(?:TTL|ORIGIN|INCLUDE|GENERATE)(?![\\w])'), group: 'PreProc' },
-            { re: words('IN CH HS'), group: 'Statement' }, { re: words('SOA NS A AAAA MX CNAME TXT PTR SRV CAA DNAME SPF NAPTR DS DNSKEY'), group: 'Type' },
-            // (?=(…))\\1 is an atomic group: no backtracking over the labels of a long name.
-            { re: re('(?=((?:[\\w-]+\\.)+))\\1(?![\\w-])'), group: 'Identifier' }, { re: re('@'), group: 'Special' }, STRING, NUMBER],
-    },
-    apache: {
-        rules: [HASH, { re: re('</?[A-Za-z]+'), group: 'Type' }, { re: re('>'), group: 'Type' }, { re: re('[A-Za-z]\\w*'), group: 'Identifier', bol: true },
-            { re: re('\\$\\{\\w+\\}'), group: 'Special' }, STRING, BOOL('all none granted denied')],
-    },
-    pfmain: { rules: [HASH, { re: re('\\w+(?=\\s*=)'), group: 'Statement', bol: true }, { re: re('\\$(?:\\{\\w+\\}|\\w+)'), group: 'Identifier' }, BOOL()] },
-    dovecot: {
-        rules: [HASH, { re: re('(?=([a-z_]+))\\1(?=[^={]*\\{)'), group: 'Type', bol: true }, { re: re('[\\w-]+(?=\\s*=)'), group: 'Statement', bol: true },
-            STRING, BOOL(), NUMBER],
-    },
-    sysctl: { rules: [HASH, { re: re(';.*'), group: 'Comment' }, { re: re('[\\w./-]+(?=\\s*=)'), group: 'Identifier', bol: true }, NUMBER] },
-    nftables: {
-        rules: [HASH, STRING, { re: words('inet ip ip6 arp bridge netdev'), group: 'Type' },
-            { re: words('table chain type hook priority policy accept drop reject counter log prefix ct state established related '
-                    + 'invalid new iifname oifname iif oif saddr daddr tcp udp icmp icmpv6 dport sport flush ruleset define masquerade snat dnat '
-                    + 'to jump goto return comment filter nat route input output forward prerouting postrouting limit rate set map elements '
-                    + 'meta l4proto th echo-request echo-reply'), group: 'Statement' },
-            { re: re('\\$\\w+'), group: 'Identifier' }, { re: re('@\\w+'), group: 'Special' }, NUMBER],
-    },
-    dosini: { rules: [HASH, { re: re(';.*'), group: 'Comment' }, { re: re('\\[[^\\]]*\\]'), group: 'Special', bol: true }, { re: re('[\\w.-]+(?=\\s*=)'), group: 'Identifier', bol: true }, NUMBER] },
-    conf: { rules: [HASH, STRING, NUMBER] },
-};
-/** vim's filetype for a configuration file (from its path, as filetype.vim does). */
-function filetypeOf(path) {
-    const name = path.slice(path.lastIndexOf('/') + 1);
-    if (path.startsWith('/etc/ssh/sshd_config'))
-        return 'sshdconfig';
-    if (path.startsWith('/etc/kea/') || name.endsWith('.json'))
-        return 'json';
-    if (path.startsWith('/etc/bind/'))
-        return name.startsWith('named.conf') ? 'named' : 'bindzone';
-    if (path.startsWith('/etc/apache2/'))
-        return 'apache';
-    if (name === 'main.cf')
-        return 'pfmain';
-    if (path.startsWith('/etc/dovecot/'))
-        return 'dovecot';
-    if (name === 'sysctl.conf' || path.startsWith('/etc/sysctl.d/'))
-        return 'sysctl';
-    if (name === 'nftables.conf' || name.endsWith('.nft'))
-        return 'nftables';
-    if (path.startsWith('/etc/wireguard/') || name.endsWith('.ini'))
-        return 'dosini';
-    return 'conf';
-}
-const WORD = /[A-Za-z0-9_]+/y;
-/** Appends a span, joining it to the previous one when it has the same group. */
-function push(out, text, group) {
-    if (!text)
-        return;
-    const last = out[out.length - 1];
-    if (last && last.group === group)
-        out[out.length - 1] = { text: last.text + text, group };
-    else
-        out.push({ text, group });
-}
-function ruleAt(syntax, line, i, bol) {
-    for (const r of syntax.rules) {
-        if (r.bol && !bol)
-            continue;
-        r.re.lastIndex = i;
-        const m = r.re.exec(line);
-        if (m && m[0])
-            return { text: m[0], group: r.group };
-    }
-    return null;
-}
-/** One line; `open` says whether a block comment is still open from the previous lines. Returns the new state. */
-function line(syntax, text, open, out) {
-    let i = 0;
-    let inBlock = open;
-    /** Only blanks so far (kept as the scan goes: slicing the line at every token would be quadratic). */
-    let bol = true;
-    while (i < text.length) {
-        if (inBlock || (syntax.block && text.startsWith('/*', i))) {
-            const end = text.indexOf('*/', inBlock ? i : i + 2);
-            const stop = end < 0 ? text.length : end + 2;
-            push(out, text.slice(i, stop), 'Comment');
-            inBlock = end < 0;
-            i = stop;
-            bol = false;
-            continue;
-        }
-        const hit = ruleAt(syntax, text, i, bol);
-        // Normal text: a whole word at once, so no rule matches inside a word («no» in «nothing»).
-        WORD.lastIndex = i;
-        const token = hit ?? { text: WORD.exec(text)?.[0] ?? text[i] ?? '', group: null };
-        push(out, token.text, token.group);
-        if (bol && token.text.trim() !== '')
-            bol = false;
-        i += token.text.length;
-    }
-    return inBlock;
-}
-/** The spans of each line of `text` (the lines of `text.split('\n')`, every character kept). */
-function highlight(text, filetype) {
-    const syntax = SYNTAX[filetype];
-    let open = false;
-    return text.split('\n').map((l) => {
-        const out = [];
-        open = line(syntax, l.slice(0, SYNMAXCOL), open, out);
-        push(out, l.slice(SYNMAXCOL), null);
-        return out;
-    });
-}
-
-return { SYNMAXCOL, filetypeOf, highlight };
-})();
 __m["web/admin-files.js"] = (() => {
 /** Estado → Configuración of the management GUI: the configuration files of a service as they are now (read-only), as vim highlights them. */
 const { t, tDynamic } = __m["i18n/t.js"];
@@ -45487,13 +45519,8 @@ const { h } = __m["web/html.js"];
 const { cards, section } = __m["web/admin-layout.js"];
 const { hostFs } = __m["devices/host-fs.js"];
 const { configFiles, configSources } = __m["services/config-files.js"];
-const { filetypeOf, highlight } = __m["editors/vim-syntax.js"];
-/** The file with vim's highlight groups as spans (h() escapes every text). */
-function syntaxPre(path, content) {
-    const ft = filetypeOf(path);
-    const lines = highlight(content, ft).map((line, i) => [i ? '\n' : '', ...line.map((s) => (s.group ? h('span', { class: `syn-${s.group.toLowerCase()}` }, s.text) : s.text))]);
-    return h('pre', { class: 'web-adm-log syn-view', 'data-filetype': ft }, lines);
-}
+const { filetypeOf } = __m["editors/vim-syntax.js"];
+const { syntaxPre } = __m["web/syntax-html.js"];
 function filesPage(server, base, q) {
     const sources = configSources(server);
     const current = sources.find((s) => s.id === q.get('svc')) ?? sources[0];
@@ -45504,7 +45531,7 @@ function filesPage(server, base, q) {
     const files = fs ? configFiles(fs, current.id) : [];
     return [
         h('ul', { class: 'web-adm-tabs' }, tabs),
-        cards(section(tDynamic(current.label), t('files.hint'), files.length ? files.map((f) => [h('h3', { class: 'web-adm-mono' }, f.path), syntaxPre(f.path, f.content)]) : t('files.none'))),
+        cards(section(tDynamic(current.label), t('files.hint'), files.length ? files.map((f) => [h('h3', { class: 'web-adm-mono' }, f.path), syntaxPre(f.content, filetypeOf(f.path))]) : t('files.none'))),
     ];
 }
 
@@ -52525,6 +52552,30 @@ function dnsPanel(server, app) {
 
 return { dnsPanel };
 })();
+__m["ui/syntax-view.js"] = (() => {
+/** A <pre> with vim's highlight groups as spans (textContent only: the content is never parsed as HTML). */
+const { el } = __m["ui/dom.js"];
+const { filetypeOf, highlight } = __m["editors/vim-syntax.js"];
+/** Replaces the content of `pre` with `text` highlighted as vim's `filetype`. */
+function fillSyntax(pre, text, filetype) {
+    pre.replaceChildren();
+    pre.classList.add('syn-view');
+    pre.dataset.filetype = filetype;
+    highlight(text, filetype).forEach((line, i) => {
+        if (i)
+            pre.append('\n');
+        for (const s of line)
+            pre.append(s.group ? el('span', { class: `syn-${s.group.toLowerCase()}` }, s.text) : s.text);
+    });
+    return pre;
+}
+/** A configuration file, with the filetype vim detects from its path. */
+function syntaxView(path, content) {
+    return fillSyntax(el('pre', { class: 'log-view' }), content, filetypeOf(path));
+}
+
+return { fillSyntax, syntaxView };
+})();
 __m["ui/files-panel.js"] = (() => {
 /**
  * Servicios → Configuración: the configuration files of the chosen service as they are now on disk, like Registros
@@ -52536,19 +52587,7 @@ const { field, select, button } = __m["ui/forms.js"];
 const { livePanel } = __m["ui/server-dhcp-dns.js"];
 const { hostFs } = __m["devices/host-fs.js"];
 const { configFiles, configSources } = __m["services/config-files.js"];
-const { filetypeOf, highlight } = __m["editors/vim-syntax.js"];
-/** The file with vim's highlight groups (textContent only: the content is never parsed as HTML). */
-function syntaxView(path, content) {
-    const ft = filetypeOf(path);
-    const pre = el('pre', { class: 'log-view syn-view', 'data-filetype': ft });
-    highlight(content, ft).forEach((line, i) => {
-        if (i)
-            pre.append('\n');
-        for (const s of line)
-            pre.append(s.group ? el('span', { class: `syn-${s.group.toLowerCase()}` }, s.text) : s.text);
-    });
-    return pre;
-}
+const { syntaxView } = __m["ui/syntax-view.js"];
 function filesPanel(server, first = 'ssh') {
     const sources = configSources(server);
     let selected = sources.some((s) => s.id === first) ? first : sources[0]?.id ?? 'ssh';
@@ -52565,7 +52604,7 @@ function filesPanel(server, first = 'ssh') {
     });
 }
 
-return { syntaxView, filesPanel };
+return { filesPanel };
 })();
 __m["ui/server-apps.js"] = (() => {
 /** Server → Servicios: SSH first, then DHCP, DNS, HTTP, Correo, Registros and Ficheros. */
@@ -52577,6 +52616,7 @@ const { field, input, select, button, onOff, message, table, subnav } = __m["ui/
 const { livePanel, dhcpPanel } = __m["ui/server-dhcp-dns.js"];
 const { dnsPanel } = __m["ui/server-dns.js"];
 const { filesPanel } = __m["ui/files-panel.js"];
+const { fillSyntax } = __m["ui/syntax-view.js"];
 const { validateAccess } = __m["services/config.js"];
 const { formatIp } = __m["core/ip.js"];
 const { validateFileName } = __m["services/http-service.js"];
@@ -52754,7 +52794,7 @@ function logPanel(server) {
         const out = el('pre', { class: 'log-view' });
         const show = () => {
             selected = unit.value;
-            out.textContent = createShell(server, 'linux', 'root').run(`journalctl -u ${unit.value} -n 100`).join('\n');
+            fillSyntax(out, createShell(server, 'linux', 'root').run(`journalctl -u ${unit.value} -n 100`).join('\n'), 'messages');
         };
         unit.addEventListener('change', show);
         show();

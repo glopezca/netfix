@@ -100,3 +100,19 @@ test('review: applying the initial list unchanged keeps it implicit; a form with
   assert.equal(srv.services.dns.publicNames?.enabled, false);
   assert.equal(srv.services.dns.publicNames?.entries, undefined);
 });
+
+test('order of the web GUI: Routing before Firewall on a Linux router; DNS: listen interfaces before the operating mode', () => {
+  const { web } = lab();
+  const menu = body(web.open(`${URL}?page=dns`));
+  const at = (page: string): number => menu.indexOf(`?page=${page}"`);
+  assert.ok(at('routing') > 0 && at('routing') < at('firewall') && at('firewall') < at('vpn'), 'Routing, Firewall, VPN');
+  assert.ok(menu.indexOf('value="dns-listen"') < menu.indexOf('value="dns-modes"'), 'Interfaces de escucha before Modo de funcionamiento');
+});
+
+test('Registros in the web GUI: the journal highlighted as vim shows logs (messages), escaped', () => {
+  const { srv, web } = lab();
+  srv.log('ssh', 'error: <b>bad</b> key from 192.168.20.10');
+  const page = body(web.open(`${URL}?page=log`));
+  assert.match(page, /<pre class="web-adm-log syn-view" data-filetype="messages"><span class="syn-type">\d\d:\d\d:\d\d<\/span>/);
+  assert.match(page, /<span class="syn-error">error: &lt;b&gt;bad&lt;\/b&gt; key from 192\.168\.20\.10<\/span>/);
+});

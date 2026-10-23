@@ -8,6 +8,7 @@ import type { AfterChange } from './host-ip.ts';
 import { livePanel, dhcpPanel } from './server-dhcp-dns.ts';
 import { dnsPanel } from './server-dns.ts';
 import { filesPanel } from './files-panel.ts';
+import { fillSyntax } from './syntax-view.ts';
 import type { Server } from '../devices/server.ts';
 import type { Account, WebAppAccess } from '../services/config.ts';
 import { validateAccess } from '../services/config.ts';
@@ -196,7 +197,7 @@ function logPanel(server: Server): HTMLElement {
     const out = el('pre', { class: 'log-view' });
     const show = (): void => {
       selected = unit.value;
-      out.textContent = createShell(server, 'linux', 'root').run(`journalctl -u ${unit.value} -n 100`).join('\n');
+      fillSyntax(out, createShell(server, 'linux', 'root').run(`journalctl -u ${unit.value} -n 100`).join('\n'), 'messages');
     };
     unit.addEventListener('change', show);
     show();

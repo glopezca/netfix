@@ -24,7 +24,7 @@ export const PAGES: readonly AdminPage[] = [
   { id: 'setup', tab: 'setup' },
   { id: 'ssh', tab: 'services' }, { id: 'dhcp', tab: 'services' }, { id: 'dns', tab: 'services' },
   { id: 'web', tab: 'services' }, { id: 'mail', tab: 'services' },
-  { id: 'firewall', tab: 'security' }, { id: 'routing', tab: 'security' }, { id: 'vpn', tab: 'security' },
+  { id: 'routing', tab: 'security' }, { id: 'firewall', tab: 'security' }, { id: 'vpn', tab: 'security' },
   { id: 'admin', tab: 'admin' },
   { id: 'status', tab: 'status' }, { id: 'files', tab: 'status' }, { id: 'log', tab: 'status' },
 ];

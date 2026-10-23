@@ -1,6 +1,6 @@
 {
   "name": "netfix",
-  "version": "0.19.5",
+  "version": "0.19.6",
   "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
   "type": "module",
   "private": true,

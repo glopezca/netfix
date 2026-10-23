@@ -1,12 +1,12 @@
 /**
  * Syntax highlighting of configuration files as vim shows them: the filetype vim detects from the path and the
  * highlight groups of its syntax files (Comment, Constant, String, Number, Identifier, Statement, PreProc, Type,
- * Special). Pure: the interface paints the groups with vim's default colours. A small rule set per filetype, not a
- * port of vim's syntax engine: enough for the files the Services tab shows.
+ * Special, and ErrorMsg as Error). Pure: the interface paints the groups with vim's default colours. A small rule set
+ * per filetype, not a port of vim's syntax engine: enough for the configuration files and logs the interface shows.
  */
 
-export type SynGroup = 'Comment' | 'Constant' | 'String' | 'Number' | 'Identifier' | 'Statement' | 'PreProc' | 'Type' | 'Special';
-export type Filetype = 'sshdconfig' | 'json' | 'named' | 'bindzone' | 'apache' | 'pfmain' | 'dovecot' | 'sysctl' | 'nftables' | 'dosini' | 'conf';
+export type SynGroup = 'Comment' | 'Constant' | 'String' | 'Number' | 'Identifier' | 'Statement' | 'PreProc' | 'Type' | 'Special' | 'Error';
+export type Filetype = 'sshdconfig' | 'json' | 'named' | 'bindzone' | 'apache' | 'pfmain' | 'dovecot' | 'sysctl' | 'nftables' | 'dosini' | 'messages' | 'conf';
 
 export interface SynSpan {
   readonly text: string;
@@ -79,6 +79,19 @@ const SYNTAX: Readonly<Record<Filetype, Syntax>> = {
       { re: re('\\$\\w+'), group: 'Identifier' }, { re: re('@\\w+'), group: 'Special' }, NUMBER],
   },
   dosini: { rules: [HASH, { re: re(';.*'), group: 'Comment' }, { re: re('\\[[^\\]]*\\]'), group: 'Special', bol: true }, { re: re('[\\w.-]+(?=\\s*=)'), group: 'Identifier', bol: true }, NUMBER] },
+  // vim's syntax/messages.vim (syslog, journalctl): date, time, host, program and PID; a line with an error word is
+  // ErrorMsg from its text on. The time and the program also match the web GUI's «HH:MM:SS unit: text».
+  messages: {
+    rules: [
+      { re: re(String.raw`[A-Z][a-z]{2} [ \d]\d(?= \d\d:)`), group: 'Constant', bol: true },
+      { re: re(String.raw`(?<=^(?:[A-Z][a-z]{2} [ \d]\d )?)\d\d:\d\d:\d\d(?:\.\d+)?`), group: 'Type' },
+      { re: re(String.raw`(?<=^[A-Z][a-z]{2} [ \d]\d \d\d:\d\d:\d\d(?:\.\d+)? )[\w.-]+(?= [\w./@-]+(?:\[\d+\])?: )`), group: 'Identifier' },
+      { re: re(String.raw`(?<=^(?:[A-Z][a-z]{2} [ \d]\d )?\d\d:\d\d:\d\d(?:\.\d+)? (?:[\w.-]+ )?)[\w./@-]+(?=(?:\[\d+\])?: )`), group: 'Statement' },
+      { re: re(String.raw`\[\d+\](?=: )`), group: 'Constant' },
+      { re: re(String.raw`(?<=: )(?=.*\b(?:fatal|errors?|failed|failure)\b).*`, 'i'), group: 'Error' },
+      { re: re(String.raw`\d{1,3}(?:\.\d{1,3}){3}(?![\w.])`), group: 'Constant' },
+    ],
+  },
   conf: { rules: [HASH, STRING, NUMBER] },
 };
 
@@ -94,6 +107,7 @@ export function filetypeOf(path: string): Filetype {
   if (name === 'sysctl.conf' || path.startsWith('/etc/sysctl.d/')) return 'sysctl';
   if (name === 'nftables.conf' || name.endsWith('.nft')) return 'nftables';
   if (path.startsWith('/etc/wireguard/') || name.endsWith('.ini')) return 'dosini';
+  if (path.startsWith('/var/log/')) return 'messages';
   return 'conf';
 }
 
