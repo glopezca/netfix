@@ -11,7 +11,7 @@ export const SERVICE_DOCS: DocGroup = {
       title: 'Server',
       summary: 'Pestañas del servidor, sistema operativo y nombres de los servicios.',
       blocks: [
-        p('Un Server es un equipo con servicios de red. Cada servicio tiene su interruptor y su panel en la pestaña Servicios; los cambios se aplican al momento y se reflejan en los ficheros de configuración que ve la Terminal Linux. El menú empieza por SSH (lo primero para administrar el equipo a distancia) y termina con Registros (journalctl) y Ficheros: elige un servicio y muestra sus ficheros de configuración tal como están ahora en el disco, como cat ejecutado por root.'),
+        p('Un Server es un equipo con servicios de red. Cada servicio tiene su interruptor y su panel en la pestaña Servicios; los cambios se aplican al momento y se reflejan en los ficheros de configuración que ve la Terminal Linux. El menú empieza por SSH (lo primero para administrar el equipo a distancia) y termina con Configuración y Registros (journalctl). Configuración muestra los ficheros de configuración del servicio elegido tal como están ahora en el disco, como cat ejecutado por root, con la sintaxis resaltada con los colores de vim (comentarios, directivas, cadenas, números y direcciones, tipos de registro…).'),
         table(['Servicio', 'Puerto', 'Unidad systemd (Ubuntu)', 'Servicio de Windows', 'Configuración en Linux'], [
           ['DHCP', '67/udp', 'kea-dhcp4-server', 'DHCPServer', '/etc/kea/kea-dhcp4.conf, /var/lib/kea/kea-leases4.csv'],
           ['DNS', '53/udp', 'bind9 (named)', 'DNS', '/etc/bind/named.conf.options, /etc/bind/named.conf.local, /etc/bind/db.<zona>'],

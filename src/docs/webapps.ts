@@ -38,7 +38,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
         ['Enrutamiento (Router Linux)', 'Casilla «Activar router» (net.ipv4.ip_forward), parámetros del núcleo y rutas estáticas.'],
         ['Correo', 'Servicios y usuarios.'],
         ['Administración', 'Usuario/contraseña de la interfaz y su puerto o alias (al cambiarlo, el navegador pasa a la nueva dirección).'],
-        ['Estado · Registros · Ficheros', 'Datos del equipo, servicios, concesiones, últimos mensajes (journalctl) y los ficheros de configuración de cada servicio tal como están (solo Linux).'],
+        ['Estado · Configuración · Registros', 'Datos del equipo, servicios, concesiones, los ficheros de configuración de cada servicio tal como están, con la sintaxis resaltada como en vim (solo Linux), y los últimos mensajes (journalctl).'],
       ]),
       h('Seguridad'),
       list(

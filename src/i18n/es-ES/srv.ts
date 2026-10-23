@@ -2,7 +2,7 @@
 export const SRV_ES = {
   'srv.mail': 'Correo',
   'srv.log': 'Registros',
-  'srv.files': 'Ficheros',
+  'srv.files': 'Configuración',
   'srv.fileContent': 'Contenido del fichero',
   'srv.httpIis': 'Servicio HTTP (IIS, puerto 80)',
   'srv.httpApache': 'Servicio HTTP (Apache2, puertos {ports})',

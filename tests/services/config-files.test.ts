@@ -1,5 +1,5 @@
 /**
- * «Ficheros» of each service: the configuration files involved, read as they are now on disk (the same that
+ * «Configuración» of each service: the configuration files involved, read as they are now on disk (the same that
  * cat shows as root), in the order of the Services tab (SSH first).
  */
 import { test } from 'node:test';

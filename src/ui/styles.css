@@ -676,3 +676,12 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 /* Selection box over the background, and the group being selected */
 .marquee { fill: var(--accent); fill-opacity: .08; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; pointer-events: none; }
 .marquee-layer { pointer-events: none; }
+/* Configuration files as vim shows them (default colour scheme, background=dark) */
+.syn-view { white-space: pre; tab-size: 8; }
+.syn-comment { color: #80a0ff; }
+.syn-constant, .syn-string, .syn-number { color: #ffa0a0; }
+.syn-identifier { color: #40ffff; }
+.syn-statement { color: #ffff60; font-weight: 700; }
+.syn-preproc { color: #ff80ff; }
+.syn-type { color: #60ff60; font-weight: 700; }
+.syn-special { color: #ffa500; }

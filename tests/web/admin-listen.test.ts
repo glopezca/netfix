@@ -54,7 +54,7 @@ test('DNS page: lo is offered; the choice becomes listen-on and is shown in the 
   assert.match(post(web, 'dns', [['action', 'dns-listen'], ['if_eth9', '1']]), /web-adm-error/);
 });
 
-test('Services lists SSH first; Estado → Ficheros shows each service\'s files as they are, escaped', () => {
+test('Services lists SSH first; Estado → Configuración (before Registros) shows each service\'s files as they are, escaped and highlighted', () => {
   const { srv, web } = lab();
   const menu = body(web.open(`${URL}?page=ssh`));
   const ids = [...menu.matchAll(/\?page=(\w+)"/g)].map((m) => m[1]);
@@ -63,7 +63,10 @@ test('Services lists SSH first; Estado → Ficheros shows each service\'s files 
   assert.match(files, /web-adm-on"><a href="\/\?page=files&amp;svc=sysctl"/, 'the router\'s first service by default');
   srv.setServices({ ...srv.services, dns: { ...srv.services.dns, listenOn: ['lo'] } });
   const dns = body(web.open(`${URL}?page=files&svc=dns`));
-  assert.match(dns, /\/etc\/bind\/named\.conf\.options[\s\S]*listen-on \{ 127\.0\.0\.1; \};/);
+  const text = dns.replace(/<span class="syn-\w+">|<\/span>/g, '');
+  assert.match(text, /\/etc\/bind\/named\.conf\.options[\s\S]*listen-on \{ 127\.0\.0\.1; \};/);
+  assert.match(dns, /<pre class="web-adm-log syn-view" data-filetype="named"><span class="syn-statement">options<\/span> \{/, 'vim\'s groups');
+  assert.ok(menu.indexOf('?page=files"') < menu.indexOf('?page=log"'), 'Configuración before Registros');
   createShell(srv, 'linux', 'root').run('echo "<b>hola</b>" > /etc/bind/db.prueba');
   assert.match(body(web.open(`${URL}?page=files&svc=dns`)), /&lt;b&gt;hola&lt;\/b&gt;/);
   assert.match(body(web.open(`${URL}?page=files&svc=<x>`)), /\/etc\/nftables\.conf|\/etc\/sysctl/, 'an unknown service falls back to the first');

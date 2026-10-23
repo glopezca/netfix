@@ -4,7 +4,7 @@ import type { SrvKey } from '../es-ES/srv.ts';
 export const SRV_EN: Readonly<Record<SrvKey, string>> = {
   'srv.mail': 'Email',
   'srv.log': 'Logs',
-  'srv.files': 'Files',
+  'srv.files': 'Configuration',
   'srv.fileContent': 'File content',
   'srv.httpIis': 'HTTP service (IIS, port 80)',
   'srv.httpApache': 'HTTP service (Apache2, ports {ports})',

@@ -696,3 +696,49 @@ no lo abría.
 
 Ambos casos tienen su prueba en `e2e-touch`.
 
+## Fase 29 · «Configuración» con la sintaxis resaltada como en vim (v0.19.2)
+
+**Nombre y orden.** El apartado «Ficheros» de servidores y routers Linux pasa a llamarse **Configuración** y queda
+antes de Registros, tanto en la pestaña Servicios como en Estado de la gestión web.
+
+**Resaltado** (`src/editors/vim-syntax.ts`, puro). El tipo de archivo se deduce de la ruta, como hace `filetype.vim`:
+
+| Tipo de archivo | Archivos |
+|---|---|
+| `sshdconfig` | `sshd_config` y `sshd_config.d/` |
+| `json` | Kea |
+| `named` | `named.conf*` |
+| `bindzone` | zonas de `/etc/bind` |
+| `apache` | configuración de Apache |
+| `pfmain` | `main.cf` de Postfix |
+| `dovecot` | configuración de Dovecot |
+| `sysctl` | `sysctl.conf` y `sysctl.d/` |
+| `nftables` | `nftables.conf` y `*.nft` |
+| `dosini` | WireGuard |
+| `conf` | el resto |
+
+- **Grupos.** Cada tipo tiene un juego pequeño de reglas que asigna los grupos de vim: Comment, Constant, String,
+  Number, Identifier, Statement, PreProc, Type y Special. Los comentarios `/* */` pueden ocupar varias líneas.
+- **Exploración del texto.** Se recorre palabra a palabra, para que ninguna regla encaje dentro de una palabra, y en
+  tiempo lineal (prueba con una línea de 256 KiB).
+- **Colores.** Los del esquema `default` de vim: con `background=dark` en la ventana del equipo (Statement amarillo,
+  Comment azul claro, Constant rosa, Type verde, PreProc magenta, Identifier cian, Special naranja) y con
+  `background=light` en la página web de gestión, que tiene fondo claro.
+- **Seguridad.** Los fragmentos se insertan con `textContent` (interfaz) o con `h()`, que escapa el texto (web): el
+  contenido de un fichero nunca se interpreta como HTML.
+
+**Pruebas:**
+
+- `tests/editors/vim-syntax.test.ts`, con 7 pruebas: tipos de archivo, que no se pierde ningún carácter, cada sintaxis
+  y el tiempo lineal.
+- `tests/web/admin-listen.test.ts`: el orden de las pestañas, los grupos en el HTML y el escapado.
+- `e2e-v014`: el orden del menú y los colores calculados en el navegador.
+
+**Revisión ECC (code-reviewer, sonnet).** No hay fallos críticos. Se corrigieron estos:
+
+- **Alto: retroceso cuadrático.** Una línea hostil en Dovecot o en una zona podía tardar segundos. Se resuelve con
+  grupos atómicos, `(?=(…))\1`, y con `SYNMAXCOL` = 1000: como el `synmaxcol` de vim, a partir de esa columna el texto
+  va sin resaltar. Hay prueba con líneas de 200 000 caracteres.
+- **Bajo: tipos de registro.** Un nombre que empieza por un tipo de registro (`NS.aula.lab.`) ya no se colorea como
+  tipo.
+

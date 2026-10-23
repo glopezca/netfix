@@ -1,4 +1,4 @@
-// End-to-end check of phase 22: listen interfaces, «Ficheros», SSH first and fields that apply on change.
+// End-to-end check of phase 22: listen interfaces, «Configuración» (v0.19.2: before Registros, highlighted as vim does), SSH first and fields that apply on change.
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { join, dirname } from 'node:path';
@@ -45,11 +45,11 @@ try {
   const ends = await page.locator('.port-end').allTextContents();
   assert.ok(ends.some((x) => /^Fa0\d+\.\d+\.\d+\.\d+\/\d+$/.test(x)), ends.join(' | '));
 
-  // Server: SSH first, the listen block of DNS and DHCP, «Ficheros» with named.conf.options as it is.
+  // Server: SSH first, the listen block of DNS and DHCP, «Configuración» with named.conf.options as it is.
   await page.dblclick('g.device-server');
   await page.click('.win-tab:has-text("Servicios")');
   const items = await page.locator('.window:visible .subnav-item').allInnerTexts();
-  assert.deepEqual(items, ['SSH', 'DHCP', 'DNS', 'HTTP', 'Correo', 'Registros', 'Ficheros']);
+  assert.deepEqual(items, ['SSH', 'DHCP', 'DNS', 'HTTP', 'Correo', 'Configuración', 'Registros']);
   await page.click('.subnav-item:has-text("DNS")');
   const block = page.locator('.listen-block');
   assert.match(await block.innerText(), /Interfaces de escucha[\s\S]*Todas[\s\S]*eth0[\s\S]*lo/);
@@ -58,10 +58,15 @@ try {
   await block.locator('button:has-text("Aplicar (systemctl restart bind9)")').click();
   await page.waitForSelector('.window:visible .form-msg[data-kind="ok"]');
   if (shots) await page.screenshot({ path: `${shots}/dns-listen.png` });
-  await page.click('.subnav-item:has-text("Ficheros")');
+  await page.click('.subnav-item:has-text("Configuración")');
   await page.locator('.window:visible select').first().selectOption('dns');
   await page.waitForSelector('.conf-file h4:has-text("/etc/bind/named.conf.options")');
   assert.match(await page.locator('.conf-file', { has: page.locator('h4', { hasText: /named\.conf\.options$/ }) }).innerText(), /listen-on \{ 127\.0\.0\.1; \};/);
+  const conf = page.locator('.conf-file', { has: page.locator('h4', { hasText: /named\.conf\.options$/ }) });
+  assert.equal(await conf.locator('pre').getAttribute('data-filetype'), 'named');
+  assert.deepEqual(await conf.locator('.syn-statement').evaluateAll((ns) => ns.slice(0, 2).map((n) => [n.textContent, getComputedStyle(n).color])),
+    [['options', 'rgb(255, 255, 96)'], ['directory', 'rgb(255, 255, 96)']], 'statements in vim yellow');
+  assert.ok(await conf.locator('.syn-comment').count() > 0, 'comments highlighted');
   if (shots) await page.screenshot({ path: `${shots}/files.png` });
   await page.click('.win-close');
 

@@ -26,7 +26,7 @@ export const PAGES: readonly AdminPage[] = [
   { id: 'web', tab: 'services' }, { id: 'mail', tab: 'services' },
   { id: 'firewall', tab: 'security' }, { id: 'routing', tab: 'security' }, { id: 'vpn', tab: 'security' },
   { id: 'admin', tab: 'admin' },
-  { id: 'status', tab: 'status' }, { id: 'log', tab: 'status' }, { id: 'files', tab: 'status' },
+  { id: 'status', tab: 'status' }, { id: 'files', tab: 'status' }, { id: 'log', tab: 'status' },
 ];
 
 /** Pages of a device: Security (firewall, routes, VPN) only on a Linux router; Ficheros only on Linux. */

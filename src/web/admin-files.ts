@@ -1,4 +1,4 @@
-/** Estado → Ficheros of the management GUI: the configuration files of a service as they are now (read-only). */
+/** Estado → Configuración of the management GUI: the configuration files of a service as they are now (read-only), as vim highlights them. */
 import { t, tDynamic } from '../i18n/t.ts';
 import type { Server } from '../devices/server.ts';
 import { h } from './html.ts';
@@ -6,6 +6,14 @@ import type { Child } from './html.ts';
 import { cards, section } from './admin-layout.ts';
 import { hostFs } from '../devices/host-fs.ts';
 import { configFiles, configSources } from '../services/config-files.ts';
+import { filetypeOf, highlight } from '../editors/vim-syntax.ts';
+
+/** The file with vim's highlight groups as spans (h() escapes every text). */
+function syntaxPre(path: string, content: string): Child {
+  const ft = filetypeOf(path);
+  const lines = highlight(content, ft).map((line, i) => [i ? '\n' : '', ...line.map((s) => (s.group ? h('span', { class: `syn-${s.group.toLowerCase()}` }, s.text) : s.text))]);
+  return h('pre', { class: 'web-adm-log syn-view', 'data-filetype': ft }, lines);
+}
 
 export function filesPage(server: Server, base: string, q: ReadonlyMap<string, string>): Child {
   const sources = configSources(server);
@@ -18,6 +26,6 @@ export function filesPage(server: Server, base: string, q: ReadonlyMap<string, s
   return [
     h('ul', { class: 'web-adm-tabs' }, tabs),
     cards(section(tDynamic(current.label), t('files.hint'),
-      files.length ? files.map((f) => [h('h3', { class: 'web-adm-mono' }, f.path), h('pre', { class: 'web-adm-log' }, f.content)]) : t('files.none'))),
+      files.length ? files.map((f) => [h('h3', { class: 'web-adm-mono' }, f.path), syntaxPre(f.path, f.content)]) : t('files.none'))),
   ];
 }

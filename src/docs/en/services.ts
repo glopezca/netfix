@@ -11,7 +11,7 @@ export const SERVICE_DOCS: DocGroup = {
       title: 'Server',
       summary: 'Server tabs, operating system and service names.',
       blocks: [
-        p('A Server is a device that provides network services. Each service has its own switch and panel in the Services tab; changes take effect immediately and are reflected in the configuration files seen by the Linux Terminal. The menu starts with SSH (the first thing to manage the device remotely) and ends with Logs (journalctl) and Files: pick a service and see its configuration files as they are on disk right now, as cat run by root shows them.'),
+        p('A Server is a device that provides network services. Each service has its own switch and panel in the Services tab; changes take effect immediately and are reflected in the configuration files seen by the Linux Terminal. The menu starts with SSH (the first thing to manage the device remotely) and ends with Configuration and Logs (journalctl). Configuration shows the configuration files of the chosen service as they are on disk right now, as cat run by root shows them, with the syntax highlighted in vim\'s colours (comments, directives, strings, numbers and addresses, record types…).'),
         table(['Service', 'Port', 'systemd unit (Ubuntu)', 'Windows service', 'Configuration on Linux'], [
           ['DHCP', '67/udp', 'kea-dhcp4-server', 'DHCPServer', '/etc/kea/kea-dhcp4.conf, /var/lib/kea/kea-leases4.csv'],
           ['DNS', '53/udp', 'bind9 (named)', 'DNS', '/etc/bind/named.conf.options, /etc/bind/named.conf.local, /etc/bind/db.<zone>'],

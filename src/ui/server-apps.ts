@@ -32,9 +32,9 @@ export function servicesTab(server: Server, app: AfterChange): HTMLElement {
     { id: 'dns', label: 'DNS', render: () => dnsPanel(server, app) },
     { id: 'http', label: 'HTTP', render: () => httpPanel(server, app) },
     { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
-    { id: 'log', label: t('srv.log'), render: () => logPanel(server) },
     // Windows Server keeps its configuration in the registry, not in files a teacher would open.
     ...(server.os === 'linux' ? [{ id: 'files', label: t('srv.files'), render: () => filesPanel(server) }] : []),
+    { id: 'log', label: t('srv.log'), render: () => logPanel(server) },
   ]);
 }
 

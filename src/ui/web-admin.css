@@ -114,3 +114,12 @@
 
 /* DNS → Nombres públicos: the RPZ file. */
 .browser-view .web-adm-file { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--font-mono); }
+/* Configuration files as vim shows them (default colour scheme, background=light) */
+.web-adm-log.syn-view { white-space: pre; overflow: auto; tab-size: 8; }
+.web-adm-log.syn-view .syn-comment { color: #0000ff; }
+.web-adm-log.syn-view .syn-constant, .web-adm-log.syn-view .syn-string, .web-adm-log.syn-view .syn-number { color: #ff00ff; }
+.web-adm-log.syn-view .syn-identifier { color: #008b8b; }
+.web-adm-log.syn-view .syn-statement { color: #a52a2a; font-weight: 700; }
+.web-adm-log.syn-view .syn-preproc { color: #a020f0; }
+.web-adm-log.syn-view .syn-type { color: #2e8b57; font-weight: 700; }
+.web-adm-log.syn-view .syn-special { color: #6a5acd; }
