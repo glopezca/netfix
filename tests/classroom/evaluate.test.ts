@@ -16,14 +16,14 @@ const passed = (r: ReturnType<typeof evaluate>): Record<string, boolean> => Obje
 
 test('devices, links, addressing and IOS configuration lines', () => {
   const checklist = parseChecklist([
-    { id: 'router', check: { type: 'device', device: 'Router0', kind: 'router' } },
+    { id: 'router', check: { type: 'device', device: 'GW', kind: 'router' } },
     { id: 'no-server', check: { type: 'device', device: 'SRV9' } },
     { id: 'cable', check: { type: 'link', a: 'PC0', b: 'Switch0' } },
-    { id: 'no-cable', check: { type: 'link', a: 'PC0', b: 'Router0' } },
+    { id: 'no-cable', check: { type: 'link', a: 'PC0', b: 'GW' } },
     { id: 'dhcp', weight: 2, check: { type: 'ip', device: 'PC1', mode: 'dhcp', network: '192.168.10.0/24', gateway: '192.168.10.1' } },
     { id: 'static', check: { type: 'ip', device: 'PC1', mode: 'static' } },
-    { id: 'pool', weight: 3, check: { type: 'config', device: 'Router0', lines: ['ip dhcp pool LAN', ' default-router 192.168.10.1'] } },
-    { id: 'no-pool', check: { type: 'config', device: 'Router0', lines: ['ip dhcp pool OTRO'] } },
+    { id: 'pool', weight: 3, check: { type: 'config', device: 'GW', lines: ['ip dhcp pool LAN', ' default-router 192.168.10.1'] } },
+    { id: 'no-pool', check: { type: 'config', device: 'GW', lines: ['ip dhcp pool OTRO'] } },
   ]);
   const r = evaluate(lab('basico'), checklist);
   assert.deepEqual(passed(r), { router: true, 'no-server': false, cable: true, 'no-cable': false, dhcp: true, static: false, pool: true, 'no-pool': false });
@@ -51,7 +51,7 @@ test('a check on a device that is missing or of the wrong kind fails with a reas
   const checklist = parseChecklist([
     { id: 'a', check: { type: 'ping', from: 'NADIE', to: '1.1.1.1' } },
     { id: 'b', check: { type: 'config', device: 'PC0', lines: ['hostname X'] } },
-    { id: 'c', check: { type: 'file', device: 'Router0', path: '/etc/hosts' } },
+    { id: 'c', check: { type: 'file', device: 'GW', path: '/etc/hosts' } },
     { id: 'd', check: { type: 'dns', from: 'Switch0', name: 'x.lan' } },
   ]);
   const r = evaluate(lab('basico'), checklist);
@@ -114,9 +114,9 @@ test('a ping expected to fail needs a probe that really left: no address, no rou
 
 test('config lines can be required inside one section (an interface, a pool)', () => {
   const r = evaluate(lab('basico'), parseChecklist([
-    { id: 'gi0', check: { type: 'config', device: 'Router0', section: 'interface GigabitEthernet0/0', lines: ['description LAN de alumnos', 'ip address 192.168.10.1 255.255.255.0'] } },
-    { id: 'gi1', check: { type: 'config', device: 'Router0', section: 'interface GigabitEthernet0/1', lines: ['ip address 192.168.10.1 255.255.255.0'] } },
-    { id: 'none', check: { type: 'config', device: 'Router0', section: 'interface Loopback9', lines: ['no shutdown'] } },
+    { id: 'gi0', check: { type: 'config', device: 'GW', section: 'interface GigabitEthernet0/0', lines: ['description LAN de alumnos', 'ip address 192.168.10.1 255.255.255.0'] } },
+    { id: 'gi1', check: { type: 'config', device: 'GW', section: 'interface GigabitEthernet0/1', lines: ['ip address 192.168.10.1 255.255.255.0'] } },
+    { id: 'none', check: { type: 'config', device: 'GW', section: 'interface Loopback9', lines: ['no shutdown'] } },
   ]));
   assert.deepEqual(passed(r), { gi0: true, gi1: false, none: false });
 });

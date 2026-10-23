@@ -58,8 +58,8 @@ const LAB_AREAS: Readonly<Record<string, (topo: Topology) => void>> = {
     area(o, ['PC0', 'PC1'], COLOR.lan, t('area.vlan', { id: '10', net: '172.16.10.0/24' }));
     area(o, ['PC2', 'PC3'], COLOR.lan2, t('area.vlan', { id: '20', net: '172.16.20.0/24' }));
   },
-  // The rogue DHCP server (Router1, 192.168.10.66) is inside: it shares the broadcast domain, which is the point.
-  snooping: (o) => area(o, ['Switch0', 'PC0', 'PC1', 'Router1'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
+  // The rogue DHCP server (ROGUE, 192.168.10.66) is inside: it shares the broadcast domain, which is the point.
+  snooping: (o) => area(o, ['SW', 'PC0', 'PC1', 'ROGUE'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
   servidores: (o) => area(o, ['Switch0', 'SRV', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.classroom'), '192.168.10.0/24')),
   internet: (o) => {
     internet(o, ['ISP-Norte', 'ISP-Sur']);
@@ -102,7 +102,7 @@ const LAB_AREAS: Readonly<Record<string, (topo: Topology) => void>> = {
  * is stretched from its top-left device, horizontally and vertically (tests/ui/lab-labels.test.ts keeps them apart).
  */
 const LAB_SPREAD: Readonly<Record<string, readonly [number, number]>> = {
-  relay: [1, 1.3], vlans: [1, 1.1], servidores: [1, 1.3], internet: [1, 1.4], 'vpn-ipsec': [1, 1.4], 'vpn-wireguard': [1, 1.4], 'linux-dmz': [1.3, 1.4], 'dns-reenvio': [1, 1.5],
+  basico: [1, 1.2], reservas: [1, 1.2], snooping: [1, 1.2], relay: [1, 1.3], vlans: [1, 1.1], servidores: [1, 1.3], internet: [1, 1.4], 'vpn-ipsec': [1, 1.4], 'vpn-wireguard': [1, 1.4], 'linux-dmz': [1.3, 1.4], 'dns-reenvio': [1, 1.5],
 };
 
 function spread(id: string, topo: Topology): void {

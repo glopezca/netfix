@@ -35,7 +35,7 @@ test('copy takes the devices, only the cables between them and the drawings; pas
   assert.deepEqual(out.devices.map((p) => p.label), ['Router1', 'PC2']);
   assert.deepEqual(out.devices.map((p) => [p.x, p.y]), [[140, 140], [140, 340]]);
   const [r2, pc2] = out.devices;
-  assert.equal((r2!.device as Router).hostname, 'R-AULA', 'the configuration comes along (running-config)');
+  assert.equal((r2!.device as Router).hostname, 'Router1', 'the hostname comes from the new name (v0.19.4), the rest of the configuration comes along');
   assert.equal((pc2!.device as Pc).config.ip, parseIp('192.168.1.10'));
   assert.equal((pc2!.device as Pc).name, 'pc2', 'host name derived from the new name');
   assert.notEqual((pc2!.device as Pc).mac, (pc.device as Pc).mac, 'a new MAC');

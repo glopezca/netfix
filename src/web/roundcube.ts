@@ -60,7 +60,7 @@ function shell(server: Server, base: string, title: string, s: RcSession, folder
         h('a', { href: link('_task=mail&_action=compose'), class: 'web-rc-compose' }, t('rc.composeLink')), h('ul', { class: 'web-rc-folders' }, nav),
         h('a', { href: link('_task=logout'), class: 'web-rc-logout' }, t('rc.logout', { address: s.address }))),
       h('main', { class: 'web-rc-main' }, main)),
-    h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), 'Roundcube Webmail · Netfix'));
+    h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-n' }, 'Netfix'), 'Roundcube Webmail · Netfix'));
 }
 
 function loginPage(base: string, error?: string): string {
@@ -73,7 +73,7 @@ function loginPage(base: string, error?: string): string {
         h('label', {}, t('rc.user'), h('input', { type: 'text', name: '_user', autocomplete: 'off' })),
         h('label', {}, t('rc.password'), h('input', { type: 'password', name: '_pass' })),
         h('button', { type: 'submit', class: 'web-rc-button' }, t('rc.login'))),
-      h('p', { class: 'web-rc-footer web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), 'Roundcube Webmail · Netfix')));
+      h('p', { class: 'web-rc-footer web-brand-foot' }, h('span', { class: 'web-brand-n' }, 'Netfix'), 'Roundcube Webmail · Netfix')));
 }
 
 function messageList(base: string, mails: readonly MailMessage[], folder: Folder, selected: number): Markup {

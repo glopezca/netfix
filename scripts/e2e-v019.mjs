@@ -41,7 +41,7 @@ try {
   await page.reload();
   await page.waitForSelector('g.device-router');
   const labs = page.locator('select.select').first();
-  await labs.selectOption('dhcp-basico').catch(() => labs.selectOption({ index: 1 }));
+  await labs.selectOption('basico');
   await page.waitForTimeout(300);
   await page.click('button[aria-label*="Ajustar"]');
   await page.waitForTimeout(200);
@@ -112,9 +112,12 @@ try {
 
   // Resize handles: the selected area grows from its south-east corner; Ctrl+Z gives it its size back.
   const area = page.locator('.drawing-rect').first();
+  await page.click('button[aria-label*="Ajustar"]');
+  await area.locator('.drawing-label').scrollIntoViewIfNeeded();
   const hit = await area.locator('.drawing-label').boundingBox();
   await page.mouse.click(hit.x + 4, hit.y + hit.height / 2);
-  assert.equal(await count(page, '.drawing-handle'), 8, 'eight handles: corners and midpoints');
+  const under = await page.evaluate(({ x, y }) => { const e = document.elementFromPoint(x, y); return `${e?.tagName}.${e?.getAttribute('class')} in ${e?.parentElement?.getAttribute('class')}`; }, { x: hit.x + 4, y: hit.y + hit.height / 2 });
+  assert.equal(await count(page, '.drawing-handle'), 8, `eight handles: corners and midpoints (clicked ${under})`);
   const width = Number(await area.locator('.drawing-shape').getAttribute('width'));
   const se = await page.locator('.drawing-handle-se').boundingBox();
   await page.mouse.move(se.x + se.width / 2, se.y + se.height / 2);
@@ -126,6 +129,21 @@ try {
   await page.keyboard.press('Control+z');
   assert.equal(Number(await page.locator('.drawing-rect').first().locator('.drawing-shape').getAttribute('width')), width);
   if (shots) await page.screenshot({ path: join(shots, 'v019.png') });
+
+  // v0.19.4: an IOS router's hostname comes from its name, as on the Linux devices (read-only in Equipo).
+  await page.dblclick('g.device-router');
+  const win = page.locator('.window:visible');
+  await win.locator('.win-tab:has-text("Equipo")').click();
+  const host = win.locator('input[name="hostname"]');
+  assert.deepEqual([await host.inputValue(), await host.getAttribute('readonly')], ['GW', '']);
+  await win.locator('input[name="label"]').fill('Sede Norte');
+  await win.locator('input[name="label"]').press('Enter');
+  await page.waitForFunction(() => document.querySelector('.window input[name="hostname"]')?.value === 'Sede-Norte', null, { timeout: 3000 });
+  await win.locator('.win-tab:has-text("CLI")').click();
+  await win.locator('.terminal').click();
+  for (const line of ['', 'enable', 'configure terminal', 'hostname R1']) { await page.keyboard.type(line); await page.keyboard.press('Enter'); await page.waitForTimeout(80); }
+  assert.match(await win.locator('.terminal').innerText(), /% In Netfix the hostname comes from the device name \(Device tab\)\s*Sede-Norte\(config\)#/);
+  await win.locator('.win-close').click();
 
   // English: the toolbar buttons are translated.
   assert.deepEqual(errors, []);

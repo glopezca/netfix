@@ -18,7 +18,7 @@ test('a deleted device comes back with its cables and its configuration, and can
   // Arrange
   const { topo, h, r, pc } = lab();
   const router = topo.get(r)?.device as Router;
-  router.hostname = 'GW';
+  router.domainName = 'aula.lab';
   // Act
   assert.equal(h.removeDevice(r), true);
   assert.equal(topo.get(r), undefined);
@@ -27,7 +27,7 @@ test('a deleted device comes back with its cables and its configuration, and can
   // Assert
   assert.equal(undone?.kind, 'remove');
   assert.equal(topo.get(r)?.device, router, 'the same device, with its running state');
-  assert.equal((topo.get(r)?.device as Router).hostname, 'GW');
+  assert.equal((topo.get(r)?.device as Router).domainName, 'aula.lab');
   assert.deepEqual(topo.net.links.map((l) => [l.a.device, l.b.device]), [[r, pc]]);
   assert.deepEqual(h.redo()?.removed, [r], 'redo deletes it again (its windows must close)');
   assert.equal(topo.get(r), undefined);

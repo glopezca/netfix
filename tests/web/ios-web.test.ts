@@ -20,7 +20,7 @@ function config(d: IosDevice, ...lines: string[]): string[] {
 
 function routerLab(): { t: Topology; r: Router; pc: Pc; web: BrowserEngine } {
   const t = new Topology();
-  const r = t.add('router', 0, 0).device as Router;
+  const r = t.add('router', 0, 0, { label: 'R1' }).device as Router;
   const pc = t.add('pc', 0, 0).device as Pc;
   t.connect({ device: r.id, port: 'GigabitEthernet0/0' }, { device: pc.id, port: 'FastEthernet0' });
   config(r, 'hostname R1', 'interface GigabitEthernet0/0', 'ip address 10.0.0.1 255.255.255.0', 'no shutdown', 'exit');
@@ -74,8 +74,8 @@ test('exec commands by URL and by the command form; configuration from the brows
   const form = web.open('http://10.0.0.1/level/15/exec/-', { form: [['command', 'show version']] });
   assert.match(body(form), /Cisco IOS Software/);
   const conf = web.open('http://10.0.0.1/level/15/configure/-', { method: 'POST', form: [['command', 'hostname Sede-Norte\ninterface Loopback0\n ip address 1.1.1.1 255.255.255.255']] });
-  assert.match(body(conf), /Sede-Norte\(config-if\)#/);
-  assert.equal(r.hostname, 'Sede-Norte');
+  assert.match(body(conf), /hostname comes from the device name[\s\S]*R1\(config-if\)#/, 'as in the CLI: the hostname is the device name');
+  assert.equal(r.hostname, 'R1');
   assert.ok(r.iface('Loopback0'));
 });
 
@@ -90,7 +90,7 @@ test('privilege levels: a level-1 user gets user EXEC only', () => {
 
 test('a switch serves its Device Manager on the SVI and applies port settings', () => {
   const t = new Topology();
-  const sw = t.add('switch', 0, 0).device as Switch;
+  const sw = t.add('switch', 0, 0, { label: 'SW1' }).device as Switch;
   const pc = t.add('pc', 0, 0).device as Pc;
   t.connect({ device: sw.id, port: 'FastEthernet0/1' }, { device: pc.id, port: 'FastEthernet0' });
   config(sw, 'hostname SW1', 'interface Vlan1', 'ip address 10.0.0.2 255.255.255.0', 'no shutdown', 'exit', 'enable secret class', 'ip http server', 'ip http port 8080');

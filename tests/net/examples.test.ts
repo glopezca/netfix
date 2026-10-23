@@ -30,6 +30,6 @@ test('snooping example ignores the rogue gateway', () => {
 
 test('client example gives the CPE its fixed WAN address', () => {
   const t = EXAMPLES.find((e) => e.id === 'cliente')!.build();
-  const cpe = t.byLabel('Router1') as Router;
+  const cpe = t.byLabel('CPE') as Router;
   assert.equal(formatIp(cpe.dhcpLearned('GigabitEthernet0/1')!.ip), '100.64.0.77');
 });

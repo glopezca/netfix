@@ -1,6 +1,6 @@
 /** A workspace: devices with positions and labels, links, and JSON persistence. */
 import { t } from '../i18n/t.ts';
-import { registerPlaced, renameDevice, syncDeviceName } from './device-names.ts';
+import { registerPlaced, renameDevice, savedLabel, syncDeviceName } from './device-names.ts';
 import { nicsToJson, routesToJson, restoreNics, restoreRoutes } from './topology-nics.ts';
 import type { NicRecord, RouteRecord } from './topology-nics.ts';
 import { LinuxRouter } from '../devices/linux-router.ts';
@@ -187,6 +187,7 @@ export class Topology {
     this.net.addDevice(d);
     this.placed.set(id, placed);
     registerPlaced(placed, () => this.placed.values());
+    syncDeviceName(placed); // a device added meanwhile may have taken its host name
   }
 
   get(id: string): Placed | undefined {
@@ -245,8 +246,9 @@ export class Topology {
   static fromJSON(data: unknown): Topology {
     const file = validateFile(data);
     const topo = new Topology();
+    const labels = new Set(file.devices.map((d) => d.label));
     for (const d of file.devices) {
-      const placed = topo.add(d.kind, d.x, d.y, { id: d.id, seed: d.seed, label: d.label });
+      const placed = topo.add(d.kind, d.x, d.y, { id: d.id, seed: d.seed, label: savedLabel(d, labels) });
       restore(placed.device, d);
       const n = Number(/^d(\d+)$/.exec(d.id)?.[1] ?? 0);
       topo.nextId = Math.max(topo.nextId, n + 1);

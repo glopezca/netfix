@@ -1,7 +1,8 @@
 /**
  * Caption under a device in the diagram: its name and, below, what identifies it on the network: the IP/CIDR of each
- * NIC with an address and no cable (with a cable, it goes under the interface name at the end of the cable), the IOS
- * hostname when it is not the default one, the public block of a cloud. The host name of a PC, Server, Linux router or cloud is derived from its name, so it is not repeated.
+ * NIC with an address and no cable (with a cable, it goes under the interface name at the end of the cable), the
+ * addresses of IOS virtual interfaces, the public block of a cloud. The host name (IOS `hostname` too) is derived from
+ * the name, so it is not repeated.
  */
 import type { Placed } from '../net/topology.ts';
 import { formatIp } from '../core/ip.ts';
@@ -14,7 +15,6 @@ import type { Rect } from './canvas-geometry.ts';
 const MAX_LINES = 3;
 /** Height of each caption line below the device name. */
 export const CAPTION_LINE = 14;
-const IOS_DEFAULTS: ReadonlySet<string> = new Set(['Router', 'Switch']);
 
 export interface DeviceCaption {
   readonly name: string;
@@ -26,7 +26,7 @@ function extraLines(p: Placed, linked?: (port: string) => boolean): string[] {
   const d = p.device;
   // A cloud: its public block, as a device shows its IP/CIDR (the provider name is in its ISP tab).
   if (d.kind === 'cloud') return [`${formatIp(d.settings.block)}/${BLOCK_PREFIX}`];
-  if (d.kind === 'router' || d.kind === 'switch') return [...(IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname]), ...iosVirtualAddresses(d)];
+  if (d.kind === 'router' || d.kind === 'switch') return iosVirtualAddresses(d);
   return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined && !linked?.(n.port) ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
 }
 

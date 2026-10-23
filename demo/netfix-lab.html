@@ -1359,11 +1359,9 @@ const HOST_ES = {
     'host.err.long': 'El nombre de host admite como máximo {max} caracteres.',
     'host.err.label': 'Cada parte del nombre admite como máximo {max} caracteres.',
     'host.err.chars': 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).',
-    'iosdev.hostnameHint': 'Es el «hostname» de IOS: aparece en el prompt (Router#) y en show running-config.',
-    'iosdev.badHostname': 'Nombre de host IOS no válido: una sola palabra que empiece por una letra (máximo 63 caracteres).',
-    'iosdev.labelSaved': 'Aplicado. Nombre del equipo cambiado.',
-    'iosdev.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo; no cambia la red ni el hostname de IOS.',
-    'iosdev.eq': 'CLI: configure terminal → hostname NOMBRE (se guarda con copy running-config startup-config).',
+    'iosdev.hostnameHint': 'Es el «hostname» de IOS (prompt Router# y show running-config). Siempre se deriva del nombre del equipo, conservando mayúsculas: no se puede cambiar con el comando hostname ni desde la gestión web.',
+    'iosdev.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo; de él sale el hostname de IOS (letras, cifras y guiones; empieza por una letra).',
+    'iosdev.eq': 'CLI: hostname solo acepta el nombre actual; para cambiarlo, cambia el nombre del equipo (se guarda con copy running-config startup-config).',
     'iosdev.eqIfaces': 'Las interfaces (descripción, dirección, VLAN, shutdown) se cambian en la pestaña Interfaces, en la CLI o en la Gestión web.',
 };
 
@@ -1395,11 +1393,9 @@ const HOST_EN = {
     'host.err.long': 'The host name allows at most {max} characters.',
     'host.err.label': 'Each part of the name allows at most {max} characters.',
     'host.err.chars': 'Use only unaccented letters, digits and hyphens (no spaces; it cannot start or end with a hyphen).',
-    'iosdev.hostnameHint': 'The IOS “hostname”: it appears in the prompt (Router#) and in show running-config.',
-    'iosdev.badHostname': 'Invalid IOS host name: a single word starting with a letter (63 characters at most).',
-    'iosdev.labelSaved': 'Applied. Device name changed.',
-    'iosdev.labelHint': 'Shown in the diagram and applied when it changes; it does not change the network or the IOS hostname.',
-    'iosdev.eq': 'CLI: configure terminal → hostname NAME (saved with copy running-config startup-config).',
+    'iosdev.hostnameHint': 'The IOS “hostname” (Router# prompt and show running-config). It always comes from the device name, keeping case: neither the hostname command nor web management can change it.',
+    'iosdev.labelHint': 'Shown in the diagram and applied when it changes; the IOS hostname comes from it (letters, digits and hyphens, starting with a letter).',
+    'iosdev.eq': 'CLI: hostname only accepts the current name; to change it, change the device name (saved with copy running-config startup-config).',
     'iosdev.eqIfaces': 'Interfaces (description, address, VLAN, shutdown) are changed in the Interfaces tab, in the CLI or in Web management.',
 };
 
@@ -4484,22 +4480,38 @@ function hostnameFromLabel(label) {
     const cut = plain.slice(0, MAX_LABEL).replace(/-+$/, '');
     return cut || FALLBACK;
 }
+const IOS_FALLBACK = { router: 'Router', switch: 'Switch' };
+/**
+ * IOS `hostname` of a router or switch from its workspace name: case kept, accents and ñ to plain letters, anything
+ * else to single hyphens; it must start with a letter (else «Router-…» / «Switch-…»), at most 63 characters.
+ */
+function iosHostnameFromLabel(label, kind) {
+    const plain = label.normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const named = !plain ? IOS_FALLBACK[kind] : /^[A-Za-z]/.test(plain) ? plain : `${IOS_FALLBACK[kind]}-${plain}`;
+    return named.slice(0, MAX_LABEL).replace(/-+$/, '');
+}
 
-return { hostnameFromLabel };
+return { hostnameFromLabel, iosHostnameFromLabel };
 })();
 __m["net/device-names.js"] = (() => {
-const { hostnameFromLabel } = __m["core/hostname.js"];
+const { hostnameFromLabel, iosHostnameFromLabel } = __m["core/hostname.js"];
 const MAX_NAME = 63;
 /** The devices a placed one lives with (its topology), to keep host names apart. */
 const owners = new WeakMap();
 function registerPlaced(p, all) {
     owners.set(p, all);
 }
+const isIos = (p) => p.device.kind === 'router' || p.device.kind === 'switch';
+/** The name a device shows now (IOS: compared without case). */
+const shown = (p) => (p.device.kind === 'router' || p.device.kind === 'switch' ? p.device.hostname.toLowerCase() : p.device.name);
 function freeName(p) {
-    const base = hostnameFromLabel(p.label);
-    const taken = new Set([...(owners.get(p)?.() ?? [])].flatMap((o) => (o === p || o.device.kind === 'router' || o.device.kind === 'switch' ? [] : [o.device.name])));
+    const d = p.device;
+    const base = d.kind === 'router' || d.kind === 'switch' ? iosHostnameFromLabel(p.label, d.kind) : hostnameFromLabel(p.label);
+    const ios = isIos(p);
+    const taken = new Set([...(owners.get(p)?.() ?? [])].flatMap((o) => (o === p || isIos(o) !== ios ? [] : [shown(o)])));
+    const key = (n) => (ios ? n.toLowerCase() : n);
     let name = base;
-    for (let i = 2; taken.has(name); i++)
+    for (let i = 2; taken.has(key(name)); i++)
         name = `${base.slice(0, MAX_NAME - String(i).length - 1).replace(/-+$/, '')}-${i}`;
     return name;
 }
@@ -4509,7 +4521,9 @@ function syncDeviceName(p) {
     const name = freeName(p);
     if (d.kind === 'cloud')
         d.name = name;
-    else if (d.kind !== 'router' && d.kind !== 'switch' && (d.name !== name || d.transientName !== undefined))
+    else if (d.kind === 'router' || d.kind === 'switch')
+        d.setDerivedHostname(name);
+    else if (d.name !== name || d.transientName !== undefined)
         d.setHostname(name);
 }
 /** Equipo → name: the label and, from it, the host name. */
@@ -4517,8 +4531,29 @@ function renameDevice(p, label) {
     p.label = label;
     syncDeviceName(p);
 }
+const IOS_DEFAULT = /^(Router|Switch)$/;
+const MAX_LABEL = 64;
+/**
+ * The name a saved device opens with. Before v0.19.4 an IOS hostname was set apart from the name (CLI `hostname`):
+ * a file whose running-config names the router otherwise opens with that hostname as its name, so the student's
+ * work keeps its prompt and both stay in step from then on, unless another device has that name. Files of this
+ * version always agree.
+ */
+function savedLabel(rec, taken) {
+    if (rec.kind !== 'router' && rec.kind !== 'switch')
+        return rec.label;
+    const line = rec.config?.find((l) => l.startsWith('hostname '));
+    const name = line?.slice('hostname '.length).trim() ?? '';
+    if (!name || IOS_DEFAULT.test(name) || name.length > MAX_LABEL || iosHostnameFromLabel(rec.label, rec.kind) === name)
+        return rec.label;
+    // Another device already has (or took) that name: this one keeps its own, so names stay unique.
+    if (taken.has(name))
+        return rec.label;
+    taken.add(name);
+    return name;
+}
 
-return { registerPlaced, syncDeviceName, renameDevice };
+return { registerPlaced, syncDeviceName, renameDevice, savedLabel };
 })();
 __m["core/ip.js"] = (() => {
 /** IPv4 helpers. Addresses are unsigned 32-bit numbers. */
@@ -17242,7 +17277,7 @@ const NETFIX_DOCS = {
                 list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo. En cada extremo se ven la luz del enlace, el nombre corto de la interfaz (Gig0/0, Fa0) y debajo su dirección IP/CIDR (también la aprendida por DHCP; en un trunk de router, las de sus subinterfaces).', 'Seleccionar: arrastra equipos; doble clic abre su ventana. Con un equipo o un cable seleccionado, Supr o Retroceso lo borra (un equipo se lleva sus cables).', 'Selección múltiple: arrastra un recuadro sobre el fondo para seleccionar los equipos y dibujos que queden dentro (Mayús añade a la selección; Mayús+clic añade o quita uno). Arrastrar uno de ellos mueve todo el grupo; Supr lo borra y Escape quita la selección. Para desplazar la vista usa la rueda, el botón central o derecho, Espacio+arrastrar o un dedo.', 'En pantallas táctiles: arrastrar el fondo desplaza la vista; mantenerlo pulsado medio segundo y después arrastrar dibuja el recuadro (añade a la selección). Tocar el fondo quita la selección, arrastrar un elemento seleccionado mueve el grupo, el doble toque abre un equipo y el botón 🗑 de la barra borra la selección.', 'Copiar (Ctrl+C, ⧉), Pegar (Ctrl+V, ⎘), Duplicar (Ctrl+D, ⊕; ⌘ en Mac) y Borrar la selección (Supr, 🗑): copian los equipos con su configuración, los cables entre ellos y los dibujos. Cada copia recibe un nombre libre (y su nombre de host), MAC nuevas y, si es una nube, otro bloque público; aparece desplazada y queda seleccionada. Lo copiado sirve también en otro laboratorio. Pegar o duplicar se deshace de una vez.', 'Eliminar: borra equipos o cables.', 'Deshacer (Ctrl+Z, ↶) y Rehacer (Ctrl+Y o Ctrl+Mayús+Z, ↷): añadir, borrar o mover equipos, cables y dibujos (hasta 100 pasos). Un equipo borrado vuelve con sus cables y su configuración; lo escrito dentro de un equipo (CLI, paneles) no se deshace desde aquí.', 'Dibujo: abre la barra para delimitar áreas, trazar líneas y escribir etiquetas (ver «Dibujo»).'),
                 h('Ventanas de los equipos'),
                 table(['Equipo', 'Pestañas'], [
-                    ['Router IOS / Switch IOS', 'Equipo (nombre visible y hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
+                    ['Router IOS / Switch IOS', 'Equipo (nombre visible y, derivado de él, el hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
                     ['Nube ISP', 'Equipo (nombre y nombre de host derivado), ISP (proveedor, bloque público, dominios), Interfaces (resumen de las seis líneas) y Líneas (modo, LAN, NAT, redirección de puertos).'],
                     ['PC', 'Equipo, Interfaces (MAC, enlace, velocidad, extremo del cable y estado del puerto), Configuración IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Terminal Windows y Terminal Linux.'],
                     ['Router Linux', 'Equipo, Interfaces (dirección de eth0-eth2, MAC, extremo del cable, reenvío y rutas), Servicios (Parámetros, Firewall, VPN, y los servicios de Server empezando por SSH) y Terminal Linux.'],
@@ -17445,7 +17480,7 @@ const IOS_DOCS = {
             summary: 'El resto de órdenes de configuración disponibles en routers y switches.',
             blocks: [
                 table(['Orden', 'Uso'], [
-                    ['hostname NOMBRE · banner motd #texto# · enable secret|password', 'Identidad y acceso.'],
+                    ['hostname NOMBRE · banner motd #texto# · enable secret|password', 'Identidad y acceso. En Netfix el hostname sale del nombre del equipo (pestaña Equipo), como en los equipos Linux: hostname solo acepta ese nombre, y al cargar una configuración guardada o pegada su línea hostname se ignora.'],
                     ['interface IF · interface range fa0/1 - 10', 'Seleccionar interfaces (g0/0, fa0/1, g0/0.10…).'],
                     ['ip address IP MÁSCARA [secondary] · ip address dhcp', 'Dirección de la interfaz.'],
                     ['shutdown / no shutdown · description · speed · duplex', 'Estado y parámetros físicos.'],
@@ -18719,7 +18754,7 @@ const NETFIX_DOCS = {
                 list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically. Each end shows the link light, the short interface name (Gig0/0, Fa0) and its IP/CIDR below (also one learnt by DHCP; on a router trunk, those of its subinterfaces).', 'Select: drag devices; double-click opens their window. With a device or a cable selected, Del or Backspace removes it (a device takes its cables with it).', 'Multiple selection: drag a box over the background to select the devices and drawings inside it (Shift adds to the selection; Shift+click adds or removes one). Dragging one of them moves the whole group; Del deletes it and Escape clears the selection. To pan the view use the wheel, the middle or right button, Space+drag or one finger.', 'On touch screens: dragging the background pans the view; pressing and holding it for half a second and then dragging draws the box (adding to the selection). A tap on the background clears the selection, dragging a selected item moves the group, a double tap opens a device and the 🗑 button on the bar deletes the selection.', 'Copy (Ctrl+C, ⧉), Paste (Ctrl+V, ⎘), Duplicate (Ctrl+D, ⊕; ⌘ on a Mac) and Delete the selection (Del, 🗑): copy the devices with their configuration, the cables between them and the drawings. Each copy gets a free name (and its host name), new MACs and, for a cloud, another public block; it appears offset and stays selected. What was copied can be pasted in another lab too. A paste or duplicate is undone in one step.', 'Delete: removes devices or cables.', 'Undo (Ctrl+Z, ↶) and Redo (Ctrl+Y or Ctrl+Shift+Z, ↷): adding, deleting or moving devices, cables and drawings (up to 100 steps). A deleted device comes back with its cables and its configuration; what is typed inside a device (CLI, panels) is not undone from here.', 'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).'),
                 h('Device windows'),
                 table(['Device', 'Tabs'], [
-                    ['IOS router / IOS switch', 'Device (workspace name and hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
+                    ['IOS router / IOS switch', 'Device (workspace name and, derived from it, the hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
                     ['ISP Cloud', 'Device (name and derived host name), ISP (provider, public block, domains), Interfaces (summary of the six lines) and Lines (mode, LAN, NAT, port forwarding).'],
                     ['PC', 'Device, Interfaces (MAC, link, speed, far end of the cable and port status), IP Config, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and Linux terminal.'],
                     ['Linux router', 'Device, Interfaces (address of eth0-eth2, MAC, far end of the cable, forwarding and routes), Services (Parameters, Firewall, VPN, and the Server services starting with SSH) and Linux terminal.'],
@@ -18922,7 +18957,7 @@ const IOS_DOCS = {
             summary: 'The remaining configuration commands available on routers and switches.',
             blocks: [
                 table(['Command', 'Use'], [
-                    ['hostname NAME · banner motd #text# · enable secret|password', 'Identity and access.'],
+                    ['hostname NAME · banner motd #text# · enable secret|password', 'Identity and access. In Netfix the hostname comes from the device name (Device tab), as on the Linux devices: hostname only accepts that name, and its line is ignored when a saved or pasted configuration is loaded.'],
                     ['interface IF · interface range fa0/1 - 10', 'Select interfaces (g0/0, fa0/1, g0/0.10…).'],
                     ['ip address IP MASK [secondary] · ip address dhcp', 'Interface address.'],
                     ['shutdown / no shutdown · description · speed · duplex', 'Status and physical parameters.'],
@@ -27303,7 +27338,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.19.3",
+    "version": "0.19.4",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -38211,7 +38246,10 @@ const { SimClock } = __m["core/clock.js"];
 const { defaultIface, compareIfaces } = __m["ios/interfaces.js"];
 const { DEFAULT_HTTP } = __m["ios/http.js"];
 class IosDevice {
-    hostname;
+    /** The hostname the configuration sets (CLI, saved file, reload); ignored while the name is derived. */
+    ownHostname;
+    /** The hostname derived from the device name in the workspace (net/device-names.ts); null off a workspace. */
+    derivedHostname = null;
     enableSecret;
     enablePassword;
     bannerMotd;
@@ -38227,8 +38265,23 @@ class IosDevice {
     clock;
     listeners = new Set();
     constructor(hostname, clock) {
-        this.hostname = hostname;
+        this.ownHostname = hostname;
         this.clock = clock;
+    }
+    /** As in IOS, except that on a workspace it always is the name derived from the device name. */
+    get hostname() {
+        return this.derivedHostname ?? this.ownHostname;
+    }
+    set hostname(name) {
+        this.ownHostname = name;
+    }
+    /** The derived hostname, or null when the device is not on a workspace and `hostname` sets it freely. */
+    lockedHostname() {
+        return this.derivedHostname;
+    }
+    /** Puts the hostname derived from the workspace name (Equipo → Nombre). */
+    setDerivedHostname(name) {
+        this.derivedHostname = name;
     }
     /** Address learned through `ip address dhcp`, if any (routers and switch SVIs). */
     dhcpLearned(_name) {
@@ -40389,7 +40442,8 @@ function applyConfig(device, lines) {
     const errors = [];
     for (const raw of lines) {
         const line = raw.replace(/\r$/, '');
-        if (shouldSkipConfigLine(line))
+        // On a workspace the hostname comes from the device name: a saved file, a lab or a pasted configuration keeps it.
+        if (shouldSkipConfigLine(line) || (device.lockedHostname() !== null && /^hostname\s/.test(line)))
             continue;
         if (!line.startsWith(' ') && session.mode !== 'config')
             session.mode = 'config';
@@ -40463,6 +40517,8 @@ const { secretHash } = __m["core/hash.js"];
 const { selectInterface, selectInterfaceRange } = __m["ios/commands/iface-select.js"];
 const { showIpInterfaceBrief, showInterfaces } = __m["ios/commands/show-iface.js"];
 const { HTTP_GLOBAL } = __m["ios/http.js"];
+/** On a workspace the hostname comes from the device name, as on the Linux devices (literal IOS-style message). */
+const HOSTNAME_LOCKED = '% In Netfix the hostname comes from the device name (Device tab)';
 const MAX_HOSTNAME = 63;
 function startupBytes(device) {
     return (device.startupConfig ?? []).reduce((n, l) => n + l.length + 1, 0);
@@ -40542,12 +40598,20 @@ const GLOBAL = [
         syntax: 'hostname <WORD:name>',
         run: (cli, m) => {
             const name = m.get('name') ?? '';
+            const locked = cli.device.lockedHostname();
             if (!/^[a-z]/i.test(name) || name.length > MAX_HOSTNAME)
                 cli.out('% Hostname contains one or more illegal characters.');
+            else if (locked !== null && name !== locked)
+                cli.out(HOSTNAME_LOCKED);
             else
                 cli.device.hostname = name;
         },
-        noRun: (cli) => { cli.device.hostname = cli.device.kind === 'router' ? 'Router' : 'Switch'; },
+        noRun: (cli) => {
+            if (cli.device.lockedHostname() !== null)
+                cli.out(HOSTNAME_LOCKED);
+            else
+                cli.device.hostname = cli.device.kind === 'router' ? 'Router' : 'Switch';
+        },
     },
     { syntax: 'enable secret [0] <WORD:pw>', run: (cli, m) => { cli.device.enableSecret = secretHash(m.get('pw') ?? ''); }, noRun: (cli) => { cli.device.enableSecret = undefined; } },
     { syntax: 'enable secret 5 <WORD:hash>', run: (cli, m) => { cli.device.enableSecret = m.get('hash'); }, hidden: true },
@@ -40608,7 +40672,7 @@ function formatIps(ips) {
     return ips.map(formatIp).join(' ');
 }
 
-return { renderRunning, EXEC_USER, EXEC_PRIV, GLOBAL, LINE_MODE, endConfig, formatIps };
+return { HOSTNAME_LOCKED, renderRunning, EXEC_USER, EXEC_PRIV, GLOBAL, LINE_MODE, endConfig, formatIps };
 })();
 __m["ios/commands/iface.js"] = (() => {
 const { isSubinterface, parseIfaceName } = __m["ios/interfaces.js"];
@@ -43572,10 +43636,10 @@ function shell(server, base, title, s, folder, main) {
         const n = server.mailboxes.list(boxKey(s.user, f)).length;
         return h('li', { class: f === folder ? 'web-rc-current' : undefined }, h('a', { href: link(`_task=mail&_mbox=${f}`) }, t(label), n ? h('span', { class: 'web-rc-count' }, String(n)) : null));
     });
-    return page(`Roundcube Webmail :: ${title}`, 'web-rc', h('div', { class: 'web-rc-layout' }, h('nav', { class: 'web-rc-menu' }, h('div', { class: 'web-rc-logo' }, 'roundcube'), h('a', { href: link('_task=mail&_action=compose'), class: 'web-rc-compose' }, t('rc.composeLink')), h('ul', { class: 'web-rc-folders' }, nav), h('a', { href: link('_task=logout'), class: 'web-rc-logout' }, t('rc.logout', { address: s.address }))), h('main', { class: 'web-rc-main' }, main)), h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), 'Roundcube Webmail · Netfix'));
+    return page(`Roundcube Webmail :: ${title}`, 'web-rc', h('div', { class: 'web-rc-layout' }, h('nav', { class: 'web-rc-menu' }, h('div', { class: 'web-rc-logo' }, 'roundcube'), h('a', { href: link('_task=mail&_action=compose'), class: 'web-rc-compose' }, t('rc.composeLink')), h('ul', { class: 'web-rc-folders' }, nav), h('a', { href: link('_task=logout'), class: 'web-rc-logout' }, t('rc.logout', { address: s.address }))), h('main', { class: 'web-rc-main' }, main)), h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-n' }, 'Netfix'), 'Roundcube Webmail · Netfix'));
 }
 function loginPage(base, error) {
-    return page(t('rc.welcome'), 'web-rc web-rc-login', h('div', { class: 'web-rc-loginbox' }, h('div', { class: 'web-rc-logo' }, 'roundcube'), error ? h('p', { class: 'web-rc-error' }, error) : null, h('form', { method: 'post', action: `${base}/?_task=login` }, h('input', { type: 'hidden', name: '_action', value: 'login' }), h('label', {}, t('rc.user'), h('input', { type: 'text', name: '_user', autocomplete: 'off' })), h('label', {}, t('rc.password'), h('input', { type: 'password', name: '_pass' })), h('button', { type: 'submit', class: 'web-rc-button' }, t('rc.login'))), h('p', { class: 'web-rc-footer web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), 'Roundcube Webmail · Netfix')));
+    return page(t('rc.welcome'), 'web-rc web-rc-login', h('div', { class: 'web-rc-loginbox' }, h('div', { class: 'web-rc-logo' }, 'roundcube'), error ? h('p', { class: 'web-rc-error' }, error) : null, h('form', { method: 'post', action: `${base}/?_task=login` }, h('input', { type: 'hidden', name: '_action', value: 'login' }), h('label', {}, t('rc.user'), h('input', { type: 'text', name: '_user', autocomplete: 'off' })), h('label', {}, t('rc.password'), h('input', { type: 'password', name: '_pass' })), h('button', { type: 'submit', class: 'web-rc-button' }, t('rc.login'))), h('p', { class: 'web-rc-footer web-brand-foot' }, h('span', { class: 'web-brand-n' }, 'Netfix'), 'Roundcube Webmail · Netfix')));
 }
 function messageList(base, mails, folder, selected) {
     if (!mails.length)
@@ -45522,7 +45586,7 @@ function model(device) {
 }
 function frame(device, title, body) {
     const nav = [['/', 'Home'], ['/level/15/exec/-', 'Monitor'], ['/level/15/configure/-', 'Configure'], ['/level/15/dm', 'Device Manager']];
-    return page(title, 'web-ios', h('div', { class: 'web-ios-top' }, h('span', { class: 'web-ios-logo' }, 'cisco'), h('span', { class: 'web-ios-host' }, `${device.hostname} · ${device.model}`)), h('div', { class: 'web-ios-nav' }, nav.map(([href, label]) => h('a', { href }, label))), h('div', { class: 'web-ios-main' }, body), h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), t('ios.foot')));
+    return page(title, 'web-ios', h('div', { class: 'web-ios-top' }, h('span', { class: 'web-ios-logo' }, 'cisco'), h('span', { class: 'web-ios-host' }, `${device.hostname} · ${device.model}`)), h('div', { class: 'web-ios-nav' }, nav.map(([href, label]) => h('a', { href }, label))), h('div', { class: 'web-ios-main' }, body), h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-n' }, 'Netfix'), t('ios.foot')));
 }
 function homePage(device, level) {
     const levels = Array.from({ length: level + 1 }, (_, i) => i);
@@ -46569,7 +46633,7 @@ return { BACKBONE, HOP_MS, InternetCore };
 __m["net/topology.js"] = (() => {
 /** A workspace: devices with positions and labels, links, and JSON persistence. */
 const { t } = __m["i18n/t.js"];
-const { registerPlaced, renameDevice, syncDeviceName } = __m["net/device-names.js"];
+const { registerPlaced, renameDevice, savedLabel, syncDeviceName } = __m["net/device-names.js"];
 const { nicsToJson, routesToJson, restoreNics, restoreRoutes } = __m["net/topology-nics.js"];
 const { LinuxRouter } = __m["devices/linux-router.js"];
 const { savedFiles, restoreFiles, bootKernel } = __m["shells/host-system.js"];
@@ -46679,6 +46743,7 @@ class Topology {
         this.net.addDevice(d);
         this.placed.set(id, placed);
         registerPlaced(placed, () => this.placed.values());
+        syncDeviceName(placed); // a device added meanwhile may have taken its host name
     }
     get(id) {
         return this.placed.get(id);
@@ -46729,8 +46794,9 @@ class Topology {
     static fromJSON(data) {
         const file = validateFile(data);
         const topo = new Topology();
+        const labels = new Set(file.devices.map((d) => d.label));
         for (const d of file.devices) {
-            const placed = topo.add(d.kind, d.x, d.y, { id: d.id, seed: d.seed, label: d.label });
+            const placed = topo.add(d.kind, d.x, d.y, { id: d.id, seed: d.seed, label: savedLabel(d, labels) });
             restore(placed.device, d);
             const n = Number(/^d(\d+)$/.exec(d.id)?.[1] ?? 0);
             topo.nextId = Math.max(topo.nextId, n + 1);
@@ -47488,7 +47554,6 @@ const { iosVirtualAddresses } = __m["ui/port-address.js"];
 const MAX_LINES = 3;
 /** Height of each caption line below the device name. */
 const CAPTION_LINE = 14;
-const IOS_DEFAULTS = new Set(['Router', 'Switch']);
 /** `linked`: ports with a cable, whose address goes at the end of the cable instead (link-labels.ts). */
 function extraLines(p, linked) {
     const d = p.device;
@@ -47496,7 +47561,7 @@ function extraLines(p, linked) {
     if (d.kind === 'cloud')
         return [`${formatIp(d.settings.block)}/${BLOCK_PREFIX}`];
     if (d.kind === 'router' || d.kind === 'switch')
-        return [...(IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname]), ...iosVirtualAddresses(d)];
+        return iosVirtualAddresses(d);
     return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined && !linked?.(n.port) ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
 }
 function deviceCaption(p, linked) {
@@ -49140,23 +49205,20 @@ function watchPointer() {
 return { nextId, input, field, select, button, onOff, message, table, copyRow, subnav, onCommit };
 })();
 __m["ui/ios-device-settings.js"] = (() => {
-/** IOS router / switch → «Equipo»: name in the workspace and `hostname` of the running configuration. */
+/** IOS router / switch → «Equipo»: name in the workspace and, derived from it, the `hostname` of the running configuration. */
 const { el, replaceKeepingFocus } = __m["ui/dom.js"];
 const { field, input, message, onCommit } = __m["ui/forms.js"];
-const { applyConfig } = __m["ios/session.js"];
+const { renameDevice } = __m["net/device-names.js"];
 const { t } = __m["i18n/t.js"];
 const MAX_LABEL = 40;
-/** Same rule as the CLI `hostname`: a leading letter, one word, at most 63 characters. */
-const IOS_HOSTNAME = /^[A-Za-z]\S{0,62}$/;
 function iosDeviceSettings(placed, d, app) {
     const msg = message();
     const root = el('div', { class: 'pane' });
     const refresh = () => {
-        // The CLI may have renamed the device since the last visit.
         app.retitle(`${placed.label} · ${d.hostname}`);
         const label = input({ value: placed.label, maxlength: String(MAX_LABEL), name: 'label' });
-        const hostname = input({ value: d.hostname, maxlength: '63', name: 'hostname' });
-        // Each field applies on its own when it changes (Enter or leaving it), as `hostname` does in the CLI.
+        // As on the Linux devices, the hostname is derived from the name: shown, never edited.
+        const hostname = input({ value: d.hostname, readonly: '', class: 'mono', name: 'hostname', tabindex: '-1' });
         onCommit(label, () => {
             const shown = label.value.trim().slice(0, MAX_LABEL);
             if (!shown) {
@@ -49165,22 +49227,7 @@ function iosDeviceSettings(placed, d, app) {
             }
             if (shown === placed.label)
                 return;
-            placed.label = shown;
-            app.afterCommand();
-            refresh();
-            msg.ok(t('iosdev.labelSaved'));
-        });
-        onCommit(hostname, () => {
-            const name = hostname.value.trim();
-            if (name === d.hostname)
-                return;
-            if (!IOS_HOSTNAME.test(name)) {
-                hostname.value = d.hostname;
-                return msg.error(t('iosdev.badHostname'));
-            }
-            const errors = applyConfig(d, [`hostname ${name}`]);
-            if (errors.length)
-                return msg.error(errors.join(' '));
+            renameDevice(placed, shown);
             app.afterCommand();
             refresh();
             msg.ok(t('host.saved', { name: d.hostname }));
@@ -54188,8 +54235,8 @@ const LAB_AREAS = {
         area(o, ['PC0', 'PC1'], COLOR.lan, t('area.vlan', { id: '10', net: '172.16.10.0/24' }));
         area(o, ['PC2', 'PC3'], COLOR.lan2, t('area.vlan', { id: '20', net: '172.16.20.0/24' }));
     },
-    // The rogue DHCP server (Router1, 192.168.10.66) is inside: it shares the broadcast domain, which is the point.
-    snooping: (o) => area(o, ['Switch0', 'PC0', 'PC1', 'Router1'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
+    // The rogue DHCP server (ROGUE, 192.168.10.66) is inside: it shares the broadcast domain, which is the point.
+    snooping: (o) => area(o, ['SW', 'PC0', 'PC1', 'ROGUE'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
     servidores: (o) => area(o, ['Switch0', 'SRV', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.classroom'), '192.168.10.0/24')),
     internet: (o) => {
         internet(o, ['ISP-Norte', 'ISP-Sur']);
@@ -54231,7 +54278,7 @@ const LAB_AREAS = {
  * is stretched from its top-left device, horizontally and vertically (tests/ui/lab-labels.test.ts keeps them apart).
  */
 const LAB_SPREAD = {
-    relay: [1, 1.3], vlans: [1, 1.1], servidores: [1, 1.3], internet: [1, 1.4], 'vpn-ipsec': [1, 1.4], 'vpn-wireguard': [1, 1.4], 'linux-dmz': [1.3, 1.4], 'dns-reenvio': [1, 1.5],
+    basico: [1, 1.2], reservas: [1, 1.2], snooping: [1, 1.2], relay: [1, 1.3], vlans: [1, 1.1], servidores: [1, 1.3], internet: [1, 1.4], 'vpn-ipsec': [1, 1.4], 'vpn-wireguard': [1, 1.4], 'linux-dmz': [1.3, 1.4], 'dns-reenvio': [1, 1.5],
 };
 function spread(id, topo) {
     const factor = LAB_SPREAD[id];
@@ -54829,9 +54876,10 @@ function conf(dev, text) {
 function link(t, a, ap, b, bp) {
     t.connect({ device: a, port: ap }, { device: b, port: bp });
 }
-function lanBase(t, pcs) {
-    const r = t.add('router', 460, 140).device;
-    const s = t.add('switch', 460, 320).device;
+/** Router GW, a switch (its name gives its hostname) and `pcs` PCs. */
+function lanBase(t, pcs, sw) {
+    const r = t.add('router', 460, 140, { label: 'GW' }).device;
+    const s = t.add('switch', 460, 320, sw ? { label: sw } : {}).device;
     link(t, r.id, 'GigabitEthernet0/0', s.id, 'GigabitEthernet0/1');
     const p = Array.from({ length: pcs }, (_, i) => {
         const pc = t.add('pc', 220 + i * 240, 520).device;
@@ -54898,8 +54946,8 @@ ip dhcp pool PC1-FIJO
         summary: LABS_ES['lab.relay.summary'],
         build: () => {
             const t = new Topology();
-            const srv = t.add('router', 240, 140).device;
-            const edge = t.add('router', 600, 140).device;
+            const srv = t.add('router', 240, 140, { label: 'DHCP-SRV' }).device;
+            const edge = t.add('router', 600, 140, { label: 'EDGE' }).device;
             const s = t.add('switch', 600, 320).device;
             link(t, srv.id, 'GigabitEthernet0/0', edge.id, 'GigabitEthernet0/0');
             link(t, edge.id, 'GigabitEthernet0/1', s.id, 'GigabitEthernet0/1');
@@ -54937,7 +54985,7 @@ interface GigabitEthernet0/1
         summary: LABS_ES['lab.vlans.summary'],
         build: () => {
             const t = new Topology();
-            const { r, s, p } = lanBase(t, 4);
+            const { r, s, p } = lanBase(t, 4, 'SW-ACCESO');
             conf(s, `
 hostname SW-ACCESO
 vlan 10
@@ -54979,8 +55027,8 @@ interface GigabitEthernet0/0.20
         summary: LABS_ES['lab.snooping.summary'],
         build: () => {
             const t = new Topology();
-            const { r, s, p } = lanBase(t, 2);
-            const rogue = t.add('router', 820, 320).device;
+            const { r, s, p } = lanBase(t, 2, 'SW');
+            const rogue = t.add('router', 820, 320, { label: 'ROGUE' }).device;
             link(t, rogue.id, 'GigabitEthernet0/0', s.id, 'FastEthernet0/24');
             conf(r, `${GATEWAY_LAN}
 interface GigabitEthernet0/0
@@ -55008,8 +55056,8 @@ interface GigabitEthernet0/1
         summary: LABS_ES['lab.cliente.summary'],
         build: () => {
             const t = new Topology();
-            const isp = t.add('router', 300, 200).device;
-            const cpe = t.add('router', 640, 200).device;
+            const isp = t.add('router', 300, 200, { label: 'ISP' }).device;
+            const cpe = t.add('router', 640, 200, { label: 'CPE' }).device;
             link(t, isp.id, 'GigabitEthernet0/0', cpe.id, 'GigabitEthernet0/1');
             conf(isp, `
 hostname ISP
@@ -55039,7 +55087,7 @@ interface GigabitEthernet0/1
         build: () => {
             const t = new Topology();
             const ip = (x) => parseIp(x) ?? 0;
-            const r = t.add('router', 460, 120).device;
+            const r = t.add('router', 460, 120, { label: 'GW' }).device;
             const s = t.add('switch', 460, 300).device;
             const srv = t.add('server', 760, 300, { label: 'SRV' }).device;
             link(t, r.id, 'GigabitEthernet0/0', s.id, 'GigabitEthernet0/1');

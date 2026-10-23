@@ -17,14 +17,14 @@ test('a PC: the name, then IP/CIDR; no host name repeated', () => {
   assert.deepEqual(deviceCaption(p), { name: 'PC0', extra: ['192.168.1.10/24'] });
 });
 
-test('a Linux router: one line per NIC with an address; an IOS router keeps its hostname; a cloud its ISP', () => {
+test('a Linux router: one line per NIC with an address; an IOS router adds nothing (its hostname is its name); a cloud its ISP', () => {
   const t = new Topology();
   const lr = t.add('linuxrouter', 0, 0);
   createShell(lr.device as Server, 'linux', 'root').run('ip addr add 10.0.0.1/8 dev eth0; ip addr add 192.168.1.1/24 dev eth2');
   assert.deepEqual(deviceCaption(lr).extra, ['10.0.0.1/8', '192.168.1.1/24']);
   const r = t.add('router', 0, 0);
-  assert.deepEqual(deviceCaption(r).extra, [], 'hostname Router: nothing to add');
+  assert.deepEqual(deviceCaption(r).extra, [], 'its hostname is its name: nothing to add');
   (r.device as Router).hostname = 'R1';
-  assert.deepEqual(deviceCaption(r).extra, ['R1']);
+  assert.deepEqual([deviceCaption(r).extra, (r.device as Router).hostname], [[], 'Router0'], 'the hostname cannot drift from the name');
   assert.deepEqual(deviceCaption(t.add('cloud', 0, 0)), { name: 'Cloud0', extra: ['81.32.0.0/16'] }, 'a cloud: its public block, like a device its IP/CIDR');
 });

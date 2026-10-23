@@ -49,7 +49,10 @@ export type ConsoleListener = (line: string) => void;
 export abstract class IosDevice {
   abstract readonly kind: DeviceKind;
   abstract readonly model: string;
-  hostname: string;
+  /** The hostname the configuration sets (CLI, saved file, reload); ignored while the name is derived. */
+  private ownHostname: string;
+  /** The hostname derived from the device name in the workspace (net/device-names.ts); null off a workspace. */
+  private derivedHostname: string | null = null;
   enableSecret: string | undefined;
   enablePassword: string | undefined;
   bannerMotd: string | undefined;
@@ -66,8 +69,27 @@ export abstract class IosDevice {
   private readonly listeners = new Set<ConsoleListener>();
 
   constructor(hostname: string, clock: SimClock) {
-    this.hostname = hostname;
+    this.ownHostname = hostname;
     this.clock = clock;
+  }
+
+  /** As in IOS, except that on a workspace it always is the name derived from the device name. */
+  get hostname(): string {
+    return this.derivedHostname ?? this.ownHostname;
+  }
+
+  set hostname(name: string) {
+    this.ownHostname = name;
+  }
+
+  /** The derived hostname, or null when the device is not on a workspace and `hostname` sets it freely. */
+  lockedHostname(): string | null {
+    return this.derivedHostname;
+  }
+
+  /** Puts the hostname derived from the workspace name (Equipo → Nombre). */
+  setDerivedHostname(name: string): void {
+    this.derivedHostname = name;
   }
 
   abstract modeTable(): ModeTable<IosDevice>;

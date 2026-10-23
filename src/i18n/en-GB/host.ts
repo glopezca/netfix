@@ -26,10 +26,8 @@ export const HOST_EN: Readonly<Record<HostKey, string>> = {
   'host.err.long': 'The host name allows at most {max} characters.',
   'host.err.label': 'Each part of the name allows at most {max} characters.',
   'host.err.chars': 'Use only unaccented letters, digits and hyphens (no spaces; it cannot start or end with a hyphen).',
-  'iosdev.hostnameHint': 'The IOS “hostname”: it appears in the prompt (Router#) and in show running-config.',
-  'iosdev.badHostname': 'Invalid IOS host name: a single word starting with a letter (63 characters at most).',
-  'iosdev.labelSaved': 'Applied. Device name changed.',
-  'iosdev.labelHint': 'Shown in the diagram and applied when it changes; it does not change the network or the IOS hostname.',
-  'iosdev.eq': 'CLI: configure terminal → hostname NAME (saved with copy running-config startup-config).',
+  'iosdev.hostnameHint': 'The IOS “hostname” (Router# prompt and show running-config). It always comes from the device name, keeping case: neither the hostname command nor web management can change it.',
+  'iosdev.labelHint': 'Shown in the diagram and applied when it changes; the IOS hostname comes from it (letters, digits and hyphens, starting with a letter).',
+  'iosdev.eq': 'CLI: hostname only accepts the current name; to change it, change the device name (saved with copy running-config startup-config).',
   'iosdev.eqIfaces': 'Interfaces (description, address, VLAN, shutdown) are changed in the Interfaces tab, in the CLI or in Web management.',
 };

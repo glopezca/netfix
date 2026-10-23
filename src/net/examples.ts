@@ -30,9 +30,10 @@ function link(t: Topology, a: string, ap: string, b: string, bp: string): void {
   t.connect({ device: a, port: ap }, { device: b, port: bp });
 }
 
-function lanBase(t: Topology, pcs: number): { r: Router; s: Switch; p: Pc[] } {
-  const r = t.add('router', 460, 140).device as Router;
-  const s = t.add('switch', 460, 320).device as Switch;
+/** Router GW, a switch (its name gives its hostname) and `pcs` PCs. */
+function lanBase(t: Topology, pcs: number, sw?: string): { r: Router; s: Switch; p: Pc[] } {
+  const r = t.add('router', 460, 140, { label: 'GW' }).device as Router;
+  const s = t.add('switch', 460, 320, sw ? { label: sw } : {}).device as Switch;
   link(t, r.id, 'GigabitEthernet0/0', s.id, 'GigabitEthernet0/1');
   const p = Array.from({ length: pcs }, (_, i) => {
     const pc = t.add('pc', 220 + i * 240, 520).device as Pc;
@@ -102,8 +103,8 @@ ip dhcp pool PC1-FIJO
     summary: LABS_ES['lab.relay.summary'],
     build: () => {
       const t = new Topology();
-      const srv = t.add('router', 240, 140).device as Router;
-      const edge = t.add('router', 600, 140).device as Router;
+      const srv = t.add('router', 240, 140, { label: 'DHCP-SRV' }).device as Router;
+      const edge = t.add('router', 600, 140, { label: 'EDGE' }).device as Router;
       const s = t.add('switch', 600, 320).device as Switch;
       link(t, srv.id, 'GigabitEthernet0/0', edge.id, 'GigabitEthernet0/0');
       link(t, edge.id, 'GigabitEthernet0/1', s.id, 'GigabitEthernet0/1');
@@ -141,7 +142,7 @@ interface GigabitEthernet0/1
     summary: LABS_ES['lab.vlans.summary'],
     build: () => {
       const t = new Topology();
-      const { r, s, p } = lanBase(t, 4);
+      const { r, s, p } = lanBase(t, 4, 'SW-ACCESO');
       conf(s, `
 hostname SW-ACCESO
 vlan 10
@@ -183,8 +184,8 @@ interface GigabitEthernet0/0.20
     summary: LABS_ES['lab.snooping.summary'],
     build: () => {
       const t = new Topology();
-      const { r, s, p } = lanBase(t, 2);
-      const rogue = t.add('router', 820, 320).device as Router;
+      const { r, s, p } = lanBase(t, 2, 'SW');
+      const rogue = t.add('router', 820, 320, { label: 'ROGUE' }).device as Router;
       link(t, rogue.id, 'GigabitEthernet0/0', s.id, 'FastEthernet0/24');
       conf(r, `${GATEWAY_LAN}
 interface GigabitEthernet0/0
@@ -212,8 +213,8 @@ interface GigabitEthernet0/1
     summary: LABS_ES['lab.cliente.summary'],
     build: () => {
       const t = new Topology();
-      const isp = t.add('router', 300, 200).device as Router;
-      const cpe = t.add('router', 640, 200).device as Router;
+      const isp = t.add('router', 300, 200, { label: 'ISP' }).device as Router;
+      const cpe = t.add('router', 640, 200, { label: 'CPE' }).device as Router;
       link(t, isp.id, 'GigabitEthernet0/0', cpe.id, 'GigabitEthernet0/1');
       conf(isp, `
 hostname ISP
@@ -243,7 +244,7 @@ interface GigabitEthernet0/1
     build: () => {
       const t = new Topology();
       const ip = (x: string): number => parseIp(x) ?? 0;
-      const r = t.add('router', 460, 120).device as Router;
+      const r = t.add('router', 460, 120, { label: 'GW' }).device as Router;
       const s = t.add('switch', 460, 300).device as Switch;
       const srv = t.add('server', 760, 300, { label: 'SRV' }).device as Server;
       link(t, r.id, 'GigabitEthernet0/0', s.id, 'GigabitEthernet0/1');

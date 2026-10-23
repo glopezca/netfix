@@ -753,3 +753,42 @@ antes de Registros, tanto en la pestaña Servicios como en Estado de la gestión
 - **Pruebas.** `e2e-brand` comprueba con estilos calculados que la viñeta es el SVG y que el pie lleva la N, y guarda
   capturas para revisarlas. `admin-listen` comprueba el marcado del pie.
 
+## Fase 31 · Hostname de IOS derivado del nombre del equipo; la N en todas las WebGUI (v0.19.4)
+
+**Marcas.** El pie de la WebGUI de los equipos IOS y el de Roundcube también llevan el isotipo de la N.
+
+**Regla de los equipos Linux aplicada a IOS:** el `hostname` sale siempre del nombre del equipo.
+
+- **Cómo se deriva** (`iosHostnameFromLabel`). Se conservan las mayúsculas; acentos y ñ pasan a letras simples; el
+  resto de caracteres, a guiones. Si no empieza por letra, se antepone «Router-» o «Switch-». Como mucho 63 caracteres.
+  Si dos nombres dan el mismo hostname entre equipos IOS (sin distinguir mayúsculas), el segundo recibe -2.
+- **En la CLI** (y en la configuración desde la gestión web): `hostname` con otro nombre, o `no hostname`, responde
+  `% In Netfix the hostname comes from the device name (Device tab)`. El mismo nombre se acepta.
+- **Configuración repetida** (`applyConfig`: archivos, laboratorios, configuración pegada). Su línea `hostname` se
+  ignora en silencio. `write erase` y `reload` mantienen el nombre derivado.
+- **Fuera de un área de trabajo** (pruebas de la CLI, corrector), `hostname` funciona como en IOS.
+- **Pestaña Equipo.** El hostname es de solo lectura; cambiar el nombre lo cambia.
+- **Rótulo del diagrama.** Ya no repite el hostname, que es el propio nombre.
+- **Archivos anteriores.** Un archivo de una versión anterior cuyo `hostname` se puso desde la CLI (por ejemplo
+  «Router0» con `hostname GW`) se abre con ese hostname como nombre del equipo (`savedLabel`). Así el trabajo del
+  alumno conserva su prompt; el valor por defecto `Router`/`Switch` no cuenta.
+- **Laboratorios.** Los equipos se llaman como su hostname: GW, DHCP-SRV, EDGE, SW-ACCESO, SW, ROGUE, ISP y CPE. Las
+  zonas siguen esos nombres, y básico, reservas y snooping se estiran un 20 % en vertical para que ninguna etiqueta
+  tape el nombre de una zona.
+- **Pruebas.** `tests/net/ios-names.test.ts` cubre la derivación, el renombrado, la CLI, la recarga, los archivos
+  antiguos, el equipo fuera del área de trabajo y los laboratorios. Las demás pruebas que contaban con el
+  comportamiento anterior se han adaptado.
+
+**Revisión ECC (code-reviewer, sonnet).** Se corrigieron dos fallos medios:
+
+- **Nombres repetidos al migrar.** Dos routers con `hostname R1`, o un hostname igual al nombre de otro equipo, ya no
+  dan nombres repetidos: el segundo conserva su nombre.
+- **Hostname repetido tras deshacer.** `restorePlaced` vuelve a derivar siempre el nombre, así que deshacer un borrado
+  no deja dos equipos con el mismo hostname.
+
+**Aviso alto, aceptado y anotado.** Las comprobaciones del aula se buscan por el nombre del equipo, y los laboratorios
+han pasado de «Router0» a «GW» (y equivalentes). Al actualizar el submódulo en FixIT Classroom hay que revisar las
+listas de comprobación que nombren «Router0», «Router1» o «Switch» de laboratorios antiguos.
+
+**Aviso bajo.** Un hostname antiguo con caracteres que IOS no admite aquí (como `R_1`) pasa a `R-1`.
+

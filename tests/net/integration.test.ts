@@ -158,8 +158,8 @@ interface GigabitEthernet0/1
 
 test('router interface as DHCP client: ip address dhcp, default route and client-identifier', () => {
   const t = new Topology();
-  const isp = t.add('router', 0, 0).device as Router;
-  const cpe = t.add('router', 0, 0).device as Router;
+  const isp = t.add('router', 0, 0, { label: 'ISP' }).device as Router;
+  const cpe = t.add('router', 0, 0, { label: 'CPE' }).device as Router;
   t.connect({ device: isp.id, port: 'GigabitEthernet0/0' }, { device: cpe.id, port: 'GigabitEthernet0/1' });
   const cid = cpe.plane.clientIdText('GigabitEthernet0/1');
   assert.match(cid, /^0063\.6973\.636f\.2d/, 'cisco-<mac>-Gi0/1 client id');

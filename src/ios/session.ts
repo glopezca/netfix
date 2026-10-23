@@ -314,7 +314,8 @@ export function applyConfig(device: IosDevice, lines: readonly string[]): string
   const errors: string[] = [];
   for (const raw of lines) {
     const line = raw.replace(/\r$/, '');
-    if (shouldSkipConfigLine(line)) continue;
+    // On a workspace the hostname comes from the device name: a saved file, a lab or a pasted configuration keeps it.
+    if (shouldSkipConfigLine(line) || (device.lockedHostname() !== null && /^hostname\s/.test(line))) continue;
     if (!line.startsWith(' ') && session.mode !== 'config') session.mode = 'config';
     const out = session.input(line);
     // In a saved configuration an interface without "shutdown" is enabled.

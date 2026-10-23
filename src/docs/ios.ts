@@ -139,7 +139,7 @@ export const IOS_DOCS: DocGroup = {
       summary: 'El resto de órdenes de configuración disponibles en routers y switches.',
       blocks: [
         table(['Orden', 'Uso'], [
-          ['hostname NOMBRE · banner motd #texto# · enable secret|password', 'Identidad y acceso.'],
+          ['hostname NOMBRE · banner motd #texto# · enable secret|password', 'Identidad y acceso. En Netfix el hostname sale del nombre del equipo (pestaña Equipo), como en los equipos Linux: hostname solo acepta ese nombre, y al cargar una configuración guardada o pegada su línea hostname se ignora.'],
           ['interface IF · interface range fa0/1 - 10', 'Seleccionar interfaces (g0/0, fa0/1, g0/0.10…).'],
           ['ip address IP MÁSCARA [secondary] · ip address dhcp', 'Dirección de la interfaz.'],
           ['shutdown / no shutdown · description · speed · duplex', 'Estado y parámetros físicos.'],

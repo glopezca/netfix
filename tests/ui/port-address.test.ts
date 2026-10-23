@@ -55,5 +55,5 @@ test('review: IOS addresses with no cable end (SVI, loopback) go under the devic
   assert.deepEqual(deviceCaption(sw, () => true).extra, ['Vlan1 192.168.1.2/24']);
   const r = t.add('router', 0, 0);
   applyConfig(r.device as Router, ['hostname R1', 'interface Loopback0', ' ip address 1.1.1.1 255.255.255.255']);
-  assert.deepEqual(deviceCaption(r, () => true).extra, ['R1', 'Lo0 1.1.1.1/32']);
+  assert.deepEqual(deviceCaption(r, () => true).extra, ['Lo0 1.1.1.1/32']);
 });

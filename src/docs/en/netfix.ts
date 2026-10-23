@@ -35,7 +35,7 @@ export const NETFIX_DOCS: DocGroup = {
         ),
         h('Device windows'),
         table(['Device', 'Tabs'], [
-          ['IOS router / IOS switch', 'Device (workspace name and hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
+          ['IOS router / IOS switch', 'Device (workspace name and, derived from it, the hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
           ['ISP Cloud', 'Device (name and derived host name), ISP (provider, public block, domains), Interfaces (summary of the six lines) and Lines (mode, LAN, NAT, port forwarding).'],
           ['PC', 'Device, Interfaces (MAC, link, speed, far end of the cable and port status), IP Config, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and Linux terminal.'],
           ['Linux router', 'Device, Interfaces (address of eth0-eth2, MAC, far end of the cable, forwarding and routes), Services (Parameters, Firewall, VPN, and the Server services starting with SSH) and Linux terminal.'],

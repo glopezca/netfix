@@ -9,6 +9,9 @@ import { selectInterface, selectInterfaceRange } from './iface-select.ts';
 import { showIpInterfaceBrief, showInterfaces } from './show-iface.ts';
 import { HTTP_GLOBAL } from '../http.ts';
 
+/** On a workspace the hostname comes from the device name, as on the Linux devices (literal IOS-style message). */
+export const HOSTNAME_LOCKED = '% In Netfix the hostname comes from the device name (Device tab)';
+
 type Def = CommandDef<Cli<IosDevice>>;
 
 const MAX_HOSTNAME = 63;
@@ -90,10 +93,15 @@ export const GLOBAL: readonly Def[] = [
     syntax: 'hostname <WORD:name>',
     run: (cli, m) => {
       const name = m.get('name') ?? '';
+      const locked = cli.device.lockedHostname();
       if (!/^[a-z]/i.test(name) || name.length > MAX_HOSTNAME) cli.out('% Hostname contains one or more illegal characters.');
+      else if (locked !== null && name !== locked) cli.out(HOSTNAME_LOCKED);
       else cli.device.hostname = name;
     },
-    noRun: (cli) => { cli.device.hostname = cli.device.kind === 'router' ? 'Router' : 'Switch'; },
+    noRun: (cli) => {
+      if (cli.device.lockedHostname() !== null) cli.out(HOSTNAME_LOCKED);
+      else cli.device.hostname = cli.device.kind === 'router' ? 'Router' : 'Switch';
+    },
   },
   { syntax: 'enable secret [0] <WORD:pw>', run: (cli, m) => { cli.device.enableSecret = secretHash(m.get('pw') ?? ''); }, noRun: (cli) => { cli.device.enableSecret = undefined; } },
   { syntax: 'enable secret 5 <WORD:hash>', run: (cli, m) => { cli.device.enableSecret = m.get('hash'); }, hidden: true },

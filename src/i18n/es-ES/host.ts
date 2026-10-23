@@ -24,11 +24,9 @@ export const HOST_ES = {
   'host.err.long': 'El nombre de host admite como máximo {max} caracteres.',
   'host.err.label': 'Cada parte del nombre admite como máximo {max} caracteres.',
   'host.err.chars': 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).',
-  'iosdev.hostnameHint': 'Es el «hostname» de IOS: aparece en el prompt (Router#) y en show running-config.',
-  'iosdev.badHostname': 'Nombre de host IOS no válido: una sola palabra que empiece por una letra (máximo 63 caracteres).',
-  'iosdev.labelSaved': 'Aplicado. Nombre del equipo cambiado.',
-  'iosdev.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo; no cambia la red ni el hostname de IOS.',
-  'iosdev.eq': 'CLI: configure terminal → hostname NOMBRE (se guarda con copy running-config startup-config).',
+  'iosdev.hostnameHint': 'Es el «hostname» de IOS (prompt Router# y show running-config). Siempre se deriva del nombre del equipo, conservando mayúsculas: no se puede cambiar con el comando hostname ni desde la gestión web.',
+  'iosdev.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo; de él sale el hostname de IOS (letras, cifras y guiones; empieza por una letra).',
+  'iosdev.eq': 'CLI: hostname solo acepta el nombre actual; para cambiarlo, cambia el nombre del equipo (se guarda con copy running-config startup-config).',
   'iosdev.eqIfaces': 'Las interfaces (descripción, dirección, VLAN, shutdown) se cambian en la pestaña Interfaces, en la CLI o en la Gestión web.',
 } as const;
 

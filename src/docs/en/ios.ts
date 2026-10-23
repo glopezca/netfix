@@ -139,7 +139,7 @@ export const IOS_DOCS: DocGroup = {
       summary: 'The remaining configuration commands available on routers and switches.',
       blocks: [
         table(['Command', 'Use'], [
-          ['hostname NAME · banner motd #text# · enable secret|password', 'Identity and access.'],
+          ['hostname NAME · banner motd #text# · enable secret|password', 'Identity and access. In Netfix the hostname comes from the device name (Device tab), as on the Linux devices: hostname only accepts that name, and its line is ignored when a saved or pasted configuration is loaded.'],
           ['interface IF · interface range fa0/1 - 10', 'Select interfaces (g0/0, fa0/1, g0/0.10…).'],
           ['ip address IP MASK [secondary] · ip address dhcp', 'Interface address.'],
           ['shutdown / no shutdown · description · speed · duplex', 'Status and physical parameters.'],

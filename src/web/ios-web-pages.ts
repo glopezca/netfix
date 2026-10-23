@@ -20,7 +20,7 @@ export function frame(device: IosDevice, title: string, body: readonly Child[]):
     h('div', { class: 'web-ios-top' }, h('span', { class: 'web-ios-logo' }, 'cisco'), h('span', { class: 'web-ios-host' }, `${device.hostname} · ${device.model}`)),
     h('div', { class: 'web-ios-nav' }, nav.map(([href, label]) => h('a', { href }, label))),
     h('div', { class: 'web-ios-main' }, body),
-    h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), t('ios.foot')));
+    h('p', { class: 'web-brand-foot' }, h('span', { class: 'web-brand-n' }, 'Netfix'), t('ios.foot')));
 }
 
 export function homePage(device: IosDevice, level: number): Markup {

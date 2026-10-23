@@ -63,7 +63,7 @@ test('crypto map config: modes, NOTE, ISAKMP ON and running-config', () => {
   const s = new Session(r1);
   s.mode = 'config';
   s.input('crypto isakmp policy 20');
-  assert.equal(s.prompt(), 'Router(config-isakmp)#');
+  assert.equal(s.prompt(), 'Router0(config-isakmp)#', 'the hostname of its name in the workspace');
   assert.deepEqual(cli(r1, 'config', 'crypto ipsec transform-set BAD esp-sha-hmac'), ['% Invalid input detected.']);
 });
 
