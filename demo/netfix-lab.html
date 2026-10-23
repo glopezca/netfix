@@ -1321,6 +1321,8 @@ const HOST_ES = {
     'host.live': 'El nombre descriptivo se actualiza solo si lo cambias desde la terminal.',
     'host.err.empty': 'El nombre de host no puede estar vacío.',
     'host.locked': 'en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)',
+    'resolvectl.oneServer': 'Netfix usa un servidor DNS por equipo: se queda el primero, {ip}',
+    'resolvectl.primaryOnly': 'en Netfix el DNS y los dominios se cambian en el enlace principal ({link})',
     'host.err.long': 'El nombre de host admite como máximo {max} caracteres.',
     'host.err.label': 'Cada parte del nombre admite como máximo {max} caracteres.',
     'host.err.chars': 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).',
@@ -1355,6 +1357,8 @@ const HOST_EN = {
     'host.live': 'The pretty name updates by itself when you change it from the terminal.',
     'host.err.empty': 'The host name cannot be empty.',
     'host.locked': 'in Netfix the host name comes from the device name (Device tab)',
+    'resolvectl.oneServer': 'Netfix uses one DNS server per device: the first one is kept, {ip}',
+    'resolvectl.primaryOnly': 'in Netfix the DNS server and domains are set on the main link ({link})',
     'host.err.long': 'The host name allows at most {max} characters.',
     'host.err.label': 'Each part of the name allows at most {max} characters.',
     'host.err.chars': 'Use only unaccented letters, digits and hyphens (no spaces; it cannot start or end with a hyphen).',
@@ -13161,11 +13165,43 @@ function runSync(hooks, op, maxMs = DEFAULT_MAX_MS) {
 
 return { runSync };
 })();
+__m["shells/resolved.js"] = (() => {
+const overrides = new WeakMap();
+const transactions = new WeakMap();
+function live(host) {
+    const o = overrides.get(host);
+    if (o && o.base !== host.config) {
+        overrides.delete(host);
+        return undefined;
+    }
+    return o;
+}
+/** The DNS server the resolver uses: the one set with resolvectl, else the device's. */
+const resolvedDns = (host) => live(host)?.dns ?? host.config.dns;
+/** Domains set with resolvectl, or undefined to use the configured ones. */
+const resolvedDomains = (host) => live(host)?.domains;
+function setResolvedDns(host, dns) {
+    overrides.set(host, { ...live(host), base: host.config, dns });
+}
+function setResolvedDomains(host, domains) {
+    overrides.set(host, { ...live(host), base: host.config, domains });
+}
+function revertResolved(host) {
+    overrides.delete(host);
+}
+function countTransaction(host) {
+    transactions.set(host, (transactions.get(host) ?? 0) + 1);
+}
+const transactionCount = (host) => transactions.get(host) ?? 0;
+
+return { resolvedDns, resolvedDomains, setResolvedDns, setResolvedDomains, revertResolved, countTransaction, transactionCount };
+})();
 __m["shells/net-tools.js"] = (() => {
 const { firstAddress, normalizeName, reverseName } = __m["net/dns.js"];
 const { runSync } = __m["net/sync.js"];
 const { parseIp } = __m["core/ip.js"];
 const { peekHostFile } = __m["devices/host-fs.js"];
+const { countTransaction, resolvedDns, resolvedDomains } = __m["shells/resolved.js"];
 const DNS_WAIT_MS = 6000;
 const DEFAULT_HTTP_PORT = 80;
 const TCP_WAIT_MS = 6000;
@@ -13173,10 +13209,16 @@ const TCP_WAIT_MS = 6000;
 const SSH_WAIT_MS = 60_000;
 function dnsQuery(host, name, type, server) {
     const target = type === 'PTR' ? name : normalizeName(name);
-    return runSync(host.hooks, (done) => host.lookup(target, type, done, server ?? host.config.dns), DNS_WAIT_MS) ?? { kind: 'timeout', server: server ?? 0 };
+    const to = server ?? resolvedDns(host);
+    countTransaction(host);
+    return runSync(host.hooks, (done) => host.lookup(target, type, done, to), DNS_WAIT_MS) ?? { kind: 'timeout', server: to ?? 0 };
 }
 /** The search domains of the host: netplan's `nameservers.search`, then the DHCP domain (option 15) while the lease lasts. */
 function searchDomains(host) {
+    const runtime = resolvedDomains(host);
+    // resolvectl domain: routing-only domains (~example.com, ~.) are not search domains.
+    if (runtime)
+        return runtime.filter((d) => !d.startsWith('~')).map(normalizeName);
     const domain = host.config.mode === 'dhcp' ? host.dhcpClient.lease?.domainName : undefined;
     return [...new Set([...host.dnsSearch.map(normalizeName), ...(domain ? [normalizeName(domain)] : [])])];
 }
@@ -20510,6 +20552,7 @@ const UTIL_DOCS = {
     netplan: { group: 'red', section: 8, synopsis: 'netplan {apply | try | generate | get | info}', summary: 'Aplica /etc/netplan/*.yaml (unidos por orden de nombre) a la interfaz eth0: dhcp4, addresses, routes (to: default, via), nameservers (addresses y search: dominios de búsqueda, también con DHCP). try revierte si no confirmas con Intro. Los errores indican fichero:línea:columna.' },
     traceroute: { group: 'red', synopsis: 'traceroute [-n] [-m SALTOS] DESTINO', summary: 'Ruta hasta el destino: sondas ICMP con TTL 1, 2, 3… (como traceroute -I); cada router responde «tiempo excedido». -n sin nombres, -m máximo de saltos (30).' },
     ping: { group: 'red', synopsis: 'ping [-b] [-c N] DESTINO', summary: 'Eco ICMP (sin -c, 4 paquetes en Netfix). A una dirección broadcast hace falta -b; las respuestas repetidas salen con (DUP!). Estado 0 si responde, 1 si no, 2 si el nombre no se resuelve.' },
+    resolvectl: { group: 'red', section: 1, synopsis: 'resolvectl [status [ENLACE]] | query [-t TIPO] [--legend=no] NOMBRE|IP... | dns [ENLACE [SERVIDOR]] | domain [ENLACE [DOMINIO...]] | revert ENLACE | flush-caches | statistics', summary: 'Cliente de systemd-resolved: estado por enlace (servidor DNS, dominios, ruta por defecto), consultas con el mismo resolutor que ping (/etc/hosts, lista de búsqueda, DNS del equipo) y, como root, cambios del servidor DNS y de los dominios en tiempo de ejecución (netplan no los guarda; revert los quita).' },
     dig: { group: 'red', synopsis: 'dig [@SERVIDOR] NOMBRE [TIPO] [+short] [+search] | dig -x IP', summary: 'Consulta DNS con la salida de BIND 9 (secciones QUESTION, ANSWER, AUTHORITY; status NOERROR/NXDOMAIN/REFUSED).' },
     nslookup: { group: 'red', synopsis: 'nslookup NOMBRE [SERVIDOR]', summary: 'Consulta DNS sencilla.' },
     host: { group: 'red', synopsis: 'host [-t TIPO] NOMBRE [SERVIDOR]', summary: 'Consulta DNS en una línea por registro.' },
@@ -20606,11 +20649,11 @@ const LINUX_DOCS = [
     {
         id: 'linux-red',
         title: 'Red y servicios desde Linux',
-        summary: 'ip, ping, dig, curl, wget, ssh, dhclient, ss, systemctl y journalctl.',
+        summary: 'ip, ping, dig, resolvectl, curl, wget, ssh, dhclient, ss, systemctl y journalctl.',
         blocks: [
             ...utilityBlocks(['red', 'servicios']),
             h('Ejemplos'),
-            code('$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n$ dig +short www.aula.lab\nsrv.aula.lab.\n192.168.10.2\n$ curl -I http://www.aula.lab\nHTTP/1.1 200 OK\nServer: Apache/2.4.62 (Ubuntu)\n$ ping -c 1 noexiste.aula.lab\nping: noexiste.aula.lab: Name or service not known\n$ systemctl stop apache2\nFailed to stop apache2.service: Interactive authentication required.'),
+            code('$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n$ dig +short www.aula.lab\nsrv.aula.lab.\n192.168.10.2\n$ resolvectl query www.aula.lab\nwww.aula.lab: 192.168.10.2                  -- link: eth0\n                (srv.aula.lab)\n$ resolvectl dns\nGlobal:\nLink 2 (eth0): 192.168.10.2\n$ curl -I http://www.aula.lab\nHTTP/1.1 200 OK\nServer: Apache/2.4.62 (Ubuntu)\n$ ping -c 1 noexiste.aula.lab\nping: noexiste.aula.lab: Name or service not known\n$ systemctl stop apache2\nFailed to stop apache2.service: Interactive authentication required.'),
         ],
     },
 ];
@@ -21986,6 +22029,7 @@ const UTIL_DOCS = {
     netplan: { group: 'red', section: 8, synopsis: 'netplan {apply | try | generate | get | info}', summary: 'Applies /etc/netplan/*.yaml (merged in name order) to the eth0 interface: dhcp4, addresses, routes (to: default, via), nameservers (addresses and search: search domains, with DHCP too). try reverts if you do not confirm with Enter. Errors show file:line:column.' },
     traceroute: { group: 'red', synopsis: 'traceroute [-n] [-m HOPS] DEST', summary: 'Route to the destination: ICMP probes with TTL 1, 2, 3… (like traceroute -I); each router replies “time exceeded”. -n without names, -m maximum hops (30).' },
     ping: { group: 'red', synopsis: 'ping [-b] [-c N] DEST', summary: 'ICMP echo (without -c, 4 packets in Netfix). A broadcast address needs -b; repeated answers show (DUP!). Status 0 if it replies, 1 if not, 2 if the name does not resolve.' },
+    resolvectl: { group: 'red', section: 1, synopsis: 'resolvectl [status [LINK]] | query [-t TYPE] [--legend=no] NAME|IP... | dns [LINK [SERVER]] | domain [LINK [DOMAIN...]] | revert LINK | flush-caches | statistics', summary: 'systemd-resolved client: status per link (DNS server, domains, default route), queries through the same resolver as ping (/etc/hosts, search list, the device DNS) and, as root, runtime changes of the DNS server and domains (netplan does not keep them; revert drops them).' },
     dig: { group: 'red', synopsis: 'dig [@SERVER] NAME [TYPE] [+short] [+search] | dig -x IP', summary: 'DNS query with BIND 9 output (QUESTION, ANSWER, AUTHORITY sections; status NOERROR/NXDOMAIN/REFUSED).' },
     nslookup: { group: 'red', synopsis: 'nslookup NAME [SERVER]', summary: 'Simple DNS query.' },
     host: { group: 'red', synopsis: 'host [-t TYPE] NAME [SERVER]', summary: 'DNS query, one line per record.' },
@@ -22082,11 +22126,11 @@ const LINUX_DOCS = [
     {
         id: 'linux-red',
         title: 'Network and services from Linux',
-        summary: 'ip, ping, dig, curl, wget, ssh, dhclient, ss, systemctl and journalctl.',
+        summary: 'ip, ping, dig, resolvectl, curl, wget, ssh, dhclient, ss, systemctl and journalctl.',
         blocks: [
             ...utilityBlocks(['red', 'servicios']),
             h('Examples'),
-            code('$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n$ dig +short www.aula.lab\nsrv.aula.lab.\n192.168.10.2\n$ curl -I http://www.aula.lab\nHTTP/1.1 200 OK\nServer: Apache/2.4.62 (Ubuntu)\n$ ping -c 1 noexiste.aula.lab\nping: noexiste.aula.lab: Name or service not known\n$ systemctl stop apache2\nFailed to stop apache2.service: Interactive authentication required.'),
+            code('$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n$ dig +short www.aula.lab\nsrv.aula.lab.\n192.168.10.2\n$ resolvectl query www.aula.lab\nwww.aula.lab: 192.168.10.2                  -- link: eth0\n                (srv.aula.lab)\n$ resolvectl dns\nGlobal:\nLink 2 (eth0): 192.168.10.2\n$ curl -I http://www.aula.lab\nHTTP/1.1 200 OK\nServer: Apache/2.4.62 (Ubuntu)\n$ ping -c 1 noexiste.aula.lab\nping: noexiste.aula.lab: Name or service not known\n$ systemctl stop apache2\nFailed to stop apache2.service: Interactive authentication required.'),
         ],
     },
 ];
@@ -29996,7 +30040,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.16.0",
+    "version": "0.17.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -32260,6 +32304,261 @@ function readBatch(ctx, path) {
 }
 
 return { sftp };
+})();
+__m["shells/resolvectl-query.js"] = (() => {
+const { normalizeName, reverseName } = __m["net/dns.js"];
+const { dnsQuery, dnsSearch, hostsLookup } = __m["shells/net-tools.js"];
+const { formatIp, parseIp } = __m["core/ip.js"];
+const QUERY_TYPES = ['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR', 'SOA'];
+const ADDRESS_COLUMN = 31;
+const RECORD_COLUMN = 47;
+const LOOPBACK_NET = 127;
+const linkFor = (host, ip) => ((ip >>> 24) === LOOPBACK_NET ? 'lo' : host.linuxIfName(host.primaryPort()));
+/** «name: value   -- link: eth0», the next values under the first, and the canonical name in brackets. */
+function addressLines(name, values, link, canonical) {
+    const indent = ' '.repeat(name.length + 2);
+    const rows = values.map((v, i) => `${i === 0 ? `${name}: ` : indent}${v.padEnd(ADDRESS_COLUMN)}-- link: ${link}`);
+    return canonical && normalizeName(canonical) !== normalizeName(name) ? [...rows, `${indent}(${canonical})`] : rows;
+}
+/** The error of a lookup with no answer, in resolved's words. */
+function failure(name, r) {
+    if (r.kind === 'noserver')
+        return 'No appropriate name servers or networks for name found';
+    if (r.kind === 'timeout')
+        return 'All attempts to contact name servers or networks failed';
+    if (r.msg.rcode === 'NXDOMAIN')
+        return `'${name}' not found`;
+    if (r.msg.rcode !== 'NOERROR')
+        return `Server returned error ${r.msg.rcode}`;
+    return `'${name}' does not have any RR of the requested type`;
+}
+const recordText = (a) => `${a.name.replace(/\.$/, '')} IN ${a.type} ${a.type === 'MX' ? `${a.priority ?? 10} ` : ''}${a.data}`;
+/** /etc/hosts, localhost and the host's own name: answered without asking a server. */
+function synthetic(host, name) {
+    const own = normalizeName(name) === host.name.toLowerCase() ? host.config.ip : undefined;
+    const ip = own ?? hostsLookup(host, name);
+    return ip === undefined ? undefined : { lines: addressLines(name, [formatIp(ip)], linkFor(host, ip)), synthetic: true };
+}
+function lookup(host, name, type) {
+    const literal = parseIp(name);
+    if (literal !== null) {
+        const r = dnsQuery(host, reverseName(literal), 'PTR');
+        const ptr = r.kind === 'answer' ? (r.msg.answers ?? []).filter((a) => a.type === 'PTR').map((a) => a.data.replace(/\.$/, '')) : [];
+        return ptr.length ? { lines: addressLines(name, ptr, linkFor(host, literal)), synthetic: false } : failure(reverseName(literal), r);
+    }
+    if (!type) {
+        const local = synthetic(host, name);
+        if (local)
+            return local;
+    }
+    const { result } = dnsSearch(host, name, type ?? 'A');
+    const answers = result.kind === 'answer' ? result.msg.answers ?? [] : [];
+    const link = host.linuxIfName(host.primaryPort());
+    if (type) {
+        const records = answers.filter((a) => a.type === type);
+        return records.length ? { lines: records.map((a) => `${recordText(a).padEnd(RECORD_COLUMN)}-- link: ${link}`), synthetic: false } : failure(name, result);
+    }
+    const addresses = answers.filter((a) => a.type === 'A');
+    return addresses.length ? { lines: addressLines(name, addresses.map((a) => a.data), link, addresses[0]?.name.replace(/\.$/, '')), synthetic: false } : failure(name, result);
+}
+/** One block per name; a failure goes to stderr and makes the exit status 1. */
+function query(ctx, host, names, opts) {
+    let status = 0;
+    for (const name of names) {
+        const start = host.clock.now();
+        const r = lookup(host, name, opts.type);
+        if (typeof r === 'string') {
+            ctx.err(`${name}: resolve call failed: ${r}\n`);
+            status = 1;
+            continue;
+        }
+        const ms = Math.max(0.1, host.clock.now() - start).toFixed(1);
+        const legend = ['', `-- Information acquired via protocol DNS in ${ms}ms.`, '-- Data is authenticated: no; Data was acquired via local or encrypted transport: no', `-- Data from: ${r.synthetic ? 'synthetic' : 'network'}`];
+        ctx.out(`${[...r.lines, ...(opts.legend ? legend : [])].join('\n')}\n`);
+    }
+    return status;
+}
+
+return { QUERY_TYPES, query };
+})();
+__m["shells/resolvectl.js"] = (() => {
+const { searchDomains } = __m["shells/net-tools.js"];
+const { resolvedDns, resolvedDomains, revertResolved, setResolvedDns, setResolvedDomains, transactionCount } = __m["shells/resolved.js"];
+const { QUERY_TYPES, query } = __m["shells/resolvectl-query.js"];
+const { formatIp, parseIp } = __m["core/ip.js"];
+const { t } = __m["i18n/t.js"];
+const PROTOCOLS = '-LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported';
+/** Linux numbers lo 1, then the NICs. */
+const FIRST_NIC_INDEX = 2;
+const DOMAIN = /^~?(?:\.|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i;
+const MAX_DOMAINS = 8;
+const links = (host) => host.nics().map((n, i) => ({ index: i + FIRST_NIC_INDEX, name: n.linux, primary: n.port === host.primaryPort() }));
+const linkDns = (host, l) => (l.primary ? resolvedDns(host) : undefined);
+const linkDomains = (host, l) => (l.primary ? resolvedDomains(host) ?? searchDomains(host) : []);
+const key = (k) => k.padStart(18);
+function linkBlock(host, l) {
+    const dns = linkDns(host, l);
+    const domains = linkDomains(host, l);
+    const route = l.primary && host.config.gateway !== undefined ? '+DefaultRoute' : '-DefaultRoute';
+    return [
+        `Link ${l.index} (${l.name})`,
+        `${key('Current Scopes')}: ${dns === undefined ? 'none' : 'DNS'}`,
+        `${key('Protocols')}: ${route} ${PROTOCOLS}`,
+        ...(dns === undefined ? [] : [`${key('Current DNS Server')}: ${formatIp(dns)}`, `${key('DNS Servers')}: ${formatIp(dns)}`]),
+        ...(domains.length ? [`${key('DNS Domain')}: ${domains.join(' ')}`] : []),
+    ];
+}
+function status(host, only) {
+    if (only)
+        return linkBlock(host, only);
+    const global = ['Global', `${key('Protocols')}: ${PROTOCOLS}`, `${key('resolv.conf mode')}: foreign`];
+    return [...global, ...links(host).flatMap((l) => ['', ...linkBlock(host, l)])];
+}
+const out = (ctx, list) => { if (list.length)
+    ctx.out(`${list.join('\n')}\n`); };
+function findLink(ctx, host, name) {
+    if (name === undefined)
+        return undefined;
+    const l = links(host).find((x) => x.name === name);
+    if (!l)
+        ctx.err(`Failed to resolve interface "${name}": No such device\n`);
+    return l ?? null;
+}
+/** dns / domain: list them, or (root) set them on the link. */
+function perLink(ctx, host, what, args) {
+    const link = findLink(ctx, host, args[0]);
+    if (link === null)
+        return 1;
+    const show = (l) => `Link ${l.index} (${l.name}):${(what === 'dns' ? [linkDns(host, l)].filter((x) => x !== undefined).map(formatIp) : [...linkDomains(host, l)]).map((x) => ` ${x}`).join('')}`;
+    if (!link) {
+        out(ctx, ['Global:', ...links(host).map(show)]);
+        return 0;
+    }
+    const values = args.slice(1);
+    if (!values.length) {
+        out(ctx, [show(link)]);
+        return 0;
+    }
+    if (ctx.cred.uid !== 0) {
+        ctx.err(`Failed to set ${what === 'dns' ? 'DNS' : 'domain'} configuration: Access denied\n`);
+        return 1;
+    }
+    if (!link.primary) {
+        ctx.err(`resolvectl: ${t('resolvectl.primaryOnly', { link: links(host).find((l) => l.primary)?.name ?? 'eth0' })}\n`);
+        return 1;
+    }
+    return what === 'dns' ? setDns(ctx, host, values) : setDomains(ctx, host, values);
+}
+function setDns(ctx, host, values) {
+    const bad = values.find((v) => parseIp(v) === null);
+    if (bad !== undefined) {
+        ctx.err(`Failed to parse DNS server address: ${bad.slice(0, 64)}\n`);
+        return 1;
+    }
+    const first = parseIp(values[0] ?? '') ?? 0;
+    if (values.length > 1)
+        ctx.err(`resolvectl: ${t('resolvectl.oneServer', { ip: formatIp(first) })}\n`);
+    setResolvedDns(host, first);
+    return 0;
+}
+function setDomains(ctx, host, values) {
+    const bad = values.find((v) => !DOMAIN.test(v));
+    if (bad !== undefined) {
+        ctx.err(`Failed to parse domain name: ${bad.slice(0, 64)}\n`);
+        return 1;
+    }
+    setResolvedDomains(host, values.slice(0, MAX_DOMAINS).map((d) => d.toLowerCase()));
+    return 0;
+}
+const HELP = ['resolvectl [OPTIONS...] COMMAND ...', '', 'Send control commands to the network name resolution manager, or', 'resolve domain names, IPv4 and IPv6 addresses, DNS records, and services.', '',
+    'Commands:', '  query HOSTNAME|ADDRESS...    Resolve domain names, IPv4 and IPv6 addresses', '  status [LINK...]             Show link and server status', '  statistics                   Show resolver statistics',
+    '  reset-server-features        Forget learnt DNS server feature levels', '  flush-caches                 Flush all local DNS caches', '  dns [LINK [SERVER...]]       Get/set per-interface DNS server address',
+    '  domain [LINK [DOMAIN...]]    Get/set per-interface search domain', '  revert LINK                  Revert per-interface configuration', '', 'Options:', '  -h --help                    Show this help', '  -t --type=TYPE               Query RR with DNS type', '     --legend=BOOL             Print headers and additional info (default: yes)'];
+function statistics(host) {
+    const n = String(transactionCount(host));
+    return ['Transactions', `${key('Current Transactions').slice(-20)}: 0`, `${'Total Transactions'.padStart(20)}: ${n}`, '', 'Cache', `${'Current Cache Size'.padStart(20)}: 0`, `${'Cache Hits'.padStart(20)}: 0`, `${'Cache Misses'.padStart(20)}: ${n}`,
+        '', 'DNSSEC Verdicts', `${'Secure'.padStart(20)}: 0`, `${'Insecure'.padStart(20)}: 0`, `${'Bogus'.padStart(20)}: 0`, `${'Indeterminate'.padStart(20)}: 0`];
+}
+/** -t TYPE / --type=TYPE and --legend=no out of the arguments. */
+function queryOptions(args) {
+    let type;
+    const names = [];
+    for (let i = 0; i < args.length; i++) {
+        const a = args[i] ?? '';
+        if (a === '-t' || a === '--type')
+            type = args[++i];
+        else if (a.startsWith('--type='))
+            type = a.slice(7);
+        else if (!a.startsWith('-'))
+            names.push(a);
+    }
+    const upper = type?.toUpperCase();
+    const known = QUERY_TYPES.find((q) => q === upper);
+    return { type: known, legend: !args.some((a) => /^--legend=(no|false|0)$/.test(a)), names, bad: type !== undefined && !known ? type : undefined };
+}
+function privileged(ctx, what) {
+    if (ctx.cred.uid === 0)
+        return true;
+    ctx.err(`Failed to ${what}: Access denied\n`);
+    return false;
+}
+function resolvectl(host) {
+    return (ctx) => {
+        const args = ctx.argv.slice(1);
+        if (args.includes('-h') || args.includes('--help')) {
+            out(ctx, HELP);
+            return 0;
+        }
+        const verbAt = args.findIndex((a) => !a.startsWith('-'));
+        const verb = verbAt < 0 ? 'status' : args[verbAt] ?? 'status';
+        const rest = verbAt < 0 ? [] : [...args.slice(0, verbAt), ...args.slice(verbAt + 1)];
+        switch (verb) {
+            case 'status': {
+                const link = findLink(ctx, host, rest.find((a) => !a.startsWith('-')));
+                if (link === null)
+                    return 1;
+                out(ctx, status(host, link));
+                return 0;
+            }
+            case 'query': {
+                const o = queryOptions(rest);
+                if (o.bad !== undefined) {
+                    ctx.err(`Failed to parse RR type ${o.bad.slice(0, 32)}\n`);
+                    return 1;
+                }
+                if (!o.names.length) {
+                    ctx.err('resolvectl query: too few arguments.\n');
+                    return 1;
+                }
+                return query(ctx, host, o.names, o);
+            }
+            case 'dns':
+            case 'domain': return perLink(ctx, host, verb, rest.filter((a) => !a.startsWith('-')));
+            case 'revert': {
+                const link = findLink(ctx, host, rest[0]);
+                if (!link) {
+                    if (link === undefined)
+                        ctx.err('resolvectl revert: too few arguments.\n');
+                    return 1;
+                }
+                if (!privileged(ctx, 'revert interface configuration'))
+                    return 1;
+                revertResolved(host);
+                return 0;
+            }
+            case 'flush-caches': return privileged(ctx, 'flush caches') ? 0 : 1;
+            case 'reset-server-features': return privileged(ctx, 'reset server features') ? 0 : 1;
+            case 'statistics':
+                out(ctx, statistics(host));
+                return 0;
+            default:
+                ctx.err(`Unknown command verb '${verb.slice(0, 32)}'.\n`);
+                return 1;
+        }
+    };
+}
+
+return { resolvectl };
 })();
 __m["shells/scp-cmd.js"] = (() => {
 const { baseName, joinPath } = __m["clients/sftp-client.js"];
@@ -36935,6 +37234,7 @@ return { rndc };
 __m["shells/linux-programs.js"] = (() => {
 /** The Netfix programs of an Ubuntu host: network clients, systemd tools, ssh and command-not-found. */
 const { sftp } = __m["shells/sftp-cmd.js"];
+const { resolvectl } = __m["shells/resolvectl.js"];
 const { scp } = __m["shells/scp-cmd.js"];
 const { wgUnit, wgUnitName } = __m["shells/wg-unit.js"];
 const { wg } = __m["shells/wg-cmd.js"];
@@ -37107,7 +37407,7 @@ function commandNotFound(ctx) {
 }
 function linuxPrograms(host) {
     return new Map([
-        ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)], ['netplan', netplanProgram(host)],
+        ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['resolvectl', resolvectl(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)], ['netplan', netplanProgram(host)],
         ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['sysctl', sysctl(host)], ['dmesg', dmesg(host)], ['nft', nft(host)], ['nc', nc(host)], ['netcat', nc(host)], ['nmap', nmap(host)], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId], ['sftp', sftp(host)], ['scp', scp(host)],
         ...(host.kind === 'linuxrouter' ? [['wg', wg(host)], ['wg-quick', wgQuick(host)]] : []),
         ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],

@@ -7,6 +7,7 @@ import type { TcpResult } from '../net/tcp.ts';
 import { runSync } from '../net/sync.ts';
 import { parseIp } from '../core/ip.ts';
 import { peekHostFile } from '../devices/host-fs.ts';
+import { countTransaction, resolvedDns, resolvedDomains } from './resolved.ts';
 
 export type Resolved =
   | { readonly kind: 'ip'; readonly ip: number; readonly name: string; readonly viaDns: boolean }
@@ -20,11 +21,16 @@ export const SSH_WAIT_MS = 60_000;
 
 export function dnsQuery(host: Host, name: string, type: DnsType, server?: number): DnsResult {
   const target = type === 'PTR' ? name : normalizeName(name);
-  return runSync<DnsResult>(host.hooks, (done) => host.lookup(target, type, done, server ?? host.config.dns), DNS_WAIT_MS) ?? { kind: 'timeout', server: server ?? 0 };
+  const to = server ?? resolvedDns(host);
+  countTransaction(host);
+  return runSync<DnsResult>(host.hooks, (done) => host.lookup(target, type, done, to), DNS_WAIT_MS) ?? { kind: 'timeout', server: to ?? 0 };
 }
 
 /** The search domains of the host: netplan's `nameservers.search`, then the DHCP domain (option 15) while the lease lasts. */
 export function searchDomains(host: Host): readonly string[] {
+  const runtime = resolvedDomains(host);
+  // resolvectl domain: routing-only domains (~example.com, ~.) are not search domains.
+  if (runtime) return runtime.filter((d) => !d.startsWith('~')).map(normalizeName);
   const domain = host.config.mode === 'dhcp' ? host.dhcpClient.lease?.domainName : undefined;
   return [...new Set([...host.dnsSearch.map(normalizeName), ...(domain ? [normalizeName(domain)] : [])])];
 }

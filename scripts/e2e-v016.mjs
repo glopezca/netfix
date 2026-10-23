@@ -1,5 +1,5 @@
 // End-to-end check of phase 24: interface names on their cables (never over a device's name or addresses), the
-// cloud's «Equipo» tab and the read-only host name.
+// cloud's «Equipo» tab, the read-only host name and resolvectl (v0.17).
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { join, dirname } from 'node:path';
@@ -66,6 +66,11 @@ try {
   await page.keyboard.press('Enter');
   await page.waitForTimeout(150);
   assert.match(await term.locator('.term-screen').innerText(), /nombre del equipo/);
+  // v0.17: resolvectl through the same resolver.
+  await term.locator('input.term-input').fill('resolvectl query www.aula.lab');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(150);
+  assert.match(await term.locator('.term-screen').innerText(), /www\.aula\.lab: 192\.168\.10\.2 +-- link: eth0/);
   if (shots) await page.screenshot({ path: `${shots}/labels.png` });
   assert.deepEqual(errors, []);
   console.log('e2e v0.16 OK');

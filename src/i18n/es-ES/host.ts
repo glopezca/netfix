@@ -19,6 +19,8 @@ export const HOST_ES = {
   'host.live': 'El nombre descriptivo se actualiza solo si lo cambias desde la terminal.',
   'host.err.empty': 'El nombre de host no puede estar vacío.',
   'host.locked': 'en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)',
+  'resolvectl.oneServer': 'Netfix usa un servidor DNS por equipo: se queda el primero, {ip}',
+  'resolvectl.primaryOnly': 'en Netfix el DNS y los dominios se cambian en el enlace principal ({link})',
   'host.err.long': 'El nombre de host admite como máximo {max} caracteres.',
   'host.err.label': 'Cada parte del nombre admite como máximo {max} caracteres.',
   'host.err.chars': 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).',

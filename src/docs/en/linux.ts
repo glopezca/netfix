@@ -77,11 +77,11 @@ export const LINUX_DOCS: readonly DocPage[] = [
   {
     id: 'linux-red',
     title: 'Network and services from Linux',
-    summary: 'ip, ping, dig, curl, wget, ssh, dhclient, ss, systemctl and journalctl.',
+    summary: 'ip, ping, dig, resolvectl, curl, wget, ssh, dhclient, ss, systemctl and journalctl.',
     blocks: [
       ...utilityBlocks(['red', 'servicios']),
       h('Examples'),
-      code('$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n$ dig +short www.aula.lab\nsrv.aula.lab.\n192.168.10.2\n$ curl -I http://www.aula.lab\nHTTP/1.1 200 OK\nServer: Apache/2.4.62 (Ubuntu)\n$ ping -c 1 noexiste.aula.lab\nping: noexiste.aula.lab: Name or service not known\n$ systemctl stop apache2\nFailed to stop apache2.service: Interactive authentication required.'),
+      code('$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n$ dig +short www.aula.lab\nsrv.aula.lab.\n192.168.10.2\n$ resolvectl query www.aula.lab\nwww.aula.lab: 192.168.10.2                  -- link: eth0\n                (srv.aula.lab)\n$ resolvectl dns\nGlobal:\nLink 2 (eth0): 192.168.10.2\n$ curl -I http://www.aula.lab\nHTTP/1.1 200 OK\nServer: Apache/2.4.62 (Ubuntu)\n$ ping -c 1 noexiste.aula.lab\nping: noexiste.aula.lab: Name or service not known\n$ systemctl stop apache2\nFailed to stop apache2.service: Interactive authentication required.'),
     ],
   },
 ];

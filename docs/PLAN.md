@@ -587,3 +587,22 @@ security-reviewer (opus) sin críticos, altos ni medios; aplicados los bajos (im
 medios: la copia local del broadcast solo para el ping propio (un router Linux que reenvía no responde dos veces) y
 nombres de host únicos (`-2`, `-3`… si dos nombres de equipo dan el mismo). Los servidores de los laboratorios de
 sedes e intranet toman el nombre de su etiqueta (srv-sede2, srv-intranet); el de «servidores» se llama SRV (srv).
+
+## Fase 25 · resolvectl en las terminales Linux (v0.17.0)
+
+`resolvectl` (cliente de systemd-resolved, Ubuntu 26.04) en PC, Server y router Linux, con la salida literal de
+systemd 257, sobre el resolutor que ya usan ping, dig, nslookup y host (/etc/hosts, lista de búsqueda, DNS del equipo):
+
+- `resolvectl [status [ENLACE]]`: Global (protocolos, `resolv.conf mode: foreign`, porque /etc/resolv.conf lo escribe
+  Netfix) y un bloque por enlace (`Link 2 (eth0)`: ámbito, +DefaultRoute, servidor DNS actual, servidores y dominios).
+  Los enlaces sin DNS salen con `Current Scopes: none`.
+- `resolvectl query [-t TIPO] [-4] [--legend=no] NOMBRE|IP…`: A (con CNAME), PTR de una IP y cualquier tipo con -t;
+  `-- link: eth0`, tiempo en milisegundos simulados y `Data from: network` o `synthetic` (/etc/hosts, el propio
+  nombre). Errores: `resolve call failed: 'x' not found`, `… does not have any RR of the requested type`, `All attempts
+  to contact name servers or networks failed`, `No appropriate name servers or networks for name found`.
+- `resolvectl dns [ENLACE [SERVIDOR…]]` y `resolvectl domain [ENLACE [DOMINIO…]]`: ver y, como root, cambiar en
+  tiempo de ejecución el servidor DNS y los dominios de búsqueda del enlace principal (Netfix usa un servidor por
+  equipo: con varios, el primero). `revert ENLACE` vuelve a la configuración de netplan; `flush-caches` y
+  `reset-server-features` (sin caché local en Netfix: no hacen nada visible); `statistics` con las transacciones de
+  resolvectl; `-h`.
+- Entrada en la documentación de órdenes (es/en) y en la pestaña Documentación.
