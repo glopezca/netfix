@@ -556,3 +556,11 @@ la primera respuesta y los routers reenvían siempre los broadcast dirigidos.
      inicial; «Aplicar» reinicia bind9. En el panel y en la gestión web. Root puede editar el fichero.
    - La Internet emulada conoce los mismos nombres (8.8.8.8 y la jerarquía raíz → TLD → autoritativo) y cada dirección
      responde a ping y a HTTP, así que ping, nslookup y dig funcionan con o sin la opción si hay salida a Internet.
+
+**Estado:** completada (v0.15.0, 596 pruebas; e2e-v015). Revisión ECC: security-reviewer (opus) sin críticos ni altos;
+corregido el medio (un broadcast dirigido que ya llegó por su subred no se reenvía: evitaba tormentas entre routers
+Linux con subredes solapadas) y los bajos (mensajes de error recortados y sin caracteres de control, TTL numérico en
+el JSON, registros repetidos). code-reviewer (sonnet) sin críticos ni altos; corregidos los medios (el reenvío de
+broadcast dirigido pasa por el camino normal: ACL de salida, IPsec y nftables; «Aplicar» con la lista inicial sin
+cambios la deja implícita; `ping -bc 3`; nmap no cuenta la dirección broadcast como equipo) y parte de los bajos
+(`endEcho` en finally, interfaces caídas). Pendiente: la salida de IOS cuando un ping a broadcast no tiene respuesta.

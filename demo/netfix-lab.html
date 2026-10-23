@@ -7398,6 +7398,8 @@ class IpStack {
     /** The interface whose subnet has `ip` as its broadcast address (directed broadcast), if any. */
     directedIface(ip) {
         for (const iface of this.host.l3Ifaces()) {
+            if (!iface.up)
+                continue;
             const a = iface.addrs.find((x) => x.prefix < MAX_PREFIX - 1 && broadcastOf(x.ip, x.prefix) === ip);
             if (a)
                 return { iface, addr: a.ip };
@@ -7456,15 +7458,13 @@ class IpStack {
         // A directed broadcast for another of our subnets is ours too; the link only gets it if forwarding is on. One that
         // arrived on a link of that subnet already reached it: relaying it again could bounce between routers forever.
         if (directed && directed.iface.name !== iface.name && !this.isLocalBroadcast(iface, packet.dst))
-            this.relayDirected(directed.iface, packet);
+            this.relayDirected(iface.name, directed.iface, packet);
         this.localIn(iface.name, packet, frame);
     }
-    relayDirected(out, packet) {
-        if (!out.up || packet.ttl <= 1 || !this.host.forwardsDirectedBroadcast?.(out.name))
-            return;
-        const sent = this.host.postrouting ? this.host.postrouting(out.name, { ...packet, ttl: packet.ttl - 1 }) : { ...packet, ttl: packet.ttl - 1 };
-        if (sent)
-            this.emitIp(out.name, BROADCAST_MAC, sent);
+    /** Allowed: the normal forwarding path (TTL, outbound ACL, IPsec, nftables) sends it out as a link broadcast. */
+    relayDirected(inIface, out, packet) {
+        if (out.up && this.host.forwardsDirectedBroadcast?.(out.name))
+            this.host.forward?.(inIface, packet);
     }
     /** Local delivery: input hook, then ICMP echo handling or the host's protocols. */
     localIn(ifaceName, arrived, frame) {
@@ -10856,7 +10856,13 @@ function setPublicNames(s, enabled, list = 'keep') {
     if (list === 'initial')
         return { ...s, publicNames: { enabled } };
     const entries = parseRpz(list);
-    return 'error' in entries ? entries : { ...s, publicNames: { enabled, entries } };
+    if ('error' in entries)
+        return entries;
+    // The initial list sent back unchanged stays implicit, so names added in later versions still reach it.
+    return sameEntries(entries, initialEntries()) ? { ...s, publicNames: { enabled } } : { ...s, publicNames: { enabled, entries } };
+}
+function sameEntries(a, b) {
+    return a.length === b.length && a.every((e, i) => e.name === b[i]?.name && e.ip === b[i]?.ip && e.ttl === b[i]?.ttl);
 }
 /** The entries that answer `qname`: the exact name, or the longest `*.domain` above it. */
 function matching(entries, qname) {
@@ -33594,6 +33600,16 @@ const INTER_PACKET_MS = 1;
 const DUP_WINDOW_MS = 5;
 function runPing(stack, hooks, dst, opts) {
     const id = pingId++ & 0xffff;
+    // Every reply waits a little for others: a directed broadcast of a remote network is not known as one here.
+    // (A real ping waits a whole second between requests; these few simulated milliseconds change nothing.)
+    try {
+        return pings(stack, hooks, dst, opts, id, DUP_WINDOW_MS);
+    }
+    finally {
+        stack.endEcho(id);
+    }
+}
+function pings(stack, hooks, dst, opts, id, window) {
     const results = [];
     for (let seq = 0; seq < opts.count; seq++) {
         let result;
@@ -33605,11 +33621,10 @@ function runPing(stack, hooks, dst, opts) {
             continue;
         }
         hooks.runUntil(() => result !== undefined, opts.timeoutMs);
-        hooks.runUntil(() => false, result ? DUP_WINDOW_MS : INTER_PACKET_MS);
+        hooks.runUntil(() => false, result ? window : INTER_PACKET_MS);
         const answer = result;
-        results.push(answer ? (dups.length ? { ...answer, dups } : answer) : { kind: 'timeout' });
+        results.push(answer ? { ...answer, dups } : { kind: 'timeout' });
     }
-    stack.endEcho(id);
     return results;
 }
 
@@ -34003,21 +34018,22 @@ function pingCount(args) {
     let target;
     for (let i = 0; i < args.length; i++) {
         const a = args[i] ?? '';
-        const flag = a.slice(0, 2);
         if (!a.startsWith('-')) {
             target ??= a;
             continue;
         }
-        if (!PING_WITH_VALUE.has(flag))
+        // Joined flags (-bc 3, -bc3): the first one that takes a value takes the rest of the word or the next one.
+        const at = [...a.slice(1)].findIndex((c) => PING_WITH_VALUE.has(`-${c}`));
+        if (at < 0)
             continue;
-        const value = a.length > 2 ? a.slice(2) : args[++i];
-        if (flag === '-c')
+        const value = a.length > at + 2 ? a.slice(at + 2) : args[++i];
+        if (a[at + 1] === 'c')
             count = Math.min(MAX_PING_COUNT, Math.max(1, Number(value) || DEFAULT_PING_COUNT));
     }
     return { count, target };
 }
 const BROADCAST_HINT = 'ping: Do you want to ping broadcast? Then -b. If not, check your local firewall rules\n';
-/** -b among the options (alone or joined, as in -bc… is not: -c takes a value). */
+/** -b among the options, alone or joined with others (-bc 3). */
 const wantsBroadcast = (args) => args.some((a) => /^-[A-Za-z]*b[A-Za-z]*$/.test(a) && !PING_WITH_VALUE.has(a.slice(0, 2)));
 /** One line per answer: the device that answered (its own address on a broadcast), repeated ones with (DUP!). */
 function replyLines(results, who) {
@@ -36488,7 +36504,8 @@ function targets(host, spec) {
 /** Host discovery: ICMP echo, or any answer on TCP 80/443 (a host that drops pings can still be up). */
 function hostsUp(host, list) {
     const echo = list.map(() => false);
-    list.forEach((t, i) => host.stack.echo(t.ip, 0x4e4d, i, undefined, (r) => { if (r.kind === 'reply')
+    // Only an answer from the address itself: a router answering for a broadcast address is not a host there.
+    list.forEach((t, i) => host.stack.echo(t.ip, 0x4e4d, i, undefined, (r) => { if (r.kind === 'reply' && r.from === t.ip)
         echo[i] = true; }));
     const tcp = probeAll(host, list.flatMap((t) => [{ ip: t.ip, port: 80 }, { ip: t.ip, port: 443 }]), PROBE_MS);
     return list.map((_, i) => echo[i] === true || tcp[i * 2] === 'open' || tcp[i * 2] === 'closed' || tcp[i * 2 + 1] === 'open' || tcp[i * 2 + 1] === 'closed');
@@ -51130,7 +51147,7 @@ function rpzForm(server, base) {
 /** dns-rpz: switch and list together (a bad list changes nothing); dns-rpz-initial: the initial list back. */
 function rpzAction(server, f, initial) {
     const enabled = f.get('enabled') === '1';
-    const next = setPublicNames(server.services.dns, enabled, initial ? 'initial' : f.get('list') ?? '');
+    const next = setPublicNames(server.services.dns, enabled, initial ? 'initial' : f.get('list') ?? 'keep');
     if ('error' in next)
         return { error: next.error };
     server.setServices({ ...server.services, dns: next });

@@ -84,3 +84,15 @@ test('DNS page: «Nombres públicos» switches the policy zone, takes an edited 
   assert.equal(srv.services.dns.publicNames?.entries, undefined);
   assert.equal(srv.services.dns.publicNames?.enabled, true);
 });
+
+test('review: applying the initial list unchanged keeps it implicit; a form without the list keeps the list', () => {
+  const { srv, web } = lab();
+  const page = body(web.open(`${URL}?page=dns`));
+  const list = (/<textarea name="list"[^>]*>([\s\S]*?)<\/textarea>/.exec(page)?.[1] ?? '').replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  post(web, 'dns', [['action', 'dns-rpz'], ['enabled', '1'], ['list', list]]);
+  assert.equal(srv.services.dns.publicNames?.enabled, true);
+  assert.equal(srv.services.dns.publicNames?.entries, undefined, 'still the initial list (future names reach it)');
+  post(web, 'dns', [['action', 'dns-rpz']]);
+  assert.equal(srv.services.dns.publicNames?.enabled, false);
+  assert.equal(srv.services.dns.publicNames?.entries, undefined);
+});

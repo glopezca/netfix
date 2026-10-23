@@ -84,18 +84,19 @@ function pingCount(args: readonly string[]): { count: number; target?: string } 
   let target: string | undefined;
   for (let i = 0; i < args.length; i++) {
     const a = args[i] ?? '';
-    const flag = a.slice(0, 2);
-    if (!a.startsWith('-')) { target ??= a; continue; }
-    if (!PING_WITH_VALUE.has(flag)) continue;
-    const value = a.length > 2 ? a.slice(2) : args[++i];
-    if (flag === '-c') count = Math.min(MAX_PING_COUNT, Math.max(1, Number(value) || DEFAULT_PING_COUNT));
+        if (!a.startsWith('-')) { target ??= a; continue; }
+    // Joined flags (-bc 3, -bc3): the first one that takes a value takes the rest of the word or the next one.
+    const at = [...a.slice(1)].findIndex((c) => PING_WITH_VALUE.has(`-${c}`));
+    if (at < 0) continue;
+    const value = a.length > at + 2 ? a.slice(at + 2) : args[++i];
+    if (a[at + 1] === 'c') count = Math.min(MAX_PING_COUNT, Math.max(1, Number(value) || DEFAULT_PING_COUNT));
   }
   return { count, target };
 }
 
 const BROADCAST_HINT = 'ping: Do you want to ping broadcast? Then -b. If not, check your local firewall rules\n';
 
-/** -b among the options (alone or joined, as in -bc… is not: -c takes a value). */
+/** -b among the options, alone or joined with others (-bc 3). */
 const wantsBroadcast = (args: readonly string[]): boolean => args.some((a) => /^-[A-Za-z]*b[A-Za-z]*$/.test(a) && !PING_WITH_VALUE.has(a.slice(0, 2)));
 
 /** One line per answer: the device that answered (its own address on a broadcast), repeated ones with (DUP!). */

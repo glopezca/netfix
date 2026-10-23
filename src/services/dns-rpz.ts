@@ -106,7 +106,13 @@ export function setPublicNames(s: DnsSettings, enabled: boolean, list: 'keep' | 
   if (list === 'keep') return { ...s, publicNames: { ...s.publicNames, enabled } };
   if (list === 'initial') return { ...s, publicNames: { enabled } };
   const entries = parseRpz(list);
-  return 'error' in entries ? entries : { ...s, publicNames: { enabled, entries } };
+  if ('error' in entries) return entries;
+  // The initial list sent back unchanged stays implicit, so names added in later versions still reach it.
+  return sameEntries(entries, initialEntries()) ? { ...s, publicNames: { enabled } } : { ...s, publicNames: { enabled, entries } };
+}
+
+function sameEntries(a: readonly RpzEntry[], b: readonly RpzEntry[]): boolean {
+  return a.length === b.length && a.every((e, i) => e.name === b[i]?.name && e.ip === b[i]?.ip && e.ttl === b[i]?.ttl);
 }
 
 /** The entries that answer `qname`: the exact name, or the longest `*.domain` above it. */

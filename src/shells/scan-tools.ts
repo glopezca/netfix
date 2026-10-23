@@ -102,7 +102,8 @@ function targets(host: Host, spec: string): { ip: number; name?: string }[] | st
 /** Host discovery: ICMP echo, or any answer on TCP 80/443 (a host that drops pings can still be up). */
 function hostsUp(host: Host, list: readonly { ip: number }[]): boolean[] {
   const echo: boolean[] = list.map(() => false);
-  list.forEach((t, i) => host.stack.echo(t.ip, 0x4e4d, i, undefined, (r) => { if (r.kind === 'reply') echo[i] = true; }));
+  // Only an answer from the address itself: a router answering for a broadcast address is not a host there.
+  list.forEach((t, i) => host.stack.echo(t.ip, 0x4e4d, i, undefined, (r) => { if (r.kind === 'reply' && r.from === t.ip) echo[i] = true; }));
   const tcp = probeAll(host, list.flatMap((t) => [{ ip: t.ip, port: 80 }, { ip: t.ip, port: 443 }]), PROBE_MS);
   return list.map((_, i) => echo[i] === true || tcp[i * 2] === 'open' || tcp[i * 2] === 'closed' || tcp[i * 2 + 1] === 'open' || tcp[i * 2 + 1] === 'closed');
 }

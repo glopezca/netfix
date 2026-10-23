@@ -91,6 +91,7 @@ export class IpStack {
   /** The interface whose subnet has `ip` as its broadcast address (directed broadcast), if any. */
   private directedIface(ip: number): { iface: L3Iface; addr: number } | undefined {
     for (const iface of this.host.l3Ifaces()) {
+      if (!iface.up) continue;
       const a = iface.addrs.find((x) => x.prefix < MAX_PREFIX - 1 && broadcastOf(x.ip, x.prefix) === ip);
       if (a) return { iface, addr: a.ip };
     }
@@ -143,14 +144,13 @@ export class IpStack {
     }
     // A directed broadcast for another of our subnets is ours too; the link only gets it if forwarding is on. One that
     // arrived on a link of that subnet already reached it: relaying it again could bounce between routers forever.
-    if (directed && directed.iface.name !== iface.name && !this.isLocalBroadcast(iface, packet.dst)) this.relayDirected(directed.iface, packet);
+    if (directed && directed.iface.name !== iface.name && !this.isLocalBroadcast(iface, packet.dst)) this.relayDirected(iface.name, directed.iface, packet);
     this.localIn(iface.name, packet, frame);
   }
 
-  private relayDirected(out: L3Iface, packet: IpPacket): void {
-    if (!out.up || packet.ttl <= 1 || !this.host.forwardsDirectedBroadcast?.(out.name)) return;
-    const sent = this.host.postrouting ? this.host.postrouting(out.name, { ...packet, ttl: packet.ttl - 1 }) : { ...packet, ttl: packet.ttl - 1 };
-    if (sent) this.emitIp(out.name, BROADCAST_MAC, sent);
+  /** Allowed: the normal forwarding path (TTL, outbound ACL, IPsec, nftables) sends it out as a link broadcast. */
+  private relayDirected(inIface: string, out: L3Iface, packet: IpPacket): void {
+    if (out.up && this.host.forwardsDirectedBroadcast?.(out.name)) this.host.forward?.(inIface, packet);
   }
 
   /** Local delivery: input hook, then ICMP echo handling or the host's protocols. */

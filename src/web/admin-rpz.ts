@@ -23,7 +23,7 @@ export function rpzForm(server: Server, base: string): Markup {
 /** dns-rpz: switch and list together (a bad list changes nothing); dns-rpz-initial: the initial list back. */
 export function rpzAction(server: Server, f: Fields, initial: boolean): { ok?: string; error?: string } {
   const enabled = f.get('enabled') === '1';
-  const next = setPublicNames(server.services.dns, enabled, initial ? 'initial' : f.get('list') ?? '');
+  const next = setPublicNames(server.services.dns, enabled, initial ? 'initial' : f.get('list') ?? 'keep');
   if ('error' in next) return { error: next.error };
   server.setServices({ ...server.services, dns: next });
   server.dns.forwarder.flush();

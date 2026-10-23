@@ -130,3 +130,14 @@ test('review: a directed broadcast that arrived on its own subnet is never relay
   t.settle();
   assert.equal(relayed, 0);
 });
+
+test('review: combined flags (-bc 1) and an outbound ACL also stop a relayed directed broadcast', () => {
+  const { r, lx, far } = lab();
+  root(far, 'sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=0');
+  const sh = createShell(lx, 'linux');
+  assert.deepEqual(from(all(sh.run('ping -bc 1 192.168.1.255'))), ['192.168.1.1'], '-bc 1: the count, not the target');
+  applyConfig(r, ['access-list 101 deny icmp any any', 'access-list 101 permit ip any any', 'interface GigabitEthernet0/1', ' ip directed-broadcast', ' ip access-group 101 out']);
+  const out = all(sh.run('ping -c 1 192.168.2.255'));
+  assert.doesNotMatch(out, /192\.168\.2\.10/, 'the ACL of the way out applies: the far network gets nothing');
+  assert.match(out, /From 192\.168\.1\.1 icmp_seq=1 Destination Host Unreachable/, 'the router says so');
+});

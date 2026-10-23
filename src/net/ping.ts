@@ -17,6 +17,16 @@ export function runPing(
   opts: { count: number; timeoutMs: number; src?: number },
 ): PingOutcome[] {
   const id = pingId++ & 0xffff;
+  // Every reply waits a little for others: a directed broadcast of a remote network is not known as one here.
+  // (A real ping waits a whole second between requests; these few simulated milliseconds change nothing.)
+  try {
+    return pings(stack, hooks, dst, opts, id, DUP_WINDOW_MS);
+  } finally {
+    stack.endEcho(id);
+  }
+}
+
+function pings(stack: IpStack, hooks: DeviceHooks, dst: number, opts: { count: number; timeoutMs: number; src?: number }, id: number, window: number): PingOutcome[] {
   const results: PingOutcome[] = [];
   for (let seq = 0; seq < opts.count; seq++) {
     let result: EchoResult | undefined;
@@ -27,10 +37,9 @@ export function runPing(
       continue;
     }
     hooks.runUntil(() => result !== undefined, opts.timeoutMs);
-    hooks.runUntil(() => false, result ? DUP_WINDOW_MS : INTER_PACKET_MS);
+    hooks.runUntil(() => false, result ? window : INTER_PACKET_MS);
     const answer: EchoResult | undefined = result;
-    results.push(answer ? (dups.length ? { ...answer, dups } : answer) : { kind: 'timeout' });
+    results.push(answer ? { ...answer, dups } : { kind: 'timeout' });
   }
-  stack.endEcho(id);
   return results;
 }
