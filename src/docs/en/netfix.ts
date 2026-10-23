@@ -26,6 +26,8 @@ export const NETFIX_DOCS: DocGroup = {
           'In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.',
           'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically. Each end shows the link light, the short interface name (Gig0/0, Fa0) and its IP/CIDR below (also one learnt by DHCP; on a router trunk, those of its subinterfaces).',
           'Select: drag devices; double-click opens their window. With a device or a cable selected, Del or Backspace removes it (a device takes its cables with it).',
+          'Multiple selection: drag a box over the background to select the devices and drawings inside it (Shift adds to the selection; Shift+click adds or removes one). Dragging one of them moves the whole group; Del deletes it and Escape clears the selection. To pan the view use the wheel, the middle or right button, Space+drag or one finger.',
+          'Copy (Ctrl+C, ⧉), Paste (Ctrl+V, ⎘) and Duplicate (Ctrl+D, ⊕; ⌘ on a Mac): copy the devices with their configuration, the cables between them and the drawings. Each copy gets a free name (and its host name), new MACs and, for a cloud, another public block; it appears offset and stays selected. What was copied can be pasted in another lab too. A paste or duplicate is undone in one step.',
           'Delete: removes devices or cables.',
           'Undo (Ctrl+Z, ↶) and Redo (Ctrl+Y or Ctrl+Shift+Z, ↷): adding, deleting or moving devices, cables and drawings (up to 100 steps). A deleted device comes back with its cables and its configuration; what is typed inside a device (CLI, panels) is not undone from here.',
           'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).',
@@ -82,6 +84,7 @@ export const NETFIX_DOCS: DocGroup = {
         ]),
         list(
           'With Select, drag a drawing by its border or its text to move it; the inside of an area lets clicks through to the background and the devices.',
+          'A selected area or line shows handles: the corners and midpoints of an area resize it (never below 20 px) and the ends of a line lengthen or turn it.',
           'Double-click an area or label: change its text. With a drawing selected, picking another colour, fill or width changes it.',
           'To delete a drawing: select it and press Delete drawing on the bar (or the Del key), or choose the Delete tool and tap the drawing; with it, tapping inside an area is enough.',
           'Delete all (on the bar, after confirming) removes every drawing, the areas that come with a lab too; devices and cables are not changed.',

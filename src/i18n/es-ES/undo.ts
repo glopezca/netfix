@@ -14,6 +14,17 @@ export const UNDO_ES = {
   'undo.disconnect': 'quitar un cable',
   'undo.move': 'mover un equipo',
   'undo.drawings': 'cambio en los dibujos',
+  'undo.batch': 'varios elementos a la vez',
+  'clip.group': 'Copiar, pegar y duplicar',
+  'clip.copy': 'Copiar la selección (Ctrl+C)',
+  'clip.paste': 'Pegar (Ctrl+V)',
+  'clip.duplicate': 'Duplicar la selección (Ctrl+D)',
+  'clip.copied': 'Copiado: {n} equipos y {d} dibujos.',
+  'clip.pasted': 'Pegado: {n} equipos y {d} dibujos (quedan seleccionados).',
+  'clip.nothing': 'Selecciona antes equipos o dibujos: haz clic en ellos o arrastra un recuadro sobre el fondo.',
+  'clip.empty': 'No hay nada copiado.',
+  'clip.selected': 'Seleccionados: {n} equipos y {d} dibujos. Arrástralos juntos, Supr los borra, Ctrl+C los copia y Ctrl+D los duplica.',
+  'clip.tooMany': 'El área de trabajo admite como mucho {n} equipos: no se ha pegado nada.',
 } as const;
 
 export type UndoKey = keyof typeof UNDO_ES;

@@ -59,7 +59,7 @@ class App {
       if (this.session.policy.fileSave) void this.save();
       return;
     }
-    if (this.undoKey(e)) return;
+    if (this.undoKey(e) || (this.view === 'net' && this.workspaceActive && this.canvas.group.key(e))) return;
     // Nothing focused after the last click was on the workspace (its element was redrawn): its keys still apply.
     // A click anywhere else (a window, the bars) ends that, so Backspace there never deletes a device.
     const idle = document.activeElement === null || document.activeElement === document.body;
@@ -84,7 +84,7 @@ class App {
       hint: (text) => { this.hintEl.textContent = text; },
       removed: (id) => { this.windows.close(id); forgetDevice(id); },
     }, this.drawState);
-    this.canvas.editable = this.session.policy.editTopology;
+    this.canvas.restrict(this.session.policy);
     this.canvas.draw.locked = !this.session.policy.drawing;
     const winLayer = el('div', { class: 'win-layer' });
     this.windows = new WindowManager(winLayer);
@@ -99,7 +99,7 @@ class App {
     }, this.toolButtons);
     this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.sim.root);
     this.paletteEl = palette({
-      selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw(), undo: (redo) => this.undo(redo),
+      selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw(), undo: (redo) => this.undo(redo), clip: (a) => this.canvas.group.run(a),
     }, this.toolButtons, this.hintEl, this.session.policy);
     this.pageHost = el('main', { class: 'docs-host', hidden: true });
     this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });

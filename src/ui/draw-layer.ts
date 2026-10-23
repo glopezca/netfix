@@ -1,11 +1,12 @@
 /**
  * Drawings layer of the workspace (below cables and devices): draws the annotations of the topology and handles
- * drawing new ones, selecting, moving, deleting and editing their text. Filled areas only catch the pointer on
+ * drawing new ones, selecting, moving, resizing (handles), deleting and editing their text. Filled areas only catch the pointer on
  * their border and their name, so the background (pan, placing devices) keeps working inside them.
  */
 import { el, svg, clear } from './dom.ts';
 import type { Topology } from '../net/topology.ts';
 import { boundsOf, moveAnnotation, restyle, MAX_TEXT } from '../net/annotations.ts';
+import { handlesOf, resizeAnnotation } from '../net/annotation-resize.ts';
 import type { Annotation, AnnotationStyle, Point, ShapeKind } from '../net/annotations.ts';
 import type { DrawState } from './draw-bar.ts';
 import { t } from '../i18n/t.ts';
@@ -13,6 +14,8 @@ import { t } from '../i18n/t.ts';
 const MIN_SIZE = 6;
 const FILL_OPACITY = '0.12';
 const LABEL_PAD = 8;
+/** Side of a resize handle, in workspace units. */
+const HANDLE = 10;
 
 export interface DrawHost {
   topo(): Topology;
@@ -25,6 +28,10 @@ export interface DrawHost {
   selectedDrawing(): void;
   /** Two fingers are zooming the view. */
   pinching(): boolean;
+  /** The drawing belongs to a group selection (shown selected, without handles). */
+  grouped(id: string): boolean;
+  /** Shift+click or a drag on a group member: the group handles it (true). */
+  grab(e: PointerEvent, id: string): boolean;
   readonly overlay: HTMLElement;
 }
 
@@ -116,11 +123,39 @@ export class DrawLayer {
     this.drawnSelection = this.selected;
     clear(this.layer);
     for (const a of list) {
-      const g = drawingNode(a, a.id === this.selected);
+      const g = drawingNode(a, a.id === this.selected || this.host.grouped(a.id));
       g.addEventListener('pointerdown', (e) => { if (!this.locked) this.onPointer(e, a.id, g); });
       g.addEventListener('dblclick', (e) => { if (this.locked) return; e.stopPropagation(); this.editText(a.id); });
       this.layer.appendChild(g);
+      if (a.id === this.selected && !this.locked) this.addHandles(a, g);
     }
+  }
+
+  /** The handles of the selected area (corners and midpoints) or line (ends): dragging one resizes it. */
+  private addHandles(a: Annotation, g: SVGGElement): void {
+    for (const h of handlesOf(a)) {
+      const node = svg('rect', { class: `drawing-handle drawing-handle-${h.handle}`, 'data-of': a.id, x: h.x - HANDLE / 2, y: h.y - HANDLE / 2, width: HANDLE, height: HANDLE, 'data-handle': h.handle });
+      node.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        if (e.button !== 0 || this.dragging) return;
+        let shown: SVGGElement = g;
+        this.drag(e, (dx, dy) => {
+          const next = drawingNode(resizeAnnotation(a, h.handle, dx, dy), true);
+          shown.replaceWith(next);
+          shown = next;
+        }, (dx, dy) => {
+          if (dx !== 0 || dy !== 0) this.host.topo().updateAnnotation(a.id, (x) => resizeAnnotation(x, h.handle, dx, dy));
+          this.render(true);
+          this.host.changed();
+        }, node);
+      });
+      this.layer.appendChild(node);
+    }
+  }
+
+  private showHandles(id: string): void {
+    const shown = [...this.layer.querySelectorAll('.drawing-handle')].some((n) => n.getAttribute('data-of') === id);
+    if (!shown) this.render(true);
   }
 
   deleteSelected(): boolean {
@@ -163,12 +198,14 @@ export class DrawLayer {
       this.host.changed();
       return;
     }
+    if (this.host.grab(e, id)) return;
     this.host.selectedDrawing();
     this.setSelected(id);
     this.drawnSelection = id;
     for (const n of this.layer.querySelectorAll('[data-drawing]')) n.classList.toggle('is-selected', n.getAttribute('data-drawing') === id);
     this.drag(e, (dx, dy) => g.setAttribute('transform', `translate(${dx} ${dy})`), (dx, dy) => {
-      if (dx === 0 && dy === 0) return g.removeAttribute('transform');
+      // A click: the selection shows its resize handles (redrawn once, so a double click still lands on it).
+      if (dx === 0 && dy === 0) return this.showHandles(id);
       this.host.topo().updateAnnotation(id, (a) => moveAnnotation(a, dx, dy));
       this.host.changed();
     }, g);

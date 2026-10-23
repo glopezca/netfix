@@ -6,6 +6,11 @@ import type { Endpoint, Link } from '../net/network.ts';
 import { Viewport } from './viewport.ts';
 import { placeInside } from './viewport-math.ts';
 import { clamp, triangle } from './canvas-geometry.ts';
+import { dragDevice } from './device-drag.ts';
+import type { DeviceDragHost } from './device-drag.ts';
+import { GroupSelection, spaceHeld } from './group-select.ts';
+import { allowsDevice, NO_RESTRICTIONS } from '../classroom/restrictions.ts';
+import type { Restrictions } from '../classroom/restrictions.ts';
 import { endLabel, lineBaselines } from './link-labels.ts';
 import { DrawLayer } from './draw-layer.ts';
 import { DrawState } from './draw-bar.ts';
@@ -27,9 +32,7 @@ export interface CanvasEvents {
 
 export const WORLD_W = 2400;
 export const WORLD_H = 1600;
-const DRAG_THRESHOLD = 4;
 const DOUBLE_TAP_MS = 350;
-const LONG_PRESS_MS = 550;
 
 const HINTS: Readonly<Record<Tool['kind'], MessageKey>> = {
   select: 'canvas.hint.select', cable: 'canvas.hint.cable', delete: 'canvas.hint.delete', place: 'canvas.hint.place', draw: 'canvas.hint.draw',
@@ -47,6 +50,9 @@ export class Canvas {
   private selected: string | null = null;
   /** False when classroom restrictions lock the topology (Del removes no device or cable). */
   editable = true;
+  private policy: Restrictions = NO_RESTRICTIONS;
+  /** Several devices and drawings selected together (box, Shift+click), and the clipboard. */
+  readonly group: GroupSelection;
   private pendingEnd: Endpoint | null = null;
   private readonly events: CanvasEvents;
   private frame = 0;
@@ -71,17 +77,35 @@ export class Canvas {
     this.draw = new DrawLayer({
       topo: () => this.topo, toWorld: (e) => this.toWorld(e), toScreen: (p) => this.toScreen(p), changed: () => this.events.changed(),
       deleting: () => this.tool.kind === 'delete', selectedDrawing: () => { this.selected = null; this.markSelection(); }, pinching: () => this.viewport.pinching(), overlay: this.root,
+      grouped: (id) => this.group.drawings.has(id), grab: (e, id) => this.group.grab(e, { drawing: id }),
     }, drawState);
     this.linkLayer.before(this.draw.layer);
+    this.group = new GroupSelection({
+      topo: () => this.topo, edits: () => this.edits(), toWorld: (e) => this.toWorld(e), svgEl: this.svgEl, world: { w: WORLD_W, h: WORLD_H },
+      single: () => ({ device: this.selected && this.topo.get(this.selected) ? this.selected : undefined, drawing: this.draw.selection() ?? undefined }),
+      clearSingle: () => { this.selected = null; this.draw.deselect(); }, marked: () => { this.markSelection(); this.draw.render(true); }, redraw: () => this.render(),
+      gesture: (on) => { this.gesture = on; }, scale: () => this.viewport.scale, pinching: () => this.viewport.pinching(),
+      changed: () => this.events.changed(), removed: (id) => this.events.removed(id), hint: (text) => this.events.hint(text),
+      editable: () => this.editable, drawingLocked: () => this.draw.locked, allows: (k) => allowsDevice(this.policy, k),
+    });
+    this.svgEl.appendChild(this.group.layer);
+    this.svgEl.addEventListener('contextmenu', (e) => e.preventDefault());
     this.svgEl.addEventListener('pointerdown', (e) => { this.lastPointer = e.pointerType; }, { capture: true });
     this.svgEl.addEventListener('pointerdown', (e) => this.onBackground(e));
     this.root.addEventListener('keydown', (e) => this.handleKey(e));
     this.viewport = new Viewport(this.root, this.svgEl, WORLD_W, WORLD_H);
   }
 
+  /** Classroom restrictions: editing the topology, and the device kinds a paste may add. */
+  restrict(policy: Restrictions): void {
+    this.policy = policy;
+    this.editable = policy.editTopology;
+  }
+
   setTopology(topo: Topology): void {
     this.topo = topo;
     this.selected = null;
+    this.group.reset();
     this.pendingEnd = null;
     this.draw.reset();
     this.render();
@@ -96,6 +120,7 @@ export class Canvas {
   /** After an undo or redo: what was selected may be gone. */
   clearSelection(): void {
     this.selected = null;
+    this.group.reset();
     this.pendingEnd = null;
     this.draw.reset();
   }
@@ -158,7 +183,7 @@ export class Canvas {
   private markSelection(): void {
     for (const node of this.svgEl.querySelectorAll<SVGGElement>('[data-id], [data-link]')) {
       const key = node.getAttribute('data-id') ?? node.getAttribute('data-link');
-      node.classList.toggle('is-selected', key === this.selected);
+      node.classList.toggle('is-selected', key === this.selected || this.group.devices.has(key ?? ''));
     }
   }
 
@@ -204,7 +229,7 @@ export class Canvas {
   private drawDevice(id: string, p: Placed): SVGGElement {
     const d = p.device;
     const g = svg('g', {
-      class: `device device-${d.kind}${this.selected === id ? ' is-selected' : ''}${this.pendingEnd?.device === id ? ' is-pending' : ''}`,
+      class: `device device-${d.kind}${this.selected === id || this.group.devices.has(id) ? ' is-selected' : ''}${this.pendingEnd?.device === id ? ' is-pending' : ''}`,
       transform: `translate(${p.x} ${p.y})`, tabindex: '0', 'data-id': id, role: 'button', 'aria-label': `${p.label} (${modelLabel(d.kind)})`,
     });
     g.appendChild(svg('rect', { class: 'device-halo', x: -ICON_W / 2 - 8, y: -ICON_H / 2 - 8, width: ICON_W + 16, height: ICON_H + 16, rx: 10 }));
@@ -258,7 +283,8 @@ export class Canvas {
       this.selected = null;
       this.markSelection();
     }
-    if (e.button === 0 || e.pointerType !== 'mouse') this.viewport.beginPan(e);
+    if (this.tool.kind === 'select' && e.pointerType === 'mouse' && e.button === 0 && !spaceHeld()) this.group.marquee(e);
+    else this.viewport.beginPan(e);
   }
 
   private onDevicePointer(e: PointerEvent, id: string, g: SVGGElement): void {
@@ -275,9 +301,19 @@ export class Canvas {
       this.showPortMenu(id, e);
       return;
     }
+    if (this.group.grab(e, { device: id })) return;
+    const placed = this.topo.get(id);
     this.selected = id;
-    this.dragDevice(e, id, g);
+    if (placed) dragDevice(this.dragHost, e, placed, g);
   }
+
+  private readonly dragHost: DeviceDragHost = {
+    toWorld: (e) => this.toWorld(e), world: { w: WORLD_W, h: WORLD_H }, scale: () => this.viewport.scale, pinching: () => this.viewport.pinching(),
+    gesture: (on) => { this.gesture = on; }, renderLinks: () => this.renderLinks(), open: (id) => this.events.open(id),
+    done: (id, moved, origin, ev) => {
+      if (moved) { this.edits().moved(id, origin); this.events.changed(); } else { this.markSelection(); if (ev.type === 'pointerup') this.tapped(id, ev); }
+    },
+  };
 
   /** Touch and pen: a second tap within DOUBLE_TAP_MS opens the device (dblclick is unreliable on phones). */
   private tapped(id: string, e: PointerEvent): void {
@@ -289,45 +325,6 @@ export class Canvas {
       return;
     }
     this.lastTap = { id, time: now };
-  }
-
-  private dragDevice(e: PointerEvent, id: string, g: SVGGElement): void {
-    const placed = this.topo.get(id);
-    if (!placed) return;
-    const start = this.toWorld(e);
-    const origin = { x: placed.x, y: placed.y };
-    let moved = false;
-    this.gesture = true;
-    g.setPointerCapture(e.pointerId);
-    const press = e.pointerType === 'mouse' ? 0 : window.setTimeout(() => { if (!moved) { moved = true; this.events.open(id); } }, LONG_PRESS_MS);
-    const move = (ev: PointerEvent): void => {
-      if (this.viewport.pinching()) return;
-      const p = this.toWorld(ev);
-      if (!moved && Math.hypot(p.x - start.x, p.y - start.y) < DRAG_THRESHOLD / this.viewport.scale) return;
-      window.clearTimeout(press);
-      moved = true;
-      placed.x = clamp(origin.x + p.x - start.x, 40, WORLD_W - 40);
-      placed.y = clamp(origin.y + p.y - start.y, 40, WORLD_H - 40);
-      g.setAttribute('transform', `translate(${placed.x} ${placed.y})`);
-      this.renderLinks();
-    };
-    const up = (ev: PointerEvent): void => {
-      this.gesture = false;
-      window.clearTimeout(press);
-      g.removeEventListener('pointermove', move);
-      g.removeEventListener('pointerup', up);
-      g.removeEventListener('pointercancel', up);
-      if (moved) {
-        this.edits().moved(id, origin);
-        this.events.changed();
-      } else {
-        this.markSelection();
-        if (ev.type === 'pointerup') this.tapped(id, ev);
-      }
-    };
-    g.addEventListener('pointermove', move);
-    g.addEventListener('pointerup', up);
-    g.addEventListener('pointercancel', up);
   }
 
   private showPortMenu(id: string, e: PointerEvent): void {
@@ -379,9 +376,11 @@ export class Canvas {
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
     if (target instanceof HTMLElement && target.isContentEditable) return;
     if (e.key === 'Escape') {
+      this.group.clear();
       this.setTool({ kind: 'select' });
       return;
     }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && this.group.remove()) return;
     if ((e.key === 'Delete' || e.key === 'Backspace') && this.draw.deleteSelected()) return;
     if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected && this.editable) {
       const id = this.selected;

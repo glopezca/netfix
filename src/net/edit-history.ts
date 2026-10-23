@@ -6,6 +6,8 @@
 import type { Topology, DeviceKind, Placed } from './topology.ts';
 import type { CableKind, Endpoint, Link } from './network.ts';
 import type { Annotation, Point } from './annotations.ts';
+import { pasteClip } from './topology-clip.ts';
+import type { Bounds, Clip, Pasted } from './topology-clip.ts';
 
 export const MAX_EDITS = 100;
 /** Drawing changes closer than this (the RGB picker fires on every frame) are one step. */
@@ -22,7 +24,9 @@ export type Edit =
   | { readonly kind: 'remove'; readonly id: string; readonly placed: Placed; readonly cables: readonly Cable[] }
   | { readonly kind: 'connect' | 'disconnect'; readonly cable: Cable }
   | { readonly kind: 'move'; readonly id: string; readonly from: Point; readonly to: Point }
-  | { readonly kind: 'drawings'; readonly before: readonly Annotation[]; readonly after: readonly Annotation[]; readonly at: number };
+  | { readonly kind: 'drawings'; readonly before: readonly Annotation[]; readonly after: readonly Annotation[]; readonly at: number }
+  /** Several edits made together (a group moved or deleted, a paste): one undo step. */
+  | { readonly kind: 'batch'; readonly edits: readonly Edit[] };
 
 /**
  * What an undo or redo did; `removed` lists the devices taken off the workspace (their windows must close) and
@@ -56,6 +60,8 @@ export class EditHistory {
   private undone: Edit[] = [];
   /** The drawings as the history last saw them. */
   private seen: readonly Annotation[];
+  /** Edits being collected by batch(). */
+  private collecting: Edit[] | null = null;
 
   constructor(topo: Topology) {
     this.topo = topo;
@@ -104,12 +110,38 @@ export class EditHistory {
     if (p && (p.x !== from.x || p.y !== from.y)) this.record({ kind: 'move', id, from, to: { x: p.x, y: p.y } });
   }
 
+  /** Runs `fn` and records everything it changed (devices, cables, drawings) as one undo step. */
+  batch<T>(fn: () => T): T {
+    if (this.collecting) return fn();
+    this.syncDrawings(Number.NEGATIVE_INFINITY);
+    const edits: Edit[] = [];
+    this.collecting = edits;
+    try {
+      return fn();
+    } finally {
+      this.syncDrawings(Number.NEGATIVE_INFINITY);
+      this.collecting = null;
+      if (edits.length === 1) this.push(edits[0] as Edit);
+      else if (edits.length > 1) this.push({ kind: 'batch', edits });
+    }
+  }
+
+  /** Pastes a clip (see topology-clip.ts) as one undo step. */
+  paste(clip: Clip, offset: number, bounds?: Bounds): Pasted {
+    return this.batch(() => {
+      const out = pasteClip(this.topo, clip, offset, bounds);
+      for (const placed of out.devices) this.record({ kind: 'add', id: placed.device.id, placed });
+      for (const link of out.links) this.record({ kind: 'connect', cable: cableOf(link) });
+      return out;
+    });
+  }
+
   /** Records the drawings changed since the last call (drawings are immutable lists, so a change is a new list). */
   syncDrawings(now: number): void {
     const after = this.topo.annotations;
     if (after === this.seen) return;
     const last = this.done[this.done.length - 1];
-    const merge = last?.kind === 'drawings' && now - last.at < MERGE_MS && this.undone.length === 0;
+    const merge = !this.collecting && last?.kind === 'drawings' && now - last.at < MERGE_MS && this.undone.length === 0;
     const before = merge ? last.before : this.seen;
     if (merge) this.done.pop();
     this.seen = after;
@@ -136,15 +168,28 @@ export class EditHistory {
   }
 
   private push(e: Edit): void {
+    if (this.collecting) {
+      this.collecting.push(e);
+      return;
+    }
     this.done = [...this.done.slice(-(MAX_EDITS - 1)), e];
     this.undone = [];
   }
 
   /** Runs an edit backwards (undo) or forwards (redo). */
   private apply(e: Edit, back: boolean): Applied {
-    const removed: string[] = [];
     this.skipped = 0;
+    const removed = this.run(e, back);
+    return { kind: e.kind, removed, skipped: this.skipped };
+  }
+
+  /** Runs one edit (a group in reverse order when undoing); returns the devices it took off the workspace. */
+  private run(e: Edit, back: boolean): string[] {
+    const removed: string[] = [];
     switch (e.kind) {
+      case 'batch':
+        for (const x of back ? [...e.edits].reverse() : e.edits) removed.push(...this.run(x, back));
+        break;
       case 'add':
       case 'remove':
         if ((e.kind === 'add') !== back) this.restore(e);
@@ -165,7 +210,7 @@ export class EditHistory {
         this.topo.annotations = back ? e.before : e.after;
         this.seen = this.topo.annotations;
     }
-    return { kind: e.kind, removed, skipped: this.skipped };
+    return removed;
   }
 
   private place(id: string, to: Point): void {

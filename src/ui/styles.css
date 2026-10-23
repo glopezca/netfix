@@ -666,3 +666,13 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 /* Servicios → Ficheros: one block per file. */
 .conf-file h4 { margin: 14px 0 4px; font-size: 12.5px; }
 .port-addr { fill: var(--ink); }
+/* Resize handles of the selected drawing (corners and midpoints of an area, ends of a line). */
+.drawing-handle { fill: #fff; stroke: var(--accent); stroke-width: 1.5; }
+.drawing-handle-nw, .drawing-handle-se { cursor: nwse-resize; }
+.drawing-handle-ne, .drawing-handle-sw { cursor: nesw-resize; }
+.drawing-handle-n, .drawing-handle-s { cursor: ns-resize; }
+.drawing-handle-e, .drawing-handle-w { cursor: ew-resize; }
+.drawing-handle-p0, .drawing-handle-p1 { cursor: move; }
+/* Selection box over the background, and the group being selected */
+.marquee { fill: var(--accent); fill-opacity: .08; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.marquee-layer { pointer-events: none; }

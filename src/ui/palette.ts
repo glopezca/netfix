@@ -15,7 +15,11 @@ export interface PaletteActions {
   toggleDraw(): boolean;
   /** Undo (false) or redo (true) the last workspace edit. */
   undo(redo: boolean): void;
+  /** Copy, paste or duplicate the selection of the workspace. */
+  clip(action: ClipAction): void;
 }
+
+export type ClipAction = 'copy' | 'paste' | 'duplicate';
 
 export const PLACEABLE: readonly (readonly [DeviceKind, MessageKey])[] = [
   ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
@@ -59,6 +63,12 @@ export function palette(actions: PaletteActions, buttons: Map<string, HTMLButton
     b.addEventListener('click', () => actions.undo(redo));
     return b;
   };
+  const clipBtn = (action: ClipAction, glyph: string): HTMLButtonElement => {
+    const label = t(`clip.${action}`);
+    const b = el('button', { type: 'button', class: `zoom-btn clip-btn clip-${action}`, 'aria-label': label, title: label }, glyph);
+    b.addEventListener('click', () => actions.clip(action));
+    return b;
+  };
   const edit = policy.editTopology;
   const devices = edit ? PLACEABLE.filter(([k]) => allowsDevice(policy, k)) : [];
   return el('footer', { class: 'palette' },
@@ -68,6 +78,7 @@ export function palette(actions: PaletteActions, buttons: Map<string, HTMLButton
       ...(edit ? [toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')] : []),
       ...(policy.drawing ? [drawToggle(actions)] : [])),
     el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))),
+    ...(edit ? [el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('clip.group') }, clipBtn('copy', '⧉'), clipBtn('paste', '⎘'), clipBtn('duplicate', '⊕'))] : []),
     el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))),
     hintEl);
 }

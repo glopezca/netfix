@@ -106,7 +106,7 @@ export interface TopologyFile {
 const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'Cloud' };
 export const FILE_VERSION = 2;
 /** A larger file would freeze the tab while it is built and settled. */
-const MAX_DEVICES = 500;
+export const MAX_DEVICES = 500;
 const MAX_LABEL = 64;
 const MAX_CONFIG_LINES = 20_000;
 const MAX_CONFIG_LINE = 4096;
@@ -148,7 +148,7 @@ export class Topology {
   }
 
   /** A file may give two clouds the same public block: the later ones move to a free block. */
-  private separateClouds(): void {
+  separateClouds(): void {
     const seen: number[] = [];
     for (const p of this.placed.values()) {
       const c = p.device;
@@ -278,7 +278,7 @@ function createDevice(kind: Exclude<DeviceKind, 'cloud'>, id: string, seed: numb
   return new Pc(id, label, clock, seed);
 }
 
-function record(id: string, p: Placed): DeviceRecord {
+export function record(id: string, p: Placed): DeviceRecord {
   const d = p.device;
   const seed = deviceSeed(d);
   const base = { id, kind: d.kind, label: p.label, x: Math.round(p.x), y: Math.round(p.y), seed };
@@ -308,7 +308,7 @@ function hostRecord(d: Host): PcRecord {
   return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
 }
 
-function restore(device: AnyDevice, rec: DeviceRecord): void {
+export function restore(device: AnyDevice, rec: DeviceRecord): void {
   if (device instanceof Cloud) {
     device.setSettings(cloudFromJson(rec.cloud, device.settings));
     return;

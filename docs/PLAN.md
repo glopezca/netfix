@@ -635,3 +635,26 @@ interfaz, y los dos extremos no se juntan) y los bajos: la dirección de una lí
 (`gatewayAddr`), la prueba de solapes deja 2 px de margen, y las direcciones IOS sin cable (SVI Vlan1, Loopback,
 Tunnel) se ven bajo el equipo.
 
+
+## Fase 27 · Áreas redimensionables, selección por retícula, copiar, pegar y duplicar (v0.19.0)
+
+1. **Redimensionar áreas y dibujos:** un rectángulo o una elipse seleccionados muestran ocho tiradores (esquinas y
+   puntos medios de los lados); arrastrar uno cambia el tamaño dejando fijo el lado opuesto (tamaño mínimo). Una línea
+   muestra sus dos extremos. Función pura `resizeAnnotation` en `net/annotations.ts`; deshacer, como cualquier cambio
+   de dibujos.
+2. **Selección por retícula:** con «Seleccionar», arrastrar con el ratón sobre el fondo dibuja un rectángulo
+   discontinuo; al soltar quedan seleccionados los equipos cuyo centro cae dentro y los dibujos que caben enteros
+   (con Mayús se añaden a la selección). Mover la vista: botón central o derecho, Espacio + arrastrar, o el dedo en
+   pantallas táctiles. Arrastrar un elemento seleccionado mueve todo el grupo; Supr lo borra entero; Escape lo
+   deselecciona. Cada acción de grupo es un único paso de deshacer (nueva edición `group` del historial).
+3. **Copiar, pegar y duplicar:** Ctrl+C, Ctrl+V y Ctrl+D (⌘ en Mac), y botones en la barra. Se copian los equipos con
+   su configuración (running-config, IP, servicios, ficheros), los cables entre ellos y los dibujos seleccionados;
+   al pegar, cada equipo recibe el siguiente nombre libre (y su nombre de host derivado), las nubes un bloque público
+   libre, todo se desplaza 40 px por pegado y lo pegado queda seleccionado. Lógica en `net/topology-clip.ts`.
+
+**Estado:** completada (v0.19.0, 641 pruebas; e2e-v019 con recuadro, arrastre y borrado de grupo, copiar, pegar,
+duplicar, desplazamiento con el botón central y tiradores). Revisión ECC: code-reviewer (sonnet) sin críticos ni altos;
+corregidos los pegados fuera del área, copiar con la topología bloqueada, ids borrados por otra vía en la selección,
+recuadro cancelado y el id del equipo arrastrado. security-reviewer (opus) sin críticos ni altos; corregido el límite de
+cables al pegar (mismo que al abrir un archivo, para que lo guardado se pueda abrir). Los routers y switches pegados
+conservan su `hostname` de IOS, como en Packet Tracer.
