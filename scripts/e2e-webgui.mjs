@@ -50,8 +50,13 @@ try {
   await page.fill('.window:visible .browser-auth input >> nth=1', 'netfix');
   await page.click('.window:visible .browser-auth button');
   await page.waitForSelector('.browser-view .web-adm-nav-files');
-  const icon = await page.locator('.browser-view .web-adm-nav-files').evaluate((n) => getComputedStyle(n, '::before').content);
-  assert.equal(icon, '"🔧"', 'Configuración has its icon');
+  // A monochrome wrench like the other glyphs: a mask painted in the text colour, the width of the other icons.
+  const icon = (sel) => page.locator(sel).evaluate((n) => { const b = getComputedStyle(n, '::before'); return { mask: b.maskImage || b.webkitMaskImage, bg: b.backgroundColor, color: getComputedStyle(n).color, width: b.width }; });
+  const wrench = await icon('.browser-view .web-adm-nav-files');
+  assert.match(wrench.mask, /^url\("data:image\/svg\+xml/);
+  assert.equal(wrench.bg, wrench.color, 'painted in the menu text colour');
+  assert.equal(wrench.width, (await icon('.browser-view .web-adm-nav-log')).width, 'as wide as the other icons');
+  if (shots) { await page.locator('.browser-view .web-adm-nav-log').scrollIntoViewIfNeeded(); await page.locator('.browser-view .web-adm-menu').screenshot({ path: join(shots, 'webgui-menu.png') }); }
   await go('http://192.168.10.2:10000/?page=files&svc=dns');
   assert.doesNotMatch(await page.locator('.browser-view').innerText(), /wa\.desc\./, 'every page has its description');
   const pre = page.locator('.browser-view pre.web-syn-view').first();
@@ -65,7 +70,7 @@ try {
   assert.equal(await log.locator('.web-syn-type').first().evaluate((n) => getComputedStyle(n).color), 'rgb(46, 139, 87)', 'vim Type for the time');
   if (shots) await page.locator('.browser-view').screenshot({ path: join(shots, 'webgui-log.png') });
   assert.deepEqual(errors, []);
-  console.log('e2e web GUI OK: management before Roundcube, 🔧 Configuración, vim colours painted on files and logs');
+  console.log('e2e web GUI OK: management before Roundcube, monochrome wrench for Configuración, vim colours painted on files and logs');
 } finally {
   await browser.close();
   server.kill();

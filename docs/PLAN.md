@@ -859,3 +859,12 @@ vim o porque no tienen efecto visible:
 - **Orden en Servicios → HTTP de servidores y routers Linux.** «Gestión web del servidor» va antes de Roundcube, también
   en la línea de estado.
 
+## Fase 35 · Llave inglesa monocroma en el menú de la WebGUI (v0.19.8)
+
+- **Icono.** El emoji 🔧 se veía en color y con otro tamaño que el resto de iconos del menú, que son glifos de texto.
+  Se sustituye por una llave inglesa propia: una silueta SVG con la boca recortada, usada como máscara CSS y pintada
+  con `currentColor`. Queda monocroma, toma el color del texto del menú (gris, o blanco en la entrada activa) y ocupa
+  18 × 15 px, como los demás glifos.
+- **Pruebas.** `e2e-webgui` comprueba que la máscara existe, que se pinta con el color del texto y que tiene la anchura
+  de los otros iconos, y guarda una captura del menú.
+
