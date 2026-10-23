@@ -1,6 +1,6 @@
 /**
  * PC / Server / Linux router → «Equipo»: the device name, applied as soon as it changes. The host name is derived from
- * it (lowercase, no accents, hyphens) and shown read-only; `hostnamectl set-hostname` in the terminal still changes it.
+ * it (lowercase, no accents, hyphens) and shown read-only: nothing else can change it (net/device-names.ts).
  */
 import { el } from './dom.ts';
 import { field, input, message, onCommit } from './forms.ts';
@@ -9,7 +9,7 @@ import { liveHostPanel } from './live.ts';
 import type { LivePanel } from './live.ts';
 import type { Host } from '../devices/host.ts';
 import type { Placed } from '../net/topology.ts';
-import { hostnameAfterRename } from '../core/hostname.ts';
+import { renameDevice } from '../net/device-names.ts';
 import { t } from '../i18n/t.ts';
 
 const MAX_LABEL = 40;
@@ -25,10 +25,8 @@ export function hostSettings(placed: Placed, h: Host, app: AfterChange & { retit
       const shown = label.value.trim().slice(0, MAX_LABEL);
       if (!shown) { label.value = placed.label; return msg.error(t('host.labelEmpty')); }
       if (shown === placed.label) return;
-      // A host name set with hostnamectl is kept; one that still follows the name is derived again.
-      const name = hostnameAfterRename(h.name, placed.label, shown);
-      placed.label = shown;
-      if (name !== h.name) h.setHostname(name);
+      renameDevice(placed, shown);
+      const name = h.name;
       app.retitle?.(shown);
       app.afterCommand();
       refresh();

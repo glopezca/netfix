@@ -114,7 +114,7 @@ button, input, select { font: inherit; color: inherit; }
 .light { stroke: var(--panel); stroke-width: 1; }
 .light-up { fill: var(--up); }
 .light-down { fill: var(--down); }
-.port-label { font: 11px var(--font-mono); fill: var(--ink-2); paint-order: stroke; stroke: var(--ws); stroke-width: 3px; }
+.port-label { font: 11px var(--font-mono); fill: var(--ink-2); paint-order: stroke; stroke: var(--ws); stroke-width: 6px; stroke-linejoin: round; }
 
 .device { cursor: grab; outline: none; }
 .device:active { cursor: grabbing; }
@@ -1306,20 +1306,21 @@ const HOST_ES = {
     'host.label': 'Nombre del equipo',
     'host.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo. El nombre de host se deriva de él: minúsculas, sin tildes y con guiones.',
     'host.hostname': 'Nombre de host',
-    'host.hostnameHint': 'Derivado del nombre del equipo (también lo cambia hostnamectl set-hostname). Lo envía el cliente DHCP (opción 12) y lo muestran el prompt, /etc/hostname y hostname.',
+    'host.hostnameHint': 'Siempre se deriva del nombre del equipo: no se puede cambiar desde la terminal ni desde la gestión web. Lo envía el cliente DHCP (opción 12) y lo muestran el prompt, /etc/hostname y hostname.',
     'host.pretty': 'Nombre descriptivo (pretty hostname)',
     'host.prettyHint': 'Solo en GNU/Linux: lo muestra hostnamectl.',
     'host.prettyPlaceholder': 'Opcional, texto libre',
     'host.labelEmpty': 'El nombre visible no puede estar vacío.',
     'host.saved': 'Aplicado. Nombre de host: {name}.',
     'host.equivalents': 'Equivalencias',
-    'host.eqLinux': 'GNU/Linux: sudo hostnamectl set-hostname NOMBRE (persistente) o sudo hostname NOMBRE (solo hasta reiniciar). bash muestra el nombre nuevo en una shell nueva (exec bash).',
+    'host.eqLinux': 'GNU/Linux: en un equipo real, sudo hostnamectl set-hostname NOMBRE; en Netfix lo rechaza porque el nombre de host sale del nombre del equipo. sudo hostnamectl set-hostname --pretty "Texto" sí cambia el nombre descriptivo.',
     'host.eqWindows': 'Windows: Configuración → Sistema → Cambiar el nombre de este equipo.',
     'host.now': 'Ahora mismo: estático «{static}»',
     'host.nowTransient': ', transitorio «{name}»',
     'host.nowPretty': ', descriptivo «{name}»',
-    'host.live': 'Estos campos se actualizan solos cuando cambias el nombre o la red desde la terminal.',
+    'host.live': 'El nombre descriptivo se actualiza solo si lo cambias desde la terminal.',
     'host.err.empty': 'El nombre de host no puede estar vacío.',
+    'host.locked': 'en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)',
     'host.err.long': 'El nombre de host admite como máximo {max} caracteres.',
     'host.err.label': 'Cada parte del nombre admite como máximo {max} caracteres.',
     'host.err.chars': 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).',
@@ -1339,20 +1340,21 @@ const HOST_EN = {
     'host.label': 'Device name',
     'host.labelHint': 'Shown in the diagram and applied when it changes. The host name is derived from it: lowercase, no accents, hyphens.',
     'host.hostname': 'Host name',
-    'host.hostnameHint': 'Derived from the device name (hostnamectl set-hostname changes it too). The DHCP client sends it (option 12) and the prompt, /etc/hostname and hostname show it.',
+    'host.hostnameHint': 'Always derived from the device name: it cannot be changed from the terminal or the web management. The DHCP client sends it (option 12) and the prompt, /etc/hostname and hostname show it.',
     'host.pretty': 'Pretty host name',
     'host.prettyHint': 'GNU/Linux only: shown by hostnamectl.',
     'host.prettyPlaceholder': 'Optional, free text',
     'host.labelEmpty': 'The display name cannot be empty.',
     'host.saved': 'Applied. Host name: {name}.',
     'host.equivalents': 'Equivalents',
-    'host.eqLinux': 'GNU/Linux: sudo hostnamectl set-hostname NAME (persistent) or sudo hostname NAME (until reboot). bash shows the new name in a new shell (exec bash).',
+    'host.eqLinux': 'GNU/Linux: on a real machine, sudo hostnamectl set-hostname NAME; Netfix refuses it because the host name comes from the device name. sudo hostnamectl set-hostname --pretty "Text" does change the pretty name.',
     'host.eqWindows': 'Windows: Settings → System → Rename this PC.',
     'host.now': 'Right now: static “{static}”',
     'host.nowTransient': ', transient “{name}”',
     'host.nowPretty': ', pretty “{name}”',
-    'host.live': 'These fields update by themselves when you change the name or the network from the terminal.',
+    'host.live': 'The pretty name updates by itself when you change it from the terminal.',
     'host.err.empty': 'The host name cannot be empty.',
+    'host.locked': 'in Netfix the host name comes from the device name (Device tab)',
     'host.err.long': 'The host name allows at most {max} characters.',
     'host.err.label': 'Each part of the name allows at most {max} characters.',
     'host.err.chars': 'Use only unaccented letters, digits and hyphens (no spaces; it cannot start or end with a hyphen).',
@@ -1801,7 +1803,7 @@ const LABS_ES = {
     'lab.cliente.title': 'Router como cliente DHCP',
     'lab.cliente.summary': 'CPE obtiene su IP WAN con «ip address dhcp»; ISP la fija con un pool host y su client-identifier cisco-….',
     'lab.servidores.title': 'Server: DHCP, DNS, web, correo y SSH',
-    'lab.servidores.summary': 'SRV0 (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave netfix), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/netfix).',
+    'lab.servidores.summary': 'SRV (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave netfix), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/netfix).',
     'lab.blanco.title': 'Área de trabajo en blanco',
     'lab.blanco.summary': 'Empieza desde cero: coloca dispositivos y conéctalos con el cable.',
     'lab.internet.title': 'Internet: dos sedes y DNS públicos',
@@ -1837,7 +1839,7 @@ const LABS_EN = {
     'lab.cliente.title': 'Router as a DHCP client',
     'lab.cliente.summary': 'CPE gets its WAN address with “ip address dhcp”; ISP pins it with a host pool and its cisco-… client-identifier.',
     'lab.servidores.title': 'Server: DHCP, DNS, web, mail and SSH',
-    'lab.servidores.summary': 'SRV0 (Ubuntu) provides DHCP, DNS (aula.lab), web, mail and SSH. Try: browser http://www.aula.lab, mail ana/ana1 (PC0, IMAP) and luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (password netfix), webmail http://webmail.aula.lab/roundcube and web admin http://srv.aula.lab:10000 (admin/netfix).',
+    'lab.servidores.summary': 'SRV (Ubuntu) provides DHCP, DNS (aula.lab), web, mail and SSH. Try: browser http://www.aula.lab, mail ana/ana1 (PC0, IMAP) and luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (password netfix), webmail http://webmail.aula.lab/roundcube and web admin http://srv.aula.lab:10000 (admin/netfix).',
     'lab.blanco.title': 'Blank workspace',
     'lab.blanco.summary': 'Start from scratch: place devices and connect them with the cable tool.',
     'lab.internet.title': 'Internet: two sites and public DNS',
@@ -1912,6 +1914,8 @@ const CLOUD_ES = {
     'cloud.none': 'ninguna',
     'cloud.noNat': 'sin traducciones',
     'cloud.lines': 'Líneas',
+    'cloud.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo.',
+    'cloud.hostnameHint': 'Se deriva del nombre de la nube (minúsculas, sin tildes y con guiones). El nombre del proveedor y el bloque público están en la pestaña ISP.',
     'cloud.err.domain': 'Dominio no válido: usa nombres como sede2.es o empresa.com.',
     'cloud.err.speed': 'Las velocidades deben estar entre 1 y 100000 Mbit/s.',
     'cloud.err.lanMask': 'La máscara de la LAN debe estar entre /8 y /30.',
@@ -1982,6 +1986,8 @@ const CLOUD_EN = {
     'cloud.none': 'none',
     'cloud.noNat': 'no translations',
     'cloud.lines': 'Lines',
+    'cloud.labelHint': 'Shown in the diagram and applied when it changes.',
+    'cloud.hostnameHint': 'Derived from the cloud name (lowercase, no accents, hyphens). The provider name and public block are in the ISP tab.',
     'cloud.err.domain': 'Invalid domain: use names like sede2.es or company.com.',
     'cloud.err.speed': 'Speeds must be between 1 and 100000 Mbit/s.',
     'cloud.err.lanMask': 'The LAN mask must be between /8 and /30.',
@@ -2775,7 +2781,7 @@ const WEB_ES = {
     'wa.delete': 'Borrar',
     'wa.remove': 'Eliminar',
     'wa.name': 'Nombre',
-    'wa.hostnameHelp': 'Nombre de host del servidor (RFC 1123).',
+    'wa.hostnameHelp': 'Se deriva del nombre del equipo (pestaña Equipo de Netfix): minúsculas, sin tildes y con guiones.',
     'wa.hostname': 'Nombre de host',
     'wa.internet': 'Dirección de Internet',
     'wa.internetHelp': 'DHCP: el servidor pide su dirección. Estática: escríbela tú.',
@@ -3043,7 +3049,7 @@ const WEB_EN = {
     'wa.delete': 'Delete',
     'wa.remove': 'Remove',
     'wa.name': 'Name',
-    'wa.hostnameHelp': 'Server host name (RFC 1123).',
+    'wa.hostnameHelp': 'It comes from the device name (Device tab in Netfix): lowercase, no accents, hyphens.',
     'wa.hostname': 'Host name',
     'wa.internet': 'Internet address',
     'wa.internetHelp': 'DHCP: the server asks for its address. Static: you write it.',
@@ -4388,8 +4394,37 @@ function triangle(c, from, to) {
     const pts = [0, 2.1, 4.2].map((o) => [c.x + Math.cos(ang + o) * s, c.y + Math.sin(ang + o) * s]);
     return `M${pts.map((p) => p.map((n) => n.toFixed(1)).join(' ')).join(' L')} Z`;
 }
+/** How far along the unit direction (ux, uy) a ray from the centre has left `r` (0 when it never crosses it). */
+function rayExit(ux, uy, r) {
+    const slab = (u, lo, hi) => {
+        if (Math.abs(u) < 1e-9)
+            return lo <= 0 && hi >= 0 ? [-Infinity, Infinity] : [Infinity, -Infinity];
+        const a = lo / u;
+        const b = hi / u;
+        return [Math.min(a, b), Math.max(a, b)];
+    };
+    const [ax, bx] = slab(ux, r.x0, r.x1);
+    const [ay, by] = slab(uy, r.y0, r.y1);
+    const enter = Math.max(ax, ay);
+    const exit = Math.min(bx, by);
+    return exit >= Math.max(enter, 0) ? exit : 0;
+}
+/**
+ * Distances along a cable, from a device's centre, of its link light and of its interface name: both just past the
+ * device's drawing (icon, model above, name and addresses below), the name centred on the cable after the light.
+ */
+function cableMarks(from, to, shapes, label) {
+    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+    const ux = (to.x - from.x) / len;
+    const uy = (to.y - from.y) / len;
+    const out = Math.max(0, ...shapes.map((r) => rayExit(ux, uy, r)));
+    const light = out + LIGHT_GAP;
+    return { light, label: light + LABEL_GAP + Math.abs(ux) * label.halfW + Math.abs(uy) * label.halfH };
+}
+const LIGHT_GAP = 8;
+const LABEL_GAP = 9;
 
-return { clamp, along, perpendicular, triangle };
+return { clamp, along, perpendicular, triangle, rayExit, cableMarks };
 })();
 __m["net/annotations.js"] = (() => {
 /**
@@ -5124,8 +5159,144 @@ const BROADCAST_IP = 0xffffffff;
 
 return { parseIp, formatIp, prefixToMask, formatMask, parseMask, networkOf, broadcastOf, inSubnet, classfulPrefix, parseIpWithMask, isUsableHost, BROADCAST_IP };
 })();
+__m["devices/cloud-config.js"] = (() => {
+/**
+ * Settings of the ISP cloud: each port is a customer line (cable, xDSL or FTTx) that either hands a
+ * public /29 to the customer's router (DHCP) or acts as the operator's router (LAN, DHCP, NAT, port
+ * forwarding). Domains registered at the ISP are published by the public DNS servers 8.8.8.8/8.8.4.4.
+ */
+const { t } = __m["i18n/t.js"];
+const { formatIp, inSubnet, networkOf, parseIp } = __m["core/ip.js"];
+const CLOUD_PORTS = ['Coaxial0', 'Coaxial1', 'DSL0', 'DSL1', 'Fibra0', 'Fibra1'];
+const BLOCK_PREFIX = 16;
+const LINE_PREFIX = 29;
+const LAN_DEFAULT = parseIp('192.168.1.1') ?? 0;
+const LAN_PREFIX = 24;
+const MAX_FORWARDS = 32;
+const MAX_DOMAINS = 32;
+const MAX_SPEED = 100_000;
+function accessOf(port) {
+    if (port.startsWith('Coaxial'))
+        return 'cable';
+    if (port.startsWith('DSL'))
+        return 'xdsl';
+    return 'fttx';
+}
+const ACCESS_LABEL = { cable: 'Cable (DOCSIS 3.1)', xdsl: 'xDSL (VDSL2)', fttx: 'FTTH (GPON)' };
+const SPEEDS = { cable: [600, 60], xdsl: [100, 10], fttx: [1000, 1000] };
+function defaultPort(port) {
+    const [down, up] = SPEEDS[accessOf(port)];
+    return { mode: 'router', down, up, lanIp: LAN_DEFAULT, lanPrefix: LAN_PREFIX, forwards: [] };
+}
+function defaultCloud(isp, block) {
+    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, defaultPort(p)]));
+    return { isp, block, ports, domains: [] };
+}
+/** Customer /29 of a port: network, gateway (.1) and first customer address (.2). */
+function lineSubnet(block, port) {
+    const i = Math.max(0, CLOUD_PORTS.indexOf(port));
+    const net = (block + (i + 1) * 256) >>> 0;
+    return { net, gw: net + 1, customer: net + 2 };
+}
+/** The ISP's own router in the core: x.y.0.1. */
+function ispHop(block) {
+    return (block + 1) >>> 0;
+}
+/** Ranges a cloud cannot use as public block or delegate a domain to (private, special, emulated Internet). */
+const RESERVED = [
+    ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16], ['172.16.0.0', 12],
+    ['192.168.0.0', 16], ['224.0.0.0', 3], ['8.8.0.0', 16], ['34.160.0.0', 16], ['93.184.0.0', 16], ['142.250.0.0', 15],
+    ['198.51.100.0', 24], ['203.0.113.0', 24],
+];
+function reservedAddress(ip) {
+    return RESERVED.some(([net, prefix]) => inSubnet(ip, parseIp(net) ?? 0, prefix));
+}
+function validDomain(name) {
+    if (!/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(name))
+        return t('cloud.err.domain');
+    return null;
+}
+function validatePort(p) {
+    if (!Number.isInteger(p.down) || !Number.isInteger(p.up) || p.down < 1 || p.up < 1 || p.down > MAX_SPEED || p.up > MAX_SPEED)
+        return t('cloud.err.speed');
+    if (p.lanPrefix < 8 || p.lanPrefix > 30)
+        return t('cloud.err.lanMask');
+    const net = networkOf(p.lanIp, p.lanPrefix);
+    if (p.lanIp === net || p.lanIp === (net | (0xffffffff >>> p.lanPrefix)) >>> 0)
+        return t('cloud.err.lanIp');
+    if (p.forwards.length > MAX_FORWARDS)
+        return t('cloud.err.forwards');
+    for (const f of p.forwards) {
+        if (![f.port, f.toPort].every((n) => Number.isInteger(n) && n >= 1 && n <= 65535))
+            return t('cloud.err.ports');
+        if (!inSubnet(f.ip, p.lanIp, p.lanPrefix) || f.ip === p.lanIp)
+            return t('cloud.err.forwardLan', { ip: formatIp(f.ip) });
+    }
+    const dup = p.forwards.find((f, i) => p.forwards.findIndex((g) => g.proto === f.proto && g.port === f.port) !== i);
+    return dup ? t('cloud.err.dupForward', { proto: dup.proto.toUpperCase(), port: dup.port }) : null;
+}
+function validateCloud(s, otherBlocks = []) {
+    if (!s.isp.trim() || s.isp.length > 40)
+        return t('cloud.err.isp');
+    if (networkOf(s.block, BLOCK_PREFIX) !== s.block)
+        return t('cloud.err.block');
+    if (reservedAddress(s.block))
+        return t('cloud.err.reserved', { net: formatIp(s.block) });
+    if (otherBlocks.includes(s.block))
+        return t('cloud.err.used', { net: formatIp(s.block) });
+    if (s.domains.length > MAX_DOMAINS)
+        return t('cloud.err.domains');
+    for (const d of s.domains) {
+        const bad = validDomain(d.name);
+        if (bad)
+            return bad;
+        if (reservedAddress(d.ip))
+            return t('cloud.err.domainIp', { name: d.name, ip: formatIp(d.ip) });
+    }
+    for (const p of CLOUD_PORTS) {
+        const bad = validatePort(s.ports[p]);
+        if (bad)
+            return `${p}: ${bad}`;
+    }
+    return null;
+}
+// ------------------------------------------------------------ JSON
+const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+const ipOf = (v, d) => (typeof v === 'string' ? parseIp(v) ?? d : d);
+const obj = (v) => (typeof v === 'object' && v !== null ? v : {});
+function cloudToJson(s) {
+    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => {
+        const c = s.ports[p];
+        return [p, { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}) }];
+    }));
+    return { isp: s.isp, block: formatIp(s.block), ports, domains: s.domains.map((d) => ({ ...d, ip: formatIp(d.ip) })) };
+}
+function portFromJson(port, v) {
+    const d = defaultPort(port);
+    const o = obj(v);
+    const forwards = (Array.isArray(o.forwards) ? o.forwards : []).slice(0, MAX_FORWARDS).map(obj).map((f) => ({
+        proto: f.proto === 'udp' ? 'udp' : 'tcp', port: num(f.port, 0), ip: ipOf(f.ip, 0), toPort: num(f.toPort, 0),
+    }));
+    const p = { mode: o.mode === 'public' ? 'public' : 'router', down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards, ...(o.dnsRelay === true ? { dnsRelay: true } : {}) };
+    return validatePort(p) ? d : p;
+}
+/** Settings from an untrusted file; anything invalid falls back to the defaults. */
+function cloudFromJson(v, fallback) {
+    const o = obj(v);
+    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, portFromJson(p, obj(o.ports)[p])]));
+    const domains = (Array.isArray(o.domains) ? o.domains : []).slice(0, MAX_DOMAINS).map(obj)
+        .map((d) => ({ name: String(d.name ?? '').toLowerCase(), kind: d.kind === 'ns' ? 'ns' : 'a', ip: ipOf(d.ip, 0) }))
+        .filter((d) => validDomain(d.name) === null && !reservedAddress(d.ip));
+    const s = { isp: typeof o.isp === 'string' ? o.isp.slice(0, 40) : fallback.isp, block: ipOf(o.block, fallback.block), ports, domains };
+    return validateCloud(s) ? { ...fallback, ports, domains } : s;
+}
+
+return { CLOUD_PORTS, BLOCK_PREFIX, LINE_PREFIX, accessOf, ACCESS_LABEL, defaultPort, defaultCloud, lineSubnet, ispHop, reservedAddress, validDomain, validatePort, validateCloud, cloudToJson, cloudFromJson };
+})();
 __m["ui/device-caption.js"] = (() => {
 const { formatIp } = __m["core/ip.js"];
+const { BLOCK_PREFIX } = __m["devices/cloud-config.js"];
+const { ICON_H, ICON_W } = __m["ui/icons.js"];
 /** More would cover the devices below. */
 const MAX_LINES = 3;
 /** Height of each caption line below the device name. */
@@ -5133,8 +5304,9 @@ const CAPTION_LINE = 14;
 const IOS_DEFAULTS = new Set(['Router', 'Switch']);
 function extraLines(p) {
     const d = p.device;
+    // A cloud: its public block, as a device shows its IP/CIDR (the provider name is in its ISP tab).
     if (d.kind === 'cloud')
-        return d.settings.isp && d.settings.isp !== p.label ? [d.settings.isp] : [];
+        return [`${formatIp(d.settings.block)}/${BLOCK_PREFIX}`];
     if (d.kind === 'router' || d.kind === 'switch')
         return IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname];
     return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
@@ -5142,8 +5314,24 @@ function extraLines(p) {
 function deviceCaption(p) {
     return { name: p.label, extra: extraLines(p).slice(0, MAX_LINES) };
 }
+/** Rough text widths (px per character) of the device name (bold 13 px) and of the lines below it (11 px). */
+const NAME_CHAR = 7.4;
+const LINE_CHAR = 6.2;
+/** Name baseline below the icon's centre, and the model line above it (canvas.ts). */
+const NAME_BASELINE = ICON_H / 2 + 18;
+const MODEL_TOP = ICON_H / 2 + 24;
+const DESCENT = 5;
+/** What a device draws around its centre: the icon with its model above, and the caption below. */
+function deviceShapes(p) {
+    const c = deviceCaption(p);
+    const half = Math.max(c.name.length * NAME_CHAR, ...c.extra.map((l) => l.length * LINE_CHAR)) / 2;
+    return [
+        { x0: -ICON_W / 2 - 4, x1: ICON_W / 2 + 4, y0: -MODEL_TOP, y1: ICON_H / 2 + 2 },
+        { x0: -half, x1: half, y0: ICON_H / 2 + 2, y1: NAME_BASELINE + c.extra.length * CAPTION_LINE + DESCENT },
+    ];
+}
 
-return { CAPTION_LINE, deviceCaption };
+return { CAPTION_LINE, deviceCaption, deviceShapes };
 })();
 __m["ui/canvas.js"] = (() => {
 /** Logical workspace: devices, cables with link lights, placing, moving, cabling, deleting. */
@@ -5152,16 +5340,15 @@ const { ICONS, ICON_W, ICON_H, modelLabel } = __m["ui/icons.js"];
 const { shortIfaceName } = __m["ios/interfaces.js"];
 const { Viewport } = __m["ui/viewport.js"];
 const { placeInside } = __m["ui/viewport-math.js"];
-const { along, clamp, perpendicular, triangle } = __m["ui/canvas-geometry.js"];
+const { along, cableMarks, clamp, triangle } = __m["ui/canvas-geometry.js"];
 const { DrawLayer } = __m["ui/draw-layer.js"];
 const { DrawState } = __m["ui/draw-bar.js"];
 const { historyFor } = __m["net/edit-history.js"];
 const { t } = __m["i18n/t.js"];
-const { CAPTION_LINE, deviceCaption } = __m["ui/device-caption.js"];
+const { CAPTION_LINE, deviceCaption, deviceShapes } = __m["ui/device-caption.js"];
 const WORLD_W = 2400;
 const WORLD_H = 1600;
-const LIGHT_OFFSET = 36;
-const LABEL_OFFSET = 62;
+const PORT_CHAR = 6.7; // px per character of an interface name (11 px monospace)
 const DRAG_THRESHOLD = 4;
 const DOUBLE_TAP_MS = 350;
 const LONG_PRESS_MS = 550;
@@ -5300,11 +5487,12 @@ class Canvas {
         const hit = svg('line', { class: 'cable-hit', x1: a.x, y1: a.y, x2: b.x, y2: b.y });
         g.append(hit, line);
         for (const [from, to, ep] of [[a, b, link.a], [b, a, link.b]]) {
-            const pos = along(from, to, LIGHT_OFFSET);
-            const lpos = along(from, to, LABEL_OFFSET);
+            const name = shortIfaceName(ep.port);
+            const marks = cableMarks(from, to, deviceShapes(from), { halfW: name.length * PORT_CHAR / 2 + 3, halfH: 7 });
+            const pos = along(from, to, marks.light);
+            const lpos = along(from, to, marks.label);
             g.appendChild(svg('path', { class: `light light-${this.endState(ep)}`, d: triangle(pos, from, to) }));
-            const side = perpendicular(from, to, 12);
-            g.appendChild(svg('text', { class: 'port-label', x: lpos.x + side.x, y: lpos.y + side.y + 4, 'text-anchor': side.x < 0 ? 'end' : 'start' }, shortIfaceName(ep.port)));
+            g.appendChild(svg('text', { class: 'port-label', x: lpos.x, y: lpos.y + 4, 'text-anchor': 'middle' }, name));
         }
         g.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
@@ -7532,6 +7720,10 @@ class IpStack {
         const out = this.outbound(egress.iface, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
         if (out)
             this.sendVia(egress, out);
+        // Only our own ping: a broadcast we forward was already delivered to us when it came in.
+        const iface = this.host.l3Iface(egress.iface);
+        if (out && iface && !iface.pointToPoint && this.isLocalBroadcast(iface, dst))
+            this.loopBroadcast(egress.iface, iface.mac, out);
         return true;
     }
     /** Routes and sends a packet originated (or forwarded) by this host. */
@@ -7569,6 +7761,15 @@ class IpStack {
             return;
         }
         this.resolve(iface, egress.nextHop, packet);
+    }
+    /**
+     * Linux hands a copy of every broadcast it sends to itself (ip_mc_output): a host that answers broadcast echoes
+     * answers its own ping -b. Only for its own echo requests, so DHCP and the rest are not seen twice.
+     */
+    loopBroadcast(ifaceName, mac, packet) {
+        if (this.host.ignoresBroadcastEcho?.() !== false)
+            return;
+        this.host.schedule(0, () => this.localIn(ifaceName, packet, { src: mac, dst: BROADCAST_MAC, ip: packet }));
     }
     /** Packets to one of our own addresses never reach the wire (like the kernel's loopback path). */
     loopback(packet) {
@@ -8715,7 +8916,7 @@ class Sysctl {
         if (key.accepts === 'int' ? !/^\d{1,9}$/.test(value) : key.accepts === 'text' ? value.length === 0 || value.length > MAX_TEXT : !key.accepts.includes(value))
             return 'invalid';
         if (name === 'kernel.hostname')
-            return this.hostname.set(value) ? 'invalid' : null;
+            return this.hostname.set(value) ? 'denied' : null;
         this.values.set(name, value);
         const mirror = MIRRORS[name];
         if (mirror)
@@ -8764,10 +8965,8 @@ class Kernel {
         this.host = host;
         this.sysctl = new Sysctl({
             get: () => host.runtimeName(),
-            set: (name) => {
-                host.setTransientName(name);
-                return null;
-            },
+            // kernel.hostname is read-only in Netfix: the host name comes from the device name.
+            set: () => 'locked',
         });
         this.netfilter = new Netfilter({
             now: () => host.clock.now(),
@@ -19739,7 +19938,7 @@ const NETFIX_DOCS = {
                 h('Ventanas de los equipos'),
                 table(['Equipo', 'Pestañas'], [
                     ['Router IOS / Switch IOS', 'Equipo (nombre visible y hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
-                    ['Nube ISP', 'ISP (proveedor, bloque público, dominios), Interfaces (resumen de las seis líneas) y Líneas (modo, LAN, NAT, redirección de puertos).'],
+                    ['Nube ISP', 'Equipo (nombre y nombre de host derivado), ISP (proveedor, bloque público, dominios), Interfaces (resumen de las seis líneas) y Líneas (modo, LAN, NAT, redirección de puertos).'],
                     ['PC', 'Equipo, Interfaces (MAC, enlace, velocidad, extremo del cable y estado del puerto), Configuración IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Terminal Windows y Terminal Linux.'],
                     ['Router Linux', 'Equipo, Interfaces (dirección de eth0-eth2, MAC, extremo del cable, reenvío y rutas), Servicios (Parámetros, Firewall, VPN, y los servicios de Server empezando por SSH) y Terminal Linux.'],
                     ['Server', 'Equipo, Interfaces, Servicios (SSH, DHCP, DNS, HTTP, correo, Registros y Ficheros), Configuración IP, Terminal Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router Linux (en su terminal siguen sysctl y nft).'],
@@ -20151,18 +20350,19 @@ const CLIENT_DOCS = {
         {
             id: 'pc-equipo',
             title: 'Nombre del equipo',
-            summary: 'Nombre del equipo, nombre de host derivado y nombre descriptivo; equivalencias en Linux y Windows.',
+            summary: 'Nombre del equipo, nombre de host derivado (no se cambia desde la terminal) y nombre descriptivo.',
             blocks: [
-                p('En la pestaña Equipo de PCs, servidores y routers Linux se escribe el nombre del equipo (el del diagrama) y se aplica al pulsar Intro o salir del campo. El nombre de host del sistema se deriva de él en formato estándar: minúsculas, sin tildes y con guiones en lugar de espacios («Aula Pública 2º» → aula-publica-2o). El diagrama muestra el nombre del equipo y la dirección IP/CIDR de cada interfaz configurada, sin repetir el nombre de host. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea), aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname, y se guarda con la topología.'),
-                table(['Dónde', 'Cómo se cambia', 'Persistente'], [
-                    ['Pestaña Equipo', 'Nombre del equipo (el nombre de host se deriva de él)', 'Sí'],
-                    ['GNU/Linux', 'sudo hostnamectl set-hostname NOMBRE', 'Sí (/etc/hostname)'],
-                    ['GNU/Linux', 'echo NOMBRE | sudo tee /etc/hostname', 'Sí'],
-                    ['GNU/Linux', 'sudo hostname NOMBRE', 'No: nombre transitorio hasta reiniciar'],
-                    ['GNU/Linux', 'sudo hostnamectl set-hostname --pretty "Texto libre"', 'Sí (nombre descriptivo)'],
+                p('En la pestaña Equipo de PCs, servidores, routers Linux y nubes se escribe el nombre del equipo (el del diagrama) y se aplica al pulsar Intro o salir del campo. El nombre de host del sistema siempre se deriva de él en formato estándar: minúsculas, sin tildes y con guiones en lugar de espacios («Aula Pública 2º» → aula-publica-2o). Se ve en la pestaña, de solo lectura, y no se puede cambiar de otra forma: así cada equipo del diagrama tiene un nombre de host predecible. El diagrama muestra el nombre del equipo y la dirección IP/CIDR de cada interfaz configurada (en una nube, su bloque público), sin repetir el nombre de host. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea) y aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname.'),
+                table(['Dónde', 'Qué pasa en Netfix'], [
+                    ['Pestaña Equipo', 'Cambia el nombre del equipo y, con él, el nombre de host.'],
+                    ['sudo hostnamectl set-hostname NOMBRE', 'Pide la contraseña y responde «Could not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo».'],
+                    ['sudo hostname NOMBRE · sysctl -w kernel.hostname=…', 'Rechazado por lo mismo.'],
+                    ['/etc/hostname', 'Fichero generado de solo lectura (Read-only file system).'],
+                    ['Gestión web → Configuración', 'Muestra el nombre de host sin campo para cambiarlo.'],
+                    ['sudo hostnamectl set-hostname --pretty "Texto libre"', 'Sí cambia el nombre descriptivo, que se guarda con la topología.'],
                 ]),
-                code('admin@srv:~$ hostnamectl set-hostname web01\n==== AUTHENTICATING FOR org.freedesktop.hostname1.set-static-hostname ====\nAuthentication is required to set the statically configured local hostname, as well as the pretty hostname.\nAuthenticating as: admin\nPassword:\n==== AUTHENTICATION COMPLETE ====\nadmin@srv:~$ exec bash\nadmin@web01:~$ hostnamectl | head -1\n Static hostname: web01'),
-                list('Como en Ubuntu, bash lee el nombre al arrancar: el prompt cambia en una shell nueva (exec bash o una terminal nueva).', 'Reglas (RFC 1123): letras sin tilde, números y guiones; partes de hasta 63 caracteres separadas por puntos; sin espacios.'),
+                code('alumno@pc0:~$ sudo hostnamectl set-hostname web01\nCould not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: pc0'),
+                list('En un Ubuntu real esas órdenes sí cambian el nombre; en Netfix se bloquean para que el nombre de host salga siempre del diagrama.', 'Reglas del nombre de host (RFC 1123): letras sin tilde, números y guiones; hasta 63 caracteres; sin espacios.'),
             ],
         },
         {
@@ -20936,6 +21136,7 @@ const INTERNET_DOCS = {
                 code('$ ping 192.168.1.255\nping: Do you want to ping broadcast? Then -b. If not, check your local firewall rules\n$ ping -b -c 2 192.168.1.255\nWARNING: pinging broadcast address\nPING 192.168.1.255 (192.168.1.255) 56(84) bytes of data.\n64 bytes from 192.168.1.1: icmp_seq=1 ttl=255 time=0.400 ms\n64 bytes from 192.168.1.20: icmp_seq=1 ttl=64 time=0.400 ms (DUP!)\n…\n2 packets transmitted, 2 received, +2 duplicates, 0% packet loss\n\nRouter# ping 192.168.1.255\nReply to request 0 from 192.168.1.20, 1 ms'),
                 h('Reenvío de broadcast dirigido'),
                 p('Desactivado por defecto, porque permite ataques de amplificación (smurf). En un router Cisco se activa en la interfaz de salida con ip directed-broadcast (no ip directed-broadcast es lo normal desde IOS 12.0); en el router Linux, con sudo sysctl -w net.ipv4.conf.all.bc_forwarding=1 y el reenvío activado.'),
+                p('Como en Linux, quien hace el ping también recibe su propia copia del broadcast: si tiene icmp_echo_ignore_broadcasts=0, se responde a sí mismo (su dirección aparece en la lista).'),
                 note('En modo simulación se ve una sola trama con destino ff:ff:ff:ff:ff:ff que el switch copia a cada puerto, y después una respuesta por cada equipo que contesta.'),
             ],
         },
@@ -21213,7 +21414,7 @@ const NETFIX_DOCS = {
                 h('Device windows'),
                 table(['Device', 'Tabs'], [
                     ['IOS router / IOS switch', 'Device (workspace name and hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
-                    ['ISP Cloud', 'ISP (provider, public block, domains), Interfaces (summary of the six lines) and Lines (mode, LAN, NAT, port forwarding).'],
+                    ['ISP Cloud', 'Device (name and derived host name), ISP (provider, public block, domains), Interfaces (summary of the six lines) and Lines (mode, LAN, NAT, port forwarding).'],
                     ['PC', 'Device, Interfaces (MAC, link, speed, far end of the cable and port status), IP Config, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and Linux terminal.'],
                     ['Linux router', 'Device, Interfaces (address of eth0-eth2, MAC, far end of the cable, forwarding and routes), Services (Parameters, Firewall, VPN, and the Server services starting with SSH) and Linux terminal.'],
                     ['Server', 'Device, Interfaces, Services (SSH, DHCP, DNS, HTTP, mail, Logs and Files), IP Config, Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the Linux router (sysctl and nft remain in its terminal).'],
@@ -21625,18 +21826,19 @@ const CLIENT_DOCS = {
         {
             id: 'pc-equipo',
             title: 'Device name',
-            summary: 'Device name, derived host name and pretty name; equivalents on Linux and Windows.',
+            summary: 'Device name, derived host name (not changed from the terminal) and pretty name.',
             blocks: [
-                p('The Device tab of PCs, servers and Linux routers holds the device name (the one in the diagram), applied on Enter or when leaving the field. The system host name is derived from it in standard form: lowercase, no accents and hyphens instead of spaces («Aula Pública 2º» → aula-publica-2o). The diagram shows the device name and the IP/CIDR of each configured interface, without repeating the host name. The host name is sent by the DHCP client (option 12, visible in show ip dhcp binding and in Kea), appears in the GNU/Linux prompt, in /etc/hostname and in hostname, and is saved with the topology.'),
-                table(['Where', 'How to change it', 'Persistent'], [
-                    ['Device tab', 'Device name (the host name is derived from it)', 'Yes'],
-                    ['GNU/Linux', 'sudo hostnamectl set-hostname NOMBRE', 'Yes (/etc/hostname)'],
-                    ['GNU/Linux', 'echo NOMBRE | sudo tee /etc/hostname', 'Yes'],
-                    ['GNU/Linux', 'sudo hostname NOMBRE', 'No: transient name until reboot'],
-                    ['GNU/Linux', 'sudo hostnamectl set-hostname --pretty "Texto libre"', 'Yes (pretty name)'],
+                p('In the Device tab of PCs, servers, Linux routers and clouds you type the device name (the one in the diagram); it applies on Enter or when leaving the field. The system host name is always derived from it in standard form: lowercase, no accents and hyphens instead of spaces («Aula Pública 2º» → aula-publica-2o). It shows in the tab, read-only, and cannot be changed any other way, so every device of the diagram has a predictable host name. The diagram shows the device name and the IP/CIDR of each configured interface (for a cloud, its public block), without repeating the host name. The DHCP client sends the host name (option 12, visible in show ip dhcp binding and in Kea) and it appears in the GNU/Linux prompt, in /etc/hostname and in hostname.'),
+                table(['Where', 'What happens in Netfix'], [
+                    ['Device tab', 'Changes the device name and, with it, the host name.'],
+                    ['sudo hostnamectl set-hostname NAME', 'Asks for the password and answers «Could not set static hostname: in Netfix the host name comes from the device name».'],
+                    ['sudo hostname NAME · sysctl -w kernel.hostname=…', 'Refused for the same reason.'],
+                    ['/etc/hostname', 'Generated read-only file (Read-only file system).'],
+                    ['Web management → Setup', 'Shows the host name without a field to change it.'],
+                    ['sudo hostnamectl set-hostname --pretty "Free text"', 'Does change the pretty name, saved with the topology.'],
                 ]),
-                code('admin@srv:~$ hostnamectl set-hostname web01\n==== AUTHENTICATING FOR org.freedesktop.hostname1.set-static-hostname ====\nAuthentication is required to set the statically configured local hostname, as well as the pretty hostname.\nAuthenticating as: admin\nPassword:\n==== AUTHENTICATION COMPLETE ====\nadmin@srv:~$ exec bash\nadmin@web01:~$ hostnamectl | head -1\n Static hostname: web01'),
-                list('As in Ubuntu, bash reads the name at start-up: the prompt changes in a new shell (exec bash or a new terminal).', 'Rules (RFC 1123): unaccented letters, digits and hyphens; labels of up to 63 characters separated by dots; no spaces.'),
+                code('alumno@pc0:~$ sudo hostnamectl set-hostname web01\nCould not set static hostname: in Netfix the host name comes from the device name (Device tab)\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: pc0'),
+                list('On a real Ubuntu those commands do change the name; Netfix blocks them so the host name always comes from the diagram.', 'Host name rules (RFC 1123): unaccented letters, digits and hyphens; up to 63 characters; no spaces.'),
             ],
         },
         {
@@ -22410,6 +22612,7 @@ const INTERNET_DOCS = {
                 code('$ ping 192.168.1.255\nping: Do you want to ping broadcast? Then -b. If not, check your local firewall rules\n$ ping -b -c 2 192.168.1.255\nWARNING: pinging broadcast address\nPING 192.168.1.255 (192.168.1.255) 56(84) bytes of data.\n64 bytes from 192.168.1.1: icmp_seq=1 ttl=255 time=0.400 ms\n64 bytes from 192.168.1.20: icmp_seq=1 ttl=64 time=0.400 ms (DUP!)\n…\n2 packets transmitted, 2 received, +2 duplicates, 0% packet loss\n\nRouter# ping 192.168.1.255\nReply to request 0 from 192.168.1.20, 1 ms'),
                 h('Directed broadcast forwarding'),
                 p('Off by default, because it allows amplification attacks (smurf). On a Cisco router it is enabled on the outgoing interface with ip directed-broadcast (no ip directed-broadcast is the norm since IOS 12.0); on the Linux router, with sudo sysctl -w net.ipv4.conf.all.bc_forwarding=1 and forwarding on.'),
+                p('As on Linux, the sender also gets its own copy of the broadcast: with icmp_echo_ignore_broadcasts=0 it answers itself (its address is in the list).'),
                 note('In simulation mode there is one frame to ff:ff:ff:ff:ff:ff that the switch copies to every port, then one reply per device that answers.'),
             ],
         },
@@ -29536,7 +29739,7 @@ function hostname(ctx) {
         }
         const err = ctx.sh.env.setHostname?.('transient', set) ?? null;
         if (err) {
-            ctx.err('hostname: the specified hostname is invalid\n');
+            ctx.err(`hostname: ${err}\n`);
             return 1;
         }
         return 0;
@@ -29793,7 +29996,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.15.0",
+    "version": "0.16.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -33597,7 +33800,7 @@ __m["net/ping.js"] = (() => {
 let pingId = 1;
 const INTER_PACKET_MS = 1;
 /** After the first answer, how long the other devices of a broadcast have to answer the same request. */
-const DUP_WINDOW_MS = 5;
+const DUP_WINDOW_MS = 50;
 function runPing(stack, hooks, dst, opts) {
     const id = pingId++ & 0xffff;
     // Every reply waits a little for others: a directed broadcast of a remote network is not known as one here.
@@ -36147,6 +36350,8 @@ function applySysctlFile(fs, host, path) {
 return { SYSCTL_CONF, SYSCTL_DIR, NETFIX_SYSCTL, seedKernel, sysctlFiles, applySysctlFile };
 })();
 __m["shells/kernel-cmds.js"] = (() => {
+/** sysctl (procps-ng 4) and dmesg for the Ubuntu shell. */
+const { t } = __m["i18n/t.js"];
 const { sysctlName, sysctlPath } = __m["net/sysctl.js"];
 const { applySysctlFile, sysctlFiles, SYSCTL_CONF } = __m["shells/kernel-files.js"];
 const EXIT_ERROR = 255;
@@ -36215,8 +36420,9 @@ function write(ctx, host, o, arg) {
         ctx.err(`sysctl: permission denied on key "${name}"\n`);
         return EXIT_ERROR;
     }
-    if (host.kernel.sysctl.set(name, value) !== null) {
-        ctx.err(`sysctl: setting key "${name}": Invalid argument\n`);
+    const r = host.kernel.sysctl.set(name, value);
+    if (r !== null) {
+        ctx.err(r === 'denied' ? `sysctl: permission denied on key "${name}" (${t('host.locked')})\n` : `sysctl: setting key "${name}": Invalid argument\n`);
         return EXIT_ERROR;
     }
     if (!o.quiet)
@@ -37031,6 +37237,7 @@ return { exportFiles, validFileRecords, importFiles };
 })();
 __m["shells/host-system.js"] = (() => {
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
+const { t } = __m["i18n/t.js"];
 const { listenChoices } = __m["services/listen.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { NAMED_OPTIONS, parseNamedOptions } = __m["services/named-options.js"];
@@ -37038,7 +37245,6 @@ const { RPZ_FILE, setPublicNames } = __m["services/dns-rpz.js"];
 const { NETPLAN_FILE, netplanFileContent, writeNetplanFile } = __m["shells/netplan.js"];
 const { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } = __m["services/sshd-config.js"];
 const { hostKeyFiles } = __m["services/ssh-hostkeys.js"];
-const { validHostname } = __m["devices/host.js"];
 const { Vfs } = __m["bash/vfs.js"];
 const { seedRootfs, seedUsers } = __m["bash/rootfs.js"];
 const { COREUTILS } = __m["bash/coreutils/index.js"];
@@ -37123,11 +37329,6 @@ const WRITERS = {
         else
             srv.setServices({ ...srv.services, dns: next });
     },
-    '/etc/hostname': (host, content) => {
-        const name = content.trim().split('\n')[0]?.trim() ?? '';
-        if (validHostname(name) === null)
-            host.setHostname(name);
-    },
 };
 /** Generated files readable only by root (like Ubuntu's 600 netplan files). */
 const PRIVATE_MODE = { [NETPLAN_FILE]: 0o600 };
@@ -37160,13 +37361,8 @@ function setName(host, kind, value) {
         host.setPrettyName(value === '' ? undefined : value.slice(0, MAX_PRETTY));
         return null;
     }
-    if (validHostname(value) !== null)
-        return `Invalid ${kind} hostname '${value}'`;
-    if (kind === 'transient')
-        host.setTransientName(value);
-    else
-        host.setHostname(value);
-    return null;
+    // The host name comes from the device name (Equipo), never from the terminal.
+    return t('host.locked');
 }
 const SSH_CLIENT_CONFIG = `# This is the ssh client system-wide configuration file.  See ssh_config(5).
 
@@ -42074,26 +42270,51 @@ function hostnameFromLabel(label) {
     const cut = plain.slice(0, MAX_LABEL).replace(/-+$/, '');
     return cut || FALLBACK;
 }
-/**
- * Host name after renaming a device: derived from the new name while it still follows the old one (the default PC0,
- * or a derived one); a name set with hostnamectl is kept.
- */
-function hostnameAfterRename(current, oldLabel, newLabel) {
-    const follows = current === oldLabel || current.toLowerCase() === hostnameFromLabel(oldLabel);
-    return follows ? hostnameFromLabel(newLabel) : current;
+
+return { hostnameFromLabel };
+})();
+__m["net/device-names.js"] = (() => {
+const { hostnameFromLabel } = __m["core/hostname.js"];
+const MAX_NAME = 63;
+/** The devices a placed one lives with (its topology), to keep host names apart. */
+const owners = new WeakMap();
+function registerPlaced(p, all) {
+    owners.set(p, all);
+}
+function freeName(p) {
+    const base = hostnameFromLabel(p.label);
+    const taken = new Set([...(owners.get(p)?.() ?? [])].flatMap((o) => (o === p || o.device.kind === 'router' || o.device.kind === 'switch' ? [] : [o.device.name])));
+    let name = base;
+    for (let i = 2; taken.has(name); i++)
+        name = `${base.slice(0, MAX_NAME - String(i).length - 1).replace(/-+$/, '')}-${i}`;
+    return name;
+}
+/** Puts the derived name back on the device (after a rename or an undo that had to pick another label). */
+function syncDeviceName(p) {
+    const d = p.device;
+    const name = freeName(p);
+    if (d.kind === 'cloud')
+        d.name = name;
+    else if (d.kind !== 'router' && d.kind !== 'switch' && (d.name !== name || d.transientName !== undefined))
+        d.setHostname(name);
+}
+/** Equipo → name: the label and, from it, the host name. */
+function renameDevice(p, label) {
+    p.label = label;
+    syncDeviceName(p);
 }
 
-return { hostnameFromLabel, hostnameAfterRename };
+return { registerPlaced, syncDeviceName, renameDevice };
 })();
 __m["ui/host-settings.js"] = (() => {
 /**
  * PC / Server / Linux router → «Equipo»: the device name, applied as soon as it changes. The host name is derived from
- * it (lowercase, no accents, hyphens) and shown read-only; `hostnamectl set-hostname` in the terminal still changes it.
+ * it (lowercase, no accents, hyphens) and shown read-only: nothing else can change it (net/device-names.ts).
  */
 const { el } = __m["ui/dom.js"];
 const { field, input, message, onCommit } = __m["ui/forms.js"];
 const { liveHostPanel } = __m["ui/live.js"];
-const { hostnameAfterRename } = __m["core/hostname.js"];
+const { renameDevice } = __m["net/device-names.js"];
 const { t } = __m["i18n/t.js"];
 const MAX_LABEL = 40;
 function hostSettings(placed, h, app) {
@@ -42111,11 +42332,8 @@ function hostSettings(placed, h, app) {
             }
             if (shown === placed.label)
                 return;
-            // A host name set with hostnamectl is kept; one that still follows the name is derived again.
-            const name = hostnameAfterRename(h.name, placed.label, shown);
-            placed.label = shown;
-            if (name !== h.name)
-                h.setHostname(name);
+            renameDevice(placed, shown);
+            const name = h.name;
             app.retitle?.(shown);
             app.afterCommand();
             refresh();
@@ -45161,140 +45379,6 @@ function populateInternet(core) {
 
 return { GOOGLE_DNS, populateInternet };
 })();
-__m["devices/cloud-config.js"] = (() => {
-/**
- * Settings of the ISP cloud: each port is a customer line (cable, xDSL or FTTx) that either hands a
- * public /29 to the customer's router (DHCP) or acts as the operator's router (LAN, DHCP, NAT, port
- * forwarding). Domains registered at the ISP are published by the public DNS servers 8.8.8.8/8.8.4.4.
- */
-const { t } = __m["i18n/t.js"];
-const { formatIp, inSubnet, networkOf, parseIp } = __m["core/ip.js"];
-const CLOUD_PORTS = ['Coaxial0', 'Coaxial1', 'DSL0', 'DSL1', 'Fibra0', 'Fibra1'];
-const BLOCK_PREFIX = 16;
-const LINE_PREFIX = 29;
-const LAN_DEFAULT = parseIp('192.168.1.1') ?? 0;
-const LAN_PREFIX = 24;
-const MAX_FORWARDS = 32;
-const MAX_DOMAINS = 32;
-const MAX_SPEED = 100_000;
-function accessOf(port) {
-    if (port.startsWith('Coaxial'))
-        return 'cable';
-    if (port.startsWith('DSL'))
-        return 'xdsl';
-    return 'fttx';
-}
-const ACCESS_LABEL = { cable: 'Cable (DOCSIS 3.1)', xdsl: 'xDSL (VDSL2)', fttx: 'FTTH (GPON)' };
-const SPEEDS = { cable: [600, 60], xdsl: [100, 10], fttx: [1000, 1000] };
-function defaultPort(port) {
-    const [down, up] = SPEEDS[accessOf(port)];
-    return { mode: 'router', down, up, lanIp: LAN_DEFAULT, lanPrefix: LAN_PREFIX, forwards: [] };
-}
-function defaultCloud(isp, block) {
-    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, defaultPort(p)]));
-    return { isp, block, ports, domains: [] };
-}
-/** Customer /29 of a port: network, gateway (.1) and first customer address (.2). */
-function lineSubnet(block, port) {
-    const i = Math.max(0, CLOUD_PORTS.indexOf(port));
-    const net = (block + (i + 1) * 256) >>> 0;
-    return { net, gw: net + 1, customer: net + 2 };
-}
-/** The ISP's own router in the core: x.y.0.1. */
-function ispHop(block) {
-    return (block + 1) >>> 0;
-}
-/** Ranges a cloud cannot use as public block or delegate a domain to (private, special, emulated Internet). */
-const RESERVED = [
-    ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16], ['172.16.0.0', 12],
-    ['192.168.0.0', 16], ['224.0.0.0', 3], ['8.8.0.0', 16], ['34.160.0.0', 16], ['93.184.0.0', 16], ['142.250.0.0', 15],
-    ['198.51.100.0', 24], ['203.0.113.0', 24],
-];
-function reservedAddress(ip) {
-    return RESERVED.some(([net, prefix]) => inSubnet(ip, parseIp(net) ?? 0, prefix));
-}
-function validDomain(name) {
-    if (!/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(name))
-        return t('cloud.err.domain');
-    return null;
-}
-function validatePort(p) {
-    if (!Number.isInteger(p.down) || !Number.isInteger(p.up) || p.down < 1 || p.up < 1 || p.down > MAX_SPEED || p.up > MAX_SPEED)
-        return t('cloud.err.speed');
-    if (p.lanPrefix < 8 || p.lanPrefix > 30)
-        return t('cloud.err.lanMask');
-    const net = networkOf(p.lanIp, p.lanPrefix);
-    if (p.lanIp === net || p.lanIp === (net | (0xffffffff >>> p.lanPrefix)) >>> 0)
-        return t('cloud.err.lanIp');
-    if (p.forwards.length > MAX_FORWARDS)
-        return t('cloud.err.forwards');
-    for (const f of p.forwards) {
-        if (![f.port, f.toPort].every((n) => Number.isInteger(n) && n >= 1 && n <= 65535))
-            return t('cloud.err.ports');
-        if (!inSubnet(f.ip, p.lanIp, p.lanPrefix) || f.ip === p.lanIp)
-            return t('cloud.err.forwardLan', { ip: formatIp(f.ip) });
-    }
-    const dup = p.forwards.find((f, i) => p.forwards.findIndex((g) => g.proto === f.proto && g.port === f.port) !== i);
-    return dup ? t('cloud.err.dupForward', { proto: dup.proto.toUpperCase(), port: dup.port }) : null;
-}
-function validateCloud(s, otherBlocks = []) {
-    if (!s.isp.trim() || s.isp.length > 40)
-        return t('cloud.err.isp');
-    if (networkOf(s.block, BLOCK_PREFIX) !== s.block)
-        return t('cloud.err.block');
-    if (reservedAddress(s.block))
-        return t('cloud.err.reserved', { net: formatIp(s.block) });
-    if (otherBlocks.includes(s.block))
-        return t('cloud.err.used', { net: formatIp(s.block) });
-    if (s.domains.length > MAX_DOMAINS)
-        return t('cloud.err.domains');
-    for (const d of s.domains) {
-        const bad = validDomain(d.name);
-        if (bad)
-            return bad;
-        if (reservedAddress(d.ip))
-            return t('cloud.err.domainIp', { name: d.name, ip: formatIp(d.ip) });
-    }
-    for (const p of CLOUD_PORTS) {
-        const bad = validatePort(s.ports[p]);
-        if (bad)
-            return `${p}: ${bad}`;
-    }
-    return null;
-}
-// ------------------------------------------------------------ JSON
-const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
-const ipOf = (v, d) => (typeof v === 'string' ? parseIp(v) ?? d : d);
-const obj = (v) => (typeof v === 'object' && v !== null ? v : {});
-function cloudToJson(s) {
-    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => {
-        const c = s.ports[p];
-        return [p, { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}) }];
-    }));
-    return { isp: s.isp, block: formatIp(s.block), ports, domains: s.domains.map((d) => ({ ...d, ip: formatIp(d.ip) })) };
-}
-function portFromJson(port, v) {
-    const d = defaultPort(port);
-    const o = obj(v);
-    const forwards = (Array.isArray(o.forwards) ? o.forwards : []).slice(0, MAX_FORWARDS).map(obj).map((f) => ({
-        proto: f.proto === 'udp' ? 'udp' : 'tcp', port: num(f.port, 0), ip: ipOf(f.ip, 0), toPort: num(f.toPort, 0),
-    }));
-    const p = { mode: o.mode === 'public' ? 'public' : 'router', down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards, ...(o.dnsRelay === true ? { dnsRelay: true } : {}) };
-    return validatePort(p) ? d : p;
-}
-/** Settings from an untrusted file; anything invalid falls back to the defaults. */
-function cloudFromJson(v, fallback) {
-    const o = obj(v);
-    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, portFromJson(p, obj(o.ports)[p])]));
-    const domains = (Array.isArray(o.domains) ? o.domains : []).slice(0, MAX_DOMAINS).map(obj)
-        .map((d) => ({ name: String(d.name ?? '').toLowerCase(), kind: d.kind === 'ns' ? 'ns' : 'a', ip: ipOf(d.ip, 0) }))
-        .filter((d) => validDomain(d.name) === null && !reservedAddress(d.ip));
-    const s = { isp: typeof o.isp === 'string' ? o.isp.slice(0, 40) : fallback.isp, block: ipOf(o.block, fallback.block), ports, domains };
-    return validateCloud(s) ? { ...fallback, ports, domains } : s;
-}
-
-return { CLOUD_PORTS, BLOCK_PREFIX, LINE_PREFIX, accessOf, ACCESS_LABEL, defaultPort, defaultCloud, lineSubnet, ispHop, reservedAddress, validDomain, validatePort, validateCloud, cloudToJson, cloudFromJson };
-})();
 __m["devices/cloud-port.js"] = (() => {
 /**
  * One customer line of the ISP cloud, with its own IP plane (so every line can use 192.168.1.0/24):
@@ -45865,6 +45949,46 @@ function cloudTabs(cloud, app) {
 
 return { cloudTabs };
 })();
+__m["ui/cloud-device.js"] = (() => {
+/**
+ * Nube ISP → «Equipo», as on the other devices: the name in the workspace (applied as soon as it changes) and the host
+ * name derived from it, read-only. The provider's name and public block stay in the ISP tab.
+ */
+const { t } = __m["i18n/t.js"];
+const { el } = __m["ui/dom.js"];
+const { field, input, message, onCommit } = __m["ui/forms.js"];
+const { livePanel } = __m["ui/server-dhcp-dns.js"];
+const { renameDevice } = __m["net/device-names.js"];
+const MAX_LABEL = 40;
+function cloudSettings(placed, cloud, app) {
+    const msg = message();
+    return livePanel((refresh) => {
+        const label = input({ value: placed.label, maxlength: String(MAX_LABEL), name: 'label' });
+        const hostname = input({ value: cloud.name, readonly: '', class: 'mono', name: 'hostname', tabindex: '-1' });
+        onCommit(label, () => {
+            const shown = label.value.trim().slice(0, MAX_LABEL);
+            if (!shown) {
+                label.value = placed.label;
+                return msg.error(t('host.labelEmpty'));
+            }
+            if (shown === placed.label)
+                return;
+            renameDevice(placed, shown);
+            app.retitle(shown);
+            app.afterCommand();
+            refresh();
+            msg.ok(t('host.saved', { name: cloud.name }));
+        });
+        return [
+            el('h3', {}, t('host.nameTitle')),
+            el('div', { class: 'grid2' }, field(t('host.label'), label, t('cloud.labelHint')), field(t('host.hostname'), hostname, t('cloud.hostnameHint'))),
+            msg.el,
+        ];
+    });
+}
+
+return { cloudSettings };
+})();
 __m["ui/prompt-toggle.js"] = (() => {
 /**
  * Footer of the Linux and Windows terminals of a PC, Server or Linux router: «Prompt con marca de fecha y hora».
@@ -45913,6 +46037,7 @@ const { sftpApp } = __m["ui/sftp-app.js"];
 const { iosWebSettings } = __m["ui/ios-web-settings.js"];
 const { Cloud } = __m["devices/cloud.js"];
 const { cloudTabs } = __m["ui/cloud-window.js"];
+const { cloudSettings } = __m["ui/cloud-device.js"];
 const { promptToggle } = __m["ui/prompt-toggle.js"];
 function allowed(host, kind, tabs) {
     return tabs.filter((tab) => host.allowsTab?.(kind, tab.id) ?? true);
@@ -45971,7 +46096,9 @@ function openDeviceWindow(placed, host) {
         return;
     }
     if (d instanceof Cloud) {
-        host.windows.show(d.id, t('win.cloud', { name: placed.label }), allowed(host, d.kind, cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) })));
+        let handle;
+        const equipo = { id: 'host', label: t('win.host'), render: () => cloudSettings(placed, d, { afterCommand: () => host.afterCommand(), retitle: (name) => handle?.setTitle(t('win.cloud', { name })) }) };
+        handle = host.windows.show(d.id, t('win.cloud', { name: placed.label }), allowed(host, d.kind, [equipo, ...cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) })]));
         return;
     }
     const term = cliTerminal(placed, host);
@@ -51063,7 +51190,7 @@ function table(head, rows, empty) {
 }
 function setupPage(server, base) {
     const c = server.config;
-    return form(base, 'setup', 'setup', h('table', {}, section(t('wa.name'), t('wa.hostnameHelp'), row(t('wa.hostname'), text('hostname', server.name))), section(t('wa.internet'), t('wa.internetHelp'), row(t('wa.connType'), choose('mode', c.mode, [['static', t('wa.staticIp')], ['dhcp', t('wa.autoDhcp')]])), row(t('wa.ip'), text('ip', ip(c.ip))), row(t('wa.mask'), text('mask', c.prefix !== undefined ? formatMask(c.prefix) : '')), row(t('wa.gateway'), text('gateway', ip(c.gateway))), row('DNS', text('dns', ip(c.dns))))), buttons());
+    return form(base, 'setup', 'setup', h('table', {}, section(t('wa.name'), t('wa.hostnameHelp'), row(t('wa.hostname'), h('span', { class: 'web-adm-mono' }, server.name))), section(t('wa.internet'), t('wa.internetHelp'), row(t('wa.connType'), choose('mode', c.mode, [['static', t('wa.staticIp')], ['dhcp', t('wa.autoDhcp')]])), row(t('wa.ip'), text('ip', ip(c.ip))), row(t('wa.mask'), text('mask', c.prefix !== undefined ? formatMask(c.prefix) : '')), row(t('wa.gateway'), text('gateway', ip(c.gateway))), row('DNS', text('dns', ip(c.dns))))), buttons());
 }
 function reservations(server, base) {
     const pools = server.services.dhcp.pools;
@@ -51656,7 +51783,6 @@ const { listenAction } = __m["web/admin-listen.js"];
 const { rpzAction } = __m["web/admin-rpz.js"];
 const { securityAction } = __m["web/admin-firewall-actions.js"];
 const { vpnAction } = __m["web/admin-vpn.js"];
-const { validHostname } = __m["devices/host.js"];
 const { parseIp, parseMask } = __m["core/ip.js"];
 const { validatePool } = __m["services/dhcp-pt.js"];
 const { readIdentifier, reserveLease, setReservations } = __m["services/dhcp-reservations.js"];
@@ -51670,11 +51796,8 @@ function set(server, change) {
     server.setServices(change(server.services));
     return saved();
 }
+/** IP settings; the host name is not set here (it comes from the device name). */
 function setup(server, f) {
-    const name = (f.get('hostname') ?? '').trim();
-    const bad = validHostname(name);
-    if (bad)
-        return { error: bad };
     if (f.get('mode') === 'dhcp') {
         if (server.config.mode !== 'dhcp')
             server.useDhcp();
@@ -51688,7 +51811,6 @@ function setup(server, f) {
             return { error: t('wa.err.setup') };
         server.setStatic({ ip, prefix, gateway, dns });
     }
-    server.setHostname(name);
     return saved();
 }
 function addPool(server, f) {
@@ -52312,6 +52434,7 @@ return { registerWebApps };
 __m["net/topology.js"] = (() => {
 /** A workspace: devices with positions and labels, links, and JSON persistence. */
 const { t } = __m["i18n/t.js"];
+const { registerPlaced, renameDevice, syncDeviceName } = __m["net/device-names.js"];
 const { nicsToJson, routesToJson, restoreNics, restoreRoutes } = __m["net/topology-nics.js"];
 const { LinuxRouter } = __m["devices/linux-router.js"];
 const { savedFiles, restoreFiles, bootKernel } = __m["shells/host-system.js"];
@@ -52324,7 +52447,7 @@ const { SimClock } = __m["core/clock.js"];
 const { Router } = __m["devices/router.js"];
 const { Switch } = __m["devices/switch.js"];
 const { Pc } = __m["devices/pc.js"];
-const { Host, validHostname } = __m["devices/host.js"];
+const { Host } = __m["devices/host.js"];
 const { Server } = __m["devices/server.js"];
 const { servicesToJson, servicesFromJson, mailboxesFromJson } = __m["services/persist.js"];
 const { applyConfig } = __m["ios/session.js"];
@@ -52368,6 +52491,8 @@ class Topology {
         this.net.addDevice(device);
         const placed = { device, label, x, y };
         this.placed.set(id, placed);
+        registerPlaced(placed, () => this.placed.values());
+        syncDeviceName(placed);
         return placed;
     }
     newCloud(id, seed, label) {
@@ -52409,7 +52534,7 @@ class Topology {
             return;
         const d = placed.device;
         if ([...this.placed.values()].some((p) => p.label === placed.label))
-            placed.label = this.nextLabel(d.kind);
+            renameDevice(placed, this.nextLabel(d.kind));
         if (d instanceof Cloud) {
             const used = [...this.placed.values()].flatMap((p) => (p.device instanceof Cloud ? [p.device.settings.block] : []));
             if (used.includes(d.settings.block))
@@ -52418,6 +52543,7 @@ class Topology {
         }
         this.net.addDevice(d);
         this.placed.set(id, placed);
+        registerPlaced(placed, () => this.placed.values());
     }
     get(id) {
         return this.placed.get(id);
@@ -52549,8 +52675,7 @@ function restore(device, rec) {
         device.clientIdOverride = typeof pc.clientId === 'string' ? parseHexId(pc.clientId) ?? undefined : undefined;
         if (pc.os === 'linux' || pc.os === 'windows')
             device.os = pc.os;
-        if (typeof pc.hostname === 'string' && validHostname(pc.hostname) === null)
-            device.name = pc.hostname;
+        // The host name is not read back: it always comes from the device name (net/device-names.ts).
         if (typeof pc.prettyHostname === 'string')
             device.prettyName = pc.prettyHostname.slice(0, MAX_PRETTY);
         if (pc.files !== undefined)
@@ -52694,7 +52819,7 @@ const LAB_AREAS = {
     },
     // The rogue DHCP server (Router1, 192.168.10.66) is inside: it shares the broadcast domain, which is the point.
     snooping: (o) => area(o, ['Switch0', 'PC0', 'PC1', 'Router1'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
-    servidores: (o) => area(o, ['Switch0', 'SRV0', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.classroom'), '192.168.10.0/24')),
+    servidores: (o) => area(o, ['Switch0', 'SRV', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.classroom'), '192.168.10.0/24')),
     internet: (o) => {
         internet(o, ['ISP-Norte', 'ISP-Sur']);
         area(o, ['Switch0', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.site', { n: '1' }), '192.168.10.0/24'));
@@ -52793,7 +52918,6 @@ function sede2(t, isp) {
     link(t, s.id, 'GigabitEthernet0/1', isp.id, 'DSL0');
     link(t, srv.id, 'FastEthernet0', s.id, 'FastEthernet0/24');
     link(t, pc.id, 'FastEthernet0', s.id, 'FastEthernet0/1');
-    srv.name = 'srv';
     srv.setStatic({ ip: ip('192.168.1.10'), prefix: 24, gateway: ip('192.168.1.1'), dns: ip('8.8.8.8') });
     srv.setServices({
         ...srv.services,
@@ -53120,7 +53244,6 @@ access-list 1 permit 192.168.50.0 0.0.0.255
 access-list 1 permit 192.168.60.0 0.0.0.255
 ip nat inside source list 1 interface GigabitEthernet0/1 overload`;
 function dnsServer(srv, pcMac) {
-    srv.name = 'ns1';
     srv.setStatic({ ip: ip('192.168.50.2'), prefix: 24, gateway: ip('192.168.50.1'), dns: ip('127.0.0.1') });
     srv.setServices({
         ...srv.services,
@@ -53187,7 +53310,6 @@ function pcAt(t, x, label, sw, port, addr, gw) {
     return pc;
 }
 function sshServer(srv, addr, gw, users) {
-    srv.name = 'srv';
     srv.setStatic({ ip: ip(addr), prefix: 24, gateway: ip(gw), dns: ip('127.0.0.1') });
     srv.setServices({
         ...srv.services,
@@ -53527,7 +53649,7 @@ interface GigabitEthernet0/1
             const ip = (x) => parseIp(x) ?? 0;
             const r = t.add('router', 460, 120).device;
             const s = t.add('switch', 460, 300).device;
-            const srv = t.add('server', 760, 300, { label: 'SRV0' }).device;
+            const srv = t.add('server', 760, 300, { label: 'SRV' }).device;
             link(t, r.id, 'GigabitEthernet0/0', s.id, 'GigabitEthernet0/1');
             link(t, srv.id, 'FastEthernet0', s.id, 'FastEthernet0/24');
             const p = [0, 1].map((i) => {
@@ -53542,7 +53664,6 @@ hostname GW
 interface GigabitEthernet0/0
  ip address 192.168.10.1 255.255.255.0
  no shutdown`);
-            srv.name = 'srv';
             srv.setStatic({ ip: ip('192.168.10.2'), prefix: 24, gateway: ip('192.168.10.1'), dns: ip('192.168.10.2') });
             srv.setServices({
                 ...srv.services,

@@ -39,7 +39,7 @@ export const WEB_ES = {
   'wa.delete': 'Borrar',
   'wa.remove': 'Eliminar',
   'wa.name': 'Nombre',
-  'wa.hostnameHelp': 'Nombre de host del servidor (RFC 1123).',
+  'wa.hostnameHelp': 'Se deriva del nombre del equipo (pestaña Equipo de Netfix): minúsculas, sin tildes y con guiones.',
   'wa.hostname': 'Nombre de host',
   'wa.internet': 'Dirección de Internet',
   'wa.internetHelp': 'DHCP: el servidor pide su dirección. Estática: escríbela tú.',

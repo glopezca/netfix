@@ -36,10 +36,8 @@ export class Kernel {
     this.host = host;
     this.sysctl = new Sysctl({
       get: () => host.runtimeName(),
-      set: (name) => {
-        host.setTransientName(name);
-        return null;
-      },
+      // kernel.hostname is read-only in Netfix: the host name comes from the device name.
+      set: () => 'locked',
     });
     this.netfilter = new Netfilter({
       now: () => host.clock.now(),

@@ -26,7 +26,7 @@ function table(head: readonly string[], rows: readonly (readonly Child[])[], emp
 export function setupPage(server: Server, base: string): Child {
   const c = server.config;
   return form(base, 'setup', 'setup', h('table', {},
-    section(t('wa.name'), t('wa.hostnameHelp'), row(t('wa.hostname'), text('hostname', server.name))),
+    section(t('wa.name'), t('wa.hostnameHelp'), row(t('wa.hostname'), h('span', { class: 'web-adm-mono' }, server.name))),
     section(t('wa.internet'), t('wa.internetHelp'),
       row(t('wa.connType'), choose('mode', c.mode, [['static', t('wa.staticIp')], ['dhcp', t('wa.autoDhcp')]])),
       row(t('wa.ip'), text('ip', ip(c.ip))), row(t('wa.mask'), text('mask', c.prefix !== undefined ? formatMask(c.prefix) : '')),

@@ -28,20 +28,21 @@ export const CLIENT_DOCS: DocGroup = {
     {
       id: 'pc-equipo',
       title: 'Nombre del equipo',
-      summary: 'Nombre del equipo, nombre de host derivado y nombre descriptivo; equivalencias en Linux y Windows.',
+      summary: 'Nombre del equipo, nombre de host derivado (no se cambia desde la terminal) y nombre descriptivo.',
       blocks: [
-        p('En la pestaña Equipo de PCs, servidores y routers Linux se escribe el nombre del equipo (el del diagrama) y se aplica al pulsar Intro o salir del campo. El nombre de host del sistema se deriva de él en formato estándar: minúsculas, sin tildes y con guiones en lugar de espacios («Aula Pública 2º» → aula-publica-2o). El diagrama muestra el nombre del equipo y la dirección IP/CIDR de cada interfaz configurada, sin repetir el nombre de host. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea), aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname, y se guarda con la topología.'),
-        table(['Dónde', 'Cómo se cambia', 'Persistente'], [
-          ['Pestaña Equipo', 'Nombre del equipo (el nombre de host se deriva de él)', 'Sí'],
-          ['GNU/Linux', 'sudo hostnamectl set-hostname NOMBRE', 'Sí (/etc/hostname)'],
-          ['GNU/Linux', 'echo NOMBRE | sudo tee /etc/hostname', 'Sí'],
-          ['GNU/Linux', 'sudo hostname NOMBRE', 'No: nombre transitorio hasta reiniciar'],
-          ['GNU/Linux', 'sudo hostnamectl set-hostname --pretty "Texto libre"', 'Sí (nombre descriptivo)'],
+        p('En la pestaña Equipo de PCs, servidores, routers Linux y nubes se escribe el nombre del equipo (el del diagrama) y se aplica al pulsar Intro o salir del campo. El nombre de host del sistema siempre se deriva de él en formato estándar: minúsculas, sin tildes y con guiones en lugar de espacios («Aula Pública 2º» → aula-publica-2o). Se ve en la pestaña, de solo lectura, y no se puede cambiar de otra forma: así cada equipo del diagrama tiene un nombre de host predecible. El diagrama muestra el nombre del equipo y la dirección IP/CIDR de cada interfaz configurada (en una nube, su bloque público), sin repetir el nombre de host. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea) y aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname.'),
+        table(['Dónde', 'Qué pasa en Netfix'], [
+          ['Pestaña Equipo', 'Cambia el nombre del equipo y, con él, el nombre de host.'],
+          ['sudo hostnamectl set-hostname NOMBRE', 'Pide la contraseña y responde «Could not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo».'],
+          ['sudo hostname NOMBRE · sysctl -w kernel.hostname=…', 'Rechazado por lo mismo.'],
+          ['/etc/hostname', 'Fichero generado de solo lectura (Read-only file system).'],
+          ['Gestión web → Configuración', 'Muestra el nombre de host sin campo para cambiarlo.'],
+          ['sudo hostnamectl set-hostname --pretty "Texto libre"', 'Sí cambia el nombre descriptivo, que se guarda con la topología.'],
         ]),
-        code('admin@srv:~$ hostnamectl set-hostname web01\n==== AUTHENTICATING FOR org.freedesktop.hostname1.set-static-hostname ====\nAuthentication is required to set the statically configured local hostname, as well as the pretty hostname.\nAuthenticating as: admin\nPassword:\n==== AUTHENTICATION COMPLETE ====\nadmin@srv:~$ exec bash\nadmin@web01:~$ hostnamectl | head -1\n Static hostname: web01'),
+        code('alumno@pc0:~$ sudo hostnamectl set-hostname web01\nCould not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: pc0'),
         list(
-          'Como en Ubuntu, bash lee el nombre al arrancar: el prompt cambia en una shell nueva (exec bash o una terminal nueva).',
-          'Reglas (RFC 1123): letras sin tilde, números y guiones; partes de hasta 63 caracteres separadas por puntos; sin espacios.',
+          'En un Ubuntu real esas órdenes sí cambian el nombre; en Netfix se bloquean para que el nombre de host salga siempre del diagrama.',
+          'Reglas del nombre de host (RFC 1123): letras sin tilde, números y guiones; hasta 63 caracteres; sin espacios.',
         ),
       ],
     },

@@ -8,7 +8,7 @@ export type PingOutcome = (EchoResult & { readonly dups?: readonly EchoResult[] 
 let pingId = 1;
 const INTER_PACKET_MS = 1;
 /** After the first answer, how long the other devices of a broadcast have to answer the same request. */
-const DUP_WINDOW_MS = 5;
+const DUP_WINDOW_MS = 50;
 
 export function runPing(
   stack: IpStack,

@@ -60,7 +60,6 @@ function sede2(t: Topology, isp: Cloud): Pc {
   link(t, s.id, 'GigabitEthernet0/1', isp.id, 'DSL0');
   link(t, srv.id, 'FastEthernet0', s.id, 'FastEthernet0/24');
   link(t, pc.id, 'FastEthernet0', s.id, 'FastEthernet0/1');
-  srv.name = 'srv';
   srv.setStatic({ ip: ip('192.168.1.10'), prefix: 24, gateway: ip('192.168.1.1'), dns: ip('8.8.8.8') });
   srv.setServices({
     ...srv.services,

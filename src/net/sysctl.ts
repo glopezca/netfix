@@ -85,12 +85,12 @@ export class Sysctl {
   }
 
   /** Sets a value; returns 'unknown', 'invalid' or null when applied. */
-  set(name: string, raw: string): 'unknown' | 'invalid' | null {
+  set(name: string, raw: string): 'unknown' | 'invalid' | 'denied' | null {
     const key = SYSCTL_KEYS.find((k) => k.name === name);
     if (!key) return 'unknown';
     const value = raw.trim();
     if (key.accepts === 'int' ? !/^\d{1,9}$/.test(value) : key.accepts === 'text' ? value.length === 0 || value.length > MAX_TEXT : !key.accepts.includes(value)) return 'invalid';
-    if (name === 'kernel.hostname') return this.hostname.set(value) ? 'invalid' : null;
+    if (name === 'kernel.hostname') return this.hostname.set(value) ? 'denied' : null;
     this.values.set(name, value);
     const mirror = MIRRORS[name];
     if (mirror) this.values.set(mirror, value);

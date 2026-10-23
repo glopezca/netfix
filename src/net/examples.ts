@@ -245,7 +245,7 @@ interface GigabitEthernet0/1
       const ip = (x: string): number => parseIp(x) ?? 0;
       const r = t.add('router', 460, 120).device as Router;
       const s = t.add('switch', 460, 300).device as Switch;
-      const srv = t.add('server', 760, 300, { label: 'SRV0' }).device as Server;
+      const srv = t.add('server', 760, 300, { label: 'SRV' }).device as Server;
       link(t, r.id, 'GigabitEthernet0/0', s.id, 'GigabitEthernet0/1');
       link(t, srv.id, 'FastEthernet0', s.id, 'FastEthernet0/24');
       const p = [0, 1].map((i) => {
@@ -260,7 +260,6 @@ hostname GW
 interface GigabitEthernet0/0
  ip address 192.168.10.1 255.255.255.0
  no shutdown`);
-      srv.name = 'srv';
       srv.setStatic({ ip: ip('192.168.10.2'), prefix: 24, gateway: ip('192.168.10.1'), dns: ip('192.168.10.2') });
       srv.setServices({
         ...srv.services,

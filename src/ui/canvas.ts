@@ -6,14 +6,14 @@ import type { Endpoint, Link } from '../net/network.ts';
 import { shortIfaceName } from '../ios/interfaces.ts';
 import { Viewport } from './viewport.ts';
 import { placeInside } from './viewport-math.ts';
-import { along, clamp, perpendicular, triangle } from './canvas-geometry.ts';
+import { along, cableMarks, clamp, triangle } from './canvas-geometry.ts';
 import { DrawLayer } from './draw-layer.ts';
 import { DrawState } from './draw-bar.ts';
 import { historyFor } from '../net/edit-history.ts';
 import type { EditHistory } from '../net/edit-history.ts';
 import type { ShapeKind } from '../net/annotations.ts';
 import { t } from '../i18n/t.ts';
-import { CAPTION_LINE, deviceCaption } from './device-caption.ts';
+import { CAPTION_LINE, deviceCaption, deviceShapes } from './device-caption.ts';
 import type { MessageKey } from '../i18n/catalog.ts';
 
 export type Tool = { kind: 'select' } | { kind: 'cable' } | { kind: 'delete' } | { kind: 'place'; device: DeviceKind } | { kind: 'draw'; shape: ShapeKind };
@@ -27,8 +27,7 @@ export interface CanvasEvents {
 
 export const WORLD_W = 2400;
 export const WORLD_H = 1600;
-const LIGHT_OFFSET = 36;
-const LABEL_OFFSET = 62;
+const PORT_CHAR = 6.7; // px per character of an interface name (11 px monospace)
 const DRAG_THRESHOLD = 4;
 const DOUBLE_TAP_MS = 350;
 const LONG_PRESS_MS = 550;
@@ -182,11 +181,12 @@ export class Canvas {
     const hit = svg('line', { class: 'cable-hit', x1: a.x, y1: a.y, x2: b.x, y2: b.y });
     g.append(hit, line);
     for (const [from, to, ep] of [[a, b, link.a], [b, a, link.b]] as const) {
-      const pos = along(from, to, LIGHT_OFFSET);
-      const lpos = along(from, to, LABEL_OFFSET);
+      const name = shortIfaceName(ep.port);
+      const marks = cableMarks(from, to, deviceShapes(from), { halfW: name.length * PORT_CHAR / 2 + 3, halfH: 7 });
+      const pos = along(from, to, marks.light);
+      const lpos = along(from, to, marks.label);
       g.appendChild(svg('path', { class: `light light-${this.endState(ep)}`, d: triangle(pos, from, to) }));
-      const side = perpendicular(from, to, 12);
-      g.appendChild(svg('text', { class: 'port-label', x: lpos.x + side.x, y: lpos.y + side.y + 4, 'text-anchor': side.x < 0 ? 'end' : 'start' }, shortIfaceName(ep.port)));
+      g.appendChild(svg('text', { class: 'port-label', x: lpos.x, y: lpos.y + 4, 'text-anchor': 'middle' }, name));
     }
     g.addEventListener('pointerdown', (e) => {
       e.stopPropagation();

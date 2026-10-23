@@ -40,9 +40,10 @@ function exec(dev: Router, line: string): string[] {
 
 function snapshot(t: Topology): Outputs {
   const out: Outputs = {};
-  for (const { device: d } of t.placed.values()) {
+  for (const { device: d, label } of t.placed.values()) {
     if (d instanceof Router) for (const c of SHOWS) out[`${d.name}|${c}`] = exec(d, c);
-    if (d instanceof Pc) for (const c of ['ipconfig /all', 'ipconfig']) out[`${d.name}|${c}`] = pcCommand(d, c);
+    // PCs by their device name: the host name (pc0) is derived from it since v0.16.
+    if (d instanceof Pc) for (const c of ['ipconfig /all', 'ipconfig']) out[`${label}|${c}`] = pcCommand(d, c);
   }
   return normalize(out);
 }

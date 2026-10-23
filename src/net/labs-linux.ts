@@ -122,7 +122,6 @@ access-list 1 permit 192.168.60.0 0.0.0.255
 ip nat inside source list 1 interface GigabitEthernet0/1 overload`;
 
 function dnsServer(srv: Server, pcMac: string): void {
-  srv.name = 'ns1';
   srv.setStatic({ ip: ip('192.168.50.2'), prefix: 24, gateway: ip('192.168.50.1'), dns: ip('127.0.0.1') });
   srv.setServices({
     ...srv.services,

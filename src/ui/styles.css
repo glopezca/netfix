@@ -101,7 +101,7 @@ button, input, select { font: inherit; color: inherit; }
 .light { stroke: var(--panel); stroke-width: 1; }
 .light-up { fill: var(--up); }
 .light-down { fill: var(--down); }
-.port-label { font: 11px var(--font-mono); fill: var(--ink-2); paint-order: stroke; stroke: var(--ws); stroke-width: 3px; }
+.port-label { font: 11px var(--font-mono); fill: var(--ink-2); paint-order: stroke; stroke: var(--ws); stroke-width: 6px; stroke-linejoin: round; }
 
 .device { cursor: grab; outline: none; }
 .device:active { cursor: grabbing; }

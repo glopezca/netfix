@@ -27,6 +27,7 @@ import { sftpApp } from './sftp-app.ts';
 import { iosWebSettings } from './ios-web-settings.ts';
 import { Cloud } from '../devices/cloud.ts';
 import { cloudTabs } from './cloud-window.ts';
+import { cloudSettings } from './cloud-device.ts';
 import { promptToggle } from './prompt-toggle.ts';
 import type { PromptToggle } from './prompt-toggle.ts';
 
@@ -102,7 +103,9 @@ export function openDeviceWindow(placed: Placed, host: WindowHost): void {
     return;
   }
   if (d instanceof Cloud) {
-    host.windows.show(d.id, t('win.cloud', { name: placed.label }), allowed(host, d.kind, cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) })));
+    let handle: { setTitle(t: string): void } | undefined;
+    const equipo: Tab = { id: 'host', label: t('win.host'), render: () => cloudSettings(placed, d, { afterCommand: () => host.afterCommand(), retitle: (name) => handle?.setTitle(t('win.cloud', { name })) }) };
+    handle = host.windows.show(d.id, t('win.cloud', { name: placed.label }), allowed(host, d.kind, [equipo, ...cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) })]));
     return;
   }
   const term = cliTerminal(placed, host);

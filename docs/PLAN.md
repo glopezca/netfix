@@ -564,3 +564,26 @@ el JSON, registros repetidos). code-reviewer (sonnet) sin críticos ni altos; co
 broadcast dirigido pasa por el camino normal: ACL de salida, IPsec y nftables; «Aplicar» con la lista inicial sin
 cambios la deja implícita; `ping -bc 3`; nmap no cuenta la dirección broadcast como equipo) y parte de los bajos
 (`endEcho` en finally, interfaces caídas). Pendiente: la salida de IOS cuando un ping a broadcast no tiene respuesta.
+
+## Fase 24 · Nombre de host fijo, nubes como equipos y nombres de interfaz sobre el cable (v0.16.0)
+
+1. **ping -b:** repaso con todos los emisores (PC Linux/Windows, Server, router Linux, IOS) y receptores, en tiempo
+   real y en simulación. Como Linux, el emisor recibe también su propia copia del broadcast (el núcleo la devuelve por
+   el bucle local), así que responde a sí mismo si `icmp_echo_ignore_broadcasts=0`.
+2. **Nombre de host bloqueado** en PC, Server y router Linux: siempre `hostnameFromLabel(nombre del equipo)`, también
+   al crear el equipo, al abrir una topología (se ignora un `hostname` guardado) y al deshacer. Lo rechazan
+   `hostnamectl set-hostname` / `hostnamectl hostname`, `hostname NOMBRE`, `sysctl -w kernel.hostname=…`, escribir
+   /etc/hostname y la gestión web (Configuración muestra el nombre sin campo). El nombre descriptivo (`--pretty`)
+   sigue libre. Los laboratorios cuyo servidor tenía un nombre de host propio (srv, ns1) pasan a llamarse así.
+3. **Nubes como los equipos:** pestaña «Equipo» con el nombre (se aplica al cambiarlo) y el nombre de host derivado
+   de solo lectura; en el diagrama, el nombre de la nube y su bloque público (CIDR) en lugar del nombre del ISP, que
+   sigue en la pestaña ISP.
+4. **Nombres de interfaz sobre el cable:** cada etiqueta se dibuja centrada sobre su cable (con un halo del color del
+   fondo), justo fuera del recuadro del equipo y de su pie (nombre e IP), en vez de al lado y por debajo del nombre.
+
+**Estado:** completada (v0.16.0, 605 pruebas; e2e-v016 con comprobación geométrica de las etiquetas). Revisión ECC:
+security-reviewer (opus) sin críticos, altos ni medios; aplicados los bajos (imports sobrantes, mensaje claro en
+`sysctl kernel.hostname`, nombres de host repetidos). code-reviewer (sonnet) sin críticos ni altos; corregidos los
+medios: la copia local del broadcast solo para el ping propio (un router Linux que reenvía no responde dos veces) y
+nombres de host únicos (`-2`, `-3`… si dos nombres de equipo dan el mismo). Los servidores de los laboratorios de
+sedes e intranet toman el nombre de su etiqueta (srv-sede2, srv-intranet); el de «servidores» se llama SRV (srv).

@@ -53,6 +53,8 @@ export const CLOUD_EN: Readonly<Record<CloudKey, string>> = {
   'cloud.none': 'none',
   'cloud.noNat': 'no translations',
   'cloud.lines': 'Lines',
+  'cloud.labelHint': 'Shown in the diagram and applied when it changes.',
+  'cloud.hostnameHint': 'Derived from the cloud name (lowercase, no accents, hyphens). The provider name and public block are in the ISP tab.',
   'cloud.err.domain': 'Invalid domain: use names like sede2.es or company.com.',
   'cloud.err.speed': 'Speeds must be between 1 and 100000 Mbit/s.',
   'cloud.err.lanMask': 'The LAN mask must be between /8 and /30.',

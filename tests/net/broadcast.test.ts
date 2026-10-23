@@ -141,3 +141,52 @@ test('review: combined flags (-bc 1) and an outbound ACL also stop a relayed dir
   assert.doesNotMatch(out, /192\.168\.2\.10/, 'the ACL of the way out applies: the far network gets nothing');
   assert.match(out, /From 192\.168\.1\.1 icmp_seq=1 Destination Host Unreachable/, 'the router says so');
 });
+
+test('ping -b from every kind of sender: Server, Linux router, IOS switch, Windows and a PC with a DHCP address', () => {
+  const t = new Topology();
+  const sw = t.add('switch', 0, 0).device;
+  const r = t.add('router', 0, 0).device as Router;
+  const srv = t.add('server', 0, 0).device as Server;
+  const lr = t.add('linuxrouter', 0, 0).device as Server;
+  const win = t.add('pc', 0, 0).device as Pc;
+  const dyn = t.add('pc', 0, 0).device as Pc;
+  const ports = sw.portNames();
+  t.connect({ device: r.id, port: 'GigabitEthernet0/0' }, { device: sw.id, port: ports[0]! });
+  [srv, win, dyn].forEach((d, i) => t.connect({ device: d.id, port: d.portNames()[0]! }, { device: sw.id, port: ports[i + 1]! }));
+  t.connect({ device: lr.id, port: 'GigabitEthernet0/0' }, { device: sw.id, port: ports[5]! });
+  applyConfig(r, ['ip dhcp pool LAN', ' network 192.168.1.0 255.255.255.0', ' default-router 192.168.1.1', 'interface GigabitEthernet0/0', ' ip address 192.168.1.1 255.255.255.0', ' no shutdown']);
+  applyConfig(sw as Router, ['interface Vlan1', ' ip address 192.168.1.2 255.255.255.0', ' no shutdown']);
+  srv.setStatic({ ip: ip('192.168.1.20'), prefix: 24, gateway: ip('192.168.1.1') });
+  win.setStatic({ ip: ip('192.168.1.11'), prefix: 24, gateway: ip('192.168.1.1') });
+  root(lr, 'ip addr add 192.168.1.30/24 dev eth0');
+  dyn.os = 'linux';
+  dyn.useDhcp();
+  t.settle(10_000);
+  root(srv, 'sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=0');
+  const ios = ['192.168.1.1', '192.168.1.2'];
+  assert.deepEqual(from(root(srv, 'ping -b -c 1 192.168.1.255')), [...ios, '192.168.1.20'], 'the Server answers its own broadcast too, as Linux does');
+  assert.deepEqual(from(root(lr, 'ping -b -c 1 192.168.1.255')), [...ios, '192.168.1.20']);
+  assert.deepEqual(from(all(createShell(dyn, 'linux').run('ping -b -c 1 192.168.1.255'))), [...ios, '192.168.1.20']);
+  assert.match(all(createShell(win, 'windows').run('ping -n 1 192.168.1.255')), /Reply from 192\.168\.1\.(1|2|20): /);
+  const s = new Session(sw as Router);
+  const out = ['enable', 'ping 192.168.1.255 repeat 1'].flatMap((l) => s.input(l)).join('\n');
+  assert.match(out, /Reply to request 0 from 192\.168\.1\.1, 1 ms/);
+  assert.match(out, /Reply to request 0 from 192\.168\.1\.20, 1 ms/);
+});
+
+test('review: a Linux router that forwards a directed broadcast answers it once, not twice', () => {
+  const t = new Topology();
+  const lr = t.add('linuxrouter', 0, 0).device as Server;
+  const a = t.add('pc', 0, 0).device as Pc;
+  const b = t.add('pc', 0, 0).device as Pc;
+  t.connect({ device: lr.id, port: 'GigabitEthernet0/1' }, { device: a.id, port: 'FastEthernet0' });
+  t.connect({ device: lr.id, port: 'GigabitEthernet0/2' }, { device: b.id, port: 'FastEthernet0' });
+  a.os = 'linux';
+  root(lr, 'ip addr add 10.1.0.1/24 dev eth1; ip addr add 10.2.0.1/24 dev eth2; sysctl -w net.ipv4.ip_forward=1; sysctl -w net.ipv4.conf.all.bc_forwarding=1; sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=0');
+  a.setStatic({ ip: ip('10.1.0.10'), prefix: 24, gateway: ip('10.1.0.1') });
+  b.setStatic({ ip: ip('10.2.0.10'), prefix: 24, gateway: ip('10.2.0.1') });
+  t.settle();
+  const out = all(createShell(a, 'linux').run('ping -c 1 10.2.0.255'));
+  assert.equal((out.match(/from 10\.2\.0\.1:/g) ?? []).length, 1, out);
+  assert.doesNotMatch(out, /DUP!/);
+});

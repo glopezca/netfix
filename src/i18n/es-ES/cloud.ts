@@ -51,6 +51,8 @@ export const CLOUD_ES = {
   'cloud.none': 'ninguna',
   'cloud.noNat': 'sin traducciones',
   'cloud.lines': 'Líneas',
+  'cloud.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo.',
+  'cloud.hostnameHint': 'Se deriva del nombre de la nube (minúsculas, sin tildes y con guiones). El nombre del proveedor y el bloque público están en la pestaña ISP.',
   'cloud.err.domain': 'Dominio no válido: usa nombres como sede2.es o empresa.com.',
   'cloud.err.speed': 'Las velocidades deben estar entre 1 y 100000 Mbit/s.',
   'cloud.err.lanMask': 'La máscara de la LAN debe estar entre /8 y /30.',

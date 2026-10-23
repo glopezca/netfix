@@ -1,4 +1,5 @@
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
+import { t } from '../i18n/t.ts';
 import { listenChoices } from '../services/listen.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { NAMED_OPTIONS, parseNamedOptions } from '../services/named-options.ts';
@@ -7,7 +8,6 @@ import { NETPLAN_FILE, netplanFileContent, writeNetplanFile } from './netplan.ts
 import { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } from '../services/sshd-config.ts';
 import { hostKeyFiles } from '../services/ssh-hostkeys.ts';
 import type { Host } from '../devices/host.ts';
-import { validHostname } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import type { CommandFn, HostEnv, UserInfo } from '../bash/types.ts';
 import { Vfs } from '../bash/vfs.ts';
@@ -104,10 +104,6 @@ const WRITERS: Readonly<Record<string, (host: Host, content: string) => void>> =
     if ('error' in next) srv.log('dns', next.error);
     else srv.setServices({ ...srv.services, dns: next });
   },
-  '/etc/hostname': (host, content) => {
-    const name = content.trim().split('\n')[0]?.trim() ?? '';
-    if (validHostname(name) === null) host.setHostname(name);
-  },
 };
 
 /** Generated files readable only by root (like Ubuntu's 600 netplan files). */
@@ -140,10 +136,8 @@ function setName(host: Host, kind: 'static' | 'transient' | 'pretty', value: str
     host.setPrettyName(value === '' ? undefined : value.slice(0, MAX_PRETTY));
     return null;
   }
-  if (validHostname(value) !== null) return `Invalid ${kind} hostname '${value}'`;
-  if (kind === 'transient') host.setTransientName(value);
-  else host.setHostname(value);
-  return null;
+  // The host name comes from the device name (Equipo), never from the terminal.
+  return t('host.locked');
 }
 
 const SSH_CLIENT_CONFIG = `# This is the ssh client system-wide configuration file.  See ssh_config(5).

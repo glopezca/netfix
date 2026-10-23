@@ -5,7 +5,6 @@ import { rpzAction } from './admin-rpz.ts';
 import { securityAction } from './admin-firewall-actions.ts';
 import { vpnAction } from './admin-vpn.ts';
 import type { Server } from '../devices/server.ts';
-import { validHostname } from '../devices/host.ts';
 import { parseIp, parseMask } from '../core/ip.ts';
 import { validatePool } from '../services/dhcp-pt.ts';
 import { readIdentifier, reserveLease, setReservations } from '../services/dhcp-reservations.ts';
@@ -29,10 +28,8 @@ function set(server: Server, change: (s: ServerServices) => ServerServices): Out
   return saved();
 }
 
+/** IP settings; the host name is not set here (it comes from the device name). */
 function setup(server: Server, f: Fields): Outcome {
-  const name = (f.get('hostname') ?? '').trim();
-  const bad = validHostname(name);
-  if (bad) return { error: bad };
   if (f.get('mode') === 'dhcp') {
     if (server.config.mode !== 'dhcp') server.useDhcp();
   } else {
@@ -43,7 +40,6 @@ function setup(server: Server, f: Fields): Outcome {
     if (ip === null || ip === undefined || prefix === null || gateway === null || dns === null) return { error: t('wa.err.setup') };
     server.setStatic({ ip, prefix, gateway, dns });
   }
-  server.setHostname(name);
   return saved();
 }
 

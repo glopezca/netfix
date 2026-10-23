@@ -212,6 +212,9 @@ export class IpStack {
     this.echoWaiters.set(`${id}:${seq}`, { first: onResult, dup: onDup, answered: false });
     const out = this.outbound(egress.iface, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
     if (out) this.sendVia(egress, out);
+    // Only our own ping: a broadcast we forward was already delivered to us when it came in.
+    const iface = this.host.l3Iface(egress.iface);
+    if (out && iface && !iface.pointToPoint && this.isLocalBroadcast(iface, dst)) this.loopBroadcast(egress.iface, iface.mac, out);
     return true;
   }
 
@@ -246,6 +249,15 @@ export class IpStack {
       return;
     }
     this.resolve(iface, egress.nextHop, packet);
+  }
+
+  /**
+   * Linux hands a copy of every broadcast it sends to itself (ip_mc_output): a host that answers broadcast echoes
+   * answers its own ping -b. Only for its own echo requests, so DHCP and the rest are not seen twice.
+   */
+  private loopBroadcast(ifaceName: string, mac: string, packet: IpPacket): void {
+    if (this.host.ignoresBroadcastEcho?.() !== false) return;
+    this.host.schedule(0, () => this.localIn(ifaceName, packet, { src: mac, dst: BROADCAST_MAC, ip: packet }));
   }
 
   /** Packets to one of our own addresses never reach the wire (like the kernel's loopback path). */

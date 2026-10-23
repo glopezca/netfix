@@ -41,7 +41,7 @@ export const WEB_EN: Readonly<Record<WebKey, string>> = {
   'wa.delete': 'Delete',
   'wa.remove': 'Remove',
   'wa.name': 'Name',
-  'wa.hostnameHelp': 'Server host name (RFC 1123).',
+  'wa.hostnameHelp': 'It comes from the device name (Device tab in Netfix): lowercase, no accents, hyphens.',
   'wa.hostname': 'Host name',
   'wa.internet': 'Internet address',
   'wa.internetHelp': 'DHCP: the server asks for its address. Static: you write it.',

@@ -1,4 +1,4 @@
-/** Host name: set from the GUI or with hostnamectl / hostname / /etc/hostname, kept in the topology file. */
+/** Host name: derived from the device name (Equipo); hostnamectl, hostname and /etc/hostname cannot change it. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
@@ -37,7 +37,7 @@ test('setHostname changes the name used by DHCP, the shells and the generated fi
   assert.throws(() => pc.setHostname('no válido'), /letras/);
 });
 
-test('hostnamectl shows the status and set-hostname is persistent (polkit asks the password)', () => {
+test('hostnamectl shows the status; set-hostname asks the password and is refused (the name comes from Equipo)', () => {
   const { srv } = lab();
   const sh = createShell(srv, 'linux');
   const status = sh.run('hostnamectl').join('\n');
@@ -50,33 +50,27 @@ test('hostnamectl shows the status and set-hostname is persistent (polkit asks t
     'Authenticating as: admin',
   ]);
   assert.equal(sh.prompt(), 'Password: ');
-  assert.deepEqual(sh.run('cisco'), ['==== AUTHENTICATION COMPLETE ====']);
-  assert.equal(srv.name, 'web01');
-  assert.match(plain(sh.prompt()), /^admin@server0:/, 'bash keeps the name it read at start, like real bash');
-  sh.run('exec bash');
-  assert.match(plain(sh.prompt()), /^admin@web01:/);
-  assert.deepEqual(sh.run('sudo hostnamectl set-hostname "mal nombre"; echo $?'), []);
-  assert.deepEqual(sh.run('cisco'), ["Could not set static hostname: Invalid static hostname 'mal nombre'", '1']);
-  assert.deepEqual(sh.run('sudo hostnamectl set-hostname --pretty "Servidor web"; hostnamectl | grep --color=never Pretty'), [' Pretty hostname: Servidor web']);
+  assert.deepEqual(sh.run('cisco'), ['==== AUTHENTICATION COMPLETE ====', 'Could not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)']);
+  assert.equal(srv.name, 'server0');
+  assert.deepEqual(sh.run('sudo hostnamectl set-hostname --pretty "Servidor web"; hostnamectl | grep --color=never Pretty'), []);
+  assert.deepEqual(sh.run('cisco'), [' Pretty hostname: Servidor web']);
 });
 
-test('hostname NAME is transient (root only); /etc/hostname is editable by root', () => {
+test('hostname NAME and /etc/hostname cannot change it either', () => {
   const { pc } = lab();
   const sh = createShell(pc, 'linux');
   assert.deepEqual(sh.run('hostname temporal'), ['hostname: you must be root to change the host name']);
-  assert.deepEqual(sh.run('sudo hostname temporal; hostname; cat /etc/hostname'), ['temporal', 'pc0']);
-  assert.match(sh.run('hostnamectl').join('\n'), /Transient hostname: temporal/);
-  assert.match(sh.run('echo otro > /etc/hostname').join(''), /Permission denied/);
-  assert.deepEqual(sh.run('echo nuevo | sudo tee /etc/hostname; cat /etc/hostname'), ['nuevo', 'nuevo']);
-  assert.equal(pc.name, 'nuevo');
+  assert.deepEqual(sh.run('sudo hostname temporal; hostname'), ['hostname: en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)', 'pc0']);
+  assert.match(sh.run('echo otro > /etc/hostname').join(''), /Read-only file system/, 'generated from Equipo, like other generated files');
+  sh.run('echo nuevo | sudo tee /etc/hostname');
+  assert.deepEqual(sh.run('cat /etc/hostname'), ['pc0']);
+  assert.equal(pc.name, 'pc0');
 });
 
-test('the host name survives saving and loading the topology', () => {
-  const { t, srv, pc } = lab();
-  srv.setHostname('srv');
-  pc.setHostname('pc-luis');
+test('saving and loading keeps the pretty name; the host name is derived again', () => {
+  const { t, pc } = lab();
   createShell(pc, 'linux').run('sudo hostnamectl set-hostname --pretty "PC de Luis"');
   const t2 = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
   const names = [...t2.placed.values()].map((p) => [p.label, (p.device as Pc).name, (p.device as Pc).prettyName]);
-  assert.deepEqual(names, [['Server0', 'srv', undefined], ['PC0', 'pc-luis', 'PC de Luis']]);
+  assert.deepEqual(names, [['Server0', 'server0', undefined], ['PC0', 'pc0', 'PC de Luis']]);
 });

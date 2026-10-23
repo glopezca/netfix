@@ -31,17 +31,17 @@ test('asks for credentials (HTTP Basic) on port 10000 and shows the Setup page',
   const wrong = web.login('http://10.0.0.2:10000/', 'admin', 'x');
   assert.equal(wrong.kind === 'auth' && wrong.failed, true);
   const ok = web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
-  assert.match(body(ok), /<title>Server0 · Configuración básica<\/title>/i);
+  assert.match(body(ok), /<title>server0 · Configuración básica<\/title>/, 'the host name, derived from Server0');
   assert.match(body(ok), /<li class="web-adm-on"><a href="\/\?page=setup" class="web-adm-nav web-adm-nav-setup">Configuración básica/);
-  assert.match(body(ok), /name="hostname" value="server0"/i);
+  assert.match(body(ok), /Nombre de host<\/span><span class="web-adm-mono">server0<\/span>/, 'shown, not editable');
 });
 
-test('changes made in the GUI apply to the server: hostname, DNS records, mail users, SSH', () => {
+test('changes made in the GUI apply to the server: address, DNS records, mail users, SSH (not the host name)', () => {
   const { srv, web } = lab();
   web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
   const saved = post(web, 'setup', [['action', 'setup'], ['hostname', 'srv-web'], ['mode', 'static'], ['ip', '10.0.0.2'], ['mask', '255.255.255.0'], ['gateway', '10.0.0.1'], ['dns', '10.0.0.2']]);
   assert.match(body(saved), /Los cambios se han guardado correctamente/);
-  assert.equal(srv.name, 'srv-web');
+  assert.equal(srv.name, 'server0', 'the host name comes from the device name');
   assert.equal(srv.config.gateway, parseIp('10.0.0.1'));
   post(web, 'dns', [['action', 'dns-modes'], ['enabled', '1'], ['authoritative', '1'], ['cache', '1']]);
   post(web, 'dns', [['action', 'zone-add'], ['z_name', 'aula.lab'], ['z_ns', 'ns.aula.lab'], ['z_kind', 'forward']]);

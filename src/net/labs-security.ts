@@ -29,7 +29,6 @@ function pcAt(t: Topology, x: number, label: string, sw: Switch, port: string, a
 }
 
 function sshServer(srv: Server, addr: string, gw: string, users: readonly { name: string; password: string }[]): void {
-  srv.name = 'srv';
   srv.setStatic({ ip: ip(addr), prefix: 24, gateway: ip(gw), dns: ip('127.0.0.1') });
   srv.setServices({
     ...srv.services,

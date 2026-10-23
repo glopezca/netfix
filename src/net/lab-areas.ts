@@ -60,7 +60,7 @@ const LAB_AREAS: Readonly<Record<string, (topo: Topology) => void>> = {
   },
   // The rogue DHCP server (Router1, 192.168.10.66) is inside: it shares the broadcast domain, which is the point.
   snooping: (o) => area(o, ['Switch0', 'PC0', 'PC1', 'Router1'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
-  servidores: (o) => area(o, ['Switch0', 'SRV0', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.classroom'), '192.168.10.0/24')),
+  servidores: (o) => area(o, ['Switch0', 'SRV', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.classroom'), '192.168.10.0/24')),
   internet: (o) => {
     internet(o, ['ISP-Norte', 'ISP-Sur']);
     area(o, ['Switch0', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.site', { n: '1' }), '192.168.10.0/24'));

@@ -28,20 +28,21 @@ export const CLIENT_DOCS: DocGroup = {
     {
       id: 'pc-equipo',
       title: 'Device name',
-      summary: 'Device name, derived host name and pretty name; equivalents on Linux and Windows.',
+      summary: 'Device name, derived host name (not changed from the terminal) and pretty name.',
       blocks: [
-        p('The Device tab of PCs, servers and Linux routers holds the device name (the one in the diagram), applied on Enter or when leaving the field. The system host name is derived from it in standard form: lowercase, no accents and hyphens instead of spaces («Aula Pública 2º» → aula-publica-2o). The diagram shows the device name and the IP/CIDR of each configured interface, without repeating the host name. The host name is sent by the DHCP client (option 12, visible in show ip dhcp binding and in Kea), appears in the GNU/Linux prompt, in /etc/hostname and in hostname, and is saved with the topology.'),
-        table(['Where', 'How to change it', 'Persistent'], [
-          ['Device tab', 'Device name (the host name is derived from it)', 'Yes'],
-          ['GNU/Linux', 'sudo hostnamectl set-hostname NOMBRE', 'Yes (/etc/hostname)'],
-          ['GNU/Linux', 'echo NOMBRE | sudo tee /etc/hostname', 'Yes'],
-          ['GNU/Linux', 'sudo hostname NOMBRE', 'No: transient name until reboot'],
-          ['GNU/Linux', 'sudo hostnamectl set-hostname --pretty "Texto libre"', 'Yes (pretty name)'],
+        p('In the Device tab of PCs, servers, Linux routers and clouds you type the device name (the one in the diagram); it applies on Enter or when leaving the field. The system host name is always derived from it in standard form: lowercase, no accents and hyphens instead of spaces («Aula Pública 2º» → aula-publica-2o). It shows in the tab, read-only, and cannot be changed any other way, so every device of the diagram has a predictable host name. The diagram shows the device name and the IP/CIDR of each configured interface (for a cloud, its public block), without repeating the host name. The DHCP client sends the host name (option 12, visible in show ip dhcp binding and in Kea) and it appears in the GNU/Linux prompt, in /etc/hostname and in hostname.'),
+        table(['Where', 'What happens in Netfix'], [
+          ['Device tab', 'Changes the device name and, with it, the host name.'],
+          ['sudo hostnamectl set-hostname NAME', 'Asks for the password and answers «Could not set static hostname: in Netfix the host name comes from the device name».'],
+          ['sudo hostname NAME · sysctl -w kernel.hostname=…', 'Refused for the same reason.'],
+          ['/etc/hostname', 'Generated read-only file (Read-only file system).'],
+          ['Web management → Setup', 'Shows the host name without a field to change it.'],
+          ['sudo hostnamectl set-hostname --pretty "Free text"', 'Does change the pretty name, saved with the topology.'],
         ]),
-        code('admin@srv:~$ hostnamectl set-hostname web01\n==== AUTHENTICATING FOR org.freedesktop.hostname1.set-static-hostname ====\nAuthentication is required to set the statically configured local hostname, as well as the pretty hostname.\nAuthenticating as: admin\nPassword:\n==== AUTHENTICATION COMPLETE ====\nadmin@srv:~$ exec bash\nadmin@web01:~$ hostnamectl | head -1\n Static hostname: web01'),
+        code('alumno@pc0:~$ sudo hostnamectl set-hostname web01\nCould not set static hostname: in Netfix the host name comes from the device name (Device tab)\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: pc0'),
         list(
-          'As in Ubuntu, bash reads the name at start-up: the prompt changes in a new shell (exec bash or a new terminal).',
-          'Rules (RFC 1123): unaccented letters, digits and hyphens; labels of up to 63 characters separated by dots; no spaces.',
+          'On a real Ubuntu those commands do change the name; Netfix blocks them so the host name always comes from the diagram.',
+          'Host name rules (RFC 1123): unaccented letters, digits and hyphens; up to 63 characters; no spaces.',
         ),
       ],
     },

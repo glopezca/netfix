@@ -103,7 +103,7 @@ function hostname(ctx: Ctx): number {
   if (set !== undefined) {
     if (ctx.cred.uid !== 0) { ctx.err('hostname: you must be root to change the host name\n'); return 1; }
     const err = ctx.sh.env.setHostname?.('transient', set) ?? null;
-    if (err) { ctx.err('hostname: the specified hostname is invalid\n'); return 1; }
+    if (err) { ctx.err(`hostname: ${err}\n`); return 1; }
     return 0;
   }
   const name = names(ctx).transient;

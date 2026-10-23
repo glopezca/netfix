@@ -26,5 +26,5 @@ test('a Linux router: one line per NIC with an address; an IOS router keeps its 
   assert.deepEqual(deviceCaption(r).extra, [], 'hostname Router: nothing to add');
   (r.device as Router).hostname = 'R1';
   assert.deepEqual(deviceCaption(r).extra, ['R1']);
-  assert.equal(deviceCaption(t.add('cloud', 0, 0)).extra.length, 1);
+  assert.deepEqual(deviceCaption(t.add('cloud', 0, 0)), { name: 'Cloud0', extra: ['81.32.0.0/16'] }, 'a cloud: its public block, like a device its IP/CIDR');
 });

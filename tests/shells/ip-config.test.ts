@@ -115,10 +115,8 @@ test('dhclient -r and hostnamectl notify the GUI', () => {
   root.run('hostnamectl set-hostname --pretty "Puesto del profesor"');
   assert.equal(pc.prettyName, 'Puesto del profesor');
   assert.ok(changes() > n);
-  n = changes();
-  root.run('hostname temporal');
-  assert.equal(pc.transientName, 'temporal');
-  assert.ok(changes() > n);
+  assert.match(root.run('hostname temporal').join(''), /nombre del equipo/, 'the host name comes from Equipo');
+  assert.equal(pc.transientName, undefined);
   root.run('dhclient eth0');
   n = changes();
   root.run('dhclient -r');

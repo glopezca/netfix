@@ -1,5 +1,6 @@
 /** A workspace: devices with positions and labels, links, and JSON persistence. */
 import { t } from '../i18n/t.ts';
+import { registerPlaced, renameDevice, syncDeviceName } from './device-names.ts';
 import { nicsToJson, routesToJson, restoreNics, restoreRoutes } from './topology-nics.ts';
 import type { NicRecord, RouteRecord } from './topology-nics.ts';
 import { LinuxRouter } from '../devices/linux-router.ts';
@@ -16,7 +17,7 @@ import { SimClock } from '../core/clock.ts';
 import { Router } from '../devices/router.ts';
 import { Switch } from '../devices/switch.ts';
 import { Pc } from '../devices/pc.ts';
-import { Host, validHostname } from '../devices/host.ts';
+import { Host } from '../devices/host.ts';
 import type { IpMode, HostOs } from '../devices/host.ts';
 import { Server } from '../devices/server.ts';
 import { servicesToJson, servicesFromJson, mailboxesFromJson } from '../services/persist.ts';
@@ -136,6 +137,8 @@ export class Topology {
     this.net.addDevice(device);
     const placed: Placed = { device, label, x, y };
     this.placed.set(id, placed);
+    registerPlaced(placed, () => this.placed.values());
+    syncDeviceName(placed);
     return placed;
   }
 
@@ -175,7 +178,7 @@ export class Topology {
   restorePlaced(id: string, placed: Placed): void {
     if (this.placed.has(id)) return;
     const d = placed.device;
-    if ([...this.placed.values()].some((p) => p.label === placed.label)) placed.label = this.nextLabel(d.kind);
+    if ([...this.placed.values()].some((p) => p.label === placed.label)) renameDevice(placed, this.nextLabel(d.kind));
     if (d instanceof Cloud) {
       const used = [...this.placed.values()].flatMap((p) => (p.device instanceof Cloud ? [p.device.settings.block] : []));
       if (used.includes(d.settings.block)) d.setSettings({ ...d.settings, block: this.internet.freeBlock([...used, ...d.otherBlocks()]) });
@@ -183,6 +186,7 @@ export class Topology {
     }
     this.net.addDevice(d);
     this.placed.set(id, placed);
+    registerPlaced(placed, () => this.placed.values());
   }
 
   get(id: string): Placed | undefined {
@@ -314,7 +318,7 @@ function restore(device: AnyDevice, rec: DeviceRecord): void {
     device.sendClientId = pc.sendClientId ?? true;
     device.clientIdOverride = typeof pc.clientId === 'string' ? parseHexId(pc.clientId) ?? undefined : undefined;
     if (pc.os === 'linux' || pc.os === 'windows') device.os = pc.os;
-    if (typeof pc.hostname === 'string' && validHostname(pc.hostname) === null) device.name = pc.hostname;
+    // The host name is not read back: it always comes from the device name (net/device-names.ts).
     if (typeof pc.prettyHostname === 'string') device.prettyName = pc.prettyHostname.slice(0, MAX_PRETTY);
     if (pc.files !== undefined) restoreFiles(device, validFileRecords(pc.files));
     if (pc.mode === 'dhcp') device.config = { mode: 'dhcp' };

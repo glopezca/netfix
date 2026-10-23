@@ -88,7 +88,11 @@ try {
   const isp = page.locator('.window:visible .field:has-text("Nombre del ISP") input');
   await isp.fill('Fibra Aula');
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => [...document.querySelectorAll('g.device-cloud text')].some((x) => x.textContent === 'Fibra Aula'));
+  // Applied without a button: the field keeps it after leaving the tab (v0.16: the diagram shows the block, not the ISP).
+  await page.waitForTimeout(50);
+  await page.click('.win-tab:has-text("Líneas")');
+  await page.click('.win-tab:has-text("ISP")');
+  assert.equal(await page.locator('.window:visible .field:has-text("Nombre del ISP") input').inputValue(), 'Fibra Aula');
   await page.click('.win-tab:has-text("Líneas")');
   const down = page.locator('.window:visible .field:has-text("Bajada") input').first();
   await down.fill('321');
