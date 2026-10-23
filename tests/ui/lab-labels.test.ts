@@ -13,7 +13,9 @@ import { deviceShapes } from '../../src/ui/device-caption.ts';
 const AREA_CHAR = 7.6;
 const AREA_PAD = 8;
 
-const hit = (a: Box, b: Box): boolean => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+/** A little margin, as the real text may be a few pixels wider than the estimate (the e2e measures it). */
+const MARGIN = 2;
+const hit = (a: Box, b: Box): boolean => a.x0 - MARGIN < b.x1 && b.x0 - MARGIN < a.x1 && a.y0 - MARGIN < b.y1 && b.y0 - MARGIN < a.y1;
 
 function boxes(topo: Topology): { ends: { box: Box; what: string }[]; devices: { box: Box; what: string }[]; titles: { box: Box; what: string }[] } {
   const linked = (p: Placed, port: string): boolean => topo.net.linkAt({ device: p.device.id, port }) !== undefined;

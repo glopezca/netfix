@@ -7,6 +7,7 @@ import type { Placed } from '../net/topology.ts';
 import { formatIp } from '../core/ip.ts';
 import { BLOCK_PREFIX } from '../devices/cloud-config.ts';
 import { ICON_H, ICON_W } from './icons.ts';
+import { iosVirtualAddresses } from './port-address.ts';
 import type { Rect } from './canvas-geometry.ts';
 
 /** More would cover the devices below. */
@@ -25,7 +26,7 @@ function extraLines(p: Placed, linked?: (port: string) => boolean): string[] {
   const d = p.device;
   // A cloud: its public block, as a device shows its IP/CIDR (the provider name is in its ISP tab).
   if (d.kind === 'cloud') return [`${formatIp(d.settings.block)}/${BLOCK_PREFIX}`];
-  if (d.kind === 'router' || d.kind === 'switch') return IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname];
+  if (d.kind === 'router' || d.kind === 'switch') return [...(IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname]), ...iosVirtualAddresses(d)];
   return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined && !linked?.(n.port) ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
 }
 

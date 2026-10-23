@@ -5,9 +5,8 @@
  */
 import type { Placed } from '../net/topology.ts';
 import { formatIp } from '../core/ip.ts';
-import { isSubinterface, parentOf } from '../ios/interfaces.ts';
+import { isSubinterface, parentOf, shortIfaceName } from '../ios/interfaces.ts';
 import { effectiveAddress } from '../ios/commands/show-iface.ts';
-import { LINE_PREFIX } from '../devices/cloud-config.ts';
 
 /** More would stack too far along the cable. */
 const MAX_ADDRESSES = 3;
@@ -26,13 +25,24 @@ function iosAddresses(d: Extract<Placed['device'], { kind: 'router' | 'switch' }
   });
 }
 
+/** IOS interfaces that never have a cable (SVI, loopback, tunnel) with an address: shown under the device. */
+export function iosVirtualAddresses(d: Extract<Placed['device'], { kind: 'router' | 'switch' }>): string[] {
+  return d.sortedIfaceNames().filter((n) => /^(Vlan|Loopback|Tunnel)/.test(n)).flatMap((n) => {
+    const cfg = d.iface(n);
+    if (!cfg) return [];
+    const a = effectiveAddress(d, cfg);
+    return cidr(a.ip, a.prefix).map((x) => `${shortIfaceName(n)} ${x}`);
+  });
+}
+
 export function portAddresses(p: Placed, port: string): string[] {
   const d = p.device;
   let list: string[];
   if (d.kind === 'router' || d.kind === 'switch') list = iosAddresses(d, port);
   else if (d.kind === 'cloud') {
-    const line = d.lines.get(port as Parameters<typeof d.lines.get>[0]);
-    list = !line ? [] : line.settings.mode === 'router' ? cidr(line.settings.lanIp, line.settings.lanPrefix) : cidr(line.line().gw, LINE_PREFIX);
+    const line = [...d.lines].find(([name]) => name === port)?.[1];
+    const a = line?.gatewayAddr();
+    list = cidr(a?.ip, a?.prefix);
   } else {
     const nic = d.nics().find((n) => n.port === port);
     list = cidr(nic?.ip, nic?.prefix);

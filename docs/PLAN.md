@@ -628,3 +628,10 @@ cambio temporal, AAAA/ANY… sin registros y estadísticas solo del resolutor (n
 3. **Laboratorios sin solapes:** una prueba recorre todos los laboratorios y comprueba que ninguna etiqueta de interfaz
    se monta sobre otra, sobre el pie o el modelo de un equipo ni sobre el título de un área; se reajustan las
    posiciones (longitud de los cables) de los que fallen. El e2e repite la comprobación con el texto real.
+
+**Estado:** completada (v0.18.0, 633 pruebas; e2e en todos los laboratorios). Revisión ECC (code-reviewer): sin
+críticos ni altos; corregido el medio (en un cable demasiado corto para la dirección solo se dibuja el nombre de la
+interfaz, y los dos extremos no se juntan) y los bajos: la dirección de una línea de nube sale de la propia nube
+(`gatewayAddr`), la prueba de solapes deja 2 px de margen, y las direcciones IOS sin cable (SVI Vlan1, Loopback,
+Tunnel) se ven bajo el equipo.
+

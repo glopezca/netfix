@@ -4647,47 +4647,6 @@ function cloudFromJson(v, fallback) {
 
 return { CLOUD_PORTS, BLOCK_PREFIX, LINE_PREFIX, accessOf, ACCESS_LABEL, defaultPort, defaultCloud, lineSubnet, ispHop, reservedAddress, validDomain, validatePort, validateCloud, cloudToJson, cloudFromJson };
 })();
-__m["ui/device-caption.js"] = (() => {
-const { formatIp } = __m["core/ip.js"];
-const { BLOCK_PREFIX } = __m["devices/cloud-config.js"];
-const { ICON_H, ICON_W } = __m["ui/icons.js"];
-/** More would cover the devices below. */
-const MAX_LINES = 3;
-/** Height of each caption line below the device name. */
-const CAPTION_LINE = 14;
-const IOS_DEFAULTS = new Set(['Router', 'Switch']);
-/** `linked`: ports with a cable, whose address goes at the end of the cable instead (link-labels.ts). */
-function extraLines(p, linked) {
-    const d = p.device;
-    // A cloud: its public block, as a device shows its IP/CIDR (the provider name is in its ISP tab).
-    if (d.kind === 'cloud')
-        return [`${formatIp(d.settings.block)}/${BLOCK_PREFIX}`];
-    if (d.kind === 'router' || d.kind === 'switch')
-        return IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname];
-    return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined && !linked?.(n.port) ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
-}
-function deviceCaption(p, linked) {
-    return { name: p.label, extra: extraLines(p, linked).slice(0, MAX_LINES) };
-}
-/** Rough text widths (px per character) of the device name (bold 13 px) and of the lines below it (11 px). */
-const NAME_CHAR = 7.4;
-const LINE_CHAR = 6.2;
-/** Name baseline below the icon's centre, and the model line above it (canvas.ts). */
-const NAME_BASELINE = ICON_H / 2 + 18;
-const MODEL_TOP = ICON_H / 2 + 24;
-const DESCENT = 5;
-/** What a device draws around its centre: the icon with its model above, and the caption below. */
-function deviceShapes(p, linked) {
-    const c = deviceCaption(p, linked);
-    const half = Math.max(c.name.length * NAME_CHAR, ...c.extra.map((l) => l.length * LINE_CHAR)) / 2;
-    return [
-        { x0: -ICON_W / 2 - 4, x1: ICON_W / 2 + 4, y0: -MODEL_TOP, y1: ICON_H / 2 + 2 },
-        { x0: -half, x1: half, y0: ICON_H / 2 + 2, y1: NAME_BASELINE + c.extra.length * CAPTION_LINE + DESCENT },
-    ];
-}
-
-return { CAPTION_LINE, deviceCaption, deviceShapes };
-})();
 __m["core/mac.js"] = (() => {
 /** MAC address and DHCP client-identifier helpers. MACs are 12 lowercase hex chars. */
 const HEX_RE = /^[0-9a-f]+$/;
@@ -4815,9 +4774,8 @@ return { effectiveAddress, ifaceStatus, showIpInterfaceBrief, showInterfaces, ma
 })();
 __m["ui/port-address.js"] = (() => {
 const { formatIp } = __m["core/ip.js"];
-const { isSubinterface, parentOf } = __m["ios/interfaces.js"];
+const { isSubinterface, parentOf, shortIfaceName } = __m["ios/interfaces.js"];
 const { effectiveAddress } = __m["ios/commands/show-iface.js"];
-const { LINE_PREFIX } = __m["devices/cloud-config.js"];
 /** More would stack too far along the cable. */
 const MAX_ADDRESSES = 3;
 const cidr = (ip, prefix) => (ip !== undefined && prefix !== undefined ? [`${formatIp(ip)}/${prefix}`] : []);
@@ -4834,14 +4792,25 @@ function iosAddresses(d, port) {
         return cidr(a.ip, a.prefix);
     });
 }
+/** IOS interfaces that never have a cable (SVI, loopback, tunnel) with an address: shown under the device. */
+function iosVirtualAddresses(d) {
+    return d.sortedIfaceNames().filter((n) => /^(Vlan|Loopback|Tunnel)/.test(n)).flatMap((n) => {
+        const cfg = d.iface(n);
+        if (!cfg)
+            return [];
+        const a = effectiveAddress(d, cfg);
+        return cidr(a.ip, a.prefix).map((x) => `${shortIfaceName(n)} ${x}`);
+    });
+}
 function portAddresses(p, port) {
     const d = p.device;
     let list;
     if (d.kind === 'router' || d.kind === 'switch')
         list = iosAddresses(d, port);
     else if (d.kind === 'cloud') {
-        const line = d.lines.get(port);
-        list = !line ? [] : line.settings.mode === 'router' ? cidr(line.settings.lanIp, line.settings.lanPrefix) : cidr(line.line().gw, LINE_PREFIX);
+        const line = [...d.lines].find(([name]) => name === port)?.[1];
+        const a = line?.gatewayAddr();
+        list = cidr(a?.ip, a?.prefix);
     }
     else {
         const nic = d.nics().find((n) => n.port === port);
@@ -4850,7 +4819,49 @@ function portAddresses(p, port) {
     return list.slice(0, MAX_ADDRESSES);
 }
 
-return { portAddresses };
+return { iosVirtualAddresses, portAddresses };
+})();
+__m["ui/device-caption.js"] = (() => {
+const { formatIp } = __m["core/ip.js"];
+const { BLOCK_PREFIX } = __m["devices/cloud-config.js"];
+const { ICON_H, ICON_W } = __m["ui/icons.js"];
+const { iosVirtualAddresses } = __m["ui/port-address.js"];
+/** More would cover the devices below. */
+const MAX_LINES = 3;
+/** Height of each caption line below the device name. */
+const CAPTION_LINE = 14;
+const IOS_DEFAULTS = new Set(['Router', 'Switch']);
+/** `linked`: ports with a cable, whose address goes at the end of the cable instead (link-labels.ts). */
+function extraLines(p, linked) {
+    const d = p.device;
+    // A cloud: its public block, as a device shows its IP/CIDR (the provider name is in its ISP tab).
+    if (d.kind === 'cloud')
+        return [`${formatIp(d.settings.block)}/${BLOCK_PREFIX}`];
+    if (d.kind === 'router' || d.kind === 'switch')
+        return [...(IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname]), ...iosVirtualAddresses(d)];
+    return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined && !linked?.(n.port) ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
+}
+function deviceCaption(p, linked) {
+    return { name: p.label, extra: extraLines(p, linked).slice(0, MAX_LINES) };
+}
+/** Rough text widths (px per character) of the device name (bold 13 px) and of the lines below it (11 px). */
+const NAME_CHAR = 7.4;
+const LINE_CHAR = 6.2;
+/** Name baseline below the icon's centre, and the model line above it (canvas.ts). */
+const NAME_BASELINE = ICON_H / 2 + 18;
+const MODEL_TOP = ICON_H / 2 + 24;
+const DESCENT = 5;
+/** What a device draws around its centre: the icon with its model above, and the caption below. */
+function deviceShapes(p, linked) {
+    const c = deviceCaption(p, linked);
+    const half = Math.max(c.name.length * NAME_CHAR, ...c.extra.map((l) => l.length * LINE_CHAR)) / 2;
+    return [
+        { x0: -ICON_W / 2 - 4, x1: ICON_W / 2 + 4, y0: -MODEL_TOP, y1: ICON_H / 2 + 2 },
+        { x0: -half, x1: half, y0: ICON_H / 2 + 2, y1: NAME_BASELINE + c.extra.length * CAPTION_LINE + DESCENT },
+    ];
+}
+
+return { CAPTION_LINE, deviceCaption, deviceShapes };
 })();
 __m["ui/link-labels.js"] = (() => {
 const { shortIfaceName } = __m["ios/interfaces.js"];
@@ -4863,12 +4874,19 @@ const PORT_LINE = 12;
 const PAD = 3;
 /** `linked`: whether a port of a device has a cable (its address then goes here, not under the device). */
 function endLabel(from, to, port, linked) {
-    const lines = [shortIfaceName(port), ...portAddresses(from, port)];
+    const full = block(from, to, [shortIfaceName(port), ...portAddresses(from, port)], linked);
+    // A cable too short for the address in its half: only the name, so both ends do not meet in the middle.
+    return full.fits || full.label.lines.length === 1 ? full.label : block(from, to, [shortIfaceName(port)], linked).label;
+}
+function block(from, to, lines, linked) {
     const halfW = Math.max(...lines.map((l) => l.length)) * PORT_CHAR / 2 + PAD;
     const halfH = lines.length * PORT_LINE / 2 + 1;
     const marks = cableMarks(from, to, deviceShapes(from, (port2) => linked(from, port2)), { halfW, halfH });
     const at = along(from, to, marks.label);
-    return { light: along(from, to, marks.light), at, lines, box: { x0: at.x - halfW, y0: at.y - halfH, x1: at.x + halfW, y1: at.y + halfH } };
+    const len = Math.hypot(to.x - from.x, to.y - from.y);
+    const u = { x: Math.abs(to.x - from.x) / (len || 1), y: Math.abs(to.y - from.y) / (len || 1) };
+    const fits = marks.label + u.x * halfW + u.y * halfH <= len / 2;
+    return { label: { light: along(from, to, marks.light), at, lines, box: { x0: at.x - halfW, y0: at.y - halfH, x1: at.x + halfW, y1: at.y + halfH } }, fits };
 }
 /** Baseline of each line of the block, so the block is centred on `at`. */
 const lineBaselines = (l) => l.lines.map((_, i) => l.at.y + 4 + (i - (l.lines.length - 1) / 2) * PORT_LINE);
@@ -45887,6 +45905,7 @@ class CloudPort {
         this.dhcp.excluded = ptExclusions(pool);
         this.dhcp.pingPackets = 0;
     }
+    /** The line's own address: the operator router's LAN, or the gateway of a public line. */
     gatewayAddr() {
         return this.settings.mode === 'router' ? { ip: this.settings.lanIp, prefix: this.settings.lanPrefix } : { ip: this.line().gw, prefix: LINE_PREFIX };
     }

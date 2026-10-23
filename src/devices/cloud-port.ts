@@ -99,7 +99,8 @@ export class CloudPort implements StackHost {
     this.dhcp.pingPackets = 0;
   }
 
-  private gatewayAddr(): { ip: number; prefix: number } {
+  /** The line's own address: the operator router's LAN, or the gateway of a public line. */
+  gatewayAddr(): { ip: number; prefix: number } {
     return this.settings.mode === 'router' ? { ip: this.settings.lanIp, prefix: this.settings.lanPrefix } : { ip: this.line().gw, prefix: LINE_PREFIX };
   }
 

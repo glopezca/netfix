@@ -34,3 +34,26 @@ test('the caption keeps only the addresses of interfaces without a cable', () =>
   assert.deepEqual(deviceCaption(pc, () => false).extra, ['192.168.1.10/24']);
   assert.deepEqual(deviceCaption(pc, () => true).extra, [], 'with a cable, it goes at the end of the cable');
 });
+
+test('review: on a short cable the address is left out so the two ends do not meet', async () => {
+  const { endLabel } = await import('../../src/ui/link-labels.ts');
+  const t = new Topology();
+  const a = t.add('pc', 0, 0);
+  const b = t.add('pc', 140, 0);
+  (a.device as Pc).setStatic({ ip: parseIp('192.168.1.10')!, prefix: 24 });
+  t.connect({ device: a.device.id, port: 'FastEthernet0' }, { device: b.device.id, port: 'FastEthernet0' });
+  const linked = (): boolean => true;
+  assert.deepEqual(endLabel(a, b, 'FastEthernet0', linked).lines, ['Fa0'], 'no room: only the name');
+  b.x = 600;
+  assert.deepEqual(endLabel(a, b, 'FastEthernet0', linked).lines, ['Fa0', '192.168.1.10/24']);
+});
+
+test('review: IOS addresses with no cable end (SVI, loopback) go under the device', () => {
+  const t = new Topology();
+  const sw = t.add('switch', 0, 0);
+  applyConfig(sw.device as Router, ['interface Vlan1', ' ip address 192.168.1.2 255.255.255.0', ' no shutdown']);
+  assert.deepEqual(deviceCaption(sw, () => true).extra, ['Vlan1 192.168.1.2/24']);
+  const r = t.add('router', 0, 0);
+  applyConfig(r.device as Router, ['hostname R1', 'interface Loopback0', ' ip address 1.1.1.1 255.255.255.255']);
+  assert.deepEqual(deviceCaption(r, () => true).extra, ['R1', 'Lo0 1.1.1.1/32']);
+});
