@@ -88,14 +88,14 @@ test('query errors, as resolved words them', () => {
   assert.equal(sh('resolvectl query www.aula.lab'), 'www.aula.lab: resolve call failed: All attempts to contact name servers or networks failed');
   pc.setStatic({ ip: ip('10.0.0.10'), prefix: 24, gateway: ip('10.0.0.1') });
   assert.equal(sh('resolvectl query www.aula.lab'), 'www.aula.lab: resolve call failed: No appropriate name servers or networks for name found');
-  assert.match(sh('resolvectl query'), /^resolvectl query: too few arguments/m);
+  assert.equal(sh('resolvectl query'), 'Too few arguments.');
 });
 
 test('dns and domain: shown per link; root changes them at run time; revert and a new IP setting drop them', () => {
   const { pc, sh, root } = lab();
   assert.equal(sh('resolvectl dns'), 'Global:\nLink 2 (eth0): 10.0.0.2');
   assert.equal(sh('resolvectl domain eth0'), 'Link 2 (eth0): aula.lab');
-  assert.match(sh('resolvectl dns eth0 10.0.0.9'), /Failed to set DNS configuration: Access denied/);
+  assert.match(sh('resolvectl dns eth0 10.0.0.9'), /Failed to set DNS configuration: Interactive authentication required\./);
   assert.equal(root('resolvectl dns eth0 8.8.8.8 1.1.1.1; echo $?'), 'resolvectl: Netfix usa un servidor DNS por equipo: se queda el primero, 8.8.8.8\n0');
   assert.equal(sh('resolvectl dns eth0'), 'Link 2 (eth0): 8.8.8.8');
   assert.match(sh('dig www.aula.lab'), /8\.8\.8\.8#53/, 'the resolver uses it (no Internet here: it times out)');
@@ -118,4 +118,46 @@ test('flush-caches, reset-server-features, statistics and help', () => {
   assert.match(sh('resolvectl statistics'), /^Transactions\nCurrent Transactions: 0\n  Total Transactions: [1-9]\d*$/m);
   assert.match(sh('resolvectl -h'), /^resolvectl \[OPTIONS\.\.\.\] COMMAND \.\.\.$/m);
   assert.match(sh('resolvectl nada'), /Unknown command verb 'nada'/);
+});
+
+test('review: options before the verb and with values; unknown options; too few arguments', () => {
+  const { sh } = lab();
+  assert.match(sh('resolvectl -t MX query aula.lab'), /aula\.lab IN MX 10 ns\.aula\.lab/);
+  assert.match(sh('resolvectl --type MX query aula.lab'), /aula\.lab IN MX 10 ns\.aula\.lab/);
+  assert.equal(sh('resolvectl query -i eth0 --legend no www.aula.lab').split('\n').length, 1, '-i and --legend take a value');
+  assert.match(sh('resolvectl query --nada x'), /^resolvectl: unrecognized option '--nada'$/m);
+  assert.equal(sh('resolvectl query'), 'Too few arguments.');
+  assert.match(sh('resolvectl query -t'), /option requires an argument -- 't'/);
+  assert.equal(sh('resolvectl query -t AAAA www.aula.lab'), "www.aula.lab: resolve call failed: 'www.aula.lab' does not have any RR of the requested type");
+});
+
+test('review: the runtime DNS survives a DHCP renewal and an unchanged netplan apply, not a real change', () => {
+  const { t, pc, srv, sh, root } = lab();
+  srv.setServices({ ...srv.services, dhcp: { enabled: true, pools: [{ name: 'p', start: ip('10.0.0.100'), prefix: 24, maxUsers: 10, gateway: ip('10.0.0.1'), dns: ip('10.0.0.2'), leaseMinutes: 2, reservations: [] }] } });
+  pc.useDhcp();
+  t.settle(10_000);
+  root('resolvectl dns eth0 10.0.0.2; resolvectl domain eth0 empresa.lan');
+  t.settle(5 * 60_000);
+  assert.equal(sh('resolvectl dns eth0'), 'Link 2 (eth0): 10.0.0.2');
+  assert.equal(sh('resolvectl domain eth0'), 'Link 2 (eth0): empresa.lan', 'renewals do not drop it');
+  assert.doesNotMatch(root('cat /etc/resolv.conf'), /empresa\.lan/, 'resolv.conf (foreign) is not resolved’s');
+  root('netplan apply');
+  assert.equal(sh('resolvectl domain eth0'), 'Link 2 (eth0): empresa.lan', 'nothing changed');
+  pc.setStatic({ ip: ip('10.0.0.12'), prefix: 24, gateway: ip('10.0.0.1'), dns: ip('10.0.0.2') });
+  assert.equal(sh('resolvectl domain eth0'), 'Link 2 (eth0): aula.lab', 'a new configuration drops it');
+});
+
+test('review: synthetic data is authenticated; empty values clear; messages as systemd; caps', () => {
+  const { sh, root } = lab();
+  assert.match(sh('resolvectl query localhost'), /-- Data is authenticated: yes; Data was acquired via local or encrypted transport: yes\n-- Data from: synthetic/);
+  root('resolvectl dns eth0 ""');
+  assert.equal(sh('resolvectl dns eth0'), 'Link 2 (eth0):');
+  assert.match(sh('resolvectl query www.aula.lab'), /No appropriate name servers/);
+  root('resolvectl revert eth0');
+  root('resolvectl domain eth0 ""');
+  assert.equal(sh('resolvectl domain eth0'), 'Link 2 (eth0):');
+  assert.equal(sh('resolvectl dns eth0 1.1.1.1'), 'Failed to set DNS configuration: Interactive authentication required.');
+  assert.match(root(`resolvectl domain eth0 ${'a.'.repeat(200)}lab`), /Failed to parse domain name/);
+  assert.doesNotMatch(sh("resolvectl status $'\\e[2J'"), /\x1b/);
+  assert.match(sh('resolvectl query www.aula.lab'), /in (\d+us|\d+\.\dms|\d+\.\ds)\./);
 });

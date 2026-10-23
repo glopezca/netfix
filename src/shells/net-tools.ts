@@ -22,7 +22,10 @@ export const SSH_WAIT_MS = 60_000;
 export function dnsQuery(host: Host, name: string, type: DnsType, server?: number): DnsResult {
   const target = type === 'PTR' ? name : normalizeName(name);
   const to = server ?? resolvedDns(host);
-  countTransaction(host);
+  // Only lookups that go through the resolver (dig @server asks that server directly).
+  if (server === undefined) countTransaction(host);
+  // No server at all (none configured, or resolvectl dns eth0 ""): lookup() would fall back to the configured one.
+  if (to === undefined) return { kind: 'noserver' };
   return runSync<DnsResult>(host.hooks, (done) => host.lookup(target, type, done, to), DNS_WAIT_MS) ?? { kind: 'timeout', server: to ?? 0 };
 }
 
@@ -30,7 +33,11 @@ export function dnsQuery(host: Host, name: string, type: DnsType, server?: numbe
 export function searchDomains(host: Host): readonly string[] {
   const runtime = resolvedDomains(host);
   // resolvectl domain: routing-only domains (~example.com, ~.) are not search domains.
-  if (runtime) return runtime.filter((d) => !d.startsWith('~')).map(normalizeName);
+  return runtime ? runtime.filter((d) => !d.startsWith('~')).map(normalizeName) : configuredSearchDomains(host);
+}
+
+/** The search list of the device's settings (netplan, DHCP), as /etc/resolv.conf shows it. */
+export function configuredSearchDomains(host: Host): readonly string[] {
   const domain = host.config.mode === 'dhcp' ? host.dhcpClient.lease?.domainName : undefined;
   return [...new Set([...host.dnsSearch.map(normalizeName), ...(domain ? [normalizeName(domain)] : [])])];
 }

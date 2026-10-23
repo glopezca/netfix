@@ -603,6 +603,15 @@ systemd 257, sobre el resolutor que ya usan ping, dig, nslookup y host (/etc/hos
 - `resolvectl dns [ENLACE [SERVIDOR…]]` y `resolvectl domain [ENLACE [DOMINIO…]]`: ver y, como root, cambiar en
   tiempo de ejecución el servidor DNS y los dominios de búsqueda del enlace principal (Netfix usa un servidor por
   equipo: con varios, el primero). `revert ENLACE` vuelve a la configuración de netplan; `flush-caches` y
-  `reset-server-features` (sin caché local en Netfix: no hacen nada visible); `statistics` con las transacciones de
-  resolvectl; `-h`.
+  `reset-server-features` (sin caché local en Netfix: no hacen nada visible); `statistics` con las consultas que pasan por el
+  resolutor del equipo; `-h`.
 - Entrada en la documentación de órdenes (es/en) y en la pestaña Documentación.
+
+**Estado:** completada (v0.17.0, 9 pruebas de resolvectl; e2e). Revisión ECC: security-reviewer (opus) sin críticos,
+altos ni medios; aplicados los bajos (lo que se repite de los argumentos, recortado y sin caracteres de control;
+dominios de hasta 253 caracteres; 64 nombres por consulta). code-reviewer (sonnet) sin críticos ni altos; corregidos
+los medios: opciones antes del verbo y con valor (`-t MX query`, `-i eth0`, `--legend no`, opciones desconocidas), el
+cambio de `resolvectl dns|domain` se compara por valor (una renovación DHCP o un `netplan apply` sin cambios no lo
+quitan; un cambio real sí), datos sintéticos «authenticated: yes», «Too few arguments.», «Interactive authentication
+required.», tiempos en us/ms/s, `dns eth0 ""` y `domain eth0 ""` vacían la lista, /etc/resolv.conf no refleja el
+cambio temporal, AAAA/ANY… sin registros y estadísticas solo del resolutor (no `dig @servidor`).

@@ -13168,23 +13168,27 @@ return { runSync };
 __m["shells/resolved.js"] = (() => {
 const overrides = new WeakMap();
 const transactions = new WeakMap();
+const settings = (h) => JSON.stringify([h.config.mode, h.config.ip, h.config.prefix, h.config.gateway, h.config.dns, h.dnsSearch]);
 function live(host) {
     const o = overrides.get(host);
-    if (o && o.base !== host.config) {
+    if (o && o.base !== settings(host)) {
         overrides.delete(host);
         return undefined;
     }
     return o;
 }
-/** The DNS server the resolver uses: the one set with resolvectl, else the device's. */
-const resolvedDns = (host) => live(host)?.dns ?? host.config.dns;
+/** The DNS server the resolver uses: the one set with resolvectl (maybe none), else the device's. */
+function resolvedDns(host) {
+    const o = live(host);
+    return o && o.dns !== undefined ? o.dns ?? undefined : host.config.dns;
+}
 /** Domains set with resolvectl, or undefined to use the configured ones. */
 const resolvedDomains = (host) => live(host)?.domains;
 function setResolvedDns(host, dns) {
-    overrides.set(host, { ...live(host), base: host.config, dns });
+    overrides.set(host, { ...live(host), base: settings(host), dns });
 }
 function setResolvedDomains(host, domains) {
-    overrides.set(host, { ...live(host), base: host.config, domains });
+    overrides.set(host, { ...live(host), base: settings(host), domains });
 }
 function revertResolved(host) {
     overrides.delete(host);
@@ -13210,15 +13214,22 @@ const SSH_WAIT_MS = 60_000;
 function dnsQuery(host, name, type, server) {
     const target = type === 'PTR' ? name : normalizeName(name);
     const to = server ?? resolvedDns(host);
-    countTransaction(host);
+    // Only lookups that go through the resolver (dig @server asks that server directly).
+    if (server === undefined)
+        countTransaction(host);
+    // No server at all (none configured, or resolvectl dns eth0 ""): lookup() would fall back to the configured one.
+    if (to === undefined)
+        return { kind: 'noserver' };
     return runSync(host.hooks, (done) => host.lookup(target, type, done, to), DNS_WAIT_MS) ?? { kind: 'timeout', server: to ?? 0 };
 }
 /** The search domains of the host: netplan's `nameservers.search`, then the DHCP domain (option 15) while the lease lasts. */
 function searchDomains(host) {
     const runtime = resolvedDomains(host);
     // resolvectl domain: routing-only domains (~example.com, ~.) are not search domains.
-    if (runtime)
-        return runtime.filter((d) => !d.startsWith('~')).map(normalizeName);
+    return runtime ? runtime.filter((d) => !d.startsWith('~')).map(normalizeName) : configuredSearchDomains(host);
+}
+/** The search list of the device's settings (netplan, DHCP), as /etc/resolv.conf shows it. */
+function configuredSearchDomains(host) {
     const domain = host.config.mode === 'dhcp' ? host.dhcpClient.lease?.domainName : undefined;
     return [...new Set([...host.dnsSearch.map(normalizeName), ...(domain ? [normalizeName(domain)] : [])])];
 }
@@ -13333,7 +13344,7 @@ function splitArgs(line) {
     return line.trim().split(/\s+/).filter(Boolean);
 }
 
-return { SSH_WAIT_MS, dnsQuery, searchDomains, hostsLookup, resolutionCandidates, dnsSearch, resolveHost, tcpCall, parseUrl, httpGet, httpRequest, reverseLookup, dateLine, splitArgs };
+return { SSH_WAIT_MS, dnsQuery, searchDomains, configuredSearchDomains, hostsLookup, resolutionCandidates, dnsSearch, resolveHost, tcpCall, parseUrl, httpGet, httpRequest, reverseLookup, dateLine, splitArgs };
 })();
 __m["core/sha256.js"] = (() => {
 /** SHA-256 (FIPS 180-4) and base64 over bytes: fingerprints and key files of the simulated OpenSSH. */
@@ -31732,7 +31743,7 @@ const { listenChoices } = __m["services/listen.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { formatIp, formatMask, networkOf, broadcastOf } = __m["core/ip.js"];
 const { formatMacCisco } = __m["core/mac.js"];
-const { searchDomains } = __m["shells/net-tools.js"];
+const { configuredSearchDomains } = __m["shells/net-tools.js"];
 const { ptExclusions } = __m["services/dhcp-pt.js"];
 const { bindFiles } = __m["services/bind-files.js"];
 const IFACE = 'eth0';
@@ -31807,7 +31818,7 @@ function linuxFiles(host) {
     const files = new Map([
         ['/etc/os-release', 'PRETTY_NAME="Ubuntu 26.04 LTS"\nNAME="Ubuntu"\nVERSION_ID="26.04"\nID=ubuntu\n'],
         ['/etc/hostname', `${host.name.toLowerCase()}\n`],
-        ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n${searchDomains(host).length ? `search ${searchDomains(host).join(' ')}\n` : ''}`],
+        ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n${configuredSearchDomains(host).length ? `search ${configuredSearchDomains(host).join(' ')}\n` : ''}`],
     ]);
     if (runsServices(host.kind))
         for (const [k, v] of serverFiles(host))
@@ -32310,9 +32321,12 @@ const { normalizeName, reverseName } = __m["net/dns.js"];
 const { dnsQuery, dnsSearch, hostsLookup } = __m["shells/net-tools.js"];
 const { formatIp, parseIp } = __m["core/ip.js"];
 const QUERY_TYPES = ['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR', 'SOA'];
+/** Real types Netfix's DNS has no records of (no IPv6, no DNSSEC…): a lookup finds nothing of the type. */
+const EMPTY_TYPES = ['AAAA', 'ANY', 'SRV', 'CAA', 'DS', 'DNSKEY', 'HINFO', 'NAPTR', 'SSHFP', 'TLSA', 'SPF'];
 const ADDRESS_COLUMN = 31;
 const RECORD_COLUMN = 47;
 const LOOPBACK_NET = 127;
+const MAX_NAME = 253;
 const linkFor = (host, ip) => ((ip >>> 24) === LOOPBACK_NET ? 'lo' : host.linuxIfName(host.primaryPort()));
 /** «name: value   -- link: eth0», the next values under the first, and the canonical name in brackets. */
 function addressLines(name, values, link, canonical) {
@@ -32339,7 +32353,17 @@ function synthetic(host, name) {
     const ip = own ?? hostsLookup(host, name);
     return ip === undefined ? undefined : { lines: addressLines(name, [formatIp(ip)], linkFor(host, ip)), synthetic: true };
 }
+/** What the terminal echoes of an argument: short, without control characters. */
+const shown = (text) => text.slice(0, 64).replace(/[\x00-\x1f\x7f]/g, '?');
+/** 212us, 20.4ms or 1.2s, as systemd formats a timespan. */
+function took(ms) {
+    if (ms < 1)
+        return `${Math.max(1, Math.round(ms * 1000))}us`;
+    return ms < 1000 ? `${ms.toFixed(1)}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
 function lookup(host, name, type) {
+    if (type === 'empty')
+        return `'${name}' does not have any RR of the requested type`;
     const literal = parseIp(name);
     if (literal !== null) {
         const r = dnsQuery(host, reverseName(literal), 'PTR');
@@ -32366,25 +32390,27 @@ function query(ctx, host, names, opts) {
     let status = 0;
     for (const name of names) {
         const start = host.clock.now();
-        const r = lookup(host, name, opts.type);
+        // A name longer than DNS allows, or with control characters, never reaches the resolver (nor the screen as is).
+        const r = name.length > MAX_NAME || shown(name) !== name ? 'Invalid domain name' : lookup(host, name, opts.type);
         if (typeof r === 'string') {
-            ctx.err(`${name}: resolve call failed: ${r}\n`);
+            ctx.err(`${shown(name)}: resolve call failed: ${r}\n`);
             status = 1;
             continue;
         }
-        const ms = Math.max(0.1, host.clock.now() - start).toFixed(1);
-        const legend = ['', `-- Information acquired via protocol DNS in ${ms}ms.`, '-- Data is authenticated: no; Data was acquired via local or encrypted transport: no', `-- Data from: ${r.synthetic ? 'synthetic' : 'network'}`];
+        // Synthetic data (/etc/hosts, own name) is trusted and local, as resolved says.
+        const trust = r.synthetic ? 'yes' : 'no';
+        const legend = ['', `-- Information acquired via protocol DNS in ${took(host.clock.now() - start)}.`, `-- Data is authenticated: ${trust}; Data was acquired via local or encrypted transport: ${trust}`, `-- Data from: ${r.synthetic ? 'synthetic' : 'network'}`];
         ctx.out(`${[...r.lines, ...(opts.legend ? legend : [])].join('\n')}\n`);
     }
     return status;
 }
 
-return { QUERY_TYPES, query };
+return { QUERY_TYPES, EMPTY_TYPES, shown, query };
 })();
 __m["shells/resolvectl.js"] = (() => {
 const { searchDomains } = __m["shells/net-tools.js"];
 const { resolvedDns, resolvedDomains, revertResolved, setResolvedDns, setResolvedDomains, transactionCount } = __m["shells/resolved.js"];
-const { QUERY_TYPES, query } = __m["shells/resolvectl-query.js"];
+const { EMPTY_TYPES, QUERY_TYPES, query, shown } = __m["shells/resolvectl-query.js"];
 const { formatIp, parseIp } = __m["core/ip.js"];
 const { t } = __m["i18n/t.js"];
 const PROTOCOLS = '-LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported';
@@ -32392,6 +32418,7 @@ const PROTOCOLS = '-LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported';
 const FIRST_NIC_INDEX = 2;
 const DOMAIN = /^~?(?:\.|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i;
 const MAX_DOMAINS = 8;
+const MAX_DOMAIN = 253;
 const links = (host) => host.nics().map((n, i) => ({ index: i + FIRST_NIC_INDEX, name: n.linux, primary: n.port === host.primaryPort() }));
 const linkDns = (host, l) => (l.primary ? resolvedDns(host) : undefined);
 const linkDomains = (host, l) => (l.primary ? resolvedDomains(host) ?? searchDomains(host) : []);
@@ -32421,7 +32448,7 @@ function findLink(ctx, host, name) {
         return undefined;
     const l = links(host).find((x) => x.name === name);
     if (!l)
-        ctx.err(`Failed to resolve interface "${name}": No such device\n`);
+        ctx.err(`Failed to resolve interface "${shown(name)}": No such device\n`);
     return l ?? null;
 }
 /** dns / domain: list them, or (root) set them on the link. */
@@ -32439,10 +32466,8 @@ function perLink(ctx, host, what, args) {
         out(ctx, [show(link)]);
         return 0;
     }
-    if (ctx.cred.uid !== 0) {
-        ctx.err(`Failed to set ${what === 'dns' ? 'DNS' : 'domain'} configuration: Access denied\n`);
+    if (!privileged(ctx, `set ${what === 'dns' ? 'DNS' : 'domain'} configuration`))
         return 1;
-    }
     if (!link.primary) {
         ctx.err(`resolvectl: ${t('resolvectl.primaryOnly', { link: links(host).find((l) => l.primary)?.name ?? 'eth0' })}\n`);
         return 1;
@@ -32450,9 +32475,14 @@ function perLink(ctx, host, what, args) {
     return what === 'dns' ? setDns(ctx, host, values) : setDomains(ctx, host, values);
 }
 function setDns(ctx, host, values) {
+    // resolvectl dns eth0 "": no server on the link.
+    if (values.length === 1 && values[0] === '') {
+        setResolvedDns(host, null);
+        return 0;
+    }
     const bad = values.find((v) => parseIp(v) === null);
     if (bad !== undefined) {
-        ctx.err(`Failed to parse DNS server address: ${bad.slice(0, 64)}\n`);
+        ctx.err(`Failed to parse DNS server address: ${shown(bad)}\n`);
         return 1;
     }
     const first = parseIp(values[0] ?? '') ?? 0;
@@ -32462,9 +32492,13 @@ function setDns(ctx, host, values) {
     return 0;
 }
 function setDomains(ctx, host, values) {
-    const bad = values.find((v) => !DOMAIN.test(v));
+    if (values.length === 1 && values[0] === '') {
+        setResolvedDomains(host, []);
+        return 0;
+    }
+    const bad = values.find((v) => v.replace(/^~/, '').length > MAX_DOMAIN || !DOMAIN.test(v));
     if (bad !== undefined) {
-        ctx.err(`Failed to parse domain name: ${bad.slice(0, 64)}\n`);
+        ctx.err(`Failed to parse domain name: ${shown(bad)}\n`);
         return 1;
     }
     setResolvedDomains(host, values.slice(0, MAX_DOMAINS).map((d) => d.toLowerCase()));
@@ -32479,28 +32513,76 @@ function statistics(host) {
     return ['Transactions', `${key('Current Transactions').slice(-20)}: 0`, `${'Total Transactions'.padStart(20)}: ${n}`, '', 'Cache', `${'Current Cache Size'.padStart(20)}: 0`, `${'Cache Hits'.padStart(20)}: 0`, `${'Cache Misses'.padStart(20)}: ${n}`,
         '', 'DNSSEC Verdicts', `${'Secure'.padStart(20)}: 0`, `${'Insecure'.padStart(20)}: 0`, `${'Bogus'.padStart(20)}: 0`, `${'Indeterminate'.padStart(20)}: 0`];
 }
-/** -t TYPE / --type=TYPE and --legend=no out of the arguments. */
-function queryOptions(args) {
-    let type;
-    const names = [];
+/** Options that take a value (as getopt: -t MX, -tMX, --type MX, --type=MX), anywhere before or after the verb. */
+const WITH_VALUE = { '-t': 'type', '--type': 'type', '-i': 'interface', '--interface': 'interface', '-p': 'protocol', '--protocol': 'protocol', '-c': 'class', '--class': 'class', '--legend': 'legend' };
+const FLAGS = new Set(['-4', '-6', '-h', '--help', '--no-pager', '--raw']);
+function parse(args) {
+    const words = [];
+    const values = {};
     for (let i = 0; i < args.length; i++) {
         const a = args[i] ?? '';
-        if (a === '-t' || a === '--type')
-            type = args[++i];
-        else if (a.startsWith('--type='))
-            type = a.slice(7);
-        else if (!a.startsWith('-'))
-            names.push(a);
+        if (a === '' || !a.startsWith('-') || a === '-') {
+            words.push(a);
+            continue;
+        }
+        const [flag = '', inline] = a.startsWith('--') ? a.split(/=(.*)/s) : [a.slice(0, 2), a.length > 2 ? a.slice(2) : undefined];
+        const name = WITH_VALUE[flag];
+        if (name === undefined) {
+            if (FLAGS.has(a))
+                continue;
+            return { words, legend: true, error: a.startsWith('--') ? `unrecognized option '${shown(a)}'` : `invalid option -- '${shown(a.slice(1, 2))}'` };
+        }
+        const value = inline ?? args[++i];
+        if (value === undefined)
+            return { words, legend: true, error: flag.startsWith('--') ? `option '${flag}' requires an argument` : `option requires an argument -- '${flag.slice(1)}'` };
+        values[name] = value;
     }
-    const upper = type?.toUpperCase();
+    return { words, type: values.type, legend: !/^(no|false|0)$/i.test(values.legend ?? 'yes') };
+}
+/** The RR type of -t: one Netfix answers, a real one it has no records of, or a parse error. */
+function queryType(text) {
+    if (text === undefined)
+        return undefined;
+    const upper = text.toUpperCase();
     const known = QUERY_TYPES.find((q) => q === upper);
-    return { type: known, legend: !args.some((a) => /^--legend=(no|false|0)$/.test(a)), names, bad: type !== undefined && !known ? type : undefined };
+    if (known)
+        return known;
+    return EMPTY_TYPES.includes(upper) ? 'empty' : { error: `Failed to parse RR type ${shown(text)}` };
 }
 function privileged(ctx, what) {
     if (ctx.cred.uid === 0)
         return true;
-    ctx.err(`Failed to ${what}: Access denied\n`);
+    ctx.err(`Failed to ${what}: Interactive authentication required.\n`);
     return false;
+}
+/** At most this many names per query (each may try the whole search list). */
+const MAX_QUERY_NAMES = 64;
+function queryVerb(ctx, host, p, names) {
+    const type = queryType(p.type);
+    if (typeof type === 'object') {
+        ctx.err(`${type.error}\n`);
+        return 1;
+    }
+    if (!names.length) {
+        ctx.err('Too few arguments.\n');
+        return 1;
+    }
+    if (names.length > MAX_QUERY_NAMES) {
+        ctx.err('Too many arguments.\n');
+        return 1;
+    }
+    return query(ctx, host, names, { type, legend: p.legend });
+}
+function revertVerb(ctx, host, name) {
+    if (name === undefined) {
+        ctx.err('Too few arguments.\n');
+        return 1;
+    }
+    const link = findLink(ctx, host, name);
+    if (!link || !privileged(ctx, 'revert interface configuration'))
+        return 1;
+    revertResolved(host);
+    return 0;
 }
 function resolvectl(host) {
     return (ctx) => {
@@ -32509,50 +32591,31 @@ function resolvectl(host) {
             out(ctx, HELP);
             return 0;
         }
-        const verbAt = args.findIndex((a) => !a.startsWith('-'));
-        const verb = verbAt < 0 ? 'status' : args[verbAt] ?? 'status';
-        const rest = verbAt < 0 ? [] : [...args.slice(0, verbAt), ...args.slice(verbAt + 1)];
+        const p = parse(args);
+        if (p.error) {
+            ctx.err(`resolvectl: ${p.error}\n`);
+            return 1;
+        }
+        const [verb = 'status', ...rest] = p.words;
         switch (verb) {
             case 'status': {
-                const link = findLink(ctx, host, rest.find((a) => !a.startsWith('-')));
+                const link = findLink(ctx, host, rest[0]);
                 if (link === null)
                     return 1;
                 out(ctx, status(host, link));
                 return 0;
             }
-            case 'query': {
-                const o = queryOptions(rest);
-                if (o.bad !== undefined) {
-                    ctx.err(`Failed to parse RR type ${o.bad.slice(0, 32)}\n`);
-                    return 1;
-                }
-                if (!o.names.length) {
-                    ctx.err('resolvectl query: too few arguments.\n');
-                    return 1;
-                }
-                return query(ctx, host, o.names, o);
-            }
+            case 'query': return queryVerb(ctx, host, p, rest);
             case 'dns':
-            case 'domain': return perLink(ctx, host, verb, rest.filter((a) => !a.startsWith('-')));
-            case 'revert': {
-                const link = findLink(ctx, host, rest[0]);
-                if (!link) {
-                    if (link === undefined)
-                        ctx.err('resolvectl revert: too few arguments.\n');
-                    return 1;
-                }
-                if (!privileged(ctx, 'revert interface configuration'))
-                    return 1;
-                revertResolved(host);
-                return 0;
-            }
+            case 'domain': return perLink(ctx, host, verb, rest);
+            case 'revert': return revertVerb(ctx, host, rest[0]);
             case 'flush-caches': return privileged(ctx, 'flush caches') ? 0 : 1;
             case 'reset-server-features': return privileged(ctx, 'reset server features') ? 0 : 1;
             case 'statistics':
                 out(ctx, statistics(host));
                 return 0;
             default:
-                ctx.err(`Unknown command verb '${verb.slice(0, 32)}'.\n`);
+                ctx.err(`Unknown command verb '${shown(verb)}'.\n`);
                 return 1;
         }
     };

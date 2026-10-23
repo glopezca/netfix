@@ -5,7 +5,7 @@ import type { Host } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import { formatIp, formatMask, networkOf, broadcastOf } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
-import { searchDomains } from './net-tools.ts';
+import { configuredSearchDomains } from './net-tools.ts';
 import { ptExclusions } from '../services/dhcp-pt.ts';
 import type { ServerServices } from '../services/config.ts';
 import { bindFiles } from '../services/bind-files.ts';
@@ -87,7 +87,7 @@ export function linuxFiles(host: Host): Map<string, string> {
   const files = new Map<string, string>([
     ['/etc/os-release', 'PRETTY_NAME="Ubuntu 26.04 LTS"\nNAME="Ubuntu"\nVERSION_ID="26.04"\nID=ubuntu\n'],
     ['/etc/hostname', `${host.name.toLowerCase()}\n`],
-    ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n${searchDomains(host).length ? `search ${searchDomains(host).join(' ')}\n` : ''}`],
+    ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n${configuredSearchDomains(host).length ? `search ${configuredSearchDomains(host).join(' ')}\n` : ''}`],
   ]);
   if (runsServices(host.kind)) for (const [k, v] of serverFiles(host as Server)) files.set(k, v);
   return files;

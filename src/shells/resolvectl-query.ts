@@ -11,9 +11,12 @@ import { dnsQuery, dnsSearch, hostsLookup } from './net-tools.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 
 export const QUERY_TYPES: readonly DnsType[] = ['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR', 'SOA'];
+/** Real types Netfix's DNS has no records of (no IPv6, no DNSSEC…): a lookup finds nothing of the type. */
+export const EMPTY_TYPES: readonly string[] = ['AAAA', 'ANY', 'SRV', 'CAA', 'DS', 'DNSKEY', 'HINFO', 'NAPTR', 'SSHFP', 'TLSA', 'SPF'];
 const ADDRESS_COLUMN = 31;
 const RECORD_COLUMN = 47;
 const LOOPBACK_NET = 127;
+const MAX_NAME = 253;
 
 interface Found {
   readonly lines: readonly string[];
@@ -47,7 +50,17 @@ function synthetic(host: Host, name: string): Found | undefined {
   return ip === undefined ? undefined : { lines: addressLines(name, [formatIp(ip)], linkFor(host, ip)), synthetic: true };
 }
 
-function lookup(host: Host, name: string, type: DnsType | undefined): Found | string {
+/** What the terminal echoes of an argument: short, without control characters. */
+export const shown = (text: string): string => text.slice(0, 64).replace(/[\x00-\x1f\x7f]/g, '?');
+
+/** 212us, 20.4ms or 1.2s, as systemd formats a timespan. */
+function took(ms: number): string {
+  if (ms < 1) return `${Math.max(1, Math.round(ms * 1000))}us`;
+  return ms < 1000 ? `${ms.toFixed(1)}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
+function lookup(host: Host, name: string, type: DnsType | 'empty' | undefined): Found | string {
+  if (type === 'empty') return `'${name}' does not have any RR of the requested type`;
   const literal = parseIp(name);
   if (literal !== null) {
     const r = dnsQuery(host, reverseName(literal), 'PTR');
@@ -70,7 +83,8 @@ function lookup(host: Host, name: string, type: DnsType | undefined): Found | st
 }
 
 export interface QueryOptions {
-  readonly type?: DnsType;
+  /** 'empty': a real type with no records in Netfix (AAAA…). */
+  readonly type?: DnsType | 'empty';
   readonly legend: boolean;
 }
 
@@ -79,14 +93,16 @@ export function query(ctx: Ctx, host: Host, names: readonly string[], opts: Quer
   let status = 0;
   for (const name of names) {
     const start = host.clock.now();
-    const r = lookup(host, name, opts.type);
+    // A name longer than DNS allows, or with control characters, never reaches the resolver (nor the screen as is).
+    const r = name.length > MAX_NAME || shown(name) !== name ? 'Invalid domain name' : lookup(host, name, opts.type);
     if (typeof r === 'string') {
-      ctx.err(`${name}: resolve call failed: ${r}\n`);
+      ctx.err(`${shown(name)}: resolve call failed: ${r}\n`);
       status = 1;
       continue;
     }
-    const ms = Math.max(0.1, host.clock.now() - start).toFixed(1);
-    const legend = ['', `-- Information acquired via protocol DNS in ${ms}ms.`, '-- Data is authenticated: no; Data was acquired via local or encrypted transport: no', `-- Data from: ${r.synthetic ? 'synthetic' : 'network'}`];
+    // Synthetic data (/etc/hosts, own name) is trusted and local, as resolved says.
+    const trust = r.synthetic ? 'yes' : 'no';
+    const legend = ['', `-- Information acquired via protocol DNS in ${took(host.clock.now() - start)}.`, `-- Data is authenticated: ${trust}; Data was acquired via local or encrypted transport: ${trust}`, `-- Data from: ${r.synthetic ? 'synthetic' : 'network'}`];
     ctx.out(`${[...r.lines, ...(opts.legend ? legend : [])].join('\n')}\n`);
   }
   return status;
