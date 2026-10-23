@@ -43,6 +43,8 @@ try {
   await page.waitForTimeout(300);
   await page.click('button[aria-label*="Ajustar"]');
   await page.waitForTimeout(200);
+  /** The first device's box, read in one step (the canvas redraws its nodes, so a handle may go stale). */
+  const firstBox = () => page.evaluate(() => { const r = document.querySelector('g.device')?.getBoundingClientRect(); return r && { x: r.x, y: r.y, width: r.width, height: r.height }; });
   const devices = await page.locator('g.device').count();
   const around = await page.evaluate(() => {
     const rs = [...document.querySelectorAll('g.device, .drawing')].map((e) => e.getBoundingClientRect());
@@ -71,14 +73,14 @@ try {
   // Dragging a member with a finger moves the whole group (one undo step).
   const pos = () => page.locator('g.device').evaluateAll((gs) => gs.map((g) => g.getAttribute('transform')));
   const p0 = await pos();
-  const d = await page.locator('g.device').first().boundingBox();
+  const d = await firstBox();
   await finger({ x: d.x + d.width / 2, y: d.y + d.height / 2 }, { x: d.x + d.width / 2 + 50, y: d.y + d.height / 2 + 30 });
   assert.ok((await pos()).every((p, i) => p !== p0[i]), 'every device moved');
   await page.click('button.undo-btn');
   assert.deepEqual(await pos(), p0);
 
   // A double tap on a member opens it.
-  const d2 = await page.locator('g.device').first().boundingBox();
+  const d2 = await firstBox();
   await finger(box.a, box.b, 650);
   const c = { x: d2.x + d2.width / 2, y: d2.y + d2.height / 2 };
   await tap(c);
