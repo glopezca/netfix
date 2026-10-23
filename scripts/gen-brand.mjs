@@ -5,8 +5,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const FILES = { logo: 'logo.webp', isologoN: 'isologo-n.webp', isologo: 'isologo.png', favicon: 'favicon.png', appleTouchIcon: 'apple-touch-icon.png' };
-const TYPES = { webp: 'image/webp', png: 'image/png' };
+const FILES = { logo: 'logo.webp', isologoN: 'isologo-n.webp', isologo: 'isologo.png', diamond: 'diamond.svg', favicon: 'favicon.png', appleTouchIcon: 'apple-touch-icon.png' };
+const TYPES = { webp: 'image/webp', png: 'image/png', svg: 'image/svg+xml' };
 
 const entries = Object.entries(FILES).map(([key, file]) => {
   const type = TYPES[file.split('.').pop()];
@@ -20,8 +20,10 @@ export interface BrandImages {
   readonly logo: string;
   /** Main isotype: the N drawn as a network path with two nodes and a diamond (About, donations, favicon). */
   readonly isologoN: string;
-  /** Secondary isotype: an X of four nodes around a diamond (documentation bullets, small marks of the simulated webs). */
+  /** Secondary isotype: an X of four nodes around a diamond (small marks of the simulated webs). */
   readonly isologo: string;
+  /** The hollow diamond at the centre of every letter of the logo, alone (documentation bullets). */
+  readonly diamond: string;
   /** Tab icon: the N isotype, tightly cropped (64 px with transparency). */
   readonly favicon: string;
   /** Home-screen icon (iOS/Android): the N on black, 180 px. */

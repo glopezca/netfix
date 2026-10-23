@@ -436,21 +436,23 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 }
 
 /* ---------------------------------------------------------------- Netfix brand */
-/* Bullets of the documentation: the secondary isotype (the X of four nodes). */
+/* Bullets of the documentation: the hollow diamond at the centre of every letter of the logo, alone. */
 .doc-page ul { list-style: none; padding-left: 1.5em; }
 .doc-page ul > li { position: relative; }
 .doc-page ul > li::before {
-  content: ""; position: absolute; left: -1.35em; top: 0.38em; width: 0.8em; height: 0.8em;
-  background: var(--brand-isologo) no-repeat center / contain;
+  content: ""; position: absolute; left: -1.3em; top: 0.4em; width: 0.75em; height: 0.75em;
+  background: var(--brand-diamond) no-repeat center / contain;
 }
 /* Brand marks inside simulated web pages (web GUIs): images come from CSS, the page only names a class. */
-.browser-view .web-brand-logo, .browser-view .web-brand-iso, .browser-view .web-brand-ison {
+.browser-view .web-brand-logo, .browser-view .web-brand-iso, .browser-view .web-brand-ison, .browser-view .web-brand-n {
   display: inline-block; vertical-align: middle; color: transparent; font-size: 0; overflow: hidden;
   background: no-repeat center / contain;
 }
 .browser-view .web-brand-logo { background-image: var(--brand-logo); width: 111px; height: 30px; }
 .browser-view .web-brand-iso { background-image: var(--brand-isologo); width: 18px; height: 18px; }
 .browser-view .web-brand-ison { background-image: var(--brand-isologo-n); width: 72px; height: 68px; }
+/* The primary N isotype at the size of a footer credit (WebGUI of servers and Linux routers). */
+.browser-view .web-brand-n { background-image: var(--brand-isologo-n); width: 20px; height: 20px; }
 .browser-view .web-brand-foot { display: flex; align-items: center; justify-content: center; gap: 6px; font: 11px/1.4 Arial, sans-serif; color: #666; margin: 12px 0 0; }
 
 /* ---------------------------------------------------------------- v0.7: responsive, touch and new views */

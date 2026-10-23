@@ -67,6 +67,7 @@ test('Services lists SSH first; Estado → Configuración (before Registros) sho
   assert.match(text, /\/etc\/bind\/named\.conf\.options[\s\S]*listen-on \{ 127\.0\.0\.1; \};/);
   assert.match(dns, /<pre class="web-adm-log syn-view" data-filetype="named"><span class="syn-statement">options<\/span> \{/, 'vim\'s groups');
   assert.ok(menu.indexOf('?page=files"') < menu.indexOf('?page=log"'), 'Configuración before Registros');
+  assert.match(menu, /<footer class="web-adm-foot web-brand-foot"><span class="web-brand-n">/, 'the N isotype in the footer credit');
   createShell(srv, 'linux', 'root').run('echo "<b>hola</b>" > /etc/bind/db.prueba');
   assert.match(body(web.open(`${URL}?page=files&svc=dns`)), /&lt;b&gt;hola&lt;\/b&gt;/);
   assert.match(body(web.open(`${URL}?page=files&svc=<x>`)), /\/etc\/nftables\.conf|\/etc\/sysctl/, 'an unknown service falls back to the first');

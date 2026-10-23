@@ -742,3 +742,14 @@ antes de Registros, tanto en la pestaña Servicios como en Estado de la gestión
 - **Bajo: tipos de registro.** Un nombre que empieza por un tipo de registro (`NS.aula.lab.`) ya no se colorea como
   tipo.
 
+## Fase 30 · Marcas: viñetas con el diamante y la N en el pie de la WebGUI (v0.19.3)
+
+- **Viñetas de la documentación.** En lugar del isotipo secundario (la X de cuatro nodos), llevan solo el cuadro hueco
+  en diamante que hay en el centro de cada letra del logo. Es `assets/brand/diamond.svg`, vectorial, con el rojo del
+  logo (#f60212) y las proporciones medidas en el isotipo: cuadrado redondeado girado 45° con el hueco centrado. Pasa a
+  `BRAND.diamond` (`npm run brand`) y a la variable CSS `--brand-diamond`.
+- **Pie de la WebGUI de servidores y routers Linux.** El crédito lleva el isotipo primario, la N (clase
+  `web-brand-n`, 20 px). Las páginas de IOS y Roundcube conservan su marca.
+- **Pruebas.** `e2e-brand` comprueba con estilos calculados que la viñeta es el SVG y que el pie lleva la N, y guarda
+  capturas para revisarlas. `admin-listen` comprueba el marcado del pie.
+

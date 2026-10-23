@@ -96,5 +96,5 @@ export function frame(server: Server, base: string, current: AdminPage, notice: 
         notice.ok ? h('p', { class: 'web-adm-ok' }, notice.ok) : null,
         notice.error ? h('p', { class: 'web-adm-error' }, notice.error) : null,
         h('div', { class: `web-adm-page web-adm-page-${current.id}` }, body))),
-    h('footer', { class: 'web-adm-foot web-brand-foot' }, h('span', { class: 'web-brand-iso' }, 'Netfix'), t('wa.foot')));
+    h('footer', { class: 'web-adm-foot web-brand-foot' }, h('span', { class: 'web-brand-n' }, 'Netfix'), t('wa.foot')));
 }

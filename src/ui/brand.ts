@@ -9,6 +9,7 @@ export function applyBrand(doc: Document = document): void {
   root.setProperty('--brand-logo', `url("${BRAND.logo}")`);
   root.setProperty('--brand-isologo-n', `url("${BRAND.isologoN}")`);
   root.setProperty('--brand-isologo', `url("${BRAND.isologo}")`);
+  root.setProperty('--brand-diamond', `url("${BRAND.diamond}")`);
   const icon = doc.querySelector('link[rel="icon"]') ?? doc.head.appendChild(el('link', { rel: 'icon', type: 'image/png' }));
   icon.setAttribute('href', BRAND.favicon);
   const touch = doc.querySelector('link[rel="apple-touch-icon"]') ?? doc.head.appendChild(el('link', { rel: 'apple-touch-icon' }));

@@ -12,9 +12,9 @@ test('brand-data.ts matches assets/brand (run npm run brand after changing an im
   assert.equal(generated, readFileSync(new URL('src/ui/brand-data.ts', root), 'utf8'));
 });
 
-test('logo, isologos and favicon are small images', () => {
+test('logo, isologos, diamond and favicon are small images', () => {
   for (const [name, uri] of Object.entries(BRAND)) {
-    assert.match(uri, /^data:image\/(png|webp);base64,[A-Za-z0-9+/=]+$/, name);
+    assert.match(uri, /^data:image\/(png|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/, name);
     assert.ok(uri.length < 40_000, `${name} is ${uri.length} bytes`);
   }
 });
