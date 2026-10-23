@@ -6,6 +6,7 @@ import type { DnsMessage } from './packets.ts';
 import type { DnsRecord } from '../services/config.ts';
 import { answerQuery } from '../services/dns-service.ts';
 import { normalizeName } from './dns.ts';
+import { registeredDomain, siteRecords } from './public-names.ts';
 
 const RECORD_TTL = 300;
 
@@ -22,7 +23,7 @@ export interface PublicZone {
   readonly ns?: { readonly name: string; readonly ip: string };
 }
 
-export const ZONES: readonly PublicZone[] = [
+const BASE_ZONES: readonly PublicZone[] = [
   { origin: 'google.com', records: [A('google.com', '142.250.184.4'), A('www.google.com', '142.250.184.4'), MX('google.com', 'smtp.google.com', 10), A('smtp.google.com', '142.250.153.27'), TXT('google.com', 'v=spf1 include:_spf.google.com ~all')], ns: { name: 'ns1.google.com', ip: '216.239.32.10' } },
   { origin: 'dns.google', records: [A('dns.google', '8.8.8.8'), A('dns.google', '8.8.4.4')], ns: { name: 'ns1.zdns.google', ip: '216.239.32.114' } },
   // Reverse lookups (dig -x 8.8.8.8) are derived from the A records.
@@ -38,6 +39,22 @@ export const ZONES: readonly PublicZone[] = [
   { origin: 'paypal.me', records: [A('paypal.me', '151.101.1.21')], ns: { name: 'ns1.p57.dynect.net', ip: '208.78.70.57' } },
   { origin: 'pool.ntp.org', records: [A('pool.ntp.org', '162.159.200.1'), A('es.pool.ntp.org', '162.159.200.123')], ns: { name: 'a.ntpns.org', ip: '185.172.155.53' } },
 ];
+
+/** Name server of the zones that come from the list of public names (one emulated server for all of them). */
+const LIST_NS = { name: 'ns1.dns-publico.net', ip: '203.0.113.54' };
+
+/** The base zones plus the list of public names, grouped by registered domain (merged into a zone that exists). */
+function withPublicSites(base: readonly PublicZone[]): PublicZone[] {
+  const zones = new Map(base.map((z) => [z.origin, z]));
+  for (const record of siteRecords()) {
+    const origin = registeredDomain(record.name);
+    const zone = zones.get(origin) ?? { origin, records: [], ns: LIST_NS };
+    if (!zone.records.some((r) => r.name === record.name && r.type === 'A')) zones.set(origin, { ...zone, records: [...zone.records, record] });
+  }
+  return [...zones.values()];
+}
+
+export const ZONES: readonly PublicZone[] = withPublicSites(BASE_ZONES);
 
 export function inZone(qname: string, origin: string): boolean {
   return qname === origin || qname.endsWith(`.${origin}`);
@@ -59,4 +76,19 @@ export function chase(q: DnsMessage, first: DnsMessage): DnsMessage {
     msg = { ...msg, answers: [...(msg.answers ?? []), ...next.answers] };
   }
   return msg;
+}
+
+/** Every public name with its address (CNAMEs followed), for the response policy zone of the DNS servers. */
+export function publicRecords(): DnsRecord[] {
+  const out = new Map<string, DnsRecord>();
+  for (const zone of ZONES) {
+    if (zone.origin === 'in-addr.arpa') continue;
+    for (const r of zone.records) {
+      if (r.type === 'A' && !out.has(r.name)) out.set(r.name, A(r.name, r.value));
+      if (r.type !== 'CNAME' || out.has(r.name)) continue;
+      const last = chase({ id: 0, response: false, qname: r.name, qtype: 'A' }, answerQuery({ id: 0, response: false, qname: r.name, qtype: 'A' }, zone.records, zone.origin)).answers?.at(-1);
+      if (last?.type === 'A') out.set(r.name, A(r.name, last.data));
+    }
+  }
+  return [...out.values()];
 }

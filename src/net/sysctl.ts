@@ -23,6 +23,7 @@ export const SYSCTL_KEYS: readonly SysctlKey[] = [
   { name: 'net.ipv6.conf.all.accept_redirects', value: '1', accepts: BOOL, effect: false },
   { name: 'net.ipv6.conf.all.accept_source_route', value: '0', accepts: BOOL, effect: false },
   { name: 'net.ipv4.conf.all.accept_redirects', value: '1', accepts: BOOL, effect: false },
+  { name: 'net.ipv4.conf.all.bc_forwarding', value: '0', accepts: BOOL, effect: true },
   { name: 'net.ipv4.conf.all.forwarding', value: '0', accepts: BOOL, effect: true },
   { name: 'net.ipv4.conf.all.log_martians', value: '0', accepts: BOOL, effect: false },
   { name: 'net.ipv4.conf.all.rp_filter', value: '2', accepts: ['0', '1', '2'], effect: false },

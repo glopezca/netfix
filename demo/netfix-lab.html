@@ -673,8 +673,8 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .term-foot-box { margin: 0; accent-color: #5fb0cc; }
 .term-foot-lock { color: #9fb3ba; }
 /* Listen interfaces of the DHCP and DNS panels. */
-.listen-block { border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px 10px; margin: 12px 0; }
-.listen-block h3 { margin: 4px 0; }
+.listen-block, .rpz-block { border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px 10px; margin: 12px 0; }
+.listen-block h3, .rpz-block h3 { margin: 4px 0; }
 .listen-row { display: flex; gap: 10px; align-items: center; margin: 4px 0; }
 /* Servicios → Ficheros: one block per file. */
 .conf-file h4 { margin: 14px 0 4px; font-size: 12.5px; }
@@ -794,6 +794,9 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .web-adm-compat h2 { font-size: 14px; margin: 0 0 4px; }
 .web-adm-compat p { margin: 0; font-size: 13px; }
 @container (max-width: 560px) { .web-adm-row label { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+
+/* DNS → Nombres públicos: the RPZ file. */
+.browser-view .web-adm-file { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--font-mono); }
 
 </style>
 </head>
@@ -3291,6 +3294,7 @@ const LOAD_ES = {
     'load.origin': 'Origen de zona DNS no válido.',
     'load.record': 'Registro DNS no válido.',
     'load.ifaces': 'Lista de interfaces de escucha no válida (eth0, eth1… o lo).',
+    'load.publicNames': 'Lista de nombres públicos del DNS no válida.',
     'load.zone': 'Zona DNS «{name}» no válida: {error}',
     'load.account': 'Cuenta no válida.',
     'load.services': 'Servicios del servidor no válidos.',
@@ -3360,6 +3364,7 @@ const LOAD_EN = {
     'load.origin': 'Invalid DNS zone origin.',
     'load.record': 'Invalid DNS record.',
     'load.ifaces': 'Invalid list of listen interfaces (eth0, eth1… or lo).',
+    'load.publicNames': 'Invalid DNS public names list.',
     'load.zone': 'Invalid DNS zone «{name}»: {error}',
     'load.account': 'Invalid account.',
     'load.services': 'Invalid server services.',
@@ -3656,6 +3661,15 @@ const DNSUI_ES = {
     'listen.apply': 'Aplicar (systemctl restart {unit})',
     'listen.noAddress': 'sin dirección',
     'listen.saved': 'Interfaces aplicadas; {unit} reiniciado.',
+    'rpz.title': 'Nombres públicos (response-policy)',
+    'rpz.desc': 'Una zona de política de respuesta (RPZ) con datos locales: /etc/bind/db.rpz.publicos tiene un «nombre A dirección» por línea, y el servidor responde esos nombres él mismo, sin preguntar a nadie. Así un laboratorio sin salida a Internet puede hacer ping, nslookup o dig a google.es. «*.dominio» cubre los nombres que hay debajo.',
+    'rpz.enable': 'Activar (response-policy { zone "rpz.publicos"; })',
+    'rpz.needsRecursion': 'Como en BIND, la política solo se aplica a las consultas recursivas: activa también el modo Recursivo.',
+    'rpz.file': 'Fichero /etc/bind/db.rpz.publicos ({count} nombres)',
+    'rpz.apply': 'Aplicar (systemctl restart bind9)',
+    'rpz.initial': 'Restaurar la lista inicial',
+    'rpz.saved': 'Nombres públicos aplicados; bind9 reiniciado.',
+    'rpz.restored': 'Lista inicial restaurada; bind9 reiniciado.',
     'listen.err.none': 'Elige al menos una interfaz (o «Todas»).',
     'listen.err.unknown': 'El equipo no tiene la interfaz «{name}».',
     'dnsm.err.noZone': 'No existe la zona «{name}».',
@@ -3802,6 +3816,15 @@ const DNSUI_EN = {
     'listen.apply': 'Apply (systemctl restart {unit})',
     'listen.noAddress': 'no address',
     'listen.saved': 'Interfaces applied; {unit} restarted.',
+    'rpz.title': 'Public names (response-policy)',
+    'rpz.desc': 'A response policy zone (RPZ) with local data: /etc/bind/db.rpz.publicos has one «name A address» per line, and the server answers those names itself, without asking anybody. So a lab with no Internet access can ping, nslookup or dig google.es. «*.domain» covers the names below it.',
+    'rpz.enable': 'Enable (response-policy { zone "rpz.publicos"; })',
+    'rpz.needsRecursion': 'As in BIND, the policy only applies to recursive queries: turn the Recursive mode on too.',
+    'rpz.file': 'File /etc/bind/db.rpz.publicos ({count} names)',
+    'rpz.apply': 'Apply (systemctl restart bind9)',
+    'rpz.initial': 'Restore the initial list',
+    'rpz.saved': 'Public names applied; bind9 restarted.',
+    'rpz.restored': 'Initial list restored; bind9 restarted.',
     'listen.err.none': 'Choose at least one interface (or «All»).',
     'listen.err.unknown': 'The device has no interface «{name}».',
     'dnsm.err.noZone': 'Zone «{name}» does not exist.',
@@ -6673,6 +6696,7 @@ const HELP = {
     description: 'Interface specific description',
     shutdown: 'Shutdown the selected interface',
     'helper-address': 'Specify a destination address for UDP broadcasts',
+    'directed-broadcast': 'Enable forwarding of directed broadcasts',
     encapsulation: 'Set encapsulation type for an interface',
     dot1q: 'IEEE 802.1Q Virtual LAN',
     duplex: 'Configure duplex operation.',
@@ -7351,9 +7375,12 @@ const LOOPBACK_NET = 127;
 const LOOPBACK_IP = 0x7f000001;
 const LOOPBACK_MAC = '000000000000';
 const MAX_PENDING = 4;
+/** /31 and /32 have no broadcast address. */
+const MAX_PREFIX = 32;
 class IpStack {
     arp = new Map();
     pending = new Map();
+    /** Pending echoes; `dup` keeps listening after the first answer (a broadcast is answered by several devices). */
     echoWaiters = new Map();
     host;
     now;
@@ -7367,6 +7394,19 @@ class IpStack {
     }
     isLocalBroadcast(iface, ip) {
         return ip === BROADCAST_IP || iface.addrs.some((a) => broadcastOf(a.ip, a.prefix) === ip);
+    }
+    /** The interface whose subnet has `ip` as its broadcast address (directed broadcast), if any. */
+    directedIface(ip) {
+        for (const iface of this.host.l3Ifaces()) {
+            const a = iface.addrs.find((x) => x.prefix < MAX_PREFIX - 1 && broadcastOf(x.ip, x.prefix) === ip);
+            if (a)
+                return { iface, addr: a.ip };
+        }
+        return undefined;
+    }
+    /** 255.255.255.255 or the broadcast address of one of our subnets (what ping -b is needed for). */
+    isBroadcast(ip) {
+        return ip === BROADCAST_IP || this.directedIface(ip) !== undefined;
     }
     receiveFrame(ifaceName, frame) {
         const iface = this.host.l3Iface(ifaceName);
@@ -7407,12 +7447,24 @@ class IpStack {
         // Martian: 127.0.0.0/8 never comes in from the wire (Linux drops it), only through lo.
         if ((packet.dst >>> 24) === LOOPBACK_NET || (packet.src >>> 24) === LOOPBACK_NET)
             return;
-        const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst);
+        const directed = this.directedIface(packet.dst);
+        const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst) || directed !== undefined;
         if (!forMe) {
             this.host.forward?.(iface.name, packet);
             return;
         }
+        // A directed broadcast for another of our subnets is ours too; the link only gets it if forwarding is on. One that
+        // arrived on a link of that subnet already reached it: relaying it again could bounce between routers forever.
+        if (directed && directed.iface.name !== iface.name && !this.isLocalBroadcast(iface, packet.dst))
+            this.relayDirected(directed.iface, packet);
         this.localIn(iface.name, packet, frame);
+    }
+    relayDirected(out, packet) {
+        if (!out.up || packet.ttl <= 1 || !this.host.forwardsDirectedBroadcast?.(out.name))
+            return;
+        const sent = this.host.postrouting ? this.host.postrouting(out.name, { ...packet, ttl: packet.ttl - 1 }) : { ...packet, ttl: packet.ttl - 1 };
+        if (sent)
+            this.emitIp(out.name, BROADCAST_MAC, sent);
     }
     /** Local delivery: input hook, then ICMP echo handling or the host's protocols. */
     localIn(ifaceName, arrived, frame) {
@@ -7420,7 +7472,7 @@ class IpStack {
         if (!packet)
             return;
         if (packet.icmp) {
-            this.onIcmp(packet, packet.icmp);
+            this.onIcmp(ifaceName, packet, packet.icmp);
             return;
         }
         this.host.deliver(ifaceName, packet, frame);
@@ -7429,24 +7481,43 @@ class IpStack {
     outbound(iface, packet) {
         return this.host.output ? this.host.output(iface, packet) : packet;
     }
-    onIcmp(packet, icmp) {
+    onIcmp(ifaceName, packet, icmp) {
         if (icmp.type === 'echo-request') {
-            this.send({ src: packet.dst, dst: packet.src, ttl: this.host.ttl, protocol: 'icmp', icmp: { ...icmp, type: 'echo-reply' } });
+            const src = this.echoSource(ifaceName, packet.dst);
+            if (src !== undefined)
+                this.send({ src, dst: packet.src, ttl: this.host.ttl, protocol: 'icmp', icmp: { ...icmp, type: 'echo-reply' } });
             return;
         }
-        const waiter = this.echoWaiters.get(`${icmp.id}:${icmp.seq}`);
+        const key = `${icmp.id}:${icmp.seq}`;
+        const waiter = this.echoWaiters.get(key);
         if (!waiter)
             return;
-        this.echoWaiters.delete(`${icmp.id}:${icmp.seq}`);
-        if (icmp.type === 'echo-reply')
-            waiter({ kind: 'reply', from: packet.src, ttl: packet.ttl });
-        else if (icmp.type === 'unreachable')
-            waiter({ kind: 'unreachable', from: packet.src });
-        else
-            waiter({ kind: 'ttl', from: packet.src });
+        const result = icmp.type === 'echo-reply' ? { kind: 'reply', from: packet.src, ttl: packet.ttl }
+            : icmp.type === 'unreachable' ? { kind: 'unreachable', from: packet.src } : { kind: 'ttl', from: packet.src };
+        if (waiter.answered)
+            return waiter.dup?.(result);
+        waiter.answered = true;
+        if (!waiter.dup)
+            this.echoWaiters.delete(key);
+        waiter.first(result);
+    }
+    /** Who answers an echo: the address it was sent to; for a broadcast, our own address on that subnet (or none). */
+    echoSource(ifaceName, dst) {
+        const directed = this.directedIface(dst);
+        if (dst !== BROADCAST_IP && !directed)
+            return dst;
+        if (this.host.ignoresBroadcastEcho?.())
+            return undefined;
+        return directed?.addr ?? this.host.l3Iface(ifaceName)?.addrs[0]?.ip;
+    }
+    /** Stops listening for the answers of a ping (`id`), duplicates included. */
+    endEcho(id) {
+        for (const key of this.echoWaiters.keys())
+            if (key.startsWith(`${id}:`))
+                this.echoWaiters.delete(key);
     }
     /** Sends an ICMP echo request; the callback fires on reply/error (never on timeout). */
-    echo(dst, id, seq, src, onResult, ttl = this.host.ttl) {
+    echo(dst, id, seq, src, onResult, ttl = this.host.ttl, onDup) {
         if (this.isMine(dst)) {
             this.host.schedule(0, () => onResult({ kind: 'reply', from: dst, ttl: this.host.ttl }));
             return true;
@@ -7457,7 +7528,7 @@ class IpStack {
         const srcIp = src ?? this.host.l3Iface(egress.iface)?.addrs[0]?.ip;
         if (srcIp === undefined)
             return false;
-        this.echoWaiters.set(`${id}:${seq}`, onResult);
+        this.echoWaiters.set(`${id}:${seq}`, { first: onResult, dup: onDup, answered: false });
         const out = this.outbound(egress.iface, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
         if (out)
             this.sendVia(egress, out);
@@ -8585,6 +8656,7 @@ const SYSCTL_KEYS = [
     { name: 'net.ipv6.conf.all.accept_redirects', value: '1', accepts: BOOL, effect: false },
     { name: 'net.ipv6.conf.all.accept_source_route', value: '0', accepts: BOOL, effect: false },
     { name: 'net.ipv4.conf.all.accept_redirects', value: '1', accepts: BOOL, effect: false },
+    { name: 'net.ipv4.conf.all.bc_forwarding', value: '0', accepts: BOOL, effect: true },
     { name: 'net.ipv4.conf.all.forwarding', value: '0', accepts: BOOL, effect: true },
     { name: 'net.ipv4.conf.all.log_martians', value: '0', accepts: BOOL, effect: false },
     { name: 'net.ipv4.conf.all.rp_filter', value: '2', accepts: ['0', '1', '2'], effect: false },
@@ -8840,6 +8912,8 @@ class Host {
     statusListeners = new Set();
     dropOnArpMiss = false;
     ttl = PC_TTL;
+    /** Windows never answers an echo to a broadcast address; Linux only with icmp_echo_ignore_broadcasts=0. */
+    ignoresBroadcastEcho = () => this.os === 'windows' || this.kernel.sysctl.enabled('net.ipv4.icmp_echo_ignore_broadcasts');
     constructor(id, name, clock, seed) {
         this.id = id;
         this.name = name;
@@ -10219,6 +10293,7 @@ function namedOptions(s, choices = []) {
         '',
         '\t// Interfaces de escucha: direcciones en las que atiende consultas (any = todas)',
         listenOnLine(s, choices),
+        ...(s.publicNames?.enabled ? ['', '\t// Nombres públicos: respuestas locales de /etc/bind/db.rpz.publicos (consultas recursivas)', '\tresponse-policy { zone "rpz.publicos"; };'] : []),
         '\tdnssec-validation no;',
         '\tlisten-on-v6 { any; };',
         '};',
@@ -10303,6 +10378,7 @@ function parseNamedOptions(text, current, choices = []) {
         maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(seconds(ttl), MAX_TTL),
         allowRecursion: /\bany\b/.test(allow) ? 'any' : 'localnets',
         listenOn: listenOnOf(LISTEN_ON.exec(clean)?.[1] ?? null, current, choices),
+        publicNames: { ...current.publicNames, enabled: /\bresponse-policy\s*\{[^{}]*\bzone\s+"rpz\.publicos"/.test(clean) },
     };
 }
 
@@ -10549,6 +10625,287 @@ class DnsForwarder {
 
 return { FORWARD_TIMEOUT_MS, recursionAllowed, DnsForwarder };
 })();
+__m["net/public-names.js"] = (() => {
+const RECORD_TTL = 300;
+/** [domain, address]; a domain with three or more labels that is a host (news.yahoo.co.jp) gets no www. */
+const LIST = [
+    // Spain and Castilla y León
+    ['google.es', '142.250.200.67'], ['educa.jcyl.es', '217.71.19.5'], ['juandecolonia.es', '217.160.0.201'],
+    ['elpais.com', '23.62.227.162'],
+    // World top 100 (2026)
+    ['youtube.com', '142.250.185.14'], ['facebook.com', '157.240.212.35'], ['instagram.com', '157.240.212.174'],
+    ['chatgpt.com', '104.18.32.47'], ['x.com', '104.244.42.1'], ['reddit.com', '151.101.1.140'],
+    ['whatsapp.com', '157.240.212.60'], ['bing.com', '13.107.21.200'], ['tiktok.com', '23.38.92.199'],
+    ['gemini.google.com', '142.250.184.238'], ['yahoo.co.jp', '182.22.25.252'], ['yahoo.com', '74.6.143.25'],
+    ['yandex.ru', '5.255.255.77'], ['amazon.com', '205.251.242.103'], ['linkedin.com', '13.107.42.14'],
+    ['baidu.com', '39.156.66.10'], ['naver.com', '223.130.200.104'], ['pinterest.com', '151.101.0.84'],
+    ['netflix.com', '54.155.178.5'], ['cloud.microsoft', '13.107.140.6'], ['live.com', '204.79.197.212'],
+    ['opera.com', '185.26.182.93'], ['openai.com', '104.18.33.45'], ['bilibili.com', '139.159.241.37'],
+    ['temu.com', '23.199.62.85'], ['dzen.ru', '62.217.160.2'], ['weather.com', '23.54.112.33'],
+    ['microsoft.com', '20.112.250.133'], ['twitch.tv', '151.101.130.167'], ['vk.com', '87.240.132.78'],
+    ['claude.ai', '160.79.104.10'], ['capcut.com', '23.36.163.10'], ['canva.com', '104.16.103.112'],
+    ['news.yahoo.co.jp', '182.22.24.124'], ['fandom.com', '151.101.192.194'], ['globo.com', '186.192.81.5'],
+    ['mail.ru', '217.69.139.202'], ['samsung.com', '23.52.8.153'], ['duckduckgo.com', '40.114.177.156'],
+    ['t.me', '149.154.167.99'], ['wordpress.com', '192.0.78.9'], ['bbc.co.uk', '151.101.0.81'],
+    ['discord.com', '162.159.137.232'], ['ebay.com', '66.211.181.181'], ['brave.com', '18.66.192.26'],
+    ['booking.com', '104.71.168.191'], ['cnn.com', '151.101.3.5'], ['nytimes.com', '151.101.193.164'],
+    ['espn.com', '18.164.96.60'], ['cricbuzz.com', '23.53.40.100'], ['foxnews.com', '23.192.43.5'],
+    ['quora.com', '151.101.65.2'], ['spotify.com', '35.186.224.25'], ['roblox.com', '128.116.119.3'],
+    ['steampowered.com', '23.205.218.14'], ['walmart.com', '23.36.162.69'], ['aliexpress.com', '47.246.136.218'],
+    ['shein.com', '23.72.240.24'], ['taobao.com', '140.205.94.193'], ['jd.com', '111.13.149.108'],
+    ['rakuten.co.jp', '23.39.236.33'], ['wildberries.ru', '185.62.202.2'], ['ozon.ru', '185.73.194.82'],
+    ['zoom.us', '170.114.52.2'], ['instructure.com', '52.36.92.62'], ['adobe.com', '23.48.180.62'],
+    ['salesforce.com', '23.200.143.44'], ['apple.com', '17.253.144.10'], ['office.com', '13.107.6.156'],
+    ['paypal.com', '64.4.250.37'], ['imdb.com', '18.165.83.67'], ['indeed.com', '104.18.39.41'],
+    ['glassdoor.com', '104.17.19.122'], ['tripadvisor.com', '151.101.2.38'], ['expedia.com', '23.201.205.41'],
+    ['agoda.com', '23.220.83.35'], ['perplexity.ai', '104.18.26.48'], ['deepseek.com', '116.205.40.120'],
+    ['hotstar.com', '13.32.145.71'], ['espncricinfo.com', '23.32.168.181'], ['theguardian.com', '151.101.129.111'],
+    ['washingtonpost.com', '23.199.47.27'], ['reuters.com', '23.10.60.21'], ['forbes.com', '151.101.130.49'],
+    ['cnbc.com', '23.6.69.99'], ['medium.com', '162.159.153.4'], ['stackoverflow.com', '104.18.32.7'],
+    ['craigslist.org', '208.82.237.226'], ['target.com', '151.101.2.187'], ['homedepot.com', '23.215.0.136'],
+    ['costco.com', '23.36.32.38'], ['flipkart.com', '163.53.78.110'], ['myntra.com', '23.55.239.90'],
+    ['mercadolibre.com', '23.198.46.214'], ['imgur.com', '151.101.24.193'], ['shutterstock.com', '23.217.104.115'],
+];
+/** Second-level suffixes under which a domain has three labels (yahoo.co.jp, bbc.co.uk). */
+const SECOND_LEVEL = new Set(['co.jp', 'co.uk', 'com.br']);
+/** The zone a name belongs to: its registered domain (google.com for gemini.google.com, yahoo.co.jp…). */
+function registeredDomain(name) {
+    const labels = name.split('.');
+    const keep = SECOND_LEVEL.has(labels.slice(-2).join('.')) ? 3 : 2;
+    return labels.slice(-keep).join('.');
+}
+const PUBLIC_SITES = LIST.map(([domain, ip]) => ({ domain, ip, www: registeredDomain(domain) === domain || domain.endsWith('.es') }));
+const A = (name, value) => ({ name, type: 'A', value, ttl: RECORD_TTL });
+/** A records of the list: each domain and, where it applies, www.domain. */
+function siteRecords() {
+    return PUBLIC_SITES.flatMap((s) => [A(s.domain, s.ip), ...(s.www ? [A(`www.${s.domain}`, s.ip)] : [])]);
+}
+
+return { registeredDomain, PUBLIC_SITES, siteRecords };
+})();
+__m["net/internet-zones.js"] = (() => {
+const { answerQuery } = __m["services/dns-service.js"];
+const { normalizeName } = __m["net/dns.js"];
+const { registeredDomain, siteRecords } = __m["net/public-names.js"];
+const RECORD_TTL = 300;
+const A = (name, value) => ({ name, type: 'A', value, ttl: RECORD_TTL });
+const CNAME = (name, value) => ({ name, type: 'CNAME', value, ttl: RECORD_TTL });
+const MX = (name, value, priority) => ({ name, type: 'MX', value, priority, ttl: RECORD_TTL });
+const TXT = (name, value) => ({ name, type: 'TXT', value, ttl: RECORD_TTL });
+const BASE_ZONES = [
+    { origin: 'google.com', records: [A('google.com', '142.250.184.4'), A('www.google.com', '142.250.184.4'), MX('google.com', 'smtp.google.com', 10), A('smtp.google.com', '142.250.153.27'), TXT('google.com', 'v=spf1 include:_spf.google.com ~all')], ns: { name: 'ns1.google.com', ip: '216.239.32.10' } },
+    { origin: 'dns.google', records: [A('dns.google', '8.8.8.8'), A('dns.google', '8.8.4.4')], ns: { name: 'ns1.zdns.google', ip: '216.239.32.114' } },
+    // Reverse lookups (dig -x 8.8.8.8) are derived from the A records.
+    { origin: 'in-addr.arpa', records: [A('dns.google', '8.8.8.8'), A('dns.google', '8.8.4.4')] },
+    { origin: 'example.com', records: [A('example.com', '93.184.215.14'), A('www.example.com', '93.184.215.14')], ns: { name: 'a.iana-servers.net', ip: '199.43.135.53' } },
+    { origin: 'ifconfig.me', records: [A('ifconfig.me', '34.160.111.145')], ns: { name: 'ns-cloud-a1.googledomains.com', ip: '216.239.32.106' } },
+    { origin: 'wikipedia.org', records: [A('wikipedia.org', '185.15.58.224'), CNAME('www.wikipedia.org', 'dyna.wikimedia.org'), CNAME('es.wikipedia.org', 'dyna.wikimedia.org')], ns: { name: 'ns0.wikimedia.org', ip: '208.80.154.238' } },
+    { origin: 'wikimedia.org', records: [A('dyna.wikimedia.org', '185.15.58.224')], ns: { name: 'ns0.wikimedia.org', ip: '208.80.154.238' } },
+    { origin: 'github.com', records: [A('github.com', '140.82.121.4'), CNAME('www.github.com', 'github.com')], ns: { name: 'dns1.p08.nsone.net', ip: '198.51.44.8' } },
+    { origin: 'ubuntu.com', records: [A('ubuntu.com', '185.125.190.20'), A('www.ubuntu.com', '185.125.190.20'), A('archive.ubuntu.com', '185.125.190.81'), A('security.ubuntu.com', '185.125.190.82')], ns: { name: 'ns1.canonical.com', ip: '91.189.95.3' } },
+    { origin: 'debian.org', records: [A('debian.org', '151.101.2.132'), A('www.debian.org', '151.101.2.132'), A('deb.debian.org', '151.101.2.132')], ns: { name: 'nsp.dnsnode.net', ip: '194.58.198.32' } },
+    { origin: 'cisco.com', records: [A('cisco.com', '72.163.4.185'), A('www.cisco.com', '23.212.248.9')], ns: { name: 'ns1.cisco.com', ip: '72.163.5.201' } },
+    { origin: 'paypal.me', records: [A('paypal.me', '151.101.1.21')], ns: { name: 'ns1.p57.dynect.net', ip: '208.78.70.57' } },
+    { origin: 'pool.ntp.org', records: [A('pool.ntp.org', '162.159.200.1'), A('es.pool.ntp.org', '162.159.200.123')], ns: { name: 'a.ntpns.org', ip: '185.172.155.53' } },
+];
+/** Name server of the zones that come from the list of public names (one emulated server for all of them). */
+const LIST_NS = { name: 'ns1.dns-publico.net', ip: '203.0.113.54' };
+/** The base zones plus the list of public names, grouped by registered domain (merged into a zone that exists). */
+function withPublicSites(base) {
+    const zones = new Map(base.map((z) => [z.origin, z]));
+    for (const record of siteRecords()) {
+        const origin = registeredDomain(record.name);
+        const zone = zones.get(origin) ?? { origin, records: [], ns: LIST_NS };
+        if (!zone.records.some((r) => r.name === record.name && r.type === 'A'))
+            zones.set(origin, { ...zone, records: [...zone.records, record] });
+    }
+    return [...zones.values()];
+}
+const ZONES = withPublicSites(BASE_ZONES);
+function inZone(qname, origin) {
+    return qname === origin || qname.endsWith(`.${origin}`);
+}
+const MAX_CNAME_CHAIN = 8;
+/** A recursive resolver follows a CNAME into other zones (es.wikipedia.org → dyna.wikimedia.org → A). */
+function chase(q, first) {
+    let msg = first;
+    for (let i = 0; i < MAX_CNAME_CHAIN; i++) {
+        const last = msg.answers?.[msg.answers.length - 1];
+        if (!last || last.type !== 'CNAME' || q.qtype === 'CNAME')
+            return msg;
+        const target = normalizeName(last.data);
+        const zone = ZONES.find((z) => inZone(target, z.origin));
+        if (!zone)
+            return msg;
+        const next = answerQuery({ ...q, qname: target }, zone.records, zone.origin);
+        if (!next.answers?.length)
+            return msg;
+        msg = { ...msg, answers: [...(msg.answers ?? []), ...next.answers] };
+    }
+    return msg;
+}
+/** Every public name with its address (CNAMEs followed), for the response policy zone of the DNS servers. */
+function publicRecords() {
+    const out = new Map();
+    for (const zone of ZONES) {
+        if (zone.origin === 'in-addr.arpa')
+            continue;
+        for (const r of zone.records) {
+            if (r.type === 'A' && !out.has(r.name))
+                out.set(r.name, A(r.name, r.value));
+            if (r.type !== 'CNAME' || out.has(r.name))
+                continue;
+            const last = chase({ id: 0, response: false, qname: r.name, qtype: 'A' }, answerQuery({ id: 0, response: false, qname: r.name, qtype: 'A' }, zone.records, zone.origin)).answers?.at(-1);
+            if (last?.type === 'A')
+                out.set(r.name, A(r.name, last.data));
+        }
+    }
+    return [...out.values()];
+}
+
+return { A, ZONES, inZone, chase, publicRecords };
+})();
+__m["services/dns-rpz.js"] = (() => {
+const { publicRecords } = __m["net/internet-zones.js"];
+const { formatIp, parseIp } = __m["core/ip.js"];
+const RPZ_ZONE = 'rpz.publicos';
+const RPZ_FILE = '/etc/bind/db.rpz.publicos';
+const MAX_RPZ_ENTRIES = 2000;
+const MAX_RPZ_TEXT = 256 * 1024;
+const RPZ_TTL = 300;
+const MAX_TTL = 2_147_483_647;
+const MAX_NAME = 253;
+const LABEL = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?';
+const RPZ_NAME = new RegExp(`^(?:\\*\\.)?(?:${LABEL}\\.)*${LABEL}$`);
+const validRpzName = (name) => name.length <= MAX_NAME && RPZ_NAME.test(name);
+let initial;
+/** The initial list: every public name of the emulated Internet with its address. */
+function initialEntries() {
+    initial ??= publicRecords().map((r) => ({ name: r.name, ip: parseIp(r.value) ?? 0, ttl: RPZ_TTL }));
+    return initial;
+}
+const rpzEntries = (s) => s.publicNames?.entries ?? initialEntries();
+function rpzFile(s) {
+    const lines = rpzEntries(s).map((e) => `${e.name.padEnd(28)} ${e.ttl === RPZ_TTL ? '' : `${e.ttl} `}A ${formatIp(e.ip)}`);
+    return [
+        '; Nombres públicos (Netfix: Servicios → DNS → Nombres públicos)',
+        '; Zona de política de respuesta (RPZ) con datos locales: cada línea «nombre A dirección» es la respuesta que da',
+        '; este servidor a ese nombre en las consultas recursivas, sin preguntar a nadie. «*.dominio» cubre los nombres',
+        '; que hay debajo. Se usa con response-policy { zone "rpz.publicos"; }; en named.conf.options.',
+        `$TTL ${RPZ_TTL}`,
+        '@ IN SOA localhost. root.localhost. ( 1 3600 900 604800 300 )',
+        '  IN NS  localhost.',
+        ...lines,
+        '',
+    ].join('\n');
+}
+const fail = (n, what) => ({ error: `dns_rdata_fromtext: ${RPZ_FILE}:${n}: ${what}` });
+/** A token of the file as it goes into a message: short and without control characters. */
+const shown = (token) => (token ?? '').slice(0, 64).replace(/[\x00-\x1f\x7f]/g, '?');
+/** One record line → entry, null for lines that are not data (SOA, NS, $TTL), or an error. */
+function parseLine(tokens, n) {
+    const [owner = ''] = tokens;
+    if (owner.startsWith('$') || owner === '@' || tokens.includes('NS') || tokens.includes('SOA'))
+        return null;
+    let i = 1;
+    const ttl = /^\d+$/.test(tokens[i] ?? '') ? Number(tokens[i++]) : RPZ_TTL;
+    if (tokens[i]?.toUpperCase() === 'IN')
+        i++;
+    if (tokens[i]?.toUpperCase() !== 'A')
+        return fail(n, `near '${shown(tokens[i])}': only A records are supported here`);
+    const name = owner.toLowerCase().replace(new RegExp(`\\.${RPZ_ZONE.replace('.', '\\.')}\\.$`), '');
+    if (!validRpzName(name))
+        return fail(n, `near '${shown(owner)}': bad owner name`);
+    const addr = parseIp(tokens[i + 1] ?? '');
+    if (addr === null)
+        return fail(n, `near '${shown(tokens[i + 1])}': bad dotted quad`);
+    if (ttl > MAX_TTL)
+        return fail(n, 'TTL out of range');
+    return { name, ip: addr, ttl };
+}
+/** The entries of an RPZ file; comments and parenthesised continuations (the SOA) are skipped. */
+function parseRpz(text) {
+    if (text.length > MAX_RPZ_TEXT)
+        return { error: `${RPZ_FILE}: file too large` };
+    const entries = [];
+    let open = false;
+    for (const [index, raw] of text.split('\n').entries()) {
+        const line = raw.replace(/;.*$/, '');
+        const wasOpen = open;
+        open = (open || line.includes('(')) && !line.includes(')');
+        if (wasOpen || line.trim() === '')
+            continue;
+        const r = parseLine(line.trim().split(/\s+/), index + 1);
+        if (r === null)
+            continue;
+        if ('error' in r)
+            return r;
+        // The same record twice is one record (as BIND loads it).
+        if (entries.some((e) => e.name === r.name && e.ip === r.ip))
+            continue;
+        if (entries.length >= MAX_RPZ_ENTRIES)
+            return { error: `${RPZ_FILE}: too many records (${MAX_RPZ_ENTRIES} at most)` };
+        entries.push(r);
+    }
+    return entries;
+}
+/** Turns the list on or off; `list` keeps the entries, puts the initial list back, or reads a file. */
+function setPublicNames(s, enabled, list = 'keep') {
+    if (list === 'keep')
+        return { ...s, publicNames: { ...s.publicNames, enabled } };
+    if (list === 'initial')
+        return { ...s, publicNames: { enabled } };
+    const entries = parseRpz(list);
+    return 'error' in entries ? entries : { ...s, publicNames: { enabled, entries } };
+}
+/** The entries that answer `qname`: the exact name, or the longest `*.domain` above it. */
+function matching(entries, qname) {
+    const exact = entries.filter((e) => e.name === qname);
+    if (exact.length)
+        return { via: qname, hits: exact };
+    const wild = entries.filter((e) => e.name.startsWith('*.') && qname.endsWith(e.name.slice(1)));
+    const longest = Math.max(...wild.map((e) => e.name.length));
+    const hits = wild.filter((e) => e.name.length === longest);
+    return hits.length ? { via: hits[0]?.name ?? qname, hits } : undefined;
+}
+/** The rewritten answer for a recursive query, with the name of the policy record (for the log). */
+function rpzAnswer(s, q, qname) {
+    if (s.publicNames?.enabled !== true)
+        return undefined;
+    const m = matching(rpzEntries(s), qname);
+    if (!m)
+        return undefined;
+    const answers = q.qtype === 'A' ? m.hits.map((e) => ({ name: qname, type: 'A', ttl: e.ttl, data: formatIp(e.ip) })) : [];
+    return { msg: { id: q.id, response: true, qname, qtype: q.qtype, rcode: 'NOERROR', answers, authoritative: false, rd: q.rd, ra: true }, via: `${m.via}.${RPZ_ZONE}` };
+}
+/** Saved form: the switch and, only when changed, the list (addresses as text). */
+function publicNamesToJson(p) {
+    if (!p)
+        return undefined;
+    return { enabled: p.enabled, ...(p.entries ? { entries: p.entries.map((e) => ({ name: e.name, ip: formatIp(e.ip), ttl: e.ttl })) } : {}) };
+}
+/** A saved list is validated as a file would be: names, addresses, TTLs and how many. */
+function publicNamesFromJson(v, error) {
+    if (typeof v !== 'object' || v === null || Array.isArray(v))
+        throw new Error(error);
+    const o = v;
+    if (o.entries === undefined)
+        return { enabled: o.enabled === true };
+    if (!Array.isArray(o.entries) || o.entries.length > MAX_RPZ_ENTRIES)
+        throw new Error(error);
+    const entries = o.entries.map((x) => {
+        const e = (typeof x === 'object' && x !== null ? x : {});
+        const addr = typeof e.ip === 'string' ? parseIp(e.ip) : null;
+        const ttl = e.ttl === undefined ? RPZ_TTL : typeof e.ttl === 'number' ? e.ttl : NaN;
+        if (typeof e.name !== 'string' || !validRpzName(e.name) || addr === null || !Number.isInteger(ttl) || ttl < 0 || ttl > MAX_TTL)
+            throw new Error(error);
+        return { name: e.name, ip: addr, ttl };
+    });
+    return { enabled: o.enabled === true, entries };
+}
+
+return { RPZ_ZONE, RPZ_FILE, MAX_RPZ_ENTRIES, validRpzName, initialEntries, rpzEntries, rpzFile, parseRpz, setPublicNames, rpzAnswer, publicNamesToJson, publicNamesFromJson };
+})();
 __m["services/dns-server.js"] = (() => {
 const { DNS_PORT } = __m["net/packets.js"];
 const { answerFromZones } = __m["services/dns-service.js"];
@@ -10557,6 +10914,8 @@ const { DEFAULT_MAX_CACHE_TTL, iterates } = __m["services/named-options.js"];
 const { ROOT_IPS } = __m["net/dns-roots.js"];
 const { DnsForwarder, recursionAllowed } = __m["services/dns-forwarder.js"];
 const { formatIp } = __m["core/ip.js"];
+const { rpzAnswer } = __m["services/dns-rpz.js"];
+const { normalizeName } = __m["net/dns.js"];
 class ServerDns {
     host;
     forwarder;
@@ -10592,6 +10951,12 @@ class ServerDns {
         const recursion = s.recursion === true && recursionAllowed(s.allowRecursion ?? 'localnets', src, this.host.config);
         const answer = answerFromZones(q, servedZones(s));
         const head = `client ${formatIp(src)}#${sport} (${q.qname}): query: ${q.qname} IN ${q.qtype} ${q.rd === false ? '-' : '+'} (${formatIp(dst)})`;
+        const policy = answer.rcode === 'REFUSED' && recursion && q.rd !== false ? rpzAnswer(s, q, normalizeName(q.qname)) : undefined;
+        if (policy) {
+            this.host.log('dns', `client ${formatIp(src)}#${sport} (${policy.msg.qname}): rpz QNAME Local-Data rewrite ${policy.msg.qname}/${q.qtype}/IN via ${policy.via}`);
+            this.host.sendUdp(src, DNS_PORT, sport, { dns: policy.msg });
+            return;
+        }
         if (answer.rcode === 'REFUSED' && recursion && q.rd !== false) {
             const iterate = iterates(s);
             this.host.log('dns', `${head} → ${forwarders.length ? `forwarding to ${forwarders.map(formatIp).join(', ')}${iterate ? ' (then iterative)' : ''}` : 'iterative resolution'}`);
@@ -19669,6 +20034,9 @@ const SERVICE_DOCS = {
                 h('Interfaces de escucha'),
                 p('Como listen-on de BIND: el bloque «Interfaces de escucha» elige en qué direcciones atiende bind9. «Todas» es listen-on { any; }; cada interfaz marcada añade su dirección y lo, 127.0.0.1. Una consulta a otra dirección del equipo no tiene respuesta (dig acaba en «connection timed out»). «Aplicar» reinicia bind9, como systemctl restart bind9; editar listen-on en named.conf.options como root cambia el panel.'),
                 code('options {\n\tlisten-on { 192.168.1.1; 127.0.0.1; };\n\t…\n};\n\nadmin@srv:~$ dig @127.0.0.1 www.aula.lab'),
+                h('Nombres públicos (response-policy)'),
+                p('El bloque «Nombres públicos» activa una zona de política de respuesta (RPZ) con datos locales: /etc/bind/db.rpz.publicos tiene un «nombre A dirección» por línea con la lista de nombres públicos de la Internet emulada (google.es, educa.jcyl.es, juandecolonia.es, el top 100…), y el servidor los responde él mismo, sin preguntar a nadie. Así, en un aula sin salida a Internet, ping google.es, nslookup y dig resuelven. Como en BIND, solo se aplica a las consultas recursivas: necesita el modo Recursivo. Se puede editar el fichero en el panel, en la gestión web o como root, y volver a la lista inicial.'),
+                code('options {\n\tresponse-policy { zone "rpz.publicos"; };\n};\nzone "rpz.publicos" { type master; file "/etc/bind/db.rpz.publicos"; allow-query { none; }; };\n\n; /etc/bind/db.rpz.publicos\ngoogle.es                    A 142.250.200.67\naula.lab                  60 A 192.168.10.5\n*.ejemplo.org                A 192.168.10.6\n\n$ journalctl -u bind9\n… rpz QNAME Local-Data rewrite google.es/A/IN via google.es.rpz.publicos'),
                 h('Lo mismo en /etc/bind'),
                 p('El panel y los archivos de BIND son la misma configuración: named.conf.options (caché, reenvío, recursión; root puede editarlo y el panel lo refleja), named.conf.local (las zonas, también las automáticas), named.conf.default-zones (la zona «.» de sugerencias raíz) y un archivo db.<zona> por zona con el SOA primero, después los NS y después los registros. La gestión web muestra esa configuración al lado de los modos, explicada.'),
                 code('admin@srv:~$ cat /etc/bind/named.conf.options\nadmin@srv:~$ cat /etc/bind/named.conf.local\nadmin@srv:~$ cat /etc/bind/db.aula.lab\nadmin@srv:~$ sudo rndc status\nadmin@srv:~$ sudo rndc flush'),
@@ -19935,7 +20303,7 @@ const UTIL_DOCS = {
     rndc: { group: 'servicios', section: 8, synopsis: 'rndc {reload | flush | status}', summary: 'Controla bind9 (con sudo): reload relee la configuración, flush vacía la caché de la recursión y status muestra reenviadores y entradas en caché.' },
     netplan: { group: 'red', section: 8, synopsis: 'netplan {apply | try | generate | get | info}', summary: 'Aplica /etc/netplan/*.yaml (unidos por orden de nombre) a la interfaz eth0: dhcp4, addresses, routes (to: default, via), nameservers (addresses y search: dominios de búsqueda, también con DHCP). try revierte si no confirmas con Intro. Los errores indican fichero:línea:columna.' },
     traceroute: { group: 'red', synopsis: 'traceroute [-n] [-m SALTOS] DESTINO', summary: 'Ruta hasta el destino: sondas ICMP con TTL 1, 2, 3… (como traceroute -I); cada router responde «tiempo excedido». -n sin nombres, -m máximo de saltos (30).' },
-    ping: { group: 'red', synopsis: 'ping [-c N] DESTINO', summary: 'Eco ICMP (sin -c, 4 paquetes en Netfix). Estado 0 si responde, 1 si no, 2 si el nombre no se resuelve.' },
+    ping: { group: 'red', synopsis: 'ping [-b] [-c N] DESTINO', summary: 'Eco ICMP (sin -c, 4 paquetes en Netfix). A una dirección broadcast hace falta -b; las respuestas repetidas salen con (DUP!). Estado 0 si responde, 1 si no, 2 si el nombre no se resuelve.' },
     dig: { group: 'red', synopsis: 'dig [@SERVIDOR] NOMBRE [TIPO] [+short] [+search] | dig -x IP', summary: 'Consulta DNS con la salida de BIND 9 (secciones QUESTION, ANSWER, AUTHORITY; status NOERROR/NXDOMAIN/REFUSED).' },
     nslookup: { group: 'red', synopsis: 'nslookup NOMBRE [SERVIDOR]', summary: 'Consulta DNS sencilla.' },
     host: { group: 'red', synopsis: 'host [-t TIPO] NOMBRE [SERVIDOR]', summary: 'Consulta DNS en una línea por registro.' },
@@ -19943,7 +20311,7 @@ const UTIL_DOCS = {
     wget: { group: 'red', synopsis: 'wget [-q] [-O FICHERO] URL', summary: 'Descarga a un fichero del directorio actual (nombre.1, nombre.2… si ya existe). «-qO-» escribe la página en la salida.' },
     ssh: { group: 'red', synopsis: 'ssh [-i CLAVE] [-l USUARIO] [-p PUERTO] [-o OPCIÓN=VALOR] [USUARIO@]HOST [ORDEN]', summary: 'Cliente OpenSSH: comprueba la clave del servidor en ~/.ssh/known_hosts, se autentica con ~/.ssh/id_* y, si no, con contraseña. Con ORDEN la ejecuta y vuelve. Opciones -o: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Devuelve el estado remoto (255 si falla).' },
     'ssh-keygen': { group: 'red', synopsis: 'ssh-keygen [-t ed25519|ecdsa|rsa] [-b BITS] [-f FICHERO] [-N FRASE] [-C COMENTARIO] [-q] | -l|-y|-p [-f FICHERO] | -F|-R HOST [-f known_hosts] | -A', summary: 'Genera pares de claves OpenSSH (privada 600 y .pub 644), muestra la huella (-l), obtiene la pública (-y), cambia la frase de paso (-p), busca (-F) o borra (-R) equipos de known_hosts y crea las claves de host que falten (-A).' },
-    sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] CLAVE... | [-w] CLAVE=VALOR | -p [FICHERO] | --system | -a', summary: 'Parámetros del núcleo (también en /proc/sys): net.ipv4.ip_forward activa el reenvío en el router Linux, net.ipv4.icmp_echo_ignore_all ignora los ping. Los cambios con -w se pierden al reiniciar; para que duren, en /etc/sysctl.conf o /etc/sysctl.d/*.conf (sysctl --system los aplica). Cambiar requiere root.' },
+    sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] CLAVE... | [-w] CLAVE=VALOR | -p [FICHERO] | --system | -a', summary: 'Parámetros del núcleo (también en /proc/sys): net.ipv4.ip_forward activa el reenvío en el router Linux, net.ipv4.icmp_echo_ignore_all ignora los ping, net.ipv4.icmp_echo_ignore_broadcasts (1) no responde a los ping a broadcast y net.ipv4.conf.all.bc_forwarding (0) reenvía los broadcast dirigidos. Los cambios con -w se pierden al reiniciar; para que duren, en /etc/sysctl.conf o /etc/sysctl.d/*.conf (sysctl --system los aplica). Cambiar requiere root.' },
     nft: { group: 'red', section: 8, synopsis: 'nft [-a] [-c] [-s] [-f FICHERO] ORDEN...', summary: 'Cortafuegos nftables: add/insert/replace/delete rule, add chain con type/hook/priority/policy, list ruleset, flush ruleset; -f carga un fichero (atómico), -c solo lo comprueba, -a muestra los handles. Lo hecho con nft dura hasta reiniciar: se guarda en /etc/nftables.conf y lo carga nftables.service. Requiere root.' },
     nc: { group: 'red', section: 1, synopsis: 'nc -z [-v] [-u] [-w SEG] HOST PUERTO[-PUERTO]...', summary: 'netcat (OpenBSD): comprueba si un puerto TCP acepta conexiones: «succeeded!» (abierto), «Connection refused» (cerrado o reject) o «timed out» (filtrado con drop). En Netfix solo el modo -z.' },
     nmap: { group: 'red', section: 1, synopsis: 'nmap [-sn] [-Pn] [-p PUERTOS] DESTINO|RED/24|A.B.C.D-E', summary: 'Escaneo de puertos TCP por conexión (open, closed, filtered) y descubrimiento de equipos (-sn: ping y TCP 80/443). Sin -p revisa los puertos habituales. Para comprobar el cortafuegos de tus propios equipos del laboratorio.' },
@@ -20477,6 +20845,9 @@ const INTERNET_DOCS = {
                     ['example.com', '93.184.215.14', 'Web de prueba.'],
                     ['ifconfig.me', '34.160.111.145', 'Devuelve solo tu IP pública en texto (curl ifconfig.me).'],
                 ]),
+                h('Nombres públicos'),
+                p('Además conoce unos 120 nombres públicos: los anteriores, google.es, educa.jcyl.es, juandecolonia.es y los 100 dominios más visitados del mundo (Similarweb y Semrush, 2026), sin webs para adultos ni de apuestas. Cada uno tiene su www, se resuelve por 8.8.8.8 y por iteración desde la raíz, y su dirección responde a ping y a HTTP. Las direcciones son representativas de las reales: las webs grandes responden desde muchas direcciones que cambian.'),
+                p('El servidor DNS de un Server o de un router Linux puede ofrecer la misma lista sin salida a Internet: Servicios → DNS → Nombres públicos.'),
                 h('Dominios registrados en un ISP'),
                 p('En la pestaña ISP de una nube puedes registrar dominios. Los DNS públicos los resuelven para todas las nubes:'),
                 table(['Tipo', 'Respuesta de 8.8.8.8'], [
@@ -20539,6 +20910,27 @@ const INTERNET_DOCS = {
                     ['/level/15/dm', 'Device Manager: panel frontal, tabla de interfaces y ajustes rápidos de puerto (descripción, estado, VLAN de acceso, IP).'],
                 ]),
                 note('La autenticación es HTTP Basic (realm level_15_access). Los fallos se registran como %SEC_LOGIN-4-LOGIN_FAILED y los cambios como %SYS-5-CONFIG_I … on vty0 (IP del PC). También funciona curl -u usuario:clave.'),
+            ],
+        },
+        {
+            id: 'red-broadcast',
+            title: 'Broadcast: a todos los equipos de la red',
+            summary: 'Broadcast de enlace e IP (255.255.255.255 y dirigido), quién responde a un ping a broadcast y quién lo reenvía.',
+            blocks: [
+                p('Un broadcast llega a todos los equipos del segmento: el switch lo inunda por todos los puertos de su VLAN y ningún router lo pasa a otra red. Lo usan ARP y DHCP (MAC ff:ff:ff:ff:ff:ff) y se puede probar a nivel IP con ping.'),
+                table(['Destino', 'Qué es', 'Llega a'], [
+                    ['255.255.255.255', 'Broadcast limitado', 'La red local del emisor; ningún router lo reenvía.'],
+                    ['192.168.1.255 (en una /24)', 'Broadcast dirigido de la subred', 'Esa subred. Desde otra red, el router responde él mismo y solo lo reenvía si se activa (abajo).'],
+                ]),
+                table(['Equipo', '¿Responde a un ping a broadcast?', 'Cómo cambiarlo'], [
+                    ['Router y switch Cisco', 'Sí, con su propia dirección', '—'],
+                    ['GNU/Linux (Server, router Linux, PC en modo Linux)', 'No (Ubuntu: net.ipv4.icmp_echo_ignore_broadcasts = 1)', 'sudo sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=0'],
+                    ['Windows (PC por defecto)', 'No', '—'],
+                ]),
+                code('$ ping 192.168.1.255\nping: Do you want to ping broadcast? Then -b. If not, check your local firewall rules\n$ ping -b -c 2 192.168.1.255\nWARNING: pinging broadcast address\nPING 192.168.1.255 (192.168.1.255) 56(84) bytes of data.\n64 bytes from 192.168.1.1: icmp_seq=1 ttl=255 time=0.400 ms\n64 bytes from 192.168.1.20: icmp_seq=1 ttl=64 time=0.400 ms (DUP!)\n…\n2 packets transmitted, 2 received, +2 duplicates, 0% packet loss\n\nRouter# ping 192.168.1.255\nReply to request 0 from 192.168.1.20, 1 ms'),
+                h('Reenvío de broadcast dirigido'),
+                p('Desactivado por defecto, porque permite ataques de amplificación (smurf). En un router Cisco se activa en la interfaz de salida con ip directed-broadcast (no ip directed-broadcast es lo normal desde IOS 12.0); en el router Linux, con sudo sysctl -w net.ipv4.conf.all.bc_forwarding=1 y el reenvío activado.'),
+                note('En modo simulación se ve una sola trama con destino ff:ff:ff:ff:ff:ff que el switch copia a cada puerto, y después una respuesta por cada equipo que contesta.'),
             ],
         },
         {
@@ -21116,6 +21508,9 @@ const SERVICE_DOCS = {
                 h('Listen interfaces'),
                 p('Like BIND listen-on: the «Listen interfaces» block picks the addresses bind9 answers on. «All» is listen-on { any; }; each ticked interface adds its address, and lo 127.0.0.1. A query to another address of the device gets no answer (dig ends in «connection timed out»). «Apply» restarts bind9, like systemctl restart bind9; editing listen-on in named.conf.options as root changes the panel.'),
                 code('options {\n\tlisten-on { 192.168.1.1; 127.0.0.1; };\n\t…\n};\n\nadmin@srv:~$ dig @127.0.0.1 www.aula.lab'),
+                h('Public names (response-policy)'),
+                p('The «Public names» block enables a response policy zone (RPZ) with local data: /etc/bind/db.rpz.publicos has one «name A address» per line with the list of public names of the emulated Internet (google.es, educa.jcyl.es, juandecolonia.es, the top 100…), and the server answers them itself, without asking anybody. So, in a classroom with no Internet access, ping google.es, nslookup and dig resolve. As in BIND, it only applies to recursive queries: it needs the Recursive mode. The file can be edited in the panel, in the web management or as root, and the initial list restored.'),
+                code('options {\n\tresponse-policy { zone "rpz.publicos"; };\n};\nzone "rpz.publicos" { type master; file "/etc/bind/db.rpz.publicos"; allow-query { none; }; };\n\n; /etc/bind/db.rpz.publicos\ngoogle.es                    A 142.250.200.67\naula.lab                  60 A 192.168.10.5\n*.ejemplo.org                A 192.168.10.6\n\n$ journalctl -u bind9\n… rpz QNAME Local-Data rewrite google.es/A/IN via google.es.rpz.publicos'),
                 h('The same in /etc/bind'),
                 p('The panel and the BIND files are the same configuration: named.conf.options (cache, forwarding, recursion; root may edit it and the panel follows), named.conf.local (the zones, the automatic ones too), named.conf.default-zones (the «.» root hints zone) and one db.<zone> file per zone with the SOA first, then the NS and then the records. The web management shows that configuration next to the modes, explained.'),
                 code('admin@srv:~$ cat /etc/bind/named.conf.options\nadmin@srv:~$ cat /etc/bind/named.conf.local\nadmin@srv:~$ cat /etc/bind/db.aula.lab\nadmin@srv:~$ sudo rndc status\nadmin@srv:~$ sudo rndc flush'),
@@ -21382,7 +21777,7 @@ const UTIL_DOCS = {
     rndc: { group: 'servicios', section: 8, synopsis: 'rndc {reload | flush | status}', summary: 'Controls bind9 (with sudo): reload rereads the configuration, flush empties the recursion cache and status shows forwarders and cached entries.' },
     netplan: { group: 'red', section: 8, synopsis: 'netplan {apply | try | generate | get | info}', summary: 'Applies /etc/netplan/*.yaml (merged in name order) to the eth0 interface: dhcp4, addresses, routes (to: default, via), nameservers (addresses and search: search domains, with DHCP too). try reverts if you do not confirm with Enter. Errors show file:line:column.' },
     traceroute: { group: 'red', synopsis: 'traceroute [-n] [-m HOPS] DEST', summary: 'Route to the destination: ICMP probes with TTL 1, 2, 3… (like traceroute -I); each router replies “time exceeded”. -n without names, -m maximum hops (30).' },
-    ping: { group: 'red', synopsis: 'ping [-c N] DEST', summary: 'ICMP echo (without -c, 4 packets in Netfix). Status 0 if it replies, 1 if not, 2 if the name does not resolve.' },
+    ping: { group: 'red', synopsis: 'ping [-b] [-c N] DEST', summary: 'ICMP echo (without -c, 4 packets in Netfix). A broadcast address needs -b; repeated answers show (DUP!). Status 0 if it replies, 1 if not, 2 if the name does not resolve.' },
     dig: { group: 'red', synopsis: 'dig [@SERVER] NAME [TYPE] [+short] [+search] | dig -x IP', summary: 'DNS query with BIND 9 output (QUESTION, ANSWER, AUTHORITY sections; status NOERROR/NXDOMAIN/REFUSED).' },
     nslookup: { group: 'red', synopsis: 'nslookup NAME [SERVER]', summary: 'Simple DNS query.' },
     host: { group: 'red', synopsis: 'host [-t TYPE] NAME [SERVER]', summary: 'DNS query, one line per record.' },
@@ -21390,7 +21785,7 @@ const UTIL_DOCS = {
     wget: { group: 'red', synopsis: 'wget [-q] [-O FILE] URL', summary: 'Downloads to a file in the current directory (name.1, name.2… if it already exists). “-qO-” writes the page to the output.' },
     ssh: { group: 'red', synopsis: 'ssh [-i KEY] [-l USER] [-p PORT] [-o OPTION=VALUE] [USER@]HOST [COMMAND]', summary: 'OpenSSH client: checks the server key in ~/.ssh/known_hosts, authenticates with ~/.ssh/id_* and, failing that, with a password. With COMMAND it runs it and returns. -o options: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Returns the remote status (255 on failure).' },
     'ssh-keygen': { group: 'red', synopsis: 'ssh-keygen [-t ed25519|ecdsa|rsa] [-b BITS] [-f FILE] [-N PASSPHRASE] [-C COMMENT] [-q] | -l|-y|-p [-f FILE] | -F|-R HOST [-f known_hosts] | -A', summary: 'Generates OpenSSH key pairs (private 600 and .pub 644), shows the fingerprint (-l), derives the public key (-y), changes the passphrase (-p), finds (-F) or removes (-R) hosts in known_hosts and creates any missing host keys (-A).' },
-    sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] KEY... | [-w] KEY=VALUE | -p [FILE] | --system | -a', summary: 'Kernel parameters (also in /proc/sys): net.ipv4.ip_forward enables forwarding on the Linux router, net.ipv4.icmp_echo_ignore_all ignores pings. Changes made with -w are lost on reboot; to make them last, put them in /etc/sysctl.conf or /etc/sysctl.d/*.conf (sysctl --system applies them). Changing requires root.' },
+    sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] KEY... | [-w] KEY=VALUE | -p [FILE] | --system | -a', summary: 'Kernel parameters (also in /proc/sys): net.ipv4.ip_forward enables forwarding on the Linux router, net.ipv4.icmp_echo_ignore_all ignores pings, net.ipv4.icmp_echo_ignore_broadcasts (1) does not answer broadcast pings and net.ipv4.conf.all.bc_forwarding (0) forwards directed broadcasts. Changes made with -w are lost on reboot; to make them last, put them in /etc/sysctl.conf or /etc/sysctl.d/*.conf (sysctl --system applies them). Changing requires root.' },
     nft: { group: 'red', section: 8, synopsis: 'nft [-a] [-c] [-s] [-f FILE] COMMAND...', summary: 'nftables firewall: add/insert/replace/delete rule, add chain with type/hook/priority/policy, list ruleset, flush ruleset; -f loads a file (atomically), -c only checks it, -a shows the handles. What you do with nft lasts until reboot: it is saved in /etc/nftables.conf and loaded by nftables.service. Requires root.' },
     nc: { group: 'red', section: 1, synopsis: 'nc -z [-v] [-u] [-w SEC] HOST PORT[-PORT]...', summary: 'netcat (OpenBSD): checks whether a TCP port accepts connections: “succeeded!” (open), “Connection refused” (closed or reject) or “timed out” (filtered with drop). In Netfix only -z mode.' },
     nmap: { group: 'red', section: 1, synopsis: 'nmap [-sn] [-Pn] [-p PORTS] DEST|NET/24|A.B.C.D-E', summary: 'TCP connect port scan (open, closed, filtered) and host discovery (-sn: ping and TCP 80/443). Without -p it checks the common ports. For testing the firewall of your own lab machines.' },
@@ -21924,6 +22319,9 @@ const INTERNET_DOCS = {
                     ['example.com', '93.184.215.14', 'Test website.'],
                     ['ifconfig.me', '34.160.111.145', 'Returns only your public IP as text (curl ifconfig.me).'],
                 ]),
+                h('Public names'),
+                p('It also knows about 120 public names: the ones above, google.es, educa.jcyl.es, juandecolonia.es and the world’s 100 most visited domains (Similarweb and Semrush, 2026), without adult or gambling sites. Each has its www, resolves through 8.8.8.8 and by iteration from the root, and its address answers ping and HTTP. The addresses are representative of the real ones: big sites answer from many addresses that change.'),
+                p('The DNS server of a Server or a Linux router can offer the same list with no Internet access: Services → DNS → Public names.'),
                 h('Domains registered with an ISP'),
                 p('In a cloud’s ISP tab you can register domains. The public DNS servers resolve them for every cloud:'),
                 table(['Type', 'Answer from 8.8.8.8'], [
@@ -21986,6 +22384,27 @@ const INTERNET_DOCS = {
                     ['/level/15/dm', 'Device Manager: front panel, interface table and quick port settings (description, status, access VLAN, IP).'],
                 ]),
                 note('Authentication is HTTP Basic (realm level_15_access). Failures are logged as %SEC_LOGIN-4-LOGIN_FAILED and changes as %SYS-5-CONFIG_I … on vty0 (PC’s IP). curl -u user:password also works.'),
+            ],
+        },
+        {
+            id: 'red-broadcast',
+            title: 'Broadcast: to every device of the network',
+            summary: 'Link and IP broadcast (255.255.255.255 and directed), who answers a broadcast ping and who forwards it.',
+            blocks: [
+                p('A broadcast reaches every device of the segment: the switch floods it out of every port of its VLAN and no router passes it to another network. ARP and DHCP use it (MAC ff:ff:ff:ff:ff:ff) and it can be tried at the IP level with ping.'),
+                table(['Destination', 'What it is', 'Reaches'], [
+                    ['255.255.255.255', 'Limited broadcast', 'The sender’s local network; no router forwards it.'],
+                    ['192.168.1.255 (on a /24)', 'Directed broadcast of the subnet', 'That subnet. From another network the router answers itself and only forwards it when enabled (below).'],
+                ]),
+                table(['Device', 'Does it answer a broadcast ping?', 'How to change it'], [
+                    ['Cisco router and switch', 'Yes, with its own address', '—'],
+                    ['GNU/Linux (Server, Linux router, PC in Linux mode)', 'No (Ubuntu: net.ipv4.icmp_echo_ignore_broadcasts = 1)', 'sudo sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=0'],
+                    ['Windows (PC by default)', 'No', '—'],
+                ]),
+                code('$ ping 192.168.1.255\nping: Do you want to ping broadcast? Then -b. If not, check your local firewall rules\n$ ping -b -c 2 192.168.1.255\nWARNING: pinging broadcast address\nPING 192.168.1.255 (192.168.1.255) 56(84) bytes of data.\n64 bytes from 192.168.1.1: icmp_seq=1 ttl=255 time=0.400 ms\n64 bytes from 192.168.1.20: icmp_seq=1 ttl=64 time=0.400 ms (DUP!)\n…\n2 packets transmitted, 2 received, +2 duplicates, 0% packet loss\n\nRouter# ping 192.168.1.255\nReply to request 0 from 192.168.1.20, 1 ms'),
+                h('Directed broadcast forwarding'),
+                p('Off by default, because it allows amplification attacks (smurf). On a Cisco router it is enabled on the outgoing interface with ip directed-broadcast (no ip directed-broadcast is the norm since IOS 12.0); on the Linux router, with sudo sysctl -w net.ipv4.conf.all.bc_forwarding=1 and forwarding on.'),
+                note('In simulation mode there is one frame to ff:ff:ff:ff:ff:ff that the switch copies to every port, then one reply per device that answers.'),
             ],
         },
         {
@@ -29368,7 +29787,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.14.0",
+    "version": "0.15.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -30959,6 +31378,7 @@ const { DEFAULT_TTL } = __m["services/config.js"];
 const { SAFE_ZONE, servedZones } = __m["services/dns-zones.js"];
 const { NAMED_OPTIONS, namedOptions } = __m["services/named-options.js"];
 const { ROOT_HINTS_FILE, rootHints } = __m["net/dns-roots.js"];
+const { RPZ_FILE, RPZ_ZONE, rpzFile } = __m["services/dns-rpz.js"];
 const NAMED_LOCAL = '/etc/bind/named.conf.local';
 const NAMED_DEFAULT_ZONES = '/etc/bind/named.conf.default-zones';
 const zoneFilePath = (zone) => `/etc/bind/db.${zone}`;
@@ -30992,9 +31412,18 @@ function zoneStanza(s) {
 function namedLocal(dns, zones) {
     const head = '//\n// Zonas de este servidor (modo autoritativo). Las genera Netfix: Servicios → DNS.\n//\n\n';
     if (dns.authoritative === false)
-        return `${head}// Modo autoritativo desactivado: no se carga ninguna zona (se conservan en Netfix).\n`;
-    return head + zones.map(zoneStanza).join('\n');
+        return `${head}// Modo autoritativo desactivado: no se carga ninguna zona (se conservan en Netfix).\n${dns.publicNames?.enabled ? RPZ_STANZA : ''}`;
+    return head + zones.map(zoneStanza).join('\n') + (dns.publicNames?.enabled ? RPZ_STANZA : '');
 }
+/** The policy zone is loaded whatever the authoritative mode: it is not served (allow-query none), only applied. */
+const RPZ_STANZA = `
+// Nombres públicos (Servicios → DNS → Nombres públicos): zona de política de respuesta
+zone "${RPZ_ZONE}" {
+\ttype master;
+\tfile "${RPZ_FILE}";
+\tallow-query { none; };
+};
+`;
 const DEFAULT_ZONES = `// prime the server with knowledge of the root servers
 // (iterative resolution starts here when recursion is on and it is not "forward only")
 zone "." {
@@ -31035,6 +31464,7 @@ function bindFiles(dns, choices) {
         [NAMED_LOCAL, namedLocal(dns, zones)],
         [NAMED_DEFAULT_ZONES, DEFAULT_ZONES],
         [ROOT_HINTS_FILE, rootHints()],
+        [RPZ_FILE, rpzFile(dns)],
     ]);
     for (const z of zones)
         files.set(zoneFilePath(z.zone.name), zoneFile(z.zone, z.auto));
@@ -33160,20 +33590,26 @@ return { digOutput, nslookupOutput, hostOutput };
 __m["net/ping.js"] = (() => {
 let pingId = 1;
 const INTER_PACKET_MS = 1;
+/** After the first answer, how long the other devices of a broadcast have to answer the same request. */
+const DUP_WINDOW_MS = 5;
 function runPing(stack, hooks, dst, opts) {
     const id = pingId++ & 0xffff;
     const results = [];
     for (let seq = 0; seq < opts.count; seq++) {
         let result;
-        const sent = stack.echo(dst, id, seq, opts.src, (r) => { result = r; });
+        const dups = [];
+        const sent = stack.echo(dst, id, seq, opts.src, (r) => { result = r; }, undefined, (r) => { if (r.kind === 'reply')
+            dups.push(r); });
         if (!sent) {
             results.push({ kind: 'noroute' });
             continue;
         }
         hooks.runUntil(() => result !== undefined, opts.timeoutMs);
-        results.push(result ?? { kind: 'timeout' });
-        hooks.runUntil(() => false, INTER_PACKET_MS);
+        hooks.runUntil(() => false, result ? DUP_WINDOW_MS : INTER_PACKET_MS);
+        const answer = result;
+        results.push(answer ? (dups.length ? { ...answer, dups } : answer) : { kind: 'timeout' });
     }
+    stack.endEcho(id);
     return results;
 }
 
@@ -33580,9 +34016,28 @@ function pingCount(args) {
     }
     return { count, target };
 }
+const BROADCAST_HINT = 'ping: Do you want to ping broadcast? Then -b. If not, check your local firewall rules\n';
+/** -b among the options (alone or joined, as in -bc… is not: -c takes a value). */
+const wantsBroadcast = (args) => args.some((a) => /^-[A-Za-z]*b[A-Za-z]*$/.test(a) && !PING_WITH_VALUE.has(a.slice(0, 2)));
+/** One line per answer: the device that answered (its own address on a broadcast), repeated ones with (DUP!). */
+function replyLines(results, who) {
+    return results.flatMap((x, i) => {
+        const seq = i + 1;
+        if (x.kind === 'reply') {
+            const line = (r, dup) => `64 bytes from ${who(r.from)}: icmp_seq=${seq} ttl=${r.ttl ?? x.ttl} time=0.${400 + i * 37} ms${dup}`;
+            return [line(x, ''), ...(x.dups ?? []).map((d) => line(d, ' (DUP!)'))];
+        }
+        if (x.kind === 'unreachable')
+            return [`From ${formatIp(x.from)} icmp_seq=${seq} Destination Host Unreachable`];
+        if (x.kind === 'ttl')
+            return [`From ${formatIp(x.from)} icmp_seq=${seq} Time to live exceeded`];
+        return [];
+    });
+}
 function ping(host) {
     return (ctx) => {
-        const { count, target } = pingCount(ctx.argv.slice(1));
+        const args = ctx.argv.slice(1);
+        const { count, target } = pingCount(args);
         if (!target) {
             ctx.err('ping: usage error: Destination address required\n');
             return 1;
@@ -33592,6 +34047,13 @@ function ping(host) {
             ctx.err(`ping: ${target}: ${r.reason === 'nxdomain' ? 'Name or service not known' : 'Temporary failure in name resolution'}\n`);
             return 2;
         }
+        const broadcast = host.stack.isBroadcast(r.ip);
+        if (broadcast && !wantsBroadcast(args)) {
+            ctx.err(BROADCAST_HINT);
+            return 2;
+        }
+        if (broadcast)
+            ctx.err('WARNING: pinging broadcast address\n');
         const results = runPing(host.stack, host.hooks, r.ip, { count, timeoutMs: PING_TIMEOUT_MS });
         if (results.every((x) => x.kind === 'noroute')) {
             ctx.err('ping: connect: Network is unreachable\n');
@@ -33600,17 +34062,11 @@ function ping(host) {
         const addr = formatIp(r.ip);
         // The name as resolved (www → www.empresa.lan with the search domain), as ping shows it.
         const shown = r.viaDns ? r.name : target;
-        const out = [`PING ${shown} (${addr}) 56(84) bytes of data.`];
-        results.forEach((x, i) => {
-            if (x.kind === 'reply')
-                out.push(`64 bytes from ${parseIp(target) === null ? `${shown} (${addr})` : addr}: icmp_seq=${i + 1} ttl=${x.ttl} time=0.${400 + i * 37} ms`);
-            else if (x.kind === 'unreachable')
-                out.push(`From ${formatIp(x.from)} icmp_seq=${i + 1} Destination Host Unreachable`);
-            else if (x.kind === 'ttl')
-                out.push(`From ${formatIp(x.from)} icmp_seq=${i + 1} Time to live exceeded`);
-        });
+        const byName = parseIp(target) === null;
+        const out = [`PING ${shown} (${addr}) 56(84) bytes of data.`, ...replyLines(results, (from) => (byName && from === r.ip ? `${shown} (${addr})` : formatIp(from)))];
         const ok = results.filter((x) => x.kind === 'reply').length;
-        out.push('', `--- ${shown} ping statistics ---`, `${count} packets transmitted, ${ok} received, ${Math.round(((count - ok) * 100) / count)}% packet loss, time ${(count - 1) * 1001}ms`);
+        const dups = results.reduce((n, x) => n + (x.kind === 'reply' ? x.dups?.length ?? 0 : 0), 0);
+        out.push('', `--- ${shown} ping statistics ---`, `${count} packets transmitted, ${ok} received, ${dups ? `+${dups} duplicates, ` : ''}${Math.round(((count - ok) * 100) / count)}% packet loss, time ${(count - 1) * 1001}ms`);
         if (ok)
             out.push('rtt min/avg/max/mdev = 0.400/0.455/0.511/0.040 ms');
         lines(ctx, out);
@@ -36561,6 +37017,7 @@ __m["shells/host-system.js"] = (() => {
 const { listenChoices } = __m["services/listen.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { NAMED_OPTIONS, parseNamedOptions } = __m["services/named-options.js"];
+const { RPZ_FILE, setPublicNames } = __m["services/dns-rpz.js"];
 const { NETPLAN_FILE, netplanFileContent, writeNetplanFile } = __m["shells/netplan.js"];
 const { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } = __m["services/sshd-config.js"];
 const { hostKeyFiles } = __m["services/ssh-hostkeys.js"];
@@ -36636,6 +37093,16 @@ const WRITERS = {
         const next = parseNamedOptions(content, srv.services.dns, listenChoices(srv, true));
         if ('error' in next)
             srv.log('dns', `named-checkconf: ${next.error}`);
+        else
+            srv.setServices({ ...srv.services, dns: next });
+    },
+    [RPZ_FILE]: (host, content) => {
+        const srv = asServer(host);
+        if (!srv)
+            return;
+        const next = setPublicNames(srv.services.dns, srv.services.dns.publicNames?.enabled === true, content);
+        if ('error' in next)
+            srv.log('dns', next.error);
         else
             srv.setServices({ ...srv.services, dns: next });
     },
@@ -39266,6 +39733,11 @@ class LinuxRouter extends Server {
             super.onLinkEvent(port, up);
         else
             this.changed();
+    }
+    /** net.ipv4.conf.all.bc_forwarding (Linux 5.3+): directed broadcasts are forwarded only when routing and set. */
+    forwardsDirectedBroadcast() {
+        const s = this.kernel.sysctl;
+        return s.enabled('net.ipv4.ip_forward') && s.enabled('net.ipv4.conf.all.bc_forwarding');
     }
     /** Transit packets: ip_forward, TTL, route, nftables forward chain, then out (postrouting does NAT). */
     forward(iface, packet) {
@@ -42654,6 +43126,31 @@ function commit(server, app, msg, next, flush = false) {
 
 return { commit };
 })();
+__m["ui/dns-public-names.js"] = (() => {
+/**
+ * Servicios → DNS → «Nombres públicos»: the response policy zone (rpz.publicos) with the list of public names. The
+ * switch, the file and «Aplicar» go together (systemctl restart bind9); «Restaurar» brings back the initial list.
+ */
+const { t } = __m["i18n/t.js"];
+const { el } = __m["ui/dom.js"];
+const { button, message } = __m["ui/forms.js"];
+const { commit } = __m["ui/dns-commit.js"];
+const { rpzEntries, rpzFile, setPublicNames } = __m["services/dns-rpz.js"];
+const FILE_ROWS = '12';
+function publicNamesBlock(server, app, msg) {
+    const dns = server.services.dns;
+    const enabled = el('input', { type: 'checkbox', checked: dns.publicNames?.enabled === true });
+    const file = el('textarea', { class: 'code-editor', rows: FILE_ROWS, spellcheck: 'false', wrap: 'off', 'aria-label': t('rpz.file', { count: rpzEntries(dns).length }) });
+    file.value = rpzFile(dns);
+    const apply = (list) => {
+        if (commit(server, app, msg, setPublicNames(server.services.dns, enabled.checked, list), true))
+            msg.ok(t(list === 'initial' ? 'rpz.restored' : 'rpz.saved'));
+    };
+    return el('section', { class: 'rpz-block' }, el('h3', {}, t('rpz.title')), el('p', { class: 'muted' }, t('rpz.desc')), el('label', { class: 'check' }, enabled, ` ${t('rpz.enable')}`), dns.recursion === true ? null : el('p', { class: 'field-hint' }, t('rpz.needsRecursion')), el('h4', { class: 'mono' }, t('rpz.file', { count: rpzEntries(dns).length })), file, el('div', { class: 'actions' }, button(t('rpz.apply'), () => apply(file.value)), button(t('rpz.initial'), () => apply('initial'), 'btn btn-quiet')));
+}
+
+return { publicNamesBlock };
+})();
 __m["ui/server-dns-zones.js"] = (() => {
 /**
  * The Autoritativo block of the DNS panel: the zone list (hand-made and automatic reverse zones), the zone wizard in
@@ -42812,6 +43309,7 @@ const { DEFAULT_MAX_CACHE_TTL } = __m["services/named-options.js"];
 const { ROOT_SERVERS } = __m["net/dns-roots.js"];
 const { livePanel } = __m["ui/server-dhcp-dns.js"];
 const { listenBlock } = __m["ui/listen-block.js"];
+const { publicNamesBlock } = __m["ui/dns-public-names.js"];
 const { authoritativeBody, setAuthoritativeMode } = __m["ui/server-dns-zones.js"];
 function modeBlock(mode, state, toggle, body) {
     const sw = onOff(tDynamic(`dnsm.${mode}`), state.on, (on) => toggle?.(on));
@@ -42883,6 +43381,7 @@ function dnsPanel(server, app) {
             modeBlock('authoritative', dnsModes(s).authoritative, (on) => setAuthoritativeMode(server, after, msg, on), authoritativeBody(server, after, msg, ui)),
             recursiveBlock(server, after, msg),
             iterativeBlock(server, after, msg),
+            publicNamesBlock(server, after, msg),
         ];
     });
 }
@@ -44412,55 +44911,6 @@ function iosWebSettings(device, afterCommand) {
 
 return { iosWebSettings };
 })();
-__m["net/internet-zones.js"] = (() => {
-const { answerQuery } = __m["services/dns-service.js"];
-const { normalizeName } = __m["net/dns.js"];
-const RECORD_TTL = 300;
-const A = (name, value) => ({ name, type: 'A', value, ttl: RECORD_TTL });
-const CNAME = (name, value) => ({ name, type: 'CNAME', value, ttl: RECORD_TTL });
-const MX = (name, value, priority) => ({ name, type: 'MX', value, priority, ttl: RECORD_TTL });
-const TXT = (name, value) => ({ name, type: 'TXT', value, ttl: RECORD_TTL });
-const ZONES = [
-    { origin: 'google.com', records: [A('google.com', '142.250.184.4'), A('www.google.com', '142.250.184.4'), MX('google.com', 'smtp.google.com', 10), A('smtp.google.com', '142.250.153.27'), TXT('google.com', 'v=spf1 include:_spf.google.com ~all')], ns: { name: 'ns1.google.com', ip: '216.239.32.10' } },
-    { origin: 'dns.google', records: [A('dns.google', '8.8.8.8'), A('dns.google', '8.8.4.4')], ns: { name: 'ns1.zdns.google', ip: '216.239.32.114' } },
-    // Reverse lookups (dig -x 8.8.8.8) are derived from the A records.
-    { origin: 'in-addr.arpa', records: [A('dns.google', '8.8.8.8'), A('dns.google', '8.8.4.4')] },
-    { origin: 'example.com', records: [A('example.com', '93.184.215.14'), A('www.example.com', '93.184.215.14')], ns: { name: 'a.iana-servers.net', ip: '199.43.135.53' } },
-    { origin: 'ifconfig.me', records: [A('ifconfig.me', '34.160.111.145')], ns: { name: 'ns-cloud-a1.googledomains.com', ip: '216.239.32.106' } },
-    { origin: 'wikipedia.org', records: [A('wikipedia.org', '185.15.58.224'), CNAME('www.wikipedia.org', 'dyna.wikimedia.org'), CNAME('es.wikipedia.org', 'dyna.wikimedia.org')], ns: { name: 'ns0.wikimedia.org', ip: '208.80.154.238' } },
-    { origin: 'wikimedia.org', records: [A('dyna.wikimedia.org', '185.15.58.224')], ns: { name: 'ns0.wikimedia.org', ip: '208.80.154.238' } },
-    { origin: 'github.com', records: [A('github.com', '140.82.121.4'), CNAME('www.github.com', 'github.com')], ns: { name: 'dns1.p08.nsone.net', ip: '198.51.44.8' } },
-    { origin: 'ubuntu.com', records: [A('ubuntu.com', '185.125.190.20'), A('www.ubuntu.com', '185.125.190.20'), A('archive.ubuntu.com', '185.125.190.81'), A('security.ubuntu.com', '185.125.190.82')], ns: { name: 'ns1.canonical.com', ip: '91.189.95.3' } },
-    { origin: 'debian.org', records: [A('debian.org', '151.101.2.132'), A('www.debian.org', '151.101.2.132'), A('deb.debian.org', '151.101.2.132')], ns: { name: 'nsp.dnsnode.net', ip: '194.58.198.32' } },
-    { origin: 'cisco.com', records: [A('cisco.com', '72.163.4.185'), A('www.cisco.com', '23.212.248.9')], ns: { name: 'ns1.cisco.com', ip: '72.163.5.201' } },
-    { origin: 'paypal.me', records: [A('paypal.me', '151.101.1.21')], ns: { name: 'ns1.p57.dynect.net', ip: '208.78.70.57' } },
-    { origin: 'pool.ntp.org', records: [A('pool.ntp.org', '162.159.200.1'), A('es.pool.ntp.org', '162.159.200.123')], ns: { name: 'a.ntpns.org', ip: '185.172.155.53' } },
-];
-function inZone(qname, origin) {
-    return qname === origin || qname.endsWith(`.${origin}`);
-}
-const MAX_CNAME_CHAIN = 8;
-/** A recursive resolver follows a CNAME into other zones (es.wikipedia.org → dyna.wikimedia.org → A). */
-function chase(q, first) {
-    let msg = first;
-    for (let i = 0; i < MAX_CNAME_CHAIN; i++) {
-        const last = msg.answers?.[msg.answers.length - 1];
-        if (!last || last.type !== 'CNAME' || q.qtype === 'CNAME')
-            return msg;
-        const target = normalizeName(last.data);
-        const zone = ZONES.find((z) => inZone(target, z.origin));
-        if (!zone)
-            return msg;
-        const next = answerQuery({ ...q, qname: target }, zone.records, zone.origin);
-        if (!next.answers?.length)
-            return msg;
-        msg = { ...msg, answers: [...(msg.answers ?? []), ...next.answers] };
-    }
-    return msg;
-}
-
-return { A, ZONES, inZone, chase };
-})();
 __m["net/internet-dns.js"] = (() => {
 const { DNS_PORT } = __m["net/packets.js"];
 const { ROOT_IPS, ROOT_SERVERS } = __m["net/dns-roots.js"];
@@ -44568,7 +45018,7 @@ const { DNS_PORT } = __m["net/packets.js"];
 const { TcpLayer } = __m["net/tcp.js"];
 const { answerQuery } = __m["services/dns-service.js"];
 const { normalizeName } = __m["net/dns.js"];
-const { A, ZONES, chase, inZone } = __m["net/internet-zones.js"];
+const { A, ZONES, chase, inZone, publicRecords } = __m["net/internet-zones.js"];
 const { addDnsHierarchy } = __m["net/internet-dns.js"];
 const { formatIp, parseIp } = __m["core/ip.js"];
 const { page, h } = __m["web/html.js"];
@@ -44684,6 +45134,12 @@ function populateInternet(core) {
     addDnsHierarchy(core);
     for (const s of SITES)
         core.addHost(new WebSite(core, s));
+    // Every other public name answers too (wikipedia.org, github.com, google.es, the top 100…): one site per address.
+    for (const r of publicRecords()) {
+        const addr = ip(r.value);
+        if (!core.isVirtual(addr))
+            core.addHost(new WebSite(core, { name: r.name, ip: addr }));
+    }
 }
 
 return { GOOGLE_DNS, populateInternet };
@@ -46624,6 +47080,9 @@ class RouterPlane {
             return null;
         return resolveEgress(this.table(), dst);
     }
+    forwardsDirectedBroadcast(iface) {
+        return this.router.iface(iface)?.directedBroadcast === true;
+    }
     forward(inIface, packet) {
         if (packet.dst === BROADCAST_IP)
             return;
@@ -47539,6 +47998,11 @@ const L3_IF = [
         },
     },
     {
+        syntax: 'ip directed-broadcast',
+        run: (cli) => eachIface(cli, (c) => ({ ...c, directedBroadcast: true })),
+        noRun: (cli) => eachIface(cli, (c) => ({ ...c, directedBroadcast: undefined })),
+    },
+    {
         syntax: 'ip dhcp relay information trusted',
         run: (cli) => eachIface(cli, (c) => ({ ...c, relayInfoTrusted: true })),
         noRun: (cli) => eachIface(cli, (c) => ({ ...c, relayInfoTrusted: false })),
@@ -48200,6 +48664,8 @@ function iosPing(cli, host, target, count, source) {
         return;
     }
     const results = runPing(host.stack, host.hooks, dst, { count, timeoutMs: PING_TIMEOUT_MS, src });
+    if (host.stack.isBroadcast(dst))
+        return broadcastReplies(cli, results, count, target);
     const marks = results.map((r) => (r.kind === 'reply' ? '!' : r.kind === 'unreachable' ? 'U' : r.kind === 'ttl' ? '&' : '.')).join('');
     const ok = results.filter((r) => r.kind === 'reply').length;
     const pct = Math.round((ok * 100) / count);
@@ -48207,6 +48673,16 @@ function iosPing(cli, host, target, count, source) {
     if (src !== undefined)
         cli.out(`Packet sent with a source address of ${formatIp(src)} `);
     cli.out(marks, `Success rate is ${pct} percent (${ok}/${count})${ok > 0 ? ', round-trip min/avg/max = 0/0/1 ms' : ''}`);
+}
+/** A broadcast is answered by several devices: IOS lists each answer instead of !!!!! and the success rate. */
+function broadcastReplies(cli, results, count, target) {
+    cli.out('Type escape sequence to abort.', `Sending ${count}, 100-byte ICMP Echos to ${target}, timeout is 2 seconds:`, '');
+    results.forEach((r, i) => {
+        if (r.kind !== 'reply')
+            return cli.out('.');
+        for (const x of [r, ...(r.dups ?? [])])
+            cli.out(`Reply to request ${i} from ${formatIp(x.from)}, 1 ms`);
+    });
 }
 function showArp(stack, own, now) {
     const rows = [
@@ -48994,6 +49470,8 @@ function interfaceBlock(cfg, extra = []) {
         lines.push(` ip access-group ${cfg.accessOut} out`);
     for (const h of cfg.helpers)
         lines.push(` ip helper-address ${formatIp(h)}`);
+    if (cfg.directedBroadcast)
+        lines.push(' ip directed-broadcast');
     if (cfg.relayInfoTrusted)
         lines.push(' ip dhcp relay information trusted');
     if (cfg.nat)
@@ -50034,6 +50512,7 @@ const { cleanOrigin, validateOrigin } = __m["services/dns-names.js"];
 const { MAX_ZONES, defaultSoa, recordTypesFor, validateZone, zonesFromLegacy } = __m["services/dns-zones.js"];
 const { validateRecord } = __m["services/dns-service.js"];
 const { normalizeName } = __m["net/dns.js"];
+const { publicNamesFromJson, publicNamesToJson } = __m["services/dns-rpz.js"];
 const MAX_ITEMS = 500;
 const MAX_TEXT = 200_000;
 const RECORD_TYPES = new Set(['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR']);
@@ -50051,7 +50530,7 @@ function servicesToJson(s) {
             })),
             interfaces: s.dhcp.interfaces,
         },
-        dns: { ...s.dns, ...(s.dns.forwarders?.length ? { forwarders: s.dns.forwarders.map(formatIp) } : { forwarders: undefined }) },
+        dns: { ...s.dns, ...(s.dns.forwarders?.length ? { forwarders: s.dns.forwarders.map(formatIp) } : { forwarders: undefined }), publicNames: publicNamesToJson(s.dns.publicNames) },
         http: { enabled: s.http.enabled, files: [...s.http.files] },
         mail: s.mail,
         ssh: s.ssh,
@@ -50236,6 +50715,7 @@ function dnsFromJson(n) {
         ...(fwd.length || n.forwardOnly !== undefined ? { forwardOnly: n.forwardOnly !== false } : {}),
         ...(n.allowRecursion !== undefined ? { allowRecursion: n.allowRecursion === 'any' ? 'any' : 'localnets' } : {}),
         ...(n.listenOn !== undefined ? { listenOn: ifaceList(n.listenOn) } : {}),
+        ...(n.publicNames !== undefined ? { publicNames: publicNamesFromJson(n.publicNames, t('load.publicNames')) } : {}),
     };
 }
 function servicesFromJson(v) {
@@ -50635,6 +51115,30 @@ function logPage(server) {
 }
 
 return { setupPage, dhcpPage, webPage, mailPage, sshPage, adminPage, statusPage, logPage };
+})();
+__m["web/admin-rpz.js"] = (() => {
+/** «Nombres públicos» card of the DNS page: the response policy zone switch, its file and the initial list. */
+const { t } = __m["i18n/t.js"];
+const { h } = __m["web/html.js"];
+const { buttons, cards, check, form, section } = __m["web/admin-layout.js"];
+const { rpzEntries, rpzFile, setPublicNames } = __m["services/dns-rpz.js"];
+const FILE_ROWS = 14;
+function rpzForm(server, base) {
+    const dns = server.services.dns;
+    return h('div', {}, form(base, 'dns', 'dns-rpz', cards(section(t('rpz.title'), t('rpz.desc'), check('enabled', dns.publicNames?.enabled === true, t('rpz.enable')), dns.recursion === true ? null : h('p', { class: 'web-adm-help' }, t('rpz.needsRecursion')), h('p', { class: 'web-adm-help' }, t('rpz.file', { count: rpzEntries(dns).length })), h('textarea', { name: 'list', rows: FILE_ROWS, class: 'web-adm-mono web-adm-file', spellcheck: 'false', wrap: 'off' }, rpzFile(dns)))), buttons(t('rpz.apply'))), form(base, 'dns', 'dns-rpz-initial', h('input', { type: 'hidden', name: 'enabled', value: dns.publicNames?.enabled ? '1' : '0' }), buttons(t('rpz.initial'))));
+}
+/** dns-rpz: switch and list together (a bad list changes nothing); dns-rpz-initial: the initial list back. */
+function rpzAction(server, f, initial) {
+    const enabled = f.get('enabled') === '1';
+    const next = setPublicNames(server.services.dns, enabled, initial ? 'initial' : f.get('list') ?? '');
+    if ('error' in next)
+        return { error: next.error };
+    server.setServices({ ...server.services, dns: next });
+    server.dns.forwarder.flush();
+    return { ok: t(initial ? 'rpz.restored' : 'rpz.saved') };
+}
+
+return { rpzForm, rpzAction };
 })();
 __m["web/admin-firewall.js"] = (() => {
 /**
@@ -51132,6 +51636,7 @@ __m["web/admin-actions.js"] = (() => {
 /** Form actions of the Server management GUI: each one validates and applies to the live server. */
 const { t } = __m["i18n/t.js"];
 const { listenAction } = __m["web/admin-listen.js"];
+const { rpzAction } = __m["web/admin-rpz.js"];
 const { securityAction } = __m["web/admin-firewall-actions.js"];
 const { vpnAction } = __m["web/admin-vpn.js"];
 const { validHostname } = __m["devices/host.js"];
@@ -51266,6 +51771,8 @@ function runAction(server, pageId, f) {
         case 'dhcp': return set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, enabled: on(f, 'enabled') } }));
         case 'dhcp-listen': return listenAction(server, 'dhcp', f);
         case 'dns-listen': return listenAction(server, 'dns', f);
+        case 'dns-rpz': return rpzAction(server, f, false);
+        case 'dns-rpz-initial': return rpzAction(server, f, true);
         case 'pool-add': return addPool(server, f);
         case 'pool-del': return set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, pools: s.dhcp.pools.filter((p) => p.name !== f.get('key')) } }));
         case 'res-add': return addReservation(server, f);
@@ -51355,6 +51862,7 @@ const { zonesTab } = __m["web/admin-dns-zones.js"];
 const { dnsLink, keepMode, modeOf } = __m["web/admin-dns-links.js"];
 const { dnsSide } = __m["web/admin-dns-side.js"];
 const { listenForm } = __m["web/admin-listen.js"];
+const { rpzForm } = __m["web/admin-rpz.js"];
 function modeCard(server, mode) {
     const state = dnsModes(server.services.dns)[mode];
     const uses = tDynamic(`dnsm.${mode}.uses`).split('|').map((u) => h('li', {}, u));
@@ -51408,7 +51916,7 @@ function specific(server, base, q, mode) {
 }
 function dnsPage(server, base, q) {
     const mode = modeOf(q);
-    return h('div', { class: 'web-adm-dns' }, h('div', { class: 'web-adm-dns-main' }, modesForm(server, base, mode), listenForm(server, base, 'dns'), specific(server, base, q, mode)), dnsSide(server, base, q, mode));
+    return h('div', { class: 'web-adm-dns' }, h('div', { class: 'web-adm-dns-main' }, modesForm(server, base, mode), listenForm(server, base, 'dns'), specific(server, base, q, mode), rpzForm(server, base)), dnsSide(server, base, q, mode));
 }
 
 return { dnsPage };

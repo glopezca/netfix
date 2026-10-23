@@ -9,6 +9,7 @@ import type { ListenChoice } from './listen.ts';
 import type { ServedZone } from './dns-zones.ts';
 import { NAMED_OPTIONS, namedOptions } from './named-options.ts';
 import { ROOT_HINTS_FILE, rootHints } from '../net/dns-roots.ts';
+import { RPZ_FILE, RPZ_ZONE, rpzFile } from './dns-rpz.ts';
 
 export const NAMED_LOCAL = '/etc/bind/named.conf.local';
 const NAMED_DEFAULT_ZONES = '/etc/bind/named.conf.default-zones';
@@ -47,9 +48,19 @@ function zoneStanza(s: ServedZone): string {
 
 function namedLocal(dns: DnsSettings, zones: readonly ServedZone[]): string {
   const head = '//\n// Zonas de este servidor (modo autoritativo). Las genera Netfix: Servicios → DNS.\n//\n\n';
-  if (dns.authoritative === false) return `${head}// Modo autoritativo desactivado: no se carga ninguna zona (se conservan en Netfix).\n`;
-  return head + zones.map(zoneStanza).join('\n');
+  if (dns.authoritative === false) return `${head}// Modo autoritativo desactivado: no se carga ninguna zona (se conservan en Netfix).\n${dns.publicNames?.enabled ? RPZ_STANZA : ''}`;
+  return head + zones.map(zoneStanza).join('\n') + (dns.publicNames?.enabled ? RPZ_STANZA : '');
 }
+
+/** The policy zone is loaded whatever the authoritative mode: it is not served (allow-query none), only applied. */
+const RPZ_STANZA = `
+// Nombres públicos (Servicios → DNS → Nombres públicos): zona de política de respuesta
+zone "${RPZ_ZONE}" {
+\ttype master;
+\tfile "${RPZ_FILE}";
+\tallow-query { none; };
+};
+`;
 
 const DEFAULT_ZONES = `// prime the server with knowledge of the root servers
 // (iterative resolution starts here when recursion is on and it is not "forward only")
@@ -93,6 +104,7 @@ export function bindFiles(dns: DnsSettings, choices: readonly ListenChoice[]): M
     [NAMED_LOCAL, namedLocal(dns, zones)],
     [NAMED_DEFAULT_ZONES, DEFAULT_ZONES],
     [ROOT_HINTS_FILE, rootHints()],
+    [RPZ_FILE, rpzFile(dns)],
   ]);
   for (const z of zones) files.set(zoneFilePath(z.zone.name), zoneFile(z.zone, z.auto));
   return files;

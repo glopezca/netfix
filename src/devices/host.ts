@@ -94,6 +94,8 @@ export abstract class Host implements NetDevice, StackHost {
 
   readonly dropOnArpMiss = false;
   readonly ttl: number = PC_TTL;
+  /** Windows never answers an echo to a broadcast address; Linux only with icmp_echo_ignore_broadcasts=0. */
+  ignoresBroadcastEcho = (): boolean => this.os === 'windows' || this.kernel.sysctl.enabled('net.ipv4.icmp_echo_ignore_broadcasts');
 
   constructor(id: string, name: string, clock: SimClock, seed: number) {
     this.id = id;

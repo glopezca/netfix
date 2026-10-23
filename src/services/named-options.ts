@@ -46,6 +46,7 @@ export function namedOptions(s: DnsSettings, choices: readonly ListenChoice[] = 
     '',
     '\t// Interfaces de escucha: direcciones en las que atiende consultas (any = todas)',
     listenOnLine(s, choices),
+    ...(s.publicNames?.enabled ? ['', '\t// Nombres públicos: respuestas locales de /etc/bind/db.rpz.publicos (consultas recursivas)', '\tresponse-policy { zone "rpz.publicos"; };'] : []),
     '\tdnssec-validation no;',
     '\tlisten-on-v6 { any; };',
     '};',
@@ -129,5 +130,6 @@ export function parseNamedOptions(text: string, current: DnsSettings, choices: r
     maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(seconds(ttl), MAX_TTL),
     allowRecursion: /\bany\b/.test(allow) ? 'any' : 'localnets',
     listenOn: listenOnOf(LISTEN_ON.exec(clean)?.[1] ?? null, current, choices),
+    publicNames: { ...current.publicNames, enabled: /\bresponse-policy\s*\{[^{}]*\bzone\s+"rpz\.publicos"/.test(clean) },
   };
 }

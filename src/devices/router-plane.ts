@@ -94,6 +94,10 @@ export class RouterPlane implements StackHost {
     return resolveEgress(this.table(), dst);
   }
 
+  forwardsDirectedBroadcast(iface: string): boolean {
+    return this.router.iface(iface)?.directedBroadcast === true;
+  }
+
   forward(inIface: string, packet: IpPacket): void {
     if (packet.dst === BROADCAST_IP) return;
     const src = this.l3Iface(inIface)?.addrs[0]?.ip ?? 0;

@@ -66,6 +66,8 @@ export interface IfaceConfig {
   readonly speed?: string;
   readonly duplex?: string;
   readonly relayInfoTrusted: boolean;
+  /** `ip directed-broadcast`: a directed broadcast for this subnet goes out as a link broadcast (off since IOS 12.0). */
+  readonly directedBroadcast?: boolean;
   /** `ip nat inside` / `ip nat outside`. */
   readonly nat?: 'inside' | 'outside';
   /** `ip access-group ACL in|out`. */

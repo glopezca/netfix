@@ -1,6 +1,7 @@
 /** Form actions of the Server management GUI: each one validates and applies to the live server. */
 import { t } from '../i18n/t.ts';
 import { listenAction } from './admin-listen.ts';
+import { rpzAction } from './admin-rpz.ts';
 import { securityAction } from './admin-firewall-actions.ts';
 import { vpnAction } from './admin-vpn.ts';
 import type { Server } from '../devices/server.ts';
@@ -138,6 +139,8 @@ export function runAction(server: Server, pageId: string, f: Fields): Outcome & 
     case 'dhcp': return set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, enabled: on(f, 'enabled') } }));
     case 'dhcp-listen': return listenAction(server, 'dhcp', f);
     case 'dns-listen': return listenAction(server, 'dns', f);
+    case 'dns-rpz': return rpzAction(server, f, false);
+    case 'dns-rpz-initial': return rpzAction(server, f, true);
     case 'pool-add': return addPool(server, f);
     case 'pool-del': return set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, pools: s.dhcp.pools.filter((p) => p.name !== f.get('key')) } }));
     case 'res-add': return addReservation(server, f);

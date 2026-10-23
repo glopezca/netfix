@@ -2,10 +2,13 @@
 import type { IpStack, EchoResult } from './ipstack.ts';
 import type { DeviceHooks } from '../devices/hooks.ts';
 
-export type PingOutcome = EchoResult | { kind: 'timeout' } | { kind: 'noroute' };
+/** A reply may come with others for the same request (a broadcast is answered by every device that answers it). */
+export type PingOutcome = (EchoResult & { readonly dups?: readonly EchoResult[] }) | { kind: 'timeout' } | { kind: 'noroute' };
 
 let pingId = 1;
 const INTER_PACKET_MS = 1;
+/** After the first answer, how long the other devices of a broadcast have to answer the same request. */
+const DUP_WINDOW_MS = 5;
 
 export function runPing(
   stack: IpStack,
@@ -16,15 +19,18 @@ export function runPing(
   const id = pingId++ & 0xffff;
   const results: PingOutcome[] = [];
   for (let seq = 0; seq < opts.count; seq++) {
-    let result: PingOutcome | undefined;
-    const sent = stack.echo(dst, id, seq, opts.src, (r) => { result = r; });
+    let result: EchoResult | undefined;
+    const dups: EchoResult[] = [];
+    const sent = stack.echo(dst, id, seq, opts.src, (r) => { result = r; }, undefined, (r) => { if (r.kind === 'reply') dups.push(r); });
     if (!sent) {
       results.push({ kind: 'noroute' });
       continue;
     }
     hooks.runUntil(() => result !== undefined, opts.timeoutMs);
-    results.push(result ?? { kind: 'timeout' });
-    hooks.runUntil(() => false, INTER_PACKET_MS);
+    hooks.runUntil(() => false, result ? DUP_WINDOW_MS : INTER_PACKET_MS);
+    const answer: EchoResult | undefined = result;
+    results.push(answer ? (dups.length ? { ...answer, dups } : answer) : { kind: 'timeout' });
   }
+  stack.endEcho(id);
   return results;
 }

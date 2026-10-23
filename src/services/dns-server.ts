@@ -8,6 +8,8 @@ import { DEFAULT_MAX_CACHE_TTL, iterates } from './named-options.ts';
 import { ROOT_IPS } from '../net/dns-roots.ts';
 import { DnsForwarder, recursionAllowed } from './dns-forwarder.ts';
 import { formatIp } from '../core/ip.ts';
+import { rpzAnswer } from './dns-rpz.ts';
+import { normalizeName } from '../net/dns.ts';
 
 export interface DnsHost {
   readonly services: { readonly dns: DnsSettings };
@@ -54,6 +56,12 @@ export class ServerDns {
     const recursion = s.recursion === true && recursionAllowed(s.allowRecursion ?? 'localnets', src, this.host.config);
     const answer = answerFromZones(q, servedZones(s));
     const head = `client ${formatIp(src)}#${sport} (${q.qname}): query: ${q.qname} IN ${q.qtype} ${q.rd === false ? '-' : '+'} (${formatIp(dst)})`;
+    const policy = answer.rcode === 'REFUSED' && recursion && q.rd !== false ? rpzAnswer(s, q, normalizeName(q.qname)) : undefined;
+    if (policy) {
+      this.host.log('dns', `client ${formatIp(src)}#${sport} (${policy.msg.qname}): rpz QNAME Local-Data rewrite ${policy.msg.qname}/${q.qtype}/IN via ${policy.via}`);
+      this.host.sendUdp(src, DNS_PORT, sport, { dns: policy.msg });
+      return;
+    }
     if (answer.rcode === 'REFUSED' && recursion && q.rd !== false) {
       const iterate = iterates(s);
       this.host.log('dns', `${head} → ${forwarders.length ? `forwarding to ${forwarders.map(formatIp).join(', ')}${iterate ? ' (then iterative)' : ''}` : 'iterative resolution'}`);

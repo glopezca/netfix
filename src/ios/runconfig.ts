@@ -64,6 +64,7 @@ export function interfaceBlock(cfg: IfaceConfig, extra: readonly string[] = []):
   if (cfg.accessIn) lines.push(` ip access-group ${cfg.accessIn} in`);
   if (cfg.accessOut) lines.push(` ip access-group ${cfg.accessOut} out`);
   for (const h of cfg.helpers) lines.push(` ip helper-address ${formatIp(h)}`);
+  if (cfg.directedBroadcast) lines.push(' ip directed-broadcast');
   if (cfg.relayInfoTrusted) lines.push(' ip dhcp relay information trusted');
   if (cfg.nat) lines.push(` ip nat ${cfg.nat}`);
   lines.push(...extra);

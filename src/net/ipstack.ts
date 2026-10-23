@@ -36,6 +36,11 @@ export interface StackHost {
   output?(iface: string, packet: IpPacket): IpPacket | null;
   /** Every packet leaving an interface, generated or forwarded (netfilter postrouting); null = dropped. */
   postrouting?(iface: string, packet: IpPacket): IpPacket | null;
+  /** An echo to a broadcast address is not answered (Linux icmp_echo_ignore_broadcasts, Windows); IOS answers. */
+  ignoresBroadcastEcho?(): boolean;
+  /** A directed broadcast for this interface's subnet, arriving from elsewhere, goes out as a link broadcast
+   * (IOS `ip directed-broadcast`, Linux bc_forwarding); off by default. */
+  forwardsDirectedBroadcast?(iface: string): boolean;
   /** Extra addresses answered by ARP on an interface (static NAT globals). */
   answersArp?(iface: string, ip: number): boolean;
   /** Hosts may want to drop the packet that triggered ARP (IOS behaviour). */
@@ -58,11 +63,14 @@ const LOOPBACK_NET = 127;
 const LOOPBACK_IP = 0x7f000001;
 const LOOPBACK_MAC = '000000000000';
 const MAX_PENDING = 4;
+/** /31 and /32 have no broadcast address. */
+const MAX_PREFIX = 32;
 
 export class IpStack {
   readonly arp = new Map<number, ArpEntry>();
   private readonly pending = new Map<number, { iface: string; packets: IpPacket[] }>();
-  private readonly echoWaiters = new Map<string, (r: EchoResult) => void>();
+  /** Pending echoes; `dup` keeps listening after the first answer (a broadcast is answered by several devices). */
+  private readonly echoWaiters = new Map<string, { first: (r: EchoResult) => void; dup?: (r: EchoResult) => void; answered: boolean }>();
   private readonly host: StackHost;
   private now: () => number;
 
@@ -78,6 +86,20 @@ export class IpStack {
 
   private isLocalBroadcast(iface: L3Iface, ip: number): boolean {
     return ip === BROADCAST_IP || iface.addrs.some((a) => broadcastOf(a.ip, a.prefix) === ip);
+  }
+
+  /** The interface whose subnet has `ip` as its broadcast address (directed broadcast), if any. */
+  private directedIface(ip: number): { iface: L3Iface; addr: number } | undefined {
+    for (const iface of this.host.l3Ifaces()) {
+      const a = iface.addrs.find((x) => x.prefix < MAX_PREFIX - 1 && broadcastOf(x.ip, x.prefix) === ip);
+      if (a) return { iface, addr: a.ip };
+    }
+    return undefined;
+  }
+
+  /** 255.255.255.255 or the broadcast address of one of our subnets (what ping -b is needed for). */
+  isBroadcast(ip: number): boolean {
+    return ip === BROADCAST_IP || this.directedIface(ip) !== undefined;
   }
 
   receiveFrame(ifaceName: string, frame: Frame): void {
@@ -113,12 +135,22 @@ export class IpStack {
     if (!packet) return;
     // Martian: 127.0.0.0/8 never comes in from the wire (Linux drops it), only through lo.
     if ((packet.dst >>> 24) === LOOPBACK_NET || (packet.src >>> 24) === LOOPBACK_NET) return;
-    const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst);
+    const directed = this.directedIface(packet.dst);
+    const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst) || directed !== undefined;
     if (!forMe) {
       this.host.forward?.(iface.name, packet);
       return;
     }
+    // A directed broadcast for another of our subnets is ours too; the link only gets it if forwarding is on. One that
+    // arrived on a link of that subnet already reached it: relaying it again could bounce between routers forever.
+    if (directed && directed.iface.name !== iface.name && !this.isLocalBroadcast(iface, packet.dst)) this.relayDirected(directed.iface, packet);
     this.localIn(iface.name, packet, frame);
+  }
+
+  private relayDirected(out: L3Iface, packet: IpPacket): void {
+    if (!out.up || packet.ttl <= 1 || !this.host.forwardsDirectedBroadcast?.(out.name)) return;
+    const sent = this.host.postrouting ? this.host.postrouting(out.name, { ...packet, ttl: packet.ttl - 1 }) : { ...packet, ttl: packet.ttl - 1 };
+    if (sent) this.emitIp(out.name, BROADCAST_MAC, sent);
   }
 
   /** Local delivery: input hook, then ICMP echo handling or the host's protocols. */
@@ -126,7 +158,7 @@ export class IpStack {
     const packet = this.host.input ? this.host.input(ifaceName, arrived) : arrived;
     if (!packet) return;
     if (packet.icmp) {
-      this.onIcmp(packet, packet.icmp);
+      this.onIcmp(ifaceName, packet, packet.icmp);
       return;
     }
     this.host.deliver(ifaceName, packet, frame);
@@ -137,21 +169,38 @@ export class IpStack {
     return this.host.output ? this.host.output(iface, packet) : packet;
   }
 
-  private onIcmp(packet: IpPacket, icmp: IcmpMessage): void {
+  private onIcmp(ifaceName: string, packet: IpPacket, icmp: IcmpMessage): void {
     if (icmp.type === 'echo-request') {
-      this.send({ src: packet.dst, dst: packet.src, ttl: this.host.ttl, protocol: 'icmp', icmp: { ...icmp, type: 'echo-reply' } });
+      const src = this.echoSource(ifaceName, packet.dst);
+      if (src !== undefined) this.send({ src, dst: packet.src, ttl: this.host.ttl, protocol: 'icmp', icmp: { ...icmp, type: 'echo-reply' } });
       return;
     }
-    const waiter = this.echoWaiters.get(`${icmp.id}:${icmp.seq}`);
+    const key = `${icmp.id}:${icmp.seq}`;
+    const waiter = this.echoWaiters.get(key);
     if (!waiter) return;
-    this.echoWaiters.delete(`${icmp.id}:${icmp.seq}`);
-    if (icmp.type === 'echo-reply') waiter({ kind: 'reply', from: packet.src, ttl: packet.ttl });
-    else if (icmp.type === 'unreachable') waiter({ kind: 'unreachable', from: packet.src });
-    else waiter({ kind: 'ttl', from: packet.src });
+    const result: EchoResult = icmp.type === 'echo-reply' ? { kind: 'reply', from: packet.src, ttl: packet.ttl }
+      : icmp.type === 'unreachable' ? { kind: 'unreachable', from: packet.src } : { kind: 'ttl', from: packet.src };
+    if (waiter.answered) return waiter.dup?.(result);
+    waiter.answered = true;
+    if (!waiter.dup) this.echoWaiters.delete(key);
+    waiter.first(result);
+  }
+
+  /** Who answers an echo: the address it was sent to; for a broadcast, our own address on that subnet (or none). */
+  private echoSource(ifaceName: string, dst: number): number | undefined {
+    const directed = this.directedIface(dst);
+    if (dst !== BROADCAST_IP && !directed) return dst;
+    if (this.host.ignoresBroadcastEcho?.()) return undefined;
+    return directed?.addr ?? this.host.l3Iface(ifaceName)?.addrs[0]?.ip;
+  }
+
+  /** Stops listening for the answers of a ping (`id`), duplicates included. */
+  endEcho(id: number): void {
+    for (const key of this.echoWaiters.keys()) if (key.startsWith(`${id}:`)) this.echoWaiters.delete(key);
   }
 
   /** Sends an ICMP echo request; the callback fires on reply/error (never on timeout). */
-  echo(dst: number, id: number, seq: number, src: number | undefined, onResult: (r: EchoResult) => void, ttl = this.host.ttl): boolean {
+  echo(dst: number, id: number, seq: number, src: number | undefined, onResult: (r: EchoResult) => void, ttl = this.host.ttl, onDup?: (r: EchoResult) => void): boolean {
     if (this.isMine(dst)) {
       this.host.schedule(0, () => onResult({ kind: 'reply', from: dst, ttl: this.host.ttl }));
       return true;
@@ -160,7 +209,7 @@ export class IpStack {
     if (!egress) return false;
     const srcIp = src ?? this.host.l3Iface(egress.iface)?.addrs[0]?.ip;
     if (srcIp === undefined) return false;
-    this.echoWaiters.set(`${id}:${seq}`, onResult);
+    this.echoWaiters.set(`${id}:${seq}`, { first: onResult, dup: onDup, answered: false });
     const out = this.outbound(egress.iface, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
     if (out) this.sendVia(egress, out);
     return true;

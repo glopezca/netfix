@@ -139,6 +139,7 @@ export const HELP: HelpMap = {
   description: 'Interface specific description',
   shutdown: 'Shutdown the selected interface',
   'helper-address': 'Specify a destination address for UDP broadcasts',
+  'directed-broadcast': 'Enable forwarding of directed broadcasts',
   encapsulation: 'Set encapsulation type for an interface',
   dot1q: 'IEEE 802.1Q Virtual LAN',
   duplex: 'Configure duplex operation.',

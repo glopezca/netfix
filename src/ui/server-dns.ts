@@ -16,6 +16,7 @@ import { DEFAULT_MAX_CACHE_TTL } from '../services/named-options.ts';
 import { ROOT_SERVERS } from '../net/dns-roots.ts';
 import { livePanel } from './server-dhcp-dns.ts';
 import { listenBlock } from './listen-block.ts';
+import { publicNamesBlock } from './dns-public-names.ts';
 import { authoritativeBody, setAuthoritativeMode } from './server-dns-zones.ts';
 import type { ZoneUi } from './server-dns-zones.ts';
 
@@ -100,6 +101,7 @@ export function dnsPanel(server: Server, app: AfterChange): HTMLElement {
       modeBlock('authoritative', dnsModes(s).authoritative, (on) => setAuthoritativeMode(server, after, msg, on), authoritativeBody(server, after, msg, ui)),
       recursiveBlock(server, after, msg),
       iterativeBlock(server, after, msg),
+      publicNamesBlock(server, after, msg),
     ];
   });
 }

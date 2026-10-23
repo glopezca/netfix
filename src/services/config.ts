@@ -127,6 +127,8 @@ export interface DnsSettings {
   readonly allowRecursion?: 'localnets' | 'any';
   /** listen-on as interfaces (eth0…, lo); undefined = any. */
   readonly listenOn?: readonly string[];
+  /** «Nombres públicos»: response policy zone rpz.publicos (services/dns-rpz.ts). */
+  readonly publicNames?: { readonly enabled: boolean; readonly entries?: readonly { readonly name: string; readonly ip: number; readonly ttl: number }[] };
 }
 
 export interface ServerServices {

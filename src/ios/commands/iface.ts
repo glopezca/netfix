@@ -119,6 +119,11 @@ export const L3_IF: readonly Def[] = [
     },
   },
   {
+    syntax: 'ip directed-broadcast',
+    run: (cli) => eachIface(cli, (c) => ({ ...c, directedBroadcast: true })),
+    noRun: (cli) => eachIface(cli, (c) => ({ ...c, directedBroadcast: undefined })),
+  },
+  {
     syntax: 'ip dhcp relay information trusted',
     run: (cli) => eachIface(cli, (c) => ({ ...c, relayInfoTrusted: true })),
     noRun: (cli) => eachIface(cli, (c) => ({ ...c, relayInfoTrusted: false })),

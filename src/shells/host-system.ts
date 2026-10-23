@@ -2,6 +2,7 @@
 import { listenChoices } from '../services/listen.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { NAMED_OPTIONS, parseNamedOptions } from '../services/named-options.ts';
+import { RPZ_FILE, setPublicNames } from '../services/dns-rpz.ts';
 import { NETPLAN_FILE, netplanFileContent, writeNetplanFile } from './netplan.ts';
 import { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } from '../services/sshd-config.ts';
 import { hostKeyFiles } from '../services/ssh-hostkeys.ts';
@@ -94,6 +95,13 @@ const WRITERS: Readonly<Record<string, (host: Host, content: string) => void>> =
     if (!srv) return;
     const next = parseNamedOptions(content, srv.services.dns, listenChoices(srv, true));
     if ('error' in next) srv.log('dns', `named-checkconf: ${next.error}`);
+    else srv.setServices({ ...srv.services, dns: next });
+  },
+  [RPZ_FILE]: (host, content) => {
+    const srv = asServer(host);
+    if (!srv) return;
+    const next = setPublicNames(srv.services.dns, srv.services.dns.publicNames?.enabled === true, content);
+    if ('error' in next) srv.log('dns', next.error);
     else srv.setServices({ ...srv.services, dns: next });
   },
   '/etc/hostname': (host, content) => {

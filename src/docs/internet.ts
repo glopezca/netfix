@@ -42,6 +42,9 @@ export const INTERNET_DOCS: DocGroup = {
           ['example.com', '93.184.215.14', 'Web de prueba.'],
           ['ifconfig.me', '34.160.111.145', 'Devuelve solo tu IP pública en texto (curl ifconfig.me).'],
         ]),
+        h('Nombres públicos'),
+        p('Además conoce unos 120 nombres públicos: los anteriores, google.es, educa.jcyl.es, juandecolonia.es y los 100 dominios más visitados del mundo (Similarweb y Semrush, 2026), sin webs para adultos ni de apuestas. Cada uno tiene su www, se resuelve por 8.8.8.8 y por iteración desde la raíz, y su dirección responde a ping y a HTTP. Las direcciones son representativas de las reales: las webs grandes responden desde muchas direcciones que cambian.'),
+        p('El servidor DNS de un Server o de un router Linux puede ofrecer la misma lista sin salida a Internet: Servicios → DNS → Nombres públicos.'),
         h('Dominios registrados en un ISP'),
         p('En la pestaña ISP de una nube puedes registrar dominios. Los DNS públicos los resuelven para todas las nubes:'),
         table(['Tipo', 'Respuesta de 8.8.8.8'], [
@@ -104,6 +107,27 @@ export const INTERNET_DOCS: DocGroup = {
           ['/level/15/dm', 'Device Manager: panel frontal, tabla de interfaces y ajustes rápidos de puerto (descripción, estado, VLAN de acceso, IP).'],
         ]),
         note('La autenticación es HTTP Basic (realm level_15_access). Los fallos se registran como %SEC_LOGIN-4-LOGIN_FAILED y los cambios como %SYS-5-CONFIG_I … on vty0 (IP del PC). También funciona curl -u usuario:clave.'),
+      ],
+    },
+    {
+      id: 'red-broadcast',
+      title: 'Broadcast: a todos los equipos de la red',
+      summary: 'Broadcast de enlace e IP (255.255.255.255 y dirigido), quién responde a un ping a broadcast y quién lo reenvía.',
+      blocks: [
+        p('Un broadcast llega a todos los equipos del segmento: el switch lo inunda por todos los puertos de su VLAN y ningún router lo pasa a otra red. Lo usan ARP y DHCP (MAC ff:ff:ff:ff:ff:ff) y se puede probar a nivel IP con ping.'),
+        table(['Destino', 'Qué es', 'Llega a'], [
+          ['255.255.255.255', 'Broadcast limitado', 'La red local del emisor; ningún router lo reenvía.'],
+          ['192.168.1.255 (en una /24)', 'Broadcast dirigido de la subred', 'Esa subred. Desde otra red, el router responde él mismo y solo lo reenvía si se activa (abajo).'],
+        ]),
+        table(['Equipo', '¿Responde a un ping a broadcast?', 'Cómo cambiarlo'], [
+          ['Router y switch Cisco', 'Sí, con su propia dirección', '—'],
+          ['GNU/Linux (Server, router Linux, PC en modo Linux)', 'No (Ubuntu: net.ipv4.icmp_echo_ignore_broadcasts = 1)', 'sudo sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=0'],
+          ['Windows (PC por defecto)', 'No', '—'],
+        ]),
+        code('$ ping 192.168.1.255\nping: Do you want to ping broadcast? Then -b. If not, check your local firewall rules\n$ ping -b -c 2 192.168.1.255\nWARNING: pinging broadcast address\nPING 192.168.1.255 (192.168.1.255) 56(84) bytes of data.\n64 bytes from 192.168.1.1: icmp_seq=1 ttl=255 time=0.400 ms\n64 bytes from 192.168.1.20: icmp_seq=1 ttl=64 time=0.400 ms (DUP!)\n…\n2 packets transmitted, 2 received, +2 duplicates, 0% packet loss\n\nRouter# ping 192.168.1.255\nReply to request 0 from 192.168.1.20, 1 ms'),
+        h('Reenvío de broadcast dirigido'),
+        p('Desactivado por defecto, porque permite ataques de amplificación (smurf). En un router Cisco se activa en la interfaz de salida con ip directed-broadcast (no ip directed-broadcast es lo normal desde IOS 12.0); en el router Linux, con sudo sysctl -w net.ipv4.conf.all.bc_forwarding=1 y el reenvío activado.'),
+        note('En modo simulación se ve una sola trama con destino ff:ff:ff:ff:ff:ff que el switch copia a cada puerto, y después una respuesta por cada equipo que contesta.'),
       ],
     },
     {

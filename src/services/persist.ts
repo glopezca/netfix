@@ -11,6 +11,7 @@ import { cleanOrigin, validateOrigin } from './dns-names.ts';
 import { MAX_ZONES, defaultSoa, recordTypesFor, validateZone, zonesFromLegacy } from './dns-zones.ts';
 import { validateRecord } from './dns-service.ts';
 import { normalizeName } from '../net/dns.ts';
+import { publicNamesFromJson, publicNamesToJson } from './dns-rpz.ts';
 
 type Json = Record<string, unknown>;
 
@@ -21,7 +22,7 @@ const MAX_TIMER = 2_147_483_647;
 
 export interface ServicesJson {
   readonly dhcp: { enabled: boolean; pools: Json[]; interfaces?: readonly string[] };
-  readonly dns: Omit<DnsSettings, 'forwarders'> & { forwarders?: string[] };
+  readonly dns: Omit<DnsSettings, 'forwarders' | 'publicNames'> & { forwarders?: string[]; publicNames?: unknown };
   readonly http: { enabled: boolean; files: WebFile[] };
   readonly mail: ServerServices['mail'];
   readonly ssh: ServerServices['ssh'];
@@ -43,7 +44,7 @@ export function servicesToJson(s: ServerServices): ServicesJson {
       })),
       interfaces: s.dhcp.interfaces,
     },
-    dns: { ...s.dns, ...(s.dns.forwarders?.length ? { forwarders: s.dns.forwarders.map(formatIp) } : { forwarders: undefined }) },
+    dns: { ...s.dns, ...(s.dns.forwarders?.length ? { forwarders: s.dns.forwarders.map(formatIp) } : { forwarders: undefined }), publicNames: publicNamesToJson(s.dns.publicNames) },
     http: { enabled: s.http.enabled, files: [...s.http.files] },
     mail: s.mail,
     ssh: s.ssh,
@@ -224,6 +225,7 @@ function dnsFromJson(n: Json): DnsSettings {
     ...(fwd.length || n.forwardOnly !== undefined ? { forwardOnly: n.forwardOnly !== false } : {}),
     ...(n.allowRecursion !== undefined ? { allowRecursion: n.allowRecursion === 'any' ? 'any' as const : 'localnets' as const } : {}),
     ...(n.listenOn !== undefined ? { listenOn: ifaceList(n.listenOn) } : {}),
+    ...(n.publicNames !== undefined ? { publicNames: publicNamesFromJson(n.publicNames, t('load.publicNames')) } : {}),
   };
 }
 

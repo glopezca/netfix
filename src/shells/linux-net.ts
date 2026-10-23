@@ -5,6 +5,7 @@ import { resolveHost, dnsQuery, dnsSearch } from './net-tools.ts';
 import { linuxMac } from './linux-files.ts';
 import { digOutput, nslookupOutput, hostOutput } from './dns-format.ts';
 import { runPing } from '../net/ping.ts';
+import type { PingOutcome } from '../net/ping.ts';
 import { reverseName } from '../net/dns.ts';
 import type { DnsType } from '../net/packets.ts';
 import { formatIp, broadcastOf, parseIp } from '../core/ip.ts';
@@ -92,25 +93,45 @@ function pingCount(args: readonly string[]): { count: number; target?: string } 
   return { count, target };
 }
 
+const BROADCAST_HINT = 'ping: Do you want to ping broadcast? Then -b. If not, check your local firewall rules\n';
+
+/** -b among the options (alone or joined, as in -bc… is not: -c takes a value). */
+const wantsBroadcast = (args: readonly string[]): boolean => args.some((a) => /^-[A-Za-z]*b[A-Za-z]*$/.test(a) && !PING_WITH_VALUE.has(a.slice(0, 2)));
+
+/** One line per answer: the device that answered (its own address on a broadcast), repeated ones with (DUP!). */
+function replyLines(results: readonly PingOutcome[], who: (from: number) => string): string[] {
+  return results.flatMap((x, i) => {
+    const seq = i + 1;
+    if (x.kind === 'reply') {
+      const line = (r: { from: number; ttl?: number }, dup: string): string => `64 bytes from ${who(r.from)}: icmp_seq=${seq} ttl=${r.ttl ?? x.ttl} time=0.${400 + i * 37} ms${dup}`;
+      return [line(x, ''), ...(x.dups ?? []).map((d) => line(d, ' (DUP!)'))];
+    }
+    if (x.kind === 'unreachable') return [`From ${formatIp(x.from)} icmp_seq=${seq} Destination Host Unreachable`];
+    if (x.kind === 'ttl') return [`From ${formatIp(x.from)} icmp_seq=${seq} Time to live exceeded`];
+    return [];
+  });
+}
+
 export function ping(host: Host) {
   return (ctx: Ctx): number => {
-    const { count, target } = pingCount(ctx.argv.slice(1));
+    const args = ctx.argv.slice(1);
+    const { count, target } = pingCount(args);
     if (!target) { ctx.err('ping: usage error: Destination address required\n'); return 1; }
     const r = resolveHost(host, target);
     if (r.kind === 'error') { ctx.err(`ping: ${target}: ${r.reason === 'nxdomain' ? 'Name or service not known' : 'Temporary failure in name resolution'}\n`); return 2; }
+    const broadcast = host.stack.isBroadcast(r.ip);
+    if (broadcast && !wantsBroadcast(args)) { ctx.err(BROADCAST_HINT); return 2; }
+    if (broadcast) ctx.err('WARNING: pinging broadcast address\n');
     const results = runPing(host.stack, host.hooks, r.ip, { count, timeoutMs: PING_TIMEOUT_MS });
     if (results.every((x) => x.kind === 'noroute')) { ctx.err('ping: connect: Network is unreachable\n'); return 2; }
     const addr = formatIp(r.ip);
     // The name as resolved (www → www.empresa.lan with the search domain), as ping shows it.
     const shown = r.viaDns ? r.name : target;
-    const out = [`PING ${shown} (${addr}) 56(84) bytes of data.`];
-    results.forEach((x, i) => {
-      if (x.kind === 'reply') out.push(`64 bytes from ${parseIp(target) === null ? `${shown} (${addr})` : addr}: icmp_seq=${i + 1} ttl=${x.ttl} time=0.${400 + i * 37} ms`);
-      else if (x.kind === 'unreachable') out.push(`From ${formatIp(x.from)} icmp_seq=${i + 1} Destination Host Unreachable`);
-      else if (x.kind === 'ttl') out.push(`From ${formatIp(x.from)} icmp_seq=${i + 1} Time to live exceeded`);
-    });
+    const byName = parseIp(target) === null;
+    const out = [`PING ${shown} (${addr}) 56(84) bytes of data.`, ...replyLines(results, (from) => (byName && from === r.ip ? `${shown} (${addr})` : formatIp(from)))];
     const ok = results.filter((x) => x.kind === 'reply').length;
-    out.push('', `--- ${shown} ping statistics ---`, `${count} packets transmitted, ${ok} received, ${Math.round(((count - ok) * 100) / count)}% packet loss, time ${(count - 1) * 1001}ms`);
+    const dups = results.reduce((n, x) => n + (x.kind === 'reply' ? x.dups?.length ?? 0 : 0), 0);
+    out.push('', `--- ${shown} ping statistics ---`, `${count} packets transmitted, ${ok} received, ${dups ? `+${dups} duplicates, ` : ''}${Math.round(((count - ok) * 100) / count)}% packet loss, time ${(count - 1) * 1001}ms`);
     if (ok) out.push('rtt min/avg/max/mdev = 0.400/0.455/0.511/0.040 ms');
     lines(ctx, out);
     return ok ? 0 : 1;

@@ -525,3 +525,34 @@ Linux, el clic que quita el foco ya no se pierde al aplicar, el hostname puesto 
 security-reviewer (opus): sin críticos, altos ni medios; corregidos los bajos (named.conf.options de más de 64 KiB se
 rechaza y se analiza en tiempo lineal, «Ficheros» no sigue enlaces fuera del árbol del servicio, una lista vacía en un
 archivo de topología se rechaza).
+
+## Fase 23 · Broadcast IP y nombres públicos en el DNS (v0.15.0)
+
+Estado de partida: el broadcast de enlace (ARP, DHCP) funciona, pero un ping a una dirección broadcast es falso: cada
+equipo «responde» con la propia dirección broadcast como origen, sin mirar `icmp_echo_ignore_broadcasts`, solo cuenta
+la primera respuesta y los routers reenvían siempre los broadcast dirigidos.
+
+1. **Broadcast IP como en los equipos reales:**
+   - Destinos: 255.255.255.255 (limitado, nunca se enruta) y la dirección broadcast de cada subred (dirigido). Un equipo
+     recibe el broadcast dirigido de cualquiera de sus interfaces.
+   - Quién responde a un eco a broadcast, con su propia dirección como origen: IOS (router y switch), sí; GNU/Linux
+     (PC en modo Linux, Server, router Linux) según `net.ipv4.icmp_echo_ignore_broadcasts` (1 por defecto, como
+     Ubuntu: no responde); Windows, nunca.
+   - Reenvío de broadcast dirigido: desactivado por defecto. IOS `ip directed-broadcast` en la interfaz de salida
+     (`no ip directed-broadcast` desde 12.0); router Linux `net.ipv4.conf.all.bc_forwarding` (0). Activado, el router
+     lo entrega también como broadcast de enlace en esa red.
+   - Ping: Linux exige `-b` («Do you want to ping broadcast? Then -b…»), avisa «WARNING: pinging broadcast address» y
+     marca las respuestas repetidas con `(DUP!)` y `+N duplicates`; Windows muestra la primera respuesta de cada
+     petición; IOS lista «Reply to request N from A.B.C.D, 1 ms» por cada equipo que responde.
+   - El switch inunda el broadcast solo en su VLAN; ningún router lo pasa (comprobado con pruebas).
+2. **Nombres públicos en el servidor DNS** (Server y router Linux), con un fichero editable:
+   - Lista inicial en `src/net/public-names.ts`: los nombres que ya conoce la Internet emulada, google.es,
+     educa.jcyl.es, juandecolonia.es y el top 100 mundial (Similarweb/Semrush, 2026), sin webs para adultos ni de
+     apuestas (Netfix se usa con menores). Direcciones representativas de las reales.
+   - En BIND: zona de política de respuesta (RPZ) con datos locales: `response-policy { zone "rpz.publicos"; };` en
+     named.conf.options y `/etc/bind/db.rpz.publicos` con un `nombre A ip` por línea (admite `*.dominio`). Como en
+     BIND, se aplica a las consultas recursivas: necesita el modo Recursivo.
+   - Opción del servicio DNS «Nombres públicos (response-policy)»: activar, editar el fichero y restaurar la lista
+     inicial; «Aplicar» reinicia bind9. En el panel y en la gestión web. Root puede editar el fichero.
+   - La Internet emulada conoce los mismos nombres (8.8.8.8 y la jerarquía raíz → TLD → autoritativo) y cada dirección
+     responde a ping y a HTTP, así que ping, nslookup y dig funcionan con o sin la opción si hay salida a Internet.

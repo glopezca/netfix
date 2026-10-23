@@ -10,7 +10,7 @@ import { TcpLayer } from './tcp.ts';
 import type { Peer } from './tcp.ts';
 import { answerQuery } from '../services/dns-service.ts';
 import { normalizeName } from './dns.ts';
-import { A, ZONES, chase, inZone } from './internet-zones.ts';
+import { A, ZONES, chase, inZone, publicRecords } from './internet-zones.ts';
 import { addDnsHierarchy } from './internet-dns.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { page, h } from '../web/html.ts';
@@ -139,4 +139,9 @@ export function populateInternet(core: InternetCore): void {
   core.addHost(new PublicDns(core));
   addDnsHierarchy(core);
   for (const s of SITES) core.addHost(new WebSite(core, s));
+  // Every other public name answers too (wikipedia.org, github.com, google.es, the top 100…): one site per address.
+  for (const r of publicRecords()) {
+    const addr = ip(r.value);
+    if (!core.isVirtual(addr)) core.addHost(new WebSite(core, { name: r.name, ip: addr }));
+  }
 }

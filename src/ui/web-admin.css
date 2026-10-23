@@ -111,3 +111,6 @@
 .web-adm-compat h2 { font-size: 14px; margin: 0 0 4px; }
 .web-adm-compat p { margin: 0; font-size: 13px; }
 @container (max-width: 560px) { .web-adm-row label { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+
+/* DNS → Nombres públicos: the RPZ file. */
+.browser-view .web-adm-file { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--font-mono); }

@@ -68,3 +68,19 @@ test('Services lists SSH first; Estado → Ficheros shows each service\'s files 
   assert.match(body(web.open(`${URL}?page=files&svc=dns`)), /&lt;b&gt;hola&lt;\/b&gt;/);
   assert.match(body(web.open(`${URL}?page=files&svc=<x>`)), /\/etc\/nftables\.conf|\/etc\/sysctl/, 'an unknown service falls back to the first');
 });
+
+test('DNS page: «Nombres públicos» switches the policy zone, takes an edited list and restores the initial one', () => {
+  const { srv, web } = lab();
+  const page = body(web.open(`${URL}?page=dns`));
+  assert.match(page, /name="action" value="dns-rpz"[\s\S]*<textarea name="list"[^>]*>[\s\S]*google\.es\s+A 142\.250\.200\.67/);
+  post(web, 'dns', [['action', 'dns-rpz'], ['enabled', '1'], ['list', 'aula.lab A 10.0.0.9\n<b>x</b> A 1.1.1.1\n']]);
+  assert.notEqual(srv.services.dns.publicNames?.enabled, true, 'a bad list changes nothing');
+  assert.match(post(web, 'dns', [['action', 'dns-rpz'], ['enabled', '1'], ['list', '<b>x</b> A 1.1.1.1\n']]), /web-adm-error[^<]*bad owner name/);
+  assert.doesNotMatch(post(web, 'dns', [['action', 'dns-rpz'], ['enabled', '1'], ['list', '<b>x</b> A 1.1.1.1\n']]), /<b>x<\/b>/, 'escaped');
+  post(web, 'dns', [['action', 'dns-rpz'], ['enabled', '1'], ['list', 'aula.lab A 10.0.0.9\n']]);
+  assert.equal(srv.services.dns.publicNames?.enabled, true);
+  assert.equal(srv.services.dns.publicNames?.entries?.length, 1);
+  post(web, 'dns', [['action', 'dns-rpz-initial'], ['enabled', '1']]);
+  assert.equal(srv.services.dns.publicNames?.entries, undefined);
+  assert.equal(srv.services.dns.publicNames?.enabled, true);
+});

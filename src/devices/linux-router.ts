@@ -162,6 +162,12 @@ export class LinuxRouter extends Server {
     else this.changed();
   }
 
+  /** net.ipv4.conf.all.bc_forwarding (Linux 5.3+): directed broadcasts are forwarded only when routing and set. */
+  forwardsDirectedBroadcast(): boolean {
+    const s = this.kernel.sysctl;
+    return s.enabled('net.ipv4.ip_forward') && s.enabled('net.ipv4.conf.all.bc_forwarding');
+  }
+
   /** Transit packets: ip_forward, TTL, route, nftables forward chain, then out (postrouting does NAT). */
   forward(iface: string, packet: IpPacket): void {
     if (!this.kernel.sysctl.enabled('net.ipv4.ip_forward')) return;

@@ -7,6 +7,7 @@ import type { DeviceHooks } from '../../devices/hooks.ts';
 import { parseIp, formatIp, formatMask } from '../../core/ip.ts';
 import { formatMacCisco } from '../../core/mac.ts';
 import { runPing } from '../../net/ping.ts';
+import type { PingOutcome } from '../../net/ping.ts';
 import { runTrace, iosTraceLines, DEFAULT_MAX_HOPS } from '../../net/trace.ts';
 
 const TRACE_TIMEOUT_MS = 3000;
@@ -34,12 +35,22 @@ export function iosPing(cli: Cli, host: PingCapable, target: string, count: numb
     return;
   }
   const results = runPing(host.stack, host.hooks, dst, { count, timeoutMs: PING_TIMEOUT_MS, src });
+  if (host.stack.isBroadcast(dst)) return broadcastReplies(cli, results, count, target);
   const marks = results.map((r) => (r.kind === 'reply' ? '!' : r.kind === 'unreachable' ? 'U' : r.kind === 'ttl' ? '&' : '.')).join('');
   const ok = results.filter((r) => r.kind === 'reply').length;
   const pct = Math.round((ok * 100) / count);
   cli.out('Type escape sequence to abort.', `Sending ${count}, 100-byte ICMP Echos to ${target}, timeout is 2 seconds:`);
   if (src !== undefined) cli.out(`Packet sent with a source address of ${formatIp(src)} `);
   cli.out(marks, `Success rate is ${pct} percent (${ok}/${count})${ok > 0 ? ', round-trip min/avg/max = 0/0/1 ms' : ''}`);
+}
+
+/** A broadcast is answered by several devices: IOS lists each answer instead of !!!!! and the success rate. */
+function broadcastReplies(cli: Cli, results: readonly PingOutcome[], count: number, target: string): void {
+  cli.out('Type escape sequence to abort.', `Sending ${count}, 100-byte ICMP Echos to ${target}, timeout is 2 seconds:`, '');
+  results.forEach((r, i) => {
+    if (r.kind !== 'reply') return cli.out('.');
+    for (const x of [r, ...(r.dups ?? [])]) cli.out(`Reply to request ${i} from ${formatIp(x.from)}, 1 ms`);
+  });
 }
 
 export function showArp(stack: IpStack, own: readonly { ip: number; mac: string; iface: string }[], now: number): string[] {

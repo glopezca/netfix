@@ -42,6 +42,9 @@ export const INTERNET_DOCS: DocGroup = {
           ['example.com', '93.184.215.14', 'Test website.'],
           ['ifconfig.me', '34.160.111.145', 'Returns only your public IP as text (curl ifconfig.me).'],
         ]),
+        h('Public names'),
+        p('It also knows about 120 public names: the ones above, google.es, educa.jcyl.es, juandecolonia.es and the world’s 100 most visited domains (Similarweb and Semrush, 2026), without adult or gambling sites. Each has its www, resolves through 8.8.8.8 and by iteration from the root, and its address answers ping and HTTP. The addresses are representative of the real ones: big sites answer from many addresses that change.'),
+        p('The DNS server of a Server or a Linux router can offer the same list with no Internet access: Services → DNS → Public names.'),
         h('Domains registered with an ISP'),
         p('In a cloud’s ISP tab you can register domains. The public DNS servers resolve them for every cloud:'),
         table(['Type', 'Answer from 8.8.8.8'], [
@@ -104,6 +107,27 @@ export const INTERNET_DOCS: DocGroup = {
           ['/level/15/dm', 'Device Manager: front panel, interface table and quick port settings (description, status, access VLAN, IP).'],
         ]),
         note('Authentication is HTTP Basic (realm level_15_access). Failures are logged as %SEC_LOGIN-4-LOGIN_FAILED and changes as %SYS-5-CONFIG_I … on vty0 (PC’s IP). curl -u user:password also works.'),
+      ],
+    },
+    {
+      id: 'red-broadcast',
+      title: 'Broadcast: to every device of the network',
+      summary: 'Link and IP broadcast (255.255.255.255 and directed), who answers a broadcast ping and who forwards it.',
+      blocks: [
+        p('A broadcast reaches every device of the segment: the switch floods it out of every port of its VLAN and no router passes it to another network. ARP and DHCP use it (MAC ff:ff:ff:ff:ff:ff) and it can be tried at the IP level with ping.'),
+        table(['Destination', 'What it is', 'Reaches'], [
+          ['255.255.255.255', 'Limited broadcast', 'The sender’s local network; no router forwards it.'],
+          ['192.168.1.255 (on a /24)', 'Directed broadcast of the subnet', 'That subnet. From another network the router answers itself and only forwards it when enabled (below).'],
+        ]),
+        table(['Device', 'Does it answer a broadcast ping?', 'How to change it'], [
+          ['Cisco router and switch', 'Yes, with its own address', '—'],
+          ['GNU/Linux (Server, Linux router, PC in Linux mode)', 'No (Ubuntu: net.ipv4.icmp_echo_ignore_broadcasts = 1)', 'sudo sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=0'],
+          ['Windows (PC by default)', 'No', '—'],
+        ]),
+        code('$ ping 192.168.1.255\nping: Do you want to ping broadcast? Then -b. If not, check your local firewall rules\n$ ping -b -c 2 192.168.1.255\nWARNING: pinging broadcast address\nPING 192.168.1.255 (192.168.1.255) 56(84) bytes of data.\n64 bytes from 192.168.1.1: icmp_seq=1 ttl=255 time=0.400 ms\n64 bytes from 192.168.1.20: icmp_seq=1 ttl=64 time=0.400 ms (DUP!)\n…\n2 packets transmitted, 2 received, +2 duplicates, 0% packet loss\n\nRouter# ping 192.168.1.255\nReply to request 0 from 192.168.1.20, 1 ms'),
+        h('Directed broadcast forwarding'),
+        p('Off by default, because it allows amplification attacks (smurf). On a Cisco router it is enabled on the outgoing interface with ip directed-broadcast (no ip directed-broadcast is the norm since IOS 12.0); on the Linux router, with sudo sysctl -w net.ipv4.conf.all.bc_forwarding=1 and forwarding on.'),
+        note('In simulation mode there is one frame to ff:ff:ff:ff:ff:ff that the switch copies to every port, then one reply per device that answers.'),
       ],
     },
     {
