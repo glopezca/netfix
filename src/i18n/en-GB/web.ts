@@ -19,6 +19,7 @@ export const WEB_EN: Readonly<Record<WebKey, string>> = {
   'wa.page.admin': 'Management',
   'wa.page.status': 'Device',
   'wa.page.log': 'Logs',
+  'wa.page.files': 'Files',
   'wa.desc.setup': 'Device name and IP address.',
   'wa.desc.dhcp': 'DHCP server: pools, reservations and leases.',
   'wa.desc.dns': 'DNS server (bind9) by operating mode, zones and the generated configuration.',

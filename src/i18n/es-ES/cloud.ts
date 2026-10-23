@@ -11,7 +11,6 @@ export const CLOUD_ES = {
   'cloud.ispName': 'Nombre del ISP',
   'cloud.block': 'Bloque público (/16)',
   'cloud.blockHint': 'Cada línea usa un /29: {a}, {b}…',
-  'cloud.save': 'Guardar',
   'cloud.domains': 'Dominios registrados',
   'cloud.domainsHint': 'Los publican los DNS públicos 8.8.8.8 y 8.8.4.4 para todas las nubes.',
   'cloud.domain': 'Dominio',

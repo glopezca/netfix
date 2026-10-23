@@ -28,11 +28,11 @@ export const CLIENT_DOCS: DocGroup = {
     {
       id: 'pc-equipo',
       title: 'Nombre del equipo',
-      summary: 'Nombre visible, nombre de host y nombre descriptivo; equivalencias en Linux y Windows.',
+      summary: 'Nombre del equipo, nombre de host derivado y nombre descriptivo; equivalencias en Linux y Windows.',
       blocks: [
-        p('La pestaña Equipo de PCs y servidores separa dos nombres: el nombre visible (la etiqueta del icono en el área de trabajo) y el nombre de host del sistema. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea), aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname, y se guarda con la topología.'),
+        p('En la pestaña Equipo de PCs, servidores y routers Linux se escribe el nombre del equipo (el del diagrama) y se aplica al pulsar Intro o salir del campo. El nombre de host del sistema se deriva de él en formato estándar: minúsculas, sin tildes y con guiones en lugar de espacios («Aula Pública 2º» → aula-publica-2o). El diagrama muestra el nombre del equipo y la dirección IP/CIDR de cada interfaz configurada, sin repetir el nombre de host. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea), aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname, y se guarda con la topología.'),
         table(['Dónde', 'Cómo se cambia', 'Persistente'], [
-          ['Pestaña Equipo', 'Nombre de host + Guardar', 'Sí'],
+          ['Pestaña Equipo', 'Nombre del equipo (el nombre de host se deriva de él)', 'Sí'],
           ['GNU/Linux', 'sudo hostnamectl set-hostname NOMBRE', 'Sí (/etc/hostname)'],
           ['GNU/Linux', 'echo NOMBRE | sudo tee /etc/hostname', 'Sí'],
           ['GNU/Linux', 'sudo hostname NOMBRE', 'No: nombre transitorio hasta reiniciar'],

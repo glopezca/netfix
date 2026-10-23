@@ -1,12 +1,15 @@
-/** PC / Server → «Equipo»: name shown in the workspace and the host name of the system (follows the terminal). */
+/**
+ * PC / Server / Linux router → «Equipo»: the device name, applied as soon as it changes. The host name is derived from
+ * it (lowercase, no accents, hyphens) and shown read-only; `hostnamectl set-hostname` in the terminal still changes it.
+ */
 import { el } from './dom.ts';
-import { field, input, button, message } from './forms.ts';
+import { field, input, message, onCommit } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';
 import { liveHostPanel } from './live.ts';
 import type { LivePanel } from './live.ts';
 import type { Host } from '../devices/host.ts';
-import { validHostname } from '../devices/host.ts';
 import type { Placed } from '../net/topology.ts';
+import { hostnameFromLabel } from '../core/hostname.ts';
 import { t } from '../i18n/t.ts';
 
 const MAX_LABEL = 40;
@@ -15,24 +18,26 @@ export function hostSettings(placed: Placed, h: Host, app: AfterChange & { retit
   // Outside the redraw: an action that changes the device redraws the panel before reporting.
   const msg = message();
   return liveHostPanel(h, (refresh) => {
-    const label = input({ value: placed.label, maxlength: String(MAX_LABEL), 'aria-describedby': 'label-hint' });
-    const hostname = input({ value: h.name, maxlength: '253' });
-    const pretty = input({ value: h.prettyName ?? '', placeholder: t('host.prettyPlaceholder') });
-    const save = (): void => {
-      const name = hostname.value.trim();
-      const err = validHostname(name);
-      if (err) return msg.error(err);
-      const shown = label.value.trim();
-      if (!shown) return msg.error(t('host.labelEmpty'));
-      placed.label = shown.slice(0, MAX_LABEL);
-      h.setPrettyName(pretty.value.trim() || undefined);
+    const label = input({ value: placed.label, maxlength: String(MAX_LABEL), name: 'label' });
+    const hostname = input({ value: h.name, readonly: '', class: 'mono', name: 'hostname', tabindex: '-1' });
+    const pretty = input({ value: h.prettyName ?? '', placeholder: t('host.prettyPlaceholder'), name: 'pretty' });
+    onCommit(label, () => {
+      const shown = label.value.trim().slice(0, MAX_LABEL);
+      if (!shown) { label.value = placed.label; return msg.error(t('host.labelEmpty')); }
+      if (shown === placed.label) return;
+      const name = hostnameFromLabel(shown);
+      placed.label = shown;
       h.setHostname(name);
-      app.retitle?.(placed.label);
+      app.retitle?.(shown);
       app.afterCommand();
       refresh();
       msg.ok(t('host.saved', { name }));
-    };
-    const same = button(t('host.useLabel'), () => { hostname.value = label.value.trim().replace(/[^a-z0-9-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase(); });
+    });
+    onCommit(pretty, () => {
+      h.setPrettyName(pretty.value.trim() || undefined);
+      app.afterCommand();
+      refresh();
+    });
     const now = t('host.now', { static: h.name }) + (h.transientName ? t('host.nowTransient', { name: h.transientName }) : '') + (h.prettyName ? t('host.nowPretty', { name: h.prettyName }) : '') + '.';
     return [
       el('h3', {}, t('host.nameTitle')),
@@ -40,7 +45,6 @@ export function hostSettings(placed: Placed, h: Host, app: AfterChange & { retit
         field(t('host.label'), label, t('host.labelHint')),
         field(t('host.hostname'), hostname, t('host.hostnameHint'))),
       field(t('host.pretty'), pretty, t('host.prettyHint')),
-      el('div', { class: 'actions' }, button(t('host.save'), save), same),
       msg.el,
       el('p', { class: 'muted live-note' }, t('host.live')),
       el('h3', {}, t('host.equivalents')),

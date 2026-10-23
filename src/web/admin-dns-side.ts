@@ -7,6 +7,7 @@ import type { Server } from '../devices/server.ts';
 import { h } from './html.ts';
 import type { Child, Markup } from './html.ts';
 import type { DnsMode } from '../services/dns-edit.ts';
+import { listenChoices } from '../services/listen.ts';
 import { bindFiles, NAMED_LOCAL } from '../services/bind-files.ts';
 import { NAMED_OPTIONS, DEFAULT_MAX_CACHE_TTL, iterates } from '../services/named-options.ts';
 import { rnameToEmail, servedZones } from '../services/dns-zones.ts';
@@ -24,7 +25,7 @@ function codeLines(text: string): Markup {
 }
 
 function fileText(server: Server, tab: FileTab): string {
-  const files = bindFiles(server.services.dns);
+  const files = bindFiles(server.services.dns, listenChoices(server, true));
   if (tab === 'options') return files.get(NAMED_OPTIONS) ?? '';
   if (tab === 'local') return `// ${NAMED_LOCAL}\n${files.get(NAMED_LOCAL) ?? ''}`;
   const zones = [...files].filter(([p]) => p.startsWith('/etc/bind/db.'));

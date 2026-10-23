@@ -1,7 +1,7 @@
 /** ISP cloud window: provider, public block and domains; per-line mode, speeds, LAN, port forwarding. */
 import { t } from '../i18n/t.ts';
 import { el } from './dom.ts';
-import { field, input, button, message, select, table, subnav } from './forms.ts';
+import { field, input, button, message, onCommit, select, table, subnav } from './forms.ts';
 import { livePanel } from './server-dhcp-dns.ts';
 import type { Tab } from './windows.ts';
 import type { Cloud } from '../devices/cloud.ts';
@@ -34,8 +34,11 @@ function ispTab(cloud: Cloud, app: CloudHost): HTMLElement {
     const apply = (): void => {
       const b = parseIp(block.value.trim());
       if (b === null) return msg.error(t('cloud.badBlock'));
+      if (isp.value.trim() === s.isp && b === s.block) return;
       save(cloud, { ...s, isp: isp.value.trim(), block: b }, msg, app, refresh);
     };
+    onCommit(isp, apply);
+    onCommit(block, apply);
     const dName = input({ placeholder: 'sede2.es' });
     const dKind = select([['a', t('cloud.kindA')], ['ns', t('cloud.kindNs')]]);
     const dIp = input({ placeholder: t('cloud.domainIpHint') });
@@ -51,7 +54,6 @@ function ispTab(cloud: Cloud, app: CloudHost): HTMLElement {
     return [
       el('h3', {}, t('cloud.provider')),
       el('div', { class: 'grid2' }, field(t('cloud.ispName'), isp), field(t('cloud.block'), block, t('cloud.blockHint', { a: formatIp(lineSubnet(s.block, 'Coaxial0').net), b: formatIp(lineSubnet(s.block, 'Coaxial1').net) }))),
-      el('div', { class: 'actions' }, button(t('cloud.save'), apply)),
       msg.el,
       el('h3', {}, t('cloud.domains')),
       el('p', { class: 'muted' }, t('cloud.domainsHint')),
@@ -111,6 +113,7 @@ function linePanel(cloud: Cloud, name: CloudPortName, app: CloudHost): HTMLEleme
       if (ip === null || prefix === null) return msg.error(t('cloud.badLan'));
       put({ ...c, mode: mode.value === 'public' ? 'public' : 'router', down: Number(down.value), up: Number(up.value), lanIp: ip, lanPrefix: prefix, dnsRelay: relay.checked });
     };
+    for (const control of [mode, down, up, lan, mask, relay]) onCommit(control, apply);
     const peer = app.connected(name);
     const leases = line.leases().map((b) => `${formatIp(b.ip)} → ${b.hostname ?? b.mac}`);
     const nat = line.nat.entries().slice(-8).map((e) => `${e.proto ?? 'ip'} ${formatIp(e.insideLocal)}:${e.localPort ?? ''} → ${formatIp(e.insideGlobal)}:${e.globalPort ?? ''}`);
@@ -121,7 +124,6 @@ function linePanel(cloud: Cloud, name: CloudPortName, app: CloudHost): HTMLEleme
       c.mode === 'router' ? el('div', { class: 'grid2' }, field(t('cloud.routerLan'), lan), field(t('cloud.lanMask'), mask)) : el('div', {}),
       c.mode === 'router' ? el('label', { class: 'check' }, relay, ` ${t('dns.relay')}`) : el('div', {}),
       c.mode === 'router' ? el('p', { class: 'field-hint' }, t('dns.relayHint')) : el('div', {}),
-      el('div', { class: 'actions' }, button(t('cloud.save'), apply)),
       msg.el,
       el('h3', {}, t('cloud.addresses')),
       el('ul', { class: 'muted' }, ...(c.mode === 'router'

@@ -490,3 +490,30 @@ de una práctica o un examen lleven la fecha y la hora simuladas.
 - **Bloqueo para Netfix Classroom:** restricción `timestampPrompt`: `"free"` (por defecto), `"on"` u `"off"`. Con
   `"on"`/`"off"` la casilla queda fija y desactivada («bloqueado por el profesor») y el valor se aplica a todos los
   equipos y a las sesiones SSH. El control de bloqueo del profesor en Classroom queda para su despliegue.
+
+## Fase 22 · Interfaces de escucha, ficheros de configuración, SSH primero y cambios automáticos (v0.14.0)
+
+1. **Interfaces de escucha de DNS y DHCP** (Server: eth0; router Linux: eth0-eth2), como Kea y BIND:
+   - DHCP: `dhcp.interfaces` (nombres Linux; sin valor = todas). Kea: `"interfaces-config": { "interfaces": [ "eth1" ] }`
+     o `[ "*" ]`. Una petición que llega por otra interfaz se descarta (también la de un relay, que entra por la
+     interfaz que tiene la dirección del servidor).
+   - DNS: `dns.listenOn` (interfaces y `lo`; sin valor = todas). BIND: `listen-on { 127.0.0.1; 192.168.1.1; };` o
+     `{ any; };` (por direcciones, que se derivan de las interfaces). Una consulta a una dirección en la que no escucha
+     no tiene respuesta (puerto cerrado). Editar `listen-on` en named.conf.options vuelve al panel.
+   - Bloque «Interfaces» en los paneles DHCP y DNS y en las páginas DHCP y DNS de la gestión web; botón «Aplicar»
+     (reinicia el servicio, como systemctl restart).
+2. **Ficheros de configuración:** apartado «Ficheros» en Servicios (como «Registros»): se elige el servicio y se ven
+   sus ficheros tal como están ahora en el disco (SSH, DHCP, DNS, HTTP, Correo y, en el router, Parámetros, Firewall y
+   VPN: los mismos apartados que su pestaña Servicios). También en la gestión web (Estado → Ficheros). Solo en Linux.
+3. **SSH primero** entre los servicios (Server: SSH, DHCP, DNS, HTTP, Correo, Registros, Ficheros; en el router Linux,
+   tras Parámetros, Firewall y VPN). En la gestión web, SSH es la primera página de Servicios.
+4. **Cambios automáticos en las ventanas de los equipos** (sin botón Guardar):
+   - PC, Server y router Linux: el nombre del equipo se aplica al cambiar el campo y el nombre de host se deriva de él
+     (minúsculas, sin tildes, guiones). El nombre de host queda como dato de solo lectura (hostnamectl lo sigue
+     cambiando) y desaparecen los botones «Guardar» y «Usar el nombre visible».
+     El diagrama muestra el nombre del equipo y su IP/prefijo (una línea por interfaz con dirección).
+   - Nubes: datos del ISP y configuración de cada línea. Router Linux: dirección de cada interfaz. Equipos IOS: nombre
+     visible y `hostname`.
+   - Se mantienen: el «Aplicar» de los servicios (reiniciar el servicio), los formularios que generan órdenes IOS
+     (interfaces y gestión web IOS: se ve la orden que se ejecuta), las acciones de listas (añadir dominio,
+     redirección, ruta) y la cuenta de correo del PC (como en un cliente de correo).

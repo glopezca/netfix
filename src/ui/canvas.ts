@@ -13,6 +13,7 @@ import { historyFor } from '../net/edit-history.ts';
 import type { EditHistory } from '../net/edit-history.ts';
 import type { ShapeKind } from '../net/annotations.ts';
 import { t } from '../i18n/t.ts';
+import { CAPTION_LINE, deviceCaption } from './device-caption.ts';
 import type { MessageKey } from '../i18n/catalog.ts';
 
 export type Tool = { kind: 'select' } | { kind: 'cable' } | { kind: 'delete' } | { kind: 'place'; device: DeviceKind } | { kind: 'draw'; shape: ShapeKind };
@@ -202,7 +203,6 @@ export class Canvas {
 
   private drawDevice(id: string, p: Placed): SVGGElement {
     const d = p.device;
-    const name = d.kind === 'router' || d.kind === 'switch' ? d.hostname : d.kind === 'cloud' ? d.settings.isp : '';
     const g = svg('g', {
       class: `device device-${d.kind}${this.selected === id ? ' is-selected' : ''}${this.pendingEnd?.device === id ? ' is-pending' : ''}`,
       transform: `translate(${p.x} ${p.y})`, tabindex: '0', 'data-id': id, role: 'button', 'aria-label': `${p.label} (${modelLabel(d.kind)})`,
@@ -213,8 +213,9 @@ export class Canvas {
     icon.setAttribute('y', String(-ICON_H / 2));
     g.appendChild(icon);
     g.appendChild(svg('text', { class: 'device-model', x: 0, y: -ICON_H / 2 - 12 }, modelLabel(d.kind)));
-    g.appendChild(svg('text', { class: 'device-label', x: 0, y: ICON_H / 2 + 18 }, p.label));
-    if (name && name !== 'Router' && name !== 'Switch' && name !== p.label) g.appendChild(svg('text', { class: 'device-host', x: 0, y: ICON_H / 2 + 33 }, name));
+    const caption = deviceCaption(p);
+    g.appendChild(svg('text', { class: 'device-label', x: 0, y: ICON_H / 2 + 18 }, caption.name));
+    caption.extra.forEach((line, i) => g.appendChild(svg('text', { class: 'device-host', x: 0, y: ICON_H / 2 + 33 + i * CAPTION_LINE }, line)));
     g.addEventListener('pointerdown', (e) => this.onDevicePointer(e, id, g));
     // Touch double-taps are handled in tapped(): browsers also synthesise dblclick from any two quick taps.
     g.addEventListener('dblclick', () => { if (this.lastPointer === 'mouse') this.events.open(id); });

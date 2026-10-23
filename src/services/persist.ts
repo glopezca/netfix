@@ -1,4 +1,5 @@
 /** JSON (de)serialisation of Server services with validation of untrusted files. */
+import { IFACE_NAME, MAX_LISTEN } from './listen.ts';
 import { hasMessage, t, tDynamic } from '../i18n/t.ts';
 import type { ServerServices, PtDhcpPool, DnsRecord, DnsSettings, DnsSoa, DnsZone, Account, WebFile } from './config.ts';
 import { defaultServices, defaultWebApps, validateAccess, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } from './config.ts';
@@ -19,7 +20,7 @@ const RECORD_TYPES = new Set(['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR']);
 const MAX_TIMER = 2_147_483_647;
 
 export interface ServicesJson {
-  readonly dhcp: { enabled: boolean; pools: Json[] };
+  readonly dhcp: { enabled: boolean; pools: Json[]; interfaces?: readonly string[] };
   readonly dns: Omit<DnsSettings, 'forwarders'> & { forwarders?: string[] };
   readonly http: { enabled: boolean; files: WebFile[] };
   readonly mail: ServerServices['mail'];
@@ -40,6 +41,7 @@ export function servicesToJson(s: ServerServices): ServicesJson {
         reservations: p.reservations.map((r) => ({ ip: formatIp(r.ip), mac: r.mac, clientId: r.clientId, name: r.name })),
         identifyBy: p.identifyBy,
       })),
+      interfaces: s.dhcp.interfaces,
     },
     dns: { ...s.dns, ...(s.dns.forwarders?.length ? { forwarders: s.dns.forwarders.map(formatIp) } : { forwarders: undefined }) },
     http: { enabled: s.http.enabled, files: [...s.http.files] },
@@ -162,6 +164,15 @@ function webapps(v: unknown): WebApps {
   };
 }
 
+/** Interfaces a service listens on (eth0…, lo); a file may only name interfaces, never anything else. */
+function ifaceList(v: unknown): string[] {
+  if (!Array.isArray(v) || v.length > MAX_LISTEN) throw new Error(t('load.ifaces'));
+  return [...new Set(v.map((x) => {
+    if (typeof x !== 'string' || !IFACE_NAME.test(x)) throw new Error(t('load.ifaces'));
+    return x;
+  }))];
+}
+
 function soa(v: unknown, zone: string): DnsSoa {
   const d = defaultSoa(zone);
   if (!isObj(v)) return d;
@@ -211,6 +222,7 @@ function dnsFromJson(n: Json): DnsSettings {
     ...(fwd.length ? { forwarders: fwd } : {}),
     ...(fwd.length || n.forwardOnly !== undefined ? { forwardOnly: n.forwardOnly !== false } : {}),
     ...(n.allowRecursion !== undefined ? { allowRecursion: n.allowRecursion === 'any' ? 'any' as const : 'localnets' as const } : {}),
+    ...(n.listenOn !== undefined ? { listenOn: ifaceList(n.listenOn) } : {}),
   };
 }
 
@@ -223,7 +235,7 @@ export function servicesFromJson(v: unknown): ServerServices {
   const m = isObj(v.mail) ? v.mail : {};
   const s = isObj(v.ssh) ? v.ssh : {};
   return {
-    dhcp: { enabled: bool(d.enabled), pools: arr(d.pools, 'pools').map(pool) },
+    dhcp: { enabled: bool(d.enabled), pools: arr(d.pools, 'pools').map(pool), ...(d.interfaces !== undefined ? { interfaces: ifaceList(d.interfaces) } : {}) },
     dns: dnsFromJson(n),
     http: { enabled: bool(h.enabled), files: arr(h.files, 'ficheros web').map((f) => { if (!isObj(f)) throw new Error(t('load.webFile')); return { name: str(f.name, 'fichero web', 128), content: str(f.content, 'contenido web', MAX_TEXT) }; }) },
     mail: { smtp: bool(m.smtp), pop3: bool(m.pop3), imap: bool(m.imap), domain: m.domain === undefined ? '' : str(m.domain, 'dominio de correo'), users: arr(m.users, 'usuarios de correo').map(account) },

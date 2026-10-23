@@ -62,3 +62,18 @@ export function safeStorageSet(key: string, value: string): void {
     // Storage may be unavailable (private mode, sandboxed preview): the app still works.
   }
 }
+
+const FOCUSABLE = 'input, select, textarea, button';
+
+/**
+ * Replaces the children of `root` and puts the focus back on the control in the same position, so a panel redrawn
+ * while it is being used (a field applied on change, Tab to the next one) does not lose the user's place.
+ */
+export function replaceKeepingFocus(root: HTMLElement, children: readonly Node[]): void {
+  const active = document.activeElement;
+  const index = active && root.contains(active) ? [...root.querySelectorAll(FOCUSABLE)].indexOf(active) : -1;
+  root.replaceChildren(...children);
+  if (index < 0) return;
+  const again = root.querySelectorAll<HTMLElement>(FOCUSABLE)[index];
+  again?.focus();
+}

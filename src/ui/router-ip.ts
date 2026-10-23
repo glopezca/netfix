@@ -1,6 +1,6 @@
 /** "Interfaces" tab of the Linux router: address per NIC, WAN by DHCP, gateway, DNS, forwarding and routes. */
 import { el } from './dom.ts';
-import { button, field, input, message, onOff, table } from './forms.ts';
+import { button, field, input, message, onCommit, onOff, table } from './forms.ts';
 import { liveHostPanel } from './live.ts';
 import type { LivePanel } from './live.ts';
 import type { AfterChange } from './host-ip.ts';
@@ -27,13 +27,18 @@ function nicRow(r: LinuxRouter, n: NicInfo, app: AfterChange, msg: ReturnType<ty
   const dhcp = el('input', { type: 'checkbox', checked: isWan && r.config.mode === 'dhcp', 'aria-label': t('router.dhcp') });
   ip.disabled = mask.disabled = dhcp.checked;
   const apply = (): void => {
+    // Address and mask go together: with only one of them filled in, wait for the other.
+    if ((ip.value.trim() === '') !== (mask.value.trim() === '')) return msg.clear();
     const a = readAddress(ip.value, mask.value);
     if (a === null) return msg.error(t('router.errAddress', { iface: n.linux }));
     msg.clear();
+    if (a?.ip === n.ip && a?.prefix === n.prefix) return;
     if (isWan) r.setStatic({ ip: a?.ip, prefix: a?.prefix, gateway: r.config.gateway, dns: r.config.dns });
     else r.setNicAddress(n.port, a);
     app.afterCommand();
   };
+  onCommit(ip, apply);
+  onCommit(mask, apply);
   dhcp.addEventListener('change', () => {
     if (dhcp.checked) {
       r.useDhcp();
@@ -47,7 +52,7 @@ function nicRow(r: LinuxRouter, n: NicInfo, app: AfterChange, msg: ReturnType<ty
     el('div', { class: 'nic-name' }, el('strong', {}, n.port), el('span', { class: 'mono muted' }, `${n.linux} · ${n.mac}`),
       el('span', { class: 'muted' }, peer ? t('iosif.peer', { peer }) : t('router.noCable'))),
     field(t('router.address'), ip), field(t('router.mask'), mask),
-    el('div', { class: 'nic-actions' }, toggle, button(t('router.apply'), apply)),
+    el('div', { class: 'nic-actions' }, toggle),
     ...(isWan ? [el('label', { class: 'check nic-dhcp' }, dhcp, t('router.dhcp'))] : []),
   );
 }
@@ -66,8 +71,8 @@ function gatewaySection(r: LinuxRouter, app: AfterChange, msg: ReturnType<typeof
     r.setStatic({ ip: c.ip, prefix: c.prefix, gateway: g, dns: d });
     app.afterCommand();
   };
-  gw.addEventListener('change', apply);
-  dns.addEventListener('change', apply);
+  onCommit(gw, apply);
+  onCommit(dns, apply);
   return el('div', { class: 'grid2' }, field(t('router.gateway'), gw), field(t('router.dns'), dns));
 }
 

@@ -54,6 +54,9 @@ export type EchoResult = { kind: 'reply'; from: number; ttl: number } | { kind: 
 const ARP_TIMEOUT_MS = 1000;
 /** Interface name the hooks see for traffic to the host's own addresses. */
 export const LOOPBACK = 'lo';
+const LOOPBACK_NET = 127;
+const LOOPBACK_IP = 0x7f000001;
+const LOOPBACK_MAC = '000000000000';
 const MAX_PENDING = 4;
 
 export class IpStack {
@@ -68,8 +71,9 @@ export class IpStack {
     this.now = now;
   }
 
+  /** One of our addresses, or the loopback network 127.0.0.0/8 (the kernel's lo). */
   isMine(ip: number): boolean {
-    return this.host.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip));
+    return (ip >>> 24) === LOOPBACK_NET || this.host.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip));
   }
 
   private isLocalBroadcast(iface: L3Iface, ip: number): boolean {
@@ -146,15 +150,15 @@ export class IpStack {
 
   /** Sends an ICMP echo request; the callback fires on reply/error (never on timeout). */
   echo(dst: number, id: number, seq: number, src: number | undefined, onResult: (r: EchoResult) => void, ttl = this.host.ttl): boolean {
+    if (this.isMine(dst)) {
+      this.host.schedule(0, () => onResult({ kind: 'reply', from: dst, ttl: this.host.ttl }));
+      return true;
+    }
     const egress = this.host.route(dst);
     if (!egress) return false;
     const srcIp = src ?? this.host.l3Iface(egress.iface)?.addrs[0]?.ip;
     if (srcIp === undefined) return false;
     this.echoWaiters.set(`${id}:${seq}`, onResult);
-    if (this.isMine(dst)) {
-      this.host.schedule(0, () => onResult({ kind: 'reply', from: dst, ttl: this.host.ttl }));
-      return true;
-    }
     const out = this.outbound(egress.iface, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
     if (out) this.sendVia(egress, out);
     return true;
@@ -195,11 +199,15 @@ export class IpStack {
 
   /** Packets to one of our own addresses never reach the wire (like the kernel's loopback path). */
   private loopback(packet: IpPacket): boolean {
+    const toLo = (packet.dst >>> 24) === LOOPBACK_NET;
     const iface = this.host.l3Ifaces().find((i) => i.addrs.some((a) => a.ip === packet.dst));
-    if (!iface) return false;
-    const out = this.outbound(LOOPBACK, packet);
+    if (!iface && !toLo) return false;
+    // To 127.x the source is 127.0.0.1 too (a socket bound to lo), as on Linux.
+    const sent = toLo && (packet.src >>> 24) !== LOOPBACK_NET ? { ...packet, src: LOOPBACK_IP } : packet;
+    const out = this.outbound(LOOPBACK, sent);
     if (!out) return true;
-    this.host.schedule(0, () => this.localIn(LOOPBACK, out, { src: iface.mac, dst: iface.mac, ip: out }));
+    const mac = iface?.mac ?? LOOPBACK_MAC;
+    this.host.schedule(0, () => this.localIn(LOOPBACK, out, { src: mac, dst: mac, ip: out }));
     return true;
   }
 

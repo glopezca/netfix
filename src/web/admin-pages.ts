@@ -10,6 +10,7 @@ import { UNITS, unitActive } from '../services/units.ts';
 import type { WebAppAccess } from '../services/config.ts';
 import { idKinds, identifierText } from '../services/dhcp-reservations.ts';
 import { formatMacCisco, formatHexId } from '../core/mac.ts';
+import { listenForm } from './admin-listen.ts';
 
 const ip = (n: number | undefined): string => (n === undefined ? '' : formatIp(n));
 
@@ -57,6 +58,7 @@ export function dhcpPage(server: Server, base: string): Child {
   const rows = d.pools.map((p) => [p.name, formatIp(p.start), String(p.maxUsers), ip(p.gateway), ip(p.dns), del(base, 'dhcp', 'pool-del', p.name)]);
   return [
     form(base, 'dhcp', 'dhcp', cards(section(t('wa.dhcpServer'), t('wa.dhcpHelp'), check('enabled', d.enabled, t('wa.enabled')))), buttons()),
+    listenForm(server, base, 'dhcp'),
     cards(section(t('wa.pools'), t('wa.poolsHelp'), table([t('wa.name'), t('wa.start'), t('wa.users'), t('wa.gateway'), 'DNS', ''], rows, t('wa.noPools')))),
     form(base, 'dhcp', 'pool-add', cards(section(t('wa.newPool'), t('wa.newPoolHelp'),
       row(t('wa.name'), text('name', '')), row(t('wa.start'), text('start', '')), row(t('wa.maskShort'), text('mask', '255.255.255.0')), row(t('wa.maxUsers'), text('max', '50')),

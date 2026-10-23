@@ -28,11 +28,11 @@ export const CLIENT_DOCS: DocGroup = {
     {
       id: 'pc-equipo',
       title: 'Device name',
-      summary: 'Display name, host name and pretty name; equivalents on Linux and Windows.',
+      summary: 'Device name, derived host name and pretty name; equivalents on Linux and Windows.',
       blocks: [
-        p('The Device tab of PCs and servers separates two names: the display name (the icon’s label on the workspace) and the system’s host name. The host name is sent by the DHCP client (option 12, visible in show ip dhcp binding and in Kea), appears in the GNU/Linux prompt, in /etc/hostname and in hostname, and is saved with the topology.'),
+        p('The Device tab of PCs, servers and Linux routers holds the device name (the one in the diagram), applied on Enter or when leaving the field. The system host name is derived from it in standard form: lowercase, no accents and hyphens instead of spaces («Aula Pública 2º» → aula-publica-2o). The diagram shows the device name and the IP/CIDR of each configured interface, without repeating the host name. The host name is sent by the DHCP client (option 12, visible in show ip dhcp binding and in Kea), appears in the GNU/Linux prompt, in /etc/hostname and in hostname, and is saved with the topology.'),
         table(['Where', 'How to change it', 'Persistent'], [
-          ['Device tab', 'Host name + Save', 'Yes'],
+          ['Device tab', 'Device name (the host name is derived from it)', 'Yes'],
           ['GNU/Linux', 'sudo hostnamectl set-hostname NOMBRE', 'Yes (/etc/hostname)'],
           ['GNU/Linux', 'echo NOMBRE | sudo tee /etc/hostname', 'Yes'],
           ['GNU/Linux', 'sudo hostname NOMBRE', 'No: transient name until reboot'],

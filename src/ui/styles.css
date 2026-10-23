@@ -659,3 +659,9 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .term-foot-check:has(input:disabled) { cursor: not-allowed; }
 .term-foot-box { margin: 0; accent-color: #5fb0cc; }
 .term-foot-lock { color: #9fb3ba; }
+/* Listen interfaces of the DHCP and DNS panels. */
+.listen-block { border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px 10px; margin: 12px 0; }
+.listen-block h3 { margin: 4px 0; }
+.listen-row { display: flex; gap: 10px; align-items: center; margin: 4px 0; }
+/* Servicios → Ficheros: one block per file. */
+.conf-file h4 { margin: 14px 0 4px; font-size: 12.5px; }

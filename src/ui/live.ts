@@ -1,5 +1,5 @@
 /** Panels that follow their device: they redraw when it changes (from the terminal, DHCP…) unless you are typing in them. */
-import { el } from './dom.ts';
+import { el, replaceKeepingFocus } from './dom.ts';
 import type { Host } from '../devices/host.ts';
 
 export interface LivePanel {
@@ -12,7 +12,7 @@ export function liveHostPanel(host: Pick<Host, 'onChange'>, render: (refresh: ()
   let stale = false;
   const refresh = (): void => {
     stale = false;
-    root.replaceChildren(...render(refresh));
+    replaceKeepingFocus(root, render(refresh));
   };
   let attached = false;
   const onChange = (): void => {

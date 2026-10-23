@@ -22,6 +22,7 @@ export const LOAD_EN: Readonly<Record<LoadKey, string>> = {
   'load.reservationId': 'Invalid reservation Client-ID (hexadecimal).',
   'load.origin': 'Invalid DNS zone origin.',
   'load.record': 'Invalid DNS record.',
+  'load.ifaces': 'Invalid list of listen interfaces (eth0, eth1… or lo).',
   'load.zone': 'Invalid DNS zone «{name}»: {error}',
   'load.account': 'Invalid account.',
   'load.services': 'Invalid server services.',

@@ -17,6 +17,7 @@ import { zonesTab } from './admin-dns-zones.ts';
 import { dnsLink, keepMode, modeOf } from './admin-dns-links.ts';
 import type { Query } from './admin-dns-links.ts';
 import { dnsSide } from './admin-dns-side.ts';
+import { listenForm } from './admin-listen.ts';
 
 function modeCard(server: Server, mode: DnsMode): Markup {
   const state = dnsModes(server.services.dns)[mode];
@@ -98,6 +99,6 @@ function specific(server: Server, base: string, q: Query, mode: DnsMode): Markup
 export function dnsPage(server: Server, base: string, q: Query): Child {
   const mode = modeOf(q);
   return h('div', { class: 'web-adm-dns' },
-    h('div', { class: 'web-adm-dns-main' }, modesForm(server, base, mode), specific(server, base, q, mode)),
+    h('div', { class: 'web-adm-dns-main' }, modesForm(server, base, mode), listenForm(server, base, 'dns'), specific(server, base, q, mode)),
     dnsSide(server, base, q, mode));
 }

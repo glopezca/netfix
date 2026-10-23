@@ -105,3 +105,11 @@ export function subnav(items: readonly { id: string; label: string; render: () =
   if (items[0]) show(items[0].id);
   return el('div', { class: 'subnav' }, el('nav', { class: 'subnav-list', 'aria-label': t('win.services') }, ...buttons), content);
 }
+
+/**
+ * Applies a field as soon as it changes (Enter, or leaving it). The work runs once the browser has moved the focus,
+ * so a panel that redraws itself keeps the control the user went to.
+ */
+export function onCommit(control: HTMLInputElement | HTMLSelectElement, apply: () => void): void {
+  control.addEventListener('change', () => { setTimeout(apply, 0); });
+}

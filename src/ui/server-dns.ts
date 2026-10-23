@@ -15,6 +15,7 @@ import { forwardersText, GOOGLE_FORWARDERS } from '../services/dns-recursion.ts'
 import { DEFAULT_MAX_CACHE_TTL } from '../services/named-options.ts';
 import { ROOT_SERVERS } from '../net/dns-roots.ts';
 import { livePanel } from './server-dhcp-dns.ts';
+import { listenBlock } from './listen-block.ts';
 import { authoritativeBody, setAuthoritativeMode } from './server-dns-zones.ts';
 import type { ZoneUi } from './server-dns-zones.ts';
 
@@ -93,6 +94,7 @@ export function dnsPanel(server: Server, app: AfterChange): HTMLElement {
       onOff(t('dnsm.service'), s.enabled, (on) => { server.setUnit('dns', on); after.afterCommand(); }),
       el('p', { class: 'muted' }, t('dnsm.intro')),
       msg.el,
+      listenBlock(server, 'dns', after, msg),
       cacheBlock(server, after, msg),
       forwarderBlock(server, after, msg),
       modeBlock('authoritative', dnsModes(s).authoritative, (on) => setAuthoritativeMode(server, after, msg, on), authoritativeBody(server, after, msg, ui)),

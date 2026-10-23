@@ -14,6 +14,7 @@ import { runAction } from './admin-actions.ts';
 import { dnsPage } from './admin-dns.ts';
 import { firewallPage, routingPage } from './admin-firewall.ts';
 import { vpnPage } from './admin-vpn.ts';
+import { filesPage } from './admin-files.ts';
 import { formatIp } from '../core/ip.ts';
 
 /** User names come from the request: no control characters in the logs. */
@@ -35,6 +36,7 @@ function body(server: Server, base: string, id: string, q: ReadonlyMap<string, s
     case 'admin': return adminPage(server, base);
     case 'status': return statusPage(server);
     case 'log': return logPage(server);
+    case 'files': return filesPage(server, base, q);
     default: return setupPage(server, base);
   }
 }

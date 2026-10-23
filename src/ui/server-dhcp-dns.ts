@@ -1,6 +1,6 @@
 /** Server → Servicios → DHCP panel (the DNS panel is in server-dns.ts). */
 import { t } from '../i18n/t.ts';
-import { el } from './dom.ts';
+import { el, replaceKeepingFocus } from './dom.ts';
 import { field, input, select, button, onOff, message, table } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';
 import type { Server } from '../devices/server.ts';
@@ -8,12 +8,13 @@ import type { PtDhcpPool } from '../services/config.ts';
 import { DEFAULT_LEASE_MINUTES, DEFAULT_MAX_USERS } from '../services/config.ts';
 import { validatePool } from '../services/dhcp-pt.ts';
 import { reservationsPanel, leasesPanel } from './server-dhcp-res.ts';
+import { listenBlock } from './listen-block.ts';
 import { formatIp, formatMask, parseIp, parseMask, networkOf } from '../core/ip.ts';
 
 /** A panel that rebuilds itself after each change. */
 export function livePanel(render: (refresh: () => void) => HTMLElement[]): HTMLElement {
   const root = el('div', { class: 'pane' });
-  const refresh = (): void => root.replaceChildren(...render(refresh));
+  const refresh = (): void => replaceKeepingFocus(root, render(refresh));
   refresh();
   return root;
 }
@@ -94,6 +95,7 @@ export function dhcpPanel(server: Server, app: AfterChange): HTMLElement {
     };
     return [
       onOff(t('dhcp.service'), s.dhcp.enabled, (on) => { server.setUnit('dhcp', on); app.afterCommand(); refresh(); }),
+      listenBlock(server, 'dhcp', app),
       el('h3', {}, pool ? t('dhcp.editPool', { name: pool.name }) : t('dhcp.newPool')),
       el('div', { class: 'grid3' }, field(t('dhcp.poolName'), f.name), field(t('dhcp.start'), f.start), field(t('dhcp.mask'), f.mask),
         field(t('dhcp.maxUsers'), f.max), field(t('dhcp.gateway'), f.gw), field(t('dhcp.dns'), f.dns),

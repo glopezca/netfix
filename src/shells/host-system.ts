@@ -1,4 +1,5 @@
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
+import { listenChoices } from '../services/listen.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { NAMED_OPTIONS, parseNamedOptions } from '../services/named-options.ts';
 import { NETPLAN_FILE, netplanFileContent, writeNetplanFile } from './netplan.ts';
@@ -91,7 +92,7 @@ const WRITERS: Readonly<Record<string, (host: Host, content: string) => void>> =
   [NAMED_OPTIONS]: (host, content) => {
     const srv = asServer(host);
     if (!srv) return;
-    const next = parseNamedOptions(content, srv.services.dns);
+    const next = parseNamedOptions(content, srv.services.dns, listenChoices(srv, true));
     if ('error' in next) srv.log('dns', `named-checkconf: ${next.error}`);
     else srv.setServices({ ...srv.services, dns: next });
   },

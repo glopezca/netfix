@@ -17,6 +17,7 @@ export const WEB_ES = {
   'wa.page.admin': 'Gestión',
   'wa.page.status': 'Equipo',
   'wa.page.log': 'Registros',
+  'wa.page.files': 'Ficheros',
   'wa.desc.setup': 'Nombre del equipo y su dirección IP.',
   'wa.desc.dhcp': 'Servidor DHCP: pools, reservas y concesiones.',
   'wa.desc.dns': 'Servidor DNS (bind9) por modos de funcionamiento, zonas y configuración generada.',

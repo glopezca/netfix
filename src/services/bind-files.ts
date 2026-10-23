@@ -5,6 +5,7 @@
 import type { DnsRecord, DnsSettings, DnsZone } from './config.ts';
 import { DEFAULT_TTL } from './config.ts';
 import { SAFE_ZONE, servedZones } from './dns-zones.ts';
+import type { ListenChoice } from './listen.ts';
 import type { ServedZone } from './dns-zones.ts';
 import { NAMED_OPTIONS, namedOptions } from './named-options.ts';
 import { ROOT_HINTS_FILE, rootHints } from '../net/dns-roots.ts';
@@ -83,12 +84,12 @@ include "/etc/bind/named.conf.local";
 include "/etc/bind/named.conf.default-zones";
 `;
 
-export function bindFiles(dns: DnsSettings): Map<string, string> {
+export function bindFiles(dns: DnsSettings, choices: readonly ListenChoice[]): Map<string, string> {
   // A zone name is part of a file name: never one that could leave /etc/bind.
   const zones = servedZones(dns).filter((z) => SAFE_ZONE.test(z.zone.name));
   const files = new Map<string, string>([
     ['/etc/bind/named.conf', NAMED_CONF],
-    [NAMED_OPTIONS, namedOptions(dns)],
+    [NAMED_OPTIONS, namedOptions(dns, choices)],
     [NAMED_LOCAL, namedLocal(dns, zones)],
     [NAMED_DEFAULT_ZONES, DEFAULT_ZONES],
     [ROOT_HINTS_FILE, rootHints()],

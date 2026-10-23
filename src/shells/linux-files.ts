@@ -1,4 +1,5 @@
 /** Read-only view of the files a student would inspect on Ubuntu (generated from the live config). */
+import { listenChoices } from '../services/listen.ts';
 import { runsServices } from '../devices/kinds.ts';
 import type { Host } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
@@ -40,7 +41,7 @@ function keaConf(s: ServerServices): string {
   });
   return `{
   "Dhcp4": {
-    "interfaces-config": { "interfaces": [ "${IFACE}" ] },
+    "interfaces-config": { "interfaces": [ ${(s.dhcp.interfaces ?? ['*']).map((i) => `"${i}"`).join(', ')} ] },
     "lease-database": { "type": "memfile", "persist": true, "name": "/var/lib/kea/kea-leases4.csv" },
     "subnet4": [
 ${subnets.join(',\n')}
@@ -70,7 +71,7 @@ function serverFiles(server: Server): Map<string, string> {
   const files = new Map<string, string>();
   webAppFiles(s, files);
   files.set('/etc/kea/kea-dhcp4.conf', keaConf(s));
-  for (const [path, content] of bindFiles(s.dns)) files.set(path, content);
+  for (const [path, content] of bindFiles(s.dns, listenChoices(server, true))) files.set(path, content);
   files.set('/etc/postfix/main.cf', `myhostname = ${server.name.toLowerCase()}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
   files.set('/etc/dovecot/dovecot.conf', `protocols = ${[s.mail.pop3 ? 'pop3' : '', s.mail.imap ? 'imap' : ''].filter(Boolean).join(' ') || 'none'}\nmail_location = maildir:~/Maildir\n`);
   const excl = s.dhcp.pools.flatMap(ptExclusions).length;

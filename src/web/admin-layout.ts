@@ -22,16 +22,16 @@ export const TABS: readonly string[] = ['setup', 'services', 'security', 'admin'
 
 export const PAGES: readonly AdminPage[] = [
   { id: 'setup', tab: 'setup' },
-  { id: 'dhcp', tab: 'services' }, { id: 'dns', tab: 'services' }, { id: 'web', tab: 'services' },
-  { id: 'mail', tab: 'services' }, { id: 'ssh', tab: 'services' },
+  { id: 'ssh', tab: 'services' }, { id: 'dhcp', tab: 'services' }, { id: 'dns', tab: 'services' },
+  { id: 'web', tab: 'services' }, { id: 'mail', tab: 'services' },
   { id: 'firewall', tab: 'security' }, { id: 'routing', tab: 'security' }, { id: 'vpn', tab: 'security' },
   { id: 'admin', tab: 'admin' },
-  { id: 'status', tab: 'status' }, { id: 'log', tab: 'status' },
+  { id: 'status', tab: 'status' }, { id: 'log', tab: 'status' }, { id: 'files', tab: 'status' },
 ];
 
-/** Pages of a device: the Security area (firewall, routes, VPN) only exists on a Linux router. */
+/** Pages of a device: Security (firewall, routes, VPN) only on a Linux router; Ficheros only on Linux. */
 export function pagesOf(server: Server): readonly AdminPage[] {
-  return server.kind === 'linuxrouter' ? PAGES : PAGES.filter((p) => p.tab !== 'security');
+  return PAGES.filter((p) => (p.tab !== 'security' || server.kind === 'linuxrouter') && (p.id !== 'files' || server.os === 'linux'));
 }
 
 /** A card: title, help line and its content. */

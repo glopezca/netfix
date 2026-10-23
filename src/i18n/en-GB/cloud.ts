@@ -13,7 +13,6 @@ export const CLOUD_EN: Readonly<Record<CloudKey, string>> = {
   'cloud.ispName': 'ISP name',
   'cloud.block': 'Public block (/16)',
   'cloud.blockHint': 'Each line uses a /29: {a}, {b}…',
-  'cloud.save': 'Save',
   'cloud.domains': 'Registered domains',
   'cloud.domainsHint': 'The public DNS servers 8.8.8.8 and 8.8.4.4 publish them for every cloud.',
   'cloud.domain': 'Domain',

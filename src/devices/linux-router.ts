@@ -58,12 +58,13 @@ export class LinuxRouter extends Server {
     return i >= 0 ? `eth${i}` : port;
   }
 
+  // `extra` is still unset while the Server constructor runs (it generates the system files): `?.` covers that moment.
   override ifaceConfig(port: string): { readonly ip?: number; readonly prefix?: number } | undefined {
-    return port === this.primaryPort() ? this.config : this.extra.get(port);
+    return port === this.primaryPort() ? this.config : this.extra?.get(port);
   }
 
   override portAdminUp(port?: string): boolean {
-    return port === undefined || port === this.primaryPort() ? this.portUp : this.extra.get(port)?.adminUp ?? false;
+    return port === undefined || port === this.primaryPort() ? this.portUp : this.extra?.get(port)?.adminUp ?? false;
   }
 
   private portLinkUp(port: string): boolean {
@@ -73,7 +74,7 @@ export class LinuxRouter extends Server {
   override nics(): NicInfo[] {
     return LINUX_ROUTER_PORTS.map((port, i) => {
       const cfg = this.ifaceConfig(port) ?? {};
-      const mac = i === 0 ? this.mac : this.extra.get(port)?.mac ?? this.mac;
+      const mac = i === 0 ? this.mac : this.extra?.get(port)?.mac ?? this.mac;
       return { port, linux: `eth${i}`, mac, up: this.portLinkUp(port), adminUp: this.portAdminUp(port), ip: cfg.ip, prefix: cfg.prefix, dhcp: i === 0 && this.config.mode === 'dhcp' };
     });
   }

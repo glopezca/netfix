@@ -672,6 +672,12 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .term-foot-check:has(input:disabled) { cursor: not-allowed; }
 .term-foot-box { margin: 0; accent-color: #5fb0cc; }
 .term-foot-lock { color: #9fb3ba; }
+/* Listen interfaces of the DHCP and DNS panels. */
+.listen-block { border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px 10px; margin: 12px 0; }
+.listen-block h3 { margin: 4px 0; }
+.listen-row { display: flex; gap: 10px; align-items: center; margin: 4px 0; }
+/* Servicios → Ficheros: one block per file. */
+.conf-file h4 { margin: 14px 0 4px; font-size: 12.5px; }
 
 </style>
   <style>
@@ -855,8 +861,22 @@ function safeStorageSet(key, value) {
         // Storage may be unavailable (private mode, sandboxed preview): the app still works.
     }
 }
+const FOCUSABLE = 'input, select, textarea, button';
+/**
+ * Replaces the children of `root` and puts the focus back on the control in the same position, so a panel redrawn
+ * while it is being used (a field applied on change, Tab to the next one) does not lose the user's place.
+ */
+function replaceKeepingFocus(root, children) {
+    const active = document.activeElement;
+    const index = active && root.contains(active) ? [...root.querySelectorAll(FOCUSABLE)].indexOf(active) : -1;
+    root.replaceChildren(...children);
+    if (index < 0)
+        return;
+    const again = root.querySelectorAll(FOCUSABLE)[index];
+    again?.focus();
+}
 
-return { el, svg, clear, staticSvg, prefersReducedMotion, safeStorageGet, safeStorageSet };
+return { el, svg, clear, staticSvg, prefersReducedMotion, safeStorageGet, safeStorageSet, replaceKeepingFocus };
 })();
 __m["ui/brand-data.js"] = (() => {
 const BRAND = {
@@ -1279,18 +1299,16 @@ return { MC_EN };
 __m["i18n/es-ES/host.js"] = (() => {
 /** Español (España): pestañas de PC y Servidor (Equipo, Configuración IP) y ventanas de equipo. */
 const HOST_ES = {
-    'host.nameTitle': 'Nombre del equipo',
-    'host.label': 'Nombre visible (área de trabajo)',
-    'host.labelHint': 'Solo identifica el icono; no cambia la red.',
+    'host.nameTitle': 'Identificación',
+    'host.label': 'Nombre del equipo',
+    'host.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo. El nombre de host se deriva de él: minúsculas, sin tildes y con guiones.',
     'host.hostname': 'Nombre de host',
-    'host.hostnameHint': 'Lo envía el cliente DHCP (opción 12) y lo muestran el prompt, /etc/hostname y hostname.',
+    'host.hostnameHint': 'Derivado del nombre del equipo (también lo cambia hostnamectl set-hostname). Lo envía el cliente DHCP (opción 12) y lo muestran el prompt, /etc/hostname y hostname.',
     'host.pretty': 'Nombre descriptivo (pretty hostname)',
     'host.prettyHint': 'Solo en GNU/Linux: lo muestra hostnamectl.',
     'host.prettyPlaceholder': 'Opcional, texto libre',
-    'host.save': 'Guardar',
-    'host.useLabel': 'Usar el nombre visible',
     'host.labelEmpty': 'El nombre visible no puede estar vacío.',
-    'host.saved': 'Guardado. Nombre de host: {name}.',
+    'host.saved': 'Aplicado. Nombre de host: {name}.',
     'host.equivalents': 'Equivalencias',
     'host.eqLinux': 'GNU/Linux: sudo hostnamectl set-hostname NOMBRE (persistente) o sudo hostname NOMBRE (solo hasta reiniciar). bash muestra el nombre nuevo en una shell nueva (exec bash).',
     'host.eqWindows': 'Windows: Configuración → Sistema → Cambiar el nombre de este equipo.',
@@ -1304,6 +1322,8 @@ const HOST_ES = {
     'host.err.chars': 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).',
     'iosdev.hostnameHint': 'Es el «hostname» de IOS: aparece en el prompt (Router#) y en show running-config.',
     'iosdev.badHostname': 'Nombre de host IOS no válido: una sola palabra que empiece por una letra (máximo 63 caracteres).',
+    'iosdev.labelSaved': 'Aplicado. Nombre del equipo cambiado.',
+    'iosdev.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo; no cambia la red ni el hostname de IOS.',
     'iosdev.eq': 'CLI: configure terminal → hostname NOMBRE (se guarda con copy running-config startup-config).',
     'iosdev.eqIfaces': 'Las interfaces (descripción, dirección, VLAN, shutdown) se cambian en la pestaña Interfaces, en la CLI o en la Gestión web.',
 };
@@ -1313,17 +1333,15 @@ return { HOST_ES };
 __m["i18n/en-GB/host.js"] = (() => {
 const HOST_EN = {
     'host.nameTitle': 'Device name',
-    'host.label': 'Display name (workspace)',
-    'host.labelHint': 'Only labels the icon; it does not change the network.',
+    'host.label': 'Device name',
+    'host.labelHint': 'Shown in the diagram and applied when it changes. The host name is derived from it: lowercase, no accents, hyphens.',
     'host.hostname': 'Host name',
-    'host.hostnameHint': 'Sent by the DHCP client (option 12) and shown by the prompt, /etc/hostname and hostname.',
+    'host.hostnameHint': 'Derived from the device name (hostnamectl set-hostname changes it too). The DHCP client sends it (option 12) and the prompt, /etc/hostname and hostname show it.',
     'host.pretty': 'Pretty host name',
     'host.prettyHint': 'GNU/Linux only: shown by hostnamectl.',
     'host.prettyPlaceholder': 'Optional, free text',
-    'host.save': 'Save',
-    'host.useLabel': 'Use the display name',
     'host.labelEmpty': 'The display name cannot be empty.',
-    'host.saved': 'Saved. Host name: {name}.',
+    'host.saved': 'Applied. Host name: {name}.',
     'host.equivalents': 'Equivalents',
     'host.eqLinux': 'GNU/Linux: sudo hostnamectl set-hostname NAME (persistent) or sudo hostname NAME (until reboot). bash shows the new name in a new shell (exec bash).',
     'host.eqWindows': 'Windows: Settings → System → Rename this PC.',
@@ -1337,6 +1355,8 @@ const HOST_EN = {
     'host.err.chars': 'Use only unaccented letters, digits and hyphens (no spaces; it cannot start or end with a hyphen).',
     'iosdev.hostnameHint': 'The IOS “hostname”: it appears in the prompt (Router#) and in show running-config.',
     'iosdev.badHostname': 'Invalid IOS host name: a single word starting with a letter (63 characters at most).',
+    'iosdev.labelSaved': 'Applied. Device name changed.',
+    'iosdev.labelHint': 'Shown in the diagram and applied when it changes; it does not change the network or the IOS hostname.',
     'iosdev.eq': 'CLI: configure terminal → hostname NAME (saved with copy running-config startup-config).',
     'iosdev.eqIfaces': 'Interfaces (description, address, VLAN, shutdown) are changed in the Interfaces tab, in the CLI or in Web management.',
 };
@@ -1849,7 +1869,6 @@ const CLOUD_ES = {
     'cloud.ispName': 'Nombre del ISP',
     'cloud.block': 'Bloque público (/16)',
     'cloud.blockHint': 'Cada línea usa un /29: {a}, {b}…',
-    'cloud.save': 'Guardar',
     'cloud.domains': 'Dominios registrados',
     'cloud.domainsHint': 'Los publican los DNS públicos 8.8.8.8 y 8.8.4.4 para todas las nubes.',
     'cloud.domain': 'Dominio',
@@ -1920,7 +1939,6 @@ const CLOUD_EN = {
     'cloud.ispName': 'ISP name',
     'cloud.block': 'Public block (/16)',
     'cloud.blockHint': 'Each line uses a /29: {a}, {b}…',
-    'cloud.save': 'Save',
     'cloud.domains': 'Registered domains',
     'cloud.domainsHint': 'The public DNS servers 8.8.8.8 and 8.8.4.4 publish them for every cloud.',
     'cloud.domain': 'Domain',
@@ -2370,6 +2388,7 @@ __m["i18n/es-ES/srv.js"] = (() => {
 const SRV_ES = {
     'srv.mail': 'Correo',
     'srv.log': 'Registros',
+    'srv.files': 'Ficheros',
     'srv.fileContent': 'Contenido del fichero',
     'srv.httpIis': 'Servicio HTTP (IIS, puerto 80)',
     'srv.httpApache': 'Servicio HTTP (Apache2, puertos {ports})',
@@ -2432,6 +2451,13 @@ const SRV_ES = {
     'srv.service': 'Servicio',
     'srv.refresh': 'Actualizar',
     'srv.journalHint': 'Equivale a journalctl -u <servicio> en el terminal del servidor.',
+    'files.ssh': 'SSH (OpenSSH)',
+    'files.dhcp': 'DHCP (Kea)',
+    'files.dns': 'DNS (BIND)',
+    'files.http': 'HTTP (Apache)',
+    'files.mail': 'Correo (Postfix y Dovecot)',
+    'files.hint': 'Los ficheros tal como están ahora en el disco (cat como root). Los cambios hechos en los paneles o en el terminal se ven al actualizar.',
+    'files.none': 'Este servicio no tiene ficheros de configuración en el equipo.',
     'dhcp.byClientId': 'Client-ID (opción 61) o, si no la envía, MAC',
     'dhcp.byMac': 'Dirección MAC',
     'dhcp.badStart': 'La IP inicial no es válida.',
@@ -2535,6 +2561,7 @@ __m["i18n/en-GB/srv.js"] = (() => {
 const SRV_EN = {
     'srv.mail': 'Email',
     'srv.log': 'Logs',
+    'srv.files': 'Files',
     'srv.fileContent': 'File content',
     'srv.httpIis': 'HTTP service (IIS, port 80)',
     'srv.httpApache': 'HTTP service (Apache2, ports {ports})',
@@ -2597,6 +2624,13 @@ const SRV_EN = {
     'srv.service': 'Service',
     'srv.refresh': 'Refresh',
     'srv.journalHint': 'The same as journalctl -u <service> in the server terminal.',
+    'files.ssh': 'SSH (OpenSSH)',
+    'files.dhcp': 'DHCP (Kea)',
+    'files.dns': 'DNS (BIND)',
+    'files.http': 'HTTP (Apache)',
+    'files.mail': 'Mail (Postfix and Dovecot)',
+    'files.hint': 'The files as they are on disk right now (cat as root). Changes made in the panels or in the terminal show up on refresh.',
+    'files.none': 'This service has no configuration files on the device.',
     'dhcp.byClientId': 'Client-ID (option 61) or, if not sent, MAC',
     'dhcp.byMac': 'MAC address',
     'dhcp.badStart': 'The start address is not valid.',
@@ -2716,6 +2750,7 @@ const WEB_ES = {
     'wa.page.admin': 'Gestión',
     'wa.page.status': 'Equipo',
     'wa.page.log': 'Registros',
+    'wa.page.files': 'Ficheros',
     'wa.desc.setup': 'Nombre del equipo y su dirección IP.',
     'wa.desc.dhcp': 'Servidor DHCP: pools, reservas y concesiones.',
     'wa.desc.dns': 'Servidor DNS (bind9) por modos de funcionamiento, zonas y configuración generada.',
@@ -2983,6 +3018,7 @@ const WEB_EN = {
     'wa.page.admin': 'Management',
     'wa.page.status': 'Device',
     'wa.page.log': 'Logs',
+    'wa.page.files': 'Files',
     'wa.desc.setup': 'Device name and IP address.',
     'wa.desc.dhcp': 'DHCP server: pools, reservations and leases.',
     'wa.desc.dns': 'DNS server (bind9) by operating mode, zones and the generated configuration.',
@@ -3254,6 +3290,7 @@ const LOAD_ES = {
     'load.reservationId': 'Client-ID de reserva no válido (hexadecimal).',
     'load.origin': 'Origen de zona DNS no válido.',
     'load.record': 'Registro DNS no válido.',
+    'load.ifaces': 'Lista de interfaces de escucha no válida (eth0, eth1… o lo).',
     'load.zone': 'Zona DNS «{name}» no válida: {error}',
     'load.account': 'Cuenta no válida.',
     'load.services': 'Servicios del servidor no válidos.',
@@ -3322,6 +3359,7 @@ const LOAD_EN = {
     'load.reservationId': 'Invalid reservation Client-ID (hexadecimal).',
     'load.origin': 'Invalid DNS zone origin.',
     'load.record': 'Invalid DNS record.',
+    'load.ifaces': 'Invalid list of listen interfaces (eth0, eth1… or lo).',
     'load.zone': 'Invalid DNS zone «{name}»: {error}',
     'load.account': 'Invalid account.',
     'load.services': 'Invalid server services.',
@@ -3611,6 +3649,15 @@ const DNSUI_ES = {
     'dnsm.err.noRecord': 'Ese registro no existe.',
     'dnsm.err.maxZones': 'Como máximo {max} zonas.',
     'dnsm.err.maxRecords': 'Como máximo {max} registros por zona.',
+    'listen.title': 'Interfaces de escucha',
+    'listen.dnsHint': 'listen-on de BIND: las direcciones en las que bind9 atiende consultas. Una consulta a otra dirección del equipo no tiene respuesta.',
+    'listen.dhcpHint': 'interfaces-config de Kea: las interfaces por las que kea-dhcp4 atiende peticiones (también las de un relay, que llegan por la interfaz con la dirección del servidor).',
+    'listen.all': 'Todas (any / *)',
+    'listen.apply': 'Aplicar (systemctl restart {unit})',
+    'listen.noAddress': 'sin dirección',
+    'listen.saved': 'Interfaces aplicadas; {unit} reiniciado.',
+    'listen.err.none': 'Elige al menos una interfaz (o «Todas»).',
+    'listen.err.unknown': 'El equipo no tiene la interfaz «{name}».',
     'dnsm.err.noZone': 'No existe la zona «{name}».',
     'wad.modesTitle': 'Modo de funcionamiento del servidor',
     'wad.modesHelp': 'Elige las funciones que cumple este servidor DNS; se pueden combinar varias. Guarda para aplicar los cambios.',
@@ -3748,6 +3795,15 @@ const DNSUI_EN = {
     'dnsm.err.noRecord': 'That record does not exist.',
     'dnsm.err.maxZones': 'At most {max} zones.',
     'dnsm.err.maxRecords': 'At most {max} records per zone.',
+    'listen.title': 'Listen interfaces',
+    'listen.dnsHint': 'BIND listen-on: the addresses bind9 answers queries on. A query to another address of the device gets no answer.',
+    'listen.dhcpHint': 'Kea interfaces-config: the interfaces kea-dhcp4 answers requests on (also a relay\'s, which arrive through the interface with the server\'s address).',
+    'listen.all': 'All (any / *)',
+    'listen.apply': 'Apply (systemctl restart {unit})',
+    'listen.noAddress': 'no address',
+    'listen.saved': 'Interfaces applied; {unit} restarted.',
+    'listen.err.none': 'Choose at least one interface (or «All»).',
+    'listen.err.unknown': 'The device has no interface «{name}».',
     'dnsm.err.noZone': 'Zone «{name}» does not exist.',
     'wad.modesTitle': 'Server operating mode',
     'wad.modesHelp': 'Choose the roles of this DNS server; several can be combined. Save to apply the changes.',
@@ -4963,6 +5019,109 @@ class EditHistory {
 
 return { MAX_EDITS, historyFor, EditHistory };
 })();
+__m["core/ip.js"] = (() => {
+/** IPv4 helpers. Addresses are unsigned 32-bit numbers. */
+const OCTET_RE = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
+const MAX_PREFIX = 32;
+function parseIp(text) {
+    const parts = text.split('.');
+    if (parts.length !== 4)
+        return null;
+    let value = 0;
+    for (const part of parts) {
+        if (!OCTET_RE.test(part))
+            return null;
+        value = value * 256 + Number(part);
+    }
+    return value >>> 0;
+}
+function formatIp(value) {
+    const v = value >>> 0;
+    return [v >>> 24, (v >>> 16) & 255, (v >>> 8) & 255, v & 255].join('.');
+}
+function prefixToMask(prefix) {
+    if (prefix <= 0)
+        return 0;
+    return (0xffffffff << (MAX_PREFIX - prefix)) >>> 0;
+}
+function formatMask(prefix) {
+    return formatIp(prefixToMask(prefix));
+}
+/** Accepts "255.255.255.0" or "/24". Returns the prefix length or null. */
+function parseMask(text) {
+    if (text.startsWith('/')) {
+        const body = text.slice(1);
+        if (!/^\d{1,2}$/.test(body))
+            return null;
+        const prefix = Number(body);
+        return prefix <= MAX_PREFIX ? prefix : null;
+    }
+    const mask = parseIp(text);
+    if (mask === null)
+        return null;
+    for (let prefix = 0; prefix <= MAX_PREFIX; prefix++) {
+        if (prefixToMask(prefix) === mask)
+            return prefix;
+    }
+    return null;
+}
+function networkOf(ip, prefix) {
+    return (ip & prefixToMask(prefix)) >>> 0;
+}
+function broadcastOf(ip, prefix) {
+    return (networkOf(ip, prefix) | (~prefixToMask(prefix) >>> 0)) >>> 0;
+}
+function inSubnet(ip, network, prefix) {
+    return networkOf(ip, prefix) === networkOf(network, prefix);
+}
+/** Classful default prefix, used by IOS when a mask is omitted. */
+function classfulPrefix(ip) {
+    const first = ip >>> 24;
+    if (first < 128)
+        return 8;
+    if (first < 192)
+        return 16;
+    if (first < 224)
+        return 24;
+    return MAX_PREFIX;
+}
+function parseIpWithMask(ipText, maskText) {
+    const ip = parseIp(ipText);
+    const prefix = parseMask(maskText);
+    if (ip === null || prefix === null)
+        return null;
+    return { ip, prefix };
+}
+function isUsableHost(ip, prefix) {
+    if (prefix >= 31)
+        return true;
+    return ip !== networkOf(ip, prefix) && ip !== broadcastOf(ip, prefix);
+}
+const BROADCAST_IP = 0xffffffff;
+
+return { parseIp, formatIp, prefixToMask, formatMask, parseMask, networkOf, broadcastOf, inSubnet, classfulPrefix, parseIpWithMask, isUsableHost, BROADCAST_IP };
+})();
+__m["ui/device-caption.js"] = (() => {
+const { formatIp } = __m["core/ip.js"];
+/** More would cover the devices below. */
+const MAX_LINES = 3;
+/** Height of each caption line below the device name. */
+const CAPTION_LINE = 14;
+const IOS_DEFAULTS = new Set(['Router', 'Switch']);
+function extraLines(p) {
+    const d = p.device;
+    if (d.kind === 'cloud')
+        return [d.settings.isp];
+    if (d.kind === 'router' || d.kind === 'switch')
+        return IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname];
+    return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
+}
+function deviceCaption(p) {
+    return { name: p.label, extra: extraLines(p).slice(0, MAX_LINES) };
+}
+
+return { CAPTION_LINE, deviceCaption };
+})();
 __m["ui/canvas.js"] = (() => {
 /** Logical workspace: devices, cables with link lights, placing, moving, cabling, deleting. */
 const { el, svg, clear, staticSvg } = __m["ui/dom.js"];
@@ -4975,6 +5134,7 @@ const { DrawLayer } = __m["ui/draw-layer.js"];
 const { DrawState } = __m["ui/draw-bar.js"];
 const { historyFor } = __m["net/edit-history.js"];
 const { t } = __m["i18n/t.js"];
+const { CAPTION_LINE, deviceCaption } = __m["ui/device-caption.js"];
 const WORLD_W = 2400;
 const WORLD_H = 1600;
 const LIGHT_OFFSET = 36;
@@ -5137,7 +5297,6 @@ class Canvas {
     }
     drawDevice(id, p) {
         const d = p.device;
-        const name = d.kind === 'router' || d.kind === 'switch' ? d.hostname : d.kind === 'cloud' ? d.settings.isp : '';
         const g = svg('g', {
             class: `device device-${d.kind}${this.selected === id ? ' is-selected' : ''}${this.pendingEnd?.device === id ? ' is-pending' : ''}`,
             transform: `translate(${p.x} ${p.y})`, tabindex: '0', 'data-id': id, role: 'button', 'aria-label': `${p.label} (${modelLabel(d.kind)})`,
@@ -5148,9 +5307,9 @@ class Canvas {
         icon.setAttribute('y', String(-ICON_H / 2));
         g.appendChild(icon);
         g.appendChild(svg('text', { class: 'device-model', x: 0, y: -ICON_H / 2 - 12 }, modelLabel(d.kind)));
-        g.appendChild(svg('text', { class: 'device-label', x: 0, y: ICON_H / 2 + 18 }, p.label));
-        if (name && name !== 'Router' && name !== 'Switch' && name !== p.label)
-            g.appendChild(svg('text', { class: 'device-host', x: 0, y: ICON_H / 2 + 33 }, name));
+        const caption = deviceCaption(p);
+        g.appendChild(svg('text', { class: 'device-label', x: 0, y: ICON_H / 2 + 18 }, caption.name));
+        caption.extra.forEach((line, i) => g.appendChild(svg('text', { class: 'device-host', x: 0, y: ICON_H / 2 + 33 + i * CAPTION_LINE }, line)));
         g.addEventListener('pointerdown', (e) => this.onDevicePointer(e, id, g));
         // Touch double-taps are handled in tapped(): browsers also synthesise dblclick from any two quick taps.
         g.addEventListener('dblclick', () => { if (this.lastPointer === 'mouse')
@@ -5549,88 +5708,6 @@ function tcpService(seg) {
 }
 
 return { DHCP_SERVER_PORT, DHCP_CLIENT_PORT, DNS_PORT, WELL_KNOWN_PORTS, DEFAULT_TTL, PC_TTL, frameProtocol, tcpService };
-})();
-__m["core/ip.js"] = (() => {
-/** IPv4 helpers. Addresses are unsigned 32-bit numbers. */
-const OCTET_RE = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
-const MAX_PREFIX = 32;
-function parseIp(text) {
-    const parts = text.split('.');
-    if (parts.length !== 4)
-        return null;
-    let value = 0;
-    for (const part of parts) {
-        if (!OCTET_RE.test(part))
-            return null;
-        value = value * 256 + Number(part);
-    }
-    return value >>> 0;
-}
-function formatIp(value) {
-    const v = value >>> 0;
-    return [v >>> 24, (v >>> 16) & 255, (v >>> 8) & 255, v & 255].join('.');
-}
-function prefixToMask(prefix) {
-    if (prefix <= 0)
-        return 0;
-    return (0xffffffff << (MAX_PREFIX - prefix)) >>> 0;
-}
-function formatMask(prefix) {
-    return formatIp(prefixToMask(prefix));
-}
-/** Accepts "255.255.255.0" or "/24". Returns the prefix length or null. */
-function parseMask(text) {
-    if (text.startsWith('/')) {
-        const body = text.slice(1);
-        if (!/^\d{1,2}$/.test(body))
-            return null;
-        const prefix = Number(body);
-        return prefix <= MAX_PREFIX ? prefix : null;
-    }
-    const mask = parseIp(text);
-    if (mask === null)
-        return null;
-    for (let prefix = 0; prefix <= MAX_PREFIX; prefix++) {
-        if (prefixToMask(prefix) === mask)
-            return prefix;
-    }
-    return null;
-}
-function networkOf(ip, prefix) {
-    return (ip & prefixToMask(prefix)) >>> 0;
-}
-function broadcastOf(ip, prefix) {
-    return (networkOf(ip, prefix) | (~prefixToMask(prefix) >>> 0)) >>> 0;
-}
-function inSubnet(ip, network, prefix) {
-    return networkOf(ip, prefix) === networkOf(network, prefix);
-}
-/** Classful default prefix, used by IOS when a mask is omitted. */
-function classfulPrefix(ip) {
-    const first = ip >>> 24;
-    if (first < 128)
-        return 8;
-    if (first < 192)
-        return 16;
-    if (first < 224)
-        return 24;
-    return MAX_PREFIX;
-}
-function parseIpWithMask(ipText, maskText) {
-    const ip = parseIp(ipText);
-    const prefix = parseMask(maskText);
-    if (ip === null || prefix === null)
-        return null;
-    return { ip, prefix };
-}
-function isUsableHost(ip, prefix) {
-    if (prefix >= 31)
-        return true;
-    return ip !== networkOf(ip, prefix) && ip !== broadcastOf(ip, prefix);
-}
-const BROADCAST_IP = 0xffffffff;
-
-return { parseIp, formatIp, prefixToMask, formatMask, parseMask, networkOf, broadcastOf, inSubnet, classfulPrefix, parseIpWithMask, isUsableHost, BROADCAST_IP };
 })();
 __m["core/mac.js"] = (() => {
 /** MAC address and DHCP client-identifier helpers. MACs are 12 lowercase hex chars. */
@@ -6031,8 +6108,15 @@ function subnav(items) {
         show(items[0].id);
     return el('div', { class: 'subnav' }, el('nav', { class: 'subnav-list', 'aria-label': t('win.services') }, ...buttons), content);
 }
+/**
+ * Applies a field as soon as it changes (Enter, or leaving it). The work runs once the browser has moved the focus,
+ * so a panel that redraws itself keeps the control the user went to.
+ */
+function onCommit(control, apply) {
+    control.addEventListener('change', () => { setTimeout(apply, 0); });
+}
 
-return { nextId, input, field, select, button, onOff, message, table, copyRow, subnav };
+return { nextId, input, field, select, button, onOff, message, table, copyRow, subnav, onCommit };
 })();
 __m["ios/pipe.js"] = (() => {
 /**
@@ -6916,8 +7000,8 @@ return { Session, applyConfig };
 })();
 __m["ui/ios-device-settings.js"] = (() => {
 /** IOS router / switch → «Equipo»: name in the workspace and `hostname` of the running configuration. */
-const { el } = __m["ui/dom.js"];
-const { field, input, button, message } = __m["ui/forms.js"];
+const { el, replaceKeepingFocus } = __m["ui/dom.js"];
+const { field, input, message, onCommit } = __m["ui/forms.js"];
 const { applyConfig } = __m["ios/session.js"];
 const { t } = __m["i18n/t.js"];
 const MAX_LABEL = 40;
@@ -6929,25 +7013,44 @@ function iosDeviceSettings(placed, d, app) {
     const refresh = () => {
         // The CLI may have renamed the device since the last visit.
         app.retitle(`${placed.label} · ${d.hostname}`);
-        const label = input({ value: placed.label, maxlength: String(MAX_LABEL) });
-        const hostname = input({ value: d.hostname, maxlength: '63' });
-        const save = () => {
-            const name = hostname.value.trim();
-            const shown = label.value.trim();
-            // Only a changed hostname is checked: one set from the CLI or a saved file is kept as it is.
-            if (name !== d.hostname && !IOS_HOSTNAME.test(name))
-                return msg.error(t('iosdev.badHostname'));
-            if (!shown)
+        const label = input({ value: placed.label, maxlength: String(MAX_LABEL), name: 'label' });
+        const hostname = input({ value: d.hostname, maxlength: '63', name: 'hostname' });
+        // Each field applies on its own when it changes (Enter or leaving it), as `hostname` does in the CLI.
+        onCommit(label, () => {
+            const shown = label.value.trim().slice(0, MAX_LABEL);
+            if (!shown) {
+                label.value = placed.label;
                 return msg.error(t('host.labelEmpty'));
-            const errors = name !== d.hostname ? applyConfig(d, [`hostname ${name}`]) : [];
+            }
+            if (shown === placed.label)
+                return;
+            placed.label = shown;
+            app.afterCommand();
+            refresh();
+            msg.ok(t('iosdev.labelSaved'));
+        });
+        onCommit(hostname, () => {
+            const name = hostname.value.trim();
+            if (name === d.hostname)
+                return;
+            if (!IOS_HOSTNAME.test(name)) {
+                hostname.value = d.hostname;
+                return msg.error(t('iosdev.badHostname'));
+            }
+            const errors = applyConfig(d, [`hostname ${name}`]);
             if (errors.length)
                 return msg.error(errors.join(' '));
-            placed.label = shown.slice(0, MAX_LABEL);
             app.afterCommand();
             refresh();
             msg.ok(t('host.saved', { name: d.hostname }));
-        };
-        root.replaceChildren(el('h3', {}, t('host.nameTitle')), el('div', { class: 'grid2' }, field(t('host.label'), label, t('host.labelHint')), field(t('host.hostname'), hostname, t('iosdev.hostnameHint'))), el('div', { class: 'actions' }, button(t('host.save'), save)), msg.el, el('h3', {}, t('host.equivalents')), el('ul', { class: 'muted' }, el('li', {}, t('iosdev.eq')), el('li', {}, t('iosdev.eqIfaces'))));
+        });
+        replaceKeepingFocus(root, [
+            el('h3', {}, t('host.nameTitle')),
+            el('div', { class: 'grid2' }, field(t('host.label'), label, t('iosdev.labelHint')), field(t('host.hostname'), hostname, t('iosdev.hostnameHint'))),
+            msg.el,
+            el('h3', {}, t('host.equivalents')),
+            el('ul', { class: 'muted' }, el('li', {}, t('iosdev.eq')), el('li', {}, t('iosdev.eqIfaces'))),
+        ]);
     };
     refresh();
     return { root, refresh: () => { msg.clear(); refresh(); } };
@@ -7079,13 +7182,13 @@ return { addressCommands, switchportCommands, changedCommands, configureIface, i
 })();
 __m["ui/live.js"] = (() => {
 /** Panels that follow their device: they redraw when it changes (from the terminal, DHCP…) unless you are typing in them. */
-const { el } = __m["ui/dom.js"];
+const { el, replaceKeepingFocus } = __m["ui/dom.js"];
 function liveHostPanel(host, render) {
     const root = el('div', { class: 'pane' });
     let stale = false;
     const refresh = () => {
         stale = false;
-        root.replaceChildren(...render(refresh));
+        replaceKeepingFocus(root, render(refresh));
     };
     let attached = false;
     const onChange = () => {
@@ -7155,12 +7258,74 @@ function hostInterfaces(h, app, peer) {
 
 return { hostInterfaces };
 })();
+__m["services/listen.js"] = (() => {
+/**
+ * Listen interfaces of the DHCP and DNS services, as Kea (`interfaces-config`) and BIND (`listen-on`) have them.
+ * Interfaces are Linux names (eth0…, and lo for DNS); no list means every interface (`*` / `any`).
+ */
+const { t } = __m["i18n/t.js"];
+const { formatIp } = __m["core/ip.js"];
+const LOOPBACK = 'lo';
+const LOOPBACK_IP = 0x7f000001;
+const MAX_LISTEN = 8;
+/** Linux interface names a saved file may carry. */
+const IFACE_NAME = /^(?:eth\d{1,2}|lo)$/;
+/** The interfaces a service can listen on: the NICs and, for DNS, lo. */
+function listenChoices(host, withLoopback) {
+    const nics = host.nics().map((n) => ({ name: n.linux, port: n.port, ip: n.ip, ...(n.ip !== undefined && n.prefix !== undefined ? { address: `${formatIp(n.ip)}/${n.prefix}` } : {}) }));
+    return withLoopback ? [...nics, { name: LOOPBACK, ip: LOOPBACK_IP, address: '127.0.0.1/8' }] : nics;
+}
+/** Whether a list (undefined = all) includes the interface. */
+const listens = (list, iface) => list === undefined || list.includes(iface);
+function validate(list, available) {
+    if (list.length === 0)
+        return t('listen.err.none');
+    const bad = list.find((n) => !available.includes(n));
+    return bad === undefined ? null : t('listen.err.unknown', { name: bad });
+}
+/** Kea's interfaces-config: undefined = all ("*"). */
+function setDhcpInterfaces(s, list, available) {
+    if (list === undefined)
+        return { ...s, dhcp: { ...s.dhcp, interfaces: undefined } };
+    const err = validate(list, available);
+    return err ? { error: err } : { ...s, dhcp: { ...s.dhcp, interfaces: [...new Set(list)] } };
+}
+/** BIND's listen-on: undefined = any. */
+function setDnsListen(s, list, available) {
+    if (list === undefined)
+        return { ...s, listenOn: undefined };
+    const err = validate(list, available);
+    return err ? { error: err } : { ...s, listenOn: [...new Set(list)] };
+}
+/** The addresses BIND listens on (listen-on); undefined = any. */
+function dnsListenAddresses(s, choices) {
+    if (s.listenOn === undefined)
+        return undefined;
+    return s.listenOn.map((n) => choices.find((c) => c.name === n)?.ip).filter((x) => x !== undefined);
+}
+/** Whether a query to `dst` reaches bind (127.x is the loopback). */
+function dnsListensOn(s, choices, dst) {
+    const addrs = dnsListenAddresses(s, choices);
+    if (addrs === undefined)
+        return true;
+    return addrs.includes(dst) || ((dst >>> 24) === 127 && listens(s.listenOn, LOOPBACK));
+}
+/** The interfaces of listen-on addresses (as named.conf.options lists them); unknown addresses are ignored. */
+function ifacesOfAddresses(addresses, choices) {
+    return [...new Set(addresses.map((a) => ((a >>> 24) === 127 ? LOOPBACK : choices.find((c) => c.ip === a)?.name)).filter((x) => x !== undefined))];
+}
+
+return { LOOPBACK, MAX_LISTEN, IFACE_NAME, listenChoices, listens, setDhcpInterfaces, setDnsListen, dnsListenAddresses, dnsListensOn, ifacesOfAddresses };
+})();
 __m["net/ipstack.js"] = (() => {
 const { inSubnet, broadcastOf, BROADCAST_IP } = __m["core/ip.js"];
 const { BROADCAST_MAC } = __m["core/mac.js"];
 const ARP_TIMEOUT_MS = 1000;
 /** Interface name the hooks see for traffic to the host's own addresses. */
 const LOOPBACK = 'lo';
+const LOOPBACK_NET = 127;
+const LOOPBACK_IP = 0x7f000001;
+const LOOPBACK_MAC = '000000000000';
 const MAX_PENDING = 4;
 class IpStack {
     arp = new Map();
@@ -7172,8 +7337,9 @@ class IpStack {
         this.host = host;
         this.now = now;
     }
+    /** One of our addresses, or the loopback network 127.0.0.0/8 (the kernel's lo). */
     isMine(ip) {
-        return this.host.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip));
+        return (ip >>> 24) === LOOPBACK_NET || this.host.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip));
     }
     isLocalBroadcast(iface, ip) {
         return ip === BROADCAST_IP || iface.addrs.some((a) => broadcastOf(a.ip, a.prefix) === ip);
@@ -7254,6 +7420,10 @@ class IpStack {
     }
     /** Sends an ICMP echo request; the callback fires on reply/error (never on timeout). */
     echo(dst, id, seq, src, onResult, ttl = this.host.ttl) {
+        if (this.isMine(dst)) {
+            this.host.schedule(0, () => onResult({ kind: 'reply', from: dst, ttl: this.host.ttl }));
+            return true;
+        }
         const egress = this.host.route(dst);
         if (!egress)
             return false;
@@ -7261,10 +7431,6 @@ class IpStack {
         if (srcIp === undefined)
             return false;
         this.echoWaiters.set(`${id}:${seq}`, onResult);
-        if (this.isMine(dst)) {
-            this.host.schedule(0, () => onResult({ kind: 'reply', from: dst, ttl: this.host.ttl }));
-            return true;
-        }
         const out = this.outbound(egress.iface, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
         if (out)
             this.sendVia(egress, out);
@@ -7308,13 +7474,17 @@ class IpStack {
     }
     /** Packets to one of our own addresses never reach the wire (like the kernel's loopback path). */
     loopback(packet) {
+        const toLo = (packet.dst >>> 24) === LOOPBACK_NET;
         const iface = this.host.l3Ifaces().find((i) => i.addrs.some((a) => a.ip === packet.dst));
-        if (!iface)
+        if (!iface && !toLo)
             return false;
-        const out = this.outbound(LOOPBACK, packet);
+        // To 127.x the source is 127.0.0.1 too (a socket bound to lo), as on Linux.
+        const sent = toLo && (packet.src >>> 24) !== LOOPBACK_NET ? { ...packet, src: LOOPBACK_IP } : packet;
+        const out = this.outbound(LOOPBACK, sent);
         if (!out)
             return true;
-        this.host.schedule(0, () => this.localIn(LOOPBACK, out, { src: iface.mac, dst: iface.mac, ip: out }));
+        const mac = iface?.mac ?? LOOPBACK_MAC;
+        this.host.schedule(0, () => this.localIn(LOOPBACK, out, { src: mac, dst: mac, ip: out }));
         return true;
     }
     /** Sends a frame on an interface to the broadcast MAC (DHCP, etc.). */
@@ -9985,6 +10155,7 @@ return { zonesOf, answerQuery, answerFromZones, validateRecord };
 })();
 __m["services/named-options.js"] = (() => {
 const { formatIp, parseIp } = __m["core/ip.js"];
+const { dnsListenAddresses, ifacesOfAddresses } = __m["services/listen.js"];
 const NAMED_OPTIONS = '/etc/bind/named.conf.options';
 const MAX_FORWARDERS = 8;
 const MAX_TTL = 2_147_483_647;
@@ -9993,7 +10164,14 @@ const DEFAULT_MAX_CACHE_TTL = 604800;
 function iterates(s) {
     return s.recursion === true && !((s.forwarders ?? []).length > 0 && s.forwardOnly !== false);
 }
-function namedOptions(s) {
+/** listen-on { any; } or the addresses of the chosen interfaces ({ none; } when none has one). */
+function listenOnLine(s, choices) {
+    const addrs = dnsListenAddresses(s, choices);
+    if (addrs === undefined)
+        return '\tlisten-on { any; };';
+    return `\tlisten-on { ${addrs.length ? addrs.map((a) => `${formatIp(a)}; `).join('') : 'none; '}};`;
+}
+function namedOptions(s, choices = []) {
     const fwd = s.forwarders ?? [];
     const lines = [
         'options {',
@@ -10012,6 +10190,8 @@ function namedOptions(s) {
         `\trecursion ${s.recursion === true ? 'yes' : 'no'};`,
         `\tallow-recursion { ${s.allowRecursion === 'any' ? 'any' : 'localnets; localhost'}; };`,
         '',
+        '\t// Interfaces de escucha: direcciones en las que atiende consultas (any = todas)',
+        listenOnLine(s, choices),
         '\tdnssec-validation no;',
         '\tlisten-on-v6 { any; };',
         '};',
@@ -10025,12 +10205,19 @@ function seconds(text) {
     const unit = text.slice(-1).toLowerCase();
     return Object.hasOwn(UNITS, unit) ? Number(text.slice(0, -1)) * (UNITS[unit] ?? 1) : Number(text);
 }
+/** listen-on back to interfaces: missing or any = all; none = []; addresses = their interfaces. */
+function listenOnOf(text, choices) {
+    if (text === null || /\bany\b/.test(text))
+        return undefined;
+    const addrs = text.split(';').map((x) => parseIp(x.trim())).filter((x) => x !== null);
+    return ifacesOfAddresses(addrs, choices);
+}
 function block(text, name) {
     const m = new RegExp(`\\b${name}\\s*\\{([^}]*)\\}\\s*;`).exec(text);
     return m ? m[1] ?? '' : null;
 }
 /** The settings described by an edited file (cache, forwarding, recursion); an error in named-checkconf words. */
-function parseNamedOptions(text, current) {
+function parseNamedOptions(text, current, choices = []) {
     const clean = text.replace(/\/\/.*$/gm, '').replace(/#.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
     if ((clean.match(/\{/g) ?? []).length !== (clean.match(/\}/g) ?? []).length)
         return { error: `${NAMED_OPTIONS}: unexpected end of input` };
@@ -10057,6 +10244,7 @@ function parseNamedOptions(text, current) {
         forwardOnly: forward === 'only',
         maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(seconds(ttl), MAX_TTL),
         allowRecursion: /\bany\b/.test(allow) ? 'any' : 'localnets',
+        listenOn: listenOnOf(block(clean, 'listen-on'), choices),
     };
 }
 
@@ -10334,6 +10522,9 @@ class ServerDns {
             return this.forwarder.onResponse(udp.dport, dns, packet.src);
         if (udp.dport !== DNS_PORT || !this.host.services.dns.enabled)
             return false;
+        // listen-on: bind has no socket on that address, so the query is lost (as with the service stopped).
+        if (!this.host.dnsListensOn(packet.dst))
+            return true;
         this.query(packet.src, udp.sport, packet.dst, dns);
         return true;
     }
@@ -19121,9 +19312,10 @@ const NETFIX_DOCS = {
                     ['Router IOS / Switch IOS', 'Equipo (nombre visible y hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
                     ['Nube ISP', 'ISP (proveedor, bloque público, dominios), Interfaces (resumen de las seis líneas) y Líneas (modo, LAN, NAT, redirección de puertos).'],
                     ['PC', 'Equipo, Interfaces (MAC, enlace, velocidad, extremo del cable y estado del puerto), Configuración IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Terminal Windows y Terminal Linux.'],
-                    ['Router Linux', 'Equipo, Interfaces (dirección de eth0-eth2, MAC, extremo del cable, reenvío y rutas), Servicios (Parámetros, Firewall, VPN, y los servicios de Server) y Terminal Linux.'],
-                    ['Server', 'Equipo, Interfaces, Servicios (DHCP, DNS, HTTP, correo, SSH), Configuración IP, Terminal Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router Linux (en su terminal siguen sysctl y nft).'],
+                    ['Router Linux', 'Equipo, Interfaces (dirección de eth0-eth2, MAC, extremo del cable, reenvío y rutas), Servicios (Parámetros, Firewall, VPN, y los servicios de Server empezando por SSH) y Terminal Linux.'],
+                    ['Server', 'Equipo, Interfaces, Servicios (SSH, DHCP, DNS, HTTP, correo, Registros y Ficheros), Configuración IP, Terminal Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router Linux (en su terminal siguen sysctl y nft).'],
                 ]),
+                note('Los campos de los equipos se aplican al cambiarlos (Intro o al salir del campo): nombre, direcciones, nube e ISP. Llevan botón los servicios («Aplicar» equivale a reiniciarlos con systemctl), los formularios que se traducen a órdenes de IOS y las listas (añadir un pool, una zona, una ruta…).'),
                 note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim). En móvil y tableta las ventanas ocupan la pantalla, el lienzo se mueve con un dedo y se amplía pellizcando, una pulsación larga abre un equipo y la terminal tiene una barra de teclas: Esc, Tab, Ctrl (se queda pulsada para la tecla siguiente), flechas, Inicio, Fin, RePág, AvPág, ^C y ^D, y con un editor abierto F1-F10. Fuera de los editores, Inicio y Fin van al principio o al final de la línea, y RePág y AvPág desplazan la salida.'),
             ],
         },
@@ -19351,10 +19543,10 @@ const SERVICE_DOCS = {
             title: 'Server',
             summary: 'Pestañas del servidor, sistema operativo y nombres de los servicios.',
             blocks: [
-                p('Un Server es un equipo con servicios de red. Cada servicio tiene su interruptor y su panel en la pestaña Servicios; los cambios se aplican al momento y se reflejan en los ficheros de configuración que ve la Terminal Linux.'),
+                p('Un Server es un equipo con servicios de red. Cada servicio tiene su interruptor y su panel en la pestaña Servicios; los cambios se aplican al momento y se reflejan en los ficheros de configuración que ve la Terminal Linux. El menú empieza por SSH (lo primero para administrar el equipo a distancia) y termina con Registros (journalctl) y Ficheros: elige un servicio y muestra sus ficheros de configuración tal como están ahora en el disco, como cat ejecutado por root.'),
                 table(['Servicio', 'Puerto', 'Unidad systemd (Ubuntu)', 'Servicio de Windows', 'Configuración en Linux'], [
                     ['DHCP', '67/udp', 'kea-dhcp4-server', 'DHCPServer', '/etc/kea/kea-dhcp4.conf, /var/lib/kea/kea-leases4.csv'],
-                    ['DNS', '53/udp', 'bind9 (named)', 'DNS', '/etc/bind/named.conf.local, /etc/bind/db.<zona>'],
+                    ['DNS', '53/udp', 'bind9 (named)', 'DNS', '/etc/bind/named.conf.options, /etc/bind/named.conf.local, /etc/bind/db.<zona>'],
                     ['HTTP', '80/tcp', 'apache2', 'W3SVC', '/var/www/html (editable)'],
                     ['SMTP', '25/tcp', 'postfix', 'SMTPSVC', '/etc/postfix/main.cf'],
                     ['POP3 / IMAP', '110 / 143', 'dovecot', 'POP3Svc', '/etc/dovecot/dovecot.conf'],
@@ -19381,6 +19573,9 @@ const SERVICE_DOCS = {
                 p('«Identificar concesiones automáticas por» decide qué identifica a un cliente que no tiene reserva:'),
                 list('Client-ID (opción 61) o, si no la envía, MAC: el comportamiento normal de DHCP (RFC 2131) y de kea por defecto.', 'MAC: ignora el Client-ID; el mismo equipo conserva su IP aunque cambie de sistema o de Client-ID (kea: "match-client-id": false).'),
                 p('En la tabla de concesiones, los botones «Reservar por MAC» y «Reservar por Client-ID» convierten una concesión automática en reserva.'),
+                h('Interfaces de escucha'),
+                p('Como interfaces-config de Kea: el bloque «Interfaces de escucha» elige por qué interfaces atiende kea-dhcp4 las peticiones. «Todas» equivale a "*"; si marcas algunas, una petición que llega por otra interfaz se descarta sin respuesta (un relay llega por la interfaz que tiene la dirección del servidor). «Aplicar» escribe el fichero y reinicia el servicio, como systemctl restart kea-dhcp4-server.'),
+                code('"interfaces-config": {\n  "interfaces": [ "eth1" ]\n},\n\nadmin@srv:~$ ss -lun | grep :67\nUNCONN 0 0 192.168.1.1:67 0.0.0.0:*'),
                 code('"reservations": [\n  { "hw-address": "00:50:f0:00:00:02", "ip-address": "192.168.10.50" },\n  { "client-id": "01:00:50:f0:00:00:03", "ip-address": "192.168.10.51" }\n],\n"match-client-id": false'),
             ],
         },
@@ -19413,6 +19608,9 @@ const SERVICE_DOCS = {
                     ['TXT', 'Texto', '@ → "v=spf1 mx -all"'],
                     ['PTR', 'Nombre de una dirección (solo zonas inversas)', '2 → srv.aula.lab.'],
                 ]),
+                h('Interfaces de escucha'),
+                p('Como listen-on de BIND: el bloque «Interfaces de escucha» elige en qué direcciones atiende bind9. «Todas» es listen-on { any; }; cada interfaz marcada añade su dirección y lo, 127.0.0.1. Una consulta a otra dirección del equipo no tiene respuesta (dig acaba en «connection timed out»). «Aplicar» reinicia bind9, como systemctl restart bind9; editar listen-on en named.conf.options como root cambia el panel.'),
+                code('options {\n\tlisten-on { 192.168.1.1; 127.0.0.1; };\n\t…\n};\n\nadmin@srv:~$ dig @127.0.0.1 www.aula.lab'),
                 h('Lo mismo en /etc/bind'),
                 p('El panel y los archivos de BIND son la misma configuración: named.conf.options (caché, reenvío, recursión; root puede editarlo y el panel lo refleja), named.conf.local (las zonas, también las automáticas), named.conf.default-zones (la zona «.» de sugerencias raíz) y un archivo db.<zona> por zona con el SOA primero, después los NS y después los registros. La gestión web muestra esa configuración al lado de los modos, explicada.'),
                 code('admin@srv:~$ cat /etc/bind/named.conf.options\nadmin@srv:~$ cat /etc/bind/named.conf.local\nadmin@srv:~$ cat /etc/bind/db.aula.lab\nadmin@srv:~$ sudo rndc status\nadmin@srv:~$ sudo rndc flush'),
@@ -19521,11 +19719,11 @@ const CLIENT_DOCS = {
         {
             id: 'pc-equipo',
             title: 'Nombre del equipo',
-            summary: 'Nombre visible, nombre de host y nombre descriptivo; equivalencias en Linux y Windows.',
+            summary: 'Nombre del equipo, nombre de host derivado y nombre descriptivo; equivalencias en Linux y Windows.',
             blocks: [
-                p('La pestaña Equipo de PCs y servidores separa dos nombres: el nombre visible (la etiqueta del icono en el área de trabajo) y el nombre de host del sistema. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea), aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname, y se guarda con la topología.'),
+                p('En la pestaña Equipo de PCs, servidores y routers Linux se escribe el nombre del equipo (el del diagrama) y se aplica al pulsar Intro o salir del campo. El nombre de host del sistema se deriva de él en formato estándar: minúsculas, sin tildes y con guiones en lugar de espacios («Aula Pública 2º» → aula-publica-2o). El diagrama muestra el nombre del equipo y la dirección IP/CIDR de cada interfaz configurada, sin repetir el nombre de host. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea), aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname, y se guarda con la topología.'),
                 table(['Dónde', 'Cómo se cambia', 'Persistente'], [
-                    ['Pestaña Equipo', 'Nombre de host + Guardar', 'Sí'],
+                    ['Pestaña Equipo', 'Nombre del equipo (el nombre de host se deriva de él)', 'Sí'],
                     ['GNU/Linux', 'sudo hostnamectl set-hostname NOMBRE', 'Sí (/etc/hostname)'],
                     ['GNU/Linux', 'echo NOMBRE | sudo tee /etc/hostname', 'Sí'],
                     ['GNU/Linux', 'sudo hostname NOMBRE', 'No: nombre transitorio hasta reiniciar'],
@@ -20324,19 +20522,20 @@ const WEBAPP_DOCS = [
     {
         id: 'srv-webadmin',
         title: 'Gestión web de Server',
-        summary: 'Interfaz de administración con menú lateral y tarjetas: configuración básica, DHCP, DNS por modos, web, correo, SSH, estado y registros.',
+        summary: 'Interfaz de administración con menú lateral y tarjetas: configuración básica, SSH, DHCP, DNS por modos, web, correo, estado, registros y ficheros.',
         blocks: [
             p('Servicios → HTTP → Aplicaciones web → Gestión web. Por defecto está desactivada; al activarla escucha en el puerto 10000 (o en un alias de Apache como /admin) con usuario admin y contraseña netfix (la misma cuenta que el SSH de los laboratorios).'),
             code('Navegador del PC:  http://srv.aula.lab:10000/\nTerminal:          curl -u admin:netfix "http://192.168.10.2:10000/?page=status"'),
             table(['Página', 'Qué cambia'], [
                 ['Configuración', 'Nombre de host, IP estática o DHCP, puerta de enlace y DNS.'],
-                ['DHCP', 'Activar el servidor, añadir y borrar pools (concesiones por MAC o por Client-ID), direcciones reservadas por MAC o identificador (hex 01… o texto) y «Reservar» una concesión activa.'],
-                ['DNS', 'Tarjetas de los cinco modos (Caché, Agente de reenvío, Autoritativo, Recursivo, Iterativo) con su interruptor y usos, una pestaña de opciones por modo (el asistente de zonas SOA → NS → tipo → registros en Autoritativo) y, al lado, la configuración de BIND generada (named.conf.options, zonas, archivos) explicada.'],
+                ['SSH', 'El primero del menú Servicios: servicio, usuarios y métodos de autenticación (contraseña y/o par de claves) de sshd_config.'],
+                ['DHCP', 'Activar el servidor, elegir las interfaces de escucha (interfaces-config de Kea), añadir y borrar pools (concesiones por MAC o por Client-ID), direcciones reservadas por MAC o identificador (hex 01… o texto) y «Reservar» una concesión activa.'],
+                ['DNS', 'Interfaces de escucha (listen-on), tarjetas de los cinco modos (Caché, Agente de reenvío, Autoritativo, Recursivo, Iterativo) con su interruptor y usos, una pestaña de opciones por modo (el asistente de zonas SOA → NS → tipo → registros en Autoritativo) y, al lado, la configuración de BIND generada (named.conf.options, zonas, archivos) explicada.'],
                 ['Web', 'Apache y el acceso a Roundcube.'],
                 ['Enrutamiento (Router Linux)', 'Casilla «Activar router» (net.ipv4.ip_forward), parámetros del núcleo y rutas estáticas.'],
-                ['Correo · SSH', 'Servicios y usuarios; en SSH, los métodos de autenticación (contraseña y/o par de claves) de sshd_config.'],
+                ['Correo', 'Servicios y usuarios.'],
                 ['Administración', 'Usuario/contraseña de la interfaz y su puerto o alias (al cambiarlo, el navegador pasa a la nueva dirección).'],
-                ['Estado · Registros', 'Datos del equipo, servicios, concesiones y últimos mensajes (journalctl).'],
+                ['Estado · Registros · Ficheros', 'Datos del equipo, servicios, concesiones, últimos mensajes (journalctl) y los ficheros de configuración de cada servicio tal como están (solo Linux).'],
             ]),
             h('Seguridad'),
             list('Autenticación HTTP Basic (realm «Server»); los intentos fallidos quedan en journalctl -u apache2.', 'Cada cambio se valida igual que en la ventana del servidor y se registra con el usuario y la IP del PC.', 'El apartado Seguridad del menú (Firewall, Enrutamiento, VPN) solo aparece en el Router Linux; en un Server no existe.'),
@@ -20560,9 +20759,10 @@ const NETFIX_DOCS = {
                     ['IOS router / IOS switch', 'Device (workspace name and hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
                     ['ISP Cloud', 'ISP (provider, public block, domains), Interfaces (summary of the six lines) and Lines (mode, LAN, NAT, port forwarding).'],
                     ['PC', 'Device, Interfaces (MAC, link, speed, far end of the cable and port status), IP Config, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and Linux terminal.'],
-                    ['Linux router', 'Device, Interfaces (address of eth0-eth2, MAC, far end of the cable, forwarding and routes), Services (Parameters, Firewall, VPN, and the Server services) and Linux terminal.'],
-                    ['Server', 'Device, Interfaces, Services (DHCP, DNS, HTTP, mail, SSH), IP Config, Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the Linux router (sysctl and nft remain in its terminal).'],
+                    ['Linux router', 'Device, Interfaces (address of eth0-eth2, MAC, far end of the cable, forwarding and routes), Services (Parameters, Firewall, VPN, and the Server services starting with SSH) and Linux terminal.'],
+                    ['Server', 'Device, Interfaces, Services (SSH, DHCP, DNS, HTTP, mail, Logs and Files), IP Config, Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the Linux router (sysctl and nft remain in its terminal).'],
                 ]),
+                note('Device fields apply when they change (Enter or leaving the field): name, addresses, cloud and ISP. Buttons remain for services («Apply» is restarting them with systemctl), forms that become IOS commands and lists (add a pool, a zone, a route…).'),
                 note('Windows are moved by their title bar and resized from the corner. Escape closes the active window (except inside nano or vim). On phones and tablets windows fill the screen, the canvas is panned with one finger and zoomed by pinching, a long press opens a device and the terminal has a key bar: Esc, Tab, Ctrl (held for the next key), arrows, Home, End, PgUp, PgDn, ^C and ^D, plus F1-F10 while an editor is open. Outside the editors, Home and End go to the start or end of the line, and PgUp and PgDn scroll the output.'),
             ],
         },
@@ -20790,10 +20990,10 @@ const SERVICE_DOCS = {
             title: 'Server',
             summary: 'Server tabs, operating system and service names.',
             blocks: [
-                p('A Server is a device that provides network services. Each service has its own switch and panel in the Services tab; changes take effect immediately and are reflected in the configuration files seen by the Linux Terminal.'),
+                p('A Server is a device that provides network services. Each service has its own switch and panel in the Services tab; changes take effect immediately and are reflected in the configuration files seen by the Linux Terminal. The menu starts with SSH (the first thing to manage the device remotely) and ends with Logs (journalctl) and Files: pick a service and see its configuration files as they are on disk right now, as cat run by root shows them.'),
                 table(['Service', 'Port', 'systemd unit (Ubuntu)', 'Windows service', 'Configuration on Linux'], [
                     ['DHCP', '67/udp', 'kea-dhcp4-server', 'DHCPServer', '/etc/kea/kea-dhcp4.conf, /var/lib/kea/kea-leases4.csv'],
-                    ['DNS', '53/udp', 'bind9 (named)', 'DNS', '/etc/bind/named.conf.local, /etc/bind/db.<zone>'],
+                    ['DNS', '53/udp', 'bind9 (named)', 'DNS', '/etc/bind/named.conf.options, /etc/bind/named.conf.local, /etc/bind/db.<zone>'],
                     ['HTTP', '80/tcp', 'apache2', 'W3SVC', '/var/www/html (editable)'],
                     ['SMTP', '25/tcp', 'postfix', 'SMTPSVC', '/etc/postfix/main.cf'],
                     ['POP3 / IMAP', '110 / 143', 'dovecot', 'POP3Svc', '/etc/dovecot/dovecot.conf'],
@@ -20820,6 +21020,9 @@ const SERVICE_DOCS = {
                 p('“Identify automatic leases by” decides what identifies a client that has no reservation:'),
                 list('Client-ID (option 61) or, if it is not sent, MAC: the normal DHCP behaviour (RFC 2131) and kea’s default.', 'MAC: ignores the Client-ID; the same device keeps its IP even if it changes operating system or Client-ID (kea: "match-client-id": false).'),
                 p('In the leases table, the “Reserve by MAC” and “Reserve by Client-ID” buttons turn an automatic lease into a reservation.'),
+                h('Listen interfaces'),
+                p('Like Kea interfaces-config: the «Listen interfaces» block picks the interfaces kea-dhcp4 answers requests on. «All» is "*"; when some are ticked, a request that arrives through another interface is dropped without an answer (a relayed one arrives through the interface holding the server address). «Apply» writes the file and restarts the service, like systemctl restart kea-dhcp4-server.'),
+                code('"interfaces-config": {\n  "interfaces": [ "eth1" ]\n},\n\nadmin@srv:~$ ss -lun | grep :67\nUNCONN 0 0 192.168.1.1:67 0.0.0.0:*'),
                 code('"reservations": [\n  { "hw-address": "00:50:f0:00:00:02", "ip-address": "192.168.10.50" },\n  { "client-id": "01:00:50:f0:00:00:03", "ip-address": "192.168.10.51" }\n],\n"match-client-id": false'),
             ],
         },
@@ -20852,6 +21055,9 @@ const SERVICE_DOCS = {
                     ['TXT', 'Text', '@ → "v=spf1 mx -all"'],
                     ['PTR', 'Name of an address (reverse zones only)', '2 → srv.aula.lab.'],
                 ]),
+                h('Listen interfaces'),
+                p('Like BIND listen-on: the «Listen interfaces» block picks the addresses bind9 answers on. «All» is listen-on { any; }; each ticked interface adds its address, and lo 127.0.0.1. A query to another address of the device gets no answer (dig ends in «connection timed out»). «Apply» restarts bind9, like systemctl restart bind9; editing listen-on in named.conf.options as root changes the panel.'),
+                code('options {\n\tlisten-on { 192.168.1.1; 127.0.0.1; };\n\t…\n};\n\nadmin@srv:~$ dig @127.0.0.1 www.aula.lab'),
                 h('The same in /etc/bind'),
                 p('The panel and the BIND files are the same configuration: named.conf.options (cache, forwarding, recursion; root may edit it and the panel follows), named.conf.local (the zones, the automatic ones too), named.conf.default-zones (the «.» root hints zone) and one db.<zone> file per zone with the SOA first, then the NS and then the records. The web management shows that configuration next to the modes, explained.'),
                 code('admin@srv:~$ cat /etc/bind/named.conf.options\nadmin@srv:~$ cat /etc/bind/named.conf.local\nadmin@srv:~$ cat /etc/bind/db.aula.lab\nadmin@srv:~$ sudo rndc status\nadmin@srv:~$ sudo rndc flush'),
@@ -20960,11 +21166,11 @@ const CLIENT_DOCS = {
         {
             id: 'pc-equipo',
             title: 'Device name',
-            summary: 'Display name, host name and pretty name; equivalents on Linux and Windows.',
+            summary: 'Device name, derived host name and pretty name; equivalents on Linux and Windows.',
             blocks: [
-                p('The Device tab of PCs and servers separates two names: the display name (the icon’s label on the workspace) and the system’s host name. The host name is sent by the DHCP client (option 12, visible in show ip dhcp binding and in Kea), appears in the GNU/Linux prompt, in /etc/hostname and in hostname, and is saved with the topology.'),
+                p('The Device tab of PCs, servers and Linux routers holds the device name (the one in the diagram), applied on Enter or when leaving the field. The system host name is derived from it in standard form: lowercase, no accents and hyphens instead of spaces («Aula Pública 2º» → aula-publica-2o). The diagram shows the device name and the IP/CIDR of each configured interface, without repeating the host name. The host name is sent by the DHCP client (option 12, visible in show ip dhcp binding and in Kea), appears in the GNU/Linux prompt, in /etc/hostname and in hostname, and is saved with the topology.'),
                 table(['Where', 'How to change it', 'Persistent'], [
-                    ['Device tab', 'Host name + Save', 'Yes'],
+                    ['Device tab', 'Device name (the host name is derived from it)', 'Yes'],
                     ['GNU/Linux', 'sudo hostnamectl set-hostname NOMBRE', 'Yes (/etc/hostname)'],
                     ['GNU/Linux', 'echo NOMBRE | sudo tee /etc/hostname', 'Yes'],
                     ['GNU/Linux', 'sudo hostname NOMBRE', 'No: transient name until reboot'],
@@ -21763,19 +21969,20 @@ const WEBAPP_DOCS = [
     {
         id: 'srv-webadmin',
         title: 'Server web management',
-        summary: 'Administration interface with a side menu and cards: basic settings, DHCP, DNS by mode, web, email, SSH, status and logs.',
+        summary: 'Administration interface with a side menu and cards: basic settings, SSH, DHCP, DNS by mode, web, email, status, logs and files.',
         blocks: [
             p('Services → HTTP → Web applications → Web management. It is disabled by default; once enabled it listens on port 10000 (or on an Apache alias such as /admin) with user admin and password netfix (the same account as the SSH of the labs).'),
             code('PC Web Browser:    http://srv.aula.lab:10000/\nTerminal:          curl -u admin:netfix "http://192.168.10.2:10000/?page=status"'),
             table(['Page', 'What it changes'], [
                 ['Config', 'Host name, static or DHCP IP, default gateway and DNS.'],
-                ['DHCP', 'Enable the server, add and delete pools (leases by MAC or by Client-ID), addresses reserved by MAC or identifier (hex 01… or text) and “Reserve” an active lease.'],
-                ['DNS', 'Cards for the five modes (Cache, Forwarder, Authoritative, Recursive, Iterative) with their switch and uses, one tab of options per mode (the zone wizard SOA → NS → kind → records in Authoritative) and, beside them, the generated BIND configuration (named.conf.options, zones, files) explained.'],
+                ['SSH', 'First in the Services menu: service, users and the authentication methods (password and/or key pair) in sshd_config.'],
+                ['DHCP', 'Enable the server, choose the listen interfaces (Kea interfaces-config), add and delete pools (leases by MAC or by Client-ID), addresses reserved by MAC or identifier (hex 01… or text) and “Reserve” an active lease.'],
+                ['DNS', 'Listen interfaces (listen-on), cards for the five modes (Cache, Forwarder, Authoritative, Recursive, Iterative) with their switch and uses, one tab of options per mode (the zone wizard SOA → NS → kind → records in Authoritative) and, beside them, the generated BIND configuration (named.conf.options, zones, files) explained.'],
                 ['Web', 'Apache and access to Roundcube.'],
                 ['Routing (Linux router)', '«Enable router» checkbox (net.ipv4.ip_forward), kernel parameters and static routes.'],
-                ['Email · SSH', 'Services and users; for SSH, the authentication methods (password and/or key pair) in sshd_config.'],
+                ['Email', 'Services and users.'],
                 ['Administration', 'Interface user/password and its port or alias (when changed, the browser moves to the new address).'],
-                ['Status · Logs', 'Device data, services, leases and latest messages (journalctl).'],
+                ['Status · Logs · Files', 'Device data, services, leases, latest messages (journalctl) and the configuration files of each service as they are (Linux only).'],
             ]),
             h('Security'),
             list('HTTP Basic authentication (realm “Server”); failed attempts are logged in journalctl -u apache2.', 'Every change is validated exactly as in the server window and logged with the user and the PC’s IP.', 'The Security section of the menu (Firewall, Routing, VPN) only appears on the Linux router; a Server has none.'),
@@ -29103,7 +29310,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.13.1",
+    "version": "0.14.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -30761,12 +30968,12 @@ include "/etc/bind/named.conf.options";
 include "/etc/bind/named.conf.local";
 include "/etc/bind/named.conf.default-zones";
 `;
-function bindFiles(dns) {
+function bindFiles(dns, choices) {
     // A zone name is part of a file name: never one that could leave /etc/bind.
     const zones = servedZones(dns).filter((z) => SAFE_ZONE.test(z.zone.name));
     const files = new Map([
         ['/etc/bind/named.conf', NAMED_CONF],
-        [NAMED_OPTIONS, namedOptions(dns)],
+        [NAMED_OPTIONS, namedOptions(dns, choices)],
         [NAMED_LOCAL, namedLocal(dns, zones)],
         [NAMED_DEFAULT_ZONES, DEFAULT_ZONES],
         [ROOT_HINTS_FILE, rootHints()],
@@ -30780,6 +30987,7 @@ return { NAMED_LOCAL, zoneFilePath, zoneFile, bindFiles };
 })();
 __m["shells/linux-files.js"] = (() => {
 /** Read-only view of the files a student would inspect on Ubuntu (generated from the live config). */
+const { listenChoices } = __m["services/listen.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { formatIp, formatMask, networkOf, broadcastOf } = __m["core/ip.js"];
 const { formatMacCisco } = __m["core/mac.js"];
@@ -30815,7 +31023,7 @@ function keaConf(s) {
     });
     return `{
   "Dhcp4": {
-    "interfaces-config": { "interfaces": [ "${IFACE}" ] },
+    "interfaces-config": { "interfaces": [ ${(s.dhcp.interfaces ?? ['*']).map((i) => `"${i}"`).join(', ')} ] },
     "lease-database": { "type": "memfile", "persist": true, "name": "/var/lib/kea/kea-leases4.csv" },
     "subnet4": [
 ${subnets.join(',\n')}
@@ -30843,7 +31051,7 @@ function serverFiles(server) {
     const files = new Map();
     webAppFiles(s, files);
     files.set('/etc/kea/kea-dhcp4.conf', keaConf(s));
-    for (const [path, content] of bindFiles(s.dns))
+    for (const [path, content] of bindFiles(s.dns, listenChoices(server, true)))
         files.set(path, content);
     files.set('/etc/postfix/main.cf', `myhostname = ${server.name.toLowerCase()}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
     files.set('/etc/dovecot/dovecot.conf', `protocols = ${[s.mail.pop3 ? 'pop3' : '', s.mail.imap ? 'imap' : ''].filter(Boolean).join(' ') || 'none'}\nmail_location = maildir:~/Maildir\n`);
@@ -32652,6 +32860,7 @@ return { WG_DIR, wgQuick };
 })();
 __m["shells/linux-services.js"] = (() => {
 /** systemctl, journalctl and ss for the Linux shell. */
+const { dnsListenAddresses, listenChoices } = __m["services/listen.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { findUnit, unitActive, openPorts, UNITS } = __m["services/units.js"];
 const { formatIp } = __m["core/ip.js"];
@@ -32774,18 +32983,28 @@ function journalctl(host, args) {
     const lines = journalLines(server, unit, limit);
     return lines.length ? lines : ['-- No entries --'];
 }
+/** Local addresses a UDP service binds: named per listen-on address, Kea per interface; undefined = wildcard. */
+function boundAddresses(server, unit) {
+    const s = server.services;
+    if (unit === 'dns')
+        return dnsListenAddresses(s.dns, listenChoices(server, true))?.map(formatIp);
+    if (unit !== 'dhcp' || s.dhcp.interfaces === undefined)
+        return undefined;
+    const chosen = listenChoices(server, false).filter((c) => s.dhcp.interfaces?.includes(c.name));
+    return chosen.map((c) => (c.ip !== undefined ? formatIp(c.ip) : `0.0.0.0%${c.name}`));
+}
 function ss(host) {
     const header = 'Netid State  Recv-Q Send-Q Local Address:Port  Peer Address:Port Process';
     const server = asServer(host);
     if (!server)
         return [header];
     const v4 = host.config.ip !== undefined ? '0.0.0.0' : '*';
-    return [header, ...openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).map((p) => {
+    return [header, ...openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).flatMap((p) => {
             // Apache and the web GUI bind the IPv6 wildcard (dual stack): Ubuntu's ss shows them as *:port, *:*.
             const dual = p.unit.id === 'http';
-            const local = dual ? '*' : v4;
+            const locals = (p.proto === 'udp' ? boundAddresses(server, p.unit.id) : undefined) ?? [dual ? '*' : v4];
             const peer = dual ? '*:*' : '0.0.0.0:*';
-            return `${p.proto.padEnd(5)} ${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${peer.padStart(15)}   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))`;
+            return locals.map((local) => `${p.proto.padEnd(5)} ${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${peer.padStart(15)}   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))`);
         })];
 }
 function serverAddress(host) {
@@ -36281,6 +36500,7 @@ return { exportFiles, validFileRecords, importFiles };
 })();
 __m["shells/host-system.js"] = (() => {
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
+const { listenChoices } = __m["services/listen.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { NAMED_OPTIONS, parseNamedOptions } = __m["services/named-options.js"];
 const { NETPLAN_FILE, netplanFileContent, writeNetplanFile } = __m["shells/netplan.js"];
@@ -36355,7 +36575,7 @@ const WRITERS = {
         const srv = asServer(host);
         if (!srv)
             return;
-        const next = parseNamedOptions(content, srv.services.dns);
+        const next = parseNamedOptions(content, srv.services.dns, listenChoices(srv, true));
         if ('error' in next)
             srv.log('dns', `named-checkconf: ${next.error}`);
         else
@@ -38575,6 +38795,7 @@ return { SshService };
 })();
 __m["devices/server.js"] = (() => {
 /** Server: a host running DHCP, DNS, HTTP, SMTP/POP3/IMAP and SSH services. */
+const { dnsListensOn, listenChoices, listens } = __m["services/listen.js"];
 const { Host, DHCP_SERVER_PORT, DNS_PORT } = __m["devices/host.js"];
 const { DHCP_CLIENT_PORT } = __m["net/packets.js"];
 const { DhcpServer } = __m["dhcp/server.js"];
@@ -38793,6 +39014,9 @@ class Server extends Host {
         });
     }
     // ------------------------------------------------------------ UDP services
+    dnsListensOn(dst) {
+        return dnsListensOn(this.services.dns, listenChoices(this, true), dst);
+    }
     onUdp(packet, iface) {
         const udp = packet.udp;
         if (!udp)
@@ -38805,6 +39029,9 @@ class Server extends Host {
     /** DHCP on the NIC the request came in through (a relay's requests come to the main address). */
     onDhcp(msg, arrived) {
         const port = this.portNames().includes(arrived) ? arrived : this.primaryPort();
+        // Kea's interfaces-config: no socket on the other interfaces.
+        if (!listens(this.services.dhcp.interfaces, this.linuxIfName(port)))
+            return;
         const { ip, prefix } = this.ifaceConfig(port) ?? {};
         if (ip === undefined || prefix === undefined)
             return;
@@ -38888,11 +39115,12 @@ class LinuxRouter extends Server {
         const i = LINUX_ROUTER_PORTS.indexOf(port);
         return i >= 0 ? `eth${i}` : port;
     }
+    // `extra` is still unset while the Server constructor runs (it generates the system files): `?.` covers that moment.
     ifaceConfig(port) {
-        return port === this.primaryPort() ? this.config : this.extra.get(port);
+        return port === this.primaryPort() ? this.config : this.extra?.get(port);
     }
     portAdminUp(port) {
-        return port === undefined || port === this.primaryPort() ? this.portUp : this.extra.get(port)?.adminUp ?? false;
+        return port === undefined || port === this.primaryPort() ? this.portUp : this.extra?.get(port)?.adminUp ?? false;
     }
     portLinkUp(port) {
         return this.portAdminUp(port) && this.hooks.peerUp(port);
@@ -38900,7 +39128,7 @@ class LinuxRouter extends Server {
     nics() {
         return LINUX_ROUTER_PORTS.map((port, i) => {
             const cfg = this.ifaceConfig(port) ?? {};
-            const mac = i === 0 ? this.mac : this.extra.get(port)?.mac ?? this.mac;
+            const mac = i === 0 ? this.mac : this.extra?.get(port)?.mac ?? this.mac;
             return { port, linux: `eth${i}`, mac, up: this.portLinkUp(port), adminUp: this.portAdminUp(port), ip: cfg.ip, prefix: cfg.prefix, dhcp: i === 0 && this.config.mode === 'dhcp' };
         });
     }
@@ -39039,7 +39267,7 @@ return { saveSysctl };
 __m["ui/router-ip.js"] = (() => {
 /** "Interfaces" tab of the Linux router: address per NIC, WAN by DHCP, gateway, DNS, forwarding and routes. */
 const { el } = __m["ui/dom.js"];
-const { button, field, input, message, onOff, table } = __m["ui/forms.js"];
+const { button, field, input, message, onCommit, onOff, table } = __m["ui/forms.js"];
 const { liveHostPanel } = __m["ui/live.js"];
 const { routeTo } = __m["devices/host-nics.js"];
 const { saveSysctl } = __m["shells/kernel-save.js"];
@@ -39060,16 +39288,23 @@ function nicRow(r, n, app, msg, peer) {
     const dhcp = el('input', { type: 'checkbox', checked: isWan && r.config.mode === 'dhcp', 'aria-label': t('router.dhcp') });
     ip.disabled = mask.disabled = dhcp.checked;
     const apply = () => {
+        // Address and mask go together: with only one of them filled in, wait for the other.
+        if ((ip.value.trim() === '') !== (mask.value.trim() === ''))
+            return msg.clear();
         const a = readAddress(ip.value, mask.value);
         if (a === null)
             return msg.error(t('router.errAddress', { iface: n.linux }));
         msg.clear();
+        if (a?.ip === n.ip && a?.prefix === n.prefix)
+            return;
         if (isWan)
             r.setStatic({ ip: a?.ip, prefix: a?.prefix, gateway: r.config.gateway, dns: r.config.dns });
         else
             r.setNicAddress(n.port, a);
         app.afterCommand();
     };
+    onCommit(ip, apply);
+    onCommit(mask, apply);
     dhcp.addEventListener('change', () => {
         if (dhcp.checked) {
             r.useDhcp();
@@ -39081,7 +39316,7 @@ function nicRow(r, n, app, msg, peer) {
     });
     const state = n.adminUp ? (n.up ? t('router.up') : `${t('router.up')} (${t('router.noCable')})`) : t('router.down');
     const toggle = onOff(state, n.adminUp, (on) => { r.setNicUp(n.port, on); app.afterCommand(); });
-    return el('div', { class: 'nic-row' }, el('div', { class: 'nic-name' }, el('strong', {}, n.port), el('span', { class: 'mono muted' }, `${n.linux} · ${n.mac}`), el('span', { class: 'muted' }, peer ? t('iosif.peer', { peer }) : t('router.noCable'))), field(t('router.address'), ip), field(t('router.mask'), mask), el('div', { class: 'nic-actions' }, toggle, button(t('router.apply'), apply)), ...(isWan ? [el('label', { class: 'check nic-dhcp' }, dhcp, t('router.dhcp'))] : []));
+    return el('div', { class: 'nic-row' }, el('div', { class: 'nic-name' }, el('strong', {}, n.port), el('span', { class: 'mono muted' }, `${n.linux} · ${n.mac}`), el('span', { class: 'muted' }, peer ? t('iosif.peer', { peer }) : t('router.noCable'))), field(t('router.address'), ip), field(t('router.mask'), mask), el('div', { class: 'nic-actions' }, toggle), ...(isWan ? [el('label', { class: 'check nic-dhcp' }, dhcp, t('router.dhcp'))] : []));
 }
 function gatewaySection(r, app, msg) {
     const c = r.config;
@@ -39098,8 +39333,8 @@ function gatewaySection(r, app, msg) {
         r.setStatic({ ip: c.ip, prefix: c.prefix, gateway: g, dns: d });
         app.afterCommand();
     };
-    gw.addEventListener('change', apply);
-    dns.addEventListener('change', apply);
+    onCommit(gw, apply);
+    onCommit(dns, apply);
     return el('div', { class: 'grid2' }, field(t('router.gateway'), gw), field(t('router.dns'), dns));
 }
 function routesSection(r, app, msg) {
@@ -41279,44 +41514,65 @@ function hostIpConfig(h, app) {
 
 return { hostIpConfig };
 })();
+__m["core/hostname.js"] = (() => {
+/** Host name of a device derived from the name shown in the workspace (Equipo → Nombre). */
+/** One DNS label (RFC 1123): at most 63 characters. */
+const MAX_LABEL = 63;
+const FALLBACK = 'equipo';
+/** Lowercase, accents and ñ to plain letters, anything else to single hyphens, none at the ends. */
+function hostnameFromLabel(label) {
+    const plain = label.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const cut = plain.slice(0, MAX_LABEL).replace(/-+$/, '');
+    return cut || FALLBACK;
+}
+
+return { hostnameFromLabel };
+})();
 __m["ui/host-settings.js"] = (() => {
-/** PC / Server → «Equipo»: name shown in the workspace and the host name of the system (follows the terminal). */
+/**
+ * PC / Server / Linux router → «Equipo»: the device name, applied as soon as it changes. The host name is derived from
+ * it (lowercase, no accents, hyphens) and shown read-only; `hostnamectl set-hostname` in the terminal still changes it.
+ */
 const { el } = __m["ui/dom.js"];
-const { field, input, button, message } = __m["ui/forms.js"];
+const { field, input, message, onCommit } = __m["ui/forms.js"];
 const { liveHostPanel } = __m["ui/live.js"];
-const { validHostname } = __m["devices/host.js"];
+const { hostnameFromLabel } = __m["core/hostname.js"];
 const { t } = __m["i18n/t.js"];
 const MAX_LABEL = 40;
 function hostSettings(placed, h, app) {
     // Outside the redraw: an action that changes the device redraws the panel before reporting.
     const msg = message();
     return liveHostPanel(h, (refresh) => {
-        const label = input({ value: placed.label, maxlength: String(MAX_LABEL), 'aria-describedby': 'label-hint' });
-        const hostname = input({ value: h.name, maxlength: '253' });
-        const pretty = input({ value: h.prettyName ?? '', placeholder: t('host.prettyPlaceholder') });
-        const save = () => {
-            const name = hostname.value.trim();
-            const err = validHostname(name);
-            if (err)
-                return msg.error(err);
-            const shown = label.value.trim();
-            if (!shown)
+        const label = input({ value: placed.label, maxlength: String(MAX_LABEL), name: 'label' });
+        const hostname = input({ value: h.name, readonly: '', class: 'mono', name: 'hostname', tabindex: '-1' });
+        const pretty = input({ value: h.prettyName ?? '', placeholder: t('host.prettyPlaceholder'), name: 'pretty' });
+        onCommit(label, () => {
+            const shown = label.value.trim().slice(0, MAX_LABEL);
+            if (!shown) {
+                label.value = placed.label;
                 return msg.error(t('host.labelEmpty'));
-            placed.label = shown.slice(0, MAX_LABEL);
-            h.setPrettyName(pretty.value.trim() || undefined);
+            }
+            if (shown === placed.label)
+                return;
+            const name = hostnameFromLabel(shown);
+            placed.label = shown;
             h.setHostname(name);
-            app.retitle?.(placed.label);
+            app.retitle?.(shown);
             app.afterCommand();
             refresh();
             msg.ok(t('host.saved', { name }));
-        };
-        const same = button(t('host.useLabel'), () => { hostname.value = label.value.trim().replace(/[^a-z0-9-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase(); });
+        });
+        onCommit(pretty, () => {
+            h.setPrettyName(pretty.value.trim() || undefined);
+            app.afterCommand();
+            refresh();
+        });
         const now = t('host.now', { static: h.name }) + (h.transientName ? t('host.nowTransient', { name: h.transientName }) : '') + (h.prettyName ? t('host.nowPretty', { name: h.prettyName }) : '') + '.';
         return [
             el('h3', {}, t('host.nameTitle')),
             el('div', { class: 'grid2' }, field(t('host.label'), label, t('host.labelHint')), field(t('host.hostname'), hostname, t('host.hostnameHint'))),
             field(t('host.pretty'), pretty, t('host.prettyHint')),
-            el('div', { class: 'actions' }, button(t('host.save'), save), same),
             msg.el,
             el('p', { class: 'muted live-note' }, t('host.live')),
             el('h3', {}, t('host.equivalents')),
@@ -42015,19 +42271,69 @@ function leasesPanel(server, app, refresh) {
 
 return { reservationsPanel, leasesPanel };
 })();
+__m["ui/listen-block.js"] = (() => {
+/**
+ * «Interfaces de escucha» of the DHCP (Kea interfaces-config) and DNS (BIND listen-on) panels: one box per interface
+ * and «All»; Apply restarts the service, as systemctl restart would after editing the file.
+ */
+const { t } = __m["i18n/t.js"];
+const { el } = __m["ui/dom.js"];
+const { button, message } = __m["ui/forms.js"];
+const { listenChoices, setDhcpInterfaces, setDnsListen } = __m["services/listen.js"];
+const UNIT = { dns: 'bind9', dhcp: 'kea-dhcp4-server' };
+function apply(server, service, list, names) {
+    const s = server.services;
+    if (service === 'dhcp') {
+        const next = setDhcpInterfaces(s, list, names);
+        if ('error' in next)
+            return next.error;
+        server.setServices(next);
+        return null;
+    }
+    const next = setDnsListen(s.dns, list, names);
+    if ('error' in next)
+        return next.error;
+    server.setServices({ ...s, dns: next });
+    return null;
+}
+function listenBlock(server, service, app, shared) {
+    const msg = shared ?? message();
+    const choices = listenChoices(server, service === 'dns');
+    const current = service === 'dns' ? server.services.dns.listenOn : server.services.dhcp.interfaces;
+    const all = el('input', { type: 'checkbox', checked: current === undefined });
+    const boxes = choices.map((c) => ({ name: c.name, box: el('input', { type: 'checkbox', checked: current?.includes(c.name) ?? false, disabled: current === undefined }) }));
+    all.addEventListener('change', () => boxes.forEach((b) => { b.box.disabled = all.checked; }));
+    const unit = UNIT[service];
+    const run = () => {
+        const err = apply(server, service, all.checked ? undefined : boxes.filter((b) => b.box.checked).map((b) => b.name), choices.map((c) => c.name));
+        if (err)
+            return msg.error(err);
+        msg.ok(t('listen.saved', { unit }));
+        app.afterCommand();
+    };
+    const row = (box, text, sub) => el('label', { class: 'check listen-row' }, box, el('span', { class: 'mono' }, text), sub ? el('span', { class: 'muted' }, sub) : null);
+    return el('section', { class: 'listen-block' }, el('h3', {}, t('listen.title')), el('p', { class: 'muted' }, t(service === 'dns' ? 'listen.dnsHint' : 'listen.dhcpHint')), row(all, t('listen.all')), ...boxes.map((b, i) => {
+        const c = choices[i];
+        return row(b.box, b.name, [c?.port, c?.address ?? t('listen.noAddress')].filter(Boolean).join(' · '));
+    }), el('div', { class: 'actions' }, button(t('listen.apply', { unit }), run)), shared ? null : msg.el);
+}
+
+return { listenBlock };
+})();
 __m["ui/server-dhcp-dns.js"] = (() => {
 /** Server → Servicios → DHCP panel (the DNS panel is in server-dns.ts). */
 const { t } = __m["i18n/t.js"];
-const { el } = __m["ui/dom.js"];
+const { el, replaceKeepingFocus } = __m["ui/dom.js"];
 const { field, input, select, button, onOff, message, table } = __m["ui/forms.js"];
 const { DEFAULT_LEASE_MINUTES, DEFAULT_MAX_USERS } = __m["services/config.js"];
 const { validatePool } = __m["services/dhcp-pt.js"];
 const { reservationsPanel, leasesPanel } = __m["ui/server-dhcp-res.js"];
+const { listenBlock } = __m["ui/listen-block.js"];
 const { formatIp, formatMask, parseIp, parseMask, networkOf } = __m["core/ip.js"];
 /** A panel that rebuilds itself after each change. */
 function livePanel(render) {
     const root = el('div', { class: 'pane' });
-    const refresh = () => root.replaceChildren(...render(refresh));
+    const refresh = () => replaceKeepingFocus(root, render(refresh));
     refresh();
     return root;
 }
@@ -42107,6 +42413,7 @@ function dhcpPanel(server, app) {
         };
         return [
             onOff(t('dhcp.service'), s.dhcp.enabled, (on) => { server.setUnit('dhcp', on); app.afterCommand(); refresh(); }),
+            listenBlock(server, 'dhcp', app),
             el('h3', {}, pool ? t('dhcp.editPool', { name: pool.name }) : t('dhcp.newPool')),
             el('div', { class: 'grid3' }, field(t('dhcp.poolName'), f.name), field(t('dhcp.start'), f.start), field(t('dhcp.mask'), f.mask), field(t('dhcp.maxUsers'), f.max), field(t('dhcp.gateway'), f.gw), field(t('dhcp.dns'), f.dns), field(t('dhcp.domain'), f.domain), field(t('dhcp.tftp'), f.tftp), field(t('dhcp.lease'), f.lease), field(t('dhcp.identify'), f.identify, t('dhcp.identifyHint'))),
             el('div', { class: 'actions' }, button(pool ? t('dhcp.saveChanges') : t('dhcp.addPool'), save), pool ? button(t('dhcp.newPool'), () => { editing = null; refresh(); }, 'btn btn-quiet') : null),
@@ -42435,6 +42742,7 @@ const { forwardersText, GOOGLE_FORWARDERS } = __m["services/dns-recursion.js"];
 const { DEFAULT_MAX_CACHE_TTL } = __m["services/named-options.js"];
 const { ROOT_SERVERS } = __m["net/dns-roots.js"];
 const { livePanel } = __m["ui/server-dhcp-dns.js"];
+const { listenBlock } = __m["ui/listen-block.js"];
 const { authoritativeBody, setAuthoritativeMode } = __m["ui/server-dns-zones.js"];
 function modeBlock(mode, state, toggle, body) {
     const sw = onOff(tDynamic(`dnsm.${mode}`), state.on, (on) => toggle?.(on));
@@ -42500,6 +42808,7 @@ function dnsPanel(server, app) {
             onOff(t('dnsm.service'), s.enabled, (on) => { server.setUnit('dns', on); after.afterCommand(); }),
             el('p', { class: 'muted' }, t('dnsm.intro')),
             msg.el,
+            listenBlock(server, 'dns', after, msg),
             cacheBlock(server, after, msg),
             forwarderBlock(server, after, msg),
             modeBlock('authoritative', dnsModes(s).authoritative, (on) => setAuthoritativeMode(server, after, msg, on), authoritativeBody(server, after, msg, ui)),
@@ -42510,6 +42819,81 @@ function dnsPanel(server, app) {
 }
 
 return { dnsPanel };
+})();
+__m["services/config-files.js"] = (() => {
+const ROUTER = [
+    { id: 'sysctl', label: 'sysctl.tab', paths: ['/etc/sysctl.conf', '/etc/sysctl.d'] },
+    { id: 'firewall', label: 'fw.tab', paths: ['/etc/nftables.conf'] },
+    { id: 'vpn', label: 'vpn.tab', paths: ['/etc/wireguard'] },
+];
+const SERVICES = [
+    { id: 'ssh', label: 'files.ssh', paths: ['/etc/ssh/sshd_config', '/etc/ssh/sshd_config.d'] },
+    { id: 'dhcp', label: 'files.dhcp', paths: ['/etc/kea/kea-dhcp4.conf'] },
+    { id: 'dns', label: 'files.dns', paths: ['/etc/bind/named.conf', '/etc/bind/named.conf.options', '/etc/bind/named.conf.local', '/etc/bind'] },
+    { id: 'http', label: 'files.http', paths: ['/etc/apache2/apache2.conf', '/etc/apache2/ports.conf', '/etc/apache2/sites-enabled', '/etc/apache2/conf-enabled'] },
+    { id: 'mail', label: 'files.mail', paths: ['/etc/postfix/main.cf', '/etc/dovecot/dovecot.conf'] },
+];
+/** The services of a device in the order of its Services tab (the router's own panels first, then SSH…). */
+function configSources(device) {
+    return device.kind === 'linuxrouter' ? [...ROUTER, ...SERVICES] : SERVICES;
+}
+/** Most files a directory can contribute (a student filling /etc/bind must not freeze the view). */
+const MAX_PER_DIR = 40;
+function expand(fs, path) {
+    const node = fs.tryLookup(path);
+    if (!node)
+        return [];
+    if (node.kind !== 'dir')
+        return [path];
+    return fs.readdir(path).sort().slice(0, MAX_PER_DIR).map((name) => `${path}/${name}`)
+        .filter((p) => fs.tryLookup(p)?.kind === 'file');
+}
+/** The files of a service with their current content; unknown ids and unreadable files are left out. */
+function configFiles(fs, id) {
+    const source = [...ROUTER, ...SERVICES].find((s) => s.id === id);
+    if (!source)
+        return [];
+    // A directory listed after some of its files (named.conf first, then /etc/bind) adds only the rest.
+    return [...new Set(source.paths.flatMap((p) => expand(fs, p)))].flatMap((path) => {
+        try {
+            return [{ path, content: fs.readFile(path) }];
+        }
+        catch {
+            return [];
+        }
+    });
+}
+
+return { configSources, configFiles };
+})();
+__m["ui/files-panel.js"] = (() => {
+/**
+ * Servicios → Ficheros: the configuration files of the chosen service as they are now on disk, like Registros shows
+ * its journal. Read-only: the files are edited in the panels or in the terminal.
+ */
+const { t, tDynamic } = __m["i18n/t.js"];
+const { el } = __m["ui/dom.js"];
+const { field, select, button } = __m["ui/forms.js"];
+const { livePanel } = __m["ui/server-dhcp-dns.js"];
+const { hostFs } = __m["devices/host-fs.js"];
+const { configFiles, configSources } = __m["services/config-files.js"];
+function filesPanel(server, first = 'ssh') {
+    const sources = configSources(server);
+    let selected = sources.some((s) => s.id === first) ? first : sources[0]?.id ?? 'ssh';
+    return livePanel((refresh) => {
+        const pick = select(sources.map((s) => [s.id, tDynamic(s.label)]), selected);
+        pick.addEventListener('change', () => { selected = pick.value; refresh(); });
+        const fs = hostFs(server);
+        const files = fs ? configFiles(fs, selected) : [];
+        return [
+            el('div', { class: 'inline-form' }, field(t('srv.service'), pick), button(t('srv.refresh'), () => { refresh(); })),
+            el('p', { class: 'muted' }, t('files.hint')),
+            ...(files.length ? files.map((f) => el('section', { class: 'conf-file' }, el('h4', { class: 'mono' }, f.path), el('pre', { class: 'log-view' }, f.content))) : [el('p', { class: 'muted' }, t('files.none'))]),
+        ];
+    });
+}
+
+return { filesPanel };
 })();
 __m["services/ssh-auth-settings.js"] = (() => {
 /**
@@ -42557,7 +42941,7 @@ function setSshAuthMethods(server, want) {
 return { sshAuthMethods, setSshAuthMethods };
 })();
 __m["ui/server-apps.js"] = (() => {
-/** Server → Servicios → HTTP, Correo, SSH and Registros panels. */
+/** Server → Servicios: SSH first, then DHCP, DNS, HTTP, Correo, Registros and Ficheros. */
 const { t } = __m["i18n/t.js"];
 const { firewallPanel, sysctlPanel } = __m["ui/firewall-panel.js"];
 const { vpnPanel } = __m["ui/vpn-panel.js"];
@@ -42565,6 +42949,7 @@ const { el } = __m["ui/dom.js"];
 const { field, input, select, button, onOff, message, table, subnav } = __m["ui/forms.js"];
 const { livePanel, dhcpPanel } = __m["ui/server-dhcp-dns.js"];
 const { dnsPanel } = __m["ui/server-dns.js"];
+const { filesPanel } = __m["ui/files-panel.js"];
 const { validateAccess } = __m["services/config.js"];
 const { formatIp } = __m["core/ip.js"];
 const { validateFileName } = __m["services/http-service.js"];
@@ -42581,12 +42966,14 @@ function servicesTab(server, app) {
     ] : [];
     return subnav([
         ...router,
+        { id: 'ssh', label: 'SSH', render: () => sshPanel(server, app) },
         { id: 'dhcp', label: 'DHCP', render: () => dhcpPanel(server, app) },
         { id: 'dns', label: 'DNS', render: () => dnsPanel(server, app) },
         { id: 'http', label: 'HTTP', render: () => httpPanel(server, app) },
         { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
-        { id: 'ssh', label: 'SSH', render: () => sshPanel(server, app) },
         { id: 'log', label: t('srv.log'), render: () => logPanel(server) },
+        // Windows Server keeps its configuration in the registry, not in files a teacher would open.
+        ...(server.os === 'linux' ? [{ id: 'files', label: t('srv.files'), render: () => filesPanel(server) }] : []),
     ]);
 }
 function httpPanel(server, app) {
@@ -44771,7 +45158,7 @@ __m["ui/cloud-window.js"] = (() => {
 /** ISP cloud window: provider, public block and domains; per-line mode, speeds, LAN, port forwarding. */
 const { t } = __m["i18n/t.js"];
 const { el } = __m["ui/dom.js"];
-const { field, input, button, message, select, table, subnav } = __m["ui/forms.js"];
+const { field, input, button, message, onCommit, select, table, subnav } = __m["ui/forms.js"];
 const { livePanel } = __m["ui/server-dhcp-dns.js"];
 const { ACCESS_LABEL, CLOUD_PORTS, LINE_PREFIX, accessOf, ispHop, lineSubnet, validateCloud, validDomain } = __m["devices/cloud-config.js"];
 const { formatIp, formatMask, parseIp, parseMask } = __m["core/ip.js"];
@@ -44795,8 +45182,12 @@ function ispTab(cloud, app) {
             const b = parseIp(block.value.trim());
             if (b === null)
                 return msg.error(t('cloud.badBlock'));
+            if (isp.value.trim() === s.isp && b === s.block)
+                return;
             save(cloud, { ...s, isp: isp.value.trim(), block: b }, msg, app, refresh);
         };
+        onCommit(isp, apply);
+        onCommit(block, apply);
         const dName = input({ placeholder: 'sede2.es' });
         const dKind = select([['a', t('cloud.kindA')], ['ns', t('cloud.kindNs')]]);
         const dIp = input({ placeholder: t('cloud.domainIpHint') });
@@ -44815,7 +45206,6 @@ function ispTab(cloud, app) {
         return [
             el('h3', {}, t('cloud.provider')),
             el('div', { class: 'grid2' }, field(t('cloud.ispName'), isp), field(t('cloud.block'), block, t('cloud.blockHint', { a: formatIp(lineSubnet(s.block, 'Coaxial0').net), b: formatIp(lineSubnet(s.block, 'Coaxial1').net) }))),
-            el('div', { class: 'actions' }, button(t('cloud.save'), apply)),
             msg.el,
             el('h3', {}, t('cloud.domains')),
             el('p', { class: 'muted' }, t('cloud.domainsHint')),
@@ -44872,6 +45262,8 @@ function linePanel(cloud, name, app) {
                 return msg.error(t('cloud.badLan'));
             put({ ...c, mode: mode.value === 'public' ? 'public' : 'router', down: Number(down.value), up: Number(up.value), lanIp: ip, lanPrefix: prefix, dnsRelay: relay.checked });
         };
+        for (const control of [mode, down, up, lan, mask, relay])
+            onCommit(control, apply);
         const peer = app.connected(name);
         const leases = line.leases().map((b) => `${formatIp(b.ip)} → ${b.hostname ?? b.mac}`);
         const nat = line.nat.entries().slice(-8).map((e) => `${e.proto ?? 'ip'} ${formatIp(e.insideLocal)}:${e.localPort ?? ''} → ${formatIp(e.insideGlobal)}:${e.globalPort ?? ''}`);
@@ -44882,7 +45274,6 @@ function linePanel(cloud, name, app) {
             c.mode === 'router' ? el('div', { class: 'grid2' }, field(t('cloud.routerLan'), lan), field(t('cloud.lanMask'), mask)) : el('div', {}),
             c.mode === 'router' ? el('label', { class: 'check' }, relay, ` ${t('dns.relay')}`) : el('div', {}),
             c.mode === 'router' ? el('p', { class: 'field-hint' }, t('dns.relayHint')) : el('div', {}),
-            el('div', { class: 'actions' }, button(t('cloud.save'), apply)),
             msg.el,
             el('h3', {}, t('cloud.addresses')),
             el('ul', { class: 'muted' }, ...(c.mode === 'router'
@@ -49553,6 +49944,7 @@ return { SWITCH_PORTS, DEFAULT_VLANS, Switch };
 })();
 __m["services/persist.js"] = (() => {
 /** JSON (de)serialisation of Server services with validation of untrusted files. */
+const { IFACE_NAME, MAX_LISTEN } = __m["services/listen.js"];
 const { hasMessage, t, tDynamic } = __m["i18n/t.js"];
 const { defaultServices, defaultWebApps, validateAccess, DEFAULT_LEASE_MINUTES, DEFAULT_TTL } = __m["services/config.js"];
 const { formatIp, parseIp } = __m["core/ip.js"];
@@ -49576,6 +49968,7 @@ function servicesToJson(s) {
                 reservations: p.reservations.map((r) => ({ ip: formatIp(r.ip), mac: r.mac, clientId: r.clientId, name: r.name })),
                 identifyBy: p.identifyBy,
             })),
+            interfaces: s.dhcp.interfaces,
         },
         dns: { ...s.dns, ...(s.dns.forwarders?.length ? { forwarders: s.dns.forwarders.map(formatIp) } : { forwarders: undefined }) },
         http: { enabled: s.http.enabled, files: [...s.http.files] },
@@ -49702,6 +50095,16 @@ function webapps(v) {
         admin: { ...access(v.admin, d.admin, roundcube), user: admin.user === undefined ? d.admin.user : str(admin.user, 'usuario de gestión web', 32), password: admin.password === undefined ? d.admin.password : str(admin.password, 'contraseña de gestión web', 128) },
     };
 }
+/** Interfaces a service listens on (eth0…, lo); a file may only name interfaces, never anything else. */
+function ifaceList(v) {
+    if (!Array.isArray(v) || v.length > MAX_LISTEN)
+        throw new Error(t('load.ifaces'));
+    return [...new Set(v.map((x) => {
+            if (typeof x !== 'string' || !IFACE_NAME.test(x))
+                throw new Error(t('load.ifaces'));
+            return x;
+        }))];
+}
 function soa(v, zone) {
     const d = defaultSoa(zone);
     if (!isObj(v))
@@ -49750,6 +50153,7 @@ function dnsFromJson(n) {
         ...(fwd.length ? { forwarders: fwd } : {}),
         ...(fwd.length || n.forwardOnly !== undefined ? { forwardOnly: n.forwardOnly !== false } : {}),
         ...(n.allowRecursion !== undefined ? { allowRecursion: n.allowRecursion === 'any' ? 'any' : 'localnets' } : {}),
+        ...(n.listenOn !== undefined ? { listenOn: ifaceList(n.listenOn) } : {}),
     };
 }
 function servicesFromJson(v) {
@@ -49763,7 +50167,7 @@ function servicesFromJson(v) {
     const m = isObj(v.mail) ? v.mail : {};
     const s = isObj(v.ssh) ? v.ssh : {};
     return {
-        dhcp: { enabled: bool(d.enabled), pools: arr(d.pools, 'pools').map(pool) },
+        dhcp: { enabled: bool(d.enabled), pools: arr(d.pools, 'pools').map(pool), ...(d.interfaces !== undefined ? { interfaces: ifaceList(d.interfaces) } : {}) },
         dns: dnsFromJson(n),
         http: { enabled: bool(h.enabled), files: arr(h.files, 'ficheros web').map((f) => { if (!isObj(f))
                 throw new Error(t('load.webFile')); return { name: str(f.name, 'fichero web', 128), content: str(f.content, 'contenido web', MAX_TEXT) }; }) },
@@ -49979,15 +50383,15 @@ const tabLabel = (id) => tDynamic(`wa.tab.${id}`);
 const TABS = ['setup', 'services', 'security', 'admin', 'status'];
 const PAGES = [
     { id: 'setup', tab: 'setup' },
-    { id: 'dhcp', tab: 'services' }, { id: 'dns', tab: 'services' }, { id: 'web', tab: 'services' },
-    { id: 'mail', tab: 'services' }, { id: 'ssh', tab: 'services' },
+    { id: 'ssh', tab: 'services' }, { id: 'dhcp', tab: 'services' }, { id: 'dns', tab: 'services' },
+    { id: 'web', tab: 'services' }, { id: 'mail', tab: 'services' },
     { id: 'firewall', tab: 'security' }, { id: 'routing', tab: 'security' }, { id: 'vpn', tab: 'security' },
     { id: 'admin', tab: 'admin' },
-    { id: 'status', tab: 'status' }, { id: 'log', tab: 'status' },
+    { id: 'status', tab: 'status' }, { id: 'log', tab: 'status' }, { id: 'files', tab: 'status' },
 ];
-/** Pages of a device: the Security area (firewall, routes, VPN) only exists on a Linux router. */
+/** Pages of a device: Security (firewall, routes, VPN) only on a Linux router; Ficheros only on Linux. */
 function pagesOf(server) {
-    return server.kind === 'linuxrouter' ? PAGES : PAGES.filter((p) => p.tab !== 'security');
+    return PAGES.filter((p) => (p.tab !== 'security' || server.kind === 'linuxrouter') && (p.id !== 'files' || server.os === 'linux'));
 }
 /** A card: title, help line and its content. */
 function section(title, help, ...body) {
@@ -50029,6 +50433,35 @@ function frame(server, base, current, notice, body) {
 
 return { pageLabel, TABS, PAGES, pagesOf, section, cards, row, text, check, choose, form, buttons, frame };
 })();
+__m["web/admin-listen.js"] = (() => {
+/**
+ * «Interfaces de escucha» card of the DHCP and DNS pages (Kea interfaces-config, BIND listen-on). The simulated browser
+ * runs no scripts, so every box stays enabled and «Todas» wins over them.
+ */
+const { t } = __m["i18n/t.js"];
+const { buttons, cards, check, form, section } = __m["web/admin-layout.js"];
+const { listenChoices, setDhcpInterfaces, setDnsListen } = __m["services/listen.js"];
+const UNIT = { dns: 'bind9', dhcp: 'kea-dhcp4-server' };
+function listenForm(server, base, service) {
+    const current = service === 'dns' ? server.services.dns.listenOn : server.services.dhcp.interfaces;
+    const boxes = listenChoices(server, service === 'dns').map((c) => check(`if_${c.name}`, current?.includes(c.name) ?? false, [c.name, c.port, c.address ?? t('listen.noAddress')].filter(Boolean).join(' · ')));
+    return form(base, service, `${service}-listen`, cards(section(t('listen.title'), t(service === 'dns' ? 'listen.dnsHint' : 'listen.dhcpHint'), check('all', current === undefined, t('listen.all')), ...boxes)), buttons(t('listen.apply', { unit: UNIT[service] })));
+}
+/** Applies the form: «all» → every interface; otherwise the ticked ones, which must exist. */
+function listenAction(server, service, f) {
+    const names = listenChoices(server, service === 'dns').map((c) => c.name);
+    const ticked = [...f.keys()].filter((k) => k.startsWith('if_')).map((k) => k.slice(3));
+    const list = f.has('all') ? undefined : ticked;
+    const s = server.services;
+    const next = service === 'dhcp' ? setDhcpInterfaces(s, list, names) : setDnsListen(s.dns, list, names);
+    if ('error' in next)
+        return { error: next.error };
+    server.setServices('dns' in next ? next : { ...s, dns: next });
+    return { ok: t('listen.saved', { unit: UNIT[service] }) };
+}
+
+return { listenForm, listenAction };
+})();
 __m["web/admin-pages.js"] = (() => {
 /** Pages of the Server management GUI (forms filled with the live configuration). */
 const { t } = __m["i18n/t.js"];
@@ -50039,6 +50472,7 @@ const { formatIp, formatMask } = __m["core/ip.js"];
 const { UNITS, unitActive } = __m["services/units.js"];
 const { idKinds, identifierText } = __m["services/dhcp-reservations.js"];
 const { formatMacCisco, formatHexId } = __m["core/mac.js"];
+const { listenForm } = __m["web/admin-listen.js"];
 const ip = (n) => (n === undefined ? '' : formatIp(n));
 function del(base, pageId, action, key) {
     return form(base, pageId, action, h('input', { type: 'hidden', name: 'key', value: key }), h('button', { type: 'submit', class: 'web-adm-small' }, t('wa.remove')));
@@ -50072,6 +50506,7 @@ function dhcpPage(server, base) {
     const rows = d.pools.map((p) => [p.name, formatIp(p.start), String(p.maxUsers), ip(p.gateway), ip(p.dns), del(base, 'dhcp', 'pool-del', p.name)]);
     return [
         form(base, 'dhcp', 'dhcp', cards(section(t('wa.dhcpServer'), t('wa.dhcpHelp'), check('enabled', d.enabled, t('wa.enabled')))), buttons()),
+        listenForm(server, base, 'dhcp'),
         cards(section(t('wa.pools'), t('wa.poolsHelp'), table([t('wa.name'), t('wa.start'), t('wa.users'), t('wa.gateway'), 'DNS', ''], rows, t('wa.noPools')))),
         form(base, 'dhcp', 'pool-add', cards(section(t('wa.newPool'), t('wa.newPoolHelp'), row(t('wa.name'), text('name', '')), row(t('wa.start'), text('start', '')), row(t('wa.maskShort'), text('mask', '255.255.255.0')), row(t('wa.maxUsers'), text('max', '50')), row(t('wa.gateway'), text('gateway', '')), row('DNS', text('dns', '')), row(t('wa.domain'), text('domain', '')), row(t('wa.leasesBy'), choose('identify', 'client-id', [['client-id', t('wa.byIdOrMac')], ['mac', 'MAC']])))), buttons()),
         reservations(server, base),
@@ -50614,6 +51049,7 @@ return { dnsAction };
 __m["web/admin-actions.js"] = (() => {
 /** Form actions of the Server management GUI: each one validates and applies to the live server. */
 const { t } = __m["i18n/t.js"];
+const { listenAction } = __m["web/admin-listen.js"];
 const { securityAction } = __m["web/admin-firewall-actions.js"];
 const { vpnAction } = __m["web/admin-vpn.js"];
 const { validHostname } = __m["devices/host.js"];
@@ -50746,6 +51182,8 @@ function runAction(server, pageId, f) {
     switch (action) {
         case 'setup': return setup(server, f);
         case 'dhcp': return set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, enabled: on(f, 'enabled') } }));
+        case 'dhcp-listen': return listenAction(server, 'dhcp', f);
+        case 'dns-listen': return listenAction(server, 'dns', f);
         case 'pool-add': return addPool(server, f);
         case 'pool-del': return set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, pools: s.dhcp.pools.filter((p) => p.name !== f.get('key')) } }));
         case 'res-add': return addReservation(server, f);
@@ -50771,6 +51209,7 @@ __m["web/admin-dns-side.js"] = (() => {
  */
 const { t } = __m["i18n/t.js"];
 const { h } = __m["web/html.js"];
+const { listenChoices } = __m["services/listen.js"];
 const { bindFiles, NAMED_LOCAL } = __m["services/bind-files.js"];
 const { NAMED_OPTIONS, DEFAULT_MAX_CACHE_TTL, iterates } = __m["services/named-options.js"];
 const { rnameToEmail, servedZones } = __m["services/dns-zones.js"];
@@ -50783,7 +51222,7 @@ function codeLines(text) {
     return h('pre', { class: 'web-adm-code' }, lines);
 }
 function fileText(server, tab) {
-    const files = bindFiles(server.services.dns);
+    const files = bindFiles(server.services.dns, listenChoices(server, true));
     if (tab === 'options')
         return files.get(NAMED_OPTIONS) ?? '';
     if (tab === 'local')
@@ -50833,6 +51272,7 @@ const { ROOT_SERVERS } = __m["net/dns-roots.js"];
 const { zonesTab } = __m["web/admin-dns-zones.js"];
 const { dnsLink, keepMode, modeOf } = __m["web/admin-dns-links.js"];
 const { dnsSide } = __m["web/admin-dns-side.js"];
+const { listenForm } = __m["web/admin-listen.js"];
 function modeCard(server, mode) {
     const state = dnsModes(server.services.dns)[mode];
     const uses = tDynamic(`dnsm.${mode}.uses`).split('|').map((u) => h('li', {}, u));
@@ -50886,10 +51326,33 @@ function specific(server, base, q, mode) {
 }
 function dnsPage(server, base, q) {
     const mode = modeOf(q);
-    return h('div', { class: 'web-adm-dns' }, h('div', { class: 'web-adm-dns-main' }, modesForm(server, base, mode), specific(server, base, q, mode)), dnsSide(server, base, q, mode));
+    return h('div', { class: 'web-adm-dns' }, h('div', { class: 'web-adm-dns-main' }, modesForm(server, base, mode), listenForm(server, base, 'dns'), specific(server, base, q, mode)), dnsSide(server, base, q, mode));
 }
 
 return { dnsPage };
+})();
+__m["web/admin-files.js"] = (() => {
+/** Estado → Ficheros of the management GUI: the configuration files of a service as they are now (read-only). */
+const { t, tDynamic } = __m["i18n/t.js"];
+const { h } = __m["web/html.js"];
+const { cards, section } = __m["web/admin-layout.js"];
+const { hostFs } = __m["devices/host-fs.js"];
+const { configFiles, configSources } = __m["services/config-files.js"];
+function filesPage(server, base, q) {
+    const sources = configSources(server);
+    const current = sources.find((s) => s.id === q.get('svc')) ?? sources[0];
+    if (!current)
+        return null;
+    const tabs = sources.map((s) => h('li', { class: s.id === current.id ? 'web-adm-on' : undefined }, h('a', { href: `${base}/?page=files&svc=${s.id}` }, tDynamic(s.label))));
+    const fs = hostFs(server);
+    const files = fs ? configFiles(fs, current.id) : [];
+    return [
+        h('ul', { class: 'web-adm-tabs' }, tabs),
+        cards(section(tDynamic(current.label), t('files.hint'), files.length ? files.map((f) => [h('h3', { class: 'web-adm-mono' }, f.path), h('pre', { class: 'web-adm-log' }, f.content)]) : t('files.none'))),
+    ];
+}
+
+return { filesPage };
 })();
 __m["web/server-admin.js"] = (() => {
 /** The Server management GUI: HTTP Basic login, pages and form actions (POST, then redirect). */
@@ -50904,6 +51367,7 @@ const { runAction } = __m["web/admin-actions.js"];
 const { dnsPage } = __m["web/admin-dns.js"];
 const { firewallPage, routingPage } = __m["web/admin-firewall.js"];
 const { vpnPage } = __m["web/admin-vpn.js"];
+const { filesPage } = __m["web/admin-files.js"];
 const { formatIp } = __m["core/ip.js"];
 /** User names come from the request: no control characters in the logs. */
 const printable = (text) => text.replace(/[\x00-\x1f\x7f]/g, '?').slice(0, 64);
@@ -50922,6 +51386,7 @@ function body(server, base, id, q) {
         case 'admin': return adminPage(server, base);
         case 'status': return statusPage(server);
         case 'log': return logPage(server);
+        case 'files': return filesPage(server, base, q);
         default: return setupPage(server, base);
     }
 }

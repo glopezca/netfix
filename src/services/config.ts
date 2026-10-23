@@ -125,10 +125,13 @@ export interface DnsSettings {
   readonly forwardOnly?: boolean;
   /** allow-recursion: localnets (default) or any. */
   readonly allowRecursion?: 'localnets' | 'any';
+  /** listen-on as interfaces (eth0…, lo); undefined = any. */
+  readonly listenOn?: readonly string[];
 }
 
 export interface ServerServices {
-  readonly dhcp: { readonly enabled: boolean; readonly pools: readonly PtDhcpPool[] };
+  /** `interfaces`: Kea's interfaces-config (Linux names); undefined = every interface. */
+  readonly dhcp: { readonly enabled: boolean; readonly pools: readonly PtDhcpPool[]; readonly interfaces?: readonly string[] };
   readonly dns: DnsSettings;
   readonly http: { readonly enabled: boolean; readonly files: readonly WebFile[] };
   readonly mail: {

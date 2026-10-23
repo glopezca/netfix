@@ -1,4 +1,4 @@
-/** Server → Servicios → HTTP, Correo, SSH and Registros panels. */
+/** Server → Servicios: SSH first, then DHCP, DNS, HTTP, Correo, Registros and Ficheros. */
 import { t } from '../i18n/t.ts';
 import { firewallPanel, sysctlPanel } from './firewall-panel.ts';
 import { vpnPanel } from './vpn-panel.ts';
@@ -7,6 +7,7 @@ import { field, input, select, button, onOff, message, table, subnav } from './f
 import type { AfterChange } from './host-ip.ts';
 import { livePanel, dhcpPanel } from './server-dhcp-dns.ts';
 import { dnsPanel } from './server-dns.ts';
+import { filesPanel } from './files-panel.ts';
 import type { Server } from '../devices/server.ts';
 import type { Account, WebAppAccess } from '../services/config.ts';
 import { validateAccess } from '../services/config.ts';
@@ -26,12 +27,14 @@ export function servicesTab(server: Server, app: AfterChange): HTMLElement {
   ] : [];
   return subnav([
     ...router,
+    { id: 'ssh', label: 'SSH', render: () => sshPanel(server, app) },
     { id: 'dhcp', label: 'DHCP', render: () => dhcpPanel(server, app) },
     { id: 'dns', label: 'DNS', render: () => dnsPanel(server, app) },
     { id: 'http', label: 'HTTP', render: () => httpPanel(server, app) },
     { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
-    { id: 'ssh', label: 'SSH', render: () => sshPanel(server, app) },
     { id: 'log', label: t('srv.log'), render: () => logPanel(server) },
+    // Windows Server keeps its configuration in the registry, not in files a teacher would open.
+    ...(server.os === 'linux' ? [{ id: 'files', label: t('srv.files'), render: () => filesPanel(server) }] : []),
   ]);
 }
 

@@ -1,4 +1,5 @@
 /** Server: a host running DHCP, DNS, HTTP, SMTP/POP3/IMAP and SSH services. */
+import { dnsListensOn, listenChoices, listens } from '../services/listen.ts';
 import { Host, DHCP_SERVER_PORT, DNS_PORT } from './host.ts';
 import type { HostOs } from './host.ts';
 import type { IpPacket, AppPayload, DhcpMessage, MailMessage } from '../net/packets.ts';
@@ -241,6 +242,10 @@ export class Server extends Host {
 
   // ------------------------------------------------------------ UDP services
 
+  dnsListensOn(dst: number): boolean {
+    return dnsListensOn(this.services.dns, listenChoices(this, true), dst);
+  }
+
   protected override onUdp(packet: IpPacket, iface: string): void {
     const udp = packet.udp;
     if (!udp) return;
@@ -251,6 +256,8 @@ export class Server extends Host {
   /** DHCP on the NIC the request came in through (a relay's requests come to the main address). */
   private onDhcp(msg: DhcpMessage, arrived: string): void {
     const port = this.portNames().includes(arrived) ? arrived : this.primaryPort();
+    // Kea's interfaces-config: no socket on the other interfaces.
+    if (!listens(this.services.dhcp.interfaces, this.linuxIfName(port))) return;
     const { ip, prefix } = this.ifaceConfig(port) ?? {};
     if (ip === undefined || prefix === undefined) return;
     const reply = this.dhcpEngine.handle(msg, {

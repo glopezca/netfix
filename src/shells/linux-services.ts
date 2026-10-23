@@ -1,9 +1,10 @@
 /** systemctl, journalctl and ss for the Linux shell. */
+import { dnsListenAddresses, listenChoices } from '../services/listen.ts';
 import { runsServices } from '../devices/kinds.ts';
 import type { Host } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import { findUnit, unitActive, openPorts, UNITS } from '../services/units.ts';
-import type { UnitInfo } from '../services/units.ts';
+import type { UnitId, UnitInfo } from '../services/units.ts';
 import { formatIp } from '../core/ip.ts';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -120,17 +121,26 @@ export function journalctl(host: Host, args: string[]): string[] {
   return lines.length ? lines : ['-- No entries --'];
 }
 
+/** Local addresses a UDP service binds: named per listen-on address, Kea per interface; undefined = wildcard. */
+function boundAddresses(server: Server, unit: UnitId): string[] | undefined {
+  const s = server.services;
+  if (unit === 'dns') return dnsListenAddresses(s.dns, listenChoices(server, true))?.map(formatIp);
+  if (unit !== 'dhcp' || s.dhcp.interfaces === undefined) return undefined;
+  const chosen = listenChoices(server, false).filter((c) => s.dhcp.interfaces?.includes(c.name));
+  return chosen.map((c) => (c.ip !== undefined ? formatIp(c.ip) : `0.0.0.0%${c.name}`));
+}
+
 export function ss(host: Host): string[] {
   const header = 'Netid State  Recv-Q Send-Q Local Address:Port  Peer Address:Port Process';
   const server = asServer(host);
   if (!server) return [header];
   const v4 = host.config.ip !== undefined ? '0.0.0.0' : '*';
-  return [header, ...openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).map((p) => {
+  return [header, ...openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).flatMap((p) => {
     // Apache and the web GUI bind the IPv6 wildcard (dual stack): Ubuntu's ss shows them as *:port, *:*.
     const dual = p.unit.id === 'http';
-    const local = dual ? '*' : v4;
+    const locals = (p.proto === 'udp' ? boundAddresses(server, p.unit.id) : undefined) ?? [dual ? '*' : v4];
     const peer = dual ? '*:*' : '0.0.0.0:*';
-    return `${p.proto.padEnd(5)} ${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${peer.padStart(15)}   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))`;
+    return locals.map((local) => `${p.proto.padEnd(5)} ${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${peer.padStart(15)}   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))`);
   })];
 }
 

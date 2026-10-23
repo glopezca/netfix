@@ -4,6 +4,8 @@
  */
 import type { DnsSettings } from './config.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
+import { dnsListenAddresses, ifacesOfAddresses } from './listen.ts';
+import type { ListenChoice } from './listen.ts';
 
 export const NAMED_OPTIONS = '/etc/bind/named.conf.options';
 const MAX_FORWARDERS = 8;
@@ -16,7 +18,14 @@ export function iterates(s: DnsSettings): boolean {
   return s.recursion === true && !((s.forwarders ?? []).length > 0 && s.forwardOnly !== false);
 }
 
-export function namedOptions(s: DnsSettings): string {
+/** listen-on { any; } or the addresses of the chosen interfaces ({ none; } when none has one). */
+function listenOnLine(s: DnsSettings, choices: readonly ListenChoice[]): string {
+  const addrs = dnsListenAddresses(s, choices);
+  if (addrs === undefined) return '\tlisten-on { any; };';
+  return `\tlisten-on { ${addrs.length ? addrs.map((a) => `${formatIp(a)}; `).join('') : 'none; '}};`;
+}
+
+export function namedOptions(s: DnsSettings, choices: readonly ListenChoice[] = []): string {
   const fwd = s.forwarders ?? [];
   const lines = [
     'options {',
@@ -35,6 +44,8 @@ export function namedOptions(s: DnsSettings): string {
     `\trecursion ${s.recursion === true ? 'yes' : 'no'};`,
     `\tallow-recursion { ${s.allowRecursion === 'any' ? 'any' : 'localnets; localhost'}; };`,
     '',
+    '\t// Interfaces de escucha: direcciones en las que atiende consultas (any = todas)',
+    listenOnLine(s, choices),
     '\tdnssec-validation no;',
     '\tlisten-on-v6 { any; };',
     '};',
@@ -50,13 +61,20 @@ function seconds(text: string): number {
   return Object.hasOwn(UNITS, unit) ? Number(text.slice(0, -1)) * (UNITS[unit] ?? 1) : Number(text);
 }
 
+/** listen-on back to interfaces: missing or any = all; none = []; addresses = their interfaces. */
+function listenOnOf(text: string | null, choices: readonly ListenChoice[]): readonly string[] | undefined {
+  if (text === null || /\bany\b/.test(text)) return undefined;
+  const addrs = text.split(';').map((x) => parseIp(x.trim())).filter((x): x is number => x !== null);
+  return ifacesOfAddresses(addrs, choices);
+}
+
 function block(text: string, name: string): string | null {
   const m = new RegExp(`\\b${name}\\s*\\{([^}]*)\\}\\s*;`).exec(text);
   return m ? m[1] ?? '' : null;
 }
 
 /** The settings described by an edited file (cache, forwarding, recursion); an error in named-checkconf words. */
-export function parseNamedOptions(text: string, current: DnsSettings): DnsSettings | { error: string } {
+export function parseNamedOptions(text: string, current: DnsSettings, choices: readonly ListenChoice[] = []): DnsSettings | { error: string } {
   const clean = text.replace(/\/\/.*$/gm, '').replace(/#.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
   if ((clean.match(/\{/g) ?? []).length !== (clean.match(/\}/g) ?? []).length) return { error: `${NAMED_OPTIONS}: unexpected end of input` };
   const fwdText = block(clean, 'forwarders');
@@ -80,5 +98,6 @@ export function parseNamedOptions(text: string, current: DnsSettings): DnsSettin
     forwardOnly: forward === 'only',
     maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(seconds(ttl), MAX_TTL),
     allowRecursion: /\bany\b/.test(allow) ? 'any' : 'localnets',
+    listenOn: listenOnOf(block(clean, 'listen-on'), choices),
   };
 }
