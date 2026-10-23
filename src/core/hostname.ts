@@ -11,3 +11,12 @@ export function hostnameFromLabel(label: string): string {
   const cut = plain.slice(0, MAX_LABEL).replace(/-+$/, '');
   return cut || FALLBACK;
 }
+
+/**
+ * Host name after renaming a device: derived from the new name while it still follows the old one (the default PC0,
+ * or a derived one); a name set with hostnamectl is kept.
+ */
+export function hostnameAfterRename(current: string, oldLabel: string, newLabel: string): string {
+  const follows = current === oldLabel || current.toLowerCase() === hostnameFromLabel(oldLabel);
+  return follows ? hostnameFromLabel(newLabel) : current;
+}

@@ -111,5 +111,23 @@ export function subnav(items: readonly { id: string; label: string; render: () =
  * so a panel that redraws itself keeps the control the user went to.
  */
 export function onCommit(control: HTMLInputElement | HTMLSelectElement, apply: () => void): void {
-  control.addEventListener('change', () => { setTimeout(apply, 0); });
+  watchPointer();
+  control.addEventListener('change', () => {
+    // A click elsewhere ended the edit: redrawing between its pointerdown and pointerup would swallow it.
+    if (!pointerDown) { setTimeout(apply, 0); return; }
+    let done = false;
+    const later = (): void => { if (!done) { done = true; setTimeout(apply, 0); } };
+    window.addEventListener('pointerup', later, { once: true });
+    window.addEventListener('pointercancel', later, { once: true });
+  });
+}
+
+let pointerDown = false;
+let watching = false;
+
+function watchPointer(): void {
+  if (watching) return;
+  watching = true;
+  window.addEventListener('pointerdown', () => { pointerDown = true; }, true);
+  for (const end of ['pointerup', 'pointercancel'] as const) window.addEventListener(end, () => { pointerDown = false; }, true);
 }

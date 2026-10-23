@@ -517,3 +517,11 @@ de una práctica o un examen lleven la fecha y la hora simuladas.
    - Se mantienen: el «Aplicar» de los servicios (reiniciar el servicio), los formularios que generan órdenes IOS
      (interfaces y gestión web IOS: se ve la orden que se ejecuta), las acciones de listas (añadir dominio,
      redirección, ruta) y la cuenta de correo del PC (como en un cliente de correo).
+
+**Estado:** completada (v0.14.0, 578 pruebas; e2e-v014). Revisión ECC: code-reviewer (sonnet) sin críticos ni altos;
+corregidos los medios (dirección del router comparada con la viva, 127/8 que llega por la red se descarta como en
+Linux, el clic que quita el foco ya no se pierde al aplicar, el hostname puesto con hostnamectl se conserva al renombrar,
+`listen-on port 53 { … }` y una interfaz sin dirección no se pierden al guardar named.conf.options) y los bajos.
+security-reviewer (opus): sin críticos, altos ni medios; corregidos los bajos (named.conf.options de más de 64 KiB se
+rechaza y se analiza en tiempo lineal, «Ficheros» no sigue enlaces fuera del árbol del servicio, una lista vacía en un
+archivo de topología se rechaza).

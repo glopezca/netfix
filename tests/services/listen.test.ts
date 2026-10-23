@@ -102,3 +102,38 @@ test('127.0.0.0/8 is the host itself (lo): ping and services answer locally', ()
   lan.setStatic({ ip: ip('192.168.1.10'), prefix: 24 });
   assert.match(all(createShell(lan, 'linux').run('ping -c 1 127.0.0.1')), / 0% packet loss/);
 });
+
+test('review: an empty list in a topology file is refused, as in the panel', () => {
+  assert.throws(() => servicesFromJson({ dhcp: { enabled: true, pools: [], interfaces: [] } }), /interfa/i);
+  assert.throws(() => servicesFromJson({ dns: { enabled: true, zones: [], listenOn: [] } }), /interfa/i);
+});
+
+test('review: 127.x that comes in from the wire is dropped (martian), as Linux does', () => {
+  const { t, lr, lan } = lab();
+  lan.setStatic({ ip: ip('192.168.1.10'), prefix: 24 });
+  const eth1 = lr.nics().find((n) => n.linux === 'eth1');
+  assert.ok(eth1);
+  const seen: unknown[] = [];
+  t.net.onFrame((e) => { if (JSON.stringify(e).includes('echo-reply')) seen.push(e); });
+  const echo = (dst: string) => lr.receive(eth1.port, { src: lan.mac, dst: eth1.mac, ip: { src: ip('192.168.1.10'), dst: ip(dst), ttl: 64, protocol: 'icmp', icmp: { type: 'echo-request', id: 7, seq: 1 } } });
+  echo('127.0.0.1');
+  t.settle();
+  assert.equal(seen.length, 0, 'no reply to 127.0.0.1 from outside');
+  echo('192.168.1.1');
+  t.settle();
+  assert.ok(seen.length > 0, 'the same request to its real address is answered');
+});
+
+test('review: listen-on port 53 { … } is understood', () => {
+  const { lr, root } = lab();
+  const file = root('cat /etc/bind/named.conf.options').replace(/listen-on \{[^}]*\};/, 'listen-on port 53 { 192.168.1.1; };');
+  hostSystem(lr).fs.writeFile('/etc/bind/named.conf.options', file);
+  assert.deepEqual(lr.services.dns.listenOn, ['eth1']);
+});
+
+test('review: an interface without an address stays chosen when the file is saved again', () => {
+  const { lr, root } = lab();
+  lr.setServices({ ...lr.services, dns: { ...lr.services.dns, listenOn: ['eth0', 'eth1'] } });
+  hostSystem(lr).fs.writeFile('/etc/bind/named.conf.options', root('cat /etc/bind/named.conf.options').replace('max-cache-ttl', 'max-cache-ttl'));
+  assert.deepEqual(lr.services.dns.listenOn, ['eth0', 'eth1']);
+});

@@ -19,7 +19,7 @@ export interface DeviceCaption {
 
 function extraLines(p: Placed): string[] {
   const d = p.device;
-  if (d.kind === 'cloud') return [d.settings.isp];
+  if (d.kind === 'cloud') return d.settings.isp && d.settings.isp !== p.label ? [d.settings.isp] : [];
   if (d.kind === 'router' || d.kind === 'switch') return IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname];
   return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
 }

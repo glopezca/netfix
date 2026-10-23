@@ -9,7 +9,7 @@ import { liveHostPanel } from './live.ts';
 import type { LivePanel } from './live.ts';
 import type { Host } from '../devices/host.ts';
 import type { Placed } from '../net/topology.ts';
-import { hostnameFromLabel } from '../core/hostname.ts';
+import { hostnameAfterRename } from '../core/hostname.ts';
 import { t } from '../i18n/t.ts';
 
 const MAX_LABEL = 40;
@@ -25,9 +25,10 @@ export function hostSettings(placed: Placed, h: Host, app: AfterChange & { retit
       const shown = label.value.trim().slice(0, MAX_LABEL);
       if (!shown) { label.value = placed.label; return msg.error(t('host.labelEmpty')); }
       if (shown === placed.label) return;
-      const name = hostnameFromLabel(shown);
+      // A host name set with hostnamectl is kept; one that still follows the name is derived again.
+      const name = hostnameAfterRename(h.name, placed.label, shown);
       placed.label = shown;
-      h.setHostname(name);
+      if (name !== h.name) h.setHostname(name);
       app.retitle?.(shown);
       app.afterCommand();
       refresh();

@@ -40,12 +40,25 @@ export function configSources(device: { readonly kind: string }): readonly Confi
 /** Most files a directory can contribute (a student filling /etc/bind must not freeze the view). */
 const MAX_PER_DIR = 40;
 
+/** The service's own tree (/etc/bind, /etc/apache2…): a link inside it may point anywhere in it, not elsewhere. */
+const treeOf = (path: string): string => path.split('/').slice(0, 3).join('/');
+
+function inTree(fs: Vfs, path: string, tree: string): boolean {
+  try {
+    const real = fs.realpath(path);
+    return real === tree || real.startsWith(`${tree}/`);
+  } catch {
+    return false;
+  }
+}
+
 function expand(fs: Vfs, path: string): string[] {
   const node = fs.tryLookup(path);
   if (!node) return [];
   if (node.kind !== 'dir') return [path];
+  const tree = treeOf(path);
   return fs.readdir(path).sort().slice(0, MAX_PER_DIR).map((name) => `${path}/${name}`)
-    .filter((p) => fs.tryLookup(p)?.kind === 'file');
+    .filter((p) => fs.tryLookup(p)?.kind === 'file' && inTree(fs, p, tree));
 }
 
 /** The files of a service with their current content; unknown ids and unreadable files are left out. */

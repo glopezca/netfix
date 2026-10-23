@@ -111,6 +111,8 @@ export class IpStack {
   private onIp(iface: L3Iface, arrived: IpPacket, frame: Frame): void {
     const packet = this.host.prerouting ? this.host.prerouting(iface.name, arrived) : arrived;
     if (!packet) return;
+    // Martian: 127.0.0.0/8 never comes in from the wire (Linux drops it), only through lo.
+    if ((packet.dst >>> 24) === LOOPBACK_NET || (packet.src >>> 24) === LOOPBACK_NET) return;
     const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst);
     if (!forMe) {
       this.host.forward?.(iface.name, packet);

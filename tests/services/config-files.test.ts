@@ -48,3 +48,13 @@ test('router: sysctl.d, nftables.conf and WireGuard; a file written by hand also
   assert.ok(paths(lr, 'sysctl').includes('/etc/sysctl.d/10-aula.conf'));
   assert.deepEqual(configFiles(hostFs(lr)!, 'nada'), []);
 });
+
+test('review: a link out of the service\'s tree is not followed (sites-enabled → sites-available still is)', () => {
+  const srv = server('server');
+  const fs = hostSystem(srv).fs;
+  fs.symlink('/etc/shadow', '/etc/bind/robado');
+  assert.ok(!paths(srv, 'dns').includes('/etc/bind/robado'));
+  fs.writeFile('/etc/apache2/sites-available/aula.conf', '<VirtualHost *:80>\n</VirtualHost>\n');
+  fs.symlink('/etc/apache2/sites-available/aula.conf', '/etc/apache2/sites-enabled/aula.conf');
+  assert.ok(paths(srv, 'http').includes('/etc/apache2/sites-enabled/aula.conf'));
+});

@@ -62,20 +62,50 @@ function seconds(text: string): number {
 }
 
 /** listen-on back to interfaces: missing or any = all; none = []; addresses = their interfaces. */
-function listenOnOf(text: string | null, choices: readonly ListenChoice[]): readonly string[] | undefined {
+function listenOnOf(text: string | null, current: DnsSettings, choices: readonly ListenChoice[]): readonly string[] | undefined {
   if (text === null || /\bany\b/.test(text)) return undefined;
   const addrs = text.split(';').map((x) => parseIp(x.trim())).filter((x): x is number => x !== null);
+  // The same addresses as now: keep the interfaces as chosen (one without an address writes nothing).
+  const now = dnsListenAddresses(current, choices);
+  if (now !== undefined && [...new Set(addrs)].sort().join() === [...new Set(now)].sort().join()) return current.listenOn;
   return ifacesOfAddresses(addrs, choices);
 }
 
+/** listen-on [port 53] { … }; */
+const LISTEN_ON = /\blisten-on\s+(?:port\s+\d{1,5}\s+)?\{([^{}]*)\}\s*;/;
+
+/** Larger than any real named.conf.options; parsing stays quick whatever is written. */
+const MAX_OPTIONS_TEXT = 64 * 1024;
+
+/** Removes // and # line comments and /* *\/ blocks in one pass (an unclosed /* runs to the end, as in BIND). */
+function stripComments(text: string): string {
+  let out = '';
+  for (let i = 0; i < text.length;) {
+    const two = text.slice(i, i + 2);
+    if (two === '/*') {
+      const end = text.indexOf('*/', i + 2);
+      i = end < 0 ? text.length : end + 2;
+    } else if (two === '//' || text[i] === '#') {
+      const end = text.indexOf('\n', i);
+      i = end < 0 ? text.length : end;
+    } else {
+      out += text[i];
+      i++;
+    }
+  }
+  return out;
+}
+
 function block(text: string, name: string): string | null {
-  const m = new RegExp(`\\b${name}\\s*\\{([^}]*)\\}\\s*;`).exec(text);
+  // [^{}]: each attempt stops at the next brace, so a hostile file cannot make this quadratic.
+  const m = new RegExp(`\\b${name}\\s*\\{([^{}]*)\\}\\s*;`).exec(text);
   return m ? m[1] ?? '' : null;
 }
 
 /** The settings described by an edited file (cache, forwarding, recursion); an error in named-checkconf words. */
 export function parseNamedOptions(text: string, current: DnsSettings, choices: readonly ListenChoice[] = []): DnsSettings | { error: string } {
-  const clean = text.replace(/\/\/.*$/gm, '').replace(/#.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  if (text.length > MAX_OPTIONS_TEXT) return { error: `${NAMED_OPTIONS}: file too large` };
+  const clean = stripComments(text);
   if ((clean.match(/\{/g) ?? []).length !== (clean.match(/\}/g) ?? []).length) return { error: `${NAMED_OPTIONS}: unexpected end of input` };
   const fwdText = block(clean, 'forwarders');
   const items = (fwdText ?? '').split(';').map((x) => x.trim()).filter(Boolean);
@@ -98,6 +128,6 @@ export function parseNamedOptions(text: string, current: DnsSettings, choices: r
     forwardOnly: forward === 'only',
     maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(seconds(ttl), MAX_TTL),
     allowRecursion: /\bany\b/.test(allow) ? 'any' : 'localnets',
-    listenOn: listenOnOf(block(clean, 'listen-on'), choices),
+    listenOn: listenOnOf(LISTEN_ON.exec(clean)?.[1] ?? null, current, choices),
   };
 }

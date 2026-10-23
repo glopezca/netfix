@@ -32,7 +32,8 @@ function nicRow(r: LinuxRouter, n: NicInfo, app: AfterChange, msg: ReturnType<ty
     const a = readAddress(ip.value, mask.value);
     if (a === null) return msg.error(t('router.errAddress', { iface: n.linux }));
     msg.clear();
-    if (a?.ip === n.ip && a?.prefix === n.prefix) return;
+    const live = r.nics().find((x) => x.port === n.port);
+    if (a?.ip === live?.ip && a?.prefix === live?.prefix) return;
     if (isWan) r.setStatic({ ip: a?.ip, prefix: a?.prefix, gateway: r.config.gateway, dns: r.config.dns });
     else r.setNicAddress(n.port, a);
     app.afterCommand();

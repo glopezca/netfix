@@ -5111,7 +5111,7 @@ const IOS_DEFAULTS = new Set(['Router', 'Switch']);
 function extraLines(p) {
     const d = p.device;
     if (d.kind === 'cloud')
-        return [d.settings.isp];
+        return d.settings.isp && d.settings.isp !== p.label ? [d.settings.isp] : [];
     if (d.kind === 'router' || d.kind === 'switch')
         return IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname];
     return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
@@ -6113,7 +6113,31 @@ function subnav(items) {
  * so a panel that redraws itself keeps the control the user went to.
  */
 function onCommit(control, apply) {
-    control.addEventListener('change', () => { setTimeout(apply, 0); });
+    watchPointer();
+    control.addEventListener('change', () => {
+        // A click elsewhere ended the edit: redrawing between its pointerdown and pointerup would swallow it.
+        if (!pointerDown) {
+            setTimeout(apply, 0);
+            return;
+        }
+        let done = false;
+        const later = () => { if (!done) {
+            done = true;
+            setTimeout(apply, 0);
+        } };
+        window.addEventListener('pointerup', later, { once: true });
+        window.addEventListener('pointercancel', later, { once: true });
+    });
+}
+let pointerDown = false;
+let watching = false;
+function watchPointer() {
+    if (watching)
+        return;
+    watching = true;
+    window.addEventListener('pointerdown', () => { pointerDown = true; }, true);
+    for (const end of ['pointerup', 'pointercancel'])
+        window.addEventListener(end, () => { pointerDown = false; }, true);
 }
 
 return { nextId, input, field, select, button, onOff, message, table, copyRow, subnav, onCommit };
@@ -7379,6 +7403,9 @@ class IpStack {
     onIp(iface, arrived, frame) {
         const packet = this.host.prerouting ? this.host.prerouting(iface.name, arrived) : arrived;
         if (!packet)
+            return;
+        // Martian: 127.0.0.0/8 never comes in from the wire (Linux drops it), only through lo.
+        if ((packet.dst >>> 24) === LOOPBACK_NET || (packet.src >>> 24) === LOOPBACK_NET)
             return;
         const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst);
         if (!forMe) {
@@ -10206,19 +10233,50 @@ function seconds(text) {
     return Object.hasOwn(UNITS, unit) ? Number(text.slice(0, -1)) * (UNITS[unit] ?? 1) : Number(text);
 }
 /** listen-on back to interfaces: missing or any = all; none = []; addresses = their interfaces. */
-function listenOnOf(text, choices) {
+function listenOnOf(text, current, choices) {
     if (text === null || /\bany\b/.test(text))
         return undefined;
     const addrs = text.split(';').map((x) => parseIp(x.trim())).filter((x) => x !== null);
+    // The same addresses as now: keep the interfaces as chosen (one without an address writes nothing).
+    const now = dnsListenAddresses(current, choices);
+    if (now !== undefined && [...new Set(addrs)].sort().join() === [...new Set(now)].sort().join())
+        return current.listenOn;
     return ifacesOfAddresses(addrs, choices);
 }
+/** listen-on [port 53] { … }; */
+const LISTEN_ON = /\blisten-on\s+(?:port\s+\d{1,5}\s+)?\{([^{}]*)\}\s*;/;
+/** Larger than any real named.conf.options; parsing stays quick whatever is written. */
+const MAX_OPTIONS_TEXT = 64 * 1024;
+/** Removes // and # line comments and /* *\/ blocks in one pass (an unclosed /* runs to the end, as in BIND). */
+function stripComments(text) {
+    let out = '';
+    for (let i = 0; i < text.length;) {
+        const two = text.slice(i, i + 2);
+        if (two === '/*') {
+            const end = text.indexOf('*/', i + 2);
+            i = end < 0 ? text.length : end + 2;
+        }
+        else if (two === '//' || text[i] === '#') {
+            const end = text.indexOf('\n', i);
+            i = end < 0 ? text.length : end;
+        }
+        else {
+            out += text[i];
+            i++;
+        }
+    }
+    return out;
+}
 function block(text, name) {
-    const m = new RegExp(`\\b${name}\\s*\\{([^}]*)\\}\\s*;`).exec(text);
+    // [^{}]: each attempt stops at the next brace, so a hostile file cannot make this quadratic.
+    const m = new RegExp(`\\b${name}\\s*\\{([^{}]*)\\}\\s*;`).exec(text);
     return m ? m[1] ?? '' : null;
 }
 /** The settings described by an edited file (cache, forwarding, recursion); an error in named-checkconf words. */
 function parseNamedOptions(text, current, choices = []) {
-    const clean = text.replace(/\/\/.*$/gm, '').replace(/#.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    if (text.length > MAX_OPTIONS_TEXT)
+        return { error: `${NAMED_OPTIONS}: file too large` };
+    const clean = stripComments(text);
     if ((clean.match(/\{/g) ?? []).length !== (clean.match(/\}/g) ?? []).length)
         return { error: `${NAMED_OPTIONS}: unexpected end of input` };
     const fwdText = block(clean, 'forwarders');
@@ -10244,7 +10302,7 @@ function parseNamedOptions(text, current, choices = []) {
         forwardOnly: forward === 'only',
         maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(seconds(ttl), MAX_TTL),
         allowRecursion: /\bany\b/.test(allow) ? 'any' : 'localnets',
-        listenOn: listenOnOf(block(clean, 'listen-on'), choices),
+        listenOn: listenOnOf(LISTEN_ON.exec(clean)?.[1] ?? null, current, choices),
     };
 }
 
@@ -10522,9 +10580,9 @@ class ServerDns {
             return this.forwarder.onResponse(udp.dport, dns, packet.src);
         if (udp.dport !== DNS_PORT || !this.host.services.dns.enabled)
             return false;
-        // listen-on: bind has no socket on that address, so the query is lost (as with the service stopped).
+        // listen-on: bind has no socket on that address, so the port is closed there, as with the service stopped.
         if (!this.host.dnsListensOn(packet.dst))
-            return true;
+            return false;
         this.query(packet.src, udp.sport, packet.dst, dns);
         return true;
     }
@@ -39295,7 +39353,8 @@ function nicRow(r, n, app, msg, peer) {
         if (a === null)
             return msg.error(t('router.errAddress', { iface: n.linux }));
         msg.clear();
-        if (a?.ip === n.ip && a?.prefix === n.prefix)
+        const live = r.nics().find((x) => x.port === n.port);
+        if (a?.ip === live?.ip && a?.prefix === live?.prefix)
             return;
         if (isWan)
             r.setStatic({ ip: a?.ip, prefix: a?.prefix, gateway: r.config.gateway, dns: r.config.dns });
@@ -41526,8 +41585,16 @@ function hostnameFromLabel(label) {
     const cut = plain.slice(0, MAX_LABEL).replace(/-+$/, '');
     return cut || FALLBACK;
 }
+/**
+ * Host name after renaming a device: derived from the new name while it still follows the old one (the default PC0,
+ * or a derived one); a name set with hostnamectl is kept.
+ */
+function hostnameAfterRename(current, oldLabel, newLabel) {
+    const follows = current === oldLabel || current.toLowerCase() === hostnameFromLabel(oldLabel);
+    return follows ? hostnameFromLabel(newLabel) : current;
+}
 
-return { hostnameFromLabel };
+return { hostnameFromLabel, hostnameAfterRename };
 })();
 __m["ui/host-settings.js"] = (() => {
 /**
@@ -41537,7 +41604,7 @@ __m["ui/host-settings.js"] = (() => {
 const { el } = __m["ui/dom.js"];
 const { field, input, message, onCommit } = __m["ui/forms.js"];
 const { liveHostPanel } = __m["ui/live.js"];
-const { hostnameFromLabel } = __m["core/hostname.js"];
+const { hostnameAfterRename } = __m["core/hostname.js"];
 const { t } = __m["i18n/t.js"];
 const MAX_LABEL = 40;
 function hostSettings(placed, h, app) {
@@ -41555,9 +41622,11 @@ function hostSettings(placed, h, app) {
             }
             if (shown === placed.label)
                 return;
-            const name = hostnameFromLabel(shown);
+            // A host name set with hostnamectl is kept; one that still follows the name is derived again.
+            const name = hostnameAfterRename(h.name, placed.label, shown);
             placed.label = shown;
-            h.setHostname(name);
+            if (name !== h.name)
+                h.setHostname(name);
             app.retitle?.(shown);
             app.afterCommand();
             refresh();
@@ -42839,14 +42908,26 @@ function configSources(device) {
 }
 /** Most files a directory can contribute (a student filling /etc/bind must not freeze the view). */
 const MAX_PER_DIR = 40;
+/** The service's own tree (/etc/bind, /etc/apache2…): a link inside it may point anywhere in it, not elsewhere. */
+const treeOf = (path) => path.split('/').slice(0, 3).join('/');
+function inTree(fs, path, tree) {
+    try {
+        const real = fs.realpath(path);
+        return real === tree || real.startsWith(`${tree}/`);
+    }
+    catch {
+        return false;
+    }
+}
 function expand(fs, path) {
     const node = fs.tryLookup(path);
     if (!node)
         return [];
     if (node.kind !== 'dir')
         return [path];
+    const tree = treeOf(path);
     return fs.readdir(path).sort().slice(0, MAX_PER_DIR).map((name) => `${path}/${name}`)
-        .filter((p) => fs.tryLookup(p)?.kind === 'file');
+        .filter((p) => fs.tryLookup(p)?.kind === 'file' && inTree(fs, p, tree));
 }
 /** The files of a service with their current content; unknown ids and unreadable files are left out. */
 function configFiles(fs, id) {
@@ -50097,7 +50178,8 @@ function webapps(v) {
 }
 /** Interfaces a service listens on (eth0…, lo); a file may only name interfaces, never anything else. */
 function ifaceList(v) {
-    if (!Array.isArray(v) || v.length > MAX_LISTEN)
+    // Empty would leave the service answering nobody: the panel refuses it too.
+    if (!Array.isArray(v) || v.length === 0 || v.length > MAX_LISTEN)
         throw new Error(t('load.ifaces'));
     return [...new Set(v.map((x) => {
             if (typeof x !== 'string' || !IFACE_NAME.test(x))

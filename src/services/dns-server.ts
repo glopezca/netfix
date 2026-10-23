@@ -42,8 +42,8 @@ export class ServerDns {
     if (!udp || !dns) return false;
     if (dns.response) return this.forwarder.onResponse(udp.dport, dns, packet.src);
     if (udp.dport !== DNS_PORT || !this.host.services.dns.enabled) return false;
-    // listen-on: bind has no socket on that address, so the query is lost (as with the service stopped).
-    if (!this.host.dnsListensOn(packet.dst)) return true;
+    // listen-on: bind has no socket on that address, so the port is closed there, as with the service stopped.
+    if (!this.host.dnsListensOn(packet.dst)) return false;
     this.query(packet.src, udp.sport, packet.dst, dns);
     return true;
   }

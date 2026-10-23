@@ -166,7 +166,8 @@ function webapps(v: unknown): WebApps {
 
 /** Interfaces a service listens on (eth0…, lo); a file may only name interfaces, never anything else. */
 function ifaceList(v: unknown): string[] {
-  if (!Array.isArray(v) || v.length > MAX_LISTEN) throw new Error(t('load.ifaces'));
+  // Empty would leave the service answering nobody: the panel refuses it too.
+  if (!Array.isArray(v) || v.length === 0 || v.length > MAX_LISTEN) throw new Error(t('load.ifaces'));
   return [...new Set(v.map((x) => {
     if (typeof x !== 'string' || !IFACE_NAME.test(x)) throw new Error(t('load.ifaces'));
     return x;
