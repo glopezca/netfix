@@ -615,3 +615,16 @@ cambio de `resolvectl dns|domain` se compara por valor (una renovación DHCP o u
 quitan; un cambio real sí), datos sintéticos «authenticated: yes», «Too few arguments.», «Interactive authentication
 required.», tiempos en us/ms/s, `dns eth0 ""` y `domain eth0 ""` vacían la lista, /etc/resolv.conf no refleja el
 cambio temporal, AAAA/ANY… sin registros y estadísticas solo del resolutor (no `dig @servidor`).
+
+## Fase 26 · Direcciones junto a su interfaz y laboratorios sin etiquetas solapadas (v0.18.0)
+
+1. **Dirección bajo el nombre de su interfaz:** en cada extremo de cable, el nombre corto de la interfaz (Gig0/0) y
+   debajo su IP/CIDR, sea de un PC, Server, router Linux, router IOS (incluida la DHCP y, si el puerto físico no tiene,
+   las de sus subinterfaces) o de una línea de nube (la LAN del router del operador o la pasarela de la línea pública).
+   El pie del equipo deja de listar direcciones: solo quedan las de interfaces sin cable (no tienen dónde ir), el
+   hostname IOS distinto del nombre y el bloque público de una nube.
+2. **Cálculo único de las etiquetas** (`src/ui/link-labels.ts`): posición y recuadro de cada etiqueta de extremo, que
+   usan el lienzo y una prueba.
+3. **Laboratorios sin solapes:** una prueba recorre todos los laboratorios y comprueba que ninguna etiqueta de interfaz
+   se monta sobre otra, sobre el pie o el modelo de un equipo ni sobre el título de un área; se reajustan las
+   posiciones (longitud de los cables) de los que fallen. El e2e repite la comprobación con el texto real.

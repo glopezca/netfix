@@ -17,12 +17,19 @@ const server = spawn(process.execPath, [join(root, 'scripts/serve.mjs')], { env:
 await new Promise((r) => setTimeout(r, 600));
 const browser = await playwright.chromium.launch();
 
-/** Interface names that overlap a device's name or the lines below it. */
+/** Cable-end labels (interface name and addresses) that overlap another one, a device's texts or an area's name. */
 const overlaps = (page) => page.evaluate(() => {
   const box = (e) => e.getBoundingClientRect();
-  const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-  const captions = [...document.querySelectorAll('g.device .device-label, g.device .device-host')].map(box);
-  return [...document.querySelectorAll('.port-label')].filter((l) => captions.some((c) => hit(box(l), c))).map((l) => l.textContent);
+  const hit = (a, b) => a.left + 1 < b.right && b.left + 1 < a.right && a.top + 1 < b.bottom && b.top + 1 < a.bottom;
+  const ends = [...document.querySelectorAll('.port-end')];
+  const name = (e) => [...e.querySelectorAll('text')].map((x) => x.textContent).join(' ');
+  const others = [...document.querySelectorAll('g.device .device-label, g.device .device-host, g.device .device-model, .drawing-label, .drawing-text')];
+  const found = [];
+  ends.forEach((e, i) => {
+    for (const f of ends.slice(i + 1)) if (hit(box(e), box(f))) found.push(`${name(e)} × ${name(f)}`);
+    for (const o of others) if (hit(box(e), box(o))) found.push(`${name(e)} × ${o.textContent}`);
+  });
+  return found;
 });
 
 try {
@@ -34,17 +41,19 @@ try {
   await page.reload();
   await page.waitForSelector('g.device-router');
   const labs = page.locator('select.select').first();
-  for (const lab of ['basico', 'relay', 'vlans', 'servidores']) {
+  // Every lab (v0.18: the address under its interface name, longer cables where needed).
+  const ids = (await labs.locator('option').evaluateAll((os) => os.map((o) => o.value))).filter((v) => v);
+  for (const lab of ids) {
     await labs.selectOption(lab);
-    await page.waitForTimeout(200);
-    assert.deepEqual(await overlaps(page), [], `${lab}: interface names clear of the captions`);
+    await page.waitForTimeout(250);
+    await page.evaluate(() => document.querySelector('.zoom-fit, button[aria-label*="Ajustar"]')?.click());
+    assert.deepEqual(await overlaps(page), [], `${lab}: cable-end labels clear of each other, the devices and the areas`);
   }
 
   // Cloud: «Equipo» first, the name applies on change, the host name is derived and read-only.
   const titles = await labs.locator('option').allTextContents();
   await labs.selectOption({ label: titles.find((o) => o.startsWith('Internet')) });
   await page.waitForSelector('g.device-cloud');
-  assert.deepEqual(await overlaps(page), [], 'internet lab');
   await page.dblclick('g.device-cloud >> nth=0');
   assert.equal(await page.locator('.window:visible .win-tab').first().innerText(), 'Equipo');
   const win = page.locator('.window:visible');

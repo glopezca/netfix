@@ -3,17 +3,17 @@ import { el, svg, clear, staticSvg } from './dom.ts';
 import { ICONS, ICON_W, ICON_H, modelLabel } from './icons.ts';
 import type { Topology, DeviceKind, Placed } from '../net/topology.ts';
 import type { Endpoint, Link } from '../net/network.ts';
-import { shortIfaceName } from '../ios/interfaces.ts';
 import { Viewport } from './viewport.ts';
 import { placeInside } from './viewport-math.ts';
-import { along, cableMarks, clamp, triangle } from './canvas-geometry.ts';
+import { clamp, triangle } from './canvas-geometry.ts';
+import { endLabel, lineBaselines } from './link-labels.ts';
 import { DrawLayer } from './draw-layer.ts';
 import { DrawState } from './draw-bar.ts';
 import { historyFor } from '../net/edit-history.ts';
 import type { EditHistory } from '../net/edit-history.ts';
 import type { ShapeKind } from '../net/annotations.ts';
 import { t } from '../i18n/t.ts';
-import { CAPTION_LINE, deviceCaption, deviceShapes } from './device-caption.ts';
+import { CAPTION_LINE, deviceCaption } from './device-caption.ts';
 import type { MessageKey } from '../i18n/catalog.ts';
 
 export type Tool = { kind: 'select' } | { kind: 'cable' } | { kind: 'delete' } | { kind: 'place'; device: DeviceKind } | { kind: 'draw'; shape: ShapeKind };
@@ -27,7 +27,6 @@ export interface CanvasEvents {
 
 export const WORLD_W = 2400;
 export const WORLD_H = 1600;
-const PORT_CHAR = 6.7; // px per character of an interface name (11 px monospace)
 const DRAG_THRESHOLD = 4;
 const DOUBLE_TAP_MS = 350;
 const LONG_PRESS_MS = 550;
@@ -172,6 +171,8 @@ export class Canvas {
     return this.topo.net.linkUp(ep) ? 'up' : 'down';
   }
 
+  /** A port with a cable: its address goes at the cable end, not under the device. */
+  private readonly linked = (p: Placed, port: string): boolean => this.topo.net.linkAt({ device: p.device.id, port }) !== undefined;
   private drawLink(link: Link): SVGGElement {
     const a = this.topo.get(link.a.device);
     const b = this.topo.get(link.b.device);
@@ -181,12 +182,11 @@ export class Canvas {
     const hit = svg('line', { class: 'cable-hit', x1: a.x, y1: a.y, x2: b.x, y2: b.y });
     g.append(hit, line);
     for (const [from, to, ep] of [[a, b, link.a], [b, a, link.b]] as const) {
-      const name = shortIfaceName(ep.port);
-      const marks = cableMarks(from, to, deviceShapes(from), { halfW: name.length * PORT_CHAR / 2 + 3, halfH: 7 });
-      const pos = along(from, to, marks.light);
-      const lpos = along(from, to, marks.label);
-      g.appendChild(svg('path', { class: `light light-${this.endState(ep)}`, d: triangle(pos, from, to) }));
-      g.appendChild(svg('text', { class: 'port-label', x: lpos.x, y: lpos.y + 4, 'text-anchor': 'middle' }, name));
+      const end = endLabel(from, to, ep.port, this.linked);
+      g.appendChild(svg('path', { class: `light light-${this.endState(ep)}`, d: triangle(end.light, from, to) }));
+      const block = svg('g', { class: 'port-end' });
+      lineBaselines(end).forEach((y, i) => block.appendChild(svg('text', { class: i === 0 ? 'port-label' : 'port-label port-addr', x: end.at.x, y, 'text-anchor': 'middle' }, end.lines[i] ?? '')));
+      g.appendChild(block);
     }
     g.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
@@ -213,7 +213,7 @@ export class Canvas {
     icon.setAttribute('y', String(-ICON_H / 2));
     g.appendChild(icon);
     g.appendChild(svg('text', { class: 'device-model', x: 0, y: -ICON_H / 2 - 12 }, modelLabel(d.kind)));
-    const caption = deviceCaption(p);
+    const caption = deviceCaption(p, (port) => this.linked(p, port));
     g.appendChild(svg('text', { class: 'device-label', x: 0, y: ICON_H / 2 + 18 }, caption.name));
     caption.extra.forEach((line, i) => g.appendChild(svg('text', { class: 'device-host', x: 0, y: ICON_H / 2 + 33 + i * CAPTION_LINE }, line)));
     g.addEventListener('pointerdown', (e) => this.onDevicePointer(e, id, g));

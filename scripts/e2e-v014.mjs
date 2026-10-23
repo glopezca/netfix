@@ -39,9 +39,11 @@ try {
   assert.match(await page.locator('.terminal:visible .term-prompt').innerText(), /@aula-publica-2o:/);
   await page.click('.win-close');
   // The diagram: name and IP/CIDR, the host name is not repeated.
+  // The diagram: the name under the device, the host name not repeated; its address at its cable end (v0.18).
   const caption = await page.locator('g.device-pc', { hasText: 'Aula Pública 2º' }).locator('text').allTextContents();
-  assert.ok(caption.some((x) => /^\d+\.\d+\.\d+\.\d+\/\d+$/.test(x)), caption.join(' | '));
-  assert.ok(!caption.includes('aula-publica-2o'));
+  assert.ok(!caption.includes('aula-publica-2o'), caption.join(' | '));
+  const ends = await page.locator('.port-end').allTextContents();
+  assert.ok(ends.some((x) => /^Fa0\d+\.\d+\.\d+\.\d+\/\d+$/.test(x)), ends.join(' | '));
 
   // Server: SSH first, the listen block of DNS and DHCP, «Ficheros» with named.conf.options as it is.
   await page.dblclick('g.device-server');
@@ -75,7 +77,7 @@ try {
   await eth2.locator('input[aria-label^="Dirección IPv4"]').fill('10.9.9.1');
   await eth2.locator('input[aria-label^="Máscara"]').fill('255.255.255.0');
   await page.keyboard.press('Tab');
-  await page.waitForFunction(() => [...document.querySelectorAll('g.device text')].some((x) => x.textContent === '10.9.9.1/24'));
+  await page.waitForFunction(() => [...document.querySelectorAll('.port-end text')].some((x) => x.textContent === '10.9.9.1/24'));
   await page.click('.win-close');
 
   // Cloud: a line applies on change.

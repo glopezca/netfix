@@ -1,7 +1,7 @@
 /**
  * Caption under a device in the diagram: its name and, below, what identifies it on the network: the IP/CIDR of each
- * NIC with an address (PC, Server, Linux router), the IOS hostname when it is not the default one, the public block
- * of a cloud. The host name of a PC, Server, Linux router or cloud is derived from its name, so it is not repeated.
+ * NIC with an address and no cable (with a cable, it goes under the interface name at the end of the cable), the IOS
+ * hostname when it is not the default one, the public block of a cloud. The host name of a PC, Server, Linux router or cloud is derived from its name, so it is not repeated.
  */
 import type { Placed } from '../net/topology.ts';
 import { formatIp } from '../core/ip.ts';
@@ -20,16 +20,17 @@ export interface DeviceCaption {
   readonly extra: readonly string[];
 }
 
-function extraLines(p: Placed): string[] {
+/** `linked`: ports with a cable, whose address goes at the end of the cable instead (link-labels.ts). */
+function extraLines(p: Placed, linked?: (port: string) => boolean): string[] {
   const d = p.device;
   // A cloud: its public block, as a device shows its IP/CIDR (the provider name is in its ISP tab).
   if (d.kind === 'cloud') return [`${formatIp(d.settings.block)}/${BLOCK_PREFIX}`];
   if (d.kind === 'router' || d.kind === 'switch') return IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname];
-  return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
+  return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined && !linked?.(n.port) ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
 }
 
-export function deviceCaption(p: Placed): DeviceCaption {
-  return { name: p.label, extra: extraLines(p).slice(0, MAX_LINES) };
+export function deviceCaption(p: Placed, linked?: (port: string) => boolean): DeviceCaption {
+  return { name: p.label, extra: extraLines(p, linked).slice(0, MAX_LINES) };
 }
 
 /** Rough text widths (px per character) of the device name (bold 13 px) and of the lines below it (11 px). */
@@ -41,8 +42,8 @@ const MODEL_TOP = ICON_H / 2 + 24;
 const DESCENT = 5;
 
 /** What a device draws around its centre: the icon with its model above, and the caption below. */
-export function deviceShapes(p: Placed): Rect[] {
-  const c = deviceCaption(p);
+export function deviceShapes(p: Placed, linked?: (port: string) => boolean): Rect[] {
+  const c = deviceCaption(p, linked);
   const half = Math.max(c.name.length * NAME_CHAR, ...c.extra.map((l) => l.length * LINE_CHAR)) / 2;
   return [
     { x0: -ICON_W / 2 - 4, x1: ICON_W / 2 + 4, y0: -MODEL_TOP, y1: ICON_H / 2 + 2 },

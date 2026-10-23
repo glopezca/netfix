@@ -678,6 +678,7 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .listen-row { display: flex; gap: 10px; align-items: center; margin: 4px 0; }
 /* Servicios → Ficheros: one block per file. */
 .conf-file h4 { margin: 14px 0 4px; font-size: 12.5px; }
+.port-addr { fill: var(--ink); }
 
 </style>
   <style>
@@ -4112,67 +4113,6 @@ function modelLabel(kind) {
 
 return { ICON_W, ICON_H, ICONS, MODEL_LABEL, modelLabel };
 })();
-__m["ios/interfaces.js"] = (() => {
-const IFACE_TYPES = ['Loopback', 'Ethernet', 'FastEthernet', 'GigabitEthernet', 'Serial', 'Vlan'];
-const SHORT = {
-    GigabitEthernet: 'Gig',
-    FastEthernet: 'Fa',
-    Ethernet: 'Eth',
-    Serial: 'Se',
-    Vlan: 'Vlan',
-    Loopback: 'Lo',
-};
-/** Parses "g0/0", "gig 0/0", "GigabitEthernet0/0.10", "vlan 1", "lo0". */
-function parseIfaceName(text) {
-    const m = /^([a-z]+)\s*([\d/.:]+)$/i.exec(text.trim());
-    if (!m)
-        return null;
-    const prefix = (m[1] ?? '').toLowerCase();
-    const number = m[2] ?? '';
-    const candidates = IFACE_TYPES.filter((t) => t.toLowerCase().startsWith(prefix));
-    const type = candidates.length === 1 ? candidates[0] : candidates.find((t) => t.toLowerCase() === prefix);
-    if (!type || !/^\d+(\/\d+)*(\.\d+)?$/.test(number))
-        return null;
-    return { type, number, full: `${type}${number}` };
-}
-function shortIfaceName(full) {
-    const parsed = parseIfaceName(full);
-    return parsed ? `${SHORT[parsed.type]}${parsed.number}` : full;
-}
-function isSubinterface(full) {
-    return /\.\d+$/.test(full);
-}
-function parentOf(full) {
-    return full.replace(/\.\d+$/, '');
-}
-function defaultIface(name, opts) {
-    return {
-        name,
-        shutdown: opts.shutdown,
-        secondaries: [],
-        helpers: [],
-        switchportMode: 'dynamic auto',
-        accessVlan: 1,
-        nativeVlan: 1,
-        relayInfoTrusted: false,
-        switchport: opts.switchport,
-    };
-}
-/** Sort key so that interfaces print in IOS order (type order, then numeric parts). */
-function ifaceSortKey(full) {
-    const parsed = parseIfaceName(full);
-    if (!parsed)
-        return full;
-    const typeIdx = IFACE_TYPES.indexOf(parsed.type);
-    const nums = parsed.number.split(/[/.:]/).map((n) => n.padStart(4, '0')).join('.');
-    return `${typeIdx}-${nums}`;
-}
-function compareIfaces(a, b) {
-    return ifaceSortKey(a).localeCompare(ifaceSortKey(b));
-}
-
-return { IFACE_TYPES, parseIfaceName, shortIfaceName, isSubinterface, parentOf, defaultIface, ifaceSortKey, compareIfaces };
-})();
 __m["ui/viewport-math.js"] = (() => {
 /** Pure geometry of the zoomable workspace: scale limits, zoom around a point and fit-to-content. */
 const MIN_SCALE = 0.35;
@@ -4429,6 +4369,511 @@ const LIGHT_GAP = 8;
 const LABEL_GAP = 9;
 
 return { clamp, along, perpendicular, triangle, rayExit, cableMarks };
+})();
+__m["ios/interfaces.js"] = (() => {
+const IFACE_TYPES = ['Loopback', 'Ethernet', 'FastEthernet', 'GigabitEthernet', 'Serial', 'Vlan'];
+const SHORT = {
+    GigabitEthernet: 'Gig',
+    FastEthernet: 'Fa',
+    Ethernet: 'Eth',
+    Serial: 'Se',
+    Vlan: 'Vlan',
+    Loopback: 'Lo',
+};
+/** Parses "g0/0", "gig 0/0", "GigabitEthernet0/0.10", "vlan 1", "lo0". */
+function parseIfaceName(text) {
+    const m = /^([a-z]+)\s*([\d/.:]+)$/i.exec(text.trim());
+    if (!m)
+        return null;
+    const prefix = (m[1] ?? '').toLowerCase();
+    const number = m[2] ?? '';
+    const candidates = IFACE_TYPES.filter((t) => t.toLowerCase().startsWith(prefix));
+    const type = candidates.length === 1 ? candidates[0] : candidates.find((t) => t.toLowerCase() === prefix);
+    if (!type || !/^\d+(\/\d+)*(\.\d+)?$/.test(number))
+        return null;
+    return { type, number, full: `${type}${number}` };
+}
+function shortIfaceName(full) {
+    const parsed = parseIfaceName(full);
+    return parsed ? `${SHORT[parsed.type]}${parsed.number}` : full;
+}
+function isSubinterface(full) {
+    return /\.\d+$/.test(full);
+}
+function parentOf(full) {
+    return full.replace(/\.\d+$/, '');
+}
+function defaultIface(name, opts) {
+    return {
+        name,
+        shutdown: opts.shutdown,
+        secondaries: [],
+        helpers: [],
+        switchportMode: 'dynamic auto',
+        accessVlan: 1,
+        nativeVlan: 1,
+        relayInfoTrusted: false,
+        switchport: opts.switchport,
+    };
+}
+/** Sort key so that interfaces print in IOS order (type order, then numeric parts). */
+function ifaceSortKey(full) {
+    const parsed = parseIfaceName(full);
+    if (!parsed)
+        return full;
+    const typeIdx = IFACE_TYPES.indexOf(parsed.type);
+    const nums = parsed.number.split(/[/.:]/).map((n) => n.padStart(4, '0')).join('.');
+    return `${typeIdx}-${nums}`;
+}
+function compareIfaces(a, b) {
+    return ifaceSortKey(a).localeCompare(ifaceSortKey(b));
+}
+
+return { IFACE_TYPES, parseIfaceName, shortIfaceName, isSubinterface, parentOf, defaultIface, ifaceSortKey, compareIfaces };
+})();
+__m["core/ip.js"] = (() => {
+/** IPv4 helpers. Addresses are unsigned 32-bit numbers. */
+const OCTET_RE = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
+const MAX_PREFIX = 32;
+function parseIp(text) {
+    const parts = text.split('.');
+    if (parts.length !== 4)
+        return null;
+    let value = 0;
+    for (const part of parts) {
+        if (!OCTET_RE.test(part))
+            return null;
+        value = value * 256 + Number(part);
+    }
+    return value >>> 0;
+}
+function formatIp(value) {
+    const v = value >>> 0;
+    return [v >>> 24, (v >>> 16) & 255, (v >>> 8) & 255, v & 255].join('.');
+}
+function prefixToMask(prefix) {
+    if (prefix <= 0)
+        return 0;
+    return (0xffffffff << (MAX_PREFIX - prefix)) >>> 0;
+}
+function formatMask(prefix) {
+    return formatIp(prefixToMask(prefix));
+}
+/** Accepts "255.255.255.0" or "/24". Returns the prefix length or null. */
+function parseMask(text) {
+    if (text.startsWith('/')) {
+        const body = text.slice(1);
+        if (!/^\d{1,2}$/.test(body))
+            return null;
+        const prefix = Number(body);
+        return prefix <= MAX_PREFIX ? prefix : null;
+    }
+    const mask = parseIp(text);
+    if (mask === null)
+        return null;
+    for (let prefix = 0; prefix <= MAX_PREFIX; prefix++) {
+        if (prefixToMask(prefix) === mask)
+            return prefix;
+    }
+    return null;
+}
+function networkOf(ip, prefix) {
+    return (ip & prefixToMask(prefix)) >>> 0;
+}
+function broadcastOf(ip, prefix) {
+    return (networkOf(ip, prefix) | (~prefixToMask(prefix) >>> 0)) >>> 0;
+}
+function inSubnet(ip, network, prefix) {
+    return networkOf(ip, prefix) === networkOf(network, prefix);
+}
+/** Classful default prefix, used by IOS when a mask is omitted. */
+function classfulPrefix(ip) {
+    const first = ip >>> 24;
+    if (first < 128)
+        return 8;
+    if (first < 192)
+        return 16;
+    if (first < 224)
+        return 24;
+    return MAX_PREFIX;
+}
+function parseIpWithMask(ipText, maskText) {
+    const ip = parseIp(ipText);
+    const prefix = parseMask(maskText);
+    if (ip === null || prefix === null)
+        return null;
+    return { ip, prefix };
+}
+function isUsableHost(ip, prefix) {
+    if (prefix >= 31)
+        return true;
+    return ip !== networkOf(ip, prefix) && ip !== broadcastOf(ip, prefix);
+}
+const BROADCAST_IP = 0xffffffff;
+
+return { parseIp, formatIp, prefixToMask, formatMask, parseMask, networkOf, broadcastOf, inSubnet, classfulPrefix, parseIpWithMask, isUsableHost, BROADCAST_IP };
+})();
+__m["devices/cloud-config.js"] = (() => {
+/**
+ * Settings of the ISP cloud: each port is a customer line (cable, xDSL or FTTx) that either hands a
+ * public /29 to the customer's router (DHCP) or acts as the operator's router (LAN, DHCP, NAT, port
+ * forwarding). Domains registered at the ISP are published by the public DNS servers 8.8.8.8/8.8.4.4.
+ */
+const { t } = __m["i18n/t.js"];
+const { formatIp, inSubnet, networkOf, parseIp } = __m["core/ip.js"];
+const CLOUD_PORTS = ['Coaxial0', 'Coaxial1', 'DSL0', 'DSL1', 'Fibra0', 'Fibra1'];
+const BLOCK_PREFIX = 16;
+const LINE_PREFIX = 29;
+const LAN_DEFAULT = parseIp('192.168.1.1') ?? 0;
+const LAN_PREFIX = 24;
+const MAX_FORWARDS = 32;
+const MAX_DOMAINS = 32;
+const MAX_SPEED = 100_000;
+function accessOf(port) {
+    if (port.startsWith('Coaxial'))
+        return 'cable';
+    if (port.startsWith('DSL'))
+        return 'xdsl';
+    return 'fttx';
+}
+const ACCESS_LABEL = { cable: 'Cable (DOCSIS 3.1)', xdsl: 'xDSL (VDSL2)', fttx: 'FTTH (GPON)' };
+const SPEEDS = { cable: [600, 60], xdsl: [100, 10], fttx: [1000, 1000] };
+function defaultPort(port) {
+    const [down, up] = SPEEDS[accessOf(port)];
+    return { mode: 'router', down, up, lanIp: LAN_DEFAULT, lanPrefix: LAN_PREFIX, forwards: [] };
+}
+function defaultCloud(isp, block) {
+    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, defaultPort(p)]));
+    return { isp, block, ports, domains: [] };
+}
+/** Customer /29 of a port: network, gateway (.1) and first customer address (.2). */
+function lineSubnet(block, port) {
+    const i = Math.max(0, CLOUD_PORTS.indexOf(port));
+    const net = (block + (i + 1) * 256) >>> 0;
+    return { net, gw: net + 1, customer: net + 2 };
+}
+/** The ISP's own router in the core: x.y.0.1. */
+function ispHop(block) {
+    return (block + 1) >>> 0;
+}
+/** Ranges a cloud cannot use as public block or delegate a domain to (private, special, emulated Internet). */
+const RESERVED = [
+    ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16], ['172.16.0.0', 12],
+    ['192.168.0.0', 16], ['224.0.0.0', 3], ['8.8.0.0', 16], ['34.160.0.0', 16], ['93.184.0.0', 16], ['142.250.0.0', 15],
+    ['198.51.100.0', 24], ['203.0.113.0', 24],
+];
+function reservedAddress(ip) {
+    return RESERVED.some(([net, prefix]) => inSubnet(ip, parseIp(net) ?? 0, prefix));
+}
+function validDomain(name) {
+    if (!/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(name))
+        return t('cloud.err.domain');
+    return null;
+}
+function validatePort(p) {
+    if (!Number.isInteger(p.down) || !Number.isInteger(p.up) || p.down < 1 || p.up < 1 || p.down > MAX_SPEED || p.up > MAX_SPEED)
+        return t('cloud.err.speed');
+    if (p.lanPrefix < 8 || p.lanPrefix > 30)
+        return t('cloud.err.lanMask');
+    const net = networkOf(p.lanIp, p.lanPrefix);
+    if (p.lanIp === net || p.lanIp === (net | (0xffffffff >>> p.lanPrefix)) >>> 0)
+        return t('cloud.err.lanIp');
+    if (p.forwards.length > MAX_FORWARDS)
+        return t('cloud.err.forwards');
+    for (const f of p.forwards) {
+        if (![f.port, f.toPort].every((n) => Number.isInteger(n) && n >= 1 && n <= 65535))
+            return t('cloud.err.ports');
+        if (!inSubnet(f.ip, p.lanIp, p.lanPrefix) || f.ip === p.lanIp)
+            return t('cloud.err.forwardLan', { ip: formatIp(f.ip) });
+    }
+    const dup = p.forwards.find((f, i) => p.forwards.findIndex((g) => g.proto === f.proto && g.port === f.port) !== i);
+    return dup ? t('cloud.err.dupForward', { proto: dup.proto.toUpperCase(), port: dup.port }) : null;
+}
+function validateCloud(s, otherBlocks = []) {
+    if (!s.isp.trim() || s.isp.length > 40)
+        return t('cloud.err.isp');
+    if (networkOf(s.block, BLOCK_PREFIX) !== s.block)
+        return t('cloud.err.block');
+    if (reservedAddress(s.block))
+        return t('cloud.err.reserved', { net: formatIp(s.block) });
+    if (otherBlocks.includes(s.block))
+        return t('cloud.err.used', { net: formatIp(s.block) });
+    if (s.domains.length > MAX_DOMAINS)
+        return t('cloud.err.domains');
+    for (const d of s.domains) {
+        const bad = validDomain(d.name);
+        if (bad)
+            return bad;
+        if (reservedAddress(d.ip))
+            return t('cloud.err.domainIp', { name: d.name, ip: formatIp(d.ip) });
+    }
+    for (const p of CLOUD_PORTS) {
+        const bad = validatePort(s.ports[p]);
+        if (bad)
+            return `${p}: ${bad}`;
+    }
+    return null;
+}
+// ------------------------------------------------------------ JSON
+const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+const ipOf = (v, d) => (typeof v === 'string' ? parseIp(v) ?? d : d);
+const obj = (v) => (typeof v === 'object' && v !== null ? v : {});
+function cloudToJson(s) {
+    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => {
+        const c = s.ports[p];
+        return [p, { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}) }];
+    }));
+    return { isp: s.isp, block: formatIp(s.block), ports, domains: s.domains.map((d) => ({ ...d, ip: formatIp(d.ip) })) };
+}
+function portFromJson(port, v) {
+    const d = defaultPort(port);
+    const o = obj(v);
+    const forwards = (Array.isArray(o.forwards) ? o.forwards : []).slice(0, MAX_FORWARDS).map(obj).map((f) => ({
+        proto: f.proto === 'udp' ? 'udp' : 'tcp', port: num(f.port, 0), ip: ipOf(f.ip, 0), toPort: num(f.toPort, 0),
+    }));
+    const p = { mode: o.mode === 'public' ? 'public' : 'router', down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards, ...(o.dnsRelay === true ? { dnsRelay: true } : {}) };
+    return validatePort(p) ? d : p;
+}
+/** Settings from an untrusted file; anything invalid falls back to the defaults. */
+function cloudFromJson(v, fallback) {
+    const o = obj(v);
+    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, portFromJson(p, obj(o.ports)[p])]));
+    const domains = (Array.isArray(o.domains) ? o.domains : []).slice(0, MAX_DOMAINS).map(obj)
+        .map((d) => ({ name: String(d.name ?? '').toLowerCase(), kind: d.kind === 'ns' ? 'ns' : 'a', ip: ipOf(d.ip, 0) }))
+        .filter((d) => validDomain(d.name) === null && !reservedAddress(d.ip));
+    const s = { isp: typeof o.isp === 'string' ? o.isp.slice(0, 40) : fallback.isp, block: ipOf(o.block, fallback.block), ports, domains };
+    return validateCloud(s) ? { ...fallback, ports, domains } : s;
+}
+
+return { CLOUD_PORTS, BLOCK_PREFIX, LINE_PREFIX, accessOf, ACCESS_LABEL, defaultPort, defaultCloud, lineSubnet, ispHop, reservedAddress, validDomain, validatePort, validateCloud, cloudToJson, cloudFromJson };
+})();
+__m["ui/device-caption.js"] = (() => {
+const { formatIp } = __m["core/ip.js"];
+const { BLOCK_PREFIX } = __m["devices/cloud-config.js"];
+const { ICON_H, ICON_W } = __m["ui/icons.js"];
+/** More would cover the devices below. */
+const MAX_LINES = 3;
+/** Height of each caption line below the device name. */
+const CAPTION_LINE = 14;
+const IOS_DEFAULTS = new Set(['Router', 'Switch']);
+/** `linked`: ports with a cable, whose address goes at the end of the cable instead (link-labels.ts). */
+function extraLines(p, linked) {
+    const d = p.device;
+    // A cloud: its public block, as a device shows its IP/CIDR (the provider name is in its ISP tab).
+    if (d.kind === 'cloud')
+        return [`${formatIp(d.settings.block)}/${BLOCK_PREFIX}`];
+    if (d.kind === 'router' || d.kind === 'switch')
+        return IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname];
+    return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined && !linked?.(n.port) ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
+}
+function deviceCaption(p, linked) {
+    return { name: p.label, extra: extraLines(p, linked).slice(0, MAX_LINES) };
+}
+/** Rough text widths (px per character) of the device name (bold 13 px) and of the lines below it (11 px). */
+const NAME_CHAR = 7.4;
+const LINE_CHAR = 6.2;
+/** Name baseline below the icon's centre, and the model line above it (canvas.ts). */
+const NAME_BASELINE = ICON_H / 2 + 18;
+const MODEL_TOP = ICON_H / 2 + 24;
+const DESCENT = 5;
+/** What a device draws around its centre: the icon with its model above, and the caption below. */
+function deviceShapes(p, linked) {
+    const c = deviceCaption(p, linked);
+    const half = Math.max(c.name.length * NAME_CHAR, ...c.extra.map((l) => l.length * LINE_CHAR)) / 2;
+    return [
+        { x0: -ICON_W / 2 - 4, x1: ICON_W / 2 + 4, y0: -MODEL_TOP, y1: ICON_H / 2 + 2 },
+        { x0: -half, x1: half, y0: ICON_H / 2 + 2, y1: NAME_BASELINE + c.extra.length * CAPTION_LINE + DESCENT },
+    ];
+}
+
+return { CAPTION_LINE, deviceCaption, deviceShapes };
+})();
+__m["core/mac.js"] = (() => {
+/** MAC address and DHCP client-identifier helpers. MACs are 12 lowercase hex chars. */
+const HEX_RE = /^[0-9a-f]+$/;
+const MAC_HEX_LEN = 12;
+const BROADCAST_MAC = 'ffffffffffff';
+function stripSeparators(text) {
+    return text.toLowerCase().replace(/[.:\-]/g, '');
+}
+function parseMac(text) {
+    const hex = stripSeparators(text);
+    return hex.length === MAC_HEX_LEN && HEX_RE.test(hex) ? hex : null;
+}
+function groupBy4(hex) {
+    return (hex.match(/.{1,4}/g) ?? []).join('.');
+}
+function formatMacCisco(mac) {
+    return groupBy4(mac);
+}
+function formatMacPT(mac) {
+    return groupBy4(mac.toUpperCase());
+}
+/** Parses a hex client identifier such as "0100.1122.3344.55". */
+function parseHexId(text) {
+    const hex = stripSeparators(text);
+    if (hex.length === 0 || hex.length % 2 !== 0 || !HEX_RE.test(hex))
+        return null;
+    return hex;
+}
+function formatHexId(hex) {
+    return groupBy4(hex.toLowerCase());
+}
+/** Ethernet client-id (hardware type 01 + MAC), as sent by PCs. */
+function clientIdFromMac(mac) {
+    return `01${mac}`;
+}
+function asciiToHex(text) {
+    return Array.from(text, (ch) => ch.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+}
+const LCG_A = 1103515245;
+const LCG_C = 12345;
+const BYTE = 256;
+/** Deterministic unicast MAC derived from a numeric seed (OUI-like prefix 00xx). */
+function macFromSeed(seed) {
+    let state = (seed * 2654435761) >>> 0;
+    const bytes = [0];
+    for (let i = 0; i < 5; i++) {
+        state = (Math.imul(state, LCG_A) + LCG_C) >>> 0;
+        bytes.push((state >>> 16) % BYTE);
+    }
+    return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+return { BROADCAST_MAC, parseMac, formatMacCisco, formatMacPT, parseHexId, formatHexId, clientIdFromMac, asciiToHex, macFromSeed };
+})();
+__m["ios/commands/show-iface.js"] = (() => {
+const { parseIfaceName } = __m["ios/interfaces.js"];
+const { formatIp, formatMask } = __m["core/ip.js"];
+const { formatMacCisco } = __m["core/mac.js"];
+/** Address actually in use: static config or DHCP-learned (provided by the device). */
+function effectiveAddress(device, cfg) {
+    const learned = device.dhcpLearned(cfg.name);
+    if (cfg.dhcpClient)
+        return learned ? { ...learned, method: 'DHCP' } : { method: 'DHCP' };
+    if (cfg.address)
+        return { ip: cfg.address.ip, prefix: cfg.address.prefix, method: 'manual' };
+    return { method: 'unset' };
+}
+function ifaceStatus(device, cfg) {
+    if (cfg.shutdown)
+        return { status: 'administratively down', protocol: 'down' };
+    const rt = device.ifaceRuntime(cfg.name);
+    return { status: rt.linkUp ? 'up' : 'down', protocol: rt.protocolUp ? 'up' : 'down' };
+}
+function showIpInterfaceBrief(device) {
+    const header = 'Interface              IP-Address      OK? Method Status                Protocol ';
+    const rows = device.sortedIfaceNames().map((name) => {
+        const cfg = device.iface(name);
+        if (!cfg)
+            return '';
+        const addr = cfg.switchport ? { method: 'unset' } : effectiveAddress(device, cfg);
+        const ip = addr.ip === undefined ? 'unassigned' : formatIp(addr.ip);
+        const { status, protocol } = ifaceStatus(device, cfg);
+        return `${name.padEnd(23)}${ip.padEnd(16)}YES ${addr.method.padEnd(7)}${status.padEnd(22)}${protocol} `;
+    });
+    return [header, ...rows];
+}
+function hardwareLine(device, cfg) {
+    const mac = formatMacCisco(device.ifaceRuntime(cfg.name).mac);
+    const type = parseIfaceName(cfg.name)?.type ?? 'Ethernet';
+    const hw = type === 'GigabitEthernet' ? 'CN Gigabit Ethernet' : type === 'Loopback' ? 'Loopback' : type === 'Vlan' ? 'CPU Interface' : 'Lance';
+    return `  Hardware is ${hw}, address is ${mac} (bia ${mac})`;
+}
+function showOne(device, cfg) {
+    const { status, protocol } = ifaceStatus(device, cfg);
+    const addr = effectiveAddress(device, cfg);
+    const lines = [`${cfg.name} is ${status}, line protocol is ${protocol}`, hardwareLine(device, cfg)];
+    if (cfg.description)
+        lines.push(`  Description: ${cfg.description}`);
+    if (addr.ip !== undefined && addr.prefix !== undefined)
+        lines.push(`  Internet address is ${formatIp(addr.ip)}/${addr.prefix}`);
+    lines.push('  MTU 1500 bytes, BW 1000000 Kbit, DLY 10 usec,', '     reliability 255/255, txload 1/255, rxload 1/255');
+    if (cfg.encapsulationVlan !== undefined)
+        lines.push(`  Encapsulation 802.1Q Virtual LAN, Vlan ID  ${cfg.encapsulationVlan}`);
+    else
+        lines.push('  Encapsulation ARPA, loopback not set');
+    return lines;
+}
+function showInterfaces(device, filter) {
+    if (filter) {
+        const parsed = parseIfaceName(filter);
+        const name = parsed ? device.resolveIface(parsed.full, false) : null;
+        const cfg = name ? device.iface(name) : undefined;
+        return cfg ? showOne(device, cfg) : ['%Invalid interface type and number'];
+    }
+    return device.sortedIfaceNames().flatMap((n) => {
+        const cfg = device.iface(n);
+        return cfg ? showOne(device, cfg) : [];
+    });
+}
+function maskText(prefix) {
+    return formatMask(prefix);
+}
+
+return { effectiveAddress, ifaceStatus, showIpInterfaceBrief, showInterfaces, maskText };
+})();
+__m["ui/port-address.js"] = (() => {
+const { formatIp } = __m["core/ip.js"];
+const { isSubinterface, parentOf } = __m["ios/interfaces.js"];
+const { effectiveAddress } = __m["ios/commands/show-iface.js"];
+const { LINE_PREFIX } = __m["devices/cloud-config.js"];
+/** More would stack too far along the cable. */
+const MAX_ADDRESSES = 3;
+const cidr = (ip, prefix) => (ip !== undefined && prefix !== undefined ? [`${formatIp(ip)}/${prefix}`] : []);
+function iosAddresses(d, port) {
+    const own = d.iface(port);
+    const mine = own && !own.switchport ? (() => { const a = effectiveAddress(d, own); return cidr(a.ip, a.prefix); })() : [];
+    if (mine.length)
+        return mine;
+    return d.sortedIfaceNames().filter((n) => isSubinterface(n) && parentOf(n) === port).flatMap((n) => {
+        const cfg = d.iface(n);
+        if (!cfg)
+            return [];
+        const a = effectiveAddress(d, cfg);
+        return cidr(a.ip, a.prefix);
+    });
+}
+function portAddresses(p, port) {
+    const d = p.device;
+    let list;
+    if (d.kind === 'router' || d.kind === 'switch')
+        list = iosAddresses(d, port);
+    else if (d.kind === 'cloud') {
+        const line = d.lines.get(port);
+        list = !line ? [] : line.settings.mode === 'router' ? cidr(line.settings.lanIp, line.settings.lanPrefix) : cidr(line.line().gw, LINE_PREFIX);
+    }
+    else {
+        const nic = d.nics().find((n) => n.port === port);
+        list = cidr(nic?.ip, nic?.prefix);
+    }
+    return list.slice(0, MAX_ADDRESSES);
+}
+
+return { portAddresses };
+})();
+__m["ui/link-labels.js"] = (() => {
+const { shortIfaceName } = __m["ios/interfaces.js"];
+const { along, cableMarks } = __m["ui/canvas-geometry.js"];
+const { deviceShapes } = __m["ui/device-caption.js"];
+const { portAddresses } = __m["ui/port-address.js"];
+/** px per character of the end labels (11 px monospace) and height of one of their lines. */
+const PORT_CHAR = 6.7;
+const PORT_LINE = 12;
+const PAD = 3;
+/** `linked`: whether a port of a device has a cable (its address then goes here, not under the device). */
+function endLabel(from, to, port, linked) {
+    const lines = [shortIfaceName(port), ...portAddresses(from, port)];
+    const halfW = Math.max(...lines.map((l) => l.length)) * PORT_CHAR / 2 + PAD;
+    const halfH = lines.length * PORT_LINE / 2 + 1;
+    const marks = cableMarks(from, to, deviceShapes(from, (port2) => linked(from, port2)), { halfW, halfH });
+    const at = along(from, to, marks.label);
+    return { light: along(from, to, marks.light), at, lines, box: { x0: at.x - halfW, y0: at.y - halfH, x1: at.x + halfW, y1: at.y + halfH } };
+}
+/** Baseline of each line of the block, so the block is centred on `at`. */
+const lineBaselines = (l) => l.lines.map((_, i) => l.at.y + 4 + (i - (l.lines.length - 1) / 2) * PORT_LINE);
+
+return { PORT_CHAR, PORT_LINE, endLabel, lineBaselines };
 })();
 __m["net/annotations.js"] = (() => {
 /**
@@ -5081,278 +5526,21 @@ class EditHistory {
 
 return { MAX_EDITS, historyFor, EditHistory };
 })();
-__m["core/ip.js"] = (() => {
-/** IPv4 helpers. Addresses are unsigned 32-bit numbers. */
-const OCTET_RE = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
-const MAX_PREFIX = 32;
-function parseIp(text) {
-    const parts = text.split('.');
-    if (parts.length !== 4)
-        return null;
-    let value = 0;
-    for (const part of parts) {
-        if (!OCTET_RE.test(part))
-            return null;
-        value = value * 256 + Number(part);
-    }
-    return value >>> 0;
-}
-function formatIp(value) {
-    const v = value >>> 0;
-    return [v >>> 24, (v >>> 16) & 255, (v >>> 8) & 255, v & 255].join('.');
-}
-function prefixToMask(prefix) {
-    if (prefix <= 0)
-        return 0;
-    return (0xffffffff << (MAX_PREFIX - prefix)) >>> 0;
-}
-function formatMask(prefix) {
-    return formatIp(prefixToMask(prefix));
-}
-/** Accepts "255.255.255.0" or "/24". Returns the prefix length or null. */
-function parseMask(text) {
-    if (text.startsWith('/')) {
-        const body = text.slice(1);
-        if (!/^\d{1,2}$/.test(body))
-            return null;
-        const prefix = Number(body);
-        return prefix <= MAX_PREFIX ? prefix : null;
-    }
-    const mask = parseIp(text);
-    if (mask === null)
-        return null;
-    for (let prefix = 0; prefix <= MAX_PREFIX; prefix++) {
-        if (prefixToMask(prefix) === mask)
-            return prefix;
-    }
-    return null;
-}
-function networkOf(ip, prefix) {
-    return (ip & prefixToMask(prefix)) >>> 0;
-}
-function broadcastOf(ip, prefix) {
-    return (networkOf(ip, prefix) | (~prefixToMask(prefix) >>> 0)) >>> 0;
-}
-function inSubnet(ip, network, prefix) {
-    return networkOf(ip, prefix) === networkOf(network, prefix);
-}
-/** Classful default prefix, used by IOS when a mask is omitted. */
-function classfulPrefix(ip) {
-    const first = ip >>> 24;
-    if (first < 128)
-        return 8;
-    if (first < 192)
-        return 16;
-    if (first < 224)
-        return 24;
-    return MAX_PREFIX;
-}
-function parseIpWithMask(ipText, maskText) {
-    const ip = parseIp(ipText);
-    const prefix = parseMask(maskText);
-    if (ip === null || prefix === null)
-        return null;
-    return { ip, prefix };
-}
-function isUsableHost(ip, prefix) {
-    if (prefix >= 31)
-        return true;
-    return ip !== networkOf(ip, prefix) && ip !== broadcastOf(ip, prefix);
-}
-const BROADCAST_IP = 0xffffffff;
-
-return { parseIp, formatIp, prefixToMask, formatMask, parseMask, networkOf, broadcastOf, inSubnet, classfulPrefix, parseIpWithMask, isUsableHost, BROADCAST_IP };
-})();
-__m["devices/cloud-config.js"] = (() => {
-/**
- * Settings of the ISP cloud: each port is a customer line (cable, xDSL or FTTx) that either hands a
- * public /29 to the customer's router (DHCP) or acts as the operator's router (LAN, DHCP, NAT, port
- * forwarding). Domains registered at the ISP are published by the public DNS servers 8.8.8.8/8.8.4.4.
- */
-const { t } = __m["i18n/t.js"];
-const { formatIp, inSubnet, networkOf, parseIp } = __m["core/ip.js"];
-const CLOUD_PORTS = ['Coaxial0', 'Coaxial1', 'DSL0', 'DSL1', 'Fibra0', 'Fibra1'];
-const BLOCK_PREFIX = 16;
-const LINE_PREFIX = 29;
-const LAN_DEFAULT = parseIp('192.168.1.1') ?? 0;
-const LAN_PREFIX = 24;
-const MAX_FORWARDS = 32;
-const MAX_DOMAINS = 32;
-const MAX_SPEED = 100_000;
-function accessOf(port) {
-    if (port.startsWith('Coaxial'))
-        return 'cable';
-    if (port.startsWith('DSL'))
-        return 'xdsl';
-    return 'fttx';
-}
-const ACCESS_LABEL = { cable: 'Cable (DOCSIS 3.1)', xdsl: 'xDSL (VDSL2)', fttx: 'FTTH (GPON)' };
-const SPEEDS = { cable: [600, 60], xdsl: [100, 10], fttx: [1000, 1000] };
-function defaultPort(port) {
-    const [down, up] = SPEEDS[accessOf(port)];
-    return { mode: 'router', down, up, lanIp: LAN_DEFAULT, lanPrefix: LAN_PREFIX, forwards: [] };
-}
-function defaultCloud(isp, block) {
-    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, defaultPort(p)]));
-    return { isp, block, ports, domains: [] };
-}
-/** Customer /29 of a port: network, gateway (.1) and first customer address (.2). */
-function lineSubnet(block, port) {
-    const i = Math.max(0, CLOUD_PORTS.indexOf(port));
-    const net = (block + (i + 1) * 256) >>> 0;
-    return { net, gw: net + 1, customer: net + 2 };
-}
-/** The ISP's own router in the core: x.y.0.1. */
-function ispHop(block) {
-    return (block + 1) >>> 0;
-}
-/** Ranges a cloud cannot use as public block or delegate a domain to (private, special, emulated Internet). */
-const RESERVED = [
-    ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16], ['172.16.0.0', 12],
-    ['192.168.0.0', 16], ['224.0.0.0', 3], ['8.8.0.0', 16], ['34.160.0.0', 16], ['93.184.0.0', 16], ['142.250.0.0', 15],
-    ['198.51.100.0', 24], ['203.0.113.0', 24],
-];
-function reservedAddress(ip) {
-    return RESERVED.some(([net, prefix]) => inSubnet(ip, parseIp(net) ?? 0, prefix));
-}
-function validDomain(name) {
-    if (!/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(name))
-        return t('cloud.err.domain');
-    return null;
-}
-function validatePort(p) {
-    if (!Number.isInteger(p.down) || !Number.isInteger(p.up) || p.down < 1 || p.up < 1 || p.down > MAX_SPEED || p.up > MAX_SPEED)
-        return t('cloud.err.speed');
-    if (p.lanPrefix < 8 || p.lanPrefix > 30)
-        return t('cloud.err.lanMask');
-    const net = networkOf(p.lanIp, p.lanPrefix);
-    if (p.lanIp === net || p.lanIp === (net | (0xffffffff >>> p.lanPrefix)) >>> 0)
-        return t('cloud.err.lanIp');
-    if (p.forwards.length > MAX_FORWARDS)
-        return t('cloud.err.forwards');
-    for (const f of p.forwards) {
-        if (![f.port, f.toPort].every((n) => Number.isInteger(n) && n >= 1 && n <= 65535))
-            return t('cloud.err.ports');
-        if (!inSubnet(f.ip, p.lanIp, p.lanPrefix) || f.ip === p.lanIp)
-            return t('cloud.err.forwardLan', { ip: formatIp(f.ip) });
-    }
-    const dup = p.forwards.find((f, i) => p.forwards.findIndex((g) => g.proto === f.proto && g.port === f.port) !== i);
-    return dup ? t('cloud.err.dupForward', { proto: dup.proto.toUpperCase(), port: dup.port }) : null;
-}
-function validateCloud(s, otherBlocks = []) {
-    if (!s.isp.trim() || s.isp.length > 40)
-        return t('cloud.err.isp');
-    if (networkOf(s.block, BLOCK_PREFIX) !== s.block)
-        return t('cloud.err.block');
-    if (reservedAddress(s.block))
-        return t('cloud.err.reserved', { net: formatIp(s.block) });
-    if (otherBlocks.includes(s.block))
-        return t('cloud.err.used', { net: formatIp(s.block) });
-    if (s.domains.length > MAX_DOMAINS)
-        return t('cloud.err.domains');
-    for (const d of s.domains) {
-        const bad = validDomain(d.name);
-        if (bad)
-            return bad;
-        if (reservedAddress(d.ip))
-            return t('cloud.err.domainIp', { name: d.name, ip: formatIp(d.ip) });
-    }
-    for (const p of CLOUD_PORTS) {
-        const bad = validatePort(s.ports[p]);
-        if (bad)
-            return `${p}: ${bad}`;
-    }
-    return null;
-}
-// ------------------------------------------------------------ JSON
-const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
-const ipOf = (v, d) => (typeof v === 'string' ? parseIp(v) ?? d : d);
-const obj = (v) => (typeof v === 'object' && v !== null ? v : {});
-function cloudToJson(s) {
-    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => {
-        const c = s.ports[p];
-        return [p, { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}) }];
-    }));
-    return { isp: s.isp, block: formatIp(s.block), ports, domains: s.domains.map((d) => ({ ...d, ip: formatIp(d.ip) })) };
-}
-function portFromJson(port, v) {
-    const d = defaultPort(port);
-    const o = obj(v);
-    const forwards = (Array.isArray(o.forwards) ? o.forwards : []).slice(0, MAX_FORWARDS).map(obj).map((f) => ({
-        proto: f.proto === 'udp' ? 'udp' : 'tcp', port: num(f.port, 0), ip: ipOf(f.ip, 0), toPort: num(f.toPort, 0),
-    }));
-    const p = { mode: o.mode === 'public' ? 'public' : 'router', down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards, ...(o.dnsRelay === true ? { dnsRelay: true } : {}) };
-    return validatePort(p) ? d : p;
-}
-/** Settings from an untrusted file; anything invalid falls back to the defaults. */
-function cloudFromJson(v, fallback) {
-    const o = obj(v);
-    const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, portFromJson(p, obj(o.ports)[p])]));
-    const domains = (Array.isArray(o.domains) ? o.domains : []).slice(0, MAX_DOMAINS).map(obj)
-        .map((d) => ({ name: String(d.name ?? '').toLowerCase(), kind: d.kind === 'ns' ? 'ns' : 'a', ip: ipOf(d.ip, 0) }))
-        .filter((d) => validDomain(d.name) === null && !reservedAddress(d.ip));
-    const s = { isp: typeof o.isp === 'string' ? o.isp.slice(0, 40) : fallback.isp, block: ipOf(o.block, fallback.block), ports, domains };
-    return validateCloud(s) ? { ...fallback, ports, domains } : s;
-}
-
-return { CLOUD_PORTS, BLOCK_PREFIX, LINE_PREFIX, accessOf, ACCESS_LABEL, defaultPort, defaultCloud, lineSubnet, ispHop, reservedAddress, validDomain, validatePort, validateCloud, cloudToJson, cloudFromJson };
-})();
-__m["ui/device-caption.js"] = (() => {
-const { formatIp } = __m["core/ip.js"];
-const { BLOCK_PREFIX } = __m["devices/cloud-config.js"];
-const { ICON_H, ICON_W } = __m["ui/icons.js"];
-/** More would cover the devices below. */
-const MAX_LINES = 3;
-/** Height of each caption line below the device name. */
-const CAPTION_LINE = 14;
-const IOS_DEFAULTS = new Set(['Router', 'Switch']);
-function extraLines(p) {
-    const d = p.device;
-    // A cloud: its public block, as a device shows its IP/CIDR (the provider name is in its ISP tab).
-    if (d.kind === 'cloud')
-        return [`${formatIp(d.settings.block)}/${BLOCK_PREFIX}`];
-    if (d.kind === 'router' || d.kind === 'switch')
-        return IOS_DEFAULTS.has(d.hostname) || d.hostname === p.label ? [] : [d.hostname];
-    return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
-}
-function deviceCaption(p) {
-    return { name: p.label, extra: extraLines(p).slice(0, MAX_LINES) };
-}
-/** Rough text widths (px per character) of the device name (bold 13 px) and of the lines below it (11 px). */
-const NAME_CHAR = 7.4;
-const LINE_CHAR = 6.2;
-/** Name baseline below the icon's centre, and the model line above it (canvas.ts). */
-const NAME_BASELINE = ICON_H / 2 + 18;
-const MODEL_TOP = ICON_H / 2 + 24;
-const DESCENT = 5;
-/** What a device draws around its centre: the icon with its model above, and the caption below. */
-function deviceShapes(p) {
-    const c = deviceCaption(p);
-    const half = Math.max(c.name.length * NAME_CHAR, ...c.extra.map((l) => l.length * LINE_CHAR)) / 2;
-    return [
-        { x0: -ICON_W / 2 - 4, x1: ICON_W / 2 + 4, y0: -MODEL_TOP, y1: ICON_H / 2 + 2 },
-        { x0: -half, x1: half, y0: ICON_H / 2 + 2, y1: NAME_BASELINE + c.extra.length * CAPTION_LINE + DESCENT },
-    ];
-}
-
-return { CAPTION_LINE, deviceCaption, deviceShapes };
-})();
 __m["ui/canvas.js"] = (() => {
 /** Logical workspace: devices, cables with link lights, placing, moving, cabling, deleting. */
 const { el, svg, clear, staticSvg } = __m["ui/dom.js"];
 const { ICONS, ICON_W, ICON_H, modelLabel } = __m["ui/icons.js"];
-const { shortIfaceName } = __m["ios/interfaces.js"];
 const { Viewport } = __m["ui/viewport.js"];
 const { placeInside } = __m["ui/viewport-math.js"];
-const { along, cableMarks, clamp, triangle } = __m["ui/canvas-geometry.js"];
+const { clamp, triangle } = __m["ui/canvas-geometry.js"];
+const { endLabel, lineBaselines } = __m["ui/link-labels.js"];
 const { DrawLayer } = __m["ui/draw-layer.js"];
 const { DrawState } = __m["ui/draw-bar.js"];
 const { historyFor } = __m["net/edit-history.js"];
 const { t } = __m["i18n/t.js"];
-const { CAPTION_LINE, deviceCaption, deviceShapes } = __m["ui/device-caption.js"];
+const { CAPTION_LINE, deviceCaption } = __m["ui/device-caption.js"];
 const WORLD_W = 2400;
 const WORLD_H = 1600;
-const PORT_CHAR = 6.7; // px per character of an interface name (11 px monospace)
 const DRAG_THRESHOLD = 4;
 const DOUBLE_TAP_MS = 350;
 const LONG_PRESS_MS = 550;
@@ -5481,6 +5669,8 @@ class Canvas {
     endState(ep) {
         return this.topo.net.linkUp(ep) ? 'up' : 'down';
     }
+    /** A port with a cable: its address goes at the cable end, not under the device. */
+    linked = (p, port) => this.topo.net.linkAt({ device: p.device.id, port }) !== undefined;
     drawLink(link) {
         const a = this.topo.get(link.a.device);
         const b = this.topo.get(link.b.device);
@@ -5491,12 +5681,11 @@ class Canvas {
         const hit = svg('line', { class: 'cable-hit', x1: a.x, y1: a.y, x2: b.x, y2: b.y });
         g.append(hit, line);
         for (const [from, to, ep] of [[a, b, link.a], [b, a, link.b]]) {
-            const name = shortIfaceName(ep.port);
-            const marks = cableMarks(from, to, deviceShapes(from), { halfW: name.length * PORT_CHAR / 2 + 3, halfH: 7 });
-            const pos = along(from, to, marks.light);
-            const lpos = along(from, to, marks.label);
-            g.appendChild(svg('path', { class: `light light-${this.endState(ep)}`, d: triangle(pos, from, to) }));
-            g.appendChild(svg('text', { class: 'port-label', x: lpos.x, y: lpos.y + 4, 'text-anchor': 'middle' }, name));
+            const end = endLabel(from, to, ep.port, this.linked);
+            g.appendChild(svg('path', { class: `light light-${this.endState(ep)}`, d: triangle(end.light, from, to) }));
+            const block = svg('g', { class: 'port-end' });
+            lineBaselines(end).forEach((y, i) => block.appendChild(svg('text', { class: i === 0 ? 'port-label' : 'port-label port-addr', x: end.at.x, y, 'text-anchor': 'middle' }, end.lines[i] ?? '')));
+            g.appendChild(block);
         }
         g.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
@@ -5522,7 +5711,7 @@ class Canvas {
         icon.setAttribute('y', String(-ICON_H / 2));
         g.appendChild(icon);
         g.appendChild(svg('text', { class: 'device-model', x: 0, y: -ICON_H / 2 - 12 }, modelLabel(d.kind)));
-        const caption = deviceCaption(p);
+        const caption = deviceCaption(p, (port) => this.linked(p, port));
         g.appendChild(svg('text', { class: 'device-label', x: 0, y: ICON_H / 2 + 18 }, caption.name));
         caption.extra.forEach((line, i) => g.appendChild(svg('text', { class: 'device-host', x: 0, y: ICON_H / 2 + 33 + i * CAPTION_LINE }, line)));
         g.addEventListener('pointerdown', (e) => this.onDevicePointer(e, id, g));
@@ -5923,60 +6112,6 @@ function tcpService(seg) {
 }
 
 return { DHCP_SERVER_PORT, DHCP_CLIENT_PORT, DNS_PORT, WELL_KNOWN_PORTS, DEFAULT_TTL, PC_TTL, frameProtocol, tcpService };
-})();
-__m["core/mac.js"] = (() => {
-/** MAC address and DHCP client-identifier helpers. MACs are 12 lowercase hex chars. */
-const HEX_RE = /^[0-9a-f]+$/;
-const MAC_HEX_LEN = 12;
-const BROADCAST_MAC = 'ffffffffffff';
-function stripSeparators(text) {
-    return text.toLowerCase().replace(/[.:\-]/g, '');
-}
-function parseMac(text) {
-    const hex = stripSeparators(text);
-    return hex.length === MAC_HEX_LEN && HEX_RE.test(hex) ? hex : null;
-}
-function groupBy4(hex) {
-    return (hex.match(/.{1,4}/g) ?? []).join('.');
-}
-function formatMacCisco(mac) {
-    return groupBy4(mac);
-}
-function formatMacPT(mac) {
-    return groupBy4(mac.toUpperCase());
-}
-/** Parses a hex client identifier such as "0100.1122.3344.55". */
-function parseHexId(text) {
-    const hex = stripSeparators(text);
-    if (hex.length === 0 || hex.length % 2 !== 0 || !HEX_RE.test(hex))
-        return null;
-    return hex;
-}
-function formatHexId(hex) {
-    return groupBy4(hex.toLowerCase());
-}
-/** Ethernet client-id (hardware type 01 + MAC), as sent by PCs. */
-function clientIdFromMac(mac) {
-    return `01${mac}`;
-}
-function asciiToHex(text) {
-    return Array.from(text, (ch) => ch.charCodeAt(0).toString(16).padStart(2, '0')).join('');
-}
-const LCG_A = 1103515245;
-const LCG_C = 12345;
-const BYTE = 256;
-/** Deterministic unicast MAC derived from a numeric seed (OUI-like prefix 00xx). */
-function macFromSeed(seed) {
-    let state = (seed * 2654435761) >>> 0;
-    const bytes = [0];
-    for (let i = 0; i < 5; i++) {
-        state = (Math.imul(state, LCG_A) + LCG_C) >>> 0;
-        bytes.push((state >>> 16) % BYTE);
-    }
-    return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-return { BROADCAST_MAC, parseMac, formatMacCisco, formatMacPT, parseHexId, formatHexId, clientIdFromMac, asciiToHex, macFromSeed };
 })();
 __m["ui/simpanel.js"] = (() => {
 /** Simulation mode: captured frames as an event list, step/play animation and PDU details. */
@@ -19987,7 +20122,7 @@ const NETFIX_DOCS = {
                     ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la documentación y las páginas web simuladas sin recargar.'],
                 ]),
                 h('Paleta y herramientas'),
-                list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.', 'Seleccionar: arrastra equipos; doble clic abre su ventana. Con un equipo o un cable seleccionado, Supr o Retroceso lo borra (un equipo se lleva sus cables).', 'Eliminar: borra equipos o cables.', 'Deshacer (Ctrl+Z, ↶) y Rehacer (Ctrl+Y o Ctrl+Mayús+Z, ↷): añadir, borrar o mover equipos, cables y dibujos (hasta 100 pasos). Un equipo borrado vuelve con sus cables y su configuración; lo escrito dentro de un equipo (CLI, paneles) no se deshace desde aquí.', 'Dibujo: abre la barra para delimitar áreas, trazar líneas y escribir etiquetas (ver «Dibujo»).'),
+                list('Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.', 'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo. En cada extremo se ven la luz del enlace, el nombre corto de la interfaz (Gig0/0, Fa0) y debajo su dirección IP/CIDR (también la aprendida por DHCP; en un trunk de router, las de sus subinterfaces).', 'Seleccionar: arrastra equipos; doble clic abre su ventana. Con un equipo o un cable seleccionado, Supr o Retroceso lo borra (un equipo se lleva sus cables).', 'Eliminar: borra equipos o cables.', 'Deshacer (Ctrl+Z, ↶) y Rehacer (Ctrl+Y o Ctrl+Mayús+Z, ↷): añadir, borrar o mover equipos, cables y dibujos (hasta 100 pasos). Un equipo borrado vuelve con sus cables y su configuración; lo escrito dentro de un equipo (CLI, paneles) no se deshace desde aquí.', 'Dibujo: abre la barra para delimitar áreas, trazar líneas y escribir etiquetas (ver «Dibujo»).'),
                 h('Ventanas de los equipos'),
                 table(['Equipo', 'Pestañas'], [
                     ['Router IOS / Switch IOS', 'Equipo (nombre visible y hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
@@ -20405,7 +20540,7 @@ const CLIENT_DOCS = {
             title: 'Nombre del equipo',
             summary: 'Nombre del equipo, nombre de host derivado (no se cambia desde la terminal) y nombre descriptivo.',
             blocks: [
-                p('En la pestaña Equipo de PCs, servidores, routers Linux y nubes se escribe el nombre del equipo (el del diagrama) y se aplica al pulsar Intro o salir del campo. El nombre de host del sistema siempre se deriva de él en formato estándar: minúsculas, sin tildes y con guiones en lugar de espacios («Aula Pública 2º» → aula-publica-2o). Se ve en la pestaña, de solo lectura, y no se puede cambiar de otra forma: así cada equipo del diagrama tiene un nombre de host predecible. El diagrama muestra el nombre del equipo y la dirección IP/CIDR de cada interfaz configurada (en una nube, su bloque público), sin repetir el nombre de host. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea) y aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname.'),
+                p('En la pestaña Equipo de PCs, servidores, routers Linux y nubes se escribe el nombre del equipo (el del diagrama) y se aplica al pulsar Intro o salir del campo. El nombre de host del sistema siempre se deriva de él en formato estándar: minúsculas, sin tildes y con guiones en lugar de espacios («Aula Pública 2º» → aula-publica-2o). Se ve en la pestaña, de solo lectura, y no se puede cambiar de otra forma: así cada equipo del diagrama tiene un nombre de host predecible. El diagrama muestra bajo cada equipo su nombre (en una nube, también su bloque público), sin repetir el nombre de host, y en cada extremo de cable el nombre de la interfaz con su dirección IP/CIDR debajo; la dirección de una interfaz sin cable queda bajo el nombre del equipo. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea) y aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname.'),
                 table(['Dónde', 'Qué pasa en Netfix'], [
                     ['Pestaña Equipo', 'Cambia el nombre del equipo y, con él, el nombre de host.'],
                     ['sudo hostnamectl set-hostname NOMBRE', 'Pide la contraseña y responde «Could not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo».'],
@@ -21464,7 +21599,7 @@ const NETFIX_DOCS = {
                     ['Language', 'Español (España) or English (UK): changes the whole interface, the documentation and the simulated web pages without reloading.'],
                 ]),
                 h('Palette and tools'),
-                list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.', 'Select: drag devices; double-click opens their window. With a device or a cable selected, Del or Backspace removes it (a device takes its cables with it).', 'Delete: removes devices or cables.', 'Undo (Ctrl+Z, ↶) and Redo (Ctrl+Y or Ctrl+Shift+Z, ↷): adding, deleting or moving devices, cables and drawings (up to 100 steps). A deleted device comes back with its cables and its configuration; what is typed inside a device (CLI, panels) is not undone from here.', 'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).'),
+                list('In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.', 'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically. Each end shows the link light, the short interface name (Gig0/0, Fa0) and its IP/CIDR below (also one learnt by DHCP; on a router trunk, those of its subinterfaces).', 'Select: drag devices; double-click opens their window. With a device or a cable selected, Del or Backspace removes it (a device takes its cables with it).', 'Delete: removes devices or cables.', 'Undo (Ctrl+Z, ↶) and Redo (Ctrl+Y or Ctrl+Shift+Z, ↷): adding, deleting or moving devices, cables and drawings (up to 100 steps). A deleted device comes back with its cables and its configuration; what is typed inside a device (CLI, panels) is not undone from here.', 'Drawing: opens the bar to mark areas, draw lines and write labels (see “Drawing”).'),
                 h('Device windows'),
                 table(['Device', 'Tabs'], [
                     ['IOS router / IOS switch', 'Device (workspace name and hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
@@ -21882,7 +22017,7 @@ const CLIENT_DOCS = {
             title: 'Device name',
             summary: 'Device name, derived host name (not changed from the terminal) and pretty name.',
             blocks: [
-                p('In the Device tab of PCs, servers, Linux routers and clouds you type the device name (the one in the diagram); it applies on Enter or when leaving the field. The system host name is always derived from it in standard form: lowercase, no accents and hyphens instead of spaces («Aula Pública 2º» → aula-publica-2o). It shows in the tab, read-only, and cannot be changed any other way, so every device of the diagram has a predictable host name. The diagram shows the device name and the IP/CIDR of each configured interface (for a cloud, its public block), without repeating the host name. The DHCP client sends the host name (option 12, visible in show ip dhcp binding and in Kea) and it appears in the GNU/Linux prompt, in /etc/hostname and in hostname.'),
+                p('In the Device tab of PCs, servers, Linux routers and clouds you type the device name (the one in the diagram); it applies on Enter or when leaving the field. The system host name is always derived from it in standard form: lowercase, no accents and hyphens instead of spaces («Aula Pública 2º» → aula-publica-2o). It shows in the tab, read-only, and cannot be changed any other way, so every device of the diagram has a predictable host name. The diagram shows the device name under each device (for a cloud, its public block too), without repeating the host name, and at each cable end the interface name with its IP/CIDR below; the address of an interface without a cable stays under the device name. The DHCP client sends the host name (option 12, visible in show ip dhcp binding and in Kea) and it appears in the GNU/Linux prompt, in /etc/hostname and in hostname.'),
                 table(['Where', 'What happens in Netfix'], [
                     ['Device tab', 'Changes the device name and, with it, the host name.'],
                     ['sudo hostnamectl set-hostname NAME', 'Asks for the password and answers «Could not set static hostname: in Netfix the host name comes from the device name».'],
@@ -30051,7 +30186,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.17.0",
+    "version": "0.18.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -45350,77 +45485,6 @@ function httpPrivilege(device, user, password) {
 
 return { DEFAULT_HTTP_PORT, DEFAULT_HTTP, MAX_PRIVILEGE, HTTP_GLOBAL, userLines, httpLines, httpPrivilege };
 })();
-__m["ios/commands/show-iface.js"] = (() => {
-const { parseIfaceName } = __m["ios/interfaces.js"];
-const { formatIp, formatMask } = __m["core/ip.js"];
-const { formatMacCisco } = __m["core/mac.js"];
-/** Address actually in use: static config or DHCP-learned (provided by the device). */
-function effectiveAddress(device, cfg) {
-    const learned = device.dhcpLearned(cfg.name);
-    if (cfg.dhcpClient)
-        return learned ? { ...learned, method: 'DHCP' } : { method: 'DHCP' };
-    if (cfg.address)
-        return { ip: cfg.address.ip, prefix: cfg.address.prefix, method: 'manual' };
-    return { method: 'unset' };
-}
-function ifaceStatus(device, cfg) {
-    if (cfg.shutdown)
-        return { status: 'administratively down', protocol: 'down' };
-    const rt = device.ifaceRuntime(cfg.name);
-    return { status: rt.linkUp ? 'up' : 'down', protocol: rt.protocolUp ? 'up' : 'down' };
-}
-function showIpInterfaceBrief(device) {
-    const header = 'Interface              IP-Address      OK? Method Status                Protocol ';
-    const rows = device.sortedIfaceNames().map((name) => {
-        const cfg = device.iface(name);
-        if (!cfg)
-            return '';
-        const addr = cfg.switchport ? { method: 'unset' } : effectiveAddress(device, cfg);
-        const ip = addr.ip === undefined ? 'unassigned' : formatIp(addr.ip);
-        const { status, protocol } = ifaceStatus(device, cfg);
-        return `${name.padEnd(23)}${ip.padEnd(16)}YES ${addr.method.padEnd(7)}${status.padEnd(22)}${protocol} `;
-    });
-    return [header, ...rows];
-}
-function hardwareLine(device, cfg) {
-    const mac = formatMacCisco(device.ifaceRuntime(cfg.name).mac);
-    const type = parseIfaceName(cfg.name)?.type ?? 'Ethernet';
-    const hw = type === 'GigabitEthernet' ? 'CN Gigabit Ethernet' : type === 'Loopback' ? 'Loopback' : type === 'Vlan' ? 'CPU Interface' : 'Lance';
-    return `  Hardware is ${hw}, address is ${mac} (bia ${mac})`;
-}
-function showOne(device, cfg) {
-    const { status, protocol } = ifaceStatus(device, cfg);
-    const addr = effectiveAddress(device, cfg);
-    const lines = [`${cfg.name} is ${status}, line protocol is ${protocol}`, hardwareLine(device, cfg)];
-    if (cfg.description)
-        lines.push(`  Description: ${cfg.description}`);
-    if (addr.ip !== undefined && addr.prefix !== undefined)
-        lines.push(`  Internet address is ${formatIp(addr.ip)}/${addr.prefix}`);
-    lines.push('  MTU 1500 bytes, BW 1000000 Kbit, DLY 10 usec,', '     reliability 255/255, txload 1/255, rxload 1/255');
-    if (cfg.encapsulationVlan !== undefined)
-        lines.push(`  Encapsulation 802.1Q Virtual LAN, Vlan ID  ${cfg.encapsulationVlan}`);
-    else
-        lines.push('  Encapsulation ARPA, loopback not set');
-    return lines;
-}
-function showInterfaces(device, filter) {
-    if (filter) {
-        const parsed = parseIfaceName(filter);
-        const name = parsed ? device.resolveIface(parsed.full, false) : null;
-        const cfg = name ? device.iface(name) : undefined;
-        return cfg ? showOne(device, cfg) : ['%Invalid interface type and number'];
-    }
-    return device.sortedIfaceNames().flatMap((n) => {
-        const cfg = device.iface(n);
-        return cfg ? showOne(device, cfg) : [];
-    });
-}
-function maskText(prefix) {
-    return formatMask(prefix);
-}
-
-return { effectiveAddress, ifaceStatus, showIpInterfaceBrief, showInterfaces, maskText };
-})();
 __m["ui/ios-web-settings.js"] = (() => {
 /**
  * Router/switch → «Gestión web»: turns the IOS HTTP server on/off, picks its port and how users log in.
@@ -53136,8 +53200,8 @@ const COLOR = {
     internet: '#455a64', lan: '#388e3c', lan2: '#0097a7', dmz: '#f57c00', guests: '#7b1fa2', servers: '#1976d2', external: '#455a64', tunnel: '#d32f2f',
 };
 const PAD_X = 70;
-/** Room above the devices (their model line and the port labels of incoming cables) for the name of the area. */
-const PAD_TOP = 96;
+/** Room above the devices (model line, then the interface name and address of an incoming cable) for the area name. */
+const PAD_TOP = 132;
 const PAD_BOTTOM = 66;
 const MIN_COORD = 4;
 const AREA_TEXT = 14;
@@ -53218,8 +53282,28 @@ const LAB_AREAS = {
         area(o, ['Switch1', 'ALUMNO'], COLOR.guests, t('area.students', { net: '192.168.20.0/24' }));
     },
 };
-/** The lab with its areas drawn (labs without areas are returned as they are). */
+/**
+ * Longer cables for the labs whose interface labels (name and address at each end) would otherwise meet: the layout
+ * is stretched from its top-left device, horizontally and vertically (tests/ui/lab-labels.test.ts keeps them apart).
+ */
+const LAB_SPREAD = {
+    relay: [1, 1.3], vlans: [1, 1.1], servidores: [1, 1.3], internet: [1, 1.4], 'vpn-ipsec': [1, 1.4], 'vpn-wireguard': [1, 1.4], 'linux-dmz': [1.3, 1.4], 'dns-reenvio': [1, 1.5],
+};
+function spread(id, topo) {
+    const factor = LAB_SPREAD[id];
+    if (!factor)
+        return;
+    const placed = [...topo.placed.values()];
+    const x0 = Math.min(...placed.map((p) => p.x));
+    const y0 = Math.min(...placed.map((p) => p.y));
+    for (const p of placed) {
+        p.x = Math.round(x0 + (p.x - x0) * factor[0]);
+        p.y = Math.round(y0 + (p.y - y0) * factor[1]);
+    }
+}
+/** The lab with its cables stretched where needed and its areas drawn. */
 function decorateLab(id, topo) {
+    spread(id, topo);
     LAB_AREAS[id]?.(topo);
     return topo;
 }
@@ -53755,16 +53839,17 @@ const hardeningLab = {
     build: () => {
         const t = new Topology();
         const gw = t.add('router', 460, 140, { label: 'GW' }).device;
-        const swA = t.add('switch', 190, 380).device;
-        const swB = t.add('switch', 730, 380).device;
-        const srv = t.add('server', 460, 380, { label: 'SRV-INTRANET' }).device;
+        // Each network leaves GW at its own angle, so the interface labels at GW stay apart.
+        const swA = t.add('switch', 100, 300).device;
+        const swB = t.add('switch', 820, 300).device;
+        const srv = t.add('server', 460, 440, { label: 'SRV-INTRANET' }).device;
         link(t, gw.id, 'GigabitEthernet0/0', swA.id, 'GigabitEthernet0/1');
         link(t, gw.id, 'GigabitEthernet0/1', swB.id, 'GigabitEthernet0/1');
         link(t, gw.id, 'GigabitEthernet0/2', srv.id, 'FastEthernet0');
         applyConfig(gw, GW_ACL.trim().split('\n'));
         sshServer(srv, '172.20.0.10', '172.20.0.1', [{ name: 'admin', password: 'netfix' }, { name: 'ana', password: 'ana1' }]);
-        pcAt(t, 190, 'ADMIN', swA, 'FastEthernet0/1', '192.168.10.10', '192.168.10.1');
-        pcAt(t, 730, 'ALUMNO', swB, 'FastEthernet0/1', '192.168.20.10', '192.168.20.1');
+        pcAt(t, 100, 'ADMIN', swA, 'FastEthernet0/1', '192.168.10.10', '192.168.10.1');
+        pcAt(t, 820, 'ALUMNO', swB, 'FastEthernet0/1', '192.168.20.10', '192.168.20.1');
         t.settle();
         rootScript(srv, `${fileCmd('/etc/nftables.conf', SERVER_RULES)}
 ${fileCmd('/etc/ssh/sshd_config.d/10-bastionado.conf', SSHD_HARDENING)}

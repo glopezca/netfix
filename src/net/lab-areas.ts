@@ -11,8 +11,8 @@ const COLOR = {
   internet: '#455a64', lan: '#388e3c', lan2: '#0097a7', dmz: '#f57c00', guests: '#7b1fa2', servers: '#1976d2', external: '#455a64', tunnel: '#d32f2f',
 } as const;
 const PAD_X = 70;
-/** Room above the devices (their model line and the port labels of incoming cables) for the name of the area. */
-const PAD_TOP = 96;
+/** Room above the devices (model line, then the interface name and address of an incoming cable) for the area name. */
+const PAD_TOP = 132;
 const PAD_BOTTOM = 66;
 const MIN_COORD = 4;
 const AREA_TEXT = 14;
@@ -97,8 +97,29 @@ const LAB_AREAS: Readonly<Record<string, (topo: Topology) => void>> = {
   },
 };
 
-/** The lab with its areas drawn (labs without areas are returned as they are). */
+/**
+ * Longer cables for the labs whose interface labels (name and address at each end) would otherwise meet: the layout
+ * is stretched from its top-left device, horizontally and vertically (tests/ui/lab-labels.test.ts keeps them apart).
+ */
+const LAB_SPREAD: Readonly<Record<string, readonly [number, number]>> = {
+  relay: [1, 1.3], vlans: [1, 1.1], servidores: [1, 1.3], internet: [1, 1.4], 'vpn-ipsec': [1, 1.4], 'vpn-wireguard': [1, 1.4], 'linux-dmz': [1.3, 1.4], 'dns-reenvio': [1, 1.5],
+};
+
+function spread(id: string, topo: Topology): void {
+  const factor = LAB_SPREAD[id];
+  if (!factor) return;
+  const placed = [...topo.placed.values()];
+  const x0 = Math.min(...placed.map((p) => p.x));
+  const y0 = Math.min(...placed.map((p) => p.y));
+  for (const p of placed) {
+    p.x = Math.round(x0 + (p.x - x0) * factor[0]);
+    p.y = Math.round(y0 + (p.y - y0) * factor[1]);
+  }
+}
+
+/** The lab with its cables stretched where needed and its areas drawn. */
 export function decorateLab(id: string, topo: Topology): Topology {
+  spread(id, topo);
   LAB_AREAS[id]?.(topo);
   return topo;
 }

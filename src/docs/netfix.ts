@@ -24,7 +24,7 @@ export const NETFIX_DOCS: DocGroup = {
         h('Paleta y herramientas'),
         list(
           'Por orden: PC, Servidor (Server), Switch IOS (2960-24TT), Router IOS (2911), Router Linux (Ubuntu, en hardware 2911) y Nube (ISP → Internet). Los dos routers van juntos y comparten el símbolo de router. Elige uno y haz clic (o toca) en el área de trabajo.',
-          'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo.',
+          'Cable: haz clic en un equipo, elige el puerto, y repite en el otro extremo. El tipo de cable se elige solo. En cada extremo se ven la luz del enlace, el nombre corto de la interfaz (Gig0/0, Fa0) y debajo su dirección IP/CIDR (también la aprendida por DHCP; en un trunk de router, las de sus subinterfaces).',
           'Seleccionar: arrastra equipos; doble clic abre su ventana. Con un equipo o un cable seleccionado, Supr o Retroceso lo borra (un equipo se lleva sus cables).',
           'Eliminar: borra equipos o cables.',
           'Deshacer (Ctrl+Z, ↶) y Rehacer (Ctrl+Y o Ctrl+Mayús+Z, ↷): añadir, borrar o mover equipos, cables y dibujos (hasta 100 pasos). Un equipo borrado vuelve con sus cables y su configuración; lo escrito dentro de un equipo (CLI, paneles) no se deshace desde aquí.',

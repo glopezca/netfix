@@ -665,3 +665,4 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .listen-row { display: flex; gap: 10px; align-items: center; margin: 4px 0; }
 /* Servicios → Ficheros: one block per file. */
 .conf-file h4 { margin: 14px 0 4px; font-size: 12.5px; }
+.port-addr { fill: var(--ink); }

@@ -118,16 +118,17 @@ export const hardeningLab: Example = {
   build: () => {
     const t = new Topology();
     const gw = t.add('router', 460, 140, { label: 'GW' }).device as Router;
-    const swA = t.add('switch', 190, 380).device as Switch;
-    const swB = t.add('switch', 730, 380).device as Switch;
-    const srv = t.add('server', 460, 380, { label: 'SRV-INTRANET' }).device as Server;
+    // Each network leaves GW at its own angle, so the interface labels at GW stay apart.
+    const swA = t.add('switch', 100, 300).device as Switch;
+    const swB = t.add('switch', 820, 300).device as Switch;
+    const srv = t.add('server', 460, 440, { label: 'SRV-INTRANET' }).device as Server;
     link(t, gw.id, 'GigabitEthernet0/0', swA.id, 'GigabitEthernet0/1');
     link(t, gw.id, 'GigabitEthernet0/1', swB.id, 'GigabitEthernet0/1');
     link(t, gw.id, 'GigabitEthernet0/2', srv.id, 'FastEthernet0');
     applyConfig(gw, GW_ACL.trim().split('\n'));
     sshServer(srv, '172.20.0.10', '172.20.0.1', [{ name: 'admin', password: 'netfix' }, { name: 'ana', password: 'ana1' }]);
-    pcAt(t, 190, 'ADMIN', swA, 'FastEthernet0/1', '192.168.10.10', '192.168.10.1');
-    pcAt(t, 730, 'ALUMNO', swB, 'FastEthernet0/1', '192.168.20.10', '192.168.20.1');
+    pcAt(t, 100, 'ADMIN', swA, 'FastEthernet0/1', '192.168.10.10', '192.168.10.1');
+    pcAt(t, 820, 'ALUMNO', swB, 'FastEthernet0/1', '192.168.20.10', '192.168.20.1');
     t.settle();
     rootScript(srv, `${fileCmd('/etc/nftables.conf', SERVER_RULES)}
 ${fileCmd('/etc/ssh/sshd_config.d/10-bastionado.conf', SSHD_HARDENING)}

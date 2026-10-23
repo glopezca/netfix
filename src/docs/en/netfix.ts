@@ -24,7 +24,7 @@ export const NETFIX_DOCS: DocGroup = {
         h('Palette and tools'),
         list(
           'In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), Linux router (Ubuntu on 2911 hardware) and Cloud (ISP → Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.',
-          'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically.',
+          'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically. Each end shows the link light, the short interface name (Gig0/0, Fa0) and its IP/CIDR below (also one learnt by DHCP; on a router trunk, those of its subinterfaces).',
           'Select: drag devices; double-click opens their window. With a device or a cable selected, Del or Backspace removes it (a device takes its cables with it).',
           'Delete: removes devices or cables.',
           'Undo (Ctrl+Z, ↶) and Redo (Ctrl+Y or Ctrl+Shift+Z, ↷): adding, deleting or moving devices, cables and drawings (up to 100 steps). A deleted device comes back with its cables and its configuration; what is typed inside a device (CLI, panels) is not undone from here.',
