@@ -18,7 +18,7 @@ export const CLIENT_DOCS: DocGroup = {
         figure({
           type: 'topology',
           nodes: [
-            { id: 'gw', kind: 'router', label: 'GW', x: 40, y: 0, note: 'gateway .1' },
+            { id: 'gw', kind: 'router', label: 'GW', x: 15, y: 0, note: '.1' },
             { id: 'sw', kind: 'switch', label: 'Switch0', x: 40, y: 20 },
             { id: 'pc0', kind: 'pc', label: 'PC0', x: 10, y: 40, note: 'DHCP' },
             { id: 'pc1', kind: 'pc', label: 'PC1', x: 70, y: 40, note: 'static .20/24' },
@@ -33,7 +33,7 @@ export const CLIENT_DOCS: DocGroup = {
         ]),
         h('Setting it up in Netfix'),
         steps(
-          ['Open the PC', 'Double-click the PC → **IP Config** tab.'],
+          ['Open the PC', 'Double-click the PC → **IP Configuration** tab.'],
           ['Choose the mode', '**DHCP**: the PC asks for the values at once (you will see “Requesting IP address…” and then “DHCP request successful”). **Static**: fill in **IPv4 address**, **Subnet mask** (255.255.255.0 or /24), **Default gateway** and **DNS server**.'],
           ['Apply', 'Each field applies when you press Enter or leave it. A mistyped value is flagged and not applied.'],
           ['Choose the operating system', '**Ubuntu** or **Windows**: it decides which terminal opens first and which system an SSH client sees.'],
@@ -50,7 +50,7 @@ export const CLIENT_DOCS: DocGroup = {
         term('cmd', 'C:\\home\\alumno> ipconfig /all\n\nFastEthernet0 Connection:(default port)\n\n   Connection-specific DNS Suffix..: aula.lab\n   Physical Address................: 0063.B914.34B5\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\n   DHCP Servers....................: 192.168.10.2\n   DNS Servers.....................: 192.168.10.2\nC:\\home\\alumno> ping -n 2 srv.aula.lab\nReply from 192.168.10.2: bytes=32 time<1ms TTL=128'),
         p('In the Linux Terminal, the same with `ip -4 addr`, `ip route` (the gateway is the “default” route) and `cat /etc/resolv.conf` (the DNS server).'),
         warn('Common mistakes', 'A mask different from the rest of the network: some devices “cannot be seen”. A gateway outside the PC’s network (or empty): it works inside the LAN but not beyond. Two devices with the **same IP address**: both fail now and then. A **169.254.x.x** address means DHCP did not answer: check the cable, the server and its pool.'),
-        exercise('From a hand-set PC to DHCP', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, give PC0 the static IP address 192.168.10.20/24, gateway 192.168.10.1 and DNS 192.168.10.2; check with ping srv.aula.lab and then go back to DHCP.', 'IP Config → Static and fill in the four fields. In the Windows Terminal, `ping srv.aula.lab` answers from 192.168.10.2. Back to **DHCP**: `ipconfig` shows 192.168.10.100 again (the lease the server kept for it).'),
+        exercise('From a hand-set PC to DHCP', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, give PC0 the static IP address 192.168.10.20/24, gateway 192.168.10.1 and DNS 192.168.10.2; check with ping srv.aula.lab and then go back to DHCP.', 'IP Configuration → Static and fill in the four fields. In the Windows Terminal, `ping srv.aula.lab` answers from 192.168.10.2. Back to **DHCP**: `ipconfig` shows 192.168.10.100 again (the lease the server kept for it).'),
       ],
     },
     {
@@ -112,7 +112,7 @@ export const CLIENT_DOCS: DocGroup = {
           ],
         }, 'Mail goes over SMTP to the server, which stores it in the mailbox; the recipient collects it over POP3 or IMAP.'),
         steps(
-          ['Set up the account', '**Mail** tab → **Set up mail account**: your name, your **address** (ana@aula.lab), the **incoming protocol** (POP3 or IMAP), the **incoming server** and the **outgoing server (SMTP)** (IP address or name), user and password. **Save account**.'],
+          ['Set up the account', '**Email** tab → **Set up an email account**: your name, your **address** (ana@aula.lab), the **incoming protocol** (POP3 or IMAP), the **incoming server** and the **outgoing server (SMTP)** (IP address or name), user and password. **Save account**.'],
           ['Send', '**Compose**: To, Subject and Message, and **Send**. Below it you will see the server’s answer.'],
           ['Receive', 'On the other PC, **Receive**: the messages appear in the **Inbox**.'],
         ),
@@ -122,7 +122,7 @@ export const CLIENT_DOCS: DocGroup = {
           ['IMAP', '143/tcp', 'Reads it keeping a copy on the server'],
         ]),
         check('Check it', 'On the server, **Services → Logs → postfix** shows the delivery (`status=sent (delivered to mailbox)`). In Simulation, with the SMTP, POP3 and IMAP filters, each protocol command shows up.'),
-        exercise('Ana writes to Luis', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, send a mail from ana (PC0) to luis (PC1) and read it on PC1.', 'The accounts are already set up (ana with IMAP, luis with POP3; passwords ana1 and luis1). On PC0 → Mail → Compose: To luis@aula.lab, Send. On PC1 → Mail → Receive: the message appears in the inbox. As luis uses POP3, it is no longer on the server.'),
+        exercise('Ana writes to Luis', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, send a mail from ana (PC0) to luis (PC1) and read it on PC1.', 'The accounts are already set up (ana with IMAP, luis with POP3; passwords ana1 and luis1). On PC0 → Email → Compose: To luis@aula.lab, Send. On PC1 → Email → Receive: the message appears in the inbox. As luis uses POP3, it is no longer on the server.'),
       ],
     },
     {

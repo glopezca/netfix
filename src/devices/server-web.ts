@@ -112,7 +112,7 @@ export class ServerWeb {
     if (app) res = app.handler(this.server, req, peer, app.base);
     else if (!this.httpPorts().includes(port)) res = null;
     else res = this.serveStatic(req, port);
-    if (res) this.server.log('http', `${formatIp(peer.ip)} - - "${req.method} ${req.path} HTTP/1.1" ${res.status} ${res.body.length}${port !== DEFAULT_HTTP_PORT ? ` (puerto ${port})` : ''}`);
+    if (res) this.server.log('http', `${formatIp(peer.ip)} - - "${req.method} ${req.path} HTTP/1.1" ${res.status} ${res.body.length}${port !== DEFAULT_HTTP_PORT ? ` (port ${port})` : ''}`);
     return res;
   }
 

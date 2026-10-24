@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import type { DocBlock, DocPage } from '../../src/docs/types.ts';
 
-const DOCS = ['outline', 'netfix', 'ios', 'services', 'ssh', 'webapps', 'internet', 'security', 'clients', 'linux', 'editors', 'bash-lang', 'bash-ref', 'utils', 'bash-builtins'];
+const DOCS = ['outline', 'netfix', 'ios', 'services', 'dns', 'http', 'mail', 'ssh', 'webapps', 'internet', 'security', 'clients', 'linux', 'editors', 'bash-lang', 'bash-ref', 'utils', 'bash-builtins'];
 
 const isPage = (v: unknown): v is DocPage => typeof v === 'object' && v !== null && 'blocks' in v && 'id' in v;
 function pagesOf(v: unknown): readonly DocPage[] | null {

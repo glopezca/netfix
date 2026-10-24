@@ -1,4 +1,4 @@
-/** Documentation: security and VPN (extended ACLs, IPsec, Linux router, nftables, WireGuard, SFTP). */
+/** Documentation: security and VPN (extended ACLs, IPsec, Linux router, nftables, WireGuard). */
 import type { DocGroup } from '../types.ts';
 import { code, h, list, note, p, table } from '../types.ts';
 
@@ -114,28 +114,6 @@ export const SECURITY_DOCS: DocGroup = {
           ['wg set wg0 peer CLAVE allowed-ips … endpoint IP:PUERTO', 'Changes a peer on the fly.'],
           ['ip a · ip route', 'wg0 appears as a POINTOPOINT interface, with its routes “dev wg0”.'],
         ]),
-      ],
-    },
-    {
-      id: 'srv-sftp',
-      title: 'SFTP and scp',
-      summary: 'sshd’s sftp subsystem, interactive and batch sftp, scp, and the PC’s SSH client and Files (SFTP) apps.',
-      blocks: [
-        p('sftp and scp use the same SSH connection (password or key pair) and the “Subsystem sftp …” subsystem in sshd_config. Every operation runs with the user’s permissions on the server: without write permission, “Permission denied”.'),
-        code('alumno@pc0:~$ sftp ana@srv.aula.lab\nConnected to srv.aula.lab.\nsftp> put tarea.txt\nUploading tarea.txt to /home/ana/tarea.txt\nsftp> ls -l\nsftp> get bienvenida.txt\nsftp> bye\nalumno@pc0:~$ scp informe.txt ana@srv.aula.lab:entregas/\nalumno@pc0:~$ scp ana@srv.aula.lab:/etc/hostname .'),
-        table(['sftp command', 'Effect'], [
-          ['ls [-la] · cd · pwd', 'On the server.'],
-          ['lls · lcd · lpwd · lmkdir', 'On the local device.'],
-          ['get REMOTE [LOCAL] · put LOCAL [REMOTE]', 'Download / upload.'],
-          ['mkdir · rmdir · rm · rename · chmod 640 FILE', 'Managing remote files.'],
-          ['sftp -b batchfile user@host', 'Runs the commands in a file (implies BatchMode: a key pair is required).'],
-        ]),
-        h('PC apps'),
-        list(
-          'SSH client (like PuTTY): saved sessions, one terminal per session, key-pair generation and a list of known hosts with their fingerprints.',
-          'Files (SFTP) (like FileZilla): quick connect, local and remote panes, upload, download, new folder, rename and delete; asks about the server’s fingerprint the first time.',
-        ),
-        note('If you remove the Subsystem line from sshd_config and reload ssh, sftp and scp fail with “subsystem request failed on channel 0”, but ssh keeps working.'),
       ],
     },
   ],

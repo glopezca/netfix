@@ -1,4 +1,4 @@
-/** Documentación: seguridad y VPN (ACL extendidas, IPsec, router Linux, nftables, WireGuard, SFTP). */
+/** Documentación: seguridad y VPN (ACL extendidas, IPsec, router Linux, nftables, WireGuard). */
 import type { DocGroup } from './types.ts';
 import { code, h, list, note, p, table } from './types.ts';
 
@@ -114,28 +114,6 @@ export const SECURITY_DOCS: DocGroup = {
           ['wg set wg0 peer CLAVE allowed-ips … endpoint IP:PUERTO', 'Cambia un par en marcha.'],
           ['ip a · ip route', 'wg0 aparece como interfaz POINTOPOINT y sus rutas «dev wg0».'],
         ]),
-      ],
-    },
-    {
-      id: 'srv-sftp',
-      title: 'SFTP y scp',
-      summary: 'Subsistema sftp de sshd, sftp interactivo y por lotes, scp, y las apps Cliente SSH y Archivos (SFTP) del PC.',
-      blocks: [
-        p('sftp y scp usan la misma conexión SSH (contraseña o par de claves) y el subsistema «Subsystem sftp …» de sshd_config. Cada operación se hace con los permisos del usuario en el servidor: sin permiso de escritura, «Permission denied».'),
-        code('alumno@pc0:~$ sftp ana@srv.aula.lab\nConnected to srv.aula.lab.\nsftp> put tarea.txt\nUploading tarea.txt to /home/ana/tarea.txt\nsftp> ls -l\nsftp> get bienvenida.txt\nsftp> bye\nalumno@pc0:~$ scp informe.txt ana@srv.aula.lab:entregas/\nalumno@pc0:~$ scp ana@srv.aula.lab:/etc/hostname .'),
-        table(['Orden de sftp', 'Efecto'], [
-          ['ls [-la] · cd · pwd', 'En el servidor.'],
-          ['lls · lcd · lpwd · lmkdir', 'En el equipo local.'],
-          ['get REMOTO [LOCAL] · put LOCAL [REMOTO]', 'Descargar / subir.'],
-          ['mkdir · rmdir · rm · rename · chmod 640 FICHERO', 'Gestión de ficheros remotos.'],
-          ['sftp -b lote usuario@host', 'Ejecuta las órdenes de un fichero (implica BatchMode: hace falta par de claves).'],
-        ]),
-        h('Apps del PC'),
-        list(
-          'Cliente SSH (como PuTTY): sesiones guardadas, una terminal por sesión, generación de pares de claves y lista de hosts conocidos con su huella.',
-          'Archivos (SFTP) (como FileZilla): conexión rápida, panel local y remoto, subir, descargar, nueva carpeta, renombrar y borrar; pregunta por la huella del servidor la primera vez.',
-        ),
-        note('Si quitas la línea Subsystem de sshd_config y recargas ssh, sftp y scp fallan con «subsystem request failed on channel 0», pero ssh sigue funcionando.'),
       ],
     },
   ],

@@ -18,7 +18,7 @@ export const CLIENT_DOCS: DocGroup = {
         figure({
           type: 'topology',
           nodes: [
-            { id: 'gw', kind: 'router', label: 'GW', x: 40, y: 0, note: 'puerta de enlace .1' },
+            { id: 'gw', kind: 'router', label: 'GW', x: 15, y: 0, note: '.1' },
             { id: 'sw', kind: 'switch', label: 'Switch0', x: 40, y: 20 },
             { id: 'pc0', kind: 'pc', label: 'PC0', x: 10, y: 40, note: 'DHCP' },
             { id: 'pc1', kind: 'pc', label: 'PC1', x: 70, y: 40, note: 'estática .20/24' },

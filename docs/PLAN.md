@@ -947,3 +947,23 @@ Las pruebas de paridad es/en cubren los bloques nuevos.
    - copiar paso a paso, compruébalo, errores típicos y un ejercicio que publica un directorio en Apache, comprobado
      con el listado de Apache.
 
+
+### Notas de la fase 36b (v0.20.2)
+
+- **PC.** Configuración IP, Nombre del equipo, Navegador y correo, y Terminal Windows, reescritas con el guion de 36a:
+  figura, pasos, terminal real, compruébalo, errores típicos y ejercicio.
+- **Servidor.** Server, SSH, pares de claves, sshd_config, SFTP, DNS, nombres y comodines, servidor web, Apache2,
+  gestión web, Roundcube y correo, con el mismo guion. Los pasos usan los rótulos exactos de la interfaz en cada idioma.
+- **Comprobado en el simulador.** Cada salida y cada ejercicio se ejecutó en el laboratorio «Server: DHCP, DNS, web,
+  correo y SSH»: `ss -tulpn`, la sesión SSH y su registro («invalid user ana»), `ssh-copy-id`, solo claves,
+  `sftp`/`scp`, `dig` (registro nuevo y su PTR automático; `google.es` con Recursivo y Nombres públicos), el comodín y
+  el punto final que falta, el VirtualHost con el error AH00526 y el aviso AH00558, el rebote de postfix por falta de MX
+  y los intentos fallidos en la gestión web.
+- **Archivos.** DNS, HTTP y correo salen de `services.ts` a `dns.ts`, `http.ts` y `mail.ts` (y sus gemelos en inglés);
+  SFTP pasa de `security.ts` a `ssh.ts`. Ninguno pasa de 400 líneas.
+- **Figuras.** El ancho de una topología cuenta lo que miden las etiquetas y las notas, para que no se corten en los
+  bordes; los routers se apartan del eje para que el cable no cruce su nota.
+- **Registro de Apache.** La línea de acceso de la gestión web en otro puerto decía «(puerto 10000)» en español fijo;
+  ahora «(port 10000)», como el resto del registro.
+
+**Siguiente:** fase 36c, Switch IOS, Router IOS, Router Linux y Nube.

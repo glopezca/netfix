@@ -14,6 +14,11 @@ const SEQ_ROW = 52;
 const SEQ_TOP = 46;
 /** Room on both sides of a sequence for the actors' names and the notes. */
 const SEQ_PAD = 150;
+/** Room at the edge beyond the widest text. */
+const EDGE = 8;
+/** Approximate advance of the label (14 px bold) and of the note (12 px monospace). */
+const LABEL_CHAR = 8.5;
+const NOTE_CHAR = 7.3;
 
 type Topology = Extract<Figure, { type: 'topology' }>;
 type Sequence = Extract<Figure, { type: 'sequence' }>;
@@ -40,10 +45,18 @@ function topology(f: Topology): SVGSVGElement {
     return [svg('line', { x1: p.x, y1: p.y, x2: q.x, y2: q.y, class: 'doc-fig-cable' }),
       l.label ? svg('text', { x: mid.x, y: mid.y - 6, class: 'doc-fig-cable-label' }, l.label) : ''];
   });
-  const w = Math.max(...f.nodes.map((n) => at(n).x)) + PAD + ICON_W / 2;
+  // Widened when a label or a note is longer than the margin, so no text is cut at the edges.
+  const left = Math.floor(Math.min(0, ...f.nodes.map((n) => at(n).x - halfWidth(n) - EDGE)));
+  const right = Math.ceil(Math.max(...f.nodes.map((n) => Math.max(at(n).x + PAD + ICON_W / 2, at(n).x + halfWidth(n) + EDGE))));
+  const w = right - left;
   const h = Math.max(...f.nodes.map((n) => at(n).y)) + PAD + ICON_H / 2 + 20;
   // Drawn at its own size (never enlarged): icons and texts keep the size they have on the workspace.
-  return svg('svg', { viewBox: `0 0 ${w} ${h}`, width: w, height: h, class: 'doc-fig-svg', role: 'img' }, ...links, ...f.nodes.map(node));
+  return svg('svg', { viewBox: `${left} 0 ${w} ${h}`, width: w, height: h, class: 'doc-fig-svg', role: 'img' }, ...links, ...f.nodes.map(node));
+}
+
+/** Half the width of a node: its icon, its label or its note, whichever is widest. */
+function halfWidth(n: FigNode): number {
+  return Math.max(ICON_W / 2, (n.label.length * LABEL_CHAR) / 2, ((n.note?.length ?? 0) * NOTE_CHAR) / 2);
 }
 
 function sequence(f: Sequence): SVGSVGElement {

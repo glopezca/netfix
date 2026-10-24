@@ -55,7 +55,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
         ['/dev/null · /dev/zero · /dev/random · /dev/tty', 'Devices'],
         ['/proc/version · /proc/cpuinfo · /proc/meminfo', 'System information'],
       ]),
-      p('Generated files are read-only (“Read-only file system”): they are changed from the interface (IP Config, Services) and the terminal sees the change immediately.'),
+      p('Generated files are read-only (“Read-only file system”): they are changed from the interface (IP Configuration, Services) and the terminal sees the change immediately.'),
       h('Permissions'),
       code('$ ls -l /etc/shadow\n-rw-r----- 1 root shadow 120 Oct 11 10:00 /etc/shadow\n$ chmod 750 script.sh      # rwxr-x---\n$ chmod u+x,go-w script.sh\n$ umask 022\n$ sudo chown root:root f'),
       list(

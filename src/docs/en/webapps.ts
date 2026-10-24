@@ -1,51 +1,73 @@
-/** Documentation: Server web applications (Roundcube and web management). */
+/** Documentation: the Server's web applications (Roundcube and web management), in guided style. */
 import type { DocPage } from '../types.ts';
-import { code, h, list, note, p, table } from '../types.ts';
+import { check, exercise, h, list, note, p, steps, table, term, tip, warn } from '../types.ts';
+
+const MD = 'https://github.com/glopezca/netfix/blob/main/';
 
 export const WEBAPP_DOCS: readonly DocPage[] = [
   {
     id: 'srv-roundcube',
     title: 'Roundcube (webmail)',
-    summary: 'Webmail on top of the server’s IMAP and SMTP, on an Apache alias or on its own port.',
+    summary: 'Reading and writing mail from the browser, on an Apache alias or on a port of its own.',
+    markdownBase: MD,
     blocks: [
-      p('Services → HTTP → Web applications: enable Roundcube and choose how it is reached, so that it does not take port 80 or the root / of the main website.'),
+      p('**Roundcube** is webmail: users read and write their mail from the browser, without setting up any client. Underneath it uses the same server’s **IMAP** and **SMTP**, so it needs the mail service working.'),
+      h('Step by step'),
+      steps(
+        ['Switch it on', '**Services → HTTP → Web applications → Roundcube (webmail)**: **Enabled**.'],
+        ['Choose the access', '**URL alias in Apache** (/roundcube by default) or **Own port** (8080 by default), and **Apply**. That way it takes neither port 80 nor the root / of the main website.'],
+        ['Log in', 'In a PC’s browser, the URL of the chosen access; log in with a user from **Services → Email**.'],
+      ),
       table(['Access', 'URL from a PC', 'Notes'], [
-        ['URL alias in Apache (default /roundcube)', 'http://servidor/roundcube/', 'Served by Apache: /etc/apache2/conf-enabled/roundcube.conf. Needs the HTTP service enabled.'],
-        ['Own port (default 8080)', 'http://servidor:8080/', 'Listens even when Apache is stopped.'],
+        ['URL alias in Apache', 'http://server/roundcube/', 'Served by Apache: /etc/apache2/conf-enabled/roundcube.conf. Needs the HTTP service on.'],
+        ['Own port', 'http://server:8080/', 'Listens even with Apache stopped.'],
       ]),
       list(
-        'Log in with one of the server’s mail users (Services → Email); IMAP must be enabled.',
         'Inbox, Sent and Trash; read, compose, reply, forward and delete.',
-        'Messages to other domains are delivered over SMTP to the MX server given by DNS.',
-        'The session is kept in the roundcube_sessid cookie; the generated configuration is in /etc/roundcube/config.inc.php.',
+        'Messages to other domains are delivered over SMTP to the MX server that DNS names.',
+        'The session goes in the roundcube_sessid cookie; the generated configuration is in /etc/roundcube/config.inc.php.',
       ),
-      note('With DNS, a CNAME webmail → srv lets you type http://webmail.aula.lab/roundcube/.'),
+      tip('An easy name', 'With a CNAME `webmail` → `srv` in DNS, users type http://webmail.aula.lab/roundcube/.'),
+      check('Check it with curl', 'Apache answers 200 OK if the alias works.'),
+      term('shell', 'alumno@pc1:~$ curl -sI http://webmail.aula.lab/roundcube/\nHTTP/1.1 200 OK\nDate: Sat, 24 Oct 2026 06:31:21 GMT\nServer: Apache/2.4.62 (Ubuntu)\nContent-Length: 682\nContent-Type: text/html; charset=UTF-8'),
+      warn('Common mistakes', 'You cannot log in: IMAP is off or the user does not exist in Services → Email. 404 on /roundcube/: the access is on its own port, not the alias. Nothing loads with the alias: the HTTP service is stopped.'),
+      exercise('Luis reads his mail on the web', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, send a message from ana to luis from PC0 and read it with Roundcube in PC1’s browser.', 'PC0 → Email → Compose to luis@aula.lab → Send. On PC1 → Web Browser: http://webmail.aula.lab/roundcube/, user luis and password luis1: the message is in the Inbox. If you downloaded it over POP3 with Receive first, it is no longer on the server.'),
     ],
   },
   {
     id: 'srv-webadmin',
     title: 'Server web management',
-    summary: 'Administration interface with a side menu and cards: basic settings, SSH, DHCP, DNS by mode, web, email, status, logs and files.',
+    summary: 'Managing the server from the browser: menu, pages and the interface’s security.',
+    markdownBase: MD,
     blocks: [
-      p('Services → HTTP → Web applications → Web management. It is disabled by default; once enabled it listens on port 10000 (or on an Apache alias such as /admin) with user admin and password netfix (the same account as the SSH of the labs).'),
-      code('PC Web Browser:    http://srv.aula.lab:10000/\nTerminal:          curl -u admin:netfix "http://192.168.10.2:10000/?page=status"'),
-      table(['Page', 'What it changes'], [
-        ['Config', 'Host name, static or DHCP IP address, default gateway and DNS.'],
-        ['SSH', 'First in the Services menu: service, users and the authentication methods (password and/or key pair) in sshd_config.'],
-        ['DHCP', 'Enable the server, choose the listen interfaces (Kea interfaces-config), add and delete pools (leases by MAC or by Client-ID), addresses reserved by MAC or identifier (hex 01… or text) and “Reserve” an active lease.'],
-        ['DNS', 'Listen interfaces (listen-on), cards for the five modes (Cache, Forwarder, Authoritative, Recursive, Iterative) with their switch and uses, one tab of options per mode (the zone wizard SOA → NS → kind → records in Authoritative) and, beside them, the generated BIND configuration (named.conf.options, zones, files) explained.'],
-        ['Web', 'Apache and access to Roundcube.'],
-        ['Routing (Linux router)', '«Enable router» checkbox (net.ipv4.ip_forward), kernel parameters and static routes.'],
-        ['Email', 'Services and users.'],
-        ['Administration', 'Interface user/password and its port or alias (when changed, the browser moves to the new address).'],
-        ['Status · Configuration · Logs', 'Device data, services, leases, the configuration files of each service as they are, with the syntax highlighted as in vim (Linux only), and the latest messages (journalctl).'],
+      p('**Web management** is an administration interface in the browser, like a home router’s or a Webmin-style panel: the same as the Services tab, but from any PC on the network. Every change is validated as in the server’s window and applies at once.'),
+      h('Step by step'),
+      steps(
+        ['Switch it on', '**Services → HTTP → Web applications → Server web management**: **Enabled** (it is off by default). It listens on port 10000 or on an Apache alias such as /admin.'],
+        ['Set user and password', 'admin and netfix by default (the same account as the labs’ SSH). Change them on the **Management** page.'],
+        ['Log in', 'In a PC’s browser, http://srv.aula.lab:10000/ (or http://srv.aula.lab/admin/). The browser asks for user and password.'],
+      ),
+      table(['Menu', 'Page', 'What it changes'], [
+        ['Setup', 'Basic setup', 'Host name (read only), static or DHCP IP address, gateway and DNS.'],
+        ['Services', 'SSH', 'Service, users and authentication methods (password and/or key pair) of sshd_config.'],
+        ['Services', 'DHCP', 'Server, listen interfaces, pools (leases by MAC or by Client-ID), reservations and “Reserve” for an active lease.'],
+        ['Services', 'DNS', 'Listen interfaces, cards of the five modes with their switch and uses, the zone wizard and, beside them, the generated BIND configuration, explained.'],
+        ['Services', 'Web and webmail', 'Apache and the access to Roundcube.'],
+        ['Services', 'Email', 'Protocols, domain and accounts.'],
+        ['Security (Linux router)', 'Routing · Firewall · VPN', 'Packet forwarding and static routes, nftables rules and WireGuard. A Server does not have it.'],
+        ['Administration', 'Management', 'User, password and port or alias of the interface (when changed, the browser moves to the new address).'],
+        ['Status', 'Device · Configuration · Logs', 'Device data, services and leases; the configuration files with vim’s colours (Linux only); the latest messages (journalctl).'],
       ]),
+      check('Check it with curl', 'Without credentials it answers **401 Unauthorized** with `Www-Authenticate: Basic realm="Server"`; with `-u user:password`, the page.'),
+      term('shell', 'alumno@pc1:~$ curl -s -u admin:netfix "http://192.168.10.2:10000/?page=status" | head -1\n<!doctype html>\nalumno@pc1:~$ curl -s -u admin:mal http://192.168.10.2:10000/ -o /dev/null -w "%{http_code}\\n"\n401'),
       h('Security'),
       list(
-        'HTTP Basic authentication (realm “Server”); failed attempts are logged in journalctl -u apache2.',
-        'Every change is validated exactly as in the server window and logged with the user and the PC’s IP address.',
-        'The Security section of the menu (Routing, Firewall, VPN) only appears on the Linux router; a Server has none.',
+        'HTTP Basic authentication (realm “Server”): user and password travel unencrypted with every request (HTTPS is not simulated). On a real network, this interface should only be reachable from the management network.',
+        'Failed attempts and every change go into apache2’s log, with the user and the PC’s IP address.',
       ),
+      term('messages', 'Oct 24 06:31:28 srv apache2[903]: netfix-webui: access denied for “admin” from 192.168.10.50\nOct 24 06:31:28 srv apache2[903]: 192.168.10.50 - - "GET / HTTP/1.1" 401 191 (port 10000)'),
+      note('The Linux router has the same web management, with the Security menu; IOS routers and switches have their own, with a different look.'),
+      exercise('Who tried to get in?', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, try to log in to web management from PC1 with a wrong password and then with the right one. Find both attempts on the server.', 'PC1 → Web Browser → http://srv.aula.lab:10000/: with a wrong password it asks again. On SRV → Services → Logs → apache2 there is “netfix-webui: access denied for “admin” from 192.168.10.50” and the request with code 401.'),
     ],
   },
 ];

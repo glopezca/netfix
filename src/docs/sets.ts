@@ -20,6 +20,9 @@ import { INTERNET_DOCS } from './internet.ts';
 import { WEBAPP_DOCS } from './webapps.ts';
 import { SSH_DOCS } from './ssh.ts';
 import { SECURITY_DOCS } from './security.ts';
+import { DNS_DOCS } from './dns.ts';
+import { HTTP_DOCS } from './http.ts';
+import { MAIL_DOCS } from './mail.ts';
 import { NETFIX_DOCS as NETFIX_EN } from './en/netfix.ts';
 import { IOS_DOCS as IOS_EN } from './en/ios.ts';
 import { SERVICE_DOCS as SERVICE_EN } from './en/services.ts';
@@ -34,6 +37,9 @@ import { INTERNET_DOCS as INTERNET_EN } from './en/internet.ts';
 import { WEBAPP_DOCS as WEBAPP_EN } from './en/webapps.ts';
 import { SSH_DOCS as SSH_EN } from './en/ssh.ts';
 import { SECURITY_DOCS as SECURITY_EN } from './en/security.ts';
+import { DNS_DOCS as DNS_EN } from './en/dns.ts';
+import { HTTP_DOCS as HTTP_EN } from './en/http.ts';
+import { MAIL_DOCS as MAIL_EN } from './en/mail.ts';
 import { OUTLINE } from './outline.ts';
 import { arrange } from './arrange.ts';
 import { OUTLINE as OUTLINE_EN } from './en/outline.ts';
@@ -64,7 +70,7 @@ export interface DocSet {
 }
 
 const ES: DocSet = {
-  groups: arrange(OUTLINE, [...NETFIX_DOCS.pages, ...IOS_DOCS.pages, ...SERVICE_DOCS.pages, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
+  groups: arrange(OUTLINE, [...NETFIX_DOCS.pages, ...IOS_DOCS.pages, ...SERVICE_DOCS.pages, ...DNS_DOCS, ...HTTP_DOCS, ...MAIL_DOCS, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
     ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE]),
   utils: UTIL_DOCS,
   builtins: BUILTIN_DOCS,
@@ -83,7 +89,7 @@ const ES: DocSet = {
 };
 
 const EN: DocSet = {
-  groups: arrange(OUTLINE_EN, [...NETFIX_EN.pages, ...IOS_EN.pages, ...SERVICE_EN.pages, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
+  groups: arrange(OUTLINE_EN, [...NETFIX_EN.pages, ...IOS_EN.pages, ...SERVICE_EN.pages, ...DNS_EN, ...HTTP_EN, ...MAIL_EN, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
     ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN]),
   utils: UTIL_EN,
   builtins: BUILTIN_EN,
