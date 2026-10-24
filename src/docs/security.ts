@@ -1,4 +1,4 @@
-/** Documentación: seguridad y VPN (ACL extendidas, IPsec, router Linux, nftables, WireGuard). */
+/** Documentación: router Linux (parámetros, nftables y WireGuard). */
 import type { DocGroup } from './types.ts';
 import { code, h, list, note, p, table } from './types.ts';
 
@@ -6,55 +6,6 @@ export const SECURITY_DOCS: DocGroup = {
   id: 'seguridad',
   title: 'Seguridad y VPN',
   pages: [
-    {
-      id: 'ios-acl',
-      title: 'ACL extendidas',
-      summary: 'access-list 100-199, ip access-list extended, puertos, established, log e ip access-group in|out.',
-      blocks: [
-        p('Una ACL extendida filtra por protocolo, origen, destino y puertos. Se aplica a una interfaz con ip access-group NOMBRE in|out. Las entradas se recorren en orden y al final hay un deny any implícito.'),
-        code('Router(config)# ip access-list extended A-SERVIDORES\nRouter(config-ext-nacl)# permit tcp any host 172.20.0.10 eq www\nRouter(config-ext-nacl)# permit tcp 192.168.10.0 0.0.0.255 host 172.20.0.10 eq 22\nRouter(config-ext-nacl)# permit icmp 192.168.10.0 0.0.0.255 any\nRouter(config-ext-nacl)# permit udp any host 172.20.0.10 eq domain\nRouter(config-ext-nacl)# deny ip any any log\nRouter(config-ext-nacl)# exit\nRouter(config)# interface g0/2\nRouter(config-if)# ip access-group A-SERVIDORES out'),
-        table(['Elemento', 'Ejemplos'], [
-          ['Protocolo', 'ip, tcp, udp, icmp, esp, gre'],
-          ['Origen / destino', 'any · host 10.0.0.2 · 192.168.10.0 0.0.0.255 (wildcard)'],
-          ['Puertos (tcp/udp)', 'eq www · eq 22 · gt 1023 · lt 1024 · neq 23 · range 50 60'],
-          ['ICMP', 'echo · echo-reply · unreachable · time-exceeded'],
-          ['Opciones', 'established (TCP con ACK o RST) · log (%SEC-6-IPACCESSLOGP)'],
-        ]),
-        list(
-          'in filtra lo que entra por la interfaz antes de la NAT y del enrutamiento; out filtra lo que sale en tránsito (ni las respuestas que entran por esa interfaz ni el tráfico del propio router).',
-          'Una ACL extendida también sirve para la NAT: deny ip LAN1 LAN2 deja ese tráfico sin traducir (exención para una VPN).',
-          'show access-lists muestra cada entrada con sus «(N match(es))»; clear access-list counters los pone a cero.',
-          'En ACL con nombre, «15 permit …» inserta con número de secuencia y «no 15» borra esa entrada.',
-        ),
-      ],
-    },
-    {
-      id: 'ios-ipsec',
-      title: 'VPN IPsec en el 2911',
-      summary: 'crypto isakmp policy, crypto isakmp key, transform-set, crypto map, show crypto isakmp sa / ipsec sa.',
-      blocks: [
-        p('Un túnel IPsec sitio a sitio cifra el tráfico entre dos LAN a través de Internet. IKE (UDP 500) negocia la política y comprueba la clave compartida sin enviarla; después ESP lleva los paquetes. El primer paquete «interesante» se pierde mientras sube el túnel.'),
-        code('crypto isakmp policy 10\n encryption aes 256\n hash sha\n authentication pre-share\n group 5\ncrypto isakmp key Netfix-VPN-2026 address 203.0.113.2\ncrypto ipsec transform-set TS-AES esp-aes 256 esp-sha-hmac\nip access-list extended VPN\n permit ip 192.168.10.0 0.0.0.255 192.168.20.0 0.0.0.255\ncrypto map VPN 10 ipsec-isakmp\n set peer 203.0.113.2\n set transform-set TS-AES\n match address VPN\ninterface GigabitEthernet0/1\n crypto map VPN'),
-        list(
-          'Las dos sedes necesitan políticas ISAKMP iguales, la misma clave, transform-sets iguales y ACL espejo (origen y destino intercambiados).',
-          'Con NAT overload en la misma interfaz, excluye el tráfico entre sedes de la NAT con una ACL extendida (deny ip LAN1 LAN2 antes del permit).',
-          'ESP no tiene puertos: atraviesa una NAT 1:1 pero una PAT lo descarta. Usa direcciones IP públicas (línea «Dirección IP pública» de la nube ISP).',
-        ),
-        table(['Orden', 'Qué muestra'], [
-          ['show crypto isakmp sa', 'La SA de IKE: QM_IDLE cuando está lista, MM_NO_STATE si falla.'],
-          ['show crypto ipsec sa', 'Identidades protegidas, pares, SPI y contadores #pkts encaps/decaps y #send errors.'],
-          ['show crypto map · show crypto isakmp policy', 'La configuración en uso.'],
-          ['clear crypto sa · clear crypto isakmp', 'Borra las SA: el siguiente paquete vuelve a negociar.'],
-        ]),
-        table(['Mensaje', 'Causa'], [
-          ['%CRYPTO-4-IKMP_BAD_MESSAGE', 'La clave compartida no coincide.'],
-          ['%CRYPTO-6-IKMP_MODE_FAILURE … Main mode', 'Ninguna política ISAKMP coincide.'],
-          ['%CRYPTO-6-IKMP_MODE_FAILURE … Quick mode', 'Transform-set o ACL espejo distintos.'],
-          ['%CRYPTO-4-RECVD_PKT_NOT_IPSEC', 'Llega en claro tráfico que el túnel debería proteger.'],
-        ]),
-        note('El simulador no cifra los bytes: ESP transporta el paquete original, pero el comportamiento (negociación, SPI, contadores, errores) es el de IOS.'),
-      ],
-    },
     {
       id: 'linux-router',
       title: 'Router Linux',

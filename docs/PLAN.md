@@ -977,3 +977,15 @@ Las pruebas de paridad es/en cubren los bloques nuevos.
   cliente). Dos salidas se corrigieron: el primer `traceroute` entre VLAN tiene un `*` mientras el router resuelve ARP, y
   `show ip route | include 0.0.0.0` también saca la línea `100.0.0.0/8 …`.
 - **Pendiente de 36c:** NAT, ACL e IPsec del router IOS; Router Linux (parámetros, nftables, WireGuard) y Nube.
+
+### Notas de la fase 36c, segunda entrega (v0.20.4)
+
+- **Router IOS: NAT, ACL e IPsec**, en estilo guiado, en un módulo propio `ios-sec.ts`. Comprobado en los laboratorios
+  «Internet: dos sedes y DNS públicos» (traducciones y estadísticas de NAT), «Bastionado: ACL, nftables y sshd»
+  (contadores de `show access-lists` y avisos `%SEC-6-IPACCESSLOGP`) y «VPN IPsec entre dos sedes (2911)»: se pierden
+  dos pings mientras sube el túnel, no uno.
+- **ping de Linux.** La línea `rtt min/avg/max/mdev` era fija (0.400/0.455/0.511/0.040 incluso con un paquete); ahora
+  sale de los tiempos impresos. Los tiempos se escriben con tres decimales (antes, a partir del paquete 17, `0.1029`).
+- **Pendiente:** el ICMP de una ACL o de una regla `reject` debería ser «administratively prohibited» (Linux: «Packet
+  filtered»), y la falta de ruta en un router, «net unreachable»; hoy todo sale como «Destination Host Unreachable».
+  `ip -4 addr show eth0` enseña también `lo` y las líneas `link/ether`.

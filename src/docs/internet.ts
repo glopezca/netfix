@@ -58,33 +58,6 @@ export const INTERNET_DOCS: DocGroup = {
       ],
     },
     {
-      id: 'ios-nat',
-      title: 'NAT y ACL estándar (IOS)',
-      summary: 'ip nat inside/outside, PAT con overload, pools, NAT estático con puertos y listas de acceso estándar.',
-      blocks: [
-        code('R1(config)# interface g0/0\nR1(config-if)# ip nat inside\nR1(config-if)# interface g0/1\nR1(config-if)# ip address dhcp\nR1(config-if)# ip nat outside\nR1(config-if)# exit\nR1(config)# access-list 1 permit 192.168.10.0 0.0.0.255\nR1(config)# ip nat inside source list 1 interface GigabitEthernet0/1 overload'),
-        table(['Orden', 'Uso'], [
-          ['ip nat inside | outside', 'Marca la interfaz (también subinterfaces).'],
-          ['access-list N permit|deny any | host A | A WILDCARD', 'ACL estándar numerada (1-99). remark para comentarios.'],
-          ['ip access-list standard NOMBRE', 'ACL estándar con nombre: (config-std-nacl)# [secuencia] permit|deny …'],
-          ['ip nat pool NOMBRE INICIO FIN netmask M | prefix-length N', 'Rango de direcciones globales.'],
-          ['ip nat inside source list ACL interface IF overload', 'PAT: todas las direcciones permitidas salen con la dirección IP de la interfaz.'],
-          ['ip nat inside source list ACL pool NOMBRE [overload]', 'NAT dinámico 1:1 (o PAT sobre el pool).'],
-          ['ip nat inside source static LOCAL GLOBAL', 'NAT estático 1:1 (el router responde ARP por GLOBAL).'],
-          ['ip nat inside source static tcp|udp LOCAL P GLOBAL|interface IF P', 'Publica un puerto de un servidor interno.'],
-        ]),
-        h('Comprobación'),
-        table(['Orden', 'Muestra'], [
-          ['show ip nat translations', 'Pro, Inside global, Inside local, Outside local, Outside global.'],
-          ['show ip nat statistics', 'Traducciones activas, interfaces, aciertos/fallos y reglas dinámicas con sus pools.'],
-          ['show access-lists', 'Entradas de cada lista y coincidencias.'],
-          ['clear ip nat translation *', 'Borra las traducciones dinámicas.'],
-          ['debug ip nat', 'NAT: s=192.168.10.10->81.32.5.2, d=8.8.8.8 [n] por cada paquete traducido.'],
-        ]),
-        note('Los paquetes que no coinciden con ninguna regla salen sin traducir (como en IOS): sin NAT, el otro extremo no sabe volver a una red privada.'),
-      ],
-    },
-    {
       id: 'red-broadcast',
       title: 'Broadcast: a todos los equipos de la red',
       summary: 'Broadcast de enlace e IP (255.255.255.255 y dirigido), quién responde a un ping a broadcast y quién lo reenvía.',
