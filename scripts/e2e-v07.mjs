@@ -93,7 +93,7 @@ try {
   assert.equal(await page.getAttribute('body', 'data-view'), 'docs');
   assert.equal(await page.locator('button.seg[aria-pressed="true"]:has-text("Documentación")').count(), 1);
   await page.selectOption('.select-lang', 'en-GB');
-  await page.waitForSelector('.doc-group:has-text("Security and VPN")');
+  await page.waitForSelector('.doc-group:has-text("Linux router")');
   await page.fill('.doc-search', 'wireguard');
   await page.waitForSelector('.doc-link');
   await page.click('button.seg:has-text("Network")');

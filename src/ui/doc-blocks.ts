@@ -2,8 +2,13 @@
 import { el } from './dom.ts';
 import type { DocBlock } from '../docs/index.ts';
 import { inlineMarkdown } from '../docs/markdown.ts';
+import { t } from '../i18n/t.ts';
+import { docFigure } from './doc-figures.ts';
+import { docTerm } from './doc-term.ts';
 
 type Child = Node | string;
+
+const TONES = { tip: 'docs.tone.tip', warn: 'docs.tone.warn', check: 'docs.tone.check', exercise: 'docs.tone.exercise' } as const;
 
 /** Plain text, or inline Markdown when the page declares a base URL for its links. */
 export function inline(text: string, markdownBase?: string): Child[] {
@@ -14,6 +19,12 @@ export function inline(text: string, markdownBase?: string): Child[] {
   });
 }
 
+/** «Ejercicio · Reserva la .60»; the kind alone when the title already says it («Errores típicos», «Compruébalo»). */
+function calloutTitle(kind: string, title: string, md?: string): Child[] {
+  const key = (x: string): string => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().slice(0, 5);
+  return key(title) === key(kind) ? inline(title, md) : [kind, ' · ', ...inline(title, md)];
+}
+
 export function docBlock(b: DocBlock, md?: string): HTMLElement {
   switch (b.kind) {
     case 'p': return el('p', {}, ...inline(b.text, md));
@@ -21,6 +32,14 @@ export function docBlock(b: DocBlock, md?: string): HTMLElement {
     case 'code': return el('pre', { class: 'doc-code' }, el('code', {}, b.text));
     case 'note': return el('p', { class: 'doc-note' }, ...inline(b.text, md));
     case 'list': return el('ul', {}, ...b.items.map((i) => el('li', {}, ...inline(i, md))));
+    case 'steps':
+      return el('ol', { class: 'doc-steps' }, ...b.items.map((s) => el('li', {}, el('strong', { class: 'doc-step-title' }, ...inline(s.title, md)), el('span', {}, ...inline(s.text, md)))));
+    case 'callout':
+      return el('aside', { class: `doc-callout doc-callout-${b.tone}`, role: 'note' },
+        el('p', { class: 'doc-callout-title' }, ...calloutTitle(t(TONES[b.tone]), b.title, md)), el('p', {}, ...inline(b.text, md)),
+        b.solution ? el('details', { class: 'doc-solution' }, el('summary', {}, t('docs.solution')), el('p', {}, ...inline(b.solution, md))) : null);
+    case 'figure': return docFigure(b.figure, b.caption);
+    case 'term': return docTerm(b.lang, b.text);
     case 'table':
       return el('div', { class: 'doc-table-wrap' }, el('table', { class: 'doc-table' },
         el('thead', {}, el('tr', {}, ...b.head.map((c) => el('th', { scope: 'col' }, ...inline(c, md))))),

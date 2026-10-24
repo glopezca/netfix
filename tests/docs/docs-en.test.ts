@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import type { DocBlock, DocPage } from '../../src/docs/types.ts';
 
-const DOCS = ['netfix', 'ios', 'services', 'ssh', 'webapps', 'internet', 'security', 'clients', 'linux', 'editors', 'bash-lang', 'bash-ref', 'utils', 'bash-builtins'];
+const DOCS = ['outline', 'netfix', 'ios', 'services', 'ssh', 'webapps', 'internet', 'security', 'clients', 'linux', 'editors', 'bash-lang', 'bash-ref', 'utils', 'bash-builtins'];
 
 const isPage = (v: unknown): v is DocPage => typeof v === 'object' && v !== null && 'blocks' in v && 'id' in v;
 function pagesOf(v: unknown): readonly DocPage[] | null {
@@ -22,6 +22,11 @@ function codeWord(line: string): string | null {
   return /^[a-z0-9_./$#!:\-[{<>|&;=*~@"'`]/.test(w) && !/^\(/.test(w) ? w : null;
 }
 
+/** A figure without its texts: the same nodes, positions, links and messages in both languages. */
+function shape(f: Extract<DocBlock, { kind: 'figure' }>['figure']): unknown {
+  return f.type === 'topology' ? f.nodes.map((n) => [n.id, n.kind, n.x, n.y]).concat(f.links.map((l) => [l.a, l.b])) : f.messages.map((m) => [m.from, m.to, m.text]);
+}
+
 function compareBlocks(where: string, es: readonly DocBlock[], en: readonly DocBlock[], bad: string[]): void {
   if (es.length !== en.length) { bad.push(`${where}: ${es.length} blocks vs ${en.length}`); return; }
   es.forEach((b, i) => {
@@ -32,6 +37,14 @@ function compareBlocks(where: string, es: readonly DocBlock[], en: readonly DocB
       if (a.length !== c.length) bad.push(`${where} code #${i}: ${a.length} lines vs ${c.length}`);
       else a.forEach((l, j) => { const w = codeWord(l); if (w !== null && w !== (c[j] ?? '').trim().split(/\s+/)[0]) bad.push(`${where} code #${i}:${j}: ${w}`); });
     }
+    if (b.kind === 'term' && e.kind === 'term' && (b.lang !== e.lang || b.text.split('\n').length !== e.text.split('\n').length)) bad.push(`${where} term #${i}`);
+    else if (b.kind === 'term' && e.kind === 'term' && ['shell', 'ios', 'cmd'].includes(b.lang)) {
+      const [a, c] = [b.text.split('\n'), e.text.split('\n')];
+      a.forEach((l, j) => { if (l !== c[j] && codeWord(l) !== null && codeWord(l) !== (c[j] ?? '').trim().split(/\s+/)[0]) bad.push(`${where} term #${i}:${j}`); });
+    }
+    if (b.kind === 'steps' && e.kind === 'steps' && b.items.length !== e.items.length) bad.push(`${where} steps #${i}`);
+    if (b.kind === 'callout' && e.kind === 'callout' && (b.tone !== e.tone || (b.solution === undefined) !== (e.solution === undefined))) bad.push(`${where} callout #${i}`);
+    if (b.kind === 'figure' && e.kind === 'figure' && JSON.stringify(shape(b.figure)) !== JSON.stringify(shape(e.figure))) bad.push(`${where} figure #${i}`);
     if (b.kind === 'table' && e.kind === 'table' && (b.head.length !== e.head.length || b.rows.length !== e.rows.length)) bad.push(`${where} table #${i}`);
     if (b.kind === 'list' && e.kind === 'list' && b.items.length !== e.items.length) bad.push(`${where} list #${i}`);
   });

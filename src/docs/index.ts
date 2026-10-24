@@ -46,6 +46,11 @@ function blockText(b: DocBlock): string {
   switch (b.kind) {
     case 'list': return b.items.join('\n');
     case 'table': return [b.head.join(' '), ...b.rows.map((r) => r.join(' '))].join('\n');
+    case 'steps': return b.items.map((i) => `${i.title} ${i.text}`).join('\n');
+    case 'callout': return [b.title, b.text, b.solution ?? ''].join('\n');
+    case 'figure': return [b.caption, ...(b.figure.type === 'topology'
+      ? [...b.figure.nodes.map((n) => `${n.label} ${n.note ?? ''}`), ...b.figure.links.map((l) => l.label ?? '')]
+      : [...b.figure.actors, ...b.figure.messages.map((m) => `${m.text} ${m.note ?? ''}`)])].join('\n');
     default: return b.text;
   }
 }

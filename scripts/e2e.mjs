@@ -155,6 +155,8 @@ try {
   await page.click('.doc-link >> nth=0');
   assert.match(await page.locator('.doc-page').innerText(), /DNS: nombres y comodines[\s\S]*srv\.aula\.lab\.aula\.lab\./);
   await page.fill('.doc-search', '');
+  // v0.20: groups fold; the bash group opens first.
+  await page.click('.doc-group-box[data-group="bash"] > summary');
   await page.click('.doc-link:has-text("bash: expansiones")');
   assert.match(await page.locator('.doc-page').innerText(), /\$\{v%%pat\}|\$\{v%pat\}/);
   if (shots) await page.screenshot({ path: `${shots}/docs.png` });

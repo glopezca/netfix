@@ -704,6 +704,7 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 /* Logs wrap, as vim wraps long lines by default (configuration files keep their columns). */
 .syn-view[data-filetype="messages"] { white-space: pre-wrap; }
 
+
 </style>
   <style>
 /* Management GUI of Server and Linux router, as the simulated browser shows it (classes web-adm-*).
@@ -730,7 +731,7 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .web-adm-nav-setup::before { content: "⚙"; } .web-adm-nav-dhcp::before { content: "⇅"; } .web-adm-nav-dns::before { content: "◎"; }
 .web-adm-nav-web::before { content: "◫"; } .web-adm-nav-mail::before { content: "✉"; } .web-adm-nav-ssh::before { content: "›"; }
 .web-adm-nav-firewall::before { content: "▦"; } .web-adm-nav-routing::before { content: "⇄"; } .web-adm-nav-vpn::before { content: "⛓"; }
-.web-adm-nav-admin::before { content: "⚿"; } .web-adm-nav-status::before { content: "◔"; } .web-adm-nav-files::before { content: ""; }
+.web-adm-nav-admin::before { content: "⚿"; } .web-adm-nav-status::before { content: ""; } .web-adm-nav-files::before { content: ""; }
 .web-adm-nav-log::before { content: "☰"; }
 .web-adm-main { padding: 16px 20px 20px; container-type: inline-size; min-width: 0; }
 .web-adm-title h1 { font-size: 22px; margin: 0; }
@@ -841,6 +842,81 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
   height: 15px; background: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cmask id=%22m%22%3E%3Crect x=%22-4%22 y=%22-4%22 width=%2232%22 height=%2232%22 fill=%22%23fff%22/%3E%3Crect x=%2210%22 y=%22-2%22 width=%224%22 height=%227.5%22 fill=%22%23000%22/%3E%3C/mask%3E%3Cg transform=%22rotate%2845 12 12%29%22%3E%3Cg mask=%22url%28%23m%29%22 fill=%22%23000%22%3E%3Ccircle cx=%2212%22 cy=%226.5%22 r=%225%22/%3E%3Crect x=%2210%22 y=%229%22 width=%224%22 height=%2213.5%22 rx=%222%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") center / 14px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cmask id=%22m%22%3E%3Crect x=%22-4%22 y=%22-4%22 width=%2232%22 height=%2232%22 fill=%22%23fff%22/%3E%3Crect x=%2210%22 y=%22-2%22 width=%224%22 height=%227.5%22 fill=%22%23000%22/%3E%3C/mask%3E%3Cg transform=%22rotate%2845 12 12%29%22%3E%3Cg mask=%22url%28%23m%29%22 fill=%22%23000%22%3E%3Ccircle cx=%2212%22 cy=%226.5%22 r=%225%22/%3E%3Crect x=%2210%22 y=%229%22 width=%224%22 height=%2213.5%22 rx=%222%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") center / 14px no-repeat;
 }
+/* Equipo: a monitor drawn the same way (the ◔ glyph is missing from many fonts and looked like a dot). */
+.web-adm-nav-status::before {
+  height: 15px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22%23000%22 fill-rule=%22evenodd%22 d=%22M4 3.5h16a2 2 0 0 1 2 2V15a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Zm.5 2.5v8.5h15V6Z%22/%3E%3Cpath fill=%22%23000%22 d=%22M10 17h4l.8 2.5H17a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2h2.2Z%22/%3E%3C/svg%3E") center / 15px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22%23000%22 fill-rule=%22evenodd%22 d=%22M4 3.5h16a2 2 0 0 1 2 2V15a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Zm.5 2.5v8.5h15V6Z%22/%3E%3Cpath fill=%22%23000%22 d=%22M10 17h4l.8 2.5H17a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2h2.2Z%22/%3E%3C/svg%3E") center / 15px no-repeat;
+}
+
+</style>
+  <style>
+/* Documentation tab (v0.20): navigation by levels and the visual blocks of the guided pages. */
+/* Navigation: level 1 = group (device icon, folds), level 2 = section (indented, guide line), level 3 = page. */
+.doc-group-box { border-bottom: 1px solid var(--line); }
+.doc-group-box > summary { list-style: none; }
+.doc-group-box > summary::-webkit-details-marker { display: none; }
+.doc-group {
+  display: flex; align-items: center; gap: 10px; margin: 0; padding: 10px 8px; cursor: pointer;
+  font-size: 15px; font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--ink); border-radius: var(--radius-ctl);
+}
+.doc-group:hover { background: var(--accent-soft); }
+.doc-group::after { content: "▸" / ""; margin-left: 4px; color: var(--ink-2); transition: transform .15s; }
+.doc-group-box[open] > .doc-group::after { transform: rotate(90deg); }
+.doc-group-icon { width: 34px; height: 26px; flex: none; }
+.doc-group-dot { display: inline-block; width: 34px; height: 12px; flex: none; background: var(--accent); border-radius: 6px; opacity: .55; }
+.doc-group-brand { object-fit: contain; }
+.doc-group-title { flex: 1; }
+.doc-group-count { font-size: 12px; font-weight: 600; color: var(--ink-2); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0 7px; }
+.doc-group-pages { padding: 0 0 10px 18px; border-left: 2px solid var(--accent-soft); margin-left: 24px; }
+.doc-section { margin: 10px 0 2px; padding-left: 8px; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); }
+.doc-link-nested { padding-left: 18px; }
+.doc-link { font-size: 14px; line-height: 1.35; }
+.doc-crumb { letter-spacing: .02em; }
+@media (prefers-reduced-motion: reduce) { .doc-group::after { transition: none; } }
+
+/* Numbered steps */
+.doc-steps { list-style: none; counter-reset: step; padding: 0; margin: 14px 0; }
+.doc-steps > li { counter-increment: step; position: relative; padding: 4px 0 14px 46px; border-left: 2px solid var(--accent-soft); margin-left: 15px; }
+.doc-steps > li:last-child { border-left-color: transparent; }
+.doc-steps > li::before {
+  content: counter(step); position: absolute; left: -16px; top: 0; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--accent); color: var(--accent-ink); font-weight: 700; display: grid; place-items: center;
+}
+.doc-step-title { display: block; margin-bottom: 2px; }
+
+/* Boxes: tip, common mistake, check it, exercise (solution folded) */
+.doc-callout { margin: 14px 0; padding: 10px 14px; border-radius: var(--radius-ctl); border: 1px solid var(--line); border-left-width: 5px; background: var(--panel-2); }
+.doc-callout p { margin: 4px 0; }
+.doc-callout-title { font-weight: 700; }
+.doc-callout-tip { border-left-color: var(--accent); }
+.doc-callout-warn { border-left-color: var(--err); }
+.doc-callout-check { border-left-color: var(--ok); }
+.doc-callout-exercise { border-left-color: var(--dhcp); }
+.doc-callout-tip .doc-callout-title { color: var(--accent); }
+.doc-callout-warn .doc-callout-title { color: var(--err); }
+.doc-callout-check .doc-callout-title { color: var(--ok); }
+.doc-callout-exercise .doc-callout-title { color: var(--dhcp); }
+.doc-solution summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+
+/* Diagrams drawn from data (palette icons, cables, sequences of messages) */
+.doc-figure { margin: 16px 0; padding: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-win); }
+.doc-figure figcaption { margin-top: 6px; color: var(--ink-2); font-size: 14px; text-align: center; }
+.doc-fig-svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.doc-fig-cable { stroke: var(--ink-2); stroke-width: 2.5; }
+.doc-fig-cable-label, .doc-fig-note { font: 12px var(--font-mono); fill: var(--ink-2); text-anchor: middle; paint-order: stroke; stroke: var(--panel-2); stroke-width: 5px; stroke-linejoin: round; }
+.doc-fig-label { font: 700 14px var(--font-ui); fill: var(--ink); text-anchor: middle; paint-order: stroke; stroke: var(--panel-2); stroke-width: 5px; stroke-linejoin: round; }
+.doc-fig-actor { font: 700 14px var(--font-ui); fill: var(--ink); text-anchor: middle; }
+.doc-fig-life { stroke: var(--line); stroke-width: 2; stroke-dasharray: 5 5; }
+.doc-fig-msg { stroke: var(--dhcp); stroke-width: 2; }
+.doc-fig-arrow { fill: var(--dhcp); }
+.doc-fig-msg-label { font: 600 13px var(--font-mono); fill: var(--ink); text-anchor: middle; paint-order: stroke; stroke: var(--panel-2); stroke-width: 5px; }
+
+/* Terminals: prompt, typed command and output; files in vim's colours */
+.doc-term { background: var(--console); color: var(--console-ink); padding: 12px 14px; border-radius: var(--radius-ctl); overflow: auto; font: 13px/1.5 var(--font-mono); margin: 12px 0; white-space: pre; }
+.doc-term-prompt { color: #80d080; font-weight: 700; }
+.doc-term-ios .doc-term-prompt { color: #7fd1e6; }
+.doc-term-cmd { color: #ffffff; font-weight: 700; }
+.doc-term-out { color: var(--console-ink); opacity: .85; }
 
 </style>
 </head>
@@ -2080,6 +2156,11 @@ const UI_ES = {
     'common.copyX': 'Copiar {label}',
     'term.cantSave': 'No se puede guardar',
     'docs.searchHint': 'Buscar: dhcp, ${var%%pat}, nano, ssh…',
+    'docs.tone.tip': 'Consejo',
+    'docs.tone.warn': 'Error típico',
+    'docs.tone.check': 'Compruébalo',
+    'docs.tone.exercise': 'Ejercicio',
+    'docs.solution': 'Ver la solución',
     'docs.searchLabel': 'Buscar en la documentación',
     'docs.toc': 'Índice de la documentación',
     'docs.title': 'Documentación',
@@ -2273,6 +2354,11 @@ const UI_EN = {
     'common.copyX': 'Copy {label}',
     'term.cantSave': 'Cannot save',
     'docs.searchHint': 'Search: dhcp, ${var%%pat}, nano, ssh…',
+    'docs.tone.tip': 'Tip',
+    'docs.tone.warn': 'Common mistake',
+    'docs.tone.check': 'Check it',
+    'docs.tone.exercise': 'Exercise',
+    'docs.solution': 'Show the solution',
     'docs.searchLabel': 'Search the documentation',
     'docs.toc': 'Documentation contents',
     'docs.title': 'Documentation',
@@ -17266,15 +17352,21 @@ const TEST = new Map([['test', testCmd], ['[', testCmd]]);
 return { TEST };
 })();
 __m["docs/types.js"] = (() => {
-/** Structure of the built-in documentation (rendered by the Documentación tab and by `man`/`help`). */
 const p = (text) => ({ kind: 'p', text });
 const h = (text) => ({ kind: 'h', text });
 const code = (text) => ({ kind: 'code', text });
 const list = (...items) => ({ kind: 'list', items });
 const note = (text) => ({ kind: 'note', text });
 const table = (head, rows) => ({ kind: 'table', head, rows });
+const steps = (...items) => ({ kind: 'steps', items: items.map(([title, text]) => ({ title, text })) });
+const tip = (title, text) => ({ kind: 'callout', tone: 'tip', title, text });
+const warn = (title, text) => ({ kind: 'callout', tone: 'warn', title, text });
+const check = (title, text) => ({ kind: 'callout', tone: 'check', title, text });
+const exercise = (title, text, solution) => ({ kind: 'callout', tone: 'exercise', title, text, solution });
+const figure = (fig, caption) => ({ kind: 'figure', figure: fig, caption });
+const term = (lang, text) => ({ kind: 'term', lang, text });
 
-return { p, h, code, list, note, table };
+return { p, h, code, list, note, table, steps, tip, warn, check, exercise, figure, term };
 })();
 __m["docs/netfix.js"] = (() => {
 const { code, h, list, note, p, table } = __m["docs/types.js"];
@@ -17525,7 +17617,7 @@ const IOS_DOCS = {
 return { IOS_DOCS };
 })();
 __m["docs/services.js"] = (() => {
-const { code, h, list, note, p, table } = __m["docs/types.js"];
+const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
 const SERVICE_DOCS = {
     id: 'servicios',
     title: 'Servicios de Server',
@@ -17552,23 +17644,59 @@ const SERVICE_DOCS = {
         {
             id: 'srv-dhcp',
             title: 'DHCP de Server',
-            summary: 'Pools al estilo Packet Tracer, reservas y asignación automática por MAC o Client-ID.',
+            summary: 'Que los equipos reciban su IP, máscara, puerta de enlace y DNS solos: pools, reservas y cómo comprobarlo.',
+            markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
             blocks: [
-                p('Cada pool se define como en Packet Tracer: IP inicial + número máximo de usuarios dentro de una subred, con puerta de enlace, servidor DNS, dominio, servidor TFTP y concesión en minutos (o infinita).'),
-                h('Reservas'),
-                p('Selecciona un pool y añade reservas: una IP fija para un cliente identificado por su dirección MAC o por su Client-ID (opción 61), con un nombre opcional. La IP debe estar en la subred del pool; no se admiten IP ni identificadores repetidos.'),
-                table(['Campo', 'Formato'], [
+                p('**DHCP** (Dynamic Host Configuration Protocol) reparte la configuración de red a los equipos que se conectan: dirección IP, máscara, puerta de enlace y servidor DNS. Sin DHCP habría que escribir esos cuatro datos a mano en cada PC, y bastaría un error (dos equipos con la misma IP) para que la red fallara. En Netfix el servidor DHCP del Server es **Kea** (`kea-dhcp4-server`), el que usan Ubuntu y Debian.'),
+                figure({
+                    type: 'topology',
+                    nodes: [
+                        { id: 'srv', kind: 'server', label: 'SRV', x: 40, y: 0, note: '192.168.10.2 · kea' },
+                        { id: 'sw', kind: 'switch', label: 'Switch0', x: 40, y: 20 },
+                        { id: 'pc0', kind: 'pc', label: 'PC0', x: 15, y: 40, note: 'DHCP → .100' },
+                        { id: 'pc1', kind: 'pc', label: 'PC1', x: 65, y: 40, note: 'reserva → .50' },
+                    ],
+                    links: [{ a: 'srv', b: 'sw' }, { a: 'sw', b: 'pc0' }, { a: 'sw', b: 'pc1' }],
+                }, 'El laboratorio «Server: DHCP, DNS, web, correo y SSH»: SRV reparte direcciones de 192.168.10.0/24; PC1 tiene una reserva y siempre recibe la .50.'),
+                h('Cómo funciona: DORA'),
+                p('Un cliente sin dirección no sabe dónde está el servidor, así que empieza gritando a toda la red (**broadcast**). Son cuatro mensajes, cuyas iniciales forman la palabra DORA:'),
+                figure({
+                    type: 'sequence',
+                    actors: ['PC0 (cliente)', 'SRV (kea-dhcp4)'],
+                    messages: [
+                        { from: 0, to: 1, text: 'DISCOVER', note: '«¿Hay algún servidor DHCP?» (a 255.255.255.255)' },
+                        { from: 1, to: 0, text: 'OFFER', note: '«Te ofrezco 192.168.10.100»' },
+                        { from: 0, to: 1, text: 'REQUEST', note: '«Me quedo con 192.168.10.100»' },
+                        { from: 1, to: 0, text: 'ACK', note: '«Es tuya durante 1 día (concesión)»' },
+                    ],
+                }, 'Los cuatro mensajes de DHCP. En Simulación, con el filtro DHCP, se ven paso a paso.'),
+                tip('Míralo en directo', 'Pulsa **Simulación**, deja solo el filtro DHCP y en el PC ejecuta `ipconfig /renew` (Windows) o `sudo dhclient eth0` (Linux). Con **Paso** verás DISCOVER, OFFER, REQUEST y ACK, y al elegir cada uno, sus capas (Ethernet, IPv4, UDP 67/68 y el mensaje DHCP).'),
+                h('Configurarlo en Netfix'),
+                steps(['Abre el servidor', 'Doble clic en el Server → pestaña **Servicios** → **DHCP**.'], ['Activa el servicio', 'Marca **Servicio DHCP**: es lo mismo que `sudo systemctl enable --now kea-dhcp4-server`.'], ['Crea un pool', 'Un pool es el conjunto de direcciones que se reparten. Rellena **IP inicial** (la primera que se dará), **Usuarios máximos** (cuántas), la **máscara**, la **puerta de enlace** (el router de la LAN) y el **servidor DNS**, y pulsa **Añadir pool**.'], ['Elige las interfaces de escucha', 'Con **Todas** atiende por cualquier interfaz; si marcas algunas, solo por esas (útil en un router con varias redes).'], ['Pon los clientes en DHCP', 'En cada PC: **Configuración IP** → **DHCP**. En segundos tendrán dirección.']),
+                table(['Campo del pool', 'Ejemplo', 'Para qué sirve'], [
+                    ['IP inicial', '192.168.10.100', 'Primera dirección que se reparte'],
+                    ['Usuarios máximos', '50', 'Cuántas: de .100 a .149'],
+                    ['Máscara de subred', '255.255.255.0', 'El tamaño de la red (/24)'],
+                    ['Puerta de enlace', '192.168.10.1', 'El router por el que se sale de la red'],
+                    ['Servidor DNS', '192.168.10.2', 'Quién traduce nombres a direcciones'],
+                    ['Dominio', 'aula.lab', 'Se añade a los nombres cortos (srv → srv.aula.lab)'],
+                    ['Concesión (minutos)', '1440', 'Cuánto dura el préstamo; a la mitad, el cliente lo renueva'],
+                ]),
+                h('Reservas: siempre la misma IP'),
+                p('Una **reserva** da siempre la misma dirección a un equipo concreto, identificado por su **MAC** o por su **Client-ID** (opción 61). Se usa para impresoras, servidores o el PC del profesor. Selecciona el pool, añade la reserva y, si quieres, un nombre. La IP debe estar en la subred del pool y no se admiten IP ni identificadores repetidos.'),
+                table(['Identificador', 'Formato que admite Netfix'], [
                     ['MAC', '0001.42AB.CDEF o 00:01:42:ab:cd:ef'],
                     ['Client-ID', 'Hexadecimal con o sin puntos (0100.0142.abcd.ef); el típico de Windows es 01 + MAC'],
                 ]),
-                h('Asignaciones automáticas'),
-                p('«Identificar concesiones automáticas por» decide qué identifica a un cliente que no tiene reserva:'),
-                list('Client-ID (opción 61) o, si no la envía, MAC: el comportamiento normal de DHCP (RFC 2131) y de kea por defecto.', 'MAC: ignora el Client-ID; el mismo equipo conserva su IP aunque cambie de sistema o de Client-ID (kea: "match-client-id": false).'),
-                p('En la tabla de concesiones, los botones «Reservar por MAC» y «Reservar por Client-ID» convierten una concesión automática en reserva.'),
-                h('Interfaces de escucha'),
-                p('Como interfaces-config de Kea: el bloque «Interfaces de escucha» elige por qué interfaces atiende kea-dhcp4 las peticiones. «Todas» equivale a "*"; si marcas algunas, una petición que llega por otra interfaz se descarta sin respuesta (un relay llega por la interfaz que tiene la dirección del servidor). «Aplicar» escribe el fichero y reinicia el servicio, como systemctl restart kea-dhcp4-server.'),
-                code('"interfaces-config": {\n  "interfaces": [ "eth1" ]\n},\n\nadmin@srv:~$ ss -lun | grep :67\nUNCONN 0 0 192.168.1.1:67 0.0.0.0:*'),
-                code('"reservations": [\n  { "hw-address": "00:50:f0:00:00:02", "ip-address": "192.168.10.50" },\n  { "client-id": "01:00:50:f0:00:00:03", "ip-address": "192.168.10.51" }\n],\n"match-client-id": false'),
+                p('«Identificar concesiones automáticas por» decide cómo se reconoce a un cliente **sin** reserva: por **Client-ID o, si no lo envía, MAC** (lo normal en DHCP y en Kea) o solo por **MAC** (el mismo equipo conserva su IP aunque cambie de sistema operativo). En la tabla de concesiones, «Reservar por MAC» y «Reservar por Client-ID» convierten una concesión en reserva con un clic.'),
+                h('Lo que se escribe en el fichero'),
+                p('Cada cambio del panel se guarda en `/etc/kea/kea-dhcp4.conf`, el mismo fichero que editarías en un Ubuntu real (lo ves en **Servicios → Configuración**):'),
+                term('json', '"interfaces-config": {\n  "interfaces": [ "*" ]\n},\n"reservations": [\n  { "hw-address": "00:fb:b1:18:68:78", "ip-address": "192.168.10.50" },\n  { "client-id": "01:00:50:f0:00:00:03", "ip-address": "192.168.10.51" }\n],\n"match-client-id": false'),
+                check('Compruébalo', 'En el PC, la dirección recibida y la ruta por defecto que llegó con ella; en el servidor, el registro de Kea (o **Servicios → Registros → kea-dhcp4-server**).'),
+                term('shell', 'alumno@pc0:~$ ip -4 addr show eth0\n    inet 192.168.10.100/24 brd 192.168.10.255 scope global dynamic eth0\nalumno@pc0:~$ ip route\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 2'),
+                term('messages', 'Oct 24 09:12:03 srv kea-dhcp4[812]: DHCP4_LEASE_ALLOC [hwtype=1 0063.b914.34b5], tid=0x7339704d: lease 192.168.10.100 has been allocated for 86400 seconds\nOct 24 09:12:03 srv kea-dhcp4[812]: DHCP4_LEASE_ALLOC [hwtype=1 00fb.b118.6878], tid=0xf09d5548: lease 192.168.10.50 has been allocated for 86400 seconds'),
+                warn('Errores típicos', 'Un pool **fuera de la red del servidor** (Kea no lo usa: el PC acaba en 169.254.x.x, APIPA). Olvidar la **puerta de enlace**: hay IP pero no se sale de la red. **Dos servidores DHCP** en la misma LAN: cada PC se queda con la oferta que llega antes. **Interfaces de escucha** sin la interfaz de la LAN: las peticiones se descartan sin respuesta. Una reserva con una **MAC mal copiada**: el PC recibe una IP normal del pool.'),
+                exercise('Reserva la .60 para PC0', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», haz que PC0 reciba siempre 192.168.10.60 y comprueba que la conserva tras renovar.', 'Mira la MAC de PC0 (pestaña Interfaces, o `ip link` en su terminal). En SRV → Servicios → DHCP selecciona el pool, añade una reserva con esa MAC y la IP 192.168.10.60 y pulsa Añadir. En PC0 renueva: `ipconfig /renew` o `sudo dhclient -r eth0 && sudo dhclient eth0`. `ip -4 addr` debe mostrar 192.168.10.60, y la tabla de concesiones del servidor la marca como reservada.'),
             ],
         },
         {
@@ -17683,6 +17811,32 @@ const SERVICE_DOCS = {
                 p('Las cuentas SSH se definen en el panel (usuario y contraseña). Cada sesión abre una shell de inicio de sesión del servidor: bash en Ubuntu (lee ~/.profile y ~/.bashrc) o cmd en Windows. Las cuentas existen también en el sistema Linux del servidor (/etc/passwd y /home/<usuario>).'),
                 code('alumno@pc0:~$ ssh admin@srv.aula.lab\nThe authenticity of host \'srv.aula.lab (192.168.10.2)\' can\'t be established.\n…\nAre you sure you want to continue connecting (yes/no/[fingerprint])? yes\nadmin@srv.aula.lab\'s password:\nWelcome to Ubuntu 26.04 LTS (GNU/Linux 6.17.0-generic x86_64)\nadmin@srv:~$ nano notas.txt        # el editor se abre a pantalla completa\nadmin@srv:~$ exit 3\nlogout\nConnection to srv.aula.lab closed.\nalumno@pc0:~$ echo $?\n3'),
                 list('Tres contraseñas erróneas: «Permission denied (publickey,password).»', 'Servicio parado: «Connection refused»; nombre inexistente: «Could not resolve hostname».', 'Ctrl+C y Ctrl+D se envían a la sesión remota.', 'El servidor registra cada intento en journalctl -u ssh (Accepted password / Accepted publickey / Failed password).', 'Para entrar sin contraseña, con pares de claves, consulta «SSH con pares de claves».'),
+            ],
+        },
+        {
+            id: 'srv-config-logs',
+            title: 'Configuración y registros',
+            summary: 'Ver los ficheros de configuración de cada servicio y sus mensajes, con los colores de vim.',
+            markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+            blocks: [
+                p('Los dos últimos apartados de **Servicios** sirven para comprobar el trabajo, no para cambiar nada. **Configuración** enseña los ficheros que escriben los paneles, tal como están ahora en el disco (como `cat` ejecutado por root). **Registros** enseña lo que cada servicio va anotando, como `journalctl -u`. Los dos usan los colores de vim, así que lo que ves aquí es lo mismo que verías abriendo el fichero en un Ubuntu real.'),
+                h('Configuración'),
+                steps(['Elige el servicio', 'En el desplegable **Servicio**: SSH, DHCP (Kea), DNS (BIND), HTTP (Apache) o Correo. En el router Linux, primero sus parámetros (sysctl), el cortafuegos y la VPN.'], ['Lee cada fichero', 'Cada fichero aparece con su ruta y la sintaxis resaltada. Si cambias algo en un panel o en la terminal, pulsa **Actualizar** para verlo.']),
+                table(['Color (fondo oscuro)', 'Grupo de vim', 'Qué marca'], [
+                    ['Azul claro', 'Comment', 'Comentarios (# … , // … , ; …)'],
+                    ['Amarillo', 'Statement', 'Directivas: options, zone, PermitRootLogin, accept…'],
+                    ['Rosa', 'Constant', 'Cadenas, números, direcciones IP, yes/no'],
+                    ['Verde', 'Type', 'Tipos: registros DNS (A, NS, MX), secciones de Apache'],
+                    ['Cian', 'Identifier', 'Nombres: parámetros, claves de un fichero ini'],
+                    ['Magenta', 'PreProc', 'Directivas de zona: $TTL, $ORIGIN'],
+                ]),
+                term('named', 'options {\n\tdirectory "/var/cache/bind";\n\t// Recursivo: resuelve cualquier nombre para los clientes permitidos\n\trecursion yes;\n\tlisten-on { any; };\n};'),
+                h('Registros'),
+                p('El desplegable empieza por **ssh** (lo primero que miras cuando falla el acceso remoto); en el router Linux sigue **nftables**; después kea-dhcp4-server, bind9, apache2, postfix y dovecot. Cada línea tiene fecha, hora, equipo, programa y PID, y las que contienen un error salen en blanco sobre rojo.'),
+                term('messages', 'Oct 24 09:12:03 srv sshd[701]: Accepted password for admin from 192.168.10.100 port 50022 ssh2\nOct 24 09:13:40 srv sshd[701]: error: maximum authentication attempts exceeded for ana from 192.168.20.10'),
+                check('Compruébalo en la terminal', 'Lo mismo se obtiene en la Terminal Linux del servidor: `cat /etc/bind/named.conf.options` o `vim` para el fichero, `journalctl -u ssh -n 20` para los registros.'),
+                tip('En la gestión web', 'La página web de gestión (Estado → Configuración y Estado → Registros) muestra lo mismo con los colores de vim para fondo claro.'),
+                exercise('¿Por qué no entra Ana?', 'En el laboratorio «Bastionado: ACL, nftables y sshd», intenta entrar por SSH al servidor como ana (contraseña ana1) desde el PC ADMIN y busca el motivo en Registros.', 'En SRV-INTRANET → Servicios → Registros → ssh aparece «User ana from 192.168.10.10 not allowed because not listed in AllowUsers». En Configuración → SSH, `/etc/ssh/sshd_config.d/10-bastionado.conf` tiene `AllowUsers admin`: solo admin puede entrar. Desde ALUMNO ni siquiera llega: la ACL del router GW y el cortafuegos del servidor solo admiten SSH desde la red de administración.'),
             ],
         },
     ],
@@ -19002,7 +19156,7 @@ const IOS_DOCS = {
 return { IOS_DOCS };
 })();
 __m["docs/en/services.js"] = (() => {
-const { code, h, list, note, p, table } = __m["docs/types.js"];
+const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
 const SERVICE_DOCS = {
     id: 'servicios',
     title: 'Server services',
@@ -19029,23 +19183,59 @@ const SERVICE_DOCS = {
         {
             id: 'srv-dhcp',
             title: 'Server DHCP',
-            summary: 'Packet Tracer–style pools, reservations and automatic assignment by MAC or Client-ID.',
+            summary: 'Devices get their IP, mask, gateway and DNS on their own: pools, reservations and how to check it.',
+            markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
             blocks: [
-                p('Each pool is defined as in Packet Tracer: start IP + maximum number of users within a subnet, with default gateway, DNS server, domain, TFTP server and lease time in minutes (or infinite).'),
-                h('Reservations'),
-                p('Select a pool and add reservations: a fixed IP for a client identified by its MAC address or its Client-ID (option 61), with an optional name. The IP must be in the pool’s subnet; duplicate IPs or identifiers are not allowed.'),
-                table(['Field', 'Format'], [
+                p('**DHCP** (Dynamic Host Configuration Protocol) hands the network settings to the devices that connect: IP address, mask, default gateway and DNS server. Without DHCP those four values would be typed by hand on every PC, and one mistake (two devices with the same IP) would be enough to break the network. In Netfix the Server’s DHCP server is **Kea** (`kea-dhcp4-server`), the one Ubuntu and Debian use.'),
+                figure({
+                    type: 'topology',
+                    nodes: [
+                        { id: 'srv', kind: 'server', label: 'SRV', x: 40, y: 0, note: '192.168.10.2 · kea' },
+                        { id: 'sw', kind: 'switch', label: 'Switch0', x: 40, y: 20 },
+                        { id: 'pc0', kind: 'pc', label: 'PC0', x: 15, y: 40, note: 'DHCP → .100' },
+                        { id: 'pc1', kind: 'pc', label: 'PC1', x: 65, y: 40, note: 'reservation → .50' },
+                    ],
+                    links: [{ a: 'srv', b: 'sw' }, { a: 'sw', b: 'pc0' }, { a: 'sw', b: 'pc1' }],
+                }, 'The «Server: DHCP, DNS, web, mail and SSH» lab: SRV hands out addresses of 192.168.10.0/24; PC1 has a reservation and always gets .50.'),
+                h('How it works: DORA'),
+                p('A client with no address does not know where the server is, so it starts by shouting to the whole network (**broadcast**). There are four messages, and their initials spell DORA:'),
+                figure({
+                    type: 'sequence',
+                    actors: ['PC0 (client)', 'SRV (kea-dhcp4)'],
+                    messages: [
+                        { from: 0, to: 1, text: 'DISCOVER', note: '“Is there a DHCP server?” (to 255.255.255.255)' },
+                        { from: 1, to: 0, text: 'OFFER', note: '“I offer you 192.168.10.100”' },
+                        { from: 0, to: 1, text: 'REQUEST', note: '“I’ll take 192.168.10.100”' },
+                        { from: 1, to: 0, text: 'ACK', note: '“It’s yours for 1 day (lease)”' },
+                    ],
+                }, 'The four DHCP messages. In Simulation, with the DHCP filter, they show up step by step.'),
+                tip('Watch it live', 'Click **Simulation**, keep only the DHCP filter and on the PC run `ipconfig /renew` (Windows) or `sudo dhclient eth0` (Linux). With **Step** you will see DISCOVER, OFFER, REQUEST and ACK, and picking each one shows its layers (Ethernet, IPv4, UDP 67/68 and the DHCP message).'),
+                h('Setting it up in Netfix'),
+                steps(['Open the server', 'Double-click the Server → **Services** tab → **DHCP**.'], ['Turn the service on', 'Tick **DHCP service**: the same as `sudo systemctl enable --now kea-dhcp4-server`.'], ['Create a pool', 'A pool is the set of addresses handed out. Fill in **Start IP** (the first one given), **Maximum users** (how many), the **mask**, the **default gateway** (the LAN router) and the **DNS server**, and click **Add pool**.'], ['Choose the listen interfaces', 'With **All** it answers on any interface; if you tick some, only on those (useful on a router with several networks).'], ['Put the clients on DHCP', 'On each PC: **IP Config** → **DHCP**. In seconds they will have an address.']),
+                table(['Pool field', 'Example', 'What it is for'], [
+                    ['Start IP', '192.168.10.100', 'First address handed out'],
+                    ['Maximum users', '50', 'How many: from .100 to .149'],
+                    ['Subnet mask', '255.255.255.0', 'The size of the network (/24)'],
+                    ['Default gateway', '192.168.10.1', 'The router used to leave the network'],
+                    ['DNS server', '192.168.10.2', 'Who translates names into addresses'],
+                    ['Domain', 'aula.lab', 'Added to short names (srv → srv.aula.lab)'],
+                    ['Lease (minutes)', '1440', 'How long the loan lasts; halfway through, the client renews it'],
+                ]),
+                h('Reservations: always the same IP'),
+                p('A **reservation** always gives the same address to one particular device, identified by its **MAC** or its **Client-ID** (option 61). It is used for printers, servers or the teacher’s PC. Select the pool, add the reservation and, if you like, a name. The IP must be in the pool’s subnet, and repeated IPs or identifiers are refused.'),
+                table(['Identifier', 'Format Netfix accepts'], [
                     ['MAC', '0001.42AB.CDEF or 00:01:42:ab:cd:ef'],
                     ['Client-ID', 'Hexadecimal with or without dots (0100.0142.abcd.ef); the usual Windows one is 01 + MAC'],
                 ]),
-                h('Automatic assignments'),
-                p('“Identify automatic leases by” decides what identifies a client that has no reservation:'),
-                list('Client-ID (option 61) or, if it is not sent, MAC: the normal DHCP behaviour (RFC 2131) and kea’s default.', 'MAC: ignores the Client-ID; the same device keeps its IP even if it changes operating system or Client-ID (kea: "match-client-id": false).'),
-                p('In the leases table, the “Reserve by MAC” and “Reserve by Client-ID” buttons turn an automatic lease into a reservation.'),
-                h('Listen interfaces'),
-                p('Like Kea interfaces-config: the «Listen interfaces» block picks the interfaces kea-dhcp4 answers requests on. «All» is "*"; when some are ticked, a request that arrives through another interface is dropped without an answer (a relayed one arrives through the interface holding the server address). «Apply» writes the file and restarts the service, like systemctl restart kea-dhcp4-server.'),
-                code('"interfaces-config": {\n  "interfaces": [ "eth1" ]\n},\n\nadmin@srv:~$ ss -lun | grep :67\nUNCONN 0 0 192.168.1.1:67 0.0.0.0:*'),
-                code('"reservations": [\n  { "hw-address": "00:50:f0:00:00:02", "ip-address": "192.168.10.50" },\n  { "client-id": "01:00:50:f0:00:00:03", "ip-address": "192.168.10.51" }\n],\n"match-client-id": false'),
+                p('“Identify automatic leases by” decides how a client **without** a reservation is recognised: by **Client-ID or, if it sends none, MAC** (normal DHCP and Kea behaviour) or by **MAC** only (the same device keeps its IP even if it changes operating system). In the lease table, “Reserve by MAC” and “Reserve by Client-ID” turn a lease into a reservation with one click.'),
+                h('What is written to the file'),
+                p('Every change in the panel is saved to `/etc/kea/kea-dhcp4.conf`, the same file you would edit on a real Ubuntu (see it in **Services → Configuration**):'),
+                term('json', '"interfaces-config": {\n  "interfaces": [ "*" ]\n},\n"reservations": [\n  { "hw-address": "00:fb:b1:18:68:78", "ip-address": "192.168.10.50" },\n  { "client-id": "01:00:50:f0:00:00:03", "ip-address": "192.168.10.51" }\n],\n"match-client-id": false'),
+                check('Check it', 'On the PC, the address it received and the default route that came with it; on the server, Kea’s log (or **Services → Logs → kea-dhcp4-server**).'),
+                term('shell', 'alumno@pc0:~$ ip -4 addr show eth0\n    inet 192.168.10.100/24 brd 192.168.10.255 scope global dynamic eth0\nalumno@pc0:~$ ip route\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 2'),
+                term('messages', 'Oct 24 09:12:03 srv kea-dhcp4[812]: DHCP4_LEASE_ALLOC [hwtype=1 0063.b914.34b5], tid=0x7339704d: lease 192.168.10.100 has been allocated for 86400 seconds\nOct 24 09:12:03 srv kea-dhcp4[812]: DHCP4_LEASE_ALLOC [hwtype=1 00fb.b118.6878], tid=0xf09d5548: lease 192.168.10.50 has been allocated for 86400 seconds'),
+                warn('Common mistakes', 'A pool **outside the server’s network** (Kea does not use it: the PC ends up with 169.254.x.x, APIPA). Forgetting the **default gateway**: there is an IP but no way out of the network. **Two DHCP servers** on the same LAN: each PC keeps whichever offer arrives first. **Listen interfaces** without the LAN interface: requests are dropped with no answer. A reservation with a **mistyped MAC**: the PC gets an ordinary address from the pool.'),
+                exercise('Reserve .60 for PC0', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, make PC0 always get 192.168.10.60 and check that it keeps it after renewing.', 'Look up PC0’s MAC (Interfaces tab, or `ip link` in its terminal). On SRV → Services → DHCP select the pool, add a reservation with that MAC and IP 192.168.10.60 and click Add. On PC0 renew: `ipconfig /renew` or `sudo dhclient -r eth0 && sudo dhclient eth0`. `ip -4 addr` must show 192.168.10.60, and the server’s lease table marks it as reserved.'),
             ],
         },
         {
@@ -19160,6 +19350,32 @@ const SERVICE_DOCS = {
                 p('SSH accounts are defined in the panel (username and password). Each session opens a login shell on the server: bash on Ubuntu (it reads ~/.profile and ~/.bashrc) or cmd on Windows. The accounts also exist in the server’s Linux system (/etc/passwd and /home/<user>).'),
                 code('alumno@pc0:~$ ssh admin@srv.aula.lab\nThe authenticity of host \'srv.aula.lab (192.168.10.2)\' can\'t be established.\n…\nAre you sure you want to continue connecting (yes/no/[fingerprint])? yes\nadmin@srv.aula.lab\'s password:\nWelcome to Ubuntu 26.04 LTS (GNU/Linux 6.17.0-generic x86_64)\nadmin@srv:~$ nano notas.txt        # the editor opens full screen\nadmin@srv:~$ exit 3\nlogout\nConnection to srv.aula.lab closed.\nalumno@pc0:~$ echo $?\n3'),
                 list('Three wrong passwords: “Permission denied (publickey,password).”', 'Service stopped: “Connection refused”; unknown name: “Could not resolve hostname”.', 'Ctrl+C and Ctrl+D are sent to the remote session.', 'The server logs every attempt in journalctl -u ssh (Accepted password / Accepted publickey / Failed password).', 'To log in without a password, using key pairs, see “SSH with key pairs”.'),
+            ],
+        },
+        {
+            id: 'srv-config-logs',
+            title: 'Configuration and logs',
+            summary: 'See the configuration files of every service and their messages, in vim’s colours.',
+            markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+            blocks: [
+                p('The last two entries of **Services** are for checking the work, not for changing anything. **Configuration** shows the files the panels write, as they are on disk right now (like `cat` run by root). **Logs** shows what each service writes down, like `journalctl -u`. Both use vim’s colours, so what you see here is what you would see opening the file on a real Ubuntu.'),
+                h('Configuration'),
+                steps(['Pick the service', 'In the **Service** list: SSH, DHCP (Kea), DNS (BIND), HTTP (Apache) or Mail. On the Linux router, first its parameters (sysctl), the firewall and the VPN.'], ['Read each file', 'Each file appears with its path and the syntax highlighted. If you change something in a panel or in the terminal, click **Refresh** to see it.']),
+                table(['Colour (dark background)', 'vim group', 'What it marks'], [
+                    ['Light blue', 'Comment', 'Comments (# … , // … , ; …)'],
+                    ['Yellow', 'Statement', 'Directives: options, zone, PermitRootLogin, accept…'],
+                    ['Pink', 'Constant', 'Strings, numbers, IP addresses, yes/no'],
+                    ['Green', 'Type', 'Types: DNS records (A, NS, MX), Apache sections'],
+                    ['Cyan', 'Identifier', 'Names: parameters, keys of an ini file'],
+                    ['Magenta', 'PreProc', 'Zone directives: $TTL, $ORIGIN'],
+                ]),
+                term('named', 'options {\n\tdirectory "/var/cache/bind";\n\t// Recursive: resolves any name for the allowed clients\n\trecursion yes;\n\tlisten-on { any; };\n};'),
+                h('Logs'),
+                p('The list starts with **ssh** (the first thing to look at when remote access fails); on the Linux router **nftables** comes next; then kea-dhcp4-server, bind9, apache2, postfix and dovecot. Each line has date, time, host, program and PID, and those with an error show white on red.'),
+                term('messages', 'Oct 24 09:12:03 srv sshd[701]: Accepted password for admin from 192.168.10.100 port 50022 ssh2\nOct 24 09:13:40 srv sshd[701]: error: maximum authentication attempts exceeded for ana from 192.168.20.10'),
+                check('Check it in the terminal', 'The same comes out in the server’s Linux Terminal: `cat /etc/bind/named.conf.options` or `vim` for the file, `journalctl -u ssh -n 20` for the logs.'),
+                tip('In web management', 'The management web page (Status → Configuration and Status → Logs) shows the same with vim’s colours for a light background.'),
+                exercise('Why can’t Ana get in?', 'In the «Hardening: ACL, nftables and sshd» lab, try to log in over SSH to the server as ana (password ana1) from the ADMIN PC and find the reason in Logs.', 'On SRV-INTRANET → Services → Logs → ssh you find “User ana from 192.168.10.10 not allowed because not listed in AllowUsers”. In Configuration → SSH, `/etc/ssh/sshd_config.d/10-bastionado.conf` has `AllowUsers admin`: only admin may log in. From ALUMNO the connection does not even arrive: the GW router’s ACL and the server’s firewall allow SSH only from the administration network.'),
             ],
         },
     ],
@@ -20230,6 +20446,83 @@ const SECURITY_DOCS = {
 
 return { SECURITY_DOCS };
 })();
+__m["docs/outline.js"] = (() => {
+const OUTLINE = [
+    { id: 'netfix', title: 'Netfix', sections: [[null, ['inicio', 'dibujo', 'guardar', 'simulacion', 'usuarios']]] },
+    { id: 'pc', title: 'PC', icon: 'pc', sections: [[null, ['pc-ip', 'pc-equipo', 'pc-apps', 'windows-cmd']]] },
+    {
+        id: 'servidor', title: 'Servidor', icon: 'server', sections: [
+            ['General', ['srv-intro']],
+            ['SSH', ['srv-ssh', 'srv-ssh-claves', 'srv-sshd-config', 'srv-sftp']],
+            ['DHCP', ['srv-dhcp']],
+            ['DNS', ['srv-dns', 'srv-dns-names']],
+            ['HTTP', ['srv-http', 'srv-apache', 'srv-webadmin', 'srv-roundcube']],
+            ['Correo', ['srv-mail']],
+            ['Configuración y registros', ['srv-config-logs']],
+        ],
+    },
+    { id: 'switch', title: 'Switch IOS', icon: 'switch', sections: [['CLI de IOS', ['ios-cli', 'ios-show']], ['Interfaces y VLAN', ['ios-otros']], ['Gestión web', ['ios-web']]] },
+    { id: 'router', title: 'Router IOS', icon: 'router', sections: [['DHCP', ['ios-dhcp', 'ios-reservas', 'ios-relay']], ['NAT y ACL', ['ios-nat', 'ios-acl']], ['VPN', ['ios-ipsec']]] },
+    { id: 'linuxrouter', title: 'Router Linux', icon: 'linuxrouter', sections: [['Parámetros', ['linux-router']], ['Cortafuegos', ['linux-nftables']], ['VPN', ['linux-wireguard']]] },
+    { id: 'nube', title: 'Nube ISP', icon: 'cloud', sections: [[null, ['inet-cloud', 'inet-dns']]] },
+    { id: 'red', title: 'Conceptos de red', sections: [[null, ['red-broadcast', 'inet-trace']]] },
+    { id: 'linux', title: 'Terminal Linux', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red']], ['Editores', ['nano', 'vim']]] },
+    {
+        id: 'bash', title: 'GNU bash 5.3', sections: [
+            ['Lenguaje', ['bash-sintaxis', 'bash-expansiones', 'bash-control', 'bash-funciones', 'bash-redirecciones']],
+            ['Referencia', ['bash-variables', 'bash-opciones', 'bash-interactivo', 'bash-53', 'bash-builtins']],
+        ],
+    },
+];
+
+return { OUTLINE };
+})();
+__m["docs/arrange.js"] = (() => {
+/** The groups of the Documentation tab: the outline filled with the pages (a page the outline misses is left out). */
+function arrange(outline, pages) {
+    const byId = new Map(pages.map((p) => [p.id, p]));
+    return outline.map((g) => ({
+        id: g.id, title: g.title, ...(g.icon ? { icon: g.icon } : {}),
+        pages: g.sections.flatMap(([section, ids]) => ids.flatMap((id) => {
+            const page = byId.get(id);
+            return page ? [section ? { ...page, section } : page] : [];
+        })),
+    }));
+}
+
+return { arrange };
+})();
+__m["docs/en/outline.js"] = (() => {
+const OUTLINE = [
+    { id: 'netfix', title: 'Netfix', sections: [[null, ['inicio', 'dibujo', 'guardar', 'simulacion', 'usuarios']]] },
+    { id: 'pc', title: 'PC', icon: 'pc', sections: [[null, ['pc-ip', 'pc-equipo', 'pc-apps', 'windows-cmd']]] },
+    {
+        id: 'servidor', title: 'Server', icon: 'server', sections: [
+            ['General', ['srv-intro']],
+            ['SSH', ['srv-ssh', 'srv-ssh-claves', 'srv-sshd-config', 'srv-sftp']],
+            ['DHCP', ['srv-dhcp']],
+            ['DNS', ['srv-dns', 'srv-dns-names']],
+            ['HTTP', ['srv-http', 'srv-apache', 'srv-webadmin', 'srv-roundcube']],
+            ['Mail', ['srv-mail']],
+            ['Configuration and logs', ['srv-config-logs']],
+        ],
+    },
+    { id: 'switch', title: 'IOS switch', icon: 'switch', sections: [['IOS CLI', ['ios-cli', 'ios-show']], ['Interfaces and VLANs', ['ios-otros']], ['Web management', ['ios-web']]] },
+    { id: 'router', title: 'IOS router', icon: 'router', sections: [['DHCP', ['ios-dhcp', 'ios-reservas', 'ios-relay']], ['NAT and ACLs', ['ios-nat', 'ios-acl']], ['VPN', ['ios-ipsec']]] },
+    { id: 'linuxrouter', title: 'Linux router', icon: 'linuxrouter', sections: [['Parameters', ['linux-router']], ['Firewall', ['linux-nftables']], ['VPN', ['linux-wireguard']]] },
+    { id: 'nube', title: 'ISP cloud', icon: 'cloud', sections: [[null, ['inet-cloud', 'inet-dns']]] },
+    { id: 'red', title: 'Networking concepts', sections: [[null, ['red-broadcast', 'inet-trace']]] },
+    { id: 'linux', title: 'Linux Terminal', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red']], ['Editors', ['nano', 'vim']]] },
+    {
+        id: 'bash', title: 'GNU bash 5.3', sections: [
+            ['Language', ['bash-sintaxis', 'bash-expansiones', 'bash-control', 'bash-funciones', 'bash-redirecciones']],
+            ['Reference', ['bash-variables', 'bash-opciones', 'bash-interactivo', 'bash-53', 'bash-builtins']],
+        ],
+    },
+];
+
+return { OUTLINE };
+})();
 __m["docs/sets.js"] = (() => {
 const { NETFIX_DOCS } = __m["docs/netfix.js"];
 const { IOS_DOCS } = __m["docs/ios.js"];
@@ -20259,17 +20552,12 @@ const { INTERNET_DOCS: INTERNET_EN } = __m["docs/en/internet.js"];
 const { WEBAPP_DOCS: WEBAPP_EN } = __m["docs/en/webapps.js"];
 const { SSH_DOCS: SSH_EN } = __m["docs/en/ssh.js"];
 const { SECURITY_DOCS: SECURITY_EN } = __m["docs/en/security.js"];
+const { OUTLINE } = __m["docs/outline.js"];
+const { arrange } = __m["docs/arrange.js"];
+const { OUTLINE: OUTLINE_EN } = __m["docs/en/outline.js"];
 const ES = {
-    groups: [
-        NETFIX_DOCS,
-        IOS_DOCS,
-        { ...SERVICE_DOCS, pages: [...SERVICE_DOCS.pages, ...SSH_DOCS, ...WEBAPP_DOCS] },
-        INTERNET_DOCS,
-        SECURITY_DOCS,
-        CLIENT_DOCS,
-        { id: 'linux', title: 'Terminal Linux', pages: [...LINUX_DOCS, ...EDITOR_DOCS] },
-        { id: 'bash', title: 'GNU bash 5.3', pages: [...BASH_LANGUAGE, ...BASH_REFERENCE] },
-    ],
+    groups: arrange(OUTLINE, [...NETFIX_DOCS.pages, ...IOS_DOCS.pages, ...SERVICE_DOCS.pages, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
+        ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE]),
     utils: UTIL_DOCS,
     builtins: BUILTIN_DOCS,
     bashPages: [...BASH_LANGUAGE, ...BASH_REFERENCE],
@@ -20286,16 +20574,8 @@ const ES = {
     },
 };
 const EN = {
-    groups: [
-        NETFIX_EN,
-        IOS_EN,
-        { ...SERVICE_EN, pages: [...SERVICE_EN.pages, ...SSH_EN, ...WEBAPP_EN] },
-        INTERNET_EN,
-        SECURITY_EN,
-        CLIENT_EN,
-        { id: 'linux', title: 'Linux Terminal', pages: [...LINUX_EN, ...EDITOR_EN] },
-        { id: 'bash', title: 'GNU bash 5.3', pages: [...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN] },
-    ],
+    groups: arrange(OUTLINE_EN, [...NETFIX_EN.pages, ...IOS_EN.pages, ...SERVICE_EN.pages, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
+        ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN]),
     utils: UTIL_EN,
     builtins: BUILTIN_EN,
     bashPages: [...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN],
@@ -20352,6 +20632,11 @@ function blockText(b) {
     switch (b.kind) {
         case 'list': return b.items.join('\n');
         case 'table': return [b.head.join(' '), ...b.rows.map((r) => r.join(' '))].join('\n');
+        case 'steps': return b.items.map((i) => `${i.title} ${i.text}`).join('\n');
+        case 'callout': return [b.title, b.text, b.solution ?? ''].join('\n');
+        case 'figure': return [b.caption, ...(b.figure.type === 'topology'
+                ? [...b.figure.nodes.map((n) => `${n.label} ${n.note ?? ''}`), ...b.figure.links.map((l) => l.label ?? '')]
+                : [...b.figure.actors, ...b.figure.messages.map((m) => `${m.text} ${m.note ?? ''}`)])].join('\n');
         default: return b.text;
     }
 }
@@ -27362,7 +27647,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.19.8",
+    "version": "0.20.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -55210,10 +55495,118 @@ const EXAMPLES = LABS.map((ex) => ({ ...ex, build: () => decorateLab(ex.id, ex.b
 
 return { EXAMPLES };
 })();
+__m["ui/doc-figures.js"] = (() => {
+/**
+ * Diagrams of the documentation, drawn from data: a topology with the palette icons (cables with their labels) and a
+ * sequence of messages between actors (DORA, a DNS query…). Text always through textContent.
+ */
+const { el, svg, staticSvg } = __m["ui/dom.js"];
+const { ICONS, ICON_W, ICON_H } = __m["ui/icons.js"];
+/** The 0-100 × 0-60 grid of a topology, in SVG units. */
+const UNIT = 5;
+const PAD = 40;
+const SEQ_COL = 320;
+const SEQ_ROW = 52;
+const SEQ_TOP = 46;
+/** Room on both sides of a sequence for the actors' names and the notes. */
+const SEQ_PAD = 150;
+const at = (n) => ({ x: PAD + n.x * UNIT, y: PAD + n.y * UNIT });
+function node(n) {
+    const { x, y } = at(n);
+    const icon = staticSvg(ICONS[n.kind]);
+    icon.setAttribute('x', String(x - ICON_W / 2));
+    icon.setAttribute('y', String(y - ICON_H / 2));
+    return svg('g', { class: `doc-fig-node doc-fig-${n.kind}` }, icon, svg('text', { x, y: y + ICON_H / 2 + 16, class: 'doc-fig-label' }, n.label), n.note ? svg('text', { x, y: y + ICON_H / 2 + 31, class: 'doc-fig-note' }, n.note) : '');
+}
+function topology(f) {
+    const byId = new Map(f.nodes.map((n) => [n.id, n]));
+    const links = f.links.flatMap((l) => {
+        const [a, b] = [byId.get(l.a), byId.get(l.b)];
+        if (!a || !b)
+            return [];
+        const [p, q] = [at(a), at(b)];
+        const mid = { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
+        return [svg('line', { x1: p.x, y1: p.y, x2: q.x, y2: q.y, class: 'doc-fig-cable' }),
+            l.label ? svg('text', { x: mid.x, y: mid.y - 6, class: 'doc-fig-cable-label' }, l.label) : ''];
+    });
+    const w = Math.max(...f.nodes.map((n) => at(n).x)) + PAD + ICON_W / 2;
+    const h = Math.max(...f.nodes.map((n) => at(n).y)) + PAD + ICON_H / 2 + 20;
+    // Drawn at its own size (never enlarged): icons and texts keep the size they have on the workspace.
+    return svg('svg', { viewBox: `0 0 ${w} ${h}`, width: w, height: h, class: 'doc-fig-svg', role: 'img' }, ...links, ...f.nodes.map(node));
+}
+function sequence(f) {
+    const x = (i) => SEQ_PAD + i * SEQ_COL;
+    const h = SEQ_TOP + (f.messages.length + 1) * SEQ_ROW;
+    const heads = f.actors.flatMap((a, i) => [
+        svg('text', { x: x(i), y: 22, class: 'doc-fig-actor' }, a),
+        svg('line', { x1: x(i), y1: 32, x2: x(i), y2: h - 10, class: 'doc-fig-life' }),
+    ]);
+    const msgs = f.messages.flatMap((m, i) => {
+        const y = SEQ_TOP + (i + 1) * SEQ_ROW;
+        const [a, b] = [x(m.from), x(m.to)];
+        const dir = Math.sign(b - a) || 1;
+        return [
+            svg('line', { x1: a, y1: y, x2: b - dir * 8, y2: y, class: 'doc-fig-msg' }),
+            svg('path', { d: `M${b} ${y} l${-dir * 10} -5 v10 z`, class: 'doc-fig-arrow' }),
+            svg('text', { x: (a + b) / 2, y: y - 8, class: 'doc-fig-msg-label' }, `${i + 1}. ${m.text}`),
+            m.note ? svg('text', { x: (a + b) / 2, y: y + 15, class: 'doc-fig-note' }, m.note) : '',
+        ];
+    });
+    const w = x(f.actors.length - 1) + SEQ_PAD;
+    return svg('svg', { viewBox: `0 0 ${w} ${h}`, width: w, height: h, class: 'doc-fig-svg doc-fig-seq', role: 'img' }, ...heads, ...msgs);
+}
+function docFigure(f, caption) {
+    const drawing = f.type === 'topology' ? topology(f) : sequence(f);
+    // Screen readers get what the drawing says, not only its caption.
+    const said = f.type === 'topology' ? f.nodes.map((n) => [n.label, n.note].filter(Boolean).join(' ')) : f.messages.map((m) => `${f.actors[m.from] ?? ''} → ${f.actors[m.to] ?? ''}: ${m.text}`);
+    drawing.setAttribute('aria-label', `${caption} ${said.join('; ')}`);
+    return el('figure', { class: 'doc-figure' }, drawing, el('figcaption', {}, caption));
+}
+
+return { docFigure };
+})();
+__m["ui/doc-term.js"] = (() => {
+/**
+ * Terminals of the documentation: Linux shell, IOS CLI or Windows cmd with the prompt and the typed command set apart
+ * from the output (as students see them), or a file highlighted in vim's colours.
+ */
+const { el } = __m["ui/dom.js"];
+const { fillSyntax } = __m["ui/syntax-view.js"];
+const PROMPTS = {
+    shell: /^((?:[\w.-]+@[\w.-]+:[^\s$#]*|root@[\w.-]+:[^\s#]*)[$#] )(.*)$/,
+    ios: /^([A-Za-z][\w.-]*(?:\([\w-]+\))?[>#])(.*)$/,
+    cmd: /^((?:[A-Z]:\\[^>]*|PS [A-Z]:\\[^>]*)> ?)(.*)$/,
+};
+/** A typed line: its prompt and its command; null for output. */
+function promptOf(lang, line) {
+    const m = PROMPTS[lang].exec(line);
+    return m ? { prompt: m[1] ?? '', command: m[2] ?? '' } : null;
+}
+function docTerm(lang, text) {
+    const pre = el('pre', { class: `doc-term doc-term-${lang}` });
+    if (lang !== 'shell' && lang !== 'ios' && lang !== 'cmd')
+        return fillSyntax(pre, text, lang);
+    text.split('\n').forEach((line, i) => {
+        if (i)
+            pre.append('\n');
+        const typed = promptOf(lang, line);
+        if (!typed)
+            return void pre.append(el('span', { class: 'doc-term-out' }, line));
+        pre.append(el('span', { class: 'doc-term-prompt' }, typed.prompt), el('span', { class: 'doc-term-cmd' }, typed.command));
+    });
+    return pre;
+}
+
+return { promptOf, docTerm };
+})();
 __m["ui/doc-blocks.js"] = (() => {
 /** Renders documentation blocks as DOM (text through textContent; links only http/https). */
 const { el } = __m["ui/dom.js"];
 const { inlineMarkdown } = __m["docs/markdown.js"];
+const { t } = __m["i18n/t.js"];
+const { docFigure } = __m["ui/doc-figures.js"];
+const { docTerm } = __m["ui/doc-term.js"];
+const TONES = { tip: 'docs.tone.tip', warn: 'docs.tone.warn', check: 'docs.tone.check', exercise: 'docs.tone.exercise' };
 /** Plain text, or inline Markdown when the page declares a base URL for its links. */
 function inline(text, markdownBase) {
     if (markdownBase === undefined)
@@ -55223,6 +55616,11 @@ function inline(text, markdownBase) {
         return s.href ? el('a', { href: s.href, target: '_blank', rel: 'noopener noreferrer' }, body) : body;
     });
 }
+/** «Ejercicio · Reserva la .60»; the kind alone when the title already says it («Errores típicos», «Compruébalo»). */
+function calloutTitle(kind, title, md) {
+    const key = (x) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().slice(0, 5);
+    return key(title) === key(kind) ? inline(title, md) : [kind, ' · ', ...inline(title, md)];
+}
 function docBlock(b, md) {
     switch (b.kind) {
         case 'p': return el('p', {}, ...inline(b.text, md));
@@ -55230,6 +55628,12 @@ function docBlock(b, md) {
         case 'code': return el('pre', { class: 'doc-code' }, el('code', {}, b.text));
         case 'note': return el('p', { class: 'doc-note' }, ...inline(b.text, md));
         case 'list': return el('ul', {}, ...b.items.map((i) => el('li', {}, ...inline(i, md))));
+        case 'steps':
+            return el('ol', { class: 'doc-steps' }, ...b.items.map((s) => el('li', {}, el('strong', { class: 'doc-step-title' }, ...inline(s.title, md)), el('span', {}, ...inline(s.text, md)))));
+        case 'callout':
+            return el('aside', { class: `doc-callout doc-callout-${b.tone}`, role: 'note' }, el('p', { class: 'doc-callout-title' }, ...calloutTitle(t(TONES[b.tone]), b.title, md)), el('p', {}, ...inline(b.text, md)), b.solution ? el('details', { class: 'doc-solution' }, el('summary', {}, t('docs.solution')), el('p', {}, ...inline(b.solution, md))) : null);
+        case 'figure': return docFigure(b.figure, b.caption);
+        case 'term': return docTerm(b.lang, b.text);
         case 'table':
             return el('div', { class: 'doc-table-wrap' }, el('table', { class: 'doc-table' }, el('thead', {}, el('tr', {}, ...b.head.map((c) => el('th', { scope: 'col' }, ...inline(c, md))))), el('tbody', {}, ...b.rows.map((r) => el('tr', {}, ...r.map((c, i) => (i === 0 ? el('th', { scope: 'row' }, ...inline(c, md)) : el('td', {}, ...inline(c, md)))))))));
     }
@@ -55240,7 +55644,9 @@ return { inline, docBlock };
 __m["ui/docs-view.js"] = (() => {
 /** The Documentation tab: table of contents, search and pages (all text through textContent). */
 const { t } = __m["i18n/t.js"];
-const { el, clear } = __m["ui/dom.js"];
+const { el, clear, staticSvg } = __m["ui/dom.js"];
+const { ICONS } = __m["ui/icons.js"];
+const { brandImage } = __m["ui/brand.js"];
 const { docGroups, findPage, searchDocs } = __m["docs/index.js"];
 const { docBlock } = __m["ui/doc-blocks.js"];
 const FIRST_PAGE = 'inicio';
@@ -55250,6 +55656,8 @@ class DocsView {
     article;
     search;
     current = FIRST_PAGE;
+    /** Groups the reader unfolded (kept across searches and redraws). */
+    opened = new Set();
     constructor() {
         this.search = el('input', { type: 'search', class: 'doc-search', placeholder: t('docs.searchHint'), 'aria-label': t('docs.searchLabel') });
         this.search.addEventListener('input', () => this.renderToc());
@@ -55270,9 +55678,14 @@ class DocsView {
         this.renderPage(page);
         for (const a of this.toc.querySelectorAll('button[data-page]'))
             a.setAttribute('aria-current', String(a.getAttribute('data-page') === page.id));
+        // The group of the page opens (the others keep how the reader left them).
+        for (const d of this.toc.querySelectorAll('details[data-group]')) {
+            if (d.querySelector(`button[data-page="${CSS.escape(page.id)}"]`))
+                d.open = true;
+        }
     }
-    link(page, extra) {
-        const b = el('button', { type: 'button', class: 'doc-link', 'data-page': page.id, 'aria-current': String(page.id === this.current) }, el('span', { class: 'doc-link-title' }, page.title), extra ? el('span', { class: 'doc-link-snippet' }, extra) : null);
+    link(page, extra, nested = false) {
+        const b = el('button', { type: 'button', class: nested ? 'doc-link doc-link-nested' : 'doc-link', 'data-page': page.id, 'aria-current': String(page.id === this.current) }, el('span', { class: 'doc-link-title' }, page.title), extra ? el('span', { class: 'doc-link-snippet' }, extra) : null);
         b.addEventListener('click', () => { this.show(page.id); this.article.focus({ preventScroll: true }); this.article.scrollTop = 0; });
         return b;
     }
@@ -55285,12 +55698,35 @@ class DocsView {
             return;
         }
         for (const g of docGroups())
-            this.toc.append(el('h2', { class: 'doc-group' }, g.title), ...g.pages.map((p) => this.link(p)));
+            this.toc.append(this.groupBox(g));
+    }
+    /** A group: its icon and title (folds), then its sections as subheadings and the pages indented below them. */
+    groupBox(g) {
+        // Devices: their palette icon; Netfix: its N; the rest (concepts, terminal, bash): a plain mark.
+        const icon = g.icon ? staticSvg(ICONS[g.icon]) : g.id === 'netfix' ? brandImage('isologoN', 'doc-group-brand', '') : el('span', { class: 'doc-group-dot', 'aria-hidden': 'true' });
+        icon.classList.add('doc-group-icon');
+        const items = [];
+        let section;
+        for (const p of g.pages) {
+            if (p.section !== section) {
+                section = p.section;
+                if (section)
+                    items.push(el('h3', { class: 'doc-section' }, section));
+            }
+            items.push(this.link(p, undefined, p.section !== undefined));
+        }
+        const box = el('details', { class: 'doc-group-box', 'data-group': g.id, open: this.opened.has(g.id) || g.pages.some((p) => p.id === this.current) }, el('summary', { class: 'doc-group' }, icon, el('span', { class: 'doc-group-title', role: 'heading', 'aria-level': '2' }, g.title), el('span', { class: 'doc-group-count', 'aria-label': t('docs.pages', { n: g.pages.length }) }, String(g.pages.length))), el('div', { class: 'doc-group-pages' }, ...items));
+        box.addEventListener('toggle', () => { if (box.open)
+            this.opened.add(g.id);
+        else
+            this.opened.delete(g.id); });
+        return box;
     }
     renderPage(page) {
         clear(this.article);
         const group = docGroups().find((g) => g.pages.includes(page));
-        this.article.append(el('p', { class: 'doc-crumb' }, group?.title ?? ''), el('h1', {}, page.title), el('p', { class: 'doc-summary' }, page.summary), ...page.blocks.map((b) => docBlock(b, page.markdownBase)));
+        const crumb = [group?.title, page.section].filter(Boolean).join(' › ');
+        this.article.append(el('p', { class: 'doc-crumb' }, crumb), el('h1', {}, page.title), el('p', { class: 'doc-summary' }, page.summary), ...page.blocks.map((b) => docBlock(b, page.markdownBase)));
     }
 }
 

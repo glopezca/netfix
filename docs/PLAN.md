@@ -868,3 +868,65 @@ vim o porque no tienen efecto visible:
 - **Pruebas.** `e2e-webgui` comprueba que la máscara existe, que se pinta con el color del texto y que tiene la anchura
   de los otros iconos, y guarda una captura del menú.
 
+## Fase 36 · Documentación reordenada, jerárquica, visual y guiada para ASIR (v0.20.0, por fases)
+
+**Decisiones del propietario (24/10/2026).**
+
+- **Recursos visuales.** Diagramas generados en código, que se actualizan con la app:
+  - minitopologías con los iconos de la paleta;
+  - diagramas de secuencia (DORA, DNS…);
+  - terminales con resaltado vim;
+  - pasos numerados;
+  - avisos, comprobaciones y ejercicios.
+- **Estilo guiado para ASIR.** Cada página sigue el mismo guion: qué es y para qué sirve, cómo se hace en Netfix paso a
+  paso, cómo se comprueba, errores típicos y un ejercicio corto con la solución desplegable.
+- **Entrega por fases**, publicando cada una para revisión.
+
+**Estructura.** Un grupo por equipo, en el orden de la paleta: PC, Servidor, Switch IOS, Router IOS, Router Linux y
+Nube ISP. Dentro de cada equipo, sus servicios van en el orden de su ventana. El Servidor sigue este orden: general,
+SSH, DHCP, DNS, HTTP (Apache, gestión web, Roundcube), correo y Configuración y registros. Antes de los equipos va el
+grupo Netfix; después, Conceptos de red, Terminal Linux y GNU bash.
+
+**Navegación.** Grupos plegables con el icono del equipo, secciones con sangría y línea guía, la página actual
+resaltada y una ruta «Grupo › Sección» encima del título.
+
+**Fases:**
+
+| Fase | Contenido |
+|---|---|
+| 36a | Estructura y navegación, componentes visuales (bloques `steps`, `callout`, `figure` y `term`), la página nueva «Configuración y registros» y una página modelo reescrita (Servidor → DHCP) para validar el estilo |
+| 36b | PC y Servidor |
+| 36c | Switch IOS, Router IOS, Router Linux y Nube |
+| 36d | Netfix, Conceptos de red, Terminal Linux y bash |
+
+Las pruebas de paridad es/en cubren los bloques nuevos.
+
+### Notas de la fase 36a (v0.20.0)
+
+**Hecho:**
+
+- **Estructura.** `src/docs/outline.ts` y su gemelo `en/outline.ts` definen los grupos y las secciones;
+  `src/docs/arrange.ts` coloca en ellos las páginas de cada módulo. Una prueba exige que cada página aparezca una sola
+  vez, que los equipos sigan el orden de la paleta y que el Servidor siga el orden de su pestaña Servicios.
+- **Navegación.** Los grupos se pliegan y llevan el icono de la paleta (Netfix lleva su N). Las secciones van en
+  versalitas con línea guía y sangría, y cada grupo muestra cuántas páginas tiene. Al abrir una página se despliega su
+  grupo. Encima del título va la ruta «Grupo › Sección».
+- **Bloques nuevos** (`types.ts`), con su paridad comprobada en `docs-en`:
+
+  | Bloque | Qué muestra | Dónde se dibuja |
+  |---|---|---|
+  | `steps` | Pasos numerados con línea de progreso | — |
+  | `callout` | Consejo, error típico, compruébalo o ejercicio con la solución plegada | — |
+  | `figure` | Topología con los iconos de la paleta y etiquetas con halo, o diagrama de secuencia; a su tamaño, sin agrandarse | `doc-figures.ts` |
+  | `term` | Terminal de shell, IOS o cmd con prompt y orden destacados, o un fichero en colores de vim | `doc-term.ts` |
+
+  Además, el Markdown en línea funciona en las páginas con `markdownBase`.
+- **Páginas.** Una nueva, «Configuración y registros». Una página modelo reescrita, Servidor → DHCP, con este guion:
+  qué es, topología, DORA, pasos, campos, reservas, fichero de Kea, compruébalo, errores típicos y ejercicio. Las
+  salidas de ejemplo están sacadas del simulador.
+- **WebGUI.** «Equipo» tiene ahora un monitor monocromo, con el mismo sistema que la llave.
+- **Pruebas.** `e2e-docs` comprueba el orden, los iconos, las secciones, la ruta, los diagramas, los pasos, las
+  terminales y el ejercicio, y guarda capturas para revisarlas.
+
+**Siguiente:** fase 36b, reescribir con el mismo guion el resto de PC y Servidor.
+

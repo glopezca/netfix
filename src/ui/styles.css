@@ -690,3 +690,4 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .syn-error { color: #ffffff; background: #ff0000; }
 /* Logs wrap, as vim wraps long lines by default (configuration files keep their columns). */
 .syn-view[data-filetype="messages"] { white-space: pre-wrap; }
+

@@ -1,6 +1,6 @@
 /** Documentation: Server services (DHCP, DNS, HTTP, mail, SSH) and their equivalents on Ubuntu and Windows. */
 import type { DocGroup } from '../types.ts';
-import { code, h, list, note, p, table } from '../types.ts';
+import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from '../types.ts';
 
 export const SERVICE_DOCS: DocGroup = {
   id: 'servicios',
@@ -28,26 +28,65 @@ export const SERVICE_DOCS: DocGroup = {
     {
       id: 'srv-dhcp',
       title: 'Server DHCP',
-      summary: 'Packet Tracer–style pools, reservations and automatic assignment by MAC or Client-ID.',
+      summary: 'Devices get their IP, mask, gateway and DNS on their own: pools, reservations and how to check it.',
+      markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
       blocks: [
-        p('Each pool is defined as in Packet Tracer: start IP + maximum number of users within a subnet, with default gateway, DNS server, domain, TFTP server and lease time in minutes (or infinite).'),
-        h('Reservations'),
-        p('Select a pool and add reservations: a fixed IP for a client identified by its MAC address or its Client-ID (option 61), with an optional name. The IP must be in the pool’s subnet; duplicate IPs or identifiers are not allowed.'),
-        table(['Field', 'Format'], [
+        p('**DHCP** (Dynamic Host Configuration Protocol) hands the network settings to the devices that connect: IP address, mask, default gateway and DNS server. Without DHCP those four values would be typed by hand on every PC, and one mistake (two devices with the same IP) would be enough to break the network. In Netfix the Server’s DHCP server is **Kea** (`kea-dhcp4-server`), the one Ubuntu and Debian use.'),
+        figure({
+          type: 'topology',
+          nodes: [
+            { id: 'srv', kind: 'server', label: 'SRV', x: 40, y: 0, note: '192.168.10.2 · kea' },
+            { id: 'sw', kind: 'switch', label: 'Switch0', x: 40, y: 20 },
+            { id: 'pc0', kind: 'pc', label: 'PC0', x: 15, y: 40, note: 'DHCP → .100' },
+            { id: 'pc1', kind: 'pc', label: 'PC1', x: 65, y: 40, note: 'reservation → .50' },
+          ],
+          links: [{ a: 'srv', b: 'sw' }, { a: 'sw', b: 'pc0' }, { a: 'sw', b: 'pc1' }],
+        }, 'The «Server: DHCP, DNS, web, mail and SSH» lab: SRV hands out addresses of 192.168.10.0/24; PC1 has a reservation and always gets .50.'),
+        h('How it works: DORA'),
+        p('A client with no address does not know where the server is, so it starts by shouting to the whole network (**broadcast**). There are four messages, and their initials spell DORA:'),
+        figure({
+          type: 'sequence',
+          actors: ['PC0 (client)', 'SRV (kea-dhcp4)'],
+          messages: [
+            { from: 0, to: 1, text: 'DISCOVER', note: '“Is there a DHCP server?” (to 255.255.255.255)' },
+            { from: 1, to: 0, text: 'OFFER', note: '“I offer you 192.168.10.100”' },
+            { from: 0, to: 1, text: 'REQUEST', note: '“I’ll take 192.168.10.100”' },
+            { from: 1, to: 0, text: 'ACK', note: '“It’s yours for 1 day (lease)”' },
+          ],
+        }, 'The four DHCP messages. In Simulation, with the DHCP filter, they show up step by step.'),
+        tip('Watch it live', 'Click **Simulation**, keep only the DHCP filter and on the PC run `ipconfig /renew` (Windows) or `sudo dhclient eth0` (Linux). With **Step** you will see DISCOVER, OFFER, REQUEST and ACK, and picking each one shows its layers (Ethernet, IPv4, UDP 67/68 and the DHCP message).'),
+        h('Setting it up in Netfix'),
+        steps(
+          ['Open the server', 'Double-click the Server → **Services** tab → **DHCP**.'],
+          ['Turn the service on', 'Tick **DHCP service**: the same as `sudo systemctl enable --now kea-dhcp4-server`.'],
+          ['Create a pool', 'A pool is the set of addresses handed out. Fill in **Start IP** (the first one given), **Maximum users** (how many), the **mask**, the **default gateway** (the LAN router) and the **DNS server**, and click **Add pool**.'],
+          ['Choose the listen interfaces', 'With **All** it answers on any interface; if you tick some, only on those (useful on a router with several networks).'],
+          ['Put the clients on DHCP', 'On each PC: **IP Config** → **DHCP**. In seconds they will have an address.'],
+        ),
+        table(['Pool field', 'Example', 'What it is for'], [
+          ['Start IP', '192.168.10.100', 'First address handed out'],
+          ['Maximum users', '50', 'How many: from .100 to .149'],
+          ['Subnet mask', '255.255.255.0', 'The size of the network (/24)'],
+          ['Default gateway', '192.168.10.1', 'The router used to leave the network'],
+          ['DNS server', '192.168.10.2', 'Who translates names into addresses'],
+          ['Domain', 'aula.lab', 'Added to short names (srv → srv.aula.lab)'],
+          ['Lease (minutes)', '1440', 'How long the loan lasts; halfway through, the client renews it'],
+        ]),
+        h('Reservations: always the same IP'),
+        p('A **reservation** always gives the same address to one particular device, identified by its **MAC** or its **Client-ID** (option 61). It is used for printers, servers or the teacher’s PC. Select the pool, add the reservation and, if you like, a name. The IP must be in the pool’s subnet, and repeated IPs or identifiers are refused.'),
+        table(['Identifier', 'Format Netfix accepts'], [
           ['MAC', '0001.42AB.CDEF or 00:01:42:ab:cd:ef'],
           ['Client-ID', 'Hexadecimal with or without dots (0100.0142.abcd.ef); the usual Windows one is 01 + MAC'],
         ]),
-        h('Automatic assignments'),
-        p('“Identify automatic leases by” decides what identifies a client that has no reservation:'),
-        list(
-          'Client-ID (option 61) or, if it is not sent, MAC: the normal DHCP behaviour (RFC 2131) and kea’s default.',
-          'MAC: ignores the Client-ID; the same device keeps its IP even if it changes operating system or Client-ID (kea: "match-client-id": false).',
-        ),
-        p('In the leases table, the “Reserve by MAC” and “Reserve by Client-ID” buttons turn an automatic lease into a reservation.'),
-        h('Listen interfaces'),
-        p('Like Kea interfaces-config: the «Listen interfaces» block picks the interfaces kea-dhcp4 answers requests on. «All» is "*"; when some are ticked, a request that arrives through another interface is dropped without an answer (a relayed one arrives through the interface holding the server address). «Apply» writes the file and restarts the service, like systemctl restart kea-dhcp4-server.'),
-        code('"interfaces-config": {\n  "interfaces": [ "eth1" ]\n},\n\nadmin@srv:~$ ss -lun | grep :67\nUNCONN 0 0 192.168.1.1:67 0.0.0.0:*'),
-        code('"reservations": [\n  { "hw-address": "00:50:f0:00:00:02", "ip-address": "192.168.10.50" },\n  { "client-id": "01:00:50:f0:00:00:03", "ip-address": "192.168.10.51" }\n],\n"match-client-id": false'),
+        p('“Identify automatic leases by” decides how a client **without** a reservation is recognised: by **Client-ID or, if it sends none, MAC** (normal DHCP and Kea behaviour) or by **MAC** only (the same device keeps its IP even if it changes operating system). In the lease table, “Reserve by MAC” and “Reserve by Client-ID” turn a lease into a reservation with one click.'),
+        h('What is written to the file'),
+        p('Every change in the panel is saved to `/etc/kea/kea-dhcp4.conf`, the same file you would edit on a real Ubuntu (see it in **Services → Configuration**):'),
+        term('json', '"interfaces-config": {\n  "interfaces": [ "*" ]\n},\n"reservations": [\n  { "hw-address": "00:fb:b1:18:68:78", "ip-address": "192.168.10.50" },\n  { "client-id": "01:00:50:f0:00:00:03", "ip-address": "192.168.10.51" }\n],\n"match-client-id": false'),
+        check('Check it', 'On the PC, the address it received and the default route that came with it; on the server, Kea’s log (or **Services → Logs → kea-dhcp4-server**).'),
+        term('shell', 'alumno@pc0:~$ ip -4 addr show eth0\n    inet 192.168.10.100/24 brd 192.168.10.255 scope global dynamic eth0\nalumno@pc0:~$ ip route\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 2'),
+        term('messages', 'Oct 24 09:12:03 srv kea-dhcp4[812]: DHCP4_LEASE_ALLOC [hwtype=1 0063.b914.34b5], tid=0x7339704d: lease 192.168.10.100 has been allocated for 86400 seconds\nOct 24 09:12:03 srv kea-dhcp4[812]: DHCP4_LEASE_ALLOC [hwtype=1 00fb.b118.6878], tid=0xf09d5548: lease 192.168.10.50 has been allocated for 86400 seconds'),
+        warn('Common mistakes', 'A pool **outside the server’s network** (Kea does not use it: the PC ends up with 169.254.x.x, APIPA). Forgetting the **default gateway**: there is an IP but no way out of the network. **Two DHCP servers** on the same LAN: each PC keeps whichever offer arrives first. **Listen interfaces** without the LAN interface: requests are dropped with no answer. A reservation with a **mistyped MAC**: the PC gets an ordinary address from the pool.'),
+        exercise('Reserve .60 for PC0', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, make PC0 always get 192.168.10.60 and check that it keeps it after renewing.', 'Look up PC0’s MAC (Interfaces tab, or `ip link` in its terminal). On SRV → Services → DHCP select the pool, add a reservation with that MAC and IP 192.168.10.60 and click Add. On PC0 renew: `ipconfig /renew` or `sudo dhclient -r eth0 && sudo dhclient eth0`. `ip -4 addr` must show 192.168.10.60, and the server’s lease table marks it as reserved.'),
       ],
     },
     {
@@ -190,6 +229,35 @@ export const SERVICE_DOCS: DocGroup = {
           'The server logs every attempt in journalctl -u ssh (Accepted password / Accepted publickey / Failed password).',
           'To log in without a password, using key pairs, see “SSH with key pairs”.',
         ),
+      ],
+    },
+    {
+      id: 'srv-config-logs',
+      title: 'Configuration and logs',
+      summary: 'See the configuration files of every service and their messages, in vim’s colours.',
+      markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+      blocks: [
+        p('The last two entries of **Services** are for checking the work, not for changing anything. **Configuration** shows the files the panels write, as they are on disk right now (like `cat` run by root). **Logs** shows what each service writes down, like `journalctl -u`. Both use vim’s colours, so what you see here is what you would see opening the file on a real Ubuntu.'),
+        h('Configuration'),
+        steps(
+          ['Pick the service', 'In the **Service** list: SSH, DHCP (Kea), DNS (BIND), HTTP (Apache) or Mail. On the Linux router, first its parameters (sysctl), the firewall and the VPN.'],
+          ['Read each file', 'Each file appears with its path and the syntax highlighted. If you change something in a panel or in the terminal, click **Refresh** to see it.'],
+        ),
+        table(['Colour (dark background)', 'vim group', 'What it marks'], [
+          ['Light blue', 'Comment', 'Comments (# … , // … , ; …)'],
+          ['Yellow', 'Statement', 'Directives: options, zone, PermitRootLogin, accept…'],
+          ['Pink', 'Constant', 'Strings, numbers, IP addresses, yes/no'],
+          ['Green', 'Type', 'Types: DNS records (A, NS, MX), Apache sections'],
+          ['Cyan', 'Identifier', 'Names: parameters, keys of an ini file'],
+          ['Magenta', 'PreProc', 'Zone directives: $TTL, $ORIGIN'],
+        ]),
+        term('named', 'options {\n\tdirectory "/var/cache/bind";\n\t// Recursive: resolves any name for the allowed clients\n\trecursion yes;\n\tlisten-on { any; };\n};'),
+        h('Logs'),
+        p('The list starts with **ssh** (the first thing to look at when remote access fails); on the Linux router **nftables** comes next; then kea-dhcp4-server, bind9, apache2, postfix and dovecot. Each line has date, time, host, program and PID, and those with an error show white on red.'),
+        term('messages', 'Oct 24 09:12:03 srv sshd[701]: Accepted password for admin from 192.168.10.100 port 50022 ssh2\nOct 24 09:13:40 srv sshd[701]: error: maximum authentication attempts exceeded for ana from 192.168.20.10'),
+        check('Check it in the terminal', 'The same comes out in the server’s Linux Terminal: `cat /etc/bind/named.conf.options` or `vim` for the file, `journalctl -u ssh -n 20` for the logs.'),
+        tip('In web management', 'The management web page (Status → Configuration and Status → Logs) shows the same with vim’s colours for a light background.'),
+        exercise('Why can’t Ana get in?', 'In the «Hardening: ACL, nftables and sshd» lab, try to log in over SSH to the server as ana (password ana1) from the ADMIN PC and find the reason in Logs.', 'On SRV-INTRANET → Services → Logs → ssh you find “User ana from 192.168.10.10 not allowed because not listed in AllowUsers”. In Configuration → SSH, `/etc/ssh/sshd_config.d/10-bastionado.conf` has `AllowUsers admin`: only admin may log in. From ALUMNO the connection does not even arrive: the GW router’s ACL and the server’s firewall allow SSH only from the administration network.'),
       ],
     },
   ],

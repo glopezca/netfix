@@ -34,6 +34,9 @@ import { INTERNET_DOCS as INTERNET_EN } from './en/internet.ts';
 import { WEBAPP_DOCS as WEBAPP_EN } from './en/webapps.ts';
 import { SSH_DOCS as SSH_EN } from './en/ssh.ts';
 import { SECURITY_DOCS as SECURITY_EN } from './en/security.ts';
+import { OUTLINE } from './outline.ts';
+import { arrange } from './arrange.ts';
+import { OUTLINE as OUTLINE_EN } from './en/outline.ts';
 
 type KeyTable = readonly (readonly [string, string])[];
 
@@ -61,16 +64,8 @@ export interface DocSet {
 }
 
 const ES: DocSet = {
-  groups: [
-    NETFIX_DOCS,
-    IOS_DOCS,
-    { ...SERVICE_DOCS, pages: [...SERVICE_DOCS.pages, ...SSH_DOCS, ...WEBAPP_DOCS] },
-    INTERNET_DOCS,
-    SECURITY_DOCS,
-    CLIENT_DOCS,
-    { id: 'linux', title: 'Terminal Linux', pages: [...LINUX_DOCS, ...EDITOR_DOCS] },
-    { id: 'bash', title: 'GNU bash 5.3', pages: [...BASH_LANGUAGE, ...BASH_REFERENCE] },
-  ],
+  groups: arrange(OUTLINE, [...NETFIX_DOCS.pages, ...IOS_DOCS.pages, ...SERVICE_DOCS.pages, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
+    ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE]),
   utils: UTIL_DOCS,
   builtins: BUILTIN_DOCS,
   bashPages: [...BASH_LANGUAGE, ...BASH_REFERENCE],
@@ -88,16 +83,8 @@ const ES: DocSet = {
 };
 
 const EN: DocSet = {
-  groups: [
-    NETFIX_EN,
-    IOS_EN,
-    { ...SERVICE_EN, pages: [...SERVICE_EN.pages, ...SSH_EN, ...WEBAPP_EN] },
-    INTERNET_EN,
-    SECURITY_EN,
-    CLIENT_EN,
-    { id: 'linux', title: 'Linux Terminal', pages: [...LINUX_EN, ...EDITOR_EN] },
-    { id: 'bash', title: 'GNU bash 5.3', pages: [...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN] },
-  ],
+  groups: arrange(OUTLINE_EN, [...NETFIX_EN.pages, ...IOS_EN.pages, ...SERVICE_EN.pages, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
+    ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN]),
   utils: UTIL_EN,
   builtins: BUILTIN_EN,
   bashPages: [...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN],

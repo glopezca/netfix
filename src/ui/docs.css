@@ -1,0 +1,67 @@
+/* Documentation tab (v0.20): navigation by levels and the visual blocks of the guided pages. */
+/* Navigation: level 1 = group (device icon, folds), level 2 = section (indented, guide line), level 3 = page. */
+.doc-group-box { border-bottom: 1px solid var(--line); }
+.doc-group-box > summary { list-style: none; }
+.doc-group-box > summary::-webkit-details-marker { display: none; }
+.doc-group {
+  display: flex; align-items: center; gap: 10px; margin: 0; padding: 10px 8px; cursor: pointer;
+  font-size: 15px; font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--ink); border-radius: var(--radius-ctl);
+}
+.doc-group:hover { background: var(--accent-soft); }
+.doc-group::after { content: "▸" / ""; margin-left: 4px; color: var(--ink-2); transition: transform .15s; }
+.doc-group-box[open] > .doc-group::after { transform: rotate(90deg); }
+.doc-group-icon { width: 34px; height: 26px; flex: none; }
+.doc-group-dot { display: inline-block; width: 34px; height: 12px; flex: none; background: var(--accent); border-radius: 6px; opacity: .55; }
+.doc-group-brand { object-fit: contain; }
+.doc-group-title { flex: 1; }
+.doc-group-count { font-size: 12px; font-weight: 600; color: var(--ink-2); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0 7px; }
+.doc-group-pages { padding: 0 0 10px 18px; border-left: 2px solid var(--accent-soft); margin-left: 24px; }
+.doc-section { margin: 10px 0 2px; padding-left: 8px; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); }
+.doc-link-nested { padding-left: 18px; }
+.doc-link { font-size: 14px; line-height: 1.35; }
+.doc-crumb { letter-spacing: .02em; }
+@media (prefers-reduced-motion: reduce) { .doc-group::after { transition: none; } }
+
+/* Numbered steps */
+.doc-steps { list-style: none; counter-reset: step; padding: 0; margin: 14px 0; }
+.doc-steps > li { counter-increment: step; position: relative; padding: 4px 0 14px 46px; border-left: 2px solid var(--accent-soft); margin-left: 15px; }
+.doc-steps > li:last-child { border-left-color: transparent; }
+.doc-steps > li::before {
+  content: counter(step); position: absolute; left: -16px; top: 0; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--accent); color: var(--accent-ink); font-weight: 700; display: grid; place-items: center;
+}
+.doc-step-title { display: block; margin-bottom: 2px; }
+
+/* Boxes: tip, common mistake, check it, exercise (solution folded) */
+.doc-callout { margin: 14px 0; padding: 10px 14px; border-radius: var(--radius-ctl); border: 1px solid var(--line); border-left-width: 5px; background: var(--panel-2); }
+.doc-callout p { margin: 4px 0; }
+.doc-callout-title { font-weight: 700; }
+.doc-callout-tip { border-left-color: var(--accent); }
+.doc-callout-warn { border-left-color: var(--err); }
+.doc-callout-check { border-left-color: var(--ok); }
+.doc-callout-exercise { border-left-color: var(--dhcp); }
+.doc-callout-tip .doc-callout-title { color: var(--accent); }
+.doc-callout-warn .doc-callout-title { color: var(--err); }
+.doc-callout-check .doc-callout-title { color: var(--ok); }
+.doc-callout-exercise .doc-callout-title { color: var(--dhcp); }
+.doc-solution summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+
+/* Diagrams drawn from data (palette icons, cables, sequences of messages) */
+.doc-figure { margin: 16px 0; padding: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-win); }
+.doc-figure figcaption { margin-top: 6px; color: var(--ink-2); font-size: 14px; text-align: center; }
+.doc-fig-svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.doc-fig-cable { stroke: var(--ink-2); stroke-width: 2.5; }
+.doc-fig-cable-label, .doc-fig-note { font: 12px var(--font-mono); fill: var(--ink-2); text-anchor: middle; paint-order: stroke; stroke: var(--panel-2); stroke-width: 5px; stroke-linejoin: round; }
+.doc-fig-label { font: 700 14px var(--font-ui); fill: var(--ink); text-anchor: middle; paint-order: stroke; stroke: var(--panel-2); stroke-width: 5px; stroke-linejoin: round; }
+.doc-fig-actor { font: 700 14px var(--font-ui); fill: var(--ink); text-anchor: middle; }
+.doc-fig-life { stroke: var(--line); stroke-width: 2; stroke-dasharray: 5 5; }
+.doc-fig-msg { stroke: var(--dhcp); stroke-width: 2; }
+.doc-fig-arrow { fill: var(--dhcp); }
+.doc-fig-msg-label { font: 600 13px var(--font-mono); fill: var(--ink); text-anchor: middle; paint-order: stroke; stroke: var(--panel-2); stroke-width: 5px; }
+
+/* Terminals: prompt, typed command and output; files in vim's colours */
+.doc-term { background: var(--console); color: var(--console-ink); padding: 12px 14px; border-radius: var(--radius-ctl); overflow: auto; font: 13px/1.5 var(--font-mono); margin: 12px 0; white-space: pre; }
+.doc-term-prompt { color: #80d080; font-weight: 700; }
+.doc-term-ios .doc-term-prompt { color: #7fd1e6; }
+.doc-term-cmd { color: #ffffff; font-weight: 700; }
+.doc-term-out { color: var(--console-ink); opacity: .85; }

@@ -22,7 +22,7 @@
 .web-adm-nav-setup::before { content: "⚙"; } .web-adm-nav-dhcp::before { content: "⇅"; } .web-adm-nav-dns::before { content: "◎"; }
 .web-adm-nav-web::before { content: "◫"; } .web-adm-nav-mail::before { content: "✉"; } .web-adm-nav-ssh::before { content: "›"; }
 .web-adm-nav-firewall::before { content: "▦"; } .web-adm-nav-routing::before { content: "⇄"; } .web-adm-nav-vpn::before { content: "⛓"; }
-.web-adm-nav-admin::before { content: "⚿"; } .web-adm-nav-status::before { content: "◔"; } .web-adm-nav-files::before { content: ""; }
+.web-adm-nav-admin::before { content: "⚿"; } .web-adm-nav-status::before { content: ""; } .web-adm-nav-files::before { content: ""; }
 .web-adm-nav-log::before { content: "☰"; }
 .web-adm-main { padding: 16px 20px 20px; container-type: inline-size; min-width: 0; }
 .web-adm-title h1 { font-size: 22px; margin: 0; }
@@ -132,4 +132,9 @@
 .web-adm-nav-files::before {
   height: 15px; background: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cmask id=%22m%22%3E%3Crect x=%22-4%22 y=%22-4%22 width=%2232%22 height=%2232%22 fill=%22%23fff%22/%3E%3Crect x=%2210%22 y=%22-2%22 width=%224%22 height=%227.5%22 fill=%22%23000%22/%3E%3C/mask%3E%3Cg transform=%22rotate%2845 12 12%29%22%3E%3Cg mask=%22url%28%23m%29%22 fill=%22%23000%22%3E%3Ccircle cx=%2212%22 cy=%226.5%22 r=%225%22/%3E%3Crect x=%2210%22 y=%229%22 width=%224%22 height=%2213.5%22 rx=%222%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") center / 14px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cmask id=%22m%22%3E%3Crect x=%22-4%22 y=%22-4%22 width=%2232%22 height=%2232%22 fill=%22%23fff%22/%3E%3Crect x=%2210%22 y=%22-2%22 width=%224%22 height=%227.5%22 fill=%22%23000%22/%3E%3C/mask%3E%3Cg transform=%22rotate%2845 12 12%29%22%3E%3Cg mask=%22url%28%23m%29%22 fill=%22%23000%22%3E%3Ccircle cx=%2212%22 cy=%226.5%22 r=%225%22/%3E%3Crect x=%2210%22 y=%229%22 width=%224%22 height=%2213.5%22 rx=%222%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") center / 14px no-repeat;
+}
+/* Equipo: a monitor drawn the same way (the ◔ glyph is missing from many fonts and looked like a dot). */
+.web-adm-nav-status::before {
+  height: 15px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22%23000%22 fill-rule=%22evenodd%22 d=%22M4 3.5h16a2 2 0 0 1 2 2V15a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Zm.5 2.5v8.5h15V6Z%22/%3E%3Cpath fill=%22%23000%22 d=%22M10 17h4l.8 2.5H17a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2h2.2Z%22/%3E%3C/svg%3E") center / 15px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22%23000%22 fill-rule=%22evenodd%22 d=%22M4 3.5h16a2 2 0 0 1 2 2V15a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Zm.5 2.5v8.5h15V6Z%22/%3E%3Cpath fill=%22%23000%22 d=%22M10 17h4l.8 2.5H17a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2h2.2Z%22/%3E%3C/svg%3E") center / 15px no-repeat;
 }

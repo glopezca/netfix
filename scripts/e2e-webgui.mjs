@@ -56,6 +56,9 @@ try {
   assert.match(wrench.mask, /^url\("data:image\/svg\+xml/);
   assert.equal(wrench.bg, wrench.color, 'painted in the menu text colour');
   assert.equal(wrench.width, (await icon('.browser-view .web-adm-nav-log')).width, 'as wide as the other icons');
+  const device = await icon('.browser-view .web-adm-nav-status');
+  assert.match(device.mask, /^url\("data:image\/svg\+xml/, 'Equipo: a monochrome monitor too');
+  assert.equal(device.bg, device.color);
   if (shots) { await page.locator('.browser-view .web-adm-nav-log').scrollIntoViewIfNeeded(); await page.locator('.browser-view .web-adm-menu').screenshot({ path: join(shots, 'webgui-menu.png') }); }
   await go('http://192.168.10.2:10000/?page=files&svc=dns');
   assert.doesNotMatch(await page.locator('.browser-view').innerText(), /wa\.desc\./, 'every page has its description');

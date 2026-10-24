@@ -17,6 +17,7 @@ mkdirSync(dist, { recursive: true });
 copyFileSync(join(root, 'src/ui/index.html'), join(dist, 'index.html'));
 copyFileSync(join(root, 'src/ui/styles.css'), join(dist, 'styles.css'));
 copyFileSync(join(root, 'src/ui/web-admin.css'), join(dist, 'web-admin.css'));
+copyFileSync(join(root, 'src/ui/docs.css'), join(dist, 'docs.css'));
 // Favicon (the N isotype) and the home-screen icon, declared in the HTML so they show before any script runs.
 const ICONS = ['favicon.png', 'apple-touch-icon.png'];
 for (const f of ICONS) copyFileSync(join(root, 'assets/brand', f), join(dist, f));
@@ -81,9 +82,11 @@ const inlineScript = bundle.replace(/<\/script/gi, '<\\/script');
 
 const css = readFileSync(join(root, 'src/ui/styles.css'), 'utf8');
 const webCss = readFileSync(join(root, 'src/ui/web-admin.css'), 'utf8');
+const docsCss = readFileSync(join(root, 'src/ui/docs.css'), 'utf8');
 const single = readFileSync(join(root, 'src/ui/index.html'), 'utf8')
   .replace('<link rel="stylesheet" href="styles.css">', () => `<style>\n${css}\n</style>`)
   .replace('<link rel="stylesheet" href="web-admin.css">', () => `<style>\n${webCss}\n</style>`)
+  .replace('<link rel="stylesheet" href="docs.css">', () => `<style>\n${docsCss}\n</style>`)
   .replace('<script type="module" src="js/ui/main.js"></script>', () => `<script>${inlineScript}</script>`)
   .replace('href="favicon.png"', () => `href="${dataUri('favicon.png')}"`)
   .replace('href="apple-touch-icon.png"', () => `href="${dataUri('apple-touch-icon.png')}"`);
