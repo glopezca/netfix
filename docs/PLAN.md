@@ -989,3 +989,17 @@ Las pruebas de paridad es/en cubren los bloques nuevos.
 - **Pendiente:** el ICMP de una ACL o de una regla `reject` debería ser «administratively prohibited» (Linux: «Packet
   filtered»), y la falta de ruta en un router, «net unreachable»; hoy todo sale como «Destination Host Unreachable».
   `ip -4 addr show eth0` enseña también `lo` y las líneas `link/ether`.
+
+### Notas de la fase 36c, tercera entrega (v0.20.5)
+
+- **Router Linux:** Router Linux, Cortafuegos nftables y VPN WireGuard, en estilo guiado, con una nota que remite a las
+  páginas de Servidor para sus servicios. Comprobado en «Router Linux con NAT y DMZ (nftables)» (ip_forward, DNAT a la
+  DMZ, `FW-DROP` en dmesg) y «VPN WireGuard: central y sucursal tras NAT» (`wg show`, traceroute por el túnel). Las
+  claves de WireGuard cambian en cada carga: en la documentación van como marcadores.
+- **Nube:** Nube ISP e Internet emulada y DNS públicos, comprobadas en «Internet: dos sedes y DNS públicos»
+  (`curl ifconfig.me`, traceroute a 8.8.8.8, delegación NS de sede2.es). Corregido: a un puerto sin redirección, curl
+  dice «Couldn't connect to server», no «Connection refused».
+- **Pendiente (fidelidad):** un Ubuntu responde con TTL 128 (el real usa 64) y la línea de `dmesg` de un `log` de
+  nftables está simplificada (sin MAC, TOS, ID, TYPE/CODE).
+
+**Siguiente:** fase 36d, Netfix, Conceptos de red, Terminal Linux y bash.
