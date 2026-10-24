@@ -93,11 +93,20 @@ export function windowsTraceLines(shown: string, r: TraceResult, maxHops: number
   for (const h of r.hops) {
     const cols = h.probes.map((p) => (p ? `${(p.ms < 1 ? '<1' : String(p.ms)).padStart(6)} ms` : '     *   ')).join('');
     const from = firstFrom(h);
+    const refused = h.probes.find((p) => p?.unreachable);
+    if (refused?.unreachable) {
+      lines.push(`${String(h.ttl).padStart(3)}  ${formatIp(refused.from)}  reports: Destination ${refused.unreachable === 'net' ? 'net' : 'host'} unreachable.`);
+      continue;
+    }
     lines.push(`${String(h.ttl).padStart(3)}${cols}  ${from === undefined ? 'Request timed out.' : formatIp(from)}`);
   }
   lines.push('', 'Trace complete.', '');
   return lines;
 }
+
+/** IOS traceroute's letter for each unreachable (A administratively prohibited, N network, H host, U port). */
+const IOS_MARK: Readonly<Record<UnreachableCode, string>> = { net: '!N', host: '!H', port: '!U', admin: '!A' };
+const hasUnreachable = (h: Hop): boolean => h.probes.some((p) => p?.unreachable);
 
 /** IOS traceroute. */
 export function iosTraceLines(target: string, r: TraceResult): string[] {
@@ -108,7 +117,7 @@ export function iosTraceLines(target: string, r: TraceResult): string[] {
       lines.push(`${String(h.ttl).padStart(3)}  *    *    * `);
       continue;
     }
-    lines.push(`${String(h.ttl).padStart(3)} ${formatIp(from)} ${h.probes.map((p) => (p ? `${p.ms} msec` : '*')).join(' ')}`);
+    lines.push(`${String(h.ttl).padStart(3)} ${formatIp(from)} ${h.probes.map((p) => (!p ? '*' : p.unreachable ? IOS_MARK[p.unreachable] : `${p.ms} msec`)).join(hasUnreachable(h) ? '  ' : ' ')}`);
   }
   return lines;
 }

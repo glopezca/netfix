@@ -1,6 +1,8 @@
-/** Documentación: uso de Netfix (interfaz, usuarios, guardar, simulación). */
+/** Documentación: uso de Netfix (interfaz, usuarios, dibujo, guardar, simulación), en estilo guiado. */
 import type { DocGroup } from './types.ts';
-import { code, h, list, note, p, table } from './types.ts';
+import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from './types.ts';
+
+const MD = 'https://github.com/glopezca/netfix/blob/main/';
 
 export const NETFIX_DOCS: DocGroup = {
   id: 'netfix',
@@ -9,9 +11,28 @@ export const NETFIX_DOCS: DocGroup = {
     {
       id: 'inicio',
       title: 'Primeros pasos',
-      summary: 'La interfaz: barra superior, área de trabajo, paleta de dispositivos y ventanas.',
+      summary: 'Tu primera red en cinco minutos y un recorrido por la interfaz: barra superior, paleta, área de trabajo y ventanas.',
+      markdownBase: MD,
       blocks: [
         p('Netfix es un simulador de redes en el navegador con el aspecto y el comportamiento de Cisco Packet Tracer. Todo se ejecuta en tu equipo: no hay servidor ni se envía nada a Internet (la «Internet» de las nubes ISP también es simulada).'),
+        h('Tu primera red'),
+        figure({
+          type: 'topology',
+          nodes: [
+            { id: 'pc0', kind: 'pc', label: 'PC0', x: 0, y: 25, note: '192.168.1.10/24' },
+            { id: 'sw', kind: 'switch', label: 'Switch0', x: 40, y: 0 },
+            { id: 'pc1', kind: 'pc', label: 'PC1', x: 80, y: 25, note: '192.168.1.11/24' },
+          ],
+          links: [{ a: 'pc0', b: 'sw' }, { a: 'pc1', b: 'sw' }],
+        }, 'Dos PC unidos por un switch en la misma red: lo mínimo para que se vean.'),
+        steps(
+          ['Coloca los equipos', 'En la paleta elige **PC** y haz clic dos veces en el área de trabajo (PC0 y PC1); después elige **Switch** y haz clic entre ellos.'],
+          ['Conecta los cables', 'Elige **Cable**, haz clic en PC0, elige su puerto (FastEthernet0) y después en el switch y un puerto libre. Igual con PC1. El tipo de cable se elige solo y las luces del enlace se ponen en verde.'],
+          ['Pon las direcciones IP', 'Doble clic en PC0 → **Configuración IP** → Estática: 192.168.1.10 y máscara 255.255.255.0. En PC1, 192.168.1.11.'],
+          ['Pruébalo', 'En PC0 → **Terminal Windows**: `ping 192.168.1.11`.'],
+        ),
+        term('cmd', 'C:\\home\\alumno> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
+        tip('Sin montar nada', '**Laboratorios…** carga prácticas ya preparadas, con sus equipos configurados y áreas dibujadas. Son el mejor punto de partida para cada tema de esta documentación.'),
         h('Barra superior'),
         table(['Control', 'Qué hace'], [
           ['Red / Documentación / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta documentación, la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
@@ -43,12 +64,15 @@ export const NETFIX_DOCS: DocGroup = {
         ]),
         note('Los campos de los equipos se aplican al cambiarlos (Intro o al salir del campo): nombre, direcciones, nube e ISP. Llevan botón los servicios («Aplicar» equivale a reiniciarlos con systemctl), los formularios que se traducen a órdenes de IOS y las listas (añadir un pool, una zona, una ruta…).'),
         note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim). En móvil y tableta las ventanas ocupan la pantalla, el lienzo se mueve con un dedo y se amplía pellizcando, una pulsación larga abre un equipo y la terminal tiene una barra de teclas: Esc, Tab, Ctrl (se queda pulsada para la tecla siguiente), flechas, Inicio, Fin, RePág, AvPág, ^C y ^D, y con un editor abierto F1-F10. Fuera de los editores, Inicio y Fin van al principio o al final de la línea, y RePág y AvPág desplazan la salida.'),
+        warn('Errores habituales', 'Dos equipos con la misma dirección IP, o con máscaras distintas: el ping falla a ratos o no sale. Un cable en un puerto apagado (luz roja): en un router hace falta `no shutdown`. Cerrar la pestaña del navegador no pierde nada (el área de trabajo se guarda sola), pero para entregar una práctica usa **Guardar**.'),
+        exercise('Tres en la misma red', 'Añade un tercer PC al switch de «Tu primera red» con la dirección IP 192.168.1.12/24 y comprueba desde él que llega a los otros dos.', 'Coloca PC2, conéctalo a un puerto libre del switch, ponle 192.168.1.12 y máscara 255.255.255.0 en Configuración IP, y en su Terminal Windows `ping 192.168.1.10` y `ping 192.168.1.11`: los dos responden («Reply from …»). No hace falta puerta de enlace: los tres están en la misma red.'),
       ],
     },
     {
       id: 'usuarios',
       title: 'Usuarios y contraseñas',
-      summary: 'Cuentas de las terminales, de SSH y del correo en los laboratorios.',
+      summary: 'Cuentas de las terminales, de SSH y del correo en los laboratorios, y cuándo pide contraseña sudo.',
+      markdownBase: MD,
       blocks: [
         p('Todas son credenciales de laboratorio, ficticias. Las cuentas SSH y de correo se cambian en la pestaña Servicios del servidor.'),
         h('Laboratorio «Server: DHCP, DNS, web, correo y SSH»'),
@@ -67,13 +91,16 @@ export const NETFIX_DOCS: DocGroup = {
           ['Cuentas SSH del servidor', '1001–9999 (fijo por nombre)', 'propio, users', 'Una por cada usuario SSH; no están en el grupo sudo.'],
         ]),
         p('sudo pide la contraseña de la cuenta cuando existe una cuenta SSH con ese nombre (admin/netfix en el laboratorio) y la recuerda 15 minutos, como Ubuntu. En los PC no hay cuentas SSH, así que sudo no pide contraseña.'),
-        code('admin@srv:~$ sudo systemctl restart apache2\n[sudo] password for admin:\nadmin@srv:~$ sudo -i\nroot@srv:~#'),
+        term('shell', 'admin@srv:~$ sudo systemctl restart apache2\n[sudo] password for admin:\nadmin@srv:~$ sudo -i\nroot@srv:~#'),
+        warn('Credenciales de laboratorio', 'Son públicas y débiles a propósito: sirven para practicar. En un equipo real, cambia siempre las contraseñas por defecto y no reutilices las de clase.'),
+        exercise('¿Quién soy y qué puedo hacer?', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», abre la Terminal Linux de SRV y averigua con qué cuenta trabajas, a qué grupos pertenece y si sudo te pide contraseña.', '`whoami` responde admin e `id` muestra uid=1000 con los grupos admin, adm, sudo y users. `sudo -i` pide «[sudo] password for admin:» (netfix, porque existe la cuenta SSH admin) y deja el indicador `root@srv:~#`; `exit` vuelve a admin.'),
       ],
     },
     {
       id: 'dibujo',
       title: 'Dibujo: áreas, líneas y etiquetas',
       summary: 'Delimitar redes con áreas de color, trazar líneas o a mano alzada y escribir etiquetas sobre el área de trabajo.',
+      markdownBase: MD,
       blocks: [
         p('El botón Dibujo de la paleta abre una barra flotante para anotar el diagrama: marcar la red privada, la DMZ o Internet, escribir la dirección de red o señalar un túnel. Los dibujos no cambian la red simulada y se guardan con la topología.'),
         table(['Herramienta', 'Uso'], [
@@ -92,12 +119,21 @@ export const NETFIX_DOCS: DocGroup = {
           'Los laboratorios ya traen áreas para las redes privadas, Internet, la DMZ, los invitados, los servidores, las VLAN y los túneles VPN.',
         ),
         note('Los dibujos van debajo de los cables y de los equipos, y «Ajustar a la red» también los tiene en cuenta.'),
+        steps(
+          ['Abre la barra', 'Botón **Dibujo** de la paleta.'],
+          ['Elige color y relleno', 'Un color para cada tipo de red (por ejemplo azul para la LAN, rojo para Internet) y **Relleno** para que el área se vea suave.'],
+          ['Delimita la red', '**Rectángulo (área)** y arrastra alrededor de los equipos de esa red.'],
+          ['Ponle nombre', 'Al soltar, escribe «LAN · 192.168.1.0/24» e Intro.'],
+        ),
+        tip('Un diagrama que se entiende solo', 'Nombra cada área con su función y su red (LAN, DMZ, Internet, VLAN 10…): quien abra tu práctica la entiende sin preguntarte.'),
+        exercise('Marca tu red', 'En «Tu primera red», dibuja un área que rodee los tres equipos con el nombre «LAN · 192.168.1.0/24» y una etiqueta junto al switch que diga «Switch0 (sin configurar)».', 'Dibujo → Rectángulo (área), arrastra alrededor de los equipos y escribe el nombre al soltar; después Etiqueta de texto, clic junto al switch y escribe el texto. Guarda y vuelve a abrir el archivo: los dibujos siguen ahí.'),
       ],
     },
     {
       id: 'guardar',
       title: 'Guardar y abrir',
-      summary: 'Qué guarda el archivo .json y cómo se recupera.',
+      summary: 'Qué guarda el archivo .json, cómo se recupera y cómo entregar una práctica.',
+      markdownBase: MD,
       blocks: [
         p('Guardar (o Ctrl+S) crea un archivo .json con toda la arquitectura. En Chrome y Edge aparece el diálogo para elegir nombre y carpeta; en otros navegadores se descarga. Además, el área de trabajo se guarda sola en el navegador.'),
         list(
@@ -109,12 +145,20 @@ export const NETFIX_DOCS: DocGroup = {
         ),
         note('Límites de los ficheros de la terminal: 256 KiB por fichero y 4 MiB por equipo. Los ficheros generados (configuración de servicios) no se guardan: se recalculan.'),
         p('Abrir… valida el archivo antes de usarlo y sigue aceptando el formato anterior (v1).'),
+        steps(
+          ['Guarda', '**Guardar** (Ctrl+S) y elige un nombre que diga qué es: `practica3-dhcp-apellido.json`.'],
+          ['Comprueba', '**Nuevo** para vaciar el área y **Abrir…** con tu archivo: debe aparecer todo como lo dejaste.'],
+          ['Entrega', 'Ese .json es lo que se sube a la plataforma del curso.'],
+        ),
+        warn('Lo que no se guarda', 'La salida de las terminales y los procesos en marcha (una sesión SSH abierta, un `ping` largo). Los cambios hechos en la CLI de IOS sí se guardan en la running-config, pero si quieres que sobrevivan a un `reload` del router, guárdalos también con `copy running-config startup-config`.'),
+        exercise('Ida y vuelta', 'Carga el laboratorio «DHCP básico», añade la descripción «LAN del aula» a GigabitEthernet0/0 de GW, guarda el archivo, pulsa Nuevo y ábrelo otra vez.', 'Tras Abrir…, en la CLI de GW `show running-config | section 0/0` sigue mostrando `description LAN del aula`: la configuración de IOS viaja dentro del .json.'),
       ],
     },
     {
       id: 'simulacion',
       title: 'Tiempo real y simulación',
       summary: 'Ver los paquetes paso a paso: lista de eventos, PDU y filtros por protocolo.',
+      markdownBase: MD,
       blocks: [
         p('En Tiempo real la red funciona sola. En Simulación, cada paquete queda en la lista de eventos y se puede reproducir paso a paso, como en Packet Tracer.'),
         list(
@@ -123,8 +167,26 @@ export const NETFIX_DOCS: DocGroup = {
           'Al elegir un evento se ve la PDU por capas (Ethernet II, IPv4, UDP/TCP y el mensaje de aplicación).',
           'SSH aparece como «datos cifrados»: su contenido no se puede leer en tránsito.',
         ),
-        h('Ejemplo: ver el DORA de DHCP'),
-        code('1. Pulsa «Simulación».\n2. En un PC: Terminal Windows → ipconfig /release y ipconfig /renew\n   (o Terminal Linux → sudo dhclient -r eth0 && sudo dhclient eth0).\n3. Pulsa «Paso» y observa DISCOVER, OFFER, REQUEST y ACK.'),
+        h('Paso a paso: ver el DORA de DHCP'),
+        figure({
+          type: 'sequence',
+          actors: ['PC0', 'Switch0', 'GW (servidor DHCP)'],
+          messages: [
+            { from: 0, to: 1, text: 'DHCPDISCOVER', note: 'ff:ff:ff:ff:ff:ff' },
+            { from: 1, to: 2, text: 'DHCPDISCOVER', note: 'el switch lo copia a todos los puertos' },
+            { from: 2, to: 0, text: 'DHCPOFFER' },
+            { from: 0, to: 2, text: 'DHCPREQUEST' },
+            { from: 2, to: 0, text: 'DHCPACK' },
+          ],
+        }, 'Lo que verás en la lista de eventos: cada mensaje con su origen, su destino y su tipo.'),
+        steps(
+          ['Cambia de modo', 'Pulsa **Simulación** en la barra superior. Se abre el **Panel de simulación**.'],
+          ['Filtra', 'En **Protocolos visibles** deja solo DHCP (y ARP si quieres verlo también).'],
+          ['Provoca el tráfico', 'En un PC: Terminal Windows → `ipconfig /release` y `ipconfig /renew` (o Terminal Linux → `sudo dhclient -r eth0 && sudo dhclient eth0`).'],
+          ['Avanza', '**Paso** muestra un evento cada vez (o **Reproducir**). Elige uno de la **Lista de eventos** para ver su PDU por capas.'],
+        ),
+        check('Compruébalo', 'Deben aparecer DISCOVER, OFFER, REQUEST y ACK, en ese orden. En la PDU del DISCOVER, el destino Ethernet es ff:ff:ff:ff:ff:ff y la dirección IP de destino, 255.255.255.255: es un broadcast porque el PC aún no sabe quién es el servidor.'),
+        exercise('¿Quién pregunta por quién?', 'En el laboratorio «DHCP básico», en modo Simulación y con el filtro ARP y el ICMP, haz `ping 192.168.10.22` desde PC0. ¿Qué dos tramas ves antes del primer eco?', 'Un ARP request de PC0 («¿quién tiene 192.168.10.22?», destino ff:ff:ff:ff:ff:ff) y la ARP reply del PC con esa dirección IP, con su MAC. Solo entonces sale el ICMP echo request; los siguientes pings ya no necesitan ARP.'),
       ],
     },
   ],

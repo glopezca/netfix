@@ -35,7 +35,7 @@ export function iosPing(cli: Cli, host: PingCapable, target: string, count: numb
     return;
   }
   const results = runPing(host.stack, host.hooks, dst, { count, timeoutMs: PING_TIMEOUT_MS, src });
-  if (host.stack.isBroadcast(dst)) return broadcastReplies(cli, results, count, target);
+  if (host.stack.isBroadcast(dst) && results.some((r) => r.kind === 'reply')) return broadcastReplies(cli, results, count, target);
   const marks = results.map((r) => (r.kind === 'reply' ? '!' : r.kind === 'unreachable' ? 'U' : r.kind === 'ttl' ? '&' : '.')).join('');
   const ok = results.filter((r) => r.kind === 'reply').length;
   const pct = Math.round((ok * 100) / count);

@@ -1017,3 +1017,14 @@ Las pruebas de paridad es/en cubren los bloques nuevos.
   de cada protocolo (TYPE/CODE/ID/SEQ, SPT/DPT/WINDOW/flags, LEN de UDP). El ping de Linux numera desde 1.
 - **Pendiente:** IOS solo responde con ICMP a los ecos; una conexión TCP bloqueada por una ACL acaba en timeout en vez
   de «No route to host».
+
+### Notas de la fase 36d, primera entrega (v0.20.7)
+
+- **Netfix:** Primeros pasos (con «Tu primera red» comprobada: dos PC, un switch y ping), Dibujo, Guardar y abrir,
+  Tiempo real y simulación (DORA paso a paso) y Usuarios, en estilo guiado.
+- **Conceptos de red:** Broadcast (quién responde y por qué, con salidas reales y (DUP!)) y traceroute/tracert (cómo leer
+  `*`, `!N`, `!X` y «reports:»).
+- **Arreglos encontrados al comprobar:** un `ping` de IOS a un broadcast sin respuestas saca `.....` y «Success rate is 0
+  percent» (antes, un punto por línea); `tracert` de Windows escribe «N  dirección  reports: Destination net
+  unreachable.» y el traceroute de IOS marca `!N`, `!H`, `!U` o `!A` (antes repetían la dirección IP como si fuera
+  el destino).

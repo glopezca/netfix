@@ -8,6 +8,8 @@ import { EXAMPLES } from '../../src/net/examples.ts';
 import { createShell } from '../../src/shells/factory.ts';
 import type { Topology } from '../../src/net/topology.ts';
 import type { Pc } from '../../src/devices/pc.ts';
+import type { Router } from '../../src/devices/router.ts';
+import { Session } from '../../src/ios/session.ts';
 
 function lab(id: string): Topology {
   const t = EXAMPLES.find((e) => e.id === id)?.build();
@@ -71,4 +73,23 @@ test('ip a s NAME and filter keywords work as in iproute2', () => {
 
 test('the Internet answers net unreachable for an address nobody has', () => {
   assert.match(shell(lab('internet'), 'PC1').run('ping -c 2 11.22.33.44').join('\n'), /From 198\.51\.100\.2 icmp_seq=\d Destination Net Unreachable/);
+});
+
+function iosExec(t: Topology, label: string, line: string): string[] {
+  const s = new Session(t.byLabel(label) as Router);
+  s.mode = 'exec';
+  return s.input(line);
+}
+
+test('IOS ping to a broadcast nobody answers: dots and a 0 percent success rate', () => {
+  const out = iosExec(lab('basico'), 'GW', 'ping 192.168.10.255');
+  assert.deepEqual(out.slice(-2), ['.....', 'Success rate is 0 percent (0/5)']);
+});
+
+test('tracert and IOS traceroute show who reported an unreachable', () => {
+  const t = lab('basico');
+  const win = createShell(t.byLabel('PC0') as Pc, 'windows', 'user').run('tracert -d 8.8.8.8');
+  assert.ok(win.includes('  2  192.168.10.1  reports: Destination net unreachable.'), win.join('\n'));
+  const ios = iosExec(lab('internet'), 'SEDE1', 'traceroute 11.22.33.44');
+  assert.match(ios.at(-1) ?? '', /^ {2}\d 198\.51\.100\.2 !N {2}!N {2}!N$/, ios.join('\n'));
 });
