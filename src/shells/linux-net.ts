@@ -99,12 +99,23 @@ const BROADCAST_HINT = 'ping: Do you want to ping broadcast? Then -b. If not, ch
 /** -b among the options, alone or joined with others (-bc 3). */
 const wantsBroadcast = (args: readonly string[]): boolean => args.some((a) => /^-[A-Za-z]*b[A-Za-z]*$/.test(a) && !PING_WITH_VALUE.has(a.slice(0, 2)));
 
+/** The simulated round trip of the i-th echo, in ms (the simulator has no real delay: a small, growing value). */
+const replyTime = (i: number): number => 0.4 + i * 0.037;
+
+/** iputils' last line: min, avg, max and mdev (the standard deviation) of the times printed. */
+function rttSummary(times: readonly number[]): string {
+  const avg = times.reduce((a, b) => a + b, 0) / times.length;
+  const mdev = Math.sqrt(Math.max(0, times.reduce((a, b) => a + b * b, 0) / times.length - avg * avg));
+  const f = (n: number): string => n.toFixed(3);
+  return `rtt min/avg/max/mdev = ${f(Math.min(...times))}/${f(avg)}/${f(Math.max(...times))}/${f(mdev)} ms`;
+}
+
 /** One line per answer: the device that answered (its own address on a broadcast), repeated ones with (DUP!). */
 function replyLines(results: readonly PingOutcome[], who: (from: number) => string): string[] {
   return results.flatMap((x, i) => {
     const seq = i + 1;
     if (x.kind === 'reply') {
-      const line = (r: { from: number; ttl?: number }, dup: string): string => `64 bytes from ${who(r.from)}: icmp_seq=${seq} ttl=${r.ttl ?? x.ttl} time=0.${400 + i * 37} ms${dup}`;
+      const line = (r: { from: number; ttl?: number }, dup: string): string => `64 bytes from ${who(r.from)}: icmp_seq=${seq} ttl=${r.ttl ?? x.ttl} time=${replyTime(i).toFixed(3)} ms${dup}`;
       return [line(x, ''), ...(x.dups ?? []).map((d) => line(d, ' (DUP!)'))];
     }
     if (x.kind === 'unreachable') return [`From ${formatIp(x.from)} icmp_seq=${seq} Destination Host Unreachable`];
@@ -133,7 +144,7 @@ export function ping(host: Host) {
     const ok = results.filter((x) => x.kind === 'reply').length;
     const dups = results.reduce((n, x) => n + (x.kind === 'reply' ? x.dups?.length ?? 0 : 0), 0);
     out.push('', `--- ${shown} ping statistics ---`, `${count} packets transmitted, ${ok} received, ${dups ? `+${dups} duplicates, ` : ''}${Math.round(((count - ok) * 100) / count)}% packet loss, time ${(count - 1) * 1001}ms`);
-    if (ok) out.push('rtt min/avg/max/mdev = 0.400/0.455/0.511/0.040 ms');
+    if (ok) out.push(rttSummary(results.flatMap((x, i) => (x.kind === 'reply' ? [replyTime(i)] : []))));
     lines(ctx, out);
     return ok ? 0 : 1;
   };
