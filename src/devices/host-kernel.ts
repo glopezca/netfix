@@ -2,7 +2,8 @@
  * The Linux kernel side of a host: sysctl parameters, netfilter (nftables + conntrack) and the kernel
  * log (dmesg). The IP stack calls the hooks with the NIC's port name; netfilter sees Linux names.
  */
-import type { IpPacket } from '../net/packets.ts';
+import type { IpPacket, UnreachableCode } from '../net/packets.ts';
+import { LINUX_TTL } from '../net/packets.ts';
 import { Netfilter } from '../net/netfilter.ts';
 import { Sysctl } from '../net/sysctl.ts';
 import { LOOPBACK } from '../net/ipstack.ts';
@@ -43,7 +44,7 @@ export class Kernel {
       now: () => host.clock.now(),
       log: (line) => this.printk(line),
       ifaceIp: (name) => host.linuxIfIp(name),
-      reject: (p, kind) => this.reject(p, kind),
+      reject: (p, kind, iif) => this.reject(p, kind, iif),
     });
   }
 
@@ -73,16 +74,20 @@ export class Kernel {
     return this.netfilter.postrouting(this.name(port), p, iif);
   }
 
-  /** `reject`: TCP RST for TCP (unless an ICMP type was asked), ICMP port unreachable otherwise. */
-  private reject(p: IpPacket, kind: string | undefined): void {
+  /**
+   * `reject`: TCP RST for TCP (unless an ICMP type was asked), ICMP port unreachable otherwise (or the type asked).
+   * The RST answers as the destination; the ICMP error comes from this host (the arrival interface when forwarding).
+   */
+  private reject(p: IpPacket, kind: string | undefined, iif?: string): void {
     if (p.icmp && p.icmp.type !== 'echo-request') return;
-    const ttl = 64;
+    const ttl = LINUX_TTL;
     if (p.tcp && (kind === undefined || kind === 'tcp reset')) {
       this.host.sendRaw({ src: p.dst, dst: p.src, ttl, protocol: 'tcp', tcp: { sport: p.tcp.dport, dport: p.tcp.sport, flags: ['RST', 'ACK'], seq: 0, ack: p.tcp.seq + 1 } });
       return;
     }
-    const id = p.icmp?.id ?? 0;
-    const seq = p.icmp?.seq ?? 0;
-    this.host.sendRaw({ src: p.dst, dst: p.src, ttl, protocol: 'icmp', icmp: { type: 'unreachable', id, seq } });
+    const src = iif === undefined ? p.dst : this.host.linuxIfIp(iif);
+    if (src === undefined) return;
+    const code: UnreachableCode = kind === 'icmp admin-prohibited' ? 'admin' : kind === 'icmp host-unreachable' ? 'host' : 'port';
+    this.host.sendRaw({ src, dst: p.src, ttl, protocol: 'icmp', icmp: { type: 'unreachable', id: p.icmp?.id ?? 0, seq: p.icmp?.seq ?? 0, code } });
   }
 }

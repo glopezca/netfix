@@ -2,7 +2,7 @@
 import type { IpWithPrefix } from '../core/ip.ts';
 import { inSubnet, broadcastOf, BROADCAST_IP } from '../core/ip.ts';
 import { BROADCAST_MAC } from '../core/mac.ts';
-import type { Frame, IpPacket, IcmpMessage } from './packets.ts';
+import type { Frame, IpPacket, IcmpMessage, UnreachableCode } from './packets.ts';
 
 export interface L3Iface {
   readonly name: string;
@@ -30,6 +30,8 @@ export interface StackHost {
   forward?(iface: string, packet: IpPacket): void;
   /** Before the routing decision (IOS `ip nat outside`, netfilter prerouting); null = dropped. */
   prerouting?(iface: string, packet: IpPacket): IpPacket | null;
+  /** The Ethernet frame a packet arrived in (Linux hosts keep it for the MAC= of the kernel log). */
+  noteFrame?(packet: IpPacket, frame: Frame): void;
   /** Packet for this host, before ICMP echo and delivery (netfilter input); null = dropped. */
   input?(iface: string, packet: IpPacket): IpPacket | null;
   /** Locally generated packet once its egress is known (netfilter output); null = dropped. */
@@ -54,7 +56,7 @@ export interface ArpEntry {
   readonly learnedAt: number;
 }
 
-export type EchoResult = { kind: 'reply'; from: number; ttl: number } | { kind: 'unreachable'; from: number } | { kind: 'ttl'; from: number };
+export type EchoResult = { kind: 'reply'; from: number; ttl: number } | { kind: 'unreachable'; from: number; code: UnreachableCode } | { kind: 'ttl'; from: number };
 
 const ARP_TIMEOUT_MS = 1000;
 /** Interface name the hooks see for traffic to the host's own addresses. */
@@ -132,6 +134,7 @@ export class IpStack {
   }
 
   private onIp(iface: L3Iface, arrived: IpPacket, frame: Frame): void {
+    this.host.noteFrame?.(arrived, frame);
     const packet = this.host.prerouting ? this.host.prerouting(iface.name, arrived) : arrived;
     if (!packet) return;
     // Martian: 127.0.0.0/8 never comes in from the wire (Linux drops it), only through lo.
@@ -179,7 +182,7 @@ export class IpStack {
     const waiter = this.echoWaiters.get(key);
     if (!waiter) return;
     const result: EchoResult = icmp.type === 'echo-reply' ? { kind: 'reply', from: packet.src, ttl: packet.ttl }
-      : icmp.type === 'unreachable' ? { kind: 'unreachable', from: packet.src } : { kind: 'ttl', from: packet.src };
+      : icmp.type === 'unreachable' ? { kind: 'unreachable', from: packet.src, code: icmp.code ?? 'host' } : { kind: 'ttl', from: packet.src };
     if (waiter.answered) return waiter.dup?.(result);
     waiter.answered = true;
     if (!waiter.dup) this.echoWaiters.delete(key);

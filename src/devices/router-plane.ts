@@ -1,6 +1,6 @@
 /** Router data plane: L3 interfaces, forwarding, DHCP server/relay and DHCP clients. */
 import type { Router } from './router.ts';
-import type { Frame, IpPacket, DhcpMessage } from '../net/packets.ts';
+import type { Frame, IpPacket, DhcpMessage, UnreachableCode } from '../net/packets.ts';
 import { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DEFAULT_TTL } from '../net/packets.ts';
 import { IpStack } from '../net/ipstack.ts';
 import type { L3Iface, StackHost, Egress } from '../net/ipstack.ts';
@@ -107,13 +107,13 @@ export class RouterPlane implements StackHost {
     }
     const egress = this.route(packet.dst);
     if (!egress) {
-      this.icmpError(packet, src, 'unreachable');
+      this.icmpError(packet, src, 'unreachable', 'net');
       return;
     }
     const out = natForward(this.router, inIface, egress.iface, { ...packet, ttl: packet.ttl - 1 });
     if (!out) return;
     if (!outboundAllowed(this.router, egress.iface, out)) {
-      this.icmpError(packet, src, 'unreachable');
+      this.icmpError(packet, src, 'unreachable', 'admin');
       return;
     }
     const sealed = this.router.ipsec.outbound(egress.iface, out);
@@ -128,7 +128,7 @@ export class RouterPlane implements StackHost {
   /** Inbound access list, IPsec decapsulation, then NAT outside → inside (IOS order). */
   prerouting(iface: string, packet: IpPacket): IpPacket | null {
     if (!inboundAllowed(this.router, iface, packet)) {
-      this.icmpError(packet, this.l3Iface(iface)?.addrs[0]?.ip ?? 0, 'unreachable');
+      this.icmpError(packet, this.l3Iface(iface)?.addrs[0]?.ip ?? 0, 'unreachable', 'admin');
       return null;
     }
     const opened = this.router.ipsec.inbound(iface, packet);
@@ -139,9 +139,9 @@ export class RouterPlane implements StackHost {
     return natAnswersArp(this.router, iface, ip);
   }
 
-  private icmpError(packet: IpPacket, src: number, type: 'unreachable' | 'ttl-exceeded'): void {
+  private icmpError(packet: IpPacket, src: number, type: 'unreachable' | 'ttl-exceeded', code?: UnreachableCode): void {
     if (!packet.icmp || packet.icmp.type !== 'echo-request') return;
-    this.stack.send({ src, dst: packet.src, ttl: this.ttl, protocol: 'icmp', icmp: { ...packet.icmp, type } });
+    this.stack.send({ src, dst: packet.src, ttl: this.ttl, protocol: 'icmp', icmp: { ...packet.icmp, type, ...(code ? { code } : {}) } });
   }
 
   // ------------------------------------------------------------ local delivery (DHCP)

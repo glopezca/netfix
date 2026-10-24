@@ -1003,3 +1003,17 @@ Las pruebas de paridad es/en cubren los bloques nuevos.
   nftables está simplificada (sin MAC, TOS, ID, TYPE/CODE).
 
 **Siguiente:** fase 36d, Netfix, Conceptos de red, Terminal Linux y bash.
+
+### Fidelidad de red (v0.20.6)
+
+- **Códigos ICMP.** El mensaje «destination unreachable» lleva su código: red (un router sin ruta), host, puerto
+  (`reject` por defecto) o prohibido por administración (ACL de IOS, `reject with icmp type admin-prohibited`).
+  El `ping` de Linux lo muestra como iputils («Destination Net Unreachable», «Packet filtered»…) y su `traceroute`
+  marca `!N`, `!H`, `!P` o `!X`. Windows e IOS siguen como Packet Tracer («Destination host unreachable.», `U`).
+- **`reject` en `forward`.** El router Linux responde ahora con el ICMP desde su propia dirección IP (antes, nada).
+- **TTL.** Un equipo Linux envía con TTL 64 y uno Windows con 128.
+- **`ip [-4] addr show DEV`.** Solo esa interfaz; con -4, solo las que tienen IPv4 y sin las líneas `link/`.
+- **Log de nftables.** Como el del núcleo: MAC, LEN, TOS, PREC, TTL (ya decrementado en forward), ID, DF y los campos
+  de cada protocolo (TYPE/CODE/ID/SEQ, SPT/DPT/WINDOW/flags, LEN de UDP). El ping de Linux numera desde 1.
+- **Pendiente:** IOS solo responde con ICMP a los ecos; una conexión TCP bloqueada por una ACL acaba en timeout en vez
+  de «No route to host».

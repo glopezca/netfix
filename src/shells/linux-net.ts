@@ -7,7 +7,7 @@ import { digOutput, nslookupOutput, hostOutput } from './dns-format.ts';
 import { runPing } from '../net/ping.ts';
 import type { PingOutcome } from '../net/ping.ts';
 import { reverseName } from '../net/dns.ts';
-import type { DnsType } from '../net/packets.ts';
+import type { DnsType, UnreachableCode } from '../net/packets.ts';
 import { formatIp, broadcastOf, parseIp } from '../core/ip.ts';
 import { ipWrite, routeLines } from './linux-ip.ts';
 import { virtualAddressLines, virtualBrief } from './linux-ip-wg.ts';
@@ -54,6 +54,48 @@ function ipBrief(host: Host, link: boolean): string[] {
   return [row('lo', 'UNKNOWN', '127.0.0.1/8 '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', nicAddress(n) ? `${nicAddress(n)?.inet} ` : '')), ...virtualBrief(host, false)];
 }
 
+/** Interface blocks of `ip addr` (a block starts with «N: name:»). */
+function addrBlocks(all: readonly string[]): string[][] {
+  const blocks: string[][] = [];
+  for (const l of all) {
+    if (/^\d+: /.test(l) || blocks.length === 0) blocks.push([l]);
+    else blocks[blocks.length - 1]?.push(l);
+  }
+  return blocks;
+}
+
+/** Filter words of `ip addr show` that are not a device (with how many values each one takes). */
+const ADDR_FILTERS: Readonly<Record<string, number>> = { dev: 0, up: 0, permanent: 0, dynamic: 0, primary: 0, secondary: 0, scope: 1, label: 1, to: 1 };
+
+/** The device names of `ip addr [show|list] …`: abbreviations of show/list and filter keywords left out. */
+function addrDevWords(rest: readonly string[]): string[] {
+  const words: string[] = [];
+  for (let i = 0; i < rest.length; i++) {
+    const w = rest[i] ?? '';
+    if (i === 0 && ('show'.startsWith(w) || 'list'.startsWith(w))) continue;
+    const skip = ADDR_FILTERS[w];
+    if (skip === undefined) words.push(w);
+    else i += skip;
+  }
+  return words;
+}
+
+/**
+ * `ip [-4] addr [show] [dev] [NAME]`: only that interface; with -4, only the interfaces with an IPv4 address and
+ * without their link/ lines. Null when the device does not exist.
+ */
+function addrShow(all: readonly string[], rest: readonly string[], v4: boolean): string[] | null {
+  const words = addrDevWords(rest);
+  const dev = words[0];
+  let blocks = addrBlocks(all);
+  if (dev !== undefined) {
+    blocks = blocks.filter((b) => new RegExp(`^\\d+: ${dev.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[:@]`).test(b[0] ?? ''));
+    if (blocks.length === 0) return null;
+  }
+  if (v4) blocks = blocks.filter((b) => b.some((l) => /^ {4}inet /.test(l))).map((b) => b.filter((l) => !/^ {4}link\//.test(l)));
+  return blocks.flat();
+}
+
 const IP_USAGE = 'Usage: ip [ OPTIONS ] OBJECT { COMMAND | help }\nwhere  OBJECT := { address | route | neigh | link }\n       OPTIONS := { -4 | -br[ief] | -c[olor] }\n';
 
 export function ip(host: Host) {
@@ -66,7 +108,11 @@ export function ip(host: Host) {
     const written = kind ? ipWrite(ctx, host, kind, args.slice(1)) : undefined;
     if (written !== undefined) return written;
     if (brief && (is('address', 'a', 'addr') || is('link', 'l'))) lines(ctx, ipBrief(host, is('link', 'l')));
-    else if (is('address', 'a', 'addr')) lines(ctx, ipAddress(host));
+    else if (is('address', 'a', 'addr')) {
+      const shown = addrShow(ipAddress(host), args.slice(1), ctx.argv.includes('-4'));
+      if (!shown) { ctx.err(`Device "${addrDevWords(args.slice(1))[0] ?? ''}" does not exist.\n`); return 1; }
+      lines(ctx, shown);
+    }
     else if (is('route', 'r')) lines(ctx, routeLines(host));
     else if (is('neighbour', 'n', 'neigh')) lines(ctx, [...host.stack.arp.entries()].map(([a, e]) => `${formatIp(a)} dev ${host.linuxIfName(e.iface)} lladdr ${linuxMac(e.mac)} REACHABLE`));
     else if (is('link', 'l')) lines(ctx, ipAddress(host).filter((l) => !/^\s+inet|valid_lft/.test(l)));
@@ -99,6 +145,11 @@ const BROADCAST_HINT = 'ping: Do you want to ping broadcast? Then -b. If not, ch
 /** -b among the options, alone or joined with others (-bc 3). */
 const wantsBroadcast = (args: readonly string[]): boolean => args.some((a) => /^-[A-Za-z]*b[A-Za-z]*$/.test(a) && !PING_WITH_VALUE.has(a.slice(0, 2)));
 
+/** iputils' text for each destination unreachable code. */
+const UNREACHABLE_TEXT: Readonly<Record<UnreachableCode, string>> = {
+  net: 'Destination Net Unreachable', host: 'Destination Host Unreachable', port: 'Destination Port Unreachable', admin: 'Packet filtered',
+};
+
 /** The simulated round trip of the i-th echo, in ms (the simulator has no real delay: a small, growing value). */
 const replyTime = (i: number): number => 0.4 + i * 0.037;
 
@@ -118,7 +169,7 @@ function replyLines(results: readonly PingOutcome[], who: (from: number) => stri
       const line = (r: { from: number; ttl?: number }, dup: string): string => `64 bytes from ${who(r.from)}: icmp_seq=${seq} ttl=${r.ttl ?? x.ttl} time=${replyTime(i).toFixed(3)} ms${dup}`;
       return [line(x, ''), ...(x.dups ?? []).map((d) => line(d, ' (DUP!)'))];
     }
-    if (x.kind === 'unreachable') return [`From ${formatIp(x.from)} icmp_seq=${seq} Destination Host Unreachable`];
+    if (x.kind === 'unreachable') return [`From ${formatIp(x.from)} icmp_seq=${seq} ${UNREACHABLE_TEXT[x.code]}`];
     if (x.kind === 'ttl') return [`From ${formatIp(x.from)} icmp_seq=${seq} Time to live exceeded`];
     return [];
   });

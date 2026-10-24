@@ -235,10 +235,15 @@ export interface TcpSegment {
 
 export type IcmpType = 'echo-request' | 'echo-reply' | 'unreachable' | 'ttl-exceeded';
 
+/** Code of a destination unreachable: network (0), host (1), port (3) or administratively prohibited (13). */
+export type UnreachableCode = 'net' | 'host' | 'port' | 'admin';
+
 export interface IcmpMessage {
   readonly type: IcmpType;
   readonly id: number;
   readonly seq: number;
+  /** Only for 'unreachable' (host when absent). */
+  readonly code?: UnreachableCode;
 }
 
 export interface IpPacket {
@@ -277,6 +282,8 @@ export const WELL_KNOWN_PORTS: Readonly<Record<number, string>> = {
 };
 export const DEFAULT_TTL = 255;
 export const PC_TTL = 128;
+/** Initial TTL of Linux (net.ipv4.ip_default_ttl). */
+export const LINUX_TTL = 64;
 
 /** Label used by the simulation event list: DHCP, DNS, ARP, ICMP, HTTP, SMTP, POP3, IMAP, SSH or TCP. */
 export function frameProtocol(frame: Frame): string {

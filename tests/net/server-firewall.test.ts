@@ -67,7 +67,7 @@ test('input policy drop: only allowed services answer; reject refuses, drop time
   assert.equal(http(t, pc, '10.0.0.2', 8080), 'timeout');
   const counters = [...srv.kernel.netfilter.counters.values()];
   assert.deepEqual(counters.map((c) => c.packets), [1, 1]);
-  assert.match(srv.kernel.log.at(-1)?.text ?? '', /^BLOCK IN=eth0 OUT= SRC=10\.0\.0\.10 DST=10\.0\.0\.2 .*PROTO=TCP SPT=\d+ DPT=8080$/);
+  assert.match(srv.kernel.log.at(-1)?.text ?? '', /^BLOCK IN=eth0 OUT= MAC=\S+ SRC=10\.0\.0\.10 DST=10\.0\.0\.2 LEN=52 TOS=0x00 PREC=0x00 TTL=128 ID=\d+ DF PROTO=TCP SPT=\d+ DPT=8080 WINDOW=64240 RES=0x00 SYN URGP=0$/);
 });
 
 test('ct state lets the server\'s own connections come back through a drop policy', () => {

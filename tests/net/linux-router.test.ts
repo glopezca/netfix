@@ -76,7 +76,7 @@ EOF`);
   const wanRoot = createShell(wan, 'linux', 'root');
   wanRoot.run('nft add table ip t; nft add chain ip t input { type filter hook input priority 0 \\; }; nft add rule ip t input icmp type echo-request log prefix \\"IN \\"');
   assert.match(all(sh.run('ping -c 1 203.0.113.20')), / 0% packet loss/, 'the WAN server has no route back: only masquerade makes it work');
-  assert.match(all(wanRoot.run('dmesg')), /IN IN=eth0 OUT= SRC=203\.0\.113\.1 DST=203\.0\.113\.20/, 'the WAN sees the router address');
+  assert.match(all(wanRoot.run('dmesg')), /IN IN=eth0 OUT= MAC=\S+ SRC=203\.0\.113\.1 DST=203\.0\.113\.20 /, 'the WAN sees the router address');
   assert.match(all(sh.run('ping -c 1 172.16.0.80')), /100% packet loss/, 'LAN → DMZ not allowed by the forward chain');
   const wanSh = createShell(wan, 'linux');
   assert.match(all(wanSh.run('curl -s http://203.0.113.1:8080/')), /Servidor web de Netfix/, 'dnat publishes the DMZ web server');

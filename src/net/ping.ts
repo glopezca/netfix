@@ -31,7 +31,7 @@ function pings(stack: IpStack, hooks: DeviceHooks, dst: number, opts: { count: n
   for (let seq = 0; seq < opts.count; seq++) {
     let result: EchoResult | undefined;
     const dups: EchoResult[] = [];
-    const sent = stack.echo(dst, id, seq, opts.src, (r) => { result = r; }, undefined, (r) => { if (r.kind === 'reply') dups.push(r); });
+    const sent = stack.echo(dst, id, seq + 1, opts.src, (r) => { result = r; }, undefined, (r) => { if (r.kind === 'reply') dups.push(r); });
     if (!sent) {
       results.push({ kind: 'noroute' });
       continue;

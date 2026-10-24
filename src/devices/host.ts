@@ -3,7 +3,7 @@ import type { HostKind } from './kinds.ts';
 import { t } from '../i18n/t.ts';
 import type { NetDevice } from '../net/network.ts';
 import type { Frame, IpPacket, UdpDatagram, AppPayload, DnsType } from '../net/packets.ts';
-import { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DNS_PORT, PC_TTL } from '../net/packets.ts';
+import { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DNS_PORT, LINUX_TTL, PC_TTL } from '../net/packets.ts';
 
 export { DHCP_SERVER_PORT, DNS_PORT };
 import { IpStack } from '../net/ipstack.ts';
@@ -93,7 +93,8 @@ export abstract class Host implements NetDevice, StackHost {
   private readonly statusListeners = new Set<() => void>();
 
   readonly dropOnArpMiss = false;
-  readonly ttl: number = PC_TTL;
+  /** Initial TTL of what this host sends: 64 on Linux, 128 on Windows. */
+  get ttl(): number { return this.os === 'linux' ? LINUX_TTL : PC_TTL; }
   /** Windows never answers an echo to a broadcast address; Linux only with icmp_echo_ignore_broadcasts=0. */
   ignoresBroadcastEcho = (): boolean => this.os === 'windows' || this.kernel.sysctl.enabled('net.ipv4.icmp_echo_ignore_broadcasts');
 
@@ -116,11 +117,12 @@ export abstract class Host implements NetDevice, StackHost {
     this.kernel.sysctl.onChange(() => this.changed());
     this.stack = new IpStack(this, () => clock.now());
     this.dhcpClient = this.createDhcpClient();
+    const host = this;
     this.tcp = new TcpLayer({
+      get ttl(): number { return host.ttl; },
       send: (p) => this.stack.send(p),
       sourceFor: (dst) => this.sourceFor(dst),
       schedule: (d, fn) => this.hooks.schedule(d, fn),
-      ttl: PC_TTL,
     });
     this.resolver = new DnsResolver({
       sendQuery: (server, sport, msg) => this.sendUdp(server, sport, DNS_PORT, { dns: msg }),
@@ -253,7 +255,7 @@ export abstract class Host implements NetDevice, StackHost {
   /** Sends a UDP datagram; broadcasts go out of `port` (the main NIC by default) directly. */
   sendUdp(dst: number, sport: number, dport: number, body: Omit<UdpDatagram, 'sport' | 'dport'>, src?: number, port = this.primaryPort()): boolean {
     const from = src ?? (dst === BROADCAST_IP ? this.ifaceConfig(port)?.ip : this.sourceFor(dst)) ?? this.config.ip ?? 0;
-    const packet: IpPacket = { src: from, dst, ttl: PC_TTL, protocol: 'udp', udp: { sport, dport, ...body } };
+    const packet: IpPacket = { src: from, dst, ttl: this.ttl, protocol: 'udp', udp: { sport, dport, ...body } };
     if (dst === BROADCAST_IP) {
       this.stack.broadcast(port, packet);
       return true;
@@ -382,18 +384,15 @@ export abstract class Host implements NetDevice, StackHost {
 
   // The kernel (sysctl + nftables) decides; each hook returns the packet, rewritten, or null when dropped.
   prerouting = (iface: string, packet: IpPacket): IpPacket | null => this.kernel.prerouting(iface, packet);
+  noteFrame = (packet: IpPacket, frame: Frame): void => this.kernel.netfilter.noteFrame(packet, frame.dst, frame.src);
   input = (iface: string, packet: IpPacket): IpPacket | null => this.kernel.input(iface, packet);
   output = (iface: string, packet: IpPacket): IpPacket | null => this.kernel.output(iface, packet);
   postrouting = (iface: string, packet: IpPacket): IpPacket | null => this.kernel.postrouting(iface, packet);
 
   /** WireGuard links (Linux router only). */
-  wgLinks(): WgManager | undefined {
-    return undefined;
-  }
+  wgLinks(): WgManager | undefined { return undefined; }
 
-  /** Server-side UDP services (DHCP on 67, DNS on 53). Plain hosts ignore them. */
-  protected onUdp(_packet: IpPacket, _iface: string): void {
-    // A PC runs no UDP services.
-  }
+  /** Server-side UDP services (DHCP on 67, DNS on 53). Plain hosts (a PC) run none. */
+  protected onUdp(_packet: IpPacket, _iface: string): void {}
 }
 

@@ -13,6 +13,7 @@ import { Conntrack, tupleOf } from './conntrack.ts';
 import type { CtEntry, Direction, NatTo } from './conntrack.ts';
 import { rewriteDst, rewriteSrc } from './nat.ts';
 import { formatIp } from '../core/ip.ts';
+import { kernelLogLine, macHeader } from './klog.ts';
 
 export interface NetfilterEnv {
   now(): number;
@@ -20,8 +21,8 @@ export interface NetfilterEnv {
   log(line: string): void;
   /** Primary IPv4 address of a Linux interface (masquerade). */
   ifaceIp(name: string): number | undefined;
-  /** Sends the TCP RST or ICMP error of a `reject`. */
-  reject(p: IpPacket, kind: string | undefined): void;
+  /** Sends the TCP RST or ICMP error of a `reject`; `iif` is the arrival interface of a forwarded packet. */
+  reject(p: IpPacket, kind: string | undefined, iif?: string): void;
 }
 
 interface Ctx {
@@ -42,6 +43,10 @@ export class Netfilter {
   private readonly env: NetfilterEnv;
   private readonly ctx = new WeakMap<IpPacket, Ctx>();
   private hooks: ReadonlySet<Hook> = new Set();
+  /** Ethernet header of each arrived packet (MAC= of the log line). */
+  private readonly macs = new WeakMap<IpPacket, string>();
+  /** IP identification of the logged packets (a fixed walk: deterministic, no repeats nearby). */
+  private ipId = 4242;
 
   constructor(env: NetfilterEnv) {
     this.env = env;
@@ -68,13 +73,14 @@ export class Netfilter {
     return to;
   }
 
-  private evalEnv(): EvalEnv {
+  private evalEnv(hook: Hook): EvalEnv {
     return {
       counters: this.counters,
       log: (prefix, p, meta) => {
-        const l4 = p.tcp ?? p.udp;
-        const ports = l4 ? ` SPT=${l4.sport} DPT=${l4.dport}` : '';
-        this.env.log(`${prefix}IN=${meta.iif ?? ''} OUT=${meta.oif ?? ''} SRC=${formatIp(p.src)} DST=${formatIp(p.dst)} LEN=60 TTL=${p.ttl} PROTO=${p.protocol.toUpperCase()}${ports}`);
+        // The kernel lowers the TTL of a forwarded packet before the forward hook.
+        const seen = hook === 'forward' ? { ...p, ttl: p.ttl - 1 } : p;
+        this.ipId = (this.ipId * 7919 + 1) % 65536;
+        this.env.log(kernelLogLine(prefix, seen, { iif: meta.iif, oif: meta.oif, mac: this.macs.get(p), id: this.ipId }));
       },
     };
   }
@@ -93,9 +99,14 @@ export class Netfilter {
 
   private filter(hook: Hook, p: IpPacket, meta: PacketMeta): boolean {
     if (!this.hooks.has(hook)) return true;
-    const r = filterHook(this.ruleset, hook, p, meta, this.evalEnv());
-    if (r.verdict === 'reject') this.env.reject(p, r.with);
+    const r = filterHook(this.ruleset, hook, p, meta, this.evalEnv(hook));
+    if (r.verdict === 'reject') this.env.reject(p, r.with, hook === 'forward' ? meta.iif : undefined);
     return r.verdict === 'accept';
+  }
+
+  /** The Ethernet header a packet arrived in, for the MAC= of the kernel log. */
+  noteFrame(p: IpPacket, dstMac: string, srcMac: string): void {
+    this.macs.set(p, macHeader(dstMac, srcMac));
   }
 
   /** Incoming packet before routing: undo SNAT of replies, apply or decide DNAT, filter prerouting. */
@@ -107,13 +118,15 @@ export class Netfilter {
       if (c.dir === 'orig' && c.entry.dnat) out = rewriteDst(p, c.entry.dnat.ip, c.entry.dnat.port);
       if (c.dir === 'reply' && c.entry.snat) out = rewriteDst(p, c.entry.orig.src, c.entry.orig.sport);
     } else if (c.entry && this.hooks.has('prerouting')) {
-      const d = natHook(this.ruleset, 'prerouting', p, { iif, ct: c.state }, this.evalEnv());
+      const d = natHook(this.ruleset, 'prerouting', p, { iif, ct: c.state }, this.evalEnv('prerouting'));
       if (d === 'drop') return null;
       if (d?.kind === 'dnat') {
         c.entry.dnat = { ip: d.ip, port: d.port };
         out = rewriteDst(p, d.ip, d.port);
       }
     }
+    const mac = this.macs.get(p);
+    if (mac && out !== p) this.macs.set(out, mac);
     if (!this.filter('prerouting', out, { iif, ct: c.state })) return null;
     return this.keep(out, c);
   }
@@ -140,7 +153,7 @@ export class Netfilter {
     const c = this.context(p);
     let out = p;
     if (c.entry && !c.entry.confirmed && this.hooks.has('output')) {
-      const d = natHook(this.ruleset, 'output', p, { oif, ct: c.state }, this.evalEnv());
+      const d = natHook(this.ruleset, 'output', p, { oif, ct: c.state }, this.evalEnv('output'));
       if (d === 'drop') return null;
       if (d?.kind === 'dnat') {
         c.entry.dnat = { ip: d.ip, port: d.port };
@@ -161,7 +174,7 @@ export class Netfilter {
       if (c.dir === 'orig' && c.entry.snat) out = rewriteSrc(p, c.entry.snat.ip, c.entry.snat.port);
       if (c.dir === 'reply' && c.entry.dnat) out = rewriteSrc(p, c.entry.orig.dst, c.entry.orig.dport);
     } else if (c.entry && this.hooks.has('postrouting')) {
-      const d = natHook(this.ruleset, 'postrouting', p, { iif, oif, ct: c.state }, this.evalEnv());
+      const d = natHook(this.ruleset, 'postrouting', p, { iif, oif, ct: c.state }, this.evalEnv('postrouting'));
       if (d === 'drop') return null;
       const to = d && d.kind !== 'dnat' ? this.snatTarget(p, d.kind === 'masquerade' ? this.env.ifaceIp(oif) : d.ip, d.kind === 'snat' ? d.port : undefined) : null;
       // No address on the interface or no free port: the kernel drops it rather than leak the private source.

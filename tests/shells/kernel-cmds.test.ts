@@ -72,7 +72,7 @@ test('nft from the shell: root only, rules affect traffic, -a, -c, errors, dmesg
   assert.match(all(sh.run('ping -c 1 10.0.0.2')), /100% packet loss/);
   assert.match(all(root.run('nft -a list ruleset')), /icmp type echo-request counter packets 1 bytes 40 log prefix "PING " drop # handle 3/);
   assert.match(all(root.run('nft -s list ruleset')), /icmp type echo-request counter log prefix "PING " drop/);
-  assert.match(all(root.run('dmesg')), /\] PING IN=eth0 OUT= SRC=10\.0\.0\.10 DST=10\.0\.0\.2 .*PROTO=ICMP/);
+  assert.match(all(root.run('dmesg')), /\] PING IN=eth0 OUT= MAC=([0-9a-f]{2}:){13}[0-9a-f]{2} SRC=10\.0\.0\.10 DST=10\.0\.0\.2 LEN=60 TOS=0x00 PREC=0x00 TTL=128 ID=\d+ PROTO=ICMP TYPE=8 CODE=0 ID=\d+ SEQ=1$/m);
   assert.deepEqual(admin.run('dmesg'), ['dmesg: read kernel buffer failed: Operation not permitted']);
   assert.deepEqual(root.run('nft -c delete rule inet filter input handle 3; nft list chain inet filter input | grep -c drop'), ['1'], '-c does not apply');
   root.run('nft delete rule inet filter input handle 3');

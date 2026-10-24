@@ -4885,6 +4885,8 @@ const WELL_KNOWN_PORTS = {
 };
 const DEFAULT_TTL = 255;
 const PC_TTL = 128;
+/** Initial TTL of Linux (net.ipv4.ip_default_ttl). */
+const LINUX_TTL = 64;
 /** Label used by the simulation event list: DHCP, DNS, ARP, ICMP, HTTP, SMTP, POP3, IMAP, SSH or TCP. */
 function frameProtocol(frame) {
     if (frame.arp)
@@ -4916,7 +4918,7 @@ function tcpService(seg) {
     return WELL_KNOWN_PORTS[seg.dport] ?? WELL_KNOWN_PORTS[seg.sport] ?? 'TCP';
 }
 
-return { DHCP_SERVER_PORT, DHCP_CLIENT_PORT, DNS_PORT, WELL_KNOWN_PORTS, DEFAULT_TTL, PC_TTL, frameProtocol, tcpService };
+return { DHCP_SERVER_PORT, DHCP_CLIENT_PORT, DNS_PORT, WELL_KNOWN_PORTS, DEFAULT_TTL, PC_TTL, LINUX_TTL, frameProtocol, tcpService };
 })();
 __m["core/mac.js"] = (() => {
 /** MAC address and DHCP client-identifier helpers. MACs are 12 lowercase hex chars. */
@@ -5050,6 +5052,7 @@ class IpStack {
             this.emitIp(waiting.iface, mac, p);
     }
     onIp(iface, arrived, frame) {
+        this.host.noteFrame?.(arrived, frame);
         const packet = this.host.prerouting ? this.host.prerouting(iface.name, arrived) : arrived;
         if (!packet)
             return;
@@ -5100,7 +5103,7 @@ class IpStack {
         if (!waiter)
             return;
         const result = icmp.type === 'echo-reply' ? { kind: 'reply', from: packet.src, ttl: packet.ttl }
-            : icmp.type === 'unreachable' ? { kind: 'unreachable', from: packet.src } : { kind: 'ttl', from: packet.src };
+            : icmp.type === 'unreachable' ? { kind: 'unreachable', from: packet.src, code: icmp.code ?? 'host' } : { kind: 'ttl', from: packet.src };
         if (waiter.answered)
             return waiter.dup?.(result);
         waiter.answered = true;
@@ -6075,12 +6078,63 @@ class NatTable {
 
 return { flowOf, rewriteSrc, rewriteDst, NatTable };
 })();
+__m["net/klog.js"] = (() => {
+const { formatIp } = __m["core/ip.js"];
+/** Above this initial TTL the sender is Windows (128), below it Linux (64): ping size and the DF bit depend on it. */
+const LINUX_MAX_TTL = 64;
+const IP_HEADER = 20;
+const ICMP_TYPES = { 'echo-reply': 0, unreachable: 3, 'echo-request': 8, 'ttl-exceeded': 11 };
+const UNREACHABLE_CODES = { net: 0, host: 1, port: 3, admin: 13 };
+/** Order in which the kernel prints the TCP flags. */
+const TCP_FLAG_ORDER = ['ACK', 'PSH', 'RST', 'SYN', 'FIN'];
+const TCP_WINDOW = 64240;
+const fromLinux = (p) => p.ttl <= LINUX_MAX_TTL;
+/** IP total length of the usual packet of each kind (ping: 56 data bytes on Linux, 32 on Windows). */
+function ipLength(p) {
+    if (p.icmp)
+        return p.icmp.type === 'echo-request' || p.icmp.type === 'echo-reply' ? (fromLinux(p) ? 84 : 60) : 56;
+    if (p.tcp)
+        return p.tcp.flags.includes('SYN') ? (fromLinux(p) ? 60 : 52) : 52;
+    if (p.udp)
+        return p.udp.dns ? 73 : 76;
+    return IP_HEADER;
+}
+function l4(p) {
+    if (p.icmp) {
+        const code = p.icmp.type === 'unreachable' ? UNREACHABLE_CODES[p.icmp.code ?? 'host'] ?? 1 : 0;
+        const echo = p.icmp.type === 'echo-request' || p.icmp.type === 'echo-reply' ? ` ID=${p.icmp.id} SEQ=${p.icmp.seq}` : '';
+        return `PROTO=ICMP TYPE=${ICMP_TYPES[p.icmp.type] ?? 0} CODE=${code}${echo}`;
+    }
+    if (p.tcp) {
+        const flags = TCP_FLAG_ORDER.filter((f) => p.tcp?.flags.includes(f)).join(' ');
+        return `PROTO=TCP SPT=${p.tcp.sport} DPT=${p.tcp.dport} WINDOW=${TCP_WINDOW} RES=0x00 ${flags}${flags ? ' ' : ''}URGP=0`;
+    }
+    if (p.udp)
+        return `PROTO=UDP SPT=${p.udp.sport} DPT=${p.udp.dport} LEN=${ipLength(p) - IP_HEADER}`;
+    return `PROTO=${p.protocol.toUpperCase()}`;
+}
+/** TCP and everything Linux sends go with Don't Fragment (path MTU discovery); Windows' ping and UDP do not. */
+const dontFragment = (p) => p.tcp !== undefined || fromLinux(p);
+function kernelLogLine(prefix, p, m) {
+    const mac = m.iif !== undefined && m.mac ? ` MAC=${m.mac}` : '';
+    const df = dontFragment(p) ? ' DF' : '';
+    return `${prefix}IN=${m.iif ?? ''} OUT=${m.oif ?? ''}${mac} SRC=${formatIp(p.src)} DST=${formatIp(p.dst)} LEN=${ipLength(p)} TOS=0x00 PREC=0x00 TTL=${p.ttl} ID=${m.id}${df} ${l4(p)}`;
+}
+/** «dst:src:08:00» as the kernel prints the MAC header (MACs are 12 hex characters). */
+function macHeader(dst, src) {
+    const pairs = (hex) => (hex.match(/../g) ?? []).join(':');
+    return `${pairs(dst)}:${pairs(src)}:08:00`;
+}
+
+return { kernelLogLine, macHeader };
+})();
 __m["net/netfilter.js"] = (() => {
 const { EMPTY_RULESET } = __m["net/nft/model.js"];
 const { activeHooks, filterHook, natHook } = __m["net/nft/eval.js"];
 const { Conntrack, tupleOf } = __m["net/conntrack.js"];
 const { rewriteDst, rewriteSrc } = __m["net/nat.js"];
 const { formatIp } = __m["core/ip.js"];
+const { kernelLogLine, macHeader } = __m["net/klog.js"];
 const FIRST_NAT_PORT = 32768;
 const LAST_NAT_PORT = 60999;
 class Netfilter {
@@ -6090,6 +6144,10 @@ class Netfilter {
     env;
     ctx = new WeakMap();
     hooks = new Set();
+    /** Ethernet header of each arrived packet (MAC= of the log line). */
+    macs = new WeakMap();
+    /** IP identification of the logged packets (a fixed walk: deterministic, no repeats nearby). */
+    ipId = 4242;
     constructor(env) {
         this.env = env;
         this.ct = new Conntrack(() => env.now());
@@ -6114,13 +6172,14 @@ class Netfilter {
             this.ctx.set(to, c);
         return to;
     }
-    evalEnv() {
+    evalEnv(hook) {
         return {
             counters: this.counters,
             log: (prefix, p, meta) => {
-                const l4 = p.tcp ?? p.udp;
-                const ports = l4 ? ` SPT=${l4.sport} DPT=${l4.dport}` : '';
-                this.env.log(`${prefix}IN=${meta.iif ?? ''} OUT=${meta.oif ?? ''} SRC=${formatIp(p.src)} DST=${formatIp(p.dst)} LEN=60 TTL=${p.ttl} PROTO=${p.protocol.toUpperCase()}${ports}`);
+                // The kernel lowers the TTL of a forwarded packet before the forward hook.
+                const seen = hook === 'forward' ? { ...p, ttl: p.ttl - 1 } : p;
+                this.ipId = (this.ipId * 7919 + 1) % 65536;
+                this.env.log(kernelLogLine(prefix, seen, { iif: meta.iif, oif: meta.oif, mac: this.macs.get(p), id: this.ipId }));
             },
         };
     }
@@ -6138,10 +6197,14 @@ class Netfilter {
     filter(hook, p, meta) {
         if (!this.hooks.has(hook))
             return true;
-        const r = filterHook(this.ruleset, hook, p, meta, this.evalEnv());
+        const r = filterHook(this.ruleset, hook, p, meta, this.evalEnv(hook));
         if (r.verdict === 'reject')
-            this.env.reject(p, r.with);
+            this.env.reject(p, r.with, hook === 'forward' ? meta.iif : undefined);
         return r.verdict === 'accept';
+    }
+    /** The Ethernet header a packet arrived in, for the MAC= of the kernel log. */
+    noteFrame(p, dstMac, srcMac) {
+        this.macs.set(p, macHeader(dstMac, srcMac));
     }
     /** Incoming packet before routing: undo SNAT of replies, apply or decide DNAT, filter prerouting. */
     prerouting(iif, p) {
@@ -6156,7 +6219,7 @@ class Netfilter {
                 out = rewriteDst(p, c.entry.orig.src, c.entry.orig.sport);
         }
         else if (c.entry && this.hooks.has('prerouting')) {
-            const d = natHook(this.ruleset, 'prerouting', p, { iif, ct: c.state }, this.evalEnv());
+            const d = natHook(this.ruleset, 'prerouting', p, { iif, ct: c.state }, this.evalEnv('prerouting'));
             if (d === 'drop')
                 return null;
             if (d?.kind === 'dnat') {
@@ -6164,6 +6227,9 @@ class Netfilter {
                 out = rewriteDst(p, d.ip, d.port);
             }
         }
+        const mac = this.macs.get(p);
+        if (mac && out !== p)
+            this.macs.set(out, mac);
         if (!this.filter('prerouting', out, { iif, ct: c.state }))
             return null;
         return this.keep(out, c);
@@ -6193,7 +6259,7 @@ class Netfilter {
         const c = this.context(p);
         let out = p;
         if (c.entry && !c.entry.confirmed && this.hooks.has('output')) {
-            const d = natHook(this.ruleset, 'output', p, { oif, ct: c.state }, this.evalEnv());
+            const d = natHook(this.ruleset, 'output', p, { oif, ct: c.state }, this.evalEnv('output'));
             if (d === 'drop')
                 return null;
             if (d?.kind === 'dnat') {
@@ -6219,7 +6285,7 @@ class Netfilter {
                 out = rewriteSrc(p, c.entry.orig.dst, c.entry.orig.dport);
         }
         else if (c.entry && this.hooks.has('postrouting')) {
-            const d = natHook(this.ruleset, 'postrouting', p, { iif, oif, ct: c.state }, this.evalEnv());
+            const d = natHook(this.ruleset, 'postrouting', p, { iif, oif, ct: c.state }, this.evalEnv('postrouting'));
             if (d === 'drop')
                 return null;
             const to = d && d.kind !== 'dnat' ? this.snatTarget(p, d.kind === 'masquerade' ? this.env.ifaceIp(oif) : d.ip, d.kind === 'snat' ? d.port : undefined) : null;
@@ -6371,6 +6437,7 @@ function parseSysctlConf(text) {
 return { SYSCTL_KEYS, sysctlName, sysctlPath, Sysctl, parseSysctlConf };
 })();
 __m["devices/host-kernel.js"] = (() => {
+const { LINUX_TTL } = __m["net/packets.js"];
 const { Netfilter } = __m["net/netfilter.js"];
 const { Sysctl } = __m["net/sysctl.js"];
 const { LOOPBACK } = __m["net/ipstack.js"];
@@ -6391,7 +6458,7 @@ class Kernel {
             now: () => host.clock.now(),
             log: (line) => this.printk(line),
             ifaceIp: (name) => host.linuxIfIp(name),
-            reject: (p, kind) => this.reject(p, kind),
+            reject: (p, kind, iif) => this.reject(p, kind, iif),
         });
     }
     printk(text) {
@@ -6416,18 +6483,23 @@ class Kernel {
     postrouting(port, p, iif) {
         return this.netfilter.postrouting(this.name(port), p, iif);
     }
-    /** `reject`: TCP RST for TCP (unless an ICMP type was asked), ICMP port unreachable otherwise. */
-    reject(p, kind) {
+    /**
+     * `reject`: TCP RST for TCP (unless an ICMP type was asked), ICMP port unreachable otherwise (or the type asked).
+     * The RST answers as the destination; the ICMP error comes from this host (the arrival interface when forwarding).
+     */
+    reject(p, kind, iif) {
         if (p.icmp && p.icmp.type !== 'echo-request')
             return;
-        const ttl = 64;
+        const ttl = LINUX_TTL;
         if (p.tcp && (kind === undefined || kind === 'tcp reset')) {
             this.host.sendRaw({ src: p.dst, dst: p.src, ttl, protocol: 'tcp', tcp: { sport: p.tcp.dport, dport: p.tcp.sport, flags: ['RST', 'ACK'], seq: 0, ack: p.tcp.seq + 1 } });
             return;
         }
-        const id = p.icmp?.id ?? 0;
-        const seq = p.icmp?.seq ?? 0;
-        this.host.sendRaw({ src: p.dst, dst: p.src, ttl, protocol: 'icmp', icmp: { type: 'unreachable', id, seq } });
+        const src = iif === undefined ? p.dst : this.host.linuxIfIp(iif);
+        if (src === undefined)
+            return;
+        const code = kind === 'icmp admin-prohibited' ? 'admin' : kind === 'icmp host-unreachable' ? 'host' : 'port';
+        this.host.sendRaw({ src, dst: p.src, ttl, protocol: 'icmp', icmp: { type: 'unreachable', id: p.icmp?.id ?? 0, seq: p.icmp?.seq ?? 0, code } });
     }
 }
 
@@ -6435,7 +6507,7 @@ return { Kernel };
 })();
 __m["devices/host.js"] = (() => {
 const { t } = __m["i18n/t.js"];
-const { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DNS_PORT, PC_TTL } = __m["net/packets.js"];
+const { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DNS_PORT, LINUX_TTL, PC_TTL } = __m["net/packets.js"];
 
 const { IpStack } = __m["net/ipstack.js"];
 const { TcpLayer } = __m["net/tcp.js"];
@@ -6502,7 +6574,8 @@ class Host {
     staticRoutes = [];
     statusListeners = new Set();
     dropOnArpMiss = false;
-    ttl = PC_TTL;
+    /** Initial TTL of what this host sends: 64 on Linux, 128 on Windows. */
+    get ttl() { return this.os === 'linux' ? LINUX_TTL : PC_TTL; }
     /** Windows never answers an echo to a broadcast address; Linux only with icmp_echo_ignore_broadcasts=0. */
     ignoresBroadcastEcho = () => this.os === 'windows' || this.kernel.sysctl.enabled('net.ipv4.icmp_echo_ignore_broadcasts');
     constructor(id, name, clock, seed) {
@@ -6525,11 +6598,12 @@ class Host {
         this.kernel.sysctl.onChange(() => this.changed());
         this.stack = new IpStack(this, () => clock.now());
         this.dhcpClient = this.createDhcpClient();
+        const host = this;
         this.tcp = new TcpLayer({
+            get ttl() { return host.ttl; },
             send: (p) => this.stack.send(p),
             sourceFor: (dst) => this.sourceFor(dst),
             schedule: (d, fn) => this.hooks.schedule(d, fn),
-            ttl: PC_TTL,
         });
         this.resolver = new DnsResolver({
             sendQuery: (server, sport, msg) => this.sendUdp(server, sport, DNS_PORT, { dns: msg }),
@@ -6647,7 +6721,7 @@ class Host {
     /** Sends a UDP datagram; broadcasts go out of `port` (the main NIC by default) directly. */
     sendUdp(dst, sport, dport, body, src, port = this.primaryPort()) {
         const from = src ?? (dst === BROADCAST_IP ? this.ifaceConfig(port)?.ip : this.sourceFor(dst)) ?? this.config.ip ?? 0;
-        const packet = { src: from, dst, ttl: PC_TTL, protocol: 'udp', udp: { sport, dport, ...body } };
+        const packet = { src: from, dst, ttl: this.ttl, protocol: 'udp', udp: { sport, dport, ...body } };
         if (dst === BROADCAST_IP) {
             this.stack.broadcast(port, packet);
             return true;
@@ -6756,17 +6830,14 @@ class Host {
     // ------------------------------------------------------------ netfilter hooks
     // The kernel (sysctl + nftables) decides; each hook returns the packet, rewritten, or null when dropped.
     prerouting = (iface, packet) => this.kernel.prerouting(iface, packet);
+    noteFrame = (packet, frame) => this.kernel.netfilter.noteFrame(packet, frame.dst, frame.src);
     input = (iface, packet) => this.kernel.input(iface, packet);
     output = (iface, packet) => this.kernel.output(iface, packet);
     postrouting = (iface, packet) => this.kernel.postrouting(iface, packet);
     /** WireGuard links (Linux router only). */
-    wgLinks() {
-        return undefined;
-    }
-    /** Server-side UDP services (DHCP on 67, DNS on 53). Plain hosts ignore them. */
-    onUdp(_packet, _iface) {
-        // A PC runs no UDP services.
-    }
+    wgLinks() { return undefined; }
+    /** Server-side UDP services (DHCP on 67, DNS on 53). Plain hosts (a PC) run none. */
+    onUdp(_packet, _iface) { }
 }
 
 return { DHCP_SERVER_PORT, DNS_PORT, HOST_PORT, HOST_LINUX_IF, validHostname, Host };
@@ -18065,7 +18136,7 @@ const CLIENT_DOCS = {
                     ['Client-ID personalizado (texto ASCII)', 'El texto como bytes, p. ej. PC-profesor.'],
                 ]),
                 check('Compruébalo', 'En la Terminal Windows, `ipconfig /all` muestra la dirección IP, la máscara, la puerta de enlace, el servidor DHCP y las fechas de la concesión. Después, `ping` a la puerta de enlace y a un nombre.'),
-                term('cmd', 'C:\\home\\alumno> ipconfig /all\n\nFastEthernet0 Connection:(default port)\n\n   Connection-specific DNS Suffix..: aula.lab\n   Physical Address................: 0063.B914.34B5\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\n   DHCP Servers....................: 192.168.10.2\n   DNS Servers.....................: 192.168.10.2\nC:\\home\\alumno> ping -n 2 srv.aula.lab\nReply from 192.168.10.2: bytes=32 time<1ms TTL=128'),
+                term('cmd', 'C:\\home\\alumno> ipconfig /all\n\nFastEthernet0 Connection:(default port)\n\n   Connection-specific DNS Suffix..: aula.lab\n   Physical Address................: 0063.B914.34B5\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\n   DHCP Servers....................: 192.168.10.2\n   DNS Servers.....................: 192.168.10.2\nC:\\home\\alumno> ping -n 2 srv.aula.lab\nReply from 192.168.10.2: bytes=32 time<1ms TTL=64'),
                 p('En la Terminal Linux, lo mismo con `ip -4 addr`, `ip route` (la puerta de enlace es la ruta «default») y `cat /etc/resolv.conf` (el servidor DNS).'),
                 warn('Errores típicos', 'Máscara distinta de la del resto de la red: hay equipos a los que «no se ve». Puerta de enlace fuera de la red del PC (o vacía): funciona dentro de la LAN pero no fuera. Dos equipos con la **misma dirección IP**: fallan los dos de forma intermitente. Una dirección **169.254.x.x** significa que DHCP no respondió: revisa el cable, el servidor y su pool.'),
                 exercise('Del PC a mano al PC por DHCP', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», pon PC0 con la dirección IP estática 192.168.10.20/24, puerta 192.168.10.1 y DNS 192.168.10.2; comprueba con ping srv.aula.lab y después vuelve a DHCP.', 'Configuración IP → Estática y rellena los cuatro campos. En la Terminal Windows, `ping srv.aula.lab` responde desde 192.168.10.2. Vuelve a **DHCP**: `ipconfig` muestra de nuevo 192.168.10.100 (la concesión que el servidor le guardaba).'),
@@ -19161,7 +19232,7 @@ const SECURITY_DOCS = {
                 steps(['Empieza cerrado', 'Cadenas input y forward con `policy drop`: lo que no se permita, se descarta.'], ['Deja pasar las respuestas', '`ct state established,related accept` el primero, e `iifname "lo" accept` en input.'], ['Abre lo necesario', 'Una regla por necesidad, con comentario: administración solo desde la LAN, la LAN a todas partes, la DMZ solo a Internet, la web publicada.'], ['NAT', '`dnat to 172.16.0.80` en prerouting para publicar la web; `oifname "eth0" masquerade` en postrouting para salir.'], ['Registra lo descartado', '`log prefix "FW-DROP " drop` al final de forward: cada paquete descartado aparece en `dmesg`.'], ['Carga y guarda', '**Aplicar y guardar** en el panel, o el fichero /etc/nftables.conf con `nft -f` y `systemctl enable --now nftables`.']),
                 term('nftables', 'table inet filter {\n  chain input {\n    type filter hook input priority filter; policy drop;\n    ct state established,related accept\n    iifname "lo" accept\n    iifname "eth1" tcp dport { 22, 10000 } accept comment "administracion solo desde la LAN"\n    icmp type echo-request accept\n  }\n  chain forward {\n    type filter hook forward priority filter; policy drop;\n    ct state established,related accept\n    iifname "eth1" accept comment "LAN a todas partes"\n    iifname "eth2" oifname "eth0" accept comment "DMZ solo a Internet"\n    iifname "eth0" oifname "eth2" ip daddr 172.16.0.80 tcp dport 80 accept comment "web publicada"\n    log prefix "FW-DROP " drop\n  }\n}\ntable ip nat {\n  chain prerouting {\n    type nat hook prerouting priority dstnat; policy accept;\n    iifname "eth0" tcp dport 80 dnat to 172.16.0.80\n  }\n  chain postrouting {\n    type nat hook postrouting priority srcnat; policy accept;\n    oifname "eth0" masquerade\n  }\n}'),
                 check('Compruébalo', 'Desde fuera, la web responde en la dirección IP pública. Desde la DMZ hacia la LAN no pasa nada, y `dmesg` en FW lo cuenta.'),
-                term('shell', 'alumno@cliente-ext:~$ curl -s http://81.32.5.2/ | head -1\n<!doctype html>\nadmin@web-dmz:~$ ping -c 1 -W 1 192.168.1.10\nPING 192.168.1.10 (192.168.1.10) 56(84) bytes of data.\n\n--- 192.168.1.10 ping statistics ---\n1 packets transmitted, 0 received, 100% packet loss, time 0ms\nroot@fw:~# dmesg | tail -1\n[35895.957000] FW-DROP IN=eth2 OUT=eth1 SRC=172.16.0.80 DST=192.168.1.10 LEN=60 TTL=128 PROTO=ICMP'),
+                term('shell', 'alumno@cliente-ext:~$ curl -s http://81.32.5.2/ | head -1\n<!doctype html>\nadmin@web-dmz:~$ ping -c 1 -W 1 192.168.1.10\nPING 192.168.1.10 (192.168.1.10) 56(84) bytes of data.\n\n--- 192.168.1.10 ping statistics ---\n1 packets transmitted, 0 received, 100% packet loss, time 0ms\nroot@fw:~# dmesg | tail -1\n[35895.957000] FW-DROP IN=eth2 OUT=eth1 MAC=00:ca:c2:10:00:f4:00:2d:9f:20:d0:fe:08:00 SRC=172.16.0.80 DST=192.168.1.10 LEN=84 TOS=0x00 PREC=0x00 TTL=63 ID=37967 DF PROTO=ICMP TYPE=8 CODE=0 ID=1 SEQ=1'),
                 table(['Orden', 'Efecto'], [
                     ['nft list ruleset', 'Reglas en marcha (con -a, los handles).'],
                     ['nft add rule inet filter input tcp dport 80 accept', 'Añade una regla al final; detrás de un «log … drop» no se alcanzaría (insert: al principio).'],
@@ -19277,7 +19348,7 @@ const DNS_DOCS = [
             code('admin@srv:~$ cat /etc/bind/named.conf.options\nadmin@srv:~$ cat /etc/bind/named.conf.local\nadmin@srv:~$ cat /etc/bind/db.aula.lab\nadmin@srv:~$ sudo rndc status\nadmin@srv:~$ sudo rndc flush'),
             warn('Errores habituales', '**status: REFUSED** al preguntar un nombre ajeno (google.es): el servidor no tiene el modo Recursivo. **NXDOMAIN** con un nombre propio: falta el registro o está en otra zona. Un NS dentro de la zona sin su registro A: la comprobación lo avisa. El PC no tiene como **Servidor DNS** la dirección IP del servidor (míralo en `/etc/resolv.conf` o `ipconfig /all`).'),
             exercise('Un servidor FTP con nombre', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», da de alta ftp.aula.lab con la dirección IP 192.168.10.3 y comprueba desde PC1 el nombre y la resolución inversa.', 'Servicios → DNS → Autoritativo → zona aula.lab → Nuevo registro: Nombre `ftp`, Tipo A, Valor 192.168.10.3, **Añadir registro**. En PC1: `dig ftp.aula.lab +short` da 192.168.10.3 y `dig -x 192.168.10.3 +short` da ftp.aula.lab. (el PTR lo añade la zona inversa automática).'),
-            exercise('¿Por qué no resuelve google.es?', 'En el mismo laboratorio, `dig google.es` desde PC1 da status: REFUSED. Consigue que responda sin dar salida a Internet.', 'El servidor solo es autoritativo. Activa **Recursivo** (clientes: localnets) y **Nombres públicos**: `dig google.es +short` da 142.250.200.67. Un `ping google.es` ya conoce la dirección IP, pero acaba en «Destination Host Unreachable»: resolver un nombre no da salida a Internet.'),
+            exercise('¿Por qué no resuelve google.es?', 'En el mismo laboratorio, `dig google.es` desde PC1 da status: REFUSED. Consigue que responda sin dar salida a Internet.', 'El servidor solo es autoritativo. Activa **Recursivo** (clientes: localnets) y **Nombres públicos**: `dig google.es +short` da 142.250.200.67. Un `ping google.es` ya conoce la dirección IP, pero acaba en «Destination Net Unreachable» (GW no tiene ruta hacia Internet): resolver un nombre no da salida a Internet.'),
         ],
     },
     {
@@ -20117,7 +20188,7 @@ const CLIENT_DOCS = {
                     ['Custom Client-ID (ASCII text)', 'The text as bytes, e.g. PC-profesor.'],
                 ]),
                 check('Check it', 'In the Windows Terminal, `ipconfig /all` shows the IP address, mask, gateway, DHCP server and lease dates. Then `ping` the gateway and a name.'),
-                term('cmd', 'C:\\home\\alumno> ipconfig /all\n\nFastEthernet0 Connection:(default port)\n\n   Connection-specific DNS Suffix..: aula.lab\n   Physical Address................: 0063.B914.34B5\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\n   DHCP Servers....................: 192.168.10.2\n   DNS Servers.....................: 192.168.10.2\nC:\\home\\alumno> ping -n 2 srv.aula.lab\nReply from 192.168.10.2: bytes=32 time<1ms TTL=128'),
+                term('cmd', 'C:\\home\\alumno> ipconfig /all\n\nFastEthernet0 Connection:(default port)\n\n   Connection-specific DNS Suffix..: aula.lab\n   Physical Address................: 0063.B914.34B5\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\n   DHCP Servers....................: 192.168.10.2\n   DNS Servers.....................: 192.168.10.2\nC:\\home\\alumno> ping -n 2 srv.aula.lab\nReply from 192.168.10.2: bytes=32 time<1ms TTL=64'),
                 p('In the Linux Terminal, the same with `ip -4 addr`, `ip route` (the gateway is the “default” route) and `cat /etc/resolv.conf` (the DNS server).'),
                 warn('Common mistakes', 'A mask different from the rest of the network: some devices “cannot be seen”. A gateway outside the PC’s network (or empty): it works inside the LAN but not beyond. Two devices with the **same IP address**: both fail now and then. A **169.254.x.x** address means DHCP did not answer: check the cable, the server and its pool.'),
                 exercise('From a hand-set PC to DHCP', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, give PC0 the static IP address 192.168.10.20/24, gateway 192.168.10.1 and DNS 192.168.10.2; check with ping srv.aula.lab and then go back to DHCP.', 'IP Configuration → Static and fill in the four fields. In the Windows Terminal, `ping srv.aula.lab` answers from 192.168.10.2. Back to **DHCP**: `ipconfig` shows 192.168.10.100 again (the lease the server kept for it).'),
@@ -21213,7 +21284,7 @@ const SECURITY_DOCS = {
                 steps(['Start closed', 'input and forward chains with `policy drop`: whatever is not permitted is dropped.'], ['Let the replies through', '`ct state established,related accept` first, and `iifname "lo" accept` in input.'], ['Open what is needed', 'One rule per need, with a comment: management only from the LAN, the LAN to everywhere, the DMZ only to the Internet, the published website.'], ['NAT', '`dnat to 172.16.0.80` in prerouting to publish the website; `oifname "eth0" masquerade` in postrouting to go out.'], ['Log what is dropped', '`log prefix "FW-DROP " drop` at the end of forward: every dropped packet shows up in `dmesg`.'], ['Load and save', '**Apply and save** in the panel, or the /etc/nftables.conf file with `nft -f` and `systemctl enable --now nftables`.']),
                 term('nftables', 'table inet filter {\n  chain input {\n    type filter hook input priority filter; policy drop;\n    ct state established,related accept\n    iifname "lo" accept\n    iifname "eth1" tcp dport { 22, 10000 } accept comment "administracion solo desde la LAN"\n    icmp type echo-request accept\n  }\n  chain forward {\n    type filter hook forward priority filter; policy drop;\n    ct state established,related accept\n    iifname "eth1" accept comment "LAN a todas partes"\n    iifname "eth2" oifname "eth0" accept comment "DMZ solo a Internet"\n    iifname "eth0" oifname "eth2" ip daddr 172.16.0.80 tcp dport 80 accept comment "web publicada"\n    log prefix "FW-DROP " drop\n  }\n}\ntable ip nat {\n  chain prerouting {\n    type nat hook prerouting priority dstnat; policy accept;\n    iifname "eth0" tcp dport 80 dnat to 172.16.0.80\n  }\n  chain postrouting {\n    type nat hook postrouting priority srcnat; policy accept;\n    oifname "eth0" masquerade\n  }\n}'),
                 check('Check it', 'From outside, the website answers on the public IP address. From the DMZ towards the LAN nothing gets through, and `dmesg` on FW tells you so.'),
-                term('shell', 'alumno@cliente-ext:~$ curl -s http://81.32.5.2/ | head -1\n<!doctype html>\nadmin@web-dmz:~$ ping -c 1 -W 1 192.168.1.10\nPING 192.168.1.10 (192.168.1.10) 56(84) bytes of data.\n\n--- 192.168.1.10 ping statistics ---\n1 packets transmitted, 0 received, 100% packet loss, time 0ms\nroot@fw:~# dmesg | tail -1\n[35895.957000] FW-DROP IN=eth2 OUT=eth1 SRC=172.16.0.80 DST=192.168.1.10 LEN=60 TTL=128 PROTO=ICMP'),
+                term('shell', 'alumno@cliente-ext:~$ curl -s http://81.32.5.2/ | head -1\n<!doctype html>\nadmin@web-dmz:~$ ping -c 1 -W 1 192.168.1.10\nPING 192.168.1.10 (192.168.1.10) 56(84) bytes of data.\n\n--- 192.168.1.10 ping statistics ---\n1 packets transmitted, 0 received, 100% packet loss, time 0ms\nroot@fw:~# dmesg | tail -1\n[35895.957000] FW-DROP IN=eth2 OUT=eth1 MAC=00:ca:c2:10:00:f4:00:2d:9f:20:d0:fe:08:00 SRC=172.16.0.80 DST=192.168.1.10 LEN=84 TOS=0x00 PREC=0x00 TTL=63 ID=37967 DF PROTO=ICMP TYPE=8 CODE=0 ID=1 SEQ=1'),
                 table(['Command', 'Effect'], [
                     ['nft list ruleset', 'Running rules (with -a, the handles).'],
                     ['nft add rule inet filter input tcp dport 80 accept', 'Adds a rule at the end; behind a “log … drop” it would never be reached (insert: at the start).'],
@@ -21329,7 +21400,7 @@ const DNS_DOCS = [
             code('admin@srv:~$ cat /etc/bind/named.conf.options\nadmin@srv:~$ cat /etc/bind/named.conf.local\nadmin@srv:~$ cat /etc/bind/db.aula.lab\nadmin@srv:~$ sudo rndc status\nadmin@srv:~$ sudo rndc flush'),
             warn('Common mistakes', '**status: REFUSED** when asking for an outside name (google.es): the server does not have the Recursive mode. **NXDOMAIN** for a name of your own: the record is missing or is in another zone. An NS inside the zone without its A record: the check warns about it. The PC does not have the server’s IP address as its **DNS server** (look in `/etc/resolv.conf` or `ipconfig /all`).'),
             exercise('An FTP server with a name', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, add ftp.aula.lab with the IP address 192.168.10.3 and check the name and the reverse lookup from PC1.', 'Services → DNS → Authoritative → zone aula.lab → New record: Name `ftp`, Type A, Value 192.168.10.3, **Add record**. On PC1: `dig ftp.aula.lab +short` gives 192.168.10.3 and `dig -x 192.168.10.3 +short` gives ftp.aula.lab. (the automatic reverse zone adds the PTR).'),
-            exercise('Why does google.es not resolve?', 'In the same lab, `dig google.es` from PC1 gives status: REFUSED. Make it answer without giving the network a way out to the Internet.', 'The server is only authoritative. Turn on **Recursive** (clients: localnets) and **Public names**: `dig google.es +short` gives 142.250.200.67. A `ping google.es` now knows the IP address, but ends in “Destination Host Unreachable”: resolving a name does not give a way out to the Internet.'),
+            exercise('Why does google.es not resolve?', 'In the same lab, `dig google.es` from PC1 gives status: REFUSED. Make it answer without giving the network a way out to the Internet.', 'The server is only authoritative. Turn on **Recursive** (clients: localnets) and **Public names**: `dig google.es +short` gives 142.250.200.67. A `ping google.es` now knows the IP address, but ends in “Destination Net Unreachable” (GW has no route to the Internet): resolving a name does not give a way out to the Internet.'),
         ],
     },
     {
@@ -28683,7 +28754,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.20.5",
+    "version": "0.20.6",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -32811,7 +32882,7 @@ function pings(stack, hooks, dst, opts, id, window) {
     for (let seq = 0; seq < opts.count; seq++) {
         let result;
         const dups = [];
-        const sent = stack.echo(dst, id, seq, opts.src, (r) => { result = r; }, undefined, (r) => { if (r.kind === 'reply')
+        const sent = stack.echo(dst, id, seq + 1, opts.src, (r) => { result = r; }, undefined, (r) => { if (r.kind === 'reply')
             dups.push(r); });
         if (!sent) {
             results.push({ kind: 'noroute' });
@@ -33176,6 +33247,51 @@ function ipBrief(host, link) {
         return [row('lo', 'UNKNOWN', '00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP> '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', `${linuxMac(n.mac)} <BROADCAST,MULTICAST${n.adminUp ? ',UP' : ''}${n.up ? ',LOWER_UP' : ''}> `)), ...virtualBrief(host, true)];
     return [row('lo', 'UNKNOWN', '127.0.0.1/8 '), ...nics.map((n) => row(n.linux, n.up ? 'UP' : 'DOWN', nicAddress(n) ? `${nicAddress(n)?.inet} ` : '')), ...virtualBrief(host, false)];
 }
+/** Interface blocks of `ip addr` (a block starts with «N: name:»). */
+function addrBlocks(all) {
+    const blocks = [];
+    for (const l of all) {
+        if (/^\d+: /.test(l) || blocks.length === 0)
+            blocks.push([l]);
+        else
+            blocks[blocks.length - 1]?.push(l);
+    }
+    return blocks;
+}
+/** Filter words of `ip addr show` that are not a device (with how many values each one takes). */
+const ADDR_FILTERS = { dev: 0, up: 0, permanent: 0, dynamic: 0, primary: 0, secondary: 0, scope: 1, label: 1, to: 1 };
+/** The device names of `ip addr [show|list] …`: abbreviations of show/list and filter keywords left out. */
+function addrDevWords(rest) {
+    const words = [];
+    for (let i = 0; i < rest.length; i++) {
+        const w = rest[i] ?? '';
+        if (i === 0 && ('show'.startsWith(w) || 'list'.startsWith(w)))
+            continue;
+        const skip = ADDR_FILTERS[w];
+        if (skip === undefined)
+            words.push(w);
+        else
+            i += skip;
+    }
+    return words;
+}
+/**
+ * `ip [-4] addr [show] [dev] [NAME]`: only that interface; with -4, only the interfaces with an IPv4 address and
+ * without their link/ lines. Null when the device does not exist.
+ */
+function addrShow(all, rest, v4) {
+    const words = addrDevWords(rest);
+    const dev = words[0];
+    let blocks = addrBlocks(all);
+    if (dev !== undefined) {
+        blocks = blocks.filter((b) => new RegExp(`^\\d+: ${dev.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[:@]`).test(b[0] ?? ''));
+        if (blocks.length === 0)
+            return null;
+    }
+    if (v4)
+        blocks = blocks.filter((b) => b.some((l) => /^ {4}inet /.test(l))).map((b) => b.filter((l) => !/^ {4}link\//.test(l)));
+    return blocks.flat();
+}
 const IP_USAGE = 'Usage: ip [ OPTIONS ] OBJECT { COMMAND | help }\nwhere  OBJECT := { address | route | neigh | link }\n       OPTIONS := { -4 | -br[ief] | -c[olor] }\n';
 function ip(host) {
     return (ctx) => {
@@ -33189,8 +33305,14 @@ function ip(host) {
             return written;
         if (brief && (is('address', 'a', 'addr') || is('link', 'l')))
             lines(ctx, ipBrief(host, is('link', 'l')));
-        else if (is('address', 'a', 'addr'))
-            lines(ctx, ipAddress(host));
+        else if (is('address', 'a', 'addr')) {
+            const shown = addrShow(ipAddress(host), args.slice(1), ctx.argv.includes('-4'));
+            if (!shown) {
+                ctx.err(`Device "${addrDevWords(args.slice(1))[0] ?? ''}" does not exist.\n`);
+                return 1;
+            }
+            lines(ctx, shown);
+        }
         else if (is('route', 'r'))
             lines(ctx, routeLines(host));
         else if (is('neighbour', 'n', 'neigh'))
@@ -33232,6 +33354,10 @@ function pingCount(args) {
 const BROADCAST_HINT = 'ping: Do you want to ping broadcast? Then -b. If not, check your local firewall rules\n';
 /** -b among the options, alone or joined with others (-bc 3). */
 const wantsBroadcast = (args) => args.some((a) => /^-[A-Za-z]*b[A-Za-z]*$/.test(a) && !PING_WITH_VALUE.has(a.slice(0, 2)));
+/** iputils' text for each destination unreachable code. */
+const UNREACHABLE_TEXT = {
+    net: 'Destination Net Unreachable', host: 'Destination Host Unreachable', port: 'Destination Port Unreachable', admin: 'Packet filtered',
+};
 /** The simulated round trip of the i-th echo, in ms (the simulator has no real delay: a small, growing value). */
 const replyTime = (i) => 0.4 + i * 0.037;
 /** iputils' last line: min, avg, max and mdev (the standard deviation) of the times printed. */
@@ -33250,7 +33376,7 @@ function replyLines(results, who) {
             return [line(x, ''), ...(x.dups ?? []).map((d) => line(d, ' (DUP!)'))];
         }
         if (x.kind === 'unreachable')
-            return [`From ${formatIp(x.from)} icmp_seq=${seq} Destination Host Unreachable`];
+            return [`From ${formatIp(x.from)} icmp_seq=${seq} ${UNREACHABLE_TEXT[x.code]}`];
         if (x.kind === 'ttl')
             return [`From ${formatIp(x.from)} icmp_seq=${seq} Time to live exceeded`];
         return [];
@@ -33392,7 +33518,7 @@ function runTrace(stack, hooks, dst, o) {
             if (!sent)
                 return { hops, reached: false, noroute: true };
             hooks.runUntil(() => result !== undefined, o.timeoutMs);
-            probes.push(result ? { from: result.from, ms: o.now() - start } : null);
+            probes.push(result ? { from: result.from, ms: o.now() - start, ...(result.kind === 'unreachable' ? { unreachable: result.code } : {}) } : null);
             if (result && result.kind !== 'ttl')
                 done = true;
         }
@@ -33409,6 +33535,8 @@ function fineMs(ms, hop, probe) {
 function firstFrom(h) {
     return h.probes.find((p) => p !== null)?.from;
 }
+/** traceroute's mark after the time of a destination unreachable. */
+const UNREACHABLE_MARK = { net: '!N', host: '!H', port: '!P', admin: '!X' };
 /** GNU/Linux traceroute (inetutils/traceroute 2.1 layout). */
 function linuxTraceLines(target, dst, r, o) {
     const lines = [`traceroute to ${target} (${formatIp(dst)}), ${o.maxHops} hops max, 60 byte packets`];
@@ -33419,7 +33547,7 @@ function linuxTraceLines(target, dst, r, o) {
                 return '*';
             const who = p.from === last ? '' : o.numeric ? `${formatIp(p.from)}  ` : `${p.from === o.gateway ? '_gateway' : formatIp(p.from)} (${formatIp(p.from)})  `;
             last = p.from;
-            return `${who}${fineMs(p.ms, h.ttl, i)} ms`;
+            return `${who}${fineMs(p.ms, h.ttl, i)} ms${p.unreachable ? ` ${UNREACHABLE_MARK[p.unreachable]}` : ''}`;
         });
         lines.push(`${String(h.ttl).padStart(2)}${parts.map((t, i) => (t === '*' && i > 0 ? ` ${t}` : `  ${t}`)).join('')}`);
     }
@@ -38824,16 +38952,18 @@ __m["devices/linux-router.js"] = (() => {
  * net.ipv4.ip_forward = 1; the nftables forward chain, conntrack and NAT apply to transit traffic.
  */
 const { Server } = __m["devices/server.js"];
+const { LINUX_TTL } = __m["net/packets.js"];
 const { WgManager } = __m["devices/wg-manager.js"];
 const LINUX_ROUTER_PORTS = ['GigabitEthernet0/0', 'GigabitEthernet0/1', 'GigabitEthernet0/2'];
-const LINUX_TTL = 64;
 /** MAC of the n-th NIC: the base MAC plus n (like consecutive ports of one card). */
 function macPlus(mac, n) {
     return ((parseInt(mac, 16) + n) % 0x1000000000000).toString(16).padStart(12, '0');
 }
 class LinuxRouter extends Server {
     os = 'linux';
-    ttl = LINUX_TTL;
+    get ttl() {
+        return LINUX_TTL;
+    }
     /** NICs 1 and 2 (NIC 0 is the host's main configuration: `config`, DHCP client, `portUp`). */
     extra = new Map();
     /** WireGuard links (wg0…), their addresses and device routes. */
@@ -38966,7 +39096,7 @@ class LinuxRouter extends Server {
         }
         const egress = this.route(packet.dst);
         if (!egress) {
-            this.icmpError(iface, packet, 'unreachable');
+            this.icmpError(iface, packet, 'unreachable', 'net');
             return;
         }
         const nf = this.kernel.netfilter;
@@ -38976,14 +39106,14 @@ class LinuxRouter extends Server {
         this.stack.sendVia(egress, nf.carry(allowed, { ...allowed, ttl: allowed.ttl - 1 }));
     }
     /** ICMP time exceeded / destination unreachable from the address of the arrival interface. */
-    icmpError(iface, p, type) {
+    icmpError(iface, p, type, code) {
         const src = this.l3Iface(iface)?.addrs[0]?.ip;
         if (src === undefined || (p.icmp && p.icmp.type !== 'echo-request'))
             return;
         const back = this.route(p.src);
         if (!back)
             return;
-        this.stack.sendVia(back, { src, dst: p.src, ttl: LINUX_TTL, protocol: 'icmp', icmp: { type, id: p.icmp?.id ?? 0, seq: p.icmp?.seq ?? 0 } });
+        this.stack.sendVia(back, { src, dst: p.src, ttl: LINUX_TTL, protocol: 'icmp', icmp: { type, id: p.icmp?.id ?? 0, seq: p.icmp?.seq ?? 0, ...(code ? { code } : {}) } });
     }
 }
 
@@ -40354,14 +40484,14 @@ class RouterPlane {
         }
         const egress = this.route(packet.dst);
         if (!egress) {
-            this.icmpError(packet, src, 'unreachable');
+            this.icmpError(packet, src, 'unreachable', 'net');
             return;
         }
         const out = natForward(this.router, inIface, egress.iface, { ...packet, ttl: packet.ttl - 1 });
         if (!out)
             return;
         if (!outboundAllowed(this.router, egress.iface, out)) {
-            this.icmpError(packet, src, 'unreachable');
+            this.icmpError(packet, src, 'unreachable', 'admin');
             return;
         }
         const sealed = this.router.ipsec.outbound(egress.iface, out);
@@ -40375,7 +40505,7 @@ class RouterPlane {
     /** Inbound access list, IPsec decapsulation, then NAT outside → inside (IOS order). */
     prerouting(iface, packet) {
         if (!inboundAllowed(this.router, iface, packet)) {
-            this.icmpError(packet, this.l3Iface(iface)?.addrs[0]?.ip ?? 0, 'unreachable');
+            this.icmpError(packet, this.l3Iface(iface)?.addrs[0]?.ip ?? 0, 'unreachable', 'admin');
             return null;
         }
         const opened = this.router.ipsec.inbound(iface, packet);
@@ -40384,10 +40514,10 @@ class RouterPlane {
     answersArp(iface, ip) {
         return natAnswersArp(this.router, iface, ip);
     }
-    icmpError(packet, src, type) {
+    icmpError(packet, src, type, code) {
         if (!packet.icmp || packet.icmp.type !== 'echo-request')
             return;
-        this.stack.send({ src, dst: packet.src, ttl: this.ttl, protocol: 'icmp', icmp: { ...packet.icmp, type } });
+        this.stack.send({ src, dst: packet.src, ttl: this.ttl, protocol: 'icmp', icmp: { ...packet.icmp, type, ...(code ? { code } : {}) } });
     }
     // ------------------------------------------------------------ local delivery (DHCP)
     deliver(iface, packet) {
@@ -47997,12 +48127,12 @@ class InternetCore {
                 this.schedule(delay, () => this.send({ src: p.dst, dst: p.src, ttl: ERROR_TTL, protocol: 'icmp', icmp: { ...p.icmp, type: 'echo-reply' } }));
             return;
         }
-        this.icmpError(packet, hops.at(-1) ?? BACKBONE[1], 'unreachable');
+        this.icmpError(packet, hops.at(-1) ?? BACKBONE[1], 'unreachable', 'net');
     }
-    icmpError(packet, from, type) {
+    icmpError(packet, from, type, code) {
         if (packet.icmp?.type !== 'echo-request')
             return;
-        const err = { src: from, dst: packet.src, ttl: ERROR_TTL, protocol: 'icmp', icmp: { ...packet.icmp, type } };
+        const err = { src: from, dst: packet.src, ttl: ERROR_TTL, protocol: 'icmp', icmp: { ...packet.icmp, type, ...(code ? { code } : {}) } };
         this.schedule(HOP_MS, () => this.send(err));
     }
 }

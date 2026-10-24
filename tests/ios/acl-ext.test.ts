@@ -53,7 +53,7 @@ test('extended ACL in on the LAN: web allowed, SSH denied (logged), ping denied 
     'interface g0/0', 'ip access-group 100 in'), []);
   assert.match(sh(pc, 'curl -s http://10.0.0.2/'), /Servidor web de Netfix/);
   assert.match(sh(pc, 'nc -z -w 1 10.0.0.2 22'), /timed out/);
-  assert.match(sh(pc, 'ping -c 1 10.0.0.2'), /From 192\.168\.1\.1 icmp_seq=1 Destination Host Unreachable/);
+  assert.match(sh(pc, 'ping -c 1 10.0.0.2'), /From 192\.168\.1\.1 icmp_seq=1 Packet filtered/);
   const show = cli(r, 'exec', 'show access-lists').join('\n');
   assert.match(show, /^Extended IP access list 100\n {4}10 permit tcp 192\.168\.1\.0 0\.0\.0\.255 host 10\.0\.0\.2 eq www \(\d+ match\(es\)\)\n {4}20 deny tcp any any eq 22 log \(1 match\(es\)\)\n {4}30 permit icmp any any echo-reply$/);
   assert.match(logs.join('\n'), /%SEC-6-IPACCESSLOGP: list 100 denied tcp 192\.168\.1\.10\(\d+\) -> 10\.0\.0\.2\(22\), 1 packet/);

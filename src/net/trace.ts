@@ -3,13 +3,16 @@
  * ICMP echo probes with TTL 1, 2, 3… until the destination answers. Routers on the way answer
  * "time exceeded" (they only do that for echo requests, so this is `traceroute -I` behaviour).
  */
-import type { IpStack } from './ipstack.ts';
+import type { EchoResult, IpStack } from './ipstack.ts';
+import type { UnreachableCode } from './packets.ts';
 import type { DeviceHooks } from '../devices/hooks.ts';
 import { formatIp } from '../core/ip.ts';
 
 export interface Probe {
   readonly from: number;
   readonly ms: number;
+  /** Set when the answer was a destination unreachable (traceroute shows !N, !H, !P or !X). */
+  readonly unreachable?: UnreachableCode;
 }
 
 export interface Hop {
@@ -43,11 +46,11 @@ export function runTrace(stack: IpStack, hooks: DeviceHooks, dst: number, o: Tra
     let done = false;
     for (let p = 0; p < o.probes; p++) {
       const start = o.now();
-      let result: { kind: string; from: number } | undefined;
+      let result: EchoResult | undefined;
       const sent = stack.echo(dst, id, seq++, undefined, (r) => { result = r; }, ttl);
       if (!sent) return { hops, reached: false, noroute: true };
       hooks.runUntil(() => result !== undefined, o.timeoutMs);
-      probes.push(result ? { from: result.from, ms: o.now() - start } : null);
+      probes.push(result ? { from: result.from, ms: o.now() - start, ...(result.kind === 'unreachable' ? { unreachable: result.code } : {}) } : null);
       if (result && result.kind !== 'ttl') done = true;
     }
     hops.push({ ttl, probes });
@@ -65,6 +68,9 @@ function firstFrom(h: Hop): number | undefined {
   return h.probes.find((p): p is Probe => p !== null)?.from;
 }
 
+/** traceroute's mark after the time of a destination unreachable. */
+const UNREACHABLE_MARK: Readonly<Record<UnreachableCode, string>> = { net: '!N', host: '!H', port: '!P', admin: '!X' };
+
 /** GNU/Linux traceroute (inetutils/traceroute 2.1 layout). */
 export function linuxTraceLines(target: string, dst: number, r: TraceResult, o: { numeric: boolean; gateway?: number; maxHops: number }): string[] {
   const lines = [`traceroute to ${target} (${formatIp(dst)}), ${o.maxHops} hops max, 60 byte packets`];
@@ -74,7 +80,7 @@ export function linuxTraceLines(target: string, dst: number, r: TraceResult, o: 
       if (!p) return '*';
       const who = p.from === last ? '' : o.numeric ? `${formatIp(p.from)}  ` : `${p.from === o.gateway ? '_gateway' : formatIp(p.from)} (${formatIp(p.from)})  `;
       last = p.from;
-      return `${who}${fineMs(p.ms, h.ttl, i)} ms`;
+      return `${who}${fineMs(p.ms, h.ttl, i)} ms${p.unreachable ? ` ${UNREACHABLE_MARK[p.unreachable]}` : ''}`;
     });
     lines.push(`${String(h.ttl).padStart(2)}${parts.map((t, i) => (t === '*' && i > 0 ? ` ${t}` : `  ${t}`)).join('')}`);
   }

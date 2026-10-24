@@ -6,13 +6,13 @@
 import { Server } from './server.ts';
 import type { HostOs } from './host.ts';
 import type { NicInfo } from './host-nics.ts';
-import type { Frame, IpPacket, WgMessage } from '../net/packets.ts';
+import type { Frame, IpPacket, UnreachableCode, WgMessage } from '../net/packets.ts';
+import { LINUX_TTL } from '../net/packets.ts';
 import type { Egress, L3Iface } from '../net/ipstack.ts';
 import { WgManager } from './wg-manager.ts';
 import type { SimClock } from '../core/clock.ts';
 
 export const LINUX_ROUTER_PORTS = ['GigabitEthernet0/0', 'GigabitEthernet0/1', 'GigabitEthernet0/2'] as const;
-const LINUX_TTL = 64;
 
 interface Nic {
   ip?: number;
@@ -29,7 +29,9 @@ function macPlus(mac: string, n: number): string {
 export class LinuxRouter extends Server {
   declare readonly kind: 'linuxrouter';
   override os: HostOs = 'linux';
-  override readonly ttl = LINUX_TTL;
+  override get ttl(): number {
+    return LINUX_TTL;
+  }
   /** NICs 1 and 2 (NIC 0 is the host's main configuration: `config`, DHCP client, `portUp`). */
   private readonly extra = new Map<string, Nic>();
   /** WireGuard links (wg0…), their addresses and device routes. */
@@ -177,7 +179,7 @@ export class LinuxRouter extends Server {
     }
     const egress = this.route(packet.dst);
     if (!egress) {
-      this.icmpError(iface, packet, 'unreachable');
+      this.icmpError(iface, packet, 'unreachable', 'net');
       return;
     }
     const nf = this.kernel.netfilter;
@@ -187,11 +189,11 @@ export class LinuxRouter extends Server {
   }
 
   /** ICMP time exceeded / destination unreachable from the address of the arrival interface. */
-  private icmpError(iface: string, p: IpPacket, type: 'ttl-exceeded' | 'unreachable'): void {
+  private icmpError(iface: string, p: IpPacket, type: 'ttl-exceeded' | 'unreachable', code?: UnreachableCode): void {
     const src = this.l3Iface(iface)?.addrs[0]?.ip;
     if (src === undefined || (p.icmp && p.icmp.type !== 'echo-request')) return;
     const back = this.route(p.src);
     if (!back) return;
-    this.stack.sendVia(back, { src, dst: p.src, ttl: LINUX_TTL, protocol: 'icmp', icmp: { type, id: p.icmp?.id ?? 0, seq: p.icmp?.seq ?? 0 } });
+    this.stack.sendVia(back, { src, dst: p.src, ttl: LINUX_TTL, protocol: 'icmp', icmp: { type, id: p.icmp?.id ?? 0, seq: p.icmp?.seq ?? 0, ...(code ? { code } : {}) } });
   }
 }

@@ -3,7 +3,7 @@
  * the ISPs' own core routers and virtual hosts such as the public DNS servers 8.8.8.8/8.8.4.4.
  * Packets travel hop by hop: TTL is decremented and "time exceeded" is returned for echo requests.
  */
-import type { IpPacket } from './packets.ts';
+import type { IpPacket, UnreachableCode } from './packets.ts';
 import { parseIp } from '../core/ip.ts';
 
 export interface InternetEdge {
@@ -140,12 +140,12 @@ export class InternetCore implements DomainSource {
       if (p.icmp?.type === 'echo-request') this.schedule(delay, () => this.send({ src: p.dst, dst: p.src, ttl: ERROR_TTL, protocol: 'icmp', icmp: { ...p.icmp!, type: 'echo-reply' } }));
       return;
     }
-    this.icmpError(packet, hops.at(-1) ?? BACKBONE[1], 'unreachable');
+    this.icmpError(packet, hops.at(-1) ?? BACKBONE[1], 'unreachable', 'net');
   }
 
-  private icmpError(packet: IpPacket, from: number, type: 'ttl-exceeded' | 'unreachable'): void {
+  private icmpError(packet: IpPacket, from: number, type: 'ttl-exceeded' | 'unreachable', code?: UnreachableCode): void {
     if (packet.icmp?.type !== 'echo-request') return;
-    const err: IpPacket = { src: from, dst: packet.src, ttl: ERROR_TTL, protocol: 'icmp', icmp: { ...packet.icmp, type } };
+    const err: IpPacket = { src: from, dst: packet.src, ttl: ERROR_TTL, protocol: 'icmp', icmp: { ...packet.icmp, type, ...(code ? { code } : {}) } };
     this.schedule(HOP_MS, () => this.send(err));
   }
 }
