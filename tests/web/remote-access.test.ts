@@ -172,7 +172,7 @@ test('from a terminal: curl -I gives the real Content-Length, curl -w prints the
 test('ss shows Apache listening on every address, as on Ubuntu', () => {
   const { srv, root } = lab('server');
   enable(srv, 'roundcube', 'port');
-  assert.match(root('ss -tln'), /LISTEN\s+0\s+511\s+\*:80\s+\*:\*\s+users:\(\("apache2"/);
+  assert.match(root('ss -tlnp'), /LISTEN\s+0\s+511\s+\*:80\s+\*:\*\s+users:\(\("apache2"/);
   assert.match(root('ss -tln'), /\*:8080\s+\*:\*/);
 });
 

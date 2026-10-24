@@ -13,7 +13,11 @@ function rr(a: DnsAnswer): string {
 }
 
 export function digOutput(name: string, type: DnsType, r: DnsResult, short: boolean, now: number): string[] {
-  if (r.kind === 'noserver') return [';; no servers could be reached (no hay servidor DNS configurado)'];
+  // No nameserver in resolv.conf: dig falls back to the loopback, where nothing listens.
+  if (r.kind === 'noserver') {
+    const refused = ';; communications error to 127.0.0.1#53: connection refused';
+    return [refused, refused, refused, '', `; <<>> DiG ${DIG_VERSION} <<>> ${name}`, ';; global options: +cmd', ';; no servers could be reached'];
+  }
   const server = formatIp(r.server);
   if (r.kind === 'timeout') return [`;; communications error to ${server}#53: timed out`, `;; communications error to ${server}#53: timed out`, '', `; <<>> DiG ${DIG_VERSION} <<>> ${name}`, ';; global options: +cmd', ';; no servers could be reached'];
   const m = r.msg;

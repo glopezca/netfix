@@ -130,17 +130,42 @@ function boundAddresses(server: Server, unit: UnitId): string[] | undefined {
   return chosen.map((c) => (c.ip !== undefined ? formatIp(c.ip) : `0.0.0.0%${c.name}`));
 }
 
-export function ss(host: Host): string[] {
-  const header = 'Netid State  Recv-Q Send-Q Local Address:Port  Peer Address:Port Process';
+export interface SsOptions {
+  readonly tcp: boolean;
+  readonly udp: boolean;
+  readonly listening: boolean;
+  readonly all: boolean;
+  readonly processes: boolean;
+}
+
+/** `ss -tulpn` and friends: the letters of every short option (ss -t -l and ss -tl are the same). */
+export function ssOptions(argv: readonly string[]): SsOptions {
+  const long: Readonly<Record<string, string>> = { '--tcp': 't', '--udp': 'u', '--listening': 'l', '--all': 'a', '--processes': 'p', '--numeric': 'n' };
+  const letters = argv.map((a) => long[a] ?? (/^-[a-zA-Z0-9]+$/.test(a) ? a.slice(1) : '')).join('');
+  const has = (c: string): boolean => letters.includes(c);
+  return { tcp: has('t'), udp: has('u'), listening: has('l'), all: has('a'), processes: has('p') };
+}
+
+/**
+ * Sockets as iproute2's ss shows them. Netfix only knows the listening ones (no established connections are
+ * listed): without -l or -a only the header is left. The Netid column appears when more than one socket type is
+ * shown; the process only with -p.
+ */
+export function ss(host: Host, o: SsOptions = { tcp: true, udp: true, listening: true, all: false, processes: true }): string[] {
+  const types = o.tcp || o.udp ? { tcp: o.tcp, udp: o.udp } : { tcp: true, udp: true };
+  const netid = types.tcp && types.udp;
+  const header = `${netid ? 'Netid ' : ''}State  Recv-Q Send-Q Local Address:Port  Peer Address:Port Process`;
   const server = asServer(host);
-  if (!server) return [header];
+  if (!server || !(o.listening || o.all)) return [header];
   const v4 = host.config.ip !== undefined ? '0.0.0.0' : '*';
-  return [header, ...openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).flatMap((p) => {
+  const ports = openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).filter((p) => types[p.proto]);
+  return [header, ...ports.flatMap((p) => {
     // Apache and the web GUI bind the IPv6 wildcard (dual stack): Ubuntu's ss shows them as *:port, *:*.
     const dual = p.unit.id === 'http';
     const locals = (p.proto === 'udp' ? boundAddresses(server, p.unit.id) : undefined) ?? [dual ? '*' : v4];
     const peer = dual ? '*:*' : '0.0.0.0:*';
-    return locals.map((local) => `${p.proto.padEnd(5)} ${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${peer.padStart(15)}   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))`);
+    const proc = o.processes ? `   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))` : '';
+    return locals.map((local) => `${netid ? `${p.proto.padEnd(5)} ` : ''}${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${peer.padStart(15)}${proc}`);
   })];
 }
 

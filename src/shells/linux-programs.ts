@@ -10,7 +10,7 @@ import type { CommandFn, Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { httpGet } from './net-tools.ts';
 import { byteLength } from '../web/http.ts';
-import { systemctl, journalctl, ss } from './linux-services.ts';
+import { systemctl, journalctl, ss, ssOptions } from './linux-services.ts';
 import { ip, ping, dig, nslookup, hostCmd, dhclient } from './linux-net.ts';
 import { traceroute } from './trace-cmds.ts';
 import { FsError } from '../bash/vfs.ts';
@@ -158,7 +158,7 @@ export function linuxPrograms(host: Host): Map<string, CommandFn> {
     ...(host.kind === 'linuxrouter' ? [['wg', wg(host)] as const, ['wg-quick', wgQuick(host)] as const] : []),
     ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
     ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
-    ['ss', (ctx) => { lines(ctx, ss(host)); return 0; }],
+    ['ss', (ctx) => { lines(ctx, ss(host, ssOptions(ctx.argv.slice(1)))); return 0; }],
     ['command-not-found', commandNotFound],
     ...(runsServices(host.kind) ? [...APACHE_TOOLS, ['rndc', rndc(host)] as const] : []),
   ]);

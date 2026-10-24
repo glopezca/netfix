@@ -18420,7 +18420,7 @@ const UTIL_DOCS = {
 return { UTIL_GROUPS, UTIL_DOCS };
 })();
 __m["docs/linux.js"] = (() => {
-const { code, h, list, note, p, table } = __m["docs/types.js"];
+const { check, code, exercise, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
 const { UTIL_DOCS, UTIL_GROUPS } = __m["docs/utils.js"];
 function utilityBlocks(groups) {
     const blocks = [];
@@ -18435,24 +18435,33 @@ function utilityBlocks(groups) {
     }
     return blocks;
 }
+const MD = 'https://github.com/glopezca/netfix/blob/main/';
 const LINUX_DOCS = [
     {
         id: 'linux-intro',
         title: 'La Terminal Linux',
-        summary: 'Ubuntu 26.04 con GNU bash 5.3 en cada PC y servidor: qué hay y cómo se usa.',
+        summary: 'Ubuntu 26.04 con GNU bash 5.3 en cada PC y servidor: tu primera sesión, tu primer script y qué hay disponible.',
+        markdownBase: MD,
         blocks: [
             p('Cada PC y cada Server tiene su propio sistema Ubuntu 26.04 simulado: un sistema de ficheros con permisos, cuentas de usuario, GNU bash 5.3.20 y las utilidades GNU más usadas (coreutils, grep, sed, mawk, find…), además de los programas de red que hablan con la red simulada (ip, ping, dig, curl, ssh…).'),
             code('alumno@pc0:~$ echo "Hola" > saludo.txt && cat saludo.txt\nHola\nalumno@pc0:~$ for h in srv www; do dig +short $h.aula.lab; done\nalumno@pc0:~$ ip -br a\nalumno@pc0:~$ sudo dhclient -r eth0 && sudo dhclient eth0\nalumno@pc0:~$ ssh admin@srv.aula.lab'),
+            h('Paso a paso: tu primer script'),
+            steps(['Abre la terminal', 'Doble clic en un PC → **Terminal Linux**. El indicador `alumno@pc1:~$` dice usuario, equipo y directorio (~ es tu home).'], ['Mira dónde estás', '`pwd` y `ls -la` (con -a, también los ficheros ocultos que empiezan por punto).'], ['Escribe el script', '`nano saludo.sh` con dos líneas: `#!/bin/bash` y `echo "Hola, $USER, desde $(hostname)"`. Ctrl+O guarda y Ctrl+X sale.'], ['Dale permiso de ejecución', '`chmod +x saludo.sh`; sin él, `./saludo.sh` da «Permission denied».'], ['Ejecútalo', '`./saludo.sh`.']),
+            term('shell', 'alumno@pc1:~$ cat saludo.sh\n#!/bin/bash\necho "Hola, $USER, desde $(hostname)"\nalumno@pc1:~$ ./saludo.sh\nbash: ./saludo.sh: Permission denied\nalumno@pc1:~$ chmod +x saludo.sh\nalumno@pc1:~$ ./saludo.sh\nHola, alumno, desde pc1'),
             h('Qué conviene saber'),
             list('El shell es interactivo: lee /etc/bash.bashrc y ~/.bashrc, guarda el historial y muestra el prompt en color de Ubuntu.', 'Los scripts funcionan: nano script.sh, chmod +x script.sh y ./script.sh (con #!/bin/bash), o bash script.sh.', 'help muestra las órdenes internas y man la ayuda de cada programa; esta pestaña tiene la referencia completa.', 'exit en la terminal local abre una sesión nueva; en una sesión SSH, la cierra.', 'No hay gestor de paquetes (apt) ni procesos reales: los trabajos en segundo plano terminan al momento.'),
             note('Todo lo que se escribe en el disco del equipo (home, scripts, cambios en /etc) se guarda con la topología.'),
+            tip('Tab y las flechas', 'Tab completa nombres de órdenes y ficheros; ↑ y ↓ recorren el historial; Ctrl+R lo busca. Escribir menos es equivocarse menos.'),
+            warn('Errores habituales', 'Escribir `saludo.sh` en vez de `./saludo.sh`: el directorio actual no está en el PATH («command not found»). Usar comillas dobles con `!` dentro en la terminal: bash intenta expandir el historial («event not found»); usa comillas simples. Olvidar `sudo` para tocar ficheros del sistema.'),
             note('Casilla «Prompt con marca de fecha y hora» (al pie de la terminal): es como ejecutar PS1="\\[\\e[32m\\]\\d \\[\\e[36m\\]\\A \\[\\e[33m\\]\\u@\\h:\\w\\$ \\[\\e[0m\\]": fecha en verde, hora en cian y usuario@equipo:ruta en amarillo, con la hora simulada. Es un ajuste del equipo (vale también para su Terminal Windows y para las sesiones SSH que se abren en él) y se guarda con la topología; al desmarcarla vuelve el PS1 que había. Un bash o su anidado lee su .bashrc, como en Ubuntu. En un aula puede estar bloqueada por el profesor.'),
+            exercise('Un script que informa', 'En PC1 del laboratorio «Server: DHCP, DNS, web, correo y SSH», crea `info.sh` que muestre el nombre del equipo, su dirección IP y su puerta de enlace, y ejecútalo.', 'Contenido: `#!/bin/bash`, `echo "Equipo: $(hostname)"`, `echo "Dirección IP: $(hostname -I)"` y `echo "Puerta de enlace: $(ip r | grep default | cut -d" " -f3)"`. Después `chmod +x info.sh` y `./info.sh` muestra pc1, 192.168.10.50 y 192.168.10.1.'),
         ],
     },
     {
         id: 'linux-ficheros',
         title: 'Sistema de ficheros y permisos',
-        summary: 'Árbol de directorios, ficheros generados por la simulación, /var/www/html y permisos.',
+        summary: 'Árbol de directorios, ficheros generados por la simulación, /var/www/html y cómo leer y cambiar permisos.',
+        markdownBase: MD,
         blocks: [
             table(['Ruta', 'Contenido'], [
                 ['/home/alumno · /home/admin · /root', 'Directorios personales (.bashrc, .profile, .bash_history)'],
@@ -18469,27 +18478,46 @@ const LINUX_DOCS = [
             ]),
             p('Los ficheros generados son de solo lectura («Read-only file system»): se cambian desde la interfaz (Configuración IP, Servicios) y la terminal los ve al momento.'),
             h('Permisos'),
-            code('$ ls -l /etc/shadow\n-rw-r----- 1 root shadow 120 Oct 11 10:00 /etc/shadow\n$ chmod 750 script.sh      # rwxr-x---\n$ chmod u+x,go-w script.sh\n$ umask 022\n$ sudo chown root:root f'),
+            p('Cada fichero tiene un **dueño**, un **grupo** y tres tríos de permisos: **r** (leer), **w** (escribir) y **x** (ejecutar, o entrar si es un directorio), para el dueño, el grupo y los demás.'),
+            table(['Columna de ls -l', 'Ejemplo', 'Significa'], [
+                ['Tipo y permisos', '-rw-r-----', 'Fichero (-); el dueño lee y escribe; el grupo lee; los demás, nada.'],
+                ['Dueño · grupo', 'root shadow', 'Solo root y el grupo shadow pueden leerlo.'],
+                ['En octal', '640', 'r=4, w=2, x=1 sumados por trío: 6 (rw-), 4 (r--), 0 (---).'],
+            ]),
+            term('shell', 'alumno@pc1:~$ ls -l /etc/shadow\n-rw-r----- 1 root shadow 67 Oct 24 10:44 /etc/shadow\nalumno@pc1:~$ cat /etc/shadow\ncat: /etc/shadow: Permission denied\nalumno@pc1:~$ echo x > /etc/resolv.conf\nbash: /etc/resolv.conf: Read-only file system'),
+            code('$ chmod 750 script.sh      # rwxr-x---\n$ chmod u+x,go-w script.sh\n$ umask 022\n$ sudo chown root:root f'),
             list('Se comprueban lectura, escritura y ejecución para dueño, grupo y otros, el bit sticky de /tmp y la ejecución en directorios.', 'root puede leer y escribir todo salvo los ficheros generados.', 'Límites: 256 KiB por fichero y 4 MiB por equipo («File too large», «No space left on device»).'),
+            warn('Permission denied o Read-only file system', 'Son errores distintos. «Permission denied»: tu usuario no tiene permiso (mira `ls -l` y usa sudo si procede). «Read-only file system»: es un fichero generado por Netfix, ni root lo cambia; se cambia en la interfaz (Configuración IP, Servicios).'),
+            exercise('Un script privado', 'En PC1, deja `saludo.sh` (de «La Terminal Linux») para que tú puedas leerlo, cambiarlo y ejecutarlo, tu grupo solo leerlo, y los demás nada. ¿Qué número octal usas?', '750 no: el grupo podría ejecutarlo. Es `chmod 740 saludo.sh`: 7 (rwx) para ti, 4 (r--) para el grupo y 0 para los demás. `ls -l saludo.sh` muestra `-rwxr-----`.'),
         ],
     },
     {
         id: 'linux-programas',
         title: 'Programas de la Terminal Linux',
-        summary: 'Todas las utilidades disponibles con sus opciones.',
+        summary: 'Todas las utilidades disponibles con sus opciones, y cómo encadenarlas con tuberías.',
+        markdownBase: MD,
         blocks: [
             p('Cada programa acepta las opciones habituales de GNU y produce sus mensajes de error. man PROGRAMA muestra esta misma información en la terminal.'),
+            tip('Encadena programas', 'La fuerza de Linux está en combinar programas pequeños con `|` (tubería): la salida de uno es la entrada del siguiente. `grep bash /etc/passwd | cut -d: -f1` lista las cuentas que usan bash.'),
+            term('shell', 'alumno@pc1:~$ grep bash /etc/passwd | cut -d: -f1\nroot\nalumno\nalumno@pc1:~$ grep -c bash /etc/passwd\n2'),
+            exercise('¿Cuántas cuentas hay?', 'En SRV del laboratorio «Server: DHCP, DNS, web, correo y SSH», cuenta las líneas de /etc/passwd y lista solo los nombres de las cuentas que tienen su home en /home.', '`wc -l /etc/passwd` cuenta 4 líneas. `grep :/home/ /etc/passwd | cut -d: -f1` muestra solo admin: es la cuenta de la terminal y también la única cuenta SSH del laboratorio (cada cuenta SSH nueva tendría su /home).'),
             ...utilityBlocks(['ficheros', 'texto', 'sistema', 'shell', 'editores']),
         ],
     },
     {
         id: 'linux-red',
         title: 'Red y servicios desde Linux',
-        summary: 'ip, ping, dig, resolvectl, curl, wget, ssh, dhclient, ss, systemctl y journalctl.',
+        summary: 'Diagnosticar la red en cuatro pasos, y la referencia de ip, ping, dig, resolvectl, curl, wget, ssh, dhclient, ss, systemctl y journalctl.',
+        markdownBase: MD,
         blocks: [
+            h('Paso a paso: ¿por qué no tengo red?'),
+            steps(['¿Tengo dirección IP?', '`ip -br a`: la interfaz debe estar UP y con su dirección IP. Si sale 169.254.x.x o nada, el problema es DHCP o el cable.'], ['¿Tengo puerta de enlace?', '`ip r`: debe haber una línea «default via …».'], ['¿Llego a la puerta de enlace?', '`ping -c 1` a esa dirección IP. Si no responde, el problema está en la red local.'], ['¿Resuelvo nombres?', '`dig +short` de un nombre conocido. Si no responde pero el ping a una dirección IP sí, el problema es el DNS.']),
+            term('shell', 'alumno@pc1:~$ ip -br a\nlo               UNKNOWN        127.0.0.1/8\neth0             UP             192.168.10.50/24\nalumno@pc1:~$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n192.168.10.0/24 dev eth0 proto kernel scope link src 192.168.10.50\nalumno@pc1:~$ ping -c 1 192.168.10.1\nPING 192.168.10.1 (192.168.10.1) 56(84) bytes of data.\n64 bytes from 192.168.10.1: icmp_seq=1 ttl=255 time=0.400 ms\nalumno@pc1:~$ dig +short srv.aula.lab\n192.168.10.2'),
+            check('Lee los TTL', 'El ttl de la respuesta delata al equipo: 255 un Cisco, 64 un Linux, 128 un Windows (menos uno por cada router que atraviesa).'),
             ...utilityBlocks(['red', 'servicios']),
             h('Ejemplos'),
             code('$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n$ dig +short www.aula.lab\nsrv.aula.lab.\n192.168.10.2\n$ resolvectl query www.aula.lab\nwww.aula.lab: 192.168.10.2                  -- link: eth0\n                (srv.aula.lab)\n$ resolvectl dns\nGlobal:\nLink 2 (eth0): 192.168.10.2\n$ curl -I http://www.aula.lab\nHTTP/1.1 200 OK\nServer: Apache/2.4.62 (Ubuntu)\n$ ping -c 1 noexiste.aula.lab\nping: noexiste.aula.lab: Name or service not known\n$ systemctl stop apache2\nFailed to stop apache2.service: Interactive authentication required.'),
+            exercise('Rompe y arregla', 'En PC1 del laboratorio «Server: DHCP, DNS, web, correo y SSH», quita el servidor DNS de su configuración (Configuración IP → Estática, sin servidor DNS) y sigue el paso a paso. ¿En qué paso falla?', 'Los pasos 1 a 3 funcionan (dirección IP, «default via 192.168.10.1» y ping a la puerta de enlace), pero `dig +short srv.aula.lab` acaba en «;; no servers could be reached» y `ping srv.aula.lab` dice «Temporary failure in name resolution»: falla el DNS. Vuelve a poner 192.168.10.2 (o DHCP).'),
         ],
     },
 ];
@@ -18899,20 +18927,27 @@ const EDITOR_DOCS = [
     {
         id: 'nano',
         title: 'nano',
-        summary: 'GNU nano 8.4: teclas, diálogos y mensajes.',
+        summary: 'GNU nano 8.4 paso a paso: abrir, editar, guardar y salir; teclas, diálogos y mensajes.',
+        markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
         blocks: [
+            p('**nano** es el editor más sencillo de la terminal: escribes directamente y las órdenes van con Ctrl. Abajo tiene siempre a la vista los atajos más usados. Es el editor recomendado para empezar.'),
+            steps(['Abre el fichero', '`nano notas.txt` (si no existe, se crea al guardar). Para ficheros del sistema, `sudo nano /etc/hosts`.'], ['Escribe', 'Las flechas mueven el cursor; lo que tecleas se inserta. «Modified» aparece arriba a la derecha.'], ['Guarda', 'Ctrl+O, confirma el nombre con Intro: abajo sale «[ Wrote N lines ]».'], ['Sal', 'Ctrl+X. Si hay cambios sin guardar pregunta «Save modified buffer?»: Y guarda, N descarta.']),
             code('nano fichero          # abre (o crea al guardar)\nnano +25 fichero      # en la línea 25\nsudo nano /etc/hosts  # ficheros de root\nnano -v fichero       # solo lectura'),
             p('La pantalla tiene la barra de título (versión, nombre y «Modified» si hay cambios), el texto, la línea de estado ([ Read 3 lines ], [ Wrote 3 lines ], [ New File ]…) y dos filas de atajos. ^ significa Ctrl y M- significa Alt.'),
             table(['Tecla', 'Acción'], NANO_KEYS),
             note('El navegador reserva Ctrl+W, Ctrl+N y Ctrl+T: para buscar usa Ctrl+F, que es el atajo propio de nano 8.'),
-            p('Al guardar un fichero sin permiso nano muestra «[ Error writing /etc/hosts: Permission denied ]» y no cierra: sal con Ctrl+X → N y vuelve a abrirlo con sudo.'),
+            warn('Sin permiso', 'Al guardar un fichero sin permiso nano muestra «[ Error writing /etc/hosts: Permission denied ]» y no cierra: sal con Ctrl+X → N y vuelve a abrirlo con sudo.'),
+            exercise('Un nombre propio para el servidor', 'En PC1 del laboratorio «Server: DHCP, DNS, web, correo y SSH», haz que el nombre `intranet` lleve a 192.168.10.2 sin tocar el DNS.', '`sudo nano /etc/hosts`, añade la línea `192.168.10.2 intranet`, Ctrl+O, Intro y Ctrl+X. `ping -c 1 intranet` responde desde 192.168.10.2: /etc/hosts se consulta antes que el DNS. `dig intranet` en cambio no lo encuentra, porque solo pregunta al servidor DNS.'),
         ],
     },
     {
         id: 'vim',
         title: 'vim',
-        summary: 'Vi IMproved 9.1: modos, órdenes de movimiento y edición, órdenes de dos puntos.',
+        summary: 'Vi IMproved 9.1 paso a paso: modos, cómo salir, movimiento, edición y órdenes de dos puntos.',
+        markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
         blocks: [
+            p('**vim** está en todos los sistemas Unix, también en los servidores mínimos donde no hay nano: merece la pena saber al menos editar, guardar y salir. Su clave es que tiene **modos**: en el normal las teclas son órdenes, y para escribir texto hay que entrar en el de inserción.'),
+            steps(['Abre el fichero', '`vim notas.txt`. Empiezas en **modo normal**.'], ['Entra a escribir', '`i` (insertar donde está el cursor). Abajo aparece «-- INSERT --».'], ['Vuelve al modo normal', 'Esc. Siempre que dudes, Esc.'], ['Guarda y sal', '`:wq` e Intro (o `ZZ`). Para salir sin guardar, `:q!`.']),
             code('vim fichero     vi fichero     view fichero (solo lectura)     vim +10 fichero'),
             p('vim tiene modos. Se abre en modo normal (las teclas son órdenes); i entra en modo inserción («-- INSERT --» abajo) y Esc vuelve. : abre la línea de órdenes. Abajo a la derecha está la posición (línea,columna) y All/Top/Bot o el porcentaje.'),
             h('Modo normal'),
@@ -18922,6 +18957,8 @@ const EDITOR_DOCS = [
             h('Mensajes habituales'),
             list('E37: No write since last change (add ! to override) — :q con cambios sin guardar.', "E45: 'readonly' option is set (add ! to override) — fichero de solo lectura.", 'W10: Warning: Changing a readonly file — empiezas a modificar uno de solo lectura.', '"f" E212: Can\'t open file for writing — sin permiso: :q! y sudo vim f.', 'E486: Pattern not found: x · E492: Not an editor command: x · E32: No file name.'),
             note('Los modos visual (v, V) y reemplazo (R) no están disponibles en Netfix.'),
+            tip('Atrapado en vim', 'Si no sabes en qué modo estás: Esc dos veces y `:q!` Intro. Sales sin cambios y vuelves a empezar.'),
+            exercise('Edita y sal sin miedo', 'En cualquier PC, crea con vim `lista.txt` con tres líneas (pc0, pc1 y srv), borra la segunda y guarda. Después intenta salir con `:q` tras cambiar algo más. ¿Qué dice vim?', '`vim lista.txt`, `i`, escribe las tres líneas, Esc, `:2` Intro y `dd` borra la línea de pc1, `:wq` guarda y sale. Al volver a abrirlo y cambiar algo, `:q` responde «E37: No write since last change (add ! to override)»: `:wq` guarda o `:q!` descarta.'),
         ],
     },
 ];
@@ -20543,7 +20580,7 @@ const UTIL_DOCS = {
 return { UTIL_GROUPS, UTIL_DOCS };
 })();
 __m["docs/en/linux.js"] = (() => {
-const { code, h, list, note, p, table } = __m["docs/types.js"];
+const { check, code, exercise, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
 const { UTIL_DOCS, UTIL_GROUPS } = __m["docs/en/utils.js"];
 function utilityBlocks(groups) {
     const blocks = [];
@@ -20558,24 +20595,33 @@ function utilityBlocks(groups) {
     }
     return blocks;
 }
+const MD = 'https://github.com/glopezca/netfix/blob/main/';
 const LINUX_DOCS = [
     {
         id: 'linux-intro',
         title: 'The Linux Terminal',
-        summary: 'Ubuntu 26.04 with GNU bash 5.3 on every PC and server: what is there and how to use it.',
+        summary: 'Ubuntu 26.04 with GNU bash 5.3 on every PC and server: your first session, your first script and what is available.',
+        markdownBase: MD,
         blocks: [
             p('Every PC and every Server has its own simulated Ubuntu 26.04 system: a file system with permissions, user accounts, GNU bash 5.3.20 and the most widely used GNU utilities (coreutils, grep, sed, mawk, find…), plus the network programs that talk to the simulated network (ip, ping, dig, curl, ssh…).'),
             code('alumno@pc0:~$ echo "Hola" > saludo.txt && cat saludo.txt\nHola\nalumno@pc0:~$ for h in srv www; do dig +short $h.aula.lab; done\nalumno@pc0:~$ ip -br a\nalumno@pc0:~$ sudo dhclient -r eth0 && sudo dhclient eth0\nalumno@pc0:~$ ssh admin@srv.aula.lab'),
+            h('Step by step: your first script'),
+            steps(['Open the terminal', 'Double-click a PC → **Linux terminal**. The prompt `alumno@pc1:~$` tells you user, device and directory (~ is your home).'], ['See where you are', '`pwd` and `ls -la` (with -a, the hidden files starting with a dot too).'], ['Write the script', '`nano saludo.sh` with two lines: `#!/bin/bash` and `echo "Hola, $USER, desde $(hostname)"`. Ctrl+O saves and Ctrl+X quits.'], ['Make it executable', '`chmod +x saludo.sh`; without it, `./saludo.sh` gives “Permission denied”.'], ['Run it', '`./saludo.sh`.']),
+            term('shell', 'alumno@pc1:~$ cat saludo.sh\n#!/bin/bash\necho "Hola, $USER, desde $(hostname)"\nalumno@pc1:~$ ./saludo.sh\nbash: ./saludo.sh: Permission denied\nalumno@pc1:~$ chmod +x saludo.sh\nalumno@pc1:~$ ./saludo.sh\nHola, alumno, desde pc1'),
             h('Worth knowing'),
             list('The shell is interactive: it reads /etc/bash.bashrc and ~/.bashrc, keeps the history and shows Ubuntu’s coloured prompt.', 'Scripts work: nano script.sh, chmod +x script.sh and ./script.sh (with #!/bin/bash), or bash script.sh.', 'help shows the built-in commands and man the help for each program; this tab has the complete reference.', 'exit in the local terminal opens a new session; in an SSH session, it closes it.', 'There is no package manager (apt) and there are no real processes: background jobs finish immediately.'),
             note('Everything written to the device’s disk (home, scripts, changes in /etc) is saved with the topology.'),
+            tip('Tab and the arrows', 'Tab completes command and file names; ↑ and ↓ go through the history; Ctrl+R searches it. Typing less is making fewer mistakes.'),
+            warn('Common mistakes', 'Typing `saludo.sh` instead of `./saludo.sh`: the current directory is not in the PATH (“command not found”). Using double quotes with a `!` inside in the terminal: bash tries to expand the history (“event not found”); use single quotes. Forgetting `sudo` to touch system files.'),
             note('«Date and time stamped prompt» checkbox (at the foot of the terminal): like running PS1="\\[\\e[32m\\]\\d \\[\\e[36m\\]\\A \\[\\e[33m\\]\\u@\\h:\\w\\$ \\[\\e[0m\\]": the date in green, the time in cyan and user@host:path in yellow, with the simulated time. It is a setting of the device (it also applies to its Windows terminal and to the SSH sessions opened on it) and it is saved with the topology; unticking it brings back the previous PS1. A nested bash or su reads its .bashrc, as on Ubuntu. In a classroom the teacher may lock it.'),
+            exercise('A script that reports', 'On PC1 of the «Server: DHCP, DNS, web, mail and SSH» lab, create `info.sh` showing the device name, its IP address and its gateway, and run it.', 'Contents: `#!/bin/bash`, `echo "Device: $(hostname)"`, `echo "IP address: $(hostname -I)"` and `echo "Gateway: $(ip r | grep default | cut -d" " -f3)"`. Then `chmod +x info.sh` and `./info.sh` shows pc1, 192.168.10.50 and 192.168.10.1.'),
         ],
     },
     {
         id: 'linux-ficheros',
         title: 'File system and permissions',
-        summary: 'Directory tree, files generated by the simulation, /var/www/html and permissions.',
+        summary: 'Directory tree, files generated by the simulation, /var/www/html and how to read and change permissions.',
+        markdownBase: MD,
         blocks: [
             table(['Path', 'Contents'], [
                 ['/home/alumno · /home/admin · /root', 'Home directories (.bashrc, .profile, .bash_history)'],
@@ -20592,27 +20638,46 @@ const LINUX_DOCS = [
             ]),
             p('Generated files are read-only (“Read-only file system”): they are changed from the interface (IP Configuration, Services) and the terminal sees the change immediately.'),
             h('Permissions'),
-            code('$ ls -l /etc/shadow\n-rw-r----- 1 root shadow 120 Oct 11 10:00 /etc/shadow\n$ chmod 750 script.sh      # rwxr-x---\n$ chmod u+x,go-w script.sh\n$ umask 022\n$ sudo chown root:root f'),
+            p('Every file has an **owner**, a **group** and three permission triplets: **r** (read), **w** (write) and **x** (execute, or enter if it is a directory), for the owner, the group and the others.'),
+            table(['ls -l column', 'Example', 'Meaning'], [
+                ['Type and permissions', '-rw-r-----', 'File (-); the owner reads and writes; the group reads; the others, nothing.'],
+                ['Owner · group', 'root shadow', 'Only root and the shadow group can read it.'],
+                ['In octal', '640', 'r=4, w=2, x=1 added up per triplet: 6 (rw-), 4 (r--), 0 (---).'],
+            ]),
+            term('shell', 'alumno@pc1:~$ ls -l /etc/shadow\n-rw-r----- 1 root shadow 67 Oct 24 10:44 /etc/shadow\nalumno@pc1:~$ cat /etc/shadow\ncat: /etc/shadow: Permission denied\nalumno@pc1:~$ echo x > /etc/resolv.conf\nbash: /etc/resolv.conf: Read-only file system'),
+            code('$ chmod 750 script.sh      # rwxr-x---\n$ chmod u+x,go-w script.sh\n$ umask 022\n$ sudo chown root:root f'),
             list('Read, write and execute are checked for owner, group and others, as are the sticky bit on /tmp and execute permission on directories.', 'root can read and write everything except generated files.', 'Limits: 256 KiB per file and 4 MiB per device (“File too large”, “No space left on device”).'),
+            warn('Permission denied or Read-only file system', 'They are different errors. “Permission denied”: your user has no permission (look at `ls -l` and use sudo if appropriate). “Read-only file system”: it is a file generated by Netfix, not even root changes it; it is changed in the interface (IP Configuration, Services).'),
+            exercise('A private script', 'On PC1, set `saludo.sh` (from “The Linux terminal”) so that you can read, change and run it, your group can only read it, and the others nothing. Which octal number do you use?', 'Not 750: the group could run it. It is `chmod 740 saludo.sh`: 7 (rwx) for you, 4 (r--) for the group and 0 for the others. `ls -l saludo.sh` shows `-rwxr-----`.'),
         ],
     },
     {
         id: 'linux-programas',
         title: 'Linux Terminal programs',
-        summary: 'All the available utilities with their options.',
+        summary: 'All the available utilities with their options, and how to chain them with pipes.',
+        markdownBase: MD,
         blocks: [
             p('Every program accepts the usual GNU options and produces its own error messages. man PROGRAM shows this same information in the terminal.'),
+            tip('Chain programs', 'Linux’s strength is combining small programs with `|` (a pipe): the output of one is the input of the next. `grep bash /etc/passwd | cut -d: -f1` lists the accounts that use bash.'),
+            term('shell', 'alumno@pc1:~$ grep bash /etc/passwd | cut -d: -f1\nroot\nalumno\nalumno@pc1:~$ grep -c bash /etc/passwd\n2'),
+            exercise('How many accounts are there?', 'On SRV of the «Server: DHCP, DNS, web, mail and SSH» lab, count the lines of /etc/passwd and list only the names of the accounts with their home in /home.', '`wc -l /etc/passwd` counts 4 lines. `grep :/home/ /etc/passwd | cut -d: -f1` shows only admin: it is the terminal’s account and also the lab’s only SSH account (each new SSH account would have its /home).'),
             ...utilityBlocks(['ficheros', 'texto', 'sistema', 'shell', 'editores']),
         ],
     },
     {
         id: 'linux-red',
         title: 'Network and services from Linux',
-        summary: 'ip, ping, dig, resolvectl, curl, wget, ssh, dhclient, ss, systemctl and journalctl.',
+        summary: 'Diagnosing the network in four steps, and the reference for ip, ping, dig, resolvectl, curl, wget, ssh, dhclient, ss, systemctl and journalctl.',
+        markdownBase: MD,
         blocks: [
+            h('Step by step: why do I have no network?'),
+            steps(['Do I have an IP address?', '`ip -br a`: the interface must be UP and have its IP address. If you see 169.254.x.x or nothing, the problem is DHCP or the cable.'], ['Do I have a gateway?', '`ip r`: there must be a “default via …” line.'], ['Do I reach the gateway?', '`ping -c 1` to that IP address. If it does not answer, the problem is on the local network.'], ['Do I resolve names?', '`dig +short` of a known name. If it does not answer but pinging an IP address does, the problem is DNS.']),
+            term('shell', 'alumno@pc1:~$ ip -br a\nlo               UNKNOWN        127.0.0.1/8\neth0             UP             192.168.10.50/24\nalumno@pc1:~$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n192.168.10.0/24 dev eth0 proto kernel scope link src 192.168.10.50\nalumno@pc1:~$ ping -c 1 192.168.10.1\nPING 192.168.10.1 (192.168.10.1) 56(84) bytes of data.\n64 bytes from 192.168.10.1: icmp_seq=1 ttl=255 time=0.400 ms\nalumno@pc1:~$ dig +short srv.aula.lab\n192.168.10.2'),
+            check('Read the TTLs', 'The reply’s ttl gives the device away: 255 a Cisco, 64 a Linux, 128 a Windows (minus one for each router it crosses).'),
             ...utilityBlocks(['red', 'servicios']),
             h('Examples'),
             code('$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n$ dig +short www.aula.lab\nsrv.aula.lab.\n192.168.10.2\n$ resolvectl query www.aula.lab\nwww.aula.lab: 192.168.10.2                  -- link: eth0\n                (srv.aula.lab)\n$ resolvectl dns\nGlobal:\nLink 2 (eth0): 192.168.10.2\n$ curl -I http://www.aula.lab\nHTTP/1.1 200 OK\nServer: Apache/2.4.62 (Ubuntu)\n$ ping -c 1 noexiste.aula.lab\nping: noexiste.aula.lab: Name or service not known\n$ systemctl stop apache2\nFailed to stop apache2.service: Interactive authentication required.'),
+            exercise('Break it and fix it', 'On PC1 of the «Server: DHCP, DNS, web, mail and SSH» lab, remove the DNS server from its configuration (IP Configuration → Static, with no DNS server) and follow the step by step. Which step fails?', 'Steps 1 to 3 work (IP address, “default via 192.168.10.1” and ping to the gateway), but `dig +short srv.aula.lab` ends in “;; no servers could be reached” and `ping srv.aula.lab` says “Temporary failure in name resolution”: DNS fails. Put 192.168.10.2 back (or DHCP).'),
         ],
     },
 ];
@@ -21022,20 +21087,27 @@ const EDITOR_DOCS = [
     {
         id: 'nano',
         title: 'nano',
-        summary: 'GNU nano 8.4: keys, dialogues and messages.',
+        summary: 'GNU nano 8.4 step by step: open, edit, save and quit; keys, dialogues and messages.',
+        markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
         blocks: [
+            p('**nano** is the simplest editor in the terminal: you type straight away and the commands go with Ctrl. The most used shortcuts are always in view at the bottom. It is the recommended editor to start with.'),
+            steps(['Open the file', '`nano notas.txt` (if it does not exist, it is created when you save). For system files, `sudo nano /etc/hosts`.'], ['Type', 'The arrows move the cursor; what you type is inserted. “Modified” appears at the top right.'], ['Save', 'Ctrl+O, confirm the name with Enter: “[ Wrote N lines ]” shows at the bottom.'], ['Quit', 'Ctrl+X. If there are unsaved changes it asks “Save modified buffer?”: Y saves, N discards.']),
             code('nano file             # opens (or creates on saving)\nnano +25 file         # at line 25\nsudo nano /etc/hosts  # root’s files\nnano -v file          # read-only'),
             p('The screen has the title bar (version, name and “Modified” if there are changes), the text, the status line ([ Read 3 lines ], [ Wrote 3 lines ], [ New File ]…) and two rows of shortcuts. ^ means Ctrl and M- means Alt.'),
             table(['Key', 'Action'], NANO_KEYS),
             note('The browser reserves Ctrl+W, Ctrl+N and Ctrl+T: to search use Ctrl+F, which is nano 8’s own shortcut.'),
-            p('When saving a file without permission, nano shows “[ Error writing /etc/hosts: Permission denied ]” and does not close: exit with Ctrl+X → N and open it again with sudo.'),
+            warn('Without permission', 'When saving a file without permission, nano shows “[ Error writing /etc/hosts: Permission denied ]” and does not close: exit with Ctrl+X → N and open it again with sudo.'),
+            exercise('A name of your own for the server', 'On PC1 of the «Server: DHCP, DNS, web, mail and SSH» lab, make the name `intranet` lead to 192.168.10.2 without touching DNS.', '`sudo nano /etc/hosts`, add the line `192.168.10.2 intranet`, Ctrl+O, Enter and Ctrl+X. `ping -c 1 intranet` answers from 192.168.10.2: /etc/hosts is checked before DNS. `dig intranet`, on the other hand, does not find it, because it only asks the DNS server.'),
         ],
     },
     {
         id: 'vim',
         title: 'vim',
-        summary: 'Vi IMproved 9.1: modes, motion and editing commands, colon commands.',
+        summary: 'Vi IMproved 9.1 step by step: modes, how to quit, motion, editing and colon commands.',
+        markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
         blocks: [
+            p('**vim** is on every Unix system, also on minimal servers where there is no nano: it is worth knowing at least how to edit, save and quit. Its key is that it has **modes**: in normal mode keys are commands, and to type text you must enter insert mode.'),
+            steps(['Open the file', '`vim notas.txt`. You start in **normal mode**.'], ['Start typing', '`i` (insert at the cursor). “-- INSERT --” appears at the bottom.'], ['Back to normal mode', 'Esc. Whenever in doubt, Esc.'], ['Save and quit', '`:wq` and Enter (or `ZZ`). To quit without saving, `:q!`.']),
             code('vim file     vi file     view file (read-only)     vim +10 file'),
             p('vim has modes. It opens in normal mode (keys are commands); i enters insert mode (“-- INSERT --” at the bottom) and Esc returns. : opens the command line. At the bottom right are the position (line,column) and All/Top/Bot or the percentage.'),
             h('Normal mode'),
@@ -21045,6 +21117,8 @@ const EDITOR_DOCS = [
             h('Common messages'),
             list('E37: No write since last change (add ! to override) — :q with unsaved changes.', "E45: 'readonly' option is set (add ! to override) — read-only file.", 'W10: Warning: Changing a readonly file — you start modifying a read-only one.', '"f" E212: Can\'t open file for writing — no permission: :q! and sudo vim f.', 'E486: Pattern not found: x · E492: Not an editor command: x · E32: No file name.'),
             note('Visual (v, V) and replace (R) modes are not available in Netfix.'),
+            tip('Stuck in vim', 'If you do not know which mode you are in: Esc twice and `:q!` Enter. You quit without changes and start again.'),
+            exercise('Edit and quit without fear', 'On any PC, create `lista.txt` with vim with three lines (pc0, pc1 and srv), delete the second one and save. Then try to quit with `:q` after changing something else. What does vim say?', '`vim lista.txt`, `i`, type the three lines, Esc, `:2` Enter and `dd` deletes the pc1 line, `:wq` saves and quits. When you open it again and change something, `:q` answers “E37: No write since last change (add ! to override)”: `:wq` saves or `:q!` discards.'),
         ],
     },
 ];
@@ -25395,6 +25469,9 @@ function openWrite(sh, path, append, clobber) {
             throw new RedirError(`${path}: cannot overwrite existing file`);
         if (!append || !node)
             fs.writeFile(abs, '', sh.cred, false, 0o666 & ~sh.umask);
+        // Appending opens the file for writing too: without permission bash fails there, not on the first write.
+        else
+            fs.writeFile(abs, '', sh.cred, true);
     }
     catch (e) {
         if (e instanceof FsError)
@@ -28896,7 +28973,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.20.7",
+    "version": "0.20.8",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -32897,25 +32974,41 @@ function boundAddresses(server, unit) {
     const chosen = listenChoices(server, false).filter((c) => s.dhcp.interfaces?.includes(c.name));
     return chosen.map((c) => (c.ip !== undefined ? formatIp(c.ip) : `0.0.0.0%${c.name}`));
 }
-function ss(host) {
-    const header = 'Netid State  Recv-Q Send-Q Local Address:Port  Peer Address:Port Process';
+/** `ss -tulpn` and friends: the letters of every short option (ss -t -l and ss -tl are the same). */
+function ssOptions(argv) {
+    const long = { '--tcp': 't', '--udp': 'u', '--listening': 'l', '--all': 'a', '--processes': 'p', '--numeric': 'n' };
+    const letters = argv.map((a) => long[a] ?? (/^-[a-zA-Z0-9]+$/.test(a) ? a.slice(1) : '')).join('');
+    const has = (c) => letters.includes(c);
+    return { tcp: has('t'), udp: has('u'), listening: has('l'), all: has('a'), processes: has('p') };
+}
+/**
+ * Sockets as iproute2's ss shows them. Netfix only knows the listening ones (no established connections are
+ * listed): without -l or -a only the header is left. The Netid column appears when more than one socket type is
+ * shown; the process only with -p.
+ */
+function ss(host, o = { tcp: true, udp: true, listening: true, all: false, processes: true }) {
+    const types = o.tcp || o.udp ? { tcp: o.tcp, udp: o.udp } : { tcp: true, udp: true };
+    const netid = types.tcp && types.udp;
+    const header = `${netid ? 'Netid ' : ''}State  Recv-Q Send-Q Local Address:Port  Peer Address:Port Process`;
     const server = asServer(host);
-    if (!server)
+    if (!server || !(o.listening || o.all))
         return [header];
     const v4 = host.config.ip !== undefined ? '0.0.0.0' : '*';
-    return [header, ...openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).flatMap((p) => {
+    const ports = openPorts(server.services, { http: server.web.httpPorts(), admin: server.web.adminPorts() }).filter((p) => types[p.proto]);
+    return [header, ...ports.flatMap((p) => {
             // Apache and the web GUI bind the IPv6 wildcard (dual stack): Ubuntu's ss shows them as *:port, *:*.
             const dual = p.unit.id === 'http';
             const locals = (p.proto === 'udp' ? boundAddresses(server, p.unit.id) : undefined) ?? [dual ? '*' : v4];
             const peer = dual ? '*:*' : '0.0.0.0:*';
-            return locals.map((local) => `${p.proto.padEnd(5)} ${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${peer.padStart(15)}   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))`);
+            const proc = o.processes ? `   users:(("${p.unit.process}",pid=${p.unit.pid},fd=4))` : '';
+            return locals.map((local) => `${netid ? `${p.proto.padEnd(5)} ` : ''}${(p.proto === 'udp' ? 'UNCONN' : 'LISTEN').padEnd(6)} 0      ${p.proto === 'udp' ? '0  ' : '511'}    ${`${local}:${p.port}`.padStart(18)}  ${peer.padStart(15)}${proc}`);
         })];
 }
 function serverAddress(host) {
     return host.config.ip !== undefined ? formatIp(host.config.ip) : '0.0.0.0';
 }
 
-return { systemctl, journalctl, ss, serverAddress };
+return { systemctl, journalctl, ssOptions, ss, serverAddress };
 })();
 __m["shells/dns-format.js"] = (() => {
 const { formatIp } = __m["core/ip.js"];
@@ -32927,8 +33020,11 @@ function rr(a) {
     return `${`${a.name}.`.padEnd(24)}${String(a.ttl).padEnd(8)}IN\t${a.type}\t${a.type === 'MX' ? `${a.priority ?? 10} ` : ''}${soa}`;
 }
 function digOutput(name, type, r, short, now) {
-    if (r.kind === 'noserver')
-        return [';; no servers could be reached (no hay servidor DNS configurado)'];
+    // No nameserver in resolv.conf: dig falls back to the loopback, where nothing listens.
+    if (r.kind === 'noserver') {
+        const refused = ';; communications error to 127.0.0.1#53: connection refused';
+        return [refused, refused, refused, '', `; <<>> DiG ${DIG_VERSION} <<>> ${name}`, ';; global options: +cmd', ';; no servers could be reached'];
+    }
     const server = formatIp(r.server);
     if (r.kind === 'timeout')
         return [`;; communications error to ${server}#53: timed out`, `;; communications error to ${server}#53: timed out`, '', `; <<>> DiG ${DIG_VERSION} <<>> ${name}`, ';; global options: +cmd', ';; no servers could be reached'];
@@ -36224,7 +36320,7 @@ const { wgQuick } = __m["shells/wg-quick.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { httpGet } = __m["shells/net-tools.js"];
 const { byteLength } = __m["web/http.js"];
-const { systemctl, journalctl, ss } = __m["shells/linux-services.js"];
+const { systemctl, journalctl, ss, ssOptions } = __m["shells/linux-services.js"];
 const { ip, ping, dig, nslookup, hostCmd, dhclient } = __m["shells/linux-net.js"];
 const { traceroute } = __m["shells/trace-cmds.js"];
 const { FsError } = __m["bash/vfs.js"];
@@ -36394,7 +36490,7 @@ function linuxPrograms(host) {
         ...(host.kind === 'linuxrouter' ? [['wg', wg(host)], ['wg-quick', wgQuick(host)]] : []),
         ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
         ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
-        ['ss', (ctx) => { lines(ctx, ss(host)); return 0; }],
+        ['ss', (ctx) => { lines(ctx, ss(host, ssOptions(ctx.argv.slice(1)))); return 0; }],
         ['command-not-found', commandNotFound],
         ...(runsServices(host.kind) ? [...APACHE_TOOLS, ['rndc', rndc(host)]] : []),
     ]);

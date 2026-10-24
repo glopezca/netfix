@@ -1028,3 +1028,15 @@ Las pruebas de paridad es/en cubren los bloques nuevos.
   percent» (antes, un punto por línea); `tracert` de Windows escribe «N  dirección  reports: Destination net
   unreachable.» y el traceroute de IOS marca `!N`, `!H`, `!U` o `!A` (antes repetían la dirección IP como si fuera
   el destino).
+
+### Notas de la fase 36d, segunda entrega (v0.20.8)
+
+- **Terminal Linux:** La Terminal Linux (tu primer script), Sistema de ficheros y permisos (leer `ls -l`, octal), Programas
+  (tuberías) y Red desde Linux (diagnóstico en cuatro pasos), nano y vim, en estilo guiado y comprobados en el
+  laboratorio «Server: DHCP, DNS, web, correo y SSH».
+- **Arreglos encontrados al comprobar:**
+  - `ss` respeta sus opciones: `-t`/`-u` filtran, la columna Netid solo sale con más de un tipo, `-l`/`-a` muestran los
+    sockets a la escucha (sin ellos, solo las conexiones, que Netfix no lista) y `users:(…)` solo con `-p`.
+  - `dig` sin servidor DNS dice «;; communications error to 127.0.0.1#53: connection refused» y «;; no servers could be
+    reached» (antes añadía un texto en español).
+  - `echo … >> FICHERO` sin permiso falla al abrir («bash: /etc/passwd: Permission denied»), no al escribir.

@@ -38,6 +38,8 @@ function openWrite(sh: Interp, path: string, append: boolean, clobber: boolean):
     if (node?.kind === 'dir') throw new FsError('EISDIR');
     if (!append && !clobber && sh.opt('noclobber') && node?.kind === 'file') throw new RedirError(`${path}: cannot overwrite existing file`);
     if (!append || !node) fs.writeFile(abs, '', sh.cred, false, 0o666 & ~sh.umask);
+    // Appending opens the file for writing too: without permission bash fails there, not on the first write.
+    else fs.writeFile(abs, '', sh.cred, true);
   } catch (e) {
     if (e instanceof FsError) throw new RedirError(`${path}: ${e.message}`);
     throw e;
