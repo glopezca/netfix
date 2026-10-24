@@ -85,7 +85,7 @@ export const IOS_DOCS: DocGroup = {
         list(
           'client-identifier X matches the option 61 sent by the client. A PC with “Send client identifier” enabled (the default, as on Windows) sends 01 + MAC.',
           'hardware-address M matches the MAC when the client sends no option 61 or when its option 61 is 01 + MAC.',
-          'A router with ip address dhcp sends the client-id cisco-<mac>-<interface> (in hex it starts with 0063.6973.636f). To pin its IP you must use client-identifier, not hardware-address: the same pitfall as on real equipment. show dhcp lease displays it.',
+          'A router with ip address dhcp sends the client-id cisco-<mac>-<interface> (in hex it starts with 0063.6973.636f). To pin its IP address you must use client-identifier, not hardware-address: the same pitfall as on real equipment. show dhcp lease displays it.',
           'Inside the network pool: address 192.168.10.70 client-id 0100.50f0.0000.04 or address … hardware-address ….',
         ),
         p('show ip dhcp binding shows the type of each lease: Automatic or Manual.'),
@@ -98,7 +98,7 @@ export const IOS_DOCS: DocGroup = {
       blocks: [
         h('Relay'),
         code('Router(config)# interface g0/1\nRouter(config-if)# ip address 10.0.20.1 255.255.255.0\nRouter(config-if)# ip helper-address 192.168.10.2'),
-        p('The router forwards DISCOVER/REQUEST messages by unicast to the server with giaddr = the interface’s IP; the server picks the pool for that subnet.'),
+        p('The router forwards DISCOVER/REQUEST messages by unicast to the server with giaddr = the interface’s IP address; the server picks the pool for that subnet.'),
         h('DHCP snooping (switch)'),
         code('Switch(config)# ip dhcp snooping\nSwitch(config)# ip dhcp snooping vlan 1\nSwitch(config)# interface fa0/24\nSwitch(config-if)# ip dhcp snooping trust'),
         list(

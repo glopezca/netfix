@@ -13,7 +13,7 @@ export const LOAD_ES = {
   'load.ip': 'Dirección IP no válida en {what}.',
   'load.number': 'Número no válido: {what}.',
   'load.pool': 'Pool DHCP no válido.',
-  'load.poolStart': 'Pool DHCP sin IP inicial.',
+  'load.poolStart': 'Pool DHCP sin dirección IP inicial.',
   'load.leaseId': 'Identificación de concesiones no válida (mac o client-id).',
   'load.reservation': 'Reserva no válida.',
   'load.reservationIncomplete': 'Reserva DHCP incompleta.',

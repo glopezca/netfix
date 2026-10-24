@@ -85,7 +85,7 @@ export const IOS_DOCS: DocGroup = {
         list(
           'client-identifier X coincide con la opción 61 que envía el cliente. Un PC con «Enviar identificador de cliente» activo (por defecto, como Windows) envía 01 + MAC.',
           'hardware-address M coincide con la MAC cuando el cliente no envía opción 61 o cuando su opción 61 es 01 + MAC.',
-          'Un router con ip address dhcp envía el client-id cisco-<mac>-<interfaz> (en hex empieza por 0063.6973.636f). Para fijarle la IP hay que usar client-identifier, no hardware-address: es el mismo tropiezo que en un equipo real. show dhcp lease lo muestra.',
+          'Un router con ip address dhcp envía el client-id cisco-<mac>-<interfaz> (en hex empieza por 0063.6973.636f). Para fijarle la dirección IP hay que usar client-identifier, no hardware-address: es el mismo tropiezo que en un equipo real. show dhcp lease lo muestra.',
           'Dentro del pool de red: address 192.168.10.70 client-id 0100.50f0.0000.04 o address … hardware-address ….',
         ),
         p('show ip dhcp binding indica el tipo de cada concesión: Automatic o Manual.'),
@@ -98,7 +98,7 @@ export const IOS_DOCS: DocGroup = {
       blocks: [
         h('Relay'),
         code('Router(config)# interface g0/1\nRouter(config-if)# ip address 10.0.20.1 255.255.255.0\nRouter(config-if)# ip helper-address 192.168.10.2'),
-        p('El router reenvía los DISCOVER/REQUEST en unicast al servidor con giaddr = IP de la interfaz; el servidor elige el pool de esa subred.'),
+        p('El router reenvía los DISCOVER/REQUEST en unicast al servidor con giaddr = dirección IP de la interfaz; el servidor elige el pool de esa subred.'),
         h('DHCP snooping (switch)'),
         code('Switch(config)# ip dhcp snooping\nSwitch(config)# ip dhcp snooping vlan 1\nSwitch(config)# interface fa0/24\nSwitch(config-if)# ip dhcp snooping trust'),
         list(
@@ -117,7 +117,7 @@ export const IOS_DOCS: DocGroup = {
       summary: 'Órdenes EXEC para comprobar el servidor y la red.',
       blocks: [
         table(['Orden', 'Muestra o hace'], [
-          ['show ip dhcp binding [IP]', 'Concesiones: IP, client-ID/MAC, caducidad y tipo.'],
+          ['show ip dhcp binding [IP]', 'Concesiones: dirección IP, client-ID/MAC, caducidad y tipo.'],
           ['show ip dhcp pool [NOMBRE]', 'Uso de cada pool, rangos y siguiente dirección.'],
           ['show ip dhcp server statistics', 'Contadores de mensajes recibidos y enviados.'],
           ['show ip dhcp conflict · show ip dhcp database', 'Conflictos y agente de base de datos.'],

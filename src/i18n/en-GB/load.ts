@@ -15,7 +15,7 @@ export const LOAD_EN: Readonly<Record<LoadKey, string>> = {
   'load.ip': 'Invalid IP address in {what}.',
   'load.number': 'Invalid number: {what}.',
   'load.pool': 'Invalid DHCP pool.',
-  'load.poolStart': 'DHCP pool without a start IP.',
+  'load.poolStart': 'DHCP pool without a start IP address.',
   'load.leaseId': 'Invalid lease identification (mac or client-id).',
   'load.reservation': 'Invalid reservation.',
   'load.reservationIncomplete': 'Incomplete DHCP reservation.',

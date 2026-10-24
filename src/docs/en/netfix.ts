@@ -103,7 +103,7 @@ export const NETFIX_DOCS: DocGroup = {
         list(
           'Positions of devices and cables.',
           'IOS configuration (running-config and startup-config).',
-          'IP, Client-ID and operating system of PCs and servers.',
+          'IP address, Client-ID and operating system of PCs and servers.',
           'Services, DNS records, DHCP pools and reservations, web pages, mailboxes and mail accounts.',
           'Files created or modified from the Linux Terminal (home, scripts, changes in /etc, bash history).',
         ),

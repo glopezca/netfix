@@ -11,7 +11,7 @@ export const SSH_DOCS: readonly DocPage[] = [
       p('El cliente ssh de los equipos Ubuntu guarda en ~/.ssh lo mismo que OpenSSH: la clave de cada servidor en known_hosts y las claves del usuario en id_ed25519 / id_ecdsa / id_rsa (privada) con su .pub (pública). El servidor acepta la clave si su línea está en ~/.ssh/authorized_keys del usuario remoto.'),
       h('Primera conexión: la clave del servidor'),
       code("alumno@pc0:~$ ssh admin@srv.aula.lab\nThe authenticity of host 'srv.aula.lab (192.168.10.2)' can't be established.\nED25519 key fingerprint is SHA256:lcQmKtMREqLLbRRWefrD17pEjPrj25sOLsaZTYE4m38.\nThis key is not known by any other names.\nAre you sure you want to continue connecting (yes/no/[fingerprint])? yes\nWarning: Permanently added 'srv.aula.lab' (ED25519) to the list of known hosts.\nadmin@srv.aula.lab's password:"),
-      p('La huella se comprueba en el servidor con ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub. Si la clave del servidor cambia (se regenera o es otro equipo con la misma IP), ssh muestra «REMOTE HOST IDENTIFICATION HAS CHANGED!» y no conecta hasta borrar la línea antigua con ssh-keygen -R.'),
+      p('La huella se comprueba en el servidor con ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub. Si la clave del servidor cambia (se regenera o es otro equipo con la misma dirección IP), ssh muestra «REMOTE HOST IDENTIFICATION HAS CHANGED!» y no conecta hasta borrar la línea antigua con ssh-keygen -R.'),
       h('Crear e instalar un par de claves'),
       code("alumno@pc0:~$ ssh-keygen                      # Intro acepta ~/.ssh/id_ed25519\nalumno@pc0:~$ ssh-copy-id admin@srv.aula.lab   # pide la contraseña una sola vez\nNumber of key(s) added: 1\nalumno@pc0:~$ ssh admin@srv.aula.lab           # ya no pide contraseña\nadmin@srv:~$ cat ~/.ssh/authorized_keys\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI… alumno@pc0"),
       table(['Orden', 'Qué hace'], [
@@ -39,7 +39,7 @@ export const SSH_DOCS: readonly DocPage[] = [
       h('Opciones en authorized_keys'),
       code('from="192.168.10.*,!192.168.10.66" ssh-ed25519 AAAAC3Nza… alumno@pc0\nrestrict ssh-ed25519 AAAAC3Nza… copias@srv2'),
       list(
-        'from="patrones": la clave solo vale desde esas IP (* y ? como comodines, ! niega). Si no coincide: «not from a permitted host» en journalctl.',
+        'from="patrones": la clave solo vale desde esas direcciones IP (* y ? como comodines, ! niega). Si no coincide: «not from a permitted host» en journalctl.',
         'restrict, no-pty, no-port-forwarding, no-agent-forwarding, no-X11-forwarding y no-user-rc se aceptan (Netfix no tiene esas funciones).',
         'command=, environment=, principals=, cert-authority y el resto no están implementados: la línea se rechaza («bad key options») en vez de dar acceso sin la restricción.',
       ),

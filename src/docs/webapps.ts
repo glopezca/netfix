@@ -30,7 +30,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       p('Servicios → HTTP → Aplicaciones web → Gestión web. Por defecto está desactivada; al activarla escucha en el puerto 10000 (o en un alias de Apache como /admin) con usuario admin y contraseña netfix (la misma cuenta que el SSH de los laboratorios).'),
       code('Navegador del PC:  http://srv.aula.lab:10000/\nTerminal:          curl -u admin:netfix "http://192.168.10.2:10000/?page=status"'),
       table(['Página', 'Qué cambia'], [
-        ['Configuración', 'Nombre de host, IP estática o DHCP, puerta de enlace y DNS.'],
+        ['Configuración', 'Nombre de host, dirección IP estática o DHCP, puerta de enlace y DNS.'],
         ['SSH', 'El primero del menú Servicios: servicio, usuarios y métodos de autenticación (contraseña y/o par de claves) de sshd_config.'],
         ['DHCP', 'Activar el servidor, elegir las interfaces de escucha (interfaces-config de Kea), añadir y borrar pools (concesiones por MAC o por Client-ID), direcciones reservadas por MAC o identificador (hex 01… o texto) y «Reservar» una concesión activa.'],
         ['DNS', 'Interfaces de escucha (listen-on), tarjetas de los cinco modos (Caché, Agente de reenvío, Autoritativo, Recursivo, Iterativo) con su interruptor y usos, una pestaña de opciones por modo (el asistente de zonas SOA → NS → tipo → registros en Autoritativo) y, al lado, la configuración de BIND generada (named.conf.options, zonas, archivos) explicada.'],
@@ -43,7 +43,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       h('Seguridad'),
       list(
         'Autenticación HTTP Basic (realm «Server»); los intentos fallidos quedan en journalctl -u apache2.',
-        'Cada cambio se valida igual que en la ventana del servidor y se registra con el usuario y la IP del PC.',
+        'Cada cambio se valida igual que en la ventana del servidor y se registra con el usuario y la dirección IP del PC.',
         'El apartado Seguridad del menú (Enrutamiento, Firewall, VPN) solo aparece en el Router Linux; en un Server no existe.',
       ),
     ],

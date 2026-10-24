@@ -11,7 +11,7 @@ export const SSH_DOCS: readonly DocPage[] = [
       p('The ssh client on Ubuntu devices keeps the same things in ~/.ssh as OpenSSH: each server’s key in known_hosts and the user’s keys in id_ed25519 / id_ecdsa / id_rsa (private) with their .pub (public). The server accepts the key if its line is in the remote user’s ~/.ssh/authorized_keys.'),
       h('First connection: the server’s key'),
       code("alumno@pc0:~$ ssh admin@srv.aula.lab\nThe authenticity of host 'srv.aula.lab (192.168.10.2)' can't be established.\nED25519 key fingerprint is SHA256:lcQmKtMREqLLbRRWefrD17pEjPrj25sOLsaZTYE4m38.\nThis key is not known by any other names.\nAre you sure you want to continue connecting (yes/no/[fingerprint])? yes\nWarning: Permanently added 'srv.aula.lab' (ED25519) to the list of known hosts.\nadmin@srv.aula.lab's password:"),
-      p('The fingerprint is checked on the server with ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub. If the server’s key changes (it is regenerated, or another device has the same IP), ssh shows “REMOTE HOST IDENTIFICATION HAS CHANGED!” and will not connect until the old line is removed with ssh-keygen -R.'),
+      p('The fingerprint is checked on the server with ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub. If the server’s key changes (it is regenerated, or another device has the same IP address), ssh shows “REMOTE HOST IDENTIFICATION HAS CHANGED!” and will not connect until the old line is removed with ssh-keygen -R.'),
       h('Creating and installing a key pair'),
       code("alumno@pc0:~$ ssh-keygen                      # Enter accepts ~/.ssh/id_ed25519\nalumno@pc0:~$ ssh-copy-id admin@srv.aula.lab   # asks for the password only once\nNumber of key(s) added: 1\nalumno@pc0:~$ ssh admin@srv.aula.lab           # no longer asks for a password\nadmin@srv:~$ cat ~/.ssh/authorized_keys\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI… alumno@pc0"),
       table(['Command', 'What it does'], [
@@ -39,7 +39,7 @@ export const SSH_DOCS: readonly DocPage[] = [
       h('Options in authorized_keys'),
       code('from="192.168.10.*,!192.168.10.66" ssh-ed25519 AAAAC3Nza… alumno@pc0\nrestrict ssh-ed25519 AAAAC3Nza… copias@srv2'),
       list(
-        'from="patterns": the key is only valid from those IPs (* and ? as wildcards, ! negates). If it does not match: “not from a permitted host” in journalctl.',
+        'from="patterns": the key is only valid from those IP addresses (* and ? as wildcards, ! negates). If it does not match: “not from a permitted host” in journalctl.',
         'restrict, no-pty, no-port-forwarding, no-agent-forwarding, no-X11-forwarding and no-user-rc are accepted (Netfix does not have those features).',
         'command=, environment=, principals=, cert-authority and the rest are not implemented: the line is rejected (“bad key options”) rather than granting access without the restriction.',
       ),

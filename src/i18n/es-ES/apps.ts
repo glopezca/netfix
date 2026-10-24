@@ -4,7 +4,7 @@ export const APPS_ES = {
   'ssh.session': 'Sesión',
   'ssh.keys': 'Claves',
   'ssh.known': 'Hosts conocidos',
-  'ssh.host': 'Servidor (IP o nombre)',
+  'ssh.host': 'Servidor (dirección IP o nombre)',
   'ssh.port': 'Puerto',
   'ssh.user': 'Usuario',
   'ssh.identity': 'Clave privada',

@@ -930,3 +930,20 @@ Las pruebas de paridad es/en cubren los bloques nuevos.
 
 **Siguiente:** fase 36b, reescribir con el mismo guion el resto de PC y Servidor.
 
+### Correcciones del propietario antes de la fase 36b (v0.20.1)
+
+1. **«Dirección IP».** Cuando se habla de una dirección, y no del protocolo IP, se dice siempre «dirección IP»: «Rellena
+   **Dirección IP inicial**». En inglés, «IP address».
+   - **Dónde.** Se revisaron a mano la documentación y la interfaz en los dos idiomas (DHCP, nube ISP, cortafuegos,
+     PDU, gestión web, reservas, correo y SSH).
+   - **Qué no cambia.** Lo que nombra el protocolo o una pestaña («Configuración IP», «a nivel IP», «plano IP») y los
+     marcadores de sintaxis (`http://IP`, `IP:PUERTO`, `usuario@IP`).
+   - **Regla para las fases siguientes.** Se mantiene en todo texto nuevo.
+2. **Midnight Commander.** Tiene página propia (`mc`), en una sección justo antes de los editores nano y vim. La página
+   incluye:
+   - una pantalla real generada con el `McApp` de Netfix;
+   - cómo abrirlo, incluido `sudo mc`, comprobado;
+   - la tabla de teclas y el truco Esc + número;
+   - copiar paso a paso, compruébalo, errores típicos y un ejercicio que publica un directorio en Apache, comprobado
+     con el listado de Apache.
+

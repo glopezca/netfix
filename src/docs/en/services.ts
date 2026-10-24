@@ -28,10 +28,10 @@ export const SERVICE_DOCS: DocGroup = {
     {
       id: 'srv-dhcp',
       title: 'Server DHCP',
-      summary: 'Devices get their IP, mask, gateway and DNS on their own: pools, reservations and how to check it.',
+      summary: 'Devices get their IP address, mask, gateway and DNS on their own: pools, reservations and how to check it.',
       markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
       blocks: [
-        p('**DHCP** (Dynamic Host Configuration Protocol) hands the network settings to the devices that connect: IP address, mask, default gateway and DNS server. Without DHCP those four values would be typed by hand on every PC, and one mistake (two devices with the same IP) would be enough to break the network. In Netfix the Server’s DHCP server is **Kea** (`kea-dhcp4-server`), the one Ubuntu and Debian use.'),
+        p('**DHCP** (Dynamic Host Configuration Protocol) hands the network settings to the devices that connect: IP address, mask, default gateway and DNS server. Without DHCP those four values would be typed by hand on every PC, and one mistake (two devices with the same IP address) would be enough to break the network. In Netfix the Server’s DHCP server is **Kea** (`kea-dhcp4-server`), the one Ubuntu and Debian use.'),
         figure({
           type: 'topology',
           nodes: [
@@ -59,12 +59,12 @@ export const SERVICE_DOCS: DocGroup = {
         steps(
           ['Open the server', 'Double-click the Server → **Services** tab → **DHCP**.'],
           ['Turn the service on', 'Tick **DHCP service**: the same as `sudo systemctl enable --now kea-dhcp4-server`.'],
-          ['Create a pool', 'A pool is the set of addresses handed out. Fill in **Start IP** (the first one given), **Maximum users** (how many), the **mask**, the **default gateway** (the LAN router) and the **DNS server**, and click **Add pool**.'],
+          ['Create a pool', 'A pool is the set of addresses handed out. Fill in **Start IP address** (the first one given), **Maximum users** (how many), the **mask**, the **default gateway** (the LAN router) and the **DNS server**, and click **Add pool**.'],
           ['Choose the listen interfaces', 'With **All** it answers on any interface; if you tick some, only on those (useful on a router with several networks).'],
           ['Put the clients on DHCP', 'On each PC: **IP Config** → **DHCP**. In seconds they will have an address.'],
         ),
         table(['Pool field', 'Example', 'What it is for'], [
-          ['Start IP', '192.168.10.100', 'First address handed out'],
+          ['Start IP address', '192.168.10.100', 'First address handed out'],
           ['Maximum users', '50', 'How many: from .100 to .149'],
           ['Subnet mask', '255.255.255.0', 'The size of the network (/24)'],
           ['Default gateway', '192.168.10.1', 'The router used to leave the network'],
@@ -72,21 +72,21 @@ export const SERVICE_DOCS: DocGroup = {
           ['Domain', 'aula.lab', 'Added to short names (srv → srv.aula.lab)'],
           ['Lease (minutes)', '1440', 'How long the loan lasts; halfway through, the client renews it'],
         ]),
-        h('Reservations: always the same IP'),
-        p('A **reservation** always gives the same address to one particular device, identified by its **MAC** or its **Client-ID** (option 61). It is used for printers, servers or the teacher’s PC. Select the pool, add the reservation and, if you like, a name. The IP must be in the pool’s subnet, and repeated IPs or identifiers are refused.'),
+        h('Reservations: always the same IP address'),
+        p('A **reservation** always gives the same address to one particular device, identified by its **MAC** or its **Client-ID** (option 61). It is used for printers, servers or the teacher’s PC. Select the pool, add the reservation and, if you like, a name. The IP address must be in the pool’s subnet, and repeated IP addresses or identifiers are refused.'),
         table(['Identifier', 'Format Netfix accepts'], [
           ['MAC', '0001.42AB.CDEF or 00:01:42:ab:cd:ef'],
           ['Client-ID', 'Hexadecimal with or without dots (0100.0142.abcd.ef); the usual Windows one is 01 + MAC'],
         ]),
-        p('“Identify automatic leases by” decides how a client **without** a reservation is recognised: by **Client-ID or, if it sends none, MAC** (normal DHCP and Kea behaviour) or by **MAC** only (the same device keeps its IP even if it changes operating system). In the lease table, “Reserve by MAC” and “Reserve by Client-ID” turn a lease into a reservation with one click.'),
+        p('“Identify automatic leases by” decides how a client **without** a reservation is recognised: by **Client-ID or, if it sends none, MAC** (normal DHCP and Kea behaviour) or by **MAC** only (the same device keeps its IP address even if it changes operating system). In the lease table, “Reserve by MAC” and “Reserve by Client-ID” turn a lease into a reservation with one click.'),
         h('What is written to the file'),
         p('Every change in the panel is saved to `/etc/kea/kea-dhcp4.conf`, the same file you would edit on a real Ubuntu (see it in **Services → Configuration**):'),
         term('json', '"interfaces-config": {\n  "interfaces": [ "*" ]\n},\n"reservations": [\n  { "hw-address": "00:fb:b1:18:68:78", "ip-address": "192.168.10.50" },\n  { "client-id": "01:00:50:f0:00:00:03", "ip-address": "192.168.10.51" }\n],\n"match-client-id": false'),
         check('Check it', 'On the PC, the address it received and the default route that came with it; on the server, Kea’s log (or **Services → Logs → kea-dhcp4-server**).'),
         term('shell', 'alumno@pc0:~$ ip -4 addr show eth0\n    inet 192.168.10.100/24 brd 192.168.10.255 scope global dynamic eth0\nalumno@pc0:~$ ip route\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 2'),
         term('messages', 'Oct 24 09:12:03 srv kea-dhcp4[812]: DHCP4_LEASE_ALLOC [hwtype=1 0063.b914.34b5], tid=0x7339704d: lease 192.168.10.100 has been allocated for 86400 seconds\nOct 24 09:12:03 srv kea-dhcp4[812]: DHCP4_LEASE_ALLOC [hwtype=1 00fb.b118.6878], tid=0xf09d5548: lease 192.168.10.50 has been allocated for 86400 seconds'),
-        warn('Common mistakes', 'A pool **outside the server’s network** (Kea does not use it: the PC ends up with 169.254.x.x, APIPA). Forgetting the **default gateway**: there is an IP but no way out of the network. **Two DHCP servers** on the same LAN: each PC keeps whichever offer arrives first. **Listen interfaces** without the LAN interface: requests are dropped with no answer. A reservation with a **mistyped MAC**: the PC gets an ordinary address from the pool.'),
-        exercise('Reserve .60 for PC0', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, make PC0 always get 192.168.10.60 and check that it keeps it after renewing.', 'Look up PC0’s MAC (Interfaces tab, or `ip link` in its terminal). On SRV → Services → DHCP select the pool, add a reservation with that MAC and IP 192.168.10.60 and click Add. On PC0 renew: `ipconfig /renew` or `sudo dhclient -r eth0 && sudo dhclient eth0`. `ip -4 addr` must show 192.168.10.60, and the server’s lease table marks it as reserved.'),
+        warn('Common mistakes', 'A pool **outside the server’s network** (Kea does not use it: the PC ends up with 169.254.x.x, APIPA). Forgetting the **default gateway**: there is an IP address but no way out of the network. **Two DHCP servers** on the same LAN: each PC keeps whichever offer arrives first. **Listen interfaces** without the LAN interface: requests are dropped with no answer. A reservation with a **mistyped MAC**: the PC gets an ordinary address from the pool.'),
+        exercise('Reserve .60 for PC0', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, make PC0 always get 192.168.10.60 and check that it keeps it after renewing.', 'Look up PC0’s MAC (Interfaces tab, or `ip link` in its terminal). On SRV → Services → DHCP select the pool, add a reservation with that MAC and IP address 192.168.10.60 and click Add. On PC0 renew: `ipconfig /renew` or `sudo dhclient -r eth0 && sudo dhclient eth0`. `ip -4 addr` must show 192.168.10.60, and the server’s lease table marks it as reserved.'),
       ],
     },
     {
@@ -110,7 +110,7 @@ export const SERVICE_DOCS: DocGroup = {
         list(
           'Step 1 · SOA record: zone name, primary server (MNAME), responsible mailbox (admin@aula.lab, which BIND writes admin.aula.lab.) and the refresh, retry, expire and negative TTL timers. Netfix sets the serial number (YYYYMMDDnn) and raises it on every change.',
           'Step 2 · Name servers (NS): one or more. Those inside the zone need their A record; while it is missing, the check warns about it as named-checkzone does.',
-          'Step 3 · Kind: forward (the default, name → IP) or reverse (IP → name, *.in-addr.arpa). A reverse zone can be typed as its network: 192.168.1 → 1.168.192.in-addr.arpa.',
+          'Step 3 · Kind: forward (the default, name → IP address) or reverse (IP address → name, *.in-addr.arpa). A reverse zone can be typed as its network: 192.168.1 → 1.168.192.in-addr.arpa.',
           'Step 4 · Records: a forward zone admits A, CNAME, MX, NS and TXT; a reverse zone, only PTR. No record can be added before the zone exists.',
         ),
         h('Automatic reverse zones'),
@@ -161,7 +161,7 @@ export const SERVICE_DOCS: DocGroup = {
         ),
         code('*      IN  A      192.168.10.80   ; anything.aula.lab → .80\n*.dev  IN  CNAME  srv             ; app.dev.aula.lab → srv.aula.lab\n@      IN  MX     10 @'),
         code('$ORIGIN aula.lab.\n$TTL 86400\n@\tIN\tSOA\tsrv.aula.lab. hostmaster.aula.lab. ( … )\n@\tIN\tNS\tsrv\n@\tIN\tMX\t10 srv\nsrv\tIN\tA\t192.168.10.2\nwww\tIN\tCNAME\tsrv'),
-        note('Search domain: when the DHCP pool has a domain-name (option 15), the PC adds it to /etc/resolv.conf (“search aula.lab”) and to Windows’ “Connection-specific DNS Suffix”. So ping, nslookup, host, curl, ssh and the browser complete a name without dots (www → www.aula.lab), as glibc with ndots:1: first with the domain, then as typed; a name with dots goes as typed first; a final dot (“www.”) skips the search. dig does not use the search list unless +search, as the real dig. With a static IP, the domains go in netplan (nameservers: search: [aula.lab]). hostname -f gives the canonical name from /etc/hosts (on Ubuntu it does not include the DHCP domain).'),
+        note('Search domain: when the DHCP pool has a domain-name (option 15), the PC adds it to /etc/resolv.conf (“search aula.lab”) and to Windows’ “Connection-specific DNS Suffix”. So ping, nslookup, host, curl, ssh and the browser complete a name without dots (www → www.aula.lab), as glibc with ndots:1: first with the domain, then as typed; a name with dots goes as typed first; a final dot (“www.”) skips the search. dig does not use the search list unless +search, as the real dig. With a static IP address, the domains go in netplan (nameservers: search: [aula.lab]). hostname -f gives the canonical name from /etc/hosts (on Ubuntu it does not include the DHCP domain).'),
       ],
     },
     {

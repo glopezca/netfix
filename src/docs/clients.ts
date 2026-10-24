@@ -9,7 +9,7 @@ export const CLIENT_DOCS: DocGroup = {
     {
       id: 'pc-ip',
       title: 'Configuración IP',
-      summary: 'IP estática o por DHCP, sistema operativo, MAC y Client-ID.',
+      summary: 'Dirección IP estática o por DHCP, sistema operativo, MAC y Client-ID.',
       blocks: [
         list(
           'Estática: dirección, máscara (255.255.255.0 o /24), puerta de enlace y servidor DNS.',

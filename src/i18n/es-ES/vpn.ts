@@ -14,7 +14,7 @@ export const VPN_ES = {
   'vpn.noPeers': 'Sin pares: el túnel no llevará tráfico.',
   'vpn.peerKey': 'Clave pública del par',
   'vpn.allowedIps': 'AllowedIPs (redes que llegan por el par)',
-  'vpn.endpoint': 'Endpoint (IP:puerto, vacío si el par llama)',
+  'vpn.endpoint': 'Endpoint (dirección IP:puerto, vacío si el par llama)',
   'vpn.keepalive': 'Keepalive (s, para atravesar NAT)',
   'vpn.addPeer': 'Añadir par',
   'vpn.save': 'Guardar y aplicar',

@@ -6,7 +6,7 @@ export const APPS_EN: Readonly<Record<AppsKey, string>> = {
   'ssh.session': 'Session',
   'ssh.keys': 'Keys',
   'ssh.known': 'Known hosts',
-  'ssh.host': 'Server (IP or name)',
+  'ssh.host': 'Server (IP address or name)',
   'ssh.port': 'Port',
   'ssh.user': 'User',
   'ssh.identity': 'Private key',

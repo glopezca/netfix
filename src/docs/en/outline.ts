@@ -20,7 +20,7 @@ export const OUTLINE: readonly OutlineGroup[] = [
   { id: 'linuxrouter', title: 'Linux router', icon: 'linuxrouter', sections: [['Parameters', ['linux-router']], ['Firewall', ['linux-nftables']], ['VPN', ['linux-wireguard']]] },
   { id: 'nube', title: 'ISP cloud', icon: 'cloud', sections: [[null, ['inet-cloud', 'inet-dns']]] },
   { id: 'red', title: 'Networking concepts', sections: [[null, ['red-broadcast', 'inet-trace']]] },
-  { id: 'linux', title: 'Linux Terminal', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red']], ['Editors', ['nano', 'vim']]] },
+  { id: 'linux', title: 'Linux Terminal', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red']], ['Midnight Commander', ['mc']], ['Editors', ['nano', 'vim']]] },
   {
     id: 'bash', title: 'GNU bash 5.3', sections: [
       ['Language', ['bash-sintaxis', 'bash-expansiones', 'bash-control', 'bash-funciones', 'bash-redirecciones']],

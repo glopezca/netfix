@@ -77,4 +77,5 @@ test('the outline places every page exactly once: devices in palette order, sect
   assert.deepEqual(OUTLINE.filter((g) => g.icon).map((g) => g.icon), ['pc', 'server', 'switch', 'router', 'linuxrouter', 'cloud'], 'the order of the palette');
   assert.deepEqual(OUTLINE.find((g) => g.id === 'servidor')?.sections.map(([s]) => s),
     ['General', 'SSH', 'DHCP', 'DNS', 'HTTP', 'Correo', 'Configuración y registros'], 'the order of the Services tab');
+  assert.deepEqual(OUTLINE.find((g) => g.id === 'linux')?.sections.map(([s]) => s), [null, 'Midnight Commander', 'Editores'], 'mc right before the editors');
 });

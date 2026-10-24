@@ -28,10 +28,10 @@ export const SERVICE_DOCS: DocGroup = {
     {
       id: 'srv-dhcp',
       title: 'DHCP de Server',
-      summary: 'Que los equipos reciban su IP, máscara, puerta de enlace y DNS solos: pools, reservas y cómo comprobarlo.',
+      summary: 'Que los equipos reciban su dirección IP, máscara, puerta de enlace y DNS solos: pools, reservas y cómo comprobarlo.',
       markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
       blocks: [
-        p('**DHCP** (Dynamic Host Configuration Protocol) reparte la configuración de red a los equipos que se conectan: dirección IP, máscara, puerta de enlace y servidor DNS. Sin DHCP habría que escribir esos cuatro datos a mano en cada PC, y bastaría un error (dos equipos con la misma IP) para que la red fallara. En Netfix el servidor DHCP del Server es **Kea** (`kea-dhcp4-server`), el que usan Ubuntu y Debian.'),
+        p('**DHCP** (Dynamic Host Configuration Protocol) reparte la configuración de red a los equipos que se conectan: dirección IP, máscara, puerta de enlace y servidor DNS. Sin DHCP habría que escribir esos cuatro datos a mano en cada PC, y bastaría un error (dos equipos con la misma dirección IP) para que la red fallara. En Netfix el servidor DHCP del Server es **Kea** (`kea-dhcp4-server`), el que usan Ubuntu y Debian.'),
         figure({
           type: 'topology',
           nodes: [
@@ -59,12 +59,12 @@ export const SERVICE_DOCS: DocGroup = {
         steps(
           ['Abre el servidor', 'Doble clic en el Server → pestaña **Servicios** → **DHCP**.'],
           ['Activa el servicio', 'Marca **Servicio DHCP**: es lo mismo que `sudo systemctl enable --now kea-dhcp4-server`.'],
-          ['Crea un pool', 'Un pool es el conjunto de direcciones que se reparten. Rellena **IP inicial** (la primera que se dará), **Usuarios máximos** (cuántas), la **máscara**, la **puerta de enlace** (el router de la LAN) y el **servidor DNS**, y pulsa **Añadir pool**.'],
+          ['Crea un pool', 'Un pool es el conjunto de direcciones que se reparten. Rellena **Dirección IP inicial** (la primera que se dará), **Usuarios máximos** (cuántas), la **máscara**, la **puerta de enlace** (el router de la LAN) y el **servidor DNS**, y pulsa **Añadir pool**.'],
           ['Elige las interfaces de escucha', 'Con **Todas** atiende por cualquier interfaz; si marcas algunas, solo por esas (útil en un router con varias redes).'],
           ['Pon los clientes en DHCP', 'En cada PC: **Configuración IP** → **DHCP**. En segundos tendrán dirección.'],
         ),
         table(['Campo del pool', 'Ejemplo', 'Para qué sirve'], [
-          ['IP inicial', '192.168.10.100', 'Primera dirección que se reparte'],
+          ['Dirección IP inicial', '192.168.10.100', 'Primera dirección que se reparte'],
           ['Usuarios máximos', '50', 'Cuántas: de .100 a .149'],
           ['Máscara de subred', '255.255.255.0', 'El tamaño de la red (/24)'],
           ['Puerta de enlace', '192.168.10.1', 'El router por el que se sale de la red'],
@@ -72,21 +72,21 @@ export const SERVICE_DOCS: DocGroup = {
           ['Dominio', 'aula.lab', 'Se añade a los nombres cortos (srv → srv.aula.lab)'],
           ['Concesión (minutos)', '1440', 'Cuánto dura el préstamo; a la mitad, el cliente lo renueva'],
         ]),
-        h('Reservas: siempre la misma IP'),
-        p('Una **reserva** da siempre la misma dirección a un equipo concreto, identificado por su **MAC** o por su **Client-ID** (opción 61). Se usa para impresoras, servidores o el PC del profesor. Selecciona el pool, añade la reserva y, si quieres, un nombre. La IP debe estar en la subred del pool y no se admiten IP ni identificadores repetidos.'),
+        h('Reservas: siempre la misma dirección IP'),
+        p('Una **reserva** da siempre la misma dirección a un equipo concreto, identificado por su **MAC** o por su **Client-ID** (opción 61). Se usa para impresoras, servidores o el PC del profesor. Selecciona el pool, añade la reserva y, si quieres, un nombre. La dirección IP debe estar en la subred del pool y no se admiten direcciones IP ni identificadores repetidos.'),
         table(['Identificador', 'Formato que admite Netfix'], [
           ['MAC', '0001.42AB.CDEF o 00:01:42:ab:cd:ef'],
           ['Client-ID', 'Hexadecimal con o sin puntos (0100.0142.abcd.ef); el típico de Windows es 01 + MAC'],
         ]),
-        p('«Identificar concesiones automáticas por» decide cómo se reconoce a un cliente **sin** reserva: por **Client-ID o, si no lo envía, MAC** (lo normal en DHCP y en Kea) o solo por **MAC** (el mismo equipo conserva su IP aunque cambie de sistema operativo). En la tabla de concesiones, «Reservar por MAC» y «Reservar por Client-ID» convierten una concesión en reserva con un clic.'),
+        p('«Identificar concesiones automáticas por» decide cómo se reconoce a un cliente **sin** reserva: por **Client-ID o, si no lo envía, MAC** (lo normal en DHCP y en Kea) o solo por **MAC** (el mismo equipo conserva su dirección IP aunque cambie de sistema operativo). En la tabla de concesiones, «Reservar por MAC» y «Reservar por Client-ID» convierten una concesión en reserva con un clic.'),
         h('Lo que se escribe en el fichero'),
         p('Cada cambio del panel se guarda en `/etc/kea/kea-dhcp4.conf`, el mismo fichero que editarías en un Ubuntu real (lo ves en **Servicios → Configuración**):'),
         term('json', '"interfaces-config": {\n  "interfaces": [ "*" ]\n},\n"reservations": [\n  { "hw-address": "00:fb:b1:18:68:78", "ip-address": "192.168.10.50" },\n  { "client-id": "01:00:50:f0:00:00:03", "ip-address": "192.168.10.51" }\n],\n"match-client-id": false'),
         check('Compruébalo', 'En el PC, la dirección recibida y la ruta por defecto que llegó con ella; en el servidor, el registro de Kea (o **Servicios → Registros → kea-dhcp4-server**).'),
         term('shell', 'alumno@pc0:~$ ip -4 addr show eth0\n    inet 192.168.10.100/24 brd 192.168.10.255 scope global dynamic eth0\nalumno@pc0:~$ ip route\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 2'),
         term('messages', 'Oct 24 09:12:03 srv kea-dhcp4[812]: DHCP4_LEASE_ALLOC [hwtype=1 0063.b914.34b5], tid=0x7339704d: lease 192.168.10.100 has been allocated for 86400 seconds\nOct 24 09:12:03 srv kea-dhcp4[812]: DHCP4_LEASE_ALLOC [hwtype=1 00fb.b118.6878], tid=0xf09d5548: lease 192.168.10.50 has been allocated for 86400 seconds'),
-        warn('Errores típicos', 'Un pool **fuera de la red del servidor** (Kea no lo usa: el PC acaba en 169.254.x.x, APIPA). Olvidar la **puerta de enlace**: hay IP pero no se sale de la red. **Dos servidores DHCP** en la misma LAN: cada PC se queda con la oferta que llega antes. **Interfaces de escucha** sin la interfaz de la LAN: las peticiones se descartan sin respuesta. Una reserva con una **MAC mal copiada**: el PC recibe una IP normal del pool.'),
-        exercise('Reserva la .60 para PC0', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», haz que PC0 reciba siempre 192.168.10.60 y comprueba que la conserva tras renovar.', 'Mira la MAC de PC0 (pestaña Interfaces, o `ip link` en su terminal). En SRV → Servicios → DHCP selecciona el pool, añade una reserva con esa MAC y la IP 192.168.10.60 y pulsa Añadir. En PC0 renueva: `ipconfig /renew` o `sudo dhclient -r eth0 && sudo dhclient eth0`. `ip -4 addr` debe mostrar 192.168.10.60, y la tabla de concesiones del servidor la marca como reservada.'),
+        warn('Errores típicos', 'Un pool **fuera de la red del servidor** (Kea no lo usa: el PC acaba en 169.254.x.x, APIPA). Olvidar la **puerta de enlace**: hay dirección IP pero no se sale de la red. **Dos servidores DHCP** en la misma LAN: cada PC se queda con la oferta que llega antes. **Interfaces de escucha** sin la interfaz de la LAN: las peticiones se descartan sin respuesta. Una reserva con una **MAC mal copiada**: el PC recibe una dirección IP normal del pool.'),
+        exercise('Reserva la .60 para PC0', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», haz que PC0 reciba siempre 192.168.10.60 y comprueba que la conserva tras renovar.', 'Mira la MAC de PC0 (pestaña Interfaces, o `ip link` en su terminal). En SRV → Servicios → DHCP selecciona el pool, añade una reserva con esa MAC y la dirección IP 192.168.10.60 y pulsa Añadir. En PC0 renueva: `ipconfig /renew` o `sudo dhclient -r eth0 && sudo dhclient eth0`. `ip -4 addr` debe mostrar 192.168.10.60, y la tabla de concesiones del servidor la marca como reservada.'),
       ],
     },
     {
@@ -110,7 +110,7 @@ export const SERVICE_DOCS: DocGroup = {
         list(
           'Paso 1 · Registro SOA: nombre de la zona, servidor primario (MNAME), correo del responsable (admin@aula.lab, que BIND escribe admin.aula.lab.) y los tiempos refresh, retry, expire y TTL negativo. El número de serie lo pone Netfix (AAAAMMDDnn) y sube con cada cambio.',
           'Paso 2 · Servidores de nombres (NS): uno o varios. Si están dentro de la zona necesitan su registro A; mientras falte, la comprobación lo avisa como named-checkzone.',
-          'Paso 3 · Tipo: directa (por defecto, nombre → IP) o inversa (IP → nombre, *.in-addr.arpa). Para una inversa se puede escribir la red: 192.168.1 → 1.168.192.in-addr.arpa.',
+          'Paso 3 · Tipo: directa (por defecto, nombre → dirección IP) o inversa (dirección IP → nombre, *.in-addr.arpa). Para una inversa se puede escribir la red: 192.168.1 → 1.168.192.in-addr.arpa.',
           'Paso 4 · Registros: una zona directa admite A, CNAME, MX, NS y TXT; una inversa, solo PTR. No se pueden añadir registros antes de que la zona exista.',
         ),
         h('Zonas inversas automáticas'),
@@ -161,7 +161,7 @@ export const SERVICE_DOCS: DocGroup = {
         ),
         code('*      IN  A      192.168.10.80   ; cualquier.aula.lab → .80\n*.dev  IN  CNAME  srv             ; app.dev.aula.lab → srv.aula.lab\n@      IN  MX     10 @'),
         code('$ORIGIN aula.lab.\n$TTL 86400\n@\tIN\tSOA\tsrv.aula.lab. hostmaster.aula.lab. ( … )\n@\tIN\tNS\tsrv\n@\tIN\tMX\t10 srv\nsrv\tIN\tA\t192.168.10.2\nwww\tIN\tCNAME\tsrv'),
-        note('Dominio de búsqueda: si el pool DHCP lleva domain-name (opción 15), el PC lo añade a /etc/resolv.conf («search aula.lab») y a «Connection-specific DNS Suffix» en Windows. Así ping, nslookup, host, curl, ssh y el navegador completan un nombre sin puntos (www → www.aula.lab), como glibc con ndots:1: primero con el dominio y después tal cual; un nombre con puntos va primero tal cual; un punto final («www.») evita la búsqueda. dig no usa la búsqueda salvo con +search, como el dig real. Con IP estática, los dominios se ponen en netplan (nameservers: search: [aula.lab]). hostname -f da el nombre canónico de /etc/hosts (en Ubuntu no incluye el dominio de DHCP).'),
+        note('Dominio de búsqueda: si el pool DHCP lleva domain-name (opción 15), el PC lo añade a /etc/resolv.conf («search aula.lab») y a «Connection-specific DNS Suffix» en Windows. Así ping, nslookup, host, curl, ssh y el navegador completan un nombre sin puntos (www → www.aula.lab), como glibc con ndots:1: primero con el dominio y después tal cual; un nombre con puntos va primero tal cual; un punto final («www.») evita la búsqueda. dig no usa la búsqueda salvo con +search, como el dig real. Con dirección IP estática, los dominios se ponen en netplan (nameservers: search: [aula.lab]). hostname -f da el nombre canónico de /etc/hosts (en Ubuntu no incluye el dominio de DHCP).'),
       ],
     },
     {

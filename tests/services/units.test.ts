@@ -87,7 +87,7 @@ test('services JSON validation rejects malformed data', () => {
   assert.deepEqual(servicesFromJson(undefined).http.enabled, true);
   assert.throws(() => servicesFromJson('x'), /no válidos/);
   assert.throws(() => servicesFromJson({ dhcp: { pools: [{ name: 'p', start: '10.0.0.1', prefix: 99, maxUsers: 1 }] } }), /máscara/);
-  assert.throws(() => servicesFromJson({ dhcp: { pools: [{ name: 'p', prefix: 24, maxUsers: 1 }] } }), /sin IP inicial/);
+  assert.throws(() => servicesFromJson({ dhcp: { pools: [{ name: 'p', prefix: 24, maxUsers: 1 }] } }), /sin dirección IP inicial/);
   assert.throws(() => servicesFromJson({ dhcp: { pools: [{ name: 'p', start: '10.0.0.1', prefix: 24, maxUsers: 1, reservations: [{ ip: '10.0.0.2', mac: 'zz' }] }] } }), /incompleta/);
   assert.throws(() => servicesFromJson({ dns: { records: [{ name: 'a', type: 'SRV', value: 'x' }] } }), /Registro DNS/);
   assert.throws(() => servicesFromJson({ mail: { users: [{ name: 'a' }] } }), /contraseña/);

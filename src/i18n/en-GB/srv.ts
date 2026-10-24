@@ -112,7 +112,7 @@ export const SRV_EN: Readonly<Record<SrvKey, string>> = {
   'dns.fullNameCol': 'Full name',
   'res.badIp': 'Invalid IP address.',
   'res.title': 'Reservations of {pool}',
-  'res.ip': 'Reserved IP',
+  'res.ip': 'Reserved IP address',
   'res.by': 'Identify the client by',
   'res.id': 'MAC or Client-ID',
   'res.desc': 'Description',

@@ -30,7 +30,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       p('Services → HTTP → Web applications → Web management. It is disabled by default; once enabled it listens on port 10000 (or on an Apache alias such as /admin) with user admin and password netfix (the same account as the SSH of the labs).'),
       code('PC Web Browser:    http://srv.aula.lab:10000/\nTerminal:          curl -u admin:netfix "http://192.168.10.2:10000/?page=status"'),
       table(['Page', 'What it changes'], [
-        ['Config', 'Host name, static or DHCP IP, default gateway and DNS.'],
+        ['Config', 'Host name, static or DHCP IP address, default gateway and DNS.'],
         ['SSH', 'First in the Services menu: service, users and the authentication methods (password and/or key pair) in sshd_config.'],
         ['DHCP', 'Enable the server, choose the listen interfaces (Kea interfaces-config), add and delete pools (leases by MAC or by Client-ID), addresses reserved by MAC or identifier (hex 01… or text) and “Reserve” an active lease.'],
         ['DNS', 'Listen interfaces (listen-on), cards for the five modes (Cache, Forwarder, Authoritative, Recursive, Iterative) with their switch and uses, one tab of options per mode (the zone wizard SOA → NS → kind → records in Authoritative) and, beside them, the generated BIND configuration (named.conf.options, zones, files) explained.'],
@@ -43,7 +43,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       h('Security'),
       list(
         'HTTP Basic authentication (realm “Server”); failed attempts are logged in journalctl -u apache2.',
-        'Every change is validated exactly as in the server window and logged with the user and the PC’s IP.',
+        'Every change is validated exactly as in the server window and logged with the user and the PC’s IP address.',
         'The Security section of the menu (Routing, Firewall, VPN) only appears on the Linux router; a Server has none.',
       ),
     ],

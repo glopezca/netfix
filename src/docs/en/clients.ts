@@ -9,7 +9,7 @@ export const CLIENT_DOCS: DocGroup = {
     {
       id: 'pc-ip',
       title: 'IP Config',
-      summary: 'Static or DHCP IP, operating system, MAC and Client-ID.',
+      summary: 'Static or DHCP IP address, operating system, MAC and Client-ID.',
       blocks: [
         list(
           'Static: address, mask (255.255.255.0 or /24), default gateway and DNS server.',

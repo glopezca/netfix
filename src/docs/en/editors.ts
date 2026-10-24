@@ -1,6 +1,6 @@
-/** Documentation: the nano and vim editors in the Linux Terminal. */
+/** Documentation: Midnight Commander and the nano and vim editors in the Linux Terminal. */
 import type { DocPage } from '../types.ts';
-import { code, h, list, note, p, table } from '../types.ts';
+import { check, code, exercise, h, list, note, p, steps, table, term, tip, warn } from '../types.ts';
 
 export const NANO_KEYS: readonly (readonly [string, string])[] = [
   ['Ctrl+O', 'Save (Write Out): confirm or change the name and press Enter'],
@@ -48,6 +48,44 @@ export const VIM_EX: readonly (readonly [string, string])[] = [
 ];
 
 export const EDITOR_DOCS: readonly DocPage[] = [
+  {
+    id: 'mc',
+    title: 'Midnight Commander (mc)',
+    summary: 'A two-panel text-mode file manager: copy, move, view and edit without typing paths.',
+    markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+    blocks: [
+      p('**Midnight Commander** (`mc`) is a full-screen file manager inside the terminal, widely used by system administrators. It shows **two panels**, each with a directory; operations go from the active panel to the other one with the function keys. It works the same locally and over **SSH**, so it helps tidy a server’s files without remembering long paths.'),
+      code('  Left     File     Command     Options     Right\n┌───────────────── ~ ──────────────────┐┌─────────── /var/www/html ────────────┐\n│.n   Name        │  Size │Modify time ││.n   Name        │  Size │Modify time │\n│/..              │UP--DIR│            ││/..              │UP--DIR│            │\n│/scripts         │    DIR│Oct 24 09:30││ aula.css        │    820│Oct 24 09:30│\n│/web             │    DIR│Oct 24 09:30││ index.html      │  10671│Oct 24 09:30│\n│ copia.sh        │    154│Oct 24 09:30││                                      │\n│ notas.txt       │    312│Oct 24 09:30││                                      │\n│                                      ││                                      │\n├──────────────────────────────────────┤├──────────────────────────────────────┤\n│UP--DIR                               ││UP--DIR                               │\n└──────────────────────────────────────┘└──────────────────────────────────────┘\nadmin@srv:~$\n1Help   2Menu   3View   4Edit   5Copy   6RenMov 7Mkdir  8Delete 9PullDn 10Quit'),
+      p('At the top, the menu bar; in the middle, the two panels (name, size and date; a leading `/` marks a directory); below, the command line with your prompt; and at the very bottom, what each function key does (1Help, 3View, 5Copy…).'),
+      h('Opening and closing it'),
+      term('shell', 'admin@srv:~$ mc\nadmin@srv:~$ mc ~ /var/www/html\nalumno@pc0:~$ sudo mc /etc /tmp\nadmin@srv:~$ mc -V\nGNU Midnight Commander 4.8.33'),
+      p('With no arguments it opens the current directory in both panels; with one or two directories, each panel in its own. **F10** quits (it asks first). It works with **your permissions**: to touch system files, open it with `sudo`.'),
+      h('Keys'),
+      table(['Key', 'What it does'], [
+        ['Tab', 'Switches the active panel (the highlighted one)'],
+        ['↑ ↓ · PgUp PgDn · Home End', 'Move through the list'],
+        ['Enter', 'Enters a directory (`/..` goes up); on a file, shows it'],
+        ['Insert · Ctrl+T', 'Marks or unmarks a file (to copy or delete several)'],
+        ['F3', 'View the file (q or F3 to go back)'],
+        ['F4', 'Edit it with nano (Ubuntu’s default editor)'],
+        ['F5 · F6', 'Copy · move or rename into the other panel’s directory'],
+        ['F7 · F8', 'Make a directory · delete (asks for confirmation)'],
+        ['Ctrl+R', 'Reread the panels (after changes made from another terminal)'],
+        ['F1 · F2/F9 · F10', 'Help · credits of Netfix and GNU Midnight Commander · quit'],
+      ]),
+      tip('No function keys', 'On a laptop without F1-F12 or on a tablet, press **Esc** and then the digit: Esc 5 = F5, Esc 0 = F10. On touch screens, the terminal’s key bar has Esc.'),
+      h('Copying a file from one directory to another'),
+      steps(
+        ['Set up the panels', 'Open `mc ~ /var/www/html`: your folder on the left and the website on the right.'],
+        ['Choose what to copy', 'In the left panel, go to the file with the arrows. For several, mark them with **Insert**.'],
+        ['Copy', 'Press **F5**. The box proposes the other panel’s directory as the target; accept with **Enter**.'],
+        ['Check', 'The file shows up in the right panel. If the target is not yours you will see a permission error: quit with F10 and come back with `sudo mc`.'],
+      ),
+      check('Check it', 'Quit with **F10** and list the target: `ls -l /var/www/html`. If you copied a web page, open it from a PC’s browser.'),
+      warn('Common mistakes', 'Pressing **F8** on the wrong directory: there is no recycle bin, what is deleted does not come back. Copying into a directory without write permission (Permission denied): use `sudo mc`. Forgetting which panel you are in: the operation always goes **from the highlighted panel to the other**.'),
+      exercise('Publish a page', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, use mc to create a `practica` directory in `/var/www/html` and copy a file from your home into it.', 'On SRV, Linux Terminal: `sudo mc ~ /var/www/html`. With **Tab** move to the right panel, press **F7**, type `practica` and Enter. Go into it with Enter, back to the left one with Tab, stand on the file and press **F5** and Enter. From PC0, the browser opens http://192.168.10.2/practica/ and lists the file (or shows it if it is called index.html).'),
+    ],
+  },
   {
     id: 'nano',
     title: 'nano',

@@ -16,7 +16,7 @@ export const VPN_EN: Readonly<Record<VpnKey, string>> = {
   'vpn.noPeers': 'No peers: the tunnel will carry no traffic.',
   'vpn.peerKey': 'Peer public key',
   'vpn.allowedIps': 'AllowedIPs (networks reached through the peer)',
-  'vpn.endpoint': 'Endpoint (IP:port, empty if the peer calls in)',
+  'vpn.endpoint': 'Endpoint (IP address:port, empty if the peer calls in)',
   'vpn.keepalive': 'Keepalive (s, to get through NAT)',
   'vpn.addPeer': 'Add peer',
   'vpn.save': 'Save and apply',

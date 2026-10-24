@@ -38,7 +38,7 @@ export const SECURITY_DOCS: DocGroup = {
         list(
           'Both sites need matching ISAKMP policies, the same key, matching transform-sets and mirror ACLs (source and destination swapped).',
           'With NAT overload on the same interface, exclude inter-site traffic from NAT with an extended ACL (deny ip LAN1 LAN2 before the permit).',
-          'ESP has no ports: it gets through a 1:1 NAT but a PAT drops it. Use public IPs (the ISP cloud’s “Public IP” line).',
+          'ESP has no ports: it gets through a 1:1 NAT but a PAT drops it. Use public IP addresses (the ISP cloud’s “Public IP address” line).',
         ),
         table(['Command', 'What it shows'], [
           ['show crypto isakmp sa', 'The IKE SA: QM_IDLE when ready, MM_NO_STATE if it fails.'],

@@ -9,12 +9,12 @@ export const INTERNET_DOCS: DocGroup = {
     {
       id: 'inet-cloud',
       title: 'Nube ISP',
-      summary: 'Líneas de cable, xDSL y fibra: IP pública por DHCP o router del operador con NAT y redirección de puertos.',
+      summary: 'Líneas de cable, xDSL y fibra: dirección IP pública por DHCP o router del operador con NAT y redirección de puertos.',
       blocks: [
         p('La Nube (paleta → Nube) emula la salida a Internet de un proveedor. Tiene seis puertos, uno por línea de cliente: Coaxial0-1 (cable DOCSIS), DSL0-1 (VDSL2) y Fibra0-1 (FTTH). Conecta a cada uno un router (GigabitEthernet), un switch o un PC.'),
         table(['Modo de la línea', 'Qué hace', 'Cuándo usarlo'], [
-          ['Router del operador (por defecto)', 'Es el router de casa: LAN 192.168.1.1/24, DHCP desde .33 (DNS 8.8.8.8 y 8.8.4.4), NAT de toda la LAN a la IP pública x.y.n.2 y redirección de puertos.', 'Conectar PCs, un switch o un servidor directamente.'],
-          ['IP pública (/29)', 'La nube es la puerta de enlace x.y.n.1/29 y entrega por DHCP x.y.n.2 a tu router; .3-.6 quedan libres para NAT estático.', 'Configurar el NAT tú mismo en un Cisco 2911 (ip address dhcp + ip nat).'],
+          ['Router del operador (por defecto)', 'Es el router de casa: LAN 192.168.1.1/24, DHCP desde .33 (DNS 8.8.8.8 y 8.8.4.4), NAT de toda la LAN a la dirección IP pública x.y.n.2 y redirección de puertos.', 'Conectar PCs, un switch o un servidor directamente.'],
+          ['Dirección IP pública (/29)', 'La nube es la puerta de enlace x.y.n.1/29 y entrega por DHCP x.y.n.2 a tu router; .3-.6 quedan libres para NAT estático.', 'Configurar el NAT tú mismo en un Cisco 2911 (ip address dhcp + ip nat).'],
         ]),
         h('Direcciones'),
         list(
@@ -25,7 +25,7 @@ export const INTERNET_DOCS: DocGroup = {
         h('Ventana de la nube'),
         list(
           'ISP: nombre del proveedor, bloque público y dominios registrados.',
-          'Líneas: modo, velocidades contratadas (informativas), IP y máscara de la LAN, concesiones DHCP, traducciones NAT y redirección de puertos (TCP o UDP, puerto público → IP:puerto de la LAN).',
+          'Líneas: modo, velocidades contratadas (informativas), dirección IP y máscara de la LAN, concesiones DHCP, traducciones NAT y redirección de puertos (TCP o UDP, puerto público → dirección IP:puerto de la LAN).',
         ),
         note('Sin redirecciones, desde Internet solo responde el propio router (ping a la WAN); cualquier otro puerto devuelve RST: curl dice «Connection refused».'),
       ],
@@ -38,9 +38,9 @@ export const INTERNET_DOCS: DocGroup = {
         p('Todas las nubes del área de trabajo están unidas por una Internet emulada: el router de cada ISP, dos routers troncales (198.51.100.1 y 198.51.100.2) y los servidores de destino. Cada salto resta 1 al TTL y responde «tiempo excedido», así que traceroute y tracert muestran la ruta.'),
         table(['Servidor', 'Dirección', 'Uso'], [
           ['dns.google', '8.8.8.8 · 8.8.4.4', 'DNS recursivo público (UDP 53). También responde a ping.'],
-          ['www.google.com', '142.250.184.4', 'Web de prueba: muestra tu IP pública.'],
+          ['www.google.com', '142.250.184.4', 'Web de prueba: muestra tu dirección IP pública.'],
           ['example.com', '93.184.215.14', 'Web de prueba.'],
-          ['ifconfig.me', '34.160.111.145', 'Devuelve solo tu IP pública en texto (curl ifconfig.me).'],
+          ['ifconfig.me', '34.160.111.145', 'Devuelve solo tu dirección IP pública en texto (curl ifconfig.me).'],
         ]),
         h('Nombres públicos'),
         p('Además conoce unos 120 nombres públicos: los anteriores, google.es, educa.jcyl.es, juandecolonia.es y los 100 dominios más visitados del mundo (Similarweb y Semrush, 2026), sin webs para adultos ni de apuestas. Cada uno tiene su www, se resuelve por 8.8.8.8 y por iteración desde la raíz, y su dirección responde a ping y a HTTP. Las direcciones son representativas de las reales: las webs grandes responden desde muchas direcciones que cambian.'),
@@ -48,11 +48,11 @@ export const INTERNET_DOCS: DocGroup = {
         h('Dominios registrados en un ISP'),
         p('En la pestaña ISP de una nube puedes registrar dominios. Los DNS públicos los resuelven para todas las nubes:'),
         table(['Tipo', 'Respuesta de 8.8.8.8'], [
-          ['A', 'El dominio y cualquier nombre bajo él (*.dominio) apuntan a la IP indicada.'],
-          ['NS (delegación)', '8.8.8.8 pregunta al servidor DNS de esa IP y reenvía su respuesta: tu Server es el autoritativo de la zona.'],
+          ['A', 'El dominio y cualquier nombre bajo él (*.dominio) apuntan a la dirección IP indicada.'],
+          ['NS (delegación)', '8.8.8.8 pregunta al servidor DNS de esa dirección IP y reenvía su respuesta: tu Server es el autoritativo de la zona.'],
         ]),
         h('Ejemplo: publicar la web de una sede'),
-        code('Nube ISP-Sur → Líneas → DSL0 (router del operador, WAN 81.33.3.2)\n  Redirección TCP 80 → 192.168.1.10:80 y UDP 53 → 192.168.1.10:53\nNube ISP-Sur → ISP → dominio sede2.es, tipo NS, IP 81.33.3.2\nSRV-SEDE2 (192.168.1.10) → DNS: zona sede2.es con www → 81.33.3.2\nPC de otra sede:  host www.sede2.es  ·  navegador http://www.sede2.es'),
+        code('Nube ISP-Sur → Líneas → DSL0 (router del operador, WAN 81.33.3.2)\n  Redirección TCP 80 → 192.168.1.10:80 y UDP 53 → 192.168.1.10:53\nNube ISP-Sur → ISP → dominio sede2.es, tipo NS, dirección IP 81.33.3.2\nSRV-SEDE2 (192.168.1.10) → DNS: zona sede2.es con www → 81.33.3.2\nPC de otra sede:  host www.sede2.es  ·  navegador http://www.sede2.es'),
         note('El laboratorio «Internet: dos sedes y DNS públicos» trae todo esto montado.'),
         p('En modo simulación los paquetes que cruzan Internet aparecen como eventos entre las nubes (puerto «Internet»).'),
       ],
@@ -68,7 +68,7 @@ export const INTERNET_DOCS: DocGroup = {
           ['access-list N permit|deny any | host A | A WILDCARD', 'ACL estándar numerada (1-99). remark para comentarios.'],
           ['ip access-list standard NOMBRE', 'ACL estándar con nombre: (config-std-nacl)# [secuencia] permit|deny …'],
           ['ip nat pool NOMBRE INICIO FIN netmask M | prefix-length N', 'Rango de direcciones globales.'],
-          ['ip nat inside source list ACL interface IF overload', 'PAT: todas las direcciones permitidas salen con la IP de la interfaz.'],
+          ['ip nat inside source list ACL interface IF overload', 'PAT: todas las direcciones permitidas salen con la dirección IP de la interfaz.'],
           ['ip nat inside source list ACL pool NOMBRE [overload]', 'NAT dinámico 1:1 (o PAT sobre el pool).'],
           ['ip nat inside source static LOCAL GLOBAL', 'NAT estático 1:1 (el router responde ARP por GLOBAL).'],
           ['ip nat inside source static tcp|udp LOCAL P GLOBAL|interface IF P', 'Publica un puerto de un servidor interno.'],
@@ -104,9 +104,9 @@ export const INTERNET_DOCS: DocGroup = {
           ['/level/15/exec/-/show/ip/interface/brief/CR', 'Ejecuta una orden EXEC (las palabras separadas por /, CR al final).'],
           ['/level/N/exec/-', 'Monitor: palabras clave posibles como enlaces y cuadro Command (nivel 1 = EXEC de usuario).'],
           ['/level/15/configure/-', 'Configure: órdenes de configuración, una por línea.'],
-          ['/level/15/dm', 'Device Manager: panel frontal, tabla de interfaces y ajustes rápidos de puerto (descripción, estado, VLAN de acceso, IP).'],
+          ['/level/15/dm', 'Device Manager: panel frontal, tabla de interfaces y ajustes rápidos de puerto (descripción, estado, VLAN de acceso, dirección IP).'],
         ]),
-        note('La autenticación es HTTP Basic (realm level_15_access). Los fallos se registran como %SEC_LOGIN-4-LOGIN_FAILED y los cambios como %SYS-5-CONFIG_I … on vty0 (IP del PC). También funciona curl -u usuario:clave.'),
+        note('La autenticación es HTTP Basic (realm level_15_access). Los fallos se registran como %SEC_LOGIN-4-LOGIN_FAILED y los cambios como %SYS-5-CONFIG_I … on vty0 (dirección IP del PC). También funciona curl -u usuario:clave.'),
       ],
     },
     {

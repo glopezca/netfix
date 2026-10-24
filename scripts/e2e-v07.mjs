@@ -182,7 +182,7 @@ try {
   await page.click('.window button >> text="Generate key"');
   await page.waitForSelector('.window td:has-text("id_ed25519")');
   await page.click('.subnav-item:has-text("Session")');
-  await page.fill('input[aria-label="Server (IP or name)"]', '10.1.0.1');
+  await page.fill('input[aria-label="Server (IP address or name)"]', '10.1.0.1');
   await page.click('.window button.btn >> text="Open"');
   await page.waitForSelector('.ssh-term .terminal');
   await page.click('.subnav-item:has-text("Keys")');
