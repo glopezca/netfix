@@ -58,7 +58,7 @@ try {
 
   // Dragging one of them moves the whole group; one Ctrl+Z puts everything back.
   const before = await positions(page);
-  const dev = await page.locator('g.device').first().boundingBox();
+  const dev = await page.locator('g.device').first().evaluate((el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; });
   await page.mouse.move(dev.x + dev.width / 2, dev.y + dev.height / 2);
   await page.mouse.down();
   await page.mouse.move(dev.x + dev.width / 2 + 60, dev.y + dev.height / 2 + 30, { steps: 5 });
@@ -114,12 +114,12 @@ try {
   const area = page.locator('.drawing-rect').first();
   await page.click('button[aria-label*="Ajustar"]');
   await area.locator('.drawing-label').scrollIntoViewIfNeeded();
-  const hit = await area.locator('.drawing-label').boundingBox();
+  const hit = await area.locator('.drawing-label').evaluate((el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; });
   await page.mouse.click(hit.x + 4, hit.y + hit.height / 2);
   const under = await page.evaluate(({ x, y }) => { const e = document.elementFromPoint(x, y); return `${e?.tagName}.${e?.getAttribute('class')} in ${e?.parentElement?.getAttribute('class')}`; }, { x: hit.x + 4, y: hit.y + hit.height / 2 });
   assert.equal(await count(page, '.drawing-handle'), 8, `eight handles: corners and midpoints (clicked ${under})`);
   const width = Number(await area.locator('.drawing-shape').getAttribute('width'));
-  const se = await page.locator('.drawing-handle-se').boundingBox();
+  const se = await page.locator('.drawing-handle-se').evaluate((el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; });
   await page.mouse.move(se.x + se.width / 2, se.y + se.height / 2);
   await page.mouse.down();
   await page.mouse.move(se.x + 80, se.y + 40, { steps: 5 });

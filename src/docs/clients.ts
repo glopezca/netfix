@@ -1,36 +1,77 @@
-/** Documentación: equipos cliente (configuración IP, aplicaciones y Terminal Windows). */
+/** Documentación: el PC (configuración IP, nombre, navegador y correo, Terminal Windows), en estilo guiado. */
 import type { DocGroup } from './types.ts';
-import { code, h, list, note, p, table } from './types.ts';
+import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from './types.ts';
+
+const MD = 'https://github.com/glopezca/netfix/blob/main/';
 
 export const CLIENT_DOCS: DocGroup = {
   id: 'clientes',
-  title: 'PC y Windows',
+  title: 'PC',
   pages: [
     {
       id: 'pc-ip',
       title: 'Configuración IP',
-      summary: 'Dirección IP estática o por DHCP, sistema operativo, MAC y Client-ID.',
+      summary: 'Dar al PC su dirección IP: a mano (estática) o automáticamente (DHCP), y cómo comprobar que funciona.',
+      markdownBase: MD,
       blocks: [
-        list(
-          'Estática: dirección, máscara (255.255.255.0 o /24), puerta de enlace y servidor DNS.',
-          'DHCP: el equipo pide la configuración (DORA) y muestra la concesión obtenida.',
-          'Sistema operativo: Ubuntu o Windows. Cambia la terminal que se abre primero y el sistema que ve un cliente SSH.',
+        p('Para hablar con otros equipos, un PC necesita cuatro datos: su **dirección IP** (quién es), la **máscara de subred** (qué direcciones están en su misma red), la **puerta de enlace** (el router por el que sale de esa red) y el **servidor DNS** (quién traduce nombres como srv.aula.lab a direcciones). Se pueden escribir a mano o pedírselos a un servidor DHCP.'),
+        figure({
+          type: 'topology',
+          nodes: [
+            { id: 'gw', kind: 'router', label: 'GW', x: 40, y: 0, note: 'puerta de enlace .1' },
+            { id: 'sw', kind: 'switch', label: 'Switch0', x: 40, y: 20 },
+            { id: 'pc0', kind: 'pc', label: 'PC0', x: 10, y: 40, note: 'DHCP' },
+            { id: 'pc1', kind: 'pc', label: 'PC1', x: 70, y: 40, note: 'estática .20/24' },
+          ],
+          links: [{ a: 'gw', b: 'sw' }, { a: 'sw', b: 'pc0' }, { a: 'sw', b: 'pc1' }],
+        }, 'Dos formas de configurar un PC en la red 192.168.10.0/24: PC0 la pide por DHCP y PC1 la tiene escrita a mano.'),
+        h('Estática o DHCP'),
+        table(['', 'Estática', 'DHCP'], [
+          ['Quién pone los datos', 'Tú, a mano, en cada equipo', 'Un servidor DHCP, automáticamente'],
+          ['Cuándo se usa', 'Servidores, routers, impresoras: deben estar siempre en la misma dirección IP', 'PCs y portátiles de usuarios'],
+          ['Riesgo', 'Equivocarse o repetir una dirección IP', 'Si no hay servidor, el PC acaba en 169.254.x.x (APIPA)'],
+        ]),
+        h('Configurarlo en Netfix'),
+        steps(
+          ['Abre el PC', 'Doble clic en el PC → pestaña **Configuración IP**.'],
+          ['Elige el modo', '**DHCP**: el PC pide los datos al momento (verás «Solicitando dirección IP…» y después «Solicitud DHCP correcta»). **Estática**: rellena **Dirección IPv4**, **Máscara de subred** (255.255.255.0 o /24), **Puerta de enlace** y **Servidor DNS**.'],
+          ['Aplica', 'Cada campo se aplica al pulsar Intro o al salir de él. Un dato mal escrito se marca y no se aplica.'],
+          ['Elige el sistema operativo', '**Ubuntu** o **Windows**: decide qué terminal se abre primero y qué sistema ve un cliente SSH.'],
         ),
         h('Client-ID (opción 61)'),
+        p('Al pedir dirección por DHCP, el PC puede enviar un **identificador de cliente**. El servidor lo usa para reconocerlo (y para sus reservas por Client-ID). Si no lo envía, lo reconoce por la **MAC**.'),
         table(['Opción', 'Qué envía'], [
           ['«Enviar identificador de cliente» activado (por defecto)', '01 + MAC, como Windows.'],
           ['Desactivado', 'Nada: el servidor identifica al cliente por la MAC.'],
           ['Client-ID personalizado (hexadecimal)', 'Los bytes indicados, p. ej. 0100.50f0.0000.02.'],
           ['Client-ID personalizado (texto ASCII)', 'El texto como bytes, p. ej. PC-profesor.'],
         ]),
+        check('Compruébalo', 'En la Terminal Windows, `ipconfig /all` muestra la dirección IP, la máscara, la puerta de enlace, el servidor DHCP y las fechas de la concesión. Después, `ping` a la puerta de enlace y a un nombre.'),
+        term('cmd', 'C:\\home\\alumno> ipconfig /all\n\nFastEthernet0 Connection:(default port)\n\n   Connection-specific DNS Suffix..: aula.lab\n   Physical Address................: 0063.B914.34B5\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\n   DHCP Servers....................: 192.168.10.2\n   DNS Servers.....................: 192.168.10.2\nC:\\home\\alumno> ping -n 2 srv.aula.lab\nReply from 192.168.10.2: bytes=32 time<1ms TTL=128'),
+        p('En la Terminal Linux, lo mismo con `ip -4 addr`, `ip route` (la puerta de enlace es la ruta «default») y `cat /etc/resolv.conf` (el servidor DNS).'),
+        warn('Errores típicos', 'Máscara distinta de la del resto de la red: hay equipos a los que «no se ve». Puerta de enlace fuera de la red del PC (o vacía): funciona dentro de la LAN pero no fuera. Dos equipos con la **misma dirección IP**: fallan los dos de forma intermitente. Una dirección **169.254.x.x** significa que DHCP no respondió: revisa el cable, el servidor y su pool.'),
+        exercise('Del PC a mano al PC por DHCP', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», pon PC0 con la dirección IP estática 192.168.10.20/24, puerta 192.168.10.1 y DNS 192.168.10.2; comprueba con ping srv.aula.lab y después vuelve a DHCP.', 'Configuración IP → Estática y rellena los cuatro campos. En la Terminal Windows, `ping srv.aula.lab` responde desde 192.168.10.2. Vuelve a **DHCP**: `ipconfig` muestra de nuevo 192.168.10.100 (la concesión que el servidor le guardaba).'),
       ],
     },
     {
       id: 'pc-equipo',
       title: 'Nombre del equipo',
-      summary: 'Nombre del equipo, nombre de host derivado (no se cambia desde la terminal) y nombre descriptivo.',
+      summary: 'El nombre del diagrama y el nombre de host que se deriva de él (no se cambia desde la terminal).',
+      markdownBase: MD,
       blocks: [
-        p('En la pestaña Equipo de PCs, servidores, routers Linux y nubes se escribe el nombre del equipo (el del diagrama) y se aplica al pulsar Intro o salir del campo. El nombre de host del sistema siempre se deriva de él en formato estándar: minúsculas, sin tildes y con guiones en lugar de espacios («Aula Pública 2º» → aula-publica-2o). Se ve en la pestaña, de solo lectura, y no se puede cambiar de otra forma: así cada equipo del diagrama tiene un nombre de host predecible. El diagrama muestra bajo cada equipo su nombre (en una nube, también su bloque público), sin repetir el nombre de host, y en cada extremo de cable el nombre de la interfaz con su dirección IP/CIDR debajo; la dirección de una interfaz sin cable queda bajo el nombre del equipo. El nombre de host lo envía el cliente DHCP (opción 12, visible en show ip dhcp binding y en Kea) y aparece en el prompt de GNU/Linux, en /etc/hostname y en hostname.'),
+        p('Cada equipo tiene un **nombre** (el que ves en el diagrama, p. ej. «Aula Pública 2º») y un **nombre de host**, el que usa el sistema en la red (aula-publica-2o). En Netfix el segundo se deriva siempre del primero, como en una red bien organizada: así cada equipo del diagrama tiene un nombre de host predecible. Vale para PCs, servidores, routers Linux y nubes; en los routers y switches IOS, el `hostname` sale igual del nombre, conservando mayúsculas.'),
+        steps(
+          ['Cambia el nombre', 'Pestaña **Equipo** → **Nombre del equipo**. Se aplica al pulsar Intro o salir del campo.'],
+          ['Mira el nombre de host', 'Debajo, de solo lectura: minúsculas, sin tildes y con guiones en lugar de espacios.'],
+          ['Úsalo', 'Aparece en el prompt de la Terminal Linux, en /etc/hostname, en `hostname` y en lo que el cliente DHCP envía al servidor (opción 12, visible en las concesiones).'],
+        ),
+        table(['Nombre del equipo', 'Nombre de host'], [
+          ['PC0', 'pc0'],
+          ['Aula Pública 2º', 'aula-publica-2o'],
+          ['SRV Intranet', 'srv-intranet'],
+          ['dos equipos que darían el mismo', 'el segundo recibe -2 (pc-1, pc-1-2)'],
+        ]),
+        h('Por qué no se cambia desde la terminal'),
         table(['Dónde', 'Qué pasa en Netfix'], [
           ['Pestaña Equipo', 'Cambia el nombre del equipo y, con él, el nombre de host.'],
           ['sudo hostnamectl set-hostname NOMBRE', 'Pide la contraseña y responde «Could not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo».'],
@@ -39,31 +80,68 @@ export const CLIENT_DOCS: DocGroup = {
           ['Gestión web → Configuración', 'Muestra el nombre de host sin campo para cambiarlo.'],
           ['sudo hostnamectl set-hostname --pretty "Texto libre"', 'Sí cambia el nombre descriptivo, que se guarda con la topología.'],
         ]),
-        code('alumno@pc0:~$ sudo hostnamectl set-hostname web01\nCould not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: pc0'),
-        list(
-          'En un Ubuntu real esas órdenes sí cambian el nombre; en Netfix se bloquean para que el nombre de host salga siempre del diagrama.',
-          'Reglas del nombre de host (RFC 1123): letras sin tilde, números y guiones; hasta 63 caracteres; sin espacios.',
-        ),
+        term('shell', 'alumno@pc0:~$ sudo hostnamectl set-hostname web01\nCould not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: pc0'),
+        tip('En un Ubuntu real', 'Esas órdenes sí cambian el nombre. En Netfix se bloquean para que el nombre de host salga siempre del diagrama y el alumnado no tenga que adivinarlo.'),
+        warn('Errores típicos', 'Esperar que el nombre de host conserve mayúsculas o espacios: no lo hace (RFC 1123: letras sin tilde, números y guiones, hasta 63 caracteres). Buscar el equipo por su nombre en el DNS sin haberlo dado de alta: el nombre de host no se registra solo en el servidor DNS.'),
+        exercise('Renombra un PC', 'Cambia el nombre de PC1 a «Portátil Profe» y averigua su nombre de host sin mirar la pestaña Equipo.', 'En su Terminal Linux, el prompt pasa a ser `alumno@portatil-profe:~$`; `hostname` también lo muestra. En el diagrama el nombre aparece como «Portátil Profe».'),
       ],
     },
     {
       id: 'pc-apps',
       title: 'Navegador y correo',
-      summary: 'Aplicaciones de escritorio del PC.',
+      summary: 'Las aplicaciones de escritorio del PC: navegar por las webs de la red y enviar y recibir correo.',
+      markdownBase: MD,
       blocks: [
-        list(
-          'Navegador: http://IP o http://nombre. Resuelve por DNS, sigue los enlaces y dibuja la página de forma segura, sin ejecutar scripts.',
-          'Correo: cuenta con servidor entrante (POP3 o IMAP) y saliente (SMTP). Redactar, Enviar y Recibir. POP3 borra del servidor; IMAP deja copia.',
+        p('El PC tiene un **navegador** y un **cliente de correo**. Con ellos se comprueba que los servicios de un servidor funcionan de verdad, como lo haría un usuario: que la web se ve, que el nombre se resuelve y que el correo llega.'),
+        h('Navegador'),
+        steps(
+          ['Ábrelo', 'Doble clic en el PC → pestaña **Navegador**.'],
+          ['Escribe la dirección', 'Una URL como `http://192.168.10.2`, `http://srv.aula.lab` o `http://srv.aula.lab:8080/ruta` y pulsa **Ir**. Con un nombre, el PC pregunta antes a su servidor DNS.'],
+          ['Navega', 'Los enlaces y los formularios funcionan. Si el sitio pide usuario y contraseña (como la gestión web), aparece un cuadro para iniciar sesión.'],
         ),
+        warn('«No se puede acceder a este sitio»', 'Si el error habla del DNS, revisa el servidor DNS del PC y el registro del nombre en el servidor. Si no, revisa que el servicio HTTP esté activo en ese puerto y que haya ruta hasta el servidor (`ping`).'),
+        note('Por seguridad, el navegador dibuja las páginas sin ejecutar scripts ni cargar estilos de la web: se ve el contenido, no el diseño exacto.'),
+        h('Correo'),
+        figure({
+          type: 'sequence',
+          actors: ['PC0 (ana)', 'SRV (postfix + dovecot)', 'PC1 (luis)'],
+          messages: [
+            { from: 0, to: 1, text: 'SMTP (25)', note: 'ana envía a luis@aula.lab' },
+            { from: 2, to: 1, text: 'POP3 (110)', note: 'luis pulsa Recibir' },
+            { from: 1, to: 2, text: 'RETR', note: 'POP3 lo descarga y lo borra del servidor' },
+          ],
+        }, 'El correo sale por SMTP hasta el servidor, que lo guarda en el buzón; el destinatario lo recoge por POP3 o IMAP.'),
+        steps(
+          ['Configura la cuenta', 'Pestaña **Correo** → **Configurar cuenta de correo**: tu nombre, tu **dirección** (ana@aula.lab), el **protocolo de entrada** (POP3 o IMAP), el **servidor entrante** y el **servidor saliente (SMTP)** (dirección IP o nombre), usuario y contraseña. **Guardar cuenta**.'],
+          ['Envía', '**Redactar**: Para, Asunto y Mensaje, y **Enviar**. Debajo verás la respuesta del servidor.'],
+          ['Recibe', 'En el otro PC, **Recibir**: los mensajes aparecen en la **Bandeja de entrada**.'],
+        ),
+        table(['Protocolo', 'Puerto', 'Qué hace con el mensaje'], [
+          ['SMTP', '25/tcp', 'Envía (del PC al servidor)'],
+          ['POP3', '110/tcp', 'Descarga y lo borra del servidor'],
+          ['IMAP', '143/tcp', 'Lo lee dejando copia en el servidor'],
+        ]),
+        check('Compruébalo', 'En el servidor, **Servicios → Registros → postfix** muestra la entrega (`status=sent (delivered to mailbox)`). En Simulación, con los filtros SMTP, POP3 e IMAP, se ve cada orden del protocolo.'),
+        exercise('Ana escribe a Luis', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», envía un correo de ana (PC0) a luis (PC1) y léelo en PC1.', 'Las cuentas ya están configuradas (ana con IMAP, luis con POP3; contraseñas ana1 y luis1). En PC0 → Correo → Redactar: Para luis@aula.lab, Enviar. En PC1 → Correo → Recibir: el mensaje aparece en la bandeja. Como luis usa POP3, ya no está en el servidor.'),
       ],
     },
     {
       id: 'windows-cmd',
       title: 'Terminal Windows (cmd)',
-      summary: 'Órdenes de cmd.exe disponibles en PCs y servidores Windows, también sobre los archivos del equipo.',
+      summary: 'Las órdenes de cmd.exe en PCs y servidores Windows: red, servicios y archivos.',
+      markdownBase: MD,
       blocks: [
-        p('La Terminal Windows trabaja sobre el mismo sistema de archivos que la Terminal Linux del equipo: la unidad C:\\ es la raíz /, las carpetas se separan con \\ (o /) y los nombres no distinguen mayúsculas. Empieza en la carpeta personal de la cuenta Linux (C:\\home\\alumno en los PC, C:\\home\\admin en los servidores) y respeta sus permisos: lo que esa cuenta no puede escribir da «Access is denied.».'),
-        note('Casilla «Prompt con marca de fecha y hora» (al pie de la terminal): el prompt pasa a ser el de esta función prompt de PowerShell: fecha y hora (Get-Date "ddd MMM dd" y "HH:mm:ss") en cian oscuro, usuario@equipo en verde, la ruta en amarillo y $ (# si la cuenta es de administrador). Por ejemplo: Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$. La comparte con la Terminal Linux del equipo.'),
+        p('La **Terminal Windows** imita a cmd.exe. Sirve para comprobar la red (`ipconfig`, `ping`, `tracert`, `nslookup`), gestionar los servicios de un Windows Server (`sc`, `net`) y trabajar con archivos. Trabaja sobre el mismo sistema de archivos que la Terminal Linux del equipo: la unidad **C:\\** es la raíz /, las carpetas se separan con \\ (o /) y los nombres no distinguen mayúsculas.'),
+        p('Empieza en la carpeta personal de la cuenta Linux (C:\\home\\alumno en los PC, C:\\home\\admin en los servidores) y respeta sus permisos: lo que esa cuenta no puede escribir da «Access is denied.».'),
+        h('Las órdenes de red, paso a paso'),
+        steps(
+          ['¿Qué dirección tengo?', '`ipconfig` (con `/all`, también la MAC, el servidor DHCP, el DNS y las fechas de la concesión).'],
+          ['¿Llego a la puerta de enlace?', '`ping 192.168.10.1`: si responde, la red local funciona.'],
+          ['¿Resuelvo nombres?', '`nslookup srv.aula.lab`: si da la dirección IP, el DNS funciona.'],
+          ['¿Por dónde va el tráfico?', '`tracert 8.8.8.8`: un salto por cada router del camino.'],
+        ),
+        term('cmd', 'C:\\home\\alumno> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\home\\alumno> nslookup srv.aula.lab\nServer:  UnKnown\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
+        h('Todas las órdenes'),
         table(['Orden', 'Uso'], [
           ['ipconfig [/all]', 'Configuración IP; /all añade MAC, servidor DHCP, DNS y fechas de la concesión.'],
           ['ipconfig /release · ipconfig /renew', 'Libera o renueva la concesión DHCP.'],
@@ -86,8 +164,10 @@ export const CLIENT_DOCS: DocGroup = {
           ['echo texto · orden > archivo · orden >> archivo', 'echo imprime el texto (echo. una línea en blanco); > guarda la salida de cualquier orden en un archivo, >> la añade al final y > nul la descarta.'],
         ]),
         code('C:\\home\\alumno> ipconfig /all > red.txt\nC:\\home\\alumno> type red.txt\nC:\\home\\alumno> edit notas.txt\nC:\\home\\alumno> copy notas.txt \\tmp\nC:\\home\\alumno> ssh admin@192.168.10.2'),
-        p('Lo que se crea aquí aparece en la Terminal Linux (cat ~/red.txt, nano ~/notas.txt) y al revés.'),
-        p('Los errores imitan Windows: «… is not recognized as an internal or external command», «Request timed out.», «FAILED 1060»…'),
+        p('Lo que se crea aquí aparece en la Terminal Linux (`cat ~/red.txt`, `nano ~/notas.txt`) y al revés. Los errores imitan Windows: «… is not recognized as an internal or external command», «Request timed out.», «FAILED 1060»…'),
+        tip('Prompt con fecha y hora', 'La casilla **Prompt con marca de fecha y hora**, al pie de la terminal, cambia el prompt al de esta función de PowerShell: fecha y hora en cian oscuro, usuario@equipo en verde, la ruta en amarillo y $ (# si la cuenta es de administrador), p. ej. `Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$`. Sirve para que las capturas de una práctica demuestren cuándo se hicieron. La comparte con la Terminal Linux del equipo.'),
+        warn('Errores típicos', 'Escribir órdenes de Linux (`ls`, `ip a`): cmd responde «is not recognized…»; usa `dir` e `ipconfig`. Olvidar que `ipconfig /renew` necesita que el PC esté en DHCP. Intentar escribir fuera de tu carpeta personal: «Access is denied.».'),
+        exercise('Guarda tu configuración en un archivo', 'Guarda la salida de `ipconfig /all` en `red.txt` y ábrela desde la Terminal Linux del mismo PC.', 'En cmd: `ipconfig /all > red.txt`. En la Terminal Linux: `cat ~/red.txt` (o `less ~/red.txt`). Es el mismo archivo: los dos terminales comparten el sistema de archivos.'),
       ],
     },
   ],
