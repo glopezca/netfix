@@ -17473,7 +17473,8 @@ const NETFIX_DOCS = {
 return { NETFIX_DOCS };
 })();
 __m["docs/ios.js"] = (() => {
-const { code, h, list, note, p, table } = __m["docs/types.js"];
+const { check, code, exercise, figure, h, list, p, steps, table, term, tip, warn } = __m["docs/types.js"];
+const MD = 'https://github.com/glopezca/netfix/blob/main/';
 const IOS_DOCS = {
     id: 'ios',
     title: 'Cisco IOS',
@@ -17481,9 +17482,12 @@ const IOS_DOCS = {
         {
             id: 'ios-cli',
             title: 'La CLI de IOS',
-            summary: 'Modos, abreviaturas, ayuda con ?, Tab, Ctrl+Z, do y filtros de show.',
+            summary: 'Modos, abreviaturas, ayuda con ?, Tab, Ctrl+Z, do, filtros de show y guardar la configuración.',
+            markdownBase: MD,
             blocks: [
-                p('Doble clic en un router o switch abre su consola. La salida imita IOS 15 / Packet Tracer literalmente: mensajes %, marcador ^ bajo el error y formato de show.'),
+                p('Los routers 2911 y los switches 2960 se configuran con la **CLI de Cisco IOS**: doble clic en el equipo abre su consola. La salida imita IOS 15 y Packet Tracer literalmente: mensajes %, marcador ^ bajo el error y el formato de cada show. Lo que aprendas aquí sirve en un Cisco real.'),
+                h('Los modos'),
+                p('IOS trabaja por **modos**: cada uno admite unas órdenes y su indicador dice dónde estás. Se baja de uno en uno y se vuelve con exit (un nivel) o end / Ctrl+Z (directo a EXEC privilegiado).'),
                 table(['Modo', 'Indicador', 'Se entra con', 'Se sale con'], [
                     ['EXEC de usuario', 'Router>', '(inicio)', 'logout'],
                     ['EXEC privilegiado', 'Router#', 'enable', 'disable'],
@@ -17491,8 +17495,11 @@ const IOS_DOCS = {
                     ['Interfaz', 'Router(config-if)#', 'interface g0/0', 'exit'],
                     ['Pool DHCP', 'Router(dhcp-config)#', 'ip dhcp pool LAN', 'exit'],
                     ['Línea', 'Router(config-line)#', 'line vty 0 4', 'exit'],
-                    ['ACL estándar con nombre', 'Router(config-std-nacl)#', 'ip access-list standard LAN', 'exit'],
+                    ['ACL con nombre', 'Router(config-std-nacl)# · (config-ext-nacl)#', 'ip access-list standard|extended NOMBRE', 'exit'],
                 ]),
+                h('Paso a paso: un cambio y guardarlo'),
+                steps(['Entra en EXEC privilegiado', '`enable`: el indicador pasa de > a #. Aquí están los show y el copy.'], ['Entra en configuración', '`configure terminal` (o `conf t`). Cada orden se aplica al momento a la configuración en marcha (running-config).'], ['Elige qué configurar', '`interface g0/0` lleva al modo de interfaz; `do` ejecuta un show sin salir.'], ['Vuelve', '`end` o Ctrl+Z.'], ['Guarda', '`copy running-config startup-config` (o `write`). Sin guardar, un reload pierde los cambios.']),
+                term('ios', 'GW>enable\nGW#conf t\nEnter configuration commands, one per line.  End with CNTL/Z.\nGW(config)#interfase g0/0\n           ^\n% Invalid input detected at \'^\' marker.\n\nGW(config)#int g0/0\nGW(config-if)#description LAN del aula\nGW(config-if)#do show ip int brief | include 0/0\nGigabitEthernet0/0     192.168.10.1    YES manual up                    up\nGW(config-if)#end\nGW#copy running-config startup-config\nDestination filename [startup-config]?\nBuilding configuration...\n[OK]'),
                 h('Ayuda y edición'),
                 list('Las órdenes se pueden abreviar mientras no sean ambiguas: conf t, int g0/0, sh ip dhcp bind.', '? muestra las opciones en cualquier punto (también tras un espacio: ip dhcp ?).', 'Tab completa la palabra; ↑ y ↓ recorren el historial; Ctrl+Z vuelve a EXEC privilegiado.', 'do ejecuta una orden EXEC desde configuración: do show ip dhcp binding.', 'no <orden> deshace una configuración: no ip dhcp excluded-address 192.168.1.1 192.168.1.10.'),
                 h('Filtros de salida'),
@@ -17503,102 +17510,66 @@ const IOS_DOCS = {
                     ['| section REGEX', 'Las secciones (línea sin sangría + sus líneas sangradas) que coinciden.'],
                 ]),
                 code('Router# show running-config | section dhcp\nRouter# show ip dhcp binding | include 0100.'),
-            ],
-        },
-        {
-            id: 'ios-dhcp',
-            title: 'Servidor DHCP de IOS',
-            summary: 'Pools, exclusiones, opciones, concesiones y parámetros globales.',
-            blocks: [
-                code('Router(config)# ip dhcp excluded-address 192.168.10.1 192.168.10.20\nRouter(config)# ip dhcp pool LAN\nRouter(dhcp-config)# network 192.168.10.0 255.255.255.0\nRouter(dhcp-config)# default-router 192.168.10.1\nRouter(dhcp-config)# dns-server 192.168.10.2 8.8.8.8\nRouter(dhcp-config)# domain-name aula.lab\nRouter(dhcp-config)# lease 0 8'),
-                h('Configuración global'),
-                table(['Orden', 'Uso'], [
-                    ['ip dhcp pool NOMBRE', 'Crea o edita un pool y entra en (dhcp-config).'],
-                    ['ip dhcp excluded-address IP [IP_FINAL]', 'Direcciones que el servidor nunca concede.'],
-                    ['service dhcp / no service dhcp', 'Activa o para el servidor y el relay.'],
-                    ['ip dhcp conflict logging', 'Registra conflictos detectados con ping/ARP.'],
-                    ['ip dhcp ping packets N · ip dhcp ping timeout MS', 'Comprobación previa de la dirección antes de ofrecerla.'],
-                    ['ip dhcp bootp ignore', 'No responde a clientes BOOTP.'],
-                    ['ip dhcp use …', 'Qué datos identifican al cliente (hardware-address client-id, class, vrf…).'],
-                    ['ip dhcp relay information …', 'Política de la opción 82 (trusted, trust-all, policy, option).'],
-                    ['ip dhcp database URL', 'Agente de base de datos de concesiones (aceptado).'],
-                ]),
-                h('Dentro del pool (dhcp-config)'),
-                table(['Orden', 'Opción DHCP / uso'], [
-                    ['network RED MÁSCARA|/LONG [secondary]', 'Subred que reparte el pool.'],
-                    ['default-router IP…', 'Opción 3 (hasta 8 puertas de enlace).'],
-                    ['dns-server IP…', 'Opción 6.'],
-                    ['domain-name NOMBRE', 'Opción 15.'],
-                    ['lease DÍAS [HORAS [MIN]] | infinite', 'Duración de la concesión (por defecto 1 día).'],
-                    ['netbios-name-server IP… · netbios-node-type', 'Opciones 44 y 46.'],
-                    ['next-server IP… · bootfile FICHERO', 'Servidor TFTP y fichero de arranque (siaddr, opción 67).'],
-                    ['option CÓDIGO {ascii TEXTO | hex HEX | ip IP…}', 'Cualquier otra opción.'],
-                    ['host IP [MÁSCARA] + client-identifier | hardware-address', 'Pool de reserva manual (ver Reservas).'],
-                    ['address IP {client-id ID | hardware-address MAC}', 'Reserva dentro de un pool de red.'],
-                    ['reserved-only', 'El pool solo concede direcciones reservadas.'],
-                    ['class NOMBRE · relay … · origin …', 'Clases DHCP y pools a demanda (aceptados).'],
-                    ['utilization mark high|low PCT', 'Umbrales de uso del pool.'],
-                ]),
-                note('Los pools de host heredan los parámetros que no definen del pool de red que los contiene (por ejemplo default-router y dns-server).'),
-            ],
-        },
-        {
-            id: 'ios-reservas',
-            title: 'Reservas y cómo se identifica a un cliente',
-            summary: 'client-identifier, hardware-address y el client-id de los routers.',
-            blocks: [
-                code('Router(config)# ip dhcp pool PC1\nRouter(dhcp-config)# host 192.168.10.50 255.255.255.0\nRouter(dhcp-config)# client-identifier 0100.50f0.0000.02\n\nRouter(config)# ip dhcp pool IMPRESORA\nRouter(dhcp-config)# host 192.168.10.60 /24\nRouter(dhcp-config)# hardware-address 0050.f000.0003'),
-                list('client-identifier X coincide con la opción 61 que envía el cliente. Un PC con «Enviar identificador de cliente» activo (por defecto, como Windows) envía 01 + MAC.', 'hardware-address M coincide con la MAC cuando el cliente no envía opción 61 o cuando su opción 61 es 01 + MAC.', 'Un router con ip address dhcp envía el client-id cisco-<mac>-<interfaz> (en hex empieza por 0063.6973.636f). Para fijarle la dirección IP hay que usar client-identifier, no hardware-address: es el mismo tropiezo que en un equipo real. show dhcp lease lo muestra.', 'Dentro del pool de red: address 192.168.10.70 client-id 0100.50f0.0000.04 o address … hardware-address ….'),
-                p('show ip dhcp binding indica el tipo de cada concesión: Automatic o Manual.'),
-            ],
-        },
-        {
-            id: 'ios-relay',
-            title: 'Relay, snooping y router como cliente',
-            summary: 'ip helper-address, opción 82, DHCP snooping e ip address dhcp.',
-            blocks: [
-                h('Relay'),
-                code('Router(config)# interface g0/1\nRouter(config-if)# ip address 10.0.20.1 255.255.255.0\nRouter(config-if)# ip helper-address 192.168.10.2'),
-                p('El router reenvía los DISCOVER/REQUEST en unicast al servidor con giaddr = dirección IP de la interfaz; el servidor elige el pool de esa subred.'),
-                h('DHCP snooping (switch)'),
-                code('Switch(config)# ip dhcp snooping\nSwitch(config)# ip dhcp snooping vlan 1\nSwitch(config)# interface fa0/24\nSwitch(config-if)# ip dhcp snooping trust'),
-                list('Las respuestas de servidor (OFFER/ACK) que llegan por puertos no confiables se descartan: así se bloquea un servidor falso.', 'El switch añade la opción 82 con giaddr 0; IOS la rechaza («inconsistent relay information») salvo ip dhcp relay information trusted en la interfaz o no ip dhcp snooping information option en el switch.', 'show ip dhcp snooping y show ip dhcp snooping binding muestran el estado.'),
-                h('Router como cliente'),
-                code('Router(config-if)# ip address dhcp\nRouter# show dhcp lease\nRouter# release dhcp g0/0 · renew dhcp g0/0'),
-                p('La ruta por defecto aprendida por DHCP se instala con distancia administrativa 254.'),
+                tip('Lee el marcador ^', 'Señala el primer carácter que IOS no entiende: «interfase» se corta en la s. «% Incomplete command.» quiere decir que falta algo al final; «% Ambiguous command:» que la abreviatura vale para varias órdenes.'),
+                warn('Errores habituales', 'Escribir órdenes de configuración en EXEC (o un show sin do en configuración): «% Invalid input». Olvidar `enable`: en Router> no hay show running-config. No guardar: tras un reload vuelve la configuración anterior.'),
+                exercise('Describe y guarda', 'En el laboratorio «DHCP básico», pon a GigabitEthernet0/0 de GW la descripción «LAN del aula», compruébalo sin salir del modo de interfaz y guarda la configuración.', '`enable`, `conf t`, `int g0/0`, `description LAN del aula`, `do show running-config | section 0/0` (aparece la línea description), `end` y `copy running-config startup-config` («[OK]»).'),
             ],
         },
         {
             id: 'ios-show',
             title: 'Verificación: show, clear y debug',
-            summary: 'Órdenes EXEC para comprobar el servidor y la red.',
+            summary: 'Las órdenes EXEC para comprobar interfaces, tablas y servicios, y cómo leer su salida.',
+            markdownBase: MD,
             blocks: [
+                p('Configurar es la mitad del trabajo; la otra mitad es **comprobar**. Los show se ejecutan en EXEC privilegiado (o con do desde configuración) y no cambian nada. Empieza siempre por las interfaces: sin ellas arriba no funciona nada más.'),
+                steps(['Interfaces', '`show ip interface brief`: dirección IP y estado. **up/up** funciona; **administratively down** es un shutdown; **down/down**, sin cable o el otro extremo apagado.'], ['Rutas', '`show ip route`: C (conectada), L (la dirección propia), S (estática), S* (por defecto).'], ['Vecinos', '`show arp` (router) o `show mac address-table` (switch): a quién ha visto el equipo y por dónde.'], ['El servicio', '`show ip dhcp binding`, `show ip nat translations`, `show access-lists`… según lo que hayas configurado.']),
+                term('ios', 'GW#show ip interface brief\nInterface              IP-Address      OK? Method Status                Protocol\nGigabitEthernet0/0     192.168.10.1    YES manual up                    up\nGigabitEthernet0/1     unassigned      YES unset  administratively down down\nGigabitEthernet0/2     unassigned      YES unset  administratively down down\nVlan1                  unassigned      YES unset  administratively down down\nGW#show ip dhcp binding\nIP address       Client-ID/              Lease expiration        Type\n                 Hardware address\n192.168.10.21    0100.cac2.1000.f2        Oct 24 2026 02:49 PM    Automatic\n192.168.10.22    0100.63b9.1434.b5        Oct 24 2026 02:49 PM    Automatic\n192.168.10.23    0100.fbb1.1868.78        Oct 24 2026 02:49 PM    Automatic'),
                 table(['Orden', 'Muestra o hace'], [
-                    ['show ip dhcp binding [IP]', 'Concesiones: dirección IP, client-ID/MAC, caducidad y tipo.'],
-                    ['show ip dhcp pool [NOMBRE]', 'Uso de cada pool, rangos y siguiente dirección.'],
-                    ['show ip dhcp server statistics', 'Contadores de mensajes recibidos y enviados.'],
-                    ['show ip dhcp conflict · show ip dhcp database', 'Conflictos y agente de base de datos.'],
-                    ['show dhcp lease', 'Concesión de una interfaz cliente (ip address dhcp).'],
-                    ['clear ip dhcp binding {* | IP}', 'Libera concesiones.'],
-                    ['clear ip dhcp conflict {* | IP} · clear ip dhcp server statistics', 'Limpia conflictos y contadores.'],
-                    ['debug ip dhcp server {events | packet}', 'Mensajes de depuración en la consola (undebug all para quitarlos).'],
-                    ['show running-config · show startup-config', 'Configuración; copy running-config startup-config (o write) la guarda.'],
                     ['show ip interface brief · show interfaces', 'Estado de las interfaces.'],
                     ['show ip route · show arp · show mac address-table · show vlan brief', 'Tablas de rutas, ARP, MAC y VLAN.'],
+                    ['show running-config · show startup-config', 'Configuración en marcha y guardada; copy running-config startup-config (o write) guarda.'],
+                    ['show ip dhcp binding [IP] · show ip dhcp pool [NOMBRE]', 'Concesiones (dirección IP, client-ID/MAC, caducidad y tipo) y uso de cada pool.'],
+                    ['show ip dhcp server statistics · show ip dhcp conflict', 'Contadores de mensajes y conflictos.'],
+                    ['show dhcp lease', 'Concesión de una interfaz cliente (ip address dhcp).'],
+                    ['clear ip dhcp binding {* | IP} · clear ip dhcp conflict {* | IP}', 'Libera concesiones o limpia conflictos.'],
+                    ['debug ip dhcp server {events | packet} · undebug all', 'Mensajes de depuración en la consola.'],
                     ['ping IP [repeat N] [source IF]', 'Prueba de conectividad (!!!!!).'],
                     ['show version · show clock · show history · show debugging', 'Información del equipo y de la sesión.'],
                 ]),
+                check('Lee el ping de IOS', 'Cada ! es una respuesta y cada . un paquete perdido. El primero suele ser un punto: el router aún está resolviendo la dirección MAC por ARP.'),
+                warn('Errores habituales', 'Mirar show running-config y no show ip interface brief: la configuración puede estar bien y la interfaz en shutdown. Olvidar undebug all: la consola se llena de mensajes.'),
+                exercise('¿Quién tiene cada dirección IP?', 'En el laboratorio «DHCP básico», averigua desde GW qué direcciones IP ha concedido y cuántas quedan libres en el pool.', '`show ip dhcp binding` lista 192.168.10.21, .22 y .23 (Automatic). `show ip dhcp pool` dice 254 direcciones en total, 3 concedidas (Leased) y 20 excluidas: quedan 231.'),
             ],
         },
         {
             id: 'ios-otros',
             title: 'Interfaces, VLAN y rutas',
-            summary: 'El resto de órdenes de configuración disponibles en routers y switches.',
+            summary: 'Puertos de acceso y troncales, VLAN, router-on-a-stick, rutas estáticas y el resto de órdenes de configuración.',
+            markdownBase: MD,
             blocks: [
+                p('Una **VLAN** divide un switch en varios switches lógicos: los puertos de la VLAN 10 no ven el tráfico de la VLAN 20, aunque estén en el mismo aparato. Para que dos VLAN se hablen hace falta un router. Con **router-on-a-stick** basta un único cable troncal: el router tiene una subinterfaz por VLAN.'),
+                figure({
+                    type: 'topology',
+                    nodes: [
+                        { id: 'gw', kind: 'router', label: 'GW', x: 15, y: 0, note: 'g0/0.10 · g0/0.20' },
+                        { id: 'sw', kind: 'switch', label: 'SW-ACCESO', x: 40, y: 20, note: 'Gig0/1 trunk' },
+                        { id: 'pc0', kind: 'pc', label: 'PC0', x: 5, y: 45, note: 'VLAN 10' },
+                        { id: 'pc1', kind: 'pc', label: 'PC1', x: 30, y: 45, note: 'VLAN 10' },
+                        { id: 'pc2', kind: 'pc', label: 'PC2', x: 55, y: 45, note: 'VLAN 20' },
+                        { id: 'pc3', kind: 'pc', label: 'PC3', x: 80, y: 45, note: 'VLAN 20' },
+                    ],
+                    links: [{ a: 'gw', b: 'sw', label: '802.1Q' }, { a: 'sw', b: 'pc0' }, { a: 'sw', b: 'pc1' }, { a: 'sw', b: 'pc2' }, { a: 'sw', b: 'pc3' }],
+                }, 'El laboratorio «Router-on-a-stick: un pool por VLAN»: VENTAS (VLAN 10, 172.16.10.0/24) y SOPORTE (VLAN 20, 172.16.20.0/24).'),
+                h('Paso a paso: VLAN y router-on-a-stick'),
+                steps(['Crea las VLAN', 'En el switch: `vlan 10`, `name VENTAS`; `vlan 20`, `name SOPORTE`.'], ['Puertos de acceso', 'Cada puerto de un PC: `switchport mode access` y `switchport access vlan 10` (o 20).'], ['El troncal', 'El puerto hacia el router: `switchport mode trunk`. Lleva todas las VLAN, cada trama con su etiqueta 802.1Q.'], ['Subinterfaces del router', '`interface g0/0.10`, `encapsulation dot1Q 10` y la dirección IP que será la puerta de enlace de esa VLAN. Igual con la .20, y `no shutdown` en g0/0.']),
+                term('ios', 'SW-ACCESO#show vlan brief\nVLAN Name                             Status    Ports\n---- -------------------------------- --------- -------------------------------\n1    default                          active    Fa0/5, Fa0/6, Fa0/7, Fa0/8\n                                                Fa0/9, Fa0/10, Fa0/11, Fa0/12\n                                                Fa0/13, Fa0/14, Fa0/15, Fa0/16\n                                                Fa0/17, Fa0/18, Fa0/19, Fa0/20\n                                                Fa0/21, Fa0/22, Fa0/23, Fa0/24\n                                                Gig0/2\n10   VENTAS                           active    Fa0/1, Fa0/2\n20   SOPORTE                          active    Fa0/3, Fa0/4\n1002 fddi-default                     act/unsup\n1003 token-ring-default               act/unsup\n1004 fddinet-default                  act/unsup\n1005 trnet-default                    act/unsup\nGW#show ip interface brief | include 0/0\nGigabitEthernet0/0     unassigned      YES unset  up                    up\nGigabitEthernet0/0.10  172.16.10.1     YES manual up                    up\nGigabitEthernet0/0.20  172.16.20.1     YES manual up                    up'),
+                check('Compruébalo', 'Desde un PC de SOPORTE, `traceroute -n` a uno de VENTAS pasa por la puerta de enlace de su VLAN: el tráfico entre VLAN siempre cruza el router. El `*` de la primera vez es la sonda que se pierde mientras el router resuelve por ARP la dirección MAC del destino.'),
+                term('shell', 'alumno@pc2:~$ traceroute -n 172.16.10.2\ntraceroute to 172.16.10.2 (172.16.10.2), 30 hops max, 60 byte packets\n 1  172.16.20.1  8.400 ms  4.211 ms  4.292 ms\n 2  *  172.16.10.2  8.400 ms  8.211 ms'),
+                h('Todas las órdenes de configuración'),
                 table(['Orden', 'Uso'], [
                     ['hostname NOMBRE · banner motd #texto# · enable secret|password', 'Identidad y acceso. En Netfix el hostname sale del nombre del equipo (pestaña Equipo), como en los equipos Linux: hostname solo acepta ese nombre, y al cargar una configuración guardada o pegada su línea hostname se ignora.'],
                     ['interface IF · interface range fa0/1 - 10', 'Seleccionar interfaces (g0/0, fa0/1, g0/0.10…).'],
-                    ['ip address IP MÁSCARA [secondary] · ip address dhcp', 'Dirección de la interfaz.'],
+                    ['ip address IP MÁSCARA [secondary] · ip address dhcp', 'Dirección IP de la interfaz.'],
                     ['shutdown / no shutdown · description · speed · duplex', 'Estado y parámetros físicos.'],
                     ['encapsulation dot1Q VLAN [native]', 'Subinterfaces de router-on-a-stick.'],
                     ['switchport mode access|trunk · switchport access vlan N · switchport trunk …', 'Puertos del switch.'],
@@ -17609,12 +17580,162 @@ const IOS_DOCS = {
                     ['spanning-tree portfast · switchport port-security …', 'Aceptadas (sin efecto en la simulación).'],
                     ['write erase · reload', 'Borrar la configuración guardada y reiniciar.'],
                 ]),
+                warn('Errores habituales', 'Un puerto de PC sin `switchport access vlan`: queda en la VLAN 1 y el PC no recibe dirección IP del pool de su VLAN. El puerto del router en acceso en vez de troncal: solo pasa una VLAN. La interfaz física g0/0 en shutdown: sus subinterfaces no funcionan aunque estén bien.'),
+                exercise('Un puesto más en SOPORTE', 'En el laboratorio «Router-on-a-stick: un pool por VLAN», mete el puerto Fa0/5 de SW-ACCESO en la VLAN SOPORTE y compruébalo.', '`enable`, `conf t`, `int fa0/5`, `switchport mode access`, `switchport access vlan 20`, `end`. `show vlan brief | include SOPORTE` muestra «20   SOPORTE   active   Fa0/3, Fa0/4, Fa0/5». Un PC conectado ahí recibe una dirección IP de 172.16.20.0/24.'),
+            ],
+        },
+        {
+            id: 'ios-web',
+            title: 'Gestión web de routers y switches',
+            summary: 'El servidor HTTP de IOS paso a paso: ip http server, usuarios, páginas y lo que queda registrado.',
+            markdownBase: MD,
+            blocks: [
+                p('Los routers 2911 y los switches 2960 (en una SVI, interface Vlan1) tienen el **servidor HTTP de IOS**: una página web para ver el estado y ejecutar órdenes desde el navegador. Se activa en la CLI o en la pestaña **Gestión web** de su ventana (casilla, puerto y usuarios).'),
+                h('Paso a paso'),
+                steps(['Activa el servidor', '`ip http server` (o la casilla **Gestión web (ip http server)**). Escucha en el puerto 80; `ip http port 8080` lo cambia.'], ['Elige la autenticación', 'Por defecto, **enable**: cualquier usuario con la contraseña de enable secret. Mejor `ip http authentication local`, con usuarios propios.'], ['Crea un usuario', '`username admin privilege 15 secret netfix`: el privilegio 15 da acceso a todo.'], ['Entra desde un PC', 'En el navegador, http://192.168.10.1/ (la dirección IP de una interfaz del equipo). Pide usuario y contraseña.']),
+                code('GW(config)# ip http server\nGW(config)# ip http authentication local\nGW(config)# username admin privilege 15 secret netfix'),
+                table(['URL', 'Contenido'], [
+                    ['/', 'Inicio: «Accessing Cisco … "GW"» con enlaces.'],
+                    ['/level/15/exec/-/show/ip/interface/brief/CR', 'Ejecuta una orden EXEC (las palabras separadas por /, CR al final).'],
+                    ['/level/N/exec/-', 'Monitor: palabras clave posibles como enlaces y cuadro Command (nivel 1 = EXEC de usuario).'],
+                    ['/level/15/configure/-', 'Configure: órdenes de configuración, una por línea.'],
+                    ['/level/15/dm', 'Device Manager: panel frontal, tabla de interfaces y ajustes rápidos de puerto (descripción, estado, VLAN de acceso, dirección IP).'],
+                ]),
+                check('Compruébalo con curl', 'Sin credenciales responde **401** con `Www-Authenticate: Basic realm="level_15_access"`; con `-u usuario:clave` ejecuta la orden de la URL.'),
+                term('shell', 'alumno@pc0:~$ curl -sI http://192.168.10.1/\nHTTP/1.1 401 Unauthorized\nDate: Sat, 24 Oct 2026 09:34:01 GMT\nServer: cisco-IOS\nWww-Authenticate: Basic realm="level_15_access"\nContent-Length: 190\nContent-Type: text/html; charset=UTF-8'),
+                p('Los intentos fallidos y los cambios hechos desde la web aparecen en la consola del equipo, como en IOS:'),
+                term('ios', '%SEC_LOGIN-4-LOGIN_FAILED: Login failed [user: admin] [Source: 192.168.10.21] [localport: 80] [Reason: Login Authentication Failed]\n%SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.168.10.21)'),
+                table(['Orden', 'Uso'], [
+                    ['ip http server · no ip http server', 'Activa o para el servidor web.'],
+                    ['ip http port N', 'Cambia el puerto (1-65535).'],
+                    ['ip http authentication enable', 'Por defecto: cualquier usuario con la contraseña de enable secret/password. Sin enable secret nadie entra.'],
+                    ['ip http authentication local', 'Usuarios de username; su privilegio decide el nivel (15 = todo).'],
+                    ['username U [privilege N] secret|password CLAVE', 'Usuario local (secret se guarda como hash tipo 5).'],
+                ]),
+                warn('Errores habituales', 'Activar el servidor con la autenticación por defecto y sin enable secret: nadie puede entrar. En un switch, olvidar darle una dirección IP a interface Vlan1: no hay a qué conectarse. La autenticación es HTTP Basic, sin cifrar (HTTPS no está simulado): en una red real, solo desde la red de administración.'),
+                exercise('Mira el router desde el navegador', 'En el laboratorio «DHCP básico», activa la gestión web de GW con el usuario admin / netfix y consulta `show ip interface brief` desde PC0 sin abrir la consola.', 'En GW: `ip http server`, `ip http authentication local`, `username admin privilege 15 secret netfix`. En PC0 → Navegador: http://192.168.10.1/, usuario admin y contraseña netfix → Monitor, o directamente http://192.168.10.1/level/15/exec/-/show/ip/interface/brief/CR. Con `curl -u admin:netfix` y esa URL, la respuesta incluye la tabla de interfaces.'),
             ],
         },
     ],
 };
 
 return { IOS_DOCS };
+})();
+__m["docs/ios-dhcp.js"] = (() => {
+const { check, code, exercise, figure, h, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
+const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const IOS_DHCP_DOCS = [
+    {
+        id: 'ios-dhcp',
+        title: 'Servidor DHCP de IOS',
+        summary: 'Un pool paso a paso: exclusiones, red, puerta de enlace, DNS, dominio y concesión; y todas las opciones.',
+        markdownBase: MD,
+        blocks: [
+            p('Un router Cisco puede ser el **servidor DHCP** de su red: reparte a los PC la dirección IP, la máscara, la puerta de enlace y el DNS. Es lo habitual en una oficina pequeña, sin un servidor aparte. El intercambio es el mismo que con un Server (DORA):'),
+            figure({
+                type: 'sequence',
+                actors: ['PC0', 'GW (IOS)'],
+                messages: [
+                    { from: 0, to: 1, text: 'DHCPDISCOVER', note: 'difusión: ¿hay algún servidor?' },
+                    { from: 1, to: 0, text: 'DHCPOFFER', note: 'te ofrezco 192.168.10.21' },
+                    { from: 0, to: 1, text: 'DHCPREQUEST', note: 'la quiero' },
+                    { from: 1, to: 0, text: 'DHCPACK', note: 'concedida durante 8 horas' },
+                ],
+            }, 'DORA: Discover, Offer, Request y Ack. El router anota la concesión en show ip dhcp binding.'),
+            h('Paso a paso: un pool'),
+            steps(['Excluye lo que no se reparte', '`ip dhcp excluded-address 192.168.10.1 192.168.10.20`: la puerta de enlace, servidores e impresoras con dirección IP fija. Se hace **antes** de crear el pool.'], ['Crea el pool', '`ip dhcp pool LAN` entra en (dhcp-config).'], ['La red', '`network 192.168.10.0 255.255.255.0`: debe ser la red de una interfaz del router (o llegar por un relay).'], ['Las opciones', '`default-router 192.168.10.1`, `dns-server 8.8.8.8`, `domain-name aula.lab`.'], ['La concesión', '`lease 0 8` (días, horas): 8 horas. Por defecto, 1 día.']),
+            term('ios', 'GW#show running-config | section dhcp\nip dhcp excluded-address 192.168.10.1 192.168.10.20\nip dhcp pool LAN\n network 192.168.10.0 255.255.255.0\n default-router 192.168.10.1\n dns-server 8.8.8.8\n domain-name aula.lab\n lease 0 8'),
+            check('Compruébalo', '`show ip dhcp binding` lista cada concesión; `show ip dhcp pool` cuántas direcciones hay, cuántas están concedidas y cuántas excluidas. En el PC, `ipconfig /all` o `ip route` muestran lo recibido.'),
+            term('ios', 'GW#show ip dhcp pool\n\nPool LAN :\n Utilization mark (high/low)    : 100 / 0\n Subnet size (first/next)       : 0 / 0\n Total addresses                : 254\n Leased addresses               : 3\n Excluded addresses             : 20\n Pending event                  : none\n 1 subnet is currently in the pool :\n Current index        IP address range                    Leased/Excluded/Total\n 192.168.10.24        192.168.10.1     - 192.168.10.254      3    / 20     / 254'),
+            h('Configuración global'),
+            table(['Orden', 'Uso'], [
+                ['ip dhcp pool NOMBRE', 'Crea o edita un pool y entra en (dhcp-config).'],
+                ['ip dhcp excluded-address IP [IP_FINAL]', 'Direcciones IP que el servidor nunca concede.'],
+                ['service dhcp / no service dhcp', 'Activa o para el servidor y el relay.'],
+                ['ip dhcp conflict logging', 'Registra conflictos detectados con ping/ARP.'],
+                ['ip dhcp ping packets N · ip dhcp ping timeout MS', 'Comprobación previa de la dirección IP antes de ofrecerla.'],
+                ['ip dhcp bootp ignore', 'No responde a clientes BOOTP.'],
+                ['ip dhcp use …', 'Qué datos identifican al cliente (hardware-address client-id, class, vrf…).'],
+                ['ip dhcp relay information …', 'Política de la opción 82 (trust-all, policy, option).'],
+                ['ip dhcp database URL', 'Agente de base de datos de concesiones (aceptado).'],
+            ]),
+            h('Dentro del pool (dhcp-config)'),
+            table(['Orden', 'Opción DHCP / uso'], [
+                ['network RED MÁSCARA|/LONG [secondary]', 'Subred que reparte el pool.'],
+                ['default-router IP…', 'Opción 3 (hasta 8 puertas de enlace).'],
+                ['dns-server IP…', 'Opción 6.'],
+                ['domain-name NOMBRE', 'Opción 15.'],
+                ['lease DÍAS [HORAS [MIN]] | infinite', 'Duración de la concesión (por defecto 1 día).'],
+                ['netbios-name-server IP… · netbios-node-type', 'Opciones 44 y 46.'],
+                ['next-server IP… · bootfile FICHERO', 'Servidor TFTP y fichero de arranque (siaddr, opción 67).'],
+                ['option CÓDIGO {ascii TEXTO | hex HEX | ip IP…}', 'Cualquier otra opción.'],
+                ['host IP [MÁSCARA] + client-identifier | hardware-address', 'Pool de reserva manual (ver Reservas).'],
+                ['address IP {client-id ID | hardware-address MAC}', 'Reserva dentro de un pool de red.'],
+                ['reserved-only', 'El pool solo concede direcciones reservadas.'],
+                ['class NOMBRE · relay … · origin …', 'Clases DHCP y pools a demanda (aceptados).'],
+                ['utilization mark high|low PCT', 'Umbrales de uso del pool.'],
+            ]),
+            warn('Errores habituales', 'Olvidar default-router: los PC reciben dirección IP pero no salen de su red. Excluir después de que los PC tengan concesión: las ya concedidas no cambian hasta que se liberan (`clear ip dhcp binding *`). Un pool cuya red no es la de ninguna interfaz: nadie recibe nada.'),
+            exercise('Un DNS propio', 'En el laboratorio «DHCP básico», haz que el pool LAN reparta como DNS 192.168.10.2 (y 8.8.8.8 de reserva). Comprueba en PC0 que lo recibe.', 'En GW: `enable`, `conf t`, `ip dhcp pool LAN`, `dns-server 192.168.10.2 8.8.8.8`, `end`. En la Terminal Windows de PC0: `ipconfig /release`, `ipconfig /renew` e `ipconfig /all`: «DNS Servers: 192.168.10.2», y la concesión dura 8 horas (Lease Obtained / Lease Expires).'),
+        ],
+    },
+    {
+        id: 'ios-reservas',
+        title: 'Reservas y cómo se identifica a un cliente',
+        summary: 'Dar siempre la misma dirección IP a un equipo: pools host con client-identifier o hardware-address, y address dentro del pool.',
+        markdownBase: MD,
+        blocks: [
+            p('Una **reserva** hace que un equipo reciba siempre la misma dirección IP por DHCP: útil para impresoras, cámaras o el PC del profesor, sin configurarlos a mano. IOS lo hace con un pool **host** por equipo, o con **address** dentro del pool de red. Lo importante es elegir bien **cómo se reconoce al cliente**.'),
+            table(['Se reconoce por', 'Cuándo coincide', 'Orden'], [
+                ['client-identifier', 'Con la opción 61 que envía el cliente. Un PC con «Enviar identificador de cliente» (por defecto, como Windows) envía 01 + MAC: 0100.cac2.1000.f2.', 'client-identifier 0100.cac2.1000.f2'],
+                ['hardware-address', 'Con la MAC, cuando el cliente no envía opción 61 o envía 01 + MAC.', 'hardware-address 0063.b914.34b5'],
+            ]),
+            h('Paso a paso: una reserva'),
+            steps(['Averigua el identificador', 'En `show ip dhcp binding` aparece el Client-ID de cada cliente; la MAC está en la pestaña Configuración IP del PC.'], ['Crea un pool para el equipo', '`ip dhcp pool PC0-FIJO`.'], ['La dirección IP', '`host 192.168.10.100 255.255.255.0` (fuera de las exclusiones y dentro de la red del pool LAN).'], ['El identificador', '`client-identifier 0100.cac2.1000.f2` o `hardware-address 0063.b914.34b5`.'], ['Renueva en el PC', 'Con la concesión anterior liberada (`clear ip dhcp binding *` en el router, o `ipconfig /release` y `/renew`).']),
+            term('ios', 'GW#show running-config | section pool\nip dhcp pool LAN\n network 192.168.10.0 255.255.255.0\n address 192.168.10.150 client-id 0100.fbb1.1868.78\n default-router 192.168.10.1\n dns-server 8.8.8.8\n domain-name aula.lab\n lease 0 8\nip dhcp pool PC0-FIJO\n host 192.168.10.100 255.255.255.0\n client-identifier 0100.cac2.1000.f2\n client-name pc0\nip dhcp pool PC1-FIJO\n host 192.168.10.101 255.255.255.0\n hardware-address 0063.b914.34b5'),
+            check('Compruébalo', 'En `show ip dhcp binding` las reservas aparecen como **Manual** y no caducan (Infinite).'),
+            term('ios', 'GW#show ip dhcp binding\nIP address       Client-ID/              Lease expiration        Type\n                 Hardware address\n192.168.10.100   0100.cac2.1000.f2        Infinite                Manual\n192.168.10.101   0063.B914.34B5           Infinite                Manual\n192.168.10.150   0100.fbb1.1868.78        Oct 24 2026 02:49 PM    Automatic'),
+            note('Los pools host heredan lo que no definen (default-router, dns-server…) del pool de red que los contiene.'),
+            warn('El tropiezo de los routers', 'Un router con ip address dhcp envía el client-id cisco-<mac>-<interfaz> (en hexadecimal empieza por 0063.6973.636f). Para reservarle una dirección IP hay que usar **client-identifier**, no hardware-address: es el mismo tropiezo que en un equipo real. `show dhcp lease` en el router lo muestra.'),
+            exercise('Tres formas de reservar', 'En el laboratorio «Reservas: host, client-identifier y hardware-address», ¿con qué identificador se reconoce a cada PC y qué tipo de concesión tiene cada uno?', '`show running-config | section pool`: PC0 por client-identifier (pool PC0-FIJO, .100), PC1 por hardware-address (PC1-FIJO, .101) y PC2 con address … client-id dentro del pool LAN (.150). En `show ip dhcp binding`, .100 y .101 son Manual (Infinite) y .150 aparece como Automatic con su caducidad.'),
+        ],
+    },
+    {
+        id: 'ios-relay',
+        title: 'Relay, snooping y router como cliente',
+        summary: 'ip helper-address para un servidor en otra red, DHCP snooping contra servidores falsos e ip address dhcp.',
+        markdownBase: MD,
+        blocks: [
+            p('El DISCOVER de DHCP es una **difusión**, y las difusiones no cruzan routers. Si el servidor está en otra red, el router de los clientes hace de **relay**: recoge la petición y la reenvía en unicast al servidor.'),
+            figure({
+                type: 'sequence',
+                actors: ['PC0', 'EDGE (relay)', 'DHCP-SRV'],
+                messages: [
+                    { from: 0, to: 1, text: 'DHCPDISCOVER', note: 'difusión en 10.20.0.0/24' },
+                    { from: 1, to: 2, text: 'DHCPDISCOVER', note: 'unicast, giaddr 10.20.0.1' },
+                    { from: 2, to: 1, text: 'DHCPOFFER', note: 'del pool de la red de giaddr' },
+                    { from: 1, to: 0, text: 'DHCPOFFER' },
+                ],
+            }, 'El relay rellena giaddr con su dirección IP en la red de los clientes; el servidor elige el pool de esa red.'),
+            h('Paso a paso: relay'),
+            steps(['En la interfaz de los clientes', '`interface g0/1` del router de la red de los PC.'], ['Apunta al servidor', '`ip helper-address 10.0.0.1` (la dirección IP del servidor DHCP).'], ['En el servidor', 'Un pool para la red de los clientes y una ruta de vuelta hacia ella.']),
+            code('EDGE(config)# interface g0/1\nEDGE(config-if)# ip helper-address 10.0.0.1'),
+            term('ios', 'DHCP-SRV#show ip dhcp binding\nIP address       Client-ID/              Lease expiration        Type\n                 Hardware address\n10.20.0.10       0100.63b9.1434.b5        Oct 25 2026 06:50 AM    Automatic\n10.20.0.11       0100.fbb1.1868.78        Oct 25 2026 06:50 AM    Automatic'),
+            h('DHCP snooping (switch)'),
+            p('Cualquiera puede conectar un router que reparta direcciones con una puerta de enlace falsa. **DHCP snooping** hace que el switch solo acepte respuestas de servidor (OFFER y ACK) por los puertos **confiables**.'),
+            code('Switch(config)# ip dhcp snooping\nSwitch(config)# ip dhcp snooping vlan 1\nSwitch(config)# interface g0/1\nSwitch(config-if)# ip dhcp snooping trust'),
+            term('ios', 'SW#show ip dhcp snooping binding\nMacAddress          IpAddress        Lease(sec)  Type           VLAN  Interface\n------------------  ---------------  ----------  -------------  ----  -----------------\n00CA.C210.00F2      192.168.10.21    28800       dhcp-snooping  1     FastEthernet0/1\n0063.B914.34B5      192.168.10.22    28800       dhcp-snooping  1     FastEthernet0/2\nTotal number of bindings: 2'),
+            warn('La opción 82', 'El switch añade la opción 82 con giaddr 0 y IOS la rechaza («inconsistent relay information») salvo con `ip dhcp relay information trusted` en la interfaz del router o `no ip dhcp snooping information option` en el switch.'),
+            h('Router como cliente'),
+            p('Un router también puede pedir su dirección IP por DHCP, como el router de casa frente al operador: `ip address dhcp` en la interfaz WAN. La ruta por defecto aprendida se instala con distancia administrativa 254.'),
+            term('ios', 'CPE#show dhcp lease\nTemp IP addr: 100.64.0.77  for peer on Interface: GigabitEthernet0/1\nTemp  sub net mask: 255.255.255.0\n   DHCP Lease server: 100.64.0.1, state: 5 Bound\n   Lease: 86400 secs,  Renewal: 43200 secs,  Rebind: 75600 secs\nTemp default-gateway addr: 100.64.0.1\n   Client-ID: 0063.6973.636f.2d30.3033.312e.6361.3063.2e63.6333.322d.4769.302f.31\n   Hostname: CPE\nCPE#show ip route | include 0.0.0.0\nGateway of last resort is 100.64.0.1 to network 0.0.0.0\nS*   0.0.0.0/0 [254/0] via 100.64.0.1\n     100.0.0.0/8 is variably subnetted, 2 subnets, 2 masks'),
+            tip('release y renew', '`release dhcp g0/1` y `renew dhcp g0/1` sueltan y piden de nuevo la concesión, como ipconfig en un PC.'),
+            exercise('¿Quién protege a quién?', 'En el laboratorio «DHCP snooping frente a un servidor falso», ¿qué puerto del switch es confiable y qué puerta de enlace reciben los PC?', '`show ip dhcp snooping` en SW: solo GigabitEthernet0/1 (hacia GW) tiene «yes» en la columna Trusted. Las ofertas de ROGUE se descartan, así que `ip route` en PC0 da «default via 192.168.10.1», la de GW. `show ip dhcp snooping binding` lista las dos concesiones legítimas.'),
+        ],
+    },
+];
+
+return { IOS_DHCP_DOCS };
 })();
 __m["docs/services.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
@@ -18652,31 +18773,6 @@ const INTERNET_DOCS = {
             ],
         },
         {
-            id: 'ios-web',
-            title: 'Gestión web de routers y switches',
-            summary: 'ip http server, puerto, autenticación enable o local, usuarios y páginas del servidor HTTP de IOS.',
-            blocks: [
-                p('Routers 2911 y switches 2960 (en una SVI, interface Vlan1) tienen el servidor HTTP de IOS. Se activa en la CLI o en la pestaña «Gestión web» de su ventana (casilla, puerto y usuarios).'),
-                code('Router(config)# ip http server\nRouter(config)# ip http port 8080\nRouter(config)# ip http authentication local\nRouter(config)# username admin privilege 15 secret netfix'),
-                table(['Orden', 'Uso'], [
-                    ['ip http server', 'Escucha en el puerto 80 (o el de ip http port).'],
-                    ['ip http port N', 'Cambia el puerto (1-65535).'],
-                    ['ip http authentication enable', 'Por defecto: cualquier usuario con la contraseña de enable secret/password. Sin enable secret nadie entra.'],
-                    ['ip http authentication local', 'Usuarios de username; su privilegio decide el nivel (15 = todo).'],
-                    ['username U [privilege N] secret|password CLAVE', 'Usuario local (secret se guarda como hash tipo 5).'],
-                ]),
-                h('Páginas'),
-                table(['URL', 'Contenido'], [
-                    ['/', 'Inicio: «Accessing Cisco … "R1"» con enlaces.'],
-                    ['/level/15/exec/-/show/ip/interface/brief/CR', 'Ejecuta una orden EXEC (las palabras separadas por /, CR al final).'],
-                    ['/level/N/exec/-', 'Monitor: palabras clave posibles como enlaces y cuadro Command (nivel 1 = EXEC de usuario).'],
-                    ['/level/15/configure/-', 'Configure: órdenes de configuración, una por línea.'],
-                    ['/level/15/dm', 'Device Manager: panel frontal, tabla de interfaces y ajustes rápidos de puerto (descripción, estado, VLAN de acceso, dirección IP).'],
-                ]),
-                note('La autenticación es HTTP Basic (realm level_15_access). Los fallos se registran como %SEC_LOGIN-4-LOGIN_FAILED y los cambios como %SYS-5-CONFIG_I … on vty0 (dirección IP del PC). También funciona curl -u usuario:clave.'),
-            ],
-        },
-        {
             id: 'red-broadcast',
             title: 'Broadcast: a todos los equipos de la red',
             summary: 'Broadcast de enlace e IP (255.255.255.255 y dirigido), quién responde a un ping a broadcast y quién lo reenvía.',
@@ -19294,7 +19390,8 @@ const NETFIX_DOCS = {
 return { NETFIX_DOCS };
 })();
 __m["docs/en/ios.js"] = (() => {
-const { code, h, list, note, p, table } = __m["docs/types.js"];
+const { check, code, exercise, figure, h, list, p, steps, table, term, tip, warn } = __m["docs/types.js"];
+const MD = 'https://github.com/glopezca/netfix/blob/main/';
 const IOS_DOCS = {
     id: 'ios',
     title: 'Cisco IOS',
@@ -19302,9 +19399,12 @@ const IOS_DOCS = {
         {
             id: 'ios-cli',
             title: 'The IOS CLI',
-            summary: 'Modes, abbreviations, help with ?, Tab, Ctrl+Z, do and show filters.',
+            summary: 'Modes, abbreviations, help with ?, Tab, Ctrl+Z, do, show filters and saving the configuration.',
+            markdownBase: MD,
             blocks: [
-                p('Double-clicking a router or switch opens its console. The output imitates IOS 15 / Packet Tracer literally: % messages, the ^ marker under the error and the show format.'),
+                p('The 2911 routers and 2960 switches are configured with the **Cisco IOS CLI**: double-clicking the device opens its console. The output imitates IOS 15 and Packet Tracer literally: % messages, the ^ marker under the error and the format of every show. What you learn here works on a real Cisco.'),
+                h('The modes'),
+                p('IOS works in **modes**: each one accepts certain commands and its prompt tells you where you are. You go down one at a time and come back with exit (one level) or end / Ctrl+Z (straight to privileged EXEC).'),
                 table(['Mode', 'Prompt', 'Entered with', 'Left with'], [
                     ['User EXEC', 'Router>', '(start)', 'logout'],
                     ['Privileged EXEC', 'Router#', 'enable', 'disable'],
@@ -19312,130 +19412,247 @@ const IOS_DOCS = {
                     ['Interface', 'Router(config-if)#', 'interface g0/0', 'exit'],
                     ['DHCP pool', 'Router(dhcp-config)#', 'ip dhcp pool LAN', 'exit'],
                     ['Line', 'Router(config-line)#', 'line vty 0 4', 'exit'],
-                    ['Named standard ACL', 'Router(config-std-nacl)#', 'ip access-list standard LAN', 'exit'],
+                    ['Named ACL', 'Router(config-std-nacl)# · (config-ext-nacl)#', 'ip access-list standard|extended NAME', 'exit'],
                 ]),
+                h('Step by step: a change and saving it'),
+                steps(['Enter privileged EXEC', '`enable`: the prompt goes from > to #. The show and copy commands live here.'], ['Enter configuration', '`configure terminal` (or `conf t`). Each command applies at once to the running configuration (running-config).'], ['Choose what to configure', '`interface g0/0` takes you to interface mode; `do` runs a show without leaving.'], ['Go back', '`end` or Ctrl+Z.'], ['Save', '`copy running-config startup-config` (or `write`). Without saving, a reload loses the changes.']),
+                term('ios', 'GW>enable\nGW#conf t\nEnter configuration commands, one per line.  End with CNTL/Z.\nGW(config)#interfase g0/0\n           ^\n% Invalid input detected at \'^\' marker.\n\nGW(config)#int g0/0\nGW(config-if)#description LAN del aula\nGW(config-if)#do show ip int brief | include 0/0\nGigabitEthernet0/0     192.168.10.1    YES manual up                    up\nGW(config-if)#end\nGW#copy running-config startup-config\nDestination filename [startup-config]?\nBuilding configuration...\n[OK]'),
                 h('Help and editing'),
-                list('Commands can be abbreviated as long as they are not ambiguous: conf t, int g0/0, sh ip dhcp bind.', '? shows the options at any point (also after a space: ip dhcp ?).', 'Tab completes the word; ↑ and ↓ move through the history; Ctrl+Z returns to privileged EXEC.', 'do runs an EXEC command from configuration mode: do show ip dhcp binding.', 'no <command> undoes a setting: no ip dhcp excluded-address 192.168.1.1 192.168.1.10.'),
+                list('Commands can be abbreviated as long as they are not ambiguous: conf t, int g0/0, sh ip dhcp bind.', '? shows the options at any point (also after a space: ip dhcp ?).', 'Tab completes the word; ↑ and ↓ go through the history; Ctrl+Z goes back to privileged EXEC.', 'do runs an EXEC command from configuration: do show ip dhcp binding.', 'no <command> undoes a setting: no ip dhcp excluded-address 192.168.1.1 192.168.1.10.'),
                 h('Output filters'),
                 table(['Filter', 'Effect'], [
                     ['| include REGEX', 'Only the matching lines.'],
                     ['| exclude REGEX', 'Removes the matching lines.'],
-                    ['| begin REGEX', 'From the first matching line onwards.'],
-                    ['| section REGEX', 'The matching sections (unindented line + its indented lines).'],
+                    ['| begin REGEX', 'From the first matching line on.'],
+                    ['| section REGEX', 'The sections (a line without indentation + its indented lines) that match.'],
                 ]),
                 code('Router# show running-config | section dhcp\nRouter# show ip dhcp binding | include 0100.'),
-            ],
-        },
-        {
-            id: 'ios-dhcp',
-            title: 'IOS DHCP server',
-            summary: 'Pools, exclusions, options, leases and global parameters.',
-            blocks: [
-                code('Router(config)# ip dhcp excluded-address 192.168.10.1 192.168.10.20\nRouter(config)# ip dhcp pool LAN\nRouter(dhcp-config)# network 192.168.10.0 255.255.255.0\nRouter(dhcp-config)# default-router 192.168.10.1\nRouter(dhcp-config)# dns-server 192.168.10.2 8.8.8.8\nRouter(dhcp-config)# domain-name aula.lab\nRouter(dhcp-config)# lease 0 8'),
-                h('Global configuration'),
-                table(['Command', 'Use'], [
-                    ['ip dhcp pool NAME', 'Creates or edits a pool and enters (dhcp-config).'],
-                    ['ip dhcp excluded-address IP [END_IP]', 'Addresses the server never leases.'],
-                    ['service dhcp / no service dhcp', 'Starts or stops the server and the relay.'],
-                    ['ip dhcp conflict logging', 'Logs conflicts detected with ping/ARP.'],
-                    ['ip dhcp ping packets N · ip dhcp ping timeout MS', 'Checks the address before offering it.'],
-                    ['ip dhcp bootp ignore', 'Does not answer BOOTP clients.'],
-                    ['ip dhcp use …', 'Which data identify the client (hardware-address client-id, class, vrf…).'],
-                    ['ip dhcp relay information …', 'Option 82 policy (trusted, trust-all, policy, option).'],
-                    ['ip dhcp database URL', 'Lease database agent (accepted).'],
-                ]),
-                h('Inside the pool (dhcp-config)'),
-                table(['Command', 'DHCP option / use'], [
-                    ['network NETWORK MASK|/LEN [secondary]', 'Subnet the pool hands out.'],
-                    ['default-router IP…', 'Option 3 (up to 8 default gateways).'],
-                    ['dns-server IP…', 'Option 6.'],
-                    ['domain-name NAME', 'Option 15.'],
-                    ['lease DAYS [HOURS [MIN]] | infinite', 'Lease duration (1 day by default).'],
-                    ['netbios-name-server IP… · netbios-node-type', 'Options 44 and 46.'],
-                    ['next-server IP… · bootfile FILE', 'TFTP server and boot file (siaddr, option 67).'],
-                    ['option CODE {ascii TEXT | hex HEX | ip IP…}', 'Any other option.'],
-                    ['host IP [MASK] + client-identifier | hardware-address', 'Manual reservation pool (see Reservations).'],
-                    ['address IP {client-id ID | hardware-address MAC}', 'Reservation inside a network pool.'],
-                    ['reserved-only', 'The pool only leases reserved addresses.'],
-                    ['class NAME · relay … · origin …', 'DHCP classes and on-demand pools (accepted).'],
-                    ['utilization mark high|low PCT', 'Pool usage thresholds.'],
-                ]),
-                note('Host pools inherit the parameters they do not define from the network pool that contains them (for example default-router and dns-server).'),
-            ],
-        },
-        {
-            id: 'ios-reservas',
-            title: 'Reservations and how a client is identified',
-            summary: 'client-identifier, hardware-address and routers’ client-id.',
-            blocks: [
-                code('Router(config)# ip dhcp pool PC1\nRouter(dhcp-config)# host 192.168.10.50 255.255.255.0\nRouter(dhcp-config)# client-identifier 0100.50f0.0000.02\n\nRouter(config)# ip dhcp pool IMPRESORA\nRouter(dhcp-config)# host 192.168.10.60 /24\nRouter(dhcp-config)# hardware-address 0050.f000.0003'),
-                list('client-identifier X matches the option 61 sent by the client. A PC with “Send client identifier” enabled (the default, as on Windows) sends 01 + MAC.', 'hardware-address M matches the MAC when the client sends no option 61 or when its option 61 is 01 + MAC.', 'A router with ip address dhcp sends the client-id cisco-<mac>-<interface> (in hex it starts with 0063.6973.636f). To pin its IP address you must use client-identifier, not hardware-address: the same pitfall as on real equipment. show dhcp lease displays it.', 'Inside the network pool: address 192.168.10.70 client-id 0100.50f0.0000.04 or address … hardware-address ….'),
-                p('show ip dhcp binding shows the type of each lease: Automatic or Manual.'),
-            ],
-        },
-        {
-            id: 'ios-relay',
-            title: 'Relay, snooping and the router as a client',
-            summary: 'ip helper-address, option 82, DHCP snooping and ip address dhcp.',
-            blocks: [
-                h('Relay'),
-                code('Router(config)# interface g0/1\nRouter(config-if)# ip address 10.0.20.1 255.255.255.0\nRouter(config-if)# ip helper-address 192.168.10.2'),
-                p('The router forwards DISCOVER/REQUEST messages by unicast to the server with giaddr = the interface’s IP address; the server picks the pool for that subnet.'),
-                h('DHCP snooping (switch)'),
-                code('Switch(config)# ip dhcp snooping\nSwitch(config)# ip dhcp snooping vlan 1\nSwitch(config)# interface fa0/24\nSwitch(config-if)# ip dhcp snooping trust'),
-                list('Server replies (OFFER/ACK) arriving on untrusted ports are dropped: this is how a rogue server is blocked.', 'The switch adds option 82 with giaddr 0; IOS rejects it (“inconsistent relay information”) unless there is ip dhcp relay information trusted on the interface or no ip dhcp snooping information option on the switch.', 'show ip dhcp snooping and show ip dhcp snooping binding show the status.'),
-                h('Router as a client'),
-                code('Router(config-if)# ip address dhcp\nRouter# show dhcp lease\nRouter# release dhcp g0/0 · renew dhcp g0/0'),
-                p('The default route learnt via DHCP is installed with administrative distance 254.'),
+                tip('Read the ^ marker', 'It points at the first character IOS does not understand: “interfase” is cut at the s. “% Incomplete command.” means something is missing at the end; “% Ambiguous command:” that the abbreviation fits several commands.'),
+                warn('Common mistakes', 'Typing configuration commands in EXEC (or a show without do in configuration): “% Invalid input”. Forgetting `enable`: there is no show running-config at Router>. Not saving: after a reload the previous configuration comes back.'),
+                exercise('Describe and save', 'In the «Basic DHCP» lab, give GW’s GigabitEthernet0/0 the description “LAN del aula”, check it without leaving interface mode and save the configuration.', '`enable`, `conf t`, `int g0/0`, `description LAN del aula`, `do show running-config | section 0/0` (the description line appears), `end` and `copy running-config startup-config` (“[OK]”).'),
             ],
         },
         {
             id: 'ios-show',
             title: 'Verification: show, clear and debug',
-            summary: 'EXEC commands for checking the server and the network.',
+            summary: 'The EXEC commands to check interfaces, tables and services, and how to read their output.',
+            markdownBase: MD,
             blocks: [
+                p('Configuring is half the job; the other half is **checking**. The show commands run in privileged EXEC (or with do from configuration) and change nothing. Always start with the interfaces: if they are not up, nothing else works.'),
+                steps(['Interfaces', '`show ip interface brief`: IP address and state. **up/up** works; **administratively down** is a shutdown; **down/down**, no cable or the other end is off.'], ['Routes', '`show ip route`: C (connected), L (its own address), S (static), S* (default).'], ['Neighbours', '`show arp` (router) or `show mac address-table` (switch): whom the device has seen and where.'], ['The service', '`show ip dhcp binding`, `show ip nat translations`, `show access-lists`… depending on what you configured.']),
+                term('ios', 'GW#show ip interface brief\nInterface              IP-Address      OK? Method Status                Protocol\nGigabitEthernet0/0     192.168.10.1    YES manual up                    up\nGigabitEthernet0/1     unassigned      YES unset  administratively down down\nGigabitEthernet0/2     unassigned      YES unset  administratively down down\nVlan1                  unassigned      YES unset  administratively down down\nGW#show ip dhcp binding\nIP address       Client-ID/              Lease expiration        Type\n                 Hardware address\n192.168.10.21    0100.cac2.1000.f2        Oct 24 2026 02:49 PM    Automatic\n192.168.10.22    0100.63b9.1434.b5        Oct 24 2026 02:49 PM    Automatic\n192.168.10.23    0100.fbb1.1868.78        Oct 24 2026 02:49 PM    Automatic'),
                 table(['Command', 'Shows or does'], [
-                    ['show ip dhcp binding [IP]', 'Leases: IP, client-ID/MAC, expiry and type.'],
-                    ['show ip dhcp pool [NAME]', 'Usage of each pool, ranges and next address.'],
-                    ['show ip dhcp server statistics', 'Counters of messages received and sent.'],
-                    ['show ip dhcp conflict · show ip dhcp database', 'Conflicts and database agent.'],
+                    ['show ip interface brief · show interfaces', 'State of the interfaces.'],
+                    ['show ip route · show arp · show mac address-table · show vlan brief', 'Route, ARP, MAC and VLAN tables.'],
+                    ['show running-config · show startup-config', 'Running and saved configuration; copy running-config startup-config (or write) saves.'],
+                    ['show ip dhcp binding [IP] · show ip dhcp pool [NAME]', 'Leases (IP address, client-ID/MAC, expiry and type) and usage of each pool.'],
+                    ['show ip dhcp server statistics · show ip dhcp conflict', 'Message counters and conflicts.'],
                     ['show dhcp lease', 'Lease of a client interface (ip address dhcp).'],
-                    ['clear ip dhcp binding {* | IP}', 'Releases leases.'],
-                    ['clear ip dhcp conflict {* | IP} · clear ip dhcp server statistics', 'Clears conflicts and counters.'],
-                    ['debug ip dhcp server {events | packet}', 'Debug messages on the console (undebug all to turn them off).'],
-                    ['show running-config · show startup-config', 'Configuration; copy running-config startup-config (or write) saves it.'],
-                    ['show ip interface brief · show interfaces', 'Interface status.'],
-                    ['show ip route · show arp · show mac address-table · show vlan brief', 'Routing, ARP, MAC and VLAN tables.'],
+                    ['clear ip dhcp binding {* | IP} · clear ip dhcp conflict {* | IP}', 'Releases leases or clears conflicts.'],
+                    ['debug ip dhcp server {events | packet} · undebug all', 'Debug messages on the console.'],
                     ['ping IP [repeat N] [source IF]', 'Connectivity test (!!!!!).'],
-                    ['show version · show clock · show history · show debugging', 'Device and session information.'],
+                    ['show version · show clock · show history · show debugging', 'Information about the device and the session.'],
                 ]),
+                check('Read the IOS ping', 'Each ! is a reply and each . a lost packet. The first one is often a dot: the router is still resolving the MAC address by ARP.'),
+                warn('Common mistakes', 'Looking at show running-config and not at show ip interface brief: the configuration can be fine and the interface shut down. Forgetting undebug all: the console fills up with messages.'),
+                exercise('Who has each IP address?', 'In the «Basic DHCP» lab, find out from GW which IP addresses it has leased and how many are still free in the pool.', '`show ip dhcp binding` lists 192.168.10.21, .22 and .23 (Automatic). `show ip dhcp pool` says 254 addresses in total, 3 leased and 20 excluded: 231 are left.'),
             ],
         },
         {
             id: 'ios-otros',
             title: 'Interfaces, VLANs and routes',
-            summary: 'The remaining configuration commands available on routers and switches.',
+            summary: 'Access and trunk ports, VLANs, router-on-a-stick, static routes and the rest of the configuration commands.',
+            markdownBase: MD,
             blocks: [
+                p('A **VLAN** splits a switch into several logical switches: the ports of VLAN 10 do not see the traffic of VLAN 20, even on the same box. For two VLANs to talk, a router is needed. With **router-on-a-stick** a single trunk cable is enough: the router has one subinterface per VLAN.'),
+                figure({
+                    type: 'topology',
+                    nodes: [
+                        { id: 'gw', kind: 'router', label: 'GW', x: 15, y: 0, note: 'g0/0.10 · g0/0.20' },
+                        { id: 'sw', kind: 'switch', label: 'SW-ACCESO', x: 40, y: 20, note: 'Gig0/1 trunk' },
+                        { id: 'pc0', kind: 'pc', label: 'PC0', x: 5, y: 45, note: 'VLAN 10' },
+                        { id: 'pc1', kind: 'pc', label: 'PC1', x: 30, y: 45, note: 'VLAN 10' },
+                        { id: 'pc2', kind: 'pc', label: 'PC2', x: 55, y: 45, note: 'VLAN 20' },
+                        { id: 'pc3', kind: 'pc', label: 'PC3', x: 80, y: 45, note: 'VLAN 20' },
+                    ],
+                    links: [{ a: 'gw', b: 'sw', label: '802.1Q' }, { a: 'sw', b: 'pc0' }, { a: 'sw', b: 'pc1' }, { a: 'sw', b: 'pc2' }, { a: 'sw', b: 'pc3' }],
+                }, 'The «Router-on-a-stick: one pool per VLAN» lab: VENTAS (VLAN 10, 172.16.10.0/24) and SOPORTE (VLAN 20, 172.16.20.0/24).'),
+                h('Step by step: VLANs and router-on-a-stick'),
+                steps(['Create the VLANs', 'On the switch: `vlan 10`, `name VENTAS`; `vlan 20`, `name SOPORTE`.'], ['Access ports', 'Each PC port: `switchport mode access` and `switchport access vlan 10` (or 20).'], ['The trunk', 'The port towards the router: `switchport mode trunk`. It carries every VLAN, each frame with its 802.1Q tag.'], ['Router subinterfaces', '`interface g0/0.10`, `encapsulation dot1Q 10` and the IP address that will be that VLAN’s gateway. The same with .20, and `no shutdown` on g0/0.']),
+                term('ios', 'SW-ACCESO#show vlan brief\nVLAN Name                             Status    Ports\n---- -------------------------------- --------- -------------------------------\n1    default                          active    Fa0/5, Fa0/6, Fa0/7, Fa0/8\n                                                Fa0/9, Fa0/10, Fa0/11, Fa0/12\n                                                Fa0/13, Fa0/14, Fa0/15, Fa0/16\n                                                Fa0/17, Fa0/18, Fa0/19, Fa0/20\n                                                Fa0/21, Fa0/22, Fa0/23, Fa0/24\n                                                Gig0/2\n10   VENTAS                           active    Fa0/1, Fa0/2\n20   SOPORTE                          active    Fa0/3, Fa0/4\n1002 fddi-default                     act/unsup\n1003 token-ring-default               act/unsup\n1004 fddinet-default                  act/unsup\n1005 trnet-default                    act/unsup\nGW#show ip interface brief | include 0/0\nGigabitEthernet0/0     unassigned      YES unset  up                    up\nGigabitEthernet0/0.10  172.16.10.1     YES manual up                    up\nGigabitEthernet0/0.20  172.16.20.1     YES manual up                    up'),
+                check('Check it', 'From a SOPORTE PC, `traceroute -n` to a VENTAS one goes through its VLAN’s gateway: traffic between VLANs always crosses the router. The `*` the first time is the probe lost while the router resolves the destination’s MAC address by ARP.'),
+                term('shell', 'alumno@pc2:~$ traceroute -n 172.16.10.2\ntraceroute to 172.16.10.2 (172.16.10.2), 30 hops max, 60 byte packets\n 1  172.16.20.1  8.400 ms  4.211 ms  4.292 ms\n 2  *  172.16.10.2  8.400 ms  8.211 ms'),
+                h('All the configuration commands'),
                 table(['Command', 'Use'], [
-                    ['hostname NAME · banner motd #text# · enable secret|password', 'Identity and access. In Netfix the hostname comes from the device name (Device tab), as on the Linux devices: hostname only accepts that name, and its line is ignored when a saved or pasted configuration is loaded.'],
-                    ['interface IF · interface range fa0/1 - 10', 'Select interfaces (g0/0, fa0/1, g0/0.10…).'],
-                    ['ip address IP MASK [secondary] · ip address dhcp', 'Interface address.'],
-                    ['shutdown / no shutdown · description · speed · duplex', 'Status and physical parameters.'],
+                    ['hostname NAME · banner motd #text# · enable secret|password', 'Identity and access. In Netfix the hostname comes from the device name (Device tab), as on the Linux devices: hostname only accepts that name, and when a saved or pasted configuration is loaded its hostname line is ignored.'],
+                    ['interface IF · interface range fa0/1 - 10', 'Selecting interfaces (g0/0, fa0/1, g0/0.10…).'],
+                    ['ip address IP MASK [secondary] · ip address dhcp', 'IP address of the interface.'],
+                    ['shutdown / no shutdown · description · speed · duplex', 'State and physical parameters.'],
                     ['encapsulation dot1Q VLAN [native]', 'Router-on-a-stick subinterfaces.'],
                     ['switchport mode access|trunk · switchport access vlan N · switchport trunk …', 'Switch ports.'],
                     ['vlan N · name NAME', 'VLAN database.'],
-                    ['ip route NETWORK MASK {NEXT_HOP | IF} [AD] · ip routing · ip default-gateway', 'Static routes.'],
-                    ['ip domain-name · ip name-server · ip domain-lookup', 'The device’s name resolution.'],
+                    ['ip route NETWORK MASK {NEXT-HOP | IF} [AD] · ip routing · ip default-gateway', 'Static routes.'],
+                    ['ip domain-name · ip name-server · ip domain-lookup', 'Name resolution for the device.'],
                     ['line console 0 · line vty 0 15 · password · login [local] · transport input', 'Access lines.'],
                     ['spanning-tree portfast · switchport port-security …', 'Accepted (no effect in the simulation).'],
                     ['write erase · reload', 'Erase the saved configuration and restart.'],
                 ]),
+                warn('Common mistakes', 'A PC port without `switchport access vlan`: it stays in VLAN 1 and the PC gets no IP address from its VLAN’s pool. The router port in access instead of trunk: only one VLAN gets through. The physical interface g0/0 shut down: its subinterfaces do not work even if they are correct.'),
+                exercise('One more seat in SOPORTE', 'In the «Router-on-a-stick: one pool per VLAN» lab, put port Fa0/5 of SW-ACCESO in the SOPORTE VLAN and check it.', '`enable`, `conf t`, `int fa0/5`, `switchport mode access`, `switchport access vlan 20`, `end`. `show vlan brief | include SOPORTE` shows “20   SOPORTE   active   Fa0/3, Fa0/4, Fa0/5”. A PC plugged in there gets an IP address from 172.16.20.0/24.'),
+            ],
+        },
+        {
+            id: 'ios-web',
+            title: 'Web management of routers and switches',
+            summary: 'The IOS HTTP server step by step: ip http server, users, pages and what gets logged.',
+            markdownBase: MD,
+            blocks: [
+                p('The 2911 routers and 2960 switches (on an SVI, interface Vlan1) have the **IOS HTTP server**: a web page to see the state and run commands from the browser. It is switched on in the CLI or in the **Web management** tab of their window (box, port and users).'),
+                h('Step by step'),
+                steps(['Switch the server on', '`ip http server` (or the **Web management (ip http server)** box). It listens on port 80; `ip http port 8080` changes it.'], ['Choose the authentication', 'By default, **enable**: any user with the enable secret password. Better `ip http authentication local`, with users of its own.'], ['Create a user', '`username admin privilege 15 secret netfix`: privilege 15 gives access to everything.'], ['Log in from a PC', 'In the browser, http://192.168.10.1/ (the IP address of one of the device’s interfaces). It asks for user and password.']),
+                code('GW(config)# ip http server\nGW(config)# ip http authentication local\nGW(config)# username admin privilege 15 secret netfix'),
+                table(['URL', 'Contents'], [
+                    ['/', 'Home: “Accessing Cisco … "GW"” with links.'],
+                    ['/level/15/exec/-/show/ip/interface/brief/CR', 'Runs an EXEC command (the words separated by /, CR at the end).'],
+                    ['/level/N/exec/-', 'Monitor: the possible keywords as links and a Command box (level 1 = user EXEC).'],
+                    ['/level/15/configure/-', 'Configure: configuration commands, one per line.'],
+                    ['/level/15/dm', 'Device Manager: front panel, interface table and quick port settings (description, state, access VLAN, IP address).'],
+                ]),
+                check('Check it with curl', 'Without credentials it answers **401** with `Www-Authenticate: Basic realm="level_15_access"`; with `-u user:key` it runs the URL’s command.'),
+                term('shell', 'alumno@pc0:~$ curl -sI http://192.168.10.1/\nHTTP/1.1 401 Unauthorized\nDate: Sat, 24 Oct 2026 09:34:01 GMT\nServer: cisco-IOS\nWww-Authenticate: Basic realm="level_15_access"\nContent-Length: 190\nContent-Type: text/html; charset=UTF-8'),
+                p('Failed attempts and changes made from the web show up on the device’s console, as in IOS:'),
+                term('ios', '%SEC_LOGIN-4-LOGIN_FAILED: Login failed [user: admin] [Source: 192.168.10.21] [localport: 80] [Reason: Login Authentication Failed]\n%SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.168.10.21)'),
+                table(['Command', 'Use'], [
+                    ['ip http server · no ip http server', 'Switches the web server on or off.'],
+                    ['ip http port N', 'Changes the port (1-65535).'],
+                    ['ip http authentication enable', 'Default: any user with the enable secret/password. Without enable secret nobody gets in.'],
+                    ['ip http authentication local', 'Users from username; their privilege decides the level (15 = everything).'],
+                    ['username U [privilege N] secret|password KEY', 'Local user (secret is stored as a type 5 hash).'],
+                ]),
+                warn('Common mistakes', 'Switching the server on with the default authentication and no enable secret: nobody can get in. On a switch, forgetting to give interface Vlan1 an IP address: there is nothing to connect to. The authentication is HTTP Basic, unencrypted (HTTPS is not simulated): on a real network, only from the management network.'),
+                exercise('Look at the router from the browser', 'In the «Basic DHCP» lab, turn on GW’s web management with the user admin / netfix and look at `show ip interface brief` from PC0 without opening the console.', 'On GW: `ip http server`, `ip http authentication local`, `username admin privilege 15 secret netfix`. On PC0 → Web Browser: http://192.168.10.1/, user admin and password netfix → Monitor, or straight to http://192.168.10.1/level/15/exec/-/show/ip/interface/brief/CR. With `curl -u admin:netfix` and that URL, the answer includes the interface table.'),
             ],
         },
     ],
 };
 
 return { IOS_DOCS };
+})();
+__m["docs/en/ios-dhcp.js"] = (() => {
+const { check, code, exercise, figure, h, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
+const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const IOS_DHCP_DOCS = [
+    {
+        id: 'ios-dhcp',
+        title: 'IOS DHCP server',
+        summary: 'A pool step by step: exclusions, network, gateway, DNS, domain and lease; and every option.',
+        markdownBase: MD,
+        blocks: [
+            p('A Cisco router can be its network’s **DHCP server**: it hands the PCs their IP address, mask, gateway and DNS. It is the usual setup in a small office, without a separate server. The exchange is the same as with a Server (DORA):'),
+            figure({
+                type: 'sequence',
+                actors: ['PC0', 'GW (IOS)'],
+                messages: [
+                    { from: 0, to: 1, text: 'DHCPDISCOVER', note: 'broadcast: is there any server?' },
+                    { from: 1, to: 0, text: 'DHCPOFFER', note: 'I offer you 192.168.10.21' },
+                    { from: 0, to: 1, text: 'DHCPREQUEST', note: 'I want it' },
+                    { from: 1, to: 0, text: 'DHCPACK', note: 'leased for 8 hours' },
+                ],
+            }, 'DORA: Discover, Offer, Request and Ack. The router notes the lease in show ip dhcp binding.'),
+            h('Step by step: a pool'),
+            steps(['Exclude what is not handed out', '`ip dhcp excluded-address 192.168.10.1 192.168.10.20`: the gateway, servers and printers with a fixed IP address. Do it **before** creating the pool.'], ['Create the pool', '`ip dhcp pool LAN` enters (dhcp-config).'], ['The network', '`network 192.168.10.0 255.255.255.0`: it must be the network of one of the router’s interfaces (or arrive through a relay).'], ['The options', '`default-router 192.168.10.1`, `dns-server 8.8.8.8`, `domain-name aula.lab`.'], ['The lease', '`lease 0 8` (days, hours): 8 hours. By default, 1 day.']),
+            term('ios', 'GW#show running-config | section dhcp\nip dhcp excluded-address 192.168.10.1 192.168.10.20\nip dhcp pool LAN\n network 192.168.10.0 255.255.255.0\n default-router 192.168.10.1\n dns-server 8.8.8.8\n domain-name aula.lab\n lease 0 8'),
+            check('Check it', '`show ip dhcp binding` lists every lease; `show ip dhcp pool` how many addresses there are, how many are leased and how many excluded. On the PC, `ipconfig /all` or `ip route` show what it received.'),
+            term('ios', 'GW#show ip dhcp pool\n\nPool LAN :\n Utilization mark (high/low)    : 100 / 0\n Subnet size (first/next)       : 0 / 0\n Total addresses                : 254\n Leased addresses               : 3\n Excluded addresses             : 20\n Pending event                  : none\n 1 subnet is currently in the pool :\n Current index        IP address range                    Leased/Excluded/Total\n 192.168.10.24        192.168.10.1     - 192.168.10.254      3    / 20     / 254'),
+            h('Global configuration'),
+            table(['Command', 'Use'], [
+                ['ip dhcp pool NAME', 'Creates or edits a pool and enters (dhcp-config).'],
+                ['ip dhcp excluded-address IP [LAST_IP]', 'IP addresses the server never leases.'],
+                ['service dhcp / no service dhcp', 'Starts or stops the server and the relay.'],
+                ['ip dhcp conflict logging', 'Logs conflicts detected with ping/ARP.'],
+                ['ip dhcp ping packets N · ip dhcp ping timeout MS', 'Checks the IP address before offering it.'],
+                ['ip dhcp bootp ignore', 'Does not answer BOOTP clients.'],
+                ['ip dhcp use …', 'Which data identify the client (hardware-address client-id, class, vrf…).'],
+                ['ip dhcp relay information …', 'Option 82 policy (trust-all, policy, option).'],
+                ['ip dhcp database URL', 'Lease database agent (accepted).'],
+            ]),
+            h('Inside the pool (dhcp-config)'),
+            table(['Command', 'DHCP option / use'], [
+                ['network NETWORK MASK|/LEN [secondary]', 'Subnet the pool hands out.'],
+                ['default-router IP…', 'Option 3 (up to 8 gateways).'],
+                ['dns-server IP…', 'Option 6.'],
+                ['domain-name NAME', 'Option 15.'],
+                ['lease DAYS [HOURS [MIN]] | infinite', 'Lease time (1 day by default).'],
+                ['netbios-name-server IP… · netbios-node-type', 'Options 44 and 46.'],
+                ['next-server IP… · bootfile FILE', 'TFTP server and boot file (siaddr, option 67).'],
+                ['option CODE {ascii TEXT | hex HEX | ip IP…}', 'Any other option.'],
+                ['host IP [MASK] + client-identifier | hardware-address', 'Manual reservation pool (see Reservations).'],
+                ['address IP {client-id ID | hardware-address MAC}', 'Reservation inside a network pool.'],
+                ['reserved-only', 'The pool only leases reserved addresses.'],
+                ['class NAME · relay … · origin …', 'DHCP classes and on-demand pools (accepted).'],
+                ['utilization mark high|low PCT', 'Pool usage thresholds.'],
+            ]),
+            warn('Common mistakes', 'Forgetting default-router: the PCs get an IP address but do not leave their network. Excluding after the PCs have a lease: the leases already given do not change until they are released (`clear ip dhcp binding *`). A pool whose network is not that of any interface: nobody gets anything.'),
+            exercise('A DNS of your own', 'In the «Basic DHCP» lab, make the LAN pool hand out 192.168.10.2 as DNS (and 8.8.8.8 as a fallback). Check on PC0 that it gets it.', 'On GW: `enable`, `conf t`, `ip dhcp pool LAN`, `dns-server 192.168.10.2 8.8.8.8`, `end`. In PC0’s Windows terminal: `ipconfig /release`, `ipconfig /renew` and `ipconfig /all`: “DNS Servers: 192.168.10.2”, and the lease lasts 8 hours (Lease Obtained / Lease Expires).'),
+        ],
+    },
+    {
+        id: 'ios-reservas',
+        title: 'Reservations and how a client is identified',
+        summary: 'Always giving a device the same IP address: host pools with client-identifier or hardware-address, and address inside the pool.',
+        markdownBase: MD,
+        blocks: [
+            p('A **reservation** makes a device always get the same IP address over DHCP: useful for printers, cameras or the teacher’s PC, without setting them up by hand. IOS does it with one **host** pool per device, or with **address** inside the network pool. What matters is choosing well **how the client is recognised**.'),
+            table(['Recognised by', 'When it matches', 'Command'], [
+                ['client-identifier', 'With the option 61 the client sends. A PC with “Send the client identifier” (the default, like Windows) sends 01 + MAC: 0100.cac2.1000.f2.', 'client-identifier 0100.cac2.1000.f2'],
+                ['hardware-address', 'With the MAC, when the client sends no option 61 or sends 01 + MAC.', 'hardware-address 0063.b914.34b5'],
+            ]),
+            h('Step by step: a reservation'),
+            steps(['Find the identifier', '`show ip dhcp binding` shows each client’s Client-ID; the MAC is in the PC’s IP Configuration tab.'], ['Create a pool for the device', '`ip dhcp pool PC0-FIJO`.'], ['The IP address', '`host 192.168.10.100 255.255.255.0` (outside the exclusions and inside the LAN pool’s network).'], ['The identifier', '`client-identifier 0100.cac2.1000.f2` or `hardware-address 0063.b914.34b5`.'], ['Renew on the PC', 'With the previous lease released (`clear ip dhcp binding *` on the router, or `ipconfig /release` and `/renew`).']),
+            term('ios', 'GW#show running-config | section pool\nip dhcp pool LAN\n network 192.168.10.0 255.255.255.0\n address 192.168.10.150 client-id 0100.fbb1.1868.78\n default-router 192.168.10.1\n dns-server 8.8.8.8\n domain-name aula.lab\n lease 0 8\nip dhcp pool PC0-FIJO\n host 192.168.10.100 255.255.255.0\n client-identifier 0100.cac2.1000.f2\n client-name pc0\nip dhcp pool PC1-FIJO\n host 192.168.10.101 255.255.255.0\n hardware-address 0063.b914.34b5'),
+            check('Check it', 'In `show ip dhcp binding` reservations show as **Manual** and do not expire (Infinite).'),
+            term('ios', 'GW#show ip dhcp binding\nIP address       Client-ID/              Lease expiration        Type\n                 Hardware address\n192.168.10.100   0100.cac2.1000.f2        Infinite                Manual\n192.168.10.101   0063.B914.34B5           Infinite                Manual\n192.168.10.150   0100.fbb1.1868.78        Oct 24 2026 02:49 PM    Automatic'),
+            note('Host pools inherit what they do not define (default-router, dns-server…) from the network pool that contains them.'),
+            warn('The routers’ trap', 'A router with ip address dhcp sends the client-id cisco-<mac>-<interface> (in hexadecimal it starts with 0063.6973.636f). To reserve it an IP address you must use **client-identifier**, not hardware-address: it is the same trap as on real equipment. `show dhcp lease` on the router shows it.'),
+            exercise('Three ways to reserve', 'In the «Reservations: host, client-identifier and hardware-address» lab, by which identifier is each PC recognised and what type of lease does each one have?', '`show running-config | section pool`: PC0 by client-identifier (pool PC0-FIJO, .100), PC1 by hardware-address (PC1-FIJO, .101) and PC2 with address … client-id inside the LAN pool (.150). In `show ip dhcp binding`, .100 and .101 are Manual (Infinite) and .150 shows as Automatic with its expiry.'),
+        ],
+    },
+    {
+        id: 'ios-relay',
+        title: 'Relay, snooping and router as a client',
+        summary: 'ip helper-address for a server on another network, DHCP snooping against rogue servers and ip address dhcp.',
+        markdownBase: MD,
+        blocks: [
+            p('The DHCP DISCOVER is a **broadcast**, and broadcasts do not cross routers. If the server is on another network, the clients’ router acts as a **relay**: it picks up the request and forwards it as unicast to the server.'),
+            figure({
+                type: 'sequence',
+                actors: ['PC0', 'EDGE (relay)', 'DHCP-SRV'],
+                messages: [
+                    { from: 0, to: 1, text: 'DHCPDISCOVER', note: 'broadcast on 10.20.0.0/24' },
+                    { from: 1, to: 2, text: 'DHCPDISCOVER', note: 'unicast, giaddr 10.20.0.1' },
+                    { from: 2, to: 1, text: 'DHCPOFFER', note: 'from the pool of giaddr’s network' },
+                    { from: 1, to: 0, text: 'DHCPOFFER' },
+                ],
+            }, 'The relay fills giaddr with its IP address on the clients’ network; the server picks that network’s pool.'),
+            h('Step by step: relay'),
+            steps(['On the clients’ interface', '`interface g0/1` of the router of the PCs’ network.'], ['Point at the server', '`ip helper-address 10.0.0.1` (the DHCP server’s IP address).'], ['On the server', 'A pool for the clients’ network and a route back to it.']),
+            code('EDGE(config)# interface g0/1\nEDGE(config-if)# ip helper-address 10.0.0.1'),
+            term('ios', 'DHCP-SRV#show ip dhcp binding\nIP address       Client-ID/              Lease expiration        Type\n                 Hardware address\n10.20.0.10       0100.63b9.1434.b5        Oct 25 2026 06:50 AM    Automatic\n10.20.0.11       0100.fbb1.1868.78        Oct 25 2026 06:50 AM    Automatic'),
+            h('DHCP snooping (switch)'),
+            p('Anyone can plug in a router handing out addresses with a fake gateway. **DHCP snooping** makes the switch accept server replies (OFFER and ACK) only on **trusted** ports.'),
+            code('Switch(config)# ip dhcp snooping\nSwitch(config)# ip dhcp snooping vlan 1\nSwitch(config)# interface g0/1\nSwitch(config-if)# ip dhcp snooping trust'),
+            term('ios', 'SW#show ip dhcp snooping binding\nMacAddress          IpAddress        Lease(sec)  Type           VLAN  Interface\n------------------  ---------------  ----------  -------------  ----  -----------------\n00CA.C210.00F2      192.168.10.21    28800       dhcp-snooping  1     FastEthernet0/1\n0063.B914.34B5      192.168.10.22    28800       dhcp-snooping  1     FastEthernet0/2\nTotal number of bindings: 2'),
+            warn('Option 82', 'The switch adds option 82 with giaddr 0 and IOS rejects it (“inconsistent relay information”) unless `ip dhcp relay information trusted` is set on the router’s interface or `no ip dhcp snooping information option` on the switch.'),
+            h('Router as a client'),
+            p('A router can also get its IP address by DHCP, like the home router facing the ISP: `ip address dhcp` on the WAN interface. The learnt default route is installed with administrative distance 254.'),
+            term('ios', 'CPE#show dhcp lease\nTemp IP addr: 100.64.0.77  for peer on Interface: GigabitEthernet0/1\nTemp  sub net mask: 255.255.255.0\n   DHCP Lease server: 100.64.0.1, state: 5 Bound\n   Lease: 86400 secs,  Renewal: 43200 secs,  Rebind: 75600 secs\nTemp default-gateway addr: 100.64.0.1\n   Client-ID: 0063.6973.636f.2d30.3033.312e.6361.3063.2e63.6333.322d.4769.302f.31\n   Hostname: CPE\nCPE#show ip route | include 0.0.0.0\nGateway of last resort is 100.64.0.1 to network 0.0.0.0\nS*   0.0.0.0/0 [254/0] via 100.64.0.1\n     100.0.0.0/8 is variably subnetted, 2 subnets, 2 masks'),
+            tip('release and renew', '`release dhcp g0/1` and `renew dhcp g0/1` let go of the lease and ask for it again, like ipconfig on a PC.'),
+            exercise('Who protects whom?', 'In the «DHCP snooping against a rogue server» lab, which switch port is trusted and which gateway do the PCs get?', '`show ip dhcp snooping` on SW: only GigabitEthernet0/1 (towards GW) has “yes” in the Trusted column. ROGUE’s offers are dropped, so `ip route` on PC0 gives “default via 192.168.10.1”, GW’s. `show ip dhcp snooping binding` lists the two legitimate leases.'),
+        ],
+    },
+];
+
+return { IOS_DHCP_DOCS };
 })();
 __m["docs/en/services.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
@@ -20473,31 +20690,6 @@ const INTERNET_DOCS = {
             ],
         },
         {
-            id: 'ios-web',
-            title: 'Web management of routers and switches',
-            summary: 'ip http server, port, enable or local authentication, users and pages of the IOS HTTP server.',
-            blocks: [
-                p('2911 routers and 2960 switches (on an SVI, interface Vlan1) have the IOS HTTP server. It is enabled in the CLI or in the “Web management” tab of their window (checkbox, port and users).'),
-                code('Router(config)# ip http server\nRouter(config)# ip http port 8080\nRouter(config)# ip http authentication local\nRouter(config)# username admin privilege 15 secret netfix'),
-                table(['Command', 'Use'], [
-                    ['ip http server', 'Listens on port 80 (or the one set with ip http port).'],
-                    ['ip http port N', 'Changes the port (1-65535).'],
-                    ['ip http authentication enable', 'Default: any user with the enable secret/password. Without an enable secret nobody gets in.'],
-                    ['ip http authentication local', 'username users; their privilege sets the level (15 = everything).'],
-                    ['username U [privilege N] secret|password CLAVE', 'Local user (secret is stored as a type 5 hash).'],
-                ]),
-                h('Pages'),
-                table(['URL', 'Content'], [
-                    ['/', 'Home: “Accessing Cisco … "R1"” with links.'],
-                    ['/level/15/exec/-/show/ip/interface/brief/CR', 'Runs an EXEC command (words separated by /, CR at the end).'],
-                    ['/level/N/exec/-', 'Monitor: possible keywords as links and a Command box (level 1 = user EXEC).'],
-                    ['/level/15/configure/-', 'Configure: configuration commands, one per line.'],
-                    ['/level/15/dm', 'Device Manager: front panel, interface table and quick port settings (description, status, access VLAN, IP address).'],
-                ]),
-                note('Authentication is HTTP Basic (realm level_15_access). Failures are logged as %SEC_LOGIN-4-LOGIN_FAILED and changes as %SYS-5-CONFIG_I … on vty0 (PC’s IP address). curl -u user:password also works.'),
-            ],
-        },
-        {
             id: 'red-broadcast',
             title: 'Broadcast: to every device of the network',
             summary: 'Link and IP broadcast (255.255.255.255 and directed), who answers a broadcast ping and who forwards it.',
@@ -21090,6 +21282,7 @@ return { OUTLINE };
 __m["docs/sets.js"] = (() => {
 const { NETFIX_DOCS } = __m["docs/netfix.js"];
 const { IOS_DOCS } = __m["docs/ios.js"];
+const { IOS_DHCP_DOCS } = __m["docs/ios-dhcp.js"];
 const { SERVICE_DOCS } = __m["docs/services.js"];
 const { CLIENT_DOCS } = __m["docs/clients.js"];
 const { LINUX_DOCS } = __m["docs/linux.js"];
@@ -21107,6 +21300,7 @@ const { HTTP_DOCS } = __m["docs/http.js"];
 const { MAIL_DOCS } = __m["docs/mail.js"];
 const { NETFIX_DOCS: NETFIX_EN } = __m["docs/en/netfix.js"];
 const { IOS_DOCS: IOS_EN } = __m["docs/en/ios.js"];
+const { IOS_DHCP_DOCS: IOS_DHCP_EN } = __m["docs/en/ios-dhcp.js"];
 const { SERVICE_DOCS: SERVICE_EN } = __m["docs/en/services.js"];
 const { CLIENT_DOCS: CLIENT_EN } = __m["docs/en/clients.js"];
 const { LINUX_DOCS: LINUX_EN } = __m["docs/en/linux.js"];
@@ -21126,7 +21320,7 @@ const { OUTLINE } = __m["docs/outline.js"];
 const { arrange } = __m["docs/arrange.js"];
 const { OUTLINE: OUTLINE_EN } = __m["docs/en/outline.js"];
 const ES = {
-    groups: arrange(OUTLINE, [...NETFIX_DOCS.pages, ...IOS_DOCS.pages, ...SERVICE_DOCS.pages, ...DNS_DOCS, ...HTTP_DOCS, ...MAIL_DOCS, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
+    groups: arrange(OUTLINE, [...NETFIX_DOCS.pages, ...IOS_DOCS.pages, ...IOS_DHCP_DOCS, ...SERVICE_DOCS.pages, ...DNS_DOCS, ...HTTP_DOCS, ...MAIL_DOCS, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
         ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE]),
     utils: UTIL_DOCS,
     builtins: BUILTIN_DOCS,
@@ -21144,7 +21338,7 @@ const ES = {
     },
 };
 const EN = {
-    groups: arrange(OUTLINE_EN, [...NETFIX_EN.pages, ...IOS_EN.pages, ...SERVICE_EN.pages, ...DNS_EN, ...HTTP_EN, ...MAIL_EN, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
+    groups: arrange(OUTLINE_EN, [...NETFIX_EN.pages, ...IOS_EN.pages, ...IOS_DHCP_EN, ...SERVICE_EN.pages, ...DNS_EN, ...HTTP_EN, ...MAIL_EN, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
         ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN]),
     utils: UTIL_EN,
     builtins: BUILTIN_EN,
@@ -28217,7 +28411,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.20.2",
+    "version": "0.20.3",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",

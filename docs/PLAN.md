@@ -967,3 +967,13 @@ Las pruebas de paridad es/en cubren los bloques nuevos.
   ahora «(port 10000)», como el resto del registro.
 
 **Siguiente:** fase 36c, Switch IOS, Router IOS, Router Linux y Nube.
+
+### Notas de la fase 36c, primera entrega (v0.20.3)
+
+- **Switch IOS.** La CLI, Verificación, Interfaces/VLAN/rutas y Gestión web de routers y switches, en estilo guiado.
+  La gestión web pasa de `internet.ts` a `ios.ts`.
+- **Router IOS: DHCP.** Servidor DHCP, Reservas y Relay/snooping/router cliente, en un módulo propio `ios-dhcp.ts`.
+- **Comprobado en el simulador** (laboratorios DHCP básico, Reservas, Relay, Router-on-a-stick, Snooping y Router
+  cliente). Dos salidas se corrigieron: el primer `traceroute` entre VLAN tiene un `*` mientras el router resuelve ARP, y
+  `show ip route | include 0.0.0.0` también saca la línea `100.0.0.0/8 …`.
+- **Pendiente de 36c:** NAT, ACL e IPsec del router IOS; Router Linux (parámetros, nftables, WireGuard) y Nube.

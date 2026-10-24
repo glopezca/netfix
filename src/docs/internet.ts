@@ -1,4 +1,4 @@
-/** Documentación: nube ISP, Internet emulada, DNS públicos, NAT de IOS, gestión web de IOS y traceroute. */
+/** Documentación: nube ISP, Internet emulada, DNS públicos, NAT de IOS, difusiones y traceroute. */
 import type { DocGroup } from './types.ts';
 import { code, h, list, note, p, table } from './types.ts';
 
@@ -82,31 +82,6 @@ export const INTERNET_DOCS: DocGroup = {
           ['debug ip nat', 'NAT: s=192.168.10.10->81.32.5.2, d=8.8.8.8 [n] por cada paquete traducido.'],
         ]),
         note('Los paquetes que no coinciden con ninguna regla salen sin traducir (como en IOS): sin NAT, el otro extremo no sabe volver a una red privada.'),
-      ],
-    },
-    {
-      id: 'ios-web',
-      title: 'Gestión web de routers y switches',
-      summary: 'ip http server, puerto, autenticación enable o local, usuarios y páginas del servidor HTTP de IOS.',
-      blocks: [
-        p('Routers 2911 y switches 2960 (en una SVI, interface Vlan1) tienen el servidor HTTP de IOS. Se activa en la CLI o en la pestaña «Gestión web» de su ventana (casilla, puerto y usuarios).'),
-        code('Router(config)# ip http server\nRouter(config)# ip http port 8080\nRouter(config)# ip http authentication local\nRouter(config)# username admin privilege 15 secret netfix'),
-        table(['Orden', 'Uso'], [
-          ['ip http server', 'Escucha en el puerto 80 (o el de ip http port).'],
-          ['ip http port N', 'Cambia el puerto (1-65535).'],
-          ['ip http authentication enable', 'Por defecto: cualquier usuario con la contraseña de enable secret/password. Sin enable secret nadie entra.'],
-          ['ip http authentication local', 'Usuarios de username; su privilegio decide el nivel (15 = todo).'],
-          ['username U [privilege N] secret|password CLAVE', 'Usuario local (secret se guarda como hash tipo 5).'],
-        ]),
-        h('Páginas'),
-        table(['URL', 'Contenido'], [
-          ['/', 'Inicio: «Accessing Cisco … "R1"» con enlaces.'],
-          ['/level/15/exec/-/show/ip/interface/brief/CR', 'Ejecuta una orden EXEC (las palabras separadas por /, CR al final).'],
-          ['/level/N/exec/-', 'Monitor: palabras clave posibles como enlaces y cuadro Command (nivel 1 = EXEC de usuario).'],
-          ['/level/15/configure/-', 'Configure: órdenes de configuración, una por línea.'],
-          ['/level/15/dm', 'Device Manager: panel frontal, tabla de interfaces y ajustes rápidos de puerto (descripción, estado, VLAN de acceso, dirección IP).'],
-        ]),
-        note('La autenticación es HTTP Basic (realm level_15_access). Los fallos se registran como %SEC_LOGIN-4-LOGIN_FAILED y los cambios como %SYS-5-CONFIG_I … on vty0 (dirección IP del PC). También funciona curl -u usuario:clave.'),
       ],
     },
     {

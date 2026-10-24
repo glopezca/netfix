@@ -1,4 +1,4 @@
-/** Documentation: ISP cloud, emulated Internet, public DNS, IOS NAT, IOS web management and traceroute. */
+/** Documentation: ISP cloud, emulated Internet, public DNS, IOS NAT, broadcasts and traceroute. */
 import type { DocGroup } from '../types.ts';
 import { code, h, list, note, p, table } from '../types.ts';
 
@@ -82,31 +82,6 @@ export const INTERNET_DOCS: DocGroup = {
           ['debug ip nat', 'NAT: s=192.168.10.10->81.32.5.2, d=8.8.8.8 [n] for every translated packet.'],
         ]),
         note('Packets that match no rule go out untranslated (as in IOS): without NAT, the far end does not know how to get back to a private network.'),
-      ],
-    },
-    {
-      id: 'ios-web',
-      title: 'Web management of routers and switches',
-      summary: 'ip http server, port, enable or local authentication, users and pages of the IOS HTTP server.',
-      blocks: [
-        p('2911 routers and 2960 switches (on an SVI, interface Vlan1) have the IOS HTTP server. It is enabled in the CLI or in the “Web management” tab of their window (checkbox, port and users).'),
-        code('Router(config)# ip http server\nRouter(config)# ip http port 8080\nRouter(config)# ip http authentication local\nRouter(config)# username admin privilege 15 secret netfix'),
-        table(['Command', 'Use'], [
-          ['ip http server', 'Listens on port 80 (or the one set with ip http port).'],
-          ['ip http port N', 'Changes the port (1-65535).'],
-          ['ip http authentication enable', 'Default: any user with the enable secret/password. Without an enable secret nobody gets in.'],
-          ['ip http authentication local', 'username users; their privilege sets the level (15 = everything).'],
-          ['username U [privilege N] secret|password CLAVE', 'Local user (secret is stored as a type 5 hash).'],
-        ]),
-        h('Pages'),
-        table(['URL', 'Content'], [
-          ['/', 'Home: “Accessing Cisco … "R1"” with links.'],
-          ['/level/15/exec/-/show/ip/interface/brief/CR', 'Runs an EXEC command (words separated by /, CR at the end).'],
-          ['/level/N/exec/-', 'Monitor: possible keywords as links and a Command box (level 1 = user EXEC).'],
-          ['/level/15/configure/-', 'Configure: configuration commands, one per line.'],
-          ['/level/15/dm', 'Device Manager: front panel, interface table and quick port settings (description, status, access VLAN, IP address).'],
-        ]),
-        note('Authentication is HTTP Basic (realm level_15_access). Failures are logged as %SEC_LOGIN-4-LOGIN_FAILED and changes as %SYS-5-CONFIG_I … on vty0 (PC’s IP address). curl -u user:password also works.'),
       ],
     },
     {
