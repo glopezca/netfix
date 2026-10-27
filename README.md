@@ -8,8 +8,8 @@ Simulador de redes en el navegador inspirado en Cisco Packet Tracer, pensado par
 **DHCP en Cisco IOS** con la sintaxis, la ayuda contextual y las salidas del equipo real, y
 **servicios de red en servidores** (DHCP, DNS, HTTP, correo y SSH) con terminales Linux y Windows.
 
-**Pruébalo:** [glopezca.github.io/Netfix](https://glopezca.github.io/Netfix/) (presentación en inglés británico y
-[en español](https://glopezca.github.io/Netfix/es/); la aplicación está en [`/app/`](https://glopezca.github.io/Netfix/app/)).
+**Pruébalo:** [infogerman.github.io/netfix](https://infogerman.github.io/netfix/) (presentación en inglés británico y
+[en español](https://infogerman.github.io/netfix/es/); la aplicación está en [`/app/`](https://infogerman.github.io/netfix/app/)).
 La página se genera con `npm run site` a partir de `site/` y la publica el job `pages` de la CI.
 
 ![Área de trabajo de Netfix con el laboratorio «Router Linux con NAT y DMZ»: áreas de color para Internet (red pública), la LAN 192.168.1.0/24, la DMZ 172.16.0.0/24 y el cliente externo alrededor del router Linux FW; a la derecha, su ventana Servicios → Firewall con la cadena forward de nftables (LAN a todas partes, DMZ solo a Internet, web publicada) y abajo la paleta de dispositivos](docs/img/netfix-workspace.png)
