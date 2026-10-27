@@ -62,7 +62,7 @@ npm run serve        # http://localhost:8080
 ```
 
 **Pruébalo online, sin instalar nada:**
-**[▶ Abrir Netfix Lab en el navegador](https://raw.githack.com/glopezca/Netfix/main/demo/netfix-lab.html)**
+**[▶ Abrir Netfix Lab en el navegador](https://raw.githack.com/infogerman/Netfix/main/demo/netfix-lab.html)**
 
 El enlace sirve [`demo/netfix-lab.html`](demo/netfix-lab.html), la aplicación completa en un
 único archivo, a través de [raw.githack.com](https://raw.githack.com) (servicio externo; tras un push
@@ -348,6 +348,6 @@ aparecen en `show running-config`, pero no cambian la asignación.
 - **`.claude/`**: reglas y agentes de
   [Everything Claude Code](https://github.com/affaan-m/everything-claude-code), licencia MIT (© Affaan Mustafa).
 
-Autoría: Germán López Castro · <https://github.com/glopezca/netfix>.
+Autoría: Germán López Castro · <https://github.com/infogerman/netfix>.
 Detalles y atribución recomendada en [LICENSE.md](LICENSE.md). Para aportar código, ver [CONTRIBUTING.md](CONTRIBUTING.md)
 (se requiere cesión de derechos, porque el autor también licencia Netfix con otros términos).
