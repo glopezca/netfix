@@ -3,6 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Canonicaliza la antigua URL de GitHub Pages hacia la publicación oficial.
+    (() => {
+      const url = new URL(window.location.href);
+      if (url.hostname.toLowerCase() !== "glopezca.github.io" || !/^\/netfix(?:\/|$)/i.test(url.pathname)) return;
+      url.hostname = "infogerman.github.io";
+      url.pathname = url.pathname.replace(/^\/netfix(?=\/|$)/i, "/netfix");
+      if (url.pathname === "/netfix") url.pathname = "/netfix/";
+      window.location.replace(url.href);
+    })();
+  </script>
   <title>Netfix — laboratorio de redes</title>
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
