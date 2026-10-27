@@ -2,8 +2,8 @@
 // {{key}} is a catalogue string, {{@name}} a value computed here; everything is HTML-escaped except the
 // amount buttons, which are built here from escaped parts.
 
-export const SITE_URL = 'https://glopezca.github.io/Netfix/';
-export const REPO_URL = 'https://github.com/glopezca/netfix';
+export const SITE_URL = 'https://infogerman.github.io/netfix/';
+export const REPO_URL = 'https://github.com/infogerman/netfix';
 export const PAYPAL_URL = 'https://paypal.me/infogerman';
 export const AMOUNTS = [5, 10, 15, 20];
 /** Each language: its catalogue, its folder under the site and the other language. */
