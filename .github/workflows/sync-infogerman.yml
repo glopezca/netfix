@@ -1,0 +1,38 @@
+name: Sync to infogerman/netfix
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-infogerman-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push main to destination
+        env:
+          DESTINATION_TOKEN: ${{ secrets.INFOGERMAN_SYNC_TOKEN }}
+        run: |
+          if [ -z "$DESTINATION_TOKEN" ]; then
+            echo "::error::Missing INFOGERMAN_SYNC_TOKEN secret"
+            exit 1
+          fi
+
+          git remote add destination \
+            "https://x-access-token:${DESTINATION_TOKEN}@github.com/infogerman/netfix.git"
+
+          git push destination HEAD:refs/heads/main --force
