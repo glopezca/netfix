@@ -3,6 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Redirige la antigua publicación a la URL canónica de Netfix.
+    (() => {
+      const url = new URL(window.location.href);
+      if (url.hostname.toLowerCase() !== "glopezca.github.io" || !/^\/netfix(?:\/|$)/i.test(url.pathname)) return;
+      url.hostname = "infogerman.github.io";
+      url.pathname = url.pathname.replace(/^\/netfix(?=\/|$)/i, "/netfix");
+      if (url.pathname === "/netfix") url.pathname = "/netfix/";
+      window.location.replace(url.href);
+    })();
+  </script>
   <title>{{meta.title}}</title>
   <meta name="description" content="{{meta.description}}">
   <link rel="canonical" href="{{@canonical}}">
