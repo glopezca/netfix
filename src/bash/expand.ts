@@ -108,7 +108,14 @@ export class Expander {
 
   /** Pattern for case, [[ == ]] and ${v#…}: quoted characters are escaped. */
   pattern(raw: string): string {
-    return this.fieldsOf(this.tilde(parseWord(raw), false), false).map((f) => f.map((s) => (s.quoted ? escapeGlob(s.text) : s.text)).join('')).join(' ');
+    return this.patternAndTrace(raw)[0];
+  }
+
+  /** The pattern and how bash's trace shows it (every quoted character behind a backslash), from one expansion. */
+  patternAndTrace(raw: string): [string, string] {
+    const fields = this.fieldsOf(this.tilde(parseWord(raw), false), false);
+    const show = (escape: (text: string) => string): string => fields.map((f) => f.map((s) => (s.quoted ? escape(s.text) : s.text)).join('')).join(' ');
+    return [show(escapeGlob), show((text) => text.replace(/./gsu, '\\$&'))];
   }
 
   /** Regex for [[ =~ ]]: quoted parts match literally. */

@@ -1,0 +1,36 @@
+n: 0
+bad.sh: line 1: syntax error near unexpected token `then'
+bad.sh: line 1: `if then'
+bad: 2
++ ((  2 == 0  ))
++ for r in "$@"
++ [[ -d /tmp ]]
++ echo '/tmp dir'
+/tmp dir
++ for r in "$@"
++ [[ -d /nada ]]
++ echo '/nada other'
+/nada other
++ x=3
++ case $x in
++ echo three
+three
++ ((  x > 2  ))
++ x=2
++ ((  x > 2  ))
+++ echo hi
++ n=hi
++ '[' hi = hi ']'
++ echo n=hi
+n=hi
+x: 0
++ ((  0 == 0  ))
++ echo none
+none
++ exit 1
+x0: 1
++ echo a
+a
++ set -n
+setn: 0
+[status 0]

@@ -10,6 +10,7 @@ import { ExpansionError } from './params.ts';
 import { ArithError } from './arith.ts';
 import { VarError } from './vars.ts';
 import { unaryTest, fileCompare, compareInts, regexMatch, TestError } from './testops.ts';
+import { traceOperand, xtrace } from './xtrace.ts';
 
 function softError(sh: Interp, e: unknown): number {
   if (e instanceof RedirError) { sh.error(e.message); return 1; }
@@ -111,8 +112,10 @@ function* forCmd(sh: Interp, cmd: Extract<Compound, { kind: 'for' }>, fds: Fds):
   const status = { value: 0 };
   sh.loopDepth++;
   try {
+    const header = `for ${cmd.name} in ${cmd.words ? cmd.words.map((w) => w.raw).join(' ') : '"$@"'}`;
     for (const item of items) {
       sh.tick();
+      xtrace(sh, header, fds);
       if (!sh.trySetVar(cmd.name, item)) return 1;
       if ((yield* loopBody(sh, cmd.body, fds, status)) === 'break') break;
     }
@@ -126,12 +129,12 @@ function* arithFor(sh: Interp, cmd: Extract<Compound, { kind: 'arith_for' }>, fd
   const status = { value: 0 };
   sh.loopDepth++;
   try {
-    sh.expander.arith(cmd.init);
+    tracedArith(sh, cmd.init, fds, true);
     for (;;) {
       sh.tick();
-      if (cmd.cond.trim() !== '' && sh.expander.arith(cmd.cond) === 0n) break;
+      if (cmd.cond.trim() !== '' && tracedArith(sh, cmd.cond, fds, true) === 0n) break;
       if ((yield* loopBody(sh, cmd.body, fds, status)) === 'break') break;
-      sh.expander.arith(cmd.step);
+      tracedArith(sh, cmd.step, fds, true);
     }
   } catch (e) {
     if (e instanceof ArithError) return softError(sh, e);
@@ -144,6 +147,7 @@ function* arithFor(sh: Interp, cmd: Extract<Compound, { kind: 'arith_for' }>, fd
 
 function* selectCmd(sh: Interp, cmd: Extract<Compound, { kind: 'select' }>, fds: Fds): Gen<number> {
   const items = cmd.words ? sh.expander.words(cmd.words) : [...sh.args];
+  xtrace(sh, `select ${cmd.name} in ${cmd.words ? cmd.words.map((w) => w.raw).join(' ') : '"$@"'}`, fds);
   const status = { value: 0 };
   const menu = items.map((it, i) => `${i + 1}) ${it}`).join('\n');
   sh.loopDepth++;
@@ -167,6 +171,7 @@ function* selectCmd(sh: Interp, cmd: Extract<Compound, { kind: 'select' }>, fds:
 
 function* caseCmd(sh: Interp, cmd: Extract<Compound, { kind: 'case' }>, fds: Fds): Gen<number> {
   let subject: string;
+  xtrace(sh, `case ${cmd.word.raw} in`, fds);
   try {
     subject = sh.expander.word(cmd.word.raw);
   } catch (e) {
@@ -187,13 +192,19 @@ function* caseCmd(sh: Interp, cmd: Extract<Compound, { kind: 'case' }>, fds: Fds
 
 function arithCmd(sh: Interp, cmd: Extract<Compound, { kind: 'arith' }>): number {
   sh.lineno = cmd.line;
-  if (sh.opt('xtrace')) sh.term(`${sh.prompt(sh.getVar('PS4') ?? '+ ')}(( ${cmd.expr.trim()} ))\n`);
   try {
-    return sh.expander.arith(cmd.expr) !== 0n ? 0 : 1;
+    return tracedArith(sh, cmd.expr) !== 0n ? 0 : 1;
   } catch (e) {
     if (e instanceof ArithError) { sh.error(`((: ${e.message}`); throw new DiscardSignal(1); }
     return softError(sh, e);
   }
+}
+
+/** An arithmetic expression, expanded once and traced as bash shows it: `((  n > 5 - 1  ))`. */
+function tracedArith(sh: Interp, expr: string, fds?: Fds, trim = false): bigint {
+  const text = sh.expander.dqString(expr);
+  xtrace(sh, `(( ${trim ? text.trimStart() : text} ))`, fds);
+  return sh.arith.eval(text);
 }
 
 function condCmd(sh: Interp, cmd: Extract<Compound, { kind: 'cond' }>): number {
@@ -206,27 +217,45 @@ function condCmd(sh: Interp, cmd: Extract<Compound, { kind: 'cond' }>): number {
   }
 }
 
-export function evalCond(sh: Interp, e: CondExpr): boolean {
+/** `negated`: a `!` right before a test, which bash's trace shows with it (`[[ ! -f /etc/hosts ]]`). */
+export function evalCond(sh: Interp, e: CondExpr, negated = false): boolean {
   switch (e.kind) {
-    case 'not': return !evalCond(sh, e.expr);
+    case 'not': return !evalCond(sh, e.expr, e.expr.kind !== 'and' && e.expr.kind !== 'or');
     case 'and': return evalCond(sh, e.left) && evalCond(sh, e.right);
     case 'or': return evalCond(sh, e.left) || evalCond(sh, e.right);
-    case 'word': return sh.expander.word(e.arg.raw) !== '';
-    case 'unary': return unaryTest(sh, e.op, sh.expander.word(e.arg.raw));
-    case 'binary': return binaryCond(sh, e.op, e.left.raw, e.right.raw);
+    case 'word': {
+      const value = sh.expander.word(e.arg.raw);
+      traceCond(sh, negated, `-n ${traceOperand(value)}`);
+      return value !== '';
+    }
+    case 'unary': {
+      const value = sh.expander.word(e.arg.raw);
+      traceCond(sh, negated, `${e.op} ${traceOperand(value)}`);
+      return unaryTest(sh, e.op, value);
+    }
+    case 'binary': return binaryCond(sh, e.op, e.left.raw, e.right.raw, negated);
   }
 }
 
-function binaryCond(sh: Interp, op: string, leftRaw: string, rightRaw: string): boolean {
+/** One test of [[ ]] in the trace, each on its own line as bash evaluates it. */
+function traceCond(sh: Interp, negated: boolean, text: string): void {
+  xtrace(sh, `[[ ${negated ? '! ' : ''}${text} ]]`);
+}
+
+function binaryCond(sh: Interp, op: string, leftRaw: string, rightRaw: string, negated: boolean): boolean {
   const left = sh.expander.word(leftRaw);
   const nocase = sh.shoptOn('nocasematch');
+  const [pattern, shown] = op === '==' || op === '=' || op === '!=' ? sh.expander.patternAndTrace(rightRaw) : [undefined, undefined];
+  const regex = op === '=~' ? sh.expander.regex(rightRaw) : undefined;
+  const right = pattern ?? regex ?? sh.expander.word(rightRaw);
+  traceCond(sh, negated, `${traceOperand(left)} ${op} ${traceOperand(shown ?? right)}`);
   switch (op) {
-    case '==': case '=': return matchPattern(sh.expander.pattern(rightRaw), left, { nocase });
-    case '!=': return !matchPattern(sh.expander.pattern(rightRaw), left, { nocase });
-    case '=~': return regexMatch(sh, left, sh.expander.regex(rightRaw));
-    case '<': return left < sh.expander.word(rightRaw);
-    case '>': return left > sh.expander.word(rightRaw);
-    case '-ef': case '-nt': case '-ot': return fileCompare(sh, op, left, sh.expander.word(rightRaw));
-    default: return compareInts(op, sh.expander.arith(left), sh.expander.arith(sh.expander.word(rightRaw)));
+    case '==': case '=': return matchPattern(right, left, { nocase });
+    case '!=': return !matchPattern(right, left, { nocase });
+    case '=~': return regexMatch(sh, left, right);
+    case '<': return left < right;
+    case '>': return left > right;
+    case '-ef': case '-nt': case '-ot': return fileCompare(sh, op, left, right);
+    default: return compareInts(op, sh.expander.arith(left), sh.expander.arith(right));
   }
 }

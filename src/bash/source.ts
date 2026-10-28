@@ -36,6 +36,8 @@ export function* runSourceText(sh: Interp, src: string, fds: Fds, topLevel: bool
     }
     if (!list) return status;
     sh.inputLine++;
+    // bash -n, set -n: read and check the syntax, run nothing (an interactive shell ignores it).
+    if (sh.opt('noexec') && !sh.interactive) { status = 0; continue; }
     try {
       status = yield* execList(sh, list, fds);
     } catch (e) {

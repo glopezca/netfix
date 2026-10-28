@@ -27,6 +27,7 @@ import { runSync } from './run-sync.ts';
 import { freshBudget, MAX_OUTPUT, CHECK_EVERY } from './interp-types.ts';
 import type { Budget, HistoryStore, Job } from './interp-types.ts';
 import { runSourceText } from './source.ts';
+import { inheritTraceLevel } from './xtrace.ts';
 import { dynamicVariable, optionFlags, specialParameter } from './specials.ts';
 import { commandSubstitution, processSubstitution } from './subst.ts';
 
@@ -125,13 +126,9 @@ export class Interp {
     this.arith = new Arith({ get: (n, sub) => this.arithGet(n, sub), set: (n, sub, v) => this.arithSet(n, sub, v) });
   }
 
-  get cred(): Cred {
-    return { uid: this.user.uid, gid: this.user.gid, groups: this.user.groups };
-  }
+  get cred(): Cred { return { uid: this.user.uid, gid: this.user.gid, groups: this.user.groups }; }
 
-  opt(name: SetOption): boolean {
-    return this.opts.get(name) ?? false;
-  }
+  opt(name: SetOption): boolean { return this.opts.get(name) ?? false; }
 
   shoptOn(name: string): boolean {
     return this.shopt.get(name) ?? false;
@@ -162,6 +159,7 @@ export class Interp {
     c.loginShell = this.loginShell;
     (c as { pid: number }).pid = this.pid;
     for (const [sig, cmd] of this.traps) if (cmd === '') c.traps.set(sig, '');
+    inheritTraceLevel(this, c);
     return c;
   }
 
@@ -315,9 +313,7 @@ export class Interp {
     return BUILTINS.has(name) && (includeDisabled || !this.disabledBuiltins.has(name));
   }
 
-  builtinNames(): string[] {
-    return [...BUILTINS.keys()].sort();
-  }
+  builtinNames(): string[] { return [...BUILTINS.keys()].sort(); }
 
   /** Every command name: aliases, functions, builtins and executables in $PATH. */
   commandNames(): string[] {

@@ -325,10 +325,14 @@ export function attrString(attrs: ReadonlySet<string> | undefined, value?: Value
   return ATTR_ORDER.filter((a) => set.has(a)).join('');
 }
 
+/** A key of an associative array as declare -p writes it: in double quotes when it has shell metacharacters. */
+const subscript = (k: string): string => (/[\s'"\\|&;()<>!{}*[\]?^$`]|^[~#]/.test(k) ? dq(k) : k);
+
 function arrayLiteral(value: Value): string {
   const keys = arrayKeys(value);
   const vals = arrayValues(value);
-  return `(${keys.map((k, i) => `[${k}]=${dq(vals[i] ?? '')}`).join(' ')}${keys.length && value.t === 'assoc' ? ' ' : ''})`;
+  const key = (k: string): string => (value.t === 'assoc' ? subscript(k) : k);
+  return `(${keys.map((k, i) => `[${key(k)}]=${dq(vals[i] ?? '')}`).join(' ')}${keys.length && value.t === 'assoc' ? ' ' : ''})`;
 }
 
 function dq(s: string): string {

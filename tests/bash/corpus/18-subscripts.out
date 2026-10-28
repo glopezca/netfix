@@ -1,0 +1,7 @@
+declare -a a=([2]="two" [3]="three")
+declare -A s=(["a b"]="1" )
+declare -A t=(["*"]="star" )
+declare -A u=(["x\"y"]="q" )
+declare -A w=([plain]="v" )
+1
+[status 0]

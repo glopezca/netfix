@@ -1,0 +1,79 @@
++ v='a b'
++ e=
++ [[ -d /tmp ]]
++ [[ a b == \a\ \b ]]
++ [[ ! -f /no/such ]]
++ [[ -n '' ]]
++ [[ x == x* ]]
++ [[ a b != a* ]]
++ echo no
+no
++ x=' sp '
++ echo ' sp '
+ sp 
++ f 21
++ local y=42
++ echo 42
+42
++ a=(1 "2 3")
++ a+=(4)
++ m=(['k']='v')
++ declare -A m
++ set -- p q
++ for r in "$@"
++ :
++ for r in "$@"
++ :
++ (( i = 0 ))
++ (( i < 2 ))
++ :
++ (( i++ ))
++ (( i < 2 ))
++ :
++ (( i++ ))
++ (( i < 2 ))
++++ echo hi
+++ echo hi
++ echo hi
+hi
++ n=3
++ ((  n > 3 - 1  ))
++ case "$v" in
++ echo match
+match
++ it='it'\''s'
++ echo 'it'\''s'
+it's
++ declare 'x=a b' e2=
++ g
++ local e3= 'z=p q'
++ export P=/x:/y Q
++ P=/x:/y
++ h=(['a b']='1' ['c']='x y')
++ declare -A h
++ b=('1' '2 3')
++ declare -a b
++ arr[2]='x y'
++ arr+=(z)
++ echo ''
+
++ x1=1
++ y1=2
++ true
++ readonly d=4 e=5
++ d=4
++ e=5
+++ echo a
++ echo a
+a
++ c=([x[1]]=1)
++ declare -p c
+declare -a c=([0]="1")
++ (( i=0 ))
++ (( i<1   ))
++ :
++ (( i++ ))
++ (( i<1   ))
++ set +x
+done
+[status 0]

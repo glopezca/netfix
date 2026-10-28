@@ -1052,3 +1052,19 @@ Las pruebas de paridad es/en cubren los bloques nuevos.
   origen 0.0.0.0. Un ping a la difusión dirigida de una red lejana denegado por una ACL ya no recibe «Packet filtered».
 - **Con NAT de entrada**, la cita es el paquete tal como lo envió su origen (antes de la traducción).
 - **Documentación:** el ejercicio de ACL explica el «No route to host» de ALUMNO.
+
+### bash: -n, traza de set -x y subíndices (v0.20.10)
+
+Encontrado al preparar la documentación de bash (fase 36d), contrastado con el bash real en el corpus
+(`16-invocation`, `17-xtrace`, `18-subscripts`):
+
+- **`bash -n` y `set -n`** analizan sin ejecutar (antes, `bash -n script.sh` lo ejecutaba). Un shell interactivo lo
+  ignora, como bash.
+- **Traza (`set -x`, `bash -x`)** como la de bash: `for`, `select` y `case` con su texto; cada prueba de `[[ ]]` en su
+  línea (con `!` y los caracteres citados del patrón tras `\`); `((  expr  ))` con `$var` expandida (y sin ejecutar dos
+  veces una `$( )`); `for (( ))`; cada asignación en su línea; `declare`/`local`/`export`/`readonly` como bash; un `+`
+  más por cada nivel de `$( )` o `<( )`, también en sus subshells y tuberías (módulo `src/bash/xtrace.ts`).
+- **`([a b]=1)`, `([1 + 1]=two)`, `([x[1]]=1)`**: el subíndice de un elemento llega hasta su `]` aunque tenga blancos o
+  corchetes. **`declare -p`** pone entre comillas las claves asociativas con metacaracteres (`["a b"]="1"`).
+- **Pendiente:** el orden de las claves de un array asociativo en `declare -p` sigue al de inserción; bash usa el de su
+  tabla hash. `[[ ! ( -z a ) ]]` se traza con `!` (bash no lo muestra con paréntesis).

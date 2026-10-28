@@ -1,6 +1,6 @@
 /** Recursive-descent parser for bash: lists, pipelines, simple commands and redirections. */
 import type { ArrayElement, Assignment, Command, List, ListItem, Pipeline, Redirect, RedirOp, SimpleCommand, Word } from './ast.ts';
-import { Lexer, BashSyntaxError, IncompleteInput } from './lexer.ts';
+import { Lexer, BashSyntaxError, IncompleteInput, skipDollar, skipDouble, skipSingle } from './lexer.ts';
 import type { Token } from './lexer.ts';
 import { parseCompound, COMPOUND_STARTS } from './parser-compound.ts';
 
@@ -230,16 +230,44 @@ export function parseAssignment(raw: string): Assignment | undefined {
   return { ...base, value: { raw: value } };
 }
 
+/** Index of the `]` closing the subscript that opens at `i` (quotes, $(…) and nested [ ] skipped), or -1. */
+function subscriptEnd(src: string, i: number): number {
+  let depth = 0;
+  for (let j = i; j < src.length; j++) {
+    const c = src[j];
+    if (c === '\\') j++;
+    else if (c === "'") j = skipSingle(src, j + 1) - 1;
+    else if (c === '"') j = skipDouble(src, j + 1) - 1;
+    else if (c === '$') j = skipDollar(src, j) - 1;
+    else if (c === '[') depth++;
+    else if (c === ']' && --depth === 0) return j;
+  }
+  return -1;
+}
+
+/**
+ * The elements of `name=(…)`. As in bash, a `[subscript]=` keeps its blanks (`([a b]=1)`, `([1 + 1]=two)`): it ends at
+ * the matching `]`, not at the first blank.
+ */
 function parseArrayElements(inner: string): ArrayElement[] {
-  const lex = new Lexer(inner);
   const out: ArrayElement[] = [];
+  let offset = 0;
   for (;;) {
-    const t = lex.next();
+    const t = new Lexer(inner.slice(offset)).next();
     if (t.kind === 'eof') return out;
-    if (t.kind === 'newline') continue;
+    if (t.kind === 'newline') { offset += t.end; continue; }
     if (t.kind !== 'word') throw new BashSyntaxError(tokenText(t));
+    const close = t.raw.startsWith('[') ? subscriptEnd(inner, offset + t.start) : -1;
+    if (close >= 0 && inner[close + 1] === '=') {
+      const v = new Lexer(inner.slice(close + 2)).next();
+      const value = v.kind === 'word' && v.start === 0 ? v.raw : '';
+      out.push({ key: inner.slice(offset + t.start + 1, close), value: { raw: value } });
+      offset = close + 2 + value.length;
+      continue;
+    }
     const m = /^\[([^\]]*)\]=(.*)$/s.exec(t.raw);
     out.push(m ? { key: m[1], value: { raw: m[2] ?? '' } } : { value: { raw: t.raw } });
+    offset += t.end;
   }
 }
 

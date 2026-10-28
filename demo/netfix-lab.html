@@ -16361,10 +16361,13 @@ function attrString(attrs, value) {
         set.add('A');
     return ATTR_ORDER.filter((a) => set.has(a)).join('');
 }
+/** A key of an associative array as declare -p writes it: in double quotes when it has shell metacharacters. */
+const subscript = (k) => (/[\s'"\\|&;()<>!{}*[\]?^$`]|^[~#]/.test(k) ? dq(k) : k);
 function arrayLiteral(value) {
     const keys = arrayKeys(value);
     const vals = arrayValues(value);
-    return `(${keys.map((k, i) => `[${k}]=${dq(vals[i] ?? '')}`).join(' ')}${keys.length && value.t === 'assoc' ? ' ' : ''})`;
+    const key = (k) => (value.t === 'assoc' ? subscript(k) : k);
+    return `(${keys.map((k, i) => `[${key(k)}]=${dq(vals[i] ?? '')}`).join(' ')}${keys.length && value.t === 'assoc' ? ' ' : ''})`;
 }
 function dq(s) {
     return `"${s.replace(/(["\\$`])/g, '\\$1')}"`;
@@ -25160,7 +25163,13 @@ class Expander {
     }
     /** Pattern for case, [[ == ]] and ${v#…}: quoted characters are escaped. */
     pattern(raw) {
-        return this.fieldsOf(this.tilde(parseWord(raw), false), false).map((f) => f.map((s) => (s.quoted ? escapeGlob(s.text) : s.text)).join('')).join(' ');
+        return this.patternAndTrace(raw)[0];
+    }
+    /** The pattern and how bash's trace shows it (every quoted character behind a backslash), from one expansion. */
+    patternAndTrace(raw) {
+        const fields = this.fieldsOf(this.tilde(parseWord(raw), false), false);
+        const show = (escape) => fields.map((f) => f.map((s) => (s.quoted ? escape(s.text) : s.text)).join('')).join(' ');
+        return [show(escapeGlob), show((text) => text.replace(/./gsu, '\\$&'))];
     }
     /** Regex for [[ =~ ]]: quoted parts match literally. */
     regex(raw) {
@@ -25610,6 +25619,49 @@ function both(sh, fds, path, append) {
 
 return { RedirError, applyRedirects };
 })();
+__m["bash/xtrace.js"] = (() => {
+const { writeSink } = __m["bash/io.js"];
+const { quoteForReuse } = __m["bash/params.js"];
+/** Substitution level of a shell (only what is not 0 is stored). */
+const levels = new WeakMap();
+const levelOf = (sh) => levels.get(sh) ?? 0;
+/**
+ * Runs `fn` one substitution level deeper than `sh`: in `target`, a subshell clone or `sh` itself (${ …; }), whose
+ * previous level comes back afterwards.
+ */
+function deeper(sh, target, fn) {
+    const before = levels.get(target);
+    levels.set(target, levelOf(sh) + 1);
+    try {
+        return fn();
+    }
+    finally {
+        if (before === undefined)
+            levels.delete(target);
+        else
+            levels.set(target, before);
+    }
+}
+/** A subshell (or a pipeline stage) traces at the level of the shell it was cloned from. */
+function inheritTraceLevel(from, to) {
+    const level = levels.get(from);
+    if (level !== undefined)
+        levels.set(to, level);
+}
+/** A word as bash's trace shows it: bare when safe, otherwise in single quotes. */
+const traceWord = (s) => (/^[A-Za-z0-9_./=:@%+,-]+$/.test(s) ? s : quoteForReuse(s));
+/** An operand of [[ ]]: bash shows its value unquoted, and '' when it is empty. */
+const traceOperand = (s) => (s === '' ? "''" : s);
+/** Writes one trace line when xtrace is on (to the command's stderr, or the shell's). */
+function xtrace(sh, text, fds = sh.currentFds) {
+    if (!sh.opt('xtrace'))
+        return;
+    const ps4 = sh.prompt(sh.getVar('PS4') ?? '+ ');
+    writeSink(sh, fds.get(2)?.write, `${(ps4[0] ?? '').repeat(levelOf(sh))}${ps4}${text}\n`);
+}
+
+return { deeper, inheritTraceLevel, traceWord, traceOperand, xtrace };
+})();
 __m["bash/exec-compound.js"] = (() => {
 const { DiscardSignal, ExitSignal, LoopSignal, ReturnSignal } = __m["bash/types.js"];
 const { applyRedirects, RedirError } = __m["bash/redirect.js"];
@@ -25619,6 +25671,7 @@ const { ExpansionError } = __m["bash/params.js"];
 const { ArithError } = __m["bash/arith.js"];
 const { VarError } = __m["bash/vars.js"];
 const { unaryTest, fileCompare, compareInts, regexMatch, TestError } = __m["bash/testops.js"];
+const { traceOperand, xtrace } = __m["bash/xtrace.js"];
 function softError(sh, e) {
     if (e instanceof RedirError) {
         sh.error(e.message);
@@ -25733,8 +25786,10 @@ function* forCmd(sh, cmd, fds) {
     const status = { value: 0 };
     sh.loopDepth++;
     try {
+        const header = `for ${cmd.name} in ${cmd.words ? cmd.words.map((w) => w.raw).join(' ') : '"$@"'}`;
         for (const item of items) {
             sh.tick();
+            xtrace(sh, header, fds);
             if (!sh.trySetVar(cmd.name, item))
                 return 1;
             if ((yield* loopBody(sh, cmd.body, fds, status)) === 'break')
@@ -25750,14 +25805,14 @@ function* arithFor(sh, cmd, fds) {
     const status = { value: 0 };
     sh.loopDepth++;
     try {
-        sh.expander.arith(cmd.init);
+        tracedArith(sh, cmd.init, fds, true);
         for (;;) {
             sh.tick();
-            if (cmd.cond.trim() !== '' && sh.expander.arith(cmd.cond) === 0n)
+            if (cmd.cond.trim() !== '' && tracedArith(sh, cmd.cond, fds, true) === 0n)
                 break;
             if ((yield* loopBody(sh, cmd.body, fds, status)) === 'break')
                 break;
-            sh.expander.arith(cmd.step);
+            tracedArith(sh, cmd.step, fds, true);
         }
     }
     catch (e) {
@@ -25772,6 +25827,7 @@ function* arithFor(sh, cmd, fds) {
 }
 function* selectCmd(sh, cmd, fds) {
     const items = cmd.words ? sh.expander.words(cmd.words) : [...sh.args];
+    xtrace(sh, `select ${cmd.name} in ${cmd.words ? cmd.words.map((w) => w.raw).join(' ') : '"$@"'}`, fds);
     const status = { value: 0 };
     const menu = items.map((it, i) => `${i + 1}) ${it}`).join('\n');
     sh.loopDepth++;
@@ -25802,6 +25858,7 @@ function* selectCmd(sh, cmd, fds) {
 }
 function* caseCmd(sh, cmd, fds) {
     let subject;
+    xtrace(sh, `case ${cmd.word.raw} in`, fds);
     try {
         subject = sh.expander.word(cmd.word.raw);
     }
@@ -25824,10 +25881,8 @@ function* caseCmd(sh, cmd, fds) {
 }
 function arithCmd(sh, cmd) {
     sh.lineno = cmd.line;
-    if (sh.opt('xtrace'))
-        sh.term(`${sh.prompt(sh.getVar('PS4') ?? '+ ')}(( ${cmd.expr.trim()} ))\n`);
     try {
-        return sh.expander.arith(cmd.expr) !== 0n ? 0 : 1;
+        return tracedArith(sh, cmd.expr) !== 0n ? 0 : 1;
     }
     catch (e) {
         if (e instanceof ArithError) {
@@ -25836,6 +25891,12 @@ function arithCmd(sh, cmd) {
         }
         return softError(sh, e);
     }
+}
+/** An arithmetic expression, expanded once and traced as bash shows it: `((  n > 5 - 1  ))`. */
+function tracedArith(sh, expr, fds, trim = false) {
+    const text = sh.expander.dqString(expr);
+    xtrace(sh, `(( ${trim ? text.trimStart() : text} ))`, fds);
+    return sh.arith.eval(text);
 }
 function condCmd(sh, cmd) {
     sh.lineno = cmd.line;
@@ -25851,30 +25912,47 @@ function condCmd(sh, cmd) {
         return softError(sh, e);
     }
 }
-function evalCond(sh, e) {
+/** `negated`: a `!` right before a test, which bash's trace shows with it (`[[ ! -f /etc/hosts ]]`). */
+function evalCond(sh, e, negated = false) {
     switch (e.kind) {
-        case 'not': return !evalCond(sh, e.expr);
+        case 'not': return !evalCond(sh, e.expr, e.expr.kind !== 'and' && e.expr.kind !== 'or');
         case 'and': return evalCond(sh, e.left) && evalCond(sh, e.right);
         case 'or': return evalCond(sh, e.left) || evalCond(sh, e.right);
-        case 'word': return sh.expander.word(e.arg.raw) !== '';
-        case 'unary': return unaryTest(sh, e.op, sh.expander.word(e.arg.raw));
-        case 'binary': return binaryCond(sh, e.op, e.left.raw, e.right.raw);
+        case 'word': {
+            const value = sh.expander.word(e.arg.raw);
+            traceCond(sh, negated, `-n ${traceOperand(value)}`);
+            return value !== '';
+        }
+        case 'unary': {
+            const value = sh.expander.word(e.arg.raw);
+            traceCond(sh, negated, `${e.op} ${traceOperand(value)}`);
+            return unaryTest(sh, e.op, value);
+        }
+        case 'binary': return binaryCond(sh, e.op, e.left.raw, e.right.raw, negated);
     }
 }
-function binaryCond(sh, op, leftRaw, rightRaw) {
+/** One test of [[ ]] in the trace, each on its own line as bash evaluates it. */
+function traceCond(sh, negated, text) {
+    xtrace(sh, `[[ ${negated ? '! ' : ''}${text} ]]`);
+}
+function binaryCond(sh, op, leftRaw, rightRaw, negated) {
     const left = sh.expander.word(leftRaw);
     const nocase = sh.shoptOn('nocasematch');
+    const [pattern, shown] = op === '==' || op === '=' || op === '!=' ? sh.expander.patternAndTrace(rightRaw) : [undefined, undefined];
+    const regex = op === '=~' ? sh.expander.regex(rightRaw) : undefined;
+    const right = pattern ?? regex ?? sh.expander.word(rightRaw);
+    traceCond(sh, negated, `${traceOperand(left)} ${op} ${traceOperand(shown ?? right)}`);
     switch (op) {
         case '==':
-        case '=': return matchPattern(sh.expander.pattern(rightRaw), left, { nocase });
-        case '!=': return !matchPattern(sh.expander.pattern(rightRaw), left, { nocase });
-        case '=~': return regexMatch(sh, left, sh.expander.regex(rightRaw));
-        case '<': return left < sh.expander.word(rightRaw);
-        case '>': return left > sh.expander.word(rightRaw);
+        case '=': return matchPattern(right, left, { nocase });
+        case '!=': return !matchPattern(right, left, { nocase });
+        case '=~': return regexMatch(sh, left, right);
+        case '<': return left < right;
+        case '>': return left > right;
         case '-ef':
         case '-nt':
-        case '-ot': return fileCompare(sh, op, left, sh.expander.word(rightRaw));
-        default: return compareInts(op, sh.expander.arith(left), sh.expander.arith(sh.expander.word(rightRaw)));
+        case '-ot': return fileCompare(sh, op, left, right);
+        default: return compareInts(op, sh.expander.arith(left), sh.expander.arith(right));
     }
 }
 
@@ -26260,7 +26338,7 @@ function condPrimary(p) {
 return { COMPOUND_STARTS, parseCompound };
 })();
 __m["bash/parser.js"] = (() => {
-const { Lexer, BashSyntaxError, IncompleteInput } = __m["bash/lexer.js"];
+const { Lexer, BashSyntaxError, IncompleteInput, skipDollar, skipDouble, skipSingle } = __m["bash/lexer.js"];
 const { parseCompound, COMPOUND_STARTS } = __m["bash/parser-compound.js"];
 
 const REDIR_OPS = new Set(['<', '>', '>>', '>|', '<>', '<<', '<<-', '<<<', '<&', '>&', '&>', '&>>']);
@@ -26504,19 +26582,54 @@ function parseAssignment(raw) {
         return { ...base, array: parseArrayElements(value.slice(1, -1)) };
     return { ...base, value: { raw: value } };
 }
+/** Index of the `]` closing the subscript that opens at `i` (quotes, $(…) and nested [ ] skipped), or -1. */
+function subscriptEnd(src, i) {
+    let depth = 0;
+    for (let j = i; j < src.length; j++) {
+        const c = src[j];
+        if (c === '\\')
+            j++;
+        else if (c === "'")
+            j = skipSingle(src, j + 1) - 1;
+        else if (c === '"')
+            j = skipDouble(src, j + 1) - 1;
+        else if (c === '$')
+            j = skipDollar(src, j) - 1;
+        else if (c === '[')
+            depth++;
+        else if (c === ']' && --depth === 0)
+            return j;
+    }
+    return -1;
+}
+/**
+ * The elements of `name=(…)`. As in bash, a `[subscript]=` keeps its blanks (`([a b]=1)`, `([1 + 1]=two)`): it ends at
+ * the matching `]`, not at the first blank.
+ */
 function parseArrayElements(inner) {
-    const lex = new Lexer(inner);
     const out = [];
+    let offset = 0;
     for (;;) {
-        const t = lex.next();
+        const t = new Lexer(inner.slice(offset)).next();
         if (t.kind === 'eof')
             return out;
-        if (t.kind === 'newline')
+        if (t.kind === 'newline') {
+            offset += t.end;
             continue;
+        }
         if (t.kind !== 'word')
             throw new BashSyntaxError(tokenText(t));
+        const close = t.raw.startsWith('[') ? subscriptEnd(inner, offset + t.start) : -1;
+        if (close >= 0 && inner[close + 1] === '=') {
+            const v = new Lexer(inner.slice(close + 2)).next();
+            const value = v.kind === 'word' && v.start === 0 ? v.raw : '';
+            out.push({ key: inner.slice(offset + t.start + 1, close), value: { raw: value } });
+            offset = close + 2 + value.length;
+            continue;
+        }
         const m = /^\[([^\]]*)\]=(.*)$/s.exec(t.raw);
         out.push(m ? { key: m[1], value: { raw: m[2] ?? '' } } : { value: { raw: t.raw } });
+        offset += t.end;
     }
 }
 /** Parses a complete program (scripts, -c strings, eval, functions). */
@@ -26539,7 +26652,7 @@ const { execCompound } = __m["bash/exec-compound.js"];
 const { resolveCommand, runResolved } = __m["bash/run.js"];
 const { parse } = __m["bash/parser.js"];
 const { isPlainWord } = __m["bash/wordparse.js"];
-const { quoteForReuse } = __m["bash/params.js"];
+const { traceWord, xtrace } = __m["bash/xtrace.js"];
 const SPECIAL_BUILTINS = new Set(['break', ':', '.', 'continue', 'eval', 'exec', 'exit', 'export', 'readonly', 'return', 'set', 'shift', 'times', 'trap', 'unset', 'source']);
 const DECLARATION = new Set(['declare', 'typeset', 'local', 'readonly', 'export']);
 /** Errors that end the current command with status 1 (and a message). */
@@ -26606,6 +26719,8 @@ function setPipestatus(sh, statuses) {
     sh.vars.setArray('PIPESTATUS', statuses.map((s) => ({ value: String(s) })), false);
 }
 function* execCommand(sh, cmd, fds) {
+    if (sh.opt('noexec') && !sh.interactive)
+        return 0;
     switch (cmd.kind) {
         case 'list': return yield* execList(sh, cmd, fds);
         case 'and_or': return yield* execAndOr(sh, cmd, fds);
@@ -26731,7 +26846,7 @@ function* execSimple(sh, cmd, fds) {
         return reportError(sh, e);
     }
     if (argv.length === 0)
-        return assignOnly(sh, cmd.assigns, sh.substitutions > subsBefore ? sh.status : 0);
+        return assignOnly(sh, cmd.assigns, sh.substitutions > subsBefore ? sh.status : 0, cfds);
     const name = argv[0] ?? '';
     let temps;
     try {
@@ -26740,7 +26855,7 @@ function* execSimple(sh, cmd, fds) {
     catch (e) {
         return reportError(sh, e);
     }
-    trace(sh, cfds, temps, argv);
+    trace(sh, cfds, temps, argv, decl);
     const resolved = resolveCommand(sh, name);
     const status = yield* withTemps(sh, resolved.kind === 'builtin' && SPECIAL_BUILTINS.has(name), resolved.kind === 'program' || resolved.kind === 'script', temps, (env) => runResolved(sh, resolved, argv, cfds, env, decl));
     sh.vars.set('_', argv[argv.length - 1] ?? '');
@@ -26771,11 +26886,11 @@ function declArg(sh, a) {
     return { name: a.name, index: a.index, append: a.append, value: a.value ? sh.expander.word(a.value.raw, true) : '' };
 }
 /** NAME=value with no command: assignments in the current shell. */
-function assignOnly(sh, assigns, before) {
+function assignOnly(sh, assigns, before, fds) {
     const subsBefore = sh.substitutions;
     for (const a of assigns) {
         try {
-            assign(sh, a);
+            assign(sh, a, fds);
         }
         catch (e) {
             return reportError(sh, e);
@@ -26783,8 +26898,12 @@ function assignOnly(sh, assigns, before) {
     }
     return sh.substitutions > subsBefore ? sh.status : before;
 }
-function assign(sh, a) {
+/** `fds`: trace the assignment (set -x) as bash does, one line each, after its expansions. */
+function assign(sh, a, fds) {
+    const op = a.append ? '+=' : '=';
     if (a.array) {
+        if (fds)
+            xtrace(sh, `${a.name}${op}(${a.array.map((e) => (e.key !== undefined ? `[${e.key}]=${e.value.raw}` : e.value.raw)).join(' ')})`, fds);
         const items = a.array.flatMap((e) => (e.key !== undefined ? [{ key: sh.expander.word(e.key), value: sh.expander.word(e.value.raw, true) }] : sh.expander.words([e.value]).map((value) => ({ value }))));
         const isAssoc = sh.vars.get(a.name)?.attrs.has('A') ?? false;
         sh.vars.setArray(a.name, items.map((it) => ({ key: it.key !== undefined && !isAssoc ? String(sh.arith.eval(it.key)) : it.key, value: it.value })), isAssoc, a.append);
@@ -26793,6 +26912,8 @@ function assign(sh, a) {
         return;
     }
     const value = sh.expander.word(a.value?.raw ?? '', true);
+    if (fds)
+        xtrace(sh, `${a.name}${a.index !== undefined ? `[${a.index}]` : ''}${op}${value === '' ? '' : traceWord(value)}`, fds);
     if (a.index !== undefined) {
         const isAssoc = sh.vars.get(a.name)?.attrs.has('A') ?? false;
         sh.vars.setElement(a.name, isAssoc ? sh.expander.word(a.index) : Number(sh.arith.eval(a.index)), value, a.append);
@@ -26830,13 +26951,30 @@ function* withTemps(sh, persistent, external, temps, run) {
         sh.vars.popScope();
     }
 }
-function trace(sh, fds, temps, argv) {
+/**
+ * set -x for a simple command. Declaration commands (declare, local, export…) show each scalar assignment inside the
+ * command (`local 'z=p q'`); an array one goes on its own line first (`m=(['k']='v')`); export and readonly repeat each
+ * one. Assignments before a command (`x=1 cmd`) go one per line.
+ */
+function trace(sh, fds, temps, argv, decl) {
     if (!sh.opt('xtrace'))
         return;
-    const q = (s) => (/^[A-Za-z0-9_./=:@%+,-]+$/.test(s) ? s : quoteForReuse(s));
-    const ps4 = sh.prompt(sh.getVar('PS4') ?? '+ ');
-    const parts = [...temps.map(([k, v]) => `${k}=${q(v)}`), ...argv.map(q)];
-    writeSink(sh, fds.get(2)?.write, `${ps4.repeat(1)}${parts.join(' ')}\n`);
+    const sq = (s) => `'${s.replace(/'/g, "'\\''")}'`;
+    const args = [...(decl?.values() ?? [])];
+    for (const d of args)
+        if (d.array)
+            xtrace(sh, `${d.name}=(${d.array.map((it) => (it.key !== undefined ? `[${sq(it.key)}]=${sq(it.value)}` : sq(it.value))).join(' ')})`, fds);
+    const shown = (w, i) => {
+        const d = decl?.get(i);
+        return d && !d.array ? traceWord(`${d.name}${d.index !== undefined ? `[${d.index}]` : ''}${d.append ? '+=' : '='}${d.value ?? ''}`) : traceWord(w);
+    };
+    for (const [k, v] of temps)
+        xtrace(sh, `${k}=${traceWord(v)}`, fds);
+    xtrace(sh, argv.map(shown).join(' '), fds);
+    if (argv[0] === 'export' || argv[0] === 'readonly')
+        for (const d of args)
+            if (!d.array)
+                xtrace(sh, `${d.name}=${d.value ? traceWord(d.value) : ''}`, fds);
 }
 // ------------------------------------------------------------ aliases
 function aliasExpansion(sh, cmd) {
@@ -27121,6 +27259,11 @@ function* runSourceText(sh, src, fds, topLevel) {
         if (!list)
             return status;
         sh.inputLine++;
+        // bash -n, set -n: read and check the syntax, run nothing (an interactive shell ignores it).
+        if (sh.opt('noexec') && !sh.interactive) {
+            status = 0;
+            continue;
+        }
         try {
             status = yield* execList(sh, list, fds);
         }
@@ -27184,6 +27327,7 @@ __m["bash/subst.js"] = (() => {
 const { DiscardSignal, ExitSignal } = __m["bash/types.js"];
 const { bufferSink } = __m["bash/io.js"];
 const { runSync } = __m["bash/run-sync.js"];
+const { deeper } = __m["bash/xtrace.js"];
 function commandSubstitution(sh, src, mode) {
     const target = mode === 'sub' ? sh.clone() : sh;
     const capture = bufferSink();
@@ -27196,7 +27340,7 @@ function commandSubstitution(sh, src, mode) {
         sh.vars.declareLocal('REPLY');
     }
     try {
-        target.status = runSync(target.runSource(src, fds));
+        target.status = deeper(sh, target, () => runSync(target.runSource(src, fds)));
     }
     catch (e) {
         if (e instanceof ExitSignal || (mode === 'sub' && e instanceof DiscardSignal))
@@ -27224,8 +27368,9 @@ function processSubstitution(sh, dir, src, path) {
     const capture = bufferSink();
     const fds = new Map(sh.currentFds);
     fds.set(1, { write: capture });
+    const child = sh.clone();
     try {
-        runSync(sh.clone().runSource(src, fds));
+        deeper(sh, child, () => runSync(child.runSource(src, fds)));
     }
     catch (e) {
         if (!(e instanceof ExitSignal))
@@ -27255,6 +27400,7 @@ const { makeCtx, ttyFds } = __m["bash/io.js"];
 const { runSync } = __m["bash/run-sync.js"];
 const { freshBudget, MAX_OUTPUT, CHECK_EVERY } = __m["bash/interp-types.js"];
 const { runSourceText } = __m["bash/source.js"];
+const { inheritTraceLevel } = __m["bash/xtrace.js"];
 const { dynamicVariable, optionFlags, specialParameter } = __m["bash/specials.js"];
 const { commandSubstitution, processSubstitution } = __m["bash/subst.js"];
 
@@ -27356,12 +27502,8 @@ class Interp {
         this.expander = new Expander(this.expandApi());
         this.arith = new Arith({ get: (n, sub) => this.arithGet(n, sub), set: (n, sub, v) => this.arithSet(n, sub, v) });
     }
-    get cred() {
-        return { uid: this.user.uid, gid: this.user.gid, groups: this.user.groups };
-    }
-    opt(name) {
-        return this.opts.get(name) ?? false;
-    }
+    get cred() { return { uid: this.user.uid, gid: this.user.gid, groups: this.user.groups }; }
+    opt(name) { return this.opts.get(name) ?? false; }
     shoptOn(name) {
         return this.shopt.get(name) ?? false;
     }
@@ -27392,6 +27534,7 @@ class Interp {
         for (const [sig, cmd] of this.traps)
             if (cmd === '')
                 c.traps.set(sig, '');
+        inheritTraceLevel(this, c);
         return c;
     }
     // ------------------------------------------------------------ limits
@@ -27533,9 +27676,7 @@ class Interp {
     isBuiltin(name, includeDisabled = false) {
         return BUILTINS.has(name) && (includeDisabled || !this.disabledBuiltins.has(name));
     }
-    builtinNames() {
-        return [...BUILTINS.keys()].sort();
-    }
+    builtinNames() { return [...BUILTINS.keys()].sort(); }
     /** Every command name: aliases, functions, builtins and executables in $PATH. */
     commandNames() {
         const names = new Set([...this.aliases.keys(), ...this.functions.keys(), ...this.builtinNames()]);
@@ -29011,7 +29152,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.20.9",
+    "version": "0.20.10",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",

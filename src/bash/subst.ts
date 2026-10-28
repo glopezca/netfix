@@ -3,6 +3,7 @@ import type { Interp } from './interp.ts';
 import { DiscardSignal, ExitSignal } from './types.ts';
 import { bufferSink } from './io.ts';
 import { runSync } from './run-sync.ts';
+import { deeper } from './xtrace.ts';
 
 export function commandSubstitution(sh: Interp, src: string, mode: 'sub' | 'cur' | 'val'): string {
   const target = mode === 'sub' ? sh.clone() : sh;
@@ -15,7 +16,7 @@ export function commandSubstitution(sh: Interp, src: string, mode: 'sub' | 'cur'
     sh.vars.declareLocal('REPLY');
   }
   try {
-    target.status = runSync(target.runSource(src, fds));
+    target.status = deeper(sh, target, () => runSync(target.runSource(src, fds)));
   } catch (e) {
     if (e instanceof ExitSignal || (mode === 'sub' && e instanceof DiscardSignal)) target.status = e.code;
     else throw e;
@@ -33,6 +34,7 @@ export function processSubstitution(sh: Interp, dir: '<' | '>', src: string, pat
   const capture = bufferSink();
   const fds = new Map(sh.currentFds);
   fds.set(1, { write: capture });
-  try { runSync(sh.clone().runSource(src, fds)); } catch (e) { if (!(e instanceof ExitSignal)) throw e; }
+  const child = sh.clone();
+  try { deeper(sh, child, () => runSync(child.runSource(src, fds))); } catch (e) { if (!(e instanceof ExitSignal)) throw e; }
   sh.env.fs.writeFile(path, capture.chunks.join(''));
 }

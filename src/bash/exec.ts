@@ -13,7 +13,7 @@ import { execCompound } from './exec-compound.ts';
 import { resolveCommand, runResolved } from './run.ts';
 import { parse } from './parser.ts';
 import { isPlainWord } from './wordparse.ts';
-import { quoteForReuse } from './params.ts';
+import { traceWord, xtrace } from './xtrace.ts';
 
 const SPECIAL_BUILTINS = new Set(['break', ':', '.', 'continue', 'eval', 'exec', 'exit', 'export', 'readonly', 'return', 'set', 'shift', 'times', 'trap', 'unset', 'source']);
 const DECLARATION = new Set(['declare', 'typeset', 'local', 'readonly', 'export']);
@@ -81,6 +81,7 @@ function setPipestatus(sh: Interp, statuses: readonly number[]): void {
 }
 
 export function* execCommand(sh: Interp, cmd: Command, fds: Fds): Gen<number> {
+  if (sh.opt('noexec') && !sh.interactive) return 0;
   switch (cmd.kind) {
     case 'list': return yield* execList(sh, cmd, fds);
     case 'and_or': return yield* execAndOr(sh, cmd, fds);
@@ -191,7 +192,7 @@ function* execSimple(sh: Interp, cmd: SimpleCommand, fds: Fds): Gen<number> {
   } catch (e) {
     return reportError(sh, e);
   }
-  if (argv.length === 0) return assignOnly(sh, cmd.assigns, sh.substitutions > subsBefore ? sh.status : 0);
+  if (argv.length === 0) return assignOnly(sh, cmd.assigns, sh.substitutions > subsBefore ? sh.status : 0, cfds);
   const name = argv[0] ?? '';
   let temps: [string, string][];
   try {
@@ -199,7 +200,7 @@ function* execSimple(sh: Interp, cmd: SimpleCommand, fds: Fds): Gen<number> {
   } catch (e) {
     return reportError(sh, e);
   }
-  trace(sh, cfds, temps, argv);
+  trace(sh, cfds, temps, argv, decl);
   const resolved = resolveCommand(sh, name);
   const status = yield* withTemps(sh, resolved.kind === 'builtin' && SPECIAL_BUILTINS.has(name), resolved.kind === 'program' || resolved.kind === 'script', temps,
     (env) => runResolved(sh, resolved, argv, cfds, env, decl));
@@ -230,11 +231,11 @@ function declArg(sh: Interp, a: Assignment): DeclArg {
 }
 
 /** NAME=value with no command: assignments in the current shell. */
-function assignOnly(sh: Interp, assigns: readonly Assignment[], before: number): number {
+function assignOnly(sh: Interp, assigns: readonly Assignment[], before: number, fds: Fds): number {
   const subsBefore = sh.substitutions;
   for (const a of assigns) {
     try {
-      assign(sh, a);
+      assign(sh, a, fds);
     } catch (e) {
       return reportError(sh, e);
     }
@@ -242,8 +243,11 @@ function assignOnly(sh: Interp, assigns: readonly Assignment[], before: number):
   return sh.substitutions > subsBefore ? sh.status : before;
 }
 
-export function assign(sh: Interp, a: Assignment): void {
+/** `fds`: trace the assignment (set -x) as bash does, one line each, after its expansions. */
+export function assign(sh: Interp, a: Assignment, fds?: Fds): void {
+  const op = a.append ? '+=' : '=';
   if (a.array) {
+    if (fds) xtrace(sh, `${a.name}${op}(${a.array.map((e) => (e.key !== undefined ? `[${e.key}]=${e.value.raw}` : e.value.raw)).join(' ')})`, fds);
     const items: { key?: string; value: string }[] = a.array.flatMap((e) => (e.key !== undefined ? [{ key: sh.expander.word(e.key), value: sh.expander.word(e.value.raw, true) }] : sh.expander.words([e.value]).map((value) => ({ value }))));
     const isAssoc = sh.vars.get(a.name)?.attrs.has('A') ?? false;
     sh.vars.setArray(a.name, items.map((it) => ({ key: it.key !== undefined && !isAssoc ? String(sh.arith.eval(it.key)) : it.key, value: it.value })), isAssoc, a.append);
@@ -251,6 +255,7 @@ export function assign(sh: Interp, a: Assignment): void {
     return;
   }
   const value = sh.expander.word(a.value?.raw ?? '', true);
+  if (fds) xtrace(sh, `${a.name}${a.index !== undefined ? `[${a.index}]` : ''}${op}${value === '' ? '' : traceWord(value)}`, fds);
   if (a.index !== undefined) {
     const isAssoc = sh.vars.get(a.name)?.attrs.has('A') ?? false;
     sh.vars.setElement(a.name, isAssoc ? sh.expander.word(a.index) : Number(sh.arith.eval(a.index)), value, a.append);
@@ -283,12 +288,23 @@ function* withTemps(sh: Interp, persistent: boolean, external: boolean, temps: r
   }
 }
 
-function trace(sh: Interp, fds: Fds, temps: readonly [string, string][], argv: readonly string[]): void {
+/**
+ * set -x for a simple command. Declaration commands (declare, local, export…) show each scalar assignment inside the
+ * command (`local 'z=p q'`); an array one goes on its own line first (`m=(['k']='v')`); export and readonly repeat each
+ * one. Assignments before a command (`x=1 cmd`) go one per line.
+ */
+function trace(sh: Interp, fds: Fds, temps: readonly [string, string][], argv: readonly string[], decl?: ReadonlyMap<number, DeclArg>): void {
   if (!sh.opt('xtrace')) return;
-  const q = (s: string): string => (/^[A-Za-z0-9_./=:@%+,-]+$/.test(s) ? s : quoteForReuse(s));
-  const ps4 = sh.prompt(sh.getVar('PS4') ?? '+ ');
-  const parts = [...temps.map(([k, v]) => `${k}=${q(v)}`), ...argv.map(q)];
-  writeSink(sh, fds.get(2)?.write, `${ps4.repeat(1)}${parts.join(' ')}\n`);
+  const sq = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`;
+  const args = [...(decl?.values() ?? [])];
+  for (const d of args) if (d.array) xtrace(sh, `${d.name}=(${d.array.map((it) => (it.key !== undefined ? `[${sq(it.key)}]=${sq(it.value)}` : sq(it.value))).join(' ')})`, fds);
+  const shown = (w: string, i: number): string => {
+    const d = decl?.get(i);
+    return d && !d.array ? traceWord(`${d.name}${d.index !== undefined ? `[${d.index}]` : ''}${d.append ? '+=' : '='}${d.value ?? ''}`) : traceWord(w);
+  };
+  for (const [k, v] of temps) xtrace(sh, `${k}=${traceWord(v)}`, fds);
+  xtrace(sh, argv.map(shown).join(' '), fds);
+  if (argv[0] === 'export' || argv[0] === 'readonly') for (const d of args) if (!d.array) xtrace(sh, `${d.name}=${d.value ? traceWord(d.value) : ''}`, fds);
 }
 
 // ------------------------------------------------------------ aliases
