@@ -1111,4 +1111,29 @@ Encontrado al preparar la documentación de bash (fase 36d), contrastado con el 
 - **WireGuard frente a la repetición (v0.21.3):** el inicio del handshake lleva una marca TAI64N autenticada y el
   que responde ignora la que no sea más reciente que la última aceptada de ese par; los contadores de datos y de
   keepalive se comprueban con una ventana deslizante de 8128 y empiezan de cero en cada sesión.
-- Pendiente: STP (PVST+) en los switch 2960.
+- STP (PVST+) en los switch 2960: fase 38 (v0.22.0).
+
+### Fase 38: spanning tree (PVST+) en los switch 2960 (v0.22.0)
+
+Objetivo: que dos enlaces entre switches no formen un bucle, como en Packet Tracer, y que el alumno vea y cambie la
+elección con las órdenes de IOS 15.
+
+- **Cálculo** (`src/net/stp.ts`, puro): por VLAN, los switch con puertos activos en ella forman dominios; se elige la
+  raíz por el identificador de puente (prioridad + VLAN por `extend system-id`, después la MAC), el puerto raíz por
+  el menor vector {raíz, coste, puente emisor, puerto emisor, puerto propio} y el designado de cada enlace por el
+  menor {raíz, coste, puente, puerto}; el resto queda Altn BLK. Costes cortos (Fa 19, Gi 4), puerto 128.N.
+- **Convergencia inmediata**: la red se calcula al cambiar (cable, shutdown, modo del puerto, VLAN, prioridad) y no
+  pasa por Listening/Learning (en un 2960 real tarda 30 s). Así los laboratorios no esperan y el resultado es el mismo.
+- **Datos**: un puerto BLK no aprende MAC ni reenvía tramas de esa VLAN. `no spanning-tree vlan N` lo apaga (vuelve
+  el bucle, para las pruebas de tormenta).
+- **Órdenes**: `spanning-tree mode pvst|rapid-pvst`, `spanning-tree vlan L priority P` (múltiplos de 4096),
+  `spanning-tree vlan L root primary|secondary`, `no spanning-tree vlan L`; en la interfaz `spanning-tree cost`,
+  `port-priority`, `portfast` (con el aviso de IOS) y `bpduguard enable` (se guarda; el err-disable queda pendiente).
+  `show spanning-tree [vlan N | interface IF | summary]` con el formato de IOS 15. running-config y fichero las guardan.
+- **Interfaz**: el triángulo del extremo de un cable se pinta ámbar en un puerto que bloquea.
+- **Pruebas**: cálculo puro (triángulo, empate por MAC y por puerto, prioridades), integración (sin tormenta, ping a
+  través del árbol, caída del puerto raíz y reelección), salidas de show y configuración.
+- **Hecho (v0.22.0):** todo lo anterior, el laboratorio «Spanning tree: tres switches en triángulo» y la página de
+  ayuda «Spanning tree» (Switch IOS). Las pruebas de tormenta apagan STP con `no spanning-tree vlan 1`.
+- **Pendiente:** Listening/Learning con sus 30 s y BPDU visibles en el modo simulación; err-disable por bpduguard;
+  `switchport trunk allowed vlan` (hoy un troncal lleva todas las VLAN).

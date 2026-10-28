@@ -12,6 +12,8 @@
   --accent-soft: #d6e8ee;
   --up: #2e9a57;
   --down: #cf3f2e;
+  /* Packet Tracer's amber: a switch port that spanning tree blocks. */
+  --blocked: #e09a1a;
   --console: #0f1e26;
   --console-ink: #d3e6df;
   --console-msg: #e9c46a;
@@ -101,6 +103,7 @@ button, input, select { font: inherit; color: inherit; }
 .light { stroke: var(--panel); stroke-width: 1; }
 .light-up { fill: var(--up); }
 .light-down { fill: var(--down); }
+.light-blocked { fill: var(--blocked); }
 .port-label { font: 11px var(--font-mono); fill: var(--ink-2); paint-order: stroke; stroke: var(--ws); stroke-width: 6px; stroke-linejoin: round; }
 
 .device { cursor: grab; outline: none; }

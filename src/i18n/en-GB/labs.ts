@@ -11,6 +11,8 @@ export const LABS_EN: Readonly<Record<LabsKey, string>> = {
   'lab.vlans.title': 'Router-on-a-stick: one pool per VLAN',
   'lab.vlans.summary': '802.1Q subinterfaces on the router, a trunk on the switch and the pools VENTAS and SOPORTE.',
   'lab.snooping.title': 'DHCP snooping against a rogue server',
+  'lab.stp.title': 'Spanning tree: three switches in a triangle',
+  'lab.stp.summary': 'SW-A and SW-B reach SW-CORE by two paths: spanning tree blocks one port (amber light) so there is no loop. Look at “show spanning-tree” and make SW-CORE the root.',
   'lab.snooping.summary': 'ROGUE offers a fake gateway; the switch only trusts Gig0/1. Note “ip dhcp relay information trusted” on GW.',
   'lab.cliente.title': 'Router as a DHCP client',
   'lab.cliente.summary': 'CPE gets its WAN address with “ip address dhcp”; ISP pins it with a host pool and its cisco-… client-identifier.',

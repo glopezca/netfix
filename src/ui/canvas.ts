@@ -193,8 +193,9 @@ export class Canvas {
     for (const link of this.topo.net.links) this.linkLayer.appendChild(this.drawLink(link));
   }
 
-  private endState(ep: Endpoint): 'up' | 'down' {
-    return this.topo.net.linkUp(ep) ? 'up' : 'down';
+  private endState(ep: Endpoint): 'up' | 'down' | 'blocked' {
+    if (!this.topo.net.linkUp(ep)) return 'down';
+    return this.topo.net.devices.get(ep.device)?.portBlocked?.(ep.port) ? 'blocked' : 'up';
   }
 
   /** A port with a cable: its address goes at the cable end, not under the device. */

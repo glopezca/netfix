@@ -9,6 +9,8 @@ export const LABS_ES = {
   'lab.vlans.title': 'Router-on-a-stick: un pool por VLAN',
   'lab.vlans.summary': 'Subinterfaces 802.1Q en el router, trunk en el switch y pools VENTAS y SOPORTE.',
   'lab.snooping.title': 'DHCP snooping frente a un servidor falso',
+  'lab.stp.title': 'Spanning tree: tres switches en triángulo',
+  'lab.stp.summary': 'SW-A y SW-B llegan a SW-CORE por dos caminos: spanning tree bloquea un puerto (luz ámbar) para que no haya bucle. Mira «show spanning-tree» y haz raíz a SW-CORE.',
   'lab.snooping.summary': 'ROGUE ofrece una puerta de enlace falsa; el switch solo confía en Gig0/1. Fíjate en «ip dhcp relay information trusted» en GW.',
   'lab.cliente.title': 'Router como cliente DHCP',
   'lab.cliente.summary': 'CPE obtiene su dirección IP WAN con «ip address dhcp»; ISP la fija con un pool host y su client-identifier cisco-….',

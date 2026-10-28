@@ -325,7 +325,7 @@ export function applyConfig(device: IosDevice, lines: readonly string[]): string
   return errors;
 }
 
-const SKIP_RE = /^(!|end$|version |Building configuration|Current configuration|no service timestamps|service timestamps|no service password-encryption|ip cef|no ipv6 cef|ip classless|ip flow-export|spanning-tree mode|\s*$)/;
+const SKIP_RE = /^(!|end$|version |Building configuration|Current configuration|no service timestamps|service timestamps|no service password-encryption|ip cef|no ipv6 cef|ip classless|ip flow-export|\s*$)/;
 
 function shouldSkipConfigLine(line: string): boolean {
   return SKIP_RE.test(line);

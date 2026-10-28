@@ -208,6 +208,27 @@ interface GigabitEthernet0/1
     },
   },
   {
+    id: 'stp',
+    title: LABS_ES['lab.stp.title'],
+    summary: LABS_ES['lab.stp.summary'],
+    build: () => {
+      const t = new Topology();
+      const r = t.add('router', 460, 100, { label: 'GW' }).device as Router;
+      const [core, a, b] = [['SW-CORE', 460, 260], ['SW-A', 240, 420], ['SW-B', 680, 420]].map(([label, x, y]) => t.add('switch', Number(x), Number(y), { label: String(label) }).device as Switch) as [Switch, Switch, Switch];
+      link(t, r.id, 'GigabitEthernet0/0', core.id, 'FastEthernet0/24');
+      link(t, core.id, 'GigabitEthernet0/1', a.id, 'GigabitEthernet0/1');
+      link(t, core.id, 'GigabitEthernet0/2', b.id, 'GigabitEthernet0/1');
+      link(t, a.id, 'GigabitEthernet0/2', b.id, 'GigabitEthernet0/2');
+      const p = [a, b].map((sw, i) => {
+        const pc = t.add('pc', 240 + i * 440, 580).device as Pc;
+        link(t, pc.id, 'FastEthernet0', sw.id, 'FastEthernet0/1');
+        return pc;
+      });
+      conf(r, GATEWAY_LAN);
+      return startDhcp(t, p);
+    },
+  },
+  {
     id: 'cliente',
     title: LABS_ES['lab.cliente.title'],
     summary: LABS_ES['lab.cliente.summary'],

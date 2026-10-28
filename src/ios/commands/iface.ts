@@ -171,7 +171,6 @@ export const SWITCH_PORT_IF: readonly Def[] = [
   { syntax: 'switchport trunk allowed vlan <LINE:list>', run: () => undefined, noRun: () => undefined },
   { syntax: 'switchport nonegotiate', run: () => undefined, noRun: () => undefined },
   { syntax: 'switchport port-security [<LINE:rest>]', run: () => undefined, noRun: () => undefined },
-  { syntax: 'spanning-tree portfast [<LINE:rest>]', run: () => undefined, noRun: () => undefined },
 ];
 
 /** Switches only route on SVIs; the commands are rejected on switch ports. */

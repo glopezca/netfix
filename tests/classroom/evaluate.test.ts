@@ -130,10 +130,11 @@ test('a label shared by two devices is ambiguous and fails; a title cannot hold 
   assert.throws(() => parseChecklist([{ id: 'a', title: 'x\u0007', check: { type: 'device', device: 'PC0' } }]), /comprobación/);
 });
 
-test('a switching loop is refused in bounded time instead of hanging the marking', () => {
+test('a switching loop (spanning tree turned off) is refused in bounded time instead of hanging the marking', () => {
+  const noStp = ['no spanning-tree vlan 1'];
   const devices = [
-    { id: 's1', kind: 'switch', x: 0, y: 0, seed: 1, label: 'S1' },
-    { id: 's2', kind: 'switch', x: 0, y: 0, seed: 2, label: 'S2' },
+    { id: 's1', kind: 'switch', x: 0, y: 0, seed: 1, label: 'S1', config: noStp },
+    { id: 's2', kind: 'switch', x: 0, y: 0, seed: 2, label: 'S2', config: noStp },
     { id: 'p', kind: 'pc', x: 0, y: 0, seed: 3, label: 'PC0', pc: { mode: 'dhcp' } },
   ];
   const links = [1, 2, 3].map((n) => ({ a: { device: 's1', port: `FastEthernet0/${n}` }, b: { device: 's2', port: `FastEthernet0/${n}` }, cable: 'auto' }));

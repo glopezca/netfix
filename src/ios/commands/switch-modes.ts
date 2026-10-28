@@ -10,6 +10,7 @@ import { parseIp } from '../../core/ip.ts';
 import { formatMacCisco } from '../../core/mac.ts';
 import { shortIfaceName } from '../interfaces.ts';
 import { parseVlanList } from '../../devices/snooping.ts';
+import { STP_EXEC, STP_GLOBAL, STP_IF } from './stp.ts';
 
 type Def = CommandDef<Cli<Switch>>;
 
@@ -55,7 +56,13 @@ function pingHost(sw: Switch): { stack: Switch['stack']; hooks: Switch['hooks'];
 }
 
 const SW_EXEC: readonly Def[] = [
-  { syntax: 'show {mac-address-table | mac address-table}', run: (cli) => cli.out(...showMacTable(cli.device)) },
+  {
+    syntax: 'show {mac-address-table | mac address-table}',
+    run: (cli) => {
+      cli.device.syncStp();
+      cli.out(...showMacTable(cli.device));
+    },
+  },
   { syntax: 'show vlan [brief]', run: (cli) => cli.out(...showVlanBrief(cli.device)) },
   { syntax: 'show ip dhcp snooping', run: (cli) => cli.out(...cli.device.snooping.show()) },
   { syntax: 'show ip dhcp snooping binding', run: (cli) => cli.out(...cli.device.snooping.showBindings()) },
@@ -101,7 +108,10 @@ const SW_GLOBAL: readonly Def[] = [
     noRun: (cli, m) => {
       const id = Number(m.get('id'));
       if (DEFAULT_VLANS.has(id)) cli.out(`%Default VLAN ${id} may not be deleted.`);
-      else cli.device.vlans.delete(id);
+      else {
+        cli.device.vlans.delete(id);
+        cli.device.stpChanged();
+      }
     },
   },
   {
@@ -109,7 +119,6 @@ const SW_GLOBAL: readonly Def[] = [
     run: (cli, m) => { cli.device.defaultGateway = parseIp(m.get('gw') ?? '') ?? undefined; },
     noRun: (cli) => { cli.device.defaultGateway = undefined; },
   },
-  { syntax: 'spanning-tree <LINE:rest>', run: () => undefined, noRun: () => undefined },
   { syntax: 'ip dhcp snooping', run: (cli) => { cli.device.snooping.enabled = true; }, noRun: (cli) => { cli.device.snooping.enabled = false; } },
   {
     syntax: 'ip dhcp snooping vlan <LINE:vlans>',
@@ -154,11 +163,11 @@ const VLAN_MODE: readonly Def[] = [
 ];
 
 export const switchModeTable: ModeTable<Switch> = {
-  user: [...EXEC_USER, ...SW_EXEC],
-  exec: [...EXEC_PRIV, ...SW_PRIV],
-  config: [...GLOBAL, ...SW_GLOBAL],
-  'config-if': [...SWITCH_PORT_IF, ...SWITCH_IP_IF, ...SW_SNOOP_IF],
-  'config-if-range': [...SWITCH_PORT_IF, ...SW_SNOOP_IF],
+  user: [...EXEC_USER, ...SW_EXEC, ...STP_EXEC],
+  exec: [...EXEC_PRIV, ...SW_PRIV, ...STP_EXEC],
+  config: [...GLOBAL, ...SW_GLOBAL, ...STP_GLOBAL],
+  'config-if': [...SWITCH_PORT_IF, ...SWITCH_IP_IF, ...SW_SNOOP_IF, ...STP_IF],
+  'config-if-range': [...SWITCH_PORT_IF, ...SW_SNOOP_IF, ...STP_IF],
   'config-line': [...LINE_MODE],
   'config-vlan': [...VLAN_MODE],
 };

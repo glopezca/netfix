@@ -25,11 +25,12 @@ test('a work limit stops a simulation that would not end and is restored afterwa
   assert.equal(withWorkLimit(10, () => 'ok'), 'ok');
 });
 
-test('a switching loop (no spanning tree) is congestion, not a hang: frames beyond the in-flight cap are dropped', () => {
+test('a switching loop (spanning tree off) is congestion, not a hang: frames beyond the in-flight cap are dropped', () => {
   const t = new Topology();
   const a = t.add('switch', 0, 0).device as Switch;
   const b = t.add('switch', 0, 0).device as Switch;
   const pc = t.add('pc', 0, 0).device as Pc;
+  for (const sw of [a, b]) sw.stp.disabled.add(1);
   for (const p of [1, 2]) t.connect({ device: a.id, port: `FastEthernet0/${p}` }, { device: b.id, port: `FastEthernet0/${p}` });
   t.connect({ device: pc.id, port: 'FastEthernet0' }, { device: a.id, port: 'FastEthernet0/24' });
   pc.useDhcp();

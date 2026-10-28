@@ -4,6 +4,8 @@ import { SimClock } from '../core/clock.ts';
 import type { Frame } from './packets.ts';
 import { frameProtocol } from './packets.ts';
 import type { DeviceHooks } from '../devices/hooks.ts';
+import { computeStp } from './stp.ts';
+import type { StpBridge, StpResult } from './stp.ts';
 
 export interface Endpoint {
   readonly device: string;
@@ -34,6 +36,10 @@ export interface NetDevice {
   ownsIp(ip: number): boolean;
   /** Switch ports configured with `switchport mode trunk` (DTP negotiation). */
   configuredTrunk?(port: string): boolean;
+  /** A switch: what spanning tree needs (bridge MAC, priorities, ports that are up and their VLANs). */
+  stpBridge?(): StpBridge;
+  /** A switch port that spanning tree blocks in every VLAN it carries (amber light). */
+  portBlocked?(port: string): boolean;
 }
 
 export interface SimEvent {
@@ -80,6 +86,8 @@ export class Network {
   private readonly byPort = new Map<string, Link>();
   private seq = 0;
   private readonly listeners = new Set<(e: SimEvent) => void>();
+  /** The converged spanning tree, recomputed after a change of cables, ports or switch configuration. */
+  private stpCache: StpResult | null = null;
 
   constructor(clock: SimClock = new SimClock()) {
     this.clock = clock;
@@ -91,11 +99,13 @@ export class Network {
     if (this.devices.has(device.id)) throw new Error(`Duplicate device id ${device.id}`);
     this.devices.set(device.id, device);
     device.hooks = this.hooksFor(device);
+    this.stpCache = null;
   }
 
   removeDevice(id: string): void {
     for (const link of this.links.filter((l) => l.a.device === id || l.b.device === id)) this.disconnect(link.id);
     this.devices.delete(id);
+    this.stpCache = null;
   }
 
   linkAt(ep: Endpoint): Link | undefined {
@@ -118,6 +128,7 @@ export class Network {
     const link: Link = { id: `L${++this.seq}`, a, b, cable };
     this.links = [...this.links, link];
     this.byPort.set(epKey(a), link).set(epKey(b), link);
+    this.stpCache = null;
     this.notifyLink(a, b);
     return link;
   }
@@ -129,6 +140,7 @@ export class Network {
     this.links = this.links.filter((l) => l.id !== linkId);
     this.byPort.delete(epKey(link.a));
     this.byPort.delete(epKey(link.b));
+    this.stpCache = null;
     if (!wasUp) return;
     this.devices.get(link.a.device)?.onLinkEvent(link.a.port, false);
     this.devices.get(link.b.device)?.onLinkEvent(link.b.port, false);
@@ -157,6 +169,7 @@ export class Network {
         return peer !== undefined && this.endUp(peer);
       },
       portChanged: (port) => {
+        this.stpCache = null;
         const peer = this.peerOf({ device: device.id, port });
         if (!peer || !this.endUp(peer)) return;
         this.devices.get(peer.device)?.onLinkEvent(peer.port, device.portAdminUp(port));
@@ -170,7 +183,19 @@ export class Network {
         const dev = peer ? this.devices.get(peer.device) : undefined;
         return dev?.configuredTrunk?.(peer?.port ?? '') ?? false;
       },
+      stp: () => this.spanningTree(),
+      stpChanged: () => { this.stpCache = null; },
     };
+  }
+
+  /** Spanning tree of the switches and the cables between them (both ends up). */
+  spanningTree(): StpResult {
+    if (this.stpCache) return this.stpCache;
+    const bridges = [...this.devices.values()].flatMap((d) => (d.stpBridge ? [d.stpBridge()] : []));
+    const ids = new Set(bridges.map((b) => b.id));
+    const links = this.links.filter((l) => ids.has(l.a.device) && ids.has(l.b.device) && this.linkUp(l.a));
+    this.stpCache = computeStp(bridges, links);
+    return this.stpCache;
   }
 
   // ------------------------------------------------------------ events

@@ -1,4 +1,4 @@
-/** Cisco 2960-style L2 switch: VLANs, access/trunk ports, MAC learning, SVI and DHCP snooping. */
+/** Cisco 2960-style L2 switch: VLANs, access/trunk ports, MAC learning, spanning tree, SVI and DHCP snooping. */
 import { IosDevice } from '../ios/device.ts';
 import type { IfaceRuntime, ModeTable } from '../ios/device.ts';
 import type { IfaceConfig } from '../ios/interfaces.ts';
@@ -21,6 +21,9 @@ import type { Lease } from '../dhcp/client.ts';
 import { Snooping } from './snooping.ts';
 import { switchModeTable } from '../ios/commands/switch-modes.ts';
 import { SWITCH_PORTS, DEFAULT_VLANS } from './switch-ports.ts';
+import { StpConfig } from './stp-config.ts';
+import type { StpBridge, StpResult, StpVlan } from '../net/stp.ts';
+import { forwardingKeys } from '../net/stp.ts';
 
 export { SWITCH_PORTS, DEFAULT_VLANS };
 import { headerLines, globalIpLines, interfaceSection, trailerLines } from '../ios/runconfig.ts';
@@ -39,6 +42,9 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
   defaultGateway: number | undefined;
   readonly macTable = new Map<string, { mac: string; vlan: number; port: string }>();
   readonly snooping = new Snooping();
+  readonly stp = new StpConfig();
+  /** The last spanning tree seen, and the forwarding ports of each VLAN in the whole network then. */
+  private stpSeen: { readonly tree: StpResult; readonly keys: ReadonlyMap<number, string> } | undefined;
   readonly stack: IpStack;
   readonly web: IosWeb;
   readonly dropOnArpMiss = true;
@@ -77,10 +83,12 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
     this.defaultGateway = undefined;
     this.vlans = new Map(DEFAULT_VLANS);
     this.snooping.reset();
+    this.stp.reset();
     this.clearIfaces();
     this.macTable.clear();
     for (const p of SWITCH_PORTS) this.addIface(p, { shutdown: false, switchport: true });
     this.addIface('Vlan1', { shutdown: true, switchport: false });
+    this.stpChanged();
   }
 
   displayName(): string {
@@ -90,6 +98,7 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
   ensureVlan(id: number): boolean {
     if (this.vlans.has(id)) return false;
     this.vlans.set(id, `VLAN${String(id).padStart(4, '0')}`);
+    this.stpChanged();
     return true;
   }
 
@@ -149,7 +158,57 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
       this.hooks.portChanged(name);
     }
     if (after?.switchport) this.flushPort(name);
+    this.stpChanged();
     this.syncSvis();
+  }
+
+  /** Something spanning tree depends on changed (ports, VLANs, priorities). */
+  stpChanged(): void {
+    this.hooks.stpChanged?.();
+  }
+
+  // ------------------------------------------------------------ spanning tree
+
+  stpBridge(): StpBridge {
+    const all = [...this.vlans.keys()].filter((v) => v === 1 || !DEFAULT_VLANS.has(v));
+    const ports = SWITCH_PORTS.flatMap((name, i) => {
+      const cfg = this.ifaces.get(name);
+      if (!cfg || !this.portUp(name)) return [];
+      const vlans = this.isTrunk(name) ? all : this.vlans.has(cfg.accessVlan) ? [cfg.accessVlan] : [];
+      return [{ name, number: i + 1, cost: this.stp.cost(name), priority: this.stp.portPriority(name), edge: this.stp.portfast.has(name), vlans }];
+    });
+    return { id: this.id, mac: this.baseMac, priority: (v) => this.stp.priority(v), ports };
+  }
+
+  /**
+   * The current spanning tree. When it changes, the VLANs whose forwarding ports changed anywhere lose their MAC
+   * entries, as every switch does on a topology change notification.
+   */
+  syncStp(): StpResult | undefined {
+    const tree = this.hooks.stp?.();
+    if (!tree || tree === this.stpSeen?.tree) return tree;
+    const keys = forwardingKeys(tree);
+    const old = this.stpSeen?.keys;
+    if (old) for (const [k, e] of this.macTable) if (keys.get(e.vlan) !== old.get(e.vlan)) this.macTable.delete(k);
+    this.stpSeen = { tree, keys };
+    return tree;
+  }
+
+  /** This switch's spanning tree for a VLAN (undefined when it does not run there). */
+  stpVlan(vlan: number): StpVlan | undefined {
+    return this.syncStp()?.get(this.id)?.get(vlan);
+  }
+
+  /** A port that blocks in this VLAN neither learns nor forwards. */
+  private forwards(port: string, vlan: number): boolean {
+    return this.stpVlan(vlan)?.ports.get(port)?.forwarding ?? true;
+  }
+
+  /** The cable end shows amber: the port blocks in every VLAN it carries. */
+  portBlocked(port: string): boolean {
+    const tree = this.syncStp()?.get(this.id);
+    const states = tree ? [...tree.values()].map((s) => s.ports.get(port)).filter((p) => p !== undefined) : [];
+    return states.length > 0 && states.every((p) => !p.forwarding);
   }
 
   onLinkEvent(port: string, up: boolean): void {
@@ -185,6 +244,7 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
     const trunk = this.isTrunk(port);
     if (!trunk && frame.vlan !== undefined) return;
     const vlan = trunk ? (frame.vlan ?? cfg.nativeVlan) : cfg.accessVlan;
+    if (!this.forwards(port, vlan)) return;
     this.macTable.set(`${vlan}|${frame.src}`, { mac: frame.src, vlan, port });
     const inspected = this.snooping.inspect(this, port, vlan, frame);
     if (!inspected) return;
@@ -198,7 +258,7 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
     if (frame.dst === this.baseMac) return;
     const out = known ? [known.port] : this.portsInVlan(vlan).filter((p) => p !== ingress);
     for (const p of out) {
-      if (!this.portUp(p)) continue;
+      if (!this.portUp(p) || !this.forwards(p, vlan)) continue;
       const native = this.ifaces.get(p)?.nativeVlan ?? 1;
       const tagged = this.isTrunk(p) && vlan !== native;
       this.hooks.transmit(p, tagged ? { ...frame, vlan } : frame);
@@ -318,11 +378,10 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
       ...headerLines(this, '15.0'),
       ...globalIpLines(this),
       ...this.snooping.configLines(),
-      'spanning-tree mode pvst',
-      'spanning-tree extend system-id',
+      ...this.stp.configLines(),
       '!',
       ...vlanLines,
-      ...interfaceSection(this, (n) => this.snooping.ifaceLines(n)),
+      ...interfaceSection(this, (n) => [...this.stp.ifaceLines(n), ...this.snooping.ifaceLines(n)]),
       ...(this.defaultGateway !== undefined ? [`ip default-gateway ${formatIp(this.defaultGateway)}`] : []),
       ...httpLines(this),
       '!',

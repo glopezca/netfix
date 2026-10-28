@@ -15,7 +15,7 @@ export const OUTLINE: readonly OutlineGroup[] = [
       ['Configuration and logs', ['srv-config-logs']],
     ],
   },
-  { id: 'switch', title: 'IOS switch', icon: 'switch', sections: [['IOS CLI', ['ios-cli', 'ios-show']], ['Interfaces and VLANs', ['ios-otros']], ['Web management', ['ios-web']]] },
+  { id: 'switch', title: 'IOS switch', icon: 'switch', sections: [['IOS CLI', ['ios-cli', 'ios-show']], ['Interfaces and VLANs', ['ios-otros']], ['Spanning tree', ['ios-stp']], ['Web management', ['ios-web']]] },
   { id: 'router', title: 'IOS router', icon: 'router', sections: [['DHCP', ['ios-dhcp', 'ios-reservas', 'ios-relay']], ['NAT and ACLs', ['ios-nat', 'ios-acl']], ['VPN', ['ios-ipsec']]] },
   { id: 'linuxrouter', title: 'Linux router', icon: 'linuxrouter', sections: [['Parameters', ['linux-router']], ['Firewall', ['linux-nftables']], ['VPN', ['linux-wireguard']]] },
   { id: 'nube', title: 'ISP cloud', icon: 'cloud', sections: [[null, ['inet-cloud', 'inet-dns']]] },

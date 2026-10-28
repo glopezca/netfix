@@ -1,5 +1,6 @@
 /** Callbacks a device uses to talk to the network it is attached to. */
 import type { Frame } from '../net/packets.ts';
+import type { StpResult } from '../net/stp.ts';
 
 export interface DeviceHooks {
   /** True when the port has a cable whose far end is administratively up. */
@@ -16,6 +17,10 @@ export interface DeviceHooks {
   peerTrunking(port: string): boolean;
   /** Fast-forwards simulated time until `done()` or `maxMs` (interactive commands). */
   runUntil(done: () => boolean, maxMs: number): boolean;
+  /** The converged spanning tree of every switch (absent when detached). */
+  stp?(): StpResult;
+  /** A switch changed something the spanning tree depends on (ports, VLANs, priorities). */
+  stpChanged?(): void;
 }
 
 export const DETACHED: DeviceHooks = {

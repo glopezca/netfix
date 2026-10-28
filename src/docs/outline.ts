@@ -27,7 +27,7 @@ export const OUTLINE: readonly OutlineGroup[] = [
       ['Configuración y registros', ['srv-config-logs']],
     ],
   },
-  { id: 'switch', title: 'Switch IOS', icon: 'switch', sections: [['CLI de IOS', ['ios-cli', 'ios-show']], ['Interfaces y VLAN', ['ios-otros']], ['Gestión web', ['ios-web']]] },
+  { id: 'switch', title: 'Switch IOS', icon: 'switch', sections: [['CLI de IOS', ['ios-cli', 'ios-show']], ['Interfaces y VLAN', ['ios-otros']], ['Spanning tree', ['ios-stp']], ['Gestión web', ['ios-web']]] },
   { id: 'router', title: 'Router IOS', icon: 'router', sections: [['DHCP', ['ios-dhcp', 'ios-reservas', 'ios-relay']], ['NAT y ACL', ['ios-nat', 'ios-acl']], ['VPN', ['ios-ipsec']]] },
   { id: 'linuxrouter', title: 'Router Linux', icon: 'linuxrouter', sections: [['Parámetros', ['linux-router']], ['Cortafuegos', ['linux-nftables']], ['VPN', ['linux-wireguard']]] },
   { id: 'nube', title: 'Nube ISP', icon: 'cloud', sections: [[null, ['inet-cloud', 'inet-dns']]] },
