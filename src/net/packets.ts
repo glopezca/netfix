@@ -238,12 +238,30 @@ export type IcmpType = 'echo-request' | 'echo-reply' | 'unreachable' | 'ttl-exce
 /** Code of a destination unreachable: network (0), host (1), port (3) or administratively prohibited (13). */
 export type UnreachableCode = 'net' | 'host' | 'port' | 'admin';
 
+/** The start of the packet an ICMP error answers (its IP header and first 8 bytes: the ports). */
+export interface IcmpQuote {
+  readonly protocol: 'tcp' | 'udp';
+  readonly src: number;
+  readonly dst: number;
+  readonly sport: number;
+  readonly dport: number;
+}
+
 export interface IcmpMessage {
   readonly type: IcmpType;
   readonly id: number;
   readonly seq: number;
   /** Only for 'unreachable' (host when absent). */
   readonly code?: UnreachableCode;
+  /** An error about a TCP or UDP packet quotes it, so the sender can tell which connection failed. */
+  readonly orig?: IcmpQuote;
+}
+
+/** The quote an ICMP error carries for a TCP or UDP packet (none for ICMP). */
+export function icmpQuote(p: IpPacket): IcmpQuote | undefined {
+  if (p.tcp) return { protocol: 'tcp', src: p.src, dst: p.dst, sport: p.tcp.sport, dport: p.tcp.dport };
+  if (p.udp) return { protocol: 'udp', src: p.src, dst: p.dst, sport: p.udp.sport, dport: p.udp.dport };
+  return undefined;
 }
 
 export interface IpPacket {

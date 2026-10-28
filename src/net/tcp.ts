@@ -10,7 +10,7 @@
  *
  * Enough to show handshakes, refused ports and application data in simulation mode.
  */
-import type { AppPayload, IpPacket, TcpFlag, TcpSegment } from './packets.ts';
+import type { AppPayload, IcmpQuote, IpPacket, TcpFlag, TcpSegment, UnreachableCode } from './packets.ts';
 
 export interface Peer {
   readonly ip: number;
@@ -23,6 +23,8 @@ export type TcpHandler = (request: AppPayload, peer: Peer, localIp: number) => A
 export type TcpResult =
   | { readonly kind: 'ok'; readonly reply: AppPayload }
   | { readonly kind: 'refused' }
+  /** An ICMP unreachable aborted the connect: net → ENETUNREACH, host or prohibited → EHOSTUNREACH. */
+  | { readonly kind: 'unreachable'; readonly reason: 'net' | 'host' }
   | { readonly kind: 'timeout' }
   | { readonly kind: 'noroute' };
 
@@ -36,7 +38,7 @@ export interface TcpEnv {
 }
 
 /** Result of a port probe (connect scan): SYN-ACK, RST, or nothing before the timeout. */
-export type ProbeResult = 'open' | 'closed' | 'filtered' | 'noroute';
+export type ProbeResult = 'open' | 'closed' | 'filtered' | 'noroute' | 'netunreach' | 'hostunreach';
 
 interface ClientConn {
   readonly remote: Peer;
@@ -48,6 +50,8 @@ interface ClientConn {
   readonly opened?: () => void;
   seq: number;
   finished: boolean;
+  /** The SYN-ACK arrived: past SYN_SENT, an ICMP error no longer aborts the connection (only a soft error on Linux). */
+  synAcked?: boolean;
 }
 
 const FIRST_EPHEMERAL = 49152;
@@ -106,13 +110,21 @@ export class TcpLayer {
       return;
     }
     const sport = this.allocatePort();
-    const map = (r: TcpResult): ProbeResult => (r.kind === 'refused' ? 'closed' : r.kind === 'timeout' ? 'filtered' : 'noroute');
+    const map = (r: TcpResult): ProbeResult => (r.kind === 'refused' ? 'closed' : r.kind === 'timeout' ? 'filtered'
+      : r.kind === 'unreachable' ? (r.reason === 'net' ? 'netunreach' : 'hostunreach') : 'noroute');
     const conn: ClientConn = { remote: { ip: dst, port: dport }, localIp, done: (r) => done(map(r)), opened: () => done('open'), seq: this.nextIsn(), finished: false };
     this.conns.set(sport, conn);
     this.emit(localIp, dst, { sport, dport, flags: ['SYN'], seq: conn.seq, ack: 0 });
     this.env.schedule(timeoutMs, () => {
       if (this.conns.get(sport) === conn) this.finish(sport, { kind: 'timeout' });
     });
+  }
+
+  /** An ICMP unreachable quoting one of our SYNs: the connect fails (port unreachable = refused). */
+  icmpUnreachable(orig: IcmpQuote, code: UnreachableCode): void {
+    const conn = this.conns.get(orig.sport);
+    if (!conn || conn.finished || conn.synAcked || conn.localIp !== orig.src || conn.remote.ip !== orig.dst || conn.remote.port !== orig.dport) return;
+    this.finish(orig.sport, code === 'port' ? { kind: 'refused' } : { kind: 'unreachable', reason: code === 'net' ? 'net' : 'host' });
   }
 
   receive(packet: IpPacket): void {
@@ -135,6 +147,7 @@ export class TcpLayer {
     }
     if (has(seg, 'SYN') && has(seg, 'ACK')) {
       conn.seq += 1;
+      conn.synAcked = true;
       if (!conn.payload) {
         this.emit(conn.localIp, conn.remote.ip, { sport, dport: conn.remote.port, flags: ['RST', 'ACK'], seq: conn.seq, ack: seg.seq + 1 });
         conn.finished = true;

@@ -44,7 +44,7 @@ test('hardening lab: admin gets SSH and ping, students only the web; ACL and nft
   assert.equal(all(admin.run('whoami')), 'admin');
   admin.run('exit');
   assert.match(all(student.run('curl -s http://172.20.0.10/')), /Servidor web de Netfix/);
-  assert.match(all(student.run('nc -zv -w 1 172.20.0.10 22 2>&1')), /timed out/);
+  assert.match(all(student.run('nc -zv -w 1 172.20.0.10 22 2>&1')), /failed: No route to host/);
   assert.match(all(student.run('ping -c 1 -W 1 172.20.0.10')), /100% packet loss|Unreachable/);
   const s = new Session(gw);
   s.mode = 'exec';

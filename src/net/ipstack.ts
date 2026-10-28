@@ -2,7 +2,7 @@
 import type { IpWithPrefix } from '../core/ip.ts';
 import { inSubnet, broadcastOf, BROADCAST_IP } from '../core/ip.ts';
 import { BROADCAST_MAC } from '../core/mac.ts';
-import type { Frame, IpPacket, IcmpMessage, UnreachableCode } from './packets.ts';
+import type { Frame, IpPacket, IcmpMessage, IcmpQuote, UnreachableCode } from './packets.ts';
 
 export interface L3Iface {
   readonly name: string;
@@ -45,6 +45,8 @@ export interface StackHost {
   forwardsDirectedBroadcast?(iface: string): boolean;
   /** Extra addresses answered by ARP on an interface (static NAT globals). */
   answersArp?(iface: string, ip: number): boolean;
+  /** An ICMP destination unreachable about one of our TCP or UDP packets (the quote says which). */
+  icmpUnreachable?(orig: IcmpQuote, code: UnreachableCode): void;
   /** Hosts may want to drop the packet that triggered ARP (IOS behaviour). */
   readonly dropOnArpMiss: boolean;
   readonly ttl: number;
@@ -176,6 +178,10 @@ export class IpStack {
     if (icmp.type === 'echo-request') {
       const src = this.echoSource(ifaceName, packet.dst);
       if (src !== undefined) this.send({ src, dst: packet.src, ttl: this.host.ttl, protocol: 'icmp', icmp: { ...icmp, type: 'echo-reply' } });
+      return;
+    }
+    if (icmp.type === 'unreachable' && icmp.orig) {
+      this.host.icmpUnreachable?.(icmp.orig, icmp.code ?? 'host');
       return;
     }
     const key = `${icmp.id}:${icmp.seq}`;

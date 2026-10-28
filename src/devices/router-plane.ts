@@ -1,7 +1,7 @@
 /** Router data plane: L3 interfaces, forwarding, DHCP server/relay and DHCP clients. */
 import type { Router } from './router.ts';
 import type { Frame, IpPacket, DhcpMessage, UnreachableCode } from '../net/packets.ts';
-import { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DEFAULT_TTL } from '../net/packets.ts';
+import { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DEFAULT_TTL, icmpQuote } from '../net/packets.ts';
 import { IpStack } from '../net/ipstack.ts';
 import type { L3Iface, StackHost, Egress } from '../net/ipstack.ts';
 import { buildRoutingTable, resolveEgress } from '../net/routing.ts';
@@ -20,6 +20,8 @@ import { inboundAllowed, outboundAllowed } from './router-acl.ts';
 import type { ServerReply } from '../dhcp/server.ts';
 
 const DHCP_DEFAULT_ROUTE_AD = 254;
+/** 224.0.0.0/4. */
+const isMulticast = (ip: number): boolean => ip >>> 28 === 0xe;
 
 export class RouterPlane implements StackHost {
   readonly stack: IpStack;
@@ -27,6 +29,8 @@ export class RouterPlane implements StackHost {
   readonly ttl = DEFAULT_TTL;
   private readonly router: Router;
   private readonly clients = new Map<string, DhcpClient>();
+  /** The packet as it arrived, for those changed by the outside → inside NAT (ICMP errors quote the original). */
+  private readonly beforeNat = new WeakMap<IpPacket, IpPacket>();
   readonly leases = new Map<string, Lease>();
 
   constructor(router: Router) {
@@ -132,16 +136,30 @@ export class RouterPlane implements StackHost {
       return null;
     }
     const opened = this.router.ipsec.inbound(iface, packet);
-    return opened ? natPrerouting(this.router, iface, opened) : null;
+    const translated = opened ? natPrerouting(this.router, iface, opened) : null;
+    if (opened && translated && translated !== opened) this.beforeNat.set(translated, opened);
+    return translated;
   }
 
   answersArp(iface: string, ip: number): boolean {
     return natAnswersArp(this.router, iface, ip);
   }
 
+  /**
+   * ICMP error back to the sender: for an echo (ping, traceroute) and, when unreachable, for TCP and UDP too, quoting
+   * the original header so the sender knows which connection failed (IOS `ip unreachables`, on by default).
+   */
   private icmpError(packet: IpPacket, src: number, type: 'unreachable' | 'ttl-exceeded', code?: UnreachableCode): void {
-    if (!packet.icmp || packet.icmp.type !== 'echo-request') return;
-    this.stack.send({ src, dst: packet.src, ttl: this.ttl, protocol: 'icmp', icmp: { ...packet.icmp, type, ...(code ? { code } : {}) } });
+    // Never about a broadcast, a multicast or an unaddressed sender (a DHCP DISCOVER denied by an ACL, for instance).
+    if (packet.src === 0 || packet.src === BROADCAST_IP || isMulticast(packet.dst) || this.stack.isBroadcast(packet.dst)) return;
+    const coded = code ? { code } : {};
+    if (packet.icmp?.type === 'echo-request') {
+      this.stack.send({ src, dst: packet.src, ttl: this.ttl, protocol: 'icmp', icmp: { ...packet.icmp, type, ...coded } });
+      return;
+    }
+    // The quote is the packet as its sender wrote it: before the outside → inside NAT.
+    const orig = type === 'unreachable' ? icmpQuote(this.beforeNat.get(packet) ?? packet) : undefined;
+    if (orig) this.stack.send({ src, dst: packet.src, ttl: this.ttl, protocol: 'icmp', icmp: { type, id: 0, seq: 0, ...coded, orig } });
   }
 
   // ------------------------------------------------------------ local delivery (DHCP)

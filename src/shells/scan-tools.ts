@@ -23,6 +23,13 @@ const PROBE_MS = 1500;
 const COLLAPSE = 25;
 const NMAP_VERSION = 'Nmap 7.94SVN';
 
+/** nc's message for a port that did not open, as OpenBSD netcat (errno text of the failed connect). */
+function ncFailure(target: string, port: number, proto: string, res: ProbeResult | undefined): string {
+  const errno: Partial<Record<ProbeResult, string>> = { closed: 'Connection refused', noroute: 'Network is unreachable', netunreach: 'Network is unreachable', hostunreach: 'No route to host' };
+  const text = res === undefined ? undefined : errno[res];
+  return text ? `nc: connect to ${target} port ${port} (${proto}) failed: ${text}\n` : `nc: connect to ${target} port ${port} (${proto}) timed out: Operation now in progress\n`;
+}
+
 /** Runs every probe in parallel and waits (simulated time) until all have answered or timed out. */
 function probeAll(host: Host, targets: readonly { ip: number; port: number }[], timeoutMs: number): ProbeResult[] {
   const results: (ProbeResult | undefined)[] = targets.map(() => undefined);
@@ -70,7 +77,7 @@ export function nc(host: Host): CommandFn {
         ok = true;
         if (verbose) ctx.err(`Connection to ${target} ${port} port [${proto}/${SERVICES[port] ?? '*'}] succeeded!\n`);
       } else if (verbose || ports.length === 1) {
-        ctx.err(res === 'closed' ? `nc: connect to ${target} port ${port} (${proto}) failed: Connection refused\n` : res === 'noroute' ? `nc: connect to ${target} port ${port} (${proto}) failed: Network is unreachable\n` : `nc: connect to ${target} port ${port} (${proto}) timed out: Operation now in progress\n`);
+        ctx.err(ncFailure(target, port, proto, res));
       }
     });
     return ok ? 0 : 1;

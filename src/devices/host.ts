@@ -2,7 +2,7 @@
 import type { HostKind } from './kinds.ts';
 import { t } from '../i18n/t.ts';
 import type { NetDevice } from '../net/network.ts';
-import type { Frame, IpPacket, UdpDatagram, AppPayload, DnsType } from '../net/packets.ts';
+import type { Frame, IpPacket, UdpDatagram, AppPayload, DnsType, IcmpQuote, UnreachableCode } from '../net/packets.ts';
 import { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DNS_PORT, LINUX_TTL, PC_TTL } from '../net/packets.ts';
 
 export { DHCP_SERVER_PORT, DNS_PORT };
@@ -95,6 +95,8 @@ export abstract class Host implements NetDevice, StackHost {
   readonly dropOnArpMiss = false;
   /** Initial TTL of what this host sends: 64 on Linux, 128 on Windows. */
   get ttl(): number { return this.os === 'linux' ? LINUX_TTL : PC_TTL; }
+  /** Linux aborts a connect() in SYN_SENT on an ICMP unreachable quoting it (tcp_v4_err); Windows ignores it. */
+  icmpUnreachable(orig: IcmpQuote, code: UnreachableCode): void { if (orig.protocol === 'tcp' && this.os === 'linux') this.tcp.icmpUnreachable(orig, code); }
   /** Windows never answers an echo to a broadcast address; Linux only with icmp_echo_ignore_broadcasts=0. */
   ignoresBroadcastEcho = (): boolean => this.os === 'windows' || this.kernel.sysctl.enabled('net.ipv4.icmp_echo_ignore_broadcasts');
 

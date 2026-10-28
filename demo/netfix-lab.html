@@ -4877,6 +4877,14 @@ function ifacesOfAddresses(addresses, choices) {
 return { LOOPBACK, MAX_LISTEN, IFACE_NAME, listenChoices, listens, setDhcpInterfaces, setDnsListen, dnsListenAddresses, dnsListensOn, ifacesOfAddresses };
 })();
 __m["net/packets.js"] = (() => {
+/** The quote an ICMP error carries for a TCP or UDP packet (none for ICMP). */
+function icmpQuote(p) {
+    if (p.tcp)
+        return { protocol: 'tcp', src: p.src, dst: p.dst, sport: p.tcp.sport, dport: p.tcp.dport };
+    if (p.udp)
+        return { protocol: 'udp', src: p.src, dst: p.dst, sport: p.udp.sport, dport: p.udp.dport };
+    return undefined;
+}
 const DHCP_SERVER_PORT = 67;
 const DHCP_CLIENT_PORT = 68;
 const DNS_PORT = 53;
@@ -4918,7 +4926,7 @@ function tcpService(seg) {
     return WELL_KNOWN_PORTS[seg.dport] ?? WELL_KNOWN_PORTS[seg.sport] ?? 'TCP';
 }
 
-return { DHCP_SERVER_PORT, DHCP_CLIENT_PORT, DNS_PORT, WELL_KNOWN_PORTS, DEFAULT_TTL, PC_TTL, LINUX_TTL, frameProtocol, tcpService };
+return { icmpQuote, DHCP_SERVER_PORT, DHCP_CLIENT_PORT, DNS_PORT, WELL_KNOWN_PORTS, DEFAULT_TTL, PC_TTL, LINUX_TTL, frameProtocol, tcpService };
 })();
 __m["core/mac.js"] = (() => {
 /** MAC address and DHCP client-identifier helpers. MACs are 12 lowercase hex chars. */
@@ -5096,6 +5104,10 @@ class IpStack {
             const src = this.echoSource(ifaceName, packet.dst);
             if (src !== undefined)
                 this.send({ src, dst: packet.src, ttl: this.host.ttl, protocol: 'icmp', icmp: { ...icmp, type: 'echo-reply' } });
+            return;
+        }
+        if (icmp.type === 'unreachable' && icmp.orig) {
+            this.host.icmpUnreachable?.(icmp.orig, icmp.code ?? 'host');
             return;
         }
         const key = `${icmp.id}:${icmp.seq}`;
@@ -5297,7 +5309,8 @@ class TcpLayer {
             return;
         }
         const sport = this.allocatePort();
-        const map = (r) => (r.kind === 'refused' ? 'closed' : r.kind === 'timeout' ? 'filtered' : 'noroute');
+        const map = (r) => (r.kind === 'refused' ? 'closed' : r.kind === 'timeout' ? 'filtered'
+            : r.kind === 'unreachable' ? (r.reason === 'net' ? 'netunreach' : 'hostunreach') : 'noroute');
         const conn = { remote: { ip: dst, port: dport }, localIp, done: (r) => done(map(r)), opened: () => done('open'), seq: this.nextIsn(), finished: false };
         this.conns.set(sport, conn);
         this.emit(localIp, dst, { sport, dport, flags: ['SYN'], seq: conn.seq, ack: 0 });
@@ -5305,6 +5318,13 @@ class TcpLayer {
             if (this.conns.get(sport) === conn)
                 this.finish(sport, { kind: 'timeout' });
         });
+    }
+    /** An ICMP unreachable quoting one of our SYNs: the connect fails (port unreachable = refused). */
+    icmpUnreachable(orig, code) {
+        const conn = this.conns.get(orig.sport);
+        if (!conn || conn.finished || conn.synAcked || conn.localIp !== orig.src || conn.remote.ip !== orig.dst || conn.remote.port !== orig.dport)
+            return;
+        this.finish(orig.sport, code === 'port' ? { kind: 'refused' } : { kind: 'unreachable', reason: code === 'net' ? 'net' : 'host' });
     }
     receive(packet) {
         const seg = packet.tcp;
@@ -5325,6 +5345,7 @@ class TcpLayer {
         }
         if (has(seg, 'SYN') && has(seg, 'ACK')) {
             conn.seq += 1;
+            conn.synAcked = true;
             if (!conn.payload) {
                 this.emit(conn.localIp, conn.remote.ip, { sport, dport: conn.remote.port, flags: ['RST', 'ACK'], seq: conn.seq, ack: seg.seq + 1 });
                 conn.finished = true;
@@ -6437,7 +6458,7 @@ function parseSysctlConf(text) {
 return { SYSCTL_KEYS, sysctlName, sysctlPath, Sysctl, parseSysctlConf };
 })();
 __m["devices/host-kernel.js"] = (() => {
-const { LINUX_TTL } = __m["net/packets.js"];
+const { LINUX_TTL, icmpQuote } = __m["net/packets.js"];
 const { Netfilter } = __m["net/netfilter.js"];
 const { Sysctl } = __m["net/sysctl.js"];
 const { LOOPBACK } = __m["net/ipstack.js"];
@@ -6499,7 +6520,8 @@ class Kernel {
         if (src === undefined)
             return;
         const code = kind === 'icmp admin-prohibited' ? 'admin' : kind === 'icmp host-unreachable' ? 'host' : 'port';
-        this.host.sendRaw({ src, dst: p.src, ttl, protocol: 'icmp', icmp: { type: 'unreachable', id: p.icmp?.id ?? 0, seq: p.icmp?.seq ?? 0, code } });
+        const orig = icmpQuote(p);
+        this.host.sendRaw({ src, dst: p.src, ttl, protocol: 'icmp', icmp: { type: 'unreachable', id: p.icmp?.id ?? 0, seq: p.icmp?.seq ?? 0, code, ...(orig ? { orig } : {}) } });
     }
 }
 
@@ -6576,6 +6598,9 @@ class Host {
     dropOnArpMiss = false;
     /** Initial TTL of what this host sends: 64 on Linux, 128 on Windows. */
     get ttl() { return this.os === 'linux' ? LINUX_TTL : PC_TTL; }
+    /** Linux aborts a connect() in SYN_SENT on an ICMP unreachable quoting it (tcp_v4_err); Windows ignores it. */
+    icmpUnreachable(orig, code) { if (orig.protocol === 'tcp' && this.os === 'linux')
+        this.tcp.icmpUnreachable(orig, code); }
     /** Windows never answers an echo to a broadcast address; Linux only with icmp_echo_ignore_broadcasts=0. */
     ignoresBroadcastEcho = () => this.os === 'windows' || this.kernel.sysctl.enabled('net.ipv4.icmp_echo_ignore_broadcasts');
     constructor(id, name, clock, seed) {
@@ -10794,10 +10819,10 @@ function httpRequest(host, url, opts = {}) {
     const r = tcpCall(host, target.ip, parts.port, { app: 'HTTP', kind: 'request', method: opts.method ?? 'GET', host: parts.host, path: parts.path, headers, body: opts.body });
     if (r.kind === 'ok' && r.reply.app === 'HTTP' && r.reply.kind === 'response')
         return { kind: 'ok', response: r.reply, ip: target.ip };
-    if (r.kind === 'refused')
+    if (r.kind === 'refused' || r.kind === 'unreachable')
         return { kind: 'error', code: 7, message: `Failed to connect to ${parts.host} port ${parts.port} after 0 ms: Couldn't connect to server` };
     if (r.kind === 'noroute')
-        return { kind: 'error', code: 7, message: `Failed to connect to ${parts.host} port ${parts.port} after 0 ms: Network is unreachable` };
+        return { kind: 'error', code: 7, message: `Failed to connect to ${parts.host} port ${parts.port} after 0 ms: Couldn't connect to server` };
     return { kind: 'error', code: 28, message: `Failed to connect to ${parts.host} port ${parts.port} after 6000 ms: Connection timed out` };
 }
 function reverseLookup(host, ip, server) {
@@ -11526,6 +11551,8 @@ class SshLogin {
         const probe = tcpCall(this.host, this.ip, port, { app: 'SSH', kind: 'auth', method: 'none', nonce, user: this.opts.user, password: '', clientOs: this.osName });
         if (probe.kind === 'refused')
             return this.fail([`ssh: connect to host ${target} port ${port}: Connection refused`]);
+        if (probe.kind === 'unreachable')
+            return this.fail([`ssh: connect to host ${target} port ${port}: ${probe.reason === 'net' ? 'Network is unreachable' : 'No route to host'}`]);
         if (probe.kind !== 'ok')
             return this.fail([`ssh: connect to host ${target} port ${port}: ${probe.kind === 'noroute' ? 'Network is unreachable' : 'Connection timed out'}`]);
         const out = probe.reply.app === 'SSH' && probe.reply.kind === 'output' ? probe.reply : undefined;
@@ -17924,7 +17951,7 @@ const IOS_SEC_DOCS = [
             ]),
             list('in filtra lo que entra por la interfaz antes de la NAT y del enrutamiento; out filtra lo que sale en tránsito (ni las respuestas que entran por esa interfaz ni el tráfico del propio router).', 'Una ACL extendida también sirve para la NAT: deny ip LAN1 LAN2 deja ese tráfico sin traducir (exención para una VPN).', 'clear access-list counters pone a cero los contadores.', 'En ACL con nombre, «15 permit …» inserta con número de secuencia y «no 15» borra esa entrada.'),
             warn('Errores habituales', 'Poner una entrada general antes que una concreta: la concreta nunca se usa. Olvidar el deny implícito: una lista con solo un deny lo bloquea todo. Aplicarla en el sentido equivocado (in en vez de out): no filtra lo que querías, o filtra las respuestas. Permitir TCP 22 sin pensar en la vuelta: con `out` en la red del servidor, las respuestas no pasan por esa lista.'),
-            exercise('¿Por qué ALUMNO no entra por SSH?', 'En el laboratorio «Bastionado: ACL, nftables y sshd», `ssh admin@172.20.0.10` desde ALUMNO acaba en «Connection timed out», pero la web sí abre. ¿Qué entrada lo decide?', 'La 30 solo permite SSH desde 192.168.10.0/24; ALUMNO es 192.168.20.10, así que llega a la 60 (`deny ip any any log`): la consola de GW muestra «%SEC-6-IPACCESSLOGP: list A-SERVIDORES denied tcp 192.168.20.10(…) -> 172.20.0.10(22)». La web pasa por la 20 (`permit tcp any … eq www`), que suma coincidencias en `show access-lists`.'),
+            exercise('¿Por qué ALUMNO no entra por SSH?', 'En el laboratorio «Bastionado: ACL, nftables y sshd», `ssh admin@172.20.0.10` desde ALUMNO responde al momento «ssh: connect to host 172.20.0.10 port 22: No route to host», pero la web sí abre. ¿Qué entrada lo decide y de dónde sale ese mensaje?', 'La 30 solo permite SSH desde 192.168.10.0/24; ALUMNO es 192.168.20.10, así que llega a la 60 (`deny ip any any log`): la consola de GW muestra «%SEC-6-IPACCESSLOGP: list A-SERVIDORES denied tcp 192.168.20.10(…) -> 172.20.0.10(22)». GW contesta además con un ICMP «administratively prohibited», y el Linux de ALUMNO aborta la conexión: de ahí «No route to host» (un Windows lo ignora y acaba en «Connection timed out»). La web pasa por la 20 (`permit tcp any … eq www`), que suma coincidencias en `show access-lists`.'),
         ],
     },
     {
@@ -20084,7 +20111,7 @@ const IOS_SEC_DOCS = [
             ]),
             list('in filters what comes in through the interface before NAT and routing; out filters what goes out in transit (neither the replies coming in through that interface nor the router’s own traffic).', 'An extended ACL also serves NAT: deny ip LAN1 LAN2 leaves that traffic untranslated (an exemption for a VPN).', 'clear access-list counters resets the counters.', 'In named ACLs, “15 permit …” inserts with a sequence number and “no 15” deletes that entry.'),
             warn('Common mistakes', 'Putting a general entry before a specific one: the specific one is never used. Forgetting the implicit deny: a list with only a deny blocks everything. Applying it in the wrong direction (in instead of out): it does not filter what you wanted, or it filters the replies. Permitting TCP 22 without thinking about the way back: with `out` on the server’s network, the replies do not go through that list.'),
-            exercise('Why can ALUMNO not get in over SSH?', 'In the «Hardening: ACL, nftables and sshd» lab, `ssh admin@172.20.0.10` from ALUMNO ends in “Connection timed out”, but the website does open. Which entry decides it?', 'Entry 30 only permits SSH from 192.168.10.0/24; ALUMNO is 192.168.20.10, so it reaches entry 60 (`deny ip any any log`): GW’s console shows “%SEC-6-IPACCESSLOGP: list A-SERVIDORES denied tcp 192.168.20.10(…) -> 172.20.0.10(22)”. The website goes through entry 20 (`permit tcp any … eq www`), which adds matches in `show access-lists`.'),
+            exercise('Why can ALUMNO not get in over SSH?', 'In the «Hardening: ACL, nftables and sshd» lab, `ssh admin@172.20.0.10` from ALUMNO answers at once “ssh: connect to host 172.20.0.10 port 22: No route to host”, but the website does open. Which entry decides it, and where does that message come from?', 'Entry 30 only permits SSH from 192.168.10.0/24; ALUMNO is 192.168.20.10, so it reaches entry 60 (`deny ip any any log`): GW’s console shows “%SEC-6-IPACCESSLOGP: list A-SERVIDORES denied tcp 192.168.20.10(…) -> 172.20.0.10(22)”. GW also answers with an ICMP “administratively prohibited”, and ALUMNO’s Linux aborts the connection: hence “No route to host” (a Windows client ignores it and ends in “Connection timed out”). The website goes through entry 20 (`permit tcp any … eq www`), which adds matches in `show access-lists`.'),
         ],
     },
     {
@@ -28973,7 +29000,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.20.8",
+    "version": "0.20.9",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -35999,6 +36026,12 @@ const MAX_HOSTS = 256;
 const PROBE_MS = 1500;
 const COLLAPSE = 25;
 const NMAP_VERSION = 'Nmap 7.94SVN';
+/** nc's message for a port that did not open, as OpenBSD netcat (errno text of the failed connect). */
+function ncFailure(target, port, proto, res) {
+    const errno = { closed: 'Connection refused', noroute: 'Network is unreachable', netunreach: 'Network is unreachable', hostunreach: 'No route to host' };
+    const text = res === undefined ? undefined : errno[res];
+    return text ? `nc: connect to ${target} port ${port} (${proto}) failed: ${text}\n` : `nc: connect to ${target} port ${port} (${proto}) timed out: Operation now in progress\n`;
+}
 /** Runs every probe in parallel and waits (simulated time) until all have answered or timed out. */
 function probeAll(host, targets, timeoutMs) {
     const results = targets.map(() => undefined);
@@ -36057,7 +36090,7 @@ function nc(host) {
                     ctx.err(`Connection to ${target} ${port} port [${proto}/${SERVICES[port] ?? '*'}] succeeded!\n`);
             }
             else if (verbose || ports.length === 1) {
-                ctx.err(res === 'closed' ? `nc: connect to ${target} port ${port} (${proto}) failed: Connection refused\n` : res === 'noroute' ? `nc: connect to ${target} port ${port} (${proto}) failed: Network is unreachable\n` : `nc: connect to ${target} port ${port} (${proto}) timed out: Operation now in progress\n`);
+                ctx.err(ncFailure(target, port, proto, res));
             }
         });
         return ok ? 0 : 1;
@@ -40642,7 +40675,7 @@ function outboundAllowed(r, iface, p) {
 return { aclAllows, inboundAllowed, outboundAllowed };
 })();
 __m["devices/router-plane.js"] = (() => {
-const { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DEFAULT_TTL } = __m["net/packets.js"];
+const { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DEFAULT_TTL, icmpQuote } = __m["net/packets.js"];
 const { IpStack } = __m["net/ipstack.js"];
 const { buildRoutingTable, resolveEgress } = __m["net/routing.js"];
 const { effectiveAddress } = __m["ios/commands/show-iface.js"];
@@ -40655,12 +40688,16 @@ const { identity } = __m["dhcp/server.js"];
 const { natAnswersArp, natForward, natPrerouting } = __m["devices/router-nat.js"];
 const { inboundAllowed, outboundAllowed } = __m["devices/router-acl.js"];
 const DHCP_DEFAULT_ROUTE_AD = 254;
+/** 224.0.0.0/4. */
+const isMulticast = (ip) => ip >>> 28 === 0xe;
 class RouterPlane {
     stack;
     dropOnArpMiss = true;
     ttl = DEFAULT_TTL;
     router;
     clients = new Map();
+    /** The packet as it arrived, for those changed by the outside → inside NAT (ICMP errors quote the original). */
+    beforeNat = new WeakMap();
     leases = new Map();
     constructor(router) {
         this.router = router;
@@ -40755,15 +40792,31 @@ class RouterPlane {
             return null;
         }
         const opened = this.router.ipsec.inbound(iface, packet);
-        return opened ? natPrerouting(this.router, iface, opened) : null;
+        const translated = opened ? natPrerouting(this.router, iface, opened) : null;
+        if (opened && translated && translated !== opened)
+            this.beforeNat.set(translated, opened);
+        return translated;
     }
     answersArp(iface, ip) {
         return natAnswersArp(this.router, iface, ip);
     }
+    /**
+     * ICMP error back to the sender: for an echo (ping, traceroute) and, when unreachable, for TCP and UDP too, quoting
+     * the original header so the sender knows which connection failed (IOS `ip unreachables`, on by default).
+     */
     icmpError(packet, src, type, code) {
-        if (!packet.icmp || packet.icmp.type !== 'echo-request')
+        // Never about a broadcast, a multicast or an unaddressed sender (a DHCP DISCOVER denied by an ACL, for instance).
+        if (packet.src === 0 || packet.src === BROADCAST_IP || isMulticast(packet.dst) || this.stack.isBroadcast(packet.dst))
             return;
-        this.stack.send({ src, dst: packet.src, ttl: this.ttl, protocol: 'icmp', icmp: { ...packet.icmp, type, ...(code ? { code } : {}) } });
+        const coded = code ? { code } : {};
+        if (packet.icmp?.type === 'echo-request') {
+            this.stack.send({ src, dst: packet.src, ttl: this.ttl, protocol: 'icmp', icmp: { ...packet.icmp, type, ...coded } });
+            return;
+        }
+        // The quote is the packet as its sender wrote it: before the outside → inside NAT.
+        const orig = type === 'unreachable' ? icmpQuote(this.beforeNat.get(packet) ?? packet) : undefined;
+        if (orig)
+            this.stack.send({ src, dst: packet.src, ttl: this.ttl, protocol: 'icmp', icmp: { type, id: 0, seq: 0, ...coded, orig } });
     }
     // ------------------------------------------------------------ local delivery (DHCP)
     deliver(iface, packet) {
@@ -54755,7 +54808,7 @@ const PORTS = { SMTP: 25, POP3: 110, IMAP: 143 };
 function connectError(server, proto, kind) {
     if (kind === 'refused')
         return { ok: false, text: t('mailc.refused', { server, proto, port: PORTS[proto] }) };
-    if (kind === 'noroute')
+    if (kind === 'noroute' || kind === 'unreachable')
         return { ok: false, text: t('mailc.noroute', { server }) };
     return { ok: false, text: t('mailc.timeout', { server }) };
 }

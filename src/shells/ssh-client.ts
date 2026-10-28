@@ -181,6 +181,7 @@ export class SshLogin {
     const nonce = toBase64(cryptoRandom(NONCE_BYTES));
     const probe = tcpCall(this.host, this.ip, port, { app: 'SSH', kind: 'auth', method: 'none', nonce, user: this.opts.user, password: '', clientOs: this.osName });
     if (probe.kind === 'refused') return this.fail([`ssh: connect to host ${target} port ${port}: Connection refused`]);
+    if (probe.kind === 'unreachable') return this.fail([`ssh: connect to host ${target} port ${port}: ${probe.reason === 'net' ? 'Network is unreachable' : 'No route to host'}`]);
     if (probe.kind !== 'ok') return this.fail([`ssh: connect to host ${target} port ${port}: ${probe.kind === 'noroute' ? 'Network is unreachable' : 'Connection timed out'}`]);
     const out = probe.reply.app === 'SSH' && probe.reply.kind === 'output' ? probe.reply : undefined;
     this.hostKey = out?.hostKey ? parsePublicLine(out.hostKey) : null;

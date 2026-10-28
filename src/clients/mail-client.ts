@@ -22,7 +22,7 @@ const PORTS = { SMTP: 25, POP3: 110, IMAP: 143 } as const;
 
 function connectError(server: string, proto: string, kind: string): MailOutcome {
   if (kind === 'refused') return { ok: false, text: t('mailc.refused', { server, proto, port: PORTS[proto as keyof typeof PORTS] }) };
-  if (kind === 'noroute') return { ok: false, text: t('mailc.noroute', { server }) };
+  if (kind === 'noroute' || kind === 'unreachable') return { ok: false, text: t('mailc.noroute', { server }) };
   return { ok: false, text: t('mailc.timeout', { server }) };
 }
 

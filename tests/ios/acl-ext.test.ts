@@ -67,7 +67,7 @@ test('named extended ACL out, established, ranges, errors and running-config blo
   cli(r, 'config', 'ip access-list extended TO-LAN', 'permit tcp any any established', 'permit icmp any any', '15 permit udp host 10.0.0.2 range 50 60 any', 'exit',
     'interface g0/0', 'ip access-group TO-LAN out');
   assert.match(sh(pc, 'curl -s http://10.0.0.2/'), /Servidor web de Netfix/, 'the replies are established');
-  assert.match(createShell(srv, 'linux').run('nc -z -w 1 192.168.1.10 22').join('\n'), /timed out/, 'new TCP from the server is blocked');
+  assert.match(createShell(srv, 'linux').run('nc -z -w 1 192.168.1.10 22').join('\n'), /failed: No route to host/, 'new TCP from the server is blocked: the router answers ICMP admin-prohibited');
   assert.match(cli(r, 'exec', 'show ip access-lists TO-LAN').join('\n'), /^Extended IP access list TO-LAN\n {4}10 permit tcp any any established \(\d+ match\(es\)\)\n {4}15 permit udp host 10\.0\.0\.2 range 50 60 any\n {4}20 permit icmp any any/);
   assert.match(cli(r, 'exec', 'show running-config').join('\n'), /ip access-list extended TO-LAN\n permit tcp any any established\n permit udp host 10\.0\.0\.2 range 50 60 any\n permit icmp any any/);
   assert.deepEqual(cli(r, 'config', 'access-list 101 permit tcp any'), ['% Incomplete command.']);

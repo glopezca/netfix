@@ -1015,8 +1015,8 @@ Las pruebas de paridad es/en cubren los bloques nuevos.
 - **`ip [-4] addr show DEV`.** Solo esa interfaz; con -4, solo las que tienen IPv4 y sin las líneas `link/`.
 - **Log de nftables.** Como el del núcleo: MAC, LEN, TOS, PREC, TTL (ya decrementado en forward), ID, DF y los campos
   de cada protocolo (TYPE/CODE/ID/SEQ, SPT/DPT/WINDOW/flags, LEN de UDP). El ping de Linux numera desde 1.
-- **Pendiente:** IOS solo responde con ICMP a los ecos; una conexión TCP bloqueada por una ACL acaba en timeout en vez
-  de «No route to host».
+- **Hecho en v0.20.9:** IOS solo respondía con ICMP a los ecos; una conexión TCP bloqueada por una ACL acababa en
+  timeout en vez de «No route to host».
 
 ### Notas de la fase 36d, primera entrega (v0.20.7)
 
@@ -1040,3 +1040,15 @@ Las pruebas de paridad es/en cubren los bloques nuevos.
   - `dig` sin servidor DNS dice «;; communications error to 127.0.0.1#53: connection refused» y «;; no servers could be
     reached» (antes añadía un texto en español).
   - `echo … >> FICHERO` sin permiso falla al abrir («bash: /etc/passwd: Permission denied»), no al escribir.
+
+### ICMP para TCP y UDP (v0.20.9)
+
+- **El error ICMP cita el paquete original** (cabecera IP y puertos), como el real. Un router IOS lo envía también
+  para TCP y UDP cuando no hay ruta o una ACL lo deniega (`ip unreachables`), y el `reject` de nftables lo cita igual.
+- **Linux aborta el `connect()`** en SYN_SENT con el errno de cada código (`tcp_v4_err`): red → «Network is
+  unreachable», host o prohibido → «No route to host», puerto → «Connection refused». Así salen ssh, nc y curl (curl 8:
+  «Couldn't connect to server», error 7). **Windows lo ignora** y sigue reintentando hasta el timeout.
+- **Nunca sobre una difusión** (RFC 1122 3.2.2, RFC 1812 4.3.2.7): ni a un destino de difusión o multidifusión ni a un
+  origen 0.0.0.0. Un ping a la difusión dirigida de una red lejana denegado por una ACL ya no recibe «Packet filtered».
+- **Con NAT de entrada**, la cita es el paquete tal como lo envió su origen (antes de la traducción).
+- **Documentación:** el ejercicio de ACL explica el «No route to host» de ALUMNO.

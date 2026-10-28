@@ -139,7 +139,8 @@ test('review: combined flags (-bc 1) and an outbound ACL also stop a relayed dir
   applyConfig(r, ['access-list 101 deny icmp any any', 'access-list 101 permit ip any any', 'interface GigabitEthernet0/1', ' ip directed-broadcast', ' ip access-group 101 out']);
   const out = all(sh.run('ping -c 1 192.168.2.255'));
   assert.doesNotMatch(out, /192\.168\.2\.10/, 'the ACL of the way out applies: the far network gets nothing');
-  assert.match(out, /From 192\.168\.1\.1 icmp_seq=1 Packet filtered/, 'the router says so (administratively prohibited)');
+  assert.doesNotMatch(out, /From 192\.168\.1\.1/, 'no ICMP error about a datagram to a broadcast address (RFC 1122 3.2.2, RFC 1812 4.3.2.7)');
+  assert.match(out, /64 bytes from 192\.168\.2\.1: /, 'IOS itself still answers an echo to the broadcast of one of its networks');
 });
 
 test('ping -b from every kind of sender: Server, Linux router, IOS switch, Windows and a PC with a DHCP address', () => {

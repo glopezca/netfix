@@ -3,7 +3,7 @@
  * log (dmesg). The IP stack calls the hooks with the NIC's port name; netfilter sees Linux names.
  */
 import type { IpPacket, UnreachableCode } from '../net/packets.ts';
-import { LINUX_TTL } from '../net/packets.ts';
+import { LINUX_TTL, icmpQuote } from '../net/packets.ts';
 import { Netfilter } from '../net/netfilter.ts';
 import { Sysctl } from '../net/sysctl.ts';
 import { LOOPBACK } from '../net/ipstack.ts';
@@ -88,6 +88,7 @@ export class Kernel {
     const src = iif === undefined ? p.dst : this.host.linuxIfIp(iif);
     if (src === undefined) return;
     const code: UnreachableCode = kind === 'icmp admin-prohibited' ? 'admin' : kind === 'icmp host-unreachable' ? 'host' : 'port';
-    this.host.sendRaw({ src, dst: p.src, ttl, protocol: 'icmp', icmp: { type: 'unreachable', id: p.icmp?.id ?? 0, seq: p.icmp?.seq ?? 0, code } });
+    const orig = icmpQuote(p);
+    this.host.sendRaw({ src, dst: p.src, ttl, protocol: 'icmp', icmp: { type: 'unreachable', id: p.icmp?.id ?? 0, seq: p.icmp?.seq ?? 0, code, ...(orig ? { orig } : {}) } });
   }
 }
