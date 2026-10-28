@@ -93,3 +93,12 @@ test('logs (vim «messages», as journalctl and syslog): date, time, host, progr
     'Error:error: maximum authentication attempts exceeded for admin from 192.168.20.10']);
   assert.deepEqual(groups(c!), ['Type:22:40:01', 'Statement:ssh'], 'the web GUI format: time and unit');
 });
+
+test('shell scripts: detected by name, with sh.vim groups (keywords, $variables, strings, test operators, comments)', () => {
+  assert.deepEqual(['/home/alumno/tipo.sh', '/root/.bashrc', '/etc/profile', '/home/ana/.profile', '/usr/local/bin/x.bash'].map(filetypeOf), ['sh', 'sh', 'sh', 'sh', 'sh']);
+  const [a, b, c, d] = highlight('#!/bin/bash\nif (( $# == 0 )); then exit 1; fi\nfor r in "$@"; do [[ -d $r ]] && echo \'dir\'; done\nx=${HOME}/a  # fin', 'sh');
+  assert.deepEqual(groups(a!), ['Comment:#!/bin/bash']);
+  assert.deepEqual(groups(b!), ['Statement:if', 'PreProc:$#', 'Number:0', 'Statement:then', 'Statement:exit', 'Number:1', 'Statement:fi']);
+  assert.deepEqual(groups(c!), ['Statement:for', 'Statement:in', 'String:"$@"', 'Statement:do', 'Statement:-d', 'PreProc:$r', 'Statement:echo', "String:'dir'", 'Statement:done']);
+  assert.deepEqual(groups(d!), ['PreProc:${HOME}', 'Comment:# fin']);
+});

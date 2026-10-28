@@ -8,6 +8,7 @@ import { canAccess, FsError } from './vfs.ts';
 import { findInPath, programName } from './path.ts';
 import { execCompound } from './exec-compound.ts';
 import { writeSink, makeCtx, isGen } from './io.ts';
+import { ansiQuote } from './builtins/util.ts';
 
 export type Resolved =
   | { readonly kind: 'function'; readonly def: FunctionDef }
@@ -43,7 +44,8 @@ export function resolveCommand(sh: Interp, name: string, opts: { noFunctions?: b
   if (opts.builtinOnly) return { kind: 'error', status: 1, message: `builtin: ${name}: not a shell builtin` };
   const path = findInPath(sh, name);
   if (path) return fromFile(sh, path, name);
-  return { kind: 'error', status: 127, message: `${name}: command not found` };
+  // A name with control characters (a CRLF script: `ls\r`) is shown as bash does, $'ls\r'.
+  return { kind: 'error', status: 127, message: `${/[\x00-\x1f\x7f]/.test(name) ? ansiQuote(name) : name}: command not found` };
 }
 
 export function* runResolved(sh: Interp, r: Resolved, argv: readonly string[], fds: Fds, env: ReadonlyMap<string, string>, decl?: ReadonlyMap<number, DeclArg>): Gen<number> {

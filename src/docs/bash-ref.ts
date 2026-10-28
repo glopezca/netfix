@@ -1,7 +1,9 @@
 /** Documentación: referencia de bash (variables, prompt, opciones, arranque, historial, trabajos, novedades 5.3 y órdenes internas). */
 import type { DocBlock, DocPage } from './types.ts';
-import { code, h, list, note, p, table } from './types.ts';
+import { code, exercise, h, list, note, p, steps, table, term, tip, warn } from './types.ts';
 import { BUILTIN_DOCS } from './bash-builtins.ts';
+
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
 function builtinBlocks(): DocBlock[] {
   const names = Object.keys(BUILTIN_DOCS).sort((a, b) => a.localeCompare(b));
@@ -21,7 +23,15 @@ export const BASH_REFERENCE: readonly DocPage[] = [
     id: 'bash-variables',
     title: 'bash: variables especiales y prompt',
     summary: 'Parámetros especiales, variables del shell y secuencias de PS1.',
+    markdownBase: MD,
     blocks: [
+      p('bash guarda información en **variables especiales**: el estado de la última orden (`$?`), los argumentos (`$1`, `$#`…), la versión, el directorio… Una de ellas, **PS1**, es el texto del **prompt**: cambiarla es la forma más rápida de ver cómo funcionan.'),
+      steps(
+        ['Mira el estado', '`false; echo $?` da 1; en una tubería, `${PIPESTATUS[@]}` guarda el de cada orden.'],
+        ['Prueba un prompt', "`PS1='\\u en \\W\\$ '`: el cambio es inmediato, pero solo dura esta sesión."],
+        ['Hazlo permanente', 'Añádelo al final de `~/.bashrc` y recárgalo con `source ~/.bashrc`.'],
+      ),
+      term('shell', "alumno@pc1:~$ false | true; echo \"${PIPESTATUS[@]}\"\n1 0\nalumno@pc1:~$ echo $BASH_VERSION\n5.3.20(1)-release\nalumno@pc1:~$ PS1='\\u en \\W\\$ '\nalumno en ~$ cd /etc\nalumno en etc$ cd"),
       table(['Variable', 'Contenido'], [
         ['$? · $$ · $! · $- · $_', 'Estado de la última orden · PID del shell · PID del último trabajo en segundo plano · opciones activas · último argumento'],
         ['BASH_VERSION · BASH_VERSINFO', '5.3.20(1)-release · (5 3 20 1 release x86_64-pc-linux-gnu)'],
@@ -46,13 +56,24 @@ export const BASH_REFERENCE: readonly DocPage[] = [
         ['\\n · \\e · \\[ … \\]', 'salto de línea, ESC, delimitan secuencias de color'],
       ]),
       code("PS1='\\[\\e[01;32m\\]\\u@\\h\\[\\e[00m\\]:\\[\\e[01;34m\\]\\w\\[\\e[00m\\]\\$ '   # el de Ubuntu"),
+      tip('Copia de seguridad', 'Antes de tocar `~/.bashrc`, `cp ~/.bashrc ~/.bashrc.bak`: si el prompt queda roto, `cp ~/.bashrc.bak ~/.bashrc` y abre otra terminal.'),
+      exercise('Tu prompt', 'En la Terminal Linux de PC1, haz que el prompt muestre usuario@equipo y la ruta completa, y que se conserve en las siguientes sesiones.', "`echo 'PS1=\"\\u@\\h:\\w\\$ \"' >> ~/.bashrc` y `source ~/.bashrc`. Tras `cd /var/log` el prompt es «alumno@pc1:/var/log$». \\w es la ruta completa (con ~ para tu home) y \\W solo su último componente."),
     ],
   },
   {
     id: 'bash-opciones',
     title: 'bash: opciones y ficheros de arranque',
     summary: 'set -euxo pipefail, shopt y qué ficheros lee bash al empezar.',
+    markdownBase: MD,
     blocks: [
+      p('Las **opciones** cambian cómo se comporta bash. Las de `set` son las que más importan en un script: que pare al primer error, que avise de variables sin definir y que enseñe lo que ejecuta. Las de `shopt` afinan los comodines y el historial.'),
+      steps(
+        ['Para al primer error', '`set -e`: si una orden falla, el script termina con su estado.'],
+        ['Nada de variables fantasma', '`set -u`: usar una variable sin definir es un error, no una cadena vacía.'],
+        ['Tuberías honestas', '`set -o pipefail`: una tubería falla si falla cualquiera de sus órdenes, no solo la última.'],
+        ['Mira qué pasa', '`set -x` enseña cada orden expandida (o `bash -x script.sh`).'],
+      ),
+      term('shell', 'alumno@pc1:~$ printf "set -e\\nfalse\\necho nunca\\n" > e.sh; bash e.sh; echo "estado: $?"\nestado: 1\nalumno@pc1:~$ printf "set -o pipefail\\nfalse | true\\necho \\$?\\n" > p.sh; bash p.sh\n1\nalumno@pc1:~$ set -x; echo hola; set +x\n+ echo hola\nhola\n+ set +x'),
       table(['set', 'Efecto'], [
         ['-e (errexit)', 'Termina el script si una orden falla (salvo en condiciones, && y ||).'],
         ['-u (nounset)', 'Error al usar una variable sin definir.'],
@@ -79,13 +100,24 @@ export const BASH_REFERENCE: readonly DocPage[] = [
         '~/.bashrc de Ubuntu: prompt en color, HISTCONTROL=ignoreboth, alias ls/grep con color, ll, la y l.',
         'command_not_found_handle (en /etc/bash.bashrc) sugiere el paquete: «Command \'ifconfig\' not found, but can be installed with: sudo apt install net-tools».',
       ),
+      warn('Cuidado con set -e', 'No salta dentro de condiciones (`if orden`, `orden || …`, `&&`): ahí un fallo es una respuesta, no un error. Y en la terminal interactiva, `set -e` cierra la sesión al primer fallo: úsalo en scripts.'),
+      exercise('Un script que no sigue a ciegas', 'En PC1, escribe un script que haga `cd /noexiste` y después `rm -f *.tmp`. ¿Qué pasa sin opciones y qué con `set -e` al principio?', 'Sin opciones, `cd` falla («No such file or directory») y `rm` se ejecuta igualmente en el directorio actual: justo lo que no querías. Con `set -e` en la primera línea, el script termina en el `cd` con estado 1 y `rm` no llega a ejecutarse.'),
     ],
   },
   {
     id: 'bash-interactivo',
     title: 'bash: teclado, historial y trabajos',
     summary: 'Teclas de la terminal, expansión del historial (!), alias y control de trabajos.',
+    markdownBase: MD,
     blocks: [
+      p('En la terminal, bash ayuda a escribir menos: **Tab** completa, las flechas recorren el **historial** y `!` repite órdenes anteriores. También puede lanzar órdenes en **segundo plano** con `&`.'),
+      steps(
+        ['Completa', 'Escribe el principio de una orden o de un fichero y pulsa **Tab** (dos veces si hay varias opciones).'],
+        ['Repite', '`!!` repite la última orden; `!$` es su último argumento.'],
+        ['Corrige', '`^viejo^nuevo` repite la última cambiando un texto: ideal para una errata.'],
+        ['En segundo plano', '`orden &` devuelve el prompt al momento; `jobs` lista lo que está en marcha.'],
+      ),
+      term('shell', 'alumno@pc1:~$ echo uno\nuno\nalumno@pc1:~$ !!\necho uno\nuno\nalumno@pc1:~$ ^uno^dos\necho dos\ndos'),
       table(['Tecla', 'Acción'], [
         ['Tab · Tab Tab', 'Completa órdenes, ficheros y $variables · lista las opciones'],
         ['↑ ↓', 'Historial de la terminal'],
@@ -105,12 +137,15 @@ export const BASH_REFERENCE: readonly DocPage[] = [
       h('Trabajos'),
       p('orden & arranca un trabajo en segundo plano. En Netfix no hay procesos reales: el trabajo termina al momento y bash avisa con [1]+ Done antes del siguiente prompt. jobs, wait, fg, bg, disown y kill se aceptan con su sintaxis y mensajes.'),
       note('Cada orden tiene un límite de 4 s de cálculo para que un bucle infinito no bloquee la página; al superarlo se interrumpe como con Ctrl+C.'),
+      warn('Expansión del historial', 'El `!` se expande también dentro de comillas dobles y de un here-document pegado en la terminal: `echo "¡Hola!"` funciona, pero `"hola!x"` busca la orden «x…» («event not found»). Usa comillas simples o `set +H`.'),
+      exercise('La errata', 'En la Terminal Linux de PC1, escribe `cat /etc/hostnmae` (con la errata) y corrígela sin volver a escribir la orden.', 'Sale «cat: /etc/hostnmae: No such file or directory». `^nmae^name` repite la orden corregida: bash muestra «cat /etc/hostname» y después su contenido, pc1.'),
     ],
   },
   {
     id: 'bash-53',
     title: 'bash: novedades de la versión 5.3',
     summary: 'Lo nuevo de bash 5.3 respecto a 5.2 que también está en Netfix.',
+    markdownBase: MD,
     blocks: [
       table(['Novedad', 'Ejemplo'], [
         ['Sustitución de órdenes sin subshell ${ …; }', 'x=1; y=${ x=2; echo $x; }; echo $x   # 2'],
@@ -122,7 +157,7 @@ export const BASH_REFERENCE: readonly DocPage[] = [
         ['read -E (readline con completado)', 'read -E -p "fichero: " f'],
         ['array_expand_once (antes assoc_expand_once)', 'shopt -s array_expand_once'],
       ]),
-      code('$ x=1\n$ v=${ x=2; echo "dentro:$x"; }\n$ echo "$v / $x"\ndentro:2 / 2'),
+      term('shell', 'alumno@pc1:~$ x=1; v=${ x=2; echo "dentro:$x"; }; echo "$v / $x"\ndentro:2 / 2'),
     ],
   },
   {

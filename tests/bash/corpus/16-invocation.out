@@ -33,4 +33,7 @@ x0: 1
 a
 + set -n
 setn: 0
+hola
+crlf.sh: line 2: $'ls\r': command not found
+crlf: 127
 [status 0]

@@ -1068,3 +1068,17 @@ Encontrado al preparar la documentación de bash (fase 36d), contrastado con el 
   corchetes. **`declare -p`** pone entre comillas las claves asociativas con metacaracteres (`["a b"]="1"`).
 - **Pendiente:** el orden de las claves de un array asociativo en `declare -p` sigue al de inserción; bash usa el de su
   tabla hash. `[[ ! ( -z a ) ]]` se traza con `!` (bash no lo muestra con paréntesis).
+
+### Notas de la fase 36d, tercera entrega (v0.21.0): bash. Fase 36 completada
+
+- **bash: Lenguaje** (sintaxis, expansiones, scripts y estructuras de control, funciones y arrays, redirecciones) en
+  estilo guiado: pasos, terminales reales, avisos y un ejercicio por página, comprobados en la Terminal Linux de PC1
+  del laboratorio «Server: DHCP, DNS, web, correo y SSH». «Tu primer script» (`tipo.sh`) recorre nano, chmod, `bash -n`,
+  la ejecución, `$?` y `bash -x`.
+- **bash: Referencia**: variables y prompt, opciones, teclado e historial y novedades de 5.3 llevan introducción,
+  pasos, terminal, aviso y ejercicio; las órdenes internas siguen generándose de `bash-builtins.ts`.
+- **Resaltado `sh`** (como `syntax/sh.vim`) para los `.sh`, `.bash`, `.bashrc`, `.profile`…: en la documentación y en el
+  vim de Netfix.
+- **Arreglo encontrado al comprobar:** con finales de línea CRLF, «command not found» cita el nombre como bash
+  (`$'ls\r'`), con su caso en el corpus.
+- **Fase 36 completada:** todos los grupos de la documentación siguen el orden de la paleta y el estilo guiado.

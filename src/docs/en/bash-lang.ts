@@ -1,13 +1,25 @@
-/** Documentation: the GNU bash 5.3 language (syntax, expansions, control, functions, arrays and redirections). */
+/** Documentation: the GNU bash 5.3 language (syntax, expansions, control, functions and redirections), in guided style. */
 import type { DocPage } from '../types.ts';
-import { code, h, list, note, p, table } from '../types.ts';
+import { check, code, exercise, h, list, note, p, steps, table, term, tip, warn } from '../types.ts';
+
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
 export const BASH_LANGUAGE: readonly DocPage[] = [
   {
     id: 'bash-sintaxis',
     title: 'bash: basic syntax',
-    summary: 'Commands, lists, pipelines, grouping, quoting and comments.',
+    summary: 'Commands, lists, pipelines, grouping, quoting and comments: how a bash line is written.',
+    markdownBase: MD,
     blocks: [
+      p('**bash** is Linux’s command interpreter: it reads what you type (or a script), expands it and runs it. Each line is a **command** with its arguments, and commands are combined: one after another, only if the previous one went well or badly, or connecting one’s output to the next one’s input (a **pipeline**).'),
+      h('Step by step: from a command to a pipeline'),
+      steps(
+        ['A command', '`ls /etc`: the program and its arguments, separated by spaces.'],
+        ['Its result', 'Every command ends with an **exit status**: 0 if it went well, another number if not. `echo $?` shows it.'],
+        ['Chaining on the result', '`a && b` runs b only if a went well; `a || b`, only if it failed.'],
+        ['Connecting commands', '`a | b`: a’s output is b’s input. That is how results are filtered without intermediate files.'],
+      ),
+      term('shell', "alumno@pc1:~$ ls /noexiste && echo bien || echo mal\nls: cannot access '/noexiste': No such file or directory\nmal\nalumno@pc1:~$ cut -d: -f1,7 /etc/passwd | grep bash\nroot:/bin/bash\nalumno:/bin/bash"),
       table(['Form', 'Meaning'], [
         ['orden arg1 arg2', 'Simple command. It may be preceded by assignments (LANG=C sort f) and followed by redirections.'],
         ['a ; b', 'Runs a and then b.'],
@@ -21,24 +33,39 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
         ['# comentario', 'Up to the end of the line.'],
       ]),
       h('Quoting and escapes'),
+      p('Quotes decide what is expanded and whether a text with spaces is **one** word or several:'),
       table(['Form', 'Effect'], [
         ["'texto'", 'Literal: nothing is expanded.'],
         ['"texto"', 'Expands $variables, $(commands), $((arithmetic)) and `…`; does not split words or expand wildcards.'],
         ["$'a\\tb\\n'", 'ANSI-C string: \\n \\t \\e \\xHH \\uHHHH \\0NNN…'],
         ['\\c', 'Removes the special meaning of a character; \\ at the end of a line continues the command.'],
       ]),
-      code('nombre="Ana López"\necho "Hola, $nombre"     # Hola, Ana López\necho \'Hola, $nombre\'     # Hola, $nombre\nprintf \'%s\\n\' $nombre  # two words: Ana / López'),
+      term('shell', "alumno@pc1:~$ nombre=\"Ana López\"\nalumno@pc1:~$ echo \"Hola, $nombre\"\nHola, Ana López\nalumno@pc1:~$ echo 'Hola, $nombre'\nHola, $nombre\nalumno@pc1:~$ printf '[%s]\\n' $nombre\n[Ana]\n[López]\nalumno@pc1:~$ printf '[%s]\\n' \"$nombre\"\n[Ana López]"),
+      tip('The golden rule', 'Always put variables in double quotes: `\"$nombre\"`. Without them, a value with spaces is split into several words (the `printf` above gets two).'),
       h('Reserved words'),
       p('! case coproc do done elif else esac fi for function if in select then time until while { } [[ ]]'),
+      warn('Common mistakes', 'Putting spaces in an assignment: `nombre = Ana` runs the command “nombre”. Forgetting the space or the `;` of `{ lista; }`. Using single quotes when you wanted a variable expanded.'),
       note('The Netfix interpreter is a reimplementation of GNU bash 5.3 (BASH_VERSION 5.3.20(1)-release): same parsing, same expansions and the same error messages (“syntax error near unexpected token”, “command not found”, “bad substitution”…).'),
+      exercise('Who uses bash?', 'In PC1’s Linux Terminal («Server: DHCP, DNS, web, mail and SSH» lab), count with a single line how many users in /etc/passwd have bash as their shell, and then show their names.', '`grep -c \'/bin/bash$\' /etc/passwd` gives 2. `cut -d: -f1,7 /etc/passwd | grep bash` shows root:/bin/bash and alumno:/bin/bash: cut keeps fields 1 (user) and 7 (shell) and grep filters the lines.'),
     ],
   },
   {
     id: 'bash-expansiones',
     title: 'bash: expansions',
-    summary: 'Brace, tilde, parameter, command and arithmetic expansion, word splitting and wildcards.',
+    summary: 'Brace, tilde, parameter, command and arithmetic expansion, word splitting and wildcards, in the order bash applies them.',
+    markdownBase: MD,
     blocks: [
-      p('Order in which they are applied: braces → tilde → parameters, arithmetic and command substitution (left to right) → word splitting (IFS) → wildcards → quote removal.'),
+      p('Before running a command, bash **transforms** the line: it replaces variables, calculates, runs the commands inside `$( )` and expands wildcards. Understanding the order explains almost every surprise.'),
+      h('The order of the expansions'),
+      steps(
+        ['Braces', '`f{1..3}.txt` → f1.txt f2.txt f3.txt.'],
+        ['Tilde', '`~` → your home directory.'],
+        ['Parameters, arithmetic and commands', '`$nombre`, `$(( 2 + 2 ))`, `$(hostname)`, left to right.'],
+        ['Word splitting', 'What came out of an **unquoted** expansion is split on spaces (IFS).'],
+        ['Wildcards', '`*.txt` becomes the list of matching files.'],
+        ['Quote removal', 'The quotes disappear: they have done their job.'],
+      ),
+      term('shell', 'alumno@pc1:~$ echo f{1..3}.txt {a,b}x\nf1.txt f2.txt f3.txt ax bx\nalumno@pc1:~$ echo ~ ~root\n/home/alumno /root\nalumno@pc1:~$ fichero=informe.tar.gz\nalumno@pc1:~$ echo ${fichero%%.*} ${fichero#*.} ${fichero%.gz} ${fichero^^}\ninforme tar.gz informe.tar INFORME.TAR.GZ\nalumno@pc1:~$ echo $(( 2**10 % 7 )) $(( 0x1F )) $(( 2#1010 ))\n2 31 10\nalumno@pc1:~$ echo "Soy $(whoami) en $(hostname)"\nSoy alumno en pc1'),
       table(['Expansion', 'Example', 'Result'], [
         ['Braces', 'echo f{1..3}.txt {a,b}x {01..10..3}', 'f1.txt f2.txt f3.txt ax bx 01 04 07 10'],
         ['Tilde', '~  ~root  ~+  ~-', '$HOME, root’s home, $PWD, $OLDPWD'],
@@ -65,17 +92,34 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
       list(
         'Unquoted results are split on the characters in IFS (space, tab and newline).',
         '"$@" keeps each argument as one word; "$*" joins them with the first character of IFS.',
-        'A wildcard with no matches is left as is, except with shopt -s nullglob (it disappears) or failglob (error).',
+        'A wildcard with no matches is left as is (`echo *.nada` prints “*.nada”), except with shopt -s nullglob (it disappears) or failglob (error).',
         'shopt -s extglob enables ?(p) *(p) +(p) @(p) !(p); dotglob includes hidden files; nocaseglob ignores case.',
         'GLOBSORT (5.3) sorts the results: name, size, mtime, numeric, none; with a leading -, in reverse.',
       ),
+      warn('Common mistakes', 'Looping over the output of `ls` with `for f in $(ls)`: it breaks with names containing spaces; use `for f in *`. Expecting `{1..$n}` to work: braces are expanded before variables (use `seq 1 "$n"` or `for (( ))`).'),
+      exercise('Change the extension', 'In PC1’s Linux Terminal, create a.txt, b.txt and c.txt and rename them all to .bak with a loop, without typing each name.', '`touch a.txt b.txt c.txt` and `for f in *.txt; do mv "$f" "${f%.txt}.bak"; done`. `ls` shows a.bak b.bak c.bak: `${f%.txt}` removes the suffix and the quotes protect names with spaces.'),
     ],
   },
   {
     id: 'bash-control',
-    title: 'bash: control structures and conditions',
-    summary: 'if, case, for, while, until, select, test, [[ ]] and (( )).',
+    title: 'bash: scripts, control structures and conditions',
+    summary: 'Your first script step by step; if, case, for, while, until, select; test, [[ ]] and (( )); and how to debug it.',
+    markdownBase: MD,
     blocks: [
+      p('A **script** is a file of bash commands run one after another. With **control structures** it decides what to do (if, case) and repeats (for, while). This one, `tipo.sh`, says what each path it receives is:'),
+      term('sh', '#!/bin/bash\n# tipo.sh: dice qué es cada argumento\nif (( $# == 0 )); then\n  echo "uso: $0 RUTA..." >&2\n  exit 1\nfi\nfor ruta in "$@"; do\n  if [[ -d $ruta ]]; then\n    echo "$ruta: directorio"\n  elif [[ -f $ruta ]]; then\n    echo "$ruta: fichero de $(wc -c < "$ruta") bytes"\n  else\n    echo "$ruta: no existe"\n  fi\ndone'),
+      h('Step by step: your first script'),
+      steps(
+        ['Write it', '`nano tipo.sh`. The first line, `#!/bin/bash` (the “shebang”), says which interpreter runs it.'],
+        ['Make it executable', '`chmod +x tipo.sh`. Without it: “Permission denied”.'],
+        ['Check the syntax', '`bash -n tipo.sh` parses it without running it: if it says nothing, it is well written.'],
+        ['Run it', '`./tipo.sh /etc /etc/hostname /nada` (the `./` because the current directory is not in PATH).'],
+        ['Look at its status', '`echo $?`: what `exit` returned. 0 is success.'],
+      ),
+      term('shell', "alumno@pc1:~$ ./tipo.sh /etc\nbash: ./tipo.sh: Permission denied\nalumno@pc1:~$ chmod +x tipo.sh\nalumno@pc1:~$ bash -n tipo.sh && echo sintaxis correcta\nsintaxis correcta\nalumno@pc1:~$ ./tipo.sh /etc /etc/hostname /nada\n/etc: directorio\n/etc/hostname: fichero de 4 bytes\n/nada: no existe\nalumno@pc1:~$ ./tipo.sh; echo \"estado: $?\"\nuso: ./tipo.sh RUTA...\nestado: 1"),
+      check('Debug it with -x', '`bash -x tipo.sh /etc` shows, with a `+` in front, each command as it runs, already expanded: you see which branch each `if` took.'),
+      term('shell', "alumno@pc1:~$ bash -x tipo.sh /etc\n+ ((  1 == 0  ))\n+ for ruta in \"$@\"\n+ [[ -d /etc ]]\n+ echo '/etc: directorio'\n/etc: directorio"),
+      h('All the structures'),
       code('if [[ -f /etc/hosts && $USER == alumno ]]; then\n  echo sí\nelif (( $# > 2 )); then\n  echo muchos\nelse\n  echo no\nfi\n\ncase $1 in\n  start|inicio) echo arrancar ;;\n  stop)         echo parar ;&      # falls through to the next one\n  *)            echo "uso: $0 start|stop" ;;\nesac\n\nfor f in *.txt; do wc -l "$f"; done\nfor (( i = 0; i < 3; i++ )); do echo $i; done\nwhile read -r linea; do echo "> $linea"; done < fichero\nuntil ping -c 1 srv >/dev/null; do sleep 1; done\nselect op in uno dos salir; do [[ $op == salir ]] && break; done'),
       h('Conditions'),
       table(['Test', 'True if'], [
@@ -90,14 +134,25 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
         ['! e · e1 && e2 · e1 || e2 · ( e )', 'inside [[ ]]; in test/[ ] use -a, -o and \\( \\)'],
       ]),
       p('(( expression )) evaluates 64-bit arithmetic with the C operators (++ -- ** * / % + - << >> < <= > >= == != & ^ | && || ?: = += …) and returns 0 if the result is not zero. Bases are written 0x1F, 017 or 2#1010.'),
+      warn('Common mistakes', 'No spaces inside the brackets: `[[-f f]]` is not a condition. Comparing numbers with `==` in `[ ]` (it compares text: use -eq or `(( ))`). Writing the script on Windows: CRLF line endings give errors such as “$\'ls\\r\': command not found”. Pasting a here-document with `#!/bin/bash` into the terminal: the `!` triggers history (“event not found”); write scripts with nano.'),
+      exercise('Improve tipo.sh', 'On PC1, create tipo.sh as in the steps and add a branch that says “ejecutable” when the path is a file that can be run. Try it with /usr/bin/ls.', 'Before the `-f` branch, add `elif [[ -f $ruta && -x $ruta ]]; then echo "$ruta: ejecutable"`. The order matters: after `-f` it is never reached. `bash -n tipo.sh` checks the syntax and `bash -x tipo.sh /usr/bin/ls` shows which test is met.'),
     ],
   },
   {
     id: 'bash-funciones',
     title: 'bash: functions, variables and arrays',
-    summary: 'Functions, positional parameters, local, declare, indexed and associative arrays, namerefs.',
+    summary: 'Functions with arguments and exit status, local, declare, indexed and associative arrays, namerefs.',
+    markdownBase: MD,
     blocks: [
-      code('saluda() {\n  local nombre=${1:-mundo}\n  echo "Hola, $nombre ($# argumentos)"\n  return 0\n}\nsaluda Ana\n\ndeclare -a dias=(lun mar mié)\ndias+=(jue)\necho "${dias[1]} ${#dias[@]} ${dias[@]:1:2}"   # mar 4 mar mié\n\ndeclare -A ip=([srv]=192.168.10.2 [gw]=192.168.10.1)\nfor k in "${!ip[@]}"; do echo "$k=${ip[$k]}"; done\n\ndeclare -n ref=dias; echo "${ref[0]}"          # nameref → lun\ndeclare -i n=5; n+=2; echo $n                  # 7\nreadonly PI=3.14'),
+      p('A **function** groups commands under a name and is called like any command, with arguments (`$1`, `$2`…). It returns a **status** with `return`, and a **result** by writing it: the caller collects it with `$( )`. Variables can be simple or **arrays** (lists, or key-value pairs).'),
+      steps(
+        ['Define it', '`suma() { echo $(( $1 + $2 )); }`.'],
+        ['Call it', '`suma 2 40` prints 42.'],
+        ['Collect its result', '`total=$(suma 1 1)` stores the output in a variable.'],
+        ['Use local variables', '`local` keeps the function from overwriting the caller’s variables.'],
+      ),
+      term('shell', 'alumno@pc1:~$ suma() { echo $(( $1 + $2 )); }\nalumno@pc1:~$ suma 2 40\n42\nalumno@pc1:~$ total=$(suma 1 1); echo $total\n2\nalumno@pc1:~$ declare -a dias=(lun mar mié)\nalumno@pc1:~$ dias+=(jue)\nalumno@pc1:~$ echo "${dias[1]} ${#dias[@]} ${dias[@]:1:2}"\nmar 4 mar mié\nalumno@pc1:~$ declare -p dias\ndeclare -a dias=([0]="lun" [1]="mar" [2]="mié" [3]="jue")'),
+      code('saluda() {\n  local nombre=${1:-mundo}\n  echo "Hola, $nombre ($# argumentos)"\n  return 0\n}\nsaluda Ana\n\ndeclare -A ip=([srv]=192.168.10.2 [gw]=192.168.10.1)\nfor k in "${!ip[@]}"; do echo "$k=${ip[$k]}"; done\n\ndeclare -n ref=dias; echo "${ref[0]}"          # nameref → lun\ndeclare -i n=5; n+=2; echo $n                  # 7\nreadonly PI=3.14'),
       table(['Parameter', 'Value'], [
         ['$1 … $9 · ${10}', 'Positional arguments'],
         ['$# · $@ · $*', 'Number of arguments · all of them (separately / joined)'],
@@ -110,13 +165,25 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
         'export marks variables (or functions with export -f) for child processes: bash -c, scripts.',
         'FUNCNEST limits recursion (at most 1000 levels in Netfix).',
       ),
+      tip('The order of an associative array', 'bash does not guarantee the order of `${!ip[@]}` (it comes out in its internal table’s order). If you need it sorted: `printf \'%s\\n\' "${!ip[@]}" | sort`.'),
+      warn('Common mistakes', 'Using `return` to hand back a calculated number: it only takes statuses 0 to 255 (print the result with echo). Forgetting `declare -A` before an associative array: bash treats it as indexed and every key is 0. `${dias}` without an index is only the first element.'),
+      exercise('A useful function', 'In PC1’s Linux Terminal, write a function `doble` that prints twice its argument, store twice 21 in a variable and show it.', '`doble() { echo $(( $1 * 2 )); }`, `r=$(doble 21)` and `echo $r` gives 42. With `return $(( $1 * 2 ))` 42 would also come out in `$?`, but it would fail from 256 on.'),
     ],
   },
   {
     id: 'bash-redirecciones',
     title: 'bash: redirections',
-    summary: 'Redirecting input, output and errors; here-documents and here-strings.',
+    summary: 'Sending output, errors and input to files; here-documents and here-strings.',
+    markdownBase: MD,
     blocks: [
+      p('Every command has three channels: **input** (0, stdin), **output** (1, stdout) and **errors** (2, stderr). By default all three are the terminal; a **redirection** sends them to a file or to another command. Keeping output and errors apart is key in scripts.'),
+      steps(
+        ['Save the output', '`orden > fichero` (overwrites it) or `>> fichero` (appends).'],
+        ['Keep the errors apart', '`2> errores.txt`, or throw them away with `2>/dev/null`.'],
+        ['Everything together', '`> fichero 2>&1`: the errors go where the output already goes.'],
+        ['Text as input', '`<<EOF` … `EOF` (here-document) or `<<< "texto"` (here-string).'],
+      ),
+      term('shell', "alumno@pc1:~$ ls /no /etc >salida.txt 2>errores.txt\nalumno@pc1:~$ cat errores.txt\nls: cannot access '/no': No such file or directory\nalumno@pc1:~$ wc -l < salida.txt\n24\nalumno@pc1:~$ grep -c root /etc/shadow 2>/dev/null || echo \"sin acceso\"\nsin acceso\nalumno@pc1:~$ read -r a b <<< \"uno dos\"; echo \"$b\"\ndos"),
       table(['Form', 'Effect'], [
         ['> f · >> f', 'Output to f (truncating · appending). With set -o noclobber, >| forces it.'],
         ['< f · <> f', 'Input from f · read and write'],
@@ -127,8 +194,9 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
         ['<<< texto', 'Here-string'],
         ['/dev/null · /dev/stdin · /dev/stdout · /dev/stderr · /dev/fd/N', 'Special files'],
       ]),
-      code('ls /no /etc >salida.txt 2>errores.txt\ngrep -c root /etc/passwd 2>/dev/null || echo "sin acceso"\ncat <<EOF > saludo.txt\nHola $USER, hoy es $(date +%A).\nEOF\nread -r a b <<< "uno dos"\nexec 3> log.txt; echo hola >&3; exec 3>&-'),
-      note('Order matters: >f 2>&1 sends everything to f; 2>&1 >f sends errors to the terminal.'),
+      code('cat <<EOF > saludo.txt\nHola $USER, estás en $(hostname).\nEOF\nexec 3> log.txt; echo hola >&3; exec 3>&-'),
+      warn('Order matters', '`> f 2>&1` sends everything to f; `2>&1 > f` sends errors to the terminal (stderr is duplicated before stdout changes). And `orden > f` on the same file the command reads (`sort f > f`) empties it before reading it.'),
+      exercise('Separate the good from the bad', 'On PC1, list /etc/hostname and /nada with a single `ls` command, saving everything (output and errors) in lista.txt. In which order do the lines end up?', '`ls /etc/hostname /nada > lista.txt 2>&1` and `cat lista.txt`: first “ls: cannot access \'/nada\': No such file or directory” and then “/etc/hostname”. ls writes errors as soon as it finds them and the list at the end.'),
     ],
   },
 ];

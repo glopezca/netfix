@@ -6,7 +6,7 @@
  */
 
 export type SynGroup = 'Comment' | 'Constant' | 'String' | 'Number' | 'Identifier' | 'Statement' | 'PreProc' | 'Type' | 'Special' | 'Error';
-export type Filetype = 'sshdconfig' | 'json' | 'named' | 'bindzone' | 'apache' | 'pfmain' | 'dovecot' | 'sysctl' | 'nftables' | 'dosini' | 'messages' | 'conf';
+export type Filetype = 'sshdconfig' | 'json' | 'named' | 'bindzone' | 'apache' | 'pfmain' | 'dovecot' | 'sysctl' | 'nftables' | 'dosini' | 'messages' | 'sh' | 'conf';
 
 export interface SynSpan {
   readonly text: string;
@@ -92,6 +92,16 @@ const SYNTAX: Readonly<Record<Filetype, Syntax>> = {
       { re: re(String.raw`\d{1,3}(?:\.\d{1,3}){3}(?![\w.])`), group: 'Constant' },
     ],
   },
+  // vim's syntax/sh.vim: $var and ${…} (shDeref → PreProc) before #, so `$#` is not a comment; keywords and builtins
+  // (Conditional, Repeat, shStatement → Statement), test operators like -d, quotes (String) and numbers.
+  sh: {
+    rules: [
+      { re: re(String.raw`\$(?:\{[^}]*\}|[A-Za-z_]\w*|[0-9#@*?$!-])`), group: 'PreProc' }, HASH,
+      { re: re(String.raw`'[^']*'?`), group: 'String' }, STRING,
+      { re: words('if then elif else fi for while until do done case esac in function select return exit break continue local export readonly declare echo printf read set unset shift source cd test'), group: 'Statement' },
+      { re: re(String.raw`-[a-zA-Z]{1,2}(?![\w-])`), group: 'Statement' }, NUMBER,
+    ],
+  },
   conf: { rules: [HASH, STRING, NUMBER] },
 };
 
@@ -108,6 +118,7 @@ export function filetypeOf(path: string): Filetype {
   if (name === 'nftables.conf' || name.endsWith('.nft')) return 'nftables';
   if (path.startsWith('/etc/wireguard/') || name.endsWith('.ini')) return 'dosini';
   if (path.startsWith('/var/log/')) return 'messages';
+  if (/\.(?:sh|bash)$/.test(name) || ['.bashrc', '.bash_profile', '.bash_logout', '.profile', 'bash.bashrc', 'profile'].includes(name)) return 'sh';
   return 'conf';
 }
 
