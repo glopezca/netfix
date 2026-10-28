@@ -1187,9 +1187,14 @@ const APP_ES = {
     'hint.advanced': 'Reloj adelantado: las concesiones se renuevan o caducan como en un equipo real.',
     'hint.empty': 'Área de trabajo vacía.',
     'unsaved.title': 'Cambios sin guardar',
-    'unsaved.body': 'La red actual tiene cambios que no has guardado. Si abres el laboratorio «{lab}», se perderán. Para conservarlos, cancela y pulsa Guardar.',
+    'unsaved.body': 'La red actual tiene cambios que no has guardado. Si abres el laboratorio «{lab}», se perderán.',
+    'unsaved.keep': 'Para conservarlos, cancela y pulsa Guardar.',
     'unsaved.cancel': 'Cancelar',
     'unsaved.proceed': 'Abrir el laboratorio',
+    'unsaved.bodyNew': 'La red actual tiene cambios que no has guardado. Si empiezas una red nueva, se perderán.',
+    'unsaved.proceedNew': 'Empezar una red nueva',
+    'unsaved.bodyOpen': 'La red actual tiene cambios que no has guardado. Si abres otro archivo, se perderán.',
+    'unsaved.proceedOpen': 'Elegir otro archivo',
     'hint.copied': 'Topología copiada al portapapeles: pégala en un archivo .json para guardarla.',
     'hint.copyFailed': 'No se pudo copiar. Usa la versión descargable de Netfix para guardar archivos.',
     'hint.saved': 'Topología guardada.',
@@ -1260,9 +1265,14 @@ const APP_EN = {
     'hint.advanced': 'Clock advanced: leases renew or expire as on real equipment.',
     'hint.empty': 'Empty workspace.',
     'unsaved.title': 'Unsaved changes',
-    'unsaved.body': 'The current network has changes you have not saved. If you open the lab “{lab}”, they will be lost. To keep them, cancel and press Save.',
+    'unsaved.body': 'The current network has changes you have not saved. If you open the lab “{lab}”, they will be lost.',
+    'unsaved.keep': 'To keep them, cancel and press Save.',
     'unsaved.cancel': 'Cancel',
     'unsaved.proceed': 'Open the lab',
+    'unsaved.bodyNew': 'The current network has changes you have not saved. If you start a new network, they will be lost.',
+    'unsaved.proceedNew': 'Start a new network',
+    'unsaved.bodyOpen': 'The current network has changes you have not saved. If you open another file, they will be lost.',
+    'unsaved.proceedOpen': 'Choose another file',
     'hint.copied': 'Topology copied to the clipboard: paste it into a .json file to keep it.',
     'hint.copyFailed': 'Could not copy. Use the downloadable version of Netfix to save files.',
     'hint.saved': 'Topology saved.',
@@ -17670,8 +17680,8 @@ const NETFIX_DOCS = {
                 h('Barra superior'),
                 table(['Control', 'Qué hace'], [
                     ['Red / Ayuda / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta ayuda, la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
-                    ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S).'],
-                    ['Laboratorios…', 'Carga una práctica preparada: DHCP (básico, reservas, relay, VLAN, snooping, router cliente), spanning tree, Server, Internet con dos sedes, VPN IPsec y WireGuard, router Linux con DMZ, DNS que reenvía, SSH/SFTP y bastionado. Si la red actual tiene cambios sin guardar, pregunta antes de reemplazarla.'],
+                    ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S). Nuevo, Abrir y Laboratorios preguntan antes de reemplazar una red con cambios sin guardar.'],
+                    ['Laboratorios…', 'Carga una práctica preparada: DHCP (básico, reservas, relay, VLAN, snooping, router cliente), spanning tree, Server, Internet con dos sedes, VPN IPsec y WireGuard, router Linux con DMZ, DNS que reenvía, SSH/SFTP y bastionado.'],
                     ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
                     ['Tiempo real / Simulación', 'Modo de ejecución (ver «Tiempo real y simulación»).'],
                     ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la ayuda y las páginas web simuladas sin recargar.'],
@@ -19944,8 +19954,8 @@ const NETFIX_DOCS = {
                 h('Top bar'),
                 table(['Control', 'What it does'], [
                     ['Network / Help / Donations / About', 'Switches between the workspace, this help, the page for supporting the project (PayPal.Me) and the version, authorship, licence and attribution information (taken from package.json and LICENSE.md).'],
-                    ['New · Open… · Save', 'Empty workspace, open a .json file or save the topology (Ctrl+S).'],
-                    ['Labs…', 'Loads a ready-made exercise: DHCP (basic, reservations, relay, VLAN, snooping, client router), spanning tree, Server, Internet with two sites, IPsec and WireGuard VPN, Linux router with DMZ, forwarding DNS, SSH/SFTP and hardening. If the current network has unsaved changes, it asks before replacing it.'],
+                    ['New · Open… · Save', 'Empty workspace, open a .json file or save the topology (Ctrl+S). New, Open and Labs ask before replacing a network with unsaved changes.'],
+                    ['Labs…', 'Loads a ready-made exercise: DHCP (basic, reservations, relay, VLAN, snooping, client router), spanning tree, Server, Internet with two sites, IPsec and WireGuard VPN, Linux router with DMZ, forwarding DNS, SSH/SFTP and hardening.'],
                     ['Clock and “Advance clock…”', 'Simulated time. Moving it forward 1 minute, 1 hour or 1 day makes DHCP leases expire or renew.'],
                     ['Realtime / Simulation', 'Execution mode (see “Realtime and simulation”).'],
                     ['Language', 'Español (España) or English (UK): changes the whole interface, the help and the simulated web pages without reloading.'],
@@ -29546,7 +29556,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.22.1",
+    "version": "0.22.2",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -58783,6 +58793,32 @@ function donateView() {
 
 return { donateView };
 })();
+__m["ui/pages.js"] = (() => {
+/** The pages beside the workspace (Ayuda, Donaciones, Acerca de), built the first time they are shown. */
+const { DocsView } = __m["ui/docs-view.js"];
+const { aboutView } = __m["ui/about-view.js"];
+const { donateView } = __m["ui/donate-view.js"];
+class Pages {
+    built = new Map();
+    docs = null;
+    get(view) {
+        const known = this.built.get(view);
+        if (known)
+            return known;
+        if (view === 'docs')
+            this.docs = new DocsView();
+        const made = this.docs && view === 'docs' ? this.docs.root : view === 'about' ? aboutView() : donateView();
+        this.built.set(view, made);
+        return made;
+    }
+    /** Keyboard focus to the help search (when the help page exists). */
+    focusDocs() {
+        this.docs?.focus();
+    }
+}
+
+return { Pages };
+})();
 __m["ui/lab-text.js"] = (() => {
 const { hasMessage, tDynamic } = __m["i18n/t.js"];
 function labText(e) {
@@ -59086,12 +59122,18 @@ function confirmDialog(text) {
         cancel.focus();
     });
 }
-/** The question before a lab replaces changes that were not saved. */
-function unsavedLabText(lab) {
-    return { title: t('unsaved.title'), body: t('unsaved.body', { lab }), cancel: t('unsaved.cancel'), proceed: t('unsaved.proceed') };
+/** The question before something replaces changes that were not saved (the Save hint only when there is Save). */
+function unsavedText(what, canSave) {
+    const keep = canSave ? ` ${t('unsaved.keep')}` : '';
+    const base = { title: t('unsaved.title'), cancel: t('unsaved.cancel') };
+    if (what === 'new')
+        return { ...base, body: t('unsaved.bodyNew') + keep, proceed: t('unsaved.proceedNew') };
+    if (what === 'open')
+        return { ...base, body: t('unsaved.bodyOpen') + keep, proceed: t('unsaved.proceedOpen') };
+    return { ...base, body: t('unsaved.body', { lab: what.lab }) + keep, proceed: t('unsaved.proceed') };
 }
 
-return { confirmDialog, unsavedLabText };
+return { confirmDialog, unsavedText };
 })();
 __m["ui/undo-keys.js"] = (() => {
 /** Undo and redo on the network view: the keyboard shortcuts and the state of the palette buttons. */
@@ -59566,15 +59608,13 @@ const { SimPanel } = __m["ui/simpanel.js"];
 const { openDeviceWindow, forgetDevice, forgetAll } = __m["ui/device-windows.js"];
 const { Topology } = __m["net/topology.js"];
 const { EXAMPLES } = __m["net/examples.js"];
-const { DocsView } = __m["ui/docs-view.js"];
-const { aboutView } = __m["ui/about-view.js"];
-const { donateView } = __m["ui/donate-view.js"];
+const { Pages } = __m["ui/pages.js"];
 const { topbar } = __m["ui/topbar.js"];
 const { palette } = __m["ui/palette.js"];
 const { labText } = __m["ui/lab-text.js"];
 const { readTopologyFile, saveTopology } = __m["ui/save-file.js"];
 const { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } = __m["ui/workspace-store.js"];
-const { confirmDialog, unsavedLabText } = __m["ui/confirm-dialog.js"];
+const { confirmDialog, unsavedText } = __m["ui/confirm-dialog.js"];
 const { syncUndoButtons, undoShortcut } = __m["ui/undo-keys.js"];
 const { t } = __m["i18n/t.js"];
 const { DrawState, drawBar } = __m["ui/draw-bar.js"];
@@ -59597,8 +59637,7 @@ class App {
     stageEl;
     paletteEl;
     pageHost;
-    pages = new Map();
-    docs = null;
+    pages = new Pages();
     saveTimer = 0;
     interval;
     mode = 'realtime';
@@ -59694,25 +59733,29 @@ class App {
         this.sim.dispose();
         forgetAll();
     }
-    /** A lab from the list; over unsaved changes, only after the user agrees to lose them. */
-    async openLab(id) {
-        const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
-        if (!ex || document.querySelector('dialog[open]'))
-            return;
-        const { title, summary } = labText(ex);
+    /**
+     * Lab, Nuevo or Abrir may replace the network: at once when nothing is unsaved, else only if the user agrees, and
+     * never when the interface was rebuilt (another language) or the network replaced while the question was open.
+     */
+    async replaceAllowed(what) {
+        if (document.querySelector('dialog[open]'))
+            return false;
         const topo = this.topo;
-        if (this.saved.dirty(topo) && !(await confirmDialog(unsavedLabText(title))))
-            return;
-        // Rebuilt in another language, or replaced, while the question was open: this App no longer decides.
-        if (app === this && this.topo === topo)
-            this.load(ex.build(), summary);
+        if (this.saved.dirty(topo) && !(await confirmDialog(unsavedText(what, this.session.policy.fileSave))))
+            return false;
+        return app === this && this.topo === topo;
     }
     topbar() {
         return topbar({
-            newWorkspace: () => this.load(new Topology(), t('hint.empty')),
-            openFile: () => this.fileInput.click(),
+            newWorkspace: () => void this.replaceAllowed('new').then((ok) => ok && this.load(new Topology(), t('hint.empty'))),
+            openFile: () => void this.replaceAllowed('open').then((ok) => ok && this.fileInput.click()),
             save: () => void this.save(),
-            loadExample: (id) => void this.openLab(id),
+            loadExample: (id) => {
+                const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
+                const text = ex ? labText(ex) : null;
+                if (ex && text)
+                    void this.replaceAllowed({ lab: text.title }).then((ok) => ok && this.load(ex.build(), text.summary));
+            },
             advance: (ms) => this.advance(ms),
             setMode: (m) => this.setMode(m),
             showView: (v) => this.showView(v),
@@ -59745,20 +59788,10 @@ class App {
         this.canvas.setTool(next);
         this.canvas.root.focus({ preventScroll: true });
     }
-    page(view) {
-        const known = this.pages.get(view);
-        if (known)
-            return known;
-        if (view === 'docs')
-            this.docs = new DocsView();
-        const made = view === 'docs' ? this.docs.root : view === 'about' ? aboutView() : donateView();
-        this.pages.set(view, made);
-        return made;
-    }
     /** Switches between the workspace and the pages (windows stay open but hidden). */
     showView(view) {
         if (view !== 'net') {
-            const page = this.page(view);
+            const page = this.pages.get(view);
             if (page.parentElement !== this.pageHost)
                 this.pageHost.replaceChildren(page);
         }
@@ -59768,7 +59801,7 @@ class App {
         document.body.dataset.view = view;
         this.view = view;
         if (view === 'docs')
-            this.docs?.focus();
+            this.pages.focusDocs();
     }
     open(id) {
         const placed = this.topo.get(id);

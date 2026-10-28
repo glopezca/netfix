@@ -1160,3 +1160,15 @@ elección con las órdenes de IOS 15.
   de un archivo restaurado se marcaban como escritos por el usuario y se guardaban); ahora son del sistema y la casa
   pasa a su usuario. Con un diálogo abierto no se abre otro ni actúan los atajos; si la interfaz se rehace mientras
   pregunta, la respuesta ya no cambia la red. Un id `blanco` en las restricciones del aula simplemente no coincide.
+
+### Fase 39b: el mismo aviso en Nuevo y Abrir… (v0.22.2)
+
+- **Nuevo** y **Abrir…** preguntan igual que el desplegable cuando hay cambios sin guardar: «Empezar una red nueva» o
+  «Elegir otro archivo» frente a **Cancelar**. Abrir pregunta antes de mostrar el selector de archivos (como las
+  aplicaciones de escritorio), así que cancelar no abre nada.
+- Una sola comprobación en `main.ts` (`replaceAllowed`) para los tres caminos: sin diálogo abierto, red cambiada y
+  la misma interfaz (no reconstruida en otro idioma) al responder.
+- e2e: Nuevo con cambios → Cancelar conserva y Empezar vacía; Abrir con cambios → Cancelar no abre el selector y
+  aceptar sí; sin cambios, ninguno pregunta.
+- **Hecho (v0.22.2):** como en el plan; la ayuda lo dice en la fila de Nuevo · Abrir… · Guardar. Las páginas (Ayuda,
+  Donaciones, Acerca de) salen a `src/ui/pages.ts` para que `main.ts` siga por debajo de 400 líneas.

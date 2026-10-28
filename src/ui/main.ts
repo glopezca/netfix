@@ -8,9 +8,7 @@ import { SimPanel } from './simpanel.ts';
 import { openDeviceWindow, forgetDevice, forgetAll } from './device-windows.ts';
 import { Topology } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
-import { DocsView } from './docs-view.ts';
-import { aboutView } from './about-view.ts';
-import { donateView } from './donate-view.ts';
+import { Pages } from './pages.ts';
 import { topbar } from './topbar.ts';
 import type { Mode, View } from './topbar.ts';
 import { palette } from './palette.ts';
@@ -18,7 +16,8 @@ import { labText } from './lab-text.ts';
 import { readTopologyFile, saveTopology } from './save-file.ts';
 import { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } from './workspace-store.ts';
 import type { KeyStore } from './workspace-store.ts';
-import { confirmDialog, unsavedLabText } from './confirm-dialog.ts';
+import { confirmDialog, unsavedText } from './confirm-dialog.ts';
+import type { Replacement } from './confirm-dialog.ts';
 import { syncUndoButtons, undoShortcut } from './undo-keys.ts';
 import { t } from '../i18n/t.ts';
 import { DrawState, drawBar } from './draw-bar.ts';
@@ -46,8 +45,7 @@ class App {
   private readonly stageEl: HTMLElement;
   private readonly paletteEl: HTMLElement;
   private readonly pageHost: HTMLElement;
-  private readonly pages = new Map<Exclude<View, 'net'>, HTMLElement>();
-  private docs: DocsView | null = null;
+  private readonly pages = new Pages();
   private saveTimer = 0;
   private readonly interval: number;
   private mode: Mode = 'realtime';
@@ -140,24 +138,27 @@ class App {
     forgetAll();
   }
 
-
-  /** A lab from the list; over unsaved changes, only after the user agrees to lose them. */
-  private async openLab(id: string): Promise<void> {
-    const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
-    if (!ex || document.querySelector('dialog[open]')) return;
-    const { title, summary } = labText(ex);
+  /**
+   * Lab, Nuevo or Abrir may replace the network: at once when nothing is unsaved, else only if the user agrees, and
+   * never when the interface was rebuilt (another language) or the network replaced while the question was open.
+   */
+  private async replaceAllowed(what: Replacement): Promise<boolean> {
+    if (document.querySelector('dialog[open]')) return false;
     const topo = this.topo;
-    if (this.saved.dirty(topo) && !(await confirmDialog(unsavedLabText(title)))) return;
-    // Rebuilt in another language, or replaced, while the question was open: this App no longer decides.
-    if (app === this && this.topo === topo) this.load(ex.build(), summary);
+    if (this.saved.dirty(topo) && !(await confirmDialog(unsavedText(what, this.session.policy.fileSave)))) return false;
+    return app === this && this.topo === topo;
   }
 
   private topbar(): HTMLElement {
     return topbar({
-      newWorkspace: () => this.load(new Topology(), t('hint.empty')),
-      openFile: () => this.fileInput.click(),
+      newWorkspace: () => void this.replaceAllowed('new').then((ok) => ok && this.load(new Topology(), t('hint.empty'))),
+      openFile: () => void this.replaceAllowed('open').then((ok) => ok && this.fileInput.click()),
       save: () => void this.save(),
-      loadExample: (id) => void this.openLab(id),
+      loadExample: (id) => {
+        const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
+        const text = ex ? labText(ex) : null;
+        if (ex && text) void this.replaceAllowed({ lab: text.title }).then((ok) => ok && this.load(ex.build(), text.summary));
+      },
       advance: (ms) => this.advance(ms),
       setMode: (m) => this.setMode(m),
       showView: (v) => this.showView(v),
@@ -190,19 +191,10 @@ class App {
     this.canvas.root.focus({ preventScroll: true });
   }
 
-  private page(view: Exclude<View, 'net'>): HTMLElement {
-    const known = this.pages.get(view);
-    if (known) return known;
-    if (view === 'docs') this.docs = new DocsView();
-    const made = view === 'docs' ? this.docs!.root : view === 'about' ? aboutView() : donateView();
-    this.pages.set(view, made);
-    return made;
-  }
-
   /** Switches between the workspace and the pages (windows stay open but hidden). */
   private showView(view: View): void {
     if (view !== 'net') {
-      const page = this.page(view);
+      const page = this.pages.get(view);
       if (page.parentElement !== this.pageHost) this.pageHost.replaceChildren(page);
     }
     this.stageEl.hidden = view !== 'net';
@@ -210,7 +202,7 @@ class App {
     this.pageHost.hidden = view === 'net';
     document.body.dataset.view = view;
     this.view = view;
-    if (view === 'docs') this.docs?.focus();
+    if (view === 'docs') this.pages.focusDocs();
   }
 
   private open(id: string): void {

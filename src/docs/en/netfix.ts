@@ -36,8 +36,8 @@ export const NETFIX_DOCS: DocGroup = {
         h('Top bar'),
         table(['Control', 'What it does'], [
           ['Network / Help / Donations / About', 'Switches between the workspace, this help, the page for supporting the project (PayPal.Me) and the version, authorship, licence and attribution information (taken from package.json and LICENSE.md).'],
-          ['New · Open… · Save', 'Empty workspace, open a .json file or save the topology (Ctrl+S).'],
-          ['Labs…', 'Loads a ready-made exercise: DHCP (basic, reservations, relay, VLAN, snooping, client router), spanning tree, Server, Internet with two sites, IPsec and WireGuard VPN, Linux router with DMZ, forwarding DNS, SSH/SFTP and hardening. If the current network has unsaved changes, it asks before replacing it.'],
+          ['New · Open… · Save', 'Empty workspace, open a .json file or save the topology (Ctrl+S). New, Open and Labs ask before replacing a network with unsaved changes.'],
+          ['Labs…', 'Loads a ready-made exercise: DHCP (basic, reservations, relay, VLAN, snooping, client router), spanning tree, Server, Internet with two sites, IPsec and WireGuard VPN, Linux router with DMZ, forwarding DNS, SSH/SFTP and hardening.'],
           ['Clock and “Advance clock…”', 'Simulated time. Moving it forward 1 minute, 1 hour or 1 day makes DHCP leases expire or renew.'],
           ['Realtime / Simulation', 'Execution mode (see “Realtime and simulation”).'],
           ['Language', 'Español (España) or English (UK): changes the whole interface, the help and the simulated web pages without reloading.'],

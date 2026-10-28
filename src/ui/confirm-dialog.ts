@@ -34,7 +34,14 @@ export function confirmDialog(text: ConfirmText): Promise<boolean> {
   });
 }
 
-/** The question before a lab replaces changes that were not saved. */
-export function unsavedLabText(lab: string): ConfirmText {
-  return { title: t('unsaved.title'), body: t('unsaved.body', { lab }), cancel: t('unsaved.cancel'), proceed: t('unsaved.proceed') };
+/** What would replace the network: a lab (by its title), a new empty network, or another file. */
+export type Replacement = { readonly lab: string } | 'new' | 'open';
+
+/** The question before something replaces changes that were not saved (the Save hint only when there is Save). */
+export function unsavedText(what: Replacement, canSave: boolean): ConfirmText {
+  const keep = canSave ? ` ${t('unsaved.keep')}` : '';
+  const base = { title: t('unsaved.title'), cancel: t('unsaved.cancel') };
+  if (what === 'new') return { ...base, body: t('unsaved.bodyNew') + keep, proceed: t('unsaved.proceedNew') };
+  if (what === 'open') return { ...base, body: t('unsaved.bodyOpen') + keep, proceed: t('unsaved.proceedOpen') };
+  return { ...base, body: t('unsaved.body', { lab: what.lab }) + keep, proceed: t('unsaved.proceed') };
 }
