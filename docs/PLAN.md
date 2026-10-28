@@ -1081,4 +1081,7 @@ Encontrado al preparar la documentación de bash (fase 36d), contrastado con el 
   vim de Netfix.
 - **Arreglo encontrado al comprobar:** con finales de línea CRLF, «command not found» cita el nombre como bash
   (`$'ls\r'`), con su caso en el corpus.
+- **Resaltado `sh` sin falsos positivos** (revisión): `-x` solo como operador de test tras un blanco o un corchete (no
+  `ls -la`), las palabras clave no dentro de rutas o palabras con guion, `#` solo al empezar una palabra y `profile`
+  solo como `/etc/profile`.
 - **Fase 36 completada:** todos los grupos de la documentación siguen el orden de la paleta y el estilo guiado.

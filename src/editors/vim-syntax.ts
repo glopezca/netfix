@@ -46,6 +46,9 @@ const NAMED_WORDS = 'options zone type file directory forwarders forward allow-q
   + 'channel category severity response-policy dnssec-validation querylog auth-nxdomain controls server '
   + 'master slave primary secondary hint only first max-cache-ttl max-ncache-ttl version minimal-responses';
 
+/** Keywords and builtins that vim's sh.vim highlights as Statement (longest first, as words() does). */
+const SH_WORDS = 'function continue readonly declare export select return source printf break local while until shift unset elif else then done case esac exit echo read test for set if fi do in cd'.split(' ');
+
 const SYNTAX: Readonly<Record<Filetype, Syntax>> = {
   sshdconfig: { rules: [HASH, { re: re('[A-Za-z]\\w*'), group: 'Statement', bol: true }, BOOL('prohibit-password without-password forced-commands-only any none'), NUMBER] },
   json: {
@@ -96,10 +99,14 @@ const SYNTAX: Readonly<Record<Filetype, Syntax>> = {
   // (Conditional, Repeat, shStatement → Statement), test operators like -d, quotes (String) and numbers.
   sh: {
     rules: [
-      { re: re(String.raw`\$(?:\{[^}]*\}|[A-Za-z_]\w*|[0-9#@*?$!-])`), group: 'PreProc' }, HASH,
+      { re: re(String.raw`\$(?:\{[^}]*\}|[A-Za-z_]\w*|[0-9#@*?$!-])`), group: 'PreProc' },
+      // A comment starts only at the beginning of a word (foo#bar is one word).
+      { re: re(String.raw`(?<![^\s;&|()])#.*`), group: 'Comment' },
       { re: re(String.raw`'[^']*'?`), group: 'String' }, STRING,
-      { re: words('if then elif else fi for while until do done case esac in function select return exit break continue local export readonly declare echo printf read set unset shift source cd test'), group: 'Statement' },
-      { re: re(String.raw`-[a-zA-Z]{1,2}(?![\w-])`), group: 'Statement' }, NUMBER,
+      // Keywords and builtins as whole words, not inside paths or hyphenated words (/usr/bin/test, my-test).
+      { re: re(String.raw`(?<![\w./-])(?:${SH_WORDS.join('|')})(?![\w.-])`), group: 'Statement' },
+      // Test operators of test, [ and [[ (shTestOpr), after a blank or a bracket: not the options of ls -la.
+      { re: re(String.raw`(?<=[\s[(])-(?:eq|ne|lt|le|gt|ge|ef|nt|ot|[abcdefghknoprstuvwxzGLNOS])(?![\w-])`), group: 'Statement' }, NUMBER,
     ],
   },
   conf: { rules: [HASH, STRING, NUMBER] },
@@ -118,7 +125,7 @@ export function filetypeOf(path: string): Filetype {
   if (name === 'nftables.conf' || name.endsWith('.nft')) return 'nftables';
   if (path.startsWith('/etc/wireguard/') || name.endsWith('.ini')) return 'dosini';
   if (path.startsWith('/var/log/')) return 'messages';
-  if (/\.(?:sh|bash)$/.test(name) || ['.bashrc', '.bash_profile', '.bash_logout', '.profile', 'bash.bashrc', 'profile'].includes(name)) return 'sh';
+  if (/\.(?:sh|bash)$/.test(name) || ['.bashrc', '.bash_profile', '.bash_logout', '.bash_aliases', '.profile', 'bash.bashrc'].includes(name) || path === '/etc/profile') return 'sh';
   return 'conf';
 }
 

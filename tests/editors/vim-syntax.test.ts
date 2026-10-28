@@ -102,3 +102,9 @@ test('shell scripts: detected by name, with sh.vim groups (keywords, $variables,
   assert.deepEqual(groups(c!), ['Statement:for', 'Statement:in', 'String:"$@"', 'Statement:do', 'Statement:-d', 'PreProc:$r', 'Statement:echo', "String:'dir'", 'Statement:done']);
   assert.deepEqual(groups(d!), ['PreProc:${HOME}', 'Comment:# fin']);
 });
+
+test('shell scripts: no false positives (options, words with hyphens, # inside a word, profile elsewhere)', () => {
+  assert.deepEqual(groups(highlight('ls -la a-b x-y /usr/bin/test my-test foo#bar', 'sh')[0]!), []);
+  assert.deepEqual(groups(highlight('[ -n "$v" ] && test -eq', 'sh')[0]!), ['Statement:-n', 'String:"$v"', 'Statement:test', 'Statement:-eq']);
+  assert.deepEqual(['/home/x/profile', '/etc/profile', '/home/ana/.bash_aliases'].map(filetypeOf), ['conf', 'sh', 'sh']);
+});
