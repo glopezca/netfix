@@ -22,6 +22,7 @@ export function effectiveAddress(device: IosDevice, cfg: IfaceConfig): IfaceAddr
 export function ifaceStatus(device: IosDevice, cfg: IfaceConfig): { status: string; protocol: string } {
   if (cfg.shutdown) return { status: 'administratively down', protocol: 'down' };
   const rt = device.ifaceRuntime(cfg.name);
+  if (rt.errDisabled) return { status: 'down', protocol: 'down (err-disabled)' };
   return { status: rt.linkUp ? 'up' : 'down', protocol: rt.protocolUp ? 'up' : 'down' };
 }
 

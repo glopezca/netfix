@@ -18099,10 +18099,12 @@ const STP_DOCS = [
                 ['spanning-tree mode pvst|rapid-pvst', 'Variante de STP (rapid-pvst: «protocol rstp»).'],
                 ['spanning-tree cost N · spanning-tree port-priority N', 'En la interfaz: coste del puerto y prioridad (múltiplos de 16, 128 por defecto).'],
                 ['spanning-tree portfast · spanning-tree bpduguard enable', 'Puertos de un solo equipo (PC, servidor): «P2p Edge».'],
+                ['spanning-tree portfast bpduguard default', 'BPDU guard en todos los puertos con portfast.'],
+                ['show interfaces status [err-disabled]', 'Estado de cada puerto: connected, notconnect, disabled o err-disabled.'],
                 ['show spanning-tree [vlan N | interface IF | summary]', 'El árbol de cada VLAN, un puerto en todas sus VLAN o el resumen.'],
             ]),
             tip('La luz ámbar', 'Como en Packet Tracer, el triángulo del extremo de un cable se pinta ámbar en un puerto que bloquea en todas sus VLAN.'),
-            list('En Netfix la convergencia es inmediata: un 2960 real tarda 30 s (Listening y Learning, 15 s cada uno) en poner un puerto a reenviar, salvo con portfast.', 'Cuando el árbol cambia, el switch vacía su tabla de direcciones MAC, como al recibir un aviso de cambio de topología.', 'bpduguard se guarda en la configuración; todavía no pone el puerto en err-disabled.'),
+            list('En Netfix la convergencia es inmediata: un 2960 real tarda 30 s (Listening y Learning, 15 s cada uno) en poner un puerto a reenviar, salvo con portfast.', 'Cuando el árbol cambia, el switch vacía su tabla de direcciones MAC, como al recibir un aviso de cambio de topología.', '**BPDU guard** protege los puertos de un solo equipo: si por uno con `spanning-tree bpduguard enable` (o con portfast y `spanning-tree portfast bpduguard default`) llegan BPDU de un switch, el puerto pasa a **err-disabled** (%SPANTREE-2-BLOCK_BPDUGUARD) y el enlace cae. `show interfaces status err-disabled` lo muestra; se recupera con `shutdown` y `no shutdown` una vez quitado el switch.'),
             warn('Errores habituales', '`no spanning-tree vlan 1` con dos caminos entre switches: la red se satura y deja de responder. Una prioridad que no es múltiplo de 4096. Esperar que el switch con más puertos sea la raíz: decide la prioridad y, a igualdad, la MAC.'),
             exercise('Otra raíz', 'En el laboratorio «Spanning tree: tres switches en triángulo», haz raíz a SW-A. ¿Qué puerto bloquea ahora?', 'En SW-A: `enable`, `conf t`, `spanning-tree vlan 1 root primary` (prioridad 24576). SW-B llega a SW-A directamente por Gi0/2 (coste 4) y SW-CORE por Gi0/1. En el enlace SW-CORE–SW-B los dos están a coste 4 de la raíz y gana la MAC más baja (SW-CORE), así que bloquea **Gi0/1 de SW-B**: `show spanning-tree` en SW-B muestra «Gi0/1 Altn BLK». El ping de PC0 a PC1 sigue funcionando.'),
         ],
@@ -20374,10 +20376,12 @@ const STP_DOCS = [
                 ['spanning-tree mode pvst|rapid-pvst', 'STP flavour (rapid-pvst: “protocol rstp”).'],
                 ['spanning-tree cost N · spanning-tree port-priority N', 'On the interface: port cost and priority (multiples of 16, 128 by default).'],
                 ['spanning-tree portfast · spanning-tree bpduguard enable', 'Ports with a single device (PC, server): “P2p Edge”.'],
+                ['spanning-tree portfast bpduguard default', 'BPDU guard on every portfast port.'],
+                ['show interfaces status [err-disabled]', 'State of each port: connected, notconnect, disabled or err-disabled.'],
                 ['show spanning-tree [vlan N | interface IF | summary]', 'The tree of each VLAN, one port in all its VLANs or the summary.'],
             ]),
             tip('The amber light', 'As in Packet Tracer, the triangle at a cable end is painted amber on a port that blocks in all its VLANs.'),
-            list('In Netfix convergence is immediate: a real 2960 takes 30 s (Listening and Learning, 15 s each) to put a port to forwarding, unless it has portfast.', 'When the tree changes, the switch flushes its MAC address table, as on a topology change notification.', 'bpduguard is kept in the configuration; it does not err-disable the port yet.'),
+            list('In Netfix convergence is immediate: a real 2960 takes 30 s (Listening and Learning, 15 s each) to put a port to forwarding, unless it has portfast.', 'When the tree changes, the switch flushes its MAC address table, as on a topology change notification.', '**BPDU guard** protects single-device ports: if BPDUs from a switch arrive on one with `spanning-tree bpduguard enable` (or with portfast and `spanning-tree portfast bpduguard default`), the port goes **err-disabled** (%SPANTREE-2-BLOCK_BPDUGUARD) and the link drops. `show interfaces status err-disabled` shows it; `shutdown` and `no shutdown` recover it once the switch is gone.'),
             warn('Common mistakes', '`no spanning-tree vlan 1` with two paths between switches: the network floods and stops answering. A priority that is not a multiple of 4096. Expecting the switch with most ports to be the root: the priority decides and, on a tie, the MAC.'),
             exercise('Another root', 'In the lab “Spanning tree: three switches in a triangle”, make SW-A the root. Which port blocks now?', 'On SW-A: `enable`, `conf t`, `spanning-tree vlan 1 root primary` (priority 24576). SW-B reaches SW-A directly through Gi0/2 (cost 4) and SW-CORE through Gi0/1. On the SW-CORE–SW-B link both are at cost 4 from the root and the lowest MAC wins (SW-CORE), so **Gi0/1 on SW-B** blocks: `show spanning-tree` on SW-B shows “Gi0/1 Altn BLK”. The ping from PC0 to PC1 still works.'),
         ],
@@ -29558,7 +29562,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.22.3",
+    "version": "0.22.4",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -40588,7 +40592,9 @@ class Network {
         if (!this.endUp(a) || !this.endUp(b))
             return;
         this.devices.get(a.device)?.onLinkEvent(a.port, true);
-        this.devices.get(b.device)?.onLinkEvent(b.port, true);
+        // The first end may have taken the link down again (BPDU guard): then the second never saw it up.
+        if (this.endUp(a))
+            this.devices.get(b.device)?.onLinkEvent(b.port, true);
     }
     hooksFor(device) {
         return {
@@ -40611,6 +40617,10 @@ class Network {
                 const peer = this.peerOf({ device: device.id, port });
                 const dev = peer ? this.devices.get(peer.device) : undefined;
                 return dev?.configuredTrunk?.(peer?.port ?? '') ?? false;
+            },
+            peerKind: (port) => {
+                const peer = this.peerOf({ device: device.id, port });
+                return peer && this.endUp(peer) ? this.devices.get(peer.device)?.kind : undefined;
             },
             stp: () => this.spanningTree(),
             stpChanged: () => { this.stpCache = null; },
@@ -41175,6 +41185,8 @@ function ifaceStatus(device, cfg) {
     if (cfg.shutdown)
         return { status: 'administratively down', protocol: 'down' };
     const rt = device.ifaceRuntime(cfg.name);
+    if (rt.errDisabled)
+        return { status: 'down', protocol: 'down (err-disabled)' };
     return { status: rt.linkUp ? 'up' : 'down', protocol: rt.protocolUp ? 'up' : 'down' };
 }
 function showIpInterfaceBrief(device) {
@@ -45694,6 +45706,10 @@ class StpConfig {
     portPriorities = new Map();
     portfast = new Set();
     bpduguard = new Set();
+    /** `spanning-tree bpduguard disable`: exempt from `portfast bpduguard default`. */
+    bpduguardOff = new Set();
+    /** `spanning-tree portfast bpduguard default`: BPDU guard on every portfast port. */
+    bpduguardDefault = false;
     reset() {
         this.mode = 'pvst';
         this.priorities = new Map();
@@ -45702,12 +45718,20 @@ class StpConfig {
         this.portPriorities = new Map();
         this.portfast = new Set();
         this.bpduguard = new Set();
+        this.bpduguardOff = new Set();
+        this.bpduguardDefault = false;
     }
     priority(vlan) {
         return this.disabled.has(vlan) ? null : this.priorities.get(vlan) ?? DEFAULT_BRIDGE_PRIORITY;
     }
     cost(port) {
         return this.costs.get(port) ?? (port.startsWith('Gigabit') ? COST_GIGABIT : COST_FAST);
+    }
+    /** BPDU guard on this port: its own setting, else the portfast default. */
+    guarded(port) {
+        if (this.bpduguardOff.has(port))
+            return false;
+        return this.bpduguard.has(port) || (this.bpduguardDefault && this.portfast.has(port));
     }
     portPriority(port) {
         return this.portPriorities.get(port) ?? DEFAULT_PORT_PRIORITY;
@@ -45719,6 +45743,7 @@ class StpConfig {
             byPriority.set(p, [...(byPriority.get(p) ?? []), vlan]);
         return [
             `spanning-tree mode ${this.mode}`,
+            ...(this.bpduguardDefault ? ['spanning-tree portfast bpduguard default'] : []),
             'spanning-tree extend system-id',
             ...(this.disabled.size ? [`no spanning-tree vlan ${vlanRanges([...this.disabled])}`] : []),
             ...[...byPriority].sort((a, b) => Math.min(...a[1]) - Math.min(...b[1])).map(([p, vlans]) => `spanning-tree vlan ${vlanRanges(vlans)} priority ${p}`),
@@ -45731,7 +45756,7 @@ class StpConfig {
             ...(prio !== undefined ? [` spanning-tree port-priority ${prio}`] : []),
             ...(cost !== undefined ? [` spanning-tree cost ${cost}`] : []),
             ...(this.portfast.has(port) ? [' spanning-tree portfast'] : []),
-            ...(this.bpduguard.has(port) ? [' spanning-tree bpduguard enable'] : []),
+            ...(this.bpduguard.has(port) ? [' spanning-tree bpduguard enable'] : this.bpduguardOff.has(port) ? [' spanning-tree bpduguard disable'] : []),
         ];
     }
 }
@@ -45918,6 +45943,15 @@ const STP_GLOBAL = [
         run: (cli, m) => eachVlan(cli, m.get('vlans') ?? '', (v) => cli.device.stp.disabled.delete(v)),
         noRun: (cli, m) => eachVlan(cli, m.get('vlans') ?? '', (v) => cli.device.stp.disabled.add(v)),
     },
+    {
+        syntax: 'spanning-tree portfast bpduguard default',
+        run: (cli) => {
+            cli.device.stp.bpduguardDefault = true;
+            for (const p of cli.device.stp.portfast)
+                cli.device.checkBpduGuard(p);
+        },
+        noRun: (cli) => { cli.device.stp.bpduguardDefault = false; },
+    },
     { syntax: 'spanning-tree <LINE:rest>', run: () => undefined, noRun: () => undefined },
 ];
 const STP_IF = [
@@ -45929,6 +45963,8 @@ const STP_IF = [
             cli.out(...PORTFAST_WARNING);
             eachPort(cli, (p) => {
                 cli.device.stp.portfast.add(p);
+                if (cli.device.stp.bpduguardDefault)
+                    cli.device.checkBpduGuard(p);
                 if (cli.device.isTrunk(p) && !m.has('trunk'))
                     cli.out(`%Portfast has been configured on ${p} but will only`, ' have effect when the interface is in a non-trunking mode.');
             });
@@ -45937,8 +45973,18 @@ const STP_IF = [
     },
     {
         syntax: 'spanning-tree bpduguard {enable | disable}',
-        run: (cli, m) => eachPort(cli, (p) => (m.has('enable') ? cli.device.stp.bpduguard.add(p) : cli.device.stp.bpduguard.delete(p))),
-        noRun: (cli) => eachPort(cli, (p) => cli.device.stp.bpduguard.delete(p)),
+        run: (cli, m) => eachPort(cli, (p) => {
+            const stp = cli.device.stp;
+            if (!m.has('enable')) {
+                stp.bpduguard.delete(p);
+                stp.bpduguardOff.add(p);
+                return;
+            }
+            stp.bpduguardOff.delete(p);
+            stp.bpduguard.add(p);
+            cli.device.checkBpduGuard(p);
+        }),
+        noRun: (cli) => eachPort(cli, (p) => { cli.device.stp.bpduguard.delete(p); cli.device.stp.bpduguardOff.delete(p); }),
     },
     {
         syntax: 'spanning-tree cost <1-200000000:cost>',
@@ -45976,12 +46022,12 @@ function showInterfacesTrunk(sw) {
         const active = allowed.filter((v) => sw.vlans.has(v) && (v === 1 || !DEFAULT_VLANS.has(v)));
         const forwarding = active.filter((v) => sw.stpVlan(v)?.ports.get(p)?.forwarding ?? true);
         const mode = cfg?.switchportMode === 'trunk' ? 'on' : 'auto';
-        return { name: shortIfaceName(p).replace(/^Gig/, 'Gi'), mode, native: cfg?.nativeVlan ?? 1, allowed, active, forwarding };
+        return { name: shortIfaceName(p).replace(/^Gig/, 'Gi'), mode, encap: mode === 'on' ? '802.1q' : 'n-802.1q', native: cfg?.nativeVlan ?? 1, allowed, active, forwarding };
     });
     const section = (title, pick) => ['', `${'Port'.padEnd(COL)}${title}`, ...rows.map((r) => `${r.name.padEnd(COL)}${list(pick(r))}`)];
     return [
         'Port        Mode             Encapsulation  Status        Native vlan',
-        ...rows.map((r) => `${r.name.padEnd(COL)}${r.mode.padEnd(17)}${'802.1q'.padEnd(15)}${'trunking'.padEnd(14)}${r.native}`),
+        ...rows.map((r) => `${r.name.padEnd(COL)}${r.mode.padEnd(17)}${r.encap.padEnd(15)}${'trunking'.padEnd(14)}${r.native}`),
         ...section('Vlans allowed on trunk', (r) => r.allowed),
         ...section('Vlans allowed and active in management domain', (r) => r.active),
         ...section('Vlans in spanning tree forwarding state and not pruned', (r) => r.forwarding),
@@ -45989,6 +46035,34 @@ function showInterfacesTrunk(sw) {
 }
 
 return { showInterfacesTrunk };
+})();
+__m["ios/show-status.js"] = (() => {
+const { SWITCH_PORTS } = __m["devices/switch-ports.js"];
+const { shortIfaceName } = __m["ios/interfaces.js"];
+const MAX_NAME = 18;
+function status(sw, port) {
+    if (sw.errDisabled.has(port))
+        return 'err-disabled';
+    if (sw.iface(port)?.shutdown)
+        return 'disabled';
+    return sw.ifaceRuntime(port).linkUp ? 'connected' : 'notconnect';
+}
+function showInterfacesStatus(sw) {
+    const rows = SWITCH_PORTS.map((port) => {
+        const cfg = sw.iface(port);
+        const gig = port.startsWith('Gigabit');
+        const st = status(sw, port);
+        const up = st === 'connected';
+        const vlan = sw.isTrunk(port) ? 'trunk' : String(cfg?.accessVlan ?? 1);
+        const duplex = up ? 'a-full' : 'auto';
+        const speed = up ? (gig ? 'a-1000' : 'a-100') : 'auto';
+        const name = (cfg?.description ?? '').slice(0, MAX_NAME);
+        return `${shortIfaceName(port).replace(/^Gig/, 'Gi').padEnd(10)}${name.padEnd(19)}${st.padEnd(13)}${vlan.padEnd(11)}${duplex.padStart(6)} ${speed.padStart(6)} ${gig ? '10/100/1000BaseTX' : '10/100BaseTX'}`;
+    });
+    return ['', 'Port      Name               Status       Vlan       Duplex  Speed Type', ...rows];
+}
+
+return { showInterfacesStatus };
 })();
 __m["ios/commands/switch-modes.js"] = (() => {
 const { DEFAULT_VLANS, SWITCH_PORTS } = __m["devices/switch-ports.js"];
@@ -46001,6 +46075,7 @@ const { shortIfaceName } = __m["ios/interfaces.js"];
 const { parseVlanList } = __m["core/vlans.js"];
 const { STP_EXEC, STP_GLOBAL, STP_IF } = __m["ios/commands/stp.js"];
 const { showInterfacesTrunk } = __m["ios/show-trunk.js"];
+const { showInterfacesStatus } = __m["ios/show-status.js"];
 function showMacTable(sw) {
     const rows = [...sw.macTable.values()].sort((a, b) => a.vlan - b.vlan || a.mac.localeCompare(b.mac));
     return [
@@ -46050,6 +46125,7 @@ const SW_EXEC = [
     },
     { syntax: 'show vlan [brief]', run: (cli) => cli.out(...showVlanBrief(cli.device)) },
     { syntax: 'show interfaces trunk', run: (cli) => cli.out(...showInterfacesTrunk(cli.device)) },
+    { syntax: 'show interfaces status [err-disabled]', run: (cli, m) => cli.out(...showInterfacesStatus(cli.device).filter((l, i) => i < 2 || !m.has('err-disabled') || l.includes('err-disabled'))) },
     { syntax: 'show ip dhcp snooping', run: (cli) => cli.out(...cli.device.snooping.show()) },
     { syntax: 'show ip dhcp snooping binding', run: (cli) => cli.out(...cli.device.snooping.showBindings()) },
     { syntax: 'ping <WORD:target> [repeat <1-2147483647:n>]', run: (cli, m) => iosPing(cli, pingHost(cli.device), m.get('target') ?? '', Number(m.get('n') ?? 5)) },
@@ -46158,6 +46234,77 @@ const switchModeTable = {
 
 return { switchModeTable };
 })();
+__m["devices/switch-stp.js"] = (() => {
+const { forwardingKeys } = __m["net/stp.js"];
+const { SWITCH_PORTS, DEFAULT_VLANS } = __m["devices/switch-ports.js"];
+/** `switchport trunk allowed vlan`: whether a trunk carries this VLAN (all of them by default). */
+const allows = (cfg, vlan) => cfg.trunkAllowed?.includes(vlan) ?? true;
+class SwitchStp {
+    sw;
+    /** The last spanning tree seen, and the forwarding ports of each VLAN in the whole network then. */
+    seen;
+    constructor(sw) {
+        this.sw = sw;
+    }
+    bridge() {
+        const sw = this.sw;
+        const all = [...sw.vlans.keys()].filter((v) => v === 1 || !DEFAULT_VLANS.has(v));
+        const ports = SWITCH_PORTS.flatMap((name, i) => {
+            const cfg = sw.iface(name);
+            if (!cfg || !sw.portUp(name))
+                return [];
+            const vlans = sw.isTrunk(name) ? all.filter((v) => allows(cfg, v)) : sw.vlans.has(cfg.accessVlan) ? [cfg.accessVlan] : [];
+            return [{ name, number: i + 1, cost: sw.stp.cost(name), priority: sw.stp.portPriority(name), edge: sw.stp.portfast.has(name), vlans }];
+        });
+        return { id: sw.id, mac: sw.baseMac, priority: (v) => sw.stp.priority(v), ports };
+    }
+    /**
+     * The current spanning tree. When it changes, the VLANs whose forwarding ports changed anywhere lose their MAC
+     * entries, as every switch does on a topology change notification.
+     */
+    sync() {
+        const tree = this.sw.hooks.stp?.();
+        if (!tree || tree === this.seen?.tree)
+            return tree;
+        const keys = forwardingKeys(tree);
+        const old = this.seen?.keys;
+        if (old)
+            for (const [k, e] of this.sw.macTable)
+                if (keys.get(e.vlan) !== old.get(e.vlan))
+                    this.sw.macTable.delete(k);
+        this.seen = { tree, keys };
+        return tree;
+    }
+    vlan(vlan) {
+        return this.sync()?.get(this.sw.id)?.get(vlan);
+    }
+    /** A port that blocks in this VLAN neither learns nor forwards. */
+    forwards(port, vlan) {
+        return this.vlan(vlan)?.ports.get(port)?.forwarding ?? true;
+    }
+    /** The cable end shows amber: the port blocks in every VLAN it carries. */
+    blocked(port) {
+        const tree = this.sync()?.get(this.sw.id);
+        const states = tree ? [...tree.values()].map((s) => s.ports.get(port)).filter((p) => p !== undefined) : [];
+        return states.length > 0 && states.every((p) => !p.forwarding);
+    }
+    /** BPDU guard on this port (its own, or `portfast bpduguard default` on a portfast port) and BPDUs reach it from a switch. */
+    guardTrips(port) {
+        return this.sw.stp.guarded(port) && this.sw.portUp(port) && this.sw.hooks.peerKind?.(port) === 'switch';
+    }
+}
+/** The console messages of a port that BPDU guard shuts down (IOS 15). */
+function bpduGuardLog(port, short) {
+    return [
+        `%SPANTREE-2-BLOCK_BPDUGUARD: Received BPDU on port ${port} with BPDU Guard enabled. Disabling port.`,
+        `%PM-4-ERR_DISABLE: bpduguard error detected on ${short}, putting ${short} in err-disable state`,
+        `%LINEPROTO-5-UPDOWN: Line protocol on Interface ${port}, changed state to down`,
+        `%LINK-3-UPDOWN: Interface ${port}, changed state to down`,
+    ];
+}
+
+return { allows, SwitchStp, bpduGuardLog };
+})();
 __m["devices/switch.js"] = (() => {
 /** Cisco 2960-style L2 switch: VLANs, access/trunk ports, MAC learning, spanning tree, SVI and DHCP snooping. */
 const { IosDevice } = __m["ios/device.js"];
@@ -46175,12 +46322,10 @@ const { Snooping } = __m["devices/snooping.js"];
 const { switchModeTable } = __m["ios/commands/switch-modes.js"];
 const { SWITCH_PORTS, DEFAULT_VLANS } = __m["devices/switch-ports.js"];
 const { StpConfig } = __m["devices/stp-config.js"];
-const { forwardingKeys } = __m["net/stp.js"];
+const { SwitchStp, allows, bpduGuardLog } = __m["devices/switch-stp.js"];
 
 const { headerLines, globalIpLines, interfaceSection, trailerLines } = __m["ios/runconfig.js"];
 const MAX_L2_HOPS = 32;
-/** `switchport trunk allowed vlan`: whether a trunk carries this VLAN (all of them by default). */
-const allows = (cfg, vlan) => cfg.trunkAllowed?.includes(vlan) ?? true;
 class Switch extends IosDevice {
     kind = 'switch';
     model = 'WS-C2960-24TT-L';
@@ -46192,8 +46337,9 @@ class Switch extends IosDevice {
     macTable = new Map();
     snooping = new Snooping();
     stp = new StpConfig();
-    /** The last spanning tree seen, and the forwarding ports of each VLAN in the whole network then. */
-    stpSeen;
+    spanning = new SwitchStp(this);
+    /** Ports shut down by BPDU guard (err-disabled) until `shutdown` and `no shutdown`. */
+    errDisabled = new Set();
     stack;
     web;
     dropOnArpMiss = true;
@@ -46229,6 +46375,7 @@ class Switch extends IosDevice {
         this.vlans = new Map(DEFAULT_VLANS);
         this.snooping.reset();
         this.stp.reset();
+        this.errDisabled.clear();
         this.clearIfaces();
         this.macTable.clear();
         for (const p of SWITCH_PORTS)
@@ -46269,7 +46416,7 @@ class Switch extends IosDevice {
             return { mac: this.baseMac, linkUp: up, protocolUp: up };
         }
         const up = this.portUp(name);
-        return { mac: this.baseMac, linkUp: up, protocolUp: up };
+        return { mac: this.baseMac, linkUp: up, protocolUp: up, ...(this.errDisabled.has(name) ? { errDisabled: true } : {}) };
     }
     portUp(port) {
         return this.portAdminUp(port) && this.hooks.peerUp(port);
@@ -46294,14 +46441,18 @@ class Switch extends IosDevice {
     onIfaceChanged(name, before) {
         const after = this.ifaces.get(name);
         if (before && after && before.shutdown !== after.shutdown && after.switchport) {
+            // shutdown clears err-disabled (the port was already down: no line-protocol message).
+            const wasDown = after.shutdown && this.errDisabled.delete(name);
             const up = !after.shutdown && this.hooks.peerUp(name);
             if (after.shutdown)
                 this.log(`%LINK-5-CHANGED: Interface ${name}, changed state to administratively down`);
             else if (up)
                 this.log(`%LINK-5-CHANGED: Interface ${name}, changed state to up`);
-            if (up || this.hooks.peerUp(name))
+            if (!wasDown && (up || this.hooks.peerUp(name)))
                 this.log(`%LINEPROTO-5-UPDOWN: Line protocol on Interface ${name}, changed state to ${up ? 'up' : 'down'}`);
             this.hooks.portChanged(name);
+            if (up)
+                this.checkBpduGuard(name);
         }
         if (after?.switchport)
             this.flushPort(name);
@@ -46314,46 +46465,29 @@ class Switch extends IosDevice {
     }
     // ------------------------------------------------------------ spanning tree
     stpBridge() {
-        const all = [...this.vlans.keys()].filter((v) => v === 1 || !DEFAULT_VLANS.has(v));
-        const ports = SWITCH_PORTS.flatMap((name, i) => {
-            const cfg = this.ifaces.get(name);
-            if (!cfg || !this.portUp(name))
-                return [];
-            const vlans = this.isTrunk(name) ? all.filter((v) => allows(cfg, v)) : this.vlans.has(cfg.accessVlan) ? [cfg.accessVlan] : [];
-            return [{ name, number: i + 1, cost: this.stp.cost(name), priority: this.stp.portPriority(name), edge: this.stp.portfast.has(name), vlans }];
-        });
-        return { id: this.id, mac: this.baseMac, priority: (v) => this.stp.priority(v), ports };
+        return this.spanning.bridge();
     }
-    /**
-     * The current spanning tree. When it changes, the VLANs whose forwarding ports changed anywhere lose their MAC
-     * entries, as every switch does on a topology change notification.
-     */
     syncStp() {
-        const tree = this.hooks.stp?.();
-        if (!tree || tree === this.stpSeen?.tree)
-            return tree;
-        const keys = forwardingKeys(tree);
-        const old = this.stpSeen?.keys;
-        if (old)
-            for (const [k, e] of this.macTable)
-                if (keys.get(e.vlan) !== old.get(e.vlan))
-                    this.macTable.delete(k);
-        this.stpSeen = { tree, keys };
-        return tree;
+        return this.spanning.sync();
     }
     /** This switch's spanning tree for a VLAN (undefined when it does not run there). */
     stpVlan(vlan) {
-        return this.syncStp()?.get(this.id)?.get(vlan);
+        return this.spanning.vlan(vlan);
     }
-    /** A port that blocks in this VLAN neither learns nor forwards. */
-    forwards(port, vlan) {
-        return this.stpVlan(vlan)?.ports.get(port)?.forwarding ?? true;
-    }
-    /** The cable end shows amber: the port blocks in every VLAN it carries. */
     portBlocked(port) {
-        const tree = this.syncStp()?.get(this.id);
-        const states = tree ? [...tree.values()].map((s) => s.ports.get(port)).filter((p) => p !== undefined) : [];
-        return states.length > 0 && states.every((p) => !p.forwarding);
+        return this.spanning.blocked(port);
+    }
+    /** BPDU guard: a guarded port with a switch at the far end goes err-disabled (shutdown + no shutdown recovers). */
+    checkBpduGuard(port) {
+        if (this.errDisabled.has(port) || !this.spanning.guardTrips(port))
+            return;
+        this.errDisabled.add(port);
+        for (const line of bpduGuardLog(port, shortIfaceName(port).replace(/^Gig/, 'Gi')))
+            this.log(line);
+        this.flushPort(port);
+        this.hooks.portChanged(port);
+        this.stpChanged();
+        this.syncSvis();
     }
     onLinkEvent(port, up) {
         if (!this.portAdminUp(port))
@@ -46363,6 +46497,8 @@ class Switch extends IosDevice {
         this.log(`%LINEPROTO-5-UPDOWN: Line protocol on Interface ${port}, changed state to ${state}`);
         if (!up)
             this.flushPort(port);
+        else
+            this.checkBpduGuard(port);
         this.syncSvis();
     }
     flushPort(port) {
@@ -46375,7 +46511,7 @@ class Switch extends IosDevice {
         return SWITCH_PORTS;
     }
     portAdminUp(port) {
-        return this.ifaces.get(port)?.shutdown === false;
+        return this.ifaces.get(port)?.shutdown === false && !this.errDisabled.has(port);
     }
     ownsIp(ip) {
         return this.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip));
@@ -46388,7 +46524,7 @@ class Switch extends IosDevice {
         if (!trunk && frame.vlan !== undefined)
             return;
         const vlan = trunk ? (frame.vlan ?? cfg.nativeVlan) : cfg.accessVlan;
-        if ((trunk && !allows(cfg, vlan)) || !this.forwards(port, vlan))
+        if ((trunk && !allows(cfg, vlan)) || !this.spanning.forwards(port, vlan))
             return;
         this.macTable.set(`${vlan}|${frame.src}`, { mac: frame.src, vlan, port });
         const inspected = this.snooping.inspect(this, port, vlan, frame);
@@ -46405,7 +46541,7 @@ class Switch extends IosDevice {
             return;
         const out = known ? [known.port] : this.portsInVlan(vlan).filter((p) => p !== ingress);
         for (const p of out) {
-            if (!this.portUp(p) || !this.forwards(p, vlan))
+            if (!this.portUp(p) || !this.spanning.forwards(p, vlan))
                 continue;
             const native = this.ifaces.get(p)?.nativeVlan ?? 1;
             const tagged = this.isTrunk(p) && vlan !== native;

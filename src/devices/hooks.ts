@@ -17,6 +17,8 @@ export interface DeviceHooks {
   peerTrunking(port: string): boolean;
   /** Fast-forwards simulated time until `done()` or `maxMs` (interactive commands). */
   runUntil(done: () => boolean, maxMs: number): boolean;
+  /** Kind of the device at the far end of the cable (BPDU guard: is it a switch?). */
+  peerKind?(port: string): string | undefined;
   /** The converged spanning tree of every switch (absent when detached). */
   stp?(): StpResult;
   /** A switch changed something the spanning tree depends on (ports, VLANs, priorities). */

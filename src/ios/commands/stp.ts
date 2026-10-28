@@ -83,6 +83,14 @@ export const STP_GLOBAL: readonly Def[] = [
     run: (cli, m) => eachVlan(cli, m.get('vlans') ?? '', (v) => cli.device.stp.disabled.delete(v)),
     noRun: (cli, m) => eachVlan(cli, m.get('vlans') ?? '', (v) => cli.device.stp.disabled.add(v)),
   },
+  {
+    syntax: 'spanning-tree portfast bpduguard default',
+    run: (cli) => {
+      cli.device.stp.bpduguardDefault = true;
+      for (const p of cli.device.stp.portfast) cli.device.checkBpduGuard(p);
+    },
+    noRun: (cli) => { cli.device.stp.bpduguardDefault = false; },
+  },
   { syntax: 'spanning-tree <LINE:rest>', run: () => undefined, noRun: () => undefined },
 ];
 
@@ -94,6 +102,7 @@ export const STP_IF: readonly Def[] = [
       cli.out(...PORTFAST_WARNING);
       eachPort(cli, (p) => {
         cli.device.stp.portfast.add(p);
+        if (cli.device.stp.bpduguardDefault) cli.device.checkBpduGuard(p);
         if (cli.device.isTrunk(p) && !m.has('trunk')) cli.out(`%Portfast has been configured on ${p} but will only`, ' have effect when the interface is in a non-trunking mode.');
       });
     },
@@ -101,8 +110,18 @@ export const STP_IF: readonly Def[] = [
   },
   {
     syntax: 'spanning-tree bpduguard {enable | disable}',
-    run: (cli, m) => eachPort(cli, (p) => (m.has('enable') ? cli.device.stp.bpduguard.add(p) : cli.device.stp.bpduguard.delete(p))),
-    noRun: (cli) => eachPort(cli, (p) => cli.device.stp.bpduguard.delete(p)),
+    run: (cli, m) => eachPort(cli, (p) => {
+      const stp = cli.device.stp;
+      if (!m.has('enable')) {
+        stp.bpduguard.delete(p);
+        stp.bpduguardOff.add(p);
+        return;
+      }
+      stp.bpduguardOff.delete(p);
+      stp.bpduguard.add(p);
+      cli.device.checkBpduGuard(p);
+    }),
+    noRun: (cli) => eachPort(cli, (p) => { cli.device.stp.bpduguard.delete(p); cli.device.stp.bpduguardOff.delete(p); }),
   },
   {
     syntax: 'spanning-tree cost <1-200000000:cost>',

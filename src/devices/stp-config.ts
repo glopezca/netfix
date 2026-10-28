@@ -23,6 +23,10 @@ export class StpConfig {
   portPriorities = new Map<string, number>();
   portfast = new Set<string>();
   bpduguard = new Set<string>();
+  /** `spanning-tree bpduguard disable`: exempt from `portfast bpduguard default`. */
+  bpduguardOff = new Set<string>();
+  /** `spanning-tree portfast bpduguard default`: BPDU guard on every portfast port. */
+  bpduguardDefault = false;
 
   reset(): void {
     this.mode = 'pvst';
@@ -32,6 +36,8 @@ export class StpConfig {
     this.portPriorities = new Map();
     this.portfast = new Set();
     this.bpduguard = new Set();
+    this.bpduguardOff = new Set();
+    this.bpduguardDefault = false;
   }
 
   priority(vlan: number): number | null {
@@ -40,6 +46,12 @@ export class StpConfig {
 
   cost(port: string): number {
     return this.costs.get(port) ?? (port.startsWith('Gigabit') ? COST_GIGABIT : COST_FAST);
+  }
+
+  /** BPDU guard on this port: its own setting, else the portfast default. */
+  guarded(port: string): boolean {
+    if (this.bpduguardOff.has(port)) return false;
+    return this.bpduguard.has(port) || (this.bpduguardDefault && this.portfast.has(port));
   }
 
   portPriority(port: string): number {
@@ -52,6 +64,7 @@ export class StpConfig {
     for (const [vlan, p] of this.priorities) byPriority.set(p, [...(byPriority.get(p) ?? []), vlan]);
     return [
       `spanning-tree mode ${this.mode}`,
+      ...(this.bpduguardDefault ? ['spanning-tree portfast bpduguard default'] : []),
       'spanning-tree extend system-id',
       ...(this.disabled.size ? [`no spanning-tree vlan ${vlanRanges([...this.disabled])}`] : []),
       ...[...byPriority].sort((a, b) => Math.min(...a[1]) - Math.min(...b[1])).map(([p, vlans]) => `spanning-tree vlan ${vlanRanges(vlans)} priority ${p}`),
@@ -65,7 +78,7 @@ export class StpConfig {
       ...(prio !== undefined ? [` spanning-tree port-priority ${prio}`] : []),
       ...(cost !== undefined ? [` spanning-tree cost ${cost}`] : []),
       ...(this.portfast.has(port) ? [' spanning-tree portfast'] : []),
-      ...(this.bpduguard.has(port) ? [' spanning-tree bpduguard enable'] : []),
+      ...(this.bpduguard.has(port) ? [' spanning-tree bpduguard enable'] : this.bpduguardOff.has(port) ? [' spanning-tree bpduguard disable'] : []),
     ];
   }
 }

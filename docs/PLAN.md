@@ -1190,3 +1190,6 @@ Queda lo de spanning tree, en tres entregas:
   En el modo simulación se ven las BPDU (cada 2 s, desde los puertos designados), con su filtro STP.
 - **Hecho 40a (v0.22.3):** `switchport trunk allowed vlan` y `show interfaces trunk`, en la ayuda de Switch IOS. Las
   listas de VLAN («1,3-5») quedan en `src/core/vlans.ts` (antes repetidas en snooping y spanning tree).
+- **Hecho 40b (v0.22.4):** BPDU guard con err-disabled, `spanning-tree portfast bpduguard default`,
+  `show interfaces status [err-disabled]` y «(err-disabled)» en `show interfaces`. La lógica de spanning tree del switch
+  pasa a `src/devices/switch-stp.ts`.

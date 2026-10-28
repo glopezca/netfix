@@ -159,7 +159,8 @@ export class Network {
   private notifyLink(a: Endpoint, b: Endpoint): void {
     if (!this.endUp(a) || !this.endUp(b)) return;
     this.devices.get(a.device)?.onLinkEvent(a.port, true);
-    this.devices.get(b.device)?.onLinkEvent(b.port, true);
+    // The first end may have taken the link down again (BPDU guard): then the second never saw it up.
+    if (this.endUp(a)) this.devices.get(b.device)?.onLinkEvent(b.port, true);
   }
 
   private hooksFor(device: NetDevice): DeviceHooks {
@@ -182,6 +183,10 @@ export class Network {
         const peer = this.peerOf({ device: device.id, port });
         const dev = peer ? this.devices.get(peer.device) : undefined;
         return dev?.configuredTrunk?.(peer?.port ?? '') ?? false;
+      },
+      peerKind: (port) => {
+        const peer = this.peerOf({ device: device.id, port });
+        return peer && this.endUp(peer) ? this.devices.get(peer.device)?.kind : undefined;
       },
       stp: () => this.spanningTree(),
       stpChanged: () => { this.stpCache = null; },

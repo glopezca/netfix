@@ -42,6 +42,8 @@ export interface IfaceRuntime {
   readonly mac: string;
   readonly linkUp: boolean;
   readonly protocolUp: boolean;
+  /** A switch port shut down by BPDU guard. */
+  readonly errDisabled?: boolean;
 }
 
 export type ConsoleListener = (line: string) => void;
