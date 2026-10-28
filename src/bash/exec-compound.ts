@@ -220,7 +220,7 @@ function condCmd(sh: Interp, cmd: Extract<Compound, { kind: 'cond' }>): number {
 /** `negated`: a `!` right before a test, which bash's trace shows with it (`[[ ! -f /etc/hosts ]]`). */
 export function evalCond(sh: Interp, e: CondExpr, negated = false): boolean {
   switch (e.kind) {
-    case 'not': return !evalCond(sh, e.expr, e.expr.kind !== 'and' && e.expr.kind !== 'or');
+    case 'not': return !evalCond(sh, e.expr, !e.group && e.expr.kind !== 'and' && e.expr.kind !== 'or');
     case 'and': return evalCond(sh, e.left) && evalCond(sh, e.right);
     case 'or': return evalCond(sh, e.left) || evalCond(sh, e.right);
     case 'word': {

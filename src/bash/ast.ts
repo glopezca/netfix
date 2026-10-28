@@ -61,7 +61,8 @@ export interface CaseItem {
 export type CondExpr =
   | { readonly kind: 'unary'; readonly op: string; readonly arg: Word }
   | { readonly kind: 'binary'; readonly op: string; readonly left: Word; readonly right: Word }
-  | { readonly kind: 'not'; readonly expr: CondExpr }
+  /** `group`: `! ( … )`, whose `!` bash's trace does not show. */
+  | { readonly kind: 'not'; readonly expr: CondExpr; readonly group?: boolean }
   | { readonly kind: 'and' | 'or'; readonly left: CondExpr; readonly right: CondExpr }
   | { readonly kind: 'word'; readonly arg: Word };
 

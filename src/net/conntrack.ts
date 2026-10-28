@@ -104,6 +104,13 @@ export class Conntrack {
     return { state: 'new', entry: { orig: t, seenReply: false, confirmed: false, closing: false, lastSeen: this.now(), packets: 0 }, dir: 'orig' };
   }
 
+  /** The connection whose packet an ICMP error quotes, as that packet left (after NAT). */
+  quoted(p: IpPacket): { entry: CtEntry; dir: Direction } | null {
+    const q = p.icmp?.orig;
+    const hit = q ? this.index.get(key({ proto: q.protocol, src: q.src, sport: q.sport, dst: q.dst, dport: q.dport })) : undefined;
+    return hit && !this.expired(hit.entry) ? hit : null;
+  }
+
   /** An ICMP error about a known connection between the same hosts. */
   private related(p: IpPacket): boolean {
     for (const e of this.entries) {

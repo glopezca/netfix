@@ -1,0 +1,8 @@
+ñandú 1 z y x foo bar 10
+6 8 3 2 1 4 5 7
+ñandú 1 z y x foo bar 10
+declare -A a=([ñandú]="6" [1]="8" [z]="3" [y]="0" [x]="9" [foo]="4" [bar]="5" [10]="7" )
+cuatro=4 dos=2 uno=1 tres=3 cinco=5 
+k28 k29 k22 k23 k20 k21 k26 k27 k24 k25 k8 k9 k4 k5 k6 k7 k1 k2 k3 k39 k38 k35 k34 k37 k36 k31 k30 k33 k32 k40 k17 k16 k15 k14 k13 k12 k11 k10 k19 k18
+437
+[status 0]

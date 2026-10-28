@@ -29,7 +29,7 @@ function condText(e: CondExpr): string {
   switch (e.kind) {
     case 'unary': return `${e.op} ${e.arg.raw}`;
     case 'binary': return `${e.left.raw} ${e.op} ${e.right.raw}`;
-    case 'not': return `! ${condText(e.expr)}`;
+    case 'not': return e.group ? `! ( ${condText(e.expr)} )` : `! ${condText(e.expr)}`;
     case 'and': return `${condText(e.left)} && ${condText(e.right)}`;
     case 'or': return `${condText(e.left)} || ${condText(e.right)}`;
     case 'word': return e.arg.raw;

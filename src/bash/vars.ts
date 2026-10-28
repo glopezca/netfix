@@ -1,5 +1,7 @@
 /** Shell variables: attributes, dynamic scopes (local), indexed and associative arrays, namerefs. */
 
+import { assocKeys } from './assoc-order.ts';
+
 export type Attr = 'x' | 'r' | 'i' | 'l' | 'u' | 'n' | 'a' | 'A' | 't';
 
 export type Value =
@@ -31,14 +33,15 @@ export function arrayValues(v: Value | undefined): string[] {
   if (!v) return [];
   if (v.t === 'str') return [v.v];
   if (v.t === 'arr') return [...v.v.entries()].sort((a, b) => a[0] - b[0]).map((e) => e[1]);
-  return [...v.v.values()];
+  const m = v.v;
+  return assocKeys(m).map((k) => m.get(k) ?? '');
 }
 
 export function arrayKeys(v: Value | undefined): string[] {
   if (!v) return [];
   if (v.t === 'str') return ['0'];
   if (v.t === 'arr') return [...v.v.keys()].sort((a, b) => a - b).map(String);
-  return [...v.v.keys()];
+  return [...assocKeys(v.v)];
 }
 
 /** Scalar view: element 0 of an array, the string otherwise. */

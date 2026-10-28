@@ -5905,6 +5905,12 @@ class Conntrack {
             return { state: 'invalid', entry: null, dir: 'orig' };
         return { state: 'new', entry: { orig: t, seenReply: false, confirmed: false, closing: false, lastSeen: this.now(), packets: 0 }, dir: 'orig' };
     }
+    /** The connection whose packet an ICMP error quotes, as that packet left (after NAT). */
+    quoted(p) {
+        const q = p.icmp?.orig;
+        const hit = q ? this.index.get(key({ proto: q.protocol, src: q.src, sport: q.sport, dst: q.dst, dport: q.dport })) : undefined;
+        return hit && !this.expired(hit.entry) ? hit : null;
+    }
     /** An ICMP error about a known connection between the same hosts. */
     related(p) {
         for (const e of this.entries) {
@@ -6060,6 +6066,8 @@ class NatTable {
     }
     /** Outside → inside: translates the destination, or returns null when nothing maps it. */
     outside(p, statics) {
+        if (p.icmp?.orig)
+            return this.related(p, statics);
         if (p.protocol === 'esp') {
             const whole = statics.find((s) => s.global === p.dst && s.proto === undefined) ?? this.dynamic.find((e) => e.proto === null && e.insideGlobal === p.dst);
             return whole ? this.hit({ ...p, dst: 'local' in whole ? whole.local : whole.insideLocal }) : null;
@@ -6073,6 +6081,22 @@ class NatTable {
             return this.hit(rewriteDst(p, known.insideLocal, known.proto ? known.localPort : undefined));
         const whole = statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
         return whole ? this.hit(rewriteDst(p, whole.local)) : null;
+    }
+    /**
+     * An ICMP error about a translated packet (RFC 5508): the quote is the packet as it left, so its source is the inside
+     * global address and port; both it and the outer destination go back to the inside local ones.
+     */
+    related(p, statics) {
+        const q = p.icmp?.orig;
+        if (!p.icmp || !q)
+            return null;
+        const st = statics.find((s) => s.global === q.src && s.proto === q.protocol && s.globalPort === q.sport) ?? statics.find((s) => s.global === q.src && s.proto === undefined);
+        // A PAT entry also records the outside end, so an error about the router's own traffic from that address is not taken for it.
+        const dyn = st ? undefined : this.dynamic.find((e) => e.insideGlobal === q.src && (e.proto === null || (e.proto === q.protocol && e.globalPort === q.sport && e.outside === q.dst && e.outsidePort === q.dport)));
+        const local = st ? { ip: st.local, port: st.proto ? st.localPort : undefined } : dyn ? { ip: dyn.insideLocal, port: dyn.proto ? dyn.localPort : undefined } : null;
+        if (!local)
+            return null;
+        return this.hit(unNatError(p, local.ip, local.port));
     }
     /** Is this global address (and pool member) taken by a 1:1 dynamic translation? */
     globalInUse(global) {
@@ -6107,8 +6131,19 @@ class NatTable {
         return null;
     }
 }
+/**
+ * An ICMP error sent back to `ip`, its quote showing `ip` (and `port`, when translated) as the source and, when the
+ * connection was also destination-translated, its original destination.
+ */
+function unNatError(p, ip, port, to) {
+    const q = p.icmp?.orig;
+    if (!p.icmp || !q)
+        return { ...p, dst: ip };
+    const dst = to ? { dst: to.ip, dport: to.port } : {};
+    return { ...p, dst: ip, icmp: { ...p.icmp, orig: { ...q, src: ip, sport: port ?? q.sport, ...dst } } };
+}
 
-return { flowOf, rewriteSrc, rewriteDst, NatTable };
+return { flowOf, rewriteSrc, rewriteDst, NatTable, unNatError };
 })();
 __m["net/klog.js"] = (() => {
 const { formatIp } = __m["core/ip.js"];
@@ -6164,7 +6199,7 @@ __m["net/netfilter.js"] = (() => {
 const { EMPTY_RULESET } = __m["net/nft/model.js"];
 const { activeHooks, filterHook, natHook } = __m["net/nft/eval.js"];
 const { Conntrack, tupleOf } = __m["net/conntrack.js"];
-const { rewriteDst, rewriteSrc } = __m["net/nat.js"];
+const { rewriteDst, rewriteSrc, unNatError } = __m["net/nat.js"];
 const { formatIp } = __m["core/ip.js"];
 const { kernelLogLine, macHeader } = __m["net/klog.js"];
 const FIRST_NAT_PORT = 32768;
@@ -6244,7 +6279,13 @@ class Netfilter {
             return p;
         const c = this.context(p);
         let out = p;
-        if (c.entry?.confirmed) {
+        const quoted = c.state === 'related' ? this.ct.quoted(p) : null;
+        if (quoted?.dir === 'orig' && quoted.entry.snat?.ip === p.icmp?.orig?.src) {
+            // An ICMP error about a source-translated packet goes back to the inside host (RFC 5508), quoting it as sent.
+            const o = quoted.entry.orig;
+            out = unNatError(p, o.src, o.sport, { ip: o.dst, port: o.dport });
+        }
+        else if (c.entry?.confirmed) {
             if (c.dir === 'orig' && c.entry.dnat)
                 out = rewriteDst(p, c.entry.dnat.ip, c.entry.dnat.port);
             if (c.dir === 'reply' && c.entry.snat)
@@ -15275,8 +15316,93 @@ const SHOPT_OFF = ['array_expand_once', 'assoc_expand_once', 'autocd', 'bash_sou
 
 return { SET_OPTIONS, SET_LETTERS, SHOPT_ON, SHOPT_OFF };
 })();
+__m["bash/assoc-order.js"] = (() => {
+/**
+ * The order in which bash lists an associative array: its hash table (hashlib.c). Keys hash with FNV-1 over the bytes
+ * (as signed chars) into 1024 buckets; each new key goes to the front of its bucket, and the listing walks the buckets
+ * in order. When the table holds twice as many keys as buckets, it grows four times and rehashes walking the old buckets.
+ * Replaying the keys in insertion order (a Map's) gives bash's order; it is exact unless keys were removed while the
+ * table grew.
+ */
+const FNV_OFFSET = 2166136261;
+const FNV_PRIME = 16777619;
+const INITIAL_BUCKETS = 1024;
+const GROW_FACTOR = 2;
+const GROW_MULTIPLIER = 4;
+const encoder = new TextEncoder();
+/** bash's hash_string: FNV-1, 32 bits, each byte xored as a signed char. */
+function hashString(s) {
+    let h = FNV_OFFSET;
+    const bytes = /^[\x00-\x7f]*$/.test(s) ? null : encoder.encode(s);
+    const n = bytes ? bytes.length : s.length;
+    for (let i = 0; i < n; i++) {
+        const byte = bytes ? bytes[i] ?? 0 : s.charCodeAt(i);
+        h = Math.imul(h, FNV_PRIME) ^ (byte < 128 ? byte : byte - 256);
+    }
+    return h >>> 0;
+}
+/** Each bucket keeps its keys oldest first; the walk reverses them (bash puts new keys at the front). */
+function place(buckets, key, size) {
+    const b = hashString(key) & (size - 1);
+    const list = buckets[b];
+    if (list)
+        list.push(key);
+    else
+        buckets[b] = [key];
+}
+function walk(buckets) {
+    const out = [];
+    for (const list of buckets)
+        if (list)
+            for (let i = list.length - 1; i >= 0; i--)
+                out.push(list[i] ?? '');
+    return out;
+}
+/** The last order of each array, with the insertion order it came from (checked before reuse). */
+const cache = new WeakMap();
+function sameKeys(m, keys) {
+    if (m.size !== keys.length)
+        return false;
+    let i = 0;
+    for (const k of m.keys())
+        if (k !== keys[i++])
+            return false;
+    return true;
+}
+/** The keys of an associative array as `${!a[@]}` lists them (cached while its keys do not change). */
+function assocKeys(m) {
+    const hit = cache.get(m);
+    if (hit && sameKeys(m, hit.keys))
+        return hit.order;
+    const keys = [...m.keys()];
+    const order = assocOrder(keys);
+    cache.set(m, { keys, order });
+    return order;
+}
+/** The keys as `${!a[@]}` lists them, from the keys in insertion order. */
+function assocOrder(keys) {
+    let size = INITIAL_BUCKETS;
+    let buckets = new Array(size);
+    let count = 0;
+    for (const key of keys) {
+        if (count >= size * GROW_FACTOR) {
+            const old = walk(buckets);
+            size *= GROW_MULTIPLIER;
+            buckets = new Array(size);
+            for (const k of old)
+                place(buckets, k, size);
+        }
+        place(buckets, key, size);
+        count++;
+    }
+    return walk(buckets);
+}
+
+return { hashString, assocKeys, assocOrder };
+})();
 __m["bash/vars.js"] = (() => {
 /** Shell variables: attributes, dynamic scopes (local), indexed and associative arrays, namerefs. */
+const { assocKeys } = __m["bash/assoc-order.js"];
 class VarError extends Error {
 }
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -15297,7 +15423,8 @@ function arrayValues(v) {
         return [v.v];
     if (v.t === 'arr')
         return [...v.v.entries()].sort((a, b) => a[0] - b[0]).map((e) => e[1]);
-    return [...v.v.values()];
+    const m = v.v;
+    return assocKeys(m).map((k) => m.get(k) ?? '');
 }
 function arrayKeys(v) {
     if (!v)
@@ -15306,7 +15433,7 @@ function arrayKeys(v) {
         return ['0'];
     if (v.t === 'arr')
         return [...v.v.keys()].sort((a, b) => a - b).map(String);
-    return [...v.v.keys()];
+    return [...assocKeys(v.v)];
 }
 /** Scalar view: element 0 of an array, the string otherwise. */
 function scalarOf(v) {
@@ -16426,7 +16553,7 @@ function condText(e) {
     switch (e.kind) {
         case 'unary': return `${e.op} ${e.arg.raw}`;
         case 'binary': return `${e.left.raw} ${e.op} ${e.right.raw}`;
-        case 'not': return `! ${condText(e.expr)}`;
+        case 'not': return e.group ? `! ( ${condText(e.expr)} )` : `! ${condText(e.expr)}`;
         case 'and': return `${condText(e.left)} && ${condText(e.right)}`;
         case 'or': return `${condText(e.left)} || ${condText(e.right)}`;
         case 'word': return e.arg.raw;
@@ -26043,7 +26170,7 @@ function condCmd(sh, cmd) {
 /** `negated`: a `!` right before a test, which bash's trace shows with it (`[[ ! -f /etc/hosts ]]`). */
 function evalCond(sh, e, negated = false) {
     switch (e.kind) {
-        case 'not': return !evalCond(sh, e.expr, e.expr.kind !== 'and' && e.expr.kind !== 'or');
+        case 'not': return !evalCond(sh, e.expr, !e.group && e.expr.kind !== 'and' && e.expr.kind !== 'or');
         case 'and': return evalCond(sh, e.left) && evalCond(sh, e.right);
         case 'or': return evalCond(sh, e.left) || evalCond(sh, e.right);
         case 'word': {
@@ -26431,7 +26558,9 @@ function condNot(p) {
     p.skipNewlines();
     if (word(p.peek(), '!')) {
         p.next();
-        return { kind: 'not', expr: condNot(p) };
+        p.skipNewlines();
+        const group = op(p.peek(), '(');
+        return { kind: 'not', expr: condNot(p), ...(group ? { group } : {}) };
     }
     return condPrimary(p);
 }
@@ -29282,7 +29411,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.21.1",
+    "version": "0.21.2",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",

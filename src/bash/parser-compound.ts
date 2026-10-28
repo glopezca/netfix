@@ -222,7 +222,9 @@ function condNot(p: Parser): CondExpr {
   p.skipNewlines();
   if (word(p.peek(), '!')) {
     p.next();
-    return { kind: 'not', expr: condNot(p) };
+    p.skipNewlines();
+    const group = op(p.peek(), '(');
+    return { kind: 'not', expr: condNot(p), ...(group ? { group } : {}) };
   }
   return condPrimary(p);
 }

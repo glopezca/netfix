@@ -1099,6 +1099,14 @@ Encontrado al preparar la documentación de bash (fase 36d), contrastado con el 
   cambian nada (`-timeout=`, `-norecurse`…). Todos los tipos de registro con el formato de cada sistema (MX, NS, TXT,
   SOA, CNAME, PTR), una dirección IP se busca en la zona inversa, «No answer» con la SOA de la autoridad, y Windows
   nombra el servidor por su PTR («UnKnown» si no lo hay). El estado de salida de Linux sale del resultado, no del texto.
-- Pendiente: orden de las claves de los arrays asociativos como la tabla hash de
-  bash, traza de `[[ ! ( … ) ]]`, errores ICMP relacionados a través de NAT, protección frente a repetición en
+- **Pendientes pequeños (v0.21.2):**
+  - bash lista las claves de un array asociativo en el orden de su tabla hash (FNV-1 sobre los bytes, 1024 cubetas
+    que crecen ×4, la clave nueva delante de su cubeta), comprobado con bash real hasta 3000 claves; el orden se
+    guarda mientras no cambien las claves.
+  - `set -x` no muestra el `!` delante de un grupo entre paréntesis (`[[ ! ( a == b ) ]]` → `+ [[ a == b ]]`) y
+    `declare -f` conserva los paréntesis.
+  - Errores ICMP relacionados a través de NAT (RFC 5508): el NAT de IOS, la nube ISP y el masquerade de nftables
+    devuelven el error al equipo interno con la cabecera citada traducida, así que una conexión denegada más allá
+    del NAT falla al momento («No route to host») en vez de agotar el tiempo.
+- Pendiente: protección frente a repetición en
   WireGuard y STP (PVST+) en los switch 2960.

@@ -11,7 +11,7 @@ import type { CtState, EvalEnv, PacketMeta } from './nft/eval.ts';
 import { activeHooks, filterHook, natHook } from './nft/eval.ts';
 import { Conntrack, tupleOf } from './conntrack.ts';
 import type { CtEntry, Direction, NatTo } from './conntrack.ts';
-import { rewriteDst, rewriteSrc } from './nat.ts';
+import { rewriteDst, rewriteSrc, unNatError } from './nat.ts';
 import { formatIp } from '../core/ip.ts';
 import { kernelLogLine, macHeader } from './klog.ts';
 
@@ -114,7 +114,12 @@ export class Netfilter {
     if (!this.active) return p;
     const c = this.context(p);
     let out = p;
-    if (c.entry?.confirmed) {
+    const quoted = c.state === 'related' ? this.ct.quoted(p) : null;
+    if (quoted?.dir === 'orig' && quoted.entry.snat?.ip === p.icmp?.orig?.src) {
+      // An ICMP error about a source-translated packet goes back to the inside host (RFC 5508), quoting it as sent.
+      const o = quoted.entry.orig;
+      out = unNatError(p, o.src, o.sport, { ip: o.dst, port: o.dport });
+    } else if (c.entry?.confirmed) {
       if (c.dir === 'orig' && c.entry.dnat) out = rewriteDst(p, c.entry.dnat.ip, c.entry.dnat.port);
       if (c.dir === 'reply' && c.entry.snat) out = rewriteDst(p, c.entry.orig.src, c.entry.orig.sport);
     } else if (c.entry && this.hooks.has('prerouting')) {

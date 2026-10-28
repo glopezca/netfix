@@ -120,6 +120,7 @@ export class NatTable {
 
   /** Outside → inside: translates the destination, or returns null when nothing maps it. */
   outside(p: IpPacket, statics: readonly StaticNat[]): IpPacket | null {
+    if (p.icmp?.orig) return this.related(p, statics);
     if (p.protocol === 'esp') {
       const whole = statics.find((s) => s.global === p.dst && s.proto === undefined) ?? this.dynamic.find((e) => e.proto === null && e.insideGlobal === p.dst);
       return whole ? this.hit({ ...p, dst: 'local' in whole ? whole.local : whole.insideLocal }) : null;
@@ -131,6 +132,21 @@ export class NatTable {
     if (known) return this.hit(rewriteDst(p, known.insideLocal, known.proto ? known.localPort : undefined));
     const whole = statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
     return whole ? this.hit(rewriteDst(p, whole.local)) : null;
+  }
+
+  /**
+   * An ICMP error about a translated packet (RFC 5508): the quote is the packet as it left, so its source is the inside
+   * global address and port; both it and the outer destination go back to the inside local ones.
+   */
+  private related(p: IpPacket, statics: readonly StaticNat[]): IpPacket | null {
+    const q = p.icmp?.orig;
+    if (!p.icmp || !q) return null;
+    const st = statics.find((s) => s.global === q.src && s.proto === q.protocol && s.globalPort === q.sport) ?? statics.find((s) => s.global === q.src && s.proto === undefined);
+    // A PAT entry also records the outside end, so an error about the router's own traffic from that address is not taken for it.
+    const dyn = st ? undefined : this.dynamic.find((e) => e.insideGlobal === q.src && (e.proto === null || (e.proto === q.protocol && e.globalPort === q.sport && e.outside === q.dst && e.outsidePort === q.dport)));
+    const local = st ? { ip: st.local, port: st.proto ? st.localPort : undefined } : dyn ? { ip: dyn.insideLocal, port: dyn.proto ? dyn.localPort : undefined } : null;
+    if (!local) return null;
+    return this.hit(unNatError(p, local.ip, local.port));
   }
 
   /** Is this global address (and pool member) taken by a 1:1 dynamic translation? */
@@ -167,4 +183,15 @@ export class NatTable {
     for (let port = FIRST_PAT_PORT; port <= LAST_PORT; port++) if (free(port)) return port;
     return null;
   }
+}
+
+/**
+ * An ICMP error sent back to `ip`, its quote showing `ip` (and `port`, when translated) as the source and, when the
+ * connection was also destination-translated, its original destination.
+ */
+export function unNatError(p: IpPacket, ip: number, port?: number, to?: { readonly ip: number; readonly port: number }): IpPacket {
+  const q = p.icmp?.orig;
+  if (!p.icmp || !q) return { ...p, dst: ip };
+  const dst = to ? { dst: to.ip, dport: to.port } : {};
+  return { ...p, dst: ip, icmp: { ...p.icmp, orig: { ...q, src: ip, sport: port ?? q.sport, ...dst } } };
 }
