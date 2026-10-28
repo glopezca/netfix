@@ -192,6 +192,10 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
     return this.spanning.blocked(port);
   }
 
+  stpHello(): void {
+    this.spanning.hello();
+  }
+
   /** BPDU guard: a guarded port with a switch at the far end goes err-disabled (shutdown + no shutdown recovers). */
   checkBpduGuard(port: string): void {
     if (this.errDisabled.has(port) || !this.spanning.guardTrips(port)) return;
@@ -232,13 +236,15 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
   }
 
   receive(port: string, frame: HopFrame): void {
+    if (frame.bpdu) return; // spanning tree reads the network, not the frames
     const cfg = this.ifaces.get(port);
     if (!cfg || cfg.shutdown || (frame.l2hops ?? 0) > MAX_L2_HOPS) return;
     const trunk = this.isTrunk(port);
     if (!trunk && frame.vlan !== undefined) return;
     const vlan = trunk ? (frame.vlan ?? cfg.nativeVlan) : cfg.accessVlan;
-    if ((trunk && !allows(cfg, vlan)) || !this.spanning.forwards(port, vlan)) return;
+    if ((trunk && !allows(cfg, vlan)) || !this.spanning.learns(port, vlan)) return;
     this.macTable.set(`${vlan}|${frame.src}`, { mac: frame.src, vlan, port });
+    if (!this.spanning.forwards(port, vlan)) return;
     const inspected = this.snooping.inspect(this, port, vlan, frame);
     if (!inspected) return;
     this.toSvi(vlan, inspected);

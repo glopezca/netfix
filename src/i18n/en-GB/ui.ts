@@ -166,6 +166,7 @@ export const UI_EN: Readonly<Record<UiKey, string>> = {
   'pdu.src': 'Source',
   'pdu.dst': 'Destination',
   'pdu.port': 'Port',
+  'pdu.rootCost': 'Root path cost',
   'pdu.op': 'Operation',
   'pdu.senderIp': 'Sender IP address',
   'pdu.senderMac': 'Sender MAC',

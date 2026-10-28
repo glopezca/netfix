@@ -18,8 +18,8 @@ export function stpVlans(sw: Switch): number[] {
   return [...sw.vlans.keys()].sort((a, b) => a - b).filter((v) => sw.stpVlan(v) !== undefined);
 }
 
-function portRow(label: string, width: number, p: { role: string; forwarding: boolean; cost: number; priority: number; number: number; edge: boolean }): string {
-  return `${label.padEnd(width)} ${p.role} ${p.forwarding ? 'FWD' : 'BLK'} ${String(p.cost).padEnd(9)} ${`${p.priority}.${p.number}`.padEnd(8)} P2p${p.edge ? ' Edge' : ''}`;
+function portRow(label: string, width: number, p: { role: string; state: string; cost: number; priority: number; number: number; edge: boolean }): string {
+  return `${label.padEnd(width)} ${p.role} ${p.state} ${String(p.cost).padEnd(9)} ${`${p.priority}.${p.number}`.padEnd(8)} P2p${p.edge ? ' Edge' : ''}`;
 }
 
 function rootLines(s: StpVlan): string[] {
@@ -68,15 +68,16 @@ export function showStpInterface(sw: Switch, port: string): string[] {
 export function showStpSummary(sw: Switch): string[] {
   const vlans = stpVlans(sw);
   const roots = vlans.filter((v) => !sw.stpVlan(v)?.rootPort).map(vlanName);
+  const STATES = ['BLK', 'LIS', 'LRN', 'FWD'] as const;
   const counts = vlans.map((v) => {
     const ports = [...(sw.stpVlan(v)?.ports.values() ?? [])];
-    const fwd = ports.filter((p) => p.forwarding).length;
-    return { v, blk: ports.length - fwd, fwd };
+    return { v, n: STATES.map((s) => ports.filter((p) => p.state === s).length) };
   });
-  const row = (name: string, blk: number, fwd: number): string => `${name.padEnd(22)} ${String(blk).padStart(8)} ${'0'.padStart(9)} ${'0'.padStart(8)} ${String(fwd).padStart(10)} ${String(blk + fwd).padStart(10)}`;
+  const widths = [8, 9, 8, 10];
+  const row = (name: string, n: readonly number[]): string =>
+    `${name.padEnd(22)} ${n.map((x, i) => String(x).padStart(widths[i] ?? 8)).join(' ')} ${String(n.reduce((a, b) => a + b, 0)).padStart(10)}`;
   const rule = '---------------------- -------- --------- -------- ---------- ----------';
-  const blk = counts.reduce((n, c) => n + c.blk, 0);
-  const fwd = counts.reduce((n, c) => n + c.fwd, 0);
+  const totals = STATES.map((_, i) => counts.reduce((sum, c) => sum + (c.n[i] ?? 0), 0));
   return [
     `Switch is in ${sw.stp.mode} mode`,
     `Root bridge for: ${roots.length ? roots.join(', ') : 'none'}`,
@@ -92,9 +93,9 @@ export function showStpSummary(sw: Switch): string[] {
     '',
     'Name                   Blocking Listening Learning Forwarding STP Active',
     rule,
-    ...counts.map((c) => row(vlanName(c.v), c.blk, c.fwd)),
+    ...counts.map((c) => row(vlanName(c.v), c.n)),
     rule,
-    row(`${counts.length} vlan${counts.length === 1 ? '' : 's'}`, blk, fwd),
+    row(`${counts.length} vlan${counts.length === 1 ? '' : 's'}`, totals),
   ];
 }
 

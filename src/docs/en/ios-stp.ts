@@ -46,9 +46,9 @@ export const STP_DOCS: readonly DocPage[] = [
         ['show interfaces status [err-disabled]', 'State of each port: connected, notconnect, disabled or err-disabled.'],
         ['show spanning-tree [vlan N | interface IF | summary]', 'The tree of each VLAN, one port in all its VLANs or the summary.'],
       ]),
-      tip('The amber light', 'As in Packet Tracer, the triangle at a cable end is painted amber on a port that blocks in all its VLANs.'),
+      tip('The amber light', 'As in Packet Tracer, the triangle at a cable end is painted amber on a port that blocks in all its VLANs, and also while it listens and learns before forwarding.'),
       list(
-        'In Netfix convergence is immediate: a real 2960 takes 30 s (Listening and Learning, 15 s each) to put a port to forwarding, unless it has portfast.',
+        'When a lab or a file is opened the network has already converged. Afterwards, a port that starts forwarding (a new cable, `no shutdown`, another root port) waits 15 s in **Listening** and 15 s in **Learning** (LIS and LRN in `show spanning-tree`), unless it has `portfast` or the switch runs `spanning-tree mode rapid-pvst`. “Advance clock” shortens the wait. In simulation mode, the **STP** filter (unticked at first) shows the BPDUs that leave the designated ports every 2 s.',
         'When the tree changes, the switch flushes its MAC address table, as on a topology change notification.',
         '**BPDU guard** protects single-device ports: if BPDUs from a switch arrive on one with `spanning-tree bpduguard enable` (or with portfast and `spanning-tree portfast bpduguard default`), the port goes **err-disabled** (%SPANTREE-2-BLOCK_BPDUGUARD) and the link drops. `show interfaces status err-disabled` shows it; `shutdown` and `no shutdown` recover it once the switch is gone.',
       ),

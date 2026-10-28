@@ -46,9 +46,9 @@ export const STP_DOCS: readonly DocPage[] = [
         ['show interfaces status [err-disabled]', 'Estado de cada puerto: connected, notconnect, disabled o err-disabled.'],
         ['show spanning-tree [vlan N | interface IF | summary]', 'El árbol de cada VLAN, un puerto en todas sus VLAN o el resumen.'],
       ]),
-      tip('La luz ámbar', 'Como en Packet Tracer, el triángulo del extremo de un cable se pinta ámbar en un puerto que bloquea en todas sus VLAN.'),
+      tip('La luz ámbar', 'Como en Packet Tracer, el triángulo del extremo de un cable se pinta ámbar en un puerto que bloquea en todas sus VLAN, y también mientras escucha y aprende antes de reenviar.'),
       list(
-        'En Netfix la convergencia es inmediata: un 2960 real tarda 30 s (Listening y Learning, 15 s cada uno) en poner un puerto a reenviar, salvo con portfast.',
+        'Al abrir un laboratorio o un archivo la red ya está convergida. Después, un puerto que pasa a reenviar (un cable nuevo, `no shutdown`, otro puerto raíz) espera 15 s en **Listening** y 15 s en **Learning** (LIS y LRN en `show spanning-tree`), salvo con `portfast` o con `spanning-tree mode rapid-pvst`. «Avanzar reloj» acorta la espera. En el modo simulación, el filtro **STP** (desmarcado al principio) muestra las BPDU que salen cada 2 s de los puertos designados.',
         'Cuando el árbol cambia, el switch vacía su tabla de direcciones MAC, como al recibir un aviso de cambio de topología.',
         '**BPDU guard** protege los puertos de un solo equipo: si por uno con `spanning-tree bpduguard enable` (o con portfast y `spanning-tree portfast bpduguard default`) llegan BPDU de un switch, el puerto pasa a **err-disabled** (%SPANTREE-2-BLOCK_BPDUGUARD) y el enlace cae. `show interfaces status err-disabled` lo muestra; se recupera con `shutdown` y `no shutdown` una vez quitado el switch.',
       ),

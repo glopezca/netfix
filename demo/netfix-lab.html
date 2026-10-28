@@ -49,6 +49,7 @@
   --http: #b34d7d;
   --mail: #9a6a1f;
   --ssh: #3d4f9c;
+  --stp: #5f7d2c;
   --ok: #2e7d4f;
   --err: #b3362a;
   --dev-top: #dbe7ec;
@@ -141,6 +142,7 @@ button, input, select { font: inherit; color: inherit; }
 .envelope rect { stroke: #fff; stroke-width: 1.2; }
 .envelope path { fill: none; stroke: #fff; stroke-width: 1.2; }
 .env-dhcp rect { fill: var(--dhcp); }
+.env-stp rect { fill: var(--stp); }
 .env-arp rect { fill: var(--arp); }
 .env-icmp rect { fill: var(--icmp); }
 .env-dns rect { fill: var(--dns); }
@@ -324,6 +326,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 .chip-http { background: var(--http); }
 .chip-smtp, .chip-pop3, .chip-imap { background: var(--mail); }
 .chip-ssh { background: var(--ssh); }
+.chip-stp { background: var(--stp); }
 .sim-count { font-size: 12px; color: var(--ink-2); }
 .events-wrap { flex: 1; min-height: 120px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-ctl); }
 .events { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -2333,6 +2336,7 @@ const UI_ES = {
     'pdu.src': 'Origen',
     'pdu.dst': 'Destino',
     'pdu.port': 'Puerto',
+    'pdu.rootCost': 'Coste hasta la raíz',
     'pdu.op': 'Operación',
     'pdu.senderIp': 'Dirección IP del emisor',
     'pdu.senderMac': 'MAC emisor',
@@ -2531,6 +2535,7 @@ const UI_EN = {
     'pdu.src': 'Source',
     'pdu.dst': 'Destination',
     'pdu.port': 'Port',
+    'pdu.rootCost': 'Root path cost',
     'pdu.op': 'Operation',
     'pdu.senderIp': 'Sender IP address',
     'pdu.senderMac': 'Sender MAC',
@@ -4924,6 +4929,8 @@ function icmpQuote(p) {
         return { protocol: 'udp', src: p.src, dst: p.dst, sport: p.udp.sport, dport: p.udp.dport };
     return undefined;
 }
+/** Destination of PVST+ BPDUs. */
+const PVST_MAC = '01000ccccccd';
 const DHCP_SERVER_PORT = 67;
 const DHCP_CLIENT_PORT = 68;
 const DNS_PORT = 53;
@@ -4936,6 +4943,8 @@ const PC_TTL = 128;
 const LINUX_TTL = 64;
 /** Label used by the simulation event list: DHCP, DNS, ARP, ICMP, HTTP, SMTP, POP3, IMAP, SSH or TCP. */
 function frameProtocol(frame) {
+    if (frame.bpdu)
+        return 'STP';
     if (frame.arp)
         return 'ARP';
     const ip = frame.ip;
@@ -4965,7 +4974,7 @@ function tcpService(seg) {
     return WELL_KNOWN_PORTS[seg.dport] ?? WELL_KNOWN_PORTS[seg.sport] ?? 'TCP';
 }
 
-return { icmpQuote, DHCP_SERVER_PORT, DHCP_CLIENT_PORT, DNS_PORT, WELL_KNOWN_PORTS, DEFAULT_TTL, PC_TTL, LINUX_TTL, frameProtocol, tcpService };
+return { icmpQuote, PVST_MAC, DHCP_SERVER_PORT, DHCP_CLIENT_PORT, DNS_PORT, WELL_KNOWN_PORTS, DEFAULT_TTL, PC_TTL, LINUX_TTL, frameProtocol, tcpService };
 })();
 __m["core/mac.js"] = (() => {
 /** MAC address and DHCP client-identifier helpers. MACs are 12 lowercase hex chars. */
@@ -18103,8 +18112,8 @@ const STP_DOCS = [
                 ['show interfaces status [err-disabled]', 'Estado de cada puerto: connected, notconnect, disabled o err-disabled.'],
                 ['show spanning-tree [vlan N | interface IF | summary]', 'El árbol de cada VLAN, un puerto en todas sus VLAN o el resumen.'],
             ]),
-            tip('La luz ámbar', 'Como en Packet Tracer, el triángulo del extremo de un cable se pinta ámbar en un puerto que bloquea en todas sus VLAN.'),
-            list('En Netfix la convergencia es inmediata: un 2960 real tarda 30 s (Listening y Learning, 15 s cada uno) en poner un puerto a reenviar, salvo con portfast.', 'Cuando el árbol cambia, el switch vacía su tabla de direcciones MAC, como al recibir un aviso de cambio de topología.', '**BPDU guard** protege los puertos de un solo equipo: si por uno con `spanning-tree bpduguard enable` (o con portfast y `spanning-tree portfast bpduguard default`) llegan BPDU de un switch, el puerto pasa a **err-disabled** (%SPANTREE-2-BLOCK_BPDUGUARD) y el enlace cae. `show interfaces status err-disabled` lo muestra; se recupera con `shutdown` y `no shutdown` una vez quitado el switch.'),
+            tip('La luz ámbar', 'Como en Packet Tracer, el triángulo del extremo de un cable se pinta ámbar en un puerto que bloquea en todas sus VLAN, y también mientras escucha y aprende antes de reenviar.'),
+            list('Al abrir un laboratorio o un archivo la red ya está convergida. Después, un puerto que pasa a reenviar (un cable nuevo, `no shutdown`, otro puerto raíz) espera 15 s en **Listening** y 15 s en **Learning** (LIS y LRN en `show spanning-tree`), salvo con `portfast` o con `spanning-tree mode rapid-pvst`. «Avanzar reloj» acorta la espera. En el modo simulación, el filtro **STP** (desmarcado al principio) muestra las BPDU que salen cada 2 s de los puertos designados.', 'Cuando el árbol cambia, el switch vacía su tabla de direcciones MAC, como al recibir un aviso de cambio de topología.', '**BPDU guard** protege los puertos de un solo equipo: si por uno con `spanning-tree bpduguard enable` (o con portfast y `spanning-tree portfast bpduguard default`) llegan BPDU de un switch, el puerto pasa a **err-disabled** (%SPANTREE-2-BLOCK_BPDUGUARD) y el enlace cae. `show interfaces status err-disabled` lo muestra; se recupera con `shutdown` y `no shutdown` una vez quitado el switch.'),
             warn('Errores habituales', '`no spanning-tree vlan 1` con dos caminos entre switches: la red se satura y deja de responder. Una prioridad que no es múltiplo de 4096. Esperar que el switch con más puertos sea la raíz: decide la prioridad y, a igualdad, la MAC.'),
             exercise('Otra raíz', 'En el laboratorio «Spanning tree: tres switches en triángulo», haz raíz a SW-A. ¿Qué puerto bloquea ahora?', 'En SW-A: `enable`, `conf t`, `spanning-tree vlan 1 root primary` (prioridad 24576). SW-B llega a SW-A directamente por Gi0/2 (coste 4) y SW-CORE por Gi0/1. En el enlace SW-CORE–SW-B los dos están a coste 4 de la raíz y gana la MAC más baja (SW-CORE), así que bloquea **Gi0/1 de SW-B**: `show spanning-tree` en SW-B muestra «Gi0/1 Altn BLK». El ping de PC0 a PC1 sigue funcionando.'),
         ],
@@ -20380,8 +20389,8 @@ const STP_DOCS = [
                 ['show interfaces status [err-disabled]', 'State of each port: connected, notconnect, disabled or err-disabled.'],
                 ['show spanning-tree [vlan N | interface IF | summary]', 'The tree of each VLAN, one port in all its VLANs or the summary.'],
             ]),
-            tip('The amber light', 'As in Packet Tracer, the triangle at a cable end is painted amber on a port that blocks in all its VLANs.'),
-            list('In Netfix convergence is immediate: a real 2960 takes 30 s (Listening and Learning, 15 s each) to put a port to forwarding, unless it has portfast.', 'When the tree changes, the switch flushes its MAC address table, as on a topology change notification.', '**BPDU guard** protects single-device ports: if BPDUs from a switch arrive on one with `spanning-tree bpduguard enable` (or with portfast and `spanning-tree portfast bpduguard default`), the port goes **err-disabled** (%SPANTREE-2-BLOCK_BPDUGUARD) and the link drops. `show interfaces status err-disabled` shows it; `shutdown` and `no shutdown` recover it once the switch is gone.'),
+            tip('The amber light', 'As in Packet Tracer, the triangle at a cable end is painted amber on a port that blocks in all its VLANs, and also while it listens and learns before forwarding.'),
+            list('When a lab or a file is opened the network has already converged. Afterwards, a port that starts forwarding (a new cable, `no shutdown`, another root port) waits 15 s in **Listening** and 15 s in **Learning** (LIS and LRN in `show spanning-tree`), unless it has `portfast` or the switch runs `spanning-tree mode rapid-pvst`. “Advance clock” shortens the wait. In simulation mode, the **STP** filter (unticked at first) shows the BPDUs that leave the designated ports every 2 s.', 'When the tree changes, the switch flushes its MAC address table, as on a topology change notification.', '**BPDU guard** protects single-device ports: if BPDUs from a switch arrive on one with `spanning-tree bpduguard enable` (or with portfast and `spanning-tree portfast bpduguard default`), the port goes **err-disabled** (%SPANTREE-2-BLOCK_BPDUGUARD) and the link drops. `show interfaces status err-disabled` shows it; `shutdown` and `no shutdown` recover it once the switch is gone.'),
             warn('Common mistakes', '`no spanning-tree vlan 1` with two paths between switches: the network floods and stops answering. A priority that is not a multiple of 4096. Expecting the switch with most ports to be the root: the priority decides and, on a tie, the MAC.'),
             exercise('Another root', 'In the lab “Spanning tree: three switches in a triangle”, make SW-A the root. Which port blocks now?', 'On SW-A: `enable`, `conf t`, `spanning-tree vlan 1 root primary` (priority 24576). SW-B reaches SW-A directly through Gi0/2 (cost 4) and SW-CORE through Gi0/1. On the SW-CORE–SW-B link both are at cost 4 from the root and the lowest MAC wins (SW-CORE), so **Gi0/1 on SW-B** blocks: `show spanning-tree` on SW-B shows “Gi0/1 Altn BLK”. The ping from PC0 to PC1 still works.'),
         ],
@@ -29562,7 +29571,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.22.4",
+    "version": "0.23.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -40451,9 +40460,9 @@ function vlanTree(m, links) {
         for (const p of member.ports) {
             const designated = isDesignated(v, member, p, nb.get(k)?.find((x) => x.port === p), best);
             const role = p.name === rootPort ? 'Root' : designated ? 'Desg' : 'Altn';
-            ports.set(p.name, { role, forwarding: role !== 'Altn', cost: p.cost, priority: p.priority, number: p.number, edge: p.edge });
+            ports.set(p.name, { role, state: role === 'Altn' ? 'BLK' : 'FWD', forwarding: role !== 'Altn', cost: p.cost, priority: p.priority, number: p.number, edge: p.edge });
         }
-        out.set(k, { root: v[0], bridge: member.id, cost: v[1], ...(rootPort ? { rootPort } : {}), ports });
+        out.set(k, { root: v[0], bridge: member.id, cost: v[1], ...(rootPort ? { rootPort } : {}), ports, ...(member.bridge.rapid ? { rapid: true } : {}) });
     }
     return out;
 }
@@ -40483,13 +40492,86 @@ function forwardingKeys(tree) {
 
 return { computeStp, forwardingKeys };
 })();
+__m["net/stp-timers.js"] = (() => {
+const LISTEN_MS = 15_000;
+/** State of a port `elapsed` ms after the tree made it forwarding. */
+function stpTransition(elapsed) {
+    if (elapsed < LISTEN_MS)
+        return 'LIS';
+    return elapsed < 2 * LISTEN_MS ? 'LRN' : 'FWD';
+}
+const keyOf = (device, vlan, port) => `${device}|${vlan}|${port}`;
+class StpTimers {
+    /** When each port in transition started it. */
+    started = new Map();
+    /** The state each port had in the last overlay. */
+    last = new Map();
+    /** The tree as it is when the timers start: what forwards now keeps forwarding. */
+    seed(base) {
+        this.started.clear();
+        this.last.clear();
+        for (const [d, vlans] of base)
+            for (const [v, s] of vlans)
+                for (const [p, st] of s.ports)
+                    this.last.set(keyOf(d, v, p), st.state);
+    }
+    /** `base` with the ports in transition, and the instant the overlay must be recomputed (Infinity: never). */
+    overlay(base, now) {
+        let until = Infinity;
+        const seen = new Set();
+        const tree = new Map();
+        for (const [d, vlans] of base) {
+            const per = new Map();
+            for (const [v, s] of vlans) {
+                const ports = new Map();
+                for (const [p, st] of s.ports) {
+                    seen.add(keyOf(d, v, p));
+                    const state = this.stateOf(keyOf(d, v, p), st, s.rapid === true, now);
+                    const start = this.started.get(keyOf(d, v, p));
+                    if (start !== undefined)
+                        until = Math.min(until, start + (state === 'LIS' ? LISTEN_MS : 2 * LISTEN_MS));
+                    ports.set(p, { ...st, state, forwarding: state === 'FWD' });
+                }
+                per.set(v, { ...s, ports });
+            }
+            tree.set(d, per);
+        }
+        // A port that went down starts again from Listening when it comes back.
+        for (const k of [...this.last.keys()])
+            if (!seen.has(k)) {
+                this.last.delete(k);
+                this.started.delete(k);
+            }
+        return { tree, until };
+    }
+    stateOf(key, st, rapid, now) {
+        let state = 'BLK';
+        if (st.state === 'FWD') {
+            const start = this.started.get(key);
+            const instant = st.edge || rapid || (this.last.get(key) === 'FWD' && start === undefined);
+            state = instant ? 'FWD' : stpTransition(now - (start ?? now));
+            if (!instant && start === undefined)
+                this.started.set(key, now);
+        }
+        if (state === 'FWD' || state === 'BLK')
+            this.started.delete(key);
+        this.last.set(key, state);
+        return state;
+    }
+}
+
+return { LISTEN_MS, stpTransition, StpTimers };
+})();
 __m["net/network.js"] = (() => {
 /** Topology and discrete-event engine. Every frame on a cable is recorded for simulation mode. */
 const { TaskQueue } = __m["net/task-queue.js"];
 const { SimClock } = __m["core/clock.js"];
 const { frameProtocol } = __m["net/packets.js"];
 const { computeStp } = __m["net/stp.js"];
+const { StpTimers } = __m["net/stp-timers.js"];
 const LINK_DELAY_MS = 1;
+/** Hello time of spanning tree. */
+const STP_HELLO_MS = 2000;
 const MAX_HISTORY = 5000;
 const HISTORY_SLACK = 1000;
 const MAX_TASKS_PER_RUN = 200_000;
@@ -40522,6 +40604,12 @@ class Network {
     listeners = new Set();
     /** The converged spanning tree, recomputed after a change of cables, ports or switch configuration. */
     stpCache = null;
+    /** Running network (the interface started it): Listening/Learning and BPDUs. */
+    stpTimers = null;
+    stpView = null;
+    stpWake = Infinity;
+    /** Background tasks in the queue (see scheduleBackground). */
+    background = 0;
     constructor(clock = new SimClock()) {
         this.clock = clock;
     }
@@ -40531,13 +40619,13 @@ class Network {
             throw new Error(`Duplicate device id ${device.id}`);
         this.devices.set(device.id, device);
         device.hooks = this.hooksFor(device);
-        this.stpCache = null;
+        this.invalidateStp();
     }
     removeDevice(id) {
         for (const link of this.links.filter((l) => l.a.device === id || l.b.device === id))
             this.disconnect(link.id);
         this.devices.delete(id);
-        this.stpCache = null;
+        this.invalidateStp();
     }
     linkAt(ep) {
         return this.byPort.get(epKey(ep));
@@ -40562,7 +40650,7 @@ class Network {
         const link = { id: `L${++this.seq}`, a, b, cable };
         this.links = [...this.links, link];
         this.byPort.set(epKey(a), link).set(epKey(b), link);
-        this.stpCache = null;
+        this.invalidateStp();
         this.notifyLink(a, b);
         return link;
     }
@@ -40574,7 +40662,7 @@ class Network {
         this.links = this.links.filter((l) => l.id !== linkId);
         this.byPort.delete(epKey(link.a));
         this.byPort.delete(epKey(link.b));
-        this.stpCache = null;
+        this.invalidateStp();
         if (!wasUp)
             return;
         this.devices.get(link.a.device)?.onLinkEvent(link.a.port, false);
@@ -40603,7 +40691,7 @@ class Network {
                 return peer !== undefined && this.endUp(peer);
             },
             portChanged: (port) => {
-                this.stpCache = null;
+                this.invalidateStp();
                 const peer = this.peerOf({ device: device.id, port });
                 if (!peer || !this.endUp(peer))
                     return;
@@ -40623,18 +40711,59 @@ class Network {
                 return peer && this.endUp(peer) ? this.devices.get(peer.device)?.kind : undefined;
             },
             stp: () => this.spanningTree(),
-            stpChanged: () => { this.stpCache = null; },
+            stpChanged: () => this.invalidateStp(),
         };
     }
     /** Spanning tree of the switches and the cables between them (both ends up). */
     spanningTree() {
-        if (this.stpCache)
-            return this.stpCache;
+        const base = this.stpCache ?? this.computeTree();
+        this.stpCache = base;
+        const timers = this.stpTimers;
+        if (!timers)
+            return base;
+        const now = this.clock.elapsed();
+        if (this.stpView?.base === base && now < this.stpView.until)
+            return this.stpView.tree;
+        const { tree, until } = timers.overlay(base, now);
+        this.stpView = { base, tree, until };
+        // One wake-up per deadline, so the lights change on time even with nothing else happening.
+        if (until !== Infinity && until !== this.stpWake) {
+            this.stpWake = until;
+            this.scheduleBackground(until - now, () => undefined);
+        }
+        return tree;
+    }
+    /**
+     * Something the tree depends on changed. On a running network the new tree is taken at once, so a port that goes
+     * down and comes back between two frames still starts again from Listening.
+     */
+    invalidateStp() {
+        this.stpCache = null;
+        if (this.stpTimers)
+            this.spanningTree();
+    }
+    computeTree() {
         const bridges = [...this.devices.values()].flatMap((d) => (d.stpBridge ? [d.stpBridge()] : []));
         const ids = new Set(bridges.map((b) => b.id));
         const links = this.links.filter((l) => ids.has(l.a.device) && ids.has(l.b.device) && this.linkUp(l.a));
-        this.stpCache = computeStp(bridges, links);
-        return this.stpCache;
+        return computeStp(bridges, links);
+    }
+    /**
+     * The network is running (the interface calls it after loading): from now on, ports that start forwarding wait in
+     * Listening and Learning, and switches send BPDUs every 2 s. Loading and the tests keep the converged tree.
+     */
+    startStp() {
+        if (this.stpTimers)
+            return;
+        const timers = new StpTimers();
+        timers.seed(this.spanningTree());
+        this.stpTimers = timers;
+        const hello = () => {
+            for (const d of this.devices.values())
+                d.stpHello?.();
+            this.scheduleBackground(STP_HELLO_MS, hello);
+        };
+        this.scheduleBackground(STP_HELLO_MS, hello);
     }
     // ------------------------------------------------------------ events
     onFrame(listener) {
@@ -40671,8 +40800,17 @@ class Network {
         for (const l of this.listeners)
             l(event);
     }
+    /** Tasks waiting, not counting the background ones (spanning tree hellos and timer wake-ups). */
     pending() {
-        return this.queue.size;
+        return this.queue.size - this.background;
+    }
+    /** A task that keeps the network ticking but is not traffic: simulation mode does not wait for it. */
+    scheduleBackground(delayMs, run) {
+        this.background++;
+        this.schedule(delayMs, () => {
+            this.background--;
+            run();
+        });
     }
     /** Runs the next task. Returns false when the queue is empty. */
     step() {
@@ -45777,7 +45915,7 @@ function stpVlans(sw) {
     return [...sw.vlans.keys()].sort((a, b) => a - b).filter((v) => sw.stpVlan(v) !== undefined);
 }
 function portRow(label, width, p) {
-    return `${label.padEnd(width)} ${p.role} ${p.forwarding ? 'FWD' : 'BLK'} ${String(p.cost).padEnd(9)} ${`${p.priority}.${p.number}`.padEnd(8)} P2p${p.edge ? ' Edge' : ''}`;
+    return `${label.padEnd(width)} ${p.role} ${p.state} ${String(p.cost).padEnd(9)} ${`${p.priority}.${p.number}`.padEnd(8)} P2p${p.edge ? ' Edge' : ''}`;
 }
 function rootLines(s) {
     const head = [`  Root ID    Priority    ${s.root.priority}`, `             Address     ${formatMacCisco(s.root.mac)}`];
@@ -45825,15 +45963,15 @@ function showStpInterface(sw, port) {
 function showStpSummary(sw) {
     const vlans = stpVlans(sw);
     const roots = vlans.filter((v) => !sw.stpVlan(v)?.rootPort).map(vlanName);
+    const STATES = ['BLK', 'LIS', 'LRN', 'FWD'];
     const counts = vlans.map((v) => {
         const ports = [...(sw.stpVlan(v)?.ports.values() ?? [])];
-        const fwd = ports.filter((p) => p.forwarding).length;
-        return { v, blk: ports.length - fwd, fwd };
+        return { v, n: STATES.map((s) => ports.filter((p) => p.state === s).length) };
     });
-    const row = (name, blk, fwd) => `${name.padEnd(22)} ${String(blk).padStart(8)} ${'0'.padStart(9)} ${'0'.padStart(8)} ${String(fwd).padStart(10)} ${String(blk + fwd).padStart(10)}`;
+    const widths = [8, 9, 8, 10];
+    const row = (name, n) => `${name.padEnd(22)} ${n.map((x, i) => String(x).padStart(widths[i] ?? 8)).join(' ')} ${String(n.reduce((a, b) => a + b, 0)).padStart(10)}`;
     const rule = '---------------------- -------- --------- -------- ---------- ----------';
-    const blk = counts.reduce((n, c) => n + c.blk, 0);
-    const fwd = counts.reduce((n, c) => n + c.fwd, 0);
+    const totals = STATES.map((_, i) => counts.reduce((sum, c) => sum + (c.n[i] ?? 0), 0));
     return [
         `Switch is in ${sw.stp.mode} mode`,
         `Root bridge for: ${roots.length ? roots.join(', ') : 'none'}`,
@@ -45849,9 +45987,9 @@ function showStpSummary(sw) {
         '',
         'Name                   Blocking Listening Learning Forwarding STP Active',
         rule,
-        ...counts.map((c) => row(vlanName(c.v), c.blk, c.fwd)),
+        ...counts.map((c) => row(vlanName(c.v), c.n)),
         rule,
-        row(`${counts.length} vlan${counts.length === 1 ? '' : 's'}`, blk, fwd),
+        row(`${counts.length} vlan${counts.length === 1 ? '' : 's'}`, totals),
     ];
 }
 /** `spanning-tree vlan N root primary`: 24576, or 4096 below the current root when that is already lower. */
@@ -46236,6 +46374,7 @@ return { switchModeTable };
 })();
 __m["devices/switch-stp.js"] = (() => {
 const { forwardingKeys } = __m["net/stp.js"];
+const { PVST_MAC } = __m["net/packets.js"];
 const { SWITCH_PORTS, DEFAULT_VLANS } = __m["devices/switch-ports.js"];
 /** `switchport trunk allowed vlan`: whether a trunk carries this VLAN (all of them by default). */
 const allows = (cfg, vlan) => cfg.trunkAllowed?.includes(vlan) ?? true;
@@ -46256,7 +46395,7 @@ class SwitchStp {
             const vlans = sw.isTrunk(name) ? all.filter((v) => allows(cfg, v)) : sw.vlans.has(cfg.accessVlan) ? [cfg.accessVlan] : [];
             return [{ name, number: i + 1, cost: sw.stp.cost(name), priority: sw.stp.portPriority(name), edge: sw.stp.portfast.has(name), vlans }];
         });
-        return { id: sw.id, mac: sw.baseMac, priority: (v) => sw.stp.priority(v), ports };
+        return { id: sw.id, mac: sw.baseMac, priority: (v) => sw.stp.priority(v), ports, rapid: sw.stp.mode === 'rapid-pvst' };
     }
     /**
      * The current spanning tree. When it changes, the VLANs whose forwarding ports changed anywhere lose their MAC
@@ -46278,9 +46417,29 @@ class SwitchStp {
     vlan(vlan) {
         return this.sync()?.get(this.sw.id)?.get(vlan);
     }
-    /** A port that blocks in this VLAN neither learns nor forwards. */
+    /** A port that blocks or listens in this VLAN neither learns nor forwards; one that learns does not forward yet. */
     forwards(port, vlan) {
         return this.vlan(vlan)?.ports.get(port)?.forwarding ?? true;
+    }
+    learns(port, vlan) {
+        const state = this.vlan(vlan)?.ports.get(port)?.state;
+        return state === undefined || state === 'FWD' || state === 'LRN';
+    }
+    /** The BPDUs of each VLAN out of the designated ports (tagged on a trunk except in its native VLAN). */
+    hello() {
+        const sw = this.sw;
+        const tree = this.sync()?.get(sw.id);
+        if (!tree)
+            return;
+        for (const [vlan, s] of tree) {
+            for (const [port, p] of s.ports) {
+                if (p.role !== 'Desg' || p.state === 'BLK')
+                    continue;
+                const tagged = sw.isTrunk(port) && vlan !== (sw.iface(port)?.nativeVlan ?? 1);
+                const bpdu = { vlan, rootPriority: s.root.priority, rootMac: s.root.mac, cost: s.cost, bridgePriority: s.bridge.priority, bridgeMac: s.bridge.mac, port: `${p.priority}.${p.number}` };
+                sw.hooks.transmit(port, { src: sw.baseMac, dst: PVST_MAC, ...(tagged ? { vlan } : {}), bpdu });
+            }
+        }
     }
     /** The cable end shows amber: the port blocks in every VLAN it carries. */
     blocked(port) {
@@ -46477,6 +46636,9 @@ class Switch extends IosDevice {
     portBlocked(port) {
         return this.spanning.blocked(port);
     }
+    stpHello() {
+        this.spanning.hello();
+    }
     /** BPDU guard: a guarded port with a switch at the far end goes err-disabled (shutdown + no shutdown recovers). */
     checkBpduGuard(port) {
         if (this.errDisabled.has(port) || !this.spanning.guardTrips(port))
@@ -46517,6 +46679,8 @@ class Switch extends IosDevice {
         return this.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip));
     }
     receive(port, frame) {
+        if (frame.bpdu)
+            return; // spanning tree reads the network, not the frames
         const cfg = this.ifaces.get(port);
         if (!cfg || cfg.shutdown || (frame.l2hops ?? 0) > MAX_L2_HOPS)
             return;
@@ -46524,9 +46688,11 @@ class Switch extends IosDevice {
         if (!trunk && frame.vlan !== undefined)
             return;
         const vlan = trunk ? (frame.vlan ?? cfg.nativeVlan) : cfg.accessVlan;
-        if ((trunk && !allows(cfg, vlan)) || !this.spanning.forwards(port, vlan))
+        if ((trunk && !allows(cfg, vlan)) || !this.spanning.learns(port, vlan))
             return;
         this.macTable.set(`${vlan}|${frame.src}`, { mac: frame.src, vlan, port });
+        if (!this.spanning.forwards(port, vlan))
+            return;
         const inspected = this.snooping.inspect(this, port, vlan, frame);
         if (!inspected)
             return;
@@ -52261,7 +52427,9 @@ const { el, svg, clear, prefersReducedMotion } = __m["ui/dom.js"];
 const { tcpService } = __m["net/packets.js"];
 const { formatIp, formatMask } = __m["core/ip.js"];
 const { formatMacCisco, formatHexId } = __m["core/mac.js"];
-const PROTOCOLS = ['DHCP', 'DNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMTP', 'POP3', 'IMAP', 'SSH'];
+const PROTOCOLS = ['DHCP', 'DNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMTP', 'POP3', 'IMAP', 'SSH', 'STP'];
+/** Off at first: the BPDUs every 2 s would bury the rest (as in Packet Tracer, tick it to see them). */
+const HIDDEN_AT_FIRST = new Set(['STP']);
 const BASE_STEP_MS = 700;
 const MAX_ROWS = 600;
 class SimPanel {
@@ -52270,7 +52438,7 @@ class SimPanel {
     detail;
     playBtn;
     counter;
-    filters = new Map(PROTOCOLS.map((p) => [p, true]));
+    filters = new Map(PROTOCOLS.map((p) => [p, !HIDDEN_AT_FIRST.has(p)]));
     events = [];
     cursor = 0;
     playing = false;
@@ -52283,6 +52451,8 @@ class SimPanel {
     constructor(topo, canvas) {
         this.topo = topo;
         this.canvas = canvas;
+        // The network runs from now on: spanning tree timers and BPDUs (loading and the tests stay converged).
+        topo.net.startStp();
         this.tbody = el('tbody');
         this.detail = el('div', { class: 'pdu', 'aria-live': 'polite' }, el('p', { class: 'muted' }, t('sim.pick')));
         this.playBtn = el('button', { type: 'button', class: 'btn' }, t('sim.play'));
@@ -52295,7 +52465,7 @@ class SimPanel {
         reset.addEventListener('click', () => this.reset());
         speed.addEventListener('input', () => { this.speed = Number(speed.value); });
         const filterBox = el('div', { class: 'filters', role: 'group', 'aria-label': t('sim.filters') }, ...PROTOCOLS.map((p) => {
-            const cb = el('input', { type: 'checkbox', checked: true });
+            const cb = el('input', { type: 'checkbox', checked: !HIDDEN_AT_FIRST.has(p) });
             cb.addEventListener('change', () => { this.filters.set(p, cb.checked); });
             return el('label', { class: `chip chip-${p.toLowerCase()}` }, cb, p);
         }));
@@ -52310,6 +52480,7 @@ class SimPanel {
     attach(topo) {
         this.unsubscribe();
         this.topo = topo;
+        topo.net.startStp();
         this.reset();
         this.unsubscribe = topo.net.onFrame((e) => this.capture(e));
     }
@@ -52434,6 +52605,8 @@ function appFields(p) {
     }
 }
 function typeName(f) {
+    if (f.bpdu)
+        return `STP BPDU VLAN ${f.bpdu.vlan}`;
     const dhcp = f.ip?.udp?.dhcp;
     if (dhcp)
         return `DHCP ${dhcp.options.messageType}`;
@@ -52456,6 +52629,11 @@ function pduView(e, from, to) {
     const f = e.frame;
     const out = [el('h3', {}, `${typeName(f)} · ${from} → ${to}`)];
     out.push(el('h4', {}, 'Ethernet II'), kv([[t('pdu.src'), formatMacCisco(f.src)], [t('pdu.dst'), formatMacCisco(f.dst)], ['802.1Q VLAN', f.vlan?.toString()], [t('pdu.port'), `${e.from.port} → ${e.to.port}`]]));
+    if (f.bpdu) {
+        const b = f.bpdu;
+        out.push(el('h4', {}, 'STP (PVST+)'), kv([['VLAN', String(b.vlan)], ['Root ID', `${b.rootPriority} ${formatMacCisco(b.rootMac)}`], [t('pdu.rootCost'), String(b.cost)], ['Bridge ID', `${b.bridgePriority} ${formatMacCisco(b.bridgeMac)}`], ['Port ID', b.port], ['Hello · Max Age · Forward Delay', '2 · 20 · 15 s']]));
+        return out;
+    }
     if (f.arp) {
         out.push(el('h4', {}, 'ARP'), kv([[t('pdu.op'), f.arp.op], [t('pdu.senderIp'), formatIp(f.arp.senderIp)], [t('pdu.senderMac'), formatMacCisco(f.arp.senderMac)], [t('pdu.targetIp'), formatIp(f.arp.targetIp)]]));
         return out;

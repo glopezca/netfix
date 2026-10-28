@@ -5,6 +5,7 @@ import type { Frame } from './packets.ts';
 import { frameProtocol } from './packets.ts';
 import type { DeviceHooks } from '../devices/hooks.ts';
 import { computeStp } from './stp.ts';
+import { StpTimers } from './stp-timers.ts';
 import type { StpBridge, StpResult } from './stp.ts';
 
 export interface Endpoint {
@@ -40,6 +41,8 @@ export interface NetDevice {
   stpBridge?(): StpBridge;
   /** A switch port that spanning tree blocks in every VLAN it carries (amber light). */
   portBlocked?(port: string): boolean;
+  /** A switch sends its BPDUs (every 2 s while the network runs). */
+  stpHello?(): void;
 }
 
 export interface SimEvent {
@@ -54,6 +57,8 @@ export interface SimEvent {
 }
 
 export const LINK_DELAY_MS = 1;
+/** Hello time of spanning tree. */
+const STP_HELLO_MS = 2000;
 const MAX_HISTORY = 5000;
 const HISTORY_SLACK = 1000;
 const MAX_TASKS_PER_RUN = 200_000;
@@ -88,6 +93,12 @@ export class Network {
   private readonly listeners = new Set<(e: SimEvent) => void>();
   /** The converged spanning tree, recomputed after a change of cables, ports or switch configuration. */
   private stpCache: StpResult | null = null;
+  /** Running network (the interface started it): Listening/Learning and BPDUs. */
+  private stpTimers: StpTimers | null = null;
+  private stpView: { readonly base: StpResult; readonly tree: StpResult; readonly until: number } | null = null;
+  private stpWake = Infinity;
+  /** Background tasks in the queue (see scheduleBackground). */
+  private background = 0;
 
   constructor(clock: SimClock = new SimClock()) {
     this.clock = clock;
@@ -99,13 +110,13 @@ export class Network {
     if (this.devices.has(device.id)) throw new Error(`Duplicate device id ${device.id}`);
     this.devices.set(device.id, device);
     device.hooks = this.hooksFor(device);
-    this.stpCache = null;
+    this.invalidateStp();
   }
 
   removeDevice(id: string): void {
     for (const link of this.links.filter((l) => l.a.device === id || l.b.device === id)) this.disconnect(link.id);
     this.devices.delete(id);
-    this.stpCache = null;
+    this.invalidateStp();
   }
 
   linkAt(ep: Endpoint): Link | undefined {
@@ -128,7 +139,7 @@ export class Network {
     const link: Link = { id: `L${++this.seq}`, a, b, cable };
     this.links = [...this.links, link];
     this.byPort.set(epKey(a), link).set(epKey(b), link);
-    this.stpCache = null;
+    this.invalidateStp();
     this.notifyLink(a, b);
     return link;
   }
@@ -140,7 +151,7 @@ export class Network {
     this.links = this.links.filter((l) => l.id !== linkId);
     this.byPort.delete(epKey(link.a));
     this.byPort.delete(epKey(link.b));
-    this.stpCache = null;
+    this.invalidateStp();
     if (!wasUp) return;
     this.devices.get(link.a.device)?.onLinkEvent(link.a.port, false);
     this.devices.get(link.b.device)?.onLinkEvent(link.b.port, false);
@@ -170,7 +181,7 @@ export class Network {
         return peer !== undefined && this.endUp(peer);
       },
       portChanged: (port) => {
-        this.stpCache = null;
+        this.invalidateStp();
         const peer = this.peerOf({ device: device.id, port });
         if (!peer || !this.endUp(peer)) return;
         this.devices.get(peer.device)?.onLinkEvent(peer.port, device.portAdminUp(port));
@@ -189,18 +200,58 @@ export class Network {
         return peer && this.endUp(peer) ? this.devices.get(peer.device)?.kind : undefined;
       },
       stp: () => this.spanningTree(),
-      stpChanged: () => { this.stpCache = null; },
+      stpChanged: () => this.invalidateStp(),
     };
   }
 
   /** Spanning tree of the switches and the cables between them (both ends up). */
   spanningTree(): StpResult {
-    if (this.stpCache) return this.stpCache;
+    const base = this.stpCache ?? this.computeTree();
+    this.stpCache = base;
+    const timers = this.stpTimers;
+    if (!timers) return base;
+    const now = this.clock.elapsed();
+    if (this.stpView?.base === base && now < this.stpView.until) return this.stpView.tree;
+    const { tree, until } = timers.overlay(base, now);
+    this.stpView = { base, tree, until };
+    // One wake-up per deadline, so the lights change on time even with nothing else happening.
+    if (until !== Infinity && until !== this.stpWake) {
+      this.stpWake = until;
+      this.scheduleBackground(until - now, () => undefined);
+    }
+    return tree;
+  }
+
+  /**
+   * Something the tree depends on changed. On a running network the new tree is taken at once, so a port that goes
+   * down and comes back between two frames still starts again from Listening.
+   */
+  private invalidateStp(): void {
+    this.stpCache = null;
+    if (this.stpTimers) this.spanningTree();
+  }
+
+  private computeTree(): StpResult {
     const bridges = [...this.devices.values()].flatMap((d) => (d.stpBridge ? [d.stpBridge()] : []));
     const ids = new Set(bridges.map((b) => b.id));
     const links = this.links.filter((l) => ids.has(l.a.device) && ids.has(l.b.device) && this.linkUp(l.a));
-    this.stpCache = computeStp(bridges, links);
-    return this.stpCache;
+    return computeStp(bridges, links);
+  }
+
+  /**
+   * The network is running (the interface calls it after loading): from now on, ports that start forwarding wait in
+   * Listening and Learning, and switches send BPDUs every 2 s. Loading and the tests keep the converged tree.
+   */
+  startStp(): void {
+    if (this.stpTimers) return;
+    const timers = new StpTimers();
+    timers.seed(this.spanningTree());
+    this.stpTimers = timers;
+    const hello = (): void => {
+      for (const d of this.devices.values()) d.stpHello?.();
+      this.scheduleBackground(STP_HELLO_MS, hello);
+    };
+    this.scheduleBackground(STP_HELLO_MS, hello);
   }
 
   // ------------------------------------------------------------ events
@@ -239,8 +290,18 @@ export class Network {
     for (const l of this.listeners) l(event);
   }
 
+  /** Tasks waiting, not counting the background ones (spanning tree hellos and timer wake-ups). */
   pending(): number {
-    return this.queue.size;
+    return this.queue.size - this.background;
+  }
+
+  /** A task that keeps the network ticking but is not traffic: simulation mode does not wait for it. */
+  private scheduleBackground(delayMs: number, run: () => void): void {
+    this.background++;
+    this.schedule(delayMs, () => {
+      this.background--;
+      run();
+    });
   }
 
   /** Runs the next task. Returns false when the queue is empty. */

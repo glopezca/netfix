@@ -1193,3 +1193,9 @@ Queda lo de spanning tree, en tres entregas:
 - **Hecho 40b (v0.22.4):** BPDU guard con err-disabled, `spanning-tree portfast bpduguard default`,
   `show interfaces status [err-disabled]` y «(err-disabled)» en `show interfaces`. La lógica de spanning tree del switch
   pasa a `src/devices/switch-stp.ts`.
+- **Hecho 40c (v0.23.0):** tiempos de STP y BPDU. `Network.startStp()` (lo llama el panel de simulación al cargar una
+  red en la interfaz) superpone Listening/Learning (`src/net/stp-timers.ts`) al árbol convergido y envía las BPDU
+  cada 2 s; las pruebas y la carga siguen sin tiempos. El filtro STP del panel empieza desmarcado. Fase 40 completada.
+- **Revisión 40c:** las BPDU y los despertares de los tiempos son tareas de fondo: no cuentan en `pending()`, así que el
+  modo simulación no avanza el reloj solo por ellas; un despertar por plazo. Queda como posible mejora agrupar los
+  recálculos del árbol en ráfagas grandes (`interface range` de 24 puertos) y enviar menos BPDU con muchas VLAN.

@@ -25,6 +25,8 @@ export interface StpPort {
 export interface StpBridge {
   readonly id: string;
   readonly mac: string;
+  /** `spanning-tree mode rapid-pvst`. */
+  readonly rapid?: boolean;
   /** Configured bridge priority for a VLAN (32768 by default), or null with `no spanning-tree vlan`. */
   readonly priority: (vlan: number) => number | null;
   readonly ports: readonly StpPort[];
@@ -45,6 +47,8 @@ export type StpRole = 'Root' | 'Desg' | 'Altn';
 
 export interface StpPortState {
   readonly role: StpRole;
+  /** Blocking, Listening, Learning or Forwarding (Listening and Learning only on a running network: stp-timers.ts). */
+  readonly state: 'BLK' | 'LIS' | 'LRN' | 'FWD';
   readonly forwarding: boolean;
   readonly cost: number;
   readonly priority: number;
@@ -59,6 +63,8 @@ export interface StpVlan {
   readonly cost: number;
   readonly rootPort?: string;
   readonly ports: ReadonlyMap<string, StpPortState>;
+  /** The switch runs rapid-pvst (no Listening/Learning wait). */
+  readonly rapid?: boolean;
 }
 
 /** Device id → VLAN → state, for the bridges and VLANs where spanning tree runs. */
@@ -155,9 +161,9 @@ function vlanTree(m: Map<string, Member>, links: readonly StpLink[]): Map<string
     for (const p of member.ports) {
       const designated = isDesignated(v, member, p, nb.get(k)?.find((x) => x.port === p), best);
       const role: StpRole = p.name === rootPort ? 'Root' : designated ? 'Desg' : 'Altn';
-      ports.set(p.name, { role, forwarding: role !== 'Altn', cost: p.cost, priority: p.priority, number: p.number, edge: p.edge });
+      ports.set(p.name, { role, state: role === 'Altn' ? 'BLK' : 'FWD', forwarding: role !== 'Altn', cost: p.cost, priority: p.priority, number: p.number, edge: p.edge });
     }
-    out.set(k, { root: v[0], bridge: member.id, cost: v[1], ...(rootPort ? { rootPort } : {}), ports });
+    out.set(k, { root: v[0], bridge: member.id, cost: v[1], ...(rootPort ? { rootPort } : {}), ports, ...(member.bridge.rapid ? { rapid: true } : {}) });
   }
   return out;
 }

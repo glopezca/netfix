@@ -9,7 +9,9 @@ import { tcpService } from '../net/packets.ts';
 import { formatIp, formatMask } from '../core/ip.ts';
 import { formatMacCisco, formatHexId } from '../core/mac.ts';
 
-const PROTOCOLS = ['DHCP', 'DNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMTP', 'POP3', 'IMAP', 'SSH'] as const;
+const PROTOCOLS = ['DHCP', 'DNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMTP', 'POP3', 'IMAP', 'SSH', 'STP'] as const;
+/** Off at first: the BPDUs every 2 s would bury the rest (as in Packet Tracer, tick it to see them). */
+const HIDDEN_AT_FIRST: ReadonlySet<string> = new Set(['STP']);
 const BASE_STEP_MS = 700;
 const MAX_ROWS = 600;
 
@@ -19,7 +21,7 @@ export class SimPanel {
   private readonly detail: HTMLElement;
   private readonly playBtn: HTMLButtonElement;
   private readonly counter: HTMLElement;
-  private readonly filters = new Map<string, boolean>(PROTOCOLS.map((p) => [p, true]));
+  private readonly filters = new Map<string, boolean>(PROTOCOLS.map((p) => [p, !HIDDEN_AT_FIRST.has(p)]));
   private events: SimEvent[] = [];
   private cursor = 0;
   private playing = false;
@@ -33,6 +35,8 @@ export class SimPanel {
   constructor(topo: Topology, canvas: Canvas) {
     this.topo = topo;
     this.canvas = canvas;
+    // The network runs from now on: spanning tree timers and BPDUs (loading and the tests stay converged).
+    topo.net.startStp();
     this.tbody = el('tbody');
     this.detail = el('div', { class: 'pdu', 'aria-live': 'polite' }, el('p', { class: 'muted' }, t('sim.pick')));
     this.playBtn = el('button', { type: 'button', class: 'btn' }, t('sim.play'));
@@ -45,7 +49,7 @@ export class SimPanel {
     reset.addEventListener('click', () => this.reset());
     speed.addEventListener('input', () => { this.speed = Number(speed.value); });
     const filterBox = el('div', { class: 'filters', role: 'group', 'aria-label': t('sim.filters') }, ...PROTOCOLS.map((p) => {
-      const cb = el('input', { type: 'checkbox', checked: true });
+      const cb = el('input', { type: 'checkbox', checked: !HIDDEN_AT_FIRST.has(p) });
       cb.addEventListener('change', () => { this.filters.set(p, cb.checked); });
       return el('label', { class: `chip chip-${p.toLowerCase()}` }, cb, p);
     }));
@@ -69,6 +73,7 @@ export class SimPanel {
   attach(topo: Topology): void {
     this.unsubscribe();
     this.topo = topo;
+    topo.net.startStp();
     this.reset();
     this.unsubscribe = topo.net.onFrame((e) => this.capture(e));
   }
@@ -197,6 +202,7 @@ function appFields(p: AppPayload): [string, string | undefined][] {
 }
 
 function typeName(f: Frame): string {
+  if (f.bpdu) return `STP BPDU VLAN ${f.bpdu.vlan}`;
   const dhcp = f.ip?.udp?.dhcp;
   if (dhcp) return `DHCP ${dhcp.options.messageType}`;
   if (f.arp) return `ARP ${f.arp.op === 'request' ? 'Request' : 'Reply'}`;
@@ -216,6 +222,11 @@ function pduView(e: SimEvent, from: string, to: string): HTMLElement[] {
   const f = e.frame;
   const out: HTMLElement[] = [el('h3', {}, `${typeName(f)} · ${from} → ${to}`)];
   out.push(el('h4', {}, 'Ethernet II'), kv([[t('pdu.src'), formatMacCisco(f.src)], [t('pdu.dst'), formatMacCisco(f.dst)], ['802.1Q VLAN', f.vlan?.toString()], [t('pdu.port'), `${e.from.port} → ${e.to.port}`]]));
+  if (f.bpdu) {
+    const b = f.bpdu;
+    out.push(el('h4', {}, 'STP (PVST+)'), kv([['VLAN', String(b.vlan)], ['Root ID', `${b.rootPriority} ${formatMacCisco(b.rootMac)}`], [t('pdu.rootCost'), String(b.cost)], ['Bridge ID', `${b.bridgePriority} ${formatMacCisco(b.bridgeMac)}`], ['Port ID', b.port], ['Hello · Max Age · Forward Delay', '2 · 20 · 15 s']]));
+    return out;
+  }
   if (f.arp) {
     out.push(el('h4', {}, 'ARP'), kv([[t('pdu.op'), f.arp.op], [t('pdu.senderIp'), formatIp(f.arp.senderIp)], [t('pdu.senderMac'), formatMacCisco(f.arp.senderMac)], [t('pdu.targetIp'), formatIp(f.arp.targetIp)]]));
     return out;

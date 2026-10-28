@@ -39,7 +39,7 @@ test('the others choose a root port, and the link between them blocks on the hig
   assert.equal(r.get('s2')?.get(1)?.cost, 19);
   assert.equal(r.get('s2')?.get(1)?.ports.get('Fa0/2')?.role, 'Desg');
   assert.equal(r.get('s3')?.get(1)?.ports.get('Fa0/1')?.role, 'Root');
-  assert.deepEqual(r.get('s3')?.get(1)?.ports.get('Fa0/2'), { role: 'Altn', forwarding: false, cost: 19, priority: 128, number: 2, edge: false });
+  assert.deepEqual(r.get('s3')?.get(1)?.ports.get('Fa0/2'), { role: 'Altn', state: 'BLK', forwarding: false, cost: 19, priority: 128, number: 2, edge: false });
 });
 
 test('a lower priority wins over the MAC; no spanning-tree vlan leaves the bridge out', () => {

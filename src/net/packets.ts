@@ -291,7 +291,24 @@ export interface Frame {
   readonly vlan?: number;
   readonly arp?: ArpMessage;
   readonly ip?: IpPacket;
+  /** A spanning tree BPDU (PVST+, to 0100.0ccc.cccd). */
+  readonly bpdu?: Bpdu;
 }
+
+/** Configuration BPDU: what the sending port advertises for its VLAN. */
+export interface Bpdu {
+  readonly vlan: number;
+  readonly rootPriority: number;
+  readonly rootMac: string;
+  readonly cost: number;
+  readonly bridgePriority: number;
+  readonly bridgeMac: string;
+  /** "128.25" */
+  readonly port: string;
+}
+
+/** Destination of PVST+ BPDUs. */
+export const PVST_MAC = '01000ccccccd';
 
 export const DHCP_SERVER_PORT = 67;
 export const DHCP_CLIENT_PORT = 68;
@@ -306,6 +323,7 @@ export const LINUX_TTL = 64;
 
 /** Label used by the simulation event list: DHCP, DNS, ARP, ICMP, HTTP, SMTP, POP3, IMAP, SSH or TCP. */
 export function frameProtocol(frame: Frame): string {
+  if (frame.bpdu) return 'STP';
   if (frame.arp) return 'ARP';
   const ip = frame.ip;
   if (!ip) return 'Ethernet';

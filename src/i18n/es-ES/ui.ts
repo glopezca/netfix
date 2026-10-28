@@ -164,6 +164,7 @@ export const UI_ES = {
   'pdu.src': 'Origen',
   'pdu.dst': 'Destino',
   'pdu.port': 'Puerto',
+  'pdu.rootCost': 'Coste hasta la raíz',
   'pdu.op': 'Operación',
   'pdu.senderIp': 'Dirección IP del emisor',
   'pdu.senderMac': 'MAC emisor',

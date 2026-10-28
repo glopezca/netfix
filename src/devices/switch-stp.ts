@@ -4,6 +4,7 @@ import type { IfaceConfig } from '../ios/interfaces.ts';
 import type { StpConfig } from './stp-config.ts';
 import type { StpBridge, StpResult, StpVlan } from '../net/stp.ts';
 import { forwardingKeys } from '../net/stp.ts';
+import { PVST_MAC } from '../net/packets.ts';
 import { SWITCH_PORTS, DEFAULT_VLANS } from './switch-ports.ts';
 
 /** What spanning tree needs from the switch. */
@@ -40,7 +41,7 @@ export class SwitchStp {
       const vlans = sw.isTrunk(name) ? all.filter((v) => allows(cfg, v)) : sw.vlans.has(cfg.accessVlan) ? [cfg.accessVlan] : [];
       return [{ name, number: i + 1, cost: sw.stp.cost(name), priority: sw.stp.portPriority(name), edge: sw.stp.portfast.has(name), vlans }];
     });
-    return { id: sw.id, mac: sw.baseMac, priority: (v) => sw.stp.priority(v), ports };
+    return { id: sw.id, mac: sw.baseMac, priority: (v) => sw.stp.priority(v), ports, rapid: sw.stp.mode === 'rapid-pvst' };
   }
 
   /**
@@ -61,9 +62,29 @@ export class SwitchStp {
     return this.sync()?.get(this.sw.id)?.get(vlan);
   }
 
-  /** A port that blocks in this VLAN neither learns nor forwards. */
+  /** A port that blocks or listens in this VLAN neither learns nor forwards; one that learns does not forward yet. */
   forwards(port: string, vlan: number): boolean {
     return this.vlan(vlan)?.ports.get(port)?.forwarding ?? true;
+  }
+
+  learns(port: string, vlan: number): boolean {
+    const state = this.vlan(vlan)?.ports.get(port)?.state;
+    return state === undefined || state === 'FWD' || state === 'LRN';
+  }
+
+  /** The BPDUs of each VLAN out of the designated ports (tagged on a trunk except in its native VLAN). */
+  hello(): void {
+    const sw = this.sw;
+    const tree = this.sync()?.get(sw.id);
+    if (!tree) return;
+    for (const [vlan, s] of tree) {
+      for (const [port, p] of s.ports) {
+        if (p.role !== 'Desg' || p.state === 'BLK') continue;
+        const tagged = sw.isTrunk(port) && vlan !== (sw.iface(port)?.nativeVlan ?? 1);
+        const bpdu = { vlan, rootPriority: s.root.priority, rootMac: s.root.mac, cost: s.cost, bridgePriority: s.bridge.priority, bridgeMac: s.bridge.mac, port: `${p.priority}.${p.number}` };
+        sw.hooks.transmit(port, { src: sw.baseMac, dst: PVST_MAC, ...(tagged ? { vlan } : {}), bpdu });
+      }
+    }
   }
 
   /** The cable end shows amber: the port blocks in every VLAN it carries. */

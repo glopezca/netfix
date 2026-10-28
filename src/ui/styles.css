@@ -25,6 +25,7 @@
   --http: #b34d7d;
   --mail: #9a6a1f;
   --ssh: #3d4f9c;
+  --stp: #5f7d2c;
   --ok: #2e7d4f;
   --err: #b3362a;
   --dev-top: #dbe7ec;
@@ -117,6 +118,7 @@ button, input, select { font: inherit; color: inherit; }
 .envelope rect { stroke: #fff; stroke-width: 1.2; }
 .envelope path { fill: none; stroke: #fff; stroke-width: 1.2; }
 .env-dhcp rect { fill: var(--dhcp); }
+.env-stp rect { fill: var(--stp); }
 .env-arp rect { fill: var(--arp); }
 .env-icmp rect { fill: var(--icmp); }
 .env-dns rect { fill: var(--dns); }
@@ -300,6 +302,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 .chip-http { background: var(--http); }
 .chip-smtp, .chip-pop3, .chip-imap { background: var(--mail); }
 .chip-ssh { background: var(--ssh); }
+.chip-stp { background: var(--stp); }
 .sim-count { font-size: 12px; color: var(--ink-2); }
 .events-wrap { flex: 1; min-height: 120px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-ctl); }
 .events { width: 100%; border-collapse: collapse; font-size: 12px; }
