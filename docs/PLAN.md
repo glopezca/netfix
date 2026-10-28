@@ -1172,3 +1172,21 @@ elección con las órdenes de IOS 15.
   aceptar sí; sin cambios, ninguno pregunta.
 - **Hecho (v0.22.2):** como en el plan; la ayuda lo dice en la fila de Nuevo · Abrir… · Guardar. Las páginas (Ayuda,
   Donaciones, Acerca de) salen a `src/ui/pages.ts` para que `main.ts` siga por debajo de 400 líneas.
+
+### Fase 40: lo pendiente de spanning tree y de los troncales — plan
+
+Revisados los «Pendiente» anteriores: el TTL 64 de Ubuntu, la línea completa del registro de nftables (`klog.ts`), los
+`reject with` y la salida de IOS de un ping a broadcast sin respuesta ya están hechos; la documentación de 36c también.
+Queda lo de spanning tree, en tres entregas:
+
+- **40a · `switchport trunk allowed vlan`** (lista, `add`, `remove`, `except`, `all`, `none`): un troncal solo lleva
+  esas VLAN (en las dos direcciones y en el árbol de cada VLAN), con su línea en running-config y
+  `show interfaces trunk` como IOS 15 (modo, encapsulación, VLAN nativa; permitidas, activas y en reenvío de STP).
+- **40b · BPDU guard:** un puerto con `spanning-tree bpduguard enable` (o `portfast bpduguard default` con portfast)
+  que tiene un switch al otro lado pasa a **err-disabled** con los mensajes `%SPANTREE-2-BLOCK_BPDUGUARD` y
+  `%PM-4-ERR_DISABLE`; el enlace cae, `show interfaces status` lo dice y `shutdown` + `no shutdown` lo recupera.
+- **40c · Tiempos y BPDU:** en la interfaz (no en las pruebas ni al cargar, que siguen convergidas) un puerto que pasa a
+  reenviar recorre Listening (15 s) y Learning (15 s) salvo con portfast o en `rapid-pvst`; luz ámbar mientras tanto.
+  En el modo simulación se ven las BPDU (cada 2 s, desde los puertos designados), con su filtro STP.
+- **Hecho 40a (v0.22.3):** `switchport trunk allowed vlan` y `show interfaces trunk`, en la ayuda de Switch IOS. Las
+  listas de VLAN («1,3-5») quedan en `src/core/vlans.ts` (antes repetidas en snooping y spanning tree).

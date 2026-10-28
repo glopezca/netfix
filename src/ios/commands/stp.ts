@@ -2,7 +2,7 @@
 import type { CommandDef } from '../parser.ts';
 import type { Cli } from '../device.ts';
 import type { Switch } from '../../devices/switch.ts';
-import { parseVlanList } from '../../devices/snooping.ts';
+import { parseVlanList } from '../../core/vlans.ts';
 import { BRIDGE_PRIORITY_STEP, PORT_PRIORITY_STEP } from '../../devices/stp-config.ts';
 import { showStp, showStpInterface, showStpSummary, showStpVlan, rootPriority } from '../show-stp.ts';
 

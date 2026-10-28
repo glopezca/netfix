@@ -72,7 +72,7 @@ export const IOS_DOCS: DocGroup = {
         term('ios', 'GW#show ip interface brief\nInterface              IP-Address      OK? Method Status                Protocol\nGigabitEthernet0/0     192.168.10.1    YES manual up                    up\nGigabitEthernet0/1     unassigned      YES unset  administratively down down\nGigabitEthernet0/2     unassigned      YES unset  administratively down down\nVlan1                  unassigned      YES unset  administratively down down\nGW#show ip dhcp binding\nIP address       Client-ID/              Lease expiration        Type\n                 Hardware address\n192.168.10.21    0100.cac2.1000.f2        Oct 24 2026 02:49 PM    Automatic\n192.168.10.22    0100.63b9.1434.b5        Oct 24 2026 02:49 PM    Automatic\n192.168.10.23    0100.fbb1.1868.78        Oct 24 2026 02:49 PM    Automatic'),
         table(['Orden', 'Muestra o hace'], [
           ['show ip interface brief · show interfaces', 'Estado de las interfaces.'],
-          ['show ip route · show arp · show mac address-table · show vlan brief', 'Tablas de rutas, ARP, MAC y VLAN.'],
+          ['show ip route · show arp · show mac address-table · show vlan brief · show interfaces trunk', 'Tablas de rutas, ARP, MAC y VLAN, y las VLAN que lleva cada troncal.'],
           ['show running-config · show startup-config', 'Configuración en marcha y guardada; copy running-config startup-config (o write) guarda.'],
           ['show ip dhcp binding [IP] · show ip dhcp pool [NOMBRE]', 'Concesiones (dirección IP, client-ID/MAC, caducidad y tipo) y uso de cada pool.'],
           ['show ip dhcp server statistics · show ip dhcp conflict', 'Contadores de mensajes y conflictos.'],
@@ -123,7 +123,8 @@ export const IOS_DOCS: DocGroup = {
           ['ip address IP MÁSCARA [secondary] · ip address dhcp', 'Dirección IP de la interfaz.'],
           ['shutdown / no shutdown · description · speed · duplex', 'Estado y parámetros físicos.'],
           ['encapsulation dot1Q VLAN [native]', 'Subinterfaces de router-on-a-stick.'],
-          ['switchport mode access|trunk · switchport access vlan N · switchport trunk …', 'Puertos del switch.'],
+          ['switchport mode access|trunk · switchport access vlan N · switchport trunk native vlan N', 'Puertos del switch.'],
+          ['switchport trunk allowed vlan LISTA|add|remove|except|all|none', 'VLAN que lleva un troncal (todas por defecto); una VLAN que falta no pasa por él.'],
           ['vlan N · name NOMBRE', 'Base de datos de VLAN.'],
           ['ip route RED MÁSCARA {SIGUIENTE | IF} [AD] · ip routing · ip default-gateway', 'Rutas estáticas.'],
           ['ip domain-name · ip name-server · ip domain-lookup', 'Resolución de nombres del equipo.'],

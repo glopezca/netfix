@@ -1,5 +1,7 @@
 /** Spanning tree configuration of a 2960 (PVST+): mode, bridge priority per VLAN and port settings. */
 
+import { vlanRanges } from '../core/vlans.ts';
+
 export const DEFAULT_BRIDGE_PRIORITY = 32768;
 export const DEFAULT_PORT_PRIORITY = 128;
 export const BRIDGE_PRIORITY_STEP = 4096;
@@ -10,18 +12,6 @@ const COST_GIGABIT = 4;
 
 export type StpMode = 'pvst' | 'rapid-pvst';
 
-/** "1,3-5,7": consecutive VLANs as a range, as IOS writes them. */
-export function vlanRanges(ids: readonly number[]): string {
-  const sorted = [...new Set(ids)].sort((a, b) => a - b);
-  const parts: string[] = [];
-  for (let i = 0; i < sorted.length; i++) {
-    const start = sorted[i] ?? 0;
-    let end = start;
-    while (sorted[i + 1] === end + 1) end = sorted[++i] ?? end;
-    parts.push(end > start ? `${start}-${end}` : `${start}`);
-  }
-  return parts.join(',');
-}
 
 export class StpConfig {
   mode: StpMode = 'pvst';

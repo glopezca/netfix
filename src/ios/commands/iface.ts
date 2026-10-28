@@ -6,6 +6,7 @@ import { isSubinterface, parseIfaceName } from '../interfaces.ts';
 import { parseIp, parseMask, formatIp, networkOf, inSubnet, isUsableHost, prefixToMask } from '../../core/ip.ts';
 import type { IpWithPrefix } from '../../core/ip.ts';
 import { endConfig } from './common.ts';
+import { allowedVlans } from '../../core/vlans.ts';
 
 type Def = CommandDef<Cli<IosDevice>>;
 
@@ -168,7 +169,17 @@ export const SWITCH_PORT_IF: readonly Def[] = [
     noRun: (cli) => eachIface(cli, (c) => ({ ...c, accessVlan: 1 })),
   },
   { syntax: 'switchport trunk native vlan <1-4094:vlan>', run: (cli, m) => eachIface(cli, (c) => ({ ...c, nativeVlan: Number(m.get('vlan')) })), noRun: (cli) => eachIface(cli, (c) => ({ ...c, nativeVlan: 1 })) },
-  { syntax: 'switchport trunk allowed vlan <LINE:list>', run: () => undefined, noRun: () => undefined },
+  {
+    syntax: 'switchport trunk allowed vlan <LINE:list>',
+    help: { list: 'VLAN IDs of the allowed VLANs when this port is in trunking mode' },
+    run: (cli, m) => {
+      const text = m.get('list') ?? '';
+      if (allowedVlans(undefined, text) === null) cli.out('Command rejected: Bad VLAN allowed list. You have to include all VLANs in a range.');
+      // add/remove apply to each port's own list (interface range).
+      else eachIface(cli, (c) => ({ ...c, trunkAllowed: allowedVlans(c.trunkAllowed, text) ?? undefined }));
+    },
+    noRun: (cli) => eachIface(cli, (c) => ({ ...c, trunkAllowed: undefined })),
+  },
   { syntax: 'switchport nonegotiate', run: () => undefined, noRun: () => undefined },
   { syntax: 'switchport port-security [<LINE:rest>]', run: () => undefined, noRun: () => undefined },
 ];

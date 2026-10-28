@@ -63,6 +63,8 @@ export interface IfaceConfig {
   readonly switchportMode: SwitchportMode;
   readonly accessVlan: number;
   readonly nativeVlan: number;
+  /** `switchport trunk allowed vlan`: the VLANs a trunk carries (absent: all). */
+  readonly trunkAllowed?: readonly number[];
   readonly speed?: string;
   readonly duplex?: string;
   readonly relayInfoTrusted: boolean;

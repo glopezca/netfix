@@ -32,6 +32,9 @@ const MAX_L2_HOPS = 32;
 
 type HopFrame = Frame & { readonly l2hops?: number };
 
+/** `switchport trunk allowed vlan`: whether a trunk carries this VLAN (all of them by default). */
+const allows = (cfg: IfaceConfig, vlan: number): boolean => cfg.trunkAllowed?.includes(vlan) ?? true;
+
 export class Switch extends IosDevice implements NetDevice, StackHost {
   readonly kind = 'switch' as const;
   readonly model = 'WS-C2960-24TT-L';
@@ -144,7 +147,7 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
   portsInVlan(vlan: number): string[] {
     return SWITCH_PORTS.filter((p) => {
       const cfg = this.ifaces.get(p);
-      return cfg !== undefined && (this.isTrunk(p) || cfg.accessVlan === vlan);
+      return cfg !== undefined && (this.isTrunk(p) ? allows(cfg, vlan) : cfg.accessVlan === vlan);
     });
   }
 
@@ -174,7 +177,7 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
     const ports = SWITCH_PORTS.flatMap((name, i) => {
       const cfg = this.ifaces.get(name);
       if (!cfg || !this.portUp(name)) return [];
-      const vlans = this.isTrunk(name) ? all : this.vlans.has(cfg.accessVlan) ? [cfg.accessVlan] : [];
+      const vlans = this.isTrunk(name) ? all.filter((v) => allows(cfg, v)) : this.vlans.has(cfg.accessVlan) ? [cfg.accessVlan] : [];
       return [{ name, number: i + 1, cost: this.stp.cost(name), priority: this.stp.portPriority(name), edge: this.stp.portfast.has(name), vlans }];
     });
     return { id: this.id, mac: this.baseMac, priority: (v) => this.stp.priority(v), ports };
@@ -244,7 +247,7 @@ export class Switch extends IosDevice implements NetDevice, StackHost {
     const trunk = this.isTrunk(port);
     if (!trunk && frame.vlan !== undefined) return;
     const vlan = trunk ? (frame.vlan ?? cfg.nativeVlan) : cfg.accessVlan;
-    if (!this.forwards(port, vlan)) return;
+    if ((trunk && !allows(cfg, vlan)) || !this.forwards(port, vlan)) return;
     this.macTable.set(`${vlan}|${frame.src}`, { mac: frame.src, vlan, port });
     const inspected = this.snooping.inspect(this, port, vlan, frame);
     if (!inspected) return;

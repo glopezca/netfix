@@ -1,4 +1,5 @@
 /** Helpers to render `show running-config` sections. */
+import { vlanRanges } from '../core/vlans.ts';
 import type { IosDevice } from './device.ts';
 import type { IfaceConfig } from './interfaces.ts';
 import { isSubinterface, parseIfaceName } from './interfaces.ts';
@@ -46,6 +47,7 @@ function switchportLines(cfg: IfaceConfig): string[] {
   const lines: string[] = [];
   if (cfg.accessVlan !== 1) lines.push(` switchport access vlan ${cfg.accessVlan}`);
   if (cfg.nativeVlan !== 1) lines.push(` switchport trunk native vlan ${cfg.nativeVlan}`);
+  if (cfg.trunkAllowed) lines.push(` switchport trunk allowed vlan ${cfg.trunkAllowed.length ? vlanRanges(cfg.trunkAllowed) : 'none'}`);
   if (cfg.switchportMode !== 'dynamic auto') lines.push(` switchport mode ${cfg.switchportMode}`);
   return lines;
 }

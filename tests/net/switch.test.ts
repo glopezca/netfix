@@ -8,7 +8,7 @@ import { pcCommand } from '../../src/devices/pc-console.ts';
 import { applyConfig } from '../../src/ios/session.ts';
 import { openConsole } from '../helpers.ts';
 import { formatIp } from '../../src/core/ip.ts';
-import { compactList, parseVlanList } from '../../src/devices/snooping.ts';
+import { vlanRanges as compactList, parseVlanList } from '../../src/core/vlans.ts';
 
 test('switch CLI: prompts, vlans and running-config round trip', () => {
   const sw = new Switch();

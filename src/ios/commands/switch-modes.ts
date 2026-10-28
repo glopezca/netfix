@@ -9,8 +9,9 @@ import { iosPing, showArp } from './net-exec.ts';
 import { parseIp } from '../../core/ip.ts';
 import { formatMacCisco } from '../../core/mac.ts';
 import { shortIfaceName } from '../interfaces.ts';
-import { parseVlanList } from '../../devices/snooping.ts';
+import { parseVlanList } from '../../core/vlans.ts';
 import { STP_EXEC, STP_GLOBAL, STP_IF } from './stp.ts';
+import { showInterfacesTrunk } from '../show-trunk.ts';
 
 type Def = CommandDef<Cli<Switch>>;
 
@@ -64,6 +65,7 @@ const SW_EXEC: readonly Def[] = [
     },
   },
   { syntax: 'show vlan [brief]', run: (cli) => cli.out(...showVlanBrief(cli.device)) },
+  { syntax: 'show interfaces trunk', run: (cli) => cli.out(...showInterfacesTrunk(cli.device)) },
   { syntax: 'show ip dhcp snooping', run: (cli) => cli.out(...cli.device.snooping.show()) },
   { syntax: 'show ip dhcp snooping binding', run: (cli) => cli.out(...cli.device.snooping.showBindings()) },
   { syntax: 'ping <WORD:target> [repeat <1-2147483647:n>]', run: (cli, m) => iosPing(cli, pingHost(cli.device), m.get('target') ?? '', Number(m.get('n') ?? 5)) },

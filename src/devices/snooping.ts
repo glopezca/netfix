@@ -2,6 +2,7 @@
 import type { Frame } from '../net/packets.ts';
 import { formatIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
+import { vlanRanges } from '../core/vlans.ts';
 
 export interface SnoopBinding {
   readonly mac: string;
@@ -78,7 +79,7 @@ export class Snooping {
     if (!this.enabled && this.vlans.size === 0 && this.option82 && !this.database) return [];
     const lines: string[] = [];
     if (this.enabled) lines.push('ip dhcp snooping');
-    if (this.vlans.size) lines.push(`ip dhcp snooping vlan ${compactList([...this.vlans])}`);
+    if (this.vlans.size) lines.push(`ip dhcp snooping vlan ${vlanRanges([...this.vlans])}`);
     if (!this.option82) lines.push('no ip dhcp snooping information option');
     if (this.database) lines.push(`ip dhcp snooping database ${this.database}`);
     if (!this.verifyMac) lines.push('no ip dhcp snooping verify mac-address');
@@ -97,7 +98,7 @@ export class Snooping {
     const lines = [
       `Switch DHCP snooping is ${this.enabled ? 'enabled' : 'disabled'}`,
       'DHCP snooping is configured on following VLANs:',
-      this.vlans.size ? compactList([...this.vlans]) : 'none',
+      this.vlans.size ? vlanRanges([...this.vlans]) : 'none',
       `Insertion of option 82 is ${this.option82 ? 'enabled' : 'disabled'}`,
       `Verification of hwaddr field is ${this.verifyMac ? 'enabled' : 'disabled'}`,
       'Interface                  Trusted    Rate limit (pps)',
@@ -121,27 +122,3 @@ export class Snooping {
   }
 }
 
-export function compactList(ids: number[]): string {
-  const sorted = [...new Set(ids)].sort((a, b) => a - b);
-  const parts: string[] = [];
-  for (let i = 0; i < sorted.length; i++) {
-    const start = sorted[i]!;
-    let end = start;
-    while (sorted[i + 1] === end + 1) end = sorted[++i]!;
-    parts.push(end > start ? `${start}-${end}` : `${start}`);
-  }
-  return parts.join(',');
-}
-
-export function parseVlanList(text: string): number[] | null {
-  const out: number[] = [];
-  for (const part of text.split(',')) {
-    const m = /^\s*(\d+)\s*(?:-\s*(\d+))?\s*$/.exec(part);
-    if (!m) return null;
-    const a = Number(m[1]);
-    const b = m[2] ? Number(m[2]) : a;
-    if (a < 1 || b > 4094 || b < a) return null;
-    for (let v = a; v <= b; v++) out.push(v);
-  }
-  return out;
-}
