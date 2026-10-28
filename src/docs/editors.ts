@@ -52,7 +52,7 @@ export const EDITOR_DOCS: readonly DocPage[] = [
     id: 'mc',
     title: 'Midnight Commander (mc)',
     summary: 'Gestor de ficheros de dos paneles en modo texto: copiar, mover, ver y editar sin escribir rutas.',
-    markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+    markdownBase: 'https://github.com/infogerman/netfix/blob/main/',
     blocks: [
       p('**Midnight Commander** (`mc`) es un gestor de ficheros a pantalla completa dentro de la terminal, muy usado por administradores de sistemas. Muestra **dos paneles**, cada uno con un directorio; las operaciones se hacen del panel activo al otro con las teclas de función. Funciona igual en local y por **SSH**, así que sirve para ordenar ficheros de un servidor sin recordar rutas largas.'),
       code('  Left     File     Command     Options     Right\n┌───────────────── ~ ──────────────────┐┌─────────── /var/www/html ────────────┐\n│.n   Name        │  Size │Modify time ││.n   Name        │  Size │Modify time │\n│/..              │UP--DIR│            ││/..              │UP--DIR│            │\n│/scripts         │    DIR│Oct 24 09:30││ aula.css        │    820│Oct 24 09:30│\n│/web             │    DIR│Oct 24 09:30││ index.html      │  10671│Oct 24 09:30│\n│ copia.sh        │    154│Oct 24 09:30││                                      │\n│ notas.txt       │    312│Oct 24 09:30││                                      │\n│                                      ││                                      │\n├──────────────────────────────────────┤├──────────────────────────────────────┤\n│UP--DIR                               ││UP--DIR                               │\n└──────────────────────────────────────┘└──────────────────────────────────────┘\nadmin@srv:~$\n1Help   2Menu   3View   4Edit   5Copy   6RenMov 7Mkdir  8Delete 9PullDn 10Quit'),
@@ -90,7 +90,7 @@ export const EDITOR_DOCS: readonly DocPage[] = [
     id: 'nano',
     title: 'nano',
     summary: 'GNU nano 8.4 paso a paso: abrir, editar, guardar y salir; teclas, diálogos y mensajes.',
-    markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+    markdownBase: 'https://github.com/infogerman/netfix/blob/main/',
     blocks: [
       p('**nano** es el editor más sencillo de la terminal: escribes directamente y las órdenes van con Ctrl. Abajo tiene siempre a la vista los atajos más usados. Es el editor recomendado para empezar.'),
       steps(
@@ -111,7 +111,7 @@ export const EDITOR_DOCS: readonly DocPage[] = [
     id: 'vim',
     title: 'vim',
     summary: 'Vi IMproved 9.1 paso a paso: modos, cómo salir, movimiento, edición y órdenes de dos puntos.',
-    markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+    markdownBase: 'https://github.com/infogerman/netfix/blob/main/',
     blocks: [
       p('**vim** está en todos los sistemas Unix, también en los servidores mínimos donde no hay nano: merece la pena saber al menos editar, guardar y salir. Su clave es que tiene **modos**: en el normal las teclas son órdenes, y para escribir texto hay que entrar en el de inserción.'),
       steps(

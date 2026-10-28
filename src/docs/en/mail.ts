@@ -2,7 +2,7 @@
 import type { DocPage } from '../types.ts';
 import { check, exercise, figure, h, p, steps, table, term, tip, warn } from '../types.ts';
 
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
 export const MAIL_DOCS: readonly DocPage[] = [
   {

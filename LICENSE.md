@@ -1,7 +1,7 @@
 # Licencia y atribuciones
 
 - **Autoría:** Germán López Castro
-- **Repositorio:** <https://github.com/glopezca/netfix>
+- **Repositorio:** <https://github.com/infogerman/netfix>
 
 Netfix usa dos licencias según el tipo de material, las dos con la misma idea de
 «compartir igual»: quien distribuya versiones modificadas debe publicarlas con la misma licencia.
@@ -44,12 +44,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 Para la documentación o las capturas:
 
-> «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),
+> «Netfix», de Germán López Castro (<https://github.com/infogerman/netfix>),
 > distribuido bajo licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).
 
 Para el software o una obra derivada:
 
-> Basado en «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),
+> Basado en «Netfix», de Germán López Castro (<https://github.com/infogerman/netfix>),
 > GPL-3.0-or-later. Cambios: …
 
 ## Otras licencias y aportaciones

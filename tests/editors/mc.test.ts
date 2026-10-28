@@ -129,7 +129,7 @@ test('mc shows the credits of Netfix and the real ones of GNU Midnight Commander
   assert.ok(screen(sh).some((r) => r.includes(`Netfix ${a.version} · © ${a.author}`)), 'help footer');
   press(sh, 'Enter', 'F9');
   const credits = mcCredits().join('\n');
-  for (const text of [`Netfix ${a.version}`, `Autoría: ${a.author}`, 'GPL-3.0-or-later', 'github.com/glopezca/netfix',
+  for (const text of [`Netfix ${a.version}`, `Autoría: ${a.author}`, 'GPL-3.0-or-later', 'github.com/infogerman/netfix',
     `GNU Midnight Commander ${MC_RELEASE}`, MC_COPYRIGHT, 'GNU GPL v3 o posterior', MC_SITE, 'Fundado en 1994 por Miguel de Icaza',
     'Andrew Borodin', 'Yury V. Zaytsev', 'Pavel Roskin', 'Slava Zanko',
     'Traducción al español de mc:', 'David Martin (2011-2013)', 'Ismael Olea (2000)', 'Traducción al inglés británico de mc:', 'Andi Chandler (2016-2025)', 'app.transifex.com/mc/mc']) assert.ok(credits.includes(text), text);

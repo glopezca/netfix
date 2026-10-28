@@ -17,7 +17,7 @@ function utilityBlocks(groups: readonly UtilDoc['group'][]): DocBlock[] {
   return blocks;
 }
 
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
 export const LINUX_DOCS: readonly DocPage[] = [
   {

@@ -3,6 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Canonicaliza la antigua URL de GitHub Pages hacia la publicación oficial.
+    (() => {
+      const url = new URL(window.location.href);
+      if (url.hostname.toLowerCase() !== "glopezca.github.io" || !/^\/netfix(?:\/|$)/i.test(url.pathname)) return;
+      url.hostname = "infogerman.github.io";
+      url.pathname = url.pathname.replace(/^\/netfix(?=\/|$)/i, "/netfix");
+      if (url.pathname === "/netfix") url.pathname = "/netfix/";
+      window.location.replace(url.href);
+    })();
+  </script>
   <title>Netfix Lab</title>
   <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAY+UlEQVR42t17aZRd1XXmt/e5975X9WpQSTVoKiFmEGBmCKSxJObB4NDuEh5IAjbt5cXCdjx1jLvjkjrLJHTHxDRxjLGNcTxXuW0aMDExbiFsMBhkaDCihc2gWdRc9cY7nPP1j3tfqUoqSa+M06tXH+msp1X1dM8539njt/cF/j8YBISrV3uH/96B35G3ujDQL4+tfkzXzPj5YwDWbFrjgA0UgP+6h+9XwQYHAN9834fbLtr6+h97pcrZXhItdZZ0sDti6rPfqZae+NSbL5QFgAPkLe2LfX2G6DONbbDPDDT43d9nHwAwcHN/y/DZV2+orjxnJ7tOJtuPJVuOIluPSv/ddRIry894fW/vOR+rXzqzT5kv2jNvdePN/S1HP/fCiUGlepwfR4tpbRNEywmwN/TMbzctWfzyn/30W+VsQc0WdH+Iww/09Zl1g4P2tbXrTu3ZO/yd5pHhVZgYQ2QjB8KlW2T6V6A5P6cotKOYyz3ySrN33dmvbZ7MJKFxtGVw0ALAjgvfu3bB5MSfe8Wpi4JKZblGMWBthqsAqrC+j9jP7Yjzwc9KXnDf0t88uqkuEYL0OW9V7Lee/87Tjhgd/1lu146FUbUcQ40noDiSQjiCAlIk/XSks7mWdr/c1Pz419qjSz/yu9MTaVSMBYP2jQvXndE9NvW5psnxyzE1CVTKiGxCAA6sw02AEBGobzxBUwEsFFDNBQ/tFu/Tx776xEtvBYRMdOXRi/taz9u+99eFvbuPCmuVREU90sGjWCUN6KYlIAIdQBUApIuCfGswrPK33eU3bpVGb37snKtvaRkf/7w/PBRElZIjQKiqSmZPOGOLTCedozhnIaJ+U0GjlpbyZK7pI93bfnXv7wsCV6/2ZNOmZOj4t9/WNT5+azgxEqvxfNIhcGDkInnKlcfepH01gDQfK95Jq5BDDHUA1QH0IIw9L3xVkrcddjEAGD310tt45B8xaup1tdyyJGrqZdTUy6h5BaOmXoZNvQybexk1LWeUX8Yot4xxsJSRv4SR18PI9LCmXUni9ZDdJ3PoiLM+czC31MDt46dHXdxeWn7asG1e4cKmXltr7qVtWmGHvEX8RzG3Aeiqe7kbgXN/KblnqF2MtMtG2sVQOxNqF/fKwtv1kDe/aVMy8rZLPrJwcvLWeNe2mCTUGJMKoSCVfcCJ0EGcozhLMNOHaTsEACpiLMlkdCjpKpY+t6fn5BsFmxLOy0P0KQCcYIvnF2pRZ+wsIVBDWHWJ/oud+q83035GgWECQgBfB56+neHlexHt8kWF6ZYFAHPgFXMCMIA+o4ODduepl5zWOjlxR7Jnp3UQTwDJdDwVcYI5EZuHSJ7UHKh5QnIUmy5EzJwKCEF1xQnbUa198aXOE48FBl3dQxx+DAkABLXyqUhiCuBI0oOYPTacfJjx3wwA5nuAEYAC8DdAcD8wmoj3VYiR9L5ECQjFHTWnCPZhFdcBKBSLdwZjYyay1qpqengAFIECLgfqaFw1z7laXKHdayBohfScIkHQITlY0rp0M3XQIYBamyS5WrVpcRJ9XoBrGgcgHV6l1AonwtSTE4AY8rXvAOPf3i/IGQYcAR1q6XgRUQyEsQCAg0NC5nVui7/BbT9hzer2cvntcaVkRcTUb56OUEenNtYHw+Gh2+ORj/8HW1r1Tlc9/h2ucvytrrzqC3b8lo12fJtBYpS0zCSAZF05vCQJXWsUXb3F7zxDADsANKAKmwAASRwWQVJEM0dOtKi/+E4gB/QpZ8Q3a9CnAji0tB4DowDJVAeIBK540Hh5tPfMe1k40oXaFUdmMSNvSTr9JZZeDwfE33o8sHJmTD3TpSwBOn8i3k+oCxlrZxLpIka6iJHpZKSLWNOFMbWTI7Lw7sxcNBDLpyC9bjquZH45w6ZeGzX1MsovT5jv5d7c8pvq3yP6TP2Z/3T9JwrlI8581XqLXSidtqaLLLXDbdXCLw7IDQRA/+rV3tSiE39LbzFD021j08PYLGbo9ZDeEvu8tsR9wJmpvUDQn4qwAJB+QL8M+BkY+Rck/xzTA9tIFzHURQx1Iava4ax2sCgLhp/CwraZVv6wXgBoL3ndIzbX62r55S7ML3dJbpkNW48qjfaeft3M+G7bn3zw6KkTL/wZ245mKJ020k5WdUESazt/ovlPzFqwH9ANgHt2yaoVJ5Rqv20qF4NEQJl+olgfNP/DTTz2J4zWbgS8tUAy12brvxsETr9U23/VAk9jOE0Pkv5xoC1AzS64dy93UwNM7UVyGBA8AZLt0n5br99yaySIRcQHCSMKzTeh1NT8vDQ3v+xUFvq12gX58bHmqFJ0AmgM65pBvIRw7MuuumqWDViffXZUkwWBtYFL9VXqwU1qBR0M+NzhbmstkBDw+oDnxhkPKqikSxwsEhAxiBAOFpY+3fWzneYhhyWgP+Lk3w4n5dcDiu/IBBAkIONKybWMjZxW2L3rPa3bt10W7N7eHJaLDoCGSOjDJSVYfQrJZ+4Chue0vgFSN7d/tlRPowLCNphOkoCMk18ImcDBaQQihkMVDjVQR2mFcBc+iaZlAtj+w3iE+rofBaaecOW+N22plCM8ADFIIaChS1wUVZIoDm0MEEKNkbg86CLY4L+zeu9NLv7KAGAOupjIDLPGWR9oatBdCWAB4HRUn5mCez4noiFpK3Ao0aEIyqgwEZHmVsU1qdU+vEsUwA0A5lrEmx+wE5e8lhS3+c76AUGfgKGoQjwFjUcrHiwLoP4WkbmX1S/cwOQDA4BZB7g5LW/sUxDPtOuzL1vnF74bAEksGAR42hQsKwQqQky4BDU4aYdCRdcB+NKaBtPldZnrXAc8dbmbOvtTrP31Esnf1Km+FiiidEhgMUnr9oqVV5k8u5Hxf7obeCTLWR0Azu164n1QC2R21iwCf9rHNjQcABQdH3LCv54EzRiI3S5GV1snjvALWqqW8Epl7Lx/AI4AsL1ujBsBITO2w5ex6dPDqNwwaSs5C6GAEgMogq6D8EbJO+4GHhkAAgGiQ1+mH4Cq6a9FAKl/pkDMJ4ORNBKTF1B+aRhuaxFOXmbkjuhcgSvy3Ti9ksgF2pqsLizObVO9TAAubSgomqbfHAG5FvmOYxBgKQQdIAoQtANYCcUxULwNpnkAMF37AXtwac6IDaoCqhkI6fTmpwJ4LBVVOwL7+BuMcfLio9waKSAZ3oswrCKqTMkx9PkX7Uf9+zuPOSb3ISCeT3gsAL28SbrUQw8FS2HQC8VyKLqh6IQiB7h1mU1qGABqCgJUUnuZScJ8Cb5XMtl5jNGDpy07Hhe6JolGhwBVqChEjQnDCpfG9qwbKoX7P9vXF2QepHFz09SBVg3QmR14EQQLoeiCYBEUzQd51Jw/9UUICCS7fYqCkoFQV40GRz+gHwQsRfDJE9Zee1poEI28KaKaReTpUVVUo2o5aSsWL//EE6/cv76vz58PCOMAfPWwCAYLoVg4/anogKJwkP938Idrpvt1dUiZtewuG+M1Ceh6gNJPlE5c882Oob0fCEeHnKpJ6SmAAcQyNVpQES8uF+PWqeIVn/zF1h/ec+YHvYZBaALUGORhUIBBKxRtULRCUYBOG+6GAIhmHHo2byoN88hEvyrg1vf3+8UfXPiDwt4910fjI4kao2nIJy4ApITYBKC4NEKGqPpRpRi3FItX/dmepwcH+wa0YRDEwIiBD0WQTR8KnS8AwbQRrIOAOcA4PGv7/b6PNX1i8PEHWnbvuTaaGIvFeF7KJ8D6EH2O5W13c+Km111lMiDECSwBiBo/qpbjfLH4znc8cdvgur4+BcDDRYlQA4GBSjq9DAzIPAGA76f6v78UZKWEQ+1iIOMTnnrfh9sue+nXj7Tu3nVZNDmaiDF+GlBJElDM827y9Xtc6bJPOfe1H7J05U5WJgKooaqFCETUj8vFuKk4de3Xf751cF1fn67PQuu51q3WwzVJbZTMmIDCZKZ7TaM2gPWDq04bw2lpOITBW4dBu/Ed7+k8afPzj7bt3n1BODWRiPE8koBI4gPeZjux9Q5XWXM3sPVhIPdJ4MkfuOLlu1w5BUHEIpOEuFyKC6XitV/ZuKUuCXOmzdVqBq+kYXwayisgBsDBPdfcAAT7wl+ZKQUiBy0m9WcGb/P51yw9d8vr/9Kye/fZYXEyUWM8ElBR55Pes27if32O1bXfBLYPAOZKINwIeB8Dnr7fTV2+JylPBBDjROob8ONKKW4vl6798k82f39wH/dwgBE8sOyZTREYnfush06GZF/uPvPoc/mA9ejHekCOfO2N+5qGh08PS1OxinogIQIntPqMnfzlp131oh8Be7I43tZT542Adwvw9COudMVwNPW6T9AxY15F/Dgsxx3VyrvOwoJ3ZNGl2V8HRITEjDxVDq+2c/882pcOzyixTT91fzDT5GKDOxvt7bmJkQtctZyIqJeBRZ8iI4x3n8PqRf8TGN0IePtHZSl/cEzuRiRPVRav+L76voLOQQihg4MDXIhxjXoOWtlmxj3uX/Yk4dzconsQYGLQudmcQJ2umKO6KZmbegaTk6NheaNCPIgk2QISw7HHa+4pLTzuDqaGyM3U43p9X/C7cGTVRbf2mtxfxknsRGBAwsLZHOi/gnD0AVd5IPu/swDMiZKzkOFsEHS+gRDrgKZsLup87kGUYH06+RAnb9jhys8FgE8wyfRJI5toIUo+NNV90r0ZhpIVLwToU9m0KRk95cLbFhUnbnNDuwlnNY0UafOAeRlh+XsuetcGYC9mUN/rs882ja0BrGTRJQ9M4xuXAMbCjMOfVdgQEnBuThuwAXDrAbkZGLrdTV2y3ZV/HcB4VEkgAjFGkrgWt1ZrN453nvgtEalXaFQwaMdPWnvXwrHxW+O9u5JUkQWks4GIeQHVsS+5yqX9SDYNpLzhAVtwopx5eY0SbHoQBZB6gRNuxuQcuO4HwgBgvgiM/hdXvHS7K28OxHhUk6TJlfHjOIwXRPH7prpWfV8AJ4CdOOnC+xZMjN8SDe9NAPEACmiTADTPsbL7Lle96C7gyblsx/42gNOKwFQWMuk9mAP3DqUCac1/hkEUAZxrlKkZrbnJS/8qxsNHBG3nhiKJgh5E/CisJq3AurHuVUY6e5L20ZHrotHhRFQ8OAelS4zA+xWrr97lKpd/C/jdoRjomVtOC1D7XxQRw+o8AUjFfVoS6hjy8InQDBDGjJu87D/G+PGKoP2PI0EihKeqXhRWXQfdu7B7J6JyyarAo7VQ0hnQe5zlFz/rqlduAnb2N3D4zHVPOwDhTDvAg6ZvcwIgpMA5wFlMF0On7Yg7/E4yEJjGj5N77eQVd0b48cqg/YIQdIZUFdEoqtmUbodxzsEjHWDlEZY29bnwXUVgNAPysEs6UQrB2be/zxhU3dxn9Q4SBhN0+9peZjkYh6TBdDgLWFSB4qSdvPIbER46wm9bHQFOSBXCpPVGBx9EhMQ9zLL3lEv+WxEY7QeCdTP4u0ONZlGSbobhxr7GFRAWNPPIBqNM/C1IC8LCIsnu3s2LEBHAfRbwNgGlDXby5s3xhAsIIQnnHKyzCEBUkODbLGKUCc6HXAMAJx3K4O03SnO4AM6CYj5GMAJgE1gmSITTOAqAYNoWNE6JbQCSTJS3nOMqT+cSnHeytlhQDCAYR4xBFhHS6dFQ5EUu2kjk1wI1NLhasyiFJLN8MSu9Za1Lbn42AACcs6jBIcoOXy8p+0yVOyM7Gx5d2Q0cT+8be1ztvO1MsAI+JmDxG0TwSKwUowWKWwpdXkH+LKD2iwFA1zUoCZwu786WgnnHAUEUSeISlGAx4SxGXIwRF2OcFlMgkukIrvGxJjvEAvg/7IY35dGaF1nhqwzRTeAIKDoh6BR1S2HQKXJV2qzR2DollA44bBrIpjttNBkSAhpX3qiOJFXsVGIo8DGWz2MkF2CbCl5jjCHEoQCszoO/z/IFcwZKw50aPHAOfJwAz54sHnqh6BKDThgsgKonggK8a/rS5zd0+80lpTBtXpvuUZqRyakeRgUyGssCwKsnXXBK0/gYjhbDXEIxGUESglKzIVxSXYmPvF+v3LAhzEra82p3E/HvKYhcv4TQOO3khAeBD0FAqBVhQfTEv2HzaYLK5pmp8yGfS057/ekGrmmVPoQE1GmszRe/e+nUyRd9t3eiONBdrLFjeBRNI0MIRoaQG34T7aOjZmkl4vle23tL99z/9Ks9p54jqUkwDUqBJSD3JCNPVGBe7Ian7TCuAwZtTNnbnBgo1PowskC86xpVgxoTdYCSDo6cnimTfXBLoES/rsOg3XHOVaeuemP7U607tr+be3aLrRTF2kRcKoN0AJxNEFVLEo0OucLE+FnLbbRpV9dJl2UHa9Q3mg2Ai1TuU80hD+PyMAhg4FFhUhZXCUGz+O99AGjGfunzHNQPgvaWBWq0OaEFQbGZHDgQCfdFgo8dKAEb+Moply/vHBp+JL9nV29UmorVGIEoRNQGoi4HkQDiIGJFFCqiUVhNgsmJ/MJqeXBr+4qjGqWu12dSuT3Ad6uqZU88QyhFDERMndDUGLBNYpadp21/mmV/B5Gy1SoAFoj+UR5iEjCp+wArgE2N9ow44cDyB7smh+/Jj4/3RFEYq1HfgQhE6YNmkqHuRM2WEasvMIKUeBBRL3JJkg+j1s5y+HdyAANx8IyRgDmrMrKnRvegqhFA7P60uwDiQNciuQ3PoqVTso6T/RloYBMJoBXyUYZVUJAlBPusegRgHJycE4A3lp16VXu5ckVcLVlR4zsIAlE3zlAetOPf+5Idu+R2O3HydzGxdgvL31EkIhCXblI8axNXcPaa59F63DxVAeOI/tEKoBCtN1/uozJFLcm8mJ7jmxZ+ux+rvQwEIaAEZB0GrQB27IS1t7eUimdUk6pNWwYzLjPLM8bE4Q3Er2R9g7MNwtiC437MwkoX5pYkYW4ZmV+eFL0ufhGyfq5N/06a76DpZmh6ksh0M9SumNrF7Sjc0mi7W71sBkDGTdczND0u1M4k1k7Gpiudms5IOxPmlrO88PhNO44991wwu19V7Lzm/ccXT1jzT1x4PGtoT0rSxklp47i0clRaOCQtriQt/KXkhq4BWuei1GWqZeVEi7XtsbOgiMtR9PF49OXVrrqKgFmfZUBrAF0DuAeB/MWm8/U8vO4YjqCzPuBtc9WvHYnyTfUursMBUM/v3zDt/+4I5AcT2pQMmdmVk6XhDnQ5L9C40IIo3/wig9xuqCzyauVT85MTfqUy4ZyIZm9KZJMAmDQB3j8j/nofo/fP5bI939n2ZJ/oOdAqHZ+s9+VvyA6T6a5eA1TKfn6LJLYbji4roSAWduLQhNFcXWQqdvJHIyKbF0lwZgRnNa1kzKLxFKJhHDmdGNOCTpwC0VNAi9hGKMFZihpmh7eoGz6yGZAXkbhnGf19lqIfaAOstU5m7lkU3aItcxg1AfpSrxrkloIWKaOVts5VYScPRT7ONQZTs2dfZelDZSQ2gMLu47RmGEWBZn2xkUtcaENbc7GNRQhR49J0NwOAsAB8IAmF5mkk/3A78OIAYAbnapCwNtltKCCEjjBOhEtM88V/B3QKEBNn+ly92iPO9ASDdufKc69uIo6LbOLSOCJdfpTcMt8EaR1gHWDORfLs/3blDxHW5KDOckb2KjKL3hCRer3LEBQrzG4d0/2HCsYi9B9i+Mxf0P5lvSNsTi8QM35MUuLQiUBiOi7wmhfd2Lx88NGm5csEm2PZtCkRbI53nP9v13aFta+6cpEigIUFSN0Jh2cQ/TRLeub1UpRkjU5nIfzqZlQ+XEVicqJKMnGz3kMhBGmUV091bRbkJHCI08zVBUBC0L+f4Ytfob1agNpLh+CIZQvy5x3ttT2hxneUjKEhXeAFWs4Ho7VCy8O2pXU4SJKTmqcmLwtGRxDaiCKUkNa2CMyjrP38UkZvZxpX/F5vhdWN4sMmuPpUNn1pqeSWgUACl9jpIpcTRyc2O3wMxyS1lM6kdWGzAwk2Ir7/DroP7ATGGuo42yVt36C/lFGwNIxy6SsvNX+JZW4Z2bySLBxJBssYYRFrssjVpIOT0mYjaY1f0Cb+FXCuABgA3tL7gfWc4t1Az88lf+cObZugLiS1k9RFpHQwkQWuJm2uJK2ckhZOSoFvSjN/LXneJ96LtwDXzyzYHj6BAvQ+oO1ybX9ysSmcGIvEDs5TInv9zNkslRII1YKwTKwPmmFYGWTt4x+H+/tGM7bDjZnPuQ7ofQ+Ca7vFXJ6HvM0Duj3AtyDKIKbA0iTcjj1wT22hvf9u4J+RdZhJo6WROkqfB5a9rm1P0FtM+ksZe0tsZHridHbFkS6KI+2II22nk1Y+J/n4dtWP4g9w83NIgsyRYRauAo76c+DMPwXO6wNOOQFYMpPT+L2lcIao+M9q/tO7zYLtzusiTQ+pXan46QKG2sYt2hw9IP6DNwBn/2scfv99bQS87EYPmgoSMNk+5v0utMxc7D+nwQ66gJavm9y/aac5W8kVFvRKsMN7BC8/5uInvgm8sr+4/l8Y0p/tdwsgqwCuBzi7nfsPsMjGxl5d0f5590z/vzn+DxHkyOdGNrUsAAAAAElFTkSuQmCC">
   <link rel="apple-touch-icon" href="data:image/png;base64,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">
@@ -17468,7 +17479,7 @@ return { p, h, code, list, note, table, steps, tip, warn, check, exercise, figur
 })();
 __m["docs/netfix.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const NETFIX_DOCS = {
     id: 'netfix',
     title: 'Netfix',
@@ -17614,7 +17625,7 @@ return { NETFIX_DOCS };
 })();
 __m["docs/ios.js"] = (() => {
 const { check, code, exercise, figure, h, list, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const IOS_DOCS = {
     id: 'ios',
     title: 'Cisco IOS',
@@ -17763,7 +17774,7 @@ return { IOS_DOCS };
 })();
 __m["docs/ios-dhcp.js"] = (() => {
 const { check, code, exercise, figure, h, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const IOS_DHCP_DOCS = [
     {
         id: 'ios-dhcp',
@@ -17879,7 +17890,7 @@ return { IOS_DHCP_DOCS };
 })();
 __m["docs/ios-sec.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const IOS_SEC_DOCS = [
     {
         id: 'ios-nat',
@@ -17999,7 +18010,7 @@ return { IOS_SEC_DOCS };
 })();
 __m["docs/services.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const SERVICE_DOCS = {
     id: 'servicios',
     title: 'Servicios de Server',
@@ -18166,7 +18177,7 @@ return { SERVICE_DOCS };
 })();
 __m["docs/clients.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const CLIENT_DOCS = {
     id: 'clientes',
     title: 'PC',
@@ -18462,7 +18473,7 @@ function utilityBlocks(groups) {
     }
     return blocks;
 }
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const LINUX_DOCS = [
     {
         id: 'linux-intro',
@@ -18922,7 +18933,7 @@ const EDITOR_DOCS = [
         id: 'mc',
         title: 'Midnight Commander (mc)',
         summary: 'Gestor de ficheros de dos paneles en modo texto: copiar, mover, ver y editar sin escribir rutas.',
-        markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+        markdownBase: 'https://github.com/infogerman/netfix/blob/main/',
         blocks: [
             p('**Midnight Commander** (`mc`) es un gestor de ficheros a pantalla completa dentro de la terminal, muy usado por administradores de sistemas. Muestra **dos paneles**, cada uno con un directorio; las operaciones se hacen del panel activo al otro con las teclas de función. Funciona igual en local y por **SSH**, así que sirve para ordenar ficheros de un servidor sin recordar rutas largas.'),
             code('  Left     File     Command     Options     Right\n┌───────────────── ~ ──────────────────┐┌─────────── /var/www/html ────────────┐\n│.n   Name        │  Size │Modify time ││.n   Name        │  Size │Modify time │\n│/..              │UP--DIR│            ││/..              │UP--DIR│            │\n│/scripts         │    DIR│Oct 24 09:30││ aula.css        │    820│Oct 24 09:30│\n│/web             │    DIR│Oct 24 09:30││ index.html      │  10671│Oct 24 09:30│\n│ copia.sh        │    154│Oct 24 09:30││                                      │\n│ notas.txt       │    312│Oct 24 09:30││                                      │\n│                                      ││                                      │\n├──────────────────────────────────────┤├──────────────────────────────────────┤\n│UP--DIR                               ││UP--DIR                               │\n└──────────────────────────────────────┘└──────────────────────────────────────┘\nadmin@srv:~$\n1Help   2Menu   3View   4Edit   5Copy   6RenMov 7Mkdir  8Delete 9PullDn 10Quit'),
@@ -18955,7 +18966,7 @@ const EDITOR_DOCS = [
         id: 'nano',
         title: 'nano',
         summary: 'GNU nano 8.4 paso a paso: abrir, editar, guardar y salir; teclas, diálogos y mensajes.',
-        markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+        markdownBase: 'https://github.com/infogerman/netfix/blob/main/',
         blocks: [
             p('**nano** es el editor más sencillo de la terminal: escribes directamente y las órdenes van con Ctrl. Abajo tiene siempre a la vista los atajos más usados. Es el editor recomendado para empezar.'),
             steps(['Abre el fichero', '`nano notas.txt` (si no existe, se crea al guardar). Para ficheros del sistema, `sudo nano /etc/hosts`.'], ['Escribe', 'Las flechas mueven el cursor; lo que tecleas se inserta. «Modified» aparece arriba a la derecha.'], ['Guarda', 'Ctrl+O, confirma el nombre con Intro: abajo sale «[ Wrote N lines ]».'], ['Sal', 'Ctrl+X. Si hay cambios sin guardar pregunta «Save modified buffer?»: Y guarda, N descarta.']),
@@ -18971,7 +18982,7 @@ const EDITOR_DOCS = [
         id: 'vim',
         title: 'vim',
         summary: 'Vi IMproved 9.1 paso a paso: modos, cómo salir, movimiento, edición y órdenes de dos puntos.',
-        markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+        markdownBase: 'https://github.com/infogerman/netfix/blob/main/',
         blocks: [
             p('**vim** está en todos los sistemas Unix, también en los servidores mínimos donde no hay nano: merece la pena saber al menos editar, guardar y salir. Su clave es que tiene **modos**: en el normal las teclas son órdenes, y para escribir texto hay que entrar en el de inserción.'),
             steps(['Abre el fichero', '`vim notas.txt`. Empiezas en **modo normal**.'], ['Entra a escribir', '`i` (insertar donde está el cursor). Abajo aparece «-- INSERT --».'], ['Vuelve al modo normal', 'Esc. Siempre que dudes, Esc.'], ['Guarda y sal', '`:wq` e Intro (o `ZZ`). Para salir sin guardar, `:q!`.']),
@@ -18994,7 +19005,7 @@ return { NANO_KEYS, VIM_KEYS, VIM_EX, EDITOR_DOCS };
 })();
 __m["docs/internet.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const INTERNET_DOCS = {
     id: 'internet',
     title: 'Internet y NAT',
@@ -19145,7 +19156,7 @@ return { INTERNET_DOCS };
 })();
 __m["docs/webapps.js"] = (() => {
 const { check, exercise, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const WEBAPP_DOCS = [
     {
         id: 'srv-roundcube',
@@ -19203,7 +19214,7 @@ return { WEBAPP_DOCS };
 })();
 __m["docs/ssh.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const SSH_DOCS = [
     {
         id: 'srv-ssh-claves',
@@ -19307,7 +19318,7 @@ return { SSH_DOCS };
 })();
 __m["docs/security.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const SECURITY_DOCS = {
     id: 'seguridad',
     title: 'Router Linux',
@@ -19422,7 +19433,7 @@ return { SECURITY_DOCS };
 })();
 __m["docs/dns.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const DNS_DOCS = [
     {
         id: 'srv-dns',
@@ -19523,7 +19534,7 @@ return { DNS_DOCS };
 })();
 __m["docs/http.js"] = (() => {
 const { check, code, exercise, figure, h, list, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const HTTP_DOCS = [
     {
         id: 'srv-http',
@@ -19589,7 +19600,7 @@ return { HTTP_DOCS };
 })();
 __m["docs/mail.js"] = (() => {
 const { check, exercise, figure, h, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const MAIL_DOCS = [
     {
         id: 'srv-mail',
@@ -19628,7 +19639,7 @@ return { MAIL_DOCS };
 })();
 __m["docs/en/netfix.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const NETFIX_DOCS = {
     id: 'netfix',
     title: 'Netfix',
@@ -19774,7 +19785,7 @@ return { NETFIX_DOCS };
 })();
 __m["docs/en/ios.js"] = (() => {
 const { check, code, exercise, figure, h, list, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const IOS_DOCS = {
     id: 'ios',
     title: 'Cisco IOS',
@@ -19923,7 +19934,7 @@ return { IOS_DOCS };
 })();
 __m["docs/en/ios-dhcp.js"] = (() => {
 const { check, code, exercise, figure, h, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const IOS_DHCP_DOCS = [
     {
         id: 'ios-dhcp',
@@ -20039,7 +20050,7 @@ return { IOS_DHCP_DOCS };
 })();
 __m["docs/en/ios-sec.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const IOS_SEC_DOCS = [
     {
         id: 'ios-nat',
@@ -20159,7 +20170,7 @@ return { IOS_SEC_DOCS };
 })();
 __m["docs/en/services.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const SERVICE_DOCS = {
     id: 'servicios',
     title: 'Server services',
@@ -20326,7 +20337,7 @@ return { SERVICE_DOCS };
 })();
 __m["docs/en/clients.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const CLIENT_DOCS = {
     id: 'clientes',
     title: 'PC',
@@ -20622,7 +20633,7 @@ function utilityBlocks(groups) {
     }
     return blocks;
 }
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const LINUX_DOCS = [
     {
         id: 'linux-intro',
@@ -21082,7 +21093,7 @@ const EDITOR_DOCS = [
         id: 'mc',
         title: 'Midnight Commander (mc)',
         summary: 'A two-panel text-mode file manager: copy, move, view and edit without typing paths.',
-        markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+        markdownBase: 'https://github.com/infogerman/netfix/blob/main/',
         blocks: [
             p('**Midnight Commander** (`mc`) is a full-screen file manager inside the terminal, widely used by system administrators. It shows **two panels**, each with a directory; operations go from the active panel to the other one with the function keys. It works the same locally and over **SSH**, so it helps tidy a server’s files without remembering long paths.'),
             code('  Left     File     Command     Options     Right\n┌───────────────── ~ ──────────────────┐┌─────────── /var/www/html ────────────┐\n│.n   Name        │  Size │Modify time ││.n   Name        │  Size │Modify time │\n│/..              │UP--DIR│            ││/..              │UP--DIR│            │\n│/scripts         │    DIR│Oct 24 09:30││ aula.css        │    820│Oct 24 09:30│\n│/web             │    DIR│Oct 24 09:30││ index.html      │  10671│Oct 24 09:30│\n│ copia.sh        │    154│Oct 24 09:30││                                      │\n│ notas.txt       │    312│Oct 24 09:30││                                      │\n│                                      ││                                      │\n├──────────────────────────────────────┤├──────────────────────────────────────┤\n│UP--DIR                               ││UP--DIR                               │\n└──────────────────────────────────────┘└──────────────────────────────────────┘\nadmin@srv:~$\n1Help   2Menu   3View   4Edit   5Copy   6RenMov 7Mkdir  8Delete 9PullDn 10Quit'),
@@ -21115,7 +21126,7 @@ const EDITOR_DOCS = [
         id: 'nano',
         title: 'nano',
         summary: 'GNU nano 8.4 step by step: open, edit, save and quit; keys, dialogues and messages.',
-        markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+        markdownBase: 'https://github.com/infogerman/netfix/blob/main/',
         blocks: [
             p('**nano** is the simplest editor in the terminal: you type straight away and the commands go with Ctrl. The most used shortcuts are always in view at the bottom. It is the recommended editor to start with.'),
             steps(['Open the file', '`nano notas.txt` (if it does not exist, it is created when you save). For system files, `sudo nano /etc/hosts`.'], ['Type', 'The arrows move the cursor; what you type is inserted. “Modified” appears at the top right.'], ['Save', 'Ctrl+O, confirm the name with Enter: “[ Wrote N lines ]” shows at the bottom.'], ['Quit', 'Ctrl+X. If there are unsaved changes it asks “Save modified buffer?”: Y saves, N discards.']),
@@ -21131,7 +21142,7 @@ const EDITOR_DOCS = [
         id: 'vim',
         title: 'vim',
         summary: 'Vi IMproved 9.1 step by step: modes, how to quit, motion, editing and colon commands.',
-        markdownBase: 'https://github.com/glopezca/netfix/blob/main/',
+        markdownBase: 'https://github.com/infogerman/netfix/blob/main/',
         blocks: [
             p('**vim** is on every Unix system, also on minimal servers where there is no nano: it is worth knowing at least how to edit, save and quit. Its key is that it has **modes**: in normal mode keys are commands, and to type text you must enter insert mode.'),
             steps(['Open the file', '`vim notas.txt`. You start in **normal mode**.'], ['Start typing', '`i` (insert at the cursor). “-- INSERT --” appears at the bottom.'], ['Back to normal mode', 'Esc. Whenever in doubt, Esc.'], ['Save and quit', '`:wq` and Enter (or `ZZ`). To quit without saving, `:q!`.']),
@@ -21154,7 +21165,7 @@ return { NANO_KEYS, VIM_KEYS, VIM_EX, EDITOR_DOCS };
 })();
 __m["docs/en/internet.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const INTERNET_DOCS = {
     id: 'internet',
     title: 'Internet and NAT',
@@ -21305,7 +21316,7 @@ return { INTERNET_DOCS };
 })();
 __m["docs/en/webapps.js"] = (() => {
 const { check, exercise, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const WEBAPP_DOCS = [
     {
         id: 'srv-roundcube',
@@ -21363,7 +21374,7 @@ return { WEBAPP_DOCS };
 })();
 __m["docs/en/ssh.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const SSH_DOCS = [
     {
         id: 'srv-ssh-claves',
@@ -21467,7 +21478,7 @@ return { SSH_DOCS };
 })();
 __m["docs/en/security.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const SECURITY_DOCS = {
     id: 'seguridad',
     title: 'Linux router',
@@ -21582,7 +21593,7 @@ return { SECURITY_DOCS };
 })();
 __m["docs/en/dns.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const DNS_DOCS = [
     {
         id: 'srv-dns',
@@ -21683,7 +21694,7 @@ return { DNS_DOCS };
 })();
 __m["docs/en/http.js"] = (() => {
 const { check, code, exercise, figure, h, list, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const HTTP_DOCS = [
     {
         id: 'srv-http',
@@ -21749,7 +21760,7 @@ return { HTTP_DOCS };
 })();
 __m["docs/en/mail.js"] = (() => {
 const { check, exercise, figure, h, p, steps, table, term, tip, warn } = __m["docs/types.js"];
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 const MAIL_DOCS = [
     {
         id: 'srv-mail',
@@ -29003,8 +29014,8 @@ const ABOUT = {
     "version": "0.20.9",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
-    "repository": "https://github.com/glopezca/netfix",
-    "licenseMarkdown": "# Licencia y atribuciones\n\n- **Autoría:** Germán López Castro\n- **Repositorio:** <https://github.com/glopezca/netfix>\n\nNetfix usa dos licencias según el tipo de material, las dos con la misma idea de\n«compartir igual»: quien distribuya versiones modificadas debe publicarlas con la misma licencia.\n\n| Material | Licencia |\n|---|---|\n| Código fuente: `src/`, `tests/`, `scripts/`, configuración del proyecto y los archivos que genera el build | [GNU GPL v3.0 o posterior](https://www.gnu.org/licenses/gpl-3.0.html) (`GPL-3.0-or-later`) — texto completo en [`LICENSE`](LICENSE) |\n| Documentación e imágenes: `README.md`, `docs/`, capturas y textos de los laboratorios | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es) — [texto legal](https://creativecommons.org/licenses/by-sa/4.0/legalcode.es) |\n| `.claude/` (reglas y agentes de Everything Claude Code) | MIT, de sus autores (ver más abajo) |\n\nLa GPL es una licencia pensada para software: exige entregar el código fuente junto con\ncualquier versión distribuida (también la página HTML compilada) y protege el derecho de\nuso, estudio, modificación y redistribución. Creative Commons recomienda no usar sus licencias\npara código, por eso CC BY-SA 4.0 queda solo para la documentación. Las dos licencias son\ncompatibles en un sentido: el material CC BY-SA 4.0 puede incorporarse a obras GPLv3.\n\n## Aviso de copyright del código\n\n```\nNetfix — simulador de redes orientado a los servicios en red e Internet,\ncon un enfoque especial en las tareas realizadas desde sistemas operativos\nreales emulados. Ejecutable desde un navegador.\nCopyright (C) 2026 Germán López Castro\n\nThis program is free software: you can redistribute it and/or modify\nit under the terms of the GNU General Public License as published by\nthe Free Software Foundation, either version 3 of the License, or\n(at your option) any later version.\n\nThis program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\nMERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\nGNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License\nalong with this program.  If not, see <https://www.gnu.org/licenses/>.\n```\n\n## Atribución recomendada\n\nPara la documentación o las capturas:\n\n> «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),\n> distribuido bajo licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).\n\nPara el software o una obra derivada:\n\n> Basado en «Netfix», de Germán López Castro (<https://github.com/glopezca/netfix>),\n> GPL-3.0-or-later. Cambios: …\n\n## Otras licencias y aportaciones\n\nEl autor puede licenciar Netfix con otros términos en productos propios (doble licencia); la versión pública sigue\nsiendo software libre con las licencias anteriores. Por eso las aportaciones de terceros solo se integran con un\nacuerdo de cesión de derechos: ver [CONTRIBUTING.md](CONTRIBUTING.md).\n\n## Componentes de terceros\n\n### Everything Claude Code (ECC)\n\nLas reglas y los agentes de la carpeta `.claude/` (`.claude/rules/`, `.claude/agents/`,\n`.claude/commands/`) proceden de\n[Everything Claude Code](https://github.com/affaan-m/everything-claude-code)\ny se mantienen bajo su licencia original **MIT**, © 2026 Affaan Mustafa.\nEl texto completo está en [`.claude/ECC-LICENSE`](.claude/ECC-LICENSE).\nLa licencia MIT es compatible con la GPLv3; la GPL y la CC BY-SA de este repositorio no se\naplican a esos archivos. Excepción: `.claude/rules/project/` contiene reglas propias de Netfix (por ejemplo, el modelo\nrecomendado para cada fase) y es documentación del proyecto, bajo CC BY-SA 4.0.\n\n### Marcas\n\nCisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc. Microsoft y Windows son\nmarcas de Microsoft Corporation. Netfix es un proyecto educativo independiente, sin relación\ncon Cisco ni con Microsoft ni respaldado por ellas. Los símbolos de red de la interfaz son\ndibujos propios de este proyecto.\n"
+    "repository": "https://github.com/infogerman/netfix",
+    "licenseMarkdown": "# Licencia y atribuciones\n\n- **Autoría:** Germán López Castro\n- **Repositorio:** <https://github.com/infogerman/netfix>\n\nNetfix usa dos licencias según el tipo de material, las dos con la misma idea de\n«compartir igual»: quien distribuya versiones modificadas debe publicarlas con la misma licencia.\n\n| Material | Licencia |\n|---|---|\n| Código fuente: `src/`, `tests/`, `scripts/`, configuración del proyecto y los archivos que genera el build | [GNU GPL v3.0 o posterior](https://www.gnu.org/licenses/gpl-3.0.html) (`GPL-3.0-or-later`) — texto completo en [`LICENSE`](LICENSE) |\n| Documentación e imágenes: `README.md`, `docs/`, capturas y textos de los laboratorios | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es) — [texto legal](https://creativecommons.org/licenses/by-sa/4.0/legalcode.es) |\n| `.claude/` (reglas y agentes de Everything Claude Code) | MIT, de sus autores (ver más abajo) |\n\nLa GPL es una licencia pensada para software: exige entregar el código fuente junto con\ncualquier versión distribuida (también la página HTML compilada) y protege el derecho de\nuso, estudio, modificación y redistribución. Creative Commons recomienda no usar sus licencias\npara código, por eso CC BY-SA 4.0 queda solo para la documentación. Las dos licencias son\ncompatibles en un sentido: el material CC BY-SA 4.0 puede incorporarse a obras GPLv3.\n\n## Aviso de copyright del código\n\n```\nNetfix — simulador de redes orientado a los servicios en red e Internet,\ncon un enfoque especial en las tareas realizadas desde sistemas operativos\nreales emulados. Ejecutable desde un navegador.\nCopyright (C) 2026 Germán López Castro\n\nThis program is free software: you can redistribute it and/or modify\nit under the terms of the GNU General Public License as published by\nthe Free Software Foundation, either version 3 of the License, or\n(at your option) any later version.\n\nThis program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\nMERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\nGNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License\nalong with this program.  If not, see <https://www.gnu.org/licenses/>.\n```\n\n## Atribución recomendada\n\nPara la documentación o las capturas:\n\n> «Netfix», de Germán López Castro (<https://github.com/infogerman/netfix>),\n> distribuido bajo licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).\n\nPara el software o una obra derivada:\n\n> Basado en «Netfix», de Germán López Castro (<https://github.com/infogerman/netfix>),\n> GPL-3.0-or-later. Cambios: …\n\n## Otras licencias y aportaciones\n\nEl autor puede licenciar Netfix con otros términos en productos propios (doble licencia); la versión pública sigue\nsiendo software libre con las licencias anteriores. Por eso las aportaciones de terceros solo se integran con un\nacuerdo de cesión de derechos: ver [CONTRIBUTING.md](CONTRIBUTING.md).\n\n## Componentes de terceros\n\n### Everything Claude Code (ECC)\n\nLas reglas y los agentes de la carpeta `.claude/` (`.claude/rules/`, `.claude/agents/`,\n`.claude/commands/`) proceden de\n[Everything Claude Code](https://github.com/affaan-m/everything-claude-code)\ny se mantienen bajo su licencia original **MIT**, © 2026 Affaan Mustafa.\nEl texto completo está en [`.claude/ECC-LICENSE`](.claude/ECC-LICENSE).\nLa licencia MIT es compatible con la GPLv3; la GPL y la CC BY-SA de este repositorio no se\naplican a esos archivos. Excepción: `.claude/rules/project/` contiene reglas propias de Netfix (por ejemplo, el modelo\nrecomendado para cada fase) y es documentación del proyecto, bajo CC BY-SA 4.0.\n\n### Marcas\n\nCisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc. Microsoft y Windows son\nmarcas de Microsoft Corporation. Netfix es un proyecto educativo independiente, sin relación\ncon Cisco ni con Microsoft ni respaldado por ellas. Los símbolos de red de la interfaz son\ndibujos propios de este proyecto.\n"
 };
 
 return { ABOUT };

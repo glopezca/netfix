@@ -8,7 +8,7 @@
   "author": "glopezca",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/glopezca/netfix.git"
+    "url": "git+https://github.com/infogerman/netfix.git"
   },
   "engines": {
     "node": ">=22.18"

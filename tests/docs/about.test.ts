@@ -15,7 +15,7 @@ test('about-data.ts is in sync with package.json and LICENSE.md (run npm run abo
   assert.equal(ABOUT.version, pkg.version);
   assert.equal(ABOUT.description, pkg.description);
   assert.equal(ABOUT.license, pkg.license);
-  assert.equal(ABOUT.repository, 'https://github.com/glopezca/netfix');
+  assert.equal(ABOUT.repository, 'https://github.com/infogerman/netfix');
   assert.equal(ABOUT.licenseMarkdown, readFileSync(new URL('LICENSE.md', root), 'utf8'));
   const generated = execFileSync(process.execPath, [new URL('scripts/gen-about.mjs', root).pathname, '--stdout'], { encoding: 'utf8' });
   assert.equal(generated, readFileSync(new URL('src/docs/about-data.ts', root), 'utf8'));
@@ -45,7 +45,7 @@ test('markdown blocks: headings, paragraphs, lists, tables, code and quotes', ()
 });
 
 test('inline markdown: links (http/https and relative to the repository), bold, code; nothing else is markup', () => {
-  const base = 'https://github.com/glopezca/netfix/blob/main/';
+  const base = 'https://github.com/infogerman/netfix/blob/main/';
   assert.deepEqual(inlineMarkdown('Ver [`LICENSE`](LICENSE) y <https://x.org/a> con **negrita**.', base), [
     { text: 'Ver ' }, { text: 'LICENSE', href: `${base}LICENSE`, code: true }, { text: ' y ' }, { text: 'https://x.org/a', href: 'https://x.org/a' },
     { text: ' con ' }, { text: 'negrita', bold: true }, { text: '.' },

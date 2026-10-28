@@ -2,7 +2,7 @@
 import type { DocGroup } from '../types.ts';
 import { check, code, exercise, figure, h, list, p, steps, table, term, tip, warn } from '../types.ts';
 
-const MD = 'https://github.com/glopezca/netfix/blob/main/';
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
 export const IOS_DOCS: DocGroup = {
   id: 'ios',
