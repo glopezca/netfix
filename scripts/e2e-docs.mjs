@@ -1,4 +1,4 @@
-// End-to-end check of the Documentation tab (v0.20): groups per device in palette order with their icons, sections
+// End-to-end check of the Help tab (Ayuda) (v0.20): groups per device in palette order with their icons, sections
 // in the order of each device's window, the page's group open, and the visual blocks of a guided page (diagrams,
 // steps, terminals with prompts and vim colours, boxes and an exercise with its folded solution).
 import { spawn } from 'node:child_process';
@@ -24,7 +24,7 @@ try {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(`http://localhost:${port}/`);
   await page.waitForSelector('g.device');
-  await page.click('button:has-text("Documentación")');
+  await page.click('button:has-text("Ayuda")');
   await page.waitForSelector('.doc-group-box');
   const groups = await page.locator('.doc-group-title').allInnerTexts();
   assert.deepEqual(groups.slice(0, 7), ['Netfix', 'PC', 'Servidor', 'Switch IOS', 'Router IOS', 'Router Linux', 'Nube ISP']);

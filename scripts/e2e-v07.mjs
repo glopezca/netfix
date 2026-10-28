@@ -86,12 +86,12 @@ try {
   assert.equal(await page.locator('.undo-btn').isDisabled(), true, 'nothing left to undo');
 
   // 2. Changing language while reading the docs keeps the docs open, now in the other language.
-  await page.click('button.seg:has-text("Documentation")');
+  await page.click('button.seg:has-text("Help")');
   await page.waitForSelector('.doc-group:has-text("Linux Terminal")');
   await page.selectOption('.select-lang', 'es-ES');
   await page.waitForSelector('.doc-group:has-text("Terminal Linux")');
   assert.equal(await page.getAttribute('body', 'data-view'), 'docs');
-  assert.equal(await page.locator('button.seg[aria-pressed="true"]:has-text("Documentación")').count(), 1);
+  assert.equal(await page.locator('button.seg[aria-pressed="true"]:has-text("Ayuda")').count(), 1);
   await page.selectOption('.select-lang', 'en-GB');
   await page.waitForSelector('.doc-group:has-text("Linux router")');
   await page.fill('.doc-search', 'wireguard');

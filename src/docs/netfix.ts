@@ -32,15 +32,15 @@ export const NETFIX_DOCS: DocGroup = {
           ['Pruébalo', 'En PC0 → **Terminal Windows**: `ping 192.168.1.11`.'],
         ),
         term('cmd', 'C:\\home\\alumno> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
-        tip('Sin montar nada', '**Laboratorios…** carga prácticas ya preparadas, con sus equipos configurados y áreas dibujadas. Son el mejor punto de partida para cada tema de esta documentación.'),
+        tip('Sin montar nada', '**Laboratorios…** carga prácticas ya preparadas, con sus equipos configurados y áreas dibujadas. Son el mejor punto de partida para cada tema de esta ayuda.'),
         h('Barra superior'),
         table(['Control', 'Qué hace'], [
-          ['Red / Documentación / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta documentación, la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
+          ['Red / Ayuda / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta ayuda, la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
           ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S).'],
           ['Laboratorios…', 'Carga una práctica preparada: DHCP (básico, reservas, relay, VLAN, snooping, router cliente), Server, Internet con dos sedes, VPN IPsec y WireGuard, router Linux con DMZ, DNS que reenvía, SSH/SFTP y bastionado.'],
           ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
           ['Tiempo real / Simulación', 'Modo de ejecución (ver «Tiempo real y simulación»).'],
-          ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la documentación y las páginas web simuladas sin recargar.'],
+          ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la ayuda y las páginas web simuladas sin recargar.'],
         ]),
         h('Paleta y herramientas'),
         list(

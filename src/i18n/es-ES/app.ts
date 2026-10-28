@@ -22,7 +22,7 @@ export const APP_ES = {
   'top.menu': 'Menú',
   'top.language': 'Idioma',
   'view.net': 'Red',
-  'view.docs': 'Documentación',
+  'view.docs': 'Ayuda',
   'view.about': 'Acerca de',
   'view.donate': 'Donaciones',
   'pal.devices': 'Dispositivos',

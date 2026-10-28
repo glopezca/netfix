@@ -32,15 +32,15 @@ export const NETFIX_DOCS: DocGroup = {
           ['Test it', 'On PC0 → **Windows terminal**: `ping 192.168.1.11`.'],
         ),
         term('cmd', 'C:\\home\\alumno> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
-        tip('Without building anything', '**Labs…** loads ready-made practicals, with their devices configured and their areas drawn. They are the best starting point for each topic in this documentation.'),
+        tip('Without building anything', '**Labs…** loads ready-made practicals, with their devices configured and their areas drawn. They are the best starting point for each topic in this help.'),
         h('Top bar'),
         table(['Control', 'What it does'], [
-          ['Network / Documentation / Donations / About', 'Switches between the workspace, this documentation, the page for supporting the project (PayPal.Me) and the version, authorship, licence and attribution information (taken from package.json and LICENSE.md).'],
+          ['Network / Help / Donations / About', 'Switches between the workspace, this help, the page for supporting the project (PayPal.Me) and the version, authorship, licence and attribution information (taken from package.json and LICENSE.md).'],
           ['New · Open… · Save', 'Empty workspace, open a .json file or save the topology (Ctrl+S).'],
           ['Labs…', 'Loads a ready-made exercise: DHCP (basic, reservations, relay, VLAN, snooping, client router), Server, Internet with two sites, IPsec and WireGuard VPN, Linux router with DMZ, forwarding DNS, SSH/SFTP and hardening.'],
           ['Clock and “Advance clock…”', 'Simulated time. Moving it forward 1 minute, 1 hour or 1 day makes DHCP leases expire or renew.'],
           ['Realtime / Simulation', 'Execution mode (see “Realtime and simulation”).'],
-          ['Language', 'Español (España) or English (UK): changes the whole interface, the documentation and the simulated web pages without reloading.'],
+          ['Language', 'Español (España) or English (UK): changes the whole interface, the help and the simulated web pages without reloading.'],
         ]),
         h('Palette and tools'),
         list(

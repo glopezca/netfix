@@ -78,19 +78,19 @@ test('English docs mirror the Spanish structure', async () => {
   assert.deepEqual(bad, []);
 });
 
-test('the Documentation tab and man follow the interface language', async () => {
+test('the Help tab and man follow the interface language', async () => {
   const { docGroups, manPage, findPage, searchDocs } = await import('../../src/docs/index.ts');
   const { setLocale } = await import('../../src/i18n/locale.ts');
   try {
     setLocale('en-GB');
     assert.equal(docGroups().find((g) => g.id === 'linux')?.title, 'Linux Terminal');
     assert.equal(findPage('ios-ipsec')?.id, 'ios-ipsec');
-    assert.match(manPage('ls') ?? '', /SEE ALSO\n\s+The Documentation tab/);
+    assert.match(manPage('ls') ?? '', /SEE ALSO\n\s+The Help tab/);
     assert.match(manPage('bash') ?? '', /version 5\.3\.20 in Netfix/);
     assert.ok(searchDocs('wireguard').length > 0);
     setLocale('es-ES');
     assert.equal(docGroups().find((g) => g.id === 'linux')?.title, 'Terminal Linux');
-    assert.match(manPage('ls') ?? '', /La pestaña Documentación/);
+    assert.match(manPage('ls') ?? '', /La pestaña Ayuda/);
   } finally {
     setLocale('es-ES');
   }

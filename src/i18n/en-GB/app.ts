@@ -24,7 +24,7 @@ export const APP_EN: Readonly<Record<AppKey, string>> = {
   'top.menu': 'Menu',
   'top.language': 'Language',
   'view.net': 'Network',
-  'view.docs': 'Documentation',
+  'view.docs': 'Help',
   'view.about': 'About',
   'view.donate': 'Donations',
   'pal.devices': 'Devices',

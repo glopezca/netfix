@@ -23,7 +23,7 @@ try {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(`http://localhost:${port}/`);
   await page.waitForSelector('g.device');
-  await page.click('button:has-text("Documentación")');
+  await page.click('button:has-text("Ayuda")');
   await page.waitForSelector('.doc-page ul > li');
   const bullet = await page.locator('.doc-page ul > li').first().evaluate((li) => {
     const s = getComputedStyle(li, '::before');

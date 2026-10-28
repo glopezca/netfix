@@ -28,7 +28,7 @@ La página se genera con `npm run site` a partir de `site/` y la publica el job 
   también a través de SSH. Terminal **Windows** (cmd) en PCs y servidores, sobre el mismo sistema de ficheros
   (`C:\` es `/`): `dir`, `cd`, `md`, `rd`, `del`, `copy`, `move`, `ren`, `type`, `edit` y redirección `>`/`>>`;
   navegador web, cliente de correo y cliente SSH en los PCs.
-- Pestaña **Documentación** con búsqueda: IOS, servicios de Server, PC/Windows, Terminal Linux,
+- Pestaña **Ayuda** con búsqueda: IOS, servicios de Server, PC/Windows, Terminal Linux,
   nano, vim y la referencia de bash 5.3 (también `man` y `help` en la terminal).
 - **Internet emulada** (v0.4): nube ISP con líneas de cable, xDSL y fibra (IP pública o router del operador
   con NAT y redirección de puertos), routers troncales que responden a `traceroute`, DNS públicos
@@ -323,7 +323,7 @@ src/devices   router (plano de datos, relay), switch (VLAN, snooping), Host → 
 src/services  DHCP (pools PT sobre el motor IOS), DNS, HTTP, correo, SSH, unidades, persistencia
 src/bash      intérprete GNU bash 5.3, VFS con permisos, builtins y utilidades GNU
 src/editors   motores de nano y vim
-src/docs      documentación es-ES (y en-GB en src/docs/en): pestaña Documentación, man, help
+src/docs      documentación es-ES (y en-GB en src/docs/en): pestaña Ayuda, man, help
 src/i18n      idioma actual, t() y catálogos es-ES / en-GB
 src/shells    sistema Ubuntu de cada equipo, programas de red, cmd de Windows, cliente SSH
 src/clients   cliente de correo (SMTP, POP3, IMAP), llavero SSH y transferencia SFTP

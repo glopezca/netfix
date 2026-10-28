@@ -46,7 +46,7 @@ src/web/    páginas HTTP generadas con escape (html.ts): Roundcube, gestión we
 src/services/ dhcp-pt, dns-service, http-service, mail-service, ssh-service, units, persist
 src/bash/   intérprete bash 5.3 (lexer, parser, expand, exec con generadores, vfs, builtins/, coreutils/)
 src/editors/ nano.ts, vim*.ts (motores puros; la UI dibuja Frame)
-src/docs/   documentación estructurada (pestaña Documentación, man, help)
+src/docs/   documentación estructurada (pestaña Ayuda, man, help)
 src/shells/ base.ts (cliente SSH), linux.ts (adaptador de BashSession), host-system.ts (VFS por equipo), windows.ts, factory.ts
 src/ui/     interfaz tipo Packet Tracer (SVG + DOM, sin frameworks)
 tests/      *.test.ts  (unit + integración DORA/relay) ; e2e/ (Playwright)

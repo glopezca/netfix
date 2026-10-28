@@ -147,8 +147,8 @@ try {
   await page.keyboard.press('Backspace');
   if (shots) await page.screenshot({ path: `${shots}/bash.png` });
 
-  // 6. Documentación tab: table of contents, search and back to the network.
-  await page.click('button.seg:has-text("Documentación")');
+  // 6. Ayuda (help) tab: table of contents, search and back to the network.
+  await page.click('button.seg:has-text("Ayuda")');
   await page.waitForSelector('.docs:visible');
   assert.match(await page.locator('.doc-page').innerText(), /Primeros pasos/);
   await page.fill('.doc-search', 'nombres relativos');
@@ -204,7 +204,7 @@ try {
   assert.equal(await page.getAttribute('html', 'lang'), 'en-GB');
   assert.equal(await page.locator('g.device').count(), devicesBefore);
   await page.reload();
-  await page.waitForSelector('button.seg:has-text("Documentation")');
+  await page.waitForSelector('button.seg:has-text("Help")');
   await page.selectOption('.select-lang', 'es-ES');
   await page.waitForSelector('button.seg:has-text("Red")');
   assert.deepEqual(errors, []);

@@ -82,12 +82,12 @@ const ES: DocSet = {
   nanoKeys: NANO_KEYS,
   vimKeys: [...VIM_KEYS, ...VIM_EX],
   man: {
-    seeAlso: 'La pestaña Documentación de Netfix tiene ejemplos y la referencia completa.',
+    seeAlso: 'La pestaña Ayuda de Netfix tiene ejemplos y la referencia completa.',
     bashName: 'bash - GNU Bourne-Again SHell (versión 5.3.20 en Netfix)',
     bashSynopsis: 'bash [opciones] [orden_o_fichero ...]',
-    bashDescription: 'Intérprete de órdenes compatible con sh que ejecuta lo que se escribe en la terminal o se lee de un fichero. La referencia completa está en la pestaña Documentación:',
+    bashDescription: 'Intérprete de órdenes compatible con sh que ejecuta lo que se escribe en la terminal o se lee de un fichero. La referencia completa está en la pestaña Ayuda:',
     bashHelp: 'Usa «help orden» para ver cada una.',
-    helpIntro: 'Órdenes internas (builtins). Escribe `help nombre` para ver una, o abre la pestaña Documentación.',
+    helpIntro: 'Órdenes internas (builtins). Escribe `help nombre` para ver una, o abre la pestaña Ayuda.',
     builtinHint: (n) => `(${n} es una orden interna de bash: prueba «help ${n}»)`,
   },
 };
@@ -101,12 +101,12 @@ const EN: DocSet = {
   nanoKeys: NANO_KEYS_EN,
   vimKeys: [...VIM_KEYS_EN, ...VIM_EX_EN],
   man: {
-    seeAlso: 'The Documentation tab of Netfix has examples and the full reference.',
+    seeAlso: 'The Help tab of Netfix has examples and the full reference.',
     bashName: 'bash - GNU Bourne-Again SHell (version 5.3.20 in Netfix)',
     bashSynopsis: 'bash [options] [command_or_file ...]',
-    bashDescription: 'An sh-compatible command interpreter that runs what is typed in the terminal or read from a file. The full reference is in the Documentation tab:',
+    bashDescription: 'An sh-compatible command interpreter that runs what is typed in the terminal or read from a file. The full reference is in the Help tab:',
     bashHelp: 'Use “help command” to see each one.',
-    helpIntro: 'Shell builtins. Type `help name` to see one, or open the Documentation tab.',
+    helpIntro: 'Shell builtins. Type `help name` to see one, or open the Help tab.',
     builtinHint: (n) => `(${n} is a bash builtin: try “help ${n}”)`,
   },
 };

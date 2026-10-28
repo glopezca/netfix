@@ -46,7 +46,7 @@
   "features.more.title": "Also included",
   "features.more.1": "Simulation mode that plays packets step by step, with the clock under your control",
   "features.more.2": "An emulated Internet with providers, public DNS and NAT",
-  "features.more.3": "Built-in documentation and man pages for every command",
+  "features.more.3": "Built-in help and man pages for every command",
   "features.more.4": "Interface in British English and Spanish",
 
   "labs.title": "Labs ready to open",

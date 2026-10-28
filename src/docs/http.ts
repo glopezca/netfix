@@ -35,7 +35,7 @@ export const HTTP_DOCS: readonly DocPage[] = [
       h('Desde la Terminal Linux del servidor'),
       p('/var/www/html es la misma carpeta que lista el panel: lo que se escribe ahí aparece en el panel y se sirve al momento. Pertenece a root, así que hace falta sudo.'),
       code('admin@srv:~$ sudo nano /var/www/html/index.html\nadmin@srv:~$ echo "<h1>Hola</h1>" | sudo tee /var/www/html/hola.html\nadmin@srv:~$ ls -l /var/www/html'),
-      tip('Aplicaciones web', 'En el mismo panel, **Aplicaciones web** activa la **Gestión web del servidor** y **Roundcube (correo web)**, cada una en un alias de Apache (/admin, /roundcube) o en un puerto propio. Tienen su propia página en esta documentación.'),
+      tip('Aplicaciones web', 'En el mismo panel, **Aplicaciones web** activa la **Gestión web del servidor** y **Roundcube (correo web)**, cada una en un alias de Apache (/admin, /roundcube) o en un puerto propio. Tienen su propia página en esta ayuda.'),
       warn('Errores habituales', '«This site can’t be reached» en el navegador: el servicio está parado, el nombre no resuelve (prueba con la dirección IP) o no hay ruta hasta el servidor. **403 Forbidden**: Apache no puede leer la carpeta (ver Apache2). Editar /var/www/html sin sudo: «Permission denied».'),
       exercise('Tu primera página', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», publica hola.html con un título `<h1>Hola</h1>` y ábrela desde PC0.', 'Servicios → HTTP → Nuevo fichero `hola.html` → Crear; escribe `<h1>Hola</h1>` y **Guardar**. En PC0 → Navegador: http://www.aula.lab/hola.html muestra «Hola». En la Terminal Linux de PC1, `curl http://www.aula.lab/hola.html` devuelve el mismo HTML.'),
     ],

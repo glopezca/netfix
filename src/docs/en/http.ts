@@ -35,7 +35,7 @@ export const HTTP_DOCS: readonly DocPage[] = [
       h('From the server’s Linux Terminal'),
       p('/var/www/html is the same folder the panel lists: what is written there appears in the panel and is served at once. It belongs to root, so sudo is needed.'),
       code('admin@srv:~$ sudo nano /var/www/html/index.html\nadmin@srv:~$ echo "<h1>Hola</h1>" | sudo tee /var/www/html/hola.html\nadmin@srv:~$ ls -l /var/www/html'),
-      tip('Web applications', 'In the same panel, **Web applications** turns on **Server web management** and **Roundcube (webmail)**, each on an Apache alias (/admin, /roundcube) or on a port of its own. They have their own page in this documentation.'),
+      tip('Web applications', 'In the same panel, **Web applications** turns on **Server web management** and **Roundcube (webmail)**, each on an Apache alias (/admin, /roundcube) or on a port of its own. They have their own page in this help.'),
       warn('Common mistakes', '“This site can’t be reached” in the browser: the service is stopped, the name does not resolve (try the IP address) or there is no route to the server. **403 Forbidden**: Apache cannot read the folder (see Apache2). Editing /var/www/html without sudo: “Permission denied”.'),
       exercise('Your first page', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, publish hola.html with a `<h1>Hola</h1>` heading and open it from PC0.', 'Services → HTTP → New file `hola.html` → Create; write `<h1>Hola</h1>` and **Save**. On PC0 → Web Browser: http://www.aula.lab/hola.html shows “Hola”. In PC1’s Linux Terminal, `curl http://www.aula.lab/hola.html` returns the same HTML.'),
     ],
