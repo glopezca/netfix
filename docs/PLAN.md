@@ -1085,3 +1085,14 @@ Encontrado al preparar la documentación de bash (fase 36d), contrastado con el 
   `ls -la`), las palabras clave no dentro de rutas o palabras con guion, `#` solo al empezar una palabra y `profile`
   solo como `/etc/profile`.
 - **Fase 36 completada:** todos los grupos de la documentación siguen el orden de la paleta y el estilo guiado.
+
+### Fase 37: pendientes, nslookup interactivo, ayuda (v0.21.x)
+
+- **Documentación → Ayuda / Help**, como en las aplicaciones de escritorio: pestaña, título, búsqueda, `man`, `help` y
+  la nota E149 de vim.
+- **Iconos** para Conceptos de red (nodos enlazados), Terminal Linux (ventana con `>_`) y GNU bash (hoja con `#!`),
+  dibujados con las variables de color de los dispositivos para que sigan el tema claro y el oscuro. Son genéricos:
+  ni la mascota de Linux ni el logotipo de GNU.
+- Pendiente: nslookup interactivo (Windows y Linux), orden de las claves de los arrays asociativos como la tabla hash de
+  bash, traza de `[[ ! ( … ) ]]`, errores ICMP relacionados a través de NAT, protección frente a repetición en
+  WireGuard y STP (PVST+) en los switch 2960.

@@ -1,4 +1,4 @@
-/** Order of the Documentation tab (English): the same groups, sections and pages as src/docs/outline.ts. */
+/** Order of the Help tab (English): the same groups, sections and pages as src/docs/outline.ts. */
 import type { OutlineGroup } from '../outline.ts';
 
 export const OUTLINE: readonly OutlineGroup[] = [
@@ -19,10 +19,10 @@ export const OUTLINE: readonly OutlineGroup[] = [
   { id: 'router', title: 'IOS router', icon: 'router', sections: [['DHCP', ['ios-dhcp', 'ios-reservas', 'ios-relay']], ['NAT and ACLs', ['ios-nat', 'ios-acl']], ['VPN', ['ios-ipsec']]] },
   { id: 'linuxrouter', title: 'Linux router', icon: 'linuxrouter', sections: [['Parameters', ['linux-router']], ['Firewall', ['linux-nftables']], ['VPN', ['linux-wireguard']]] },
   { id: 'nube', title: 'ISP cloud', icon: 'cloud', sections: [[null, ['inet-cloud', 'inet-dns']]] },
-  { id: 'red', title: 'Networking concepts', sections: [[null, ['red-broadcast', 'inet-trace']]] },
-  { id: 'linux', title: 'Linux Terminal', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red']], ['Midnight Commander', ['mc']], ['Editors', ['nano', 'vim']]] },
+  { id: 'red', icon: 'network', title: 'Networking concepts', sections: [[null, ['red-broadcast', 'inet-trace']]] },
+  { id: 'linux', icon: 'terminal', title: 'Linux Terminal', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red']], ['Midnight Commander', ['mc']], ['Editors', ['nano', 'vim']]] },
   {
-    id: 'bash', title: 'GNU bash 5.3', sections: [
+    id: 'bash', icon: 'script', title: 'GNU bash 5.3', sections: [
       ['Language', ['bash-sintaxis', 'bash-expansiones', 'bash-control', 'bash-funciones', 'bash-redirecciones']],
       ['Reference', ['bash-variables', 'bash-opciones', 'bash-interactivo', 'bash-53', 'bash-builtins']],
     ],

@@ -1,8 +1,11 @@
-/** Structure of the built-in documentation (rendered by the Documentación tab and by `man`/`help`). */
+/** Structure of the built-in documentation (rendered by the Ayuda tab and by `man`/`help`). */
 import type { Filetype } from '../editors/vim-syntax.ts';
 
 /** Kinds of the palette, for the diagrams and the group icons. */
 export type FigKind = 'pc' | 'server' | 'switch' | 'router' | 'linuxrouter' | 'cloud';
+
+/** Icon of a group of the help: a palette kind, or a topic (networking concepts, the terminal, bash scripts). */
+export type GroupIcon = FigKind | 'network' | 'terminal' | 'script';
 
 export interface FigNode {
   readonly id: string;
@@ -52,8 +55,8 @@ export interface DocGroup {
   readonly id: string;
   readonly title: string;
   readonly pages: readonly DocPage[];
-  /** The palette icon shown next to the group (devices). */
-  readonly icon?: FigKind;
+  /** The icon shown next to the group: the palette one for devices, a topic one for the rest. */
+  readonly icon?: GroupIcon;
 }
 
 export const p = (text: string): DocBlock => ({ kind: 'p', text });

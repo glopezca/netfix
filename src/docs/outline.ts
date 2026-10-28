@@ -1,14 +1,14 @@
 /**
- * Order of the Documentation tab (español): a group per device in the order of the palette (PC, Servidor, Switch
+ * Order of the Ayuda tab (español): a group per device in the order of the palette (PC, Servidor, Switch
  * IOS, Router IOS, Router Linux, Nube) and, inside each one, its services in the order of its window. Every page of
  * the documentation appears exactly once (tests/docs/docs.test.ts).
  */
-import type { FigKind } from './types.ts';
+import type { GroupIcon } from './types.ts';
 
 export interface OutlineGroup {
   readonly id: string;
   readonly title: string;
-  readonly icon?: FigKind;
+  readonly icon?: GroupIcon;
   /** Sections in order: a title (null: no subheading) and the ids of its pages. */
   readonly sections: readonly (readonly [string | null, readonly string[]])[];
 }
@@ -31,10 +31,10 @@ export const OUTLINE: readonly OutlineGroup[] = [
   { id: 'router', title: 'Router IOS', icon: 'router', sections: [['DHCP', ['ios-dhcp', 'ios-reservas', 'ios-relay']], ['NAT y ACL', ['ios-nat', 'ios-acl']], ['VPN', ['ios-ipsec']]] },
   { id: 'linuxrouter', title: 'Router Linux', icon: 'linuxrouter', sections: [['Parámetros', ['linux-router']], ['Cortafuegos', ['linux-nftables']], ['VPN', ['linux-wireguard']]] },
   { id: 'nube', title: 'Nube ISP', icon: 'cloud', sections: [[null, ['inet-cloud', 'inet-dns']]] },
-  { id: 'red', title: 'Conceptos de red', sections: [[null, ['red-broadcast', 'inet-trace']]] },
-  { id: 'linux', title: 'Terminal Linux', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red']], ['Midnight Commander', ['mc']], ['Editores', ['nano', 'vim']]] },
+  { id: 'red', icon: 'network', title: 'Conceptos de red', sections: [[null, ['red-broadcast', 'inet-trace']]] },
+  { id: 'linux', icon: 'terminal', title: 'Terminal Linux', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red']], ['Midnight Commander', ['mc']], ['Editores', ['nano', 'vim']]] },
   {
-    id: 'bash', title: 'GNU bash 5.3', sections: [
+    id: 'bash', icon: 'script', title: 'GNU bash 5.3', sections: [
       ['Lenguaje', ['bash-sintaxis', 'bash-expansiones', 'bash-control', 'bash-funciones', 'bash-redirecciones']],
       ['Referencia', ['bash-variables', 'bash-opciones', 'bash-interactivo', 'bash-53', 'bash-builtins']],
     ],

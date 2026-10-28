@@ -2,6 +2,7 @@
 import { t } from '../i18n/t.ts';
 import { el, clear, staticSvg } from './dom.ts';
 import { ICONS } from './icons.ts';
+import { TOPIC_ICONS } from './doc-icons.ts';
 import { brandImage } from './brand.ts';
 import { docGroups, findPage, searchDocs } from '../docs/index.ts';
 import type { DocGroup, DocPage } from '../docs/index.ts';
@@ -65,8 +66,9 @@ export class DocsView {
 
   /** A group: its icon and title (folds), then its sections as subheadings and the pages indented below them. */
   private groupBox(g: DocGroup): HTMLElement {
-    // Devices: their palette icon; Netfix: its N; the rest (concepts, terminal, bash): a plain mark.
-    const icon = g.icon ? staticSvg(ICONS[g.icon]) : g.id === 'netfix' ? brandImage('isologoN', 'doc-group-brand', '') : el('span', { class: 'doc-group-dot', 'aria-hidden': 'true' });
+    // Devices: their palette icon; topics (concepts, terminal, bash): theirs; Netfix: its N.
+    const art = g.icon === undefined ? undefined : g.icon === 'network' || g.icon === 'terminal' || g.icon === 'script' ? TOPIC_ICONS[g.icon] : ICONS[g.icon];
+    const icon = art ? staticSvg(art) : g.id === 'netfix' ? brandImage('isologoN', 'doc-group-brand', '') : el('span', { class: 'doc-group-dot', 'aria-hidden': 'true' });
     icon.classList.add('doc-group-icon');
     const items: HTMLElement[] = [];
     let section: string | undefined;
