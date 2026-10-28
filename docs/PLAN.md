@@ -1137,3 +1137,26 @@ elección con las órdenes de IOS 15.
   ayuda «Spanning tree» (Switch IOS). Las pruebas de tormenta apagan STP con `no spanning-tree vlan 1`.
 - **Pendiente:** Listening/Learning con sus 30 s y BPDU visibles en el modo simulación; err-disable por bpduguard;
   `switchport trunk allowed vlan` (hoy un troncal lleva todas las VLAN).
+
+### Fase 39: aviso de cambios sin guardar al cambiar de laboratorio (v0.22.1)
+
+- **Qué es «sin guardar»:** la huella (SHA-256 del JSON de la topología) difiere de la del último momento en que se
+  cargó o se guardó en un archivo. Se guarda junto al autoguardado del navegador, así que sobrevive a recargar la
+  página y a cambiar de idioma (la interfaz se reconstruye). El JSON no cambia con el paso del tiempo simulado (prueba
+  con todos los laboratorios).
+- **El aviso:** al elegir un laboratorio con cambios sin guardar, un diálogo modal (`<dialog>`) explica que se
+  perderán y ofrece **Cancelar** (el foco por defecto; también Esc) o **Abrir el laboratorio**. Sin cambios, abre sin
+  preguntar.
+- **«Área de trabajo en blanco» desaparece** del desplegable: hace lo mismo que **Nuevo**.
+- `src/ui/workspace-store.ts` (autoguardado y huella) y `src/ui/confirm-dialog.ts` salen de `main.ts`, que pasaba de
+  400 líneas.
+- Pruebas: unidad (huella, marcado, estabilidad en el tiempo) y e2e (cambio → aviso → Cancelar conserva; Abrir cambia;
+  sin cambios no pregunta; ya no está el área en blanco).
+- **Hecho (v0.22.1):** como en el plan. «Guardar» solo marca la red como guardada si el archivo se escribió o se
+  copió (no al cancelar ni si falla el portapapeles). Embebido, la huella vive en memoria y se reinicia con cada
+  `embed`. `undo-keys.ts`, `readTopologyFile` e `initialWorkspace` también salen de `main.ts`.
+- **Revisión:** la huella usa JSON con las claves ordenadas, y guardar y cargar cualquier laboratorio da la misma
+  huella. Eso destapó un fallo real: al cargar el laboratorio SSH, /home/ana quedaba de root (los directorios padre
+  de un archivo restaurado se marcaban como escritos por el usuario y se guardaban); ahora son del sistema y la casa
+  pasa a su usuario. Con un diálogo abierto no se abre otro ni actúan los atajos; si la interfaz se rehace mientras
+  pregunta, la respuesta ya no cambia la red. Un id `blanco` en las restricciones del aula simplemente no coincide.

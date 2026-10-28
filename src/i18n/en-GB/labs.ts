@@ -18,8 +18,6 @@ export const LABS_EN: Readonly<Record<LabsKey, string>> = {
   'lab.cliente.summary': 'CPE gets its WAN address with “ip address dhcp”; ISP pins it with a host pool and its cisco-… client-identifier.',
   'lab.servidores.title': 'Server: DHCP, DNS, web, mail and SSH',
   'lab.servidores.summary': 'SRV (Ubuntu) provides DHCP, DNS (aula.lab), web, mail and SSH. Try: browser http://www.aula.lab, mail ana/ana1 (PC0, IMAP) and luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (password netfix), webmail http://webmail.aula.lab/roundcube and web admin http://srv.aula.lab:10000 (admin/netfix).',
-  'lab.blanco.title': 'Blank workspace',
-  'lab.blanco.summary': 'Start from scratch: place devices and connect them with the cable tool.',
   'lab.internet.title': 'Internet: two sites and public DNS',
   'lab.internet.summary': 'SEDE1 goes out over fibre (ISP-Norte, public address by DHCP) with NAT overload; site 2 uses the ISP-Sur operator router (ADSL) and publishes its server (80, 22, 53/udp). sede2.es is delegated to SRV-SEDE2. Try: browser http://www.sede2.es, tracert 8.8.8.8, curl ifconfig.me, show ip nat translations.',
   'lab.vpn-ipsec.title': 'IPsec VPN between two sites (2911)',

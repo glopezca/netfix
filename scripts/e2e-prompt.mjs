@@ -18,6 +18,8 @@ const LINUX = /^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{2}:\d{2} \S+@\S+:~[#$] $/;
 const WINDOWS = /^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{2}:\d{2}:\d{2} \S+@\S+ C:\\.*[#$] $/;
 try {
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, locale: 'es-ES' });
+  // A lab over unsaved changes asks first (scripts/e2e-unsaved.mjs checks it); these flows always go ahead.
+  await page.addLocatorHandler(page.locator('dialog.confirm-dialog[open]'), (d) => d.locator('button.danger').click());
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(`http://localhost:${port}/`);

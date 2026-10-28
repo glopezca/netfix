@@ -719,6 +719,13 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .syn-view[data-filetype="messages"] { white-space: pre-wrap; }
 
 
+/* Modal question (unsaved changes before opening a lab). */
+.confirm-dialog { max-width: min(460px, calc(100vw - 32px)); padding: 20px 22px 18px; border: 1px solid var(--line); border-radius: var(--radius-win); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+.confirm-dialog::backdrop { background: rgba(23, 35, 42, 0.35); }
+.confirm-title { margin: 0 0 8px; font-size: 17px; }
+.confirm-body { margin: 0 0 18px; line-height: 1.45; }
+.confirm-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
 </style>
   <style>
 /* Management GUI of Server and Linux router, as the simulated browser shows it (classes web-adm-*).
@@ -1179,6 +1186,10 @@ const APP_ES = {
     'hint.realtime': 'Tiempo real: la red funciona sola; los cambios se aplican al instante.',
     'hint.advanced': 'Reloj adelantado: las concesiones se renuevan o caducan como en un equipo real.',
     'hint.empty': 'Área de trabajo vacía.',
+    'unsaved.title': 'Cambios sin guardar',
+    'unsaved.body': 'La red actual tiene cambios que no has guardado. Si abres el laboratorio «{lab}», se perderán. Para conservarlos, cancela y pulsa Guardar.',
+    'unsaved.cancel': 'Cancelar',
+    'unsaved.proceed': 'Abrir el laboratorio',
     'hint.copied': 'Topología copiada al portapapeles: pégala en un archivo .json para guardarla.',
     'hint.copyFailed': 'No se pudo copiar. Usa la versión descargable de Netfix para guardar archivos.',
     'hint.saved': 'Topología guardada.',
@@ -1248,6 +1259,10 @@ const APP_EN = {
     'hint.realtime': 'Realtime: the network runs by itself; changes apply immediately.',
     'hint.advanced': 'Clock advanced: leases renew or expire as on real equipment.',
     'hint.empty': 'Empty workspace.',
+    'unsaved.title': 'Unsaved changes',
+    'unsaved.body': 'The current network has changes you have not saved. If you open the lab “{lab}”, they will be lost. To keep them, cancel and press Save.',
+    'unsaved.cancel': 'Cancel',
+    'unsaved.proceed': 'Open the lab',
     'hint.copied': 'Topology copied to the clipboard: paste it into a .json file to keep it.',
     'hint.copyFailed': 'Could not copy. Use the downloadable version of Netfix to save files.',
     'hint.saved': 'Topology saved.',
@@ -1942,8 +1957,6 @@ const LABS_ES = {
     'lab.cliente.summary': 'CPE obtiene su dirección IP WAN con «ip address dhcp»; ISP la fija con un pool host y su client-identifier cisco-….',
     'lab.servidores.title': 'Server: DHCP, DNS, web, correo y SSH',
     'lab.servidores.summary': 'SRV (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave netfix), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/netfix).',
-    'lab.blanco.title': 'Área de trabajo en blanco',
-    'lab.blanco.summary': 'Empieza desde cero: coloca dispositivos y conéctalos con el cable.',
     'lab.internet.title': 'Internet: dos sedes y DNS públicos',
     'lab.internet.summary': 'SEDE1 sale por fibra (ISP-Norte, dirección IP pública por DHCP) con NAT overload; la sede 2 usa el router del operador de ISP-Sur (ADSL) y publica su servidor (80, 22, 53/udp). sede2.es está delegado en SRV-SEDE2. Prueba: navegador http://www.sede2.es, tracert 8.8.8.8, curl ifconfig.me, show ip nat translations.',
     'lab.vpn-ipsec.title': 'VPN IPsec entre dos sedes (2911)',
@@ -1980,8 +1993,6 @@ const LABS_EN = {
     'lab.cliente.summary': 'CPE gets its WAN address with “ip address dhcp”; ISP pins it with a host pool and its cisco-… client-identifier.',
     'lab.servidores.title': 'Server: DHCP, DNS, web, mail and SSH',
     'lab.servidores.summary': 'SRV (Ubuntu) provides DHCP, DNS (aula.lab), web, mail and SSH. Try: browser http://www.aula.lab, mail ana/ana1 (PC0, IMAP) and luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (password netfix), webmail http://webmail.aula.lab/roundcube and web admin http://srv.aula.lab:10000 (admin/netfix).',
-    'lab.blanco.title': 'Blank workspace',
-    'lab.blanco.summary': 'Start from scratch: place devices and connect them with the cable tool.',
     'lab.internet.title': 'Internet: two sites and public DNS',
     'lab.internet.summary': 'SEDE1 goes out over fibre (ISP-Norte, public address by DHCP) with NAT overload; site 2 uses the ISP-Sur operator router (ADSL) and publishes its server (80, 22, 53/udp). sede2.es is delegated to SRV-SEDE2. Try: browser http://www.sede2.es, tracert 8.8.8.8, curl ifconfig.me, show ip nat translations.',
     'lab.vpn-ipsec.title': 'IPsec VPN between two sites (2911)',
@@ -9921,8 +9932,9 @@ class Vfs {
     /** Creates a node as root without marking it dirty (skeleton). */
     seed(path, node, mode, uid = 0, gid = 0) {
         const p = normalize(path);
+        // Missing parents are system directories (root's, not written by the user, so not saved with the topology).
         if (p !== '/' && !this.tryLookup(dirname(p)))
-            this.mkdir(dirname(p), ROOT, true);
+            this.seed(dirname(p), { kind: 'dir' });
         const parent = this.lookup(dirname(p));
         const meta = { uid, gid, mtime: this.now() };
         const full = node.kind === 'dir'
@@ -12878,6 +12890,18 @@ function seedEtc(fs, o) {
     fs.seed('/proc/loadavg', { kind: 'file', content: '0.00 0.01 0.00 1/123 4321\n' });
 }
 /** The account files and home directories of the given users. */
+/**
+ * A home that only exists because a saved file inside it was restored before the account (a topology loaded from a
+ * file): it was created as root's parent directory, so it goes to its user as useradd -m would have made it.
+ */
+function adoptHome(fs, u) {
+    const home = fs.tryLookup(u.home, undefined, false);
+    if (!home || home.kind !== 'dir' || home.dirty || u.uid === 0 || home.uid !== 0)
+        return;
+    home.uid = u.uid;
+    home.gid = u.gid;
+    home.mode = 0o750;
+}
 function seedUsers(fs, users) {
     const groups = new Map([[0, 'root'], [4, 'adm'], [27, 'sudo'], [33, 'www-data'], [42, 'shadow'], [100, 'users']]);
     for (const u of users)
@@ -12889,6 +12913,8 @@ function seedUsers(fs, users) {
     for (const u of users) {
         if (!fs.exists(u.home))
             fs.seed(u.home, { kind: 'dir' }, u.uid === 0 ? 0o700 : 0o750, u.uid, u.gid);
+        else
+            adoptHome(fs, u);
         const files = [['.bashrc', u.uid === 0 ? ROOT_BASHRC : BASHRC], ['.profile', PROFILE]];
         if (u.uid !== 0)
             files.push(['.bash_logout', '# ~/.bash_logout: executed by bash(1) when login shell exits.\n']);
@@ -17645,7 +17671,7 @@ const NETFIX_DOCS = {
                 table(['Control', 'Qué hace'], [
                     ['Red / Ayuda / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta ayuda, la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
                     ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S).'],
-                    ['Laboratorios…', 'Carga una práctica preparada: DHCP (básico, reservas, relay, VLAN, snooping, router cliente), Server, Internet con dos sedes, VPN IPsec y WireGuard, router Linux con DMZ, DNS que reenvía, SSH/SFTP y bastionado.'],
+                    ['Laboratorios…', 'Carga una práctica preparada: DHCP (básico, reservas, relay, VLAN, snooping, router cliente), spanning tree, Server, Internet con dos sedes, VPN IPsec y WireGuard, router Linux con DMZ, DNS que reenvía, SSH/SFTP y bastionado. Si la red actual tiene cambios sin guardar, pregunta antes de reemplazarla.'],
                     ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
                     ['Tiempo real / Simulación', 'Modo de ejecución (ver «Tiempo real y simulación»).'],
                     ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la ayuda y las páginas web simuladas sin recargar.'],
@@ -19919,7 +19945,7 @@ const NETFIX_DOCS = {
                 table(['Control', 'What it does'], [
                     ['Network / Help / Donations / About', 'Switches between the workspace, this help, the page for supporting the project (PayPal.Me) and the version, authorship, licence and attribution information (taken from package.json and LICENSE.md).'],
                     ['New · Open… · Save', 'Empty workspace, open a .json file or save the topology (Ctrl+S).'],
-                    ['Labs…', 'Loads a ready-made exercise: DHCP (basic, reservations, relay, VLAN, snooping, client router), Server, Internet with two sites, IPsec and WireGuard VPN, Linux router with DMZ, forwarding DNS, SSH/SFTP and hardening.'],
+                    ['Labs…', 'Loads a ready-made exercise: DHCP (basic, reservations, relay, VLAN, snooping, client router), spanning tree, Server, Internet with two sites, IPsec and WireGuard VPN, Linux router with DMZ, forwarding DNS, SSH/SFTP and hardening. If the current network has unsaved changes, it asks before replacing it.'],
                     ['Clock and “Advance clock…”', 'Simulated time. Moving it forward 1 minute, 1 hour or 1 day makes DHCP leases expire or renew.'],
                     ['Realtime / Simulation', 'Execution mode (see “Realtime and simulation”).'],
                     ['Language', 'Español (España) or English (UK): changes the whole interface, the help and the simulated web pages without reloading.'],
@@ -29520,7 +29546,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.22.0",
+    "version": "0.22.1",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -58352,12 +58378,6 @@ interface GigabitEthernet0/0
     dnsForwardLab,
     sshLab,
     hardeningLab,
-    {
-        id: 'blanco',
-        title: LABS_ES['lab.blanco.title'],
-        summary: LABS_ES['lab.blanco.summary'],
-        build: () => new Topology(),
-    },
 ];
 /** The labs, with areas drawn around their networks where they help to read the diagram. */
 const EXAMPLES = LABS.map((ex) => ({ ...ex, build: () => decorateLab(ex.id, ex.build()) }));
@@ -58910,14 +58930,16 @@ return { PLACEABLE, palette };
 __m["ui/save-file.js"] = (() => {
 /** Saving the topology: clipboard in the embedded artifact, file picker when available, download otherwise. */
 const { el } = __m["ui/dom.js"];
+const { Topology } = __m["net/topology.js"];
 const { t } = __m["i18n/t.js"];
 function copyToClipboard(json) {
+    const failed = { message: t('hint.copyFailed'), saved: false };
     const clip = navigator.clipboard;
     if (!clip)
-        return Promise.resolve(t('hint.copyFailed'));
-    return clip.writeText(json).then(() => t('hint.copied'), () => t('hint.copyFailed'));
+        return Promise.resolve(failed);
+    return clip.writeText(json).then(() => ({ message: t('hint.copied'), saved: true }), () => failed);
 }
-/** Saves and returns the message for the status line ('' when the user cancelled). */
+/** Saves the topology (the message is '' when the user cancelled). */
 async function saveTopology(topo) {
     const json = JSON.stringify(topo.toJSON(), null, 2);
     if (document.getElementById('app')?.dataset.embed === 'artifact')
@@ -58930,11 +58952,11 @@ async function saveTopology(topo) {
             const w = await handle.createWritable();
             await w.write(json);
             await w.close();
-            return t('hint.saved');
+            return { message: t('hint.saved'), saved: true };
         }
         catch (err) {
             if (err instanceof DOMException && err.name === 'AbortError')
-                return '';
+                return { message: '', saved: false };
         }
     }
     const blob = new Blob([json], { type: 'application/json' });
@@ -58943,10 +58965,159 @@ async function saveTopology(topo) {
     a.click();
     a.remove();
     window.setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    return t('hint.downloaded', { name });
+    return { message: t('hint.downloaded', { name }), saved: true };
+}
+/** A topology file the user picked: the topology, or the message saying why it cannot be opened. */
+async function readTopologyFile(file) {
+    try {
+        return Topology.fromJSON(JSON.parse(await file.text()));
+    }
+    catch (err) {
+        return t('hint.openFailed', { name: file.name, error: err instanceof Error ? err.message : t('hint.unknownFormat') });
+    }
 }
 
-return { saveTopology };
+return { saveTopology, readTopologyFile };
+})();
+__m["ui/workspace-store.js"] = (() => {
+/**
+ * The workspace kept between visits: the browser autosave, and the fingerprint of the topology as it was last loaded
+ * or saved to a file, to tell whether there are unsaved changes before replacing it.
+ */
+const { Topology } = __m["net/topology.js"];
+const { sha256, toBase64 } = __m["core/sha256.js"];
+const AUTOSAVE_KEY = 'netfix:workspace:v1';
+/** Workspace autosaved before the rename (netsim ≤ 0.4.0). */
+const LEGACY_AUTOSAVE_KEY = 'netsim:workspace:v1';
+const SAVED_KEY = 'netfix:workspace-saved:v1';
+/** Embedded nothing is stored in the browser: this map survives rebuilding the interface in another language. */
+const memory = new Map();
+const MEMORY_STORE = {
+    get: (k) => memory.get(k) ?? null,
+    set: (k, v) => { memory.set(k, v); },
+    clear: () => memory.clear(),
+};
+/** The change sent to the host page that embeds Netfix; an error there must not break the simulator. */
+function notifyHost(s, topo) {
+    try {
+        s.onChange?.(topo.toJSON());
+    }
+    catch {
+        // The host page's own error: nothing to undo here.
+    }
+}
+/** JSON with the keys of every object sorted, so the same content always gives the same text. */
+function canonical(value) {
+    return JSON.stringify(value, (_k, v) => (v && typeof v === 'object' && !Array.isArray(v)
+        ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+        : v));
+}
+/** SHA-256 of the topology file: equal fingerprints, same network (whatever the order of the keys). */
+function fingerprint(topo) {
+    return toBase64(sha256(new TextEncoder().encode(canonical(topo.toJSON()))));
+}
+/** The autosaved workspace, or null (none, or unreadable). */
+function restoreWorkspace(store) {
+    const saved = store.get(AUTOSAVE_KEY) ?? store.get(LEGACY_AUTOSAVE_KEY);
+    if (!saved)
+        return null;
+    try {
+        return Topology.fromJSON(JSON.parse(saved));
+    }
+    catch {
+        return null;
+    }
+}
+/** Whether the workspace changed since it was loaded or saved to a file (the mark lives in the store). */
+class SavedState {
+    store;
+    constructor(store) {
+        this.store = store;
+    }
+    /** Loaded from a lab or a file, or saved: this is the clean state. */
+    mark(topo) {
+        this.store.set(SAVED_KEY, fingerprint(topo));
+    }
+    /** The workspace restored at start-up: without a mark yet (first run after an update) it counts as saved. */
+    adopt(topo) {
+        if (this.store.get(SAVED_KEY) === null)
+            this.mark(topo);
+    }
+    dirty(topo) {
+        return this.store.get(SAVED_KEY) !== fingerprint(topo);
+    }
+}
+/** The autosaved workspace (the saved mark it had) or, when there is none or it is corrupt, `fallback` as just loaded. */
+function initialWorkspace(store, saved, fallback) {
+    const restored = restoreWorkspace(store);
+    if (restored) {
+        saved.adopt(restored);
+        return restored;
+    }
+    const topo = fallback();
+    saved.mark(topo);
+    return topo;
+}
+
+return { AUTOSAVE_KEY, MEMORY_STORE, notifyHost, fingerprint, restoreWorkspace, SavedState, initialWorkspace };
+})();
+__m["ui/confirm-dialog.js"] = (() => {
+/** A modal question with two answers (Cancel is focused, and Esc or a click outside also cancels). */
+const { el } = __m["ui/dom.js"];
+const { button } = __m["ui/forms.js"];
+const { t } = __m["i18n/t.js"];
+/** Resolves true only when the user picks the second answer. */
+function confirmDialog(text) {
+    return new Promise((resolve) => {
+        const dialog = el('dialog', { class: 'confirm-dialog', 'aria-labelledby': 'confirm-title', 'aria-describedby': 'confirm-body' });
+        const close = (answer) => {
+            dialog.close();
+            dialog.remove();
+            resolve(answer);
+        };
+        const cancel = button(text.cancel, () => close(false), 'btn');
+        const proceed = button(text.proceed, () => close(true), 'btn danger');
+        dialog.append(el('h2', { id: 'confirm-title', class: 'confirm-title' }, text.title), el('p', { id: 'confirm-body', class: 'confirm-body' }, text.body), el('div', { class: 'confirm-actions' }, cancel, proceed));
+        dialog.addEventListener('cancel', (e) => { e.preventDefault(); close(false); });
+        dialog.addEventListener('click', (e) => { if (e.target === dialog)
+            close(false); });
+        document.body.appendChild(dialog);
+        dialog.showModal();
+        cancel.focus();
+    });
+}
+/** The question before a lab replaces changes that were not saved. */
+function unsavedLabText(lab) {
+    return { title: t('unsaved.title'), body: t('unsaved.body', { lab }), cancel: t('unsaved.cancel'), proceed: t('unsaved.proceed') };
+}
+
+return { confirmDialog, unsavedLabText };
+})();
+__m["ui/undo-keys.js"] = (() => {
+/** Undo and redo on the network view: the keyboard shortcuts and the state of the palette buttons. */
+/** Ctrl+Z (undo), Ctrl+Y or Ctrl+Shift+Z (redo); not while typing or inside a window (it has its own undo). */
+function undoShortcut(e) {
+    const key = e.key.toLowerCase();
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || (key !== 'z' && key !== 'y'))
+        return null;
+    const target = e.target;
+    if (target instanceof Element && target.closest('input, textarea, select, .win-layer'))
+        return null;
+    if (target instanceof HTMLElement && target.isContentEditable)
+        return null;
+    return key === 'y' || e.shiftKey ? 'redo' : 'undo';
+}
+/** The undo and redo buttons are enabled only when there is something to undo or redo. */
+function syncUndoButtons(palette, edits) {
+    const undo = palette.querySelector('.undo-btn');
+    const redo = palette.querySelector('.redo-btn');
+    if (undo)
+        undo.disabled = !edits.canUndo();
+    if (redo)
+        redo.disabled = !edits.canRedo();
+}
+
+return { undoShortcut, syncUndoButtons };
 })();
 __m["classroom/checklist.js"] = (() => {
 const { parseIp } = __m["core/ip.js"];
@@ -59401,16 +59572,17 @@ const { donateView } = __m["ui/donate-view.js"];
 const { topbar } = __m["ui/topbar.js"];
 const { palette } = __m["ui/palette.js"];
 const { labText } = __m["ui/lab-text.js"];
-const { saveTopology } = __m["ui/save-file.js"];
+const { readTopologyFile, saveTopology } = __m["ui/save-file.js"];
+const { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } = __m["ui/workspace-store.js"];
+const { confirmDialog, unsavedLabText } = __m["ui/confirm-dialog.js"];
+const { syncUndoButtons, undoShortcut } = __m["ui/undo-keys.js"];
 const { t } = __m["i18n/t.js"];
 const { DrawState, drawBar } = __m["ui/draw-bar.js"];
 const { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } = __m["i18n/locale.js"];
 const { allowsLab, allowsTab, lockedPrompt } = __m["classroom/restrictions.js"];
 const { forceTimestampPrompt } = __m["shells/prompt-clock.js"];
 const { STANDALONE, checkMount, embedSession, evaluateFile, installApi } = __m["classroom/embed.js"];
-const AUTOSAVE_KEY = 'netfix:workspace:v1';
-/** Workspace autosaved before the rename (netsim ≤ 0.4.0). */
-const LEGACY_AUTOSAVE_KEY = 'netsim:workspace:v1';
+const BROWSER_STORE = { get: safeStorageGet, set: safeStorageSet };
 const TICK_MS = 250;
 const AUTOSAVE_DELAY_MS = 800;
 class App {
@@ -59434,7 +59606,11 @@ class App {
     drawBarEl;
     view = 'net';
     session;
+    /** What was last loaded or saved to a file: opening a lab over other changes asks first. */
+    saved;
     onKeyDown = (e) => {
+        if (document.querySelector('dialog[open]'))
+            return;
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
             e.preventDefault();
             if (this.session.policy.fileSave)
@@ -59456,9 +59632,12 @@ class App {
     };
     constructor(root, session, topo, initial = { view: 'net', mode: 'realtime' }) {
         this.session = session;
+        this.saved = new SavedState(session.embedded ? MEMORY_STORE : BROWSER_STORE);
         this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
         this.view = initial.view === 'docs' && !this.session.policy.docs ? 'net' : initial.view;
-        this.topo = topo ?? this.initialTopology();
+        this.topo = topo ?? initialWorkspace(BROWSER_STORE, this.saved, () => EXAMPLES[0].build());
+        if (topo)
+            this.saved.adopt(topo);
         this.hintEl = el('p', { class: 'hint', role: 'status' });
         this.clockEl = el('time', { class: 'clock' });
         this.canvas = new Canvas(this.topo, {
@@ -59515,28 +59694,25 @@ class App {
         this.sim.dispose();
         forgetAll();
     }
-    initialTopology() {
-        const saved = safeStorageGet(AUTOSAVE_KEY) ?? safeStorageGet(LEGACY_AUTOSAVE_KEY);
-        if (saved) {
-            try {
-                return Topology.fromJSON(JSON.parse(saved));
-            }
-            catch {
-                // A corrupt autosave falls back to the first example.
-            }
-        }
-        return EXAMPLES[0].build();
+    /** A lab from the list; over unsaved changes, only after the user agrees to lose them. */
+    async openLab(id) {
+        const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
+        if (!ex || document.querySelector('dialog[open]'))
+            return;
+        const { title, summary } = labText(ex);
+        const topo = this.topo;
+        if (this.saved.dirty(topo) && !(await confirmDialog(unsavedLabText(title))))
+            return;
+        // Rebuilt in another language, or replaced, while the question was open: this App no longer decides.
+        if (app === this && this.topo === topo)
+            this.load(ex.build(), summary);
     }
     topbar() {
         return topbar({
             newWorkspace: () => this.load(new Topology(), t('hint.empty')),
             openFile: () => this.fileInput.click(),
             save: () => void this.save(),
-            loadExample: (id) => {
-                const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
-                if (ex)
-                    this.load(ex.build(), labText(ex).summary);
-            },
+            loadExample: (id) => void this.openLab(id),
             advance: (ms) => this.advance(ms),
             setMode: (m) => this.setMode(m),
             showView: (v) => this.showView(v),
@@ -59619,18 +59795,13 @@ class App {
         this.markUndo();
         this.scheduleSave();
     }
-    /** Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z on the network view, except while typing or inside a window (its own undo). */
+    /** Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z on the network view. */
     undoKey(e) {
-        const key = e.key.toLowerCase();
-        if (!(e.ctrlKey || e.metaKey) || e.altKey || (key !== 'z' && key !== 'y') || this.view !== 'net')
-            return false;
-        const target = e.target;
-        if (target instanceof Element && target.closest('input, textarea, select, .win-layer'))
-            return false;
-        if (target instanceof HTMLElement && target.isContentEditable)
+        const which = this.view === 'net' ? undoShortcut(e) : null;
+        if (!which)
             return false;
         e.preventDefault();
-        this.undo(key === 'y' || e.shiftKey);
+        this.undo(which === 'redo');
         return true;
     }
     undo(redo) {
@@ -59649,15 +59820,8 @@ class App {
         const left = done.skipped ? ` ${t('undo.cablesLeft', { n: String(done.skipped) })}` : '';
         this.hintEl.textContent = t(redo ? 'undo.redone' : 'undo.undone', { what: t(`undo.${done.kind}`) }) + left;
     }
-    /** The undo and redo buttons are enabled only when there is something to undo or redo. */
     markUndo() {
-        const edits = this.canvas.edits();
-        const undo = this.paletteEl.querySelector('.undo-btn');
-        const redo = this.paletteEl.querySelector('.redo-btn');
-        if (undo)
-            undo.disabled = !edits.canUndo();
-        if (redo)
-            redo.disabled = !edits.canRedo();
+        syncUndoButtons(this.paletteEl, this.canvas.edits());
     }
     tick() {
         if (this.mode === 'realtime' || this.topo.net.pending() > 0)
@@ -59676,6 +59840,7 @@ class App {
         this.windows.closeAll();
         forgetAll();
         this.topo = topo;
+        this.saved.mark(topo);
         this.canvas.setTopology(topo);
         this.sim.attach(topo);
         this.markUndo();
@@ -59693,35 +59858,28 @@ class App {
         if (!this.session.embedded)
             safeStorageSet(AUTOSAVE_KEY, JSON.stringify(this.topo.toJSON()));
         else
-            notify(this.session, this.topo);
+            notifyHost(this.session, this.topo);
     }
     async save() {
-        this.hintEl.textContent = await saveTopology(this.topo);
+        const done = await saveTopology(this.topo);
+        if (done.saved)
+            this.saved.mark(this.topo);
+        this.hintEl.textContent = done.message;
     }
     async openFile() {
         const file = this.fileInput.files?.[0];
         this.fileInput.value = '';
         if (!file)
             return;
-        try {
-            this.load(Topology.fromJSON(JSON.parse(await file.text())), t('hint.opened', { name: file.name }));
-        }
-        catch (err) {
-            this.hintEl.textContent = t('hint.openFailed', { name: file.name, error: err instanceof Error ? err.message : t('hint.unknownFormat') });
-        }
+        const read = await readTopologyFile(file);
+        if (typeof read === 'string')
+            this.hintEl.textContent = read;
+        else
+            this.load(read, t('hint.opened', { name: file.name }));
     }
     /** Message for the status line after a language change. */
     announce(text) {
         this.hintEl.textContent = text;
-    }
-}
-/** The change sent to the host page; an error there must not break the simulator. */
-function notify(s, topo) {
-    try {
-        s.onChange?.(topo.toJSON());
-    }
-    catch {
-        // The host page's own error: nothing to undo here.
     }
 }
 let app = null;
@@ -59754,6 +59912,7 @@ function start(mount, s, topo) {
         mountEl.replaceChildren();
     mountEl = mount;
     session = s;
+    MEMORY_STORE.clear();
     setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
     applyDocumentLanguage();
     applyBrand();

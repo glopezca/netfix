@@ -21,6 +21,8 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 try {
   const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, hasTouch: true, locale: 'es-ES' });
   const page = await context.newPage();
+  // A lab over unsaved changes asks first (scripts/e2e-unsaved.mjs checks it); these flows always go ahead.
+  await page.addLocatorHandler(page.locator('dialog.confirm-dialog[open]'), (d) => d.locator('button.danger').click());
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   const cdp = await context.newCDPSession(page);

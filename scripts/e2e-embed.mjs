@@ -16,6 +16,8 @@ const errors = [];
 try {
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 860 }, locale: 'es-ES' });
   const page = await ctx.newPage();
+  // A lab over unsaved changes asks first (scripts/e2e-unsaved.mjs checks it); these flows always go ahead.
+  await page.addLocatorHandler(page.locator('dialog.confirm-dialog[open]'), (d) => d.locator('button.danger').click());
   page.on('pageerror', (e) => errors.push(e.message));
   await page.route('http://aula.test/**', (r) => r.fulfill({ contentType: 'text/html', body: html }));
   await page.goto('http://aula.test/practica');

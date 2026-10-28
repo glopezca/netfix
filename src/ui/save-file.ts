@@ -1,18 +1,25 @@
 /** Saving the topology: clipboard in the embedded artifact, file picker when available, download otherwise. */
 import { el } from './dom.ts';
-import type { Topology } from '../net/topology.ts';
+import { Topology } from '../net/topology.ts';
 import { t } from '../i18n/t.ts';
 
 type Picker = (o: unknown) => Promise<{ createWritable(): Promise<{ write(d: string): Promise<void>; close(): Promise<void> }> }>;
 
-function copyToClipboard(json: string): Promise<string> {
-  const clip = navigator.clipboard;
-  if (!clip) return Promise.resolve(t('hint.copyFailed'));
-  return clip.writeText(json).then(() => t('hint.copied'), () => t('hint.copyFailed'));
+/** The status line message, and whether the topology really left the app (so there is nothing unsaved). */
+export interface SaveResult {
+  readonly message: string;
+  readonly saved: boolean;
 }
 
-/** Saves and returns the message for the status line ('' when the user cancelled). */
-export async function saveTopology(topo: Topology): Promise<string> {
+function copyToClipboard(json: string): Promise<SaveResult> {
+  const failed = { message: t('hint.copyFailed'), saved: false };
+  const clip = navigator.clipboard;
+  if (!clip) return Promise.resolve(failed);
+  return clip.writeText(json).then(() => ({ message: t('hint.copied'), saved: true }), () => failed);
+}
+
+/** Saves the topology (the message is '' when the user cancelled). */
+export async function saveTopology(topo: Topology): Promise<SaveResult> {
   const json = JSON.stringify(topo.toJSON(), null, 2);
   if (document.getElementById('app')?.dataset.embed === 'artifact') return copyToClipboard(json);
   const name = `${t('file.prefix')}-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.netfix.json`;
@@ -23,9 +30,9 @@ export async function saveTopology(topo: Topology): Promise<string> {
       const w = await handle.createWritable();
       await w.write(json);
       await w.close();
-      return t('hint.saved');
+      return { message: t('hint.saved'), saved: true };
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return '';
+      if (err instanceof DOMException && err.name === 'AbortError') return { message: '', saved: false };
     }
   }
   const blob = new Blob([json], { type: 'application/json' });
@@ -34,5 +41,14 @@ export async function saveTopology(topo: Topology): Promise<string> {
   a.click();
   a.remove();
   window.setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  return t('hint.downloaded', { name });
+  return { message: t('hint.downloaded', { name }), saved: true };
+}
+
+/** A topology file the user picked: the topology, or the message saying why it cannot be opened. */
+export async function readTopologyFile(file: File): Promise<Topology | string> {
+  try {
+    return Topology.fromJSON(JSON.parse(await file.text()));
+  } catch (err) {
+    return t('hint.openFailed', { name: file.name, error: err instanceof Error ? err.message : t('hint.unknownFormat') });
+  }
 }

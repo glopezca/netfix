@@ -49,10 +49,11 @@ function snapshot(t: Topology): Outputs {
 }
 
 const golden = fixture<Record<string, Outputs>>('ios-outputs.json');
-const LAB_IDS = Object.keys(golden);
+/** «blanco» was a lab until v0.22.1 (the same as Nuevo); its v0.1 file still opens below. */
+const LAB_IDS = Object.keys(golden).filter((id) => id !== 'blanco');
 
 test('v0.1 labs produce the same IOS and PC outputs as before Server', () => {
-  assert.ok(LAB_IDS.includes('reservas') && LAB_IDS.length === 7);
+  assert.ok(LAB_IDS.includes('reservas') && LAB_IDS.length === 6);
   for (const id of LAB_IDS) {
     const ex = EXAMPLES.find((e) => e.id === id);
     assert.ok(ex, `falta el laboratorio ${id}`);

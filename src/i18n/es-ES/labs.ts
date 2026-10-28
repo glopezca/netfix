@@ -16,8 +16,6 @@ export const LABS_ES = {
   'lab.cliente.summary': 'CPE obtiene su dirección IP WAN con «ip address dhcp»; ISP la fija con un pool host y su client-identifier cisco-….',
   'lab.servidores.title': 'Server: DHCP, DNS, web, correo y SSH',
   'lab.servidores.summary': 'SRV (Ubuntu) da DHCP, DNS (aula.lab), web, correo y SSH. Prueba: navegador http://www.aula.lab, correo ana/ana1 (PC0, IMAP) y luis/luis1 (PC1, POP3), ssh admin@srv.aula.lab (clave netfix), correo web http://webmail.aula.lab/roundcube y gestión web http://srv.aula.lab:10000 (admin/netfix).',
-  'lab.blanco.title': 'Área de trabajo en blanco',
-  'lab.blanco.summary': 'Empieza desde cero: coloca dispositivos y conéctalos con el cable.',
   'lab.internet.title': 'Internet: dos sedes y DNS públicos',
   'lab.internet.summary': 'SEDE1 sale por fibra (ISP-Norte, dirección IP pública por DHCP) con NAT overload; la sede 2 usa el router del operador de ISP-Sur (ADSL) y publica su servidor (80, 22, 53/udp). sede2.es está delegado en SRV-SEDE2. Prueba: navegador http://www.sede2.es, tracert 8.8.8.8, curl ifconfig.me, show ip nat translations.',
   'lab.vpn-ipsec.title': 'VPN IPsec entre dos sedes (2911)',

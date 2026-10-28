@@ -36,7 +36,7 @@ Todo lo que no se indica queda permitido.
 
 | Campo | Valor | Efecto |
 |---|---|---|
-| `labs` | lista de ids (`basico`, `dns-reenvio`…) | Laboratorios que se pueden abrir (`[]`: ninguno) |
+| `labs` | lista de ids (`basico`, `dns-reenvio`…) | Laboratorios que se pueden abrir (`[]`: ninguno). `blanco` ya no existe desde v0.22.1: es **Nuevo** (`fileNew`) |
 | `devices` | `pc`, `server`, `switch`, `router`, `linuxrouter`, `cloud` | Equipos de la paleta |
 | `tabs` | `{ tipo: [pestañas] }` | Pestañas de la ventana de cada tipo de equipo; la primera (Equipo, o ISP en la nube) se mantiene |
 | `docs` | `true` / `false` | Vista Ayuda |

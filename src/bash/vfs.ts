@@ -378,7 +378,8 @@ export class Vfs {
   /** Creates a node as root without marking it dirty (skeleton). */
   seed(path: string, node: { kind: 'file'; content: string } | { kind: 'dir' } | { kind: 'link'; target: string } | { kind: 'dev'; dev: string }, mode?: number, uid = 0, gid = 0): void {
     const p = normalize(path);
-    if (p !== '/' && !this.tryLookup(dirname(p))) this.mkdir(dirname(p), ROOT, true);
+    // Missing parents are system directories (root's, not written by the user, so not saved with the topology).
+    if (p !== '/' && !this.tryLookup(dirname(p))) this.seed(dirname(p), { kind: 'dir' });
     const parent = this.lookup(dirname(p)) as FsNode & { kind: 'dir' };
     const meta = { uid, gid, mtime: this.now() };
     const full: FsNode = node.kind === 'dir'

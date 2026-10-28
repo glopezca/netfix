@@ -131,6 +131,18 @@ function seedEtc(fs: Vfs, o: RootfsOptions): void {
 }
 
 /** The account files and home directories of the given users. */
+/**
+ * A home that only exists because a saved file inside it was restored before the account (a topology loaded from a
+ * file): it was created as root's parent directory, so it goes to its user as useradd -m would have made it.
+ */
+function adoptHome(fs: Vfs, u: UserInfo): void {
+  const home = fs.tryLookup(u.home, undefined, false);
+  if (!home || home.kind !== 'dir' || home.dirty || u.uid === 0 || home.uid !== 0) return;
+  home.uid = u.uid;
+  home.gid = u.gid;
+  home.mode = 0o750;
+}
+
 export function seedUsers(fs: Vfs, users: readonly UserInfo[]): void {
   const groups = new Map<number, string>([[0, 'root'], [4, 'adm'], [27, 'sudo'], [33, 'www-data'], [42, 'shadow'], [100, 'users']]);
   for (const u of users) if (!groups.has(u.gid)) groups.set(u.gid, u.name);
@@ -139,6 +151,7 @@ export function seedUsers(fs: Vfs, users: readonly UserInfo[]): void {
   fs.seed('/etc/group', { kind: 'file', content: [...groups].sort((a, b) => a[0] - b[0]).map(([gid, name]) => `${name}:x:${gid}:${members(gid)}`).join('\n') + '\n' });
   for (const u of users) {
     if (!fs.exists(u.home)) fs.seed(u.home, { kind: 'dir' }, u.uid === 0 ? 0o700 : 0o750, u.uid, u.gid);
+    else adoptHome(fs, u);
     const files: [string, string][] = [['.bashrc', u.uid === 0 ? ROOT_BASHRC : BASHRC], ['.profile', PROFILE]];
     if (u.uid !== 0) files.push(['.bash_logout', '# ~/.bash_logout: executed by bash(1) when login shell exits.\n']);
     for (const [name, content] of files) if (!fs.exists(`${u.home}/${name}`)) fs.seed(`${u.home}/${name}`, { kind: 'file', content }, 0o644, u.uid, u.gid);

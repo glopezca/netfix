@@ -313,12 +313,6 @@ interface GigabitEthernet0/0
   dnsForwardLab,
   sshLab,
   hardeningLab,
-  {
-    id: 'blanco',
-    title: LABS_ES['lab.blanco.title'],
-    summary: LABS_ES['lab.blanco.summary'],
-    build: () => new Topology(),
-  },
 ];
 
 /** The labs, with areas drawn around their networks where they help to read the diagram. */

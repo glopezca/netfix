@@ -37,7 +37,7 @@ export const NETFIX_DOCS: DocGroup = {
         table(['Control', 'Qué hace'], [
           ['Red / Ayuda / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta ayuda, la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
           ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S).'],
-          ['Laboratorios…', 'Carga una práctica preparada: DHCP (básico, reservas, relay, VLAN, snooping, router cliente), Server, Internet con dos sedes, VPN IPsec y WireGuard, router Linux con DMZ, DNS que reenvía, SSH/SFTP y bastionado.'],
+          ['Laboratorios…', 'Carga una práctica preparada: DHCP (básico, reservas, relay, VLAN, snooping, router cliente), spanning tree, Server, Internet con dos sedes, VPN IPsec y WireGuard, router Linux con DMZ, DNS que reenvía, SSH/SFTP y bastionado. Si la red actual tiene cambios sin guardar, pregunta antes de reemplazarla.'],
           ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
           ['Tiempo real / Simulación', 'Modo de ejecución (ver «Tiempo real y simulación»).'],
           ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la ayuda y las páginas web simuladas sin recargar.'],

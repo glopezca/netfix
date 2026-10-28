@@ -15,7 +15,11 @@ import { topbar } from './topbar.ts';
 import type { Mode, View } from './topbar.ts';
 import { palette } from './palette.ts';
 import { labText } from './lab-text.ts';
-import { saveTopology } from './save-file.ts';
+import { readTopologyFile, saveTopology } from './save-file.ts';
+import { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } from './workspace-store.ts';
+import type { KeyStore } from './workspace-store.ts';
+import { confirmDialog, unsavedLabText } from './confirm-dialog.ts';
+import { syncUndoButtons, undoShortcut } from './undo-keys.ts';
 import { t } from '../i18n/t.ts';
 import { DrawState, drawBar } from './draw-bar.ts';
 import { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } from '../i18n/locale.ts';
@@ -26,9 +30,7 @@ import type { DeviceKind } from '../net/topology.ts';
 import { STANDALONE, checkMount, embedSession, evaluateFile, installApi } from '../classroom/embed.ts';
 import type { AppSession, EmbedHandle } from '../classroom/embed.ts';
 
-const AUTOSAVE_KEY = 'netfix:workspace:v1';
-/** Workspace autosaved before the rename (netsim ≤ 0.4.0). */
-const LEGACY_AUTOSAVE_KEY = 'netsim:workspace:v1';
+const BROWSER_STORE: KeyStore = { get: safeStorageGet, set: safeStorageSet };
 const TICK_MS = 250;
 const AUTOSAVE_DELAY_MS = 800;
 
@@ -53,7 +55,10 @@ class App {
   private readonly drawBarEl: HTMLElement;
   private view: View = 'net';
   private readonly session: AppSession;
+  /** What was last loaded or saved to a file: opening a lab over other changes asks first. */
+  private readonly saved: SavedState;
   private readonly onKeyDown = (e: KeyboardEvent): void => {
+    if (document.querySelector('dialog[open]')) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
       if (this.session.policy.fileSave) void this.save();
@@ -73,9 +78,11 @@ class App {
 
   constructor(root: HTMLElement, session: AppSession, topo?: Topology, initial: { readonly view: View; readonly mode: Mode } = { view: 'net', mode: 'realtime' }) {
     this.session = session;
+    this.saved = new SavedState(session.embedded ? MEMORY_STORE : BROWSER_STORE);
     this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
     this.view = initial.view === 'docs' && !this.session.policy.docs ? 'net' : initial.view;
-    this.topo = topo ?? this.initialTopology();
+    this.topo = topo ?? initialWorkspace(BROWSER_STORE, this.saved, () => EXAMPLES[0]!.build());
+    if (topo) this.saved.adopt(topo);
     this.hintEl = el('p', { class: 'hint', role: 'status' });
     this.clockEl = el('time', { class: 'clock' });
     this.canvas = new Canvas(this.topo, {
@@ -133,16 +140,16 @@ class App {
     forgetAll();
   }
 
-  private initialTopology(): Topology {
-    const saved = safeStorageGet(AUTOSAVE_KEY) ?? safeStorageGet(LEGACY_AUTOSAVE_KEY);
-    if (saved) {
-      try {
-        return Topology.fromJSON(JSON.parse(saved));
-      } catch {
-        // A corrupt autosave falls back to the first example.
-      }
-    }
-    return EXAMPLES[0]!.build();
+
+  /** A lab from the list; over unsaved changes, only after the user agrees to lose them. */
+  private async openLab(id: string): Promise<void> {
+    const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
+    if (!ex || document.querySelector('dialog[open]')) return;
+    const { title, summary } = labText(ex);
+    const topo = this.topo;
+    if (this.saved.dirty(topo) && !(await confirmDialog(unsavedLabText(title)))) return;
+    // Rebuilt in another language, or replaced, while the question was open: this App no longer decides.
+    if (app === this && this.topo === topo) this.load(ex.build(), summary);
   }
 
   private topbar(): HTMLElement {
@@ -150,10 +157,7 @@ class App {
       newWorkspace: () => this.load(new Topology(), t('hint.empty')),
       openFile: () => this.fileInput.click(),
       save: () => void this.save(),
-      loadExample: (id) => {
-        const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
-        if (ex) this.load(ex.build(), labText(ex).summary);
-      },
+      loadExample: (id) => void this.openLab(id),
       advance: (ms) => this.advance(ms),
       setMode: (m) => this.setMode(m),
       showView: (v) => this.showView(v),
@@ -238,15 +242,12 @@ class App {
     this.scheduleSave();
   }
 
-  /** Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z on the network view, except while typing or inside a window (its own undo). */
+  /** Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z on the network view. */
   private undoKey(e: KeyboardEvent): boolean {
-    const key = e.key.toLowerCase();
-    if (!(e.ctrlKey || e.metaKey) || e.altKey || (key !== 'z' && key !== 'y') || this.view !== 'net') return false;
-    const target = e.target;
-    if (target instanceof Element && target.closest('input, textarea, select, .win-layer')) return false;
-    if (target instanceof HTMLElement && target.isContentEditable) return false;
+    const which = this.view === 'net' ? undoShortcut(e) : null;
+    if (!which) return false;
     e.preventDefault();
-    this.undo(key === 'y' || e.shiftKey);
+    this.undo(which === 'redo');
     return true;
   }
 
@@ -264,13 +265,8 @@ class App {
     this.hintEl.textContent = t(redo ? 'undo.redone' : 'undo.undone', { what: t(`undo.${done.kind}`) }) + left;
   }
 
-  /** The undo and redo buttons are enabled only when there is something to undo or redo. */
   private markUndo(): void {
-    const edits = this.canvas.edits();
-    const undo = this.paletteEl.querySelector<HTMLButtonElement>('.undo-btn');
-    const redo = this.paletteEl.querySelector<HTMLButtonElement>('.redo-btn');
-    if (undo) undo.disabled = !edits.canUndo();
-    if (redo) redo.disabled = !edits.canRedo();
+    syncUndoButtons(this.paletteEl, this.canvas.edits());
   }
 
   private tick(): void {
@@ -291,6 +287,7 @@ class App {
     this.windows.closeAll();
     forgetAll();
     this.topo = topo;
+    this.saved.mark(topo);
     this.canvas.setTopology(topo);
     this.sim.attach(topo);
     this.markUndo();
@@ -308,36 +305,27 @@ class App {
     window.clearTimeout(this.saveTimer);
     this.saveTimer = 0;
     if (!this.session.embedded) safeStorageSet(AUTOSAVE_KEY, JSON.stringify(this.topo.toJSON()));
-    else notify(this.session, this.topo);
+    else notifyHost(this.session, this.topo);
   }
 
   private async save(): Promise<void> {
-    this.hintEl.textContent = await saveTopology(this.topo);
+    const done = await saveTopology(this.topo);
+    if (done.saved) this.saved.mark(this.topo);
+    this.hintEl.textContent = done.message;
   }
 
   private async openFile(): Promise<void> {
     const file = this.fileInput.files?.[0];
     this.fileInput.value = '';
     if (!file) return;
-    try {
-      this.load(Topology.fromJSON(JSON.parse(await file.text())), t('hint.opened', { name: file.name }));
-    } catch (err) {
-      this.hintEl.textContent = t('hint.openFailed', { name: file.name, error: err instanceof Error ? err.message : t('hint.unknownFormat') });
-    }
+    const read = await readTopologyFile(file);
+    if (typeof read === 'string') this.hintEl.textContent = read;
+    else this.load(read, t('hint.opened', { name: file.name }));
   }
 
   /** Message for the status line after a language change. */
   announce(text: string): void {
     this.hintEl.textContent = text;
-  }
-}
-
-/** The change sent to the host page; an error there must not break the simulator. */
-function notify(s: AppSession, topo: Topology): void {
-  try {
-    s.onChange?.(topo.toJSON());
-  } catch {
-    // The host page's own error: nothing to undo here.
   }
 }
 
@@ -371,6 +359,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology): App {
   if (mountEl && mountEl !== mount) mountEl.replaceChildren();
   mountEl = mount;
   session = s;
+  MEMORY_STORE.clear();
   setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
   applyDocumentLanguage();
   applyBrand();
