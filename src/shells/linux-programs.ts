@@ -11,7 +11,8 @@ import type { Host } from '../devices/host.ts';
 import { httpGet } from './net-tools.ts';
 import { byteLength } from '../web/http.ts';
 import { systemctl, journalctl, ss, ssOptions } from './linux-services.ts';
-import { ip, ping, dig, nslookup, hostCmd, dhclient } from './linux-net.ts';
+import { ip, ping, dig, hostCmd, dhclient } from './linux-net.ts';
+import { nslookupProgram } from './nslookup.ts';
 import { traceroute } from './trace-cmds.ts';
 import { FsError } from '../bash/vfs.ts';
 import { APACHE_TOOLS } from '../services/apache/tools.ts';
@@ -153,7 +154,7 @@ function commandNotFound(ctx: Ctx): number {
 
 export function linuxPrograms(host: Host): Map<string, CommandFn> {
   return new Map<string, CommandFn>([
-    ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookup(host)], ['resolvectl', resolvectl(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)], ['netplan', netplanProgram(host)],
+    ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookupProgram(host)], ['resolvectl', resolvectl(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)], ['netplan', netplanProgram(host)],
     ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['sysctl', sysctl(host)], ['dmesg', dmesg(host)], ['nft', nft(host)], ['nc', nc(host)], ['netcat', nc(host)], ['nmap', nmap(host)], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId], ['sftp', sftp(host)], ['scp', scp(host)],
     ...(host.kind === 'linuxrouter' ? [['wg', wg(host)] as const, ['wg-quick', wgQuick(host)] as const] : []),
     ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],

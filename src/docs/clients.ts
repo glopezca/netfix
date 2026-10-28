@@ -140,7 +140,7 @@ export const CLIENT_DOCS: DocGroup = {
           ['¿Resuelvo nombres?', '`nslookup srv.aula.lab`: si da la dirección IP, el DNS funciona.'],
           ['¿Por dónde va el tráfico?', '`tracert 8.8.8.8`: un salto por cada router del camino.'],
         ),
-        term('cmd', 'C:\\home\\alumno> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\home\\alumno> nslookup srv.aula.lab\nServer:  UnKnown\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
+        term('cmd', 'C:\\home\\alumno> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\home\\alumno> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
         h('Todas las órdenes'),
         table(['Orden', 'Uso'], [
           ['ipconfig [/all]', 'Configuración IP; /all añade MAC, servidor DHCP, DNS y fechas de la concesión.'],
@@ -148,7 +148,7 @@ export const CLIENT_DOCS: DocGroup = {
           ['ping [-n N] destino', 'Eco ICMP (4 por defecto).'],
           ['tracert [-h N] destino', 'Ruta salto a salto (ver «traceroute y tracert»).'],
           ['arp -a · arp -d', 'Muestra o borra la caché ARP.'],
-          ['nslookup nombre [servidor]', 'Consulta DNS.'],
+          ['nslookup [-type=TIPO] nombre [servidor]', 'Consulta DNS; sin argumentos, modo interactivo (`>`, exit para salir).'],
           ['netstat -an', 'Puertos a la escucha y conexiones.'],
           ['curl [-I] URL', 'Cliente HTTP.'],
           ['ssh usuario@host', 'Cliente SSH (también a servidores Ubuntu: abre bash).'],

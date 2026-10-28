@@ -1093,6 +1093,12 @@ Encontrado al preparar la documentación de bash (fase 36d), contrastado con el 
 - **Iconos** para Conceptos de red (nodos enlazados), Terminal Linux (ventana con `>_`) y GNU bash (hoja con `#!`),
   dibujados con las variables de color de los dispositivos para que sigan el tema claro y el oscuro. Son genéricos:
   ni la mascota de Linux ni el logotipo de GNU.
-- Pendiente: nslookup interactivo (Windows y Linux), orden de las claves de los arrays asociativos como la tabla hash de
+- **nslookup interactivo (v0.21.1)** en la Terminal Linux (BIND 9) y en la Windows: sin nombre (o con `-`) muestra
+  `>` y acepta NOMBRE [SERVIDOR], `server`/`lserver`, `set type=` (querytype, q), `set [no]debug` (volcado por
+  secciones), `set all`, `help` y `exit` (Ctrl+C en Windows). Fuera de él, `-type=`, `-debug` y las opciones que no
+  cambian nada (`-timeout=`, `-norecurse`…). Todos los tipos de registro con el formato de cada sistema (MX, NS, TXT,
+  SOA, CNAME, PTR), una dirección IP se busca en la zona inversa, «No answer» con la SOA de la autoridad, y Windows
+  nombra el servidor por su PTR («UnKnown» si no lo hay). El estado de salida de Linux sale del resultado, no del texto.
+- Pendiente: orden de las claves de los arrays asociativos como la tabla hash de
   bash, traza de `[[ ! ( … ) ]]`, errores ICMP relacionados a través de NAT, protección frente a repetición en
   WireGuard y STP (PVST+) en los switch 2960.

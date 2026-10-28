@@ -1,9 +1,9 @@
-/** iproute2, ping, dig/nslookup/host and dhclient as programs of the bash core (Ubuntu output). */
+/** iproute2, ping, dig/host and dhclient as programs of the bash core (Ubuntu output). */
 import type { Ctx } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { resolveHost, dnsQuery, dnsSearch } from './net-tools.ts';
 import { linuxMac } from './linux-files.ts';
-import { digOutput, nslookupOutput, hostOutput } from './dns-format.ts';
+import { digOutput, hostOutput } from './dns-format.ts';
 import { runPing } from '../net/ping.ts';
 import type { PingOutcome } from '../net/ping.ts';
 import { reverseName } from '../net/dns.ts';
@@ -228,16 +228,6 @@ export function dig(host: Host) {
 
 function serverArg(text: string | undefined): number | undefined {
   return text ? parseIp(text) ?? undefined : undefined;
-}
-
-export function nslookup(host: Host) {
-  return (ctx: Ctx): number => {
-    const [name, srv] = ctx.argv.slice(1).filter((a) => !a.startsWith('-'));
-    if (!name) { ctx.err('Usage: nslookup <name> [server]\n'); return 1; }
-    const { result: res } = dnsSearch(host, name, 'A', serverArg(srv));
-    lines(ctx, nslookupOutput(name, res, false));
-    return res.kind === 'answer' && res.msg.rcode === 'NOERROR' && (res.msg.answers?.length ?? 0) > 0 ? 0 : 1;
-  };
 }
 
 export function hostCmd(host: Host) {

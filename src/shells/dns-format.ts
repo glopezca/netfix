@@ -1,4 +1,4 @@
-/** dig / nslookup / host output formats. */
+/** dig and host output formats (nslookup: nslookup-format.ts). */
 import type { DnsMessage, DnsAnswer, DnsType } from '../net/packets.ts';
 import type { DnsResult } from '../net/dns.ts';
 import { formatIp } from '../core/ip.ts';
@@ -39,29 +39,6 @@ export function digOutput(name: string, type: DnsType, r: DnsResult, short: bool
   if (m.authority?.length) out.push('', ';; AUTHORITY SECTION:', ...m.authority.map(rr));
   out.push('', ';; Query time: 1 msec', `;; SERVER: ${server}#53(${server}) (UDP)`, `;; WHEN: ${dateLine(now)}`, `;; MSG SIZE  rcvd: ${48 + answers.length * 16}`, '');
   return out;
-}
-
-function noAnswer(m: DnsMessage, server: string, name: string, windows: boolean): string[] {
-  if (windows) return [`*** ${server} can't find ${name}: ${m.rcode === 'NXDOMAIN' ? 'Non-existent domain' : m.rcode === 'REFUSED' ? 'Query refused' : 'No response from server'}`];
-  return [`** server can't find ${name}: ${m.rcode === 'NOERROR' ? 'No answer' : m.rcode}`];
-}
-
-export function nslookupOutput(name: string, r: DnsResult, windows: boolean): string[] {
-  if (r.kind === 'noserver') return windows ? ['*** Default servers are not available', 'Server:  UnKnown', 'Address:  127.0.0.1', '', `*** UnKnown can't find ${name}: No response from server`] : [';; connection timed out; no servers could be reached'];
-  const server = formatIp(r.server);
-  if (r.kind === 'timeout') return windows ? ['DNS request timed out.', '    timeout was 2 seconds.', 'Server:  UnKnown', `Address:  ${server}`, '', `*** Request to UnKnown timed-out`] : [';; connection timed out; no servers could be reached'];
-  const m = r.msg;
-  const head = windows ? ['Server:  UnKnown', `Address:  ${server}`, ''] : [`Server:\t\t${server}`, `Address:\t${server}#53`, ''];
-  const addrs = (m.answers ?? []).filter((a) => a.type === 'A' || a.type === 'PTR' || a.type === 'MX');
-  if (addrs.length === 0) return [...head, ...noAnswer(m, windows ? 'UnKnown' : server, name, windows)];
-  const aliases = (m.answers ?? []).filter((a) => a.type === 'CNAME');
-  if (m.qtype === 'PTR') return [...head, ...addrs.map((a) => (windows ? `Name:    ${a.data}\nAddress:  ${name}` : `${a.name}\tname = ${a.data}.`))];
-  if (m.qtype === 'MX') return [...head, ...addrs.map((a) => `${a.name}\tmail exchanger = ${a.priority ?? 10} ${a.data}.`)];
-  if (windows) {
-    const final = addrs[0]?.name ?? name;
-    return [...head, ...(m.authoritative ? [] : ['Non-authoritative answer:']), `Name:    ${final}`, `Address${addrs.length > 1 ? 'es' : ''}:  ${addrs.map((a) => a.data).join('\n          ')}`, ...(aliases.length ? [`Aliases:  ${aliases.map((a) => a.name).join(', ')}`] : []), ''];
-  }
-  return [...head, ...(m.authoritative ? [] : ['Non-authoritative answer:']), ...aliases.map((a) => `${a.name}\tcanonical name = ${a.data}.`), ...addrs.flatMap((a) => [`Name:\t${a.name}`, `Address: ${a.data}`]), ''];
 }
 
 export function hostOutput(name: string, r: DnsResult): string[] {

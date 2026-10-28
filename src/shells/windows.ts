@@ -8,7 +8,8 @@ import { windowsSshStore } from './ssh-stores.ts';
 import type { SshClientStore } from './ssh-client.ts';
 import { BaseShell } from './base.ts';
 import { resolveHost, dnsSearch, httpGet } from './net-tools.ts';
-import { nslookupOutput } from './dns-format.ts';
+import { startNslookup } from './nslookup.ts';
+import type { Nslookup } from './nslookup.ts';
 import type { Host } from '../devices/host.ts';
 import { HOST_PORT } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
@@ -43,7 +44,7 @@ const HELP = [
   '  ipconfig [/all]          Show IP configuration',
   '  ipconfig /release|/renew Release / renew the DHCP lease',
   '  netstat -an              Listening ports and connections',
-  '  nslookup <name> [srv]    DNS lookup',
+  '  nslookup [name [srv]]    DNS lookup (no name: interactive, exit to leave)',
   '  ping [-n N] <host>       Send ICMP echo requests',
   '  tracert [-h N] <host>    Trace the route to a host',
   '  ssh user@host            SSH client',
@@ -91,6 +92,8 @@ export class WindowsShell extends BaseShell {
   private fileCmds: WinFiles | null = null;
   /** The Linux account behind this terminal is root: PowerShell would run as Administrator (prompt ends in #). */
   private admin = false;
+  /** Interactive nslookup (the `>` prompt) until exit or Ctrl+C. */
+  private ns: Nslookup | null = null;
 
   constructor(host: Host, user: string, remote = false) {
     super(host, user);
@@ -114,6 +117,7 @@ export class WindowsShell extends BaseShell {
   }
 
   protected localPrompt(): string {
+    if (this.ns) return '> ';
     const files = this.files();
     if (timestampPromptOn(this.host) && !files.pending) {
       const path = files.prompt().replace(/>$/, '');
@@ -129,6 +133,11 @@ export class WindowsShell extends BaseShell {
 
   /** One cmd.exe line: quoted words, and > or >> sending the output to a file. */
   protected override runLocalLine(line: string): string[] {
+    if (this.ns) {
+      const reply = this.ns.line(line);
+      if (reply.exit) this.ns = null;
+      return reply.out;
+    }
     const files = this.files();
     if (files.pending) return files.answer(line);
     const parsed = splitCmdLine(line.trim());
@@ -140,6 +149,17 @@ export class WindowsShell extends BaseShell {
     if (cmd.toLowerCase() === 'ssh') return this.startSsh(args);
     const out = this.runLocal(cmd, args, parsed.text);
     return parsed.redirect ? files.redirect(parsed.redirect, out) : out;
+  }
+
+  protected override localInterrupt(): string[] {
+    this.ns = null;
+    return [];
+  }
+
+  private nslookup(args: string[]): string[] {
+    const start = startNslookup(this.host, true, args);
+    if (start.interactive) this.ns = start.ns;
+    return start.out;
   }
 
   protected override localEditRequest(): EditSpec | null {
@@ -164,7 +184,7 @@ export class WindowsShell extends BaseShell {
       case 'ping': return this.ping(args);
       case 'tracert': return tracert(this.host, args);
       case 'arp': return this.arp(arg);
-      case 'nslookup': return args[0] ? nslookupOutput(args[0], dnsSearch(this.host, args[0], 'A', args[1] ? parseIp(args[1]) ?? undefined : undefined).result, true) : ['Usage: nslookup <name> [server]'];
+      case 'nslookup': return this.nslookup(args);
       case 'netstat': return this.netstat();
       case 'curl': return this.curl(args);
       case 'hostname': return [this.host.name];

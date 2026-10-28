@@ -140,7 +140,7 @@ export const CLIENT_DOCS: DocGroup = {
           ['Do names resolve?', '`nslookup srv.aula.lab`: if it gives the IP address, DNS works.'],
           ['Which way does traffic go?', '`tracert 8.8.8.8`: one hop for each router on the way.'],
         ),
-        term('cmd', 'C:\\home\\alumno> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\home\\alumno> nslookup srv.aula.lab\nServer:  UnKnown\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
+        term('cmd', 'C:\\home\\alumno> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\home\\alumno> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
         h('All the commands'),
         table(['Command', 'Use'], [
           ['ipconfig [/all]', 'IP configuration; /all adds MAC, DHCP server, DNS and lease dates.'],
@@ -148,7 +148,7 @@ export const CLIENT_DOCS: DocGroup = {
           ['ping [-n N] target', 'ICMP echo (4 by default).'],
           ['tracert [-h N] target', 'Hop-by-hop route (see “traceroute and tracert”).'],
           ['arp -a · arp -d', 'Shows or clears the ARP cache.'],
-          ['nslookup name [server]', 'DNS lookup.'],
+          ['nslookup [-type=TYPE] name [server]', 'DNS lookup; without arguments, interactive mode (`>`, exit to leave).'],
           ['netstat -an', 'Listening ports and connections.'],
           ['curl [-I] URL', 'HTTP client.'],
           ['ssh user@host', 'SSH client (also to Ubuntu servers: opens bash).'],
