@@ -19610,6 +19610,7 @@ const SECURITY_DOCS = {
                     ['wg set wg0 peer CLAVE allowed-ips … endpoint IP:PUERTO', 'Cambia un par en marcha.'],
                     ['ip a · ip route', 'wg0 aparece como interfaz POINTOPOINT y sus rutas «dev wg0».'],
                 ]),
+                tip('Mensajes repetidos', 'Como el WireGuard real, Netfix ignora un mensaje capturado y reenviado: el inicio del handshake lleva una marca de tiempo (TAI64N) que debe ser más reciente que la última aceptada de ese par, y cada paquete de datos un contador que no puede repetirse.'),
                 note('PostUp/PostDown en wg0.conf se ejecutan con bash (%i es la interfaz), por ejemplo para añadir reglas nft. La masquerade solo debe aplicarse a la salida por eth0, no a wg0.'),
                 warn('Errores habituales', 'Una clave pública equivocada: el handshake nunca termina y `wg show` no muestra «latest handshake». AllowedIPs sin la LAN del otro: el túnel sube pero no hay ruta hacia ella. Nadie con Endpoint cuando los dos están tras NAT: ninguno puede empezar. UDP 51820 cerrado en el cortafuegos de la central.'),
                 exercise('Sigue el túnel', 'En el laboratorio «VPN WireGuard: central y sucursal tras NAT», comprueba desde PC0 que llega a PC2 y por dónde pasa. ¿Desde qué dirección IP pública llama la sucursal?', '`traceroute -n 10.2.0.10` en PC0: 10.1.0.1 (CENTRAL), 10.99.0.2 (la sucursal por el túnel) y 10.2.0.10. En CENTRAL, `wg show` muestra el par con endpoint 81.33.3.2:51820: la dirección IP pública del router del operador de la sucursal, aprendida gracias al keepalive.'),
@@ -21834,6 +21835,7 @@ const SECURITY_DOCS = {
                     ['wg set wg0 peer KEY allowed-ips … endpoint IP:PORT', 'Changes a peer on the fly.'],
                     ['ip a · ip route', 'wg0 shows up as a POINTOPOINT interface with its “dev wg0” routes.'],
                 ]),
+                tip('Repeated messages', 'Like the real WireGuard, Netfix ignores a message captured and sent again: the handshake initiation carries a timestamp (TAI64N) that must be newer than the last one accepted from that peer, and each data packet a counter that cannot repeat.'),
                 note('PostUp/PostDown in wg0.conf run with bash (%i is the interface), for example to add nft rules. Masquerade should only apply to traffic leaving through eth0, not wg0.'),
                 warn('Common mistakes', 'A wrong public key: the handshake never completes and `wg show` shows no “latest handshake”. AllowedIPs without the other one’s LAN: the tunnel comes up but there is no route to it. Nobody with an Endpoint when both are behind NAT: neither can start. UDP 51820 closed in the hub’s firewall.'),
                 exercise('Follow the tunnel', 'In the «WireGuard VPN: hub and branch behind NAT» lab, check from PC0 that it reaches PC2 and which way it goes. From which public IP address does the branch call?', '`traceroute -n 10.2.0.10` on PC0: 10.1.0.1 (CENTRAL), 10.99.0.2 (the branch through the tunnel) and 10.2.0.10. On CENTRAL, `wg show` shows the peer with endpoint 81.33.3.2:51820: the public IP address of the branch’s operator router, learnt thanks to the keepalive.'),
@@ -29411,7 +29413,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.21.2",
+    "version": "0.21.3",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -32764,6 +32766,40 @@ const REJECT_AFTER_MS = 180_000;
 const MAX_QUEUE = 16;
 const SIZE = { init: 148, resp: 92, keepalive: 32, overhead: 32 };
 const MS = 1000;
+/** Sliding window of data counters (the kernel's 8192 bits less one word). */
+const REPLAY_WINDOW = 8128;
+const TAI64_BASE = 0x400000000000000an;
+const NS_PER_MS = 1_000_000;
+/** TAI64N of an instant in milliseconds: 2^62 + 10 + seconds (8 bytes), then nanoseconds (4 bytes), in hex. */
+function tai64n(ms) {
+    const secs = Math.floor(ms / MS);
+    const nanos = (ms - secs * MS) * NS_PER_MS;
+    return (TAI64_BASE + BigInt(secs)).toString(16).padStart(16, '0') + Math.round(nanos).toString(16).padStart(8, '0');
+}
+/** Records a data counter; false when it was already seen or is older than the window. */
+function fresh(replay, counter) {
+    if (counter > replay.max) {
+        replay.max = counter;
+        replay.seen.add(counter);
+        if (replay.seen.size > REPLAY_WINDOW)
+            for (const c of replay.seen)
+                if (c <= counter - REPLAY_WINDOW)
+                    replay.seen.delete(c);
+        return true;
+    }
+    if (counter <= replay.max - REPLAY_WINDOW || replay.seen.has(counter))
+        return false;
+    replay.seen.add(counter);
+    return true;
+}
+/** A new session: counters start again on both sides. */
+function newSession(st, local, remote, now) {
+    st.session = { local, remote, established: now };
+    st.lastHandshake = now;
+    st.pending = undefined;
+    st.counter = 0;
+    st.replay = { max: 0, seen: new Set() };
+}
 /** Rough size of an IPv4 packet on the wire (for `transfer:`). */
 function packetSize(p) {
     const IP = 20;
@@ -32816,9 +32852,9 @@ class WgInterface {
         const found = this.peers.get(key);
         if (found)
             return found;
-        const fresh = { queue: [], rx: 0, tx: 0, counter: 0 };
-        this.peers.set(key, fresh);
-        return fresh;
+        const created = { queue: [], rx: 0, tx: 0, counter: 0, replay: { max: 0, seen: new Set() } };
+        this.peers.set(key, created);
+        return created;
     }
     /** Stops keepalives and drops sessions (`wg-quick down`, `ip link del`). */
     shutdown() {
@@ -32871,11 +32907,11 @@ class WgInterface {
         const pub = decodeKey(peerKey);
         return priv && pub ? toBase64(x25519(priv, pub)) : undefined;
     }
-    proof(peer, kind, sender, receiver = 0) {
+    proof(peer, kind, sender, receiver = 0, timestamp = '') {
         const shared = this.shared(peer.publicKey);
         if (!shared)
             return undefined;
-        return toBase64(sha256(utf8(`netfix-wg|${kind}|${shared}|${peer.presharedKey ?? ''}|${sender}|${receiver}`)));
+        return toBase64(sha256(utf8(`netfix-wg|${kind}|${shared}|${peer.presharedKey ?? ''}|${sender}|${receiver}|${timestamp}`)));
     }
     initiate(peer, st) {
         const now = this.host.now();
@@ -32883,12 +32919,13 @@ class WgInterface {
         if (!st.endpoint || !me || (st.pending && now - st.pending.at < REKEY_TIMEOUT_MS))
             return;
         const sender = randomIndex();
-        const proof = this.proof(peer, 'init', sender);
+        const timestamp = tai64n(now);
+        const proof = this.proof(peer, 'init', sender, 0, timestamp);
         if (!proof)
             return;
         st.pending = { sender, at: now };
         st.tx += SIZE.init;
-        this.host.sendUdp(st.endpoint.ip, st.endpoint.port, this.listenPort, { kind: 'initiation', sender, publicKey: me, proof });
+        this.host.sendUdp(st.endpoint.ip, st.endpoint.port, this.listenPort, { kind: 'initiation', sender, publicKey: me, timestamp, proof });
     }
     /** A WireGuard datagram from `src:sport` to our listen port. */
     receive(src, sport, msg) {
@@ -32902,14 +32939,16 @@ class WgInterface {
     onInitiation(from, msg) {
         const peer = this.config.peers.find((p) => p.publicKey === msg.publicKey);
         const me = this.publicKey();
-        if (!peer || !me || this.proof(peer, 'init', msg.sender) !== msg.proof)
+        if (!peer || !me || this.proof(peer, 'init', msg.sender, 0, msg.timestamp) !== msg.proof)
             return;
         const st = this.state(peer.publicKey);
+        // A replayed (or reordered) initiation: not newer than the last one accepted from this peer.
+        if (st.lastTimestamp !== undefined && msg.timestamp <= st.lastTimestamp)
+            return;
+        st.lastTimestamp = msg.timestamp;
         const local = randomIndex();
         st.endpoint = from;
-        st.session = { local, remote: msg.sender, established: this.host.now() };
-        st.lastHandshake = this.host.now();
-        st.pending = undefined;
+        newSession(st, local, msg.sender, this.host.now());
         st.rx += SIZE.init;
         st.tx += SIZE.resp;
         this.host.sendUdp(from.ip, from.port, this.listenPort, { kind: 'response', sender: local, receiver: msg.sender, publicKey: me, proof: this.proof(peer, 'resp', local, msg.sender) ?? '' });
@@ -32923,9 +32962,7 @@ class WgInterface {
         if (st.pending?.sender !== msg.receiver || this.proof(peer, 'resp', msg.sender, msg.receiver) !== msg.proof)
             return;
         st.endpoint = from;
-        st.session = { local: msg.receiver, remote: msg.sender, established: this.host.now() };
-        st.lastHandshake = this.host.now();
-        st.pending = undefined;
+        newSession(st, msg.receiver, msg.sender, this.host.now());
         st.rx += SIZE.resp;
         this.flush(st);
         if (!st.queue.length)
@@ -32943,6 +32980,8 @@ class WgInterface {
         if (!entry || !peer)
             return;
         const st = entry[1];
+        if (!fresh(st.replay, msg.counter))
+            return;
         st.endpoint = from;
         if (msg.kind === 'keepalive') {
             st.rx += SIZE.keepalive;
@@ -32978,7 +33017,7 @@ class WgInterface {
     }
 }
 
-return { REKEY_TIMEOUT_MS, REJECT_AFTER_MS, packetSize, WgInterface };
+return { REKEY_TIMEOUT_MS, REJECT_AFTER_MS, REPLAY_WINDOW, tai64n, packetSize, WgInterface };
 })();
 __m["devices/wg-manager.js"] = (() => {
 const { inCidr, networkCidr } = __m["net/wg-config.js"];

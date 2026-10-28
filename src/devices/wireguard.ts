@@ -1,7 +1,8 @@
 /**
  * Runtime of a WireGuard interface (wg0): cryptokey routing, the handshake (initiation/response proved
  * with the X25519 shared secret and the optional preshared key), data messages that carry the inner
- * packet over UDP, endpoint roaming (NAT traversal) and persistent keepalives.
+ * packet over UDP, endpoint roaming (NAT traversal) and persistent keepalives. Replays are ignored: an initiation
+ * whose TAI64N timestamp is not newer than the last one accepted, and a data counter already seen or out of the window.
  */
 import type { IpPacket, WgMessage } from '../net/packets.ts';
 import type { Cidr, Endpoint, WgConfig, WgPeerConfig } from '../net/wg-config.ts';
@@ -33,6 +34,10 @@ export interface PeerState {
   tx: number;
   lastHandshake?: number;
   counter: number;
+  /** TAI64N of the last initiation accepted from this peer. */
+  lastTimestamp?: string;
+  /** Counters received in the current session: the highest and those seen within the window below it. */
+  replay: { max: number; readonly seen: Set<number> };
 }
 
 export const REKEY_TIMEOUT_MS = 5_000;
@@ -40,6 +45,39 @@ export const REJECT_AFTER_MS = 180_000;
 const MAX_QUEUE = 16;
 const SIZE = { init: 148, resp: 92, keepalive: 32, overhead: 32 };
 const MS = 1000;
+/** Sliding window of data counters (the kernel's 8192 bits less one word). */
+export const REPLAY_WINDOW = 8128;
+const TAI64_BASE = 0x400000000000000an;
+const NS_PER_MS = 1_000_000;
+
+/** TAI64N of an instant in milliseconds: 2^62 + 10 + seconds (8 bytes), then nanoseconds (4 bytes), in hex. */
+export function tai64n(ms: number): string {
+  const secs = Math.floor(ms / MS);
+  const nanos = (ms - secs * MS) * NS_PER_MS;
+  return (TAI64_BASE + BigInt(secs)).toString(16).padStart(16, '0') + Math.round(nanos).toString(16).padStart(8, '0');
+}
+
+/** Records a data counter; false when it was already seen or is older than the window. */
+function fresh(replay: PeerState['replay'], counter: number): boolean {
+  if (counter > replay.max) {
+    replay.max = counter;
+    replay.seen.add(counter);
+    if (replay.seen.size > REPLAY_WINDOW) for (const c of replay.seen) if (c <= counter - REPLAY_WINDOW) replay.seen.delete(c);
+    return true;
+  }
+  if (counter <= replay.max - REPLAY_WINDOW || replay.seen.has(counter)) return false;
+  replay.seen.add(counter);
+  return true;
+}
+
+/** A new session: counters start again on both sides. */
+function newSession(st: PeerState, local: number, remote: number, now: number): void {
+  st.session = { local, remote, established: now };
+  st.lastHandshake = now;
+  st.pending = undefined;
+  st.counter = 0;
+  st.replay = { max: 0, seen: new Set() };
+}
 
 /** Rough size of an IPv4 packet on the wire (for `transfer:`). */
 export function packetSize(p: IpPacket): number {
@@ -94,9 +132,9 @@ export class WgInterface {
   state(key: string): PeerState {
     const found = this.peers.get(key);
     if (found) return found;
-    const fresh: PeerState = { queue: [], rx: 0, tx: 0, counter: 0 };
-    this.peers.set(key, fresh);
-    return fresh;
+    const created: PeerState = { queue: [], rx: 0, tx: 0, counter: 0, replay: { max: 0, seen: new Set() } };
+    this.peers.set(key, created);
+    return created;
   }
 
   /** Stops keepalives and drops sessions (`wg-quick down`, `ip link del`). */
@@ -152,10 +190,10 @@ export class WgInterface {
     return priv && pub ? toBase64(x25519(priv, pub)) : undefined;
   }
 
-  private proof(peer: WgPeerConfig, kind: 'init' | 'resp', sender: number, receiver = 0): string | undefined {
+  private proof(peer: WgPeerConfig, kind: 'init' | 'resp', sender: number, receiver = 0, timestamp = ''): string | undefined {
     const shared = this.shared(peer.publicKey);
     if (!shared) return undefined;
-    return toBase64(sha256(utf8(`netfix-wg|${kind}|${shared}|${peer.presharedKey ?? ''}|${sender}|${receiver}`)));
+    return toBase64(sha256(utf8(`netfix-wg|${kind}|${shared}|${peer.presharedKey ?? ''}|${sender}|${receiver}|${timestamp}`)));
   }
 
   private initiate(peer: WgPeerConfig, st: PeerState): void {
@@ -163,11 +201,12 @@ export class WgInterface {
     const me = this.publicKey();
     if (!st.endpoint || !me || (st.pending && now - st.pending.at < REKEY_TIMEOUT_MS)) return;
     const sender = randomIndex();
-    const proof = this.proof(peer, 'init', sender);
+    const timestamp = tai64n(now);
+    const proof = this.proof(peer, 'init', sender, 0, timestamp);
     if (!proof) return;
     st.pending = { sender, at: now };
     st.tx += SIZE.init;
-    this.host.sendUdp(st.endpoint.ip, st.endpoint.port, this.listenPort, { kind: 'initiation', sender, publicKey: me, proof });
+    this.host.sendUdp(st.endpoint.ip, st.endpoint.port, this.listenPort, { kind: 'initiation', sender, publicKey: me, timestamp, proof });
   }
 
   /** A WireGuard datagram from `src:sport` to our listen port. */
@@ -180,13 +219,14 @@ export class WgInterface {
   private onInitiation(from: Endpoint, msg: Extract<WgMessage, { kind: 'initiation' }>): void {
     const peer = this.config.peers.find((p) => p.publicKey === msg.publicKey);
     const me = this.publicKey();
-    if (!peer || !me || this.proof(peer, 'init', msg.sender) !== msg.proof) return;
+    if (!peer || !me || this.proof(peer, 'init', msg.sender, 0, msg.timestamp) !== msg.proof) return;
     const st = this.state(peer.publicKey);
+    // A replayed (or reordered) initiation: not newer than the last one accepted from this peer.
+    if (st.lastTimestamp !== undefined && msg.timestamp <= st.lastTimestamp) return;
+    st.lastTimestamp = msg.timestamp;
     const local = randomIndex();
     st.endpoint = from;
-    st.session = { local, remote: msg.sender, established: this.host.now() };
-    st.lastHandshake = this.host.now();
-    st.pending = undefined;
+    newSession(st, local, msg.sender, this.host.now());
     st.rx += SIZE.init;
     st.tx += SIZE.resp;
     this.host.sendUdp(from.ip, from.port, this.listenPort, { kind: 'response', sender: local, receiver: msg.sender, publicKey: me, proof: this.proof(peer, 'resp', local, msg.sender) ?? '' });
@@ -199,9 +239,7 @@ export class WgInterface {
     const st = this.state(peer.publicKey);
     if (st.pending?.sender !== msg.receiver || this.proof(peer, 'resp', msg.sender, msg.receiver) !== msg.proof) return;
     st.endpoint = from;
-    st.session = { local: msg.receiver, remote: msg.sender, established: this.host.now() };
-    st.lastHandshake = this.host.now();
-    st.pending = undefined;
+    newSession(st, msg.receiver, msg.sender, this.host.now());
     st.rx += SIZE.resp;
     this.flush(st);
     if (!st.queue.length) this.transmit(st, undefined);
@@ -218,6 +256,7 @@ export class WgInterface {
     const peer = entry && this.config.peers.find((p) => p.publicKey === entry[0]);
     if (!entry || !peer) return;
     const st = entry[1];
+    if (!fresh(st.replay, msg.counter)) return;
     st.endpoint = from;
     if (msg.kind === 'keepalive') {
       st.rx += SIZE.keepalive;

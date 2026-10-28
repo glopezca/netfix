@@ -127,6 +127,7 @@ export const SECURITY_DOCS: DocGroup = {
           ['wg set wg0 peer CLAVE allowed-ips … endpoint IP:PUERTO', 'Cambia un par en marcha.'],
           ['ip a · ip route', 'wg0 aparece como interfaz POINTOPOINT y sus rutas «dev wg0».'],
         ]),
+        tip('Mensajes repetidos', 'Como el WireGuard real, Netfix ignora un mensaje capturado y reenviado: el inicio del handshake lleva una marca de tiempo (TAI64N) que debe ser más reciente que la última aceptada de ese par, y cada paquete de datos un contador que no puede repetirse.'),
         note('PostUp/PostDown en wg0.conf se ejecutan con bash (%i es la interfaz), por ejemplo para añadir reglas nft. La masquerade solo debe aplicarse a la salida por eth0, no a wg0.'),
         warn('Errores habituales', 'Una clave pública equivocada: el handshake nunca termina y `wg show` no muestra «latest handshake». AllowedIPs sin la LAN del otro: el túnel sube pero no hay ruta hacia ella. Nadie con Endpoint cuando los dos están tras NAT: ninguno puede empezar. UDP 51820 cerrado en el cortafuegos de la central.'),
         exercise('Sigue el túnel', 'En el laboratorio «VPN WireGuard: central y sucursal tras NAT», comprueba desde PC0 que llega a PC2 y por dónde pasa. ¿Desde qué dirección IP pública llama la sucursal?', '`traceroute -n 10.2.0.10` en PC0: 10.1.0.1 (CENTRAL), 10.99.0.2 (la sucursal por el túnel) y 10.2.0.10. En CENTRAL, `wg show` muestra el par con endpoint 81.33.3.2:51820: la dirección IP pública del router del operador de la sucursal, aprendida gracias al keepalive.'),

@@ -121,7 +121,8 @@ export interface EspPayload {
 }
 
 export type WgMessage =
-  | { readonly kind: 'initiation'; readonly sender: number; readonly publicKey: string; readonly proof: string }
+  /** `timestamp`: TAI64N in hex, authenticated by the proof; the responder ignores one not newer than the last. */
+  | { readonly kind: 'initiation'; readonly sender: number; readonly publicKey: string; readonly timestamp: string; readonly proof: string }
   | { readonly kind: 'response'; readonly sender: number; readonly receiver: number; readonly publicKey: string; readonly proof: string }
   | { readonly kind: 'data'; readonly receiver: number; readonly counter: number; readonly inner: IpPacket }
   | { readonly kind: 'keepalive'; readonly receiver: number; readonly counter: number };

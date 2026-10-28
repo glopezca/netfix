@@ -986,7 +986,7 @@ Las pruebas de paridad es/en cubren los bloques nuevos.
   dos pings mientras sube el túnel, no uno.
 - **ping de Linux.** La línea `rtt min/avg/max/mdev` era fija (0.400/0.455/0.511/0.040 incluso con un paquete); ahora
   sale de los tiempos impresos. Los tiempos se escriben con tres decimales (antes, a partir del paquete 17, `0.1029`).
-- **Pendiente:** el ICMP de una ACL o de una regla `reject` debería ser «administratively prohibited» (Linux: «Packet
+- **Hecho después (v0.20.9):** el ICMP de una ACL o de una regla `reject` debería ser «administratively prohibited» (Linux: «Packet
   filtered»), y la falta de ruta en un router, «net unreachable»; hoy todo sale como «Destination Host Unreachable».
   `ip -4 addr show eth0` enseña también `lo` y las líneas `link/ether`.
 
@@ -1066,7 +1066,7 @@ Encontrado al preparar la documentación de bash (fase 36d), contrastado con el 
   más por cada nivel de `$( )` o `<( )`, también en sus subshells y tuberías (módulo `src/bash/xtrace.ts`).
 - **`([a b]=1)`, `([1 + 1]=two)`, `([x[1]]=1)`**: el subíndice de un elemento llega hasta su `]` aunque tenga blancos o
   corchetes. **`declare -p`** pone entre comillas las claves asociativas con metacaracteres (`["a b"]="1"`).
-- **Pendiente:** el orden de las claves de un array asociativo en `declare -p` sigue al de inserción; bash usa el de su
+- **Hecho en v0.21.2:** el orden de las claves de un array asociativo en `declare -p` sigue al de inserción; bash usa el de su
   tabla hash. `[[ ! ( -z a ) ]]` se traza con `!` (bash no lo muestra con paréntesis).
 
 ### Notas de la fase 36d, tercera entrega (v0.21.0): bash. Fase 36 completada
@@ -1108,5 +1108,7 @@ Encontrado al preparar la documentación de bash (fase 36d), contrastado con el 
   - Errores ICMP relacionados a través de NAT (RFC 5508): el NAT de IOS, la nube ISP y el masquerade de nftables
     devuelven el error al equipo interno con la cabecera citada traducida, así que una conexión denegada más allá
     del NAT falla al momento («No route to host») en vez de agotar el tiempo.
-- Pendiente: protección frente a repetición en
-  WireGuard y STP (PVST+) en los switch 2960.
+- **WireGuard frente a la repetición (v0.21.3):** el inicio del handshake lleva una marca TAI64N autenticada y el
+  que responde ignora la que no sea más reciente que la última aceptada de ese par; los contadores de datos y de
+  keepalive se comprueban con una ventana deslizante de 8128 y empiezan de cero en cada sesión.
+- Pendiente: STP (PVST+) en los switch 2960.

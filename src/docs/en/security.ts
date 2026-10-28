@@ -127,6 +127,7 @@ export const SECURITY_DOCS: DocGroup = {
           ['wg set wg0 peer KEY allowed-ips … endpoint IP:PORT', 'Changes a peer on the fly.'],
           ['ip a · ip route', 'wg0 shows up as a POINTOPOINT interface with its “dev wg0” routes.'],
         ]),
+        tip('Repeated messages', 'Like the real WireGuard, Netfix ignores a message captured and sent again: the handshake initiation carries a timestamp (TAI64N) that must be newer than the last one accepted from that peer, and each data packet a counter that cannot repeat.'),
         note('PostUp/PostDown in wg0.conf run with bash (%i is the interface), for example to add nft rules. Masquerade should only apply to traffic leaving through eth0, not wg0.'),
         warn('Common mistakes', 'A wrong public key: the handshake never completes and `wg show` shows no “latest handshake”. AllowedIPs without the other one’s LAN: the tunnel comes up but there is no route to it. Nobody with an Endpoint when both are behind NAT: neither can start. UDP 51820 closed in the hub’s firewall.'),
         exercise('Follow the tunnel', 'In the «WireGuard VPN: hub and branch behind NAT» lab, check from PC0 that it reaches PC2 and which way it goes. From which public IP address does the branch call?', '`traceroute -n 10.2.0.10` on PC0: 10.1.0.1 (CENTRAL), 10.99.0.2 (the branch through the tunnel) and 10.2.0.10. On CENTRAL, `wg show` shows the peer with endpoint 81.33.3.2:51820: the public IP address of the branch’s operator router, learnt thanks to the keepalive.'),
