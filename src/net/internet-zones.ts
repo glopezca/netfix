@@ -36,7 +36,7 @@ const BASE_ZONES: readonly PublicZone[] = [
   { origin: 'ubuntu.com', records: [A('ubuntu.com', '185.125.190.20'), A('www.ubuntu.com', '185.125.190.20'), A('archive.ubuntu.com', '185.125.190.81'), A('security.ubuntu.com', '185.125.190.82'),
     // the other names of the Ubuntu repositories (apt, mirrors, release upgrades, keys, Ubuntu Pro)
     A('es.archive.ubuntu.com', '185.125.190.83'), A('ports.ubuntu.com', '185.125.190.39'), A('changelogs.ubuntu.com', '185.125.190.18'),
-    A('keyserver.ubuntu.com', '185.125.188.27'), A('esm.ubuntu.com', '185.125.188.62'), A('motd.ubuntu.com', '185.125.188.59'), A('releases.ubuntu.com', '185.125.190.37')], ns: { name: 'ns1.canonical.com', ip: '91.189.95.3' } },
+    A('keyserver.ubuntu.com', '185.125.188.27'), A('esm.ubuntu.com', '185.125.188.62'), A('motd.ubuntu.com', '185.125.188.59'), A('releases.ubuntu.com', '185.125.190.37'), A('connectivity-check.ubuntu.com', '185.125.190.49')], ns: { name: 'ns1.canonical.com', ip: '91.189.95.3' } },
   { origin: 'debian.org', records: [A('debian.org', '151.101.2.132'), A('www.debian.org', '151.101.2.132'), A('deb.debian.org', '151.101.2.132')], ns: { name: 'nsp.dnsnode.net', ip: '194.58.198.32' } },
   { origin: 'cisco.com', records: [A('cisco.com', '72.163.4.185'), A('www.cisco.com', '23.212.248.9')], ns: { name: 'ns1.cisco.com', ip: '72.163.5.201' } },
   { origin: 'paypal.me', records: [A('paypal.me', '151.101.1.21')], ns: { name: 'ns1.p57.dynect.net', ip: '208.78.70.57' } },

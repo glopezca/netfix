@@ -37,6 +37,8 @@ try {
   await win.locator('.win-tab:text-is("Configuración")').click();
   await win.locator('input[name="dev-sftp"]').check();
   await win.locator('input[name="dev-browser"]').uncheck();
+  // The window is redrawn after the change (deferred): wait for the new tabs.
+  await page.waitForFunction(() => ![...document.querySelectorAll('.window .win-tab')].some((b) => b.textContent === 'Navegador'));
   assert.deepEqual(await tabs(), ['Equipo', 'Interfaces', 'Configuración IP', 'Correo', 'Cliente SSH', 'Archivos (SFTP)', 'Terminal Windows', 'Configuración']);
   assert.equal(await win.locator('.win-tab[aria-selected="true"]').innerText(), 'Configuración', 'the window reopens on the tab');
   if (shots) await page.screenshot({ path: `${shots}/device-config.png` });

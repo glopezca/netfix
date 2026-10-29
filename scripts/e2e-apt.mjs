@@ -69,8 +69,16 @@ try {
   assert.equal(await win.locator('.subnav-item:has-text("DHCP")').count(), 1, 'the DHCP panel is there');
   await win.locator('.win-tab:text-is("Configuración")').click();
   assert.equal(await win.locator('input[name="dev-dhcp"]').isChecked(), true, 'and its box');
+  await win.locator('.win-close').click();
+
+  // v0.27: nmcli and mDNS can be installed on any GNU/Linux device, a PC too.
+  await page.dblclick('g.device:has-text("PC1")');
+  await win.locator('.win-tab:has-text("Terminal GNU/Linux")').click();
+  assert.match(await run(page, 'nmcli'), /sudo apt install network-manager/);
+  assert.match(await run(page, 'sudo apt install -y network-manager avahi-daemon'), /Setting up avahi-daemon/);
+  assert.match(await run(page, 'nmcli d'), /eth0 +ethernet +connected +netplan-eth0/);
   assert.deepEqual(errors, []);
-  console.log('e2e apt OK: placed server without services, apt update/install over the emulated Internet, panel and box at once, moo');
+  console.log('e2e apt OK: placed server without services, apt update/install over the emulated Internet, panel and box at once, moo, nmcli on a PC');
 } finally {
   await browser.close();
   server.kill();

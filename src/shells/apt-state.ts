@@ -2,7 +2,7 @@
  * What apt has installed on a host. On a Server or GNU/Linux router a service package is installed when its panel is
  * on in the device (Configuración tab), so the box and apt always agree; the three mail packages each follow their
  * own service (postfix SMTP, dovecot-imapd IMAP, dovecot-pop3d POP3) and the panel stays while one is left. Anything
- * else (and every package on a PC, which has no service panels) is remembered for the session. Installing starts the
+ * else (and every package on a PC, which has no service panels) is kept with the device (host-packages.ts). Installing starts the
  * service and removing stops it, as dpkg's scripts do.
  */
 import type { Host } from '../devices/host.ts';
@@ -10,8 +10,7 @@ import type { Server } from '../devices/server.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { APPS_BY_KIND, deviceApps, setDeviceApps } from '../net/device-apps.ts';
 import type { AptPackage } from './apt-catalog.ts';
-
-const extras = new WeakMap<Host, Set<string>>();
+import { hasPackage, setPackageInstalled } from '../net/host-packages.ts';
 
 type MailKey = 'smtp' | 'imap' | 'pop3';
 const MAIL_KEY: Readonly<Record<string, MailKey>> = { postfix: 'smtp', 'dovecot-imapd': 'imap', 'dovecot-pop3d': 'pop3' };
@@ -24,7 +23,7 @@ const hasPanel = (host: Host, p: AptPackage): boolean =>
 const asServer = (host: Host): Server => host as Server;
 
 export function installedPackage(host: Host, p: AptPackage): boolean {
-  if (!hasPanel(host, p) || p.feature === undefined) return extras.get(host)?.has(p.name) ?? false;
+  if (!hasPanel(host, p) || p.feature === undefined) return hasPackage(host, p.name);
   const key = MAIL_KEY[p.name];
   return deviceApps(host).includes(p.feature) && (key === undefined || asServer(host).services.mail[key]);
 }
@@ -43,10 +42,7 @@ function runService(server: Server, p: AptPackage, on: boolean): void {
 
 export function setPackage(host: Host, p: AptPackage, on: boolean): void {
   if (!hasPanel(host, p) || p.feature === undefined) {
-    const set = extras.get(host) ?? new Set<string>();
-    if (on) set.add(p.name);
-    else set.delete(p.name);
-    extras.set(host, set);
+    setPackageInstalled(host, p.name, on);
     return;
   }
   const server = asServer(host);

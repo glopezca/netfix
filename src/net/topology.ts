@@ -15,6 +15,10 @@ import { FILE_VERSION, validateFile } from './topology-file.ts';
 import { parseFeatures } from './lab-features.ts';
 import type { LabFeatures } from './lab-features.ts';
 import { bindLab, customApps, deviceApps, parseApps, setDeviceApps } from './device-apps.ts';
+import { packagesOf, parsePackages, setPackageInstalled } from './host-packages.ts';
+import { registerMdns } from './mdns.ts';
+
+registerMdns();
 import type { Annotation, AnnotationInit } from './annotations.ts';
 import type { CableKind, Endpoint, Link } from './network.ts';
 import { SimClock } from '../core/clock.ts';
@@ -76,6 +80,8 @@ export interface PcRecord {
   readonly search?: readonly string[];
   /** The device's Configuración tab (v0.25), when it differs from the defaults; untrusted until parseApps. */
   readonly enabled?: unknown;
+  /** Packages installed with apt that are not a service panel (v0.27: network-manager, avahi-daemon…). */
+  readonly packages?: unknown;
 }
 
 export interface ServerRecord {
@@ -318,7 +324,8 @@ function hostRecord(d: Host): PcRecord {
   const clientId = d.clientIdOverride;
   const files = savedFiles(d);
   const enabled = customApps(d);
-  const names = { ...(enabled ? { enabled } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
+  const packages = packagesOf(d);
+  const names = { ...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
   if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
   const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
   return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
@@ -335,6 +342,7 @@ export function restore(device: AnyDevice, rec: DeviceRecord): void {
     device.clientIdOverride = typeof pc.clientId === 'string' ? parseHexId(pc.clientId) ?? undefined : undefined;
     if (pc.os === 'linux' || pc.os === 'windows') device.os = pc.os;
     setDeviceApps(device, parseApps(pc.enabled, device.kind));
+    for (const name of parsePackages(pc.packages)) setPackageInstalled(device, name, true);
     // The host name is not read back: it always comes from the device name (net/device-names.ts).
     if (typeof pc.prettyHostname === 'string') device.prettyName = pc.prettyHostname.slice(0, MAX_PRETTY);
     if (pc.files !== undefined) restoreFiles(device, validFileRecords(pc.files));

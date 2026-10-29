@@ -10,7 +10,7 @@ export const APT_DOCS: readonly DocPage[] = [
   {
     id: 'linux-apt',
     title: 'Installing packages with apt',
-    summary: 'Ubuntu 26.04 apt with a limited reach: real sources, a real network and a fictitious catalogue that turns on the server’s services.',
+    summary: 'Ubuntu 26.04 apt with a limited reach: real sources, a real network and a fictitious catalogue that turns on the server’s services, nmcli and mDNS.',
     markdownBase: MD,
     blocks: [
       p('A **Server** or a **GNU/Linux router** placed from the palette brings no service: only its IP configuration, the configuration files, the logs, the kernel parameters and its terminal. Each service is added with a box in its **Settings** tab or, as on a real Ubuntu, by installing its package with `apt`.'),
@@ -34,6 +34,15 @@ export const APT_DOCS: readonly DocPage[] = [
         ['wireguard (or wireguard-tools)', 'VPN (GNU/Linux router)'],
         ['rsyslog', 'Logs'],
       ]),
+      h('Packages for any GNU/Linux device'),
+      p('These can be installed in any GNU/Linux terminal, on a PC too, and are saved with the device:'),
+      table(['Package', 'What it adds'], [
+        ['network-manager', '`nmcli`: interface state, IP addresses, routes, DNS and connectivity (`nmcli`, `nmcli device show`, `nmcli connection show`, `nmcli general`). Before it is installed, bash suggests “sudo apt install network-manager”.'],
+        ['avahi-daemon', 'mDNS: the device answers to its name followed by **.local** and can ask for the others (`ping pc1.local`, `ssh admin@srv.local`) without a DNS server. It brings libnss-mdns.'],
+        ['libnss-mdns', 'Only asks for .local names; it does not answer for its own.'],
+      ]),
+      p('mDNS goes by multicast (224.0.0.251, UDP port 5353) to the devices on the same link: switches pass it on but routers do not, so it only works within the same network, and the other device needs avahi-daemon too. In Simulation mode you will see the MDNS packets; a firewall that blocks port 5353 stops it.'),
+      term('shell', 'alumno@pc1:~$ ping -c 1 pc0.local\nPING pc0.local (192.168.10.10) 56(84) bytes of data.\n64 bytes from pc0.local (192.168.10.10): icmp_seq=1 ttl=64 time=0.400 ms'),
       term('shell', 'root@srv:~# apt install -y apache2\nReading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\nInstalling:\n  apache2\n\nInstalling dependencies:\n  apache2-bin  apache2-data  apache2-utils  libapr1t64  libaprutil1t64  ssl-cert\n…\nSetting up apache2 (2.4.62-1ubuntu1) ...\nCreated symlink \'/etc/systemd/system/multi-user.target.wants/apache2.service\' → \'/usr/lib/systemd/system/apache2.service\'.'),
       steps(
         ['Place a server', 'From the palette, with a way out to the Internet (an ISP cloud or a router that reaches it) and 8.8.8.8 as DNS.'],
@@ -42,7 +51,7 @@ export const APT_DOCS: readonly DocPage[] = [
       ),
       check('Check it', 'From a PC, the browser opens the server’s website. `sudo apt remove apache2` stops Apache and removes the panel; the box is unticked too.'),
       warn('Offline', 'If the DNS does not answer you will see “Temporary failure resolving \'archive.ubuntu.com\'”; if the name does not exist, “Could not resolve”; if there is no route, “Could not connect … connection timed out”. Check the gateway and the DNS, as on a real server.'),
-      tip('Limited reach', 'Only the packages of Netfix’s services and those of the base system (which cannot be removed) are there. A name not in the catalogue gives “Unable to locate package”. Without sudo, apt gives dpkg’s real lock error.'),
+      tip('Limited reach', 'Only the packages of Netfix’s services, network-manager, avahi-daemon, libnss-mdns and those of the base system (which cannot be removed) are there. A name not in the catalogue gives “Unable to locate package”. Without sudo, apt gives dpkg’s real lock error.'),
       exercise('A DNS server from scratch', 'Place a server in the “Internet: two sites and public DNS” lab, give it a way out and turn it into a DNS server using only the terminal.', 'Set the IP address, the gateway and DNS 8.8.8.8; then `sudo apt update` and `sudo apt install -y bind9`. The Services tab shows DNS and `systemctl status named` says it is active.'),
     ],
   },

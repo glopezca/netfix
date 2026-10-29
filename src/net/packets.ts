@@ -328,7 +328,7 @@ export function frameProtocol(frame: Frame): string {
   const ip = frame.ip;
   if (!ip) return 'Ethernet';
   if (ip.udp?.dhcp) return 'DHCP';
-  if (ip.udp?.dns) return 'DNS';
+  if (ip.udp?.dns) return ip.udp.dport === 5353 || ip.udp.sport === 5353 ? 'MDNS' : 'DNS';
   if (ip.udp?.isakmp) return 'ISAKMP';
   if (ip.udp?.wg) return 'WireGuard';
   if (ip.esp) return 'ESP';

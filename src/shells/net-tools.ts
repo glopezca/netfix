@@ -1,4 +1,5 @@
 /** Network operations shared by the Linux and Windows shells and the desktop apps. */
+import { asksMdns, mdnsResolve } from '../net/mdns.ts';
 import type { Host } from '../devices/host.ts';
 import type { AppPayload, DnsMessage, DnsType, HttpHeaders, HttpMethod } from '../net/packets.ts';
 import type { DnsResult } from '../net/dns.ts';
@@ -95,6 +96,11 @@ export function resolveHost(host: Host, target: string): Resolved {
   if (normalizeName(target) === host.name.toLowerCase() && host.config.ip !== undefined) return { kind: 'ip', ip: host.config.ip, name: target, viaDns: false };
   const local = hostsLookup(host, target);
   if (local !== undefined) return { kind: 'ip', ip: local, name: target, viaDns: false };
+  // nsswitch «hosts: files mdns4_minimal [NOTFOUND=return] dns»: a .local name is asked on the link, never to the DNS.
+  if (/\.local\.?$/i.test(target) && asksMdns(host)) {
+    const ip = mdnsResolve(host, normalizeName(target));
+    return ip === undefined ? { kind: 'error', reason: 'nxdomain' } : { kind: 'ip', ip, name: normalizeName(target), viaDns: false };
+  }
   const { result: r, name } = dnsSearch(host, target, 'A');
   if (r.kind !== 'answer') return { kind: 'error', reason: r.kind };
   if (r.msg.rcode === 'NXDOMAIN' || r.msg.rcode === 'REFUSED' || r.msg.rcode === 'SERVFAIL') return { kind: 'error', reason: 'nxdomain' };

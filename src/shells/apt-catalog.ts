@@ -43,6 +43,10 @@ export const PACKAGES: readonly AptPackage[] = [
   { ...dep('wireguard-tools', '1.0.20250521-1', 89), section: 'main', deps: [], feature: 'vpn' },
   { ...dep('wireguard', '1.0.20250521-1', 3, 'all'), section: 'main', deps: [dep('wireguard-tools', '1.0.20250521-1', 89)], feature: 'vpn' },
   { ...dep('rsyslog', '8.2412.0-2ubuntu2', 538), section: 'main', deps: [dep('liblognorm5', '2.0.6-4build1', 63), dep('libestr0', '0.1.11-1build1', 8)], feature: 'log', unit: 'rsyslog' },
+  // Any GNU/Linux host (PC too): tools rather than service panels (host-packages.ts keeps them).
+  { ...dep('network-manager', '1.54.0-1ubuntu1', 3412), section: 'main', deps: [dep('libnm0', '1.54.0-1ubuntu1', 498), dep('libndp0', '1.9-1', 12), dep('libteamdctl0', '1.31-1build4', 13)], unit: 'NetworkManager' },
+  { ...dep('avahi-daemon', '0.8-16ubuntu2', 85), section: 'main', deps: [dep('libavahi-common3', '0.8-16ubuntu2', 23), dep('libavahi-core7', '0.8-16ubuntu2', 82), dep('libdaemon0', '0.14-7.1ubuntu4', 15), dep('libnss-mdns', '0.15.1-4build2', 27)], unit: 'avahi-daemon' },
+  { ...dep('libnss-mdns', '0.15.1-4build2', 27), section: 'main', deps: [] },
 ];
 
 /** Always installed: `install` says they are up to date, `remove` refuses. */

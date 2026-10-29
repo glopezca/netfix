@@ -5268,7 +5268,7 @@ function frameProtocol(frame) {
     if (ip.udp?.dhcp)
         return 'DHCP';
     if (ip.udp?.dns)
-        return 'DNS';
+        return ip.udp.dport === 5353 || ip.udp.sport === 5353 ? 'MDNS' : 'DNS';
     if (ip.udp?.isakmp)
         return 'ISAKMP';
     if (ip.udp?.wg)
@@ -5348,6 +5348,15 @@ return { BROADCAST_MAC, parseMac, formatMacCisco, formatMacPT, parseHexId, forma
 __m["net/ipstack.js"] = (() => {
 const { inSubnet, broadcastOf, BROADCAST_IP } = __m["core/ip.js"];
 const { BROADCAST_MAC } = __m["core/mac.js"];
+let sockets;
+function registerLocalSockets(s) {
+    sockets = s;
+}
+const isMulticast = (ip) => ip >>> 28 === 0xe;
+/** 01:00:5e + the low 23 bits of the group (224.0.0.251 → 01005e0000fb). */
+function multicastMac(group) {
+    return `01005e${[(group >>> 16) & 0x7f, (group >>> 8) & 0xff, group & 0xff].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
 const ARP_TIMEOUT_MS = 1000;
 /** Interface name the hooks see for traffic to the host's own addresses. */
 const LOOPBACK = 'lo';
@@ -5394,7 +5403,7 @@ class IpStack {
         const iface = this.host.l3Iface(ifaceName);
         if (!iface?.up)
             return;
-        if (!iface.pointToPoint && frame.dst !== iface.mac && frame.dst !== BROADCAST_MAC)
+        if (!iface.pointToPoint && frame.dst !== iface.mac && frame.dst !== BROADCAST_MAC && !this.joined(frame.ip?.dst, frame.dst))
             return;
         if (frame.arp)
             this.onArp(iface, frame);
@@ -5431,9 +5440,11 @@ class IpStack {
         if ((packet.dst >>> 24) === LOOPBACK_NET || (packet.src >>> 24) === LOOPBACK_NET)
             return;
         const directed = this.directedIface(packet.dst);
-        const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst) || directed !== undefined;
+        const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst) || directed !== undefined || this.joined(packet.dst);
         if (!forMe) {
-            this.host.forward?.(iface.name, packet);
+            // 224.0.0.0/4 is never routed here (mDNS and the like stay on their link).
+            if (!isMulticast(packet.dst))
+                this.host.forward?.(iface.name, packet);
             return;
         }
         // A directed broadcast for another of our subnets is ours too; the link only gets it if forwarding is on. One that
@@ -5456,6 +5467,8 @@ class IpStack {
             this.onIcmp(ifaceName, packet, packet.icmp);
             return;
         }
+        if (packet.udp && sockets?.take(this.host, ifaceName, packet))
+            return;
         this.host.deliver(ifaceName, packet, frame);
     }
     /** Output hook for a locally generated packet; null = dropped by the firewall. */
@@ -5583,6 +5596,16 @@ class IpStack {
         this.host.schedule(0, () => this.localIn(LOOPBACK, out, { src: mac, dst: mac, ip: out }));
         return true;
     }
+    /** A multicast group this host has joined (with its MAC, when a frame brings one). */
+    joined(group, mac) {
+        if (group === undefined || !isMulticast(group) || (mac !== undefined && mac !== multicastMac(group)))
+            return false;
+        return sockets?.member(this.host, group) ?? false;
+    }
+    /** Sends a datagram to a link-local multicast group (it is never routed: TTL 255, mDNS). */
+    multicast(ifaceName, packet) {
+        this.emitIp(ifaceName, multicastMac(packet.dst), packet);
+    }
     /** Sends a frame on an interface to the broadcast MAC (DHCP, etc.). */
     broadcast(ifaceName, packet) {
         this.emitIp(ifaceName, BROADCAST_MAC, packet);
@@ -5620,7 +5643,7 @@ class IpStack {
     }
 }
 
-return { LOOPBACK, IpStack };
+return { registerLocalSockets, multicastMac, LOOPBACK, IpStack };
 })();
 __m["net/tcp.js"] = (() => {
 const FIRST_EPHEMERAL = 49152;
@@ -8794,7 +8817,7 @@ const BASE_ZONES = [
     { origin: 'ubuntu.com', records: [A('ubuntu.com', '185.125.190.20'), A('www.ubuntu.com', '185.125.190.20'), A('archive.ubuntu.com', '185.125.190.81'), A('security.ubuntu.com', '185.125.190.82'),
             // the other names of the Ubuntu repositories (apt, mirrors, release upgrades, keys, Ubuntu Pro)
             A('es.archive.ubuntu.com', '185.125.190.83'), A('ports.ubuntu.com', '185.125.190.39'), A('changelogs.ubuntu.com', '185.125.190.18'),
-            A('keyserver.ubuntu.com', '185.125.188.27'), A('esm.ubuntu.com', '185.125.188.62'), A('motd.ubuntu.com', '185.125.188.59'), A('releases.ubuntu.com', '185.125.190.37')], ns: { name: 'ns1.canonical.com', ip: '91.189.95.3' } },
+            A('keyserver.ubuntu.com', '185.125.188.27'), A('esm.ubuntu.com', '185.125.188.62'), A('motd.ubuntu.com', '185.125.188.59'), A('releases.ubuntu.com', '185.125.190.37'), A('connectivity-check.ubuntu.com', '185.125.190.49')], ns: { name: 'ns1.canonical.com', ip: '91.189.95.3' } },
     { origin: 'debian.org', records: [A('debian.org', '151.101.2.132'), A('www.debian.org', '151.101.2.132'), A('deb.debian.org', '151.101.2.132')], ns: { name: 'nsp.dnsnode.net', ip: '194.58.198.32' } },
     { origin: 'cisco.com', records: [A('cisco.com', '72.163.4.185'), A('www.cisco.com', '23.212.248.9')], ns: { name: 'ns1.cisco.com', ip: '72.163.5.201' } },
     { origin: 'paypal.me', records: [A('paypal.me', '151.101.1.21')], ns: { name: 'ns1.p57.dynect.net', ip: '208.78.70.57' } },
@@ -11042,6 +11065,40 @@ function runsServices(kind) {
 
 return { runsServices };
 })();
+__m["net/host-packages.js"] = (() => {
+/**
+ * Packages apt has installed on a host that are not a service panel (network-manager, avahi-daemon…, and every package
+ * on a PC). They live beside the device in a weak registry, as its Configuración boxes do, and are saved with the
+ * topology, so a feature that a package brings (nmcli, mDNS) stays after reopening the file.
+ */
+const installed = new WeakMap();
+/** Debian package names: lower case, digits and + . - (what a file may bring is checked against it). */
+const NAME = /^[a-z0-9][a-z0-9+.-]{0,63}$/;
+const MAX_PACKAGES = 64;
+function hasPackage(d, name) {
+    return installed.get(d)?.has(name) ?? false;
+}
+/** In name order (what the file keeps). */
+function packagesOf(d) {
+    return [...(installed.get(d) ?? [])].sort();
+}
+function setPackageInstalled(d, name, on) {
+    const next = new Set(installed.get(d));
+    if (on)
+        next.add(name);
+    else
+        next.delete(name);
+    installed.set(d, next);
+}
+/** The `packages` of a file (untrusted): valid names, no repeats, a bounded list. */
+function parsePackages(data) {
+    if (!Array.isArray(data) || data.length > MAX_PACKAGES)
+        return [];
+    return [...new Set(data.filter((n) => typeof n === 'string' && NAME.test(n)))];
+}
+
+return { hasPackage, packagesOf, setPackageInstalled, parsePackages };
+})();
 __m["net/sync.js"] = (() => {
 const DEFAULT_MAX_MS = 10_000;
 /**
@@ -11063,6 +11120,83 @@ function runSync(hooks, op, maxMs = DEFAULT_MAX_MS) {
 }
 
 return { runSync };
+})();
+__m["net/mdns.js"] = (() => {
+const { registerLocalSockets } = __m["net/ipstack.js"];
+const { hasPackage } = __m["net/host-packages.js"];
+const { runSync } = __m["net/sync.js"];
+const { formatIp, parseIp } = __m["core/ip.js"];
+const MDNS_GROUP = parseIp('224.0.0.251') ?? 0;
+const MDNS_PORT = 5353;
+/** nss-mdns gives up after about a second without an answer. */
+const QUERY_MS = 1000;
+const LINK_LOCAL_TTL = 255;
+const ANSWER_TTL = 120;
+/** One-shot query ports, clear of the stub resolver's 50000-50999. */
+const FIRST_PORT = 52000;
+const PORTS = 8000;
+/** avahi-daemon answers for the host's name. */
+const answers = (h) => hasPackage(h, 'avahi-daemon');
+/** libnss-mdns (avahi-daemon brings it) makes the resolver ask mDNS for names under .local. */
+const asksMdns = (h) => hasPackage(h, 'avahi-daemon') || hasPackage(h, 'libnss-mdns');
+const waiting = new WeakMap();
+let nextPort = 0;
+function answer(host, iface, p) {
+    const q = p.udp?.dns;
+    const own = host.l3Iface(iface)?.addrs[0]?.ip;
+    if (!q || !p.udp || own === undefined || q.qtype !== 'A')
+        return;
+    // The name the host goes by now (hostname / hostnamectl change it), as avahi publishes it.
+    if (q.qname.replace(/\.$/, '').toLowerCase() !== `${host.runtimeName().toLowerCase()}.local`)
+        return;
+    const reply = { id: q.id, response: true, authoritative: true, qname: q.qname, qtype: 'A', rcode: 'NOERROR',
+        answers: [{ name: q.qname, type: 'A', ttl: ANSWER_TTL, data: formatIp(own) }] };
+    host.sendUdp(p.src, MDNS_PORT, p.udp.sport, { dns: reply }, own, iface);
+}
+function take(host, iface, p) {
+    const u = p.udp;
+    if (!u?.dns)
+        return false;
+    if (u.dns.response && u.sport === MDNS_PORT) {
+        const done = waiting.get(host)?.get(u.dport);
+        const ip = parseIp(u.dns.answers?.find((a) => a.type === 'A')?.data ?? '');
+        if (!done || ip === null)
+            return false;
+        done(ip);
+        return true;
+    }
+    if (u.dport !== MDNS_PORT || p.dst !== MDNS_GROUP || !answers(host))
+        return false;
+    answer(host, iface, p);
+    return true;
+}
+let registered = false;
+/** Hosts join 224.0.0.251 and answer from here on (topology.ts calls it, so a loaded network answers at once). */
+function registerMdns() {
+    if (registered)
+        return;
+    registered = true;
+    registerLocalSockets({ member: (h, group) => group === MDNS_GROUP && answers(h), take });
+}
+/** The address of `name` (…​.local) on the host's links, or undefined when nobody answers. */
+function mdnsResolve(host, name) {
+    registerMdns();
+    const port = FIRST_PORT + (nextPort++ % PORTS);
+    const pending = waiting.get(host) ?? new Map();
+    waiting.set(host, pending);
+    const ip = runSync(host.hooks, (done) => {
+        pending.set(port, done);
+        host.hooks.schedule(QUERY_MS, () => done(undefined));
+        for (const iface of host.l3Ifaces().filter((i) => i.up && i.addrs.length)) {
+            host.stack.multicast(iface.name, { src: iface.addrs[0]?.ip ?? 0, dst: MDNS_GROUP, ttl: LINK_LOCAL_TTL, protocol: 'udp',
+                udp: { sport: port, dport: MDNS_PORT, dns: { id: port & 0xffff, response: false, qname: name, qtype: 'A' } } });
+        }
+    }, QUERY_MS + 500);
+    pending.delete(port);
+    return ip;
+}
+
+return { MDNS_GROUP, MDNS_PORT, asksMdns, registerMdns, mdnsResolve };
 })();
 __m["shells/resolved.js"] = (() => {
 const overrides = new WeakMap();
@@ -11100,6 +11234,8 @@ const transactionCount = (host) => transactions.get(host) ?? 0;
 return { resolvedDns, resolvedDomains, setResolvedDns, setResolvedDomains, revertResolved, countTransaction, transactionCount };
 })();
 __m["shells/net-tools.js"] = (() => {
+/** Network operations shared by the Linux and Windows shells and the desktop apps. */
+const { asksMdns, mdnsResolve } = __m["net/mdns.js"];
 const { firstAddress, normalizeName, reverseName } = __m["net/dns.js"];
 const { runSync } = __m["net/sync.js"];
 const { parseIp } = __m["core/ip.js"];
@@ -11189,6 +11325,11 @@ function resolveHost(host, target) {
     const local = hostsLookup(host, target);
     if (local !== undefined)
         return { kind: 'ip', ip: local, name: target, viaDns: false };
+    // nsswitch «hosts: files mdns4_minimal [NOTFOUND=return] dns»: a .local name is asked on the link, never to the DNS.
+    if (/\.local\.?$/i.test(target) && asksMdns(host)) {
+        const ip = mdnsResolve(host, normalizeName(target));
+        return ip === undefined ? { kind: 'error', reason: 'nxdomain' } : { kind: 'ip', ip, name: normalizeName(target), viaDns: false };
+    }
     const { result: r, name } = dnsSearch(host, target, 'A');
     if (r.kind !== 'answer')
         return { kind: 'error', reason: r.kind };
@@ -19090,6 +19231,7 @@ const UTIL_DOCS = {
     curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X MÉTODO] [-d DATOS] [-u USUARIO:CLAVE] [-b COOKIES] [-H "Cabecera: valor"] [-o FICHERO | -O] [-w FORMATO] URL', summary: 'Cliente HTTP. Errores con su código: (6) no resuelve, (7) conexión rechazada, (3) URL no válida, (22) error HTTP con -f.', options: '-I  solo cabeceras (HEAD)        -i  incluye las cabeceras\n-L  sigue las redirecciones       -v  muestra la petición y la respuesta\n-X  método (GET, POST, HEAD)      -d  datos de formulario (POST)\n-u  usuario:clave (Basic)         -b  cookies «a=1; b=2»\n-H  cabecera extra («Host: www.aula.lab» para probar un VirtualHost)\n-s  silencioso (-S muestra los errores)   -f  falla con los errores HTTP\n-w  escribe al final: %{http_code}, %{size_download}, %{content_type}, %{url_effective} («-s -o /dev/null -w \'%{http_code}\'» da solo el código)' },
     wget: { group: 'red', synopsis: 'wget [-q] [-O FICHERO] URL', summary: 'Descarga a un fichero del directorio actual (nombre.1, nombre.2… si ya existe). «-qO-» escribe la página en la salida.' },
     apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PAQUETE... | remove|purge [-y] PAQUETE... | list [--installed] [PATRÓN] | moo', summary: 'Gestor de paquetes de Ubuntu 26.04 con alcance limitado: lee las fuentes reales (/etc/apt/sources.list.d/ubuntu.sources) y se conecta a archive.ubuntu.com y security.ubuntu.com por la red simulada; sin salida a Internet o sin DNS que los resuelva da los errores reales («Temporary failure resolving…»). El catálogo es ficticio y siempre está al día: update, upgrade y autoremove no cambian nada. install y remove sí: en un Server o router GNU/Linux activan o quitan la casilla y el panel del servicio (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) y arrancan o paran el servicio. Requiere root (sudo).', options: '-y  responde «sí» a «Continue? [Y/n]»\npurge  como remove, y borra la configuración' },
+    nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f CAMPOS | -g CAMPOS] [general [status | hostname] | networking [connectivity] | device [status | show [IFAZ]] | connection [show [NOMBRE]]] | --version', summary: 'NetworkManager (se instala con «sudo apt install network-manager»): sin argumentos, un resumen por interfaz (estado, MAC, dirección IP, rutas) y la configuración DNS; device status y device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (los perfiles netplan-eth0 y lo); general status comprueba de verdad la conectividad (full con Internet, limited sin ella). Admite abreviaturas (nmcli d, nmcli c, nmcli g) y, para scripts, -t (sin cabecera, separado por «:»), -f (columnas o campos: -f DEVICE,STATE, -f IP4) y -g (solo los valores: nmcli -g IP4.ADDRESS dev show eth0). Solo consulta: la configuración se cambia con netplan, ip o la pestaña Configuración IP.' },
     ssh: { group: 'red', synopsis: 'ssh [-i CLAVE] [-l USUARIO] [-p PUERTO] [-o OPCIÓN=VALOR] [USUARIO@]HOST [ORDEN]', summary: 'Cliente OpenSSH: comprueba la clave del servidor en ~/.ssh/known_hosts, se autentica con ~/.ssh/id_* y, si no, con contraseña. Con ORDEN la ejecuta y vuelve. Opciones -o: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Devuelve el estado remoto (255 si falla).' },
     'ssh-keygen': { group: 'red', synopsis: 'ssh-keygen [-t ed25519|ecdsa|rsa] [-b BITS] [-f FICHERO] [-N FRASE] [-C COMENTARIO] [-q] | -l|-y|-p [-f FICHERO] | -F|-R HOST [-f known_hosts] | -A', summary: 'Genera pares de claves OpenSSH (privada 600 y .pub 644), muestra la huella (-l), obtiene la pública (-y), cambia la frase de paso (-p), busca (-F) o borra (-R) equipos de known_hosts y crea las claves de host que falten (-A).' },
     sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] CLAVE... | [-w] CLAVE=VALOR | -p [FICHERO] | --system | -a', summary: 'Parámetros del núcleo (también en /proc/sys): net.ipv4.ip_forward activa el reenvío en el router GNU/Linux, net.ipv4.icmp_echo_ignore_all ignora los ping, net.ipv4.icmp_echo_ignore_broadcasts (1) no responde a los ping a broadcast y net.ipv4.conf.all.bc_forwarding (0) reenvía los broadcast dirigidos. Los cambios con -w se pierden al reiniciar; para que duren, en /etc/sysctl.conf o /etc/sysctl.d/*.conf (sysctl --system los aplica). Cambiar requiere root.' },
@@ -20369,7 +20511,7 @@ const APT_DOCS = [
     {
         id: 'linux-apt',
         title: 'Instalar paquetes con apt',
-        summary: 'apt de Ubuntu 26.04 con alcance limitado: fuentes reales, red real y un catálogo ficticio que activa los servicios del servidor.',
+        summary: 'apt de Ubuntu 26.04 con alcance limitado: fuentes reales, red real y un catálogo ficticio que activa los servicios del servidor, nmcli y mDNS.',
         markdownBase: MD,
         blocks: [
             p('Un **Server** o un **router GNU/Linux** colocado desde la paleta no trae ningún servicio: solo su configuración IP, los ficheros de configuración, los registros, los parámetros del kernel y su terminal. Cada servicio se añade con una casilla de su pestaña **Configuración** o, como en un Ubuntu real, instalando su paquete con `apt`.'),
@@ -20393,11 +20535,20 @@ const APT_DOCS = [
                 ['wireguard (o wireguard-tools)', 'VPN (router GNU/Linux)'],
                 ['rsyslog', 'Registros'],
             ]),
+            h('Paquetes para cualquier equipo GNU/Linux'),
+            p('Estos se instalan en cualquier terminal GNU/Linux, también en un PC, y quedan guardados con el equipo:'),
+            table(['Paquete', 'Qué añade'], [
+                ['network-manager', '`nmcli`: estado de las interfaces, direcciones IP, rutas, DNS y conectividad (`nmcli`, `nmcli device show`, `nmcli connection show`, `nmcli general`). Antes de instalarlo, bash propone «sudo apt install network-manager».'],
+                ['avahi-daemon', 'mDNS: el equipo responde a su nombre seguido de **.local** y puede preguntar por los demás (`ping pc1.local`, `ssh admin@srv.local`) sin servidor DNS. Trae libnss-mdns.'],
+                ['libnss-mdns', 'Solo pregunta por los nombres .local; no responde por el suyo.'],
+            ]),
+            p('mDNS va por multicast (224.0.0.251, puerto UDP 5353) a los equipos del mismo enlace: lo propagan los switches pero no los routers, así que solo funciona dentro de la misma red, y el otro equipo también debe tener avahi-daemon. En modo Simulación verás los paquetes MDNS; un cortafuegos que bloquee el puerto 5353 lo impide.'),
+            term('shell', 'alumno@pc1:~$ ping -c 1 pc0.local\nPING pc0.local (192.168.10.10) 56(84) bytes of data.\n64 bytes from pc0.local (192.168.10.10): icmp_seq=1 ttl=64 time=0.400 ms'),
             term('shell', 'root@srv:~# apt install -y apache2\nReading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\nInstalling:\n  apache2\n\nInstalling dependencies:\n  apache2-bin  apache2-data  apache2-utils  libapr1t64  libaprutil1t64  ssl-cert\n…\nSetting up apache2 (2.4.62-1ubuntu1) ...\nCreated symlink \'/etc/systemd/system/multi-user.target.wants/apache2.service\' → \'/usr/lib/systemd/system/apache2.service\'.'),
             steps(['Coloca un servidor', 'Desde la paleta, con una salida a Internet (una Nube ISP o un router que llegue a ella) y como DNS 8.8.8.8.'], ['Abre su terminal GNU/Linux', '`sudo apt update` debe dar cuatro «Hit:».'], ['Instala el servicio', '`sudo apt install apache2`: la pestaña Servicios aparece al momento con HTTP, y la casilla HTTP de Configuración queda marcada.']),
             check('Compruébalo', 'Desde un PC, el navegador abre la web del servidor. `sudo apt remove apache2` para Apache y quita el panel; la casilla también se desmarca.'),
             warn('Sin conexión', 'Si el DNS no responde verás «Temporary failure resolving \'archive.ubuntu.com\'»; si el nombre no existe, «Could not resolve»; si no hay ruta, «Could not connect … connection timed out». Revisa la puerta de enlace y el DNS, como en un servidor real.'),
-            tip('Alcance limitado', 'Solo están los paquetes de los servicios de Netfix y los del sistema base (que no se pueden quitar). Un nombre que no está en el catálogo da «Unable to locate package». Sin sudo, apt da el error real del bloqueo de dpkg.'),
+            tip('Alcance limitado', 'Solo están los paquetes de los servicios de Netfix, network-manager, avahi-daemon, libnss-mdns y los del sistema base (que no se pueden quitar). Un nombre que no está en el catálogo da «Unable to locate package». Sin sudo, apt da el error real del bloqueo de dpkg.'),
             exercise('Un servidor DNS desde cero', 'Coloca un servidor en el laboratorio «Internet: dos sedes y DNS públicos», dale salida y conviértelo en servidor DNS solo con la terminal.', 'Configura la dirección IP, la puerta de enlace y el DNS 8.8.8.8; después `sudo apt update` y `sudo apt install -y bind9`. La pestaña Servicios muestra DNS y `systemctl status named` lo da activo.'),
         ],
     },
@@ -21476,6 +21627,7 @@ const UTIL_DOCS = {
     curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X METHOD] [-d DATA] [-u USER:PASSWORD] [-b COOKIES] [-H "Header: value"] [-o FILE | -O] [-w FORMAT] URL', summary: 'HTTP client. Errors with their code: (6) cannot resolve, (7) connection refused, (3) invalid URL, (22) HTTP error with -f.', options: '-I  headers only (HEAD)          -i  includes the headers\n-L  follows redirects            -v  shows the request and the response\n-X  method (GET, POST, HEAD)      -d  form data (POST)\n-u  user:password (Basic)         -b  cookies “a=1; b=2”\n-H  extra header (“Host: www.aula.lab” to test a VirtualHost)\n-s  silent (-S shows errors)      -f  fails on HTTP errors\n-w  writes at the end: %{http_code}, %{size_download}, %{content_type}, %{url_effective} (“-s -o /dev/null -w \'%{http_code}\'” gives just the code)' },
     wget: { group: 'red', synopsis: 'wget [-q] [-O FILE] URL', summary: 'Downloads to a file in the current directory (name.1, name.2… if it already exists). “-qO-” writes the page to the output.' },
     apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PACKAGE... | remove|purge [-y] PACKAGE... | list [--installed] [PATTERN] | moo', summary: 'Ubuntu 26.04 package manager, with a limited reach: it reads the real sources (/etc/apt/sources.list.d/ubuntu.sources) and connects to archive.ubuntu.com and security.ubuntu.com over the simulated network; with no way out to the Internet or no DNS that resolves them it gives the real errors (“Temporary failure resolving…”). The catalogue is fictitious and always up to date: update, upgrade and autoremove change nothing. install and remove do: on a Server or GNU/Linux router they tick or untick the box and panel of the service (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) and start or stop the service. Needs root (sudo).', options: '-y  answers “yes” to “Continue? [Y/n]”\npurge  like remove, and deletes the configuration' },
+    nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f FIELDS | -g FIELDS] [general [status | hostname] | networking [connectivity] | device [status | show [IFACE]] | connection [show [NAME]]] | --version', summary: 'NetworkManager (installed with “sudo apt install network-manager”): with no arguments, an overview per interface (state, MAC, IP address, routes) and the DNS configuration; device status and device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (the netplan-eth0 and lo profiles); general status really checks connectivity (full with Internet, limited without). Takes abbreviations (nmcli d, nmcli c, nmcli g) and, for scripts, -t (no header, “:” separated), -f (columns or fields: -f DEVICE,STATE, -f IP4) and -g (values only: nmcli -g IP4.ADDRESS dev show eth0). Read-only: the configuration is changed with netplan, ip or the IP Configuration tab.' },
     ssh: { group: 'red', synopsis: 'ssh [-i KEY] [-l USER] [-p PORT] [-o OPTION=VALUE] [USER@]HOST [COMMAND]', summary: 'OpenSSH client: checks the server key in ~/.ssh/known_hosts, authenticates with ~/.ssh/id_* and, failing that, with a password. With COMMAND it runs it and returns. -o options: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Returns the remote status (255 on failure).' },
     'ssh-keygen': { group: 'red', synopsis: 'ssh-keygen [-t ed25519|ecdsa|rsa] [-b BITS] [-f FILE] [-N PASSPHRASE] [-C COMMENT] [-q] | -l|-y|-p [-f FILE] | -F|-R HOST [-f known_hosts] | -A', summary: 'Generates OpenSSH key pairs (private 600 and .pub 644), shows the fingerprint (-l), derives the public key (-y), changes the passphrase (-p), finds (-F) or removes (-R) hosts in known_hosts and creates any missing host keys (-A).' },
     sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] KEY... | [-w] KEY=VALUE | -p [FILE] | --system | -a', summary: 'Kernel parameters (also in /proc/sys): net.ipv4.ip_forward enables forwarding on the GNU/Linux router, net.ipv4.icmp_echo_ignore_all ignores pings, net.ipv4.icmp_echo_ignore_broadcasts (1) does not answer broadcast pings and net.ipv4.conf.all.bc_forwarding (0) forwards directed broadcasts. Changes made with -w are lost on reboot; to make them last, put them in /etc/sysctl.conf or /etc/sysctl.d/*.conf (sysctl --system applies them). Changing requires root.' },
@@ -22755,7 +22907,7 @@ const APT_DOCS = [
     {
         id: 'linux-apt',
         title: 'Installing packages with apt',
-        summary: 'Ubuntu 26.04 apt with a limited reach: real sources, a real network and a fictitious catalogue that turns on the server’s services.',
+        summary: 'Ubuntu 26.04 apt with a limited reach: real sources, a real network and a fictitious catalogue that turns on the server’s services, nmcli and mDNS.',
         markdownBase: MD,
         blocks: [
             p('A **Server** or a **GNU/Linux router** placed from the palette brings no service: only its IP configuration, the configuration files, the logs, the kernel parameters and its terminal. Each service is added with a box in its **Settings** tab or, as on a real Ubuntu, by installing its package with `apt`.'),
@@ -22779,11 +22931,20 @@ const APT_DOCS = [
                 ['wireguard (or wireguard-tools)', 'VPN (GNU/Linux router)'],
                 ['rsyslog', 'Logs'],
             ]),
+            h('Packages for any GNU/Linux device'),
+            p('These can be installed in any GNU/Linux terminal, on a PC too, and are saved with the device:'),
+            table(['Package', 'What it adds'], [
+                ['network-manager', '`nmcli`: interface state, IP addresses, routes, DNS and connectivity (`nmcli`, `nmcli device show`, `nmcli connection show`, `nmcli general`). Before it is installed, bash suggests “sudo apt install network-manager”.'],
+                ['avahi-daemon', 'mDNS: the device answers to its name followed by **.local** and can ask for the others (`ping pc1.local`, `ssh admin@srv.local`) without a DNS server. It brings libnss-mdns.'],
+                ['libnss-mdns', 'Only asks for .local names; it does not answer for its own.'],
+            ]),
+            p('mDNS goes by multicast (224.0.0.251, UDP port 5353) to the devices on the same link: switches pass it on but routers do not, so it only works within the same network, and the other device needs avahi-daemon too. In Simulation mode you will see the MDNS packets; a firewall that blocks port 5353 stops it.'),
+            term('shell', 'alumno@pc1:~$ ping -c 1 pc0.local\nPING pc0.local (192.168.10.10) 56(84) bytes of data.\n64 bytes from pc0.local (192.168.10.10): icmp_seq=1 ttl=64 time=0.400 ms'),
             term('shell', 'root@srv:~# apt install -y apache2\nReading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\nInstalling:\n  apache2\n\nInstalling dependencies:\n  apache2-bin  apache2-data  apache2-utils  libapr1t64  libaprutil1t64  ssl-cert\n…\nSetting up apache2 (2.4.62-1ubuntu1) ...\nCreated symlink \'/etc/systemd/system/multi-user.target.wants/apache2.service\' → \'/usr/lib/systemd/system/apache2.service\'.'),
             steps(['Place a server', 'From the palette, with a way out to the Internet (an ISP cloud or a router that reaches it) and 8.8.8.8 as DNS.'], ['Open its GNU/Linux terminal', '`sudo apt update` should give four “Hit:”.'], ['Install the service', '`sudo apt install apache2`: the Services tab appears at once with HTTP, and the HTTP box in Settings is ticked.']),
             check('Check it', 'From a PC, the browser opens the server’s website. `sudo apt remove apache2` stops Apache and removes the panel; the box is unticked too.'),
             warn('Offline', 'If the DNS does not answer you will see “Temporary failure resolving \'archive.ubuntu.com\'”; if the name does not exist, “Could not resolve”; if there is no route, “Could not connect … connection timed out”. Check the gateway and the DNS, as on a real server.'),
-            tip('Limited reach', 'Only the packages of Netfix’s services and those of the base system (which cannot be removed) are there. A name not in the catalogue gives “Unable to locate package”. Without sudo, apt gives dpkg’s real lock error.'),
+            tip('Limited reach', 'Only the packages of Netfix’s services, network-manager, avahi-daemon, libnss-mdns and those of the base system (which cannot be removed) are there. A name not in the catalogue gives “Unable to locate package”. Without sudo, apt gives dpkg’s real lock error.'),
             exercise('A DNS server from scratch', 'Place a server in the “Internet: two sites and public DNS” lab, give it a way out and turn it into a DNS server using only the terminal.', 'Set the IP address, the gateway and DNS 8.8.8.8; then `sudo apt update` and `sudo apt install -y bind9`. The Services tab shows DNS and `systemctl status named` says it is active.'),
         ],
     },
@@ -30168,7 +30329,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.26.0",
+    "version": "0.27.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -37912,6 +38073,10 @@ const PACKAGES = [
     { ...dep('wireguard-tools', '1.0.20250521-1', 89), section: 'main', deps: [], feature: 'vpn' },
     { ...dep('wireguard', '1.0.20250521-1', 3, 'all'), section: 'main', deps: [dep('wireguard-tools', '1.0.20250521-1', 89)], feature: 'vpn' },
     { ...dep('rsyslog', '8.2412.0-2ubuntu2', 538), section: 'main', deps: [dep('liblognorm5', '2.0.6-4build1', 63), dep('libestr0', '0.1.11-1build1', 8)], feature: 'log', unit: 'rsyslog' },
+    // Any GNU/Linux host (PC too): tools rather than service panels (host-packages.ts keeps them).
+    { ...dep('network-manager', '1.54.0-1ubuntu1', 3412), section: 'main', deps: [dep('libnm0', '1.54.0-1ubuntu1', 498), dep('libndp0', '1.9-1', 12), dep('libteamdctl0', '1.31-1build4', 13)], unit: 'NetworkManager' },
+    { ...dep('avahi-daemon', '0.8-16ubuntu2', 85), section: 'main', deps: [dep('libavahi-common3', '0.8-16ubuntu2', 23), dep('libavahi-core7', '0.8-16ubuntu2', 82), dep('libdaemon0', '0.14-7.1ubuntu4', 15), dep('libnss-mdns', '0.15.1-4build2', 27)], unit: 'avahi-daemon' },
+    { ...dep('libnss-mdns', '0.15.1-4build2', 27), section: 'main', deps: [] },
 ];
 /** Always installed: `install` says they are up to date, `remove` refuses. */
 const BASE = {
@@ -38146,7 +38311,7 @@ return { APPS_BY_KIND, PC_APPS, defaultApps, freshApps, onAppsChange, deviceApps
 __m["shells/apt-state.js"] = (() => {
 const { runsServices } = __m["devices/kinds.js"];
 const { APPS_BY_KIND, deviceApps, setDeviceApps } = __m["net/device-apps.js"];
-const extras = new WeakMap();
+const { hasPackage, setPackageInstalled } = __m["net/host-packages.js"];
 const MAIL_KEY = { postfix: 'smtp', 'dovecot-imapd': 'imap', 'dovecot-pop3d': 'pop3' };
 /** The package turns on a panel of this device (a PC's SSH and mail tabs are clients, not these services). */
 const hasPanel = (host, p) => runsServices(host.kind) && p.feature !== undefined && APPS_BY_KIND[host.kind].includes(p.feature);
@@ -38154,7 +38319,7 @@ const hasPanel = (host, p) => runsServices(host.kind) && p.feature !== undefined
 const asServer = (host) => host;
 function installedPackage(host, p) {
     if (!hasPanel(host, p) || p.feature === undefined)
-        return extras.get(host)?.has(p.name) ?? false;
+        return hasPackage(host, p.name);
     const key = MAIL_KEY[p.name];
     return deviceApps(host).includes(p.feature) && (key === undefined || asServer(host).services.mail[key]);
 }
@@ -38177,12 +38342,7 @@ function runService(server, p, on) {
 }
 function setPackage(host, p, on) {
     if (!hasPanel(host, p) || p.feature === undefined) {
-        const set = extras.get(host) ?? new Set();
-        if (on)
-            set.add(p.name);
-        else
-            set.delete(p.name);
-        extras.set(host, set);
+        setPackageInstalled(host, p.name, on);
         return;
     }
     const server = asServer(host);
@@ -38429,6 +38589,195 @@ function apt(host) {
 
 return { apt };
 })();
+__m["shells/nmcli-model.js"] = (() => {
+const { formatIp } = __m["core/ip.js"];
+const { routeLines } = __m["shells/linux-ip.js"];
+const { configuredSearchDomains } = __m["shells/net-tools.js"];
+const FOOTER = 'Use "nmcli device show" to get complete information about known devices and\n"nmcli connection show" to get an overview on active connection profiles.\n\nConsult nmcli(1) and nmcli-examples(7) manual pages for complete usage details.';
+const stateOf = (n) => (!n.adminUp ? 'disconnected' : n.up ? 'connected' : 'unavailable');
+const STATE_CODE = { connected: '100 (connected)', unavailable: '20 (unavailable)', disconnected: '30 (disconnected)' };
+const nmMac = (m) => (m.match(/../g) ?? []).join(':').toUpperCase();
+const conName = (n) => `netplan-${n.linux}`;
+/** The routes of a device, from `ip route`: [destination, next hop]. */
+function routesOf(host, dev) {
+    return routeLines(host).filter((l) => new RegExp(`(^| )dev ${dev}( |$)`).test(l)).map((l) => {
+        const words = l.split(' ');
+        const dst = words[0] === 'default' ? '0.0.0.0/0' : words[0] ?? '';
+        return [dst, words[1] === 'via' ? words[2] ?? '0.0.0.0' : '0.0.0.0'];
+    });
+}
+function overviewOf(host, n) {
+    const s = stateOf(n);
+    const head = s === 'connected' ? `${n.linux}: connected to ${conName(n)}` : `${n.linux}: ${s}`;
+    const routes = routesOf(host, n.linux);
+    const ip = n.ip !== undefined && s === 'connected' ? [
+        ...(routes.some(([d]) => d === '0.0.0.0/0') ? ['\tip4 default'] : []), `\tinet4 ${formatIp(n.ip)}/${n.prefix ?? 32}`,
+        ...routes.map(([d, via]) => (d === '0.0.0.0/0' ? `\troute4 default via ${via} metric 100` : `\troute4 ${d} metric 100`))
+    ] : [];
+    return [head, '\t"Intel 82540EM"', `\tethernet (e1000), ${nmMac(n.mac)}, hw, mtu 1500`, ...ip, ''];
+}
+/** `nmcli` without arguments: each device, lo, the DNS configuration and the hint. */
+function nmcliOverview(host) {
+    const nics = host.nics();
+    const lo = ['lo: connected (externally) to lo', '\t"lo"', '\tloopback (unknown), 00:00:00:00:00:00, sw, mtu 65536', '\tinet4 127.0.0.1/8', '\tinet6 ::1/128', '\troute6 ::1/128 metric 256', ''];
+    const search = configuredSearchDomains(host);
+    const dns = host.config.dns === undefined ? [] : ['DNS configuration:', `\tservers: ${formatIp(host.config.dns)}`,
+        ...(search.length ? [`\tdomains: ${search.join(' ')}`] : []), `\tinterface: ${nics[0]?.linux ?? 'eth0'}`, ''];
+    return [...nics.flatMap((n) => overviewOf(host, n)), ...lo, ...dns, FOOTER].join('\n');
+}
+
+return { stateOf, nmMac, conName, routesOf, nmcliOverview };
+})();
+__m["shells/nmcli.js"] = (() => {
+const { hasPackage } = __m["net/host-packages.js"];
+const { formatIp } = __m["core/ip.js"];
+const { configuredSearchDomains } = __m["shells/net-tools.js"];
+const { reachMirror } = __m["shells/apt-net.js"];
+const { conName, nmcliOverview, nmMac, routesOf, stateOf } = __m["shells/nmcli-model.js"];
+const VERSION = '1.54.0';
+const LABEL_WIDTH = 40;
+const CONNECTIVITY_URI = 'http://connectivity-check.ubuntu.com';
+const STATE_CODE = { connected: '100 (connected)', unavailable: '20 (unavailable)', disconnected: '30 (disconnected)' };
+/** A stable UUID for a profile of a device (NetworkManager makes one per profile). */
+function uuid(seed) {
+    let h = 0x811c9dc5;
+    const hex = Array.from({ length: 32 }, (_, i) => {
+        h = Math.imul(h ^ (seed.charCodeAt(i % seed.length) + i), 0x01000193) >>> 0;
+        return ((h >>> 4) & 0xf).toString(16);
+    }).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+function ip4(host, n) {
+    if (n.ip === undefined || stateOf(n) !== 'connected')
+        return [];
+    const routes = routesOf(host, n.linux);
+    const primary = host.nics()[0]?.linux === n.linux;
+    const dns = primary && host.config.dns !== undefined ? [['IP4.DNS[1]', formatIp(host.config.dns)]] : [];
+    const domains = primary ? configuredSearchDomains(host).map((d, i) => [`IP4.DOMAIN[${i + 1}]`, d]) : [];
+    return [['IP4.ADDRESS[1]', `${formatIp(n.ip)}/${n.prefix ?? 32}`], ['IP4.GATEWAY', routes.find(([d]) => d === '0.0.0.0/0')?.[1] ?? '--'],
+        ...routes.map(([d, via], i) => [`IP4.ROUTE[${i + 1}]`, `dst = ${d}, nh = ${via}, mt = 100`]), ...dns, ...domains];
+}
+function deviceFields(host, n, index) {
+    const s = stateOf(n);
+    return [['GENERAL.DEVICE', n.linux], ['GENERAL.TYPE', 'ethernet'], ['GENERAL.HWADDR', nmMac(n.mac)], ['GENERAL.MTU', '1500'], ['GENERAL.STATE', STATE_CODE[s]],
+        ['GENERAL.CONNECTION', s === 'connected' ? conName(n) : '--'], ['GENERAL.CON-PATH', s === 'connected' ? `/org/freedesktop/NetworkManager/ActiveConnection/${index + 2}` : '--'],
+        ['WIRED-PROPERTIES.CARRIER', n.up ? 'on' : 'off'], ...ip4(host, n), ['IP6.GATEWAY', '--']];
+}
+const LO = [['GENERAL.DEVICE', 'lo'], ['GENERAL.TYPE', 'loopback'], ['GENERAL.HWADDR', '00:00:00:00:00:00'], ['GENERAL.MTU', '65536'],
+    ['GENERAL.STATE', '100 (connected (externally))'], ['GENERAL.CONNECTION', 'lo'], ['GENERAL.CON-PATH', '/org/freedesktop/NetworkManager/ActiveConnection/1'],
+    ['IP4.ADDRESS[1]', '127.0.0.1/8'], ['IP4.GATEWAY', '--'], ['IP6.ADDRESS[1]', '::1/128'], ['IP6.GATEWAY', '--']];
+function profileFields(host, n) {
+    const stat = !n.dhcp && n.ip !== undefined;
+    const opt = (v) => (stat && v !== undefined ? formatIp(v) : '--');
+    return [['connection.id', conName(n)], ['connection.uuid', uuid(`${host.id}${n.linux}`)], ['connection.type', '802-3-ethernet'], ['connection.interface-name', n.linux],
+        ['connection.autoconnect', 'yes'], ['ipv4.method', n.dhcp ? 'auto' : 'manual'], ['ipv4.dns', opt(host.config.dns)],
+        ['ipv4.addresses', stat ? `${formatIp(n.ip ?? 0)}/${n.prefix ?? 32}` : '--'], ['ipv4.gateway', opt(host.config.gateway)], ['ipv6.method', 'link-local'],
+        ['GENERAL.NAME', conName(n)], ['GENERAL.DEVICES', n.linux], ['GENERAL.STATE', stateOf(n) === 'connected' ? 'activated' : '--'], ...ip4(host, n)];
+}
+/** `connection show [NAME]`: every profile (with its device when active), or one; null when there is no such profile. */
+function connection(host, name) {
+    const nics = host.nics();
+    if (name === undefined) {
+        const rows = nics.map((n) => [conName(n), uuid(`${host.id}${n.linux}`), 'ethernet', stateOf(n) === 'connected' ? n.linux : '--']);
+        return { table: [['NAME', 'UUID', 'TYPE', 'DEVICE'], ...rows, ['lo', uuid(`${host.id}lo`), 'loopback', 'lo']] };
+    }
+    const n = nics.find((x) => conName(x) === name);
+    if (n)
+        return { blocks: [profileFields(host, n)] };
+    return name === 'lo' ? { blocks: [[['connection.id', 'lo'], ['connection.type', 'loopback'], ['ipv4.method', 'manual'], ['ipv4.addresses', '127.0.0.1/8'], ...LO]] } : null;
+}
+function connectivity(host) {
+    const hasIp = host.nics().some((n) => n.ip !== undefined && stateOf(n) === 'connected');
+    return !hasIp ? 'none' : reachMirror(host, CONNECTIVITY_URI, '') === undefined ? 'full' : 'limited';
+}
+function general(host) {
+    const c = connectivity(host);
+    const state = c === 'full' ? 'connected' : c === 'limited' ? 'connected (site only)' : 'disconnected';
+    return { table: [['STATE', 'CONNECTIVITY', 'WIFI-HW', 'WIFI', 'WWAN-HW', 'WWAN', 'METERED'], [state, c, 'missing', 'enabled', 'missing', 'enabled', 'no (guessed)']] };
+}
+/** -f NAME,TYPE / -f IP4 keeps those columns or fields; -t drops the header and joins with «:»; -g prints just values. */
+function render(out, shape) {
+    const wanted = (label) => {
+        const l = label.toUpperCase();
+        return !shape.fields || shape.fields.some((f) => l === f || l.startsWith(`${f}.`) || l.startsWith(`${f}[`));
+    };
+    if ('table' in out) {
+        const head = out.table[0] ?? [];
+        const cols = head.map((_, i) => i).filter((i) => wanted(head[i] ?? ''));
+        const rows = out.table.map((r) => cols.map((i) => r[i] ?? ''));
+        if (shape.terse || shape.values)
+            return rows.slice(1).map((r) => r.map((c) => (c === 'ethernet' && head.includes('UUID') ? '802-3-ethernet' : c).replace(/:/g, '\\:')).join(':')).join('\n');
+        const widths = cols.map((_, j) => Math.max(...rows.map((r) => (r[j] ?? '').length)) + 2);
+        return rows.map((r) => r.map((c, j) => c.padEnd(widths[j] ?? 0)).join('')).join('\n');
+    }
+    const line = ([label, value]) => (shape.values ? value : shape.terse ? `${label}:${value}` : `${label}:`.padEnd(LABEL_WIDTH) + value);
+    return out.blocks.map((b) => b.filter(([l]) => wanted(l)).map(line).join('\n')).join('\n\n');
+}
+function shapeOf(args) {
+    const at = args.findIndex((a) => a === '-f' || a === '--fields' || a === '-g' || a === '--get-values');
+    const fields = at >= 0 ? (args[at + 1] ?? '').split(',').map((f) => f.trim().toUpperCase()).filter(Boolean) : undefined;
+    return { terse: args.includes('-t') || args.includes('--terse'), values: args.includes('-g') || args.includes('--get-values'), ...(fields ? { fields } : {}) };
+}
+/** Words that are not options, skipping the values of -f/-g. */
+function words(args) {
+    const valued = new Set(['-f', '--fields', '-g', '--get-values']);
+    return args.filter((a, i) => !a.startsWith('-') && !valued.has(args[i - 1] ?? ''));
+}
+const OBJECTS = ['general', 'networking', 'radio', 'connection', 'device', 'agent', 'monitor', 'help'];
+const pick = (word, list) => list.find((o) => o.startsWith(word));
+function device(host, sub, name) {
+    const verb = sub === undefined ? 'status' : pick(sub, ['status', 'show']);
+    const nics = host.nics();
+    if (verb === 'status')
+        return { table: [['DEVICE', 'TYPE', 'STATE', 'CONNECTION'], ...nics.map((n) => [n.linux, 'ethernet', stateOf(n), stateOf(n) === 'connected' ? conName(n) : '--']), ['lo', 'loopback', 'connected (externally)', 'lo']] };
+    if (verb !== 'show')
+        return `Error: argument '${sub}' not understood. Try passing --help instead.`;
+    const shown = name === undefined ? nics : nics.filter((n) => n.linux === name);
+    if (name !== undefined && name !== 'lo' && !shown.length)
+        return `Error: Device '${name}' not found.`;
+    return { blocks: [...shown.map((n, i) => deviceFields(host, n, i)), ...(name === undefined || name === 'lo' ? [LO] : [])] };
+}
+/** The output of a command line, or an error with its exit status. */
+function dispatch(host, word, sub, name) {
+    const obj = pick(word, OBJECTS);
+    if (obj === 'device')
+        return device(host, sub, name);
+    if (obj === 'general')
+        return sub === undefined || pick(sub, ['status']) ? general(host) : pick(sub, ['hostname']) ? { text: host.runtimeName() } : `Error: argument '${sub}' not understood. Try passing --help instead.`;
+    if (obj === 'networking')
+        return { text: sub !== undefined && pick(sub, ['connectivity']) ? connectivity(host) : 'enabled' };
+    if (obj === 'connection' && (sub === undefined || pick(sub, ['show'])))
+        return connection(host, name) ?? `Error: ${name} - no such connection profile.`;
+    if (obj === undefined)
+        return `Error: Object '${word}' is unknown, try 'nmcli help'.`;
+    return `Error: argument '${sub ?? word}' not understood. Try passing --help instead.`;
+}
+function run(ctx, host) {
+    const args = ctx.argv.slice(1);
+    if (args.some((a) => a === '-v' || a === '--version'))
+        return ctx.out(`nmcli tool, version ${VERSION}\n`), 0;
+    const [word, sub, name] = words(args);
+    if (word === undefined)
+        return ctx.out(`${nmcliOverview(host)}\n`), 0;
+    const out = dispatch(host, word, sub, name);
+    if (typeof out === 'string')
+        return ctx.err(`${out}\n`), /not found|no such/.test(out) ? 10 : 2;
+    const text = 'text' in out ? out.text : render(out, shapeOf(args));
+    ctx.out(text ? `${text}\n` : '');
+    return 0;
+}
+/** Without network-manager installed, bash's command-not-found answers instead. */
+function nmcli(host) {
+    return (ctx) => {
+        if (hasPackage(host, 'network-manager'))
+            return run(ctx, host);
+        ctx.err("Command 'nmcli' not found, but can be installed with:\nsudo apt install network-manager\n");
+        return 127;
+    };
+}
+
+return { nmcli };
+})();
 __m["shells/linux-programs.js"] = (() => {
 /** The Netfix programs of an Ubuntu host: network clients, systemd tools, ssh and command-not-found. */
 const { sftp } = __m["shells/sftp-cmd.js"];
@@ -38456,6 +38805,7 @@ const { sshCopyId } = __m["shells/ssh-copy-id.js"];
 const { netplanProgram } = __m["shells/netplan.js"];
 const { rndc } = __m["shells/rndc.js"];
 const { apt } = __m["shells/apt.js"];
+const { nmcli } = __m["shells/nmcli.js"];
 const PACKAGES = {
     ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
     telnet: 'inetutils-telnet', conntrack: 'conntrack', htop: 'htop', tree: 'tree', zip: 'zip', unzip: 'unzip', php: 'php8.4-cli', python: 'python-is-python3',
@@ -38613,7 +38963,7 @@ function linuxPrograms(host) {
         ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
         ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
         ['ss', (ctx) => { lines(ctx, ss(host, ssOptions(ctx.argv.slice(1)))); return 0; }],
-        ['apt', apt(host)],
+        ['apt', apt(host)], ['nmcli', nmcli(host)],
         ['command-not-found', commandNotFound],
         ...(runsServices(host.kind) ? [...APACHE_TOOLS, ['rndc', rndc(host)]] : []),
     ]);
@@ -51346,6 +51696,9 @@ const { drawable, makeAnnotation, MAX_ANNOTATIONS } = __m["net/annotations.js"];
 const { FILE_VERSION, validateFile } = __m["net/topology-file.js"];
 const { parseFeatures } = __m["net/lab-features.js"];
 const { bindLab, customApps, deviceApps, parseApps, setDeviceApps } = __m["net/device-apps.js"];
+const { packagesOf, parsePackages, setPackageInstalled } = __m["net/host-packages.js"];
+const { registerMdns } = __m["net/mdns.js"];
+registerMdns();
 const { SimClock } = __m["core/clock.js"];
 const { Router } = __m["devices/router.js"];
 const { Switch } = __m["devices/switch.js"];
@@ -51568,7 +51921,8 @@ function hostRecord(d) {
     const clientId = d.clientIdOverride;
     const files = savedFiles(d);
     const enabled = customApps(d);
-    const names = { ...(enabled ? { enabled } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
+    const packages = packagesOf(d);
+    const names = { ...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
     if (c.mode === 'dhcp')
         return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
     const opt = (n) => (n === undefined ? undefined : formatIp(n));
@@ -51586,6 +51940,8 @@ function restore(device, rec) {
         if (pc.os === 'linux' || pc.os === 'windows')
             device.os = pc.os;
         setDeviceApps(device, parseApps(pc.enabled, device.kind));
+        for (const name of parsePackages(pc.packages))
+            setPackageInstalled(device, name, true);
         // The host name is not read back: it always comes from the device name (net/device-names.ts).
         if (typeof pc.prettyHostname === 'string')
             device.prettyName = pc.prettyHostname.slice(0, MAX_PRETTY);

@@ -18,6 +18,28 @@ export interface Egress {
   readonly nextHop: number;
 }
 
+/**
+ * Local sockets the stack itself does not know (mDNS, net/mdns.ts): which hosts joined a multicast group, and the
+ * datagrams a service takes before the host's protocols see them. Registered once; nothing joins without it.
+ */
+export interface LocalSockets {
+  member(host: StackHost, group: number): boolean;
+  take(host: StackHost, iface: string, packet: IpPacket): boolean;
+}
+
+let sockets: LocalSockets | undefined;
+
+export function registerLocalSockets(s: LocalSockets): void {
+  sockets = s;
+}
+
+const isMulticast = (ip: number): boolean => ip >>> 28 === 0xe;
+
+/** 01:00:5e + the low 23 bits of the group (224.0.0.251 → 01005e0000fb). */
+export function multicastMac(group: number): string {
+  return `01005e${[(group >>> 16) & 0x7f, (group >>> 8) & 0xff, group & 0xff].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
 export interface StackHost {
   l3Iface(name: string): L3Iface | undefined;
   l3Ifaces(): readonly L3Iface[];
@@ -110,7 +132,7 @@ export class IpStack {
   receiveFrame(ifaceName: string, frame: Frame): void {
     const iface = this.host.l3Iface(ifaceName);
     if (!iface?.up) return;
-    if (!iface.pointToPoint && frame.dst !== iface.mac && frame.dst !== BROADCAST_MAC) return;
+    if (!iface.pointToPoint && frame.dst !== iface.mac && frame.dst !== BROADCAST_MAC && !this.joined(frame.ip?.dst, frame.dst)) return;
     if (frame.arp) this.onArp(iface, frame);
     else if (frame.ip) this.onIp(iface, frame.ip, frame);
   }
@@ -142,9 +164,10 @@ export class IpStack {
     // Martian: 127.0.0.0/8 never comes in from the wire (Linux drops it), only through lo.
     if ((packet.dst >>> 24) === LOOPBACK_NET || (packet.src >>> 24) === LOOPBACK_NET) return;
     const directed = this.directedIface(packet.dst);
-    const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst) || directed !== undefined;
+    const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst) || directed !== undefined || this.joined(packet.dst);
     if (!forMe) {
-      this.host.forward?.(iface.name, packet);
+      // 224.0.0.0/4 is never routed here (mDNS and the like stay on their link).
+      if (!isMulticast(packet.dst)) this.host.forward?.(iface.name, packet);
       return;
     }
     // A directed broadcast for another of our subnets is ours too; the link only gets it if forwarding is on. One that
@@ -166,6 +189,7 @@ export class IpStack {
       this.onIcmp(ifaceName, packet, packet.icmp);
       return;
     }
+    if (packet.udp && sockets?.take(this.host, ifaceName, packet)) return;
     this.host.deliver(ifaceName, packet, frame);
   }
 
@@ -281,6 +305,17 @@ export class IpStack {
     const mac = iface?.mac ?? LOOPBACK_MAC;
     this.host.schedule(0, () => this.localIn(LOOPBACK, out, { src: mac, dst: mac, ip: out }));
     return true;
+  }
+
+  /** A multicast group this host has joined (with its MAC, when a frame brings one). */
+  private joined(group: number | undefined, mac?: string): boolean {
+    if (group === undefined || !isMulticast(group) || (mac !== undefined && mac !== multicastMac(group))) return false;
+    return sockets?.member(this.host, group) ?? false;
+  }
+
+  /** Sends a datagram to a link-local multicast group (it is never routed: TTL 255, mDNS). */
+  multicast(ifaceName: string, packet: IpPacket): void {
+    this.emitIp(ifaceName, multicastMac(packet.dst), packet);
   }
 
   /** Sends a frame on an interface to the broadcast MAC (DHCP, etc.). */

@@ -1340,3 +1340,28 @@ Pascua en la ayuda (créditos de mc y `apt moo`). «Linux» como SO pasa a «GNU
   paquete de correo sigue a su servicio (postfix, dovecot-imapd, dovecot-pop3d) y el panel se queda mientras quede
   uno; no se vuelven a descargar dependencias ya instaladas; `apt list` sin `--installed` y con patrón; las opciones
   con valor (-o, -t, -c) no se toman por la orden; fin de la entrada en «Continue?» aborta.
+
+### Fase 44: paquetes instalables en todos los GNU/Linux: nmcli y mDNS (v0.27.0)
+
+Petición: `apt install` de dos paquetes en cualquier terminal GNU/Linux (PC, Server, router): **nmcli** (NetworkManager)
+con información completa de interfaces y red, y **mDNS** para hacer ping por nombre sin servidor DNS. Base para más
+paquetes instalables.
+
+- **Paquetes instalados guardados** (`src/net/host-packages.ts`, registro débil como device-apps): lo que apt instala que
+  no es un panel de servicio queda en el equipo y en el archivo (`packages`, validado). apt-state lo usa.
+- **network-manager** (`src/shells/nmcli.ts`): sin instalar, «Command 'nmcli' not found, but can be installed with:
+  sudo apt install network-manager». Instalado: `nmcli` (resumen por dispositivo, DNS), `general [status]` (con la
+  comprobación real de conectividad a connectivity-check.ubuntu.com: full / limited / none), `device [status]`,
+  `device show [IFACE]`, `connection [show [NOMBRE]]`, `networking`, `--version`; abreviaturas (d, dev, c, con, g…) y
+  los errores reales. Conexiones «netplan-eth0» (NetworkManager como renderer de netplan) y lo.
+- **avahi-daemon** (+ libnss-mdns): responde por mDNS a `<hostname>.local`; con libnss-mdns, `ping pc1.local`, ssh, curl…
+  preguntan por mDNS antes que al DNS (`mdns4_minimal [NOTFOUND=return]`). Paquetes reales: multicast 224.0.0.251:5353
+  (MAC 01:00:5e:00:00:fb) por la red simulada, que no pasa de un router; respuesta unicast al puerto del que pregunta.
+  Registro de sockets locales en `ipstack.ts` (miembros de grupo y datagramas que toma un servicio) para no tocar host.ts.
+- **Ayuda:** página de apt (paquetes instalables), referencia de `nmcli`, y mDNS en Red y servicios desde GNU/Linux.
+- **Pruebas:** nmcli antes/después de instalar y sus salidas, persistencia, conectividad; mDNS entre dos GNU/Linux del
+  mismo switch, no a través de un router, no sin avahi en el destino, cortafuegos; e2e en el terminal.
+- **Hecho (v0.27.0):** como en el plan; revisión: los puertos de las consultas mDNS (52000-59999) no chocan con el
+  resolutor y solo se acepta la respuesta desde el 5353; el nombre que publica avahi es el de ahora (hostname); el
+  registro de mDNS lo hace topology.ts al cargar; un router nunca reenvía 224.0.0.0/4; nmcli con -t/-f/-g, todos
+  los perfiles en `connection show`, `networking connectivity` y `general hostname`.

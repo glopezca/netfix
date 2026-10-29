@@ -26,6 +26,7 @@ import { sshCopyId } from './ssh-copy-id.ts';
 import { netplanProgram } from './netplan.ts';
 import { rndc } from './rndc.ts';
 import { apt } from './apt.ts';
+import { nmcli } from './nmcli.ts';
 
 const PACKAGES: Readonly<Record<string, string>> = {
   ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
@@ -161,7 +162,7 @@ export function linuxPrograms(host: Host): Map<string, CommandFn> {
     ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
     ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
     ['ss', (ctx) => { lines(ctx, ss(host, ssOptions(ctx.argv.slice(1)))); return 0; }],
-    ['apt', apt(host)],
+    ['apt', apt(host)], ['nmcli', nmcli(host)],
     ['command-not-found', commandNotFound],
     ...(runsServices(host.kind) ? [...APACHE_TOOLS, ['rndc', rndc(host)] as const] : []),
   ]);
