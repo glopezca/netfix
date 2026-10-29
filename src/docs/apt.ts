@@ -42,6 +42,7 @@ export const APT_DOCS: readonly DocPage[] = [
         ['libnss-mdns', 'Solo pregunta por los nombres .local; no responde por el suyo.'],
       ]),
       p('mDNS va por multicast (224.0.0.251, puerto UDP 5353) a los equipos del mismo enlace: lo propagan los switches pero no los routers, así que solo funciona dentro de la misma red, y el otro equipo también debe tener avahi-daemon. En modo Simulación verás los paquetes MDNS; un cortafuegos que bloquee el puerto 5353 lo impide.'),
+      p('Los equipos **Windows** (PC o Windows Server) traen mDNS de serie, como Windows 10 y 11: sin instalar nada responden a su nombre .local y preguntan por los demás (`ping pc1.local` en la Terminal Windows). Windows pregunta desde el puerto 5353 y la respuesta llega por multicast; nss-mdns, desde un puerto propio y con respuesta directa.'),
       term('shell', 'alumno@pc1:~$ ping -c 1 pc0.local\nPING pc0.local (192.168.10.10) 56(84) bytes of data.\n64 bytes from pc0.local (192.168.10.10): icmp_seq=1 ttl=64 time=0.400 ms'),
       term('shell', 'root@srv:~# apt install -y apache2\nReading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\nInstalling:\n  apache2\n\nInstalling dependencies:\n  apache2-bin  apache2-data  apache2-utils  libapr1t64  libaprutil1t64  ssl-cert\n…\nSetting up apache2 (2.4.62-1ubuntu1) ...\nCreated symlink \'/etc/systemd/system/multi-user.target.wants/apache2.service\' → \'/usr/lib/systemd/system/apache2.service\'.'),
       steps(

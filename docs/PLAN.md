@@ -1365,3 +1365,15 @@ paquetes instalables.
   resolutor y solo se acepta la respuesta desde el 5353; el nombre que publica avahi es el de ahora (hostname); el
   registro de mDNS lo hace topology.ts al cargar; un router nunca reenvía 224.0.0.0/4; nmcli con -t/-f/-g, todos
   los perfiles en `connection show`, `networking connectivity` y `general hostname`.
+
+### Fase 44b: mDNS de serie en Windows, como en un PC real (v0.27.1)
+
+(nmcli en Windows, descartado: no existe en un Windows real.) Windows 10 1803+ y 11 traen mDNS en su cliente DNS: sin
+instalar nada, el equipo responde a `NOMBRE.local` y pregunta por los nombres `.local` (cmd: `ping pc1.local`).
+- **Quién:** todo equipo cuyo sistema (Configuración IP) es Windows: PC y Windows Server. Los GNU/Linux siguen con
+  avahi-daemon / libnss-mdns (fase 44).
+- **Paquetes como Windows:** pregunta desde el puerto 5353 y la respuesta va por multicast al grupo (no la unicast
+  «legacy» de nss-mdns); el que responde contesta así a quien pregunte desde 5353, sea Windows o no.
+- **Pruebas:** Windows ↔ Windows sin instalar nada; Windows ↔ GNU/Linux con avahi; respuesta multicast en el cable;
+  no cruza routers; `nslookup` sigue sin usar mDNS (como el real). Ayuda: apt (mDNS) y terminal Windows.
+- **Hecho (v0.27.1).**

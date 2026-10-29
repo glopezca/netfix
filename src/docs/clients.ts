@@ -138,6 +138,7 @@ export const CLIENT_DOCS: DocGroup = {
           ['¿Qué dirección tengo?', '`ipconfig` (con `/all`, también la MAC, el servidor DHCP, el DNS y las fechas de la concesión).'],
           ['¿Llego a la puerta de enlace?', '`ping 192.168.10.1`: si responde, la red local funciona.'],
           ['¿Resuelvo nombres?', '`nslookup srv.aula.lab`: si da la dirección IP, el DNS funciona.'],
+          ['¿Y sin servidor DNS?', '`ping pc1.local`: Windows trae mDNS de serie y pregunta por los nombres .local en su red (un equipo GNU/Linux responde si tiene avahi-daemon). `nslookup` no usa mDNS: solo pregunta al DNS.'],
           ['¿Por dónde va el tráfico?', '`tracert 8.8.8.8`: un salto por cada router del camino.'],
         ),
         term('cmd', 'C:\\home\\alumno> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\home\\alumno> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),

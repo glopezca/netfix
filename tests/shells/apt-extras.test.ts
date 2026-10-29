@@ -92,3 +92,37 @@ test('review: nmcli -t, -f and -g for scripts; every profile listed; eth1 is not
   assert.match(run(fw, 'nmcli connection show'), /netplan-eth2 +[0-9a-f-]{36} +ethernet +-- /, 'a profile without its device');
   assert.doesNotMatch(run(fw, 'nmcli dev show eth1'), /dev eth1\d/);
 });
+
+const win = (h: Host, cmd: string): string => createShell(h, 'windows').run(cmd).join('\n');
+
+test('Windows has mDNS built in: it answers to NAME.local and asks for .local names, with nothing installed', () => {
+  const t = lab('basico');
+  const [pc0, pc2] = [t.byLabel('PC0') as Host, t.byLabel('PC2') as Host];
+  assert.equal(pc0.os, 'windows');
+  const before = t.net.history.length;
+  assert.match(win(pc0, 'ping -n 1 pc2.local'), /Pinging pc2\.local \[(\d+\.\d+\.\d+\.\d+)\] with 32 bytes of data:\n\nReply from \1: bytes=32/);
+  const mdns = t.net.history.slice(before).filter((e) => e.frame.ip?.udp?.dns && (e.frame.ip.udp.dport === 5353 || e.frame.ip.udp.sport === 5353));
+  assert.ok(mdns.some((e) => e.frame.ip?.udp?.dns?.response && e.frame.dst === '01005e0000fb'), 'Windows asks from 5353: the answer is multicast');
+  assert.ok(mdns.every((e) => e.frame.ip?.udp?.sport === 5353), 'both ends use 5353');
+  assert.match(win(pc0, 'nslookup pc2.local'), /can't find pc2\.local|Non-existent domain|timed out/i, 'nslookup asks the DNS server, as on Windows');
+});
+
+test('Windows and GNU/Linux with avahi find each other; Windows does not cross routers either', () => {
+  const t = lab('internet');
+  const [pc0, pc1, pc2] = [t.byLabel('PC0') as Host, t.byLabel('PC1') as Host, t.byLabel('PC2') as Host];
+  assert.match(win(pc0, 'ping -n 1 pc1.local'), /could not find host pc1\.local/, 'the GNU/Linux PC needs avahi to answer');
+  run(pc1, 'apt install -y avahi-daemon');
+  assert.match(win(pc0, 'ping -n 1 pc1.local'), /Reply from /);
+  assert.match(run(pc1, 'ping -c 1 pc0.local'), /1 received/, 'Windows answers the GNU/Linux query (unicast to its port)');
+  assert.match(win(pc0, 'ping -n 1 pc2.local'), /could not find host pc2\.local/, 'PC2 is behind a router');
+});
+
+test('review: a multicast answer for another name is not taken by a host waiting on 5353', () => {
+  const t = lab('basico');
+  const [pc0, pc2] = [t.byLabel('PC0') as Host, t.byLabel('PC2') as Host];
+  const before = t.net.history.length;
+  // PC2's own question goes out; while it waits, PC0 answers for itself, not for the name PC2 asked.
+  assert.match(win(pc2, 'ping -n 1 nadie.local'), /could not find host nadie\.local/);
+  assert.match(win(pc2, 'ping -n 1 pc0.local'), /Reply from /);
+  assert.ok(t.net.history.length > before);
+});

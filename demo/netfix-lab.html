@@ -11135,10 +11135,13 @@ const ANSWER_TTL = 120;
 /** One-shot query ports, clear of the stub resolver's 50000-50999. */
 const FIRST_PORT = 52000;
 const PORTS = 8000;
-/** avahi-daemon answers for the host's name. */
-const answers = (h) => hasPackage(h, 'avahi-daemon');
-/** libnss-mdns (avahi-daemon brings it) makes the resolver ask mDNS for names under .local. */
-const asksMdns = (h) => hasPackage(h, 'avahi-daemon') || hasPackage(h, 'libnss-mdns');
+/** Windows 10 1803+ and 11 have mDNS in their DNS client: nothing to install (the system of the IP tab). */
+const windows = (h) => h.os === 'windows';
+/** avahi-daemon answers for the host's name; Windows does by itself. */
+const answers = (h) => hasPackage(h, 'avahi-daemon') || windows(h);
+/** libnss-mdns (avahi-daemon brings it) makes the resolver ask mDNS for names under .local; Windows always does. */
+const asksMdns = (h) => hasPackage(h, 'avahi-daemon') || hasPackage(h, 'libnss-mdns') || windows(h);
+/** Pending questions per host and port, with the name asked (a multicast answer reaches every member). */
 const waiting = new WeakMap();
 let nextPort = 0;
 function answer(host, iface, p) {
@@ -11151,18 +11154,23 @@ function answer(host, iface, p) {
         return;
     const reply = { id: q.id, response: true, authoritative: true, qname: q.qname, qtype: 'A', rcode: 'NOERROR',
         answers: [{ name: q.qname, type: 'A', ttl: ANSWER_TTL, data: formatIp(own) }] };
-    host.sendUdp(p.src, MDNS_PORT, p.udp.sport, { dns: reply }, own, iface);
+    // A question from 5353 (Windows, a full mDNS stack) is answered to the group; a one-shot one (nss-mdns), to its port.
+    if (p.udp.sport === MDNS_PORT)
+        host.stack.multicast(iface, { src: own, dst: MDNS_GROUP, ttl: LINK_LOCAL_TTL, protocol: 'udp', udp: { sport: MDNS_PORT, dport: MDNS_PORT, dns: reply } });
+    else
+        host.sendUdp(p.src, MDNS_PORT, p.udp.sport, { dns: reply }, own, iface);
 }
 function take(host, iface, p) {
     const u = p.udp;
     if (!u?.dns)
         return false;
     if (u.dns.response && u.sport === MDNS_PORT) {
-        const done = waiting.get(host)?.get(u.dport);
-        const ip = parseIp(u.dns.answers?.find((a) => a.type === 'A')?.data ?? '');
-        if (!done || ip === null)
+        const q = waiting.get(host)?.get(u.dport);
+        const a = u.dns.answers?.find((x) => x.type === 'A' && x.name.toLowerCase() === q?.name);
+        const ip = parseIp(a?.data ?? '');
+        if (!q || ip === null)
             return false;
-        done(ip);
+        q.done(ip);
         return true;
     }
     if (u.dport !== MDNS_PORT || p.dst !== MDNS_GROUP || !answers(host))
@@ -11181,11 +11189,12 @@ function registerMdns() {
 /** The address of `name` (…​.local) on the host's links, or undefined when nobody answers. */
 function mdnsResolve(host, name) {
     registerMdns();
-    const port = FIRST_PORT + (nextPort++ % PORTS);
+    // Windows asks from 5353 and hears the answer on the group; nss-mdns from a one-shot port.
+    const port = windows(host) ? MDNS_PORT : FIRST_PORT + (nextPort++ % PORTS);
     const pending = waiting.get(host) ?? new Map();
     waiting.set(host, pending);
     const ip = runSync(host.hooks, (done) => {
-        pending.set(port, done);
+        pending.set(port, { name: name.toLowerCase(), done });
         host.hooks.schedule(QUERY_MS, () => done(undefined));
         for (const iface of host.l3Ifaces().filter((i) => i.up && i.addrs.length)) {
             host.stack.multicast(iface.name, { src: iface.addrs[0]?.ip ?? 0, dst: MDNS_GROUP, ttl: LINK_LOCAL_TTL, protocol: 'udp',
@@ -19089,7 +19098,7 @@ const CLIENT_DOCS = {
                 p('La **Terminal Windows** imita a cmd.exe. Sirve para comprobar la red (`ipconfig`, `ping`, `tracert`, `nslookup`), gestionar los servicios de un Windows Server (`sc`, `net`) y trabajar con archivos. Trabaja sobre el mismo sistema de archivos que la Terminal GNU/Linux del equipo: la unidad **C:\\** es la raíz /, las carpetas se separan con \\ (o /) y los nombres no distinguen mayúsculas.'),
                 p('Empieza en la carpeta personal de la cuenta GNU/Linux (C:\\home\\alumno en los PC, C:\\home\\admin en los servidores) y respeta sus permisos: lo que esa cuenta no puede escribir da «Access is denied.».'),
                 h('Las órdenes de red, paso a paso'),
-                steps(['¿Qué dirección tengo?', '`ipconfig` (con `/all`, también la MAC, el servidor DHCP, el DNS y las fechas de la concesión).'], ['¿Llego a la puerta de enlace?', '`ping 192.168.10.1`: si responde, la red local funciona.'], ['¿Resuelvo nombres?', '`nslookup srv.aula.lab`: si da la dirección IP, el DNS funciona.'], ['¿Por dónde va el tráfico?', '`tracert 8.8.8.8`: un salto por cada router del camino.']),
+                steps(['¿Qué dirección tengo?', '`ipconfig` (con `/all`, también la MAC, el servidor DHCP, el DNS y las fechas de la concesión).'], ['¿Llego a la puerta de enlace?', '`ping 192.168.10.1`: si responde, la red local funciona.'], ['¿Resuelvo nombres?', '`nslookup srv.aula.lab`: si da la dirección IP, el DNS funciona.'], ['¿Y sin servidor DNS?', '`ping pc1.local`: Windows trae mDNS de serie y pregunta por los nombres .local en su red (un equipo GNU/Linux responde si tiene avahi-daemon). `nslookup` no usa mDNS: solo pregunta al DNS.'], ['¿Por dónde va el tráfico?', '`tracert 8.8.8.8`: un salto por cada router del camino.']),
                 term('cmd', 'C:\\home\\alumno> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\home\\alumno> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
                 h('Todas las órdenes'),
                 table(['Orden', 'Uso'], [
@@ -20543,6 +20552,7 @@ const APT_DOCS = [
                 ['libnss-mdns', 'Solo pregunta por los nombres .local; no responde por el suyo.'],
             ]),
             p('mDNS va por multicast (224.0.0.251, puerto UDP 5353) a los equipos del mismo enlace: lo propagan los switches pero no los routers, así que solo funciona dentro de la misma red, y el otro equipo también debe tener avahi-daemon. En modo Simulación verás los paquetes MDNS; un cortafuegos que bloquee el puerto 5353 lo impide.'),
+            p('Los equipos **Windows** (PC o Windows Server) traen mDNS de serie, como Windows 10 y 11: sin instalar nada responden a su nombre .local y preguntan por los demás (`ping pc1.local` en la Terminal Windows). Windows pregunta desde el puerto 5353 y la respuesta llega por multicast; nss-mdns, desde un puerto propio y con respuesta directa.'),
             term('shell', 'alumno@pc1:~$ ping -c 1 pc0.local\nPING pc0.local (192.168.10.10) 56(84) bytes of data.\n64 bytes from pc0.local (192.168.10.10): icmp_seq=1 ttl=64 time=0.400 ms'),
             term('shell', 'root@srv:~# apt install -y apache2\nReading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\nInstalling:\n  apache2\n\nInstalling dependencies:\n  apache2-bin  apache2-data  apache2-utils  libapr1t64  libaprutil1t64  ssl-cert\n…\nSetting up apache2 (2.4.62-1ubuntu1) ...\nCreated symlink \'/etc/systemd/system/multi-user.target.wants/apache2.service\' → \'/usr/lib/systemd/system/apache2.service\'.'),
             steps(['Coloca un servidor', 'Desde la paleta, con una salida a Internet (una Nube ISP o un router que llegue a ella) y como DNS 8.8.8.8.'], ['Abre su terminal GNU/Linux', '`sudo apt update` debe dar cuatro «Hit:».'], ['Instala el servicio', '`sudo apt install apache2`: la pestaña Servicios aparece al momento con HTTP, y la casilla HTTP de Configuración queda marcada.']),
@@ -21485,7 +21495,7 @@ const CLIENT_DOCS = {
                 p('The **Windows Terminal** imitates cmd.exe. It checks the network (`ipconfig`, `ping`, `tracert`, `nslookup`), manages the services of a Windows Server (`sc`, `net`) and works with files. It works on the same file system as the device’s GNU/Linux Terminal: drive **C:\\** is the root /, folders are separated with \\ (or /) and names are case-insensitive.'),
                 p('It starts in the home folder of the GNU/Linux account (C:\\home\\alumno on PCs, C:\\home\\admin on servers) and respects its permissions: what that account cannot write gives “Access is denied.”.'),
                 h('The network commands, step by step'),
-                steps(['What is my address?', '`ipconfig` (with `/all`, also the MAC, DHCP server, DNS and lease dates).'], ['Do I reach the gateway?', '`ping 192.168.10.1`: if it answers, the local network works.'], ['Do names resolve?', '`nslookup srv.aula.lab`: if it gives the IP address, DNS works.'], ['Which way does traffic go?', '`tracert 8.8.8.8`: one hop for each router on the way.']),
+                steps(['What is my address?', '`ipconfig` (with `/all`, also the MAC, DHCP server, DNS and lease dates).'], ['Do I reach the gateway?', '`ping 192.168.10.1`: if it answers, the local network works.'], ['Do names resolve?', '`nslookup srv.aula.lab`: if it gives the IP address, DNS works.'], ['And without a DNS server?', '`ping pc1.local`: Windows has mDNS built in and asks for .local names on its network (a GNU/Linux device answers if it has avahi-daemon). `nslookup` does not use mDNS: it only asks the DNS.'], ['Which way does traffic go?', '`tracert 8.8.8.8`: one hop for each router on the way.']),
                 term('cmd', 'C:\\home\\alumno> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\home\\alumno> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
                 h('All the commands'),
                 table(['Command', 'Use'], [
@@ -22939,6 +22949,7 @@ const APT_DOCS = [
                 ['libnss-mdns', 'Only asks for .local names; it does not answer for its own.'],
             ]),
             p('mDNS goes by multicast (224.0.0.251, UDP port 5353) to the devices on the same link: switches pass it on but routers do not, so it only works within the same network, and the other device needs avahi-daemon too. In Simulation mode you will see the MDNS packets; a firewall that blocks port 5353 stops it.'),
+            p('**Windows** devices (PC or Windows Server) have mDNS built in, as Windows 10 and 11 do: with nothing installed they answer to their .local name and ask for the others (`ping pc1.local` in the Windows terminal). Windows asks from port 5353 and the answer comes by multicast; nss-mdns, from a port of its own with a direct answer.'),
             term('shell', 'alumno@pc1:~$ ping -c 1 pc0.local\nPING pc0.local (192.168.10.10) 56(84) bytes of data.\n64 bytes from pc0.local (192.168.10.10): icmp_seq=1 ttl=64 time=0.400 ms'),
             term('shell', 'root@srv:~# apt install -y apache2\nReading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\nInstalling:\n  apache2\n\nInstalling dependencies:\n  apache2-bin  apache2-data  apache2-utils  libapr1t64  libaprutil1t64  ssl-cert\n…\nSetting up apache2 (2.4.62-1ubuntu1) ...\nCreated symlink \'/etc/systemd/system/multi-user.target.wants/apache2.service\' → \'/usr/lib/systemd/system/apache2.service\'.'),
             steps(['Place a server', 'From the palette, with a way out to the Internet (an ISP cloud or a router that reaches it) and 8.8.8.8 as DNS.'], ['Open its GNU/Linux terminal', '`sudo apt update` should give four “Hit:”.'], ['Install the service', '`sudo apt install apache2`: the Services tab appears at once with HTTP, and the HTTP box in Settings is ticked.']),
@@ -30329,7 +30340,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.27.0",
+    "version": "0.27.1",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
