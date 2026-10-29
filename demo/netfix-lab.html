@@ -19089,7 +19089,7 @@ const UTIL_DOCS = {
     host: { group: 'red', synopsis: 'host [-t TIPO] NOMBRE [SERVIDOR]', summary: 'Consulta DNS en una línea por registro.' },
     curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X MÉTODO] [-d DATOS] [-u USUARIO:CLAVE] [-b COOKIES] [-H "Cabecera: valor"] [-o FICHERO | -O] [-w FORMATO] URL', summary: 'Cliente HTTP. Errores con su código: (6) no resuelve, (7) conexión rechazada, (3) URL no válida, (22) error HTTP con -f.', options: '-I  solo cabeceras (HEAD)        -i  incluye las cabeceras\n-L  sigue las redirecciones       -v  muestra la petición y la respuesta\n-X  método (GET, POST, HEAD)      -d  datos de formulario (POST)\n-u  usuario:clave (Basic)         -b  cookies «a=1; b=2»\n-H  cabecera extra («Host: www.aula.lab» para probar un VirtualHost)\n-s  silencioso (-S muestra los errores)   -f  falla con los errores HTTP\n-w  escribe al final: %{http_code}, %{size_download}, %{content_type}, %{url_effective} («-s -o /dev/null -w \'%{http_code}\'» da solo el código)' },
     wget: { group: 'red', synopsis: 'wget [-q] [-O FICHERO] URL', summary: 'Descarga a un fichero del directorio actual (nombre.1, nombre.2… si ya existe). «-qO-» escribe la página en la salida.' },
-    apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PAQUETE... | remove|purge [-y] PAQUETE... | list --installed | moo', summary: 'Gestor de paquetes de Ubuntu 26.04 con alcance limitado: lee las fuentes reales (/etc/apt/sources.list.d/ubuntu.sources) y se conecta a archive.ubuntu.com y security.ubuntu.com por la red simulada; sin salida a Internet o sin DNS que los resuelva da los errores reales («Temporary failure resolving…»). El catálogo es ficticio y siempre está al día: update, upgrade y autoremove no cambian nada. install y remove sí: en un Server o router GNU/Linux activan o quitan la casilla y el panel del servicio (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) y arrancan o paran el servicio. Requiere root (sudo).', options: '-y  responde «sí» a «Continue? [Y/n]»\npurge  como remove, y borra la configuración' },
+    apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PAQUETE... | remove|purge [-y] PAQUETE... | list [--installed] [PATRÓN] | moo', summary: 'Gestor de paquetes de Ubuntu 26.04 con alcance limitado: lee las fuentes reales (/etc/apt/sources.list.d/ubuntu.sources) y se conecta a archive.ubuntu.com y security.ubuntu.com por la red simulada; sin salida a Internet o sin DNS que los resuelva da los errores reales («Temporary failure resolving…»). El catálogo es ficticio y siempre está al día: update, upgrade y autoremove no cambian nada. install y remove sí: en un Server o router GNU/Linux activan o quitan la casilla y el panel del servicio (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) y arrancan o paran el servicio. Requiere root (sudo).', options: '-y  responde «sí» a «Continue? [Y/n]»\npurge  como remove, y borra la configuración' },
     ssh: { group: 'red', synopsis: 'ssh [-i CLAVE] [-l USUARIO] [-p PUERTO] [-o OPCIÓN=VALOR] [USUARIO@]HOST [ORDEN]', summary: 'Cliente OpenSSH: comprueba la clave del servidor en ~/.ssh/known_hosts, se autentica con ~/.ssh/id_* y, si no, con contraseña. Con ORDEN la ejecuta y vuelve. Opciones -o: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Devuelve el estado remoto (255 si falla).' },
     'ssh-keygen': { group: 'red', synopsis: 'ssh-keygen [-t ed25519|ecdsa|rsa] [-b BITS] [-f FICHERO] [-N FRASE] [-C COMENTARIO] [-q] | -l|-y|-p [-f FICHERO] | -F|-R HOST [-f known_hosts] | -A', summary: 'Genera pares de claves OpenSSH (privada 600 y .pub 644), muestra la huella (-l), obtiene la pública (-y), cambia la frase de paso (-p), busca (-F) o borra (-R) equipos de known_hosts y crea las claves de host que falten (-A).' },
     sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] CLAVE... | [-w] CLAVE=VALOR | -p [FICHERO] | --system | -a', summary: 'Parámetros del núcleo (también en /proc/sys): net.ipv4.ip_forward activa el reenvío en el router GNU/Linux, net.ipv4.icmp_echo_ignore_all ignora los ping, net.ipv4.icmp_echo_ignore_broadcasts (1) no responde a los ping a broadcast y net.ipv4.conf.all.bc_forwarding (0) reenvía los broadcast dirigidos. Los cambios con -w se pierden al reiniciar; para que duren, en /etc/sysctl.conf o /etc/sysctl.d/*.conf (sysctl --system los aplica). Cambiar requiere root.' },
@@ -20381,7 +20381,7 @@ const APT_DOCS = [
                 ['sudo apt autoremove', 'No hay nada que quitar.'],
                 ['sudo apt install PAQUETE', 'Descarga (pasa tiempo de simulación), instala, activa la casilla del servicio y lo arranca. Pregunta «Continue? [Y/n]» salvo con -y.'],
                 ['sudo apt remove · purge PAQUETE', 'Para el servicio y quita su casilla y su panel. Funciona sin conexión.'],
-                ['apt list --installed', 'Los paquetes instalados (base y servicios).'],
+                ['apt list [--installed]', 'El catálogo, o solo lo instalado (base y servicios); admite un patrón como «dovecot*».'],
             ]),
             table(['Paquete', 'Servicio que activa'], [
                 ['openssh-server (o ssh)', 'SSH'],
@@ -21475,7 +21475,7 @@ const UTIL_DOCS = {
     host: { group: 'red', synopsis: 'host [-t TYPE] NAME [SERVER]', summary: 'DNS query, one line per record.' },
     curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X METHOD] [-d DATA] [-u USER:PASSWORD] [-b COOKIES] [-H "Header: value"] [-o FILE | -O] [-w FORMAT] URL', summary: 'HTTP client. Errors with their code: (6) cannot resolve, (7) connection refused, (3) invalid URL, (22) HTTP error with -f.', options: '-I  headers only (HEAD)          -i  includes the headers\n-L  follows redirects            -v  shows the request and the response\n-X  method (GET, POST, HEAD)      -d  form data (POST)\n-u  user:password (Basic)         -b  cookies “a=1; b=2”\n-H  extra header (“Host: www.aula.lab” to test a VirtualHost)\n-s  silent (-S shows errors)      -f  fails on HTTP errors\n-w  writes at the end: %{http_code}, %{size_download}, %{content_type}, %{url_effective} (“-s -o /dev/null -w \'%{http_code}\'” gives just the code)' },
     wget: { group: 'red', synopsis: 'wget [-q] [-O FILE] URL', summary: 'Downloads to a file in the current directory (name.1, name.2… if it already exists). “-qO-” writes the page to the output.' },
-    apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PACKAGE... | remove|purge [-y] PACKAGE... | list --installed | moo', summary: 'Ubuntu 26.04 package manager, with a limited reach: it reads the real sources (/etc/apt/sources.list.d/ubuntu.sources) and connects to archive.ubuntu.com and security.ubuntu.com over the simulated network; with no way out to the Internet or no DNS that resolves them it gives the real errors (“Temporary failure resolving…”). The catalogue is fictitious and always up to date: update, upgrade and autoremove change nothing. install and remove do: on a Server or GNU/Linux router they tick or untick the box and panel of the service (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) and start or stop the service. Needs root (sudo).', options: '-y  answers “yes” to “Continue? [Y/n]”\npurge  like remove, and deletes the configuration' },
+    apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PACKAGE... | remove|purge [-y] PACKAGE... | list [--installed] [PATTERN] | moo', summary: 'Ubuntu 26.04 package manager, with a limited reach: it reads the real sources (/etc/apt/sources.list.d/ubuntu.sources) and connects to archive.ubuntu.com and security.ubuntu.com over the simulated network; with no way out to the Internet or no DNS that resolves them it gives the real errors (“Temporary failure resolving…”). The catalogue is fictitious and always up to date: update, upgrade and autoremove change nothing. install and remove do: on a Server or GNU/Linux router they tick or untick the box and panel of the service (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) and start or stop the service. Needs root (sudo).', options: '-y  answers “yes” to “Continue? [Y/n]”\npurge  like remove, and deletes the configuration' },
     ssh: { group: 'red', synopsis: 'ssh [-i KEY] [-l USER] [-p PORT] [-o OPTION=VALUE] [USER@]HOST [COMMAND]', summary: 'OpenSSH client: checks the server key in ~/.ssh/known_hosts, authenticates with ~/.ssh/id_* and, failing that, with a password. With COMMAND it runs it and returns. -o options: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Returns the remote status (255 on failure).' },
     'ssh-keygen': { group: 'red', synopsis: 'ssh-keygen [-t ed25519|ecdsa|rsa] [-b BITS] [-f FILE] [-N PASSPHRASE] [-C COMMENT] [-q] | -l|-y|-p [-f FILE] | -F|-R HOST [-f known_hosts] | -A', summary: 'Generates OpenSSH key pairs (private 600 and .pub 644), shows the fingerprint (-l), derives the public key (-y), changes the passphrase (-p), finds (-F) or removes (-R) hosts in known_hosts and creates any missing host keys (-A).' },
     sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] KEY... | [-w] KEY=VALUE | -p [FILE] | --system | -a', summary: 'Kernel parameters (also in /proc/sys): net.ipv4.ip_forward enables forwarding on the GNU/Linux router, net.ipv4.icmp_echo_ignore_all ignores pings, net.ipv4.icmp_echo_ignore_broadcasts (1) does not answer broadcast pings and net.ipv4.conf.all.bc_forwarding (0) forwards directed broadcasts. Changes made with -w are lost on reboot; to make them last, put them in /etc/sysctl.conf or /etc/sysctl.d/*.conf (sysctl --system applies them). Changing requires root.' },
@@ -22767,7 +22767,7 @@ const APT_DOCS = [
                 ['sudo apt autoremove', 'There is nothing to remove.'],
                 ['sudo apt install PACKAGE', 'Downloads (simulated time passes), installs, ticks the service’s box and starts it. Asks “Continue? [Y/n]” unless -y.'],
                 ['sudo apt remove · purge PACKAGE', 'Stops the service and removes its box and panel. Works offline.'],
-                ['apt list --installed', 'The installed packages (base and services).'],
+                ['apt list [--installed]', 'The catalogue, or only what is installed (base and services); takes a pattern such as “dovecot*”.'],
             ]),
             table(['Package', 'Service it turns on'], [
                 ['openssh-server (or ssh)', 'SSH'],
@@ -38147,13 +38147,18 @@ __m["shells/apt-state.js"] = (() => {
 const { runsServices } = __m["devices/kinds.js"];
 const { APPS_BY_KIND, deviceApps, setDeviceApps } = __m["net/device-apps.js"];
 const extras = new WeakMap();
-const hasPanel = (host, p) => p.feature !== undefined && APPS_BY_KIND[host.kind].includes(p.feature);
+const MAIL_KEY = { postfix: 'smtp', 'dovecot-imapd': 'imap', 'dovecot-pop3d': 'pop3' };
+/** The package turns on a panel of this device (a PC's SSH and mail tabs are clients, not these services). */
+const hasPanel = (host, p) => runsServices(host.kind) && p.feature !== undefined && APPS_BY_KIND[host.kind].includes(p.feature);
+// Server and the GNU/Linux router (a value import of Server would close an import cycle through the shells).
+const asServer = (host) => host;
 function installedPackage(host, p) {
-    if (p.feature !== undefined && hasPanel(host, p))
-        return deviceApps(host).includes(p.feature);
-    return extras.get(host)?.has(p.name) ?? false;
+    if (!hasPanel(host, p) || p.feature === undefined)
+        return extras.get(host)?.has(p.name) ?? false;
+    const key = MAIL_KEY[p.name];
+    return deviceApps(host).includes(p.feature) && (key === undefined || asServer(host).services.mail[key]);
 }
-/** The service a package runs (postfix: SMTP, dovecot: IMAP or POP3…), started on install and stopped on remove. */
+/** The service a package runs, started on install and stopped on remove. */
 function runService(server, p, on) {
     const s = server.services;
     if (p.feature === 'ssh')
@@ -38166,26 +38171,27 @@ function runService(server, p, on) {
         server.setServices({ ...s, http: { ...s.http, enabled: on } });
     else if (p.feature === 'firewall' && !on)
         server.setServices({ ...s, firewall: { ...s.firewall, enabled: false } });
-    else if (p.feature === 'mail') {
-        const key = p.name === 'postfix' ? 'smtp' : p.name === 'dovecot-imapd' ? 'imap' : 'pop3';
-        server.setServices({ ...s, mail: on ? { ...s.mail, [key]: true } : { ...s.mail, smtp: false, imap: false, pop3: false } });
-    }
+    const key = MAIL_KEY[p.name];
+    if (key)
+        server.setServices({ ...server.services, mail: { ...server.services.mail, [key]: on } });
 }
 function setPackage(host, p, on) {
-    if (p.feature !== undefined && hasPanel(host, p)) {
-        const rest = deviceApps(host).filter((id) => id !== p.feature);
-        setDeviceApps(host, on ? [...rest, p.feature] : rest);
-        // Server and the GNU/Linux router (a value import of Server would close an import cycle through the shells).
-        if (runsServices(host.kind))
-            runService(host, p, on);
+    if (!hasPanel(host, p) || p.feature === undefined) {
+        const set = extras.get(host) ?? new Set();
+        if (on)
+            set.add(p.name);
+        else
+            set.delete(p.name);
+        extras.set(host, set);
         return;
     }
-    const set = extras.get(host) ?? new Set();
-    if (on)
-        set.add(p.name);
-    else
-        set.delete(p.name);
-    extras.set(host, set);
+    const server = asServer(host);
+    runService(server, p, on);
+    const mail = server.services.mail;
+    const keep = !on && p.feature === 'mail' && (mail.smtp || mail.imap || mail.pop3);
+    const rest = deviceApps(host).filter((id) => id !== p.feature);
+    if (!keep)
+        setDeviceApps(host, on ? [...rest, p.feature] : rest);
 }
 
 return { installedPackage, setPackage };
@@ -38263,7 +38269,8 @@ function* confirm(ctx, yes) {
     if (!tty)
         ctx.out('Continue? [Y/n] ');
     const answer = yield* ctx.readLine(tty ? 'Continue? [Y/n] ' : '');
-    if (answer && /^\s*n/i.test(answer.text)) {
+    // No answer (end of input) is not a yes: apt aborts.
+    if (!answer || /^\s*n/i.test(answer.text)) {
         ctx.out('Abort.\n');
         return false;
     }
@@ -38272,8 +38279,10 @@ function* confirm(ctx, yes) {
 const debName = (d) => `${d.name}_${d.version.replace(/^\d+:/, '')}_${d.arch}.deb`;
 const poolPath = (p, section) => `pool/${section}/${p.name.startsWith('lib') ? p.name.slice(0, 4) : p.name[0]}/${p.name}/${debName(p)}`;
 /** The packages to fetch for `todo` (dependencies first, each once). */
-function toFetch(todo) {
-    const seen = new Set(todo.map((p) => p.name));
+function toFetch(host, todo) {
+    // What is there already (with what came with it) is not fetched again.
+    const present = PACKAGES.filter((p) => installedPackage(host, p)).flatMap((p) => [p.name, ...p.deps.map((d) => d.name)]);
+    const seen = new Set([...todo.map((p) => p.name), ...present]);
     const deps = todo.flatMap((p) => p.deps.map((d) => ({ pkg: d, section: p.section }))).filter(({ pkg }) => !seen.has(pkg.name) && (seen.add(pkg.name), true));
     return [...deps, ...todo.map((p) => ({ pkg: p, section: p.section }))];
 }
@@ -38323,7 +38332,7 @@ function* install(ctx, host, names, yes) {
         ctx.out(NOTHING);
         return 0;
     }
-    const fetch = toFetch(todo);
+    const fetch = toFetch(host, todo);
     ctx.out(plan(todo, fetch));
     if (!(yield* confirm(ctx, yes)))
         return 1;
@@ -38365,26 +38374,37 @@ function* remove(ctx, host, names, yes, purge) {
         setPackage(host, p, false);
     return 0;
 }
-function list(ctx, host) {
-    const installed = [...Object.entries(BASE).map(([name, version]) => ({ name, version, arch: 'amd64' })), ...PACKAGES.filter((p) => installedPackage(host, p))];
-    ctx.out(`Listing... Done\n${installed.sort((a, b) => a.name.localeCompare(b.name)).map((p) => `${p.name}/resolute,now ${p.version} ${p.arch} [installed]`).join('\n')}\n`);
+/** A pattern of `apt list`: a name, with * and ? as in the shell. */
+const matches = (patterns, name) => !patterns.length || patterns.some((g) => new RegExp(`^${g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`).test(name));
+/** `apt list [--installed] [PATTERN...]`: the catalogue (or what is installed), with apt's warning for scripts. */
+function list(ctx, host, patterns, installedOnly) {
+    const base = Object.entries(BASE).map(([name, version]) => ({ name, version, arch: 'amd64', on: true }));
+    const all = [...base, ...PACKAGES.map((p) => ({ name: p.name, version: p.version, arch: p.arch, on: installedPackage(host, p) }))];
+    const shown = all.filter((p) => (!installedOnly || p.on) && matches(patterns, p.name)).sort((a, b) => a.name.localeCompare(b.name));
+    ctx.err('\nWARNING: apt does not have a stable CLI interface. Use with caution in scripts.\n\n');
+    ctx.out(`Listing... Done\n${shown.map((p) => `${p.name}/resolute${p.on ? ',now' : ''} ${p.version} ${p.arch}${p.on ? ' [installed]' : ''}`).join('\n')}${shown.length ? '\n' : ''}`);
     return 0;
+}
+/** Options that take the next word as their value (-o Dir=x, -t resolute, -c file). */
+const WITH_VALUE = new Set(['-o', '-t', '-c', '--option', '--target-release', '--config-file']);
+function words(args) {
+    return args.filter((a, i) => !a.startsWith('-') && !WITH_VALUE.has(args[i - 1] ?? ''));
 }
 function* run(ctx, host) {
     const args = ctx.argv.slice(1);
-    const words = args.filter((a) => !a.startsWith('-'));
+    const plain = words(args);
     const yes = args.some((a) => a === '-y' || a === '--yes' || a === '--assume-yes' || /^-[a-z]*y/.test(a));
-    const [cmd, ...names] = words;
+    const [cmd, ...names] = plain;
     if (cmd === undefined || args.includes('-h') || args.includes('--help')) {
         ctx.out(HELP);
         return cmd === undefined ? 1 : 0;
     }
     if (cmd === 'moo') {
-        ctx.out(`${mooLines(words.filter((w) => w === 'moo').length, ctx.sh.env.now()).join('\n')}\n`);
+        ctx.out(`${mooLines(plain.filter((w) => w === 'moo').length, ctx.sh.env.now()).join('\n')}\n`);
         return 0;
     }
     if (cmd === 'list')
-        return list(ctx, host);
+        return list(ctx, host, names, args.includes('--installed'));
     if (!['update', 'upgrade', 'full-upgrade', 'dist-upgrade', 'autoremove', 'install', 'remove', 'purge'].includes(cmd)) {
         ctx.err(`Error: Invalid operation ${cmd}\n`);
         return 100;

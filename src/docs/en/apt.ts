@@ -22,7 +22,7 @@ export const APT_DOCS: readonly DocPage[] = [
         ['sudo apt autoremove', 'There is nothing to remove.'],
         ['sudo apt install PACKAGE', 'Downloads (simulated time passes), installs, ticks the service’s box and starts it. Asks “Continue? [Y/n]” unless -y.'],
         ['sudo apt remove · purge PACKAGE', 'Stops the service and removes its box and panel. Works offline.'],
-        ['apt list --installed', 'The installed packages (base and services).'],
+        ['apt list [--installed]', 'The catalogue, or only what is installed (base and services); takes a pattern such as “dovecot*”.'],
       ]),
       table(['Package', 'Service it turns on'], [
         ['openssh-server (or ssh)', 'SSH'],

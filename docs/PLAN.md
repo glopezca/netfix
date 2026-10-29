@@ -1336,3 +1336,7 @@ Pascua en la ayuda (créditos de mc y `apt moo`). «Linux» como SO pasa a «GNU
   laboratorio (LAB_PRESETS fuera: cada equipo muestra lo que usa y lo que se instale con apt aparece siempre), y «sin
   servicios» se aplica a los equipos colocados desde la paleta (los archivos y laboratorios conservan lo suyo, sin
   migración). `apt moo` comprobado contra el apt real (1, 2 y 3 moos, seis fechas). e2e nuevo `scripts/e2e-apt.mjs`.
+- **Revisión (v0.26.0):** en un PC apt no toca sus clientes SSH ni de correo (no tiene paneles de servicio); cada
+  paquete de correo sigue a su servicio (postfix, dovecot-imapd, dovecot-pop3d) y el panel se queda mientras quede
+  uno; no se vuelven a descargar dependencias ya instaladas; `apt list` sin `--installed` y con patrón; las opciones
+  con valor (-o, -t, -c) no se toman por la orden; fin de la entrada en «Continue?» aborta.

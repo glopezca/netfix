@@ -125,3 +125,40 @@ test('the public DNS know the names of the Ubuntu repositories', () => {
   const out = run(pc, 'for n in archive security es.archive ports changelogs keyserver esm; do dig +short $n.ubuntu.com; done', 'alumno');
   assert.equal(out.trim().split('\n').length, 7, out);
 });
+
+test('review: a PC has no service panels, so apt does not touch its SSH client or mail tabs', () => {
+  const pc = lab('internet').byLabel('PC1') as Host;
+  const before = [...deviceApps(pc)];
+  assert.match(run(pc, 'apt install -y openssh-server postfix'), /Setting up openssh-server[\s\S]*Setting up postfix/);
+  assert.deepEqual(deviceApps(pc), before);
+  assert.match(run(pc, 'apt remove -y openssh-server'), /Removing openssh-server/);
+  assert.deepEqual(deviceApps(pc), before, 'the SSH client stays');
+});
+
+test('review: each mail package on its own; dependencies already there are not fetched again', () => {
+  const t = new Topology();
+  const srv = t.add('server', 0, 0).device as Server;
+  setDeviceApps(srv, freshApps(srv));
+  const sede = lab('internet').byLabel('SRV-SEDE2') as Server;
+  for (const cmd of ['apt remove -y apache2', 'apt install -y postfix']) run(sede, cmd);
+  assert.match(run(sede, 'apt install -y dovecot-imapd'), /Setting up dovecot-imapd/, 'not «already the newest» after postfix');
+  assert.ok(sede.services.mail.smtp && sede.services.mail.imap && !sede.services.mail.pop3);
+  assert.doesNotMatch(run(sede, 'apt install -y apache2'), /Get:\d+ \S+ \S+ amd64 ssl-cert /, 'ssl-cert came with postfix');
+  run(sede, 'apt remove -y dovecot-imapd');
+  assert.ok(sede.services.mail.smtp && !sede.services.mail.imap, 'postfix keeps running');
+  assert.ok(deviceApps(sede).includes('mail'), 'and the mail panel stays');
+  run(sede, 'apt remove -y postfix');
+  assert.ok(!deviceApps(sede).includes('mail'), 'the last mail package takes the panel away');
+});
+
+test('review: apt list with and without --installed, options with a value, and EOF at the question', () => {
+  const sede = lab('internet').byLabel('SRV-SEDE2') as Server;
+  const all = run(sede, 'apt list 2>/dev/null');
+  assert.match(all, /^Listing\.\.\. Done\n/);
+  assert.match(all, /^apache2\/resolute,now 2\.4\.62-1ubuntu1 amd64 \[installed\]$/m);
+  assert.match(all, /^kea-dhcp4-server\/resolute 2\.6\.3-1ubuntu1 amd64$/m, 'available, not installed');
+  assert.doesNotMatch(run(sede, 'apt list --installed 2>/dev/null'), /^kea-dhcp4-server/m);
+  assert.equal(run(sede, "apt list 'dovecot*' 2>/dev/null").split('\n').length, 3, 'a pattern');
+  assert.match(run(sede, 'apt -o Debug::NoLocking=1 -t resolute install -y kea'), /Setting up kea /);
+  assert.match(run(sede, 'apt install nftables < /dev/null; echo "status $?"'), /Continue\? \[Y\/n\] Abort\.\nstatus 1$/);
+});

@@ -80,7 +80,8 @@ function* confirm(ctx: Ctx, yes: boolean): Gen<boolean> {
   const tty = ctx.fds.get(0)?.read?.kind === 'tty';
   if (!tty) ctx.out('Continue? [Y/n] ');
   const answer = yield* ctx.readLine(tty ? 'Continue? [Y/n] ' : '');
-  if (answer && /^\s*n/i.test(answer.text)) {
+  // No answer (end of input) is not a yes: apt aborts.
+  if (!answer || /^\s*n/i.test(answer.text)) {
     ctx.out('Abort.\n');
     return false;
   }
@@ -91,8 +92,10 @@ const debName = (d: AptDep): string => `${d.name}_${d.version.replace(/^\d+:/, '
 const poolPath = (p: AptDep, section: string): string => `pool/${section}/${p.name.startsWith('lib') ? p.name.slice(0, 4) : p.name[0]}/${p.name}/${debName(p)}`;
 
 /** The packages to fetch for `todo` (dependencies first, each once). */
-function toFetch(todo: readonly AptPackage[]): { pkg: AptDep; section: string }[] {
-  const seen = new Set(todo.map((p) => p.name));
+function toFetch(host: Host, todo: readonly AptPackage[]): { pkg: AptDep; section: string }[] {
+  // What is there already (with what came with it) is not fetched again.
+  const present = PACKAGES.filter((p) => installedPackage(host, p)).flatMap((p) => [p.name, ...p.deps.map((d) => d.name)]);
+  const seen = new Set([...todo.map((p) => p.name), ...present]);
   const deps = todo.flatMap((p) => p.deps.map((d) => ({ pkg: d, section: p.section }))).filter(({ pkg }) => !seen.has(pkg.name) && (seen.add(pkg.name), true));
   return [...deps, ...todo.map((p) => ({ pkg: p as AptDep, section: p.section }))];
 }
@@ -139,7 +142,7 @@ function* install(ctx: Ctx, host: Host, names: readonly string[], yes: boolean):
   const todo = names.flatMap((n) => { const p = findPackage(n); return p && !installedPackage(host, p) ? [p] : []; });
   if (newest.length) ctx.out(`${newest.join('\n')}\n`);
   if (!todo.length) { ctx.out(NOTHING); return 0; }
-  const fetch = toFetch(todo);
+  const fetch = toFetch(host, todo);
   ctx.out(plan(todo, fetch));
   if (!(yield* confirm(ctx, yes))) return 1;
   const archive = aptSources(ctx.sh.env.fs).find((s) => s.suite === 'resolute')?.uri ?? 'http://archive.ubuntu.com/ubuntu';
@@ -168,20 +171,35 @@ function* remove(ctx: Ctx, host: Host, names: readonly string[], yes: boolean, p
   return 0;
 }
 
-function list(ctx: Ctx, host: Host): number {
-  const installed = [...Object.entries(BASE).map(([name, version]) => ({ name, version, arch: 'amd64' })), ...PACKAGES.filter((p) => installedPackage(host, p))];
-  ctx.out(`Listing... Done\n${installed.sort((a, b) => a.name.localeCompare(b.name)).map((p) => `${p.name}/resolute,now ${p.version} ${p.arch} [installed]`).join('\n')}\n`);
+/** A pattern of `apt list`: a name, with * and ? as in the shell. */
+const matches = (patterns: readonly string[], name: string): boolean =>
+  !patterns.length || patterns.some((g) => new RegExp(`^${g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`).test(name));
+
+/** `apt list [--installed] [PATTERN...]`: the catalogue (or what is installed), with apt's warning for scripts. */
+function list(ctx: Ctx, host: Host, patterns: readonly string[], installedOnly: boolean): number {
+  const base = Object.entries(BASE).map(([name, version]) => ({ name, version, arch: 'amd64', on: true }));
+  const all = [...base, ...PACKAGES.map((p) => ({ name: p.name, version: p.version, arch: p.arch, on: installedPackage(host, p) }))];
+  const shown = all.filter((p) => (!installedOnly || p.on) && matches(patterns, p.name)).sort((a, b) => a.name.localeCompare(b.name));
+  ctx.err('\nWARNING: apt does not have a stable CLI interface. Use with caution in scripts.\n\n');
+  ctx.out(`Listing... Done\n${shown.map((p) => `${p.name}/resolute${p.on ? ',now' : ''} ${p.version} ${p.arch}${p.on ? ' [installed]' : ''}`).join('\n')}${shown.length ? '\n' : ''}`);
   return 0;
+}
+
+/** Options that take the next word as their value (-o Dir=x, -t resolute, -c file). */
+const WITH_VALUE = new Set(['-o', '-t', '-c', '--option', '--target-release', '--config-file']);
+
+function words(args: readonly string[]): string[] {
+  return args.filter((a, i) => !a.startsWith('-') && !WITH_VALUE.has(args[i - 1] ?? ''));
 }
 
 function* run(ctx: Ctx, host: Host): Gen<number> {
   const args = ctx.argv.slice(1);
-  const words = args.filter((a) => !a.startsWith('-'));
+  const plain = words(args);
   const yes = args.some((a) => a === '-y' || a === '--yes' || a === '--assume-yes' || /^-[a-z]*y/.test(a));
-  const [cmd, ...names] = words;
+  const [cmd, ...names] = plain;
   if (cmd === undefined || args.includes('-h') || args.includes('--help')) { ctx.out(HELP); return cmd === undefined ? 1 : 0; }
-  if (cmd === 'moo') { ctx.out(`${mooLines(words.filter((w) => w === 'moo').length, ctx.sh.env.now()).join('\n')}\n`); return 0; }
-  if (cmd === 'list') return list(ctx, host);
+  if (cmd === 'moo') { ctx.out(`${mooLines(plain.filter((w) => w === 'moo').length, ctx.sh.env.now()).join('\n')}\n`); return 0; }
+  if (cmd === 'list') return list(ctx, host, names, args.includes('--installed'));
   if (!['update', 'upgrade', 'full-upgrade', 'dist-upgrade', 'autoremove', 'install', 'remove', 'purge'].includes(cmd)) { ctx.err(`Error: Invalid operation ${cmd}\n`); return 100; }
   if (locked(ctx, cmd === 'update')) return 100;
   if (cmd === 'update') return update(ctx, host);

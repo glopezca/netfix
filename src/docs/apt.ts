@@ -22,7 +22,7 @@ export const APT_DOCS: readonly DocPage[] = [
         ['sudo apt autoremove', 'No hay nada que quitar.'],
         ['sudo apt install PAQUETE', 'Descarga (pasa tiempo de simulación), instala, activa la casilla del servicio y lo arranca. Pregunta «Continue? [Y/n]» salvo con -y.'],
         ['sudo apt remove · purge PAQUETE', 'Para el servicio y quita su casilla y su panel. Funciona sin conexión.'],
-        ['apt list --installed', 'Los paquetes instalados (base y servicios).'],
+        ['apt list [--installed]', 'El catálogo, o solo lo instalado (base y servicios); admite un patrón como «dovecot*».'],
       ]),
       table(['Paquete', 'Servicio que activa'], [
         ['openssh-server (o ssh)', 'SSH'],
