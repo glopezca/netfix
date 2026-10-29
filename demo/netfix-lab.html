@@ -29927,7 +29927,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.24.1",
+    "version": "0.24.2",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -59684,7 +59684,7 @@ const { t } = __m["i18n/t.js"];
 const { getLocale, LOCALES, LOCALE_NAMES, LOCALE_SHORT, isLocale } = __m["i18n/locale.js"];
 const { NO_RESTRICTIONS, allowsLab } = __m["classroom/restrictions.js"];
 const MINUTE = 60_000;
-const VIEWS = [['net', 'view.net'], ['docs', 'view.docs'], ['settings', 'view.settings'], ['donate', 'view.donate'], ['about', 'view.about']];
+const VIEWS = [['net', 'view.net'], ['settings', 'view.settings'], ['donate', 'view.donate'], ['docs', 'view.docs'], ['about', 'view.about']];
 function button(label, fn, attrs = {}) {
     const b = el('button', { type: 'button', class: 'btn', ...attrs }, label);
     b.addEventListener('click', fn);

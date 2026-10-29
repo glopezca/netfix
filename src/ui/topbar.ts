@@ -25,7 +25,7 @@ export interface TopbarActions {
 }
 
 const MINUTE = 60_000;
-const VIEWS: readonly (readonly [View, MessageKey])[] = [['net', 'view.net'], ['docs', 'view.docs'], ['settings', 'view.settings'], ['donate', 'view.donate'], ['about', 'view.about']];
+const VIEWS: readonly (readonly [View, MessageKey])[] = [['net', 'view.net'], ['settings', 'view.settings'], ['donate', 'view.donate'], ['docs', 'view.docs'], ['about', 'view.about']];
 
 function button(label: string, fn: () => void, attrs: Record<string, string> = {}): HTMLButtonElement {
   const b = el('button', { type: 'button', class: 'btn', ...attrs }, label);

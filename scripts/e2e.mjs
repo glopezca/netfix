@@ -149,7 +149,9 @@ try {
   await page.keyboard.press('Backspace');
   if (shots) await page.screenshot({ path: `${shots}/bash.png` });
 
-  // 6. Ayuda (help) tab: table of contents, search and back to the network.
+  // 6. Ayuda (help) tab, second to last before «Acerca de»: table of contents, search and back to the network.
+  const views = await page.locator('[role="group"]:has(button.seg:has-text("Acerca de")) button.seg').allInnerTexts();
+  assert.deepEqual(views.slice(-2).map((v) => v.trim()), ['Ayuda', 'Acerca de'], `view tabs: ${views.join(' | ')}`);
   await page.click('button.seg:has-text("Ayuda")');
   await page.waitForSelector('.docs:visible');
   assert.match(await page.locator('.doc-page').innerText(), /Primeros pasos/);

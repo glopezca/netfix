@@ -1256,3 +1256,9 @@ Modelos (regla del proyecto): opus en la sesión principal (cruza red, interfaz 
   El bloqueo del aula sigue mandando. Los ficheros antiguos con `timestampPrompt` se abren sin error (se ignora).
 - **Hecho (v0.24.1):** como en el plan (`src/net/lab-presets.ts`, `SERVICE_IDS`), con la ayuda al día (Configuración,
   Terminal Linux y Terminal Windows) y el e2e del router Linux de la DMZ ajustado a sus paneles.
+
+### Fase 41c: la pestaña Ayuda, penúltima (v0.24.2)
+
+- Orden de las vistas en la barra superior: Red, Configuración, Donaciones, **Ayuda**, Acerca de (`VIEWS` en
+  `src/ui/topbar.ts`). Prueba: el e2e general comprueba que las dos últimas son Ayuda y Acerca de.
+- **Hecho (v0.24.2).**
