@@ -14,7 +14,7 @@ import { drawable, makeAnnotation, MAX_ANNOTATIONS } from './annotations.ts';
 import { FILE_VERSION, validateFile } from './topology-file.ts';
 import { parseFeatures } from './lab-features.ts';
 import type { LabFeatures } from './lab-features.ts';
-import { bindLab, customApps, parseApps, setDeviceApps } from './device-apps.ts';
+import { bindLab, customApps, deviceApps, parseApps, setDeviceApps } from './device-apps.ts';
 import type { Annotation, AnnotationInit } from './annotations.ts';
 import type { CableKind, Endpoint, Link } from './network.ts';
 import { SimClock } from '../core/clock.ts';
@@ -343,6 +343,8 @@ export function restore(device: AnyDevice, rec: DeviceRecord): void {
     if (device instanceof Server) device.web.reload();
     if (device instanceof Server && rec.server) restoreServer(device, rec.server);
     if (device instanceof Pc && pc.apps) restoreApps(device, pc.apps);
+    // Files before v0.25 have no `enabled`: a PC with a mail account keeps its Correo tab.
+    if (device instanceof Pc && pc.enabled === undefined && device.mailAccount) setDeviceApps(device, [...deviceApps(device), 'mail']);
     restoreNics(device, pc.nics);
     restoreRoutes(device, pc.routes);
     const search = Array.isArray(pc.search) ? searchList(pc.search) : { ok: [] };

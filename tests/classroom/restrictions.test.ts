@@ -52,3 +52,9 @@ test('timestampPrompt: free by default; "on"/"off" lock the timestamp prompt of 
   assert.throws(() => parseRestrictions({ timestampPrompt: true }), /timestampPrompt/);
   assert.throws(() => parseRestrictions({ timestampPrompt: 'yes' }), /timestampPrompt/);
 });
+
+test('the teacher can list the Configuración tab of a device (apps)', () => {
+  const r = parseRestrictions({ tabs: { pc: ['host', 'apps'] } });
+  assert.equal(allowsTab(r, 'pc', 'apps'), true);
+  assert.equal(allowsTab(r, 'pc', 'sftp'), false);
+});

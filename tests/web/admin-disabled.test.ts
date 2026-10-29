@@ -52,5 +52,14 @@ test('what the lab turns off is off in the GUI as well; with the lab option it i
   t.webHideOff = true;
   const menu = body(web.open(`${URL}?page=status`));
   assert.doesNotMatch(menu, /web-adm-nav-mail/);
-  assert.match(body(web.open(`${URL}?page=mail`)), /web-adm-page-setup/, 'an unknown page: the first one');
+  assert.match(body(web.open(`${URL}?page=mail`)), /Esta opción está desactivada en este equipo/, 'asked for by its address: the notice');
+});
+
+test('a page hidden by the lab answers with the notice, and a POST to it runs no other page’s action', () => {
+  const { t, srv, web } = lab();
+  setDeviceApps(srv, deviceApps(srv).filter((a) => a !== 'dhcp'));
+  t.webHideOff = true;
+  const r = body(web.open(`${URL}?page=dhcp`, { method: 'POST', form: [['action', 'setup'], ['mode', 'dhcp']] }));
+  assert.match(r, /Esta opción está desactivada en este equipo/);
+  assert.equal(srv.config.mode, 'static', 'the setup action did not run');
 });

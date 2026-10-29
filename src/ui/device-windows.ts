@@ -165,7 +165,7 @@ function shellTerminal(placed: Placed, h: Host, os: HostOs, app: WindowHost): Te
   return term;
 }
 
-function openHostWindow(placed: Placed, h: Host, app: WindowHost, initial?: string): void {
+function openHostWindow(placed: Placed, h: Host, app: WindowHost, again?: { initial: string; like?: HTMLElement }): void {
   const disposers: (() => void)[] = [];
   const terminal = (os: HostOs): Tab => ({
     id: os, label: os === 'windows' ? t('win.cmd') : t('win.linuxTerm'),
@@ -188,16 +188,13 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost, initial?: stri
     { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }].filter((tab) => has(tab.id === 'web' ? 'browser' : tab.id as FeatureId)) : [];
   const config: Tab = { id: 'apps', label: t('dev.tab'), render: () => deviceConfig(h, () => reopen(placed, h, app)) };
   const tabs: Tab[] = [settingsTab, ifTab, ...(h instanceof LinuxRouter ? svc : [...svc, ...(has('ip') ? [ipTab] : []), ...pcApps]), ...order.filter(has).map(terminal), config];
-  handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()), { initial, like: reopening });
+  handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()), again ?? {});
 }
-
-let reopening: HTMLElement | undefined;
 
 /** The Configuración tab changed what the device shows: the same window again, in the same place, on that tab. */
 function reopen(placed: Placed, h: Host, app: WindowHost): void {
-  reopening = app.windows.element(h.id);
+  const like = app.windows.element(h.id);
   app.windows.close(h.id);
-  openHostWindow(placed, h, app, 'apps');
-  reopening = undefined;
+  openHostWindow(placed, h, app, { initial: 'apps', like });
   app.afterCommand();
 }

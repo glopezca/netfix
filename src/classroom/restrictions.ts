@@ -7,7 +7,7 @@
 import type { DeviceKind } from '../net/topology.ts';
 
 export const DEVICE_KINDS: readonly DeviceKind[] = ['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'];
-export const TAB_IDS = ['host', 'ifaces', 'cli', 'web', 'ip', 'svc', 'mail', 'ssh', 'sftp', 'linux', 'windows', 'isp', 'lines'] as const;
+export const TAB_IDS = ['host', 'ifaces', 'cli', 'web', 'ip', 'svc', 'mail', 'ssh', 'sftp', 'linux', 'windows', 'apps', 'isp', 'lines'] as const;
 export type TabId = (typeof TAB_IDS)[number];
 
 /** The first tab of each window (Device; ISP for the cloud): kept even when a list leaves it out, so a window is never empty. */

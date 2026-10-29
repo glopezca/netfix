@@ -1295,3 +1295,6 @@ web de Server y router Linux muestra lo desactivado en gris, o lo oculta con un 
 - Fuera de alcance: routers y switches IOS siguen con el ajuste del laboratorio (CLI y web), sin pestaña propia.
 - **Hecho (v0.25.0):** como en el plan, con el e2e `scripts/e2e-devices.mjs` y los e2e anteriores apuntando al PC del
   sistema que usan (PC1 Linux en «Server», o añadiendo su terminal Linux desde Configuración).
+- **Revisión (v0.25.0):** archivos anteriores sin `enabled` mantienen Correo en los PCs con cuenta; `apps` en las
+  pestañas que el profesor puede listar (`TAB_IDS`, EMBED.md); una página apagada pedida por su dirección (también
+  oculta) responde con el aviso y su POST no ejecuta otra acción; la ventana reabierta recibe su sitio como argumento.

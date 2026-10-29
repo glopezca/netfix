@@ -76,3 +76,12 @@ test('the system chosen when a PC is placed: its stack and its terminals', () =>
   choosePcSystem(pc, 'windows');
   assert.deepEqual([pc.os, customApps(pc)], ['windows', undefined]);
 });
+
+test('a file from before v0.25 (no «enabled»): a PC with a mail account keeps its Correo tab', () => {
+  const t = new Topology();
+  const pc = t.add('pc', 0, 0).device as Pc;
+  pc.mailAccount = { name: 'Ana', address: 'ana@aula.lab', incoming: 'srv', outgoing: 'srv', user: 'ana', password: 'ana1', protocol: 'POP3' };
+  const again = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
+  const pc2 = [...again.placed.values()].find((p) => p.device.kind === 'pc')!.device as Pc;
+  assert.ok(deviceApps(pc2).includes('mail'));
+});

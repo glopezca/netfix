@@ -61,10 +61,11 @@ function adminResponse(server: Server, req: HttpRequest, peer: Peer, base: strin
     return unauthorized(BANNER, REALM, page('401 Unauthorized', '', h('h1', {}, 'Unauthorized'), h('p', {}, t('wa.needLogin'))));
   }
   const q = query(req);
+  // Switched off in the device or its lab (greyed or hidden): the page says so, has no forms and a POST runs nothing.
+  const off = PAGES.find((p) => p.id === q.get('page') && pageOff(server, p.id));
+  if (off) return forMethod(req, respond(BANNER, 200, frame(server, base, off, { error: t('wa.offPage') }, null)));
   const current = pagesOf(server).find((p) => p.id === q.get('page')) ?? PAGES[0];
   if (!current) return respond(BANNER, 404, 'Not Found');
-  // Switched off in the device or its lab: the page says so, has no forms and a POST runs nothing.
-  if (pageOff(server, current.id)) return forMethod(req, respond(BANNER, 200, frame(server, base, current, { error: t('wa.offPage') }, null)));
   if (req.method === 'POST') {
     const fields = formFields(req);
     const result = runAction(server, current.id, fields);

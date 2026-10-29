@@ -49606,12 +49606,13 @@ function adminResponse(server, req, peer, base) {
         return unauthorized(BANNER, REALM, page('401 Unauthorized', '', h('h1', {}, 'Unauthorized'), h('p', {}, t('wa.needLogin'))));
     }
     const q = query(req);
+    // Switched off in the device or its lab (greyed or hidden): the page says so, has no forms and a POST runs nothing.
+    const off = PAGES.find((p) => p.id === q.get('page') && pageOff(server, p.id));
+    if (off)
+        return forMethod(req, respond(BANNER, 200, frame(server, base, off, { error: t('wa.offPage') }, null)));
     const current = pagesOf(server).find((p) => p.id === q.get('page')) ?? PAGES[0];
     if (!current)
         return respond(BANNER, 404, 'Not Found');
-    // Switched off in the device or its lab: the page says so, has no forms and a POST runs nothing.
-    if (pageOff(server, current.id))
-        return forMethod(req, respond(BANNER, 200, frame(server, base, current, { error: t('wa.offPage') }, null)));
     if (req.method === 'POST') {
         const fields = formFields(req);
         const result = runAction(server, current.id, fields);
@@ -50697,7 +50698,7 @@ const { Network } = __m["net/network.js"];
 const { drawable, makeAnnotation, MAX_ANNOTATIONS } = __m["net/annotations.js"];
 const { FILE_VERSION, validateFile } = __m["net/topology-file.js"];
 const { parseFeatures } = __m["net/lab-features.js"];
-const { bindLab, customApps, parseApps, setDeviceApps } = __m["net/device-apps.js"];
+const { bindLab, customApps, deviceApps, parseApps, setDeviceApps } = __m["net/device-apps.js"];
 const { SimClock } = __m["core/clock.js"];
 const { Router } = __m["devices/router.js"];
 const { Switch } = __m["devices/switch.js"];
@@ -50953,6 +50954,9 @@ function restore(device, rec) {
             restoreServer(device, rec.server);
         if (device instanceof Pc && pc.apps)
             restoreApps(device, pc.apps);
+        // Files before v0.25 have no `enabled`: a PC with a mail account keeps its Correo tab.
+        if (device instanceof Pc && pc.enabled === undefined && device.mailAccount)
+            setDeviceApps(device, [...deviceApps(device), 'mail']);
         restoreNics(device, pc.nics);
         restoreRoutes(device, pc.routes);
         const search = Array.isArray(pc.search) ? searchList(pc.search) : { ok: [] };
@@ -51421,7 +51425,7 @@ return { BOX_PRESS_MS, spaceHeld, GroupSelection };
 })();
 __m["classroom/restrictions.js"] = (() => {
 const DEVICE_KINDS = ['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'];
-const TAB_IDS = ['host', 'ifaces', 'cli', 'web', 'ip', 'svc', 'mail', 'ssh', 'sftp', 'linux', 'windows', 'isp', 'lines'];
+const TAB_IDS = ['host', 'ifaces', 'cli', 'web', 'ip', 'svc', 'mail', 'ssh', 'sftp', 'linux', 'windows', 'apps', 'isp', 'lines'];
 /** The first tab of each window (Device; ISP for the cloud): kept even when a list leaves it out, so a window is never empty. */
 const firstTab = (k) => (k === 'cloud' ? 'isp' : 'host');
 const FLAGS = ['docs', 'fileOpen', 'fileSave', 'fileNew', 'simulation', 'clock', 'drawing', 'editTopology'];
@@ -58326,7 +58330,7 @@ function shellTerminal(placed, h, os, app) {
     }
     return term;
 }
-function openHostWindow(placed, h, app, initial) {
+function openHostWindow(placed, h, app, again) {
     const disposers = [];
     const terminal = (os) => ({
         id: os, label: os === 'windows' ? t('win.cmd') : t('win.linuxTerm'),
@@ -58349,15 +58353,13 @@ function openHostWindow(placed, h, app, initial) {
         { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }].filter((tab) => has(tab.id === 'web' ? 'browser' : tab.id)) : [];
     const config = { id: 'apps', label: t('dev.tab'), render: () => deviceConfig(h, () => reopen(placed, h, app)) };
     const tabs = [settingsTab, ifTab, ...(h instanceof LinuxRouter ? svc : [...svc, ...(has('ip') ? [ipTab] : []), ...pcApps]), ...order.filter(has).map(terminal), config];
-    handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()), { initial, like: reopening });
+    handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()), again ?? {});
 }
-let reopening;
 /** The Configuración tab changed what the device shows: the same window again, in the same place, on that tab. */
 function reopen(placed, h, app) {
-    reopening = app.windows.element(h.id);
+    const like = app.windows.element(h.id);
     app.windows.close(h.id);
-    openHostWindow(placed, h, app, 'apps');
-    reopening = undefined;
+    openHostWindow(placed, h, app, { initial: 'apps', like });
     app.afterCommand();
 }
 
