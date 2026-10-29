@@ -9,6 +9,9 @@ import { openDeviceWindow, forgetDevice, forgetAll } from './device-windows.ts';
 import { Topology } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
 import { Pages } from './pages.ts';
+import { applyDocumentLanguage, applyTheme, confirmUnsaved } from './preferences.ts';
+import { featureOn } from '../net/lab-features.ts';
+import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
 import { topbar } from './topbar.ts';
 import type { Mode, View } from './topbar.ts';
 import { palette } from './palette.ts';
@@ -21,7 +24,7 @@ import type { Replacement } from './confirm-dialog.ts';
 import { syncUndoButtons, undoShortcut } from './undo-keys.ts';
 import { t } from '../i18n/t.ts';
 import { DrawState, drawBar } from './draw-bar.ts';
-import { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } from '../i18n/locale.ts';
+import { detectLocale, setLocale, LOCALE_STORAGE_KEY } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
 import { allowsLab, allowsTab, lockedPrompt } from '../classroom/restrictions.ts';
 import { forceTimestampPrompt } from '../shells/prompt-clock.ts';
@@ -45,7 +48,7 @@ class App {
   private readonly stageEl: HTMLElement;
   private readonly paletteEl: HTMLElement;
   private readonly pageHost: HTMLElement;
-  private readonly pages = new Pages();
+  private readonly pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), labLocked: () => this.session.embedded, setLocale: (l) => changeLocale(l) });
   private saveTimer = 0;
   private readonly interval: number;
   private mode: Mode = 'realtime';
@@ -145,7 +148,7 @@ class App {
   private async replaceAllowed(what: Replacement): Promise<boolean> {
     if (document.querySelector('dialog[open]')) return false;
     const topo = this.topo;
-    if (this.saved.dirty(topo) && !(await confirmDialog(unsavedText(what, this.session.policy.fileSave)))) return false;
+    if (confirmUnsaved() && this.saved.dirty(topo) && !(await confirmDialog(unsavedText(what, this.session.policy.fileSave)))) return false;
     return app === this && this.topo === topo;
   }
 
@@ -203,11 +206,23 @@ class App {
     document.body.dataset.view = view;
     this.view = view;
     if (view === 'docs') this.pages.focusDocs();
+    if (view === 'settings') this.pages.refreshSettings();
   }
 
   private open(id: string): void {
     const placed = this.topo.get(id);
     if (placed) openDeviceWindow(placed, this);
+  }
+
+  /** Configuración → Laboratorio actual: windows reopen with the new tabs, and the change is unsaved work. */
+  private setFeatures(next: LabFeatures): void {
+    this.topo.features = next;
+    this.windows.closeAll();
+    this.afterCommand();
+  }
+
+  feature(kind: DeviceKind, id: FeatureId): boolean {
+    return featureOn(this.topo.features, kind, id);
   }
 
   /** Tabs of the device windows left by the classroom restrictions. */
@@ -283,6 +298,7 @@ class App {
     this.canvas.setTopology(topo);
     this.sim.attach(topo);
     this.markUndo();
+    this.pages.refreshSettings();
     this.hintEl.textContent = message;
     this.scheduleSave();
   }
@@ -325,12 +341,6 @@ let app: App | null = null;
 let mountEl: HTMLElement | null = null;
 let session: AppSession = STANDALONE;
 
-function applyDocumentLanguage(): void {
-  document.documentElement.lang = getLocale();
-  document.title = t('app.title');
-  document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.description'));
-}
-
 /** Rebuilds the interface in another language, keeping the topology (open windows are closed). */
 function changeLocale(locale: Locale): void {
   if (!session.embedded) safeStorageSet(LOCALE_STORAGE_KEY, locale);
@@ -354,6 +364,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology): App {
   MEMORY_STORE.clear();
   setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
   applyDocumentLanguage();
+  if (!s.embedded) applyTheme(); // embedded, the page (and its theme) belongs to the host
   applyBrand();
   // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
   forceTimestampPrompt(lockedPrompt(s.policy));

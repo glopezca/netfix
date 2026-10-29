@@ -10,7 +10,10 @@ import { searchList } from '../shells/netplan-model.ts';
 import { validFileRecords } from '../bash/vfs-persist.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
 import { Network } from './network.ts';
-import { annotationsFromJson, drawable, makeAnnotation, MAX_ANNOTATIONS } from './annotations.ts';
+import { drawable, makeAnnotation, MAX_ANNOTATIONS } from './annotations.ts';
+import { FILE_VERSION, validateFile } from './topology-file.ts';
+import { parseFeatures } from './lab-features.ts';
+import type { LabFeatures } from './lab-features.ts';
 import type { Annotation, AnnotationInit } from './annotations.ts';
 import type { CableKind, Endpoint, Link } from './network.ts';
 import { SimClock } from '../core/clock.ts';
@@ -101,15 +104,11 @@ export interface TopologyFile {
   readonly links: readonly { readonly a: Endpoint; readonly b: Endpoint; readonly cable: CableKind }[];
   /** Drawings of the workspace (areas, lines, labels); missing in files before v0.8. */
   readonly annotations?: readonly Annotation[];
+  /** Device settings of the lab that differ from the defaults (v0.24); untrusted until parseFeatures. */
+  readonly features?: unknown;
 }
 
 const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'Cloud' };
-export const FILE_VERSION = 2;
-/** A larger file would freeze the tab while it is built and settled. */
-export const MAX_DEVICES = 500;
-const MAX_LABEL = 64;
-const MAX_CONFIG_LINES = 20_000;
-const MAX_CONFIG_LINE = 4096;
 /** Drawing ids stay short (aN) even after a crafted file. */
 const MAX_DRAWING_ID = 999_999_999;
 const SETTLE_MS = 30_000;
@@ -125,6 +124,8 @@ export class Topology {
   private nextId = 1;
   /** Drawings of the workspace (replaced, never mutated). */
   annotations: readonly Annotation[] = [];
+  /** Configuración → Laboratorio actual: the device settings shown (only the differences from the defaults). */
+  features: LabFeatures = {};
   private nextDrawing = 1;
 
   add(kind: DeviceKind, x: number, y: number, opts: { id?: string; seed?: number; label?: string } = {}): Placed {
@@ -240,7 +241,8 @@ export class Topology {
   toJSON(): TopologyFile {
     const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
     const links = this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable }));
-    return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}) };
+    const features = Object.keys(this.features).length ? { features: this.features } : {};
+    return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features };
   }
 
   static fromJSON(data: unknown): Topology {
@@ -255,6 +257,7 @@ export class Topology {
     }
     topo.separateClouds();
     topo.annotations = file.annotations ?? [];
+    topo.features = parseFeatures(file.features);
     topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
     for (const l of file.links) topo.connect(l.a, l.b, l.cable);
     for (const p of topo.placed.values()) if (p.device instanceof Host && p.device.config.mode === 'dhcp') p.device.useDhcp();
@@ -363,33 +366,4 @@ export function parseStatic(pc: PcRecord): { ip?: number; prefix?: number; gatew
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
-}
-
-/** Validates untrusted JSON before building a topology from it. */
-/** IOS configuration of a file: absent, or a bounded list of bounded lines (the IOS parser reads every one). */
-function configLines(v: unknown): boolean {
-  return v === undefined || (Array.isArray(v) && v.length <= MAX_CONFIG_LINES && v.every((l) => typeof l === 'string' && l.length <= MAX_CONFIG_LINE));
-}
-
-export function validateFile(data: unknown): TopologyFile {
-  if (!isObject(data) || (data.format !== 'netfix' && data.format !== 'netsim') || (data.version !== 1 && data.version !== FILE_VERSION)) throw new Error(t('load.notNetfix'));
-  const { devices, links } = data;
-  if (!Array.isArray(devices) || !Array.isArray(links)) throw new Error(t('load.incomplete'));
-  if (devices.length > MAX_DEVICES || links.length > MAX_DEVICES * 2) throw new Error(t('load.tooBig', { max: MAX_DEVICES }));
-  for (const d of devices) {
-    if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'].includes(String(d.kind))) throw new Error(t('load.badDevice'));
-    if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string') throw new Error(t('load.deviceData', { id: d.id }));
-    if (d.label.length > MAX_LABEL) throw new Error(t('load.deviceData', { id: d.id }));
-    if (!configLines(d.config) || !(d.startup === null || configLines(d.startup))) throw new Error(t('load.deviceConfig', { id: d.id }));
-  }
-  for (const l of links) {
-    if (!isObject(l) || !isObject(l.a) || !isObject(l.b) || [l.a.device, l.a.port, l.b.device, l.b.port].some((x) => typeof x !== 'string')) throw new Error(t('load.badLink'));
-  }
-  let annotations: Annotation[];
-  try {
-    annotations = annotationsFromJson(data.annotations);
-  } catch {
-    throw new Error(t('load.drawings'));
-  }
-  return { ...(data as unknown as TopologyFile), annotations };
 }

@@ -704,3 +704,16 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .confirm-title { margin: 0 0 8px; font-size: 17px; }
 .confirm-body { margin: 0 0 18px; line-height: 1.45; }
 .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* Configuración: general settings and the device settings of the current lab. */
+.settings .settings-page { grid-column: 1 / -1; max-width: 1080px; }
+.set-section { margin-top: 28px; }
+.set-section h2 { font-size: 19px; margin: 0 0 6px; }
+.set-row { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+.set-group { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 10px 14px 12px; margin: 12px 0; display: grid; gap: 6px; align-content: start; max-width: 520px; }
+.set-group legend { font-weight: 700; padding: 0 4px; }
+.set-choice { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.set-choice input { flex: none; width: 18px; height: 18px; accent-color: var(--accent); }
+.set-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0 16px; align-items: start; }
+.set-kinds .set-group { max-width: none; }
+.set-status { min-height: 1.4em; margin: 10px 0 0; color: var(--ok); font-weight: 700; }

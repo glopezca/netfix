@@ -14,6 +14,10 @@
       window.location.replace(url.href);
     })();
   </script>
+  <script>
+    // El tema elegido en Configuración, antes de pintar (sin parpadeo).
+    try { const v = localStorage.getItem("netfix:theme"); if (v === "light" || v === "dark") document.documentElement.dataset.theme = v; } catch {}
+  </script>
   <title>Netfix — laboratorio de redes</title>
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">

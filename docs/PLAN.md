@@ -1199,3 +1199,35 @@ Queda lo de spanning tree, en tres entregas:
 - **Revisión 40c:** las BPDU y los despertares de los tiempos son tareas de fondo: no cuentan en `pending()`, así que el
   modo simulación no avanza el reloj solo por ellas; un despertar por plazo. Queda como posible mejora agrupar los
   recálculos del árbol en ráfagas grandes (`interface range` de 24 puertos) y enviar menos BPDU con muchas VLAN.
+
+## Fase 41 · Pestaña Configuración: ajustes generales y del laboratorio (v0.24.0)
+
+Modelos (regla del proyecto): opus en la sesión principal (cruza red, interfaz y fichero), revisión con
+`code-reviewer` (sonnet) y `security-reviewer` (opus, el fichero de topología trae un campo nuevo sin validar).
+
+- **Vista nueva «Configuración» / «Settings»** junto a Ayuda, con dos apartados.
+- **Generales** (de este navegador, en localStorage): idioma, tema (automático, claro, oscuro; el CSS ya tiene
+  `data-theme`) y avisar de los cambios sin guardar.
+- **Laboratorio actual** (se guarda con la topología, `features`, solo lo que difiere de lo predeterminado): qué
+  ajustes de cada tipo de equipo están activos. «Equipo» (nombre de host) e «Interfaces» siempre lo están.
+
+  | Equipo | Activado por defecto | Se puede activar |
+  |---|---|---|
+  | PC | Configuración IP, aplicaciones (navegador, correo, SSH, SFTP), terminal Linux y terminal Windows | — |
+  | Servidor | Configuración IP, servicios, terminal Linux y Windows | Parámetros del kernel, firewall |
+  | Router Linux | Parámetros del kernel, firewall, VPN, servicios, terminal Linux | Terminal Windows |
+  | Router y switch IOS | CLI, gestión web | — |
+
+  Todo lo activado por defecto se puede desactivar. Las restricciones del aula siguen mandando (lo efectivo es la
+  intersección). Al cambiar algo se cierran las ventanas abiertas (se reabren con las pestañas nuevas) y cuenta como
+  cambio sin guardar. Embebido en el aula, el apartado del laboratorio es de solo lectura.
+- **Módulos:** `src/net/lab-features.ts` (puro: catálogo, valores por defecto, validación del JSON),
+  `Topology.features`, `src/ui/settings-view.ts`, `device-windows.ts` y `server-apps.ts` consultan los ajustes.
+- **Pruebas:** unidad (por defecto, cambios normalizados, JSON hostil, ida y vuelta del fichero) y e2e (desactivar el
+  terminal Windows de los PC lo quita de la ventana; activar el firewall del servidor lo añade; tema; recarga).
+- **Hecho (v0.24.0):** como en el plan, con su página de ayuda (Netfix → Configuración). La validación del fichero de
+  topología pasa a `src/net/topology-file.ts`. Revisión (sonnet y opus): la página se actualiza al cargar otra red, las
+  casillas no pierden el foco y un mensaje con `role="status"` dice el cambio; el tema se aplica antes de pintar (y no
+  en la página que embebe Netfix); «Configuración IP» lleva también el sistema operativo del PC; el JSON hostil
+  (listas enormes, `__proto__`) se descarta. Pendiente: en el aula, las restricciones van por pestañas y no pueden
+  ocultar los paneles del servidor (kernel, firewall) que un fichero active.

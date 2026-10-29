@@ -14,7 +14,7 @@ export interface OutlineGroup {
 }
 
 export const OUTLINE: readonly OutlineGroup[] = [
-  { id: 'netfix', title: 'Netfix', sections: [[null, ['inicio', 'dibujo', 'guardar', 'simulacion', 'usuarios']]] },
+  { id: 'netfix', title: 'Netfix', sections: [[null, ['inicio', 'dibujo', 'guardar', 'simulacion', 'configuracion', 'usuarios']]] },
   { id: 'pc', title: 'PC', icon: 'pc', sections: [[null, ['pc-ip', 'pc-equipo', 'pc-apps', 'windows-cmd']]] },
   {
     id: 'servidor', title: 'Servidor', icon: 'server', sections: [

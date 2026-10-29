@@ -18,16 +18,25 @@ import { logUnits, unitActive } from '../services/units.ts';
 import { createShell } from '../shells/factory.ts';
 import { sshAuthMethods, setSshAuthMethods } from '../services/ssh-auth-settings.ts';
 
-export function servicesTab(server: Server, app: AfterChange): HTMLElement {
-  // A Linux router starts with its own panels (kernel parameters, firewall, VPN); a Server has none of them:
-  // sysctl and nft are still there in its terminal, but tuning the kernel belongs to the router.
-  const router = server.kind === 'linuxrouter' ? [
-    { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root },
-    { id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root },
-    { id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root },
-  ] : [];
-  return subnav([
-    ...router,
+/** The panels of the tab, as Configuración → Laboratorio actual says (a Server starts without kernel and firewall). */
+export interface ServicePanels {
+  readonly services: boolean;
+  readonly sysctl: boolean;
+  readonly firewall: boolean;
+  readonly vpn: boolean;
+}
+
+export function servicesTab(server: Server, app: AfterChange, panels: ServicePanels): HTMLElement {
+  const system = [
+    ...(panels.sysctl ? [{ id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root }] : []),
+    ...(panels.firewall ? [{ id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root }] : []),
+    ...(panels.vpn && server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
+  ];
+  return subnav([...system, ...(panels.services ? servicePanels(server, app) : [])]);
+}
+
+function servicePanels(server: Server, app: AfterChange): { id: string; label: string; render: () => HTMLElement }[] {
+  return [
     { id: 'ssh', label: 'SSH', render: () => sshPanel(server, app) },
     { id: 'dhcp', label: 'DHCP', render: () => dhcpPanel(server, app) },
     { id: 'dns', label: 'DNS', render: () => dnsPanel(server, app) },
@@ -36,7 +45,7 @@ export function servicesTab(server: Server, app: AfterChange): HTMLElement {
     // Windows Server keeps its configuration in the registry, not in files a teacher would open.
     ...(server.os === 'linux' ? [{ id: 'files', label: t('srv.files'), render: () => filesPanel(server) }] : []),
     { id: 'log', label: t('srv.log'), render: () => logPanel(server) },
-  ]);
+  ];
 }
 
 function httpPanel(server: Server, app: AfterChange): HTMLElement {

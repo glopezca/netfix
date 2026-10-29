@@ -14,6 +14,10 @@
       window.location.replace(url.href);
     })();
   </script>
+  <script>
+    // El tema elegido en Configuración, antes de pintar (sin parpadeo).
+    try { const v = localStorage.getItem("netfix:theme"); if (v === "light" || v === "dark") document.documentElement.dataset.theme = v; } catch {}
+  </script>
   <title>Netfix Lab</title>
   <link rel="icon" type="image/png" href="data:image/png;base64,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">
   <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAMAAAAKE/YAAAABgFBMVEX+LET/Ijr+GzH9FSv9Eyj8ECX8DiP6DiL5DiL8DCD6CyD5CyD8CR36Ch76CR76CR36CRz6CB36CBz6CBv5Ch35CBz+Bhr7Bxv7BRn6Bxz6Bxv6Bxr6Bhv6Bhr6Bhn6BRr6BRn6BRj+BBf7BBj7BBf6BBn6BBj6BBf5Bhr5BBj+Axb7Axf7Axb7AxX7AhX/AhL+AQ/7AhP7AQ/6Axj6Axf6Axb6AxX6Ahb6AhX6AxT6AhT6AxP6AhP6AhL6ARL5Axb5AhT5ARP5AhH5ARHiIjfzDyL4CR3yCh33BRn3AxT1BRjjAw/3AhP4AhH3AhD2AhH2Ag70Ag7yAg7tAg3mAgvSAgn3ARD1AQ/2AQ3zAQ7xAQ3wAQ3vAQ3sAQzqAQzoAQvkAQvZAQnJAQigFyaoAwe3AQanAQWeAQWNAQSiAANwDRhsAQNyAAJEBgpBAAIvBQkoAAIWAQMIAQEEAQEEAAEEAAADAQEDAAEDAAACAQECAAECAAABAAEBAAAAAAEAAABuTNNeAAAdLUlEQVR42u2cjz9i29fHVRijiEiJOMTpd2mmU+lG3ShpKEqMX0n0gxKZYVzd85x//VlrH+Zi6mTS9/Xc7/Oyh7lzZzi9rT5r7bXXXnt3cP+Fo+Md+h36Hfod+h36Hfod+h36Hfod+h36Hfod+v87NMuy/1XQ999u/yZ/+PH9B/tfAc1+4//77Zrnva3966HZW/jt8vzkZBnGycn5xTXH/V37d0MDcvV8uaNDJBZLJGKxSCRaPrkEmfyHoNn7+9vbH/f3r3Wfus/4i7s+XxZJusPRaARHeKUHwBGbbTc0e/vtryf/+/e329bA7zkOrCwJKzWUnmEYl8vPMFORlU6x+Jzjau2EZm8J8P9ULy8vLi4uL6t3PHitBeZvJx3iUHiU0judyDwf8HjnXfqJlU7RyXVj6o6W/KZ6cQ5+08EPdJ+LKsrz/neZq8sdPVKFVq3TO/V6J1B7vN5AYH7eRYXEy9WG1B2/j3wNwOg4ks6eUE9XZ6dELALyk3Pgvv8da9eQOdSnoii1Wq2bmeEF4g14vb6Ad2pFnL1u5C0drbi6SNwVkobDAwPK4YEhpTIcDnUBOO/17Ot9ELQR6jMYCDQ1hQpxuz0eDzCDtWfCkpNGMeR3oNm/uepJB4gwJB0eUCgUGo1mTDtBURMT2jGlNATciF17tQGAuVehhTFJURRt9MNAZq8nEPD6vPpwZ4m7eyv0LXF1caint29AMaRB6jHN2NgEviI9RWnCIYlIdP6d+/7Kp110SKRyxdDYGKE20iaTyWIDaIcHFeJ1+eUrVbb2NuhvaGZxSNorVyjAzkMKJWIPaZB6Sq/X02qtckUiWr58FTVbu14W9QwPDAwoxsbGxw1qSzydySTXrY4AmtoHEvFEuwv1Td3xeuZLcJuevkGFQqlUwmsBOWAPoUS0lJqmgds4qQSvvxCezh4fdw7iGBiQw4OAWp3MFUulUrmQ2iPU8OHy+rXR6pvk8Q3eTVGoVz4gB0Mr5H19cnhBOa/sMZVWO4XQeqeRCneKzptTs+z1slgqHxgehmcMqfzZcqV6w3E31Uphy+F3gEpcXo8nOl1+CzQaBpnl8j45/tbXD/jDw+CPoxqFRqWlpmijk3FCAFCHu4D6W5Pn/eAuRD3kUTAUM9nK9eO/VMsZh9WF/ugNrJlSN61Do9eIe/oUPHRfXx9YaBiHXDE6qtRgCJnVOZEZpmGQyHkzXUPoEIcG4P1CcHW2AkGH5aXO3RQ/+f0wy0AMCXjWLluGvucuwc59GsUAIQZmHnlYPsjHPWCmP/PMTrMOqJvomuW+L0vCw8NALVfIkqUHZBx3XDVr8nsgYMPcuGYvtwrN/gWeHuob0gwpeGZiah56VDM2DpGWopxOnIc9jNNimVF2ha4E43WNuxJ3Dcvl8KFQjuSun6Z0N1zJbnTD5OjxzK+azlqFJtMAMI9pFIPyfmJsYulwWKnUGCDKTk5QNCoaoS1Wi0UX7szW7lhBSYt74EHDA/JBpan8LLDV2GpS5SeT4/yaPdsiNJkGhjUarVYzqnjwHflwuE8mk6lGRkYmDQYtTsIWsxnUYbG6rJYZ8MbzBrMZGd+5c5hY+PgzGKywd8+1k5NFGTfj8vrW7KnWoNn7b8siKTibVqtSjSqUg4RZNmJMfjlOHX9Jrs6MUMYZM+rCYoF31QrDbOwNNZjNHqE7V2BiwTCtSr6Q0neu0B0F97B6A8FWock0oATVasc1KozRgwNK2Ugye1Yu4XRQzGcPrWYgNiO0BZnn563W6MeigKm/c6VuyLdAZwCdeAnNnnQSaE9g3dGiPNhvy+IVSMWoSe2kSgUKGRwYicP8Vale17jadfWyVMwlTH6/zYY2nve45ucdjnkGZ7OGpgZn+xhGZvmAyjBd4V7IA6AZxuMJBOP2XEvQoGhRyEDraCNgj2vHx7WGkS9npasnblYt5TMOlxegXTAlzM/Pe70O7+pImbtp9NA77kIWJg49MBR+8YU4WXYbAToQWI/PFVqCvodpIEw7/U49PUtNgrUnpzPFyg1MAyRFZ1kMsVfFYwdkC/MOYIZfXp/vjzXT8XXDxSmEPEP/QB/JA5Sy1LNIA3IUhRkM0+vr8U+lVqBZWF50RWDe+PyZ1s3Ogkqm04XK86wZPK6K1AgL448/fL5gcGHNdNHQ1Cx3k5IpSexQKAyy0pMJ9BZeUBJxwzQeXI/F0pVWoDGirvidjNns/KyjYcz+kas8mcB+TmOFfYfD4VsAZl8A8sog6PG0sajvuMJIZEgxoFRi0hiCdLb2WGxiT0RhCph9wdiOPXvdGvSJGIOm0+x06mg9TU8fl+us3e64q9zG4sLCgo8AB9FKiweNXfGOq0wrwalxaJQfQxdoY1KIgKRdqnV6vIvrsZ3Ep9ayPOLKHheDpnbiknkVDV2XYguIfQsLwLy+DsyxXXupsSuyN6kRgwYSA4VCpQp3i0/4zAhWoCKpwsl4vWvbO7ubmatWoFkOXDniQWpMhpyMKVmo1vWvO7YwFwDmYDAGxPGN+E7CnmtcfLrjSqaIllDDjBWWwpLnBAZWblR6xu0FJ9xMbBRqbAvQ4GKhj36PywWLexeSm74U2UYBIeNF5iAg7+xsJhKJzVjjtImt3WSnI+O40lSMDioGwh87xWKxpCuspPR+j3c9Dj90InXJ1VqCvuwaYHDx43Khvf2WTKkBSI0rzq0B8XZsE4n39g+ScwKhGp6coAwGoB4FacNca4jCiEzpIVGCAB2HRxyVG8TMV0Ar3RiDPVaPh7H6rZlG63rwxcTi9nZsY3M3sZ9MHh4epr/CwkNAIGV7xAAKAX+E32CdCVkX43R7XL61+M7m/n6ycN0ydLfGg8wum8fKQArXEBq+9tS++/VrYi9xkEynj3B8rTROQFjwAntEqx3nmbUUTTOM30kmQpBGIn3aUFyvgXZBLkHUAXmnrTH0DVeZ2/m6uwdmTh9lyPgqlDWBk5+BrcdGRzXjkI9Rej1AA3MwHt/cA+bLVmt5RB6MzeGw2sDajI3xHzWEBojjOZDy4eHRViZzjCOTuhaoM8M3FD7pIhrCPEtj3RSQMWwkNjKFy5arpgTabLXacIEMCYHfn24IDX9ftIOYeeQUGVsVobUAy9XKRya1FlYRszTtdGO6sb2T2Nw4zBavWq9P89AWCzLDYJpAVz4dpLfQyKksP46LgmtFeBcquU3TiJoyGv2exXWYUTbiMTBz5Vro+5pDdyK0hUFkxu3yp8sNoeHtTsXAyilEzpGRzQnpA5NESGxPU/Fpk8lkhzE3t7GVLZauBHcvXgXtxGWUxQqfEKgPG0OjPuaIlZE3f3Z2lj/NCuqDvAJXKhROc7By+3J8nM0Xy8UL8sO8DXrwMwOmNptxQcWYhaErGzzz6Vnh9CSbOy3mS81qvze1UrZQLJbJKJXL+C03b9pHROjhz2azeWbGjMPp3xeARn0cA/PpaaGwTDbZcsWisD7IJJPK5/MFMorwmS83+zlfAd03q9Pp1Dqzzjyjo/0HAtDw5YUMmrlYXBb1GCJDHzpTxasmCAB9nDvNP3CDpnLtgJZOIrRap6PhwyhkaczdjnN5eLOXxcMRxmqMSDuzlSYIN1wxjU5wiiOfPz3NtgFaIh2fpLQqLe7mzFKRPWFLX2WJncVhrZ7xMEYqLMkJRwKEjj8GGz7itMXSo5OT4yoYWAAThoZvKOSQWTrutDJ+hqG10s4T7p4VhjalHuM6IGdT5SYB5zWW7hkdh4yGUKsnI18FH1njygXCbHbZIP220LR2RSxM/Z0rjvAT6D8TUhuglZjxjqpgjTE5bvhaFgpItb+uTjuAWc9YGZcVVjq0cQyp/2YFoflUhZ/5U5m2QMvlMnlfv1wmG1QplBuC0LjLIZaqcPuVX6DRRlojFbQ1QMsOMSs8fhiH7YD+0I8F6X5Zf79MJg8LQhPmsIZ2mpHab7HonXqdWiOoEID+CKlhGvOs5vnsqy39WEjvxwqvEDQyS8KTtNkCubGTsWDhYQaCu6CuAbo7vospLa4c0odH7YHu7X2E7h8OC2iaZ6b0n2fMM6TGbnY6Z3Qzej1NbN2gyv6dO+9e29nZ3d3bO8Bx+KlN0L2Eu7+/X8jSWBMGZtqpN+t0QO336y0zMzN6MDZtQOr6++YA3bW2FNvZ2UDu/b39ubZB86YWguaZJ5xgWJhBdRZQtJ8wW8DW+rGG1Ai9urS9vf0Vzb27m2gLdNeH3t5HY/c2kgd7S5i1tB5+6WYhSXGkUnY/iASsbYYfpKGtcVcguri4tATgYO+dnTZB/0PdG96sC02Yu8LaKZqGhROto2lbqlLJOMDcYOjP8FdTmgbUBNqLhdbg0nYwth1vB7QYoH9S90rrWpr9C/c4wM78mJqibbihWcks+i06/u+MjWyNm0ZRrBIvLCwEF4NLcXuhTdCP1PWh2XvctBsGO1MUTdE6ataByR2sCTJeI3agIPWDrn9p0SLQLhdf3AaZrLUFuvNDN1B/7JVKG0ADBmFGG89OQS44O88npEB95MEmlglYbes/68aldWxNoBnSUgPgi4ttgu7qRmq09sd60Pc88wSIAqkh7V54LAcDddpGTWi1FIgEQgrY+vwlNdE0zkRWmw1r6attgv7wgaf+8PHjr9A17FMLDVNGijIa6Sk1pVvL/Sy0oK3d1IRqEn6ez7D4GVuRvKQm0JAQWmxWG5Yp2gUNgzc2WPplnL7nrk9EoX6DcQqgqalZamQ9d/XPqwL1oTMypqWMYGmI4QZC/Ss02YR0txH6A6GuD80i88rwhBGcEAxNGafjT5nJ7lvSHOFLSNimYAx3nj9bmTxAw1Lfhvvh7jZCP8r6BTR7f30iBm1gTJulKDU1HctfPX9NoD6ciUBY0aNwIfeLfLx4+hXoiBGnk+xRY8LiN521TR68qKUvoH9w56LQKAlpNDU7OalLvGQm1PvTRqzVMYwLlgb+6ezTWgyB/gzvgQ0SLMZpWTW1S9MfHsdzaJarhj6EQa+4VweiVW8Uqr++IlAfmacQ2u/xzPvWrOmn214k5DndHpvFacGlg79djvihqz70HXfZDbkopPzG2Vmdzmgt1t2Fw8VJVE+6IRzza2u+rRfQEPLcbreTcVvcDGj67O2rcTExdHddaPjnkYgRFiooaZqKTOfu6jRMQJ693BPB8rN33hdcT8zl7p5UFQg0LBpI/HAynnZBf2gEjXWw6SiGYJDH7Kw6IqvTQYw5q1hKMWSqDq7HEhulF47YGfUzDNZmzU63LdAe6A8QOnjojx96njsihOG5KSNS62gKkoxo50tqkv+JpVo9uKDXEVyPJ+by1y8cEUIeyIOPH7a2WBpT08eA9/HDyzhd48p2p1Gnh8wCt/snX1KT/E8sHYO3n/FCIrce38w/3z19mBEhtMCnxQLyyLcH+nH0/gINX1EKmo0zJOapqYmx8DNqYD7pkEiHpmDZyMz7FtaDiXz1ZfcPOiKEFnBEG+i+zdD1U1OgjjlBIWqKorRa1eAKUt89yf+AeUKtg9nD4Qsu4C51rU7CZAF9uG02yPbaJI8enhjs3Ptr7sGxd1xp4zMCa7WaIY1CttKVrfLpBen5DyEzTC1WYHYkf42JvDwgbBBohmmPpXueLQI2fq3lAXVMhx1wKsXQ0ICsP9y5TKgxlwJmpRY7lbEB3XFYJ44TaFA0Jh42kjC1C/rnGlG6Wa435ZU+URrV6KBCoZDJBvtWJEh9i70b2Is+MaU3W70LC46tcp1NKx7a43YCMGTUtjZB9/6sIfT19tWtmgJ1cFI5OCjHVmWZvG+lC6jJOYVexRgIeoZxOP6oz/wQpz0kLbXZHN72QZOiR19/X1+DEgJQx1UDfHPkgHywH21NmAc1CG2xOhyO49J1/Tn+vDPiZ6wentq71iZobEUbxDEgb1T3QF2rwnJ5H3Y1yhV90q7lZVGod0g7Acxmy/z8H8elGtegWIPLLZfH5kB5tMvSfTKZAuvqZDSq5d1wpQRQy/pAHrKBwf5wV2dPH5h5Cu087/gj1YD5J7SNLLawv7QdIU8qH1RoqUk82qEdw+2LmwbbEBdALesDZhk45GA4LIdVllo9A8zzjuxFo62Xh+jhgSUiLMe9C2tz7bC0VKGCF4c5epaihTaKbrhKQgG2lg0oVNgvo9FA3AAfdAVMdliesw1LvSR6eDxWUkNYiAM0+2boYWIwmtZ/pp1GoS05nnpANjioGhrCYxnA7AQ7m2J1WvmeQ6My8OCWLxBsEzSlm5kxW0jDmF9w8xOok6ow+CyeJNGMaafMwOwyxc8qgh2+AE2UgUUmhD57O3Tn8Cw2fDjIUwOrQnvjD9QKPP6CLfc09lPbE4Wi0AY5CXmkvOTFal6sLZbuHNCD9ztI99pCYE0QGr0xrVLyjVSYb7hc9mSxXCgIbJDzVVMyFoLr6wSaeyt0l9I1D0llcDsWA+y1tCA0W6sWvowoNdpJioYUGvScLhYLhZzABvljqdcHThjEzpq2QBt82Na4sfF1ZyMWiwtbGgxaAmoD2NkJdvabviDzWbZxOw7ZCYiSdmBi6FiiHdDdUwuxGOlohLGLHX5C0LD+OkXqKdrpemTO57P5GisIvYjI2KQa32kPtD+2sZnYOzhIJg8O9vaPmln6Ol8ofJnWRYwum/2YMOOGd2N9/IReWAdxtAt6dSdxkDw8TKfTR+n0YabJdjskIdn8WTZptduTOWA+O0XmTONuGQLtJfsX2zFsMf109nboj6uJZPpoaws3VLe2jppB17irVO60WDzFto/CWZ4wp47ywpb2ghsuYTdwfDMx1wZoWQL7GR/2reEPzRob2NppKpdD5rM8IiPz8dZxlWMFoPHYJFH05m7iUxvkoU3ynXZkwB+aQYM+jp40nSAy/KxzF+yNAHQgAHMhKBqo26Lp6Nbx8c9eDBhNLc1Vv2Qe2tzw65H56Khx6vYAHQgsYZDe2W0L9Opx6sFu+YdmnSY1zTuuEHzsgcQ3J5M5Okx+ylw3Tk27o38GcF4B5p3d/TfL4+726iibyy7zI5U9zedK9zfNoCumo5/dG+C96eT+ZsJeaaAPAu0jBwlQ0m+HvuW4S7w+QCQSi8k1FqLlVIlrdoSWvckuPDYjI/LB3uZOAhZRd42hAzgXxnFvPPFGaJY/DSHulIbDBoNSGZb2dIpFyydXTU60w8prev8A+zcOD5PJ/cTu5sb2tqORPgg0amMDBQ2z2JugyeF2kURqMBgofvPYSBmUPRKR+JwV7hjjqtHA7u4eP/Fv7uzEtpcW1hodIEHo1fUY0TN+w5ugyeF2yUp4HHetnHrdjJO0cFCalU7xSVVQIjWuYNrZ2djZwCyLJIdBgM7Vf39IkwpkN6CNxN7e/n7ya+vQt6BmUSisoYy0EXd5nHg6h7G6GD1lCImXBZsx8bzQ2hKyLi1tLy0uLCwu+AL++FXdY5XfuZOuOG/mPTyy8QZocuh6RY6pvF5P41FlbI+1WKwWs1mnXZE0Ofl7kxpZW8CjOuRklM+3GPCtmuq3RLDcSXect/N+Ekb6a6vTOB66FpPrQtRkuw3PhDvNM9hHbTE7zepwV+q6cbYJ4i2PrGI3BALjjR1ewHam651gxQ2yj3HSwoRmTh6m9wqtQbN/V5eBWTUB0Dp6dhbvsXDyvci4yWCx6CLdRcGe02pUDayLvnmbx/sw0NQ3ddRxIY4CNJ7mOUDm9H6L0D+4E1FIrsWT92DpWeOU0Wg2+420GU8sO9HcOqXsUpD6VLaKpC6Xh78jwOHwgKp/1RS8lGQ1TsSxz2fAh8WWijV4U0Gob2hMOzGFJRpKZ7LbP63bTTNGdEb4AHNHR3ICzwZXHDHi7RF4rAfvkPDaHI7V6Rx3w/6yXScKr/1UB0T2w6PWunrxSojw0Bi54wBsPZ3OFUsXF+Vc0u7HTXmz2WJx+/0WIVOzdylQNV+fczjAzjabwxb95dztPXe9LOHVQaCB+fC40tqO7YU4pNCMATUoZDqeK/HXbNxVckDN8MHP0yga/JwVRyI2G1IjMkgbTO3Gvfzv7NMYxZ6IImt86MBGQlwfZS9bq+WdSFaQWaNSaUcOCniSsXZ3B0+6LmLXGoQPPGwsdPKXJKiqVZvV5XV4rVaHdR4MbbP5h3suQBIPR1Nvb7HvIuxaR3X8ZE6fVlsq1lyFPijHEHpoSIVtBY/BDQx7al9l+Gt8vJ5Pl4KqLo5EyRU0eJ583mH1glAsxn7JOR6b/cFfNXexLAoH1nFi2SPMCJ0pNmOuD33eGRoaUwKzSqHOPVXYHVdN2lYZswUD2ZrQcVRcK65SbpsXeF1Wl40U1jw2JhKWLJ/zh1CvLyBNiBJmYmjU8+FROtVU0vWhc13hIVJBB0MXb9hn91gUp6MgahupfheFm9YL01HUhNVltUIMgRDi8bsZY7RL/Hg0VRxeXY1v8pHjIEm0kc7kq61Z+ks3gR5SKNXHzw9P3LGVaWyDAWjSi8YKLsvjnzF0eEAeLpfN5iW7Kn5/JNrbKRGLJd2R6OrazqM2eOajQ8jX2ZYml5WPSt7SGjr1fD4A/1oZ8TPwtvvA0qfNll2mVQf6IQ5yc47Hg77gX4WxBr/WH3K7fYJMjl1m8lfNr5+qD907BFFaABoU/SfZZxBcX7LVI1vAgfoAgZCrUfB0IM6Pi4u+4BKWk/h09ODggXlrK1tiW7wDMipTEmSDRn38HBre8y6t34O5UBBvV2CbFBPmVh3ggMjtcTMut5uQg7QWl5bIOhaZDx6ZtzJbx8Xmim6kaQKNCjHsPb/m5Dt7IYkis28hFm/aUn7H5e2rOLmAOCyE1/1w5RlWZta3n6RJhDmTyVVeczdZXejsSESjIfowvGjdgvSmKxqAF10K7uzslZqXQLJIjbrADhQPvy8L0IukEr3Dy5nYmRxjyJVuXnMLXF3owkhkDA2Nc+LW05a179ylOIwX8QVj2xsbmaYRFdR0bFrF+6vwCh7G7SHqCHgD2OGN4iBntdOPJy+y5deIowF0aRqhSQAJy07/WcV+g/SmMwpZMr7k5kau+UvccVcZsLX34V4CDNYBTyDwJ6/oBDly8WjmTK5Yfd3FdfWn8eSIYUyjVKIrhrsLN9xf337c3n7DKyHEUT+4URDleFh8hVmAOgXU4IcuhggEkH1LD4Lmg/PRQ4kkV7565WV79ROm05GIdmxIM2TQGjTSztzjzSCYKugDvsWl2M7uXuIV8y1PnbPbVt1uWPAQZp8v8NTOj2Y+fj1zA+gKHp1HfRgM2tEVifjk/OLiAi/zjNAB38ISpGV7++nC9asEeAe54YbJ78cOA36vEEM0mQcPfyJnUmel6qsvNexoUNeaxnsscIwbDGG8H7WjQyQJR/SwQAVmnHizlVe+CHxVJWu34CWJBDq4hO/UU+at4xxeg/PqWy87GiyW7BFKqyLUsBAwRCOGSCQaNfrRzmAlYD5+nkkJRj4IfeXjOZMjAHp2LPCBg2d+RG526Po18oBk2BSZJdR4QeME3isJSTRerLZOtHFwlL96vWVQ+1fl7Ibd4VhcWyTM5IgZmVFSiMxyv3O5aIMSAnudNUXUWv64J1by9Oj5Xt+fa+vEzulc5bdeBt+U6kUhdfhpbu7Tp+2vX/f29g7TSFwoV67ufsfMjYs1uN1jikxqVXjggxy3MeOieiHYGjPHX+LHXlXKhRzuDeDWQu60UCxVrq6530RuXBbDI76miAGY1fRnPf3ZzEDis7COse5gH5hbuAqZLy/dVK8uK/y4ql6zXLPT+L9VgISV1aldF6HUOhoW3xbI5iHJ2cbgup85q3At3YLM1n55e2q1Fp7UIRCpbspbgB0xms2Q9SMzKSAnX5shNFJ37edo9ebqDsH4elVI26d1EOlgpYEbDBt488bvRNT/zOhoIsIrrCvZH26xOErlS5c33Bvs/J+H5rdWbq7wJj/cgS3zrv5/bObmW3J41O2J63McV2O5fz004t7Vfjr/v4CYe/W1tyzL/jt4fwf63zXeod+h36Hfod+h36Hfod+h36Hfod+h36Hfof8j438BQoqhCzhFIVkAAAAASUVORK5CYII=">
@@ -728,6 +732,19 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .confirm-title { margin: 0 0 8px; font-size: 17px; }
 .confirm-body { margin: 0 0 18px; line-height: 1.45; }
 .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* Configuración: general settings and the device settings of the current lab. */
+.settings .settings-page { grid-column: 1 / -1; max-width: 1080px; }
+.set-section { margin-top: 28px; }
+.set-section h2 { font-size: 19px; margin: 0 0 6px; }
+.set-row { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+.set-group { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 10px 14px 12px; margin: 12px 0; display: grid; gap: 6px; align-content: start; max-width: 520px; }
+.set-group legend { font-weight: 700; padding: 0 4px; }
+.set-choice { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.set-choice input { flex: none; width: 18px; height: 18px; accent-color: var(--accent); }
+.set-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0 16px; align-items: start; }
+.set-kinds .set-group { max-width: none; }
+.set-status { min-height: 1.4em; margin: 10px 0 0; color: var(--ok); font-weight: 700; }
 
 </style>
   <style>
@@ -4164,6 +4181,85 @@ const DNSUI_EN = {
 
 return { DNSUI_EN };
 })();
+__m["i18n/es-ES/settings.js"] = (() => {
+/** Español (España): pestaña Configuración (ajustes generales y del laboratorio actual). */
+const SETTINGS_ES = {
+    'view.settings': 'Configuración',
+    'set.label': 'Configuración',
+    'set.title': 'Configuración',
+    'set.summary': 'Ajustes de Netfix en este navegador y de la red que tienes abierta.',
+    'set.general': 'Generales',
+    'set.generalNote': 'Se guardan en este navegador y valen para cualquier red.',
+    'set.language': 'Idioma',
+    'set.theme': 'Tema',
+    'set.themeAuto': 'Automático (el del sistema)',
+    'set.themeLight': 'Claro',
+    'set.themeDark': 'Oscuro',
+    'set.confirm': 'Avisar antes de reemplazar una red con cambios sin guardar',
+    'set.lab': 'Laboratorio actual',
+    'set.labNote': 'Qué ajustes muestran las ventanas de cada tipo de equipo en esta red. Se guarda con la topología; al cambiarlo se cierran las ventanas abiertas.',
+    'set.labLocked': 'En esta práctica los ajustes del laboratorio los fija el profesor.',
+    'set.always': 'Siempre: Equipo (nombre de host) e Interfaces.',
+    'set.reset': 'Restablecer los valores predeterminados',
+    'set.changed': 'Ajustes del laboratorio cambiados: las ventanas se abren con las pestañas nuevas.',
+    'set.kind.pc': 'PC',
+    'set.kind.server': 'Servidor',
+    'set.kind.linuxrouter': 'Router Linux',
+    'set.kind.router': 'Router IOS',
+    'set.kind.switch': 'Switch IOS',
+    'set.feat.ip': 'Configuración IP (y sistema operativo)',
+    'set.feat.apps': 'Aplicaciones (navegador, correo, SSH y SFTP)',
+    'set.feat.services': 'Servicios (SSH, DHCP, DNS, HTTP, correo, ficheros y registros)',
+    'set.feat.sysctl': 'Parámetros del kernel',
+    'set.feat.firewall': 'Firewall',
+    'set.feat.vpn': 'VPN',
+    'set.feat.cli': 'CLI',
+    'set.feat.web': 'Gestión web',
+    'set.feat.linux': 'Terminal Linux',
+    'set.feat.windows': 'Terminal Windows',
+};
+
+return { SETTINGS_ES };
+})();
+__m["i18n/en-GB/settings.js"] = (() => {
+const SETTINGS_EN = {
+    'view.settings': 'Settings',
+    'set.label': 'Settings',
+    'set.title': 'Settings',
+    'set.summary': 'Netfix settings in this browser and for the network you have open.',
+    'set.general': 'General',
+    'set.generalNote': 'Kept in this browser; they apply to any network.',
+    'set.language': 'Language',
+    'set.theme': 'Theme',
+    'set.themeAuto': 'Automatic (the system’s)',
+    'set.themeLight': 'Light',
+    'set.themeDark': 'Dark',
+    'set.confirm': 'Ask before replacing a network with unsaved changes',
+    'set.lab': 'Current lab',
+    'set.labNote': 'Which settings the windows of each kind of device show in this network. Saved with the topology; changing it closes the open windows.',
+    'set.labLocked': 'In this exercise the lab settings are set by the teacher.',
+    'set.always': 'Always: Device (host name) and Interfaces.',
+    'set.reset': 'Restore the defaults',
+    'set.changed': 'Lab settings changed: windows open with the new tabs.',
+    'set.kind.pc': 'PC',
+    'set.kind.server': 'Server',
+    'set.kind.linuxrouter': 'Linux router',
+    'set.kind.router': 'IOS router',
+    'set.kind.switch': 'IOS switch',
+    'set.feat.ip': 'IP configuration (and operating system)',
+    'set.feat.apps': 'Applications (browser, mail, SSH and SFTP)',
+    'set.feat.services': 'Services (SSH, DHCP, DNS, HTTP, mail, files and logs)',
+    'set.feat.sysctl': 'Kernel parameters',
+    'set.feat.firewall': 'Firewall',
+    'set.feat.vpn': 'VPN',
+    'set.feat.cli': 'CLI',
+    'set.feat.web': 'Web management',
+    'set.feat.linux': 'Linux terminal',
+    'set.feat.windows': 'Windows terminal',
+};
+
+return { SETTINGS_EN };
+})();
 __m["i18n/catalog.js"] = (() => {
 const { APP_ES } = __m["i18n/es-ES/app.js"];
 const { APP_EN } = __m["i18n/en-GB/app.js"];
@@ -4207,10 +4303,12 @@ const { ZONES_ES } = __m["i18n/es-ES/zones.js"];
 const { ZONES_EN } = __m["i18n/en-GB/zones.js"];
 const { DNSUI_ES } = __m["i18n/es-ES/dnsui.js"];
 const { DNSUI_EN } = __m["i18n/en-GB/dnsui.js"];
-const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES, ...LABS_ES, ...UI_ES, ...CLOUD_ES, ...SRV_ES, ...WEB_ES, ...LOAD_ES, ...IFACES_ES, ...DRAW_ES, ...UNDO_ES, ...ZONES_ES, ...DNSUI_ES };
+const { SETTINGS_ES } = __m["i18n/es-ES/settings.js"];
+const { SETTINGS_EN } = __m["i18n/en-GB/settings.js"];
+const ES = { ...APP_ES, ...CANVAS_ES, ...PAGES_ES, ...MC_ES, ...HOST_ES, ...DNS_ES, ...ROUTER_ES, ...FIREWALL_ES, ...VPN_ES, ...APPS_ES, ...LABS_ES, ...UI_ES, ...CLOUD_ES, ...SRV_ES, ...WEB_ES, ...LOAD_ES, ...IFACES_ES, ...DRAW_ES, ...UNDO_ES, ...ZONES_ES, ...DNSUI_ES, ...SETTINGS_ES };
 const CATALOGS = {
     'es-ES': ES,
-    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN, ...LABS_EN, ...UI_EN, ...CLOUD_EN, ...SRV_EN, ...WEB_EN, ...LOAD_EN, ...IFACES_EN, ...DRAW_EN, ...UNDO_EN, ...ZONES_EN, ...DNSUI_EN },
+    'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN, ...LABS_EN, ...UI_EN, ...CLOUD_EN, ...SRV_EN, ...WEB_EN, ...LOAD_EN, ...IFACES_EN, ...DRAW_EN, ...UNDO_EN, ...ZONES_EN, ...DNSUI_EN, ...SETTINGS_EN },
 };
 
 return { CATALOGS };
@@ -4612,6 +4710,176 @@ function dragDevice(h, e, placed, g) {
 }
 
 return { dragDevice };
+})();
+__m["net/annotations.js"] = (() => {
+/**
+ * Drawings of the workspace (vector annotations): areas (rectangles and ellipses, optionally filled and named),
+ * lines, freehand strokes and text labels. Immutable records: every change returns a new one. They have no effect
+ * on the simulated network; they are saved in the topology file.
+ */
+/** Basic colours of the drawing bar (any other one is picked with the RGB selector). */
+const BASIC_COLORS = ['#d32f2f', '#f57c00', '#fbc02d', '#388e3c', '#0097a7', '#1976d2', '#7b1fa2', '#455a64', '#000000'];
+const KINDS = ['rect', 'ellipse', 'line', 'free', 'text'];
+const MAX_ANNOTATIONS = 500;
+const MAX_TEXT = 200;
+const MAX_POINTS = 1000;
+const MIN_STEP = 2;
+const MAX_WIDTH = 16;
+const MIN_SIZE = 8;
+const MAX_SIZE = 72;
+const DEFAULT_SIZE = 16;
+const MAX_COORD = 100_000;
+/** #rgb or #rrggbb in lower case, or null. */
+function normaliseColor(text) {
+    const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(text.trim());
+    if (!m)
+        return null;
+    const hex = (m[1] ?? '').toLowerCase();
+    return `#${hex.length === 3 ? [...hex].map((c) => c + c).join('') : hex}`;
+}
+/** A freehand stroke without points closer than MIN_STEP and with at most MAX_POINTS points. */
+function simplifyStroke(points) {
+    const out = [];
+    for (const p of points) {
+        const last = out[out.length - 1];
+        if (!last || Math.hypot(p.x - last.x, p.y - last.y) >= MIN_STEP)
+            out.push({ x: Math.round(p.x), y: Math.round(p.y) });
+    }
+    if (out.length <= MAX_POINTS)
+        return out;
+    const step = out.length / MAX_POINTS;
+    return Array.from({ length: MAX_POINTS }, (_, i) => out[Math.floor(i * step)]);
+}
+function makeAnnotation(id, init) {
+    const points = init.kind === 'free' ? simplifyStroke(init.points) : init.points.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }));
+    const text = init.text?.replace(/[\r\n\t]+/g, ' ').slice(0, MAX_TEXT);
+    return {
+        id, kind: init.kind, points, color: normaliseColor(init.color) ?? '#000000', fill: init.fill && (init.kind === 'rect' || init.kind === 'ellipse'),
+        width: Math.min(MAX_WIDTH, Math.max(1, Math.round(init.width))),
+        ...(text ? { text } : {}),
+        ...(init.kind === 'text' || text ? { size: Math.min(MAX_SIZE, Math.max(MIN_SIZE, Math.round(init.size ?? DEFAULT_SIZE))) } : {}),
+    };
+}
+function moveAnnotation(a, dx, dy) {
+    return { ...a, points: a.points.map((p) => ({ x: Math.round(p.x + dx), y: Math.round(p.y + dy) })) };
+}
+function restyle(a, style) {
+    return makeAnnotation(a.id, { ...a, ...style });
+}
+/** Bounding box of the points (for text, a box from the anchor). */
+function boundsOf(a) {
+    const xs = a.points.map((p) => p.x);
+    const ys = a.points.map((p) => p.y);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+}
+// ------------------------------------------------------------ JSON (untrusted)
+function isRecord(v) {
+    return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+function pointFrom(v) {
+    if (!isRecord(v) || typeof v.x !== 'number' || typeof v.y !== 'number' || !Number.isFinite(v.x) || !Number.isFinite(v.y) || Math.abs(v.x) > MAX_COORD || Math.abs(v.y) > MAX_COORD)
+        throw new Error('point');
+    return { x: v.x, y: v.y };
+}
+function annotationFrom(v) {
+    if (!isRecord(v) || typeof v.id !== 'string' || !/^[\w-]{1,32}$/.test(v.id))
+        throw new Error('annotation');
+    const kind = KINDS.find((k) => k === v.kind);
+    const color = typeof v.color === 'string' ? normaliseColor(v.color) : null;
+    if (!kind || !color || !Array.isArray(v.points) || typeof v.width !== 'number' || !Number.isFinite(v.width))
+        throw new Error('annotation');
+    const need = kind === 'text' ? 1 : 2;
+    if (v.points.length < need || v.points.length > (kind === 'free' ? MAX_POINTS * 2 : need))
+        throw new Error('annotation points');
+    if (v.text !== undefined && (typeof v.text !== 'string' || v.text.length > MAX_TEXT))
+        throw new Error('annotation text');
+    if (v.size !== undefined && (typeof v.size !== 'number' || !Number.isFinite(v.size)))
+        throw new Error('annotation size');
+    return makeAnnotation(v.id, { kind, color, fill: v.fill === true, width: v.width, points: v.points.map(pointFrom), text: v.text, size: v.size });
+}
+/** A drawing that can be shown: a freehand stroke needs two points after simplification. */
+function drawable(a) {
+    return a.kind === 'text' ? Boolean(a.text) : a.points.length >= 2;
+}
+/**
+ * The drawings of a file (none in files saved before v0.8). The list itself must be sane (or the file is
+ * refused); a single malformed or repeated drawing is left out, so a lab is never lost because of a doodle.
+ */
+function annotationsFromJson(v) {
+    if (v === undefined)
+        return [];
+    if (!Array.isArray(v) || v.length > MAX_ANNOTATIONS)
+        throw new Error('annotations');
+    const seen = new Set();
+    return v.flatMap((item) => {
+        try {
+            const a = annotationFrom(item);
+            if (seen.has(a.id) || !drawable(a))
+                return [];
+            seen.add(a.id);
+            return [a];
+        }
+        catch {
+            return [];
+        }
+    });
+}
+
+return { BASIC_COLORS, KINDS, MAX_ANNOTATIONS, MAX_TEXT, normaliseColor, simplifyStroke, makeAnnotation, moveAnnotation, restyle, boundsOf, drawable, annotationsFromJson };
+})();
+__m["net/topology-file.js"] = (() => {
+/** The topology file: format version, size limits and the validation of untrusted JSON before it is built. */
+const { t } = __m["i18n/t.js"];
+const { annotationsFromJson } = __m["net/annotations.js"];
+const FILE_VERSION = 2;
+/** A larger file would freeze the tab while it is built and settled. */
+const MAX_DEVICES = 500;
+const MAX_LABEL = 64;
+const MAX_CONFIG_LINES = 20_000;
+const MAX_CONFIG_LINE = 4096;
+function isObject(v) {
+    return typeof v === 'object' && v !== null;
+}
+/** IOS configuration of a file: absent, or a bounded list of bounded lines (the IOS parser reads every one). */
+function configLines(v) {
+    return v === undefined || (Array.isArray(v) && v.length <= MAX_CONFIG_LINES && v.every((l) => typeof l === 'string' && l.length <= MAX_CONFIG_LINE));
+}
+/** Validates untrusted JSON before building a topology from it. */
+function validateFile(data) {
+    if (!isObject(data) || (data.format !== 'netfix' && data.format !== 'netsim') || (data.version !== 1 && data.version !== FILE_VERSION))
+        throw new Error(t('load.notNetfix'));
+    const { devices, links } = data;
+    if (!Array.isArray(devices) || !Array.isArray(links))
+        throw new Error(t('load.incomplete'));
+    if (devices.length > MAX_DEVICES || links.length > MAX_DEVICES * 2)
+        throw new Error(t('load.tooBig', { max: MAX_DEVICES }));
+    for (const d of devices) {
+        if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'].includes(String(d.kind)))
+            throw new Error(t('load.badDevice'));
+        if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string')
+            throw new Error(t('load.deviceData', { id: d.id }));
+        if (d.label.length > MAX_LABEL)
+            throw new Error(t('load.deviceData', { id: d.id }));
+        if (!configLines(d.config) || !(d.startup === null || configLines(d.startup)))
+            throw new Error(t('load.deviceConfig', { id: d.id }));
+    }
+    for (const l of links) {
+        if (!isObject(l) || !isObject(l.a) || !isObject(l.b) || [l.a.device, l.a.port, l.b.device, l.b.port].some((x) => typeof x !== 'string'))
+            throw new Error(t('load.badLink'));
+    }
+    let annotations;
+    try {
+        annotations = annotationsFromJson(data.annotations);
+    }
+    catch {
+        throw new Error(t('load.drawings'));
+    }
+    return { ...data, annotations };
+}
+
+return { FILE_VERSION, MAX_DEVICES, validateFile };
 })();
 __m["core/hostname.js"] = (() => {
 /** Host name of a device derived from the name shown in the workspace (Equipo → Nombre). */
@@ -17688,7 +17956,7 @@ const NETFIX_DOCS = {
                 tip('Sin montar nada', '**Laboratorios…** carga prácticas ya preparadas, con sus equipos configurados y áreas dibujadas. Son el mejor punto de partida para cada tema de esta ayuda.'),
                 h('Barra superior'),
                 table(['Control', 'Qué hace'], [
-                    ['Red / Ayuda / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta ayuda, la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
+                    ['Red / Ayuda / Configuración / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta ayuda, los ajustes (ver «Configuración»), la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
                     ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S). Nuevo, Abrir y Laboratorios preguntan antes de reemplazar una red con cambios sin guardar.'],
                     ['Laboratorios…', 'Carga una práctica preparada: DHCP (básico, reservas, relay, VLAN, snooping, router cliente), spanning tree, Server, Internet con dos sedes, VPN IPsec y WireGuard, router Linux con DMZ, DNS que reenvía, SSH/SFTP y bastionado.'],
                     ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
@@ -17804,6 +18072,41 @@ const NETFIX_DOCS = {
 };
 
 return { NETFIX_DOCS };
+})();
+__m["docs/settings.js"] = (() => {
+const { check, exercise, h, p, steps, table, tip } = __m["docs/types.js"];
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
+const SETTINGS_DOCS = [
+    {
+        id: 'configuracion',
+        title: 'Configuración',
+        summary: 'Idioma, tema y aviso de cambios sin guardar; y qué ajustes muestra cada tipo de equipo en el laboratorio abierto.',
+        markdownBase: MD,
+        blocks: [
+            p('La pestaña **Configuración** (junto a Ayuda) tiene dos apartados. **Generales** vale para cualquier red y se guarda en este navegador. **Laboratorio actual** es de la red abierta: se guarda con ella al pulsar Guardar, y viaja en el archivo .netfix.json.'),
+            h('Generales'),
+            table(['Ajuste', 'Qué hace'], [
+                ['Idioma', 'Español (España) o English (UK), como el desplegable de la barra superior.'],
+                ['Tema', 'Automático (el del sistema), claro u oscuro.'],
+                ['Avisar antes de reemplazar…', 'Si está desmarcado, Laboratorios, Nuevo y Abrir reemplazan la red sin preguntar aunque tenga cambios sin guardar.'],
+            ]),
+            h('Laboratorio actual'),
+            p('Decide qué pestañas y paneles muestran las ventanas de cada tipo de equipo. **Equipo** (nombre de host) e **Interfaces** están siempre.'),
+            table(['Equipo', 'Activado por defecto', 'Se puede activar'], [
+                ['PC', 'Configuración IP, aplicaciones (navegador, correo, SSH, SFTP), terminal Linux y terminal Windows', '—'],
+                ['Servidor', 'Configuración IP, servicios, terminal Linux y terminal Windows', 'Parámetros del kernel y firewall (en Servicios)'],
+                ['Router Linux', 'Parámetros del kernel, firewall, VPN, servicios y terminal Linux', 'Terminal Windows'],
+                ['Router y switch IOS', 'CLI y gestión web', '—'],
+            ]),
+            steps(['Abre la pestaña', '**Configuración**, apartado **Laboratorio actual**.'], ['Marca o desmarca', 'Cada casilla cambia al momento. Las ventanas abiertas se cierran: al abrirlas de nuevo ya tienen las pestañas nuevas.'], ['Guarda', 'Es un cambio de la red: **Guardar** lo lleva al archivo, y cambiar de laboratorio sin guardar avisa.']),
+            check('Compruébalo', 'Desmarca **Terminal Windows** en PC y abre un PC: ya no tiene esa pestaña. **Restablecer los valores predeterminados** la devuelve.'),
+            tip('En el aula', 'Embebido en una práctica de Netfix Classroom, el apartado del laboratorio es de solo lectura, y las restricciones del profesor siguen mandando: una pestaña que él oculta no aparece aunque esté marcada aquí.'),
+            exercise('Un servidor con cortafuegos', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», haz que el servidor muestre el panel Firewall y comprueba que no bloquea el acceso web.', 'Configuración → Laboratorio actual → Servidor: marca **Firewall**. En la ventana de SRV, Servicios → Firewall aparece con su servicio parado. Desde PC0, el navegador sigue abriendo http://www.aula.lab mientras no actives nftables con reglas que lo impidan.'),
+        ],
+    },
+];
+
+return { SETTINGS_DOCS };
 })();
 __m["docs/ios.js"] = (() => {
 const { check, code, exercise, figure, h, list, p, steps, table, term, tip, warn } = __m["docs/types.js"];
@@ -19965,7 +20268,7 @@ const NETFIX_DOCS = {
                 tip('Without building anything', '**Labs…** loads ready-made practicals, with their devices configured and their areas drawn. They are the best starting point for each topic in this help.'),
                 h('Top bar'),
                 table(['Control', 'What it does'], [
-                    ['Network / Help / Donations / About', 'Switches between the workspace, this help, the page for supporting the project (PayPal.Me) and the version, authorship, licence and attribution information (taken from package.json and LICENSE.md).'],
+                    ['Network / Help / Settings / Donations / About', 'Switches between the workspace, this help, the settings (see “Settings”), the page for supporting the project (PayPal.Me) and the version, authorship, licence and attribution information (taken from package.json and LICENSE.md).'],
                     ['New · Open… · Save', 'Empty workspace, open a .json file or save the topology (Ctrl+S). New, Open and Labs ask before replacing a network with unsaved changes.'],
                     ['Labs…', 'Loads a ready-made exercise: DHCP (basic, reservations, relay, VLAN, snooping, client router), spanning tree, Server, Internet with two sites, IPsec and WireGuard VPN, Linux router with DMZ, forwarding DNS, SSH/SFTP and hardening.'],
                     ['Clock and “Advance clock…”', 'Simulated time. Moving it forward 1 minute, 1 hour or 1 day makes DHCP leases expire or renew.'],
@@ -20081,6 +20384,41 @@ const NETFIX_DOCS = {
 };
 
 return { NETFIX_DOCS };
+})();
+__m["docs/en/settings.js"] = (() => {
+const { check, exercise, h, p, steps, table, tip } = __m["docs/types.js"];
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
+const SETTINGS_DOCS = [
+    {
+        id: 'configuracion',
+        title: 'Settings',
+        summary: 'Language, theme and the unsaved-changes question; and which settings each kind of device shows in the open lab.',
+        markdownBase: MD,
+        blocks: [
+            p('The **Settings** tab (next to Help) has two sections. **General** applies to any network and is kept in this browser. **Current lab** belongs to the open network: it is saved with it when you press Save, and travels in the .netfix.json file.'),
+            h('General'),
+            table(['Setting', 'What it does'], [
+                ['Language', 'Español (España) or English (UK), like the drop-down in the top bar.'],
+                ['Theme', 'Automatic (the system’s), light or dark.'],
+                ['Ask before replacing…', 'When unticked, Labs, New and Open replace the network without asking even if it has unsaved changes.'],
+            ]),
+            h('Current lab'),
+            p('Decides which tabs and panels the windows of each kind of device show. **Device** (host name) and **Interfaces** are always there.'),
+            table(['Device', 'On by default', 'Can be turned on'], [
+                ['PC', 'IP configuration, applications (browser, mail, SSH, SFTP), Linux terminal and Windows terminal', '—'],
+                ['Server', 'IP configuration, services, Linux terminal and Windows terminal', 'Kernel parameters and firewall (in Services)'],
+                ['Linux router', 'Kernel parameters, firewall, VPN, services and Linux terminal', 'Windows terminal'],
+                ['IOS router and switch', 'CLI and web management', '—'],
+            ]),
+            steps(['Open the tab', '**Settings**, section **Current lab**.'], ['Tick or untick', 'Each box applies at once. Open windows close: when opened again they have the new tabs.'], ['Save', 'It is a change to the network: **Save** puts it in the file, and changing lab without saving asks first.']),
+            check('Check it', 'Untick **Windows terminal** for PC and open a PC: it no longer has that tab. **Restore the defaults** brings it back.'),
+            tip('In the classroom', 'Embedded in a Netfix Classroom exercise, the lab section is read-only, and the teacher’s restrictions still rule: a tab the teacher hides does not appear even if it is ticked here.'),
+            exercise('A server with a firewall', 'In the lab “Server: DHCP, DNS, web, mail and SSH”, make the server show the Firewall panel and check that it does not block web access.', 'Settings → Current lab → Server: tick **Firewall**. In the SRV window, Services → Firewall appears with its service stopped. From PC0, the browser still opens http://www.aula.lab as long as you do not start nftables with rules that prevent it.'),
+        ],
+    },
+];
+
+return { SETTINGS_DOCS };
 })();
 __m["docs/en/ios.js"] = (() => {
 const { check, code, exercise, figure, h, list, p, steps, table, term, tip, warn } = __m["docs/types.js"];
@@ -22215,7 +22553,7 @@ return { MAIL_DOCS };
 })();
 __m["docs/outline.js"] = (() => {
 const OUTLINE = [
-    { id: 'netfix', title: 'Netfix', sections: [[null, ['inicio', 'dibujo', 'guardar', 'simulacion', 'usuarios']]] },
+    { id: 'netfix', title: 'Netfix', sections: [[null, ['inicio', 'dibujo', 'guardar', 'simulacion', 'configuracion', 'usuarios']]] },
     { id: 'pc', title: 'PC', icon: 'pc', sections: [[null, ['pc-ip', 'pc-equipo', 'pc-apps', 'windows-cmd']]] },
     {
         id: 'servidor', title: 'Servidor', icon: 'server', sections: [
@@ -22261,7 +22599,7 @@ return { arrange };
 })();
 __m["docs/en/outline.js"] = (() => {
 const OUTLINE = [
-    { id: 'netfix', title: 'Netfix', sections: [[null, ['inicio', 'dibujo', 'guardar', 'simulacion', 'usuarios']]] },
+    { id: 'netfix', title: 'Netfix', sections: [[null, ['inicio', 'dibujo', 'guardar', 'simulacion', 'configuracion', 'usuarios']]] },
     { id: 'pc', title: 'PC', icon: 'pc', sections: [[null, ['pc-ip', 'pc-equipo', 'pc-apps', 'windows-cmd']]] },
     {
         id: 'servidor', title: 'Server', icon: 'server', sections: [
@@ -22292,6 +22630,7 @@ return { OUTLINE };
 })();
 __m["docs/sets.js"] = (() => {
 const { NETFIX_DOCS } = __m["docs/netfix.js"];
+const { SETTINGS_DOCS } = __m["docs/settings.js"];
 const { IOS_DOCS } = __m["docs/ios.js"];
 const { IOS_DHCP_DOCS } = __m["docs/ios-dhcp.js"];
 const { STP_DOCS } = __m["docs/ios-stp.js"];
@@ -22312,6 +22651,7 @@ const { DNS_DOCS } = __m["docs/dns.js"];
 const { HTTP_DOCS } = __m["docs/http.js"];
 const { MAIL_DOCS } = __m["docs/mail.js"];
 const { NETFIX_DOCS: NETFIX_EN } = __m["docs/en/netfix.js"];
+const { SETTINGS_DOCS: SETTINGS_EN } = __m["docs/en/settings.js"];
 const { IOS_DOCS: IOS_EN } = __m["docs/en/ios.js"];
 const { IOS_DHCP_DOCS: IOS_DHCP_EN } = __m["docs/en/ios-dhcp.js"];
 const { STP_DOCS: STP_EN } = __m["docs/en/ios-stp.js"];
@@ -22335,7 +22675,7 @@ const { OUTLINE } = __m["docs/outline.js"];
 const { arrange } = __m["docs/arrange.js"];
 const { OUTLINE: OUTLINE_EN } = __m["docs/en/outline.js"];
 const ES = {
-    groups: arrange(OUTLINE, [...NETFIX_DOCS.pages, ...IOS_DOCS.pages, ...STP_DOCS, ...IOS_DHCP_DOCS, ...IOS_SEC_DOCS, ...SERVICE_DOCS.pages, ...DNS_DOCS, ...HTTP_DOCS, ...MAIL_DOCS, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
+    groups: arrange(OUTLINE, [...NETFIX_DOCS.pages, ...SETTINGS_DOCS, ...IOS_DOCS.pages, ...STP_DOCS, ...IOS_DHCP_DOCS, ...IOS_SEC_DOCS, ...SERVICE_DOCS.pages, ...DNS_DOCS, ...HTTP_DOCS, ...MAIL_DOCS, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
         ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE]),
     utils: UTIL_DOCS,
     builtins: BUILTIN_DOCS,
@@ -22353,7 +22693,7 @@ const ES = {
     },
 };
 const EN = {
-    groups: arrange(OUTLINE_EN, [...NETFIX_EN.pages, ...IOS_EN.pages, ...STP_EN, ...IOS_DHCP_EN, ...IOS_SEC_EN, ...SERVICE_EN.pages, ...DNS_EN, ...HTTP_EN, ...MAIL_EN, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
+    groups: arrange(OUTLINE_EN, [...NETFIX_EN.pages, ...SETTINGS_EN, ...IOS_EN.pages, ...STP_EN, ...IOS_DHCP_EN, ...IOS_SEC_EN, ...SERVICE_EN.pages, ...DNS_EN, ...HTTP_EN, ...MAIL_EN, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
         ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN]),
     utils: UTIL_EN,
     builtins: BUILTIN_EN,
@@ -29571,7 +29911,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.23.0",
+    "version": "0.24.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -40854,123 +41194,69 @@ function sameEp(a, b) {
 
 return { LINK_DELAY_MS, WorkLimitError, withWorkLimit, Network, sameEp };
 })();
-__m["net/annotations.js"] = (() => {
-/**
- * Drawings of the workspace (vector annotations): areas (rectangles and ellipses, optionally filled and named),
- * lines, freehand strokes and text labels. Immutable records: every change returns a new one. They have no effect
- * on the simulated network; they are saved in the topology file.
- */
-/** Basic colours of the drawing bar (any other one is picked with the RGB selector). */
-const BASIC_COLORS = ['#d32f2f', '#f57c00', '#fbc02d', '#388e3c', '#0097a7', '#1976d2', '#7b1fa2', '#455a64', '#000000'];
-const KINDS = ['rect', 'ellipse', 'line', 'free', 'text'];
-const MAX_ANNOTATIONS = 500;
-const MAX_TEXT = 200;
-const MAX_POINTS = 1000;
-const MIN_STEP = 2;
-const MAX_WIDTH = 16;
-const MIN_SIZE = 8;
-const MAX_SIZE = 72;
-const DEFAULT_SIZE = 16;
-const MAX_COORD = 100_000;
-/** #rgb or #rrggbb in lower case, or null. */
-function normaliseColor(text) {
-    const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(text.trim());
-    if (!m)
-        return null;
-    const hex = (m[1] ?? '').toLowerCase();
-    return `#${hex.length === 3 ? [...hex].map((c) => c + c).join('') : hex}`;
+__m["net/lab-features.js"] = (() => {
+const FEATURE_IDS = ['ip', 'apps', 'services', 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'];
+/** What can be switched on each kind, in the order the settings list them. */
+const FEATURES_BY_KIND = {
+    pc: ['ip', 'apps', 'linux', 'windows'],
+    server: ['ip', 'services', 'sysctl', 'firewall', 'linux', 'windows'],
+    linuxrouter: ['sysctl', 'firewall', 'vpn', 'services', 'linux', 'windows'],
+    router: ['cli', 'web'],
+    switch: ['cli', 'web'],
+    cloud: [],
+};
+/** On by default: a server's kernel and firewall panels, and the Linux router's Windows terminal, are extras. */
+const DEFAULT_OFF = {
+    server: ['sysctl', 'firewall'],
+    linuxrouter: ['windows'],
+};
+const KINDS = Object.keys(FEATURES_BY_KIND);
+function defaults(kind) {
+    return FEATURES_BY_KIND[kind].filter((f) => !(DEFAULT_OFF[kind] ?? []).includes(f));
 }
-/** A freehand stroke without points closer than MIN_STEP and with at most MAX_POINTS points. */
-function simplifyStroke(points) {
-    const out = [];
-    for (const p of points) {
-        const last = out[out.length - 1];
-        if (!last || Math.hypot(p.x - last.x, p.y - last.y) >= MIN_STEP)
-            out.push({ x: Math.round(p.x), y: Math.round(p.y) });
+/** A longer list in a file is not a list of features (each kind has at most a handful). */
+const MAX_LIST = 64;
+function sameAsDefault(kind, list) {
+    const d = defaults(kind);
+    return list.length === d.length && list.every((f, i) => f === d[i]);
+}
+/** The features on for a kind, in catalogue order. */
+function featuresOf(features, kind) {
+    return features[kind] ?? defaults(kind);
+}
+function featureOn(features, kind, id) {
+    return featuresOf(features, kind).includes(id);
+}
+/** A copy with one feature switched; a kind back to its defaults is left out. */
+function setFeature(features, kind, id, on) {
+    if (!FEATURES_BY_KIND[kind].includes(id))
+        return features;
+    const current = new Set(featuresOf(features, kind));
+    if (on)
+        current.add(id);
+    else
+        current.delete(id);
+    const next = FEATURES_BY_KIND[kind].filter((f) => current.has(f));
+    const rest = Object.fromEntries(Object.entries(features).filter(([k]) => k !== kind));
+    return sameAsDefault(kind, next) ? rest : { ...rest, [kind]: next };
+}
+/** The `features` of a topology file (untrusted): known kinds, known features of that kind, no repeats. */
+function parseFeatures(data) {
+    if (typeof data !== 'object' || data === null || Array.isArray(data))
+        return {};
+    const out = {};
+    for (const kind of KINDS) {
+        const list = data[kind];
+        if (!Array.isArray(list) || list.length > MAX_LIST)
+            continue;
+        const on = FEATURES_BY_KIND[kind].filter((f) => list.includes(f));
+        if (!sameAsDefault(kind, on))
+            out[kind] = on;
     }
-    if (out.length <= MAX_POINTS)
-        return out;
-    const step = out.length / MAX_POINTS;
-    return Array.from({ length: MAX_POINTS }, (_, i) => out[Math.floor(i * step)]);
-}
-function makeAnnotation(id, init) {
-    const points = init.kind === 'free' ? simplifyStroke(init.points) : init.points.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }));
-    const text = init.text?.replace(/[\r\n\t]+/g, ' ').slice(0, MAX_TEXT);
-    return {
-        id, kind: init.kind, points, color: normaliseColor(init.color) ?? '#000000', fill: init.fill && (init.kind === 'rect' || init.kind === 'ellipse'),
-        width: Math.min(MAX_WIDTH, Math.max(1, Math.round(init.width))),
-        ...(text ? { text } : {}),
-        ...(init.kind === 'text' || text ? { size: Math.min(MAX_SIZE, Math.max(MIN_SIZE, Math.round(init.size ?? DEFAULT_SIZE))) } : {}),
-    };
-}
-function moveAnnotation(a, dx, dy) {
-    return { ...a, points: a.points.map((p) => ({ x: Math.round(p.x + dx), y: Math.round(p.y + dy) })) };
-}
-function restyle(a, style) {
-    return makeAnnotation(a.id, { ...a, ...style });
-}
-/** Bounding box of the points (for text, a box from the anchor). */
-function boundsOf(a) {
-    const xs = a.points.map((p) => p.x);
-    const ys = a.points.map((p) => p.y);
-    const x = Math.min(...xs);
-    const y = Math.min(...ys);
-    return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
-}
-// ------------------------------------------------------------ JSON (untrusted)
-function isRecord(v) {
-    return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-function pointFrom(v) {
-    if (!isRecord(v) || typeof v.x !== 'number' || typeof v.y !== 'number' || !Number.isFinite(v.x) || !Number.isFinite(v.y) || Math.abs(v.x) > MAX_COORD || Math.abs(v.y) > MAX_COORD)
-        throw new Error('point');
-    return { x: v.x, y: v.y };
-}
-function annotationFrom(v) {
-    if (!isRecord(v) || typeof v.id !== 'string' || !/^[\w-]{1,32}$/.test(v.id))
-        throw new Error('annotation');
-    const kind = KINDS.find((k) => k === v.kind);
-    const color = typeof v.color === 'string' ? normaliseColor(v.color) : null;
-    if (!kind || !color || !Array.isArray(v.points) || typeof v.width !== 'number' || !Number.isFinite(v.width))
-        throw new Error('annotation');
-    const need = kind === 'text' ? 1 : 2;
-    if (v.points.length < need || v.points.length > (kind === 'free' ? MAX_POINTS * 2 : need))
-        throw new Error('annotation points');
-    if (v.text !== undefined && (typeof v.text !== 'string' || v.text.length > MAX_TEXT))
-        throw new Error('annotation text');
-    if (v.size !== undefined && (typeof v.size !== 'number' || !Number.isFinite(v.size)))
-        throw new Error('annotation size');
-    return makeAnnotation(v.id, { kind, color, fill: v.fill === true, width: v.width, points: v.points.map(pointFrom), text: v.text, size: v.size });
-}
-/** A drawing that can be shown: a freehand stroke needs two points after simplification. */
-function drawable(a) {
-    return a.kind === 'text' ? Boolean(a.text) : a.points.length >= 2;
-}
-/**
- * The drawings of a file (none in files saved before v0.8). The list itself must be sane (or the file is
- * refused); a single malformed or repeated drawing is left out, so a lab is never lost because of a doodle.
- */
-function annotationsFromJson(v) {
-    if (v === undefined)
-        return [];
-    if (!Array.isArray(v) || v.length > MAX_ANNOTATIONS)
-        throw new Error('annotations');
-    const seen = new Set();
-    return v.flatMap((item) => {
-        try {
-            const a = annotationFrom(item);
-            if (seen.has(a.id) || !drawable(a))
-                return [];
-            seen.add(a.id);
-            return [a];
-        }
-        catch {
-            return [];
-        }
-    });
+    return out;
 }
 
-return { BASIC_COLORS, KINDS, MAX_ANNOTATIONS, MAX_TEXT, normaliseColor, simplifyStroke, makeAnnotation, moveAnnotation, restyle, boundsOf, drawable, annotationsFromJson };
+return { FEATURE_IDS, FEATURES_BY_KIND, featuresOf, featureOn, setFeature, parseFeatures };
 })();
 __m["ios/crypto-config.js"] = (() => {
 /**
@@ -50234,7 +50520,9 @@ const { bootWireguard } = __m["shells/wg-boot.js"];
 const { searchList } = __m["shells/netplan-model.js"];
 const { validFileRecords } = __m["bash/vfs-persist.js"];
 const { Network } = __m["net/network.js"];
-const { annotationsFromJson, drawable, makeAnnotation, MAX_ANNOTATIONS } = __m["net/annotations.js"];
+const { drawable, makeAnnotation, MAX_ANNOTATIONS } = __m["net/annotations.js"];
+const { FILE_VERSION, validateFile } = __m["net/topology-file.js"];
+const { parseFeatures } = __m["net/lab-features.js"];
 const { SimClock } = __m["core/clock.js"];
 const { Router } = __m["devices/router.js"];
 const { Switch } = __m["devices/switch.js"];
@@ -50252,12 +50540,6 @@ const { InternetCore } = __m["net/internet.js"];
 const { populateInternet } = __m["net/internet-hosts.js"];
 registerWebApps();
 const PREFIX = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'Cloud' };
-const FILE_VERSION = 2;
-/** A larger file would freeze the tab while it is built and settled. */
-const MAX_DEVICES = 500;
-const MAX_LABEL = 64;
-const MAX_CONFIG_LINES = 20_000;
-const MAX_CONFIG_LINE = 4096;
 /** Drawing ids stay short (aN) even after a crafted file. */
 const MAX_DRAWING_ID = 999_999_999;
 const SETTLE_MS = 30_000;
@@ -50272,6 +50554,8 @@ class Topology {
     nextId = 1;
     /** Drawings of the workspace (replaced, never mutated). */
     annotations = [];
+    /** Configuración → Laboratorio actual: the device settings shown (only the differences from the defaults). */
+    features = {};
     nextDrawing = 1;
     add(kind, x, y, opts = {}) {
         const id = opts.id ?? `d${this.nextId++}`;
@@ -50382,7 +50666,8 @@ class Topology {
     toJSON() {
         const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
         const links = this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable }));
-        return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}) };
+        const features = Object.keys(this.features).length ? { features: this.features } : {};
+        return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features };
     }
     static fromJSON(data) {
         const file = validateFile(data);
@@ -50396,6 +50681,7 @@ class Topology {
         }
         topo.separateClouds();
         topo.annotations = file.annotations ?? [];
+        topo.features = parseFeatures(file.features);
         topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
         for (const l of file.links)
             topo.connect(l.a, l.b, l.cable);
@@ -50522,44 +50808,8 @@ function parseStatic(pc) {
 function isObject(v) {
     return typeof v === 'object' && v !== null;
 }
-/** Validates untrusted JSON before building a topology from it. */
-/** IOS configuration of a file: absent, or a bounded list of bounded lines (the IOS parser reads every one). */
-function configLines(v) {
-    return v === undefined || (Array.isArray(v) && v.length <= MAX_CONFIG_LINES && v.every((l) => typeof l === 'string' && l.length <= MAX_CONFIG_LINE));
-}
-function validateFile(data) {
-    if (!isObject(data) || (data.format !== 'netfix' && data.format !== 'netsim') || (data.version !== 1 && data.version !== FILE_VERSION))
-        throw new Error(t('load.notNetfix'));
-    const { devices, links } = data;
-    if (!Array.isArray(devices) || !Array.isArray(links))
-        throw new Error(t('load.incomplete'));
-    if (devices.length > MAX_DEVICES || links.length > MAX_DEVICES * 2)
-        throw new Error(t('load.tooBig', { max: MAX_DEVICES }));
-    for (const d of devices) {
-        if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'].includes(String(d.kind)))
-            throw new Error(t('load.badDevice'));
-        if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string')
-            throw new Error(t('load.deviceData', { id: d.id }));
-        if (d.label.length > MAX_LABEL)
-            throw new Error(t('load.deviceData', { id: d.id }));
-        if (!configLines(d.config) || !(d.startup === null || configLines(d.startup)))
-            throw new Error(t('load.deviceConfig', { id: d.id }));
-    }
-    for (const l of links) {
-        if (!isObject(l) || !isObject(l.a) || !isObject(l.b) || [l.a.device, l.a.port, l.b.device, l.b.port].some((x) => typeof x !== 'string'))
-            throw new Error(t('load.badLink'));
-    }
-    let annotations;
-    try {
-        annotations = annotationsFromJson(data.annotations);
-    }
-    catch {
-        throw new Error(t('load.drawings'));
-    }
-    return { ...data, annotations };
-}
 
-return { FILE_VERSION, MAX_DEVICES, Topology, record, restore, parseStatic, validateFile };
+return { Topology, record, restore, parseStatic };
 })();
 __m["net/topology-clip.js"] = (() => {
 /**
@@ -50630,7 +50880,7 @@ __m["ui/group-select.js"] = (() => {
  * group change is one undo step.
  */
 const { svg } = __m["ui/dom.js"];
-const { MAX_DEVICES } = __m["net/topology.js"];
+const { MAX_DEVICES } = __m["net/topology-file.js"];
 const { boundsOf, moveAnnotation } = __m["net/annotations.js"];
 const { copyClip, onlyKinds, PASTE_OFFSET } = __m["net/topology-clip.js"];
 const { t } = __m["i18n/t.js"];
@@ -56194,16 +56444,16 @@ const { validateFileName } = __m["services/http-service.js"];
 const { logUnits, unitActive } = __m["services/units.js"];
 const { createShell } = __m["shells/factory.js"];
 const { sshAuthMethods, setSshAuthMethods } = __m["services/ssh-auth-settings.js"];
-function servicesTab(server, app) {
-    // A Linux router starts with its own panels (kernel parameters, firewall, VPN); a Server has none of them:
-    // sysctl and nft are still there in its terminal, but tuning the kernel belongs to the router.
-    const router = server.kind === 'linuxrouter' ? [
-        { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root },
-        { id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root },
-        { id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root },
-    ] : [];
-    return subnav([
-        ...router,
+function servicesTab(server, app, panels) {
+    const system = [
+        ...(panels.sysctl ? [{ id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root }] : []),
+        ...(panels.firewall ? [{ id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root }] : []),
+        ...(panels.vpn && server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
+    ];
+    return subnav([...system, ...(panels.services ? servicePanels(server, app) : [])]);
+}
+function servicePanels(server, app) {
+    return [
         { id: 'ssh', label: 'SSH', render: () => sshPanel(server, app) },
         { id: 'dhcp', label: 'DHCP', render: () => dhcpPanel(server, app) },
         { id: 'dns', label: 'DNS', render: () => dnsPanel(server, app) },
@@ -56212,7 +56462,7 @@ function servicesTab(server, app) {
         // Windows Server keeps its configuration in the registry, not in files a teacher would open.
         ...(server.os === 'linux' ? [{ id: 'files', label: t('srv.files'), render: () => filesPanel(server) }] : []),
         { id: 'log', label: t('srv.log'), render: () => logPanel(server) },
-    ]);
+    ];
 }
 function httpPanel(server, app) {
     let current = server.services.http.files[0]?.name ?? null;
@@ -57668,9 +57918,11 @@ const { Cloud } = __m["devices/cloud.js"];
 const { cloudTabs } = __m["ui/cloud-window.js"];
 const { cloudSettings } = __m["ui/cloud-device.js"];
 const { promptToggle } = __m["ui/prompt-toggle.js"];
+const { featureOn } = __m["net/lab-features.js"];
 function allowed(host, kind, tabs) {
     return tabs.filter((tab) => host.allowsTab?.(kind, tab.id) ?? true);
 }
+const on = (host, kind, id) => host.feature?.(kind, id) ?? featureOn({}, kind, id);
 const terminals = new Map();
 const footers = new Map();
 function iosBackend(device, session) {
@@ -57737,8 +57989,8 @@ function openDeviceWindow(placed, host) {
     handle = host.windows.show(d.id, `${placed.label} · ${d.hostname}`, allowed(host, d.kind, [
         { id: 'host', label: t('win.host'), render: () => device.root, onShow: () => device.refresh() },
         { id: 'ifaces', label: t('win.ifaces'), render: () => ifaces.root, onShow: () => ifaces.refresh() },
-        { id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() },
-        { id: 'web', label: t('win.webAdmin'), render: () => iosWebSettings(d, () => host.afterCommand()) },
+        ...(on(host, d.kind, 'cli') ? [{ id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() }] : []),
+        ...(on(host, d.kind, 'web') ? [{ id: 'web', label: t('win.webAdmin'), render: () => iosWebSettings(d, () => host.afterCommand()) }] : []),
     ]));
 }
 /** Both terminals of a device follow its timestamp-prompt setting (and their footer boxes show it). */
@@ -57790,17 +58042,16 @@ function openHostWindow(placed, h, app) {
             disposers.push(v.dispose);
             return v.root;
         } };
-    // «Equipo» is always the first tab (as in the IOS devices).
-    const routerTabs = (r) => [
-        settingsTab,
-        { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = routerInterfaces(r, app, (port) => app.peerLabel?.(r.id, port)); disposers.push(v.dispose); return v.root; } },
-        { id: 'svc', label: t('win.services'), render: () => servicesTab(r, app) },
-        terminal('linux'),
-    ];
-    const tabs = h instanceof LinuxRouter ? routerTabs(h) : h instanceof Server
-        ? [settingsTab, nicTab, { id: 'svc', label: t('win.services'), render: () => servicesTab(h, app) }, ipTab, ...order.map(terminal)]
-        : [settingsTab, nicTab, ipTab, ...(h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
-                { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : []), ...order.map(terminal)];
+    // «Equipo» and «Interfaces» always; the rest as Configuración → Laboratorio actual says.
+    const has = (id) => on(app, h.kind, id);
+    const ifTab = h instanceof LinuxRouter
+        ? { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = routerInterfaces(h, app, (port) => app.peerLabel?.(h.id, port)); disposers.push(v.dispose); return v.root; } }
+        : nicTab;
+    const panels = { services: has('services'), sysctl: has('sysctl'), firewall: has('firewall'), vpn: has('vpn') };
+    const svc = h instanceof Server && Object.values(panels).some(Boolean) ? [{ id: 'svc', label: t('win.services'), render: () => servicesTab(h, app, panels) }] : [];
+    const apps = h instanceof Pc && has('apps') ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
+        { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : [];
+    const tabs = [settingsTab, ifTab, ...(h instanceof LinuxRouter ? svc : [...svc, ...(has('ip') ? [ipTab] : []), ...apps]), ...order.filter(has).map(terminal)];
     handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()));
 }
 
@@ -59182,23 +59433,143 @@ function donateView() {
 
 return { donateView };
 })();
+__m["ui/preferences.js"] = (() => {
+/** General settings of this browser (Configuración → Generales): theme, the unsaved-changes question, language of the page. */
+const { safeStorageGet, safeStorageSet } = __m["ui/dom.js"];
+const { getLocale } = __m["i18n/locale.js"];
+const { t } = __m["i18n/t.js"];
+const THEMES = ['auto', 'light', 'dark'];
+const THEME_KEY = 'netfix:theme';
+const CONFIRM_KEY = 'netfix:confirm-unsaved';
+function theme() {
+    const v = safeStorageGet(THEME_KEY);
+    return THEMES.find((x) => x === v) ?? 'auto';
+}
+/** The CSS reads `data-theme` (light or dark); without it, the system's choice. */
+function applyTheme(value = theme()) {
+    if (value === 'auto')
+        delete document.documentElement.dataset.theme;
+    else
+        document.documentElement.dataset.theme = value;
+}
+function setTheme(value) {
+    safeStorageSet(THEME_KEY, value);
+    applyTheme(value);
+}
+/** Ask before a lab, Nuevo or Abrir replaces unsaved changes (on unless turned off). */
+function confirmUnsaved() {
+    return safeStorageGet(CONFIRM_KEY) !== 'off';
+}
+function setConfirmUnsaved(on) {
+    safeStorageSet(CONFIRM_KEY, on ? 'on' : 'off');
+}
+/** The page's language, title and description in the current language. */
+function applyDocumentLanguage() {
+    document.documentElement.lang = getLocale();
+    document.title = t('app.title');
+    document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.description'));
+}
+
+return { THEMES, theme, applyTheme, setTheme, confirmUnsaved, setConfirmUnsaved, applyDocumentLanguage };
+})();
+__m["ui/settings-view.js"] = (() => {
+/** The Configuración tab: general settings of this browser and the device settings of the current lab. */
+const { el } = __m["ui/dom.js"];
+const { t, tDynamic } = __m["i18n/t.js"];
+const { LOCALES, LOCALE_NAMES, getLocale, isLocale } = __m["i18n/locale.js"];
+const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved } = __m["ui/preferences.js"];
+const { FEATURES_BY_KIND, featureOn, setFeature } = __m["net/lab-features.js"];
+/** The kinds whose windows have settings to switch (the cloud has none). */
+const KINDS = ['pc', 'server', 'linuxrouter', 'router', 'switch'];
+function generalSection(host) {
+    const lang = el('select', { class: 'select', id: 'set-lang' }, ...LOCALES.map((l) => el('option', { value: l, selected: l === getLocale() }, LOCALE_NAMES[l])));
+    lang.addEventListener('change', () => { if (isLocale(lang.value))
+        host.setLocale(lang.value); });
+    const radios = THEMES.map((v) => {
+        const r = el('input', { type: 'radio', name: 'set-theme', value: v, checked: v === theme() });
+        r.addEventListener('change', () => { if (r.checked)
+            setTheme(v); });
+        return el('label', { class: 'set-choice' }, r, tDynamic(`set.theme${v[0]?.toUpperCase()}${v.slice(1)}`));
+    });
+    const confirm = el('input', { type: 'checkbox', checked: confirmUnsaved() });
+    confirm.addEventListener('change', () => setConfirmUnsaved(confirm.checked));
+    return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' }, el('h2', { id: 'set-general' }, t('set.general')), el('p', { class: 'muted' }, t('set.generalNote')), el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang), el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), el('label', { class: 'set-choice' }, confirm, t('set.confirm')));
+}
+function kindGroup(host, kind, changed) {
+    const boxes = FEATURES_BY_KIND[kind].map((id) => {
+        const box = el('input', { type: 'checkbox', checked: featureOn(host.features(), kind, id), disabled: host.labLocked(), 'data-feature': `${kind}:${id}` });
+        box.addEventListener('change', () => {
+            host.setFeatures(setFeature(host.features(), kind, id, box.checked));
+            changed();
+        });
+        return el('label', { class: 'set-choice' }, box, tDynamic(`set.feat.${id}`));
+    });
+    return el('fieldset', { class: 'set-group', 'data-kind': kind }, el('legend', {}, tDynamic(`set.kind.${kind}`)), ...boxes);
+}
+class SettingsView {
+    root;
+    lab;
+    host;
+    /** Says what changed (the status line of the workspace is hidden on this page). */
+    status = el('p', { class: 'set-status', role: 'status' });
+    constructor(host) {
+        this.host = host;
+        this.lab = el('section', { class: 'set-section', 'aria-labelledby': 'set-lab' });
+        const page = el('article', { class: 'doc-page settings-page', tabindex: '-1' }, el('h1', {}, t('set.title')), el('p', { class: 'doc-summary' }, t('set.summary')), generalSection(host), this.lab);
+        this.root = el('section', { class: 'docs settings', 'aria-label': t('set.label') }, page);
+        this.render();
+    }
+    /** The lab section, from the network open now (called each time the tab is shown). */
+    render() {
+        const host = this.host;
+        const reset = el('button', { type: 'button', class: 'btn', disabled: host.labLocked() }, t('set.reset'));
+        const changed = () => { this.status.textContent = t('set.changed'); };
+        reset.addEventListener('click', () => {
+            host.setFeatures({});
+            this.render();
+            changed();
+            this.lab.querySelector('.set-reset')?.focus();
+        });
+        reset.classList.add('set-reset');
+        this.status.textContent = '';
+        this.lab.replaceChildren(el('h2', { id: 'set-lab' }, t('set.lab')), el('p', { class: 'muted' }, host.labLocked() ? t('set.labLocked') : t('set.labNote')), el('p', {}, t('set.always')), el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed))), reset, this.status);
+    }
+}
+
+return { SettingsView };
+})();
 __m["ui/pages.js"] = (() => {
-/** The pages beside the workspace (Ayuda, Donaciones, Acerca de), built the first time they are shown. */
+/** The pages beside the workspace (Ayuda, Configuración, Donaciones, Acerca de), built the first time they are shown. */
 const { DocsView } = __m["ui/docs-view.js"];
 const { aboutView } = __m["ui/about-view.js"];
 const { donateView } = __m["ui/donate-view.js"];
+const { SettingsView } = __m["ui/settings-view.js"];
 class Pages {
     built = new Map();
     docs = null;
+    settings = null;
+    settingsHost;
+    constructor(settingsHost) {
+        this.settingsHost = settingsHost;
+    }
     get(view) {
         const known = this.built.get(view);
         if (known)
             return known;
+        if (view === 'settings') {
+            this.settings = new SettingsView(this.settingsHost);
+            this.built.set(view, this.settings.root);
+            return this.settings.root;
+        }
         if (view === 'docs')
             this.docs = new DocsView();
         const made = this.docs && view === 'docs' ? this.docs.root : view === 'about' ? aboutView() : donateView();
         this.built.set(view, made);
         return made;
+    }
+    /** The settings of the network open now (the page is kept between visits). */
+    refreshSettings() {
+        this.settings?.render();
     }
     /** Keyboard focus to the help search (when the help page exists). */
     focusDocs() {
@@ -59230,7 +59601,7 @@ const { t } = __m["i18n/t.js"];
 const { getLocale, LOCALES, LOCALE_NAMES, LOCALE_SHORT, isLocale } = __m["i18n/locale.js"];
 const { NO_RESTRICTIONS, allowsLab } = __m["classroom/restrictions.js"];
 const MINUTE = 60_000;
-const VIEWS = [['net', 'view.net'], ['docs', 'view.docs'], ['donate', 'view.donate'], ['about', 'view.about']];
+const VIEWS = [['net', 'view.net'], ['docs', 'view.docs'], ['settings', 'view.settings'], ['donate', 'view.donate'], ['about', 'view.about']];
 function button(label, fn, attrs = {}) {
     const b = el('button', { type: 'button', class: 'btn', ...attrs }, label);
     b.addEventListener('click', fn);
@@ -59998,6 +60369,8 @@ const { openDeviceWindow, forgetDevice, forgetAll } = __m["ui/device-windows.js"
 const { Topology } = __m["net/topology.js"];
 const { EXAMPLES } = __m["net/examples.js"];
 const { Pages } = __m["ui/pages.js"];
+const { applyDocumentLanguage, applyTheme, confirmUnsaved } = __m["ui/preferences.js"];
+const { featureOn } = __m["net/lab-features.js"];
 const { topbar } = __m["ui/topbar.js"];
 const { palette } = __m["ui/palette.js"];
 const { labText } = __m["ui/lab-text.js"];
@@ -60007,7 +60380,7 @@ const { confirmDialog, unsavedText } = __m["ui/confirm-dialog.js"];
 const { syncUndoButtons, undoShortcut } = __m["ui/undo-keys.js"];
 const { t } = __m["i18n/t.js"];
 const { DrawState, drawBar } = __m["ui/draw-bar.js"];
-const { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } = __m["i18n/locale.js"];
+const { detectLocale, setLocale, LOCALE_STORAGE_KEY } = __m["i18n/locale.js"];
 const { allowsLab, allowsTab, lockedPrompt } = __m["classroom/restrictions.js"];
 const { forceTimestampPrompt } = __m["shells/prompt-clock.js"];
 const { STANDALONE, checkMount, embedSession, evaluateFile, installApi } = __m["classroom/embed.js"];
@@ -60026,7 +60399,7 @@ class App {
     stageEl;
     paletteEl;
     pageHost;
-    pages = new Pages();
+    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), labLocked: () => this.session.embedded, setLocale: (l) => changeLocale(l) });
     saveTimer = 0;
     interval;
     mode = 'realtime';
@@ -60130,7 +60503,7 @@ class App {
         if (document.querySelector('dialog[open]'))
             return false;
         const topo = this.topo;
-        if (this.saved.dirty(topo) && !(await confirmDialog(unsavedText(what, this.session.policy.fileSave))))
+        if (confirmUnsaved() && this.saved.dirty(topo) && !(await confirmDialog(unsavedText(what, this.session.policy.fileSave))))
             return false;
         return app === this && this.topo === topo;
     }
@@ -60191,11 +60564,22 @@ class App {
         this.view = view;
         if (view === 'docs')
             this.pages.focusDocs();
+        if (view === 'settings')
+            this.pages.refreshSettings();
     }
     open(id) {
         const placed = this.topo.get(id);
         if (placed)
             openDeviceWindow(placed, this);
+    }
+    /** Configuración → Laboratorio actual: windows reopen with the new tabs, and the change is unsaved work. */
+    setFeatures(next) {
+        this.topo.features = next;
+        this.windows.closeAll();
+        this.afterCommand();
+    }
+    feature(kind, id) {
+        return featureOn(this.topo.features, kind, id);
     }
     /** Tabs of the device windows left by the classroom restrictions. */
     allowsTab(kind, tab) {
@@ -60266,6 +60650,7 @@ class App {
         this.canvas.setTopology(topo);
         this.sim.attach(topo);
         this.markUndo();
+        this.pages.refreshSettings();
         this.hintEl.textContent = message;
         this.scheduleSave();
     }
@@ -60307,11 +60692,6 @@ class App {
 let app = null;
 let mountEl = null;
 let session = STANDALONE;
-function applyDocumentLanguage() {
-    document.documentElement.lang = getLocale();
-    document.title = t('app.title');
-    document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.description'));
-}
 /** Rebuilds the interface in another language, keeping the topology (open windows are closed). */
 function changeLocale(locale) {
     if (!session.embedded)
@@ -60337,6 +60717,8 @@ function start(mount, s, topo) {
     MEMORY_STORE.clear();
     setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
     applyDocumentLanguage();
+    if (!s.embedded)
+        applyTheme(); // embedded, the page (and its theme) belongs to the host
     applyBrand();
     // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
     forceTimestampPrompt(lockedPrompt(s.policy));

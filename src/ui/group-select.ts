@@ -5,7 +5,7 @@
  */
 import { svg } from './dom.ts';
 import type { DeviceKind, Placed, Topology } from '../net/topology.ts';
-import { MAX_DEVICES } from '../net/topology.ts';
+import { MAX_DEVICES } from '../net/topology-file.ts';
 import type { EditHistory } from '../net/edit-history.ts';
 import { boundsOf, moveAnnotation } from '../net/annotations.ts';
 import type { Annotation, Point } from '../net/annotations.ts';

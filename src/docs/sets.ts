@@ -7,6 +7,7 @@ import type { Locale } from '../i18n/locale.ts';
 import type { UtilDoc } from './utils.ts';
 import type { BuiltinDoc } from './bash-builtins.ts';
 import { NETFIX_DOCS } from './netfix.ts';
+import { SETTINGS_DOCS } from './settings.ts';
 import { IOS_DOCS } from './ios.ts';
 import { IOS_DHCP_DOCS } from './ios-dhcp.ts';
 import { STP_DOCS } from './ios-stp.ts';
@@ -27,6 +28,7 @@ import { DNS_DOCS } from './dns.ts';
 import { HTTP_DOCS } from './http.ts';
 import { MAIL_DOCS } from './mail.ts';
 import { NETFIX_DOCS as NETFIX_EN } from './en/netfix.ts';
+import { SETTINGS_DOCS as SETTINGS_EN } from './en/settings.ts';
 import { IOS_DOCS as IOS_EN } from './en/ios.ts';
 import { IOS_DHCP_DOCS as IOS_DHCP_EN } from './en/ios-dhcp.ts';
 import { STP_DOCS as STP_EN } from './en/ios-stp.ts';
@@ -76,7 +78,7 @@ export interface DocSet {
 }
 
 const ES: DocSet = {
-  groups: arrange(OUTLINE, [...NETFIX_DOCS.pages, ...IOS_DOCS.pages, ...STP_DOCS, ...IOS_DHCP_DOCS, ...IOS_SEC_DOCS, ...SERVICE_DOCS.pages, ...DNS_DOCS, ...HTTP_DOCS, ...MAIL_DOCS, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
+  groups: arrange(OUTLINE, [...NETFIX_DOCS.pages, ...SETTINGS_DOCS, ...IOS_DOCS.pages, ...STP_DOCS, ...IOS_DHCP_DOCS, ...IOS_SEC_DOCS, ...SERVICE_DOCS.pages, ...DNS_DOCS, ...HTTP_DOCS, ...MAIL_DOCS, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
     ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE]),
   utils: UTIL_DOCS,
   builtins: BUILTIN_DOCS,
@@ -95,7 +97,7 @@ const ES: DocSet = {
 };
 
 const EN: DocSet = {
-  groups: arrange(OUTLINE_EN, [...NETFIX_EN.pages, ...IOS_EN.pages, ...STP_EN, ...IOS_DHCP_EN, ...IOS_SEC_EN, ...SERVICE_EN.pages, ...DNS_EN, ...HTTP_EN, ...MAIL_EN, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
+  groups: arrange(OUTLINE_EN, [...NETFIX_EN.pages, ...SETTINGS_EN, ...IOS_EN.pages, ...STP_EN, ...IOS_DHCP_EN, ...IOS_SEC_EN, ...SERVICE_EN.pages, ...DNS_EN, ...HTTP_EN, ...MAIL_EN, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
     ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN]),
   utils: UTIL_EN,
   builtins: BUILTIN_EN,

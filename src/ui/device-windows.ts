@@ -29,6 +29,8 @@ import { Cloud } from '../devices/cloud.ts';
 import { cloudTabs } from './cloud-window.ts';
 import { cloudSettings } from './cloud-device.ts';
 import { promptToggle } from './prompt-toggle.ts';
+import { featureOn } from '../net/lab-features.ts';
+import type { FeatureId } from '../net/lab-features.ts';
 import type { PromptToggle } from './prompt-toggle.ts';
 
 export interface WindowHost {
@@ -39,11 +41,15 @@ export interface WindowHost {
   allowsTab?(kind: DeviceKind, tab: string): boolean;
   /** Classroom lock of the timestamp prompt: true/false forces it; undefined lets each device decide. */
   promptLock?(): boolean | undefined;
+  /** Configuración → Laboratorio actual: whether a setting of a device kind is on (the defaults, when absent). */
+  feature?(kind: DeviceKind, id: FeatureId): boolean;
 }
 
 function allowed(host: WindowHost, kind: DeviceKind, tabs: readonly Tab[]): Tab[] {
   return tabs.filter((tab) => host.allowsTab?.(kind, tab.id) ?? true);
 }
+
+const on = (host: WindowHost, kind: DeviceKind, id: FeatureId): boolean => host.feature?.(kind, id) ?? featureOn({}, kind, id);
 
 const terminals = new Map<string, Terminal>();
 const footers = new Map<string, PromptToggle>();
@@ -115,8 +121,8 @@ export function openDeviceWindow(placed: Placed, host: WindowHost): void {
   handle = host.windows.show(d.id, `${placed.label} · ${d.hostname}`, allowed(host, d.kind, [
     { id: 'host', label: t('win.host'), render: () => device.root, onShow: () => device.refresh() },
     { id: 'ifaces', label: t('win.ifaces'), render: () => ifaces.root, onShow: () => ifaces.refresh() },
-    { id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() },
-    { id: 'web', label: t('win.webAdmin'), render: () => iosWebSettings(d, () => host.afterCommand()) },
+    ...(on(host, d.kind, 'cli') ? [{ id: 'cli', label: 'CLI', render: () => term.root, onShow: () => term.focus() }] : []),
+    ...(on(host, d.kind, 'web') ? [{ id: 'web', label: t('win.webAdmin'), render: () => iosWebSettings(d, () => host.afterCommand()) }] : []),
   ]));
 }
 
@@ -171,16 +177,15 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost): void {
     disposers.push(v.dispose);
     return v.root;
   } };
-  // «Equipo» is always the first tab (as in the IOS devices).
-  const routerTabs = (r: LinuxRouter): Tab[] => [
-    settingsTab,
-    { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = routerInterfaces(r, app, (port) => app.peerLabel?.(r.id, port)); disposers.push(v.dispose); return v.root; } },
-    { id: 'svc', label: t('win.services'), render: () => servicesTab(r, app) },
-    terminal('linux'),
-  ];
-  const tabs: Tab[] = h instanceof LinuxRouter ? routerTabs(h) : h instanceof Server
-    ? [settingsTab, nicTab, { id: 'svc', label: t('win.services'), render: () => servicesTab(h, app) }, ipTab, ...order.map(terminal)]
-    : [settingsTab, nicTab, ipTab, ...(h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
-      { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : []), ...order.map(terminal)];
+  // «Equipo» and «Interfaces» always; the rest as Configuración → Laboratorio actual says.
+  const has = (id: FeatureId): boolean => on(app, h.kind, id);
+  const ifTab: Tab = h instanceof LinuxRouter
+    ? { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = routerInterfaces(h, app, (port) => app.peerLabel?.(h.id, port)); disposers.push(v.dispose); return v.root; } }
+    : nicTab;
+  const panels = { services: has('services'), sysctl: has('sysctl'), firewall: has('firewall'), vpn: has('vpn') };
+  const svc: Tab[] = h instanceof Server && Object.values(panels).some(Boolean) ? [{ id: 'svc', label: t('win.services'), render: () => servicesTab(h, app, panels) }] : [];
+  const apps: Tab[] = h instanceof Pc && has('apps') ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
+    { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : [];
+  const tabs: Tab[] = [settingsTab, ifTab, ...(h instanceof LinuxRouter ? svc : [...svc, ...(has('ip') ? [ipTab] : []), ...apps]), ...order.filter(has).map(terminal)];
   handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()));
 }

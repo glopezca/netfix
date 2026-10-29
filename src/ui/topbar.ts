@@ -10,7 +10,7 @@ import type { Locale } from '../i18n/locale.ts';
 import { NO_RESTRICTIONS, allowsLab } from '../classroom/restrictions.ts';
 import type { Restrictions } from '../classroom/restrictions.ts';
 
-export type View = 'net' | 'docs' | 'donate' | 'about';
+export type View = 'net' | 'docs' | 'settings' | 'donate' | 'about';
 export type Mode = 'realtime' | 'simulation';
 
 export interface TopbarActions {
@@ -25,7 +25,7 @@ export interface TopbarActions {
 }
 
 const MINUTE = 60_000;
-const VIEWS: readonly (readonly [View, MessageKey])[] = [['net', 'view.net'], ['docs', 'view.docs'], ['donate', 'view.donate'], ['about', 'view.about']];
+const VIEWS: readonly (readonly [View, MessageKey])[] = [['net', 'view.net'], ['docs', 'view.docs'], ['settings', 'view.settings'], ['donate', 'view.donate'], ['about', 'view.about']];
 
 function button(label: string, fn: () => void, attrs: Record<string, string> = {}): HTMLButtonElement {
   const b = el('button', { type: 'button', class: 'btn', ...attrs }, label);
