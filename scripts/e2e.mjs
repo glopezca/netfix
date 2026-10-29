@@ -82,6 +82,11 @@ try {
   await page.click('button.seg:has-text("Tiempo real")');
   await page.click('.pal-item:has-text("PC")');
   await page.mouse.click(1100, 600);
+  // A new PC asks for its system (Linux, Windows or both) and says it can be changed later.
+  const osDialog = page.locator('dialog.os-dialog[open]');
+  assert.match(await osDialog.innerText(), /¿Qué sistema operativo tiene PC3\?[\s\S]*pestaña Configuración/);
+  await osDialog.locator('button:has-text("Linux")').click();
+  await osDialog.waitFor({ state: 'detached' });
   if (shots) await page.screenshot({ path: `${shots}/placed.png` });
   await page.click('.pal-cable');
   await page.click('g.device-pc >> nth=3');
@@ -108,6 +113,9 @@ try {
   await page.click('button:has-text("Enviar")');
   await page.click('button:has-text("Recibir")');
   assert.match(await page.locator('.grid-table').last().innerText(), /Prueba e2e/);
+  // PC0 runs Windows: the Linux terminal is that of PC1.
+  await page.click('.win-close');
+  await page.dblclick('g.device-pc >> nth=1');
   await page.click('.win-tab:has-text("Terminal Linux")');
   await type('ssh admin@srv.aula.lab');
   assert.match(await page.locator('.terminal:visible').innerText(), /ED25519 key fingerprint is SHA256:/);
@@ -234,6 +242,9 @@ try {
   const box = await phone.locator('.workspace').boundingBox();
   await phone.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
   assert.equal(await phone.locator('g.device').count(), before + 1);
+  const phoneOs = await phone.locator('dialog.os-dialog[open]').boundingBox();
+  assert.ok(phoneOs.x >= 0 && phoneOs.x + phoneOs.width <= 390, 'the system question fits a phone');
+  await phone.tap('dialog.os-dialog button:has-text("Windows")');
   const pcBox = await phone.locator('g.device-pc').last().boundingBox();
   const cx = pcBox.x + pcBox.width / 2;
   const cy = pcBox.y + pcBox.height / 2;

@@ -70,7 +70,7 @@ try {
 
   // A PC: the terminal cannot change the host name.
   await page.selectOption('select.select >> nth=0', 'servidores');
-  await page.dblclick('g.device-pc >> nth=0');
+  await page.dblclick('g.device-pc >> nth=1'); // PC1 runs Linux
   await page.click('.win-tab:has-text("Terminal Linux")');
   const term = page.locator('.terminal:visible');
   await term.locator('input.term-input').fill('sudo hostname otro');

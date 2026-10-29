@@ -28,6 +28,16 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
         ['Router y switch IOS', 'CLI y gestión web', '—'],
       ]),
       p('Esos son los valores de una red nueva (**Nuevo**). Cada laboratorio grabado trae los suyos: sus servidores muestran solo los servicios que usa (por ejemplo, «DNS de empresa que reenvía a Internet» solo DHCP y DNS), y en «Bastionado: ACL, nftables y sshd» el servidor tiene además parámetros del kernel y firewall. Un laboratorio sin servidores deja los valores por defecto.'),
+      h('La pestaña Configuración de cada equipo'),
+      p('Cada PC, servidor y router Linux tiene además su propia pestaña **Configuración**: casillas para sus aplicaciones, servicios y terminales. Solo lista lo que el laboratorio permite (lo de arriba es el máximo), y al cambiar una casilla la ventana se reabre en esa pestaña con las pestañas nuevas.'),
+      table(['Equipo', 'Activado por defecto', 'Desactivado por defecto'], [
+        ['PC', 'Configuración IP, navegador, cliente SSH y el terminal de su sistema operativo', 'Correo, Archivos (SFTP) y el terminal del otro sistema'],
+        ['Servidor', 'Configuración IP, todos sus servicios y el terminal Linux', 'Terminal Windows'],
+        ['Router Linux', 'Parámetros del kernel, firewall, VPN, sus servicios y el terminal Linux', 'Terminal Windows'],
+      ]),
+      p('En los laboratorios grabados, de cada pareja de PCs del mismo switch uno es Windows y el otro Linux; el correo solo está en los PCs con cuenta configurada y SFTP en PC1 de «SSH y SFTP con claves»; cada servidor muestra solo los servicios que arranca (más ficheros y registros).'),
+      p('Al **colocar un PC** desde la paleta, Netfix pregunta si es Linux, Windows o ambos, y activa su terminal y la pila de red de ese sistema (Configuración IP → sistema operativo). Se puede cambiar después. Los servidores no preguntan: llevan Linux.'),
+      p('La **gestión web** de servidores y routers Linux enseña en gris, sin formularios, las páginas de lo desactivado (en el equipo o en el laboratorio). Con la casilla **Ocultar en la gestión web… las opciones desactivadas** de Laboratorio actual ni siquiera aparecen en el menú.'),
       steps(
         ['Abre la pestaña', '**Configuración**, apartado **Laboratorio actual**.'],
         ['Marca o desmarca', 'Cada casilla cambia al momento. Las ventanas abiertas se cierran: al abrirlas de nuevo ya tienen las pestañas nuevas.'],

@@ -40,6 +40,19 @@ export const SETTINGS_ES = {
   'set.feat.web': 'Gestión web',
   'set.feat.linux': 'Terminal Linux',
   'set.feat.windows': 'Terminal Windows',
+  'set.webHideOff': 'Ocultar en la gestión web de servidores y routers Linux las opciones desactivadas',
+  'set.webHideOffHint': 'Sin marcar, aparecen en gris y no se pueden usar.',
+  'dev.tab': 'Configuración',
+  'dev.intro': 'Qué muestra este equipo. Lo que el laboratorio desactiva (Configuración → Laboratorio actual) no aparece aquí.',
+  'dev.apps': 'Aplicaciones',
+  'dev.services': 'Servicios',
+  'dev.terminals': 'Terminales',
+  'dev.changed': 'La ventana se ha reabierto con las pestañas elegidas.',
+  'os.title': '¿Qué sistema operativo tiene {name}?',
+  'os.body': 'Se activa su terminal y la pila de red de ese sistema. Puedes cambiarlo después en su pestaña Configuración (terminales) y en Configuración IP (sistema operativo).',
+  'os.linux': 'Linux',
+  'os.windows': 'Windows',
+  'os.both': 'Ambos',
 } as const;
 
 export type SettingsKey = keyof typeof SETTINGS_ES;

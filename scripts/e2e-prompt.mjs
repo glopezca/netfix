@@ -32,6 +32,9 @@ try {
   // PC: tick it in the Linux terminal; the Windows terminal of the same device follows; untick restores both.
   await page.selectOption('select.select >> nth=0', 'servidores');
   await page.dblclick('g.device-pc >> nth=0');
+  // PC0 runs Windows: its Configuración tab adds the Linux terminal (the window reopens on that tab).
+  await page.click('.win-tab:text-is("Configuración")');
+  await page.locator('.window input[name="dev-linux"]').check();
   await page.click('.win-tab:has-text("Terminal Linux")');
   const plain = await prompt();
   assert.equal(await box().isChecked(), false);

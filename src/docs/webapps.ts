@@ -67,6 +67,7 @@ export const WEBAPP_DOCS: readonly DocPage[] = [
       ),
       term('messages', 'Oct 24 06:31:28 srv apache2[903]: netfix-webui: acceso denegado para «admin» desde 192.168.10.50\nOct 24 06:31:28 srv apache2[903]: 192.168.10.50 - - "GET / HTTP/1.1" 401 191 (port 10000)'),
       note('El Router Linux tiene la misma gestión web, con el menú Seguridad; los routers y switches IOS tienen la suya, con otro aspecto.'),
+      note('Lo que la pestaña Configuración del equipo o el laboratorio desactivan sale en gris en el menú, y su página solo lo avisa; con «Ocultar en la gestión web… las opciones desactivadas» (Configuración → Laboratorio actual) no aparece.'),
       exercise('¿Quién ha intentado entrar?', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», intenta entrar a la gestión web desde PC1 con una contraseña errónea y después con la buena. Busca los dos intentos en el servidor.', 'PC1 → Navegador → http://srv.aula.lab:10000/: con una contraseña errónea vuelve a pedirla. En SRV → Servicios → Registros → apache2 aparece «netfix-webui: acceso denegado para «admin» desde 192.168.10.50» y la petición con el código 401.'),
     ],
   },

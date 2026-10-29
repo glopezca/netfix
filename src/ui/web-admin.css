@@ -18,6 +18,7 @@
 .browser-view .web-adm-nav { display: flex; align-items: center; gap: 10px; color: var(--adm-side-ink); text-decoration: none; padding: 7px 10px; border-radius: 7px; }
 .browser-view .web-adm-nav:hover { background: rgb(255 255 255 / .07); color: #fff; }
 .web-adm-menu li.web-adm-on .web-adm-nav { background: var(--adm-blue); color: #fff; }
+.browser-view .web-adm-nav.web-adm-off, .browser-view .web-adm-nav.web-adm-off:hover { opacity: .45; cursor: not-allowed; background: none; color: var(--adm-side-ink); }
 .web-adm-nav::before { width: 18px; text-align: center; font-size: 15px; opacity: .9; }
 .web-adm-nav-setup::before { content: "⚙"; } .web-adm-nav-dhcp::before { content: "⇅"; } .web-adm-nav-dns::before { content: "◎"; }
 .web-adm-nav-web::before { content: "◫"; } .web-adm-nav-mail::before { content: "✉"; } .web-adm-nav-ssh::before { content: "›"; }

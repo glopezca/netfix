@@ -51,7 +51,7 @@ try {
   await page.click('.win-close');
 
   // A PC of the lab (no Internet) resolves google.es through the server; a broadcast ping needs -b.
-  await page.dblclick('g.device-pc >> nth=0');
+  await page.dblclick('g.device-pc >> nth=1'); // PC1 runs Linux
   await page.click('.win-tab:has-text("Terminal Linux")');
   const dig = await run(page, 'dig +short google.es');
   assert.match(dig, /142\.250\.200\.67/, dig);

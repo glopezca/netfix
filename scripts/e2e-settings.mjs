@@ -64,7 +64,7 @@ try {
   assert.equal(await stamp.isChecked(), false);
   await stamp.check();
   await page.click('button.seg:has-text("Red")');
-  await page.locator('g.device-pc').first().dblclick();
+  await page.locator('g.device-pc').nth(1).dblclick(); // PC1 runs Linux
   await page.click('.window .win-tab:has-text("Terminal Linux")');
   assert.equal(await page.locator('.window .term-foot input').first().isChecked(), true, 'the terminal footer follows the global setting');
   await page.click('.win-close');

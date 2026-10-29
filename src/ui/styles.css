@@ -699,8 +699,8 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 
 
 /* Modal question (unsaved changes before opening a lab). */
-.confirm-dialog { max-width: min(460px, calc(100vw - 32px)); padding: 20px 22px 18px; border: 1px solid var(--line); border-radius: var(--radius-win); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
-.confirm-dialog::backdrop { background: rgba(23, 35, 42, 0.35); }
+.confirm-dialog, .os-dialog { max-width: min(460px, calc(100vw - 32px)); padding: 20px 22px 18px; border: 1px solid var(--line); border-radius: var(--radius-win); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+.confirm-dialog::backdrop, .os-dialog::backdrop { background: rgba(23, 35, 42, 0.35); }
 .confirm-title { margin: 0 0 8px; font-size: 17px; }
 .confirm-body { margin: 0 0 18px; line-height: 1.45; }
 .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
@@ -717,3 +717,5 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .set-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0 16px; align-items: start; }
 .set-kinds .set-group { max-width: none; }
 .set-status { min-height: 1.4em; margin: 10px 0 0; color: var(--ok); font-weight: 700; }
+.dev-config { display: grid; gap: 12px; padding: 4px 2px; }
+.dev-group { display: grid; gap: 6px; }

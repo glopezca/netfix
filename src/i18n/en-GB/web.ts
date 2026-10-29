@@ -128,6 +128,8 @@ export const WEB_EN: Readonly<Record<WebKey, string>> = {
   'wa.noDhcpLeases': 'No leases.',
   'wa.logHelp': 'Latest service messages (journalctl).',
   'wa.empty': '(empty)',
+  'wa.off': 'Disabled on this device',
+  'wa.offPage': 'This option is disabled on this device (the device\'s Settings tab or the lab settings).',
   'wa.saved': 'Settings saved successfully.',
   'fwa.templateKept': 'Template applied. A rule accepting port {port} was added so you do not lose access to this page.',
   'fwa.badField': 'Check the field “{field}”.',

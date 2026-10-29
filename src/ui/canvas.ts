@@ -28,15 +28,14 @@ export interface CanvasEvents {
   changed(): void;
   hint(text: string): void;
   removed(id: string): void;
+  placed(p: Placed): void; // with the palette: a PC then asks for its system
 }
 
 export const WORLD_W = 2400;
 export const WORLD_H = 1600;
 const DOUBLE_TAP_MS = 350;
 
-const HINTS: Readonly<Record<Tool['kind'], MessageKey>> = {
-  select: 'canvas.hint.select', cable: 'canvas.hint.cable', delete: 'canvas.hint.delete', place: 'canvas.hint.place', draw: 'canvas.hint.draw',
-};
+const HINTS: Readonly<Record<Tool['kind'], MessageKey>> = { select: 'canvas.hint.select', cable: 'canvas.hint.cable', delete: 'canvas.hint.delete', place: 'canvas.hint.place', draw: 'canvas.hint.draw' };
 
 export class Canvas {
   readonly root: HTMLElement;
@@ -276,9 +275,9 @@ export class Canvas {
     }
     if (this.tool.kind === 'place') {
       const { x, y } = this.toWorld(e);
-      this.edits().addDevice(this.tool.device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
+      const placed = this.edits().addDevice(this.tool.device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
       this.setTool({ kind: 'select' });
-      this.events.changed();
+      this.events.placed(placed);
       return;
     }
     this.pendingEnd = null;

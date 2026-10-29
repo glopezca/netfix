@@ -1,6 +1,6 @@
 /** Ready-made labs that show each DHCP feature working. */
 import { parseFeatures } from './lab-features.ts';
-import { LAB_PRESETS } from './lab-presets.ts';
+import { LAB_PRESETS, setLabDevices } from './lab-presets.ts';
 import { newZone } from '../services/dns-zones.ts';
 import { decorateLab } from './lab-areas.ts';
 import { LABS_ES } from '../i18n/es-ES/labs.ts';
@@ -39,6 +39,7 @@ function lanBase(t: Topology, pcs: number, sw?: string): { r: Router; s: Switch;
   link(t, r.id, 'GigabitEthernet0/0', s.id, 'GigabitEthernet0/1');
   const p = Array.from({ length: pcs }, (_, i) => {
     const pc = t.add('pc', 220 + i * 240, 520).device as Pc;
+    if (i % 2) pc.os = 'linux'; // pairs on one switch: one Windows PC and one Linux PC
     link(t, pc.id, 'FastEthernet0', s.id, `FastEthernet0/${i + 1}`);
     return pc;
   });
@@ -112,6 +113,7 @@ ip dhcp pool PC1-FIJO
       link(t, edge.id, 'GigabitEthernet0/1', s.id, 'GigabitEthernet0/1');
       const p = [0, 1].map((i) => {
         const pc = t.add('pc', 480 + i * 240, 500).device as Pc;
+        if (i === 1) pc.os = 'linux';
         link(t, pc.id, 'FastEthernet0', s.id, `FastEthernet0/${i + 1}`);
         return pc;
       });
@@ -322,5 +324,6 @@ export const EXAMPLES: readonly Example[] = LABS.map((ex) => ({ ...ex, build: ()
 
 function withPreset(id: string, topo: Topology): Topology {
   topo.features = parseFeatures(LAB_PRESETS[id] ?? {});
+  setLabDevices(id, topo);
   return topo;
 }

@@ -31,6 +31,8 @@ import { cloudSettings } from './cloud-device.ts';
 import { promptToggle } from './prompt-toggle.ts';
 import { onTimestampPrompt } from './preferences.ts';
 import { featureOn, SERVICE_IDS } from '../net/lab-features.ts';
+import { appAvailable } from '../net/device-apps.ts';
+import { deviceConfig } from './device-config.ts';
 import type { FeatureId } from '../net/lab-features.ts';
 import type { PromptToggle } from './prompt-toggle.ts';
 
@@ -163,32 +165,39 @@ function shellTerminal(placed: Placed, h: Host, os: HostOs, app: WindowHost): Te
   return term;
 }
 
-function openHostWindow(placed: Placed, h: Host, app: WindowHost): void {
+function openHostWindow(placed: Placed, h: Host, app: WindowHost, initial?: string): void {
   const disposers: (() => void)[] = [];
   const terminal = (os: HostOs): Tab => ({
     id: os, label: os === 'windows' ? t('win.cmd') : t('win.linuxTerm'),
     render: () => shellTerminal(placed, h, os, app).root,
     onShow: () => { syncPrompts(); shellTerminal(placed, h, os, app).focus(); },
   });
-  const nicTab: Tab = { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = hostInterfaces(h, app, (port) => app.peerLabel?.(h.id, port)); disposers.push(v.dispose); return v.root; } };
-  const ipTab: Tab = { id: 'ip', label: t('win.ip'), render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
+  const view = (make: () => { root: HTMLElement; dispose: () => void }) => (): HTMLElement => { const v = make(); disposers.push(v.dispose); return v.root; };
+  const peer = (port: string): string | undefined => app.peerLabel?.(h.id, port);
+  const ipTab: Tab = { id: 'ip', label: t('win.ip'), render: view(() => hostIpConfig(h, app)) };
   const order: HostOs[] = h.os === 'linux' ? ['linux', 'windows'] : ['windows', 'linux'];
   const model = h instanceof LinuxRouter ? 'Ubuntu' : h instanceof Server ? 'Server' : 'PC';
   let handle: { setTitle(t: string): void } | undefined;
-  const settingsTab: Tab = { id: 'host', label: t('win.host'), render: () => {
-    const v = hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) });
-    disposers.push(v.dispose);
-    return v.root;
-  } };
-  // «Equipo» and «Interfaces» always; the rest as Configuración → Laboratorio actual says.
-  const has = (id: FeatureId): boolean => on(app, h.kind, id);
-  const ifTab: Tab = h instanceof LinuxRouter
-    ? { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = routerInterfaces(h, app, (port) => app.peerLabel?.(h.id, port)); disposers.push(v.dispose); return v.root; } }
-    : nicTab;
+  const settingsTab: Tab = { id: 'host', label: t('win.host'), render: view(() => hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) })) };
+  // «Equipo», «Interfaces» and «Configuración» always; the rest as the lab allows and the device's own tab says.
+  const has = (id: FeatureId): boolean => appAvailable(h, id);
+  const ifTab: Tab = { id: 'ifaces', label: t('win.ifaces'), render: view(() => (h instanceof LinuxRouter ? routerInterfaces(h, app, peer) : hostInterfaces(h, app, peer))) };
   const panels = PANEL_IDS.filter(has);
   const svc: Tab[] = h instanceof Server && panels.length ? [{ id: 'svc', label: t('win.services'), render: () => servicesTab(h, app, panels) }] : [];
-  const apps: Tab[] = h instanceof Pc && has('apps') ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
-    { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : [];
-  const tabs: Tab[] = [settingsTab, ifTab, ...(h instanceof LinuxRouter ? svc : [...svc, ...(has('ip') ? [ipTab] : []), ...apps]), ...order.filter(has).map(terminal)];
-  handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()));
+  const pcApps: Tab[] = h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
+    { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }].filter((tab) => has(tab.id === 'web' ? 'browser' : tab.id as FeatureId)) : [];
+  const config: Tab = { id: 'apps', label: t('dev.tab'), render: () => deviceConfig(h, () => reopen(placed, h, app)) };
+  const tabs: Tab[] = [settingsTab, ifTab, ...(h instanceof LinuxRouter ? svc : [...svc, ...(has('ip') ? [ipTab] : []), ...pcApps]), ...order.filter(has).map(terminal), config];
+  handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()), { initial, like: reopening });
+}
+
+let reopening: HTMLElement | undefined;
+
+/** The Configuración tab changed what the device shows: the same window again, in the same place, on that tab. */
+function reopen(placed: Placed, h: Host, app: WindowHost): void {
+  reopening = app.windows.element(h.id);
+  app.windows.close(h.id);
+  openHostWindow(placed, h, app, 'apps');
+  reopening = undefined;
+  app.afterCommand();
 }

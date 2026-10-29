@@ -14,6 +14,7 @@ import { drawable, makeAnnotation, MAX_ANNOTATIONS } from './annotations.ts';
 import { FILE_VERSION, validateFile } from './topology-file.ts';
 import { parseFeatures } from './lab-features.ts';
 import type { LabFeatures } from './lab-features.ts';
+import { bindLab, customApps, parseApps, setDeviceApps } from './device-apps.ts';
 import type { Annotation, AnnotationInit } from './annotations.ts';
 import type { CableKind, Endpoint, Link } from './network.ts';
 import { SimClock } from '../core/clock.ts';
@@ -73,6 +74,8 @@ export interface PcRecord {
   readonly routes?: readonly RouteRecord[];
   /** netplan's nameservers.search (omitted when empty). */
   readonly search?: readonly string[];
+  /** The device's Configuración tab (v0.25), when it differs from the defaults; untrusted until parseApps. */
+  readonly enabled?: unknown;
 }
 
 export interface ServerRecord {
@@ -106,6 +109,8 @@ export interface TopologyFile {
   readonly annotations?: readonly Annotation[];
   /** Device settings of the lab that differ from the defaults (v0.24); untrusted until parseFeatures. */
   readonly features?: unknown;
+  /** Configuración → Laboratorio actual: the web GUI leaves out what is off (v0.25; only when true). */
+  readonly webHideOff?: unknown;
 }
 
 const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'Cloud' };
@@ -126,6 +131,8 @@ export class Topology {
   annotations: readonly Annotation[] = [];
   /** Configuración → Laboratorio actual: the device settings shown (only the differences from the defaults). */
   features: LabFeatures = {};
+  /** The web GUI of servers and Linux routers leaves out (instead of greying) what is off. */
+  webHideOff = false;
   private nextDrawing = 1;
 
   add(kind: DeviceKind, x: number, y: number, opts: { id?: string; seed?: number; label?: string } = {}): Placed {
@@ -135,6 +142,7 @@ export class Topology {
     const label = opts.label ?? this.nextLabel(kind);
     const device = kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind, id, seed, this.clock, label);
     seeds.set(device, seed);
+    if (device instanceof Host) bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff }));
     this.net.addDevice(device);
     const placed: Placed = { device, label, x, y };
     this.placed.set(id, placed);
@@ -242,7 +250,8 @@ export class Topology {
     const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
     const links = this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable }));
     const features = Object.keys(this.features).length ? { features: this.features } : {};
-    return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features };
+    const web = this.webHideOff ? { webHideOff: true } : {};
+    return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features, ...web };
   }
 
   static fromJSON(data: unknown): Topology {
@@ -258,6 +267,7 @@ export class Topology {
     topo.separateClouds();
     topo.annotations = file.annotations ?? [];
     topo.features = parseFeatures(file.features);
+    topo.webHideOff = file.webHideOff === true;
     topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
     for (const l of file.links) topo.connect(l.a, l.b, l.cable);
     for (const p of topo.placed.values()) if (p.device instanceof Host && p.device.config.mode === 'dhcp') p.device.useDhcp();
@@ -307,7 +317,8 @@ function hostRecord(d: Host): PcRecord {
   const os = d.os;
   const clientId = d.clientIdOverride;
   const files = savedFiles(d);
-  const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
+  const enabled = customApps(d);
+  const names = { ...(enabled ? { enabled } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
   if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
   const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
   return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
@@ -323,6 +334,7 @@ export function restore(device: AnyDevice, rec: DeviceRecord): void {
     device.sendClientId = pc.sendClientId ?? true;
     device.clientIdOverride = typeof pc.clientId === 'string' ? parseHexId(pc.clientId) ?? undefined : undefined;
     if (pc.os === 'linux' || pc.os === 'windows') device.os = pc.os;
+    setDeviceApps(device, parseApps(pc.enabled, device.kind));
     // The host name is not read back: it always comes from the device name (net/device-names.ts).
     if (typeof pc.prettyHostname === 'string') device.prettyName = pc.prettyHostname.slice(0, MAX_PRETTY);
     if (pc.files !== undefined) restoreFiles(device, validFileRecords(pc.files));

@@ -1262,3 +1262,36 @@ Modelos (regla del proyecto): opus en la sesión principal (cruza red, interfaz 
 - Orden de las vistas en la barra superior: Red, Configuración, Donaciones, **Ayuda**, Acerca de (`VIEWS` en
   `src/ui/topbar.ts`). Prueba: el e2e general comprueba que las dos últimas son Ayuda y Acerca de.
 - **Hecho (v0.24.2).**
+
+### Fase 42: pestaña Configuración de cada equipo, SO al colocar un PC y opciones desactivadas en la gestión web (v0.25.0)
+
+Petición: cada equipo tiene una pestaña Configuración que activa sus aplicaciones, servicios y terminales dentro del
+máximo del laboratorio; los PCs llevan normalmente un solo terminal; al colocar un PC se pregunta el SO; la gestión
+web de Server y router Linux muestra lo desactivado en gris, o lo oculta con un ajuste del laboratorio.
+
+- **Catálogo por equipo** (`src/net/device-apps.ts`, nuevo): PC = IP, navegador, correo, SSH, SFTP, terminal Linux y
+  Windows; Server y router Linux = los paneles de la fase 41b. Disponible = laboratorio (`featureOn`; en el PC el
+  interruptor `apps` cubre las cuatro aplicaciones) **y** equipo. Por defecto del equipo: PC con IP, navegador y SSH
+  (correo y SFTP apagados) y el terminal de su SO; Server y router Linux con todo y el terminal de su SO (Linux).
+  Se guarda por equipo solo si se cambió (`enabled` en el registro del archivo; desconocidos y repetidos fuera).
+  Registro débil (WeakMap) como `seeds`, para no tocar `host.ts` (398 líneas) y que la web lo lea sin importar la UI.
+- **Topología:** `add()` enlaza cada equipo con la vista del laboratorio (sus `features` y `webHideOff`); el archivo
+  guarda `webHideOff: true` solo si está activado.
+- **Laboratorios grabados:** las parejas de PCs del mismo switch, uno Windows y otro Linux (`lanBase`, relay, y
+  ssh-sftp con PC0 Windows); correo solo en los PCs con cuenta; SFTP en PC1 de «SSH y SFTP»; cada servidor, solo los
+  servicios que arranca (más ficheros y registros), y SSH en SRV-SEDE2 de «Internet» (el ISP redirige el 22).
+- **Ventana del equipo:** pestaña «Configuración» (id `apps`) con casillas por grupo (aplicaciones, servicios,
+  terminales) de lo que el laboratorio permite; al cambiar, la ventana se reabre en esa pestaña. Las pestañas y
+  paneles siguen lo disponible (navegador, correo, SSH, SFTP por separado).
+- **Colocar un PC:** diálogo «Linux / Windows / Ambos» con la nota de que se cambia luego en Configuración; fija el SO
+  (pestaña IP) y los terminales. Escape = Windows (el valor por defecto). Los servidores no preguntan (Linux).
+- **Gestión web** (`admin-layout.ts`, `server-admin.ts`): página de una opción apagada → en el menú en gris
+  (`aria-disabled`), al abrirla un aviso sin formularios y un POST se rechaza sin ejecutar nada; con «Ocultar en la
+  gestión web lo desactivado» (Configuración → Laboratorio actual) ni aparece. Mapa: ssh, dhcp, dns, web→http, mail,
+  routing→sysctl, firewall, vpn, files, log; Configuración, Administración y Estado siempre.
+- **Pruebas:** unidad del catálogo y del archivo, laboratorios (parejas, correo, SFTP, servicios), gestión web (gris,
+  POST rechazado, oculto); e2e: diálogo al colocar un PC, pestaña Configuración que quita SFTP, menú web en gris.
+- **Docs es/en:** Configuración (pestaña del equipo, pregunta del SO, ajuste de la web), Gestión web.
+- Fuera de alcance: routers y switches IOS siguen con el ajuste del laboratorio (CLI y web), sin pestaña propia.
+- **Hecho (v0.25.0):** como en el plan, con el e2e `scripts/e2e-devices.mjs` y los e2e anteriores apuntando al PC del
+  sistema que usan (PC1 Linux en «Server», o añadiendo su terminal Linux desde Configuración).

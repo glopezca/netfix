@@ -10,6 +10,7 @@ import type { Router } from '../devices/router.ts';
 import type { Switch } from '../devices/switch.ts';
 import type { Pc } from '../devices/pc.ts';
 import type { Server } from '../devices/server.ts';
+import type { HostOs } from '../devices/host.ts';
 import { applyConfig } from '../ios/session.ts';
 import { parseIp } from '../core/ip.ts';
 import { fileCmd, rootScript } from './labs-linux.ts';
@@ -20,10 +21,10 @@ function link(t: Topology, a: string, ap: string, b: string, bp: string): void {
   t.connect({ device: a, port: ap }, { device: b, port: bp });
 }
 
-function pcAt(t: Topology, x: number, label: string, sw: Switch, port: string, addr: string, gw: string): Pc {
+function pcAt(t: Topology, x: number, label: string, sw: Switch, port: string, addr: string, gw: string, os: HostOs = 'linux'): Pc {
   const pc = t.add('pc', x, 580, { label }).device as Pc;
   link(t, pc.id, 'FastEthernet0', sw.id, port);
-  pc.os = 'linux';
+  pc.os = os;
   pc.setStatic({ ip: ip(addr), prefix: 24, gateway: ip(gw), dns: ip('172.20.0.10') });
   return pc;
 }
@@ -50,7 +51,7 @@ export const sshLab: Example = {
     const srv = t.add('server', 760, 380, { label: 'SRV' }).device as Server;
     link(t, srv.id, 'FastEthernet0', sw.id, 'FastEthernet0/24');
     sshServer(srv, '172.20.0.10', '172.20.0.1', [{ name: 'admin', password: 'netfix' }, { name: 'ana', password: 'ana1' }]);
-    pcAt(t, 220, 'PC0', sw, 'FastEthernet0/1', '172.20.0.21', '172.20.0.1');
+    pcAt(t, 220, 'PC0', sw, 'FastEthernet0/1', '172.20.0.21', '172.20.0.1', 'windows');
     pcAt(t, 460, 'PC1', sw, 'FastEthernet0/2', '172.20.0.22', '172.20.0.1');
     t.settle();
     rootScript(srv, `${fileCmd('/home/ana/bienvenida.txt', 'Hola Ana: sube aquí tus entregas con SFTP.')}

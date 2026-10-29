@@ -6,6 +6,7 @@ import type { Tool } from './canvas.ts';
 import { WindowManager } from './windows.ts';
 import { SimPanel } from './simpanel.ts';
 import { openDeviceWindow, forgetDevice, forgetAll } from './device-windows.ts';
+import { afterPlaced } from './os-dialog.ts';
 import { Topology } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
 import { Pages } from './pages.ts';
@@ -48,7 +49,7 @@ class App {
   private readonly stageEl: HTMLElement;
   private readonly paletteEl: HTMLElement;
   private readonly pageHost: HTMLElement;
-  private readonly pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
+  private readonly pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
   private saveTimer = 0;
   private readonly interval: number;
   private mode: Mode = 'realtime';
@@ -91,6 +92,7 @@ class App {
       changed: () => this.afterCommand(),
       hint: (text) => { this.hintEl.textContent = text; },
       removed: (id) => { this.windows.close(id); forgetDevice(id); },
+      placed: (p) => afterPlaced(p, () => this.afterCommand()),
     }, this.drawState);
     this.canvas.restrict(this.session.policy);
     this.canvas.draw.locked = !this.session.policy.drawing;
@@ -121,7 +123,7 @@ class App {
     window.addEventListener('pointerdown', this.onPointerDown, { capture: true });
     this.setMode(this.mode, false);
     this.showView(this.view);
-    this.markUndo();
+    syncUndoButtons(this.paletteEl, this.canvas.edits());
     this.tick();
   }
 
@@ -245,7 +247,7 @@ class App {
     this.topo.net.runFor(20);
     this.canvas.edits().syncDrawings(performance.now());
     this.canvas.render();
-    this.markUndo();
+    syncUndoButtons(this.paletteEl, this.canvas.edits());
     this.scheduleSave();
   }
 
@@ -272,10 +274,6 @@ class App {
     this.hintEl.textContent = t(redo ? 'undo.redone' : 'undo.undone', { what: t(`undo.${done.kind}`) }) + left;
   }
 
-  private markUndo(): void {
-    syncUndoButtons(this.paletteEl, this.canvas.edits());
-  }
-
   private tick(): void {
     if (this.mode === 'realtime' || this.topo.net.pending() > 0) this.topo.net.runFor(TICK_MS);
     const now = new Date(this.topo.clock.now());
@@ -297,7 +295,7 @@ class App {
     this.saved.mark(topo);
     this.canvas.setTopology(topo);
     this.sim.attach(topo);
-    this.markUndo();
+    syncUndoButtons(this.paletteEl, this.canvas.edits());
     this.pages.refreshSettings();
     this.hintEl.textContent = message;
     this.scheduleSave();

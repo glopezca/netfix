@@ -727,8 +727,8 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 
 
 /* Modal question (unsaved changes before opening a lab). */
-.confirm-dialog { max-width: min(460px, calc(100vw - 32px)); padding: 20px 22px 18px; border: 1px solid var(--line); border-radius: var(--radius-win); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
-.confirm-dialog::backdrop { background: rgba(23, 35, 42, 0.35); }
+.confirm-dialog, .os-dialog { max-width: min(460px, calc(100vw - 32px)); padding: 20px 22px 18px; border: 1px solid var(--line); border-radius: var(--radius-win); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+.confirm-dialog::backdrop, .os-dialog::backdrop { background: rgba(23, 35, 42, 0.35); }
 .confirm-title { margin: 0 0 8px; font-size: 17px; }
 .confirm-body { margin: 0 0 18px; line-height: 1.45; }
 .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
@@ -745,6 +745,8 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .set-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0 16px; align-items: start; }
 .set-kinds .set-group { max-width: none; }
 .set-status { min-height: 1.4em; margin: 10px 0 0; color: var(--ok); font-weight: 700; }
+.dev-config { display: grid; gap: 12px; padding: 4px 2px; }
+.dev-group { display: grid; gap: 6px; }
 
 </style>
   <style>
@@ -768,6 +770,7 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .browser-view .web-adm-nav { display: flex; align-items: center; gap: 10px; color: var(--adm-side-ink); text-decoration: none; padding: 7px 10px; border-radius: 7px; }
 .browser-view .web-adm-nav:hover { background: rgb(255 255 255 / .07); color: #fff; }
 .web-adm-menu li.web-adm-on .web-adm-nav { background: var(--adm-blue); color: #fff; }
+.browser-view .web-adm-nav.web-adm-off, .browser-view .web-adm-nav.web-adm-off:hover { opacity: .45; cursor: not-allowed; background: none; color: var(--adm-side-ink); }
 .web-adm-nav::before { width: 18px; text-align: center; font-size: 15px; opacity: .9; }
 .web-adm-nav-setup::before { content: "⚙"; } .web-adm-nav-dhcp::before { content: "⇅"; } .web-adm-nav-dns::before { content: "◎"; }
 .web-adm-nav-web::before { content: "◫"; } .web-adm-nav-mail::before { content: "✉"; } .web-adm-nav-ssh::before { content: "›"; }
@@ -3061,6 +3064,8 @@ const WEB_ES = {
     'wa.noDhcpLeases': 'Sin concesiones.',
     'wa.logHelp': 'Últimos mensajes de los servicios (journalctl).',
     'wa.empty': '(vacío)',
+    'wa.off': 'Desactivado en este equipo',
+    'wa.offPage': 'Esta opción está desactivada en este equipo (pestaña Configuración del equipo o ajustes del laboratorio).',
     'wa.saved': 'Los cambios se han guardado correctamente.',
     'fwa.templateKept': 'Plantilla aplicada. Se ha añadido una regla que acepta el puerto {port} para no perder el acceso a esta página.',
     'fwa.badField': 'Revisa el campo «{field}».',
@@ -3330,6 +3335,8 @@ const WEB_EN = {
     'wa.noDhcpLeases': 'No leases.',
     'wa.logHelp': 'Latest service messages (journalctl).',
     'wa.empty': '(empty)',
+    'wa.off': 'Disabled on this device',
+    'wa.offPage': 'This option is disabled on this device (the device\'s Settings tab or the lab settings).',
     'wa.saved': 'Settings saved successfully.',
     'fwa.templateKept': 'Template applied. A rule accepting port {port} was added so you do not lose access to this page.',
     'fwa.badField': 'Check the field “{field}”.',
@@ -4224,6 +4231,19 @@ const SETTINGS_ES = {
     'set.feat.web': 'Gestión web',
     'set.feat.linux': 'Terminal Linux',
     'set.feat.windows': 'Terminal Windows',
+    'set.webHideOff': 'Ocultar en la gestión web de servidores y routers Linux las opciones desactivadas',
+    'set.webHideOffHint': 'Sin marcar, aparecen en gris y no se pueden usar.',
+    'dev.tab': 'Configuración',
+    'dev.intro': 'Qué muestra este equipo. Lo que el laboratorio desactiva (Configuración → Laboratorio actual) no aparece aquí.',
+    'dev.apps': 'Aplicaciones',
+    'dev.services': 'Servicios',
+    'dev.terminals': 'Terminales',
+    'dev.changed': 'La ventana se ha reabierto con las pestañas elegidas.',
+    'os.title': '¿Qué sistema operativo tiene {name}?',
+    'os.body': 'Se activa su terminal y la pila de red de ese sistema. Puedes cambiarlo después en su pestaña Configuración (terminales) y en Configuración IP (sistema operativo).',
+    'os.linux': 'Linux',
+    'os.windows': 'Windows',
+    'os.both': 'Ambos',
 };
 
 return { SETTINGS_ES };
@@ -4270,6 +4290,19 @@ const SETTINGS_EN = {
     'set.feat.web': 'Web management',
     'set.feat.linux': 'Linux terminal',
     'set.feat.windows': 'Windows terminal',
+    'set.webHideOff': 'Hide disabled options in the web management of servers and Linux routers',
+    'set.webHideOffHint': 'When unticked, they are shown greyed out and cannot be used.',
+    'dev.tab': 'Settings',
+    'dev.intro': 'What this device shows. Whatever the lab turns off (Settings → Current lab) is not listed here.',
+    'dev.apps': 'Applications',
+    'dev.services': 'Services',
+    'dev.terminals': 'Terminals',
+    'dev.changed': 'The window has been reopened with the chosen tabs.',
+    'os.title': 'Which operating system does {name} run?',
+    'os.body': 'Its terminal and that system\'s network stack are turned on. You can change it later in its Settings tab (terminals) and in IP Configuration (operating system).',
+    'os.linux': 'Linux',
+    'os.windows': 'Windows',
+    'os.both': 'Both',
 };
 
 return { SETTINGS_EN };
@@ -18112,6 +18145,16 @@ const SETTINGS_DOCS = [
                 ['Router y switch IOS', 'CLI y gestión web', '—'],
             ]),
             p('Esos son los valores de una red nueva (**Nuevo**). Cada laboratorio grabado trae los suyos: sus servidores muestran solo los servicios que usa (por ejemplo, «DNS de empresa que reenvía a Internet» solo DHCP y DNS), y en «Bastionado: ACL, nftables y sshd» el servidor tiene además parámetros del kernel y firewall. Un laboratorio sin servidores deja los valores por defecto.'),
+            h('La pestaña Configuración de cada equipo'),
+            p('Cada PC, servidor y router Linux tiene además su propia pestaña **Configuración**: casillas para sus aplicaciones, servicios y terminales. Solo lista lo que el laboratorio permite (lo de arriba es el máximo), y al cambiar una casilla la ventana se reabre en esa pestaña con las pestañas nuevas.'),
+            table(['Equipo', 'Activado por defecto', 'Desactivado por defecto'], [
+                ['PC', 'Configuración IP, navegador, cliente SSH y el terminal de su sistema operativo', 'Correo, Archivos (SFTP) y el terminal del otro sistema'],
+                ['Servidor', 'Configuración IP, todos sus servicios y el terminal Linux', 'Terminal Windows'],
+                ['Router Linux', 'Parámetros del kernel, firewall, VPN, sus servicios y el terminal Linux', 'Terminal Windows'],
+            ]),
+            p('En los laboratorios grabados, de cada pareja de PCs del mismo switch uno es Windows y el otro Linux; el correo solo está en los PCs con cuenta configurada y SFTP en PC1 de «SSH y SFTP con claves»; cada servidor muestra solo los servicios que arranca (más ficheros y registros).'),
+            p('Al **colocar un PC** desde la paleta, Netfix pregunta si es Linux, Windows o ambos, y activa su terminal y la pila de red de ese sistema (Configuración IP → sistema operativo). Se puede cambiar después. Los servidores no preguntan: llevan Linux.'),
+            p('La **gestión web** de servidores y routers Linux enseña en gris, sin formularios, las páginas de lo desactivado (en el equipo o en el laboratorio). Con la casilla **Ocultar en la gestión web… las opciones desactivadas** de Laboratorio actual ni siquiera aparecen en el menú.'),
             steps(['Abre la pestaña', '**Configuración**, apartado **Laboratorio actual**.'], ['Marca o desmarca', 'Cada casilla cambia al momento. Las ventanas abiertas se cierran: al abrirlas de nuevo ya tienen las pestañas nuevas.'], ['Guarda', 'Es un cambio de la red: **Guardar** lo lleva al archivo, y cambiar de laboratorio sin guardar avisa.']),
             check('Compruébalo', 'Desmarca **Terminal Windows** en PC y abre un PC: ya no tiene esa pestaña. **Restablecer los valores predeterminados** la devuelve.'),
             tip('En el aula', 'Embebido en una práctica de Netfix Classroom, el apartado del laboratorio es de solo lectura, y las restricciones del profesor siguen mandando: una pestaña que él oculta no aparece aunque esté marcada aquí.'),
@@ -19815,6 +19858,7 @@ const WEBAPP_DOCS = [
             list('Autenticación HTTP Basic (realm «Server»): el usuario y la contraseña viajan en cada petición sin cifrar (HTTPS no está simulado). En una red real, esta interfaz solo debe verse desde la red de administración.', 'Los intentos fallidos y cada cambio quedan en el registro de apache2, con el usuario y la dirección IP del PC.'),
             term('messages', 'Oct 24 06:31:28 srv apache2[903]: netfix-webui: acceso denegado para «admin» desde 192.168.10.50\nOct 24 06:31:28 srv apache2[903]: 192.168.10.50 - - "GET / HTTP/1.1" 401 191 (port 10000)'),
             note('El Router Linux tiene la misma gestión web, con el menú Seguridad; los routers y switches IOS tienen la suya, con otro aspecto.'),
+            note('Lo que la pestaña Configuración del equipo o el laboratorio desactivan sale en gris en el menú, y su página solo lo avisa; con «Ocultar en la gestión web… las opciones desactivadas» (Configuración → Laboratorio actual) no aparece.'),
             exercise('¿Quién ha intentado entrar?', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», intenta entrar a la gestión web desde PC1 con una contraseña errónea y después con la buena. Busca los dos intentos en el servidor.', 'PC1 → Navegador → http://srv.aula.lab:10000/: con una contraseña errónea vuelve a pedirla. En SRV → Servicios → Registros → apache2 aparece «netfix-webui: acceso denegado para «admin» desde 192.168.10.50» y la petición con el código 401.'),
         ],
     },
@@ -20426,6 +20470,16 @@ const SETTINGS_DOCS = [
                 ['IOS router and switch', 'CLI and web management', '—'],
             ]),
             p('Those are the values of a new network (**New**). Each recorded lab brings its own: its servers show only the services it uses (for instance, “Company DNS forwarding to the Internet” only DHCP and DNS), and in “Hardening: ACL, nftables and sshd” the server also has kernel parameters and firewall. A lab without servers keeps the defaults.'),
+            h('Each device’s Settings tab'),
+            p('Every PC, server and Linux router also has its own **Settings** tab: boxes for its applications, services and terminals. It only lists what the lab allows (the table above is the maximum), and when a box changes the window reopens on that tab with the new tabs.'),
+            table(['Device', 'On by default', 'Off by default'], [
+                ['PC', 'IP configuration, browser, SSH client and the terminal of its operating system', 'Mail, Files (SFTP) and the other system’s terminal'],
+                ['Server', 'IP configuration, all its services and the Linux terminal', 'Windows terminal'],
+                ['Linux router', 'Kernel parameters, firewall, VPN, its services and the Linux terminal', 'Windows terminal'],
+            ]),
+            p('In the recorded labs, of each pair of PCs on the same switch one runs Windows and the other Linux; mail is only on the PCs with an account set up, and SFTP on PC1 of “SSH and SFTP with keys”; each server shows only the services it starts (plus files and logs).'),
+            p('When you **place a PC** from the palette, Netfix asks whether it runs Linux, Windows or both, and turns on its terminal and that system’s network stack (IP Configuration → operating system). It can be changed later. Servers do not ask: they run Linux.'),
+            p('The **web management** of servers and Linux routers shows greyed out, without forms, the pages of whatever is off (on the device or in the lab). With the **Hide disabled options in the web management…** box of Current lab they are not even in the menu.'),
             steps(['Open the tab', '**Settings**, section **Current lab**.'], ['Tick or untick', 'Each box applies at once. Open windows close: when opened again they have the new tabs.'], ['Save', 'It is a change to the network: **Save** puts it in the file, and changing lab without saving asks first.']),
             check('Check it', 'Untick **Windows terminal** for PC and open a PC: it no longer has that tab. **Restore the defaults** brings it back.'),
             tip('In the classroom', 'Embedded in a Netfix Classroom exercise, the lab section is read-only, and the teacher’s restrictions still rule: a tab the teacher hides does not appear even if it is ticked here.'),
@@ -22129,6 +22183,7 @@ const WEBAPP_DOCS = [
             list('HTTP Basic authentication (realm “Server”): user and password travel unencrypted with every request (HTTPS is not simulated). On a real network, this interface should only be reachable from the management network.', 'Failed attempts and every change go into apache2’s log, with the user and the PC’s IP address.'),
             term('messages', 'Oct 24 06:31:28 srv apache2[903]: netfix-webui: access denied for “admin” from 192.168.10.50\nOct 24 06:31:28 srv apache2[903]: 192.168.10.50 - - "GET / HTTP/1.1" 401 191 (port 10000)'),
             note('The Linux router has the same web management, with the Security menu; IOS routers and switches have their own, with a different look.'),
+            note('Whatever the device’s Settings tab or the lab turn off is greyed out in the menu, and its page only says so; with “Hide disabled options in the web management…” (Settings → Current lab) it is not shown.'),
             exercise('Who tried to get in?', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, try to log in to web management from PC1 with a wrong password and then with the right one. Find both attempts on the server.', 'PC1 → Web Browser → http://srv.aula.lab:10000/: with a wrong password it asks again. On SRV → Services → Logs → apache2 there is “netfix-webui: access denied for “admin” from 192.168.10.50” and the request with code 401.'),
         ],
     },
@@ -29927,7 +29982,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.24.2",
+    "version": "0.25.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -41215,7 +41270,7 @@ return { LINK_DELAY_MS, WorkLimitError, withWorkLimit, Network, sameEp };
 __m["net/lab-features.js"] = (() => {
 /** The service panels of a Server or Linux router, each switched on its own. */
 const SERVICE_IDS = ['ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log'];
-const FEATURE_IDS = ['ip', 'apps', ...SERVICE_IDS, 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'];
+const FEATURE_IDS = ['ip', 'apps', 'browser', 'sftp', ...SERVICE_IDS, 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'];
 /** What can be switched on each kind, in the order the settings list them. */
 const FEATURES_BY_KIND = {
     pc: ['ip', 'apps', 'linux', 'windows'],
@@ -41280,6 +41335,80 @@ function parseFeatures(data) {
 }
 
 return { SERVICE_IDS, FEATURE_IDS, FEATURES_BY_KIND, featuresOf, featureOn, setFeature, parseFeatures };
+})();
+__m["net/device-apps.js"] = (() => {
+/**
+ * Per-device switches (the «Configuración» tab of a PC, Server or Linux router): the applications, service panels and
+ * terminals the device shows, within what its lab allows (lab-features.ts). They live beside the device in weak
+ * registries, as the seeds do, so the device's own web GUI reads them without knowing the interface.
+ */
+const { featureOn, SERVICE_IDS } = __m["net/lab-features.js"];
+/** What the Configuración tab of each kind lists, in its order. */
+const APPS_BY_KIND = {
+    pc: ['ip', 'browser', 'mail', 'ssh', 'sftp', 'linux', 'windows'],
+    server: ['ip', ...SERVICE_IDS, 'sysctl', 'firewall', 'linux', 'windows'],
+    linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'linux', 'windows'],
+};
+/** The PC client applications: one lab switch («apps») covers them all. */
+const PC_APPS = ['browser', 'mail', 'ssh', 'sftp'];
+/** Off in a new PC: few labs use the mail client or SFTP. */
+const PC_OFF = ['mail', 'sftp'];
+/** A longer list in a file is not a list of applications. */
+const MAX_LIST = 64;
+const NO_LAB = { features: {}, webHideOff: false };
+const chosen = new WeakMap();
+const labs = new WeakMap();
+/** Everything but the other system's terminal (and, in a PC, mail and SFTP). */
+function defaultApps(d) {
+    const other = d.os === 'linux' ? 'windows' : 'linux';
+    return APPS_BY_KIND[d.kind].filter((id) => id !== other && !(d.kind === 'pc' && PC_OFF.includes(id)));
+}
+function deviceApps(d) {
+    return chosen.get(d) ?? defaultApps(d);
+}
+/** The device's own choice, when it differs from the defaults (what the file keeps). */
+function customApps(d) {
+    return chosen.get(d);
+}
+/** In catalogue order; a list equal to the defaults is forgotten, so the terminals follow a later change of system. */
+function setDeviceApps(d, list) {
+    const next = list && APPS_BY_KIND[d.kind].filter((id) => list.includes(id));
+    const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+    if (!next || same(next, defaultApps(d)))
+        chosen.delete(d);
+    else
+        chosen.set(d, next);
+}
+/** The lab switch behind a device switch. */
+function labFeature(kind, id) {
+    return kind === 'pc' && PC_APPS.includes(id) ? 'apps' : id;
+}
+function labAllows(features, kind, id) {
+    return featureOn(features, kind, labFeature(kind, id));
+}
+function bindLab(d, view) {
+    labs.set(d, view);
+}
+function labViewOf(d) {
+    return labs.get(d)?.() ?? NO_LAB;
+}
+/** Allowed by the device's lab and switched on in the device. */
+function appAvailable(d, id) {
+    return labAllows(labViewOf(d).features, d.kind, id) && deviceApps(d).includes(id);
+}
+/** The `enabled` list of a file (untrusted): known ids of that kind, no repeats; undefined when it is not a list. */
+function parseApps(data, kind) {
+    if (!Array.isArray(data) || data.length > MAX_LIST)
+        return undefined;
+    return APPS_BY_KIND[kind].filter((id) => data.includes(id));
+}
+/** The question when a PC is placed: its system (IP tab) and its terminals; «both» keeps Windows and adds Linux. */
+function choosePcSystem(pc, system) {
+    pc.os = system === 'linux' ? 'linux' : 'windows';
+    setDeviceApps(pc, system === 'both' ? [...defaultApps(pc), 'linux'] : undefined);
+}
+
+return { APPS_BY_KIND, PC_APPS, defaultApps, deviceApps, customApps, setDeviceApps, labFeature, labAllows, bindLab, labViewOf, appAvailable, parseApps, choosePcSystem };
 })();
 __m["ios/crypto-config.js"] = (() => {
 /**
@@ -47601,6 +47730,7 @@ __m["web/admin-layout.js"] = (() => {
 const { t, tDynamic } = __m["i18n/t.js"];
 const { h, page } = __m["web/html.js"];
 const { ABOUT } = __m["docs/about-data.js"];
+const { appAvailable, labViewOf } = __m["net/device-apps.js"];
 /** Name of a page or area in the current language. */
 const pageLabel = (id) => tDynamic(`wa.page.${id}`);
 const tabLabel = (id) => tDynamic(`wa.tab.${id}`);
@@ -47613,9 +47743,22 @@ const PAGES = [
     { id: 'admin', tab: 'admin' },
     { id: 'status', tab: 'status' }, { id: 'files', tab: 'status' }, { id: 'log', tab: 'status' },
 ];
-/** Pages of a device: Security (firewall, routes, VPN) only on a Linux router; Ficheros only on Linux. */
+/** The device switch behind each page (Configuración, Administración and Estado are always there). */
+const PAGE_FEATURE = {
+    ssh: 'ssh', dhcp: 'dhcp', dns: 'dns', web: 'http', mail: 'mail', routing: 'sysctl', firewall: 'firewall', vpn: 'vpn', files: 'files', log: 'log',
+};
+/** Switched off in the device (its Configuración tab) or in its lab. */
+function pageOff(server, id) {
+    const feature = PAGE_FEATURE[id];
+    return feature !== undefined && !appAvailable(server, feature);
+}
+/**
+ * Pages of a device: Security (firewall, routes, VPN) only on a Linux router; Ficheros only on Linux; those switched
+ * off are left out when the lab says so (else they are shown greyed).
+ */
 function pagesOf(server) {
-    return PAGES.filter((p) => (p.tab !== 'security' || server.kind === 'linuxrouter') && (p.id !== 'files' || server.os === 'linux'));
+    const hide = labViewOf(server).webHideOff;
+    return PAGES.filter((p) => (p.tab !== 'security' || server.kind === 'linuxrouter') && (p.id !== 'files' || server.os === 'linux') && !(hide && pageOff(server, p.id)));
 }
 /** A card: title, help line and its content. */
 function section(title, help, ...body) {
@@ -47645,9 +47788,14 @@ function form(base, pageId, action, ...children) {
 function buttons(save = t('wa.save')) {
     return h('div', { class: 'web-adm-buttons' }, h('button', { type: 'submit', class: 'web-adm-save' }, save), h('button', { type: 'reset', class: 'web-adm-reset' }, t('wa.cancel')));
 }
+function navItem(server, base, id) {
+    if (pageOff(server, id))
+        return h('span', { class: `web-adm-nav web-adm-nav-${id} web-adm-off`, 'aria-disabled': 'true', title: t('wa.off') }, pageLabel(id));
+    return h('a', { href: `${base}/?page=${id}`, class: `web-adm-nav web-adm-nav-${id}` }, pageLabel(id));
+}
 function menu(server, base, current) {
     const pages = pagesOf(server);
-    const groups = TABS.filter((id) => pages.some((p) => p.tab === id)).map((tab) => h('li', { class: 'web-adm-group' }, h('span', { class: 'web-adm-group-name' }, tabLabel(tab)), h('ul', {}, pages.filter((p) => p.tab === tab).map((p) => h('li', { class: p.id === current.id ? 'web-adm-on' : undefined }, h('a', { href: `${base}/?page=${p.id}`, class: `web-adm-nav web-adm-nav-${p.id}` }, pageLabel(p.id)))))));
+    const groups = TABS.filter((id) => pages.some((p) => p.tab === id)).map((tab) => h('li', { class: 'web-adm-group' }, h('span', { class: 'web-adm-group-name' }, tabLabel(tab)), h('ul', {}, pages.filter((p) => p.tab === tab).map((p) => h('li', { class: p.id === current.id ? 'web-adm-on' : undefined }, navItem(server, base, p.id))))));
     return h('nav', { class: 'web-adm-menu' }, h('ul', {}, groups));
 }
 function frame(server, base, current, notice, body) {
@@ -47655,7 +47803,7 @@ function frame(server, base, current, notice, body) {
     return page(`${server.name} · ${pageLabel(current.id)}`, 'web-adm', h('header', { class: 'web-adm-top' }, h('span', { class: 'web-brand-logo', title: 'Netfix' }, 'Netfix'), h('span', { class: 'web-adm-product' }, t('wa.product')), h('span', { class: 'web-adm-device' }, `${server.name} · ${kind}`), h('span', { class: 'web-adm-version' }, t('wa.firmware', { version: ABOUT.version }))), h('div', { class: 'web-adm-layout' }, menu(server, base, current), h('main', { class: 'web-adm-main' }, h('div', { class: 'web-adm-title' }, h('h1', {}, pageLabel(current.id)), h('p', { class: 'web-adm-help' }, tDynamic(`wa.desc.${current.id}`))), notice.ok ? h('p', { class: 'web-adm-ok' }, notice.ok) : null, notice.error ? h('p', { class: 'web-adm-error' }, notice.error) : null, h('div', { class: `web-adm-page web-adm-page-${current.id}` }, body))), h('footer', { class: 'web-adm-foot web-brand-foot' }, h('span', { class: 'web-brand-n' }, 'Netfix'), t('wa.foot')));
 }
 
-return { pageLabel, TABS, PAGES, pagesOf, section, cards, row, text, check, choose, form, buttons, frame };
+return { pageLabel, TABS, PAGES, pageOff, pagesOf, section, cards, row, text, check, choose, form, buttons, frame };
 })();
 __m["services/ssh-auth-settings.js"] = (() => {
 /**
@@ -49410,7 +49558,7 @@ const { withLocale } = __m["i18n/locale.js"];
 const { requestLocale } = __m["web/html.js"];
 const { basicAuth, formFields, query, redirect, respond, unauthorized, forMethod } = __m["web/http.js"];
 const { h, page } = __m["web/html.js"];
-const { PAGES, frame, pagesOf } = __m["web/admin-layout.js"];
+const { PAGES, frame, pageOff, pagesOf } = __m["web/admin-layout.js"];
 const { setupPage, dhcpPage, webPage, mailPage, sshPage, adminPage, statusPage, logPage } = __m["web/admin-pages.js"];
 const { runAction } = __m["web/admin-actions.js"];
 const { dnsPage } = __m["web/admin-dns.js"];
@@ -49461,6 +49609,9 @@ function adminResponse(server, req, peer, base) {
     const current = pagesOf(server).find((p) => p.id === q.get('page')) ?? PAGES[0];
     if (!current)
         return respond(BANNER, 404, 'Not Found');
+    // Switched off in the device or its lab: the page says so, has no forms and a POST runs nothing.
+    if (pageOff(server, current.id))
+        return forMethod(req, respond(BANNER, 200, frame(server, base, current, { error: t('wa.offPage') }, null)));
     if (req.method === 'POST') {
         const fields = formFields(req);
         const result = runAction(server, current.id, fields);
@@ -50546,6 +50697,7 @@ const { Network } = __m["net/network.js"];
 const { drawable, makeAnnotation, MAX_ANNOTATIONS } = __m["net/annotations.js"];
 const { FILE_VERSION, validateFile } = __m["net/topology-file.js"];
 const { parseFeatures } = __m["net/lab-features.js"];
+const { bindLab, customApps, parseApps, setDeviceApps } = __m["net/device-apps.js"];
 const { SimClock } = __m["core/clock.js"];
 const { Router } = __m["devices/router.js"];
 const { Switch } = __m["devices/switch.js"];
@@ -50579,6 +50731,8 @@ class Topology {
     annotations = [];
     /** Configuración → Laboratorio actual: the device settings shown (only the differences from the defaults). */
     features = {};
+    /** The web GUI of servers and Linux routers leaves out (instead of greying) what is off. */
+    webHideOff = false;
     nextDrawing = 1;
     add(kind, x, y, opts = {}) {
         const id = opts.id ?? `d${this.nextId++}`;
@@ -50587,6 +50741,8 @@ class Topology {
         const label = opts.label ?? this.nextLabel(kind);
         const device = kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind, id, seed, this.clock, label);
         seeds.set(device, seed);
+        if (device instanceof Host)
+            bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff }));
         this.net.addDevice(device);
         const placed = { device, label, x, y };
         this.placed.set(id, placed);
@@ -50690,7 +50846,8 @@ class Topology {
         const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
         const links = this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable }));
         const features = Object.keys(this.features).length ? { features: this.features } : {};
-        return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features };
+        const web = this.webHideOff ? { webHideOff: true } : {};
+        return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features, ...web };
     }
     static fromJSON(data) {
         const file = validateFile(data);
@@ -50705,6 +50862,7 @@ class Topology {
         topo.separateClouds();
         topo.annotations = file.annotations ?? [];
         topo.features = parseFeatures(file.features);
+        topo.webHideOff = file.webHideOff === true;
         topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
         for (const l of file.links)
             topo.connect(l.a, l.b, l.cable);
@@ -50761,7 +50919,8 @@ function hostRecord(d) {
     const os = d.os;
     const clientId = d.clientIdOverride;
     const files = savedFiles(d);
-    const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
+    const enabled = customApps(d);
+    const names = { ...(enabled ? { enabled } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
     if (c.mode === 'dhcp')
         return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
     const opt = (n) => (n === undefined ? undefined : formatIp(n));
@@ -50778,6 +50937,7 @@ function restore(device, rec) {
         device.clientIdOverride = typeof pc.clientId === 'string' ? parseHexId(pc.clientId) ?? undefined : undefined;
         if (pc.os === 'linux' || pc.os === 'windows')
             device.os = pc.os;
+        setDeviceApps(device, parseApps(pc.enabled, device.kind));
         // The host name is not read back: it always comes from the device name (net/device-names.ts).
         if (typeof pc.prettyHostname === 'string')
             device.prettyName = pc.prettyHostname.slice(0, MAX_PRETTY);
@@ -52158,9 +52318,7 @@ const { CAPTION_LINE, deviceCaption } = __m["ui/device-caption.js"];
 const WORLD_W = 2400;
 const WORLD_H = 1600;
 const DOUBLE_TAP_MS = 350;
-const HINTS = {
-    select: 'canvas.hint.select', cable: 'canvas.hint.cable', delete: 'canvas.hint.delete', place: 'canvas.hint.place', draw: 'canvas.hint.draw',
-};
+const HINTS = { select: 'canvas.hint.select', cable: 'canvas.hint.cable', delete: 'canvas.hint.delete', place: 'canvas.hint.place', draw: 'canvas.hint.draw' };
 class Canvas {
     root;
     svgEl;
@@ -52384,9 +52542,9 @@ class Canvas {
         }
         if (this.tool.kind === 'place') {
             const { x, y } = this.toWorld(e);
-            this.edits().addDevice(this.tool.device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
+            const placed = this.edits().addDevice(this.tool.device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
             this.setTool({ kind: 'select' });
-            this.events.changed();
+            this.events.placed(placed);
             return;
         }
         this.pendingEnd = null;
@@ -52573,10 +52731,15 @@ class WindowManager {
             b.title = t('win.next', { count: n });
         }
     }
+    /** The window element of a key (to reopen it in the same place). */
+    element(key) {
+        return this.open.get(key)?.root;
+    }
     close(key) {
         this.open.get(key)?.close();
     }
-    show(key, title, tabs, onClose = () => undefined) {
+    /** `initial`: the tab shown first; `like`: a window this one replaces, whose place and size it keeps. */
+    show(key, title, tabs, onClose = () => undefined, opts = {}) {
         const existing = this.open.get(key);
         if (existing) {
             existing.focus();
@@ -52590,7 +52753,10 @@ class WindowManager {
         const tabBar = el('div', { class: 'win-tabs', role: 'tablist' });
         const body = el('div', { class: 'win-body' });
         const root = el('section', { class: 'window', role: 'dialog', 'aria-labelledby': `wt-${key}` }, header, tabBar, body);
-        place(root, (this.cascade++ % 6) * 28);
+        if (opts.like)
+            root.style.cssText = opts.like.style.cssText;
+        else
+            place(root, (this.cascade++ % 6) * 28);
         const select = tabStrip(tabs, tabBar, body);
         tabBar.hidden = tabs.length < 2;
         const handle = {
@@ -52621,8 +52787,9 @@ class WindowManager {
         this.layer.appendChild(root);
         this.open.set(key, handle);
         handle.focus();
-        if (tabs[0])
-            select(tabs[0]);
+        const first = tabs.find((tab) => tab.id === opts.initial) ?? tabs[0];
+        if (first)
+            select(first);
         return handle;
     }
 }
@@ -57981,6 +58148,44 @@ function promptToggle(locked) {
 
 return { promptToggle };
 })();
+__m["ui/device-config.js"] = (() => {
+/**
+ * The Configuración tab of a PC, Server or Linux router: which applications, service panels and terminals the device
+ * shows, among what its lab allows. A change reopens the window with the new tabs.
+ */
+const { el } = __m["ui/dom.js"];
+const { t, tDynamic } = __m["i18n/t.js"];
+const { APPS_BY_KIND, PC_APPS, deviceApps, labAllows, labViewOf, setDeviceApps } = __m["net/device-apps.js"];
+const TERMINALS = ['linux', 'windows'];
+/** The PC applications and terminals are named as their tabs; the service panels as in Laboratorio actual. */
+const TAB_NAMES = {
+    ip: 'win.ip', browser: 'win.browser', mail: 'win.mail', ssh: 'ssh.tab', sftp: 'sftp.tab', linux: 'win.linuxTerm', windows: 'win.cmd',
+};
+function appName(h, id) {
+    const tab = TAB_NAMES[id];
+    return tab && (h.kind === 'pc' || TERMINALS.includes(id) || id === 'ip') ? t(tab) : tDynamic(`set.feat.${id}`);
+}
+function group(title, boxes) {
+    return boxes.length ? [el('fieldset', { class: 'set-group dev-group' }, el('legend', {}, title), ...boxes)] : [];
+}
+function deviceConfig(h, reopen) {
+    const allowed = APPS_BY_KIND[h.kind].filter((id) => labAllows(labViewOf(h).features, h.kind, id));
+    const box = (id) => {
+        const input = el('input', { type: 'checkbox', name: `dev-${id}`, checked: deviceApps(h).includes(id) });
+        input.addEventListener('change', () => {
+            const rest = deviceApps(h).filter((x) => x !== id);
+            setDeviceApps(h, input.checked ? [...rest, id] : rest);
+            reopen();
+        });
+        return el('label', { class: 'set-choice' }, input, appName(h, id));
+    };
+    const apps = h.kind === 'pc' ? allowed.filter((id) => id === 'ip' || PC_APPS.includes(id)) : allowed.filter((id) => id === 'ip');
+    const services = h.kind === 'pc' ? [] : allowed.filter((id) => id !== 'ip' && !TERMINALS.includes(id));
+    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), services.map(box)), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)));
+}
+
+return { deviceConfig };
+})();
 __m["ui/device-windows.js"] = (() => {
 /** Window contents: IOS CLI for routers/switches; desktop tabs for PCs and Server. */
 const { iosDeviceSettings } = __m["ui/ios-device-settings.js"];
@@ -58009,6 +58214,8 @@ const { cloudSettings } = __m["ui/cloud-device.js"];
 const { promptToggle } = __m["ui/prompt-toggle.js"];
 const { onTimestampPrompt } = __m["ui/preferences.js"];
 const { featureOn, SERVICE_IDS } = __m["net/lab-features.js"];
+const { appAvailable } = __m["net/device-apps.js"];
+const { deviceConfig } = __m["ui/device-config.js"];
 function allowed(host, kind, tabs) {
     return tabs.filter((tab) => host.allowsTab?.(kind, tab.id) ?? true);
 }
@@ -58119,39 +58326,93 @@ function shellTerminal(placed, h, os, app) {
     }
     return term;
 }
-function openHostWindow(placed, h, app) {
+function openHostWindow(placed, h, app, initial) {
     const disposers = [];
     const terminal = (os) => ({
         id: os, label: os === 'windows' ? t('win.cmd') : t('win.linuxTerm'),
         render: () => shellTerminal(placed, h, os, app).root,
         onShow: () => { syncPrompts(); shellTerminal(placed, h, os, app).focus(); },
     });
-    const nicTab = { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = hostInterfaces(h, app, (port) => app.peerLabel?.(h.id, port)); disposers.push(v.dispose); return v.root; } };
-    const ipTab = { id: 'ip', label: t('win.ip'), render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
+    const view = (make) => () => { const v = make(); disposers.push(v.dispose); return v.root; };
+    const peer = (port) => app.peerLabel?.(h.id, port);
+    const ipTab = { id: 'ip', label: t('win.ip'), render: view(() => hostIpConfig(h, app)) };
     const order = h.os === 'linux' ? ['linux', 'windows'] : ['windows', 'linux'];
     const model = h instanceof LinuxRouter ? 'Ubuntu' : h instanceof Server ? 'Server' : 'PC';
     let handle;
-    const settingsTab = { id: 'host', label: t('win.host'), render: () => {
-            const v = hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) });
-            disposers.push(v.dispose);
-            return v.root;
-        } };
-    // «Equipo» and «Interfaces» always; the rest as Configuración → Laboratorio actual says.
-    const has = (id) => on(app, h.kind, id);
-    const ifTab = h instanceof LinuxRouter
-        ? { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = routerInterfaces(h, app, (port) => app.peerLabel?.(h.id, port)); disposers.push(v.dispose); return v.root; } }
-        : nicTab;
+    const settingsTab = { id: 'host', label: t('win.host'), render: view(() => hostSettings(placed, h, { afterCommand: () => app.afterCommand(), retitle: (t) => handle?.setTitle(`${t} · ${model}`) })) };
+    // «Equipo», «Interfaces» and «Configuración» always; the rest as the lab allows and the device's own tab says.
+    const has = (id) => appAvailable(h, id);
+    const ifTab = { id: 'ifaces', label: t('win.ifaces'), render: view(() => (h instanceof LinuxRouter ? routerInterfaces(h, app, peer) : hostInterfaces(h, app, peer))) };
     const panels = PANEL_IDS.filter(has);
     const svc = h instanceof Server && panels.length ? [{ id: 'svc', label: t('win.services'), render: () => servicesTab(h, app, panels) }] : [];
-    const apps = h instanceof Pc && has('apps') ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
-        { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : [];
-    const tabs = [settingsTab, ifTab, ...(h instanceof LinuxRouter ? svc : [...svc, ...(has('ip') ? [ipTab] : []), ...apps]), ...order.filter(has).map(terminal)];
-    handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()));
+    const pcApps = h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
+        { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }].filter((tab) => has(tab.id === 'web' ? 'browser' : tab.id)) : [];
+    const config = { id: 'apps', label: t('dev.tab'), render: () => deviceConfig(h, () => reopen(placed, h, app)) };
+    const tabs = [settingsTab, ifTab, ...(h instanceof LinuxRouter ? svc : [...svc, ...(has('ip') ? [ipTab] : []), ...pcApps]), ...order.filter(has).map(terminal), config];
+    handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()), { initial, like: reopening });
+}
+let reopening;
+/** The Configuración tab changed what the device shows: the same window again, in the same place, on that tab. */
+function reopen(placed, h, app) {
+    reopening = app.windows.element(h.id);
+    app.windows.close(h.id);
+    openHostWindow(placed, h, app, 'apps');
+    reopening = undefined;
+    app.afterCommand();
 }
 
 return { forgetDevice, forgetAll, openDeviceWindow };
 })();
+__m["ui/os-dialog.js"] = (() => {
+/**
+ * The question when a PC is placed: Linux, Windows or both. Windows is focused, and Esc or a click outside keeps it
+ * (the default system). Servers do not ask: they run Linux until changed.
+ */
+const { el } = __m["ui/dom.js"];
+const { button } = __m["ui/forms.js"];
+const { t } = __m["i18n/t.js"];
+const { choosePcSystem } = __m["net/device-apps.js"];
+const { Pc } = __m["devices/pc.js"];
+function askPcSystem(name) {
+    return new Promise((resolve) => {
+        const dialog = el('dialog', { class: 'os-dialog', 'aria-labelledby': 'os-title', 'aria-describedby': 'os-body' });
+        const close = (answer) => {
+            dialog.close();
+            dialog.remove();
+            resolve(answer);
+        };
+        const choice = (s) => button(t(`os.${s}`), () => close(s), s === 'windows' ? 'btn btn-primary' : 'btn');
+        const windows = choice('windows');
+        dialog.append(el('h2', { id: 'os-title', class: 'confirm-title' }, t('os.title', { name })), el('p', { id: 'os-body', class: 'confirm-body' }, t('os.body')), el('div', { class: 'confirm-actions' }, choice('linux'), windows, choice('both')));
+        dialog.addEventListener('cancel', (e) => { e.preventDefault(); close('windows'); });
+        dialog.addEventListener('click', (e) => { if (e.target === dialog)
+            close('windows'); });
+        document.body.appendChild(dialog);
+        dialog.showModal();
+        windows.focus();
+    });
+}
+/** After a device is placed: a PC asks for its system; either way the change is unsaved work. */
+function afterPlaced(placed, changed) {
+    changed();
+    const pc = placed.device;
+    if (pc instanceof Pc)
+        void askPcSystem(placed.label).then((s) => { choosePcSystem(pc, s); changed(); });
+}
+
+return { askPcSystem, afterPlaced };
+})();
 __m["net/lab-presets.js"] = (() => {
+/**
+ * The device settings each recorded lab brings (Configuración → Laboratorio actual): its servers and Linux routers
+ * show only the services the lab uses; «bastionado» adds kernel parameters and firewall to the server. A lab that is
+ * not here (no servers) keeps the defaults, so a server added by the student has everything.
+ */
+const { SERVICE_IDS } = __m["net/lab-features.js"];
+const { defaultApps, setDeviceApps } = __m["net/device-apps.js"];
+const { Host } = __m["devices/host.js"];
+const { Pc } = __m["devices/pc.js"];
+const { Server } = __m["devices/server.js"];
 const BASE_SERVER = ['ip', 'linux', 'windows'];
 const KEEP = ['files', 'log'];
 const LAB_PRESETS = {
@@ -58163,8 +58424,32 @@ const LAB_PRESETS = {
     'linux-dmz': { server: [...BASE_SERVER, 'http', ...KEEP], linuxrouter: ['sysctl', 'firewall', ...KEEP, 'linux'] },
     'vpn-wireguard': { linuxrouter: ['sysctl', 'firewall', 'vpn', 'ssh', ...KEEP, 'linux'] },
 };
+/** What a lab uses beyond the services its servers start: SRV-SEDE2 gets SSH through the ISP, PC1 tries SFTP. */
+const EXTRA = {
+    internet: { 'SRV-SEDE2': ['ssh'] },
+    'ssh-sftp': { PC1: ['sftp'] },
+};
+const SERVICES = SERVICE_IDS;
+function servicesInUse(s) {
+    const v = s.services;
+    const on = [['ssh', v.ssh.enabled], ['dhcp', v.dhcp.enabled], ['dns', v.dns.enabled], ['http', v.http.enabled],
+        ['mail', v.mail.smtp || v.mail.pop3 || v.mail.imap], ['files', true], ['log', true]];
+    return on.filter(([, used]) => used).map(([id]) => id);
+}
+/** Each device of a recorded lab (its Configuración tab): servers with the services they run, PCs with mail if set up. */
+function setLabDevices(id, topo) {
+    for (const p of topo.placed.values()) {
+        const d = p.device;
+        if (!(d instanceof Host))
+            continue;
+        const extra = EXTRA[id]?.[p.label] ?? [];
+        const base = defaultApps(d).filter((a) => !(d instanceof Server) || !SERVICES.includes(a));
+        const used = d instanceof Server ? servicesInUse(d) : d instanceof Pc && d.mailAccount ? ['mail'] : [];
+        setDeviceApps(d, [...base, ...used, ...extra]);
+    }
+}
 
-return { LAB_PRESETS };
+return { LAB_PRESETS, setLabDevices };
 })();
 __m["net/lab-areas.js"] = (() => {
 const { t } = __m["i18n/t.js"];
@@ -58721,10 +59006,10 @@ const ip = (x) => parseIp(x) ?? 0;
 function link(t, a, ap, b, bp) {
     t.connect({ device: a, port: ap }, { device: b, port: bp });
 }
-function pcAt(t, x, label, sw, port, addr, gw) {
+function pcAt(t, x, label, sw, port, addr, gw, os = 'linux') {
     const pc = t.add('pc', x, 580, { label }).device;
     link(t, pc.id, 'FastEthernet0', sw.id, port);
-    pc.os = 'linux';
+    pc.os = os;
     pc.setStatic({ ip: ip(addr), prefix: 24, gateway: ip(gw), dns: ip('172.20.0.10') });
     return pc;
 }
@@ -58748,7 +59033,7 @@ const sshLab = {
         const srv = t.add('server', 760, 380, { label: 'SRV' }).device;
         link(t, srv.id, 'FastEthernet0', sw.id, 'FastEthernet0/24');
         sshServer(srv, '172.20.0.10', '172.20.0.1', [{ name: 'admin', password: 'netfix' }, { name: 'ana', password: 'ana1' }]);
-        pcAt(t, 220, 'PC0', sw, 'FastEthernet0/1', '172.20.0.21', '172.20.0.1');
+        pcAt(t, 220, 'PC0', sw, 'FastEthernet0/1', '172.20.0.21', '172.20.0.1', 'windows');
         pcAt(t, 460, 'PC1', sw, 'FastEthernet0/2', '172.20.0.22', '172.20.0.1');
         t.settle();
         rootScript(srv, `${fileCmd('/home/ana/bienvenida.txt', 'Hola Ana: sube aquí tus entregas con SFTP.')}
@@ -58837,7 +59122,7 @@ return { sshLab, hardeningLab };
 __m["net/examples.js"] = (() => {
 /** Ready-made labs that show each DHCP feature working. */
 const { parseFeatures } = __m["net/lab-features.js"];
-const { LAB_PRESETS } = __m["net/lab-presets.js"];
+const { LAB_PRESETS, setLabDevices } = __m["net/lab-presets.js"];
 const { newZone } = __m["services/dns-zones.js"];
 const { decorateLab } = __m["net/lab-areas.js"];
 const { LABS_ES } = __m["i18n/es-ES/labs.js"];
@@ -58866,6 +59151,8 @@ function lanBase(t, pcs, sw) {
     link(t, r.id, 'GigabitEthernet0/0', s.id, 'GigabitEthernet0/1');
     const p = Array.from({ length: pcs }, (_, i) => {
         const pc = t.add('pc', 220 + i * 240, 520).device;
+        if (i % 2)
+            pc.os = 'linux'; // pairs on one switch: one Windows PC and one Linux PC
         link(t, pc.id, 'FastEthernet0', s.id, `FastEthernet0/${i + 1}`);
         return pc;
     });
@@ -58936,6 +59223,8 @@ ip dhcp pool PC1-FIJO
             link(t, edge.id, 'GigabitEthernet0/1', s.id, 'GigabitEthernet0/1');
             const p = [0, 1].map((i) => {
                 const pc = t.add('pc', 480 + i * 240, 500).device;
+                if (i === 1)
+                    pc.os = 'linux';
                 link(t, pc.id, 'FastEthernet0', s.id, `FastEthernet0/${i + 1}`);
                 return pc;
             });
@@ -59144,6 +59433,7 @@ interface GigabitEthernet0/0
 const EXAMPLES = LABS.map((ex) => ({ ...ex, build: () => withPreset(ex.id, decorateLab(ex.id, ex.build())) }));
 function withPreset(id, topo) {
     topo.features = parseFeatures(LAB_PRESETS[id] ?? {});
+    setLabDevices(id, topo);
     return topo;
 }
 
@@ -59589,6 +59879,11 @@ function kindGroup(host, kind, changed) {
     });
     return el('fieldset', { class: 'set-group', 'data-kind': kind }, el('legend', {}, tDynamic(`set.kind.${kind}`)), ...boxes);
 }
+function webOption(host, changed) {
+    const box = el('input', { type: 'checkbox', checked: host.webHideOff(), disabled: host.labLocked(), 'data-feature': 'webHideOff' });
+    box.addEventListener('change', () => { host.setWebHideOff(box.checked); changed(); });
+    return el('label', { class: 'set-choice' }, box, t('set.webHideOff'), el('span', { class: 'muted' }, ` ${t('set.webHideOffHint')}`));
+}
 class SettingsView {
     root;
     lab;
@@ -59609,13 +59904,14 @@ class SettingsView {
         const changed = () => { this.status.textContent = t('set.changed'); };
         reset.addEventListener('click', () => {
             host.setFeatures({});
+            host.setWebHideOff(false);
             this.render();
             changed();
             this.lab.querySelector('.set-reset')?.focus();
         });
         reset.classList.add('set-reset');
         this.status.textContent = '';
-        this.lab.replaceChildren(el('h2', { id: 'set-lab' }, t('set.lab')), el('p', { class: 'muted' }, host.labLocked() ? t('set.labLocked') : t('set.labNote')), el('p', {}, t('set.always')), el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed))), reset, this.status);
+        this.lab.replaceChildren(el('h2', { id: 'set-lab' }, t('set.lab')), el('p', { class: 'muted' }, host.labLocked() ? t('set.labLocked') : t('set.labNote')), el('p', {}, t('set.always')), el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed))), webOption(host, changed), reset, this.status);
     }
 }
 
@@ -60449,6 +60745,7 @@ const { Canvas } = __m["ui/canvas.js"];
 const { WindowManager } = __m["ui/windows.js"];
 const { SimPanel } = __m["ui/simpanel.js"];
 const { openDeviceWindow, forgetDevice, forgetAll } = __m["ui/device-windows.js"];
+const { afterPlaced } = __m["ui/os-dialog.js"];
 const { Topology } = __m["net/topology.js"];
 const { EXAMPLES } = __m["net/examples.js"];
 const { Pages } = __m["ui/pages.js"];
@@ -60482,7 +60779,7 @@ class App {
     stageEl;
     paletteEl;
     pageHost;
-    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
+    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
     saveTimer = 0;
     interval;
     mode = 'realtime';
@@ -60529,6 +60826,7 @@ class App {
             changed: () => this.afterCommand(),
             hint: (text) => { this.hintEl.textContent = text; },
             removed: (id) => { this.windows.close(id); forgetDevice(id); },
+            placed: (p) => afterPlaced(p, () => this.afterCommand()),
         }, this.drawState);
         this.canvas.restrict(this.session.policy);
         this.canvas.draw.locked = !this.session.policy.drawing;
@@ -60560,7 +60858,7 @@ class App {
         window.addEventListener('pointerdown', this.onPointerDown, { capture: true });
         this.setMode(this.mode, false);
         this.showView(this.view);
-        this.markUndo();
+        syncUndoButtons(this.paletteEl, this.canvas.edits());
         this.tick();
     }
     /** Where the user is (kept when the interface is rebuilt in another language). */
@@ -60681,7 +60979,7 @@ class App {
         this.topo.net.runFor(20);
         this.canvas.edits().syncDrawings(performance.now());
         this.canvas.render();
-        this.markUndo();
+        syncUndoButtons(this.paletteEl, this.canvas.edits());
         this.scheduleSave();
     }
     /** Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z on the network view. */
@@ -60709,9 +61007,6 @@ class App {
         const left = done.skipped ? ` ${t('undo.cablesLeft', { n: String(done.skipped) })}` : '';
         this.hintEl.textContent = t(redo ? 'undo.redone' : 'undo.undone', { what: t(`undo.${done.kind}`) }) + left;
     }
-    markUndo() {
-        syncUndoButtons(this.paletteEl, this.canvas.edits());
-    }
     tick() {
         if (this.mode === 'realtime' || this.topo.net.pending() > 0)
             this.topo.net.runFor(TICK_MS);
@@ -60732,7 +61027,7 @@ class App {
         this.saved.mark(topo);
         this.canvas.setTopology(topo);
         this.sim.attach(topo);
-        this.markUndo();
+        syncUndoButtons(this.paletteEl, this.canvas.edits());
         this.pages.refreshSettings();
         this.hintEl.textContent = message;
         this.scheduleSave();

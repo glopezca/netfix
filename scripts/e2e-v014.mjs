@@ -27,8 +27,8 @@ try {
   await page.waitForSelector('g.device-router');
   await page.selectOption('select.select >> nth=0', 'servidores');
 
-  // PC: the name applies on Tab, the host name follows it, the focus goes on to the next field; no buttons.
-  await page.dblclick('g.device-pc >> nth=0');
+  // PC (PC1, the Linux one): the name applies on Tab, the host name follows it, the focus goes on to the next field.
+  await page.dblclick('g.device-pc >> nth=1');
   await page.click('.win-tab:has-text("Equipo")');
   const win = page.locator('.window:visible');
   assert.equal(await win.locator('button:has-text("Guardar"), button:has-text("Usar el nombre visible")').count(), 0);

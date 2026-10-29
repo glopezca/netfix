@@ -126,6 +126,8 @@ export const WEB_ES = {
   'wa.noDhcpLeases': 'Sin concesiones.',
   'wa.logHelp': 'Últimos mensajes de los servicios (journalctl).',
   'wa.empty': '(vacío)',
+  'wa.off': 'Desactivado en este equipo',
+  'wa.offPage': 'Esta opción está desactivada en este equipo (pestaña Configuración del equipo o ajustes del laboratorio).',
   'wa.saved': 'Los cambios se han guardado correctamente.',
   'fwa.templateKept': 'Plantilla aplicada. Se ha añadido una regla que acepta el puerto {port} para no perder el acceso a esta página.',
   'fwa.badField': 'Revisa el campo «{field}».',

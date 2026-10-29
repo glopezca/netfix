@@ -28,6 +28,16 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
         ['IOS router and switch', 'CLI and web management', '—'],
       ]),
       p('Those are the values of a new network (**New**). Each recorded lab brings its own: its servers show only the services it uses (for instance, “Company DNS forwarding to the Internet” only DHCP and DNS), and in “Hardening: ACL, nftables and sshd” the server also has kernel parameters and firewall. A lab without servers keeps the defaults.'),
+      h('Each device’s Settings tab'),
+      p('Every PC, server and Linux router also has its own **Settings** tab: boxes for its applications, services and terminals. It only lists what the lab allows (the table above is the maximum), and when a box changes the window reopens on that tab with the new tabs.'),
+      table(['Device', 'On by default', 'Off by default'], [
+        ['PC', 'IP configuration, browser, SSH client and the terminal of its operating system', 'Mail, Files (SFTP) and the other system’s terminal'],
+        ['Server', 'IP configuration, all its services and the Linux terminal', 'Windows terminal'],
+        ['Linux router', 'Kernel parameters, firewall, VPN, its services and the Linux terminal', 'Windows terminal'],
+      ]),
+      p('In the recorded labs, of each pair of PCs on the same switch one runs Windows and the other Linux; mail is only on the PCs with an account set up, and SFTP on PC1 of “SSH and SFTP with keys”; each server shows only the services it starts (plus files and logs).'),
+      p('When you **place a PC** from the palette, Netfix asks whether it runs Linux, Windows or both, and turns on its terminal and that system’s network stack (IP Configuration → operating system). It can be changed later. Servers do not ask: they run Linux.'),
+      p('The **web management** of servers and Linux routers shows greyed out, without forms, the pages of whatever is off (on the device or in the lab). With the **Hide disabled options in the web management…** box of Current lab they are not even in the menu.'),
       steps(
         ['Open the tab', '**Settings**, section **Current lab**.'],
         ['Tick or untick', 'Each box applies at once. Open windows close: when opened again they have the new tabs.'],

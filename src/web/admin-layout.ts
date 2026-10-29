@@ -8,6 +8,8 @@ import type { Server } from '../devices/server.ts';
 import { h, page } from './html.ts';
 import type { Child, Markup } from './html.ts';
 import { ABOUT } from '../docs/about-data.ts';
+import { appAvailable, labViewOf } from '../net/device-apps.ts';
+import type { FeatureId } from '../net/lab-features.ts';
 
 export interface AdminPage {
   readonly id: string;
@@ -29,9 +31,24 @@ export const PAGES: readonly AdminPage[] = [
   { id: 'status', tab: 'status' }, { id: 'files', tab: 'status' }, { id: 'log', tab: 'status' },
 ];
 
-/** Pages of a device: Security (firewall, routes, VPN) only on a Linux router; Ficheros only on Linux. */
+/** The device switch behind each page (Configuración, Administración and Estado are always there). */
+const PAGE_FEATURE: Readonly<Record<string, FeatureId>> = {
+  ssh: 'ssh', dhcp: 'dhcp', dns: 'dns', web: 'http', mail: 'mail', routing: 'sysctl', firewall: 'firewall', vpn: 'vpn', files: 'files', log: 'log',
+};
+
+/** Switched off in the device (its Configuración tab) or in its lab. */
+export function pageOff(server: Server, id: string): boolean {
+  const feature = PAGE_FEATURE[id];
+  return feature !== undefined && !appAvailable(server, feature);
+}
+
+/**
+ * Pages of a device: Security (firewall, routes, VPN) only on a Linux router; Ficheros only on Linux; those switched
+ * off are left out when the lab says so (else they are shown greyed).
+ */
 export function pagesOf(server: Server): readonly AdminPage[] {
-  return PAGES.filter((p) => (p.tab !== 'security' || server.kind === 'linuxrouter') && (p.id !== 'files' || server.os === 'linux'));
+  const hide = labViewOf(server).webHideOff;
+  return PAGES.filter((p) => (p.tab !== 'security' || server.kind === 'linuxrouter') && (p.id !== 'files' || server.os === 'linux') && !(hide && pageOff(server, p.id)));
 }
 
 /** A card: title, help line and its content. */
@@ -72,12 +89,16 @@ export function buttons(save = t('wa.save')): Markup {
   return h('div', { class: 'web-adm-buttons' }, h('button', { type: 'submit', class: 'web-adm-save' }, save), h('button', { type: 'reset', class: 'web-adm-reset' }, t('wa.cancel')));
 }
 
+function navItem(server: Server, base: string, id: string): Markup {
+  if (pageOff(server, id)) return h('span', { class: `web-adm-nav web-adm-nav-${id} web-adm-off`, 'aria-disabled': 'true', title: t('wa.off') }, pageLabel(id));
+  return h('a', { href: `${base}/?page=${id}`, class: `web-adm-nav web-adm-nav-${id}` }, pageLabel(id));
+}
+
 function menu(server: Server, base: string, current: AdminPage): Markup {
   const pages = pagesOf(server);
   const groups = TABS.filter((id) => pages.some((p) => p.tab === id)).map((tab) => h('li', { class: 'web-adm-group' },
     h('span', { class: 'web-adm-group-name' }, tabLabel(tab)),
-    h('ul', {}, pages.filter((p) => p.tab === tab).map((p) => h('li', { class: p.id === current.id ? 'web-adm-on' : undefined },
-      h('a', { href: `${base}/?page=${p.id}`, class: `web-adm-nav web-adm-nav-${p.id}` }, pageLabel(p.id)))))));
+    h('ul', {}, pages.filter((p) => p.tab === tab).map((p) => h('li', { class: p.id === current.id ? 'web-adm-on' : undefined }, navItem(server, base, p.id))))));
   return h('nav', { class: 'web-adm-menu' }, h('ul', {}, groups));
 }
 

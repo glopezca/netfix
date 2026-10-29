@@ -18,6 +18,9 @@ const KINDS: readonly DeviceKind[] = ['pc', 'server', 'linuxrouter', 'router', '
 export interface SettingsHost {
   features(): LabFeatures;
   setFeatures(next: LabFeatures): void;
+  /** The web GUI of servers and Linux routers leaves out what is off (instead of greying it). */
+  webHideOff(): boolean;
+  setWebHideOff(on: boolean): void;
   /** Embedded in a classroom exercise: the lab section is read-only. */
   labLocked(): boolean;
   /** The classroom fixes the timestamp prompt. */
@@ -59,6 +62,12 @@ function kindGroup(host: SettingsHost, kind: DeviceKind, changed: () => void): H
   return el('fieldset', { class: 'set-group', 'data-kind': kind }, el('legend', {}, tDynamic(`set.kind.${kind}`)), ...boxes);
 }
 
+function webOption(host: SettingsHost, changed: () => void): HTMLElement {
+  const box = el('input', { type: 'checkbox', checked: host.webHideOff(), disabled: host.labLocked(), 'data-feature': 'webHideOff' });
+  box.addEventListener('change', () => { host.setWebHideOff(box.checked); changed(); });
+  return el('label', { class: 'set-choice' }, box, t('set.webHideOff'), el('span', { class: 'muted' }, ` ${t('set.webHideOffHint')}`));
+}
+
 export class SettingsView {
   readonly root: HTMLElement;
   private readonly lab: HTMLElement;
@@ -82,6 +91,7 @@ export class SettingsView {
     const changed = (): void => { this.status.textContent = t('set.changed'); };
     reset.addEventListener('click', () => {
       host.setFeatures({});
+      host.setWebHideOff(false);
       this.render();
       changed();
       this.lab.querySelector<HTMLButtonElement>('.set-reset')?.focus();
@@ -93,6 +103,7 @@ export class SettingsView {
       el('p', { class: 'muted' }, host.labLocked() ? t('set.labLocked') : t('set.labNote')),
       el('p', {}, t('set.always')),
       el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed))),
+      webOption(host, changed),
       reset, this.status);
   }
 }

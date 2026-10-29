@@ -6,7 +6,7 @@ import type { DeviceKind } from './topology.ts';
 
 /** The service panels of a Server or Linux router, each switched on its own. */
 export const SERVICE_IDS = ['ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log'] as const;
-export const FEATURE_IDS = ['ip', 'apps', ...SERVICE_IDS, 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'] as const;
+export const FEATURE_IDS = ['ip', 'apps', 'browser', 'sftp', ...SERVICE_IDS, 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 export type LabFeatures = Readonly<Partial<Record<DeviceKind, readonly FeatureId[]>>>;
 

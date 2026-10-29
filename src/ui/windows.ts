@@ -62,11 +62,17 @@ export class WindowManager {
     }
   }
 
+  /** The window element of a key (to reopen it in the same place). */
+  element(key: string): HTMLElement | undefined {
+    return this.open.get(key)?.root;
+  }
+
   close(key: string): void {
     this.open.get(key)?.close();
   }
 
-  show(key: string, title: string, tabs: readonly Tab[], onClose: () => void = () => undefined): WindowHandle {
+  /** `initial`: the tab shown first; `like`: a window this one replaces, whose place and size it keeps. */
+  show(key: string, title: string, tabs: readonly Tab[], onClose: () => void = () => undefined, opts: { initial?: string; like?: HTMLElement } = {}): WindowHandle {
     const existing = this.open.get(key);
     if (existing) {
       existing.focus();
@@ -80,7 +86,8 @@ export class WindowManager {
     const tabBar = el('div', { class: 'win-tabs', role: 'tablist' });
     const body = el('div', { class: 'win-body' });
     const root = el('section', { class: 'window', role: 'dialog', 'aria-labelledby': `wt-${key}` }, header, tabBar, body);
-    place(root, (this.cascade++ % 6) * 28);
+    if (opts.like) root.style.cssText = opts.like.style.cssText;
+    else place(root, (this.cascade++ % 6) * 28);
     const select = tabStrip(tabs, tabBar, body);
     tabBar.hidden = tabs.length < 2;
     const handle = {
@@ -110,7 +117,8 @@ export class WindowManager {
     this.layer.appendChild(root);
     this.open.set(key, handle);
     handle.focus();
-    if (tabs[0]) select(tabs[0]);
+    const first = tabs.find((tab) => tab.id === opts.initial) ?? tabs[0];
+    if (first) select(first);
     return handle;
   }
 }

@@ -7,7 +7,7 @@ import type { Peer } from '../net/tcp.ts';
 import type { HttpRequest, HttpResponse } from './http.ts';
 import { basicAuth, formFields, query, redirect, respond, unauthorized, forMethod } from './http.ts';
 import { h, page } from './html.ts';
-import { PAGES, frame, pagesOf } from './admin-layout.ts';
+import { PAGES, frame, pageOff, pagesOf } from './admin-layout.ts';
 import { setupPage, dhcpPage, webPage, mailPage, sshPage, adminPage, statusPage, logPage } from './admin-pages.ts';
 import type { Child } from './html.ts';
 import { runAction } from './admin-actions.ts';
@@ -63,6 +63,8 @@ function adminResponse(server: Server, req: HttpRequest, peer: Peer, base: strin
   const q = query(req);
   const current = pagesOf(server).find((p) => p.id === q.get('page')) ?? PAGES[0];
   if (!current) return respond(BANNER, 404, 'Not Found');
+  // Switched off in the device or its lab: the page says so, has no forms and a POST runs nothing.
+  if (pageOff(server, current.id)) return forMethod(req, respond(BANNER, 200, frame(server, base, current, { error: t('wa.offPage') }, null)));
   if (req.method === 'POST') {
     const fields = formFields(req);
     const result = runAction(server, current.id, fields);
