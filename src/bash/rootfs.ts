@@ -1,4 +1,5 @@
 /** Ubuntu 26.04 root file system skeleton (directories, /etc, /dev, /proc, /usr/bin and home directories). */
+import { SOURCES_LIST, UBUNTU_SOURCES } from './apt-sources.ts';
 import type { Vfs } from './vfs.ts';
 import { ROOT } from './vfs.ts';
 import type { UserInfo } from './types.ts';
@@ -115,6 +116,8 @@ function seedEtc(fs: Vfs, o: RootfsOptions): void {
   const shadowGid = 42;
   fs.seed('/etc/shells', { kind: 'file', content: '# /etc/shells: valid login shells\n/bin/sh\n/usr/bin/sh\n/bin/bash\n/usr/bin/bash\n/bin/rbash\n/usr/bin/rbash\n/usr/bin/dash\n' });
   fs.seed('/etc/issue', { kind: 'file', content: 'Ubuntu 26.04 LTS \\n \\l\n\n' });
+  fs.seed('/etc/apt/sources.list', { kind: 'file', content: SOURCES_LIST });
+  fs.seed('/etc/apt/sources.list.d/ubuntu.sources', { kind: 'file', content: UBUNTU_SOURCES });
   fs.seed('/etc/timezone', { kind: 'file', content: 'Etc/UTC\n' });
   fs.seed('/etc/services', { kind: 'file', content: `${SERVICES}\n` });
   fs.seed('/etc/bash.bashrc', { kind: 'file', content: BASH_BASHRC });

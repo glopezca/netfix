@@ -89,13 +89,13 @@ try {
 
   // 2. Changing language while reading the docs keeps the docs open, now in the other language.
   await page.click('button.seg:has-text("Help")');
-  await page.waitForSelector('.doc-group:has-text("Linux Terminal")');
+  await page.waitForSelector('.doc-group:has-text("GNU/Linux Terminal")');
   await page.selectOption('.select-lang', 'es-ES');
-  await page.waitForSelector('.doc-group:has-text("Terminal Linux")');
+  await page.waitForSelector('.doc-group:has-text("Terminal GNU/Linux")');
   assert.equal(await page.getAttribute('body', 'data-view'), 'docs');
   assert.equal(await page.locator('button.seg[aria-pressed="true"]:has-text("Ayuda")').count(), 1);
   await page.selectOption('.select-lang', 'en-GB');
-  await page.waitForSelector('.doc-group:has-text("Linux router")');
+  await page.waitForSelector('.doc-group:has-text("GNU/Linux router")');
   await page.fill('.doc-search', 'wireguard');
   await page.waitForSelector('.doc-link');
   await page.click('button.seg:has-text("Network")');
@@ -105,7 +105,7 @@ try {
   await labs.selectOption({ label: 'WireGuard VPN: hub and branch behind NAT' });
   await page.waitForSelector('text=CENTRAL');
   await page.dblclick('g.device:has-text("SUCURSAL")');
-  await page.click('.win-tab:has-text("Linux terminal")');
+  await page.click('.win-tab:has-text("GNU/Linux terminal")');
   const type = async (line) => { await page.keyboard.type(line); await page.keyboard.press('Enter'); };
   await type('ping -c 2 10.1.0.10');
   await page.waitForTimeout(300);
@@ -210,9 +210,9 @@ try {
   await page.waitForSelector('.term-input:visible');
   await typeLine('type notes.txt');
   assert.match(await page.locator('.terminal:visible').innerText(), /C:\\home\\alumno>type notes\.txt\nfirst line\nfrom edit/);
-  await page.click('.win-tab:has-text("Settings")'); // PC0 runs Windows: add the Linux terminal
+  await page.click('.win-tab:has-text("Settings")'); // PC0 runs Windows: add the GNU/Linux terminal
   await page.locator('.window input[name="dev-linux"]').check();
-  await page.click('.win-tab:has-text("Linux terminal")');
+  await page.click('.win-tab:has-text("GNU/Linux terminal")');
   await typeLine('cat ~/notes.txt');
   assert.match(await page.locator('.terminal:visible').innerText(), /first line\nfrom edit/);
   await desk.close();
@@ -229,7 +229,7 @@ try {
   assert.match(await tablet.locator('.window').innerText(), /FastEthernet0 · eth0[\s\S]*Switch0/, 'PC interfaces with the far end');
   const tw = await tablet.locator('.window').boundingBox();
   assert.ok(tw.x >= 0 && tw.x + tw.width <= 820, 'the window fits the tablet width');
-  await tablet.tap('.win-tab:has-text("Windows terminal"), .win-tab:has-text("Linux terminal")');
+  await tablet.tap('.win-tab:has-text("Windows terminal"), .win-tab:has-text("GNU/Linux terminal")');
   assert.deepEqual(await tablet.locator('.terminal:visible .term-keys [data-key="Home"], .terminal:visible .term-keys [data-key="PageDown"]').allInnerTexts(), ['Home', 'PgDn'], 'navigation keys on the key bar');
   const ctrl = tablet.locator('.terminal:visible .term-keys [data-key="Ctrl"]');
   await ctrl.dispatchEvent('pointerdown');

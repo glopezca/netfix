@@ -17,7 +17,7 @@ test('a PC: the name, then IP/CIDR; no host name repeated', () => {
   assert.deepEqual(deviceCaption(p), { name: 'PC0', extra: ['192.168.1.10/24'] });
 });
 
-test('a Linux router: one line per NIC with an address; an IOS router adds nothing (its hostname is its name); a cloud its ISP', () => {
+test('a GNU/Linux router: one line per NIC with an address; an IOS router adds nothing (its hostname is its name); a cloud its ISP', () => {
   const t = new Topology();
   const lr = t.add('linuxrouter', 0, 0);
   createShell(lr.device as Server, 'linux', 'root').run('ip addr add 10.0.0.1/8 dev eth0; ip addr add 192.168.1.1/24 dev eth2');

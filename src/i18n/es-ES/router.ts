@@ -1,9 +1,9 @@
-/** Español (España): router Linux (interfaces y rutas). */
+/** Español (España): router GNU/Linux (interfaces y rutas). */
 export const ROUTER_ES = {
   'router.ifaces': 'Interfaces',
   'router.ifacesIntro': 'Hardware de un 2911 (GigabitEthernet0/0-2) con Ubuntu: eth0-2. eth0 es la WAN (estática o DHCP). Los cambios aquí son la configuración en ejecución, como «ip addr»; para que duren al reiniciar el equipo simulado se guardan en el archivo de la topología.',
   'router.port': 'Puerto',
-  'router.linux': 'Linux',
+  'router.linux': 'GNU/Linux',
   'router.address': 'Dirección IPv4',
   'router.mask': 'Máscara',
   'router.state': 'Estado',

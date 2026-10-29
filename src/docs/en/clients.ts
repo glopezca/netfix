@@ -48,7 +48,7 @@ export const CLIENT_DOCS: DocGroup = {
         ]),
         check('Check it', 'In the Windows Terminal, `ipconfig /all` shows the IP address, mask, gateway, DHCP server and lease dates. Then `ping` the gateway and a name.'),
         term('cmd', 'C:\\home\\alumno> ipconfig /all\n\nFastEthernet0 Connection:(default port)\n\n   Connection-specific DNS Suffix..: aula.lab\n   Physical Address................: 0063.B914.34B5\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\n   DHCP Servers....................: 192.168.10.2\n   DNS Servers.....................: 192.168.10.2\nC:\\home\\alumno> ping -n 2 srv.aula.lab\nReply from 192.168.10.2: bytes=32 time<1ms TTL=64'),
-        p('In the Linux Terminal, the same with `ip -4 addr`, `ip route` (the gateway is the “default” route) and `cat /etc/resolv.conf` (the DNS server).'),
+        p('In the GNU/Linux Terminal, the same with `ip -4 addr`, `ip route` (the gateway is the “default” route) and `cat /etc/resolv.conf` (the DNS server).'),
         warn('Common mistakes', 'A mask different from the rest of the network: some devices “cannot be seen”. A gateway outside the PC’s network (or empty): it works inside the LAN but not beyond. Two devices with the **same IP address**: both fail now and then. A **169.254.x.x** address means DHCP did not answer: check the cable, the server and its pool.'),
         exercise('From a hand-set PC to DHCP', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, give PC0 the static IP address 192.168.10.20/24, gateway 192.168.10.1 and DNS 192.168.10.2; check with ping srv.aula.lab and then go back to DHCP.', 'IP Configuration → Static and fill in the four fields. In the Windows Terminal, `ping srv.aula.lab` answers from 192.168.10.2. Back to **DHCP**: `ipconfig` shows 192.168.10.100 again (the lease the server kept for it).'),
       ],
@@ -59,11 +59,11 @@ export const CLIENT_DOCS: DocGroup = {
       summary: 'The name on the diagram and the host name derived from it (it cannot be changed from the terminal).',
       markdownBase: MD,
       blocks: [
-        p('Each device has a **name** (the one on the diagram, e.g. «Aula Pública 2º») and a **host name**, the one the system uses on the network (aula-publica-2o). In Netfix the second always comes from the first, as in a well-run network: every device on the diagram has a predictable host name. This applies to PCs, servers, Linux routers and clouds; on IOS routers and switches the `hostname` comes from the name too, keeping case.'),
+        p('Each device has a **name** (the one on the diagram, e.g. «Aula Pública 2º») and a **host name**, the one the system uses on the network (aula-publica-2o). In Netfix the second always comes from the first, as in a well-run network: every device on the diagram has a predictable host name. This applies to PCs, servers, GNU/Linux routers and clouds; on IOS routers and switches the `hostname` comes from the name too, keeping case.'),
         steps(
           ['Change the name', '**Device** tab → **Device name**. It applies when you press Enter or leave the field.'],
           ['See the host name', 'Below it, read-only: lower case, no accents and hyphens instead of spaces.'],
-          ['Use it', 'It shows in the Linux Terminal prompt, in /etc/hostname, in `hostname` and in what the DHCP client sends the server (option 12, visible in the leases).'],
+          ['Use it', 'It shows in the GNU/Linux Terminal prompt, in /etc/hostname, in `hostname` and in what the DHCP client sends the server (option 12, visible in the leases).'],
         ),
         table(['Device name', 'Host name'], [
           ['PC0', 'pc0'],
@@ -83,7 +83,7 @@ export const CLIENT_DOCS: DocGroup = {
         term('shell', 'alumno@pc0:~$ sudo hostnamectl set-hostname web01\nCould not set static hostname: in Netfix the host name comes from the device name (Device tab)\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: pc0'),
         tip('On a real Ubuntu', 'Those commands do change the name. Netfix blocks them so the host name always comes from the diagram and students never have to guess it.'),
         warn('Common mistakes', 'Expecting the host name to keep capitals or spaces: it does not (RFC 1123: unaccented letters, digits and hyphens, up to 63 characters). Looking the device up by name in DNS without registering it: the host name is not added to the DNS server on its own.'),
-        exercise('Rename a PC', 'Change PC1’s name to «Portátil Profe» and find its host name without looking at the Device tab.', 'In its Linux Terminal the prompt becomes `alumno@portatil-profe:~$`; `hostname` shows it too. On the diagram the name appears as «Portátil Profe».'),
+        exercise('Rename a PC', 'Change PC1’s name to «Portátil Profe» and find its host name without looking at the Device tab.', 'In its GNU/Linux Terminal the prompt becomes `alumno@portatil-profe:~$`; `hostname` shows it too. On the diagram the name appears as «Portátil Profe».'),
       ],
     },
     {
@@ -131,8 +131,8 @@ export const CLIENT_DOCS: DocGroup = {
       summary: 'The cmd.exe commands on Windows PCs and servers: network, services and files.',
       markdownBase: MD,
       blocks: [
-        p('The **Windows Terminal** imitates cmd.exe. It checks the network (`ipconfig`, `ping`, `tracert`, `nslookup`), manages the services of a Windows Server (`sc`, `net`) and works with files. It works on the same file system as the device’s Linux Terminal: drive **C:\\** is the root /, folders are separated with \\ (or /) and names are case-insensitive.'),
-        p('It starts in the home folder of the Linux account (C:\\home\\alumno on PCs, C:\\home\\admin on servers) and respects its permissions: what that account cannot write gives “Access is denied.”.'),
+        p('The **Windows Terminal** imitates cmd.exe. It checks the network (`ipconfig`, `ping`, `tracert`, `nslookup`), manages the services of a Windows Server (`sc`, `net`) and works with files. It works on the same file system as the device’s GNU/Linux Terminal: drive **C:\\** is the root /, folders are separated with \\ (or /) and names are case-insensitive.'),
+        p('It starts in the home folder of the GNU/Linux account (C:\\home\\alumno on PCs, C:\\home\\admin on servers) and respects its permissions: what that account cannot write gives “Access is denied.”.'),
         h('The network commands, step by step'),
         steps(
           ['What is my address?', '`ipconfig` (with `/all`, also the MAC, DHCP server, DNS and lease dates).'],
@@ -164,10 +164,10 @@ export const CLIENT_DOCS: DocGroup = {
           ['echo text · command > file · command >> file', 'echo prints the text (echo. a blank line); > saves any command’s output to a file, >> appends it and > nul discards it.'],
         ]),
         code('C:\\home\\alumno> ipconfig /all > red.txt\nC:\\home\\alumno> type red.txt\nC:\\home\\alumno> edit notas.txt\nC:\\home\\alumno> copy notas.txt \\tmp\nC:\\home\\alumno> ssh admin@192.168.10.2'),
-        p('What is created here shows up in the Linux Terminal (`cat ~/red.txt`, `nano ~/notas.txt`) and the other way round. Errors imitate Windows: “… is not recognized as an internal or external command”, “Request timed out.”, “FAILED 1060”…'),
+        p('What is created here shows up in the GNU/Linux Terminal (`cat ~/red.txt`, `nano ~/notas.txt`) and the other way round. Errors imitate Windows: “… is not recognized as an internal or external command”, “Request timed out.”, “FAILED 1060”…'),
         tip('Prompt with date and time', 'The **Prompt with date and time stamp** box, at the foot of the terminal, switches the prompt to this PowerShell function’s: date and time in dark cyan, user@device in green, the path in yellow and $ (# for an administrator account), e.g. `Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$`. It lets screenshots of a practical prove when they were taken. It is a general setting, off by default (also in Settings → General): it applies to every terminal of every device.'),
-        warn('Common mistakes', 'Typing Linux commands (`ls`, `ip a`): cmd answers “is not recognized…”; use `dir` and `ipconfig`. Forgetting that `ipconfig /renew` needs the PC on DHCP. Trying to write outside your home folder: “Access is denied.”.'),
-        exercise('Save your configuration to a file', 'Save the output of `ipconfig /all` to `red.txt` and open it from the Linux Terminal of the same PC.', 'In cmd: `ipconfig /all > red.txt`. In the Linux Terminal: `cat ~/red.txt` (or `less ~/red.txt`). It is the same file: both terminals share the file system.'),
+        warn('Common mistakes', 'Typing GNU/Linux commands (`ls`, `ip a`): cmd answers “is not recognized…”; use `dir` and `ipconfig`. Forgetting that `ipconfig /renew` needs the PC on DHCP. Trying to write outside your home folder: “Access is denied.”.'),
+        exercise('Save your configuration to a file', 'Save the output of `ipconfig /all` to `red.txt` and open it from the GNU/Linux Terminal of the same PC.', 'In cmd: `ipconfig /all > red.txt`. In the GNU/Linux Terminal: `cat ~/red.txt` (or `less ~/red.txt`). It is the same file: both terminals share the file system.'),
       ],
     },
   ],

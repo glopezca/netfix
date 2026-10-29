@@ -1,5 +1,5 @@
 /**
- * DNS page of the management GUI (Server and Linux router): mode cards in order, per-mode settings, the zone wizard
+ * DNS page of the management GUI (Server and GNU/Linux router): mode cards in order, per-mode settings, the zone wizard
  * (SOA → NS → kind → records), the automatic reverse zone and the generated BIND configuration next to them.
  */
 import { test } from 'node:test';

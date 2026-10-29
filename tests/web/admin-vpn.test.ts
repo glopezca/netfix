@@ -1,4 +1,4 @@
-/** VPN (WireGuard) of the Linux router from the web admin and the shared save code of the Services tab. */
+/** VPN (WireGuard) of the GNU/Linux router from the web admin and the shared save code of the Services tab. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';

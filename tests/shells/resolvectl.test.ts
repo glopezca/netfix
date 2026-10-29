@@ -1,5 +1,5 @@
 /**
- * resolvectl (systemd-resolved) in the Linux terminals: status per link, queries through the same resolver as ping
+ * resolvectl (systemd-resolved) in the GNU/Linux terminals: status per link, queries through the same resolver as ping
  * and dig (/etc/hosts, search list, the device's DNS server), and runtime changes of the DNS server and domains that
  * netplan does not keep (revert, or a new IP configuration, drops them).
  */
@@ -53,7 +53,7 @@ test('status: Global and one block per link, as systemd 257 prints them', () => 
   assert.match(sh('resolvectl status eth9'), /Failed to resolve interface "eth9": No such device/);
 });
 
-test('a Linux router: the links without DNS have no scope', () => {
+test('a GNU/Linux router: the links without DNS have no scope', () => {
   const t = new Topology();
   const lr = t.add('linuxrouter', 0, 0).device as Server;
   const out = all(createShell(lr, 'linux').run('resolvectl status'));

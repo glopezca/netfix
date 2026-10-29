@@ -1,4 +1,4 @@
-/** Documentación: router Linux (parámetros, nftables y WireGuard), en estilo guiado. */
+/** Documentación: router GNU/Linux (parámetros, nftables y WireGuard), en estilo guiado. */
 import type { DocGroup } from './types.ts';
 import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from './types.ts';
 
@@ -6,15 +6,15 @@ const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
 export const SECURITY_DOCS: DocGroup = {
   id: 'seguridad',
-  title: 'Router Linux',
+  title: 'Router GNU/Linux',
   pages: [
     {
       id: 'linux-router',
-      title: 'Router Linux',
+      title: 'Router GNU/Linux',
       summary: 'Un Ubuntu con tres puertos que enruta: interfaces, ip_forward, rutas, NAT y dónde se configura cada cosa.',
       markdownBase: MD,
       blocks: [
-        p('El **Router Linux** tiene los puertos de un 2911 (GigabitEthernet0/0-2) y el software de un Server con Ubuntu: en la terminal los puertos se llaman **eth0**, **eth1** y **eth2**. Es como montar un router con un PC y tres tarjetas de red: enruta, hace NAT y filtra con **nftables**, y puede unir sedes con **WireGuard**.'),
+        p('El **Router GNU/Linux** tiene los puertos de un 2911 (GigabitEthernet0/0-2) y el software de un Server con Ubuntu: en la terminal los puertos se llaman **eth0**, **eth1** y **eth2**. Es como montar un router con un PC y tres tarjetas de red: enruta, hace NAT y filtra con **nftables**, y puede unir sedes con **WireGuard**.'),
         figure({
           type: 'topology',
           nodes: [
@@ -24,7 +24,7 @@ export const SECURITY_DOCS: DocGroup = {
             { id: 'dmz', kind: 'server', label: 'WEB-DMZ', x: 75, y: 40, note: 'eth2 · DMZ 172.16.0.80' },
           ],
           links: [{ a: 'isp', b: 'fw' }, { a: 'fw', b: 'lan', label: 'eth1' }, { a: 'fw', b: 'dmz', label: 'eth2' }],
-        }, 'El laboratorio «Router Linux con NAT y DMZ (nftables)»: Internet por eth0, la LAN por eth1 y la DMZ con el servidor web por eth2.'),
+        }, 'El laboratorio «Router GNU/Linux con NAT y DMZ (nftables)»: Internet por eth0, la LAN por eth1 y la DMZ con el servidor web por eth2.'),
         h('Paso a paso: que enrute'),
         steps(
           ['Direcciones de las interfaces', 'Pestaña **Interfaces** (o `ip addr add 192.168.1.1/24 dev eth1`). eth0 puede pedir la suya por DHCP al operador.'],
@@ -44,7 +44,7 @@ export const SECURITY_DOCS: DocGroup = {
         ]),
         tip('Sus servicios son los del Server', 'Después de Parámetros, Firewall y VPN, el menú Servicios sigue con SSH, DHCP, DNS, HTTP, Correo, Configuración y Registros, iguales que en un Server: consulta sus páginas en el grupo Servidor.'),
         warn('Errores habituales', 'Olvidar ip_forward: los PC llegan al router pero no más allá. Hacer `sysctl -w` o `ip route add` y no guardarlo: se pierde al reiniciar (guárdalo en /etc/sysctl.d, en /etc/nftables.conf o con los paneles, que aplican y guardan). Sin NAT de salida, Internet no sabe volver a la LAN privada.'),
-        exercise('Apágale el reenvío', 'En el laboratorio «Router Linux con NAT y DMZ (nftables)», comprueba que PC0 hace ping a 8.8.8.8. Después pon net.ipv4.ip_forward a 0 en FW y repite.', 'Con el reenvío activo, `ping -c 1 8.8.8.8` responde. Tras `sysctl -w net.ipv4.ip_forward=0` en FW (o 0 en Servicios → Parámetros), el mismo ping acaba en «1 packets transmitted, 0 received, 100% packet loss»: FW ya no pasa paquetes de eth1 a eth0. Vuelve a ponerlo a 1.'),
+        exercise('Apágale el reenvío', 'En el laboratorio «Router GNU/Linux con NAT y DMZ (nftables)», comprueba que PC0 hace ping a 8.8.8.8. Después pon net.ipv4.ip_forward a 0 en FW y repite.', 'Con el reenvío activo, `ping -c 1 8.8.8.8` responde. Tras `sysctl -w net.ipv4.ip_forward=0` en FW (o 0 en Servicios → Parámetros), el mismo ping acaba en «1 packets transmitted, 0 received, 100% packet loss»: FW ya no pasa paquetes de eth1 a eth0. Vuelve a ponerlo a 1.'),
       ],
     },
     {
@@ -53,7 +53,7 @@ export const SECURITY_DOCS: DocGroup = {
       summary: 'Tablas, cadenas con gancho, reglas con ct state, NAT (masquerade, dnat), log y cómo comprobarlo.',
       markdownBase: MD,
       blocks: [
-        p('**nftables** es el cortafuegos de Linux. Las reglas viven en **cadenas** colgadas de un **gancho**: **input** (lo que va al propio equipo), **forward** (lo que pasa por él), **output** (lo que genera) y **prerouting/postrouting** (NAT). Cada cadena tiene una **política** por defecto (accept o drop). **conntrack** recuerda las conexiones: `ct state established,related accept` deja pasar las respuestas sin abrir nada más.'),
+        p('**nftables** es el cortafuegos del núcleo Linux. Las reglas viven en **cadenas** colgadas de un **gancho**: **input** (lo que va al propio equipo), **forward** (lo que pasa por él), **output** (lo que genera) y **prerouting/postrouting** (NAT). Cada cadena tiene una **política** por defecto (accept o drop). **conntrack** recuerda las conexiones: `ct state established,related accept` deja pasar las respuestas sin abrir nada más.'),
         figure({
           type: 'sequence',
           actors: ['CLIENTE-EXT', 'FW (nftables)', 'WEB-DMZ'],
@@ -90,7 +90,7 @@ export const SECURITY_DOCS: DocGroup = {
           'La gestión web impide guardar un cambio que te deje sin acceso a ella.',
         ),
         warn('Errores habituales', 'Poner policy drop sin `ct state established,related accept`: no vuelve ninguna respuesta. Añadir una regla con `add` detrás de un `drop` final: nunca se alcanza (usa `insert` o colócala antes). Filtrar en input lo que pasa por el router: el tránsito va por forward. Probar desde el propio router: su tráfico va por output, no por forward.'),
-        exercise('¿Puede la DMZ entrar en la LAN?', 'En el laboratorio «Router Linux con NAT y DMZ (nftables)», haz ping desde WEB-DMZ a 192.168.1.10 y explica qué regla lo decide. Comprueba después que la web se ve desde CLIENTE-EXT.', 'El ping no recibe respuesta: en forward ninguna regla permite eth2 → eth1 («DMZ solo a Internet» solo deja eth2 → eth0), así que llega a `log prefix "FW-DROP " drop` y `dmesg` en FW muestra «FW-DROP IN=eth2 OUT=eth1 SRC=172.16.0.80 DST=192.168.1.10». `curl http://81.32.5.2/` en CLIENTE-EXT devuelve la página de WEB-DMZ gracias al dnat y a la regla «web publicada».'),
+        exercise('¿Puede la DMZ entrar en la LAN?', 'En el laboratorio «Router GNU/Linux con NAT y DMZ (nftables)», haz ping desde WEB-DMZ a 192.168.1.10 y explica qué regla lo decide. Comprueba después que la web se ve desde CLIENTE-EXT.', 'El ping no recibe respuesta: en forward ninguna regla permite eth2 → eth1 («DMZ solo a Internet» solo deja eth2 → eth0), así que llega a `log prefix "FW-DROP " drop` y `dmesg` en FW muestra «FW-DROP IN=eth2 OUT=eth1 SRC=172.16.0.80 DST=192.168.1.10». `curl http://81.32.5.2/` en CLIENTE-EXT devuelve la página de WEB-DMZ gracias al dnat y a la regla «web publicada».'),
       ],
     },
     {
@@ -99,7 +99,7 @@ export const SECURITY_DOCS: DocGroup = {
       summary: 'Unir dos sedes con WireGuard paso a paso: claves, wg0.conf, AllowedIPs, Endpoint y PersistentKeepalive detrás de NAT.',
       markdownBase: MD,
       blocks: [
-        p('**WireGuard** une dos routers Linux con un túnel UDP (puerto 51820). Cada extremo tiene una **clave privada** y conoce la **pública** del otro (X25519, las mismas claves que el wg real). **AllowedIPs** dice qué redes llegan por cada par, y se convierten en rutas por wg0.'),
+        p('**WireGuard** une dos routers GNU/Linux con un túnel UDP (puerto 51820). Cada extremo tiene una **clave privada** y conoce la **pública** del otro (X25519, las mismas claves que el wg real). **AllowedIPs** dice qué redes llegan por cada par, y se convierten en rutas por wg0.'),
         figure({
           type: 'topology',
           nodes: [

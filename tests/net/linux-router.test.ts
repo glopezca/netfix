@@ -1,4 +1,4 @@
-/** Linux router (2911 hardware, Ubuntu software): ip_forward, forward chain, masquerade, dnat, traceroute. */
+/** GNU/Linux router (2911 hardware, Ubuntu software): ip_forward, forward chain, masquerade, dnat, traceroute. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';

@@ -11,7 +11,7 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
     summary: 'Órdenes, listas, tuberías, agrupaciones, comillas y comentarios: cómo se escribe una línea de bash.',
     markdownBase: MD,
     blocks: [
-      p('**bash** es el intérprete de órdenes de Linux: lee lo que escribes (o un script), lo expande y lo ejecuta. Cada línea es una **orden** con sus argumentos, y las órdenes se combinan: una detrás de otra, solo si la anterior salió bien o mal, o conectando la salida de una con la entrada de la siguiente (**tubería**).'),
+      p('**bash** es el intérprete de órdenes de GNU/Linux: lee lo que escribes (o un script), lo expande y lo ejecuta. Cada línea es una **orden** con sus argumentos, y las órdenes se combinan: una detrás de otra, solo si la anterior salió bien o mal, o conectando la salida de una con la entrada de la siguiente (**tubería**).'),
       h('Paso a paso: de una orden a una tubería'),
       steps(
         ['Una orden', '`ls /etc`: el programa y sus argumentos, separados por espacios.'],
@@ -46,7 +46,7 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
       p('! case coproc do done elif else esac fi for function if in select then time until while { } [[ ]]'),
       warn('Errores habituales', 'Poner espacios en una asignación: `nombre = Ana` ejecuta la orden «nombre». Olvidar el espacio o el `;` de `{ lista; }`. Usar comillas simples cuando querías expandir una variable.'),
       note('El intérprete de Netfix es una reimplementación de GNU bash 5.3 (BASH_VERSION 5.3.20(1)-release): mismo análisis, mismas expansiones y los mismos mensajes de error («syntax error near unexpected token», «command not found», «bad substitution»…).'),
-      exercise('¿Quién usa bash?', 'En la Terminal Linux de PC1 (laboratorio «Server: DHCP, DNS, web, correo y SSH»), cuenta con una sola línea cuántos usuarios de /etc/passwd tienen bash como shell, y después muestra sus nombres.', '`grep -c \'/bin/bash$\' /etc/passwd` da 2. `cut -d: -f1,7 /etc/passwd | grep bash` muestra root:/bin/bash y alumno:/bin/bash: cut se queda con los campos 1 (usuario) y 7 (shell) y grep filtra las líneas.'),
+      exercise('¿Quién usa bash?', 'En la Terminal GNU/Linux de PC1 (laboratorio «Server: DHCP, DNS, web, correo y SSH»), cuenta con una sola línea cuántos usuarios de /etc/passwd tienen bash como shell, y después muestra sus nombres.', '`grep -c \'/bin/bash$\' /etc/passwd` da 2. `cut -d: -f1,7 /etc/passwd | grep bash` muestra root:/bin/bash y alumno:/bin/bash: cut se queda con los campos 1 (usuario) y 7 (shell) y grep filtra las líneas.'),
     ],
   },
   {
@@ -97,7 +97,7 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
         'GLOBSORT (5.3) ordena los resultados: name, size, mtime, numeric, none; con - delante, al revés.',
       ),
       warn('Errores habituales', 'Recorrer la salida de `ls` con `for f in $(ls)`: se rompe con nombres con espacios; usa `for f in *`. Esperar que `{1..$n}` funcione: las llaves se expanden antes que las variables (usa `seq 1 "$n"` o `for (( ))`).'),
-      exercise('Cambia la extensión', 'En la Terminal Linux de PC1, crea a.txt, b.txt y c.txt y renómbralos todos a .bak con un bucle, sin escribir cada nombre.', '`touch a.txt b.txt c.txt` y `for f in *.txt; do mv "$f" "${f%.txt}.bak"; done`. `ls` muestra a.bak b.bak c.bak: `${f%.txt}` quita el sufijo y las comillas protegen nombres con espacios.'),
+      exercise('Cambia la extensión', 'En la Terminal GNU/Linux de PC1, crea a.txt, b.txt y c.txt y renómbralos todos a .bak con un bucle, sin escribir cada nombre.', '`touch a.txt b.txt c.txt` y `for f in *.txt; do mv "$f" "${f%.txt}.bak"; done`. `ls` muestra a.bak b.bak c.bak: `${f%.txt}` quita el sufijo y las comillas protegen nombres con espacios.'),
     ],
   },
   {
@@ -167,7 +167,7 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
       ),
       tip('El orden de un array asociativo', 'bash no garantiza el orden de `${!ip[@]}` (sale el de su tabla interna). Si lo necesitas ordenado: `printf \'%s\\n\' "${!ip[@]}" | sort`.'),
       warn('Errores habituales', 'Usar `return` para devolver un número calculado: solo admite estados de 0 a 255 (escribe el resultado con echo). Olvidar `declare -A` antes de un array asociativo: bash lo trata como indexado y todas las claves valen 0. `${dias}` sin índice es solo el primer elemento.'),
-      exercise('Una función útil', 'En la Terminal Linux de PC1, escribe una función `doble` que escriba el doble de su argumento, guarda en una variable el doble de 21 y muéstrala.', '`doble() { echo $(( $1 * 2 )); }`, `r=$(doble 21)` y `echo $r` da 42. Con `return $(( $1 * 2 ))` también saldría 42 en `$?`, pero fallaría a partir de 256.'),
+      exercise('Una función útil', 'En la Terminal GNU/Linux de PC1, escribe una función `doble` que escriba el doble de su argumento, guarda en una variable el doble de 21 y muéstrala.', '`doble() { echo $(( $1 * 2 )); }`, `r=$(doble 21)` y `echo $r` da 42. Con `return $(( $1 * 2 ))` también saldría 42 en `$?`, pero fallaría a partir de 256.'),
     ],
   },
   {

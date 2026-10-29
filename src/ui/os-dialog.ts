@@ -1,14 +1,15 @@
 /**
  * The question when a PC is placed: Linux, Windows or both. Windows is focused, and Esc or a click outside keeps it
- * (the default system). Servers do not ask: they run Linux until changed.
+ * (the default system). Servers do not ask: they run GNU/Linux until changed.
  */
 import { el } from './dom.ts';
 import { button } from './forms.ts';
 import { t } from '../i18n/t.ts';
-import { choosePcSystem } from '../net/device-apps.ts';
+import { choosePcSystem, freshApps, setDeviceApps } from '../net/device-apps.ts';
 import type { PcSystem } from '../net/device-apps.ts';
 import type { Placed } from '../net/topology.ts';
 import { Pc } from '../devices/pc.ts';
+import { Server } from '../devices/server.ts';
 
 export function askPcSystem(name: string): Promise<PcSystem> {
   return new Promise((resolve) => {
@@ -33,9 +34,16 @@ export function askPcSystem(name: string): Promise<PcSystem> {
   });
 }
 
-/** After a device is placed: a PC asks for its system; either way the change is unsaved work. */
+/**
+ * After a device is placed: a PC asks for its system; a Server or Linux router starts with no service running (its
+ * boxes are off until ticked or installed with apt, and Apache is not there yet). Either way it is unsaved work.
+ */
 export function afterPlaced(placed: Placed, changed: () => void): void {
-  changed();
   const pc = placed.device;
+  if (pc instanceof Server) {
+    pc.setServices({ ...pc.services, http: { ...pc.services.http, enabled: false } });
+    setDeviceApps(pc, freshApps(pc));
+  }
+  changed();
   if (pc instanceof Pc) void askPcSystem(placed.label).then((s) => { choosePcSystem(pc, s); changed(); });
 }

@@ -1,4 +1,4 @@
-/** English (UK): páginas web simuladas: gestión web de Server y del router Linux, Roundcube y gestión web de IOS. */
+/** English (UK): páginas web simuladas: gestión web de Server y del router GNU/Linux, Roundcube y gestión web de IOS. */
 import type { WebKey } from '../es-ES/web.ts';
 
 export const WEB_EN: Readonly<Record<WebKey, string>> = {
@@ -212,7 +212,7 @@ export const WEB_EN: Readonly<Record<WebKey, string>> = {
   'vpnw.handshake': 'Latest handshake',
   'vpnw.traffic': 'Traffic',
   'vpnw.noPeers': 'No peers.',
-  'vpnw.onlyRouter': 'WireGuard is only on the Linux router.',
+  'vpnw.onlyRouter': 'WireGuard is only on the GNU/Linux router.',
   'vpnw.tunnel': 'Tunnel wg0',
   'vpnw.tunnelHelp': 'wg-quick@wg0: turning it on also starts it at boot. Open the UDP port in the firewall if the input chain drops.',
   'vpnw.enabled': 'Enabled',

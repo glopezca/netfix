@@ -99,7 +99,8 @@ try {
   await page.selectOption('select.select >> nth=0', 'servidores');
   await page.dblclick('g.device-server');
   await page.click('.win-tab:has-text("Servicios")');
-  assert.equal(await page.locator('.subnav-item:has-text("Parámetros"), .subnav-item:has-text("Firewall")').count(), 0, 'a Server has no kernel panels');
+  assert.equal(await page.locator('.subnav-item:has-text("Parámetros")').count(), 1, 'the kernel parameters are always there');
+  assert.equal(await page.locator('.subnav-item:has-text("Firewall")').count(), 0, 'the firewall only when installed or ticked');
   await page.click('.subnav-item:has-text("DNS")');
   assert.match(await page.locator(".subnav-content").innerText(), /Autoritativo[\s\S]*aula\.lab/);
   await page.click('.win-close');
@@ -113,10 +114,10 @@ try {
   await page.click('button:has-text("Enviar")');
   await page.click('button:has-text("Recibir")');
   assert.match(await page.locator('.grid-table').last().innerText(), /Prueba e2e/);
-  // PC0 runs Windows: the Linux terminal is that of PC1.
+  // PC0 runs Windows: the GNU/Linux terminal is that of PC1.
   await page.click('.win-close');
   await page.dblclick('g.device-pc >> nth=1');
-  await page.click('.win-tab:has-text("Terminal Linux")');
+  await page.click('.win-tab:has-text("Terminal GNU/Linux")');
   await type('ssh admin@srv.aula.lab');
   assert.match(await page.locator('.terminal:visible').innerText(), /ED25519 key fingerprint is SHA256:/);
   await type('yes');

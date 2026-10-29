@@ -1,5 +1,5 @@
 // End-to-end check of the brand marks (v0.19.3): documentation bullets are the hollow diamond of the logo alone, and
-// the footer credit of the WebGUI of servers and Linux routers is the primary N isotype.
+// the footer credit of the WebGUI of servers and GNU/Linux routers is the primary N isotype.
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { join, dirname } from 'node:path';

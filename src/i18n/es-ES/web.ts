@@ -1,4 +1,4 @@
-/** Español (España): páginas web simuladas: gestión web de Server y del router Linux, Roundcube y gestión web de IOS. */
+/** Español (España): páginas web simuladas: gestión web de Server y del router GNU/Linux, Roundcube y gestión web de IOS. */
 export const WEB_ES = {
   'wa.tab.setup': 'Configuración',
   'wa.tab.services': 'Servicios',
@@ -210,7 +210,7 @@ export const WEB_ES = {
   'vpnw.handshake': 'Último handshake',
   'vpnw.traffic': 'Tráfico',
   'vpnw.noPeers': 'Sin pares.',
-  'vpnw.onlyRouter': 'WireGuard solo está en el router Linux.',
+  'vpnw.onlyRouter': 'WireGuard solo está en el router GNU/Linux.',
   'vpnw.tunnel': 'Túnel wg0',
   'vpnw.tunnelHelp': 'wg-quick@wg0: al activarlo también arranca con el equipo. Abre el puerto UDP en el cortafuegos si la cadena input descarta.',
   'vpnw.enabled': 'Activado',

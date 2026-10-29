@@ -10,7 +10,7 @@ export const UI_ES = {
   'win.cmd': 'Terminal Windows',
   'term.timestampPrompt': 'Prompt con marca de fecha y hora',
   'term.timestampLocked': '(bloqueado por el profesor)',
-  'win.linuxTerm': 'Terminal Linux',
+  'win.linuxTerm': 'Terminal GNU/Linux',
   'win.cmdOf': 'Terminal Windows de {name}',
   'win.termOf': 'Terminal de {name}',
   'win.ip': 'Configuración IP',

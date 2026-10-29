@@ -1298,3 +1298,41 @@ web de Server y router Linux muestra lo desactivado en gris, o lo oculta con un 
 - **Revisión (v0.25.0):** archivos anteriores sin `enabled` mantienen Correo en los PCs con cuenta; `apps` en las
   pestañas que el profesor puede listar (`TAB_IDS`, EMBED.md); una página apagada pedida por su dirección (también
   oculta) responde con el aviso y su POST no ejecuta otra acción; la ventana reabierta recibe su sitio como argumento.
+
+### Fase 43: apt en GNU/Linux, servidores sin servicios de serie, huevos de Pascua y «GNU/Linux» (v0.26.0)
+
+Petición: `apt` en los terminales GNU/Linux con las fuentes reales de Ubuntu 26.04 (resolute) y alcance limitado;
+solo funciona con salida a la Internet emulada y DNS que resuelvan los repositorios. Servidores y routers nuevos sin
+servicios (salvo parámetros del kernel); `apt install/remove` activa o quita la casilla del servicio. Huevos de
+Pascua en la ayuda (créditos de mc y `apt moo`). «Linux» como SO pasa a «GNU/Linux».
+
+- **Fuentes:** `/etc/apt/sources.list` (solo el comentario de Ubuntu) y `/etc/apt/sources.list.d/ubuntu.sources`
+  (deb822: archive.ubuntu.com resolute, -updates, -backports; security.ubuntu.com resolute-security), copiados del
+  formato real de 24.04 con la suite cambiada.
+- **Red real:** cada fuente se comprueba con el resolutor y una petición HTTP de su `InRelease` por la red simulada.
+  Errores reales: sin DNS que responda «Temporary failure resolving 'x'»; NXDOMAIN «Could not resolve 'x'»; sin
+  ruta o filtrado «Could not connect to x:80 (ip), connection timed out»; rechazo «… - connect (111: Connection
+  refused)». `apt update`: Hit:/Err: y «All packages are up to date.» con los avisos `Warning: Failed to fetch …`.
+- **Catálogo ficticio** (`src/shells/apt-catalog.ts`): paquetes de servicio con su versión y dependencias
+  (openssh-server/ssh → SSH; kea-dhcp4-server/kea → DHCP; bind9 → DNS; apache2 → HTTP; postfix, dovecot-imapd,
+  dovecot-pop3d → correo; nftables → firewall; wireguard/wireguard-tools → VPN; rsyslog → registros) y paquetes
+  base (no se pueden quitar: «Removing essential system-critical packages is not permitted»).
+- **Órdenes** (formato de apt 3): `update`, `upgrade`/`full-upgrade` (todo al día), `autoremove` (nada que quitar),
+  `install`/`remove`/`purge` (descarga simulada que pasa tiempo de simulación, `Continue? [Y/n]` salvo `-y`,
+  efecto real en la casilla del equipo), `list --installed`, `moo` (idéntico al real: 1, 2 o 3 «moo», frases de
+  fechas especiales y el del 1 de abril, según el reloj simulado). Sin root: el error real del bloqueo de dpkg.
+- **Equipos:** Server y router GNU/Linux nuevos: IP, ficheros, registros y su terminal; ningún servicio. Los
+  parámetros del kernel no tienen casilla: se ven siempre (si el laboratorio no los quita). La página Enrutamiento de
+  la gestión web depende de nftables (firewall). En el laboratorio, servidor con parámetros y firewall por defecto
+  (la casilla del equipo decide). Archivos anteriores sin `enabled`: los servidores conservan todos sus servicios.
+  Un cambio de casillas (casilla o apt) reabre la ventana abierta del equipo en la pestaña donde estaba.
+- **DNS públicos:** más nombres de los repositorios (es.archive, ports, changelogs, keyserver, esm, api.launchpad).
+- **Ayuda:** apt en Órdenes (utils), página «Huevos de Pascua» (mc y apt moo), Configuración al día.
+- **GNU/Linux:** en la interfaz y la ayuda, «Linux» como sistema operativo pasa a «GNU/Linux» (Terminal GNU/Linux,
+  Router GNU/Linux…); el kernel, `uname` y las salidas reales no cambian.
+- **Pruebas:** apt con y sin red (DNS caído, NXDOMAIN, sin ruta), install/remove con efecto, root, moo y fechas,
+  catálogo, valores por defecto, migración; e2e: `sudo apt install apache2` en el terminal añade HTTP a Servicios.
+- **Hecho (v0.26.0):** como en el plan, con dos ajustes: los laboratorios grabados ya no limitan servicios a nivel de
+  laboratorio (LAB_PRESETS fuera: cada equipo muestra lo que usa y lo que se instale con apt aparece siempre), y «sin
+  servicios» se aplica a los equipos colocados desde la paleta (los archivos y laboratorios conservan lo suyo, sin
+  migración). `apt moo` comprobado contra el apt real (1, 2 y 3 moos, seis fechas). e2e nuevo `scripts/e2e-apt.mjs`.

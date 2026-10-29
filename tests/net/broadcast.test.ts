@@ -16,7 +16,7 @@ import { parseIp } from '../../src/core/ip.ts';
 const ip = (s: string): number => parseIp(s) ?? 0;
 const all = (l: string[]): string => l.join('\n');
 
-/** LAN 1 (192.168.1.0/24): router Gi0/0 .1, Linux PC .10, Windows PC .11, server .20. LAN 2: Linux PC .10 on Gi0/1. */
+/** LAN 1 (192.168.1.0/24): router Gi0/0 .1, GNU/Linux PC .10, Windows PC .11, server .20. LAN 2: GNU/Linux PC .10 on Gi0/1. */
 function lab() {
   const t = new Topology();
   const sw = t.add('switch', 0, 0).device;
@@ -92,7 +92,7 @@ test('a limited broadcast never crosses a router', () => {
   assert.deepEqual(from(all(createShell(lx, 'linux').run('ping -b -c 1 255.255.255.255'))), ['192.168.1.1', '192.168.1.20']);
 });
 
-test('Linux router: bc_forwarding forwards a directed broadcast (0 by default)', () => {
+test('GNU/Linux router: bc_forwarding forwards a directed broadcast (0 by default)', () => {
   const t = new Topology();
   const lr = t.add('linuxrouter', 0, 0).device as Server;
   const a = t.add('pc', 0, 0).device as Pc;
@@ -143,7 +143,7 @@ test('review: combined flags (-bc 1) and an outbound ACL also stop a relayed dir
   assert.match(out, /64 bytes from 192\.168\.2\.1: /, 'IOS itself still answers an echo to the broadcast of one of its networks');
 });
 
-test('ping -b from every kind of sender: Server, Linux router, IOS switch, Windows and a PC with a DHCP address', () => {
+test('ping -b from every kind of sender: Server, GNU/Linux router, IOS switch, Windows and a PC with a DHCP address', () => {
   const t = new Topology();
   const sw = t.add('switch', 0, 0).device;
   const r = t.add('router', 0, 0).device as Router;
@@ -175,7 +175,7 @@ test('ping -b from every kind of sender: Server, Linux router, IOS switch, Windo
   assert.match(out, /Reply to request 0 from 192\.168\.1\.20, 1 ms/);
 });
 
-test('review: a Linux router that forwards a directed broadcast answers it once, not twice', () => {
+test('review: a GNU/Linux router that forwards a directed broadcast answers it once, not twice', () => {
   const t = new Topology();
   const lr = t.add('linuxrouter', 0, 0).device as Server;
   const a = t.add('pc', 0, 0).device as Pc;

@@ -1,4 +1,4 @@
-/** Documentación: Midnight Commander y los editores nano y vim de la Terminal Linux. */
+/** Documentación: Midnight Commander y los editores nano y vim de la Terminal GNU/Linux. */
 import type { DocPage } from './types.ts';
 import { check, code, exercise, h, list, note, p, steps, table, term, tip, warn } from './types.ts';
 
@@ -83,7 +83,7 @@ export const EDITOR_DOCS: readonly DocPage[] = [
       ),
       check('Compruébalo', 'Sal con **F10** y lista el destino: `ls -l /var/www/html`. Si copiaste una página web, ábrela desde el navegador de un PC.'),
       warn('Errores típicos', 'Pulsar **F8** sobre el directorio equivocado: no hay papelera, lo borrado no vuelve. Copiar a un directorio sin permiso de escritura (Permission denied): usa `sudo mc`. Olvidar en qué panel estás: la operación va siempre **del panel resaltado al otro**.'),
-      exercise('Publica una página', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», crea con mc un directorio `practica` en `/var/www/html` y copia allí un fichero de tu home.', 'En SRV, Terminal Linux: `sudo mc ~ /var/www/html`. Con **Tab** pasa al panel derecho, pulsa **F7**, escribe `practica` e Intro. Entra en él con Intro, vuelve al izquierdo con Tab, sitúate en el fichero y pulsa **F5** e Intro. Desde PC0, el navegador abre http://192.168.10.2/practica/ y lista el fichero (o lo muestra si se llama index.html).'),
+      exercise('Publica una página', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», crea con mc un directorio `practica` en `/var/www/html` y copia allí un fichero de tu home.', 'En SRV, Terminal GNU/Linux: `sudo mc ~ /var/www/html`. Con **Tab** pasa al panel derecho, pulsa **F7**, escribe `practica` e Intro. Entra en él con Intro, vuelve al izquierdo con Tab, sitúate en el fichero y pulsa **F5** e Intro. Desde PC0, el navegador abre http://192.168.10.2/practica/ y lista el fichero (o lo muestra si se llama index.html).'),
     ],
   },
   {

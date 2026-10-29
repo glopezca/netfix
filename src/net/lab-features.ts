@@ -20,9 +20,8 @@ export const FEATURES_BY_KIND: Readonly<Record<DeviceKind, readonly FeatureId[]>
   cloud: [],
 };
 
-/** On by default: a server's kernel and firewall panels, and the Linux router's Windows terminal, are extras. */
+/** On by default, except the Linux router's Windows terminal (each device then decides: device-apps.ts). */
 const DEFAULT_OFF: Readonly<Partial<Record<DeviceKind, readonly FeatureId[]>>> = {
-  server: ['sysctl', 'firewall'],
   linuxrouter: ['windows'],
 };
 

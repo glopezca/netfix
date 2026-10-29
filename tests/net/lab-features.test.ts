@@ -5,23 +5,23 @@ import { featureOn, featuresOf, setFeature, parseFeatures, FEATURES_BY_KIND } fr
 import { EXAMPLES } from '../../src/net/examples.ts';
 import { Topology } from '../../src/net/topology.ts';
 
-test('defaults: PCs and servers have both terminals; the Linux router has kernel and firewall but no Windows terminal', () => {
+test('defaults: everything allowed but the Windows terminal of the GNU/Linux router (each device then decides)', () => {
   const none = {};
   assert.deepEqual(featuresOf(none, 'pc'), ['ip', 'apps', 'linux', 'windows']);
-  assert.deepEqual(featuresOf(none, 'server'), ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'linux', 'windows']);
+  assert.deepEqual(featuresOf(none, 'server'), ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'sysctl', 'firewall', 'linux', 'windows']);
   assert.deepEqual(featuresOf(none, 'linuxrouter'), ['sysctl', 'firewall', 'vpn', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'linux']);
   assert.deepEqual(featuresOf(none, 'router'), ['cli', 'web']);
-  assert.equal(featureOn(none, 'server', 'firewall'), false);
+  assert.equal(featureOn(none, 'server', 'firewall'), true);
   assert.equal(featureOn(none, 'linuxrouter', 'windows'), false);
   assert.deepEqual(FEATURES_BY_KIND.server, ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'sysctl', 'firewall', 'linux', 'windows'], 'each service on its own');
 });
 
 test('a change keeps only what differs from the defaults, and a feature a kind lacks is ignored', () => {
-  let f = setFeature({}, 'server', 'firewall', true);
-  assert.deepEqual(f, { server: ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'firewall', 'linux', 'windows'] });
+  let f = setFeature({}, 'server', 'firewall', false);
+  assert.deepEqual(f, { server: ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'sysctl', 'linux', 'windows'] });
   f = setFeature(f, 'pc', 'windows', false);
   assert.equal(featureOn(f, 'pc', 'windows'), false);
-  f = setFeature(f, 'server', 'firewall', false);
+  f = setFeature(f, 'server', 'firewall', true);
   assert.deepEqual(Object.keys(f), ['pc'], 'back to the default: the server entry goes away');
   assert.deepEqual(setFeature({}, 'pc', 'firewall', true), {}, 'a PC has no firewall panel');
 });
@@ -45,18 +45,7 @@ test('the lab settings travel with the topology file', () => {
   assert.equal(featureOn(again.features, 'pc', 'linux'), true);
 });
 
-test('recorded labs bring only the services they use; bastionado adds kernel and firewall; a blank network keeps them all', async () => {
-  const lab = (id: string) => EXAMPLES.find((e) => e.id === id)!.build().features;
-  assert.deepEqual(featuresOf(lab('servidores'), 'server'), ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'linux', 'windows']);
-  assert.deepEqual(featuresOf(lab('dns-reenvio'), 'server'), ['ip', 'dhcp', 'dns', 'files', 'log', 'linux', 'windows']);
-  assert.deepEqual(featuresOf(lab('bastionado'), 'server'), ['ip', 'ssh', 'dns', 'http', 'files', 'log', 'sysctl', 'firewall', 'linux', 'windows']);
-  assert.deepEqual(featuresOf(lab('vpn-wireguard'), 'linuxrouter'), ['sysctl', 'firewall', 'vpn', 'ssh', 'files', 'log', 'linux']);
-  assert.deepEqual(lab('basico'), {}, 'no servers: the defaults');
-  assert.deepEqual(new Topology().features, {}, 'Nuevo: every service but kernel and firewall');
-});
-
-test('a file from v0.24.0 with the old «services» switch keeps every service panel', () => {
-  const old = parseFeatures({ server: ['ip', 'services', 'firewall', 'linux', 'windows'], linuxrouter: ['sysctl', 'linux'] });
-  assert.deepEqual(featuresOf(old, 'server'), ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'firewall', 'linux', 'windows']);
-  assert.deepEqual(featuresOf(old, 'linuxrouter'), ['sysctl', 'linux'], 'without it, the router had no services');
+test('recorded labs limit nothing in the lab settings (each device shows what it runs: lab-devices.test.ts)', () => {
+  for (const ex of EXAMPLES) assert.deepEqual(ex.build().features, {}, ex.id);
+  assert.deepEqual(new Topology().features, {}, 'Nuevo: the defaults');
 });

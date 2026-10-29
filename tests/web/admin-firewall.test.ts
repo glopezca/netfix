@@ -1,4 +1,4 @@
-/** Management GUI → Seguridad of the Linux router: firewall and routing pages (same model as the CLI and the Services tab). */
+/** Management GUI → Seguridad of the GNU/Linux router: firewall and routing pages (same model as the CLI and the Services tab). */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
@@ -75,7 +75,7 @@ test('Seguridad → Enrutamiento: the «Activar router» checkbox shows and chan
   assert.match(createShell(srv, 'linux', 'root').run('sysctl net.ipv4.ip_forward').join('\n'), /= 0/);
 });
 
-test('a Server has no Seguridad tab in its management GUI (it belongs to the Linux router)', () => {
+test('a Server has no Seguridad tab in its management GUI (it belongs to the GNU/Linux router)', () => {
   const t = new Topology();
   const srv = t.add('server', 0, 0).device as Server;
   const pc = t.add('pc', 0, 0).device as Pc;

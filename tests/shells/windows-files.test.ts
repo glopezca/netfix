@@ -100,12 +100,12 @@ test('edit opens the full-screen editor on the Windows path and saves to the Lin
   assert.deepEqual(win.run('edit'), ['The syntax of the command is incorrect.']);
 });
 
-test('a Windows server works as the admin account of its Linux system', () => {
+test('a Windows server works as the admin account of its GNU/Linux system', () => {
   const t = new Topology();
   const srv = t.add('server', 0, 0).device as Server;
   const win = createShell(srv, 'windows');
   assert.equal(win.prompt(), 'C:\\home\\admin>');
-  assert.deepEqual(win.run('echo web> \\var\\www\\html\\prueba.html'), ['Access is denied.'], 'the web root is root\'s, as in its Linux terminal');
+  assert.deepEqual(win.run('echo web> \\var\\www\\html\\prueba.html'), ['Access is denied.'], 'the web root is root\'s, as in its GNU/Linux terminal');
   assert.deepEqual(win.run('type \\var\\www\\html\\index.html').length > 0, true);
   assert.equal(srv.services.http.files.some((f) => f.name === 'prueba.html'), false);
 });

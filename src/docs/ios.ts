@@ -118,7 +118,7 @@ export const IOS_DOCS: DocGroup = {
         term('shell', 'alumno@pc2:~$ traceroute -n 172.16.10.2\ntraceroute to 172.16.10.2 (172.16.10.2), 30 hops max, 60 byte packets\n 1  172.16.20.1  8.400 ms  4.211 ms  4.292 ms\n 2  *  172.16.10.2  8.400 ms  8.211 ms'),
         h('Todas las órdenes de configuración'),
         table(['Orden', 'Uso'], [
-          ['hostname NOMBRE · banner motd #texto# · enable secret|password', 'Identidad y acceso. En Netfix el hostname sale del nombre del equipo (pestaña Equipo), como en los equipos Linux: hostname solo acepta ese nombre, y al cargar una configuración guardada o pegada su línea hostname se ignora.'],
+          ['hostname NOMBRE · banner motd #texto# · enable secret|password', 'Identidad y acceso. En Netfix el hostname sale del nombre del equipo (pestaña Equipo), como en los equipos GNU/Linux: hostname solo acepta ese nombre, y al cargar una configuración guardada o pegada su línea hostname se ignora.'],
           ['interface IF · interface range fa0/1 - 10', 'Seleccionar interfaces (g0/0, fa0/1, g0/0.10…).'],
           ['ip address IP MÁSCARA [secondary] · ip address dhcp', 'Dirección IP de la interfaz.'],
           ['shutdown / no shutdown · description · speed · duplex', 'Estado y parámetros físicos.'],

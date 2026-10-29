@@ -1,11 +1,11 @@
-/** English (UK): Linux router (interfaces and routes). */
+/** English (UK): GNU/Linux router (interfaces and routes). */
 import type { RouterKey } from '../es-ES/router.ts';
 
 export const ROUTER_EN: Readonly<Record<RouterKey, string>> = {
   'router.ifaces': 'Interfaces',
   'router.ifacesIntro': 'The hardware of a 2911 (GigabitEthernet0/0-2) running Ubuntu: eth0-2. eth0 is the WAN (static or DHCP). Changes here are the running configuration, like “ip addr”; they are kept in the topology file so they survive a restart of the simulated device.',
   'router.port': 'Port',
-  'router.linux': 'Linux',
+  'router.linux': 'GNU/Linux',
   'router.address': 'IPv4 address',
   'router.mask': 'Mask',
   'router.state': 'State',

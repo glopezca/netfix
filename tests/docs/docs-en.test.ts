@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import type { DocBlock, DocPage } from '../../src/docs/types.ts';
 
-const DOCS = ['outline', 'netfix', 'settings', 'ios', 'ios-stp', 'ios-dhcp', 'ios-sec', 'services', 'dns', 'http', 'mail', 'ssh', 'webapps', 'internet', 'security', 'clients', 'linux', 'editors', 'bash-lang', 'bash-ref', 'utils', 'bash-builtins'];
+const DOCS = ['outline', 'netfix', 'settings', 'ios', 'ios-stp', 'ios-dhcp', 'ios-sec', 'services', 'dns', 'http', 'mail', 'ssh', 'webapps', 'internet', 'security', 'clients', 'linux', 'apt', 'editors', 'bash-lang', 'bash-ref', 'utils', 'bash-builtins'];
 
 const isPage = (v: unknown): v is DocPage => typeof v === 'object' && v !== null && 'blocks' in v && 'id' in v;
 function pagesOf(v: unknown): readonly DocPage[] | null {
@@ -83,13 +83,13 @@ test('the Help tab and man follow the interface language', async () => {
   const { setLocale } = await import('../../src/i18n/locale.ts');
   try {
     setLocale('en-GB');
-    assert.equal(docGroups().find((g) => g.id === 'linux')?.title, 'Linux Terminal');
+    assert.equal(docGroups().find((g) => g.id === 'linux')?.title, 'GNU/Linux Terminal');
     assert.equal(findPage('ios-ipsec')?.id, 'ios-ipsec');
     assert.match(manPage('ls') ?? '', /SEE ALSO\n\s+The Help tab/);
     assert.match(manPage('bash') ?? '', /version 5\.3\.20 in Netfix/);
     assert.ok(searchDocs('wireguard').length > 0);
     setLocale('es-ES');
-    assert.equal(docGroups().find((g) => g.id === 'linux')?.title, 'Terminal Linux');
+    assert.equal(docGroups().find((g) => g.id === 'linux')?.title, 'Terminal GNU/Linux');
     assert.match(manPage('ls') ?? '', /La pestaña Ayuda/);
   } finally {
     setLocale('es-ES');

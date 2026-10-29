@@ -1,6 +1,6 @@
 /**
  * The Configuración tab of a PC, Server or Linux router: which applications, service panels and terminals the device
- * shows, among what its lab allows. A change reopens the window with the new tabs.
+ * shows, among what its lab allows. A change redraws the window with the new tabs (device-windows.ts).
  */
 import { el } from './dom.ts';
 import { t, tDynamic } from '../i18n/t.ts';
@@ -25,14 +25,14 @@ function group(title: string, boxes: readonly HTMLElement[]): HTMLElement[] {
   return boxes.length ? [el('fieldset', { class: 'set-group dev-group' }, el('legend', {}, title), ...boxes)] : [];
 }
 
-export function deviceConfig(h: Host, reopen: () => void): HTMLElement {
+export function deviceConfig(h: Host, changed: () => void): HTMLElement {
   const allowed = APPS_BY_KIND[h.kind].filter((id) => labAllows(labViewOf(h).features, h.kind, id));
   const box = (id: FeatureId): HTMLElement => {
     const input = el('input', { type: 'checkbox', name: `dev-${id}`, checked: deviceApps(h).includes(id) });
     input.addEventListener('change', () => {
       const rest = deviceApps(h).filter((x) => x !== id);
       setDeviceApps(h, input.checked ? [...rest, id] : rest);
-      reopen();
+      changed();
     });
     return el('label', { class: 'set-choice' }, input, appName(h, id));
   };

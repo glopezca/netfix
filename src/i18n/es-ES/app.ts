@@ -1,7 +1,7 @@
 /** Español (España): barra superior, paleta, vistas y mensajes generales de la aplicación. */
 export const APP_ES = {
   'app.title': 'Netfix — laboratorio de redes',
-  'app.description': 'Simulador de redes estilo Packet Tracer con CLI de Cisco IOS, servidores Linux y Windows y laboratorios.',
+  'app.description': 'Simulador de redes estilo Packet Tracer con CLI de Cisco IOS, servidores GNU/Linux y Windows y laboratorios.',
   'app.noscript': 'Netfix necesita JavaScript para simular la red.',
   'top.examples': 'Laboratorios…',
   'top.examplesLabel': 'Abrir un laboratorio de ejemplo',
@@ -34,7 +34,7 @@ export const APP_ES = {
   'pal.zoomOut': 'Alejar',
   'pal.zoomFit': 'Ajustar a la red',
   'kind.router': 'Router IOS',
-  'kind.linuxrouter': 'Router Linux',
+  'kind.linuxrouter': 'Router GNU/Linux',
   'kind.switch': 'Switch IOS',
   'kind.pc': 'PC',
   'kind.server': 'Servidor',

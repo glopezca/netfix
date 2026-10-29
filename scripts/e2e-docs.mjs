@@ -29,7 +29,7 @@ try {
   await page.click('button:has-text("Ayuda")');
   await page.waitForSelector('.doc-group-box');
   const groups = await page.locator('.doc-group-title').allInnerTexts();
-  assert.deepEqual(groups.slice(0, 7), ['Netfix', 'PC', 'Servidor', 'Switch IOS', 'Router IOS', 'Router Linux', 'Nube ISP']);
+  assert.deepEqual(groups.slice(0, 7), ['Netfix', 'PC', 'Servidor', 'Switch IOS', 'Router IOS', 'Router GNU/Linux', 'Nube ISP']);
   assert.equal(await page.locator('.doc-group-box[data-group="servidor"] svg.doc-group-icon').count(), 1, 'the palette icon of the group');
   // Open Servidor → DHCP: its group unfolds and the crumb shows group › section.
   await page.locator('.doc-group-box[data-group="servidor"] > summary').click();

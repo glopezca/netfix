@@ -57,7 +57,7 @@ export const BASH_REFERENCE: readonly DocPage[] = [
       ]),
       code("PS1='\\[\\e[01;32m\\]\\u@\\h\\[\\e[00m\\]:\\[\\e[01;34m\\]\\w\\[\\e[00m\\]\\$ '   # el de Ubuntu"),
       tip('Copia de seguridad', 'Antes de tocar `~/.bashrc`, `cp ~/.bashrc ~/.bashrc.bak`: si el prompt queda roto, `cp ~/.bashrc.bak ~/.bashrc` y abre otra terminal.'),
-      exercise('Tu prompt', 'En la Terminal Linux de PC1, haz que el prompt muestre usuario@equipo y la ruta completa, y que se conserve en las siguientes sesiones.', "`echo 'PS1=\"\\u@\\h:\\w\\$ \"' >> ~/.bashrc` y `source ~/.bashrc`. Tras `cd /var/log` el prompt es «alumno@pc1:/var/log$». \\w es la ruta completa (con ~ para tu home) y \\W solo su último componente."),
+      exercise('Tu prompt', 'En la Terminal GNU/Linux de PC1, haz que el prompt muestre usuario@equipo y la ruta completa, y que se conserve en las siguientes sesiones.', "`echo 'PS1=\"\\u@\\h:\\w\\$ \"' >> ~/.bashrc` y `source ~/.bashrc`. Tras `cd /var/log` el prompt es «alumno@pc1:/var/log$». \\w es la ruta completa (con ~ para tu home) y \\W solo su último componente."),
     ],
   },
   {
@@ -95,7 +95,7 @@ export const BASH_REFERENCE: readonly DocPage[] = [
       h('Ficheros de arranque'),
       list(
         'Shell de inicio de sesión (SSH, sudo -i, su -, bash -l): /etc/profile y luego ~/.profile, que carga ~/.bashrc. Al salir, ~/.bash_logout.',
-        'Shell interactivo normal (la Terminal Linux, bash): /etc/bash.bashrc y ~/.bashrc.',
+        'Shell interactivo normal (la Terminal GNU/Linux, bash): /etc/bash.bashrc y ~/.bashrc.',
         'Scripts (bash script.sh, ./script.sh con #!): no leen ningún fichero.',
         '~/.bashrc de Ubuntu: prompt en color, HISTCONTROL=ignoreboth, alias ls/grep con color, ll, la y l.',
         'command_not_found_handle (en /etc/bash.bashrc) sugiere el paquete: «Command \'ifconfig\' not found, but can be installed with: sudo apt install net-tools».',
@@ -138,7 +138,7 @@ export const BASH_REFERENCE: readonly DocPage[] = [
       p('orden & arranca un trabajo en segundo plano. En Netfix no hay procesos reales: el trabajo termina al momento y bash avisa con [1]+ Done antes del siguiente prompt. jobs, wait, fg, bg, disown y kill se aceptan con su sintaxis y mensajes.'),
       note('Cada orden tiene un límite de 4 s de cálculo para que un bucle infinito no bloquee la página; al superarlo se interrumpe como con Ctrl+C.'),
       warn('Expansión del historial', 'El `!` se expande también dentro de comillas dobles y de un here-document pegado en la terminal: `echo "¡Hola!"` funciona, pero `"hola!x"` busca la orden «x…» («event not found»). Usa comillas simples o `set +H`.'),
-      exercise('La errata', 'En la Terminal Linux de PC1, escribe `cat /etc/hostnmae` (con la errata) y corrígela sin volver a escribir la orden.', 'Sale «cat: /etc/hostnmae: No such file or directory». `^nmae^name` repite la orden corregida: bash muestra «cat /etc/hostname» y después su contenido, pc1.'),
+      exercise('La errata', 'En la Terminal GNU/Linux de PC1, escribe `cat /etc/hostnmae` (con la errata) y corrígela sin volver a escribir la orden.', 'Sale «cat: /etc/hostnmae: No such file or directory». `^nmae^name` repite la orden corregida: bash muestra «cat /etc/hostname» y después su contenido, pc1.'),
     ],
   },
   {

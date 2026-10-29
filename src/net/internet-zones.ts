@@ -33,7 +33,10 @@ const BASE_ZONES: readonly PublicZone[] = [
   { origin: 'wikipedia.org', records: [A('wikipedia.org', '185.15.58.224'), CNAME('www.wikipedia.org', 'dyna.wikimedia.org'), CNAME('es.wikipedia.org', 'dyna.wikimedia.org')], ns: { name: 'ns0.wikimedia.org', ip: '208.80.154.238' } },
   { origin: 'wikimedia.org', records: [A('dyna.wikimedia.org', '185.15.58.224')], ns: { name: 'ns0.wikimedia.org', ip: '208.80.154.238' } },
   { origin: 'github.com', records: [A('github.com', '140.82.121.4'), CNAME('www.github.com', 'github.com')], ns: { name: 'dns1.p08.nsone.net', ip: '198.51.44.8' } },
-  { origin: 'ubuntu.com', records: [A('ubuntu.com', '185.125.190.20'), A('www.ubuntu.com', '185.125.190.20'), A('archive.ubuntu.com', '185.125.190.81'), A('security.ubuntu.com', '185.125.190.82')], ns: { name: 'ns1.canonical.com', ip: '91.189.95.3' } },
+  { origin: 'ubuntu.com', records: [A('ubuntu.com', '185.125.190.20'), A('www.ubuntu.com', '185.125.190.20'), A('archive.ubuntu.com', '185.125.190.81'), A('security.ubuntu.com', '185.125.190.82'),
+    // the other names of the Ubuntu repositories (apt, mirrors, release upgrades, keys, Ubuntu Pro)
+    A('es.archive.ubuntu.com', '185.125.190.83'), A('ports.ubuntu.com', '185.125.190.39'), A('changelogs.ubuntu.com', '185.125.190.18'),
+    A('keyserver.ubuntu.com', '185.125.188.27'), A('esm.ubuntu.com', '185.125.188.62'), A('motd.ubuntu.com', '185.125.188.59'), A('releases.ubuntu.com', '185.125.190.37')], ns: { name: 'ns1.canonical.com', ip: '91.189.95.3' } },
   { origin: 'debian.org', records: [A('debian.org', '151.101.2.132'), A('www.debian.org', '151.101.2.132'), A('deb.debian.org', '151.101.2.132')], ns: { name: 'nsp.dnsnode.net', ip: '194.58.198.32' } },
   { origin: 'cisco.com', records: [A('cisco.com', '72.163.4.185'), A('www.cisco.com', '23.212.248.9')], ns: { name: 'ns1.cisco.com', ip: '72.163.5.201' } },
   { origin: 'paypal.me', records: [A('paypal.me', '151.101.1.21')], ns: { name: 'ns1.p57.dynect.net', ip: '208.78.70.57' } },

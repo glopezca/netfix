@@ -62,6 +62,11 @@ export class WindowManager {
     }
   }
 
+  /** The tab shown now in the window of a key. */
+  selectedTab(key: string): string | undefined {
+    return this.open.get(key)?.root.querySelector<HTMLElement>('.win-tab[aria-selected="true"]')?.dataset.tab;
+  }
+
   /** The window element of a key (to reopen it in the same place). */
   element(key: string): HTMLElement | undefined {
     return this.open.get(key)?.root;
@@ -139,7 +144,7 @@ function place(root: HTMLElement, offset: number): void {
 function tabStrip(tabs: readonly Tab[], tabBar: HTMLElement, body: HTMLElement): (tab: Tab) => void {
   const rendered = new Map<string, HTMLElement>();
   const buttons = tabs.map((tab) => {
-    const b = el('button', { class: 'win-tab', type: 'button', role: 'tab', 'aria-selected': 'false' }, tab.label);
+    const b = el('button', { class: 'win-tab', type: 'button', role: 'tab', 'aria-selected': 'false', 'data-tab': tab.id }, tab.label);
     b.addEventListener('click', () => select(tab));
     tabBar.appendChild(b);
     return b;

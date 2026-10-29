@@ -1,9 +1,9 @@
-/** Español (España): VPN WireGuard del router Linux (pestaña Servicios → VPN y gestión web). */
+/** Español (España): VPN WireGuard del router GNU/Linux (pestaña Servicios → VPN y gestión web). */
 export const VPN_ES = {
   'vpn.tab': 'VPN',
   'vpn.service': 'Túnel WireGuard wg0 (wg-quick@wg0)',
   'vpn.intro': 'Lo que guardas aquí se escribe en /etc/wireguard/wg0.conf y, si el túnel está en marcha, se reinicia. Activarlo también lo deja habilitado al arrancar. Con «wg set» en la terminal solo cambias lo que está en marcha.',
-  'vpn.notRouter': 'WireGuard solo está disponible en el router Linux.',
+  'vpn.notRouter': 'WireGuard solo está disponible en el router GNU/Linux.',
   'vpn.interface': 'Interfaz',
   'vpn.privateKey': 'Clave privada',
   'vpn.publicKey': 'Clave pública (dásela a los pares)',

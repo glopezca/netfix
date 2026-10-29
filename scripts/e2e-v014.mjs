@@ -37,7 +37,7 @@ try {
   await page.waitForFunction(() => document.querySelector('.window input[name="hostname"]')?.value === 'aula-publica-2o');
   assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('name')), 'pretty', 'focus moved on to the next field after the redraw');
   assert.equal(await page.locator('g.device-pc .device-label', { hasText: 'Aula Pública 2º' }).count(), 1);
-  await page.click('.win-tab:has-text("Terminal Linux")');
+  await page.click('.win-tab:has-text("Terminal GNU/Linux")');
   assert.match(await page.locator('.terminal:visible .term-prompt').innerText(), /@aula-publica-2o:/);
   await page.click('.win-close');
   // The diagram: name and IP/CIDR, the host name is not repeated.
@@ -51,7 +51,7 @@ try {
   await page.dblclick('g.device-server');
   await page.click('.win-tab:has-text("Servicios")');
   const items = await page.locator('.window:visible .subnav-item').allInnerTexts();
-  assert.deepEqual(items, ['SSH', 'DHCP', 'DNS', 'HTTP', 'Correo', 'Configuración', 'Registros']);
+  assert.deepEqual(items, ['Parámetros', 'SSH', 'DHCP', 'DNS', 'HTTP', 'Correo', 'Configuración', 'Registros'], 'kernel parameters always (v0.26)');
   await page.click('.subnav-item:has-text("DNS")');
   const block = page.locator('.listen-block');
   assert.match(await block.innerText(), /Interfaces de escucha[\s\S]*Todas[\s\S]*eth0[\s\S]*lo/);
@@ -81,7 +81,7 @@ try {
   if (shots) await page.screenshot({ path: `${shots}/logs.png` });
   await page.click('.win-close');
 
-  // Linux router: the NIC address applies on change (no «Aplicar»); the lab shows only what it uses (kernel, firewall).
+  // GNU/Linux router: the NIC address applies on change (no «Aplicar»); the lab shows only what it uses (kernel, firewall).
   await page.selectOption('select.select >> nth=0', 'linux-dmz');
   await page.dblclick('g.device:has-text("FW")');
   await page.click('.win-tab:has-text("Servicios")');
@@ -89,7 +89,7 @@ try {
   assert.deepEqual(routerItems, ['Parámetros', 'Firewall', 'Configuración', 'Registros'], routerItems.join(' | '));
   await page.click('.window:visible .subnav-item:has-text("Registros")');
   const routerUnits = (await page.locator('.window:visible select').first().locator('option').allTextContents()).map((o) => o.split(' ')[0]);
-  assert.deepEqual(routerUnits, ['ssh', 'nftables', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot'], 'a Linux router: nftables second');
+  assert.deepEqual(routerUnits, ['ssh', 'nftables', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot'], 'a GNU/Linux router: nftables second');
   await page.click('.win-tab:has-text("Interfaces")');
   const eth2 = page.locator('.window:visible .nic-row:has-text("GigabitEthernet0/2")');
   assert.equal(await eth2.locator('button:has-text("Aplicar")').count(), 0);

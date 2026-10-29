@@ -1,6 +1,5 @@
 /** Ready-made labs that show each DHCP feature working. */
-import { parseFeatures } from './lab-features.ts';
-import { LAB_PRESETS, setLabDevices } from './lab-presets.ts';
+import { setLabDevices } from './lab-presets.ts';
 import { newZone } from '../services/dns-zones.ts';
 import { decorateLab } from './lab-areas.ts';
 import { LABS_ES } from '../i18n/es-ES/labs.ts';
@@ -323,7 +322,6 @@ interface GigabitEthernet0/0
 export const EXAMPLES: readonly Example[] = LABS.map((ex) => ({ ...ex, build: () => withPreset(ex.id, decorateLab(ex.id, ex.build())) }));
 
 function withPreset(id: string, topo: Topology): Topology {
-  topo.features = parseFeatures(LAB_PRESETS[id] ?? {});
   setLabDevices(id, topo);
   return topo;
 }

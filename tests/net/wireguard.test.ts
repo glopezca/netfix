@@ -1,4 +1,4 @@
-/** WireGuard between two Linux routers: wg/wg-quick, cryptokey routing, NAT traversal and keepalive. */
+/** WireGuard between two GNU/Linux routers: wg/wg-quick, cryptokey routing, NAT traversal and keepalive. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';

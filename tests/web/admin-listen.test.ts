@@ -101,7 +101,7 @@ test('review: applying the initial list unchanged keeps it implicit; a form with
   assert.equal(srv.services.dns.publicNames?.entries, undefined);
 });
 
-test('order of the web GUI: Routing before Firewall on a Linux router; DNS: listen interfaces before the operating mode', () => {
+test('order of the web GUI: Routing before Firewall on a GNU/Linux router; DNS: listen interfaces before the operating mode', () => {
   const { web } = lab();
   const menu = body(web.open(`${URL}?page=dns`));
   const at = (page: string): number => menu.indexOf(`?page=${page}"`);

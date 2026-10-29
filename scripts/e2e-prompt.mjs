@@ -29,13 +29,13 @@ try {
   const prompt = () => page.locator('.terminal:visible .term-prompt').innerText();
   const box = () => page.locator('.terminal:visible .term-foot-box');
 
-  // PC: tick it in the Linux terminal; the Windows terminal of the same device follows; untick restores both.
+  // PC: tick it in the GNU/Linux terminal; the Windows terminal of the same device follows; untick restores both.
   await page.selectOption('select.select >> nth=0', 'servidores');
   await page.dblclick('g.device-pc >> nth=0');
-  // PC0 runs Windows: its Configuración tab adds the Linux terminal (the window reopens on that tab).
+  // PC0 runs Windows: its Configuración tab adds the GNU/Linux terminal (the window reopens on that tab).
   await page.click('.win-tab:text-is("Configuración")');
   await page.locator('.window input[name="dev-linux"]').check();
-  await page.click('.win-tab:has-text("Terminal Linux")');
+  await page.click('.win-tab:has-text("Terminal GNU/Linux")');
   const plain = await prompt();
   assert.equal(await box().isChecked(), false);
   assert.match(await page.locator('.terminal:visible .term-foot').innerText(), /Prompt con marca de fecha y hora/);
@@ -47,19 +47,19 @@ try {
   assert.match(await prompt(), WINDOWS);
   await box().uncheck();
   assert.doesNotMatch(await prompt(), WINDOWS);
-  await page.click('.win-tab:has-text("Terminal Linux")');
+  await page.click('.win-tab:has-text("Terminal GNU/Linux")');
   assert.equal(await prompt(), plain, 'the previous PS1 is back');
   await page.click('.win-close');
 
-  // Server and Linux router have the box too.
+  // Server and GNU/Linux router have the box too.
   await page.dblclick('g.device-server');
-  await page.click('.win-tab:has-text("Terminal Linux")');
+  await page.click('.win-tab:has-text("Terminal GNU/Linux")');
   await box().check();
   assert.match(await prompt(), LINUX);
   await page.click('.win-close');
   await page.selectOption('select.select >> nth=0', 'linux-dmz');
   await page.dblclick('g.device:has-text("FW")');
-  await page.click('.win-tab:has-text("Terminal Linux")');
+  await page.click('.win-tab:has-text("Terminal GNU/Linux")');
   await box().check();
   assert.match(await prompt(), LINUX);
   assert.deepEqual(errors, []);

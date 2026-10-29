@@ -56,7 +56,7 @@ test('netplan nameservers.search: a static host gets its search list, in resolv.
   assert.match(all(root.run('netplan apply; echo $?')), /search domain.*bad_domain!/);
 });
 
-test('a saved /etc/hosts applies as soon as the topology loads, before the Linux system of the host is first used', () => {
+test('a saved /etc/hosts applies as soon as the topology loads, before the GNU/Linux system of the host is first used', () => {
   const t = new Topology();
   const pc = t.add('pc', 0, 0).device as Pc;
   pc.setStatic({ ip: 0x0a000001, prefix: 24 });

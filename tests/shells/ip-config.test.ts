@@ -1,4 +1,4 @@
-/** Network configuration from the Linux terminal: ip, netplan, dhclient and hostnamectl change the device (and notify the GUI). */
+/** Network configuration from the GNU/Linux terminal: ip, netplan, dhclient and hostnamectl change the device (and notify the GUI). */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';

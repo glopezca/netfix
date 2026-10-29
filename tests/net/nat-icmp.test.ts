@@ -1,7 +1,7 @@
 /**
  * ICMP errors "related" to a translated connection go back through the NAT (RFC 5508): the router translates the
  * outer destination and the quoted header back to the inside local address and port, so the client behind the NAT
- * learns that its connection failed. Both IOS NAT and nftables masquerade on a Linux router.
+ * learns that its connection failed. Both IOS NAT and nftables masquerade on a GNU/Linux router.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -91,7 +91,7 @@ test('NatTable.outside translates an ICMP error back: outer destination and quot
   assert.equal(nat.outside({ ...error, icmp: { ...error.icmp!, orig: { ...error.icmp!.orig!, sport: sport + 1 } } }, []), null, 'an error about no translation is not forwarded inside');
 });
 
-test('behind nftables masquerade on a Linux router, the error is translated back too', () => {
+test('behind nftables masquerade on a GNU/Linux router, the error is translated back too', () => {
   const sh = createShell(lab(true), 'linux', 'alumno');
   assert.deepEqual(sh.run('curl -s -o /dev/null -w "%{http_code}\\n" http://172.16.0.10/'), ['200']);
   assert.match(sh.run('nc -zv -w 3 172.16.0.10 22 2>&1').join('\n'), /failed: No route to host/);

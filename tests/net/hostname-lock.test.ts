@@ -1,5 +1,5 @@
 /**
- * The host name of PCs, servers and Linux routers always comes from the device name (Equipo): it is derived when the
+ * The host name of PCs, servers and GNU/Linux routers always comes from the device name (Equipo): it is derived when the
  * device is created, opened from a file or renamed, and the terminal, sysctl, /etc/hostname and the web GUI cannot
  * change it. The pretty name stays free.
  */
@@ -16,7 +16,7 @@ import { parseIp } from '../../src/core/ip.ts';
 
 const all = (l: string[]): string => l.join('\n');
 
-test('derived on creation and on rename; the Windows and Linux terminals show it', () => {
+test('derived on creation and on rename; the Windows and GNU/Linux terminals show it', () => {
   const t = new Topology();
   const p = t.add('pc', 0, 0);
   const pc = p.device as Pc;

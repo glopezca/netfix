@@ -3,7 +3,7 @@ import type { AppKey } from '../es-ES/app.ts';
 
 export const APP_EN: Readonly<Record<AppKey, string>> = {
   'app.title': 'Netfix — network lab',
-  'app.description': 'Packet Tracer-style network simulator with the Cisco IOS CLI, Linux and Windows servers, and labs.',
+  'app.description': 'Packet Tracer-style network simulator with the Cisco IOS CLI, GNU/Linux and Windows servers, and labs.',
   'app.noscript': 'Netfix needs JavaScript to simulate the network.',
   'top.examples': 'Labs…',
   'top.examplesLabel': 'Open an example lab',
@@ -36,7 +36,7 @@ export const APP_EN: Readonly<Record<AppKey, string>> = {
   'pal.zoomOut': 'Zoom out',
   'pal.zoomFit': 'Fit to network',
   'kind.router': 'IOS router',
-  'kind.linuxrouter': 'Linux router',
+  'kind.linuxrouter': 'GNU/Linux router',
   'kind.switch': 'IOS switch',
   'kind.pc': 'PC',
   'kind.server': 'Server',

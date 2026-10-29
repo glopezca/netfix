@@ -1,7 +1,7 @@
-/** Per-device switches (Configuración tab of each PC, Server and Linux router), within what the lab allows. */
+/** Per-device switches (Configuración tab of each PC, Server and GNU/Linux router), within what the lab allows. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { choosePcSystem, defaultApps, deviceApps, setDeviceApps, customApps, appAvailable, parseApps, labViewOf, APPS_BY_KIND } from '../../src/net/device-apps.ts';
+import { choosePcSystem, freshApps, onAppsChange, defaultApps, deviceApps, setDeviceApps, customApps, appAvailable, parseApps, labViewOf, APPS_BY_KIND } from '../../src/net/device-apps.ts';
 import { setFeature } from '../../src/net/lab-features.ts';
 import { Topology } from '../../src/net/topology.ts';
 import type { Pc } from '../../src/devices/pc.ts';
@@ -10,8 +10,10 @@ import type { Server } from '../../src/devices/server.ts';
 test('defaults: a PC has IP, browser and SSH but no mail or SFTP, and only the terminal of its system', () => {
   assert.deepEqual(defaultApps({ kind: 'pc', os: 'windows' }), ['ip', 'browser', 'ssh', 'windows']);
   assert.deepEqual(defaultApps({ kind: 'pc', os: 'linux' }), ['ip', 'browser', 'ssh', 'linux']);
-  assert.deepEqual(defaultApps({ kind: 'server', os: 'linux' }), ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'sysctl', 'firewall', 'linux']);
-  assert.deepEqual(defaultApps({ kind: 'linuxrouter', os: 'linux' }), ['sysctl', 'firewall', 'vpn', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'linux']);
+  assert.deepEqual(defaultApps({ kind: 'server', os: 'linux' }), ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'firewall', 'linux']);
+  assert.deepEqual(defaultApps({ kind: 'linuxrouter', os: 'linux' }), ['firewall', 'vpn', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'linux']);
+  assert.deepEqual(freshApps({ kind: 'server', os: 'linux' }), ['ip', 'files', 'log', 'linux'], 'placed from the palette: no service');
+  assert.deepEqual(freshApps({ kind: 'linuxrouter', os: 'linux' }), ['files', 'log', 'linux']);
   assert.deepEqual(APPS_BY_KIND.pc, ['ip', 'browser', 'mail', 'ssh', 'sftp', 'linux', 'windows']);
 });
 
@@ -32,9 +34,12 @@ test('available = allowed by the lab and switched on in the device', () => {
   const srv = t.add('server', 0, 0).device as Server;
   assert.equal(appAvailable(pc, 'browser'), true);
   assert.equal(appAvailable(pc, 'mail'), false, 'off in the device');
-  assert.equal(appAvailable(srv, 'firewall'), false, 'on in the device, off in the lab');
-  t.features = setFeature(t.features, 'server', 'firewall', true);
-  assert.equal(appAvailable(srv, 'firewall'), true, 'the device follows the lab it is in');
+  assert.equal(appAvailable(srv, 'sysctl'), true, 'the kernel parameters have no box: always there');
+  setDeviceApps(srv, freshApps(srv));
+  assert.equal(appAvailable(srv, 'sysctl'), true);
+  assert.equal(appAvailable(srv, 'firewall'), false, 'not installed');
+  t.features = setFeature(t.features, 'server', 'sysctl', false);
+  assert.equal(appAvailable(srv, 'sysctl'), false, 'unless the lab takes them away');
   t.features = setFeature(t.features, 'pc', 'apps', false);
   assert.equal(appAvailable(pc, 'browser'), false, 'the lab «apps» switch covers the four PC applications');
   assert.equal(labViewOf(srv).webHideOff, false);
@@ -84,4 +89,15 @@ test('a file from before v0.25 (no «enabled»): a PC with a mail account keeps 
   const again = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
   const pc2 = [...again.placed.values()].find((p) => p.device.kind === 'pc')!.device as Pc;
   assert.ok(deviceApps(pc2).includes('mail'));
+});
+
+test('a change of boxes is announced (the open window follows it); the same list is not', () => {
+  const t = new Topology();
+  const srv = t.add('server', 0, 0).device as Server;
+  const seen: unknown[] = [];
+  onAppsChange((d) => seen.push(d));
+  setDeviceApps(srv, deviceApps(srv));
+  assert.equal(seen.length, 0);
+  setDeviceApps(srv, freshApps(srv));
+  assert.deepEqual(seen, [srv]);
 });

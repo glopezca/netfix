@@ -1,5 +1,5 @@
 /**
- * Page frame of the management GUI of Server and Linux router: a top bar, a side menu grouped by area and the page
+ * Page frame of the management GUI of Server and GNU/Linux router: a top bar, a side menu grouped by area and the page
  * as cards (title, help, form). The look lives in the app's CSS (`web-adm-*`): the simulated browser copies no
  * styles or scripts, so icons are CSS glyphs and every interaction is a link or a form.
  */
@@ -33,7 +33,7 @@ export const PAGES: readonly AdminPage[] = [
 
 /** The device switch behind each page (Configuración, Administración and Estado are always there). */
 const PAGE_FEATURE: Readonly<Record<string, FeatureId>> = {
-  ssh: 'ssh', dhcp: 'dhcp', dns: 'dns', web: 'http', mail: 'mail', routing: 'sysctl', firewall: 'firewall', vpn: 'vpn', files: 'files', log: 'log',
+  ssh: 'ssh', dhcp: 'dhcp', dns: 'dns', web: 'http', mail: 'mail', routing: 'firewall', firewall: 'firewall', vpn: 'vpn', files: 'files', log: 'log',
 };
 
 /** Switched off in the device (its Configuración tab) or in its lab. */
@@ -43,7 +43,7 @@ export function pageOff(server: Server, id: string): boolean {
 }
 
 /**
- * Pages of a device: Security (firewall, routes, VPN) only on a Linux router; Ficheros only on Linux; those switched
+ * Pages of a device: Security (firewall, routes, VPN) only on a GNU/Linux router; Ficheros only on Linux; those switched
  * off are left out when the lab says so (else they are shown greyed).
  */
 export function pagesOf(server: Server): readonly AdminPage[] {
@@ -103,7 +103,7 @@ function menu(server: Server, base: string, current: AdminPage): Markup {
 }
 
 export function frame(server: Server, base: string, current: AdminPage, notice: { ok?: string; error?: string }, body: Child): string {
-  const kind = server.kind === 'linuxrouter' ? 'Router Linux' : server.os === 'windows' ? 'Windows Server' : 'Server';
+  const kind = server.kind === 'linuxrouter' ? 'Router GNU/Linux' : server.os === 'windows' ? 'Windows Server' : 'Server';
   return page(`${server.name} · ${pageLabel(current.id)}`, 'web-adm',
     h('header', { class: 'web-adm-top' },
       h('span', { class: 'web-brand-logo', title: 'Netfix' }, 'Netfix'),

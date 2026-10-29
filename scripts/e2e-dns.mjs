@@ -57,7 +57,7 @@ try {
   assert.match(await page.locator('.dns-zone-editor').innerText(), /Esta zona admite: A, CNAME, MX, NS, TXT/);
   await page.click('.win-close');
 
-  // 2. Linux router → Services → Parameters: the box mirrors ip_forward and cannot be clicked.
+  // 2. GNU/Linux router → Services → Parameters: the box mirrors ip_forward and cannot be clicked.
   await page.selectOption('select.select >> nth=0', 'linux-dmz');
   await page.dblclick('g.device:has-text("FW")');
   await page.click('.win-tab:has-text("Servicios")');

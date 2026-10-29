@@ -1,4 +1,4 @@
-/** Registros: SSH first, nftables second (Linux routers only), then Kea, BIND, Apache, Postfix and Dovecot. */
+/** Registros: SSH first, nftables second (GNU/Linux routers only), then Kea, BIND, Apache, Postfix and Dovecot. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { logUnits } from '../../src/services/units.ts';

@@ -29,13 +29,13 @@ export const SERVICE_DOCS: DocGroup = {
         h('The Services tab'),
         steps(
           ['Choose the service', 'The menu follows this order: **SSH** (the first thing to manage the device remotely), **DHCP**, **DNS**, **HTTP**, **Email**, **Configuration** and **Logs**.'],
-          ['Switch it on', 'Each service has its switch. Changes apply at once and are written to the configuration files the Linux Terminal sees.'],
+          ['Switch it on', 'Each service has its switch. Changes apply at once and are written to the configuration files the GNU/Linux Terminal sees.'],
           ['Check', '**Configuration** shows those files as they are on disk and **Logs** what each service writes down, both with vim’s colours.'],
         ),
         tip('Fixed IP address', 'A server always needs the same IP address: the PCs have it noted as their DNS server, mail server… Give it a **static** one in IP Configuration, never one from DHCP.'),
         h('What each service is called'),
         p('The operating system (Ubuntu or Windows Server, in the Device tab) decides what each service is called and how it is managed from the terminal:'),
-        table(['Service', 'Port', 'systemd unit (Ubuntu)', 'Windows service', 'Configuration on Linux'], [
+        table(['Service', 'Port', 'systemd unit (Ubuntu)', 'Windows service', 'Configuration on GNU/Linux'], [
           ['SSH', '22/tcp', 'ssh', 'sshd', '/etc/ssh/sshd_config'],
           ['DHCP', '67/udp', 'kea-dhcp4-server', 'DHCPServer', '/etc/kea/kea-dhcp4.conf, /var/lib/kea/kea-leases4.csv'],
           ['DNS', '53/udp', 'bind9 (named)', 'DNS', '/etc/bind/named.conf.options, /etc/bind/named.conf.local, /etc/bind/db.<zone>'],
@@ -47,7 +47,7 @@ export const SERVICE_DOCS: DocGroup = {
         term('shell', 'admin@srv:~$ systemctl status bind9\n● bind9.service - BIND Domain Name Server\n     Loaded: loaded (/usr/lib/systemd/system/bind9.service; enabled; preset: enabled)\n     Active: active (running)\n     Main PID: 845 (named)'),
         code('admin@srv:~$ sudo systemctl stop apache2\nadmin@srv:~$ sudo systemctl enable --now bind9\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 20\nadmin@srv:~$ ss -tulpn\n\nC:\\home\\admin> sc query W3SVC\nC:\\home\\admin> net stop DNS'),
         warn('Without sudo', 'systemctl start, stop, restart, enable and disable answer “Interactive authentication required”, as on Ubuntu: they need root privileges.'),
-        exercise('Which ports is it listening on?', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, find out from SRV’s Linux Terminal which services are listening and on which ports.', '`ss -tulpn` lists 53/udp (named), 67/udp (kea-dhcp4), 22 (sshd), 25 (postfix: master), 80 (apache2), 110 and 143 (dovecot) and 10000 (netfix-webui, the server’s web management).'),
+        exercise('Which ports is it listening on?', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, find out from SRV’s GNU/Linux Terminal which services are listening and on which ports.', '`ss -tulpn` lists 53/udp (named), 67/udp (kea-dhcp4), 22 (sshd), 25 (postfix: master), 80 (apache2), 110 and 143 (dovecot) and 10000 (netfix-webui, the server’s web management).'),
       ],
     },
     {
@@ -79,7 +79,7 @@ export const SERVICE_DOCS: DocGroup = {
             { from: 1, to: 0, text: 'ACK', note: '“It’s yours for 1 day (lease)”' },
           ],
         }, 'The four DHCP messages. In Simulation, with the DHCP filter, they show up step by step.'),
-        tip('Watch it live', 'Click **Simulation**, keep only the DHCP filter and on the PC run `ipconfig /renew` (Windows) or `sudo dhclient eth0` (Linux). With **Step** you will see DISCOVER, OFFER, REQUEST and ACK, and picking each one shows its layers (Ethernet, IPv4, UDP 67/68 and the DHCP message).'),
+        tip('Watch it live', 'Click **Simulation**, keep only the DHCP filter and on the PC run `ipconfig /renew` (Windows) or `sudo dhclient eth0` (GNU/Linux). With **Step** you will see DISCOVER, OFFER, REQUEST and ACK, and picking each one shows its layers (Ethernet, IPv4, UDP 67/68 and the DHCP message).'),
         h('Setting it up in Netfix'),
         steps(
           ['Open the server', 'Double-click the Server → **Services** tab → **DHCP**.'],
@@ -134,9 +134,9 @@ export const SERVICE_DOCS: DocGroup = {
         h('Step by step'),
         steps(
           ['Switch the service on', '**Services → SSH**: **SSH service (port 22)**.'],
-          ['Create the account', 'In **SSH users**, user and password, and **Add**. The account also exists in the server’s Linux system (/etc/passwd and /home/<user>).'],
+          ['Create the account', 'In **SSH users**, user and password, and **Add**. The account also exists in the server’s GNU/Linux system (/etc/passwd and /home/<user>).'],
           ['Choose the authentication', '**User and password** and/or **Key pair**: they are written to /etc/ssh/sshd_config and ssh is reloaded.'],
-          ['Connect from a PC', '`ssh user@server` in the Linux Terminal or the Windows Terminal (or the SSH Client app). The first time, answer **yes** to the server’s fingerprint.'],
+          ['Connect from a PC', '`ssh user@server` in the GNU/Linux Terminal or the Windows Terminal (or the SSH Client app). The first time, answer **yes** to the server’s fingerprint.'],
         ),
         term('shell', "alumno@pc1:~$ ssh admin@srv.aula.lab\nThe authenticity of host 'srv.aula.lab (192.168.10.2)' can't be established.\nED25519 key fingerprint is SHA256:lcQmKtMREqLLbRRWefrD17pEjPrj25sOLsaZTYE4m38.\nThis key is not known by any other names.\nAre you sure you want to continue connecting (yes/no/[fingerprint])? yes\nWarning: Permanently added 'srv.aula.lab' (ED25519) to the list of known hosts.\nadmin@srv.aula.lab's password:\nWelcome to Ubuntu 26.04 LTS (GNU/Linux 6.17.0-generic x86_64)\nadmin@srv:~$ hostname\nsrv\nadmin@srv:~$ exit 3\nlogout\nConnection to srv.aula.lab closed.\nalumno@pc1:~$ echo $?\n3"),
         p('Inside the session you work as on the server itself: nano and vim open full screen, and Ctrl+C and Ctrl+D go to the remote device. The session’s exit status (exit 3) reaches the PC.'),
@@ -161,7 +161,7 @@ export const SERVICE_DOCS: DocGroup = {
         p('The last two entries of **Services** are for checking the work, not for changing anything. **Configuration** shows the files the panels write, as they are on disk right now (like `cat` run by root). **Logs** shows what each service writes down, like `journalctl -u`. Both use vim’s colours, so what you see here is what you would see opening the file on a real Ubuntu.'),
         h('Configuration'),
         steps(
-          ['Pick the service', 'In the **Service** list: SSH, DHCP (Kea), DNS (BIND), HTTP (Apache) or Mail. On the Linux router, first its parameters (sysctl), the firewall and the VPN.'],
+          ['Pick the service', 'In the **Service** list: SSH, DHCP (Kea), DNS (BIND), HTTP (Apache) or Mail. On the GNU/Linux router, first its parameters (sysctl), the firewall and the VPN.'],
           ['Read each file', 'Each file appears with its path and the syntax highlighted. If you change something in a panel or in the terminal, click **Refresh** to see it.'],
         ),
         table(['Colour (dark background)', 'vim group', 'What it marks'], [
@@ -174,9 +174,9 @@ export const SERVICE_DOCS: DocGroup = {
         ]),
         term('named', 'options {\n\tdirectory "/var/cache/bind";\n\t// Recursive: resolves any name for the allowed clients\n\trecursion yes;\n\tlisten-on { any; };\n};'),
         h('Logs'),
-        p('The list starts with **ssh** (the first thing to look at when remote access fails); on the Linux router **nftables** comes next; then kea-dhcp4-server, bind9, apache2, postfix and dovecot. Each line has date, time, host, program and PID, and those with an error show white on red.'),
+        p('The list starts with **ssh** (the first thing to look at when remote access fails); on the GNU/Linux router **nftables** comes next; then kea-dhcp4-server, bind9, apache2, postfix and dovecot. Each line has date, time, host, program and PID, and those with an error show white on red.'),
         term('messages', 'Oct 24 09:12:03 srv sshd[701]: Accepted password for admin from 192.168.10.100 port 50022 ssh2\nOct 24 09:13:40 srv sshd[701]: error: maximum authentication attempts exceeded for ana from 192.168.20.10'),
-        check('Check it in the terminal', 'The same comes out in the server’s Linux Terminal: `cat /etc/bind/named.conf.options` or `vim` for the file, `journalctl -u ssh -n 20` for the logs.'),
+        check('Check it in the terminal', 'The same comes out in the server’s GNU/Linux Terminal: `cat /etc/bind/named.conf.options` or `vim` for the file, `journalctl -u ssh -n 20` for the logs.'),
         tip('In web management', 'The management web page (Status → Configuration and Status → Logs) shows the same with vim’s colours for a light background.'),
         exercise('Why can’t Ana get in?', 'In the «Hardening: ACL, nftables and sshd» lab, try to log in over SSH to the server as ana (password ana1) from the ADMIN PC and find the reason in Logs.', 'On SRV-INTRANET → Services → Logs → ssh you find “User ana from 192.168.10.10 not allowed because not listed in AllowUsers”. In Configuration → SSH, `/etc/ssh/sshd_config.d/10-bastionado.conf` has `AllowUsers admin`: only admin may log in. From ALUMNO the connection does not even arrive: the GW router’s ACL and the server’s firewall allow SSH only from the administration network.'),
       ],

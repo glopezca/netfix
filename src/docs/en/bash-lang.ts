@@ -11,7 +11,7 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
     summary: 'Commands, lists, pipelines, grouping, quoting and comments: how a bash line is written.',
     markdownBase: MD,
     blocks: [
-      p('**bash** is Linux’s command interpreter: it reads what you type (or a script), expands it and runs it. Each line is a **command** with its arguments, and commands are combined: one after another, only if the previous one went well or badly, or connecting one’s output to the next one’s input (a **pipeline**).'),
+      p('**bash** is GNU/Linux’s command interpreter: it reads what you type (or a script), expands it and runs it. Each line is a **command** with its arguments, and commands are combined: one after another, only if the previous one went well or badly, or connecting one’s output to the next one’s input (a **pipeline**).'),
       h('Step by step: from a command to a pipeline'),
       steps(
         ['A command', '`ls /etc`: the program and its arguments, separated by spaces.'],
@@ -46,7 +46,7 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
       p('! case coproc do done elif else esac fi for function if in select then time until while { } [[ ]]'),
       warn('Common mistakes', 'Putting spaces in an assignment: `nombre = Ana` runs the command “nombre”. Forgetting the space or the `;` of `{ lista; }`. Using single quotes when you wanted a variable expanded.'),
       note('The Netfix interpreter is a reimplementation of GNU bash 5.3 (BASH_VERSION 5.3.20(1)-release): same parsing, same expansions and the same error messages (“syntax error near unexpected token”, “command not found”, “bad substitution”…).'),
-      exercise('Who uses bash?', 'In PC1’s Linux Terminal («Server: DHCP, DNS, web, mail and SSH» lab), count with a single line how many users in /etc/passwd have bash as their shell, and then show their names.', '`grep -c \'/bin/bash$\' /etc/passwd` gives 2. `cut -d: -f1,7 /etc/passwd | grep bash` shows root:/bin/bash and alumno:/bin/bash: cut keeps fields 1 (user) and 7 (shell) and grep filters the lines.'),
+      exercise('Who uses bash?', 'In PC1’s GNU/Linux Terminal («Server: DHCP, DNS, web, mail and SSH» lab), count with a single line how many users in /etc/passwd have bash as their shell, and then show their names.', '`grep -c \'/bin/bash$\' /etc/passwd` gives 2. `cut -d: -f1,7 /etc/passwd | grep bash` shows root:/bin/bash and alumno:/bin/bash: cut keeps fields 1 (user) and 7 (shell) and grep filters the lines.'),
     ],
   },
   {
@@ -97,7 +97,7 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
         'GLOBSORT (5.3) sorts the results: name, size, mtime, numeric, none; with a leading -, in reverse.',
       ),
       warn('Common mistakes', 'Looping over the output of `ls` with `for f in $(ls)`: it breaks with names containing spaces; use `for f in *`. Expecting `{1..$n}` to work: braces are expanded before variables (use `seq 1 "$n"` or `for (( ))`).'),
-      exercise('Change the extension', 'In PC1’s Linux Terminal, create a.txt, b.txt and c.txt and rename them all to .bak with a loop, without typing each name.', '`touch a.txt b.txt c.txt` and `for f in *.txt; do mv "$f" "${f%.txt}.bak"; done`. `ls` shows a.bak b.bak c.bak: `${f%.txt}` removes the suffix and the quotes protect names with spaces.'),
+      exercise('Change the extension', 'In PC1’s GNU/Linux Terminal, create a.txt, b.txt and c.txt and rename them all to .bak with a loop, without typing each name.', '`touch a.txt b.txt c.txt` and `for f in *.txt; do mv "$f" "${f%.txt}.bak"; done`. `ls` shows a.bak b.bak c.bak: `${f%.txt}` removes the suffix and the quotes protect names with spaces.'),
     ],
   },
   {
@@ -167,7 +167,7 @@ export const BASH_LANGUAGE: readonly DocPage[] = [
       ),
       tip('The order of an associative array', 'bash does not guarantee the order of `${!ip[@]}` (it comes out in its internal table’s order). If you need it sorted: `printf \'%s\\n\' "${!ip[@]}" | sort`.'),
       warn('Common mistakes', 'Using `return` to hand back a calculated number: it only takes statuses 0 to 255 (print the result with echo). Forgetting `declare -A` before an associative array: bash treats it as indexed and every key is 0. `${dias}` without an index is only the first element.'),
-      exercise('A useful function', 'In PC1’s Linux Terminal, write a function `doble` that prints twice its argument, store twice 21 in a variable and show it.', '`doble() { echo $(( $1 * 2 )); }`, `r=$(doble 21)` and `echo $r` gives 42. With `return $(( $1 * 2 ))` 42 would also come out in `$?`, but it would fail from 256 on.'),
+      exercise('A useful function', 'In PC1’s GNU/Linux Terminal, write a function `doble` that prints twice its argument, store twice 21 in a variable and show it.', '`doble() { echo $(( $1 * 2 )); }`, `r=$(doble 21)` and `echo $r` gives 42. With `return $(( $1 * 2 ))` 42 would also come out in `$?`, but it would fail from 256 on.'),
     ],
   },
   {

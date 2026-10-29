@@ -12,7 +12,7 @@ export const UI_EN: Readonly<Record<UiKey, string>> = {
   'win.cmd': 'Windows terminal',
   'term.timestampPrompt': 'Date and time stamped prompt',
   'term.timestampLocked': '(locked by the teacher)',
-  'win.linuxTerm': 'Linux terminal',
+  'win.linuxTerm': 'GNU/Linux terminal',
   'win.cmdOf': '{name} Windows terminal',
   'win.termOf': '{name} terminal',
   'win.ip': 'IP Configuration',

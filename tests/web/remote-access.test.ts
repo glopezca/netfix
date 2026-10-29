@@ -1,5 +1,5 @@
 /**
- * Remote management (web GUI) and Roundcube on a Server and on a Linux router, reached from a PC browser both on a port
+ * Remote management (web GUI) and Roundcube on a Server and on a GNU/Linux router, reached from a PC browser both on a port
  * of their own and as an alias of Apache: login, navigation inside the app, the files Apache shows, ss, persistence,
  * Apache on other ports, Apache stopped and changing the access at runtime.
  */

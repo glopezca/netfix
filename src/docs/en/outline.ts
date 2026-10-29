@@ -2,7 +2,7 @@
 import type { OutlineGroup } from '../outline.ts';
 
 export const OUTLINE: readonly OutlineGroup[] = [
-  { id: 'netfix', title: 'Netfix', sections: [[null, ['inicio', 'dibujo', 'guardar', 'simulacion', 'configuracion', 'usuarios']]] },
+  { id: 'netfix', title: 'Netfix', sections: [[null, ['inicio', 'dibujo', 'guardar', 'simulacion', 'configuracion', 'usuarios', 'huevos']]] },
   { id: 'pc', title: 'PC', icon: 'pc', sections: [[null, ['pc-ip', 'pc-equipo', 'pc-apps', 'windows-cmd']]] },
   {
     id: 'servidor', title: 'Server', icon: 'server', sections: [
@@ -17,10 +17,10 @@ export const OUTLINE: readonly OutlineGroup[] = [
   },
   { id: 'switch', title: 'IOS switch', icon: 'switch', sections: [['IOS CLI', ['ios-cli', 'ios-show']], ['Interfaces and VLANs', ['ios-otros']], ['Spanning tree', ['ios-stp']], ['Web management', ['ios-web']]] },
   { id: 'router', title: 'IOS router', icon: 'router', sections: [['DHCP', ['ios-dhcp', 'ios-reservas', 'ios-relay']], ['NAT and ACLs', ['ios-nat', 'ios-acl']], ['VPN', ['ios-ipsec']]] },
-  { id: 'linuxrouter', title: 'Linux router', icon: 'linuxrouter', sections: [['Parameters', ['linux-router']], ['Firewall', ['linux-nftables']], ['VPN', ['linux-wireguard']]] },
+  { id: 'linuxrouter', title: 'GNU/Linux router', icon: 'linuxrouter', sections: [['Parameters', ['linux-router']], ['Firewall', ['linux-nftables']], ['VPN', ['linux-wireguard']]] },
   { id: 'nube', title: 'ISP cloud', icon: 'cloud', sections: [[null, ['inet-cloud', 'inet-dns']]] },
   { id: 'red', icon: 'network', title: 'Networking concepts', sections: [[null, ['red-broadcast', 'inet-trace']]] },
-  { id: 'linux', icon: 'terminal', title: 'Linux Terminal', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red']], ['Midnight Commander', ['mc']], ['Editors', ['nano', 'vim']]] },
+  { id: 'linux', icon: 'terminal', title: 'GNU/Linux Terminal', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red', 'linux-apt']], ['Midnight Commander', ['mc']], ['Editors', ['nano', 'vim']]] },
   {
     id: 'bash', icon: 'script', title: 'GNU bash 5.3', sections: [
       ['Language', ['bash-sintaxis', 'bash-expansiones', 'bash-control', 'bash-funciones', 'bash-redirecciones']],

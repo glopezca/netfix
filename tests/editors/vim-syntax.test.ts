@@ -1,6 +1,6 @@
 /**
  * Syntax highlighting of configuration files as vim shows them (filetype detection and its highlight groups), for
- * the «Configuración» view of Linux servers and routers.
+ * the «Configuración» view of GNU/Linux servers and routers.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

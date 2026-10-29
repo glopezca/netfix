@@ -1,5 +1,5 @@
 /**
- * Fidelity of what the tools show: TTL 64 for Linux hosts, the ICMP unreachable codes (net, host, port,
+ * Fidelity of what the tools show: TTL 64 for GNU/Linux hosts, the ICMP unreachable codes (net, host, port,
  * administratively prohibited) in ping and traceroute, ip addr show DEV, ss options, dig without a server, `>>`
  * without permission, IOS broadcast ping and tracert, and the kernel `log` line of nftables.
  */
@@ -20,7 +20,7 @@ function lab(id: string): Topology {
 
 const shell = (t: Topology, label: string, user = 'alumno') => createShell(t.byLabel(label) as Pc, 'linux', user);
 
-test('a Linux host answers with TTL 64 and a Windows one with TTL 128', () => {
+test('a GNU/Linux host answers with TTL 64 and a Windows one with TTL 128', () => {
   const t = lab('servidores');
   const sh = shell(t, 'PC1');
   assert.match(sh.run('ping -c 1 192.168.10.2').join('\n'), /from 192\.168\.10\.2: icmp_seq=1 ttl=64 /, 'Ubuntu server');

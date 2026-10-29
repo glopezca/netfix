@@ -1,11 +1,11 @@
-/** English (UK): WireGuard VPN of the Linux router (Services → VPN tab and web admin). */
+/** English (UK): WireGuard VPN of the GNU/Linux router (Services → VPN tab and web admin). */
 import type { VpnKey } from '../es-ES/vpn.ts';
 
 export const VPN_EN: Readonly<Record<VpnKey, string>> = {
   'vpn.tab': 'VPN',
   'vpn.service': 'WireGuard tunnel wg0 (wg-quick@wg0)',
   'vpn.intro': 'What you save here is written to /etc/wireguard/wg0.conf and, if the tunnel is running, it is restarted. Turning it on also enables it at boot. With “wg set” in the terminal you only change the running tunnel.',
-  'vpn.notRouter': 'WireGuard is only available on the Linux router.',
+  'vpn.notRouter': 'WireGuard is only available on the GNU/Linux router.',
   'vpn.interface': 'Interface',
   'vpn.privateKey': 'Private key',
   'vpn.publicKey': 'Public key (give it to the peers)',

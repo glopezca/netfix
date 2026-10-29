@@ -36,16 +36,16 @@ try {
   await page.click('button.seg:has-text("Configuración")');
   const settings = page.locator('.settings');
   await settings.waitFor();
-  assert.equal(await settings.locator('input[data-feature="server:firewall"]').isChecked(), false, 'a server has no firewall panel by default');
+  assert.equal(await settings.locator('input[data-feature="server:firewall"]').isChecked(), true, 'the lab allows everything by default (v0.26)');
   assert.equal(await settings.locator('input[data-feature="linuxrouter:sysctl"]').isChecked(), true);
   if (shots) await page.screenshot({ path: `${shots}/settings.png`, fullPage: false });
   await settings.locator('input[data-feature="pc:windows"]').uncheck();
-  await settings.locator('input[data-feature="server:firewall"]').check();
+  await settings.locator('input[data-feature="server:sysctl"]').uncheck();
   await page.click('button.seg:has-text("Red")');
   assert.ok(!(await tabsOf('g.device-pc')).includes('Terminal Windows'), 'the PC lost its Windows terminal');
   await page.locator('g.device-server').first().dblclick();
   await page.click('.window .win-tab:has-text("Servicios")');
-  assert.ok(await page.locator('.window .subnav-item:has-text("Firewall")').count() > 0, 'the server gained the firewall panel');
+  assert.equal(await page.locator('.window .subnav-item:has-text("Parámetros")').count(), 0, 'the server lost its kernel parameters');
   await page.click('.win-close');
 
   // Theme: dark sets data-theme; the setting survives a reload, and so do the lab settings (autosave).
@@ -65,7 +65,7 @@ try {
   await stamp.check();
   await page.click('button.seg:has-text("Red")');
   await page.locator('g.device-pc').nth(1).dblclick(); // PC1 runs Linux
-  await page.click('.window .win-tab:has-text("Terminal Linux")');
+  await page.click('.window .win-tab:has-text("Terminal GNU/Linux")');
   assert.equal(await page.locator('.window .term-foot input').first().isChecked(), true, 'the terminal footer follows the global setting');
   await page.click('.win-close');
   await page.click('button.seg:has-text("Configuración")');
@@ -84,7 +84,7 @@ try {
   await settings.locator('input[name="set-theme"][value="auto"]').check();
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), undefined);
   assert.deepEqual(errors, []);
-  console.log('e2e settings OK: lab features change the windows (PC terminal off, server firewall on), theme and lab settings survive a reload, global timestamp prompt, unsaved question can be turned off');
+  console.log('e2e settings OK: lab features change the windows (PC terminal off, server kernel parameters off), theme and lab settings survive a reload, global timestamp prompt, unsaved question can be turned off');
 } finally {
   await browser.close();
   server.kill();

@@ -1,5 +1,5 @@
 /**
- * «Prompt con marca de fecha y hora»: a global setting (Configuración → Generales) that sets PS1 in the Linux terminal
+ * «Prompt con marca de fecha y hora»: a global setting (Configuración → Generales) that sets PS1 in the GNU/Linux terminal
  * (as the statement PS1="\[\e[32m\]\d \[\e[36m\]\A \[\e[33m\]\u@\h:\w\$ \[\e[0m\]" would) and the PowerShell-style prompt in the
  * Windows terminal; when a classroom locks it, forced on every device and SSH session.
  */

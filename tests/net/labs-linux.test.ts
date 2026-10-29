@@ -1,4 +1,4 @@
-/** Linux router DMZ lab and company DNS lab: what is allowed and what is blocked. */
+/** GNU/Linux router DMZ lab and company DNS lab: what is allowed and what is blocked. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EXAMPLES } from '../../src/net/examples.ts';

@@ -31,7 +31,7 @@ import { cloudSettings } from './cloud-device.ts';
 import { promptToggle } from './prompt-toggle.ts';
 import { onTimestampPrompt } from './preferences.ts';
 import { featureOn, SERVICE_IDS } from '../net/lab-features.ts';
-import { appAvailable } from '../net/device-apps.ts';
+import { appAvailable, onAppsChange } from '../net/device-apps.ts';
 import { deviceConfig } from './device-config.ts';
 import type { FeatureId } from '../net/lab-features.ts';
 import type { PromptToggle } from './prompt-toggle.ts';
@@ -186,15 +186,30 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost, again?: { init
   const svc: Tab[] = h instanceof Server && panels.length ? [{ id: 'svc', label: t('win.services'), render: () => servicesTab(h, app, panels) }] : [];
   const pcApps: Tab[] = h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
     { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }].filter((tab) => has(tab.id === 'web' ? 'browser' : tab.id as FeatureId)) : [];
-  const config: Tab = { id: 'apps', label: t('dev.tab'), render: () => deviceConfig(h, () => reopen(placed, h, app)) };
+  const config: Tab = { id: 'apps', label: t('dev.tab'), render: () => deviceConfig(h, () => app.afterCommand()) };
   const tabs: Tab[] = [settingsTab, ifTab, ...(h instanceof LinuxRouter ? svc : [...svc, ...(has('ip') ? [ipTab] : []), ...pcApps]), ...order.filter(has).map(terminal), config];
-  handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => disposers.forEach((f) => f()), again ?? {});
+  openHosts.set(h.id, { placed, app });
+  handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => { openHosts.delete(h.id); disposers.forEach((f) => f()); }, again ?? {});
 }
 
-/** The Configuración tab changed what the device shows: the same window again, in the same place, on that tab. */
-function reopen(placed: Placed, h: Host, app: WindowHost): void {
-  const like = app.windows.element(h.id);
-  app.windows.close(h.id);
-  openHostWindow(placed, h, app, { initial: 'apps', like });
-  app.afterCommand();
-}
+/** Host windows open now, to redraw them when their boxes change. */
+const openHosts = new Map<string, { placed: Placed; app: WindowHost }>();
+const reopening = new Set<string>();
+
+/**
+ * The boxes of a device changed (its Configuración tab, apt, a lab): its open window is drawn again with the new tabs,
+ * in the same place and on the same tab (a terminal keeps its session). After the current command, not during it.
+ */
+onAppsChange((d) => {
+  if (!(d instanceof Host) || !openHosts.has(d.id) || reopening.has(d.id)) return;
+  reopening.add(d.id);
+  setTimeout(() => {
+    reopening.delete(d.id);
+    const open = openHosts.get(d.id);
+    if (!open) return;
+    const initial = open.app.windows.selectedTab(d.id) ?? 'apps';
+    const like = open.app.windows.element(d.id);
+    open.app.windows.close(d.id);
+    openHostWindow(open.placed, d, open.app, { initial, like });
+  }, 0);
+});

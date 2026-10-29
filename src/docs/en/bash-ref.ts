@@ -57,7 +57,7 @@ export const BASH_REFERENCE: readonly DocPage[] = [
       ]),
       code("PS1='\\[\\e[01;32m\\]\\u@\\h\\[\\e[00m\\]:\\[\\e[01;34m\\]\\w\\[\\e[00m\\]\\$ '   # Ubuntu’s default"),
       tip('Backup', 'Before touching `~/.bashrc`, `cp ~/.bashrc ~/.bashrc.bak`: if the prompt ends up broken, `cp ~/.bashrc.bak ~/.bashrc` and open another terminal.'),
-      exercise('Your prompt', 'In PC1’s Linux Terminal, make the prompt show user@host and the full path, and keep it in later sessions.', "`echo 'PS1=\"\\u@\\h:\\w\\$ \"' >> ~/.bashrc` and `source ~/.bashrc`. After `cd /var/log` the prompt is “alumno@pc1:/var/log$”. \\w is the full path (with ~ for your home) and \\W only its last component."),
+      exercise('Your prompt', 'In PC1’s GNU/Linux Terminal, make the prompt show user@host and the full path, and keep it in later sessions.', "`echo 'PS1=\"\\u@\\h:\\w\\$ \"' >> ~/.bashrc` and `source ~/.bashrc`. After `cd /var/log` the prompt is “alumno@pc1:/var/log$”. \\w is the full path (with ~ for your home) and \\W only its last component."),
     ],
   },
   {
@@ -95,7 +95,7 @@ export const BASH_REFERENCE: readonly DocPage[] = [
       h('Startup files'),
       list(
         'Login shell (SSH, sudo -i, su -, bash -l): /etc/profile and then ~/.profile, which loads ~/.bashrc. On exit, ~/.bash_logout.',
-        'Normal interactive shell (the Linux Terminal, bash): /etc/bash.bashrc and ~/.bashrc.',
+        'Normal interactive shell (the GNU/Linux Terminal, bash): /etc/bash.bashrc and ~/.bashrc.',
         'Scripts (bash script.sh, ./script.sh with #!): read no files.',
         'Ubuntu’s ~/.bashrc: coloured prompt, HISTCONTROL=ignoreboth, ls/grep aliases with colour, ll, la and l.',
         'command_not_found_handle (in /etc/bash.bashrc) suggests the package: “Command \'ifconfig\' not found, but can be installed with: sudo apt install net-tools”.',
@@ -138,7 +138,7 @@ export const BASH_REFERENCE: readonly DocPage[] = [
       p('command & starts a job in the background. In Netfix there are no real processes: the job finishes at once and bash reports [1]+ Done before the next prompt. jobs, wait, fg, bg, disown and kill are accepted with their syntax and messages.'),
       note('Each command has a 4 s computation limit so that an infinite loop does not freeze the page; when exceeded it is interrupted as with Ctrl+C.'),
       warn('History expansion', 'The `!` is also expanded inside double quotes and in a here-document pasted into the terminal: `echo "¡Hola!"` works, but `"hola!x"` looks for the command “x…” (“event not found”). Use single quotes or `set +H`.'),
-      exercise('The typo', 'In PC1’s Linux Terminal, type `cat /etc/hostnmae` (with the typo) and fix it without typing the command again.', 'You get “cat: /etc/hostnmae: No such file or directory”. `^nmae^name` repeats the corrected command: bash shows “cat /etc/hostname” and then its contents, pc1.'),
+      exercise('The typo', 'In PC1’s GNU/Linux Terminal, type `cat /etc/hostnmae` (with the typo) and fix it without typing the command again.', 'You get “cat: /etc/hostnmae: No such file or directory”. `^nmae^name` repeats the corrected command: bash shows “cat /etc/hostname” and then its contents, pc1.'),
     ],
   },
   {

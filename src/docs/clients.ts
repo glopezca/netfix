@@ -48,7 +48,7 @@ export const CLIENT_DOCS: DocGroup = {
         ]),
         check('Compruébalo', 'En la Terminal Windows, `ipconfig /all` muestra la dirección IP, la máscara, la puerta de enlace, el servidor DHCP y las fechas de la concesión. Después, `ping` a la puerta de enlace y a un nombre.'),
         term('cmd', 'C:\\home\\alumno> ipconfig /all\n\nFastEthernet0 Connection:(default port)\n\n   Connection-specific DNS Suffix..: aula.lab\n   Physical Address................: 0063.B914.34B5\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\n   DHCP Servers....................: 192.168.10.2\n   DNS Servers.....................: 192.168.10.2\nC:\\home\\alumno> ping -n 2 srv.aula.lab\nReply from 192.168.10.2: bytes=32 time<1ms TTL=64'),
-        p('En la Terminal Linux, lo mismo con `ip -4 addr`, `ip route` (la puerta de enlace es la ruta «default») y `cat /etc/resolv.conf` (el servidor DNS).'),
+        p('En la Terminal GNU/Linux, lo mismo con `ip -4 addr`, `ip route` (la puerta de enlace es la ruta «default») y `cat /etc/resolv.conf` (el servidor DNS).'),
         warn('Errores típicos', 'Máscara distinta de la del resto de la red: hay equipos a los que «no se ve». Puerta de enlace fuera de la red del PC (o vacía): funciona dentro de la LAN pero no fuera. Dos equipos con la **misma dirección IP**: fallan los dos de forma intermitente. Una dirección **169.254.x.x** significa que DHCP no respondió: revisa el cable, el servidor y su pool.'),
         exercise('Del PC a mano al PC por DHCP', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», pon PC0 con la dirección IP estática 192.168.10.20/24, puerta 192.168.10.1 y DNS 192.168.10.2; comprueba con ping srv.aula.lab y después vuelve a DHCP.', 'Configuración IP → Estática y rellena los cuatro campos. En la Terminal Windows, `ping srv.aula.lab` responde desde 192.168.10.2. Vuelve a **DHCP**: `ipconfig` muestra de nuevo 192.168.10.100 (la concesión que el servidor le guardaba).'),
       ],
@@ -59,11 +59,11 @@ export const CLIENT_DOCS: DocGroup = {
       summary: 'El nombre del diagrama y el nombre de host que se deriva de él (no se cambia desde la terminal).',
       markdownBase: MD,
       blocks: [
-        p('Cada equipo tiene un **nombre** (el que ves en el diagrama, p. ej. «Aula Pública 2º») y un **nombre de host**, el que usa el sistema en la red (aula-publica-2o). En Netfix el segundo se deriva siempre del primero, como en una red bien organizada: así cada equipo del diagrama tiene un nombre de host predecible. Vale para PCs, servidores, routers Linux y nubes; en los routers y switches IOS, el `hostname` sale igual del nombre, conservando mayúsculas.'),
+        p('Cada equipo tiene un **nombre** (el que ves en el diagrama, p. ej. «Aula Pública 2º») y un **nombre de host**, el que usa el sistema en la red (aula-publica-2o). En Netfix el segundo se deriva siempre del primero, como en una red bien organizada: así cada equipo del diagrama tiene un nombre de host predecible. Vale para PCs, servidores, routers GNU/Linux y nubes; en los routers y switches IOS, el `hostname` sale igual del nombre, conservando mayúsculas.'),
         steps(
           ['Cambia el nombre', 'Pestaña **Equipo** → **Nombre del equipo**. Se aplica al pulsar Intro o salir del campo.'],
           ['Mira el nombre de host', 'Debajo, de solo lectura: minúsculas, sin tildes y con guiones en lugar de espacios.'],
-          ['Úsalo', 'Aparece en el prompt de la Terminal Linux, en /etc/hostname, en `hostname` y en lo que el cliente DHCP envía al servidor (opción 12, visible en las concesiones).'],
+          ['Úsalo', 'Aparece en el prompt de la Terminal GNU/Linux, en /etc/hostname, en `hostname` y en lo que el cliente DHCP envía al servidor (opción 12, visible en las concesiones).'],
         ),
         table(['Nombre del equipo', 'Nombre de host'], [
           ['PC0', 'pc0'],
@@ -83,7 +83,7 @@ export const CLIENT_DOCS: DocGroup = {
         term('shell', 'alumno@pc0:~$ sudo hostnamectl set-hostname web01\nCould not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: pc0'),
         tip('En un Ubuntu real', 'Esas órdenes sí cambian el nombre. En Netfix se bloquean para que el nombre de host salga siempre del diagrama y el alumnado no tenga que adivinarlo.'),
         warn('Errores típicos', 'Esperar que el nombre de host conserve mayúsculas o espacios: no lo hace (RFC 1123: letras sin tilde, números y guiones, hasta 63 caracteres). Buscar el equipo por su nombre en el DNS sin haberlo dado de alta: el nombre de host no se registra solo en el servidor DNS.'),
-        exercise('Renombra un PC', 'Cambia el nombre de PC1 a «Portátil Profe» y averigua su nombre de host sin mirar la pestaña Equipo.', 'En su Terminal Linux, el prompt pasa a ser `alumno@portatil-profe:~$`; `hostname` también lo muestra. En el diagrama el nombre aparece como «Portátil Profe».'),
+        exercise('Renombra un PC', 'Cambia el nombre de PC1 a «Portátil Profe» y averigua su nombre de host sin mirar la pestaña Equipo.', 'En su Terminal GNU/Linux, el prompt pasa a ser `alumno@portatil-profe:~$`; `hostname` también lo muestra. En el diagrama el nombre aparece como «Portátil Profe».'),
       ],
     },
     {
@@ -131,8 +131,8 @@ export const CLIENT_DOCS: DocGroup = {
       summary: 'Las órdenes de cmd.exe en PCs y servidores Windows: red, servicios y archivos.',
       markdownBase: MD,
       blocks: [
-        p('La **Terminal Windows** imita a cmd.exe. Sirve para comprobar la red (`ipconfig`, `ping`, `tracert`, `nslookup`), gestionar los servicios de un Windows Server (`sc`, `net`) y trabajar con archivos. Trabaja sobre el mismo sistema de archivos que la Terminal Linux del equipo: la unidad **C:\\** es la raíz /, las carpetas se separan con \\ (o /) y los nombres no distinguen mayúsculas.'),
-        p('Empieza en la carpeta personal de la cuenta Linux (C:\\home\\alumno en los PC, C:\\home\\admin en los servidores) y respeta sus permisos: lo que esa cuenta no puede escribir da «Access is denied.».'),
+        p('La **Terminal Windows** imita a cmd.exe. Sirve para comprobar la red (`ipconfig`, `ping`, `tracert`, `nslookup`), gestionar los servicios de un Windows Server (`sc`, `net`) y trabajar con archivos. Trabaja sobre el mismo sistema de archivos que la Terminal GNU/Linux del equipo: la unidad **C:\\** es la raíz /, las carpetas se separan con \\ (o /) y los nombres no distinguen mayúsculas.'),
+        p('Empieza en la carpeta personal de la cuenta GNU/Linux (C:\\home\\alumno en los PC, C:\\home\\admin en los servidores) y respeta sus permisos: lo que esa cuenta no puede escribir da «Access is denied.».'),
         h('Las órdenes de red, paso a paso'),
         steps(
           ['¿Qué dirección tengo?', '`ipconfig` (con `/all`, también la MAC, el servidor DHCP, el DNS y las fechas de la concesión).'],
@@ -164,10 +164,10 @@ export const CLIENT_DOCS: DocGroup = {
           ['echo texto · orden > archivo · orden >> archivo', 'echo imprime el texto (echo. una línea en blanco); > guarda la salida de cualquier orden en un archivo, >> la añade al final y > nul la descarta.'],
         ]),
         code('C:\\home\\alumno> ipconfig /all > red.txt\nC:\\home\\alumno> type red.txt\nC:\\home\\alumno> edit notas.txt\nC:\\home\\alumno> copy notas.txt \\tmp\nC:\\home\\alumno> ssh admin@192.168.10.2'),
-        p('Lo que se crea aquí aparece en la Terminal Linux (`cat ~/red.txt`, `nano ~/notas.txt`) y al revés. Los errores imitan Windows: «… is not recognized as an internal or external command», «Request timed out.», «FAILED 1060»…'),
+        p('Lo que se crea aquí aparece en la Terminal GNU/Linux (`cat ~/red.txt`, `nano ~/notas.txt`) y al revés. Los errores imitan Windows: «… is not recognized as an internal or external command», «Request timed out.», «FAILED 1060»…'),
         tip('Prompt con fecha y hora', 'La casilla **Prompt con marca de fecha y hora**, al pie de la terminal, cambia el prompt al de esta función de PowerShell: fecha y hora en cian oscuro, usuario@equipo en verde, la ruta en amarillo y $ (# si la cuenta es de administrador), p. ej. `Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$`. Sirve para que las capturas de una práctica demuestren cuándo se hicieron. Es un ajuste general, desactivado por defecto (también en Configuración → Generales): vale para todas las terminales de todos los equipos.'),
-        warn('Errores típicos', 'Escribir órdenes de Linux (`ls`, `ip a`): cmd responde «is not recognized…»; usa `dir` e `ipconfig`. Olvidar que `ipconfig /renew` necesita que el PC esté en DHCP. Intentar escribir fuera de tu carpeta personal: «Access is denied.».'),
-        exercise('Guarda tu configuración en un archivo', 'Guarda la salida de `ipconfig /all` en `red.txt` y ábrela desde la Terminal Linux del mismo PC.', 'En cmd: `ipconfig /all > red.txt`. En la Terminal Linux: `cat ~/red.txt` (o `less ~/red.txt`). Es el mismo archivo: los dos terminales comparten el sistema de archivos.'),
+        warn('Errores típicos', 'Escribir órdenes de GNU/Linux (`ls`, `ip a`): cmd responde «is not recognized…»; usa `dir` e `ipconfig`. Olvidar que `ipconfig /renew` necesita que el PC esté en DHCP. Intentar escribir fuera de tu carpeta personal: «Access is denied.».'),
+        exercise('Guarda tu configuración en un archivo', 'Guarda la salida de `ipconfig /all` en `red.txt` y ábrela desde la Terminal GNU/Linux del mismo PC.', 'En cmd: `ipconfig /all > red.txt`. En la Terminal GNU/Linux: `cat ~/red.txt` (o `less ~/red.txt`). Es el mismo archivo: los dos terminales comparten el sistema de archivos.'),
       ],
     },
   ],
