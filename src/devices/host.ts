@@ -75,8 +75,6 @@ export abstract class Host implements NetDevice, StackHost {
   os: HostOs = 'windows';
   /** Windows-style clients send option 61 = 01 + MAC. */
   sendClientId = true;
-  /** «Prompt con marca de fecha y hora» in this device's terminals (saved with the topology). */
-  timestampPrompt = false;
   /** Option 61 to send instead of 01 + MAC (lowercase hex), like dhclient's `send dhcp-client-identifier`. */
   clientIdOverride: string | undefined = undefined;
   portUp = true;

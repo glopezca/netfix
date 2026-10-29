@@ -1,6 +1,6 @@
 /**
- * «Prompt con marca de fecha y hora»: a setting of each PC, Server and Linux router (saved with the topology) that
- * the classroom can lock on or off for every device. Linux gets it as a PS1 value; Windows as the prompt the
+ * «Prompt con marca de fecha y hora»: a global setting of this browser (Configuración → Generales; off by default)
+ * that the classroom can lock on or off. Linux gets it as a PS1 value; Windows as the prompt the
  * PowerShell `prompt` function of the statement prints (Get-Date "ddd MMM dd" / "HH:mm:ss", user@host, path, $ or #).
  */
 import type { Host } from '../devices/host.ts';
@@ -16,20 +16,22 @@ const WHITE = '\x1b[97m';
 const YELLOW = '\x1b[93m';
 const RESET = '\x1b[0m';
 
-/** The classroom lock: true/false forces the prompt on every device; undefined leaves each device's setting. */
+/** The classroom lock: true/false forces the prompt on every device; undefined leaves the global setting. */
 let forced: boolean | undefined;
+/** Configuración → Generales (the interface loads it from the browser). */
+let globalOn = false;
 
 export function forceTimestampPrompt(value: boolean | undefined): void {
   forced = value;
 }
 
-/** Whether `host`'s terminals show the date and time in the prompt. */
-export function timestampPromptOn(host: Host): boolean {
-  return forced ?? host.timestampPrompt;
+/** Whether `host`'s terminals show the date and time in the prompt (the same for every device). */
+export function timestampPromptOn(_host?: Host): boolean {
+  return forced ?? globalOn;
 }
 
-export function setTimestampPrompt(host: Host, on: boolean): void {
-  host.timestampPrompt = on;
+export function setGlobalTimestampPrompt(on: boolean): void {
+  globalOn = on;
 }
 
 /** What the PowerShell prompt function prints: "Thu Oct 22 18:28:05 ana@pc0 C:\home\ana$ " in its colours. */

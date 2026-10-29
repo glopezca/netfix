@@ -4196,6 +4196,7 @@ const SETTINGS_ES = {
     'set.themeLight': 'Claro',
     'set.themeDark': 'Oscuro',
     'set.confirm': 'Avisar antes de reemplazar una red con cambios sin guardar',
+    'set.timestamp': 'Prompt con marca de fecha y hora en todas las terminales Linux y Windows',
     'set.lab': 'Laboratorio actual',
     'set.labNote': 'Qué ajustes muestran las ventanas de cada tipo de equipo en esta red. Se guarda con la topología; al cambiarlo se cierran las ventanas abiertas.',
     'set.labLocked': 'En esta práctica los ajustes del laboratorio los fija el profesor.',
@@ -4209,7 +4210,13 @@ const SETTINGS_ES = {
     'set.kind.switch': 'Switch IOS',
     'set.feat.ip': 'Configuración IP (y sistema operativo)',
     'set.feat.apps': 'Aplicaciones (navegador, correo, SSH y SFTP)',
-    'set.feat.services': 'Servicios (SSH, DHCP, DNS, HTTP, correo, ficheros y registros)',
+    'set.feat.ssh': 'Servicio SSH',
+    'set.feat.dhcp': 'Servicio DHCP',
+    'set.feat.dns': 'Servicio DNS',
+    'set.feat.http': 'Servicio HTTP (web)',
+    'set.feat.mail': 'Servicio de correo',
+    'set.feat.files': 'Ficheros de configuración',
+    'set.feat.log': 'Registros',
     'set.feat.sysctl': 'Parámetros del kernel',
     'set.feat.firewall': 'Firewall',
     'set.feat.vpn': 'VPN',
@@ -4235,6 +4242,7 @@ const SETTINGS_EN = {
     'set.themeLight': 'Light',
     'set.themeDark': 'Dark',
     'set.confirm': 'Ask before replacing a network with unsaved changes',
+    'set.timestamp': 'Date and time stamped prompt in every Linux and Windows terminal',
     'set.lab': 'Current lab',
     'set.labNote': 'Which settings the windows of each kind of device show in this network. Saved with the topology; changing it closes the open windows.',
     'set.labLocked': 'In this exercise the lab settings are set by the teacher.',
@@ -4248,7 +4256,13 @@ const SETTINGS_EN = {
     'set.kind.switch': 'IOS switch',
     'set.feat.ip': 'IP configuration (and operating system)',
     'set.feat.apps': 'Applications (browser, mail, SSH and SFTP)',
-    'set.feat.services': 'Services (SSH, DHCP, DNS, HTTP, mail, files and logs)',
+    'set.feat.ssh': 'SSH service',
+    'set.feat.dhcp': 'DHCP service',
+    'set.feat.dns': 'DNS service',
+    'set.feat.http': 'HTTP service (web)',
+    'set.feat.mail': 'Mail service',
+    'set.feat.files': 'Configuration files',
+    'set.feat.log': 'Logs',
     'set.feat.sysctl': 'Kernel parameters',
     'set.feat.firewall': 'Firewall',
     'set.feat.vpn': 'VPN',
@@ -6936,8 +6950,6 @@ class Host {
     os = 'windows';
     /** Windows-style clients send option 61 = 01 + MAC. */
     sendClientId = true;
-    /** «Prompt con marca de fecha y hora» in this device's terminals (saved with the topology). */
-    timestampPrompt = false;
     /** Option 61 to send instead of 01 + MAC (lowercase hex), like dhclient's `send dhcp-client-identifier`. */
     clientIdOverride = undefined;
     portUp = true;
@@ -18089,15 +18101,17 @@ const SETTINGS_DOCS = [
                 ['Idioma', 'Español (España) o English (UK), como el desplegable de la barra superior.'],
                 ['Tema', 'Automático (el del sistema), claro u oscuro.'],
                 ['Avisar antes de reemplazar…', 'Si está desmarcado, Laboratorios, Nuevo y Abrir reemplazan la red sin preguntar aunque tenga cambios sin guardar.'],
+                ['Prompt con marca de fecha y hora', 'Desactivado por defecto. Pone la fecha y la hora en el prompt de todas las terminales Linux y Windows (la misma casilla está al pie de cada terminal). En el aula, el profesor puede fijarlo.'],
             ]),
             h('Laboratorio actual'),
             p('Decide qué pestañas y paneles muestran las ventanas de cada tipo de equipo. **Equipo** (nombre de host) e **Interfaces** están siempre.'),
             table(['Equipo', 'Activado por defecto', 'Se puede activar'], [
                 ['PC', 'Configuración IP, aplicaciones (navegador, correo, SSH, SFTP), terminal Linux y terminal Windows', '—'],
-                ['Servidor', 'Configuración IP, servicios, terminal Linux y terminal Windows', 'Parámetros del kernel y firewall (en Servicios)'],
-                ['Router Linux', 'Parámetros del kernel, firewall, VPN, servicios y terminal Linux', 'Terminal Windows'],
+                ['Servidor', 'Configuración IP, cada servicio (SSH, DHCP, DNS, HTTP, correo, ficheros y registros), terminal Linux y terminal Windows', 'Parámetros del kernel y firewall (en Servicios)'],
+                ['Router Linux', 'Parámetros del kernel, firewall, VPN, cada servicio y terminal Linux', 'Terminal Windows'],
                 ['Router y switch IOS', 'CLI y gestión web', '—'],
             ]),
+            p('Esos son los valores de una red nueva (**Nuevo**). Cada laboratorio grabado trae los suyos: sus servidores muestran solo los servicios que usa (por ejemplo, «DNS de empresa que reenvía a Internet» solo DHCP y DNS), y en «Bastionado: ACL, nftables y sshd» el servidor tiene además parámetros del kernel y firewall. Un laboratorio sin servidores deja los valores por defecto.'),
             steps(['Abre la pestaña', '**Configuración**, apartado **Laboratorio actual**.'], ['Marca o desmarca', 'Cada casilla cambia al momento. Las ventanas abiertas se cierran: al abrirlas de nuevo ya tienen las pestañas nuevas.'], ['Guarda', 'Es un cambio de la red: **Guardar** lo lleva al archivo, y cambiar de laboratorio sin guardar avisa.']),
             check('Compruébalo', 'Desmarca **Terminal Windows** en PC y abre un PC: ya no tiene esa pestaña. **Restablecer los valores predeterminados** la devuelve.'),
             tip('En el aula', 'Embebido en una práctica de Netfix Classroom, el apartado del laboratorio es de solo lectura, y las restricciones del profesor siguen mandando: una pestaña que él oculta no aparece aunque esté marcada aquí.'),
@@ -18854,7 +18868,7 @@ const CLIENT_DOCS = {
                 ]),
                 code('C:\\home\\alumno> ipconfig /all > red.txt\nC:\\home\\alumno> type red.txt\nC:\\home\\alumno> edit notas.txt\nC:\\home\\alumno> copy notas.txt \\tmp\nC:\\home\\alumno> ssh admin@192.168.10.2'),
                 p('Lo que se crea aquí aparece en la Terminal Linux (`cat ~/red.txt`, `nano ~/notas.txt`) y al revés. Los errores imitan Windows: «… is not recognized as an internal or external command», «Request timed out.», «FAILED 1060»…'),
-                tip('Prompt con fecha y hora', 'La casilla **Prompt con marca de fecha y hora**, al pie de la terminal, cambia el prompt al de esta función de PowerShell: fecha y hora en cian oscuro, usuario@equipo en verde, la ruta en amarillo y $ (# si la cuenta es de administrador), p. ej. `Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$`. Sirve para que las capturas de una práctica demuestren cuándo se hicieron. La comparte con la Terminal Linux del equipo.'),
+                tip('Prompt con fecha y hora', 'La casilla **Prompt con marca de fecha y hora**, al pie de la terminal, cambia el prompt al de esta función de PowerShell: fecha y hora en cian oscuro, usuario@equipo en verde, la ruta en amarillo y $ (# si la cuenta es de administrador), p. ej. `Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$`. Sirve para que las capturas de una práctica demuestren cuándo se hicieron. Es un ajuste general, desactivado por defecto (también en Configuración → Generales): vale para todas las terminales de todos los equipos.'),
                 warn('Errores típicos', 'Escribir órdenes de Linux (`ls`, `ip a`): cmd responde «is not recognized…»; usa `dir` e `ipconfig`. Olvidar que `ipconfig /renew` necesita que el PC esté en DHCP. Intentar escribir fuera de tu carpeta personal: «Access is denied.».'),
                 exercise('Guarda tu configuración en un archivo', 'Guarda la salida de `ipconfig /all` en `red.txt` y ábrela desde la Terminal Linux del mismo PC.', 'En cmd: `ipconfig /all > red.txt`. En la Terminal Linux: `cat ~/red.txt` (o `less ~/red.txt`). Es el mismo archivo: los dos terminales comparten el sistema de archivos.'),
             ],
@@ -19028,7 +19042,7 @@ const LINUX_DOCS = [
             note('Todo lo que se escribe en el disco del equipo (home, scripts, cambios en /etc) se guarda con la topología.'),
             tip('Tab y las flechas', 'Tab completa nombres de órdenes y ficheros; ↑ y ↓ recorren el historial; Ctrl+R lo busca. Escribir menos es equivocarse menos.'),
             warn('Errores habituales', 'Escribir `saludo.sh` en vez de `./saludo.sh`: el directorio actual no está en el PATH («command not found»). Usar comillas dobles con `!` dentro en la terminal: bash intenta expandir el historial («event not found»); usa comillas simples. Olvidar `sudo` para tocar ficheros del sistema.'),
-            note('Casilla «Prompt con marca de fecha y hora» (al pie de la terminal): es como ejecutar PS1="\\[\\e[32m\\]\\d \\[\\e[36m\\]\\A \\[\\e[33m\\]\\u@\\h:\\w\\$ \\[\\e[0m\\]": fecha en verde, hora en cian y usuario@equipo:ruta en amarillo, con la hora simulada. Es un ajuste del equipo (vale también para su Terminal Windows y para las sesiones SSH que se abren en él) y se guarda con la topología; al desmarcarla vuelve el PS1 que había. Un bash o su anidado lee su .bashrc, como en Ubuntu. En un aula puede estar bloqueada por el profesor.'),
+            note('Casilla «Prompt con marca de fecha y hora» (al pie de la terminal): es como ejecutar PS1="\\[\\e[32m\\]\\d \\[\\e[36m\\]\\A \\[\\e[33m\\]\\u@\\h:\\w\\$ \\[\\e[0m\\]": fecha en verde, hora en cian y usuario@equipo:ruta en amarillo, con la hora simulada. Es un ajuste general de este navegador, desactivado por defecto (también en Configuración → Generales): vale para todas las terminales Linux y Windows y para las sesiones SSH; al desmarcarla vuelve el PS1 que había. Un bash o su anidado lee su .bashrc, como en Ubuntu. En un aula puede estar bloqueada por el profesor.'),
             exercise('Un script que informa', 'En PC1 del laboratorio «Server: DHCP, DNS, web, correo y SSH», crea `info.sh` que muestre el nombre del equipo, su dirección IP y su puerta de enlace, y ejecútalo.', 'Contenido: `#!/bin/bash`, `echo "Equipo: $(hostname)"`, `echo "Dirección IP: $(hostname -I)"` y `echo "Puerta de enlace: $(ip r | grep default | cut -d" " -f3)"`. Después `chmod +x info.sh` y `./info.sh` muestra pc1, 192.168.10.50 y 192.168.10.1.'),
         ],
     },
@@ -20401,15 +20415,17 @@ const SETTINGS_DOCS = [
                 ['Language', 'Español (España) or English (UK), like the drop-down in the top bar.'],
                 ['Theme', 'Automatic (the system’s), light or dark.'],
                 ['Ask before replacing…', 'When unticked, Labs, New and Open replace the network without asking even if it has unsaved changes.'],
+                ['Date and time stamped prompt', 'Off by default. Puts the date and time in the prompt of every Linux and Windows terminal (the same box is at the foot of each terminal). In the classroom the teacher may fix it.'],
             ]),
             h('Current lab'),
             p('Decides which tabs and panels the windows of each kind of device show. **Device** (host name) and **Interfaces** are always there.'),
             table(['Device', 'On by default', 'Can be turned on'], [
                 ['PC', 'IP configuration, applications (browser, mail, SSH, SFTP), Linux terminal and Windows terminal', '—'],
-                ['Server', 'IP configuration, services, Linux terminal and Windows terminal', 'Kernel parameters and firewall (in Services)'],
-                ['Linux router', 'Kernel parameters, firewall, VPN, services and Linux terminal', 'Windows terminal'],
+                ['Server', 'IP configuration, each service (SSH, DHCP, DNS, HTTP, mail, files and logs), Linux terminal and Windows terminal', 'Kernel parameters and firewall (in Services)'],
+                ['Linux router', 'Kernel parameters, firewall, VPN, each service and Linux terminal', 'Windows terminal'],
                 ['IOS router and switch', 'CLI and web management', '—'],
             ]),
+            p('Those are the values of a new network (**New**). Each recorded lab brings its own: its servers show only the services it uses (for instance, “Company DNS forwarding to the Internet” only DHCP and DNS), and in “Hardening: ACL, nftables and sshd” the server also has kernel parameters and firewall. A lab without servers keeps the defaults.'),
             steps(['Open the tab', '**Settings**, section **Current lab**.'], ['Tick or untick', 'Each box applies at once. Open windows close: when opened again they have the new tabs.'], ['Save', 'It is a change to the network: **Save** puts it in the file, and changing lab without saving asks first.']),
             check('Check it', 'Untick **Windows terminal** for PC and open a PC: it no longer has that tab. **Restore the defaults** brings it back.'),
             tip('In the classroom', 'Embedded in a Netfix Classroom exercise, the lab section is read-only, and the teacher’s restrictions still rule: a tab the teacher hides does not appear even if it is ticked here.'),
@@ -21166,7 +21182,7 @@ const CLIENT_DOCS = {
                 ]),
                 code('C:\\home\\alumno> ipconfig /all > red.txt\nC:\\home\\alumno> type red.txt\nC:\\home\\alumno> edit notas.txt\nC:\\home\\alumno> copy notas.txt \\tmp\nC:\\home\\alumno> ssh admin@192.168.10.2'),
                 p('What is created here shows up in the Linux Terminal (`cat ~/red.txt`, `nano ~/notas.txt`) and the other way round. Errors imitate Windows: “… is not recognized as an internal or external command”, “Request timed out.”, “FAILED 1060”…'),
-                tip('Prompt with date and time', 'The **Prompt with date and time stamp** box, at the foot of the terminal, switches the prompt to this PowerShell function’s: date and time in dark cyan, user@device in green, the path in yellow and $ (# for an administrator account), e.g. `Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$`. It lets screenshots of a practical prove when they were taken. It is shared with the device’s Linux Terminal.'),
+                tip('Prompt with date and time', 'The **Prompt with date and time stamp** box, at the foot of the terminal, switches the prompt to this PowerShell function’s: date and time in dark cyan, user@device in green, the path in yellow and $ (# for an administrator account), e.g. `Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$`. It lets screenshots of a practical prove when they were taken. It is a general setting, off by default (also in Settings → General): it applies to every terminal of every device.'),
                 warn('Common mistakes', 'Typing Linux commands (`ls`, `ip a`): cmd answers “is not recognized…”; use `dir` and `ipconfig`. Forgetting that `ipconfig /renew` needs the PC on DHCP. Trying to write outside your home folder: “Access is denied.”.'),
                 exercise('Save your configuration to a file', 'Save the output of `ipconfig /all` to `red.txt` and open it from the Linux Terminal of the same PC.', 'In cmd: `ipconfig /all > red.txt`. In the Linux Terminal: `cat ~/red.txt` (or `less ~/red.txt`). It is the same file: both terminals share the file system.'),
             ],
@@ -21340,7 +21356,7 @@ const LINUX_DOCS = [
             note('Everything written to the device’s disk (home, scripts, changes in /etc) is saved with the topology.'),
             tip('Tab and the arrows', 'Tab completes command and file names; ↑ and ↓ go through the history; Ctrl+R searches it. Typing less is making fewer mistakes.'),
             warn('Common mistakes', 'Typing `saludo.sh` instead of `./saludo.sh`: the current directory is not in the PATH (“command not found”). Using double quotes with a `!` inside in the terminal: bash tries to expand the history (“event not found”); use single quotes. Forgetting `sudo` to touch system files.'),
-            note('«Date and time stamped prompt» checkbox (at the foot of the terminal): like running PS1="\\[\\e[32m\\]\\d \\[\\e[36m\\]\\A \\[\\e[33m\\]\\u@\\h:\\w\\$ \\[\\e[0m\\]": the date in green, the time in cyan and user@host:path in yellow, with the simulated time. It is a setting of the device (it also applies to its Windows terminal and to the SSH sessions opened on it) and it is saved with the topology; unticking it brings back the previous PS1. A nested bash or su reads its .bashrc, as on Ubuntu. In a classroom the teacher may lock it.'),
+            note('«Date and time stamped prompt» checkbox (at the foot of the terminal): like running PS1="\\[\\e[32m\\]\\d \\[\\e[36m\\]\\A \\[\\e[33m\\]\\u@\\h:\\w\\$ \\[\\e[0m\\]": the date in green, the time in cyan and user@host:path in yellow, with the simulated time. It is a general setting of this browser, off by default (also in Settings → General): it applies to every Linux and Windows terminal and to SSH sessions; unticking it brings back the previous PS1. A nested bash or su reads its .bashrc, as on Ubuntu. In a classroom the teacher may lock it.'),
             exercise('A script that reports', 'On PC1 of the «Server: DHCP, DNS, web, mail and SSH» lab, create `info.sh` showing the device name, its IP address and its gateway, and run it.', 'Contents: `#!/bin/bash`, `echo "Device: $(hostname)"`, `echo "IP address: $(hostname -I)"` and `echo "Gateway: $(ip r | grep default | cut -d" " -f3)"`. Then `chmod +x info.sh` and `./info.sh` shows pc1, 192.168.10.50 and 192.168.10.1.'),
         ],
     },
@@ -29911,7 +29927,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.24.0",
+    "version": "0.24.1",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -38543,17 +38559,19 @@ const GREEN = '\x1b[92m';
 const WHITE = '\x1b[97m';
 const YELLOW = '\x1b[93m';
 const RESET = '\x1b[0m';
-/** The classroom lock: true/false forces the prompt on every device; undefined leaves each device's setting. */
+/** The classroom lock: true/false forces the prompt on every device; undefined leaves the global setting. */
 let forced;
+/** Configuración → Generales (the interface loads it from the browser). */
+let globalOn = false;
 function forceTimestampPrompt(value) {
     forced = value;
 }
-/** Whether `host`'s terminals show the date and time in the prompt. */
-function timestampPromptOn(host) {
-    return forced ?? host.timestampPrompt;
+/** Whether `host`'s terminals show the date and time in the prompt (the same for every device). */
+function timestampPromptOn(_host) {
+    return forced ?? globalOn;
 }
-function setTimestampPrompt(host, on) {
-    host.timestampPrompt = on;
+function setGlobalTimestampPrompt(on) {
+    globalOn = on;
 }
 /** What the PowerShell prompt function prints: "Thu Oct 22 18:28:05 ana@pc0 C:\home\ana$ " in its colours. */
 function windowsTimestampPrompt(now, user, computer, path, admin) {
@@ -38561,7 +38579,7 @@ function windowsTimestampPrompt(now, user, computer, path, admin) {
     return `${DARK_CYAN}${stamp}${GREEN}${user}@${computer.toLowerCase()}${WHITE} ${YELLOW}${path}${RESET}${admin ? '#' : '$'} `;
 }
 
-return { LINUX_TIMESTAMP_PS1, forceTimestampPrompt, timestampPromptOn, setTimestampPrompt, windowsTimestampPrompt };
+return { LINUX_TIMESTAMP_PS1, forceTimestampPrompt, timestampPromptOn, setGlobalTimestampPrompt, windowsTimestampPrompt };
 })();
 __m["shells/linux.js"] = (() => {
 /** Ubuntu terminal: a GNU bash 5.3 session on the host's system, plus the ssh client of BaseShell. */
@@ -41195,12 +41213,14 @@ function sameEp(a, b) {
 return { LINK_DELAY_MS, WorkLimitError, withWorkLimit, Network, sameEp };
 })();
 __m["net/lab-features.js"] = (() => {
-const FEATURE_IDS = ['ip', 'apps', 'services', 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'];
+/** The service panels of a Server or Linux router, each switched on its own. */
+const SERVICE_IDS = ['ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log'];
+const FEATURE_IDS = ['ip', 'apps', ...SERVICE_IDS, 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'];
 /** What can be switched on each kind, in the order the settings list them. */
 const FEATURES_BY_KIND = {
     pc: ['ip', 'apps', 'linux', 'windows'],
-    server: ['ip', 'services', 'sysctl', 'firewall', 'linux', 'windows'],
-    linuxrouter: ['sysctl', 'firewall', 'vpn', 'services', 'linux', 'windows'],
+    server: ['ip', ...SERVICE_IDS, 'sysctl', 'firewall', 'linux', 'windows'],
+    linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'linux', 'windows'],
     router: ['cli', 'web'],
     switch: ['cli', 'web'],
     cloud: [],
@@ -41241,6 +41261,7 @@ function setFeature(features, kind, id, on) {
     return sameAsDefault(kind, next) ? rest : { ...rest, [kind]: next };
 }
 /** The `features` of a topology file (untrusted): known kinds, known features of that kind, no repeats. */
+const isService = (f) => SERVICE_IDS.includes(f);
 function parseFeatures(data) {
     if (typeof data !== 'object' || data === null || Array.isArray(data))
         return {};
@@ -41249,14 +41270,16 @@ function parseFeatures(data) {
         const list = data[kind];
         if (!Array.isArray(list) || list.length > MAX_LIST)
             continue;
-        const on = FEATURES_BY_KIND[kind].filter((f) => list.includes(f));
+        /** Up to v0.24.0 one «services» switch stood for every service panel. */
+        const legacy = list.includes('services');
+        const on = FEATURES_BY_KIND[kind].filter((f) => list.includes(f) || (legacy && isService(f)));
         if (!sameAsDefault(kind, on))
             out[kind] = on;
     }
     return out;
 }
 
-return { FEATURE_IDS, FEATURES_BY_KIND, featuresOf, featureOn, setFeature, parseFeatures };
+return { SERVICE_IDS, FEATURE_IDS, FEATURES_BY_KIND, featuresOf, featureOn, setFeature, parseFeatures };
 })();
 __m["ios/crypto-config.js"] = (() => {
 /**
@@ -50738,7 +50761,7 @@ function hostRecord(d) {
     const os = d.os;
     const clientId = d.clientIdOverride;
     const files = savedFiles(d);
-    const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}), ...(d.timestampPrompt ? { timestampPrompt: true } : {}) };
+    const names = { hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
     if (c.mode === 'dhcp')
         return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
     const opt = (n) => (n === undefined ? undefined : formatIp(n));
@@ -50774,7 +50797,6 @@ function restore(device, rec) {
         restoreRoutes(device, pc.routes);
         const search = Array.isArray(pc.search) ? searchList(pc.search) : { ok: [] };
         device.dnsSearch = 'ok' in search ? search.ok : [];
-        device.timestampPrompt = pc.timestampPrompt === true;
         if (pc.files !== undefined)
             bootKernel(device, validFileRecords(pc.files));
         return;
@@ -56444,13 +56466,18 @@ const { validateFileName } = __m["services/http-service.js"];
 const { logUnits, unitActive } = __m["services/units.js"];
 const { createShell } = __m["shells/factory.js"];
 const { sshAuthMethods, setSshAuthMethods } = __m["services/ssh-auth-settings.js"];
+/**
+ * The panels of the tab that Configuración → Laboratorio actual leaves on (`panels`: feature ids), in this order:
+ * kernel parameters, firewall, VPN, then SSH, DHCP, DNS, HTTP, mail, files and logs.
+ */
 function servicesTab(server, app, panels) {
-    const system = [
-        ...(panels.sysctl ? [{ id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root }] : []),
-        ...(panels.firewall ? [{ id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root }] : []),
-        ...(panels.vpn && server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
+    const all = [
+        { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root },
+        { id: 'firewall', label: t('fw.tab'), render: () => firewallPanel(server, app).root },
+        ...(server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
+        ...servicePanels(server, app),
     ];
-    return subnav([...system, ...(panels.services ? servicePanels(server, app) : [])]);
+    return subnav(all.filter((p) => panels.includes(p.id)));
 }
 function servicePanels(server, app) {
     return [
@@ -57868,24 +57895,86 @@ function cloudSettings(placed, cloud, app) {
 
 return { cloudSettings };
 })();
+__m["ui/preferences.js"] = (() => {
+/** General settings of this browser (Configuración → Generales): theme, the unsaved-changes question, language of the page. */
+const { safeStorageGet, safeStorageSet } = __m["ui/dom.js"];
+const { getLocale } = __m["i18n/locale.js"];
+const { t } = __m["i18n/t.js"];
+const { setGlobalTimestampPrompt, timestampPromptOn } = __m["shells/prompt-clock.js"];
+const THEMES = ['auto', 'light', 'dark'];
+const THEME_KEY = 'netfix:theme';
+const CONFIRM_KEY = 'netfix:confirm-unsaved';
+const STAMP_KEY = 'netfix:timestamp-prompt';
+const stampListeners = new Set();
+/** Saved only outside the classroom (embedded pages leave the host page's storage alone). */
+let stampStored = false;
+function theme() {
+    const v = safeStorageGet(THEME_KEY);
+    return THEMES.find((x) => x === v) ?? 'auto';
+}
+/** The CSS reads `data-theme` (light or dark); without it, the system's choice. */
+function applyTheme(value = theme()) {
+    if (value === 'auto')
+        delete document.documentElement.dataset.theme;
+    else
+        document.documentElement.dataset.theme = value;
+}
+function setTheme(value) {
+    safeStorageSet(THEME_KEY, value);
+    applyTheme(value);
+}
+/** Ask before a lab, Nuevo or Abrir replaces unsaved changes (on unless turned off). */
+function confirmUnsaved() {
+    return safeStorageGet(CONFIRM_KEY) !== 'off';
+}
+function setConfirmUnsaved(on) {
+    safeStorageSet(CONFIRM_KEY, on ? 'on' : 'off');
+}
+/** The page's language, title and description in the current language. */
+function applyDocumentLanguage() {
+    document.documentElement.lang = getLocale();
+    document.title = t('app.title');
+    document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.description'));
+}
+/** «Prompt con marca de fecha y hora» for every terminal: off unless turned on (a classroom lock still wins). */
+function loadTimestampPrompt() {
+    stampStored = true;
+    setGlobalTimestampPrompt(safeStorageGet(STAMP_KEY) === 'on');
+}
+/** The value the terminals show now (the classroom lock included). */
+function timestampPrompt() {
+    return timestampPromptOn();
+}
+function setTimestampPromptPref(on) {
+    if (stampStored)
+        safeStorageSet(STAMP_KEY, on ? 'on' : 'off');
+    setGlobalTimestampPrompt(on);
+    for (const fn of stampListeners)
+        fn();
+}
+/** The open terminals redraw their prompts when the setting changes (from Configuración or from any terminal). */
+function onTimestampPrompt(fn) {
+    stampListeners.add(fn);
+}
+
+return { THEMES, theme, applyTheme, setTheme, confirmUnsaved, setConfirmUnsaved, applyDocumentLanguage, loadTimestampPrompt, timestampPrompt, setTimestampPromptPref, onTimestampPrompt };
+})();
 __m["ui/prompt-toggle.js"] = (() => {
 /**
  * Footer of the Linux and Windows terminals of a PC, Server or Linux router: «Prompt con marca de fecha y hora».
- * It is a device setting, so the two terminals of the device show the same box; a classroom lock fixes and greys it.
+ * It is the global setting (also in Configuración → Generales): every terminal shows the same box; a classroom lock
+ * fixes and greys it.
  */
 const { t } = __m["i18n/t.js"];
 const { el } = __m["ui/dom.js"];
-const { setTimestampPrompt, timestampPromptOn } = __m["shells/prompt-clock.js"];
-/** `locked`: the classroom forces the value (true/false); `changed`: the device setting changed, redraw the prompts. */
-function promptToggle(host, locked, changed) {
+const { setTimestampPromptPref, timestampPrompt } = __m["ui/preferences.js"];
+/** `locked`: the classroom forces the value (true/false). Changing it redraws every open terminal (preferences). */
+function promptToggle(locked) {
     const box = el('input', { type: 'checkbox', class: 'term-foot-box' });
     box.disabled = locked !== undefined;
-    box.addEventListener('change', () => {
-        setTimestampPrompt(host, box.checked);
-        changed();
-    });
+    box.addEventListener('change', () => setTimestampPromptPref(box.checked));
     const label = el('label', { class: 'term-foot-check' }, box, el('span', {}, t('term.timestampPrompt')), locked === undefined ? null : el('span', { class: 'term-foot-lock' }, t('term.timestampLocked')));
-    const refresh = () => { box.checked = timestampPromptOn(host); };
+    const refresh = () => { box.checked = timestampPrompt(); };
     refresh();
     return { root: el('div', { class: 'term-foot' }, label), refresh };
 }
@@ -57918,10 +58007,13 @@ const { Cloud } = __m["devices/cloud.js"];
 const { cloudTabs } = __m["ui/cloud-window.js"];
 const { cloudSettings } = __m["ui/cloud-device.js"];
 const { promptToggle } = __m["ui/prompt-toggle.js"];
-const { featureOn } = __m["net/lab-features.js"];
+const { onTimestampPrompt } = __m["ui/preferences.js"];
+const { featureOn, SERVICE_IDS } = __m["net/lab-features.js"];
 function allowed(host, kind, tabs) {
     return tabs.filter((tab) => host.allowsTab?.(kind, tab.id) ?? true);
 }
+/** The panels of the Services tab, in its order. */
+const PANEL_IDS = ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS];
 const on = (host, kind, id) => host.feature?.(kind, id) ?? featureOn({}, kind, id);
 const terminals = new Map();
 const footers = new Map();
@@ -57993,13 +58085,15 @@ function openDeviceWindow(placed, host) {
         ...(on(host, d.kind, 'web') ? [{ id: 'web', label: t('win.webAdmin'), render: () => iosWebSettings(d, () => host.afterCommand()) }] : []),
     ]));
 }
-/** Both terminals of a device follow its timestamp-prompt setting (and their footer boxes show it). */
-function syncPrompts(h) {
-    for (const os of ['linux', 'windows']) {
-        terminals.get(`${h.id}:${os}`)?.syncPrompt();
-        footers.get(`${h.id}:${os}`)?.refresh();
-    }
+/** Every open terminal follows the timestamp-prompt setting (and their footer boxes show it). */
+function syncPrompts() {
+    for (const [key, term] of terminals)
+        if (key.includes(':'))
+            term.syncPrompt();
+    for (const f of footers.values())
+        f.refresh();
 }
+onTimestampPrompt(syncPrompts);
 function shellTerminal(placed, h, os, app) {
     const key = `${h.id}:${os}`;
     let term = terminals.get(key);
@@ -58016,7 +58110,7 @@ function shellTerminal(placed, h, os, app) {
             screenFrame: (w, h) => shell.screenFrame?.(w, h) ?? null, screenKey: (k) => shell.screenKey?.(k) ?? [],
             applyPrompt: () => shell.applyTimestampPrompt?.(),
         };
-        const footer = promptToggle(h, app.promptLock?.(), () => { syncPrompts(h); app.afterCommand(); });
+        const footer = promptToggle(app.promptLock?.());
         footers.set(key, footer);
         term = new Terminal(backend, {
             intro, label: t(os === 'windows' ? 'win.cmdOf' : 'win.termOf', { name: placed.label }), afterRun: () => app.afterCommand(), footer: footer.root,
@@ -58030,7 +58124,7 @@ function openHostWindow(placed, h, app) {
     const terminal = (os) => ({
         id: os, label: os === 'windows' ? t('win.cmd') : t('win.linuxTerm'),
         render: () => shellTerminal(placed, h, os, app).root,
-        onShow: () => { syncPrompts(h); shellTerminal(placed, h, os, app).focus(); },
+        onShow: () => { syncPrompts(); shellTerminal(placed, h, os, app).focus(); },
     });
     const nicTab = { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = hostInterfaces(h, app, (port) => app.peerLabel?.(h.id, port)); disposers.push(v.dispose); return v.root; } };
     const ipTab = { id: 'ip', label: t('win.ip'), render: () => { const v = hostIpConfig(h, app); disposers.push(v.dispose); return v.root; } };
@@ -58047,8 +58141,8 @@ function openHostWindow(placed, h, app) {
     const ifTab = h instanceof LinuxRouter
         ? { id: 'ifaces', label: t('win.ifaces'), render: () => { const v = routerInterfaces(h, app, (port) => app.peerLabel?.(h.id, port)); disposers.push(v.dispose); return v.root; } }
         : nicTab;
-    const panels = { services: has('services'), sysctl: has('sysctl'), firewall: has('firewall'), vpn: has('vpn') };
-    const svc = h instanceof Server && Object.values(panels).some(Boolean) ? [{ id: 'svc', label: t('win.services'), render: () => servicesTab(h, app, panels) }] : [];
+    const panels = PANEL_IDS.filter(has);
+    const svc = h instanceof Server && panels.length ? [{ id: 'svc', label: t('win.services'), render: () => servicesTab(h, app, panels) }] : [];
     const apps = h instanceof Pc && has('apps') ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
         { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }] : [];
     const tabs = [settingsTab, ifTab, ...(h instanceof LinuxRouter ? svc : [...svc, ...(has('ip') ? [ipTab] : []), ...apps]), ...order.filter(has).map(terminal)];
@@ -58056,6 +58150,21 @@ function openHostWindow(placed, h, app) {
 }
 
 return { forgetDevice, forgetAll, openDeviceWindow };
+})();
+__m["net/lab-presets.js"] = (() => {
+const BASE_SERVER = ['ip', 'linux', 'windows'];
+const KEEP = ['files', 'log'];
+const LAB_PRESETS = {
+    servidores: { server: [...BASE_SERVER, 'ssh', 'dhcp', 'dns', 'http', 'mail', ...KEEP] },
+    internet: { server: [...BASE_SERVER, 'ssh', 'dns', 'http', ...KEEP] },
+    'dns-reenvio': { server: [...BASE_SERVER, 'dhcp', 'dns', ...KEEP] },
+    'ssh-sftp': { server: [...BASE_SERVER, 'ssh', 'dns', ...KEEP] },
+    bastionado: { server: [...BASE_SERVER, 'ssh', 'dns', 'http', ...KEEP, 'sysctl', 'firewall'] },
+    'linux-dmz': { server: [...BASE_SERVER, 'http', ...KEEP], linuxrouter: ['sysctl', 'firewall', ...KEEP, 'linux'] },
+    'vpn-wireguard': { linuxrouter: ['sysctl', 'firewall', 'vpn', 'ssh', ...KEEP, 'linux'] },
+};
+
+return { LAB_PRESETS };
 })();
 __m["net/lab-areas.js"] = (() => {
 const { t } = __m["i18n/t.js"];
@@ -58727,6 +58836,8 @@ return { sshLab, hardeningLab };
 })();
 __m["net/examples.js"] = (() => {
 /** Ready-made labs that show each DHCP feature working. */
+const { parseFeatures } = __m["net/lab-features.js"];
+const { LAB_PRESETS } = __m["net/lab-presets.js"];
 const { newZone } = __m["services/dns-zones.js"];
 const { decorateLab } = __m["net/lab-areas.js"];
 const { LABS_ES } = __m["i18n/es-ES/labs.js"];
@@ -59029,8 +59140,12 @@ interface GigabitEthernet0/0
     sshLab,
     hardeningLab,
 ];
-/** The labs, with areas drawn around their networks where they help to read the diagram. */
-const EXAMPLES = LABS.map((ex) => ({ ...ex, build: () => decorateLab(ex.id, ex.build()) }));
+/** The labs, with areas drawn around their networks where they help to read the diagram, and their device settings. */
+const EXAMPLES = LABS.map((ex) => ({ ...ex, build: () => withPreset(ex.id, decorateLab(ex.id, ex.build())) }));
+function withPreset(id, topo) {
+    topo.features = parseFeatures(LAB_PRESETS[id] ?? {});
+    return topo;
+}
 
 return { EXAMPLES };
 })();
@@ -59433,53 +59548,18 @@ function donateView() {
 
 return { donateView };
 })();
-__m["ui/preferences.js"] = (() => {
-/** General settings of this browser (Configuración → Generales): theme, the unsaved-changes question, language of the page. */
-const { safeStorageGet, safeStorageSet } = __m["ui/dom.js"];
-const { getLocale } = __m["i18n/locale.js"];
-const { t } = __m["i18n/t.js"];
-const THEMES = ['auto', 'light', 'dark'];
-const THEME_KEY = 'netfix:theme';
-const CONFIRM_KEY = 'netfix:confirm-unsaved';
-function theme() {
-    const v = safeStorageGet(THEME_KEY);
-    return THEMES.find((x) => x === v) ?? 'auto';
-}
-/** The CSS reads `data-theme` (light or dark); without it, the system's choice. */
-function applyTheme(value = theme()) {
-    if (value === 'auto')
-        delete document.documentElement.dataset.theme;
-    else
-        document.documentElement.dataset.theme = value;
-}
-function setTheme(value) {
-    safeStorageSet(THEME_KEY, value);
-    applyTheme(value);
-}
-/** Ask before a lab, Nuevo or Abrir replaces unsaved changes (on unless turned off). */
-function confirmUnsaved() {
-    return safeStorageGet(CONFIRM_KEY) !== 'off';
-}
-function setConfirmUnsaved(on) {
-    safeStorageSet(CONFIRM_KEY, on ? 'on' : 'off');
-}
-/** The page's language, title and description in the current language. */
-function applyDocumentLanguage() {
-    document.documentElement.lang = getLocale();
-    document.title = t('app.title');
-    document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.description'));
-}
-
-return { THEMES, theme, applyTheme, setTheme, confirmUnsaved, setConfirmUnsaved, applyDocumentLanguage };
-})();
 __m["ui/settings-view.js"] = (() => {
 /** The Configuración tab: general settings of this browser and the device settings of the current lab. */
 const { el } = __m["ui/dom.js"];
 const { t, tDynamic } = __m["i18n/t.js"];
 const { LOCALES, LOCALE_NAMES, getLocale, isLocale } = __m["i18n/locale.js"];
-const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved } = __m["ui/preferences.js"];
+const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt } = __m["ui/preferences.js"];
 const { FEATURES_BY_KIND, featureOn, setFeature } = __m["net/lab-features.js"];
 /** The kinds whose windows have settings to switch (the cloud has none). */
+/** The «prompt con hora» box of the page built last, kept in step when a terminal footer changes it. */
+let stampBox;
+onTimestampPrompt(() => { if (stampBox)
+    stampBox.checked = timestampPrompt(); });
 const KINDS = ['pc', 'server', 'linuxrouter', 'router', 'switch'];
 function generalSection(host) {
     const lang = el('select', { class: 'select', id: 'set-lang' }, ...LOCALES.map((l) => el('option', { value: l, selected: l === getLocale() }, LOCALE_NAMES[l])));
@@ -59493,7 +59573,10 @@ function generalSection(host) {
     });
     const confirm = el('input', { type: 'checkbox', checked: confirmUnsaved() });
     confirm.addEventListener('change', () => setConfirmUnsaved(confirm.checked));
-    return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' }, el('h2', { id: 'set-general' }, t('set.general')), el('p', { class: 'muted' }, t('set.generalNote')), el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang), el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), el('label', { class: 'set-choice' }, confirm, t('set.confirm')));
+    const stamp = el('input', { type: 'checkbox', checked: timestampPrompt(), disabled: host.promptLocked() });
+    stamp.addEventListener('change', () => setTimestampPromptPref(stamp.checked));
+    stampBox = stamp;
+    return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' }, el('h2', { id: 'set-general' }, t('set.general')), el('p', { class: 'muted' }, t('set.generalNote')), el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang), el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), el('label', { class: 'set-choice' }, confirm, t('set.confirm')), el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }
 function kindGroup(host, kind, changed) {
     const boxes = FEATURES_BY_KIND[kind].map((id) => {
@@ -60369,7 +60452,7 @@ const { openDeviceWindow, forgetDevice, forgetAll } = __m["ui/device-windows.js"
 const { Topology } = __m["net/topology.js"];
 const { EXAMPLES } = __m["net/examples.js"];
 const { Pages } = __m["ui/pages.js"];
-const { applyDocumentLanguage, applyTheme, confirmUnsaved } = __m["ui/preferences.js"];
+const { applyDocumentLanguage, applyTheme, confirmUnsaved, loadTimestampPrompt } = __m["ui/preferences.js"];
 const { featureOn } = __m["net/lab-features.js"];
 const { topbar } = __m["ui/topbar.js"];
 const { palette } = __m["ui/palette.js"];
@@ -60399,7 +60482,7 @@ class App {
     stageEl;
     paletteEl;
     pageHost;
-    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), labLocked: () => this.session.embedded, setLocale: (l) => changeLocale(l) });
+    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
     saveTimer = 0;
     interval;
     mode = 'realtime';
@@ -60717,8 +60800,10 @@ function start(mount, s, topo) {
     MEMORY_STORE.clear();
     setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
     applyDocumentLanguage();
-    if (!s.embedded)
-        applyTheme(); // embedded, the page (and its theme) belongs to the host
+    if (!s.embedded) {
+        applyTheme();
+        loadTimestampPrompt();
+    } // embedded, the page (and its theme) belongs to the host
     applyBrand();
     // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
     forceTimestampPrompt(lockedPrompt(s.policy));

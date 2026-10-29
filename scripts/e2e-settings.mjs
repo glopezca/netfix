@@ -58,6 +58,19 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
   assert.ok(!(await tabsOf('g.device-pc')).includes('Terminal Windows'), 'the lab settings came back with the workspace');
 
+  // The timestamp prompt is global and off by default; ticked here, the terminals show it.
+  await page.click('button.seg:has-text("Configuración")');
+  const stamp = settings.locator('label:has-text("Prompt con marca de fecha y hora") input');
+  assert.equal(await stamp.isChecked(), false);
+  await stamp.check();
+  await page.click('button.seg:has-text("Red")');
+  await page.locator('g.device-pc').first().dblclick();
+  await page.click('.window .win-tab:has-text("Terminal Linux")');
+  assert.equal(await page.locator('.window .term-foot input').first().isChecked(), true, 'the terminal footer follows the global setting');
+  await page.click('.win-close');
+  await page.click('button.seg:has-text("Configuración")');
+  await stamp.uncheck();
+
   // Without the unsaved question, a lab replaces the changes at once.
   await page.click('button.seg:has-text("Configuración")');
   await settings.locator('input[data-feature="pc:windows"]').check();
@@ -71,7 +84,7 @@ try {
   await settings.locator('input[name="set-theme"][value="auto"]').check();
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), undefined);
   assert.deepEqual(errors, []);
-  console.log('e2e settings OK: lab features change the windows (PC terminal off, server firewall on), theme and lab settings survive a reload, unsaved question can be turned off');
+  console.log('e2e settings OK: lab features change the windows (PC terminal off, server firewall on), theme and lab settings survive a reload, global timestamp prompt, unsaved question can be turned off');
 } finally {
   await browser.close();
   server.kill();

@@ -4,15 +4,17 @@
  */
 import type { DeviceKind } from './topology.ts';
 
-export const FEATURE_IDS = ['ip', 'apps', 'services', 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'] as const;
+/** The service panels of a Server or Linux router, each switched on its own. */
+export const SERVICE_IDS = ['ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log'] as const;
+export const FEATURE_IDS = ['ip', 'apps', ...SERVICE_IDS, 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 export type LabFeatures = Readonly<Partial<Record<DeviceKind, readonly FeatureId[]>>>;
 
 /** What can be switched on each kind, in the order the settings list them. */
 export const FEATURES_BY_KIND: Readonly<Record<DeviceKind, readonly FeatureId[]>> = {
   pc: ['ip', 'apps', 'linux', 'windows'],
-  server: ['ip', 'services', 'sysctl', 'firewall', 'linux', 'windows'],
-  linuxrouter: ['sysctl', 'firewall', 'vpn', 'services', 'linux', 'windows'],
+  server: ['ip', ...SERVICE_IDS, 'sysctl', 'firewall', 'linux', 'windows'],
+  linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'linux', 'windows'],
   router: ['cli', 'web'],
   switch: ['cli', 'web'],
   cloud: [],
@@ -59,13 +61,17 @@ export function setFeature(features: LabFeatures, kind: DeviceKind, id: FeatureI
 }
 
 /** The `features` of a topology file (untrusted): known kinds, known features of that kind, no repeats. */
+const isService = (f: FeatureId): boolean => (SERVICE_IDS as readonly string[]).includes(f);
+
 export function parseFeatures(data: unknown): LabFeatures {
   if (typeof data !== 'object' || data === null || Array.isArray(data)) return {};
   const out: Partial<Record<DeviceKind, readonly FeatureId[]>> = {};
   for (const kind of KINDS) {
     const list: unknown = (data as Record<string, unknown>)[kind];
     if (!Array.isArray(list) || list.length > MAX_LIST) continue;
-    const on = FEATURES_BY_KIND[kind].filter((f) => list.includes(f));
+    /** Up to v0.24.0 one «services» switch stood for every service panel. */
+    const legacy = list.includes('services');
+    const on = FEATURES_BY_KIND[kind].filter((f) => list.includes(f) || (legacy && isService(f)));
     if (!sameAsDefault(kind, on)) out[kind] = on;
   }
   return out;

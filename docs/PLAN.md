@@ -1231,3 +1231,28 @@ Modelos (regla del proyecto): opus en la sesión principal (cruza red, interfaz 
   en la página que embebe Netfix); «Configuración IP» lleva también el sistema operativo del PC; el JSON hostil
   (listas enormes, `__proto__`) se descarta. Pendiente: en el aula, las restricciones van por pestañas y no pueden
   ocultar los paneles del servidor (kernel, firewall) que un fichero active.
+
+### Fase 41b: servicios uno a uno, ajustes de cada laboratorio grabado y prompt con hora global (v0.24.1)
+
+- **Servicios uno a uno:** en Configuración → Laboratorio actual, el servidor y el router Linux tienen una casilla por
+  panel (SSH, DHCP, DNS, HTTP, correo, ficheros, registros) en lugar de «Servicios». En una red nueva (Nuevo) el
+  servidor los lleva todos menos parámetros del kernel y firewall, como hasta ahora.
+- **Laboratorios grabados:** cada uno trae sus ajustes (`src/net/lab-presets.ts`): solo los servicios que usa. Bastionado
+  añade parámetros del kernel y firewall al servidor. Un laboratorio sin servidores no cambia los valores por defecto
+  (si el alumno añade uno, lo tiene completo).
+
+  | Laboratorio | Servidor | Router Linux |
+  |---|---|---|
+  | Server: DHCP, DNS, web, correo y SSH | SSH, DHCP, DNS, HTTP, correo, ficheros, registros | — |
+  | Internet: dos sedes | SSH, DNS, HTTP, ficheros, registros | — |
+  | DNS que reenvía | DHCP, DNS, ficheros, registros | — |
+  | SSH y SFTP | SSH, DNS, ficheros, registros | — |
+  | Bastionado | SSH, DNS, HTTP, ficheros, registros, kernel, firewall | — |
+  | Router Linux con DMZ | HTTP, ficheros, registros | kernel, firewall, ficheros, registros |
+  | VPN WireGuard | — | kernel, firewall, VPN, SSH, ficheros, registros |
+
+- **Prompt con fecha y hora:** deja de ser de cada equipo y de la red; es un ajuste general de este navegador
+  (Configuración → Generales y la casilla del pie de las terminales, que ahora cambia todas), desactivado por defecto.
+  El bloqueo del aula sigue mandando. Los ficheros antiguos con `timestampPrompt` se abren sin error (se ignora).
+- **Hecho (v0.24.1):** como en el plan (`src/net/lab-presets.ts`, `SERVICE_IDS`), con la ayuda al día (Configuración,
+  Terminal Linux y Terminal Windows) y el e2e del router Linux de la DMZ ajustado a sus paneles.

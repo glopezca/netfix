@@ -81,12 +81,12 @@ try {
   if (shots) await page.screenshot({ path: `${shots}/logs.png` });
   await page.click('.win-close');
 
-  // Linux router: the NIC address applies on change (no «Aplicar»), its panels first and then SSH.
+  // Linux router: the NIC address applies on change (no «Aplicar»); the lab shows only what it uses (kernel, firewall).
   await page.selectOption('select.select >> nth=0', 'linux-dmz');
   await page.dblclick('g.device:has-text("FW")');
   await page.click('.win-tab:has-text("Servicios")');
   const routerItems = await page.locator('.window:visible .subnav-item').allInnerTexts();
-  assert.equal(routerItems[3], 'SSH', routerItems.join(' | '));
+  assert.deepEqual(routerItems, ['Parámetros', 'Firewall', 'Configuración', 'Registros'], routerItems.join(' | '));
   await page.click('.window:visible .subnav-item:has-text("Registros")');
   const routerUnits = (await page.locator('.window:visible select').first().locator('option').allTextContents()).map((o) => o.split(' ')[0]);
   assert.deepEqual(routerUnits, ['ssh', 'nftables', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot'], 'a Linux router: nftables second');

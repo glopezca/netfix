@@ -18,21 +18,18 @@ import { logUnits, unitActive } from '../services/units.ts';
 import { createShell } from '../shells/factory.ts';
 import { sshAuthMethods, setSshAuthMethods } from '../services/ssh-auth-settings.ts';
 
-/** The panels of the tab, as Configuración → Laboratorio actual says (a Server starts without kernel and firewall). */
-export interface ServicePanels {
-  readonly services: boolean;
-  readonly sysctl: boolean;
-  readonly firewall: boolean;
-  readonly vpn: boolean;
-}
-
-export function servicesTab(server: Server, app: AfterChange, panels: ServicePanels): HTMLElement {
-  const system = [
-    ...(panels.sysctl ? [{ id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root }] : []),
-    ...(panels.firewall ? [{ id: 'fw', label: t('fw.tab'), render: () => firewallPanel(server, app).root }] : []),
-    ...(panels.vpn && server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
+/**
+ * The panels of the tab that Configuración → Laboratorio actual leaves on (`panels`: feature ids), in this order:
+ * kernel parameters, firewall, VPN, then SSH, DHCP, DNS, HTTP, mail, files and logs.
+ */
+export function servicesTab(server: Server, app: AfterChange, panels: readonly string[]): HTMLElement {
+  const all = [
+    { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(server, app).root },
+    { id: 'firewall', label: t('fw.tab'), render: () => firewallPanel(server, app).root },
+    ...(server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
+    ...servicePanels(server, app),
   ];
-  return subnav([...system, ...(panels.services ? servicePanels(server, app) : [])]);
+  return subnav(all.filter((p) => panels.includes(p.id)));
 }
 
 function servicePanels(server: Server, app: AfterChange): { id: string; label: string; render: () => HTMLElement }[] {
