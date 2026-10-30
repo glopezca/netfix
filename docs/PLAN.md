@@ -1409,3 +1409,27 @@ siempre con avahi, como en la realidad; la pestaña «Configuración IP» pasa a
   de Windows resuelven a la manera de Windows) y los programas de la terminal GNU/Linux piden siempre la de GNU/Linux;
   nsswitch.conf se siembra con mdns4_minimal si libnss-mdns ya estaba instalado (archivos anteriores); la línea
   `hosts:` vacía no se come la siguiente; un equipo sin NetBIOS no se queda los datagramas del 137.
+
+### Fase 46: LLMNR en Windows, ayuda y laboratorios de resolución de nombres, laboratorios por temas (v0.29.0)
+
+Petición: LLMNR nativo en los equipos Windows; ayuda y laboratorios para la resolución de nombres por los distintos
+protocolos; los laboratorios agrupados por temas para encontrarlos mejor.
+
+- **LLMNR** (`src/net/llmnr.ts`, RFC 4795): pregunta en formato DNS a 224.0.0.252, UDP 5355, TTL 1, desde un puerto
+  efímero; responde por unicast el equipo Windows cuyo nombre es (de una etiqueta, sin distinguir mayúsculas). No
+  cruza routers. Solo Windows (los GNU/Linux de Netfix no lo hablan).
+- **Orden de Windows** para un nombre de una etiqueta: hosts → DNS (con sufijo) → LLMNR y NetBIOS **a la vez**
+  (como Windows 10/11): gana la respuesta LLMNR; si no llega, la de NBNS. `.local` sigue por mDNS.
+  netbios.ts y llmnr.ts ofrecen consultas asíncronas; `src/net/win-names.ts` las lanza juntas en un solo `runSync`.
+- **Simulación:** filtro LLMNR con su color, línea `LLMNR A? pc2` y detalle «UDP x → 5355 · LLMNR».
+- **Laboratorios de nombres** (`src/net/labs-names.ts`): «Nombres sin servidor DNS» (una LAN con dos Windows, un
+  GNU/Linux con avahi y otro sin nada: hosts, mDNS, LLMNR, NetBIOS) y «Nombres entre redes» (dos LAN unidas por un
+  router con un servidor DNS: lo que cruza el router y lo que no, sufijo DNS del DHCP).
+- **Grupos de laboratorios:** `LAB_GROUPS` en examples.ts (DHCP; Conmutación y VLAN; Servicios; Resolución de
+  nombres; Internet y VPN; Seguridad), `<optgroup>` en el selector (sin grupos vacíos si el aula oculta laboratorios).
+  Una prueba exige que cada laboratorio esté en un solo grupo.
+- **Ayuda:** página «Resolución de nombres» en Conceptos de red (es/en): orden de cada sistema, tabla de protocolos
+  (puerto, alcance, quién responde), cómo verlo en Simulación y ejercicios con los dos laboratorios.
+- **Hecho (v0.29.0)**, con la revisión: sin respuesta, Windows repite la pregunta LLMNR a los 410 ms (como el real).
+  El laboratorio «LAN sin DNS propio» sale a Internet (ISP-Norte, DNS 8.8.8.8) para que LNX2 pueda instalar avahi o
+  samba con apt; en «Nombres entre redes» todos son Windows (WIN-B2 no está en la zona).

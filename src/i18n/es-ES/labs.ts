@@ -30,6 +30,16 @@ export const LABS_ES = {
   'lab.ssh-sftp.summary': 'srv.aula.lab acepta SSH y SFTP (ana/ana1, admin/netfix). En PC1: pestaña Cliente SSH → Claves (genera ed25519), ssh-copy-id ana@srv.aula.lab, Archivos (SFTP) para subir y bajar. Después pon «PasswordAuthentication no» en un fichero de /etc/ssh/sshd_config.d/ y recarga: solo entra quien tiene clave. Los permisos son los de cada usuario en el servidor.',
   'lab.bastionado.title': 'Bastionado: ACL, nftables y sshd',
   'lab.bastionado.summary': 'Defensa en profundidad: la ACL extendida A-SERVIDORES de GW deja la web a todos y SSH/ping solo a ADMINISTRACION (deny … log); el servidor repite la política con nftables desde su terminal (/etc/nftables.conf: input drop, log NFT-DROP) y sshd_config.d (sin root, AllowUsers admin, MaxAuthTries 3). Prueba desde ADMIN y ALUMNO: ssh admin@172.20.0.10, curl, ping, nmap; en GW show access-lists.',
+  'lab.nombres-lan.title': 'Nombres en una LAN sin DNS propio: hosts, mDNS, LLMNR y NetBIOS',
+  'lab.nombres-lan.summary': 'Una LAN de casa: GW sale a Internet y los PCs usan el DNS público 8.8.8.8, que no conoce sus nombres. WIN1 y WIN2 (Windows) se encuentran de serie: ping win2 (LLMNR y NetBIOS a la vez), ping win2.local (mDNS), nbtstat -c. LNX1 tiene avahi: responde a lnx1.local y pregunta .local. LNX2 no tiene nada: añade una línea a /etc/hosts, o sudo apt install avahi-daemon (mDNS) o samba (NetBIOS). Mira cada protocolo en Simulación (filtros MDNS, LLMNR, NBNS).',
+  'lab.nombres-redes.title': 'Nombres entre redes: DNS frente a los protocolos de enlace',
+  'lab.nombres-redes.summary': 'GW une la LAN A (SRV, DNS de aula.lab, y WIN-A) y la LAN B (WIN-B y WIN-B2). Desde WIN-A, ping win-b funciona por DNS con el sufijo aula.lab; ping win-b2 no (no está en la zona y LLMNR, NetBIOS y mDNS no cruzan el router). Desde WIN-B, ping win-b2 sí funciona por LLMNR. Da de alta win-b2 en la zona de SRV y repite. Prueba nslookup y Simulación.',
+  'labgroup.dhcp': 'DHCP',
+  'labgroup.switching': 'Conmutación y VLAN',
+  'labgroup.services': 'Servicios',
+  'labgroup.names': 'Resolución de nombres',
+  'labgroup.internet': 'Internet y VPN',
+  'labgroup.security': 'Seguridad',
 } as const;
 
 export type LabsKey = keyof typeof LABS_ES;

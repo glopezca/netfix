@@ -31,7 +31,7 @@ export const OUTLINE: readonly OutlineGroup[] = [
   { id: 'router', title: 'Router IOS', icon: 'router', sections: [['DHCP', ['ios-dhcp', 'ios-reservas', 'ios-relay']], ['NAT y ACL', ['ios-nat', 'ios-acl']], ['VPN', ['ios-ipsec']]] },
   { id: 'linuxrouter', title: 'Router GNU/Linux', icon: 'linuxrouter', sections: [['Parámetros', ['linux-router']], ['Cortafuegos', ['linux-nftables']], ['VPN', ['linux-wireguard']]] },
   { id: 'nube', title: 'Nube ISP', icon: 'cloud', sections: [[null, ['inet-cloud', 'inet-dns']]] },
-  { id: 'red', icon: 'network', title: 'Conceptos de red', sections: [[null, ['red-broadcast', 'inet-trace']]] },
+  { id: 'red', icon: 'network', title: 'Conceptos de red', sections: [[null, ['red-broadcast', 'red-nombres', 'inet-trace']]] },
   { id: 'linux', icon: 'terminal', title: 'Terminal GNU/Linux', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red', 'linux-apt']], ['Midnight Commander', ['mc']], ['Editores', ['nano', 'vim']]] },
   {
     id: 'bash', icon: 'script', title: 'GNU bash 5.3', sections: [

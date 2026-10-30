@@ -37,7 +37,7 @@ export const NETFIX_DOCS: DocGroup = {
         table(['Control', 'What it does'], [
           ['Network / Help / Settings / Donations / About', 'Switches between the workspace, this help, the settings (see “Settings”), the page for supporting the project (PayPal.Me) and the version, authorship, licence and attribution information (taken from package.json and LICENSE.md).'],
           ['New · Open… · Save', 'Empty workspace, open a .json file or save the topology (Ctrl+S). New, Open and Labs ask before replacing a network with unsaved changes.'],
-          ['Labs…', 'Loads a ready-made exercise: DHCP (basic, reservations, relay, VLAN, snooping, client router), spanning tree, Server, Internet with two sites, IPsec and WireGuard VPN, GNU/Linux router with DMZ, forwarding DNS, SSH/SFTP and hardening.'],
+          ['Labs…', 'Loads a ready-made exercise, grouped by theme: DHCP (basic, reservations, relay, client router); Switching and VLANs (router-on-a-stick, spanning tree, snooping); Services (Server, SSH/SFTP); Name resolution (LAN with no DNS of its own, names across networks, forwarding DNS); Internet and VPN (two sites, IPsec, WireGuard); Security (GNU/Linux router with DMZ, hardening).'],
           ['Clock and “Advance clock…”', 'Simulated time. Moving it forward 1 minute, 1 hour or 1 day makes DHCP leases expire or renew.'],
           ['Realtime / Simulation', 'Execution mode (see “Realtime and simulation”).'],
           ['Language', 'Español (España) or English (UK): changes the whole interface, the help and the simulated web pages without reloading.'],
@@ -163,7 +163,7 @@ export const NETFIX_DOCS: DocGroup = {
         p('In Realtime the network runs on its own. In Simulation, every packet stays in the event list and can be replayed step by step, as in Packet Tracer.'),
         list(
           'Play / Pause / Step: advance the simulation.',
-          'Filters: DHCP, DNS, MDNS, NBNS, ARP, ICMP, TCP, HTTP, SMB, SMTP, POP3, IMAP, SSH and STP. MDNS (UDP 5353, multicast) and NBNS (UDP 137, broadcast) show their question, their answer and, in NetBIOS, the name table with the MAC.',
+          'Filters: DHCP, DNS, MDNS, LLMNR, NBNS, ARP, ICMP, TCP, HTTP, SMB, SMTP, POP3, IMAP, SSH and STP. MDNS (UDP 5353, multicast), LLMNR (UDP 5355, multicast) and NBNS (UDP 137, broadcast) show their question, their answer and, in NetBIOS, the name table with the MAC.',
           'Choosing an event shows the PDU by layers (Ethernet II, IPv4, UDP/TCP and the application message).',
           'SSH appears as “encrypted data”: its content cannot be read in transit.',
         ),

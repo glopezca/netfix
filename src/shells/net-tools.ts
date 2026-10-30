@@ -1,6 +1,7 @@
 /** Network operations shared by the Linux and Windows shells and the desktop apps. */
 import { mdnsResolve } from '../net/mdns.ts';
 import { nbnsResolve } from '../net/netbios.ts';
+import { windowsLinkResolve } from '../net/win-names.ts';
 import { hostsSources } from './nsswitch.ts';
 import { hasPackage } from '../net/host-packages.ts';
 import type { Host } from '../devices/host.ts';
@@ -107,12 +108,12 @@ function dnsStep(host: Host, target: string): Resolved {
   return addr === undefined ? { kind: 'error', reason: 'nodata' } : { kind: 'ip', ip: addr, name: normalizeName(name), viaDns: true };
 }
 
-/** Windows: hosts, then mDNS for .local, the DNS (with its suffix) and NetBIOS for a bare name (cache, broadcast). */
+/** Windows: hosts, then mDNS for .local, the DNS (with its suffix) and, for a bare name, LLMNR and NetBIOS at once. */
 function windowsLookup(host: Host, target: string): Resolved {
   if (isLocalName(target)) return ip(mdnsResolve(host, normalizeName(target), true), normalizeName(target)) ?? dnsStep(host, target);
   const dns = dnsStep(host, target);
   if (dns.kind === 'ip' || !singleLabel(target)) return dns;
-  return ip(nbnsResolve(host, target), target) ?? dns;
+  return ip(windowsLinkResolve(host, target), target) ?? dns;
 }
 
 /** GNU/Linux: the sources of «hosts:» in /etc/nsswitch.conf, in order (files was already asked). */

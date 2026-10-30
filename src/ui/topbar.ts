@@ -1,9 +1,10 @@
 /** Top bar: brand, views, file actions, labs, clock, mode and language. Folds into a menu on phones. */
 import { brandImage } from './brand.ts';
 import { el } from './dom.ts';
-import { EXAMPLES } from '../net/examples.ts';
+import { EXAMPLES, LAB_GROUPS } from '../net/examples.ts';
+import type { Example } from '../net/examples.ts';
 import { labText } from './lab-text.ts';
-import { t } from '../i18n/t.ts';
+import { t, tDynamic } from '../i18n/t.ts';
 import type { MessageKey } from '../i18n/catalog.ts';
 import { getLocale, LOCALES, LOCALE_NAMES, LOCALE_SHORT, isLocale } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
@@ -33,9 +34,16 @@ function button(label: string, fn: () => void, attrs: Record<string, string> = {
   return b;
 }
 
+type Option = readonly [value: string, label: string];
+/** Options, or groups of them (<optgroup>) as [group title, options]. */
+type Options = readonly (Option | readonly [string, readonly Option[]])[];
+
+const optionEl = ([v, l]: Option): HTMLOptionElement => el('option', { value: v }, l);
+
 /** A <select> that runs `fn` with the chosen value and goes back to its placeholder. */
-function actionSelect(label: string, placeholder: string, options: readonly (readonly [string, string])[], fn: (v: string) => void): HTMLSelectElement {
-  const s = el('select', { class: 'select', 'aria-label': label }, el('option', { value: '' }, placeholder), ...options.map(([v, l]) => el('option', { value: v }, l)));
+function actionSelect(label: string, placeholder: string, options: Options, fn: (v: string) => void): HTMLSelectElement {
+  const s = el('select', { class: 'select', 'aria-label': label }, el('option', { value: '' }, placeholder),
+    ...options.map((o) => (typeof o[1] === 'string' ? optionEl(o as Option) : el('optgroup', { label: o[0] }, ...(o[1] as readonly Option[]).map(optionEl)))));
   s.addEventListener('change', () => {
     const v = s.value;
     s.value = '';
@@ -63,6 +71,14 @@ function languageSelect(actions: TopbarActions): HTMLSelectElement {
   return s;
 }
 
+/** The labs the classroom allows, by theme (a group with none left is not shown). */
+function labGroups(allowed: readonly Example[]): Options {
+  return LAB_GROUPS.flatMap(([group, ids]) => {
+    const items = ids.flatMap((id) => allowed.filter((e) => e.id === id)).map((e) => [e.id, labText(e).title] as const);
+    return items.length ? [[tDynamic(`labgroup.${group}`), items] as const] : [];
+  });
+}
+
 /** What the classroom restrictions leave of a list: the items whose flag is on. */
 function only(items: readonly (readonly [boolean, HTMLElement])[]): HTMLElement[] {
   return items.filter(([on]) => on).map(([, x]) => x);
@@ -70,7 +86,7 @@ function only(items: readonly (readonly [boolean, HTMLElement])[]): HTMLElement[
 
 export function topbar(actions: TopbarActions, clockEl: HTMLElement, mode: Mode, view: View = 'net', policy: Restrictions = NO_RESTRICTIONS): HTMLElement {
   const allowed = EXAMPLES.filter((e) => allowsLab(policy, e.id));
-  const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), allowed.map((e) => [e.id, labText(e).title] as const), (id) => actions.loadExample(id));
+  const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), labGroups(allowed), (id) => actions.loadExample(id));
   const advance = actionSelect(t('top.advanceLabel'), t('top.advance'),
     [[String(MINUTE), t('top.plusMinute')], [String(60 * MINUTE), t('top.plusHour')], [String(24 * 60 * MINUTE), t('top.plusDay')]], (v) => actions.advance(Number(v)));
   const menuId = 'topbar-menu';

@@ -9,7 +9,7 @@ import { frameProtocol, tcpService } from '../net/packets.ts';
 import { formatIp, formatMask } from '../core/ip.ts';
 import { formatMacCisco, formatHexId } from '../core/mac.ts';
 
-const PROTOCOLS = ['DHCP', 'DNS', 'MDNS', 'NBNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMB', 'SMTP', 'POP3', 'IMAP', 'SSH', 'STP'] as const;
+const PROTOCOLS = ['DHCP', 'DNS', 'MDNS', 'LLMNR', 'NBNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMB', 'SMTP', 'POP3', 'IMAP', 'SSH', 'STP'] as const;
 /** Off at first: the BPDUs every 2 s would bury the rest (as in Packet Tracer, tick it to see them). */
 const HIDDEN_AT_FIRST: ReadonlySet<string> = new Set(['STP']);
 const BASE_STEP_MS = 700;
@@ -201,6 +201,8 @@ function appFields(p: AppPayload): [string, string | undefined][] {
   }
 }
 
+const DNS_HEADER: Readonly<Record<string, string>> = { MDNS: 'mDNS', LLMNR: 'LLMNR' };
+
 function typeName(f: Frame): string {
   if (f.bpdu) return `STP BPDU VLAN ${f.bpdu.vlan}`;
   const dhcp = f.ip?.udp?.dhcp;
@@ -267,7 +269,7 @@ function pduView(e: SimEvent, from: string, to: string): HTMLElement[] {
     out.push(el('h4', {}, `UDP ${ip.udp.sport} → ${ip.udp.dport} · NetBIOS Name Service`), kv(nbnsFields(ip.udp.nbns)));
   } else if (ip.udp?.dns) {
     const q = ip.udp.dns;
-    out.push(el('h4', {}, `UDP ${ip.udp.sport} → ${ip.udp.dport} · ${frameProtocol(f) === 'MDNS' ? 'mDNS' : 'DNS'}`), kv([
+    out.push(el('h4', {}, `UDP ${ip.udp.sport} → ${ip.udp.dport} · ${DNS_HEADER[frameProtocol(f)] ?? 'DNS'}`), kv([
       ['id', String(q.id)], ['QR', q.response ? t('pdu.response') : t('pdu.query')], [t('pdu.question'), `${q.qname} IN ${q.qtype}`], ['rcode', q.rcode], ['AA', q.authoritative ? t('pdu.yes') : undefined],
       [t('pdu.answers'), q.answers?.map((a) => `${a.name} ${a.ttl} ${a.type} ${a.priority !== undefined ? `${a.priority} ` : ''}${a.data}`).join(' · ')],
       [t('pdu.authority'), q.authority?.map((a) => `${a.name} ${a.type}`).join(' · ')],

@@ -55,6 +55,7 @@
   --ssh: #3d4f9c;
   --stp: #5f7d2c;
   --mdns: #237a6f;
+  --llmnr: #6b4fa0;
   --nbns: #8a5a2b;
   --smb: #4a6b8f;
   --ok: #2e7d4f;
@@ -158,6 +159,7 @@ button, input, select { font: inherit; color: inherit; }
 .env-smtp rect, .env-pop3 rect, .env-imap rect { fill: var(--mail); }
 .env-ssh rect { fill: var(--ssh); }
 .env-mdns rect { fill: var(--mdns); }
+.env-llmnr rect { fill: var(--llmnr); }
 .env-nbns rect { fill: var(--nbns); }
 .env-smb rect { fill: var(--smb); }
 
@@ -338,6 +340,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 .chip-ssh { background: var(--ssh); }
 .chip-stp { background: var(--stp); }
 .chip-mdns { background: var(--mdns); }
+.chip-llmnr { background: var(--llmnr); }
 .chip-nbns { background: var(--nbns); }
 .chip-smb { background: var(--smb); }
 .sim-count { font-size: 12px; color: var(--ink-2); }
@@ -2013,6 +2016,16 @@ const LABS_ES = {
     'lab.ssh-sftp.summary': 'srv.aula.lab acepta SSH y SFTP (ana/ana1, admin/netfix). En PC1: pestaña Cliente SSH → Claves (genera ed25519), ssh-copy-id ana@srv.aula.lab, Archivos (SFTP) para subir y bajar. Después pon «PasswordAuthentication no» en un fichero de /etc/ssh/sshd_config.d/ y recarga: solo entra quien tiene clave. Los permisos son los de cada usuario en el servidor.',
     'lab.bastionado.title': 'Bastionado: ACL, nftables y sshd',
     'lab.bastionado.summary': 'Defensa en profundidad: la ACL extendida A-SERVIDORES de GW deja la web a todos y SSH/ping solo a ADMINISTRACION (deny … log); el servidor repite la política con nftables desde su terminal (/etc/nftables.conf: input drop, log NFT-DROP) y sshd_config.d (sin root, AllowUsers admin, MaxAuthTries 3). Prueba desde ADMIN y ALUMNO: ssh admin@172.20.0.10, curl, ping, nmap; en GW show access-lists.',
+    'lab.nombres-lan.title': 'Nombres en una LAN sin DNS propio: hosts, mDNS, LLMNR y NetBIOS',
+    'lab.nombres-lan.summary': 'Una LAN de casa: GW sale a Internet y los PCs usan el DNS público 8.8.8.8, que no conoce sus nombres. WIN1 y WIN2 (Windows) se encuentran de serie: ping win2 (LLMNR y NetBIOS a la vez), ping win2.local (mDNS), nbtstat -c. LNX1 tiene avahi: responde a lnx1.local y pregunta .local. LNX2 no tiene nada: añade una línea a /etc/hosts, o sudo apt install avahi-daemon (mDNS) o samba (NetBIOS). Mira cada protocolo en Simulación (filtros MDNS, LLMNR, NBNS).',
+    'lab.nombres-redes.title': 'Nombres entre redes: DNS frente a los protocolos de enlace',
+    'lab.nombres-redes.summary': 'GW une la LAN A (SRV, DNS de aula.lab, y WIN-A) y la LAN B (WIN-B y WIN-B2). Desde WIN-A, ping win-b funciona por DNS con el sufijo aula.lab; ping win-b2 no (no está en la zona y LLMNR, NetBIOS y mDNS no cruzan el router). Desde WIN-B, ping win-b2 sí funciona por LLMNR. Da de alta win-b2 en la zona de SRV y repite. Prueba nslookup y Simulación.',
+    'labgroup.dhcp': 'DHCP',
+    'labgroup.switching': 'Conmutación y VLAN',
+    'labgroup.services': 'Servicios',
+    'labgroup.names': 'Resolución de nombres',
+    'labgroup.internet': 'Internet y VPN',
+    'labgroup.security': 'Seguridad',
 };
 
 return { LABS_ES };
@@ -2049,6 +2062,16 @@ const LABS_EN = {
     'lab.ssh-sftp.summary': 'srv.aula.lab accepts SSH and SFTP (ana/ana1, admin/netfix). On PC1: SSH client tab → Keys (generate ed25519), ssh-copy-id ana@srv.aula.lab, Files (SFTP) to upload and download. Then put “PasswordAuthentication no” in a file under /etc/ssh/sshd_config.d/ and reload: only users with a key get in. Permissions are each user\'s on the server.',
     'lab.bastionado.title': 'Hardening: ACL, nftables and sshd',
     'lab.bastionado.summary': 'Defence in depth: GW\'s extended ACL A-SERVIDORES lets everyone use the web and only ADMINISTRACION use SSH/ping (deny … log); the server repeats the policy with nftables from its terminal (/etc/nftables.conf: input drop, NFT-DROP log) and sshd_config.d (no root, AllowUsers admin, MaxAuthTries 3). Try from ADMIN and ALUMNO: ssh admin@172.20.0.10, curl, ping, nmap; on GW show access-lists.',
+    'lab.nombres-lan.title': 'Names in a LAN with no DNS of its own: hosts, mDNS, LLMNR and NetBIOS',
+    'lab.nombres-lan.summary': 'A home LAN: GW goes out to the Internet and the PCs use the public DNS 8.8.8.8, which knows none of their names. WIN1 and WIN2 (Windows) find each other out of the box: ping win2 (LLMNR and NetBIOS at once), ping win2.local (mDNS), nbtstat -c. LNX1 has avahi: it answers to lnx1.local and asks .local names. LNX2 has nothing: add a line to /etc/hosts, or sudo apt install avahi-daemon (mDNS) or samba (NetBIOS). Watch each protocol in Simulation (MDNS, LLMNR, NBNS filters).',
+    'lab.nombres-redes.title': 'Names across networks: DNS versus the link protocols',
+    'lab.nombres-redes.summary': 'GW joins LAN A (SRV, DNS for aula.lab, and WIN-A) and LAN B (WIN-B and WIN-B2). From WIN-A, ping win-b works through the DNS with the aula.lab suffix; ping win-b2 does not (it is not in the zone, and LLMNR, NetBIOS and mDNS do not cross the router). From WIN-B, ping win-b2 works through LLMNR. Add win-b2 to SRV\'s zone and try again. Try nslookup and Simulation.',
+    'labgroup.dhcp': 'DHCP',
+    'labgroup.switching': 'Switching and VLANs',
+    'labgroup.services': 'Services',
+    'labgroup.names': 'Name resolution',
+    'labgroup.internet': 'Internet and VPN',
+    'labgroup.security': 'Security',
 };
 
 return { LABS_EN };
@@ -5267,6 +5290,8 @@ const DEFAULT_TTL = 255;
 const PC_TTL = 128;
 /** Initial TTL of Linux (net.ipv4.ip_default_ttl). */
 const LINUX_TTL = 64;
+/** DNS-format protocols on their own ports: mDNS and LLMNR. */
+const DNS_LIKE = { 5353: 'MDNS', 5355: 'LLMNR' };
 /** Label used by the simulation event list: DHCP, DNS, ARP, ICMP, HTTP, SMTP, POP3, IMAP, SSH or TCP. */
 function frameProtocol(frame) {
     if (frame.bpdu)
@@ -5279,7 +5304,7 @@ function frameProtocol(frame) {
     if (ip.udp?.dhcp)
         return 'DHCP';
     if (ip.udp?.dns)
-        return ip.udp.dport === 5353 || ip.udp.sport === 5353 ? 'MDNS' : 'DNS';
+        return DNS_LIKE[ip.udp.dport] ?? DNS_LIKE[ip.udp.sport] ?? 'DNS';
     if (ip.udp?.nbns)
         return 'NBNS';
     if (ip.udp?.isakmp)
@@ -11295,42 +11320,60 @@ function attachNetbios(host) {
     for (const port of SMB_PORTS)
         host.tcp.listen(port, () => null, () => speaksNetbios(host));
 }
-/** Sends a question (to the subnet broadcast, or to one address) and waits for the first answer. */
-function nbnsAsk(host, q, to) {
+/** Sends a question (to the subnet broadcast, or to one address); `done` gets the first answer or undefined. */
+function nbnsQuery(host, q, to, done) {
     const id = nextId++ & 0xffff || 1;
     const pending = waiting.get(host) ?? new Map();
     waiting.set(host, pending);
+    let over = false;
+    const finish = (m) => {
+        if (over)
+            return;
+        over = true;
+        pending.delete(id);
+        done(m);
+    };
     const msg = { ...q, id, response: false, name: q.name === '*' ? '*' : netbiosName(q.name) };
-    const got = runSync(host.hooks, (done) => {
-        pending.set(id, done);
-        host.hooks.schedule(QUERY_MS, () => done(undefined));
-        for (const i of host.l3Ifaces().filter((x) => x.up && x.addrs.length)) {
-            const a = i.addrs[0];
-            if (!a)
-                continue;
-            host.sendUdp(to ?? broadcastOf(a.ip, a.prefix), NBNS_PORT, NBNS_PORT, { nbns: msg }, a.ip, i.name);
-            if (to !== undefined)
-                break;
-        }
-    }, QUERY_MS + 500);
-    pending.delete(id);
-    return got;
+    pending.set(id, finish);
+    host.hooks.schedule(QUERY_MS, () => finish(undefined));
+    for (const i of host.l3Ifaces().filter((x) => x.up && x.addrs.length)) {
+        const a = i.addrs[0];
+        if (!a)
+            continue;
+        host.sendUdp(to ?? broadcastOf(a.ip, a.prefix), NBNS_PORT, NBNS_PORT, { nbns: msg }, a.ip, i.name);
+        if (to !== undefined)
+            break;
+    }
 }
-/** The address of NAME<suffix>: the cache first, then a broadcast query (what Windows does after DNS). */
-function nbnsResolve(host, name, suffix = WORKSTATION) {
-    const key = `${netbiosName(name)}<${suffix}>`;
+/** nbnsQuery, waiting for the answer. */
+function nbnsAsk(host, q, to) {
+    return runSync(host.hooks, (done) => nbnsQuery(host, q, to, done), QUERY_MS + 500);
+}
+function cacheOf(host) {
     const cache = caches.get(host) ?? new Map();
     caches.set(host, cache);
-    const hit = cache.get(key);
-    const now = host.clock.now();
-    if (hit && hit.until > now)
-        return hit.ip;
-    const r = nbnsAsk(host, { type: 'NB', name, suffix, broadcast: true });
-    const ip = r?.addresses?.[0];
-    if (ip !== undefined)
-        cache.set(key, { ip, suffix, until: now + CACHE_MS });
-    return ip;
+    return cache;
 }
+/** The address of NAME<suffix>, asynchronously: the cache first, then a broadcast query (cached when answered). */
+function nbnsLookup(host, name, suffix, done) {
+    const key = `${netbiosName(name)}<${suffix}>`;
+    const hit = cacheOf(host).get(key);
+    if (hit && hit.until > host.clock.now()) {
+        done(hit.ip);
+        return;
+    }
+    nbnsQuery(host, { type: 'NB', name, suffix, broadcast: true }, undefined, (r) => {
+        const ip = r?.addresses?.[0];
+        if (ip !== undefined)
+            cacheOf(host).set(key, { ip, suffix, until: host.clock.now() + CACHE_MS });
+        done(ip);
+    });
+}
+/** nbnsLookup, waiting for the answer (what Windows does after DNS). */
+function nbnsResolve(host, name, suffix = WORKSTATION) {
+    return runSync(host.hooks, (done) => nbnsLookup(host, name, suffix, done), QUERY_MS + 500);
+}
+const NBNS_WAIT_MS = QUERY_MS;
 /** nbtstat -c: [name, suffix, address, seconds left]. */
 function nbnsCache(host) {
     const now = host.clock.now();
@@ -11341,7 +11384,112 @@ function purgeNbnsCache(host) {
     caches.delete(host);
 }
 
-return { NBNS_PORT, CACHE_MS, WORKGROUP, WORKSTATION, FILE_SERVER, speaksNetbios, netbiosName, ownNames, attachNetbios, nbnsAsk, nbnsResolve, nbnsCache, purgeNbnsCache };
+return { NBNS_PORT, CACHE_MS, WORKGROUP, WORKSTATION, FILE_SERVER, speaksNetbios, netbiosName, ownNames, attachNetbios, nbnsQuery, nbnsAsk, nbnsLookup, nbnsResolve, NBNS_WAIT_MS, nbnsCache, purgeNbnsCache };
+})();
+__m["net/llmnr.js"] = (() => {
+const { registerLocalSockets } = __m["net/ipstack.js"];
+const { formatIp, parseIp } = __m["core/ip.js"];
+const LLMNR_GROUP = parseIp('224.0.0.252') ?? 0;
+const LLMNR_PORT = 5355;
+/** Windows waits about a second for an answer (it asks twice, RETRY_MS apart, then gives up). */
+const LLMNR_WAIT_MS = 1000;
+/** Without an answer, Windows asks once more. */
+const RETRY_MS = 410;
+const LINK_TTL = 1;
+const ANSWER_TTL = 30;
+/** Query ports, clear of the stub resolver's 50000-50999 and mDNS's 52000-59999. */
+const FIRST_PORT = 60000;
+const PORTS = 5000;
+const windows = (h) => h.os === 'windows';
+const waiting = new WeakMap();
+let nextPort = 0;
+function answer(host, iface, p) {
+    const q = p.udp?.dns;
+    const own = host.l3Iface(iface)?.addrs[0]?.ip;
+    if (!q || !p.udp || own === undefined || q.qtype !== 'A')
+        return;
+    if (q.qname.replace(/\.$/, '').toLowerCase() !== host.runtimeName().toLowerCase())
+        return;
+    host.sendUdp(p.src, LLMNR_PORT, p.udp.sport, { dns: { id: q.id, response: true, qname: q.qname, qtype: 'A', rcode: 'NOERROR',
+            answers: [{ name: q.qname, type: 'A', ttl: ANSWER_TTL, data: formatIp(own) }] } }, own, iface);
+}
+function take(host, iface, p) {
+    const u = p.udp;
+    if (!u?.dns)
+        return false;
+    if (u.dns.response && u.sport === LLMNR_PORT) {
+        const q = waiting.get(host)?.get(u.dport);
+        const a = u.dns.answers?.find((x) => x.type === 'A' && x.name.toLowerCase() === q?.name);
+        const ip = parseIp(a?.data ?? '');
+        if (!q || ip === null)
+            return false;
+        q.done(ip);
+        return true;
+    }
+    if (u.dns.response || u.dport !== LLMNR_PORT || p.dst !== LLMNR_GROUP || !windows(host))
+        return false;
+    answer(host, iface, p);
+    return true;
+}
+let registered = false;
+/** Windows hosts join 224.0.0.252 and answer from here on (topology.ts calls it). */
+function registerLlmnr() {
+    if (registered)
+        return;
+    registered = true;
+    registerLocalSockets({ member: (h, group) => group === LLMNR_GROUP && windows(h), take });
+}
+/** Asks for `name` on every link of the host; `done` gets its address, or undefined after LLMNR_WAIT_MS. */
+function llmnrLookup(host, name, done) {
+    registerLlmnr();
+    const port = FIRST_PORT + (nextPort++ % PORTS);
+    const pending = waiting.get(host) ?? new Map();
+    waiting.set(host, pending);
+    let over = false;
+    const finish = (ip) => {
+        if (over)
+            return;
+        over = true;
+        pending.delete(port);
+        done(ip);
+    };
+    pending.set(port, { name: name.toLowerCase(), done: finish });
+    host.hooks.schedule(LLMNR_WAIT_MS, () => finish(undefined));
+    const ask = () => {
+        if (over)
+            return;
+        for (const iface of host.l3Ifaces().filter((i) => i.up && i.addrs.length)) {
+            host.stack.multicast(iface.name, { src: iface.addrs[0]?.ip ?? 0, dst: LLMNR_GROUP, ttl: LINK_TTL, protocol: 'udp',
+                udp: { sport: port, dport: LLMNR_PORT, dns: { id: port & 0xffff, response: false, qname: name, qtype: 'A' } } });
+        }
+    };
+    ask();
+    host.hooks.schedule(RETRY_MS, ask);
+}
+
+return { LLMNR_GROUP, LLMNR_PORT, LLMNR_WAIT_MS, registerLlmnr, llmnrLookup };
+})();
+__m["net/win-names.js"] = (() => {
+const { LLMNR_WAIT_MS, llmnrLookup } = __m["net/llmnr.js"];
+const { NBNS_WAIT_MS, WORKSTATION, nbnsLookup } = __m["net/netbios.js"];
+const { runSync } = __m["net/sync.js"];
+const MARGIN_MS = 500;
+function windowsLinkResolve(host, name) {
+    return runSync(host.hooks, (done) => {
+        let llmnr = null;
+        let nbns = null;
+        const settle = () => {
+            if (llmnr !== null && llmnr !== undefined)
+                done(llmnr);
+            else if (llmnr === undefined && nbns !== null)
+                done(nbns);
+        };
+        llmnrLookup(host, name, (ip) => { llmnr = ip; settle(); });
+        nbnsLookup(host, name, WORKSTATION, (ip) => { nbns = ip; settle(); });
+    }, Math.max(LLMNR_WAIT_MS, NBNS_WAIT_MS) + MARGIN_MS);
+}
+
+return { windowsLinkResolve };
 })();
 __m["shells/nsswitch.js"] = (() => {
 const { peekHostFile } = __m["devices/host-fs.js"];
@@ -11431,6 +11579,7 @@ __m["shells/net-tools.js"] = (() => {
 /** Network operations shared by the Linux and Windows shells and the desktop apps. */
 const { mdnsResolve } = __m["net/mdns.js"];
 const { nbnsResolve } = __m["net/netbios.js"];
+const { windowsLinkResolve } = __m["net/win-names.js"];
 const { hostsSources } = __m["shells/nsswitch.js"];
 const { hasPackage } = __m["net/host-packages.js"];
 const { firstAddress, normalizeName, reverseName } = __m["net/dns.js"];
@@ -11523,14 +11672,14 @@ function dnsStep(host, target) {
     const addr = firstAddress(r.msg);
     return addr === undefined ? { kind: 'error', reason: 'nodata' } : { kind: 'ip', ip: addr, name: normalizeName(name), viaDns: true };
 }
-/** Windows: hosts, then mDNS for .local, the DNS (with its suffix) and NetBIOS for a bare name (cache, broadcast). */
+/** Windows: hosts, then mDNS for .local, the DNS (with its suffix) and, for a bare name, LLMNR and NetBIOS at once. */
 function windowsLookup(host, target) {
     if (isLocalName(target))
         return ip(mdnsResolve(host, normalizeName(target), true), normalizeName(target)) ?? dnsStep(host, target);
     const dns = dnsStep(host, target);
     if (dns.kind === 'ip' || !singleLabel(target))
         return dns;
-    return ip(nbnsResolve(host, target), target) ?? dns;
+    return ip(windowsLinkResolve(host, target), target) ?? dns;
 }
 /** GNU/Linux: the sources of «hosts:» in /etc/nsswitch.conf, in order (files was already asked). */
 function linuxLookup(host, target) {
@@ -18433,7 +18582,7 @@ const NETFIX_DOCS = {
                 table(['Control', 'Qué hace'], [
                     ['Red / Ayuda / Configuración / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta ayuda, los ajustes (ver «Configuración»), la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
                     ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S). Nuevo, Abrir y Laboratorios preguntan antes de reemplazar una red con cambios sin guardar.'],
-                    ['Laboratorios…', 'Carga una práctica preparada: DHCP (básico, reservas, relay, VLAN, snooping, router cliente), spanning tree, Server, Internet con dos sedes, VPN IPsec y WireGuard, router GNU/Linux con DMZ, DNS que reenvía, SSH/SFTP y bastionado.'],
+                    ['Laboratorios…', 'Carga una práctica preparada, agrupada por temas: DHCP (básico, reservas, relay, router cliente); Conmutación y VLAN (router-on-a-stick, spanning tree, snooping); Servicios (Server, SSH/SFTP); Resolución de nombres (LAN sin DNS propio, nombres entre redes, DNS que reenvía); Internet y VPN (dos sedes, IPsec, WireGuard); Seguridad (router GNU/Linux con DMZ, bastionado).'],
                     ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
                     ['Tiempo real / Simulación', 'Modo de ejecución (ver «Tiempo real y simulación»).'],
                     ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la ayuda y las páginas web simuladas sin recargar.'],
@@ -18525,7 +18674,7 @@ const NETFIX_DOCS = {
             markdownBase: MD,
             blocks: [
                 p('En Tiempo real la red funciona sola. En Simulación, cada paquete queda en la lista de eventos y se puede reproducir paso a paso, como en Packet Tracer.'),
-                list('Reproducir / Pausa / Paso: avanzan la simulación.', 'Filtros: DHCP, DNS, MDNS, NBNS, ARP, ICMP, TCP, HTTP, SMB, SMTP, POP3, IMAP, SSH y STP. MDNS (UDP 5353, multicast) y NBNS (UDP 137, broadcast) muestran su pregunta, su respuesta y, en NetBIOS, la tabla de nombres con la MAC.', 'Al elegir un evento se ve la PDU por capas (Ethernet II, IPv4, UDP/TCP y el mensaje de aplicación).', 'SSH aparece como «datos cifrados»: su contenido no se puede leer en tránsito.'),
+                list('Reproducir / Pausa / Paso: avanzan la simulación.', 'Filtros: DHCP, DNS, MDNS, LLMNR, NBNS, ARP, ICMP, TCP, HTTP, SMB, SMTP, POP3, IMAP, SSH y STP. MDNS (UDP 5353, multicast), LLMNR (UDP 5355, multicast) y NBNS (UDP 137, broadcast) muestran su pregunta, su respuesta y, en NetBIOS, la tabla de nombres con la MAC.', 'Al elegir un evento se ve la PDU por capas (Ethernet II, IPv4, UDP/TCP y el mensaje de aplicación).', 'SSH aparece como «datos cifrados»: su contenido no se puede leer en tránsito.'),
                 h('Paso a paso: ver el DORA de DHCP'),
                 figure({
                     type: 'sequence',
@@ -20835,7 +20984,7 @@ const NETFIX_DOCS = {
                 table(['Control', 'What it does'], [
                     ['Network / Help / Settings / Donations / About', 'Switches between the workspace, this help, the settings (see “Settings”), the page for supporting the project (PayPal.Me) and the version, authorship, licence and attribution information (taken from package.json and LICENSE.md).'],
                     ['New · Open… · Save', 'Empty workspace, open a .json file or save the topology (Ctrl+S). New, Open and Labs ask before replacing a network with unsaved changes.'],
-                    ['Labs…', 'Loads a ready-made exercise: DHCP (basic, reservations, relay, VLAN, snooping, client router), spanning tree, Server, Internet with two sites, IPsec and WireGuard VPN, GNU/Linux router with DMZ, forwarding DNS, SSH/SFTP and hardening.'],
+                    ['Labs…', 'Loads a ready-made exercise, grouped by theme: DHCP (basic, reservations, relay, client router); Switching and VLANs (router-on-a-stick, spanning tree, snooping); Services (Server, SSH/SFTP); Name resolution (LAN with no DNS of its own, names across networks, forwarding DNS); Internet and VPN (two sites, IPsec, WireGuard); Security (GNU/Linux router with DMZ, hardening).'],
                     ['Clock and “Advance clock…”', 'Simulated time. Moving it forward 1 minute, 1 hour or 1 day makes DHCP leases expire or renew.'],
                     ['Realtime / Simulation', 'Execution mode (see “Realtime and simulation”).'],
                     ['Language', 'Español (España) or English (UK): changes the whole interface, the help and the simulated web pages without reloading.'],
@@ -20927,7 +21076,7 @@ const NETFIX_DOCS = {
             markdownBase: MD,
             blocks: [
                 p('In Realtime the network runs on its own. In Simulation, every packet stays in the event list and can be replayed step by step, as in Packet Tracer.'),
-                list('Play / Pause / Step: advance the simulation.', 'Filters: DHCP, DNS, MDNS, NBNS, ARP, ICMP, TCP, HTTP, SMB, SMTP, POP3, IMAP, SSH and STP. MDNS (UDP 5353, multicast) and NBNS (UDP 137, broadcast) show their question, their answer and, in NetBIOS, the name table with the MAC.', 'Choosing an event shows the PDU by layers (Ethernet II, IPv4, UDP/TCP and the application message).', 'SSH appears as “encrypted data”: its content cannot be read in transit.'),
+                list('Play / Pause / Step: advance the simulation.', 'Filters: DHCP, DNS, MDNS, LLMNR, NBNS, ARP, ICMP, TCP, HTTP, SMB, SMTP, POP3, IMAP, SSH and STP. MDNS (UDP 5353, multicast), LLMNR (UDP 5355, multicast) and NBNS (UDP 137, broadcast) show their question, their answer and, in NetBIOS, the name table with the MAC.', 'Choosing an event shows the PDU by layers (Ethernet II, IPv4, UDP/TCP and the application message).', 'SSH appears as “encrypted data”: its content cannot be read in transit.'),
                 h('Step by step: watching the DHCP DORA'),
                 figure({
                     type: 'sequence',
@@ -23206,6 +23355,136 @@ const APT_DOCS = [
 
 return { APT_DOCS };
 })();
+__m["docs/names.js"] = (() => {
+const { check, code, exercise, figure, h, list, p, table, term, tip, warn } = __m["docs/types.js"];
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
+const NAMES_DOCS = [
+    {
+        id: 'red-nombres',
+        title: 'Resolución de nombres: hosts, DNS, mDNS, LLMNR y NetBIOS',
+        summary: 'Cinco maneras de pasar de un nombre a una dirección IP, cuál usa cada sistema y en qué orden, qué cruza un router y cómo verlo en Simulación.',
+        markdownBase: MD,
+        blocks: [
+            p('Antes de enviar un `ping pc2`, el equipo necesita la **dirección IP** de pc2. Hay varias maneras de averiguarla: un fichero local, un servidor DNS o preguntar a toda la red local. Windows y GNU/Linux las prueban en un orden distinto, y solo una de ellas cruza routers.'),
+            h('Los protocolos'),
+            table(['Protocolo', 'Nombres', 'Cómo pregunta', 'Alcance', 'Quién responde en Netfix'], [
+                ['hosts', 'Cualquiera', 'Lee el fichero /etc/hosts del equipo', 'El propio equipo', 'Nadie: es local'],
+                ['DNS', 'Con dominio (y sin punto, con el sufijo de búsqueda)', 'Unicast, UDP 53, al servidor DNS configurado', 'Cruza routers', 'Un servidor DNS (bind9, 8.8.8.8…)'],
+                ['mDNS', 'Acabados en .local', 'Multicast 224.0.0.251, UDP 5353', 'El enlace: no cruza routers', 'Windows de serie; GNU/Linux con avahi-daemon'],
+                ['LLMNR', 'De una sola etiqueta (pc2)', 'Multicast 224.0.0.252, UDP 5355, TTL 1', 'El enlace: no cruza routers', 'Windows de serie'],
+                ['NetBIOS (NBNS)', 'De una sola etiqueta, hasta 15 caracteres', 'Broadcast de la subred, UDP 137', 'La subred: no cruza routers', 'Windows de serie; GNU/Linux con samba'],
+            ]),
+            p('mDNS, LLMNR y NetBIOS no necesitan servidor: preguntan a todos los equipos del enlace y responde el que tiene ese nombre. Por eso sirven en una red de casa o un aula sin DNS propio, pero no para llegar a otra red.'),
+            h('Orden en Windows'),
+            list('El fichero hosts (en Netfix, el /etc/hosts del equipo, el mismo de su terminal GNU/Linux).', 'Si el nombre acaba en **.local**: mDNS (y, si nadie responde, el DNS).', 'El **DNS**, con el sufijo de búsqueda: `ping srv` pregunta srv.aula.lab si el DHCP dio el dominio aula.lab.', 'Si el DNS no lo conoce y el nombre es de **una etiqueta**: **LLMNR y NetBIOS a la vez**. Gana la respuesta LLMNR; la de NetBIOS solo cuenta si LLMNR no encuentra nada.'),
+            figure({
+                type: 'sequence',
+                actors: ['WIN1', '8.8.8.8 (DNS)', 'Toda la LAN', 'WIN2'],
+                messages: [
+                    { from: 0, to: 1, text: 'DNS A? win2', note: 'UDP 53 (con el sufijo, si lo hay)' },
+                    { from: 1, to: 0, text: 'NXDOMAIN', note: 'el DNS público no conoce win2' },
+                    { from: 0, to: 2, text: 'LLMNR A? win2', note: 'multicast 224.0.0.252:5355' },
+                    { from: 0, to: 2, text: 'NBNS Query WIN2<00>', note: 'broadcast 192.168.1.255:137' },
+                    { from: 3, to: 0, text: 'LLMNR: 192.168.1.12', note: 'unicast desde el 5355' },
+                    { from: 3, to: 0, text: 'NBNS Response', note: 'unicast; queda en la caché (nbtstat -c)' },
+                ],
+            }, '`ping win2` desde WIN1 en el laboratorio «Nombres en una LAN sin DNS propio». En Simulación, con los filtros DNS, LLMNR y NBNS.'),
+            h('Orden en GNU/Linux'),
+            p('glibc sigue la línea `hosts:` de **/etc/nsswitch.conf**, de izquierda a derecha. Ubuntu Server trae `files dns`: el fichero /etc/hosts y después el DNS. Cada paquete añade su fuente:'),
+            table(['Fuente', 'Paquete', 'Cómo se añade'], [
+                ['files', '(base)', 'Viene de serie: /etc/hosts.'],
+                ['dns', '(base)', 'Viene de serie: los servidores de /etc/resolv.conf.'],
+                ['mdns4_minimal [NOTFOUND=return]', 'libnss-mdns (lo trae avahi-daemon)', 'Lo pone su instalación y lo quita su desinstalación. Solo pregunta los .local; si nadie responde, no sigue al DNS.'],
+                ['wins', 'winbind y libnss-winbind', 'A mano, como en un Ubuntu real.'],
+            ]),
+            code('hosts:          files mdns4_minimal [NOTFOUND=return] dns wins'),
+            p('Los equipos GNU/Linux de Netfix no hablan LLMNR: ni preguntan ni responden. Para que Windows encuentre a un GNU/Linux por su nombre, instálale **avahi-daemon** (pc.local) o **samba** (nombre sin punto, por NetBIOS).'),
+            warn('Un PC con las dos terminales', 'La terminal Windows de un PC resuelve a la manera de Windows (mDNS, LLMNR y NetBIOS de serie) y su terminal GNU/Linux a la manera de GNU/Linux: sin avahi, `ping pc2.local` falla allí aunque en la terminal Windows funcione.'),
+            h('Herramientas'),
+            table(['Orden', 'Sistema', 'Qué hace'], [
+                ['ping NOMBRE', 'Los dos', 'Resuelve como el sistema y muestra la dirección IP que obtuvo.'],
+                ['nslookup · dig · host', 'Los dos / GNU/Linux', 'Preguntan **solo al DNS**: no usan hosts, mDNS, LLMNR ni NetBIOS.'],
+                ['nbtstat -n · -a · -A · -c · -R', 'Windows', 'Tabla NetBIOS propia o remota, caché y purga.'],
+                ['nmblookup NOMBRE · -A IP', 'GNU/Linux con samba', 'Consulta NetBIOS por broadcast o tabla de un equipo.'],
+            ]),
+            term('cmd', 'C:\\>ping -n 1 win2\n\nPinging win2 [192.168.1.12] with 32 bytes of data:\n\nReply from 192.168.1.12: bytes=32 time<1ms TTL=128'),
+            tip('Verlo en Simulación', 'Pasa a **Simulación**, deja marcados DNS, MDNS, LLMNR y NBNS y lanza el ping: verás la pregunta DNS, la multicast LLMNR (MAC 01:00:5e:00:00:fc, TTL 1), el broadcast NBNS y las respuestas unicast. Pulsa cada evento para ver su PDU.'),
+            h('Laboratorios'),
+            p('En **Laboratorios… → Resolución de nombres** hay tres prácticas: «Nombres en una LAN sin DNS propio», «Nombres entre redes» y «DNS de empresa que reenvía a Internet».'),
+            exercise('Cuatro equipos, cuatro maneras', 'En «Nombres en una LAN sin DNS propio», consigue que cada equipo haga ping a los otros tres por su nombre y anota qué protocolo lo resuelve en cada caso.', 'WIN1 ↔ WIN2: LLMNR (`ping win2`) o mDNS (`ping win2.local`). WIN → LNX1: `ping lnx1.local` (avahi responde). LNX1 → WIN: `ping win1.local` (avahi pregunta). LNX2 no pregunta ni responde: `echo "192.168.1.11 win1" | sudo tee -a /etc/hosts` (hosts), o `sudo apt install samba` para que Windows lo encuentre por NetBIOS (`ping lnx2`) y `sudo apt install avahi-daemon` para que pregunte .local.'),
+            exercise('Lo que no cruza el router', 'En «Nombres entre redes», desde WIN-A, `ping win-b` funciona y `ping win-b2` no. Desde WIN-B, `ping win-b2` sí. Explica por qué y arréglalo sin tocar WIN-A.', 'win-b está en la zona aula.lab de SRV y el DNS cruza el router; win-b2 no está, y LLMNR y NetBIOS se quedan en la LAN B (multicast con TTL 1 y broadcast de subred). Desde WIN-B responde WIN-B2 por LLMNR. Añade en SRV (Servicios → DNS → aula.lab) el registro `win-b2` A 192.168.20.12: `ping win-b2` desde WIN-A resuelve win-b2.aula.lab.'),
+            check('Comprueba', '`nslookup win-b2` desde WIN-A responde con 192.168.20.12 y en Simulación ya no aparecen paquetes LLMNR ni NBNS: el DNS lo resolvió antes.'),
+        ],
+    },
+];
+
+return { NAMES_DOCS };
+})();
+__m["docs/en/names.js"] = (() => {
+const { check, code, exercise, figure, h, list, p, table, term, tip, warn } = __m["docs/types.js"];
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
+const NAMES_DOCS = [
+    {
+        id: 'red-nombres',
+        title: 'Name resolution: hosts, DNS, mDNS, LLMNR and NetBIOS',
+        summary: 'Five ways to get from a name to an IP address, which one each system uses and in what order, what crosses a router and how to watch it in Simulation.',
+        markdownBase: MD,
+        blocks: [
+            p('Before it sends `ping pc2`, a device needs pc2’s **IP address**. There are several ways to find it: a local file, a DNS server or asking the whole local network. Windows and GNU/Linux try them in a different order, and only one of them crosses routers.'),
+            h('The protocols'),
+            table(['Protocol', 'Names', 'How it asks', 'Reach', 'Who answers in Netfix'], [
+                ['hosts', 'Any', 'Reads the device’s /etc/hosts file', 'The device itself', 'Nobody: it is local'],
+                ['DNS', 'With a domain (and without a dot, with the search suffix)', 'Unicast, UDP 53, to the configured DNS server', 'Crosses routers', 'A DNS server (bind9, 8.8.8.8…)'],
+                ['mDNS', 'Ending in .local', 'Multicast 224.0.0.251, UDP 5353', 'The link: does not cross routers', 'Windows out of the box; GNU/Linux with avahi-daemon'],
+                ['LLMNR', 'Single-label (pc2)', 'Multicast 224.0.0.252, UDP 5355, TTL 1', 'The link: does not cross routers', 'Windows out of the box'],
+                ['NetBIOS (NBNS)', 'Single-label, up to 15 characters', 'Subnet broadcast, UDP 137', 'The subnet: does not cross routers', 'Windows out of the box; GNU/Linux with samba'],
+            ]),
+            p('mDNS, LLMNR and NetBIOS need no server: they ask every device on the link and the one with that name answers. That is why they work in a home network or a classroom with no DNS of its own, but not to reach another network.'),
+            h('Order on Windows'),
+            list('The hosts file (in Netfix, the device’s /etc/hosts, the same one as its GNU/Linux terminal).', 'If the name ends in **.local**: mDNS (and, if nobody answers, the DNS).', 'The **DNS**, with the search suffix: `ping srv` asks for srv.aula.lab if DHCP gave the domain aula.lab.', 'If the DNS does not know it and the name is **single-label**: **LLMNR and NetBIOS at once**. The LLMNR answer wins; the NetBIOS one only counts if LLMNR finds nothing.'),
+            figure({
+                type: 'sequence',
+                actors: ['WIN1', '8.8.8.8 (DNS)', 'The whole LAN', 'WIN2'],
+                messages: [
+                    { from: 0, to: 1, text: 'DNS A? win2', note: 'UDP 53 (with the suffix, if any)' },
+                    { from: 1, to: 0, text: 'NXDOMAIN', note: 'the public DNS does not know win2' },
+                    { from: 0, to: 2, text: 'LLMNR A? win2', note: 'multicast 224.0.0.252:5355' },
+                    { from: 0, to: 2, text: 'NBNS Query WIN2<00>', note: 'broadcast 192.168.1.255:137' },
+                    { from: 3, to: 0, text: 'LLMNR: 192.168.1.12', note: 'unicast from 5355' },
+                    { from: 3, to: 0, text: 'NBNS Response', note: 'unicast; it stays in the cache (nbtstat -c)' },
+                ],
+            }, '`ping win2` from WIN1 in the “Names in a LAN with no DNS of its own” lab. In Simulation, with the DNS, LLMNR and NBNS filters.'),
+            h('Order on GNU/Linux'),
+            p('glibc follows the `hosts:` line of **/etc/nsswitch.conf**, from left to right. Ubuntu Server ships `files dns`: the /etc/hosts file, then the DNS. Each package adds its source:'),
+            table(['Source', 'Package', 'How it is added'], [
+                ['files', '(base)', 'Out of the box: /etc/hosts.'],
+                ['dns', '(base)', 'Out of the box: the servers in /etc/resolv.conf.'],
+                ['mdns4_minimal [NOTFOUND=return]', 'libnss-mdns (avahi-daemon brings it)', 'Its installation adds it and its removal takes it away. It only asks .local names; if nobody answers, it does not go on to the DNS.'],
+                ['wins', 'winbind and libnss-winbind', 'By hand, as on a real Ubuntu.'],
+            ]),
+            code('hosts:          files mdns4_minimal [NOTFOUND=return] dns wins'),
+            p('Netfix’s GNU/Linux devices do not speak LLMNR: they neither ask nor answer. For Windows to find a GNU/Linux device by its name, install **avahi-daemon** (pc.local) or **samba** (a name without a dot, through NetBIOS) on it.'),
+            warn('A PC with both terminals', 'A PC’s Windows terminal resolves the Windows way (mDNS, LLMNR and NetBIOS out of the box) and its GNU/Linux terminal the GNU/Linux way: without avahi, `ping pc2.local` fails there even though it works in the Windows terminal.'),
+            h('Tools'),
+            table(['Command', 'System', 'What it does'], [
+                ['ping NAME', 'Both', 'Resolves as the system does and shows the IP address it got.'],
+                ['nslookup · dig · host', 'Both / GNU/Linux', 'Ask **only the DNS**: they do not use hosts, mDNS, LLMNR or NetBIOS.'],
+                ['nbtstat -n · -a · -A · -c · -R', 'Windows', 'Own or remote NetBIOS table, cache and purge.'],
+                ['nmblookup NAME · -A IP', 'GNU/Linux with samba', 'NetBIOS query by broadcast, or a device’s table.'],
+            ]),
+            term('cmd', 'C:\\>ping -n 1 win2\n\nPinging win2 [192.168.1.12] with 32 bytes of data:\n\nReply from 192.168.1.12: bytes=32 time<1ms TTL=128'),
+            tip('Watch it in Simulation', 'Switch to **Simulation**, keep DNS, MDNS, LLMNR and NBNS ticked and run the ping: you will see the DNS question, the LLMNR multicast (MAC 01:00:5e:00:00:fc, TTL 1), the NBNS broadcast and the unicast answers. Click each event to see its PDU.'),
+            h('Labs'),
+            p('Under **Labs… → Name resolution** there are three exercises: “Names in a LAN with no DNS of its own”, “Names across networks” and “Company DNS forwarding to the Internet”.'),
+            exercise('Four devices, four ways', 'In “Names in a LAN with no DNS of its own”, get every device to ping the other three by name and write down which protocol resolves each case.', 'WIN1 ↔ WIN2: LLMNR (`ping win2`) or mDNS (`ping win2.local`). WIN → LNX1: `ping lnx1.local` (avahi answers). LNX1 → WIN: `ping win1.local` (avahi asks). LNX2 neither asks nor answers: `echo "192.168.1.11 win1" | sudo tee -a /etc/hosts` (hosts), or `sudo apt install samba` so that Windows finds it through NetBIOS (`ping lnx2`) and `sudo apt install avahi-daemon` so that it asks .local names.'),
+            exercise('What does not cross the router', 'In “Names across networks”, from WIN-A, `ping win-b` works and `ping win-b2` does not. From WIN-B, `ping win-b2` does. Explain why and fix it without touching WIN-A.', 'win-b is in SRV’s aula.lab zone and the DNS crosses the router; win-b2 is not, and LLMNR and NetBIOS stay in LAN B (multicast with TTL 1 and subnet broadcast). From WIN-B, WIN-B2 answers through LLMNR. On SRV (Services → DNS → aula.lab) add the record `win-b2` A 192.168.20.12: `ping win-b2` from WIN-A resolves win-b2.aula.lab.'),
+            check('Check it', '`nslookup win-b2` from WIN-A answers 192.168.20.12, and in Simulation there are no more LLMNR or NBNS packets: the DNS resolved it first.'),
+        ],
+    },
+];
+
+return { NAMES_DOCS };
+})();
 __m["docs/outline.js"] = (() => {
 const OUTLINE = [
     { id: 'netfix', title: 'Netfix', sections: [[null, ['inicio', 'dibujo', 'guardar', 'simulacion', 'configuracion', 'usuarios', 'huevos']]] },
@@ -23225,7 +23504,7 @@ const OUTLINE = [
     { id: 'router', title: 'Router IOS', icon: 'router', sections: [['DHCP', ['ios-dhcp', 'ios-reservas', 'ios-relay']], ['NAT y ACL', ['ios-nat', 'ios-acl']], ['VPN', ['ios-ipsec']]] },
     { id: 'linuxrouter', title: 'Router GNU/Linux', icon: 'linuxrouter', sections: [['Parámetros', ['linux-router']], ['Cortafuegos', ['linux-nftables']], ['VPN', ['linux-wireguard']]] },
     { id: 'nube', title: 'Nube ISP', icon: 'cloud', sections: [[null, ['inet-cloud', 'inet-dns']]] },
-    { id: 'red', icon: 'network', title: 'Conceptos de red', sections: [[null, ['red-broadcast', 'inet-trace']]] },
+    { id: 'red', icon: 'network', title: 'Conceptos de red', sections: [[null, ['red-broadcast', 'red-nombres', 'inet-trace']]] },
     { id: 'linux', icon: 'terminal', title: 'Terminal GNU/Linux', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red', 'linux-apt']], ['Midnight Commander', ['mc']], ['Editores', ['nano', 'vim']]] },
     {
         id: 'bash', icon: 'script', title: 'GNU bash 5.3', sections: [
@@ -23271,7 +23550,7 @@ const OUTLINE = [
     { id: 'router', title: 'IOS router', icon: 'router', sections: [['DHCP', ['ios-dhcp', 'ios-reservas', 'ios-relay']], ['NAT and ACLs', ['ios-nat', 'ios-acl']], ['VPN', ['ios-ipsec']]] },
     { id: 'linuxrouter', title: 'GNU/Linux router', icon: 'linuxrouter', sections: [['Parameters', ['linux-router']], ['Firewall', ['linux-nftables']], ['VPN', ['linux-wireguard']]] },
     { id: 'nube', title: 'ISP cloud', icon: 'cloud', sections: [[null, ['inet-cloud', 'inet-dns']]] },
-    { id: 'red', icon: 'network', title: 'Networking concepts', sections: [[null, ['red-broadcast', 'inet-trace']]] },
+    { id: 'red', icon: 'network', title: 'Networking concepts', sections: [[null, ['red-broadcast', 'red-nombres', 'inet-trace']]] },
     { id: 'linux', icon: 'terminal', title: 'GNU/Linux Terminal', sections: [[null, ['linux-intro', 'linux-ficheros', 'linux-programas', 'linux-red', 'linux-apt']], ['Midnight Commander', ['mc']], ['Editors', ['nano', 'vim']]] },
     {
         id: 'bash', icon: 'script', title: 'GNU bash 5.3', sections: [
@@ -23328,12 +23607,14 @@ const { DNS_DOCS: DNS_EN } = __m["docs/en/dns.js"];
 const { HTTP_DOCS: HTTP_EN } = __m["docs/en/http.js"];
 const { MAIL_DOCS: MAIL_EN } = __m["docs/en/mail.js"];
 const { APT_DOCS: APT_EN } = __m["docs/en/apt.js"];
+const { NAMES_DOCS } = __m["docs/names.js"];
+const { NAMES_DOCS: NAMES_EN } = __m["docs/en/names.js"];
 const { OUTLINE } = __m["docs/outline.js"];
 const { arrange } = __m["docs/arrange.js"];
 const { OUTLINE: OUTLINE_EN } = __m["docs/en/outline.js"];
 const ES = {
     groups: arrange(OUTLINE, [...NETFIX_DOCS.pages, ...SETTINGS_DOCS, ...IOS_DOCS.pages, ...STP_DOCS, ...IOS_DHCP_DOCS, ...IOS_SEC_DOCS, ...SERVICE_DOCS.pages, ...DNS_DOCS, ...HTTP_DOCS, ...MAIL_DOCS, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
-        ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...APT_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE]),
+        ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...APT_DOCS, ...NAMES_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE]),
     utils: UTIL_DOCS,
     builtins: BUILTIN_DOCS,
     bashPages: [...BASH_LANGUAGE, ...BASH_REFERENCE],
@@ -23351,7 +23632,7 @@ const ES = {
 };
 const EN = {
     groups: arrange(OUTLINE_EN, [...NETFIX_EN.pages, ...SETTINGS_EN, ...IOS_EN.pages, ...STP_EN, ...IOS_DHCP_EN, ...IOS_SEC_EN, ...SERVICE_EN.pages, ...DNS_EN, ...HTTP_EN, ...MAIL_EN, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
-        ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...APT_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN]),
+        ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...APT_EN, ...NAMES_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN]),
     utils: UTIL_EN,
     builtins: BUILTIN_EN,
     bashPages: [...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN],
@@ -30568,7 +30849,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.28.0",
+    "version": "0.29.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -52084,8 +52365,10 @@ const { parseFeatures } = __m["net/lab-features.js"];
 const { bindLab, customApps, deviceApps, parseApps, setDeviceApps } = __m["net/device-apps.js"];
 const { packagesOf, parsePackages, setPackageInstalled } = __m["net/host-packages.js"];
 const { registerMdns } = __m["net/mdns.js"];
+const { registerLlmnr } = __m["net/llmnr.js"];
 const { attachNetbios } = __m["net/netbios.js"];
 registerMdns();
+registerLlmnr();
 const { SimClock } = __m["core/clock.js"];
 const { Router } = __m["devices/router.js"];
 const { Switch } = __m["devices/switch.js"];
@@ -54266,7 +54549,7 @@ const { el, svg, clear, prefersReducedMotion } = __m["ui/dom.js"];
 const { frameProtocol, tcpService } = __m["net/packets.js"];
 const { formatIp, formatMask } = __m["core/ip.js"];
 const { formatMacCisco, formatHexId } = __m["core/mac.js"];
-const PROTOCOLS = ['DHCP', 'DNS', 'MDNS', 'NBNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMB', 'SMTP', 'POP3', 'IMAP', 'SSH', 'STP'];
+const PROTOCOLS = ['DHCP', 'DNS', 'MDNS', 'LLMNR', 'NBNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMB', 'SMTP', 'POP3', 'IMAP', 'SSH', 'STP'];
 /** Off at first: the BPDUs every 2 s would bury the rest (as in Packet Tracer, tick it to see them). */
 const HIDDEN_AT_FIRST = new Set(['STP']);
 const BASE_STEP_MS = 700;
@@ -54443,6 +54726,7 @@ function appFields(p) {
             return [['USER', p.user], ['PASS', '•'.repeat(Math.min(8, p.password.length))], [t('pdu.note'), t('pdu.clearPass', { app: p.app })]];
     }
 }
+const DNS_HEADER = { MDNS: 'mDNS', LLMNR: 'LLMNR' };
 function typeName(f) {
     if (f.bpdu)
         return `STP BPDU VLAN ${f.bpdu.vlan}`;
@@ -54516,7 +54800,7 @@ function pduView(e, from, to) {
     }
     else if (ip.udp?.dns) {
         const q = ip.udp.dns;
-        out.push(el('h4', {}, `UDP ${ip.udp.sport} → ${ip.udp.dport} · ${frameProtocol(f) === 'MDNS' ? 'mDNS' : 'DNS'}`), kv([
+        out.push(el('h4', {}, `UDP ${ip.udp.sport} → ${ip.udp.dport} · ${DNS_HEADER[frameProtocol(f)] ?? 'DNS'}`), kv([
             ['id', String(q.id)], ['QR', q.response ? t('pdu.response') : t('pdu.query')], [t('pdu.question'), `${q.qname} IN ${q.qtype}`], ['rcode', q.rcode], ['AA', q.authoritative ? t('pdu.yes') : undefined],
             [t('pdu.answers'), q.answers?.map((a) => `${a.name} ${a.ttl} ${a.type} ${a.priority !== undefined ? `${a.priority} ` : ''}${a.data}`).join(' · ')],
             [t('pdu.authority'), q.authority?.map((a) => `${a.name} ${a.type}`).join(' · ')],
@@ -59959,6 +60243,14 @@ const LAB_AREAS = {
         area(o, ['Switch0', 'PC0', 'PC1', 'NS1'], COLOR.lan, lan(t('area.name.company'), '192.168.50.0/24'));
         area(o, ['INVITADO'], COLOR.guests, t('area.guests', { net: '192.168.60.0/24' }));
     },
+    'nombres-lan': (o) => {
+        internet(o, ['ISP-Norte']);
+        area(o, ['Switch0', 'WIN1', 'WIN2', 'LNX1', 'LNX2'], COLOR.lan, lan(t('area.name.lan'), '192.168.1.0/24'));
+    },
+    'nombres-redes': (o) => {
+        area(o, ['SW-A', 'SRV', 'WIN-A'], COLOR.lan, lan('LAN A', '192.168.10.0/24'));
+        area(o, ['SW-B', 'WIN-B', 'WIN-B2'], COLOR.lan2, lan('LAN B', '192.168.20.0/24'));
+    },
     'ssh-sftp': (o) => area(o, ['Switch0', 'SRV', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.classroom'), '172.20.0.0/24')),
     bastionado: (o) => {
         area(o, ['Switch0', 'ADMIN'], COLOR.lan, t('area.admin', { net: '192.168.10.0/24' }));
@@ -59971,7 +60263,7 @@ const LAB_AREAS = {
  * is stretched from its top-left device, horizontally and vertically (tests/ui/lab-labels.test.ts keeps them apart).
  */
 const LAB_SPREAD = {
-    basico: [1, 1.2], reservas: [1, 1.2], snooping: [1, 1.2], relay: [1, 1.3], vlans: [1, 1.1], servidores: [1, 1.3], internet: [1, 1.4], 'vpn-ipsec': [1, 1.4], 'vpn-wireguard': [1, 1.4], 'linux-dmz': [1.3, 1.4], 'dns-reenvio': [1, 1.5],
+    basico: [1, 1.2], reservas: [1, 1.2], snooping: [1, 1.2], relay: [1, 1.3], vlans: [1, 1.1], servidores: [1, 1.3], internet: [1, 1.4], 'vpn-ipsec': [1, 1.4], 'vpn-wireguard': [1, 1.4], 'linux-dmz': [1.3, 1.4], 'dns-reenvio': [1, 1.5], 'nombres-lan': [1, 1.4], 'nombres-redes': [1.2, 1.5],
 };
 function spread(id, topo) {
     const factor = LAB_SPREAD[id];
@@ -60546,6 +60838,131 @@ systemctl reload ssh`);
 
 return { sshLab, hardeningLab };
 })();
+__m["net/labs-names.js"] = (() => {
+/**
+ * Labs of name resolution: a LAN whose only DNS is the public one (hosts, mDNS, LLMNR and NetBIOS, which Windows has built in and a
+ * GNU/Linux host only with avahi or samba) and two LANs joined by a router (the DNS crosses it; the link protocols do not).
+ */
+const { newZone } = __m["services/dns-zones.js"];
+const { LABS_ES } = __m["i18n/es-ES/labs.js"];
+const { Topology } = __m["net/topology.js"];
+const { setPackageInstalled } = __m["net/host-packages.js"];
+const { applyConfig } = __m["ios/session.js"];
+const { parseIp } = __m["core/ip.js"];
+const { cloud } = __m["net/labs-vpn.js"];
+const ip = (x) => parseIp(x) ?? 0;
+function link(t, a, ap, b, bp) {
+    t.connect({ device: a, port: ap }, { device: b, port: bp });
+}
+function pcOn(t, sw, port, spec, y) {
+    const pc = t.add('pc', spec.x, y, { label: spec.label }).device;
+    pc.os = spec.os;
+    link(t, pc.id, 'FastEthernet0', sw.id, `FastEthernet0/${port}`);
+    return pc;
+}
+// ------------------------------------------------------------ One LAN, no DNS server of its own
+/** A home router: NAT to the ISP, the public DNS for everything (it knows no name of the LAN). */
+const GW_HOME = `
+hostname GW
+no ip domain-lookup
+interface GigabitEthernet0/0
+ description LAN
+ ip address 192.168.1.1 255.255.255.0
+ ip nat inside
+ no shutdown
+interface GigabitEthernet0/1
+ ip address dhcp
+ ip nat outside
+ no shutdown
+access-list 1 permit 192.168.1.0 0.0.0.255
+ip nat inside source list 1 interface GigabitEthernet0/1 overload`;
+const LAN_PCS = [
+    { label: 'WIN1', os: 'windows', x: 160, addr: '192.168.1.11' },
+    { label: 'WIN2', os: 'windows', x: 380, addr: '192.168.1.12' },
+    { label: 'LNX1', os: 'linux', x: 600, addr: '192.168.1.21' },
+    { label: 'LNX2', os: 'linux', x: 820, addr: '192.168.1.22' },
+];
+const namesLanLab = {
+    id: 'nombres-lan',
+    title: LABS_ES['lab.nombres-lan.title'],
+    summary: LABS_ES['lab.nombres-lan.summary'],
+    build: () => {
+        const t = new Topology();
+        const isp = cloud(t, 'ISP-Norte', 490, 'Fibra0', 'public');
+        const gw = t.add('router', 490, 240, { label: 'GW' }).device;
+        link(t, gw.id, 'GigabitEthernet0/1', isp.id, 'Fibra0');
+        applyConfig(gw, GW_HOME.trim().split('\n'));
+        const sw = t.add('switch', 490, 400, { label: 'Switch0' }).device;
+        link(t, gw.id, 'GigabitEthernet0/0', sw.id, 'GigabitEthernet0/1');
+        for (const [i, spec] of LAN_PCS.entries()) {
+            const pc = pcOn(t, sw, i + 1, spec, 600);
+            pc.setStatic({ ip: ip(spec.addr), prefix: 24, gateway: ip('192.168.1.1'), dns: ip('8.8.8.8') });
+        }
+        // LNX1 has avahi (it answers and asks .local names); LNX2 has nothing installed yet.
+        const lnx1 = t.byLabel('LNX1');
+        for (const name of ['avahi-daemon', 'libnss-mdns'])
+            setPackageInstalled(lnx1, name, true);
+        t.settle();
+        return t;
+    },
+};
+// ------------------------------------------------------------ Two LANs and a DNS server
+const GW_NAMES = `
+hostname GW
+no ip domain-lookup
+interface GigabitEthernet0/0
+ description LAN A
+ ip address 192.168.10.1 255.255.255.0
+ no shutdown
+interface GigabitEthernet0/1
+ description LAN B
+ ip address 192.168.20.1 255.255.255.0
+ no shutdown`;
+const NETS_PCS = [
+    { label: 'WIN-A', os: 'windows', x: 360, addr: '192.168.10.11', lan: 'a' },
+    { label: 'WIN-B', os: 'windows', x: 640, addr: '192.168.20.11', lan: 'b' },
+    { label: 'WIN-B2', os: 'windows', x: 860, addr: '192.168.20.12', lan: 'b' },
+];
+function namesServer(srv) {
+    srv.setStatic({ ip: ip('192.168.10.2'), prefix: 24, gateway: ip('192.168.10.1'), dns: ip('127.0.0.1') });
+    srv.dnsSearch = ['aula.lab'];
+    srv.setServices({
+        ...srv.services,
+        dns: { enabled: true, zones: [{ ...newZone('aula.lab', 'forward', ['srv.aula.lab']), records: [
+                        { name: 'srv', type: 'A', value: '192.168.10.2', ttl: 86400 },
+                        { name: 'gw', type: 'A', value: '192.168.10.1', ttl: 86400 },
+                        { name: 'win-a', type: 'A', value: '192.168.10.11', ttl: 86400 },
+                        { name: 'win-b', type: 'A', value: '192.168.20.11', ttl: 86400 },
+                    ] }] },
+    });
+}
+const namesNetsLab = {
+    id: 'nombres-redes',
+    title: LABS_ES['lab.nombres-redes.title'],
+    summary: LABS_ES['lab.nombres-redes.summary'],
+    build: () => {
+        const t = new Topology();
+        const gw = t.add('router', 500, 100, { label: 'GW' }).device;
+        applyConfig(gw, GW_NAMES.trim().split('\n'));
+        const swA = t.add('switch', 260, 280, { label: 'SW-A' }).device;
+        const swB = t.add('switch', 750, 280, { label: 'SW-B' }).device;
+        link(t, gw.id, 'GigabitEthernet0/0', swA.id, 'GigabitEthernet0/1');
+        link(t, gw.id, 'GigabitEthernet0/1', swB.id, 'GigabitEthernet0/1');
+        const srv = t.add('server', 140, 480, { label: 'SRV' }).device;
+        link(t, srv.id, 'FastEthernet0', swA.id, 'FastEthernet0/24');
+        namesServer(srv);
+        for (const [i, spec] of NETS_PCS.entries()) {
+            const pc = pcOn(t, spec.lan === 'a' ? swA : swB, i + 1, spec, 480);
+            pc.setStatic({ ip: ip(spec.addr), prefix: 24, gateway: ip(spec.lan === 'a' ? '192.168.10.1' : '192.168.20.1'), dns: ip('192.168.10.2') });
+            pc.dnsSearch = ['aula.lab'];
+        }
+        t.settle();
+        return t;
+    },
+};
+
+return { namesLanLab, namesNetsLab };
+})();
 __m["net/examples.js"] = (() => {
 /** Ready-made labs that show each DHCP feature working. */
 const { setLabDevices } = __m["net/lab-presets.js"];
@@ -60564,6 +60981,7 @@ const { internetExample } = __m["net/example-internet.js"];
 const { ipsecLab, wireguardLab } = __m["net/labs-vpn.js"];
 const { dmzLab, dnsForwardLab } = __m["net/labs-linux.js"];
 const { hardeningLab, sshLab } = __m["net/labs-security.js"];
+const { namesLanLab, namesNetsLab } = __m["net/labs-names.js"];
 function conf(dev, text) {
     applyConfig(dev, text.trim().split('\n'));
 }
@@ -60854,6 +61272,17 @@ interface GigabitEthernet0/0
     dnsForwardLab,
     sshLab,
     hardeningLab,
+    namesLanLab,
+    namesNetsLab,
+];
+/** The labs by theme, in the order of the Labs menu (each lab in exactly one group: tests/net/lab-groups.test.ts). */
+const LAB_GROUPS = [
+    ['dhcp', ['basico', 'reservas', 'relay', 'cliente']],
+    ['switching', ['vlans', 'stp', 'snooping']],
+    ['services', ['servidores', 'ssh-sftp']],
+    ['names', ['nombres-lan', 'nombres-redes', 'dns-reenvio']],
+    ['internet', ['internet', 'vpn-ipsec', 'vpn-wireguard']],
+    ['security', ['linux-dmz', 'bastionado']],
 ];
 /** The labs, with areas drawn around their networks where they help to read the diagram, and their device settings. */
 const EXAMPLES = LABS.map((ex) => ({ ...ex, build: () => withPreset(ex.id, decorateLab(ex.id, ex.build())) }));
@@ -60862,7 +61291,7 @@ function withPreset(id, topo) {
     return topo;
 }
 
-return { EXAMPLES };
+return { LAB_GROUPS, EXAMPLES };
 })();
 __m["ui/doc-icons.js"] = (() => {
 /**
@@ -61399,9 +61828,9 @@ __m["ui/topbar.js"] = (() => {
 /** Top bar: brand, views, file actions, labs, clock, mode and language. Folds into a menu on phones. */
 const { brandImage } = __m["ui/brand.js"];
 const { el } = __m["ui/dom.js"];
-const { EXAMPLES } = __m["net/examples.js"];
+const { EXAMPLES, LAB_GROUPS } = __m["net/examples.js"];
 const { labText } = __m["ui/lab-text.js"];
-const { t } = __m["i18n/t.js"];
+const { t, tDynamic } = __m["i18n/t.js"];
 const { getLocale, LOCALES, LOCALE_NAMES, LOCALE_SHORT, isLocale } = __m["i18n/locale.js"];
 const { NO_RESTRICTIONS, allowsLab } = __m["classroom/restrictions.js"];
 const MINUTE = 60_000;
@@ -61411,9 +61840,10 @@ function button(label, fn, attrs = {}) {
     b.addEventListener('click', fn);
     return b;
 }
+const optionEl = ([v, l]) => el('option', { value: v }, l);
 /** A <select> that runs `fn` with the chosen value and goes back to its placeholder. */
 function actionSelect(label, placeholder, options, fn) {
-    const s = el('select', { class: 'select', 'aria-label': label }, el('option', { value: '' }, placeholder), ...options.map(([v, l]) => el('option', { value: v }, l)));
+    const s = el('select', { class: 'select', 'aria-label': label }, el('option', { value: '' }, placeholder), ...options.map((o) => (typeof o[1] === 'string' ? optionEl(o) : el('optgroup', { label: o[0] }, ...o[1].map(optionEl)))));
     s.addEventListener('change', () => {
         const v = s.value;
         s.value = '';
@@ -61440,13 +61870,20 @@ function languageSelect(actions) {
         actions.setLocale(s.value); });
     return s;
 }
+/** The labs the classroom allows, by theme (a group with none left is not shown). */
+function labGroups(allowed) {
+    return LAB_GROUPS.flatMap(([group, ids]) => {
+        const items = ids.flatMap((id) => allowed.filter((e) => e.id === id)).map((e) => [e.id, labText(e).title]);
+        return items.length ? [[tDynamic(`labgroup.${group}`), items]] : [];
+    });
+}
 /** What the classroom restrictions leave of a list: the items whose flag is on. */
 function only(items) {
     return items.filter(([on]) => on).map(([, x]) => x);
 }
 function topbar(actions, clockEl, mode, view = 'net', policy = NO_RESTRICTIONS) {
     const allowed = EXAMPLES.filter((e) => allowsLab(policy, e.id));
-    const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), allowed.map((e) => [e.id, labText(e).title]), (id) => actions.loadExample(id));
+    const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), labGroups(allowed), (id) => actions.loadExample(id));
     const advance = actionSelect(t('top.advanceLabel'), t('top.advance'), [[String(MINUTE), t('top.plusMinute')], [String(60 * MINUTE), t('top.plusHour')], [String(24 * 60 * MINUTE), t('top.plusDay')]], (v) => actions.advance(Number(v)));
     const menuId = 'topbar-menu';
     const toggle = el('button', { type: 'button', class: 'btn menu-toggle', 'aria-expanded': 'false', 'aria-controls': menuId }, el('span', { 'aria-hidden': 'true' }, '☰'), el('span', { class: 'menu-toggle-label' }, t('top.menu')));

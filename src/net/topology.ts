@@ -17,9 +17,11 @@ import type { LabFeatures } from './lab-features.ts';
 import { bindLab, customApps, deviceApps, parseApps, setDeviceApps } from './device-apps.ts';
 import { packagesOf, parsePackages, setPackageInstalled } from './host-packages.ts';
 import { registerMdns } from './mdns.ts';
+import { registerLlmnr } from './llmnr.ts';
 import { attachNetbios } from './netbios.ts';
 
 registerMdns();
+registerLlmnr();
 import type { Annotation, AnnotationInit } from './annotations.ts';
 import type { CableKind, Endpoint, Link } from './network.ts';
 import { SimClock } from '../core/clock.ts';

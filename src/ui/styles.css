@@ -27,6 +27,7 @@
   --ssh: #3d4f9c;
   --stp: #5f7d2c;
   --mdns: #237a6f;
+  --llmnr: #6b4fa0;
   --nbns: #8a5a2b;
   --smb: #4a6b8f;
   --ok: #2e7d4f;
@@ -130,6 +131,7 @@ button, input, select { font: inherit; color: inherit; }
 .env-smtp rect, .env-pop3 rect, .env-imap rect { fill: var(--mail); }
 .env-ssh rect { fill: var(--ssh); }
 .env-mdns rect { fill: var(--mdns); }
+.env-llmnr rect { fill: var(--llmnr); }
 .env-nbns rect { fill: var(--nbns); }
 .env-smb rect { fill: var(--smb); }
 
@@ -310,6 +312,7 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 .chip-ssh { background: var(--ssh); }
 .chip-stp { background: var(--stp); }
 .chip-mdns { background: var(--mdns); }
+.chip-llmnr { background: var(--llmnr); }
 .chip-nbns { background: var(--nbns); }
 .chip-smb { background: var(--smb); }
 .sim-count { font-size: 12px; color: var(--ink-2); }

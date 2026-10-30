@@ -342,6 +342,9 @@ export const PC_TTL = 128;
 /** Initial TTL of Linux (net.ipv4.ip_default_ttl). */
 export const LINUX_TTL = 64;
 
+/** DNS-format protocols on their own ports: mDNS and LLMNR. */
+const DNS_LIKE: Readonly<Record<number, string>> = { 5353: 'MDNS', 5355: 'LLMNR' };
+
 /** Label used by the simulation event list: DHCP, DNS, ARP, ICMP, HTTP, SMTP, POP3, IMAP, SSH or TCP. */
 export function frameProtocol(frame: Frame): string {
   if (frame.bpdu) return 'STP';
@@ -349,7 +352,7 @@ export function frameProtocol(frame: Frame): string {
   const ip = frame.ip;
   if (!ip) return 'Ethernet';
   if (ip.udp?.dhcp) return 'DHCP';
-  if (ip.udp?.dns) return ip.udp.dport === 5353 || ip.udp.sport === 5353 ? 'MDNS' : 'DNS';
+  if (ip.udp?.dns) return DNS_LIKE[ip.udp.dport] ?? DNS_LIKE[ip.udp.sport] ?? 'DNS';
   if (ip.udp?.nbns) return 'NBNS';
   if (ip.udp?.isakmp) return 'ISAKMP';
   if (ip.udp?.wg) return 'WireGuard';

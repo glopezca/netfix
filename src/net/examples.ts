@@ -15,6 +15,7 @@ import { internetExample } from './example-internet.ts';
 import { ipsecLab, wireguardLab } from './labs-vpn.ts';
 import { dmzLab, dnsForwardLab } from './labs-linux.ts';
 import { hardeningLab, sshLab } from './labs-security.ts';
+import { namesLanLab, namesNetsLab } from './labs-names.ts';
 
 export interface Example {
   readonly id: string;
@@ -316,6 +317,20 @@ interface GigabitEthernet0/0
   dnsForwardLab,
   sshLab,
   hardeningLab,
+  namesLanLab,
+  namesNetsLab,
+];
+
+export type LabGroupId = 'dhcp' | 'switching' | 'services' | 'names' | 'internet' | 'security';
+
+/** The labs by theme, in the order of the Labs menu (each lab in exactly one group: tests/net/lab-groups.test.ts). */
+export const LAB_GROUPS: readonly (readonly [LabGroupId, readonly string[]])[] = [
+  ['dhcp', ['basico', 'reservas', 'relay', 'cliente']],
+  ['switching', ['vlans', 'stp', 'snooping']],
+  ['services', ['servidores', 'ssh-sftp']],
+  ['names', ['nombres-lan', 'nombres-redes', 'dns-reenvio']],
+  ['internet', ['internet', 'vpn-ipsec', 'vpn-wireguard']],
+  ['security', ['linux-dmz', 'bastionado']],
 ];
 
 /** The labs, with areas drawn around their networks where they help to read the diagram, and their device settings. */

@@ -36,7 +36,8 @@ export function ownNames(host: Host): NbnsName[] {
 }
 
 const waiting = new WeakMap<object, Map<number, (m: NbnsMessage) => void>>();
-const caches = new WeakMap<object, Map<string, { readonly ip: number; readonly suffix: number; readonly until: number }>>();
+interface CacheEntry { readonly ip: number; readonly suffix: number; readonly until: number }
+const caches = new WeakMap<object, Map<string, CacheEntry>>();
 let nextId = 0x8000;
 
 function reply(host: Host, iface: string, p: IpPacket, msg: NbnsMessage): void {
@@ -80,39 +81,61 @@ export function attachNetbios(host: Host): void {
   for (const port of SMB_PORTS) host.tcp.listen(port, () => null, () => speaksNetbios(host));
 }
 
-/** Sends a question (to the subnet broadcast, or to one address) and waits for the first answer. */
-export function nbnsAsk(host: Host, q: Omit<NbnsMessage, 'id' | 'response'>, to?: number): NbnsMessage | undefined {
+/** Sends a question (to the subnet broadcast, or to one address); `done` gets the first answer or undefined. */
+export function nbnsQuery(host: Host, q: Omit<NbnsMessage, 'id' | 'response'>, to: number | undefined, done: (m: NbnsMessage | undefined) => void): void {
   const id = nextId++ & 0xffff || 1;
   const pending = waiting.get(host) ?? new Map<number, (m: NbnsMessage) => void>();
   waiting.set(host, pending);
+  let over = false;
+  const finish = (m: NbnsMessage | undefined): void => {
+    if (over) return;
+    over = true;
+    pending.delete(id);
+    done(m);
+  };
   const msg: NbnsMessage = { ...q, id, response: false, name: q.name === '*' ? '*' : netbiosName(q.name) };
-  const got = runSync<NbnsMessage | undefined>(host.hooks, (done) => {
-    pending.set(id, done);
-    host.hooks.schedule(QUERY_MS, () => done(undefined));
-    for (const i of host.l3Ifaces().filter((x) => x.up && x.addrs.length)) {
-      const a = i.addrs[0];
-      if (!a) continue;
-      host.sendUdp(to ?? broadcastOf(a.ip, a.prefix), NBNS_PORT, NBNS_PORT, { nbns: msg }, a.ip, i.name);
-      if (to !== undefined) break;
-    }
-  }, QUERY_MS + 500);
-  pending.delete(id);
-  return got;
+  pending.set(id, finish);
+  host.hooks.schedule(QUERY_MS, () => finish(undefined));
+  for (const i of host.l3Ifaces().filter((x) => x.up && x.addrs.length)) {
+    const a = i.addrs[0];
+    if (!a) continue;
+    host.sendUdp(to ?? broadcastOf(a.ip, a.prefix), NBNS_PORT, NBNS_PORT, { nbns: msg }, a.ip, i.name);
+    if (to !== undefined) break;
+  }
 }
 
-/** The address of NAME<suffix>: the cache first, then a broadcast query (what Windows does after DNS). */
-export function nbnsResolve(host: Host, name: string, suffix = WORKSTATION): number | undefined {
-  const key = `${netbiosName(name)}<${suffix}>`;
-  const cache = caches.get(host) ?? new Map<string, { readonly ip: number; readonly suffix: number; readonly until: number }>();
-  caches.set(host, cache);
-  const hit = cache.get(key);
-  const now = host.clock.now();
-  if (hit && hit.until > now) return hit.ip;
-  const r = nbnsAsk(host, { type: 'NB', name, suffix, broadcast: true });
-  const ip = r?.addresses?.[0];
-  if (ip !== undefined) cache.set(key, { ip, suffix, until: now + CACHE_MS });
-  return ip;
+/** nbnsQuery, waiting for the answer. */
+export function nbnsAsk(host: Host, q: Omit<NbnsMessage, 'id' | 'response'>, to?: number): NbnsMessage | undefined {
+  return runSync<NbnsMessage | undefined>(host.hooks, (done) => nbnsQuery(host, q, to, done), QUERY_MS + 500);
 }
+
+function cacheOf(host: Host): Map<string, CacheEntry> {
+  const cache = caches.get(host) ?? new Map<string, CacheEntry>();
+  caches.set(host, cache);
+  return cache;
+}
+
+/** The address of NAME<suffix>, asynchronously: the cache first, then a broadcast query (cached when answered). */
+export function nbnsLookup(host: Host, name: string, suffix: number, done: (ip: number | undefined) => void): void {
+  const key = `${netbiosName(name)}<${suffix}>`;
+  const hit = cacheOf(host).get(key);
+  if (hit && hit.until > host.clock.now()) {
+    done(hit.ip);
+    return;
+  }
+  nbnsQuery(host, { type: 'NB', name, suffix, broadcast: true }, undefined, (r) => {
+    const ip = r?.addresses?.[0];
+    if (ip !== undefined) cacheOf(host).set(key, { ip, suffix, until: host.clock.now() + CACHE_MS });
+    done(ip);
+  });
+}
+
+/** nbnsLookup, waiting for the answer (what Windows does after DNS). */
+export function nbnsResolve(host: Host, name: string, suffix = WORKSTATION): number | undefined {
+  return runSync<number | undefined>(host.hooks, (done) => nbnsLookup(host, name, suffix, done), QUERY_MS + 500);
+}
+
+export const NBNS_WAIT_MS = QUERY_MS;
 
 /** nbtstat -c: [name, suffix, address, seconds left]. */
 export function nbnsCache(host: Host): [string, number, number, number][] {

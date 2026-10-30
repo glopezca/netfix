@@ -1,5 +1,5 @@
-// End-to-end check (v0.28) of Windows name resolution in Simulation mode: `ping pc2.local` (mDNS, multicast) and
-// `ping pc2` (NetBIOS, broadcast) are captured with their own filters, rows and PDU detail; nbtstat in the terminal.
+// End-to-end check (v0.28, v0.29) of Windows name resolution in Simulation mode: `ping pc2.local` (mDNS, multicast) and
+// `ping pc2` (LLMNR multicast and NetBIOS broadcast) are captured with their own filters, rows and PDU detail; nbtstat in the terminal.
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { join, dirname } from 'node:path';
@@ -26,12 +26,16 @@ try {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('g.device');
+  // The Labs menu groups the labs by theme.
+  const groups = await page.locator('select.select').first().locator('optgroup').evaluateAll((gs) => gs.map((g) => g.label));
+  assert.deepEqual(groups, ['DHCP', 'Conmutación y VLAN', 'Servicios', 'Resolución de nombres', 'Internet y VPN', 'Seguridad']);
+  assert.equal(await page.locator('optgroup[label="Resolución de nombres"] option').count(), 3);
   await page.locator('select.select').first().selectOption('basico');
   await page.waitForTimeout(300);
 
   // The filters list the new protocols, ticked.
   await page.click('button.seg:has-text("Simulación")');
-  for (const p of ['MDNS', 'NBNS', 'SMB']) assert.equal(await page.locator(`.filters label:has-text("${p}") input`).isChecked(), true, p);
+  for (const p of ['MDNS', 'LLMNR', 'NBNS', 'SMB']) assert.equal(await page.locator(`.filters label:has-text("${p}") input`).isChecked(), true, p);
 
   const type = async (line) => { await page.locator('.terminal:visible input.term-input').fill(line); await page.keyboard.press('Enter'); await page.waitForTimeout(250); };
   await page.dblclick('g.device:has-text("PC0")');
@@ -46,6 +50,8 @@ try {
   const events = await page.locator('.events tbody').innerText();
   assert.match(events, /MDNS A\? pc2\.local/, 'the mDNS question');
   assert.match(events, /MDNS NOERROR pc2\.local/, 'the mDNS answer');
+  assert.match(events, /LLMNR A\? pc2/, 'the LLMNR question');
+  assert.match(events, /LLMNR NOERROR pc2/, 'the LLMNR answer');
   assert.match(events, /NBNS Query PC2<00>/);
   assert.match(events, /NBNS Response PC2<00>/);
   await page.locator('.events tbody tr', { hasText: 'NBNS Response PC2<00>' }).first().click();
@@ -55,12 +61,14 @@ try {
   await page.locator('.events tbody tr', { hasText: 'MDNS A? pc2.local' }).first().click();
   assert.match(await page.locator('.pdu').innerText(), /UDP 5353 → 5353 · mDNS[\s\S]*pc2\.local IN A/);
   assert.match(await page.locator('.pdu').innerText(), /01:00:5e:00:00:fb|0100\.5e00\.00fb/i, 'to the mDNS group MAC');
+  await page.locator('.events tbody tr', { hasText: 'LLMNR A? pc2' }).first().click();
+  assert.match(await page.locator('.pdu').innerText(), /TTL\s*1[\s\S]*→ 5355 · LLMNR[\s\S]*pc2 IN A/);
   if (shots) await page.screenshot({ path: `${shots}/sim-netbios.png` });
 
   // A filter off stops capturing that protocol.
   await page.locator('.filters label:has-text("NBNS") input').uncheck();
   assert.deepEqual(errors, []);
-  console.log('e2e netbios OK: MDNS and NBNS captured with rows and PDU detail, nbtstat in the Windows terminal');
+  console.log('e2e netbios OK: labs grouped; MDNS, LLMNR and NBNS captured with rows and PDU detail, nbtstat in the Windows terminal');
 } finally {
   await browser.close();
   server.kill();
