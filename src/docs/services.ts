@@ -14,7 +14,7 @@ export const SERVICE_DOCS: DocGroup = {
       summary: 'Qué es un Server, sus pestañas, el sistema operativo y cómo se llaman sus servicios en Ubuntu y en Windows.',
       markdownBase: MD,
       blocks: [
-        p('Un **Server** es un equipo que ofrece servicios de red a los demás: da direcciones IP (DHCP), traduce nombres (DNS), publica páginas (HTTP), guarda el correo y deja entrar a distancia (SSH). Se configura igual que un PC (Configuración IP y Equipo), y además tiene la pestaña **Servicios**.'),
+        p('Un **Server** es un equipo que ofrece servicios de red a los demás: da direcciones IP (DHCP), traduce nombres (DNS), publica páginas (HTTP), guarda el correo y deja entrar a distancia (SSH). Se configura igual que un PC (TCP/IP y Equipo), y además tiene la pestaña **Servicios**.'),
         figure({
           type: 'topology',
           nodes: [
@@ -32,7 +32,7 @@ export const SERVICE_DOCS: DocGroup = {
           ['Enciéndelo', 'Cada servicio tiene su interruptor. Los cambios se aplican al momento y se escriben en los ficheros de configuración que ve la Terminal GNU/Linux.'],
           ['Comprueba', '**Configuración** enseña esos ficheros tal como están en el disco y **Registros** lo que va anotando cada servicio, los dos con los colores de vim.'],
         ),
-        tip('Dirección IP fija', 'Un servidor necesita siempre la misma dirección IP: los PC la tienen apuntada como servidor DNS, puerta de correo… Dale una **estática** en Configuración IP, nunca por DHCP.'),
+        tip('Dirección IP fija', 'Un servidor necesita siempre la misma dirección IP: los PC la tienen apuntada como servidor DNS, puerta de correo… Dale una **estática** en TCP/IP, nunca por DHCP.'),
         h('Los nombres de cada servicio'),
         p('El sistema operativo (Ubuntu o Windows Server, en la pestaña Equipo) decide cómo se llama cada servicio y cómo se gestiona desde la terminal:'),
         table(['Servicio', 'Puerto', 'Unidad systemd (Ubuntu)', 'Servicio de Windows', 'Configuración en GNU/Linux'], [
@@ -86,7 +86,7 @@ export const SERVICE_DOCS: DocGroup = {
           ['Activa el servicio', 'Marca **Servicio DHCP**: es lo mismo que `sudo systemctl enable --now kea-dhcp4-server`.'],
           ['Crea un pool', 'Un pool es el conjunto de direcciones que se reparten. Rellena **Dirección IP inicial** (la primera que se dará), **Usuarios máximos** (cuántas), la **máscara**, la **puerta de enlace** (el router de la LAN) y el **servidor DNS**, y pulsa **Añadir pool**.'],
           ['Elige las interfaces de escucha', 'Con **Todas** atiende por cualquier interfaz; si marcas algunas, solo por esas (útil en un router con varias redes).'],
-          ['Pon los clientes en DHCP', 'En cada PC: **Configuración IP** → **DHCP**. En segundos tendrán dirección.'],
+          ['Pon los clientes en DHCP', 'En cada PC: **TCP/IP** → **DHCP**. En segundos tendrán dirección.'],
         ),
         table(['Campo del pool', 'Ejemplo', 'Para qué sirve'], [
           ['Dirección IP inicial', '192.168.10.100', 'Primera dirección que se reparte'],

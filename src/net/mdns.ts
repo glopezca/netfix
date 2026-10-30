@@ -28,9 +28,6 @@ const windows = (h: object): boolean => (h as { readonly os?: string }).os === '
 /** avahi-daemon answers for the host's name; Windows does by itself. */
 const answers = (h: object): boolean => hasPackage(h, 'avahi-daemon') || windows(h);
 
-/** libnss-mdns (avahi-daemon brings it) makes the resolver ask mDNS for names under .local; Windows always does. */
-export const asksMdns = (h: object): boolean => hasPackage(h, 'avahi-daemon') || hasPackage(h, 'libnss-mdns') || windows(h);
-
 /** Pending questions per host and port, with the name asked (a multicast answer reaches every member). */
 const waiting = new WeakMap<object, Map<number, { readonly name: string; readonly done: (ip: number) => void }>>();
 let nextPort = 0;
@@ -74,10 +71,10 @@ export function registerMdns(): void {
 }
 
 /** The address of `name` (…​.local) on the host's links, or undefined when nobody answers. */
-export function mdnsResolve(host: Host, name: string): number | undefined {
+export function mdnsResolve(host: Host, name: string, windowsClient: boolean): number | undefined {
   registerMdns();
   // Windows asks from 5353 and hears the answer on the group; nss-mdns from a one-shot port.
-  const port = windows(host) ? MDNS_PORT : FIRST_PORT + (nextPort++ % PORTS);
+  const port = windowsClient ? MDNS_PORT : FIRST_PORT + (nextPort++ % PORTS);
   const pending = waiting.get(host) ?? new Map<number, { readonly name: string; readonly done: (ip: number) => void }>();
   waiting.set(host, pending);
   const ip = runSync<number | undefined>(host.hooks, (done) => {

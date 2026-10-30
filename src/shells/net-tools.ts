@@ -1,5 +1,8 @@
 /** Network operations shared by the Linux and Windows shells and the desktop apps. */
-import { asksMdns, mdnsResolve } from '../net/mdns.ts';
+import { mdnsResolve } from '../net/mdns.ts';
+import { nbnsResolve } from '../net/netbios.ts';
+import { hostsSources } from './nsswitch.ts';
+import { hasPackage } from '../net/host-packages.ts';
 import type { Host } from '../devices/host.ts';
 import type { AppPayload, DnsMessage, DnsType, HttpHeaders, HttpMethod } from '../net/packets.ts';
 import type { DnsResult } from '../net/dns.ts';
@@ -88,24 +91,56 @@ export function dnsSearch(host: Host, name: string, type: DnsType, server?: numb
   return { result: nodata ?? last ?? dnsQuery(host, name, type, server), name };
 }
 
-/** IP literal, the host's own name, /etc/hosts, or a DNS A lookup (through the search list), as nsswitch `files dns`. */
-export function resolveHost(host: Host, target: string): Resolved {
+/** Who asks: a GNU/Linux program (glibc and /etc/nsswitch.conf) or a Windows one (its DNS client and NetBT). */
+export type NameClient = 'linux' | 'windows';
+
+type Step = Resolved | undefined;
+const ip = (addr: number | undefined, name: string): Step => (addr === undefined ? undefined : { kind: 'ip', ip: addr, name, viaDns: false });
+const isLocalName = (name: string): boolean => /\.local\.?$/i.test(name);
+const singleLabel = (name: string): boolean => !name.replace(/\.$/, '').includes('.');
+
+function dnsStep(host: Host, target: string): Resolved {
+  const { result: r, name } = dnsSearch(host, target, 'A');
+  if (r.kind !== 'answer') return { kind: 'error', reason: r.kind };
+  if (r.msg.rcode === 'NXDOMAIN' || r.msg.rcode === 'REFUSED' || r.msg.rcode === 'SERVFAIL') return { kind: 'error', reason: 'nxdomain' };
+  const addr = firstAddress(r.msg);
+  return addr === undefined ? { kind: 'error', reason: 'nodata' } : { kind: 'ip', ip: addr, name: normalizeName(name), viaDns: true };
+}
+
+/** Windows: hosts, then mDNS for .local, the DNS (with its suffix) and NetBIOS for a bare name (cache, broadcast). */
+function windowsLookup(host: Host, target: string): Resolved {
+  if (isLocalName(target)) return ip(mdnsResolve(host, normalizeName(target), true), normalizeName(target)) ?? dnsStep(host, target);
+  const dns = dnsStep(host, target);
+  if (dns.kind === 'ip' || !singleLabel(target)) return dns;
+  return ip(nbnsResolve(host, target), target) ?? dns;
+}
+
+/** GNU/Linux: the sources of «hosts:» in /etc/nsswitch.conf, in order (files was already asked). */
+function linuxLookup(host: Host, target: string): Resolved {
+  let last: Resolved = { kind: 'error', reason: 'nxdomain' };
+  for (const { source, notFoundReturn } of hostsSources(host)) {
+    if (source === 'dns') last = dnsStep(host, target);
+    else if (source.startsWith('mdns') && (hasPackage(host, 'libnss-mdns') || hasPackage(host, 'avahi-daemon')) && (source === 'mdns' || source === 'mdns4' || isLocalName(target))) {
+      last = ip(mdnsResolve(host, normalizeName(target), false), normalizeName(target)) ?? { kind: 'error', reason: 'nxdomain' };
+      if (last.kind === 'error' && notFoundReturn && isLocalName(target)) return last;
+    } else if (source === 'wins' && hasPackage(host, 'libnss-winbind') && hasPackage(host, 'winbind') && singleLabel(target)) {
+      last = ip(nbnsResolve(host, target), target) ?? last;
+    }
+    if (last.kind === 'ip') return last;
+  }
+  return last;
+}
+
+/** IP literal, the host's own name, /etc/hosts, then what the asking system does (linuxLookup, windowsLookup). */
+/** `client` defaults to the device's system (TCP/IP tab); the terminals say which one asks. */
+export function resolveHost(host: Host, target: string, client: NameClient = host.os === 'windows' ? 'windows' : 'linux'): Resolved {
   const literal = parseIp(target);
   if (literal !== null) return { kind: 'ip', ip: literal, name: target, viaDns: false };
   // The host's own name answers with its network address (its hosts line, 127.0.1.1, is the loopback).
   if (normalizeName(target) === host.name.toLowerCase() && host.config.ip !== undefined) return { kind: 'ip', ip: host.config.ip, name: target, viaDns: false };
   const local = hostsLookup(host, target);
   if (local !== undefined) return { kind: 'ip', ip: local, name: target, viaDns: false };
-  // nsswitch «hosts: files mdns4_minimal [NOTFOUND=return] dns»: a .local name is asked on the link, never to the DNS.
-  if (/\.local\.?$/i.test(target) && asksMdns(host)) {
-    const ip = mdnsResolve(host, normalizeName(target));
-    return ip === undefined ? { kind: 'error', reason: 'nxdomain' } : { kind: 'ip', ip, name: normalizeName(target), viaDns: false };
-  }
-  const { result: r, name } = dnsSearch(host, target, 'A');
-  if (r.kind !== 'answer') return { kind: 'error', reason: r.kind };
-  if (r.msg.rcode === 'NXDOMAIN' || r.msg.rcode === 'REFUSED' || r.msg.rcode === 'SERVFAIL') return { kind: 'error', reason: 'nxdomain' };
-  const ip = firstAddress(r.msg);
-  return ip === undefined ? { kind: 'error', reason: 'nodata' } : { kind: 'ip', ip, name: normalizeName(name), viaDns: true };
+  return client === 'windows' ? windowsLookup(host, target) : linuxLookup(host, target);
 }
 
 export function tcpCall(host: Host, ip: number, port: number, payload: AppPayload, waitMs = TCP_WAIT_MS): TcpResult {
@@ -134,18 +169,20 @@ export interface HttpOptions {
   readonly method?: HttpMethod;
   readonly headers?: HttpHeaders;
   readonly body?: string;
+  /** Who resolves the name (the device's system when absent: its browser, its mail client). */
+  readonly client?: NameClient;
 }
 
 /** Resolves and fetches a URL. Errors use curl's exit codes and messages. */
-export function httpGet(host: Host, url: string, method: HttpMethod = 'GET'): HttpOutcome {
-  return httpRequest(host, url, { method });
+export function httpGet(host: Host, url: string, method: HttpMethod = 'GET', client?: NameClient): HttpOutcome {
+  return httpRequest(host, url, { method, ...(client ? { client } : {}) });
 }
 
 /** One HTTP request (no redirects followed); the Host header carries the port when it is not 80. */
 export function httpRequest(host: Host, url: string, opts: HttpOptions = {}): HttpOutcome {
   const parts = parseUrl(url);
   if (!parts) return { kind: 'error', code: 3, message: `URL rejected: Malformed input to a URL function (solo se admite http://)` };
-  const target = resolveHost(host, parts.host);
+  const target = resolveHost(host, parts.host, opts.client);
   if (target.kind === 'error') return { kind: 'error', code: 6, message: `Could not resolve host: ${parts.host}` };
   const headers: HttpHeaders = { host: `${parts.host}${parts.port !== DEFAULT_HTTP_PORT ? `:${parts.port}` : ''}`, 'user-agent': 'Netfix', ...opts.headers };
   const r = tcpCall(host, target.ip, parts.port, { app: 'HTTP', kind: 'request', method: opts.method ?? 'GET', host: parts.host, path: parts.path, headers, body: opts.body });

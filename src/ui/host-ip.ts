@@ -1,4 +1,4 @@
-/** "IP Configuration" tab for PCs and servers. */
+/** "TCP/IP" tab for PCs and servers. */
 import { t } from '../i18n/t.ts';
 import { el } from './dom.ts';
 import { field, copyRow, input, message } from './forms.ts';

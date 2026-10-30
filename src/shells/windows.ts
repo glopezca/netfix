@@ -2,6 +2,7 @@
  * Windows Command Prompt: ipconfig, ping, nslookup, netstat, arp, curl, ssh, sc / net (servers) and the file
  * commands (dir, cd, md, rd, del, copy, move, ren, type, echo, edit) on the device's Linux file system.
  */
+import { nbtstat, netView } from './win-nbt.ts';
 import { timestampPromptOn, windowsTimestampPrompt } from './prompt-clock.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { windowsSshStore } from './ssh-stores.ts';
@@ -191,7 +192,8 @@ export class WindowsShell extends BaseShell {
       case 'whoami': return [`${this.host.name.toLowerCase()}\\${this.user.toLowerCase()}`];
       case 'ver': return ['', 'Microsoft Windows [Version 10.0.20348.2700]', ''];
       case 'sc': return this.sc(args);
-      case 'net': return this.net(args);
+      case 'net': return (args[0] ?? '').toLowerCase() === 'view' ? netView(this.host, args[1]) : this.net(args);
+      case 'nbtstat': return nbtstat(this.host, args);
       case 'help': case '?': return HELP;
       case 'cls': return [];
       case 'exit':
@@ -233,7 +235,7 @@ export class WindowsShell extends BaseShell {
     const count = nIdx >= 0 ? Math.min(MAX_PING_COUNT, Math.max(1, Number(args[nIdx + 1]) || DEFAULT_PING_COUNT)) : DEFAULT_PING_COUNT;
     const target = args.filter((_, i) => nIdx < 0 || (i !== nIdx && i !== nIdx + 1)).pop();
     if (!target) return this.notFound('ping');
-    const r = resolveHost(this.host, target);
+    const r = resolveHost(this.host, target, 'windows');
     if (r.kind === 'error') return [`Ping request could not find host ${target}. Please check the name and try again.`];
     const ip = formatIp(r.ip);
     // A name (from DNS or the hosts file) shows with its address; an address alone shows bare.
@@ -275,7 +277,7 @@ export class WindowsShell extends BaseShell {
     const head = args.includes('-I');
     const url = args.find((a) => !a.startsWith('-'));
     if (!url) return ["curl: try 'curl --help' for more information"];
-    const r = httpGet(this.host, url, head ? 'HEAD' : 'GET');
+    const r = httpGet(this.host, url, head ? 'HEAD' : 'GET', 'windows');
     if (r.kind === 'error') return [`curl: (${r.code}) ${r.message}`];
     return head ? [`HTTP/1.1 ${r.response.status} ${r.response.reason}`, `Server: ${r.response.server}`, `Content-Type: ${r.response.contentType}`, ''] : r.response.body.split('\n');
   }

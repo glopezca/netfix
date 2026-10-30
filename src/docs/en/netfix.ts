@@ -28,7 +28,7 @@ export const NETFIX_DOCS: DocGroup = {
         steps(
           ['Place the devices', 'In the palette choose **PC** and click twice on the workspace (PC0 and PC1); then choose **Switch** and click between them.'],
           ['Plug in the cables', 'Choose **Cable**, click PC0, pick its port (FastEthernet0) and then the switch and a free port. The same with PC1. The cable type is chosen for you and the link lights turn green.'],
-          ['Set the IP addresses', 'Double-click PC0 → **IP Configuration** → Static: 192.168.1.10 and mask 255.255.255.0. On PC1, 192.168.1.11.'],
+          ['Set the IP addresses', 'Double-click PC0 → **TCP/IP** → Static: 192.168.1.10 and mask 255.255.255.0. On PC1, 192.168.1.11.'],
           ['Test it', 'On PC0 → **Windows terminal**: `ping 192.168.1.11`.'],
         ),
         term('cmd', 'C:\\home\\alumno> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
@@ -58,14 +58,14 @@ export const NETFIX_DOCS: DocGroup = {
         table(['Device', 'Tabs'], [
           ['IOS router / IOS switch', 'Device (workspace name and, derived from it, the hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
           ['ISP Cloud', 'Device (name and derived host name), ISP (provider, public block, domains), Interfaces (summary of the six lines) and Lines (mode, LAN, NAT, port forwarding).'],
-          ['PC', 'Device, Interfaces (MAC, link, speed, far end of the cable and port status), IP Configuration, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and GNU/Linux terminal.'],
+          ['PC', 'Device, Interfaces (MAC, link, speed, far end of the cable and port status), TCP/IP, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and GNU/Linux terminal.'],
           ['GNU/Linux router', 'Device, Interfaces (address of eth0-eth2, MAC, far end of the cable, forwarding and routes), Services (Parameters, Firewall, VPN, and the Server services starting with SSH) and GNU/Linux terminal.'],
-          ['Server', 'Device, Interfaces, Services (SSH, DHCP, DNS, HTTP, mail, Configuration and Logs), IP Configuration, GNU/Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the GNU/Linux router (sysctl and nft remain in its terminal).'],
+          ['Server', 'Device, Interfaces, Services (SSH, DHCP, DNS, HTTP, mail, Configuration and Logs), TCP/IP, GNU/Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the GNU/Linux router (sysctl and nft remain in its terminal).'],
         ]),
         note('Device fields apply when they change (Enter or leaving the field): name, addresses, cloud and ISP. Buttons remain for services («Apply» is restarting them with systemctl), forms that become IOS commands and lists (add a pool, a zone, a route…).'),
         note('Windows are moved by their title bar and resized from the corner. Escape closes the active window (except inside nano or vim). On phones and tablets windows fill the screen, the canvas is panned with one finger and zoomed by pinching, a long press opens a device and the terminal has a key bar: Esc, Tab, Ctrl (held for the next key), arrows, Home, End, PgUp, PgDn, ^C and ^D, plus F1-F10 while an editor is open. Outside the editors, Home and End go to the start or end of the line, and PgUp and PgDn scroll the output.'),
         warn('Common mistakes', 'Two devices with the same IP address, or with different masks: the ping fails now and then or does not get out. A cable in a port that is shut down (red light): on a router you need `no shutdown`. Closing the browser tab loses nothing (the workspace saves itself), but to hand in a practical use **Save**.'),
-        exercise('Three on the same network', 'Add a third PC to the switch of “Your first network” with the IP address 192.168.1.12/24 and check from it that it reaches the other two.', 'Place PC2, plug it into a free switch port, give it 192.168.1.12 and mask 255.255.255.0 in IP Configuration, and in its Windows terminal `ping 192.168.1.10` and `ping 192.168.1.11`: both answer (“Reply from …”). No gateway is needed: the three are on the same network.'),
+        exercise('Three on the same network', 'Add a third PC to the switch of “Your first network” with the IP address 192.168.1.12/24 and check from it that it reaches the other two.', 'Place PC2, plug it into a free switch port, give it 192.168.1.12 and mask 255.255.255.0 in TCP/IP, and in its Windows terminal `ping 192.168.1.10` and `ping 192.168.1.11`: both answer (“Reply from …”). No gateway is needed: the three are on the same network.'),
       ],
     },
     {
@@ -163,7 +163,7 @@ export const NETFIX_DOCS: DocGroup = {
         p('In Realtime the network runs on its own. In Simulation, every packet stays in the event list and can be replayed step by step, as in Packet Tracer.'),
         list(
           'Play / Pause / Step: advance the simulation.',
-          'Filters: DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP and SSH.',
+          'Filters: DHCP, DNS, MDNS, NBNS, ARP, ICMP, TCP, HTTP, SMB, SMTP, POP3, IMAP, SSH and STP. MDNS (UDP 5353, multicast) and NBNS (UDP 137, broadcast) show their question, their answer and, in NetBIOS, the name table with the MAC.',
           'Choosing an event shows the PDU by layers (Ethernet II, IPv4, UDP/TCP and the application message).',
           'SSH appears as “encrypted data”: its content cannot be read in transit.',
         ),

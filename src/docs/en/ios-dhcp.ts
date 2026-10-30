@@ -78,7 +78,7 @@ export const IOS_DHCP_DOCS: readonly DocPage[] = [
       ]),
       h('Step by step: a reservation'),
       steps(
-        ['Find the identifier', '`show ip dhcp binding` shows each client’s Client-ID; the MAC is in the PC’s IP Configuration tab.'],
+        ['Find the identifier', '`show ip dhcp binding` shows each client’s Client-ID; the MAC is in the PC’s TCP/IP tab.'],
         ['Create a pool for the device', '`ip dhcp pool PC0-FIJO`.'],
         ['The IP address', '`host 192.168.10.100 255.255.255.0` (outside the exclusions and inside the LAN pool’s network).'],
         ['The identifier', '`client-identifier 0100.cac2.1000.f2` or `hardware-address 0063.b914.34b5`.'],

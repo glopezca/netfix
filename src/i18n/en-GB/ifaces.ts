@@ -17,7 +17,7 @@ export const IFACES_EN: Readonly<Record<IfacesKey, string>> = {
   'iosif.peer': 'Connected to {peer}',
   'iosif.badVlan': 'The VLAN must be a number from 1 to 4094.',
   'iosif.applied': 'Applied to {name}.',
-  'hostif.intro': 'Network cards of the device. The address is changed in IP Configuration; here you see the link and turn each port on or off.',
+  'hostif.intro': 'Network cards of the device. The address is changed in TCP/IP; here you see the link and turn each port on or off.',
   'hostif.address': 'Address and mask',
   'hostif.speed': 'Speed',
   'hostif.peer': 'Connected to',

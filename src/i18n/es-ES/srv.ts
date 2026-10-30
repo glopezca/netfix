@@ -117,7 +117,7 @@ export const SRV_ES = {
   'res.add': 'Añadir reserva',
   'res.hint': 'Por MAC: coincide con la dirección física aunque el cliente envíe otro Client-ID (como «hw-address» en Kea). Por Client-ID: coincide con la opción 61 que envía el cliente.',
   'res.identifier': 'Identificador',
-  'res.none': 'Sin reservas. La MAC y el Client-ID de cada equipo están en su pestaña Configuración IP.',
+  'res.none': 'Sin reservas. La MAC y el Client-ID de cada equipo están en su pestaña TCP/IP.',
   'res.auto': 'Automática',
   'res.byId': 'Reserva (Client-ID)',
   'res.byMac': 'Reserva (MAC)',

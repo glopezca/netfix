@@ -1377,3 +1377,35 @@ instalar nada, el equipo responde a `NOMBRE.local` y pregunta por los nombres `.
 - **Pruebas:** Windows ↔ Windows sin instalar nada; Windows ↔ GNU/Linux con avahi; respuesta multicast en el cable;
   no cruza routers; `nslookup` sigue sin usar mDNS (como el real). Ayuda: apt (mDNS) y terminal Windows.
 - **Hecho (v0.27.1).**
+
+### Fase 45: NetBIOS (nmb/smb) en Windows y samba, resolución nativa, Simulación, avahi obligatorio y «TCP/IP» (v0.28.0)
+
+Petición: NetBIOS/smb/nmb en Windows con su resolución de nombres nativa; Simulación que recoja bien mDNS y NetBIOS
+con sus PDU; samba instalable con apt en GNU/Linux (documentado) para usar NetBIOS desde allí; en GNU/Linux mDNS
+siempre con avahi, como en la realidad; la pestaña «Configuración IP» pasa a «TCP/IP».
+
+- **Hallazgo:** el panel de Simulación descartaba los paquetes MDNS (su lista de protocolos no los tenía). Se añaden
+  MDNS, NBNS y SMB a los filtros, con su color, su línea (`MDNS A? pc1.local`, `NBNS Query PC2<00>`) y su detalle
+  (UDP 5353 · mDNS; UDP 137 · NetBIOS Name Service: transacción, operación, nombre<sufijo>, B-node, direcciones o
+  tabla de nombres con la MAC).
+- **NBNS** (`src/net/netbios.ts`, como mdns.ts): consulta de nombre por broadcast de la subred al puerto 137 (B-node,
+  no cruza routers) y respuesta unicast; petición de estado de nodo (NBSTAT) unicast con la tabla de nombres y la MAC.
+  Responden los equipos Windows (NetBIOS sobre TCP/IP de serie) y los GNU/Linux con samba (nmbd): NOMBRE<00>,
+  WORKGROUP<00> (grupo) y NOMBRE<20> (servidor de ficheros). Caché de nombres por equipo (10 min).
+- **SMB:** Windows y samba (smbd) escuchan TCP 139 y 445 (nc/nmap los ven abiertos); `listen` de tcp.ts admite una
+  condición. `net view \\EQUIPO` en Windows: «There are no entries in the list.» o «System error 53…».
+- **Resolución por cliente:** `resolveHost(host, nombre, cliente)`. Windows: hosts → (.local: mDNS) → DNS con sufijo →
+  NetBIOS (nombre de una etiqueta, caché primero). GNU/Linux: el orden de `hosts:` en **/etc/nsswitch.conf** (por
+  defecto `files dns`, como Ubuntu Server): `mdns4_minimal [NOTFOUND=return]` lo añade el postinst de libnss-mdns
+  (avahi-daemon lo trae) y lo quita al desinstalar; `wins` (winbind + libnss-winbind) se añade a mano, como en la
+  realidad. Así, desde GNU/Linux mDNS necesita siempre avahi aunque el sistema del equipo sea Windows.
+- **Windows:** `nbtstat -n | -a NOMBRE | -A IP | -c | -R` con su formato; `net view`.
+- **GNU/Linux (apt):** `samba` (smbd + nmbd; trae samba-common-bin con `nmblookup [-A] NOMBRE|IP`), `winbind`,
+  `libnss-winbind`. Ayuda: apt (NetBIOS y samba), Terminal Windows (nbtstat, net view), Simulación.
+- **«TCP/IP»:** pestaña, casilla del laboratorio y del equipo, ayuda, pruebas y e2e.
+- **Pruebas:** NBNS Windows↔Windows y Windows↔samba, no cruza routers, nbtstat, nmblookup, nsswitch (mdns y wins),
+  avahi obligatorio en GNU/Linux, puertos SMB; Simulación: filtros y detalle de MDNS y NBNS (e2e).
+- **Hecho (v0.28.0)**, con la revisión: el cliente por defecto es el sistema del equipo (navegador, correo, ssh y curl
+  de Windows resuelven a la manera de Windows) y los programas de la terminal GNU/Linux piden siempre la de GNU/Linux;
+  nsswitch.conf se siembra con mdns4_minimal si libnss-mdns ya estaba instalado (archivos anteriores); la línea
+  `hosts:` vacía no se come la siguiente; un equipo sin NetBIOS no se queda los datagramas del 137.

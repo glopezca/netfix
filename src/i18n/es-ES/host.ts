@@ -1,4 +1,4 @@
-/** Español (España): pestañas de PC y Servidor (Equipo, Configuración IP) y ventanas de equipo. */
+/** Español (España): pestañas de PC y Servidor (Equipo, TCP/IP) y ventanas de equipo. */
 export const HOST_ES = {
   'host.nameTitle': 'Identificación',
   'host.label': 'Nombre del equipo',

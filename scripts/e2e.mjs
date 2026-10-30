@@ -68,7 +68,7 @@ try {
   assert.match(await page.locator('.terminal').last().innerText(), /IPv4 Address\.+: 192\.168\.10\.\d+/);
   const rows = await page.locator('.events tbody tr').count();
   assert.ok(rows >= 4, `expected DHCP events, got ${rows}`);
-  await page.click('.win-tab:has-text("Configuración IP")');
+  await page.click('.win-tab:has-text("TCP/IP")');
   if (shots) await page.screenshot({ path: `${shots}/pc.png` });
   await page.click('.win-close');
   await page.click('.sim-controls button:has-text("Paso")');

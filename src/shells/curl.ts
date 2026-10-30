@@ -125,7 +125,7 @@ export function curl(host: Host): CommandFn {
     let written = '';
     for (let hop = 0; ; hop++) {
       const headers: Record<string, string> = { 'user-agent': USER_AGENT, accept: '*/*', ...(body !== undefined ? { 'content-type': 'application/x-www-form-urlencoded' } : {}), ...o.headers };
-      const r = httpRequest(host, url, { method, headers, body });
+      const r = httpRequest(host, url, { method, headers, body, client: 'linux' });
       if (r.kind === 'error') {
         if (!o.silent || o.showError) ctx.err(`curl: (${r.code}) ${r.message}\n`);
         if (o.writeOut !== undefined) ctx.out(writeOutText(o.writeOut, undefined, url));

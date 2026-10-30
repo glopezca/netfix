@@ -22,8 +22,8 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
       h('Current lab'),
       p('Decides which tabs and panels the windows of each kind of device show. **Device** (host name) and **Interfaces** are always there.'),
       table(['Device', 'On by default', 'Can be turned on'], [
-        ['PC', 'IP configuration, applications (browser, mail, SSH, SFTP), GNU/Linux terminal and Windows terminal', '—'],
-        ['Server', 'IP configuration, each service (SSH, DHCP, DNS, HTTP, mail, files and logs), kernel parameters, firewall, GNU/Linux terminal and Windows terminal', '—'],
+        ['PC', 'TCP/IP, applications (browser, mail, SSH, SFTP), GNU/Linux terminal and Windows terminal', '—'],
+        ['Server', 'TCP/IP, each service (SSH, DHCP, DNS, HTTP, mail, files and logs), kernel parameters, firewall, GNU/Linux terminal and Windows terminal', '—'],
         ['GNU/Linux router', 'Kernel parameters, firewall, VPN, each service and GNU/Linux terminal', 'Windows terminal'],
         ['IOS router and switch', 'CLI and web management', '—'],
       ]),
@@ -31,13 +31,13 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
       h('Each device’s Settings tab'),
       p('Every PC, server and GNU/Linux router also has its own **Settings** tab: boxes for its applications, services and terminals. It only lists what the lab allows (the table above is the maximum), and when a box changes the window reopens on that tab with the new tabs.'),
       table(['Device', 'On by default', 'Off by default'], [
-        ['PC', 'IP configuration, browser, SSH client and the terminal of its operating system', 'Mail, Files (SFTP) and the other system’s terminal'],
-        ['Server', 'Placed from the palette: IP configuration, files, logs and the GNU/Linux terminal. Kernel parameters always (no box)', 'Every service and the firewall: ticked here or installed with apt (Installing packages with apt)'],
+        ['PC', 'TCP/IP, browser, SSH client and the terminal of its operating system', 'Mail, Files (SFTP) and the other system’s terminal'],
+        ['Server', 'Placed from the palette: TCP/IP, files, logs and the GNU/Linux terminal. Kernel parameters always (no box)', 'Every service and the firewall: ticked here or installed with apt (Installing packages with apt)'],
         ['GNU/Linux router', 'Placed from the palette: files, logs and the GNU/Linux terminal. Kernel parameters always', 'Services, firewall and VPN (box or apt)'],
       ]),
       p('In the recorded labs, of each pair of PCs on the same switch one runs Windows and the other GNU/Linux; mail is only on the PCs with an account set up, and SFTP on PC1 of “SSH and SFTP with keys”; each server shows only the services it starts (plus files and logs).'),
       p('The servers of the recorded labs and of saved files keep the services they had.'),
-      p('When you **place a PC** from the palette, Netfix asks whether it runs GNU/Linux, Windows or both, and turns on its terminal and that system’s network stack (IP Configuration → operating system). It can be changed later. Servers do not ask: they run GNU/Linux.'),
+      p('When you **place a PC** from the palette, Netfix asks whether it runs GNU/Linux, Windows or both, and turns on its terminal and that system’s network stack (TCP/IP → operating system). It can be changed later. Servers do not ask: they run GNU/Linux.'),
       p('The **web management** of servers and GNU/Linux routers shows greyed out, without forms, the pages of whatever is off (on the device or in the lab). With the **Hide disabled options in the web management…** box of Current lab they are not even in the menu.'),
       steps(
         ['Open the tab', '**Settings**, section **Current lab**.'],

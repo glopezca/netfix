@@ -14,7 +14,7 @@ export const SERVICE_DOCS: DocGroup = {
       summary: 'What a Server is, its tabs, the operating system and what its services are called on Ubuntu and on Windows.',
       markdownBase: MD,
       blocks: [
-        p('A **Server** is a device that offers network services to the others: it hands out IP addresses (DHCP), translates names (DNS), publishes pages (HTTP), keeps the mail and lets people in remotely (SSH). It is set up like a PC (IP Configuration and Device), and it also has the **Services** tab.'),
+        p('A **Server** is a device that offers network services to the others: it hands out IP addresses (DHCP), translates names (DNS), publishes pages (HTTP), keeps the mail and lets people in remotely (SSH). It is set up like a PC (TCP/IP and Device), and it also has the **Services** tab.'),
         figure({
           type: 'topology',
           nodes: [
@@ -32,7 +32,7 @@ export const SERVICE_DOCS: DocGroup = {
           ['Switch it on', 'Each service has its switch. Changes apply at once and are written to the configuration files the GNU/Linux Terminal sees.'],
           ['Check', '**Configuration** shows those files as they are on disk and **Logs** what each service writes down, both with vim’s colours.'],
         ),
-        tip('Fixed IP address', 'A server always needs the same IP address: the PCs have it noted as their DNS server, mail server… Give it a **static** one in IP Configuration, never one from DHCP.'),
+        tip('Fixed IP address', 'A server always needs the same IP address: the PCs have it noted as their DNS server, mail server… Give it a **static** one in TCP/IP, never one from DHCP.'),
         h('What each service is called'),
         p('The operating system (Ubuntu or Windows Server, in the Device tab) decides what each service is called and how it is managed from the terminal:'),
         table(['Service', 'Port', 'systemd unit (Ubuntu)', 'Windows service', 'Configuration on GNU/Linux'], [
@@ -86,7 +86,7 @@ export const SERVICE_DOCS: DocGroup = {
           ['Turn the service on', 'Tick **DHCP service**: the same as `sudo systemctl enable --now kea-dhcp4-server`.'],
           ['Create a pool', 'A pool is the set of addresses handed out. Fill in **Start IP address** (the first one given), **Maximum users** (how many), the **mask**, the **default gateway** (the LAN router) and the **DNS server**, and click **Add pool**.'],
           ['Choose the listen interfaces', 'With **All** it answers on any interface; if you tick some, only on those (useful on a router with several networks).'],
-          ['Put the clients on DHCP', 'On each PC: **IP Configuration** → **DHCP**. In seconds they will have an address.'],
+          ['Put the clients on DHCP', 'On each PC: **TCP/IP** → **DHCP**. In seconds they will have an address.'],
         ),
         table(['Pool field', 'Example', 'What it is for'], [
           ['Start IP address', '192.168.10.100', 'First address handed out'],

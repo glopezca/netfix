@@ -1,4 +1,5 @@
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
+import { NSSWITCH, seededNsswitch } from './nsswitch.ts';
 import { t } from '../i18n/t.ts';
 import { listenChoices } from '../services/listen.ts';
 import { runsServices } from '../devices/kinds.ts';
@@ -171,6 +172,7 @@ function createSystem(host: Host): Entry {
   const users = hostUsers(host);
   seedRootfs(fs, { hostname: host.name.toLowerCase(), users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
   // An ordinary file, as in Ubuntu: root edits it, it is saved with the topology and the resolver reads it first.
+  fs.seed(NSSWITCH, { kind: 'file', content: seededNsswitch(host) }, 0o644);
   fs.seed('/etc/hosts', { kind: 'file', content: `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n` }, 0o644);
   fs.seed('/usr/lib/command-not-found', { kind: 'file', content: `${BINARY_MARK}command-not-found\n` }, 0o755);
   const server = asServer(host);

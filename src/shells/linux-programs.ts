@@ -27,6 +27,7 @@ import { netplanProgram } from './netplan.ts';
 import { rndc } from './rndc.ts';
 import { apt } from './apt.ts';
 import { nmcli } from './nmcli.ts';
+import { nmblookup } from './nmblookup.ts';
 
 const PACKAGES: Readonly<Record<string, string>> = {
   ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
@@ -111,7 +112,7 @@ function wget(host: Host): CommandFn {
     const say = (t: string): void => { if (!quiet) ctx.err(t); };
     const stamp = new Date(host.clock.now()).toISOString().slice(0, 19).replace('T', ' ');
     say(`--${stamp}--  ${url}\n`);
-    const r = httpGet(host, url);
+    const r = httpGet(host, url, 'GET', 'linux');
     if (r.kind === 'error') { say(r.code === 6 ? `wget: unable to resolve host address ‘${url.replace(/^\w+:\/\//, '').split(/[/:]/)[0]}’\n` : `${r.message}.\n`); return 4; }
     const res = r.response;
     say(`Connecting to ${url.replace(/^\w+:\/\//, '').split('/')[0]}... connected.\nHTTP request sent, awaiting response... ${res.status} ${res.reason}\n`);
@@ -162,7 +163,7 @@ export function linuxPrograms(host: Host): Map<string, CommandFn> {
     ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
     ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
     ['ss', (ctx) => { lines(ctx, ss(host, ssOptions(ctx.argv.slice(1)))); return 0; }],
-    ['apt', apt(host)], ['nmcli', nmcli(host)],
+    ['apt', apt(host)], ['nmcli', nmcli(host)], ['nmblookup', nmblookup(host)],
     ['command-not-found', commandNotFound],
     ...(runsServices(host.kind) ? [...APACHE_TOOLS, ['rndc', rndc(host)] as const] : []),
   ]);

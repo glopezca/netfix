@@ -11,6 +11,7 @@ import { BASE, PACKAGES, findPackage, kb } from './apt-catalog.ts';
 import type { AptDep, AptPackage } from './apt-catalog.ts';
 import { mooLines } from './apt-moo.ts';
 import { installedPackage, setPackage } from './apt-state.ts';
+import { afterPackage } from './apt-scripts.ts';
 
 const READING = 'Reading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\n';
 const summary = (installing: number, removing: number): string => `Summary:\n  Upgrading: 0, Installing: ${installing}, Removing: ${removing}, Not Upgrading: 0\n`;
@@ -149,7 +150,7 @@ function* install(ctx: Ctx, host: Host, names: readonly string[], yes: boolean):
   const reason = mirrorStatus(host)(archive, 'dists/resolute/InRelease');
   if (reason !== undefined) return fetchFailed(ctx, archive, fetch, reason);
   unpack(ctx, host, todo, fetch, archive);
-  for (const p of todo) setPackage(host, p, true);
+  for (const p of todo) { setPackage(host, p, true); afterPackage(ctx.sh.env.fs, host, p.name, true); }
   return 0;
 }
 
@@ -167,7 +168,7 @@ function* remove(ctx: Ctx, host: Host, names: readonly string[], yes: boolean, p
   if (!(yield* confirm(ctx, yes))) return 1;
   const lines = todo.flatMap((p) => [`Removing ${p.name} (${p.version}) ...`, ...(purge ? [`Purging configuration files for ${p.name} (${p.version}) ...`] : [])]);
   ctx.out(`(Reading database ... ${dbFiles(host)} files and directories currently installed.)\n${lines.join('\n')}\nProcessing triggers for man-db (2.13.1-1) ...\n`);
-  for (const p of todo) setPackage(host, p, false);
+  for (const p of todo) { setPackage(host, p, false); afterPackage(ctx.sh.env.fs, host, p.name, false); }
   return 0;
 }
 

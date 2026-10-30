@@ -15,7 +15,7 @@ export const IFACES_ES = {
   'iosif.peer': 'Conectada a {peer}',
   'iosif.badVlan': 'La VLAN debe ser un número entre 1 y 4094.',
   'iosif.applied': 'Aplicado en {name}.',
-  'hostif.intro': 'Tarjetas de red del equipo. La dirección se cambia en Configuración IP; aquí se ve el enlace y se enciende o apaga cada puerto.',
+  'hostif.intro': 'Tarjetas de red del equipo. La dirección se cambia en TCP/IP; aquí se ve el enlace y se enciende o apaga cada puerto.',
   'hostif.address': 'Dirección y máscara',
   'hostif.speed': 'Velocidad',
   'hostif.peer': 'Conectada a',

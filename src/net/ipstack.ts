@@ -27,10 +27,11 @@ export interface LocalSockets {
   take(host: StackHost, iface: string, packet: IpPacket): boolean;
 }
 
-let sockets: LocalSockets | undefined;
+const sockets: LocalSockets[] = [];
 
+/** Each service registers once (mDNS, NetBIOS). */
 export function registerLocalSockets(s: LocalSockets): void {
-  sockets = s;
+  sockets.push(s);
 }
 
 const isMulticast = (ip: number): boolean => ip >>> 28 === 0xe;
@@ -189,7 +190,7 @@ export class IpStack {
       this.onIcmp(ifaceName, packet, packet.icmp);
       return;
     }
-    if (packet.udp && sockets?.take(this.host, ifaceName, packet)) return;
+    if (packet.udp && sockets.some((s) => s.take(this.host, ifaceName, packet))) return;
     this.host.deliver(ifaceName, packet, frame);
   }
 
@@ -310,7 +311,7 @@ export class IpStack {
   /** A multicast group this host has joined (with its MAC, when a frame brings one). */
   private joined(group: number | undefined, mac?: string): boolean {
     if (group === undefined || !isMulticast(group) || (mac !== undefined && mac !== multicastMac(group))) return false;
-    return sockets?.member(this.host, group) ?? false;
+    return sockets.some((s) => s.member(this.host, group));
   }
 
   /** Sends a datagram to a link-local multicast group (it is never routed: TTL 255, mDNS). */

@@ -10,7 +10,7 @@ export const CLIENT_DOCS: DocGroup = {
   pages: [
     {
       id: 'pc-ip',
-      title: 'Configuración IP',
+      title: 'TCP/IP',
       summary: 'Dar al PC su dirección IP: a mano (estática) o automáticamente (DHCP), y cómo comprobar que funciona.',
       markdownBase: MD,
       blocks: [
@@ -33,7 +33,7 @@ export const CLIENT_DOCS: DocGroup = {
         ]),
         h('Configurarlo en Netfix'),
         steps(
-          ['Abre el PC', 'Doble clic en el PC → pestaña **Configuración IP**.'],
+          ['Abre el PC', 'Doble clic en el PC → pestaña **TCP/IP**.'],
           ['Elige el modo', '**DHCP**: el PC pide los datos al momento (verás «Solicitando dirección IP…» y después «Solicitud DHCP correcta»). **Estática**: rellena **Dirección IPv4**, **Máscara de subred** (255.255.255.0 o /24), **Puerta de enlace** y **Servidor DNS**.'],
           ['Aplica', 'Cada campo se aplica al pulsar Intro o al salir de él. Un dato mal escrito se marca y no se aplica.'],
           ['Elige el sistema operativo', '**Ubuntu** o **Windows**: decide qué terminal se abre primero y qué sistema ve un cliente SSH.'],
@@ -138,6 +138,7 @@ export const CLIENT_DOCS: DocGroup = {
           ['¿Qué dirección tengo?', '`ipconfig` (con `/all`, también la MAC, el servidor DHCP, el DNS y las fechas de la concesión).'],
           ['¿Llego a la puerta de enlace?', '`ping 192.168.10.1`: si responde, la red local funciona.'],
           ['¿Resuelvo nombres?', '`nslookup srv.aula.lab`: si da la dirección IP, el DNS funciona.'],
+          ['¿Y un nombre sin punto?', '`ping pc2`: si el DNS no lo conoce, Windows pregunta por NetBIOS con un broadcast a su red (UDP 137). `nbtstat -n` muestra sus nombres, `nbtstat -a PC2` los de otro equipo con su MAC, `nbtstat -c` la caché y `net view \\\\PC2` si tiene SMB.'],
           ['¿Y sin servidor DNS?', '`ping pc1.local`: Windows trae mDNS de serie y pregunta por los nombres .local en su red (un equipo GNU/Linux responde si tiene avahi-daemon). `nslookup` no usa mDNS: solo pregunta al DNS.'],
           ['¿Por dónde va el tráfico?', '`tracert 8.8.8.8`: un salto por cada router del camino.'],
         ),

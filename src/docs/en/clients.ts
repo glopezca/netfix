@@ -10,7 +10,7 @@ export const CLIENT_DOCS: DocGroup = {
   pages: [
     {
       id: 'pc-ip',
-      title: 'IP configuration',
+      title: 'TCP/IP',
       summary: 'Giving the PC its IP address: by hand (static) or automatically (DHCP), and how to check that it works.',
       markdownBase: MD,
       blocks: [
@@ -33,7 +33,7 @@ export const CLIENT_DOCS: DocGroup = {
         ]),
         h('Setting it up in Netfix'),
         steps(
-          ['Open the PC', 'Double-click the PC → **IP Configuration** tab.'],
+          ['Open the PC', 'Double-click the PC → **TCP/IP** tab.'],
           ['Choose the mode', '**DHCP**: the PC asks for the values at once (you will see “Requesting IP address…” and then “DHCP request successful”). **Static**: fill in **IPv4 address**, **Subnet mask** (255.255.255.0 or /24), **Default gateway** and **DNS server**.'],
           ['Apply', 'Each field applies when you press Enter or leave it. A mistyped value is flagged and not applied.'],
           ['Choose the operating system', '**Ubuntu** or **Windows**: it decides which terminal opens first and which system an SSH client sees.'],
@@ -138,6 +138,7 @@ export const CLIENT_DOCS: DocGroup = {
           ['What is my address?', '`ipconfig` (with `/all`, also the MAC, DHCP server, DNS and lease dates).'],
           ['Do I reach the gateway?', '`ping 192.168.10.1`: if it answers, the local network works.'],
           ['Do names resolve?', '`nslookup srv.aula.lab`: if it gives the IP address, DNS works.'],
+          ['And a name without a dot?', '`ping pc2`: if the DNS does not know it, Windows asks by NetBIOS with a broadcast to its network (UDP 137). `nbtstat -n` shows its names, `nbtstat -a PC2` another device’s with its MAC, `nbtstat -c` the cache and `net view \\\\PC2` whether it has SMB.'],
           ['And without a DNS server?', '`ping pc1.local`: Windows has mDNS built in and asks for .local names on its network (a GNU/Linux device answers if it has avahi-daemon). `nslookup` does not use mDNS: it only asks the DNS.'],
           ['Which way does traffic go?', '`tracert 8.8.8.8`: one hop for each router on the way.'],
         ),

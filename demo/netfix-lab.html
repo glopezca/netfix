@@ -54,6 +54,9 @@
   --mail: #9a6a1f;
   --ssh: #3d4f9c;
   --stp: #5f7d2c;
+  --mdns: #237a6f;
+  --nbns: #8a5a2b;
+  --smb: #4a6b8f;
   --ok: #2e7d4f;
   --err: #b3362a;
   --dev-top: #dbe7ec;
@@ -154,6 +157,9 @@ button, input, select { font: inherit; color: inherit; }
 .env-http rect { fill: var(--http); }
 .env-smtp rect, .env-pop3 rect, .env-imap rect { fill: var(--mail); }
 .env-ssh rect { fill: var(--ssh); }
+.env-mdns rect { fill: var(--mdns); }
+.env-nbns rect { fill: var(--nbns); }
+.env-smb rect { fill: var(--smb); }
 
 .port-menu {
   position: absolute; z-index: 5; min-width: 200px; max-height: 320px; overflow: auto;
@@ -331,6 +337,9 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 .chip-smtp, .chip-pop3, .chip-imap { background: var(--mail); }
 .chip-ssh { background: var(--ssh); }
 .chip-stp { background: var(--stp); }
+.chip-mdns { background: var(--mdns); }
+.chip-nbns { background: var(--nbns); }
+.chip-smb { background: var(--smb); }
 .sim-count { font-size: 12px; color: var(--ink-2); }
 .events-wrap { flex: 1; min-height: 120px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-ctl); }
 .events { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -1484,7 +1493,7 @@ const MC_EN = {
 return { MC_EN };
 })();
 __m["i18n/es-ES/host.js"] = (() => {
-/** Español (España): pestañas de PC y Servidor (Equipo, Configuración IP) y ventanas de equipo. */
+/** Español (España): pestañas de PC y Servidor (Equipo, TCP/IP) y ventanas de equipo. */
 const HOST_ES = {
     'host.nameTitle': 'Identificación',
     'host.label': 'Nombre del equipo',
@@ -2205,7 +2214,7 @@ const UI_ES = {
     'win.linuxTerm': 'Terminal GNU/Linux',
     'win.cmdOf': 'Terminal Windows de {name}',
     'win.termOf': 'Terminal de {name}',
-    'win.ip': 'Configuración IP',
+    'win.ip': 'TCP/IP',
     'win.host': 'Equipo',
     'win.services': 'Servicios',
     'win.browser': 'Navegador',
@@ -2373,6 +2382,7 @@ const UI_ES = {
     'pdu.response': 'respuesta',
     'pdu.query': 'consulta',
     'pdu.question': 'Pregunta',
+    'pdu.nbNames': 'Tabla de nombres',
     'pdu.yes': 'sí',
     'pdu.answers': 'Respuestas',
     'pdu.authority': 'Autoridad',
@@ -2404,7 +2414,7 @@ const UI_EN = {
     'win.linuxTerm': 'GNU/Linux terminal',
     'win.cmdOf': '{name} Windows terminal',
     'win.termOf': '{name} terminal',
-    'win.ip': 'IP Configuration',
+    'win.ip': 'TCP/IP',
     'win.host': 'Device',
     'win.services': 'Services',
     'win.browser': 'Web Browser',
@@ -2572,6 +2582,7 @@ const UI_EN = {
     'pdu.response': 'response',
     'pdu.query': 'query',
     'pdu.question': 'Question',
+    'pdu.nbNames': 'Name table',
     'pdu.yes': 'yes',
     'pdu.answers': 'Answers',
     'pdu.authority': 'Authority',
@@ -2708,7 +2719,7 @@ const SRV_ES = {
     'res.add': 'Añadir reserva',
     'res.hint': 'Por MAC: coincide con la dirección física aunque el cliente envíe otro Client-ID (como «hw-address» en Kea). Por Client-ID: coincide con la opción 61 que envía el cliente.',
     'res.identifier': 'Identificador',
-    'res.none': 'Sin reservas. La MAC y el Client-ID de cada equipo están en su pestaña Configuración IP.',
+    'res.none': 'Sin reservas. La MAC y el Client-ID de cada equipo están en su pestaña TCP/IP.',
     'res.auto': 'Automática',
     'res.byId': 'Reserva (Client-ID)',
     'res.byMac': 'Reserva (MAC)',
@@ -2881,7 +2892,7 @@ const SRV_EN = {
     'res.add': 'Add reservation',
     'res.hint': 'By MAC: matches the physical address even if the client sends another Client-ID (like “hw-address” in Kea). By Client-ID: matches the option 61 the client sends.',
     'res.identifier': 'Identifier',
-    'res.none': 'No reservations. Each device’s MAC and Client-ID are in its IP Configuration tab.',
+    'res.none': 'No reservations. Each device’s MAC and Client-ID are in its TCP/IP tab.',
     'res.auto': 'Automatic',
     'res.byId': 'Reservation (Client-ID)',
     'res.byMac': 'Reservation (MAC)',
@@ -3637,7 +3648,7 @@ const IFACES_ES = {
     'iosif.peer': 'Conectada a {peer}',
     'iosif.badVlan': 'La VLAN debe ser un número entre 1 y 4094.',
     'iosif.applied': 'Aplicado en {name}.',
-    'hostif.intro': 'Tarjetas de red del equipo. La dirección se cambia en Configuración IP; aquí se ve el enlace y se enciende o apaga cada puerto.',
+    'hostif.intro': 'Tarjetas de red del equipo. La dirección se cambia en TCP/IP; aquí se ve el enlace y se enciende o apaga cada puerto.',
     'hostif.address': 'Dirección y máscara',
     'hostif.speed': 'Velocidad',
     'hostif.peer': 'Conectada a',
@@ -3669,7 +3680,7 @@ const IFACES_EN = {
     'iosif.peer': 'Connected to {peer}',
     'iosif.badVlan': 'The VLAN must be a number from 1 to 4094.',
     'iosif.applied': 'Applied to {name}.',
-    'hostif.intro': 'Network cards of the device. The address is changed in IP Configuration; here you see the link and turn each port on or off.',
+    'hostif.intro': 'Network cards of the device. The address is changed in TCP/IP; here you see the link and turn each port on or off.',
     'hostif.address': 'Address and mask',
     'hostif.speed': 'Speed',
     'hostif.peer': 'Connected to',
@@ -4215,7 +4226,7 @@ const SETTINGS_ES = {
     'set.kind.linuxrouter': 'Router GNU/Linux',
     'set.kind.router': 'Router IOS',
     'set.kind.switch': 'Switch IOS',
-    'set.feat.ip': 'Configuración IP (y sistema operativo)',
+    'set.feat.ip': 'TCP/IP (y sistema operativo)',
     'set.feat.apps': 'Aplicaciones (navegador, correo, SSH y SFTP)',
     'set.feat.ssh': 'Servicio SSH',
     'set.feat.dhcp': 'Servicio DHCP',
@@ -4240,7 +4251,7 @@ const SETTINGS_ES = {
     'dev.terminals': 'Terminales',
     'dev.changed': 'La ventana se ha reabierto con las pestañas elegidas.',
     'os.title': '¿Qué sistema operativo tiene {name}?',
-    'os.body': 'Se activa su terminal y la pila de red de ese sistema. Puedes cambiarlo después en su pestaña Configuración (terminales) y en Configuración IP (sistema operativo).',
+    'os.body': 'Se activa su terminal y la pila de red de ese sistema. Puedes cambiarlo después en su pestaña Configuración (terminales) y en TCP/IP (sistema operativo).',
     'os.linux': 'GNU/Linux',
     'os.windows': 'Windows',
     'os.both': 'Ambos',
@@ -4274,7 +4285,7 @@ const SETTINGS_EN = {
     'set.kind.linuxrouter': 'GNU/Linux router',
     'set.kind.router': 'IOS router',
     'set.kind.switch': 'IOS switch',
-    'set.feat.ip': 'IP configuration (and operating system)',
+    'set.feat.ip': 'TCP/IP (and operating system)',
     'set.feat.apps': 'Applications (browser, mail, SSH and SFTP)',
     'set.feat.ssh': 'SSH service',
     'set.feat.dhcp': 'DHCP service',
@@ -4299,7 +4310,7 @@ const SETTINGS_EN = {
     'dev.terminals': 'Terminals',
     'dev.changed': 'The window has been reopened with the chosen tabs.',
     'os.title': 'Which operating system does {name} run?',
-    'os.body': 'Its terminal and that system\'s network stack are turned on. You can change it later in its Settings tab (terminals) and in IP Configuration (operating system).',
+    'os.body': 'Its terminal and that system\'s network stack are turned on. You can change it later in its Settings tab (terminals) and in TCP/IP (operating system).',
     'os.linux': 'GNU/Linux',
     'os.windows': 'Windows',
     'os.both': 'Both',
@@ -5250,7 +5261,7 @@ const DHCP_SERVER_PORT = 67;
 const DHCP_CLIENT_PORT = 68;
 const DNS_PORT = 53;
 const WELL_KNOWN_PORTS = {
-    22: 'SSH', 25: 'SMTP', 53: 'DNS', 80: 'HTTP', 110: 'POP3', 143: 'IMAP',
+    22: 'SSH', 25: 'SMTP', 53: 'DNS', 80: 'HTTP', 110: 'POP3', 139: 'SMB', 143: 'IMAP', 445: 'SMB',
 };
 const DEFAULT_TTL = 255;
 const PC_TTL = 128;
@@ -5269,6 +5280,8 @@ function frameProtocol(frame) {
         return 'DHCP';
     if (ip.udp?.dns)
         return ip.udp.dport === 5353 || ip.udp.sport === 5353 ? 'MDNS' : 'DNS';
+    if (ip.udp?.nbns)
+        return 'NBNS';
     if (ip.udp?.isakmp)
         return 'ISAKMP';
     if (ip.udp?.wg)
@@ -5280,7 +5293,7 @@ function frameProtocol(frame) {
     if (ip.tcp) {
         if (ip.tcp.data)
             return ip.tcp.data.app;
-        return 'TCP';
+        return tcpService(ip.tcp) === 'SMB' ? 'SMB' : 'TCP';
     }
     return 'IPv4';
 }
@@ -5348,9 +5361,10 @@ return { BROADCAST_MAC, parseMac, formatMacCisco, formatMacPT, parseHexId, forma
 __m["net/ipstack.js"] = (() => {
 const { inSubnet, broadcastOf, BROADCAST_IP } = __m["core/ip.js"];
 const { BROADCAST_MAC } = __m["core/mac.js"];
-let sockets;
+const sockets = [];
+/** Each service registers once (mDNS, NetBIOS). */
 function registerLocalSockets(s) {
-    sockets = s;
+    sockets.push(s);
 }
 const isMulticast = (ip) => ip >>> 28 === 0xe;
 /** 01:00:5e + the low 23 bits of the group (224.0.0.251 → 01005e0000fb). */
@@ -5467,7 +5481,7 @@ class IpStack {
             this.onIcmp(ifaceName, packet, packet.icmp);
             return;
         }
-        if (packet.udp && sockets?.take(this.host, ifaceName, packet))
+        if (packet.udp && sockets.some((s) => s.take(this.host, ifaceName, packet)))
             return;
         this.host.deliver(ifaceName, packet, frame);
     }
@@ -5600,7 +5614,7 @@ class IpStack {
     joined(group, mac) {
         if (group === undefined || !isMulticast(group) || (mac !== undefined && mac !== multicastMac(group)))
             return false;
-        return sockets?.member(this.host, group) ?? false;
+        return sockets.some((s) => s.member(this.host, group));
     }
     /** Sends a datagram to a link-local multicast group (it is never routed: TTL 255, mDNS). */
     multicast(ifaceName, packet) {
@@ -5653,23 +5667,28 @@ const ISN_STEP = 64_000;
 class TcpLayer {
     env;
     listeners = new Map();
+    /** Ports open only while a condition holds (SMB on Windows or with samba: net/netbios.ts). */
+    whenOpen = new Map();
     conns = new Map();
     nextPort = FIRST_EPHEMERAL;
     isn = 1_000;
     constructor(env) {
         this.env = env;
     }
-    listen(port, handler) {
+    listen(port, handler, open) {
         this.listeners.set(port, handler);
+        if (open)
+            this.whenOpen.set(port, open);
     }
     unlisten(port) {
         this.listeners.delete(port);
+        this.whenOpen.delete(port);
     }
     isListening(port) {
-        return this.listeners.has(port);
+        return this.listeners.has(port) && this.whenOpen.get(port)?.() !== false;
     }
     listeningPorts() {
-        return [...this.listeners.keys()].sort((a, b) => a - b);
+        return [...this.listeners.keys()].filter((p) => this.isListening(p)).sort((a, b) => a - b);
     }
     /** Opens a connection, sends `payload` and reports the reply through `done` (exactly once). */
     request(dst, dport, payload, done, timeoutMs = DEFAULT_TIMEOUT_MS) {
@@ -5758,7 +5777,7 @@ class TcpLayer {
     // ------------------------------------------------------------ server side
     onServerSegment(packet, seg) {
         const reply = (flags, data) => this.emit(packet.dst, packet.src, { sport: seg.dport, dport: seg.sport, flags, seq: this.nextIsn(), ack: seg.seq + 1, data });
-        const handler = this.listeners.get(seg.dport);
+        const handler = this.whenOpen.get(seg.dport)?.() === false ? undefined : this.listeners.get(seg.dport);
         if (has(seg, 'SYN') && !has(seg, 'ACK')) {
             reply(handler ? ['SYN', 'ACK'] : ['RST', 'ACK']);
             return;
@@ -11139,8 +11158,6 @@ const PORTS = 8000;
 const windows = (h) => h.os === 'windows';
 /** avahi-daemon answers for the host's name; Windows does by itself. */
 const answers = (h) => hasPackage(h, 'avahi-daemon') || windows(h);
-/** libnss-mdns (avahi-daemon brings it) makes the resolver ask mDNS for names under .local; Windows always does. */
-const asksMdns = (h) => hasPackage(h, 'avahi-daemon') || hasPackage(h, 'libnss-mdns') || windows(h);
 /** Pending questions per host and port, with the name asked (a multicast answer reaches every member). */
 const waiting = new WeakMap();
 let nextPort = 0;
@@ -11187,10 +11204,10 @@ function registerMdns() {
     registerLocalSockets({ member: (h, group) => group === MDNS_GROUP && answers(h), take });
 }
 /** The address of `name` (…​.local) on the host's links, or undefined when nobody answers. */
-function mdnsResolve(host, name) {
+function mdnsResolve(host, name, windowsClient) {
     registerMdns();
     // Windows asks from 5353 and hears the answer on the group; nss-mdns from a one-shot port.
-    const port = windows(host) ? MDNS_PORT : FIRST_PORT + (nextPort++ % PORTS);
+    const port = windowsClient ? MDNS_PORT : FIRST_PORT + (nextPort++ % PORTS);
     const pending = waiting.get(host) ?? new Map();
     waiting.set(host, pending);
     const ip = runSync(host.hooks, (done) => {
@@ -11205,7 +11222,175 @@ function mdnsResolve(host, name) {
     return ip;
 }
 
-return { MDNS_GROUP, MDNS_PORT, asksMdns, registerMdns, mdnsResolve };
+return { MDNS_GROUP, MDNS_PORT, registerMdns, mdnsResolve };
+})();
+__m["net/netbios.js"] = (() => {
+const { registerLocalSockets } = __m["net/ipstack.js"];
+const { hasPackage } = __m["net/host-packages.js"];
+const { runSync } = __m["net/sync.js"];
+const { broadcastOf } = __m["core/ip.js"];
+const NBNS_PORT = 137;
+const SMB_PORTS = [139, 445];
+/** Windows asks three times, 750 ms apart. */
+const QUERY_MS = 2250;
+/** Names stay ten minutes in the cache (NetBT's default). */
+const CACHE_MS = 600_000;
+const WORKGROUP = 'WORKGROUP';
+const WORKSTATION = 0x00;
+const FILE_SERVER = 0x20;
+const MAX_NAME = 15;
+/** NetBIOS over TCP/IP is on in Windows; on GNU/Linux nmbd (samba) gives it. */
+const windows = (h) => h.os === 'windows';
+const speaksNetbios = (h) => windows(h) || hasPackage(h, 'samba');
+const netbiosName = (name) => name.toUpperCase().slice(0, MAX_NAME);
+/** A host's own names: NAME<00>, WORKGROUP<00> (group) and NAME<20> (its SMB server). */
+function ownNames(host) {
+    const name = netbiosName(host.runtimeName());
+    return [{ name, suffix: WORKSTATION, group: false }, { name: WORKGROUP, suffix: WORKSTATION, group: true }, { name, suffix: FILE_SERVER, group: false }];
+}
+const waiting = new WeakMap();
+const caches = new WeakMap();
+let nextId = 0x8000;
+function reply(host, iface, p, msg) {
+    const own = host.l3Iface(iface)?.addrs[0]?.ip;
+    if (own === undefined || !p.udp)
+        return;
+    host.sendUdp(p.src, NBNS_PORT, p.udp.sport, { nbns: msg }, own, iface);
+}
+function answer(host, iface, p, q) {
+    const own = host.l3Iface(iface)?.addrs[0]?.ip;
+    if (own === undefined)
+        return;
+    if (q.type === 'NBSTAT') {
+        if (p.dst === own)
+            reply(host, iface, p, { ...q, response: true, broadcast: false, names: ownNames(host), mac: host.l3Iface(iface)?.mac ?? '' });
+        return;
+    }
+    const mine = ownNames(host).some((n) => !n.group && n.name === netbiosName(q.name) && n.suffix === q.suffix);
+    if (mine)
+        reply(host, iface, p, { ...q, response: true, broadcast: false, addresses: [own] });
+}
+function take(host, iface, p) {
+    const q = p.udp?.nbns;
+    if (!q || p.udp?.dport !== NBNS_PORT)
+        return false;
+    if (q.response) {
+        const done = waiting.get(host)?.get(q.id);
+        if (done)
+            done(q);
+        return true;
+    }
+    if (!speaksNetbios(host))
+        return false;
+    answer(host, iface, p, q);
+    return true;
+}
+let registered = false;
+/** NBNS and the SMB ports of a host (topology.ts calls it for every host it adds). */
+function attachNetbios(host) {
+    if (!registered) {
+        registered = true;
+        registerLocalSockets({ member: () => false, take });
+    }
+    for (const port of SMB_PORTS)
+        host.tcp.listen(port, () => null, () => speaksNetbios(host));
+}
+/** Sends a question (to the subnet broadcast, or to one address) and waits for the first answer. */
+function nbnsAsk(host, q, to) {
+    const id = nextId++ & 0xffff || 1;
+    const pending = waiting.get(host) ?? new Map();
+    waiting.set(host, pending);
+    const msg = { ...q, id, response: false, name: q.name === '*' ? '*' : netbiosName(q.name) };
+    const got = runSync(host.hooks, (done) => {
+        pending.set(id, done);
+        host.hooks.schedule(QUERY_MS, () => done(undefined));
+        for (const i of host.l3Ifaces().filter((x) => x.up && x.addrs.length)) {
+            const a = i.addrs[0];
+            if (!a)
+                continue;
+            host.sendUdp(to ?? broadcastOf(a.ip, a.prefix), NBNS_PORT, NBNS_PORT, { nbns: msg }, a.ip, i.name);
+            if (to !== undefined)
+                break;
+        }
+    }, QUERY_MS + 500);
+    pending.delete(id);
+    return got;
+}
+/** The address of NAME<suffix>: the cache first, then a broadcast query (what Windows does after DNS). */
+function nbnsResolve(host, name, suffix = WORKSTATION) {
+    const key = `${netbiosName(name)}<${suffix}>`;
+    const cache = caches.get(host) ?? new Map();
+    caches.set(host, cache);
+    const hit = cache.get(key);
+    const now = host.clock.now();
+    if (hit && hit.until > now)
+        return hit.ip;
+    const r = nbnsAsk(host, { type: 'NB', name, suffix, broadcast: true });
+    const ip = r?.addresses?.[0];
+    if (ip !== undefined)
+        cache.set(key, { ip, suffix, until: now + CACHE_MS });
+    return ip;
+}
+/** nbtstat -c: [name, suffix, address, seconds left]. */
+function nbnsCache(host) {
+    const now = host.clock.now();
+    return [...(caches.get(host) ?? [])].filter(([, e]) => e.until > now).map(([k, e]) => [k.replace(/<\d+>$/, ''), e.suffix, e.ip, Math.round((e.until - now) / 1000)]);
+}
+/** nbtstat -R. */
+function purgeNbnsCache(host) {
+    caches.delete(host);
+}
+
+return { NBNS_PORT, CACHE_MS, WORKGROUP, WORKSTATION, FILE_SERVER, speaksNetbios, netbiosName, ownNames, attachNetbios, nbnsAsk, nbnsResolve, nbnsCache, purgeNbnsCache };
+})();
+__m["shells/nsswitch.js"] = (() => {
+const { peekHostFile } = __m["devices/host-fs.js"];
+const { hasPackage } = __m["net/host-packages.js"];
+const NSSWITCH = '/etc/nsswitch.conf';
+const DEFAULT_NSSWITCH = `# /etc/nsswitch.conf
+#
+# Example configuration of GNU Name Service Switch functionality.
+# If you have the \`glibc-doc-reference' and \`info' packages installed, try:
+# \`info libc "Name Service Switch"' for information about this file.
+
+passwd:         files systemd
+group:          files systemd
+shadow:         files systemd
+gshadow:        files systemd
+
+hosts:          files dns
+networks:       files
+
+protocols:      db files
+services:       db files
+ethers:         db files
+rpc:            db files
+
+netgroup:       nis
+`;
+/** The sources of «hosts:», without files (the caller asks /etc/hosts first). */
+function hostsSources(host) {
+    const text = peekHostFile(host, NSSWITCH) ?? seededNsswitch(host);
+    const line = /^hosts:[ \t]*(.*)$/m.exec(text.replace(/#.*$/gm, ''))?.[1] ?? 'files dns';
+    const words = line.trim().split(/\s+/);
+    return words.flatMap((w, i) => (w.startsWith('[') || w === 'files' ? [] : [{ source: w, notFoundReturn: /NOTFOUND=return/i.test(words[i + 1] ?? '') }]));
+}
+const MDNS = 'mdns4_minimal [NOTFOUND=return]';
+/** libnss-mdns's postinst / postrm: mdns4_minimal [NOTFOUND=return] before dns in «hosts:», or out of it. */
+function withMdns(text, on) {
+    return text.replace(/^(hosts:[ \t]*)(.*)$/m, (_all, head, rest) => {
+        const clean = rest.replace(/\s*mdns4_minimal(\s*\[NOTFOUND=return\])?/g, '').trim();
+        if (!on)
+            return `${head}${clean}`;
+        return `${head}${/\bdns\b/.test(clean) ? clean.replace(/\bdns\b/, `${MDNS} dns`) : `${clean} ${MDNS}`}`;
+    });
+}
+/** The file a host starts with: Ubuntu's, with mdns4_minimal when libnss-mdns came installed (a file saved before v0.28). */
+function seededNsswitch(host) {
+    return withMdns(DEFAULT_NSSWITCH, hasPackage(host, 'libnss-mdns') || hasPackage(host, 'avahi-daemon'));
+}
+
+return { NSSWITCH, DEFAULT_NSSWITCH, hostsSources, withMdns, seededNsswitch };
 })();
 __m["shells/resolved.js"] = (() => {
 const overrides = new WeakMap();
@@ -11244,7 +11429,10 @@ return { resolvedDns, resolvedDomains, setResolvedDns, setResolvedDomains, rever
 })();
 __m["shells/net-tools.js"] = (() => {
 /** Network operations shared by the Linux and Windows shells and the desktop apps. */
-const { asksMdns, mdnsResolve } = __m["net/mdns.js"];
+const { mdnsResolve } = __m["net/mdns.js"];
+const { nbnsResolve } = __m["net/netbios.js"];
+const { hostsSources } = __m["shells/nsswitch.js"];
+const { hasPackage } = __m["net/host-packages.js"];
 const { firstAddress, normalizeName, reverseName } = __m["net/dns.js"];
 const { runSync } = __m["net/sync.js"];
 const { parseIp } = __m["core/ip.js"];
@@ -11323,8 +11511,49 @@ function dnsSearch(host, name, type, server) {
     }
     return { result: nodata ?? last ?? dnsQuery(host, name, type, server), name };
 }
-/** IP literal, the host's own name, /etc/hosts, or a DNS A lookup (through the search list), as nsswitch `files dns`. */
-function resolveHost(host, target) {
+const ip = (addr, name) => (addr === undefined ? undefined : { kind: 'ip', ip: addr, name, viaDns: false });
+const isLocalName = (name) => /\.local\.?$/i.test(name);
+const singleLabel = (name) => !name.replace(/\.$/, '').includes('.');
+function dnsStep(host, target) {
+    const { result: r, name } = dnsSearch(host, target, 'A');
+    if (r.kind !== 'answer')
+        return { kind: 'error', reason: r.kind };
+    if (r.msg.rcode === 'NXDOMAIN' || r.msg.rcode === 'REFUSED' || r.msg.rcode === 'SERVFAIL')
+        return { kind: 'error', reason: 'nxdomain' };
+    const addr = firstAddress(r.msg);
+    return addr === undefined ? { kind: 'error', reason: 'nodata' } : { kind: 'ip', ip: addr, name: normalizeName(name), viaDns: true };
+}
+/** Windows: hosts, then mDNS for .local, the DNS (with its suffix) and NetBIOS for a bare name (cache, broadcast). */
+function windowsLookup(host, target) {
+    if (isLocalName(target))
+        return ip(mdnsResolve(host, normalizeName(target), true), normalizeName(target)) ?? dnsStep(host, target);
+    const dns = dnsStep(host, target);
+    if (dns.kind === 'ip' || !singleLabel(target))
+        return dns;
+    return ip(nbnsResolve(host, target), target) ?? dns;
+}
+/** GNU/Linux: the sources of «hosts:» in /etc/nsswitch.conf, in order (files was already asked). */
+function linuxLookup(host, target) {
+    let last = { kind: 'error', reason: 'nxdomain' };
+    for (const { source, notFoundReturn } of hostsSources(host)) {
+        if (source === 'dns')
+            last = dnsStep(host, target);
+        else if (source.startsWith('mdns') && (hasPackage(host, 'libnss-mdns') || hasPackage(host, 'avahi-daemon')) && (source === 'mdns' || source === 'mdns4' || isLocalName(target))) {
+            last = ip(mdnsResolve(host, normalizeName(target), false), normalizeName(target)) ?? { kind: 'error', reason: 'nxdomain' };
+            if (last.kind === 'error' && notFoundReturn && isLocalName(target))
+                return last;
+        }
+        else if (source === 'wins' && hasPackage(host, 'libnss-winbind') && hasPackage(host, 'winbind') && singleLabel(target)) {
+            last = ip(nbnsResolve(host, target), target) ?? last;
+        }
+        if (last.kind === 'ip')
+            return last;
+    }
+    return last;
+}
+/** IP literal, the host's own name, /etc/hosts, then what the asking system does (linuxLookup, windowsLookup). */
+/** `client` defaults to the device's system (TCP/IP tab); the terminals say which one asks. */
+function resolveHost(host, target, client = host.os === 'windows' ? 'windows' : 'linux') {
     const literal = parseIp(target);
     if (literal !== null)
         return { kind: 'ip', ip: literal, name: target, viaDns: false };
@@ -11334,18 +11563,7 @@ function resolveHost(host, target) {
     const local = hostsLookup(host, target);
     if (local !== undefined)
         return { kind: 'ip', ip: local, name: target, viaDns: false };
-    // nsswitch «hosts: files mdns4_minimal [NOTFOUND=return] dns»: a .local name is asked on the link, never to the DNS.
-    if (/\.local\.?$/i.test(target) && asksMdns(host)) {
-        const ip = mdnsResolve(host, normalizeName(target));
-        return ip === undefined ? { kind: 'error', reason: 'nxdomain' } : { kind: 'ip', ip, name: normalizeName(target), viaDns: false };
-    }
-    const { result: r, name } = dnsSearch(host, target, 'A');
-    if (r.kind !== 'answer')
-        return { kind: 'error', reason: r.kind };
-    if (r.msg.rcode === 'NXDOMAIN' || r.msg.rcode === 'REFUSED' || r.msg.rcode === 'SERVFAIL')
-        return { kind: 'error', reason: 'nxdomain' };
-    const ip = firstAddress(r.msg);
-    return ip === undefined ? { kind: 'error', reason: 'nodata' } : { kind: 'ip', ip, name: normalizeName(name), viaDns: true };
+    return client === 'windows' ? windowsLookup(host, target) : linuxLookup(host, target);
 }
 function tcpCall(host, ip, port, payload, waitMs = TCP_WAIT_MS) {
     return runSync(host.hooks, (done) => host.connect(ip, port, payload, done, waitMs), waitMs + 1000) ?? { kind: 'timeout' };
@@ -11360,15 +11578,15 @@ function parseUrl(text) {
     return { host: m[2] ?? '', port, path: m[4] && m[4].startsWith('/') ? m[4] : `/${m[4] ?? ''}` };
 }
 /** Resolves and fetches a URL. Errors use curl's exit codes and messages. */
-function httpGet(host, url, method = 'GET') {
-    return httpRequest(host, url, { method });
+function httpGet(host, url, method = 'GET', client) {
+    return httpRequest(host, url, { method, ...(client ? { client } : {}) });
 }
 /** One HTTP request (no redirects followed); the Host header carries the port when it is not 80. */
 function httpRequest(host, url, opts = {}) {
     const parts = parseUrl(url);
     if (!parts)
         return { kind: 'error', code: 3, message: `URL rejected: Malformed input to a URL function (solo se admite http://)` };
-    const target = resolveHost(host, parts.host);
+    const target = resolveHost(host, parts.host, opts.client);
     if (target.kind === 'error')
         return { kind: 'error', code: 6, message: `Could not resolve host: ${parts.host}` };
     const headers = { host: `${parts.host}${parts.port !== DEFAULT_HTTP_PORT ? `:${parts.port}` : ''}`, 'user-agent': 'Netfix', ...opts.headers };
@@ -18208,7 +18426,7 @@ const NETFIX_DOCS = {
                     ],
                     links: [{ a: 'pc0', b: 'sw' }, { a: 'pc1', b: 'sw' }],
                 }, 'Dos PC unidos por un switch en la misma red: lo mínimo para que se vean.'),
-                steps(['Coloca los equipos', 'En la paleta elige **PC** y haz clic dos veces en el área de trabajo (PC0 y PC1); después elige **Switch** y haz clic entre ellos.'], ['Conecta los cables', 'Elige **Cable**, haz clic en PC0, elige su puerto (FastEthernet0) y después en el switch y un puerto libre. Igual con PC1. El tipo de cable se elige solo y las luces del enlace se ponen en verde.'], ['Pon las direcciones IP', 'Doble clic en PC0 → **Configuración IP** → Estática: 192.168.1.10 y máscara 255.255.255.0. En PC1, 192.168.1.11.'], ['Pruébalo', 'En PC0 → **Terminal Windows**: `ping 192.168.1.11`.']),
+                steps(['Coloca los equipos', 'En la paleta elige **PC** y haz clic dos veces en el área de trabajo (PC0 y PC1); después elige **Switch** y haz clic entre ellos.'], ['Conecta los cables', 'Elige **Cable**, haz clic en PC0, elige su puerto (FastEthernet0) y después en el switch y un puerto libre. Igual con PC1. El tipo de cable se elige solo y las luces del enlace se ponen en verde.'], ['Pon las direcciones IP', 'Doble clic en PC0 → **TCP/IP** → Estática: 192.168.1.10 y máscara 255.255.255.0. En PC1, 192.168.1.11.'], ['Pruébalo', 'En PC0 → **Terminal Windows**: `ping 192.168.1.11`.']),
                 term('cmd', 'C:\\home\\alumno> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
                 tip('Sin montar nada', '**Laboratorios…** carga prácticas ya preparadas, con sus equipos configurados y áreas dibujadas. Son el mejor punto de partida para cada tema de esta ayuda.'),
                 h('Barra superior'),
@@ -18226,14 +18444,14 @@ const NETFIX_DOCS = {
                 table(['Equipo', 'Pestañas'], [
                     ['Router IOS / Switch IOS', 'Equipo (nombre visible y, derivado de él, el hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
                     ['Nube ISP', 'Equipo (nombre y nombre de host derivado), ISP (proveedor, bloque público, dominios), Interfaces (resumen de las seis líneas) y Líneas (modo, LAN, NAT, redirección de puertos).'],
-                    ['PC', 'Equipo, Interfaces (MAC, enlace, velocidad, extremo del cable y estado del puerto), Configuración IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Terminal Windows y Terminal GNU/Linux.'],
+                    ['PC', 'Equipo, Interfaces (MAC, enlace, velocidad, extremo del cable y estado del puerto), TCP/IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Terminal Windows y Terminal GNU/Linux.'],
                     ['Router GNU/Linux', 'Equipo, Interfaces (dirección de eth0-eth2, MAC, extremo del cable, reenvío y rutas), Servicios (Parámetros, Firewall, VPN, y los servicios de Server empezando por SSH) y Terminal GNU/Linux.'],
-                    ['Server', 'Equipo, Interfaces, Servicios (SSH, DHCP, DNS, HTTP, correo, Configuración y Registros), Configuración IP, Terminal GNU/Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router GNU/Linux (en su terminal siguen sysctl y nft).'],
+                    ['Server', 'Equipo, Interfaces, Servicios (SSH, DHCP, DNS, HTTP, correo, Configuración y Registros), TCP/IP, Terminal GNU/Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router GNU/Linux (en su terminal siguen sysctl y nft).'],
                 ]),
                 note('Los campos de los equipos se aplican al cambiarlos (Intro o al salir del campo): nombre, direcciones, nube e ISP. Llevan botón los servicios («Aplicar» equivale a reiniciarlos con systemctl), los formularios que se traducen a órdenes de IOS y las listas (añadir un pool, una zona, una ruta…).'),
                 note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim). En móvil y tableta las ventanas ocupan la pantalla, el lienzo se mueve con un dedo y se amplía pellizcando, una pulsación larga abre un equipo y la terminal tiene una barra de teclas: Esc, Tab, Ctrl (se queda pulsada para la tecla siguiente), flechas, Inicio, Fin, RePág, AvPág, ^C y ^D, y con un editor abierto F1-F10. Fuera de los editores, Inicio y Fin van al principio o al final de la línea, y RePág y AvPág desplazan la salida.'),
                 warn('Errores habituales', 'Dos equipos con la misma dirección IP, o con máscaras distintas: el ping falla a ratos o no sale. Un cable en un puerto apagado (luz roja): en un router hace falta `no shutdown`. Cerrar la pestaña del navegador no pierde nada (el área de trabajo se guarda sola), pero para entregar una práctica usa **Guardar**.'),
-                exercise('Tres en la misma red', 'Añade un tercer PC al switch de «Tu primera red» con la dirección IP 192.168.1.12/24 y comprueba desde él que llega a los otros dos.', 'Coloca PC2, conéctalo a un puerto libre del switch, ponle 192.168.1.12 y máscara 255.255.255.0 en Configuración IP, y en su Terminal Windows `ping 192.168.1.10` y `ping 192.168.1.11`: los dos responden («Reply from …»). No hace falta puerta de enlace: los tres están en la misma red.'),
+                exercise('Tres en la misma red', 'Añade un tercer PC al switch de «Tu primera red» con la dirección IP 192.168.1.12/24 y comprueba desde él que llega a los otros dos.', 'Coloca PC2, conéctalo a un puerto libre del switch, ponle 192.168.1.12 y máscara 255.255.255.0 en TCP/IP, y en su Terminal Windows `ping 192.168.1.10` y `ping 192.168.1.11`: los dos responden («Reply from …»). No hace falta puerta de enlace: los tres están en la misma red.'),
             ],
         },
         {
@@ -18307,7 +18525,7 @@ const NETFIX_DOCS = {
             markdownBase: MD,
             blocks: [
                 p('En Tiempo real la red funciona sola. En Simulación, cada paquete queda en la lista de eventos y se puede reproducir paso a paso, como en Packet Tracer.'),
-                list('Reproducir / Pausa / Paso: avanzan la simulación.', 'Filtros: DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP y SSH.', 'Al elegir un evento se ve la PDU por capas (Ethernet II, IPv4, UDP/TCP y el mensaje de aplicación).', 'SSH aparece como «datos cifrados»: su contenido no se puede leer en tránsito.'),
+                list('Reproducir / Pausa / Paso: avanzan la simulación.', 'Filtros: DHCP, DNS, MDNS, NBNS, ARP, ICMP, TCP, HTTP, SMB, SMTP, POP3, IMAP, SSH y STP. MDNS (UDP 5353, multicast) y NBNS (UDP 137, broadcast) muestran su pregunta, su respuesta y, en NetBIOS, la tabla de nombres con la MAC.', 'Al elegir un evento se ve la PDU por capas (Ethernet II, IPv4, UDP/TCP y el mensaje de aplicación).', 'SSH aparece como «datos cifrados»: su contenido no se puede leer en tránsito.'),
                 h('Paso a paso: ver el DORA de DHCP'),
                 figure({
                     type: 'sequence',
@@ -18351,8 +18569,8 @@ const SETTINGS_DOCS = [
             h('Laboratorio actual'),
             p('Decide qué pestañas y paneles muestran las ventanas de cada tipo de equipo. **Equipo** (nombre de host) e **Interfaces** están siempre.'),
             table(['Equipo', 'Activado por defecto', 'Se puede activar'], [
-                ['PC', 'Configuración IP, aplicaciones (navegador, correo, SSH, SFTP), terminal GNU/Linux y terminal Windows', '—'],
-                ['Servidor', 'Configuración IP, cada servicio (SSH, DHCP, DNS, HTTP, correo, ficheros y registros), parámetros del kernel, firewall, terminal GNU/Linux y terminal Windows', '—'],
+                ['PC', 'TCP/IP, aplicaciones (navegador, correo, SSH, SFTP), terminal GNU/Linux y terminal Windows', '—'],
+                ['Servidor', 'TCP/IP, cada servicio (SSH, DHCP, DNS, HTTP, correo, ficheros y registros), parámetros del kernel, firewall, terminal GNU/Linux y terminal Windows', '—'],
                 ['Router GNU/Linux', 'Parámetros del kernel, firewall, VPN, cada servicio y terminal GNU/Linux', 'Terminal Windows'],
                 ['Router y switch IOS', 'CLI y gestión web', '—'],
             ]),
@@ -18360,13 +18578,13 @@ const SETTINGS_DOCS = [
             h('La pestaña Configuración de cada equipo'),
             p('Cada PC, servidor y router GNU/Linux tiene además su propia pestaña **Configuración**: casillas para sus aplicaciones, servicios y terminales. Solo lista lo que el laboratorio permite (lo de arriba es el máximo), y al cambiar una casilla la ventana se reabre en esa pestaña con las pestañas nuevas.'),
             table(['Equipo', 'Activado por defecto', 'Desactivado por defecto'], [
-                ['PC', 'Configuración IP, navegador, cliente SSH y el terminal de su sistema operativo', 'Correo, Archivos (SFTP) y el terminal del otro sistema'],
+                ['PC', 'TCP/IP, navegador, cliente SSH y el terminal de su sistema operativo', 'Correo, Archivos (SFTP) y el terminal del otro sistema'],
                 ['Servidor', 'Colocado desde la paleta: configuración IP, ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre (sin casilla)', 'Todos los servicios y el firewall: se marcan aquí o se instalan con apt (Instalar paquetes con apt)'],
                 ['Router GNU/Linux', 'Colocado desde la paleta: ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre', 'Servicios, firewall y VPN (casilla o apt)'],
             ]),
             p('En los laboratorios grabados, de cada pareja de PCs del mismo switch uno es Windows y el otro GNU/Linux; el correo solo está en los PCs con cuenta configurada y SFTP en PC1 de «SSH y SFTP con claves»; cada servidor muestra solo los servicios que arranca (más ficheros y registros).'),
             p('Los servidores de los laboratorios grabados y de los archivos guardados conservan los servicios que tenían.'),
-            p('Al **colocar un PC** desde la paleta, Netfix pregunta si es GNU/Linux, Windows o ambos, y activa su terminal y la pila de red de ese sistema (Configuración IP → sistema operativo). Se puede cambiar después. Los servidores no preguntan: llevan GNU/Linux.'),
+            p('Al **colocar un PC** desde la paleta, Netfix pregunta si es GNU/Linux, Windows o ambos, y activa su terminal y la pila de red de ese sistema (TCP/IP → sistema operativo). Se puede cambiar después. Los servidores no preguntan: llevan GNU/Linux.'),
             p('La **gestión web** de servidores y routers GNU/Linux enseña en gris, sin formularios, las páginas de lo desactivado (en el equipo o en el laboratorio). Con la casilla **Ocultar en la gestión web… las opciones desactivadas** de Laboratorio actual ni siquiera aparecen en el menú.'),
             steps(['Abre la pestaña', '**Configuración**, apartado **Laboratorio actual**.'], ['Marca o desmarca', 'Cada casilla cambia al momento. Las ventanas abiertas se cierran: al abrirlas de nuevo ya tienen las pestañas nuevas.'], ['Guarda', 'Es un cambio de la red: **Guardar** lo lleva al archivo, y cambiar de laboratorio sin guardar avisa.']),
             check('Compruébalo', 'Desmarca **Terminal Windows** en PC y abre un PC: ya no tiene esa pestaña. **Restablecer los valores predeterminados** la devuelve.'),
@@ -18599,7 +18817,7 @@ const IOS_DHCP_DOCS = [
                 ['hardware-address', 'Con la MAC, cuando el cliente no envía opción 61 o envía 01 + MAC.', 'hardware-address 0063.b914.34b5'],
             ]),
             h('Paso a paso: una reserva'),
-            steps(['Averigua el identificador', 'En `show ip dhcp binding` aparece el Client-ID de cada cliente; la MAC está en la pestaña Configuración IP del PC.'], ['Crea un pool para el equipo', '`ip dhcp pool PC0-FIJO`.'], ['La dirección IP', '`host 192.168.10.100 255.255.255.0` (fuera de las exclusiones y dentro de la red del pool LAN).'], ['El identificador', '`client-identifier 0100.cac2.1000.f2` o `hardware-address 0063.b914.34b5`.'], ['Renueva en el PC', 'Con la concesión anterior liberada (`clear ip dhcp binding *` en el router, o `ipconfig /release` y `/renew`).']),
+            steps(['Averigua el identificador', 'En `show ip dhcp binding` aparece el Client-ID de cada cliente; la MAC está en la pestaña TCP/IP del PC.'], ['Crea un pool para el equipo', '`ip dhcp pool PC0-FIJO`.'], ['La dirección IP', '`host 192.168.10.100 255.255.255.0` (fuera de las exclusiones y dentro de la red del pool LAN).'], ['El identificador', '`client-identifier 0100.cac2.1000.f2` o `hardware-address 0063.b914.34b5`.'], ['Renueva en el PC', 'Con la concesión anterior liberada (`clear ip dhcp binding *` en el router, o `ipconfig /release` y `/renew`).']),
             term('ios', 'GW#show running-config | section pool\nip dhcp pool LAN\n network 192.168.10.0 255.255.255.0\n address 192.168.10.150 client-id 0100.fbb1.1868.78\n default-router 192.168.10.1\n dns-server 8.8.8.8\n domain-name aula.lab\n lease 0 8\nip dhcp pool PC0-FIJO\n host 192.168.10.100 255.255.255.0\n client-identifier 0100.cac2.1000.f2\n client-name pc0\nip dhcp pool PC1-FIJO\n host 192.168.10.101 255.255.255.0\n hardware-address 0063.b914.34b5'),
             check('Compruébalo', 'En `show ip dhcp binding` las reservas aparecen como **Manual** y no caducan (Infinite).'),
             term('ios', 'GW#show ip dhcp binding\nIP address       Client-ID/              Lease expiration        Type\n                 Hardware address\n192.168.10.100   0100.cac2.1000.f2        Infinite                Manual\n192.168.10.101   0063.B914.34B5           Infinite                Manual\n192.168.10.150   0100.fbb1.1868.78        Oct 24 2026 02:49 PM    Automatic'),
@@ -18828,7 +19046,7 @@ const SERVICE_DOCS = {
             summary: 'Qué es un Server, sus pestañas, el sistema operativo y cómo se llaman sus servicios en Ubuntu y en Windows.',
             markdownBase: MD,
             blocks: [
-                p('Un **Server** es un equipo que ofrece servicios de red a los demás: da direcciones IP (DHCP), traduce nombres (DNS), publica páginas (HTTP), guarda el correo y deja entrar a distancia (SSH). Se configura igual que un PC (Configuración IP y Equipo), y además tiene la pestaña **Servicios**.'),
+                p('Un **Server** es un equipo que ofrece servicios de red a los demás: da direcciones IP (DHCP), traduce nombres (DNS), publica páginas (HTTP), guarda el correo y deja entrar a distancia (SSH). Se configura igual que un PC (TCP/IP y Equipo), y además tiene la pestaña **Servicios**.'),
                 figure({
                     type: 'topology',
                     nodes: [
@@ -18842,7 +19060,7 @@ const SERVICE_DOCS = {
                 }, 'El laboratorio «Server: DHCP, DNS, web, correo y SSH»: un servidor con dirección IP fija da servicio a los PC de la red 192.168.10.0/24.'),
                 h('La pestaña Servicios'),
                 steps(['Elige el servicio', 'El menú sigue este orden: **SSH** (lo primero para administrar el equipo a distancia), **DHCP**, **DNS**, **HTTP**, **Correo**, **Configuración** y **Registros**.'], ['Enciéndelo', 'Cada servicio tiene su interruptor. Los cambios se aplican al momento y se escriben en los ficheros de configuración que ve la Terminal GNU/Linux.'], ['Comprueba', '**Configuración** enseña esos ficheros tal como están en el disco y **Registros** lo que va anotando cada servicio, los dos con los colores de vim.']),
-                tip('Dirección IP fija', 'Un servidor necesita siempre la misma dirección IP: los PC la tienen apuntada como servidor DNS, puerta de correo… Dale una **estática** en Configuración IP, nunca por DHCP.'),
+                tip('Dirección IP fija', 'Un servidor necesita siempre la misma dirección IP: los PC la tienen apuntada como servidor DNS, puerta de correo… Dale una **estática** en TCP/IP, nunca por DHCP.'),
                 h('Los nombres de cada servicio'),
                 p('El sistema operativo (Ubuntu o Windows Server, en la pestaña Equipo) decide cómo se llama cada servicio y cómo se gestiona desde la terminal:'),
                 table(['Servicio', 'Puerto', 'Unidad systemd (Ubuntu)', 'Servicio de Windows', 'Configuración en GNU/Linux'], [
@@ -18891,7 +19109,7 @@ const SERVICE_DOCS = {
                 }, 'Los cuatro mensajes de DHCP. En Simulación, con el filtro DHCP, se ven paso a paso.'),
                 tip('Míralo en directo', 'Pulsa **Simulación**, deja solo el filtro DHCP y en el PC ejecuta `ipconfig /renew` (Windows) o `sudo dhclient eth0` (GNU/Linux). Con **Paso** verás DISCOVER, OFFER, REQUEST y ACK, y al elegir cada uno, sus capas (Ethernet, IPv4, UDP 67/68 y el mensaje DHCP).'),
                 h('Configurarlo en Netfix'),
-                steps(['Abre el servidor', 'Doble clic en el Server → pestaña **Servicios** → **DHCP**.'], ['Activa el servicio', 'Marca **Servicio DHCP**: es lo mismo que `sudo systemctl enable --now kea-dhcp4-server`.'], ['Crea un pool', 'Un pool es el conjunto de direcciones que se reparten. Rellena **Dirección IP inicial** (la primera que se dará), **Usuarios máximos** (cuántas), la **máscara**, la **puerta de enlace** (el router de la LAN) y el **servidor DNS**, y pulsa **Añadir pool**.'], ['Elige las interfaces de escucha', 'Con **Todas** atiende por cualquier interfaz; si marcas algunas, solo por esas (útil en un router con varias redes).'], ['Pon los clientes en DHCP', 'En cada PC: **Configuración IP** → **DHCP**. En segundos tendrán dirección.']),
+                steps(['Abre el servidor', 'Doble clic en el Server → pestaña **Servicios** → **DHCP**.'], ['Activa el servicio', 'Marca **Servicio DHCP**: es lo mismo que `sudo systemctl enable --now kea-dhcp4-server`.'], ['Crea un pool', 'Un pool es el conjunto de direcciones que se reparten. Rellena **Dirección IP inicial** (la primera que se dará), **Usuarios máximos** (cuántas), la **máscara**, la **puerta de enlace** (el router de la LAN) y el **servidor DNS**, y pulsa **Añadir pool**.'], ['Elige las interfaces de escucha', 'Con **Todas** atiende por cualquier interfaz; si marcas algunas, solo por esas (útil en un router con varias redes).'], ['Pon los clientes en DHCP', 'En cada PC: **TCP/IP** → **DHCP**. En segundos tendrán dirección.']),
                 table(['Campo del pool', 'Ejemplo', 'Para qué sirve'], [
                     ['Dirección IP inicial', '192.168.10.100', 'Primera dirección que se reparte'],
                     ['Usuarios máximos', '50', 'Cuántas: de .100 a .149'],
@@ -18991,7 +19209,7 @@ const CLIENT_DOCS = {
     pages: [
         {
             id: 'pc-ip',
-            title: 'Configuración IP',
+            title: 'TCP/IP',
             summary: 'Dar al PC su dirección IP: a mano (estática) o automáticamente (DHCP), y cómo comprobar que funciona.',
             markdownBase: MD,
             blocks: [
@@ -19013,7 +19231,7 @@ const CLIENT_DOCS = {
                     ['Riesgo', 'Equivocarse o repetir una dirección IP', 'Si no hay servidor, el PC acaba en 169.254.x.x (APIPA)'],
                 ]),
                 h('Configurarlo en Netfix'),
-                steps(['Abre el PC', 'Doble clic en el PC → pestaña **Configuración IP**.'], ['Elige el modo', '**DHCP**: el PC pide los datos al momento (verás «Solicitando dirección IP…» y después «Solicitud DHCP correcta»). **Estática**: rellena **Dirección IPv4**, **Máscara de subred** (255.255.255.0 o /24), **Puerta de enlace** y **Servidor DNS**.'], ['Aplica', 'Cada campo se aplica al pulsar Intro o al salir de él. Un dato mal escrito se marca y no se aplica.'], ['Elige el sistema operativo', '**Ubuntu** o **Windows**: decide qué terminal se abre primero y qué sistema ve un cliente SSH.']),
+                steps(['Abre el PC', 'Doble clic en el PC → pestaña **TCP/IP**.'], ['Elige el modo', '**DHCP**: el PC pide los datos al momento (verás «Solicitando dirección IP…» y después «Solicitud DHCP correcta»). **Estática**: rellena **Dirección IPv4**, **Máscara de subred** (255.255.255.0 o /24), **Puerta de enlace** y **Servidor DNS**.'], ['Aplica', 'Cada campo se aplica al pulsar Intro o al salir de él. Un dato mal escrito se marca y no se aplica.'], ['Elige el sistema operativo', '**Ubuntu** o **Windows**: decide qué terminal se abre primero y qué sistema ve un cliente SSH.']),
                 h('Client-ID (opción 61)'),
                 p('Al pedir dirección por DHCP, el PC puede enviar un **identificador de cliente**. El servidor lo usa para reconocerlo (y para sus reservas por Client-ID). Si no lo envía, lo reconoce por la **MAC**.'),
                 table(['Opción', 'Qué envía'], [
@@ -19098,7 +19316,7 @@ const CLIENT_DOCS = {
                 p('La **Terminal Windows** imita a cmd.exe. Sirve para comprobar la red (`ipconfig`, `ping`, `tracert`, `nslookup`), gestionar los servicios de un Windows Server (`sc`, `net`) y trabajar con archivos. Trabaja sobre el mismo sistema de archivos que la Terminal GNU/Linux del equipo: la unidad **C:\\** es la raíz /, las carpetas se separan con \\ (o /) y los nombres no distinguen mayúsculas.'),
                 p('Empieza en la carpeta personal de la cuenta GNU/Linux (C:\\home\\alumno en los PC, C:\\home\\admin en los servidores) y respeta sus permisos: lo que esa cuenta no puede escribir da «Access is denied.».'),
                 h('Las órdenes de red, paso a paso'),
-                steps(['¿Qué dirección tengo?', '`ipconfig` (con `/all`, también la MAC, el servidor DHCP, el DNS y las fechas de la concesión).'], ['¿Llego a la puerta de enlace?', '`ping 192.168.10.1`: si responde, la red local funciona.'], ['¿Resuelvo nombres?', '`nslookup srv.aula.lab`: si da la dirección IP, el DNS funciona.'], ['¿Y sin servidor DNS?', '`ping pc1.local`: Windows trae mDNS de serie y pregunta por los nombres .local en su red (un equipo GNU/Linux responde si tiene avahi-daemon). `nslookup` no usa mDNS: solo pregunta al DNS.'], ['¿Por dónde va el tráfico?', '`tracert 8.8.8.8`: un salto por cada router del camino.']),
+                steps(['¿Qué dirección tengo?', '`ipconfig` (con `/all`, también la MAC, el servidor DHCP, el DNS y las fechas de la concesión).'], ['¿Llego a la puerta de enlace?', '`ping 192.168.10.1`: si responde, la red local funciona.'], ['¿Resuelvo nombres?', '`nslookup srv.aula.lab`: si da la dirección IP, el DNS funciona.'], ['¿Y un nombre sin punto?', '`ping pc2`: si el DNS no lo conoce, Windows pregunta por NetBIOS con un broadcast a su red (UDP 137). `nbtstat -n` muestra sus nombres, `nbtstat -a PC2` los de otro equipo con su MAC, `nbtstat -c` la caché y `net view \\\\PC2` si tiene SMB.'], ['¿Y sin servidor DNS?', '`ping pc1.local`: Windows trae mDNS de serie y pregunta por los nombres .local en su red (un equipo GNU/Linux responde si tiene avahi-daemon). `nslookup` no usa mDNS: solo pregunta al DNS.'], ['¿Por dónde va el tráfico?', '`tracert 8.8.8.8`: un salto por cada router del camino.']),
                 term('cmd', 'C:\\home\\alumno> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\home\\alumno> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
                 h('Todas las órdenes'),
                 table(['Orden', 'Uso'], [
@@ -19240,7 +19458,8 @@ const UTIL_DOCS = {
     curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X MÉTODO] [-d DATOS] [-u USUARIO:CLAVE] [-b COOKIES] [-H "Cabecera: valor"] [-o FICHERO | -O] [-w FORMATO] URL', summary: 'Cliente HTTP. Errores con su código: (6) no resuelve, (7) conexión rechazada, (3) URL no válida, (22) error HTTP con -f.', options: '-I  solo cabeceras (HEAD)        -i  incluye las cabeceras\n-L  sigue las redirecciones       -v  muestra la petición y la respuesta\n-X  método (GET, POST, HEAD)      -d  datos de formulario (POST)\n-u  usuario:clave (Basic)         -b  cookies «a=1; b=2»\n-H  cabecera extra («Host: www.aula.lab» para probar un VirtualHost)\n-s  silencioso (-S muestra los errores)   -f  falla con los errores HTTP\n-w  escribe al final: %{http_code}, %{size_download}, %{content_type}, %{url_effective} («-s -o /dev/null -w \'%{http_code}\'» da solo el código)' },
     wget: { group: 'red', synopsis: 'wget [-q] [-O FICHERO] URL', summary: 'Descarga a un fichero del directorio actual (nombre.1, nombre.2… si ya existe). «-qO-» escribe la página en la salida.' },
     apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PAQUETE... | remove|purge [-y] PAQUETE... | list [--installed] [PATRÓN] | moo', summary: 'Gestor de paquetes de Ubuntu 26.04 con alcance limitado: lee las fuentes reales (/etc/apt/sources.list.d/ubuntu.sources) y se conecta a archive.ubuntu.com y security.ubuntu.com por la red simulada; sin salida a Internet o sin DNS que los resuelva da los errores reales («Temporary failure resolving…»). El catálogo es ficticio y siempre está al día: update, upgrade y autoremove no cambian nada. install y remove sí: en un Server o router GNU/Linux activan o quitan la casilla y el panel del servicio (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) y arrancan o paran el servicio. Requiere root (sudo).', options: '-y  responde «sí» a «Continue? [Y/n]»\npurge  como remove, y borra la configuración' },
-    nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f CAMPOS | -g CAMPOS] [general [status | hostname] | networking [connectivity] | device [status | show [IFAZ]] | connection [show [NOMBRE]]] | --version', summary: 'NetworkManager (se instala con «sudo apt install network-manager»): sin argumentos, un resumen por interfaz (estado, MAC, dirección IP, rutas) y la configuración DNS; device status y device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (los perfiles netplan-eth0 y lo); general status comprueba de verdad la conectividad (full con Internet, limited sin ella). Admite abreviaturas (nmcli d, nmcli c, nmcli g) y, para scripts, -t (sin cabecera, separado por «:»), -f (columnas o campos: -f DEVICE,STATE, -f IP4) y -g (solo los valores: nmcli -g IP4.ADDRESS dev show eth0). Solo consulta: la configuración se cambia con netplan, ip o la pestaña Configuración IP.' },
+    nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f CAMPOS | -g CAMPOS] [general [status | hostname] | networking [connectivity] | device [status | show [IFAZ]] | connection [show [NOMBRE]]] | --version', summary: 'NetworkManager (se instala con «sudo apt install network-manager»): sin argumentos, un resumen por interfaz (estado, MAC, dirección IP, rutas) y la configuración DNS; device status y device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (los perfiles netplan-eth0 y lo); general status comprueba de verdad la conectividad (full con Internet, limited sin ella). Admite abreviaturas (nmcli d, nmcli c, nmcli g) y, para scripts, -t (sin cabecera, separado por «:»), -f (columnas o campos: -f DEVICE,STATE, -f IP4) y -g (solo los valores: nmcli -g IP4.ADDRESS dev show eth0). Solo consulta: la configuración se cambia con netplan, ip o la pestaña TCP/IP.' },
+    nmblookup: { group: 'red', synopsis: 'nmblookup NOMBRE | -A DIRECCIÓN_IP', summary: 'Consulta NetBIOS (samba-common-bin, que trae samba): pregunta por un nombre con un broadcast a la subred (UDP 137) o, con -A, pide a un equipo su tabla de nombres y su MAC. Responden los Windows y los GNU/Linux con samba de la misma red (no cruza routers).' },
     ssh: { group: 'red', synopsis: 'ssh [-i CLAVE] [-l USUARIO] [-p PUERTO] [-o OPCIÓN=VALOR] [USUARIO@]HOST [ORDEN]', summary: 'Cliente OpenSSH: comprueba la clave del servidor en ~/.ssh/known_hosts, se autentica con ~/.ssh/id_* y, si no, con contraseña. Con ORDEN la ejecuta y vuelve. Opciones -o: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Devuelve el estado remoto (255 si falla).' },
     'ssh-keygen': { group: 'red', synopsis: 'ssh-keygen [-t ed25519|ecdsa|rsa] [-b BITS] [-f FICHERO] [-N FRASE] [-C COMENTARIO] [-q] | -l|-y|-p [-f FICHERO] | -F|-R HOST [-f known_hosts] | -A', summary: 'Genera pares de claves OpenSSH (privada 600 y .pub 644), muestra la huella (-l), obtiene la pública (-y), cambia la frase de paso (-p), busca (-F) o borra (-R) equipos de known_hosts y crea las claves de host que falten (-A).' },
     sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] CLAVE... | [-w] CLAVE=VALOR | -p [FICHERO] | --system | -a', summary: 'Parámetros del núcleo (también en /proc/sys): net.ipv4.ip_forward activa el reenvío en el router GNU/Linux, net.ipv4.icmp_echo_ignore_all ignora los ping, net.ipv4.icmp_echo_ignore_broadcasts (1) no responde a los ping a broadcast y net.ipv4.conf.all.bc_forwarding (0) reenvía los broadcast dirigidos. Los cambios con -w se pierden al reiniciar; para que duren, en /etc/sysctl.conf o /etc/sysctl.d/*.conf (sysctl --system los aplica). Cambiar requiere root.' },
@@ -19323,7 +19542,7 @@ const LINUX_DOCS = [
                 ['/dev/null · /dev/zero · /dev/random · /dev/tty', 'Dispositivos'],
                 ['/proc/version · /proc/cpuinfo · /proc/meminfo', 'Información del sistema'],
             ]),
-            p('Los ficheros generados son de solo lectura («Read-only file system»): se cambian desde la interfaz (Configuración IP, Servicios) y la terminal los ve al momento.'),
+            p('Los ficheros generados son de solo lectura («Read-only file system»): se cambian desde la interfaz (TCP/IP, Servicios) y la terminal los ve al momento.'),
             h('Permisos'),
             p('Cada fichero tiene un **dueño**, un **grupo** y tres tríos de permisos: **r** (leer), **w** (escribir) y **x** (ejecutar, o entrar si es un directorio), para el dueño, el grupo y los demás.'),
             table(['Columna de ls -l', 'Ejemplo', 'Significa'], [
@@ -19334,7 +19553,7 @@ const LINUX_DOCS = [
             term('shell', 'alumno@pc1:~$ ls -l /etc/shadow\n-rw-r----- 1 root shadow 67 Oct 24 10:44 /etc/shadow\nalumno@pc1:~$ cat /etc/shadow\ncat: /etc/shadow: Permission denied\nalumno@pc1:~$ echo x > /etc/resolv.conf\nbash: /etc/resolv.conf: Read-only file system'),
             code('$ chmod 750 script.sh      # rwxr-x---\n$ chmod u+x,go-w script.sh\n$ umask 022\n$ sudo chown root:root f'),
             list('Se comprueban lectura, escritura y ejecución para dueño, grupo y otros, el bit sticky de /tmp y la ejecución en directorios.', 'root puede leer y escribir todo salvo los ficheros generados.', 'Límites: 256 KiB por fichero y 4 MiB por equipo («File too large», «No space left on device»).'),
-            warn('Permission denied o Read-only file system', 'Son errores distintos. «Permission denied»: tu usuario no tiene permiso (mira `ls -l` y usa sudo si procede). «Read-only file system»: es un fichero generado por Netfix, ni root lo cambia; se cambia en la interfaz (Configuración IP, Servicios).'),
+            warn('Permission denied o Read-only file system', 'Son errores distintos. «Permission denied»: tu usuario no tiene permiso (mira `ls -l` y usa sudo si procede). «Read-only file system»: es un fichero generado por Netfix, ni root lo cambia; se cambia en la interfaz (TCP/IP, Servicios).'),
             exercise('Un script privado', 'En PC1, deja `saludo.sh` (de «La Terminal GNU/Linux») para que tú puedas leerlo, cambiarlo y ejecutarlo, tu grupo solo leerlo, y los demás nada. ¿Qué número octal usas?', '750 no: el grupo podría ejecutarlo. Es `chmod 740 saludo.sh`: 7 (rwx) para ti, 4 (r--) para el grupo y 0 para los demás. `ls -l saludo.sh` muestra `-rwxr-----`.'),
         ],
     },
@@ -19364,7 +19583,7 @@ const LINUX_DOCS = [
             ...utilityBlocks(['red', 'servicios']),
             h('Ejemplos'),
             code('$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n$ dig +short www.aula.lab\nsrv.aula.lab.\n192.168.10.2\n$ resolvectl query www.aula.lab\nwww.aula.lab: 192.168.10.2                  -- link: eth0\n                (srv.aula.lab)\n$ resolvectl dns\nGlobal:\nLink 2 (eth0): 192.168.10.2\n$ curl -I http://www.aula.lab\nHTTP/1.1 200 OK\nServer: Apache/2.4.62 (Ubuntu)\n$ ping -c 1 noexiste.aula.lab\nping: noexiste.aula.lab: Name or service not known\n$ systemctl stop apache2\nFailed to stop apache2.service: Interactive authentication required.'),
-            exercise('Rompe y arregla', 'En PC1 del laboratorio «Server: DHCP, DNS, web, correo y SSH», quita el servidor DNS de su configuración (Configuración IP → Estática, sin servidor DNS) y sigue el paso a paso. ¿En qué paso falla?', 'Los pasos 1 a 3 funcionan (dirección IP, «default via 192.168.10.1» y ping a la puerta de enlace), pero `dig +short srv.aula.lab` acaba en «;; no servers could be reached» y `ping srv.aula.lab` dice «Temporary failure in name resolution»: falla el DNS. Vuelve a poner 192.168.10.2 (o DHCP).'),
+            exercise('Rompe y arregla', 'En PC1 del laboratorio «Server: DHCP, DNS, web, correo y SSH», quita el servidor DNS de su configuración (TCP/IP → Estática, sin servidor DNS) y sigue el paso a paso. ¿En qué paso falla?', 'Los pasos 1 a 3 funcionan (dirección IP, «default via 192.168.10.1» y ping a la puerta de enlace), pero `dig +short srv.aula.lab` acaba en «;; no servers could be reached» y `ping srv.aula.lab` dice «Temporary failure in name resolution»: falla el DNS. Vuelve a poner 192.168.10.2 (o DHCP).'),
         ],
     },
 ];
@@ -20553,12 +20772,16 @@ const APT_DOCS = [
             ]),
             p('mDNS va por multicast (224.0.0.251, puerto UDP 5353) a los equipos del mismo enlace: lo propagan los switches pero no los routers, así que solo funciona dentro de la misma red, y el otro equipo también debe tener avahi-daemon. En modo Simulación verás los paquetes MDNS; un cortafuegos que bloquee el puerto 5353 lo impide.'),
             p('Los equipos **Windows** (PC o Windows Server) traen mDNS de serie, como Windows 10 y 11: sin instalar nada responden a su nombre .local y preguntan por los demás (`ping pc1.local` en la Terminal Windows). Windows pregunta desde el puerto 5353 y la respuesta llega por multicast; nss-mdns, desde un puerto propio y con respuesta directa.'),
+            h('NetBIOS y SMB: samba'),
+            p('Windows trae de serie NetBIOS sobre TCP/IP: responde a su nombre (NOMBRE<00>, WORKGROUP y NOMBRE<20>), resuelve un nombre sin punto por broadcast a su red (UDP 137) si el DNS no lo conoce y escucha SMB en TCP 139 y 445. Un equipo GNU/Linux hace lo mismo con **samba** (smbd y nmbd): `sudo apt install samba` y Windows ya hace `ping` y `net view` a su nombre. samba trae `nmblookup NOMBRE` (y `nmblookup -A IP` para la tabla de nombres).'),
+            p('Para que los programas de GNU/Linux (ping, ssh…) resuelvan nombres NetBIOS, como en un Ubuntu real: `sudo apt install winbind libnss-winbind` y añadir **wins** a la línea `hosts:` de **/etc/nsswitch.conf** (por ejemplo `hosts: files dns wins`). Igual que mDNS, NetBIOS no cruza routers.'),
+            p('Por la misma razón, desde GNU/Linux mDNS necesita siempre avahi-daemon o libnss-mdns: al instalarlos, su script añade `mdns4_minimal [NOTFOUND=return]` a `hosts:` en /etc/nsswitch.conf, y al quitarlos lo borra.'),
             term('shell', 'alumno@pc1:~$ ping -c 1 pc0.local\nPING pc0.local (192.168.10.10) 56(84) bytes of data.\n64 bytes from pc0.local (192.168.10.10): icmp_seq=1 ttl=64 time=0.400 ms'),
             term('shell', 'root@srv:~# apt install -y apache2\nReading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\nInstalling:\n  apache2\n\nInstalling dependencies:\n  apache2-bin  apache2-data  apache2-utils  libapr1t64  libaprutil1t64  ssl-cert\n…\nSetting up apache2 (2.4.62-1ubuntu1) ...\nCreated symlink \'/etc/systemd/system/multi-user.target.wants/apache2.service\' → \'/usr/lib/systemd/system/apache2.service\'.'),
             steps(['Coloca un servidor', 'Desde la paleta, con una salida a Internet (una Nube ISP o un router que llegue a ella) y como DNS 8.8.8.8.'], ['Abre su terminal GNU/Linux', '`sudo apt update` debe dar cuatro «Hit:».'], ['Instala el servicio', '`sudo apt install apache2`: la pestaña Servicios aparece al momento con HTTP, y la casilla HTTP de Configuración queda marcada.']),
             check('Compruébalo', 'Desde un PC, el navegador abre la web del servidor. `sudo apt remove apache2` para Apache y quita el panel; la casilla también se desmarca.'),
             warn('Sin conexión', 'Si el DNS no responde verás «Temporary failure resolving \'archive.ubuntu.com\'»; si el nombre no existe, «Could not resolve»; si no hay ruta, «Could not connect … connection timed out». Revisa la puerta de enlace y el DNS, como en un servidor real.'),
-            tip('Alcance limitado', 'Solo están los paquetes de los servicios de Netfix, network-manager, avahi-daemon, libnss-mdns y los del sistema base (que no se pueden quitar). Un nombre que no está en el catálogo da «Unable to locate package». Sin sudo, apt da el error real del bloqueo de dpkg.'),
+            tip('Alcance limitado', 'Solo están los paquetes de los servicios de Netfix, network-manager, avahi-daemon, libnss-mdns, samba, winbind, libnss-winbind y los del sistema base (que no se pueden quitar). Un nombre que no está en el catálogo da «Unable to locate package». Sin sudo, apt da el error real del bloqueo de dpkg.'),
             exercise('Un servidor DNS desde cero', 'Coloca un servidor en el laboratorio «Internet: dos sedes y DNS públicos», dale salida y conviértelo en servidor DNS solo con la terminal.', 'Configura la dirección IP, la puerta de enlace y el DNS 8.8.8.8; después `sudo apt update` y `sudo apt install -y bind9`. La pestaña Servicios muestra DNS y `systemctl status named` lo da activo.'),
         ],
     },
@@ -20605,7 +20828,7 @@ const NETFIX_DOCS = {
                     ],
                     links: [{ a: 'pc0', b: 'sw' }, { a: 'pc1', b: 'sw' }],
                 }, 'Two PCs joined by a switch on the same network: the minimum for them to see each other.'),
-                steps(['Place the devices', 'In the palette choose **PC** and click twice on the workspace (PC0 and PC1); then choose **Switch** and click between them.'], ['Plug in the cables', 'Choose **Cable**, click PC0, pick its port (FastEthernet0) and then the switch and a free port. The same with PC1. The cable type is chosen for you and the link lights turn green.'], ['Set the IP addresses', 'Double-click PC0 → **IP Configuration** → Static: 192.168.1.10 and mask 255.255.255.0. On PC1, 192.168.1.11.'], ['Test it', 'On PC0 → **Windows terminal**: `ping 192.168.1.11`.']),
+                steps(['Place the devices', 'In the palette choose **PC** and click twice on the workspace (PC0 and PC1); then choose **Switch** and click between them.'], ['Plug in the cables', 'Choose **Cable**, click PC0, pick its port (FastEthernet0) and then the switch and a free port. The same with PC1. The cable type is chosen for you and the link lights turn green.'], ['Set the IP addresses', 'Double-click PC0 → **TCP/IP** → Static: 192.168.1.10 and mask 255.255.255.0. On PC1, 192.168.1.11.'], ['Test it', 'On PC0 → **Windows terminal**: `ping 192.168.1.11`.']),
                 term('cmd', 'C:\\home\\alumno> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
                 tip('Without building anything', '**Labs…** loads ready-made practicals, with their devices configured and their areas drawn. They are the best starting point for each topic in this help.'),
                 h('Top bar'),
@@ -20623,14 +20846,14 @@ const NETFIX_DOCS = {
                 table(['Device', 'Tabs'], [
                     ['IOS router / IOS switch', 'Device (workspace name and, derived from it, the hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
                     ['ISP Cloud', 'Device (name and derived host name), ISP (provider, public block, domains), Interfaces (summary of the six lines) and Lines (mode, LAN, NAT, port forwarding).'],
-                    ['PC', 'Device, Interfaces (MAC, link, speed, far end of the cable and port status), IP Configuration, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and GNU/Linux terminal.'],
+                    ['PC', 'Device, Interfaces (MAC, link, speed, far end of the cable and port status), TCP/IP, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and GNU/Linux terminal.'],
                     ['GNU/Linux router', 'Device, Interfaces (address of eth0-eth2, MAC, far end of the cable, forwarding and routes), Services (Parameters, Firewall, VPN, and the Server services starting with SSH) and GNU/Linux terminal.'],
-                    ['Server', 'Device, Interfaces, Services (SSH, DHCP, DNS, HTTP, mail, Configuration and Logs), IP Configuration, GNU/Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the GNU/Linux router (sysctl and nft remain in its terminal).'],
+                    ['Server', 'Device, Interfaces, Services (SSH, DHCP, DNS, HTTP, mail, Configuration and Logs), TCP/IP, GNU/Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the GNU/Linux router (sysctl and nft remain in its terminal).'],
                 ]),
                 note('Device fields apply when they change (Enter or leaving the field): name, addresses, cloud and ISP. Buttons remain for services («Apply» is restarting them with systemctl), forms that become IOS commands and lists (add a pool, a zone, a route…).'),
                 note('Windows are moved by their title bar and resized from the corner. Escape closes the active window (except inside nano or vim). On phones and tablets windows fill the screen, the canvas is panned with one finger and zoomed by pinching, a long press opens a device and the terminal has a key bar: Esc, Tab, Ctrl (held for the next key), arrows, Home, End, PgUp, PgDn, ^C and ^D, plus F1-F10 while an editor is open. Outside the editors, Home and End go to the start or end of the line, and PgUp and PgDn scroll the output.'),
                 warn('Common mistakes', 'Two devices with the same IP address, or with different masks: the ping fails now and then or does not get out. A cable in a port that is shut down (red light): on a router you need `no shutdown`. Closing the browser tab loses nothing (the workspace saves itself), but to hand in a practical use **Save**.'),
-                exercise('Three on the same network', 'Add a third PC to the switch of “Your first network” with the IP address 192.168.1.12/24 and check from it that it reaches the other two.', 'Place PC2, plug it into a free switch port, give it 192.168.1.12 and mask 255.255.255.0 in IP Configuration, and in its Windows terminal `ping 192.168.1.10` and `ping 192.168.1.11`: both answer (“Reply from …”). No gateway is needed: the three are on the same network.'),
+                exercise('Three on the same network', 'Add a third PC to the switch of “Your first network” with the IP address 192.168.1.12/24 and check from it that it reaches the other two.', 'Place PC2, plug it into a free switch port, give it 192.168.1.12 and mask 255.255.255.0 in TCP/IP, and in its Windows terminal `ping 192.168.1.10` and `ping 192.168.1.11`: both answer (“Reply from …”). No gateway is needed: the three are on the same network.'),
             ],
         },
         {
@@ -20704,7 +20927,7 @@ const NETFIX_DOCS = {
             markdownBase: MD,
             blocks: [
                 p('In Realtime the network runs on its own. In Simulation, every packet stays in the event list and can be replayed step by step, as in Packet Tracer.'),
-                list('Play / Pause / Step: advance the simulation.', 'Filters: DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP and SSH.', 'Choosing an event shows the PDU by layers (Ethernet II, IPv4, UDP/TCP and the application message).', 'SSH appears as “encrypted data”: its content cannot be read in transit.'),
+                list('Play / Pause / Step: advance the simulation.', 'Filters: DHCP, DNS, MDNS, NBNS, ARP, ICMP, TCP, HTTP, SMB, SMTP, POP3, IMAP, SSH and STP. MDNS (UDP 5353, multicast) and NBNS (UDP 137, broadcast) show their question, their answer and, in NetBIOS, the name table with the MAC.', 'Choosing an event shows the PDU by layers (Ethernet II, IPv4, UDP/TCP and the application message).', 'SSH appears as “encrypted data”: its content cannot be read in transit.'),
                 h('Step by step: watching the DHCP DORA'),
                 figure({
                     type: 'sequence',
@@ -20748,8 +20971,8 @@ const SETTINGS_DOCS = [
             h('Current lab'),
             p('Decides which tabs and panels the windows of each kind of device show. **Device** (host name) and **Interfaces** are always there.'),
             table(['Device', 'On by default', 'Can be turned on'], [
-                ['PC', 'IP configuration, applications (browser, mail, SSH, SFTP), GNU/Linux terminal and Windows terminal', '—'],
-                ['Server', 'IP configuration, each service (SSH, DHCP, DNS, HTTP, mail, files and logs), kernel parameters, firewall, GNU/Linux terminal and Windows terminal', '—'],
+                ['PC', 'TCP/IP, applications (browser, mail, SSH, SFTP), GNU/Linux terminal and Windows terminal', '—'],
+                ['Server', 'TCP/IP, each service (SSH, DHCP, DNS, HTTP, mail, files and logs), kernel parameters, firewall, GNU/Linux terminal and Windows terminal', '—'],
                 ['GNU/Linux router', 'Kernel parameters, firewall, VPN, each service and GNU/Linux terminal', 'Windows terminal'],
                 ['IOS router and switch', 'CLI and web management', '—'],
             ]),
@@ -20757,13 +20980,13 @@ const SETTINGS_DOCS = [
             h('Each device’s Settings tab'),
             p('Every PC, server and GNU/Linux router also has its own **Settings** tab: boxes for its applications, services and terminals. It only lists what the lab allows (the table above is the maximum), and when a box changes the window reopens on that tab with the new tabs.'),
             table(['Device', 'On by default', 'Off by default'], [
-                ['PC', 'IP configuration, browser, SSH client and the terminal of its operating system', 'Mail, Files (SFTP) and the other system’s terminal'],
-                ['Server', 'Placed from the palette: IP configuration, files, logs and the GNU/Linux terminal. Kernel parameters always (no box)', 'Every service and the firewall: ticked here or installed with apt (Installing packages with apt)'],
+                ['PC', 'TCP/IP, browser, SSH client and the terminal of its operating system', 'Mail, Files (SFTP) and the other system’s terminal'],
+                ['Server', 'Placed from the palette: TCP/IP, files, logs and the GNU/Linux terminal. Kernel parameters always (no box)', 'Every service and the firewall: ticked here or installed with apt (Installing packages with apt)'],
                 ['GNU/Linux router', 'Placed from the palette: files, logs and the GNU/Linux terminal. Kernel parameters always', 'Services, firewall and VPN (box or apt)'],
             ]),
             p('In the recorded labs, of each pair of PCs on the same switch one runs Windows and the other GNU/Linux; mail is only on the PCs with an account set up, and SFTP on PC1 of “SSH and SFTP with keys”; each server shows only the services it starts (plus files and logs).'),
             p('The servers of the recorded labs and of saved files keep the services they had.'),
-            p('When you **place a PC** from the palette, Netfix asks whether it runs GNU/Linux, Windows or both, and turns on its terminal and that system’s network stack (IP Configuration → operating system). It can be changed later. Servers do not ask: they run GNU/Linux.'),
+            p('When you **place a PC** from the palette, Netfix asks whether it runs GNU/Linux, Windows or both, and turns on its terminal and that system’s network stack (TCP/IP → operating system). It can be changed later. Servers do not ask: they run GNU/Linux.'),
             p('The **web management** of servers and GNU/Linux routers shows greyed out, without forms, the pages of whatever is off (on the device or in the lab). With the **Hide disabled options in the web management…** box of Current lab they are not even in the menu.'),
             steps(['Open the tab', '**Settings**, section **Current lab**.'], ['Tick or untick', 'Each box applies at once. Open windows close: when opened again they have the new tabs.'], ['Save', 'It is a change to the network: **Save** puts it in the file, and changing lab without saving asks first.']),
             check('Check it', 'Untick **Windows terminal** for PC and open a PC: it no longer has that tab. **Restore the defaults** brings it back.'),
@@ -20996,7 +21219,7 @@ const IOS_DHCP_DOCS = [
                 ['hardware-address', 'With the MAC, when the client sends no option 61 or sends 01 + MAC.', 'hardware-address 0063.b914.34b5'],
             ]),
             h('Step by step: a reservation'),
-            steps(['Find the identifier', '`show ip dhcp binding` shows each client’s Client-ID; the MAC is in the PC’s IP Configuration tab.'], ['Create a pool for the device', '`ip dhcp pool PC0-FIJO`.'], ['The IP address', '`host 192.168.10.100 255.255.255.0` (outside the exclusions and inside the LAN pool’s network).'], ['The identifier', '`client-identifier 0100.cac2.1000.f2` or `hardware-address 0063.b914.34b5`.'], ['Renew on the PC', 'With the previous lease released (`clear ip dhcp binding *` on the router, or `ipconfig /release` and `/renew`).']),
+            steps(['Find the identifier', '`show ip dhcp binding` shows each client’s Client-ID; the MAC is in the PC’s TCP/IP tab.'], ['Create a pool for the device', '`ip dhcp pool PC0-FIJO`.'], ['The IP address', '`host 192.168.10.100 255.255.255.0` (outside the exclusions and inside the LAN pool’s network).'], ['The identifier', '`client-identifier 0100.cac2.1000.f2` or `hardware-address 0063.b914.34b5`.'], ['Renew on the PC', 'With the previous lease released (`clear ip dhcp binding *` on the router, or `ipconfig /release` and `/renew`).']),
             term('ios', 'GW#show running-config | section pool\nip dhcp pool LAN\n network 192.168.10.0 255.255.255.0\n address 192.168.10.150 client-id 0100.fbb1.1868.78\n default-router 192.168.10.1\n dns-server 8.8.8.8\n domain-name aula.lab\n lease 0 8\nip dhcp pool PC0-FIJO\n host 192.168.10.100 255.255.255.0\n client-identifier 0100.cac2.1000.f2\n client-name pc0\nip dhcp pool PC1-FIJO\n host 192.168.10.101 255.255.255.0\n hardware-address 0063.b914.34b5'),
             check('Check it', 'In `show ip dhcp binding` reservations show as **Manual** and do not expire (Infinite).'),
             term('ios', 'GW#show ip dhcp binding\nIP address       Client-ID/              Lease expiration        Type\n                 Hardware address\n192.168.10.100   0100.cac2.1000.f2        Infinite                Manual\n192.168.10.101   0063.B914.34B5           Infinite                Manual\n192.168.10.150   0100.fbb1.1868.78        Oct 24 2026 02:49 PM    Automatic'),
@@ -21225,7 +21448,7 @@ const SERVICE_DOCS = {
             summary: 'What a Server is, its tabs, the operating system and what its services are called on Ubuntu and on Windows.',
             markdownBase: MD,
             blocks: [
-                p('A **Server** is a device that offers network services to the others: it hands out IP addresses (DHCP), translates names (DNS), publishes pages (HTTP), keeps the mail and lets people in remotely (SSH). It is set up like a PC (IP Configuration and Device), and it also has the **Services** tab.'),
+                p('A **Server** is a device that offers network services to the others: it hands out IP addresses (DHCP), translates names (DNS), publishes pages (HTTP), keeps the mail and lets people in remotely (SSH). It is set up like a PC (TCP/IP and Device), and it also has the **Services** tab.'),
                 figure({
                     type: 'topology',
                     nodes: [
@@ -21239,7 +21462,7 @@ const SERVICE_DOCS = {
                 }, 'The «Server: DHCP, DNS, web, mail and SSH» lab: a server with a fixed IP address serves the PCs of the 192.168.10.0/24 network.'),
                 h('The Services tab'),
                 steps(['Choose the service', 'The menu follows this order: **SSH** (the first thing to manage the device remotely), **DHCP**, **DNS**, **HTTP**, **Email**, **Configuration** and **Logs**.'], ['Switch it on', 'Each service has its switch. Changes apply at once and are written to the configuration files the GNU/Linux Terminal sees.'], ['Check', '**Configuration** shows those files as they are on disk and **Logs** what each service writes down, both with vim’s colours.']),
-                tip('Fixed IP address', 'A server always needs the same IP address: the PCs have it noted as their DNS server, mail server… Give it a **static** one in IP Configuration, never one from DHCP.'),
+                tip('Fixed IP address', 'A server always needs the same IP address: the PCs have it noted as their DNS server, mail server… Give it a **static** one in TCP/IP, never one from DHCP.'),
                 h('What each service is called'),
                 p('The operating system (Ubuntu or Windows Server, in the Device tab) decides what each service is called and how it is managed from the terminal:'),
                 table(['Service', 'Port', 'systemd unit (Ubuntu)', 'Windows service', 'Configuration on GNU/Linux'], [
@@ -21288,7 +21511,7 @@ const SERVICE_DOCS = {
                 }, 'The four DHCP messages. In Simulation, with the DHCP filter, they show up step by step.'),
                 tip('Watch it live', 'Click **Simulation**, keep only the DHCP filter and on the PC run `ipconfig /renew` (Windows) or `sudo dhclient eth0` (GNU/Linux). With **Step** you will see DISCOVER, OFFER, REQUEST and ACK, and picking each one shows its layers (Ethernet, IPv4, UDP 67/68 and the DHCP message).'),
                 h('Setting it up in Netfix'),
-                steps(['Open the server', 'Double-click the Server → **Services** tab → **DHCP**.'], ['Turn the service on', 'Tick **DHCP service**: the same as `sudo systemctl enable --now kea-dhcp4-server`.'], ['Create a pool', 'A pool is the set of addresses handed out. Fill in **Start IP address** (the first one given), **Maximum users** (how many), the **mask**, the **default gateway** (the LAN router) and the **DNS server**, and click **Add pool**.'], ['Choose the listen interfaces', 'With **All** it answers on any interface; if you tick some, only on those (useful on a router with several networks).'], ['Put the clients on DHCP', 'On each PC: **IP Configuration** → **DHCP**. In seconds they will have an address.']),
+                steps(['Open the server', 'Double-click the Server → **Services** tab → **DHCP**.'], ['Turn the service on', 'Tick **DHCP service**: the same as `sudo systemctl enable --now kea-dhcp4-server`.'], ['Create a pool', 'A pool is the set of addresses handed out. Fill in **Start IP address** (the first one given), **Maximum users** (how many), the **mask**, the **default gateway** (the LAN router) and the **DNS server**, and click **Add pool**.'], ['Choose the listen interfaces', 'With **All** it answers on any interface; if you tick some, only on those (useful on a router with several networks).'], ['Put the clients on DHCP', 'On each PC: **TCP/IP** → **DHCP**. In seconds they will have an address.']),
                 table(['Pool field', 'Example', 'What it is for'], [
                     ['Start IP address', '192.168.10.100', 'First address handed out'],
                     ['Maximum users', '50', 'How many: from .100 to .149'],
@@ -21388,7 +21611,7 @@ const CLIENT_DOCS = {
     pages: [
         {
             id: 'pc-ip',
-            title: 'IP configuration',
+            title: 'TCP/IP',
             summary: 'Giving the PC its IP address: by hand (static) or automatically (DHCP), and how to check that it works.',
             markdownBase: MD,
             blocks: [
@@ -21410,7 +21633,7 @@ const CLIENT_DOCS = {
                     ['Risk', 'A typo or a repeated IP address', 'With no server, the PC ends up on 169.254.x.x (APIPA)'],
                 ]),
                 h('Setting it up in Netfix'),
-                steps(['Open the PC', 'Double-click the PC → **IP Configuration** tab.'], ['Choose the mode', '**DHCP**: the PC asks for the values at once (you will see “Requesting IP address…” and then “DHCP request successful”). **Static**: fill in **IPv4 address**, **Subnet mask** (255.255.255.0 or /24), **Default gateway** and **DNS server**.'], ['Apply', 'Each field applies when you press Enter or leave it. A mistyped value is flagged and not applied.'], ['Choose the operating system', '**Ubuntu** or **Windows**: it decides which terminal opens first and which system an SSH client sees.']),
+                steps(['Open the PC', 'Double-click the PC → **TCP/IP** tab.'], ['Choose the mode', '**DHCP**: the PC asks for the values at once (you will see “Requesting IP address…” and then “DHCP request successful”). **Static**: fill in **IPv4 address**, **Subnet mask** (255.255.255.0 or /24), **Default gateway** and **DNS server**.'], ['Apply', 'Each field applies when you press Enter or leave it. A mistyped value is flagged and not applied.'], ['Choose the operating system', '**Ubuntu** or **Windows**: it decides which terminal opens first and which system an SSH client sees.']),
                 h('Client-ID (option 61)'),
                 p('When asking for an address over DHCP, the PC can send a **client identifier**. The server uses it to recognise it (and for its reservations by Client-ID). If none is sent, it recognises it by its **MAC**.'),
                 table(['Option', 'What it sends'], [
@@ -21495,7 +21718,7 @@ const CLIENT_DOCS = {
                 p('The **Windows Terminal** imitates cmd.exe. It checks the network (`ipconfig`, `ping`, `tracert`, `nslookup`), manages the services of a Windows Server (`sc`, `net`) and works with files. It works on the same file system as the device’s GNU/Linux Terminal: drive **C:\\** is the root /, folders are separated with \\ (or /) and names are case-insensitive.'),
                 p('It starts in the home folder of the GNU/Linux account (C:\\home\\alumno on PCs, C:\\home\\admin on servers) and respects its permissions: what that account cannot write gives “Access is denied.”.'),
                 h('The network commands, step by step'),
-                steps(['What is my address?', '`ipconfig` (with `/all`, also the MAC, DHCP server, DNS and lease dates).'], ['Do I reach the gateway?', '`ping 192.168.10.1`: if it answers, the local network works.'], ['Do names resolve?', '`nslookup srv.aula.lab`: if it gives the IP address, DNS works.'], ['And without a DNS server?', '`ping pc1.local`: Windows has mDNS built in and asks for .local names on its network (a GNU/Linux device answers if it has avahi-daemon). `nslookup` does not use mDNS: it only asks the DNS.'], ['Which way does traffic go?', '`tracert 8.8.8.8`: one hop for each router on the way.']),
+                steps(['What is my address?', '`ipconfig` (with `/all`, also the MAC, DHCP server, DNS and lease dates).'], ['Do I reach the gateway?', '`ping 192.168.10.1`: if it answers, the local network works.'], ['Do names resolve?', '`nslookup srv.aula.lab`: if it gives the IP address, DNS works.'], ['And a name without a dot?', '`ping pc2`: if the DNS does not know it, Windows asks by NetBIOS with a broadcast to its network (UDP 137). `nbtstat -n` shows its names, `nbtstat -a PC2` another device’s with its MAC, `nbtstat -c` the cache and `net view \\\\PC2` whether it has SMB.'], ['And without a DNS server?', '`ping pc1.local`: Windows has mDNS built in and asks for .local names on its network (a GNU/Linux device answers if it has avahi-daemon). `nslookup` does not use mDNS: it only asks the DNS.'], ['Which way does traffic go?', '`tracert 8.8.8.8`: one hop for each router on the way.']),
                 term('cmd', 'C:\\home\\alumno> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\home\\alumno> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
                 h('All the commands'),
                 table(['Command', 'Use'], [
@@ -21637,7 +21860,8 @@ const UTIL_DOCS = {
     curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X METHOD] [-d DATA] [-u USER:PASSWORD] [-b COOKIES] [-H "Header: value"] [-o FILE | -O] [-w FORMAT] URL', summary: 'HTTP client. Errors with their code: (6) cannot resolve, (7) connection refused, (3) invalid URL, (22) HTTP error with -f.', options: '-I  headers only (HEAD)          -i  includes the headers\n-L  follows redirects            -v  shows the request and the response\n-X  method (GET, POST, HEAD)      -d  form data (POST)\n-u  user:password (Basic)         -b  cookies “a=1; b=2”\n-H  extra header (“Host: www.aula.lab” to test a VirtualHost)\n-s  silent (-S shows errors)      -f  fails on HTTP errors\n-w  writes at the end: %{http_code}, %{size_download}, %{content_type}, %{url_effective} (“-s -o /dev/null -w \'%{http_code}\'” gives just the code)' },
     wget: { group: 'red', synopsis: 'wget [-q] [-O FILE] URL', summary: 'Downloads to a file in the current directory (name.1, name.2… if it already exists). “-qO-” writes the page to the output.' },
     apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PACKAGE... | remove|purge [-y] PACKAGE... | list [--installed] [PATTERN] | moo', summary: 'Ubuntu 26.04 package manager, with a limited reach: it reads the real sources (/etc/apt/sources.list.d/ubuntu.sources) and connects to archive.ubuntu.com and security.ubuntu.com over the simulated network; with no way out to the Internet or no DNS that resolves them it gives the real errors (“Temporary failure resolving…”). The catalogue is fictitious and always up to date: update, upgrade and autoremove change nothing. install and remove do: on a Server or GNU/Linux router they tick or untick the box and panel of the service (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) and start or stop the service. Needs root (sudo).', options: '-y  answers “yes” to “Continue? [Y/n]”\npurge  like remove, and deletes the configuration' },
-    nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f FIELDS | -g FIELDS] [general [status | hostname] | networking [connectivity] | device [status | show [IFACE]] | connection [show [NAME]]] | --version', summary: 'NetworkManager (installed with “sudo apt install network-manager”): with no arguments, an overview per interface (state, MAC, IP address, routes) and the DNS configuration; device status and device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (the netplan-eth0 and lo profiles); general status really checks connectivity (full with Internet, limited without). Takes abbreviations (nmcli d, nmcli c, nmcli g) and, for scripts, -t (no header, “:” separated), -f (columns or fields: -f DEVICE,STATE, -f IP4) and -g (values only: nmcli -g IP4.ADDRESS dev show eth0). Read-only: the configuration is changed with netplan, ip or the IP Configuration tab.' },
+    nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f FIELDS | -g FIELDS] [general [status | hostname] | networking [connectivity] | device [status | show [IFACE]] | connection [show [NAME]]] | --version', summary: 'NetworkManager (installed with “sudo apt install network-manager”): with no arguments, an overview per interface (state, MAC, IP address, routes) and the DNS configuration; device status and device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (the netplan-eth0 and lo profiles); general status really checks connectivity (full with Internet, limited without). Takes abbreviations (nmcli d, nmcli c, nmcli g) and, for scripts, -t (no header, “:” separated), -f (columns or fields: -f DEVICE,STATE, -f IP4) and -g (values only: nmcli -g IP4.ADDRESS dev show eth0). Read-only: the configuration is changed with netplan, ip or the TCP/IP tab.' },
+    nmblookup: { group: 'red', synopsis: 'nmblookup NAME | -A IP_ADDRESS', summary: 'NetBIOS query (samba-common-bin, which samba brings): asks for a name with a broadcast to the subnet (UDP 137) or, with -A, asks a device for its name table and MAC. Windows devices and GNU/Linux ones with samba on the same network answer (it does not cross routers).' },
     ssh: { group: 'red', synopsis: 'ssh [-i KEY] [-l USER] [-p PORT] [-o OPTION=VALUE] [USER@]HOST [COMMAND]', summary: 'OpenSSH client: checks the server key in ~/.ssh/known_hosts, authenticates with ~/.ssh/id_* and, failing that, with a password. With COMMAND it runs it and returns. -o options: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Returns the remote status (255 on failure).' },
     'ssh-keygen': { group: 'red', synopsis: 'ssh-keygen [-t ed25519|ecdsa|rsa] [-b BITS] [-f FILE] [-N PASSPHRASE] [-C COMMENT] [-q] | -l|-y|-p [-f FILE] | -F|-R HOST [-f known_hosts] | -A', summary: 'Generates OpenSSH key pairs (private 600 and .pub 644), shows the fingerprint (-l), derives the public key (-y), changes the passphrase (-p), finds (-F) or removes (-R) hosts in known_hosts and creates any missing host keys (-A).' },
     sysctl: { group: 'red', section: 8, synopsis: 'sysctl [-n] KEY... | [-w] KEY=VALUE | -p [FILE] | --system | -a', summary: 'Kernel parameters (also in /proc/sys): net.ipv4.ip_forward enables forwarding on the GNU/Linux router, net.ipv4.icmp_echo_ignore_all ignores pings, net.ipv4.icmp_echo_ignore_broadcasts (1) does not answer broadcast pings and net.ipv4.conf.all.bc_forwarding (0) forwards directed broadcasts. Changes made with -w are lost on reboot; to make them last, put them in /etc/sysctl.conf or /etc/sysctl.d/*.conf (sysctl --system applies them). Changing requires root.' },
@@ -21720,7 +21944,7 @@ const LINUX_DOCS = [
                 ['/dev/null · /dev/zero · /dev/random · /dev/tty', 'Devices'],
                 ['/proc/version · /proc/cpuinfo · /proc/meminfo', 'System information'],
             ]),
-            p('Generated files are read-only (“Read-only file system”): they are changed from the interface (IP Configuration, Services) and the terminal sees the change immediately.'),
+            p('Generated files are read-only (“Read-only file system”): they are changed from the interface (TCP/IP, Services) and the terminal sees the change immediately.'),
             h('Permissions'),
             p('Every file has an **owner**, a **group** and three permission triplets: **r** (read), **w** (write) and **x** (execute, or enter if it is a directory), for the owner, the group and the others.'),
             table(['ls -l column', 'Example', 'Meaning'], [
@@ -21731,7 +21955,7 @@ const LINUX_DOCS = [
             term('shell', 'alumno@pc1:~$ ls -l /etc/shadow\n-rw-r----- 1 root shadow 67 Oct 24 10:44 /etc/shadow\nalumno@pc1:~$ cat /etc/shadow\ncat: /etc/shadow: Permission denied\nalumno@pc1:~$ echo x > /etc/resolv.conf\nbash: /etc/resolv.conf: Read-only file system'),
             code('$ chmod 750 script.sh      # rwxr-x---\n$ chmod u+x,go-w script.sh\n$ umask 022\n$ sudo chown root:root f'),
             list('Read, write and execute are checked for owner, group and others, as are the sticky bit on /tmp and execute permission on directories.', 'root can read and write everything except generated files.', 'Limits: 256 KiB per file and 4 MiB per device (“File too large”, “No space left on device”).'),
-            warn('Permission denied or Read-only file system', 'They are different errors. “Permission denied”: your user has no permission (look at `ls -l` and use sudo if appropriate). “Read-only file system”: it is a file generated by Netfix, not even root changes it; it is changed in the interface (IP Configuration, Services).'),
+            warn('Permission denied or Read-only file system', 'They are different errors. “Permission denied”: your user has no permission (look at `ls -l` and use sudo if appropriate). “Read-only file system”: it is a file generated by Netfix, not even root changes it; it is changed in the interface (TCP/IP, Services).'),
             exercise('A private script', 'On PC1, set `saludo.sh` (from “The GNU/Linux terminal”) so that you can read, change and run it, your group can only read it, and the others nothing. Which octal number do you use?', 'Not 750: the group could run it. It is `chmod 740 saludo.sh`: 7 (rwx) for you, 4 (r--) for the group and 0 for the others. `ls -l saludo.sh` shows `-rwxr-----`.'),
         ],
     },
@@ -21761,7 +21985,7 @@ const LINUX_DOCS = [
             ...utilityBlocks(['red', 'servicios']),
             h('Examples'),
             code('$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n$ dig +short www.aula.lab\nsrv.aula.lab.\n192.168.10.2\n$ resolvectl query www.aula.lab\nwww.aula.lab: 192.168.10.2                  -- link: eth0\n                (srv.aula.lab)\n$ resolvectl dns\nGlobal:\nLink 2 (eth0): 192.168.10.2\n$ curl -I http://www.aula.lab\nHTTP/1.1 200 OK\nServer: Apache/2.4.62 (Ubuntu)\n$ ping -c 1 noexiste.aula.lab\nping: noexiste.aula.lab: Name or service not known\n$ systemctl stop apache2\nFailed to stop apache2.service: Interactive authentication required.'),
-            exercise('Break it and fix it', 'On PC1 of the «Server: DHCP, DNS, web, mail and SSH» lab, remove the DNS server from its configuration (IP Configuration → Static, with no DNS server) and follow the step by step. Which step fails?', 'Steps 1 to 3 work (IP address, “default via 192.168.10.1” and ping to the gateway), but `dig +short srv.aula.lab` ends in “;; no servers could be reached” and `ping srv.aula.lab` says “Temporary failure in name resolution”: DNS fails. Put 192.168.10.2 back (or DHCP).'),
+            exercise('Break it and fix it', 'On PC1 of the «Server: DHCP, DNS, web, mail and SSH» lab, remove the DNS server from its configuration (TCP/IP → Static, with no DNS server) and follow the step by step. Which step fails?', 'Steps 1 to 3 work (IP address, “default via 192.168.10.1” and ping to the gateway), but `dig +short srv.aula.lab` ends in “;; no servers could be reached” and `ping srv.aula.lab` says “Temporary failure in name resolution”: DNS fails. Put 192.168.10.2 back (or DHCP).'),
         ],
     },
 ];
@@ -22950,12 +23174,16 @@ const APT_DOCS = [
             ]),
             p('mDNS goes by multicast (224.0.0.251, UDP port 5353) to the devices on the same link: switches pass it on but routers do not, so it only works within the same network, and the other device needs avahi-daemon too. In Simulation mode you will see the MDNS packets; a firewall that blocks port 5353 stops it.'),
             p('**Windows** devices (PC or Windows Server) have mDNS built in, as Windows 10 and 11 do: with nothing installed they answer to their .local name and ask for the others (`ping pc1.local` in the Windows terminal). Windows asks from port 5353 and the answer comes by multicast; nss-mdns, from a port of its own with a direct answer.'),
+            h('NetBIOS and SMB: samba'),
+            p('Windows has NetBIOS over TCP/IP built in: it answers to its name (NAME<00>, WORKGROUP and NAME<20>), resolves a name without a dot by broadcast to its network (UDP 137) when the DNS does not know it, and listens for SMB on TCP 139 and 445. A GNU/Linux device does the same with **samba** (smbd and nmbd): `sudo apt install samba` and Windows can already `ping` and `net view` its name. samba brings `nmblookup NAME` (and `nmblookup -A IP` for the name table).'),
+            p('For GNU/Linux programs (ping, ssh…) to resolve NetBIOS names, as on a real Ubuntu: `sudo apt install winbind libnss-winbind` and add **wins** to the `hosts:` line of **/etc/nsswitch.conf** (for instance `hosts: files dns wins`). Like mDNS, NetBIOS does not cross routers.'),
+            p('For the same reason, from GNU/Linux mDNS always needs avahi-daemon or libnss-mdns: when installed, its script adds `mdns4_minimal [NOTFOUND=return]` to `hosts:` in /etc/nsswitch.conf, and removes it when they go.'),
             term('shell', 'alumno@pc1:~$ ping -c 1 pc0.local\nPING pc0.local (192.168.10.10) 56(84) bytes of data.\n64 bytes from pc0.local (192.168.10.10): icmp_seq=1 ttl=64 time=0.400 ms'),
             term('shell', 'root@srv:~# apt install -y apache2\nReading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\nInstalling:\n  apache2\n\nInstalling dependencies:\n  apache2-bin  apache2-data  apache2-utils  libapr1t64  libaprutil1t64  ssl-cert\n…\nSetting up apache2 (2.4.62-1ubuntu1) ...\nCreated symlink \'/etc/systemd/system/multi-user.target.wants/apache2.service\' → \'/usr/lib/systemd/system/apache2.service\'.'),
             steps(['Place a server', 'From the palette, with a way out to the Internet (an ISP cloud or a router that reaches it) and 8.8.8.8 as DNS.'], ['Open its GNU/Linux terminal', '`sudo apt update` should give four “Hit:”.'], ['Install the service', '`sudo apt install apache2`: the Services tab appears at once with HTTP, and the HTTP box in Settings is ticked.']),
             check('Check it', 'From a PC, the browser opens the server’s website. `sudo apt remove apache2` stops Apache and removes the panel; the box is unticked too.'),
             warn('Offline', 'If the DNS does not answer you will see “Temporary failure resolving \'archive.ubuntu.com\'”; if the name does not exist, “Could not resolve”; if there is no route, “Could not connect … connection timed out”. Check the gateway and the DNS, as on a real server.'),
-            tip('Limited reach', 'Only the packages of Netfix’s services, network-manager, avahi-daemon, libnss-mdns and those of the base system (which cannot be removed) are there. A name not in the catalogue gives “Unable to locate package”. Without sudo, apt gives dpkg’s real lock error.'),
+            tip('Limited reach', 'Only the packages of Netfix’s services, network-manager, avahi-daemon, libnss-mdns, samba, winbind, libnss-winbind and those of the base system (which cannot be removed) are there. A name not in the catalogue gives “Unable to locate package”. Without sudo, apt gives dpkg’s real lock error.'),
             exercise('A DNS server from scratch', 'Place a server in the “Internet: two sites and public DNS” lab, give it a way out and turn it into a DNS server using only the terminal.', 'Set the IP address, the gateway and DNS 8.8.8.8; then `sudo apt update` and `sudo apt install -y bind9`. The Services tab shows DNS and `systemctl status named` says it is active.'),
         ],
     },
@@ -30340,7 +30568,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.27.1",
+    "version": "0.28.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -35005,7 +35233,7 @@ function ping(host) {
             ctx.err('ping: usage error: Destination address required\n');
             return 1;
         }
-        const r = resolveHost(host, target);
+        const r = resolveHost(host, target, 'linux');
         if (r.kind === 'error') {
             ctx.err(`ping: ${target}: ${r.reason === 'nxdomain' ? 'Name or service not known' : 'Temporary failure in name resolution'}\n`);
             return 2;
@@ -35538,7 +35766,7 @@ function traceroute(host) {
             ctx.err('Usage:\n  traceroute [ -46dFITnreAUDV ] [ -m max_ttl ] host [ packetlen ]\n');
             return 2;
         }
-        const r = resolveHost(host, target);
+        const r = resolveHost(host, target, 'linux');
         if (r.kind === 'error') {
             ctx.err(`${target}: Name or service not known\nCannot handle "host" cmdline arg \`${target}' on position 1 (argc 1)\n`);
             return 2;
@@ -35559,7 +35787,7 @@ function tracert(host, args) {
     const target = args.filter((a, i) => !a.startsWith('-') && lower[i - 1] !== '-h').at(-1);
     if (!target || maxHops === null)
         return ['', 'Usage: tracert [-d] [-h maximum_hops] target_name', ''];
-    const r = resolveHost(host, target);
+    const r = resolveHost(host, target, 'windows');
     if (r.kind === 'error')
         return [`Unable to resolve target system name ${target}.`];
     const res = runTrace(host.stack, host.hooks, r.ip, { maxHops, probes: PROBES, timeoutMs: WINDOWS_TIMEOUT_MS, now: () => host.clock.elapsed() });
@@ -35931,7 +36159,7 @@ function curl(host) {
         let written = '';
         for (let hop = 0;; hop++) {
             const headers = { 'user-agent': USER_AGENT, accept: '*/*', ...(body !== undefined ? { 'content-type': 'application/x-www-form-urlencoded' } : {}), ...o.headers };
-            const r = httpRequest(host, url, { method, headers, body });
+            const r = httpRequest(host, url, { method, headers, body, client: 'linux' });
             if (r.kind === 'error') {
                 if (!o.silent || o.showError)
                     ctx.err(`curl: (${r.code}) ${r.message}\n`);
@@ -37728,7 +37956,7 @@ function nc(host) {
             ctx.err('nc: solo está disponible el modo de comprobación de puertos (-z) en Netfix\n');
             return 1;
         }
-        const r = resolveHost(host, target);
+        const r = resolveHost(host, target, 'linux');
         if (r.kind === 'error') {
             ctx.err(`nc: getaddrinfo for host "${target}" port ${portSpecs[0]}: Name or service not known\n`);
             return 1;
@@ -37771,7 +37999,7 @@ function targets(host, spec) {
         const to = Math.min(255, Number(range[3]));
         return Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => ({ ip: parseIp(`${range[1]}.${from + i}`) ?? 0 }));
     }
-    const r = resolveHost(host, spec);
+    const r = resolveHost(host, spec, 'linux');
     return r.kind === 'error' ? `Failed to resolve "${spec}".` : [{ ip: r.ip, name: r.viaDns ? spec : undefined }];
 }
 /** Host discovery: ICMP echo, or any answer on TCP 80/443 (a host that drops pings can still be up). */
@@ -38042,7 +38270,7 @@ const hostOf = (uri) => uri.replace(/^\w+:\/\//, '').split(/[/:]/)[0] ?? '';
 /** Undefined when the mirror answers; else apt's reason («Temporary failure resolving 'x'»…). */
 function reachMirror(host, uri, path) {
     const name = hostOf(uri);
-    const target = resolveHost(host, name);
+    const target = resolveHost(host, name, 'linux');
     if (target.kind === 'error')
         return target.reason === 'nxdomain' || target.reason === 'nodata' ? `Could not resolve '${name}'` : `Temporary failure resolving '${name}'`;
     const r = tcpCall(host, target.ip, 80, { app: 'HTTP', kind: 'request', method: 'GET', host: name, path: `/${uri.replace(/^\w+:\/\/[^/]*\/?/, '')}/${path}`.replace(/\/+/g, '/'), headers: { host: name, 'user-agent': 'Debian APT-HTTP/1.3 (3.1.6ubuntu2)' } });
@@ -38088,6 +38316,11 @@ const PACKAGES = [
     { ...dep('network-manager', '1.54.0-1ubuntu1', 3412), section: 'main', deps: [dep('libnm0', '1.54.0-1ubuntu1', 498), dep('libndp0', '1.9-1', 12), dep('libteamdctl0', '1.31-1build4', 13)], unit: 'NetworkManager' },
     { ...dep('avahi-daemon', '0.8-16ubuntu2', 85), section: 'main', deps: [dep('libavahi-common3', '0.8-16ubuntu2', 23), dep('libavahi-core7', '0.8-16ubuntu2', 82), dep('libdaemon0', '0.14-7.1ubuntu4', 15), dep('libnss-mdns', '0.15.1-4build2', 27)], unit: 'avahi-daemon' },
     { ...dep('libnss-mdns', '0.15.1-4build2', 27), section: 'main', deps: [] },
+    // NetBIOS and SMB: samba (smbd, nmbd, nmblookup), and winbind + libnss-winbind for «wins» in nsswitch.conf.
+    { ...dep('samba', '2:4.22.3+dfsg-4ubuntu2', 1095), section: 'main', deps: [dep('samba-common', '2:4.22.3+dfsg-4ubuntu2', 58, 'all'), dep('samba-common-bin', '2:4.22.3+dfsg-4ubuntu2', 1324), dep('samba-libs', '2:4.22.3+dfsg-4ubuntu2', 6120), dep('python3-samba', '2:4.22.3+dfsg-4ubuntu2', 2953), dep('tdb-tools', '1.4.13-1', 26)], unit: 'smbd' },
+    { ...dep('samba-common-bin', '2:4.22.3+dfsg-4ubuntu2', 1324), section: 'main', deps: [dep('samba-common', '2:4.22.3+dfsg-4ubuntu2', 58, 'all'), dep('samba-libs', '2:4.22.3+dfsg-4ubuntu2', 6120)] },
+    { ...dep('winbind', '2:4.22.3+dfsg-4ubuntu2', 449), section: 'main', deps: [dep('samba-common-bin', '2:4.22.3+dfsg-4ubuntu2', 1324), dep('samba-libs', '2:4.22.3+dfsg-4ubuntu2', 6120)], unit: 'winbind' },
+    { ...dep('libnss-winbind', '2:4.22.3+dfsg-4ubuntu2', 24), section: 'main', deps: [] },
 ];
 /** Always installed: `install` says they are up to date, `remove` refuses. */
 const BASE = {
@@ -38367,11 +38600,38 @@ function setPackage(host, p, on) {
 
 return { installedPackage, setPackage };
 })();
+__m["shells/apt-scripts.js"] = (() => {
+const { hasPackage, setPackageInstalled } = __m["net/host-packages.js"];
+const { DEFAULT_NSSWITCH, NSSWITCH, withMdns } = __m["shells/nsswitch.js"];
+/** Dependencies that bring a feature of their own (nmblookup, the mDNS resolver). */
+const TRACKED_DEPS = {
+    'avahi-daemon': ['libnss-mdns'], samba: ['samba-common-bin'], winbind: ['samba-common-bin'],
+};
+function editNsswitch(fs, on) {
+    let text = DEFAULT_NSSWITCH;
+    try {
+        text = fs.readFile(NSSWITCH);
+    }
+    catch { /* a missing file is written again from Ubuntu's default */ }
+    fs.writeFile(NSSWITCH, withMdns(text, on));
+}
+function afterPackage(fs, host, name, on) {
+    if (on)
+        for (const d of TRACKED_DEPS[name] ?? [])
+            setPackageInstalled(host, d, true);
+    if (name === 'avahi-daemon' || name === 'libnss-mdns') {
+        editNsswitch(fs, hasPackage(host, 'libnss-mdns'));
+    }
+}
+
+return { afterPackage };
+})();
 __m["shells/apt.js"] = (() => {
 const { aptSources, mirrorStatus } = __m["shells/apt-net.js"];
 const { BASE, PACKAGES, findPackage, kb } = __m["shells/apt-catalog.js"];
 const { mooLines } = __m["shells/apt-moo.js"];
 const { installedPackage, setPackage } = __m["shells/apt-state.js"];
+const { afterPackage } = __m["shells/apt-scripts.js"];
 const READING = 'Reading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\n';
 const summary = (installing, removing) => `Summary:\n  Upgrading: 0, Installing: ${installing}, Removing: ${removing}, Not Upgrading: 0\n`;
 const NOTHING = summary(0, 0);
@@ -38512,8 +38772,10 @@ function* install(ctx, host, names, yes) {
     if (reason !== undefined)
         return fetchFailed(ctx, archive, fetch, reason);
     unpack(ctx, host, todo, fetch, archive);
-    for (const p of todo)
+    for (const p of todo) {
         setPackage(host, p, true);
+        afterPackage(ctx.sh.env.fs, host, p.name, true);
+    }
     return 0;
 }
 function* remove(ctx, host, names, yes, purge) {
@@ -38541,8 +38803,10 @@ function* remove(ctx, host, names, yes, purge) {
         return 1;
     const lines = todo.flatMap((p) => [`Removing ${p.name} (${p.version}) ...`, ...(purge ? [`Purging configuration files for ${p.name} (${p.version}) ...`] : [])]);
     ctx.out(`(Reading database ... ${dbFiles(host)} files and directories currently installed.)\n${lines.join('\n')}\nProcessing triggers for man-db (2.13.1-1) ...\n`);
-    for (const p of todo)
+    for (const p of todo) {
         setPackage(host, p, false);
+        afterPackage(ctx.sh.env.fs, host, p.name, false);
+    }
     return 0;
 }
 /** A pattern of `apt list`: a name, with * and ? as in the shell. */
@@ -38789,6 +39053,53 @@ function nmcli(host) {
 
 return { nmcli };
 })();
+__m["shells/nmblookup.js"] = (() => {
+const { hasPackage } = __m["net/host-packages.js"];
+const { WORKSTATION, nbnsAsk } = __m["net/netbios.js"];
+const { broadcastOf, formatIp, parseIp } = __m["core/ip.js"];
+function status(ctx, host, target) {
+    ctx.out(`Looking up status of ${target}\n`);
+    const ip = parseIp(target);
+    const r = ip === null ? undefined : nbnsAsk(host, { type: 'NBSTAT', name: '*', suffix: WORKSTATION, broadcast: false }, ip);
+    if (!r?.names) {
+        ctx.out(`No reply from ${target}\n\n`);
+        return 1;
+    }
+    const rows = r.names.map((n) => `\t${n.name.padEnd(15)} <${n.suffix.toString(16).padStart(2, '0')}> - ${n.group ? '<GROUP>' : '       '} B <ACTIVE> `);
+    ctx.out(`${rows.join('\n')}\n\n\tMAC Address = ${(r.mac?.match(/../g) ?? []).join('-').toUpperCase()}\n\n`);
+    return 0;
+}
+function query(ctx, host, name) {
+    const a = host.l3Ifaces().find((i) => i.up && i.addrs.length)?.addrs[0];
+    ctx.out(`querying ${name} on ${a ? formatIp(broadcastOf(a.ip, a.prefix)) : '0.0.0.0'}\n`);
+    const r = nbnsAsk(host, { type: 'NB', name, suffix: WORKSTATION, broadcast: true });
+    const ip = r?.addresses?.[0];
+    if (ip === undefined) {
+        ctx.out(`name_query failed to find name ${name}\n`);
+        return 1;
+    }
+    ctx.out(`${formatIp(ip)} ${name}<00>\n`);
+    return 0;
+}
+function nmblookup(host) {
+    return (ctx) => {
+        if (!hasPackage(host, 'samba-common-bin')) {
+            ctx.err("Command 'nmblookup' not found, but can be installed with:\nsudo apt install samba-common-bin\n");
+            return 127;
+        }
+        const args = ctx.argv.slice(1);
+        const a = args.indexOf('-A');
+        const target = a >= 0 ? args[a + 1] : args.find((x) => !x.startsWith('-'));
+        if (!target) {
+            ctx.err('Usage: nmblookup [-A] NAME|IP\n');
+            return 1;
+        }
+        return a >= 0 ? status(ctx, host, target) : query(ctx, host, target);
+    };
+}
+
+return { nmblookup };
+})();
 __m["shells/linux-programs.js"] = (() => {
 /** The Netfix programs of an Ubuntu host: network clients, systemd tools, ssh and command-not-found. */
 const { sftp } = __m["shells/sftp-cmd.js"];
@@ -38817,6 +39128,7 @@ const { netplanProgram } = __m["shells/netplan.js"];
 const { rndc } = __m["shells/rndc.js"];
 const { apt } = __m["shells/apt.js"];
 const { nmcli } = __m["shells/nmcli.js"];
+const { nmblookup } = __m["shells/nmblookup.js"];
 const PACKAGES = {
     ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
     telnet: 'inetutils-telnet', conntrack: 'conntrack', htop: 'htop', tree: 'tree', zip: 'zip', unzip: 'unzip', php: 'php8.4-cli', python: 'python-is-python3',
@@ -38906,7 +39218,7 @@ function wget(host) {
             ctx.err(t); };
         const stamp = new Date(host.clock.now()).toISOString().slice(0, 19).replace('T', ' ');
         say(`--${stamp}--  ${url}\n`);
-        const r = httpGet(host, url);
+        const r = httpGet(host, url, 'GET', 'linux');
         if (r.kind === 'error') {
             say(r.code === 6 ? `wget: unable to resolve host address ‘${url.replace(/^\w+:\/\//, '').split(/[/:]/)[0]}’\n` : `${r.message}.\n`);
             return 4;
@@ -38974,7 +39286,7 @@ function linuxPrograms(host) {
         ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
         ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
         ['ss', (ctx) => { lines(ctx, ss(host, ssOptions(ctx.argv.slice(1)))); return 0; }],
-        ['apt', apt(host)], ['nmcli', nmcli(host)],
+        ['apt', apt(host)], ['nmcli', nmcli(host)], ['nmblookup', nmblookup(host)],
         ['command-not-found', commandNotFound],
         ...(runsServices(host.kind) ? [...APACHE_TOOLS, ['rndc', rndc(host)]] : []),
     ]);
@@ -39099,6 +39411,7 @@ return { exportFiles, validFileRecords, importFiles };
 })();
 __m["shells/host-system.js"] = (() => {
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
+const { NSSWITCH, seededNsswitch } = __m["shells/nsswitch.js"];
 const { t } = __m["i18n/t.js"];
 const { listenChoices } = __m["services/listen.js"];
 const { runsServices } = __m["devices/kinds.js"];
@@ -39257,6 +39570,7 @@ function createSystem(host) {
     const users = hostUsers(host);
     seedRootfs(fs, { hostname: host.name.toLowerCase(), users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
     // An ordinary file, as in Ubuntu: root edits it, it is saved with the topology and the resolver reads it first.
+    fs.seed(NSSWITCH, { kind: 'file', content: seededNsswitch(host) }, 0o644);
     fs.seed('/etc/hosts', { kind: 'file', content: `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n` }, 0o644);
     fs.seed('/usr/lib/command-not-found', { kind: 'file', content: `${BINARY_MARK}command-not-found\n` }, 0o755);
     const server = asServer(host);
@@ -39917,6 +40231,65 @@ class LinuxShell extends BaseShell {
 
 
 return { splitArgs, textLines, LinuxShell };
+})();
+__m["shells/win-nbt.js"] = (() => {
+const { WORKSTATION, nbnsAsk, nbnsCache, nbnsResolve, ownNames, purgeNbnsCache } = __m["net/netbios.js"];
+const { runSync } = __m["net/sync.js"];
+const { formatIp, parseIp } = __m["core/ip.js"];
+const { resolveHost } = __m["shells/net-tools.js"];
+const RULE = `    ${'-'.repeat(45)}`;
+const CACHE_RULE = `    ${'-'.repeat(60)}`;
+const suffixOf = (n) => `<${n.toString(16).toUpperCase().padStart(2, '0')}>`;
+const nameRow = (n) => `    ${n.name.padEnd(15)}${suffixOf(n.suffix)}  ${(n.group ? 'GROUP' : 'UNIQUE').padEnd(12)}Registered`;
+const winMac = (mac) => (mac.match(/../g) ?? []).join('-').toUpperCase();
+function header(host) {
+    const ip = host.config.ip;
+    return ['', 'Ethernet:', `Node IpAddress: [${ip !== undefined ? formatIp(ip) : '0.0.0.0'}] Scope Id: []`, ''];
+}
+function remote(host, target, byAddress) {
+    const ip = byAddress ? parseIp(target) ?? undefined : nbnsResolve(host, target, WORKSTATION);
+    const status = ip === undefined ? undefined : nbnsAsk(host, { type: 'NBSTAT', name: '*', suffix: WORKSTATION, broadcast: false }, ip);
+    if (!status?.names)
+        return [...header(host), '    Host not found.', ''];
+    return [...header(host), '           NetBIOS Remote Machine Name Table', '', '       Name               Type         Status', RULE,
+        ...status.names.map(nameRow), '', `    MAC Address = ${winMac(status.mac ?? '')}`, ''];
+}
+function cache(host) {
+    const rows = nbnsCache(host);
+    if (!rows.length)
+        return [...header(host), '    No names in cache', ''];
+    return [...header(host), '                  NetBIOS Remote Cache Name Table', '', '        Name              Type       Host Address    Life [sec]', CACHE_RULE,
+        ...rows.map(([name, suffix, ip, life]) => `    ${name.padEnd(15)}${suffixOf(suffix)}  UNIQUE          ${formatIp(ip).padEnd(16)}${String(life).padStart(5)}`), ''];
+}
+const USAGE = ['', 'Displays protocol statistics and current TCP/IP connections using NBT (NetBIOS over TCP/IP).', '',
+    'NBTSTAT [ [-a RemoteName] [-A IP address] [-c] [-n] [-R] ]', ''];
+function nbtstat(host, args) {
+    const [flag, value] = args;
+    if (flag === '-n')
+        return [...header(host), '                NetBIOS Local Name Table', '', '       Name               Type         Status', RULE, ...ownNames(host).map(nameRow), ''];
+    if (flag === '-c')
+        return cache(host);
+    if (flag === '-R') {
+        purgeNbnsCache(host);
+        return ['    Successful purge and preload of the NBT Remote Cache Name Table.', ''];
+    }
+    if ((flag === '-a' || flag === '-A') && value)
+        return remote(host, value, flag === '-A');
+    return USAGE;
+}
+const SMB_PORT = 445;
+const PROBE_MS = 3000;
+/** `net view \\NAME`: the name the Windows way, then SMB on 445 (a default host shares nothing visible). */
+function netView(host, unc) {
+    const name = (unc ?? '').replace(/^\\\\/, '');
+    if (!name)
+        return ['The syntax of this command is:', '', 'NET VIEW', '[\\\\computername [/CACHE] | [/ALL] | /DOMAIN[:domainname]]'];
+    const r = resolveHost(host, name, 'windows');
+    const open = r.kind === 'ip' && runSync(host.hooks, (done) => host.tcp.probe(r.ip, SMB_PORT, done, PROBE_MS), PROBE_MS + 500) === 'open';
+    return open ? ['There are no entries in the list.', ''] : ['System error 53 has occurred.', '', 'The network path was not found.', ''];
+}
+
+return { nbtstat, netView };
 })();
 __m["core/clock.js"] = (() => {
 /** Simulated wall clock shared by a topology. Times are epoch milliseconds (UTC). */
@@ -40623,6 +40996,7 @@ __m["shells/windows.js"] = (() => {
  * Windows Command Prompt: ipconfig, ping, nslookup, netstat, arp, curl, ssh, sc / net (servers) and the file
  * commands (dir, cd, md, rd, del, copy, move, ren, type, echo, edit) on the device's Linux file system.
  */
+const { nbtstat, netView } = __m["shells/win-nbt.js"];
 const { timestampPromptOn, windowsTimestampPrompt } = __m["shells/prompt-clock.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { windowsSshStore } = __m["shells/ssh-stores.js"];
@@ -40793,7 +41167,8 @@ class WindowsShell extends BaseShell {
             case 'whoami': return [`${this.host.name.toLowerCase()}\\${this.user.toLowerCase()}`];
             case 'ver': return ['', 'Microsoft Windows [Version 10.0.20348.2700]', ''];
             case 'sc': return this.sc(args);
-            case 'net': return this.net(args);
+            case 'net': return (args[0] ?? '').toLowerCase() === 'view' ? netView(this.host, args[1]) : this.net(args);
+            case 'nbtstat': return nbtstat(this.host, args);
             case 'help':
             case '?': return HELP;
             case 'cls': return [];
@@ -40840,7 +41215,7 @@ class WindowsShell extends BaseShell {
         const target = args.filter((_, i) => nIdx < 0 || (i !== nIdx && i !== nIdx + 1)).pop();
         if (!target)
             return this.notFound('ping');
-        const r = resolveHost(this.host, target);
+        const r = resolveHost(this.host, target, 'windows');
         if (r.kind === 'error')
             return [`Ping request could not find host ${target}. Please check the name and try again.`];
         const ip = formatIp(r.ip);
@@ -40888,7 +41263,7 @@ class WindowsShell extends BaseShell {
         const url = args.find((a) => !a.startsWith('-'));
         if (!url)
             return ["curl: try 'curl --help' for more information"];
-        const r = httpGet(this.host, url, head ? 'HEAD' : 'GET');
+        const r = httpGet(this.host, url, head ? 'HEAD' : 'GET', 'windows');
         if (r.kind === 'error')
             return [`curl: (${r.code}) ${r.message}`];
         return head ? [`HTTP/1.1 ${r.response.status} ${r.response.reason}`, `Server: ${r.response.server}`, `Content-Type: ${r.response.contentType}`, ''] : r.response.body.split('\n');
@@ -51709,6 +52084,7 @@ const { parseFeatures } = __m["net/lab-features.js"];
 const { bindLab, customApps, deviceApps, parseApps, setDeviceApps } = __m["net/device-apps.js"];
 const { packagesOf, parsePackages, setPackageInstalled } = __m["net/host-packages.js"];
 const { registerMdns } = __m["net/mdns.js"];
+const { attachNetbios } = __m["net/netbios.js"];
 registerMdns();
 const { SimClock } = __m["core/clock.js"];
 const { Router } = __m["devices/router.js"];
@@ -51753,8 +52129,10 @@ class Topology {
         const label = opts.label ?? this.nextLabel(kind);
         const device = kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind, id, seed, this.clock, label);
         seeds.set(device, seed);
-        if (device instanceof Host)
+        if (device instanceof Host) {
             bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff }));
+            attachNetbios(device);
+        }
         this.net.addDevice(device);
         const placed = { device, label, x, y };
         this.placed.set(id, placed);
@@ -53885,10 +54263,10 @@ __m["ui/simpanel.js"] = (() => {
 /** Simulation mode: captured frames as an event list, step/play animation and PDU details. */
 const { t } = __m["i18n/t.js"];
 const { el, svg, clear, prefersReducedMotion } = __m["ui/dom.js"];
-const { tcpService } = __m["net/packets.js"];
+const { frameProtocol, tcpService } = __m["net/packets.js"];
 const { formatIp, formatMask } = __m["core/ip.js"];
 const { formatMacCisco, formatHexId } = __m["core/mac.js"];
-const PROTOCOLS = ['DHCP', 'DNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMTP', 'POP3', 'IMAP', 'SSH', 'STP'];
+const PROTOCOLS = ['DHCP', 'DNS', 'MDNS', 'NBNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMB', 'SMTP', 'POP3', 'IMAP', 'SSH', 'STP'];
 /** Off at first: the BPDUs every 2 s would bury the rest (as in Packet Tracer, tick it to see them). */
 const HIDDEN_AT_FIRST = new Set(['STP']);
 const BASE_STEP_MS = 700;
@@ -54076,12 +54454,23 @@ function typeName(f) {
     if (f.ip?.icmp)
         return `ICMP ${f.ip.icmp.type}`;
     const dns = f.ip?.udp?.dns;
+    const app = frameProtocol(f);
     if (dns)
-        return `DNS ${dns.response ? `${dns.rcode ?? 'NOERROR'}` : `${dns.qtype}?`} ${dns.qname}`;
+        return `${app} ${dns.response ? `${dns.rcode ?? 'NOERROR'}` : `${dns.qtype}?`} ${dns.qname}`;
+    const nb = f.ip?.udp?.nbns;
+    if (nb)
+        return `NBNS ${nb.type === 'NBSTAT' ? 'NBSTAT' : nb.response ? 'Response' : 'Query'} ${nbLabel(nb)}`;
     const tcp = f.ip?.tcp;
     if (tcp)
         return tcp.data ? `${tcp.data.app} ${appSummary(tcp.data)}` : `TCP ${tcp.flags.join(',')} ${tcpService(tcp)}`;
     return 'IPv4';
+}
+const nbLabel = (n) => (n.name === '*' ? '*' : `${n.name}<${n.suffix.toString(16).toUpperCase().padStart(2, '0')}>`);
+function nbnsFields(n) {
+    return [['Transaction ID', `0x${n.id.toString(16).toUpperCase().padStart(4, '0')}`], ['QR', n.response ? t('pdu.response') : t('pdu.query')],
+        [t('pdu.question'), `${nbLabel(n)} ${n.type}`], ['B-node (broadcast)', n.broadcast ? t('pdu.yes') : undefined],
+        [t('pdu.answers'), n.addresses?.map(formatIp).join(', ')],
+        [t('pdu.nbNames'), n.names?.map((x) => `${nbLabel(x)}${x.group ? ' GROUP' : ''}`).join(' · ')], ['MAC', n.mac ? formatMacCisco(n.mac) : undefined]];
 }
 function kv(rows) {
     return el('dl', { class: 'kv' }, ...rows.filter(([, v]) => v !== undefined && v !== '').flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v ?? '')]));
@@ -54122,9 +54511,12 @@ function pduView(e, from, to) {
     else if (ip.icmp) {
         out.push(el('h4', {}, 'ICMP'), kv([[t('pdu.type'), ip.icmp.type], ['id', String(ip.icmp.id)], ['seq', String(ip.icmp.seq)]]));
     }
+    else if (ip.udp?.nbns) {
+        out.push(el('h4', {}, `UDP ${ip.udp.sport} → ${ip.udp.dport} · NetBIOS Name Service`), kv(nbnsFields(ip.udp.nbns)));
+    }
     else if (ip.udp?.dns) {
         const q = ip.udp.dns;
-        out.push(el('h4', {}, `UDP ${ip.udp.sport} → ${ip.udp.dport} · DNS`), kv([
+        out.push(el('h4', {}, `UDP ${ip.udp.sport} → ${ip.udp.dport} · ${frameProtocol(f) === 'MDNS' ? 'mDNS' : 'DNS'}`), kv([
             ['id', String(q.id)], ['QR', q.response ? t('pdu.response') : t('pdu.query')], [t('pdu.question'), `${q.qname} IN ${q.qtype}`], ['rcode', q.rcode], ['AA', q.authoritative ? t('pdu.yes') : undefined],
             [t('pdu.answers'), q.answers?.map((a) => `${a.name} ${a.ttl} ${a.type} ${a.priority !== undefined ? `${a.priority} ` : ''}${a.data}`).join(' · ')],
             [t('pdu.authority'), q.authority?.map((a) => `${a.name} ${a.type}`).join(' · ')],
@@ -56647,7 +57039,7 @@ class Terminal {
 return { Terminal };
 })();
 __m["ui/host-ip.js"] = (() => {
-/** "IP Configuration" tab for PCs and servers. */
+/** "TCP/IP" tab for PCs and servers. */
 const { t } = __m["i18n/t.js"];
 const { el } = __m["ui/dom.js"];
 const { field, copyRow, input, message } = __m["ui/forms.js"];

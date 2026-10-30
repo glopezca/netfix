@@ -62,6 +62,8 @@ const ISN_STEP = 64_000;
 export class TcpLayer {
   private readonly env: TcpEnv;
   private readonly listeners = new Map<number, TcpHandler>();
+  /** Ports open only while a condition holds (SMB on Windows or with samba: net/netbios.ts). */
+  private readonly whenOpen = new Map<number, () => boolean>();
   private readonly conns = new Map<number, ClientConn>();
   private nextPort = FIRST_EPHEMERAL;
   private isn = 1_000;
@@ -70,20 +72,22 @@ export class TcpLayer {
     this.env = env;
   }
 
-  listen(port: number, handler: TcpHandler): void {
+  listen(port: number, handler: TcpHandler, open?: () => boolean): void {
     this.listeners.set(port, handler);
+    if (open) this.whenOpen.set(port, open);
   }
 
   unlisten(port: number): void {
     this.listeners.delete(port);
+    this.whenOpen.delete(port);
   }
 
   isListening(port: number): boolean {
-    return this.listeners.has(port);
+    return this.listeners.has(port) && this.whenOpen.get(port)?.() !== false;
   }
 
   listeningPorts(): number[] {
-    return [...this.listeners.keys()].sort((a, b) => a - b);
+    return [...this.listeners.keys()].filter((p) => this.isListening(p)).sort((a, b) => a - b);
   }
 
   /** Opens a connection, sends `payload` and reports the reply through `done` (exactly once). */
@@ -177,7 +181,7 @@ export class TcpLayer {
   private onServerSegment(packet: IpPacket, seg: TcpSegment): void {
     const reply = (flags: TcpFlag[], data?: AppPayload): void =>
       this.emit(packet.dst, packet.src, { sport: seg.dport, dport: seg.sport, flags, seq: this.nextIsn(), ack: seg.seq + 1, data });
-    const handler = this.listeners.get(seg.dport);
+    const handler = this.whenOpen.get(seg.dport)?.() === false ? undefined : this.listeners.get(seg.dport);
     if (has(seg, 'SYN') && !has(seg, 'ACK')) {
       reply(handler ? ['SYN', 'ACK'] : ['RST', 'ACK']);
       return;

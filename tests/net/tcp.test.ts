@@ -35,7 +35,7 @@ test('tcp: handshake, request and reply with simulation labels', () => {
   const tcp = t.net.history.filter((e) => e.frame.ip?.tcp).map((e) => `${e.protocol}:${e.frame.ip!.tcp!.flags.join('+')}`);
   assert.deepEqual(tcp, ['TCP:SYN', 'TCP:SYN+ACK', 'HTTP:ACK+PSH', 'HTTP:ACK+PSH+FIN', 'TCP:ACK']);
   assert.equal(tcpService(t.net.history.find((e) => e.frame.ip?.tcp)!.frame.ip!.tcp!), 'HTTP');
-  assert.deepEqual(b.tcp.listeningPorts(), [80]);
+  assert.deepEqual(b.tcp.listeningPorts(), [80, 139, 445], 'a Windows PC also has SMB (NetBIOS session and direct hosting)');
 });
 
 test('tcp: closed port is refused, handler null resets, no route and timeout', () => {

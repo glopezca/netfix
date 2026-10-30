@@ -24,7 +24,7 @@ export function traceroute(host: Host) {
     if (maxHops === null) { ctx.err('first hop out of range\n'); return 2; }
     const target = args.filter((a, i) => !a.startsWith('-') && args[i - 1] !== '-m').at(0);
     if (!target) { ctx.err('Usage:\n  traceroute [ -46dFITnreAUDV ] [ -m max_ttl ] host [ packetlen ]\n'); return 2; }
-    const r = resolveHost(host, target);
+    const r = resolveHost(host, target, 'linux');
     if (r.kind === 'error') { ctx.err(`${target}: Name or service not known\nCannot handle "host" cmdline arg \`${target}' on position 1 (argc 1)\n`); return 2; }
     const res = runTrace(host.stack, host.hooks, r.ip, { maxHops, probes: PROBES, timeoutMs: LINUX_TIMEOUT_MS, now: () => host.clock.elapsed() });
     if (res.noroute) { ctx.err('connect: Network is unreachable\n'); return 1; }
@@ -39,7 +39,7 @@ export function tracert(host: Host, args: readonly string[]): string[] {
   const maxHops = maxHopsArg(lower, '-h');
   const target = args.filter((a, i) => !a.startsWith('-') && lower[i - 1] !== '-h').at(-1);
   if (!target || maxHops === null) return ['', 'Usage: tracert [-d] [-h maximum_hops] target_name', ''];
-  const r = resolveHost(host, target);
+  const r = resolveHost(host, target, 'windows');
   if (r.kind === 'error') return [`Unable to resolve target system name ${target}.`];
   const res = runTrace(host.stack, host.hooks, r.ip, { maxHops, probes: PROBES, timeoutMs: WINDOWS_TIMEOUT_MS, now: () => host.clock.elapsed() });
   if (res.noroute) return ['', `Unable to contact IP driver. General failure.`, ''];

@@ -1,4 +1,4 @@
-/** English (UK): PC and Server tabs (Device, IP Configuration) and device windows. */
+/** English (UK): PC and Server tabs (Device, TCP/IP) and device windows. */
 import type { HostKey } from '../es-ES/host.ts';
 
 export const HOST_EN: Readonly<Record<HostKey, string>> = {

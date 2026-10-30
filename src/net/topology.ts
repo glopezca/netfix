@@ -17,6 +17,7 @@ import type { LabFeatures } from './lab-features.ts';
 import { bindLab, customApps, deviceApps, parseApps, setDeviceApps } from './device-apps.ts';
 import { packagesOf, parsePackages, setPackageInstalled } from './host-packages.ts';
 import { registerMdns } from './mdns.ts';
+import { attachNetbios } from './netbios.ts';
 
 registerMdns();
 import type { Annotation, AnnotationInit } from './annotations.ts';
@@ -148,7 +149,10 @@ export class Topology {
     const label = opts.label ?? this.nextLabel(kind);
     const device = kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind, id, seed, this.clock, label);
     seeds.set(device, seed);
-    if (device instanceof Host) bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff }));
+    if (device instanceof Host) {
+      bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff }));
+      attachNetbios(device);
+    }
     this.net.addDevice(device);
     const placed: Placed = { device, label, x, y };
     this.placed.set(id, placed);

@@ -33,13 +33,13 @@ try {
 
   // PC0 (Windows, with a mail account): no SFTP, a single terminal; its Configuración tab adds SFTP and drops the browser.
   await page.dblclick('g.device:has-text("PC0")');
-  assert.deepEqual(await tabs(), ['Equipo', 'Interfaces', 'Configuración IP', 'Navegador', 'Correo', 'Cliente SSH', 'Terminal Windows', 'Configuración']);
+  assert.deepEqual(await tabs(), ['Equipo', 'Interfaces', 'TCP/IP', 'Navegador', 'Correo', 'Cliente SSH', 'Terminal Windows', 'Configuración']);
   await win.locator('.win-tab:text-is("Configuración")').click();
   await win.locator('input[name="dev-sftp"]').check();
   await win.locator('input[name="dev-browser"]').uncheck();
   // The window is redrawn after the change (deferred): wait for the new tabs.
   await page.waitForFunction(() => ![...document.querySelectorAll('.window .win-tab')].some((b) => b.textContent === 'Navegador'));
-  assert.deepEqual(await tabs(), ['Equipo', 'Interfaces', 'Configuración IP', 'Correo', 'Cliente SSH', 'Archivos (SFTP)', 'Terminal Windows', 'Configuración']);
+  assert.deepEqual(await tabs(), ['Equipo', 'Interfaces', 'TCP/IP', 'Correo', 'Cliente SSH', 'Archivos (SFTP)', 'Terminal Windows', 'Configuración']);
   assert.equal(await win.locator('.win-tab[aria-selected="true"]').innerText(), 'Configuración', 'the window reopens on the tab');
   if (shots) await page.screenshot({ path: `${shots}/device-config.png` });
   await win.locator('.win-close').click();

@@ -4,12 +4,12 @@ import { el, svg, clear, prefersReducedMotion } from './dom.ts';
 import type { Canvas } from './canvas.ts';
 import type { Topology } from '../net/topology.ts';
 import type { SimEvent } from '../net/network.ts';
-import type { Frame, AppPayload } from '../net/packets.ts';
-import { tcpService } from '../net/packets.ts';
+import type { Frame, AppPayload, NbnsMessage } from '../net/packets.ts';
+import { frameProtocol, tcpService } from '../net/packets.ts';
 import { formatIp, formatMask } from '../core/ip.ts';
 import { formatMacCisco, formatHexId } from '../core/mac.ts';
 
-const PROTOCOLS = ['DHCP', 'DNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMTP', 'POP3', 'IMAP', 'SSH', 'STP'] as const;
+const PROTOCOLS = ['DHCP', 'DNS', 'MDNS', 'NBNS', 'ARP', 'ICMP', 'TCP', 'HTTP', 'SMB', 'SMTP', 'POP3', 'IMAP', 'SSH', 'STP'] as const;
 /** Off at first: the BPDUs every 2 s would bury the rest (as in Packet Tracer, tick it to see them). */
 const HIDDEN_AT_FIRST: ReadonlySet<string> = new Set(['STP']);
 const BASE_STEP_MS = 700;
@@ -208,10 +208,22 @@ function typeName(f: Frame): string {
   if (f.arp) return `ARP ${f.arp.op === 'request' ? 'Request' : 'Reply'}`;
   if (f.ip?.icmp) return `ICMP ${f.ip.icmp.type}`;
   const dns = f.ip?.udp?.dns;
-  if (dns) return `DNS ${dns.response ? `${dns.rcode ?? 'NOERROR'}` : `${dns.qtype}?`} ${dns.qname}`;
+  const app = frameProtocol(f);
+  if (dns) return `${app} ${dns.response ? `${dns.rcode ?? 'NOERROR'}` : `${dns.qtype}?`} ${dns.qname}`;
+  const nb = f.ip?.udp?.nbns;
+  if (nb) return `NBNS ${nb.type === 'NBSTAT' ? 'NBSTAT' : nb.response ? 'Response' : 'Query'} ${nbLabel(nb)}`;
   const tcp = f.ip?.tcp;
   if (tcp) return tcp.data ? `${tcp.data.app} ${appSummary(tcp.data)}` : `TCP ${tcp.flags.join(',')} ${tcpService(tcp)}`;
   return 'IPv4';
+}
+
+const nbLabel = (n: { readonly name: string; readonly suffix: number }): string => (n.name === '*' ? '*' : `${n.name}<${n.suffix.toString(16).toUpperCase().padStart(2, '0')}>`);
+
+function nbnsFields(n: NbnsMessage): [string, string | undefined][] {
+  return [['Transaction ID', `0x${n.id.toString(16).toUpperCase().padStart(4, '0')}`], ['QR', n.response ? t('pdu.response') : t('pdu.query')],
+    [t('pdu.question'), `${nbLabel(n)} ${n.type}`], ['B-node (broadcast)', n.broadcast ? t('pdu.yes') : undefined],
+    [t('pdu.answers'), n.addresses?.map(formatIp).join(', ')],
+    [t('pdu.nbNames'), n.names?.map((x) => `${nbLabel(x)}${x.group ? ' GROUP' : ''}`).join(' · ')], ['MAC', n.mac ? formatMacCisco(n.mac) : undefined]];
 }
 
 function kv(rows: readonly [string, string | undefined][]): HTMLElement {
@@ -251,9 +263,11 @@ function pduView(e: SimEvent, from: string, to: string): HTMLElement[] {
     ]));
   } else if (ip.icmp) {
     out.push(el('h4', {}, 'ICMP'), kv([[t('pdu.type'), ip.icmp.type], ['id', String(ip.icmp.id)], ['seq', String(ip.icmp.seq)]]));
+  } else if (ip.udp?.nbns) {
+    out.push(el('h4', {}, `UDP ${ip.udp.sport} → ${ip.udp.dport} · NetBIOS Name Service`), kv(nbnsFields(ip.udp.nbns)));
   } else if (ip.udp?.dns) {
     const q = ip.udp.dns;
-    out.push(el('h4', {}, `UDP ${ip.udp.sport} → ${ip.udp.dport} · DNS`), kv([
+    out.push(el('h4', {}, `UDP ${ip.udp.sport} → ${ip.udp.dport} · ${frameProtocol(f) === 'MDNS' ? 'mDNS' : 'DNS'}`), kv([
       ['id', String(q.id)], ['QR', q.response ? t('pdu.response') : t('pdu.query')], [t('pdu.question'), `${q.qname} IN ${q.qtype}`], ['rcode', q.rcode], ['AA', q.authoritative ? t('pdu.yes') : undefined],
       [t('pdu.answers'), q.answers?.map((a) => `${a.name} ${a.ttl} ${a.type} ${a.priority !== undefined ? `${a.priority} ` : ''}${a.data}`).join(' · ')],
       [t('pdu.authority'), q.authority?.map((a) => `${a.name} ${a.type}`).join(' · ')],

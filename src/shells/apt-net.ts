@@ -47,7 +47,7 @@ const hostOf = (uri: string): string => uri.replace(/^\w+:\/\//, '').split(/[/:]
 /** Undefined when the mirror answers; else apt's reason («Temporary failure resolving 'x'»…). */
 export function reachMirror(host: Host, uri: string, path: string): string | undefined {
   const name = hostOf(uri);
-  const target = resolveHost(host, name);
+  const target = resolveHost(host, name, 'linux');
   if (target.kind === 'error') return target.reason === 'nxdomain' || target.reason === 'nodata' ? `Could not resolve '${name}'` : `Temporary failure resolving '${name}'`;
   const r = tcpCall(host, target.ip, 80, { app: 'HTTP', kind: 'request', method: 'GET', host: name, path: `/${uri.replace(/^\w+:\/\/[^/]*\/?/, '')}/${path}`.replace(/\/+/g, '/'), headers: { host: name, 'user-agent': 'Debian APT-HTTP/1.3 (3.1.6ubuntu2)' } });
   if (r.kind === 'ok') return undefined;

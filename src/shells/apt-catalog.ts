@@ -47,6 +47,11 @@ export const PACKAGES: readonly AptPackage[] = [
   { ...dep('network-manager', '1.54.0-1ubuntu1', 3412), section: 'main', deps: [dep('libnm0', '1.54.0-1ubuntu1', 498), dep('libndp0', '1.9-1', 12), dep('libteamdctl0', '1.31-1build4', 13)], unit: 'NetworkManager' },
   { ...dep('avahi-daemon', '0.8-16ubuntu2', 85), section: 'main', deps: [dep('libavahi-common3', '0.8-16ubuntu2', 23), dep('libavahi-core7', '0.8-16ubuntu2', 82), dep('libdaemon0', '0.14-7.1ubuntu4', 15), dep('libnss-mdns', '0.15.1-4build2', 27)], unit: 'avahi-daemon' },
   { ...dep('libnss-mdns', '0.15.1-4build2', 27), section: 'main', deps: [] },
+  // NetBIOS and SMB: samba (smbd, nmbd, nmblookup), and winbind + libnss-winbind for «wins» in nsswitch.conf.
+  { ...dep('samba', '2:4.22.3+dfsg-4ubuntu2', 1095), section: 'main', deps: [dep('samba-common', '2:4.22.3+dfsg-4ubuntu2', 58, 'all'), dep('samba-common-bin', '2:4.22.3+dfsg-4ubuntu2', 1324), dep('samba-libs', '2:4.22.3+dfsg-4ubuntu2', 6120), dep('python3-samba', '2:4.22.3+dfsg-4ubuntu2', 2953), dep('tdb-tools', '1.4.13-1', 26)], unit: 'smbd' },
+  { ...dep('samba-common-bin', '2:4.22.3+dfsg-4ubuntu2', 1324), section: 'main', deps: [dep('samba-common', '2:4.22.3+dfsg-4ubuntu2', 58, 'all'), dep('samba-libs', '2:4.22.3+dfsg-4ubuntu2', 6120)] },
+  { ...dep('winbind', '2:4.22.3+dfsg-4ubuntu2', 449), section: 'main', deps: [dep('samba-common-bin', '2:4.22.3+dfsg-4ubuntu2', 1324), dep('samba-libs', '2:4.22.3+dfsg-4ubuntu2', 6120)], unit: 'winbind' },
+  { ...dep('libnss-winbind', '2:4.22.3+dfsg-4ubuntu2', 24), section: 'main', deps: [] },
 ];
 
 /** Always installed: `install` says they are up to date, `remove` refuses. */

@@ -28,7 +28,7 @@ export const NETFIX_DOCS: DocGroup = {
         steps(
           ['Coloca los equipos', 'En la paleta elige **PC** y haz clic dos veces en el área de trabajo (PC0 y PC1); después elige **Switch** y haz clic entre ellos.'],
           ['Conecta los cables', 'Elige **Cable**, haz clic en PC0, elige su puerto (FastEthernet0) y después en el switch y un puerto libre. Igual con PC1. El tipo de cable se elige solo y las luces del enlace se ponen en verde.'],
-          ['Pon las direcciones IP', 'Doble clic en PC0 → **Configuración IP** → Estática: 192.168.1.10 y máscara 255.255.255.0. En PC1, 192.168.1.11.'],
+          ['Pon las direcciones IP', 'Doble clic en PC0 → **TCP/IP** → Estática: 192.168.1.10 y máscara 255.255.255.0. En PC1, 192.168.1.11.'],
           ['Pruébalo', 'En PC0 → **Terminal Windows**: `ping 192.168.1.11`.'],
         ),
         term('cmd', 'C:\\home\\alumno> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
@@ -58,14 +58,14 @@ export const NETFIX_DOCS: DocGroup = {
         table(['Equipo', 'Pestañas'], [
           ['Router IOS / Switch IOS', 'Equipo (nombre visible y, derivado de él, el hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
           ['Nube ISP', 'Equipo (nombre y nombre de host derivado), ISP (proveedor, bloque público, dominios), Interfaces (resumen de las seis líneas) y Líneas (modo, LAN, NAT, redirección de puertos).'],
-          ['PC', 'Equipo, Interfaces (MAC, enlace, velocidad, extremo del cable y estado del puerto), Configuración IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Terminal Windows y Terminal GNU/Linux.'],
+          ['PC', 'Equipo, Interfaces (MAC, enlace, velocidad, extremo del cable y estado del puerto), TCP/IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Terminal Windows y Terminal GNU/Linux.'],
           ['Router GNU/Linux', 'Equipo, Interfaces (dirección de eth0-eth2, MAC, extremo del cable, reenvío y rutas), Servicios (Parámetros, Firewall, VPN, y los servicios de Server empezando por SSH) y Terminal GNU/Linux.'],
-          ['Server', 'Equipo, Interfaces, Servicios (SSH, DHCP, DNS, HTTP, correo, Configuración y Registros), Configuración IP, Terminal GNU/Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router GNU/Linux (en su terminal siguen sysctl y nft).'],
+          ['Server', 'Equipo, Interfaces, Servicios (SSH, DHCP, DNS, HTTP, correo, Configuración y Registros), TCP/IP, Terminal GNU/Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router GNU/Linux (en su terminal siguen sysctl y nft).'],
         ]),
         note('Los campos de los equipos se aplican al cambiarlos (Intro o al salir del campo): nombre, direcciones, nube e ISP. Llevan botón los servicios («Aplicar» equivale a reiniciarlos con systemctl), los formularios que se traducen a órdenes de IOS y las listas (añadir un pool, una zona, una ruta…).'),
         note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim). En móvil y tableta las ventanas ocupan la pantalla, el lienzo se mueve con un dedo y se amplía pellizcando, una pulsación larga abre un equipo y la terminal tiene una barra de teclas: Esc, Tab, Ctrl (se queda pulsada para la tecla siguiente), flechas, Inicio, Fin, RePág, AvPág, ^C y ^D, y con un editor abierto F1-F10. Fuera de los editores, Inicio y Fin van al principio o al final de la línea, y RePág y AvPág desplazan la salida.'),
         warn('Errores habituales', 'Dos equipos con la misma dirección IP, o con máscaras distintas: el ping falla a ratos o no sale. Un cable en un puerto apagado (luz roja): en un router hace falta `no shutdown`. Cerrar la pestaña del navegador no pierde nada (el área de trabajo se guarda sola), pero para entregar una práctica usa **Guardar**.'),
-        exercise('Tres en la misma red', 'Añade un tercer PC al switch de «Tu primera red» con la dirección IP 192.168.1.12/24 y comprueba desde él que llega a los otros dos.', 'Coloca PC2, conéctalo a un puerto libre del switch, ponle 192.168.1.12 y máscara 255.255.255.0 en Configuración IP, y en su Terminal Windows `ping 192.168.1.10` y `ping 192.168.1.11`: los dos responden («Reply from …»). No hace falta puerta de enlace: los tres están en la misma red.'),
+        exercise('Tres en la misma red', 'Añade un tercer PC al switch de «Tu primera red» con la dirección IP 192.168.1.12/24 y comprueba desde él que llega a los otros dos.', 'Coloca PC2, conéctalo a un puerto libre del switch, ponle 192.168.1.12 y máscara 255.255.255.0 en TCP/IP, y en su Terminal Windows `ping 192.168.1.10` y `ping 192.168.1.11`: los dos responden («Reply from …»). No hace falta puerta de enlace: los tres están en la misma red.'),
       ],
     },
     {
@@ -163,7 +163,7 @@ export const NETFIX_DOCS: DocGroup = {
         p('En Tiempo real la red funciona sola. En Simulación, cada paquete queda en la lista de eventos y se puede reproducir paso a paso, como en Packet Tracer.'),
         list(
           'Reproducir / Pausa / Paso: avanzan la simulación.',
-          'Filtros: DHCP, DNS, ARP, ICMP, TCP, HTTP, SMTP, POP3, IMAP y SSH.',
+          'Filtros: DHCP, DNS, MDNS, NBNS, ARP, ICMP, TCP, HTTP, SMB, SMTP, POP3, IMAP, SSH y STP. MDNS (UDP 5353, multicast) y NBNS (UDP 137, broadcast) muestran su pregunta, su respuesta y, en NetBIOS, la tabla de nombres con la MAC.',
           'Al elegir un evento se ve la PDU por capas (Ethernet II, IPv4, UDP/TCP y el mensaje de aplicación).',
           'SSH aparece como «datos cifrados»: su contenido no se puede leer en tránsito.',
         ),

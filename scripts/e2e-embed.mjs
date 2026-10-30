@@ -40,7 +40,7 @@ try {
   await page.waitForSelector('g.device-pc');
   await page.dblclick('g.device-pc >> nth=0');
   await page.waitForSelector('.window');
-  assert.deepEqual(await page.locator('.window .win-tabs > .win-tab').allTextContents(), ['Equipo', 'Configuración IP', 'Terminal Windows']);
+  assert.deepEqual(await page.locator('.window .win-tabs > .win-tab').allTextContents(), ['Equipo', 'TCP/IP', 'Terminal Windows']);
   await page.waitForTimeout(1200);
   assert.ok(await page.evaluate(() => globalThis.changes) > 0, 'changes reach the host page');
   assert.equal(await page.evaluate(() => localStorage.getItem('netfix:workspace:v1')), null, 'nothing autosaved in the browser');

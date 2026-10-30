@@ -39,11 +39,32 @@ export interface DhcpMessage {
   readonly options: DhcpOptions;
 }
 
+/** A NetBIOS name: up to 15 characters (upper case) and its type suffix (<00> workstation, <20> file server). */
+export interface NbnsName {
+  readonly name: string;
+  readonly suffix: number;
+  readonly group: boolean;
+}
+
+/** NetBIOS Name Service (UDP 137): a name query (NB, broadcast in B-node) or a node status request (NBSTAT). */
+export interface NbnsMessage {
+  readonly id: number;
+  readonly response: boolean;
+  readonly type: 'NB' | 'NBSTAT';
+  readonly name: string;
+  readonly suffix: number;
+  readonly broadcast: boolean;
+  readonly addresses?: readonly number[];
+  readonly names?: readonly NbnsName[];
+  readonly mac?: string;
+}
+
 export interface UdpDatagram {
   readonly sport: number;
   readonly dport: number;
   readonly dhcp?: DhcpMessage;
   readonly dns?: DnsMessage;
+  readonly nbns?: NbnsMessage;
   /** IKE (UDP 500) between IPsec peers. */
   readonly isakmp?: IsakmpMessage;
   /** WireGuard message (UDP 51820 by default). */
@@ -314,7 +335,7 @@ export const DHCP_SERVER_PORT = 67;
 export const DHCP_CLIENT_PORT = 68;
 export const DNS_PORT = 53;
 export const WELL_KNOWN_PORTS: Readonly<Record<number, string>> = {
-  22: 'SSH', 25: 'SMTP', 53: 'DNS', 80: 'HTTP', 110: 'POP3', 143: 'IMAP',
+  22: 'SSH', 25: 'SMTP', 53: 'DNS', 80: 'HTTP', 110: 'POP3', 139: 'SMB', 143: 'IMAP', 445: 'SMB',
 };
 export const DEFAULT_TTL = 255;
 export const PC_TTL = 128;
@@ -329,13 +350,14 @@ export function frameProtocol(frame: Frame): string {
   if (!ip) return 'Ethernet';
   if (ip.udp?.dhcp) return 'DHCP';
   if (ip.udp?.dns) return ip.udp.dport === 5353 || ip.udp.sport === 5353 ? 'MDNS' : 'DNS';
+  if (ip.udp?.nbns) return 'NBNS';
   if (ip.udp?.isakmp) return 'ISAKMP';
   if (ip.udp?.wg) return 'WireGuard';
   if (ip.esp) return 'ESP';
   if (ip.icmp) return 'ICMP';
   if (ip.tcp) {
     if (ip.tcp.data) return ip.tcp.data.app;
-    return 'TCP';
+    return tcpService(ip.tcp) === 'SMB' ? 'SMB' : 'TCP';
   }
   return 'IPv4';
 }

@@ -22,8 +22,8 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
       h('Laboratorio actual'),
       p('Decide qué pestañas y paneles muestran las ventanas de cada tipo de equipo. **Equipo** (nombre de host) e **Interfaces** están siempre.'),
       table(['Equipo', 'Activado por defecto', 'Se puede activar'], [
-        ['PC', 'Configuración IP, aplicaciones (navegador, correo, SSH, SFTP), terminal GNU/Linux y terminal Windows', '—'],
-        ['Servidor', 'Configuración IP, cada servicio (SSH, DHCP, DNS, HTTP, correo, ficheros y registros), parámetros del kernel, firewall, terminal GNU/Linux y terminal Windows', '—'],
+        ['PC', 'TCP/IP, aplicaciones (navegador, correo, SSH, SFTP), terminal GNU/Linux y terminal Windows', '—'],
+        ['Servidor', 'TCP/IP, cada servicio (SSH, DHCP, DNS, HTTP, correo, ficheros y registros), parámetros del kernel, firewall, terminal GNU/Linux y terminal Windows', '—'],
         ['Router GNU/Linux', 'Parámetros del kernel, firewall, VPN, cada servicio y terminal GNU/Linux', 'Terminal Windows'],
         ['Router y switch IOS', 'CLI y gestión web', '—'],
       ]),
@@ -31,13 +31,13 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
       h('La pestaña Configuración de cada equipo'),
       p('Cada PC, servidor y router GNU/Linux tiene además su propia pestaña **Configuración**: casillas para sus aplicaciones, servicios y terminales. Solo lista lo que el laboratorio permite (lo de arriba es el máximo), y al cambiar una casilla la ventana se reabre en esa pestaña con las pestañas nuevas.'),
       table(['Equipo', 'Activado por defecto', 'Desactivado por defecto'], [
-        ['PC', 'Configuración IP, navegador, cliente SSH y el terminal de su sistema operativo', 'Correo, Archivos (SFTP) y el terminal del otro sistema'],
+        ['PC', 'TCP/IP, navegador, cliente SSH y el terminal de su sistema operativo', 'Correo, Archivos (SFTP) y el terminal del otro sistema'],
         ['Servidor', 'Colocado desde la paleta: configuración IP, ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre (sin casilla)', 'Todos los servicios y el firewall: se marcan aquí o se instalan con apt (Instalar paquetes con apt)'],
         ['Router GNU/Linux', 'Colocado desde la paleta: ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre', 'Servicios, firewall y VPN (casilla o apt)'],
       ]),
       p('En los laboratorios grabados, de cada pareja de PCs del mismo switch uno es Windows y el otro GNU/Linux; el correo solo está en los PCs con cuenta configurada y SFTP en PC1 de «SSH y SFTP con claves»; cada servidor muestra solo los servicios que arranca (más ficheros y registros).'),
       p('Los servidores de los laboratorios grabados y de los archivos guardados conservan los servicios que tenían.'),
-      p('Al **colocar un PC** desde la paleta, Netfix pregunta si es GNU/Linux, Windows o ambos, y activa su terminal y la pila de red de ese sistema (Configuración IP → sistema operativo). Se puede cambiar después. Los servidores no preguntan: llevan GNU/Linux.'),
+      p('Al **colocar un PC** desde la paleta, Netfix pregunta si es GNU/Linux, Windows o ambos, y activa su terminal y la pila de red de ese sistema (TCP/IP → sistema operativo). Se puede cambiar después. Los servidores no preguntan: llevan GNU/Linux.'),
       p('La **gestión web** de servidores y routers GNU/Linux enseña en gris, sin formularios, las páginas de lo desactivado (en el equipo o en el laboratorio). Con la casilla **Ocultar en la gestión web… las opciones desactivadas** de Laboratorio actual ni siquiera aparecen en el menú.'),
       steps(
         ['Abre la pestaña', '**Configuración**, apartado **Laboratorio actual**.'],

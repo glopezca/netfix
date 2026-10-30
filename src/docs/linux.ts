@@ -71,7 +71,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
         ['/dev/null · /dev/zero · /dev/random · /dev/tty', 'Dispositivos'],
         ['/proc/version · /proc/cpuinfo · /proc/meminfo', 'Información del sistema'],
       ]),
-      p('Los ficheros generados son de solo lectura («Read-only file system»): se cambian desde la interfaz (Configuración IP, Servicios) y la terminal los ve al momento.'),
+      p('Los ficheros generados son de solo lectura («Read-only file system»): se cambian desde la interfaz (TCP/IP, Servicios) y la terminal los ve al momento.'),
       h('Permisos'),
       p('Cada fichero tiene un **dueño**, un **grupo** y tres tríos de permisos: **r** (leer), **w** (escribir) y **x** (ejecutar, o entrar si es un directorio), para el dueño, el grupo y los demás.'),
       table(['Columna de ls -l', 'Ejemplo', 'Significa'], [
@@ -86,7 +86,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
         'root puede leer y escribir todo salvo los ficheros generados.',
         'Límites: 256 KiB por fichero y 4 MiB por equipo («File too large», «No space left on device»).',
       ),
-      warn('Permission denied o Read-only file system', 'Son errores distintos. «Permission denied»: tu usuario no tiene permiso (mira `ls -l` y usa sudo si procede). «Read-only file system»: es un fichero generado por Netfix, ni root lo cambia; se cambia en la interfaz (Configuración IP, Servicios).'),
+      warn('Permission denied o Read-only file system', 'Son errores distintos. «Permission denied»: tu usuario no tiene permiso (mira `ls -l` y usa sudo si procede). «Read-only file system»: es un fichero generado por Netfix, ni root lo cambia; se cambia en la interfaz (TCP/IP, Servicios).'),
       exercise('Un script privado', 'En PC1, deja `saludo.sh` (de «La Terminal GNU/Linux») para que tú puedas leerlo, cambiarlo y ejecutarlo, tu grupo solo leerlo, y los demás nada. ¿Qué número octal usas?', '750 no: el grupo podría ejecutarlo. Es `chmod 740 saludo.sh`: 7 (rwx) para ti, 4 (r--) para el grupo y 0 para los demás. `ls -l saludo.sh` muestra `-rwxr-----`.'),
     ],
   },
@@ -121,7 +121,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
       ...utilityBlocks(['red', 'servicios']),
       h('Ejemplos'),
       code('$ ip r\ndefault via 192.168.10.1 dev eth0 proto dhcp metric 100\n$ dig +short www.aula.lab\nsrv.aula.lab.\n192.168.10.2\n$ resolvectl query www.aula.lab\nwww.aula.lab: 192.168.10.2                  -- link: eth0\n                (srv.aula.lab)\n$ resolvectl dns\nGlobal:\nLink 2 (eth0): 192.168.10.2\n$ curl -I http://www.aula.lab\nHTTP/1.1 200 OK\nServer: Apache/2.4.62 (Ubuntu)\n$ ping -c 1 noexiste.aula.lab\nping: noexiste.aula.lab: Name or service not known\n$ systemctl stop apache2\nFailed to stop apache2.service: Interactive authentication required.'),
-      exercise('Rompe y arregla', 'En PC1 del laboratorio «Server: DHCP, DNS, web, correo y SSH», quita el servidor DNS de su configuración (Configuración IP → Estática, sin servidor DNS) y sigue el paso a paso. ¿En qué paso falla?', 'Los pasos 1 a 3 funcionan (dirección IP, «default via 192.168.10.1» y ping a la puerta de enlace), pero `dig +short srv.aula.lab` acaba en «;; no servers could be reached» y `ping srv.aula.lab` dice «Temporary failure in name resolution»: falla el DNS. Vuelve a poner 192.168.10.2 (o DHCP).'),
+      exercise('Rompe y arregla', 'En PC1 del laboratorio «Server: DHCP, DNS, web, correo y SSH», quita el servidor DNS de su configuración (TCP/IP → Estática, sin servidor DNS) y sigue el paso a paso. ¿En qué paso falla?', 'Los pasos 1 a 3 funcionan (dirección IP, «default via 192.168.10.1» y ping a la puerta de enlace), pero `dig +short srv.aula.lab` acaba en «;; no servers could be reached» y `ping srv.aula.lab` dice «Temporary failure in name resolution»: falla el DNS. Vuelve a poner 192.168.10.2 (o DHCP).'),
     ],
   },
 ];

@@ -44,7 +44,7 @@ try {
   await page.click('.pal-item:has-text("Servidor")');
   await page.mouse.click(1150, 700);
   await page.locator('g.device-server').last().dblclick();
-  assert.deepEqual(await tabs(), ['Equipo', 'Interfaces', 'Servicios', 'Configuración IP', 'Terminal GNU/Linux', 'Configuración']);
+  assert.deepEqual(await tabs(), ['Equipo', 'Interfaces', 'Servicios', 'TCP/IP', 'Terminal GNU/Linux', 'Configuración']);
   await win.locator('.win-tab:has-text("Servicios")').click();
   assert.deepEqual(await win.locator('.subnav-item').allInnerTexts(), ['Parámetros', 'Configuración', 'Registros']);
   await win.locator('.win-tab:text-is("Configuración")').click();

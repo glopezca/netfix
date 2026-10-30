@@ -180,7 +180,7 @@ export function ping(host: Host) {
     const args = ctx.argv.slice(1);
     const { count, target } = pingCount(args);
     if (!target) { ctx.err('ping: usage error: Destination address required\n'); return 1; }
-    const r = resolveHost(host, target);
+    const r = resolveHost(host, target, 'linux');
     if (r.kind === 'error') { ctx.err(`ping: ${target}: ${r.reason === 'nxdomain' ? 'Name or service not known' : 'Temporary failure in name resolution'}\n`); return 2; }
     const broadcast = host.stack.isBroadcast(r.ip);
     if (broadcast && !wantsBroadcast(args)) { ctx.err(BROADCAST_HINT); return 2; }

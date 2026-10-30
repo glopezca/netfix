@@ -63,7 +63,7 @@ export function nc(host: Host): CommandFn {
     const [target, ...portSpecs] = rest;
     if (!target || !portSpecs.length) { ctx.err('usage: nc [-46CDdFhklNnrStUuvZz] [-I length] [-i interval] [-M ttl]\n\t  [-m minttl] [-O length] [-P proxy_username] [-p source_port]\n\t  [-q seconds] [-s sourceaddr] [-T keyword] [-V rtable] [-W recvlimit]\n\t  [-w timeout] [-X proxy_protocol] [-x proxy_address[:port]]\n\t  [destination] [port]\n'); return 1; }
     if (!flags.includes('z')) { ctx.err('nc: solo está disponible el modo de comprobación de puertos (-z) en Netfix\n'); return 1; }
-    const r = resolveHost(host, target);
+    const r = resolveHost(host, target, 'linux');
     if (r.kind === 'error') { ctx.err(`nc: getaddrinfo for host "${target}" port ${portSpecs[0]}: Name or service not known\n`); return 1; }
     const ports = portSpecs.flatMap((p) => parsePorts(p) ?? []);
     const verbose = flags.includes('v');
@@ -102,7 +102,7 @@ function targets(host: Host, spec: string): { ip: number; name?: string }[] | st
     const to = Math.min(255, Number(range[3]));
     return Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => ({ ip: parseIp(`${range[1]}.${from + i}`) ?? 0 }));
   }
-  const r = resolveHost(host, spec);
+  const r = resolveHost(host, spec, 'linux');
   return r.kind === 'error' ? `Failed to resolve "${spec}".` : [{ ip: r.ip, name: r.viaDns ? spec : undefined }];
 }
 
