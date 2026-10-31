@@ -5,6 +5,9 @@ import { Canvas } from './canvas.ts';
 import type { Tool } from './canvas.ts';
 import { WindowManager } from './windows.ts';
 import { SimPanel } from './simpanel.ts';
+import { MissionPanel } from './mission-panel.ts';
+import { startLab, viewSolution } from '../labs/mission-build.ts';
+import { missionById } from '../labs/missions.ts';
 import { openDeviceWindow, forgetDevice, forgetAll } from './device-windows.ts';
 import { afterPlaced } from './os-dialog.ts';
 import { Topology } from '../net/topology.ts';
@@ -42,6 +45,7 @@ class App {
   readonly canvas: Canvas;
   readonly windows: WindowManager;
   readonly sim: SimPanel;
+  private readonly mission: MissionPanel;
   private readonly hintEl: HTMLElement;
   private readonly clockEl: HTMLElement;
   private readonly toolButtons = new Map<string, HTMLButtonElement>();
@@ -99,6 +103,7 @@ class App {
     const winLayer = el('div', { class: 'win-layer' });
     this.windows = new WindowManager(winLayer);
     this.sim = new SimPanel(this.topo, this.canvas);
+    this.mission = new MissionPanel(this.topo, { changed: () => this.scheduleSave(), solve: () => this.solve(), openDoc: (id) => this.openDoc(id) }, this.session.policy);
     this.drawBarEl = drawBar(this.drawState, {
       pick: (shape) => this.selectTool({ kind: 'draw', shape }, `draw-${shape}`),
       deleteSelected: () => { this.canvas.draw.deleteSelected(); this.canvas.root.focus({ preventScroll: true }); },
@@ -107,7 +112,7 @@ class App {
         this.canvas.draw.deleteAll();
       },
     }, this.toolButtons);
-    this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.sim.root);
+    this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.mission.root, this.sim.root);
     this.paletteEl = palette({
       selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw(), undo: (redo) => this.undo(redo), clip: (a) => this.canvas.group.run(a),
     }, this.toolButtons, this.hintEl, this.session.policy);
@@ -128,9 +133,7 @@ class App {
   }
 
   /** Where the user is (kept when the interface is rebuilt in another language). */
-  where(): { readonly view: View; readonly mode: Mode } {
-    return { view: this.view, mode: this.mode };
-  }
+  where(): { readonly view: View; readonly mode: Mode } { return { view: this.view, mode: this.mode }; }
 
   /** Stops timers and listeners (before rebuilding the interface in another language). */
   dispose(): void {
@@ -162,7 +165,7 @@ class App {
       loadExample: (id) => {
         const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
         const text = ex ? labText(ex) : null;
-        if (ex && text) void this.replaceAllowed({ lab: text.title }).then((ok) => ok && this.load(ex.build(), text.summary));
+        if (ex && text) void this.replaceAllowed({ lab: text.title }).then((ok) => ok && this.load(startLab(ex), missionById(id) ? t('mission.ui.loaded', { title: text.title }) : text.summary));
       },
       advance: (ms) => this.advance(ms),
       setMode: (m) => this.setMode(m),
@@ -189,10 +192,9 @@ class App {
 
   private selectTool(tool: Tool, key: string): void {
     const same = this.toolButtons.get(key)?.getAttribute('aria-pressed') === 'true' && key !== 'select';
-    const next: Tool = same ? { kind: 'select' } : tool;
     const nextKey = same ? 'select' : key;
     for (const [k, b] of this.toolButtons) b.setAttribute('aria-pressed', String(k === nextKey));
-    this.canvas.setTool(next);
+    this.canvas.setTool(same ? { kind: 'select' } : tool);
     this.canvas.root.focus({ preventScroll: true });
   }
 
@@ -211,10 +213,7 @@ class App {
     if (view === 'settings') this.pages.refreshSettings();
   }
 
-  private open(id: string): void {
-    const placed = this.topo.get(id);
-    if (placed) openDeviceWindow(placed, this);
-  }
+  private open(id: string): void { const placed = this.topo.get(id); if (placed) openDeviceWindow(placed, this); }
 
   /** Configuración → Laboratorio actual: windows reopen with the new tabs, and the change is unsaved work. */
   private setFeatures(next: LabFeatures): void {
@@ -223,18 +222,22 @@ class App {
     this.afterCommand();
   }
 
-  feature(kind: DeviceKind, id: FeatureId): boolean {
-    return featureOn(this.topo.features, kind, id);
-  }
+  feature(kind: DeviceKind, id: FeatureId): boolean { return featureOn(this.topo.features, kind, id); }
 
   /** Tabs of the device windows left by the classroom restrictions. */
-  allowsTab(kind: DeviceKind, tab: string): boolean {
-    return allowsTab(this.session.policy, kind, tab);
-  }
+  allowsTab(kind: DeviceKind, tab: string): boolean { return allowsTab(this.session.policy, kind, tab); }
 
   /** Timestamp prompt locked by the classroom (true/false) or left to each device (undefined). */
-  promptLock(): boolean | undefined {
-    return lockedPrompt(this.session.policy);
+  promptLock(): boolean | undefined { return lockedPrompt(this.session.policy); }
+
+  /** Mission → View solution: the solved lab, keeping the hints read (the dialog already asked). */
+  private solve(): void { if (this.topo.mission) this.load(viewSolution(this.topo.mission), t('mission.ui.solved')); }
+
+  /** Mission → Para saber más: the Help view on that page, with the top bar showing Help. */
+  private openDoc(id: string): void {
+    this.showView('docs');
+    this.pages.showDoc(id);
+    for (const b of document.querySelectorAll<HTMLElement>('.topbar [data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === 'docs'));
   }
 
   /** "PC0 (FastEthernet0)" at the far end of a cable, for the device windows. */
@@ -295,6 +298,7 @@ class App {
     this.saved.mark(topo);
     this.canvas.setTopology(topo);
     this.sim.attach(topo);
+    this.mission.attach(topo);
     syncUndoButtons(this.paletteEl, this.canvas.edits());
     this.pages.refreshSettings();
     this.hintEl.textContent = message;
@@ -330,9 +334,7 @@ class App {
   }
 
   /** Message for the status line after a language change. */
-  announce(text: string): void {
-    this.hintEl.textContent = text;
-  }
+  announce(text: string): void { this.hintEl.textContent = text; }
 }
 
 let app: App | null = null;

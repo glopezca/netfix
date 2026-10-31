@@ -1433,3 +1433,22 @@ protocolos; los laboratorios agrupados por temas para encontrarlos mejor.
 - **Hecho (v0.29.0)**, con la revisión: sin respuesta, Windows repite la pregunta LLMNR a los 410 ms (como el real).
   El laboratorio «LAN sin DNS propio» sale a Internet (ISP-Norte, DNS 8.8.8.8) para que LNX2 pueda instalar avahi o
   samba con apt; en «Nombres entre redes» todos son Windows (WIN-B2 no está en la zona).
+
+### Fase 47: laboratorios guiados (misiones) y su corrección en el aula (v0.30.0)
+
+Petición: convertir algunos laboratorios en prácticas guiadas con un encargo, tareas, pistas graduadas y una rúbrica; permitir
+que el aula compruebe el trabajo o muestre la solución, con esos controles sujetos a las restricciones del profesor.
+
+- **Misiones** (`src/labs/`): basico, relay y nombres-redes. Cada una conserva el laboratorio correspondiente como referencia,
+  define el estado inicial incompleto o los cambios de la solución, tareas, rúbrica, pistas y textos en es/en.
+- **Panel de misión** (`src/ui/mission-panel.ts`): aparece junto al espacio de trabajo al abrir una misión. Permite leer pistas
+  por niveles, comprobar la configuración con la rúbrica y cargar el laboratorio resuelto tras confirmarlo. Guarda en la topología
+  las pistas consultadas y si se mostró la solución; la evaluación incluye esos datos.
+- **Aula** (`src/classroom/restrictions.ts`, `checklist.ts`, `evaluate.ts`; `docs/EMBED.md`): restricciones independientes para
+  comprobar misiones, ver pistas y cargar la solución. La evaluación de una topología informa del id de misión, el número de
+  pistas consultadas y si se mostró la solución.
+- **Documentación y pruebas:** páginas de ayuda para las misiones, pruebas de estado, construcción y rúbricas; recorrido E2E
+  de una misión y de las restricciones del aula.
+- **Hecho (v0.30.0)**: basico y relay parten con configuración por completar; nombres-redes parte con el registro DNS de WIN-B2
+  ausente. La comprobación puntúa la rúbrica, y «Ver solución» reemplaza la red por la configuración resuelta y deja constancia
+  de ello en la topología.

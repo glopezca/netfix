@@ -14,6 +14,8 @@ import { drawable, makeAnnotation, MAX_ANNOTATIONS } from './annotations.ts';
 import { FILE_VERSION, validateFile } from './topology-file.ts';
 import { parseFeatures } from './lab-features.ts';
 import type { LabFeatures } from './lab-features.ts';
+import { parseMissionState } from '../labs/mission-state.ts';
+import type { MissionState } from '../labs/mission-state.ts';
 import { bindLab, customApps, deviceApps, parseApps, setDeviceApps } from './device-apps.ts';
 import { packagesOf, parsePackages, setPackageInstalled } from './host-packages.ts';
 import { registerMdns } from './mdns.ts';
@@ -31,7 +33,8 @@ import { Pc } from '../devices/pc.ts';
 import { Host } from '../devices/host.ts';
 import type { IpMode, HostOs } from '../devices/host.ts';
 import { Server } from '../devices/server.ts';
-import { servicesToJson, servicesFromJson, mailboxesFromJson } from '../services/persist.ts';
+import { servicesToJson } from '../services/persist.ts';
+import { restoreApps, restoreServer } from './topology-restore.ts';
 import type { ServicesJson } from '../services/persist.ts';
 import type { UnitId } from '../services/units.ts';
 import type { MailMessage } from './packets.ts';
@@ -120,6 +123,8 @@ export interface TopologyFile {
   readonly features?: unknown;
   /** Configuración → Laboratorio actual: the web GUI leaves out what is off (v0.25; only when true). */
   readonly webHideOff?: unknown;
+  /** Guided lab and hints shown (v0.30); untrusted until parseMissionState. */
+  readonly mission?: unknown;
 }
 
 const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'Cloud' };
@@ -142,6 +147,8 @@ export class Topology {
   features: LabFeatures = {};
   /** The web GUI of servers and Linux routers leaves out (instead of greying) what is off. */
   webHideOff = false;
+  /** The guided lab this workspace is, with the hints already shown. */
+  mission: MissionState | undefined;
   private nextDrawing = 1;
 
   add(kind: DeviceKind, x: number, y: number, opts: { id?: string; seed?: number; label?: string } = {}): Placed {
@@ -262,7 +269,7 @@ export class Topology {
     const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
     const links = this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable }));
     const features = Object.keys(this.features).length ? { features: this.features } : {};
-    const web = this.webHideOff ? { webHideOff: true } : {};
+    const web = { ...(this.webHideOff ? { webHideOff: true } : {}), ...(this.mission ? { mission: this.mission } : {}) };
     return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features, ...web };
   }
 
@@ -280,6 +287,7 @@ export class Topology {
     topo.annotations = file.annotations ?? [];
     topo.features = parseFeatures(file.features);
     topo.webHideOff = file.webHideOff === true;
+    topo.mission = parseMissionState(file.mission);
     topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
     for (const l of file.links) topo.connect(l.a, l.b, l.cable);
     for (const p of topo.placed.values()) if (p.device instanceof Host && p.device.config.mode === 'dhcp') p.device.useDhcp();
@@ -370,27 +378,7 @@ export function restore(device: AnyDevice, rec: DeviceRecord): void {
   device.startupConfig = rec.startup ?? null;
 }
 
-function restoreApps(pc: Pc, apps: NonNullable<PcRecord['apps']>): void {
-  const m = apps.mail;
-  if (isObject(m) && ['name', 'address', 'incoming', 'outgoing', 'user', 'password'].every((k) => typeof m[k as keyof MailAccount] === 'string')) {
-    pc.mailAccount = { ...m, protocol: m.protocol === 'IMAP' ? 'IMAP' : 'POP3' };
-  }
-  if (apps.inbox !== undefined) pc.inbox = [...(mailboxesFromJson({ inbox: apps.inbox }).inbox ?? [])];
-  if (typeof apps.url === 'string') pc.browserUrl = apps.url.slice(0, 2048);
-}
-
-function restoreServer(server: Server, rec: ServerRecord): void {
-  server.setServices(servicesFromJson(rec.services));
-  const auto = isObject(rec.autostart) ? rec.autostart : {};
-  for (const id of Object.keys(server.autostart) as UnitId[]) if (typeof auto[id] === 'boolean') server.autostart = { ...server.autostart, [id]: auto[id] };
-  server.mailboxes.load(mailboxesFromJson(rec.mailboxes));
-}
-
 export function parseStatic(pc: PcRecord): { ip?: number; prefix?: number; gateway?: number; dns?: number } {
   const opt = (s: string | undefined): number | undefined => (s ? parseIp(s) ?? undefined : undefined);
   return { ip: opt(pc.ip), prefix: pc.mask ? parseMask(pc.mask) ?? undefined : undefined, gateway: opt(pc.gateway), dns: opt(pc.dns) };
-}
-
-function isObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null;
 }

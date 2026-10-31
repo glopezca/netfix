@@ -42,7 +42,8 @@ try {
   await page.locator('select.select').first().selectOption('basico');
   await page.waitForTimeout(300);
   await page.click('.pal-item:has-text("Servidor")');
-  await page.mouse.click(1150, 700);
+  // The mission panel occupies the right side when basico is open; place the server inside the remaining canvas.
+  await page.mouse.click(900, 700);
   await page.locator('g.device-server').last().dblclick();
   assert.deepEqual(await tabs(), ['Equipo', 'Interfaces', 'Servicios', 'TCP/IP', 'Terminal GNU/Linux', 'Configuración']);
   await win.locator('.win-tab:has-text("Servicios")').click();

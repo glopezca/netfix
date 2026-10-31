@@ -1,7 +1,7 @@
 /**
  * Restriction policy for embedding Netfix in a classroom: which labs, palette devices and window tabs the student
- * may use, whether the documentation, files, simulation mode, clock, drawing and topology editing are on, and whether
- * the timestamp prompt of the terminals is locked on or off.
+ * may use, whether the documentation, files, simulation mode, clock, drawing, topology editing and the guided-lab
+ * Check, hints and View solution are on, and whether the timestamp prompt of the terminals is locked on or off.
  * It arrives as untrusted JSON, so it is validated strictly; anything left out stays allowed.
  */
 import type { DeviceKind } from '../net/topology.ts';
@@ -12,7 +12,7 @@ export type TabId = (typeof TAB_IDS)[number];
 
 /** The first tab of each window (Device; ISP for the cloud): kept even when a list leaves it out, so a window is never empty. */
 const firstTab = (k: DeviceKind): TabId => (k === 'cloud' ? 'isp' : 'host');
-const FLAGS = ['docs', 'fileOpen', 'fileSave', 'fileNew', 'simulation', 'clock', 'drawing', 'editTopology'] as const;
+const FLAGS = ['docs', 'fileOpen', 'fileSave', 'fileNew', 'simulation', 'clock', 'drawing', 'editTopology', 'missionCheck', 'hints', 'solution'] as const;
 type Flag = (typeof FLAGS)[number];
 /** «Prompt con marca de fecha y hora»: each device decides (free), or the teacher locks it on or off. */
 export const PROMPT_MODES = ['free', 'on', 'off'] as const;
@@ -34,6 +34,7 @@ export type Restrictions = {
 export const NO_RESTRICTIONS: Restrictions = Object.freeze({
   labs: null, devices: null, tabs: Object.freeze({}), timestampPrompt: 'free',
   docs: true, fileOpen: true, fileSave: true, fileNew: true, simulation: true, clock: true, drawing: true, editTopology: true,
+  missionCheck: true, hints: true, solution: true,
 });
 
 function invalid(why: string): never {

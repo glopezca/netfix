@@ -58,3 +58,11 @@ test('the teacher can list the Configuración tab of a device (apps)', () => {
   assert.equal(allowsTab(r, 'pc', 'apps'), true);
   assert.equal(allowsTab(r, 'pc', 'sftp'), false);
 });
+
+test('guided labs: Check, hints and View solution are on unless the teacher turns them off', () => {
+  const open = parseRestrictions({});
+  assert.deepEqual([open.missionCheck, open.hints, open.solution], [true, true, true]);
+  const exam = parseRestrictions({ missionCheck: false, hints: false, solution: false });
+  assert.deepEqual([exam.missionCheck, exam.hints, exam.solution], [false, false, false]);
+  assert.throws(() => parseRestrictions({ hints: 'no' }), /hints/);
+});

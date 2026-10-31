@@ -4,8 +4,9 @@ import type { Filetype } from '../editors/vim-syntax.ts';
 /** Kinds of the palette, for the diagrams and the group icons. */
 export type FigKind = 'pc' | 'server' | 'switch' | 'router' | 'linuxrouter' | 'cloud';
 
-/** Icon of a group of the help: a palette kind, or a topic (networking concepts, the terminal, bash scripts). */
-export type GroupIcon = FigKind | 'network' | 'terminal' | 'script';
+/** Icon of a group of the help: a palette kind, or a topic (networking concepts, the terminal, bash scripts, labs). */
+export type TopicIcon = 'network' | 'terminal' | 'script' | 'mission';
+export type GroupIcon = FigKind | TopicIcon;
 
 export interface FigNode {
   readonly id: string;
@@ -36,7 +37,7 @@ export type DocBlock =
   | { readonly kind: 'table'; readonly head: readonly string[]; readonly rows: readonly (readonly string[])[] }
   | { readonly kind: 'note'; readonly text: string }
   | { readonly kind: 'steps'; readonly items: readonly { readonly title: string; readonly text: string }[] }
-  | { readonly kind: 'callout'; readonly tone: Tone; readonly title: string; readonly text: string; readonly solution?: string }
+  | { readonly kind: 'callout'; readonly tone: Tone; readonly title: string; readonly text: string; readonly solution?: string; readonly solutionLabel?: string }
   | { readonly kind: 'figure'; readonly figure: Figure; readonly caption: string }
   | { readonly kind: 'term'; readonly lang: TermLang; readonly text: string };
 

@@ -2,6 +2,7 @@
  * Topic icons of the help (networking concepts, the terminal, bash scripts), drawn like the palette symbols: same
  * 64 × 48 box, the same colour variables (--dev-*) and line weights, so they sit beside the device icons.
  */
+import type { TopicIcon } from '../docs/types.ts';
 
 const NETWORK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="64" height="48">
   <g stroke="var(--dev-edge)" stroke-width="2" stroke-linecap="round">
@@ -36,5 +37,20 @@ const SCRIPT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" widt
   </g>
 </svg>`;
 
+/** A clipboard with a checklist: the guided labs. */
+const MISSION = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="64" height="48">
+  <rect x="15" y="6" width="34" height="40" rx="3" fill="var(--dev-side)" stroke="var(--dev-edge)" stroke-width="1.5"/>
+  <rect x="24" y="2" width="16" height="8" rx="2" fill="var(--dev-top)" stroke="var(--dev-edge)" stroke-width="1.5"/>
+  <g stroke="var(--dev-mark)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M20 19 l3 3 l5 -6"/><path d="M20 30 l3 3 l5 -6"/>
+  </g>
+  <g stroke="var(--dev-port)" stroke-width="2.2" stroke-linecap="round">
+    <path d="M32 19 h11 M32 30 h11 M32 40 h8"/>
+  </g>
+  <rect x="20" y="37" width="6" height="6" rx="1" fill="none" stroke="var(--dev-edge)" stroke-width="1.5"/>
+</svg>`;
+
 /** The topic icons by name (the device ones come from ICONS). */
-export const TOPIC_ICONS: Readonly<Record<'network' | 'terminal' | 'script', string>> = { network: NETWORK, terminal: TERMINAL, script: SCRIPT };
+export const TOPIC_ICONS: Readonly<Record<TopicIcon, string>> = { network: NETWORK, terminal: TERMINAL, script: SCRIPT, mission: MISSION };
+
+export const isTopicIcon = (icon: string): icon is TopicIcon => Object.hasOwn(TOPIC_ICONS, icon);

@@ -40,4 +40,9 @@ export class Pages {
   focusDocs(): void {
     this.docs?.focus();
   }
+
+  /** Opens one help page (after the help view has been shown, so it exists). */
+  showDoc(id: string): void {
+    this.docs?.show(id);
+  }
 }

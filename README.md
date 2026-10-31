@@ -69,7 +69,13 @@ El enlace sirve [`demo/netfix-lab.html`](demo/netfix-lab.html), la aplicación c
 puede tardar unos minutos en mostrar la última versión). También puedes descargar ese archivo y
 abrirlo con doble clic, sin servidor ni conexión. `npm run build` lo regenera: tras cambiar el código,
 haz commit de la nueva versión.
-El menú **Laboratorios…** carga escenarios ya resueltos:
+
+El menú **Laboratorios…** abre **misiones guiadas**: entras como técnico júnior en Soporte Netfix y cada laboratorio
+es el aviso de un cliente, con la red averiada o a medio hacer. El panel **Misión** muestra el aviso, para qué sirve,
+las tareas con tres pistas cada una (se ven de una en una y no restan puntos) y **Comprobar**, que corrige la red de
+verdad y da la puntuación con las pistas usadas. **Ver solución** carga el laboratorio resuelto con la explicación.
+Cada misión tiene su página en la pestaña Ayuda (grupo **Laboratorios**). Los laboratorios que aún no son misiones se
+cargan ya resueltos.
 
 | Laboratorio | Qué practica |
 |---|---|

@@ -127,22 +127,62 @@
     <div class="wrap">
       <h2 class="section-title">{{labs.title}}</h2>
       <p class="section-lead">{{labs.lead}}</p>
-      <ol class="lab-list">
-        <li>{{labs.basico}}</li>
-        <li>{{labs.reservas}}</li>
-        <li>{{labs.relay}}</li>
-        <li>{{labs.vlans}}</li>
-        <li>{{labs.snooping}}</li>
-        <li>{{labs.cliente}}</li>
-        <li>{{labs.servidores}}</li>
-        <li>{{labs.internet}}</li>
-        <li>{{labs.vpn-ipsec}}</li>
-        <li>{{labs.vpn-wireguard}}</li>
-        <li>{{labs.linux-dmz}}</li>
-        <li>{{labs.dns-reenvio}}</li>
-        <li>{{labs.ssh-sftp}}</li>
-        <li>{{labs.bastionado}}</li>
-      </ol>
+      <div class="mission-how">
+        <div><h3>{{labs.how.story.title}}</h3><p>{{labs.how.story.text}}</p></div>
+        <div><h3>{{labs.how.purpose.title}}</h3><p>{{labs.how.purpose.text}}</p></div>
+        <div><h3>{{labs.how.hints.title}}</h3><p>{{labs.how.hints.text}}</p></div>
+        <div><h3>{{labs.how.check.title}}</h3><p>{{labs.how.check.text}}</p></div>
+      </div>
+      <div class="lab-chapters">
+        <div>
+          <h3>{{labs.chapter.dhcp}}</h3>
+          <ol>
+            <li>{{labs.basico}}</li>
+            <li>{{labs.reservas}}</li>
+            <li>{{labs.relay}}</li>
+            <li>{{labs.cliente}}</li>
+          </ol>
+        </div>
+        <div>
+          <h3>{{labs.chapter.switching}}</h3>
+          <ol>
+            <li>{{labs.vlans}}</li>
+            <li>{{labs.stp}}</li>
+            <li>{{labs.snooping}}</li>
+          </ol>
+        </div>
+        <div>
+          <h3>{{labs.chapter.services}}</h3>
+          <ol>
+            <li>{{labs.servidores}}</li>
+            <li>{{labs.ssh-sftp}}</li>
+          </ol>
+        </div>
+        <div>
+          <h3>{{labs.chapter.names}}</h3>
+          <ol>
+            <li>{{labs.nombres-lan}}</li>
+            <li>{{labs.nombres-redes}}</li>
+            <li>{{labs.dns-reenvio}}</li>
+          </ol>
+        </div>
+        <div>
+          <h3>{{labs.chapter.internet}}</h3>
+          <ol>
+            <li>{{labs.internet}}</li>
+            <li>{{labs.vpn-ipsec}}</li>
+            <li>{{labs.vpn-wireguard}}</li>
+          </ol>
+        </div>
+        <div>
+          <h3>{{labs.chapter.security}}</h3>
+          <ol>
+            <li>{{labs.linux-dmz}}</li>
+            <li>{{labs.bastionado}}</li>
+          </ol>
+        </div>
+      </div>
+      <p class="labs-docs">{{labs.docs}}</p>
     </div>
   </section>
 
