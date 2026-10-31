@@ -4,6 +4,7 @@
  * the documentation appears exactly once (tests/docs/docs.test.ts).
  */
 import type { GroupIcon } from './types.ts';
+import { labsOutline } from './labs.ts';
 
 export interface OutlineGroup {
   readonly id: string;
@@ -39,5 +40,5 @@ export const OUTLINE: readonly OutlineGroup[] = [
       ['Referencia', ['bash-variables', 'bash-opciones', 'bash-interactivo', 'bash-53', 'bash-builtins']],
     ],
   },
+  labsOutline('es-ES', 'Laboratorios'),
 ];
-

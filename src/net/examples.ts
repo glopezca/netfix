@@ -321,18 +321,6 @@ interface GigabitEthernet0/0
   namesNetsLab,
 ];
 
-export type LabGroupId = 'dhcp' | 'switching' | 'services' | 'names' | 'internet' | 'security';
-
-/** The labs by theme, in the order of the Labs menu (each lab in exactly one group: tests/net/lab-groups.test.ts). */
-export const LAB_GROUPS: readonly (readonly [LabGroupId, readonly string[]])[] = [
-  ['dhcp', ['basico', 'reservas', 'relay', 'cliente']],
-  ['switching', ['vlans', 'stp', 'snooping']],
-  ['services', ['servidores', 'ssh-sftp']],
-  ['names', ['nombres-lan', 'nombres-redes', 'dns-reenvio']],
-  ['internet', ['internet', 'vpn-ipsec', 'vpn-wireguard']],
-  ['security', ['linux-dmz', 'bastionado']],
-];
-
 /** The labs, with areas drawn around their networks where they help to read the diagram, and their device settings. */
 export const EXAMPLES: readonly Example[] = LABS.map((ex) => ({ ...ex, build: () => withPreset(ex.id, decorateLab(ex.id, ex.build())) }));
 

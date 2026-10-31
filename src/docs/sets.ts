@@ -54,6 +54,7 @@ import { NAMES_DOCS } from './names.ts';
 import { NAMES_DOCS as NAMES_EN } from './en/names.ts';
 import { OUTLINE } from './outline.ts';
 import { arrange } from './arrange.ts';
+import { labDocs } from './labs.ts';
 import { OUTLINE as OUTLINE_EN } from './en/outline.ts';
 
 type KeyTable = readonly (readonly [string, string])[];
@@ -81,9 +82,11 @@ export interface DocSet {
   readonly man: ManTexts;
 }
 
+const ES_PAGES: readonly DocPage[] = [...NETFIX_DOCS.pages, ...SETTINGS_DOCS, ...IOS_DOCS.pages, ...STP_DOCS, ...IOS_DHCP_DOCS, ...IOS_SEC_DOCS, ...SERVICE_DOCS.pages, ...DNS_DOCS, ...HTTP_DOCS, ...MAIL_DOCS, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
+    ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...APT_DOCS, ...NAMES_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE];
+
 const ES: DocSet = {
-  groups: arrange(OUTLINE, [...NETFIX_DOCS.pages, ...SETTINGS_DOCS, ...IOS_DOCS.pages, ...STP_DOCS, ...IOS_DHCP_DOCS, ...IOS_SEC_DOCS, ...SERVICE_DOCS.pages, ...DNS_DOCS, ...HTTP_DOCS, ...MAIL_DOCS, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
-    ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...APT_DOCS, ...NAMES_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE]),
+  groups: arrange(OUTLINE, [...ES_PAGES, ...labDocs('es-ES', ES_PAGES)]),
   utils: UTIL_DOCS,
   builtins: BUILTIN_DOCS,
   bashPages: [...BASH_LANGUAGE, ...BASH_REFERENCE],
@@ -100,9 +103,11 @@ const ES: DocSet = {
   },
 };
 
+const EN_PAGES: readonly DocPage[] = [...NETFIX_EN.pages, ...SETTINGS_EN, ...IOS_EN.pages, ...STP_EN, ...IOS_DHCP_EN, ...IOS_SEC_EN, ...SERVICE_EN.pages, ...DNS_EN, ...HTTP_EN, ...MAIL_EN, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
+    ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...APT_EN, ...NAMES_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN];
+
 const EN: DocSet = {
-  groups: arrange(OUTLINE_EN, [...NETFIX_EN.pages, ...SETTINGS_EN, ...IOS_EN.pages, ...STP_EN, ...IOS_DHCP_EN, ...IOS_SEC_EN, ...SERVICE_EN.pages, ...DNS_EN, ...HTTP_EN, ...MAIL_EN, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
-    ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...APT_EN, ...NAMES_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN]),
+  groups: arrange(OUTLINE_EN, [...EN_PAGES, ...labDocs('en-GB', EN_PAGES)]),
   utils: UTIL_EN,
   builtins: BUILTIN_EN,
   bashPages: [...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN],

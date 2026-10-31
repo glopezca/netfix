@@ -12,7 +12,11 @@ export type Check =
   | { readonly type: 'link'; readonly a: string; readonly b: string }
   | { readonly type: 'ip'; readonly device: string; readonly mode?: 'static' | 'dhcp'; readonly ip?: string; readonly network?: string; readonly gateway?: string; readonly dns?: string }
   | { readonly type: 'ping'; readonly from: string; readonly to: string; readonly expect: 'success' | 'fail' }
-  | { readonly type: 'dns'; readonly from: string; readonly name: string; readonly ip?: string }
+  | { readonly type: 'dns'; readonly from: string; readonly name: string; readonly ip?: string; readonly expect?: 'success' | 'fail' }
+  /** A TCP connect (SYN, SYN-ACK) to a port: `success` when it opens, `fail` when it is closed or filtered. */
+  | { readonly type: 'tcp'; readonly from: string; readonly to: string; readonly port: number; readonly expect: 'success' | 'fail' }
+  /** A read-only `show …` command run on an IOS device: its output must contain the text. */
+  | { readonly type: 'output'; readonly device: string; readonly command: string; readonly contains: string }
   | { readonly type: 'http'; readonly from: string; readonly url: string; readonly status?: number; readonly contains?: string }
   | { readonly type: 'file'; readonly device: string; readonly path: string; readonly contains?: string }
   /** `section`: the lines must be inside it (the indented lines under that unindented line, e.g. an interface). */
@@ -30,6 +34,7 @@ const MAX_WEIGHT = 100;
 const MAX_TEXT = 500;
 const MAX_LINES = 50;
 const MAX_PREFIX = 32;
+const MAX_PORT = 65535;
 const ID_RE = /^[A-Za-z0-9._-]{1,64}$/;
 /** Text without control or format characters (bidi overrides, zero width…) or line separators: shown to students. */
 const VISIBLE = '[^\\p{Cc}\\p{Cf}\\u2028\\u2029]';
@@ -83,14 +88,27 @@ const dnsName: Field = (v, at) => {
   return text(NAME_RE)(v, at);
 };
 const path = text(/^\/[^\u0000-\u001f]*$/, 256);
+const port: Field = (v, at) => {
+  if (!Number.isInteger(v) || (v as number) < 1 || (v as number) > MAX_PORT) invalid(`${at} debe ser un puerto de 1 a ${MAX_PORT}`);
+  return v;
+};
+/** Only show commands: a checklist reads the device, it never configures it. */
+const showCommand: Field = (v, at) => {
+  const cmd = text(LINE_RE, 200)(v, at) as string;
+  if (!/^sh(o(w)?)? \S/.test(cmd)) invalid(`${at} debe ser una orden show`);
+  return cmd;
+};
+const expect = oneOf(['success', 'fail']);
 
 /** Fields of each check type: required (no `?`) and optional (`?` suffix). */
 const SCHEMAS: Readonly<Record<Check['type'], Readonly<Record<string, Field>>>> = {
   device: { device: label, 'kind?': oneOf(DEVICE_KINDS) },
   link: { a: label, b: label },
   ip: { device: label, 'mode?': oneOf(['static', 'dhcp']), 'ip?': ipText, 'network?': cidr, 'gateway?': ipText, 'dns?': ipText },
-  ping: { from: label, to: text(NAME_RE), 'expect?': oneOf(['success', 'fail']) },
-  dns: { from: label, name: dnsName, 'ip?': ipText },
+  ping: { from: label, to: text(NAME_RE), 'expect?': expect },
+  dns: { from: label, name: dnsName, 'ip?': ipText, 'expect?': expect },
+  tcp: { from: label, to: text(NAME_RE), port, 'expect?': expect },
+  output: { device: label, command: showCommand, contains: text(null) },
   http: { from: label, url: httpUrl, 'status?': status, 'contains?': text(null) },
   file: { device: label, path, 'contains?': text(null) },
   config: { device: label, 'section?': configLine, lines },
@@ -119,7 +137,7 @@ function parseCheck(v: unknown, at: string): Check {
     }
     out[name] = field(v[name], `${at}.${name}`);
   }
-  if (v.type === 'ping') out.expect ??= 'success';
+  if (v.type === 'ping' || v.type === 'tcp') out.expect ??= 'success';
   return Object.freeze(out) as Check;
 }
 

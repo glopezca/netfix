@@ -40,6 +40,9 @@ Todo lo que no se indica queda permitido.
 | `devices` | `pc`, `server`, `switch`, `router`, `linuxrouter`, `cloud` | Equipos de la paleta |
 | `tabs` | `{ tipo: [pestañas] }` | Pestañas de la ventana de cada tipo de equipo; la primera (Equipo, o ISP en la nube) se mantiene |
 | `docs` | `true` / `false` | Vista Ayuda |
+| `missionCheck` | `true` / `false` | Botón **Comprobar** del panel Misión (la nota de clase sigue siendo `evaluate` en el servidor) |
+| `hints` | `true` / `false` | Botones de pistas del panel Misión (las ya vistas se siguen mostrando) |
+| `solution` | `true` / `false` | Botón **Ver solución** del panel Misión |
 | `fileNew`, `fileOpen`, `fileSave` | `true` / `false` | Botones Nuevo, Abrir y Guardar (y Ctrl+S) |
 | `simulation` | `true` / `false` | Modo simulación |
 | `clock` | `true` / `false` | Adelantar el reloj |
@@ -53,7 +56,10 @@ Pestañas: `host`, `ifaces`, `cli`, `web` (gestión web IOS o navegador del PC),
 ## Corrección
 
 `netfix.evaluate(archivo, lista)` en el navegador, o `evaluate(archivo, parseChecklist(lista))` de
-`src/classroom/evaluate.ts` en un servidor. Devuelve `{ score, max, items: [{ id, weight, passed, detail }] }`.
+`src/classroom/evaluate.ts` en un servidor. Devuelve `{ score, max, items: [{ id, weight, passed, detail }], mission? }`. Si el archivo es una misión
+(laboratorio guiado), `mission` es `{ id, hints, solution }`: el laboratorio, cuántas pistas vio el alumno y si cargó la
+solución. Las pistas no cambian la nota; el profesor decide qué hacer con ese dato. El archivo lo escribe el alumno, así
+que `mission` es informativo, no una prueba.
 
 ```json
 [

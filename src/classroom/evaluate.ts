@@ -15,6 +15,9 @@ import { parseIp, formatIp } from '../core/ip.ts';
 import { runPing } from '../net/ping.ts';
 import { resolveHost, httpRequest } from '../shells/net-tools.ts';
 import { hostSystem } from '../shells/host-system.ts';
+import { runSync } from '../net/sync.ts';
+import type { ProbeResult } from '../net/tcp.ts';
+import { Session } from '../ios/session.ts';
 import type { Check, ChecklistItem } from './checklist.ts';
 
 export interface ItemResult {
@@ -30,6 +33,8 @@ export interface Evaluation {
   readonly score: number;
   readonly max: number;
   readonly items: readonly ItemResult[];
+  /** The guided lab the file belongs to: hints read and whether "View solution" was used. */
+  readonly mission?: { readonly id: string; readonly hints: number; readonly solution: boolean };
 }
 
 type Outcome = { readonly passed: boolean; readonly detail: string };
@@ -37,6 +42,8 @@ type Outcome = { readonly passed: boolean; readonly detail: string };
 const PING_COUNT = 3;
 const PING_TIMEOUT_MS = 2000;
 const HTTP_ERROR = 400;
+const PROBE_MS = 3000;
+const PROBE_SLACK_MS = 500;
 /**
  * Simulation tasks for one whole marking. A lab with every check needs a few hundred; a switching loop (no spanning
  * tree) floods without end, and the limit keeps it to well under a second of CPU.
@@ -138,6 +145,9 @@ function dnsCheck(t: Topology, c: Extract<Check, { type: 'dns' }>): Outcome {
   const h = host(t, c.from);
   if (!(h instanceof Host)) return h;
   const r = resolveHost(h, c.name);
+  if (c.expect === 'fail') {
+    return r.kind === 'ip' ? fail(`«${c.from}» resuelve ${c.name} como ${formatIp(r.ip)}.`) : pass(`«${c.from}» no resuelve ${c.name}.`);
+  }
   if (r.kind !== 'ip') return fail(`«${c.from}» no resuelve ${c.name}.`);
   // /etc/hosts answers too, but the check is about the DNS service.
   if (!r.viaDns) return fail(`«${c.from}» resuelve ${c.name} sin DNS (por /etc/hosts).`);
@@ -169,6 +179,31 @@ function fileCheck(t: Topology, c: Extract<Check, { type: 'file' }>): Outcome {
   return pass(`Existe ${c.path} en «${c.device}».`);
 }
 
+function tcpCheck(t: Topology, c: Extract<Check, { type: 'tcp' }>): Outcome {
+  const h = host(t, c.from);
+  if (!(h instanceof Host)) return h;
+  const to = resolveHost(h, c.to);
+  if (to.kind !== 'ip') return fail(`No se resuelve «${c.to}» desde «${c.from}».`);
+  const r = runSync<ProbeResult>(h.hooks, (done) => h.tcp.probe(to.ip, c.port, done, PROBE_MS), PROBE_MS + PROBE_SLACK_MS) ?? 'filtered';
+  if (r === 'noroute') return fail(`«${c.from}» no puede enviar a ${c.to}: no tiene dirección o ruta.`);
+  const what = r === 'open' ? `«${c.from}» abre el puerto TCP ${c.port} de ${c.to}.` : `El puerto TCP ${c.port} de ${c.to} no se abre desde «${c.from}» (${PROBE_TEXT[r]}).`;
+  return (c.expect === 'success') === (r === 'open') ? pass(what) : fail(what);
+}
+
+const PROBE_TEXT: Readonly<Record<Exclude<ProbeResult, 'open' | 'noroute'>, string>> = {
+  closed: 'cerrado', filtered: 'filtrado', netunreach: 'red inalcanzable', hostunreach: 'equipo inalcanzable',
+};
+
+function outputCheck(t: Topology, c: Extract<Check, { type: 'output' }>): Outcome {
+  const d = find(t, c.device);
+  if ('passed' in d) return d;
+  if (!(d instanceof IosDevice)) return fail(`«${c.device}» no es un router ni un switch.`);
+  const session = new Session(d);
+  session.mode = 'exec';
+  const out = session.input(c.command).join('\n');
+  return out.includes(c.contains) ? pass(`«${c.command}» en «${c.device}» muestra «${c.contains}».`) : fail(`«${c.command}» en «${c.device}» no muestra «${c.contains}».`);
+}
+
 /** The indented lines under the unindented line `head` (undefined when it is not there). */
 function section(lines: readonly string[], head: string): string[] | undefined {
   const at = lines.findIndex((l) => l.trim() === head.trim() && !/^\s/.test(l));
@@ -198,6 +233,8 @@ function run(t: Topology, c: Check): Outcome {
     case 'http': return httpCheck(t, c);
     case 'file': return fileCheck(t, c);
     case 'config': return configCheck(t, c);
+    case 'tcp': return tcpCheck(t, c);
+    case 'output': return outputCheck(t, c);
   }
 }
 
@@ -215,7 +252,7 @@ export function evaluate(file: unknown, checklist: readonly ChecklistItem[], wor
 }
 
 /** Checks that send traffic and advance the simulated time; they run after the rest, so order never changes a mark. */
-const ACTIVE: ReadonlySet<Check['type']> = new Set(['ping', 'dns', 'http']);
+const ACTIVE: ReadonlySet<Check['type']> = new Set(['ping', 'dns', 'http', 'tcp']);
 
 function mark(file: unknown, checklist: readonly ChecklistItem[]): Evaluation {
   const t = load(file);
@@ -227,5 +264,6 @@ function mark(file: unknown, checklist: readonly ChecklistItem[]): Evaluation {
     score: items.reduce((n, i) => n + (i.passed ? i.weight : 0), 0),
     max: items.reduce((n, i) => n + i.weight, 0),
     items,
+    ...(t.mission ? { mission: { id: t.mission.id, hints: t.mission.hints.length, solution: t.mission.solution === true } } : {}),
   };
 }

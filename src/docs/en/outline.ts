@@ -1,5 +1,6 @@
 /** Order of the Help tab (English): the same groups, sections and pages as src/docs/outline.ts. */
 import type { OutlineGroup } from '../outline.ts';
+import { labsOutline } from '../labs.ts';
 
 export const OUTLINE: readonly OutlineGroup[] = [
   { id: 'netfix', title: 'Netfix', sections: [[null, ['inicio', 'dibujo', 'guardar', 'simulacion', 'configuracion', 'usuarios', 'huevos']]] },
@@ -27,4 +28,5 @@ export const OUTLINE: readonly OutlineGroup[] = [
       ['Reference', ['bash-variables', 'bash-opciones', 'bash-interactivo', 'bash-53', 'bash-builtins']],
     ],
   },
+  labsOutline('en-GB', 'Labs'),
 ];

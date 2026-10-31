@@ -1,7 +1,8 @@
 /** The Labs menu groups the labs by theme: every lab in exactly one group, and the name-resolution labs work. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { EXAMPLES, LAB_GROUPS } from '../../src/net/examples.ts';
+import { EXAMPLES } from '../../src/net/examples.ts';
+import { LAB_GROUPS } from '../../src/labs/lab-groups.ts';
 import { hasMessage } from '../../src/i18n/t.ts';
 import { createShell } from '../../src/shells/factory.ts';
 import type { Host } from '../../src/devices/host.ts';

@@ -37,7 +37,8 @@ export function docBlock(b: DocBlock, md?: string): HTMLElement {
     case 'callout':
       return el('aside', { class: `doc-callout doc-callout-${b.tone}`, role: 'note' },
         el('p', { class: 'doc-callout-title' }, ...calloutTitle(t(TONES[b.tone]), b.title, md)), el('p', {}, ...inline(b.text, md)),
-        b.solution ? el('details', { class: 'doc-solution' }, el('summary', {}, t('docs.solution')), el('p', {}, ...inline(b.solution, md))) : null);
+        b.solution ? el('details', { class: 'doc-solution' }, el('summary', {}, b.solutionLabel ?? t('docs.solution')),
+          ...b.solution.split('\n\n').map((s) => el('p', {}, ...inline(s, md)))) : null);
     case 'figure': return docFigure(b.figure, b.caption);
     case 'term': return docTerm(b.lang, b.text);
     case 'table':

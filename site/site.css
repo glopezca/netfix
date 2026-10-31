@@ -93,11 +93,17 @@ p { margin: 0 0 1em; max-width: var(--measure); }
 .more li { padding-left: 22px; position: relative; color: var(--ink-2); }
 .more li::before { content: ""; position: absolute; left: 0; top: .6em; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--teal); }
 
-/* Labs: numbered in the order of the app's Labs menu (roughly from basic to advanced). */
+/* Labs: how a mission works (four cards), then the labs by chapter in the order of the app's Labs menu. */
 .labs { background: #fff; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: clamp(48px, 7vw, 88px) 0; }
-.lab-list { columns: 2; column-gap: 48px; margin: 0; padding-left: 1.6em; }
-.lab-list li { break-inside: avoid; padding: 7px 0 7px 4px; border-bottom: 1px dashed var(--line); }
-.lab-list li::marker { color: var(--ink-2); }
+.mission-how { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(16px, 3vw, 32px); margin: 8px 0 40px; }
+.mission-how h3 { padding-top: 14px; border-top: 3px solid var(--teal); margin-bottom: 6px; }
+.mission-how p { color: var(--ink-2); margin: 0; }
+.lab-chapters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px clamp(24px, 4vw, 48px); }
+.lab-chapters h3 { font-size: 1rem; color: var(--ink-2); margin-bottom: 6px; }
+.lab-chapters ol { margin: 0; padding-left: 1.6em; }
+.lab-chapters li { padding: 6px 0 6px 4px; border-bottom: 1px dashed var(--line); }
+.lab-chapters li::marker { color: var(--ink-2); }
+.labs-docs { color: var(--ink-2); margin: 32px 0 0; }
 
 /* Audiences */
 .who { padding-top: clamp(56px, 8vw, 96px); padding-bottom: clamp(40px, 6vw, 72px); }
@@ -147,11 +153,12 @@ p { margin: 0 0 1em; max-width: var(--measure); }
   .facts-list div:nth-child(n+3) { border-top: 1px solid var(--line); }
   .pair, .feature, .feature-phone, .donate-grid, .who-grid { grid-template-columns: 1fr; }
   .feature-flip .feature-text { order: 0; }
-  .lab-list { columns: 1; }
+  .mission-how, .lab-chapters { grid-template-columns: 1fr 1fr; }
   .more ul { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 520px) {
+  .mission-how, .lab-chapters { grid-template-columns: 1fr; }
   body { font-size: 17px; }
   .top-row { gap: 12px; }
   .brand img { width: 108px; }

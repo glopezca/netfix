@@ -1,7 +1,8 @@
 /** Top bar: brand, views, file actions, labs, clock, mode and language. Folds into a menu on phones. */
 import { brandImage } from './brand.ts';
 import { el } from './dom.ts';
-import { EXAMPLES, LAB_GROUPS } from '../net/examples.ts';
+import { EXAMPLES } from '../net/examples.ts';
+import { LAB_GROUPS } from '../labs/lab-groups.ts';
 import type { Example } from '../net/examples.ts';
 import { labText } from './lab-text.ts';
 import { t, tDynamic } from '../i18n/t.ts';
