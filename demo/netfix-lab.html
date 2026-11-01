@@ -4537,6 +4537,8 @@ const SETTINGS_ES = {
     'set.themeAuto': 'Automático (el del sistema)',
     'set.themeLight': 'Claro',
     'set.themeDark': 'Oscuro',
+    'set.missions': 'Mostrar las misiones de los laboratorios',
+    'set.missionsHint': '(el panel Misión junto al área de trabajo y el grupo Laboratorios de la Ayuda)',
     'set.confirm': 'Avisar antes de reemplazar una red con cambios sin guardar',
     'set.timestamp': 'Prompt con marca de fecha y hora en todas las terminales GNU/Linux y Windows',
     'set.lab': 'Laboratorio actual',
@@ -4596,6 +4598,8 @@ const SETTINGS_EN = {
     'set.themeAuto': 'Automatic (the system’s)',
     'set.themeLight': 'Light',
     'set.themeDark': 'Dark',
+    'set.missions': 'Show the labs’ missions',
+    'set.missionsHint': '(the Mission panel beside the workspace and the Labs group of the Help tab)',
     'set.confirm': 'Ask before replacing a network with unsaved changes',
     'set.timestamp': 'Date and time stamped prompt in every GNU/Linux and Windows terminal',
     'set.lab': 'Current lab',
@@ -19016,6 +19020,7 @@ const SETTINGS_DOCS = [
                 ['Idioma', 'Español (España) o English (UK), como el desplegable de la barra superior.'],
                 ['Tema', 'Automático (el del sistema), claro u oscuro.'],
                 ['Avisar antes de reemplazar…', 'Si está desmarcado, Laboratorios, Nuevo y Abrir reemplazan la red sin preguntar aunque tenga cambios sin guardar.'],
+                ['Mostrar las misiones de los laboratorios', 'Desactivado por defecto. Al marcarlo aparecen el panel Misión junto al área de trabajo (en los laboratorios que tienen misión: encargo, tareas, pistas, Comprobar y Ver solución) y el grupo Laboratorios de la Ayuda. En el aula, las misiones se muestran siempre y el profesor decide si hay pistas, comprobación y solución.'],
                 ['Prompt con marca de fecha y hora', 'Desactivado por defecto. Pone la fecha y la hora en el prompt de todas las terminales GNU/Linux y Windows (la misma casilla está al pie de cada terminal). En el aula, el profesor puede fijarlo.'],
             ]),
             h('Laboratorio actual'),
@@ -21418,6 +21423,7 @@ const SETTINGS_DOCS = [
                 ['Language', 'Español (España) or English (UK), like the drop-down in the top bar.'],
                 ['Theme', 'Automatic (the system’s), light or dark.'],
                 ['Ask before replacing…', 'When unticked, Labs, New and Open replace the network without asking even if it has unsaved changes.'],
+                ['Show the labs’ missions', 'Off by default. When ticked, the Mission panel shows beside the workspace (in the labs that have a mission: ticket, tasks, hints, Check and View solution) and so does the Labs group of the Help tab. In the classroom missions always show and the teacher decides whether there are hints, checking and the solution.'],
                 ['Date and time stamped prompt', 'Off by default. Puts the date and time in the prompt of every GNU/Linux and Windows terminal (the same box is at the foot of each terminal). In the classroom the teacher may fix it.'],
             ]),
             h('Current lab'),
@@ -31285,7 +31291,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.30.0",
+    "version": "0.31.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -57029,6 +57035,101 @@ function mark(file, checklist) {
 
 return { WORK_LIMIT, evaluate };
 })();
+__m["ui/preferences.js"] = (() => {
+/** General settings of this browser (Configuración → Generales): theme, the unsaved-changes question, the missions, language of the page. */
+const { safeStorageGet, safeStorageSet } = __m["ui/dom.js"];
+const { getLocale } = __m["i18n/locale.js"];
+const { t } = __m["i18n/t.js"];
+const { setGlobalTimestampPrompt, timestampPromptOn } = __m["shells/prompt-clock.js"];
+const THEMES = ['auto', 'light', 'dark'];
+const THEME_KEY = 'netfix:theme';
+const CONFIRM_KEY = 'netfix:confirm-unsaved';
+const STAMP_KEY = 'netfix:timestamp-prompt';
+const stampListeners = new Set();
+/** Saved only outside the classroom (embedded pages leave the host page's storage alone). */
+let stampStored = false;
+function theme() {
+    const v = safeStorageGet(THEME_KEY);
+    return THEMES.find((x) => x === v) ?? 'auto';
+}
+/** The CSS reads `data-theme` (light or dark); without it, the system's choice. */
+function applyTheme(value = theme()) {
+    if (value === 'auto')
+        delete document.documentElement.dataset.theme;
+    else
+        document.documentElement.dataset.theme = value;
+}
+function setTheme(value) {
+    safeStorageSet(THEME_KEY, value);
+    applyTheme(value);
+}
+/** Ask before a lab, Nuevo or Abrir replaces unsaved changes (on unless turned off). */
+function confirmUnsaved() {
+    return safeStorageGet(CONFIRM_KEY) !== 'off';
+}
+function setConfirmUnsaved(on) {
+    safeStorageSet(CONFIRM_KEY, on ? 'on' : 'off');
+}
+/** The page's language, title and description in the current language. */
+function applyDocumentLanguage() {
+    document.documentElement.lang = getLocale();
+    document.title = t('app.title');
+    document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.description'));
+}
+/** «Prompt con marca de fecha y hora» for every terminal: off unless turned on (a classroom lock still wins). */
+function loadTimestampPrompt() {
+    stampStored = true;
+    setGlobalTimestampPrompt(safeStorageGet(STAMP_KEY) === 'on');
+}
+/** The value the terminals show now (the classroom lock included). */
+function timestampPrompt() {
+    return timestampPromptOn();
+}
+function setTimestampPromptPref(on) {
+    if (stampStored)
+        safeStorageSet(STAMP_KEY, on ? 'on' : 'off');
+    setGlobalTimestampPrompt(on);
+    for (const fn of stampListeners)
+        fn();
+}
+/** The open terminals redraw their prompts when the setting changes (from Configuración or from any terminal). */
+function onTimestampPrompt(fn) {
+    stampListeners.add(fn);
+}
+const MISSIONS_KEY = 'netfix:missions';
+const missionListeners = new Set();
+let missionsOn = false;
+/** Saved only outside the classroom, as the prompt option. */
+let missionsStored = false;
+/** «Mostrar las misiones de los laboratorios»: off unless turned on in this browser. */
+function loadMissionsPref() {
+    missionsStored = true;
+    missionsOn = safeStorageGet(MISSIONS_KEY) === 'on';
+}
+/** Whether the mission panel and the Laboratorios group of the Help tab show. */
+function missionsShown() {
+    return missionsOn;
+}
+function setMissionsShown(on) {
+    if (missionsStored)
+        safeStorageSet(MISSIONS_KEY, on ? 'on' : 'off');
+    missionsOn = on;
+    for (const fn of missionListeners)
+        fn();
+}
+/** In the classroom (embedded) missions always show, and the host page's storage is left alone. */
+function classroomMissions() {
+    missionsStored = false;
+    missionsOn = true;
+}
+/** The mission panel and the Help tab redraw when the option changes; the result stops listening. */
+function onMissionsShown(fn) {
+    missionListeners.add(fn);
+    return () => { missionListeners.delete(fn); };
+}
+
+return { THEMES, theme, applyTheme, setTheme, confirmUnsaved, setConfirmUnsaved, applyDocumentLanguage, loadTimestampPrompt, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, loadMissionsPref, missionsShown, setMissionsShown, classroomMissions, onMissionsShown };
+})();
 __m["ui/mission-panel.js"] = (() => {
 /**
  * Guided lab panel beside the workspace: the client's ticket, what the lab is for, the tasks with their hints (shown
@@ -57048,6 +57149,7 @@ const { HINT_LEVELS } = __m["labs/mission-plans.js"];
 const { withHint } = __m["labs/mission-state.js"];
 const { findPage } = __m["docs/index.js"];
 const { evaluate } = __m["classroom/evaluate.js"];
+const { missionsShown, onMissionsShown } = __m["ui/preferences.js"];
 const range = (n) => Array.from({ length: n }, (_, i) => i + 1);
 const present = (x) => x !== null;
 class MissionPanel {
@@ -57060,6 +57162,7 @@ class MissionPanel {
     policy;
     topo;
     result = null;
+    unlisten;
     constructor(topo, host, policy) {
         this.topo = topo;
         this.host = host;
@@ -57072,8 +57175,13 @@ class MissionPanel {
         this.root = el('aside', { class: 'mission', 'aria-labelledby': 'mission-title', hidden: true }, el('header', { class: 'mission-head' }, el('div', {}, this.chapter, this.heading), this.fold), this.body);
         this.setFolded(false);
         this.render();
+        this.unlisten = onMissionsShown(() => this.render());
     }
-    /** Shows the mission of another network (none: the panel hides). */
+    /** Stops following the Configuración option (the interface is rebuilt). */
+    dispose() {
+        this.unlisten();
+    }
+    /** Shows the mission of another network (none, or missions off in Configuración: the panel hides). */
     attach(topo) {
         this.topo = topo;
         this.result = null;
@@ -57093,7 +57201,7 @@ class MissionPanel {
         return id === undefined ? undefined : missionById(id);
     }
     render() {
-        const m = this.mission();
+        const m = missionsShown() ? this.mission() : undefined;
         this.root.hidden = !m;
         clear(this.body);
         if (!m)
@@ -62004,70 +62112,6 @@ function cloudSettings(placed, cloud, app) {
 
 return { cloudSettings };
 })();
-__m["ui/preferences.js"] = (() => {
-/** General settings of this browser (Configuración → Generales): theme, the unsaved-changes question, language of the page. */
-const { safeStorageGet, safeStorageSet } = __m["ui/dom.js"];
-const { getLocale } = __m["i18n/locale.js"];
-const { t } = __m["i18n/t.js"];
-const { setGlobalTimestampPrompt, timestampPromptOn } = __m["shells/prompt-clock.js"];
-const THEMES = ['auto', 'light', 'dark'];
-const THEME_KEY = 'netfix:theme';
-const CONFIRM_KEY = 'netfix:confirm-unsaved';
-const STAMP_KEY = 'netfix:timestamp-prompt';
-const stampListeners = new Set();
-/** Saved only outside the classroom (embedded pages leave the host page's storage alone). */
-let stampStored = false;
-function theme() {
-    const v = safeStorageGet(THEME_KEY);
-    return THEMES.find((x) => x === v) ?? 'auto';
-}
-/** The CSS reads `data-theme` (light or dark); without it, the system's choice. */
-function applyTheme(value = theme()) {
-    if (value === 'auto')
-        delete document.documentElement.dataset.theme;
-    else
-        document.documentElement.dataset.theme = value;
-}
-function setTheme(value) {
-    safeStorageSet(THEME_KEY, value);
-    applyTheme(value);
-}
-/** Ask before a lab, Nuevo or Abrir replaces unsaved changes (on unless turned off). */
-function confirmUnsaved() {
-    return safeStorageGet(CONFIRM_KEY) !== 'off';
-}
-function setConfirmUnsaved(on) {
-    safeStorageSet(CONFIRM_KEY, on ? 'on' : 'off');
-}
-/** The page's language, title and description in the current language. */
-function applyDocumentLanguage() {
-    document.documentElement.lang = getLocale();
-    document.title = t('app.title');
-    document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.description'));
-}
-/** «Prompt con marca de fecha y hora» for every terminal: off unless turned on (a classroom lock still wins). */
-function loadTimestampPrompt() {
-    stampStored = true;
-    setGlobalTimestampPrompt(safeStorageGet(STAMP_KEY) === 'on');
-}
-/** The value the terminals show now (the classroom lock included). */
-function timestampPrompt() {
-    return timestampPromptOn();
-}
-function setTimestampPromptPref(on) {
-    if (stampStored)
-        safeStorageSet(STAMP_KEY, on ? 'on' : 'off');
-    setGlobalTimestampPrompt(on);
-    for (const fn of stampListeners)
-        fn();
-}
-/** The open terminals redraw their prompts when the setting changes (from Configuración or from any terminal). */
-function onTimestampPrompt(fn) {
-    stampListeners.add(fn);
-}
-
-return { THEMES, theme, applyTheme, setTheme, confirmUnsaved, setConfirmUnsaved, applyDocumentLanguage, loadTimestampPrompt, timestampPrompt, setTimestampPromptPref, onTimestampPrompt };
-})();
 __m["ui/prompt-toggle.js"] = (() => {
 /**
  * Footer of the Linux and Windows terminals of a PC, Server or Linux router: «Prompt con marca de fecha y hora».
@@ -62581,8 +62625,14 @@ const { ICONS } = __m["ui/icons.js"];
 const { TOPIC_ICONS, isTopicIcon } = __m["ui/doc-icons.js"];
 const { brandImage } = __m["ui/brand.js"];
 const { docGroups, findPage, searchDocs } = __m["docs/index.js"];
+const { missionsShown, onMissionsShown } = __m["ui/preferences.js"];
 const { docBlock } = __m["ui/doc-blocks.js"];
 const FIRST_PAGE = 'inicio';
+/** The Help group of the missions: shown only when they are on (Configuración → Generales). */
+const LABS_GROUP = 'labs';
+const visible = (g) => g.id !== LABS_GROUP || missionsShown();
+const groups = () => docGroups().filter(visible);
+const pageOf = (id) => groups().flatMap((g) => g.pages).find((p) => p.id === id);
 class DocsView {
     root;
     toc;
@@ -62591,6 +62641,7 @@ class DocsView {
     current = FIRST_PAGE;
     /** Groups the reader unfolded (kept across searches and redraws). */
     opened = new Set();
+    unlisten;
     constructor() {
         this.search = el('input', { type: 'search', class: 'doc-search', placeholder: t('docs.searchHint'), 'aria-label': t('docs.searchLabel') });
         this.search.addEventListener('input', () => this.renderToc());
@@ -62599,12 +62650,17 @@ class DocsView {
         this.root = el('section', { class: 'docs', 'aria-label': t('docs.title') }, el('aside', { class: 'doc-side' }, this.search, this.toc), this.article);
         this.renderToc();
         this.show(FIRST_PAGE);
+        this.unlisten = onMissionsShown(() => { this.renderToc(); if (!pageOf(this.current))
+            this.show(FIRST_PAGE); });
+    }
+    dispose() {
+        this.unlisten();
     }
     focus() {
         this.search.focus({ preventScroll: true });
     }
     show(id) {
-        const page = findPage(id) ?? findPage(FIRST_PAGE);
+        const page = pageOf(id) ?? findPage(FIRST_PAGE);
         if (!page)
             return;
         this.current = page.id;
@@ -62626,11 +62682,11 @@ class DocsView {
         clear(this.toc);
         const q = this.search.value.trim();
         if (q) {
-            const hits = searchDocs(q);
+            const hits = searchDocs(q).filter((h) => visible(h.group));
             this.toc.append(el('p', { class: 'doc-count', role: 'status' }, hits.length ? (hits.length === 1 ? t('docs.onePage') : t('docs.pages', { n: hits.length })) : t('docs.noResults')), ...hits.map((h) => this.link(h.page, h.snippet)));
             return;
         }
-        for (const g of docGroups())
+        for (const g of groups())
             this.toc.append(this.groupBox(g));
     }
     /** A group: its icon and title (folds), then its sections as subheadings and the pages indented below them. */
@@ -62779,7 +62835,7 @@ __m["ui/settings-view.js"] = (() => {
 const { el } = __m["ui/dom.js"];
 const { t, tDynamic } = __m["i18n/t.js"];
 const { LOCALES, LOCALE_NAMES, getLocale, isLocale } = __m["i18n/locale.js"];
-const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt } = __m["ui/preferences.js"];
+const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } = __m["ui/preferences.js"];
 const { FEATURES_BY_KIND, featureOn, setFeature } = __m["net/lab-features.js"];
 /** The kinds whose windows have settings to switch (the cloud has none). */
 /** The «prompt con hora» box of the page built last, kept in step when a terminal footer changes it. */
@@ -62802,7 +62858,9 @@ function generalSection(host) {
     const stamp = el('input', { type: 'checkbox', checked: timestampPrompt(), disabled: host.promptLocked() });
     stamp.addEventListener('change', () => setTimestampPromptPref(stamp.checked));
     stampBox = stamp;
-    return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' }, el('h2', { id: 'set-general' }, t('set.general')), el('p', { class: 'muted' }, t('set.generalNote')), el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang), el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), el('label', { class: 'set-choice' }, confirm, t('set.confirm')), el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
+    const missions = el('input', { type: 'checkbox', checked: missionsShown(), 'data-setting': 'missions' });
+    missions.addEventListener('change', () => setMissionsShown(missions.checked));
+    return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' }, el('h2', { id: 'set-general' }, t('set.general')), el('p', { class: 'muted' }, t('set.generalNote')), el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang), el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), el('label', { class: 'set-choice' }, confirm, t('set.confirm')), el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)), el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }
 function kindGroup(host, kind, changed) {
     const boxes = FEATURES_BY_KIND[kind].map((id) => {
@@ -62866,6 +62924,10 @@ class Pages {
     settingsHost;
     constructor(settingsHost) {
         this.settingsHost = settingsHost;
+    }
+    /** Stops the listeners of the pages built (the interface is rebuilt). */
+    dispose() {
+        this.docs?.dispose();
     }
     get(view) {
         const known = this.built.get(view);
@@ -63409,7 +63471,7 @@ const { afterPlaced } = __m["ui/os-dialog.js"];
 const { Topology } = __m["net/topology.js"];
 const { EXAMPLES } = __m["net/examples.js"];
 const { Pages } = __m["ui/pages.js"];
-const { applyDocumentLanguage, applyTheme, confirmUnsaved, loadTimestampPrompt } = __m["ui/preferences.js"];
+const { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown } = __m["ui/preferences.js"];
 const { featureOn } = __m["net/lab-features.js"];
 const { topbar } = __m["ui/topbar.js"];
 const { palette } = __m["ui/palette.js"];
@@ -63534,6 +63596,8 @@ class App {
             this.flushSave();
         this.windows.closeAll();
         this.sim.dispose();
+        this.mission.dispose();
+        this.pages.dispose();
         forgetAll();
     }
     /**
@@ -63557,7 +63621,7 @@ class App {
                 const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
                 const text = ex ? labText(ex) : null;
                 if (ex && text)
-                    void this.replaceAllowed({ lab: text.title }).then((ok) => ok && this.load(startLab(ex), missionById(id) ? t('mission.ui.loaded', { title: text.title }) : text.summary));
+                    void this.replaceAllowed({ lab: text.title }).then((ok) => ok && this.load(startLab(ex), missionById(id) && missionsShown() ? t('mission.ui.loaded', { title: text.title }) : text.summary));
             },
             advance: (ms) => this.advance(ms),
             setMode: (m) => this.setMode(m),
@@ -63754,10 +63818,14 @@ function start(mount, s, topo) {
     MEMORY_STORE.clear();
     setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
     applyDocumentLanguage();
+    // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.
     if (!s.embedded) {
         applyTheme();
         loadTimestampPrompt();
-    } // embedded, the page (and its theme) belongs to the host
+        loadMissionsPref();
+    }
+    else
+        classroomMissions();
     applyBrand();
     // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
     forceTimestampPrompt(lockedPrompt(s.policy));

@@ -18,6 +18,7 @@ import { HINT_LEVELS } from '../labs/mission-plans.ts';
 import { withHint } from '../labs/mission-state.ts';
 import { findPage } from '../docs/index.ts';
 import { evaluate } from '../classroom/evaluate.ts';
+import { missionsShown, onMissionsShown } from './preferences.ts';
 import type { Evaluation } from '../classroom/evaluate.ts';
 import type { Restrictions } from '../classroom/restrictions.ts';
 
@@ -43,6 +44,7 @@ export class MissionPanel {
   private readonly policy: Restrictions;
   private topo: Topology;
   private result: Evaluation | null = null;
+  private readonly unlisten: () => void;
 
   constructor(topo: Topology, host: MissionHost, policy: Restrictions) {
     this.topo = topo;
@@ -57,9 +59,15 @@ export class MissionPanel {
       el('header', { class: 'mission-head' }, el('div', {}, this.chapter, this.heading), this.fold), this.body);
     this.setFolded(false);
     this.render();
+    this.unlisten = onMissionsShown(() => this.render());
   }
 
-  /** Shows the mission of another network (none: the panel hides). */
+  /** Stops following the Configuración option (the interface is rebuilt). */
+  dispose(): void {
+    this.unlisten();
+  }
+
+  /** Shows the mission of another network (none, or missions off in Configuración: the panel hides). */
   attach(topo: Topology): void {
     this.topo = topo;
     this.result = null;
@@ -82,7 +90,7 @@ export class MissionPanel {
   }
 
   private render(): void {
-    const m = this.mission();
+    const m = missionsShown() ? this.mission() : undefined;
     this.root.hidden = !m;
     clear(this.body);
     if (!m) return;

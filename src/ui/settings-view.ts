@@ -3,7 +3,7 @@ import { el } from './dom.ts';
 import { t, tDynamic } from '../i18n/t.ts';
 import { LOCALES, LOCALE_NAMES, getLocale, isLocale } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
-import { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt } from './preferences.ts';
+import { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } from './preferences.ts';
 import { FEATURES_BY_KIND, featureOn, setFeature } from '../net/lab-features.ts';
 import type { LabFeatures } from '../net/lab-features.ts';
 import type { DeviceKind } from '../net/topology.ts';
@@ -41,12 +41,15 @@ function generalSection(host: SettingsHost): HTMLElement {
   const stamp = el('input', { type: 'checkbox', checked: timestampPrompt(), disabled: host.promptLocked() });
   stamp.addEventListener('change', () => setTimestampPromptPref(stamp.checked));
   stampBox = stamp;
+  const missions = el('input', { type: 'checkbox', checked: missionsShown(), 'data-setting': 'missions' });
+  missions.addEventListener('change', () => setMissionsShown(missions.checked));
   return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' },
     el('h2', { id: 'set-general' }, t('set.general')),
     el('p', { class: 'muted' }, t('set.generalNote')),
     el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang),
     el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios),
     el('label', { class: 'set-choice' }, confirm, t('set.confirm')),
+    el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)),
     el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }
 

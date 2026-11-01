@@ -26,8 +26,21 @@ try {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('g.device');
+  // Off by default: no panel and no Laboratorios group in Help until Configuración → Generales turns them on.
   await page.locator('select.select').first().selectOption('basico');
+  await page.waitForTimeout(300);
+  assert.equal(await page.locator('.mission').isHidden(), true, 'hidden by default');
+  await page.click('button.seg[data-view="docs"]');
+  assert.equal(await page.locator('details[data-group="labs"]').count(), 0, 'no Labs group in Help');
+  await page.click('button.seg[data-view="settings"]');
+  await page.locator('input[data-setting="missions"]').check();
+  await page.click('button.seg[data-view="docs"]');
+  assert.equal(await page.locator('details[data-group="labs"]').count(), 1, 'the Labs group once on');
+  await page.click('button.seg[data-view="net"]');
   await page.waitForSelector('.mission:not([hidden])');
+  await page.waitForTimeout(1500); // the autosave of the lab
+  await page.reload(); // the option is kept in this browser
+  await page.waitForSelector('.mission:not([hidden])', { timeout: 5000 });
   assert.match(await page.locator('.mission').innerText(), /Misión|DHCP/i);
   await page.locator('.mission-hint-btn').first().click();
   assert.equal(await page.locator('.mission-hints li').count(), 1, 'the first hint is revealed');
@@ -54,7 +67,7 @@ try {
   assert.equal(await classroom.locator('.mission-actions').count(), 0);
   assert.deepEqual(errors, []);
   await classroom.evaluate(() => globalThis.handle.destroy());
-  console.log('e2e missions OK: hint, check, solution, passing score and classroom restrictions');
+  console.log('e2e missions OK: off by default and turned on in Configuración, hint, check, solution, passing score and classroom restrictions');
 } finally {
   await browser.close();
   server.kill();

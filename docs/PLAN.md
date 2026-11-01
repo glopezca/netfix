@@ -1452,3 +1452,22 @@ que el aula compruebe el trabajo o muestre la solución, con esos controles suje
 - **Hecho (v0.30.0)**: basico y relay parten con configuración por completar; nombres-redes parte con el registro DNS de WIN-B2
   ausente. La comprobación puntúa la rúbrica, y «Ver solución» reemplaza la red por la configuración resuelta y deja constancia
   de ello en la topología.
+
+### Fase 48: las misiones, solo si se activan en la configuración general (v0.31.0)
+
+Petición: para ver las misiones de los laboratorios hay que activarlas en Configuración → Generales; por defecto,
+desactivadas.
+
+- **Preferencia** `netfix:missions` en `src/ui/preferences.ts` (`missionsShown`, `setMissionsShown`, `onMissionsShown`),
+  desactivada si no se marca, guardada en el navegador como el prompt con hora.
+- **Qué oculta:** el panel Misión (aunque el laboratorio tenga misión; el estado de la misión se sigue guardando en la
+  topología) y el grupo Laboratorios de la Ayuda, también en la búsqueda; al cargar el laboratorio, la barra de estado
+  muestra su resumen en vez del aviso de misión. Al cambiar la casilla, el panel y la Ayuda se redibujan al momento.
+- **Aula (incrustado):** las misiones se muestran siempre; sus restricciones (`missionCheck`, `hints`, `solution`)
+  deciden qué ofrece el panel. No se toca el almacenamiento de la página anfitriona.
+- **Pruebas:** preferencia por defecto y avisos (unidad); e2e de misiones: oculto por defecto, sin grupo en la Ayuda,
+  casilla en Configuración, panel y grupo al activarla, y se conserva al recargar. Ayuda de Configuración (es/en).
+- **Hecho (v0.31.0)**, con la revisión: en el aula la preferencia no escribe nunca en el almacenamiento aunque antes se
+  arrancara la aplicación sola en la misma página (`classroomMissions`); el panel y la Ayuda dejan de escuchar la
+  opción al reconstruir la interfaz (cambio de idioma). Con las misiones ocultas, el estado de la misión del
+  laboratorio se crea y guarda igual, de modo que al activarlas el panel aparece con su progreso.

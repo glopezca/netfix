@@ -13,6 +13,8 @@ export const SETTINGS_EN: Readonly<Record<SettingsKey, string>> = {
   'set.themeAuto': 'Automatic (the system’s)',
   'set.themeLight': 'Light',
   'set.themeDark': 'Dark',
+  'set.missions': 'Show the labs’ missions',
+  'set.missionsHint': '(the Mission panel beside the workspace and the Labs group of the Help tab)',
   'set.confirm': 'Ask before replacing a network with unsaved changes',
   'set.timestamp': 'Date and time stamped prompt in every GNU/Linux and Windows terminal',
   'set.lab': 'Current lab',

@@ -17,6 +17,7 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
         ['Language', 'Español (España) or English (UK), like the drop-down in the top bar.'],
         ['Theme', 'Automatic (the system’s), light or dark.'],
         ['Ask before replacing…', 'When unticked, Labs, New and Open replace the network without asking even if it has unsaved changes.'],
+        ['Show the labs’ missions', 'Off by default. When ticked, the Mission panel shows beside the workspace (in the labs that have a mission: ticket, tasks, hints, Check and View solution) and so does the Labs group of the Help tab. In the classroom missions always show and the teacher decides whether there are hints, checking and the solution.'],
         ['Date and time stamped prompt', 'Off by default. Puts the date and time in the prompt of every GNU/Linux and Windows terminal (the same box is at the foot of each terminal). In the classroom the teacher may fix it.'],
       ]),
       h('Current lab'),

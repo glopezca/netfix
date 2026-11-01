@@ -17,6 +17,11 @@ export class Pages {
     this.settingsHost = settingsHost;
   }
 
+  /** Stops the listeners of the pages built (the interface is rebuilt). */
+  dispose(): void {
+    this.docs?.dispose();
+  }
+
   get(view: PageView): HTMLElement {
     const known = this.built.get(view);
     if (known) return known;

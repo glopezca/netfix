@@ -5,10 +5,17 @@ import { ICONS } from './icons.ts';
 import { TOPIC_ICONS, isTopicIcon } from './doc-icons.ts';
 import { brandImage } from './brand.ts';
 import { docGroups, findPage, searchDocs } from '../docs/index.ts';
+import { missionsShown, onMissionsShown } from './preferences.ts';
 import type { DocGroup, DocPage } from '../docs/index.ts';
 import { docBlock } from './doc-blocks.ts';
 
 const FIRST_PAGE = 'inicio';
+/** The Help group of the missions: shown only when they are on (Configuración → Generales). */
+const LABS_GROUP = 'labs';
+
+const visible = (g: DocGroup): boolean => g.id !== LABS_GROUP || missionsShown();
+const groups = (): DocGroup[] => docGroups().filter(visible);
+const pageOf = (id: string): DocPage | undefined => groups().flatMap((g) => g.pages).find((p) => p.id === id);
 
 export class DocsView {
   readonly root: HTMLElement;
@@ -18,6 +25,7 @@ export class DocsView {
   private current = FIRST_PAGE;
   /** Groups the reader unfolded (kept across searches and redraws). */
   private readonly opened = new Set<string>();
+  private readonly unlisten: () => void;
 
   constructor() {
     this.search = el('input', { type: 'search', class: 'doc-search', placeholder: t('docs.searchHint'), 'aria-label': t('docs.searchLabel') });
@@ -27,6 +35,11 @@ export class DocsView {
     this.root = el('section', { class: 'docs', 'aria-label': t('docs.title') }, el('aside', { class: 'doc-side' }, this.search, this.toc), this.article);
     this.renderToc();
     this.show(FIRST_PAGE);
+    this.unlisten = onMissionsShown(() => { this.renderToc(); if (!pageOf(this.current)) this.show(FIRST_PAGE); });
+  }
+
+  dispose(): void {
+    this.unlisten();
   }
 
   focus(): void {
@@ -34,7 +47,7 @@ export class DocsView {
   }
 
   show(id: string): void {
-    const page = findPage(id) ?? findPage(FIRST_PAGE);
+    const page = pageOf(id) ?? findPage(FIRST_PAGE);
     if (!page) return;
     this.current = page.id;
     this.renderPage(page);
@@ -56,12 +69,12 @@ export class DocsView {
     clear(this.toc);
     const q = this.search.value.trim();
     if (q) {
-      const hits = searchDocs(q);
+      const hits = searchDocs(q).filter((h) => visible(h.group));
       this.toc.append(el('p', { class: 'doc-count', role: 'status' }, hits.length ? (hits.length === 1 ? t('docs.onePage') : t('docs.pages', { n: hits.length })) : t('docs.noResults')),
         ...hits.map((h) => this.link(h.page, h.snippet)));
       return;
     }
-    for (const g of docGroups()) this.toc.append(this.groupBox(g));
+    for (const g of groups()) this.toc.append(this.groupBox(g));
   }
 
   /** A group: its icon and title (folds), then its sections as subheadings and the pages indented below them. */

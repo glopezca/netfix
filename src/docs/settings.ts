@@ -17,6 +17,7 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
         ['Idioma', 'Español (España) o English (UK), como el desplegable de la barra superior.'],
         ['Tema', 'Automático (el del sistema), claro u oscuro.'],
         ['Avisar antes de reemplazar…', 'Si está desmarcado, Laboratorios, Nuevo y Abrir reemplazan la red sin preguntar aunque tenga cambios sin guardar.'],
+        ['Mostrar las misiones de los laboratorios', 'Desactivado por defecto. Al marcarlo aparecen el panel Misión junto al área de trabajo (en los laboratorios que tienen misión: encargo, tareas, pistas, Comprobar y Ver solución) y el grupo Laboratorios de la Ayuda. En el aula, las misiones se muestran siempre y el profesor decide si hay pistas, comprobación y solución.'],
         ['Prompt con marca de fecha y hora', 'Desactivado por defecto. Pone la fecha y la hora en el prompt de todas las terminales GNU/Linux y Windows (la misma casilla está al pie de cada terminal). En el aula, el profesor puede fijarlo.'],
       ]),
       h('Laboratorio actual'),

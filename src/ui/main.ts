@@ -13,7 +13,7 @@ import { afterPlaced } from './os-dialog.ts';
 import { Topology } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
 import { Pages } from './pages.ts';
-import { applyDocumentLanguage, applyTheme, confirmUnsaved, loadTimestampPrompt } from './preferences.ts';
+import { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown } from './preferences.ts';
 import { featureOn } from '../net/lab-features.ts';
 import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
 import { topbar } from './topbar.ts';
@@ -143,6 +143,7 @@ class App {
     if (!this.session.embedded || this.saveTimer) this.flushSave();
     this.windows.closeAll();
     this.sim.dispose();
+    this.mission.dispose(); this.pages.dispose();
     forgetAll();
   }
 
@@ -165,7 +166,7 @@ class App {
       loadExample: (id) => {
         const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
         const text = ex ? labText(ex) : null;
-        if (ex && text) void this.replaceAllowed({ lab: text.title }).then((ok) => ok && this.load(startLab(ex), missionById(id) ? t('mission.ui.loaded', { title: text.title }) : text.summary));
+        if (ex && text) void this.replaceAllowed({ lab: text.title }).then((ok) => ok && this.load(startLab(ex), missionById(id) && missionsShown() ? t('mission.ui.loaded', { title: text.title }) : text.summary));
       },
       advance: (ms) => this.advance(ms),
       setMode: (m) => this.setMode(m),
@@ -218,8 +219,7 @@ class App {
   /** Configuración → Laboratorio actual: windows reopen with the new tabs, and the change is unsaved work. */
   private setFeatures(next: LabFeatures): void {
     this.topo.features = next;
-    this.windows.closeAll();
-    this.afterCommand();
+    this.windows.closeAll(); this.afterCommand();
   }
 
   feature(kind: DeviceKind, id: FeatureId): boolean { return featureOn(this.topo.features, kind, id); }
@@ -364,7 +364,8 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology): App {
   MEMORY_STORE.clear();
   setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
   applyDocumentLanguage();
-  if (!s.embedded) { applyTheme(); loadTimestampPrompt(); } // embedded, the page (and its theme) belongs to the host
+  // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.
+  if (!s.embedded) { applyTheme(); loadTimestampPrompt(); loadMissionsPref(); } else classroomMissions();
   applyBrand();
   // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
   forceTimestampPrompt(lockedPrompt(s.policy));

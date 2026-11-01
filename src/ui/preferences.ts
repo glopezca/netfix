@@ -1,4 +1,4 @@
-/** General settings of this browser (Configuración → Generales): theme, the unsaved-changes question, language of the page. */
+/** General settings of this browser (Configuración → Generales): theme, the unsaved-changes question, the missions, language of the page. */
 import { safeStorageGet, safeStorageSet } from './dom.ts';
 import { getLocale } from '../i18n/locale.ts';
 import { t } from '../i18n/t.ts';
@@ -66,4 +66,39 @@ export function setTimestampPromptPref(on: boolean): void {
 /** The open terminals redraw their prompts when the setting changes (from Configuración or from any terminal). */
 export function onTimestampPrompt(fn: () => void): void {
   stampListeners.add(fn);
+}
+
+const MISSIONS_KEY = 'netfix:missions';
+const missionListeners = new Set<() => void>();
+let missionsOn = false;
+/** Saved only outside the classroom, as the prompt option. */
+let missionsStored = false;
+
+/** «Mostrar las misiones de los laboratorios»: off unless turned on in this browser. */
+export function loadMissionsPref(): void {
+  missionsStored = true;
+  missionsOn = safeStorageGet(MISSIONS_KEY) === 'on';
+}
+
+/** Whether the mission panel and the Laboratorios group of the Help tab show. */
+export function missionsShown(): boolean {
+  return missionsOn;
+}
+
+export function setMissionsShown(on: boolean): void {
+  if (missionsStored) safeStorageSet(MISSIONS_KEY, on ? 'on' : 'off');
+  missionsOn = on;
+  for (const fn of missionListeners) fn();
+}
+
+/** In the classroom (embedded) missions always show, and the host page's storage is left alone. */
+export function classroomMissions(): void {
+  missionsStored = false;
+  missionsOn = true;
+}
+
+/** The mission panel and the Help tab redraw when the option changes; the result stops listening. */
+export function onMissionsShown(fn: () => void): () => void {
+  missionListeners.add(fn);
+  return () => { missionListeners.delete(fn); };
 }
