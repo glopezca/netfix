@@ -82,6 +82,38 @@ zone "127.in-addr.arpa" {
 };
 `;
 
+/** /etc/bind/db.local and db.127 as installed by the Ubuntu bind9 package (named-checkconf -z loads them too). */
+const DB_LOCAL = `;
+; BIND data file for local loopback interface
+;
+$TTL\t604800
+@\tIN\tSOA\tlocalhost. root.localhost. (
+\t\t\t      2\t\t; Serial
+\t\t\t 604800\t\t; Refresh
+\t\t\t  86400\t\t; Retry
+\t\t\t2419200\t\t; Expire
+\t\t\t 604800 )\t; Negative Cache TTL
+;
+@\tIN\tNS\tlocalhost.
+@\tIN\tA\t127.0.0.1
+@\tIN\tAAAA\t::1
+`;
+
+const DB_127 = `;
+; BIND reverse data file for local loopback interface
+;
+$TTL\t604800
+@\tIN\tSOA\tlocalhost. root.localhost. (
+\t\t\t      1\t\t; Serial
+\t\t\t 604800\t\t; Refresh
+\t\t\t  86400\t\t; Retry
+\t\t\t2419200\t\t; Expire
+\t\t\t 604800 )\t; Negative Cache TTL
+;
+@\tIN\tNS\tlocalhost.
+1.0.0\tIN\tPTR\tlocalhost.
+`;
+
 const NAMED_CONF = `// This is the primary configuration file for the BIND DNS server named.
 //
 // Please read /usr/share/doc/bind9/README.Debian for information on the
@@ -103,6 +135,8 @@ export function bindFiles(dns: DnsSettings, choices: readonly ListenChoice[]): M
     [NAMED_OPTIONS, namedOptions(dns, choices)],
     [NAMED_LOCAL, namedLocal(dns, zones)],
     [NAMED_DEFAULT_ZONES, DEFAULT_ZONES],
+    ['/etc/bind/db.local', DB_LOCAL],
+    ['/etc/bind/db.127', DB_127],
     [ROOT_HINTS_FILE, rootHints()],
     [RPZ_FILE, rpzFile(dns)],
   ]);

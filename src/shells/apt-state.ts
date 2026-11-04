@@ -10,6 +10,7 @@ import type { Server } from '../devices/server.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { APPS_BY_KIND, deviceApps, setDeviceApps } from '../net/device-apps.ts';
 import type { AptPackage } from './apt-catalog.ts';
+import { findPackage } from './apt-catalog.ts';
 import { hasPackage, setPackageInstalled } from '../net/host-packages.ts';
 
 type MailKey = 'smtp' | 'imap' | 'pop3';
@@ -26,6 +27,14 @@ export function installedPackage(host: Host, p: AptPackage): boolean {
   if (!hasPanel(host, p) || p.feature === undefined) return hasPackage(host, p.name);
   const key = MAIL_KEY[p.name];
   return deviceApps(host).includes(p.feature) && (key === undefined || asServer(host).services.mail[key]);
+}
+
+/** A program some packages bring (named-checkzone: bind9-utils, bind9utils or bind9): installed with any of them. */
+export function anyInstalled(host: Host, names: readonly string[]): boolean {
+  return names.some((n) => {
+    const p = findPackage(n);
+    return p ? installedPackage(host, p) : hasPackage(host, n);
+  });
 }
 
 /** The service a package runs, started on install and stopped on remove. */

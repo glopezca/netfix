@@ -1471,3 +1471,43 @@ desactivadas.
   arrancara la aplicación sola en la misma página (`classroomMissions`); el panel y la Ayuda dejan de escuchar la
   opción al reconstruir la interfaz (cambio de idioma). Con las misiones ocultas, el estado de la misión del
   laboratorio se crea y guarda igual, de modo que al activarlas el panel aparece con su progreso.
+
+### Fase 49: named-checkconf, named-checkzone y kea-dhcp4 -t en las terminales GNU/Linux (v0.32.0)
+
+Petición: en las terminales GNU/Linux, las órdenes «named-checkconf», «named-checkzone» y «kea-dhcp4 -t» (y
+similares), disponibles al instalar «bind9utils» e «isc-kea» con apt.
+
+- **Paquetes** (`src/shells/apt-catalog.ts`): `bind9-utils` (con `bind9-libs`), `bind9utils` (de transición, trae
+  `bind9-utils`) e `isc-kea` (el paquete de ISC; en Ubuntu real viene del repositorio de ISC en Cloudsmith, aquí del
+  catálogo ficticio). Son herramientas, sin panel: se guardan en el registro de paquetes del equipo y valen también en
+  un PC. `bind9` y `bind9utils` dejan `bind9-utils` instalado (`TRACKED_DEPS`), como apt.
+- **Cuándo están:** las de BIND con `bind9-utils` instalado o con `bind9` (también si el panel DNS se activó desde la
+  interfaz); `kea-dhcp4` con `isc-kea` o con `kea-dhcp4-server`/`kea`. Sin ellos, el aviso de Ubuntu «Command '…' not
+  found, but can be installed with:» y estado 127.
+- **named-checkzone ZONA FICHERO** (`src/services/zone-parse.ts`, `zone-check.ts`): lee el fichero maestro
+  (`$TTL`, `$ORIGIN`, paréntesis, dueño heredado, TTL y clase en cualquier orden) y da los mensajes de BIND: `zone
+  Z/IN: loaded serial N` y `OK`; errores `dns_master_load:`/`dns_rdata_fromtext: FICHERO:LÍNEA: …` (tipo desconocido,
+  dirección mal escrita, CNAME con otros datos, SOA fuera del vértice), `has 0 SOA records`, `has no NS records`,
+  `NS '…' has no address records (A or AAAA)` y `not loaded due to errors.`; avisos de datos fuera de la zona y de TTL
+  ausente. `-q` calla. **named-compilezone -o SALIDA** escribe la zona en forma canónica (nombres completos).
+- **named-checkconf [-z] [FICHERO]** (`src/services/named-conf-parse.ts`, `named-conf-check.ts`): sigue los `include`,
+  conoce las sentencias y opciones habituales (todas las que genera Netfix) y da los errores de BIND con
+  fichero:línea (`missing ';' before`, `unknown option`, `boolean expected`, `expected IP address`, `undefined ACL`,
+  `unexpected end of input`, fichero no encontrado) y los de las zonas (`type not present`, `missing 'file' entry`,
+  zona repetida). `-z` carga las zonas primarias como named-checkzone. Se añaden `db.local` y `db.127` de Ubuntu.
+- **kea-dhcp4 -t|-T FICHERO** (`src/services/kea-json.ts`, `kea-check.ts`): JSON con comentarios de Kea, errores de
+  sintaxis al estilo bison (`FICHERO:L.C: syntax error, unexpected …, expecting …`), claves desconocidas (`got
+  unexpected keyword "…" in Dhcp4 map.`), tipos, subredes, pools y reservas fuera de su subred; al pasar, las líneas
+  INFO de cada subred. `-v`/`-V` dan la versión; sin `-t` muestra el uso.
+- **Pruebas:** analizadores (unidad), órdenes en PC y Server (sin instalar, tras instalar, panel activado desde la
+  interfaz, usuario sin privilegios, estados), persistencia y regresión: la configuración que genera Netfix en los
+  laboratorios pasa `named-checkconf -z` y `kea-dhcp4 -t`. Ayuda de las órdenes y de apt (es/en).
+- **Hecho (v0.32.0)**, con la revisión: los ficheros de zona admiten `$GENERATE` (rango con paso, `${desplazamiento,
+  ancho,base}`) y `$INCLUDE` (relativo al directorio de trabajo de named o al de `-w`), los tipos que BIND conoce sin
+  mirarlos por dentro (DNSSEC, SSHFP, TLSA, DNAME, `TYPEnnn`…) y un índice por dueño en vez de recorrer la zona en cada
+  registro. named.conf acepta muchas más opciones de BIND 9.20 (una errata sigue siendo `unknown option`), un `/*` sin
+  cerrar es `unexpected end of input` y `named-checkconf -l` lista las zonas; Kea, los parámetros DDNS que faltaban y el
+  resto de opciones estándar de DHCPv4. Límites contra ficheros hostiles: el patrón del TTL ya no retrocede
+  exponencialmente, la anidación de JSON (`memory exhausted`) y de listas de direcciones está acotada, como el total de
+  `include`; un error inesperado al leer un fichero no se escapa, y una ruta ocupada no detiene apt al dejar los
+  ficheros por defecto en un PC.

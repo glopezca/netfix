@@ -19914,7 +19914,7 @@ const UTIL_DOCS = {
     host: { group: 'red', synopsis: 'host [-t TIPO] NOMBRE [SERVIDOR]', summary: 'Consulta DNS en una línea por registro.' },
     curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X MÉTODO] [-d DATOS] [-u USUARIO:CLAVE] [-b COOKIES] [-H "Cabecera: valor"] [-o FICHERO | -O] [-w FORMATO] URL', summary: 'Cliente HTTP. Errores con su código: (6) no resuelve, (7) conexión rechazada, (3) URL no válida, (22) error HTTP con -f.', options: '-I  solo cabeceras (HEAD)        -i  incluye las cabeceras\n-L  sigue las redirecciones       -v  muestra la petición y la respuesta\n-X  método (GET, POST, HEAD)      -d  datos de formulario (POST)\n-u  usuario:clave (Basic)         -b  cookies «a=1; b=2»\n-H  cabecera extra («Host: www.aula.lab» para probar un VirtualHost)\n-s  silencioso (-S muestra los errores)   -f  falla con los errores HTTP\n-w  escribe al final: %{http_code}, %{size_download}, %{content_type}, %{url_effective} («-s -o /dev/null -w \'%{http_code}\'» da solo el código)' },
     wget: { group: 'red', synopsis: 'wget [-q] [-O FICHERO] URL', summary: 'Descarga a un fichero del directorio actual (nombre.1, nombre.2… si ya existe). «-qO-» escribe la página en la salida.' },
-    apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PAQUETE... | remove|purge [-y] PAQUETE... | list [--installed] [PATRÓN] | moo', summary: 'Gestor de paquetes de Ubuntu 26.04 con alcance limitado: lee las fuentes reales (/etc/apt/sources.list.d/ubuntu.sources) y se conecta a archive.ubuntu.com y security.ubuntu.com por la red simulada; sin salida a Internet o sin DNS que los resuelva da los errores reales («Temporary failure resolving…»). El catálogo es ficticio y siempre está al día: update, upgrade y autoremove no cambian nada. install y remove sí: en un Server o router GNU/Linux activan o quitan la casilla y el panel del servicio (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) y arrancan o paran el servicio. Requiere root (sudo).', options: '-y  responde «sí» a «Continue? [Y/n]»\npurge  como remove, y borra la configuración' },
+    apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PAQUETE... | remove|purge [-y] PAQUETE... | list [--installed] [PATRÓN] | moo', summary: 'Gestor de paquetes de Ubuntu 26.04 con alcance limitado: lee las fuentes reales (/etc/apt/sources.list.d/ubuntu.sources) y se conecta a archive.ubuntu.com y security.ubuntu.com por la red simulada; sin salida a Internet o sin DNS que los resuelva da los errores reales («Temporary failure resolving…»). El catálogo es ficticio y siempre está al día: update, upgrade y autoremove no cambian nada. install y remove sí: en un Server o router GNU/Linux activan o quitan la casilla y el panel del servicio (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) y arrancan o paran el servicio. En cualquier equipo GNU/Linux (también un PC), bind9utils trae named-checkconf y named-checkzone, e isc-kea trae kea-dhcp4 para comprobar configuraciones (kea-dhcp4 -t). Requiere root (sudo).', options: '-y  responde «sí» a «Continue? [Y/n]»\npurge  como remove, y borra la configuración' },
     nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f CAMPOS | -g CAMPOS] [general [status | hostname] | networking [connectivity] | device [status | show [IFAZ]] | connection [show [NOMBRE]]] | --version', summary: 'NetworkManager (se instala con «sudo apt install network-manager»): sin argumentos, un resumen por interfaz (estado, MAC, dirección IP, rutas) y la configuración DNS; device status y device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (los perfiles netplan-eth0 y lo); general status comprueba de verdad la conectividad (full con Internet, limited sin ella). Admite abreviaturas (nmcli d, nmcli c, nmcli g) y, para scripts, -t (sin cabecera, separado por «:»), -f (columnas o campos: -f DEVICE,STATE, -f IP4) y -g (solo los valores: nmcli -g IP4.ADDRESS dev show eth0). Solo consulta: la configuración se cambia con netplan, ip o la pestaña TCP/IP.' },
     nmblookup: { group: 'red', synopsis: 'nmblookup NOMBRE | -A DIRECCIÓN_IP', summary: 'Consulta NetBIOS (samba-common-bin, que trae samba): pregunta por un nombre con un broadcast a la subred (UDP 137) o, con -A, pide a un equipo su tabla de nombres y su MAC. Responden los Windows y los GNU/Linux con samba de la misma red (no cruza routers).' },
     ssh: { group: 'red', synopsis: 'ssh [-i CLAVE] [-l USUARIO] [-p PUERTO] [-o OPCIÓN=VALOR] [USUARIO@]HOST [ORDEN]', summary: 'Cliente OpenSSH: comprueba la clave del servidor en ~/.ssh/known_hosts, se autentica con ~/.ssh/id_* y, si no, con contraseña. Con ORDEN la ejecuta y vuelve. Opciones -o: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Devuelve el estado remoto (255 si falla).' },
@@ -19937,6 +19937,10 @@ const UTIL_DOCS = {
     a2enmod: { group: 'servicios', section: 8, synopsis: 'a2enmod MÓDULO... | a2dismod MÓDULO...', summary: 'Activa o desactiva módulos de Apache (rewrite, ssl, headers, userdir, proxy…) con sus dependencias. Se aplica con systemctl restart apache2.' },
     a2enconf: { group: 'servicios', section: 8, synopsis: 'a2enconf CONF... | a2disconf CONF...', summary: 'Activa o desactiva fragmentos de /etc/apache2/conf-available.' },
     apache2ctl: { group: 'servicios', section: 8, synopsis: 'apache2ctl configtest | -t | -S | -M | -v | start | stop | restart | graceful | status', summary: 'Comprueba la configuración de Apache (Syntax OK o el error AH00526 con fichero y línea), lista los VirtualHost (-S) y los módulos (-M) y controla el servicio. apachectl es el mismo programa.' },
+    'named-checkconf': { group: 'servicios', section: 8, synopsis: 'named-checkconf [-hjvz] [-t DIRECTORIO] [named.conf]', summary: 'Comprueba la sintaxis de la configuración de BIND (por defecto /etc/bind/named.conf y sus include): sin errores no dice nada y sale con 0; si no, «fichero:línea: mensaje» y 1. -z además carga cada zona de tipo master («zone aula.lab/IN: loaded serial N»). Viene con bind9-utils (sudo apt install bind9utils, o con bind9).' },
+    'named-checkzone': { group: 'servicios', section: 8, synopsis: 'named-checkzone [-qD] [-o FICHERO] [-w DIRECTORIO] ZONA FICHERO', summary: 'Carga un fichero de zona como lo haría named: SOA, NS con su dirección, registros y nombres válidos. Termina con «OK» (estado 0) o con el error y su línea y «not loaded due to errors.» (1). -q solo da el estado, -D vuelca la zona en forma canónica. Viene con bind9-utils.' },
+    'named-compilezone': { group: 'servicios', section: 8, synopsis: 'named-compilezone [-q] -o FICHERO|- ZONA FICHERO', summary: 'Como named-checkzone, y escribe la zona en forma canónica (nombres completos, TTL y clase en cada registro) en FICHERO o, con -o -, en la salida.' },
+    'kea-dhcp4': { group: 'servicios', section: 8, synopsis: 'kea-dhcp4 -t|-T FICHERO [-d] | -v | -V', summary: 'Servidor DHCPv4 de Kea 2.6: -t comprueba la configuración como la cargaría (JSON con comentarios, parámetros, subredes, pools, reservas y opciones) y escribe su registro; los errores salen con fichero:línea:columna y estado 1. -d añade «Syntax check OK». El servidor se arranca con systemctl start kea-dhcp4-server. Se instala con sudo apt install isc-kea (o kea-dhcp4-server), que en un PC deja un /etc/kea/kea-dhcp4.conf de ejemplo.' },
     journalctl: { group: 'servicios', synopsis: 'journalctl [-u UNIDAD] [-n N]', summary: 'Registro de los servicios (peticiones DHCP, consultas DNS, accesos web, correo, SSH).' },
 };
 
@@ -22317,7 +22321,7 @@ const UTIL_DOCS = {
     host: { group: 'red', synopsis: 'host [-t TYPE] NAME [SERVER]', summary: 'DNS query, one line per record.' },
     curl: { group: 'red', synopsis: 'curl [-sSLIivf] [-X METHOD] [-d DATA] [-u USER:PASSWORD] [-b COOKIES] [-H "Header: value"] [-o FILE | -O] [-w FORMAT] URL', summary: 'HTTP client. Errors with their code: (6) cannot resolve, (7) connection refused, (3) invalid URL, (22) HTTP error with -f.', options: '-I  headers only (HEAD)          -i  includes the headers\n-L  follows redirects            -v  shows the request and the response\n-X  method (GET, POST, HEAD)      -d  form data (POST)\n-u  user:password (Basic)         -b  cookies “a=1; b=2”\n-H  extra header (“Host: www.aula.lab” to test a VirtualHost)\n-s  silent (-S shows errors)      -f  fails on HTTP errors\n-w  writes at the end: %{http_code}, %{size_download}, %{content_type}, %{url_effective} (“-s -o /dev/null -w \'%{http_code}\'” gives just the code)' },
     wget: { group: 'red', synopsis: 'wget [-q] [-O FILE] URL', summary: 'Downloads to a file in the current directory (name.1, name.2… if it already exists). “-qO-” writes the page to the output.' },
-    apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PACKAGE... | remove|purge [-y] PACKAGE... | list [--installed] [PATTERN] | moo', summary: 'Ubuntu 26.04 package manager, with a limited reach: it reads the real sources (/etc/apt/sources.list.d/ubuntu.sources) and connects to archive.ubuntu.com and security.ubuntu.com over the simulated network; with no way out to the Internet or no DNS that resolves them it gives the real errors (“Temporary failure resolving…”). The catalogue is fictitious and always up to date: update, upgrade and autoremove change nothing. install and remove do: on a Server or GNU/Linux router they tick or untick the box and panel of the service (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) and start or stop the service. Needs root (sudo).', options: '-y  answers “yes” to “Continue? [Y/n]”\npurge  like remove, and deletes the configuration' },
+    apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PACKAGE... | remove|purge [-y] PACKAGE... | list [--installed] [PATTERN] | moo', summary: 'Ubuntu 26.04 package manager, with a limited reach: it reads the real sources (/etc/apt/sources.list.d/ubuntu.sources) and connects to archive.ubuntu.com and security.ubuntu.com over the simulated network; with no way out to the Internet or no DNS that resolves them it gives the real errors (“Temporary failure resolving…”). The catalogue is fictitious and always up to date: update, upgrade and autoremove change nothing. install and remove do: on a Server or GNU/Linux router they tick or untick the box and panel of the service (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) and start or stop the service. On any GNU/Linux device (a PC too), bind9utils brings named-checkconf and named-checkzone, and isc-kea brings kea-dhcp4 to check configurations (kea-dhcp4 -t). Needs root (sudo).', options: '-y  answers “yes” to “Continue? [Y/n]”\npurge  like remove, and deletes the configuration' },
     nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f FIELDS | -g FIELDS] [general [status | hostname] | networking [connectivity] | device [status | show [IFACE]] | connection [show [NAME]]] | --version', summary: 'NetworkManager (installed with “sudo apt install network-manager”): with no arguments, an overview per interface (state, MAC, IP address, routes) and the DNS configuration; device status and device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (the netplan-eth0 and lo profiles); general status really checks connectivity (full with Internet, limited without). Takes abbreviations (nmcli d, nmcli c, nmcli g) and, for scripts, -t (no header, “:” separated), -f (columns or fields: -f DEVICE,STATE, -f IP4) and -g (values only: nmcli -g IP4.ADDRESS dev show eth0). Read-only: the configuration is changed with netplan, ip or the TCP/IP tab.' },
     nmblookup: { group: 'red', synopsis: 'nmblookup NAME | -A IP_ADDRESS', summary: 'NetBIOS query (samba-common-bin, which samba brings): asks for a name with a broadcast to the subnet (UDP 137) or, with -A, asks a device for its name table and MAC. Windows devices and GNU/Linux ones with samba on the same network answer (it does not cross routers).' },
     ssh: { group: 'red', synopsis: 'ssh [-i KEY] [-l USER] [-p PORT] [-o OPTION=VALUE] [USER@]HOST [COMMAND]', summary: 'OpenSSH client: checks the server key in ~/.ssh/known_hosts, authenticates with ~/.ssh/id_* and, failing that, with a password. With COMMAND it runs it and returns. -o options: StrictHostKeyChecking, UserKnownHostsFile, IdentityFile, PasswordAuthentication, PubkeyAuthentication, BatchMode, User, Port. Returns the remote status (255 on failure).' },
@@ -22340,6 +22344,10 @@ const UTIL_DOCS = {
     a2enmod: { group: 'servicios', section: 8, synopsis: 'a2enmod MODULE... | a2dismod MODULE...', summary: 'Enables or disables Apache modules (rewrite, ssl, headers, userdir, proxy…) together with their dependencies. Applied with systemctl restart apache2.' },
     a2enconf: { group: 'servicios', section: 8, synopsis: 'a2enconf CONF... | a2disconf CONF...', summary: 'Enables or disables snippets from /etc/apache2/conf-available.' },
     apache2ctl: { group: 'servicios', section: 8, synopsis: 'apache2ctl configtest | -t | -S | -M | -v | start | stop | restart | graceful | status', summary: 'Checks the Apache configuration (Syntax OK or error AH00526 with file and line), lists the VirtualHosts (-S) and modules (-M) and controls the service. apachectl is the same program.' },
+    'named-checkconf': { group: 'servicios', section: 8, synopsis: 'named-checkconf [-hjvz] [-t DIRECTORY] [named.conf]', summary: 'Checks the syntax of the BIND configuration (by default /etc/bind/named.conf and its includes): with no errors it prints nothing and exits 0; otherwise “file:line: message” and 1. -z also loads every master zone (“zone aula.lab/IN: loaded serial N”). Comes with bind9-utils (sudo apt install bind9utils, or with bind9).' },
+    'named-checkzone': { group: 'servicios', section: 8, synopsis: 'named-checkzone [-qD] [-o FILE] [-w DIRECTORY] ZONE FILE', summary: 'Loads a zone file as named would: SOA, NS with an address, valid records and names. Ends with “OK” (status 0) or with the error, its line and “not loaded due to errors.” (1). -q gives only the status, -D dumps the zone in canonical form. Comes with bind9-utils.' },
+    'named-compilezone': { group: 'servicios', section: 8, synopsis: 'named-compilezone [-q] -o FILE|- ZONE FILE', summary: 'Like named-checkzone, and writes the zone in canonical form (full names, TTL and class on every record) to FILE or, with -o -, to the output.' },
+    'kea-dhcp4': { group: 'servicios', section: 8, synopsis: 'kea-dhcp4 -t|-T FILE [-d] | -v | -V', summary: 'Kea 2.6 DHCPv4 server: -t checks the configuration as it would load it (JSON with comments, parameters, subnets, pools, reservations and options) and writes its log; errors come with file:line:column and status 1. -d adds “Syntax check OK”. The server is started with systemctl start kea-dhcp4-server. Installed with sudo apt install isc-kea (or kea-dhcp4-server), which on a PC leaves a sample /etc/kea/kea-dhcp4.conf.' },
     journalctl: { group: 'servicios', synopsis: 'journalctl [-u UNIT] [-n N]', summary: 'Service log (DHCP requests, DNS queries, web access, mail, SSH).' },
 };
 
@@ -31291,7 +31299,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.31.0",
+    "version": "0.32.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -32947,6 +32955,36 @@ zone "127.in-addr.arpa" {
 \tfile "/etc/bind/db.127";
 };
 `;
+/** /etc/bind/db.local and db.127 as installed by the Ubuntu bind9 package (named-checkconf -z loads them too). */
+const DB_LOCAL = `;
+; BIND data file for local loopback interface
+;
+$TTL\t604800
+@\tIN\tSOA\tlocalhost. root.localhost. (
+\t\t\t      2\t\t; Serial
+\t\t\t 604800\t\t; Refresh
+\t\t\t  86400\t\t; Retry
+\t\t\t2419200\t\t; Expire
+\t\t\t 604800 )\t; Negative Cache TTL
+;
+@\tIN\tNS\tlocalhost.
+@\tIN\tA\t127.0.0.1
+@\tIN\tAAAA\t::1
+`;
+const DB_127 = `;
+; BIND reverse data file for local loopback interface
+;
+$TTL\t604800
+@\tIN\tSOA\tlocalhost. root.localhost. (
+\t\t\t      1\t\t; Serial
+\t\t\t 604800\t\t; Refresh
+\t\t\t  86400\t\t; Retry
+\t\t\t2419200\t\t; Expire
+\t\t\t 604800 )\t; Negative Cache TTL
+;
+@\tIN\tNS\tlocalhost.
+1.0.0\tIN\tPTR\tlocalhost.
+`;
 const NAMED_CONF = `// This is the primary configuration file for the BIND DNS server named.
 //
 // Please read /usr/share/doc/bind9/README.Debian for information on the
@@ -32967,6 +33005,8 @@ function bindFiles(dns, choices) {
         [NAMED_OPTIONS, namedOptions(dns, choices)],
         [NAMED_LOCAL, namedLocal(dns, zones)],
         [NAMED_DEFAULT_ZONES, DEFAULT_ZONES],
+        ['/etc/bind/db.local', DB_LOCAL],
+        ['/etc/bind/db.127', DB_127],
         [ROOT_HINTS_FILE, rootHints()],
         [RPZ_FILE, rpzFile(dns)],
     ]);
@@ -39019,14 +39059,23 @@ __m["shells/apt-catalog.js"] = (() => {
 const dep = (name, version, kb, arch = 'amd64') => ({ name, version, kb, arch });
 const SSH_VERSION = '1:10.0p2-5ubuntu2';
 const OPENSSH = [dep('openssh-sftp-server', SSH_VERSION, 38), dep('ncurses-term', '6.5+20250216-2', 275, 'all'), dep('ssh-import-id', '5.11-0ubuntu3', 10, 'all')];
-const KEA = [dep('kea-common', '2.6.3-1ubuntu1', 85, 'all'), dep('libkea-dhcpsrv62', '2.6.3-1ubuntu1', 1243), dep('libkea-asiolink56', '2.6.3-1ubuntu1', 98), dep('libkea-log61', '2.6.3-1ubuntu1', 41)];
+const KEA_VERSION = '2.6.3-1ubuntu1';
+const KEA = [dep('kea-common', KEA_VERSION, 85, 'all'), dep('libkea-dhcpsrv62', KEA_VERSION, 1243), dep('libkea-asiolink56', KEA_VERSION, 98), dep('libkea-log61', KEA_VERSION, 41)];
+const BIND_VERSION = '1:9.20.4-3ubuntu1';
+const BIND_UTILS = dep('bind9-utils', BIND_VERSION, 189);
+const BIND_LIBS = dep('bind9-libs', BIND_VERSION, 1452);
 const DOVECOT = [dep('dovecot-core', '1:2.4.1+dfsg1-6ubuntu1', 3511), dep('libexttextcat-2.0-0', '3.4.7-1', 14)];
 const PACKAGES = [
     { ...dep('openssh-server', SSH_VERSION, 549), section: 'main', deps: OPENSSH, feature: 'ssh', unit: 'ssh' },
     { ...dep('ssh', SSH_VERSION, 3, 'all'), section: 'main', deps: [dep('openssh-server', SSH_VERSION, 549), ...OPENSSH], feature: 'ssh', unit: 'ssh' },
     { ...dep('kea-dhcp4-server', '2.6.3-1ubuntu1', 432), section: 'main', deps: KEA, feature: 'dhcp', unit: 'kea-dhcp4-server' },
     { ...dep('kea', '2.6.3-1ubuntu1', 3, 'all'), section: 'main', deps: [dep('kea-dhcp4-server', '2.6.3-1ubuntu1', 432), ...KEA], feature: 'dhcp', unit: 'kea-dhcp4-server' },
-    { ...dep('bind9', '1:9.20.4-3ubuntu1', 260), section: 'main', deps: [dep('bind9-utils', '1:9.20.4-3ubuntu1', 189), dep('bind9-libs', '1:9.20.4-3ubuntu1', 1452), dep('dns-root-data', '2024071801', 6, 'all')], feature: 'dns', unit: 'named' },
+    { ...dep('bind9', BIND_VERSION, 260), section: 'main', deps: [BIND_UTILS, BIND_LIBS, dep('dns-root-data', '2024071801', 6, 'all')], feature: 'dns', unit: 'named' },
+    // The checking tools alone (named-checkconf, named-checkzone, named-compilezone); bind9utils is the old name.
+    { ...BIND_UTILS, section: 'main', deps: [BIND_LIBS] },
+    { ...dep('bind9utils', BIND_VERSION, 3, 'all'), section: 'main', deps: [BIND_UTILS, BIND_LIBS] },
+    // ISC's packaging of Kea (kea-dhcp4 and the server), as Ubuntu's kea.
+    { ...dep('isc-kea', KEA_VERSION, 3, 'all'), section: 'main', deps: [dep('isc-kea-dhcp4', KEA_VERSION, 432), ...KEA], feature: 'dhcp', unit: 'kea-dhcp4-server' },
     { ...dep('apache2', '2.4.62-1ubuntu1', 90), section: 'main', deps: [dep('apache2-bin', '2.4.62-1ubuntu1', 1370), dep('apache2-data', '2.4.62-1ubuntu1', 160, 'all'), dep('apache2-utils', '2.4.62-1ubuntu1', 96), dep('libapr1t64', '1.7.5-1', 107), dep('libaprutil1t64', '1.6.3-3ubuntu1', 92), dep('ssl-cert', '1.1.3ubuntu1', 17, 'all')], feature: 'http', unit: 'apache2' },
     { ...dep('postfix', '3.10.2-1ubuntu1', 1305), section: 'main', deps: [dep('ssl-cert', '1.1.3ubuntu1', 17, 'all')], feature: 'mail', unit: 'postfix' },
     { ...dep('dovecot-imapd', '1:2.4.1+dfsg1-6ubuntu1', 214), section: 'main', deps: DOVECOT, feature: 'mail', unit: 'dovecot' },
@@ -39278,6 +39327,7 @@ return { APPS_BY_KIND, PC_APPS, defaultApps, freshApps, onAppsChange, deviceApps
 __m["shells/apt-state.js"] = (() => {
 const { runsServices } = __m["devices/kinds.js"];
 const { APPS_BY_KIND, deviceApps, setDeviceApps } = __m["net/device-apps.js"];
+const { findPackage } = __m["shells/apt-catalog.js"];
 const { hasPackage, setPackageInstalled } = __m["net/host-packages.js"];
 const MAIL_KEY = { postfix: 'smtp', 'dovecot-imapd': 'imap', 'dovecot-pop3d': 'pop3' };
 /** The package turns on a panel of this device (a PC's SSH and mail tabs are clients, not these services). */
@@ -39289,6 +39339,13 @@ function installedPackage(host, p) {
         return hasPackage(host, p.name);
     const key = MAIL_KEY[p.name];
     return deviceApps(host).includes(p.feature) && (key === undefined || asServer(host).services.mail[key]);
+}
+/** A program some packages bring (named-checkzone: bind9-utils, bind9utils or bind9): installed with any of them. */
+function anyInstalled(host, names) {
+    return names.some((n) => {
+        const p = findPackage(n);
+        return p ? installedPackage(host, p) : hasPackage(host, n);
+    });
 }
 /** The service a package runs, started on install and stopped on remove. */
 function runService(server, p, on) {
@@ -39321,14 +39378,128 @@ function setPackage(host, p, on) {
         setDeviceApps(host, on ? [...rest, p.feature] : rest);
 }
 
-return { installedPackage, setPackage };
+return { installedPackage, anyInstalled, setPackage };
+})();
+__m["shells/apt-defaults.js"] = (() => {
+/**
+ * The configuration files a package ships, written when apt installs it on a host without service panels (a PC):
+ * Kea's kea-dhcp4.conf (the basic one of the Ubuntu package, shortened) and bind9's /etc/bind. On a Server or a
+ * GNU/Linux router these files come from its Servicios settings instead (linux-files.ts).
+ */
+const { bindFiles } = __m["services/bind-files.js"];
+const { defaultServices } = __m["services/config.js"];
+const KEA_DHCP4_CONF = '/etc/kea/kea-dhcp4.conf';
+const KEA_DEFAULT = `// This is a basic configuration for the Kea DHCPv4 server. Subnet declarations
+// are mostly commented out and no interfaces are listed. Therefore, the servers
+// will not listen or respond to any queries.
+// The basic configuration must be extended to specify interfaces on which
+// the servers should listen. Make sure you at least update the following,
+// before running this example in your network:
+// - change the network interface names
+// - change the subnets to match your network
+// - change the option values to match your network
+{
+"Dhcp4": {
+    // Add names of your network interfaces to listen on.
+    "interfaces-config": {
+        "interfaces": [ ]
+    },
+
+    "control-socket": {
+        "socket-type": "unix",
+        "socket-name": "kea4-ctrl-socket"
+    },
+
+    // Use Memfile lease database backend to store leases in a CSV file.
+    "lease-database": {
+        "type": "memfile",
+        "lfc-interval": 3600
+    },
+
+    // Global timers specified here apply to all subnets, unless there are
+    // subnet specific values defined in particular subnets.
+    "renew-timer": 900,
+    "rebind-timer": 1800,
+    "valid-lifetime": 3600,
+
+    "option-data": [
+        {
+            "name": "domain-name-servers",
+            "data": "192.0.2.1, 192.0.2.2"
+        },
+        {
+            "name": "domain-search",
+            "data": "mydomain.example.com, example.com"
+        }
+    ],
+
+    "subnet4": [
+        {
+            // This defines the whole subnet. Kea will use this information to
+            // determine where the clients are connected.
+            "id": 1,
+            "subnet": "192.0.2.0/24",
+
+            // Pools define the actual part of your subnet that is governed
+            // by Kea.
+            "pools": [ { "pool": "192.0.2.1 - 192.0.2.200" } ],
+
+            "option-data": [
+                {
+                    // For each IPv4 subnet you most likely need to specify at
+                    // least one router.
+                    "name": "routers",
+                    "data": "192.0.2.1"
+                }
+            ],
+
+            "reservations": [
+                {
+                    "hw-address": "1a:1b:1c:1d:1e:1f",
+                    "ip-address": "192.0.2.201"
+                }
+            ]
+        }
+    ],
+
+    "loggers": [
+    {
+        "name": "kea-dhcp4",
+        "output-options": [
+            {
+                "output": "stdout"
+            }
+        ],
+        "severity": "INFO",
+        "debuglevel": 0
+    }
+  ]
+}
+}
+`;
+const KEA_PACKAGES = new Set(['kea', 'kea-dhcp4-server', 'isc-kea']);
+/** The files a package ships, by path. */
+function shippedFiles(name) {
+    if (KEA_PACKAGES.has(name))
+        return new Map([[KEA_DHCP4_CONF, KEA_DEFAULT]]);
+    if (name === 'bind9')
+        return bindFiles(defaultServices().dns, []);
+    return new Map();
+}
+
+return { KEA_DHCP4_CONF, shippedFiles };
 })();
 __m["shells/apt-scripts.js"] = (() => {
+const { FsError } = __m["bash/vfs.js"];
 const { hasPackage, setPackageInstalled } = __m["net/host-packages.js"];
 const { DEFAULT_NSSWITCH, NSSWITCH, withMdns } = __m["shells/nsswitch.js"];
+const { runsServices } = __m["devices/kinds.js"];
+const { shippedFiles } = __m["shells/apt-defaults.js"];
 /** Dependencies that bring a feature of their own (nmblookup, the mDNS resolver). */
 const TRACKED_DEPS = {
     'avahi-daemon': ['libnss-mdns'], samba: ['samba-common-bin'], winbind: ['samba-common-bin'],
+    // named-checkconf and named-checkzone stay when bind9 goes (apt leaves bind9-utils until autoremove).
+    bind9: ['bind9-utils'], bind9utils: ['bind9-utils'],
 };
 function editNsswitch(fs, on) {
     let text = DEFAULT_NSSWITCH;
@@ -39338,10 +39509,29 @@ function editNsswitch(fs, on) {
     catch { /* a missing file is written again from Ubuntu's default */ }
     fs.writeFile(NSSWITCH, withMdns(text, on));
 }
+/** The package's configuration files on a PC, unless they are there already (dpkg keeps the conffiles you edited). */
+function writeShipped(fs, name) {
+    for (const [path, content] of shippedFiles(name)) {
+        if (fs.exists(path))
+            continue;
+        try {
+            fs.mkdir(path.slice(0, path.lastIndexOf('/')), undefined, true, 0o755);
+            fs.writeFile(path, content, undefined, false, 0o644);
+        }
+        catch (e) {
+            // /etc/kea made a plain file by hand: the package is installed without that file (the tools still work).
+            if (!(e instanceof FsError))
+                throw e;
+        }
+    }
+}
 function afterPackage(fs, host, name, on) {
     if (on)
         for (const d of TRACKED_DEPS[name] ?? [])
             setPackageInstalled(host, d, true);
+    // A Server or GNU/Linux router writes them from its Servicios settings (linux-files.ts).
+    if (on && !runsServices(host.kind))
+        writeShipped(fs, name);
     if (name === 'avahi-daemon' || name === 'libnss-mdns') {
         editNsswitch(fs, hasPackage(host, 'libnss-mdns'));
     }
@@ -39823,6 +40013,1781 @@ function nmblookup(host) {
 
 return { nmblookup };
 })();
+__m["services/zone-parse.js"] = (() => {
+/**
+ * Lectura de archivos de zona (RFC 1035 §5) como la hace BIND 9.20 al cargar una zona: comentarios, paréntesis,
+ * directivas $TTL y $ORIGIN, propietario heredado, TTL (con unidades) y clase en cualquier orden. Los mensajes son
+ * los de dns_master_load y dns_rdata_fromtext; las comprobaciones de la zona ya cargada están en zone-check.ts.
+ */
+class LoadError extends Error {
+    line;
+    reason;
+    constructor(line, reason) {
+        super(reason);
+        this.line = line;
+        this.reason = reason;
+    }
+}
+/** Nombre absoluto con punto final y en minúsculas («aula.lab» → «aula.lab.»). */
+function absolute(name) {
+    return name.toLowerCase().replace(/\.?$/, '.');
+}
+/** Nombre como lo escribe BIND en sus mensajes: sin el punto final (salvo la raíz). */
+function bare(name) {
+    return name === '.' ? '.' : name.replace(/\.$/, '');
+}
+/** ¿Está `name` dentro de la zona `apex` (ambos absolutos)? */
+function inZone(name, apex) {
+    return apex === '.' || name === apex || name.endsWith(`.${apex}`);
+}
+function relativeTo(name, origin) {
+    if (name === '@')
+        return origin;
+    const n = name.toLowerCase();
+    if (n.endsWith('.'))
+        return n;
+    return origin === '.' ? `${n}.` : `${n}.${origin}`;
+}
+const UNIT = { s: 1, m: 60, h: 3600, d: 86400, w: 604800 };
+// 1h30m, 3600, 1w2d: each repeated part ends with its unit, so the match is linear (no nested backtracking).
+const isTtl = (t) => /^(?:\d+[smhdw])*\d+[smhdw]?$/i.test(t);
+function ttlValue(t) {
+    let total = 0;
+    for (const m of t.matchAll(/(\d+)([smhdw]?)/gi))
+        total += Number(m[1] ?? '0') * (UNIT[(m[2] || 's').toLowerCase()] ?? 1);
+    return total;
+}
+function isIpv4(t) {
+    return /^\d{1,3}(\.\d{1,3}){3}$/.test(t) && t.split('.').every((o) => Number(o) <= 255);
+}
+function isIpv6(t) {
+    if (!/^[0-9a-f:.]+$/i.test(t) || t.split('::').length > 2)
+        return false;
+    const v4 = /(\d+\.\d+\.\d+\.\d+)$/.exec(t)?.[1];
+    if (v4 !== undefined && !isIpv4(v4))
+        return false;
+    const text = v4 === undefined ? t : `${t.slice(0, -v4.length)}0:0`;
+    const parts = text.split('::');
+    const groups = parts.map((p) => (p === '' ? [] : p.split(':')));
+    if (groups.some((g) => g.some((x) => !/^[0-9a-f]{1,4}$/i.test(x))))
+        return false;
+    const n = groups.reduce((sum, g) => sum + g.length, 0);
+    return parts.length === 2 ? n < 8 : n === 8;
+}
+/** Corta una línea en palabras; devuelve la profundidad de paréntesis al acabarla. */
+function scanLine(line, n, depth, toks, file) {
+    let cur = '';
+    const flush = () => {
+        if (cur)
+            toks.push({ text: cur, line: n });
+        cur = '';
+    };
+    for (let j = 0; j < line.length; j++) {
+        const c = line[j] ?? '';
+        if (c === ';')
+            break;
+        if (c === '"') {
+            flush();
+            let k = j + 1;
+            while (k < line.length && line[k] !== '"')
+                k += line[k] === '\\' ? 2 : 1;
+            if (k >= line.length)
+                throw new LoadError(`dns_master_load: ${file}:${n}: unbalanced quotes`, 'unbalanced quotes');
+            toks.push({ text: line.slice(j, k + 1), line: n });
+            j = k;
+        }
+        else if (c === '(' || c === ')') {
+            flush();
+            if (c === ')' && depth === 0)
+                throw new LoadError(`dns_master_load: ${file}:${n}: unbalanced parentheses`, 'unbalanced parentheses');
+            depth += c === '(' ? 1 : -1;
+        }
+        else if (c === ' ' || c === '\t')
+            flush();
+        else
+            cur += c;
+    }
+    flush();
+    return depth;
+}
+/** Entradas lógicas del archivo: las líneas unidas dentro de los paréntesis. */
+function tokenize(text, file) {
+    const lines = text.split('\n');
+    const entries = [];
+    let toks = [];
+    let inherit = false;
+    let depth = 0;
+    for (let i = 0; i < lines.length; i++) {
+        const line = (lines[i] ?? '').replace(/\r$/, '');
+        if (depth === 0 && toks.length === 0)
+            inherit = /^[ \t]/.test(line);
+        depth = scanLine(line, i + 1, depth, toks, file);
+        if (depth === 0 && toks.length > 0) {
+            entries.push({ toks, inherit, line: i + 1 });
+            toks = [];
+        }
+    }
+    if (depth > 0)
+        throw new LoadError(`dns_master_load: ${file}:${lines.length}: unexpected end of input`, 'unexpected end of input');
+    return entries;
+}
+const endOfInput = (where) => new LoadError(`dns_master_load: ${where}: unexpected end of input`, 'unexpected end of input');
+function directive(e, st, where) {
+    const word = e.toks[0]?.text ?? '';
+    const d = word.toUpperCase();
+    const arg = e.toks[1]?.text;
+    if (d !== '$TTL' && d !== '$ORIGIN')
+        throw new LoadError(`dns_master_load: ${where}: unknown $ directive '${word}'`, 'syntax error');
+    if (arg === undefined)
+        throw endOfInput(where);
+    if (d === '$ORIGIN') {
+        st.origin = relativeTo(arg, st.origin);
+        return;
+    }
+    if (!isTtl(arg))
+        throw new LoadError(`dns_master_load: ${where}: ${arg}: bad ttl`, 'bad ttl');
+    st.defaultTtl = ttlValue(arg);
+}
+/** Types whose data is kept as written (DNSSEC, SSHFP, TLSA…): BIND knows them, Netfix does not look inside. */
+const OPAQUE = [
+    'SPF', 'SSHFP', 'TLSA', 'SMIMEA', 'NAPTR', 'DS', 'CDS', 'DNSKEY', 'CDNSKEY', 'KEY', 'RRSIG', 'SIG', 'NSEC', 'NSEC3',
+    'NSEC3PARAM', 'LOC', 'CERT', 'URI', 'SVCB', 'HTTPS', 'OPENPGPKEY', 'ZONEMD', 'DHCID', 'IPSECKEY', 'HIP', 'APL', 'CSYNC',
+];
+const RDATA = {
+    A: ['ip4'], AAAA: ['ip6'], NS: ['name'], CNAME: ['name'], DNAME: ['name'], PTR: ['name'], MX: ['u16', 'name'],
+    SRV: ['u16', 'u16', 'u16', 'name'], SOA: ['name', 'name', 'u32', 'ttl', 'ttl', 'ttl', 'ttl'],
+    TXT: ['text'], HINFO: ['str', 'str'], CAA: ['u8', 'str', 'str'], RP: ['name', 'name'], AFSDB: ['u16', 'name'],
+    KX: ['u16', 'name'], ...Object.fromEntries(OPAQUE.map((t) => [t, ['text']])),
+};
+/** RFC 3597: TYPE65534 \# 3 abcdef. */
+const fieldsOf = (type) => (Object.hasOwn(RDATA, type) ? RDATA[type] : undefined) ?? (/^TYPE\d{1,5}$/.test(type) ? ['text'] : undefined);
+const MAX = { u8: 255, u16: 65535, u32: 4294967295 };
+function field(f, tok, origin, file) {
+    const bad = (reason) => new LoadError(`dns_rdata_fromtext: ${file}:${tok.line}: near '${tok.text}': ${reason}`, reason);
+    const t = tok.text;
+    if (f === 'ip4') {
+        if (!isIpv4(t))
+            throw bad('bad dotted quad');
+        return t;
+    }
+    if (f === 'ip6') {
+        if (!isIpv6(t))
+            throw bad('bad IPv6 address');
+        return t.toLowerCase();
+    }
+    if (f === 'name')
+        return relativeTo(t, origin);
+    if (f === 'ttl') {
+        if (!isTtl(t))
+            throw bad('not a valid number');
+        return String(ttlValue(t));
+    }
+    const max = MAX[f];
+    if (max !== undefined && (!/^\d+$/.test(t) || Number(t) > max))
+        throw bad('not a valid number');
+    return t;
+}
+function rdata(type, toks, origin, file, line) {
+    const fields = fieldsOf(type) ?? [];
+    const out = [];
+    let i = 0;
+    for (const f of fields) {
+        const tok = toks[i];
+        if (!tok)
+            throw new LoadError(`dns_rdata_fromtext: ${file}:${line}: near eol: unexpected end of input`, 'unexpected end of input');
+        if (f === 'text')
+            return toks.slice(i).map((x) => x.text);
+        out.push(field(f, tok, origin, file));
+        i++;
+    }
+    const extra = toks[i];
+    if (extra)
+        throw new LoadError(`dns_rdata_fromtext: ${file}:${extra.line}: near '${extra.text}': extra input text`, 'extra input text');
+    return out;
+}
+/** El TTL de un registro sin TTL propio: $TTL, si no el del registro anterior y, en el SOA, su mínimo. */
+function ttlOf(explicit, type, data, st, where, warnings) {
+    if (explicit !== undefined)
+        return (st.lastTtl = explicit);
+    if (st.defaultTtl !== undefined)
+        return st.defaultTtl;
+    if (st.lastTtl !== undefined)
+        return st.lastTtl;
+    if (type !== 'SOA')
+        throw new LoadError(`dns_master_load: ${where}: no TTL specified; zone rejected`, 'no ttl');
+    if (!st.warnedTtl)
+        warnings.push(`dns_master_load: ${where}: no TTL specified; using SOA MINTTL instead`);
+    st.warnedTtl = true;
+    return (st.lastTtl = Number(data[6]));
+}
+function record(e, st, file, warnings) {
+    const where = `${file}:${e.line}`;
+    const first = e.toks[0]?.text ?? '';
+    if (!e.inherit && first.startsWith('$')) {
+        directive(e, st, where);
+        return undefined;
+    }
+    const owner = e.inherit ? st.lastOwner : relativeTo(first, st.origin);
+    if (owner === undefined)
+        throw new LoadError(`dns_master_load: ${where}: no current owner name`, 'no owner');
+    st.lastOwner = owner;
+    let i = e.inherit ? 0 : 1;
+    let ttl;
+    let klass = false;
+    for (let k = 0; k < 2; k++) {
+        const t = e.toks[i]?.text ?? '';
+        if (ttl === undefined && isTtl(t))
+            ttl = ttlValue(t);
+        else if (!klass && t.toUpperCase() === 'IN')
+            klass = true;
+        else
+            break;
+        i++;
+    }
+    const typeTok = e.toks[i];
+    if (!typeTok)
+        throw endOfInput(where);
+    const type = typeTok.text.toUpperCase();
+    if (!fieldsOf(type))
+        throw new LoadError(`dns_master_load: ${where}: unknown RR type '${typeTok.text}'`, 'unknown class/type');
+    const data = rdata(type, e.toks.slice(i + 1), st.origin, file, e.line);
+    return { owner, ttl: ttlOf(ttl, type, data, st, where, warnings), type, data, line: e.line };
+}
+const SINGLETON = new Set(['SOA', 'CNAME']);
+/** Añade el registro a la zona con las comprobaciones que BIND hace al cargarlo. */
+function add(r, l, file) {
+    const where = `${file}:${r.line}`;
+    if (!inZone(r.owner, l.apex)) {
+        l.warnings.push(`dns_master_load: ${where}: ignoring out-of-zone data (${bare(r.owner)})`);
+        return;
+    }
+    if (r.type === 'SOA' && r.owner !== l.apex)
+        throw new LoadError(`dns_master_load: ${where}: SOA record not at top of zone (${bare(r.owner)})`, 'not at top of zone');
+    const same = l.byOwner.get(r.owner) ?? [];
+    const fail = (reason) => new LoadError(`dns_master_load: ${where}: ${bare(r.owner)}: ${reason}`, reason);
+    if (same.some((x) => (x.type === 'CNAME') !== (r.type === 'CNAME')))
+        throw fail('CNAME and other data');
+    const twin = same.filter((x) => x.type === r.type);
+    if (twin.some((x) => x.data.join(' ') === r.data.join(' ')))
+        return;
+    if (SINGLETON.has(r.type) && twin.length > 0)
+        throw fail('multiple RRs of singleton type');
+    l.records.push(r);
+    l.byOwner.set(r.owner, [...same, r]);
+}
+/** $GENERATE 1-254 host-$ A 10.0.0.$: `$`, `${offset,width,base}` (d, o, x, X, n, N) and `\$` for a dollar. */
+function substitute(template, n) {
+    return template.replace(/\\\$|\$\{(-?\d+)(?:,(\d+)(?:,([doxXnN]))?)?\}|\$/g, (m, off, width, base) => {
+        if (m === '\\$')
+            return '$';
+        const v = n + Number(off ?? 0);
+        const w = Number(width ?? 0);
+        if (base === 'n' || base === 'N') {
+            const hex = v.toString(16).padStart(Math.ceil((w + 1) / 2), '0');
+            const nibbles = [...hex].reverse().join('.');
+            return base === 'N' ? nibbles.toUpperCase() : nibbles;
+        }
+        const text = base === 'o' ? v.toString(8) : base === 'x' ? v.toString(16) : base === 'X' ? v.toString(16).toUpperCase() : String(v);
+        return text.padStart(w, '0');
+    });
+}
+const MAX_GENERATE = 65536;
+/** The records of `$GENERATE range lhs [ttl] [class] type rhs`, one entry for each value of the range. */
+function generate(e, where) {
+    const [, range, lhs, ...rest] = e.toks;
+    const rhs = rest[rest.length - 1];
+    if (!range || !lhs || !rhs || rest.length < 2)
+        throw endOfInput(where);
+    const m = /^(\d+)-(\d+)(?:\/(\d+))?$/.exec(range.text);
+    const [start, stop, step] = [Number(m?.[1]), Number(m?.[2]), Number(m?.[3] ?? 1)];
+    if (!m || start > stop || step < 1 || (stop - start) / step >= MAX_GENERATE) {
+        throw new LoadError(`dns_master_load: ${where}: $GENERATE: invalid range '${range.text}'`, 'syntax error');
+    }
+    const out = [];
+    for (let n = start; n <= stop; n += step) {
+        const toks = [{ ...lhs, text: substitute(lhs.text, n) }, ...rest.slice(0, -1), { ...rhs, text: substitute(rhs.text, n) }];
+        out.push({ toks, inherit: false, line: e.line });
+    }
+    return out;
+}
+const MAX_INCLUDE_DEPTH = 16;
+/** $INCLUDE file [origin]: the records of another file; the origin of this one is the same afterwards. */
+function include(l, e, where, depth) {
+    const name = e.toks[1]?.text.replace(/^"(.*)"$/, '$1');
+    if (name === undefined)
+        throw endOfInput(where);
+    if (depth >= MAX_INCLUDE_DEPTH)
+        throw new LoadError(`dns_master_load: ${where}: ${name}: too many nested includes`, 'too many nested includes');
+    const text = l.read?.(name) ?? { error: 'file not found' };
+    if (typeof text !== 'string')
+        throw new LoadError(`dns_master_load: ${where}: ${name}: ${text.error}`, text.error);
+    const origin = l.st.origin;
+    const arg = e.toks[2]?.text;
+    if (arg !== undefined)
+        l.st.origin = relativeTo(arg, origin);
+    loadText(l, name, text, depth + 1);
+    l.st.origin = origin;
+}
+function loadText(l, file, text, depth) {
+    for (const e of tokenize(text, file)) {
+        const where = `${file}:${e.line}`;
+        const word = e.inherit ? '' : (e.toks[0]?.text ?? '').toUpperCase();
+        if (word === '$INCLUDE') {
+            include(l, e, where, depth);
+            continue;
+        }
+        for (const g of word === '$GENERATE' ? generate(e, where) : [e]) {
+            const r = record(g, l.st, file, l.warnings);
+            if (r)
+                add(r, l, file);
+        }
+    }
+}
+/** Carga el texto de un archivo de zona; se detiene en el primer error, como dns_master_load. */
+function loadZone(zone, file, text, read) {
+    const apex = absolute(zone);
+    const l = { apex, st: { origin: apex, warnedTtl: false }, records: [], byOwner: new Map(), warnings: [], read };
+    try {
+        loadText(l, file, text, 0);
+        return { records: l.records, warnings: l.warnings };
+    }
+    catch (err) {
+        if (err instanceof LoadError)
+            return { records: l.records, warnings: l.warnings, error: { line: err.line, reason: err.reason } };
+        throw err;
+    }
+}
+
+return { absolute, bare, inZone, isIpv4, isIpv6, loadZone };
+})();
+__m["services/named-conf-parse.js"] = (() => {
+/**
+ * Lectura de named.conf como la hace el analizador de BIND 9.20 (lib/isccfg): palabras, cadenas, los signos { } ; !,
+ * los tres tipos de comentario e `include "archivo";` en cualquier punto. Aquí están el léxico y los tipos de valor
+ * (booleano, duración, lista de direcciones…); la gramática de cada sentencia está en named-conf-check.ts. Los mensajes
+ * son los de cfg_parser_error: «ARCHIVO:LÍNEA: missing ';' before 'x'», «… near 'x'».
+ */
+const { isIpv4, isIpv6 } = __m["services/zone-parse.js"];
+class ConfError extends Error {
+}
+const PUNCT = new Set(['{', '}', ';', '!']);
+const WORD_END = /[\s{};!"#]/;
+const MAX_INCLUDE_DEPTH = 16;
+/** Files read in all: `include "x"; include "x";` inside x itself would otherwise read 2^16 files. */
+const MAX_INCLUDES = 256;
+/** `{ { { … } } }` in an address match list (each level is a nested call). */
+const MAX_AML_DEPTH = 64;
+/** Una cadena entre comillas desde `i` (la comilla de apertura); devuelve su texto, dónde sigue y las líneas que ocupa. */
+function quoted(text, i, file, line) {
+    let s = '';
+    let lines = 0;
+    let k = i + 1;
+    while (k < text.length && text[k] !== '"') {
+        if (text[k] === '\\' && k + 1 < text.length)
+            k++;
+        if (text[k] === '\n')
+            lines++;
+        s += text[k] ?? '';
+        k++;
+    }
+    if (k >= text.length)
+        throw new ConfError(`${file}:${line + lines}: unexpected end of input`);
+    return { text: s, next: k + 1, lines };
+}
+/** Las piezas de un archivo; la última es el fin de archivo, en la línea que sigue al último salto. */
+function lex(text, file) {
+    const toks = [];
+    let line = 1;
+    let i = 0;
+    while (i < text.length) {
+        const c = text[i] ?? '';
+        const two = text.slice(i, i + 2);
+        if (c === '\n') {
+            line++;
+            i++;
+            continue;
+        }
+        if (/\s/.test(c)) {
+            i++;
+            continue;
+        }
+        if (two === '//' || c === '#') {
+            const end = text.indexOf('\n', i);
+            i = end < 0 ? text.length : end;
+        }
+        else if (two === '/*') {
+            const end = text.indexOf('*/', i + 2);
+            const stop = end < 0 ? text.length : end + 2;
+            line += (text.slice(i, stop).match(/\n/g) ?? []).length;
+            if (end < 0)
+                throw new ConfError(`${file}:${line}: unexpected end of input`);
+            i = stop;
+        }
+        else if (c === '"') {
+            const q = quoted(text, i, file, line);
+            toks.push({ text: q.text, kind: 'string', file, line });
+            line += q.lines;
+            i = q.next;
+        }
+        else if (PUNCT.has(c)) {
+            toks.push({ text: c, kind: 'punct', file, line });
+            i++;
+        }
+        else {
+            let k = i;
+            while (k < text.length && !WORD_END.test(text[k] ?? '') && !['//', '/*'].includes(text.slice(k, k + 2)))
+                k++;
+            toks.push({ text: text.slice(i, k), kind: 'word', file, line });
+            i = k;
+        }
+    }
+    toks.push({ text: '', kind: 'eof', file, line });
+    return toks;
+}
+const near = (t) => (t.kind === 'eof' ? 'end of file' : `'${t.text}'`);
+const fail = (t, message) => new ConfError(`${t.file}:${t.line}: ${message}`);
+const is = (t, punct) => t.kind === 'punct' && t.text === punct;
+/** Las piezas en orden, con los `include` ya sustituidos por las del archivo incluido. */
+class Stream {
+    frames;
+    read;
+    /** Piezas consumidas: ordena los errores de varios archivos como aparecen. */
+    taken = 0;
+    includes = 0;
+    constructor(toks, read) {
+        this.frames = [{ toks, i: 0 }];
+        this.read = read;
+    }
+    peek() {
+        for (;;) {
+            const f = this.top();
+            const t = f.toks[f.i] ?? f.toks[f.toks.length - 1];
+            if (!t)
+                throw new ConfError('none:0: unexpected end of input');
+            if (t.kind === 'eof' && this.frames.length > 1)
+                this.frames.pop();
+            else if (t.kind === 'word' && t.text === 'include')
+                this.include(f, t);
+            else
+                return t;
+        }
+    }
+    next() {
+        const t = this.peek();
+        if (t.kind !== 'eof')
+            this.top().i++;
+        this.taken++;
+        return t;
+    }
+    top() {
+        const f = this.frames[this.frames.length - 1];
+        if (!f)
+            throw new ConfError('none:0: unexpected end of input');
+        return f;
+    }
+    include(f, t) {
+        const name = f.toks[f.i + 1] ?? t;
+        if (name.kind !== 'string' && name.kind !== 'word')
+            throw fail(name, `expected quoted string near ${near(name)}`);
+        const semi = f.toks[f.i + 2] ?? name;
+        if (!is(semi, ';'))
+            throw fail(semi, `missing ';' before ${near(semi)}`);
+        f.i += 3;
+        if (this.frames.length >= MAX_INCLUDE_DEPTH)
+            throw fail(t, `${name.text}: too many nested includes`);
+        if (++this.includes > MAX_INCLUDES)
+            throw fail(t, `${name.text}: too many includes`);
+        const text = this.read(name.text);
+        if (typeof text !== 'string')
+            throw fail(t, `open: ${name.text}: ${text.error}`);
+        this.frames.push({ toks: lex(text, name.text), i: 0 });
+    }
+}
+function semicolon(s) {
+    const t = s.peek();
+    if (!is(t, ';'))
+        throw fail(t, `missing ';' before ${near(t)}`);
+    s.next();
+}
+function open(s) {
+    const t = s.next();
+    if (!is(t, '{'))
+        throw fail(t, `'{' expected near ${near(t)}`);
+}
+/** Lee las entradas de un bloque hasta su `}`; cada una acaba en `;`. */
+function items(c, item) {
+    open(c.s);
+    for (;;) {
+        const t = c.s.peek();
+        if (is(t, '}')) {
+            c.s.next();
+            return;
+        }
+        if (t.kind === 'eof')
+            throw fail(t, 'unexpected end of input');
+        item(c);
+        semicolon(c.s);
+    }
+}
+const word = (s) => {
+    const t = s.next();
+    if (t.kind === 'eof')
+        throw fail(t, 'unexpected end of input');
+    return t;
+};
+const bool = (c) => {
+    const t = word(c.s);
+    if (t.kind !== 'word' || !['yes', 'no', 'true', 'false', '1', '0'].includes(t.text.toLowerCase()))
+        throw fail(t, `boolean expected near ${near(t)}`);
+    return t.text;
+};
+const int = (c) => {
+    const t = word(c.s);
+    if (t.kind !== 'word' || !/^\d+$/.test(t.text))
+        throw fail(t, `expected integer near ${near(t)}`);
+    return t.text;
+};
+const duration = (c) => {
+    const t = word(c.s);
+    if (t.kind !== 'word' || !/^(?:\d+[smhdw]?|unlimited|P(?:\d+[YMWD])*(?:T(?:\d+[HMS])+)?)$/i.test(t.text)) {
+        throw fail(t, `expected ISO 8601 duration or TTL-style duration near ${near(t)}`);
+    }
+    return t.text;
+};
+const qstring = (c) => {
+    const t = word(c.s);
+    if (t.kind !== 'string' && t.kind !== 'word')
+        throw fail(t, `expected quoted string near ${near(t)}`);
+    return t.text;
+};
+const oneOf = (...values) => (c) => {
+    const t = word(c.s);
+    if (t.kind !== 'word' || !values.includes(t.text.toLowerCase()))
+        throw fail(t, `'${t.text}' unexpected near ${near(t)}`);
+    return t.text.toLowerCase();
+};
+/** Una dirección (o, si `prefix`, una red: 192.168.10.0/24, 10/8, fd00::/8). */
+function isAddress(text, prefix) {
+    const [addr = '', bits, extra] = text.split('/');
+    if (extra !== undefined || (bits !== undefined && (!prefix || !/^\d{1,3}$/.test(bits))))
+        return false;
+    if (addr.includes(':'))
+        return isIpv6(addr) && Number(bits ?? 0) <= 128;
+    const short = bits !== undefined && /^\d{1,3}(\.\d{1,3}){0,3}$/.test(addr) && addr.split('.').every((o) => Number(o) <= 255);
+    return (isIpv4(addr) || short) && Number(bits ?? 0) <= 32;
+}
+const looksLikeAddress = (text) => /^\d/.test(text) || text.includes(':');
+function amlElement(c, depth) {
+    if (is(c.s.peek(), '!'))
+        c.s.next();
+    if (is(c.s.peek(), '{')) {
+        amlList(c, depth + 1);
+        return;
+    }
+    const t = word(c.s);
+    if (t.kind === 'punct')
+        throw fail(t, `expected IP match list element near ${near(t)}`);
+    if (t.kind === 'word' && t.text === 'key') {
+        qstring(c);
+        return;
+    }
+    if (looksLikeAddress(t.text)) {
+        if (!isAddress(t.text, true))
+            throw fail(t, `expected IP address near ${near(t)}`);
+    }
+    else
+        c.refs.push({ name: t.text, tok: t, seq: c.s.taken });
+}
+/** Lista de direcciones: `{ 192.168.10.0/24; !10.0.0.1; localnets; nombre-de-acl; key k; { … }; }`. */
+function amlList(c, depth) {
+    if (depth > MAX_AML_DEPTH)
+        throw fail(c.s.peek(), 'address match list nested too deeply');
+    items(c, (x) => amlElement(x, depth));
+}
+const aml = (c) => {
+    amlList(c, 0);
+    return undefined;
+};
+/** Modificadores `port 53`, `dscp 0`, `tls nombre`… delante o detrás de una dirección. */
+function modifiers(c, allowed) {
+    for (let t = c.s.peek(); t.kind === 'word' && allowed.includes(t.text.toLowerCase()); t = c.s.peek()) {
+        c.s.next();
+        if (t.text.toLowerCase() === 'port' || t.text.toLowerCase() === 'dscp')
+            int(c);
+        else
+            qstring(c);
+    }
+}
+/** forwarders: `[port N] { 8.8.8.8; 1.1.1.1 port 53; }`. */
+const iplist = (c) => {
+    modifiers(c, ['port', 'dscp', 'tls']);
+    items(c, (x) => {
+        const t = word(x.s);
+        if (!isAddress(t.text, false) || t.kind === 'punct')
+            throw fail(t, `expected IP address near ${near(t)}`);
+        modifiers(x, ['port', 'dscp', 'tls']);
+    });
+    return undefined;
+};
+/** primaries, also-notify: direcciones o nombres de listas `primaries`, con puerto y clave. */
+const hosts = (c) => {
+    modifiers(c, ['port', 'dscp', 'source', 'source-v6']);
+    items(c, (x) => {
+        const t = word(x.s);
+        if (t.kind === 'punct' || (looksLikeAddress(t.text) && !isAddress(t.text, false)))
+            throw fail(t, `expected IP address near ${near(t)}`);
+        modifiers(x, ['port', 'key', 'tls']);
+    });
+    return undefined;
+};
+/** listen-on: `[port N] [tls x] [http x] { lista de direcciones }`. */
+const listen = (c) => {
+    modifiers(c, ['port', 'tls', 'http', 'proxy']);
+    return aml(c);
+};
+/** Un valor que no se comprueba: todo hasta el `;` de la sentencia, con sus bloques. */
+const skip = (c) => {
+    let depth = 0;
+    for (let t = c.s.peek(); depth > 0 || !(is(t, ';') || is(t, '}')); t = c.s.peek()) {
+        if (t.kind === 'eof')
+            throw fail(t, 'unexpected end of input');
+        if (is(t, '{'))
+            depth++;
+        if (is(t, '}'))
+            depth--;
+        c.s.next();
+    }
+    return undefined;
+};
+/** response-policy: `{ zone "rpz"; … } [opciones];`. */
+const rpz = (c) => {
+    items(c, skip);
+    return skip(c);
+};
+
+return { ConfError, lex, near, fail, Stream, semicolon, bool, int, duration, qstring, oneOf, aml, iplist, hosts, listen, skip, rpz };
+})();
+__m["services/zone-check.js"] = (() => {
+/**
+ * Comprobación de una zona como named-checkzone (BIND 9.20): la carga (zone-parse.ts) y después las comprobaciones de
+ * la zona cargada (un SOA, algún NS, direcciones de los NS, MX y SRV de dentro de la zona). Lo usan named-checkzone,
+ * named-compilezone y named-checkconf -z.
+ */
+const { absolute, bare, inZone, loadZone } = __m["services/zone-parse.js"];
+/** Comprobaciones de integridad: las de los NS son errores; las de MX y SRV, avisos (named-checkzone -M/-S warn). */
+function integrity(apex, records, tag) {
+    const errors = [];
+    const warnings = [];
+    const at = (name, types) => records.some((r) => r.owner === name && types.includes(r.type));
+    const target = (r) => r.data[r.data.length - 1] ?? '.';
+    const check = (r, label, out) => {
+        const t = target(r);
+        if (t === '.' || !inZone(t, apex))
+            return;
+        if (at(t, ['CNAME']))
+            out.push(`${tag}: ${label} '${bare(t)}' is a CNAME (illegal)`);
+        else if (!at(t, ['A', 'AAAA']))
+            out.push(`${tag}: ${label} '${bare(t)}' has no address records (A or AAAA)`);
+    };
+    for (const r of records)
+        if (r.type === 'NS' && r.owner === apex)
+            check(r, 'NS', errors);
+    for (const r of records)
+        if (r.type === 'MX' || r.type === 'SRV')
+            check(r, `${bare(r.owner)}/${r.type}`, warnings);
+    return { errors, warnings };
+}
+/**
+ * Comprueba el texto de una zona. `text` sin definir es que el archivo no se pudo leer y `readError` el motivo
+ * («file not found», «permission denied»).
+ */
+function checkZone(zone, file, text, readError = 'file not found', read) {
+    const apex = absolute(zone);
+    const tag = `zone ${bare(apex)}/IN`;
+    const notLoaded = `${tag}: not loaded due to errors.`;
+    const failed = (reason) => `${tag}: loading from master file ${file} failed: ${reason}`;
+    if (text === undefined)
+        return { ok: false, lines: [failed(readError), notLoaded], records: [] };
+    const load = loadZone(zone, file, text, read);
+    if (load.error)
+        return { ok: false, lines: [...load.warnings, load.error.line, failed(load.error.reason), notLoaded], records: [] };
+    const apexOf = (type) => load.records.filter((r) => r.owner === apex && r.type === type);
+    const soa = apexOf('SOA');
+    const structural = [
+        ...(soa.length === 0 ? [`${tag}: has 0 SOA records`] : []),
+        ...(apexOf('NS').length === 0 ? [`${tag}: has no NS records`] : []),
+    ];
+    if (structural.length > 0)
+        return { ok: false, lines: [...load.warnings, ...structural, notLoaded], records: load.records };
+    const found = integrity(apex, load.records, tag);
+    if (found.errors.length > 0)
+        return { ok: false, lines: [...load.warnings, ...found.errors, ...found.warnings, notLoaded], records: load.records };
+    const serial = Number(soa[0]?.data[2] ?? 0);
+    return { ok: true, lines: [...load.warnings, ...found.warnings, `${tag}: loaded serial ${serial}`], serial, records: load.records };
+}
+const TYPE_RANK = { SOA: 0, NS: 1 };
+const canonical = (name) => name.split('.').reverse().join('\u0001');
+/** La zona en forma canónica, como la escribe named-compilezone: nombres completos, el vértice primero. */
+function dumpZone(records) {
+    const apex = records.find((r) => r.type === 'SOA')?.owner;
+    const sorted = [...records].sort((a, b) => {
+        if ((a.owner === apex) !== (b.owner === apex))
+            return a.owner === apex ? -1 : 1;
+        const [ka, kb] = [canonical(a.owner), canonical(b.owner)];
+        const byName = ka < kb ? -1 : ka > kb ? 1 : 0;
+        return byName || (TYPE_RANK[a.type] ?? 2) - (TYPE_RANK[b.type] ?? 2);
+    });
+    return sorted.map((r) => `${r.owner}\t${r.ttl}\tIN ${r.type}\t${r.data.join(' ')}\n`).join('');
+}
+
+return { checkZone, dumpZone };
+})();
+__m["services/named-conf-check.js"] = (() => {
+/**
+ * named-checkconf (BIND 9.20): la gramática de named.conf (options, zone, acl y los bloques que no se comprueban), las
+ * comprobaciones de después (ACL sin definir, zonas sin tipo, sin archivo o repetidas) y, con -z, la carga de prueba
+ * de cada zona primaria con zone-check.ts. Lo usan named-checkconf y el arranque de bind9.
+ */
+const { aml, bool, ConfError, duration, fail, hosts, int, iplist, lex, listen, near, oneOf, qstring, rpz, semicolon, skip, Stream, } = __m["services/named-conf-parse.js"];
+const { checkZone } = __m["services/zone-check.js"];
+const { absolute, bare } = __m["services/zone-parse.js"];
+const yesNo = ['yes', 'no'];
+const skipped = (names) => Object.fromEntries(names.map((n) => [n, skip]));
+/** Valid in both options and zone (BIND 9.20); read without checking the value. */
+const ZONE_TUNING = [
+    'check-integrity', 'check-mx', 'check-mx-cname', 'check-srv-cname', 'check-sibling', 'check-spf', 'check-wildcard',
+    'check-dup-records', 'check-svcb', 'ixfr-from-differences', 'max-zone-ttl', 'notify-delay', 'notify-to-soa',
+    'request-ixfr', 'request-expire', 'max-refresh-time', 'min-refresh-time', 'max-retry-time', 'min-retry-time',
+    'max-transfer-time-in', 'max-transfer-time-out', 'max-transfer-idle-in', 'max-transfer-idle-out', 'min-transfer-rate-in',
+    'multi-master', 'try-tcp-refresh', 'zero-no-soa-ttl', 'sig-validity-interval', 'sig-signing-nodes',
+    'sig-signing-signatures', 'sig-signing-type', 'dnskey-sig-validity', 'dnssec-loadkeys-interval', 'dnssec-update-mode',
+    'update-check-ksk', 'max-ixfr-ratio', 'max-records', 'max-records-per-type', 'max-types-per-name', 'dialup',
+    'notify-source-v6', 'transfer-source-v6', 'parental-agents', 'parental-source', 'parental-source-v6', 'checkds',
+    'max-journal-size', 'serial-update-method', 'provide-ixfr', 'update-quota', 'allow-query-on',
+];
+/** Valid only in options. */
+const SERVER_TUNING = [
+    'stale-cache-enable', 'stale-answer-ttl', 'stale-answer-client-timeout', 'stale-refresh-time', 'transfers-per-ns',
+    'notify-rate', 'startup-notify-rate', 'dnssec-accept-expired', 'dnssec-must-be-secure', 'nocookie-udp-size',
+    'send-cookie', 'require-server-cookie', 'answer-cookie', 'cookie-algorithm', 'cookie-secret', 'max-recursion-depth',
+    'max-recursion-queries', 'max-query-count', 'max-query-restarts', 'fetches-per-server', 'fetches-per-zone',
+    'fetch-quota-params', 'lmdb-mapsize', 'new-zones-directory', 'nta-lifetime', 'nta-recheck', 'preferred-glue',
+    'root-key-sentinel', 'synth-from-dnssec', 'trust-anchor-telemetry', 'udp-receive-buffer', 'udp-send-buffer',
+    'disable-algorithms', 'disable-ds-digests', 'disable-empty-zone', 'empty-server', 'empty-contact',
+    'flush-zones-on-shutdown', 'geoip-directory', 'match-mapped-addresses', 'memstatistics', 'memstatistics-file', 'port',
+    'heartbeat-interval', 'ipv4only-enable', 'ipv4only-server', 'ipv4only-contact', 'recursing-file', 'secroots-file',
+    'tcp-advertised-timeout', 'tcp-idle-timeout', 'tcp-initial-timeout', 'tcp-keepalive-timeout', 'tcp-listen-queue',
+    'tcp-receive-buffer', 'tcp-send-buffer', 'tls-port', 'https-port', 'http-port', 'http-listener-clients',
+    'http-streams-per-connection', 'transfer-message-size', 'use-v4-udp-ports', 'use-v6-udp-ports', 'avoid-v4-udp-ports',
+    'avoid-v6-udp-ports', 'reserved-sockets', 'resolver-nonbackoff-tries', 'resolver-retry-interval', 'validate-except',
+    'max-validations-per-fetch', 'max-validation-failures-per-fetch', 'catalog-zones', 'deny-answer-addresses',
+    'deny-answer-aliases', 'automatic-interface-scan', 'responselog', 'dnstap', 'dnstap-output', 'dnstap-identity',
+    'dnstap-version', 'v6-bias', 'zero-no-soa-ttl-cache',
+];
+const OPTIONS = {
+    ...skipped(ZONE_TUNING), ...skipped(SERVER_TUNING),
+    directory: qstring, 'pid-file': qstring, version: qstring, hostname: qstring, 'server-id': qstring,
+    'dump-file': qstring, 'statistics-file': qstring, 'key-directory': qstring, 'managed-keys-directory': qstring,
+    'session-keyfile': qstring, 'bindkeys-file': qstring, 'dnssec-policy': qstring,
+    'max-cache-ttl': duration, 'max-ncache-ttl': duration, 'min-cache-ttl': duration, 'min-ncache-ttl': duration,
+    'lame-ttl': duration, 'servfail-ttl': duration, 'max-stale-ttl': duration, 'interface-interval': duration,
+    forwarders: iplist, 'also-notify': hosts, forward: oneOf('only', 'first'),
+    recursion: bool, 'auth-nxdomain': bool, querylog: bool, 'empty-zones-enable': bool, 'minimal-any': bool,
+    'stale-answer-enable': bool, 'zone-statistics': bool, 'allow-new-zones': bool,
+    notify: oneOf(...yesNo, 'explicit', 'master-only', 'primary-only'),
+    'minimal-responses': oneOf(...yesNo, 'no-auth', 'no-auth-recursive'),
+    'dnssec-validation': oneOf(...yesNo, 'auto'),
+    'qname-minimization': oneOf('strict', 'relaxed', 'disabled', 'off'),
+    'allow-recursion': aml, 'allow-recursion-on': aml, 'allow-query': aml, 'allow-query-on': aml, 'allow-query-cache': aml,
+    'allow-query-cache-on': aml, 'allow-transfer': aml, 'allow-update': aml, 'allow-update-forwarding': aml,
+    'allow-notify': aml, blackhole: aml, sortlist: aml,
+    'listen-on': listen, 'listen-on-v6': listen, 'response-policy': rpz,
+    'max-cache-size': skip, 'check-names': skip, 'rate-limit': skip, 'transfer-source': skip, 'notify-source': skip,
+    'query-source': skip, 'query-source-v6': skip, dns64: skip, 'rrset-order': skip, 'tcp-clients': int,
+    'recursive-clients': int, 'clients-per-query': int, 'max-clients-per-query': int, 'edns-udp-size': int,
+    'max-udp-size': int, prefetch: skip, 'transfers-in': int, 'transfers-out': int, 'transfer-format': skip,
+    'serial-query-rate': int, 'resolver-query-timeout': int, 'masterfile-format': skip,
+};
+const ZONE = {
+    ...skipped(ZONE_TUNING), database: qstring, dlz: qstring, 'server-addresses': iplist, 'server-names': skip,
+    type: oneOf('master', 'primary', 'slave', 'secondary', 'hint', 'forward', 'stub', 'mirror', 'static-stub', 'redirect'),
+    file: qstring, journal: qstring, 'in-view': qstring, 'key-directory': qstring, 'dnssec-policy': qstring,
+    'allow-query': aml, 'allow-query-on': aml, 'allow-transfer': aml, 'allow-update': aml, 'allow-notify': aml,
+    'allow-update-forwarding': aml, primaries: hosts, masters: hosts, forwarders: iplist, forward: oneOf('only', 'first'),
+    notify: oneOf(...yesNo, 'explicit', 'master-only', 'primary-only'), 'also-notify': hosts, 'inline-signing': bool,
+    'zone-statistics': skip, 'update-policy': skip, 'check-names': skip, 'masterfile-format': skip,
+    'max-journal-size': skip, 'notify-source': skip, 'transfer-source': skip, 'serial-update-method': skip,
+};
+/** Sentencias de primer nivel que se aceptan sin comprobar su contenido. */
+const SKIPPED = new Set([
+    'logging', 'controls', 'key', 'view', 'server', 'statistics-channels', 'trust-anchors', 'managed-keys', 'primaries',
+    'masters', 'tls', 'http', 'dnssec-policy', 'remote-servers', 'key-store',
+]);
+const BUILTIN_ACLS = new Set(['any', 'none', 'localhost', 'localnets']);
+const CLASSES = new Set(['in', 'ch', 'chaos', 'hs', 'hesiod']);
+const NEEDS_FILE = new Set(['master', 'primary', 'hint']);
+const NEEDS_PRIMARIES = new Set(['slave', 'secondary', 'stub']);
+const LOADABLE = new Set(['master', 'primary']);
+/** El cuerpo de un bloque { … }: sentencias de su gramática hasta el `}`; devuelve los valores leídos. */
+function mapBody(c, grammar) {
+    const found = new Map();
+    for (;;) {
+        const t = c.s.next();
+        if (t.kind === 'punct' && t.text === '}')
+            return found;
+        if (t.kind === 'eof')
+            throw fail(t, 'unexpected end of input');
+        const name = t.text.toLowerCase();
+        const value = t.kind === 'word' && Object.hasOwn(grammar, name) ? grammar[name] : undefined;
+        if (!value)
+            throw fail(t, `unknown option ${near(t)}`);
+        found.set(name, value(c));
+        semicolon(c.s);
+    }
+}
+function openBlock(s) {
+    const t = s.next();
+    if (t.kind !== 'punct' || t.text !== '{')
+        throw fail(t, `'{' expected near ${near(t)}`);
+}
+function zone(c, at, p) {
+    const seq = c.s.taken;
+    const name = qstring(c) ?? '';
+    const cls = c.s.peek();
+    if (cls.kind === 'word' && CLASSES.has(cls.text.toLowerCase()))
+        c.s.next();
+    openBlock(c.s);
+    const body = mapBody(c, ZONE);
+    p.zones.push({
+        name, type: body.get('type'), file: body.get('file'), where: `${at.file}:${at.line}`, seq,
+        primaries: body.has('primaries') || body.has('masters'),
+    });
+}
+function statement(c, t, p) {
+    const word = t.kind === 'word' ? t.text.toLowerCase() : '';
+    if (word === 'options') {
+        openBlock(c.s);
+        const dir = mapBody(c, OPTIONS).get('directory');
+        if (dir !== undefined)
+            p.directory = dir;
+    }
+    else if (word === 'zone')
+        zone(c, t, p);
+    else if (word === 'acl') {
+        p.acls.add((qstring(c) ?? '').toLowerCase());
+        aml(c);
+    }
+    else if (SKIPPED.has(word))
+        skip(c);
+    else
+        throw fail(t, `unknown option ${near(t)}`);
+    semicolon(c.s);
+}
+/** Lo que named-checkconf comprueba con el archivo ya leído; todos los errores, en el orden en que aparecen. */
+function semantic(p, refs) {
+    const found = [];
+    for (const r of refs) {
+        const name = r.name.toLowerCase();
+        if (!BUILTIN_ACLS.has(name) && !p.acls.has(name))
+            found.push({ seq: r.seq, message: `${r.tok.file}:${r.tok.line}: undefined ACL '${r.name}'` });
+    }
+    const seen = new Map();
+    for (const z of p.zones) {
+        const say = (what) => { found.push({ seq: z.seq, message: `${z.where}: zone '${z.name}': ${what}` }); };
+        if (z.type === undefined)
+            say('type not present');
+        else if (NEEDS_FILE.has(z.type) && z.file === undefined)
+            say("missing 'file' entry");
+        else if (NEEDS_PRIMARIES.has(z.type) && !z.primaries)
+            say("missing 'primaries' entry");
+        const key = absolute(z.name);
+        const prev = seen.get(key);
+        if (prev)
+            say(`already exists previous definition: ${prev.where}`);
+        else
+            seen.set(key, z);
+    }
+    return found.sort((a, b) => a.seq - b.seq).map((f) => f.message);
+}
+/** Lee y comprueba named.conf con sus include, como `named-checkconf [archivo]`. */
+function checkNamedConf(path, read) {
+    const text = read(path);
+    if (typeof text !== 'string')
+        return { errors: [`none:0: open: ${path}: ${text.error}`], zones: [] };
+    const p = { acls: new Set(), zones: [] };
+    const refs = [];
+    try {
+        const c = { s: new Stream(lex(text, path), read), refs };
+        for (let t = c.s.next(); t.kind !== 'eof'; t = c.s.next())
+            statement(c, t, p);
+    }
+    catch (err) {
+        if (err instanceof ConfError)
+            return { errors: [err.message], zones: [] };
+        throw err;
+    }
+    const zones = p.zones.map(({ name, type, file, where }) => ({ name, type, file, where }));
+    return { errors: semantic(p, refs), zones, ...(p.directory === undefined ? {} : { directory: p.directory }) };
+}
+/** named-checkconf -z: carga cada zona primaria; un archivo relativo se lee desde `directory`. */
+function loadConfZones(conf, read) {
+    const lines = [];
+    let ok = true;
+    const dir = conf.directory?.replace(/\/$/, '');
+    // Zone files and their $INCLUDEs are relative to the working directory of named.
+    const inDirectory = (file) => read(file.startsWith('/') || dir === undefined ? file : `${dir}/${file}`);
+    for (const z of conf.zones) {
+        if (z.type === undefined || !LOADABLE.has(z.type) || z.file === undefined)
+            continue;
+        const text = inDirectory(z.file);
+        const r = typeof text === 'string' ? checkZone(z.name, z.file, text, undefined, inDirectory) : checkZone(z.name, z.file, undefined, text.error);
+        lines.push(...r.lines);
+        if (!r.ok) {
+            ok = false;
+            lines.push(`_default/${bare(absolute(z.name))}/IN: bad zone`);
+        }
+    }
+    return { ok, lines };
+}
+
+return { checkNamedConf, loadConfZones };
+})();
+__m["shells/bind-tools.js"] = (() => {
+const { FsError } = __m["bash/vfs.js"];
+const { checkNamedConf, loadConfZones } = __m["services/named-conf-check.js"];
+const { checkZone, dumpZone } = __m["services/zone-check.js"];
+const { anyInstalled } = __m["shells/apt-state.js"];
+const BIND_VERSION = '9.20.4-3ubuntu1-Ubuntu';
+const BIND_TOOLS = ['bind9-utils', 'bind9utils', 'bind9'];
+/** How isc_result names the reasons a file cannot be read or written (anything else is ISC_R_UNEXPECTED). */
+function reason(e) {
+    if (!(e instanceof FsError))
+        return 'unexpected error';
+    if (e.code === 'ENOENT')
+        return 'file not found';
+    if (e.code === 'EACCES')
+        return 'permission denied';
+    return 'unexpected error';
+}
+/** Reads files of the host as the user (relative paths from the working directory). */
+function fileReader(ctx, dir) {
+    return (path) => {
+        try {
+            return ctx.sh.env.fs.readFile(ctx.resolve(dir && !path.startsWith('/') ? `${dir}/${path}` : path), ctx.cred);
+        }
+        catch (e) {
+            return { error: reason(e) };
+        }
+    };
+}
+/** False (and Ubuntu's command-not-found hint) when no package that brings the program is installed. */
+function toolInstalled(ctx, host, packages, hint) {
+    if (anyInstalled(host, packages))
+        return true;
+    ctx.err(`Command '${ctx.argv[0] ?? ''}' not found, but can be installed with:\nsudo apt install ${hint}\n`);
+    return false;
+}
+/** getopt: grouped flags (-qD), values glued or apart (-o out, -oout), and `--` or the first operand ends them. */
+function getopt(args, flags, valued) {
+    const set = new Set();
+    const values = new Map();
+    let i = 0;
+    for (; i < args.length; i++) {
+        const a = args[i] ?? '';
+        if (a === '--') {
+            i++;
+            break;
+        }
+        if (!a.startsWith('-') || a === '-')
+            break;
+        for (let k = 1; k < a.length; k++) {
+            const c = a[k] ?? '';
+            if (valued.includes(c)) {
+                const v = k + 1 < a.length ? a.slice(k + 1) : args[++i];
+                if (v === undefined)
+                    return { flags: set, values, rest: [], bad: c };
+                values.set(c, v);
+                break;
+            }
+            if (!flags.includes(c))
+                return { flags: set, values, rest: [], bad: c };
+            set.add(c);
+        }
+    }
+    return { flags: set, values, rest: args.slice(i) };
+}
+const MODES = '(ignore|warn|fail)';
+const zoneUsage = (prog) => `usage: ${prog} [-djqvD] [-c class] [-f inputformat] [-F outputformat] [-J filename] [-s (full|relative)] [-t directory] [-w directory] [-k ${MODES}] [-m ${MODES}] [-n ${MODES}] [-r ${MODES}] [-i (full|full-sibling|local|local-sibling|none)] [-M ${MODES}] [-S ${MODES}] [-W (ignore|warn)] [-o filename] zonename filename\n`;
+function usageError(ctx, prog, usage, bad, valued) {
+    if (bad !== undefined)
+        ctx.err(valued.includes(bad) ? `${prog}: option requires an argument -- ${bad}\n` : `${prog}: illegal option -- ${bad}\n`);
+    ctx.err(usage);
+    return 1;
+}
+/** named-compilezone -o: the zone in canonical form, to a file or to stdout with `-`. */
+function writeDump(ctx, out, body, say) {
+    if (out === '-') {
+        ctx.out(body);
+        return true;
+    }
+    try {
+        ctx.sh.env.fs.writeFile(ctx.resolve(out), body, ctx.cred);
+        say(`dump zone to ${out}...done\n`);
+        return true;
+    }
+    catch (e) {
+        say(`dump zone to ${out}...failed: ${reason(e)}\n`);
+        return false;
+    }
+}
+const ZONE_VALUED = 'cfFJstwkmnriMSWoLlT';
+function zoneTool(host, prog) {
+    return (ctx) => {
+        if (!toolInstalled(ctx, host, BIND_TOOLS, 'bind9-utils'))
+            return 127;
+        const o = getopt(ctx.argv.slice(1), 'djqvDh', ZONE_VALUED);
+        if (o.flags.has('v')) {
+            ctx.out(`${BIND_VERSION}\n`);
+            return 0;
+        }
+        const [zone, file] = o.rest;
+        if (o.bad !== undefined || o.flags.has('h') || zone === undefined || file === undefined)
+            return usageError(ctx, prog, zoneUsage(prog), o.bad, ZONE_VALUED);
+        const out = o.values.get('o');
+        const compile = prog === 'named-compilezone';
+        if (compile && out === undefined) {
+            ctx.err('output file required, but not specified\n');
+            ctx.err(zoneUsage(prog));
+            return 1;
+        }
+        const quiet = o.flags.has('q');
+        // With the zone on stdout, the messages go to stderr.
+        const say = (s) => { if (!quiet)
+            (out === '-' || (!compile && o.flags.has('D')) ? ctx.err(s) : ctx.out(s)); };
+        const read = fileReader(ctx, o.values.get('w'));
+        const text = read(file);
+        const r = typeof text === 'string' ? checkZone(zone, file, text, undefined, read) : checkZone(zone, file, undefined, text.error);
+        for (const l of r.lines)
+            say(`${l}\n`);
+        if (!r.ok)
+            return 1;
+        if (compile || o.flags.has('D')) {
+            if (!writeDump(ctx, out ?? '-', dumpZone(r.records), say))
+                return 1;
+        }
+        say('OK\n');
+        return 0;
+    };
+}
+const namedCheckzone = (host) => zoneTool(host, 'named-checkzone');
+const namedCompilezone = (host) => zoneTool(host, 'named-compilezone');
+const CONF_USAGE = 'usage: named-checkconf [-achijlvz] [-p [-x]] [-t directory] [named.conf]\n';
+const NAMED_CONF_PATH = '/etc/bind/named.conf';
+function namedCheckconf(host) {
+    return (ctx) => {
+        if (!toolInstalled(ctx, host, BIND_TOOLS, 'bind9-utils'))
+            return 127;
+        const o = getopt(ctx.argv.slice(1), 'achijlvzpx', 't');
+        if (o.bad !== undefined)
+            return usageError(ctx, 'named-checkconf', CONF_USAGE, o.bad, 't');
+        if (o.flags.has('h')) {
+            ctx.err(CONF_USAGE);
+            return 0;
+        }
+        if (o.flags.has('v')) {
+            ctx.out(`${BIND_VERSION}\n`);
+            return 0;
+        }
+        const read = fileReader(ctx);
+        const conf = checkNamedConf(o.rest[0] ?? NAMED_CONF_PATH, read);
+        if (conf.errors.length > 0) {
+            ctx.out(`${conf.errors.join('\n')}\n`);
+            return 1;
+        }
+        // -l: «name class view type», one line per zone.
+        if (o.flags.has('l'))
+            for (const z of conf.zones)
+                ctx.out(`${z.name} IN _default ${z.type ?? ''}\n`);
+        if (!o.flags.has('z'))
+            return 0;
+        const zones = loadConfZones(conf, read);
+        if (zones.lines.length > 0)
+            ctx.out(`${zones.lines.join('\n')}\n`);
+        return zones.ok ? 0 : 1;
+    };
+}
+
+return { BIND_VERSION, fileReader, toolInstalled, namedCheckzone, namedCompilezone, NAMED_CONF_PATH, namedCheckconf };
+})();
+__m["services/kea-json.js"] = (() => {
+/**
+ * Lectura de kea-dhcp4.conf como la hace Kea 2.6 (dhcp4_lexer.ll y dhcp4_parser.yy): JSON con comentarios `#`, `//` y
+ * de bloque, y en cada mapa solo las palabras clave de su gramática (Spec); una coma final se acepta con un aviso. Los
+ * mensajes son los de Parser4Context: «ARCHIVO:LÍNEA.COL[-FIN]: syntax error, unexpected X, expecting Y», «got
+ * unexpected keyword "x" in Dhcp4 map.» y «Invalid character: x». Lo que se comprueba después está en kea-check.ts.
+ */
+class ParseError extends Error {
+}
+/** Los nombres de bison: sin comillas salvo los que llevan una coma. */
+const NAME = {
+    '{': '{', '}': '}', '[': '[', ']': ']', ',': '","', ':': ':', string: 'constant string', integer: 'integer',
+    float: 'floating point', boolean: 'boolean', null: 'null', eof: 'end of file',
+};
+const NUMBER = /-?\d+(\.\d+)?([eE][+-]?\d+)?/y;
+const WORD = /true|false|null/y;
+const pos = (t) => ({ line: t.line, col: t.col });
+/** Maps and lists inside one another before the parser gives up (Kea's own configurations nest about 6 deep). */
+const MAX_DEPTH = 200;
+class Lexer {
+    text;
+    file;
+    i = 0;
+    line = 1;
+    col = 1;
+    constructor(text, file) {
+        this.text = text;
+        this.file = file;
+    }
+    loc(line, col, last = col) {
+        return `${this.file}:${line}.${col}${last > col ? `-${last}` : ''}`;
+    }
+    next() {
+        this.skip();
+        const { text, i, line, col } = this;
+        const c = text[i];
+        if (c === undefined)
+            return { kind: 'eof', text: '', line, col, last: col };
+        if ('{}[],:'.includes(c))
+            return this.take(c, c);
+        if (c === '"')
+            return this.string();
+        for (const [re, kind] of [[NUMBER, 'number'], [WORD, 'word']]) {
+            re.lastIndex = i;
+            const m = re.exec(text)?.[0];
+            if (m === undefined)
+                continue;
+            if (kind === 'word')
+                return this.take(m === 'null' ? 'null' : 'boolean', m);
+            return this.take(/[.eE]/.test(m) ? 'float' : 'integer', m);
+        }
+        throw new ParseError(`${this.loc(line, col)}: Invalid character: ${c}`);
+    }
+    take(kind, raw, value = raw) {
+        const t = { kind, text: value, line: this.line, col: this.col, last: this.col + raw.length - 1 };
+        this.i += raw.length;
+        this.col += raw.length;
+        return t;
+    }
+    advance(n) {
+        for (const c of this.text.slice(this.i, this.i + n)) {
+            if (c === '\n') {
+                this.line++;
+                this.col = 1;
+            }
+            else
+                this.col++;
+        }
+        this.i += n;
+    }
+    /** Espacios y comentarios: `#` y `//` hasta el fin de línea, y los de bloque. */
+    skip() {
+        for (;;) {
+            const { text, i } = this;
+            const two = text.slice(i, i + 2);
+            if (/^\s/.test(text[i] ?? ''))
+                this.advance(1);
+            else if (text[i] === '#' || two === '//') {
+                const end = text.indexOf('\n', i);
+                this.advance((end < 0 ? text.length : end) - i);
+            }
+            else if (two === '/*') {
+                const end = text.indexOf('*/', i + 2);
+                if (end < 0)
+                    throw new ParseError(`${this.loc(this.line, this.col)}: Comment not closed. (/* in line ${this.line})`);
+                this.advance(end + 2 - i);
+            }
+            else
+                return;
+        }
+    }
+    string() {
+        const { text, i, line, col } = this;
+        let k = i + 1;
+        while (k < text.length && text[k] !== '"')
+            k += text[k] === '\\' ? 2 : 1;
+        if (k >= text.length)
+            throw new ParseError(`${this.loc(line, col)}: Invalid character: "`);
+        const raw = text.slice(i, k + 1);
+        if (/[\u0000-\u001f]/.test(raw))
+            throw new ParseError(`${this.loc(line, col)}: Invalid control in ${raw}`);
+        let value;
+        try {
+            value = JSON.parse(raw);
+        }
+        catch {
+            throw new ParseError(`${this.loc(line, col)}: Bad escape in ${raw}`);
+        }
+        return this.take('string', raw, String(value));
+    }
+}
+class Parser {
+    lexer;
+    warnings = [];
+    peeked;
+    depth = 0;
+    constructor(lexer) {
+        this.lexer = lexer;
+    }
+    document(top) {
+        const open = this.next();
+        if (open.kind !== '{')
+            throw this.syntax(open, '{');
+        const root = this.map(open, top);
+        const end = this.next();
+        if (end.kind !== 'eof')
+            throw this.syntax(end, 'end of file');
+        return root;
+    }
+    next() {
+        const t = this.peek();
+        this.peeked = undefined;
+        return t;
+    }
+    peek() {
+        this.peeked ??= this.lexer.next();
+        return this.peeked;
+    }
+    /** Una clave conocida del mapa en curso es una palabra clave del analizador: bison la nombra por su texto. */
+    syntax(t, expecting, spec) {
+        const name = t.kind === 'string' && spec && Object.hasOwn(spec.keys, t.text) ? t.text : NAME[t.kind];
+        return new ParseError(`${this.lexer.loc(t.line, t.col, t.last)}: syntax error, unexpected ${name}${expecting ? `, expecting ${expecting}` : ''}`);
+    }
+    warn(comma) {
+        this.warnings.push(`${this.lexer.loc(comma.line, comma.col)}: Extraneous comma. A piece of configuration may have been omitted.`);
+    }
+    value(spec) {
+        const t = this.next();
+        if (t.kind === '{' || t.kind === '[') {
+            this.depth++;
+            try {
+                return this.nested(t, spec);
+            }
+            finally {
+                this.depth--;
+            }
+        }
+        if (typeof spec === 'object')
+            throw this.syntax(t, 'map' in spec ? '{' : '[');
+        if (spec !== 'any' && t.kind !== spec)
+            throw this.syntax(t, NAME[spec]);
+        return this.scalar(t);
+    }
+    /** A map or list; bison's stack is bounded, and so is this one (no RangeError from a file of «[[[[…»). */
+    nested(t, spec) {
+        if (this.depth > MAX_DEPTH)
+            throw new ParseError(`${this.lexer.loc(t.line, t.col)}: memory exhausted`);
+        if (typeof spec === 'object') {
+            const want = 'map' in spec ? '{' : '[';
+            if (t.kind !== want)
+                throw this.syntax(t, want);
+            return 'map' in spec ? this.map(t, spec) : this.list(t, spec.list);
+        }
+        if (spec !== 'any' && t.kind !== spec)
+            throw this.syntax(t, NAME[spec]);
+        return t.kind === '{' ? this.map(t, undefined) : this.list(t, 'any');
+    }
+    scalar(t) {
+        const p = pos(t);
+        switch (t.kind) {
+            case 'string': return { kind: 'string', value: t.text, pos: p };
+            case 'integer':
+            case 'float': return { kind: t.kind, value: Number(t.text), pos: p };
+            case 'boolean': return { kind: 'boolean', value: t.text === 'true', pos: p };
+            case 'null': return { kind: 'null', pos: p };
+            default: throw this.syntax(t, '');
+        }
+    }
+    keyword(key, spec) {
+        const sub = Object.hasOwn(spec.keys, key.text) ? spec.keys[key.text] : undefined;
+        if (sub === undefined)
+            throw new ParseError(`${this.lexer.loc(key.line, key.col, key.last)}: got unexpected keyword "${key.text}" in ${spec.map} map.`);
+        return sub;
+    }
+    map(open, spec) {
+        const entries = new Map();
+        const done = () => ({ kind: 'map', entries, pos: pos(open) });
+        let comma;
+        for (;;) {
+            const key = this.next();
+            if (key.kind === '}') {
+                if (comma)
+                    this.warn(comma);
+                return done();
+            }
+            if (key.kind !== 'string')
+                throw this.syntax(key, spec ? '' : 'constant string or }', spec);
+            const colon = this.next();
+            if (colon.kind !== ':')
+                throw this.syntax(colon, ':', spec);
+            const sub = spec ? this.keyword(key, spec) : 'any';
+            const prev = entries.get(key.text);
+            if (spec && prev) {
+                const file = this.lexer.file;
+                throw new ParseError(`${file}:${key.line}:${key.col}: duplicate ${key.text} entries in ${spec.map} map (previous at ${file}:${prev.pos.line}:${prev.pos.col})`);
+            }
+            entries.set(key.text, this.value(sub));
+            const sep = this.next();
+            if (sep.kind === '}')
+                return done();
+            if (sep.kind !== ',')
+                throw this.syntax(sep, '"," or }', spec);
+            comma = sep;
+        }
+    }
+    list(open, item) {
+        const items = [];
+        const done = () => ({ kind: 'list', items, pos: pos(open) });
+        if (this.peek().kind === ']') {
+            this.next();
+            return done();
+        }
+        for (;;) {
+            items.push(this.value(item));
+            const sep = this.next();
+            if (sep.kind === ']')
+                return done();
+            if (sep.kind !== ',')
+                throw this.syntax(sep, '"," or ]');
+            if (this.peek().kind === ']') {
+                this.warn(sep);
+                this.next();
+                return done();
+            }
+        }
+    }
+}
+/** Lee el archivo con la gramática `top`; se detiene en el primer error, como el analizador de Kea. */
+function parseKea(text, file, top) {
+    const parser = new Parser(new Lexer(text, file));
+    try {
+        return { root: parser.document(top), warnings: parser.warnings };
+    }
+    catch (err) {
+        if (err instanceof ParseError)
+            return { error: err.message, warnings: parser.warnings };
+        throw err;
+    }
+}
+
+return { parseKea };
+})();
+__m["services/kea-schema.js"] = (() => {
+const STRINGS = { list: 'string' };
+const COMMON = { comment: 'string', 'user-context': 'any' };
+const OPTION_DATA = { list: { map: 'option-data', keys: {
+            name: 'string', data: 'string', code: 'integer', space: 'string', 'csv-format': 'boolean', 'always-send': 'boolean',
+            'never-send': 'boolean', 'client-classes': STRINGS, ...COMMON,
+        } } };
+const RESERVATIONS = { list: { map: 'reservations', keys: {
+            'hw-address': 'string', 'client-id': 'string', duid: 'string', 'circuit-id': 'string', 'flex-id': 'string',
+            'ip-address': 'string', hostname: 'string', 'next-server': 'string', 'server-hostname': 'string',
+            'boot-file-name': 'string', 'option-data': OPTION_DATA, 'client-classes': STRINGS, ...COMMON,
+        } } };
+const POOLS = { list: { map: 'pools', keys: {
+            pool: 'string', 'pool-id': 'integer', 'option-data': OPTION_DATA, 'client-class': 'string',
+            'require-client-classes': STRINGS, 'evaluate-additional-classes': STRINGS, ...COMMON,
+        } } };
+/** Parámetros que valen en Dhcp4 y en cada subred (la subred hereda los globales). */
+const NETWORK = {
+    'valid-lifetime': 'integer', 'min-valid-lifetime': 'integer', 'max-valid-lifetime': 'integer', 'renew-timer': 'integer',
+    'rebind-timer': 'integer', 'calculate-tee-times': 'boolean', 't1-percent': 'float', 't2-percent': 'float',
+    'match-client-id': 'boolean', authoritative: 'boolean', 'next-server': 'string', 'server-hostname': 'string',
+    'boot-file-name': 'string', 'reservations-global': 'boolean', 'reservations-in-subnet': 'boolean',
+    'reservations-out-of-pool': 'boolean', 'store-extended-info': 'boolean', 'cache-threshold': 'float',
+    'cache-max-age': 'integer', 'offer-lifetime': 'integer', allocator: 'string', 'option-data': OPTION_DATA,
+    'ddns-send-updates': 'boolean', 'ddns-override-no-update': 'boolean', 'ddns-override-client-update': 'boolean',
+    'ddns-replace-client-name': 'string', 'ddns-generated-prefix': 'string', 'ddns-qualifying-suffix': 'string',
+    'hostname-char-set': 'string', 'hostname-char-replacement': 'string', 'ddns-update-on-renew': 'boolean',
+    'ddns-use-conflict-resolution': 'boolean', 'ddns-conflict-resolution-mode': 'string', 'ddns-ttl-percent': 'float',
+    'ddns-ttl': 'integer', 'ddns-ttl-min': 'integer', 'ddns-ttl-max': 'integer', 'reservation-mode': 'string',
+    'reservations-lookup-first': 'boolean', ...COMMON,
+};
+const SUBNET4 = { list: { map: 'subnet4', keys: {
+            ...NETWORK, id: 'integer', subnet: 'string', pools: POOLS, reservations: RESERVATIONS, interface: 'string',
+            relay: 'any', 'client-class': 'string', 'require-client-classes': STRINGS, 'evaluate-additional-classes': STRINGS,
+            '4o6-interface': 'string', '4o6-interface-id': 'string', '4o6-subnet': 'string', 'shared-network-name': 'string',
+        } } };
+const INTERFACES = { map: 'interfaces-config', keys: {
+        interfaces: STRINGS, 'dhcp-socket-type': 'string', 'outbound-interface': 'string', 're-detect': 'boolean',
+        'service-sockets-require-all': 'boolean', 'service-sockets-max-retries': 'integer',
+        'service-sockets-retry-wait-time': 'integer', ...COMMON,
+    } };
+const database = (map) => ({ map, keys: {
+        type: 'string', persist: 'boolean', name: 'string', 'lfc-interval': 'integer', host: 'string', port: 'integer',
+        user: 'string', password: 'string', 'max-row-errors': 'integer', 'connect-timeout': 'integer', readonly: 'boolean',
+        'max-reconnect-tries': 'integer', 'reconnect-wait-time': 'integer', 'on-fail': 'string', 'retry-on-startup': 'boolean',
+        'trust-anchor': 'string', 'cert-file': 'string', 'key-file': 'string', 'cipher-list': 'string', ...COMMON,
+    } });
+const DHCP4 = { map: 'Dhcp4', keys: {
+        ...NETWORK, 'interfaces-config': INTERFACES, 'lease-database': database('lease-database'),
+        'hosts-database': database('hosts-database'), 'hosts-databases': { list: database('hosts-databases') },
+        subnet4: SUBNET4, reservations: RESERVATIONS, 'host-reservation-identifiers': STRINGS, 'dhcp4o6-port': 'integer',
+        'decline-probation-period': 'integer', 'echo-client-id': 'boolean', 'server-tag': 'string',
+        'ip-reservations-unique': 'boolean', 'early-global-reservations-lookup': 'boolean', 'parked-packet-limit': 'integer',
+        'statistic-default-sample-count': 'integer', 'statistic-default-sample-age': 'integer', 'stash-agent-options': 'boolean',
+        'shared-networks': 'any', 'option-def': 'any', 'client-classes': 'any', 'control-socket': 'any', 'control-sockets': 'any',
+        'dhcp-ddns': 'any', loggers: 'any', 'hooks-libraries': 'any', 'expired-leases-processing': 'any',
+        'multi-threading': 'any', 'sanity-checks': 'any', 'dhcp-queue-control': 'any', compatibility: 'any', 'config-control': 'any',
+    } };
+const KEA_TOPLEVEL = { map: 'toplevel', keys: { Dhcp4: DHCP4 } };
+const def = (code, type = 'other') => ({ code, type });
+/** Opciones estándar del espacio dhcp4 (RFC 2132 y siguientes) por su nombre en Kea. */
+const DHCP4_OPTIONS = {
+    'subnet-mask': def(1, 'ip'), 'time-offset': def(2), routers: def(3, 'ips'), 'time-servers': def(4, 'ips'),
+    'name-servers': def(5, 'ips'), 'domain-name-servers': def(6, 'ips'), 'log-servers': def(7, 'ips'),
+    'cookie-servers': def(8, 'ips'), 'lpr-servers': def(9, 'ips'), 'host-name': def(12), 'boot-size': def(13),
+    'domain-name': def(15), 'swap-server': def(16, 'ip'), 'root-path': def(17), 'ip-forwarding': def(19),
+    'default-ip-ttl': def(23), 'interface-mtu': def(26), 'broadcast-address': def(28, 'ip'), 'static-routes': def(33, 'ips'),
+    'nis-domain': def(40), 'nis-servers': def(41, 'ips'), 'ntp-servers': def(42, 'ips'),
+    'vendor-encapsulated-options': def(43), 'netbios-name-servers': def(44, 'ips'), 'netbios-dd-server': def(45, 'ips'),
+    'netbios-node-type': def(46), 'netbios-scope': def(47), 'dhcp-lease-time': def(51), 'dhcp-server-identifier': def(54, 'ip'),
+    'dhcp-message': def(56), 'dhcp-max-message-size': def(57), 'dhcp-renewal-time': def(58), 'dhcp-rebinding-time': def(59),
+    'vendor-class-identifier': def(60), 'tftp-server-name': def(66), 'boot-file-name': def(67),
+    'smtp-server': def(69, 'ips'), 'pop-server': def(70, 'ips'), 'www-server': def(72, 'ips'), 'user-class': def(77),
+    'v4-captive-portal': def(114), 'domain-search': def(119), 'classless-static-route': def(121),
+    'impress-servers': def(10, 'ips'), 'resource-location-servers': def(11, 'ips'), 'merit-dump': def(14),
+    'extensions-path': def(18), 'non-local-source-routing': def(20), 'policy-filter': def(21, 'ips'),
+    'max-dgram-reassembly': def(22), 'path-mtu-aging-timeout': def(24), 'path-mtu-plateau-table': def(25),
+    'all-subnets-local': def(27), 'perform-mask-discovery': def(29), 'mask-supplier': def(30), 'router-discovery': def(31),
+    'router-solicitation-address': def(32, 'ip'), 'trailer-encapsulation': def(34), 'arp-cache-timeout': def(35),
+    'ieee802-3-encapsulation': def(36), 'default-tcp-ttl': def(37), 'tcp-keepalive-interval': def(38),
+    'tcp-keepalive-garbage': def(39), 'font-servers': def(48, 'ips'), 'x-display-manager': def(49, 'ips'),
+    'dhcp-requested-address': def(50, 'ip'), 'dhcp-option-overload': def(52), 'dhcp-message-type': def(53),
+    'dhcp-parameter-request-list': def(55), 'dhcp-client-identifier': def(61), 'nwip-domain-name': def(62),
+    'nwip-suboptions': def(63), 'nisplus-domain-name': def(64), 'nisplus-servers': def(65, 'ips'),
+    'mobile-ip-home-agent': def(68, 'ips'), 'nntp-server': def(71, 'ips'), 'finger-server': def(73, 'ips'),
+    'irc-server': def(74, 'ips'), 'streettalk-server': def(75, 'ips'), 'streettalk-directory-assistance-server': def(76, 'ips'),
+    'slp-directory-agent': def(78), 'slp-service-scope': def(79), fqdn: def(81), 'dhcp-agent-options': def(82),
+    'nds-servers': def(85, 'ips'), 'nds-tree-name': def(86), 'nds-context': def(87), 'bcms-controller-names': def(88),
+    'bcms-controller-address': def(89, 'ips'), authenticate: def(90), 'client-last-transaction-time': def(91),
+    'associated-ip': def(92, 'ips'), 'client-system': def(93), 'client-ndi': def(94), 'uuid-guid': def(97),
+    'uap-servers': def(98), 'geoconf-civic': def(99), pcode: def(100), tcode: def(101), 'v6-only-preferred': def(108),
+    'netinfo-server-address': def(112, 'ips'), 'netinfo-server-tag': def(113), 'auto-config': def(116),
+    'name-service-search': def(117), 'subnet-selection': def(118, 'ip'), 'vivco-suboptions': def(124),
+    'vivso-suboptions': def(125), 'pana-agent': def(136, 'ips'), 'v4-lost': def(137), 'capwap-ac-v4': def(138, 'ips'),
+    'sip-ua-cs-domains': def(141), 'rdnss-selection': def(146), 'v4-portparams': def(159), 'v4-dnr': def(162),
+    'option-6rd': def(212), 'v4-access-domain': def(213),
+};
+
+return { KEA_TOPLEVEL, DHCP4_OPTIONS };
+})();
+__m["services/kea-check.js"] = (() => {
+/**
+ * kea-dhcp4 -t (Kea 2.6): lee kea-dhcp4.conf con kea-json.ts y lo configura sin aplicarlo, en el orden de
+ * configureDhcp4Server: opciones globales, interfaces, subredes (pools, opciones, la subred, reservas) y reservas
+ * globales. Devuelve el registro que Kea escribe en la salida estándar y el error que escribe en la de errores.
+ */
+const { formatIp, inSubnet, networkOf, broadcastOf, parseIp } = __m["core/ip.js"];
+const { parseKea } = __m["services/kea-json.js"];
+const { DHCP4_OPTIONS, KEA_TOPLEVEL } = __m["services/kea-schema.js"];
+class ConfigError extends Error {
+}
+const SUBNET_FAILED = 'subnet configuration failed: ';
+const IDENTIFIERS = ['hw-address', 'duid', 'circuit-id', 'client-id', 'flex-id'];
+const where = (r, n) => `${r.file}:${n.pos.line}:${n.pos.col}`;
+const badAddress = (text) => `Failed to convert string to address '${text}': Invalid argument`;
+function str(m, key) {
+    const n = m.entries.get(key);
+    return n?.kind === 'string' ? n : undefined;
+}
+function num(m, key) {
+    const n = m.entries.get(key);
+    return n?.kind === 'integer' ? n.value : undefined;
+}
+const mapsOf = (n) => (n?.kind === 'list' ? n.items.filter((x) => x.kind === 'map') : []);
+function optionDef(name, code) {
+    if (name !== undefined)
+        return Object.hasOwn(DHCP4_OPTIONS, name) ? DHCP4_OPTIONS[name] : undefined;
+    return Object.values(DHCP4_OPTIONS).find((d) => d.code === code);
+}
+/** option-data: el nombre ha de ser una opción conocida y las direcciones, direcciones. */
+function checkOptions(r, list) {
+    for (const o of mapsOf(list)) {
+        const space = str(o, 'space')?.value ?? 'dhcp4';
+        if (space !== 'dhcp4')
+            continue;
+        const name = str(o, 'name');
+        const code = num(o, 'code');
+        const d = optionDef(name?.value, code);
+        if (!d) {
+            if (name)
+                throw new ConfigError(`definition for the option '${space}.${name.value}' having code '${code ?? 0}' does not exist (${where(r, name)})`);
+            continue;
+        }
+        const data = str(o, 'data');
+        const csv = o.entries.get('csv-format');
+        if (!data || d.type === 'other' || (csv?.kind === 'boolean' && !csv.value))
+            continue;
+        for (const a of data.value.split(',').map((s) => s.trim()).filter(Boolean)) {
+            if (parseIp(a) === null) {
+                throw new ConfigError(`option data does not match option definition (space: ${space}, code: ${d.code}): ${badAddress(a)} (${where(r, data)})`);
+            }
+        }
+    }
+}
+/** Un pool «primera - última» o «red/prefijo»; Kea quita antes los espacios. */
+function poolRange(r, pool) {
+    const txt = pool.value.replace(/[ \t]/g, '');
+    const at = `(${where(r, pool)})`;
+    const slash = txt.indexOf('/');
+    const dash = txt.indexOf('-');
+    if (slash < 0 && dash < 0) {
+        throw new ConfigError(`invalid pool definition: ${pool.value}. There are two acceptable formats <min address-max address> or <prefix/len> ${at}`);
+    }
+    const [a = '', b = ''] = slash >= 0 ? [txt.slice(0, slash), txt.slice(slash + 1)] : [txt.slice(0, dash), txt.slice(dash + 1)];
+    const first = parseIp(a);
+    const other = slash >= 0 ? (/^\d+$/.test(b) ? Number(b) : null) : parseIp(b);
+    if (first === null || other === null)
+        throw new ConfigError(`Failed to parse pool definition: ${txt} ${at}`);
+    if (slash >= 0) {
+        if (other > 32)
+            throw new ConfigError(`Failed to create pool defined by: ${txt} ${at}`);
+        return { first: networkOf(first, other), last: broadcastOf(first, other) };
+    }
+    if (other < first)
+        throw new ConfigError(`Failed to create pool defined by: ${txt} ${at}`);
+    return { first, last: other };
+}
+function pools(r, subnet) {
+    return mapsOf(subnet.entries.get('pools')).map((p) => {
+        const pool = str(p, 'pool');
+        if (!pool)
+            throw new ConfigError(`missing parameter 'pool' (${where(r, p)})`);
+        const range = poolRange(r, pool);
+        checkOptions(r, p.entries.get('option-data'));
+        return range;
+    });
+}
+function subnetOf(r, m) {
+    const s = str(m, 'subnet');
+    if (!s)
+        throw new ConfigError(`${SUBNET_FAILED}mandatory 'subnet' parameter is missing for a subnet being configured (${where(r, m)})`);
+    const [addr = '', len, extra] = s.value.split('/');
+    if (len === undefined || extra !== undefined || !/^\d+$/.test(len)) {
+        throw new ConfigError(`${SUBNET_FAILED}Invalid subnet syntax (prefix/len expected):${s.value} (${where(r, s)})`);
+    }
+    const ip = parseIp(addr);
+    if (ip === null)
+        throw new ConfigError(`${SUBNET_FAILED}${badAddress(addr)}`);
+    if (Number(len) > 32)
+        throw new ConfigError(`${SUBNET_FAILED}Invalid prefix length specified for subnet: ${len}`);
+    return { net: ip, prefix: Number(len), text: `${formatIp(ip)}/${len}` };
+}
+/** La subred con sus pools; como Subnet4ConfigParser, anuncia la subred con sus tiempos (heredados de Dhcp4). */
+function createSubnet(r, m, ranges) {
+    const net = subnetOf(r, m);
+    const text = (x) => `${formatIp(x.first)}-${formatIp(x.last)}`;
+    ranges.forEach((x, i) => {
+        const fail = (what) => new ConfigError(`${SUBNET_FAILED}a pool of type V4, with the following address range: ${text(x)} ${what} ${net.text} to which it is being added. (${where(r, m)})`);
+        if (!inSubnet(x.first, net.net, net.prefix) || !inSubnet(x.last, net.net, net.prefix))
+            throw fail('does not match the prefix of a subnet:');
+        if (ranges.slice(0, i).some((y) => x.first <= y.last && y.first <= x.last))
+            throw fail('overlaps with an existing pool in the subnet:');
+    });
+    const inherited = (key) => num(m, key) ?? num(r.global, key);
+    const params = [['t1', 'renew-timer'], ['t2', 'rebind-timer'], ['valid-lifetime', 'valid-lifetime']]
+        .flatMap(([label, key]) => { const v = inherited(key ?? ''); return v === undefined ? [] : [`${label}=${v}`]; });
+    r.log.push({ level: 'INFO', logger: 'dhcpsrv', message: `DHCPSRV_CFGMGR_NEW_SUBNET4 a new subnet has been added to configuration: ${net.text} with params: ${params.join(', ')}` });
+    return net;
+}
+function checkReservations(r, list, net) {
+    for (const h of mapsOf(list)) {
+        if (!IDENTIFIERS.some((k) => h.entries.has(k))) {
+            throw new ConfigError(`one of the supported identifiers must be specified for host reservation: ${IDENTIFIERS.join(' ')} (${where(r, h)})`);
+        }
+        checkOptions(r, h.entries.get('option-data'));
+        const ip = str(h, 'ip-address');
+        if (!ip)
+            continue;
+        const a = parseIp(ip.value);
+        if (a === null)
+            throw new ConfigError(`${badAddress(ip.value)} (${where(r, ip)})`);
+        if (net && !inSubnet(a, net.net, net.prefix))
+            throw new ConfigError(`specified reservation '${formatIp(a)}' is not within the IPv4 subnet '${net.text}'`);
+    }
+}
+function checkSubnets(r, list) {
+    const ids = new Set();
+    const prefixes = new Set();
+    for (const m of mapsOf(list)) {
+        const ranges = pools(r, m);
+        checkOptions(r, m.entries.get('option-data'));
+        const net = createSubnet(r, m, ranges);
+        checkReservations(r, m.entries.get('reservations'), net);
+        const id = num(m, 'id');
+        if (id !== undefined && ids.has(id))
+            throw new ConfigError(`ID of the new IPv4 subnet '${id}' is already in use (${where(r, m)})`);
+        if (prefixes.has(net.text))
+            throw new ConfigError(`subnet with the prefix of '${net.text}' already exists (${where(r, m)})`);
+        if (id !== undefined)
+            ids.add(id);
+        prefixes.add(net.text);
+    }
+}
+function checkInterfaces(r, cfg) {
+    if (cfg?.kind !== 'map')
+        return;
+    const type = str(cfg, 'dhcp-socket-type');
+    if (!type)
+        r.log.push({ level: 'INFO', logger: 'dhcpsrv', message: 'DHCPSRV_CFGMGR_SOCKET_TYPE_DEFAULT "dhcp-socket-type" not specified , using default socket type raw' });
+    else if (type.value !== 'raw' && type.value !== 'udp')
+        throw new ConfigError(`unsupported socket type '${type.value}'`);
+}
+const STEPS = [
+    ['option-data', checkOptions],
+    ['interfaces-config', checkInterfaces],
+    ['subnet4', checkSubnets],
+    ['reservations', (r, n) => { checkReservations(r, n, undefined); }],
+];
+/** `kea-dhcp4 -t ARCHIVO`: el texto del archivo o por qué no se pudo leer. */
+function checkKeaConf(path, text) {
+    if (typeof text !== 'string')
+        return { ok: false, log: [], error: `Syntax check failed with: Unable to open file ${path}` };
+    const parsed = parseKea(text, path, KEA_TOPLEVEL);
+    const log = parsed.warnings.map((w) => ({ level: 'WARN', logger: 'dhcp4', message: `DHCP4_CONFIG_SYNTAX_WARNING configuration syntax warning: ${w}` }));
+    if (!parsed.root)
+        return { ok: false, log, error: `Syntax check failed with: ${parsed.error ?? ''}` };
+    const dhcp4 = parsed.root.entries.get('Dhcp4');
+    if (dhcp4?.kind !== 'map')
+        return { ok: false, log, error: 'Missing mandatory Dhcp4 element' };
+    const r = { file: path, log, global: dhcp4 };
+    for (const [element, step] of STEPS) {
+        try {
+            step(r, dhcp4.entries.get(element));
+        }
+        catch (err) {
+            if (!(err instanceof ConfigError))
+                throw err;
+            log.push({ level: 'ERROR', logger: 'dhcp4', message: `DHCP4_PARSER_FAIL failed to create or run parser for configuration element ${element}: ${err.message}` });
+            return { ok: false, log, error: `Error encountered: ${err.message}` };
+        }
+    }
+    return { ok: true, log };
+}
+
+return { checkKeaConf };
+})();
+__m["shells/kea-tools.js"] = (() => {
+const { runsServices } = __m["devices/kinds.js"];
+const { checkKeaConf } = __m["services/kea-check.js"];
+const { fileReader, toolInstalled } = __m["shells/bind-tools.js"];
+const KEA_VERSION = '2.6.3';
+const KEA_TOOLS = ['isc-kea', 'isc-kea-dhcp4', 'isc-kea-dhcp4-server', 'kea', 'kea-dhcp4-server'];
+/** The process the check runs in: kea-dhcp4 logs «PID.THREAD». */
+const PID_TID = '2318.140245170644864';
+const USAGE = `Usage: kea-dhcp4 -[v|V|W] [-d] [-{c|t|T} cfgfile] [-p number] [-P number]
+  -v: print version number and exit
+  -V: print extended version and exit
+  -W: display the configuration report and exit
+  -d: debug mode with extra verbosity (former -v)
+  -c file: specify configuration file
+  -t file: check the configuration file syntax and exit
+  -T file: check the configuration file doing hooks load and extra checks and exit
+  -p number: specify non-standard server port number 1-65535 (useful for testing only)
+  -P number: specify non-standard client port number 1-65535 (useful for testing only)
+`;
+const EXTENDED = `${KEA_VERSION} (tarball)
+premium: no
+linked with:
+log4cplus 2.0.8
+OpenSSL 3.5.0 8 Apr 2025
+database:
+MySQL backend 22.2, library 3.4.2
+PostgreSQL backend 22.2, library 170005
+Memfile backend 3.0
+`;
+function usage(ctx, message) {
+    if (message)
+        ctx.err(`kea-dhcp4: ${message}\n`);
+    ctx.err(USAGE);
+    return 1;
+}
+/** 2026-11-04 10:15:02.137 INFO  [kea-dhcp4.dhcpsrv/2318.140245170644864] MESSAGE */
+function logLine(ms, l) {
+    const stamp = new Date(ms).toISOString().slice(0, 23).replace('T', ' ');
+    return `${stamp} ${l.level.padEnd(5)} [kea-dhcp4.${l.logger}/${PID_TID}] ${l.message}\n`;
+}
+function parse(args) {
+    const flags = new Set();
+    let mode;
+    let file;
+    for (let i = 0; i < args.length; i++) {
+        const a = args[i] ?? '';
+        if (a === '-c' || a === '-t' || a === '-T') {
+            mode = a[1];
+            file = args[++i];
+            if (file === undefined)
+                return { flags, bad: `option requires an argument -- '${a[1] ?? ''}'` };
+        }
+        else if (a === '-p' || a === '-P') {
+            const port = args[++i];
+            if (port === undefined || !/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
+                return { flags, bad: `${a === '-p' ? 'server' : 'client'} port number must be within 1..65535` };
+            }
+        }
+        else if (/^-[vVWd]$/.test(a))
+            flags.add(a[1] ?? '');
+        else
+            return { flags, bad: a.startsWith('-') ? `invalid option -- '${a.slice(1)}'` : `extraneous command line information` };
+    }
+    return { mode, file, flags };
+}
+function check(ctx, file, verbose) {
+    const text = fileReader(ctx)(file);
+    const r = checkKeaConf(file, text);
+    const now = ctx.sh.env.now();
+    for (const l of r.log)
+        ctx.out(logLine(now, l));
+    if (r.error !== undefined) {
+        ctx.err(`${r.error}\n`);
+        return 1;
+    }
+    if (verbose)
+        ctx.err('Syntax check OK\n');
+    return 0;
+}
+// A Server or GNU/Linux router (a value import of Server would close an import cycle through the shells, as in apt-state.ts).
+const dhcpRunning = (host) => runsServices(host.kind) && host.services.dhcp.enabled;
+function keaDhcp4(host) {
+    return (ctx) => {
+        if (!toolInstalled(ctx, host, KEA_TOOLS, 'kea-dhcp4-server'))
+            return 127;
+        const a = parse(ctx.argv.slice(1));
+        if (a.bad !== undefined)
+            return usage(ctx, a.bad);
+        if (a.flags.has('v')) {
+            ctx.out(`${KEA_VERSION}\n`);
+            return 0;
+        }
+        if (a.flags.has('V') || a.flags.has('W')) {
+            ctx.out(EXTENDED);
+            return 0;
+        }
+        if (a.file === undefined)
+            return usage(ctx, 'configuration file not specified');
+        if (a.mode !== 'c')
+            return check(ctx, a.file, a.flags.has('d'));
+        if (dhcpRunning(host)) {
+            ctx.err('DHCP4_ALREADY_RUNNING kea-dhcp4 already running? PID file: /run/kea/kea-dhcp4.kea-dhcp4.pid\n');
+            return 1;
+        }
+        ctx.err('kea-dhcp4: en Netfix el servidor DHCP se arranca como servicio: sudo systemctl start kea-dhcp4-server\n');
+        return 1;
+    };
+}
+
+return { KEA_VERSION, keaDhcp4 };
+})();
 __m["shells/linux-programs.js"] = (() => {
 /** The Netfix programs of an Ubuntu host: network clients, systemd tools, ssh and command-not-found. */
 const { sftp } = __m["shells/sftp-cmd.js"];
@@ -39852,6 +41817,8 @@ const { rndc } = __m["shells/rndc.js"];
 const { apt } = __m["shells/apt.js"];
 const { nmcli } = __m["shells/nmcli.js"];
 const { nmblookup } = __m["shells/nmblookup.js"];
+const { namedCheckconf, namedCheckzone, namedCompilezone } = __m["shells/bind-tools.js"];
+const { keaDhcp4 } = __m["shells/kea-tools.js"];
 const PACKAGES = {
     ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
     telnet: 'inetutils-telnet', conntrack: 'conntrack', htop: 'htop', tree: 'tree', zip: 'zip', unzip: 'unzip', php: 'php8.4-cli', python: 'python-is-python3',
@@ -40010,6 +41977,7 @@ function linuxPrograms(host) {
         ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
         ['ss', (ctx) => { lines(ctx, ss(host, ssOptions(ctx.argv.slice(1)))); return 0; }],
         ['apt', apt(host)], ['nmcli', nmcli(host)], ['nmblookup', nmblookup(host)],
+        ['named-checkzone', namedCheckzone(host)], ['named-compilezone', namedCompilezone(host)], ['named-checkconf', namedCheckconf(host)], ['kea-dhcp4', keaDhcp4(host)],
         ['command-not-found', commandNotFound],
         ...(runsServices(host.kind) ? [...APACHE_TOOLS, ['rndc', rndc(host)]] : []),
     ]);
