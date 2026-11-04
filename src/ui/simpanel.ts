@@ -186,6 +186,7 @@ function appSummary(p: AppPayload): string {
   switch (p.app) {
     case 'HTTP': return p.kind === 'request' ? `${p.method} ${p.path}` : `${p.status} ${p.reason}`;
     case 'SSH': return p.kind === 'auth' ? 'auth' : p.kind === 'output' ? t('sim.encIn') : t('sim.encOut');
+    case 'SMB': return p.kind === 'smb-request' ? `${p.smb.req.op} \\${p.smb.share}` : p.smb.status;
     default: return p.kind === 'reply' ? p.code : p.kind === 'request' && 'mail' in p ? 'MAIL/RCPT/DATA' : 'USER/PASS';
   }
 }
@@ -194,6 +195,9 @@ function appFields(p: AppPayload): [string, string | undefined][] {
   switch (p.app) {
     case 'HTTP': return p.kind === 'request' ? [[t('pdu.request'), `${p.method} ${p.path} HTTP/1.1`], ['Host', p.host]] : [[t('pdu.status'), `HTTP/1.1 ${p.status} ${p.reason}`], ['Server', p.server], ['Content-Type', p.contentType], [t('pdu.size'), `${p.body.length} bytes`]];
     case 'SSH': return [[t('pdu.content'), t('pdu.encrypted')], [t('pdu.message'), p.kind]];
+    case 'SMB': return p.kind === 'smb-request'
+      ? [['Command', p.smb.req.op], ['Tree', `\\${p.smb.share}`], ['User', p.smb.user || '(anonymous)'], ['NTLM', p.smb.hash ? '•'.repeat(8) : undefined]]
+      : [['NT Status', p.smb.status], [t('pdu.size'), p.smb.data !== undefined ? `${p.smb.data.length} bytes` : undefined]];
     default:
       if (p.kind === 'reply') return [[t('pdu.reply'), `${p.code} ${p.text}`], [t('pdu.messages'), p.messages ? String(p.messages.length) : undefined]];
       if ('mail' in p) return [['HELO', p.helo], ['MAIL FROM', p.mail.from], ['RCPT TO', p.mail.to.join(', ')], ['Subject', p.mail.subject]];

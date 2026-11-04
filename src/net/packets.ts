@@ -1,6 +1,7 @@
 /** Wire-level data structures exchanged between simulated devices. */
 import type { EditSpec } from '../bash/types.ts';
 import type { Frame as ScreenFrame, KeyInput } from '../editors/buffer.ts';
+import type { SmbReply, SmbRequest } from './smb-types.ts';
 
 export type DhcpType = 'DISCOVER' | 'OFFER' | 'REQUEST' | 'DECLINE' | 'ACK' | 'NAK' | 'RELEASE' | 'INFORM';
 
@@ -219,6 +220,9 @@ export type AppPayload =
     readonly signature?: string;
     /** `sftp`/`scp`: open the sftp subsystem instead of a shell. */
     readonly subsystem?: 'sftp' }
+  /** SMB2: a request on a share and the server's NT status (kinds of their own: no other app narrows to them). */
+  | { readonly app: 'SMB'; readonly kind: 'smb-request'; readonly smb: SmbRequest }
+  | { readonly app: 'SMB'; readonly kind: 'smb-reply'; readonly smb: SmbReply }
   | { readonly app: 'SSH'; readonly kind: 'command'; readonly session: string; readonly line: string }
   /** One SFTP request on an sftp session. */
   | { readonly app: 'SSH'; readonly kind: 'sftp'; readonly session: string; readonly req: SftpOp }

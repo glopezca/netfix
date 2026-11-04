@@ -87,7 +87,13 @@ export abstract class BaseShell implements ShellSession {
   }
 
   secret(): boolean {
-    return (this.state.kind === 'login' && this.state.login.secret()) || (this.state.kind === 'remote' && this.state.secret);
+    return (this.state.kind === 'login' && this.state.login.secret()) || (this.state.kind === 'remote' && this.state.secret)
+      || (this.state.kind === 'local' && this.localSecret());
+  }
+
+  /** The local shell asks for a password (Windows: net use /user:NAME). */
+  protected localSecret(): boolean {
+    return false;
   }
 
   run(line: string): string[] {

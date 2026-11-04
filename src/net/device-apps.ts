@@ -62,6 +62,11 @@ export function onAppsChange(fn: (d: AppsDevice) => void): void {
   listeners.add(fn);
 }
 
+/** Something outside the boxes changed what the device shows (apt installed or removed a package with a panel). */
+export function notifyAppsChange(d: AppsDevice): void {
+  for (const fn of listeners) fn(d);
+}
+
 export function deviceApps(d: AppsDevice): readonly FeatureId[] {
   return chosen.get(d) ?? defaultApps(d);
 }

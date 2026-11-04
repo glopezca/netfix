@@ -15,6 +15,7 @@ import { internetExample } from './example-internet.ts';
 import { ipsecLab, wireguardLab } from './labs-vpn.ts';
 import { dmzLab, dnsForwardLab } from './labs-linux.ts';
 import { hardeningLab, sshLab } from './labs-security.ts';
+import { sambaLab } from './labs-samba.ts';
 import { namesLanLab, namesNetsLab } from './labs-names.ts';
 
 export interface Example {
@@ -316,6 +317,7 @@ interface GigabitEthernet0/0
   dmzLab,
   dnsForwardLab,
   sshLab,
+  sambaLab,
   hardeningLab,
   namesLanLab,
   namesNetsLab,

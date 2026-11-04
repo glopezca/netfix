@@ -17,7 +17,7 @@ type MailKey = 'smtp' | 'imap' | 'pop3';
 const MAIL_KEY: Readonly<Record<string, MailKey>> = { postfix: 'smtp', 'dovecot-imapd': 'imap', 'dovecot-pop3d': 'pop3' };
 
 /** The package turns on a panel of this device (a PC's SSH and mail tabs are clients, not these services). */
-const hasPanel = (host: Host, p: AptPackage): boolean =>
+export const hasPanel = (host: Host, p: AptPackage): boolean =>
   runsServices(host.kind) && p.feature !== undefined && APPS_BY_KIND[host.kind].includes(p.feature);
 
 // Server and the GNU/Linux router (a value import of Server would close an import cycle through the shells).

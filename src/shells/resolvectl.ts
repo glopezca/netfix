@@ -10,21 +10,28 @@ import { resolvedDns, resolvedDomains, revertResolved, setResolvedDns, setResolv
 import { EMPTY_TYPES, QUERY_TYPES, query, shown } from './resolvectl-query.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { t } from '../i18n/t.ts';
+import { hasPackage } from '../net/host-packages.ts';
 
 interface Link {
   readonly index: number;
   readonly name: string;
   readonly primary: boolean;
+  /** It has an IPv4 address (mDNS answers there). */
+  readonly addressed: boolean;
 }
 
-const PROTOCOLS = '-LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported';
+/** Only the protocols this host has: mDNS with avahi or nss-mdns; LLMNR never (no GNU/Linux package brings it here). */
+const protocols = (host: Host): string => `${hasMdns(host) ? '+mDNS ' : ''}-DNSOverTLS DNSSEC=no/unsupported`;
+const hasMdns = (host: Host): boolean => hasPackage(host, 'avahi-daemon') || hasPackage(host, 'libnss-mdns');
 /** Linux numbers lo 1, then the NICs. */
 const FIRST_NIC_INDEX = 2;
 const DOMAIN = /^~?(?:\.|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i;
 const MAX_DOMAINS = 8;
 const MAX_DOMAIN = 253;
 
-const links = (host: Host): Link[] => host.nics().map((n, i) => ({ index: i + FIRST_NIC_INDEX, name: n.linux, primary: n.port === host.primaryPort() }));
+const links = (host: Host): Link[] => host.nics().map((n, i) => ({
+  index: i + FIRST_NIC_INDEX, name: n.linux, primary: n.port === host.primaryPort(), addressed: host.ifaceConfig(n.port)?.ip !== undefined,
+}));
 const linkDns = (host: Host, l: Link): number | undefined => (l.primary ? resolvedDns(host) : undefined);
 const linkDomains = (host: Host, l: Link): readonly string[] => (l.primary ? resolvedDomains(host) ?? searchDomains(host) : []);
 const key = (k: string): string => k.padStart(18);
@@ -33,10 +40,11 @@ function linkBlock(host: Host, l: Link): string[] {
   const dns = linkDns(host, l);
   const domains = linkDomains(host, l);
   const route = l.primary && host.config.gateway !== undefined ? '+DefaultRoute' : '-DefaultRoute';
+  const scopes = [...(dns === undefined ? [] : ['DNS']), ...(hasMdns(host) && l.addressed ? ['mDNS/IPv4'] : [])];
   return [
     `Link ${l.index} (${l.name})`,
-    `${key('Current Scopes')}: ${dns === undefined ? 'none' : 'DNS'}`,
-    `${key('Protocols')}: ${route} ${PROTOCOLS}`,
+    `${key('Current Scopes')}: ${scopes.join(' ') || 'none'}`,
+    `${key('Protocols')}: ${route} ${protocols(host)}`,
     ...(dns === undefined ? [] : [`${key('Current DNS Server')}: ${formatIp(dns)}`, `${key('DNS Servers')}: ${formatIp(dns)}`]),
     ...(domains.length ? [`${key('DNS Domain')}: ${domains.join(' ')}`] : []),
   ];
@@ -44,7 +52,7 @@ function linkBlock(host: Host, l: Link): string[] {
 
 function status(host: Host, only?: Link): string[] {
   if (only) return linkBlock(host, only);
-  const global = ['Global', `${key('Protocols')}: ${PROTOCOLS}`, `${key('resolv.conf mode')}: foreign`];
+  const global = ['Global', `${key('Protocols')}: ${protocols(host)}`, `${key('resolv.conf mode')}: foreign`];
   return [...global, ...links(host).flatMap((l) => ['', ...linkBlock(host, l)])];
 }
 

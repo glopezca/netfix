@@ -98,6 +98,10 @@ const LAB_AREAS: Readonly<Record<string, (topo: Topology) => void>> = {
     area(o, ['SW-B', 'WIN-B', 'WIN-B2'], COLOR.lan2, lan('LAN B', '192.168.20.0/24'));
   },
   'ssh-sftp': (o) => area(o, ['Switch0', 'SRV', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.classroom'), '172.20.0.0/24')),
+  samba: (o) => {
+    internet(o, ['ISP-Norte']);
+    area(o, ['Switch0', 'SRV', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.classroom'), '172.20.0.0/24'));
+  },
   bastionado: (o) => {
     area(o, ['Switch0', 'ADMIN'], COLOR.lan, t('area.admin', { net: '192.168.10.0/24' }));
     area(o, ['SRV-INTRANET'], COLOR.servers, t('area.servers', { net: '172.20.0.0/24' }));

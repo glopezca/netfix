@@ -6,6 +6,9 @@ import type { Server } from '../devices/server.ts';
 import { findUnit, unitActive, openPorts, UNITS } from '../services/units.ts';
 import type { UnitId, UnitInfo } from '../services/units.ts';
 import { formatIp } from '../core/ip.ts';
+import { findPkgUnit, installedUnits, pkgJournal, pkgUnitState, setPkgUnitState } from '../net/pkg-units.ts';
+import type { PkgUnit } from '../net/pkg-units.ts';
+import { reloadPkgUnit, startPkgUnit, stopPkgUnit } from './pkg-service.ts';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const STATUS_LOG_LINES = 5;
@@ -21,53 +24,99 @@ function stamp(ms: number): string {
   return `${MONTHS[d.getUTCMonth()]} ${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
 }
 
-function journalLines(server: Server, unit: UnitInfo, limit: number): string[] {
+/** A journal entry with its time (to merge a Server's units with those of its packages). */
+interface Entry { readonly time: number; readonly text: string }
+
+function serverEntries(server: Server, unit: UnitInfo): Entry[] {
   const host = server.name.toLowerCase();
-  return server.journal(unit.id).slice(-limit).map((l) => `${stamp(l.time)} ${host} ${unit.process}[${unit.pid}]: ${l.line}`);
+  return server.journal(unit.id).map((l) => ({ time: l.time, text: `${stamp(l.time)} ${host} ${unit.process}[${unit.pid}]: ${l.line}` }));
 }
 
-function status(server: Server, unit: UnitInfo): string[] {
-  const active = unitActive(server.services, unit.id);
-  const enabled = server.autostart[unit.id] ? 'enabled' : 'disabled';
+function pkgEntries(host: Host, u: PkgUnit): Entry[] {
+  const name = host.name.toLowerCase();
+  return pkgJournal(host, u).map((l) => ({ time: l.time, text: `${stamp(l.time)} ${name} ${l.systemd ? 'systemd[1]' : `${u.process}[${u.pid}]`}: ${l.line}` }));
+}
+
+const texts = (entries: readonly Entry[], limit: number): string[] => entries.slice(-limit).map((e) => e.text);
+
+/** What `systemctl status` shows of a unit, a Server's own or a package's. */
+interface UnitView {
+  readonly linux: string;
+  readonly description: string;
+  readonly process: string;
+  readonly pid: number;
+  readonly oneshot: boolean;
+  readonly active: boolean;
+  readonly enabled: boolean;
+  readonly log: readonly string[];
+}
+
+function status(v: UnitView): string[] {
   const lines = [
-    `${active ? '●' : '○'} ${unit.linux}.service - ${unit.description}`,
-    `     Loaded: loaded (/usr/lib/systemd/system/${unit.linux}.service; ${enabled}; preset: enabled)`,
-    active ? `     Active: active (${unit.oneshot ? 'exited' : 'running'})` : '     Active: inactive (dead)',
+    `${v.active ? '●' : '○'} ${v.linux}.service - ${v.description}`,
+    `     Loaded: loaded (/usr/lib/systemd/system/${v.linux}.service; ${v.enabled ? 'enabled' : 'disabled'}; preset: enabled)`,
+    v.active ? `     Active: active (${v.oneshot ? 'exited' : 'running'})` : '     Active: inactive (dead)',
   ];
-  if (active && unit.oneshot) lines.push(`    Process: ${unit.pid} ExecStart=/usr/sbin/nft -f /etc/nftables.conf (code=exited, status=0/SUCCESS)`, `   Main PID: ${unit.pid} (code=exited, status=0/SUCCESS)`);
-  else if (active) lines.push(`   Main PID: ${unit.pid} (${unit.process})`, `     CGroup: /system.slice/${unit.linux}.service`, `             └─${unit.pid} /usr/sbin/${unit.process}`);
-  const log = journalLines(server, unit, STATUS_LOG_LINES);
-  return log.length ? [...lines, '', ...log] : lines;
+  if (v.active && v.oneshot) lines.push(`    Process: ${v.pid} ExecStart=/usr/sbin/nft -f /etc/nftables.conf (code=exited, status=0/SUCCESS)`, `   Main PID: ${v.pid} (code=exited, status=0/SUCCESS)`);
+  else if (v.active) lines.push(`   Main PID: ${v.pid} (${v.process})`, `     CGroup: /system.slice/${v.linux}.service`, `             └─${v.pid} /usr/sbin/${v.process}`);
+  return v.log.length ? [...lines, '', ...v.log] : lines;
 }
 
-function listUnits(server: Server): string[] {
-  const rows = UNITS.map((u) => {
-    const on = unitActive(server.services, u.id);
-    return `  ${`${u.linux}.service`.padEnd(26)} loaded ${on ? `active   ${u.oneshot ? 'exited ' : 'running'}` : 'inactive dead   '} ${u.description}`;
-  });
-  return ['  UNIT                       LOAD   ACTIVE   SUB     DESCRIPTION', ...rows, '', `${UNITS.length} loaded units listed.`];
+function serverView(server: Server, unit: UnitInfo): UnitView {
+  const log = texts(serverEntries(server, unit), STATUS_LOG_LINES);
+  return { ...unit, oneshot: unit.oneshot ?? false, active: unitActive(server.services, unit.id), enabled: server.autostart[unit.id] ?? false, log };
+}
+
+function pkgView(host: Host, u: PkgUnit): UnitView {
+  return { ...u, linux: u.name, ...pkgUnitState(host, u), log: texts(pkgEntries(host, u), STATUS_LOG_LINES) };
+}
+
+function unitRow(name: string, on: boolean, oneshot: boolean, description: string): string {
+  return `  ${`${name}.service`.padEnd(26)} loaded ${on ? `active   ${oneshot ? 'exited ' : 'running'}` : 'inactive dead   '} ${description}`;
+}
+
+function listUnits(host: Host): string[] {
+  const server = asServer(host);
+  const rows = [
+    ...(server ? UNITS.map((u) => unitRow(u.linux, unitActive(server.services, u.id), u.oneshot ?? false, u.description)) : []),
+    ...installedUnits(host).map((u) => unitRow(u.name, pkgUnitState(host, u).active, u.oneshot, u.description)),
+  ];
+  if (!rows.length) return ['0 loaded units listed.'];
+  return ['  UNIT                       LOAD   ACTIVE   SUB     DESCRIPTION', ...rows, '', `${rows.length} loaded units listed.`];
 }
 
 const NEEDS_ROOT = new Set(['start', 'stop', 'restart', 'reload', 'force-reload', 'enable', 'disable']);
 
+function notFound(verb: string, name: string): string[] {
+  const unit = `${name.replace(/\.service$/, '')}.service`;
+  return verb === 'status' ? [`Unit ${unit} could not be found.`] : [`Failed to ${verb} ${unit}: Unit ${unit} not found.`];
+}
+
 export function systemctl(host: Host, args: string[], root: boolean): string[] {
   const server = asServer(host);
   const verb = args[0] ?? 'list-units';
-  if (verb === 'list-units' || verb === 'list-unit-files') return server ? listUnits(server) : ['0 loaded units listed.'];
+  if (verb === 'list-units' || verb === 'list-unit-files') return listUnits(host);
   const name = args.filter((a) => !a.startsWith('-'))[1];
   if (!name) return [`Too few arguments.`];
-  const unit = findUnit(name);
-  if (!server || !unit) return verb === 'status' ? [`Unit ${name.replace(/\.service$/, '')}.service could not be found.`] : [`Failed to ${verb} ${name.replace(/\.service$/, '')}.service: Unit ${name.replace(/\.service$/, '')}.service not found.`];
-  if (NEEDS_ROOT.has(verb) && !root) return [`Failed to ${verb} ${unit.linux}.service: Interactive authentication required.`, `See system logs and 'systemctl status ${unit.linux}.service' for details. (Prueba con sudo)`];
-  return runVerb(server, unit, verb, args.includes('--now'));
+  const unit = server ? findUnit(name) : undefined;
+  const pkg = unit ? undefined : findPkgUnit(host, name);
+  const linux = unit?.linux ?? pkg?.name;
+  if (linux === undefined) return notFound(verb, name);
+  if (NEEDS_ROOT.has(verb) && !root) return [`Failed to ${verb} ${linux}.service: Interactive authentication required.`, `See system logs and 'systemctl status ${linux}.service' for details. (Prueba con sudo)`];
+  const now = args.includes('--now');
+  return server && unit ? runVerb(server, unit, verb, now) : runPkgVerb(host, pkg as PkgUnit, verb, now);
 }
 
-function jobFailed(unit: UnitInfo): string[] {
-  return [`Job for ${unit.linux}.service failed because the control process exited with error code.`, `See "systemctl status ${unit.linux}.service" and "journalctl -xeu ${unit.linux}.service" for details.`];
+function jobFailed(linux: string): string[] {
+  return [`Job for ${linux}.service failed because the control process exited with error code.`, `See "systemctl status ${linux}.service" and "journalctl -xeu ${linux}.service" for details.`];
 }
+
+const wantsPath = (linux: string): string => `/etc/systemd/system/multi-user.target.wants/${linux}.service`;
+const created = (linux: string): string => `Created symlink ${wantsPath(linux)} → /usr/lib/systemd/system/${linux}.service.`;
+const removed = (linux: string): string => `Removed "${wantsPath(linux)}".`;
 
 function started(server: Server, unit: UnitInfo): string[] {
-  return unitActive(server.services, unit.id) ? [] : jobFailed(unit);
+  return unitActive(server.services, unit.id) ? [] : jobFailed(unit.linux);
 }
 
 function restart(server: Server, unit: UnitInfo): string[] {
@@ -77,29 +126,64 @@ function restart(server: Server, unit: UnitInfo): string[] {
 }
 
 function runVerb(server: Server, unit: UnitInfo, verb: string, now: boolean): string[] {
-  const path = `/etc/systemd/system/multi-user.target.wants/${unit.linux}.service`;
   switch (verb) {
-    case 'status': return status(server, unit);
+    case 'status': return status(serverView(server, unit));
     case 'is-active': return [unitActive(server.services, unit.id) ? 'active' : 'inactive'];
     case 'is-enabled': return [server.autostart[unit.id] ? 'enabled' : 'disabled'];
     case 'start': server.setUnit(unit.id, true); return started(server, unit);
     case 'stop': server.setUnit(unit.id, false); return [];
     case 'reload': case 'force-reload':
-      if (unit.id === 'http' && unitActive(server.services, 'http')) return server.reloadWeb() ? jobFailed(unit) : [];
-      if (unit.id === 'firewall' && unitActive(server.services, 'firewall')) return server.reloadFirewall() ? jobFailed(unit) : [];
-      if (unit.id === 'ssh' && unitActive(server.services, 'ssh')) return server.reloadSsh() ? jobFailed(unit) : [];
+      if (unit.id === 'http' && unitActive(server.services, 'http')) return server.reloadWeb() ? jobFailed(unit.linux) : [];
+      if (unit.id === 'firewall' && unitActive(server.services, 'firewall')) return server.reloadFirewall() ? jobFailed(unit.linux) : [];
+      if (unit.id === 'ssh' && unitActive(server.services, 'ssh')) return server.reloadSsh() ? jobFailed(unit.linux) : [];
       return restart(server, unit);
     case 'restart': return restart(server, unit);
     case 'enable':
       server.autostart = { ...server.autostart, [unit.id]: true };
       if (now) server.setUnit(unit.id, true);
-      return [`Created symlink ${path} → /usr/lib/systemd/system/${unit.linux}.service.`];
+      return [created(unit.linux)];
     case 'disable':
       server.autostart = { ...server.autostart, [unit.id]: false };
       if (now) server.setUnit(unit.id, false);
-      return [`Removed "${path}".`];
+      return [removed(unit.linux)];
     default: return [`Unknown command verb '${verb}'.`];
   }
+}
+
+const startOrFail = (host: Host, u: PkgUnit): string[] => (startPkgUnit(host, u) ? [] : jobFailed(u.name));
+
+/** The verbs on a unit a package brought (samba's smbd and nmbd, nftables on a PC). */
+function runPkgVerb(host: Host, u: PkgUnit, verb: string, now: boolean): string[] {
+  const s = pkgUnitState(host, u);
+  switch (verb) {
+    case 'status': return status(pkgView(host, u));
+    case 'is-active': return [s.active ? 'active' : 'inactive'];
+    case 'is-enabled': return [s.enabled ? 'enabled' : 'disabled'];
+    case 'start': return startOrFail(host, u);
+    case 'stop': stopPkgUnit(host, u); return [];
+    case 'restart': stopPkgUnit(host, u); return startOrFail(host, u);
+    case 'reload': case 'force-reload': return reloadPkgUnit(host, u);
+    case 'enable': {
+      setPkgUnitState(host, u, { enabled: true });
+      const link = s.enabled ? [] : [created(u.name)];
+      return now ? [...link, ...startOrFail(host, u)] : link;
+    }
+    case 'disable':
+      setPkgUnitState(host, u, { enabled: false });
+      if (now) stopPkgUnit(host, u);
+      return s.enabled ? [removed(u.name)] : [];
+    default: return [`Unknown command verb '${verb}'.`];
+  }
+}
+
+/** Every journal entry of the host: its own units (a Server) and those of its packages, in time order. */
+function allEntries(host: Host): Entry[] {
+  const server = asServer(host);
+  const own: Entry[] = server ? server.logs.map((l) => {
+    const u = UNITS.find((x) => x.id === l.unit);
+    return { time: l.time, text: `${stamp(l.time)} ${server.name.toLowerCase()} ${u?.process ?? 'systemd'}[${u?.pid ?? 1}]: ${l.line}` };
+  }) : [];
+  return [...own, ...installedUnits(host).flatMap((u) => pkgEntries(host, u))].sort((a, b) => a.time - b.time);
 }
 
 export function journalctl(host: Host, args: string[]): string[] {
@@ -107,17 +191,14 @@ export function journalctl(host: Host, args: string[]): string[] {
   const uIdx = args.findIndex((a) => a === '-u' || a === '--unit');
   const nIdx = args.indexOf('-n');
   const limit = nIdx >= 0 ? Math.max(1, Number(args[nIdx + 1]) || DEFAULT_JOURNAL_LINES) : DEFAULT_JOURNAL_LINES;
-  if (!server) return ['-- No entries --'];
-  if (uIdx < 0) {
-    const all = server.logs.slice(-limit).map((l) => {
-      const u = UNITS.find((x) => x.id === l.unit);
-      return `${stamp(l.time)} ${server.name.toLowerCase()} ${u?.process ?? 'systemd'}[${u?.pid ?? 1}]: ${l.line}`;
-    });
-    return all.length ? all : ['-- No entries --'];
-  }
-  const unit = findUnit(args[uIdx + 1] ?? '');
-  if (!unit) return ['-- No entries --'];
-  const lines = journalLines(server, unit, limit);
+  const name = uIdx < 0 ? undefined : args[uIdx + 1] ?? '';
+  const unit = name !== undefined && server ? findUnit(name) : undefined;
+  const pkg = name !== undefined && !unit ? findPkgUnit(host, name) : undefined;
+  let entries: Entry[] = [];
+  if (name === undefined) entries = allEntries(host);
+  else if (server && unit) entries = serverEntries(server, unit);
+  else if (pkg) entries = pkgEntries(host, pkg);
+  const lines = texts(entries, limit);
   return lines.length ? lines : ['-- No entries --'];
 }
 

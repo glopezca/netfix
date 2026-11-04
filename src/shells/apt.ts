@@ -12,6 +12,8 @@ import type { AptDep, AptPackage } from './apt-catalog.ts';
 import { mooLines } from './apt-moo.ts';
 import { installedPackage, setPackage } from './apt-state.ts';
 import { afterPackage } from './apt-scripts.ts';
+import { findDep, leftoverNote, markDependencies, orphans } from './apt-auto.ts';
+import { isPackageAuto, setPackageAuto, setPackageInstalled } from '../net/host-packages.ts';
 
 const READING = 'Reading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\n';
 const summary = (installing: number, removing: number): string => `Summary:\n  Upgrading: 0, Installing: ${installing}, Removing: ${removing}, Not Upgrading: 0\n`;
@@ -138,7 +140,12 @@ function* install(ctx: Ctx, host: Host, names: readonly string[], yes: boolean):
   if (unknown !== undefined) { ctx.err(`Error: Unable to locate package ${unknown}\n`); return 100; }
   const newest = names.flatMap((n) => {
     const p = findPackage(n);
-    return !p || installedPackage(host, p) ? [`${n} is already the newest version (${p?.version ?? BASE[n]}).`] : [];
+    if (p && !installedPackage(host, p)) return [];
+    const line = `${n} is already the newest version (${p?.version ?? BASE[n]}).`;
+    if (!isPackageAuto(host, n)) return [line];
+    // Asked for by name: it stays when what brought it goes (apt-mark manual).
+    setPackageAuto(host, n, false);
+    return [line, `${n} set to manually installed.`];
   });
   const todo = names.flatMap((n) => { const p = findPackage(n); return p && !installedPackage(host, p) ? [p] : []; });
   if (newest.length) ctx.out(`${newest.join('\n')}\n`);
@@ -150,6 +157,7 @@ function* install(ctx: Ctx, host: Host, names: readonly string[], yes: boolean):
   const reason = mirrorStatus(host)(archive, 'dists/resolute/InRelease');
   if (reason !== undefined) return fetchFailed(ctx, archive, fetch, reason);
   unpack(ctx, host, todo, fetch, archive);
+  markDependencies(host, todo, fetch.map(({ pkg }) => pkg));
   for (const p of todo) { setPackage(host, p, true); afterPackage(ctx.sh.env.fs, host, p.name, true); }
   return 0;
 }
@@ -163,13 +171,32 @@ function* remove(ctx: Ctx, host: Host, names: readonly string[], yes: boolean, p
   const absent = names.filter((n) => !todo.some((p) => p.name === n));
   if (absent.length) ctx.out(absent.map((n) => `Package '${n}' is not installed, so not removed`).join('\n') + '\n');
   if (!todo.length) { ctx.out(NOTHING); return 0; }
+  ctx.out(leftoverNote(orphans(host, todo.map((p) => p.name))));
+  return yield* drop(ctx, host, todo, yes, purge);
+}
+
+/** REMOVING, the question, and dpkg removing each package (with its scripts). */
+function* drop(ctx: Ctx, host: Host, todo: readonly AptDep[], yes: boolean, purge: boolean): Gen<number> {
   const freed = todo.reduce((n, p) => n + p.kb * 4, 0);
   ctx.out(`REMOVING:\n  ${todo.map((p) => `${p.name}${purge ? '*' : ''}`).join('  ')}\n\n${summary(0, todo.length)}  Freed space: ${kb(freed)} kB\n\n`);
   if (!(yield* confirm(ctx, yes))) return 1;
   const lines = todo.flatMap((p) => [`Removing ${p.name} (${p.version}) ...`, ...(purge ? [`Purging configuration files for ${p.name} (${p.version}) ...`] : [])]);
   ctx.out(`(Reading database ... ${dbFiles(host)} files and directories currently installed.)\n${lines.join('\n')}\nProcessing triggers for man-db (2.13.1-1) ...\n`);
-  for (const p of todo) { setPackage(host, p, false); afterPackage(ctx.sh.env.fs, host, p.name, false); }
+  for (const d of todo) {
+    const p = findPackage(d.name);
+    if (p) setPackage(host, p, false);
+    else setPackageInstalled(host, d.name, false);
+    afterPackage(ctx.sh.env.fs, host, d.name, false);
+  }
   return 0;
+}
+
+/** apt autoremove: the automatic packages nothing needs any more. */
+function* autoremove(ctx: Ctx, host: Host, yes: boolean, purge: boolean): Gen<number> {
+  ctx.out(READING);
+  const todo = orphans(host).flatMap((n) => { const d = findDep(n); return d ? [d] : []; });
+  if (!todo.length) { ctx.out(NOTHING); return 0; }
+  return yield* drop(ctx, host, todo, yes, purge);
 }
 
 /** A pattern of `apt list`: a name, with * and ? as in the shell. */
@@ -181,8 +208,9 @@ function list(ctx: Ctx, host: Host, patterns: readonly string[], installedOnly: 
   const base = Object.entries(BASE).map(([name, version]) => ({ name, version, arch: 'amd64', on: true }));
   const all = [...base, ...PACKAGES.map((p) => ({ name: p.name, version: p.version, arch: p.arch, on: installedPackage(host, p) }))];
   const shown = all.filter((p) => (!installedOnly || p.on) && matches(patterns, p.name)).sort((a, b) => a.name.localeCompare(b.name));
+  const mark = (name: string): string => (isPackageAuto(host, name) ? ' [installed,automatic]' : ' [installed]');
   ctx.err('\nWARNING: apt does not have a stable CLI interface. Use with caution in scripts.\n\n');
-  ctx.out(`Listing... Done\n${shown.map((p) => `${p.name}/resolute${p.on ? ',now' : ''} ${p.version} ${p.arch}${p.on ? ' [installed]' : ''}`).join('\n')}${shown.length ? '\n' : ''}`);
+  ctx.out(`Listing... Done\n${shown.map((p) => `${p.name}/resolute${p.on ? ',now' : ''} ${p.version} ${p.arch}${p.on ? mark(p.name) : ''}`).join('\n')}${shown.length ? '\n' : ''}`);
   return 0;
 }
 
@@ -208,7 +236,8 @@ function* run(ctx: Ctx, host: Host): Gen<number> {
     if (!names.length) { ctx.out(`${READING}${NOTHING}`); return 0; }
     return cmd === 'install' ? yield* install(ctx, host, names, yes) : yield* remove(ctx, host, names, yes, cmd === 'purge');
   }
-  ctx.out(`${READING}${cmd === 'autoremove' ? '' : 'Calculating upgrade... Done\n'}${NOTHING}`);
+  if (cmd === 'autoremove') return yield* autoremove(ctx, host, yes, args.includes('--purge'));
+  ctx.out(`${READING}Calculating upgrade... Done\n${NOTHING}`);
   return 0;
 }
 

@@ -1,4 +1,4 @@
-/** Server → Servicios: SSH first, then DHCP, DNS, HTTP, Correo, Registros and Ficheros. */
+/** Server → Servicios: SSH first, then DHCP, DNS, HTTP, Correo, Samba (with apt), Configuración and Registros. */
 import { t } from '../i18n/t.ts';
 import { firewallPanel, sysctlPanel } from './firewall-panel.ts';
 import { vpnPanel } from './vpn-panel.ts';
@@ -8,19 +8,20 @@ import type { AfterChange } from './host-ip.ts';
 import { livePanel, dhcpPanel } from './server-dhcp-dns.ts';
 import { dnsPanel } from './server-dns.ts';
 import { filesPanel } from './files-panel.ts';
-import { fillSyntax } from './syntax-view.ts';
+import { logPanel, packageLogUnits } from './log-panel.ts';
+import type { LogUnit } from './log-panel.ts';
+import { sambaPanel } from './samba-panel.ts';
 import type { Server } from '../devices/server.ts';
 import type { Account, WebAppAccess } from '../services/config.ts';
 import { validateAccess } from '../services/config.ts';
 import { formatIp } from '../core/ip.ts';
 import { validateFileName } from '../services/http-service.ts';
 import { logUnits, unitActive } from '../services/units.ts';
-import { createShell } from '../shells/factory.ts';
 import { sshAuthMethods, setSshAuthMethods } from '../services/ssh-auth-settings.ts';
 
 /**
  * The panels of the tab that Configuración → Laboratorio actual leaves on (`panels`: feature ids), in this order:
- * kernel parameters, firewall, VPN, then SSH, DHCP, DNS, HTTP, mail, files and logs.
+ * kernel parameters, firewall, VPN, then SSH, DHCP, DNS, HTTP, mail, Samba (when apt installed it), files and logs.
  */
 export function servicesTab(server: Server, app: AfterChange, panels: readonly string[]): HTMLElement {
   const all = [
@@ -39,9 +40,11 @@ function servicePanels(server: Server, app: AfterChange): { id: string; label: s
     { id: 'dns', label: 'DNS', render: () => dnsPanel(server, app) },
     { id: 'http', label: 'HTTP', render: () => httpPanel(server, app) },
     { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
+    // apt install samba (Ubuntu): its own panel, beside the files and the logs of smbd and nmbd.
+    { id: 'samba', label: t('smb.tab'), render: () => sambaPanel(server, app).root },
     // Windows Server keeps its configuration in the registry, not in files a teacher would open.
     ...(server.os === 'linux' ? [{ id: 'files', label: t('srv.files'), render: () => filesPanel(server) }] : []),
-    { id: 'log', label: t('srv.log'), render: () => logPanel(server) },
+    { id: 'log', label: t('srv.log'), render: () => logPanel(server, () => serverLogUnits(server), t('srv.journalHint')) },
   ];
 }
 
@@ -195,19 +198,10 @@ function sshPanel(server: Server, app: AfterChange): HTMLElement {
   });
 }
 
-function logPanel(server: Server): HTMLElement {
-  const units = logUnits(server.kind);
-  let selected = units[0]?.linux ?? 'ssh';
-  return livePanel((refresh) => {
-    const unit = select(units.map((u) => [u.linux, `${u.linux} (${unitActive(server.services, u.id) ? t('srv.active') : t('srv.stopped')})`] as const), selected);
-    const out = el('pre', { class: 'log-view' });
-    const show = (): void => {
-      selected = unit.value;
-      fillSyntax(out, createShell(server, 'linux', 'root').run(`journalctl -u ${unit.value} -n 100`).join('\n'), 'messages');
-    };
-    unit.addEventListener('change', show);
-    show();
-    return [el('div', { class: 'inline-form' }, field(t('srv.service'), unit), button(t('srv.refresh'), () => { refresh(); })), out,
-      el('p', { class: 'muted' }, t('srv.journalHint'))];
-  });
+/** The server's own units (SSH first) and then those of apt's packages (smbd, nmbd). */
+function serverLogUnits(server: Server): LogUnit[] {
+  return [
+    ...logUnits(server.kind).map((u) => ({ name: u.linux, active: unitActive(server.services, u.id) })),
+    ...packageLogUnits(server),
+  ];
 }

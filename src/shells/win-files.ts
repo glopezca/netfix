@@ -26,6 +26,11 @@ export class WinFiles {
     this.ctx = new WinFs(fs, cred, fs.tryLookup(home, cred)?.kind === 'dir' ? home : '/');
   }
 
+  /** The file system as this account sees it (the share commands copy to and from it). */
+  get winFs(): WinFs {
+    return this.ctx;
+  }
+
   get cwd(): string {
     return this.ctx.cwd;
   }
@@ -61,7 +66,8 @@ export class WinFiles {
     }
   }
 
-  private ask(r: string[] | Confirm): string[] {
+  /** Shows the output, or keeps the question for the next line. */
+  ask(r: string[] | Confirm): string[] {
     if (Array.isArray(r)) return r;
     this.pending = r;
     return [];

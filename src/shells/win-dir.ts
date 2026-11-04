@@ -8,10 +8,10 @@ const SERIAL = '4E37-1F0A';
 const HEAD = [' Volume in drive C has no label.', ` Volume Serial Number is ${SERIAL}`, ''];
 
 const twoDigits = (n: number): string => String(n).padStart(2, '0');
-const thousands = (n: number): string => n.toLocaleString('en-US');
+export const thousands = (n: number): string => n.toLocaleString('en-US');
 
 /** 10/15/2026  02:55 PM (the date column of dir). */
-function dirDate(ms: number): string {
+export function dirDate(ms: number): string {
   const d = new Date(ms);
   const h = d.getUTCHours();
   return `${twoDigits(d.getUTCMonth() + 1)}/${twoDigits(d.getUTCDate())}/${d.getUTCFullYear()}  ${twoDigits(h % 12 || 12)}:${twoDigits(d.getUTCMinutes())} ${h < 12 ? 'AM' : 'PM'}`;

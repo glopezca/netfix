@@ -70,6 +70,7 @@ export const SRV_ES = {
   'files.dns': 'DNS (BIND)',
   'files.http': 'HTTP (Apache)',
   'files.mail': 'Correo (Postfix y Dovecot)',
+  'files.samba': 'Samba (smb.conf)',
   'files.hint': 'Los ficheros tal como están ahora en el disco (cat como root). Los cambios hechos en los paneles o en el terminal se ven al actualizar.',
   'files.none': 'Este servicio no tiene ficheros de configuración en el equipo.',
   'dhcp.byClientId': 'Client-ID (opción 61) o, si no la envía, MAC',
