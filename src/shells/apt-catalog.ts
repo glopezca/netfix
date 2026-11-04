@@ -26,7 +26,11 @@ const dep = (name: string, version: string, kb: number, arch: 'amd64' | 'all' = 
 
 const SSH_VERSION = '1:10.0p2-5ubuntu2';
 const OPENSSH: readonly AptDep[] = [dep('openssh-sftp-server', SSH_VERSION, 38), dep('ncurses-term', '6.5+20250216-2', 275, 'all'), dep('ssh-import-id', '5.11-0ubuntu3', 10, 'all')];
-const KEA: readonly AptDep[] = [dep('kea-common', '2.6.3-1ubuntu1', 85, 'all'), dep('libkea-dhcpsrv62', '2.6.3-1ubuntu1', 1243), dep('libkea-asiolink56', '2.6.3-1ubuntu1', 98), dep('libkea-log61', '2.6.3-1ubuntu1', 41)];
+const KEA_VERSION = '2.6.3-1ubuntu1';
+const KEA: readonly AptDep[] = [dep('kea-common', KEA_VERSION, 85, 'all'), dep('libkea-dhcpsrv62', KEA_VERSION, 1243), dep('libkea-asiolink56', KEA_VERSION, 98), dep('libkea-log61', KEA_VERSION, 41)];
+const BIND_VERSION = '1:9.20.4-3ubuntu1';
+const BIND_UTILS = dep('bind9-utils', BIND_VERSION, 189);
+const BIND_LIBS = dep('bind9-libs', BIND_VERSION, 1452);
 const DOVECOT: readonly AptDep[] = [dep('dovecot-core', '1:2.4.1+dfsg1-6ubuntu1', 3511), dep('libexttextcat-2.0-0', '3.4.7-1', 14)];
 
 export const PACKAGES: readonly AptPackage[] = [
@@ -34,7 +38,12 @@ export const PACKAGES: readonly AptPackage[] = [
   { ...dep('ssh', SSH_VERSION, 3, 'all'), section: 'main', deps: [dep('openssh-server', SSH_VERSION, 549), ...OPENSSH], feature: 'ssh', unit: 'ssh' },
   { ...dep('kea-dhcp4-server', '2.6.3-1ubuntu1', 432), section: 'main', deps: KEA, feature: 'dhcp', unit: 'kea-dhcp4-server' },
   { ...dep('kea', '2.6.3-1ubuntu1', 3, 'all'), section: 'main', deps: [dep('kea-dhcp4-server', '2.6.3-1ubuntu1', 432), ...KEA], feature: 'dhcp', unit: 'kea-dhcp4-server' },
-  { ...dep('bind9', '1:9.20.4-3ubuntu1', 260), section: 'main', deps: [dep('bind9-utils', '1:9.20.4-3ubuntu1', 189), dep('bind9-libs', '1:9.20.4-3ubuntu1', 1452), dep('dns-root-data', '2024071801', 6, 'all')], feature: 'dns', unit: 'named' },
+  { ...dep('bind9', BIND_VERSION, 260), section: 'main', deps: [BIND_UTILS, BIND_LIBS, dep('dns-root-data', '2024071801', 6, 'all')], feature: 'dns', unit: 'named' },
+  // The checking tools alone (named-checkconf, named-checkzone, named-compilezone); bind9utils is the old name.
+  { ...BIND_UTILS, section: 'main', deps: [BIND_LIBS] },
+  { ...dep('bind9utils', BIND_VERSION, 3, 'all'), section: 'main', deps: [BIND_UTILS, BIND_LIBS] },
+  // ISC's packaging of Kea (kea-dhcp4 and the server), as Ubuntu's kea.
+  { ...dep('isc-kea', KEA_VERSION, 3, 'all'), section: 'main', deps: [dep('isc-kea-dhcp4', KEA_VERSION, 432), ...KEA], feature: 'dhcp', unit: 'kea-dhcp4-server' },
   { ...dep('apache2', '2.4.62-1ubuntu1', 90), section: 'main', deps: [dep('apache2-bin', '2.4.62-1ubuntu1', 1370), dep('apache2-data', '2.4.62-1ubuntu1', 160, 'all'), dep('apache2-utils', '2.4.62-1ubuntu1', 96), dep('libapr1t64', '1.7.5-1', 107), dep('libaprutil1t64', '1.6.3-3ubuntu1', 92), dep('ssl-cert', '1.1.3ubuntu1', 17, 'all')], feature: 'http', unit: 'apache2' },
   { ...dep('postfix', '3.10.2-1ubuntu1', 1305), section: 'main', deps: [dep('ssl-cert', '1.1.3ubuntu1', 17, 'all')], feature: 'mail', unit: 'postfix' },
   { ...dep('dovecot-imapd', '1:2.4.1+dfsg1-6ubuntu1', 214), section: 'main', deps: DOVECOT, feature: 'mail', unit: 'dovecot' },

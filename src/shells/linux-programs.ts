@@ -28,6 +28,8 @@ import { rndc } from './rndc.ts';
 import { apt } from './apt.ts';
 import { nmcli } from './nmcli.ts';
 import { nmblookup } from './nmblookup.ts';
+import { namedCheckconf, namedCheckzone, namedCompilezone } from './bind-tools.ts';
+import { keaDhcp4 } from './kea-tools.ts';
 
 const PACKAGES: Readonly<Record<string, string>> = {
   ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
@@ -164,6 +166,7 @@ export function linuxPrograms(host: Host): Map<string, CommandFn> {
     ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
     ['ss', (ctx) => { lines(ctx, ss(host, ssOptions(ctx.argv.slice(1)))); return 0; }],
     ['apt', apt(host)], ['nmcli', nmcli(host)], ['nmblookup', nmblookup(host)],
+    ['named-checkzone', namedCheckzone(host)], ['named-compilezone', namedCompilezone(host)], ['named-checkconf', namedCheckconf(host)], ['kea-dhcp4', keaDhcp4(host)],
     ['command-not-found', commandNotFound],
     ...(runsServices(host.kind) ? [...APACHE_TOOLS, ['rndc', rndc(host)] as const] : []),
   ]);
