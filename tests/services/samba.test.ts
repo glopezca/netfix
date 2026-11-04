@@ -84,6 +84,48 @@ test('read only shares and the share root: no writes, no way out by .. or by a l
   assert.match(run(pc1, 'cat /tmp/p 2>&1'), /No such file or directory/);
 });
 
+test('the share root: entering it needs x, listing it needs r', () => {
+  const { srv, pc1 } = lab();
+  run(pc1, 'apt install -y smbclient; echo x > /tmp/x.txt');
+  run(srv, "mkdir -p /srv/samba/buzon /srv/samba/cerrada; chmod 733 /srv/samba/buzon; chmod 700 /srv/samba/cerrada; printf '\\n[buzon]\\n   path = /srv/samba/buzon\\n   guest ok = yes\\n   read only = no\\n[cerrada]\\n   path = /srv/samba/cerrada\\n   guest ok = yes\\n' >> /etc/samba/smb.conf");
+  assert.match(run(pc1, `smbclient //${SRV}/buzon -N -c 'put /tmp/x.txt x.txt'`), /putting file \/tmp\/x\.txt as \\x\.txt/, 'a drop box: wx is enough to connect and write');
+  assert.match(run(pc1, `smbclient //${SRV}/buzon -N -c ls 2>&1`), /^NT_STATUS_ACCESS_DENIED listing \\\*$/m);
+  assert.equal(run(srv, 'cat /srv/samba/buzon/x.txt'), 'x');
+  assert.match(run(pc1, `smbclient //${SRV}/cerrada -N -c ls 2>&1`), /tree connect failed: NT_STATUS_ACCESS_DENIED/);
+});
+
+test('a link that leads out of the share: not followed, but it can be deleted or renamed', () => {
+  const { srv, pc0, pc1 } = lab();
+  run(pc1, 'apt install -y smbclient');
+  run(srv, 'ln -s /etc /srv/samba/publico/etc; ln -s /etc/passwd /srv/samba/publico/pw');
+  assert.equal(run(pc1, `smbclient //${SRV}/publico -N -c 'rm pw' 2>&1`), '');
+  assert.equal(createShell(pc0, 'windows').run('ren \\\\srv\\publico\\etc sistema').join('\n'), '');
+  assert.equal(run(srv, 'ls /srv/samba/publico'), 'sistema');
+  assert.match(run(pc1, `smbclient //${SRV}/publico -N -c 'get sistema/passwd /tmp/p' 2>&1`), /NT_STATUS_ACCESS_DENIED opening remote file \\sistema\\passwd/);
+  assert.equal(run(pc1, `smbclient //${SRV}/publico -N -c 'rm sistema' 2>&1`), '');
+  assert.match(run(srv, 'ls /etc/passwd'), /^\/etc\/passwd$/, 'the targets stay');
+  // A rename onto a link to an outside directory would move the file into it: denied.
+  run(srv, 'ln -s /tmp /srv/samba/publico/fuera; echo hi > /srv/samba/publico/a.txt');
+  assert.equal(createShell(pc0, 'windows').run('ren \\\\srv\\publico\\a.txt fuera').join('\n'), 'Access is denied.');
+  assert.equal(run(srv, 'cat /srv/samba/publico/a.txt; ls /tmp/a.txt 2>&1'), "hi\nls: cannot access '/tmp/a.txt': No such file or directory");
+});
+
+test('smbclient: ls and rm with wildcards; -c splits at every ;', () => {
+  const { srv, pc1 } = lab();
+  run(pc1, 'apt install -y smbclient; echo x > /tmp/x.txt');
+  const smb = (c: string): string => run(pc1, `smbclient //${SRV}/publico -N -c '${c}' 2>&1`);
+  smb('put /tmp/x.txt a.txt; put /tmp/x.txt B.TXT; put /tmp/x.txt c.log; mkdir sub; put /tmp/x.txt sub/d.txt');
+  const names = (out: string): string[] => [...out.matchAll(/^ {2}(\S+) +[AD] /gm)].map((m) => m[1] ?? '');
+  assert.deepEqual(names(smb('ls *.txt')).sort(), ['B.TXT', 'a.txt']);
+  assert.deepEqual(names(smb('ls sub\\*.txt')), ['d.txt']);
+  assert.match(smb('ls *.zip'), /^NT_STATUS_NO_SUCH_FILE listing \\\*\.zip$/m);
+  assert.equal(smb('rm *.txt'), '');
+  assert.deepEqual(names(smb('ls')), ['.', '..', 'c.log', 'sub']);
+  assert.match(smb('rm *.zip'), /^NT_STATUS_NO_SUCH_FILE deleting remote file \\\*\.zip$/m);
+  assert.match(smb('put /tmp/x.txt "a;b.txt"'), /^b\.txt": command not found$/m, 'as smbclient, -c splits at every ;, quoted or not');
+  assert.match(run(srv, 'ls /srv/samba/publico'), /^(?!.*a;b)/s);
+});
+
 test('Windows: net view lists the visible shares, net use maps a drive, and dir, copy, type and del work on it', () => {
   const { srv, pc0 } = lab();
   const win = (cmd: string): string => createShell(pc0, 'windows').run(cmd).join('\n');

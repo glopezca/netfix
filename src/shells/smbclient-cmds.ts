@@ -4,6 +4,7 @@ import type { Host } from '../devices/host.ts';
 import type { SmbEntry, SmbOp } from '../net/smb-types.ts';
 import { smbCall, smbPath } from '../clients/smb-client.ts';
 import type { SmbLogin, SmbResult } from '../clients/smb-client.ts';
+import { hasWildcard, wildMatch } from './win-path.ts';
 
 export interface SmbSession {
   readonly host: Host;
@@ -41,12 +42,51 @@ function failed(ctx: Ctx, r: SmbResult, what: string): Outcome {
   return 'fail';
 }
 
+interface Mask {
+  /** The directory to list, \ or \dir\sub */
+  readonly dir: string;
+  readonly mask: string;
+}
+
+/** A path whose last name has * or ?: the directory it names and the mask (the server's rules: any case, *.* is all). */
+function masked(path: string): Mask | null {
+  const at = path.lastIndexOf('\\');
+  const mask = path.slice(at + 1);
+  return hasWildcard(mask) ? { dir: path.slice(0, at) || '\\', mask } : null;
+}
+
+const inDir = (dir: string, name: string): string => `${dir === '\\' ? '' : dir}\\${name}`;
+
+function noSuchFile(ctx: Ctx, what: string): Outcome {
+  ctx.err(`NT_STATUS_NO_SUCH_FILE ${what}\n`);
+  return 'fail';
+}
+
 function ls(ctx: Ctx, s: SmbSession, arg: string | undefined): Outcome {
   const path = arg ? remote(s, arg) : smbPath(s.cwd);
-  const r = call(s, { op: 'list', path });
-  if (r.status !== 'NT_STATUS_OK') return failed(ctx, r, `listing ${path === '\\' ? '' : path}\\*`);
-  ctx.out(`${(r.entries ?? []).map(row).join('\n')}\n\n${BLOCKS}\n`);
+  const m = masked(path);
+  const shown = m ? path : inDir(path, '*');
+  const r = call(s, { op: 'list', path: m?.dir ?? path });
+  if (r.status !== 'NT_STATUS_OK') return failed(ctx, r, `listing ${shown}`);
+  const entries = (r.entries ?? []).filter((e) => !m || wildMatch(m.mask, e.name));
+  if (!entries.length) return noSuchFile(ctx, `listing ${shown}`);
+  ctx.out(`${entries.map(row).join('\n')}\n\n${BLOCKS}\n`);
   return 'ok';
+}
+
+/** rm with a mask: every file of the directory that matches it (directories are left alone, as smbclient does). */
+function removeMatching(ctx: Ctx, s: SmbSession, path: string, m: Mask): Outcome {
+  const r = call(s, { op: 'list', path: m.dir });
+  if (r.status !== 'NT_STATUS_OK') return failed(ctx, r, `deleting remote file ${path}`);
+  const files = (r.entries ?? []).filter((e) => !e.dir && wildMatch(m.mask, e.name));
+  if (!files.length) return noSuchFile(ctx, `deleting remote file ${path}`);
+  let outcome: Outcome = 'ok';
+  for (const f of files) {
+    const one = inDir(m.dir, f.name);
+    const d = call(s, { op: 'remove', path: one });
+    if (d.status !== 'NT_STATUS_OK') outcome = failed(ctx, d, `deleting remote file ${one}`);
+  }
+  return outcome;
 }
 
 /** cd: «..» is worked out here, as smbclient does, before asking the server whether the directory exists. */
@@ -101,7 +141,7 @@ function put(ctx: Ctx, s: SmbSession, args: readonly string[]): Outcome {
   return 'ok';
 }
 
-/** mkdir, rmdir and rm: one path each, and the words smbclient uses when it fails. */
+/** mkdir, rmdir and rm (a path or, for rm, a mask): and the words smbclient uses when it fails. */
 const SIMPLE: Readonly<Record<string, { readonly op: 'mkdir' | 'rmdir' | 'remove'; readonly what: string }>> = {
   mkdir: { op: 'mkdir', what: 'making remote directory' }, md: { op: 'mkdir', what: 'making remote directory' },
   rmdir: { op: 'rmdir', what: 'removing remote directory file' }, rd: { op: 'rmdir', what: 'removing remote directory file' },
@@ -113,6 +153,8 @@ function simple(ctx: Ctx, s: SmbSession, cmd: string, arg: string | undefined): 
   if (!c) return 'fail';
   if (!arg) { ctx.err(`${cmd} <${c.op === 'remove' ? 'mask' : 'directory'}>\n`); return 'fail'; }
   const path = remote(s, arg);
+  const m = c.op === 'remove' ? masked(path) : null;
+  if (m) return removeMatching(ctx, s, path, m);
   const r = call(s, { op: c.op, path });
   return r.status === 'NT_STATUS_OK' ? 'ok' : failed(ctx, r, `${c.what} ${path}`);
 }

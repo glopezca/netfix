@@ -1549,3 +1549,19 @@ Samba en un servidor GNU/Linux; (6) documentación al día.
   con apt install/remove y el panel Samba de SRV). Ayuda de las órdenes, de apt y de la resolución de nombres (es/en).
 - **Hecho (v0.33.0).** Límites conocidos: el acceso de invitados funciona aunque Windows real bloquea por defecto los
   inicios de sesión de invitado inseguros; `systemctl is-active` con varias unidades sigue dando solo la primera.
+
+### Fase 51: detalles de SMB (v0.33.1)
+
+Tres fallos menores de la revisión de la fase 50, con sus pruebas en `tests/services/samba.test.ts`:
+
+- **Conectar a un recurso** (`src/services/smb-server.ts`, `connect`): como smbd, basta poder entrar en la carpeta
+  (permiso x, además del de los directorios del camino); leerla (r) solo hace falta para listarla. Un buzón en modo 733
+  conecta y admite `put`, y `ls` da `NT_STATUS_ACCESS_DENIED listing \*`.
+- **Enlaces que salen del recurso**: borrar o renombrar actúa sobre el enlace y no sobre su destino, así que solo se
+  comprueban los directorios del camino (`resolve(…, follow = false)`); leer, escribir o listar a través del enlace
+  sigue denegado. Renombrar sobre un enlace a un directorio movería el archivo dentro de él: ese directorio también
+  tiene que estar en el recurso (`renameTarget`).
+- **smbclient**: `ls` y `rm` con comodines (`*`, `?`; sin distinguir mayúsculas, como el servidor) filtran el
+  directorio y, sin coincidencias, dan `NT_STATUS_NO_SUCH_FILE`; `rm` con máscara no borra directorios. `-c` sigue
+  separando en cada `;`, también entre comillas: es lo que hace smbclient (`process_command_string`), no un fallo.
+- **Hecho (v0.33.1).**

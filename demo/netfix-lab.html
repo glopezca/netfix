@@ -20322,7 +20322,7 @@ const UTIL_DOCS = {
     apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PAQUETE... | remove|purge [-y] PAQUETE... | list [--installed] [PATRÓN] | moo', summary: 'Gestor de paquetes de Ubuntu 26.04 con alcance limitado: lee las fuentes reales (/etc/apt/sources.list.d/ubuntu.sources) y se conecta a archive.ubuntu.com y security.ubuntu.com por la red simulada; sin salida a Internet o sin DNS que los resuelva da los errores reales («Temporary failure resolving…»). El catálogo es ficticio y siempre está al día: update, upgrade y autoremove no cambian nada. install y remove sí: en un Server o router GNU/Linux activan o quitan la casilla y el panel del servicio (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) y arrancan o paran el servicio. En cualquier equipo GNU/Linux (también un PC), bind9utils trae named-checkconf y named-checkzone, e isc-kea trae kea-dhcp4 para comprobar configuraciones (kea-dhcp4 -t). Requiere root (sudo).', options: '-y  responde «sí» a «Continue? [Y/n]»\npurge  como remove, y borra la configuración' },
     nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f CAMPOS | -g CAMPOS] [general [status | hostname] | networking [connectivity] | device [status | show [IFAZ]] | connection [show [NOMBRE]]] | --version', summary: 'NetworkManager (se instala con «sudo apt install network-manager»): sin argumentos, un resumen por interfaz (estado, MAC, dirección IP, rutas) y la configuración DNS; device status y device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (los perfiles netplan-eth0 y lo); general status comprueba de verdad la conectividad (full con Internet, limited sin ella). Admite abreviaturas (nmcli d, nmcli c, nmcli g) y, para scripts, -t (sin cabecera, separado por «:»), -f (columnas o campos: -f DEVICE,STATE, -f IP4) y -g (solo los valores: nmcli -g IP4.ADDRESS dev show eth0). Solo consulta: la configuración se cambia con netplan, ip o la pestaña TCP/IP.' },
     nmblookup: { group: 'red', synopsis: 'nmblookup NOMBRE | -A DIRECCIÓN_IP', summary: 'Consulta NetBIOS (samba-common-bin, que trae samba): pregunta por un nombre con un broadcast a la subred (UDP 137) o, con -A, pide a un equipo su tabla de nombres y su MAC. Responden los Windows y los GNU/Linux con samba de la misma red (no cruza routers).' },
-    smbclient: { group: 'red', synopsis: 'smbclient -L SERVIDOR [-N | -U USUARIO[%CLAVE]] | //SERVIDOR/RECURSO [-N | -U USUARIO[%CLAVE]] [-c "ORDEN; ORDEN"]', summary: 'Cliente SMB (paquete smbclient): -L lista los recursos compartidos de un servidor; //SERVIDOR/RECURSO abre uno y, con el indicador «smb: \\>» o con -c, ejecuta ls, cd, get, put, mkdir, rmdir, rm, pwd, help y exit. -N entra como invitado; -U con una cuenta de Samba (sin %CLAVE la pide). El servidor aplica read only, valid users y los permisos Linux de la cuenta.' },
+    smbclient: { group: 'red', synopsis: 'smbclient -L SERVIDOR [-N | -U USUARIO[%CLAVE]] | //SERVIDOR/RECURSO [-N | -U USUARIO[%CLAVE]] [-c "ORDEN; ORDEN"]', summary: 'Cliente SMB (paquete smbclient): -L lista los recursos compartidos de un servidor; //SERVIDOR/RECURSO abre uno y, con el indicador «smb: \\>» o con -c, ejecuta ls, cd, get, put, mkdir, rmdir, rm, pwd, help y exit (`ls` y `rm` admiten comodines: `ls *.txt`, `rm *.tmp`). -N entra como invitado; -U con una cuenta de Samba (sin %CLAVE la pide). El servidor aplica read only, valid users y los permisos Linux de la cuenta.' },
     smbpasswd: { group: 'red', section: 8, synopsis: 'smbpasswd [-a | -x | -d | -e] [-s] [USUARIO]', summary: 'Cuentas de Samba (samba-common-bin): root añade (-a) un usuario Linux existente con su contraseña SMB, lo borra (-x), lo deshabilita (-d) o lo habilita (-e); cualquier otro usuario solo cambia su propia contraseña. -s lee las contraseñas de la entrada estándar, para scripts: printf \'clave\\nclave\\n\' | sudo smbpasswd -s -a ana.' },
     testparm: { group: 'red', synopsis: 'testparm [-s] [FICHERO]', summary: 'Comprueba /etc/samba/smb.conf (samba-common-bin): avisa de los parámetros desconocidos («Unknown parameter encountered») y vuelca las secciones que entiende, con los recursos ordenados por parámetro. Sin -s espera a que pulses Intro antes del volcado.' },
     pdbedit: { group: 'red', section: 8, synopsis: 'pdbedit -L', summary: 'Lista las cuentas de Samba (paquete samba) como usuario:uid:. Requiere root (lee /var/lib/samba/private/passdb.tdb).' },
@@ -22740,7 +22740,7 @@ const UTIL_DOCS = {
     apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PACKAGE... | remove|purge [-y] PACKAGE... | list [--installed] [PATTERN] | moo', summary: 'Ubuntu 26.04 package manager, with a limited reach: it reads the real sources (/etc/apt/sources.list.d/ubuntu.sources) and connects to archive.ubuntu.com and security.ubuntu.com over the simulated network; with no way out to the Internet or no DNS that resolves them it gives the real errors (“Temporary failure resolving…”). The catalogue is fictitious and always up to date: update, upgrade and autoremove change nothing. install and remove do: on a Server or GNU/Linux router they tick or untick the box and panel of the service (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) and start or stop the service. On any GNU/Linux device (a PC too), bind9utils brings named-checkconf and named-checkzone, and isc-kea brings kea-dhcp4 to check configurations (kea-dhcp4 -t). Needs root (sudo).', options: '-y  answers “yes” to “Continue? [Y/n]”\npurge  like remove, and deletes the configuration' },
     nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f FIELDS | -g FIELDS] [general [status | hostname] | networking [connectivity] | device [status | show [IFACE]] | connection [show [NAME]]] | --version', summary: 'NetworkManager (installed with “sudo apt install network-manager”): with no arguments, an overview per interface (state, MAC, IP address, routes) and the DNS configuration; device status and device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (the netplan-eth0 and lo profiles); general status really checks connectivity (full with Internet, limited without). Takes abbreviations (nmcli d, nmcli c, nmcli g) and, for scripts, -t (no header, “:” separated), -f (columns or fields: -f DEVICE,STATE, -f IP4) and -g (values only: nmcli -g IP4.ADDRESS dev show eth0). Read-only: the configuration is changed with netplan, ip or the TCP/IP tab.' },
     nmblookup: { group: 'red', synopsis: 'nmblookup NAME | -A IP_ADDRESS', summary: 'NetBIOS query (samba-common-bin, which samba brings): asks for a name with a broadcast to the subnet (UDP 137) or, with -A, asks a device for its name table and MAC. Windows devices and GNU/Linux ones with samba on the same network answer (it does not cross routers).' },
-    smbclient: { group: 'red', synopsis: 'smbclient -L SERVER [-N | -U USER[%PASSWORD]] | //SERVER/SHARE [-N | -U USER[%PASSWORD]] [-c "COMMAND; COMMAND"]', summary: 'SMB client (smbclient package): -L lists the shares of a server; //SERVER/SHARE opens one and, at the “smb: \\>” prompt or with -c, runs ls, cd, get, put, mkdir, rmdir, rm, pwd, help and exit. -N logs in as the guest; -U with a Samba account (without %PASSWORD it asks for it). The server applies read only, valid users and the Linux permissions of the account.' },
+    smbclient: { group: 'red', synopsis: 'smbclient -L SERVER [-N | -U USER[%PASSWORD]] | //SERVER/SHARE [-N | -U USER[%PASSWORD]] [-c "COMMAND; COMMAND"]', summary: 'SMB client (smbclient package): -L lists the shares of a server; //SERVER/SHARE opens one and, at the “smb: \\>” prompt or with -c, runs ls, cd, get, put, mkdir, rmdir, rm, pwd, help and exit (`ls` and `rm` take wildcards: `ls *.txt`, `rm *.tmp`). -N logs in as the guest; -U with a Samba account (without %PASSWORD it asks for it). The server applies read only, valid users and the Linux permissions of the account.' },
     smbpasswd: { group: 'red', section: 8, synopsis: 'smbpasswd [-a | -x | -d | -e] [-s] [USER]', summary: 'Samba accounts (samba-common-bin): root adds (-a) an existing Linux user with its SMB password, deletes (-x), disables (-d) or enables (-e) it; any other user may only change their own password. -s reads the passwords from standard input, for scripts: printf \'secret\\nsecret\\n\' | sudo smbpasswd -s -a ana.' },
     testparm: { group: 'red', synopsis: 'testparm [-s] [FILE]', summary: 'Checks /etc/samba/smb.conf (samba-common-bin): warns about unknown parameters (“Unknown parameter encountered”) and dumps the sections it understands, with the shares sorted by parameter. Without -s it waits for Enter before the dump.' },
     pdbedit: { group: 'red', section: 8, synopsis: 'pdbedit -L', summary: 'Lists the Samba accounts (samba package) as user:uid:. Requires root (it reads /var/lib/samba/private/passdb.tdb).' },
@@ -31728,7 +31728,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.33.0",
+    "version": "0.33.1",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -40791,8 +40791,157 @@ function smbPath(path) {
 
 return { SMB_PORT, ANONYMOUS, smbCall, smbPath };
 })();
+__m["shells/win-path.js"] = (() => {
+/** C:\home\alumno for /home/alumno. */
+function toWindowsPath(linux) {
+    return `C:\\${linux.split('/').filter(Boolean).join('\\')}`;
+}
+/**
+ * Words (double quotes group and are removed) and the last > or >> outside quotes, followed by its file name
+ * (`nul` discards the output; `2>` sends errors, which are not told apart here, so it is ignored). A > with no
+ * file name is a syntax error.
+ */
+function splitCmdLine(line) {
+    const words = [];
+    let word = null;
+    let quoted = false;
+    let redirect = null;
+    let target = false;
+    let missing = false;
+    let text = '';
+    const flush = () => {
+        if (word === null)
+            return;
+        if (target && redirect) {
+            redirect.path = word;
+            target = false;
+        }
+        else
+            words.push(word);
+        word = null;
+    };
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i] ?? '';
+        if (ch === '"') {
+            quoted = !quoted;
+            word ??= '';
+            if (!target)
+                text += ch;
+            continue;
+        }
+        if (!quoted && ch === '>') {
+            const stderr = word === '2' && !/\s/.test(line[i - 1] ?? ' ') && (i < 2 || /\s/.test(line[i - 2] ?? ' '));
+            if (stderr) {
+                word = null;
+                text = text.slice(0, -1);
+            }
+            else
+                flush();
+            if (target)
+                missing = true;
+            const append = line[i + 1] === '>';
+            if (append)
+                i++;
+            redirect = { path: '', append, stderr };
+            target = true;
+            continue;
+        }
+        if (!quoted && /\s/.test(ch)) {
+            flush();
+            if (!target)
+                text += ch;
+            continue;
+        }
+        word = (word ?? '') + ch;
+        if (!target)
+            text += ch;
+    }
+    flush();
+    if (redirect && (!redirect.path || missing))
+        return { words, redirect: null, text, error: true };
+    const out = redirect && !redirect.stderr ? { path: redirect.path, append: redirect.append } : null;
+    return { words, redirect: out, text, error: false };
+}
+/**
+ * cmd.exe wildcards: * any run of characters, ? one character, case-insensitive; *.* is every name and a final .*
+ * also matches names without a dot. Linear backtracking on the last *, never exponential.
+ */
+function wildMatch(pattern, name) {
+    if (pattern === '*.*')
+        return true;
+    if (pattern.endsWith('.*') && glob(pattern.slice(0, -2).toLowerCase(), name.toLowerCase()))
+        return true;
+    return glob(pattern.toLowerCase(), name.toLowerCase());
+}
+function glob(p, s) {
+    let i = 0;
+    let j = 0;
+    let star = -1;
+    let mark = 0;
+    while (j < s.length) {
+        if (i < p.length && (p[i] === '?' || p[i] === s[j])) {
+            i++;
+            j++;
+        }
+        else if (i < p.length && p[i] === '*') {
+            star = i++;
+            mark = j;
+        }
+        else if (star >= 0) {
+            i = star + 1;
+            j = ++mark;
+        }
+        else
+            return false;
+    }
+    while (p[i] === '*')
+        i++;
+    return i === p.length;
+}
+function hasWildcard(name) {
+    return /[*?]/.test(name);
+}
+/** The entry of `dir` whose name matches `name` exactly or, failing that, without regard to case. */
+function matchEntry(fs, dir, name, cred) {
+    if (fs.tryLookup(`${dir === '/' ? '' : dir}/${name}`, cred))
+        return name;
+    try {
+        return fs.readdir(dir, cred).find((n) => n.toLowerCase() === name.toLowerCase()) ?? name;
+    }
+    catch {
+        return name;
+    }
+}
+/** Linux path of a Windows path typed in the folder `cwd` (a Linux path). */
+function resolveWinPath(fs, cwd, input, cred) {
+    let rest = input.replace(/\//g, '\\');
+    let parts = rest.startsWith('\\') ? [] : cwd.split('/').filter(Boolean);
+    const drive = /^([A-Za-z]):(.*)$/.exec(rest);
+    if (drive) {
+        if ((drive[1] ?? '').toUpperCase() !== 'C')
+            return { ok: false, error: 'drive' };
+        rest = drive[2] ?? '';
+        // "C:" alone or "C:name" is relative to the current folder of the drive, as in cmd.exe.
+        parts = rest.startsWith('\\') ? [] : cwd.split('/').filter(Boolean);
+    }
+    for (const seg of rest.split('\\')) {
+        if (seg === '' || seg === '.')
+            continue;
+        if (seg === '..') {
+            parts.pop();
+            continue;
+        }
+        const dir = `/${parts.join('/')}`;
+        parts.push(matchEntry(fs, dir, seg.replace(/[. ]+$/, '') || seg, cred));
+    }
+    return { ok: true, path: `/${parts.join('/')}` };
+}
+
+return { toWindowsPath, splitCmdLine, wildMatch, hasWildcard, resolveWinPath };
+})();
 __m["shells/smbclient-cmds.js"] = (() => {
 const { smbCall, smbPath } = __m["clients/smb-client.js"];
+const { hasWildcard, wildMatch } = __m["shells/win-path.js"];
 /** What `df` would say of the share's disk (fixed: Netfix does not size the server's disk). */
 const BLOCKS = '\t\t30787492 blocks of size 1024. 21345612 blocks available';
 const HELP = ['?              cd             del            dir            exit', 'get            help           ls             mkdir          put', 'pwd            q              quit           rm             rmdir'];
@@ -40811,13 +40960,46 @@ function failed(ctx, r, what) {
     ctx.err(`${r.status} ${what}\n`);
     return 'fail';
 }
+/** A path whose last name has * or ?: the directory it names and the mask (the server's rules: any case, *.* is all). */
+function masked(path) {
+    const at = path.lastIndexOf('\\');
+    const mask = path.slice(at + 1);
+    return hasWildcard(mask) ? { dir: path.slice(0, at) || '\\', mask } : null;
+}
+const inDir = (dir, name) => `${dir === '\\' ? '' : dir}\\${name}`;
+function noSuchFile(ctx, what) {
+    ctx.err(`NT_STATUS_NO_SUCH_FILE ${what}\n`);
+    return 'fail';
+}
 function ls(ctx, s, arg) {
     const path = arg ? remote(s, arg) : smbPath(s.cwd);
-    const r = call(s, { op: 'list', path });
+    const m = masked(path);
+    const shown = m ? path : inDir(path, '*');
+    const r = call(s, { op: 'list', path: m?.dir ?? path });
     if (r.status !== 'NT_STATUS_OK')
-        return failed(ctx, r, `listing ${path === '\\' ? '' : path}\\*`);
-    ctx.out(`${(r.entries ?? []).map(row).join('\n')}\n\n${BLOCKS}\n`);
+        return failed(ctx, r, `listing ${shown}`);
+    const entries = (r.entries ?? []).filter((e) => !m || wildMatch(m.mask, e.name));
+    if (!entries.length)
+        return noSuchFile(ctx, `listing ${shown}`);
+    ctx.out(`${entries.map(row).join('\n')}\n\n${BLOCKS}\n`);
     return 'ok';
+}
+/** rm with a mask: every file of the directory that matches it (directories are left alone, as smbclient does). */
+function removeMatching(ctx, s, path, m) {
+    const r = call(s, { op: 'list', path: m.dir });
+    if (r.status !== 'NT_STATUS_OK')
+        return failed(ctx, r, `deleting remote file ${path}`);
+    const files = (r.entries ?? []).filter((e) => !e.dir && wildMatch(m.mask, e.name));
+    if (!files.length)
+        return noSuchFile(ctx, `deleting remote file ${path}`);
+    let outcome = 'ok';
+    for (const f of files) {
+        const one = inDir(m.dir, f.name);
+        const d = call(s, { op: 'remove', path: one });
+        if (d.status !== 'NT_STATUS_OK')
+            outcome = failed(ctx, d, `deleting remote file ${one}`);
+    }
+    return outcome;
 }
 /** cd: «..» is worked out here, as smbclient does, before asking the server whether the directory exists. */
 function cd(ctx, s, arg) {
@@ -40888,7 +41070,7 @@ function put(ctx, s, args) {
     ctx.out(`putting file ${local} as ${path} (${rate(data.length)} kb/s) (average ${rate(data.length)} kb/s)\n`);
     return 'ok';
 }
-/** mkdir, rmdir and rm: one path each, and the words smbclient uses when it fails. */
+/** mkdir, rmdir and rm (a path or, for rm, a mask): and the words smbclient uses when it fails. */
 const SIMPLE = {
     mkdir: { op: 'mkdir', what: 'making remote directory' }, md: { op: 'mkdir', what: 'making remote directory' },
     rmdir: { op: 'rmdir', what: 'removing remote directory file' }, rd: { op: 'rmdir', what: 'removing remote directory file' },
@@ -40903,6 +41085,9 @@ function simple(ctx, s, cmd, arg) {
         return 'fail';
     }
     const path = remote(s, arg);
+    const m = c.op === 'remove' ? masked(path) : null;
+    if (m)
+        return removeMatching(ctx, s, path, m);
     const r = call(s, { op: c.op, path });
     return r.status === 'NT_STATUS_OK' ? 'ok' : failed(ctx, r, `${c.what} ${path}`);
 }
@@ -41029,6 +41214,7 @@ function listShares(ctx, host, server, login) {
 function* session(ctx, s, commands) {
     if (commands !== undefined) {
         let status = 0;
+        // As smbclient: every ; ends a command, even inside quotes (process_command_string splits with strchr).
         for (const line of commands.split(';')) {
             const r = smbCommand(ctx, s, line.trim());
             if (r === 'fail')
@@ -44395,154 +44581,6 @@ function netView(host, unc) {
 
 return { smbTarget, netUse, netView };
 })();
-__m["shells/win-path.js"] = (() => {
-/** C:\home\alumno for /home/alumno. */
-function toWindowsPath(linux) {
-    return `C:\\${linux.split('/').filter(Boolean).join('\\')}`;
-}
-/**
- * Words (double quotes group and are removed) and the last > or >> outside quotes, followed by its file name
- * (`nul` discards the output; `2>` sends errors, which are not told apart here, so it is ignored). A > with no
- * file name is a syntax error.
- */
-function splitCmdLine(line) {
-    const words = [];
-    let word = null;
-    let quoted = false;
-    let redirect = null;
-    let target = false;
-    let missing = false;
-    let text = '';
-    const flush = () => {
-        if (word === null)
-            return;
-        if (target && redirect) {
-            redirect.path = word;
-            target = false;
-        }
-        else
-            words.push(word);
-        word = null;
-    };
-    for (let i = 0; i < line.length; i++) {
-        const ch = line[i] ?? '';
-        if (ch === '"') {
-            quoted = !quoted;
-            word ??= '';
-            if (!target)
-                text += ch;
-            continue;
-        }
-        if (!quoted && ch === '>') {
-            const stderr = word === '2' && !/\s/.test(line[i - 1] ?? ' ') && (i < 2 || /\s/.test(line[i - 2] ?? ' '));
-            if (stderr) {
-                word = null;
-                text = text.slice(0, -1);
-            }
-            else
-                flush();
-            if (target)
-                missing = true;
-            const append = line[i + 1] === '>';
-            if (append)
-                i++;
-            redirect = { path: '', append, stderr };
-            target = true;
-            continue;
-        }
-        if (!quoted && /\s/.test(ch)) {
-            flush();
-            if (!target)
-                text += ch;
-            continue;
-        }
-        word = (word ?? '') + ch;
-        if (!target)
-            text += ch;
-    }
-    flush();
-    if (redirect && (!redirect.path || missing))
-        return { words, redirect: null, text, error: true };
-    const out = redirect && !redirect.stderr ? { path: redirect.path, append: redirect.append } : null;
-    return { words, redirect: out, text, error: false };
-}
-/**
- * cmd.exe wildcards: * any run of characters, ? one character, case-insensitive; *.* is every name and a final .*
- * also matches names without a dot. Linear backtracking on the last *, never exponential.
- */
-function wildMatch(pattern, name) {
-    if (pattern === '*.*')
-        return true;
-    if (pattern.endsWith('.*') && glob(pattern.slice(0, -2).toLowerCase(), name.toLowerCase()))
-        return true;
-    return glob(pattern.toLowerCase(), name.toLowerCase());
-}
-function glob(p, s) {
-    let i = 0;
-    let j = 0;
-    let star = -1;
-    let mark = 0;
-    while (j < s.length) {
-        if (i < p.length && (p[i] === '?' || p[i] === s[j])) {
-            i++;
-            j++;
-        }
-        else if (i < p.length && p[i] === '*') {
-            star = i++;
-            mark = j;
-        }
-        else if (star >= 0) {
-            i = star + 1;
-            j = ++mark;
-        }
-        else
-            return false;
-    }
-    while (p[i] === '*')
-        i++;
-    return i === p.length;
-}
-function hasWildcard(name) {
-    return /[*?]/.test(name);
-}
-/** The entry of `dir` whose name matches `name` exactly or, failing that, without regard to case. */
-function matchEntry(fs, dir, name, cred) {
-    if (fs.tryLookup(`${dir === '/' ? '' : dir}/${name}`, cred))
-        return name;
-    try {
-        return fs.readdir(dir, cred).find((n) => n.toLowerCase() === name.toLowerCase()) ?? name;
-    }
-    catch {
-        return name;
-    }
-}
-/** Linux path of a Windows path typed in the folder `cwd` (a Linux path). */
-function resolveWinPath(fs, cwd, input, cred) {
-    let rest = input.replace(/\//g, '\\');
-    let parts = rest.startsWith('\\') ? [] : cwd.split('/').filter(Boolean);
-    const drive = /^([A-Za-z]):(.*)$/.exec(rest);
-    if (drive) {
-        if ((drive[1] ?? '').toUpperCase() !== 'C')
-            return { ok: false, error: 'drive' };
-        rest = drive[2] ?? '';
-        // "C:" alone or "C:name" is relative to the current folder of the drive, as in cmd.exe.
-        parts = rest.startsWith('\\') ? [] : cwd.split('/').filter(Boolean);
-    }
-    for (const seg of rest.split('\\')) {
-        if (seg === '' || seg === '.')
-            continue;
-        if (seg === '..') {
-            parts.pop();
-            continue;
-        }
-        const dir = `/${parts.join('/')}`;
-        parts.push(matchEntry(fs, dir, seg.replace(/[. ]+$/, '') || seg, cred));
-    }
-    return { ok: true, path: `/${parts.join('/')}` };
-}
-
-return { toWindowsPath, splitCmdLine, wildMatch, hasWildcard, resolveWinPath };
-})();
 __m["shells/win-fsctx.js"] = (() => {
 /** What the cmd.exe file commands share: the account's view of the Linux file system, cmd's messages and listings. */
 const { FsError, basename, dirname } = __m["bash/vfs.js"];
@@ -47185,7 +47223,7 @@ function withHint(state, hint) {
 return { parseMissionState, withHint };
 })();
 __m["services/smb-server.js"] = (() => {
-const { FsError } = __m["bash/vfs.js"];
+const { FsError, canAccess } = __m["bash/vfs.js"];
 const { hostFs } = __m["devices/host-fs.js"];
 const { DEFAULT_SMB_CONF, SMB_CONF, findShare, parseSmbConf, serverComment } = __m["services/smb-conf.js"];
 const { readPassdb, unixAccount } = __m["services/smb-passdb.js"];
@@ -47235,7 +47273,8 @@ function listed(fs, share, u) {
     const groups = groupNames(fs, u.cred.groups ?? [u.cred.gid]);
     return share.validUsers.some((v) => (/^[@+]/.test(v) ? groups.includes(v.slice(1)) : !u.guest && v.toLowerCase() === u.name));
 }
-/** Tree connect: the share's real directory, or why this session may not use it. */
+/** Tree connect: the share's real directory, or why this session may not use it. smbd only has to chdir into it (x);
+ * a directory that may not be read still connects, and its listing is what is denied. */
 function connect(fs, share, u) {
     if ((u.guest && !share.guestOk) || !listed(fs, share, u))
         return 'NT_STATUS_ACCESS_DENIED';
@@ -47245,26 +47284,36 @@ function connect(fs, share, u) {
         const root = fs.realpath(share.path);
         if (fs.tryLookup(root)?.kind !== 'dir')
             return 'NT_STATUS_BAD_NETWORK_NAME';
-        fs.readdir(root, u.cred);
-        return root;
+        return canAccess(fs.lookup(root, u.cred), u.cred, 1) ? root : 'NT_STATUS_ACCESS_DENIED';
     }
     catch (e) {
         return e instanceof FsError ? 'NT_STATUS_ACCESS_DENIED' : 'NT_STATUS_UNSUCCESSFUL';
     }
 }
 const inside = (p, root) => root === '/' || p === root || p.startsWith(`${root}/`);
-/** A path of the share (\dir\file) on the server: never above the share root, by «..» or by a link. */
-function resolve(fs, root, path) {
+/**
+ * A path of the share (\dir\file) on the server: never above the share root, by «..» or by a link. With `follow`
+ * false (delete, rename) only the directories on the way are checked: the last name is the entry itself, so a link
+ * that leads out of the share can still be deleted or renamed, which touches the link and not its target.
+ */
+function resolve(fs, root, path, follow = true) {
     const parts = path.split(/[\\/]+/).filter((p) => p && p !== '.');
     if (parts.includes('..'))
         return 'NT_STATUS_OBJECT_PATH_SYNTAX_BAD';
     const full = parts.length ? `${root === '/' ? '' : root}/${parts.join('/')}` : root;
+    const checked = follow || !parts.length ? full : full.slice(0, full.lastIndexOf('/')) || '/';
     try {
-        return inside(fs.realpath(full), root) ? full : 'NT_STATUS_ACCESS_DENIED';
+        return inside(fs.realpath(checked), root) ? full : 'NT_STATUS_ACCESS_DENIED';
     }
     catch {
         return 'NT_STATUS_OBJECT_NAME_NOT_FOUND';
     }
+}
+/** A rename's target: a link there is replaced, not followed, unless it leads to a directory, which rename moves the
+ * file into, so that directory must be inside the share as well. */
+function renameTarget(fs, root, path) {
+    const to = resolve(fs, root, path, false);
+    return isStatus(to) || fs.tryLookup(to)?.kind !== 'dir' ? to : resolve(fs, root, path);
 }
 function entry(fs, path, name, cred) {
     const st = fs.stat(path, cred);
@@ -47277,6 +47326,8 @@ function list(fs, path, cred) {
     return { status: 'NT_STATUS_OK', entries: [self, { ...self, name: '..' }, ...entries] };
 }
 const WRITES = new Set(['write', 'mkdir', 'rmdir', 'remove', 'rename']);
+/** The operations on the entry itself, not on what a link points to. */
+const ON_ENTRY = new Set(['remove', 'rename']);
 /** One operation on a path already checked to be inside the share. */
 function operate(fs, op, path, to, cred) {
     const ok = { status: 'NT_STATUS_OK' };
@@ -47312,10 +47363,10 @@ function onShare(fs, root, share, op, cred) {
         return { status: 'NT_STATUS_OK' };
     if (WRITES.has(op.op) && share.readOnly)
         return fail('NT_STATUS_ACCESS_DENIED');
-    const path = resolve(fs, root, 'path' in op ? op.path : '');
+    const path = resolve(fs, root, 'path' in op ? op.path : '', !ON_ENTRY.has(op.op));
     if (isStatus(path))
         return fail(path);
-    const to = op.op === 'rename' ? resolve(fs, root, op.to) : '';
+    const to = op.op === 'rename' ? renameTarget(fs, root, op.to) : '';
     if (isStatus(to))
         return fail(to);
     if (WRITES.has(op.op) && op.op !== 'write' && op.op !== 'mkdir' && path === root)
