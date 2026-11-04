@@ -59,6 +59,18 @@ test('samba: a GNU/Linux host answers NetBIOS and SMB; nmblookup; Windows cannot
   assert.match(win(pc0, 'ping -n 1 srv-sede2'), /could not find host srv-sede2/, 'NBNS broadcasts do not cross routers');
 });
 
+test('nmblookup on GNU/Linux: localhost<00> and the own name answer on the host itself', () => {
+  const t = lab('internet');
+  const pc1 = t.byLabel('PC1') as Host;
+  sh(pc1, 'apt install -y samba-common-bin');
+  assert.match(sh(pc1, 'nmblookup localhost'), /^querying localhost on \d+\.\d+\.\d+\.255\n127\.0\.0\.1 localhost<00>$/, 'without nmbd too');
+  const name = sh(pc1, 'hostname');
+  assert.match(sh(pc1, `nmblookup ${name}; echo "status $?"`), /name_query failed to find name [^\n]+\nstatus 1$/, 'no nmbd: nobody answers for it');
+  sh(pc1, 'apt install -y samba');
+  const ip1 = sh(pc1, 'hostname -I').trim().split(' ')[0];
+  assert.equal(sh(pc1, `nmblookup ${name.toUpperCase()}`).split('\n')[1], `${ip1} ${name.toUpperCase()}<00>`, 'nmbd answers its own broadcast');
+});
+
 test('GNU/Linux follows /etc/nsswitch.conf: wins with winbind, mdns4_minimal only with avahi or libnss-mdns', () => {
   const t = lab('internet');
   const [pc0, pc1] = [t.byLabel('PC0') as Host, t.byLabel('PC1') as Host];

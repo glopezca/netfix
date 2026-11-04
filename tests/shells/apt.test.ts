@@ -54,6 +54,42 @@ test('upgrade, full-upgrade and autoremove: always up to date', () => {
   assert.match(run(srv, 'apt autoremove'), summary);
 });
 
+test('autoremove: what samba brought stays after remove until autoremove, and nmblookup goes with it', () => {
+  const t = lab('internet');
+  const pc = t.byLabel('PC1') as Host;
+  run(pc, 'apt install -y samba');
+  assert.match(run(pc, 'apt list --installed samba-common-bin 2>/dev/null'), /samba-common-bin\/resolute,now [^ ]+ amd64 \[installed,automatic\]/);
+  const removed = run(pc, 'apt remove -y samba');
+  assert.match(removed, /The following packages were automatically installed and are no longer required:\n {2}python3-samba {2}samba-common {2}samba-common-bin {2}samba-libs {2}tdb-tools\nUse 'sudo apt autoremove' to remove them\.\n\nREMOVING:\n {2}samba\n/);
+  assert.match(run(pc, 'nmblookup -h; echo "status $?"'), /status [01]$/, 'nmblookup stays until autoremove');
+  const again = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON()))).byLabel('PC1') as Host;
+  const auto = run(again, 'apt autoremove -y');
+  assert.match(auto, /REMOVING:\n {2}python3-samba {2}samba-common {2}samba-common-bin {2}samba-libs {2}tdb-tools\n\nSummary:\n {2}Upgrading: 0, Installing: 0, Removing: 5, Not Upgrading: 0\n {2}Freed space: [\d,]+ kB\n/, 'the automatic mark is kept in the file');
+  assert.match(auto, /Removing samba-common-bin \(2:4\.22\.3\+dfsg-4ubuntu2\) \.\.\./);
+  assert.match(run(again, 'nmblookup pc0; echo "status $?"'), /Command 'nmblookup' not found[\s\S]*status 127$/);
+  assert.match(run(again, 'apt autoremove'), /Removing: 0, Not Upgrading: 0$/);
+});
+
+test('autoremove keeps what another package needs, and what you install by hand', () => {
+  const pc = lab('internet').byLabel('PC1') as Host;
+  run(pc, 'apt install -y samba winbind');
+  assert.match(run(pc, 'apt remove -y samba'), /no longer required:\n {2}python3-samba {2}tdb-tools\n/, 'winbind still needs samba-common-bin, and it samba-common and samba-libs');
+  assert.match(run(pc, 'apt install -y samba-common-bin'), /samba-common-bin is already the newest version \([^)]+\)\.\nsamba-common-bin set to manually installed\./);
+  run(pc, 'apt remove -y winbind');
+  const auto = run(pc, 'apt autoremove -y');
+  assert.match(auto, /REMOVING:\n {2}python3-samba {2}tdb-tools\n/, 'samba-common-bin is manual now and keeps its own dependencies');
+  assert.match(run(pc, 'nmblookup -h; echo "status $?"'), /status [01]$/);
+});
+
+test('autoremove after avahi-daemon: libnss-mdns goes and takes mdns4_minimal out of nsswitch.conf', () => {
+  const pc = lab('internet').byLabel('PC1') as Host;
+  run(pc, 'apt install -y avahi-daemon');
+  run(pc, 'apt remove -y avahi-daemon');
+  assert.match(run(pc, 'grep ^hosts: /etc/nsswitch.conf'), /mdns4_minimal/, 'libnss-mdns is still there');
+  assert.match(run(pc, 'apt autoremove -y'), /Removing libnss-mdns /);
+  assert.match(run(pc, 'grep ^hosts: /etc/nsswitch.conf'), /^hosts: +files dns$/);
+});
+
 test('apt install of a service package: download, set up, and its panel appears at once', () => {
   const t = lab('internet');
   const srv = t.byLabel('SRV-SEDE2') as Server;

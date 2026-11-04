@@ -59,6 +59,7 @@ export const PACKAGES: readonly AptPackage[] = [
   // NetBIOS and SMB: samba (smbd, nmbd, nmblookup), and winbind + libnss-winbind for «wins» in nsswitch.conf.
   { ...dep('samba', '2:4.22.3+dfsg-4ubuntu2', 1095), section: 'main', deps: [dep('samba-common', '2:4.22.3+dfsg-4ubuntu2', 58, 'all'), dep('samba-common-bin', '2:4.22.3+dfsg-4ubuntu2', 1324), dep('samba-libs', '2:4.22.3+dfsg-4ubuntu2', 6120), dep('python3-samba', '2:4.22.3+dfsg-4ubuntu2', 2953), dep('tdb-tools', '1.4.13-1', 26)], unit: 'smbd' },
   { ...dep('samba-common-bin', '2:4.22.3+dfsg-4ubuntu2', 1324), section: 'main', deps: [dep('samba-common', '2:4.22.3+dfsg-4ubuntu2', 58, 'all'), dep('samba-libs', '2:4.22.3+dfsg-4ubuntu2', 6120)] },
+  { ...dep('smbclient', '2:4.22.3+dfsg-4ubuntu2', 473), section: 'main', deps: [dep('samba-common', '2:4.22.3+dfsg-4ubuntu2', 58, 'all'), dep('samba-libs', '2:4.22.3+dfsg-4ubuntu2', 6120), dep('libsmbclient0', '2:4.22.3+dfsg-4ubuntu2', 65)] },
   { ...dep('winbind', '2:4.22.3+dfsg-4ubuntu2', 449), section: 'main', deps: [dep('samba-common-bin', '2:4.22.3+dfsg-4ubuntu2', 1324), dep('samba-libs', '2:4.22.3+dfsg-4ubuntu2', 6120)], unit: 'winbind' },
   { ...dep('libnss-winbind', '2:4.22.3+dfsg-4ubuntu2', 24), section: 'main', deps: [] },
 ];

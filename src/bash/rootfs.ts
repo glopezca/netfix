@@ -147,7 +147,7 @@ function adoptHome(fs: Vfs, u: UserInfo): void {
 }
 
 export function seedUsers(fs: Vfs, users: readonly UserInfo[]): void {
-  const groups = new Map<number, string>([[0, 'root'], [4, 'adm'], [27, 'sudo'], [33, 'www-data'], [42, 'shadow'], [100, 'users']]);
+  const groups = new Map<number, string>([[0, 'root'], [4, 'adm'], [27, 'sudo'], [33, 'www-data'], [42, 'shadow'], [100, 'users'], [65534, 'nogroup']]);
   for (const u of users) if (!groups.has(u.gid)) groups.set(u.gid, u.name);
   const members = (gid: number): string => users.filter((u) => u.uid !== 0 && u.groups.includes(gid) && u.gid !== gid).map((u) => u.name).join(',');
   fs.seed('/etc/passwd', { kind: 'file', content: [...users.map((u) => `${u.name}:x:${u.uid}:${u.gid}:${u.uid === 0 ? 'root' : u.name}:${u.home}:${u.shell}`), 'www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin', 'nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin'].join('\n') + '\n' });

@@ -21,6 +21,8 @@ import type { Tab } from './windows.ts';
 import { hostIpConfig } from './host-ip.ts';
 import { hostSettings } from './host-settings.ts';
 import { servicesTab } from './server-apps.ts';
+import { pcServicesTab } from './pc-services.ts';
+import { hostPanels } from '../net/pkg-units.ts';
 import { browserApp, mailApp } from './pc-apps.ts';
 import { sshApp } from './ssh-app.ts';
 import { sftpApp } from './sftp-app.ts';
@@ -182,8 +184,10 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost, again?: { init
   // «Equipo», «Interfaces» and «Configuración» always; the rest as the lab allows and the device's own tab says.
   const has = (id: FeatureId): boolean => appAvailable(h, id);
   const ifTab: Tab = { id: 'ifaces', label: t('win.ifaces'), render: view(() => (h instanceof LinuxRouter ? routerInterfaces(h, app, peer) : hostInterfaces(h, app, peer))) };
-  const panels = PANEL_IDS.filter(has);
-  const svc: Tab[] = h instanceof Server && panels.length ? [{ id: 'svc', label: t('win.services'), render: () => servicesTab(h, app, panels) }] : [];
+  // A Server: the panels the lab leaves on, and what apt added (samba). A GNU/Linux PC: what its packages bring.
+  const panels = h instanceof Server ? [...PANEL_IDS.filter(has), ...hostPanels(h)] : hostPanels(h);
+  const svcTab = (render: () => HTMLElement): Tab[] => (panels.length ? [{ id: 'svc', label: t('win.services'), render }] : []);
+  const svc: Tab[] = h instanceof Server ? svcTab(() => servicesTab(h, app, panels)) : svcTab(() => pcServicesTab(h, app, panels));
   const pcApps: Tab[] = h instanceof Pc ? [{ id: 'web', label: t('win.browser'), render: () => browserApp(h, app) }, { id: 'mail', label: t('win.mail'), render: () => mailApp(h, app) },
     { id: 'ssh', label: t('ssh.tab'), render: () => sshApp(h, app) }, { id: 'sftp', label: t('sftp.tab'), render: () => sftpApp(h, app) }].filter((tab) => has(tab.id === 'web' ? 'browser' : tab.id as FeatureId)) : [];
   const config: Tab = { id: 'apps', label: t('dev.tab'), render: () => deviceConfig(h, () => app.afterCommand()) };

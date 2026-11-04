@@ -1,8 +1,8 @@
-/** nmblookup (samba-common-bin): NetBIOS name queries by broadcast, and node status with -A. */
+/** nmblookup (samba-common-bin): NetBIOS name queries by broadcast (localhost and the own name answered here), and node status with -A. */
 import type { CommandFn, Ctx } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { hasPackage } from '../net/host-packages.ts';
-import { WORKSTATION, nbnsAsk } from '../net/netbios.ts';
+import { WORKSTATION, nbnsAsk, netbiosName, ownNames, speaksNetbios } from '../net/netbios.ts';
 import { broadcastOf, formatIp, parseIp } from '../core/ip.ts';
 
 function status(ctx: Ctx, host: Host, target: string): number {
@@ -15,11 +15,19 @@ function status(ctx: Ctx, host: Host, target: string): number {
   return 0;
 }
 
+const LOOPBACK = 0x7f000001;
+
+/** The host answers itself: localhost always, its own name when nmbd (samba) runs and hears its broadcast. */
+function local(host: Host, name: string, own: number | undefined): number | undefined {
+  if (name.toLowerCase() === 'localhost') return LOOPBACK;
+  const mine = speaksNetbios(host) && ownNames(host).some((n) => !n.group && n.suffix === WORKSTATION && n.name === netbiosName(name));
+  return mine ? own : undefined;
+}
+
 function query(ctx: Ctx, host: Host, name: string): number {
   const a = host.l3Ifaces().find((i) => i.up && i.addrs.length)?.addrs[0];
   ctx.out(`querying ${name} on ${a ? formatIp(broadcastOf(a.ip, a.prefix)) : '0.0.0.0'}\n`);
-  const r = nbnsAsk(host, { type: 'NB', name, suffix: WORKSTATION, broadcast: true });
-  const ip = r?.addresses?.[0];
+  const ip = local(host, name, a?.ip) ?? nbnsAsk(host, { type: 'NB', name, suffix: WORKSTATION, broadcast: true })?.addresses?.[0];
   if (ip === undefined) { ctx.out(`name_query failed to find name ${name}\n`); return 1; }
   ctx.out(`${formatIp(ip)} ${name}<00>\n`);
   return 0;

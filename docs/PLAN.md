@@ -1511,3 +1511,41 @@ similares), disponibles al instalar «bind9utils» e «isc-kea» con apt.
   exponencialmente, la anidación de JSON (`memory exhausted`) y de listas de direcciones está acotada, como el total de
   `include`; un error inesperado al leer un fichero no se escapa, y una ruta ocupada no detiene apt al dejar los
   ficheros por defecto en un PC.
+
+### Fase 50: apt autoremove, nmblookup, resolvectl, Samba como servidor de ficheros y Servicios de un PC GNU/Linux (v0.33.0)
+
+Petición: (1) `apt autoremove` no quitaba nmblookup; (2) `nmblookup localhost` no resolvía `localhost<00>` en
+GNU/Linux; (3) al instalar samba debe aparecer su panel de gestión en Servicios, y un PC GNU/Linux debe tener en
+Servicios al menos los parámetros del kernel y, con nftables o samba instalados por apt, la pestaña del servicio, la de
+configuración y la de registros, que desaparecen al desinstalarlos (un PC no tiene gestión web: no tiene servidor
+HTTP); (4) `resolvectl` mostraba mDNS y LLMNR sin tenerlos instalados; (5) laboratorio de compartición de ficheros con
+Samba en un servidor GNU/Linux; (6) documentación al día.
+
+- **apt autoremove** (`src/shells/apt-auto.ts`): las dependencias que apt instala solas se marcan
+  automáticas (como en `/var/lib/apt/extended_states`; `apt list --installed` dice `[installed,automatic]`); `apt remove` avisa de las que ya nadie necesita («no longer
+  required») y `apt autoremove [--purge]` las quita, como apt real. Tras `apt remove samba` se va samba-common-bin y,
+  con él, `nmblookup`.
+- **nmblookup** (`src/shells/nmblookup.ts`): `localhost` responde 127.0.0.1 y el nombre propio, la dirección del
+  equipo, mientras nmbd está en marcha. NetBIOS (`src/net/netbios.ts`) exige nmbd en marcha para responder y smbd para
+  servir SMB.
+- **resolvectl** (`src/shells/resolvectl.ts`): solo los protocolos instalados. `+mDNS` y el ámbito `mDNS/IPv4` (en
+  las interfaces con dirección) con avahi-daemon o libnss-mdns; LLMNR nunca, porque ningún paquete lo trae aquí.
+- **Samba servidor de ficheros**: `smb.conf` (`src/services/smb-conf.ts`: secciones, `path`, `read only`, `guest ok`,
+  `valid users`, `browseable`), cuentas (`smb-passdb.ts`, `smbpasswd -a/-x/-d/-e/-s`), servidor SMB (`smb-server.ts`,
+  aplica los permisos Linux de la cuenta o de nobody), `testparm`, `smbclient` (paquete nuevo: `-L`, `-N`, `-U`, `-c`,
+  ls/cd/get/put/mkdir/rmdir/rm) y, en Windows, `net view \\srv` y `net use Z: \\srv\recurso` con `dir`, `copy` y
+  `type` en la unidad. `chown`/`chgrp` aceptan los grupos del sistema (`users`, `nogroup`…).
+- **Servicios** (`src/net/pkg-units.ts` → `hostPanels`): en un Server o router GNU/Linux, samba añade el panel
+  **Samba** (`src/ui/samba-panel.ts`: smbd/nmbd encendido o apagado, recursos y cuentas, mediante
+  `src/shells/samba-admin.ts`), y smbd y nmbd entran en Registros. Un PC GNU/Linux tiene la pestaña Servicios
+  (`src/ui/pc-services.ts`) con Parámetros siempre; nftables añade Firewall, samba añade Samba y cualquiera de los dos,
+  Configuración y Registros (`src/ui/log-panel.ts`, compartido con el servidor). apt redibuja la ventana al instalar o
+  quitar. Un PC Windows sigue sin esta pestaña.
+- **Laboratorio** «Compartir carpetas con Samba en un servidor GNU/Linux» (`src/net/labs-samba.ts`): SRV comparte
+  `publico` (invitados) y `profes` (`valid users = ana luis`, solo ana con cuenta); PC0 (Windows) y PC1 (GNU/Linux) los
+  usan.
+- **Pruebas:** samba (smb.conf, cuentas, servidor, smbclient, net use), apt autoremove, nmblookup localhost,
+  resolvectl con y sin avahi, `hostPanels` y unidades de los paquetes; e2e `scripts/e2e-samba.mjs` (Servicios del PC
+  con apt install/remove y el panel Samba de SRV). Ayuda de las órdenes, de apt y de la resolución de nombres (es/en).
+- **Hecho (v0.33.0).** Límites conocidos: el acceso de invitados funciona aunque Windows real bloquea por defecto los
+  inicios de sesión de invitado inseguros; `systemctl is-active` con varias unidades sigue dando solo la primera.

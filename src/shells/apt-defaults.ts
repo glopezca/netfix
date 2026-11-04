@@ -1,10 +1,13 @@
 /**
  * The configuration files a package ships, written when apt installs it on a host without service panels (a PC):
- * Kea's kea-dhcp4.conf (the basic one of the Ubuntu package, shortened) and bind9's /etc/bind. On a Server or a
- * GNU/Linux router these files come from its Servicios settings instead (linux-files.ts).
+ * Kea's kea-dhcp4.conf (the basic one of the Ubuntu package, shortened), bind9's /etc/bind and nftables'
+ * /etc/nftables.conf. On a Server or a GNU/Linux router these files come from its Servicios settings instead
+ * (linux-files.ts), except samba's smb.conf, which has no settings box and is written on any host.
  */
 import { bindFiles } from '../services/bind-files.ts';
 import { defaultServices } from '../services/config.ts';
+import { DEFAULT_SMB_CONF, SMB_CONF } from '../services/smb-conf.ts';
+import { DEFAULT_NFTABLES_CONF, NFTABLES_CONF } from '../devices/server-firewall.ts';
 
 export const KEA_DHCP4_CONF = '/etc/kea/kea-dhcp4.conf';
 
@@ -103,5 +106,7 @@ const KEA_PACKAGES: ReadonlySet<string> = new Set(['kea', 'kea-dhcp4-server', 'i
 export function shippedFiles(name: string): ReadonlyMap<string, string> {
   if (KEA_PACKAGES.has(name)) return new Map([[KEA_DHCP4_CONF, KEA_DEFAULT]]);
   if (name === 'bind9') return bindFiles(defaultServices().dns, []);
+  if (name === 'samba') return new Map([[SMB_CONF, DEFAULT_SMB_CONF]]);
+  if (name === 'nftables') return new Map([[NFTABLES_CONF, DEFAULT_NFTABLES_CONF]]);
   return new Map();
 }

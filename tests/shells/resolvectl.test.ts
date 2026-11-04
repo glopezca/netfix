@@ -11,6 +11,7 @@ import type { Server } from '../../src/devices/server.ts';
 import { createShell } from '../../src/shells/factory.ts';
 import { newZone } from '../../src/services/dns-zones.ts';
 import { parseIp } from '../../src/core/ip.ts';
+import { setPackageInstalled } from '../../src/net/host-packages.ts';
 
 const ip = (s: string): number => parseIp(s) ?? 0;
 const all = (l: string[]): string => l.join('\n');
@@ -37,12 +38,12 @@ test('status: Global and one block per link, as systemd 257 prints them', () => 
   const { sh } = lab();
   assert.equal(sh('resolvectl status'), [
     'Global',
-    '         Protocols: -LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported',
+    '         Protocols: -DNSOverTLS DNSSEC=no/unsupported',
     '  resolv.conf mode: foreign',
     '',
     'Link 2 (eth0)',
     '    Current Scopes: DNS',
-    '         Protocols: +DefaultRoute -LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported',
+    '         Protocols: +DefaultRoute -DNSOverTLS DNSSEC=no/unsupported',
     'Current DNS Server: 10.0.0.2',
     '       DNS Servers: 10.0.0.2',
     '        DNS Domain: aula.lab',
@@ -53,11 +54,21 @@ test('status: Global and one block per link, as systemd 257 prints them', () => 
   assert.match(sh('resolvectl status eth9'), /Failed to resolve interface "eth9": No such device/);
 });
 
+test('status: mDNS only once avahi-daemon or libnss-mdns is installed; LLMNR never (no package brings it)', () => {
+  const { pc, sh } = lab();
+  assert.doesNotMatch(sh('resolvectl status'), /LLMNR|mDNS/);
+  setPackageInstalled(pc, 'libnss-mdns', true);
+  const out = sh('resolvectl status');
+  assert.match(out, /^Global\n {9}Protocols: \+mDNS -DNSOverTLS DNSSEC=no\/unsupported$/m);
+  assert.match(out, /Link 2 \(eth0\)\n {4}Current Scopes: DNS mDNS\/IPv4\n {9}Protocols: \+DefaultRoute \+mDNS -DNSOverTLS/);
+  assert.doesNotMatch(out, /LLMNR/);
+});
+
 test('a GNU/Linux router: the links without DNS have no scope', () => {
   const t = new Topology();
   const lr = t.add('linuxrouter', 0, 0).device as Server;
   const out = all(createShell(lr, 'linux').run('resolvectl status'));
-  assert.match(out, /Link 3 \(eth1\)\n    Current Scopes: none\n         Protocols: -DefaultRoute -LLMNR -mDNS -DNSOverTLS DNSSEC=no\/unsupported/);
+  assert.match(out, /Link 3 \(eth1\)\n    Current Scopes: none\n         Protocols: -DefaultRoute -DNSOverTLS DNSSEC=no\/unsupported/);
   assert.match(out, /Link 4 \(eth2\)/);
 });
 

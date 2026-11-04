@@ -17,13 +17,17 @@ import type { LabFeatures } from './lab-features.ts';
 import { parseMissionState } from '../labs/mission-state.ts';
 import type { MissionState } from '../labs/mission-state.ts';
 import { bindLab, customApps, deviceApps, parseApps, setDeviceApps } from './device-apps.ts';
-import { packagesOf, parsePackages, setPackageInstalled } from './host-packages.ts';
+import { autoPackagesOf, packagesOf, parsePackages, setPackageAuto, setPackageInstalled } from './host-packages.ts';
 import { registerMdns } from './mdns.ts';
 import { registerLlmnr } from './llmnr.ts';
-import { attachNetbios } from './netbios.ts';
+import { attachNetbios, registerSmbServer } from './netbios.ts';
+import { smbServe } from '../services/smb-server.ts';
+import { pkgUnitsRecord, restorePkgUnits } from './pkg-units.ts';
+import { bootPkgUnits } from '../shells/pkg-service.ts';
 
 registerMdns();
 registerLlmnr();
+registerSmbServer(smbServe);
 import type { Annotation, AnnotationInit } from './annotations.ts';
 import type { CableKind, Endpoint, Link } from './network.ts';
 import { SimClock } from '../core/clock.ts';
@@ -88,6 +92,10 @@ export interface PcRecord {
   readonly enabled?: unknown;
   /** Packages installed with apt that are not a service panel (v0.27: network-manager, avahi-daemon…). */
   readonly packages?: unknown;
+  /** Those of `packages` apt brought as dependencies (v0.33: `apt autoremove` takes them). */
+  readonly autoPackages?: unknown;
+  /** The units those packages bring (v0.33: smbd, nmbd, nftables), when not as installed; untrusted. */
+  readonly units?: unknown;
 }
 
 export interface ServerRecord {
@@ -339,7 +347,9 @@ function hostRecord(d: Host): PcRecord {
   const files = savedFiles(d);
   const enabled = customApps(d);
   const packages = packagesOf(d);
-  const names = { ...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
+  const autoPackages = autoPackagesOf(d);
+  const units = pkgUnitsRecord(d);
+  const names = { ...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), ...(autoPackages.length ? { autoPackages } : {}), ...(units ? { units } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
   if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
   const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
   return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
@@ -357,6 +367,8 @@ export function restore(device: AnyDevice, rec: DeviceRecord): void {
     if (pc.os === 'linux' || pc.os === 'windows') device.os = pc.os;
     setDeviceApps(device, parseApps(pc.enabled, device.kind));
     for (const name of parsePackages(pc.packages)) setPackageInstalled(device, name, true);
+    for (const name of parsePackages(pc.autoPackages)) setPackageAuto(device, name, true);
+    restorePkgUnits(device, pc.units);
     // The host name is not read back: it always comes from the device name (net/device-names.ts).
     if (typeof pc.prettyHostname === 'string') device.prettyName = pc.prettyHostname.slice(0, MAX_PRETTY);
     if (pc.files !== undefined) restoreFiles(device, validFileRecords(pc.files));
@@ -372,6 +384,7 @@ export function restore(device: AnyDevice, rec: DeviceRecord): void {
     const search = Array.isArray(pc.search) ? searchList(pc.search) : { ok: [] };
     device.dnsSearch = 'ok' in search ? search.ok : [];
     if (pc.files !== undefined) bootKernel(device, validFileRecords(pc.files));
+    bootPkgUnits(device);
     return;
   }
   if (rec.config) applyConfig(device, rec.config);

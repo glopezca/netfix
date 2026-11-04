@@ -1,23 +1,23 @@
-/** Services → Firewall (nftables) and Services → sysctl panels of Ubuntu servers and the Linux router. */
+/** Services → Firewall (nftables) and Services → sysctl panels of Ubuntu servers, the Linux router and GNU/Linux PCs. */
 import { el } from './dom.ts';
 import { button, input, message, onOff, select, table } from './forms.ts';
 import { liveHostPanel } from './live.ts';
 import type { LivePanel } from './live.ts';
 import type { AfterChange } from './host-ip.ts';
-import type { Server } from '../devices/server.ts';
+import type { Host } from '../devices/host.ts';
 import type { Chain, Rule, Table } from '../net/nft/model.ts';
 import { EMPTY_RULESET } from '../net/nft/model.ts';
 import { ruleText } from '../net/nft/format.ts';
 import { runNft } from '../net/nft/apply.ts';
 import { moveRule, nftEdit, NFT_TEMPLATES } from '../net/nft/edit.ts';
-import { applyAndSave, firewallStatus, setFirewallActive } from '../shells/firewall-save.ts';
+import { applyAndSave, firewallStatus, reloadFirewall, setFirewallActive } from '../shells/firewall-save.ts';
 import { saveSysctl } from '../shells/kernel-save.ts';
 import { SYSCTL_KEYS } from '../net/sysctl.ts';
 import { chainForm, ruleForm, tableForm } from './firewall-forms.ts';
 import type { Commit } from './firewall-forms.ts';
 import { t } from '../i18n/t.ts';
 
-function header(s: Server, app: AfterChange, fail: (m: string) => void): HTMLElement[] {
+function header(s: Host, app: AfterChange, fail: (m: string) => void): HTMLElement[] {
   const st = firewallStatus(s);
   const tpl = select([['', t('fw.tpl.none')], ['hardening', t('fw.tpl.hardening')], ['router', t('fw.tpl.router')], ['open', t('fw.tpl.open')]], '');
   const load = (): void => {
@@ -34,12 +34,12 @@ function header(s: Server, app: AfterChange, fail: (m: string) => void): HTMLEle
     el('p', { class: 'status', 'data-state': st.saved ? 'ok' : 'failed' }, st.saved ? t('fw.saved') : t('fw.unsaved')),
     ...(st.saved ? [] : [el('div', { class: 'row-actions' },
       button(t('fw.save'), () => { applyAndSave(s, s.kernel.netfilter.ruleset); app.afterCommand(); }),
-      button(t('fw.reload'), () => { const err = s.reloadFirewall(); if (err) fail(err); app.afterCommand(); }))]),
+      button(t('fw.reload'), () => { const err = reloadFirewall(s); if (err) fail(err); app.afterCommand(); }))]),
     el('div', { class: 'row-actions' }, tpl, button(t('fw.loadTemplate'), load)),
   ];
 }
 
-function rulesOf(s: Server, tb: Table, ch: Chain, commit: Commit, app: AfterChange): HTMLElement {
+function rulesOf(s: Host, tb: Table, ch: Chain, commit: Commit, app: AfterChange): HTMLElement {
   const counters = s.kernel.netfilter.counters;
   const move = (r: Rule, d: -1 | 1): void => {
     applyAndSave(s, moveRule(s.kernel.netfilter.ruleset, tb.family, tb.name, ch.name, r.handle, d));
@@ -52,7 +52,7 @@ function rulesOf(s: Server, tb: Table, ch: Chain, commit: Commit, app: AfterChan
   });
 }
 
-function chainView(s: Server, tb: Table, ch: Chain, commit: Commit, app: AfterChange): HTMLElement {
+function chainView(s: Host, tb: Table, ch: Chain, commit: Commit, app: AfterChange): HTMLElement {
   const b = ch.base;
   const policy = b ? select([['accept', 'accept'], ['drop', 'drop']], b.policy) : undefined;
   policy?.addEventListener('change', () => { if (b) commit(`add chain ${tb.family} ${tb.name} ${ch.name} { type ${b.type} hook ${b.hook} priority ${b.priority}; policy ${policy.value}; }`); });
@@ -63,7 +63,7 @@ function chainView(s: Server, tb: Table, ch: Chain, commit: Commit, app: AfterCh
     rulesOf(s, tb, ch, commit, app));
 }
 
-function tablesView(s: Server, commit: Commit, app: AfterChange, fail: (m: string) => void): HTMLElement[] {
+function tablesView(s: Host, commit: Commit, app: AfterChange, fail: (m: string) => void): HTMLElement[] {
   const rs = s.kernel.netfilter.ruleset;
   const tables = rs.tables.map((tb) => el('section', { class: 'fw-table' },
     el('h4', { class: 'mono' }, `table ${tb.family} ${tb.name}`, ' ', button(t('fw.deleteTable'), () => { commit(`delete table ${tb.family} ${tb.name}`); }, 'btn btn-small danger')),
@@ -72,11 +72,11 @@ function tablesView(s: Server, commit: Commit, app: AfterChange, fail: (m: strin
   return [el('h3', {}, t('fw.tables')), ...(tables.length ? tables : [el('p', { class: 'muted' }, t('fw.noTables'))]), tableForm(commit, fail), ruleForm(rs, commit, fail)];
 }
 
-export function firewallPanel(s: Server, app: AfterChange): LivePanel {
+export function firewallPanel(s: Host, app: AfterChange): LivePanel {
   // Outside the redraw: an action that changes the device redraws the panel before reporting.
   const msg = message();
   return liveHostPanel(s, () => {
-    if (s.os !== 'linux') return [el('p', { class: 'muted' }, t('fw.notLinux'))];
+    if (s.os !== 'linux' && s.kind !== 'pc') return [el('p', { class: 'muted' }, t('fw.notLinux'))];
     const fail = (m: string): void => msg.error(m);
     const commit: Commit = (command) => {
       const r = nftEdit(s.kernel.netfilter.ruleset, command);
@@ -95,14 +95,14 @@ export function firewallPanel(s: Server, app: AfterChange): LivePanel {
 }
 
 /** «Activar router»: mirrors net.ipv4.ip_forward and cannot be clicked (the parameter is what changes it). */
-function routerFlag(s: Server): HTMLElement[] {
+function routerFlag(s: Host): HTMLElement[] {
   if (s.kind !== 'linuxrouter') return [];
   const box = el('input', { type: 'checkbox', checked: s.kernel.sysctl.enabled('net.ipv4.ip_forward'), disabled: true });
   return [el('label', { class: 'router-flag' }, box,
     el('span', {}, el('strong', {}, t('sysctl.router')), el('span', { class: 'muted router-flag-help' }, t('sysctl.routerHelp'))))];
 }
 
-export function sysctlPanel(s: Server, app: AfterChange): LivePanel {
+export function sysctlPanel(s: Host, app: AfterChange): LivePanel {
   // Outside the redraw: an action that changes the device redraws the panel before reporting.
   const msg = message();
   return liveHostPanel(s, () => {

@@ -2,13 +2,15 @@
  * NetBIOS over TCP/IP (RFC 1001/1002), as a Windows host has it built in and a GNU/Linux host with samba (nmbd, smbd):
  * names are found by a broadcast query to the subnet on UDP 137 (B-node, so never past a router) and answered by the
  * owner with a unicast reply; a node status request (NBSTAT) asks a host for its name table and MAC. Each host keeps a
- * cache of what it found (nbtstat -c). SMB servers listen on TCP 139 and 445.
+ * cache of what it found (nbtstat -c). SMB servers (Windows, smbd) listen on TCP 139 and 445.
  */
 import type { Host } from '../devices/host.ts';
 import type { IpPacket, NbnsMessage, NbnsName } from './packets.ts';
 import type { StackHost } from './ipstack.ts';
 import { registerLocalSockets } from './ipstack.ts';
-import { hasPackage } from './host-packages.ts';
+import { unitRunning } from './pkg-units.ts';
+import type { AppPayload } from './packets.ts';
+import type { Peer } from './tcp.ts';
 import { runSync } from './sync.ts';
 import { broadcastOf } from '../core/ip.ts';
 
@@ -23,9 +25,19 @@ export const WORKSTATION = 0x00;
 export const FILE_SERVER = 0x20;
 const MAX_NAME = 15;
 
-/** NetBIOS over TCP/IP is on in Windows; on GNU/Linux nmbd (samba) gives it. */
-const windows = (h: object): boolean => (h as { readonly os?: string }).os === 'windows';
-export const speaksNetbios = (h: object): boolean => windows(h) || hasPackage(h, 'samba');
+/** NetBIOS over TCP/IP is on in Windows; on GNU/Linux nmbd (samba) gives it, while it runs. */
+const windows = (h: Host): boolean => h.os === 'windows';
+export const speaksNetbios = (h: Host): boolean => windows(h) || unitRunning(h, 'nmbd');
+/** The SMB server: Windows' own, or smbd while it runs. */
+const servesSmb = (h: Host): boolean => windows(h) || unitRunning(h, 'smbd');
+
+/** What answers an SMB request on 139/445 (services/smb-server.ts, registered from topology.ts). */
+export type SmbHandler = (host: Host, request: AppPayload, peer: Peer, localIp: number) => AppPayload | null;
+let smbHandler: SmbHandler = () => null;
+
+export function registerSmbServer(fn: SmbHandler): void {
+  smbHandler = fn;
+}
 
 export const netbiosName = (name: string): string => name.toUpperCase().slice(0, MAX_NAME);
 
@@ -65,7 +77,7 @@ function take(host: StackHost, iface: string, p: IpPacket): boolean {
     if (done) done(q);
     return true;
   }
-  if (!speaksNetbios(host)) return false;
+  if (!speaksNetbios(host as Host)) return false;
   answer(host as Host, iface, p, q);
   return true;
 }
@@ -78,7 +90,7 @@ export function attachNetbios(host: Host): void {
     registered = true;
     registerLocalSockets({ member: () => false, take });
   }
-  for (const port of SMB_PORTS) host.tcp.listen(port, () => null, () => speaksNetbios(host));
+  for (const port of SMB_PORTS) host.tcp.listen(port, (req, peer, local) => smbHandler(host, req, peer, local), () => servesSmb(host));
 }
 
 /** Sends a question (to the subnet broadcast, or to one address); `done` gets the first answer or undefined. */

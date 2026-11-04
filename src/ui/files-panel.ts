@@ -6,12 +6,12 @@ import { t, tDynamic } from '../i18n/t.ts';
 import { el } from './dom.ts';
 import { field, select, button } from './forms.ts';
 import { livePanel } from './server-dhcp-dns.ts';
-import type { Server } from '../devices/server.ts';
+import type { Host } from '../devices/host.ts';
 import { hostFs } from '../devices/host-fs.ts';
 import { configFiles, configSources } from '../services/config-files.ts';
 import { syntaxView } from './syntax-view.ts';
 
-export function filesPanel(server: Server, first = 'ssh'): HTMLElement {
+export function filesPanel(server: Host, first = 'ssh'): HTMLElement {
   const sources = configSources(server);
   let selected = sources.some((s) => s.id === first) ? first : sources[0]?.id ?? 'ssh';
   return livePanel((refresh) => {

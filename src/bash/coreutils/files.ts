@@ -3,6 +3,9 @@ import type { CommandFn, Ctx, Gen } from '../types.ts';
 import { normalize, basename as base, FsError } from '../vfs.ts';
 import { gnuOpts, usageError, q, lq, errMsg, readInputs } from './common.ts';
 
+/** Groups of the system (/etc/group of Ubuntu) that chown and chgrp accept by name besides the users' own. */
+const SYSTEM_GROUPS: Readonly<Record<string, number>> = { root: 0, adm: 4, sudo: 27, 'www-data': 33, shadow: 42, users: 100, nogroup: 65534 };
+
 function* cat(ctx: Ctx): Gen<number> {
   const p = gnuOpts(ctx.argv.slice(1), { flags: 'nbsEATve', long: { number: 'n', 'number-nonblank': 'b', 'squeeze-blank': 's', 'show-ends': 'E', 'show-all': 'A', 'show-tabs': 'T' } });
   if (p.error) return usageError(ctx, p.error);
@@ -303,7 +306,7 @@ function chown(groupOnly: boolean): CommandFn {
     const users = ctx.sh.env.users();
     const [u, g] = groupOnly ? [undefined, spec] : spec.split(/[:.]/);
     const uid = u ? users.find((x) => x.name === u)?.uid ?? (/^\d+$/.test(u) ? Number(u) : undefined) : undefined;
-    const gid = g ? users.find((x) => x.name === g)?.gid ?? (/^\d+$/.test(g) ? Number(g) : g === 'root' ? 0 : g === 'www-data' ? 33 : undefined) : undefined;
+    const gid = g ? users.find((x) => x.name === g)?.gid ?? (/^\d+$/.test(g) ? Number(g) : SYSTEM_GROUPS[g]) : undefined;
     if (u && uid === undefined) { ctx.err(`${name}: invalid user: ${q(spec)}\n`); return 1; }
     if (g && gid === undefined) { ctx.err(`${name}: invalid group: ${q(spec)}\n`); return 1; }
     let status = 0;

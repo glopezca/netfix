@@ -2,7 +2,10 @@
  * Windows Command Prompt: ipconfig, ping, nslookup, netstat, arp, curl, ssh, sc / net (servers) and the file
  * commands (dir, cd, md, rd, del, copy, move, ren, type, echo, edit) on the device's Linux file system.
  */
-import { nbtstat, netView } from './win-nbt.ts';
+import { nbtstat } from './win-nbt.ts';
+import { netUse, netView } from './win-smb.ts';
+import type { PasswordQuestion } from './win-smb.ts';
+import { smbFileCommand } from './win-smb-files.ts';
 import { timestampPromptOn, windowsTimestampPrompt } from './prompt-clock.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { windowsSshStore } from './ssh-stores.ts';
@@ -95,6 +98,8 @@ export class WindowsShell extends BaseShell {
   private admin = false;
   /** Interactive nslookup (the `>` prompt) until exit or Ctrl+C. */
   private ns: Nslookup | null = null;
+  /** net use waiting for a password (typed without echo). */
+  private question: PasswordQuestion | null = null;
 
   constructor(host: Host, user: string, remote = false) {
     super(host, user);
@@ -119,6 +124,7 @@ export class WindowsShell extends BaseShell {
 
   protected localPrompt(): string {
     if (this.ns) return '> ';
+    if (this.question) return this.question.prompt;
     const files = this.files();
     if (timestampPromptOn(this.host) && !files.pending) {
       const path = files.prompt().replace(/>$/, '');
@@ -139,6 +145,11 @@ export class WindowsShell extends BaseShell {
       if (reply.exit) this.ns = null;
       return reply.out;
     }
+    if (this.question) {
+      const q = this.question;
+      this.question = null;
+      return q.answer(line);
+    }
     const files = this.files();
     if (files.pending) return files.answer(line);
     const parsed = splitCmdLine(line.trim());
@@ -152,8 +163,13 @@ export class WindowsShell extends BaseShell {
     return parsed.redirect ? files.redirect(parsed.redirect, out) : out;
   }
 
+  protected override localSecret(): boolean {
+    return this.question !== null;
+  }
+
   protected override localInterrupt(): string[] {
     this.ns = null;
+    this.question = null;
     return [];
   }
 
@@ -178,6 +194,8 @@ export class WindowsShell extends BaseShell {
 
   protected runLocal(cmd: string, args: string[], text = ''): string[] {
     const arg = (args[0] ?? '').toLowerCase();
+    const share = smbFileCommand(this.host, this.files().winFs, cmd.toLowerCase(), args);
+    if (share) return this.files().ask(share);
     const file = this.files().run(cmd.toLowerCase(), args, text);
     if (file) return file;
     switch (cmd.toLowerCase()) {
@@ -192,7 +210,7 @@ export class WindowsShell extends BaseShell {
       case 'whoami': return [`${this.host.name.toLowerCase()}\\${this.user.toLowerCase()}`];
       case 'ver': return ['', 'Microsoft Windows [Version 10.0.20348.2700]', ''];
       case 'sc': return this.sc(args);
-      case 'net': return (args[0] ?? '').toLowerCase() === 'view' ? netView(this.host, args[1]) : this.net(args);
+      case 'net': return this.netCommand(args);
       case 'nbtstat': return nbtstat(this.host, args);
       case 'help': case '?': return HELP;
       case 'cls': return [];
@@ -310,10 +328,20 @@ export class WindowsShell extends BaseShell {
     return ['', `SERVICE_NAME: ${unit.windows}`, '        TYPE               : 10  WIN32_OWN_PROCESS', `        STATE              : ${on ? '4  RUNNING' : '1  STOPPED'}`, '        WIN32_EXIT_CODE    : 0  (0x0)'];
   }
 
+  private netCommand(args: string[]): string[] {
+    const verb = (args[0] ?? '').toLowerCase();
+    if (verb === 'view') return netView(this.host, args[1]);
+    if (verb !== 'use') return this.net(args);
+    const r = netUse(this.host, args.slice(1));
+    if (Array.isArray(r)) return r;
+    this.question = r;
+    return [];
+  }
+
   private net(args: string[]): string[] {
     const verb = (args[0] ?? '').toLowerCase();
     const s = this.server();
-    if (verb !== 'start' && verb !== 'stop') return ['The syntax of this command is:', '', 'NET [ START | STOP ] [service]'];
+    if (verb !== 'start' && verb !== 'stop') return ['The syntax of this command is:', '', 'NET [ START | STOP | USE | VIEW ]'];
     if (verb === 'start' && !args[1]) return ['These Windows services are started:', '', ...(s ? UNITS.filter((u) => unitActive(s.services, u.id)).map((u) => `   ${u.windowsDisplay}`) : []), '', 'The command completed successfully.'];
     const unit = args[1] ? findUnit(args.slice(1).join(' ')) : undefined;
     if (!s || !unit) return ['The service name is invalid.', '', 'More help is available by typing NET HELPMSG 2185.'];

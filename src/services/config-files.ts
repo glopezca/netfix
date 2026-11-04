@@ -4,6 +4,8 @@
  * deep (sites-enabled, sysctl.d…), so a file written by hand shows up too.
  */
 import type { Vfs } from '../bash/vfs.ts';
+import type { AppsDevice } from '../net/device-apps.ts';
+import { hostPanels } from '../net/pkg-units.ts';
 
 export interface ConfigSource {
   readonly id: string;
@@ -32,9 +34,19 @@ const SERVICES: readonly ConfigSource[] = [
   { id: 'mail', label: 'files.mail', paths: ['/etc/postfix/main.cf', '/etc/dovecot/dovecot.conf'] },
 ];
 
-/** The services of a device in the order of its Services tab (the router's own panels first, then SSH…). */
-export function configSources(device: { readonly kind: string }): readonly ConfigSource[] {
-  return device.kind === 'linuxrouter' ? [...ROUTER, ...SERVICES] : SERVICES;
+/** Brought by apt install samba, on any GNU/Linux host. */
+const SAMBA: ConfigSource = { id: 'samba', label: 'files.samba', paths: ['/etc/samba/smb.conf'] };
+
+/**
+ * The services of a device in the order of its Services tab (the router's own panels first, then SSH…, then Samba
+ * when it is installed). A GNU/Linux PC has only what its packages bring: the kernel parameters, nftables and Samba.
+ */
+export function configSources(device: AppsDevice): readonly ConfigSource[] {
+  const panels = hostPanels(device);
+  const samba = panels.includes('samba') ? [SAMBA] : [];
+  if (device.kind === 'linuxrouter') return [...ROUTER, ...SERVICES, ...samba];
+  if (device.kind === 'server') return [...SERVICES, ...samba];
+  return [...ROUTER, SAMBA].filter((s) => panels.includes(s.id));
 }
 
 /** Most files a directory can contribute (a student filling /etc/bind must not freeze the view). */
@@ -63,7 +75,7 @@ function expand(fs: Vfs, path: string): string[] {
 
 /** The files of a service with their current content; unknown ids and unreadable files are left out. */
 export function configFiles(fs: Vfs, id: string): ConfigFile[] {
-  const source = [...ROUTER, ...SERVICES].find((s) => s.id === id);
+  const source = [...ROUTER, ...SERVICES, SAMBA].find((s) => s.id === id);
   if (!source) return [];
   // A directory listed after some of its files (named.conf first, then /etc/bind) adds only the rest.
   return [...new Set(source.paths.flatMap((p) => expand(fs, p)))].flatMap((path) => {

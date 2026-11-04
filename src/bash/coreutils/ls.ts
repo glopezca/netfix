@@ -79,14 +79,17 @@ export function columns(names: readonly string[], widths: readonly number[], wid
   return [...names];
 }
 
+/** Accounts of the system that are not login users (smbd writes a guest's files as nobody). */
+const SYSTEM_USERS: Readonly<Record<number, string>> = { 33: 'www-data', 65534: 'nobody' };
+
 function owner(ctx: Ctx, uid: number, numeric: boolean): string {
   if (numeric) return String(uid);
-  return ctx.sh.env.users().find((u) => u.uid === uid)?.name ?? String(uid);
+  return ctx.sh.env.users().find((u) => u.uid === uid)?.name ?? SYSTEM_USERS[uid] ?? String(uid);
 }
 
 function group(ctx: Ctx, gid: number, numeric: boolean): string {
   if (numeric) return String(gid);
-  const special: Record<number, string> = { 0: 'root', 4: 'adm', 27: 'sudo', 33: 'www-data', 42: 'shadow', 100: 'users' };
+  const special: Record<number, string> = { 0: 'root', 4: 'adm', 27: 'sudo', 33: 'www-data', 42: 'shadow', 100: 'users', 65534: 'nogroup' };
   return special[gid] ?? ctx.sh.env.users().find((u) => u.gid === gid)?.name ?? String(gid);
 }
 

@@ -72,6 +72,7 @@ export const SRV_EN: Readonly<Record<SrvKey, string>> = {
   'files.dns': 'DNS (BIND)',
   'files.http': 'HTTP (Apache)',
   'files.mail': 'Mail (Postfix and Dovecot)',
+  'files.samba': 'Samba (smb.conf)',
   'files.hint': 'The files as they are on disk right now (cat as root). Changes made in the panels or in the terminal show up on refresh.',
   'files.none': 'This service has no configuration files on the device.',
   'dhcp.byClientId': 'Client-ID (option 61) or, if not sent, MAC',
