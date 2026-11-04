@@ -96,6 +96,7 @@ function listShares(ctx: Ctx, host: Host, server: string, login: SmbLogin): numb
 function* session(ctx: Ctx, s: SmbSession, commands: string | undefined): Gen<number> {
   if (commands !== undefined) {
     let status = 0;
+    // As smbclient: every ; ends a command, even inside quotes (process_command_string splits with strchr).
     for (const line of commands.split(';')) {
       const r = smbCommand(ctx, s, line.trim());
       if (r === 'fail') status = 1;

@@ -9,7 +9,7 @@ import type { Host } from '../devices/host.ts';
 import type { AppPayload } from '../net/packets.ts';
 import type { SmbEntry, SmbOp, SmbReply, SmbRequest, SmbShareInfo, SmbStatus } from '../net/smb-types.ts';
 import type { Cred, Vfs } from '../bash/vfs.ts';
-import { FsError } from '../bash/vfs.ts';
+import { FsError, canAccess } from '../bash/vfs.ts';
 import { hostFs } from '../devices/host-fs.ts';
 import { DEFAULT_SMB_CONF, SMB_CONF, findShare, parseSmbConf, serverComment } from './smb-conf.ts';
 import type { SmbConf, SmbShare } from './smb-conf.ts';
@@ -67,15 +67,15 @@ function listed(fs: Vfs, share: SmbShare, u: Session): boolean {
   return share.validUsers.some((v) => (/^[@+]/.test(v) ? groups.includes(v.slice(1)) : !u.guest && v.toLowerCase() === u.name));
 }
 
-/** Tree connect: the share's real directory, or why this session may not use it. */
+/** Tree connect: the share's real directory, or why this session may not use it. smbd only has to chdir into it (x);
+ * a directory that may not be read still connects, and its listing is what is denied. */
 function connect(fs: Vfs, share: SmbShare, u: Session): string | SmbStatus {
   if ((u.guest && !share.guestOk) || !listed(fs, share, u)) return 'NT_STATUS_ACCESS_DENIED';
   if (!share.path.startsWith('/')) return 'NT_STATUS_BAD_NETWORK_NAME';
   try {
     const root = fs.realpath(share.path);
     if (fs.tryLookup(root)?.kind !== 'dir') return 'NT_STATUS_BAD_NETWORK_NAME';
-    fs.readdir(root, u.cred);
-    return root;
+    return canAccess(fs.lookup(root, u.cred), u.cred, 1) ? root : 'NT_STATUS_ACCESS_DENIED';
   } catch (e) {
     return e instanceof FsError ? 'NT_STATUS_ACCESS_DENIED' : 'NT_STATUS_UNSUCCESSFUL';
   }
@@ -83,16 +83,28 @@ function connect(fs: Vfs, share: SmbShare, u: Session): string | SmbStatus {
 
 const inside = (p: string, root: string): boolean => root === '/' || p === root || p.startsWith(`${root}/`);
 
-/** A path of the share (\dir\file) on the server: never above the share root, by «..» or by a link. */
-function resolve(fs: Vfs, root: string, path: string): string | SmbStatus {
+/**
+ * A path of the share (\dir\file) on the server: never above the share root, by «..» or by a link. With `follow`
+ * false (delete, rename) only the directories on the way are checked: the last name is the entry itself, so a link
+ * that leads out of the share can still be deleted or renamed, which touches the link and not its target.
+ */
+function resolve(fs: Vfs, root: string, path: string, follow = true): string | SmbStatus {
   const parts = path.split(/[\\/]+/).filter((p) => p && p !== '.');
   if (parts.includes('..')) return 'NT_STATUS_OBJECT_PATH_SYNTAX_BAD';
   const full = parts.length ? `${root === '/' ? '' : root}/${parts.join('/')}` : root;
+  const checked = follow || !parts.length ? full : full.slice(0, full.lastIndexOf('/')) || '/';
   try {
-    return inside(fs.realpath(full), root) ? full : 'NT_STATUS_ACCESS_DENIED';
+    return inside(fs.realpath(checked), root) ? full : 'NT_STATUS_ACCESS_DENIED';
   } catch {
     return 'NT_STATUS_OBJECT_NAME_NOT_FOUND';
   }
+}
+
+/** A rename's target: a link there is replaced, not followed, unless it leads to a directory, which rename moves the
+ * file into, so that directory must be inside the share as well. */
+function renameTarget(fs: Vfs, root: string, path: string): string | SmbStatus {
+  const to = resolve(fs, root, path, false);
+  return isStatus(to) || fs.tryLookup(to)?.kind !== 'dir' ? to : resolve(fs, root, path);
 }
 
 function entry(fs: Vfs, path: string, name: string, cred: Cred): SmbEntry {
@@ -108,6 +120,8 @@ function list(fs: Vfs, path: string, cred: Cred): SmbReply {
 }
 
 const WRITES: ReadonlySet<SmbOp['op']> = new Set(['write', 'mkdir', 'rmdir', 'remove', 'rename']);
+/** The operations on the entry itself, not on what a link points to. */
+const ON_ENTRY: ReadonlySet<SmbOp['op']> = new Set(['remove', 'rename']);
 
 /** One operation on a path already checked to be inside the share. */
 function operate(fs: Vfs, op: SmbOp, path: string, to: string, cred: Cred): SmbReply {
@@ -133,9 +147,9 @@ function operate(fs: Vfs, op: SmbOp, path: string, to: string, cred: Cred): SmbR
 function onShare(fs: Vfs, root: string, share: SmbShare, op: SmbOp, cred: Cred): SmbReply {
   if (op.op === 'tree') return { status: 'NT_STATUS_OK' };
   if (WRITES.has(op.op) && share.readOnly) return fail('NT_STATUS_ACCESS_DENIED');
-  const path = resolve(fs, root, 'path' in op ? op.path : '');
+  const path = resolve(fs, root, 'path' in op ? op.path : '', !ON_ENTRY.has(op.op));
   if (isStatus(path)) return fail(path);
-  const to = op.op === 'rename' ? resolve(fs, root, op.to) : '';
+  const to = op.op === 'rename' ? renameTarget(fs, root, op.to) : '';
   if (isStatus(to)) return fail(to);
   if (WRITES.has(op.op) && op.op !== 'write' && op.op !== 'mkdir' && path === root) return fail('NT_STATUS_ACCESS_DENIED');
   try {
