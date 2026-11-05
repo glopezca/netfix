@@ -2,7 +2,7 @@
 import { t } from '../i18n/t.ts';
 import { registerPlaced, renameDevice, savedLabel, syncDeviceName } from './device-names.ts';
 import type { NicRecord, RouteRecord } from './topology-nics.ts';
-import { hostRecord, restoreHost } from './topology-host.ts';
+import { bootLinked, hostRecord, restoreHost } from './topology-host.ts';
 import { LinuxRouter } from '../devices/linux-router.ts';
 import { bootWireguard } from '../shells/wg-boot.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
@@ -16,7 +16,8 @@ import type { MissionState } from '../labs/mission-state.ts';
 import { bindLab } from './device-apps.ts';
 import { registerMdns, setMdnsResponder } from './mdns.ts';
 import { registerLlmnr, setLlmnrResponder } from './llmnr.ts';
-import { attachNetbios, registerSmbServer } from './netbios.ts';
+import { attachNetbios, registerSmbServer, registerWinsHandler } from './netbios.ts';
+import { winsTake } from './wins.ts';
 import { smbServe } from '../services/smb-server.ts';
 import { resolvedAnswers } from '../shells/resolved.ts';
 
@@ -26,6 +27,7 @@ registerLlmnr();
 setLlmnrResponder((h, iface) => resolvedAnswers(h, iface, 'llmnr'));
 setMdnsResponder((h, iface) => resolvedAnswers(h, iface, 'mdns'));
 registerSmbServer(smbServe);
+registerWinsHandler(winsTake);
 import type { Annotation, AnnotationInit } from './annotations.ts';
 import type { CableKind, Endpoint, Link } from './network.ts';
 import { SimClock } from '../core/clock.ts';
@@ -293,7 +295,7 @@ export class Topology {
     topo.mission = parseMissionState(file.mission);
     topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
     for (const l of file.links) topo.connect(l.a, l.b, l.cable);
-    for (const p of topo.placed.values()) if (p.device instanceof Host && p.device.config.mode === 'dhcp') p.device.useDhcp();
+    for (const p of topo.placed.values()) if (p.device instanceof Host) bootLinked(p.device);
     for (const p of topo.placed.values()) if (p.device instanceof LinuxRouter) bootWireguard(p.device);
     topo.settle();
     return topo;

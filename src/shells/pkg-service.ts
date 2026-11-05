@@ -2,7 +2,8 @@
  * What systemd does with the units apt's packages bring (net/pkg-units.ts): start, stop and reload them, and what
  * dpkg's maintainer scripts do (samba starts smbd and nmbd on install; removing a package stops its units). nftables on
  * a PC loads /etc/nftables.conf on start and flushes the ruleset on stop, as Debian's nftables.service does;
- * systemd-resolved reads /etc/systemd/resolved.conf on start; nmbd will not start with both WINS roles in smb.conf.
+ * systemd-resolved reads /etc/systemd/resolved.conf on start; nmbd will not start with both WINS roles in smb.conf,
+ * and serves WINS or registers with its WINS server as it starts (samba-wins.ts).
  */
 import type { Host } from '../devices/host.ts';
 import { loadNftablesConf, readHostFile } from '../devices/server-firewall.ts';
@@ -11,6 +12,7 @@ import { EMPTY_RULESET } from '../net/nft/model.ts';
 import { SMB_CONF, smbSections, winsConflict } from '../services/smb-conf.ts';
 import { parseResolvedConf, resolvedStartLines, RESOLVED_CONF } from './resolved-conf.ts';
 import { setResolvedConfig } from './resolved.ts';
+import { nmbdStarted, nmbdStopped } from './samba-wins.ts';
 import { PKG_UNITS, RESOLVED_UNIT, forgetPkgUnits, installedUnits, pkgLog, pkgUnitState, setPkgUnitState } from '../net/pkg-units.ts';
 import type { PkgUnit } from '../net/pkg-units.ts';
 
@@ -56,6 +58,7 @@ export function startPkgUnit(host: Host, u: PkgUnit): boolean {
   }
   if (!isNft(u)) for (const line of startLines(host, u)) pkgLog(host, u, t, line);
   setPkgUnitState(host, u, { active: true });
+  if (u.name === 'nmbd') nmbdStarted(host);
   pkgLog(host, u, t, `${isNft(u) ? 'Finished' : 'Started'} ${u.name}.service - ${u.description}.`, true);
   return true;
 }
@@ -65,6 +68,7 @@ export function stopPkgUnit(host: Host, u: PkgUnit): void {
   const t = host.clock.now();
   pkgLog(host, u, t, `Stopping ${u.name}.service - ${u.description}...`, true);
   if (isNft(u)) host.kernel.netfilter.setRuleset(EMPTY_RULESET);
+  if (u.name === 'nmbd') nmbdStopped(host);
   setPkgUnitState(host, u, { active: false });
   pkgLog(host, u, t, `${u.name}.service: Deactivated successfully.`, true);
   pkgLog(host, u, t, `Stopped ${u.name}.service - ${u.description}.`, true);

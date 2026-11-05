@@ -8,6 +8,7 @@ import { customApps, deviceApps, parseApps, setDeviceApps } from './device-apps.
 import { autoPackagesOf, packagesOf, parsePackages, setPackageAuto, setPackageInstalled } from './host-packages.ts';
 import { pkgUnitsRecord, restorePkgUnits } from './pkg-units.ts';
 import { bootPkgUnits } from '../shells/pkg-service.ts';
+import { bootWins } from '../shells/samba-wins.ts';
 import type { Host } from '../devices/host.ts';
 import { Pc } from '../devices/pc.ts';
 import { Server } from '../devices/server.ts';
@@ -63,4 +64,10 @@ export function restoreHost(device: Host, pc: PcRecord, server: ServerRecord | u
 export function parseStatic(pc: PcRecord): { ip?: number; prefix?: number; gateway?: number; dns?: number } {
   const opt = (s: string | undefined): number | undefined => (s ? parseIp(s) ?? undefined : undefined);
   return { ip: opt(pc.ip), prefix: pc.mask ? parseMask(pc.mask) ?? undefined : undefined, gateway: opt(pc.gateway), dns: opt(pc.dns) };
+}
+
+/** Once the links of a read-back lab are up: DHCP asks for a lease again, and nmbd registers with its WINS server. */
+export function bootLinked(device: Host): void {
+  if (device.config.mode === 'dhcp') device.useDhcp();
+  bootWins(device);
 }
