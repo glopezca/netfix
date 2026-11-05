@@ -1,6 +1,6 @@
 /** Network operations shared by the Linux and Windows shells and the desktop apps. */
 import { mdnsResolve } from '../net/mdns.ts';
-import { nbnsResolve } from '../net/netbios.ts';
+import { winsLookup } from './samba-wins.ts';
 import { windowsLinkResolve } from '../net/win-names.ts';
 import { hostsSources, nssNext } from './nsswitch.ts';
 import type { NssStatus } from './nsswitch.ts';
@@ -84,7 +84,7 @@ function nssStep(host: Host, source: string, target: string): NssStep {
     return r ? { status: 'SUCCESS', result: r } : notFound;
   }
   if (source === 'wins' && hasPackage(host, 'libnss-winbind') && hasPackage(host, 'winbind')) {
-    const r = singleLabel(target) ? ip(nbnsResolve(host, target), target) : undefined;
+    const r = singleLabel(target) ? ip(winsLookup(host, target), target) : undefined;
     return r ? { status: 'SUCCESS', result: r } : notFound;
   }
   return unavail;

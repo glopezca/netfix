@@ -97,7 +97,8 @@ function query(host: Host, iface: string, q: NbnsMessage): NbnsMessage {
 export function winsTake(host: Host, iface: string, p: IpPacket, q: NbnsMessage): boolean {
   if (!isWinsServer(host) || q.type !== 'NB') return false;
   const op = q.opcode ?? 'query';
-  if (op === 'query' && q.broadcast) return false;
+  // A query without recursion desired is an ordinary one: the host answers it for its own names (netbios.ts).
+  if (op === 'query' && (q.broadcast || q.rd !== true)) return false;
   const answer = op === 'query' ? query(host, iface, q) : op === 'release' ? release(host, q, p.src) : register(host, q, p.src);
   reply(host, iface, p, { ...answer, broadcast: false });
   return true;

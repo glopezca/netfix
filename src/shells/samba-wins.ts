@@ -2,13 +2,14 @@
  * nmbd and WINS, as it starts and stops: with `wins support = yes` it serves (net/wins.ts); with `wins server = IP…` it
  * registers its names with the first server of the list that answers (the next one when it does not), asking for
  * Samba's «max ttl» (3 days), refreshes them every 20 minutes (nameserv.h MAX_REFRESH_TIME) and releases them as it
- * stops. A host read back from a saved lab does the same once its links are up (topology-host.ts).
+ * stops. A host read back from a saved lab does the same once its links are up (topology-host.ts). libnss_wins asks
+ * those servers before the broadcast.
  */
 import type { Host } from '../devices/host.ts';
 import { readHostFile } from '../devices/server-firewall.ts';
 import { SMB_CONF, parseSmbConf } from '../services/smb-conf.ts';
-import { setWinsServer, winsSend, winsSendAll } from '../net/wins.ts';
-import { ownNames } from '../net/netbios.ts';
+import { setWinsServer, winsAsk, winsSend, winsSendAll } from '../net/wins.ts';
+import { WORKSTATION, nbnsResolve, ownNames } from '../net/netbios.ts';
 import { unitRunning } from '../net/pkg-units.ts';
 
 /** Samba's default «max ttl»: what a client asks of its WINS server. */
@@ -71,4 +72,22 @@ export function nmbdStopped(host: Host): void {
 /** A host read back from a saved lab, once its links are up: a running nmbd starts its WINS role again. */
 export function bootWins(host: Host): void {
   if (unitRunning(host, 'nmbd')) nmbdStarted(host);
+}
+
+/** A group name's address in WINS: not one host's. */
+const GROUP_ADDRESS = 0xffffffff;
+
+/**
+ * libnss_wins (the `wins` of «hosts:»): the servers of `wins server`, in order, until one answers (a negative answer
+ * ends there), then a broadcast to the subnet.
+ */
+export function winsLookup(host: Host, name: string): number | undefined {
+  for (const server of parseSmbConf(readHostFile(host, SMB_CONF) ?? '').winsServers) {
+    const r = winsAsk(host, server, name, WORKSTATION);
+    if (r === undefined) continue;
+    const ip = (r.rcode ?? 0) === 0 ? r.addresses?.[0] : undefined;
+    if (ip !== undefined && ip !== GROUP_ADDRESS) return ip;
+    break;
+  }
+  return nbnsResolve(host, name);
 }
