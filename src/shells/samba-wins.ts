@@ -18,8 +18,10 @@ export const WINS_REFRESH_MS = 20 * 60_000;
 
 /** The server the host's names are registered with. */
 const registeredWith = new WeakMap<object, number>();
-/** Bumped as nmbd starts or stops: a timer of an earlier run does nothing. */
+/** Bumped as nmbd starts or stops: an answer to an earlier run does nothing. */
 const generations = new WeakMap<object, number>();
+/** Hosts with a refresh timer pending: one per host, however often nmbd restarts. */
+const refreshing = new WeakSet<object>();
 
 const generation = (host: Host): number => generations.get(host) ?? 0;
 const bump = (host: Host): number => {
@@ -28,26 +30,30 @@ const bump = (host: Host): number => {
   return g;
 };
 
-function refreshLoop(host: Host, gen: number): void {
+/** Every 20 minutes the names go again to the server they are registered with; the timer ends when there is none. */
+function refreshLoop(host: Host): void {
+  if (refreshing.has(host)) return;
+  refreshing.add(host);
   host.hooks.schedule(WINS_REFRESH_MS, () => {
+    refreshing.delete(host);
     const server = registeredWith.get(host);
-    if (generation(host) !== gen || server === undefined) return;
+    if (server === undefined) return;
     winsSendAll(host, server, 'refresh', WINS_CLIENT_TTL_S);
-    refreshLoop(host, gen);
+    refreshLoop(host);
   });
 }
 
-/** The first name goes to each server in turn until one answers; then the others follow it there. */
+/** The first name goes to each server in turn until one takes it (silence or a refusal: the next); the others follow. */
 function registerWith(host: Host, servers: readonly number[], gen: number): void {
   const [server, ...rest] = servers;
   const [first, ...others] = ownNames(host);
   if (server === undefined || first === undefined) return;
   winsSend(host, server, 'registration', first, WINS_CLIENT_TTL_S, (m) => {
     if (generation(host) !== gen) return;
-    if (m === undefined) return registerWith(host, rest, gen);
+    if (m === undefined || (m.rcode ?? 0) !== 0) return registerWith(host, rest, gen);
     registeredWith.set(host, server);
     for (const n of others) winsSend(host, server, 'registration', n, WINS_CLIENT_TTL_S);
-    refreshLoop(host, gen);
+    refreshLoop(host);
   });
 }
 

@@ -59,9 +59,12 @@ test('a unicast query from another subnet gets the address; an unknown name gets
 
 test('stopping nmbd releases the names; a stopped server does not answer and forgets them', () => {
   const { t, srv, winB, b2 } = lab();
+  winsSend(winB, SRV_IP, 'release', { name: 'WIN-B2', suffix: 0, group: false }, 0);
+  t.net.runFor(1000);
+  assert.equal(names(srv).length, 3, 'only the owner releases a unique name');
   run(b2, 'systemctl stop nmbd');
   t.net.runFor(1000);
-  assert.deepEqual(names(srv), []);
+  assert.deepEqual(names(srv), ['WORKGROUP<00>'], 'a group name stays until nobody refreshes it');
   assert.equal(winsAsk(winB, SRV_IP, 'WIN-B2', 0)?.rcode, NAM_ERR);
   run(b2, 'systemctl start nmbd');
   t.net.runFor(1000);
@@ -96,11 +99,24 @@ test('a server grants at most 6 days and refuses names past its limit with RFS_E
   winsSend(winB, SRV_IP, 'registration', { name: 'LARGO', suffix: 0, group: false }, 30 * 86_400, (m) => { granted = m; });
   t.net.runFor(1000);
   assert.equal(granted?.ttl, WINS_MAX_TTL_S);
+  winsSend(winB, SRV_IP, 'registration', { name: 'RARO', suffix: 0, group: false }, Number.NaN, (m) => { granted = m; });
+  t.net.runFor(1000);
+  assert.equal(granted?.ttl, WINS_MAX_TTL_S, 'not a number: the most, and it still expires');
   const answers: (NbnsMessage | undefined)[] = [];
   for (let i = 0; i < MAX_WINS_RECORDS; i++) winsSend(winB, SRV_IP, 'registration', { name: `N${i}`, suffix: 0, group: false }, 3600, (m) => answers.push(m));
   t.net.runFor(3000);
   assert.equal(winsRecords(srv).length, MAX_WINS_RECORDS);
-  assert.equal(answers.filter((m) => m?.rcode === RFS_ERR).length, 4, 'the three names of WIN-B2 and LARGO were there first');
+  assert.equal(answers.filter((m) => m?.rcode === RFS_ERR).length, 5, 'the three names of WIN-B2, LARGO and RARO were there first');
+});
+
+test('however often nmbd restarts, one refresh every 20 minutes', () => {
+  const { t, b2 } = lab();
+  for (let i = 0; i < 5; i++) run(b2, 'systemctl restart nmbd');
+  t.net.runFor(1000);
+  const before = t.net.history.length;
+  t.net.runFor(20 * 60_000);
+  const refreshes = t.net.history.slice(before).filter((e) => e.frame.ip?.udp?.nbns?.opcode === 'refresh' && !e.frame.ip.udp.nbns.response && e.frame.ip.src === B2_IP);
+  assert.equal(new Set(refreshes.map((e) => e.frame.ip?.udp?.nbns?.id)).size, 3);
 });
 
 test('a dead first server in the list: the client registers with the next one', () => {

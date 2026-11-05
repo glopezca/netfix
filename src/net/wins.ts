@@ -58,26 +58,30 @@ export function winsRecords(host: Host): WinsRecord[] {
   return [...database(host).values()].sort((a, b) => key(a.name, a.suffix).localeCompare(key(b.name, b.suffix)));
 }
 
-const grantedTtl = (asked: number | undefined): number => Math.min(WINS_MAX_TTL_S, Math.max(WINS_MIN_TTL_S, Math.floor(asked ?? 0)));
+/** What the client asked for, between the two limits (anything that is not a number of seconds: the most). */
+const grantedTtl = (asked: number | undefined): number =>
+  Number.isFinite(asked) ? Math.min(WINS_MAX_TTL_S, Math.max(WINS_MIN_TTL_S, Math.floor(asked ?? 0))) : WINS_MAX_TTL_S;
 
-/** Registration or refresh: the name now belongs to the address in the request, until its TTL runs out. */
+/** Registration or refresh: the name now belongs to the address it came from, until its TTL runs out. */
 function register(host: Host, q: NbnsMessage, from: number): NbnsMessage {
   const db = database(host);
   const k = key(q.name, q.suffix);
   if (!db.has(k) && db.size >= MAX_WINS_RECORDS) return { ...q, response: true, rcode: RFS_ERR };
   const ttl = grantedTtl(q.ttl);
   const group = q.group === true;
-  const ip = q.addresses?.[0] ?? from;
-  db.set(k, { name: netbiosName(q.name), suffix: q.suffix, group, ips: [group ? GROUP_ADDRESS : ip], expires: host.clock.now() + ttl * 1000 });
-  return { ...q, response: true, ttl, rcode: 0, addresses: [ip] };
+  db.set(k, { name: netbiosName(q.name), suffix: q.suffix, group, ips: [group ? GROUP_ADDRESS : from], expires: host.clock.now() + ttl * 1000 });
+  return { ...q, response: true, ttl, rcode: 0, addresses: [from] };
 }
 
-/** Release: the owner gives the name up (a release of a unique name from another address is ignored). */
+/**
+ * Release: the owner gives the name up. A unique name released from another address stays, and so does a group name
+ * (other members still have it; it goes when nobody refreshes it), as Samba does.
+ */
 function release(host: Host, q: NbnsMessage, from: number): NbnsMessage {
   const db = database(host);
   const k = key(q.name, q.suffix);
   const r = db.get(k);
-  if (r && (r.group || r.ips.includes(q.addresses?.[0] ?? from))) db.delete(k);
+  if (r && !r.group && r.ips.includes(from)) db.delete(k);
   return { ...q, response: true, ttl: 0, rcode: r ? 0 : NAM_ERR };
 }
 
@@ -93,9 +97,13 @@ function query(host: Host, iface: string, q: NbnsMessage): NbnsMessage {
   return { ...q, response: true, ttl, rcode: 0, addresses: r.ips };
 }
 
+const validSuffix = (s: number): boolean => Number.isInteger(s) && s >= 0 && s <= 0xff;
+
 /** The WINS side of netbios.ts: unicast queries, registrations, refreshes and releases sent to this server. */
 export function winsTake(host: Host, iface: string, p: IpPacket, q: NbnsMessage): boolean {
-  if (!isWinsServer(host) || q.type !== 'NB') return false;
+  if (!isWinsServer(host) || q.type !== 'NB' || !validSuffix(q.suffix)) return false;
+  // A WINS server takes what is sent to its own address, not to a broadcast it hears.
+  if (!host.l3Iface(iface)?.addrs.some((a) => a.ip === p.dst)) return false;
   const op = q.opcode ?? 'query';
   // A query without recursion desired is an ordinary one: the host answers it for its own names (netbios.ts).
   if (op === 'query' && (q.broadcast || q.rd !== true)) return false;
