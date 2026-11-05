@@ -1,8 +1,10 @@
 /**
  * /etc/samba/smb.conf: Ubuntu's default (shortened) and what smbd reads of it, its shares with their path, comment and
  * access (browseable, read only/writable, guest ok, valid users). An unknown parameter is ignored with a warning, as
- * testparm reports it; the Samba panel adds and removes share sections by editing the text.
+ * testparm reports it; the Samba panel adds and removes share sections by editing the text. [global] may make nmbd a
+ * WINS server (`wins support`) or point it at one (`wins server`), not both.
  */
+import { parseIp } from '../core/ip.ts';
 
 export const SMB_CONF = '/etc/samba/smb.conf';
 
@@ -95,6 +97,10 @@ export interface SmbConf {
   readonly serverString: string;
   /** «map to guest = bad user»: an unknown user name connects as the guest account. */
   readonly mapToGuest: boolean;
+  /** «wins support = yes»: nmbd is the WINS server. */
+  readonly winsSupport: boolean;
+  /** «wins server»: the WINS servers nmbd registers with and asks (IPs only; names are dropped). */
+  readonly winsServers: readonly number[];
   readonly shares: readonly SmbShare[];
   /** Parameters smbd does not know, as testparm names them. */
   readonly unknown: readonly string[];
@@ -104,7 +110,7 @@ export interface SmbConf {
 const KNOWN = new Set([
   'workgroup', 'server string', 'netbios name', 'log file', 'max log size', 'logging', 'panic action', 'server role',
   'obey pam restrictions', 'unix password sync', 'passwd program', 'passwd chat', 'pam password change', 'map to guest',
-  'usershare allow guests', 'interfaces', 'bind interfaces only', 'security', 'guest account',
+  'usershare allow guests', 'interfaces', 'bind interfaces only', 'security', 'guest account', 'wins support', 'wins server',
   'comment', 'path', 'browseable', 'browsable', 'read only', 'writable', 'writeable', 'write ok', 'guest ok', 'public',
   'valid users', 'printable', 'create mask', 'create mode', 'directory mask', 'directory mode', 'force user', 'force group',
 ]);
@@ -141,6 +147,18 @@ function sections(text: string, unknown: string[]): Section[] {
 
 const yes = (v: string | undefined, fallback: boolean): boolean => (v === undefined ? fallback : /^(yes|true|1)$/i.test(v));
 
+/** At most this many WINS servers are kept from the list (the file is not trusted). */
+const MAX_WINS_SERVERS = 8;
+
+/** «wins server = a, b c»: the IPs of the list, in order and without repeats. */
+function winsList(value: string | undefined): number[] {
+  const ips = (value ?? '').split(/[\s,]+/).map(parseIp).filter((ip): ip is number => ip !== null);
+  return [...new Set(ips)].slice(0, MAX_WINS_SERVERS);
+}
+
+/** Both at once: testparm reports it and nmbd will not start. */
+export const winsConflict = (conf: SmbConf): boolean => conf.winsSupport && conf.winsServers.length > 0;
+
 function share(s: Section): SmbShare {
   const p = (k: string): string | undefined => s.params.get(k);
   const writable = p('writable') ?? p('writeable') ?? p('write ok');
@@ -165,6 +183,8 @@ export function parseSmbConf(text: string): SmbConf {
     workgroup: (global.get('workgroup') ?? 'WORKGROUP').toUpperCase(),
     serverString: global.get('server string') ?? 'Samba 4.22.3-Ubuntu',
     mapToGuest: /^bad user$/i.test(global.get('map to guest') ?? ''),
+    winsSupport: yes(global.get('wins support'), false),
+    winsServers: winsList(global.get('wins server')),
     shares: all.filter((s) => s.name.toLowerCase() !== 'global').map(share),
     unknown,
   };

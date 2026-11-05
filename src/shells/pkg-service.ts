@@ -2,12 +2,13 @@
  * What systemd does with the units apt's packages bring (net/pkg-units.ts): start, stop and reload them, and what
  * dpkg's maintainer scripts do (samba starts smbd and nmbd on install; removing a package stops its units). nftables on
  * a PC loads /etc/nftables.conf on start and flushes the ruleset on stop, as Debian's nftables.service does;
- * systemd-resolved reads /etc/systemd/resolved.conf on start.
+ * systemd-resolved reads /etc/systemd/resolved.conf on start; nmbd will not start with both WINS roles in smb.conf.
  */
 import type { Host } from '../devices/host.ts';
 import { loadNftablesConf, readHostFile } from '../devices/server-firewall.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { EMPTY_RULESET } from '../net/nft/model.ts';
+import { SMB_CONF, parseSmbConf, winsConflict } from '../services/smb-conf.ts';
 import { parseResolvedConf, resolvedStartLines, RESOLVED_CONF } from './resolved-conf.ts';
 import { setResolvedConfig } from './resolved.ts';
 import { PKG_UNITS, RESOLVED_UNIT, forgetPkgUnits, installedUnits, pkgLog, pkgUnitState, setPkgUnitState } from '../net/pkg-units.ts';
@@ -25,6 +26,16 @@ function logFailure(host: Host, u: PkgUnit, t: number, error: string, verb: 'sta
   pkgLog(host, u, t, `Failed to ${verb} ${u.name}.service - ${u.description}.`, true);
 }
 
+/** nmbd's own check of smb.conf (nmbd.c): both WINS roles at once and it exits before it serves. */
+function nmbdError(host: Host): string | null {
+  const text = readHostFile(host, SMB_CONF);
+  if (text === null || !winsConflict(parseSmbConf(text))) return null;
+  return [`nmbd version ${SAMBA_VERSION} started.`, "ERROR: both 'wins support = true' and 'wins server = <server list>' cannot be set in the smb.conf file. nmbd aborting."].join('\n');
+}
+
+/** Why the unit's process exits as it starts (its journal lines), or null when it starts. */
+const startError = (host: Host, u: PkgUnit): string | null => (isNft(u) ? loadNftablesConf(host) : u.name === 'nmbd' ? nmbdError(host) : null);
+
 /** What the service itself logs as it starts; resolved reads resolved.conf then (and only then). */
 function startLines(host: Host, u: PkgUnit): string[] {
   if (u !== RESOLVED_UNIT) return [`${u.process} version ${SAMBA_VERSION} started.`];
@@ -38,13 +49,12 @@ export function startPkgUnit(host: Host, u: PkgUnit): boolean {
   if (pkgUnitState(host, u).active) return true;
   const t = host.clock.now();
   pkgLog(host, u, t, `Starting ${u.name}.service - ${u.description}...`, true);
-  if (isNft(u)) {
-    const error = loadNftablesConf(host);
-    if (error !== null) {
-      logFailure(host, u, t, error, 'start');
-      return false;
-    }
-  } else for (const line of startLines(host, u)) pkgLog(host, u, t, line);
+  const error = startError(host, u);
+  if (error !== null) {
+    logFailure(host, u, t, error, 'start');
+    return false;
+  }
+  if (!isNft(u)) for (const line of startLines(host, u)) pkgLog(host, u, t, line);
   setPkgUnitState(host, u, { active: true });
   pkgLog(host, u, t, `${isNft(u) ? 'Finished' : 'Started'} ${u.name}.service - ${u.description}.`, true);
   return true;
