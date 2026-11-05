@@ -137,7 +137,7 @@ const dbFiles = (host: Host): number => DB_FILES + PACKAGES.filter((p) => instal
 
 function* install(ctx: Ctx, host: Host, names: readonly string[], yes: boolean): Gen<number> {
   ctx.out(READING);
-  // A lab without «Permitir instalación de Samba» has no samba in its archive.
+  // A lab whose Samba feature is off for this kind of device has no samba in its archive.
   const unknown = names.find((n) => (!findPackage(n) && BASE[n] === undefined) || (n === 'samba' && !sambaAllowed(host)));
   if (unknown !== undefined) { ctx.err(`Error: Unable to locate package ${unknown}\n`); return 100; }
   const newest = names.flatMap((n) => {

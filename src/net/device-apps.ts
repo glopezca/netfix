@@ -35,11 +35,9 @@ export interface AppsDevice {
 export interface LabView {
   readonly features: LabFeatures;
   readonly webHideOff: boolean;
-  /** Configuración → Laboratorio actual: «Permitir instalación de Samba» (apt finds no samba package when off). */
-  readonly samba: boolean;
 }
 
-const NO_LAB: LabView = { features: {}, webHideOff: false, samba: true };
+const NO_LAB: LabView = { features: {}, webHideOff: false };
 const chosen = new WeakMap<object, readonly FeatureId[]>();
 const labs = new WeakMap<object, () => LabView>();
 
@@ -105,9 +103,9 @@ export function labViewOf(d: AppsDevice): LabView {
   return labs.get(d)?.() ?? NO_LAB;
 }
 
-/** The device's lab lets samba be installed (what is already installed stays, without its panel). */
+/** The lab's Samba feature for the device's kind: apt finds no samba package when off (what is installed stays, without its panel). */
 export function sambaAllowed(d: AppsDevice): boolean {
-  return labViewOf(d).samba;
+  return featureOn(labViewOf(d).features, d.kind, 'samba');
 }
 
 /** Allowed by the device's lab and switched on in the device. */

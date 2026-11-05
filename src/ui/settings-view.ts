@@ -21,9 +21,6 @@ export interface SettingsHost {
   /** The web GUI of servers and Linux routers leaves out what is off (instead of greying it). */
   webHideOff(): boolean;
   setWebHideOff(on: boolean): void;
-  /** «Permitir instalación de Samba»: apt and the Samba box of each device may install samba. */
-  sambaAllowed(): boolean;
-  setSambaAllowed(on: boolean): void;
   /** Embedded in a classroom exercise: the lab section is read-only. */
   labLocked(): boolean;
   /** The classroom fixes the timestamp prompt. */
@@ -74,12 +71,6 @@ function webOption(host: SettingsHost, changed: () => void): HTMLElement {
   return el('label', { class: 'set-choice' }, box, t('set.webHideOff'), el('span', { class: 'muted' }, ` ${t('set.webHideOffHint')}`));
 }
 
-function sambaOption(host: SettingsHost, changed: () => void): HTMLElement {
-  const box = el('input', { type: 'checkbox', checked: host.sambaAllowed(), disabled: host.labLocked(), 'data-feature': 'samba' });
-  box.addEventListener('change', () => { host.setSambaAllowed(box.checked); changed(); });
-  return el('label', { class: 'set-choice' }, box, t('set.samba'), el('span', { class: 'muted' }, ` ${t('set.sambaHint')}`));
-}
-
 export class SettingsView {
   readonly root: HTMLElement;
   private readonly lab: HTMLElement;
@@ -104,7 +95,6 @@ export class SettingsView {
     reset.addEventListener('click', () => {
       host.setFeatures({});
       host.setWebHideOff(false);
-      host.setSambaAllowed(true);
       this.render();
       changed();
       this.lab.querySelector<HTMLButtonElement>('.set-reset')?.focus();
@@ -117,7 +107,6 @@ export class SettingsView {
       el('p', {}, t('set.always')),
       el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed))),
       webOption(host, changed),
-      sambaOption(host, changed),
       reset, this.status);
   }
 }

@@ -7,18 +7,18 @@ import { Topology } from '../../src/net/topology.ts';
 
 test('defaults: everything allowed but the Windows terminal of the GNU/Linux router (each device then decides)', () => {
   const none = {};
-  assert.deepEqual(featuresOf(none, 'pc'), ['ip', 'apps', 'linux', 'windows']);
-  assert.deepEqual(featuresOf(none, 'server'), ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'sysctl', 'firewall', 'linux', 'windows']);
-  assert.deepEqual(featuresOf(none, 'linuxrouter'), ['sysctl', 'firewall', 'vpn', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'linux']);
+  assert.deepEqual(featuresOf(none, 'pc'), ['ip', 'apps', 'samba', 'linux', 'windows']);
+  assert.deepEqual(featuresOf(none, 'server'), ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'samba', 'sysctl', 'firewall', 'linux', 'windows']);
+  assert.deepEqual(featuresOf(none, 'linuxrouter'), ['sysctl', 'firewall', 'vpn', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'samba', 'linux']);
   assert.deepEqual(featuresOf(none, 'router'), ['cli', 'web']);
   assert.equal(featureOn(none, 'server', 'firewall'), true);
   assert.equal(featureOn(none, 'linuxrouter', 'windows'), false);
-  assert.deepEqual(FEATURES_BY_KIND.server, ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'sysctl', 'firewall', 'linux', 'windows'], 'each service on its own');
+  assert.deepEqual(FEATURES_BY_KIND.server, ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'samba', 'sysctl', 'firewall', 'linux', 'windows'], 'each service on its own');
 });
 
 test('a change keeps only what differs from the defaults, and a feature a kind lacks is ignored', () => {
   let f = setFeature({}, 'server', 'firewall', false);
-  assert.deepEqual(f, { server: ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'sysctl', 'linux', 'windows'] });
+  assert.deepEqual(f, { server: ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'samba', 'sysctl', 'linux', 'windows'] });
   f = setFeature(f, 'pc', 'windows', false);
   assert.equal(featureOn(f, 'pc', 'windows'), false);
   f = setFeature(f, 'server', 'firewall', true);
@@ -32,7 +32,7 @@ test('untrusted JSON: unknown kinds, unknown features and wrong types are droppe
   assert.deepEqual(parseFeatures(null), {});
   assert.deepEqual(parseFeatures({ pc: Array.from({ length: 50 }, () => 'linux') }), { pc: ['linux'] }, 'repeated entries collapse');
   assert.deepEqual(parseFeatures({ pc: Array.from({ length: 500 }, () => 'linux') }), {}, 'an absurdly long list is ignored');
-  assert.deepEqual(parseFeatures({ pc: ['ip', 'apps', 'linux', 'windows'] }), {}, 'a list equal to the defaults is not kept');
+  assert.deepEqual(parseFeatures({ pc: ['ip', 'apps', 'samba', 'linux', 'windows'] }), {}, 'a list equal to the defaults is not kept');
   assert.deepEqual(parseFeatures(JSON.parse('{"__proto__": ["linux"], "constructor": ["linux"]}')), {});
 });
 

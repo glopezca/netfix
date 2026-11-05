@@ -53,7 +53,7 @@ class App {
   private readonly stageEl: HTMLElement;
   private readonly paletteEl: HTMLElement;
   private readonly pageHost: HTMLElement;
-  private readonly pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, sambaAllowed: () => this.topo.allowSamba, setSambaAllowed: (on) => { this.topo.allowSamba = on; this.windows.closeAll(); this.afterCommand(); }, labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
+  private readonly pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
   private saveTimer = 0;
   private readonly interval: number;
   private mode: Mode = 'realtime';

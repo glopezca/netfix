@@ -12,7 +12,7 @@ import type { FileRecord } from '../bash/vfs-persist.ts';
 import { Network } from './network.ts';
 import { drawable, makeAnnotation, MAX_ANNOTATIONS } from './annotations.ts';
 import { FILE_VERSION, validateFile } from './topology-file.ts';
-import { parseFeatures } from './lab-features.ts';
+import { FEATURES_V, fileFeatures } from './lab-features.ts';
 import type { LabFeatures } from './lab-features.ts';
 import { parseMissionState } from '../labs/mission-state.ts';
 import type { MissionState } from '../labs/mission-state.ts';
@@ -129,9 +129,12 @@ export interface TopologyFile {
   readonly annotations?: readonly Annotation[];
   /** Device settings of the lab that differ from the defaults (v0.24); untrusted until parseFeatures. */
   readonly features?: unknown;
-  /** Configuración → Laboratorio actual, only when true: the web GUI leaves out what is off (v0.25); no samba (v0.34). */
+  /** Configuración → Laboratorio actual, only when true: the web GUI leaves out what is off (v0.25). */
   readonly webHideOff?: unknown;
+  /** v0.34 only: no samba in the lab (now the Samba feature of each kind). */
   readonly sambaOff?: unknown;
+  /** 2 from v0.35, when the feature lists gained Samba. */
+  readonly featuresV?: unknown;
   /** Guided lab and hints shown (v0.30); untrusted until parseMissionState. */
   readonly mission?: unknown;
 }
@@ -154,9 +157,8 @@ export class Topology {
   annotations: readonly Annotation[] = [];
   /** Configuración → Laboratorio actual: the device settings shown (only the differences from the defaults). */
   features: LabFeatures = {};
-  /** The web GUI of servers and Linux routers leaves out (instead of greying) what is off; apt may install samba. */
+  /** The web GUI of servers and Linux routers leaves out (instead of greying) what is off. */
   webHideOff = false;
-  allowSamba = true;
   /** The guided lab this workspace is, with the hints already shown. */
   mission: MissionState | undefined;
   private nextDrawing = 1;
@@ -169,7 +171,7 @@ export class Topology {
     const device = kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind, id, seed, this.clock, label);
     seeds.set(device, seed);
     if (device instanceof Host) {
-      bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff, samba: this.allowSamba }));
+      bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff }));
       attachNetbios(device);
     }
     this.net.addDevice(device);
@@ -276,8 +278,8 @@ export class Topology {
   toJSON(): TopologyFile {
     const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
     const links = this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable }));
-    const features = Object.keys(this.features).length ? { features: this.features } : {};
-    const web = { ...(this.webHideOff ? { webHideOff: true } : {}), ...(this.allowSamba ? {} : { sambaOff: true }), ...(this.mission ? { mission: this.mission } : {}) };
+    const features = Object.keys(this.features).length ? { features: this.features, featuresV: FEATURES_V } : {};
+    const web = { ...(this.webHideOff ? { webHideOff: true } : {}), ...(this.mission ? { mission: this.mission } : {}) };
     return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features, ...web };
   }
 
@@ -293,9 +295,8 @@ export class Topology {
     }
     topo.separateClouds();
     topo.annotations = file.annotations ?? [];
-    topo.features = parseFeatures(file.features);
+    topo.features = fileFeatures(file.features, file.featuresV, file.sambaOff);
     topo.webHideOff = file.webHideOff === true;
-    topo.allowSamba = file.sambaOff !== true;
     topo.mission = parseMissionState(file.mission);
     topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
     for (const l of file.links) topo.connect(l.a, l.b, l.cable);
