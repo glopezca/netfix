@@ -31,7 +31,7 @@ const ONTO_ITSELF = 'The file cannot be copied onto itself.';
 const fileKey = (t: SmbTarget, path: string): string => `${t.ip}|${t.share.toLowerCase()}|${path}`;
 
 /** cmd.exe's wording of an SMB answer. */
-function message(status: SmbClientStatus, notFound = NO_FILE): string {
+export function smbMessage(status: SmbClientStatus, notFound = NO_FILE): string {
   switch (status) {
     case 'NT_STATUS_OBJECT_NAME_NOT_FOUND': case 'NT_STATUS_NOT_A_DIRECTORY': return notFound;
     case 'NT_STATUS_OBJECT_PATH_SYNTAX_BAD': return 'The filename, directory name, or volume label syntax is incorrect.';
@@ -58,15 +58,15 @@ function expand(t: SmbTarget): Found | string {
   const last = t.path.slice(t.path.lastIndexOf('\\') + 1);
   if (hasWildcard(last)) {
     const r = call(at(t, parentOf(t.path)), { op: 'list', path: parentOf(t.path) });
-    if (r.status !== 'NT_STATUS_OK') return message(r.status, NOT_FOUND);
+    if (r.status !== 'NT_STATUS_OK') return smbMessage(r.status, NOT_FOUND);
     const entries = (r.entries ?? []).filter((e) => e.name !== '.' && e.name !== '..' && wildMatch(last, e.name));
     return entries.length ? { dir: parentOf(t.path), entries, whole: false } : NOT_FOUND;
   }
   const s = call(t, { op: 'stat', path: t.path });
-  if (s.status !== 'NT_STATUS_OK' || !s.entry) return message(s.status, NOT_FOUND);
+  if (s.status !== 'NT_STATUS_OK' || !s.entry) return smbMessage(s.status, NOT_FOUND);
   if (!s.entry.dir) return { dir: parentOf(t.path), entries: [{ ...s.entry, name: last }], whole: false };
   const r = call(t, { op: 'list', path: t.path });
-  return r.status === 'NT_STATUS_OK' ? { dir: t.path, entries: r.entries ?? [], whole: true } : message(r.status, NOT_FOUND);
+  return r.status === 'NT_STATUS_OK' ? { dir: t.path, entries: r.entries ?? [], whole: true } : smbMessage(r.status, NOT_FOUND);
 }
 
 function dir(t: SmbTarget): string[] {
@@ -84,7 +84,7 @@ function dir(t: SmbTarget): string[] {
 
 function type(t: SmbTarget): string[] {
   const r = call(t, { op: 'read', path: t.path });
-  if (r.status !== 'NT_STATUS_OK') return [message(r.status)];
+  if (r.status !== 'NT_STATUS_OK') return [smbMessage(r.status)];
   const data = r.data ?? '';
   return data === '' ? [] : data.replace(/\n$/, '').split('\n');
 }
@@ -92,13 +92,13 @@ function type(t: SmbTarget): string[] {
 function md(t: SmbTarget, input: string): string[] {
   if (call(t, { op: 'stat', path: t.path }).status === 'NT_STATUS_OK') return [`A subdirectory or file ${input} already exists.`];
   const r = call(t, { op: 'mkdir', path: t.path });
-  return r.status === 'NT_STATUS_OK' ? [] : [message(r.status, 'The system cannot find the path specified.')];
+  return r.status === 'NT_STATUS_OK' ? [] : [smbMessage(r.status, 'The system cannot find the path specified.')];
 }
 
 function rd(t: SmbTarget): string[] {
   const r = call(t, { op: 'rmdir', path: t.path });
   if (r.status === 'NT_STATUS_NOT_A_DIRECTORY') return ['The directory name is invalid.'];
-  return r.status === 'NT_STATUS_OK' ? [] : [message(r.status)];
+  return r.status === 'NT_STATUS_OK' ? [] : [smbMessage(r.status)];
 }
 
 /** del: the files of a name, a wildcard or a folder (a folder or * asks first, unless /Q). */
@@ -108,7 +108,7 @@ function del(t: SmbTarget, quiet: boolean): string[] | Confirm {
   const files = found.entries.filter((e) => !e.dir);
   const go = (): string[] => files.flatMap((e) => {
     const r = call(t, { op: 'remove', path: child(found.dir, e.name) });
-    return r.status === 'NT_STATUS_OK' ? [] : [shown(t, child(found.dir, e.name)), message(r.status)];
+    return r.status === 'NT_STATUS_OK' ? [] : [shown(t, child(found.dir, e.name)), smbMessage(r.status)];
   });
   const everything = found.whole || /^\*(\.\*)?$/.test(t.path.slice(t.path.lastIndexOf('\\') + 1));
   if (!everything || quiet) return go();
@@ -118,7 +118,7 @@ function del(t: SmbTarget, quiet: boolean): string[] | Confirm {
 function ren(t: SmbTarget, name: string): string[] {
   if (/[\\/:*?]/.test(name)) return [SYNTAX];
   const r = call(t, { op: 'rename', path: t.path, to: child(parentOf(t.path), name) });
-  return r.status === 'NT_STATUS_OK' ? [] : [message(r.status)];
+  return r.status === 'NT_STATUS_OK' ? [] : [smbMessage(r.status)];
 }
 
 /** One end of copy or move: a share or the local disk. */
@@ -138,8 +138,8 @@ function remoteSources(t: SmbTarget): Source[] | string {
     return {
       name: e.name,
       key: fileKey(t, path),
-      read: () => { const r = call(t, { op: 'read', path }); return r.status === 'NT_STATUS_OK' ? r.data ?? '' : { error: message(r.status) }; },
-      drop: () => { const r = call(t, { op: 'remove', path }); return r.status === 'NT_STATUS_OK' ? null : message(r.status); },
+      read: () => { const r = call(t, { op: 'read', path }); return r.status === 'NT_STATUS_OK' ? r.data ?? '' : { error: smbMessage(r.status) }; },
+      drop: () => { const r = call(t, { op: 'remove', path }); return r.status === 'NT_STATUS_OK' ? null : smbMessage(r.status); },
     };
   });
 }
@@ -166,7 +166,7 @@ function writer(host: Host, ctx: WinFs, input: string): Write | string {
       const path = folder ? child(t.path, name) : t.path;
       if (key === fileKey(t, path)) return ONTO_ITSELF;
       const r = call(t, { op: 'write', path, data });
-      return r.status === 'NT_STATUS_OK' ? null : message(r.status);
+      return r.status === 'NT_STATUS_OK' ? null : smbMessage(r.status);
     };
   }
   const p = ctx.path(input);
@@ -210,14 +210,20 @@ export function smbFileCommand(host: Host, ctx: WinFs, cmd: string, args: readon
   const targets = names.map((n) => smbTarget(host, n));
   if (targets.every((t) => t === null)) return null;
   if (cmd === 'copy' || cmd === 'move') return transfer(host, ctx, args, cmd === 'move');
+  // md and type take every name, as the local commands do (rd, del and dir one).
+  if (cmd === 'md' || cmd === 'mkdir' || cmd === 'type') {
+    return names.flatMap((n, i) => {
+      const each = targets[i];
+      if (typeof each === 'string') return [each];
+      if (!each) return [NO_FILE];
+      return cmd === 'type' ? type(each) : md(each, n);
+    });
+  }
   const [t] = targets;
-  const [input = ''] = names;
   if (typeof t === 'string') return [t];
   if (!t) return [NO_FILE];
   switch (cmd) {
     case 'dir': return dir(t);
-    case 'type': return type(t);
-    case 'md': case 'mkdir': return md(t, input);
     case 'rd': case 'rmdir': return rd(t);
     case 'ren': case 'rename': return names[1] ? ren(t, names[1]) : [SYNTAX];
     default: return del(t, args.some((a) => a.toLowerCase() === '/q'));

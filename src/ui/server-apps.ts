@@ -11,6 +11,7 @@ import { filesPanel } from './files-panel.ts';
 import { logPanel, packageLogUnits } from './log-panel.ts';
 import type { LogUnit } from './log-panel.ts';
 import { sambaPanel } from './samba-panel.ts';
+import { linuxSide } from '../net/pkg-units.ts';
 import type { Server } from '../devices/server.ts';
 import type { Account, WebAppAccess } from '../services/config.ts';
 import { validateAccess } from '../services/config.ts';
@@ -42,8 +43,8 @@ function servicePanels(server: Server, app: AfterChange): { id: string; label: s
     { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
     // apt install samba (Ubuntu): its own panel, beside the files and the logs of smbd and nmbd.
     { id: 'samba', label: t('smb.tab'), render: () => sambaPanel(server, app).root },
-    // Windows Server keeps its configuration in the registry, not in files a teacher would open.
-    ...(server.os === 'linux' ? [{ id: 'files', label: t('srv.files'), render: () => filesPanel(server) }] : []),
+    // Windows Server keeps its configuration in the registry: the files are there only with its GNU/Linux terminal.
+    ...(linuxSide(server) ? [{ id: 'files', label: t('srv.files'), render: () => filesPanel(server) }] : []),
     { id: 'log', label: t('srv.log'), render: () => logPanel(server, () => serverLogUnits(server), t('srv.journalHint')) },
   ];
 }

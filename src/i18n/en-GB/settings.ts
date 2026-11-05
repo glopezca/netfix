@@ -46,6 +46,8 @@ export const SETTINGS_EN: Readonly<Record<SettingsKey, string>> = {
   'set.feat.windows': 'Windows terminal',
   'set.webHideOff': 'Hide disabled options in the web management of servers and GNU/Linux routers',
   'set.webHideOffHint': 'When unticked, they are shown greyed out and cannot be used.',
+  'set.samba': 'Allow installing Samba',
+  'set.sambaHint': 'When unticked, apt cannot find the samba package and devices show neither the Samba box nor its panel (what is already installed stays, without its panel).',
   'dev.tab': 'Settings',
   'dev.intro': 'What this device shows. Whatever the lab turns off (Settings → Current lab) is not listed here.',
   'dev.apps': 'Applications',

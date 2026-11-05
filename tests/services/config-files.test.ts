@@ -18,8 +18,8 @@ function server(kind: 'server' | 'linuxrouter'): Server {
 
 const paths = (srv: Server, id: string): string[] => configFiles(hostFs(srv)!, id).map((f) => f.path);
 
-test('the services in the order of the Services tab: SSH first; the router adds its own', () => {
-  assert.deepEqual(configSources(server('server')).map((s) => s.id), ['ssh', 'dhcp', 'dns', 'http', 'mail']);
+test('the services in the order of the Services tab: the kernel parameters, SSH…; the router adds its own', () => {
+  assert.deepEqual(configSources(server('server')).map((s) => s.id), ['sysctl', 'ssh', 'dhcp', 'dns', 'http', 'mail']);
   assert.deepEqual(configSources(server('linuxrouter')).map((s) => s.id), ['sysctl', 'firewall', 'vpn', 'ssh', 'dhcp', 'dns', 'http', 'mail']);
 });
 

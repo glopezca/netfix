@@ -10,6 +10,7 @@ import type { Child, Markup } from './html.ts';
 import { ABOUT } from '../docs/about-data.ts';
 import { appAvailable, labViewOf } from '../net/device-apps.ts';
 import type { FeatureId } from '../net/lab-features.ts';
+import { hostPanels, linuxSide } from '../net/pkg-units.ts';
 
 export interface AdminPage {
   readonly id: string;
@@ -25,7 +26,7 @@ export const TABS: readonly string[] = ['setup', 'services', 'security', 'admin'
 export const PAGES: readonly AdminPage[] = [
   { id: 'setup', tab: 'setup' },
   { id: 'ssh', tab: 'services' }, { id: 'dhcp', tab: 'services' }, { id: 'dns', tab: 'services' },
-  { id: 'web', tab: 'services' }, { id: 'mail', tab: 'services' },
+  { id: 'web', tab: 'services' }, { id: 'mail', tab: 'services' }, { id: 'samba', tab: 'services' },
   { id: 'routing', tab: 'security' }, { id: 'firewall', tab: 'security' }, { id: 'vpn', tab: 'security' },
   { id: 'admin', tab: 'admin' },
   { id: 'status', tab: 'status' }, { id: 'files', tab: 'status' }, { id: 'log', tab: 'status' },
@@ -36,19 +37,20 @@ const PAGE_FEATURE: Readonly<Record<string, FeatureId>> = {
   ssh: 'ssh', dhcp: 'dhcp', dns: 'dns', web: 'http', mail: 'mail', routing: 'firewall', firewall: 'firewall', vpn: 'vpn', files: 'files', log: 'log',
 };
 
-/** Switched off in the device (its Configuración tab) or in its lab. */
+/** Switched off in the device (its Configuración tab) or in its lab; Samba, without samba or when the lab forbids it. */
 export function pageOff(server: Server, id: string): boolean {
+  if (id === 'samba') return !hostPanels(server).includes('samba');
   const feature = PAGE_FEATURE[id];
   return feature !== undefined && !appAvailable(server, feature);
 }
 
 /**
- * Pages of a device: Security (firewall, routes, VPN) only on a GNU/Linux router; Ficheros only on Linux; those switched
- * off are left out when the lab says so (else they are shown greyed).
+ * Pages of a device: Security (firewall, routes, VPN) only on a GNU/Linux router; Ficheros and Samba only with a
+ * GNU/Linux terminal; those switched off are left out when the lab says so (else they are shown greyed).
  */
 export function pagesOf(server: Server): readonly AdminPage[] {
   const hide = labViewOf(server).webHideOff;
-  return PAGES.filter((p) => (p.tab !== 'security' || server.kind === 'linuxrouter') && (p.id !== 'files' || server.os === 'linux') && !(hide && pageOff(server, p.id)));
+  return PAGES.filter((p) => (p.tab !== 'security' || server.kind === 'linuxrouter') && ((p.id !== 'files' && p.id !== 'samba') || linuxSide(server)) && !(hide && pageOff(server, p.id)));
 }
 
 /** A card: title, help line and its content. */

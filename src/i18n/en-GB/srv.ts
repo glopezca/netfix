@@ -67,6 +67,7 @@ export const SRV_EN: Readonly<Record<SrvKey, string>> = {
   'srv.service': 'Service',
   'srv.refresh': 'Refresh',
   'srv.journalHint': 'The same as journalctl -u <service> in the server terminal.',
+  'files.sysctl': 'Parameters (sysctl)',
   'files.ssh': 'SSH (OpenSSH)',
   'files.dhcp': 'DHCP (Kea)',
   'files.dns': 'DNS (BIND)',

@@ -21,7 +21,7 @@
 .browser-view .web-adm-nav.web-adm-off, .browser-view .web-adm-nav.web-adm-off:hover { opacity: .45; cursor: not-allowed; background: none; color: var(--adm-side-ink); }
 .web-adm-nav::before { width: 18px; text-align: center; font-size: 15px; opacity: .9; }
 .web-adm-nav-setup::before { content: "⚙"; } .web-adm-nav-dhcp::before { content: "⇅"; } .web-adm-nav-dns::before { content: "◎"; }
-.web-adm-nav-web::before { content: "◫"; } .web-adm-nav-mail::before { content: "✉"; } .web-adm-nav-ssh::before { content: "›"; }
+.web-adm-nav-web::before { content: "◫"; } .web-adm-nav-mail::before { content: "✉"; } .web-adm-nav-samba::before { content: "⛁"; } .web-adm-nav-ssh::before { content: "›"; }
 .web-adm-nav-firewall::before { content: "▦"; } .web-adm-nav-routing::before { content: "⇄"; } .web-adm-nav-vpn::before { content: "⛓"; }
 .web-adm-nav-admin::before { content: "⚿"; } .web-adm-nav-status::before { content: ""; } .web-adm-nav-files::before { content: ""; }
 .web-adm-nav-log::before { content: "☰"; }

@@ -4,7 +4,9 @@
  * one out, and manage the Samba accounts of Linux users (smbpasswd -a / -d / -e / -x). smbd reads smb.conf on every
  * connection, so a change is in force at once.
  */
+import { t } from '../i18n/t.ts';
 import type { Host } from '../devices/host.ts';
+import { FsError } from '../bash/vfs.ts';
 import type { Vfs } from '../bash/vfs.ts';
 import { hostSystem } from './host-system.ts';
 import { startPkgUnit, stopPkgUnit } from './pkg-service.ts';
@@ -33,6 +35,12 @@ const SAMBA_UNITS = PKG_UNITS.filter((u) => u.pkg === 'samba');
 
 const fsOf = (host: Host): Vfs => hostSystem(host).fs;
 const confText = (fs: Vfs): string => (fs.tryLookup(SMB_CONF)?.kind === 'file' ? fs.readFile(SMB_CONF) : DEFAULT_SMB_CONF);
+/** Who may use a share and how, as the panel and the web GUI list it. */
+export function shareAccess(s: SmbShare): string {
+  const who = s.guestOk ? t('smb.guests') : s.validUsers?.length ? t('smb.validUsers', { users: s.validUsers.join(' ') }) : t('smb.accountsOnly');
+  return `${s.readOnly ? t('smb.readOnly') : t('smb.readWrite')} · ${who}`;
+}
+
 /** A value on one line of smb.conf (a newline would start another parameter or section). */
 const oneLine = (text: string): string => text.replace(/[\r\n]+/g, ' ').trim();
 
@@ -74,15 +82,29 @@ export function addSambaShare(host: Host, share: NewShare): SambaError | null {
   const text = confText(fs);
   if (findShare(parseSmbConf(text), name)) return 'smb.err.exists';
   if (!path.startsWith('/') || path.length > MAX_PATH || fs.tryLookup(path)?.kind === 'file') return 'smb.err.path';
-  if (!fs.tryLookup(path)) fs.mkdir(path, undefined, true);
+  if (!fs.tryLookup(path) && !makeFolder(fs, path)) return 'smb.err.path';
   fs.writeFile(SMB_CONF, addShare(text, { ...share, name, path, comment: oneLine(share.comment) }));
   host.notifyChange();
   return null;
 }
 
+/** mkdir -p of a share's folder; false when the path cannot be one (a file on the way, say). */
+function makeFolder(fs: Vfs, path: string): boolean {
+  try {
+    fs.mkdir(path, undefined, true);
+    return true;
+  } catch (err) {
+    if (err instanceof FsError) return false;
+    throw err;
+  }
+}
+
+/** Removes a share of smb.conf ([global] and the other sections that are not shares stay). */
 export function removeSambaShare(host: Host, name: string): void {
   const fs = fsOf(host);
-  fs.writeFile(SMB_CONF, removeShare(confText(fs), name));
+  const text = confText(fs);
+  if (!findShare(parseSmbConf(text), name)) return;
+  fs.writeFile(SMB_CONF, removeShare(text, name));
   host.notifyChange();
 }
 

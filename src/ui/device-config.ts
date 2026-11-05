@@ -1,6 +1,6 @@
 /**
  * The Configuración tab of a PC, Server or Linux router: which applications, service panels and terminals the device
- * shows, among what its lab allows. A change redraws the window with the new tabs (device-windows.ts).
+ * shows, among what its lab allows, and whether Samba is installed. A change redraws the window with the new tabs (device-windows.ts).
  */
 import { el } from './dom.ts';
 import { t, tDynamic } from '../i18n/t.ts';
@@ -8,6 +8,9 @@ import type { MessageKey } from '../i18n/catalog.ts';
 import { APPS_BY_KIND, PC_APPS, deviceApps, labAllows, labViewOf, setDeviceApps } from '../net/device-apps.ts';
 import type { FeatureId } from '../net/lab-features.ts';
 import type { Host } from '../devices/host.ts';
+import { sambaOffered } from '../net/pkg-units.ts';
+import { hasPackage } from '../net/host-packages.ts';
+import { setSambaInstalled } from '../shells/samba-install.ts';
 
 const TERMINALS: readonly FeatureId[] = ['linux', 'windows'];
 
@@ -19,6 +22,14 @@ const TAB_NAMES: Readonly<Partial<Record<FeatureId, MessageKey>>> = {
 function appName(h: Host, id: FeatureId): string {
   const tab = TAB_NAMES[id];
   return tab && (h.kind === 'pc' || TERMINALS.includes(id) || id === 'ip') ? t(tab) : tDynamic(`set.feat.${id}`);
+}
+
+/** Samba (when the lab allows it and the device has a GNU/Linux terminal): installs or removes the package, as apt. */
+function sambaBox(h: Host, changed: () => void): HTMLElement[] {
+  if (!sambaOffered(h)) return [];
+  const input = el('input', { type: 'checkbox', name: 'dev-samba', checked: hasPackage(h, 'samba') });
+  input.addEventListener('change', () => { setSambaInstalled(h, input.checked); changed(); });
+  return [el('label', { class: 'set-choice' }, input, t('smb.tab'))];
 }
 
 function group(title: string, boxes: readonly HTMLElement[]): HTMLElement[] {
@@ -41,6 +52,6 @@ export function deviceConfig(h: Host, changed: () => void): HTMLElement {
   return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') },
     el('p', { class: 'muted' }, t('dev.intro')),
     ...group(t('dev.apps'), apps.map(box)),
-    ...group(t('dev.services'), services.map(box)),
+    ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed)]),
     ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)));
 }

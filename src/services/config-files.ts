@@ -5,7 +5,8 @@
  */
 import type { Vfs } from '../bash/vfs.ts';
 import type { AppsDevice } from '../net/device-apps.ts';
-import { hostPanels } from '../net/pkg-units.ts';
+import { appAvailable } from '../net/device-apps.ts';
+import { hostPanels, linuxSide } from '../net/pkg-units.ts';
 
 export interface ConfigSource {
   readonly id: string;
@@ -20,8 +21,10 @@ export interface ConfigFile {
   readonly content: string;
 }
 
+/** «Parámetros (sysctl)»: on every GNU/Linux terminal whose lab keeps Servicios → Parámetros. */
+const SYSCTL: ConfigSource = { id: 'sysctl', label: 'files.sysctl', paths: ['/etc/sysctl.conf', '/etc/sysctl.d'] };
+
 const ROUTER: readonly ConfigSource[] = [
-  { id: 'sysctl', label: 'sysctl.tab', paths: ['/etc/sysctl.conf', '/etc/sysctl.d'] },
   { id: 'firewall', label: 'fw.tab', paths: ['/etc/nftables.conf'] },
   { id: 'vpn', label: 'vpn.tab', paths: ['/etc/wireguard'] },
 ];
@@ -38,15 +41,16 @@ const SERVICES: readonly ConfigSource[] = [
 const SAMBA: ConfigSource = { id: 'samba', label: 'files.samba', paths: ['/etc/samba/smb.conf'] };
 
 /**
- * The services of a device in the order of its Services tab (the router's own panels first, then SSH…, then Samba
- * when it is installed). A GNU/Linux PC has only what its packages bring: the kernel parameters, nftables and Samba.
+ * The services of a device in the order of its Services tab (the kernel parameters, the router's own panels, then
+ * SSH…, then Samba when it is installed). A GNU/Linux PC has the kernel parameters and what its packages bring.
  */
 export function configSources(device: AppsDevice): readonly ConfigSource[] {
   const panels = hostPanels(device);
   const samba = panels.includes('samba') ? [SAMBA] : [];
-  if (device.kind === 'linuxrouter') return [...ROUTER, ...SERVICES, ...samba];
-  if (device.kind === 'server') return [...SERVICES, ...samba];
-  return [...ROUTER, SAMBA].filter((s) => panels.includes(s.id));
+  const sysctl = appAvailable(device, 'sysctl') && linuxSide(device) ? [SYSCTL] : [];
+  if (device.kind === 'linuxrouter') return [...sysctl, ...ROUTER, ...SERVICES, ...samba];
+  if (device.kind === 'server') return [...sysctl, ...SERVICES, ...samba];
+  return [SYSCTL, ...ROUTER, SAMBA].filter((s) => panels.includes(s.id));
 }
 
 /** Most files a directory can contribute (a student filling /etc/bind must not freeze the view). */
@@ -75,7 +79,7 @@ function expand(fs: Vfs, path: string): string[] {
 
 /** The files of a service with their current content; unknown ids and unreadable files are left out. */
 export function configFiles(fs: Vfs, id: string): ConfigFile[] {
-  const source = [...ROUTER, ...SERVICES, SAMBA].find((s) => s.id === id);
+  const source = [SYSCTL, ...ROUTER, ...SERVICES, SAMBA].find((s) => s.id === id);
   if (!source) return [];
   // A directory listed after some of its files (named.conf first, then /etc/bind) adds only the rest.
   return [...new Set(source.paths.flatMap((p) => expand(fs, p)))].flatMap((path) => {

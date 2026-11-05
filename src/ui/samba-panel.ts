@@ -12,16 +12,11 @@ import type { Host } from '../devices/host.ts';
 import type { SmbShare } from '../services/smb-conf.ts';
 import type { SmbAccount } from '../services/smb-passdb.ts';
 import {
-  addSambaShare, removeSambaAccount, removeSambaShare, sambaView, setSambaAccountDisabled, setSambaPassword, setSambaRunning,
+  addSambaShare, removeSambaAccount, removeSambaShare, sambaView, setSambaAccountDisabled, setSambaPassword, setSambaRunning, shareAccess,
 } from '../shells/samba-admin.ts';
 import type { SambaError, SambaView } from '../shells/samba-admin.ts';
 
 type Msg = ReturnType<typeof message>;
-
-function access(s: SmbShare): string {
-  const who = s.guestOk ? t('smb.guests') : s.validUsers?.length ? t('smb.validUsers', { users: s.validUsers.join(' ') }) : t('smb.accountsOnly');
-  return `${s.readOnly ? t('smb.readOnly') : t('smb.readWrite')} · ${who}`;
-}
 
 function sharesSection(host: Host, view: SambaView, app: AfterChange, msg: Msg): HTMLElement {
   const name = input({ placeholder: 'docs', 'aria-label': t('smb.share') });
@@ -40,7 +35,7 @@ function sharesSection(host: Host, view: SambaView, app: AfterChange, msg: Msg):
       { label: t('smb.share'), value: (s) => s.name, mono: true },
       { label: t('smb.path'), value: (s) => s.path, mono: true },
       { label: t('smb.comment'), value: (s) => s.comment },
-      { label: t('smb.access'), value: access },
+      { label: t('smb.access'), value: shareAccess },
     ], { empty: t('smb.noShares'), onDelete: (s) => { removeSambaShare(host, s.name); done(null); } }),
     el('h4', {}, t('smb.addShare')),
     el('div', { class: 'grid3' }, field(t('smb.share'), name), field(t('smb.path'), path), field(t('smb.comment'), comment)),
