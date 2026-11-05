@@ -1,4 +1,4 @@
-/** nmblookup (samba-common-bin): NetBIOS name queries by broadcast (localhost and the own name answered here), and node status with -A. */
+/** nmblookup (samba-common-bin): NetBIOS name queries by broadcast (the own name answered here; `localhost` is no NetBIOS name, as on Windows), and node status with -A. */
 import type { CommandFn, Ctx } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { hasPackage } from '../net/host-packages.ts';
@@ -15,11 +15,8 @@ function status(ctx: Ctx, host: Host, target: string): number {
   return 0;
 }
 
-const LOOPBACK = 0x7f000001;
-
-/** The host answers itself: localhost always, its own name when nmbd (samba) runs and hears its broadcast. */
+/** The host answers itself: its own name when nmbd (samba) runs and hears its broadcast. */
 function local(host: Host, name: string, own: number | undefined): number | undefined {
-  if (name.toLowerCase() === 'localhost') return LOOPBACK;
   const mine = speaksNetbios(host) && ownNames(host).some((n) => !n.group && n.suffix === WORKSTATION && n.name === netbiosName(name));
   return mine ? own : undefined;
 }

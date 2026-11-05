@@ -64,11 +64,11 @@ test('nftables on a PC: installed stopped; start loads /etc/nftables.conf, stop 
   assert.match(run(pc, 'journalctl -u nftables'), /\/etc\/nftables\.conf/);
 });
 
-test('the Servicios tab of a GNU/Linux PC: kernel parameters, then what apt brings (panel, files, logs)', () => {
+test('the Servicios tab of a GNU/Linux PC: kernel parameters and files, then what apt brings (panel, logs)', () => {
   const t = lab('internet');
   const [pc0, pc1] = [t.byLabel('PC0') as Host, t.byLabel('PC1') as Host];
   assert.deepEqual(hostPanels(pc0), [], 'a Windows PC has no Linux services');
-  assert.deepEqual(hostPanels(pc1), ['sysctl']);
+  assert.deepEqual(hostPanels(pc1), ['sysctl', 'files']);
   const changed: unknown[] = [];
   onAppsChange((d) => changed.push(d));
   run(pc1, 'apt install -y nftables');
@@ -77,7 +77,7 @@ test('the Servicios tab of a GNU/Linux PC: kernel parameters, then what apt brin
   run(pc1, 'apt install -y samba');
   assert.deepEqual(hostPanels(pc1), ['sysctl', 'firewall', 'samba', 'files', 'log']);
   run(pc1, 'apt remove -y nftables samba');
-  assert.deepEqual(hostPanels(pc1), ['sysctl']);
+  assert.deepEqual(hostPanels(pc1), ['sysctl', 'files']);
 });
 
 test('samba on a Server: the Samba panel joins its Servicios, and smb.conf is shipped', () => {

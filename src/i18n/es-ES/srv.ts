@@ -65,6 +65,7 @@ export const SRV_ES = {
   'srv.service': 'Servicio',
   'srv.refresh': 'Actualizar',
   'srv.journalHint': 'Equivale a journalctl -u <servicio> en el terminal del servidor.',
+  'files.sysctl': 'Parámetros (sysctl)',
   'files.ssh': 'SSH (OpenSSH)',
   'files.dhcp': 'DHCP (Kea)',
   'files.dns': 'DNS (BIND)',

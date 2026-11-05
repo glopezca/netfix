@@ -99,7 +99,7 @@ export class WinFiles {
     const ctx = this.ctx;
     const target = args.filter((a) => a.toLowerCase() !== '/d').join(' ');
     if (!target) return [toWindowsPath(ctx.cwd)];
-    if (/^[A-Za-z]:$/.test(target)) return target.toUpperCase() === 'C:' ? [] : [NO_DRIVE];
+    if (/^[A-Za-z]:$/.test(target)) return target.toUpperCase() === 'C:' ? [toWindowsPath(ctx.cwd)] : [NO_DRIVE];
     const p = ctx.path(target);
     if (p === null) return [NO_DRIVE];
     try {

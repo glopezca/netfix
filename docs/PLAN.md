@@ -1565,3 +1565,28 @@ Tres fallos menores de la revisión de la fase 50, con sus pruebas en `tests/ser
   directorio y, sin coincidencias, dan `NT_STATUS_NO_SUCH_FILE`; `rm` con máscara no borra directorios. `-c` sigue
   separando en cada `;`, también entre comillas: es lo que hace smbclient (`process_command_string`), no un fallo.
 - **Hecho (v0.33.1).**
+
+### Fase 52: Samba en la configuración del laboratorio y de cada equipo; unidades de red navegables (v0.34.0)
+
+- **Laboratorio** (Configuración → Laboratorio actual): casilla «Permitir instalación de Samba», activada por defecto y
+  guardada con la topología solo cuando está desactivada (`sambaOff`). Desactivada, `apt install samba` responde
+  `Error: Unable to locate package samba` (exit 100) y desaparecen la casilla, el panel y la página web de Samba; lo
+  instalado se queda.
+- **Equipo** (pestaña Configuración de un PC, Server o router GNU/Linux con sistema GNU/Linux): casilla **Samba** en
+  Servicios, marcada si el paquete samba está instalado; marcarla o desmarcarla instala o quita samba como lo hace apt
+  (dependencias automáticas, smb.conf, smbd y nmbd en marcha).
+- **nmblookup** ya no responde `localhost` (Windows tampoco lo hace): solo el nombre propio con nmbd en marcha.
+- **Gestión web** de Server y router GNU/Linux: página **Samba** en Servicios (smbd/nmbd, recursos, cuentas), con el
+  mismo código que el panel (`src/shells/samba-admin.ts`).
+- **Windows**: una unidad de `net use` se usa como C:. `Z:` cambia de unidad (cada una con su carpeta actual), `cd`,
+  `cd ..`, `cd \`, `cd /d`, `dir` sin ruta, rutas relativas en dir, type, md, rd, del, ren, copy y move, redirección
+  `>`/`>>` a la unidad y el prompt `Z:\carpeta>`. `cd Z:` y `cd C:` muestran la carpeta de esa unidad;
+  una ruta UNC no puede ser la carpeta actual. Si la unidad se desconecta, la terminal vuelve a C: (`src/shells/win-drives.ts`).
+- **Servicios → Configuración**: el origen «Parámetros (sysctl)» aparece en todo equipo con terminal GNU/Linux que tiene
+  Servicios → Parámetros. En un PC GNU/Linux, Configuración aparece siempre; Registros solo con nftables o samba.
+- **Pruebas** (`tests/services/samba-settings.test.ts`, `tests/shells/win-drives.test.ts`): permiso del laboratorio,
+  casilla del equipo, nmblookup, página web y unidades; se actualizan las de `hostPanels`, `configSources` y netbios.
+- **Hecho (v0.34.0)**, con la revisión: en una unidad de red `md` y `type` toman todos los nombres (como en C:); `edit`
+  con un nombre relativo en Z: no abre un archivo de C:; una letra que se vuelve a conectar a otro recurso empieza en su
+  raíz; una ruta de recurso que pasa por un archivo da el error de ruta en vez de una excepción; borrar un recurso solo
+  borra recursos (no `[global]`). `cd nada\..` funciona como en Windows (que resuelve `..` sobre el texto).

@@ -25,6 +25,7 @@ import { formatMacCisco } from '../core/mac.ts';
 import { formatLeaseTime } from '../core/clock.ts';
 import { hostSystem, hostUsers, defaultLinuxUser } from './host-system.ts';
 import { WinFiles } from './win-files.ts';
+import { WinDrives } from './win-drives.ts';
 import { splitCmdLine } from './win-path.ts';
 import type { EditSpec } from '../bash/types.ts';
 
@@ -39,6 +40,8 @@ const HELP = [
   '  arp -a | arp -d          Show / delete the ARP cache',
   '  cd | dir | md | rd | del Folders and files (C:\\ is the Linux root /)',
   '  copy | move | ren        Copy, move or rename files',
+  '  Z: | cd /d Z:\\dir        Switch to a drive mapped with net use',
+  '  net view | net use       SMB shares and mapped drives',
   '  type <file>              Show a file',
   '  edit <file>              Edit a file full screen',
   '  echo <text> [> file]     Print text (> and >> write it to a file)',
@@ -100,10 +103,13 @@ export class WindowsShell extends BaseShell {
   private ns: Nslookup | null = null;
   /** net use waiting for a password (typed without echo). */
   private question: PasswordQuestion | null = null;
+  /** C: and the drives mapped with net use, each with its own folder. */
+  private readonly drives: WinDrives;
 
   constructor(host: Host, user: string, remote = false) {
     super(host, user);
     this.remote = remote;
+    this.drives = new WinDrives(host);
   }
 
   /** The file commands, as the Linux account of the device this terminal works as (created on first use). */
@@ -126,11 +132,11 @@ export class WindowsShell extends BaseShell {
     if (this.ns) return '> ';
     if (this.question) return this.question.prompt;
     const files = this.files();
+    const drive = files.pending ? null : this.drives.here();
+    const here = drive === null ? files.prompt() : `${drive}>`;
     if (timestampPromptOn(this.host) && !files.pending) {
-      const path = files.prompt().replace(/>$/, '');
-      return windowsTimestampPrompt(this.host.clock.now(), this.user.toLowerCase(), this.host.runtimeName(), path, this.admin);
+      return windowsTimestampPrompt(this.host.clock.now(), this.user.toLowerCase(), this.host.runtimeName(), here.replace(/>$/, ''), this.admin);
     }
-    const here = files.prompt();
     return this.remote ? `${this.user.toLowerCase()}@${this.host.name.toUpperCase()} ${here}` : here;
   }
 
@@ -160,7 +166,7 @@ export class WindowsShell extends BaseShell {
     const cmd = /^echo[.:(]/i.test(first) ? 'echo' : first;
     if (cmd.toLowerCase() === 'ssh') return this.startSsh(args);
     const out = this.runLocal(cmd, args, parsed.text);
-    return parsed.redirect ? files.redirect(parsed.redirect, out) : out;
+    return parsed.redirect ? this.drives.redirect(parsed.redirect, out) ?? files.redirect(parsed.redirect, out) : out;
   }
 
   protected override localSecret(): boolean {
@@ -194,9 +200,13 @@ export class WindowsShell extends BaseShell {
 
   protected runLocal(cmd: string, args: string[], text = ''): string[] {
     const arg = (args[0] ?? '').toLowerCase();
-    const share = smbFileCommand(this.host, this.files().winFs, cmd.toLowerCase(), args);
+    const name = cmd.toLowerCase();
+    if (/^[a-z]:$/.test(name) && !args.length) return this.drives.select(name);
+    if (name === 'cd' || name === 'chdir') return this.drives.cd(args, this.files());
+    const paths = this.drives.paths(name, args);
+    const share = smbFileCommand(this.host, this.files().winFs, name, paths);
     if (share) return this.files().ask(share);
-    const file = this.files().run(cmd.toLowerCase(), args, text);
+    const file = this.files().run(name, paths, text);
     if (file) return file;
     switch (cmd.toLowerCase()) {
       case 'ipconfig': return this.ipconfig(arg);

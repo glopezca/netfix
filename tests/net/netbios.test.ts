@@ -59,11 +59,11 @@ test('samba: a GNU/Linux host answers NetBIOS and SMB; nmblookup; Windows cannot
   assert.match(win(pc0, 'ping -n 1 srv-sede2'), /could not find host srv-sede2/, 'NBNS broadcasts do not cross routers');
 });
 
-test('nmblookup on GNU/Linux: localhost<00> and the own name answer on the host itself', () => {
+test('nmblookup on GNU/Linux: the own name answers on the host itself; localhost is no NetBIOS name', () => {
   const t = lab('internet');
   const pc1 = t.byLabel('PC1') as Host;
   sh(pc1, 'apt install -y samba-common-bin');
-  assert.match(sh(pc1, 'nmblookup localhost'), /^querying localhost on \d+\.\d+\.\d+\.255\n127\.0\.0\.1 localhost<00>$/, 'without nmbd too');
+  assert.match(sh(pc1, 'nmblookup localhost; echo "status $?"'), /^querying localhost on \d+\.\d+\.\d+\.255\nname_query failed to find name localhost\nstatus 1$/, 'as on Windows');
   const name = sh(pc1, 'hostname');
   assert.match(sh(pc1, `nmblookup ${name}; echo "status $?"`), /name_query failed to find name [^\n]+\nstatus 1$/, 'no nmbd: nobody answers for it');
   sh(pc1, 'apt install -y samba');

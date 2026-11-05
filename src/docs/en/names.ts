@@ -56,7 +56,7 @@ export const NAMES_DOCS: readonly DocPage[] = [
         ['ping NAME', 'Both', 'Resolves as the system does and shows the IP address it got.'],
         ['nslookup · dig · host', 'Both / GNU/Linux', 'Ask **only the DNS**: they do not use hosts, mDNS, LLMNR or NetBIOS.'],
         ['nbtstat -n · -a · -A · -c · -R', 'Windows', 'Own or remote NetBIOS table, cache and purge.'],
-        ['nmblookup NAME · -A IP', 'GNU/Linux with samba', 'NetBIOS query by broadcast, or a device’s table; `nmblookup localhost` gives 127.0.0.1. `apt autoremove` removes it after samba is uninstalled.'],
+        ['nmblookup NAME · -A IP', 'GNU/Linux with samba', 'NetBIOS query by broadcast, or a device’s table; `nmblookup localhost` finds nothing, as on Windows (localhost is not a NetBIOS name). `apt autoremove` removes it after samba is uninstalled.'],
         ['resolvectl [status]', 'GNU/Linux', 'Each interface’s DNS and the active protocols: only those installed (mDNS with avahi or libnss-mdns; LLMNR never).'],
       ]),
       term('cmd', 'C:\\>ping -n 1 win2\n\nPinging win2 [192.168.1.12] with 32 bytes of data:\n\nReply from 192.168.1.12: bytes=32 time<1ms TTL=128'),

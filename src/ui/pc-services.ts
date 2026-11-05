@@ -1,6 +1,6 @@
 /**
- * Servicios of a GNU/Linux PC: the kernel parameters always, and what apt's packages bring (net/pkg-units.ts →
- * hostPanels): the nftables firewall, Samba, and the configuration files and logs of either. A PC has no web GUI (no
+ * Servicios of a GNU/Linux PC: the kernel parameters and the configuration files always, and what apt's packages
+ * bring (net/pkg-units.ts → hostPanels): the nftables firewall, Samba, and the logs of either. A PC has no web GUI (no
  * HTTP server): everything else is done in its terminal.
  */
 import { t } from '../i18n/t.ts';
@@ -18,7 +18,7 @@ export function pcServicesTab(host: Host, app: AfterChange, panels: readonly str
     { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(host, app).root },
     { id: 'firewall', label: t('fw.tab'), render: () => firewallPanel(host, app).root },
     { id: 'samba', label: t('smb.tab'), render: () => sambaPanel(host, app).root },
-    { id: 'files', label: t('srv.files'), render: () => filesPanel(host, panels.includes('samba') ? 'samba' : 'firewall') },
+    { id: 'files', label: t('srv.files'), render: () => filesPanel(host, 'sysctl') },
     { id: 'log', label: t('srv.log'), render: () => logPanel(host, () => packageLogUnits(host), t('pcsvc.journalHint')) },
   ];
   return subnav(all.filter((p) => panels.includes(p.id)));

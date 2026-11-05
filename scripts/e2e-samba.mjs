@@ -1,5 +1,5 @@
-// End-to-end check (v0.33) of the Servicios tab of a GNU/Linux PC and of the Samba panel: PC1 has the kernel parameters;
-// apt install nftables samba adds Firewall, Samba, Configuración and Registros at once, apt remove takes them away; on
+// End-to-end check (v0.33) of the Servicios tab of a GNU/Linux PC and of the Samba panel: PC1 has the kernel parameters
+// and its files; apt install nftables samba adds Firewall, Samba and Registros at once, apt remove takes them away; on
 // SRV the Samba panel adds a share that testparm then shows.
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -40,9 +40,9 @@ try {
   const win = page.locator('.window:visible');
   const subnav = async () => { await win.locator('.win-tab:has-text("Servicios")').click(); return win.locator('.subnav-item').allInnerTexts(); };
 
-  // PC1 (GNU/Linux): only the kernel parameters, and no web GUI; apt brings the rest and takes it away.
+  // PC1 (GNU/Linux): the kernel parameters and its files, and no web GUI; apt brings the rest and takes it away.
   await page.dblclick('g.device:has-text("PC1")');
-  assert.deepEqual(await subnav(), ['Parámetros']);
+  assert.deepEqual(await subnav(), ['Parámetros', 'Configuración']);
   await win.locator('.win-tab:has-text("Terminal GNU/Linux")').click();
   assert.match(await run(page, 'sudo apt install -y nftables samba'), /Setting up samba/);
   await page.waitForTimeout(300);
@@ -53,7 +53,7 @@ try {
   await win.locator('.win-tab:has-text("Terminal GNU/Linux")').click();
   await run(page, 'sudo apt remove -y nftables samba');
   await page.waitForTimeout(300);
-  assert.deepEqual(await subnav(), ['Parámetros'], 'apt remove takes the panels away');
+  assert.deepEqual(await subnav(), ['Parámetros', 'Configuración'], 'apt remove takes the panels away');
   await win.locator('.win-close').click();
 
   // SRV: the Samba panel lists publico and profes; a share added here is in smb.conf.

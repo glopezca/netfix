@@ -19,7 +19,7 @@ function del(base: string, pageId: string, action: string, key: string): Markup 
   return form(base, pageId, action, h('input', { type: 'hidden', name: 'key', value: key }), h('button', { type: 'submit', class: 'web-adm-small' }, t('wa.remove')));
 }
 
-function table(head: readonly string[], rows: readonly (readonly Child[])[], empty: string): Markup {
+export function table(head: readonly string[], rows: readonly (readonly Child[])[], empty: string): Markup {
   if (!rows.length) return h('p', { class: 'web-adm-muted' }, empty);
   return h('table', { class: 'web-adm-grid' }, h('tr', {}, head.map((c) => h('th', {}, c))), rows.map((r) => h('tr', {}, r.map((c) => h('td', {}, c)))));
 }

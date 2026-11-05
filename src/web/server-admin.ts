@@ -15,6 +15,7 @@ import { dnsPage } from './admin-dns.ts';
 import { firewallPage, routingPage } from './admin-firewall.ts';
 import { vpnPage } from './admin-vpn.ts';
 import { filesPage } from './admin-files.ts';
+import { sambaPage } from './admin-samba.ts';
 import { formatIp } from '../core/ip.ts';
 
 /** User names come from the request: no control characters in the logs. */
@@ -29,6 +30,7 @@ function body(server: Server, base: string, id: string, q: ReadonlyMap<string, s
     case 'dns': return dnsPage(server, base, q);
     case 'web': return webPage(server, base);
     case 'mail': return mailPage(server, base);
+    case 'samba': return sambaPage(server, base);
     case 'ssh': return sshPage(server, base);
     case 'firewall': return firewallPage(server, base);
     case 'routing': return routingPage(server, base);

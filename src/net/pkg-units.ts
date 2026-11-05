@@ -5,7 +5,7 @@
  * the device in weak registries, as its packages do; the state is saved with the topology.
  */
 import { hasPackage } from './host-packages.ts';
-import { deviceApps } from './device-apps.ts';
+import { deviceApps, sambaAllowed } from './device-apps.ts';
 import type { AppsDevice } from './device-apps.ts';
 import { runsServices } from '../devices/kinds.ts';
 
@@ -120,20 +120,23 @@ export function unitRunning(d: AppsDevice, name: string): boolean {
   return u !== undefined && pkgUnitState(d, u).active;
 }
 
-/** The GNU/Linux system of the device is there (its own system, or the Linux terminal of a Windows PC). */
-const linuxSide = (d: AppsDevice): boolean => d.os === 'linux' || deviceApps(d).includes('linux');
+/** It has a GNU/Linux terminal: its own system, or the Linux terminal switched on in its Configuración tab. */
+export const linuxSide = (d: AppsDevice): boolean => d.os === 'linux' || deviceApps(d).includes('linux');
+
+/** The Configuración tab offers the Samba box: a GNU/Linux terminal, in a lab that allows Samba. */
+export function sambaOffered(d: AppsDevice): boolean {
+  return sambaAllowed(d) && linuxSide(d);
+}
 
 /**
- * What the packages add to the Servicios tab. A GNU/Linux PC: the kernel parameters (always: every kernel has them), then
- * the firewall with nftables, Samba with samba, and the configuration files and logs of either. A Server or Linux
- * router has every other panel already: samba adds its own.
+ * What the packages add to the Servicios tab. A GNU/Linux PC: the kernel parameters and the configuration files
+ * (always: every kernel has them), then the firewall with nftables, Samba with samba, and the logs of either. A Server
+ * or Linux router has every other panel already: samba adds its own. A lab without Samba hides its panel.
  */
 export function hostPanels(d: AppsDevice): string[] {
-  const samba = hasPackage(d, 'samba') && linuxSide(d);
+  const samba = hasPackage(d, 'samba') && sambaOffered(d);
   if (runsServices(d.kind)) return samba ? ['samba'] : [];
   if (!linuxSide(d)) return [];
   const nft = unitInstalled(d, NFTABLES_UNIT);
-  return [
-    'sysctl', ...(nft ? ['firewall'] : []), ...(samba ? ['samba'] : []), ...(nft || samba ? ['files', 'log'] : []),
-  ];
+  return ['sysctl', ...(nft ? ['firewall'] : []), ...(samba ? ['samba'] : []), 'files', ...(nft || samba ? ['log'] : [])];
 }

@@ -10,6 +10,7 @@ import type { AptSource } from './apt-net.ts';
 import { BASE, PACKAGES, findPackage, kb } from './apt-catalog.ts';
 import type { AptDep, AptPackage } from './apt-catalog.ts';
 import { mooLines } from './apt-moo.ts';
+import { sambaAllowed } from '../net/device-apps.ts';
 import { installedPackage, setPackage } from './apt-state.ts';
 import { afterPackage } from './apt-scripts.ts';
 import { findDep, leftoverNote, markDependencies, orphans } from './apt-auto.ts';
@@ -94,8 +95,8 @@ function* confirm(ctx: Ctx, yes: boolean): Gen<boolean> {
 const debName = (d: AptDep): string => `${d.name}_${d.version.replace(/^\d+:/, '')}_${d.arch}.deb`;
 const poolPath = (p: AptDep, section: string): string => `pool/${section}/${p.name.startsWith('lib') ? p.name.slice(0, 4) : p.name[0]}/${p.name}/${debName(p)}`;
 
-/** The packages to fetch for `todo` (dependencies first, each once). */
-function toFetch(host: Host, todo: readonly AptPackage[]): { pkg: AptDep; section: string }[] {
+/** The packages to fetch for `todo` (dependencies not there yet first, each once). */
+export function toFetch(host: Host, todo: readonly AptPackage[]): { pkg: AptDep; section: string }[] {
   // What is there already (with what came with it) is not fetched again.
   const present = PACKAGES.filter((p) => installedPackage(host, p)).flatMap((p) => [p.name, ...p.deps.map((d) => d.name)]);
   const seen = new Set([...todo.map((p) => p.name), ...present]);
@@ -136,7 +137,8 @@ const dbFiles = (host: Host): number => DB_FILES + PACKAGES.filter((p) => instal
 
 function* install(ctx: Ctx, host: Host, names: readonly string[], yes: boolean): Gen<number> {
   ctx.out(READING);
-  const unknown = names.find((n) => !findPackage(n) && BASE[n] === undefined);
+  // A lab without «Permitir instalación de Samba» has no samba in its archive.
+  const unknown = names.find((n) => (!findPackage(n) && BASE[n] === undefined) || (n === 'samba' && !sambaAllowed(host)));
   if (unknown !== undefined) { ctx.err(`Error: Unable to locate package ${unknown}\n`); return 100; }
   const newest = names.flatMap((n) => {
     const p = findPackage(n);

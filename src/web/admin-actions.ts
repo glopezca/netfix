@@ -4,6 +4,7 @@ import { listenAction } from './admin-listen.ts';
 import { rpzAction } from './admin-rpz.ts';
 import { securityAction } from './admin-firewall-actions.ts';
 import { vpnAction } from './admin-vpn.ts';
+import { sambaAction } from './admin-samba.ts';
 import type { Server } from '../devices/server.ts';
 import { parseIp, parseMask } from '../core/ip.ts';
 import { validatePool } from '../services/dhcp-pt.ts';
@@ -130,6 +131,8 @@ export function runAction(server: Server, pageId: string, f: Fields): Outcome & 
   const action = f.get('action') ?? '';
   const dns = pageId === 'dns' ? dnsAction(server, f) : undefined;
   if (dns) return dns;
+  const samba = pageId === 'samba' ? sambaAction(server, f) : null;
+  if (samba) return samba;
   switch (action) {
     case 'setup': return setup(server, f);
     case 'dhcp': return set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, enabled: on(f, 'enabled') } }));
