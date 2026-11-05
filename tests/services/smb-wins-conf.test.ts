@@ -9,6 +9,7 @@ import { createShell } from '../../src/shells/factory.ts';
 import { parseSmbConf } from '../../src/services/smb-conf.ts';
 import { unitRunning } from '../../src/net/pkg-units.ts';
 import type { Host } from '../../src/devices/host.ts';
+import { Topology } from '../../src/net/topology.ts';
 
 const run = (h: Host, cmd: string): string => createShell(h, 'linux', 'root').run(cmd).join('\n');
 const CONFLICT = "ERROR: both 'wins support = true' and 'wins server = <server list>' cannot be set in the smb.conf file. nmbd will abort with this setting.";
@@ -36,6 +37,17 @@ test('testparm: both keys are an error (exit 1), the dump still follows; one alo
   const out = run(srv, 'testparm -s 2>&1; echo "status $?"');
   assert.match(out, new RegExp(`Loaded services file OK\\.\\n.*\\n${CONFLICT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n\\nServer role: ROLE_STANDALONE`));
   assert.match(out, /\twins server = 10\.0\.0\.1\nstatus 1$/);
+  run(srv, "printf '[global]\\n   wins support = yes\\n   wins server = srv\\n' > /etc/samba/smb.conf");
+  assert.equal(run(srv, 'testparm -s >/dev/null 2>&1; echo $?'), '1', 'a name in the list counts too');
+});
+
+test('a saved lab whose smb.conf got both keys while nmbd ran comes back with nmbd stopped', () => {
+  const t = EXAMPLES.find((e) => e.id === 'samba')!.build();
+  run(t.byLabel('SRV') as Host, "printf '[global]\\n   wins support = yes\\n   wins server = 10.0.0.1\\n' > /etc/samba/smb.conf");
+  assert.equal(unitRunning(t.byLabel('SRV') as Host, 'nmbd'), true, 'nmbd only checks as it starts');
+  const back = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
+  assert.equal(unitRunning(back.byLabel('SRV') as Host, 'nmbd'), false);
+  assert.equal(unitRunning(back.byLabel('SRV') as Host, 'smbd'), true);
 });
 
 test('nmbd does not start with both keys (its journal says why); it starts once one goes', () => {

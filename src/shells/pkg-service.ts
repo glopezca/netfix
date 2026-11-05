@@ -8,7 +8,7 @@ import type { Host } from '../devices/host.ts';
 import { loadNftablesConf, readHostFile } from '../devices/server-firewall.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { EMPTY_RULESET } from '../net/nft/model.ts';
-import { SMB_CONF, parseSmbConf, winsConflict } from '../services/smb-conf.ts';
+import { SMB_CONF, smbSections, winsConflict } from '../services/smb-conf.ts';
 import { parseResolvedConf, resolvedStartLines, RESOLVED_CONF } from './resolved-conf.ts';
 import { setResolvedConfig } from './resolved.ts';
 import { PKG_UNITS, RESOLVED_UNIT, forgetPkgUnits, installedUnits, pkgLog, pkgUnitState, setPkgUnitState } from '../net/pkg-units.ts';
@@ -29,7 +29,7 @@ function logFailure(host: Host, u: PkgUnit, t: number, error: string, verb: 'sta
 /** nmbd's own check of smb.conf (nmbd.c): both WINS roles at once and it exits before it serves. */
 function nmbdError(host: Host): string | null {
   const text = readHostFile(host, SMB_CONF);
-  if (text === null || !winsConflict(parseSmbConf(text))) return null;
+  if (text === null || !winsConflict(smbSections(text).sections)) return null;
   return [`nmbd version ${SAMBA_VERSION} started.`, "ERROR: both 'wins support = true' and 'wins server = <server list>' cannot be set in the smb.conf file. nmbd aborting."].join('\n');
 }
 
@@ -102,10 +102,12 @@ export function pkgRemoved(host: Host, pkg: string): void {
   forgetPkgUnits(host, pkg);
 }
 
-/** After the topology is read back: an active nftables.service has its file in the kernel again. */
+/**
+ * After the topology is read back: an active nftables.service has its file in the kernel again, and a unit whose
+ * process could not start now (nftables.conf or smb.conf edited while it ran) comes back stopped.
+ */
 export function bootPkgUnits(host: Host): void {
   for (const u of installedUnits(host)) {
-    if (!isNft(u) || !pkgUnitState(host, u).active) continue;
-    if (loadNftablesConf(host) !== null) setPkgUnitState(host, u, { active: false });
+    if (pkgUnitState(host, u).active && startError(host, u) !== null) setPkgUnitState(host, u, { active: false });
   }
 }

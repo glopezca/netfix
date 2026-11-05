@@ -5,7 +5,7 @@
 import type { CommandFn, Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { hasPackage } from '../net/host-packages.ts';
-import { SMB_CONF, parseSmbConf, smbSections, winsConflict } from '../services/smb-conf.ts';
+import { SMB_CONF, smbSections, winsConflict } from '../services/smb-conf.ts';
 import type { SmbSection } from '../services/smb-conf.ts';
 import { readPassdb } from '../services/smb-passdb.ts';
 
@@ -57,7 +57,7 @@ function* testparmRun(ctx: Ctx): Gen<number> {
   const { sections, unknown } = smbSections(text);
   for (const p of unknown) ctx.err(`Unknown parameter encountered: "${p}"\nIgnoring unknown parameter "${p}"\n`);
   ctx.err('Loaded services file OK.\nWeak crypto is allowed by GnuTLS (e.g. NTLM as a compatibility fallback)\n');
-  const conflict = winsConflict(parseSmbConf(text));
+  const conflict = winsConflict(sections);
   if (conflict) ctx.err(WINS_CONFLICT);
   ctx.err('\nServer role: ROLE_STANDALONE\n\n');
   if (!silent) {

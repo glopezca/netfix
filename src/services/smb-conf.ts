@@ -150,14 +150,22 @@ const yes = (v: string | undefined, fallback: boolean): boolean => (v === undefi
 /** At most this many WINS servers are kept from the list (the file is not trusted). */
 const MAX_WINS_SERVERS = 8;
 
+/** Only this much of the «wins server» value is read (the file is not trusted). */
+const MAX_WINS_TEXT = 1024;
+
 /** «wins server = a, b c»: the IPs of the list, in order and without repeats. */
 function winsList(value: string | undefined): number[] {
-  const ips = (value ?? '').split(/[\s,]+/).map(parseIp).filter((ip): ip is number => ip !== null);
+  const ips = (value ?? '').slice(0, MAX_WINS_TEXT).split(/[\s,]+/).map(parseIp).filter((ip): ip is number => ip !== null);
   return [...new Set(ips)].slice(0, MAX_WINS_SERVERS);
 }
 
-/** Both at once: testparm reports it and nmbd will not start. */
-export const winsConflict = (conf: SmbConf): boolean => conf.winsSupport && conf.winsServers.length > 0;
+const globalParams = (all: readonly Section[]): ReadonlyMap<string, string> => all.find((s) => s.name.toLowerCase() === 'global')?.params ?? new Map<string, string>();
+
+/** Both at once (any «wins server» text, a name too, as Samba checks it): testparm reports it and nmbd will not start. */
+export function winsConflict(all: readonly SmbSection[]): boolean {
+  const g = globalParams(all);
+  return yes(g.get('wins support'), false) && (g.get('wins server') ?? '').trim() !== '';
+}
 
 function share(s: Section): SmbShare {
   const p = (k: string): string | undefined => s.params.get(k);
@@ -178,7 +186,7 @@ function share(s: Section): SmbShare {
 export function parseSmbConf(text: string): SmbConf {
   const unknown: string[] = [];
   const all = sections(text, unknown);
-  const global = all.find((s) => s.name.toLowerCase() === 'global')?.params ?? new Map<string, string>();
+  const global = globalParams(all);
   return {
     workgroup: (global.get('workgroup') ?? 'WORKGROUP').toUpperCase(),
     serverString: global.get('server string') ?? 'Samba 4.22.3-Ubuntu',
