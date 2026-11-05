@@ -12,6 +12,7 @@ import { createShell } from '../../src/shells/factory.ts';
 import { newZone } from '../../src/services/dns-zones.ts';
 import { parseIp } from '../../src/core/ip.ts';
 import { setPackageInstalled } from '../../src/net/host-packages.ts';
+import { effectiveSupport } from '../../src/shells/resolved.ts';
 
 const ip = (s: string): number => parseIp(s) ?? 0;
 const all = (l: string[]): string => l.join('\n');
@@ -34,16 +35,16 @@ function lab(): { t: Topology; pc: Pc; srv: Server; sh: (c: string) => string; r
   return { t, pc, srv, sh: (c) => all(user.run(c)), root: (c) => all(r.run(c)) };
 }
 
-test('status: Global and one block per link, as systemd 257 prints them', () => {
+test('status: Global and one block per link, as systemd 258 prints them', () => {
   const { sh } = lab();
   assert.equal(sh('resolvectl status'), [
     'Global',
-    '         Protocols: -DNSOverTLS DNSSEC=no/unsupported',
+    '         Protocols: -LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported',
     '  resolv.conf mode: foreign',
     '',
     'Link 2 (eth0)',
     '    Current Scopes: DNS',
-    '         Protocols: +DefaultRoute -DNSOverTLS DNSSEC=no/unsupported',
+    '         Protocols: +DefaultRoute +LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported',
     'Current DNS Server: 10.0.0.2',
     '       DNS Servers: 10.0.0.2',
     '        DNS Domain: aula.lab',
@@ -54,21 +55,55 @@ test('status: Global and one block per link, as systemd 257 prints them', () => 
   assert.match(sh('resolvectl status eth9'), /Failed to resolve interface "eth9": No such device/);
 });
 
-test('status: mDNS only once avahi-daemon or libnss-mdns is installed; LLMNR never (no package brings it)', () => {
+test('status: LLMNR and mDNS follow resolved, never avahi (it answers .local through NSS, not resolved)', () => {
   const { pc, sh } = lab();
-  assert.doesNotMatch(sh('resolvectl status'), /LLMNR|mDNS/);
   setPackageInstalled(pc, 'libnss-mdns', true);
+  setPackageInstalled(pc, 'avahi-daemon', true);
   const out = sh('resolvectl status');
-  assert.match(out, /^Global\n {9}Protocols: \+mDNS -DNSOverTLS DNSSEC=no\/unsupported$/m);
-  assert.match(out, /Link 2 \(eth0\)\n {4}Current Scopes: DNS mDNS\/IPv4\n {9}Protocols: \+DefaultRoute \+mDNS -DNSOverTLS/);
-  assert.doesNotMatch(out, /LLMNR/);
+  assert.match(out, /^Global\n {9}Protocols: -LLMNR -mDNS -DNSOverTLS DNSSEC=no\/unsupported$/m);
+  assert.match(out, /Link 2 \(eth0\)\n {4}Current Scopes: DNS\n/);
+});
+
+test('the global value comes from resolved.conf after a restart; a link uses the lower of global and its own', () => {
+  const { pc, sh, root } = lab();
+  root(`printf '[Resolve]\\nLLMNR=yes\\nMulticastDNS=yes\\n' > /etc/systemd/resolved.conf`);
+  assert.match(sh('resolvectl status'), /Protocols: -LLMNR -mDNS/, 'not before the restart');
+  root('systemctl restart systemd-resolved');
+  const out = sh('resolvectl status');
+  assert.match(out, /^Global\n {9}Protocols: \+LLMNR \+mDNS -DNSOverTLS DNSSEC=no\/unsupported$/m);
+  assert.match(out, /Link 2 \(eth0\)\n {4}Current Scopes: DNS LLMNR\/IPv4\n {9}Protocols: \+DefaultRoute \+LLMNR -mDNS /, 'mDNS is off on the link (networkd default)');
+  assert.equal(effectiveSupport(pc, 'eth0', 'llmnr'), 'yes');
+  assert.equal(effectiveSupport(pc, 'eth0', 'mdns'), 'no');
+  root('resolvectl mdns eth0 yes');
+  assert.match(sh('resolvectl status eth0'), /Current Scopes: DNS LLMNR\/IPv4 mDNS\/IPv4\n {9}Protocols: \+DefaultRoute \+LLMNR \+mDNS /);
+  root(`printf '[Resolve]\\nLLMNR=resolve\\nMulticastDNS=no\\n' > /etc/systemd/resolved.conf; systemctl restart systemd-resolved`);
+  assert.match(sh('resolvectl status'), /^ {9}Protocols: LLMNR=resolve -mDNS -DNSOverTLS/m);
+  assert.equal(effectiveSupport(pc, 'eth0', 'llmnr'), 'resolve', 'resolve: it asks, it does not answer');
+  assert.equal(effectiveSupport(pc, 'eth0', 'mdns'), 'no', 'the link says yes, the global no');
+  assert.match(sh('resolvectl status eth0'), /Current Scopes: DNS LLMNR\/IPv4\n/);
+});
+
+test('resolvectl llmnr|mdns: show the values; root sets one per link; revert drops it', () => {
+  const { pc, sh, root } = lab();
+  assert.equal(sh('resolvectl llmnr'), 'Global: no\nLink 2 (eth0): yes');
+  assert.equal(sh('resolvectl mdns eth0'), 'Link 2 (eth0): no');
+  assert.match(sh('resolvectl llmnr eth0 no 2>&1'), /^Failed to set LLMNR configuration: Interactive authentication required\.$/);
+  assert.match(root('resolvectl mdns eth0 maybe 2>&1; echo "status $?"'), /^Failed to set MulticastDNS configuration: Invalid MulticastDNS setting: maybe\nstatus 1$/);
+  assert.match(root('resolvectl llmnr eth9 no 2>&1'), /Failed to resolve interface "eth9": No such device/);
+  root('resolvectl llmnr eth0 no; resolvectl mdns eth0 resolve');
+  assert.equal(sh('resolvectl llmnr eth0'), 'Link 2 (eth0): no');
+  assert.equal(sh('resolvectl mdns eth0'), 'Link 2 (eth0): resolve');
+  assert.match(sh('resolvectl status eth0'), /Protocols: \+DefaultRoute -LLMNR mDNS=resolve /);
+  root('resolvectl revert eth0');
+  assert.equal(sh('resolvectl llmnr eth0'), 'Link 2 (eth0): yes');
+  assert.equal(effectiveSupport(pc, 'eth0', 'mdns'), 'no');
 });
 
 test('a GNU/Linux router: the links without DNS have no scope', () => {
   const t = new Topology();
   const lr = t.add('linuxrouter', 0, 0).device as Server;
   const out = all(createShell(lr, 'linux').run('resolvectl status'));
-  assert.match(out, /Link 3 \(eth1\)\n    Current Scopes: none\n         Protocols: -DefaultRoute -DNSOverTLS DNSSEC=no\/unsupported/);
+  assert.match(out, /Link 3 \(eth1\)\n    Current Scopes: none\n         Protocols: -DefaultRoute \+LLMNR -mDNS -DNSOverTLS DNSSEC=no\/unsupported/);
   assert.match(out, /Link 4 \(eth2\)/);
 });
 

@@ -49,7 +49,7 @@ export const NAMES_DOCS: readonly DocPage[] = [
         ['wins', 'winbind y libnss-winbind', 'A mano, como en un Ubuntu real.'],
       ]),
       code('hosts:          files mdns4_minimal [NOTFOUND=return] dns wins'),
-      p('Los equipos GNU/Linux de Netfix no hablan LLMNR: ni preguntan ni responden, y por eso `resolvectl` no muestra LLMNR. Tampoco mDNS hasta instalar avahi-daemon o libnss-mdns: entonces aparecen `+mDNS` en Protocols y `mDNS/IPv4` en Current Scopes. Para que Windows encuentre a un GNU/Linux por su nombre, instálale **avahi-daemon** (pc.local) o **samba** (nombre sin punto, por NetBIOS).'),
+      p('En GNU/Linux, LLMNR y mDNS son cosa de systemd-resolved y empiezan apagados, como en Ubuntu: `resolvectl` muestra `-LLMNR -mDNS` en Global. Se encienden con `LLMNR=yes` o `MulticastDNS=yes` en /etc/systemd/resolved.conf y `systemctl restart systemd-resolved`; cada interfaz usa el menor de su valor (`resolvectl llmnr|mdns eth0`) y el global, y Current Scopes muestra `LLMNR/IPv4` o `mDNS/IPv4` cuando está activo. avahi resuelve los `.local` por su cuenta, sin resolved. Para que Windows encuentre a un GNU/Linux por su nombre, instálale **avahi-daemon** (pc.local) o **samba** (nombre sin punto, por NetBIOS).'),
       warn('Un PC con las dos terminales', 'La terminal Windows de un PC resuelve a la manera de Windows (mDNS, LLMNR y NetBIOS de serie) y su terminal GNU/Linux a la manera de GNU/Linux: sin avahi, `ping pc2.local` falla allí aunque en la terminal Windows funcione.'),
       h('Herramientas'),
       table(['Orden', 'Sistema', 'Qué hace'], [
@@ -57,7 +57,7 @@ export const NAMES_DOCS: readonly DocPage[] = [
         ['nslookup · dig · host', 'Los dos / GNU/Linux', 'Preguntan **solo al DNS**: no usan hosts, mDNS, LLMNR ni NetBIOS.'],
         ['nbtstat -n · -a · -A · -c · -R', 'Windows', 'Tabla NetBIOS propia o remota, caché y purga.'],
         ['nmblookup NOMBRE · -A IP', 'GNU/Linux con samba', 'Consulta NetBIOS por broadcast o tabla de un equipo; `nmblookup localhost` no encuentra nada, como en Windows (localhost no es un nombre NetBIOS). `apt autoremove` lo quita tras desinstalar samba.'],
-        ['resolvectl [status]', 'GNU/Linux', 'DNS de cada interfaz y protocolos activos: solo los que hay instalados (mDNS con avahi o libnss-mdns; LLMNR nunca).'],
+        ['resolvectl [status]', 'GNU/Linux', 'DNS de cada interfaz, LLMNR y mDNS globales y por interfaz, y los ámbitos activos (Current Scopes). `resolvectl llmnr|mdns eth0 yes` los cambia en una interfaz (root).'],
       ]),
       term('cmd', 'C:\\>ping -n 1 win2\n\nPinging win2 [192.168.1.12] with 32 bytes of data:\n\nReply from 192.168.1.12: bytes=32 time<1ms TTL=128'),
       tip('Verlo en Simulación', 'Pasa a **Simulación**, deja marcados DNS, MDNS, LLMNR y NBNS y lanza el ping: verás la pregunta DNS, la multicast LLMNR (MAC 01:00:5e:00:00:fc, TTL 1), el broadcast NBNS y las respuestas unicast. Pulsa cada evento para ver su PDU.'),

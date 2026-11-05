@@ -1,28 +1,35 @@
 /**
- * resolvectl (systemd-resolved) in the Linux terminals: status, query, dns, domain, revert, flush-caches,
+ * resolvectl (systemd-resolved) in the Linux terminals: status, query, dns, domain, llmnr, mdns, revert, flush-caches,
  * reset-server-features and statistics, as systemd 258 prints them. Changes are runtime state (shells/resolved.ts).
  */
 import type { Ctx, CommandFn } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import type { DnsType } from '../net/packets.ts';
 import { searchDomains } from './net-tools.ts';
-import { resolvedDns, resolvedDomains, revertResolved, setResolvedDns, setResolvedDomains, transactionCount } from './resolved.ts';
+import { effectiveSupport, linkSupport, resolvedConfig, resolvedDns, resolvedDomains, revertResolved, setLinkSupport, setResolvedDns, setResolvedDomains, transactionCount } from './resolved.ts';
+import type { Protocol } from './resolved.ts';
+import { parseSupport } from './resolved-conf.ts';
+import type { ResolveSupport } from './resolved-conf.ts';
 import { EMPTY_TYPES, QUERY_TYPES, query, shown } from './resolvectl-query.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { t } from '../i18n/t.ts';
-import { hasPackage } from '../net/host-packages.ts';
 
 interface Link {
   readonly index: number;
   readonly name: string;
   readonly primary: boolean;
-  /** It has an IPv4 address (mDNS answers there). */
+  /** It has an IPv4 address (LLMNR and mDNS have a scope there). */
   readonly addressed: boolean;
 }
 
-/** Only the protocols this host has: mDNS with avahi or nss-mdns; LLMNR never (no GNU/Linux package brings it here). */
-const protocols = (host: Host): string => `${hasMdns(host) ? '+mDNS ' : ''}-DNSOverTLS DNSSEC=no/unsupported`;
-const hasMdns = (host: Host): boolean => hasPackage(host, 'avahi-daemon') || hasPackage(host, 'libnss-mdns');
+/** As resolvectl prints a mode: +LLMNR, -LLMNR or LLMNR=resolve. */
+const mode = (name: string, v: ResolveSupport): string => (v === 'yes' ? `+${name}` : v === 'no' ? `-${name}` : `${name}=${v}`);
+const modes = (llmnr: ResolveSupport, mdns: ResolveSupport): string => `${mode('LLMNR', llmnr)} ${mode('mDNS', mdns)} -DNSOverTLS DNSSEC=no/unsupported`;
+/** Global: what resolved read of resolved.conf; a link: its own values (the scopes say what it really does). */
+const globalProtocols = (host: Host): string => modes(resolvedConfig(host).llmnr, resolvedConfig(host).mdns);
+const linkProtocols = (host: Host, l: Link): string => modes(linkSupport(host, l.name, 'llmnr'), linkSupport(host, l.name, 'mdns'));
+/** The setting's name in resolved's messages. */
+const SETTING: Readonly<Record<Protocol, string>> = { llmnr: 'LLMNR', mdns: 'MulticastDNS' };
 /** Linux numbers lo 1, then the NICs. */
 const FIRST_NIC_INDEX = 2;
 const DOMAIN = /^~?(?:\.|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i;
@@ -40,11 +47,12 @@ function linkBlock(host: Host, l: Link): string[] {
   const dns = linkDns(host, l);
   const domains = linkDomains(host, l);
   const route = l.primary && host.config.gateway !== undefined ? '+DefaultRoute' : '-DefaultRoute';
-  const scopes = [...(dns === undefined ? [] : ['DNS']), ...(hasMdns(host) && l.addressed ? ['mDNS/IPv4'] : [])];
+  const on = (p: Protocol): boolean => l.addressed && effectiveSupport(host, l.name, p) !== 'no';
+  const scopes = [...(dns === undefined ? [] : ['DNS']), ...(on('llmnr') ? ['LLMNR/IPv4'] : []), ...(on('mdns') ? ['mDNS/IPv4'] : [])];
   return [
     `Link ${l.index} (${l.name})`,
     `${key('Current Scopes')}: ${scopes.join(' ') || 'none'}`,
-    `${key('Protocols')}: ${route} ${protocols(host)}`,
+    `${key('Protocols')}: ${route} ${linkProtocols(host, l)}`,
     ...(dns === undefined ? [] : [`${key('Current DNS Server')}: ${formatIp(dns)}`, `${key('DNS Servers')}: ${formatIp(dns)}`]),
     ...(domains.length ? [`${key('DNS Domain')}: ${domains.join(' ')}`] : []),
   ];
@@ -52,7 +60,7 @@ function linkBlock(host: Host, l: Link): string[] {
 
 function status(host: Host, only?: Link): string[] {
   if (only) return linkBlock(host, only);
-  const global = ['Global', `${key('Protocols')}: ${protocols(host)}`, `${key('resolv.conf mode')}: foreign`];
+  const global = ['Global', `${key('Protocols')}: ${globalProtocols(host)}`, `${key('resolv.conf mode')}: foreign`];
   return [...global, ...links(host).flatMap((l) => ['', ...linkBlock(host, l)])];
 }
 
@@ -78,6 +86,22 @@ function perLink(ctx: Ctx, host: Host, what: 'dns' | 'domain', args: readonly st
   return what === 'dns' ? setDns(ctx, host, values) : setDomains(ctx, host, values);
 }
 
+/** llmnr / mdns: the global and link values, or (root) the link's own. resolved checks the value, then the caller. */
+function supportVerb(ctx: Ctx, host: Host, p: Protocol, args: readonly string[]): number {
+  const link = findLink(ctx, host, args[0]);
+  if (link === null) return 1;
+  const show = (l: Link): string => `Link ${l.index} (${l.name}): ${linkSupport(host, l.name, p)}`;
+  if (!link) { out(ctx, [`Global: ${resolvedConfig(host)[p]}`, ...links(host).map(show)]); return 0; }
+  const value = args[1];
+  if (value === undefined) { out(ctx, [show(link)]); return 0; }
+  const what = `set ${SETTING[p]} configuration`;
+  const next = parseSupport(value);
+  if (next === undefined) { ctx.err(`Failed to ${what}: Invalid ${SETTING[p]} setting: ${shown(value)}\n`); return 1; }
+  if (!privileged(ctx, what)) return 1;
+  setLinkSupport(host, link.name, p, next);
+  return 0;
+}
+
 function setDns(ctx: Ctx, host: Host, values: readonly string[]): number {
   // resolvectl dns eth0 "": no server on the link.
   if (values.length === 1 && values[0] === '') { setResolvedDns(host, null); return 0; }
@@ -100,7 +124,8 @@ function setDomains(ctx: Ctx, host: Host, values: readonly string[]): number {
 const HELP = ['resolvectl [OPTIONS...] COMMAND ...', '', 'Send control commands to the network name resolution manager, or', 'resolve domain names, IPv4 and IPv6 addresses, DNS records, and services.', '',
   'Commands:', '  query HOSTNAME|ADDRESS...    Resolve domain names, IPv4 and IPv6 addresses', '  status [LINK...]             Show link and server status', '  statistics                   Show resolver statistics',
   '  reset-server-features        Forget learnt DNS server feature levels', '  flush-caches                 Flush all local DNS caches', '  dns [LINK [SERVER...]]       Get/set per-interface DNS server address',
-  '  domain [LINK [DOMAIN...]]    Get/set per-interface search domain', '  revert LINK                  Revert per-interface configuration', '', 'Options:', '  -h --help                    Show this help', '  -t --type=TYPE               Query RR with DNS type', '     --legend=BOOL             Print headers and additional info (default: yes)'];
+  '  domain [LINK [DOMAIN...]]    Get/set per-interface search domain', '  llmnr [LINK [MODE]]          Get/set per-interface LLMNR mode',
+  '  mdns [LINK [MODE]]           Get/set per-interface MulticastDNS mode', '  revert LINK                  Revert per-interface configuration', '', 'Options:', '  -h --help                    Show this help', '  -t --type=TYPE               Query RR with DNS type', '     --legend=BOOL             Print headers and additional info (default: yes)'];
 
 function statistics(host: Host): string[] {
   const n = String(transactionCount(host));
@@ -188,6 +213,7 @@ export function resolvectl(host: Host): CommandFn {
       }
       case 'query': return queryVerb(ctx, host, p, rest);
       case 'dns': case 'domain': return perLink(ctx, host, verb, rest);
+      case 'llmnr': case 'mdns': return supportVerb(ctx, host, verb, rest);
       case 'revert': return revertVerb(ctx, host, rest[0]);
       case 'flush-caches': return privileged(ctx, 'flush caches') ? 0 : 1;
       case 'reset-server-features': return privileged(ctx, 'reset server features') ? 0 : 1;

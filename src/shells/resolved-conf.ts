@@ -34,7 +34,7 @@ const TRUE = new Set(['1', 'yes', 'y', 'true', 't', 'on']);
 const FALSE = new Set(['0', 'no', 'n', 'false', 'f', 'off']);
 
 /** systemd's parse_boolean (any case), then the string table (exact): yes, no, resolve. */
-function parseSupport(value: string): ResolveSupport | undefined {
+export function parseSupport(value: string): ResolveSupport | undefined {
   const lower = value.toLowerCase();
   if (TRUE.has(lower)) return 'yes';
   if (FALSE.has(lower)) return 'no';
