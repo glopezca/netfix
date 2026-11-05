@@ -2,9 +2,11 @@
  * systemd-resolved's runtime state of a host: the DNS server and domains set with `resolvectl dns|domain` (netplan does
  * not keep them) and its transaction counter. A real change of the device's IP settings (address, gateway, DNS,
  * netplan search list), as a new link setup in networkd, drops them; a DHCP renewal with the same lease does not.
- * `resolvectl revert` drops them too.
+ * `resolvectl revert` drops them too. Beside them, what the daemon read of resolved.conf when it started.
  */
 import type { Host } from '../devices/host.ts';
+import { RESOLVED_DEFAULTS } from './resolved-conf.ts';
+import type { ResolvedConf } from './resolved-conf.ts';
 
 interface Override {
   /** The IP settings it was set over, by value. */
@@ -47,6 +49,15 @@ export function setResolvedDomains(host: Host, domains: readonly string[]): void
 
 export function revertResolved(host: Host): void {
   overrides.delete(host);
+}
+
+const configs = new WeakMap<Host, ResolvedConf>();
+
+/** What resolved read of resolved.conf when it last started (the host's boot, or a start or restart of the unit). */
+export const resolvedConfig = (host: Host): ResolvedConf => configs.get(host) ?? RESOLVED_DEFAULTS;
+
+export function setResolvedConfig(host: Host, conf: ResolvedConf): void {
+  configs.set(host, conf);
 }
 
 export function countTransaction(host: Host): void {

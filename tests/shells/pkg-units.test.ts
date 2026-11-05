@@ -25,11 +25,12 @@ test('samba on a PC: smbd and nmbd run and are enabled, and go away with the pac
   assert.match(st, /Main PID: \d+ \(smbd\)/);
   assert.equal(run(pc, 'systemctl is-enabled nmbd'), 'enabled');
   assert.equal(run(pc, 'systemctl is-active nmbd.service'), 'active');
-  assert.match(run(pc, 'systemctl list-units'), /smbd\.service +loaded active +running Samba SMB Daemon[\s\S]*2 loaded units listed\./);
+  assert.match(run(pc, 'systemctl list-units'), /smbd\.service +loaded active +running Samba SMB Daemon[\s\S]*3 loaded units listed\./, 'with systemd-resolved, always there');
   assert.match(run(pc, 'journalctl -u smbd'), /smbd\[\d+\]: .*smbd version 4\.22\.3-Ubuntu started\./);
   run(pc, 'apt remove -y samba');
   assert.match(run(pc, 'systemctl status smbd; echo "status $?"'), /Unit smbd\.service could not be found\.\nstatus 4$/);
-  assert.equal(run(pc, 'systemctl list-units'), '0 loaded units listed.');
+  assert.doesNotMatch(run(pc, 'systemctl list-units'), /smbd|nmbd/);
+  assert.match(run(pc, 'systemctl list-units'), /\n1 loaded units listed\.$/);
 });
 
 test('stopping nmbd silences NetBIOS; stopping smbd closes 139/445', () => {

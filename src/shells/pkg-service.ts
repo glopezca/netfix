@@ -1,13 +1,16 @@
 /**
  * What systemd does with the units apt's packages bring (net/pkg-units.ts): start, stop and reload them, and what
  * dpkg's maintainer scripts do (samba starts smbd and nmbd on install; removing a package stops its units). nftables on
- * a PC loads /etc/nftables.conf on start and flushes the ruleset on stop, as Debian's nftables.service does.
+ * a PC loads /etc/nftables.conf on start and flushes the ruleset on stop, as Debian's nftables.service does;
+ * systemd-resolved reads /etc/systemd/resolved.conf on start.
  */
 import type { Host } from '../devices/host.ts';
-import { loadNftablesConf } from '../devices/server-firewall.ts';
+import { loadNftablesConf, readHostFile } from '../devices/server-firewall.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { EMPTY_RULESET } from '../net/nft/model.ts';
-import { PKG_UNITS, forgetPkgUnits, installedUnits, pkgLog, pkgUnitState, setPkgUnitState } from '../net/pkg-units.ts';
+import { parseResolvedConf, resolvedStartLines, RESOLVED_CONF } from './resolved-conf.ts';
+import { setResolvedConfig } from './resolved.ts';
+import { PKG_UNITS, RESOLVED_UNIT, forgetPkgUnits, installedUnits, pkgLog, pkgUnitState, setPkgUnitState } from '../net/pkg-units.ts';
 import type { PkgUnit } from '../net/pkg-units.ts';
 
 export const SAMBA_VERSION = '4.22.3-Ubuntu';
@@ -22,6 +25,14 @@ function logFailure(host: Host, u: PkgUnit, t: number, error: string, verb: 'sta
   pkgLog(host, u, t, `Failed to ${verb} ${u.name}.service - ${u.description}.`, true);
 }
 
+/** What the service itself logs as it starts; resolved reads resolved.conf then (and only then). */
+function startLines(host: Host, u: PkgUnit): string[] {
+  if (u !== RESOLVED_UNIT) return [`${u.process} version ${SAMBA_VERSION} started.`];
+  const conf = parseResolvedConf(readHostFile(host, RESOLVED_CONF) ?? '');
+  setResolvedConfig(host, conf);
+  return [...conf.warnings, ...resolvedStartLines(host.runtimeName().toLowerCase())];
+}
+
 /** Starts the unit (a running one is left as it is); false when its process failed (the reason is in its journal). */
 export function startPkgUnit(host: Host, u: PkgUnit): boolean {
   if (pkgUnitState(host, u).active) return true;
@@ -33,7 +44,7 @@ export function startPkgUnit(host: Host, u: PkgUnit): boolean {
       logFailure(host, u, t, error, 'start');
       return false;
     }
-  } else pkgLog(host, u, t, `${u.process} version ${SAMBA_VERSION} started.`);
+  } else for (const line of startLines(host, u)) pkgLog(host, u, t, line);
   setPkgUnitState(host, u, { active: true });
   pkgLog(host, u, t, `${isNft(u) ? 'Finished' : 'Started'} ${u.name}.service - ${u.description}.`, true);
   return true;

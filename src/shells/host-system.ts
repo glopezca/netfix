@@ -1,5 +1,7 @@
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
 import { NSSWITCH, seededNsswitch } from './nsswitch.ts';
+import { DEFAULT_RESOLVED_CONF, parseResolvedConf, RESOLVED_CONF } from './resolved-conf.ts';
+import { setResolvedConfig } from './resolved.ts';
 import { t } from '../i18n/t.ts';
 import { listenChoices } from '../services/listen.ts';
 import { runsServices } from '../devices/kinds.ts';
@@ -173,6 +175,7 @@ function createSystem(host: Host): Entry {
   seedRootfs(fs, { hostname: host.name.toLowerCase(), users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
   // An ordinary file, as in Ubuntu: root edits it, it is saved with the topology and the resolver reads it first.
   fs.seed(NSSWITCH, { kind: 'file', content: seededNsswitch(host) }, 0o644);
+  fs.seed(RESOLVED_CONF, { kind: 'file', content: DEFAULT_RESOLVED_CONF }, 0o644);
   fs.seed('/etc/hosts', { kind: 'file', content: `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n` }, 0o644);
   fs.seed('/usr/lib/command-not-found', { kind: 'file', content: `${BINARY_MARK}command-not-found\n` }, 0o755);
   const server = asServer(host);
@@ -196,6 +199,7 @@ function createSystem(host: Host): Entry {
   };
   importFiles(fs, pendingFiles.get(host) ?? []);
   pendingFiles.delete(host);
+  bootResolvedFrom(host, fs);
   return { fs, env, mounted: new Set(), usersKey: users.map((u) => u.name).join(',') };
 }
 
@@ -218,9 +222,23 @@ export function savedFiles(host: Host): readonly FileRecord[] | undefined {
 /** Restores the user files saved in a topology (applied when the host's system is created). */
 export function restoreFiles(host: Host, files: readonly FileRecord[]): void {
   const e = systems.get(host);
-  if (e) importFiles(e.fs, files);
-  else pendingFiles.set(host, files);
+  if (e) {
+    importFiles(e.fs, files);
+    bootResolvedFrom(host, e.fs);
+    return;
+  }
+  pendingFiles.set(host, files);
+  // Records apply in order: the last one for the path is what will be on disk (a deleted file is the defaults).
+  const last = files.filter((f) => f.path === RESOLVED_CONF).pop();
+  if (last) bootResolved(host, last.kind === 'file' ? last.content ?? '' : '');
 }
+
+/** The host boots: systemd-resolved reads its file (later edits wait for a restart of the unit). */
+function bootResolved(host: Host, text: string): void {
+  setResolvedConfig(host, parseResolvedConf(text));
+}
+
+const bootResolvedFrom = (host: Host, fs: Vfs): void => bootResolved(host, fs.tryLookup(RESOLVED_CONF)?.kind === 'file' ? fs.readFile(RESOLVED_CONF) : '');
 
 /**
  * Boot of a host loaded from a topology: if its saved files change kernel parameters, `sysctl --system`
