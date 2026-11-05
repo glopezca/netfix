@@ -7,7 +7,7 @@ import type { Ctx, Gen } from '../bash/types.ts';
 import type { DnsType } from '../net/packets.ts';
 import type { DnsResult } from '../net/dns.ts';
 import { reverseName } from '../net/dns.ts';
-import { dnsQuery, dnsSearch, searchDomains } from './net-tools.ts';
+import { dnsQuery, dnsSearch, searchDomains } from './dns-client.ts';
 import { resolvedDns } from './resolved.ts';
 import { nslookupOutput, serverHead } from './nslookup-format.ts';
 import { formatIp, parseIp } from '../core/ip.ts';

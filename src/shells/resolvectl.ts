@@ -5,7 +5,7 @@
 import type { Ctx, CommandFn } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import type { DnsType } from '../net/packets.ts';
-import { searchDomains } from './net-tools.ts';
+import { searchDomains } from './dns-client.ts';
 import { effectiveSupport, linkSupport, resolvedConfig, resolvedDns, resolvedDomains, revertResolved, setLinkSupport, setResolvedDns, setResolvedDomains, transactionCount } from './resolved.ts';
 import type { Protocol } from './resolved.ts';
 import { parseSupport } from './resolved-conf.ts';

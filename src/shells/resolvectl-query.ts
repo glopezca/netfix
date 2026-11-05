@@ -7,7 +7,7 @@ import type { Host } from '../devices/host.ts';
 import type { DnsAnswer, DnsType } from '../net/packets.ts';
 import type { DnsResult } from '../net/dns.ts';
 import { normalizeName, reverseName } from '../net/dns.ts';
-import { dnsQuery, dnsSearch, hostsLookup } from './net-tools.ts';
+import { dnsQuery, dnsSearch, hostsLookup } from './dns-client.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 
 export const QUERY_TYPES: readonly DnsType[] = ['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR', 'SOA'];

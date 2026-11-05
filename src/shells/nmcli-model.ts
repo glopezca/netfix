@@ -3,7 +3,7 @@ import type { Host } from '../devices/host.ts';
 import type { NicInfo } from '../devices/host-nics.ts';
 import { formatIp } from '../core/ip.ts';
 import { routeLines } from './linux-ip.ts';
-import { configuredSearchDomains } from './net-tools.ts';
+import { configuredSearchDomains } from './dns-client.ts';
 
 const FOOTER = 'Use "nmcli device show" to get complete information about known devices and\n"nmcli connection show" to get an overview on active connection profiles.\n\nConsult nmcli(1) and nmcli-examples(7) manual pages for complete usage details.';
 

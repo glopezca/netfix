@@ -5,7 +5,8 @@ import { EXAMPLES } from '../../src/net/examples.ts';
 import { Topology } from '../../src/net/topology.ts';
 import { createShell } from '../../src/shells/factory.ts';
 import { hostSystem } from '../../src/shells/host-system.ts';
-import { searchDomains, resolveHost } from '../../src/shells/net-tools.ts';
+import { resolveHost } from '../../src/shells/net-tools.ts';
+import { searchDomains } from '../../src/shells/dns-client.ts';
 import type { Pc } from '../../src/devices/pc.ts';
 
 const all = (lines: readonly string[]): string => lines.join('\n').replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
