@@ -34,7 +34,7 @@ try {
   // Open Servidor → DHCP: its group unfolds and the crumb shows group › section.
   await page.locator('.doc-group-box[data-group="servidor"] > summary').click();
   const sections = await page.locator('.doc-group-box[data-group="servidor"] .doc-section').allInnerTexts();
-  assert.deepEqual(sections.map((s) => s.toLowerCase()), ['general', 'ssh', 'dhcp', 'dns', 'http', 'correo', 'configuración y registros']);
+  assert.deepEqual(sections.map((s) => s.toLowerCase()), ['general', 'ssh', 'dhcp', 'dns', 'http', 'correo', 'samba', 'configuración y registros']);
   await page.locator('button[data-page="srv-dhcp"]').click();
   assert.equal(await page.locator('.doc-crumb').innerText(), 'Servidor › DHCP');
   const article = page.locator('article.doc-page');

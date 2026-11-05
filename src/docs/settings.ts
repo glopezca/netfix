@@ -23,8 +23,8 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
       h('Laboratorio actual'),
       p('Decide qué pestañas y paneles muestran las ventanas de cada tipo de equipo. **Equipo** (nombre de host) e **Interfaces** están siempre.'),
       table(['Equipo', 'Activado por defecto', 'Se puede activar'], [
-        ['PC', 'TCP/IP, aplicaciones (navegador, correo, SSH, SFTP), terminal GNU/Linux y terminal Windows', '—'],
-        ['Servidor', 'TCP/IP, cada servicio (SSH, DHCP, DNS, HTTP, correo, ficheros y registros), parámetros del kernel, firewall, terminal GNU/Linux y terminal Windows', '—'],
+        ['PC', 'TCP/IP, aplicaciones (navegador, correo, SSH, SFTP), servicio Samba, terminal GNU/Linux y terminal Windows', '—'],
+        ['Servidor', 'TCP/IP, cada servicio (SSH, DHCP, DNS, HTTP, correo, ficheros, registros y Samba), parámetros del kernel, firewall, terminal GNU/Linux y terminal Windows', '—'],
         ['Router GNU/Linux', 'Parámetros del kernel, firewall, VPN, cada servicio y terminal GNU/Linux', 'Terminal Windows'],
         ['Router y switch IOS', 'CLI y gestión web', '—'],
       ]),
@@ -32,9 +32,9 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
       h('La pestaña Configuración de cada equipo'),
       p('Cada PC, servidor y router GNU/Linux tiene además su propia pestaña **Configuración**: casillas para sus aplicaciones, servicios y terminales. Solo lista lo que el laboratorio permite (lo de arriba es el máximo), y al cambiar una casilla la ventana se reabre en esa pestaña con las pestañas nuevas.'),
       table(['Equipo', 'Activado por defecto', 'Desactivado por defecto'], [
-        ['PC', 'TCP/IP, navegador, cliente SSH y el terminal de su sistema operativo', 'Correo, Archivos (SFTP) y el terminal del otro sistema'],
-        ['Servidor', 'Colocado desde la paleta: configuración IP, ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre (sin casilla)', 'Todos los servicios y el firewall: se marcan aquí o se instalan con apt (Instalar paquetes con apt)'],
-        ['Router GNU/Linux', 'Colocado desde la paleta: ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre', 'Servicios, firewall y VPN (casilla o apt)'],
+        ['PC', 'TCP/IP, navegador, cliente SSH y el terminal de su sistema operativo', 'Correo, Archivos (SFTP), Samba (con terminal GNU/Linux) y el terminal del otro sistema'],
+        ['Servidor', 'Colocado desde la paleta: configuración IP, ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre (sin casilla)', 'Todos los servicios, Samba incluido, y el firewall: se marcan aquí o se instalan con apt (Instalar paquetes con apt)'],
+        ['Router GNU/Linux', 'Colocado desde la paleta: ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre', 'Servicios (Samba incluido), firewall y VPN (casilla o apt)'],
       ]),
       p('En los laboratorios grabados, de cada pareja de PCs del mismo switch uno es Windows y el otro GNU/Linux; el correo solo está en los PCs con cuenta configurada y SFTP en PC1 de «SSH y SFTP con claves»; cada servidor muestra solo los servicios que arranca (más ficheros y registros).'),
       p('Los servidores de los laboratorios grabados y de los archivos guardados conservan los servicios que tenían.'),

@@ -74,8 +74,22 @@ try {
   if (shots) await page.screenshot({ path: `${shots}/samba-panel.png` });
   await win.locator('.win-tab:has-text("Terminal GNU/Linux")').click();
   assert.match(await run(page, 'testparm -s 2>/dev/null | grep -A4 "\\[docs\\]"'), /\[docs\][\s\S]*path = \/srv\/samba\/docs/);
+  await win.locator('.win-close').click();
+
+  // The lab: «Servicio Samba» for PCs, servers and GNU/Linux routers, on by default. Off for PCs, PC1's Configuración has no Samba box.
+  await page.click('button.seg[data-view="settings"]');
+  for (const kind of ['pc', 'server', 'linuxrouter']) assert.equal(await page.locator(`input[data-feature="${kind}:samba"]`).isChecked(), true, kind);
+  await page.locator('input[data-feature="pc:samba"]').uncheck();
+  await page.click('button.seg[data-view="net"]');
+  await page.dblclick('g.device:has-text("PC1")');
+  await win.locator('.win-tab:has-text("Configuración")').first().click();
+  assert.equal(await win.locator('input[name="dev-samba"]').count(), 0, 'no Samba box on a PC');
+  await win.locator('.win-close').click();
+  await page.dblclick('g.device:has-text("SRV")');
+  await win.locator('.win-tab:has-text("Configuración")').first().click();
+  assert.equal(await win.locator('input[name="dev-samba"]').isChecked(), true, 'the server keeps its Samba, ticked');
   assert.deepEqual(errors, []);
-  console.log('e2e samba OK: PC Servicios follows apt install/remove (no web GUI), Samba panel adds a share on SRV');
+  console.log('e2e samba OK: PC Servicios follows apt install/remove (no web GUI), Samba panel adds a share on SRV, Samba per kind in the lab settings');
 } finally {
   await browser.close();
   server.kill();
