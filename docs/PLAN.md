@@ -1590,3 +1590,240 @@ Tres fallos menores de la revisión de la fase 50, con sus pruebas en `tests/ser
   con un nombre relativo en Z: no abre un archivo de C:; una letra que se vuelve a conectar a otro recurso empieza en su
   raíz; una ruta de recurso que pasa por un archivo da el error de ruta en vez de una excepción; borrar un recurso solo
   borra recursos (no `[global]`). `cd nada\..` funciona como en Windows (que resuelve `..` sobre el texto).
+
+### Fase 53: resolución de nombres en GNU/Linux con systemd-resolved (DNS, LLMNR, mDNS), NSS y WINS (v0.35.0) — plan
+
+Petición: que la terminal GNU/Linux resuelva nombres con systemd-resolved (DNS, mDNS y LLMNR) y con NetBIOS, integrado
+en NSS y con WINS; documentarlo en la Ayuda y comprobar que funciona con `resolvectl`.
+
+Objetivo: GNU/Linux deja de ser «el que no habla LLMNR». systemd-resolved pasa a ser una unidad real, con su
+`/etc/systemd/resolved.conf`, sus ámbitos por interfaz (DNS, LLMNR/IPv4, mDNS/IPv4) y su fuente NSS `resolve`
+(libnss-resolve). NetBIOS gana un servidor WINS de verdad (nmbd con `wins support = yes`), y lo usan tanto los
+clientes GNU/Linux (`wins server =`) como los Windows (TCP/IP → WINS, `ipconfig /all`, nodo h).
+
+Decisiones del usuario (no se reabren):
+- **Herramientas**: `resolvectl` comprueba DNS, mDNS y LLMNR, nunca NetBIOS, como en Ubuntu. La orden nueva
+  `getent hosts|ahosts NOMBRE` sigue toda la línea `hosts:` de nsswitch, `wins` incluido. `nmblookup` gana
+  `-U servidor` y `-R` para consultar NetBIOS y WINS.
+- **WINS completo**:
+  - nmbd con `wins support = yes` hace de servidor y guarda los registros.
+  - Un cliente GNU/Linux con `wins server = IP` pregunta por unicast, que cruza routers, y por difusión si falla.
+  - Un cliente Windows tiene su WINS en la pestaña TCP/IP, `ipconfig /all` lo muestra, y NetBT se registra y
+    pregunta al WINS antes de la difusión (nodo h).
+- **LLMNR y mDNS empiezan apagados**, como en Ubuntu (`-LLMNR -mDNS`). Se encienden de dos maneras:
+  - `LLMNR=yes` / `MulticastDNS=yes` en resolved.conf y `systemctl restart systemd-resolved`;
+  - `resolvectl llmnr|mdns eth0 yes`.
+
+  Un GNU/Linux con LLMNR responde por su nombre. `resolvectl query pc2` dice
+  `-- Information acquired via protocol LLMNR/IPv4 in …`, y un nombre `.local` dice `mDNS/IPv4`.
+
+**Por decidir o contrastar en una VM Ubuntu real antes del commit 4:**
+1. **Global frente a enlace.**
+   - En resolved real, el soporte de cada enlace es el MÍNIMO entre el valor global y el del enlace. mDNS necesita
+     los dos en yes. Por defecto el enlace tiene LLMNR=yes y mDNS=no.
+   - La salida típica sería:
+     - global: `-LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported`;
+     - enlace: `+DefaultRoute +LLMNR -mDNS …` con `Current Scopes: DNS` (confianza ~70 %).
+   - **Decidido (usuario): MIN(global, enlace)**, como resolved real, aislado en `effectiveSupport()` para poder
+     cambiarlo con una línea.
+2. `nmblookup -R` sin `-U` sigue preguntando por difusión, aunque haya `wins server` (~80 %). Al WINS se pregunta
+   con `nmblookup -U IP -R nombre`.
+3. La versión de systemd no cuadra: el catálogo trae `258.1-1ubuntu1` y los comentarios de resolvectl dicen 257.
+   Se unifica, y libnss-resolve lleva la versión de systemd.
+4. resolvectl ya no muestra `+mDNS` por tener avahi: solo depende de resolved. Se reescribe el caso de la fase 50
+   en `tests/shells/resolvectl.test.ts`. avahi sigue resolviendo `.local` por NSS (`mdns4_minimal`).
+
+#### Modelo
+
+- **resolved.conf**:
+  - `host-system.ts` siembra el fichero de Ubuntu, con `[Resolve]`, `#LLMNR=no` y `#MulticastDNS=no`.
+  - Lo lee `src/shells/resolved-conf.ts`, como fichero no fiable: límites de tamaño y de líneas, solo `[Resolve]`,
+    valores `yes|no|resolve` (también true/false/1/0); lo demás se ignora.
+  - Solo se lee al arrancar o reiniciar la unidad, o al cargar. El resultado queda en `resolved.ts`
+    (`resolvedConfig` en un WeakMap). Editar sin reiniciar no cambia nada.
+- **Por enlace**: `resolvectl llmnr|mdns LINK [yes|no|resolve]`.
+  - Cambiarlo exige root; sin valor, muestra `Link 2 (eth0): no`.
+  - Se guarda en los overrides de `resolved.ts`. `revert` o un cambio de IP lo quitan, como pasa ya con dns/domain.
+  - No se guarda en la topología.
+- **Soporte efectivo**: `effectiveSupport(host, link, 'llmnr'|'mdns')`, con el orden no < resolve < yes. `resolve`
+  solo pregunta; `yes` pregunta y responde.
+- **Unidad `systemd-resolved`** en `PKG_UNITS`:
+  - campos nuevos `base: true` (siempre instalada) y `path` (`/usr/lib/systemd/systemd-resolved` en
+    `systemctl status`);
+  - en el journal, `Positive Trust Anchors:` … y `Using system hostname '…'.` (función `startLines(u)`);
+  - no entra en Registros salvo que se decida; los ficheros antiguos sin `units` deben cargar igual.
+- **Resolved parado**: la fuente `resolve` da UNAVAIL y glibc pasa a `dns`; los respondedores LLMNR y mDNS de Linux
+  callan. No se simula el stub 127.0.0.53.
+- **libnss-resolve**:
+  - Paquete nuevo con la versión de systemd. Su postinst llama a `withResolve(text, on)` de `nsswitch.ts`, que pone
+    `resolve [!UNAVAIL=return]` antes de `dns` y lo quita al desinstalar (como `withMdns`).
+  - Ubuntu Server y Desktop no lo traen de serie (~85 %). Sin él, `ping pc2` y `getent hosts pc2` no usan LLMNR
+    aunque `resolvectl query pc2` sí. Es la lección central del laboratorio.
+- **Semántica de `resolve`** (nuevo `src/shells/nss-resolve.ts`, común a `resolvectl query` y a NSS):
+  - primero lo sintético: localhost, el nombre propio, `_gateway`;
+  - `.local`: mDNS si hay ámbito; si no, `No appropriate name servers or networks for name found`;
+  - un nombre de una etiqueta: DNS (solo con dominios de búsqueda) y LLMNR en paralelo;
+  - lo demás: DNS;
+  - el resultado lleva el protocolo: `DNS`, `LLMNR/IPv4` o `mDNS/IPv4`.
+- **Acciones de nsswitch**:
+  - `hostsSources()` devuelve las acciones (`{status, negate, action}`); `notFoundReturn` se mantiene, derivado.
+  - Con `resolve [!UNAVAIL=return] dns wins` y resolved en marcha, `wins` no llega a preguntarse. Hay que explicarlo
+    en la documentación.
+- **Respondedores de Linux**:
+  - `registerLinuxLlmnr(pred)` y `registerLinuxMdns(pred)`; `topology.ts` les pasa los predicados desde
+    `shells/resolved.ts`, así que net/ no importa shells/.
+  - Con `resolve`, el equipo pregunta pero no responde.
+- **WINS** (nuevo `src/net/wins.ts`, sin imports de shells):
+  - **Base por servidor**: guarda sufijo, grupo, IPs y caducidad, con un TTL de 6 días (`max wins ttl`, por
+    verificar) y un máximo de entradas.
+  - **Rol de servidor**: `setWinsServer(host, on)`, que llama pkg-service al arrancar o recargar nmbd.
+  - **Operaciones**: registro, refresco, liberación y consulta unicast con RD; si el nombre no está, NAM_ERR
+    (rcode 3).
+  - **Enganche en netbios.ts**: `take()` entrega el unicast a `registerWinsHandler(fn)`.
+  - **Cliente Linux**: `winsServersOf(host)` lee smb.conf en cada consulta; se registra al arrancar nmbd con
+    `wins server`.
+  - **Cliente Windows**: `setWindowsWins` / `windowsWins` en un registro débil, fuera de host.ts. Se registra al poner
+    el WINS, cuando cambia la IP (solo entonces, para evitar tormentas) y al cargar.
+- **smb.conf**: claves `wins support` y `wins server` (IPs separadas por espacios o comas; las que no son IP se
+  descartan).
+  - Si están las dos, testparm da
+    `ERROR: both 'wins support = true' and 'wins server = <server list>' cannot be set in the smb.conf file. nmbd will abort with this setting.`
+    (~75 %), y nmbd no arranca.
+- **Windows** (`windowsLinkResolve`): con WINS, primero la consulta unicast al WINS; si falla, LLMNR y la difusión en
+  paralelo, como ahora.
+- **DHCP opción 44**: solo para pools IOS, cuyo servidor ya la envía (`dhcp/server.ts:358`).
+  - **Ojo**: `src/dhcp/client.ts` todavía no la lee. Hay que añadir `winsServers` al `Lease`.
+  - Windows usa el WINS manual o, si no lo hay, el del lease.
+
+#### Salida literal (punto de partida; contrastar en la VM)
+
+- `resolvectl status`, global:
+  ```
+  Global
+           Protocols: -LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported
+    resolv.conf mode: stub
+  ```
+- `resolvectl status`, enlace por defecto:
+  ```
+  Link 2 (eth0)
+      Current Scopes: DNS
+           Protocols: +DefaultRoute +LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported
+  ```
+  Con todo encendido: `Current Scopes: DNS LLMNR/IPv4 mDNS/IPv4`.
+- `resolvectl query pc2`: `pc2: 192.168.1.12` y `-- link: eth0`, seguido de
+  `-- Information acquired via protocol LLMNR/IPv4 in 1.2ms.`. El protocolo deja de estar fijo en
+  `resolvectl-query.ts`.
+- `resolvectl llmnr eth0` muestra `Link 2 (eth0): no`. Sin root:
+  `Failed to set LLMNR support: Interactive authentication required.`
+- `getent hosts pc2`:
+  - salida `192.168.1.12    pc2`, con formato `%-15s %s`;
+  - exit 0; si no lo encuentra, nada y exit 2;
+  - `getent foo x` da `Unknown database: foo` y exit 1;
+  - una IP como clave hace la búsqueda inversa.
+- `getent ahosts pc2`: líneas STREAM / DGRAM / RAW con formato `%-15s %-6s %s` (las dos últimas acaban en espacio).
+- `nmblookup -U 192.168.1.10 -R pc2`:
+  - primero `querying pc2 on 192.168.1.10`, después `192.168.1.12 pc2<00>`;
+  - si falla, `name_query failed to find name pc2`.
+- `ipconfig /all`: `   Primary WINS Server.............: 192.168.1.10`, solo si hay WINS.
+- Simulación (`nbnsFields`): filas Opcode, RD, TTL y Rcode, con claves `pdu.*` nuevas en es y en.
+
+#### División de ficheros y ciclos
+
+- `src/net/topology.ts` (398 líneas): primero se extrae `hostRecord`/`restore` a `src/net/topology-host.ts`, en un
+  commit `refactor:`. Allí va el campo `wins?`, validado como IP.
+- `src/shells/net-tools.ts`: `linuxLookup` sale a `src/shells/nss-hosts.ts`, que usan `resolveHost` y getent.
+- `src/shells/resolvectl.ts`: los verbos `llmnr` y `mdns` van a `src/shells/resolvectl-link.ts`.
+- `src/shells/getent.ts`: orden nueva, registrada en `linux-programs.ts`.
+- `src/net/netbios.ts`: solo cambian el enganche WINS en `take()` y el RD en `nbnsQuery`.
+- `host.ts` (398 líneas) no se toca.
+- Los imports van de shells a net y de net a core. Los predicados de shells llegan a net por registros que se
+  rellenan desde topology.ts.
+
+#### Commits (TDD: prueba en rojo primero; `npm run check` en verde en cada uno)
+
+1. `refactor:` extrae el registro de host de topology.ts. Las pruebas de topología quedan en verde sin cambios.
+2. Acciones de nsswitch y libnss-resolve (`nsswitch.ts`, `apt-catalog.ts`, `apt-scripts.ts`). Pruebas:
+   - al instalar, `files resolve [!UNAVAIL=return] dns`, y con mdns delante;
+   - al desinstalar se quita;
+   - un fichero editado a mano conserva lo demás;
+   - `[!UNAVAIL=return]` se aplica bien.
+3. resolved.conf y la unidad systemd-resolved. Pruebas:
+   - `systemctl status` con `Network Name Resolution`;
+   - editar sin restart no cambia nada; con restart, sí;
+   - ficheros raros (10 000 líneas, valores inválidos);
+   - stop y start.
+4. resolvectl muestra y cambia LLMNR y mDNS. Se reescribe el caso «LLMNR nunca». Pruebas:
+   - los valores por defecto;
+   - el valor global con restart;
+   - el valor por enlace según la decisión 1;
+   - sin root;
+   - `revert`.
+5. LLMNR y mDNS de resolved por la red. Pruebas:
+   - WIN1 encuentra a LNX1 por LLMNR;
+   - `resolvectl query` muestra `LLMNR/IPv4` y `mDNS/IPv4`;
+   - `resolve` no responde;
+   - resolved parado no responde;
+   - el TTL 1 no cruza el router.
+6. `getent hosts` y `ahosts`, con su entrada en `src/docs/utils.ts`. Pruebas:
+   - las fuentes files, dns y resolve; esta última solo con libnss-resolve;
+   - `ping` falla sin libnss-resolve aunque resolvectl funcione;
+   - `wins` no se alcanza detrás de `resolve` mientras resolved está en marcha, y sí cuando está parado;
+   - los códigos de salida y una IP como clave.
+7. smb.conf con `wins support` y `wins server`. Pruebas: el análisis de las IPs, el error de testparm y que nmbd no
+   arranca con las dos claves.
+8. Servidor WINS en nmbd. Pruebas:
+   - registro al arrancar;
+   - consulta unicast desde otra subred, a través del router;
+   - NAM_ERR;
+   - liberación al parar;
+   - refresco y caducidad con el reloj simulado;
+   - límite de entradas.
+9. `nmblookup -U` y `-R`, y la fuente NSS `wins` pregunta primero al WINS y luego por difusión. Se actualiza el uso
+   de `-h`.
+10. WINS en Windows (`win-names.ts`, `windows.ts`, `ui/host-ip.ts`, `topology-host.ts`, `dhcp/client.ts`). Pruebas:
+    - `Primary WINS Server` en `ipconfig /all`;
+    - `ping` entre redes por WINS;
+    - la opción 44 de IOS llega al WINS;
+    - guardar y cargar, rechazando lo que no es IP;
+    - el campo de la UI, escapado.
+11. PDU NBNS con opcode, RD, TTL y rcode en Simulación, con i18n es/en.
+12. `docs:`, la resolución en GNU/Linux (`names.ts` es/en, `utils.ts` es/en, `apt.ts`):
+    - tabla de fuentes NSS con `resolve`;
+    - global frente a enlace y el restart;
+    - qué ve cada herramienta (resolvectl, getent, nmblookup);
+    - WINS y el nodo h.
+13. Laboratorio «Nombres con systemd-resolved y WINS» (nuevo `src/net/labs-resolved.ts`). Topología: dos LAN con
+    router, SRV-WINS, LNX-A, LNX-B, WIN-A y WIN-B. Ejercicios:
+    - encender LLMNR y comprobarlo con resolvectl;
+    - ver que ping no lo usa hasta instalar libnss-resolve;
+    - poner `wins server` y comprobarlo con `nmblookup -U … -R` y `getent`;
+    - configurar el WINS de WIN-B y comprobarlo con `ipconfig /all`.
+14. `test:` e2e (`scripts/e2e-names.mjs`): resolved.conf con nano y restart, `resolvectl status`, getent, nmblookup,
+    el WINS en la UI y las filas de Simulación. Se ajustan `e2e-dns.mjs` y `e2e-docs.mjs` si comprueban textos viejos.
+15. `chore: v0.35.0`: la versión, about-data y PLAN.md.
+
+`security-reviewer` (opus) revisa los commits 3, 7, 8 y 10. La cobertura debe ser ≥ 80 % en `wins.ts`,
+`resolved-conf.ts`, `nss-resolve.ts`, `nss-hosts.ts` y `getent.ts`.
+
+**Seguridad**:
+- resolved.conf, smb.conf, nsswitch.conf y las topologías cargadas no son fiables. Llevan límites de tamaño, líneas
+  y entradas, valores de una lista blanca, regex sin backtracking catastrófico y IPs pasadas por `parseIp`.
+- La base WINS tiene un máximo de entradas y un TTL acotado.
+- Los nombres NetBIOS siguen limitados a 15 caracteres.
+- El campo WINS y los nombres registrados se muestran con `textContent`.
+
+**Riesgos**:
+- La fidelidad de las salidas; se mitiga contrastando en la VM.
+- `hostsSources` afecta a todas las búsquedas de Linux; las pruebas de ping, curl y ssh por nombre deben seguir en
+  verde.
+- La unidad base en `hostPanels`, `journalUnits` y `pkgUnitsRecord`.
+- Las tormentas de registro de Windows.
+- Los tamaños: topology.ts y host.ts.
+
+**Límites** (para fases posteriores):
+- sin el stub 127.0.0.53 ni la reactivación por D-Bus;
+- sin DNSSEC, DoT ni `resolvectl monitor`;
+- WINS sin conflictos, challenge, `wins.dat`, `wins proxy` ni `name resolve order`;
+- sin replicación de WINS ni `netsh … winsservers`;
+- sin opción 44 en Kea ni en el DHCP de PT;
+- sin IPv6.
