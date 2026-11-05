@@ -8,8 +8,8 @@
 import type { Host } from '../devices/host.ts';
 import { readHostFile } from '../devices/server-firewall.ts';
 import { SMB_CONF, parseSmbConf } from '../services/smb-conf.ts';
-import { setWinsServer, winsAsk, winsSend, winsSendAll } from '../net/wins.ts';
-import { WORKSTATION, nbnsResolve, ownNames } from '../net/netbios.ts';
+import { setWinsServer, winsRegister, winsResolve, winsSendAll } from '../net/wins.ts';
+import { WORKSTATION, nbnsResolve } from '../net/netbios.ts';
 import { unitRunning } from '../net/pkg-units.ts';
 
 /** Samba's default «max ttl»: what a client asks of its WINS server. */
@@ -43,16 +43,11 @@ function refreshLoop(host: Host): void {
   });
 }
 
-/** The first name goes to each server in turn until one takes it (silence or a refusal: the next); the others follow. */
+/** Registers with the first server of the list that takes the names, and refreshes them there. */
 function registerWith(host: Host, servers: readonly number[], gen: number): void {
-  const [server, ...rest] = servers;
-  const [first, ...others] = ownNames(host);
-  if (server === undefined || first === undefined) return;
-  winsSend(host, server, 'registration', first, WINS_CLIENT_TTL_S, (m) => {
-    if (generation(host) !== gen) return;
-    if (m === undefined || (m.rcode ?? 0) !== 0) return registerWith(host, rest, gen);
+  winsRegister(host, servers, WINS_CLIENT_TTL_S, () => generation(host) === gen, (server) => {
+    if (server === undefined) return;
     registeredWith.set(host, server);
-    for (const n of others) winsSend(host, server, 'registration', n, WINS_CLIENT_TTL_S);
     refreshLoop(host);
   });
 }
@@ -80,20 +75,8 @@ export function bootWins(host: Host): void {
   if (unitRunning(host, 'nmbd')) nmbdStarted(host);
 }
 
-/** A group name's address in WINS: not one host's. */
-const GROUP_ADDRESS = 0xffffffff;
-
-/**
- * libnss_wins (the `wins` of «hosts:»): the servers of `wins server`, in order, until one answers (a negative answer
- * ends there), then a broadcast to the subnet.
- */
+/** libnss_wins (the `wins` of «hosts:»): the servers of `wins server`, then a broadcast to the subnet. */
 export function winsLookup(host: Host, name: string): number | undefined {
-  for (const server of parseSmbConf(readHostFile(host, SMB_CONF) ?? '').winsServers) {
-    const r = winsAsk(host, server, name, WORKSTATION);
-    if (r === undefined) continue;
-    const ip = (r.rcode ?? 0) === 0 ? r.addresses?.[0] : undefined;
-    if (ip !== undefined && ip !== GROUP_ADDRESS) return ip;
-    break;
-  }
-  return nbnsResolve(host, name);
+  const servers = parseSmbConf(readHostFile(host, SMB_CONF) ?? '').winsServers;
+  return winsResolve(host, servers, name, WORKSTATION) ?? nbnsResolve(host, name);
 }

@@ -131,3 +131,34 @@ export function winsSendAll(host: Host, server: number, op: WinsOpcode, ttlS: nu
 export function winsAsk(host: Host, server: number, name: string, suffix: number): NbnsMessage | undefined {
   return nbnsAsk(host, { type: 'NB', name, suffix, broadcast: false, rd: true }, server);
 }
+
+/**
+ * The host's names go to the first server of the list that takes the first one (silence or a refusal: the next); the
+ * others follow. `done` gets that server and the TTL it granted, or undefined; `live` false stops it (an older run).
+ */
+export function winsRegister(host: Host, servers: readonly number[], ttlS: number, live: () => boolean, done: (server: number | undefined, ttlS: number) => void): void {
+  const [server, ...rest] = servers;
+  const [first, ...others] = ownNames(host);
+  if (server === undefined || first === undefined) return done(undefined, 0);
+  winsSend(host, server, 'registration', first, ttlS, (m) => {
+    if (!live()) return;
+    if (m === undefined || (m.rcode ?? 0) !== 0) return winsRegister(host, rest, ttlS, live, done);
+    for (const n of others) winsSend(host, server, 'registration', n, ttlS);
+    // Bounded whoever answered: a TTL of 0 or NaN would refresh at the same instant, forever.
+    done(server, grantedTtl(m.ttl ?? ttlS));
+  });
+}
+
+/**
+ * A name asked of the servers in order, until one answers: its unique address, or undefined (nobody answered, the
+ * name is not there, or it is a group name). A negative answer ends the search, as in libnss_wins and NetBT.
+ */
+export function winsResolve(host: Host, servers: readonly number[], name: string, suffix: number): number | undefined {
+  for (const server of servers) {
+    const r = winsAsk(host, server, name, suffix);
+    if (r === undefined) continue;
+    const ip = (r.rcode ?? 0) === 0 ? r.addresses?.[0] : undefined;
+    return ip === GROUP_ADDRESS ? undefined : ip;
+  }
+  return undefined;
+}

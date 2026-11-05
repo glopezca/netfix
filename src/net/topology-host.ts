@@ -9,6 +9,7 @@ import { autoPackagesOf, packagesOf, parsePackages, setPackageAuto, setPackageIn
 import { pkgUnitsRecord, restorePkgUnits } from './pkg-units.ts';
 import { bootPkgUnits } from '../shells/pkg-service.ts';
 import { bootWins } from '../shells/samba-wins.ts';
+import { bootWindowsWins, setWindowsWins, validWins, windowsWinsManual } from './win-wins.ts';
 import type { Host } from '../devices/host.ts';
 import { Pc } from '../devices/pc.ts';
 import { Server } from '../devices/server.ts';
@@ -28,7 +29,8 @@ export function hostRecord(d: Host): PcRecord {
   const packages = packagesOf(d);
   const autoPackages = autoPackagesOf(d);
   const units = pkgUnitsRecord(d);
-  const names = { ...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), ...(autoPackages.length ? { autoPackages } : {}), ...(units ? { units } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
+  const wins = windowsWinsManual(d);
+  const names = { ...(wins !== undefined ? { wins: formatIp(wins) } : {}), ...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), ...(autoPackages.length ? { autoPackages } : {}), ...(units ? { units } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
   if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
   const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
   return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
@@ -48,6 +50,8 @@ export function restoreHost(device: Host, pc: PcRecord, server: ServerRecord | u
   if (pc.files !== undefined) restoreFiles(device, validFileRecords(pc.files));
   if (pc.mode === 'dhcp') device.config = { mode: 'dhcp' };
   else device.setStatic(parseStatic(pc));
+  const wins = typeof pc.wins === 'string' ? parseIp(pc.wins) : null;
+  setWindowsWins(device, validWins(wins) ? wins : undefined);
   if (device instanceof Server) device.web.reload();
   if (device instanceof Server && server) restoreServer(device, server);
   if (device instanceof Pc && pc.apps) restoreApps(device, pc.apps);
@@ -66,8 +70,9 @@ export function parseStatic(pc: PcRecord): { ip?: number; prefix?: number; gatew
   return { ip: opt(pc.ip), prefix: pc.mask ? parseMask(pc.mask) ?? undefined : undefined, gateway: opt(pc.gateway), dns: opt(pc.dns) };
 }
 
-/** Once the links of a read-back lab are up: DHCP asks for a lease again, and nmbd registers with its WINS server. */
+/** Once the links of a read-back lab are up: DHCP asks for a lease again, and nmbd or NetBT register with their WINS. */
 export function bootLinked(device: Host): void {
   if (device.config.mode === 'dhcp') device.useDhcp();
   bootWins(device);
+  bootWindowsWins(device);
 }

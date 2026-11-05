@@ -17,6 +17,7 @@ import { bindLab } from './device-apps.ts';
 import { registerMdns, setMdnsResponder } from './mdns.ts';
 import { registerLlmnr, setLlmnrResponder } from './llmnr.ts';
 import { attachNetbios, registerSmbServer, registerWinsHandler } from './netbios.ts';
+import { attachWindowsWins } from './win-wins.ts';
 import { winsTake } from './wins.ts';
 import { smbServe } from '../services/smb-server.ts';
 import { resolvedAnswers } from '../shells/resolved.ts';
@@ -67,6 +68,8 @@ export interface PcRecord {
   readonly mask?: string;
   readonly gateway?: string;
   readonly dns?: string;
+  /** Windows: the WINS server of the TCP/IP tab (v0.35); untrusted until validWins. */
+  readonly wins?: string;
   readonly sendClientId?: boolean;
   /** Custom option 61 (hex), when it is not 01 + MAC. */
   readonly clientId?: string;
@@ -167,6 +170,7 @@ export class Topology {
     if (device instanceof Host) {
       bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff, samba: this.allowSamba }));
       attachNetbios(device);
+      attachWindowsWins(device);
     }
     this.net.addDevice(device);
     const placed: Placed = { device, label, x, y };

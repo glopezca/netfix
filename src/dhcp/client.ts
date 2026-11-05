@@ -12,6 +12,8 @@ export interface Lease {
   readonly obtainedAt: number;
   readonly routers: readonly number[];
   readonly dnsServers: readonly number[];
+  /** Option 44 (NetBIOS name servers: WINS). */
+  readonly winsServers?: readonly number[];
   readonly domainName?: string;
   readonly hostname?: string;
   readonly tftpServers?: readonly number[];
@@ -149,6 +151,7 @@ export class DhcpClient {
       obtainedAt: this.env.now(),
       routers: o.routers ?? [],
       dnsServers: o.dnsServers ?? [],
+      winsServers: o.netbiosServers,
       domainName: o.domainName,
       hostname: o.hostname,
       tftpServers: o.tftpServers,
