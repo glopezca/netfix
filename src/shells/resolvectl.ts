@@ -1,6 +1,6 @@
 /**
  * resolvectl (systemd-resolved) in the Linux terminals: status, query, dns, domain, revert, flush-caches,
- * reset-server-features and statistics, as systemd 257 prints them. Changes are runtime state (shells/resolved.ts).
+ * reset-server-features and statistics, as systemd 258 prints them. Changes are runtime state (shells/resolved.ts).
  */
 import type { Ctx, CommandFn } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';

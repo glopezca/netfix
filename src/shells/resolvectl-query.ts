@@ -1,5 +1,5 @@
 /**
- * `resolvectl query`: names and addresses through systemd-resolved, worded as systemd 257 prints them. The same
+ * `resolvectl query`: names and addresses through systemd-resolved, worded as systemd 258 prints them. The same
  * resolver as ping and dig: /etc/hosts and the host's own name first (synthetic data), then DNS with the search list.
  */
 import type { Ctx } from '../bash/types.ts';

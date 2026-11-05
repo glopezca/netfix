@@ -2,7 +2,8 @@
 import { mdnsResolve } from '../net/mdns.ts';
 import { nbnsResolve } from '../net/netbios.ts';
 import { windowsLinkResolve } from '../net/win-names.ts';
-import { hostsSources } from './nsswitch.ts';
+import { hostsSources, nssNext } from './nsswitch.ts';
+import type { NssStatus } from './nsswitch.ts';
 import { hasPackage } from '../net/host-packages.ts';
 import type { Host } from '../devices/host.ts';
 import type { AppPayload, DnsMessage, DnsType, HttpHeaders, HttpMethod } from '../net/packets.ts';
@@ -116,18 +117,42 @@ function windowsLookup(host: Host, target: string): Resolved {
   return ip(windowsLinkResolve(host, target), target) ?? dns;
 }
 
-/** GNU/Linux: the sources of «hosts:» in /etc/nsswitch.conf, in order (files was already asked). */
+/** What one NSS module answers: its status for glibc and, when it found the name, the address. */
+interface NssStep {
+  readonly status: NssStatus;
+  readonly result?: Resolved;
+}
+
+const notFound: NssStep = { status: 'NOTFOUND' };
+const unavail: NssStep = { status: 'UNAVAIL' };
+const DNS_STATUS: Readonly<Record<Extract<Resolved, { kind: 'error' }>['reason'], NssStatus>> = { noserver: 'UNAVAIL', timeout: 'TRYAGAIN', nxdomain: 'NOTFOUND', nodata: 'NOTFOUND' };
+
+/** One source of «hosts:»; a module that is not installed (or a source glibc does not know) is UNAVAIL. */
+function nssStep(host: Host, source: string, target: string): NssStep {
+  if (source === 'dns') {
+    const r = dnsStep(host, target);
+    return { status: r.kind === 'ip' ? 'SUCCESS' : DNS_STATUS[r.reason], result: r };
+  }
+  if (source.startsWith('mdns') && (hasPackage(host, 'libnss-mdns') || hasPackage(host, 'avahi-daemon'))) {
+    // The _minimal modules only take .local names: anything else is UNAVAIL, so [NOTFOUND=return] does not stop it.
+    if (source.endsWith('_minimal') && !isLocalName(target)) return unavail;
+    const r = ip(mdnsResolve(host, normalizeName(target), false), normalizeName(target));
+    return r ? { status: 'SUCCESS', result: r } : notFound;
+  }
+  if (source === 'wins' && hasPackage(host, 'libnss-winbind') && hasPackage(host, 'winbind')) {
+    const r = singleLabel(target) ? ip(nbnsResolve(host, target), target) : undefined;
+    return r ? { status: 'SUCCESS', result: r } : notFound;
+  }
+  return unavail;
+}
+
+/** GNU/Linux: the sources of «hosts:» in /etc/nsswitch.conf, in order, with their [STATUS=action] (files was already asked). */
 function linuxLookup(host: Host, target: string): Resolved {
   let last: Resolved = { kind: 'error', reason: 'nxdomain' };
-  for (const { source, notFoundReturn } of hostsSources(host)) {
-    if (source === 'dns') last = dnsStep(host, target);
-    else if (source.startsWith('mdns') && (hasPackage(host, 'libnss-mdns') || hasPackage(host, 'avahi-daemon')) && (source === 'mdns' || source === 'mdns4' || isLocalName(target))) {
-      last = ip(mdnsResolve(host, normalizeName(target), false), normalizeName(target)) ?? { kind: 'error', reason: 'nxdomain' };
-      if (last.kind === 'error' && notFoundReturn && isLocalName(target)) return last;
-    } else if (source === 'wins' && hasPackage(host, 'libnss-winbind') && hasPackage(host, 'winbind') && singleLabel(target)) {
-      last = ip(nbnsResolve(host, target), target) ?? last;
-    }
-    if (last.kind === 'ip') return last;
+  for (const { source, actions } of hostsSources(host)) {
+    const step = nssStep(host, source, target);
+    if (step.result) last = step.result;
+    if (nssNext(actions, step.status) === 'return') return step.status === 'SUCCESS' ? last : step.result ?? { kind: 'error', reason: 'nxdomain' };
   }
   return last;
 }

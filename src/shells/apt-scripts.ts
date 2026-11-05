@@ -1,14 +1,14 @@
 /**
  * What a package's maintainer scripts change besides the package itself: libnss-mdns (avahi-daemon brings it) puts
  * mdns4_minimal [NOTFOUND=return] into the «hosts:» line of /etc/nsswitch.conf on install and takes it out when the
- * last package that brings it goes; samba starts smbd and nmbd, and removing a package stops its units
+ * last package that brings it goes, and libnss-resolve does the same with resolve [!UNAVAIL=return]; samba starts smbd and nmbd, and removing a package stops its units
  * (pkg-service.ts). The dependencies themselves are recorded by apt (apt-auto.ts).
  */
 import type { Vfs } from '../bash/vfs.ts';
 import { FsError } from '../bash/vfs.ts';
 import type { Host } from '../devices/host.ts';
 import { hasPackage } from '../net/host-packages.ts';
-import { DEFAULT_NSSWITCH, NSSWITCH, withMdns } from './nsswitch.ts';
+import { DEFAULT_NSSWITCH, NSSWITCH, withMdns, withResolve } from './nsswitch.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { shippedFiles } from './apt-defaults.ts';
 import { pkgInstalled, pkgRemoved } from './pkg-service.ts';
@@ -17,10 +17,10 @@ import { notifyAppsChange } from '../net/device-apps.ts';
 /** Packages that add tabs to the Servicios of a GNU/Linux host (net/pkg-units.ts hostPanels). */
 const WITH_PANELS: ReadonlySet<string> = new Set(['samba', 'nftables']);
 
-function editNsswitch(fs: Vfs, on: boolean): void {
+function editNsswitch(fs: Vfs, edit: (text: string) => string): void {
   let text = DEFAULT_NSSWITCH;
   try { text = fs.readFile(NSSWITCH); } catch { /* a missing file is written again from Ubuntu's default */ }
-  fs.writeFile(NSSWITCH, withMdns(text, on));
+  fs.writeFile(NSSWITCH, edit(text));
 }
 
 /** The package's configuration files on a PC, unless they are there already (dpkg keeps the conffiles you edited). */
@@ -41,8 +41,9 @@ export function afterPackage(fs: Vfs, host: Host, name: string, on: boolean): vo
   // A Server or GNU/Linux router writes them from its Servicios settings (linux-files.ts); smb.conf has none.
   if (on && (!runsServices(host.kind) || name === 'samba')) writeShipped(fs, name);
   if (name === 'avahi-daemon' || name === 'libnss-mdns') {
-    editNsswitch(fs, hasPackage(host, 'libnss-mdns'));
+    editNsswitch(fs, (text) => withMdns(text, hasPackage(host, 'libnss-mdns')));
   }
+  if (name === 'libnss-resolve') editNsswitch(fs, (text) => withResolve(text, on));
   if (on) pkgInstalled(host, name);
   else pkgRemoved(host, name);
   if (WITH_PANELS.has(name)) notifyAppsChange(host);
