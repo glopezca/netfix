@@ -14,13 +14,17 @@ import type { LabFeatures } from './lab-features.ts';
 import { parseMissionState } from '../labs/mission-state.ts';
 import type { MissionState } from '../labs/mission-state.ts';
 import { bindLab } from './device-apps.ts';
-import { registerMdns } from './mdns.ts';
-import { registerLlmnr } from './llmnr.ts';
+import { registerMdns, setMdnsResponder } from './mdns.ts';
+import { registerLlmnr, setLlmnrResponder } from './llmnr.ts';
 import { attachNetbios, registerSmbServer } from './netbios.ts';
 import { smbServe } from '../services/smb-server.ts';
+import { resolvedAnswers } from '../shells/resolved.ts';
 
 registerMdns();
 registerLlmnr();
+// GNU/Linux hosts answer LLMNR and mDNS through systemd-resolved, when it runs and the link says yes.
+setLlmnrResponder((h, iface) => resolvedAnswers(h, iface, 'llmnr'));
+setMdnsResponder((h, iface) => resolvedAnswers(h, iface, 'mdns'));
 registerSmbServer(smbServe);
 import type { Annotation, AnnotationInit } from './annotations.ts';
 import type { CableKind, Endpoint, Link } from './network.ts';

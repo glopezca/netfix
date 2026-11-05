@@ -3,9 +3,10 @@
  * not keep them) and its transaction counter. A real change of the device's IP settings (address, gateway, DNS,
  * netplan search list), as a new link setup in networkd, drops them; a DHCP renewal with the same lease does not.
  * `resolvectl revert` drops them too, with the LLMNR and mDNS set on each link. Beside them, what the daemon read of
- * resolved.conf when it started.
+ * resolved.conf when it started, and who asks and answers by LLMNR and mDNS on each link.
  */
 import type { Host } from '../devices/host.ts';
+import { RESOLVED_UNIT, pkgUnitState } from '../net/pkg-units.ts';
 import { RESOLVED_DEFAULTS } from './resolved-conf.ts';
 import type { ResolvedConf, ResolveSupport } from './resolved-conf.ts';
 
@@ -89,6 +90,15 @@ export function effectiveSupport(host: Host, link: string, p: Protocol): Resolve
   const own = linkSupport(host, link, p);
   return RANK[global] <= RANK[own] ? global : own;
 }
+
+/** The unit runs (systemctl stop systemd-resolved silences it: no NSS answers, no LLMNR or mDNS). */
+export const resolvedRunning = (host: Host): boolean => host.os === 'linux' && pkgUnitState(host, RESOLVED_UNIT).active;
+
+/** resolved has a scope for the protocol on the link (asks there): it runs, and the link's support is not «no». */
+export const resolvedAsks = (host: Host, link: string, p: Protocol): boolean => resolvedRunning(host) && effectiveSupport(host, link, p) !== 'no';
+
+/** resolved answers for the host's name on a stack interface: it runs and the link's support is «yes». */
+export const resolvedAnswers = (host: Host, iface: string, p: Protocol): boolean => resolvedRunning(host) && effectiveSupport(host, host.linuxIfName(iface), p) === 'yes';
 
 export function countTransaction(host: Host): void {
   transactions.set(host, (transactions.get(host) ?? 0) + 1);

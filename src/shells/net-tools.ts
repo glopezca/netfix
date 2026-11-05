@@ -12,6 +12,8 @@ import type { TcpResult } from '../net/tcp.ts';
 import { runSync } from '../net/sync.ts';
 import { parseIp } from '../core/ip.ts';
 import { dnsQuery, dnsSearch, hostsLookup } from './dns-client.ts';
+import { resolvedLookup } from './nss-resolve.ts';
+import { resolvedRunning } from './resolved.ts';
 
 export type Resolved =
   | { readonly kind: 'ip'; readonly ip: number; readonly name: string; readonly viaDns: boolean }
@@ -56,12 +58,25 @@ const notFound: NssStep = { status: 'NOTFOUND' };
 const unavail: NssStep = { status: 'UNAVAIL' };
 const DNS_STATUS: Readonly<Record<Extract<Resolved, { kind: 'error' }>['reason'], NssStatus>> = { noserver: 'UNAVAIL', timeout: 'TRYAGAIN', nxdomain: 'NOTFOUND', nodata: 'NOTFOUND' };
 
+/**
+ * libnss-resolve: systemd-resolved answers (LLMNR, mDNS, DNS). A stopped unit is UNAVAIL ([!UNAVAIL=return] lets the
+ * next source try); any failure of resolved itself is NOTFOUND.
+ */
+function resolveStep(host: Host, target: string): NssStep {
+  if (!resolvedRunning(host)) return unavail;
+  const r = resolvedLookup(host, target);
+  if (r.kind === 'link') return { status: 'SUCCESS', result: { kind: 'ip', ip: r.ip, name: normalizeName(target), viaDns: false } };
+  const addr = r.kind === 'dns' && r.result.kind === 'answer' && r.result.msg.rcode === 'NOERROR' ? firstAddress(r.result.msg) : undefined;
+  return r.kind === 'dns' && addr !== undefined ? { status: 'SUCCESS', result: { kind: 'ip', ip: addr, name: normalizeName(r.name), viaDns: true } } : notFound;
+}
+
 /** One source of «hosts:»; a module that is not installed (or a source glibc does not know) is UNAVAIL. */
 function nssStep(host: Host, source: string, target: string): NssStep {
   if (source === 'dns') {
     const r = dnsStep(host, target);
     return { status: r.kind === 'ip' ? 'SUCCESS' : DNS_STATUS[r.reason], result: r };
   }
+  if (source === 'resolve' && hasPackage(host, 'libnss-resolve')) return resolveStep(host, target);
   if (source.startsWith('mdns') && (hasPackage(host, 'libnss-mdns') || hasPackage(host, 'avahi-daemon'))) {
     // The _minimal modules only take .local names: anything else is UNAVAIL, so [NOTFOUND=return] does not stop it.
     if (source.endsWith('_minimal') && !isLocalName(target)) return unavail;
