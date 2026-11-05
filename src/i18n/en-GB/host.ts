@@ -21,6 +21,8 @@ export const HOST_EN: Readonly<Record<HostKey, string>> = {
   'host.live': 'The pretty name updates by itself when you change it from the terminal.',
   'host.err.empty': 'The host name cannot be empty.',
   'host.locked': 'in Netfix the host name comes from the device name (Device tab)',
+  'getent.unsimulated': 'Netfix does not simulate the {db} database (it does hosts, ahosts, ahostsv4, ahostsv6, passwd and group)',
+  'getent.tooMany': 'Netfix looks up at most {max} keys per command; the rest are ignored',
   'resolvectl.oneServer': 'Netfix uses one DNS server per device: the first one is kept, {ip}',
   'resolvectl.primaryOnly': 'in Netfix the DNS server and domains are set on the main link ({link})',
   'host.err.long': 'The host name allows at most {max} characters.',

@@ -36,18 +36,31 @@ export function configuredSearchDomains(host: Host): readonly string[] {
   return [...new Set([...host.dnsSearch.map(normalizeName), ...(domain ? [normalizeName(domain)] : [])])];
 }
 
-/** The address /etc/hosts gives a name (first matching line, IPv4), as the `files` source of nsswitch. */
-export function hostsLookup(host: Host, name: string): number | undefined {
+/** One line of /etc/hosts with an IPv4 address: the canonical name first, then the aliases. */
+export interface HostsEntry {
+  readonly ip: number;
+  readonly names: readonly string[];
+}
+
+/** The IPv4 lines of /etc/hosts, in order. */
+export function hostsEntries(host: Host): HostsEntry[] {
   // A device whose Linux system was never used still has the default file (no need to build the system for it).
   const text = peekHostFile(host, '/etc/hosts') ?? `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`;
-  const wanted = normalizeName(name.replace(/\.$/, ''));
-  for (const line of text.split('\n')) {
+  return text.split('\n').flatMap((line) => {
     const [addr, ...names] = line.replace(/#.*/, '').trim().split(/\s+/);
     const ip = addr ? parseIp(addr) : null;
-    if (ip !== null && names.some((n) => normalizeName(n.replace(/\.$/, '')) === wanted)) return ip;
-  }
-  return undefined;
+    return ip !== null && names.length > 0 ? [{ ip, names }] : [];
+  });
 }
+
+/** The first line of /etc/hosts that has the name, as the `files` source of nsswitch. */
+export function hostsEntry(host: Host, name: string): HostsEntry | undefined {
+  const wanted = normalizeName(name.replace(/\.$/, ''));
+  return hostsEntries(host).find((e) => e.names.some((n) => normalizeName(n.replace(/\.$/, '')) === wanted));
+}
+
+/** The address /etc/hosts gives a name (first matching line, IPv4). */
+export const hostsLookup = (host: Host, name: string): number | undefined => hostsEntry(host, name)?.ip;
 
 /**
  * The names the resolver tries, as glibc with ndots:1 (and Windows with its DNS suffix): a name without dots goes
