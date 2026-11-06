@@ -74,6 +74,7 @@ export const SRV_ES = {
   'files.samba': 'Samba (smb.conf)',
   'files.hint': 'Los ficheros tal como están ahora en el disco (cat como root). Los cambios hechos en los paneles o en el terminal se ven al actualizar.',
   'files.none': 'Este servicio no tiene ficheros de configuración en el equipo.',
+  'files.nothing': 'No hay ningún servicio instalado con ficheros de configuración.',
   'dhcp.byClientId': 'Client-ID (opción 61) o, si no la envía, MAC',
   'dhcp.byMac': 'Dirección MAC',
   'dhcp.badStart': 'La dirección IP inicial no es válida.',

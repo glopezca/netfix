@@ -1966,3 +1966,17 @@ fuera de la carpeta, HTML de los paneles).
   - `apt install` de un paquete quitado del laboratorio responde «Error: Unable to locate package X» (apt 3).
   - Ayuda «Compartir carpetas desde Windows» (`win-compartir`) y e2e `scripts/e2e-winshare.mjs`.
   - Pendiente: desactivar la función en el laboratorio no envía la liberación de NOMBRE<20> al servidor WINS (desmarcar la casilla del equipo sí).
+
+### Fase 56: Servicios → Configuración y Registros, solo lo instalado (v0.37.1)
+
+Petición: en las pestañas Configuración y Registros no deben aparecer los servicios no instalados (casilla del equipo
+desmarcada).
+
+- `configSources` (Servicios → Configuración y Estado → Configuración de la gestión web) deja fuera los servicios de
+  Server y router GNU/Linux cuya casilla está desmarcada (SSH, DHCP, DNS, HTTP, correo, firewall, VPN); los parámetros
+  del kernel siguen siempre y Samba solo con su paquete.
+- `src/services/installed-units.ts` (`installedLogUnits`): las unidades de Registros y de la tabla de servicios de
+  Estado en la gestión web, solo de lo instalado; postfix y dovecot con la casilla de correo (parados siguen en la lista, con su registro). Sin nada que mostrar, Configuración lo dice en vez de enseñar los ficheros de SSH.
+- Los laboratorios grabados no cambian (sus servidores tienen marcados los servicios que usan).
+- Pruebas: `tests/services/installed-only.test.ts` (servidor y router colocados desde la paleta, marcar y desmarcar,
+  correo por servicio).

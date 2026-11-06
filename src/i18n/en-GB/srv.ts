@@ -76,6 +76,7 @@ export const SRV_EN: Readonly<Record<SrvKey, string>> = {
   'files.samba': 'Samba (smb.conf)',
   'files.hint': 'The files as they are on disk right now (cat as root). Changes made in the panels or in the terminal show up on refresh.',
   'files.none': 'This service has no configuration files on the device.',
+  'files.nothing': 'No installed service has configuration files.',
   'dhcp.byClientId': 'Client-ID (option 61) or, if not sent, MAC',
   'dhcp.byMac': 'MAC address',
   'dhcp.badStart': 'The start address is not valid.',

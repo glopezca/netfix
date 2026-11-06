@@ -15,6 +15,8 @@ export function filesPanel(server: Host, first = 'ssh'): HTMLElement {
   const sources = configSources(server);
   let selected = sources.some((s) => s.id === first) ? first : sources[0]?.id ?? 'ssh';
   return livePanel((refresh) => {
+    // Nothing installed with files to show: no list, and no other service's files.
+    if (!sources.some((s) => s.id === selected)) return [el('p', { class: 'muted' }, t('files.nothing'))];
     const pick = select(sources.map((s) => [s.id, tDynamic(s.label)] as const), selected);
     pick.addEventListener('change', () => { selected = pick.value; refresh(); });
     const fs = hostFs(server);

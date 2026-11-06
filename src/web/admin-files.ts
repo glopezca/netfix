@@ -12,7 +12,7 @@ import { syntaxPre } from './syntax-html.ts';
 export function filesPage(server: Server, base: string, q: ReadonlyMap<string, string>): Child {
   const sources = configSources(server);
   const current = sources.find((s) => s.id === q.get('svc')) ?? sources[0];
-  if (!current) return null;
+  if (!current) return cards(section(t('srv.files'), t('files.hint'), t('files.nothing')));
   const tabs = sources.map((s) => h('li', { class: s.id === current.id ? 'web-adm-on' : undefined },
     h('a', { href: `${base}/?page=files&svc=${s.id}` }, tDynamic(s.label))));
   const fs = hostFs(server);
