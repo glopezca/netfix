@@ -216,7 +216,7 @@ class App {
 
   /** Configuración → Laboratorio actual: windows reopen with the new tabs, and the change is unsaved work. */
   private setFeatures(next: LabFeatures): void {
-    this.topo.features = next;
+    this.topo.setFeatures(next);
     this.windows.closeAll(); this.afterCommand();
   }
 

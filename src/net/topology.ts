@@ -13,7 +13,7 @@ import { FEATURES_V, fileFeatures } from './lab-features.ts';
 import type { LabFeatures } from './lab-features.ts';
 import { parseMissionState } from '../labs/mission-state.ts';
 import type { MissionState } from '../labs/mission-state.ts';
-import { bindLab } from './device-apps.ts';
+import { bindLab, notifyAppsChange } from './device-apps.ts';
 import { parsePkgsOff } from './lab-packages.ts';
 import { registerMdns, setMdnsResponder } from './mdns.ts';
 import { registerLlmnr, setLlmnrResponder } from './llmnr.ts';
@@ -168,6 +168,12 @@ export class Topology {
   /** The guided lab this workspace is, with the hints already shown. */
   mission: MissionState | undefined;
   private nextDrawing = 1;
+
+  /** Configuración → Laboratorio actual changed: every host re-reads what its lab offers (sharing sends its release). */
+  setFeatures(next: LabFeatures): void {
+    this.features = next;
+    for (const d of this.net.devices.values()) if (d instanceof Host) notifyAppsChange(d);
+  }
 
   add(kind: DeviceKind, x: number, y: number, opts: { id?: string; seed?: number; label?: string } = {}): Placed {
     const id = opts.id ?? `d${this.nextId++}`;
