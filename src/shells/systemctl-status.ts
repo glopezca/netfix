@@ -3,6 +3,8 @@
  * process after a start that failed) and the unit tables of `list-units` and `--failed`.
  */
 import type { UnitStart } from '../services/units.ts';
+import { plain } from './systemd-colors.ts';
+import type { Paint } from './systemd-colors.ts';
 
 /** What `systemctl status` shows of a unit, a Server's own or a package's. */
 export interface UnitView {
@@ -57,26 +59,32 @@ export function relativeTime(from: number, now: number): string {
   return `${d}ms ago`;
 }
 
-/** The process that exited with an error; "Main PID" too when it was the main one (not a control process). */
-function failedLines(v: UnitView, f: { readonly time: number; readonly status: string }): string[] {
+/**
+ * The process that exited with an error; "Main PID" too when it was the main one (not a control process). systemd
+ * paints the unclean exit of a Process line red, not the Main PID's.
+ */
+function failedLines(v: UnitView, f: { readonly time: number; readonly status: string }, p: Paint): string[] {
   const exited = `(code=exited, status=${f.status})`;
-  const lines = [`     Active: failed (Result: exit-code) since ${absoluteTime(f.time)}; ${relativeTime(f.time, v.now)}`];
-  if (v.start) lines.push(`    Process: ${v.start.pid ?? v.pid} ${v.start.exec} ${exited}`);
+  const lines = [`     Active: ${p('failed', 'red')} (Result: exit-code) since ${absoluteTime(f.time)}; ${relativeTime(f.time, v.now)}`];
+  if (v.start) lines.push(`    Process: ${v.start.pid ?? v.pid} ${v.start.exec} ${p(exited, 'red')}`);
   if (!v.start?.control) lines.push(`   Main PID: ${v.pid} ${exited}`);
   return lines;
 }
 
-function activeLines(v: UnitView): string[] {
-  if (v.oneshot) return ['     Active: active (exited)', `    Process: ${v.pid} ${v.start?.exec ?? `ExecStart=/usr/sbin/${v.process}`} (code=exited, status=0/SUCCESS)`, `   Main PID: ${v.pid} (code=exited, status=0/SUCCESS)`];
-  return ['     Active: active (running)', `   Main PID: ${v.pid} (${v.process.slice(0, COMM_LEN)})`, `     CGroup: /system.slice/${v.linux}.service`, `             └─${v.pid} ${v.path ?? `/usr/sbin/${v.process}`}`];
+function activeLines(v: UnitView, p: Paint): string[] {
+  if (v.oneshot) return [`     Active: ${p('active (exited)', 'green')}`, `    Process: ${v.pid} ${v.start?.exec ?? `ExecStart=/usr/sbin/${v.process}`} (code=exited, status=0/SUCCESS)`, `   Main PID: ${v.pid} (code=exited, status=0/SUCCESS)`];
+  return [`     Active: ${p('active (running)', 'green')}`, `   Main PID: ${v.pid} (${v.process.slice(0, COMM_LEN)})`, `     CGroup: /system.slice/${v.linux}.service`, `             └─${v.pid} ${v.path ?? `/usr/sbin/${v.process}`}`];
 }
 
-export function status(v: UnitView): string[] {
+/** `systemctl status`; `p` paints as systemd does on a terminal (the log lines come already painted). */
+export function status(v: UnitView, p: Paint = plain): string[] {
   const failed = v.active ? undefined : v.failed;
+  const mark = v.active ? p('●', 'green') : failed ? p('×', 'red') : '○';
+  const enabled = v.enabled ? p('enabled', 'green') : p('disabled', 'yellow');
   const lines = [
-    `${v.active ? '●' : failed ? '×' : '○'} ${v.linux}.service - ${v.description}`,
-    `     Loaded: loaded (/usr/lib/systemd/system/${v.linux}.service; ${v.enabled ? 'enabled' : 'disabled'}; preset: enabled)`,
-    ...(v.active ? activeLines(v) : failed ? failedLines(v, failed) : ['     Active: inactive (dead)']),
+    `${mark} ${v.linux}.service - ${v.description}`,
+    `     Loaded: loaded (/usr/lib/systemd/system/${v.linux}.service; ${enabled}; preset: ${p('enabled', 'green')})`,
+    ...(v.active ? activeLines(v, p) : failed ? failedLines(v, failed, p) : ['     Active: inactive (dead)']),
   ];
   return v.log.length ? [...lines, '', ...v.log] : lines;
 }
@@ -95,12 +103,18 @@ const LEGEND = [
   '        SUB    → The low-level unit activation state, values depend on unit type.',
 ];
 
+/** The LOAD column keeps its colour; the other cells of a failed unit are red (systemd's on_active). */
+const LOAD_COLUMN = 1;
+
 /** `systemctl --failed` (list-units --state=failed): columns as wide as their widest cell, then the legend. */
-export function failedTable(rows: readonly UnitRow[]): string[] {
+export function failedTable(rows: readonly UnitRow[], p: Paint = plain): string[] {
   const cells = rows.map((r) => [`${r.name}.service`, 'loaded', 'failed', 'failed', r.description]);
   const head = ['UNIT', 'LOAD', 'ACTIVE', 'SUB', 'DESCRIPTION'];
   const widths = head.map((h, i) => Math.max(h.length, ...cells.map((c) => c[i]?.length ?? 0)));
-  const line = (mark: string, c: readonly string[]): string => `${mark} ${c.map((x, i) => (i === c.length - 1 ? x : x.padEnd(widths[i] ?? 0))).join(' ')}`;
-  const table = [line(' ', head), ...cells.map((c) => line('●', c))];
+  const pad = (x: string, i: number, last: boolean): string => (last ? x : x.padEnd(widths[i] ?? 0));
+  const header = p(`  ${head.map((x, i) => pad(x, i, i === head.length - 1)).join(' ')}`, 'underline');
+  const row = (c: readonly string[]): string =>
+    `${p('●', 'red')} ${c.map((x, i) => (i === LOAD_COLUMN ? pad(x, i, false) : p(pad(x, i, i === c.length - 1), 'red'))).join(' ')}`;
+  const table = [header, ...cells.map(row)];
   return rows.length ? [...table, '', ...LEGEND, '', `${rows.length} loaded units listed.`] : [...table, '', '0 loaded units listed.'];
 }

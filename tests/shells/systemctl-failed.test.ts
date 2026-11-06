@@ -18,7 +18,10 @@ function lab(): { t: Topology; srv: Server; root: ShellSession; user: ShellSessi
   const srv = t.add('server', 0, 0).device as Server;
   srv.setStatic({ ip: parseIp('10.0.0.2')!, prefix: 24 });
   t.clock.set(T0);
-  return { t, srv, root: createShell(srv, 'linux', 'root'), user: createShell(srv, 'linux') };
+  // The format without colours (systemd-colors.test.ts checks them).
+  const [root, user] = [createShell(srv, 'linux', 'root'), createShell(srv, 'linux')];
+  for (const sh of [root, user]) sh.run('export SYSTEMD_COLORS=0');
+  return { t, srv, root, user };
 }
 
 const all = (lines: readonly string[]): string => lines.join('\n');

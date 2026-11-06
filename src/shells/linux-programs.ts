@@ -12,6 +12,10 @@ import type { Host } from '../devices/host.ts';
 import { httpGet } from './net-tools.ts';
 import { byteLength } from '../web/http.ts';
 import { systemctl, journalctl, ss, ssOptions } from './linux-services.ts';
+import { colorMode, painter } from './systemd-colors.ts';
+import type { Paint } from './systemd-colors.ts';
+import { isTty } from '../bash/io.ts';
+import { stripAnsi } from '../core/ansi.ts';
 import { ip, ping, dig, hostCmd, dhclient } from './linux-net.ts';
 import { nslookupProgram } from './nslookup.ts';
 import { traceroute } from './trace-cmds.ts';
@@ -46,6 +50,11 @@ const lines = (ctx: Ctx, list: readonly string[]): void => {
   if (list.length) ctx.out(`${list.join('\n')}\n`);
 };
 
+/** systemd's colours: on when stdout and stderr are the terminal, unless SYSTEMD_COLORS, NO_COLOR or TERM say no. */
+function systemdPaint(ctx: Ctx): Paint {
+  return painter(colorMode((name) => ctx.env.get(name), isTty(ctx.fds.get(1)) && isTty(ctx.fds.get(2))));
+}
+
 /** Messages of systemctl/journalctl that go to stderr with a failure status. */
 const FAILURE = /^(Failed to|Unit .* could not be found|Too few arguments|Unknown command verb|Job for)/;
 
@@ -60,13 +69,13 @@ function systemd(host: Host, kind: 'systemctl' | 'service'): CommandFn {
       return raw[0] === '--status-all' ? 0 : 1;
     }
     const args = kind === 'service' ? [raw[1] ?? '', raw[0] ?? ''] : raw;
-    const out = systemctl(host, args, ctx.cred.uid === 0);
+    const out = systemctl(host, args, ctx.cred.uid === 0, systemdPaint(ctx));
     if (out.length && FAILURE.test(out[0] ?? '')) { ctx.err(`${out.join('\n')}\n`); return /could not be found|not found/.test(out[0] ?? '') ? 4 : 1; }
     lines(ctx, out);
     const verb = args.find((a) => !a.startsWith('-'));
     if (verb === 'is-failed') return out[0] === 'failed' ? 0 : 1;
     // LSB: 3 = not running (inactive or failed).
-    if (verb === 'is-active' || verb === 'status') return out[0] === 'inactive' || out[0] === 'failed' || out.some((l) => /Active: (inactive|failed)/.test(l)) ? 3 : 0;
+    if (verb === 'is-active' || verb === 'status') return out[0] === 'inactive' || out[0] === 'failed' || out.some((l) => /Active: (inactive|failed)/.test(stripAnsi(l))) ? 3 : 0;
     return 0;
   };
 }
@@ -170,7 +179,7 @@ export function linuxPrograms(host: Host): Map<string, CommandFn> {
     ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['sysctl', sysctl(host)], ['dmesg', dmesg(host)], ['nft', nft(host)], ['nc', nc(host)], ['netcat', nc(host)], ['nmap', nmap(host)], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId], ['sftp', sftp(host)], ['scp', scp(host)],
     ...(host.kind === 'linuxrouter' ? [['wg', wg(host)] as const, ['wg-quick', wgQuick(host)] as const] : []),
     ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
-    ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1))); return 0; }],
+    ['journalctl', (ctx) => { lines(ctx, journalctl(host, ctx.argv.slice(1), systemdPaint(ctx))); return 0; }],
     ['ss', (ctx) => { lines(ctx, ss(host, ssOptions(ctx.argv.slice(1)))); return 0; }],
     ['apt', apt(host)], ['nmcli', nmcli(host)], ['nmblookup', nmblookup(host)],
     ['smbclient', smbclient(host)], ['smbpasswd', smbpasswd(host)], ['testparm', testparm(host)], ['pdbedit', pdbedit(host)],

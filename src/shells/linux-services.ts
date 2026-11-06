@@ -11,6 +11,9 @@ import type { PkgUnit } from '../net/pkg-units.ts';
 import { reloadPkgUnit, startPkgUnit, stopPkgUnit } from './pkg-service.ts';
 import { failedTable, status } from './systemctl-status.ts';
 import type { UnitRow, UnitView } from './systemctl-status.ts';
+import { paintMessage, plain } from './systemd-colors.ts';
+import type { Paint } from './systemd-colors.ts';
+import type { LogPriority } from '../devices/server.ts';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const STATUS_LOG_LINES = 5;
@@ -26,13 +29,13 @@ function stamp(ms: number): string {
   return `${MONTHS[d.getUTCMonth()]} ${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
 }
 
-/** A journal entry with its time (to merge a Server's units with those of its packages). */
-interface Entry { readonly time: number; readonly text: string }
+/** A journal entry with its time (to merge a Server's units with those of its packages) and its priority. */
+interface Entry { readonly time: number; readonly head: string; readonly line: string; readonly priority?: LogPriority }
 
 /** A line of a Server's journal: who wrote it (systemd[1], apachectl[1123]…), else the unit's own process. */
-function serverEntry(host: string, unit: UnitInfo | undefined, l: { readonly time: number; readonly line: string; readonly ident?: string }): Entry {
+function serverEntry(host: string, unit: UnitInfo | undefined, l: { readonly time: number; readonly line: string; readonly ident?: string; readonly priority?: LogPriority }): Entry {
   const ident = l.ident ?? (unit ? `${unit.process}[${unit.pid}]` : 'systemd[1]');
-  return { time: l.time, text: `${stamp(l.time)} ${host} ${ident}: ${l.line}` };
+  return { time: l.time, head: `${stamp(l.time)} ${host} ${ident}: `, line: l.line, ...(l.priority ? { priority: l.priority } : {}) };
 }
 
 function serverEntries(server: Server, unit: UnitInfo): Entry[] {
@@ -42,10 +45,12 @@ function serverEntries(server: Server, unit: UnitInfo): Entry[] {
 
 function pkgEntries(host: Host, u: PkgUnit): Entry[] {
   const name = host.name.toLowerCase();
-  return pkgJournal(host, u).map((l) => ({ time: l.time, text: `${stamp(l.time)} ${name} ${l.systemd ? 'systemd[1]' : `${u.process}[${u.pid}]`}: ${l.line}` }));
+  return pkgJournal(host, u).map((l) => ({ time: l.time, head: `${stamp(l.time)} ${name} ${l.systemd ? 'systemd[1]' : `${u.process}[${u.pid}]`}: `, line: l.line }));
 }
 
-const texts = (entries: readonly Entry[], limit: number): string[] => entries.slice(-limit).map((e) => e.text);
+/** The last entries as journalctl prints them: only the message takes its priority's colour. */
+const texts = (entries: readonly Entry[], limit: number, p: Paint): string[] =>
+  entries.slice(-limit).map((e) => `${e.head}${paintMessage(p, e.line, e.priority)}`);
 
 /** active, failed (a start that failed, until a good start or reset-failed) or inactive. */
 function unitState(server: Server, id: UnitId): UnitRow['active'] {
@@ -53,22 +58,23 @@ function unitState(server: Server, id: UnitId): UnitRow['active'] {
   return server.failed[id] ? 'failed' : 'inactive';
 }
 
-function serverView(server: Server, unit: UnitInfo): UnitView {
-  const log = texts(serverEntries(server, unit), STATUS_LOG_LINES);
+function serverView(server: Server, unit: UnitInfo, p: Paint): UnitView {
+  const log = texts(serverEntries(server, unit), STATUS_LOG_LINES, p);
   const failed = server.failed[unit.id];
   return { ...unit, oneshot: unit.oneshot ?? false, active: unitActive(server.services, unit.id), enabled: server.autostart[unit.id] ?? false, log, now: server.clock.now(), ...(failed ? { failed } : {}) };
 }
 
-function pkgView(host: Host, u: PkgUnit): UnitView {
-  return { ...u, linux: u.name, ...pkgUnitState(host, u), log: texts(pkgEntries(host, u), STATUS_LOG_LINES), now: host.clock.now() };
+function pkgView(host: Host, u: PkgUnit, p: Paint): UnitView {
+  return { ...u, linux: u.name, ...pkgUnitState(host, u), log: texts(pkgEntries(host, u), STATUS_LOG_LINES, p), now: host.clock.now() };
 }
 
 const SUB: Readonly<Record<UnitRow['active'], string>> = { active: 'running', failed: 'failed ', inactive: 'dead   ' };
 
-/** A row of `systemctl list-units`: ● before a failed unit. */
-function unitRow(r: UnitRow): string {
+/** A row of `systemctl list-units`: a failed unit has a ● and its cells red, except LOAD. */
+function unitRow(r: UnitRow, p: Paint): string {
   const sub = r.active === 'active' && r.oneshot ? 'exited ' : SUB[r.active];
-  return `${r.active === 'failed' ? '●' : ' '} ${`${r.name}.service`.padEnd(26)} loaded ${r.active.padEnd(8)} ${sub} ${r.description}`;
+  const red = r.active === 'failed' ? (t: string): string => p(t, 'red') : (t: string): string => t;
+  return `${r.active === 'failed' ? red('●') : ' '} ${red(`${r.name}.service`.padEnd(26))} loaded ${red(r.active.padEnd(8))} ${red(sub)} ${red(r.description)}`;
 }
 
 function unitRows(host: Host): UnitRow[] {
@@ -80,11 +86,11 @@ function unitRows(host: Host): UnitRow[] {
 }
 
 /** `systemctl list-units`, or only the failed ones (`--failed`, `--state=failed`). */
-function listUnits(host: Host, args: readonly string[]): string[] {
+function listUnits(host: Host, args: readonly string[], p: Paint): string[] {
   const rows = unitRows(host);
-  if (args.includes('--failed') || args.includes('--state=failed')) return failedTable(rows.filter((r) => r.active === 'failed'));
+  if (args.includes('--failed') || args.includes('--state=failed')) return failedTable(rows.filter((r) => r.active === 'failed'), p);
   if (!rows.length) return ['0 loaded units listed.'];
-  return ['  UNIT                       LOAD   ACTIVE   SUB     DESCRIPTION', ...rows.map(unitRow), '', `${rows.length} loaded units listed.`];
+  return [p('  UNIT                       LOAD   ACTIVE   SUB     DESCRIPTION', 'underline'), ...rows.map((r) => unitRow(r, p)), '', `${rows.length} loaded units listed.`];
 }
 
 const NEEDS_ROOT = new Set(['start', 'stop', 'restart', 'reload', 'force-reload', 'enable', 'disable']);
@@ -113,11 +119,12 @@ function resetFailed(host: Host, name: string | undefined, root: boolean): strin
   return [];
 }
 
-export function systemctl(host: Host, args: string[], root: boolean): string[] {
+/** systemctl; `p` paints its output as systemd does on a terminal. */
+export function systemctl(host: Host, args: string[], root: boolean, p: Paint = plain): string[] {
   const server = asServer(host);
   const positional = args.filter((a) => !a.startsWith('-'));
   const verb = positional[0] ?? 'list-units';
-  if (verb === 'list-units' || verb === 'list-unit-files') return listUnits(host, args);
+  if (verb === 'list-units' || verb === 'list-unit-files') return listUnits(host, args, p);
   const name = positional[1];
   if (verb === 'reset-failed') return resetFailed(host, name, root);
   if (!name) return [`Too few arguments.`];
@@ -129,6 +136,7 @@ export function systemctl(host: Host, args: string[], root: boolean): string[] {
   const alias = unit?.alias;
   if ((verb === 'enable' || verb === 'disable') && alias !== undefined && name.toLowerCase().replace(/\.service$/, '') === alias) return [`Failed to ${verb} unit: Refusing to operate on alias name or linked unit file: ${alias}.service`];
   const now = args.includes('--now');
+  if (verb === 'status') return server && unit ? status(serverView(server, unit, p), p) : status(pkgView(host, pkg as PkgUnit, p), p);
   return server && unit ? runVerb(server, unit, verb, now) : runPkgVerb(host, pkg as PkgUnit, verb, now);
 }
 
@@ -161,7 +169,6 @@ function reload(server: Server, unit: UnitInfo): string[] {
 
 function runVerb(server: Server, unit: UnitInfo, verb: string, now: boolean): string[] {
   switch (verb) {
-    case 'status': return status(serverView(server, unit));
     case 'is-active': case 'is-failed': return [unitState(server, unit.id)];
     case 'is-enabled': return [server.autostart[unit.id] ? 'enabled' : 'disabled'];
     case 'start': server.setUnit(unit.id, true); return started(server, unit);
@@ -186,7 +193,6 @@ const startOrFail = (host: Host, u: PkgUnit): string[] => (startPkgUnit(host, u)
 function runPkgVerb(host: Host, u: PkgUnit, verb: string, now: boolean): string[] {
   const s = pkgUnitState(host, u);
   switch (verb) {
-    case 'status': return status(pkgView(host, u));
     case 'is-active': case 'is-failed': return [s.active ? 'active' : 'inactive'];
     case 'is-enabled': return [s.enabled ? 'enabled' : 'disabled'];
     case 'start': return startOrFail(host, u);
@@ -214,7 +220,8 @@ function allEntries(host: Host): Entry[] {
   return [...own, ...installedUnits(host).flatMap((u) => pkgEntries(host, u))].sort((a, b) => a.time - b.time);
 }
 
-export function journalctl(host: Host, args: string[]): string[] {
+/** journalctl; `p` paints each message by its priority, as on a terminal. */
+export function journalctl(host: Host, args: string[], p: Paint = plain): string[] {
   const server = asServer(host);
   const uIdx = args.findIndex((a) => a === '-u' || a === '--unit');
   const nIdx = args.indexOf('-n');
@@ -226,7 +233,7 @@ export function journalctl(host: Host, args: string[]): string[] {
   if (name === undefined) entries = allEntries(host);
   else if (server && unit) entries = serverEntries(server, unit);
   else if (pkg) entries = pkgEntries(host, pkg);
-  const lines = texts(entries, limit);
+  const lines = texts(entries, limit, p);
   return lines.length ? lines : ['-- No entries --'];
 }
 

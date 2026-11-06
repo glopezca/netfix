@@ -85,10 +85,10 @@ test('nftables.service loads /etc/nftables.conf; a broken file fails like system
   const { srv, pc } = lab();
   const root = createShell(srv, 'linux', 'root');
   const sh = createShell(pc, 'linux');
-  assert.match(all(root.run('systemctl status nftables')), /○ nftables\.service - nftables\n {5}Loaded: loaded \(\/usr\/lib\/systemd\/system\/nftables\.service; disabled; preset: enabled\)\n {5}Active: inactive \(dead\)/);
+  assert.match(all(root.run('systemctl status nftables | cat')), /○ nftables\.service - nftables\n {5}Loaded: loaded \(\/usr\/lib\/systemd\/system\/nftables\.service; disabled; preset: enabled\)\n {5}Active: inactive \(dead\)/);
   root.run("sed -i 's/type filter hook input priority filter;/type filter hook input priority filter; policy drop;/' /etc/nftables.conf");
   root.run('systemctl enable --now nftables');
-  assert.match(all(root.run('systemctl status nftables')), /Active: active \(exited\)/);
+  assert.match(all(root.run('systemctl status nftables | cat')), /Active: active \(exited\)/);
   assert.match(all(sh.run('ping -c 1 10.0.0.2')), /100% packet loss/);
   root.run("echo 'table inet broken { chain c { tcp dprt 1 accept } }' >> /etc/nftables.conf");
   assert.match(all(root.run('systemctl reload nftables')), /Job for nftables\.service failed/);
