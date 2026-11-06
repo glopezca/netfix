@@ -146,3 +146,15 @@ test('the time since the failure, as systemd writes it', () => {
   t.net.runFor(2 * 3600_000);
   assert.equal(since(), '2h 11min ago');
 });
+
+test('reload of a unit that is not running: systemd refuses it (status 1); reload-or-restart starts it', () => {
+  const { root } = lab();
+  failApache(root);
+  assert.deepEqual(root.run('systemctl reload apache2; echo $?'), ['Failed to reload apache2.service: Unit apache2.service is not active.', '1']);
+  assert.equal(root.run('systemctl is-active apache2')[0], 'failed');
+  root.run('systemctl stop named');
+  assert.deepEqual(root.run('systemctl reload named; echo $?'), ['Failed to reload named.service: Unit named.service is not active.', '1']);
+  assert.equal(root.run('systemctl is-active named')[0], 'inactive');
+  assert.deepEqual(root.run('systemctl reload-or-restart named; echo $?'), ['0']);
+  assert.equal(root.run('systemctl is-active named')[0], 'active');
+});

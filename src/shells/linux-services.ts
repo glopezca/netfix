@@ -159,21 +159,22 @@ function restart(server: Server, unit: UnitInfo): string[] {
   return started(server, unit);
 }
 
-/** reload: ExecReload of a running unit (a failure keeps what runs); otherwise a restart. */
+/** reload: ExecReload of a running unit (a failure keeps what runs); systemd refuses it for a unit that is not running. */
 function reload(server: Server, unit: UnitInfo): string[] {
-  const on = unitActive(server.services, unit.id);
-  if (on && unit.id === 'http') return server.reloadWeb() ? jobFailed(unit.linux) : [];
-  if (on && unit.id === 'firewall') return server.reloadFirewall() ? jobFailed(unit.linux) : [];
-  if (on && unit.id === 'ssh') return server.reloadSsh() ? jobFailed(unit.linux) : [];
-  if (on && unit.id === 'dns') return server.reloadDns() ? jobFailed(unit.linux) : [];
+  if (!unitActive(server.services, unit.id)) return [`Failed to reload ${unit.linux}.service: Unit ${unit.linux}.service is not active.`];
+  if (unit.id === 'http') return server.reloadWeb() ? jobFailed(unit.linux) : [];
+  if (unit.id === 'firewall') return server.reloadFirewall() ? jobFailed(unit.linux) : [];
+  if (unit.id === 'ssh') return server.reloadSsh() ? jobFailed(unit.linux) : [];
+  if (unit.id === 'dns') return server.reloadDns() ? jobFailed(unit.linux) : [];
+  // postfix and dovecot: their files are read again as a restart reads them.
   return restart(server, unit);
 }
 
 /** A unit without ExecReload (Kea): systemd refuses the reload job. */
 const notApplicable = (u: UnitInfo): string[] => [`Failed to reload ${u.linux}.service: Job type reload is not applicable for unit ${u.linux}.service.`];
 
-/** reload-or-restart: the unit's reload when it has one, a restart otherwise. */
-const reloadOrRestart = (server: Server, unit: UnitInfo): string[] => (unit.noReload ? restart(server, unit) : reload(server, unit));
+/** reload-or-restart: the reload of a running unit that has one, a restart (or start) otherwise. */
+const reloadOrRestart = (server: Server, unit: UnitInfo): string[] => (unit.noReload || !unitActive(server.services, unit.id) ? restart(server, unit) : reload(server, unit));
 
 function runVerb(server: Server, unit: UnitInfo, verb: string, now: boolean): string[] {
   const on = unitActive(server.services, unit.id);
