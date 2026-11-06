@@ -11,10 +11,10 @@ import { BASE, PACKAGES, findPackage, kb } from './apt-catalog.ts';
 import type { AptDep, AptPackage } from './apt-catalog.ts';
 import { mooLines } from './apt-moo.ts';
 import { sambaAllowed } from '../net/device-apps.ts';
-import { installedPackage, setPackage } from './apt-state.ts';
-import { afterPackage } from './apt-scripts.ts';
-import { findDep, leftoverNote, markDependencies, orphans } from './apt-auto.ts';
-import { isPackageAuto, setPackageAuto, setPackageInstalled } from '../net/host-packages.ts';
+import { installedPackage } from './apt-state.ts';
+import { commitInstall, commitRemove, toFetch } from './apt-core.ts';
+import { findDep, leftoverNote, orphans } from './apt-auto.ts';
+import { isPackageAuto, setPackageAuto } from '../net/host-packages.ts';
 
 const READING = 'Reading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\n';
 const summary = (installing: number, removing: number): string => `Summary:\n  Upgrading: 0, Installing: ${installing}, Removing: ${removing}, Not Upgrading: 0\n`;
@@ -95,15 +95,6 @@ function* confirm(ctx: Ctx, yes: boolean): Gen<boolean> {
 const debName = (d: AptDep): string => `${d.name}_${d.version.replace(/^\d+:/, '')}_${d.arch}.deb`;
 const poolPath = (p: AptDep, section: string): string => `pool/${section}/${p.name.startsWith('lib') ? p.name.slice(0, 4) : p.name[0]}/${p.name}/${debName(p)}`;
 
-/** The packages to fetch for `todo` (dependencies not there yet first, each once). */
-export function toFetch(host: Host, todo: readonly AptPackage[]): { pkg: AptDep; section: string }[] {
-  // What is there already (with what came with it) is not fetched again.
-  const present = PACKAGES.filter((p) => installedPackage(host, p)).flatMap((p) => [p.name, ...p.deps.map((d) => d.name)]);
-  const seen = new Set([...todo.map((p) => p.name), ...present]);
-  const deps = todo.flatMap((p) => p.deps.map((d) => ({ pkg: d, section: p.section }))).filter(({ pkg }) => !seen.has(pkg.name) && (seen.add(pkg.name), true));
-  return [...deps, ...todo.map((p) => ({ pkg: p as AptDep, section: p.section }))];
-}
-
 function plan(todo: readonly AptPackage[], fetch: readonly { pkg: AptDep }[]): string {
   const deps = fetch.filter(({ pkg }) => !todo.some((p) => p.name === pkg.name)).map(({ pkg }) => pkg.name);
   const size = fetch.reduce((n, { pkg }) => n + pkg.kb, 0);
@@ -159,8 +150,7 @@ function* install(ctx: Ctx, host: Host, names: readonly string[], yes: boolean):
   const reason = mirrorStatus(host)(archive, 'dists/resolute/InRelease');
   if (reason !== undefined) return fetchFailed(ctx, archive, fetch, reason);
   unpack(ctx, host, todo, fetch, archive);
-  markDependencies(host, todo, fetch.map(({ pkg }) => pkg));
-  for (const p of todo) { setPackage(host, p, true); afterPackage(ctx.sh.env.fs, host, p.name, true); }
+  commitInstall(ctx.sh.env.fs, host, todo, fetch.map(({ pkg }) => pkg));
   return 0;
 }
 
@@ -184,12 +174,7 @@ function* drop(ctx: Ctx, host: Host, todo: readonly AptDep[], yes: boolean, purg
   if (!(yield* confirm(ctx, yes))) return 1;
   const lines = todo.flatMap((p) => [`Removing ${p.name} (${p.version}) ...`, ...(purge ? [`Purging configuration files for ${p.name} (${p.version}) ...`] : [])]);
   ctx.out(`(Reading database ... ${dbFiles(host)} files and directories currently installed.)\n${lines.join('\n')}\nProcessing triggers for man-db (2.13.1-1) ...\n`);
-  for (const d of todo) {
-    const p = findPackage(d.name);
-    if (p) setPackage(host, p, false);
-    else setPackageInstalled(host, d.name, false);
-    afterPackage(ctx.sh.env.fs, host, d.name, false);
-  }
+  commitRemove(ctx.sh.env.fs, host, todo);
   return 0;
 }
 

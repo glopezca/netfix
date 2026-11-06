@@ -38618,15 +38618,51 @@ function leftoverNote(names) {
 
 return { findDep, markDependencies, orphans, leftoverNote };
 })();
+__m["shells/apt-core.js"] = (() => {
+const { PACKAGES, findPackage } = __m["shells/apt-catalog.js"];
+const { installedPackage, setPackage } = __m["shells/apt-state.js"];
+const { afterPackage } = __m["shells/apt-scripts.js"];
+const { markDependencies } = __m["shells/apt-auto.js"];
+const { setPackageInstalled } = __m["net/host-packages.js"];
+/** The packages to fetch for `todo` (dependencies not there yet first, each once). */
+function toFetch(host, todo) {
+    // What is there already (with what came with it) is not fetched again.
+    const present = PACKAGES.filter((p) => installedPackage(host, p)).flatMap((p) => [p.name, ...p.deps.map((d) => d.name)]);
+    const seen = new Set([...todo.map((p) => p.name), ...present]);
+    const deps = todo.flatMap((p) => p.deps.map((d) => ({ pkg: d, section: p.section }))).filter(({ pkg }) => !seen.has(pkg.name) && (seen.add(pkg.name), true));
+    return [...deps, ...todo.map((p) => ({ pkg: p, section: p.section }))];
+}
+/** dpkg after the download: the dependencies automatic, each package installed (manual) and its scripts run. */
+function commitInstall(fs, host, todo, fetched) {
+    markDependencies(host, todo, fetched);
+    for (const p of todo) {
+        setPackage(host, p, true);
+        afterPackage(fs, host, p.name, true);
+    }
+}
+/** dpkg removing packages (a catalogue one or a dependency); what they brought stays for autoremove. */
+function commitRemove(fs, host, todo) {
+    for (const d of todo) {
+        const p = findPackage(d.name);
+        if (p)
+            setPackage(host, p, false);
+        else
+            setPackageInstalled(host, d.name, false);
+        afterPackage(fs, host, d.name, false);
+    }
+}
+
+return { toFetch, commitInstall, commitRemove };
+})();
 __m["shells/apt.js"] = (() => {
 const { aptSources, mirrorStatus } = __m["shells/apt-net.js"];
 const { BASE, PACKAGES, findPackage, kb } = __m["shells/apt-catalog.js"];
 const { mooLines } = __m["shells/apt-moo.js"];
 const { sambaAllowed } = __m["net/device-apps.js"];
-const { installedPackage, setPackage } = __m["shells/apt-state.js"];
-const { afterPackage } = __m["shells/apt-scripts.js"];
-const { findDep, leftoverNote, markDependencies, orphans } = __m["shells/apt-auto.js"];
-const { isPackageAuto, setPackageAuto, setPackageInstalled } = __m["net/host-packages.js"];
+const { installedPackage } = __m["shells/apt-state.js"];
+const { commitInstall, commitRemove, toFetch } = __m["shells/apt-core.js"];
+const { findDep, leftoverNote, orphans } = __m["shells/apt-auto.js"];
+const { isPackageAuto, setPackageAuto } = __m["net/host-packages.js"];
 const READING = 'Reading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\n';
 const summary = (installing, removing) => `Summary:\n  Upgrading: 0, Installing: ${installing}, Removing: ${removing}, Not Upgrading: 0\n`;
 const NOTHING = summary(0, 0);
@@ -38704,14 +38740,6 @@ function* confirm(ctx, yes) {
 }
 const debName = (d) => `${d.name}_${d.version.replace(/^\d+:/, '')}_${d.arch}.deb`;
 const poolPath = (p, section) => `pool/${section}/${p.name.startsWith('lib') ? p.name.slice(0, 4) : p.name[0]}/${p.name}/${debName(p)}`;
-/** The packages to fetch for `todo` (dependencies not there yet first, each once). */
-function toFetch(host, todo) {
-    // What is there already (with what came with it) is not fetched again.
-    const present = PACKAGES.filter((p) => installedPackage(host, p)).flatMap((p) => [p.name, ...p.deps.map((d) => d.name)]);
-    const seen = new Set([...todo.map((p) => p.name), ...present]);
-    const deps = todo.flatMap((p) => p.deps.map((d) => ({ pkg: d, section: p.section }))).filter(({ pkg }) => !seen.has(pkg.name) && (seen.add(pkg.name), true));
-    return [...deps, ...todo.map((p) => ({ pkg: p, section: p.section }))];
-}
 function plan(todo, fetch) {
     const deps = fetch.filter(({ pkg }) => !todo.some((p) => p.name === pkg.name)).map(({ pkg }) => pkg.name);
     const size = fetch.reduce((n, { pkg }) => n + pkg.kb, 0);
@@ -38775,11 +38803,7 @@ function* install(ctx, host, names, yes) {
     if (reason !== undefined)
         return fetchFailed(ctx, archive, fetch, reason);
     unpack(ctx, host, todo, fetch, archive);
-    markDependencies(host, todo, fetch.map(({ pkg }) => pkg));
-    for (const p of todo) {
-        setPackage(host, p, true);
-        afterPackage(ctx.sh.env.fs, host, p.name, true);
-    }
+    commitInstall(ctx.sh.env.fs, host, todo, fetch.map(({ pkg }) => pkg));
     return 0;
 }
 function* remove(ctx, host, names, yes, purge) {
@@ -38812,14 +38836,7 @@ function* drop(ctx, host, todo, yes, purge) {
         return 1;
     const lines = todo.flatMap((p) => [`Removing ${p.name} (${p.version}) ...`, ...(purge ? [`Purging configuration files for ${p.name} (${p.version}) ...`] : [])]);
     ctx.out(`(Reading database ... ${dbFiles(host)} files and directories currently installed.)\n${lines.join('\n')}\nProcessing triggers for man-db (2.13.1-1) ...\n`);
-    for (const d of todo) {
-        const p = findPackage(d.name);
-        if (p)
-            setPackage(host, p, false);
-        else
-            setPackageInstalled(host, d.name, false);
-        afterPackage(ctx.sh.env.fs, host, d.name, false);
-    }
+    commitRemove(ctx.sh.env.fs, host, todo);
     return 0;
 }
 /** apt autoremove: the automatic packages nothing needs any more. */
@@ -38888,7 +38905,7 @@ function apt(host) {
     return (ctx) => run(ctx, host);
 }
 
-return { toFetch, apt };
+return { apt };
 })();
 __m["shells/nmcli-model.js"] = (() => {
 const { formatIp } = __m["core/ip.js"];
@@ -62148,24 +62165,35 @@ const namesNetsLab = {
 
 return { namesLanLab, namesNetsLab };
 })();
+__m["shells/apt-install.js"] = (() => {
+const { findPackage } = __m["shells/apt-catalog.js"];
+const { installedPackage } = __m["shells/apt-state.js"];
+const { commitInstall, commitRemove, toFetch } = __m["shells/apt-core.js"];
+const { hostSystem } = __m["shells/host-system.js"];
+/** Installs (on) or removes (off) a catalogue package as apt would: whether anything changed. */
+function setAptInstalled(host, name, on) {
+    const p = findPackage(name);
+    if (!p || installedPackage(host, p) === on)
+        return false;
+    const fs = hostSystem(host).fs;
+    if (on)
+        commitInstall(fs, host, [p], toFetch(host, [p]).map(({ pkg }) => pkg));
+    else
+        commitRemove(fs, host, [p]);
+    host.notifyChange();
+    return true;
+}
+
+return { setAptInstalled };
+})();
 __m["shells/samba-install.js"] = (() => {
 const { sambaAllowed } = __m["net/device-apps.js"];
-const { findPackage } = __m["shells/apt-catalog.js"];
-const { installedPackage, setPackage } = __m["shells/apt-state.js"];
-const { markDependencies } = __m["shells/apt-auto.js"];
-const { afterPackage } = __m["shells/apt-scripts.js"];
-const { toFetch } = __m["shells/apt.js"];
-const { hostSystem } = __m["shells/host-system.js"];
+const { setAptInstalled } = __m["shells/apt-install.js"];
 /** Installs (on) or removes (off) the samba package as apt would; nothing when already so or the lab forbids it. */
 function setSambaInstalled(host, on) {
-    const p = findPackage('samba');
-    if (!p || installedPackage(host, p) === on || (on && !sambaAllowed(host)))
+    if (on && !sambaAllowed(host))
         return;
-    if (on)
-        markDependencies(host, [p], toFetch(host, [p]).map(({ pkg }) => pkg));
-    setPackage(host, p, on);
-    afterPackage(hostSystem(host).fs, host, p.name, on);
-    host.notifyChange();
+    setAptInstalled(host, 'samba', on);
 }
 
 return { setSambaInstalled };
