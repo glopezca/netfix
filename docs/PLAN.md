@@ -1591,7 +1591,7 @@ Tres fallos menores de la revisión de la fase 50, con sus pruebas en `tests/ser
   raíz; una ruta de recurso que pasa por un archivo da el error de ruta en vez de una excepción; borrar un recurso solo
   borra recursos (no `[global]`). `cd nada\..` funciona como en Windows (que resuelve `..` sobre el texto).
 
-### Fase 53: resolución de nombres en GNU/Linux con systemd-resolved (DNS, LLMNR, mDNS), NSS y WINS (v0.35.0) — plan
+### Fase 53: resolución de nombres en GNU/Linux con systemd-resolved (DNS, LLMNR, mDNS), NSS y WINS (v0.35.0)
 
 Petición: que la terminal GNU/Linux resuelva nombres con systemd-resolved (DNS, mDNS y LLMNR) y con NetBIOS, integrado
 en NSS y con WINS; documentarlo en la Ayuda y comprobar que funciona con `resolvectl`.
@@ -1827,3 +1827,9 @@ Decisiones del usuario (no se reabren):
 - sin replicación de WINS ni `netsh … winsservers`;
 - sin opción 44 en Kea ni en el DHCP de PT;
 - sin IPv6.
+
+- **Hecho (v0.35.0)**, con la revisión de seguridad: el servidor WINS acota el TTL a [6 h, 6 días], guarda como mucho
+  512 registros (después responde RFS_ERR) y solo atiende consultas unicast con RD; Windows refresca a la mitad del TTL
+  concedido con un único temporizador por equipo y usa como mucho dos servidores WINS de la concesión. La vista PDU de
+  NBNS (`src/ui/pdu-nbns.ts`) traduce el opcode y el código de respuesta. Laboratorio «Nombres en GNU/Linux:
+  systemd-resolved, NSS y WINS» (`src/net/labs-resolved.ts`) y e2e `scripts/e2e-names.mjs`.
