@@ -16,6 +16,7 @@ import { firewallPage, routingPage } from './admin-firewall.ts';
 import { vpnPage } from './admin-vpn.ts';
 import { filesPage } from './admin-files.ts';
 import { sambaPage } from './admin-samba.ts';
+import { mdnsPage, packagesPage, sysctlPage, winbindPage, winSharePage } from './admin-extra.ts';
 import { formatIp } from '../core/ip.ts';
 
 /** User names come from the request: no control characters in the logs. */
@@ -35,6 +36,11 @@ function body(server: Server, base: string, id: string, q: ReadonlyMap<string, s
     case 'firewall': return firewallPage(server, base);
     case 'routing': return routingPage(server, base);
     case 'vpn': return vpnPage(server, base);
+    case 'sysctl': return sysctlPage(server, base);
+    case 'mdns': return mdnsPage(server, base);
+    case 'winbind': return winbindPage(server, base);
+    case 'winshare': return winSharePage(server, base);
+    case 'packages': return packagesPage(server, base);
     case 'admin': return adminPage(server, base);
     case 'status': return statusPage(server);
     case 'log': return logPage(server);

@@ -2,6 +2,7 @@
  * "Seguridad" tab of the management GUI (WRT300N style): nftables firewall (tables, chains, rules,
  * templates) and routing (ip_forward, sysctl, static routes). Same editing code as the Services tab.
  */
+import { linuxSide } from '../net/pkg-units.ts';
 import { t } from '../i18n/t.ts';
 import type { Server } from '../devices/server.ts';
 import type { Chain, Rule, Ruleset, Table, Value } from '../net/nft/model.ts';
@@ -60,7 +61,7 @@ function ruleForm(server: Server, base: string): Markup {
 }
 
 export function firewallPage(server: Server, base: string): Child {
-  if (server.os !== 'linux') return h('p', { class: 'web-adm-muted' }, t('fwa.ubuntuOnly'));
+  if (!linuxSide(server)) return h('p', { class: 'web-adm-muted' }, t('fwa.ubuntuOnly'));
   const st = firewallStatus(server);
   const rs = server.kernel.netfilter.ruleset;
   const listed = runNft(rs, 'list ruleset');
@@ -83,7 +84,7 @@ export function firewallPage(server: Server, base: string): Child {
 }
 
 export function routingPage(server: Server, base: string): Child {
-  if (server.os !== 'linux') return h('p', { class: 'web-adm-muted' }, t('fwa.onlyUbuntu'));
+  if (!linuxSide(server)) return h('p', { class: 'web-adm-muted' }, t('fwa.onlyUbuntu'));
   const sysctl = server.kernel.sysctl;
   const keys = SYSCTL_KEYS.filter((k) => k.effect || k.name.startsWith('net.ipv4.conf.all'));
   const routes = server.staticRoutes.map((r) => h('tr', {}, h('td', { class: 'web-adm-mono' }, `${formatIp(r.net)}/${r.prefix}`), h('td', { class: 'web-adm-mono' }, formatIp(r.via)),

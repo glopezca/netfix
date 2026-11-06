@@ -82,10 +82,10 @@ test('GNU/Linux follows /etc/nsswitch.conf: wins with winbind, mdns4_minimal onl
   assert.match(sh(pc1, 'ping -c 1 pc0; echo "status $?"'), /status 2$/, 'no wins in nsswitch');
   sh(pc1, 'apt install -y winbind libnss-winbind; sed -i "s/^hosts:.*/hosts:          files dns wins/" /etc/nsswitch.conf');
   assert.match(sh(pc1, 'ping -c 1 pc0'), /1 received/, 'Windows answers NBNS');
-  sh(pc1, 'apt install -y libnss-mdns');
+  sh(pc1, 'apt install -y avahi-daemon');
   assert.match(sh(pc1, 'grep ^hosts: /etc/nsswitch.conf'), /^hosts: +files mdns4_minimal \[NOTFOUND=return\] dns wins$/, 'the postinst adds mdns4_minimal');
   assert.match(sh(pc1, 'ping -c 1 pc0.local'), /1 received/);
-  sh(pc1, 'apt remove -y libnss-mdns');
+  sh(pc1, 'apt remove -y avahi-daemon libnss-mdns');
   assert.match(sh(pc1, 'grep ^hosts: /etc/nsswitch.conf'), /^hosts: +files dns wins$/);
   pc1.os = 'windows';
   assert.match(sh(pc1, 'ping -c 1 pc0.local; echo "status $?"'), /status 2$/, 'from GNU/Linux mDNS always needs avahi, whatever the system');

@@ -10,12 +10,12 @@ import type { Host } from '../devices/host.ts';
 import { hasPackage } from '../net/host-packages.ts';
 import { DEFAULT_NSSWITCH, NSSWITCH, withMdns, withResolve } from './nsswitch.ts';
 import { runsServices } from '../devices/kinds.ts';
-import { SMB_CONF_PACKAGES, shippedFiles } from './apt-defaults.ts';
+import { ANY_HOST_FILES, shippedFiles } from './apt-defaults.ts';
 import { pkgInstalled, pkgRemoved } from './pkg-service.ts';
 import { notifyAppsChange } from '../net/device-apps.ts';
 
 /** Packages that add tabs to the Servicios of a GNU/Linux host (net/pkg-units.ts hostPanels). */
-const WITH_PANELS: ReadonlySet<string> = new Set(['samba', 'nftables']);
+const WITH_PANELS: ReadonlySet<string> = new Set(['samba', 'nftables', 'avahi-daemon', 'winbind']);
 
 function editNsswitch(fs: Vfs, edit: (text: string) => string): void {
   let text = DEFAULT_NSSWITCH;
@@ -39,7 +39,7 @@ function writeShipped(fs: Vfs, name: string): void {
 
 export function afterPackage(fs: Vfs, host: Host, name: string, on: boolean): void {
   // A Server or GNU/Linux router writes them from its Servicios settings (linux-files.ts); smb.conf has none.
-  if (on && (!runsServices(host.kind) || SMB_CONF_PACKAGES.has(name))) writeShipped(fs, name);
+  if (on && (!runsServices(host.kind) || ANY_HOST_FILES.has(name))) writeShipped(fs, name);
   if (name === 'avahi-daemon' || name === 'libnss-mdns') {
     editNsswitch(fs, (text) => withMdns(text, hasPackage(host, 'libnss-mdns')));
   }

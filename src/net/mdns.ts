@@ -5,6 +5,10 @@
  * to the group when asked from 5353 (Windows), else unicast to the asking port (a «legacy» one-shot query, nss-mdns). The packets cross the simulated network: switches
  * flood them, routers stop them, nftables can drop them.
  */
+import { avahiConfig } from './avahi.ts';
+import { unitRunning } from './pkg-units.ts';
+import { hasSystem } from './device-apps.ts';
+import type { AppsDevice } from './device-apps.ts';
 import type { Host } from '../devices/host.ts';
 import type { IpPacket } from './packets.ts';
 import type { StackHost } from './ipstack.ts';
@@ -24,7 +28,7 @@ const FIRST_PORT = 52000;
 const PORTS = 8000;
 
 /** Windows 10 1803+ and 11 have mDNS in their DNS client: nothing to install (the system of the IP tab). */
-const windows = (h: object): boolean => (h as { readonly os?: string }).os === 'windows';
+const windows = (h: object): boolean => hasSystem(h as AppsDevice, 'windows');
 
 /** Whether systemd-resolved answers on a stack interface of a GNU/Linux host (set by topology.ts). */
 type Responder = (host: Host, iface: string) => boolean;
@@ -34,9 +38,22 @@ export function setMdnsResponder(r: Responder): void {
   resolvedAnswers = r;
 }
 
-const linux = (h: object): boolean => (h as { readonly os?: string }).os === 'linux';
-/** avahi-daemon answers for the host's name; Windows does by itself; resolved, on the links where it may. */
-const answersOn = (h: StackHost, iface: string): boolean => hasPackage(h, 'avahi-daemon') || windows(h) || (linux(h) && resolvedAnswers(h as Host, iface));
+const linux = (h: object): boolean => hasSystem(h as AppsDevice, 'linux');
+/**
+ * The names the host answers for on a link: Windows and resolved, its host name; avahi-daemon while it runs, the name
+ * of its avahi-daemon.conf (the host name unless `host-name=`), unless publishing is off.
+ */
+function answerNames(h: Host, iface: string): string[] {
+  // Routers and the hosts of the emulated Internet join no mDNS group.
+  if (typeof (h as Partial<Host>).runtimeName !== 'function') return [];
+  const own = h.runtimeName().toLowerCase();
+  const avahi = linux(h) && unitRunning(h, 'avahi-daemon') ? avahiConfig(h) : undefined;
+  return [
+    ...(windows(h) || (linux(h) && resolvedAnswers(h, iface)) ? [own] : []),
+    ...(avahi?.publish ? [(avahi.hostName || own).toLowerCase()] : []),
+  ];
+}
+const answersOn = (h: StackHost, iface: string): boolean => answerNames(h as Host, iface).length > 0;
 
 /** Pending questions per host and port, with the name asked (a multicast answer reaches every member). */
 const waiting = new WeakMap<object, Map<number, { readonly name: string; readonly done: (ip: number) => void }>>();
@@ -46,8 +63,9 @@ function answer(host: Host, iface: string, p: IpPacket): void {
   const q = p.udp?.dns;
   const own = host.l3Iface(iface)?.addrs[0]?.ip;
   if (!q || !p.udp || own === undefined || q.qtype !== 'A') return;
-  // The name the host goes by now (hostname / hostnamectl change it), as avahi publishes it.
-  if (q.qname.replace(/\.$/, '').toLowerCase() !== `${host.runtimeName().toLowerCase()}.local`) return;
+  // The name the host goes by now (hostname / hostnamectl change it), or the one avahi publishes.
+  const asked = q.qname.replace(/\.$/, '').toLowerCase();
+  if (!answerNames(host, iface).some((n) => asked === `${n}.local`)) return;
   const reply = { id: q.id, response: true, authoritative: true, qname: q.qname, qtype: 'A' as const, rcode: 'NOERROR' as const,
     answers: [{ name: q.qname, type: 'A' as const, ttl: ANSWER_TTL, data: formatIp(own) }] };
   // A question from 5353 (Windows, a full mDNS stack) is answered to the group; a one-shot one (nss-mdns), to its port.

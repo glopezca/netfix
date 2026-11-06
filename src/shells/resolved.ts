@@ -9,6 +9,7 @@ import type { Host } from '../devices/host.ts';
 import { RESOLVED_UNIT, pkgUnitState } from '../net/pkg-units.ts';
 import { RESOLVED_DEFAULTS } from './resolved-conf.ts';
 import type { ResolvedConf, ResolveSupport } from './resolved-conf.ts';
+import { hasSystem } from '../net/device-apps.ts';
 
 interface Override {
   /** The IP settings it was set over, by value. */
@@ -92,7 +93,7 @@ export function effectiveSupport(host: Host, link: string, p: Protocol): Resolve
 }
 
 /** The unit runs (systemctl stop systemd-resolved silences it: no NSS answers, no LLMNR or mDNS). */
-export const resolvedRunning = (host: Host): boolean => host.os === 'linux' && pkgUnitState(host, RESOLVED_UNIT).active;
+export const resolvedRunning = (host: Host): boolean => hasSystem(host, 'linux') && pkgUnitState(host, RESOLVED_UNIT).active;
 
 /** resolved has a scope for the protocol on the link (asks there): it runs, and the link's support is not «no». */
 export const resolvedAsks = (host: Host, link: string, p: Protocol): boolean => resolvedRunning(host) && effectiveSupport(host, link, p) !== 'no';

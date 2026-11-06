@@ -72,8 +72,10 @@ test('mDNS stays on its link, needs avahi on the other end, and nftables can blo
   const pc0 = t.byLabel('PC0') as Host;
   pc0.os = 'linux';
   run(pc0, 'apt install -y libnss-mdns');
-  assert.match(run(pc1, 'ping -c 1 pc0.local; echo "status $?"'), /status 2$/, 'libnss-mdns only asks; avahi-daemon answers');
-  assert.match(run(pc0, 'ping -c 1 pc1.local'), /1 received/, 'it can ask, though');
+  assert.match(run(pc1, 'ping -c 1 pc0.local; echo "status $?"'), /status 2$/, 'libnss-mdns does not answer; avahi-daemon does');
+  assert.match(run(pc0, 'ping -c 1 pc1.local; echo "status $?"'), /status 2$/, 'nor can it ask without avahi-daemon running (v0.39)');
+  run(pc0, 'apt install -y avahi-daemon');
+  assert.match(run(pc0, 'ping -c 1 pc1.local'), /1 received/, 'with avahi it asks');
   run(pc1, 'nft add table inet f; nft add chain inet f input "{ type filter hook input priority 0; policy accept; }"; nft add rule inet f input udp dport 5353 drop');
   assert.match(run(pc0, 'ping -c 1 pc1.local; echo "status $?"'), /status 2$/, 'the firewall drops the question');
 });

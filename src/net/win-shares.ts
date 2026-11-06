@@ -7,7 +7,7 @@
  * typed.
  */
 import { featureOn } from './lab-features.ts';
-import { labViewOf, notifyAppsChange } from './device-apps.ts';
+import { hasSystem, labViewOf, notifyAppsChange } from './device-apps.ts';
 import type { AppsDevice } from './device-apps.ts';
 
 export type ShareAccess = 'read' | 'full';
@@ -72,9 +72,9 @@ function checkShare(shares: readonly WinShare[], s: WinShare): WinShare | ShareE
   return { name: s.name, path, remark: s.remark, access: s.access === 'full' ? 'full' : 'read' };
 }
 
-/** The box of the device's Configuración tab: a Windows device whose lab keeps the feature. */
+/** The box of the device's Configuración tab: a device with Windows (its terminal) whose lab keeps the feature. */
 export function winShareOffered(d: AppsDevice): boolean {
-  return d.os === 'windows' && featureOn(labViewOf(d).features, d.kind, 'winshare');
+  return hasSystem(d, 'windows') && featureOn(labViewOf(d).features, d.kind, 'winshare');
 }
 
 /** The box ticked (whether or not the lab still offers it). */

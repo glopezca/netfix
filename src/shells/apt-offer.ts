@@ -4,7 +4,8 @@
  * since ticking the box is installing that package.
  */
 import type { AppsDevice } from '../net/device-apps.ts';
-import { APPS_BY_KIND, deviceApps, setDeviceApps } from '../net/device-apps.ts';
+import { APPS_BY_KIND, deviceApps, sambaAllowed, setDeviceApps } from '../net/device-apps.ts';
+import { installedPackage } from './apt-state.ts';
 import { setAptInstalled } from './apt-install.ts';
 import type { FeatureId } from '../net/lab-features.ts';
 import { SERVICE_PACKAGES, TOOL_PACKAGES, labHasPackage } from '../net/lab-packages.ts';
@@ -45,6 +46,21 @@ function effective(h: Host, name: string): boolean {
   const feature = findPackage(name)?.feature;
   if (feature !== undefined && runsServices(h.kind) && APPS_BY_KIND[h.kind].includes(feature)) return true;
   return PKG_UNITS.some((u) => u.pkg === name && !(u.pcOnly && runsServices(h.kind)));
+}
+
+/** One catalogue package as the device's Configuración tab and its web GUI list it. */
+export interface ListedPackage {
+  readonly name: string;
+  readonly installed: boolean;
+  readonly service: boolean;
+}
+
+/** The device's catalogue that its lab keeps, or that it has installed (so it can be removed), with apt's state. */
+export function listedPackages(h: Host): ListedPackage[] {
+  const installed = (name: string): boolean => { const p = findPackage(name); return p !== undefined && installedPackage(h, p); };
+  return devicePackages(h)
+    .filter((name) => installed(name) || (labHasPackage(h, name) && (name !== 'samba' || sambaAllowed(h))))
+    .map((name) => ({ name, installed: installed(name), service: (SERVICE_PACKAGES as readonly string[]).includes(name) }));
 }
 
 /** The catalogue of the device's Configuración tab (a GNU/Linux terminal only): its service packages, then the tools. */

@@ -5,11 +5,12 @@
  * in its terminal.
  */
 import { t } from '../i18n/t.ts';
-import { subnav } from './forms.ts';
+import { systemSubnav } from './system-subnav.ts';
 import type { AfterChange } from './host-ip.ts';
 import type { Host } from '../devices/host.ts';
 import { firewallPanel, sysctlPanel } from './firewall-panel.ts';
 import { sambaPanel } from './samba-panel.ts';
+import { mdnsPanel, winbindPanel } from './link-panels.ts';
 import { winSharePanel } from './win-share-panel.ts';
 import { filesPanel } from './files-panel.ts';
 import { logPanel, packageLogUnits } from './log-panel.ts';
@@ -21,8 +22,10 @@ export function pcServicesTab(host: Host, app: AfterChange, panels: readonly str
     { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(host, app).root },
     { id: 'firewall', label: t('fw.tab'), render: () => firewallPanel(host, app).root },
     { id: 'samba', label: t('smb.tab'), render: () => sambaPanel(host, app).root },
+    { id: 'mdns', label: t('mdns.tab'), render: () => mdnsPanel(host, app).root },
+    { id: 'winbind', label: t('wbd.tab'), render: () => winbindPanel(host, app).root },
     { id: 'files', label: t('srv.files'), render: () => filesPanel(host, 'sysctl') },
     { id: 'log', label: t('srv.log'), render: () => logPanel(host, () => packageLogUnits(host), t('pcsvc.journalHint')) },
   ];
-  return subnav(all.filter((p) => panels.includes(p.id)));
+  return systemSubnav(host, all.filter((p) => panels.includes(p.id)));
 }

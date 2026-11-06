@@ -11,6 +11,7 @@ import { ABOUT } from '../docs/about-data.ts';
 import { appAvailable, labViewOf } from '../net/device-apps.ts';
 import type { FeatureId } from '../net/lab-features.ts';
 import { hostPanels, linuxSide } from '../net/pkg-units.ts';
+import { winShareOffered } from '../net/win-shares.ts';
 
 export interface AdminPage {
   readonly id: string;
@@ -27,30 +28,42 @@ export const PAGES: readonly AdminPage[] = [
   { id: 'setup', tab: 'setup' },
   { id: 'ssh', tab: 'services' }, { id: 'dhcp', tab: 'services' }, { id: 'dns', tab: 'services' },
   { id: 'web', tab: 'services' }, { id: 'mail', tab: 'services' }, { id: 'samba', tab: 'services' },
-  { id: 'routing', tab: 'security' }, { id: 'firewall', tab: 'security' }, { id: 'vpn', tab: 'security' },
-  { id: 'admin', tab: 'admin' },
+  { id: 'mdns', tab: 'services' }, { id: 'winbind', tab: 'services' }, { id: 'winshare', tab: 'services' },
+  { id: 'routing', tab: 'security' }, { id: 'firewall', tab: 'security' }, { id: 'sysctl', tab: 'security' }, { id: 'vpn', tab: 'security' },
+  { id: 'admin', tab: 'admin' }, { id: 'packages', tab: 'admin' },
   { id: 'status', tab: 'status' }, { id: 'files', tab: 'status' }, { id: 'log', tab: 'status' },
 ];
 
 /** The device switch behind each page (Configuración, Administración and Estado are always there). */
 const PAGE_FEATURE: Readonly<Record<string, FeatureId>> = {
-  ssh: 'ssh', dhcp: 'dhcp', dns: 'dns', web: 'http', mail: 'mail', routing: 'firewall', firewall: 'firewall', vpn: 'vpn', files: 'files', log: 'log',
+  ssh: 'ssh', dhcp: 'dhcp', dns: 'dns', web: 'http', mail: 'mail', routing: 'firewall', firewall: 'firewall', vpn: 'vpn', files: 'files', log: 'log', sysctl: 'sysctl',
 };
 
 /** Switched off in the device (its Configuración tab) or in its lab; Samba, without samba or when the lab forbids it. */
 export function pageOff(server: Server, id: string): boolean {
-  if (id === 'samba') return !hostPanels(server).includes('samba');
+  // Its page turns the sharing on, so it is there while Windows offers it.
+  if (id === 'winshare') return !winShareOffered(server);
+  if (PANEL_PAGES.includes(id)) return !hostPanels(server).includes(id);
   const feature = PAGE_FEATURE[id];
   return feature !== undefined && !appAvailable(server, feature);
 }
 
+/** Pages that follow a panel of the Servicios tab (its package installed). */
+const PANEL_PAGES: readonly string[] = ['samba', 'mdns', 'winbind'];
+/** Pages of GNU/Linux itself: there only with its terminal. */
+const LINUX_PAGES: readonly string[] = ['files', 'samba', 'mdns', 'winbind', 'firewall', 'sysctl', 'packages'];
+/** Pages of the GNU/Linux router alone. */
+const ROUTER_PAGES: readonly string[] = ['routing', 'vpn'];
+
 /**
- * Pages of a device: Security (firewall, routes, VPN) only on a GNU/Linux router; Ficheros and Samba only with a
- * GNU/Linux terminal; those switched off are left out when the lab says so (else they are shown greyed).
+ * Pages of a device, as its window has them: routes and VPN only on a GNU/Linux router; what belongs to GNU/Linux
+ * (files, firewall, kernel parameters, packages, Samba, mDNS, winbind) only with its terminal; Windows sharing only
+ * where Windows offers it; those switched off are left out when the lab says so (else they are shown greyed).
  */
 export function pagesOf(server: Server): readonly AdminPage[] {
   const hide = labViewOf(server).webHideOff;
-  return PAGES.filter((p) => (p.tab !== 'security' || server.kind === 'linuxrouter') && ((p.id !== 'files' && p.id !== 'samba') || linuxSide(server)) && !(hide && pageOff(server, p.id)));
+  return PAGES.filter((p) => (!ROUTER_PAGES.includes(p.id) || server.kind === 'linuxrouter') && (!LINUX_PAGES.includes(p.id) || linuxSide(server))
+    && (p.id !== 'winshare' || winShareOffered(server)) && !(hide && pageOff(server, p.id)));
 }
 
 /** A card: title, help line and its content. */

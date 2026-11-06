@@ -8,6 +8,7 @@ import { bindFiles } from '../services/bind-files.ts';
 import { defaultServices } from '../services/config.ts';
 import { DEFAULT_SMB_CONF, SMB_CONF } from '../services/smb-conf.ts';
 import { DEFAULT_NFTABLES_CONF, NFTABLES_CONF } from '../devices/server-firewall.ts';
+import { AVAHI_CONF, DEFAULT_AVAHI_CONF } from './avahi-conf.ts';
 
 export const KEA_DHCP4_CONF = '/etc/kea/kea-dhcp4.conf';
 
@@ -108,11 +109,15 @@ const KEA_PACKAGES: ReadonlySet<string> = new Set(['kea', 'kea-dhcp4-server', 'i
  */
 export const SMB_CONF_PACKAGES: ReadonlySet<string> = new Set(['samba', 'smbclient', 'samba-common-bin', 'winbind']);
 
+/** Packages whose files no Servicios setting writes: they ship them on every kind. */
+export const ANY_HOST_FILES: ReadonlySet<string> = new Set([...SMB_CONF_PACKAGES, 'avahi-daemon']);
+
 /** The files a package ships, by path. */
 export function shippedFiles(name: string): ReadonlyMap<string, string> {
   if (KEA_PACKAGES.has(name)) return new Map([[KEA_DHCP4_CONF, KEA_DEFAULT]]);
   if (name === 'bind9') return bindFiles(defaultServices().dns, []);
   if (SMB_CONF_PACKAGES.has(name)) return new Map([[SMB_CONF, DEFAULT_SMB_CONF]]);
   if (name === 'nftables') return new Map([[NFTABLES_CONF, DEFAULT_NFTABLES_CONF]]);
+  if (name === 'avahi-daemon') return new Map([[AVAHI_CONF, DEFAULT_AVAHI_CONF]]);
   return new Map();
 }

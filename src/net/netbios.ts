@@ -11,6 +11,7 @@ import type { StackHost } from './ipstack.ts';
 import { registerLocalSockets } from './ipstack.ts';
 import { unitRunning } from './pkg-units.ts';
 import { winShareActive } from './win-shares.ts';
+import { hasSystem } from './device-apps.ts';
 import type { AppPayload } from './packets.ts';
 import type { Peer } from './tcp.ts';
 import { runSync } from './sync.ts';
@@ -28,10 +29,10 @@ export const FILE_SERVER = 0x20;
 const MAX_NAME = 15;
 
 /** NetBIOS over TCP/IP is on in Windows; on GNU/Linux nmbd (samba) gives it, while it runs. */
-const windows = (h: Host): boolean => h.os === 'windows';
+const windows = (h: Host): boolean => hasSystem(h, 'windows');
 export const speaksNetbios = (h: Host): boolean => windows(h) || unitRunning(h, 'nmbd');
 /** The SMB server: Windows' own with file and printer sharing on (win-shares.ts), or smbd while it runs. */
-const servesSmb = (h: Host): boolean => (windows(h) ? winShareActive(h) : unitRunning(h, 'smbd'));
+const servesSmb = (h: Host): boolean => winShareActive(h) || unitRunning(h, 'smbd');
 
 /** What answers an SMB request on 139/445 (services/smb-server.ts, registered from topology.ts). */
 export type SmbHandler = (host: Host, request: AppPayload, peer: Peer, localIp: number) => AppPayload | null;
@@ -56,7 +57,7 @@ export const netbiosName = (name: string): string => name.toUpperCase().slice(0,
 export function ownNames(host: Host): NbnsName[] {
   const name = netbiosName(host.runtimeName());
   const base: NbnsName[] = [{ name, suffix: WORKSTATION, group: false }, { name: WORKGROUP, suffix: WORKSTATION, group: true }];
-  return windows(host) && !winShareActive(host) ? base : [...base, { name, suffix: FILE_SERVER, group: false }];
+  return winShareActive(host) || unitRunning(host, 'nmbd') ? [...base, { name, suffix: FILE_SERVER, group: false }] : base;
 }
 
 const waiting = new WeakMap<object, Map<number, (m: NbnsMessage) => void>>();

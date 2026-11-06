@@ -4,6 +4,7 @@
  * is Everyone: a share for reading or with full control, and the files are worked on with the permissions of the
  * device's own account (the one its Windows terminal uses), so what arrives over the network is that user's.
  */
+import type { MessageKey } from '../i18n/catalog.ts';
 import type { Host } from '../devices/host.ts';
 import type { Cred, Vfs } from '../bash/vfs.ts';
 import { FsError, canAccess } from '../bash/vfs.ts';
@@ -81,3 +82,14 @@ export function unpublishWinShare(host: Host, name: string): boolean {
   if (done) host.notifyChange();
   return done;
 }
+
+/** How the panel and the web GUI word each refusal. */
+export const PUBLISH_ERRORS: Readonly<Record<PublishError, MessageKey>> = {
+  name: 'wsh.err.name',
+  reserved: 'wsh.err.reserved',
+  exists: 'smb.err.exists',
+  path: 'wsh.err.path',
+  folder: 'wsh.err.folder',
+  remark: 'wsh.err.remark',
+  full: 'wsh.err.full',
+};

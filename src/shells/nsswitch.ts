@@ -117,3 +117,8 @@ export function seededNsswitch(host: Host): string {
   const mdns = withMdns(DEFAULT_NSSWITCH, hasPackage(host, 'libnss-mdns') || hasPackage(host, 'avahi-daemon'));
   return withResolve(mdns, hasPackage(host, 'libnss-resolve'));
 }
+
+/** The panel of winbind: «wins» at the end of «hosts:», or out of it (the edit an administrator makes by hand). */
+export function withWins(text: string, on: boolean): string {
+  return editHosts(text, /\s*\bwins\b/g, 'wins', /$^/, on);
+}

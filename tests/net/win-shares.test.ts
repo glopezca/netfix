@@ -22,7 +22,7 @@ const docs = { name: 'docs', path: 'C:\\Users\\Public\\Documents', remark: 'Apun
 test('a lab feature of PCs and Servers, on by default; files from before it keep it on', () => {
   assert.equal(featureOn({}, 'pc', 'winshare'), true);
   assert.equal(featureOn({}, 'server', 'winshare'), true);
-  assert.equal(featureOn({}, 'linuxrouter', 'winshare'), false);
+  assert.equal(featureOn({}, 'linuxrouter', 'winshare'), true, 'a GNU/Linux router with Windows too (v0.39)');
   const v2 = fileFeatures({ pc: ['ip', 'apps', 'samba', 'linux'] }, 2, undefined);
   assert.equal(featureOn(v2, 'pc', 'winshare'), true, 'a v0.35 list never names it');
   assert.equal(featureOn(v2, 'pc', 'windows'), false);

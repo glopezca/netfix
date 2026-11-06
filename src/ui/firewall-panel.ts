@@ -16,6 +16,7 @@ import { SYSCTL_KEYS } from '../net/sysctl.ts';
 import { chainForm, ruleForm, tableForm } from './firewall-forms.ts';
 import type { Commit } from './firewall-forms.ts';
 import { t } from '../i18n/t.ts';
+import { linuxSide } from '../net/pkg-units.ts';
 
 function header(s: Host, app: AfterChange, fail: (m: string) => void): HTMLElement[] {
   const st = firewallStatus(s);
@@ -76,7 +77,7 @@ export function firewallPanel(s: Host, app: AfterChange): LivePanel {
   // Outside the redraw: an action that changes the device redraws the panel before reporting.
   const msg = message();
   return liveHostPanel(s, () => {
-    if (s.os !== 'linux' && s.kind !== 'pc') return [el('p', { class: 'muted' }, t('fw.notLinux'))];
+    if (!linuxSide(s) && s.kind !== 'pc') return [el('p', { class: 'muted' }, t('fw.notLinux'))];
     const fail = (m: string): void => msg.error(m);
     const commit: Commit = (command) => {
       const r = nftEdit(s.kernel.netfilter.ruleset, command);

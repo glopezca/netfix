@@ -5,6 +5,7 @@
  * that Linux account, inside the share's directory: «..» is refused and a link that leads out of it is denied.
  * Windows serves the shares of its SMB panel instead (smb-windows.ts), with the same file operations.
  */
+import { winShareActive } from '../net/win-shares.ts';
 import type { Host } from '../devices/host.ts';
 import type { AppPayload } from '../net/packets.ts';
 import type { SmbEntry, SmbOp, SmbReply, SmbRequest, SmbShareInfo, SmbStatus } from '../net/smb-types.ts';
@@ -173,7 +174,8 @@ function shareList(conf: SmbConf, host: Host): SmbReply {
 function answer(host: Host, r: SmbRequest): SmbReply {
   const fs = hostFs(host);
   if (!fs) return fail('NT_STATUS_UNSUCCESSFUL');
-  if (host.os === 'windows') {
+  // Windows' own server while its sharing is on; else smbd (servesSmb in netbios.ts lets nothing else in).
+  if (winShareActive(host)) {
     if (r.req.op === 'shares') return windowsShareList(host);
     const tree = windowsTree(host, fs, r.share);
     return typeof tree === 'string' ? fail(tree) : onShare(fs, tree, r.req);

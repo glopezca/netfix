@@ -22,6 +22,7 @@ import { firstAddress } from '../net/dns.ts';
 import { BROADCAST_IP, formatIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
 import type { SimClock } from '../core/clock.ts';
+import { linuxSide } from '../net/pkg-units.ts';
 
 export interface LogEntry {
   readonly time: number;
@@ -87,7 +88,7 @@ export class Server extends Host {
 
   /** nftables.service start: `nft -f /etc/nftables.conf`; an error keeps it stopped (logged like systemd). */
   private startFirewall(): boolean {
-    if (this.os === 'windows') return true;
+    if (!linuxSide(this)) return true;
     const err = loadNftablesConf(this);
     if (!err) return true;
     this.logFirewallError(err);
@@ -103,7 +104,7 @@ export class Server extends Host {
 
   /** systemctl reload nftables: loads the file again; on error the running ruleset stays. */
   reloadFirewall(): string | null {
-    const err = this.os === 'windows' ? null : loadNftablesConf(this);
+    const err = linuxSide(this) ? loadNftablesConf(this) : null;
     if (err) {
       this.logFirewallError(err);
       this.log('firewall', 'Reload failed for nftables.service - nftables.');

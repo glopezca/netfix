@@ -140,7 +140,7 @@ export const SAMBA_DOCS: readonly DocPage[] = [
     summary: 'La casilla «Compartir archivos e impresoras para redes Microsoft», Servicios → SMB y net share, y cómo se usa el recurso desde GNU/Linux y desde otro Windows.',
     markdownBase: MD,
     blocks: [
-      p('Un equipo **Windows** (PC o Windows Server) comparte carpetas por SMB sin instalar nada, como uno real. Lo decide la casilla **Compartir archivos e impresoras para redes Microsoft** de su pestaña **Configuración**, que empieza desmarcada: es el servicio Servidor enlazado al adaptador de red.'),
+      p('Un equipo con **Windows** (PC, Server o router GNU/Linux con la terminal Windows marcada) comparte carpetas por SMB sin instalar nada, como uno real. Lo decide la casilla **Compartir archivos e impresoras para redes Microsoft** de su pestaña **Configuración**, que empieza desmarcada: es el servicio Servidor enlazado al adaptador de red.'),
       table(['Casilla', 'Qué pasa'], [
         ['Marcada', 'Escucha en TCP 139 y 445, registra NOMBRE<20> (`nbtstat -n`, y en el servidor WINS si lo tiene) y aparece la pestaña **Servicios → SMB**.'],
         ['Desmarcada', 'Nadie responde en 139 y 445: smbclient da `NT_STATUS_CONNECTION_REFUSED` y `net view \\\\pc0`, «System error 53». Los recursos se conservan para cuando se vuelva a marcar.'],
@@ -167,7 +167,7 @@ export const SAMBA_DOCS: readonly DocPage[] = [
         ['NT_STATUS_ACCESS_DENIED · System error 5', 'Escribir en un recurso de solo lectura.'],
         ['NT_STATUS_BAD_NETWORK_NAME · System error 67', 'El recurso no existe o se borró su carpeta.'],
       ]),
-      tip('En la configuración general', '**Configuración → Laboratorio actual** tiene la casilla **Compartir archivos e impresoras para redes Microsoft (Windows)** para PC y Servidor, marcada por defecto. Desmarcada, los equipos de esa red no la ofrecen y no comparten nada.'),
+      tip('En la configuración general', '**Configuración → Laboratorio actual** tiene la casilla **Compartir archivos e impresoras para redes Microsoft (Windows)** para PC, Servidor y Router GNU/Linux, marcada por defecto. Desmarcada, los equipos de esa red no la ofrecen y no comparten nada.'),
       exercise('De Windows a GNU/Linux', 'Con un PC Windows y un PC GNU/Linux en la misma red, comparte en Windows la carpeta C:\\home\\alumno\\docs para que el PC GNU/Linux pueda dejar archivos en ella.', 'En Windows: marca la casilla en Configuración, `md C:\\home\\alumno\\docs` y `net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL` (o Servicios → SMB con Todos: Control total). En GNU/Linux: `sudo apt install smbclient` y `smbclient //NOMBRE/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\home\\alumno\\docs` en Windows lo muestra.'),
     ],
   },

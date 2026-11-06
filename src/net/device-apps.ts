@@ -73,6 +73,28 @@ export function deviceApps(d: AppsDevice): readonly FeatureId[] {
   return chosen.get(d) ?? defaultApps(d);
 }
 
+/**
+ * The systems of a device are its terminals: GNU/Linux with the GNU/Linux terminal ticked, Windows with the Windows
+ * one (so adding or taking away a terminal adds or takes away that system, its services included). With neither
+ * ticked, the system of its IP tab.
+ */
+export function hasSystem(d: AppsDevice, os: 'linux' | 'windows'): boolean {
+  // Hosts of the emulated Internet have no terminals: only their system.
+  if (!(d.kind in APPS_BY_KIND)) return d.os === os;
+  const apps = deviceApps(d);
+  return apps.includes(os) || (d.os === os && !apps.includes(os === 'linux' ? 'windows' : 'linux'));
+}
+
+/**
+ * The system that runs a device's own services (SSH, DHCP, DNS, HTTP, mail) and its default resolver: its only one,
+ * or with both the system of its TCP/IP tab.
+ */
+export function serviceSystem(d: AppsDevice): 'linux' | 'windows' {
+  const linux = hasSystem(d, 'linux');
+  const windows = hasSystem(d, 'windows');
+  return linux && windows ? d.os : windows ? 'windows' : 'linux';
+}
+
 /** The device's own choice, when it differs from the defaults (what the file keeps). */
 export function customApps(d: AppsDevice): readonly FeatureId[] | undefined {
   return chosen.get(d);

@@ -13,6 +13,8 @@ import { SMB_CONF, smbSections, winsConflict } from '../services/smb-conf.ts';
 import { parseResolvedConf, resolvedStartLines, RESOLVED_CONF } from './resolved-conf.ts';
 import { setResolvedConfig } from './resolved.ts';
 import { nmbdStarted, nmbdStopped } from './samba-wins.ts';
+import { AVAHI_CONF, parseAvahiConf } from './avahi-conf.ts';
+import { setAvahiConfig } from '../net/avahi.ts';
 import { PKG_UNITS, RESOLVED_UNIT, forgetPkgUnits, installedUnits, pkgLog, pkgUnitState, setPkgUnitState } from '../net/pkg-units.ts';
 import type { PkgUnit } from '../net/pkg-units.ts';
 
@@ -40,10 +42,24 @@ const startError = (host: Host, u: PkgUnit): string | null => (isNft(u) ? loadNf
 
 /** What the service itself logs as it starts; resolved reads resolved.conf then (and only then). */
 function startLines(host: Host, u: PkgUnit): string[] {
+  if (u.name === 'avahi-daemon') return avahiStartLines(host);
   if (u !== RESOLVED_UNIT) return [`${u.process} version ${SAMBA_VERSION} started.`];
   const conf = parseResolvedConf(readHostFile(host, RESOLVED_CONF) ?? '');
   setResolvedConfig(host, conf);
   return [...conf.warnings, ...resolvedStartLines(host.runtimeName().toLowerCase())];
+}
+
+/** avahi-daemon reads its file as it starts (Netfix: host-name, disable-publishing) and says the name it publishes. */
+function avahiStartLines(host: Host): string[] {
+  const conf = parseAvahiConf(readHostFile(host, AVAHI_CONF) ?? '');
+  setAvahiConfig(host, conf);
+  const name = `${conf.hostName || host.runtimeName().toLowerCase()}.local`;
+  return [
+    "Found user 'avahi' (UID 107) and group 'avahi' (GID 114).", 'Successfully dropped root privileges.', 'avahi-daemon 0.8 starting up.',
+    'Successfully called chroot().', 'Successfully dropped remaining capabilities.',
+    ...(conf.publish ? [] : ['Publishing disabled: no host name is announced.']),
+    `Server startup complete. Host name is ${name}. Local service cookie is 3626245938.`,
+  ];
 }
 
 /** Starts the unit (a running one is left as it is); false when its process failed (the reason is in its journal). */
@@ -113,5 +129,7 @@ export function pkgRemoved(host: Host, pkg: string): void {
 export function bootPkgUnits(host: Host): void {
   for (const u of installedUnits(host)) {
     if (pkgUnitState(host, u).active && startError(host, u) !== null) setPkgUnitState(host, u, { active: false });
+    // A running avahi-daemon goes on with what its file says.
+    if (u.name === 'avahi-daemon' && pkgUnitState(host, u).active) setAvahiConfig(host, parseAvahiConf(readHostFile(host, AVAHI_CONF) ?? ''));
   }
 }

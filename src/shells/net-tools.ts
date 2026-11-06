@@ -14,6 +14,8 @@ import { parseIp } from '../core/ip.ts';
 import { dnsQuery, dnsSearch, hostsLookup } from './dns-client.ts';
 import { resolvedLookup } from './nss-resolve.ts';
 import { resolvedRunning } from './resolved.ts';
+import { unitRunning } from '../net/pkg-units.ts';
+import { serviceSystem } from '../net/device-apps.ts';
 
 export type Resolved =
   | { readonly kind: 'ip'; readonly ip: number; readonly name: string; readonly viaDns: boolean }
@@ -77,13 +79,15 @@ function nssStep(host: Host, source: string, target: string): NssStep {
     return { status: r.kind === 'ip' ? 'SUCCESS' : DNS_STATUS[r.reason], result: r };
   }
   if (source === 'resolve' && hasPackage(host, 'libnss-resolve')) return resolveStep(host, target);
-  if (source.startsWith('mdns') && (hasPackage(host, 'libnss-mdns') || hasPackage(host, 'avahi-daemon'))) {
+  // nss-mdns asks through avahi-daemon: without it running the module has nothing to ask.
+  if (source.startsWith('mdns') && hasPackage(host, 'libnss-mdns') && unitRunning(host, 'avahi-daemon')) {
     // The _minimal modules only take .local names: anything else is UNAVAIL, so [NOTFOUND=return] does not stop it.
     if (source.endsWith('_minimal') && !isLocalName(target)) return unavail;
     const r = ip(mdnsResolve(host, normalizeName(target), false), normalizeName(target));
     return r ? { status: 'SUCCESS', result: r } : notFound;
   }
-  if (source === 'wins' && hasPackage(host, 'libnss-winbind') && hasPackage(host, 'winbind')) {
+  // nss_wins asks winbindd: stopped, wins finds nothing.
+  if (source === 'wins' && hasPackage(host, 'libnss-winbind') && unitRunning(host, 'winbind')) {
     const r = singleLabel(target) ? ip(winsLookup(host, target), target) : undefined;
     return r ? { status: 'SUCCESS', result: r } : notFound;
   }
@@ -103,7 +107,7 @@ function linuxLookup(host: Host, target: string): Resolved {
 
 /** IP literal, the host's own name, /etc/hosts, then what the asking system does (linuxLookup, windowsLookup). */
 /** `client` defaults to the device's system (TCP/IP tab); the terminals say which one asks. */
-export function resolveHost(host: Host, target: string, client: NameClient = host.os === 'windows' ? 'windows' : 'linux'): Resolved {
+export function resolveHost(host: Host, target: string, client: NameClient = serviceSystem(host)): Resolved {
   const literal = parseIp(target);
   if (literal !== null) return { kind: 'ip', ip: literal, name: target, viaDns: false };
   // The host's own name answers with its network address (its hosts line, 127.0.1.1, is the loopback).
