@@ -88,8 +88,34 @@ try {
   await page.dblclick('g.device:has-text("SRV")');
   await win.locator('.win-tab:has-text("Configuración")').first().click();
   assert.equal(await win.locator('input[name="dev-samba"]').isChecked(), true, 'the server keeps its Samba, ticked');
+
+  // Service packages in the catalogue (v0.38): the bind9 box and the DNS box are one; the terminal's apt agrees.
+  const cfg = async () => { await win.locator('.win-tab:has-text("Configuración")').first().click(); await page.waitForTimeout(200); };
+  assert.equal(await win.locator('input[name="dev-pkg-samba"]').isChecked(), true, 'samba in the service packages, ticked');
+  assert.equal(await win.locator('input[name="dev-pkg-bind9"]').isChecked(), false);
+  await win.locator('input[name="dev-pkg-bind9"]').check();
+  await page.waitForTimeout(300);
+  await cfg();
+  assert.equal(await win.locator('input[name="dev-dns"]').isChecked(), true, 'installing bind9 ticks the DNS box');
+  assert.ok((await subnav()).includes('DNS'), 'and brings the DNS panel');
+  await win.locator('.win-tab:has-text("Terminal GNU/Linux")').click();
+  assert.match(await run(page, 'apt list --installed 2>/dev/null | grep ^bind9/'), /bind9\/resolute,now/);
+  await run(page, 'sudo apt remove -y bind9');
+  await page.waitForTimeout(300);
+  await cfg();
+  assert.equal(await win.locator('input[name="dev-dns"]').isChecked(), false, 'apt remove unticks the DNS box');
+  assert.equal(await win.locator('input[name="dev-pkg-bind9"]').isChecked(), false, 'and the package box');
+  await win.locator('.win-close').click();
+  // The lab takes bind9 away: no package box and no DNS box on a server without DNS.
+  await page.click('button.seg[data-view="settings"]');
+  await page.locator('fieldset[data-kind="packages"] input[data-pkg="bind9"]').uncheck();
+  await page.click('button.seg[data-view="net"]');
+  await page.dblclick('g.device:has-text("SRV")');
+  await cfg();
+  assert.equal(await win.locator('input[name="dev-pkg-bind9"]').count(), 0);
+  assert.equal(await win.locator('input[name="dev-dns"]').count(), 0);
   assert.deepEqual(errors, []);
-  console.log('e2e samba OK: PC Servicios follows apt install/remove (no web GUI), Samba panel adds a share on SRV, Samba per kind in the lab settings');
+  console.log('e2e samba OK: PC Servicios follows apt install/remove (no web GUI), Samba panel adds a share on SRV, Samba per kind in the lab settings, service packages in the catalogue');
 } finally {
   await browser.close();
   server.kill();
