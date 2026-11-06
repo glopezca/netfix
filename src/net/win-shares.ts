@@ -30,8 +30,11 @@ const MAX_PATH = 260;
 /** More than a lab needs, and a bound on a crafted file. */
 export const MAX_SHARES = 32;
 
-/** Characters a share name cannot have (as Windows: " / \ [ ] : | < > + = ; , ? *), nor control characters. */
-const BAD_NAME = /["/\\[\]:|<>+=;,?*\u0000-\u001f\u007f]/;
+/** Control characters (C0, DEL, C1) and the invisible or bidi ones that make one name look like another. */
+const HIDDEN = '\\u0000-\\u001f\\u007f-\\u009f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff';
+/** Characters a share name cannot have (as Windows: " / \ [ ] : | < > + = ; , ? *), nor hidden ones. */
+const BAD_NAME = new RegExp(`["/\\\\[\\]:|<>+=;,?*${HIDDEN}]`);
+const BAD_REMARK = new RegExp(`[${HIDDEN}]`);
 /** The administrative shares Windows keeps for itself. */
 const RESERVED = /^(?:IPC|ADMIN|PRINT|[A-Z])\$$/i;
 /** Characters a folder name cannot have. */
@@ -49,20 +52,22 @@ const stateOf = (d: object): ShareState => states.get(d) ?? NONE;
 /** C:\a\b tidied (upper-case drive, no trailing \), or undefined when it is not a plain folder of drive C:. */
 export function sharePath(path: string): string | undefined {
   if (path.length > MAX_PATH || !/^[cC]:\\/.test(path)) return undefined;
-  const parts = path.slice(3).split('\\');
-  if (parts.at(-1) === '') parts.pop();
-  if (parts.some((p) => p === '' || p === '.' || p === '..' || BAD_SEGMENT.test(p))) return undefined;
+  const typed = path.slice(3).split('\\');
+  if (typed.at(-1) === '') typed.pop();
+  // Win32 drops the dots and spaces that end a name (so «docs.» is docs, and «. .» is nothing).
+  const parts = typed.map((p) => p.replace(/[. ]+$/, ''));
+  if (parts.some((p) => p === '' || BAD_SEGMENT.test(p))) return undefined;
   return `C:\\${parts.join('\\')}`;
 }
 
 /** The share as it would be kept, or why not (beside the shares already there). */
 function checkShare(shares: readonly WinShare[], s: WinShare): WinShare | ShareError {
-  if (!s.name || s.name.length > MAX_NAME || BAD_NAME.test(s.name)) return 'name';
+  if (!s.name || s.name.length > MAX_NAME || s.name.trim() !== s.name || BAD_NAME.test(s.name)) return 'name';
   if (RESERVED.test(s.name)) return 'reserved';
   if (shares.some((x) => x.name.toLowerCase() === s.name.toLowerCase())) return 'exists';
   const path = sharePath(s.path);
   if (path === undefined) return 'path';
-  if (s.remark.length > MAX_REMARK || /[\u0000-\u001f\u007f]/.test(s.remark)) return 'remark';
+  if (s.remark.length > MAX_REMARK || BAD_REMARK.test(s.remark)) return 'remark';
   if (shares.length >= MAX_SHARES) return 'full';
   return { name: s.name, path, remark: s.remark, access: s.access === 'full' ? 'full' : 'read' };
 }

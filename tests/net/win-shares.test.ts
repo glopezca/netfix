@@ -68,6 +68,19 @@ test('a share: checked name, folder of drive C:, comment and permission', () => 
   assert.deepEqual(winShares(h).map((s) => s.name), ['docs', 'oculto$']);
 });
 
+test('no look-alikes: invisible and bidi characters, or spaces around a name; a folder is kept as Windows reads it', () => {
+  const h = windowsPc(lab());
+  for (const name of [' docs', 'docs ', 'ADMIN\u200b$', 'a\u202eb', 'a\u0085b', 'a\u2066b', '\ufeffx']) {
+    assert.equal(addWinShare(h, { ...docs, name }), 'name', JSON.stringify(name));
+  }
+  assert.equal(addWinShare(h, { ...docs, remark: 'abc\u202edcp.exe' }), 'remark');
+  for (const path of ['C:\\a\\. .', 'C:\\a\\...', 'C:\\ \\b']) {
+    assert.equal(addWinShare(h, { ...docs, name: 'otro', path }), 'path', JSON.stringify(path));
+  }
+  assert.equal(addWinShare(h, { ...docs, path: 'C:\\Users\\Public. \\Documents. ' }), undefined);
+  assert.equal(findWinShare(h, 'docs')?.path, 'C:\\Users\\Public\\Documents', 'trailing dots and spaces dropped, as Win32 does');
+});
+
 test('at most MAX_SHARES shares', () => {
   const h = windowsPc(lab());
   for (let i = 0; i < MAX_SHARES; i++) assert.equal(addWinShare(h, { ...docs, name: `r${i}` }), undefined);
