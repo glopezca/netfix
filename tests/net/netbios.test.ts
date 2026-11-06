@@ -1,6 +1,6 @@
 /**
  * NetBIOS over TCP/IP: Windows resolves single-label names by NBNS broadcast (UDP 137) after DNS, answers for its
- * own names, keeps a cache (nbtstat) and listens for SMB (139/445); GNU/Linux does with samba (nmbd, smbd, nmblookup)
+ * own names, keeps a cache (nbtstat) and listens for SMB (139/445) when it shares files; GNU/Linux does with samba (nmbd, smbd, nmblookup)
  * and resolves through /etc/nsswitch.conf (wins with winbind; mdns4_minimal only with avahi / libnss-mdns).
  */
 import { test } from 'node:test';
@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { EXAMPLES } from '../../src/net/examples.ts';
 import { createShell } from '../../src/shells/factory.ts';
 import { frameProtocol } from '../../src/net/packets.ts';
+import { setWinShareOn } from '../../src/net/win-shares.ts';
 import type { Host } from '../../src/devices/host.ts';
 
 const plain = (s: string): string => s.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
@@ -32,6 +33,8 @@ test('Windows finds another Windows by its bare name over NBNS broadcast, after 
 test('nbtstat: local table, remote table by name and by address, purge', () => {
   const t = lab('basico');
   const pc0 = t.byLabel('PC0') as Host;
+  setWinShareOn(pc0, true);
+  setWinShareOn(t.byLabel('PC2') as Host, true);
   const n = win(pc0, 'nbtstat -n');
   assert.match(n, /Node IpAddress: \[\d+\.\d+\.\d+\.\d+\] Scope Id: \[\]\n\n {16}NetBIOS Local Name Table\n\n {7}Name {15}Type {9}Status\n {4}-{45}\n {4}PC0 {12}<00>  UNIQUE {6}Registered\n {4}WORKGROUP {6}<00>  GROUP {7}Registered\n {4}PC0 {12}<20>  UNIQUE {6}Registered/);
   const a = win(pc0, 'nbtstat -a pc2');
@@ -89,9 +92,10 @@ test('GNU/Linux follows /etc/nsswitch.conf: wins with winbind, mdns4_minimal onl
   assert.match(win(pc1, 'ping -n 1 pc0.local'), /Reply from /, 'the Windows terminal asks natively');
 });
 
-test('SMB ports: Windows listens on 139 and 445; a GNU/Linux host only with samba', () => {
+test('SMB ports: Windows listens on 139 and 445 when it shares files; a GNU/Linux host only with samba', () => {
   const t = lab('internet');
   const [pc0, pc1] = [t.byLabel('PC0') as Host, t.byLabel('PC1') as Host];
+  setWinShareOn(pc0, true);
   const ip0 = win(pc0, 'ipconfig').match(/IPv4 Address[. ]*: ([\d.]+)/)?.[1] ?? '';
   const ip1 = win(pc1, 'ipconfig').match(/IPv4 Address[. ]*: ([\d.]+)/)?.[1] ?? '';
   assert.match(sh(pc1, `nc -z -v -w 1 ${ip0} 445 2>&1`), /succeeded/);

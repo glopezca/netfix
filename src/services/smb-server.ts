@@ -3,7 +3,7 @@
  * changed file) and the Samba accounts. A session is a Samba user proving their NT hash, or the guest (nobody) when
  * anonymous or, with «map to guest = bad user», an unknown name. Every file operation runs with the permissions of
  * that Linux account, inside the share's directory: «..» is refused and a link that leads out of it is denied.
- * Windows answers only its IPC$ (Netfix does not share Windows folders).
+ * Windows serves the shares of its SMB panel instead (smb-windows.ts), with the same file operations.
  */
 import type { Host } from '../devices/host.ts';
 import type { AppPayload } from '../net/packets.ts';
@@ -15,6 +15,8 @@ import { DEFAULT_SMB_CONF, SMB_CONF, findShare, parseSmbConf, serverComment } fr
 import type { SmbConf, SmbShare } from './smb-conf.ts';
 import { readPassdb, unixAccount } from './smb-passdb.ts';
 import { groupNames } from './ssh-auth.ts';
+import { windowsShareList, windowsTree } from './smb-windows.ts';
+import type { SmbTree } from './smb-windows.ts';
 
 const NOBODY = 65534;
 const FILE_MODE = 0o744;
@@ -144,9 +146,10 @@ function operate(fs: Vfs, op: SmbOp, path: string, to: string, cred: Cred): SmbR
   }
 }
 
-function onShare(fs: Vfs, root: string, share: SmbShare, op: SmbOp, cred: Cred): SmbReply {
+function onShare(fs: Vfs, tree: SmbTree, op: SmbOp): SmbReply {
+  const { root, cred } = tree;
   if (op.op === 'tree') return { status: 'NT_STATUS_OK' };
-  if (WRITES.has(op.op) && share.readOnly) return fail('NT_STATUS_ACCESS_DENIED');
+  if (WRITES.has(op.op) && tree.readOnly) return fail('NT_STATUS_ACCESS_DENIED');
   const path = resolve(fs, root, 'path' in op ? op.path : '', !ON_ENTRY.has(op.op));
   if (isStatus(path)) return fail(path);
   const to = op.op === 'rename' ? renameTarget(fs, root, op.to) : '';
@@ -171,7 +174,9 @@ function answer(host: Host, r: SmbRequest): SmbReply {
   const fs = hostFs(host);
   if (!fs) return fail('NT_STATUS_UNSUCCESSFUL');
   if (host.os === 'windows') {
-    return r.req.op === 'shares' ? { status: 'NT_STATUS_OK', comment: '', shares: [{ name: 'IPC$', type: 'IPC', comment: 'Remote IPC' }] } : fail('NT_STATUS_BAD_NETWORK_NAME');
+    if (r.req.op === 'shares') return windowsShareList(host);
+    const tree = windowsTree(host, fs, r.share);
+    return typeof tree === 'string' ? fail(tree) : onShare(fs, tree, r.req);
   }
   const conf = readConf(fs);
   const session = login(fs, conf, r);
@@ -181,10 +186,10 @@ function answer(host: Host, r: SmbRequest): SmbReply {
   if (!share) return fail('NT_STATUS_BAD_NETWORK_NAME');
   const root = connect(fs, share, session);
   if (isStatus(root)) return fail(root);
-  return onShare(fs, root, share, r.req, session.cred);
+  return onShare(fs, { root, readOnly: share.readOnly, cred: session.cred }, r.req);
 }
 
-/** The SMB handler of netbios.ts (TCP 139/445 while smbd runs, or on Windows). */
+/** The SMB handler of netbios.ts (TCP 139/445 while smbd runs, or on Windows sharing files). */
 export function smbServe(host: Host, payload: AppPayload): AppPayload | null {
   if (payload.app !== 'SMB' || payload.kind !== 'smb-request') return null;
   return { app: 'SMB', kind: 'smb-reply', smb: answer(host, payload.smb) };

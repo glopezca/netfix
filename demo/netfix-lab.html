@@ -15316,7 +15316,7 @@ const UTIL_DOCS = {
     wget: { group: 'red', synopsis: 'wget [-q] [-O FICHERO] URL', summary: 'Descarga a un fichero del directorio actual (nombre.1, nombre.2… si ya existe). «-qO-» escribe la página en la salida.' },
     apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PAQUETE... | remove|purge [-y] PAQUETE... | list [--installed] [PATRÓN] | moo', summary: 'Gestor de paquetes de Ubuntu 26.04 con alcance limitado: lee las fuentes reales (/etc/apt/sources.list.d/ubuntu.sources) y se conecta a archive.ubuntu.com y security.ubuntu.com por la red simulada; sin salida a Internet o sin DNS que los resuelva da los errores reales («Temporary failure resolving…»). El catálogo es ficticio y siempre está al día: update, upgrade y autoremove no cambian nada. install y remove sí: en un Server o router GNU/Linux activan o quitan la casilla y el panel del servicio (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) y arrancan o paran el servicio. En cualquier equipo GNU/Linux (también un PC), bind9utils trae named-checkconf y named-checkzone, e isc-kea trae kea-dhcp4 para comprobar configuraciones (kea-dhcp4 -t). Requiere root (sudo).', options: '-y  responde «sí» a «Continue? [Y/n]»\npurge  como remove, y borra la configuración' },
     nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f CAMPOS | -g CAMPOS] [general [status | hostname] | networking [connectivity] | device [status | show [IFAZ]] | connection [show [NOMBRE]]] | --version', summary: 'NetworkManager (se instala con «sudo apt install network-manager»): sin argumentos, un resumen por interfaz (estado, MAC, dirección IP, rutas) y la configuración DNS; device status y device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (los perfiles netplan-eth0 y lo); general status comprueba de verdad la conectividad (full con Internet, limited sin ella). Admite abreviaturas (nmcli d, nmcli c, nmcli g) y, para scripts, -t (sin cabecera, separado por «:»), -f (columnas o campos: -f DEVICE,STATE, -f IP4) y -g (solo los valores: nmcli -g IP4.ADDRESS dev show eth0). Solo consulta: la configuración se cambia con netplan, ip o la pestaña TCP/IP.' },
-    nmblookup: { group: 'red', synopsis: 'nmblookup [-U DIRECCIÓN] [-R] NOMBRE | -A DIRECCIÓN_IP', summary: 'Consulta NetBIOS (samba-common-bin, que trae samba): pregunta por un nombre con un broadcast a la subred (UDP 137) o, con -A, pide a un equipo su tabla de nombres y su MAC. Responden los Windows y los GNU/Linux con samba de la misma red (no cruza routers). Con -U pregunta por unicast a esa dirección y con -R pide recursión: `nmblookup -U 192.168.10.2 -R pc2` consulta al servidor WINS, que sí cruza routers; sin -U no se usa el `wins server` de smb.conf.' },
+    nmblookup: { group: 'red', synopsis: 'nmblookup [-S] [-U DIRECCIÓN] [-R] NOMBRE | -A DIRECCIÓN_IP', summary: 'Consulta NetBIOS (samba-common-bin, que trae samba): pregunta por un nombre con un broadcast a la subred (UDP 137) o, con -A, pide a un equipo su tabla de nombres y su MAC; -S pide además la tabla del equipo encontrado (NOMBRE<20> indica que comparte archivos). Responden los Windows y los GNU/Linux con samba de la misma red (no cruza routers). Con -U pregunta por unicast a esa dirección y con -R pide recursión: `nmblookup -U 192.168.10.2 -R pc2` consulta al servidor WINS, que sí cruza routers; sin -U no se usa el `wins server` de smb.conf.' },
     smbclient: { group: 'red', synopsis: 'smbclient -L SERVIDOR [-N | -U USUARIO[%CLAVE]] | //SERVIDOR/RECURSO [-N | -U USUARIO[%CLAVE]] [-c "ORDEN; ORDEN"]', summary: 'Cliente SMB (paquete smbclient): -L lista los recursos compartidos de un servidor; //SERVIDOR/RECURSO abre uno y, con el indicador «smb: \\>» o con -c, ejecuta ls, cd, get, put, mkdir, rmdir, rm, pwd, help y exit (`ls` y `rm` admiten comodines: `ls *.txt`, `rm *.tmp`). -N entra como invitado; -U con una cuenta de Samba (sin %CLAVE la pide). El servidor aplica read only, valid users y los permisos Linux de la cuenta.' },
     smbpasswd: { group: 'red', section: 8, synopsis: 'smbpasswd [-a | -x | -d | -e] [-s] [USUARIO]', summary: 'Cuentas de Samba (samba-common-bin): root añade (-a) un usuario Linux existente con su contraseña SMB, lo borra (-x), lo deshabilita (-d) o lo habilita (-e); cualquier otro usuario solo cambia su propia contraseña. -s lee las contraseñas de la entrada estándar, para scripts: printf \'clave\\nclave\\n\' | sudo smbpasswd -s -a ana.' },
     testparm: { group: 'red', synopsis: 'testparm [-s] [FICHERO]', summary: 'Comprueba /etc/samba/smb.conf (samba-common-bin): avisa de los parámetros desconocidos («Unknown parameter encountered») y vuelca las secciones que entiende, con los recursos ordenados por parámetro. Sin -s espera a que pulses Intro antes del volcado.' },
@@ -16642,7 +16642,7 @@ const APT_DOCS = [
             p('mDNS va por multicast (224.0.0.251, puerto UDP 5353) a los equipos del mismo enlace: lo propagan los switches pero no los routers, así que solo funciona dentro de la misma red, y el otro equipo también debe tener avahi-daemon. En modo Simulación verás los paquetes MDNS; un cortafuegos que bloquee el puerto 5353 lo impide.'),
             p('Los equipos **Windows** (PC o Windows Server) traen mDNS de serie, como Windows 10 y 11: sin instalar nada responden a su nombre .local y preguntan por los demás (`ping pc1.local` en la Terminal Windows). Windows pregunta desde el puerto 5353 y la respuesta llega por multicast; nss-mdns, desde un puerto propio y con respuesta directa.'),
             h('NetBIOS y carpetas compartidas: samba'),
-            p('Windows trae de serie NetBIOS sobre TCP/IP: responde a su nombre (NOMBRE<00>, WORKGROUP y NOMBRE<20>), resuelve un nombre sin punto por broadcast a su red (UDP 137) si el DNS no lo conoce y escucha SMB en TCP 139 y 445. Un equipo GNU/Linux hace lo mismo con el servicio **Samba** (paquete samba: smbd y nmbd); `nmblookup NOMBRE` (y `nmblookup -A IP`) consulta NetBIOS desde la terminal, y el nombre propio responde mientras nmbd está en marcha (`localhost` no es un nombre NetBIOS, tampoco en Windows).'),
+            p('Windows trae de serie NetBIOS sobre TCP/IP: responde a su nombre (NOMBRE<00> y WORKGROUP, y NOMBRE<20> si comparte archivos) y resuelve un nombre sin punto por broadcast a su red (UDP 137) si el DNS no lo conoce; con **Compartir archivos e impresoras para redes Microsoft** marcada en su pestaña **Configuración**, escucha además SMB en TCP 139 y 445. Un equipo GNU/Linux hace lo mismo con el servicio **Samba** (paquete samba: smbd y nmbd); `nmblookup NOMBRE` (y `nmblookup -A IP`) consulta NetBIOS desde la terminal, y el nombre propio responde mientras nmbd está en marcha (`localhost` no es un nombre NetBIOS, tampoco en Windows).'),
             p('Samba es un servicio más, como DNS o DHCP, en servidores, routers GNU/Linux y también PCs: smb.conf, las cuentas (`smbpasswd`), los permisos, `net use` desde Windows y `smbclient` desde GNU/Linux se explican en **Servidor → Samba** (páginas «Samba: compartir carpetas» y «Samba: acceder desde Windows y GNU/Linux»), y se practican en el laboratorio «Compartir carpetas con Samba en un servidor GNU/Linux».'),
             p('Para que los programas de GNU/Linux (ping, ssh…) resuelvan nombres NetBIOS, como en un Ubuntu real: `sudo apt install winbind libnss-winbind` y añadir **wins** a la línea `hosts:` de **/etc/nsswitch.conf** (por ejemplo `hosts: files dns wins`). Igual que mDNS, el broadcast NetBIOS no cruza routers; un servidor WINS sí (`wins support = yes` en el servidor y `wins server = IP` en los clientes; consulta «Resolución de nombres»).'),
             p('Por la misma razón, desde GNU/Linux mDNS necesita siempre avahi-daemon o libnss-mdns: al instalarlos, su script añade `mdns4_minimal [NOTFOUND=return]` a `hosts:` en /etc/nsswitch.conf, y al quitarlos lo borra.'),
@@ -17864,7 +17864,7 @@ const UTIL_DOCS = {
     wget: { group: 'red', synopsis: 'wget [-q] [-O FILE] URL', summary: 'Downloads to a file in the current directory (name.1, name.2… if it already exists). “-qO-” writes the page to the output.' },
     apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PACKAGE... | remove|purge [-y] PACKAGE... | list [--installed] [PATTERN] | moo', summary: 'Ubuntu 26.04 package manager, with a limited reach: it reads the real sources (/etc/apt/sources.list.d/ubuntu.sources) and connects to archive.ubuntu.com and security.ubuntu.com over the simulated network; with no way out to the Internet or no DNS that resolves them it gives the real errors (“Temporary failure resolving…”). The catalogue is fictitious and always up to date: update, upgrade and autoremove change nothing. install and remove do: on a Server or GNU/Linux router they tick or untick the box and panel of the service (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) and start or stop the service. On any GNU/Linux device (a PC too), bind9utils brings named-checkconf and named-checkzone, and isc-kea brings kea-dhcp4 to check configurations (kea-dhcp4 -t). Needs root (sudo).', options: '-y  answers “yes” to “Continue? [Y/n]”\npurge  like remove, and deletes the configuration' },
     nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f FIELDS | -g FIELDS] [general [status | hostname] | networking [connectivity] | device [status | show [IFACE]] | connection [show [NAME]]] | --version', summary: 'NetworkManager (installed with “sudo apt install network-manager”): with no arguments, an overview per interface (state, MAC, IP address, routes) and the DNS configuration; device status and device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (the netplan-eth0 and lo profiles); general status really checks connectivity (full with Internet, limited without). Takes abbreviations (nmcli d, nmcli c, nmcli g) and, for scripts, -t (no header, “:” separated), -f (columns or fields: -f DEVICE,STATE, -f IP4) and -g (values only: nmcli -g IP4.ADDRESS dev show eth0). Read-only: the configuration is changed with netplan, ip or the TCP/IP tab.' },
-    nmblookup: { group: 'red', synopsis: 'nmblookup [-U ADDRESS] [-R] NAME | -A IP_ADDRESS', summary: 'NetBIOS query (samba-common-bin, which samba brings): asks for a name with a broadcast to the subnet (UDP 137) or, with -A, asks a device for its name table and MAC. Windows devices and GNU/Linux ones with samba on the same network answer (it does not cross routers). With -U it asks that address by unicast and with -R it asks for recursion: `nmblookup -U 192.168.10.2 -R pc2` queries the WINS server, which does cross routers; without -U the `wins server` of smb.conf is not used.' },
+    nmblookup: { group: 'red', synopsis: 'nmblookup [-S] [-U ADDRESS] [-R] NAME | -A IP_ADDRESS', summary: 'NetBIOS query (samba-common-bin, which samba brings): asks for a name with a broadcast to the subnet (UDP 137) or, with -A, asks a device for its name table and MAC; -S also asks for the table of the device it finds (NAME<20> means it shares files). Windows devices and GNU/Linux ones with samba on the same network answer (it does not cross routers). With -U it asks that address by unicast and with -R it asks for recursion: `nmblookup -U 192.168.10.2 -R pc2` queries the WINS server, which does cross routers; without -U the `wins server` of smb.conf is not used.' },
     smbclient: { group: 'red', synopsis: 'smbclient -L SERVER [-N | -U USER[%PASSWORD]] | //SERVER/SHARE [-N | -U USER[%PASSWORD]] [-c "COMMAND; COMMAND"]', summary: 'SMB client (smbclient package): -L lists the shares of a server; //SERVER/SHARE opens one and, at the “smb: \\>” prompt or with -c, runs ls, cd, get, put, mkdir, rmdir, rm, pwd, help and exit (`ls` and `rm` take wildcards: `ls *.txt`, `rm *.tmp`). -N logs in as the guest; -U with a Samba account (without %PASSWORD it asks for it). The server applies read only, valid users and the Linux permissions of the account.' },
     smbpasswd: { group: 'red', section: 8, synopsis: 'smbpasswd [-a | -x | -d | -e] [-s] [USER]', summary: 'Samba accounts (samba-common-bin): root adds (-a) an existing Linux user with its SMB password, deletes (-x), disables (-d) or enables (-e) it; any other user may only change their own password. -s reads the passwords from standard input, for scripts: printf \'secret\\nsecret\\n\' | sudo smbpasswd -s -a ana.' },
     testparm: { group: 'red', synopsis: 'testparm [-s] [FILE]', summary: 'Checks /etc/samba/smb.conf (samba-common-bin): warns about unknown parameters (“Unknown parameter encountered”) and dumps the sections it understands, with the shares sorted by parameter. Without -s it waits for Enter before the dump.' },
@@ -19190,7 +19190,7 @@ const APT_DOCS = [
             p('mDNS goes by multicast (224.0.0.251, UDP port 5353) to the devices on the same link: switches pass it on but routers do not, so it only works within the same network, and the other device needs avahi-daemon too. In Simulation mode you will see the MDNS packets; a firewall that blocks port 5353 stops it.'),
             p('**Windows** devices (PC or Windows Server) have mDNS built in, as Windows 10 and 11 do: with nothing installed they answer to their .local name and ask for the others (`ping pc1.local` in the Windows terminal). Windows asks from port 5353 and the answer comes by multicast; nss-mdns, from a port of its own with a direct answer.'),
             h('NetBIOS and shared folders: samba'),
-            p('Windows has NetBIOS over TCP/IP built in: it answers to its name (NAME<00>, WORKGROUP and NAME<20>), resolves a name without a dot by broadcast to its network (UDP 137) when the DNS does not know it, and listens for SMB on TCP 139 and 445. A GNU/Linux device does the same with the **Samba** service (samba package: smbd and nmbd); `nmblookup NAME` (and `nmblookup -A IP`) asks NetBIOS from the terminal, and the device’s own name answers while nmbd is running (`localhost` is not a NetBIOS name, on Windows either).'),
+            p('Windows has NetBIOS over TCP/IP built in: it answers to its name (NAME<00> and WORKGROUP, and NAME<20> when it shares files) and resolves a name without a dot by broadcast to its network (UDP 137) when the DNS does not know it; with **File and Printer Sharing for Microsoft Networks** ticked in its **Settings** tab, it also listens for SMB on TCP 139 and 445. A GNU/Linux device does the same with the **Samba** service (samba package: smbd and nmbd); `nmblookup NAME` (and `nmblookup -A IP`) asks NetBIOS from the terminal, and the device’s own name answers while nmbd is running (`localhost` is not a NetBIOS name, on Windows either).'),
             p('Samba is one more service, like DNS or DHCP, on servers, GNU/Linux routers and PCs too: smb.conf, the accounts (`smbpasswd`), the permissions, `net use` from Windows and `smbclient` from GNU/Linux are explained under **Server → Samba** (the pages “Samba: sharing folders” and “Samba: access from Windows and GNU/Linux”), and practised in the “Sharing folders with Samba on a GNU/Linux server” lab.'),
             p('For GNU/Linux programs (ping, ssh…) to resolve NetBIOS names, as on a real Ubuntu: `sudo apt install winbind libnss-winbind` and add **wins** to the `hosts:` line of **/etc/nsswitch.conf** (for instance `hosts: files dns wins`). Like mDNS, the NetBIOS broadcast does not cross routers; a WINS server does (`wins support = yes` on the server and `wins server = IP` on the clients; see “Name resolution”).'),
             p('For the same reason, from GNU/Linux mDNS always needs avahi-daemon or libnss-mdns: when installed, its script adds `mdns4_minimal [NOTFOUND=return]` to `hosts:` in /etc/nsswitch.conf, and removes it when they go.'),
@@ -30711,9 +30711,135 @@ function removeShare(text, name) {
 
 return { SMB_CONF, DEFAULT_SMB_CONF, smbSections, winsConflict, parseSmbConf, findShare, serverComment, validShareName, addShare, removeShare };
 })();
+__m["net/win-shares.js"] = (() => {
+/**
+ * «Compartir archivos e impresoras para redes Microsoft» on Windows (PC and Server): the binding of the Server service
+ * to the adapter, which the device's Configuración box ticks (unticked in each device; the lab's «winshare» feature
+ * decides whether the box is there), and the shares it publishes. As with «uso compartido con protección por
+ * contraseña» turned off: each share has a name, a folder of drive C:, a comment and what Everyone may do (read, or
+ * full control). Kept beside the device in a weak registry and saved with it; a record from a file is checked as if
+ * typed.
+ */
+const { featureOn } = __m["net/lab-features.js"];
+const { labViewOf, notifyAppsChange } = __m["net/device-apps.js"];
+/** What Windows allows: a share name of up to 80 characters, a comment of 256 and a path of MAX_PATH. */
+const MAX_NAME = 80;
+const MAX_REMARK = 256;
+const MAX_PATH = 260;
+/** More than a lab needs, and a bound on a crafted file. */
+const MAX_SHARES = 32;
+/** Characters a share name cannot have (as Windows: " / \ [ ] : | < > + = ; , ? *), nor control characters. */
+const BAD_NAME = /["/\\[\]:|<>+=;,?*\u0000-\u001f\u007f]/;
+/** The administrative shares Windows keeps for itself. */
+const RESERVED = /^(?:IPC|ADMIN|PRINT|[A-Z])\$$/i;
+/** Characters a folder name cannot have. */
+const BAD_SEGMENT = /[<>:"/|?*\u0000-\u001f\u007f]/;
+const NONE = { on: false, shares: [] };
+const states = new WeakMap();
+const stateOf = (d) => states.get(d) ?? NONE;
+/** C:\a\b tidied (upper-case drive, no trailing \), or undefined when it is not a plain folder of drive C:. */
+function sharePath(path) {
+    if (path.length > MAX_PATH || !/^[cC]:\\/.test(path))
+        return undefined;
+    const parts = path.slice(3).split('\\');
+    if (parts.at(-1) === '')
+        parts.pop();
+    if (parts.some((p) => p === '' || p === '.' || p === '..' || BAD_SEGMENT.test(p)))
+        return undefined;
+    return `C:\\${parts.join('\\')}`;
+}
+/** The share as it would be kept, or why not (beside the shares already there). */
+function checkShare(shares, s) {
+    if (!s.name || s.name.length > MAX_NAME || BAD_NAME.test(s.name))
+        return 'name';
+    if (RESERVED.test(s.name))
+        return 'reserved';
+    if (shares.some((x) => x.name.toLowerCase() === s.name.toLowerCase()))
+        return 'exists';
+    const path = sharePath(s.path);
+    if (path === undefined)
+        return 'path';
+    if (s.remark.length > MAX_REMARK || /[\u0000-\u001f\u007f]/.test(s.remark))
+        return 'remark';
+    if (shares.length >= MAX_SHARES)
+        return 'full';
+    return { name: s.name, path, remark: s.remark, access: s.access === 'full' ? 'full' : 'read' };
+}
+/** The box of the device's Configuración tab: a Windows device whose lab keeps the feature. */
+function winShareOffered(d) {
+    return d.os === 'windows' && featureOn(labViewOf(d).features, d.kind, 'winshare');
+}
+/** The box ticked (whether or not the lab still offers it). */
+function winShareOn(d) {
+    return stateOf(d).on;
+}
+/** File and printer sharing working: the box ticked on a device that offers it (SMB on 139/445, NAME<20>). */
+function winShareActive(d) {
+    return winShareOn(d) && winShareOffered(d);
+}
+function setWinShareOn(d, on) {
+    if (winShareOn(d) === on)
+        return;
+    states.set(d, { ...stateOf(d), on });
+    notifyAppsChange(d);
+}
+function winShares(d) {
+    return stateOf(d).shares;
+}
+function findWinShare(d, name) {
+    return winShares(d).find((s) => s.name.toLowerCase() === name.toLowerCase());
+}
+/** Publishes a share: undefined when done, or why not. */
+function addWinShare(d, share) {
+    const state = stateOf(d);
+    const checked = checkShare(state.shares, share);
+    if (typeof checked === 'string')
+        return checked;
+    states.set(d, { ...state, shares: [...state.shares, checked] });
+    return undefined;
+}
+/** Stops sharing (the folder stays): whether there was such a share. */
+function removeWinShare(d, name) {
+    const state = stateOf(d);
+    const rest = state.shares.filter((s) => s.name.toLowerCase() !== name.toLowerCase());
+    if (rest.length === state.shares.length)
+        return false;
+    states.set(d, { ...state, shares: rest });
+    return true;
+}
+/** What the file keeps: nothing while the box is unticked and there are no shares. */
+function winSharesRecord(d) {
+    const state = stateOf(d);
+    return state.on || state.shares.length ? { on: state.on, shares: state.shares } : undefined;
+}
+const isObj = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+/** A share of a file (untrusted): every field of the right type and accepted as if typed. */
+function shareOf(v) {
+    if (!isObj(v) || typeof v.name !== 'string' || typeof v.path !== 'string' || typeof v.remark !== 'string')
+        return undefined;
+    if (v.access !== 'read' && v.access !== 'full')
+        return undefined;
+    return { name: v.name, path: v.path, remark: v.remark, access: v.access };
+}
+/** Puts the `winShare` of a file back: the box only when `on` is true, the shares that pass the checks. */
+function restoreWinShares(d, data) {
+    if (!isObj(data))
+        return;
+    const list = Array.isArray(data.shares) ? data.shares.slice(0, MAX_SHARES * 2) : [];
+    const shares = list.reduce((kept, v) => {
+        const s = shareOf(v);
+        const checked = s && checkShare(kept, s);
+        return checked && typeof checked !== 'string' ? [...kept, checked] : kept;
+    }, []);
+    states.set(d, { on: data.on === true, shares });
+}
+
+return { MAX_SHARES, sharePath, winShareOffered, winShareOn, winShareActive, setWinShareOn, winShares, findWinShare, addWinShare, removeWinShare, winSharesRecord, restoreWinShares };
+})();
 __m["net/netbios.js"] = (() => {
 const { registerLocalSockets } = __m["net/ipstack.js"];
 const { unitRunning } = __m["net/pkg-units.js"];
+const { winShareActive } = __m["net/win-shares.js"];
 const { runSync } = __m["net/sync.js"];
 const { broadcastOf } = __m["core/ip.js"];
 const NBNS_PORT = 137;
@@ -30729,8 +30855,8 @@ const MAX_NAME = 15;
 /** NetBIOS over TCP/IP is on in Windows; on GNU/Linux nmbd (samba) gives it, while it runs. */
 const windows = (h) => h.os === 'windows';
 const speaksNetbios = (h) => windows(h) || unitRunning(h, 'nmbd');
-/** The SMB server: Windows' own, or smbd while it runs. */
-const servesSmb = (h) => windows(h) || unitRunning(h, 'smbd');
+/** The SMB server: Windows' own with file and printer sharing on (win-shares.ts), or smbd while it runs. */
+const servesSmb = (h) => (windows(h) ? winShareActive(h) : unitRunning(h, 'smbd'));
 let smbHandler = () => null;
 function registerSmbServer(fn) {
     smbHandler = fn;
@@ -30740,10 +30866,12 @@ function registerWinsHandler(fn) {
     winsHandler = fn;
 }
 const netbiosName = (name) => name.toUpperCase().slice(0, MAX_NAME);
-/** A host's own names: NAME<00>, WORKGROUP<00> (group) and NAME<20> (its SMB server). */
+/** A host's own names: NAME<00>, WORKGROUP<00> (group) and NAME<20> (its SMB server: nmbd always registers it; Windows
+ * only with file and printer sharing on). */
 function ownNames(host) {
     const name = netbiosName(host.runtimeName());
-    return [{ name, suffix: WORKSTATION, group: false }, { name: WORKGROUP, suffix: WORKSTATION, group: true }, { name, suffix: FILE_SERVER, group: false }];
+    const base = [{ name, suffix: WORKSTATION, group: false }, { name: WORKGROUP, suffix: WORKSTATION, group: true }];
+    return windows(host) && !winShareActive(host) ? base : [...base, { name, suffix: FILE_SERVER, group: false }];
 }
 const waiting = new WeakMap();
 const caches = new WeakMap();
@@ -31177,7 +31305,10 @@ function llmnrLookup(host, name, done, on = () => true) {
 return { LLMNR_GROUP, LLMNR_PORT, LLMNR_WAIT_MS, setLlmnrResponder, registerLlmnr, llmnrLookup };
 })();
 __m["net/win-wins.js"] = (() => {
-const { winsRegister, winsSendAll } = __m["net/wins.js"];
+const { winsRegister, winsSend, winsSendAll } = __m["net/wins.js"];
+const { FILE_SERVER, netbiosName } = __m["net/netbios.js"];
+const { winShareActive } = __m["net/win-shares.js"];
+const { onAppsChange } = __m["net/device-apps.js"];
 /** What Windows asks for in a registration (0x493E0 seconds). */
 const WINDOWS_WINS_TTL_S = 300_000;
 const MULTICAST = 0xe0000000;
@@ -31188,6 +31319,10 @@ const generations = new WeakMap();
 /** The server and granted TTL to refresh with, and the hosts with that timer pending (one each, however often they register). */
 const current = new WeakMap();
 const pending = new WeakSet();
+/** Whether NAME<20> went with the names (sharing on when they were registered, or since). */
+const sharedFor = new WeakMap();
+/** The hosts of a workspace, by themselves: what a change of the Configuración tab (device-apps.ts) is about. */
+const attached = new WeakMap();
 /** NetBT keeps a primary and a secondary WINS server (what ipconfig /all shows): any more in the lease are left out. */
 const MAX_SERVERS = 2;
 /** A unicast address that can be a WINS server (not 0.0.0.0, broadcast or multicast). */
@@ -31231,6 +31366,7 @@ function checkWindowsWins(host) {
     registeredFor.set(host, key);
     current.delete(host);
     const gen = bump(host);
+    sharedFor.set(host, winShareActive(host));
     if (!key)
         return;
     winsRegister(host, servers, WINDOWS_WINS_TTL_S, () => generations.get(host) === gen, (server, ttlS) => {
@@ -31251,9 +31387,32 @@ function setWindowsWins(host, ip) {
     checkWindowsWins(host);
     return true;
 }
-/** A new host in the workspace: every change of its configuration may bring a new address or lease to register. */
+/** File and printer sharing turned on or off: NAME<20> registered or released with the server the names are with. */
+function sharingChanged(host) {
+    const on = winShareActive(host);
+    if (on === (sharedFor.get(host) ?? false))
+        return;
+    sharedFor.set(host, on);
+    const c = current.get(host);
+    if (!c)
+        return;
+    const name = { name: netbiosName(host.runtimeName()), suffix: FILE_SERVER, group: false };
+    winsSend(host, c.server, on ? 'registration' : 'release', name, on ? WINDOWS_WINS_TTL_S : 0);
+}
+let watching = false;
+/** A new host in the workspace: every change of its configuration may bring a new address or lease to register, and
+ * of its Configuración tab, its sharing box. */
 function attachWindowsWins(host) {
     host.onChange(() => checkWindowsWins(host));
+    attached.set(host, host);
+    if (watching)
+        return;
+    watching = true;
+    onAppsChange((d) => {
+        const h = attached.get(d);
+        if (h)
+            sharingChanged(h);
+    });
 }
 /** A host read back from a saved lab, once its links are up: it registers again. */
 function bootWindowsWins(host) {
@@ -39152,7 +39311,7 @@ __m["shells/nmblookup.js"] = (() => {
 const { hasPackage } = __m["net/host-packages.js"];
 const { WORKSTATION, nbnsAsk, netbiosName, ownNames, speaksNetbios } = __m["net/netbios.js"];
 const { broadcastOf, formatIp, parseIp } = __m["core/ip.js"];
-const USAGE = 'Usage: nmblookup [-A] [-U UNICAST-ADDRESS] [-R] NAME|IP\n';
+const USAGE = 'Usage: nmblookup [-A] [-S] [-U UNICAST-ADDRESS] [-R] NAME|IP\n';
 function status(ctx, host, target) {
     ctx.out(`Looking up status of ${target}\n`);
     const ip = parseIp(target);
@@ -39187,15 +39346,17 @@ function query(ctx, host, name, o) {
         return 1;
     }
     ctx.out(`${formatIp(ip)} ${name}<00>\n`);
-    return 0;
+    return o.lookupStatus ? status(ctx, host, formatIp(ip)) : 0;
 }
-/** -A, -R and -U ADDRESS (or -UADDRESS, --unicast=ADDRESS); the first other word is the name. Null: a usage error. */
+/** -A, -S (the node status of what the query finds), -R and -U ADDRESS (or -UADDRESS, --unicast=ADDRESS); the first other word is the name. Null: a usage error. */
 function parse(args) {
-    let o = { status: false, recurse: false };
+    let o = { status: false, lookupStatus: false, recurse: false };
     for (let i = 0; i < args.length; i++) {
         const a = args[i] ?? '';
         if (a === '-A')
             o = { ...o, status: true };
+        else if (a === '-S')
+            o = { ...o, lookupStatus: true };
         else if (a === '-R')
             o = { ...o, recurse: true };
         else if (a === '-U' || a === '--unicast') {
@@ -42379,131 +42540,6 @@ registerHostFileReader((host, path) => {
 });
 
 return { defaultLinuxUser, hostUsers, hostSystem, savedFiles, restoreFiles, bootKernel };
-})();
-__m["net/win-shares.js"] = (() => {
-/**
- * «Compartir archivos e impresoras para redes Microsoft» on Windows (PC and Server): the binding of the Server service
- * to the adapter, which the device's Configuración box ticks (unticked in each device; the lab's «winshare» feature
- * decides whether the box is there), and the shares it publishes. As with «uso compartido con protección por
- * contraseña» turned off: each share has a name, a folder of drive C:, a comment and what Everyone may do (read, or
- * full control). Kept beside the device in a weak registry and saved with it; a record from a file is checked as if
- * typed.
- */
-const { featureOn } = __m["net/lab-features.js"];
-const { labViewOf, notifyAppsChange } = __m["net/device-apps.js"];
-/** What Windows allows: a share name of up to 80 characters, a comment of 256 and a path of MAX_PATH. */
-const MAX_NAME = 80;
-const MAX_REMARK = 256;
-const MAX_PATH = 260;
-/** More than a lab needs, and a bound on a crafted file. */
-const MAX_SHARES = 32;
-/** Characters a share name cannot have (as Windows: " / \ [ ] : | < > + = ; , ? *), nor control characters. */
-const BAD_NAME = /["/\\[\]:|<>+=;,?*\u0000-\u001f\u007f]/;
-/** The administrative shares Windows keeps for itself. */
-const RESERVED = /^(?:IPC|ADMIN|PRINT|[A-Z])\$$/i;
-/** Characters a folder name cannot have. */
-const BAD_SEGMENT = /[<>:"/|?*\u0000-\u001f\u007f]/;
-const NONE = { on: false, shares: [] };
-const states = new WeakMap();
-const stateOf = (d) => states.get(d) ?? NONE;
-/** C:\a\b tidied (upper-case drive, no trailing \), or undefined when it is not a plain folder of drive C:. */
-function sharePath(path) {
-    if (path.length > MAX_PATH || !/^[cC]:\\/.test(path))
-        return undefined;
-    const parts = path.slice(3).split('\\');
-    if (parts.at(-1) === '')
-        parts.pop();
-    if (parts.some((p) => p === '' || p === '.' || p === '..' || BAD_SEGMENT.test(p)))
-        return undefined;
-    return `C:\\${parts.join('\\')}`;
-}
-/** The share as it would be kept, or why not (beside the shares already there). */
-function checkShare(shares, s) {
-    if (!s.name || s.name.length > MAX_NAME || BAD_NAME.test(s.name))
-        return 'name';
-    if (RESERVED.test(s.name))
-        return 'reserved';
-    if (shares.some((x) => x.name.toLowerCase() === s.name.toLowerCase()))
-        return 'exists';
-    const path = sharePath(s.path);
-    if (path === undefined)
-        return 'path';
-    if (s.remark.length > MAX_REMARK || /[\u0000-\u001f\u007f]/.test(s.remark))
-        return 'remark';
-    if (shares.length >= MAX_SHARES)
-        return 'full';
-    return { name: s.name, path, remark: s.remark, access: s.access === 'full' ? 'full' : 'read' };
-}
-/** The box of the device's Configuración tab: a Windows device whose lab keeps the feature. */
-function winShareOffered(d) {
-    return d.os === 'windows' && featureOn(labViewOf(d).features, d.kind, 'winshare');
-}
-/** The box ticked (whether or not the lab still offers it). */
-function winShareOn(d) {
-    return stateOf(d).on;
-}
-/** File and printer sharing working: the box ticked on a device that offers it (SMB on 139/445, NAME<20>). */
-function winShareActive(d) {
-    return winShareOn(d) && winShareOffered(d);
-}
-function setWinShareOn(d, on) {
-    if (winShareOn(d) === on)
-        return;
-    states.set(d, { ...stateOf(d), on });
-    notifyAppsChange(d);
-}
-function winShares(d) {
-    return stateOf(d).shares;
-}
-function findWinShare(d, name) {
-    return winShares(d).find((s) => s.name.toLowerCase() === name.toLowerCase());
-}
-/** Publishes a share: undefined when done, or why not. */
-function addWinShare(d, share) {
-    const state = stateOf(d);
-    const checked = checkShare(state.shares, share);
-    if (typeof checked === 'string')
-        return checked;
-    states.set(d, { ...state, shares: [...state.shares, checked] });
-    return undefined;
-}
-/** Stops sharing (the folder stays): whether there was such a share. */
-function removeWinShare(d, name) {
-    const state = stateOf(d);
-    const rest = state.shares.filter((s) => s.name.toLowerCase() !== name.toLowerCase());
-    if (rest.length === state.shares.length)
-        return false;
-    states.set(d, { ...state, shares: rest });
-    return true;
-}
-/** What the file keeps: nothing while the box is unticked and there are no shares. */
-function winSharesRecord(d) {
-    const state = stateOf(d);
-    return state.on || state.shares.length ? { on: state.on, shares: state.shares } : undefined;
-}
-const isObj = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
-/** A share of a file (untrusted): every field of the right type and accepted as if typed. */
-function shareOf(v) {
-    if (!isObj(v) || typeof v.name !== 'string' || typeof v.path !== 'string' || typeof v.remark !== 'string')
-        return undefined;
-    if (v.access !== 'read' && v.access !== 'full')
-        return undefined;
-    return { name: v.name, path: v.path, remark: v.remark, access: v.access };
-}
-/** Puts the `winShare` of a file back: the box only when `on` is true, the shares that pass the checks. */
-function restoreWinShares(d, data) {
-    if (!isObj(data))
-        return;
-    const list = Array.isArray(data.shares) ? data.shares.slice(0, MAX_SHARES * 2) : [];
-    const shares = list.reduce((kept, v) => {
-        const s = shareOf(v);
-        const checked = s && checkShare(kept, s);
-        return checked && typeof checked !== 'string' ? [...kept, checked] : kept;
-    }, []);
-    states.set(d, { on: data.on === true, shares });
-}
-
-return { MAX_SHARES, sharePath, winShareOffered, winShareOn, winShareActive, setWinShareOn, winShares, findWinShare, addWinShare, removeWinShare, winSharesRecord, restoreWinShares };
 })();
 __m["net/packets.js"] = (() => {
 /** The quote an ICMP error carries for a TCP or UDP packet (none for ICMP). */
@@ -49342,12 +49378,55 @@ function withHint(state, hint) {
 
 return { parseMissionState, withHint };
 })();
+__m["services/smb-windows.js"] = (() => {
+const { FsError, canAccess } = __m["bash/vfs.js"];
+const { findWinShare, winShares } = __m["net/win-shares.js"];
+const { defaultLinuxUser, hostUsers } = __m["shells/host-system.js"];
+const { resolveWinPath } = __m["shells/win-path.js"];
+/** The device's own account, as its Windows terminal (windows.ts). */
+function localCred(host) {
+    const users = hostUsers(host);
+    const account = users.find((u) => u.name === defaultLinuxUser(host)) ?? users[0];
+    return { uid: account?.uid ?? 0, gid: account?.gid ?? 0, groups: account?.groups ?? [] };
+}
+/** NetShareEnum: the shares by name, then IPC$; Windows gives no server comment. */
+function windowsShareList(host) {
+    const disks = [...winShares(host)]
+        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+        .map((s) => ({ name: s.name, type: 'Disk', comment: s.remark }));
+    return { status: 'NT_STATUS_OK', comment: '', shares: [...disks, { name: 'IPC$', type: 'IPC', comment: 'Remote IPC' }] };
+}
+/** Tree connect: the share (its name in any case) and its folder, which must still be there and be entered. */
+function windowsTree(host, fs, name) {
+    const share = findWinShare(host, name);
+    if (!share)
+        return 'NT_STATUS_BAD_NETWORK_NAME';
+    const cred = localCred(host);
+    const path = resolveWinPath(fs, '/', share.path, cred);
+    if (!path.ok)
+        return 'NT_STATUS_BAD_NETWORK_NAME';
+    try {
+        const root = fs.realpath(path.path);
+        if (fs.tryLookup(root)?.kind !== 'dir')
+            return 'NT_STATUS_BAD_NETWORK_NAME';
+        if (!canAccess(fs.lookup(root, cred), cred, 1))
+            return 'NT_STATUS_ACCESS_DENIED';
+        return { root, readOnly: share.access === 'read', cred };
+    }
+    catch (e) {
+        return e instanceof FsError ? 'NT_STATUS_BAD_NETWORK_NAME' : 'NT_STATUS_UNSUCCESSFUL';
+    }
+}
+
+return { windowsShareList, windowsTree };
+})();
 __m["services/smb-server.js"] = (() => {
 const { FsError, canAccess } = __m["bash/vfs.js"];
 const { hostFs } = __m["devices/host-fs.js"];
 const { DEFAULT_SMB_CONF, SMB_CONF, findShare, parseSmbConf, serverComment } = __m["services/smb-conf.js"];
 const { readPassdb, unixAccount } = __m["services/smb-passdb.js"];
 const { groupNames } = __m["services/ssh-auth.js"];
+const { windowsShareList, windowsTree } = __m["services/smb-windows.js"];
 const NOBODY = 65534;
 const FILE_MODE = 0o744;
 const DIR_MODE = 0o755;
@@ -49478,10 +49557,11 @@ function operate(fs, op, path, to, cred) {
         default: return ok;
     }
 }
-function onShare(fs, root, share, op, cred) {
+function onShare(fs, tree, op) {
+    const { root, cred } = tree;
     if (op.op === 'tree')
         return { status: 'NT_STATUS_OK' };
-    if (WRITES.has(op.op) && share.readOnly)
+    if (WRITES.has(op.op) && tree.readOnly)
         return fail('NT_STATUS_ACCESS_DENIED');
     const path = resolve(fs, root, 'path' in op ? op.path : '', !ON_ENTRY.has(op.op));
     if (isStatus(path))
@@ -49510,7 +49590,10 @@ function answer(host, r) {
     if (!fs)
         return fail('NT_STATUS_UNSUCCESSFUL');
     if (host.os === 'windows') {
-        return r.req.op === 'shares' ? { status: 'NT_STATUS_OK', comment: '', shares: [{ name: 'IPC$', type: 'IPC', comment: 'Remote IPC' }] } : fail('NT_STATUS_BAD_NETWORK_NAME');
+        if (r.req.op === 'shares')
+            return windowsShareList(host);
+        const tree = windowsTree(host, fs, r.share);
+        return typeof tree === 'string' ? fail(tree) : onShare(fs, tree, r.req);
     }
     const conf = readConf(fs);
     const session = login(fs, conf, r);
@@ -49524,9 +49607,9 @@ function answer(host, r) {
     const root = connect(fs, share, session);
     if (isStatus(root))
         return fail(root);
-    return onShare(fs, root, share, r.req, session.cred);
+    return onShare(fs, { root, readOnly: share.readOnly, cred: session.cred }, r.req);
 }
-/** The SMB handler of netbios.ts (TCP 139/445 while smbd runs, or on Windows). */
+/** The SMB handler of netbios.ts (TCP 139/445 while smbd runs, or on Windows sharing files). */
 function smbServe(host, payload) {
     if (payload.app !== 'SMB' || payload.kind !== 'smb-request')
         return null;
