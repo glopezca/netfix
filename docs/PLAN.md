@@ -1865,3 +1865,95 @@ Decisiones del usuario (no se reabren):
   concedido con un único temporizador por equipo y usa como mucho dos servidores WINS de la concesión. La vista PDU de
   NBNS (`src/ui/pdu-nbns.ts`) traduce el opcode y el código de respuesta. Laboratorio «Nombres en GNU/Linux:
   systemd-resolved, NSS y WINS» (`src/net/labs-resolved.ts`) y e2e `scripts/e2e-names.mjs`.
+
+### Fase 55: opción 44 en el DHCP de PT y Kea, smbclient con WINS, compartir en Windows y catálogo de paquetes apt (v0.37.0)
+
+Petición: (1) que el DHCP de Kea y el del router IOS envíen la opción 44; (2) que smbclient consulte el servidor WINS;
+(3) en los equipos Windows, la casilla «Compartir archivos e impresoras para redes Microsoft» en su Configuración, que
+activa Servicios → SMB para gestionar los recursos compartidos por SMB/NetBIOS (sin apt), con su casilla en la
+configuración general; (4) en cada equipo, un catálogo de los paquetes apt que no son servicios (network-manager,
+smbclient…), con una casilla por paquete que equivale a apt install/remove, y su paralelo en la configuración general.
+
+Estado de partida:
+- **IOS ya envía la opción 44** (`netbios-name-server` en `ip dhcp pool`, `src/dhcp/server.ts:358`) y Windows la usa
+  desde la Fase 54. Falta en el DHCP de PT (Servidor, Router GNU/Linux y Windows Server: Servicios → DHCP y su gestión
+  web), que es el que genera `/etc/kea/kea-dhcp4.conf`.
+- smbclient pregunta al sistema y después por difusión; nunca al `wins server` de smb.conf.
+- Windows responde por SMB solo con IPC$ (`smb-server.ts`), registra NOMBRE<20> y no tiene Servicios.
+- El único paquete con casilla por equipo es samba (`setSambaInstalled`); el resto se instala solo por la terminal.
+
+Decisiones tomadas por defecto (se pueden cambiar al revisar el plan):
+1. **Opción 44 en PT**: un campo «Servidor WINS» por pool (opcional, una IP). Va a `netbiosServers` del motor y a
+   `{ "name": "netbios-name-servers" }` en kea-dhcp4.conf. Sin opción 46: Windows con WINS y sin tipo de nodo se pone
+   en nodo h, como el real.
+2. **smbclient**: sigue `name resolve order = lmhosts wins host bcast` de Samba: con `wins server` en smb.conf pregunta
+   por unicast a ese WINS (cruza routers) antes que al sistema; sin él, como ahora. `name resolve order` escrito en
+   smb.conf se respeta (wins, host, bcast; lmhosts se acepta y no hace nada).
+3. **Compartir en Windows, como «uso compartido con protección por contraseña» desactivado**: cada recurso tiene
+   nombre, carpeta (C:\…), comentario y permiso para Todos: Lectura o Control total. Se entra sin contraseña (cualquier
+   usuario se acepta como invitado); las operaciones corren con la cuenta local del equipo y no salen de la carpeta.
+   Netfix no tiene contraseñas de Windows; la protección por contraseña queda para otra fase.
+4. **Casilla desactivada = enlace desmarcado en el adaptador, como Windows real**: sin el servicio Servidor no hay
+   TCP 139/445 (smbclient: `NT_STATUS_CONNECTION_REFUSED`; `net view \\pc`: `System error 53 has occurred.`) ni
+   NOMBRE<20>. Cambia el comportamiento actual (IPC$ siempre); las pruebas y laboratorios que lo usan marcan la casilla.
+   En el equipo empieza desmarcada; en el laboratorio, la función empieza activada (como Samba).
+5. **`net share`** en la terminal Windows: listar, `net share NOMBRE=C:\ruta [/grant:Everyone,READ|FULL]
+   [/remark:"…"]` y `net share NOMBRE /delete`, con la salida literal de Windows. Es lo mismo que el panel.
+6. **Catálogo de paquetes**: los paquetes de herramientas de `apt-catalog.ts` (sin `feature` y sin samba):
+   network-manager, avahi-daemon, libnss-mdns, libnss-resolve, smbclient, samba-common-bin, winbind, libnss-winbind y
+   bind9-utils (bind9utils, nombre viejo, se queda solo para la terminal). Solo en equipos con lado GNU/Linux. La
+   casilla hace lo mismo que `apt install`/`apt remove` (dependencias automáticas, postinst, unidades, dpkg.log), sin
+   pedir red, como la de Samba; la terminal y la casilla se siguen mutuamente.
+7. **En la configuración general, disponibilidad**: una casilla por paquete del catálogo en «Laboratorio actual»,
+   común a todos los tipos, activadas por defecto. Desactivada: el paquete desaparece del catálogo de los equipos y
+   `apt install` responde `E: Unable to locate package X`, como un repositorio quitado. Un equipo que ya lo tiene lo
+   conserva (y puede quitarlo con apt remove). Se guarda como lista de desactivados.
+
+Commits (TDD, uno o varios por punto):
+1. `docs:` este plan.
+2. `feat:` opción 44 en el DHCP de PT: `PtDhcpPool.wins`, `validatePool`, `persist.ts` (IP validada), `ptPoolToIos`,
+   `keaConf`, campo en Servicios → DHCP (`server-dhcp-dns.ts`) y en la gestión web (`admin-pages.ts`,
+   `admin-actions.ts`), i18n es/en. Pruebas: un Windows con DHCP de un Servidor ve el WINS en `ipconfig /all` y se
+   registra; kea-dhcp4.conf lo lleva y pasa `kea-dhcp4 -t`; la prueba equivalente con un pool IOS.
+3. `feat:` smbclient pregunta al WINS (`winsLookup`) en el orden de Samba; prueba con el laboratorio
+   `nombres-resolved` (LNX-B llega a //win-a a través del router solo con `wins server`).
+4. `refactor:` el núcleo de apt install/remove (`apt.ts`) en una función común; `setAptInstalled(host, nombre, on)` y
+   `setSambaInstalled` como envoltorio. Las pruebas de apt y Samba siguen en verde.
+5. `feat:` catálogo por equipo (Configuración → «Paquetes») y disponibilidad en el laboratorio (`lab-features.ts`:
+   `pkgsOff`, validado con la regex de nombres y `MAX_LIST`; `settings-view.ts`); apt install de un paquete quitado da
+   «Unable to locate package». Persistencia y lectura de archivos viejos (sin la lista = todo disponible).
+6. `feat:` compartir en Windows: función `winshare` del laboratorio (PC y Servidor), casilla por equipo, registro de
+   recursos (`src/net/win-shares.ts`, WeakMap + JSON validado: nombre ≤ 80, sin `\/:*?"<>|`, carpeta dentro del VFS,
+   máximo de recursos), persistencia.
+7. `feat:` el servidor SMB de Windows: `smb-server.ts` separa «qué recursos hay» (smb.conf o el registro de Windows)
+   de las operaciones de ficheros; casilla apagada = sin 139/445 y sin NOMBRE<20>; NBSTAT y `nmblookup -S` lo
+   reflejan. Clientes: smbclient desde GNU/Linux y `net use`/`dir \\win-a\docs` desde otro Windows.
+8. `feat:` Servicios → SMB en Windows (PC y Servidor), con la tabla de recursos y su formulario, y `net share` en la
+   terminal (`src/shells/win-net-share.ts`), con su entrada en `src/docs/utils.ts` es/en.
+9. `docs:` Ayuda es/en: opción 44 (DHCP), smbclient y WINS (Samba), «Compartir en Windows», catálogo de paquetes (apt y
+   Configuración).
+10. `test:` e2e `scripts/e2e-winshare.mjs` (puerto 8115): casilla de Windows, recurso en Servicios → SMB, `smbclient`
+    desde GNU/Linux; casilla de un paquete del catálogo y su efecto en la terminal; campo WINS del pool. En la cadena
+    `npm run e2e`.
+11. `chore: v0.37.0`: versión, about-data y PLAN.md.
+
+`security-reviewer` (opus) revisa los commits 5, 6, 7 y 8 (datos de archivos cargados, rutas de los recursos, acceso
+fuera de la carpeta, HTML de los paneles).
+
+**Seguridad**:
+- Las rutas de los recursos de Windows se resuelven en el VFS y se rechazan `..` y los enlaces que salen de la carpeta,
+  como en Samba.
+- Las listas cargadas de archivos (recursos, paquetes desactivados) tienen máximo de entradas y validación por regex.
+- Los nombres y comentarios de los recursos se muestran con `textContent`.
+
+**Riesgos**:
+- Pruebas y laboratorios que dan por hecho que Windows responde por SMB o registra NOMBRE<20>
+  (`tests/net/netbios.test.ts`, `tests/services/samba.test.ts`, `labs-resolved`).
+- El tamaño de `smb-server.ts`, `apt.ts`, `settings-view.ts` y `device-config.ts`.
+- Que casilla y terminal no se desincronicen (ambas pasan por la misma función de apt).
+
+**Límites** (para fases posteriores):
+- sin uso compartido con protección por contraseña ni cuentas de Windows;
+- sin impresoras compartidas (la casilla solo comparte archivos);
+- sin recursos administrativos C$ y ADMIN$;
+- sin opción 46 en PT ni opción 44 por reserva.
