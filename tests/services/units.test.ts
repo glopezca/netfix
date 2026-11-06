@@ -68,7 +68,7 @@ test('mail helpers, units and service toggles', () => {
   const boxes = new Mailboxes();
   boxes.deliver('Ana', { from: 'a@b', to: ['ana@b'], subject: 's', body: 'b', date: 1 });
   assert.equal(boxes.count(), 1);
-  assert.equal(findUnit('named.service')?.linux, 'bind9');
+  assert.equal(findUnit('bind9.service')?.linux, 'named');
   assert.equal(findUnit('W3SVC')?.id, 'http');
   assert.equal(findUnit('nada'), undefined);
   let s = defaultServices();

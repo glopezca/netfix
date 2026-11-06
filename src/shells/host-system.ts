@@ -3,17 +3,21 @@ import { NSSWITCH, seededNsswitch } from './nsswitch.ts';
 import { DEFAULT_RESOLVED_CONF, parseResolvedConf, RESOLVED_CONF } from './resolved-conf.ts';
 import { setResolvedConfig } from './resolved.ts';
 import { t } from '../i18n/t.ts';
-import { listenChoices } from '../services/listen.ts';
 import { runsServices } from '../devices/kinds.ts';
-import { NAMED_OPTIONS, parseNamedOptions } from '../services/named-options.ts';
-import { RPZ_FILE, setPublicNames } from '../services/dns-rpz.ts';
 import { NETPLAN_FILE, netplanFileContent, writeNetplanFile } from './netplan.ts';
 import { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } from '../services/sshd-config.ts';
 import { hostKeyFiles } from '../services/ssh-hostkeys.ts';
 import type { Host } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import type { CommandFn, HostEnv, UserInfo } from '../bash/types.ts';
-import { Vfs } from '../bash/vfs.ts';
+import { FsError, MAX_FILE, ROOT, Vfs, dirname } from '../bash/vfs.ts';
+import { KEA_DHCP4_CONF } from './apt-defaults.ts';
+import { keaStart } from './service-files.ts';
+import { namedStart } from './named-start.ts';
+import { registerUnitCheck } from '../devices/unit-checks.ts';
+import type { UnitCheck } from '../devices/unit-checks.ts';
+import { adoptEdits, familyOf, followModel, guardCheck, noteEdit } from './hand-edits.ts';
+import type { Family } from './hand-edits.ts';
 import type { DirMount } from '../bash/vfs.ts';
 import { seedRootfs, seedUsers } from '../bash/rootfs.ts';
 import { COREUTILS } from '../bash/coreutils/index.ts';
@@ -93,26 +97,67 @@ function webRoot(server: Server): DirMount {
 /** Generated files that root may edit: writing them changes the device configuration. */
 const WRITERS: Readonly<Record<string, (host: Host, content: string) => void>> = {
   [NETPLAN_FILE]: (host, content) => writeNetplanFile(host, content),
-  [NAMED_OPTIONS]: (host, content) => {
-    const srv = asServer(host);
-    if (!srv) return;
-    const next = parseNamedOptions(content, srv.services.dns, listenChoices(srv, true));
-    if ('error' in next) srv.log('dns', `named-checkconf: ${next.error}`);
-    else srv.setServices({ ...srv.services, dns: next });
-  },
-  [RPZ_FILE]: (host, content) => {
-    const srv = asServer(host);
-    if (!srv) return;
-    const next = setPublicNames(srv.services.dns, srv.services.dns.publicNames?.enabled === true, content);
-    if ('error' in next) srv.log('dns', next.error);
-    else srv.setServices({ ...srv.services, dns: next });
-  },
 };
 
 /** Generated files readable only by root (like Ubuntu's 600 netplan files). */
 const PRIVATE_MODE: Readonly<Record<string, number>> = { [NETPLAN_FILE]: 0o600 };
 
-/** Generated configuration files follow the live device config (zones, pools, netplan…). */
+/**
+ * Files root may write as ordinary files (root, 644, saved with the lab): kea-dhcp4.conf and the files right in
+ * /etc/bind, generated or new. Saving applies nothing; the unit reads them when it starts (service-files.ts,
+ * named-start.ts).
+ */
+const editable = (p: string): boolean => p === KEA_DHCP4_CONF || /^\/etc\/bind\/[^/]+$/.test(p);
+/** The directories above the editable files: a saved lab may not replace them (by a link, say). */
+const EDITABLE_DIRS: ReadonlySet<string> = new Set(['/etc', '/etc/kea', '/etc/bind']);
+
+/** A saved editable file comes back as root's 644 file in place of the generated one, whatever its record says. */
+function restoreEditable(fs: Vfs, path: string, content: string): void {
+  const parent = dirname(path);
+  const dir = fs.tryLookup(parent, ROOT, false);
+  if (content.length > MAX_FILE || (dir !== undefined && dir.kind !== 'dir')) return;
+  const there = fs.tryLookup(path, ROOT, false);
+  if (there !== undefined && there.kind !== 'file') return;
+  if (there?.kind === 'file' && !there.generated) fs.usedBytes -= there.content.length;
+  fs.unmountFile(path);
+  fs.seed(path, { kind: 'file', content }, 0o644, 0, 0);
+  fs.lookup(path, ROOT, false).dirty = true;
+  fs.usedBytes += content.length;
+}
+
+/** The files of a saved lab: the editable ones and the directories above them apart, as root's. */
+function restoreRecords(fs: Vfs, records: readonly FileRecord[]): void {
+  importFiles(fs, records.filter((r) => !editable(r.path) && !EDITABLE_DIRS.has(r.path)));
+  for (const r of records) if (editable(r.path) && r.kind === 'file') restoreEditable(fs, r.path, r.content ?? '');
+}
+
+/** An editable path keeps the file there only if it is root's, not writable by others and not behind a link. */
+function keptUserFile(fs: Vfs, p: string): boolean {
+  const there = fs.tryLookup(p, ROOT, false);
+  if (!editable(p) || there?.kind !== 'file' || there.generated) return false;
+  return there.uid === 0 && (there.mode & 0o022) === 0 && fs.realpath(dirname(p)) === dirname(p);
+}
+
+/** The first write of an editable generated file: from then on it is the user's file. */
+function toUserFile(host: Host, fs: Vfs, path: string, content: string, read: () => string): void {
+  if (content.length > MAX_FILE) throw new FsError('EFBIG');
+  fs.unmountFile(path);
+  try {
+    fs.writeFile(path, content);
+  } catch (err) {
+    fs.mountFile(path, read, 0o644, (c) => { toUserFile(host, fs, path, c, read); });
+    throw err;
+  }
+  noteEdit(host, path);
+}
+
+function writerOf(host: Host, fs: Vfs, p: string, read: () => string): ((c: string) => void) | undefined {
+  if (editable(p)) return (c) => { toUserFile(host, fs, p, c, read); };
+  const writer = WRITERS[p];
+  return writer ? (c) => { writer(host, c); } : undefined;
+}
+
+/** Generated configuration files follow the live device config (zones, pools, netplan…); a user's file stays. */
 function refreshMounts(host: Host, e: Entry): void {
   const now = linuxFiles(host);
   now.set(NETPLAN_FILE, '');
@@ -120,10 +165,22 @@ function refreshMounts(host: Host, e: Entry): void {
   for (const p of e.mounted) if (!now.has(p)) e.fs.unmountFile(p);
   for (const p of now.keys()) {
     if (e.mounted.has(p)) continue;
-    const writer = WRITERS[p];
-    e.fs.mountFile(p, () => read(p), PRIVATE_MODE[p] ?? 0o644, writer ? (c) => writer(host, c) : undefined);
+    if (keptUserFile(e.fs, p)) continue;
+    e.fs.mountFile(p, () => read(p), PRIVATE_MODE[p] ?? 0o644, writerOf(host, e.fs, p, () => read(p)));
   }
   e.mounted = new Set(now.keys());
+}
+
+/** Servicios changed the model behind the family's files: root's copies of generated files give way to the model's. */
+function regenerate(host: Host, e: Entry, family: Family): void {
+  const read = (p: string): string => linuxFiles(host).get(p) ?? '';
+  for (const p of linuxFiles(host).keys()) {
+    const there = e.fs.tryLookup(p, ROOT, false);
+    if (familyOf(p) !== family || there?.kind !== 'file' || there.generated || e.fs.realpath(dirname(p)) !== dirname(p)) continue;
+    e.fs.usedBytes -= there.content.length;
+    e.fs.mountFile(p, () => read(p), PRIVATE_MODE[p] ?? 0o644, writerOf(host, e.fs, p, () => read(p)));
+    e.mounted.add(p);
+  }
 }
 
 function refreshUsers(host: Host, e: Entry): void {
@@ -197,7 +254,7 @@ function createSystem(host: Host): Entry {
     hostnames: () => ({ static: host.name.toLowerCase(), transient: host.runtimeName().toLowerCase(), pretty: host.prettyName }),
     setHostname: (kind, value) => setName(host, kind, value),
   };
-  importFiles(fs, pendingFiles.get(host) ?? []);
+  restoreRecords(fs, pendingFiles.get(host) ?? []);
   pendingFiles.delete(host);
   bootResolvedFrom(host, fs);
   return { fs, env, mounted: new Set(), usersKey: users.map((u) => u.name).join(',') };
@@ -205,8 +262,14 @@ function createSystem(host: Host): Entry {
 
 /** The (lazily created) system of a host, with its generated files and accounts brought up to date. */
 export function hostSystem(host: Host): HostSystem {
-  const e = systems.get(host) ?? createSystem(host);
-  systems.set(host, e);
+  let e = systems.get(host);
+  if (!e) {
+    const made = createSystem(host);
+    systems.set(host, made);
+    const server = asServer(host);
+    server?.onChange(() => { followModel(server, (f) => { regenerate(host, made, f); }); });
+    e = made;
+  }
   refreshUsers(host, e);
   refreshMounts(host, e);
   return e;
@@ -223,7 +286,7 @@ export function savedFiles(host: Host): readonly FileRecord[] | undefined {
 export function restoreFiles(host: Host, files: readonly FileRecord[]): void {
   const e = systems.get(host);
   if (e) {
-    importFiles(e.fs, files);
+    restoreRecords(e.fs, files);
     bootResolvedFrom(host, e.fs);
     return;
   }
@@ -250,7 +313,29 @@ export function bootKernel(host: Host, files: readonly FileRecord[]): void {
   for (const path of sysctlFiles(fs)) applySysctlFile(fs, host, path);
 }
 
+/**
+ * A lab just loaded (its services already started with the saved files): the saved service files go with the saved
+ * model, so the next change from Servicios writes them again.
+ */
+export function adoptSavedFiles(server: Server, files: readonly FileRecord[]): void {
+  const families = new Set(files.filter((f) => f.kind === 'file').map((f) => familyOf(f.path)).filter((f) => f !== undefined));
+  if (!families.size) return;
+  hostSystem(server);
+  adoptEdits(server, families);
+}
+
+/** A unit's start or reload reads its files; a host whose system does not exist yet has only the generated ones. */
+function checkFiles(srv: Server, family: Family, run: (fs: Vfs) => UnitCheck): UnitCheck {
+  if (!systems.has(srv) && !(pendingFiles.get(srv) ?? []).some((f) => familyOf(f.path) === family)) return { ok: true };
+  const fs = hostSystem(srv).fs;
+  const e = systems.get(srv);
+  return guardCheck(srv, family, (f) => { if (e) regenerate(srv, e, f); }, () => run(fs));
+}
+
 registerHostFs((host) => hostSystem(host).fs);
+// kea-dhcp4 reads its file when it starts; named reads /etc/bind when it starts and at rndc reload.
+registerUnitCheck('dhcp', (srv) => checkFiles(srv, 'dhcp', (fs) => keaStart(srv, fs)));
+registerUnitCheck('dns', (srv, mode) => checkFiles(srv, 'dns', (fs) => namedStart(srv, fs, mode)));
 // Before the system exists, a file saved with the topology is read from the pending records (same result either way).
 registerHostFileReader((host, path) => {
   const e = systems.get(host);

@@ -1,7 +1,7 @@
 /** The PC and server part of a saved device: what a Host writes to the file and how it is read back. */
 import type { PcRecord, ServerRecord } from './topology.ts';
 import { nicsToJson, routesToJson, restoreNics, restoreRoutes } from './topology-nics.ts';
-import { savedFiles, restoreFiles, bootKernel } from '../shells/host-system.ts';
+import { savedFiles, restoreFiles, bootKernel, adoptSavedFiles } from '../shells/host-system.ts';
 import { searchList } from '../shells/netplan-model.ts';
 import { validFileRecords } from '../bash/vfs-persist.ts';
 import { customApps, deviceApps, parseApps, setDeviceApps } from './device-apps.ts';
@@ -56,7 +56,10 @@ export function restoreHost(device: Host, pc: PcRecord, server: ServerRecord | u
   setWindowsWins(device, validWins(wins) ? wins : undefined);
   restoreWinShares(device, pc.winShare);
   if (device instanceof Server) device.web.reload();
-  if (device instanceof Server && server) restoreServer(device, server);
+  if (device instanceof Server && server) {
+    restoreServer(device, server);
+    if (pc.files !== undefined) adoptSavedFiles(device, validFileRecords(pc.files));
+  }
   if (device instanceof Pc && pc.apps) restoreApps(device, pc.apps);
   // Files before v0.25 have no `enabled`: a PC with a mail account keeps its Correo tab.
   if (device instanceof Pc && pc.enabled === undefined && device.mailAccount) setDeviceApps(device, [...deviceApps(device), 'mail']);

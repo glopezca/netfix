@@ -163,3 +163,18 @@ test('named-compilezone dump: full names, the apex first and the TTLs written ou
   assert.match(text, /^www\.aula\.lab\.\t86400\tIN CNAME\tsrv\.aula\.lab\.$/m);
   assert.ok(text.endsWith('\n'));
 });
+
+test('review: a load has a budget, so files from a saved lab cannot hang the page', () => {
+  // Ten $INCLUDE of the next file, fifteen levels deep: 10^15 loads without a total quota.
+  const files: Record<string, string> = {};
+  for (let i = 0; i < 15; i++) files[`db.${i}`] = `$INCLUDE db.${i + 1}\n`.repeat(10);
+  files['db.15'] = 'h A 192.168.10.9\n';
+  const chain = checkZone('aula.lab', FILE, `${ZONE}$INCLUDE db.0\n`, undefined, (p) => files[p] ?? { error: 'file not found' });
+  assert.equal(chain.ok, false);
+  assert.match(chain.lines.join('\n'), /quota reached/);
+  const many = check(`${ZONE}${'$GENERATE 0-65535 g$ A 192.168.10.1\n'.repeat(3)}`);
+  assert.equal(many.ok, false);
+  assert.match(many.lines.join('\n'), /too many records/);
+  const outside = check(`${ZONE}$GENERATE 0-999 g$.otra. A 192.168.10.1\n`);
+  assert.ok(outside.lines.filter((l) => /out-of-zone/.test(l)).length <= 100);
+});

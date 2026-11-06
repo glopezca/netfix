@@ -104,7 +104,7 @@ const BUILTIN_ACLS = new Set(['any', 'none', 'localhost', 'localnets']);
 const CLASSES = new Set(['in', 'ch', 'chaos', 'hs', 'hesiod']);
 const NEEDS_FILE = new Set(['master', 'primary', 'hint']);
 const NEEDS_PRIMARIES = new Set(['slave', 'secondary', 'stub']);
-const LOADABLE = new Set(['master', 'primary']);
+export const LOADABLE: ReadonlySet<string> = new Set(['master', 'primary']);
 
 interface ZoneDef extends ConfZone { readonly seq: number; readonly primaries: boolean }
 interface Parsed { readonly acls: Set<string>; readonly zones: ZoneDef[]; directory?: string }

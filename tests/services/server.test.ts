@@ -189,7 +189,7 @@ test('SSH: login from Linux and Windows clients, remote commands, wrong password
   assert.deepEqual(sh.run('mal'), ['Permission denied, please try again.']);
   assert.match(sh.run('cisco').join('\n'), /Welcome to Ubuntu 26\.04 LTS/);
   assert.equal(plain(sh.prompt()), `admin@${srv.name.toLowerCase()}:~$ `);
-  assert.match(sh.run('systemctl status ssh').join('\n'), /● ssh\.service - OpenBSD Secure Shell server[\s\S]*Active: active \(running\)[\s\S]*Accepted password for admin/);
+  assert.match(sh.run('systemctl status ssh | cat').join('\n'), /● ssh\.service - OpenBSD Secure Shell server[\s\S]*Active: active \(running\)[\s\S]*Accepted password for admin/);
   assert.match(sh.run('hostname -I').join(''), /192\.168\.10\.2/);
   assert.match(sh.run('ping -c 1 192.168.10.1').join('\n'), /1 packets transmitted/, 'remote ping runs on the server');
   assert.deepEqual(sh.run('exit'), ['logout', 'Connection to srv.aula.lab closed.']);

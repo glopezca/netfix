@@ -79,8 +79,10 @@ test('DNS only answers on the addresses of listen-on; editing named.conf.options
   assert.match(root('dig +short @127.0.0.1 ns.aula.lab'), /^192\.168\.1\.1$/m, 'lo: the router itself');
   assert.match(root('ss -lun'), /192\.168\.1\.1:53[\s\S]*127\.0\.0\.1:53/);
   hostSystem(lr).fs.writeFile('/etc/bind/named.conf.options', root('cat /etc/bind/named.conf.options').replace(/listen-on \{[^}]*\};/, 'listen-on { 172.16.0.1; };'));
+  root('systemctl restart named');
   assert.deepEqual(lr.services.dns.listenOn, ['eth2']);
   hostSystem(lr).fs.writeFile('/etc/bind/named.conf.options', root('cat /etc/bind/named.conf.options').replace(/listen-on \{[^}]*\};/, 'listen-on { any; };'));
+  root('systemctl restart named');
   assert.equal(lr.services.dns.listenOn, undefined);
 });
 
@@ -128,6 +130,7 @@ test('review: listen-on port 53 { … } is understood', () => {
   const { lr, root } = lab();
   const file = root('cat /etc/bind/named.conf.options').replace(/listen-on \{[^}]*\};/, 'listen-on port 53 { 192.168.1.1; };');
   hostSystem(lr).fs.writeFile('/etc/bind/named.conf.options', file);
+  root('systemctl restart named');
   assert.deepEqual(lr.services.dns.listenOn, ['eth1']);
 });
 
@@ -135,5 +138,6 @@ test('review: an interface without an address stays chosen when the file is save
   const { lr, root } = lab();
   lr.setServices({ ...lr.services, dns: { ...lr.services.dns, listenOn: ['eth0', 'eth1'] } });
   hostSystem(lr).fs.writeFile('/etc/bind/named.conf.options', root('cat /etc/bind/named.conf.options').replace('max-cache-ttl', 'max-cache-ttl'));
+  root('systemctl restart named');
   assert.deepEqual(lr.services.dns.listenOn, ['eth0', 'eth1']);
 });

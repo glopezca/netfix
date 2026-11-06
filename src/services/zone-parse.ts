@@ -243,13 +243,22 @@ interface Load {
   readonly byOwner: Map<string, ZoneRecord[]>;
   readonly warnings: string[];
   readonly read?: ZoneReader;
+  /** What is left of the work one load may do (files a saved lab brings must not hang the page). */
+  readonly budget: { entries: number; includes: number };
 }
+
+/** BIND's max-records (ISC_R_TOOMANYRECORDS) for everything a load reads, $GENERATE and $INCLUDE included. */
+const MAX_ENTRIES = 131072;
+/** Files one load may $INCLUDE in all, as named.conf's include (ISC_R_QUOTA). */
+const MAX_INCLUDES = 256;
+/** Out-of-zone warnings written for one load; the rest are ignored silently. */
+const MAX_WARNINGS = 100;
 
 /** Añade el registro a la zona con las comprobaciones que BIND hace al cargarlo. */
 function add(r: ZoneRecord, l: Load, file: string): void {
   const where = `${file}:${r.line}`;
   if (!inZone(r.owner, l.apex)) {
-    l.warnings.push(`dns_master_load: ${where}: ignoring out-of-zone data (${bare(r.owner)})`);
+    if (l.warnings.length < MAX_WARNINGS) l.warnings.push(`dns_master_load: ${where}: ignoring out-of-zone data (${bare(r.owner)})`);
     return;
   }
   if (r.type === 'SOA' && r.owner !== l.apex) throw new LoadError(`dns_master_load: ${where}: SOA record not at top of zone (${bare(r.owner)})`, 'not at top of zone');
@@ -306,6 +315,7 @@ function include(l: Load, e: Entry, where: string, depth: number): void {
   const name = e.toks[1]?.text.replace(/^"(.*)"$/, '$1');
   if (name === undefined) throw endOfInput(where);
   if (depth >= MAX_INCLUDE_DEPTH) throw new LoadError(`dns_master_load: ${where}: ${name}: too many nested includes`, 'too many nested includes');
+  if (--l.budget.includes < 0) throw new LoadError(`dns_master_load: ${where}: ${name}: quota reached`, 'quota reached');
   const text = l.read?.(name) ?? { error: 'file not found' };
   if (typeof text !== 'string') throw new LoadError(`dns_master_load: ${where}: ${name}: ${text.error}`, text.error);
   const origin = l.st.origin;
@@ -321,6 +331,7 @@ function loadText(l: Load, file: string, text: string, depth: number): void {
     const word = e.inherit ? '' : (e.toks[0]?.text ?? '').toUpperCase();
     if (word === '$INCLUDE') { include(l, e, where, depth); continue; }
     for (const g of word === '$GENERATE' ? generate(e, where) : [e]) {
+      if (--l.budget.entries < 0) throw new LoadError(`dns_master_load: ${where}: too many records`, 'too many records');
       const r = record(g, l.st, file, l.warnings);
       if (r) add(r, l, file);
     }
@@ -330,7 +341,7 @@ function loadText(l: Load, file: string, text: string, depth: number): void {
 /** Carga el texto de un archivo de zona; se detiene en el primer error, como dns_master_load. */
 export function loadZone(zone: string, file: string, text: string, read?: ZoneReader): ZoneLoad {
   const apex = absolute(zone);
-  const l: Load = { apex, st: { origin: apex, warnedTtl: false }, records: [], byOwner: new Map(), warnings: [], read };
+  const l: Load = { apex, st: { origin: apex, warnedTtl: false }, records: [], byOwner: new Map(), warnings: [], read, budget: { entries: MAX_ENTRIES, includes: MAX_INCLUDES } };
   try {
     loadText(l, file, text, 0);
     return { records: l.records, warnings: l.warnings };

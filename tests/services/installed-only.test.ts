@@ -33,7 +33,7 @@ test('ticking a service brings its files and its unit; unticking takes them away
   const srv = placed('server');
   tick(srv, 'dns', 'ssh');
   assert.deepEqual(sources(srv), ['sysctl', 'ssh', 'dns']);
-  assert.deepEqual(units(srv), ['ssh', 'bind9']);
+  assert.deepEqual(units(srv), ['ssh', 'named']);
   setDeviceApps(srv, deviceApps(srv).filter((id) => id !== 'dns'));
   assert.deepEqual(sources(srv), ['sysctl', 'ssh']);
   assert.deepEqual(units(srv), ['ssh']);

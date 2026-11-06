@@ -97,13 +97,13 @@ test('named.conf.options shows and changes the recursion; settings survive save 
   const root = createShell(srv, 'linux', 'root');
   assert.match(all(root.run('cat /etc/bind/named.conf.options')), /recursion no;/);
   hostSystem(srv).fs.writeFile('/etc/bind/named.conf.options', 'options {\n  forwarders { 8.8.4.4; };\n  forward first;\n  allow-recursion { any; };\n};\n');
+  assert.deepEqual(srv.services.dns.forwarders ?? [], [], 'saving applies nothing');
+  root.run('systemctl restart named');
   assert.deepEqual(srv.services.dns.forwarders, [ip('8.8.4.4')]);
   assert.equal(srv.services.dns.forwardOnly, false);
   assert.equal(srv.services.dns.allowRecursion, 'any');
-  const conf = all(root.run('cat /etc/bind/named.conf.options'));
-  assert.match(conf, /forwarders \{\n\t\t8\.8\.4\.4;\n\t\};/);
-  assert.match(conf, /\tforward first;/);
-  assert.match(conf, /\trecursion yes;\n\tallow-recursion \{ any; \};/, 'a file without «recursion» gets BIND\'s default: yes');
+  assert.equal(srv.services.dns.recursion, true, 'a file without «recursion» gets BIND\'s default: yes');
+  assert.match(all(root.run('cat /etc/bind/named.conf.options')), /^options \{\n  forwarders \{ 8\.8\.4\.4; \};/, 'named does not rewrite the file root wrote');
   assert.match(all(createShell(local, 'linux').run('dig +short @192.168.1.10 ubuntu.com')), /185\.125\.190\.20/);
   assert.match(all(root.run('rndc status')), /forwarders: 8\.8\.4\.4\ncache entries: 1/);
   root.run('rndc flush');

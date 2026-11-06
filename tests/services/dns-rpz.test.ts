@@ -71,14 +71,17 @@ test('root edits the file: entries, wildcards and named-checkzone errors', () =>
   on(srv);
   const fs = hostSystem(srv).fs;
   fs.writeFile(RPZ_FILE, `$TTL 300\n@ IN SOA localhost. root.localhost. ( 2 3600 900 604800 300 )\n  IN NS localhost.\naula.ejemplo 60 IN A 10.0.0.50\n*.ejemplo.org A 10.0.0.60\n`);
+  root('systemctl restart named');
   assert.deepEqual(rpzEntries(srv.services.dns).map((e) => e.name), ['aula.ejemplo', '*.ejemplo.org']);
   assert.equal(sh('dig +short aula.ejemplo').trim(), '10.0.0.50');
   assert.equal(sh('dig +short www.ejemplo.org').trim(), '10.0.0.60');
   assert.doesNotMatch(sh('dig +short ejemplo.org'), /10\.0\.0\.60/, 'a wildcard covers the names below, not the domain');
   assert.match(sh('dig google.es'), /status: (SERVFAIL|NXDOMAIN)|timed out/, 'google.es is no longer in the list');
   fs.writeFile(RPZ_FILE, 'aula.ejemplo A 999.1.1.1\n');
-  assert.equal(rpzEntries(srv.services.dns).length, 2, 'a bad file is refused');
-  assert.match(root('journalctl -u bind9 -n 3'), /db\.rpz\.publicos:1: near '999\.1\.1\.1': bad dotted quad/);
+  root('systemctl reload named');
+  assert.equal(rpzEntries(srv.services.dns).length, 2, 'a reload with a bad file keeps the zone named served');
+  assert.equal(sh('dig +short aula.ejemplo').trim(), '10.0.0.50');
+  assert.match(root('journalctl -u bind9 -n 20'), /db\.rpz\.publicos:1: near '999\.1\.1\.1': bad dotted quad/);
 });
 
 test('restore, persistence and validation', () => {

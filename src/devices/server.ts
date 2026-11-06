@@ -13,25 +13,46 @@ import { applyPtPools } from '../services/dhcp-pt.ts';
 import { ServerDns } from '../services/dns-server.ts';
 import { ServerWeb } from './server-web.ts';
 import { Mailboxes, handleSmtp, handleRetrieve } from '../services/mail-service.ts';
-import type { MailEnv } from '../services/mail-service.ts';
-import { findUnit, setUnitActive, unitActive, UNITS } from '../services/units.ts';
-import type { UnitId } from '../services/units.ts';
+import { mailEnv, SMTP_PORT } from './server-mail.ts';
+import { findUnit, setUnitActive, unitActive, unitById, unitTitle, UNITS } from '../services/units.ts';
+import type { UnitId, UnitInfo } from '../services/units.ts';
 import { SshService } from '../services/ssh-service.ts';
+import { unitCheck } from './unit-checks.ts';
+import { journalLines } from './journal-text.ts';
 import { loadNftablesConf } from './server-firewall.ts';
-import { firstAddress } from '../net/dns.ts';
 import { BROADCAST_IP, formatIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
 import type { SimClock } from '../core/clock.ts';
 import { linuxSide } from '../net/pkg-units.ts';
 
-export interface LogEntry {
+/** journald's priorities that journalctl colours (the rest are info). */
+export type LogPriority = 'err' | 'warning' | 'notice';
+
+export interface LogMeta {
+  readonly priority?: LogPriority;
+  /** Who wrote the line (`systemd[1]`, `apachectl[1123]`); the unit's own process when missing. */
+  readonly ident?: string;
+}
+
+export interface LogEntry extends LogMeta {
   readonly time: number;
   readonly unit: UnitId;
   readonly line: string;
 }
 
+/** A unit whose start failed (systemd's "failed (Result: exit-code)"): since when, and how its process exited. */
+export interface UnitFailure {
+  readonly time: number;
+  readonly status: string;
+}
+
+const SYSTEMD = 'systemd[1]';
+/** rndc as named.service's ExecReload. */
+const RNDC = 'rndc[1311]';
+/** systemd's default: five starts within 10 s, then the unit stays failed. */
+const START_LIMIT_BURST = 5;
+
 const MAX_LOG = 400;
-const SMTP_PORT = 25;
 const POP3_PORT = 110;
 const IMAP_PORT = 143;
 const SSH_PORT = 22;
@@ -45,6 +66,8 @@ export class Server extends Host {
   readonly dhcpEngine = new DhcpServer();
   readonly mailboxes = new Mailboxes();
   readonly logs: LogEntry[] = [];
+  /** Units left failed by a start that failed, until a good start or `systemctl reset-failed`. */
+  failed: Partial<Record<UnitId, UnitFailure>> = {};
   readonly ssh: SshService;
   readonly dns: ServerDns;
   readonly web: ServerWeb = new ServerWeb(this);
@@ -60,58 +83,156 @@ export class Server extends Host {
 
   // ------------------------------------------------------------ configuration
 
+  /** Starts and stops what changed, logged as systemd 257 does; a unit whose start fails stays stopped, failed. */
   setServices(requested: ServerServices): void {
     const before = this.services;
-    let next = !before.http.enabled && requested.http.enabled && !this.startWeb() ? { ...requested, http: { ...requested.http, enabled: false } } : requested;
-    if (!before.ssh.enabled && next.ssh.enabled && !this.startSsh()) next = { ...next, ssh: { ...next.ssh, enabled: false } };
-    if (!before.firewall.enabled && next.firewall.enabled && !this.startFirewall()) next = { ...next, firewall: { enabled: false } };
+    let next: ServerServices;
+    try {
+      next = this.startStop(before, requested);
+    } catch (err) {
+      this.services = before;
+      throw err;
+    }
     if (before.firewall.enabled && !next.firewall.enabled) this.kernel.netfilter.flush();
     this.services = next;
     this.applyServices();
-    for (const u of UNITS) {
-      const was = unitActive(before, u.id);
-      const now = unitActive(next, u.id);
-      if (was !== now) this.log(u.id, now ? `Started ${u.description}.` : `Stopped ${u.description}.`);
-    }
+    for (const u of UNITS) if (!unitActive(before, u.id) && unitActive(next, u.id)) this.logStarted(u);
     this.changed();
   }
 
-  /** Starting sshd reads /etc/ssh/sshd_config and the host key; an error keeps it stopped. */
-  private startSsh(): boolean {
-    const err = this.ssh.reload();
-    if (!err) return true;
-    this.log('ssh', `sshd[701]: ${err}`);
-    this.log('ssh', 'ssh.service: Main process exited, code=exited, status=255/EXCEPTION');
-    this.log('ssh', 'Failed to start ssh.service - OpenBSD Secure Shell server.');
-    return false;
+  /** Stops and starts the units whose state changes (a failed start is left off); a throw puts the model back. */
+  private startStop(before: ServerServices, requested: ServerServices): ServerServices {
+    let next = requested;
+    for (const u of UNITS) {
+      const was = unitActive(before, u.id);
+      if (was === unitActive(next, u.id)) continue;
+      if (was) this.logStop(u);
+      else {
+        // Type=simple (Kea): systemd says Started once it runs the process, nothing before.
+        if (!u.simple) this.systemd(u.id, `Starting ${unitTitle(u)}...`);
+        // The start reads the files generated from the requested model (a lab loaded, or Servicios saving and starting).
+        this.services = next;
+        next = this.startUnit(u, next) ?? setUnitActive(next, u.id, false);
+      }
+    }
+    return next;
   }
 
-  /** nftables.service start: `nft -f /etc/nftables.conf`; an error keeps it stopped (logged like systemd). */
+  private logStop(u: UnitInfo): void {
+    this.systemd(u.id, `Stopping ${unitTitle(u)}...`);
+    this.systemd(u.id, `${u.linux}.service: Deactivated successfully.`);
+    this.systemd(u.id, `Stopped ${unitTitle(u)}.`);
+  }
+
+  /** A good start ends the failed state. */
+  private logStarted(u: UnitInfo): void {
+    const { [u.id]: _, ...rest } = this.failed;
+    this.failed = rest;
+    this.systemd(u.id, `${u.oneshot ? 'Finished' : 'Started'} ${unitTitle(u)}.`);
+  }
+
+  /** What a unit's start runs: the services it leaves, or null when its process exits with an error (in the journal). */
+  private startUnit(u: UnitInfo, next: ServerServices): ServerServices | null {
+    if (u.id === 'http') return this.startWeb() ? next : null;
+    if (u.id === 'ssh') return this.startSsh() ? next : null;
+    if (u.id === 'firewall') return this.startFirewall() ? next : null;
+    const check = unitCheck(u.id, this);
+    if (check.ok) {
+      if (check.ident && check.lines) this.logLines(u.id, check.ident, check.lines);
+      return check.apply ? check.apply(next) : next;
+    }
+    if (u.simple) this.systemd(u.id, `Started ${unitTitle(u)}.`);
+    this.logLines(u.id, check.ident, check.lines);
+    this.failStart(u.id);
+    if (u.restart) this.restartLimit(u, check.ident, check.lines);
+    return null;
+  }
+
+  /** Restart=on-failure: systemd starts it again (the files have not changed) until StartLimitBurst stops it. */
+  private restartLimit(u: UnitInfo, ident: string, lines: readonly string[]): void {
+    const service = `${u.linux}.service`;
+    for (let n = 1; n < START_LIMIT_BURST; n++) {
+      this.systemd(u.id, `${service}: Scheduled restart job, restart counter is at ${n}.`);
+      this.systemd(u.id, `Starting ${unitTitle(u)}...`);
+      this.logLines(u.id, ident, lines);
+      this.failStart(u.id);
+    }
+    this.systemd(u.id, `${service}: Scheduled restart job, restart counter is at ${START_LIMIT_BURST}.`);
+    this.systemd(u.id, `${service}: Start request repeated too quickly.`, 'warning');
+    this.systemd(u.id, `${service}: Failed with result 'exit-code'.`, 'warning');
+    this.systemd(u.id, `Failed to start ${unitTitle(u)}.`, 'err');
+  }
+
+  /** A line systemd itself writes in the unit's journal. */
+  private systemd(unit: UnitId, line: string, priority?: LogPriority): void {
+    this.log(unit, line, { ident: SYSTEMD, ...(priority ? { priority } : {}) });
+  }
+
+  /** systemd after the start's process exited with an error: the unit is left failed. */
+  private failStart(id: UnitId): void {
+    const u = unitById(id);
+    const status = u.start?.status ?? '1/FAILURE';
+    this.systemd(id, `${u.linux}.service: ${u.start?.control ? 'Control' : 'Main'} process exited, code=exited, status=${status}`, 'notice');
+    this.systemd(id, `${u.linux}.service: Failed with result 'exit-code'.`, 'warning');
+    // A Type=simple unit had started: its main process exiting is not a failed start job.
+    if (!u.simple) this.systemd(id, `Failed to start ${unitTitle(u)}.`, 'err');
+    this.failed = { ...this.failed, [id]: { time: this.clock.now(), status } };
+  }
+
+  /** systemd after an ExecReload that failed: the unit keeps running with what it had. */
+  private failReload(id: UnitId): void {
+    const u = unitById(id);
+    this.systemd(id, `${u.linux}.service: Control process exited, code=exited, status=1/FAILURE`, 'notice');
+    this.systemd(id, `Reload failed for ${unitTitle(u)}.`, 'err');
+  }
+
+  private logReloaded(id: UnitId): void {
+    const u = unitById(id);
+    this.systemd(id, `Reloading ${unitTitle(u)}...`);
+    this.systemd(id, `Reloaded ${unitTitle(u)}.`);
+  }
+
+  /** `systemctl reset-failed [unit]`: forgets the failure (the unit is inactive from then on). */
+  resetFailed(id?: UnitId): void {
+    if (id === undefined) this.failed = {};
+    else {
+      const { [id]: _, ...rest } = this.failed;
+      this.failed = rest;
+    }
+  }
+
+  /** The lines a program writes to its journal (its stdout and stderr). */
+  private logLines(unit: UnitId, ident: string, lines: readonly string[]): void {
+    for (const line of lines) this.log(unit, line, { ident });
+  }
+
+  /** ssh.service's ExecStartPre (sshd -t) checks /etc/ssh/sshd_config and the host key; an error leaves it failed. */
+  private startSsh(): boolean {
+    const err = this.ssh.reload();
+    this.logLines('ssh', 'sshd[701]', err ? err.split('\n') : ['Server listening on 0.0.0.0 port 22.', 'Server listening on :: port 22.']);
+    if (err) this.failStart('ssh');
+    return !err;
+  }
+
+  /** nftables.service start: `nft -f /etc/nftables.conf`; an error leaves it failed. */
   private startFirewall(): boolean {
     if (!linuxSide(this)) return true;
     const err = loadNftablesConf(this);
     if (!err) return true;
-    this.logFirewallError(err);
-    this.log('firewall', 'Failed to start nftables.service - nftables.');
+    this.logLines('firewall', 'nft[655]', err.split('\n'));
+    this.failStart('firewall');
     return false;
-  }
-
-  private logFirewallError(err: string): void {
-    for (const line of err.split('\n')) this.log('firewall', `nft[655]: ${line}`);
-    this.log('firewall', 'nftables.service: Main process exited, code=exited, status=1/FAILURE');
-    this.log('firewall', "nftables.service: Failed with result 'exit-code'.");
   }
 
   /** systemctl reload nftables: loads the file again; on error the running ruleset stays. */
   reloadFirewall(): string | null {
     const err = linuxSide(this) ? loadNftablesConf(this) : null;
     if (err) {
-      this.logFirewallError(err);
-      this.log('firewall', 'Reload failed for nftables.service - nftables.');
+      this.logLines('firewall', 'nft[655]', err.split('\n'));
+      this.failReload('firewall');
       return err;
     }
-    this.log('firewall', 'Reloading nftables.service - nftables...');
-    this.log('firewall', 'Reloaded nftables.service - nftables.');
+    this.logReloaded('firewall');
     return null;
   }
 
@@ -119,42 +240,61 @@ export class Server extends Host {
   reloadSsh(): string | null {
     const err = this.ssh.reload();
     if (err) {
-      this.log('ssh', `sshd[701]: ${err}`);
-      this.log('ssh', 'Reload failed for ssh.service - OpenBSD Secure Shell server.');
+      this.logLines('ssh', 'sshd[701]', err.split('\n'));
+      this.failReload('ssh');
       return err;
     }
-    this.log('ssh', 'Reloading ssh.service - OpenBSD Secure Shell server...');
-    this.log('ssh', 'Reloaded ssh.service - OpenBSD Secure Shell server.');
+    this.logReloaded('ssh');
     return null;
   }
 
-  /** Starting Apache reads /etc/apache2; a configuration error keeps it stopped (logged like systemd). */
+  /**
+   * `systemctl reload named` (ExecReload=rndc reload) or rndc itself: named reads its files again and keeps what it
+   * had when named.conf does not load. Returns the error, or null.
+   */
+  reloadDns(bySystemd = true): string | null {
+    const u = unitById('dns');
+    if (bySystemd) this.systemd('dns', `Reloading ${unitTitle(u)}...`);
+    const check = unitCheck('dns', this, 'reload');
+    if (check.ident && check.lines) this.logLines('dns', check.ident, check.lines);
+    if (!check.ok) {
+      if (!bySystemd) return 'failure';
+      this.log('dns', "rndc: 'reload' failed: failure", { ident: RNDC });
+      this.failReload('dns');
+      return 'failure';
+    }
+    if (bySystemd) {
+      this.log('dns', 'server reload successful', { ident: RNDC });
+      this.systemd('dns', `Reloaded ${unitTitle(u)}.`);
+    }
+    if (check.apply) this.setServices(check.apply(this.services));
+    return null;
+  }
+
+  /** Starting Apache (apachectl start) reads /etc/apache2; a configuration error leaves it failed. */
   private startWeb(): boolean {
     if (this.os === 'windows') return true;
     const err = this.web.reload();
     if (!err) return true;
-    this.logWebError(err);
-    this.log('http', 'apache2.service: Control process exited, code=exited, status=1/FAILURE');
-    this.log('http', "apache2.service: Failed with result 'exit-code'.");
-    this.log('http', 'Failed to start apache2.service - The Apache HTTP Server.');
+    this.logWebError(err, 'start');
+    this.failStart('http');
     return false;
   }
 
-  private logWebError(err: string): void {
-    for (const line of [...err.split('\n'), "Action 'start' failed.", 'The Apache error log may have more information.']) this.log('http', `apachectl[1123]: ${line}`);
+  private logWebError(err: string, action: 'start' | 'graceful'): void {
+    this.logLines('http', 'apachectl[1123]', [...err.split('\n'), `Action '${action}' failed.`, 'The Apache error log may have more information.']);
   }
 
-  /** systemctl reload apache2: applies the new configuration, or keeps the running one on error. */
+  /** systemctl reload apache2 (apachectl graceful): applies the new configuration, or keeps the running one on error. */
   reloadWeb(): string | null {
     if (this.os === 'windows') return null;
     const err = this.web.reload();
     if (err) {
-      this.logWebError(err);
-      this.log('http', 'Reload failed for apache2.service - The Apache HTTP Server.');
+      this.logWebError(err, 'graceful');
+      this.failReload('http');
       return err;
     }
-    this.log('http', 'Reloading apache2.service - The Apache HTTP Server...');
-    this.log('http', 'Reloaded apache2.service - The Apache HTTP Server.');
+    this.logReloaded('http');
     this.applyServices();
     this.changed();
     return null;
@@ -164,17 +304,15 @@ export class Server extends Host {
     this.setServices(setUnitActive(this.services, id, on));
   }
 
-  unitByName(name: string): UnitId | undefined {
-    return findUnit(name)?.id;
-  }
+  unitByName(name: string): UnitId | undefined { return findUnit(name)?.id; }
 
   private applyServices(): void {
     const s = this.services;
     applyPtPools(this.dhcpEngine, s.dhcp.pools, s.dhcp.enabled);
     this.web.sync();
-    this.toggle(SMTP_PORT, s.mail.smtp, (req, peer) => (req.app === 'SMTP' && req.kind === 'request' ? handleSmtp(this.mailEnv(), this.mailboxes, req, formatIp(peer.ip)) : null));
-    this.toggle(POP3_PORT, s.mail.pop3, (req, peer) => (req.app === 'POP3' && req.kind === 'request' ? handleRetrieve(this.mailEnv(), this.mailboxes, req, formatIp(peer.ip)) : null));
-    this.toggle(IMAP_PORT, s.mail.imap, (req, peer) => (req.app === 'IMAP' && req.kind === 'request' ? handleRetrieve(this.mailEnv(), this.mailboxes, req, formatIp(peer.ip)) : null));
+    this.toggle(SMTP_PORT, s.mail.smtp, (req, peer) => (req.app === 'SMTP' && req.kind === 'request' ? handleSmtp(mailEnv(this), this.mailboxes, req, formatIp(peer.ip)) : null));
+    this.toggle(POP3_PORT, s.mail.pop3, (req, peer) => (req.app === 'POP3' && req.kind === 'request' ? handleRetrieve(mailEnv(this), this.mailboxes, req, formatIp(peer.ip)) : null));
+    this.toggle(IMAP_PORT, s.mail.imap, (req, peer) => (req.app === 'IMAP' && req.kind === 'request' ? handleRetrieve(mailEnv(this), this.mailboxes, req, formatIp(peer.ip)) : null));
     this.toggle(SSH_PORT, s.ssh.enabled, (req, peer) => this.ssh.handle(req, peer));
     if (!s.ssh.enabled) this.ssh.closeAll();
   }
@@ -184,8 +322,9 @@ export class Server extends Host {
     else this.tcp.unlisten(port);
   }
 
-  log(unit: UnitId, line: string): void {
-    this.logs.push({ time: this.clock.now(), unit, line });
+  /** A message in the unit's journal: one entry per line (journal-text.ts). */
+  log(unit: UnitId, text: string, meta: LogMeta = {}): void {
+    for (const line of journalLines(text)) this.logs.push({ time: this.clock.now(), unit, line, ...meta });
     if (this.logs.length > MAX_LOG) this.logs.splice(0, this.logs.length - MAX_LOG);
   }
 
@@ -195,50 +334,15 @@ export class Server extends Host {
 
   // ------------------------------------------------------------ mail
 
-  private mailEnv(): MailEnv {
-    const m = this.services.mail;
-    return {
-      domain: m.domain,
-      users: m.users,
-      hostname: this.name,
-      log: (line) => this.log(line.startsWith('dovecot') ? 'mailbox' : 'smtp', line),
-      relay: (domain, mail, done) => this.relayMail(domain, mail, done),
-    };
-  }
-
   /** Mail submitted by a local program (webmail): the same rules as SMTP from 127.0.0.1. */
   submitMail(mail: MailMessage): { ok: boolean; text: string } {
-    const r = handleSmtp(this.mailEnv(), this.mailboxes, { app: 'SMTP', kind: 'request', helo: 'localhost', mail }, '127.0.0.1');
+    const r = handleSmtp(mailEnv(this), this.mailboxes, { app: 'SMTP', kind: 'request', helo: 'localhost', mail }, '127.0.0.1');
     return { ok: r.code === '250', text: `${r.code} ${r.text}` };
   }
 
   /** Checks a mail account (Dovecot login), as webmail does through IMAP. */
   mailLogin(user: string, password: string): boolean {
     return this.services.mail.users.some((u) => u.name.toLowerCase() === user.toLowerCase() && u.password === password);
-  }
-
-  /** MX lookup, then A lookup of the exchange, then SMTP to it. */
-  private relayMail(domain: string, mail: MailMessage, done: (ok: boolean, reason: string) => void): void {
-    this.lookup(domain, 'MX', (mx) => {
-      const exchange = mx.kind === 'answer' ? [...(mx.msg.answers ?? [])].filter((a) => a.type === 'MX').sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))[0]?.data : undefined;
-      const target = exchange ?? domain;
-      this.lookup(target, 'A', (a) => {
-        const ip = a.kind === 'answer' ? firstAddress(a.msg) : undefined;
-        if (ip === undefined) {
-          done(false, `Host or domain name not found. Name service error for name=${domain} type=MX`);
-          return;
-        }
-        if (this.ownsIp(ip)) {
-          done(false, `mail for ${domain} loops back to myself`);
-          return;
-        }
-        this.connect(ip, SMTP_PORT, { app: 'SMTP', kind: 'request', helo: this.name, mail }, (r) => {
-          const ok = r.kind === 'ok' && r.reply.app === 'SMTP' && r.reply.kind === 'reply' && r.reply.code === '250';
-          const why = r.kind === 'ok' && r.reply.kind === 'reply' ? `${r.reply.code} ${r.reply.text}` : `connect to ${formatIp(ip)}:25: ${r.kind}`;
-          done(ok, `relay=${target}[${formatIp(ip)}]:25, ${why}`);
-        });
-      });
-    });
   }
 
   // ------------------------------------------------------------ UDP services

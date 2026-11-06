@@ -15,6 +15,7 @@ import { Topology } from '../../src/net/topology.ts';
 import { applyConfig } from '../../src/ios/session.ts';
 import { winsRecords } from '../../src/net/wins.ts';
 import { setWinShareOn } from '../../src/net/win-shares.ts';
+import { setFeature } from '../../src/net/lab-features.ts';
 import { WINDOWS_WINS_TTL_S, setWindowsWins, validWins, windowsWinsManual, windowsWinsServers } from '../../src/net/win-wins.ts';
 
 const ip = (s: string): number => parseIp(s) ?? 0;
@@ -136,4 +137,18 @@ test('a saved lab keeps the WINS, registers again, and a file with anything else
     const odd = Topology.fromJSON(JSON.parse(text.replace('"wins":"192.168.10.2"', `"wins":${bad}`)));
     assert.equal(windowsWinsManual(odd.byLabel('WIN-B2') as Host), undefined, bad);
   }
+});
+
+test('turning sharing off for the whole lab releases NAME<20>; turning it on registers it again', () => {
+  const { t, srv, b2 } = lab();
+  setWinShareOn(b2, true);
+  setWindowsWins(b2, SRV_IP);
+  t.net.runFor(1000);
+  assert.ok(names(srv).includes('WIN-B2<20>'));
+  t.setFeatures(setFeature(t.features, 'pc', 'winshare', false));
+  t.net.runFor(1000);
+  assert.deepEqual(names(srv), ['WIN-B2<00>', 'WORKGROUP<00>'], 'the release reached the WINS server');
+  t.setFeatures({});
+  t.net.runFor(1000);
+  assert.ok(names(srv).includes('WIN-B2<20>'), 'the box was still ticked');
 });

@@ -2041,3 +2041,187 @@ de Interfaces y TCP/IP (si no, herramienta, explicado en la ayuda); (5) gestión
   - el registro WINS de Windows sigue a las casillas de terminal;
   - avahi-daemon.conf: borrar el nombre comenta cualquier `host-name=` sin comentar; `is_yes` como avahi; aplicar
     reinicia sin cambiar si está habilitado.
+
+### Fase 59: liberación WINS desde el laboratorio, ficheros de Kea y BIND editables con comprobación al arrancar, estado failed y colores de systemctl (v0.40.0)
+
+Petición: (1) liberar el nombre WINS al desactivar la función en el laboratorio; (2) que los ficheros de configuración
+de DHCP y DNS se puedan editar desde la consola GNU/Linux y que, al relanzar o recargar el servicio, se comprueben con
+`kea-dhcp4 -t` y `named-checkconf`/`named-checkzone`: si son correctos, se aplican; si no, como en Ubuntu, el error va
+al journal y el servicio no arranca; (3) los colores de systemctl de Ubuntu.
+
+Estado de partida:
+- `sharingChanged` (`win-wins.ts`) envía el registro o la liberación de NOMBRE<20> cuando cambia el uso compartido,
+  pero solo se llama desde `notifyAppsChange`. El interruptor del laboratorio (`main.ts` `setFeatures`) cambia
+  `topo.features` y no avisa a ningún equipo.
+- `/etc/kea/kea-dhcp4.conf`, `named.conf`, `named.conf.local` y los `db.*` son vistas de solo lectura generadas del
+  modelo (`linux-files.ts`, `bind-files.ts`, montadas en `host-system.ts`): escribir en ellas da EROFS.
+  `named.conf.options` y el fichero RPZ sí admiten escritura y se aplican **al guardar**, sin reiniciar nada.
+- Los comprobadores ya existen y son puros: `checkKeaConf` (`kea-check.ts`), `checkNamedConf`/`loadConfZones`
+  (`named-conf-check.ts`), `checkZone`/`loadZone` (`zone-check.ts`, `zone-parse.ts`). Las órdenes `kea-dhcp4 -t`,
+  `named-checkconf` y `named-checkzone` ya los usan.
+- systemctl no tiene estado failed. Su salida no lleva colores y el journal no guarda la prioridad de cada línea.
+
+Decisiones tomadas por defecto (se pueden cambiar al revisar el plan):
+1. **WINS**: al desactivar `winshare` en «Laboratorio actual», cada Windows que compartía envía la liberación de
+   NOMBRE<20>, igual que al desmarcar su casilla. Al activarla de nuevo, los que tienen la casilla marcada lo
+   registran otra vez.
+2. **Ficheros editables**: `kea-dhcp4.conf` y todo lo que genera `bind-files.ts` (`named.conf`,
+   `named.conf.options`, `named.conf.local`, `named.conf.default-zones`, `db.*` y RPZ). También se pueden crear zonas
+   nuevas en `/etc/bind/` y declararlas en `named.conf.local`. Escribir el fichero lo convierte en un fichero normal
+   del equipo, que se guarda con el laboratorio como los demás ficheros del usuario. Se edita con nano, vim, `tee`,
+   `sed -i` o `>`, todos con sudo (modo 644 y propietario root, como ahora).
+3. **Guardar no aplica nada, como en Ubuntu.** El cambio entra en vigor con `systemctl start|restart|reload` (también
+   `try-restart` y `force-reload`), con `rndc reload` y con el interruptor del servicio en Servicios, que pasa por el
+   mismo camino. `named.conf.options` y RPZ dejan de aplicarse al guardar; las pruebas que lo esperaban añaden el
+   reinicio.
+4. **Fichero correcto**: se traduce al modelo. Así Servicios → DHCP/DNS y la gestión web muestran lo editado y la red
+   lo usa.
+   - Kea: un pool por `subnet4`, con el primer rango de `pools`, `valid-lifetime`, `match-client-id`, las opciones
+     `routers`, `domain-name-servers`, `domain-name` y `netbios-name-servers`, `reservations` e
+     `interfaces-config`. El nombre del pool se conserva si la red coincide; si no, se llama `subnet<id>`.
+   - BIND: las opciones van por `parseNamedOptions`. Las zonas `type master|primary` de `named.conf.local` toman el SOA
+     y los registros A, CNAME, MX, NS, TXT y PTR de su fichero (`loadZone`). La zona es inversa si acaba en
+     `in-addr.arpa`.
+   - Lo que pasa la comprobación pero el modelo no representa no tiene efecto y no da error, porque el comprobador
+     real lo acepta. Son, por ejemplo, varios rangos por subred, otras opciones DHCP, AAAA, SRV y las zonas
+     `secondary`. Queda en el fichero y la Ayuda lo explica.
+5. **Fichero incorrecto al arrancar o reiniciar.** Revisado con las unidades reales: `kea-dhcp4-server.service` de
+   isc-kea 3.0.3 y `bind9.named.service` de bind9 9.20, ambas de sources.debian.org.
+   - **Kea** (sin `Type=`, así que es `simple`; sin `ExecReload` ni `Restart=`): `systemctl` vuelve sin mensaje y con
+     código 0, porque el proceso se lanza y muere después.
+     - El journal recoge `ERROR [kea-dhcp4.dhcp4/…] DHCP4_CONFIG_LOAD_FAIL configuration error using file:
+       /etc/kea/kea-dhcp4.conf, reason: …` y `ERROR … DHCP4_INIT_FAIL failed to initialize Kea server: configuration
+       error using file '/etc/kea/kea-dhcp4.conf': …` (fuentes de Kea 3.0.3).
+     - Después, `kea-dhcp4-server.service: Main process exited, code=exited, status=1/FAILURE` y
+       `kea-dhcp4-server.service: Failed with result 'exit-code'.`.
+     - La unidad queda failed y el DHCP no responde.
+   - **BIND** (`Type=notify`, `Restart=on-failure`): `systemctl` imprime `Job for named.service failed because the
+     control process exited with error code.` y la línea de `systemctl status`/`journalctl -xeu`.
+     - El journal recoge `loading configuration from '/etc/bind/named.conf'`, el error de `named-checkconf` con
+       fichero y línea, `loading configuration: failure`, `exiting (due to fatal error)` y las líneas de systemd
+       (`Main process exited…`, `Failed with result 'exit-code'.`, `Failed to start named.service - BIND Domain Name
+       Server.`).
+     - Después vienen los reintentos de systemd (`Scheduled restart job, restart counter is at 1…5`) y
+       `named.service: Start request repeated too quickly.`.
+     - La unidad queda failed.
+   - **Nombre de la unidad**: como en Ubuntu, pasa a ser `named.service` con el alias `bind9.service`. `systemctl
+     status bind9` muestra `● named.service - BIND Domain Name Server`.
+   - **Zona con errores** (`named-checkzone` falla y `named.conf` es correcto): named **arranca**, como el real, y
+     solo esa zona queda sin cargar. El journal recoge `zone X/IN: loading from master file … failed: …` y
+     `zone X/IN: not loaded due to errors.`, y esa zona responde SERVFAIL. Esto se aparta de «servicio no arrancado»
+     porque es lo que hace Ubuntu.
+6. **Recargar**:
+   - Kea no tiene `ExecReload`. `systemctl reload kea-dhcp4-server` responde `Failed to reload
+     kea-dhcp4-server.service: Job type reload is not applicable for unit kea-dhcp4-server.service.` (código 1) y no
+     lee el fichero.
+   - En Kea, `force-reload`, `reload-or-restart` y `try-reload-or-restart` reinician, con la comprobación de la
+     decisión 5.
+   - BIND (`ExecReload=rndc reload`): con el fichero incorrecto named sigue con la configuración anterior y en
+     marcha.
+     - systemctl imprime `Job for named.service failed because the control process exited with error code.`.
+     - El journal recoge el error, `reloading configuration failed: failure`, `named.service: Control process
+       exited, code=exited, status=1/FAILURE` y `Reload failed for named.service - BIND Domain Name Server.`.
+     - `rndc reload` responde `rndc: 'reload' failed: failure`.
+7. **Cambios desde la interfaz**: si Servicios o la gestión web cambian el modelo de un servicio con ficheros editados
+   a mano, Netfix vuelve a generar esos ficheros a partir del modelo, como Webmin. Se detecta comparando el texto
+   generado con el de la última aplicación. Una edición todavía sin aplicar se pierde, y la Ayuda lo dice.
+8. **Arranque al cargar el laboratorio**: los servicios activos arrancan con los ficheros guardados, por el mismo
+   camino que `bootKernel`. Si uno es incorrecto, la unidad queda failed, como tras un reinicio real.
+9. **Estado failed**:
+   - `systemctl status` pone el marcador `×` y `Active: failed (Result: exit-code) since …`, con la línea `Process:`
+     o `Main PID: … (code=exited, status=1/FAILURE)`.
+   - `is-active` imprime `failed` con código 3. `is-failed` imprime `failed` y devuelve 0, o `active` y devuelve 1.
+   - `systemctl --failed` y `list-units --failed` listan las unidades caídas. `reset-failed` limpia el estado.
+   - `start` o `restart` con el fichero corregido arranca la unidad. En Servicios, el interruptor queda apagado y se ve
+     el error.
+10. **Colores**: los de systemd 257/258, solo cuando la salida es la terminal (`isTty`). Con tubería o redirección
+    salen sin color, y `SYSTEMD_COLORS=0` y `--no-pager` se aceptan.
+    - Marcador: `●` verde si está activa, sin color si está inactiva, `×` rojo si ha fallado.
+    - `Active:`: `active (running)` y `active (exited)` en verde negrita, `failed` en rojo negrita.
+    - `Loaded:`: `enabled` en verde y `disabled` en amarillo, también en `preset:`.
+    - El detalle `status=1/FAILURE` va en rojo.
+    - Líneas del journal por prioridad, en `status` y en `journalctl`: err en rojo negrita, warning en amarillo,
+      notice en negrita.
+    - `list-units`: cabecera subrayada y filas de unidades fallidas en rojo.
+    - Los códigos son los de `src/core/ansi.ts`. Para la prioridad, `LogEntry` gana un campo opcional `priority`.
+
+Commits (TDD, uno o varios por punto):
+1. `docs:` este plan.
+2. `fix:` liberación de NOMBRE<20> al desactivar `winshare` en el laboratorio.
+   - `Topology.setFeatures(next)` cambia las funciones y llama a `notifyAppsChange` en cada equipo.
+   - `main.ts` la usa sin crecer (está en 398 líneas). Antes se comprueba que no se crea un ciclo de imports.
+   - Prueba en `tests/net/win-wins.test.ts`: el servidor WINS pierde el nombre al desactivar la función y lo recupera
+     al activarla.
+3. `feat:` estado failed de las unidades y prioridad en el journal.
+   - Cambian `units.ts` y `Server` (`failUnit`, `log(unit, line, priority?)`).
+   - En `linux-services.ts`: `status`, `is-active`, `is-failed`, `--failed`, `list-units --failed` y `reset-failed`.
+   - Si `linux-services.ts` pasa de 400 líneas, el formato de `status` se separa en `systemctl-status.ts`.
+4. `feat:` colores de systemctl y journalctl en la terminal (`src/shells/systemd-colors.ts`).
+   - Pruebas con las secuencias SGR literales, con tty y sin él.
+5. `feat:` `kea-dhcp4.conf` editable y comprobado al arrancar, reiniciar y recargar.
+   - El registro de ficheros de servicio (`src/shells/service-files.ts`) guarda, por equipo y ruta, el texto generado
+     en la última aplicación.
+   - `src/services/kea-import.ts` traduce el JSON comprobado a `PtDhcpPool[]`.
+   - Un registro de comprobación al arrancar (`registerUnitCheck`) da el mismo camino a `systemctl` y al interruptor
+     de Servicios, sin que `src/devices` importe de `src/shells`.
+6. `feat:` ficheros de BIND editables y comprobados.
+   - `src/services/bind-import.ts` construye zonas y opciones a partir de `named.conf.local` y los `db.*`.
+   - Zonas con error y `rndc reload` según las decisiones 5 y 6.
+   - `named.conf.options` y RPZ pasan de aplicarse al guardar a aplicarse al arrancar o recargar, y se adaptan sus
+     pruebas: `dns-forwarders`, `named-conf-check`, `config-files`, `dns-rpz`, `dns-modes`, `listen` y `vim-syntax`.
+7. `feat:` cambios desde la interfaz que vuelven a generar los ficheros (decisión 7), persistencia y arranque al
+   cargar el laboratorio (decisión 8).
+8. `docs:` Ayuda es/en.
+   - «Editar kea-dhcp4.conf a mano» en DHCP, «Editar BIND a mano» en DNS, y el estado failed y los colores en la
+     página de systemctl.
+   - Entradas de `utils.ts` para las opciones nuevas de systemctl (no hay órdenes nuevas).
+9. `test:` e2e `scripts/e2e-service-files.mjs` (puerto 8116), en la cadena `npm run e2e`.
+   - Se edita `kea-dhcp4.conf` con un error y `systemctl restart` deja la unidad failed con el error en `journalctl`.
+   - Se corrige el error, la unidad arranca y Servicios → DHCP muestra el pool nuevo.
+   - Una zona editada responde a `dig`.
+   - `systemctl status` en color.
+   - Desactivar `winshare` borra el nombre del servidor WINS.
+10. `chore: v0.40.0`: versión, about-data y PLAN.md.
+
+`security-reviewer` (opus) revisa los commits 5, 6 y 7: ficheros del usuario que entran en el modelo, límites de
+tamaño y de número de pools, zonas y registros, rutas de `file "…"` dentro de `/etc/bind` y `/var/cache/bind`, y
+ficheros guardados en el laboratorio.
+
+**Seguridad**:
+- Los ficheros del usuario solo llegan al modelo después de pasar el comprobador. La traducción vuelve a validar cada
+  valor con las mismas reglas que la interfaz: `validatePool`, nombres DNS, IP y TTL. Hay máximos de pools, reservas,
+  zonas y registros.
+- `file "…"` de `named.conf.local` se resuelve en el VFS. Fuera de `/etc/bind` y `/var/cache/bind` da el error de
+  named («file not found»): no se leen otros ficheros del equipo.
+- Lo que muestra la interfaz a partir de estos ficheros (nombres de pool, dominios, registros TXT) sale con
+  `textContent`, como ahora.
+
+**Riesgos**:
+- Pruebas que dan por hecho que `named.conf.options` y RPZ se aplican al guardar (lista del commit 6).
+- Las zonas inversas automáticas (`autoReverseZones`) pueden duplicar una zona inversa declarada a mano. La declarada
+  gana.
+- El tamaño de `linux-services.ts` (259 líneas), `host-system.ts` (263) y `server.ts` (294). Lo nuevo va en módulos
+  propios.
+- El cambio de nombre `bind9.service` → `named.service` toca la salida de systemctl, `ss -p` y las pruebas que la
+  esperan. `bind9` sigue siendo el nombre del paquete y el alias de la unidad.
+- Que la interfaz y los ficheros se desincronicen. Las dos vías pasan por el mismo modelo y por la comparación de la
+  decisión 7.
+
+**Límites** (para fases posteriores):
+- sin AAAA, SRV ni zonas secundarias en el modelo (se aceptan en el fichero y no tienen efecto);
+- sin varios rangos por subred, clases de cliente ni opciones DHCP fuera de las cuatro de la decisión 4;
+- sin `kill -HUP` al proceso de Kea (`DHCP4_DYNAMIC_RECONFIGURATION_FAIL`);
+- sin `kea-dhcp6` ni `keactrl`.
+
+- **Hecho (v0.40.0)**, con la revisión de seguridad (sin hallazgos críticos ni altos):
+  - El hallazgo bajo, un arranque que lanzaba una excepción y dejaba el modelo a medias, se corrigió: `setServices`
+    vuelve al modelo anterior.
+  - `systemctl reload` de una unidad parada o en failed se rechaza («Unit X.service is not active.»), como en systemd;
+    `reload-or-restart` la arranca.
+  - `journalctl -xeu UNIDAD`, la orden que sugiere systemctl, filtra la unidad y va al final; también `-n5`, `--unit=`
+    y `--lines=`.
+  - Ayuda: «Cuando un servicio no arranca» y «Los colores de systemctl y journalctl» en Servicios, «Editar
+    kea-dhcp4.conf a mano» en DHCP y «Editar BIND a mano» en DNS (es/en). e2e `scripts/e2e-service-files.mjs`.
+  - Límites que quedan: sin el catálogo de mensajes de `journalctl -x`; la zona inversa automática se genera aunque no
+    esté declarada; las opciones solo se leen de `named.conf.options`; un `include` relativo se rechaza; un cambio
+    desde la interfaz pierde lo editado y no aplicado (como en Webmin).

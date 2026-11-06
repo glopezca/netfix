@@ -73,11 +73,13 @@ try {
   // Registros (v0.19.5): SSH first, then Kea … Dovecot (no nftables on a Server).
   await page.click('.subnav-item:has-text("Registros")');
   const units = (await page.locator('.window:visible select').first().locator('option').allTextContents()).map((o) => o.split(' ')[0]);
-  assert.deepEqual(units, ['ssh', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot']);
+  assert.deepEqual(units, ['ssh', 'kea-dhcp4-server', 'named', 'apache2', 'postfix', 'dovecot']);
   // Logs highlighted as vim shows them (filetype messages): time in Type green, program in Statement yellow.
   const log = page.locator('.window:visible pre.syn-view[data-filetype="messages"]');
   assert.equal(await log.locator('.syn-type').first().evaluate((n) => getComputedStyle(n).color), 'rgb(96, 255, 96)');
-  assert.equal(await log.locator('.syn-statement').first().textContent(), 'sshd');
+  const writers = await log.locator('.syn-statement').allTextContents();
+  assert.equal(writers[0], 'systemd', 'systemd[1] starts the unit, as in journalctl -u ssh');
+  assert.ok(writers.includes('sshd'), writers.join(' | '));
   if (shots) await page.screenshot({ path: `${shots}/logs.png` });
   await page.click('.win-close');
 
