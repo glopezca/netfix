@@ -47,6 +47,8 @@ export const SETTINGS_EN: Readonly<Record<SettingsKey, string>> = {
   'set.webHideOff': 'Hide disabled options in the web management of servers and GNU/Linux routers',
   'set.webHideOffHint': 'When unticked, they are shown greyed out and cannot be used.',
   'set.feat.samba': 'Samba service (file sharing)',
+  'set.feat.winshare': 'File and Printer Sharing for Microsoft Networks (Windows)',
+  'dev.winshare': 'File and Printer Sharing for Microsoft Networks',
   'dev.tab': 'Settings',
   'dev.intro': 'What this device shows. Whatever the lab turns off (Settings → Current lab) is not listed here.',
   'dev.apps': 'Applications',

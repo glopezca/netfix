@@ -97,6 +97,8 @@ export interface PcRecord {
   readonly autoPackages?: unknown;
   /** The units those packages bring (v0.33: smbd, nmbd, nftables), when not as installed; untrusted. */
   readonly units?: unknown;
+  /** Windows file and printer sharing (v0.37: the box and the shares); untrusted. */
+  readonly winShare?: unknown;
 }
 
 export interface ServerRecord {

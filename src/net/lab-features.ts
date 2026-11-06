@@ -6,17 +6,18 @@ import type { DeviceKind } from './topology.ts';
 
 /**
  * The service panels of a Server or Linux router, each switched on its own. Samba is a lab feature of PCs too, but its
- * box in a device follows the samba package (apt or the box install it), not the device's list of panels.
+ * box in a device follows the samba package (apt or the box install it), not the device's list of panels; the Windows
+ * sharing («winshare», PC and Server) follows its own box (win-shares.ts).
  */
 export const SERVICE_IDS = ['ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log'] as const;
-export const FEATURE_IDS = ['ip', 'apps', 'browser', 'sftp', ...SERVICE_IDS, 'samba', 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'] as const;
+export const FEATURE_IDS = ['ip', 'apps', 'browser', 'sftp', ...SERVICE_IDS, 'samba', 'winshare', 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 export type LabFeatures = Readonly<Partial<Record<DeviceKind, readonly FeatureId[]>>>;
 
 /** What can be switched on each kind, in the order the settings list them. */
 export const FEATURES_BY_KIND: Readonly<Record<DeviceKind, readonly FeatureId[]>> = {
-  pc: ['ip', 'apps', 'samba', 'linux', 'windows'],
-  server: ['ip', ...SERVICE_IDS, 'samba', 'sysctl', 'firewall', 'linux', 'windows'],
+  pc: ['ip', 'apps', 'samba', 'winshare', 'linux', 'windows'],
+  server: ['ip', ...SERVICE_IDS, 'samba', 'winshare', 'sysctl', 'firewall', 'linux', 'windows'],
   linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'samba', 'linux', 'windows'],
   router: ['cli', 'web'],
   switch: ['cli', 'web'],
@@ -62,14 +63,9 @@ export function setFeature(features: LabFeatures, kind: DeviceKind, id: FeatureI
   return sameAsDefault(kind, next) ? rest : { ...rest, [kind]: next };
 }
 
-/** Samba on for every kind that has it (a list saved before the feature existed). */
-export function withSamba(features: LabFeatures): LabFeatures {
-  return KINDS.filter((k) => FEATURES_BY_KIND[k].includes('samba')).reduce((f, k) => setFeature(f, k, 'samba', true), features);
-}
-
-/** Samba off for every kind that has it (a v0.34 file with «sambaOff»). */
-export function withoutSamba(features: LabFeatures): LabFeatures {
-  return KINDS.filter((k) => FEATURES_BY_KIND[k].includes('samba')).reduce((f, k) => setFeature(f, k, 'samba', false), features);
+/** A feature on (a list saved before it existed) or off for every kind that has it. */
+function switchAll(features: LabFeatures, id: FeatureId, on: boolean): LabFeatures {
+  return KINDS.filter((k) => FEATURES_BY_KIND[k].includes(id)).reduce((f, k) => setFeature(f, k, id, on), features);
 }
 
 /** The `features` of a topology file (untrusted): known kinds, known features of that kind, no repeats. */
@@ -89,15 +85,19 @@ export function parseFeatures(data: unknown): LabFeatures {
   return out;
 }
 
-/** The `featuresV` of a file whose lists know Samba (v0.35). */
-export const FEATURES_V = 2;
+/** The `featuresV` of a file whose lists know Samba (2, v0.35) and the Windows sharing (3, v0.37). */
+export const FEATURES_V = 3;
+const SAMBA_V = 2;
 
 /**
- * The lab settings of a file. A list saved before v0.35 never names Samba, which did not exist yet: Samba stays on,
- * unless the file says «sambaOff» (v0.34's single switch), which turns it off for every kind.
+ * The lab settings of a file. A list never names a feature that did not exist yet when it was saved: Samba (before
+ * v0.35) and the Windows sharing (before v0.37) stay on, unless the file says «sambaOff» (v0.34's single switch), which
+ * turns Samba off for every kind.
  */
 export function fileFeatures(data: unknown, version: unknown, sambaOff: unknown): LabFeatures {
   const parsed = parseFeatures(data);
-  const known = version === FEATURES_V ? parsed : withSamba(parsed);
-  return sambaOff === true ? withoutSamba(known) : known;
+  const v = typeof version === 'number' ? version : 0;
+  const withSamba = v >= SAMBA_V ? parsed : switchAll(parsed, 'samba', true);
+  const known = v >= FEATURES_V ? withSamba : switchAll(withSamba, 'winshare', true);
+  return sambaOff === true ? switchAll(known, 'samba', false) : known;
 }

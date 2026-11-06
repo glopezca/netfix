@@ -14,6 +14,7 @@ import { hasPackage } from '../net/host-packages.ts';
 import { setSambaInstalled } from '../shells/samba-install.ts';
 import { setAptInstalled } from '../shells/apt-install.ts';
 import { CATALOG_PACKAGES, labHasPackage } from '../net/lab-packages.ts';
+import { setWinShareOn, winShareOffered, winShareOn } from '../net/win-shares.ts';
 
 const TERMINALS: readonly FeatureId[] = ['linux', 'windows'];
 
@@ -33,6 +34,14 @@ function sambaBox(h: Host, changed: () => void): HTMLElement[] {
   const input = el('input', { type: 'checkbox', name: 'dev-samba', checked: hasPackage(h, 'samba') });
   input.addEventListener('change', () => { setSambaInstalled(h, input.checked); changed(); });
   return [el('label', { class: 'set-choice' }, input, t('smb.tab'))];
+}
+
+/** File and printer sharing for Microsoft networks (a Windows device whose lab offers it): SMB/NetBIOS on or off. */
+function winShareBox(h: Host, changed: () => void): HTMLElement[] {
+  if (!winShareOffered(h)) return [];
+  const input = el('input', { type: 'checkbox', name: 'dev-winshare', checked: winShareOn(h) });
+  input.addEventListener('change', () => { setWinShareOn(h, input.checked); changed(); });
+  return [el('label', { class: 'set-choice' }, input, t('dev.winshare'))];
 }
 
 /** The catalogue packages the lab keeps (a GNU/Linux terminal only): each box is apt install / apt remove. */
@@ -65,7 +74,7 @@ export function deviceConfig(h: Host, changed: () => void): HTMLElement {
   return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') },
     el('p', { class: 'muted' }, t('dev.intro')),
     ...group(t('dev.apps'), apps.map(box)),
-    ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed)]),
+    ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed), ...winShareBox(h, changed)]),
     ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)),
     ...group(t('dev.packages'), packageBoxes(h, changed)));
 }

@@ -45,6 +45,8 @@ export const SETTINGS_ES = {
   'set.webHideOff': 'Ocultar en la gestión web de servidores y routers GNU/Linux las opciones desactivadas',
   'set.webHideOffHint': 'Sin marcar, aparecen en gris y no se pueden usar.',
   'set.feat.samba': 'Servicio Samba (compartir ficheros)',
+  'set.feat.winshare': 'Compartir archivos e impresoras para redes Microsoft (Windows)',
+  'dev.winshare': 'Compartir archivos e impresoras para redes Microsoft',
   'dev.tab': 'Configuración',
   'dev.intro': 'Qué muestra este equipo. Lo que el laboratorio desactiva (Configuración → Laboratorio actual) no aparece aquí.',
   'dev.apps': 'Aplicaciones',

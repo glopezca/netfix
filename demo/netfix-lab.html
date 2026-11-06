@@ -4615,6 +4615,8 @@ const SETTINGS_ES = {
     'set.webHideOff': 'Ocultar en la gestión web de servidores y routers GNU/Linux las opciones desactivadas',
     'set.webHideOffHint': 'Sin marcar, aparecen en gris y no se pueden usar.',
     'set.feat.samba': 'Servicio Samba (compartir ficheros)',
+    'set.feat.winshare': 'Compartir archivos e impresoras para redes Microsoft (Windows)',
+    'dev.winshare': 'Compartir archivos e impresoras para redes Microsoft',
     'dev.tab': 'Configuración',
     'dev.intro': 'Qué muestra este equipo. Lo que el laboratorio desactiva (Configuración → Laboratorio actual) no aparece aquí.',
     'dev.apps': 'Aplicaciones',
@@ -4680,6 +4682,8 @@ const SETTINGS_EN = {
     'set.webHideOff': 'Hide disabled options in the web management of servers and GNU/Linux routers',
     'set.webHideOffHint': 'When unticked, they are shown greyed out and cannot be used.',
     'set.feat.samba': 'Samba service (file sharing)',
+    'set.feat.winshare': 'File and Printer Sharing for Microsoft Networks (Windows)',
+    'dev.winshare': 'File and Printer Sharing for Microsoft Networks',
     'dev.tab': 'Settings',
     'dev.intro': 'What this device shows. Whatever the lab turns off (Settings → Current lab) is not listed here.',
     'dev.apps': 'Applications',
@@ -5968,14 +5972,15 @@ return { RESOLVED_CONF, RESOLVED_DEFAULTS, parseSupport, parseResolvedConf, DEFA
 __m["net/lab-features.js"] = (() => {
 /**
  * The service panels of a Server or Linux router, each switched on its own. Samba is a lab feature of PCs too, but its
- * box in a device follows the samba package (apt or the box install it), not the device's list of panels.
+ * box in a device follows the samba package (apt or the box install it), not the device's list of panels; the Windows
+ * sharing («winshare», PC and Server) follows its own box (win-shares.ts).
  */
 const SERVICE_IDS = ['ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log'];
-const FEATURE_IDS = ['ip', 'apps', 'browser', 'sftp', ...SERVICE_IDS, 'samba', 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'];
+const FEATURE_IDS = ['ip', 'apps', 'browser', 'sftp', ...SERVICE_IDS, 'samba', 'winshare', 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'];
 /** What can be switched on each kind, in the order the settings list them. */
 const FEATURES_BY_KIND = {
-    pc: ['ip', 'apps', 'samba', 'linux', 'windows'],
-    server: ['ip', ...SERVICE_IDS, 'samba', 'sysctl', 'firewall', 'linux', 'windows'],
+    pc: ['ip', 'apps', 'samba', 'winshare', 'linux', 'windows'],
+    server: ['ip', ...SERVICE_IDS, 'samba', 'winshare', 'sysctl', 'firewall', 'linux', 'windows'],
     linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'samba', 'linux', 'windows'],
     router: ['cli', 'web'],
     switch: ['cli', 'web'],
@@ -6015,13 +6020,9 @@ function setFeature(features, kind, id, on) {
     const rest = Object.fromEntries(Object.entries(features).filter(([k]) => k !== kind));
     return sameAsDefault(kind, next) ? rest : { ...rest, [kind]: next };
 }
-/** Samba on for every kind that has it (a list saved before the feature existed). */
-function withSamba(features) {
-    return KINDS.filter((k) => FEATURES_BY_KIND[k].includes('samba')).reduce((f, k) => setFeature(f, k, 'samba', true), features);
-}
-/** Samba off for every kind that has it (a v0.34 file with «sambaOff»). */
-function withoutSamba(features) {
-    return KINDS.filter((k) => FEATURES_BY_KIND[k].includes('samba')).reduce((f, k) => setFeature(f, k, 'samba', false), features);
+/** A feature on (a list saved before it existed) or off for every kind that has it. */
+function switchAll(features, id, on) {
+    return KINDS.filter((k) => FEATURES_BY_KIND[k].includes(id)).reduce((f, k) => setFeature(f, k, id, on), features);
 }
 /** The `features` of a topology file (untrusted): known kinds, known features of that kind, no repeats. */
 const isService = (f) => SERVICE_IDS.includes(f);
@@ -6041,19 +6042,23 @@ function parseFeatures(data) {
     }
     return out;
 }
-/** The `featuresV` of a file whose lists know Samba (v0.35). */
-const FEATURES_V = 2;
+/** The `featuresV` of a file whose lists know Samba (2, v0.35) and the Windows sharing (3, v0.37). */
+const FEATURES_V = 3;
+const SAMBA_V = 2;
 /**
- * The lab settings of a file. A list saved before v0.35 never names Samba, which did not exist yet: Samba stays on,
- * unless the file says «sambaOff» (v0.34's single switch), which turns it off for every kind.
+ * The lab settings of a file. A list never names a feature that did not exist yet when it was saved: Samba (before
+ * v0.35) and the Windows sharing (before v0.37) stay on, unless the file says «sambaOff» (v0.34's single switch), which
+ * turns Samba off for every kind.
  */
 function fileFeatures(data, version, sambaOff) {
     const parsed = parseFeatures(data);
-    const known = version === FEATURES_V ? parsed : withSamba(parsed);
-    return sambaOff === true ? withoutSamba(known) : known;
+    const v = typeof version === 'number' ? version : 0;
+    const withSamba = v >= SAMBA_V ? parsed : switchAll(parsed, 'samba', true);
+    const known = v >= FEATURES_V ? withSamba : switchAll(withSamba, 'winshare', true);
+    return sambaOff === true ? switchAll(known, 'samba', false) : known;
 }
 
-return { SERVICE_IDS, FEATURE_IDS, FEATURES_BY_KIND, featuresOf, featureOn, setFeature, withSamba, withoutSamba, parseFeatures, FEATURES_V, fileFeatures };
+return { SERVICE_IDS, FEATURE_IDS, FEATURES_BY_KIND, featuresOf, featureOn, setFeature, parseFeatures, FEATURES_V, fileFeatures };
 })();
 __m["net/device-apps.js"] = (() => {
 /**
@@ -42375,6 +42380,131 @@ registerHostFileReader((host, path) => {
 
 return { defaultLinuxUser, hostUsers, hostSystem, savedFiles, restoreFiles, bootKernel };
 })();
+__m["net/win-shares.js"] = (() => {
+/**
+ * «Compartir archivos e impresoras para redes Microsoft» on Windows (PC and Server): the binding of the Server service
+ * to the adapter, which the device's Configuración box ticks (unticked in each device; the lab's «winshare» feature
+ * decides whether the box is there), and the shares it publishes. As with «uso compartido con protección por
+ * contraseña» turned off: each share has a name, a folder of drive C:, a comment and what Everyone may do (read, or
+ * full control). Kept beside the device in a weak registry and saved with it; a record from a file is checked as if
+ * typed.
+ */
+const { featureOn } = __m["net/lab-features.js"];
+const { labViewOf, notifyAppsChange } = __m["net/device-apps.js"];
+/** What Windows allows: a share name of up to 80 characters, a comment of 256 and a path of MAX_PATH. */
+const MAX_NAME = 80;
+const MAX_REMARK = 256;
+const MAX_PATH = 260;
+/** More than a lab needs, and a bound on a crafted file. */
+const MAX_SHARES = 32;
+/** Characters a share name cannot have (as Windows: " / \ [ ] : | < > + = ; , ? *), nor control characters. */
+const BAD_NAME = /["/\\[\]:|<>+=;,?*\u0000-\u001f\u007f]/;
+/** The administrative shares Windows keeps for itself. */
+const RESERVED = /^(?:IPC|ADMIN|PRINT|[A-Z])\$$/i;
+/** Characters a folder name cannot have. */
+const BAD_SEGMENT = /[<>:"/|?*\u0000-\u001f\u007f]/;
+const NONE = { on: false, shares: [] };
+const states = new WeakMap();
+const stateOf = (d) => states.get(d) ?? NONE;
+/** C:\a\b tidied (upper-case drive, no trailing \), or undefined when it is not a plain folder of drive C:. */
+function sharePath(path) {
+    if (path.length > MAX_PATH || !/^[cC]:\\/.test(path))
+        return undefined;
+    const parts = path.slice(3).split('\\');
+    if (parts.at(-1) === '')
+        parts.pop();
+    if (parts.some((p) => p === '' || p === '.' || p === '..' || BAD_SEGMENT.test(p)))
+        return undefined;
+    return `C:\\${parts.join('\\')}`;
+}
+/** The share as it would be kept, or why not (beside the shares already there). */
+function checkShare(shares, s) {
+    if (!s.name || s.name.length > MAX_NAME || BAD_NAME.test(s.name))
+        return 'name';
+    if (RESERVED.test(s.name))
+        return 'reserved';
+    if (shares.some((x) => x.name.toLowerCase() === s.name.toLowerCase()))
+        return 'exists';
+    const path = sharePath(s.path);
+    if (path === undefined)
+        return 'path';
+    if (s.remark.length > MAX_REMARK || /[\u0000-\u001f\u007f]/.test(s.remark))
+        return 'remark';
+    if (shares.length >= MAX_SHARES)
+        return 'full';
+    return { name: s.name, path, remark: s.remark, access: s.access === 'full' ? 'full' : 'read' };
+}
+/** The box of the device's Configuración tab: a Windows device whose lab keeps the feature. */
+function winShareOffered(d) {
+    return d.os === 'windows' && featureOn(labViewOf(d).features, d.kind, 'winshare');
+}
+/** The box ticked (whether or not the lab still offers it). */
+function winShareOn(d) {
+    return stateOf(d).on;
+}
+/** File and printer sharing working: the box ticked on a device that offers it (SMB on 139/445, NAME<20>). */
+function winShareActive(d) {
+    return winShareOn(d) && winShareOffered(d);
+}
+function setWinShareOn(d, on) {
+    if (winShareOn(d) === on)
+        return;
+    states.set(d, { ...stateOf(d), on });
+    notifyAppsChange(d);
+}
+function winShares(d) {
+    return stateOf(d).shares;
+}
+function findWinShare(d, name) {
+    return winShares(d).find((s) => s.name.toLowerCase() === name.toLowerCase());
+}
+/** Publishes a share: undefined when done, or why not. */
+function addWinShare(d, share) {
+    const state = stateOf(d);
+    const checked = checkShare(state.shares, share);
+    if (typeof checked === 'string')
+        return checked;
+    states.set(d, { ...state, shares: [...state.shares, checked] });
+    return undefined;
+}
+/** Stops sharing (the folder stays): whether there was such a share. */
+function removeWinShare(d, name) {
+    const state = stateOf(d);
+    const rest = state.shares.filter((s) => s.name.toLowerCase() !== name.toLowerCase());
+    if (rest.length === state.shares.length)
+        return false;
+    states.set(d, { ...state, shares: rest });
+    return true;
+}
+/** What the file keeps: nothing while the box is unticked and there are no shares. */
+function winSharesRecord(d) {
+    const state = stateOf(d);
+    return state.on || state.shares.length ? { on: state.on, shares: state.shares } : undefined;
+}
+const isObj = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+/** A share of a file (untrusted): every field of the right type and accepted as if typed. */
+function shareOf(v) {
+    if (!isObj(v) || typeof v.name !== 'string' || typeof v.path !== 'string' || typeof v.remark !== 'string')
+        return undefined;
+    if (v.access !== 'read' && v.access !== 'full')
+        return undefined;
+    return { name: v.name, path: v.path, remark: v.remark, access: v.access };
+}
+/** Puts the `winShare` of a file back: the box only when `on` is true, the shares that pass the checks. */
+function restoreWinShares(d, data) {
+    if (!isObj(data))
+        return;
+    const list = Array.isArray(data.shares) ? data.shares.slice(0, MAX_SHARES * 2) : [];
+    const shares = list.reduce((kept, v) => {
+        const s = shareOf(v);
+        const checked = s && checkShare(kept, s);
+        return checked && typeof checked !== 'string' ? [...kept, checked] : kept;
+    }, []);
+    states.set(d, { on: data.on === true, shares });
+}
+
+return { MAX_SHARES, sharePath, winShareOffered, winShareOn, winShareActive, setWinShareOn, winShares, findWinShare, addWinShare, removeWinShare, winSharesRecord, restoreWinShares };
+})();
 __m["net/packets.js"] = (() => {
 /** The quote an ICMP error carries for a TCP or UDP packet (none for ICMP). */
 function icmpQuote(p) {
@@ -48386,6 +48516,7 @@ const { pkgUnitsRecord, restorePkgUnits } = __m["net/pkg-units.js"];
 const { bootPkgUnits } = __m["shells/pkg-service.js"];
 const { bootWins } = __m["shells/samba-wins.js"];
 const { bootWindowsWins, setWindowsWins, validWins, windowsWinsManual } = __m["net/win-wins.js"];
+const { restoreWinShares, winSharesRecord } = __m["net/win-shares.js"];
 const { Pc } = __m["devices/pc.js"];
 const { Server } = __m["devices/server.js"];
 const { restoreApps, restoreServer } = __m["net/topology-restore.js"];
@@ -48403,7 +48534,8 @@ function hostRecord(d) {
     const autoPackages = autoPackagesOf(d);
     const units = pkgUnitsRecord(d);
     const wins = windowsWinsManual(d);
-    const names = { ...(wins !== undefined ? { wins: formatIp(wins) } : {}), ...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), ...(autoPackages.length ? { autoPackages } : {}), ...(units ? { units } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
+    const winShare = winSharesRecord(d);
+    const names = { ...(wins !== undefined ? { wins: formatIp(wins) } : {}), ...(winShare ? { winShare } : {}), ...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), ...(autoPackages.length ? { autoPackages } : {}), ...(units ? { units } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
     if (c.mode === 'dhcp')
         return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
     const opt = (n) => (n === undefined ? undefined : formatIp(n));
@@ -48432,6 +48564,7 @@ function restoreHost(device, pc, server) {
         device.setStatic(parseStatic(pc));
     const wins = typeof pc.wins === 'string' ? parseIp(pc.wins) : null;
     setWindowsWins(device, validWins(wins) ? wins : undefined);
+    restoreWinShares(device, pc.winShare);
     if (device instanceof Server)
         device.web.reload();
     if (device instanceof Server && server)
@@ -68341,6 +68474,7 @@ const { hasPackage } = __m["net/host-packages.js"];
 const { setSambaInstalled } = __m["shells/samba-install.js"];
 const { setAptInstalled } = __m["shells/apt-install.js"];
 const { CATALOG_PACKAGES, labHasPackage } = __m["net/lab-packages.js"];
+const { setWinShareOn, winShareOffered, winShareOn } = __m["net/win-shares.js"];
 const TERMINALS = ['linux', 'windows'];
 /** The PC applications and terminals are named as their tabs; the service panels as in Laboratorio actual. */
 const TAB_NAMES = {
@@ -68357,6 +68491,14 @@ function sambaBox(h, changed) {
     const input = el('input', { type: 'checkbox', name: 'dev-samba', checked: hasPackage(h, 'samba') });
     input.addEventListener('change', () => { setSambaInstalled(h, input.checked); changed(); });
     return [el('label', { class: 'set-choice' }, input, t('smb.tab'))];
+}
+/** File and printer sharing for Microsoft networks (a Windows device whose lab offers it): SMB/NetBIOS on or off. */
+function winShareBox(h, changed) {
+    if (!winShareOffered(h))
+        return [];
+    const input = el('input', { type: 'checkbox', name: 'dev-winshare', checked: winShareOn(h) });
+    input.addEventListener('change', () => { setWinShareOn(h, input.checked); changed(); });
+    return [el('label', { class: 'set-choice' }, input, t('dev.winshare'))];
 }
 /** The catalogue packages the lab keeps (a GNU/Linux terminal only): each box is apt install / apt remove. */
 function packageBoxes(h, changed) {
@@ -68384,7 +68526,7 @@ function deviceConfig(h, changed) {
     };
     const apps = h.kind === 'pc' ? allowed.filter((id) => id === 'ip' || PC_APPS.includes(id)) : allowed.filter((id) => id === 'ip');
     const services = h.kind === 'pc' ? [] : allowed.filter((id) => id !== 'ip' && !TERMINALS.includes(id));
-    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed)]), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)), ...group(t('dev.packages'), packageBoxes(h, changed)));
+    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed), ...winShareBox(h, changed)]), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)), ...group(t('dev.packages'), packageBoxes(h, changed)));
 }
 
 return { deviceConfig };

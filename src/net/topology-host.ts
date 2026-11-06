@@ -10,6 +10,7 @@ import { pkgUnitsRecord, restorePkgUnits } from './pkg-units.ts';
 import { bootPkgUnits } from '../shells/pkg-service.ts';
 import { bootWins } from '../shells/samba-wins.ts';
 import { bootWindowsWins, setWindowsWins, validWins, windowsWinsManual } from './win-wins.ts';
+import { restoreWinShares, winSharesRecord } from './win-shares.ts';
 import type { Host } from '../devices/host.ts';
 import { Pc } from '../devices/pc.ts';
 import { Server } from '../devices/server.ts';
@@ -30,7 +31,8 @@ export function hostRecord(d: Host): PcRecord {
   const autoPackages = autoPackagesOf(d);
   const units = pkgUnitsRecord(d);
   const wins = windowsWinsManual(d);
-  const names = { ...(wins !== undefined ? { wins: formatIp(wins) } : {}), ...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), ...(autoPackages.length ? { autoPackages } : {}), ...(units ? { units } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
+  const winShare = winSharesRecord(d);
+  const names = { ...(wins !== undefined ? { wins: formatIp(wins) } : {}), ...(winShare ? { winShare } : {}),...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), ...(autoPackages.length ? { autoPackages } : {}), ...(units ? { units } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
   if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
   const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
   return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
@@ -52,6 +54,7 @@ export function restoreHost(device: Host, pc: PcRecord, server: ServerRecord | u
   else device.setStatic(parseStatic(pc));
   const wins = typeof pc.wins === 'string' ? parseIp(pc.wins) : null;
   setWindowsWins(device, validWins(wins) ? wins : undefined);
+  restoreWinShares(device, pc.winShare);
   if (device instanceof Server) device.web.reload();
   if (device instanceof Server && server) restoreServer(device, server);
   if (device instanceof Pc && pc.apps) restoreApps(device, pc.apps);
