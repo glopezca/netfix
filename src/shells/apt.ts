@@ -11,6 +11,7 @@ import { BASE, PACKAGES, findPackage, kb } from './apt-catalog.ts';
 import type { AptDep, AptPackage } from './apt-catalog.ts';
 import { mooLines } from './apt-moo.ts';
 import { sambaAllowed } from '../net/device-apps.ts';
+import { labHasPackage } from '../net/lab-packages.ts';
 import { installedPackage } from './apt-state.ts';
 import { commitInstall, commitRemove, toFetch } from './apt-core.ts';
 import { findDep, leftoverNote, orphans } from './apt-auto.ts';
@@ -124,12 +125,17 @@ function unpack(ctx: Ctx, host: Host, todo: readonly AptPackage[], fetch: readon
   ctx.out(`${[...lines, ...setup, 'Processing triggers for man-db (2.13.1-1) ...', 'Processing triggers for libc-bin (2.42-0ubuntu3) ...'].join('\n')}\n`);
 }
 
+/**
+ * What the lab's archive offers: a lab whose Samba feature is off for this kind of device has no samba, and the
+ * catalogue packages the lab took away are gone (an installed one stays on the device).
+ */
+const inArchive = (host: Host, name: string): boolean => (name !== 'samba' || sambaAllowed(host)) && labHasPackage(host, name);
+
 const dbFiles = (host: Host): number => DB_FILES + PACKAGES.filter((p) => installedPackage(host, p)).length * 137;
 
 function* install(ctx: Ctx, host: Host, names: readonly string[], yes: boolean): Gen<number> {
   ctx.out(READING);
-  // A lab whose Samba feature is off for this kind of device has no samba in its archive.
-  const unknown = names.find((n) => (!findPackage(n) && BASE[n] === undefined) || (n === 'samba' && !sambaAllowed(host)));
+  const unknown = names.find((n) => (!findPackage(n) && BASE[n] === undefined) || !inArchive(host, n));
   if (unknown !== undefined) { ctx.err(`Error: Unable to locate package ${unknown}\n`); return 100; }
   const newest = names.flatMap((n) => {
     const p = findPackage(n);
@@ -193,7 +199,8 @@ const matches = (patterns: readonly string[], name: string): boolean =>
 /** `apt list [--installed] [PATTERN...]`: the catalogue (or what is installed), with apt's warning for scripts. */
 function list(ctx: Ctx, host: Host, patterns: readonly string[], installedOnly: boolean): number {
   const base = Object.entries(BASE).map(([name, version]) => ({ name, version, arch: 'amd64', on: true }));
-  const all = [...base, ...PACKAGES.map((p) => ({ name: p.name, version: p.version, arch: p.arch, on: installedPackage(host, p) }))];
+  const pkgs = PACKAGES.map((p) => ({ name: p.name, version: p.version, arch: p.arch, on: installedPackage(host, p) })).filter((p) => p.on || labHasPackage(host, p.name));
+  const all = [...base, ...pkgs];
   const shown = all.filter((p) => (!installedOnly || p.on) && matches(patterns, p.name)).sort((a, b) => a.name.localeCompare(b.name));
   const mark = (name: string): string => (isPackageAuto(host, name) ? ' [installed,automatic]' : ' [installed]');
   ctx.err('\nWARNING: apt does not have a stable CLI interface. Use with caution in scripts.\n\n');

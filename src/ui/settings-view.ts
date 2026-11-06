@@ -6,6 +6,7 @@ import type { Locale } from '../i18n/locale.ts';
 import { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } from './preferences.ts';
 import { FEATURES_BY_KIND, featureOn, setFeature } from '../net/lab-features.ts';
 import type { LabFeatures } from '../net/lab-features.ts';
+import { CATALOG_PACKAGES, packageAllowed, setPackageOff } from '../net/lab-packages.ts';
 import type { DeviceKind } from '../net/topology.ts';
 
 /** The kinds whose windows have settings to switch (the cloud has none). */
@@ -21,6 +22,9 @@ export interface SettingsHost {
   /** The web GUI of servers and Linux routers leaves out what is off (instead of greying it). */
   webHideOff(): boolean;
   setWebHideOff(on: boolean): void;
+  /** The catalogue packages taken away from the lab's archive (lab-packages.ts). */
+  pkgsOff(): readonly string[];
+  setPkgsOff(next: readonly string[]): void;
   /** Embedded in a classroom exercise: the lab section is read-only. */
   labLocked(): boolean;
   /** The classroom fixes the timestamp prompt. */
@@ -65,6 +69,20 @@ function kindGroup(host: SettingsHost, kind: DeviceKind, changed: () => void): H
   return el('fieldset', { class: 'set-group', 'data-kind': kind }, el('legend', {}, tDynamic(`set.kind.${kind}`)), ...boxes);
 }
 
+/** One box per catalogue package, for every kind: unticked, apt and the devices' Configuración no longer offer it. */
+function packagesGroup(host: SettingsHost, changed: () => void): HTMLElement {
+  const boxes = CATALOG_PACKAGES.map((name) => {
+    const box = el('input', { type: 'checkbox', checked: packageAllowed(host.pkgsOff(), name), disabled: host.labLocked(), 'data-pkg': name });
+    box.addEventListener('change', () => {
+      host.setPkgsOff(setPackageOff(host.pkgsOff(), name, !box.checked));
+      changed();
+    });
+    return el('label', { class: 'set-choice' }, box, el('code', {}, name));
+  });
+  return el('fieldset', { class: 'set-group', 'data-kind': 'packages' }, el('legend', {}, t('set.packages')),
+    el('p', { class: 'muted' }, t('set.packagesHint')), ...boxes);
+}
+
 function webOption(host: SettingsHost, changed: () => void): HTMLElement {
   const box = el('input', { type: 'checkbox', checked: host.webHideOff(), disabled: host.labLocked(), 'data-feature': 'webHideOff' });
   box.addEventListener('change', () => { host.setWebHideOff(box.checked); changed(); });
@@ -95,6 +113,7 @@ export class SettingsView {
     reset.addEventListener('click', () => {
       host.setFeatures({});
       host.setWebHideOff(false);
+      host.setPkgsOff([]);
       this.render();
       changed();
       this.lab.querySelector<HTMLButtonElement>('.set-reset')?.focus();
@@ -105,7 +124,7 @@ export class SettingsView {
       el('h2', { id: 'set-lab' }, t('set.lab')),
       el('p', { class: 'muted' }, host.labLocked() ? t('set.labLocked') : t('set.labNote')),
       el('p', {}, t('set.always')),
-      el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed))),
+      el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed)), packagesGroup(host, changed)),
       webOption(host, changed),
       reset, this.status);
   }

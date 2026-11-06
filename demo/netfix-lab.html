@@ -4620,6 +4620,9 @@ const SETTINGS_ES = {
     'dev.apps': 'Aplicaciones',
     'dev.services': 'Servicios',
     'dev.terminals': 'Terminales',
+    'dev.packages': 'Paquetes',
+    'set.packages': 'Paquetes del repositorio apt (equipos con GNU/Linux)',
+    'set.packagesHint': 'Desmarcado, apt no lo encuentra y no aparece en la pestaña Configuración de los equipos; quien ya lo tiene lo conserva.',
     'dev.changed': 'La ventana se ha reabierto con las pestañas elegidas.',
     'os.title': '¿Qué sistema operativo tiene {name}?',
     'os.body': 'Se activa su terminal y la pila de red de ese sistema. Puedes cambiarlo después en su pestaña Configuración (terminales) y en TCP/IP (sistema operativo).',
@@ -4682,6 +4685,9 @@ const SETTINGS_EN = {
     'dev.apps': 'Applications',
     'dev.services': 'Services',
     'dev.terminals': 'Terminals',
+    'dev.packages': 'Packages',
+    'set.packages': 'Packages in the apt repository (GNU/Linux devices)',
+    'set.packagesHint': 'When unticked, apt cannot find it and it is not listed in the devices\' Settings tab; a device that already has it keeps it.',
     'dev.changed': 'The window has been reopened with the chosen tabs.',
     'os.title': 'Which operating system does {name} run?',
     'os.body': 'Its terminal and that system\'s network stack are turned on. You can change it later in its Settings tab (terminals) and in TCP/IP (operating system).',
@@ -6072,7 +6078,7 @@ const PC_APPS = ['browser', 'mail', 'ssh', 'sftp'];
 const PC_OFF = ['mail', 'sftp'];
 /** A longer list in a file is not a list of applications. */
 const MAX_LIST = 64;
-const NO_LAB = { features: {}, webHideOff: false };
+const NO_LAB = { features: {}, webHideOff: false, pkgsOff: [] };
 const chosen = new WeakMap();
 const labs = new WeakMap();
 /**
@@ -38343,6 +38349,41 @@ function mooLines(moos, ms) {
 
 return { mooLines };
 })();
+__m["net/lab-packages.js"] = (() => {
+/**
+ * The package catalogue of a device's Configuración tab: apt's tool packages, which bring no service panel (those
+ * follow the Servicios boxes and the lab features; samba has its own). Each has a box in the device (apt install /
+ * apt remove, apt-install.ts) and one in Configuración → Laboratorio actual: a package the lab takes away is no longer
+ * in the archive (apt cannot find it), but a device that has it keeps it. Saved with the topology as the list of
+ * packages taken away.
+ */
+const { labViewOf } = __m["net/device-apps.js"];
+/** In the order the boxes list them (bind9utils, the old name of bind9-utils, is left to the terminal). */
+const CATALOG_PACKAGES = ['network-manager', 'avahi-daemon', 'libnss-mdns', 'libnss-resolve', 'smbclient', 'samba-common-bin', 'winbind', 'libnss-winbind', 'bind9-utils'];
+/** A longer list in a file is not a list of packages (the catalogue has a handful). */
+const MAX_LIST = 64;
+const inCatalogue = (name) => CATALOG_PACKAGES.includes(name);
+/** Not taken away by the lab (a package outside the catalogue always is available). */
+function packageAllowed(off, name) {
+    return !off.includes(name);
+}
+/** The device's lab keeps the package in its archive. */
+function labHasPackage(d, name) {
+    return packageAllowed(labViewOf(d).pkgsOff, name);
+}
+/** A copy with one package taken away (on) or given back, in catalogue order; names outside it are ignored. */
+function setPackageOff(off, name, on) {
+    return CATALOG_PACKAGES.filter((p) => (p === name ? on && inCatalogue(name) : off.includes(p)));
+}
+/** The `pkgsOff` of a topology file (untrusted): catalogue names, no repeats; anything else is «all available». */
+function parsePkgsOff(data) {
+    if (!Array.isArray(data) || data.length > MAX_LIST)
+        return [];
+    return CATALOG_PACKAGES.filter((p) => data.includes(p));
+}
+
+return { CATALOG_PACKAGES, packageAllowed, labHasPackage, setPackageOff, parsePkgsOff };
+})();
 __m["shells/apt-state.js"] = (() => {
 const { runsServices } = __m["devices/kinds.js"];
 const { APPS_BY_KIND, deviceApps, setDeviceApps } = __m["net/device-apps.js"];
@@ -38659,6 +38700,7 @@ const { aptSources, mirrorStatus } = __m["shells/apt-net.js"];
 const { BASE, PACKAGES, findPackage, kb } = __m["shells/apt-catalog.js"];
 const { mooLines } = __m["shells/apt-moo.js"];
 const { sambaAllowed } = __m["net/device-apps.js"];
+const { labHasPackage } = __m["net/lab-packages.js"];
 const { installedPackage } = __m["shells/apt-state.js"];
 const { commitInstall, commitRemove, toFetch } = __m["shells/apt-core.js"];
 const { findDep, leftoverNote, orphans } = __m["shells/apt-auto.js"];
@@ -38767,11 +38809,15 @@ function unpack(ctx, host, todo, fetch, archive) {
     });
     ctx.out(`${[...lines, ...setup, 'Processing triggers for man-db (2.13.1-1) ...', 'Processing triggers for libc-bin (2.42-0ubuntu3) ...'].join('\n')}\n`);
 }
+/**
+ * What the lab's archive offers: a lab whose Samba feature is off for this kind of device has no samba, and the
+ * catalogue packages the lab took away are gone (an installed one stays on the device).
+ */
+const inArchive = (host, name) => (name !== 'samba' || sambaAllowed(host)) && labHasPackage(host, name);
 const dbFiles = (host) => DB_FILES + PACKAGES.filter((p) => installedPackage(host, p)).length * 137;
 function* install(ctx, host, names, yes) {
     ctx.out(READING);
-    // A lab whose Samba feature is off for this kind of device has no samba in its archive.
-    const unknown = names.find((n) => (!findPackage(n) && BASE[n] === undefined) || (n === 'samba' && !sambaAllowed(host)));
+    const unknown = names.find((n) => (!findPackage(n) && BASE[n] === undefined) || !inArchive(host, n));
     if (unknown !== undefined) {
         ctx.err(`Error: Unable to locate package ${unknown}\n`);
         return 100;
@@ -38854,7 +38900,8 @@ const matches = (patterns, name) => !patterns.length || patterns.some((g) => new
 /** `apt list [--installed] [PATTERN...]`: the catalogue (or what is installed), with apt's warning for scripts. */
 function list(ctx, host, patterns, installedOnly) {
     const base = Object.entries(BASE).map(([name, version]) => ({ name, version, arch: 'amd64', on: true }));
-    const all = [...base, ...PACKAGES.map((p) => ({ name: p.name, version: p.version, arch: p.arch, on: installedPackage(host, p) }))];
+    const pkgs = PACKAGES.map((p) => ({ name: p.name, version: p.version, arch: p.arch, on: installedPackage(host, p) })).filter((p) => p.on || labHasPackage(host, p.name));
+    const all = [...base, ...pkgs];
     const shown = all.filter((p) => (!installedOnly || p.on) && matches(patterns, p.name)).sort((a, b) => a.name.localeCompare(b.name));
     const mark = (name) => (isPackageAuto(host, name) ? ' [installed,automatic]' : ' [installed]');
     ctx.err('\nWARNING: apt does not have a stable CLI interface. Use with caution in scripts.\n\n');
@@ -58602,6 +58649,7 @@ const { FILE_VERSION, validateFile } = __m["net/topology-file.js"];
 const { FEATURES_V, fileFeatures } = __m["net/lab-features.js"];
 const { parseMissionState } = __m["labs/mission-state.js"];
 const { bindLab } = __m["net/device-apps.js"];
+const { parsePkgsOff } = __m["net/lab-packages.js"];
 const { registerMdns, setMdnsResponder } = __m["net/mdns.js"];
 const { registerLlmnr, setLlmnrResponder } = __m["net/llmnr.js"];
 const { attachNetbios, registerSmbServer, registerWinsHandler } = __m["net/netbios.js"];
@@ -58648,6 +58696,8 @@ class Topology {
     features = {};
     /** The web GUI of servers and Linux routers leaves out (instead of greying) what is off. */
     webHideOff = false;
+    /** Catalogue packages taken away from the lab's archive (lab-packages.ts), in catalogue order. */
+    pkgsOff = [];
     /** The guided lab this workspace is, with the hints already shown. */
     mission;
     nextDrawing = 1;
@@ -58659,7 +58709,7 @@ class Topology {
         const device = kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind, id, seed, this.clock, label);
         seeds.set(device, seed);
         if (device instanceof Host) {
-            bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff }));
+            bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff, pkgsOff: this.pkgsOff }));
             attachNetbios(device);
             attachWindowsWins(device);
         }
@@ -58764,7 +58814,7 @@ class Topology {
         const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
         const links = this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable }));
         const features = Object.keys(this.features).length ? { features: this.features, featuresV: FEATURES_V } : {};
-        const web = { ...(this.webHideOff ? { webHideOff: true } : {}), ...(this.mission ? { mission: this.mission } : {}) };
+        const web = { ...(this.webHideOff ? { webHideOff: true } : {}), ...(this.pkgsOff.length ? { pkgsOff: this.pkgsOff } : {}), ...(this.mission ? { mission: this.mission } : {}) };
         return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features, ...web };
     }
     static fromJSON(data) {
@@ -58781,6 +58831,7 @@ class Topology {
         topo.annotations = file.annotations ?? [];
         topo.features = fileFeatures(file.features, file.featuresV, file.sambaOff);
         topo.webHideOff = file.webHideOff === true;
+        topo.pkgsOff = parsePkgsOff(file.pkgsOff);
         topo.mission = parseMissionState(file.mission);
         topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
         for (const l of file.links)
@@ -62170,10 +62221,12 @@ const { findPackage } = __m["shells/apt-catalog.js"];
 const { installedPackage } = __m["shells/apt-state.js"];
 const { commitInstall, commitRemove, toFetch } = __m["shells/apt-core.js"];
 const { hostSystem } = __m["shells/host-system.js"];
+const { labHasPackage } = __m["net/lab-packages.js"];
 /** Installs (on) or removes (off) a catalogue package as apt would: whether anything changed. */
 function setAptInstalled(host, name, on) {
     const p = findPackage(name);
-    if (!p || installedPackage(host, p) === on)
+    // Nothing to install from an archive the lab took the package away from (removing it is still possible).
+    if (!p || installedPackage(host, p) === on || (on && !labHasPackage(host, name)))
         return false;
     const fs = hostSystem(host).fs;
     if (on)
@@ -68277,14 +68330,17 @@ return { promptToggle };
 __m["ui/device-config.js"] = (() => {
 /**
  * The Configuración tab of a PC, Server or Linux router: which applications, service panels and terminals the device
- * shows, among what its lab allows, and whether Samba is installed. A change redraws the window with the new tabs (device-windows.ts).
+ * shows, among what its lab allows, whether Samba is installed, and the catalogue of tool packages (lab-packages.ts).
+ * A change redraws the window with the new tabs (device-windows.ts).
  */
 const { el } = __m["ui/dom.js"];
 const { t, tDynamic } = __m["i18n/t.js"];
 const { APPS_BY_KIND, PC_APPS, deviceApps, labAllows, labViewOf, setDeviceApps } = __m["net/device-apps.js"];
-const { sambaOffered } = __m["net/pkg-units.js"];
+const { linuxSide, sambaOffered } = __m["net/pkg-units.js"];
 const { hasPackage } = __m["net/host-packages.js"];
 const { setSambaInstalled } = __m["shells/samba-install.js"];
+const { setAptInstalled } = __m["shells/apt-install.js"];
+const { CATALOG_PACKAGES, labHasPackage } = __m["net/lab-packages.js"];
 const TERMINALS = ['linux', 'windows'];
 /** The PC applications and terminals are named as their tabs; the service panels as in Laboratorio actual. */
 const TAB_NAMES = {
@@ -68302,6 +68358,16 @@ function sambaBox(h, changed) {
     input.addEventListener('change', () => { setSambaInstalled(h, input.checked); changed(); });
     return [el('label', { class: 'set-choice' }, input, t('smb.tab'))];
 }
+/** The catalogue packages the lab keeps (a GNU/Linux terminal only): each box is apt install / apt remove. */
+function packageBoxes(h, changed) {
+    if (!linuxSide(h))
+        return [];
+    return CATALOG_PACKAGES.filter((name) => labHasPackage(h, name)).map((name) => {
+        const input = el('input', { type: 'checkbox', name: `dev-pkg-${name}`, checked: hasPackage(h, name), 'data-pkg': name });
+        input.addEventListener('change', () => { setAptInstalled(h, name, input.checked); changed(); });
+        return el('label', { class: 'set-choice' }, input, el('code', {}, name));
+    });
+}
 function group(title, boxes) {
     return boxes.length ? [el('fieldset', { class: 'set-group dev-group' }, el('legend', {}, title), ...boxes)] : [];
 }
@@ -68318,7 +68384,7 @@ function deviceConfig(h, changed) {
     };
     const apps = h.kind === 'pc' ? allowed.filter((id) => id === 'ip' || PC_APPS.includes(id)) : allowed.filter((id) => id === 'ip');
     const services = h.kind === 'pc' ? [] : allowed.filter((id) => id !== 'ip' && !TERMINALS.includes(id));
-    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed)]), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)));
+    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed)]), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)), ...group(t('dev.packages'), packageBoxes(h, changed)));
 }
 
 return { deviceConfig };
@@ -68992,6 +69058,7 @@ const { t, tDynamic } = __m["i18n/t.js"];
 const { LOCALES, LOCALE_NAMES, getLocale, isLocale } = __m["i18n/locale.js"];
 const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } = __m["ui/preferences.js"];
 const { FEATURES_BY_KIND, featureOn, setFeature } = __m["net/lab-features.js"];
+const { CATALOG_PACKAGES, packageAllowed, setPackageOff } = __m["net/lab-packages.js"];
 /** The kinds whose windows have settings to switch (the cloud has none). */
 /** The «prompt con hora» box of the page built last, kept in step when a terminal footer changes it. */
 let stampBox;
@@ -69028,6 +69095,18 @@ function kindGroup(host, kind, changed) {
     });
     return el('fieldset', { class: 'set-group', 'data-kind': kind }, el('legend', {}, tDynamic(`set.kind.${kind}`)), ...boxes);
 }
+/** One box per catalogue package, for every kind: unticked, apt and the devices' Configuración no longer offer it. */
+function packagesGroup(host, changed) {
+    const boxes = CATALOG_PACKAGES.map((name) => {
+        const box = el('input', { type: 'checkbox', checked: packageAllowed(host.pkgsOff(), name), disabled: host.labLocked(), 'data-pkg': name });
+        box.addEventListener('change', () => {
+            host.setPkgsOff(setPackageOff(host.pkgsOff(), name, !box.checked));
+            changed();
+        });
+        return el('label', { class: 'set-choice' }, box, el('code', {}, name));
+    });
+    return el('fieldset', { class: 'set-group', 'data-kind': 'packages' }, el('legend', {}, t('set.packages')), el('p', { class: 'muted' }, t('set.packagesHint')), ...boxes);
+}
 function webOption(host, changed) {
     const box = el('input', { type: 'checkbox', checked: host.webHideOff(), disabled: host.labLocked(), 'data-feature': 'webHideOff' });
     box.addEventListener('change', () => { host.setWebHideOff(box.checked); changed(); });
@@ -69054,13 +69133,14 @@ class SettingsView {
         reset.addEventListener('click', () => {
             host.setFeatures({});
             host.setWebHideOff(false);
+            host.setPkgsOff([]);
             this.render();
             changed();
             this.lab.querySelector('.set-reset')?.focus();
         });
         reset.classList.add('set-reset');
         this.status.textContent = '';
-        this.lab.replaceChildren(el('h2', { id: 'set-lab' }, t('set.lab')), el('p', { class: 'muted' }, host.labLocked() ? t('set.labLocked') : t('set.labNote')), el('p', {}, t('set.always')), el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed))), webOption(host, changed), reset, this.status);
+        this.lab.replaceChildren(el('h2', { id: 'set-lab' }, t('set.lab')), el('p', { class: 'muted' }, host.labLocked() ? t('set.labLocked') : t('set.labNote')), el('p', {}, t('set.always')), el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed)), packagesGroup(host, changed)), webOption(host, changed), reset, this.status);
     }
 }
 
@@ -69657,7 +69737,7 @@ class App {
     stageEl;
     paletteEl;
     pageHost;
-    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
+    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, pkgsOff: () => this.topo.pkgsOff, setPkgsOff: (p) => { this.topo.pkgsOff = p; this.windows.closeAll(); this.afterCommand(); }, labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
     saveTimer = 0;
     interval;
     mode = 'realtime';

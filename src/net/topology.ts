@@ -14,6 +14,7 @@ import type { LabFeatures } from './lab-features.ts';
 import { parseMissionState } from '../labs/mission-state.ts';
 import type { MissionState } from '../labs/mission-state.ts';
 import { bindLab } from './device-apps.ts';
+import { parsePkgsOff } from './lab-packages.ts';
 import { registerMdns, setMdnsResponder } from './mdns.ts';
 import { registerLlmnr, setLlmnrResponder } from './llmnr.ts';
 import { attachNetbios, registerSmbServer, registerWinsHandler } from './netbios.ts';
@@ -135,6 +136,8 @@ export interface TopologyFile {
   readonly sambaOff?: unknown;
   /** 2 from v0.35, when the feature lists gained Samba. */
   readonly featuresV?: unknown;
+  /** Catalogue packages taken away from the lab's archive (v0.37); untrusted until parsePkgsOff. */
+  readonly pkgsOff?: unknown;
   /** Guided lab and hints shown (v0.30); untrusted until parseMissionState. */
   readonly mission?: unknown;
 }
@@ -158,6 +161,8 @@ export class Topology {
   features: LabFeatures = {};
   /** The web GUI of servers and Linux routers leaves out (instead of greying) what is off. */
   webHideOff = false;
+  /** Catalogue packages taken away from the lab's archive (lab-packages.ts), in catalogue order. */
+  pkgsOff: readonly string[] = [];
   /** The guided lab this workspace is, with the hints already shown. */
   mission: MissionState | undefined;
   private nextDrawing = 1;
@@ -170,7 +175,7 @@ export class Topology {
     const device = kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind, id, seed, this.clock, label);
     seeds.set(device, seed);
     if (device instanceof Host) {
-      bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff }));
+      bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff, pkgsOff: this.pkgsOff }));
       attachNetbios(device);
       attachWindowsWins(device);
     }
@@ -279,7 +284,7 @@ export class Topology {
     const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
     const links = this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable }));
     const features = Object.keys(this.features).length ? { features: this.features, featuresV: FEATURES_V } : {};
-    const web = { ...(this.webHideOff ? { webHideOff: true } : {}), ...(this.mission ? { mission: this.mission } : {}) };
+    const web = { ...(this.webHideOff ? { webHideOff: true } : {}), ...(this.pkgsOff.length ? { pkgsOff: this.pkgsOff } : {}), ...(this.mission ? { mission: this.mission } : {}) };
     return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features, ...web };
   }
 
@@ -297,6 +302,7 @@ export class Topology {
     topo.annotations = file.annotations ?? [];
     topo.features = fileFeatures(file.features, file.featuresV, file.sambaOff);
     topo.webHideOff = file.webHideOff === true;
+    topo.pkgsOff = parsePkgsOff(file.pkgsOff);
     topo.mission = parseMissionState(file.mission);
     topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
     for (const l of file.links) topo.connect(l.a, l.b, l.cable);
