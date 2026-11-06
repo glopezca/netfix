@@ -47,7 +47,13 @@ export interface NbnsName {
   readonly group: boolean;
 }
 
-/** NetBIOS Name Service (UDP 137): a name query (NB, broadcast in B-node) or a node status request (NBSTAT). */
+/** NBNS opcodes (RFC 1002 4.2.1.1): what a WINS client asks of its server, besides a query. */
+export type NbnsOpcode = 'query' | 'registration' | 'release' | 'refresh';
+
+/**
+ * NetBIOS Name Service (UDP 137): a name query (NB, broadcast in B-node, unicast to a WINS server), a node status
+ * request (NBSTAT), or a registration, refresh or release of a name with a WINS server.
+ */
 export interface NbnsMessage {
   readonly id: number;
   readonly response: boolean;
@@ -55,6 +61,16 @@ export interface NbnsMessage {
   readonly name: string;
   readonly suffix: number;
   readonly broadcast: boolean;
+  /** Absent: a query. */
+  readonly opcode?: NbnsOpcode;
+  /** Recursion desired: asked of a WINS server. */
+  readonly rd?: boolean;
+  /** The name registered or released is a group name. */
+  readonly group?: boolean;
+  /** Seconds the name lives (asked in a registration, granted in its answer and in a query answer). */
+  readonly ttl?: number;
+  /** 0 when absent; 3 NAM_ERR (no such name), 5 RFS_ERR (refused). */
+  readonly rcode?: number;
   readonly addresses?: readonly number[];
   readonly names?: readonly NbnsName[];
   readonly mac?: string;

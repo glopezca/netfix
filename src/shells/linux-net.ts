@@ -1,7 +1,8 @@
 /** iproute2, ping, dig/host and dhclient as programs of the bash core (Ubuntu output). */
 import type { Ctx } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
-import { resolveHost, dnsQuery, dnsSearch } from './net-tools.ts';
+import { resolveHost } from './net-tools.ts';
+import { dnsQuery, dnsSearch } from './dns-client.ts';
 import { linuxMac } from './linux-files.ts';
 import { digOutput, hostOutput } from './dns-format.ts';
 import { runPing } from '../net/ping.ts';

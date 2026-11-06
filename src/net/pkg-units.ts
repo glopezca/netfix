@@ -1,7 +1,8 @@
 /**
  * The systemd units that apt's packages bring on any GNU/Linux host, a PC too: samba's smbd and nmbd (started and
- * enabled on install, as dpkg's scripts do) and, on a PC, nftables.service (installed stopped and disabled, Debian's
- * default; a Server or Linux router has its own firewall unit, services/units.ts). Their state and journal live beside
+ * enabled on install, as dpkg's scripts do), on a PC nftables.service (installed stopped and disabled, Debian's
+ * default; a Server or Linux router has its own firewall unit, services/units.ts), and systemd-resolved, which the base
+ * system brings (running and enabled; it is not in Registros). Their state and journal live beside
  * the device in weak registries, as its packages do; the state is saved with the topology.
  */
 import { hasPackage } from './host-packages.ts';
@@ -20,7 +21,14 @@ export interface PkgUnit {
   readonly startOnInstall: boolean;
   /** Only where the device has no unit of its own for it. */
   readonly pcOnly: boolean;
+  /** Part of the base system (its package cannot be removed): every host has it, running and enabled. */
+  readonly base?: boolean;
+  /** Its program, when not /usr/sbin/<process>. */
+  readonly path?: string;
 }
+
+/** systemd-resolved: the system's resolver (resolvectl, the «resolve» source of nsswitch.conf, LLMNR and mDNS). */
+export const RESOLVED_UNIT: PkgUnit = { name: 'systemd-resolved', pkg: 'systemd', process: 'systemd-resolved', description: 'Network Name Resolution', pid: 512, oneshot: false, startOnInstall: true, pcOnly: false, base: true, path: '/usr/lib/systemd/systemd-resolved' };
 
 export const NFTABLES_UNIT: PkgUnit = { name: 'nftables', pkg: 'nftables', process: 'nft', description: 'nftables', pid: 655, oneshot: true, startOnInstall: false, pcOnly: true };
 
@@ -28,6 +36,7 @@ export const PKG_UNITS: readonly PkgUnit[] = [
   { name: 'nmbd', pkg: 'samba', process: 'nmbd', description: 'Samba NMB Daemon', pid: 1205, oneshot: false, startOnInstall: true, pcOnly: false },
   { name: 'smbd', pkg: 'samba', process: 'smbd', description: 'Samba SMB Daemon', pid: 1210, oneshot: false, startOnInstall: true, pcOnly: false },
   NFTABLES_UNIT,
+  RESOLVED_UNIT,
 ];
 
 export interface UnitState {
@@ -47,7 +56,7 @@ const journals = new WeakMap<object, ReadonlyMap<string, readonly JournalLine[]>
 const MAX_JOURNAL = 200;
 
 export function unitInstalled(d: AppsDevice, u: PkgUnit): boolean {
-  return hasPackage(d, u.pkg) && !(u.pcOnly && runsServices(d.kind));
+  return (u.base === true || hasPackage(d, u.pkg)) && !(u.pcOnly && runsServices(d.kind));
 }
 
 /** The installed unit called `name` (with or without .service). */

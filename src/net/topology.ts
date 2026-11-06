@@ -1,13 +1,10 @@
 /** A workspace: devices with positions and labels, links, and JSON persistence. */
 import { t } from '../i18n/t.ts';
 import { registerPlaced, renameDevice, savedLabel, syncDeviceName } from './device-names.ts';
-import { nicsToJson, routesToJson, restoreNics, restoreRoutes } from './topology-nics.ts';
 import type { NicRecord, RouteRecord } from './topology-nics.ts';
+import { bootLinked, hostRecord, restoreHost } from './topology-host.ts';
 import { LinuxRouter } from '../devices/linux-router.ts';
-import { savedFiles, restoreFiles, bootKernel } from '../shells/host-system.ts';
 import { bootWireguard } from '../shells/wg-boot.ts';
-import { searchList } from '../shells/netplan-model.ts';
-import { validFileRecords } from '../bash/vfs-persist.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
 import { Network } from './network.ts';
 import { drawable, makeAnnotation, MAX_ANNOTATIONS } from './annotations.ts';
@@ -16,18 +13,22 @@ import { FEATURES_V, fileFeatures } from './lab-features.ts';
 import type { LabFeatures } from './lab-features.ts';
 import { parseMissionState } from '../labs/mission-state.ts';
 import type { MissionState } from '../labs/mission-state.ts';
-import { bindLab, customApps, deviceApps, parseApps, setDeviceApps } from './device-apps.ts';
-import { autoPackagesOf, packagesOf, parsePackages, setPackageAuto, setPackageInstalled } from './host-packages.ts';
-import { registerMdns } from './mdns.ts';
-import { registerLlmnr } from './llmnr.ts';
-import { attachNetbios, registerSmbServer } from './netbios.ts';
+import { bindLab } from './device-apps.ts';
+import { registerMdns, setMdnsResponder } from './mdns.ts';
+import { registerLlmnr, setLlmnrResponder } from './llmnr.ts';
+import { attachNetbios, registerSmbServer, registerWinsHandler } from './netbios.ts';
+import { attachWindowsWins } from './win-wins.ts';
+import { winsTake } from './wins.ts';
 import { smbServe } from '../services/smb-server.ts';
-import { pkgUnitsRecord, restorePkgUnits } from './pkg-units.ts';
-import { bootPkgUnits } from '../shells/pkg-service.ts';
+import { resolvedAnswers } from '../shells/resolved.ts';
 
 registerMdns();
 registerLlmnr();
+// GNU/Linux hosts answer LLMNR and mDNS through systemd-resolved, when it runs and the link says yes.
+setLlmnrResponder((h, iface) => resolvedAnswers(h, iface, 'llmnr'));
+setMdnsResponder((h, iface) => resolvedAnswers(h, iface, 'mdns'));
 registerSmbServer(smbServe);
+registerWinsHandler(winsTake);
 import type { Annotation, AnnotationInit } from './annotations.ts';
 import type { CableKind, Endpoint, Link } from './network.ts';
 import { SimClock } from '../core/clock.ts';
@@ -38,14 +39,11 @@ import { Host } from '../devices/host.ts';
 import type { IpMode, HostOs } from '../devices/host.ts';
 import { Server } from '../devices/server.ts';
 import { servicesToJson } from '../services/persist.ts';
-import { restoreApps, restoreServer } from './topology-restore.ts';
 import type { ServicesJson } from '../services/persist.ts';
 import type { UnitId } from '../services/units.ts';
 import type { MailMessage } from './packets.ts';
 import type { MailAccount } from '../clients/mail-client.ts';
 import { applyConfig } from '../ios/session.ts';
-import { parseIp, formatIp, parseMask } from '../core/ip.ts';
-import { parseHexId } from '../core/mac.ts';
 import { registerWebApps } from '../web/apps.ts';
 import { Cloud } from '../devices/cloud.ts';
 import { cloudFromJson, cloudToJson } from '../devices/cloud-config.ts';
@@ -70,6 +68,8 @@ export interface PcRecord {
   readonly mask?: string;
   readonly gateway?: string;
   readonly dns?: string;
+  /** Windows: the WINS server of the TCP/IP tab (v0.36); untrusted until validWins. */
+  readonly wins?: string;
   readonly sendClientId?: boolean;
   /** Custom option 61 (hex), when it is not 01 + MAC. */
   readonly clientId?: string;
@@ -143,7 +143,6 @@ const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch:
 /** Drawing ids stay short (aN) even after a crafted file. */
 const MAX_DRAWING_ID = 999_999_999;
 const SETTLE_MS = 30_000;
-const MAX_PRETTY = 256;
 
 export class Topology {
   readonly clock = new SimClock();
@@ -173,6 +172,7 @@ export class Topology {
     if (device instanceof Host) {
       bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff }));
       attachNetbios(device);
+      attachWindowsWins(device);
     }
     this.net.addDevice(device);
     const placed: Placed = { device, label, x, y };
@@ -300,7 +300,7 @@ export class Topology {
     topo.mission = parseMissionState(file.mission);
     topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
     for (const l of file.links) topo.connect(l.a, l.b, l.cable);
-    for (const p of topo.placed.values()) if (p.device instanceof Host && p.device.config.mode === 'dhcp') p.device.useDhcp();
+    for (const p of topo.placed.values()) if (p.device instanceof Host) bootLinked(p.device);
     for (const p of topo.placed.values()) if (p.device instanceof LinuxRouter) bootWireguard(p.device);
     topo.settle();
     return topo;
@@ -342,58 +342,15 @@ function deviceSeed(d: AnyDevice): number {
   return seeds.get(d) ?? 0;
 }
 
-function hostRecord(d: Host): PcRecord {
-  const c = d.config;
-  const os = d.os;
-  const clientId = d.clientIdOverride;
-  const files = savedFiles(d);
-  const enabled = customApps(d);
-  const packages = packagesOf(d);
-  const autoPackages = autoPackagesOf(d);
-  const units = pkgUnitsRecord(d);
-  const names = { ...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), ...(autoPackages.length ? { autoPackages } : {}), ...(units ? { units } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
-  if (c.mode === 'dhcp') return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
-  const opt = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
-  return { mode: 'static', ip: opt(c.ip), mask: c.prefix !== undefined ? `/${c.prefix}` : undefined, gateway: opt(c.gateway), dns: opt(c.dns), sendClientId: d.sendClientId, clientId, os, files, ...names };
-}
-
 export function restore(device: AnyDevice, rec: DeviceRecord): void {
   if (device instanceof Cloud) {
     device.setSettings(cloudFromJson(rec.cloud, device.settings));
     return;
   }
   if (device instanceof Host) {
-    const pc = rec.pc ?? { mode: 'static' as const };
-    device.sendClientId = pc.sendClientId ?? true;
-    device.clientIdOverride = typeof pc.clientId === 'string' ? parseHexId(pc.clientId) ?? undefined : undefined;
-    if (pc.os === 'linux' || pc.os === 'windows') device.os = pc.os;
-    setDeviceApps(device, parseApps(pc.enabled, device.kind));
-    for (const name of parsePackages(pc.packages)) setPackageInstalled(device, name, true);
-    for (const name of parsePackages(pc.autoPackages)) setPackageAuto(device, name, true);
-    restorePkgUnits(device, pc.units);
-    // The host name is not read back: it always comes from the device name (net/device-names.ts).
-    if (typeof pc.prettyHostname === 'string') device.prettyName = pc.prettyHostname.slice(0, MAX_PRETTY);
-    if (pc.files !== undefined) restoreFiles(device, validFileRecords(pc.files));
-    if (pc.mode === 'dhcp') device.config = { mode: 'dhcp' };
-    else device.setStatic(parseStatic(pc));
-    if (device instanceof Server) device.web.reload();
-    if (device instanceof Server && rec.server) restoreServer(device, rec.server);
-    if (device instanceof Pc && pc.apps) restoreApps(device, pc.apps);
-    // Files before v0.25 have no `enabled`: a PC with a mail account keeps its Correo tab.
-    if (device instanceof Pc && pc.enabled === undefined && device.mailAccount) setDeviceApps(device, [...deviceApps(device), 'mail']);
-    restoreNics(device, pc.nics);
-    restoreRoutes(device, pc.routes);
-    const search = Array.isArray(pc.search) ? searchList(pc.search) : { ok: [] };
-    device.dnsSearch = 'ok' in search ? search.ok : [];
-    if (pc.files !== undefined) bootKernel(device, validFileRecords(pc.files));
-    bootPkgUnits(device);
+    restoreHost(device, rec.pc ?? { mode: 'static' }, rec.server);
     return;
   }
   if (rec.config) applyConfig(device, rec.config);
   device.startupConfig = rec.startup ?? null;
-}
-
-export function parseStatic(pc: PcRecord): { ip?: number; prefix?: number; gateway?: number; dns?: number } {
-  const opt = (s: string | undefined): number | undefined => (s ? parseIp(s) ?? undefined : undefined);
-  return { ip: opt(pc.ip), prefix: pc.mask ? parseMask(pc.mask) ?? undefined : undefined, gateway: opt(pc.gateway), dns: opt(pc.dns) };
 }

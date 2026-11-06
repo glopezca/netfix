@@ -1,6 +1,7 @@
 /**
- * mDNS (RFC 6762) for hosts with avahi-daemon or libnss-mdns installed: `ping pc1.local` asks the link by multicast
- * (224.0.0.251:5353, never routed) and the host whose name it is answers if it runs avahi-daemon or Windows (built in):
+ * mDNS (RFC 6762) for hosts with avahi-daemon or libnss-mdns installed, and systemd-resolved: `ping pc1.local` asks the
+ * link by multicast (224.0.0.251:5353, never routed) and the host whose name it is answers if it runs avahi-daemon,
+ * resolved with MulticastDNS=yes on the link (topology.ts passes that test in) or Windows (built in):
  * to the group when asked from 5353 (Windows), else unicast to the asking port (a «legacy» one-shot query, nss-mdns). The packets cross the simulated network: switches
  * flood them, routers stop them, nftables can drop them.
  */
@@ -25,8 +26,17 @@ const PORTS = 8000;
 /** Windows 10 1803+ and 11 have mDNS in their DNS client: nothing to install (the system of the IP tab). */
 const windows = (h: object): boolean => (h as { readonly os?: string }).os === 'windows';
 
-/** avahi-daemon answers for the host's name; Windows does by itself. */
-const answers = (h: object): boolean => hasPackage(h, 'avahi-daemon') || windows(h);
+/** Whether systemd-resolved answers on a stack interface of a GNU/Linux host (set by topology.ts). */
+type Responder = (host: Host, iface: string) => boolean;
+let resolvedAnswers: Responder = () => false;
+
+export function setMdnsResponder(r: Responder): void {
+  resolvedAnswers = r;
+}
+
+const linux = (h: object): boolean => (h as { readonly os?: string }).os === 'linux';
+/** avahi-daemon answers for the host's name; Windows does by itself; resolved, on the links where it may. */
+const answersOn = (h: StackHost, iface: string): boolean => hasPackage(h, 'avahi-daemon') || windows(h) || (linux(h) && resolvedAnswers(h as Host, iface));
 
 /** Pending questions per host and port, with the name asked (a multicast answer reaches every member). */
 const waiting = new WeakMap<object, Map<number, { readonly name: string; readonly done: (ip: number) => void }>>();
@@ -56,7 +66,7 @@ function take(host: StackHost, iface: string, p: IpPacket): boolean {
     q.done(ip);
     return true;
   }
-  if (u.dport !== MDNS_PORT || p.dst !== MDNS_GROUP || !answers(host)) return false;
+  if (u.dport !== MDNS_PORT || p.dst !== MDNS_GROUP || !answersOn(host, iface)) return false;
   answer(host as Host, iface, p);
   return true;
 }
@@ -67,7 +77,7 @@ let registered = false;
 export function registerMdns(): void {
   if (registered) return;
   registered = true;
-  registerLocalSockets({ member: (h, group) => group === MDNS_GROUP && answers(h), take });
+  registerLocalSockets({ member: (h, group) => group === MDNS_GROUP && h.l3Ifaces().some((i) => answersOn(h, i.name)), take });
 }
 
 /** The address of `name` (…​.local) on the host's links, or undefined when nobody answers. */

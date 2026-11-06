@@ -1,7 +1,8 @@
 /**
- * LLMNR (RFC 4795), built into Windows: a single-label name is asked in DNS format by multicast to 224.0.0.252,
- * UDP 5355, with TTL 1 (so never past a router), from a port of the asker's own; the Windows host whose name it is
- * answers unicast from 5355. Names are compared without case. Netfix's GNU/Linux hosts do not speak it.
+ * LLMNR (RFC 4795), built into Windows and into systemd-resolved: a single-label name is asked in DNS format by
+ * multicast to 224.0.0.252, UDP 5355, with TTL 1 (so never past a router), from a port of the asker's own; the host
+ * whose name it is answers unicast from 5355. Names are compared without case. Windows always answers; a GNU/Linux host
+ * when resolved has LLMNR=yes on the link (topology.ts passes that test in, so net/ does not import shells/).
  */
 import type { Host } from '../devices/host.ts';
 import type { IpPacket } from './packets.ts';
@@ -21,7 +22,18 @@ const ANSWER_TTL = 30;
 const FIRST_PORT = 60000;
 const PORTS = 5000;
 
-const windows = (h: object): boolean => (h as { readonly os?: string }).os === 'windows';
+const osOf = (h: object): string | undefined => (h as { readonly os?: string }).os;
+const windows = (h: object): boolean => osOf(h) === 'windows';
+
+/** Whether a GNU/Linux host answers on a stack interface (systemd-resolved, set by topology.ts). */
+type Responder = (host: Host, iface: string) => boolean;
+let linuxAnswers: Responder = () => false;
+
+export function setLlmnrResponder(r: Responder): void {
+  linuxAnswers = r;
+}
+
+const answersOn = (h: StackHost, iface: string): boolean => windows(h) || (osOf(h) === 'linux' && linuxAnswers(h as Host, iface));
 
 const waiting = new WeakMap<object, Map<number, { readonly name: string; readonly done: (ip: number) => void }>>();
 let nextPort = 0;
@@ -46,22 +58,25 @@ function take(host: StackHost, iface: string, p: IpPacket): boolean {
     q.done(ip);
     return true;
   }
-  if (u.dns.response || u.dport !== LLMNR_PORT || p.dst !== LLMNR_GROUP || !windows(host)) return false;
+  if (u.dns.response || u.dport !== LLMNR_PORT || p.dst !== LLMNR_GROUP || !answersOn(host, iface)) return false;
   answer(host as Host, iface, p);
   return true;
 }
 
 let registered = false;
 
-/** Windows hosts join 224.0.0.252 and answer from here on (topology.ts calls it). */
+/** Windows hosts (and GNU/Linux ones with LLMNR=yes) join 224.0.0.252 and answer from here on (topology.ts calls it). */
 export function registerLlmnr(): void {
   if (registered) return;
   registered = true;
-  registerLocalSockets({ member: (h, group) => group === LLMNR_GROUP && windows(h), take });
+  registerLocalSockets({ member: (h, group) => group === LLMNR_GROUP && h.l3Ifaces().some((i) => answersOn(h, i.name)), take });
 }
 
-/** Asks for `name` on every link of the host; `done` gets its address, or undefined after LLMNR_WAIT_MS. */
-export function llmnrLookup(host: Host, name: string, done: (ip: number | undefined) => void): void {
+/**
+ * Asks for `name` on the host's links (those `on` accepts: resolved asks only where it has a scope); `done` gets its
+ * address, or undefined after LLMNR_WAIT_MS.
+ */
+export function llmnrLookup(host: Host, name: string, done: (ip: number | undefined) => void, on: (iface: string) => boolean = () => true): void {
   registerLlmnr();
   const port = FIRST_PORT + (nextPort++ % PORTS);
   const pending = waiting.get(host) ?? new Map<number, { readonly name: string; readonly done: (ip: number) => void }>();
@@ -77,7 +92,7 @@ export function llmnrLookup(host: Host, name: string, done: (ip: number | undefi
   host.hooks.schedule(LLMNR_WAIT_MS, () => finish(undefined));
   const ask = (): void => {
     if (over) return;
-    for (const iface of host.l3Ifaces().filter((i) => i.up && i.addrs.length)) {
+    for (const iface of host.l3Ifaces().filter((i) => i.up && i.addrs.length && on(i.name))) {
       host.stack.multicast(iface.name, { src: iface.addrs[0]?.ip ?? 0, dst: LLMNR_GROUP, ttl: LINK_TTL, protocol: 'udp',
         udp: { sport: port, dport: LLMNR_PORT, dns: { id: port & 0xffff, response: false, qname: name, qtype: 'A' } } });
     }

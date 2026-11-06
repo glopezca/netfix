@@ -1,13 +1,15 @@
 /**
- * `resolvectl query`: names and addresses through systemd-resolved, worded as systemd 257 prints them. The same
- * resolver as ping and dig: /etc/hosts and the host's own name first (synthetic data), then DNS with the search list.
+ * `resolvectl query`: names and addresses through systemd-resolved, worded as systemd 258 prints them. The same
+ * resolver as ping and dig: /etc/hosts and the host's own name first (synthetic data), then (nss-resolve.ts) mDNS for
+ * `.local`, LLMNR for a single label and DNS with the search list, on the links where resolved has a scope.
  */
 import type { Ctx } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import type { DnsAnswer, DnsType } from '../net/packets.ts';
 import type { DnsResult } from '../net/dns.ts';
 import { normalizeName, reverseName } from '../net/dns.ts';
-import { dnsQuery, dnsSearch, hostsLookup } from './net-tools.ts';
+import { dnsQuery, dnsSearch, hostsLookup } from './dns-client.ts';
+import { resolvedLookup } from './nss-resolve.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 
 export const QUERY_TYPES: readonly DnsType[] = ['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR', 'SOA'];
@@ -21,6 +23,8 @@ const MAX_NAME = 253;
 interface Found {
   readonly lines: readonly string[];
   readonly synthetic: boolean;
+  /** What the legend says it was acquired with. */
+  readonly protocol?: string;
 }
 
 const linkFor = (host: Host, ip: number): string => ((ip >>> 24) === LOOPBACK_NET ? 'lo' : host.linuxIfName(host.primaryPort()));
@@ -32,10 +36,13 @@ function addressLines(name: string, values: readonly string[], link: string, can
   return canonical && normalizeName(canonical) !== normalizeName(name) ? [...rows, `${indent}(${canonical})`] : rows;
 }
 
+const NO_SCOPE = 'No appropriate name servers or networks for name found';
+const NO_ANSWER = 'All attempts to contact name servers or networks failed';
+
 /** The error of a lookup with no answer, in resolved's words. */
 function failure(name: string, r: DnsResult): string {
-  if (r.kind === 'noserver') return 'No appropriate name servers or networks for name found';
-  if (r.kind === 'timeout') return 'All attempts to contact name servers or networks failed';
+  if (r.kind === 'noserver') return NO_SCOPE;
+  if (r.kind === 'timeout') return NO_ANSWER;
   if (r.msg.rcode === 'NXDOMAIN') return `'${name}' not found`;
   if (r.msg.rcode !== 'NOERROR') return `Server returned error ${r.msg.rcode}`;
   return `'${name}' does not have any RR of the requested type`;
@@ -67,19 +74,21 @@ function lookup(host: Host, name: string, type: DnsType | 'empty' | undefined): 
     const ptr = r.kind === 'answer' ? (r.msg.answers ?? []).filter((a) => a.type === 'PTR').map((a) => a.data.replace(/\.$/, '')) : [];
     return ptr.length ? { lines: addressLines(name, ptr, linkFor(host, literal)), synthetic: false } : failure(reverseName(literal), r);
   }
-  if (!type) {
-    const local = synthetic(host, name);
-    if (local) return local;
-  }
-  const { result } = dnsSearch(host, name, type ?? 'A');
-  const answers = result.kind === 'answer' ? result.msg.answers ?? [] : [];
+  if (!type) return synthetic(host, name) ?? addressLookup(host, name);
+  const { result } = dnsSearch(host, name, type);
+  const records = (result.kind === 'answer' ? result.msg.answers ?? [] : []).filter((a) => a.type === type);
   const link = host.linuxIfName(host.primaryPort());
-  if (type) {
-    const records = answers.filter((a) => a.type === type);
-    return records.length ? { lines: records.map((a) => `${recordText(a).padEnd(RECORD_COLUMN)}-- link: ${link}`), synthetic: false } : failure(name, result);
-  }
-  const addresses = answers.filter((a) => a.type === 'A');
-  return addresses.length ? { lines: addressLines(name, addresses.map((a) => a.data), link, addresses[0]?.name.replace(/\.$/, '')), synthetic: false } : failure(name, result);
+  return records.length ? { lines: records.map((a) => `${recordText(a).padEnd(RECORD_COLUMN)}-- link: ${link}`), synthetic: false } : failure(name, result);
+}
+
+/** An address the way resolved looks it up: mDNS, LLMNR or DNS (nss-resolve.ts). */
+function addressLookup(host: Host, name: string): Found | string {
+  const r = resolvedLookup(host, name);
+  const link = host.linuxIfName(host.primaryPort());
+  if (r.kind === 'link') return { lines: addressLines(name, [formatIp(r.ip)], link), synthetic: false, protocol: r.protocol };
+  if (r.kind === 'failed') return r.reason === 'noscope' ? NO_SCOPE : NO_ANSWER;
+  const addresses = (r.result.kind === 'answer' ? r.result.msg.answers ?? [] : []).filter((a) => a.type === 'A');
+  return addresses.length ? { lines: addressLines(name, addresses.map((a) => a.data), link, addresses[0]?.name.replace(/\.$/, '')), synthetic: false } : failure(name, r.result);
 }
 
 export interface QueryOptions {
@@ -102,7 +111,7 @@ export function query(ctx: Ctx, host: Host, names: readonly string[], opts: Quer
     }
     // Synthetic data (/etc/hosts, own name) is trusted and local, as resolved says.
     const trust = r.synthetic ? 'yes' : 'no';
-    const legend = ['', `-- Information acquired via protocol DNS in ${took(host.clock.now() - start)}.`, `-- Data is authenticated: ${trust}; Data was acquired via local or encrypted transport: ${trust}`, `-- Data from: ${r.synthetic ? 'synthetic' : 'network'}`];
+    const legend = ['', `-- Information acquired via protocol ${r.protocol ?? 'DNS'} in ${took(host.clock.now() - start)}.`, `-- Data is authenticated: ${trust}; Data was acquired via local or encrypted transport: ${trust}`, `-- Data from: ${r.synthetic ? 'synthetic' : 'network'}`];
     ctx.out(`${[...r.lines, ...(opts.legend ? legend : [])].join('\n')}\n`);
   }
   return status;

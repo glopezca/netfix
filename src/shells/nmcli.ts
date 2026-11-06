@@ -9,7 +9,7 @@ import type { Host } from '../devices/host.ts';
 import type { NicInfo } from '../devices/host-nics.ts';
 import { hasPackage } from '../net/host-packages.ts';
 import { formatIp } from '../core/ip.ts';
-import { configuredSearchDomains } from './net-tools.ts';
+import { configuredSearchDomains } from './dns-client.ts';
 import { reachMirror } from './apt-net.ts';
 import { conName, nmcliOverview, nmMac, routesOf, stateOf } from './nmcli-model.ts';
 import type { NicState } from './nmcli-model.ts';

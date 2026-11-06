@@ -1,13 +1,19 @@
 /**
  * What systemd does with the units apt's packages bring (net/pkg-units.ts): start, stop and reload them, and what
  * dpkg's maintainer scripts do (samba starts smbd and nmbd on install; removing a package stops its units). nftables on
- * a PC loads /etc/nftables.conf on start and flushes the ruleset on stop, as Debian's nftables.service does.
+ * a PC loads /etc/nftables.conf on start and flushes the ruleset on stop, as Debian's nftables.service does;
+ * systemd-resolved reads /etc/systemd/resolved.conf on start; nmbd will not start with both WINS roles in smb.conf,
+ * and serves WINS or registers with its WINS server as it starts (samba-wins.ts).
  */
 import type { Host } from '../devices/host.ts';
-import { loadNftablesConf } from '../devices/server-firewall.ts';
+import { loadNftablesConf, readHostFile } from '../devices/server-firewall.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { EMPTY_RULESET } from '../net/nft/model.ts';
-import { PKG_UNITS, forgetPkgUnits, installedUnits, pkgLog, pkgUnitState, setPkgUnitState } from '../net/pkg-units.ts';
+import { SMB_CONF, smbSections, winsConflict } from '../services/smb-conf.ts';
+import { parseResolvedConf, resolvedStartLines, RESOLVED_CONF } from './resolved-conf.ts';
+import { setResolvedConfig } from './resolved.ts';
+import { nmbdStarted, nmbdStopped } from './samba-wins.ts';
+import { PKG_UNITS, RESOLVED_UNIT, forgetPkgUnits, installedUnits, pkgLog, pkgUnitState, setPkgUnitState } from '../net/pkg-units.ts';
 import type { PkgUnit } from '../net/pkg-units.ts';
 
 export const SAMBA_VERSION = '4.22.3-Ubuntu';
@@ -22,19 +28,37 @@ function logFailure(host: Host, u: PkgUnit, t: number, error: string, verb: 'sta
   pkgLog(host, u, t, `Failed to ${verb} ${u.name}.service - ${u.description}.`, true);
 }
 
+/** nmbd's own check of smb.conf (nmbd.c): both WINS roles at once and it exits before it serves. */
+function nmbdError(host: Host): string | null {
+  const text = readHostFile(host, SMB_CONF);
+  if (text === null || !winsConflict(smbSections(text).sections)) return null;
+  return [`nmbd version ${SAMBA_VERSION} started.`, "ERROR: both 'wins support = true' and 'wins server = <server list>' cannot be set in the smb.conf file. nmbd aborting."].join('\n');
+}
+
+/** Why the unit's process exits as it starts (its journal lines), or null when it starts. */
+const startError = (host: Host, u: PkgUnit): string | null => (isNft(u) ? loadNftablesConf(host) : u.name === 'nmbd' ? nmbdError(host) : null);
+
+/** What the service itself logs as it starts; resolved reads resolved.conf then (and only then). */
+function startLines(host: Host, u: PkgUnit): string[] {
+  if (u !== RESOLVED_UNIT) return [`${u.process} version ${SAMBA_VERSION} started.`];
+  const conf = parseResolvedConf(readHostFile(host, RESOLVED_CONF) ?? '');
+  setResolvedConfig(host, conf);
+  return [...conf.warnings, ...resolvedStartLines(host.runtimeName().toLowerCase())];
+}
+
 /** Starts the unit (a running one is left as it is); false when its process failed (the reason is in its journal). */
 export function startPkgUnit(host: Host, u: PkgUnit): boolean {
   if (pkgUnitState(host, u).active) return true;
   const t = host.clock.now();
   pkgLog(host, u, t, `Starting ${u.name}.service - ${u.description}...`, true);
-  if (isNft(u)) {
-    const error = loadNftablesConf(host);
-    if (error !== null) {
-      logFailure(host, u, t, error, 'start');
-      return false;
-    }
-  } else pkgLog(host, u, t, `${u.process} version ${SAMBA_VERSION} started.`);
+  const error = startError(host, u);
+  if (error !== null) {
+    logFailure(host, u, t, error, 'start');
+    return false;
+  }
+  if (!isNft(u)) for (const line of startLines(host, u)) pkgLog(host, u, t, line);
   setPkgUnitState(host, u, { active: true });
+  if (u.name === 'nmbd') nmbdStarted(host);
   pkgLog(host, u, t, `${isNft(u) ? 'Finished' : 'Started'} ${u.name}.service - ${u.description}.`, true);
   return true;
 }
@@ -44,6 +68,7 @@ export function stopPkgUnit(host: Host, u: PkgUnit): void {
   const t = host.clock.now();
   pkgLog(host, u, t, `Stopping ${u.name}.service - ${u.description}...`, true);
   if (isNft(u)) host.kernel.netfilter.setRuleset(EMPTY_RULESET);
+  if (u.name === 'nmbd') nmbdStopped(host);
   setPkgUnitState(host, u, { active: false });
   pkgLog(host, u, t, `${u.name}.service: Deactivated successfully.`, true);
   pkgLog(host, u, t, `Stopped ${u.name}.service - ${u.description}.`, true);
@@ -81,10 +106,12 @@ export function pkgRemoved(host: Host, pkg: string): void {
   forgetPkgUnits(host, pkg);
 }
 
-/** After the topology is read back: an active nftables.service has its file in the kernel again. */
+/**
+ * After the topology is read back: an active nftables.service has its file in the kernel again, and a unit whose
+ * process could not start now (nftables.conf or smb.conf edited while it ran) comes back stopped.
+ */
 export function bootPkgUnits(host: Host): void {
   for (const u of installedUnits(host)) {
-    if (!isNft(u) || !pkgUnitState(host, u).active) continue;
-    if (loadNftablesConf(host) !== null) setPkgUnitState(host, u, { active: false });
+    if (pkgUnitState(host, u).active && startError(host, u) !== null) setPkgUnitState(host, u, { active: false });
   }
 }

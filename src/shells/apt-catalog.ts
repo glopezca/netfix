@@ -31,6 +31,8 @@ const KEA: readonly AptDep[] = [dep('kea-common', KEA_VERSION, 85, 'all'), dep('
 const BIND_VERSION = '1:9.20.4-3ubuntu1';
 const BIND_UTILS = dep('bind9-utils', BIND_VERSION, 189);
 const BIND_LIBS = dep('bind9-libs', BIND_VERSION, 1452);
+/** systemd and the packages built from it (libnss-resolve). */
+const SYSTEMD_VERSION = '258.1-1ubuntu1';
 const DOVECOT: readonly AptDep[] = [dep('dovecot-core', '1:2.4.1+dfsg1-6ubuntu1', 3511), dep('libexttextcat-2.0-0', '3.4.7-1', 14)];
 
 export const PACKAGES: readonly AptPackage[] = [
@@ -56,6 +58,8 @@ export const PACKAGES: readonly AptPackage[] = [
   { ...dep('network-manager', '1.54.0-1ubuntu1', 3412), section: 'main', deps: [dep('libnm0', '1.54.0-1ubuntu1', 498), dep('libndp0', '1.9-1', 12), dep('libteamdctl0', '1.31-1build4', 13)], unit: 'NetworkManager' },
   { ...dep('avahi-daemon', '0.8-16ubuntu2', 85), section: 'main', deps: [dep('libavahi-common3', '0.8-16ubuntu2', 23), dep('libavahi-core7', '0.8-16ubuntu2', 82), dep('libdaemon0', '0.14-7.1ubuntu4', 15), dep('libnss-mdns', '0.15.1-4build2', 27)], unit: 'avahi-daemon' },
   { ...dep('libnss-mdns', '0.15.1-4build2', 27), section: 'main', deps: [] },
+  // The «resolve» source of nsswitch.conf: glibc asks systemd-resolved (LLMNR and mDNS too), not only the DNS.
+  { ...dep('libnss-resolve', SYSTEMD_VERSION, 290), section: 'main', deps: [] },
   // NetBIOS and SMB: samba (smbd, nmbd, nmblookup), and winbind + libnss-winbind for «wins» in nsswitch.conf.
   { ...dep('samba', '2:4.22.3+dfsg-4ubuntu2', 1095), section: 'main', deps: [dep('samba-common', '2:4.22.3+dfsg-4ubuntu2', 58, 'all'), dep('samba-common-bin', '2:4.22.3+dfsg-4ubuntu2', 1324), dep('samba-libs', '2:4.22.3+dfsg-4ubuntu2', 6120), dep('python3-samba', '2:4.22.3+dfsg-4ubuntu2', 2953), dep('tdb-tools', '1.4.13-1', 26)], unit: 'smbd' },
   { ...dep('samba-common-bin', '2:4.22.3+dfsg-4ubuntu2', 1324), section: 'main', deps: [dep('samba-common', '2:4.22.3+dfsg-4ubuntu2', 58, 'all'), dep('samba-libs', '2:4.22.3+dfsg-4ubuntu2', 6120)] },
@@ -66,7 +70,7 @@ export const PACKAGES: readonly AptPackage[] = [
 
 /** Always installed: `install` says they are up to date, `remove` refuses. */
 export const BASE: Readonly<Record<string, string>> = {
-  apt: '3.1.6ubuntu2', bash: '5.3-1ubuntu1', coreutils: '9.7-3ubuntu1', dpkg: '1.22.21ubuntu3', sudo: '1.9.17p2-1ubuntu1', systemd: '258.1-1ubuntu1',
+  apt: '3.1.6ubuntu2', bash: '5.3-1ubuntu1', coreutils: '9.7-3ubuntu1', dpkg: '1.22.21ubuntu3', sudo: '1.9.17p2-1ubuntu1', systemd: SYSTEMD_VERSION,
   'openssh-client': SSH_VERSION, curl: '8.14.1-2ubuntu1', wget: '1.25.0-2ubuntu1', nano: '8.4-1', vim: '2:9.1.1230-2ubuntu1', mc: '3:4.8.33-1',
   iproute2: '6.14.0-1ubuntu1', 'iputils-ping': '3:20240905-3ubuntu1', 'bind9-dnsutils': '1:9.20.4-3ubuntu1', 'netplan.io': '1.1.2-6ubuntu1', less: '668-1',
 };

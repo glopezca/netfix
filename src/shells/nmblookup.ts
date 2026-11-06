@@ -1,9 +1,22 @@
-/** nmblookup (samba-common-bin): NetBIOS name queries by broadcast (the own name answered here; `localhost` is no NetBIOS name, as on Windows), and node status with -A. */
+/**
+ * nmblookup (samba-common-bin): NetBIOS name queries by broadcast (the own name answered here; `localhost` is no NetBIOS
+ * name, as on Windows), or by unicast to one address with -U (-R sets «recursion desired», so a WINS server looks the
+ * name up in its database), and node status with -A.
+ */
 import type { CommandFn, Ctx } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { hasPackage } from '../net/host-packages.ts';
 import { WORKSTATION, nbnsAsk, netbiosName, ownNames, speaksNetbios } from '../net/netbios.ts';
 import { broadcastOf, formatIp, parseIp } from '../core/ip.ts';
+
+const USAGE = 'Usage: nmblookup [-A] [-U UNICAST-ADDRESS] [-R] NAME|IP\n';
+
+interface Options {
+  readonly status: boolean;
+  readonly recurse: boolean;
+  readonly unicast?: string;
+  readonly target?: string;
+}
 
 function status(ctx: Ctx, host: Host, target: string): number {
   ctx.out(`Looking up status of ${target}\n`);
@@ -21,13 +34,40 @@ function local(host: Host, name: string, own: number | undefined): number | unde
   return mine ? own : undefined;
 }
 
-function query(ctx: Ctx, host: Host, name: string): number {
+/** A unicast question to one address; a negative answer (NAM_ERR from a WINS server) finds nothing. */
+function unicast(host: Host, name: string, to: string, recurse: boolean): number | undefined {
+  const ip = parseIp(to);
+  const r = ip === null ? undefined : nbnsAsk(host, { type: 'NB', name, suffix: WORKSTATION, broadcast: false, rd: recurse }, ip);
+  return r && (r.rcode ?? 0) === 0 ? r.addresses?.[0] : undefined;
+}
+
+function query(ctx: Ctx, host: Host, name: string, o: Options): number {
   const a = host.l3Ifaces().find((i) => i.up && i.addrs.length)?.addrs[0];
-  ctx.out(`querying ${name} on ${a ? formatIp(broadcastOf(a.ip, a.prefix)) : '0.0.0.0'}\n`);
-  const ip = local(host, name, a?.ip) ?? nbnsAsk(host, { type: 'NB', name, suffix: WORKSTATION, broadcast: true })?.addresses?.[0];
+  ctx.out(`querying ${name} on ${o.unicast ?? (a ? formatIp(broadcastOf(a.ip, a.prefix)) : '0.0.0.0')}\n`);
+  const ip = o.unicast !== undefined
+    ? unicast(host, name, o.unicast, o.recurse)
+    : local(host, name, a?.ip) ?? nbnsAsk(host, { type: 'NB', name, suffix: WORKSTATION, broadcast: true })?.addresses?.[0];
   if (ip === undefined) { ctx.out(`name_query failed to find name ${name}\n`); return 1; }
   ctx.out(`${formatIp(ip)} ${name}<00>\n`);
   return 0;
+}
+
+/** -A, -R and -U ADDRESS (or -UADDRESS, --unicast=ADDRESS); the first other word is the name. Null: a usage error. */
+function parse(args: readonly string[]): Options | null {
+  let o: Options = { status: false, recurse: false };
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i] ?? '';
+    if (a === '-A') o = { ...o, status: true };
+    else if (a === '-R') o = { ...o, recurse: true };
+    else if (a === '-U' || a === '--unicast') {
+      const v = args[++i];
+      if (v === undefined) return null;
+      o = { ...o, unicast: v };
+    } else if (a.startsWith('--unicast=')) o = { ...o, unicast: a.slice('--unicast='.length) };
+    else if (/^-U./.test(a)) o = { ...o, unicast: a.slice(2) };
+    else if (!a.startsWith('-') && o.target === undefined) o = { ...o, target: a };
+  }
+  return o.target === undefined ? null : o;
 }
 
 export function nmblookup(host: Host): CommandFn {
@@ -36,10 +76,9 @@ export function nmblookup(host: Host): CommandFn {
       ctx.err("Command 'nmblookup' not found, but can be installed with:\nsudo apt install samba-common-bin\n");
       return 127;
     }
-    const args = ctx.argv.slice(1);
-    const a = args.indexOf('-A');
-    const target = a >= 0 ? args[a + 1] : args.find((x) => !x.startsWith('-'));
-    if (!target) { ctx.err('Usage: nmblookup [-A] NAME|IP\n'); return 1; }
-    return a >= 0 ? status(ctx, host, target) : query(ctx, host, target);
+    if (ctx.argv.some((a) => a === '-h' || a === '--help' || a === '-?')) { ctx.out(USAGE); return 0; }
+    const o = parse(ctx.argv.slice(1));
+    if (!o?.target) { ctx.err(USAGE); return 1; }
+    return o.status ? status(ctx, host, o.target) : query(ctx, host, o.target, o);
   };
 }

@@ -45,11 +45,14 @@ interface UnitView {
   readonly description: string;
   readonly process: string;
   readonly pid: number;
+  readonly path?: string;
   readonly oneshot: boolean;
   readonly active: boolean;
   readonly enabled: boolean;
   readonly log: readonly string[];
 }
+
+const COMM_LEN = 15;
 
 function status(v: UnitView): string[] {
   const lines = [
@@ -58,7 +61,8 @@ function status(v: UnitView): string[] {
     v.active ? `     Active: active (${v.oneshot ? 'exited' : 'running'})` : '     Active: inactive (dead)',
   ];
   if (v.active && v.oneshot) lines.push(`    Process: ${v.pid} ExecStart=/usr/sbin/nft -f /etc/nftables.conf (code=exited, status=0/SUCCESS)`, `   Main PID: ${v.pid} (code=exited, status=0/SUCCESS)`);
-  else if (v.active) lines.push(`   Main PID: ${v.pid} (${v.process})`, `     CGroup: /system.slice/${v.linux}.service`, `             └─${v.pid} /usr/sbin/${v.process}`);
+  // The kernel keeps 15 characters of a process name (TASK_COMM_LEN): systemd-resolved is «systemd-resolve».
+  else if (v.active) lines.push(`   Main PID: ${v.pid} (${v.process.slice(0, COMM_LEN)})`, `     CGroup: /system.slice/${v.linux}.service`, `             └─${v.pid} ${v.path ?? `/usr/sbin/${v.process}`}`);
   return v.log.length ? [...lines, '', ...v.log] : lines;
 }
 

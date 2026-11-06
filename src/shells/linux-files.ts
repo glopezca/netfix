@@ -5,7 +5,7 @@ import type { Host } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import { formatIp, formatMask, networkOf, broadcastOf } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
-import { configuredSearchDomains } from './net-tools.ts';
+import { configuredSearchDomains } from './dns-client.ts';
 import { ptExclusions } from '../services/dhcp-pt.ts';
 import type { ServerServices } from '../services/config.ts';
 import { bindFiles } from '../services/bind-files.ts';

@@ -17,6 +17,7 @@ import { dmzLab, dnsForwardLab } from './labs-linux.ts';
 import { hardeningLab, sshLab } from './labs-security.ts';
 import { sambaLab } from './labs-samba.ts';
 import { namesLanLab, namesNetsLab } from './labs-names.ts';
+import { resolvedLab } from './labs-resolved.ts';
 
 export interface Example {
   readonly id: string;
@@ -321,6 +322,7 @@ interface GigabitEthernet0/0
   hardeningLab,
   namesLanLab,
   namesNetsLab,
+  resolvedLab,
 ];
 
 /** The labs, with areas drawn around their networks where they help to read the diagram, and their device settings. */

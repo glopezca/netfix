@@ -97,6 +97,11 @@ const LAB_AREAS: Readonly<Record<string, (topo: Topology) => void>> = {
     area(o, ['SW-A', 'SRV', 'WIN-A'], COLOR.lan, lan('LAN A', '192.168.10.0/24'));
     area(o, ['SW-B', 'WIN-B', 'WIN-B2'], COLOR.lan2, lan('LAN B', '192.168.20.0/24'));
   },
+  'nombres-resolved': (o) => {
+    internet(o, ['ISP-Norte']);
+    area(o, ['SW-A', 'SRV-WINS', 'LNX-A', 'WIN-A'], COLOR.lan, lan('LAN A', '192.168.10.0/24'));
+    area(o, ['SW-B', 'WIN-B', 'LNX-B'], COLOR.lan2, lan('LAN B', '192.168.20.0/24'));
+  },
   'ssh-sftp': (o) => area(o, ['Switch0', 'SRV', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.classroom'), '172.20.0.0/24')),
   samba: (o) => {
     internet(o, ['ISP-Norte']);
@@ -114,7 +119,7 @@ const LAB_AREAS: Readonly<Record<string, (topo: Topology) => void>> = {
  * is stretched from its top-left device, horizontally and vertically (tests/ui/lab-labels.test.ts keeps them apart).
  */
 const LAB_SPREAD: Readonly<Record<string, readonly [number, number]>> = {
-  basico: [1, 1.2], reservas: [1, 1.2], snooping: [1, 1.2], relay: [1, 1.3], vlans: [1, 1.1], servidores: [1, 1.3], internet: [1, 1.4], 'vpn-ipsec': [1, 1.4], 'vpn-wireguard': [1, 1.4], 'linux-dmz': [1.3, 1.4], 'dns-reenvio': [1, 1.5], 'nombres-lan': [1, 1.4], 'nombres-redes': [1.2, 1.5],
+  basico: [1, 1.2], reservas: [1, 1.2], snooping: [1, 1.2], relay: [1, 1.3], vlans: [1, 1.1], servidores: [1, 1.3], internet: [1, 1.4], 'vpn-ipsec': [1, 1.4], 'vpn-wireguard': [1, 1.4], 'linux-dmz': [1.3, 1.4], 'dns-reenvio': [1, 1.5], 'nombres-lan': [1, 1.4], 'nombres-redes': [1.2, 1.5], 'nombres-resolved': [1.2, 1.5],
 };
 
 function spread(id: string, topo: Topology): void {

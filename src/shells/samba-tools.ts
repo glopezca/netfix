@@ -1,15 +1,16 @@
 /**
- * Samba's checking and listing tools: testparm (samba-common-bin) reads smb.conf, warns about unknown parameters and
- * dumps the sections it understood; pdbedit -L (samba) lists the Samba accounts as user:uid:full name.
+ * Samba's checking and listing tools: testparm (samba-common-bin) reads smb.conf, warns about unknown parameters, reports
+ * the settings nmbd or smbd would refuse (exit 1) and dumps the sections it understood; pdbedit -L (samba) lists the Samba accounts as user:uid:full name.
  */
 import type { CommandFn, Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { hasPackage } from '../net/host-packages.ts';
-import { SMB_CONF, smbSections } from '../services/smb-conf.ts';
+import { SMB_CONF, smbSections, winsConflict } from '../services/smb-conf.ts';
 import type { SmbSection } from '../services/smb-conf.ts';
 import { readPassdb } from '../services/smb-passdb.ts';
 
 const TESTPARM_USAGE = 'Usage: testparm [-s] [-v] [--show-all-parameters] [config_file]\n';
+const WINS_CONFLICT = "ERROR: both 'wins support = true' and 'wins server = <server list>' cannot be set in the smb.conf file. nmbd will abort with this setting.\n";
 const PDBEDIT_USAGE = 'Usage: pdbedit [-L]\n  -L, --list     list all users\n';
 
 function notFound(ctx: Ctx, cmd: string, pkg: string): number {
@@ -55,13 +56,16 @@ function* testparmRun(ctx: Ctx): Gen<number> {
   }
   const { sections, unknown } = smbSections(text);
   for (const p of unknown) ctx.err(`Unknown parameter encountered: "${p}"\nIgnoring unknown parameter "${p}"\n`);
-  ctx.err('Loaded services file OK.\nWeak crypto is allowed by GnuTLS (e.g. NTLM as a compatibility fallback)\n\nServer role: ROLE_STANDALONE\n\n');
+  ctx.err('Loaded services file OK.\nWeak crypto is allowed by GnuTLS (e.g. NTLM as a compatibility fallback)\n');
+  const conflict = winsConflict(sections);
+  if (conflict) ctx.err(WINS_CONFLICT);
+  ctx.err('\nServer role: ROLE_STANDALONE\n\n');
   if (!silent) {
     ctx.err('Press enter to see a dump of your service definitions\n');
     yield* ctx.readLine();
   }
   ctx.out(dump(sections));
-  return 0;
+  return conflict ? 1 : 0;
 }
 
 export function testparm(host: Host): CommandFn {

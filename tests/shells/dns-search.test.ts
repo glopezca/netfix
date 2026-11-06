@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EXAMPLES } from '../../src/net/examples.ts';
 import { createShell } from '../../src/shells/factory.ts';
-import { resolutionCandidates } from '../../src/shells/net-tools.ts';
+import { resolutionCandidates } from '../../src/shells/dns-client.ts';
 import type { Pc } from '../../src/devices/pc.ts';
 
 const plain = (t: string): string => t.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
@@ -50,7 +50,7 @@ test('hostname -f is the canonical name in /etc/hosts (Ubuntu does not add the D
 
 test('no search without a DHCP domain (static IP, released lease), for addresses or reverse names', async () => {
   const { Topology } = await import('../../src/net/topology.ts');
-  const { dnsSearch, searchDomains } = await import('../../src/shells/net-tools.ts');
+  const { dnsSearch, searchDomains } = await import('../../src/shells/dns-client.ts');
   const pc = lab();
   assert.deepEqual(searchDomains(pc), ['empresa.lan']);
   const sh = createShell(pc, 'linux');

@@ -2,7 +2,8 @@
  * NetBIOS over TCP/IP (RFC 1001/1002), as a Windows host has it built in and a GNU/Linux host with samba (nmbd, smbd):
  * names are found by a broadcast query to the subnet on UDP 137 (B-node, so never past a router) and answered by the
  * owner with a unicast reply; a node status request (NBSTAT) asks a host for its name table and MAC. Each host keeps a
- * cache of what it found (nbtstat -c). SMB servers (Windows, smbd) listen on TCP 139 and 445.
+ * cache of what it found (nbtstat -c). SMB servers (Windows, smbd) listen on TCP 139 and 445. A WINS server (wins.ts)
+ * takes the unicast questions, registrations and releases before the host's own answer.
  */
 import type { Host } from '../devices/host.ts';
 import type { IpPacket, NbnsMessage, NbnsName } from './packets.ts';
@@ -39,6 +40,14 @@ export function registerSmbServer(fn: SmbHandler): void {
   smbHandler = fn;
 }
 
+/** What a WINS server does with a request (wins.ts, registered from topology.ts); true when it took it. */
+export type WinsHandler = (host: Host, iface: string, p: IpPacket, q: NbnsMessage) => boolean;
+let winsHandler: WinsHandler = () => false;
+
+export function registerWinsHandler(fn: WinsHandler): void {
+  winsHandler = fn;
+}
+
 export const netbiosName = (name: string): string => name.toUpperCase().slice(0, MAX_NAME);
 
 /** A host's own names: NAME<00>, WORKGROUP<00> (group) and NAME<20> (its SMB server). */
@@ -52,7 +61,8 @@ interface CacheEntry { readonly ip: number; readonly suffix: number; readonly un
 const caches = new WeakMap<object, Map<string, CacheEntry>>();
 let nextId = 0x8000;
 
-function reply(host: Host, iface: string, p: IpPacket, msg: NbnsMessage): void {
+/** The answer to a request, unicast back to its sender from the interface it came in on. */
+export function reply(host: Host, iface: string, p: IpPacket, msg: NbnsMessage): void {
   const own = host.l3Iface(iface)?.addrs[0]?.ip;
   if (own === undefined || !p.udp) return;
   host.sendUdp(p.src, NBNS_PORT, p.udp.sport, { nbns: msg }, own, iface);
@@ -65,6 +75,7 @@ function answer(host: Host, iface: string, p: IpPacket, q: NbnsMessage): void {
     if (p.dst === own) reply(host, iface, p, { ...q, response: true, broadcast: false, names: ownNames(host), mac: host.l3Iface(iface)?.mac ?? '' });
     return;
   }
+  if (q.opcode !== undefined && q.opcode !== 'query') return;
   const mine = ownNames(host).some((n) => !n.group && n.name === netbiosName(q.name) && n.suffix === q.suffix);
   if (mine) reply(host, iface, p, { ...q, response: true, broadcast: false, addresses: [own] });
 }
@@ -78,7 +89,7 @@ function take(host: StackHost, iface: string, p: IpPacket): boolean {
     return true;
   }
   if (!speaksNetbios(host as Host)) return false;
-  answer(host as Host, iface, p, q);
+  if (!winsHandler(host as Host, iface, p, q)) answer(host as Host, iface, p, q);
   return true;
 }
 

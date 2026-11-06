@@ -5,6 +5,7 @@ import { field, copyRow, input, message } from './forms.ts';
 import type { Host } from '../devices/host.ts';
 import { formatIp, formatMask, parseIp, parseMask, classfulPrefix } from '../core/ip.ts';
 import { formatMacCisco, formatHexId, parseHexId, asciiToHex } from '../core/mac.ts';
+import { checkWindowsWins, setWindowsWins, windowsWinsManual, windowsWinsServers } from '../net/win-wins.ts';
 
 const DHCP_WAIT_MS = 20_000;
 
@@ -40,6 +41,28 @@ function clientIdSection(h: Host, app: AfterChange, msg: ReturnType<typeof messa
   return { form, box, render };
 }
 
+/** Windows only: the WINS server (empty: that of the DHCP lease, shown as the placeholder, or none). */
+function winsSection(h: Host, app: AfterChange, msg: ReturnType<typeof message>): { box: HTMLElement; render: () => void } {
+  const wins = input({ inputmode: 'decimal' });
+  const box = el('div', { class: 'grid2' }, field(t('ip.wins'), wins));
+  const render = (): void => {
+    box.hidden = h.os !== 'windows';
+    const own = windowsWinsManual(h);
+    wins.value = own !== undefined ? formatIp(own) : '';
+    const leased = own === undefined ? windowsWinsServers(h)[0] : undefined;
+    wins.placeholder = leased !== undefined ? formatIp(leased) : '';
+  };
+  wins.addEventListener('change', () => {
+    const text = wins.value.trim();
+    const ip = text === '' ? undefined : parseIp(text);
+    if (ip === null || !setWindowsWins(h, ip)) return msg.error(t('ip.check', { field: t('ip.field.wins') }));
+    msg.clear();
+    app.afterCommand();
+    render();
+  });
+  return { box, render };
+}
+
 type IpInputs = Readonly<Record<'ip' | 'mask' | 'gw' | 'dns', HTMLInputElement>>;
 
 /** Static configuration from the form, or the message for the first invalid field. */
@@ -66,6 +89,7 @@ interface Parts {
   readonly sendId: HTMLInputElement;
   readonly osSel: HTMLSelectElement;
   readonly ids: { readonly form: HTMLElement; readonly box: HTMLElement };
+  readonly wins: HTMLElement;
 }
 
 function layout(p: Parts): HTMLElement {
@@ -75,6 +99,7 @@ function layout(p: Parts): HTMLElement {
       el('label', { class: 'radio' }, dhcpRadio, 'DHCP'), el('label', { class: 'radio' }, staticRadio, t('ip.static'))),
     status,
     el('div', { class: 'grid2' }, field(t('ip.address'), inputs.ip), field(t('ip.mask'), inputs.mask), field(t('ip.gateway'), inputs.gw), field(t('ip.dns'), inputs.dns)),
+    p.wins,
     p.msg,
     el('label', { class: 'check' }, sendId, t('ip.sendId')),
     ids.form,
@@ -94,6 +119,7 @@ export function hostIpConfig(h: Host, app: AfterChange): { root: HTMLElement; di
   const osSel = el('select', { class: 'select' }, el('option', { value: 'windows' }, 'Windows'), el('option', { value: 'linux' }, 'GNU/Linux (Ubuntu)'));
   osSel.value = h.os;
   const ids = clientIdSection(h, app, msg);
+  const wins = winsSection(h, app, msg);
   const fill = (): void => {
     const c = h.config;
     dhcpRadio.checked = c.mode === 'dhcp';
@@ -106,6 +132,7 @@ export function hostIpConfig(h: Host, app: AfterChange): { root: HTMLElement; di
     status.textContent = c.mode !== 'dhcp' ? '' : dhcpText(h.dhcpStatus);
     status.dataset.state = h.dhcpStatus;
     ids.render();
+    wins.render();
   };
 
   const applyStatic = (): void => {
@@ -128,9 +155,9 @@ export function hostIpConfig(h: Host, app: AfterChange): { root: HTMLElement; di
   staticRadio.addEventListener('change', applyStatic);
   for (const i of Object.values(inputs)) i.addEventListener('change', applyStatic);
   sendId.addEventListener('change', () => { h.sendClientId = sendId.checked; app.afterCommand(); ids.render(); });
-  osSel.addEventListener('change', () => { h.os = osSel.value === 'linux' ? 'linux' : 'windows'; app.afterCommand(); });
+  osSel.addEventListener('change', () => { h.os = osSel.value === 'linux' ? 'linux' : 'windows'; checkWindowsWins(h); app.afterCommand(); wins.render(); });
   const dispose = h.onChange(fill);
-  const root = layout({ dhcpRadio, staticRadio, status, inputs, msg: msg.el, sendId, osSel, ids });
+  const root = layout({ dhcpRadio, staticRadio, status, inputs, msg: msg.el, sendId, osSel, ids, wins: wins.box });
   fill();
   return { root, dispose };
 }

@@ -11,7 +11,8 @@ import { runsServices } from '../devices/kinds.ts';
 import { windowsSshStore } from './ssh-stores.ts';
 import type { SshClientStore } from './ssh-client.ts';
 import { BaseShell } from './base.ts';
-import { resolveHost, dnsSearch, httpGet } from './net-tools.ts';
+import { resolveHost, httpGet } from './net-tools.ts';
+import { dnsSearch } from './dns-client.ts';
 import { startNslookup } from './nslookup.ts';
 import type { Nslookup } from './nslookup.ts';
 import type { Host } from '../devices/host.ts';
@@ -28,6 +29,7 @@ import { WinFiles } from './win-files.ts';
 import { WinDrives } from './win-drives.ts';
 import { splitCmdLine } from './win-path.ts';
 import type { EditSpec } from '../bash/types.ts';
+import { windowsWinsServers } from '../net/win-wins.ts';
 
 const PING_TIMEOUT_MS = 1000;
 const DEFAULT_PING_COUNT = 4;
@@ -82,6 +84,9 @@ export function ipconfig(host: Host, all: boolean): string[] {
   );
   if (all) {
     lines.push(`   DHCP Servers....................: ${lease ? formatIp(lease.serverId) : '0.0.0.0'}`, `   DNS Servers.....................: ${c.dns !== undefined ? formatIp(c.dns) : '0.0.0.0'}`);
+    const [primary, secondary] = windowsWinsServers(host);
+    if (primary !== undefined) lines.push(`   Primary WINS Server.............: ${formatIp(primary)}`);
+    if (secondary !== undefined) lines.push(`   Secondary WINS Server...........: ${formatIp(secondary)}`);
     if (lease) {
       const exp = lease.leaseSeconds >= 0xffffffff ? 'Infinite' : formatLeaseTime(lease.obtainedAt + lease.leaseSeconds * MS);
       lines.push(`   Lease Obtained..................: ${formatLeaseTime(lease.obtainedAt)}`, `   Lease Expires...................: ${exp}`);

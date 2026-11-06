@@ -1,6 +1,7 @@
 /** The Netfix programs of an Ubuntu host: network clients, systemd tools, ssh and command-not-found. */
 import { sftp } from './sftp-cmd.ts';
 import { resolvectl } from './resolvectl.ts';
+import { getent } from './getent.ts';
 import { scp } from './scp-cmd.ts';
 import { wgUnit, wgUnitName } from './wg-unit.ts';
 import { wg } from './wg-cmd.ts';
@@ -162,7 +163,7 @@ function commandNotFound(ctx: Ctx): number {
 
 export function linuxPrograms(host: Host): Map<string, CommandFn> {
   return new Map<string, CommandFn>([
-    ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookupProgram(host)], ['resolvectl', resolvectl(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)], ['netplan', netplanProgram(host)],
+    ['ip', ip(host)], ['ping', ping(host)], ['traceroute', traceroute(host)], ['dig', dig(host)], ['nslookup', nslookupProgram(host)], ['resolvectl', resolvectl(host)], ['getent', getent(host)], ['host', hostCmd(host)], ['dhclient', dhclient(host)], ['netplan', netplanProgram(host)],
     ['curl', curl(host)], ['wget', wget(host)], ['ssh', ssh], ['sysctl', sysctl(host)], ['dmesg', dmesg(host)], ['nft', nft(host)], ['nc', nc(host)], ['netcat', nc(host)], ['nmap', nmap(host)], ['ssh-keygen', sshKeygen], ['ssh-copy-id', sshCopyId], ['sftp', sftp(host)], ['scp', scp(host)],
     ...(host.kind === 'linuxrouter' ? [['wg', wg(host)] as const, ['wg-quick', wgQuick(host)] as const] : []),
     ['systemctl', systemd(host, 'systemctl')], ['service', systemd(host, 'service')],
