@@ -23,6 +23,7 @@ import { loadNftablesConf } from './server-firewall.ts';
 import { BROADCAST_IP, formatIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
 import type { SimClock } from '../core/clock.ts';
+import { linuxSide } from '../net/pkg-units.ts';
 
 /** journald's priorities that journalctl colours (the rest are info). */
 export type LogPriority = 'err' | 'warning' | 'notice';
@@ -208,15 +209,14 @@ export class Server extends Host {
   /** ssh.service's ExecStartPre (sshd -t) checks /etc/ssh/sshd_config and the host key; an error leaves it failed. */
   private startSsh(): boolean {
     const err = this.ssh.reload();
-    if (!err) return true;
-    this.logLines('ssh', 'sshd[701]', err.split('\n'));
-    this.failStart('ssh');
-    return false;
+    this.logLines('ssh', 'sshd[701]', err ? err.split('\n') : ['Server listening on 0.0.0.0 port 22.', 'Server listening on :: port 22.']);
+    if (err) this.failStart('ssh');
+    return !err;
   }
 
   /** nftables.service start: `nft -f /etc/nftables.conf`; an error leaves it failed. */
   private startFirewall(): boolean {
-    if (this.os === 'windows') return true;
+    if (!linuxSide(this)) return true;
     const err = loadNftablesConf(this);
     if (!err) return true;
     this.logLines('firewall', 'nft[655]', err.split('\n'));
@@ -226,7 +226,7 @@ export class Server extends Host {
 
   /** systemctl reload nftables: loads the file again; on error the running ruleset stays. */
   reloadFirewall(): string | null {
-    const err = this.os === 'windows' ? null : loadNftablesConf(this);
+    const err = linuxSide(this) ? loadNftablesConf(this) : null;
     if (err) {
       this.logLines('firewall', 'nft[655]', err.split('\n'));
       this.failReload('firewall');

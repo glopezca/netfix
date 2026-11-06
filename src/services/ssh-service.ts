@@ -21,6 +21,7 @@ import { accessDenied, checkPublicKey, groupNames, rootRefused } from './ssh-aut
 import { PendingLogins, hostProofMessage, userAuthMessage } from './ssh-handshake.ts';
 import { sftpRequest } from './sftp-server.ts';
 import type { SftpUser } from './sftp-server.ts';
+import { serviceSystem } from '../net/device-apps.ts';
 
 type SshOutput = Extract<AppPayload, { app: 'SSH'; kind: 'output' }>;
 type SshAuth = Extract<AppPayload, { app: 'SSH'; kind: 'auth' }>;
@@ -186,7 +187,7 @@ export class SshService {
     const fs = hostFs(this.server);
     const info = hostUsers(this.server).find((u) => u.name === user);
     this.logAccepted(user, from, how);
-    if (!this.settings.sftp || !fs || !info || this.server.os === 'windows') {
+    if (!this.settings.sftp || !fs || !info || serviceSystem(this.server) === 'windows') {
       this.server.log('ssh', `subsystem request for sftp by user ${user} failed, subsystem not found`);
       return this.refuse({ closed: true, lines: ['subsystem request failed on channel 0', 'Connection closed'] });
     }
@@ -246,7 +247,7 @@ export class SshService {
   }
 
   private banner(user: string): string[] {
-    if (this.server.os === 'windows') return ['Microsoft Windows [Versión 10.0.20348.2700]', '(c) Microsoft Corporation. Todos los derechos reservados.', ''];
+    if (serviceSystem(this.server) === 'windows') return ['Microsoft Windows [Versión 10.0.20348.2700]', '(c) Microsoft Corporation. Todos los derechos reservados.', ''];
     return [
       'Welcome to Ubuntu 26.04 LTS (GNU/Linux 6.17.0-generic x86_64)',
       '',

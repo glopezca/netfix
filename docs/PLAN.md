@@ -1967,7 +1967,82 @@ fuera de la carpeta, HTML de los paneles).
   - Ayuda «Compartir carpetas desde Windows» (`win-compartir`) y e2e `scripts/e2e-winshare.mjs`.
   - Pendiente: desactivar la función en el laboratorio no envía la liberación de NOMBRE<20> al servidor WINS (desmarcar la casilla del equipo sí).
 
-### Fase 56: liberación WINS desde el laboratorio, ficheros de Kea y BIND editables con comprobación al arrancar, estado failed y colores de systemctl (v0.38.0)
+### Fase 56: Servicios → Configuración y Registros, solo lo instalado (v0.37.1)
+
+Petición: en las pestañas Configuración y Registros no deben aparecer los servicios no instalados (casilla del equipo
+desmarcada).
+
+- `configSources` (Servicios → Configuración y Estado → Configuración de la gestión web) deja fuera los servicios de
+  Server y router GNU/Linux cuya casilla está desmarcada (SSH, DHCP, DNS, HTTP, correo, firewall, VPN); los parámetros
+  del kernel siguen siempre y Samba solo con su paquete.
+- `src/services/installed-units.ts` (`installedLogUnits`): las unidades de Registros y de la tabla de servicios de
+  Estado en la gestión web, solo de lo instalado; postfix y dovecot con la casilla de correo (parados siguen en la lista, con su registro). Sin nada que mostrar, Configuración lo dice en vez de enseñar los ficheros de SSH.
+- Los laboratorios grabados no cambian (sus servidores tienen marcados los servicios que usan).
+- Pruebas: `tests/services/installed-only.test.ts` (servidor y router colocados desde la paleta, marcar y desmarcar,
+  correo por servicio).
+
+### Fase 57: los paquetes de servicios en el catálogo apt de cada equipo (v0.38.0)
+
+Petición: el catálogo apt de los equipos con GNU/Linux incluye todos los paquetes de servicios de Netfix (ssh,
+kea-dhcp4-server…), instalables y desinstalables desde la pestaña Configuración del equipo, sincronizados con las
+pestañas Servicios, la gestión web y apt en la terminal, y limitables desde la configuración del laboratorio.
+
+- `lab-packages.ts`: `SERVICE_PACKAGES` (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd,
+  dovecot-pop3d, nftables, wireguard-tools, rsyslog, samba) + `TOOL_PACKAGES` = `CATALOG_PACKAGES`. Los nombres cortos
+  (ssh, kea, wireguard) siguen a su paquete: quitado openssh-server del repositorio, `apt install ssh` tampoco lo encuentra.
+- `apt-offer.ts`: `devicePackages` (los paquetes de servicio que hacen algo en ese equipo: panel en Server/router,
+  unidades en un PC —nftables, samba—, y después las herramientas) y `serviceOffered` (una casilla de servicio no
+  instalada desaparece si el laboratorio quitó todos sus paquetes; instalada, se queda para poder quitarla).
+- Configuración del equipo: apartados «Paquetes de servicios» y «Paquetes»; cada casilla es `apt install`/`apt remove`
+  (`setAptInstalled`) y lee el estado de apt (`installedPackage`), así que la casilla del paquete y la del servicio
+  siempre coinciden. Laboratorio actual: los mismos dos grupos en «Paquetes del repositorio apt».
+- Pruebas en `tests/net/lab-packages.test.ts` y e2e de Samba (bind9 ↔ DNS, apt remove, paquete quitado por el laboratorio).
+- **Hecho (v0.38.0)**, con la revisión: la casilla de un servicio de Server o router GNU/Linux también es apt
+  (`setServiceBox`: instala o quita sus paquetes; la de Correo, los tres), así que nunca se contradice con las de los
+  paquetes; la casilla SSH de un PC sigue siendo el cliente. Un Windows sin terminal GNU/Linux conserva sus casillas de
+  servicio aunque el laboratorio quite paquetes. `isc-kea` sigue a kea-dhcp4-server. Un paquete quitado que es
+  dependencia de otro llega con él (documentado).
+
+### Fase 58: GNU/Linux y Windows homogéneos en los equipos (v0.39.0)
+
+Petición: (1) al añadir Windows a un equipo GNU/Linux debe aparecer «Compartir archivos e impresoras para redes
+Microsoft» (y funcionar como servicio), y al quitárselo a un Windows, desaparecer con su servicio; (2) todo equipo con
+Windows puede compartir, también Servidores y routers GNU/Linux forzados a tener Windows; (3) con los dos sistemas, la
+pestaña Servicios agrupa los paneles en GNU/Linux y Windows; (4) los paquetes que son servicios (mDNS…) pasan a
+servicios, desactivados en Configuración y con su panel en Servicios; network-manager solo con panel si no repite lo
+de Interfaces y TCP/IP (si no, herramienta, explicado en la ayuda); (5) gestión web armonizada con la ventana.
+
+- **Sistemas = terminales** (`hasSystem` en device-apps.ts): Windows con su terminal marcada, GNU/Linux con la suya;
+  sin ninguna, el de TCP/IP. `linuxSide`, `winShareOffered`, NetBIOS, LLMNR, mDNS nativo de Windows y el registro WINS
+  de Windows la usan. El servidor SMB es el de Windows mientras comparte; si no, smbd.
+- **winshare** también en `FEATURES_BY_KIND.linuxrouter` (activado); `featuresV: 4` para que una lista guardada antes
+  no lo apague.
+- **Servicios agrupado**: `panelGroups` (pkg-units.ts) y `systemSubnav` (ui/system-subnav.ts): con los dos sistemas,
+  encabezados GNU/Linux y Windows en la lista (Windows: SMB).
+- **avahi-daemon y winbind, servicios**: en `SERVICE_PACKAGES`, unidades systemd (avahi-daemon, winbind), paneles
+  mDNS (en marcha, nombre publicado `host-name`, publicar o no; reinicio al aplicar) y winbind (en marcha, `wins` en
+  nsswitch.conf), fichero /etc/avahi/avahi-daemon.conf (el de Ubuntu) en Configuración y su registro. mDNS de
+  GNU/Linux solo con avahi-daemon en marcha (nss-mdns pregunta a través de él); wins, con winbind en marcha.
+- **network-manager**: herramienta. Un panel solo repetiría direcciones, puerta de enlace, DNS y estado del enlace
+  (Interfaces y TCP/IP); lo propio son los perfiles y la conectividad de `nmcli`. Explicado en la ayuda de apt.
+- **Gestión web**: Servicios → mDNS, winbind y Compartir (Windows); Seguridad → Firewall y Parámetros del kernel en
+  Server y router (Enrutamiento y VPN, solo router); Administración → Paquetes (el catálogo con Instalar/Quitar).
+  Lo de GNU/Linux solo con su terminal; Compartir solo con Windows (`admin-extra.ts`).
+- **Hecho (v0.39.0)**, con la revisión (opus):
+  - cada acción de la gestión web solo corre desde su página (`ACTION_PAGES`, `securityFrom`): en un Server, la
+    página Firewall solo hace lo del firewall (no rutas ni sysctl); Parámetros del kernel sigue la función `sysctl`
+    del laboratorio y rechaza valores de varias líneas; un formulario genérico (DHCP…) enviado desde otra página ya no
+    corre (fallo anterior a esta fase);
+  - `serviceSystem` (device-apps.ts): el sistema de los servicios propios y del resolvedor por defecto (el único, o
+    con los dos el de TCP/IP): SSH (SFTP, rótulo), sshd_config, `resolveHost` y la agrupación de Servicios de un
+    Windows Server con terminal GNU/Linux (sus servicios, en Windows);
+  - el firewall (nftables) de un Server con terminal GNU/Linux carga su fichero aunque su TCP/IP sea Windows;
+    systemd-resolved funciona en el lado GNU/Linux de un equipo con los dos sistemas;
+  - el registro WINS de Windows sigue a las casillas de terminal;
+  - avahi-daemon.conf: borrar el nombre comenta cualquier `host-name=` sin comentar; `is_yes` como avahi; aplicar
+    reinicia sin cambiar si está habilitado.
+
+### Fase 59: liberación WINS desde el laboratorio, ficheros de Kea y BIND editables con comprobación al arrancar, estado failed y colores de systemctl (v0.40.0)
 
 Petición: (1) liberar el nombre WINS al desactivar la función en el laboratorio; (2) que los ficheros de configuración
 de DHCP y DNS se puedan editar desde la consola GNU/Linux y que, al relanzar o recargar el servicio, se comprueben con
@@ -2106,7 +2181,7 @@ Commits (TDD, uno o varios por punto):
    - Una zona editada responde a `dig`.
    - `systemctl status` en color.
    - Desactivar `winshare` borra el nombre del servidor WINS.
-10. `chore: v0.38.0`: versión, about-data y PLAN.md.
+10. `chore: v0.40.0`: versión, about-data y PLAN.md.
 
 `security-reviewer` (opus) revisa los commits 5, 6 y 7: ficheros del usuario que entran en el modelo, límites de
 tamaño y de número de pools, zonas y registros, rutas de `file "…"` dentro de `/etc/bind` y `/var/cache/bind`, y
@@ -2138,7 +2213,7 @@ ficheros guardados en el laboratorio.
 - sin `kill -HUP` al proceso de Kea (`DHCP4_DYNAMIC_RECONFIGURATION_FAIL`);
 - sin `kea-dhcp6` ni `keactrl`.
 
-- **Hecho (v0.38.0)**, con la revisión de seguridad (sin hallazgos críticos ni altos):
+- **Hecho (v0.40.0)**, con la revisión de seguridad (sin hallazgos críticos ni altos):
   - El hallazgo bajo, un arranque que lanzaba una excepción y dejaba el modelo a medias, se corrigió: `setServices`
     vuelve al modelo anterior.
   - `systemctl reload` de una unidad parada o en failed se rechaza («Unit X.service is not active.»), como en systemd;

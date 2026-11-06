@@ -3,6 +3,7 @@
  * Everyone may do and a remark, shown one by one and deleted, with the wording of net.exe; nothing while File and
  * Printer Sharing is off (the Server service not bound).
  */
+import { deviceApps, setDeviceApps } from '../../src/net/device-apps.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EXAMPLES } from '../../src/net/examples.ts';
@@ -99,6 +100,8 @@ test('Servicios → SMB follows the box: a Windows PC or Server has the panel on
   assert.deepEqual(hostPanels(h), []);
   const srv = EXAMPLES.find((e) => e.id === 'internet')!.build().byLabel('SRV-SEDE2') as Host;
   srv.os = 'windows';
+  // Its terminals say its systems (v0.39): the recorded lab gave it the GNU/Linux one.
+  setDeviceApps(srv, [...deviceApps(srv).filter((id) => id !== 'linux'), 'windows']);
   assert.ok(!hostPanels(srv).includes('winshare'));
   setWinShareOn(srv, true);
   assert.ok(hostPanels(srv).includes('winshare'));

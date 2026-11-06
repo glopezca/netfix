@@ -3,7 +3,7 @@ import { t } from '../i18n/t.ts';
 import { firewallPanel, sysctlPanel } from './firewall-panel.ts';
 import { vpnPanel } from './vpn-panel.ts';
 import { el } from './dom.ts';
-import { field, input, select, button, onOff, message, table, subnav } from './forms.ts';
+import { field, input, select, button, onOff, message, table } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';
 import { livePanel, dhcpPanel } from './server-dhcp-dns.ts';
 import { dnsPanel } from './server-dns.ts';
@@ -11,6 +11,8 @@ import { filesPanel } from './files-panel.ts';
 import { logPanel, packageLogUnits } from './log-panel.ts';
 import type { LogUnit } from './log-panel.ts';
 import { sambaPanel } from './samba-panel.ts';
+import { mdnsPanel, winbindPanel } from './link-panels.ts';
+import { systemSubnav } from './system-subnav.ts';
 import { winSharePanel } from './win-share-panel.ts';
 import { linuxSide } from '../net/pkg-units.ts';
 import type { Server } from '../devices/server.ts';
@@ -18,7 +20,8 @@ import type { Account, WebAppAccess } from '../services/config.ts';
 import { validateAccess } from '../services/config.ts';
 import { formatIp } from '../core/ip.ts';
 import { validateFileName } from '../services/http-service.ts';
-import { logUnits, unitActive } from '../services/units.ts';
+import { unitActive } from '../services/units.ts';
+import { installedLogUnits } from '../services/installed-units.ts';
 import { sshAuthMethods, setSshAuthMethods } from '../services/ssh-auth-settings.ts';
 
 /**
@@ -32,7 +35,7 @@ export function servicesTab(server: Server, app: AfterChange, panels: readonly s
     ...(server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
     ...servicePanels(server, app),
   ];
-  return subnav(all.filter((p) => panels.includes(p.id)));
+  return systemSubnav(server, all.filter((p) => panels.includes(p.id)));
 }
 
 function servicePanels(server: Server, app: AfterChange): { id: string; label: string; render: () => HTMLElement }[] {
@@ -44,6 +47,8 @@ function servicePanels(server: Server, app: AfterChange): { id: string; label: s
     { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
     // apt install samba (Ubuntu): its own panel, beside the files and the logs of smbd and nmbd.
     { id: 'samba', label: t('smb.tab'), render: () => sambaPanel(server, app).root },
+    { id: 'mdns', label: t('mdns.tab'), render: () => mdnsPanel(server, app).root },
+    { id: 'winbind', label: t('wbd.tab'), render: () => winbindPanel(server, app).root },
     // Windows Server with file and printer sharing ticked in its Configuración tab.
     { id: 'winshare', label: t('wsh.tab'), render: () => winSharePanel(server, app).root },
     // Windows Server keeps its configuration in the registry: the files are there only with its GNU/Linux terminal.
@@ -202,10 +207,10 @@ function sshPanel(server: Server, app: AfterChange): HTMLElement {
   });
 }
 
-/** The server's own units (SSH first) and then those of apt's packages (smbd, nmbd). */
+/** The server's own units of what is installed (SSH first) and then those of apt's packages (smbd, nmbd). */
 function serverLogUnits(server: Server): LogUnit[] {
   return [
-    ...logUnits(server.kind).map((u) => ({ name: u.linux, active: unitActive(server.services, u.id) })),
+    ...installedLogUnits(server).map((u) => ({ name: u.linux, active: unitActive(server.services, u.id) })),
     ...packageLogUnits(server),
   ];
 }

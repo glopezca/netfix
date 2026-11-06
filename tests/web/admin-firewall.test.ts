@@ -75,7 +75,7 @@ test('Seguridad → Enrutamiento: the «Activar router» checkbox shows and chan
   assert.match(createShell(srv, 'linux', 'root').run('sysctl net.ipv4.ip_forward').join('\n'), /= 0/);
 });
 
-test('a Server has no Seguridad tab in its management GUI (it belongs to the GNU/Linux router)', () => {
+test('a Server has its firewall in Seguridad, as in its Servicios tab (v0.39); routes and VPN are the router\'s', () => {
   const t = new Topology();
   const srv = t.add('server', 0, 0).device as Server;
   const pc = t.add('pc', 0, 0).device as Pc;
@@ -87,7 +87,8 @@ test('a Server has no Seguridad tab in its management GUI (it belongs to the GNU
   const web = new BrowserEngine(pc);
   web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
   const page = body(web.open('http://10.0.0.2:10000/?page=firewall'));
-  assert.doesNotMatch(page, /Plantilla|page=firewall/);
-  assert.match(body(post(web, 'firewall', [['action', 'fw-template'], ['template', 'hardening']])), /.+/);
-  assert.equal(srv.services.firewall.enabled, false);
+  assert.match(page, /Plantilla/);
+  assert.doesNotMatch(page, /web-adm-nav-routing|web-adm-nav-vpn/);
+  post(web, 'firewall', [['action', 'fw-template'], ['template', 'hardening']]);
+  assert.ok(srv.kernel.netfilter.ruleset.tables.length > 0, 'the template loads its rules');
 });

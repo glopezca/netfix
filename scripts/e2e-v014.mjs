@@ -77,7 +77,9 @@ try {
   // Logs highlighted as vim shows them (filetype messages): time in Type green, program in Statement yellow.
   const log = page.locator('.window:visible pre.syn-view[data-filetype="messages"]');
   assert.equal(await log.locator('.syn-type').first().evaluate((n) => getComputedStyle(n).color), 'rgb(96, 255, 96)');
-  assert.equal(await log.locator('.syn-statement').first().textContent(), 'sshd');
+  const writers = await log.locator('.syn-statement').allTextContents();
+  assert.equal(writers[0], 'systemd', 'systemd[1] starts the unit, as in journalctl -u ssh');
+  assert.ok(writers.includes('sshd'), writers.join(' | '));
   if (shots) await page.screenshot({ path: `${shots}/logs.png` });
   await page.click('.win-close');
 
@@ -89,7 +91,7 @@ try {
   assert.deepEqual(routerItems, ['Parámetros', 'Firewall', 'Configuración', 'Registros'], routerItems.join(' | '));
   await page.click('.window:visible .subnav-item:has-text("Registros")');
   const routerUnits = (await page.locator('.window:visible select').first().locator('option').allTextContents()).map((o) => o.split(' ')[0]);
-  assert.deepEqual(routerUnits, ['ssh', 'nftables', 'kea-dhcp4-server', 'named', 'apache2', 'postfix', 'dovecot'], 'a GNU/Linux router: nftables second');
+  assert.deepEqual(routerUnits, ['nftables'], 'a GNU/Linux router: only what it has installed (v0.36)');
   await page.click('.win-tab:has-text("Interfaces")');
   const eth2 = page.locator('.window:visible .nic-row:has-text("GigabitEthernet0/2")');
   assert.equal(await eth2.locator('button:has-text("Aplicar")').count(), 0);

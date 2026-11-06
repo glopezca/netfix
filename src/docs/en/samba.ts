@@ -140,7 +140,7 @@ export const SAMBA_DOCS: readonly DocPage[] = [
     summary: 'The “File and Printer Sharing for Microsoft Networks” box, Services → SMB and net share, and how the share is used from GNU/Linux and from another Windows.',
     markdownBase: MD,
     blocks: [
-      p('A **Windows** device (PC or Windows Server) shares folders over SMB with nothing to install, as a real one does. The **File and Printer Sharing for Microsoft Networks** box of its **Settings** tab decides it, and it starts unticked: it is the Server service bound to the network adapter.'),
+      p('A device with **Windows** (PC, Server, or GNU/Linux router with the Windows terminal ticked) shares folders over SMB with nothing to install, as a real one does. The **File and Printer Sharing for Microsoft Networks** box of its **Settings** tab decides it, and it starts unticked: it is the Server service bound to the network adapter.'),
       table(['Box', 'What happens'], [
         ['Ticked', 'It listens on TCP 139 and 445, registers NAME<20> (`nbtstat -n`, and with the WINS server if it has one) and the **Services → SMB** tab appears.'],
         ['Unticked', 'Nothing answers on 139 and 445: smbclient gives `NT_STATUS_CONNECTION_REFUSED` and `net view \\\\pc0`, “System error 53”. The shares are kept for when it is ticked again.'],
@@ -167,7 +167,7 @@ export const SAMBA_DOCS: readonly DocPage[] = [
         ['NT_STATUS_ACCESS_DENIED · System error 5', 'Writing to a read-only share.'],
         ['NT_STATUS_BAD_NETWORK_NAME · System error 67', 'The share does not exist or its folder was deleted.'],
       ]),
-      tip('In the general settings', '**Settings → Current lab** has the **File and Printer Sharing for Microsoft Networks (Windows)** box for PC and Server, ticked by default. Unticked, the devices of that network do not offer it and share nothing.'),
+      tip('In the general settings', '**Settings → Current lab** has the **File and Printer Sharing for Microsoft Networks (Windows)** box for PC, Server and GNU/Linux router, ticked by default. Unticked, the devices of that network do not offer it and share nothing.'),
       exercise('From Windows to GNU/Linux', 'With a Windows PC and a GNU/Linux PC on the same network, share the folder C:\\home\\alumno\\docs on Windows so that the GNU/Linux PC can leave files in it.', 'On Windows: tick the box in Settings, `md C:\\home\\alumno\\docs` and `net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL` (or Services → SMB with Everyone: Full Control). On GNU/Linux: `sudo apt install smbclient` and `smbclient //NAME/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\home\\alumno\\docs` on Windows shows it.'),
     ],
   },

@@ -18,7 +18,7 @@ export type LabFeatures = Readonly<Partial<Record<DeviceKind, readonly FeatureId
 export const FEATURES_BY_KIND: Readonly<Record<DeviceKind, readonly FeatureId[]>> = {
   pc: ['ip', 'apps', 'samba', 'winshare', 'linux', 'windows'],
   server: ['ip', ...SERVICE_IDS, 'samba', 'winshare', 'sysctl', 'firewall', 'linux', 'windows'],
-  linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'samba', 'linux', 'windows'],
+  linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'samba', 'winshare', 'linux', 'windows'],
   router: ['cli', 'web'],
   switch: ['cli', 'web'],
   cloud: [],
@@ -85,9 +85,10 @@ export function parseFeatures(data: unknown): LabFeatures {
   return out;
 }
 
-/** The `featuresV` of a file whose lists know Samba (2, v0.35) and the Windows sharing (3, v0.37). */
-export const FEATURES_V = 3;
+/** The `featuresV` of a file whose lists know Samba (2, v0.35), the Windows sharing (3, v0.37) and its router box (4, v0.39). */
+export const FEATURES_V = 4;
 const SAMBA_V = 2;
+const WINSHARE_V = 3;
 
 /**
  * The lab settings of a file. A list never names a feature that did not exist yet when it was saved: Samba (before
@@ -98,6 +99,7 @@ export function fileFeatures(data: unknown, version: unknown, sambaOff: unknown)
   const parsed = parseFeatures(data);
   const v = typeof version === 'number' ? version : 0;
   const withSamba = v >= SAMBA_V ? parsed : switchAll(parsed, 'samba', true);
-  const known = v >= FEATURES_V ? withSamba : switchAll(withSamba, 'winshare', true);
+  const withShare = v >= WINSHARE_V ? withSamba : switchAll(withSamba, 'winshare', true);
+  const known = v >= FEATURES_V ? withShare : setFeature(withShare, 'linuxrouter', 'winshare', true);
   return sambaOff === true ? switchAll(known, 'samba', false) : known;
 }

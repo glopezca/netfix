@@ -6,6 +6,7 @@ import { t } from '../i18n/t.ts';
 import type { Server } from '../devices/server.ts';
 import { hostFs } from '../devices/host-fs.ts';
 import { parseSshdConfig, setDirective, SSHD_CONFIG, DEFAULT_SSHD } from './sshd-config.ts';
+import { serviceSystem } from '../net/device-apps.ts';
 
 export interface SshAuthMethods {
   readonly password: boolean;
@@ -14,7 +15,7 @@ export interface SshAuthMethods {
 
 /** What /etc/ssh/sshd_config says now (null when the file cannot be parsed or the server is not Ubuntu). */
 export function sshAuthMethods(server: Server): SshAuthMethods | null {
-  const fs = server.os === 'linux' ? hostFs(server) : undefined;
+  const fs = serviceSystem(server) === 'linux' ? hostFs(server) : undefined;
   if (!fs) return null;
   const parsed = parseSshdConfig({
     read: (p) => (fs.tryLookup(p)?.kind === 'file' ? fs.readFile(p) : null),
@@ -30,7 +31,7 @@ const yesNo = (on: boolean): string => (on ? 'yes' : 'no');
  * when a file of sshd_config.d overrides the main file), or null.
  */
 export function setSshAuthMethods(server: Server, want: SshAuthMethods): string | null {
-  const fs = server.os === 'linux' ? hostFs(server) : undefined;
+  const fs = serviceSystem(server) === 'linux' ? hostFs(server) : undefined;
   if (!fs) return t('sshv.ubuntu');
   if (!want.password && !want.pubkey) return t('sshv.oneMethod');
   const before = fs.tryLookup(SSHD_CONFIG)?.kind === 'file' ? fs.readFile(SSHD_CONFIG) : '';

@@ -38,6 +38,7 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
       ]),
       p('In the recorded labs, of each pair of PCs on the same switch one runs Windows and the other GNU/Linux; mail is only on the PCs with an account set up, and SFTP on PC1 of “SSH and SFTP with keys”; each server shows only the services it starts (plus files and logs).'),
       p('The servers of the recorded labs and of saved files keep the services they had.'),
+      p('**A device’s systems are its terminals.** Ticking the Windows terminal on a GNU/Linux device gives it Windows, with what it brings out of the box (File and Printer Sharing for Microsoft Networks, its own NetBIOS, LLMNR and mDNS); unticking it takes it away, and its sharing service with it. The same goes for the GNU/Linux terminal (apt, its packages and its services). With both ticked, the **Services** tab groups its panels under **GNU/Linux** and **Windows**. With no terminal ticked, the device has the system of its TCP/IP tab.'),
       p('When you **place a PC** from the palette, Netfix asks whether it runs GNU/Linux, Windows or both, and turns on its terminal and that system’s network stack (TCP/IP → operating system). It can be changed later. Servers do not ask: they run GNU/Linux.'),
       p('The **web management** of servers and GNU/Linux routers shows greyed out, without forms, the pages of whatever is off (on the device or in the lab). With the **Hide disabled options in the web management…** box of Current lab they are not even in the menu.'),
       steps(

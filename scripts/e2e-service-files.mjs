@@ -1,4 +1,4 @@
-// End-to-end check (v0.38) of the service files edited by hand (Fase 56) in the lab «Servidores»: kea-dhcp4.conf with a
+// End-to-end check (v0.40) of the service files edited by hand (Fase 59) in the lab «Servidores»: kea-dhcp4.conf with a
 // bad value (kea-dhcp4 -t, the unit failed, a red × in systemctl status, systemctl --failed), then a good edit that the
 // DHCP panel shows after the restart; named.conf.local broken (a reload that fails and keeps named running, the error in
 // journalctl -xeu), then a zone made in Servicios → DNS that writes the generated files again.

@@ -4,7 +4,6 @@
  * shells/win-net-share.ts). Shares and remarks are the user's: they reach the page only as text.
  */
 import { t } from '../i18n/t.ts';
-import type { MessageKey } from '../i18n/catalog.ts';
 import { el } from './dom.ts';
 import { button, field, input, message, select, table } from './forms.ts';
 import { liveHostPanel } from './live.ts';
@@ -13,18 +12,8 @@ import type { AfterChange } from './host-ip.ts';
 import type { Host } from '../devices/host.ts';
 import { winShares } from '../net/win-shares.ts';
 import type { ShareAccess, WinShare } from '../net/win-shares.ts';
-import { publishWinShare, unpublishWinShare } from '../services/smb-windows.ts';
-import type { PublishError } from '../services/smb-windows.ts';
+import { PUBLISH_ERRORS as ERRORS, publishWinShare, unpublishWinShare } from '../services/smb-windows.ts';
 
-const ERRORS: Readonly<Record<PublishError, MessageKey>> = {
-  name: 'wsh.err.name',
-  reserved: 'wsh.err.reserved',
-  exists: 'smb.err.exists',
-  path: 'wsh.err.path',
-  folder: 'wsh.err.folder',
-  remark: 'wsh.err.remark',
-  full: 'wsh.err.full',
-};
 
 const accessLabel = (a: ShareAccess): string => t(a === 'full' ? 'wsh.full' : 'wsh.read');
 

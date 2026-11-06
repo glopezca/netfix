@@ -3,10 +3,11 @@
  * enabled on install, as dpkg's scripts do), on a PC nftables.service (installed stopped and disabled, Debian's
  * default; a Server or Linux router has its own firewall unit, services/units.ts), and systemd-resolved, which the base
  * system brings (running and enabled; it is not in Registros). Their state and journal live beside
- * the device in weak registries, as its packages do; the state is saved with the topology.
+ * the device in weak registries, as its packages do; the state is saved with the topology. avahi-daemon (mDNS) and
+ * winbind are services too, on any kind: started and enabled on install.
  */
 import { hasPackage } from './host-packages.ts';
-import { deviceApps, sambaAllowed } from './device-apps.ts';
+import { deviceApps, hasSystem, sambaAllowed, serviceSystem } from './device-apps.ts';
 import type { AppsDevice } from './device-apps.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { winShareActive } from './win-shares.ts';
@@ -38,6 +39,8 @@ export const PKG_UNITS: readonly PkgUnit[] = [
   { name: 'smbd', pkg: 'samba', process: 'smbd', description: 'Samba SMB Daemon', pid: 1210, oneshot: false, startOnInstall: true, pcOnly: false },
   NFTABLES_UNIT,
   RESOLVED_UNIT,
+  { name: 'avahi-daemon', pkg: 'avahi-daemon', process: 'avahi-daemon', description: 'Avahi mDNS/DNS-SD Stack', pid: 640, oneshot: false, startOnInstall: true, pcOnly: false },
+  { name: 'winbind', pkg: 'winbind', process: 'winbindd', description: 'Samba Winbind Daemon', pid: 1215, oneshot: false, startOnInstall: true, pcOnly: false },
 ];
 
 export interface UnitState {
@@ -72,7 +75,7 @@ export function installedUnits(d: AppsDevice): PkgUnit[] {
 
 /** The units whose journal Registros shows: Samba's daemons (smbd first, as an administrator looks there), then nftables. */
 export function journalUnits(d: AppsDevice): string[] {
-  return ['smbd', 'nmbd', 'nftables'].filter((name) => findPkgUnit(d, name) !== undefined);
+  return ['smbd', 'nmbd', 'nftables', 'avahi-daemon', 'winbind'].filter((name) => findPkgUnit(d, name) !== undefined);
 }
 
 export function pkgUnitState(d: object, u: PkgUnit): UnitState {
@@ -131,7 +134,7 @@ export function unitRunning(d: AppsDevice, name: string): boolean {
 }
 
 /** It has a GNU/Linux terminal: its own system, or the Linux terminal switched on in its Configuración tab. */
-export const linuxSide = (d: AppsDevice): boolean => d.os === 'linux' || deviceApps(d).includes('linux');
+export const linuxSide = (d: AppsDevice): boolean => hasSystem(d, 'linux');
 
 /** The Configuración tab offers the Samba box: a GNU/Linux terminal, in a lab that allows Samba. */
 export function sambaOffered(d: AppsDevice): boolean {
@@ -147,8 +150,33 @@ export function sambaOffered(d: AppsDevice): boolean {
 export function hostPanels(d: AppsDevice): string[] {
   const samba = hasPackage(d, 'samba') && sambaOffered(d);
   const smb = winShareActive(d) ? ['winshare'] : [];
-  if (runsServices(d.kind)) return [...(samba ? ['samba'] : []), ...smb];
+  // avahi-daemon (mDNS) and winbind: a GNU/Linux service each, on any kind.
+  const linux = linuxSide(d) ? LINK_PANELS.filter(([, pkg]) => hasPackage(d, pkg)).map(([id]) => id) : [];
+  if (runsServices(d.kind)) return [...(samba ? ['samba'] : []), ...linux, ...smb];
   if (!linuxSide(d)) return smb;
   const nft = unitInstalled(d, NFTABLES_UNIT);
-  return [...smb, 'sysctl', ...(nft ? ['firewall'] : []), ...(samba ? ['samba'] : []), 'files', ...(nft || samba ? ['log'] : [])];
+  const logs = nft || samba || linux.length > 0;
+  return [...smb, 'sysctl', ...(nft ? ['firewall'] : []), ...(samba ? ['samba'] : []), ...linux, 'files', ...(logs ? ['log'] : [])];
+}
+
+/** The panels of the packages that are services of their own: [panel, package]. */
+const LINK_PANELS: readonly (readonly [string, string])[] = [['mdns', 'avahi-daemon'], ['winbind', 'winbind']];
+
+/** The panels of Windows itself in the Servicios tab (the rest are GNU/Linux's on a device with both). */
+const WINDOWS_PANELS: readonly string[] = ['winshare'];
+/** The services of a Server or router of its own (not apt's packages). */
+const OWN_SERVICES: readonly string[] = ['ssh', 'dhcp', 'dns', 'http', 'mail'];
+
+/**
+ * Servicios of a device with both systems: its panels as [system, ids] groups, GNU/Linux first, in their order (an
+ * empty group left out); null with one system, where the tab lists them as they come.
+ */
+export function panelGroups(d: AppsDevice, ids: readonly string[]): [('linux' | 'windows'), string[]][] | null {
+  if (!hasSystem(d, 'linux') || !hasSystem(d, 'windows')) return null;
+  // A server's own services belong to the system that runs them (IIS and the rest on a Windows Server).
+  const own = runsServices(d.kind) && serviceSystem(d) === 'windows' ? OWN_SERVICES : [];
+  const isWin = (id: string): boolean => WINDOWS_PANELS.includes(id) || own.includes(id);
+  const win = ids.filter(isWin);
+  const linux = ids.filter((id) => !isWin(id));
+  return ([['linux', linux], ['windows', win]] as [('linux' | 'windows'), string[]][]).filter(([, list]) => list.length > 0);
 }

@@ -429,6 +429,8 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 .grid-table tr.is-current { background: var(--accent-soft); }
 .subnav { display: grid; grid-template-columns: 130px minmax(0, 1fr); height: 100%; }
 .subnav-list { display: flex; flex-direction: column; gap: 2px; padding: 10px 6px; border-right: 1px solid var(--line); background: var(--panel-2); }
+.subnav-group { font-size: 0.78rem; font-weight: 700; color: var(--ink-2); padding: 8px 10px 2px; }
+.subnav-group:first-child { padding-top: 2px; }
 .subnav-item { text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: var(--radius-ctl); cursor: pointer; }
 .subnav-item[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .subnav-content { min-width: 0; overflow: auto; }
@@ -785,6 +787,7 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .set-row { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
 .set-group { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 10px 14px 12px; margin: 12px 0; display: grid; gap: 6px; align-content: start; max-width: 520px; }
 .set-group legend { font-weight: 700; padding: 0 4px; }
+.set-group .set-sub { margin: 6px 0 0; font-weight: 600; color: var(--ink-2); }
 .set-choice { display: flex; align-items: center; gap: 8px; min-height: 28px; }
 .set-choice input { flex: none; width: 18px; height: 18px; accent-color: var(--accent); }
 .set-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0 16px; align-items: start; }
@@ -3029,7 +3032,28 @@ const SRV_ES = {
     'files.mail': 'Correo (Postfix y Dovecot)',
     'files.samba': 'Samba (smb.conf)',
     'files.hint': 'Los ficheros tal como están ahora en el disco (cat como root). Los cambios hechos en los paneles o en el terminal se ven al actualizar.',
+    'files.mdns': 'mDNS (avahi-daemon)',
+    'files.winbind': 'winbind',
+    'mdns.tab': 'mDNS',
+    'mdns.service': 'avahi-daemon en marcha',
+    'mdns.intro': 'avahi-daemon responde por multicast (224.0.0.251, UDP 5353) al nombre del equipo seguido de .local y, con libnss-mdns, hace que el sistema pregunte los .local. Solo en el enlace: no cruza routers.',
+    'mdns.stopped': 'Parado: el equipo no responde a ningún nombre .local y nss-mdns no puede preguntar.',
+    'mdns.publishing': 'Publica {name} con su dirección IP en cada interfaz.',
+    'mdns.silent': 'En marcha sin publicar nada (disable-publishing=yes): pregunta, pero no responde.',
+    'mdns.name': 'Nombre publicado (host-name)',
+    'mdns.publish': 'Publicar el nombre del equipo',
+    'mdns.apply': 'Aplicar y reiniciar',
+    'mdns.applied': 'Guardado en /etc/avahi/avahi-daemon.conf.',
+    'mdns.badName': 'Nombre no válido: letras, cifras y guiones, hasta 63.',
+    'mdns.hint': 'Vacío, el nombre del equipo. avahi-daemon lee su fichero al arrancar: los cambios valen tras reiniciarlo (este botón lo hace si está en marcha).',
+    'wbd.tab': 'winbind',
+    'wbd.service': 'winbind en marcha',
+    'wbd.intro': 'winbindd resuelve nombres NetBIOS (por broadcast o con el servidor WINS de smb.conf) para el módulo wins de libnss-winbind: con él, ping, ssh o curl encuentran equipos Windows por su nombre sin DNS.',
+    'wbd.wins': 'Resolver nombres NetBIOS en el sistema (wins en la línea hosts: de /etc/nsswitch.conf)',
+    'wbd.winsHint': 'Se añade al final de hosts:, después de dns, como haría el administrador a mano.',
+    'wbd.noNss': 'Hace falta libnss-winbind (pestaña Configuración → Paquetes, o sudo apt install libnss-winbind).',
     'files.none': 'Este servicio no tiene ficheros de configuración en el equipo.',
+    'files.nothing': 'No hay ningún servicio instalado con ficheros de configuración.',
     'dhcp.byClientId': 'Client-ID (opción 61) o, si no la envía, MAC',
     'dhcp.byMac': 'Dirección MAC',
     'dhcp.badStart': 'La dirección IP inicial no es válida.',
@@ -3206,7 +3230,28 @@ const SRV_EN = {
     'files.mail': 'Mail (Postfix and Dovecot)',
     'files.samba': 'Samba (smb.conf)',
     'files.hint': 'The files as they are on disk right now (cat as root). Changes made in the panels or in the terminal show up on refresh.',
+    'files.mdns': 'mDNS (avahi-daemon)',
+    'files.winbind': 'winbind',
+    'mdns.tab': 'mDNS',
+    'mdns.service': 'avahi-daemon running',
+    'mdns.intro': 'avahi-daemon answers by multicast (224.0.0.251, UDP 5353) to the device’s name followed by .local and, with libnss-mdns, lets the system ask for .local names. Only on the link: it does not cross routers.',
+    'mdns.stopped': 'Stopped: the device answers to no .local name and nss-mdns cannot ask.',
+    'mdns.publishing': 'Publishes {name} with its IP address on each interface.',
+    'mdns.silent': 'Running without publishing anything (disable-publishing=yes): it asks, but does not answer.',
+    'mdns.name': 'Published name (host-name)',
+    'mdns.publish': 'Publish the device’s name',
+    'mdns.apply': 'Apply and restart',
+    'mdns.applied': 'Saved to /etc/avahi/avahi-daemon.conf.',
+    'mdns.badName': 'Invalid name: letters, digits and hyphens, up to 63.',
+    'mdns.hint': 'Empty, the device’s name. avahi-daemon reads its file when it starts: changes apply after a restart (this button does it when it runs).',
+    'wbd.tab': 'winbind',
+    'wbd.service': 'winbind running',
+    'wbd.intro': 'winbindd resolves NetBIOS names (by broadcast or with the WINS server of smb.conf) for the wins module of libnss-winbind: with it, ping, ssh or curl find Windows devices by name without DNS.',
+    'wbd.wins': 'Resolve NetBIOS names in the system (wins in the hosts: line of /etc/nsswitch.conf)',
+    'wbd.winsHint': 'It goes at the end of hosts:, after dns, as an administrator would add it by hand.',
+    'wbd.noNss': 'It needs libnss-winbind (Settings tab → Packages, or sudo apt install libnss-winbind).',
     'files.none': 'This service has no configuration files on the device.',
+    'files.nothing': 'No installed service has configuration files.',
     'dhcp.byClientId': 'Client-ID (option 61) or, if not sent, MAC',
     'dhcp.byMac': 'MAC address',
     'dhcp.badStart': 'The start address is not valid.',
@@ -3316,6 +3361,24 @@ const WEB_ES = {
     'wa.tab.security': 'Seguridad',
     'wa.tab.admin': 'Administración',
     'wa.tab.status': 'Estado',
+    'wa.page.mdns': 'mDNS',
+    'wa.page.winbind': 'winbind',
+    'wa.page.winshare': 'Compartir (Windows)',
+    'wa.page.sysctl': 'Parámetros del kernel',
+    'wa.page.packages': 'Paquetes',
+    'wa.desc.mdns': 'avahi-daemon: el nombre .local que publica el equipo por multicast.',
+    'wa.desc.winbind': 'winbindd: nombres NetBIOS para el sistema (wins en nsswitch.conf).',
+    'wa.desc.winshare': 'Compartir archivos e impresoras para redes Microsoft: las carpetas que Windows comparte por SMB.',
+    'wa.desc.sysctl': 'Parámetros del kernel (sysctl) y su efecto en Netfix.',
+    'wa.desc.packages': 'El catálogo apt del equipo: instalar o quitar es lo mismo que apt install / apt remove.',
+    'wa.pkgName': 'Paquete',
+    'wa.pkgInstalled': 'Instalado',
+    'wa.pkgAbsent': 'No instalado',
+    'wa.pkgInstall': 'Instalar',
+    'wa.pkgRemove': 'Quitar',
+    'wa.pkgHelp': 'Instalar un paquete de servicio activa su casilla en el equipo, su panel en Servicios y su página aquí; quitarlo, al revés. No hace falta red.',
+    'wa.noShare': 'No hay ningún recurso con ese nombre.',
+    'wa.badValue': 'Valor no válido: una sola línea.',
     'wa.page.setup': 'Configuración básica',
     'wa.page.dhcp': 'DHCP',
     'wa.page.dns': 'DNS',
@@ -3590,6 +3653,24 @@ const WEB_EN = {
     'wa.tab.security': 'Security',
     'wa.tab.admin': 'Administration',
     'wa.tab.status': 'Status',
+    'wa.page.mdns': 'mDNS',
+    'wa.page.winbind': 'winbind',
+    'wa.page.winshare': 'Sharing (Windows)',
+    'wa.page.sysctl': 'Kernel parameters',
+    'wa.page.packages': 'Packages',
+    'wa.desc.mdns': 'avahi-daemon: the .local name the device publishes by multicast.',
+    'wa.desc.winbind': 'winbindd: NetBIOS names for the system (wins in nsswitch.conf).',
+    'wa.desc.winshare': 'File and printer sharing for Microsoft networks: the folders Windows shares over SMB.',
+    'wa.desc.sysctl': 'Kernel parameters (sysctl) and their effect in Netfix.',
+    'wa.desc.packages': 'The device’s apt catalogue: installing or removing is the same as apt install / apt remove.',
+    'wa.pkgName': 'Package',
+    'wa.pkgInstalled': 'Installed',
+    'wa.pkgAbsent': 'Not installed',
+    'wa.pkgInstall': 'Install',
+    'wa.pkgRemove': 'Remove',
+    'wa.pkgHelp': 'Installing a service package ticks its box in the device, brings its panel to Services and its page here; removing it, the reverse. No network is needed.',
+    'wa.noShare': 'There is no share with that name.',
+    'wa.badValue': 'Invalid value: a single line.',
     'wa.page.setup': 'Basic setup',
     'wa.page.dhcp': 'DHCP',
     'wa.page.dns': 'DNS',
@@ -4623,8 +4704,11 @@ const SETTINGS_ES = {
     'dev.services': 'Servicios',
     'dev.terminals': 'Terminales',
     'dev.packages': 'Paquetes',
+    'dev.svcPackages': 'Paquetes de servicios',
+    'set.svcPackages': 'Servicios (instalarlo marca su casilla de servicio en el equipo)',
+    'set.toolPackages': 'Herramientas',
     'set.packages': 'Paquetes del repositorio apt (equipos con GNU/Linux)',
-    'set.packagesHint': 'Desmarcado, apt no lo encuentra y no aparece en la pestaña Configuración de los equipos; quien ya lo tiene lo conserva.',
+    'set.packagesHint': 'Desmarcado, apt no lo encuentra (ni su nombre corto, como ssh o kea) y no aparece en la pestaña Configuración de los equipos, tampoco la casilla de su servicio; quien ya lo tiene lo conserva y puede quitarlo.',
     'dev.changed': 'La ventana se ha reabierto con las pestañas elegidas.',
     'os.title': '¿Qué sistema operativo tiene {name}?',
     'os.body': 'Se activa su terminal y la pila de red de ese sistema. Puedes cambiarlo después en su pestaña Configuración (terminales) y en TCP/IP (sistema operativo).',
@@ -4690,8 +4774,11 @@ const SETTINGS_EN = {
     'dev.services': 'Services',
     'dev.terminals': 'Terminals',
     'dev.packages': 'Packages',
+    'dev.svcPackages': 'Service packages',
+    'set.svcPackages': 'Services (installing one ticks its service box in the device)',
+    'set.toolPackages': 'Tools',
     'set.packages': 'Packages in the apt repository (GNU/Linux devices)',
-    'set.packagesHint': 'When unticked, apt cannot find it and it is not listed in the devices\' Settings tab; a device that already has it keeps it.',
+    'set.packagesHint': 'When unticked, apt cannot find it (nor its short name, such as ssh or kea) and the devices\' Settings tab lists neither it nor its service box; a device that already has it keeps it and can remove it.',
     'dev.changed': 'The window has been reopened with the chosen tabs.',
     'os.title': 'Which operating system does {name} run?',
     'os.body': 'Its terminal and that system\'s network stack are turned on. You can change it later in its Settings tab (terminals) and in TCP/IP (operating system).',
@@ -5854,8 +5941,12 @@ function seededNsswitch(host) {
     const mdns = withMdns(DEFAULT_NSSWITCH, hasPackage(host, 'libnss-mdns') || hasPackage(host, 'avahi-daemon'));
     return withResolve(mdns, hasPackage(host, 'libnss-resolve'));
 }
+/** The panel of winbind: «wins» at the end of «hosts:», or out of it (the edit an administrator makes by hand). */
+function withWins(text, on) {
+    return editHosts(text, /\s*\bwins\b/g, 'wins', /$^/, on);
+}
 
-return { NSSWITCH, DEFAULT_NSSWITCH, nssNext, parseHostsLine, hostsSources, withMdns, withResolve, seededNsswitch };
+return { NSSWITCH, DEFAULT_NSSWITCH, nssNext, parseHostsLine, hostsSources, withMdns, withResolve, seededNsswitch, withWins };
 })();
 __m["shells/resolved-conf.js"] = (() => {
 /**
@@ -6005,7 +6096,7 @@ const FEATURE_IDS = ['ip', 'apps', 'browser', 'sftp', ...SERVICE_IDS, 'samba', '
 const FEATURES_BY_KIND = {
     pc: ['ip', 'apps', 'samba', 'winshare', 'linux', 'windows'],
     server: ['ip', ...SERVICE_IDS, 'samba', 'winshare', 'sysctl', 'firewall', 'linux', 'windows'],
-    linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'samba', 'linux', 'windows'],
+    linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'samba', 'winshare', 'linux', 'windows'],
     router: ['cli', 'web'],
     switch: ['cli', 'web'],
     cloud: [],
@@ -6066,9 +6157,10 @@ function parseFeatures(data) {
     }
     return out;
 }
-/** The `featuresV` of a file whose lists know Samba (2, v0.35) and the Windows sharing (3, v0.37). */
-const FEATURES_V = 3;
+/** The `featuresV` of a file whose lists know Samba (2, v0.35), the Windows sharing (3, v0.37) and its router box (4, v0.39). */
+const FEATURES_V = 4;
 const SAMBA_V = 2;
+const WINSHARE_V = 3;
 /**
  * The lab settings of a file. A list never names a feature that did not exist yet when it was saved: Samba (before
  * v0.35) and the Windows sharing (before v0.37) stay on, unless the file says «sambaOff» (v0.34's single switch), which
@@ -6078,7 +6170,8 @@ function fileFeatures(data, version, sambaOff) {
     const parsed = parseFeatures(data);
     const v = typeof version === 'number' ? version : 0;
     const withSamba = v >= SAMBA_V ? parsed : switchAll(parsed, 'samba', true);
-    const known = v >= FEATURES_V ? withSamba : switchAll(withSamba, 'winshare', true);
+    const withShare = v >= WINSHARE_V ? withSamba : switchAll(withSamba, 'winshare', true);
+    const known = v >= FEATURES_V ? withShare : setFeature(withShare, 'linuxrouter', 'winshare', true);
     return sambaOff === true ? switchAll(known, 'samba', false) : known;
 }
 
@@ -6135,6 +6228,27 @@ function notifyAppsChange(d) {
 function deviceApps(d) {
     return chosen.get(d) ?? defaultApps(d);
 }
+/**
+ * The systems of a device are its terminals: GNU/Linux with the GNU/Linux terminal ticked, Windows with the Windows
+ * one (so adding or taking away a terminal adds or takes away that system, its services included). With neither
+ * ticked, the system of its IP tab.
+ */
+function hasSystem(d, os) {
+    // Hosts of the emulated Internet have no terminals: only their system.
+    if (!(d.kind in APPS_BY_KIND))
+        return d.os === os;
+    const apps = deviceApps(d);
+    return apps.includes(os) || (d.os === os && !apps.includes(os === 'linux' ? 'windows' : 'linux'));
+}
+/**
+ * The system that runs a device's own services (SSH, DHCP, DNS, HTTP, mail) and its default resolver: its only one,
+ * or with both the system of its TCP/IP tab.
+ */
+function serviceSystem(d) {
+    const linux = hasSystem(d, 'linux');
+    const windows = hasSystem(d, 'windows');
+    return linux && windows ? d.os : windows ? 'windows' : 'linux';
+}
 /** The device's own choice, when it differs from the defaults (what the file keeps). */
 function customApps(d) {
     return chosen.get(d);
@@ -6185,7 +6299,7 @@ function choosePcSystem(pc, system) {
     setDeviceApps(pc, system === 'both' ? [...defaultApps(pc), 'linux'] : undefined);
 }
 
-return { APPS_BY_KIND, PC_APPS, defaultApps, freshApps, onAppsChange, notifyAppsChange, deviceApps, customApps, setDeviceApps, labFeature, labAllows, bindLab, labViewOf, sambaAllowed, appAvailable, parseApps, choosePcSystem };
+return { APPS_BY_KIND, PC_APPS, defaultApps, freshApps, onAppsChange, notifyAppsChange, deviceApps, hasSystem, serviceSystem, customApps, setDeviceApps, labFeature, labAllows, bindLab, labViewOf, sambaAllowed, appAvailable, parseApps, choosePcSystem };
 })();
 __m["devices/kinds.js"] = (() => {
 /** Kinds of end devices and what they run (a leaf module: shells use it instead of importing Server). */
@@ -6206,7 +6320,7 @@ __m["net/win-shares.js"] = (() => {
  * typed.
  */
 const { featureOn } = __m["net/lab-features.js"];
-const { labViewOf, notifyAppsChange } = __m["net/device-apps.js"];
+const { hasSystem, labViewOf, notifyAppsChange } = __m["net/device-apps.js"];
 /** What Windows allows: a share name of up to 80 characters, a comment of 256 and a path of MAX_PATH. */
 const MAX_NAME = 80;
 const MAX_REMARK = 256;
@@ -6255,9 +6369,9 @@ function checkShare(shares, s) {
         return 'full';
     return { name: s.name, path, remark: s.remark, access: s.access === 'full' ? 'full' : 'read' };
 }
-/** The box of the device's Configuración tab: a Windows device whose lab keeps the feature. */
+/** The box of the device's Configuración tab: a device with Windows (its terminal) whose lab keeps the feature. */
 function winShareOffered(d) {
-    return d.os === 'windows' && featureOn(labViewOf(d).features, d.kind, 'winshare');
+    return hasSystem(d, 'windows') && featureOn(labViewOf(d).features, d.kind, 'winshare');
 }
 /** The box ticked (whether or not the lab still offers it). */
 function winShareOn(d) {
@@ -6332,10 +6446,11 @@ __m["net/pkg-units.js"] = (() => {
  * enabled on install, as dpkg's scripts do), on a PC nftables.service (installed stopped and disabled, Debian's
  * default; a Server or Linux router has its own firewall unit, services/units.ts), and systemd-resolved, which the base
  * system brings (running and enabled; it is not in Registros). Their state and journal live beside
- * the device in weak registries, as its packages do; the state is saved with the topology.
+ * the device in weak registries, as its packages do; the state is saved with the topology. avahi-daemon (mDNS) and
+ * winbind are services too, on any kind: started and enabled on install.
  */
 const { hasPackage } = __m["net/host-packages.js"];
-const { deviceApps, sambaAllowed } = __m["net/device-apps.js"];
+const { deviceApps, hasSystem, sambaAllowed, serviceSystem } = __m["net/device-apps.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { winShareActive } = __m["net/win-shares.js"];
 /** systemd-resolved: the system's resolver (resolvectl, the «resolve» source of nsswitch.conf, LLMNR and mDNS). */
@@ -6346,6 +6461,8 @@ const PKG_UNITS = [
     { name: 'smbd', pkg: 'samba', process: 'smbd', description: 'Samba SMB Daemon', pid: 1210, oneshot: false, startOnInstall: true, pcOnly: false },
     NFTABLES_UNIT,
     RESOLVED_UNIT,
+    { name: 'avahi-daemon', pkg: 'avahi-daemon', process: 'avahi-daemon', description: 'Avahi mDNS/DNS-SD Stack', pid: 640, oneshot: false, startOnInstall: true, pcOnly: false },
+    { name: 'winbind', pkg: 'winbind', process: 'winbindd', description: 'Samba Winbind Daemon', pid: 1215, oneshot: false, startOnInstall: true, pcOnly: false },
 ];
 const states = new WeakMap();
 const journals = new WeakMap();
@@ -6363,7 +6480,7 @@ function installedUnits(d) {
 }
 /** The units whose journal Registros shows: Samba's daemons (smbd first, as an administrator looks there), then nftables. */
 function journalUnits(d) {
-    return ['smbd', 'nmbd', 'nftables'].filter((name) => findPkgUnit(d, name) !== undefined);
+    return ['smbd', 'nmbd', 'nftables', 'avahi-daemon', 'winbind'].filter((name) => findPkgUnit(d, name) !== undefined);
 }
 function pkgUnitState(d, u) {
     return states.get(d)?.get(u.name) ?? { active: u.startOnInstall, enabled: u.startOnInstall };
@@ -6417,7 +6534,7 @@ function unitRunning(d, name) {
     return u !== undefined && pkgUnitState(d, u).active;
 }
 /** It has a GNU/Linux terminal: its own system, or the Linux terminal switched on in its Configuración tab. */
-const linuxSide = (d) => d.os === 'linux' || deviceApps(d).includes('linux');
+const linuxSide = (d) => hasSystem(d, 'linux');
 /** The Configuración tab offers the Samba box: a GNU/Linux terminal, in a lab that allows Samba. */
 function sambaOffered(d) {
     return sambaAllowed(d) && linuxSide(d);
@@ -6431,19 +6548,43 @@ function sambaOffered(d) {
 function hostPanels(d) {
     const samba = hasPackage(d, 'samba') && sambaOffered(d);
     const smb = winShareActive(d) ? ['winshare'] : [];
+    // avahi-daemon (mDNS) and winbind: a GNU/Linux service each, on any kind.
+    const linux = linuxSide(d) ? LINK_PANELS.filter(([, pkg]) => hasPackage(d, pkg)).map(([id]) => id) : [];
     if (runsServices(d.kind))
-        return [...(samba ? ['samba'] : []), ...smb];
+        return [...(samba ? ['samba'] : []), ...linux, ...smb];
     if (!linuxSide(d))
         return smb;
     const nft = unitInstalled(d, NFTABLES_UNIT);
-    return [...smb, 'sysctl', ...(nft ? ['firewall'] : []), ...(samba ? ['samba'] : []), 'files', ...(nft || samba ? ['log'] : [])];
+    const logs = nft || samba || linux.length > 0;
+    return [...smb, 'sysctl', ...(nft ? ['firewall'] : []), ...(samba ? ['samba'] : []), ...linux, 'files', ...(logs ? ['log'] : [])];
+}
+/** The panels of the packages that are services of their own: [panel, package]. */
+const LINK_PANELS = [['mdns', 'avahi-daemon'], ['winbind', 'winbind']];
+/** The panels of Windows itself in the Servicios tab (the rest are GNU/Linux's on a device with both). */
+const WINDOWS_PANELS = ['winshare'];
+/** The services of a Server or router of its own (not apt's packages). */
+const OWN_SERVICES = ['ssh', 'dhcp', 'dns', 'http', 'mail'];
+/**
+ * Servicios of a device with both systems: its panels as [system, ids] groups, GNU/Linux first, in their order (an
+ * empty group left out); null with one system, where the tab lists them as they come.
+ */
+function panelGroups(d, ids) {
+    if (!hasSystem(d, 'linux') || !hasSystem(d, 'windows'))
+        return null;
+    // A server's own services belong to the system that runs them (IIS and the rest on a Windows Server).
+    const own = runsServices(d.kind) && serviceSystem(d) === 'windows' ? OWN_SERVICES : [];
+    const isWin = (id) => WINDOWS_PANELS.includes(id) || own.includes(id);
+    const win = ids.filter(isWin);
+    const linux = ids.filter((id) => !isWin(id));
+    return [['linux', linux], ['windows', win]].filter(([, list]) => list.length > 0);
 }
 
-return { RESOLVED_UNIT, NFTABLES_UNIT, PKG_UNITS, unitInstalled, findPkgUnit, installedUnits, journalUnits, pkgUnitState, setPkgUnitState, forgetPkgUnits, pkgLog, pkgJournal, pkgUnitsRecord, restorePkgUnits, unitRunning, linuxSide, sambaOffered, hostPanels };
+return { RESOLVED_UNIT, NFTABLES_UNIT, PKG_UNITS, unitInstalled, findPkgUnit, installedUnits, journalUnits, pkgUnitState, setPkgUnitState, forgetPkgUnits, pkgLog, pkgJournal, pkgUnitsRecord, restorePkgUnits, unitRunning, linuxSide, sambaOffered, hostPanels, panelGroups };
 })();
 __m["shells/resolved.js"] = (() => {
 const { RESOLVED_UNIT, pkgUnitState } = __m["net/pkg-units.js"];
 const { RESOLVED_DEFAULTS } = __m["shells/resolved-conf.js"];
+const { hasSystem } = __m["net/device-apps.js"];
 const overrides = new WeakMap();
 const transactions = new WeakMap();
 const settings = (h) => JSON.stringify([h.config.mode, h.config.ip, h.config.prefix, h.config.gateway, h.config.dns, h.dnsSearch]);
@@ -6498,7 +6639,7 @@ function effectiveSupport(host, link, p) {
     return RANK[global] <= RANK[own] ? global : own;
 }
 /** The unit runs (systemctl stop systemd-resolved silences it: no NSS answers, no LLMNR or mDNS). */
-const resolvedRunning = (host) => host.os === 'linux' && pkgUnitState(host, RESOLVED_UNIT).active;
+const resolvedRunning = (host) => hasSystem(host, 'linux') && pkgUnitState(host, RESOLVED_UNIT).active;
 /** resolved has a scope for the protocol on the link (asks there): it runs, and the link's support is not «no». */
 const resolvedAsks = (host, link, p) => resolvedRunning(host) && effectiveSupport(host, link, p) !== 'no';
 /** resolved answers for the host's name on a stack interface: it runs and the link's support is «yes». */
@@ -10716,6 +10857,145 @@ function loadNftablesConf(host) {
 
 return { NFTABLES_CONF, DEFAULT_NFTABLES_CONF, readHostFile, loadNftablesConf };
 })();
+__m["shells/avahi-conf.js"] = (() => {
+const AVAHI_CONF = '/etc/avahi/avahi-daemon.conf';
+const DEFAULT_AVAHI_CONF = `# This file is part of avahi.
+#
+# avahi is free software; you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# avahi is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with avahi; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+# USA.
+
+# See avahi-daemon.conf(5) for more information on this configuration
+# file!
+
+[server]
+#host-name=foo
+#domain-name=local
+#browse-domains=0pointer.de, zeroconf.org
+use-ipv4=yes
+use-ipv6=yes
+#allow-interfaces=eth0
+#deny-interfaces=eth1
+#check-response-ttl=no
+#use-iff-running=no
+#enable-dbus=yes
+#disallow-other-stacks=no
+#allow-point-to-point=no
+#cache-entries-max=4096
+#clients-max=4096
+#objects-per-client-max=1024
+#entries-per-entry-group-max=32
+ratelimit-interval-usec=1000000
+ratelimit-burst=1000
+
+[wide-area]
+enable-wide-area=yes
+
+[publish]
+#disable-publishing=no
+#disable-user-service-publishing=no
+#add-service-cookie=no
+#publish-addresses=yes
+publish-hinfo=no
+publish-workstation=no
+#publish-domain=yes
+#publish-dns-servers=192.168.50.1, 192.168.50.2
+#publish-resolv-conf-dns-servers=yes
+#publish-aaaa-on-ipv4=yes
+#publish-a-on-ipv6=no
+
+[reflector]
+#enable-reflector=no
+#reflect-ipv=no
+#reflect-filters=_airplay._tcp.local,_raop._tcp.local
+
+[rlimits]
+#rlimit-as=
+#rlimit-core=0
+#rlimit-data=8388608
+#rlimit-fsize=0
+#rlimit-nofile=768
+#rlimit-stack=8388608
+#rlimit-nproc=3
+`;
+/** A host label avahi accepts: letters, digits and hyphens, up to 63 (it would refuse to start otherwise). */
+const LABEL = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;
+const validAvahiName = (name) => name === '' || LABEL.test(name);
+/** The key's value in a section (the last uncommented line wins), or undefined. */
+function value(text, section, key) {
+    let current = '';
+    let found;
+    for (const raw of text.split('\n')) {
+        const line = raw.trim();
+        const head = /^\[([^\]]+)\]$/.exec(line);
+        if (head) {
+            current = head[1] ?? '';
+            continue;
+        }
+        const kv = /^([a-z-]+)\s*=\s*(.*)$/.exec(line);
+        if (current === section && kv && kv[1] === key)
+            found = (kv[2] ?? '').trim();
+    }
+    return found;
+}
+function parseAvahiConf(text) {
+    const name = value(text, 'server', 'host-name') ?? '';
+    // avahi's is_yes(): a value starting with y, t or 1 (any case) is true.
+    return { hostName: validAvahiName(name) ? name : '', publish: !/^[yt1]/i.test(value(text, 'publish', 'disable-publishing') ?? '') };
+}
+/**
+ * Sets `key=value` in the section: every uncommented line of the key is commented out, then the last line of it
+ * (commented or not) holds the new value, or the section's head is followed by it; undefined leaves it commented.
+ */
+function setValue(text, section, key, val) {
+    const lines = text.replace(/\n$/, '').split('\n');
+    const keyLine = new RegExp(`^\\s*#?\\s*${key}\\s*=`);
+    let current = '';
+    let at = -1;
+    let head = -1;
+    lines.forEach((raw, i) => {
+        const h = /^\s*\[([^\]]+)\]\s*$/.exec(raw);
+        if (h) {
+            current = h[1] ?? '';
+            if (current === section)
+                head = i;
+            return;
+        }
+        if (current !== section || !keyLine.test(raw))
+            return;
+        at = i;
+        if (!raw.trim().startsWith('#'))
+            lines[i] = `#${raw.trim()}`;
+    });
+    if (val !== undefined) {
+        if (at >= 0)
+            lines[at] = `${key}=${val}`;
+        else if (head >= 0)
+            lines.splice(head + 1, 0, `${key}=${val}`);
+        else
+            lines.push('', `[${section}]`, `${key}=${val}`);
+    }
+    return `${lines.join('\n')}\n`;
+}
+/** The file with the panel's settings (an empty name or publishing on leave the defaults commented). */
+function withAvahiSettings(text, c) {
+    const named = setValue(text, 'server', 'host-name', c.hostName || undefined);
+    return setValue(named, 'publish', 'disable-publishing', c.publish ? undefined : 'yes');
+}
+
+return { AVAHI_CONF, DEFAULT_AVAHI_CONF, validAvahiName, parseAvahiConf, withAvahiSettings };
+})();
 __m["shells/apt-defaults.js"] = (() => {
 /**
  * The configuration files a package ships, written when apt installs it on a host without service panels (a PC):
@@ -10727,6 +11007,7 @@ const { bindFiles } = __m["services/bind-files.js"];
 const { defaultServices } = __m["services/config.js"];
 const { DEFAULT_SMB_CONF, SMB_CONF } = __m["services/smb-conf.js"];
 const { DEFAULT_NFTABLES_CONF, NFTABLES_CONF } = __m["devices/server-firewall.js"];
+const { AVAHI_CONF, DEFAULT_AVAHI_CONF } = __m["shells/avahi-conf.js"];
 const KEA_DHCP4_CONF = '/etc/kea/kea-dhcp4.conf';
 const KEA_DEFAULT = `// This is a basic configuration for the Kea DHCPv4 server. Subnet declarations
 // are mostly commented out and no interfaces are listed. Therefore, the servers
@@ -10822,6 +11103,8 @@ const KEA_PACKAGES = new Set(['kea', 'kea-dhcp4-server', 'isc-kea']);
  * settings write it).
  */
 const SMB_CONF_PACKAGES = new Set(['samba', 'smbclient', 'samba-common-bin', 'winbind']);
+/** Packages whose files no Servicios setting writes: they ship them on every kind. */
+const ANY_HOST_FILES = new Set([...SMB_CONF_PACKAGES, 'avahi-daemon']);
 /** The files a package ships, by path. */
 function shippedFiles(name) {
     if (KEA_PACKAGES.has(name))
@@ -10832,10 +11115,12 @@ function shippedFiles(name) {
         return new Map([[SMB_CONF, DEFAULT_SMB_CONF]]);
     if (name === 'nftables')
         return new Map([[NFTABLES_CONF, DEFAULT_NFTABLES_CONF]]);
+    if (name === 'avahi-daemon')
+        return new Map([[AVAHI_CONF, DEFAULT_AVAHI_CONF]]);
     return new Map();
 }
 
-return { KEA_DHCP4_CONF, SMB_CONF_PACKAGES, shippedFiles };
+return { KEA_DHCP4_CONF, SMB_CONF_PACKAGES, ANY_HOST_FILES, shippedFiles };
 })();
 __m["services/kea-json.js"] = (() => {
 /**
@@ -18036,6 +18321,7 @@ const SETTINGS_DOCS = [
             ]),
             p('En los laboratorios grabados, de cada pareja de PCs del mismo switch uno es Windows y el otro GNU/Linux; el correo solo está en los PCs con cuenta configurada y SFTP en PC1 de «SSH y SFTP con claves»; cada servidor muestra solo los servicios que arranca (más ficheros y registros).'),
             p('Los servidores de los laboratorios grabados y de los archivos guardados conservan los servicios que tenían.'),
+            p('**Los sistemas de un equipo son sus terminales.** Marcar la terminal Windows en un equipo GNU/Linux le da Windows, con lo que trae de serie (Compartir archivos e impresoras para redes Microsoft, NetBIOS, LLMNR y mDNS propios); desmarcarla se lo quita, y con ello su servicio de compartir. Lo mismo con la terminal GNU/Linux (apt, sus paquetes y sus servicios). Con las dos marcadas, la pestaña **Servicios** agrupa sus paneles bajo **GNU/Linux** y **Windows**. Sin ninguna terminal marcada, el equipo tiene el sistema de su pestaña TCP/IP.'),
             p('Al **colocar un PC** desde la paleta, Netfix pregunta si es GNU/Linux, Windows o ambos, y activa su terminal y la pila de red de ese sistema (TCP/IP → sistema operativo). Se puede cambiar después. Los servidores no preguntan: llevan GNU/Linux.'),
             p('La **gestión web** de servidores y routers GNU/Linux enseña en gris, sin formularios, las páginas de lo desactivado (en el equipo o en el laboratorio). Con la casilla **Ocultar en la gestión web… las opciones desactivadas** de Laboratorio actual ni siquiera aparecen en el menú.'),
             steps(['Abre la pestaña', '**Configuración**, apartado **Laboratorio actual**.'], ['Marca o desmarca', 'Cada casilla cambia al momento. Las ventanas abiertas se cierran: al abrirlas de nuevo ya tienen las pestañas nuevas.'], ['Guarda', 'Es un cambio de la red: **Guardar** lo lleva al archivo, y cambiar de laboratorio sin guardar avisa.']),
@@ -19763,8 +20049,10 @@ const WEBAPP_DOCS = [
                 ['Servicios', 'DNS', 'Interfaces de escucha, tarjetas de los cinco modos con su interruptor y usos, el asistente de zonas y, al lado, la configuración de BIND generada, explicada.'],
                 ['Servicios', 'Web y correo web', 'Apache y el acceso a Roundcube.'],
                 ['Servicios', 'Correo', 'Protocolos, dominio y cuentas.'],
-                ['Seguridad (Router GNU/Linux)', 'Enrutamiento · Firewall · VPN', 'Reenvío de paquetes y rutas estáticas, reglas nftables y WireGuard. En un Server no existe.'],
-                ['Administración', 'Gestión', 'Usuario, contraseña y puerto o alias de la interfaz (al cambiarlo, el navegador pasa a la nueva dirección).'],
+                ['Servicios', 'Samba · mDNS · winbind', 'Con su paquete instalado: lo mismo que sus paneles de Servicios (recursos y cuentas; nombre .local publicado; wins en nsswitch.conf).'],
+                ['Servicios', 'Compartir (Windows)', 'Con la terminal Windows: «Compartir archivos e impresoras para redes Microsoft» y las carpetas que comparte por SMB.'],
+                ['Seguridad', 'Firewall · Parámetros del kernel (y, en el Router GNU/Linux, Enrutamiento y VPN)', 'Reglas nftables, sysctl, reenvío de paquetes y rutas estáticas, WireGuard.'],
+                ['Administración', 'Gestión · Paquetes', 'Usuario, contraseña y puerto o alias de la interfaz (al cambiarlo, el navegador pasa a la nueva dirección); el catálogo apt del equipo, con Instalar y Quitar.'],
                 ['Estado', 'Equipo · Configuración · Registros', 'Datos del equipo, servicios y concesiones; los ficheros de configuración con los colores de vim (solo GNU/Linux); los últimos mensajes (journalctl).'],
             ]),
             check('Compruébalo con curl', 'Sin credenciales responde **401 Unauthorized** con `Www-Authenticate: Basic realm="Server"`; con `-u usuario:contraseña`, la página.'),
@@ -19772,7 +20060,7 @@ const WEBAPP_DOCS = [
             h('Seguridad'),
             list('Autenticación HTTP Basic (realm «Server»): el usuario y la contraseña viajan en cada petición sin cifrar (HTTPS no está simulado). En una red real, esta interfaz solo debe verse desde la red de administración.', 'Los intentos fallidos y cada cambio quedan en el registro de apache2, con el usuario y la dirección IP del PC.'),
             term('messages', 'Oct 24 06:31:28 srv apache2[903]: netfix-webui: acceso denegado para «admin» desde 192.168.10.50\nOct 24 06:31:28 srv apache2[903]: 192.168.10.50 - - "GET / HTTP/1.1" 401 191 (port 10000)'),
-            note('El Router GNU/Linux tiene la misma gestión web, con el menú Seguridad; los routers y switches IOS tienen la suya, con otro aspecto.'),
+            note('El Router GNU/Linux tiene la misma gestión web, con Enrutamiento y VPN en Seguridad; los routers y switches IOS tienen la suya, con otro aspecto. Las páginas son las mismas que la ventana del equipo: lo que es de GNU/Linux (Configuración, Firewall, Parámetros, Paquetes, Samba, mDNS, winbind) solo con su terminal, y Compartir solo con la de Windows.'),
             note('Lo que la pestaña Configuración del equipo o el laboratorio desactivan sale en gris en el menú, y su página solo lo avisa; con «Ocultar en la gestión web… las opciones desactivadas» (Configuración → Laboratorio actual) no aparece.'),
             exercise('¿Quién ha intentado entrar?', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», intenta entrar a la gestión web desde PC1 con una contraseña errónea y después con la buena. Busca los dos intentos en el servidor.', 'PC1 → Navegador → http://srv.aula.lab:10000/: con una contraseña errónea vuelve a pedirla. En SRV → Servicios → Registros → apache2 aparece «netfix-webui: acceso denegado para «admin» desde 192.168.10.50» y la petición con el código 401.'),
         ],
@@ -20263,13 +20551,13 @@ const APT_DOCS = [
             p('mDNS va por multicast (224.0.0.251, puerto UDP 5353) a los equipos del mismo enlace: lo propagan los switches pero no los routers, así que solo funciona dentro de la misma red, y el otro equipo también debe tener avahi-daemon. En modo Simulación verás los paquetes MDNS; un cortafuegos que bloquee el puerto 5353 lo impide.'),
             p('Los equipos **Windows** (PC o Windows Server) traen mDNS de serie, como Windows 10 y 11: sin instalar nada responden a su nombre .local y preguntan por los demás (`ping pc1.local` en la Terminal Windows). Windows pregunta desde el puerto 5353 y la respuesta llega por multicast; nss-mdns, desde un puerto propio y con respuesta directa.'),
             h('Sin terminal: la casilla de cada paquete'),
-            p('La pestaña **Configuración** de cada equipo con GNU/Linux tiene el apartado **Paquetes**: una casilla por paquete de herramientas del catálogo (network-manager, avahi-daemon, libnss-mdns, libnss-resolve, smbclient, samba-common-bin, winbind, libnss-winbind y bind9-utils). Marcarla hace lo mismo que `sudo apt install` (dependencias, scripts de instalación, servicios y /var/log/dpkg.log) sin necesitar red, como la casilla de Samba; desmarcarla, lo mismo que `sudo apt remove`. La terminal y la casilla se siguen: lo que instala una aparece marcado en la otra.'),
-            p('En **Configuración → Laboratorio actual**, **Paquetes del repositorio apt** decide qué paquetes existen en esta red. Uno desmarcado desaparece de la pestaña de los equipos y `apt install` responde «Unable to locate package», como si se hubiera quitado del repositorio; quien ya lo tiene lo conserva y puede quitarlo con `apt remove`.'),
+            p('La pestaña **Configuración** de cada equipo con GNU/Linux tiene dos apartados de casillas, una por paquete del catálogo. **Paquetes de servicios**: los de los servicios que hacen algo en ese equipo (en un Server, openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, rsyslog y samba; un router GNU/Linux añade wireguard-tools; un PC, nftables y samba). La casilla de un paquete de servicio y la de su servicio en el apartado Servicios son la misma: marcar bind9 marca DNS y hace aparecer su panel en Servicios y su página en la gestión web, y desmarcar la casilla DNS es `apt remove bind9`; la casilla Correo instala o quita a la vez postfix, dovecot-imapd y dovecot-pop3d. **Paquetes**: las herramientas (network-manager, avahi-daemon, libnss-mdns, libnss-resolve, smbclient, samba-common-bin, winbind, libnss-winbind y bind9-utils). Marcar cualquiera hace lo mismo que `sudo apt install` (dependencias, scripts de instalación, servicios y /var/log/dpkg.log) sin necesitar red, como la casilla de Samba; desmarcarla, lo mismo que `sudo apt remove`. La terminal y la casilla se siguen: lo que instala una aparece marcado en la otra.'),
+            p('En **Configuración → Laboratorio actual**, **Paquetes del repositorio apt** decide qué paquetes existen en esta red. Están los paquetes de servicios y las herramientas. Uno desmarcado desaparece de la pestaña de los equipos y `apt install` responde «Unable to locate package», como si se hubiera quitado del repositorio, también por su nombre corto (ssh, kea, wireguard); en un equipo que no tiene ese servicio desaparece además su casilla de servicio. Quien ya lo tiene lo conserva y puede quitarlo con `apt remove` o con su casilla. La lista solo limita lo que se instala por su nombre: un paquete quitado que es dependencia de otro (bind9-utils de bind9, samba-common-bin de samba) llega igualmente con él. Un Windows sin terminal GNU/Linux no tiene apt y conserva siempre sus casillas de servicio.'),
             h('NetBIOS y carpetas compartidas: samba'),
             p('Windows trae de serie NetBIOS sobre TCP/IP: responde a su nombre (NOMBRE<00> y WORKGROUP, y NOMBRE<20> si comparte archivos) y resuelve un nombre sin punto por broadcast a su red (UDP 137) si el DNS no lo conoce; con **Compartir archivos e impresoras para redes Microsoft** marcada en su pestaña **Configuración**, escucha además SMB en TCP 139 y 445. Un equipo GNU/Linux hace lo mismo con el servicio **Samba** (paquete samba: smbd y nmbd); `nmblookup NOMBRE` (y `nmblookup -A IP`) consulta NetBIOS desde la terminal, y el nombre propio responde mientras nmbd está en marcha (`localhost` no es un nombre NetBIOS, tampoco en Windows).'),
             p('Samba es un servicio más, como DNS o DHCP, en servidores, routers GNU/Linux y también PCs: smb.conf, las cuentas (`smbpasswd`), los permisos, `net use` desde Windows y `smbclient` desde GNU/Linux se explican en **Servidor → Samba** (páginas «Samba: compartir carpetas» y «Samba: acceder desde Windows y GNU/Linux»), y se practican en el laboratorio «Compartir carpetas con Samba en un servidor GNU/Linux».'),
             p('Para que los programas de GNU/Linux (ping, ssh…) resuelvan nombres NetBIOS, como en un Ubuntu real: `sudo apt install winbind libnss-winbind` y añadir **wins** a la línea `hosts:` de **/etc/nsswitch.conf** (por ejemplo `hosts: files dns wins`). Igual que mDNS, el broadcast NetBIOS no cruza routers; un servidor WINS sí (`wins support = yes` en el servidor y `wins server = IP` en los clientes; consulta «Resolución de nombres»).'),
-            p('Por la misma razón, desde GNU/Linux mDNS necesita siempre avahi-daemon o libnss-mdns: al instalarlos, su script añade `mdns4_minimal [NOTFOUND=return]` a `hosts:` en /etc/nsswitch.conf, y al quitarlos lo borra.'),
+            p('Por la misma razón, desde GNU/Linux mDNS necesita siempre avahi-daemon **en marcha**: libnss-mdns pregunta a través de él (parado, el equipo ni responde ni encuentra los .local). Al instalarlo, el script de libnss-mdns añade `mdns4_minimal [NOTFOUND=return]` a `hosts:` en /etc/nsswitch.conf, y al quitarlo lo borra. **winbind** es también un servicio con su panel **winbind** en Servicios: en marcha o parado, y la casilla que pone o quita **wins** en `hosts:`; con winbind parado, wins no encuentra nada. **network-manager** es propiamente un servicio de red, pero está entre las herramientas: lo que mostraría un panel (direcciones, puerta de enlace, DNS, estado del enlace) ya está en las pestañas Interfaces y TCP/IP, y lo que añade es su orden, `nmcli` (perfiles de conexión y conectividad).'),
             h('La pestaña Servicios de un PC GNU/Linux'),
             p('Un PC no tiene gestión web (no tiene servidor HTTP): lo que configura un servidor desde el navegador, en un PC se hace en su terminal o en su pestaña **Servicios**. Un PC con GNU/Linux muestra siempre los **Parámetros** del kernel (sysctl). `sudo apt install nftables` añade **Firewall**; `sudo apt install samba`, **Samba**; y cualquiera de los dos, **Configuración** (sus ficheros) y **Registros** (journalctl de nftables, smbd y nmbd). `sudo apt remove` los quita al momento. Un PC con Windows no tiene esta pestaña.'),
             p('En un **Server** o un router GNU/Linux, instalar samba añade el panel **Samba** a Servicios y la página Samba a la gestión web, y smbd y nmbd aparecen en Registros; quitarlo los hace desaparecer.'),
@@ -20430,7 +20718,7 @@ const SAMBA_DOCS = [
         summary: 'La casilla «Compartir archivos e impresoras para redes Microsoft», Servicios → SMB y net share, y cómo se usa el recurso desde GNU/Linux y desde otro Windows.',
         markdownBase: MD,
         blocks: [
-            p('Un equipo **Windows** (PC o Windows Server) comparte carpetas por SMB sin instalar nada, como uno real. Lo decide la casilla **Compartir archivos e impresoras para redes Microsoft** de su pestaña **Configuración**, que empieza desmarcada: es el servicio Servidor enlazado al adaptador de red.'),
+            p('Un equipo con **Windows** (PC, Server o router GNU/Linux con la terminal Windows marcada) comparte carpetas por SMB sin instalar nada, como uno real. Lo decide la casilla **Compartir archivos e impresoras para redes Microsoft** de su pestaña **Configuración**, que empieza desmarcada: es el servicio Servidor enlazado al adaptador de red.'),
             table(['Casilla', 'Qué pasa'], [
                 ['Marcada', 'Escucha en TCP 139 y 445, registra NOMBRE<20> (`nbtstat -n`, y en el servidor WINS si lo tiene) y aparece la pestaña **Servicios → SMB**.'],
                 ['Desmarcada', 'Nadie responde en 139 y 445: smbclient da `NT_STATUS_CONNECTION_REFUSED` y `net view \\\\pc0`, «System error 53». Los recursos se conservan para cuando se vuelva a marcar.'],
@@ -20457,7 +20745,7 @@ const SAMBA_DOCS = [
                 ['NT_STATUS_ACCESS_DENIED · System error 5', 'Escribir en un recurso de solo lectura.'],
                 ['NT_STATUS_BAD_NETWORK_NAME · System error 67', 'El recurso no existe o se borró su carpeta.'],
             ]),
-            tip('En la configuración general', '**Configuración → Laboratorio actual** tiene la casilla **Compartir archivos e impresoras para redes Microsoft (Windows)** para PC y Servidor, marcada por defecto. Desmarcada, los equipos de esa red no la ofrecen y no comparten nada.'),
+            tip('En la configuración general', '**Configuración → Laboratorio actual** tiene la casilla **Compartir archivos e impresoras para redes Microsoft (Windows)** para PC, Servidor y Router GNU/Linux, marcada por defecto. Desmarcada, los equipos de esa red no la ofrecen y no comparten nada.'),
             exercise('De Windows a GNU/Linux', 'Con un PC Windows y un PC GNU/Linux en la misma red, comparte en Windows la carpeta C:\\home\\alumno\\docs para que el PC GNU/Linux pueda dejar archivos en ella.', 'En Windows: marca la casilla en Configuración, `md C:\\home\\alumno\\docs` y `net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL` (o Servicios → SMB con Todos: Control total). En GNU/Linux: `sudo apt install smbclient` y `smbclient //NOMBRE/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\home\\alumno\\docs` en Windows lo muestra.'),
         ],
     },
@@ -20648,6 +20936,7 @@ const SETTINGS_DOCS = [
             ]),
             p('In the recorded labs, of each pair of PCs on the same switch one runs Windows and the other GNU/Linux; mail is only on the PCs with an account set up, and SFTP on PC1 of “SSH and SFTP with keys”; each server shows only the services it starts (plus files and logs).'),
             p('The servers of the recorded labs and of saved files keep the services they had.'),
+            p('**A device’s systems are its terminals.** Ticking the Windows terminal on a GNU/Linux device gives it Windows, with what it brings out of the box (File and Printer Sharing for Microsoft Networks, its own NetBIOS, LLMNR and mDNS); unticking it takes it away, and its sharing service with it. The same goes for the GNU/Linux terminal (apt, its packages and its services). With both ticked, the **Services** tab groups its panels under **GNU/Linux** and **Windows**. With no terminal ticked, the device has the system of its TCP/IP tab.'),
             p('When you **place a PC** from the palette, Netfix asks whether it runs GNU/Linux, Windows or both, and turns on its terminal and that system’s network stack (TCP/IP → operating system). It can be changed later. Servers do not ask: they run GNU/Linux.'),
             p('The **web management** of servers and GNU/Linux routers shows greyed out, without forms, the pages of whatever is off (on the device or in the lab). With the **Hide disabled options in the web management…** box of Current lab they are not even in the menu.'),
             steps(['Open the tab', '**Settings**, section **Current lab**.'], ['Tick or untick', 'Each box applies at once. Open windows close: when opened again they have the new tabs.'], ['Save', 'It is a change to the network: **Save** puts it in the file, and changing lab without saving asks first.']),
@@ -22375,8 +22664,10 @@ const WEBAPP_DOCS = [
                 ['Services', 'DNS', 'Listen interfaces, cards of the five modes with their switch and uses, the zone wizard and, beside them, the generated BIND configuration, explained.'],
                 ['Services', 'Web and webmail', 'Apache and the access to Roundcube.'],
                 ['Services', 'Email', 'Protocols, domain and accounts.'],
-                ['Security (GNU/Linux router)', 'Routing · Firewall · VPN', 'Packet forwarding and static routes, nftables rules and WireGuard. A Server does not have it.'],
-                ['Administration', 'Management', 'User, password and port or alias of the interface (when changed, the browser moves to the new address).'],
+                ['Services', 'Samba · mDNS · winbind', 'With their package installed: the same as their Services panels (shares and accounts; the published .local name; wins in nsswitch.conf).'],
+                ['Services', 'Sharing (Windows)', 'With the Windows terminal: “File and Printer Sharing for Microsoft Networks” and the folders it shares over SMB.'],
+                ['Security', 'Firewall · Kernel parameters (and, on the GNU/Linux router, Routing and VPN)', 'nftables rules, sysctl, packet forwarding and static routes, WireGuard.'],
+                ['Administration', 'Management · Packages', 'User, password and port or alias of the interface (when changed, the browser moves to the new address); the device’s apt catalogue, with Install and Remove.'],
                 ['Status', 'Device · Configuration · Logs', 'Device data, services and leases; the configuration files with vim’s colours (GNU/Linux only); the latest messages (journalctl).'],
             ]),
             check('Check it with curl', 'Without credentials it answers **401 Unauthorized** with `Www-Authenticate: Basic realm="Server"`; with `-u user:password`, the page.'),
@@ -22384,7 +22675,7 @@ const WEBAPP_DOCS = [
             h('Security'),
             list('HTTP Basic authentication (realm “Server”): user and password travel unencrypted with every request (HTTPS is not simulated). On a real network, this interface should only be reachable from the management network.', 'Failed attempts and every change go into apache2’s log, with the user and the PC’s IP address.'),
             term('messages', 'Oct 24 06:31:28 srv apache2[903]: netfix-webui: access denied for “admin” from 192.168.10.50\nOct 24 06:31:28 srv apache2[903]: 192.168.10.50 - - "GET / HTTP/1.1" 401 191 (port 10000)'),
-            note('The GNU/Linux router has the same web management, with the Security menu; IOS routers and switches have their own, with a different look.'),
+            note('The GNU/Linux router has the same web management, with Routing and VPN under Security; IOS routers and switches have their own, with a different look. The pages are the same as the device’s window: what belongs to GNU/Linux (Configuration, Firewall, Parameters, Packages, Samba, mDNS, winbind) only with its terminal, and Sharing only with the Windows one.'),
             note('Whatever the device’s Settings tab or the lab turn off is greyed out in the menu, and its page only says so; with “Hide disabled options in the web management…” (Settings → Current lab) it is not shown.'),
             exercise('Who tried to get in?', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, try to log in to web management from PC1 with a wrong password and then with the right one. Find both attempts on the server.', 'PC1 → Web Browser → http://srv.aula.lab:10000/: with a wrong password it asks again. On SRV → Services → Logs → apache2 there is “netfix-webui: access denied for “admin” from 192.168.10.50” and the request with code 401.'),
         ],
@@ -22866,7 +23157,7 @@ const APT_DOCS = [
             p('These can be installed in any GNU/Linux terminal, on a PC too, and are saved with the device:'),
             table(['Package', 'What it adds'], [
                 ['network-manager', '`nmcli`: interface state, IP addresses, routes, DNS and connectivity (`nmcli`, `nmcli device show`, `nmcli connection show`, `nmcli general`). Before it is installed, bash suggests “sudo apt install network-manager”.'],
-                ['avahi-daemon', 'mDNS: the device answers to its name followed by **.local** and can ask for the others (`ping pc1.local`, `ssh admin@srv.local`) without a DNS server. It brings libnss-mdns.'],
+                ['avahi-daemon', 'The mDNS service, with its **mDNS** panel in Services (running or stopped, the published name and whether it publishes) and its file /etc/avahi/avahi-daemon.conf: the device answers to its name followed by **.local** and can ask for the others (`ping pc1.local`, `ssh admin@srv.local`) without a DNS server. It brings libnss-mdns.'],
                 ['libnss-mdns', 'Only asks for .local names; it does not answer for its own.'],
                 ['libnss-resolve', 'The NSS source `resolve`: ping, ssh and `getent` ask systemd-resolved and see the same as `resolvectl query`, LLMNR and mDNS included. Its installation puts `resolve [!UNAVAIL=return]` before dns in /etc/nsswitch.conf.'],
                 ['nftables', 'The firewall (`nft`, /etc/nftables.conf). On a PC it adds the Firewall, Configuration and Logs panels to Services.'],
@@ -22875,13 +23166,13 @@ const APT_DOCS = [
             p('mDNS goes by multicast (224.0.0.251, UDP port 5353) to the devices on the same link: switches pass it on but routers do not, so it only works within the same network, and the other device needs avahi-daemon too. In Simulation mode you will see the MDNS packets; a firewall that blocks port 5353 stops it.'),
             p('**Windows** devices (PC or Windows Server) have mDNS built in, as Windows 10 and 11 do: with nothing installed they answer to their .local name and ask for the others (`ping pc1.local` in the Windows terminal). Windows asks from port 5353 and the answer comes by multicast; nss-mdns, from a port of its own with a direct answer.'),
             h('Without a terminal: one box per package'),
-            p('The **Settings** tab of every device with GNU/Linux has a **Packages** section: one box per tool package of the catalogue (network-manager, avahi-daemon, libnss-mdns, libnss-resolve, smbclient, samba-common-bin, winbind, libnss-winbind and bind9-utils). Ticking it does the same as `sudo apt install` (dependencies, install scripts, services and /var/log/dpkg.log) with no network needed, like the Samba box; unticking it, the same as `sudo apt remove`. The terminal and the box follow each other: what one installs shows ticked in the other.'),
-            p('In **Settings → Current lab**, **Packages in the apt repository** decides which packages exist in this network. One that is unticked leaves the devices’ tab and `apt install` answers “Unable to locate package”, as if it had been taken out of the repository; a device that already has it keeps it and can remove it with `apt remove`.'),
+            p('The **Settings** tab of every device with GNU/Linux has two sections of boxes, one per catalogue package. **Service packages**: those of the services that do something on that device (on a Server, openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, rsyslog and samba; a GNU/Linux router adds wireguard-tools; a PC, nftables and samba). A service package’s box and its service box in the Services section are one: ticking bind9 ticks DNS and brings its panel to Services and its page to the web management, and unticking DNS is `apt remove bind9`; the Mail box installs or removes postfix, dovecot-imapd and dovecot-pop3d together. **Packages**: the tools (network-manager, avahi-daemon, libnss-mdns, libnss-resolve, smbclient, samba-common-bin, winbind, libnss-winbind and bind9-utils). Ticking any of them does the same as `sudo apt install` (dependencies, install scripts, services and /var/log/dpkg.log) with no network needed, like the Samba box; unticking it, the same as `sudo apt remove`. The terminal and the box follow each other: what one installs shows ticked in the other.'),
+            p('In **Settings → Current lab**, **Packages in the apt repository** decides which packages exist in this network. It holds the service packages and the tools. One that is unticked leaves the devices’ tab and `apt install` answers “Unable to locate package”, as if it had been taken out of the repository, by its short name too (ssh, kea, wireguard); on a device without that service its service box goes as well. A device that already has it keeps it and can remove it with `apt remove` or its box. The list only limits what is installed by name: a removed package that another one depends on (bind9-utils for bind9, samba-common-bin for samba) still comes with it. A Windows device without a GNU/Linux terminal has no apt and always keeps its service boxes.'),
             h('NetBIOS and shared folders: samba'),
             p('Windows has NetBIOS over TCP/IP built in: it answers to its name (NAME<00> and WORKGROUP, and NAME<20> when it shares files) and resolves a name without a dot by broadcast to its network (UDP 137) when the DNS does not know it; with **File and Printer Sharing for Microsoft Networks** ticked in its **Settings** tab, it also listens for SMB on TCP 139 and 445. A GNU/Linux device does the same with the **Samba** service (samba package: smbd and nmbd); `nmblookup NAME` (and `nmblookup -A IP`) asks NetBIOS from the terminal, and the device’s own name answers while nmbd is running (`localhost` is not a NetBIOS name, on Windows either).'),
             p('Samba is one more service, like DNS or DHCP, on servers, GNU/Linux routers and PCs too: smb.conf, the accounts (`smbpasswd`), the permissions, `net use` from Windows and `smbclient` from GNU/Linux are explained under **Server → Samba** (the pages “Samba: sharing folders” and “Samba: access from Windows and GNU/Linux”), and practised in the “Sharing folders with Samba on a GNU/Linux server” lab.'),
             p('For GNU/Linux programs (ping, ssh…) to resolve NetBIOS names, as on a real Ubuntu: `sudo apt install winbind libnss-winbind` and add **wins** to the `hosts:` line of **/etc/nsswitch.conf** (for instance `hosts: files dns wins`). Like mDNS, the NetBIOS broadcast does not cross routers; a WINS server does (`wins support = yes` on the server and `wins server = IP` on the clients; see “Name resolution”).'),
-            p('For the same reason, from GNU/Linux mDNS always needs avahi-daemon or libnss-mdns: when installed, its script adds `mdns4_minimal [NOTFOUND=return]` to `hosts:` in /etc/nsswitch.conf, and removes it when they go.'),
+            p('For the same reason, from GNU/Linux mDNS always needs avahi-daemon **running**: libnss-mdns asks through it (stopped, the device neither answers nor finds .local names). When installed, libnss-mdns’s script adds `mdns4_minimal [NOTFOUND=return]` to `hosts:` in /etc/nsswitch.conf, and removes it when it goes. **winbind** is also a service, with its **winbind** panel in Services: running or stopped, and the box that puts **wins** in `hosts:` or takes it out; with winbind stopped, wins finds nothing. **network-manager** is a network service in its own right, but it is among the tools: what a panel would show (addresses, gateway, DNS, link state) is in the Interfaces and TCP/IP tabs already, and what it adds is its command, `nmcli` (connection profiles and connectivity).'),
             h('The Services tab of a GNU/Linux PC'),
             p('A PC has no web management (it has no HTTP server): what a server configures from the browser, a PC does in its terminal or in its **Services** tab. A GNU/Linux PC always shows the kernel **Parameters** (sysctl). `sudo apt install nftables` adds **Firewall**; `sudo apt install samba`, **Samba**; and either of them, **Configuration** (their files) and **Logs** (journalctl of nftables, smbd and nmbd). `sudo apt remove` takes them away at once. A Windows PC has no such tab.'),
             p('On a **Server** or a GNU/Linux router, installing samba adds the **Samba** panel to Services and the Samba page to the web management, and smbd and nmbd show up in Logs; removing it makes them go.'),
@@ -23042,7 +23333,7 @@ const SAMBA_DOCS = [
         summary: 'The “File and Printer Sharing for Microsoft Networks” box, Services → SMB and net share, and how the share is used from GNU/Linux and from another Windows.',
         markdownBase: MD,
         blocks: [
-            p('A **Windows** device (PC or Windows Server) shares folders over SMB with nothing to install, as a real one does. The **File and Printer Sharing for Microsoft Networks** box of its **Settings** tab decides it, and it starts unticked: it is the Server service bound to the network adapter.'),
+            p('A device with **Windows** (PC, Server, or GNU/Linux router with the Windows terminal ticked) shares folders over SMB with nothing to install, as a real one does. The **File and Printer Sharing for Microsoft Networks** box of its **Settings** tab decides it, and it starts unticked: it is the Server service bound to the network adapter.'),
             table(['Box', 'What happens'], [
                 ['Ticked', 'It listens on TCP 139 and 445, registers NAME<20> (`nbtstat -n`, and with the WINS server if it has one) and the **Services → SMB** tab appears.'],
                 ['Unticked', 'Nothing answers on 139 and 445: smbclient gives `NT_STATUS_CONNECTION_REFUSED` and `net view \\\\pc0`, “System error 53”. The shares are kept for when it is ticked again.'],
@@ -23069,7 +23360,7 @@ const SAMBA_DOCS = [
                 ['NT_STATUS_ACCESS_DENIED · System error 5', 'Writing to a read-only share.'],
                 ['NT_STATUS_BAD_NETWORK_NAME · System error 67', 'The share does not exist or its folder was deleted.'],
             ]),
-            tip('In the general settings', '**Settings → Current lab** has the **File and Printer Sharing for Microsoft Networks (Windows)** box for PC and Server, ticked by default. Unticked, the devices of that network do not offer it and share nothing.'),
+            tip('In the general settings', '**Settings → Current lab** has the **File and Printer Sharing for Microsoft Networks (Windows)** box for PC, Server and GNU/Linux router, ticked by default. Unticked, the devices of that network do not offer it and share nothing.'),
             exercise('From Windows to GNU/Linux', 'With a Windows PC and a GNU/Linux PC on the same network, share the folder C:\\home\\alumno\\docs on Windows so that the GNU/Linux PC can leave files in it.', 'On Windows: tick the box in Settings, `md C:\\home\\alumno\\docs` and `net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL` (or Services → SMB with Everyone: Full Control). On GNU/Linux: `sudo apt install smbclient` and `smbclient //NAME/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\home\\alumno\\docs` on Windows shows it.'),
         ],
     },
@@ -30755,7 +31046,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.38.0",
+    "version": "0.40.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -32737,6 +33028,18 @@ function maskOf(prefix) {
 
 return { formatMacCisco, IFACE, linuxMac, linuxFiles, describeAddress, maskOf };
 })();
+__m["net/avahi.js"] = (() => {
+const AVAHI_DEFAULT = { hostName: '', publish: true };
+const configs = new WeakMap();
+function setAvahiConfig(host, c) {
+    configs.set(host, c);
+}
+function avahiConfig(host) {
+    return configs.get(host) ?? AVAHI_DEFAULT;
+}
+
+return { AVAHI_DEFAULT, setAvahiConfig, avahiConfig };
+})();
 __m["net/ipstack.js"] = (() => {
 const { inSubnet, broadcastOf, BROADCAST_IP } = __m["core/ip.js"];
 const { BROADCAST_MAC } = __m["core/mac.js"];
@@ -33039,6 +33342,16 @@ class IpStack {
 return { registerLocalSockets, multicastMac, LOOPBACK, IpStack };
 })();
 __m["net/mdns.js"] = (() => {
+/**
+ * mDNS (RFC 6762) for hosts with avahi-daemon or libnss-mdns installed, and systemd-resolved: `ping pc1.local` asks the
+ * link by multicast (224.0.0.251:5353, never routed) and the host whose name it is answers if it runs avahi-daemon,
+ * resolved with MulticastDNS=yes on the link (topology.ts passes that test in) or Windows (built in):
+ * to the group when asked from 5353 (Windows), else unicast to the asking port (a «legacy» one-shot query, nss-mdns). The packets cross the simulated network: switches
+ * flood them, routers stop them, nftables can drop them.
+ */
+const { avahiConfig } = __m["net/avahi.js"];
+const { unitRunning } = __m["net/pkg-units.js"];
+const { hasSystem } = __m["net/device-apps.js"];
 const { registerLocalSockets } = __m["net/ipstack.js"];
 const { hasPackage } = __m["net/host-packages.js"];
 const { runSync } = __m["net/sync.js"];
@@ -33053,14 +33366,28 @@ const ANSWER_TTL = 120;
 const FIRST_PORT = 52000;
 const PORTS = 8000;
 /** Windows 10 1803+ and 11 have mDNS in their DNS client: nothing to install (the system of the IP tab). */
-const windows = (h) => h.os === 'windows';
+const windows = (h) => hasSystem(h, 'windows');
 let resolvedAnswers = () => false;
 function setMdnsResponder(r) {
     resolvedAnswers = r;
 }
-const linux = (h) => h.os === 'linux';
-/** avahi-daemon answers for the host's name; Windows does by itself; resolved, on the links where it may. */
-const answersOn = (h, iface) => hasPackage(h, 'avahi-daemon') || windows(h) || (linux(h) && resolvedAnswers(h, iface));
+const linux = (h) => hasSystem(h, 'linux');
+/**
+ * The names the host answers for on a link: Windows and resolved, its host name; avahi-daemon while it runs, the name
+ * of its avahi-daemon.conf (the host name unless `host-name=`), unless publishing is off.
+ */
+function answerNames(h, iface) {
+    // Routers and the hosts of the emulated Internet join no mDNS group.
+    if (typeof h.runtimeName !== 'function')
+        return [];
+    const own = h.runtimeName().toLowerCase();
+    const avahi = linux(h) && unitRunning(h, 'avahi-daemon') ? avahiConfig(h) : undefined;
+    return [
+        ...(windows(h) || (linux(h) && resolvedAnswers(h, iface)) ? [own] : []),
+        ...(avahi?.publish ? [(avahi.hostName || own).toLowerCase()] : []),
+    ];
+}
+const answersOn = (h, iface) => answerNames(h, iface).length > 0;
 /** Pending questions per host and port, with the name asked (a multicast answer reaches every member). */
 const waiting = new WeakMap();
 let nextPort = 0;
@@ -33069,8 +33396,9 @@ function answer(host, iface, p) {
     const own = host.l3Iface(iface)?.addrs[0]?.ip;
     if (!q || !p.udp || own === undefined || q.qtype !== 'A')
         return;
-    // The name the host goes by now (hostname / hostnamectl change it), as avahi publishes it.
-    if (q.qname.replace(/\.$/, '').toLowerCase() !== `${host.runtimeName().toLowerCase()}.local`)
+    // The name the host goes by now (hostname / hostnamectl change it), or the one avahi publishes.
+    const asked = q.qname.replace(/\.$/, '').toLowerCase();
+    if (!answerNames(host, iface).some((n) => asked === `${n}.local`))
         return;
     const reply = { id: q.id, response: true, authoritative: true, qname: q.qname, qtype: 'A', rcode: 'NOERROR',
         answers: [{ name: q.qname, type: 'A', ttl: ANSWER_TTL, data: formatIp(own) }] };
@@ -33131,6 +33459,7 @@ __m["net/netbios.js"] = (() => {
 const { registerLocalSockets } = __m["net/ipstack.js"];
 const { unitRunning } = __m["net/pkg-units.js"];
 const { winShareActive } = __m["net/win-shares.js"];
+const { hasSystem } = __m["net/device-apps.js"];
 const { runSync } = __m["net/sync.js"];
 const { broadcastOf } = __m["core/ip.js"];
 const NBNS_PORT = 137;
@@ -33144,10 +33473,10 @@ const WORKSTATION = 0x00;
 const FILE_SERVER = 0x20;
 const MAX_NAME = 15;
 /** NetBIOS over TCP/IP is on in Windows; on GNU/Linux nmbd (samba) gives it, while it runs. */
-const windows = (h) => h.os === 'windows';
+const windows = (h) => hasSystem(h, 'windows');
 const speaksNetbios = (h) => windows(h) || unitRunning(h, 'nmbd');
 /** The SMB server: Windows' own with file and printer sharing on (win-shares.ts), or smbd while it runs. */
-const servesSmb = (h) => (windows(h) ? winShareActive(h) : unitRunning(h, 'smbd'));
+const servesSmb = (h) => winShareActive(h) || unitRunning(h, 'smbd');
 let smbHandler = () => null;
 function registerSmbServer(fn) {
     smbHandler = fn;
@@ -33162,7 +33491,7 @@ const netbiosName = (name) => name.toUpperCase().slice(0, MAX_NAME);
 function ownNames(host) {
     const name = netbiosName(host.runtimeName());
     const base = [{ name, suffix: WORKSTATION, group: false }, { name: WORKGROUP, suffix: WORKSTATION, group: true }];
-    return windows(host) && !winShareActive(host) ? base : [...base, { name, suffix: FILE_SERVER, group: false }];
+    return winShareActive(host) || unitRunning(host, 'nmbd') ? [...base, { name, suffix: FILE_SERVER, group: false }] : base;
 }
 const waiting = new WeakMap();
 const caches = new WeakMap();
@@ -33504,6 +33833,7 @@ function winsLookup(host, name) {
 return { WINS_CLIENT_TTL_S, WINS_REFRESH_MS, nmbdStarted, nmbdStopped, bootWins, winsLookup };
 })();
 __m["net/llmnr.js"] = (() => {
+const { hasSystem } = __m["net/device-apps.js"];
 const { registerLocalSockets } = __m["net/ipstack.js"];
 const { formatIp, parseIp } = __m["core/ip.js"];
 const LLMNR_GROUP = parseIp('224.0.0.252') ?? 0;
@@ -33517,13 +33847,12 @@ const ANSWER_TTL = 30;
 /** Query ports, clear of the stub resolver's 50000-50999 and mDNS's 52000-59999. */
 const FIRST_PORT = 60000;
 const PORTS = 5000;
-const osOf = (h) => h.os;
-const windows = (h) => osOf(h) === 'windows';
+const windows = (h) => hasSystem(h, 'windows');
 let linuxAnswers = () => false;
 function setLlmnrResponder(r) {
     linuxAnswers = r;
 }
-const answersOn = (h, iface) => windows(h) || (osOf(h) === 'linux' && linuxAnswers(h, iface));
+const answersOn = (h, iface) => windows(h) || (hasSystem(h, 'linux') && linuxAnswers(h, iface));
 const waiting = new WeakMap();
 let nextPort = 0;
 function answer(host, iface, p) {
@@ -33599,7 +33928,7 @@ __m["net/win-wins.js"] = (() => {
 const { winsRegister, winsSend, winsSendAll } = __m["net/wins.js"];
 const { FILE_SERVER, netbiosName } = __m["net/netbios.js"];
 const { winShareActive } = __m["net/win-shares.js"];
-const { onAppsChange } = __m["net/device-apps.js"];
+const { hasSystem, onAppsChange } = __m["net/device-apps.js"];
 /** What Windows asks for in a registration (0x493E0 seconds). */
 const WINDOWS_WINS_TTL_S = 300_000;
 const MULTICAST = 0xe0000000;
@@ -33651,7 +33980,7 @@ function refreshLater(host) {
 function checkWindowsWins(host) {
     const ip = host.config.ip;
     const servers = windowsWinsServers(host);
-    const key = host.os === 'windows' && ip !== undefined && servers.length ? `${ip}>${servers.join(',')}` : '';
+    const key = hasSystem(host, 'windows') && ip !== undefined && servers.length ? `${ip}>${servers.join(',')}` : '';
     if (key === (registeredFor.get(host) ?? ''))
         return;
     registeredFor.set(host, key);
@@ -33701,8 +34030,11 @@ function attachWindowsWins(host) {
     watching = true;
     onAppsChange((d) => {
         const h = attached.get(d);
-        if (h)
-            sharingChanged(h);
+        if (!h)
+            return;
+        // A terminal ticked or unticked gives or takes Windows: register, or stop refreshing.
+        checkWindowsWins(h);
+        sharingChanged(h);
     });
 }
 /** A host read back from a saved lab, once its links are up: it registers again. */
@@ -33792,6 +34124,8 @@ const { parseIp } = __m["core/ip.js"];
 const { dnsQuery, dnsSearch, hostsLookup } = __m["shells/dns-client.js"];
 const { resolvedLookup } = __m["shells/nss-resolve.js"];
 const { resolvedRunning } = __m["shells/resolved.js"];
+const { unitRunning } = __m["net/pkg-units.js"];
+const { serviceSystem } = __m["net/device-apps.js"];
 const DEFAULT_HTTP_PORT = 80;
 const TCP_WAIT_MS = 6000;
 /** Remote commands may run network tools on the server (ping, dig, curl…). */
@@ -33841,14 +34175,16 @@ function nssStep(host, source, target) {
     }
     if (source === 'resolve' && hasPackage(host, 'libnss-resolve'))
         return resolveStep(host, target);
-    if (source.startsWith('mdns') && (hasPackage(host, 'libnss-mdns') || hasPackage(host, 'avahi-daemon'))) {
+    // nss-mdns asks through avahi-daemon: without it running the module has nothing to ask.
+    if (source.startsWith('mdns') && hasPackage(host, 'libnss-mdns') && unitRunning(host, 'avahi-daemon')) {
         // The _minimal modules only take .local names: anything else is UNAVAIL, so [NOTFOUND=return] does not stop it.
         if (source.endsWith('_minimal') && !isLocalName(target))
             return unavail;
         const r = ip(mdnsResolve(host, normalizeName(target), false), normalizeName(target));
         return r ? { status: 'SUCCESS', result: r } : notFound;
     }
-    if (source === 'wins' && hasPackage(host, 'libnss-winbind') && hasPackage(host, 'winbind')) {
+    // nss_wins asks winbindd: stopped, wins finds nothing.
+    if (source === 'wins' && hasPackage(host, 'libnss-winbind') && unitRunning(host, 'winbind')) {
         const r = singleLabel(target) ? ip(winsLookup(host, target), target) : undefined;
         return r ? { status: 'SUCCESS', result: r } : notFound;
     }
@@ -33868,7 +34204,7 @@ function linuxLookup(host, target) {
 }
 /** IP literal, the host's own name, /etc/hosts, then what the asking system does (linuxLookup, windowsLookup). */
 /** `client` defaults to the device's system (TCP/IP tab); the terminals say which one asks. */
-function resolveHost(host, target, client = host.os === 'windows' ? 'windows' : 'linux') {
+function resolveHost(host, target, client = serviceSystem(host)) {
     const literal = parseIp(target);
     if (literal !== null)
         return { kind: 'ip', ip: literal, name: target, viaDns: false };
@@ -36876,6 +37212,8 @@ const { SMB_CONF, smbSections, winsConflict } = __m["services/smb-conf.js"];
 const { parseResolvedConf, resolvedStartLines, RESOLVED_CONF } = __m["shells/resolved-conf.js"];
 const { setResolvedConfig } = __m["shells/resolved.js"];
 const { nmbdStarted, nmbdStopped } = __m["shells/samba-wins.js"];
+const { AVAHI_CONF, parseAvahiConf } = __m["shells/avahi-conf.js"];
+const { setAvahiConfig } = __m["net/avahi.js"];
 const { PKG_UNITS, RESOLVED_UNIT, forgetPkgUnits, installedUnits, pkgLog, pkgUnitState, setPkgUnitState } = __m["net/pkg-units.js"];
 const SAMBA_VERSION = '4.22.3-Ubuntu';
 const isNft = (u) => u.name === 'nftables';
@@ -36899,11 +37237,25 @@ function nmbdError(host) {
 const startError = (host, u) => (isNft(u) ? loadNftablesConf(host) : u.name === 'nmbd' ? nmbdError(host) : null);
 /** What the service itself logs as it starts; resolved reads resolved.conf then (and only then). */
 function startLines(host, u) {
+    if (u.name === 'avahi-daemon')
+        return avahiStartLines(host);
     if (u !== RESOLVED_UNIT)
         return [`${u.process} version ${SAMBA_VERSION} started.`];
     const conf = parseResolvedConf(readHostFile(host, RESOLVED_CONF) ?? '');
     setResolvedConfig(host, conf);
     return [...conf.warnings, ...resolvedStartLines(host.runtimeName().toLowerCase())];
+}
+/** avahi-daemon reads its file as it starts (Netfix: host-name, disable-publishing) and says the name it publishes. */
+function avahiStartLines(host) {
+    const conf = parseAvahiConf(readHostFile(host, AVAHI_CONF) ?? '');
+    setAvahiConfig(host, conf);
+    const name = `${conf.hostName || host.runtimeName().toLowerCase()}.local`;
+    return [
+        "Found user 'avahi' (UID 107) and group 'avahi' (GID 114).", 'Successfully dropped root privileges.', 'avahi-daemon 0.8 starting up.',
+        'Successfully called chroot().', 'Successfully dropped remaining capabilities.',
+        ...(conf.publish ? [] : ['Publishing disabled: no host name is announced.']),
+        `Server startup complete. Host name is ${name}. Local service cookie is 3626245938.`,
+    ];
 }
 /** Starts the unit (a running one is left as it is); false when its process failed (the reason is in its journal). */
 function startPkgUnit(host, u) {
@@ -36977,6 +37329,9 @@ function bootPkgUnits(host) {
     for (const u of installedUnits(host)) {
         if (pkgUnitState(host, u).active && startError(host, u) !== null)
             setPkgUnitState(host, u, { active: false });
+        // A running avahi-daemon goes on with what its file says.
+        if (u.name === 'avahi-daemon' && pkgUnitState(host, u).active)
+            setAvahiConfig(host, parseAvahiConf(readHostFile(host, AVAHI_CONF) ?? ''));
     }
 }
 
@@ -41164,21 +41519,31 @@ return { mooLines };
 })();
 __m["net/lab-packages.js"] = (() => {
 /**
- * The package catalogue of a device's Configuración tab: apt's tool packages, which bring no service panel (those
- * follow the Servicios boxes and the lab features; samba has its own). Each has a box in the device (apt install /
+ * The package catalogue of a device's Configuración tab: apt's service packages (each one is a service box: installing
+ * it ticks the box and brings its panel, apt-state.ts) and its tool packages. Each has a box in the device (apt install /
  * apt remove, apt-install.ts) and one in Configuración → Laboratorio actual: a package the lab takes away is no longer
- * in the archive (apt cannot find it), but a device that has it keeps it. Saved with the topology as the list of
- * packages taken away.
+ * in the archive (apt cannot find it, nor its short name), but a device that has it keeps it. Saved with the topology
+ * as the list of packages taken away.
  */
 const { labViewOf } = __m["net/device-apps.js"];
-/** In the order the boxes list them (bind9utils, the old name of bind9-utils, is left to the terminal). */
-const CATALOG_PACKAGES = ['network-manager', 'avahi-daemon', 'libnss-mdns', 'libnss-resolve', 'smbclient', 'samba-common-bin', 'winbind', 'libnss-winbind', 'bind9-utils'];
+/** The packages of Netfix's services, in the order of the Servicios tab. */
+const SERVICE_PACKAGES = ['openssh-server', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot-imapd', 'dovecot-pop3d', 'nftables', 'wireguard-tools', 'rsyslog', 'samba', 'avahi-daemon', 'winbind'];
+/**
+ * Tools without a panel (bind9utils, the old name of bind9-utils, is left to the terminal). network-manager is a
+ * network service, but what it would show (addresses, gateway, DNS, link state) is in Interfaces and TCP/IP already:
+ * its tool, nmcli, is what it adds.
+ */
+const TOOL_PACKAGES = ['network-manager', 'libnss-mdns', 'libnss-resolve', 'smbclient', 'samba-common-bin', 'libnss-winbind', 'bind9-utils'];
+/** In the order the boxes list them. */
+const CATALOG_PACKAGES = [...SERVICE_PACKAGES, ...TOOL_PACKAGES];
+/** Short names that only depend on a catalogue package: they go with it (apt cannot install them without it). */
+const SHORT = { ssh: 'openssh-server', kea: 'kea-dhcp4-server', 'isc-kea': 'kea-dhcp4-server', wireguard: 'wireguard-tools' };
 /** A longer list in a file is not a list of packages (the catalogue has a handful). */
 const MAX_LIST = 64;
 const inCatalogue = (name) => CATALOG_PACKAGES.includes(name);
 /** Not taken away by the lab (a package outside the catalogue always is available). */
 function packageAllowed(off, name) {
-    return !off.includes(name);
+    return !off.includes(SHORT[name] ?? name);
 }
 /** The device's lab keeps the package in its archive. */
 function labHasPackage(d, name) {
@@ -41195,7 +41560,7 @@ function parsePkgsOff(data) {
     return CATALOG_PACKAGES.filter((p) => data.includes(p));
 }
 
-return { CATALOG_PACKAGES, packageAllowed, labHasPackage, setPackageOff, parsePkgsOff };
+return { SERVICE_PACKAGES, TOOL_PACKAGES, CATALOG_PACKAGES, packageAllowed, labHasPackage, setPackageOff, parsePkgsOff };
 })();
 __m["shells/apt-state.js"] = (() => {
 const { runsServices } = __m["devices/kinds.js"];
@@ -41258,11 +41623,11 @@ const { FsError } = __m["bash/vfs.js"];
 const { hasPackage } = __m["net/host-packages.js"];
 const { DEFAULT_NSSWITCH, NSSWITCH, withMdns, withResolve } = __m["shells/nsswitch.js"];
 const { runsServices } = __m["devices/kinds.js"];
-const { SMB_CONF_PACKAGES, shippedFiles } = __m["shells/apt-defaults.js"];
+const { ANY_HOST_FILES, shippedFiles } = __m["shells/apt-defaults.js"];
 const { pkgInstalled, pkgRemoved } = __m["shells/pkg-service.js"];
 const { notifyAppsChange } = __m["net/device-apps.js"];
 /** Packages that add tabs to the Servicios of a GNU/Linux host (net/pkg-units.ts hostPanels). */
-const WITH_PANELS = new Set(['samba', 'nftables']);
+const WITH_PANELS = new Set(['samba', 'nftables', 'avahi-daemon', 'winbind']);
 function editNsswitch(fs, edit) {
     let text = DEFAULT_NSSWITCH;
     try {
@@ -41289,7 +41654,7 @@ function writeShipped(fs, name) {
 }
 function afterPackage(fs, host, name, on) {
     // A Server or GNU/Linux router writes them from its Servicios settings (linux-files.ts); smb.conf has none.
-    if (on && (!runsServices(host.kind) || SMB_CONF_PACKAGES.has(name)))
+    if (on && (!runsServices(host.kind) || ANY_HOST_FILES.has(name)))
         writeShipped(fs, name);
     if (name === 'avahi-daemon' || name === 'libnss-mdns') {
         editNsswitch(fs, (text) => withMdns(text, hasPackage(host, 'libnss-mdns')));
@@ -47431,8 +47796,18 @@ function unpublishWinShare(host, name) {
         host.notifyChange();
     return done;
 }
+/** How the panel and the web GUI word each refusal. */
+const PUBLISH_ERRORS = {
+    name: 'wsh.err.name',
+    reserved: 'wsh.err.reserved',
+    exists: 'smb.err.exists',
+    path: 'wsh.err.path',
+    folder: 'wsh.err.folder',
+    remark: 'wsh.err.remark',
+    full: 'wsh.err.full',
+};
 
-return { windowsShareList, windowsTree, publishWinShare, unpublishWinShare };
+return { windowsShareList, windowsTree, publishWinShare, unpublishWinShare, PUBLISH_ERRORS };
 })();
 __m["shells/win-net-share.js"] = (() => {
 const { findWinShare, winShareActive, winShares } = __m["net/win-shares.js"];
@@ -49110,6 +49485,7 @@ const { HOST_KEY_PATH, loadHostKey } = __m["services/ssh-hostkeys.js"];
 const { accessDenied, checkPublicKey, groupNames, rootRefused } = __m["services/ssh-auth.js"];
 const { PendingLogins, hostProofMessage, userAuthMessage } = __m["services/ssh-handshake.js"];
 const { sftpRequest } = __m["services/sftp-server.js"];
+const { serviceSystem } = __m["net/device-apps.js"];
 const MAX_SESSIONS = 16;
 const IDLE_LIMIT_MS = 30 * 60_000;
 const SESSION_ID_BYTES = 12;
@@ -49271,7 +49647,7 @@ class SshService {
         const fs = hostFs(this.server);
         const info = hostUsers(this.server).find((u) => u.name === user);
         this.logAccepted(user, from, how);
-        if (!this.settings.sftp || !fs || !info || this.server.os === 'windows') {
+        if (!this.settings.sftp || !fs || !info || serviceSystem(this.server) === 'windows') {
             this.server.log('ssh', `subsystem request for sftp by user ${user} failed, subsystem not found`);
             return this.refuse({ closed: true, lines: ['subsystem request failed on channel 0', 'Connection closed'] });
         }
@@ -49330,7 +49706,7 @@ class SshService {
         return { app: 'SSH', kind: 'output', ok: true, lines, prompt: sh.prompt(), secret: sh.secret(), edit: sh.editRequest?.() ?? undefined, screen };
     }
     banner(user) {
-        if (this.server.os === 'windows')
+        if (serviceSystem(this.server) === 'windows')
             return ['Microsoft Windows [Versión 10.0.20348.2700]', '(c) Microsoft Corporation. Todos los derechos reservados.', ''];
         return [
             'Welcome to Ubuntu 26.04 LTS (GNU/Linux 6.17.0-generic x86_64)',
@@ -49378,6 +49754,7 @@ const { journalLines } = __m["devices/journal-text.js"];
 const { loadNftablesConf } = __m["devices/server-firewall.js"];
 const { BROADCAST_IP, formatIp } = __m["core/ip.js"];
 const { formatMacCisco } = __m["core/mac.js"];
+const { linuxSide } = __m["net/pkg-units.js"];
 const SYSTEMD = 'systemd[1]';
 /** rndc as named.service's ExecReload. */
 const RNDC = 'rndc[1311]';
@@ -49540,15 +49917,14 @@ class Server extends Host {
     /** ssh.service's ExecStartPre (sshd -t) checks /etc/ssh/sshd_config and the host key; an error leaves it failed. */
     startSsh() {
         const err = this.ssh.reload();
-        if (!err)
-            return true;
-        this.logLines('ssh', 'sshd[701]', err.split('\n'));
-        this.failStart('ssh');
-        return false;
+        this.logLines('ssh', 'sshd[701]', err ? err.split('\n') : ['Server listening on 0.0.0.0 port 22.', 'Server listening on :: port 22.']);
+        if (err)
+            this.failStart('ssh');
+        return !err;
     }
     /** nftables.service start: `nft -f /etc/nftables.conf`; an error leaves it failed. */
     startFirewall() {
-        if (this.os === 'windows')
+        if (!linuxSide(this))
             return true;
         const err = loadNftablesConf(this);
         if (!err)
@@ -49559,7 +49935,7 @@ class Server extends Host {
     }
     /** systemctl reload nftables: loads the file again; on error the running ruleset stays. */
     reloadFirewall() {
-        const err = this.os === 'windows' ? null : loadNftablesConf(this);
+        const err = linuxSide(this) ? loadNftablesConf(this) : null;
         if (err) {
             this.logLines('firewall', 'nft[655]', err.split('\n'));
             this.failReload('firewall');
@@ -50864,6 +51240,14 @@ function withHint(state, hint) {
 return { parseMissionState, withHint };
 })();
 __m["services/smb-server.js"] = (() => {
+/**
+ * smbd: answers SMB requests on TCP 445 from /etc/samba/smb.conf (read again on every request, as smbd notices a
+ * changed file) and the Samba accounts. A session is a Samba user proving their NT hash, or the guest (nobody) when
+ * anonymous or, with «map to guest = bad user», an unknown name. Every file operation runs with the permissions of
+ * that Linux account, inside the share's directory: «..» is refused and a link that leads out of it is denied.
+ * Windows serves the shares of its SMB panel instead (smb-windows.ts), with the same file operations.
+ */
+const { winShareActive } = __m["net/win-shares.js"];
 const { FsError, canAccess } = __m["bash/vfs.js"];
 const { hostFs } = __m["devices/host-fs.js"];
 const { DEFAULT_SMB_CONF, SMB_CONF, findShare, parseSmbConf, serverComment } = __m["services/smb-conf.js"];
@@ -51032,7 +51416,8 @@ function answer(host, r) {
     const fs = hostFs(host);
     if (!fs)
         return fail('NT_STATUS_UNSUCCESSFUL');
-    if (host.os === 'windows') {
+    // Windows' own server while its sharing is on; else smbd (servesSmb in netbios.ts lets nothing else in).
+    if (winShareActive(host)) {
         if (r.req.op === 'shares')
             return windowsShareList(host);
         const tree = windowsTree(host, fs, r.share);
@@ -57099,6 +57484,7 @@ const { h, page } = __m["web/html.js"];
 const { ABOUT } = __m["docs/about-data.js"];
 const { appAvailable, labViewOf } = __m["net/device-apps.js"];
 const { hostPanels, linuxSide } = __m["net/pkg-units.js"];
+const { winShareOffered } = __m["net/win-shares.js"];
 /** Name of a page or area in the current language. */
 const pageLabel = (id) => tDynamic(`wa.page.${id}`);
 const tabLabel = (id) => tDynamic(`wa.tab.${id}`);
@@ -57107,28 +57493,40 @@ const PAGES = [
     { id: 'setup', tab: 'setup' },
     { id: 'ssh', tab: 'services' }, { id: 'dhcp', tab: 'services' }, { id: 'dns', tab: 'services' },
     { id: 'web', tab: 'services' }, { id: 'mail', tab: 'services' }, { id: 'samba', tab: 'services' },
-    { id: 'routing', tab: 'security' }, { id: 'firewall', tab: 'security' }, { id: 'vpn', tab: 'security' },
-    { id: 'admin', tab: 'admin' },
+    { id: 'mdns', tab: 'services' }, { id: 'winbind', tab: 'services' }, { id: 'winshare', tab: 'services' },
+    { id: 'routing', tab: 'security' }, { id: 'firewall', tab: 'security' }, { id: 'sysctl', tab: 'security' }, { id: 'vpn', tab: 'security' },
+    { id: 'admin', tab: 'admin' }, { id: 'packages', tab: 'admin' },
     { id: 'status', tab: 'status' }, { id: 'files', tab: 'status' }, { id: 'log', tab: 'status' },
 ];
 /** The device switch behind each page (Configuración, Administración and Estado are always there). */
 const PAGE_FEATURE = {
-    ssh: 'ssh', dhcp: 'dhcp', dns: 'dns', web: 'http', mail: 'mail', routing: 'firewall', firewall: 'firewall', vpn: 'vpn', files: 'files', log: 'log',
+    ssh: 'ssh', dhcp: 'dhcp', dns: 'dns', web: 'http', mail: 'mail', routing: 'firewall', firewall: 'firewall', vpn: 'vpn', files: 'files', log: 'log', sysctl: 'sysctl',
 };
 /** Switched off in the device (its Configuración tab) or in its lab; Samba, without samba or when the lab forbids it. */
 function pageOff(server, id) {
-    if (id === 'samba')
-        return !hostPanels(server).includes('samba');
+    // Its page turns the sharing on, so it is there while Windows offers it.
+    if (id === 'winshare')
+        return !winShareOffered(server);
+    if (PANEL_PAGES.includes(id))
+        return !hostPanels(server).includes(id);
     const feature = PAGE_FEATURE[id];
     return feature !== undefined && !appAvailable(server, feature);
 }
+/** Pages that follow a panel of the Servicios tab (its package installed). */
+const PANEL_PAGES = ['samba', 'mdns', 'winbind'];
+/** Pages of GNU/Linux itself: there only with its terminal. */
+const LINUX_PAGES = ['files', 'samba', 'mdns', 'winbind', 'firewall', 'sysctl', 'packages'];
+/** Pages of the GNU/Linux router alone. */
+const ROUTER_PAGES = ['routing', 'vpn'];
 /**
- * Pages of a device: Security (firewall, routes, VPN) only on a GNU/Linux router; Ficheros and Samba only with a
- * GNU/Linux terminal; those switched off are left out when the lab says so (else they are shown greyed).
+ * Pages of a device, as its window has them: routes and VPN only on a GNU/Linux router; what belongs to GNU/Linux
+ * (files, firewall, kernel parameters, packages, Samba, mDNS, winbind) only with its terminal; Windows sharing only
+ * where Windows offers it; those switched off are left out when the lab says so (else they are shown greyed).
  */
 function pagesOf(server) {
     const hide = labViewOf(server).webHideOff;
-    return PAGES.filter((p) => (p.tab !== 'security' || server.kind === 'linuxrouter') && ((p.id !== 'files' && p.id !== 'samba') || linuxSide(server)) && !(hide && pageOff(server, p.id)));
+    return PAGES.filter((p) => (!ROUTER_PAGES.includes(p.id) || server.kind === 'linuxrouter') && (!LINUX_PAGES.includes(p.id) || linuxSide(server))
+        && (p.id !== 'winshare' || winShareOffered(server)) && !(hide && pageOff(server, p.id)));
 }
 /** A card: title, help line and its content. */
 function section(title, help, ...body) {
@@ -57183,9 +57581,10 @@ __m["services/ssh-auth-settings.js"] = (() => {
 const { t } = __m["i18n/t.js"];
 const { hostFs } = __m["devices/host-fs.js"];
 const { parseSshdConfig, setDirective, SSHD_CONFIG, DEFAULT_SSHD } = __m["services/sshd-config.js"];
+const { serviceSystem } = __m["net/device-apps.js"];
 /** What /etc/ssh/sshd_config says now (null when the file cannot be parsed or the server is not Ubuntu). */
 function sshAuthMethods(server) {
-    const fs = server.os === 'linux' ? hostFs(server) : undefined;
+    const fs = serviceSystem(server) === 'linux' ? hostFs(server) : undefined;
     if (!fs)
         return null;
     const parsed = parseSshdConfig({
@@ -57200,7 +57599,7 @@ const yesNo = (on) => (on ? 'yes' : 'no');
  * when a file of sshd_config.d overrides the main file), or null.
  */
 function setSshAuthMethods(server, want) {
-    const fs = server.os === 'linux' ? hostFs(server) : undefined;
+    const fs = serviceSystem(server) === 'linux' ? hostFs(server) : undefined;
     if (!fs)
         return t('sshv.ubuntu');
     if (!want.password && !want.pubkey)
@@ -57219,6 +57618,18 @@ function setSshAuthMethods(server, want) {
 }
 
 return { sshAuthMethods, setSshAuthMethods };
+})();
+__m["services/installed-units.js"] = (() => {
+const { appAvailable } = __m["net/device-apps.js"];
+const { logUnits } = __m["services/units.js"];
+/** The box of each unit (smtp and mailbox are the mail box). */
+const FEATURE = { smtp: 'mail', mailbox: 'mail' };
+/** A stopped service stays listed (its journal says why it stopped), as on a real system. */
+function installedLogUnits(d) {
+    return logUnits(d.kind).filter((u) => appAvailable(d, FEATURE[u.id] ?? u.id));
+}
+
+return { installedLogUnits };
 })();
 __m["services/dhcp-reservations.js"] = (() => {
 /** DHCP reservations of a Server (by MAC or by client-identifier): shared by its window and its web GUI. */
@@ -57491,7 +57902,8 @@ const { sshAuthMethods } = __m["services/ssh-auth-settings.js"];
 const { h } = __m["web/html.js"];
 const { cards, section, row, text, check, choose, form, buttons } = __m["web/admin-layout.js"];
 const { formatIp, formatMask } = __m["core/ip.js"];
-const { UNITS, unitActive } = __m["services/units.js"];
+const { unitActive } = __m["services/units.js"];
+const { installedLogUnits } = __m["services/installed-units.js"];
 const { idKinds, identifierText } = __m["services/dhcp-reservations.js"];
 const { formatMacCisco, formatHexId } = __m["core/mac.js"];
 const { listenForm } = __m["web/admin-listen.js"];
@@ -57568,7 +57980,7 @@ function statusPage(server) {
     const c = server.config;
     const leases = server.dhcpEngine.allBindings(server.clock.now()).map((b) => [formatIp(b.ip), b.mac.match(/../g)?.join(':') ?? b.mac, b.hostname ?? '', b.type]);
     return h('table', {}, section(t('wa.device'), t('wa.deviceHelp'), table([t('wa.field'), t('wa.value')], [[t('wa.name'), server.name], [t('wa.system'), server.os === 'windows' ? 'Windows Server' : 'Ubuntu 26.04 LTS'], ['MAC', server.mac.match(/../g)?.join(':') ?? ''],
-        [t('wa.ip'), ip(c.ip)], [t('wa.maskShort'), c.prefix !== undefined ? formatMask(c.prefix) : ''], [t('wa.gateway'), ip(c.gateway)], ['DNS', ip(c.dns)], [t('wa.mode'), c.mode === 'dhcp' ? 'DHCP' : t('wa.static')]], '')), section(t('wa.services'), t('wa.servicesHelp'), table([t('wa.service'), t('wa.state')], UNITS.map((u) => [u.linux, unitActive(server.services, u.id) ? t('wa.active') : t('wa.stopped')]), '')), section(t('wa.dhcpLeases'), t('wa.dhcpLeasesHelp'), table(['IP', 'MAC', t('wa.name'), t('wa.type')], leases, t('wa.noDhcpLeases'))));
+        [t('wa.ip'), ip(c.ip)], [t('wa.maskShort'), c.prefix !== undefined ? formatMask(c.prefix) : ''], [t('wa.gateway'), ip(c.gateway)], ['DNS', ip(c.dns)], [t('wa.mode'), c.mode === 'dhcp' ? 'DHCP' : t('wa.static')]], '')), section(t('wa.services'), t('wa.servicesHelp'), table([t('wa.service'), t('wa.state')], installedLogUnits(server).map((u) => [u.linux, unitActive(server.services, u.id) ? t('wa.active') : t('wa.stopped')]), '')), section(t('wa.dhcpLeases'), t('wa.dhcpLeasesHelp'), table(['IP', 'MAC', t('wa.name'), t('wa.type')], leases, t('wa.noDhcpLeases'))));
 }
 function logPage(server) {
     const lines = server.logs.slice(-40).map((l) => `${new Date(l.time).toISOString().slice(11, 19)} ${l.unit}: ${l.line}`);
@@ -57674,6 +58086,7 @@ __m["web/admin-firewall.js"] = (() => {
  * "Seguridad" tab of the management GUI (WRT300N style): nftables firewall (tables, chains, rules,
  * templates) and routing (ip_forward, sysctl, static routes). Same editing code as the Services tab.
  */
+const { linuxSide } = __m["net/pkg-units.js"];
 const { t } = __m["i18n/t.js"];
 const { ruleText } = __m["net/nft/format.js"];
 const { runNft } = __m["net/nft/apply.js"];
@@ -57711,7 +58124,7 @@ function ruleForm(server, base) {
     return form(base, 'firewall', 'fw-rule-add', cards(section(t('fwa.newRule'), t('fwa.newRuleHelp'), row(t('fwa.chain'), choose('target', chains[0]?.[0] ?? '', chains)), row(t('fwa.action'), choose('ruleAction', 'accept', ['accept', 'drop', 'reject', 'masquerade', 'snat', 'dnat'].map((a) => [a, a]))), row(t('fwa.iif'), text('iif', '', { placeholder: 'eth1' })), row(t('fwa.oif'), text('oif', '', { placeholder: 'eth0' })), row(t('fwa.saddr'), text('saddr', '', { placeholder: '192.168.1.0/24' })), row(t('fwa.daddr'), text('daddr', '')), row(t('fwa.proto'), choose('proto', '', [['', t('fwa.any')], ['tcp', 'tcp'], ['udp', 'udp'], ['icmp', 'icmp']])), row(t('fwa.dport'), text('dport', '', { placeholder: '22' })), row(t('fwa.to'), text('to', '', { placeholder: '172.16.0.80:80' })), row(t('fwa.log'), text('log', '')), row(t('fwa.comment'), text('comment', '')), check('ct_new', false, 'new'), check('ct_established', false, 'established'), check('ct_related', false, 'related'), check('ct_invalid', false, 'invalid'), check('counter', true, t('fwa.counter')), check('top', false, t('fwa.top')))), buttons());
 }
 function firewallPage(server, base) {
-    if (server.os !== 'linux')
+    if (!linuxSide(server))
         return h('p', { class: 'web-adm-muted' }, t('fwa.ubuntuOnly'));
     const st = firewallStatus(server);
     const rs = server.kernel.netfilter.ruleset;
@@ -57727,7 +58140,7 @@ function firewallPage(server, base) {
     ];
 }
 function routingPage(server, base) {
-    if (server.os !== 'linux')
+    if (!linuxSide(server))
         return h('p', { class: 'web-adm-muted' }, t('fwa.onlyUbuntu'));
     const sysctl = server.kernel.sysctl;
     const keys = SYSCTL_KEYS.filter((k) => k.effect || k.name.startsWith('net.ipv4.conf.all'));
@@ -58421,6 +58834,255 @@ function sambaAction(server, f) {
 
 return { sambaPage, sambaAction };
 })();
+__m["shells/link-services.js"] = (() => {
+const { hostSystem } = __m["shells/host-system.js"];
+const { startPkgUnit, stopPkgUnit } = __m["shells/pkg-service.js"];
+const { findPkgUnit, setPkgUnitState, unitRunning } = __m["net/pkg-units.js"];
+const { AVAHI_CONF, DEFAULT_AVAHI_CONF, parseAvahiConf, validAvahiName, withAvahiSettings } = __m["shells/avahi-conf.js"];
+const { DEFAULT_NSSWITCH, NSSWITCH, hostsSources, withWins } = __m["shells/nsswitch.js"];
+const read = (host, path, fallback) => {
+    try {
+        return hostSystem(host).fs.readFile(path);
+    }
+    catch {
+        return fallback;
+    }
+};
+/** Starts (and enables) or stops (and disables) a package's unit; false when it is not installed. */
+function setUnitRunning(host, name, on) {
+    const u = findPkgUnit(host, name);
+    if (!u)
+        return false;
+    setPkgUnitState(host, u, { enabled: on });
+    if (on)
+        startPkgUnit(host, u);
+    else
+        stopPkgUnit(host, u);
+    host.notifyChange();
+    return true;
+}
+const unitOn = (host, name) => unitRunning(host, name);
+/** What avahi-daemon.conf says now (what the daemon uses after its next start). */
+function avahiSettings(host) {
+    return parseAvahiConf(read(host, AVAHI_CONF, DEFAULT_AVAHI_CONF));
+}
+/** Writes the settings and restarts avahi-daemon if it runs; false for a name avahi would not take. */
+function setAvahiSettings(host, c) {
+    const hostName = c.hostName.trim();
+    if (!validAvahiName(hostName))
+        return false;
+    hostSystem(host).fs.writeFile(AVAHI_CONF, withAvahiSettings(read(host, AVAHI_CONF, DEFAULT_AVAHI_CONF), { hostName, publish: c.publish }));
+    // systemctl restart: the daemon reads the file again; whether it is enabled does not change.
+    const u = findPkgUnit(host, 'avahi-daemon');
+    if (u && unitRunning(host, 'avahi-daemon')) {
+        stopPkgUnit(host, u);
+        startPkgUnit(host, u);
+    }
+    host.notifyChange();
+    return true;
+}
+/** «wins» is a source of «hosts:» in nsswitch.conf. */
+function winsLookupOn(host) {
+    return hostsSources(host).some((s) => s.source === 'wins');
+}
+function setWinsLookup(host, on) {
+    hostSystem(host).fs.writeFile(NSSWITCH, withWins(read(host, NSSWITCH, DEFAULT_NSSWITCH), on));
+    host.notifyChange();
+}
+
+return { setUnitRunning, unitOn, avahiSettings, setAvahiSettings, winsLookupOn, setWinsLookup };
+})();
+__m["shells/apt-install.js"] = (() => {
+const { findPackage } = __m["shells/apt-catalog.js"];
+const { installedPackage } = __m["shells/apt-state.js"];
+const { commitInstall, commitRemove, toFetch } = __m["shells/apt-core.js"];
+const { hostSystem } = __m["shells/host-system.js"];
+const { labHasPackage } = __m["net/lab-packages.js"];
+/** Installs (on) or removes (off) a catalogue package as apt would: whether anything changed. */
+function setAptInstalled(host, name, on) {
+    const p = findPackage(name);
+    // Nothing to install from an archive the lab took the package away from (removing it is still possible).
+    if (!p || installedPackage(host, p) === on || (on && !labHasPackage(host, name)))
+        return false;
+    const fs = hostSystem(host).fs;
+    if (on)
+        commitInstall(fs, host, [p], toFetch(host, [p]).map(({ pkg }) => pkg));
+    else
+        commitRemove(fs, host, [p]);
+    host.notifyChange();
+    return true;
+}
+
+return { setAptInstalled };
+})();
+__m["shells/apt-offer.js"] = (() => {
+const { APPS_BY_KIND, deviceApps, sambaAllowed, setDeviceApps } = __m["net/device-apps.js"];
+const { installedPackage } = __m["shells/apt-state.js"];
+const { setAptInstalled } = __m["shells/apt-install.js"];
+const { SERVICE_PACKAGES, TOOL_PACKAGES, labHasPackage } = __m["net/lab-packages.js"];
+const { PKG_UNITS, linuxSide, sambaOffered } = __m["net/pkg-units.js"];
+const { runsServices } = __m["devices/kinds.js"];
+const { findPackage } = __m["shells/apt-catalog.js"];
+/** The catalogue packages of a service box (the mail box has three: postfix, dovecot-imapd, dovecot-pop3d). */
+function servicePackages(id) {
+    return SERVICE_PACKAGES.filter((name) => findPackage(name)?.feature === id);
+}
+function serviceOffered(d, id) {
+    // Without a GNU/Linux terminal there is no apt: the box is the only way, as before.
+    if (!linuxSide(d) || deviceApps(d).includes(id))
+        return true;
+    const pkgs = servicePackages(id);
+    return pkgs.length === 0 || pkgs.some((name) => labHasPackage(d, name));
+}
+/**
+ * A service box ticked or unticked: on a GNU/Linux device it is apt install / apt remove of its packages (so the
+ * package boxes, Servicios, the web GUI and apt agree); a box without packages, or a device without apt, only shows
+ * or hides the panel.
+ */
+function setServiceBox(h, id, on) {
+    // Only a Server's or router's service boxes (a PC's SSH box is its client, not openssh-server).
+    const pkgs = linuxSide(h) && runsServices(h.kind) ? servicePackages(id) : [];
+    if (pkgs.length)
+        for (const name of pkgs)
+            setAptInstalled(h, name, on);
+    if (deviceApps(h).includes(id) === on)
+        return;
+    const rest = deviceApps(h).filter((x) => x !== id);
+    setDeviceApps(h, on ? [...rest, id] : rest);
+}
+/** A service package that does something on this device: a panel of it, or units it runs (nftables and samba on a PC). */
+function effective(h, name) {
+    if (name === 'samba')
+        return sambaOffered(h);
+    const feature = findPackage(name)?.feature;
+    if (feature !== undefined && runsServices(h.kind) && APPS_BY_KIND[h.kind].includes(feature))
+        return true;
+    return PKG_UNITS.some((u) => u.pkg === name && !(u.pcOnly && runsServices(h.kind)));
+}
+/** The device's catalogue that its lab keeps, or that it has installed (so it can be removed), with apt's state. */
+function listedPackages(h) {
+    const installed = (name) => { const p = findPackage(name); return p !== undefined && installedPackage(h, p); };
+    return devicePackages(h)
+        .filter((name) => installed(name) || (labHasPackage(h, name) && (name !== 'samba' || sambaAllowed(h))))
+        .map((name) => ({ name, installed: installed(name), service: SERVICE_PACKAGES.includes(name) }));
+}
+/** The catalogue of the device's Configuración tab (a GNU/Linux terminal only): its service packages, then the tools. */
+function devicePackages(h) {
+    if (!linuxSide(h))
+        return [];
+    return [...SERVICE_PACKAGES.filter((name) => effective(h, name)), ...TOOL_PACKAGES];
+}
+
+return { servicePackages, serviceOffered, setServiceBox, listedPackages, devicePackages };
+})();
+__m["web/admin-extra.js"] = (() => {
+/**
+ * The pages of the management GUI that mirror the rest of the device's window: Parámetros del kernel (Seguridad),
+ * mDNS, winbind and the Windows SMB shares (Servicios) and the apt catalogue of its Configuración tab (Administración).
+ * Each form does what the matching panel or box does (shells/link-services.ts, kernel-save.ts, apt-install.ts,
+ * services/smb-windows.ts); share names and remarks are the user's and reach the page only through `h` (escaped).
+ */
+const { t } = __m["i18n/t.js"];
+const { h } = __m["web/html.js"];
+const { buttons, cards, check, choose, form, row, section, text } = __m["web/admin-layout.js"];
+const { table } = __m["web/admin-pages.js"];
+const { SYSCTL_KEYS } = __m["net/sysctl.js"];
+const { saveSysctl } = __m["shells/kernel-save.js"];
+const { hasPackage } = __m["net/host-packages.js"];
+const { avahiSettings, setAvahiSettings, setUnitRunning, setWinsLookup, unitOn, winsLookupOn } = __m["shells/link-services.js"];
+const { listedPackages } = __m["shells/apt-offer.js"];
+const { setAptInstalled } = __m["shells/apt-install.js"];
+const { setWinShareOn, winShareOn, winShares } = __m["net/win-shares.js"];
+const { PUBLISH_ERRORS, publishWinShare, unpublishWinShare } = __m["services/smb-windows.js"];
+const on = (f, k) => f.get(k) === '1';
+const saved = () => ({ ok: t('wa.saved') });
+/** A one-button form on a row of a table (what it acts on, hidden). */
+function rowButton(base, page, action, fields, label) {
+    return form(base, page, action, Object.entries(fields).map(([name, value]) => h('input', { type: 'hidden', name, value })), h('button', { type: 'submit', class: 'web-adm-small' }, label));
+}
+function sysctlPage(server, base) {
+    const rows = [...SYSCTL_KEYS].sort((a, b) => Number(b.effect) - Number(a.effect) || a.name.localeCompare(b.name)).map((k) => {
+        const current = server.kernel.sysctl.get(k.name) ?? '';
+        const control = Array.isArray(k.accepts) ? choose('value', current, k.accepts.map((v) => [v, v])) : text('value', current);
+        return [h('span', { class: 'web-adm-mono' }, k.name), k.effect ? t('sysctl.yes') : t('sysctl.no'),
+            form(base, 'sysctl', 'sysctl', h('input', { type: 'hidden', name: 'key', value: k.name }), control, h('button', { type: 'submit', class: 'web-adm-small' }, t('sysctl.apply')))];
+    });
+    return cards(section(t('sysctl.tab'), t('sysctl.intro'), table([t('sysctl.key'), t('sysctl.effect'), t('sysctl.value')], rows, '')));
+}
+function mdnsPage(server, base) {
+    const conf = avahiSettings(server);
+    return form(base, 'mdns', 'mdns', cards(section(t('mdns.tab'), t('mdns.intro'), check('enabled', unitOn(server, 'avahi-daemon'), t('mdns.service'))), section(t('mdns.name'), t('mdns.hint'), row(t('mdns.name'), text('hostName', conf.hostName, { placeholder: server.runtimeName().toLowerCase() })), check('publish', conf.publish, t('mdns.publish')))), buttons());
+}
+function winbindPage(server, base) {
+    const nss = hasPackage(server, 'libnss-winbind');
+    return form(base, 'winbind', 'winbind', cards(section(t('wbd.tab'), t('wbd.intro'), check('enabled', unitOn(server, 'winbind'), t('wbd.service')), check('wins', winsLookupOn(server), t('wbd.wins'), !nss), h('p', { class: 'web-adm-muted' }, nss ? t('wbd.winsHint') : t('wbd.noNss')))), buttons());
+}
+function winSharePage(server, base) {
+    const rows = winShares(server).map((s) => [h('span', { class: 'web-adm-mono' }, s.name), h('span', { class: 'web-adm-mono' }, s.path), s.remark,
+        t(s.access === 'full' ? 'wsh.full' : 'wsh.read'), rowButton(base, 'winshare', 'wsh-del', { name: s.name }, t('wa.remove'))]);
+    return [
+        form(base, 'winshare', 'wsh-service', cards(section(t('dev.winshare'), t('wsh.intro'), check('enabled', winShareOn(server), t('wa.enabled')))), buttons()),
+        cards(section(t('smb.shares'), '', table([t('smb.share'), t('smb.path'), t('smb.comment'), t('wsh.permission'), ''], rows, t('smb.noShares')))),
+        form(base, 'winshare', 'wsh-add', cards(section(t('smb.addShare'), t('wsh.hint'), row(t('smb.share'), text('name', '', { placeholder: 'docs' })), row(t('smb.path'), text('path', '', { placeholder: 'C:\\home\\alumno\\docs' })), row(t('smb.comment'), text('remark', '')), row(t('wsh.permission'), choose('access', 'read', [['read', t('wsh.read')], ['full', t('wsh.full')]])))), buttons(t('smb.add'))),
+    ];
+}
+function packageRows(base, list) {
+    return list.map((p) => [h('span', { class: 'web-adm-mono' }, p.name), p.installed ? t('wa.pkgInstalled') : t('wa.pkgAbsent'),
+        rowButton(base, 'packages', 'pkg', { name: p.name, on: p.installed ? '0' : '1' }, p.installed ? t('wa.pkgRemove') : t('wa.pkgInstall'))]);
+}
+function packagesPage(server, base) {
+    const list = listedPackages(server);
+    const head = [t('wa.pkgName'), t('wa.state'), ''];
+    return cards(section(t('dev.svcPackages'), t('wa.pkgHelp'), table(head, packageRows(base, list.filter((p) => p.service)), t('wa.empty'))), section(t('dev.packages'), '', table(head, packageRows(base, list.filter((p) => !p.service)), t('wa.empty'))));
+}
+function shareAction(server, f, action) {
+    if (action === 'wsh-service') {
+        setWinShareOn(server, on(f, 'enabled'));
+        return saved();
+    }
+    if (action === 'wsh-del')
+        return unpublishWinShare(server, f.get('name') ?? '') ? saved() : { error: t('wa.noShare') };
+    const err = publishWinShare(server, { name: (f.get('name') ?? '').trim(), path: (f.get('path') ?? '').trim(), remark: f.get('remark') ?? '', access: f.get('access') === 'full' ? 'full' : 'read' });
+    return err ? { error: t(PUBLISH_ERRORS[err]) } : saved();
+}
+/** The forms of these pages; null for an action of another page. */
+function extraAction(server, pageId, f) {
+    const action = f.get('action') ?? '';
+    if (pageId === 'sysctl' && action === 'sysctl') {
+        const value = (f.get('value') ?? '').trim();
+        // One line of 99-netfix.conf: a value with a line break would add lines of its own.
+        if (/[\r\n]/.test(value))
+            return { error: t('wa.badValue') };
+        const err = saveSysctl(server, f.get('key') ?? '', value);
+        return err ? { error: err } : saved();
+    }
+    if (pageId === 'mdns' && action === 'mdns') {
+        if (!setAvahiSettings(server, { hostName: f.get('hostName') ?? '', publish: on(f, 'publish') }))
+            return { error: t('mdns.badName') };
+        setUnitRunning(server, 'avahi-daemon', on(f, 'enabled'));
+        return saved();
+    }
+    if (pageId === 'winbind' && action === 'winbind') {
+        setUnitRunning(server, 'winbind', on(f, 'enabled'));
+        if (hasPackage(server, 'libnss-winbind'))
+            setWinsLookup(server, on(f, 'wins'));
+        return saved();
+    }
+    if (pageId === 'winshare' && action.startsWith('wsh-'))
+        return shareAction(server, f, action);
+    if (pageId === 'packages' && action === 'pkg') {
+        const name = f.get('name') ?? '';
+        // Only what the page lists: the device's catalogue that its lab keeps (or that it has installed).
+        if (!listedPackages(server).some((p) => p.name === name))
+            return { error: t('wa.unknownAction') };
+        setAptInstalled(server, name, on(f, 'on'));
+        return saved();
+    }
+    return null;
+}
+
+return { sysctlPage, mdnsPage, winbindPage, winSharePage, packagesPage, extraAction };
+})();
 __m["services/dns-recursion.js"] = (() => {
 const { parseIp, formatIp } = __m["core/ip.js"];
 const { t } = __m["i18n/t.js"];
@@ -58781,6 +59443,8 @@ const { rpzAction } = __m["web/admin-rpz.js"];
 const { securityAction } = __m["web/admin-firewall-actions.js"];
 const { vpnAction } = __m["web/admin-vpn.js"];
 const { sambaAction } = __m["web/admin-samba.js"];
+const { extraAction } = __m["web/admin-extra.js"];
+const { linuxSide } = __m["net/pkg-units.js"];
 const { parseIp, parseMask } = __m["core/ip.js"];
 const { validatePool } = __m["services/dhcp-pt.js"];
 const { readIdentifier, reserveLease, setReservations } = __m["services/dhcp-reservations.js"];
@@ -58895,8 +59559,25 @@ function ssh(server, f) {
     if (f.has('auth') && !want.password && !want.pubkey)
         return { error: t('wa.err.auth') };
     const saved = set(server, (s) => ({ ...s, ssh: { ...s.ssh, enabled: on(f, 'enabled') } }));
-    const err = server.os === 'linux' && f.has('auth') ? setSshAuthMethods(server, want) : null;
+    const err = linuxSide(server) && f.has('auth') ? setSshAuthMethods(server, want) : null;
     return err ? { error: err } : saved;
+}
+/** The page each generic action belongs to: sent from another page, it runs nothing. */
+const ACTION_PAGES = {
+    setup: ['setup'], dhcp: ['dhcp'], 'dhcp-listen': ['dhcp'], 'dns-listen': ['dns'], 'dns-rpz': ['dns'], 'dns-rpz-initial': ['dns'],
+    'pool-add': ['dhcp'], 'pool-del': ['dhcp'], 'res-add': ['dhcp'], 'res-del': ['dhcp'], 'lease-reserve': ['dhcp'],
+    web: ['web'], mail: ['mail'], ssh: ['ssh'], 'user-add': ['ssh', 'mail'], 'user-del': ['ssh', 'mail'], admin: ['admin'],
+};
+/** Seguridad: the firewall's actions from its page (a Server's only page there), routes and forwarding from Enrutamiento. */
+function securityFrom(server, pageId, f) {
+    const action = f.get('action') ?? '';
+    if (pageId === 'firewall')
+        return action.startsWith('fw-') ? securityAction(server, f) : null;
+    if (pageId === 'routing' && server.kind === 'linuxrouter')
+        return action.startsWith('fw-') ? null : securityAction(server, f);
+    if (pageId === 'vpn' && server.kind === 'linuxrouter')
+        return vpnAction(server, f);
+    return null;
 }
 /** Runs a form action of a page. */
 function runAction(server, pageId, f) {
@@ -58907,6 +59588,12 @@ function runAction(server, pageId, f) {
     const samba = pageId === 'samba' ? sambaAction(server, f) : null;
     if (samba)
         return samba;
+    const extra = extraAction(server, pageId, f);
+    if (extra)
+        return extra;
+    const pages = ACTION_PAGES[action];
+    if (pages && !pages.includes(pageId))
+        return { error: t('wa.unknownAction') };
     switch (action) {
         case 'setup': return setup(server, f);
         case 'dhcp': return set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, enabled: on(f, 'enabled') } }));
@@ -58925,8 +59612,8 @@ function runAction(server, pageId, f) {
         case 'user-add':
         case 'user-del': return users(server, pageId === 'ssh' ? 'ssh' : 'mail', f, action === 'user-add');
         case 'admin': return admin(server, f);
-        // Firewall, routes and VPN are pages of the Linux router only.
-        default: return (server.kind === 'linuxrouter' ? vpnAction(server, f) ?? securityAction(server, f) : undefined) ?? { error: t('wa.unknownAction') };
+        // Routes and VPN are pages of the Linux router only; the firewall, of a Server too.
+        default: return securityFrom(server, pageId, f) ?? { error: t('wa.unknownAction') };
     }
 }
 
@@ -59080,19 +59767,26 @@ const SERVICES = [
 ];
 /** Brought by apt install samba, on any GNU/Linux host. */
 const SAMBA = { id: 'samba', label: 'files.samba', paths: ['/etc/samba/smb.conf'] };
+/** avahi-daemon and winbind, services of their own on any kind (winbind reads smb.conf and serves nsswitch.conf). */
+const LINK = [
+    { id: 'mdns', label: 'files.mdns', paths: ['/etc/avahi/avahi-daemon.conf'] },
+    { id: 'winbind', label: 'files.winbind', paths: ['/etc/nsswitch.conf', '/etc/samba/smb.conf'] },
+];
 /**
  * The services of a device in the order of its Services tab (the kernel parameters, the router's own panels, then
  * SSH…, then Samba when it is installed). A GNU/Linux PC has the kernel parameters and what its packages bring.
  */
 function configSources(device) {
     const panels = hostPanels(device);
-    const samba = panels.includes('samba') ? [SAMBA] : [];
+    const samba = [...(panels.includes('samba') ? [SAMBA] : []), ...LINK.filter((s) => panels.includes(s.id))];
     const sysctl = appAvailable(device, 'sysctl') && linuxSide(device) ? [SYSCTL] : [];
+    // Only what is installed: a service whose box is off has no files to show.
+    const on = (s) => appAvailable(device, s.id);
     if (device.kind === 'linuxrouter')
-        return [...sysctl, ...ROUTER, ...SERVICES, ...samba];
+        return [...sysctl, ...ROUTER.filter(on), ...SERVICES.filter(on), ...samba];
     if (device.kind === 'server')
-        return [...sysctl, ...SERVICES, ...samba];
-    return [SYSCTL, ...ROUTER, SAMBA].filter((s) => panels.includes(s.id));
+        return [...sysctl, ...SERVICES.filter(on), ...samba];
+    return [SYSCTL, ...ROUTER, SAMBA, ...LINK].filter((s) => panels.includes(s.id));
 }
 /** Most files a directory can contribute (a student filling /etc/bind must not freeze the view). */
 const MAX_PER_DIR = 40;
@@ -59148,7 +59842,7 @@ function filesPage(server, base, q) {
     const sources = configSources(server);
     const current = sources.find((s) => s.id === q.get('svc')) ?? sources[0];
     if (!current)
-        return null;
+        return cards(section(t('srv.files'), t('files.hint'), t('files.nothing')));
     const tabs = sources.map((s) => h('li', { class: s.id === current.id ? 'web-adm-on' : undefined }, h('a', { href: `${base}/?page=files&svc=${s.id}` }, tDynamic(s.label))));
     const fs = hostFs(server);
     const files = fs ? configFiles(fs, current.id) : [];
@@ -59175,6 +59869,7 @@ const { firewallPage, routingPage } = __m["web/admin-firewall.js"];
 const { vpnPage } = __m["web/admin-vpn.js"];
 const { filesPage } = __m["web/admin-files.js"];
 const { sambaPage } = __m["web/admin-samba.js"];
+const { mdnsPage, packagesPage, sysctlPage, winbindPage, winSharePage } = __m["web/admin-extra.js"];
 const { formatIp } = __m["core/ip.js"];
 /** User names come from the request: no control characters in the logs. */
 const printable = (text) => text.replace(/[\x00-\x1f\x7f]/g, '?').slice(0, 64);
@@ -59191,6 +59886,11 @@ function body(server, base, id, q) {
         case 'firewall': return firewallPage(server, base);
         case 'routing': return routingPage(server, base);
         case 'vpn': return vpnPage(server, base);
+        case 'sysctl': return sysctlPage(server, base);
+        case 'mdns': return mdnsPage(server, base);
+        case 'winbind': return winbindPage(server, base);
+        case 'winshare': return winSharePage(server, base);
+        case 'packages': return packagesPage(server, base);
         case 'admin': return adminPage(server, base);
         case 'status': return statusPage(server);
         case 'log': return logPage(server);
@@ -62829,8 +63529,6 @@ function copyRow(label, value, help) {
     btn.setAttribute('aria-label', t('common.copyX', { label }));
     return el('div', { class: 'id-row' }, el('div', {}, el('span', { class: 'field-label' }, label), el('code', { class: 'id-value' }, value), el('p', { class: 'id-help' }, help)), btn);
 }
-/** Vertical sub-navigation used inside a window tab (Servicios → DHCP / DNS / …). */
-/** Side navigation of a pane; items with `keep` are drawn once and kept (an open terminal survives a visit to another item). */
 function subnav(items) {
     const content = el('div', { class: 'subnav-content' });
     const kept = new Map();
@@ -62851,7 +63549,12 @@ function subnav(items) {
     };
     if (items[0])
         show(items[0].id);
-    return el('div', { class: 'subnav' }, el('nav', { class: 'subnav-list', 'aria-label': t('win.services') }, ...buttons), content);
+    // A heading before the first entry of each group (devices with both systems).
+    const list = buttons.flatMap((b, i) => {
+        const g = items[i]?.group;
+        return g && g !== items[i - 1]?.group ? [el('span', { class: 'subnav-group' }, g), b] : [b];
+    });
+    return el('div', { class: 'subnav' }, el('nav', { class: 'subnav-list', 'aria-label': t('win.services') }, ...list), content);
 }
 /**
  * Applies a field as soon as it changes (Enter, or leaving it). The work runs once the browser has moved the focus,
@@ -63765,7 +64468,7 @@ __m["net/labs-names.js"] = (() => {
 const { newZone } = __m["services/dns-zones.js"];
 const { LABS_ES } = __m["i18n/es-ES/labs.js"];
 const { Topology } = __m["net/topology.js"];
-const { setPackageInstalled } = __m["net/host-packages.js"];
+const { setAptInstalled } = __m["shells/apt-install.js"];
 const { applyConfig } = __m["ios/session.js"];
 const { parseIp } = __m["core/ip.js"];
 const { cloud } = __m["net/labs-vpn.js"];
@@ -63819,8 +64522,7 @@ const namesLanLab = {
         }
         // LNX1 has avahi (it answers and asks .local names); LNX2 has nothing installed yet.
         const lnx1 = t.byLabel('LNX1');
-        for (const name of ['avahi-daemon', 'libnss-mdns'])
-            setPackageInstalled(lnx1, name, true);
+        setAptInstalled(lnx1, 'avahi-daemon', true);
         t.settle();
         return t;
     },
@@ -63881,29 +64583,6 @@ const namesNetsLab = {
 };
 
 return { namesLanLab, namesNetsLab };
-})();
-__m["shells/apt-install.js"] = (() => {
-const { findPackage } = __m["shells/apt-catalog.js"];
-const { installedPackage } = __m["shells/apt-state.js"];
-const { commitInstall, commitRemove, toFetch } = __m["shells/apt-core.js"];
-const { hostSystem } = __m["shells/host-system.js"];
-const { labHasPackage } = __m["net/lab-packages.js"];
-/** Installs (on) or removes (off) a catalogue package as apt would: whether anything changed. */
-function setAptInstalled(host, name, on) {
-    const p = findPackage(name);
-    // Nothing to install from an archive the lab took the package away from (removing it is still possible).
-    if (!p || installedPackage(host, p) === on || (on && !labHasPackage(host, name)))
-        return false;
-    const fs = hostSystem(host).fs;
-    if (on)
-        commitInstall(fs, host, [p], toFetch(host, [p]).map(({ pkg }) => pkg));
-    else
-        commitRemove(fs, host, [p]);
-    host.notifyChange();
-    return true;
-}
-
-return { setAptInstalled };
 })();
 __m["shells/samba-install.js"] = (() => {
 const { sambaAllowed } = __m["net/device-apps.js"];
@@ -67559,6 +68238,7 @@ const { saveSysctl } = __m["shells/kernel-save.js"];
 const { SYSCTL_KEYS } = __m["net/sysctl.js"];
 const { chainForm, ruleForm, tableForm } = __m["ui/firewall-forms.js"];
 const { t } = __m["i18n/t.js"];
+const { linuxSide } = __m["net/pkg-units.js"];
 function header(s, app, fail) {
     const st = firewallStatus(s);
     const tpl = select([['', t('fw.tpl.none')], ['hardening', t('fw.tpl.hardening')], ['router', t('fw.tpl.router')], ['open', t('fw.tpl.open')]], '');
@@ -67610,7 +68290,7 @@ function firewallPanel(s, app) {
     // Outside the redraw: an action that changes the device redraws the panel before reporting.
     const msg = message();
     return liveHostPanel(s, () => {
-        if (s.os !== 'linux' && s.kind !== 'pc')
+        if (!linuxSide(s) && s.kind !== 'pc')
             return [el('p', { class: 'muted' }, t('fw.notLinux'))];
         const fail = (m) => msg.error(m);
         const commit = (command) => {
@@ -68286,6 +68966,9 @@ function filesPanel(server, first = 'ssh') {
     const sources = configSources(server);
     let selected = sources.some((s) => s.id === first) ? first : sources[0]?.id ?? 'ssh';
     return livePanel((refresh) => {
+        // Nothing installed with files to show: no list, and no other service's files.
+        if (!sources.some((s) => s.id === selected))
+            return [el('p', { class: 'muted' }, t('files.nothing'))];
         const pick = select(sources.map((s) => [s.id, tDynamic(s.label)]), selected);
         pick.addEventListener('change', () => { selected = pick.value; refresh(); });
         const fs = hostFs(server);
@@ -68413,6 +69096,76 @@ function sambaPanel(host, app) {
 
 return { sambaPanel };
 })();
+__m["ui/link-panels.js"] = (() => {
+/**
+ * Servicios → mDNS (avahi-daemon) and Servicios → winbind of a GNU/Linux device with those packages: the daemon on or
+ * off, and what each one is configured with (the name avahi publishes and whether it publishes; «wins» in
+ * /etc/nsswitch.conf). Done as root would do it (shells/link-services.ts); the files are in Configuración.
+ */
+const { t } = __m["i18n/t.js"];
+const { el } = __m["ui/dom.js"];
+const { button, field, input, message, onOff } = __m["ui/forms.js"];
+const { liveHostPanel } = __m["ui/live.js"];
+const { hasPackage } = __m["net/host-packages.js"];
+const { avahiConfig } = __m["net/avahi.js"];
+const { avahiSettings, setAvahiSettings, setUnitRunning, setWinsLookup, unitOn, winsLookupOn } = __m["shells/link-services.js"];
+function mdnsPanel(host, app) {
+    const msg = message();
+    return liveHostPanel(host, () => {
+        const running = unitOn(host, 'avahi-daemon');
+        const conf = avahiSettings(host);
+        const name = input({ value: conf.hostName, placeholder: host.runtimeName().toLowerCase(), 'aria-label': t('mdns.name') });
+        const publish = el('input', { type: 'checkbox', checked: conf.publish });
+        const apply = () => {
+            if (!setAvahiSettings(host, { hostName: name.value, publish: publish.checked }))
+                return msg.error(t('mdns.badName'));
+            msg.ok(t('mdns.applied'));
+            app.afterCommand();
+        };
+        const live = avahiConfig(host);
+        const now = !running ? t('mdns.stopped') : live.publish ? t('mdns.publishing', { name: `${live.hostName || host.runtimeName().toLowerCase()}.local` }) : t('mdns.silent');
+        return [
+            onOff(t('mdns.service'), running, (on) => { setUnitRunning(host, 'avahi-daemon', on); app.afterCommand(); }),
+            el('p', { class: 'muted' }, t('mdns.intro')),
+            el('p', {}, now),
+            msg.el,
+            el('div', { class: 'inline-form' }, field(t('mdns.name'), name)),
+            el('label', { class: 'check' }, publish, ` ${t('mdns.publish')}`),
+            el('div', { class: 'actions' }, button(t('mdns.apply'), apply)),
+            el('p', { class: 'muted' }, t('mdns.hint')),
+        ];
+    });
+}
+function winbindPanel(host, app) {
+    return liveHostPanel(host, () => {
+        const nss = hasPackage(host, 'libnss-winbind');
+        const wins = el('input', { type: 'checkbox', checked: winsLookupOn(host), disabled: !nss });
+        wins.addEventListener('change', () => { setWinsLookup(host, wins.checked); app.afterCommand(); });
+        return [
+            onOff(t('wbd.service'), unitOn(host, 'winbind'), (on) => { setUnitRunning(host, 'winbind', on); app.afterCommand(); }),
+            el('p', { class: 'muted' }, t('wbd.intro')),
+            el('label', { class: 'check' }, wins, ` ${t('wbd.wins')}`),
+            el('p', { class: 'muted' }, nss ? t('wbd.winsHint') : t('wbd.noNss')),
+        ];
+    });
+}
+
+return { mdnsPanel, winbindPanel };
+})();
+__m["ui/system-subnav.js"] = (() => {
+/** The Servicios list of a device with both systems: its panels under a GNU/Linux heading and a Windows one. */
+const { subnav } = __m["ui/forms.js"];
+const { panelGroups } = __m["net/pkg-units.js"];
+const SYSTEM_NAME = { linux: 'GNU/Linux', windows: 'Windows' };
+function systemSubnav(d, items) {
+    const groups = panelGroups(d, items.map((i) => i.id));
+    if (!groups)
+        return subnav(items);
+    return subnav(groups.flatMap(([os, ids]) => items.filter((i) => ids.includes(i.id)).map((i) => ({ ...i, group: SYSTEM_NAME[os] }))));
+}
+
+return { systemSubnav };
+})();
 __m["ui/win-share-panel.js"] = (() => {
 /**
  * Servicios → SMB of a Windows PC or Server with «Compartir archivos e impresoras para redes Microsoft» ticked in its
@@ -68424,16 +69177,7 @@ const { el } = __m["ui/dom.js"];
 const { button, field, input, message, select, table } = __m["ui/forms.js"];
 const { liveHostPanel } = __m["ui/live.js"];
 const { winShares } = __m["net/win-shares.js"];
-const { publishWinShare, unpublishWinShare } = __m["services/smb-windows.js"];
-const ERRORS = {
-    name: 'wsh.err.name',
-    reserved: 'wsh.err.reserved',
-    exists: 'smb.err.exists',
-    path: 'wsh.err.path',
-    folder: 'wsh.err.folder',
-    remark: 'wsh.err.remark',
-    full: 'wsh.err.full',
-};
+const { PUBLISH_ERRORS: ERRORS, publishWinShare, unpublishWinShare } = __m["services/smb-windows.js"];
 const accessLabel = (a) => t(a === 'full' ? 'wsh.full' : 'wsh.read');
 function addForm(host, app, msg) {
     const name = input({ placeholder: 'docs', 'aria-label': t('smb.share') });
@@ -68479,18 +69223,21 @@ const { t } = __m["i18n/t.js"];
 const { firewallPanel, sysctlPanel } = __m["ui/firewall-panel.js"];
 const { vpnPanel } = __m["ui/vpn-panel.js"];
 const { el } = __m["ui/dom.js"];
-const { field, input, select, button, onOff, message, table, subnav } = __m["ui/forms.js"];
+const { field, input, select, button, onOff, message, table } = __m["ui/forms.js"];
 const { livePanel, dhcpPanel } = __m["ui/server-dhcp-dns.js"];
 const { dnsPanel } = __m["ui/server-dns.js"];
 const { filesPanel } = __m["ui/files-panel.js"];
 const { logPanel, packageLogUnits } = __m["ui/log-panel.js"];
 const { sambaPanel } = __m["ui/samba-panel.js"];
+const { mdnsPanel, winbindPanel } = __m["ui/link-panels.js"];
+const { systemSubnav } = __m["ui/system-subnav.js"];
 const { winSharePanel } = __m["ui/win-share-panel.js"];
 const { linuxSide } = __m["net/pkg-units.js"];
 const { validateAccess } = __m["services/config.js"];
 const { formatIp } = __m["core/ip.js"];
 const { validateFileName } = __m["services/http-service.js"];
-const { logUnits, unitActive } = __m["services/units.js"];
+const { unitActive } = __m["services/units.js"];
+const { installedLogUnits } = __m["services/installed-units.js"];
 const { sshAuthMethods, setSshAuthMethods } = __m["services/ssh-auth-settings.js"];
 /**
  * The panels of the tab that Configuración → Laboratorio actual leaves on (`panels`: feature ids), in this order:
@@ -68503,7 +69250,7 @@ function servicesTab(server, app, panels) {
         ...(server.kind === 'linuxrouter' ? [{ id: 'vpn', label: t('vpn.tab'), render: () => vpnPanel(server, app).root }] : []),
         ...servicePanels(server, app),
     ];
-    return subnav(all.filter((p) => panels.includes(p.id)));
+    return systemSubnav(server, all.filter((p) => panels.includes(p.id)));
 }
 function servicePanels(server, app) {
     return [
@@ -68514,6 +69261,8 @@ function servicePanels(server, app) {
         { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
         // apt install samba (Ubuntu): its own panel, beside the files and the logs of smbd and nmbd.
         { id: 'samba', label: t('smb.tab'), render: () => sambaPanel(server, app).root },
+        { id: 'mdns', label: t('mdns.tab'), render: () => mdnsPanel(server, app).root },
+        { id: 'winbind', label: t('wbd.tab'), render: () => winbindPanel(server, app).root },
         // Windows Server with file and printer sharing ticked in its Configuración tab.
         { id: 'winshare', label: t('wsh.tab'), render: () => winSharePanel(server, app).root },
         // Windows Server keeps its configuration in the registry: the files are there only with its GNU/Linux terminal.
@@ -68664,10 +69413,10 @@ function sshPanel(server, app) {
         ];
     });
 }
-/** The server's own units (SSH first) and then those of apt's packages (smbd, nmbd). */
+/** The server's own units of what is installed (SSH first) and then those of apt's packages (smbd, nmbd). */
 function serverLogUnits(server) {
     return [
-        ...logUnits(server.kind).map((u) => ({ name: u.linux, active: unitActive(server.services, u.id) })),
+        ...installedLogUnits(server).map((u) => ({ name: u.linux, active: unitActive(server.services, u.id) })),
         ...packageLogUnits(server),
     ];
 }
@@ -68682,9 +69431,10 @@ __m["ui/pc-services.js"] = (() => {
  * in its terminal.
  */
 const { t } = __m["i18n/t.js"];
-const { subnav } = __m["ui/forms.js"];
+const { systemSubnav } = __m["ui/system-subnav.js"];
 const { firewallPanel, sysctlPanel } = __m["ui/firewall-panel.js"];
 const { sambaPanel } = __m["ui/samba-panel.js"];
+const { mdnsPanel, winbindPanel } = __m["ui/link-panels.js"];
 const { winSharePanel } = __m["ui/win-share-panel.js"];
 const { filesPanel } = __m["ui/files-panel.js"];
 const { logPanel, packageLogUnits } = __m["ui/log-panel.js"];
@@ -68695,10 +69445,12 @@ function pcServicesTab(host, app, panels) {
         { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(host, app).root },
         { id: 'firewall', label: t('fw.tab'), render: () => firewallPanel(host, app).root },
         { id: 'samba', label: t('smb.tab'), render: () => sambaPanel(host, app).root },
+        { id: 'mdns', label: t('mdns.tab'), render: () => mdnsPanel(host, app).root },
+        { id: 'winbind', label: t('wbd.tab'), render: () => winbindPanel(host, app).root },
         { id: 'files', label: t('srv.files'), render: () => filesPanel(host, 'sysctl') },
         { id: 'log', label: t('srv.log'), render: () => logPanel(host, () => packageLogUnits(host), t('pcsvc.journalHint')) },
     ];
-    return subnav(all.filter((p) => panels.includes(p.id)));
+    return systemSubnav(host, all.filter((p) => panels.includes(p.id)));
 }
 
 return { pcServicesTab };
@@ -69970,17 +70722,19 @@ return { promptToggle };
 __m["ui/device-config.js"] = (() => {
 /**
  * The Configuración tab of a PC, Server or Linux router: which applications, service panels and terminals the device
- * shows, among what its lab allows, whether Samba is installed, and the catalogue of tool packages (lab-packages.ts).
+ * shows, among what its lab allows, whether Samba is installed, and the catalogue of apt packages (service packages
+ * and tools, lab-packages.ts).
  * A change redraws the window with the new tabs (device-windows.ts).
  */
 const { el } = __m["ui/dom.js"];
 const { t, tDynamic } = __m["i18n/t.js"];
-const { APPS_BY_KIND, PC_APPS, deviceApps, labAllows, labViewOf, setDeviceApps } = __m["net/device-apps.js"];
+const { APPS_BY_KIND, PC_APPS, deviceApps, labAllows, labViewOf } = __m["net/device-apps.js"];
 const { linuxSide, sambaOffered } = __m["net/pkg-units.js"];
 const { hasPackage } = __m["net/host-packages.js"];
 const { setSambaInstalled } = __m["shells/samba-install.js"];
 const { setAptInstalled } = __m["shells/apt-install.js"];
-const { CATALOG_PACKAGES, labHasPackage } = __m["net/lab-packages.js"];
+const { labHasPackage } = __m["net/lab-packages.js"];
+const { listedPackages, serviceOffered, setServiceBox } = __m["shells/apt-offer.js"];
 const { setWinShareOn, winShareOffered, winShareOn } = __m["net/win-shares.js"];
 const TERMINALS = ['linux', 'windows'];
 /** The PC applications and terminals are named as their tabs; the service panels as in Laboratorio actual. */
@@ -69993,7 +70747,7 @@ function appName(h, id) {
 }
 /** Samba (when the lab allows it and the device has a GNU/Linux terminal): installs or removes the package, as apt. */
 function sambaBox(h, changed) {
-    if (!sambaOffered(h))
+    if (!sambaOffered(h) || (!hasPackage(h, 'samba') && !labHasPackage(h, 'samba')))
         return [];
     const input = el('input', { type: 'checkbox', name: 'dev-samba', checked: hasPackage(h, 'samba') });
     input.addEventListener('change', () => { setSambaInstalled(h, input.checked); changed(); });
@@ -70007,12 +70761,13 @@ function winShareBox(h, changed) {
     input.addEventListener('change', () => { setWinShareOn(h, input.checked); changed(); });
     return [el('label', { class: 'set-choice' }, input, t('dev.winshare'))];
 }
-/** The catalogue packages the lab keeps (a GNU/Linux terminal only): each box is apt install / apt remove. */
-function packageBoxes(h, changed) {
-    if (!linuxSide(h))
-        return [];
-    return CATALOG_PACKAGES.filter((name) => labHasPackage(h, name)).map((name) => {
-        const input = el('input', { type: 'checkbox', name: `dev-pkg-${name}`, checked: hasPackage(h, name), 'data-pkg': name });
+/**
+ * The catalogue packages of the device that its lab keeps, or that it has installed (so they can be removed): each box
+ * is apt install / apt remove; a service package's box and its service box always agree (both read apt's state).
+ */
+function packageBoxes(h, list, changed) {
+    return list.map(({ name, installed }) => {
+        const input = el('input', { type: 'checkbox', name: `dev-pkg-${name}`, checked: installed, 'data-pkg': name });
         input.addEventListener('change', () => { setAptInstalled(h, name, input.checked); changed(); });
         return el('label', { class: 'set-choice' }, input, el('code', {}, name));
     });
@@ -70024,16 +70779,13 @@ function deviceConfig(h, changed) {
     const allowed = APPS_BY_KIND[h.kind].filter((id) => labAllows(labViewOf(h).features, h.kind, id));
     const box = (id) => {
         const input = el('input', { type: 'checkbox', name: `dev-${id}`, checked: deviceApps(h).includes(id) });
-        input.addEventListener('change', () => {
-            const rest = deviceApps(h).filter((x) => x !== id);
-            setDeviceApps(h, input.checked ? [...rest, id] : rest);
-            changed();
-        });
+        input.addEventListener('change', () => { setServiceBox(h, id, input.checked); changed(); });
         return el('label', { class: 'set-choice' }, input, appName(h, id));
     };
     const apps = h.kind === 'pc' ? allowed.filter((id) => id === 'ip' || PC_APPS.includes(id)) : allowed.filter((id) => id === 'ip');
-    const services = h.kind === 'pc' ? [] : allowed.filter((id) => id !== 'ip' && !TERMINALS.includes(id));
-    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed), ...winShareBox(h, changed)]), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)), ...group(t('dev.packages'), packageBoxes(h, changed)));
+    const services = h.kind === 'pc' ? [] : allowed.filter((id) => id !== 'ip' && !TERMINALS.includes(id) && serviceOffered(h, id));
+    const packages = listedPackages(h);
+    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed), ...winShareBox(h, changed)]), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)), ...group(t('dev.svcPackages'), packageBoxes(h, packages.filter((p) => p.service), changed)), ...group(t('dev.packages'), packageBoxes(h, packages.filter((p) => !p.service), changed)));
 }
 
 return { deviceConfig };
@@ -70707,7 +71459,7 @@ const { t, tDynamic } = __m["i18n/t.js"];
 const { LOCALES, LOCALE_NAMES, getLocale, isLocale } = __m["i18n/locale.js"];
 const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } = __m["ui/preferences.js"];
 const { FEATURES_BY_KIND, featureOn, setFeature } = __m["net/lab-features.js"];
-const { CATALOG_PACKAGES, packageAllowed, setPackageOff } = __m["net/lab-packages.js"];
+const { SERVICE_PACKAGES, TOOL_PACKAGES, packageAllowed, setPackageOff } = __m["net/lab-packages.js"];
 /** The kinds whose windows have settings to switch (the cloud has none). */
 /** The «prompt con hora» box of the page built last, kept in step when a terminal footer changes it. */
 let stampBox;
@@ -70746,7 +71498,7 @@ function kindGroup(host, kind, changed) {
 }
 /** One box per catalogue package, for every kind: unticked, apt and the devices' Configuración no longer offer it. */
 function packagesGroup(host, changed) {
-    const boxes = CATALOG_PACKAGES.map((name) => {
+    const boxes = (names) => names.map((name) => {
         const box = el('input', { type: 'checkbox', checked: packageAllowed(host.pkgsOff(), name), disabled: host.labLocked(), 'data-pkg': name });
         box.addEventListener('change', () => {
             host.setPkgsOff(setPackageOff(host.pkgsOff(), name, !box.checked));
@@ -70754,7 +71506,7 @@ function packagesGroup(host, changed) {
         });
         return el('label', { class: 'set-choice' }, box, el('code', {}, name));
     });
-    return el('fieldset', { class: 'set-group', 'data-kind': 'packages' }, el('legend', {}, t('set.packages')), el('p', { class: 'muted' }, t('set.packagesHint')), ...boxes);
+    return el('fieldset', { class: 'set-group', 'data-kind': 'packages' }, el('legend', {}, t('set.packages')), el('p', { class: 'muted' }, t('set.packagesHint')), el('p', { class: 'set-sub' }, t('set.svcPackages')), ...boxes(SERVICE_PACKAGES), el('p', { class: 'set-sub' }, t('set.toolPackages')), ...boxes(TOOL_PACKAGES));
 }
 function webOption(host, changed) {
     const box = el('input', { type: 'checkbox', checked: host.webHideOff(), disabled: host.labLocked(), 'data-feature': 'webHideOff' });
