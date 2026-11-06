@@ -8,6 +8,10 @@ import type { Host } from '../devices/host.ts';
 import { hasPackage } from '../net/host-packages.ts';
 import { resolveHost } from './net-tools.ts';
 import { FILE_SERVER, nbnsResolve } from '../net/netbios.ts';
+import { winsResolve } from '../net/wins.ts';
+import { readHostFile } from '../devices/server-firewall.ts';
+import { SMB_CONF, parseSmbConf } from '../services/smb-conf.ts';
+import type { NameResolveMethod } from '../services/smb-conf.ts';
 import { ANONYMOUS, smbCall } from '../clients/smb-client.ts';
 import type { SmbClientStatus, SmbLogin } from '../clients/smb-client.ts';
 import { smbCommand } from './smbclient-cmds.ts';
@@ -79,16 +83,28 @@ function connectError(ctx: Ctx, server: string, status: SmbClientStatus): number
 /** A NetBIOS name: one label of up to 15 characters. */
 const NETBIOS_NAME = /^[^.\s]{1,15}$/;
 
+/** One method of «name resolve order»; smbclient asks NetBIOS for the server's file service, NAME<20>. */
+function resolveBy(host: Host, method: NameResolveMethod, server: string, wins: readonly number[]): number | undefined {
+  if (method === 'host') {
+    const r = resolveHost(host, server, 'linux');
+    return r.kind === 'ip' ? r.ip : undefined;
+  }
+  if (!NETBIOS_NAME.test(server)) return undefined;
+  if (method === 'wins') return wins.length ? winsResolve(host, wins, server, FILE_SERVER) : undefined;
+  // No lmhosts file is simulated: that method finds nothing.
+  return method === 'bcast' ? nbnsResolve(host, server, FILE_SERVER) : undefined;
+}
+
 /**
- * Samba's «name resolve order» (lmhosts wins host bcast): no lmhosts file nor WINS server here, so the system
- * resolver (/etc/hosts, DNS… as nsswitch.conf says) and then a NetBIOS broadcast, which nmbd answers.
+ * Samba's «name resolve order» of smb.conf (lmhosts wins host bcast by default): the «wins server» by unicast, which
+ * crosses routers; the system resolver (/etc/hosts, DNS… as nsswitch.conf says); a NetBIOS broadcast, which nmbd answers.
  */
 function serverIp(ctx: Ctx, host: Host, server: string): number | null {
-  const r = resolveHost(host, server, 'linux');
-  if (r.kind === 'ip') return r.ip;
-  // smbclient asks for the server's file service, NAME<20>.
-  const bcast = NETBIOS_NAME.test(server) ? nbnsResolve(host, server, FILE_SERVER) : undefined;
-  if (bcast !== undefined) return bcast;
+  const conf = parseSmbConf(readHostFile(host, SMB_CONF) ?? '');
+  for (const method of conf.nameResolveOrder) {
+    const ip = resolveBy(host, method, server, conf.winsServers);
+    if (ip !== undefined) return ip;
+  }
   ctx.err(`do_connect: Connection to ${server} failed (Error NT_STATUS_UNSUCCESSFUL)\n`);
   return null;
 }

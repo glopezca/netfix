@@ -143,4 +143,7 @@ c
 x
 legible
 ejecutable
+sed: can't read falta.txt: No such file or directory
+sed=2
+sin falta.txt
 [status 0]

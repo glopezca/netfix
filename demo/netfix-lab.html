@@ -21816,6 +21816,7 @@ function* sed(ctx) {
     let status = 0;
     for (const group of groups) {
         const texts = [];
+        let unread = false;
         for (const f of group) {
             if (f === '-') {
                 texts.push(yield* ctx.readAll());
@@ -21827,8 +21828,12 @@ function* sed(ctx) {
             catch (e) {
                 ctx.err(`sed: can't read ${f}: ${errMsg(e)}\n`);
                 status = 2;
+                unread = true;
             }
         }
+        // -i on a file it could not read: GNU sed goes on with the next one and does not create it.
+        if (inPlace && unread)
+            continue;
         const result = runSed(ctx, cmds, labels, lines(texts.join('')), !q.opts.has('n'));
         if (result.error) {
             ctx.err(`sed: ${result.error}\n`);
@@ -30577,7 +30582,7 @@ const KNOWN = new Set([
     'workgroup', 'server string', 'netbios name', 'log file', 'max log size', 'logging', 'panic action', 'server role',
     'obey pam restrictions', 'unix password sync', 'passwd program', 'passwd chat', 'pam password change', 'map to guest',
     'usershare allow guests', 'interfaces', 'bind interfaces only', 'security', 'guest account', 'wins support', 'wins server',
-    'comment', 'path', 'browseable', 'browsable', 'read only', 'writable', 'writeable', 'write ok', 'guest ok', 'public',
+    'name resolve order', 'comment', 'path', 'browseable', 'browsable', 'read only', 'writable', 'writeable', 'write ok', 'guest ok', 'public',
     'valid users', 'printable', 'create mask', 'create mode', 'directory mask', 'directory mode', 'force user', 'force group',
 ]);
 /** The sections as testparm dumps them, and the unknown parameters it warns about. */
@@ -30619,6 +30624,13 @@ function winsList(value) {
     const ips = (value ?? '').slice(0, MAX_WINS_TEXT).split(/[\s,]+/).map(parseIp).filter((ip) => ip !== null);
     return [...new Set(ips)].slice(0, MAX_WINS_SERVERS);
 }
+const RESOLVE_METHODS = ['lmhosts', 'wins', 'host', 'bcast'];
+const isResolveMethod = (w) => RESOLVE_METHODS.includes(w);
+/** «name resolve order = bcast wins»: the known methods in order, once each; none known is Samba's default. */
+function resolveOrder(value) {
+    const words = (value ?? '').slice(0, MAX_WINS_TEXT).toLowerCase().split(/[\s,]+/).filter(isResolveMethod);
+    return words.length ? [...new Set(words)] : [...RESOLVE_METHODS];
+}
 const globalParams = (all) => all.find((s) => s.name.toLowerCase() === 'global')?.params ?? new Map();
 /** Both at once (any «wins server» text, a name too, as Samba checks it): testparm reports it and nmbd will not start. */
 function winsConflict(all) {
@@ -30650,6 +30662,7 @@ function parseSmbConf(text) {
         mapToGuest: /^bad user$/i.test(global.get('map to guest') ?? ''),
         winsSupport: yes(global.get('wins support'), false),
         winsServers: winsList(global.get('wins server')),
+        nameResolveOrder: resolveOrder(global.get('name resolve order')),
         shares: all.filter((s) => s.name.toLowerCase() !== 'global').map(share),
         unknown,
     };
@@ -38487,27 +38500,32 @@ const KEA_DEFAULT = `// This is a basic configuration for the Kea DHCPv4 server.
 }
 `;
 const KEA_PACKAGES = new Set(['kea', 'kea-dhcp4-server', 'isc-kea']);
+/**
+ * smb.conf is samba-common's conffile: the packages of the catalogue that bring it write it, on any host (no Servicios
+ * settings write it).
+ */
+const SMB_CONF_PACKAGES = new Set(['samba', 'smbclient', 'samba-common-bin', 'winbind']);
 /** The files a package ships, by path. */
 function shippedFiles(name) {
     if (KEA_PACKAGES.has(name))
         return new Map([[KEA_DHCP4_CONF, KEA_DEFAULT]]);
     if (name === 'bind9')
         return bindFiles(defaultServices().dns, []);
-    if (name === 'samba')
+    if (SMB_CONF_PACKAGES.has(name))
         return new Map([[SMB_CONF, DEFAULT_SMB_CONF]]);
     if (name === 'nftables')
         return new Map([[NFTABLES_CONF, DEFAULT_NFTABLES_CONF]]);
     return new Map();
 }
 
-return { KEA_DHCP4_CONF, shippedFiles };
+return { KEA_DHCP4_CONF, SMB_CONF_PACKAGES, shippedFiles };
 })();
 __m["shells/apt-scripts.js"] = (() => {
 const { FsError } = __m["bash/vfs.js"];
 const { hasPackage } = __m["net/host-packages.js"];
 const { DEFAULT_NSSWITCH, NSSWITCH, withMdns, withResolve } = __m["shells/nsswitch.js"];
 const { runsServices } = __m["devices/kinds.js"];
-const { shippedFiles } = __m["shells/apt-defaults.js"];
+const { SMB_CONF_PACKAGES, shippedFiles } = __m["shells/apt-defaults.js"];
 const { pkgInstalled, pkgRemoved } = __m["shells/pkg-service.js"];
 const { notifyAppsChange } = __m["net/device-apps.js"];
 /** Packages that add tabs to the Servicios of a GNU/Linux host (net/pkg-units.ts hostPanels). */
@@ -38538,7 +38556,7 @@ function writeShipped(fs, name) {
 }
 function afterPackage(fs, host, name, on) {
     // A Server or GNU/Linux router writes them from its Servicios settings (linux-files.ts); smb.conf has none.
-    if (on && (!runsServices(host.kind) || name === 'samba'))
+    if (on && (!runsServices(host.kind) || SMB_CONF_PACKAGES.has(name)))
         writeShipped(fs, name);
     if (name === 'avahi-daemon' || name === 'libnss-mdns') {
         editNsswitch(fs, (text) => withMdns(text, hasPackage(host, 'libnss-mdns')));
@@ -39569,6 +39587,9 @@ __m["shells/smbclient.js"] = (() => {
 const { hasPackage } = __m["net/host-packages.js"];
 const { resolveHost } = __m["shells/net-tools.js"];
 const { FILE_SERVER, nbnsResolve } = __m["net/netbios.js"];
+const { winsResolve } = __m["net/wins.js"];
+const { readHostFile } = __m["devices/server-firewall.js"];
+const { SMB_CONF, parseSmbConf } = __m["services/smb-conf.js"];
 const { ANONYMOUS, smbCall } = __m["clients/smb-client.js"];
 const { smbCommand } = __m["shells/smbclient-cmds.js"];
 const USAGE = 'Usage: smbclient [-?EgqBNPkV] [-?|--help] [--usage] [-M|--message=HOST] [-I|--ip-address=IP]\n        [-L|--list=HOST] [-c|--command=STRING] [-N|--no-pass] [-U|--user=[DOMAIN/]USERNAME[%PASSWORD]]\n        [-W|--workgroup=WORKGROUP] service <password>\n';
@@ -39635,18 +39656,30 @@ function connectError(ctx, server, status) {
 }
 /** A NetBIOS name: one label of up to 15 characters. */
 const NETBIOS_NAME = /^[^.\s]{1,15}$/;
+/** One method of «name resolve order»; smbclient asks NetBIOS for the server's file service, NAME<20>. */
+function resolveBy(host, method, server, wins) {
+    if (method === 'host') {
+        const r = resolveHost(host, server, 'linux');
+        return r.kind === 'ip' ? r.ip : undefined;
+    }
+    if (!NETBIOS_NAME.test(server))
+        return undefined;
+    if (method === 'wins')
+        return wins.length ? winsResolve(host, wins, server, FILE_SERVER) : undefined;
+    // No lmhosts file is simulated: that method finds nothing.
+    return method === 'bcast' ? nbnsResolve(host, server, FILE_SERVER) : undefined;
+}
 /**
- * Samba's «name resolve order» (lmhosts wins host bcast): no lmhosts file nor WINS server here, so the system
- * resolver (/etc/hosts, DNS… as nsswitch.conf says) and then a NetBIOS broadcast, which nmbd answers.
+ * Samba's «name resolve order» of smb.conf (lmhosts wins host bcast by default): the «wins server» by unicast, which
+ * crosses routers; the system resolver (/etc/hosts, DNS… as nsswitch.conf says); a NetBIOS broadcast, which nmbd answers.
  */
 function serverIp(ctx, host, server) {
-    const r = resolveHost(host, server, 'linux');
-    if (r.kind === 'ip')
-        return r.ip;
-    // smbclient asks for the server's file service, NAME<20>.
-    const bcast = NETBIOS_NAME.test(server) ? nbnsResolve(host, server, FILE_SERVER) : undefined;
-    if (bcast !== undefined)
-        return bcast;
+    const conf = parseSmbConf(readHostFile(host, SMB_CONF) ?? '');
+    for (const method of conf.nameResolveOrder) {
+        const ip = resolveBy(host, method, server, conf.winsServers);
+        if (ip !== undefined)
+            return ip;
+    }
     ctx.err(`do_connect: Connection to ${server} failed (Error NT_STATUS_UNSUCCESSFUL)\n`);
     return null;
 }

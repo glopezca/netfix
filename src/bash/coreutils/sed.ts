@@ -283,10 +283,13 @@ export function* sed(ctx: Ctx): Gen<number> {
   let status = 0;
   for (const group of groups) {
     const texts: string[] = [];
+    let unread = false;
     for (const f of group) {
       if (f === '-') { texts.push(yield* ctx.readAll()); continue; }
-      try { texts.push(ctx.sh.env.fs.readFile(ctx.resolve(f), ctx.cred)); } catch (e) { ctx.err(`sed: can't read ${f}: ${errMsg(e)}\n`); status = 2; }
+      try { texts.push(ctx.sh.env.fs.readFile(ctx.resolve(f), ctx.cred)); } catch (e) { ctx.err(`sed: can't read ${f}: ${errMsg(e)}\n`); status = 2; unread = true; }
     }
+    // -i on a file it could not read: GNU sed goes on with the next one and does not create it.
+    if (inPlace && unread) continue;
     const result = runSed(ctx, cmds, labels, lines(texts.join('')), !q.opts.has('n'));
     if (result.error) { ctx.err(`sed: ${result.error}\n`); return 1; }
     if (inPlace && group[0] !== '-') ctx.sh.env.fs.writeFile(ctx.resolve(group[0] ?? ''), result.text, ctx.cred);

@@ -101,6 +101,8 @@ export interface SmbConf {
   readonly winsSupport: boolean;
   /** «wins server»: the WINS servers nmbd registers with and asks (IPs only; names are dropped). */
   readonly winsServers: readonly number[];
+  /** «name resolve order»: how smbclient finds a server by name (lmhosts wins host bcast by default). */
+  readonly nameResolveOrder: readonly NameResolveMethod[];
   readonly shares: readonly SmbShare[];
   /** Parameters smbd does not know, as testparm names them. */
   readonly unknown: readonly string[];
@@ -111,7 +113,7 @@ const KNOWN = new Set([
   'workgroup', 'server string', 'netbios name', 'log file', 'max log size', 'logging', 'panic action', 'server role',
   'obey pam restrictions', 'unix password sync', 'passwd program', 'passwd chat', 'pam password change', 'map to guest',
   'usershare allow guests', 'interfaces', 'bind interfaces only', 'security', 'guest account', 'wins support', 'wins server',
-  'comment', 'path', 'browseable', 'browsable', 'read only', 'writable', 'writeable', 'write ok', 'guest ok', 'public',
+  'name resolve order', 'comment', 'path', 'browseable', 'browsable', 'read only', 'writable', 'writeable', 'write ok', 'guest ok', 'public',
   'valid users', 'printable', 'create mask', 'create mode', 'directory mask', 'directory mode', 'force user', 'force group',
 ]);
 
@@ -159,6 +161,16 @@ function winsList(value: string | undefined): number[] {
   return [...new Set(ips)].slice(0, MAX_WINS_SERVERS);
 }
 
+export type NameResolveMethod = 'lmhosts' | 'wins' | 'host' | 'bcast';
+const RESOLVE_METHODS: readonly NameResolveMethod[] = ['lmhosts', 'wins', 'host', 'bcast'];
+const isResolveMethod = (w: string): w is NameResolveMethod => (RESOLVE_METHODS as readonly string[]).includes(w);
+
+/** «name resolve order = bcast wins»: the known methods in order, once each; none known is Samba's default. */
+function resolveOrder(value: string | undefined): NameResolveMethod[] {
+  const words = (value ?? '').slice(0, MAX_WINS_TEXT).toLowerCase().split(/[\s,]+/).filter(isResolveMethod);
+  return words.length ? [...new Set(words)] : [...RESOLVE_METHODS];
+}
+
 const globalParams = (all: readonly Section[]): ReadonlyMap<string, string> => all.find((s) => s.name.toLowerCase() === 'global')?.params ?? new Map<string, string>();
 
 /** Both at once (any «wins server» text, a name too, as Samba checks it): testparm reports it and nmbd will not start. */
@@ -193,6 +205,7 @@ export function parseSmbConf(text: string): SmbConf {
     mapToGuest: /^bad user$/i.test(global.get('map to guest') ?? ''),
     winsSupport: yes(global.get('wins support'), false),
     winsServers: winsList(global.get('wins server')),
+    nameResolveOrder: resolveOrder(global.get('name resolve order')),
     shares: all.filter((s) => s.name.toLowerCase() !== 'global').map(share),
     unknown,
   };

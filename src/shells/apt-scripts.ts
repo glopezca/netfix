@@ -10,7 +10,7 @@ import type { Host } from '../devices/host.ts';
 import { hasPackage } from '../net/host-packages.ts';
 import { DEFAULT_NSSWITCH, NSSWITCH, withMdns, withResolve } from './nsswitch.ts';
 import { runsServices } from '../devices/kinds.ts';
-import { shippedFiles } from './apt-defaults.ts';
+import { SMB_CONF_PACKAGES, shippedFiles } from './apt-defaults.ts';
 import { pkgInstalled, pkgRemoved } from './pkg-service.ts';
 import { notifyAppsChange } from '../net/device-apps.ts';
 
@@ -39,7 +39,7 @@ function writeShipped(fs: Vfs, name: string): void {
 
 export function afterPackage(fs: Vfs, host: Host, name: string, on: boolean): void {
   // A Server or GNU/Linux router writes them from its Servicios settings (linux-files.ts); smb.conf has none.
-  if (on && (!runsServices(host.kind) || name === 'samba')) writeShipped(fs, name);
+  if (on && (!runsServices(host.kind) || SMB_CONF_PACKAGES.has(name))) writeShipped(fs, name);
   if (name === 'avahi-daemon' || name === 'libnss-mdns') {
     editNsswitch(fs, (text) => withMdns(text, hasPackage(host, 'libnss-mdns')));
   }

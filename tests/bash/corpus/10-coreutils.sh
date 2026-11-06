@@ -21,3 +21,4 @@ basename /a/b/c.txt .txt; dirname /a/b/c.txt; echo "aGVsbG8=" | base64 -d; echo;
 printf 'a\nb\nc\n' > x; printf 'a\nB\nc\nd\n' > y; diff x y; echo "diff=$?"; diff -u x y | tail -n +3
 cat -n x; cat x y | sort | uniq -d; comm -12 x y; ln -s x enlace; cat enlace; readlink enlace
 chmod 600 x; [ -r x ] && echo legible; chmod u+x,g+r x; [ -x x ] && echo ejecutable
+sed -i 's/a/b/' falta.txt; echo "sed=$?"; [ -e falta.txt ] || echo "sin falta.txt"
