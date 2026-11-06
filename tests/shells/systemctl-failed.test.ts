@@ -158,3 +158,13 @@ test('reload of a unit that is not running: systemd refuses it (status 1); reloa
   assert.deepEqual(root.run('systemctl reload-or-restart named; echo $?'), ['0']);
   assert.equal(root.run('systemctl is-active named')[0], 'active');
 });
+
+test('journalctl -xeu UNIT, as systemctl suggests: the unit only, to the end; -n5, --unit= and --lines= too', () => {
+  const { root } = lab();
+  failApache(root);
+  const xeu = root.run('journalctl -xeu apache2.service');
+  assert.ok(xeu.length > 3 && xeu.every((l) => / (systemd\[1\]|apachectl\[1123\]): /.test(l)), xeu.join('\n'));
+  assert.match(xeu.at(-1) ?? '', /Failed to start apache2\.service/);
+  assert.deepEqual(root.run('journalctl -u apache2 -n5'), root.run('journalctl --unit=apache2 --lines=5'));
+  assert.equal(root.run('journalctl -n2 -u apache2').length, 2);
+});

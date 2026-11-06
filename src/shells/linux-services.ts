@@ -237,13 +237,46 @@ function allEntries(host: Host): Entry[] {
   return [...own, ...installedUnits(host).flatMap((u) => pkgEntries(host, u))].sort((a, b) => a.time - b.time);
 }
 
+/** With -e and no -n, journalctl shows the last 1000 lines. */
+const PAGER_END_LINES = 1000;
+
+/**
+ * journalctl's options that matter here: -u/--unit, -n/--lines (also -n5 and --lines=5) and -e/--pager-end, in
+ * clusters such as -xeu UNIT (as systemctl suggests); -x (catalog) and the rest are accepted.
+ */
+function journalArgs(args: readonly string[]): { name?: string; limit: number } {
+  let name: string | undefined;
+  let lines: string | undefined;
+  let end = false;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i] ?? '';
+    const long = /^--(unit|lines)(?:=(.*))?$/.exec(a);
+    if (long) {
+      const value = long[2] ?? args[++i] ?? '';
+      if (long[1] === 'unit') name = value;
+      else lines = value;
+    } else if (a === '--pager-end') end = true;
+    else if (/^-[a-z]/i.test(a)) {
+      for (let j = 1; j < a.length; j++) {
+        const c = a[j];
+        if (c === 'e') end = true;
+        if (c !== 'u' && c !== 'n') continue;
+        const value = a.length > j + 1 ? a.slice(j + 1) : args[++i] ?? '';
+        if (c === 'u') name = value;
+        else lines = value;
+        break;
+      }
+    }
+  }
+  const fallback = end ? PAGER_END_LINES : DEFAULT_JOURNAL_LINES;
+  const limit = lines !== undefined ? Math.max(1, Number(lines) || fallback) : fallback;
+  return name === undefined ? { limit } : { name, limit };
+}
+
 /** journalctl; `p` paints each message by its priority, as on a terminal. */
 export function journalctl(host: Host, args: string[], p: Paint = plain): string[] {
   const server = asServer(host);
-  const uIdx = args.findIndex((a) => a === '-u' || a === '--unit');
-  const nIdx = args.indexOf('-n');
-  const limit = nIdx >= 0 ? Math.max(1, Number(args[nIdx + 1]) || DEFAULT_JOURNAL_LINES) : DEFAULT_JOURNAL_LINES;
-  const name = uIdx < 0 ? undefined : args[uIdx + 1] ?? '';
+  const { name, limit } = journalArgs(args);
   const unit = name !== undefined && server ? findUnit(name) : undefined;
   const pkg = name !== undefined && !unit ? findPkgUnit(host, name) : undefined;
   let entries: Entry[] = [];
