@@ -8,7 +8,7 @@ import { DEFAULT_MAX_CACHE_TTL, iterates } from './named-options.ts';
 import { ROOT_IPS } from '../net/dns-roots.ts';
 import { DnsForwarder, recursionAllowed } from './dns-forwarder.ts';
 import { formatIp } from '../core/ip.ts';
-import { rpzAnswer } from './dns-rpz.ts';
+import { RPZ_ZONE, rpzAnswer } from './dns-rpz.ts';
 import { normalizeName } from '../net/dns.ts';
 
 export interface DnsHost {
@@ -20,6 +20,15 @@ export interface DnsHost {
   readonly clock: { now(): number };
   /** Whether bind listens on the address `dst` (listen-on). */
   dnsListensOn(dst: number): boolean;
+}
+
+const within = (name: string, zone: string): boolean => name === zone || name.endsWith(`.${zone}`);
+const labels = (zone: string): number => (zone === '' ? 0 : zone.split('.').length);
+
+/** The name is in a zone named could not load, and no loaded zone below it holds it: named answers SERVFAIL. */
+function inUnloaded(qname: string, loaded: readonly string[], unloaded: readonly string[]): boolean {
+  const deepest = (zones: readonly string[]): number => Math.max(-1, ...zones.filter((z) => within(qname, z)).map(labels));
+  return deepest(unloaded) > deepest(loaded);
 }
 
 export class ServerDns {
@@ -54,9 +63,14 @@ export class ServerDns {
     const s = this.host.services.dns;
     const forwarders = s.forwarders ?? [];
     const recursion = s.recursion === true && recursionAllowed(s.allowRecursion ?? 'localnets', src, this.host.config);
-    const answer = answerFromZones(q, servedZones(s));
+    const unloaded = s.unloaded ?? [];
+    const zones = servedZones(s).filter((z) => !unloaded.includes(z.zone.name));
+    const qname = normalizeName(q.qname);
+    const failed = inUnloaded(qname, zones.map((z) => z.zone.name), unloaded);
+    const answer = failed ? { id: q.id, response: true, qname, qtype: q.qtype, rcode: 'SERVFAIL' as const, answers: [] } : answerFromZones(q, zones);
     const head = `client ${formatIp(src)}#${sport} (${q.qname}): query: ${q.qname} IN ${q.qtype} ${q.rd === false ? '-' : '+'} (${formatIp(dst)})`;
-    const policy = answer.rcode === 'REFUSED' && recursion && q.rd !== false ? rpzAnswer(s, q, normalizeName(q.qname)) : undefined;
+    const rpz = answer.rcode === 'REFUSED' && recursion && q.rd !== false && !unloaded.includes(RPZ_ZONE);
+    const policy = rpz ? rpzAnswer(s, q, qname) : undefined;
     if (policy) {
       this.host.log('dns', `client ${formatIp(src)}#${sport} (${policy.msg.qname}): rpz QNAME Local-Data rewrite ${policy.msg.qname}/${q.qtype}/IN via ${policy.via}`);
       this.host.sendUdp(src, DNS_PORT, sport, { dns: policy.msg });

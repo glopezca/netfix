@@ -7,6 +7,13 @@ import { servedZones } from '../services/dns-zones.ts';
 
 const USAGE = 'Usage: rndc [-b address] [-c config] [-s server] [-p port]\n\t[-k key-file ] [-y key] [-r] [-V] [-4 | -6] command\n\ncommand is one of the following:\n\n  flush\t\tFlushes all of the server\'s caches.\n  reload\tReload configuration file and zones.\n  status\tDisplay status of the server.\n';
 
+/** rndc reload: named answers whether its files loaded (it keeps what it had when named.conf does not). */
+function reload(ctx: Ctx, server: Server): number {
+  if (server.reloadDns(false)) { ctx.err("rndc: 'reload' failed: failure\n"); return 1; }
+  ctx.out('server reload successful\n');
+  return 0;
+}
+
 export function rndc(host: Host): CommandFn {
   return (ctx: Ctx): number => {
     const server = host as Server;
@@ -15,7 +22,7 @@ export function rndc(host: Host): CommandFn {
     if (ctx.cred.uid !== 0) { ctx.err('rndc: open: /etc/bind/rndc.key: permission denied\nrndc: could not load rndc configuration\n'); return 1; }
     if (!server.services.dns.enabled) { ctx.err('rndc: connect failed: 127.0.0.1#953: connection refused\n'); return 1; }
     if (verb === 'flush') { server.dns.forwarder.flush(); return 0; }
-    if (verb === 'reload') { ctx.out('server reload successful\n'); return 0; }
+    if (verb === 'reload') return reload(ctx, server);
     const s = server.services.dns;
     ctx.out([
       'version: BIND 9.20.4-3ubuntu1-Ubuntu (Stable Release) <id:>',

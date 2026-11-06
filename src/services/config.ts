@@ -131,6 +131,8 @@ export interface DnsSettings {
   readonly listenOn?: readonly string[];
   /** «Nombres públicos»: response policy zone rpz.publicos (services/dns-rpz.ts). */
   readonly publicNames?: { readonly enabled: boolean; readonly entries?: readonly { readonly name: string; readonly ip: number; readonly ttl: number }[] };
+  /** Zones named could not load from their edited file (they answer SERVFAIL). Not saved: the next start finds them. */
+  readonly unloaded?: readonly string[];
 }
 
 export interface ServerServices {

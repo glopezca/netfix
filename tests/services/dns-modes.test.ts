@@ -103,6 +103,7 @@ test('named.conf.options carries every mode and edits come back to the settings'
   assert.match(conf, /forward first;/);
   assert.match(conf, /recursion yes;/);
   hostSystem(srv).fs.writeFile('/etc/bind/named.conf.options', conf.replace('recursion yes;', 'recursion no;').replace('max-cache-ttl 3600;', 'max-cache-ttl 0;').replace('forward first;', 'forward only;'));
+  root.run('systemctl restart named');
   assert.equal(srv.services.dns.recursion, false);
   assert.equal(srv.services.dns.maxCacheTtl, 0);
   assert.equal(srv.services.dns.forwardOnly, true);

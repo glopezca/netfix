@@ -3,10 +3,7 @@ import { NSSWITCH, seededNsswitch } from './nsswitch.ts';
 import { DEFAULT_RESOLVED_CONF, parseResolvedConf, RESOLVED_CONF } from './resolved-conf.ts';
 import { setResolvedConfig } from './resolved.ts';
 import { t } from '../i18n/t.ts';
-import { listenChoices } from '../services/listen.ts';
 import { runsServices } from '../devices/kinds.ts';
-import { NAMED_OPTIONS, parseNamedOptions } from '../services/named-options.ts';
-import { RPZ_FILE, setPublicNames } from '../services/dns-rpz.ts';
 import { NETPLAN_FILE, netplanFileContent, writeNetplanFile } from './netplan.ts';
 import { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } from '../services/sshd-config.ts';
 import { hostKeyFiles } from '../services/ssh-hostkeys.ts';
@@ -16,6 +13,7 @@ import type { CommandFn, HostEnv, UserInfo } from '../bash/types.ts';
 import { FsError, MAX_FILE, ROOT, Vfs, dirname } from '../bash/vfs.ts';
 import { KEA_DHCP4_CONF } from './apt-defaults.ts';
 import { keaStart } from './service-files.ts';
+import { namedStart } from './named-start.ts';
 import { registerUnitCheck } from '../devices/unit-checks.ts';
 import type { DirMount } from '../bash/vfs.ts';
 import { seedRootfs, seedUsers } from '../bash/rootfs.ts';
@@ -96,32 +94,19 @@ function webRoot(server: Server): DirMount {
 /** Generated files that root may edit: writing them changes the device configuration. */
 const WRITERS: Readonly<Record<string, (host: Host, content: string) => void>> = {
   [NETPLAN_FILE]: (host, content) => writeNetplanFile(host, content),
-  [NAMED_OPTIONS]: (host, content) => {
-    const srv = asServer(host);
-    if (!srv) return;
-    const next = parseNamedOptions(content, srv.services.dns, listenChoices(srv, true));
-    if ('error' in next) srv.log('dns', `named-checkconf: ${next.error}`);
-    else srv.setServices({ ...srv.services, dns: next });
-  },
-  [RPZ_FILE]: (host, content) => {
-    const srv = asServer(host);
-    if (!srv) return;
-    const next = setPublicNames(srv.services.dns, srv.services.dns.publicNames?.enabled === true, content);
-    if ('error' in next) srv.log('dns', next.error);
-    else srv.setServices({ ...srv.services, dns: next });
-  },
 };
 
 /** Generated files readable only by root (like Ubuntu's 600 netplan files). */
 const PRIVATE_MODE: Readonly<Record<string, number>> = { [NETPLAN_FILE]: 0o600 };
 
 /**
- * Generated files root may rewrite as an ordinary file (root, 644, saved with the lab): saving applies nothing, the
- * unit reads it when it starts (service-files.ts).
+ * Files root may write as ordinary files (root, 644, saved with the lab): kea-dhcp4.conf and the files right in
+ * /etc/bind, generated or new. Saving applies nothing; the unit reads them when it starts (service-files.ts,
+ * named-start.ts).
  */
-const EDITABLE: ReadonlySet<string> = new Set([KEA_DHCP4_CONF]);
+const editable = (p: string): boolean => p === KEA_DHCP4_CONF || /^\/etc\/bind\/[^/]+$/.test(p);
 /** The directories above the editable files: a saved lab may not replace them (by a link, say). */
-const EDITABLE_DIRS: ReadonlySet<string> = new Set(['/etc', '/etc/kea']);
+const EDITABLE_DIRS: ReadonlySet<string> = new Set(['/etc', '/etc/kea', '/etc/bind']);
 
 /** A saved editable file comes back as root's 644 file in place of the generated one, whatever its record says. */
 function restoreEditable(fs: Vfs, path: string, content: string): void {
@@ -139,14 +124,14 @@ function restoreEditable(fs: Vfs, path: string, content: string): void {
 
 /** The files of a saved lab: the editable ones and the directories above them apart, as root's. */
 function restoreRecords(fs: Vfs, records: readonly FileRecord[]): void {
-  importFiles(fs, records.filter((r) => !EDITABLE.has(r.path) && !EDITABLE_DIRS.has(r.path)));
-  for (const r of records) if (EDITABLE.has(r.path) && r.kind === 'file') restoreEditable(fs, r.path, r.content ?? '');
+  importFiles(fs, records.filter((r) => !editable(r.path) && !EDITABLE_DIRS.has(r.path)));
+  for (const r of records) if (editable(r.path) && r.kind === 'file') restoreEditable(fs, r.path, r.content ?? '');
 }
 
 /** An editable path keeps the file there only if it is root's, not writable by others and not behind a link. */
 function keptUserFile(fs: Vfs, p: string): boolean {
   const there = fs.tryLookup(p, ROOT, false);
-  if (!EDITABLE.has(p) || there?.kind !== 'file' || there.generated) return false;
+  if (!editable(p) || there?.kind !== 'file' || there.generated) return false;
   return there.uid === 0 && (there.mode & 0o022) === 0 && fs.realpath(dirname(p)) === dirname(p);
 }
 
@@ -163,7 +148,7 @@ function toUserFile(fs: Vfs, path: string, content: string, read: () => string):
 }
 
 function writerOf(host: Host, fs: Vfs, p: string, read: () => string): ((c: string) => void) | undefined {
-  if (EDITABLE.has(p)) return (c) => { toUserFile(fs, p, c, read); };
+  if (editable(p)) return (c) => { toUserFile(fs, p, c, read); };
   const writer = WRITERS[p];
   return writer ? (c) => { writer(host, c); } : undefined;
 }
@@ -312,6 +297,12 @@ registerUnitCheck('dhcp', (srv) => {
   const kea = (f: FileRecord): boolean => f.path === KEA_DHCP4_CONF;
   if (!systems.has(srv) && !(pendingFiles.get(srv) ?? []).some(kea)) return { ok: true };
   return keaStart(srv, hostSystem(srv).fs);
+});
+// named reads /etc/bind when it starts and at rndc reload.
+registerUnitCheck('dns', (srv, mode) => {
+  const bind = (f: FileRecord): boolean => f.path.startsWith('/etc/bind/');
+  if (!systems.has(srv) && !(pendingFiles.get(srv) ?? []).some(bind)) return { ok: true };
+  return namedStart(srv, hostSystem(srv).fs, mode);
 });
 // Before the system exists, a file saved with the topology is read from the pending records (same result either way).
 registerHostFileReader((host, path) => {

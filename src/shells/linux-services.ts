@@ -165,6 +165,7 @@ function reload(server: Server, unit: UnitInfo): string[] {
   if (on && unit.id === 'http') return server.reloadWeb() ? jobFailed(unit.linux) : [];
   if (on && unit.id === 'firewall') return server.reloadFirewall() ? jobFailed(unit.linux) : [];
   if (on && unit.id === 'ssh') return server.reloadSsh() ? jobFailed(unit.linux) : [];
+  if (on && unit.id === 'dns') return server.reloadDns() ? jobFailed(unit.linux) : [];
   return restart(server, unit);
 }
 

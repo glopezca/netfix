@@ -13,14 +13,13 @@ import { applyPtPools } from '../services/dhcp-pt.ts';
 import { ServerDns } from '../services/dns-server.ts';
 import { ServerWeb } from './server-web.ts';
 import { Mailboxes, handleSmtp, handleRetrieve } from '../services/mail-service.ts';
-import type { MailEnv } from '../services/mail-service.ts';
+import { mailEnv, SMTP_PORT } from './server-mail.ts';
 import { findUnit, setUnitActive, unitActive, unitById, unitTitle, UNITS } from '../services/units.ts';
 import type { UnitId, UnitInfo } from '../services/units.ts';
 import { SshService } from '../services/ssh-service.ts';
 import { unitCheck } from './unit-checks.ts';
 import { journalLines } from './journal-text.ts';
 import { loadNftablesConf } from './server-firewall.ts';
-import { firstAddress } from '../net/dns.ts';
 import { BROADCAST_IP, formatIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
 import type { SimClock } from '../core/clock.ts';
@@ -47,9 +46,12 @@ export interface UnitFailure {
 }
 
 const SYSTEMD = 'systemd[1]';
+/** rndc as named.service's ExecReload. */
+const RNDC = 'rndc[1311]';
+/** systemd's default: five starts within 10 s, then the unit stays failed. */
+const START_LIMIT_BURST = 5;
 
 const MAX_LOG = 400;
-const SMTP_PORT = 25;
 const POP3_PORT = 110;
 const IMAP_PORT = 143;
 const SSH_PORT = 22;
@@ -120,11 +122,30 @@ export class Server extends Host {
     if (u.id === 'ssh') return this.startSsh() ? next : null;
     if (u.id === 'firewall') return this.startFirewall() ? next : null;
     const check = unitCheck(u.id, this);
-    if (check.ok) return check.apply ? check.apply(next) : next;
+    if (check.ok) {
+      if (check.ident && check.lines) this.logLines(u.id, check.ident, check.lines);
+      return check.apply ? check.apply(next) : next;
+    }
     if (u.simple) this.systemd(u.id, `Started ${unitTitle(u)}.`);
     this.logLines(u.id, check.ident, check.lines);
     this.failStart(u.id);
+    if (u.restart) this.restartLimit(u, check.ident, check.lines);
     return null;
+  }
+
+  /** Restart=on-failure: systemd starts it again (the files have not changed) until StartLimitBurst stops it. */
+  private restartLimit(u: UnitInfo, ident: string, lines: readonly string[]): void {
+    const service = `${u.linux}.service`;
+    for (let n = 1; n < START_LIMIT_BURST; n++) {
+      this.systemd(u.id, `${service}: Scheduled restart job, restart counter is at ${n}.`);
+      this.systemd(u.id, `Starting ${unitTitle(u)}...`);
+      this.logLines(u.id, ident, lines);
+      this.failStart(u.id);
+    }
+    this.systemd(u.id, `${service}: Scheduled restart job, restart counter is at ${START_LIMIT_BURST}.`);
+    this.systemd(u.id, `${service}: Start request repeated too quickly.`, 'warning');
+    this.systemd(u.id, `${service}: Failed with result 'exit-code'.`, 'warning');
+    this.systemd(u.id, `Failed to start ${unitTitle(u)}.`, 'err');
   }
 
   /** A line systemd itself writes in the unit's journal. */
@@ -213,6 +234,29 @@ export class Server extends Host {
     return null;
   }
 
+  /**
+   * `systemctl reload named` (ExecReload=rndc reload) or rndc itself: named reads its files again and keeps what it
+   * had when named.conf does not load. Returns the error, or null.
+   */
+  reloadDns(bySystemd = true): string | null {
+    const u = unitById('dns');
+    if (bySystemd) this.systemd('dns', `Reloading ${unitTitle(u)}...`);
+    const check = unitCheck('dns', this, 'reload');
+    if (check.ident && check.lines) this.logLines('dns', check.ident, check.lines);
+    if (!check.ok) {
+      if (!bySystemd) return 'failure';
+      this.log('dns', "rndc: 'reload' failed: failure", { ident: RNDC });
+      this.failReload('dns');
+      return 'failure';
+    }
+    if (bySystemd) {
+      this.log('dns', 'server reload successful', { ident: RNDC });
+      this.systemd('dns', `Reloaded ${unitTitle(u)}.`);
+    }
+    if (check.apply) this.setServices(check.apply(this.services));
+    return null;
+  }
+
   /** Starting Apache (apachectl start) reads /etc/apache2; a configuration error leaves it failed. */
   private startWeb(): boolean {
     if (this.os === 'windows') return true;
@@ -254,9 +298,9 @@ export class Server extends Host {
     const s = this.services;
     applyPtPools(this.dhcpEngine, s.dhcp.pools, s.dhcp.enabled);
     this.web.sync();
-    this.toggle(SMTP_PORT, s.mail.smtp, (req, peer) => (req.app === 'SMTP' && req.kind === 'request' ? handleSmtp(this.mailEnv(), this.mailboxes, req, formatIp(peer.ip)) : null));
-    this.toggle(POP3_PORT, s.mail.pop3, (req, peer) => (req.app === 'POP3' && req.kind === 'request' ? handleRetrieve(this.mailEnv(), this.mailboxes, req, formatIp(peer.ip)) : null));
-    this.toggle(IMAP_PORT, s.mail.imap, (req, peer) => (req.app === 'IMAP' && req.kind === 'request' ? handleRetrieve(this.mailEnv(), this.mailboxes, req, formatIp(peer.ip)) : null));
+    this.toggle(SMTP_PORT, s.mail.smtp, (req, peer) => (req.app === 'SMTP' && req.kind === 'request' ? handleSmtp(mailEnv(this), this.mailboxes, req, formatIp(peer.ip)) : null));
+    this.toggle(POP3_PORT, s.mail.pop3, (req, peer) => (req.app === 'POP3' && req.kind === 'request' ? handleRetrieve(mailEnv(this), this.mailboxes, req, formatIp(peer.ip)) : null));
+    this.toggle(IMAP_PORT, s.mail.imap, (req, peer) => (req.app === 'IMAP' && req.kind === 'request' ? handleRetrieve(mailEnv(this), this.mailboxes, req, formatIp(peer.ip)) : null));
     this.toggle(SSH_PORT, s.ssh.enabled, (req, peer) => this.ssh.handle(req, peer));
     if (!s.ssh.enabled) this.ssh.closeAll();
   }
@@ -278,50 +322,15 @@ export class Server extends Host {
 
   // ------------------------------------------------------------ mail
 
-  private mailEnv(): MailEnv {
-    const m = this.services.mail;
-    return {
-      domain: m.domain,
-      users: m.users,
-      hostname: this.name,
-      log: (line) => this.log(line.startsWith('dovecot') ? 'mailbox' : 'smtp', line),
-      relay: (domain, mail, done) => this.relayMail(domain, mail, done),
-    };
-  }
-
   /** Mail submitted by a local program (webmail): the same rules as SMTP from 127.0.0.1. */
   submitMail(mail: MailMessage): { ok: boolean; text: string } {
-    const r = handleSmtp(this.mailEnv(), this.mailboxes, { app: 'SMTP', kind: 'request', helo: 'localhost', mail }, '127.0.0.1');
+    const r = handleSmtp(mailEnv(this), this.mailboxes, { app: 'SMTP', kind: 'request', helo: 'localhost', mail }, '127.0.0.1');
     return { ok: r.code === '250', text: `${r.code} ${r.text}` };
   }
 
   /** Checks a mail account (Dovecot login), as webmail does through IMAP. */
   mailLogin(user: string, password: string): boolean {
     return this.services.mail.users.some((u) => u.name.toLowerCase() === user.toLowerCase() && u.password === password);
-  }
-
-  /** MX lookup, then A lookup of the exchange, then SMTP to it. */
-  private relayMail(domain: string, mail: MailMessage, done: (ok: boolean, reason: string) => void): void {
-    this.lookup(domain, 'MX', (mx) => {
-      const exchange = mx.kind === 'answer' ? [...(mx.msg.answers ?? [])].filter((a) => a.type === 'MX').sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))[0]?.data : undefined;
-      const target = exchange ?? domain;
-      this.lookup(target, 'A', (a) => {
-        const ip = a.kind === 'answer' ? firstAddress(a.msg) : undefined;
-        if (ip === undefined) {
-          done(false, `Host or domain name not found. Name service error for name=${domain} type=MX`);
-          return;
-        }
-        if (this.ownsIp(ip)) {
-          done(false, `mail for ${domain} loops back to myself`);
-          return;
-        }
-        this.connect(ip, SMTP_PORT, { app: 'SMTP', kind: 'request', helo: this.name, mail }, (r) => {
-          const ok = r.kind === 'ok' && r.reply.app === 'SMTP' && r.reply.kind === 'reply' && r.reply.code === '250';
-          const why = r.kind === 'ok' && r.reply.kind === 'reply' ? `${r.reply.code} ${r.reply.text}` : `connect to ${formatIp(ip)}:25: ${r.kind}`;
-          done(ok, `relay=${target}[${formatIp(ip)}]:25, ${why}`);
-        });
-      });
-    });
   }
 
   // ------------------------------------------------------------ UDP services

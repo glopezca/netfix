@@ -33,6 +33,8 @@ export interface ServicesJson {
 const ip = (n: number | undefined): string | undefined => (n === undefined ? undefined : formatIp(n));
 
 export function servicesToJson(s: ServerServices): ServicesJson {
+  // Zones named could not load are its running state: the next start loads the files again.
+  const { unloaded: _unloaded, ...dns } = s.dns;
   return {
     dhcp: {
       enabled: s.dhcp.enabled,
@@ -44,7 +46,7 @@ export function servicesToJson(s: ServerServices): ServicesJson {
       })),
       interfaces: s.dhcp.interfaces,
     },
-    dns: { ...s.dns, ...(s.dns.forwarders?.length ? { forwarders: s.dns.forwarders.map(formatIp) } : { forwarders: undefined }), publicNames: publicNamesToJson(s.dns.publicNames) },
+    dns: { ...dns, ...(dns.forwarders?.length ? { forwarders: dns.forwarders.map(formatIp) } : { forwarders: undefined }), publicNames: publicNamesToJson(dns.publicNames) },
     http: { enabled: s.http.enabled, files: [...s.http.files] },
     mail: s.mail,
     ssh: s.ssh,

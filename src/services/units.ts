@@ -23,6 +23,8 @@ export interface UnitInfo {
   readonly simple?: boolean;
   /** No ExecReload (Kea): `systemctl reload` is not applicable. */
   readonly noReload?: boolean;
+  /** Restart=on-failure (named): a failed start is tried again until the start limit. */
+  readonly restart?: boolean;
 }
 
 /** What starting a unit runs (from its unit file in Ubuntu). */
@@ -39,7 +41,7 @@ export interface UnitStart {
 
 export const UNITS: readonly UnitInfo[] = [
   { id: 'dhcp', linux: 'kea-dhcp4-server', aliases: ['kea-dhcp4', 'isc-dhcp-server', 'dhcpd'], process: 'kea-dhcp4', description: 'Kea DHCPv4 Service', windows: 'DHCPServer', windowsDisplay: 'Servidor DHCP', ports: [{ proto: 'udp', port: 67 }], pid: 812, start: { exec: 'ExecStart=/usr/sbin/kea-dhcp4 -c /etc/kea/kea-dhcp4.conf' }, simple: true, noReload: true },
-  { id: 'dns', linux: 'named', aliases: ['bind9'], alias: 'bind9', process: 'named', description: 'BIND Domain Name Server', windows: 'DNS', windowsDisplay: 'Servidor DNS', ports: [{ proto: 'udp', port: 53 }], pid: 845, start: { exec: 'ExecStart=/usr/sbin/named -f $OPTIONS' } },
+  { id: 'dns', linux: 'named', aliases: ['bind9'], alias: 'bind9', process: 'named', description: 'BIND Domain Name Server', windows: 'DNS', windowsDisplay: 'Servidor DNS', ports: [{ proto: 'udp', port: 53 }], pid: 845, start: { exec: 'ExecStart=/usr/sbin/named -f $OPTIONS' }, restart: true },
   { id: 'http', linux: 'apache2', aliases: ['httpd'], process: 'apache2', description: 'The Apache HTTP Server', windows: 'W3SVC', windowsDisplay: 'Servicio de publicación World Wide Web', ports: [{ proto: 'tcp', port: 80 }], pid: 903, start: { exec: 'ExecStart=/usr/sbin/apachectl start', control: true, pid: 1123 } },
   { id: 'smtp', linux: 'postfix', aliases: ['smtp'], process: 'master', description: 'Postfix Mail Transport Agent', windows: 'SMTPSVC', windowsDisplay: 'Protocolo simple de transferencia de correo (SMTP)', ports: [{ proto: 'tcp', port: 25 }], pid: 1021 },
   { id: 'mailbox', linux: 'dovecot', aliases: ['pop3', 'imap'], process: 'dovecot', description: 'Dovecot IMAP/POP3 email server', windows: 'POP3Svc', windowsDisplay: 'Servicio POP3/IMAP', ports: [{ proto: 'tcp', port: 110 }, { proto: 'tcp', port: 143 }], pid: 1088, start: { exec: 'ExecStart=/usr/sbin/dovecot -F' } },
