@@ -29,7 +29,7 @@ try {
   // The Labs menu groups the labs by theme.
   const groups = await page.locator('select.select').first().locator('optgroup').evaluateAll((gs) => gs.map((g) => g.label));
   assert.deepEqual(groups, ['DHCP', 'Conmutación y VLAN', 'Servicios', 'Resolución de nombres', 'Internet y VPN', 'Seguridad']);
-  assert.equal(await page.locator('optgroup[label="Resolución de nombres"] option').count(), 3);
+  assert.equal(await page.locator('optgroup[label="Resolución de nombres"] option').count(), 4);
   await page.locator('select.select').first().selectOption('basico');
   await page.waitForTimeout(300);
 
