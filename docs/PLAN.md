@@ -2002,3 +2002,42 @@ pestañas Servicios, la gestión web y apt en la terminal, y limitables desde la
   paquetes; la casilla SSH de un PC sigue siendo el cliente. Un Windows sin terminal GNU/Linux conserva sus casillas de
   servicio aunque el laboratorio quite paquetes. `isc-kea` sigue a kea-dhcp4-server. Un paquete quitado que es
   dependencia de otro llega con él (documentado).
+
+### Fase 58: GNU/Linux y Windows homogéneos en los equipos (v0.39.0)
+
+Petición: (1) al añadir Windows a un equipo GNU/Linux debe aparecer «Compartir archivos e impresoras para redes
+Microsoft» (y funcionar como servicio), y al quitárselo a un Windows, desaparecer con su servicio; (2) todo equipo con
+Windows puede compartir, también Servidores y routers GNU/Linux forzados a tener Windows; (3) con los dos sistemas, la
+pestaña Servicios agrupa los paneles en GNU/Linux y Windows; (4) los paquetes que son servicios (mDNS…) pasan a
+servicios, desactivados en Configuración y con su panel en Servicios; network-manager solo con panel si no repite lo
+de Interfaces y TCP/IP (si no, herramienta, explicado en la ayuda); (5) gestión web armonizada con la ventana.
+
+- **Sistemas = terminales** (`hasSystem` en device-apps.ts): Windows con su terminal marcada, GNU/Linux con la suya;
+  sin ninguna, el de TCP/IP. `linuxSide`, `winShareOffered`, NetBIOS, LLMNR, mDNS nativo de Windows y el registro WINS
+  de Windows la usan. El servidor SMB es el de Windows mientras comparte; si no, smbd.
+- **winshare** también en `FEATURES_BY_KIND.linuxrouter` (activado); `featuresV: 4` para que una lista guardada antes
+  no lo apague.
+- **Servicios agrupado**: `panelGroups` (pkg-units.ts) y `systemSubnav` (ui/system-subnav.ts): con los dos sistemas,
+  encabezados GNU/Linux y Windows en la lista (Windows: SMB).
+- **avahi-daemon y winbind, servicios**: en `SERVICE_PACKAGES`, unidades systemd (avahi-daemon, winbind), paneles
+  mDNS (en marcha, nombre publicado `host-name`, publicar o no; reinicio al aplicar) y winbind (en marcha, `wins` en
+  nsswitch.conf), fichero /etc/avahi/avahi-daemon.conf (el de Ubuntu) en Configuración y su registro. mDNS de
+  GNU/Linux solo con avahi-daemon en marcha (nss-mdns pregunta a través de él); wins, con winbind en marcha.
+- **network-manager**: herramienta. Un panel solo repetiría direcciones, puerta de enlace, DNS y estado del enlace
+  (Interfaces y TCP/IP); lo propio son los perfiles y la conectividad de `nmcli`. Explicado en la ayuda de apt.
+- **Gestión web**: Servicios → mDNS, winbind y Compartir (Windows); Seguridad → Firewall y Parámetros del kernel en
+  Server y router (Enrutamiento y VPN, solo router); Administración → Paquetes (el catálogo con Instalar/Quitar).
+  Lo de GNU/Linux solo con su terminal; Compartir solo con Windows (`admin-extra.ts`).
+- **Hecho (v0.39.0)**, con la revisión (opus):
+  - cada acción de la gestión web solo corre desde su página (`ACTION_PAGES`, `securityFrom`): en un Server, la
+    página Firewall solo hace lo del firewall (no rutas ni sysctl); Parámetros del kernel sigue la función `sysctl`
+    del laboratorio y rechaza valores de varias líneas; un formulario genérico (DHCP…) enviado desde otra página ya no
+    corre (fallo anterior a esta fase);
+  - `serviceSystem` (device-apps.ts): el sistema de los servicios propios y del resolvedor por defecto (el único, o
+    con los dos el de TCP/IP): SSH (SFTP, rótulo), sshd_config, `resolveHost` y la agrupación de Servicios de un
+    Windows Server con terminal GNU/Linux (sus servicios, en Windows);
+  - el firewall (nftables) de un Server con terminal GNU/Linux carga su fichero aunque su TCP/IP sea Windows;
+    systemd-resolved funciona en el lado GNU/Linux de un equipo con los dos sistemas;
+  - el registro WINS de Windows sigue a las casillas de terminal;
+  - avahi-daemon.conf: borrar el nombre comenta cualquier `host-name=` sin comentar; `is_yes` como avahi; aplicar
+    reinicia sin cambiar si está habilitado.

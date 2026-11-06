@@ -7,21 +7,19 @@
 import { el } from './dom.ts';
 import { t, tDynamic } from '../i18n/t.ts';
 import type { MessageKey } from '../i18n/catalog.ts';
-import { APPS_BY_KIND, PC_APPS, deviceApps, labAllows, labViewOf, sambaAllowed, setDeviceApps } from '../net/device-apps.ts';
+import { APPS_BY_KIND, PC_APPS, deviceApps, labAllows, labViewOf } from '../net/device-apps.ts';
 import type { FeatureId } from '../net/lab-features.ts';
 import type { Host } from '../devices/host.ts';
 import { linuxSide, sambaOffered } from '../net/pkg-units.ts';
 import { hasPackage } from '../net/host-packages.ts';
 import { setSambaInstalled } from '../shells/samba-install.ts';
 import { setAptInstalled } from '../shells/apt-install.ts';
-import { SERVICE_PACKAGES, labHasPackage } from '../net/lab-packages.ts';
-import { devicePackages, serviceOffered, setServiceBox } from '../shells/apt-offer.ts';
-import { findPackage } from '../shells/apt-catalog.ts';
-import { installedPackage } from '../shells/apt-state.ts';
+import { labHasPackage } from '../net/lab-packages.ts';
+import { listedPackages, serviceOffered, setServiceBox } from '../shells/apt-offer.ts';
+import type { ListedPackage } from '../shells/apt-offer.ts';
 import { setWinShareOn, winShareOffered, winShareOn } from '../net/win-shares.ts';
 
 const TERMINALS: readonly FeatureId[] = ['linux', 'windows'];
-const SERVICE_SET: ReadonlySet<string> = new Set(SERVICE_PACKAGES);
 
 /** The PC applications and terminals are named as their tabs; the service panels as in Laboratorio actual. */
 const TAB_NAMES: Readonly<Partial<Record<FeatureId, MessageKey>>> = {
@@ -53,10 +51,9 @@ function winShareBox(h: Host, changed: () => void): HTMLElement[] {
  * The catalogue packages of the device that its lab keeps, or that it has installed (so they can be removed): each box
  * is apt install / apt remove; a service package's box and its service box always agree (both read apt's state).
  */
-function packageBoxes(h: Host, names: readonly string[], changed: () => void): HTMLElement[] {
-  const installed = (name: string): boolean => { const p = findPackage(name); return p !== undefined && installedPackage(h, p); };
-  return names.filter((name) => installed(name) || (labHasPackage(h, name) && (name !== 'samba' || sambaAllowed(h)))).map((name) => {
-    const input = el('input', { type: 'checkbox', name: `dev-pkg-${name}`, checked: installed(name), 'data-pkg': name });
+function packageBoxes(h: Host, list: readonly ListedPackage[], changed: () => void): HTMLElement[] {
+  return list.map(({ name, installed }) => {
+    const input = el('input', { type: 'checkbox', name: `dev-pkg-${name}`, checked: installed, 'data-pkg': name });
     input.addEventListener('change', () => { setAptInstalled(h, name, input.checked); changed(); });
     return el('label', { class: 'set-choice' }, input, el('code', {}, name));
   });
@@ -75,12 +72,12 @@ export function deviceConfig(h: Host, changed: () => void): HTMLElement {
   };
   const apps = h.kind === 'pc' ? allowed.filter((id) => id === 'ip' || PC_APPS.includes(id)) : allowed.filter((id) => id === 'ip');
   const services = h.kind === 'pc' ? [] : allowed.filter((id) => id !== 'ip' && !TERMINALS.includes(id) && serviceOffered(h, id));
-  const packages = devicePackages(h);
+  const packages = listedPackages(h);
   return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') },
     el('p', { class: 'muted' }, t('dev.intro')),
     ...group(t('dev.apps'), apps.map(box)),
     ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed), ...winShareBox(h, changed)]),
     ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)),
-    ...group(t('dev.svcPackages'), packageBoxes(h, packages.filter((n) => SERVICE_SET.has(n)), changed)),
-    ...group(t('dev.packages'), packageBoxes(h, packages.filter((n) => !SERVICE_SET.has(n)), changed)));
+    ...group(t('dev.svcPackages'), packageBoxes(h, packages.filter((p) => p.service), changed)),
+    ...group(t('dev.packages'), packageBoxes(h, packages.filter((p) => !p.service), changed)));
 }

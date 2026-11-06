@@ -86,7 +86,10 @@ export function copyRow(label: string, value: string, help: string): HTMLElement
 
 /** Vertical sub-navigation used inside a window tab (Servicios → DHCP / DNS / …). */
 /** Side navigation of a pane; items with `keep` are drawn once and kept (an open terminal survives a visit to another item). */
-export function subnav(items: readonly { id: string; label: string; render: () => HTMLElement; keep?: boolean }[]): HTMLElement {
+/** One entry of a subnav; `group` (a system name) heads a run of entries when the list is grouped. */
+export interface SubnavItem { readonly id: string; readonly label: string; readonly render: () => HTMLElement; readonly keep?: boolean; readonly group?: string }
+
+export function subnav(items: readonly SubnavItem[]): HTMLElement {
   const content = el('div', { class: 'subnav-content' });
   const kept = new Map<string, HTMLElement>();
   const buttons = items.map((it) => {
@@ -103,7 +106,12 @@ export function subnav(items: readonly { id: string; label: string; render: () =
     content.replaceChildren(view);
   };
   if (items[0]) show(items[0].id);
-  return el('div', { class: 'subnav' }, el('nav', { class: 'subnav-list', 'aria-label': t('win.services') }, ...buttons), content);
+  // A heading before the first entry of each group (devices with both systems).
+  const list = buttons.flatMap((b, i) => {
+    const g = items[i]?.group;
+    return g && g !== items[i - 1]?.group ? [el('span', { class: 'subnav-group' }, g), b] : [b];
+  });
+  return el('div', { class: 'subnav' }, el('nav', { class: 'subnav-list', 'aria-label': t('win.services') }, ...list), content);
 }
 
 /**

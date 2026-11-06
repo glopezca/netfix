@@ -11,7 +11,7 @@ import type { Pc } from '../devices/pc.ts';
 import type { Server } from '../devices/server.ts';
 import type { Switch } from '../devices/switch.ts';
 import type { HostOs } from '../devices/host.ts';
-import { setPackageInstalled } from './host-packages.ts';
+import { setAptInstalled } from '../shells/apt-install.ts';
 import { applyConfig } from '../ios/session.ts';
 import { parseIp } from '../core/ip.ts';
 import { cloud } from './labs-vpn.ts';
@@ -79,7 +79,7 @@ export const namesLanLab: Example = {
     }
     // LNX1 has avahi (it answers and asks .local names); LNX2 has nothing installed yet.
     const lnx1 = t.byLabel('LNX1') as Pc;
-    for (const name of ['avahi-daemon', 'libnss-mdns']) setPackageInstalled(lnx1, name, true);
+    setAptInstalled(lnx1, 'avahi-daemon', true);
     t.settle();
     return t;
   },

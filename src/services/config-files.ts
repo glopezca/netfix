@@ -41,19 +41,25 @@ const SERVICES: readonly ConfigSource[] = [
 /** Brought by apt install samba, on any GNU/Linux host. */
 const SAMBA: ConfigSource = { id: 'samba', label: 'files.samba', paths: ['/etc/samba/smb.conf'] };
 
+/** avahi-daemon and winbind, services of their own on any kind (winbind reads smb.conf and serves nsswitch.conf). */
+const LINK: readonly ConfigSource[] = [
+  { id: 'mdns', label: 'files.mdns', paths: ['/etc/avahi/avahi-daemon.conf'] },
+  { id: 'winbind', label: 'files.winbind', paths: ['/etc/nsswitch.conf', '/etc/samba/smb.conf'] },
+];
+
 /**
  * The services of a device in the order of its Services tab (the kernel parameters, the router's own panels, then
  * SSH…, then Samba when it is installed). A GNU/Linux PC has the kernel parameters and what its packages bring.
  */
 export function configSources(device: AppsDevice): readonly ConfigSource[] {
   const panels = hostPanels(device);
-  const samba = panels.includes('samba') ? [SAMBA] : [];
+  const samba = [...(panels.includes('samba') ? [SAMBA] : []), ...LINK.filter((s) => panels.includes(s.id))];
   const sysctl = appAvailable(device, 'sysctl') && linuxSide(device) ? [SYSCTL] : [];
   // Only what is installed: a service whose box is off has no files to show.
   const on = (s: ConfigSource): boolean => appAvailable(device, s.id as FeatureId);
   if (device.kind === 'linuxrouter') return [...sysctl, ...ROUTER.filter(on), ...SERVICES.filter(on), ...samba];
   if (device.kind === 'server') return [...sysctl, ...SERVICES.filter(on), ...samba];
-  return [SYSCTL, ...ROUTER, SAMBA].filter((s) => panels.includes(s.id));
+  return [SYSCTL, ...ROUTER, SAMBA, ...LINK].filter((s) => panels.includes(s.id));
 }
 
 /** Most files a directory can contribute (a student filling /etc/bind must not freeze the view). */

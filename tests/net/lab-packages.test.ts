@@ -23,10 +23,10 @@ const plain = (s: string): string => s.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
 const run = (h: Host, cmd: string): string => plain(createShell(h, 'linux', 'root').run(cmd).join('\n'));
 
 test('the catalogue: first the service packages (each one turns on a panel), then the tools', () => {
-  assert.deepEqual([...SERVICE_PACKAGES], ['openssh-server', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot-imapd', 'dovecot-pop3d', 'nftables', 'wireguard-tools', 'rsyslog', 'samba']);
-  assert.deepEqual([...TOOL_PACKAGES], ['network-manager', 'avahi-daemon', 'libnss-mdns', 'libnss-resolve', 'smbclient', 'samba-common-bin', 'winbind', 'libnss-winbind', 'bind9-utils']);
+  assert.deepEqual([...SERVICE_PACKAGES], ['openssh-server', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot-imapd', 'dovecot-pop3d', 'nftables', 'wireguard-tools', 'rsyslog', 'samba', 'avahi-daemon', 'winbind']);
+  assert.deepEqual([...TOOL_PACKAGES], ['network-manager', 'libnss-mdns', 'libnss-resolve', 'smbclient', 'samba-common-bin', 'libnss-winbind', 'bind9-utils']);
   assert.deepEqual([...CATALOG_PACKAGES], [...SERVICE_PACKAGES, ...TOOL_PACKAGES]);
-  for (const name of SERVICE_PACKAGES) assert.ok(findPackage(name)?.feature ?? name === 'samba', `${name}: a service`);
+  for (const name of SERVICE_PACKAGES) assert.ok(findPackage(name)?.feature ?? ['samba', 'avahi-daemon', 'winbind'].includes(name), `${name}: a service`);
   for (const name of TOOL_PACKAGES) assert.equal(findPackage(name)?.feature, undefined, `${name} has no service panel`);
 });
 
@@ -41,7 +41,7 @@ test('the list of packages taken away: catalogue order, no repeats, empty when a
   let off = setPackageOff([], 'winbind', true);
   off = setPackageOff(off, 'network-manager', true);
   off = setPackageOff(off, 'winbind', true);
-  assert.deepEqual(off, ['network-manager', 'winbind']);
+  assert.deepEqual(off, ['winbind', 'network-manager'], 'services first');
   assert.deepEqual(setPackageOff(off, 'network-manager', false), ['winbind']);
   assert.deepEqual(setPackageOff([], 'samba', true), ['samba'], 'samba too (besides its lab feature)');
   assert.deepEqual(setPackageOff([], 'ssh', true), [], 'a short name is not in the list');
@@ -108,9 +108,9 @@ test('the lab takes a service package away: apt cannot find it and an uninstalle
 test('each device lists the service packages that do something on it', () => {
   const topo = EXAMPLES.find((e) => e.id === 'samba')!.build();
   const services = (label: string): string[] => devicePackages(topo.byLabel(label) as Host).filter((n) => (SERVICE_PACKAGES as readonly string[]).includes(n));
-  assert.deepEqual(services('PC1'), ['nftables', 'samba'], 'a GNU/Linux PC: its firewall and Samba');
-  assert.deepEqual(services('SRV'), ['openssh-server', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot-imapd', 'dovecot-pop3d', 'nftables', 'rsyslog', 'samba'], 'a server: no VPN');
-  assert.deepEqual(devicePackages(topo.byLabel('PC1') as Host).slice(2), [...TOOL_PACKAGES], 'then every tool');
+  assert.deepEqual(services('PC1'), ['nftables', 'samba', 'avahi-daemon', 'winbind'], 'a GNU/Linux PC: its firewall, Samba, mDNS and winbind');
+  assert.deepEqual(services('SRV'), ['openssh-server', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot-imapd', 'dovecot-pop3d', 'nftables', 'rsyslog', 'samba', 'avahi-daemon', 'winbind'], 'a server: no VPN');
+  assert.deepEqual(devicePackages(topo.byLabel('PC1') as Host).slice(4), [...TOOL_PACKAGES], 'then every tool');
   assert.deepEqual(devicePackages(topo.byLabel('PC0') as Host), [], 'a Windows PC has no apt');
 });
 

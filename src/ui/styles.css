@@ -401,6 +401,8 @@ body[data-view="docs"] .win-layer, body[data-view="about"] .win-layer, body[data
 .grid-table tr.is-current { background: var(--accent-soft); }
 .subnav { display: grid; grid-template-columns: 130px minmax(0, 1fr); height: 100%; }
 .subnav-list { display: flex; flex-direction: column; gap: 2px; padding: 10px 6px; border-right: 1px solid var(--line); background: var(--panel-2); }
+.subnav-group { font-size: 0.78rem; font-weight: 700; color: var(--ink-2); padding: 8px 10px 2px; }
+.subnav-group:first-child { padding-top: 2px; }
 .subnav-item { text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: var(--radius-ctl); cursor: pointer; }
 .subnav-item[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .subnav-content { min-width: 0; overflow: auto; }

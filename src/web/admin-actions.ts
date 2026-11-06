@@ -5,6 +5,8 @@ import { rpzAction } from './admin-rpz.ts';
 import { securityAction } from './admin-firewall-actions.ts';
 import { vpnAction } from './admin-vpn.ts';
 import { sambaAction } from './admin-samba.ts';
+import { extraAction } from './admin-extra.ts';
+import { linuxSide } from '../net/pkg-units.ts';
 import type { Server } from '../devices/server.ts';
 import { parseIp, parseMask } from '../core/ip.ts';
 import { validatePool } from '../services/dhcp-pt.ts';
@@ -123,8 +125,24 @@ function ssh(server: Server, f: Fields): Outcome {
   const want = { password: on(f, 'password'), pubkey: on(f, 'pubkey') };
   if (f.has('auth') && !want.password && !want.pubkey) return { error: t('wa.err.auth') };
   const saved = set(server, (s) => ({ ...s, ssh: { ...s.ssh, enabled: on(f, 'enabled') } }));
-  const err = server.os === 'linux' && f.has('auth') ? setSshAuthMethods(server, want) : null;
+  const err = linuxSide(server) && f.has('auth') ? setSshAuthMethods(server, want) : null;
   return err ? { error: err } : saved;
+}
+
+/** The page each generic action belongs to: sent from another page, it runs nothing. */
+const ACTION_PAGES: Readonly<Record<string, readonly string[]>> = {
+  setup: ['setup'], dhcp: ['dhcp'], 'dhcp-listen': ['dhcp'], 'dns-listen': ['dns'], 'dns-rpz': ['dns'], 'dns-rpz-initial': ['dns'],
+  'pool-add': ['dhcp'], 'pool-del': ['dhcp'], 'res-add': ['dhcp'], 'res-del': ['dhcp'], 'lease-reserve': ['dhcp'],
+  web: ['web'], mail: ['mail'], ssh: ['ssh'], 'user-add': ['ssh', 'mail'], 'user-del': ['ssh', 'mail'], admin: ['admin'],
+};
+
+/** Seguridad: the firewall's actions from its page (a Server's only page there), routes and forwarding from Enrutamiento. */
+function securityFrom(server: Server, pageId: string, f: Fields): Outcome | null {
+  const action = f.get('action') ?? '';
+  if (pageId === 'firewall') return action.startsWith('fw-') ? securityAction(server, f) : null;
+  if (pageId === 'routing' && server.kind === 'linuxrouter') return action.startsWith('fw-') ? null : securityAction(server, f);
+  if (pageId === 'vpn' && server.kind === 'linuxrouter') return vpnAction(server, f);
+  return null;
 }
 
 /** Runs a form action of a page. */
@@ -134,6 +152,10 @@ export function runAction(server: Server, pageId: string, f: Fields): Outcome & 
   if (dns) return dns;
   const samba = pageId === 'samba' ? sambaAction(server, f) : null;
   if (samba) return samba;
+  const extra = extraAction(server, pageId, f);
+  if (extra) return extra;
+  const pages = ACTION_PAGES[action];
+  if (pages && !pages.includes(pageId)) return { error: t('wa.unknownAction') };
   switch (action) {
     case 'setup': return setup(server, f);
     case 'dhcp': return set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, enabled: on(f, 'enabled') } }));
@@ -151,7 +173,7 @@ export function runAction(server: Server, pageId: string, f: Fields): Outcome & 
     case 'ssh': return ssh(server, f);
     case 'user-add': case 'user-del': return users(server, pageId === 'ssh' ? 'ssh' : 'mail', f, action === 'user-add');
     case 'admin': return admin(server, f);
-    // Firewall, routes and VPN are pages of the Linux router only.
-    default: return (server.kind === 'linuxrouter' ? vpnAction(server, f) ?? securityAction(server, f) : undefined) ?? { error: t('wa.unknownAction') };
+    // Routes and VPN are pages of the Linux router only; the firewall, of a Server too.
+    default: return securityFrom(server, pageId, f) ?? { error: t('wa.unknownAction') };
   }
 }

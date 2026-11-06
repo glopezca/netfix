@@ -114,8 +114,29 @@ try {
   await cfg();
   assert.equal(await win.locator('input[name="dev-pkg-bind9"]').count(), 0);
   assert.equal(await win.locator('input[name="dev-dns"]').count(), 0);
+  await win.locator('.win-close').click();
+
+  // Both systems (v0.39): Windows added to PC1 brings its sharing box; Servicios groups GNU/Linux and Windows.
+  await page.click('button.seg[data-view="settings"]');
+  await page.locator('input[data-feature="pc:samba"]').check();
+  await page.click('button.seg[data-view="net"]');
+  await page.dblclick('g.device:has-text("PC1")');
+  await cfg();
+  assert.equal(await win.locator('input[name="dev-winshare"]').count(), 0, 'GNU/Linux only: no Windows sharing');
+  await win.locator('input[name="dev-windows"]').check();
+  await page.waitForTimeout(300);
+  await cfg();
+  await win.locator('input[name="dev-winshare"]').check();
+  await page.waitForTimeout(300);
+  await win.locator('.win-tab:has-text("Servicios")').click();
+  assert.deepEqual(await win.locator('.subnav-group').allInnerTexts(), ['GNU/Linux', 'Windows']);
+  await cfg();
+  await win.locator('input[name="dev-windows"]').uncheck();
+  await page.waitForTimeout(300);
+  await cfg();
+  assert.equal(await win.locator('input[name="dev-winshare"]').count(), 0, 'Windows taken away: its sharing goes');
   assert.deepEqual(errors, []);
-  console.log('e2e samba OK: PC Servicios follows apt install/remove (no web GUI), Samba panel adds a share on SRV, Samba per kind in the lab settings, service packages in the catalogue');
+  console.log('e2e samba OK: PC Servicios follows apt install/remove (no web GUI), Samba panel adds a share on SRV, Samba per kind in the lab settings, service packages in the catalogue, Windows added and taken away');
 } finally {
   await browser.close();
   server.kill();

@@ -5,6 +5,8 @@
  * when resolved has LLMNR=yes on the link (topology.ts passes that test in, so net/ does not import shells/).
  */
 import type { Host } from '../devices/host.ts';
+import { hasSystem } from './device-apps.ts';
+import type { AppsDevice } from './device-apps.ts';
 import type { IpPacket } from './packets.ts';
 import type { StackHost } from './ipstack.ts';
 import { registerLocalSockets } from './ipstack.ts';
@@ -22,8 +24,7 @@ const ANSWER_TTL = 30;
 const FIRST_PORT = 60000;
 const PORTS = 5000;
 
-const osOf = (h: object): string | undefined => (h as { readonly os?: string }).os;
-const windows = (h: object): boolean => osOf(h) === 'windows';
+const windows = (h: object): boolean => hasSystem(h as AppsDevice, 'windows');
 
 /** Whether a GNU/Linux host answers on a stack interface (systemd-resolved, set by topology.ts). */
 type Responder = (host: Host, iface: string) => boolean;
@@ -33,7 +34,7 @@ export function setLlmnrResponder(r: Responder): void {
   linuxAnswers = r;
 }
 
-const answersOn = (h: StackHost, iface: string): boolean => windows(h) || (osOf(h) === 'linux' && linuxAnswers(h as Host, iface));
+const answersOn = (h: StackHost, iface: string): boolean => windows(h) || (hasSystem(h as object as AppsDevice, 'linux') && linuxAnswers(h as Host, iface));
 
 const waiting = new WeakMap<object, Map<number, { readonly name: string; readonly done: (ip: number) => void }>>();
 let nextPort = 0;

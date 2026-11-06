@@ -9,7 +9,7 @@ test('defaults: everything allowed but the Windows terminal of the GNU/Linux rou
   const none = {};
   assert.deepEqual(featuresOf(none, 'pc'), ['ip', 'apps', 'samba', 'winshare', 'linux', 'windows']);
   assert.deepEqual(featuresOf(none, 'server'), ['ip', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'samba', 'winshare', 'sysctl', 'firewall', 'linux', 'windows']);
-  assert.deepEqual(featuresOf(none, 'linuxrouter'), ['sysctl', 'firewall', 'vpn', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'samba', 'linux']);
+  assert.deepEqual(featuresOf(none, 'linuxrouter'), ['sysctl', 'firewall', 'vpn', 'ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log', 'samba', 'winshare', 'linux']);
   assert.deepEqual(featuresOf(none, 'router'), ['cli', 'web']);
   assert.equal(featureOn(none, 'server', 'firewall'), true);
   assert.equal(featureOn(none, 'linuxrouter', 'windows'), false);

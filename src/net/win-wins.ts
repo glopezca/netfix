@@ -8,7 +8,7 @@ import type { Host } from '../devices/host.ts';
 import { winsRegister, winsSend, winsSendAll } from './wins.ts';
 import { FILE_SERVER, netbiosName } from './netbios.ts';
 import { winShareActive } from './win-shares.ts';
-import { onAppsChange } from './device-apps.ts';
+import { hasSystem, onAppsChange } from './device-apps.ts';
 
 /** What Windows asks for in a registration (0x493E0 seconds). */
 export const WINDOWS_WINS_TTL_S = 300_000;
@@ -65,7 +65,7 @@ function refreshLater(host: Host): void {
 export function checkWindowsWins(host: Host): void {
   const ip = host.config.ip;
   const servers = windowsWinsServers(host);
-  const key = host.os === 'windows' && ip !== undefined && servers.length ? `${ip}>${servers.join(',')}` : '';
+  const key = hasSystem(host, 'windows') && ip !== undefined && servers.length ? `${ip}>${servers.join(',')}` : '';
   if (key === (registeredFor.get(host) ?? '')) return;
   registeredFor.set(host, key);
   current.delete(host);
@@ -110,7 +110,10 @@ export function attachWindowsWins(host: Host): void {
   watching = true;
   onAppsChange((d) => {
     const h = attached.get(d);
-    if (h) sharingChanged(h);
+    if (!h) return;
+    // A terminal ticked or unticked gives or takes Windows: register, or stop refreshing.
+    checkWindowsWins(h);
+    sharingChanged(h);
   });
 }
 
