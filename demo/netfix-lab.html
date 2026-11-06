@@ -3034,7 +3034,7 @@ const SRV_ES = {
     'dhcp.byMac': 'Dirección MAC',
     'dhcp.badStart': 'La dirección IP inicial no es válida.',
     'dhcp.badMask': 'La máscara no es válida: usa una como 255.255.255.0 (o /24).',
-    'dhcp.badOptions': 'Revisa la puerta de enlace, el DNS o el TFTP (formato 192.168.1.1).',
+    'dhcp.badOptions': 'Revisa la puerta de enlace, el DNS, el TFTP o el WINS (formato 192.168.1.1).',
     'dhcp.badNumbers': 'Usuarios máximos y concesión deben ser números enteros.',
     'dhcp.name': 'Nombre',
     'dhcp.net': 'Red',
@@ -3053,6 +3053,7 @@ const SRV_ES = {
     'dhcp.dns': 'Servidor DNS',
     'dhcp.domain': 'Dominio',
     'dhcp.tftp': 'Servidor TFTP (opción 150)',
+    'dhcp.wins': 'Servidor WINS (opción 44)',
     'dhcp.lease': 'Concesión (minutos)',
     'dhcp.identify': 'Identificar concesiones automáticas por',
     'dhcp.identifyHint': 'Kea «match-client-id»: con MAC, un equipo que cambia de Client-ID conserva su dirección IP.',
@@ -3100,6 +3101,7 @@ const SRV_ES = {
     'pool.err.start': 'La dirección IP inicial {ip} no es una dirección de host de su subred.',
     'pool.err.users': 'El número máximo de usuarios debe ser al menos 1.',
     'pool.err.gateway': 'La puerta de enlace debe estar en la misma subred que el pool.',
+    'pool.err.wins': 'El servidor WINS ha de ser la dirección de un equipo (ni 0.0.0.0, ni multidifusión, ni difusión).',
     'pool.err.subnet': 'Ya hay un pool para esa subred.',
     'pool.err.resNet': 'La reserva {ip} no está en la subred del pool.',
     'pool.err.resId': 'Cada reserva necesita una MAC o un Client-ID (solo uno de los dos).',
@@ -3209,7 +3211,7 @@ const SRV_EN = {
     'dhcp.byMac': 'MAC address',
     'dhcp.badStart': 'The start address is not valid.',
     'dhcp.badMask': 'The mask is not valid: use one such as 255.255.255.0 (or /24).',
-    'dhcp.badOptions': 'Check the gateway, DNS or TFTP (format 192.168.1.1).',
+    'dhcp.badOptions': 'Check the gateway, DNS, TFTP or WINS (format 192.168.1.1).',
     'dhcp.badNumbers': 'Maximum users and lease must be whole numbers.',
     'dhcp.name': 'Name',
     'dhcp.net': 'Network',
@@ -3228,6 +3230,7 @@ const SRV_EN = {
     'dhcp.dns': 'DNS server',
     'dhcp.domain': 'Domain',
     'dhcp.tftp': 'TFTP server (option 150)',
+    'dhcp.wins': 'WINS server (option 44)',
     'dhcp.lease': 'Lease (minutes)',
     'dhcp.identify': 'Identify automatic leases by',
     'dhcp.identifyHint': 'Kea “match-client-id”: with MAC, a device that changes its Client-ID keeps its address.',
@@ -3275,6 +3278,7 @@ const SRV_EN = {
     'pool.err.start': 'The start address {ip} is not a host address of its subnet.',
     'pool.err.users': 'The maximum number of users must be at least 1.',
     'pool.err.gateway': 'The default gateway must be in the same subnet as the pool.',
+    'pool.err.wins': 'The WINS server must be the address of a host (not 0.0.0.0, multicast or broadcast).',
     'pool.err.subnet': 'There is already a pool for that subnet.',
     'pool.err.resNet': 'The reservation {ip} is not in the pool’s subnet.',
     'pool.err.resId': 'Each reservation needs a MAC or a Client-ID (only one of them).',
@@ -3388,6 +3392,7 @@ const WEB_ES = {
     'wa.maskShort': 'Máscara',
     'wa.maxUsers': 'Usuarios máximos',
     'wa.domain': 'Dominio',
+    'wa.wins': 'Servidor WINS (opción 44)',
     'wa.leasesBy': 'Concesiones por',
     'wa.byIdOrMac': 'Client-ID (opción 61) o MAC',
     'wa.records': 'Registros',
@@ -3661,6 +3666,7 @@ const WEB_EN = {
     'wa.maskShort': 'Mask',
     'wa.maxUsers': 'Maximum users',
     'wa.domain': 'Domain',
+    'wa.wins': 'WINS server (option 44)',
     'wa.leasesBy': 'Leases by',
     'wa.byIdOrMac': 'Client-ID (option 61) or MAC',
     'wa.records': 'Records',
@@ -4609,11 +4615,16 @@ const SETTINGS_ES = {
     'set.webHideOff': 'Ocultar en la gestión web de servidores y routers GNU/Linux las opciones desactivadas',
     'set.webHideOffHint': 'Sin marcar, aparecen en gris y no se pueden usar.',
     'set.feat.samba': 'Servicio Samba (compartir ficheros)',
+    'set.feat.winshare': 'Compartir archivos e impresoras para redes Microsoft (Windows)',
+    'dev.winshare': 'Compartir archivos e impresoras para redes Microsoft',
     'dev.tab': 'Configuración',
     'dev.intro': 'Qué muestra este equipo. Lo que el laboratorio desactiva (Configuración → Laboratorio actual) no aparece aquí.',
     'dev.apps': 'Aplicaciones',
     'dev.services': 'Servicios',
     'dev.terminals': 'Terminales',
+    'dev.packages': 'Paquetes',
+    'set.packages': 'Paquetes del repositorio apt (equipos con GNU/Linux)',
+    'set.packagesHint': 'Desmarcado, apt no lo encuentra y no aparece en la pestaña Configuración de los equipos; quien ya lo tiene lo conserva.',
     'dev.changed': 'La ventana se ha reabierto con las pestañas elegidas.',
     'os.title': '¿Qué sistema operativo tiene {name}?',
     'os.body': 'Se activa su terminal y la pila de red de ese sistema. Puedes cambiarlo después en su pestaña Configuración (terminales) y en TCP/IP (sistema operativo).',
@@ -4671,11 +4682,16 @@ const SETTINGS_EN = {
     'set.webHideOff': 'Hide disabled options in the web management of servers and GNU/Linux routers',
     'set.webHideOffHint': 'When unticked, they are shown greyed out and cannot be used.',
     'set.feat.samba': 'Samba service (file sharing)',
+    'set.feat.winshare': 'File and Printer Sharing for Microsoft Networks (Windows)',
+    'dev.winshare': 'File and Printer Sharing for Microsoft Networks',
     'dev.tab': 'Settings',
     'dev.intro': 'What this device shows. Whatever the lab turns off (Settings → Current lab) is not listed here.',
     'dev.apps': 'Applications',
     'dev.services': 'Services',
     'dev.terminals': 'Terminals',
+    'dev.packages': 'Packages',
+    'set.packages': 'Packages in the apt repository (GNU/Linux devices)',
+    'set.packagesHint': 'When unticked, apt cannot find it and it is not listed in the devices\' Settings tab; a device that already has it keeps it.',
     'dev.changed': 'The window has been reopened with the chosen tabs.',
     'os.title': 'Which operating system does {name} run?',
     'os.body': 'Its terminal and that system\'s network stack are turned on. You can change it later in its Settings tab (terminals) and in TCP/IP (operating system).',
@@ -4687,7 +4703,7 @@ const SETTINGS_EN = {
 return { SETTINGS_EN };
 })();
 __m["i18n/es-ES/samba.js"] = (() => {
-/** Español (España): panel Servicios → Samba (servidor o PC GNU/Linux) y Servicios de un PC GNU/Linux. */
+/** Español (España): Servicios → Samba (servidor o PC GNU/Linux), Servicios → SMB de Windows y Servicios de un PC GNU/Linux. */
 const SAMBA_ES = {
     'smb.tab': 'Samba',
     'smb.service': 'Compartición de ficheros (smbd y nmbd)',
@@ -4724,6 +4740,18 @@ const SAMBA_ES = {
     'smb.err.path': 'La carpeta debe ser una ruta absoluta (empieza por /) que no sea un fichero.',
     'smb.err.user': 'Ese usuario no existe en Linux.',
     'smb.err.password': 'Escribe una contraseña.',
+    'wsh.tab': 'SMB',
+    'wsh.intro': 'Los recursos que este equipo comparte por SMB (TCP 139 y 445) con el uso compartido protegido por contraseña desactivado: cualquiera de la red entra como Todos, sin contraseña. Es lo mismo que net share en la terminal.',
+    'wsh.permission': 'Permiso',
+    'wsh.read': 'Todos: Lectura',
+    'wsh.full': 'Todos: Control total',
+    'wsh.hint': 'Una carpeta de la unidad C: que ya exista (créala con md en la terminal).',
+    'wsh.err.name': 'Nombre de recurso no válido (hasta 80 caracteres, sin " / \\ [ ] : | < > + = ; , ? *).',
+    'wsh.err.reserved': 'Ese nombre lo reserva Windows (IPC$, ADMIN$, C$…).',
+    'wsh.err.path': 'La carpeta debe ser una ruta de la unidad C: (C:\\carpeta), sin . ni ..',
+    'wsh.err.folder': 'Esa carpeta no existe en la unidad C:.',
+    'wsh.err.remark': 'Comentario no válido (hasta 256 caracteres, sin caracteres de control).',
+    'wsh.err.full': 'No caben más recursos (32 como máximo).',
     'pcsvc.journalHint': 'Equivale a journalctl -u <servicio> en la terminal del equipo.',
     'pcsvc.noUnits': 'No hay servicios instalados. Instala nftables o samba con apt.',
 };
@@ -4767,6 +4795,18 @@ const SAMBA_EN = {
     'smb.err.path': 'The folder must be an absolute path (starting with /) that is not a file.',
     'smb.err.user': 'That user does not exist on Linux.',
     'smb.err.password': 'Type a password.',
+    'wsh.tab': 'SMB',
+    'wsh.intro': 'The shares this device offers over SMB (TCP 139 and 445) with password protected sharing turned off: anyone on the network gets in as Everyone, without a password. The same as net share in the terminal.',
+    'wsh.permission': 'Permission',
+    'wsh.read': 'Everyone: Read',
+    'wsh.full': 'Everyone: Full Control',
+    'wsh.hint': 'A folder of drive C: that already exists (create it with md in the terminal).',
+    'wsh.err.name': 'Invalid share name (up to 80 characters, without " / \\ [ ] : | < > + = ; , ? *).',
+    'wsh.err.reserved': 'Windows keeps that name for itself (IPC$, ADMIN$, C$…).',
+    'wsh.err.path': 'The folder must be a path of drive C: (C:\\folder), without . or ..',
+    'wsh.err.folder': 'That folder does not exist on drive C:.',
+    'wsh.err.remark': 'Invalid remark (up to 256 characters, no control characters).',
+    'wsh.err.full': 'No room for more shares (32 at most).',
     'pcsvc.journalHint': 'Same as journalctl -u <service> in the computer\'s terminal.',
     'pcsvc.noUnits': 'No services installed. Install nftables or samba with apt.',
 };
@@ -5956,14 +5996,15 @@ return { RESOLVED_CONF, RESOLVED_DEFAULTS, parseSupport, parseResolvedConf, DEFA
 __m["net/lab-features.js"] = (() => {
 /**
  * The service panels of a Server or Linux router, each switched on its own. Samba is a lab feature of PCs too, but its
- * box in a device follows the samba package (apt or the box install it), not the device's list of panels.
+ * box in a device follows the samba package (apt or the box install it), not the device's list of panels; the Windows
+ * sharing («winshare», PC and Server) follows its own box (win-shares.ts).
  */
 const SERVICE_IDS = ['ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log'];
-const FEATURE_IDS = ['ip', 'apps', 'browser', 'sftp', ...SERVICE_IDS, 'samba', 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'];
+const FEATURE_IDS = ['ip', 'apps', 'browser', 'sftp', ...SERVICE_IDS, 'samba', 'winshare', 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'];
 /** What can be switched on each kind, in the order the settings list them. */
 const FEATURES_BY_KIND = {
-    pc: ['ip', 'apps', 'samba', 'linux', 'windows'],
-    server: ['ip', ...SERVICE_IDS, 'samba', 'sysctl', 'firewall', 'linux', 'windows'],
+    pc: ['ip', 'apps', 'samba', 'winshare', 'linux', 'windows'],
+    server: ['ip', ...SERVICE_IDS, 'samba', 'winshare', 'sysctl', 'firewall', 'linux', 'windows'],
     linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'samba', 'linux', 'windows'],
     router: ['cli', 'web'],
     switch: ['cli', 'web'],
@@ -6003,13 +6044,9 @@ function setFeature(features, kind, id, on) {
     const rest = Object.fromEntries(Object.entries(features).filter(([k]) => k !== kind));
     return sameAsDefault(kind, next) ? rest : { ...rest, [kind]: next };
 }
-/** Samba on for every kind that has it (a list saved before the feature existed). */
-function withSamba(features) {
-    return KINDS.filter((k) => FEATURES_BY_KIND[k].includes('samba')).reduce((f, k) => setFeature(f, k, 'samba', true), features);
-}
-/** Samba off for every kind that has it (a v0.34 file with «sambaOff»). */
-function withoutSamba(features) {
-    return KINDS.filter((k) => FEATURES_BY_KIND[k].includes('samba')).reduce((f, k) => setFeature(f, k, 'samba', false), features);
+/** A feature on (a list saved before it existed) or off for every kind that has it. */
+function switchAll(features, id, on) {
+    return KINDS.filter((k) => FEATURES_BY_KIND[k].includes(id)).reduce((f, k) => setFeature(f, k, id, on), features);
 }
 /** The `features` of a topology file (untrusted): known kinds, known features of that kind, no repeats. */
 const isService = (f) => SERVICE_IDS.includes(f);
@@ -6029,19 +6066,23 @@ function parseFeatures(data) {
     }
     return out;
 }
-/** The `featuresV` of a file whose lists know Samba (v0.35). */
-const FEATURES_V = 2;
+/** The `featuresV` of a file whose lists know Samba (2, v0.35) and the Windows sharing (3, v0.37). */
+const FEATURES_V = 3;
+const SAMBA_V = 2;
 /**
- * The lab settings of a file. A list saved before v0.35 never names Samba, which did not exist yet: Samba stays on,
- * unless the file says «sambaOff» (v0.34's single switch), which turns it off for every kind.
+ * The lab settings of a file. A list never names a feature that did not exist yet when it was saved: Samba (before
+ * v0.35) and the Windows sharing (before v0.37) stay on, unless the file says «sambaOff» (v0.34's single switch), which
+ * turns Samba off for every kind.
  */
 function fileFeatures(data, version, sambaOff) {
     const parsed = parseFeatures(data);
-    const known = version === FEATURES_V ? parsed : withSamba(parsed);
-    return sambaOff === true ? withoutSamba(known) : known;
+    const v = typeof version === 'number' ? version : 0;
+    const withSamba = v >= SAMBA_V ? parsed : switchAll(parsed, 'samba', true);
+    const known = v >= FEATURES_V ? withSamba : switchAll(withSamba, 'winshare', true);
+    return sambaOff === true ? switchAll(known, 'samba', false) : known;
 }
 
-return { SERVICE_IDS, FEATURE_IDS, FEATURES_BY_KIND, featuresOf, featureOn, setFeature, withSamba, withoutSamba, parseFeatures, FEATURES_V, fileFeatures };
+return { SERVICE_IDS, FEATURE_IDS, FEATURES_BY_KIND, featuresOf, featureOn, setFeature, parseFeatures, FEATURES_V, fileFeatures };
 })();
 __m["net/device-apps.js"] = (() => {
 /**
@@ -6066,7 +6107,7 @@ const PC_APPS = ['browser', 'mail', 'ssh', 'sftp'];
 const PC_OFF = ['mail', 'sftp'];
 /** A longer list in a file is not a list of applications. */
 const MAX_LIST = 64;
-const NO_LAB = { features: {}, webHideOff: false };
+const NO_LAB = { features: {}, webHideOff: false, pkgsOff: [] };
 const chosen = new WeakMap();
 const labs = new WeakMap();
 /**
@@ -6155,6 +6196,136 @@ function runsServices(kind) {
 
 return { runsServices };
 })();
+__m["net/win-shares.js"] = (() => {
+/**
+ * «Compartir archivos e impresoras para redes Microsoft» on Windows (PC and Server): the binding of the Server service
+ * to the adapter, which the device's Configuración box ticks (unticked in each device; the lab's «winshare» feature
+ * decides whether the box is there), and the shares it publishes. As with «uso compartido con protección por
+ * contraseña» turned off: each share has a name, a folder of drive C:, a comment and what Everyone may do (read, or
+ * full control). Kept beside the device in a weak registry and saved with it; a record from a file is checked as if
+ * typed.
+ */
+const { featureOn } = __m["net/lab-features.js"];
+const { labViewOf, notifyAppsChange } = __m["net/device-apps.js"];
+/** What Windows allows: a share name of up to 80 characters, a comment of 256 and a path of MAX_PATH. */
+const MAX_NAME = 80;
+const MAX_REMARK = 256;
+const MAX_PATH = 260;
+/** More than a lab needs, and a bound on a crafted file. */
+const MAX_SHARES = 32;
+/** Control characters (C0, DEL, C1) and the invisible or bidi ones that make one name look like another. */
+const HIDDEN = '\\u0000-\\u001f\\u007f-\\u009f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff';
+/** Characters a share name cannot have (as Windows: " / \ [ ] : | < > + = ; , ? *), nor hidden ones. */
+const BAD_NAME = new RegExp(`["/\\\\[\\]:|<>+=;,?*${HIDDEN}]`);
+const BAD_REMARK = new RegExp(`[${HIDDEN}]`);
+/** The administrative shares Windows keeps for itself. */
+const RESERVED = /^(?:IPC|ADMIN|PRINT|[A-Z])\$$/i;
+/** Characters a folder name cannot have. */
+const BAD_SEGMENT = /[<>:"/|?*\u0000-\u001f\u007f]/;
+const NONE = { on: false, shares: [] };
+const states = new WeakMap();
+const stateOf = (d) => states.get(d) ?? NONE;
+/** C:\a\b tidied (upper-case drive, no trailing \), or undefined when it is not a plain folder of drive C:. */
+function sharePath(path) {
+    if (path.length > MAX_PATH || !/^[cC]:\\/.test(path))
+        return undefined;
+    const typed = path.slice(3).split('\\');
+    if (typed.at(-1) === '')
+        typed.pop();
+    // Win32 drops the dots and spaces that end a name (so «docs.» is docs, and «. .» is nothing).
+    const parts = typed.map((p) => p.replace(/[. ]+$/, ''));
+    if (parts.some((p) => p === '' || BAD_SEGMENT.test(p)))
+        return undefined;
+    return `C:\\${parts.join('\\')}`;
+}
+/** The share as it would be kept, or why not (beside the shares already there). */
+function checkShare(shares, s) {
+    if (!s.name || s.name.length > MAX_NAME || s.name.trim() !== s.name || BAD_NAME.test(s.name))
+        return 'name';
+    if (RESERVED.test(s.name))
+        return 'reserved';
+    if (shares.some((x) => x.name.toLowerCase() === s.name.toLowerCase()))
+        return 'exists';
+    const path = sharePath(s.path);
+    if (path === undefined)
+        return 'path';
+    if (s.remark.length > MAX_REMARK || BAD_REMARK.test(s.remark))
+        return 'remark';
+    if (shares.length >= MAX_SHARES)
+        return 'full';
+    return { name: s.name, path, remark: s.remark, access: s.access === 'full' ? 'full' : 'read' };
+}
+/** The box of the device's Configuración tab: a Windows device whose lab keeps the feature. */
+function winShareOffered(d) {
+    return d.os === 'windows' && featureOn(labViewOf(d).features, d.kind, 'winshare');
+}
+/** The box ticked (whether or not the lab still offers it). */
+function winShareOn(d) {
+    return stateOf(d).on;
+}
+/** File and printer sharing working: the box ticked on a device that offers it (SMB on 139/445, NAME<20>). */
+function winShareActive(d) {
+    return winShareOn(d) && winShareOffered(d);
+}
+function setWinShareOn(d, on) {
+    if (winShareOn(d) === on)
+        return;
+    states.set(d, { ...stateOf(d), on });
+    notifyAppsChange(d);
+}
+function winShares(d) {
+    return stateOf(d).shares;
+}
+function findWinShare(d, name) {
+    return winShares(d).find((s) => s.name.toLowerCase() === name.toLowerCase());
+}
+/** Publishes a share: undefined when done, or why not. */
+function addWinShare(d, share) {
+    const state = stateOf(d);
+    const checked = checkShare(state.shares, share);
+    if (typeof checked === 'string')
+        return checked;
+    states.set(d, { ...state, shares: [...state.shares, checked] });
+    return undefined;
+}
+/** Stops sharing (the folder stays): whether there was such a share. */
+function removeWinShare(d, name) {
+    const state = stateOf(d);
+    const rest = state.shares.filter((s) => s.name.toLowerCase() !== name.toLowerCase());
+    if (rest.length === state.shares.length)
+        return false;
+    states.set(d, { ...state, shares: rest });
+    return true;
+}
+/** What the file keeps: nothing while the box is unticked and there are no shares. */
+function winSharesRecord(d) {
+    const state = stateOf(d);
+    return state.on || state.shares.length ? { on: state.on, shares: state.shares } : undefined;
+}
+const isObj = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+/** A share of a file (untrusted): every field of the right type and accepted as if typed. */
+function shareOf(v) {
+    if (!isObj(v) || typeof v.name !== 'string' || typeof v.path !== 'string' || typeof v.remark !== 'string')
+        return undefined;
+    if (v.access !== 'read' && v.access !== 'full')
+        return undefined;
+    return { name: v.name, path: v.path, remark: v.remark, access: v.access };
+}
+/** Puts the `winShare` of a file back: the box only when `on` is true, the shares that pass the checks. */
+function restoreWinShares(d, data) {
+    if (!isObj(data))
+        return;
+    const list = Array.isArray(data.shares) ? data.shares.slice(0, MAX_SHARES * 2) : [];
+    const shares = list.reduce((kept, v) => {
+        const s = shareOf(v);
+        const checked = s && checkShare(kept, s);
+        return checked && typeof checked !== 'string' ? [...kept, checked] : kept;
+    }, []);
+    states.set(d, { on: data.on === true, shares });
+}
+
+return { MAX_SHARES, sharePath, winShareOffered, winShareOn, winShareActive, setWinShareOn, winShares, findWinShare, addWinShare, removeWinShare, winSharesRecord, restoreWinShares };
+})();
 __m["net/pkg-units.js"] = (() => {
 /**
  * The systemd units that apt's packages bring on any GNU/Linux host, a PC too: samba's smbd and nmbd (started and
@@ -6166,6 +6337,7 @@ __m["net/pkg-units.js"] = (() => {
 const { hasPackage } = __m["net/host-packages.js"];
 const { deviceApps, sambaAllowed } = __m["net/device-apps.js"];
 const { runsServices } = __m["devices/kinds.js"];
+const { winShareActive } = __m["net/win-shares.js"];
 /** systemd-resolved: the system's resolver (resolvectl, the «resolve» source of nsswitch.conf, LLMNR and mDNS). */
 const RESOLVED_UNIT = { name: 'systemd-resolved', pkg: 'systemd', process: 'systemd-resolved', description: 'Network Name Resolution', pid: 512, oneshot: false, startOnInstall: true, pcOnly: false, base: true, path: '/usr/lib/systemd/systemd-resolved' };
 const NFTABLES_UNIT = { name: 'nftables', pkg: 'nftables', process: 'nft', description: 'nftables', pid: 655, oneshot: true, startOnInstall: false, pcOnly: true };
@@ -6253,16 +6425,18 @@ function sambaOffered(d) {
 /**
  * What the packages add to the Servicios tab. A GNU/Linux PC: the kernel parameters and the configuration files
  * (always: every kernel has them), then the firewall with nftables, Samba with samba, and the logs of either. A Server
- * or Linux router has every other panel already: samba adds its own. A lab without Samba hides its panel.
+ * or Linux router has every other panel already: samba adds its own. A lab without Samba hides its panel. Windows with
+ * «Compartir archivos e impresoras» ticked (win-shares.ts) has its SMB panel, first on a PC.
  */
 function hostPanels(d) {
     const samba = hasPackage(d, 'samba') && sambaOffered(d);
+    const smb = winShareActive(d) ? ['winshare'] : [];
     if (runsServices(d.kind))
-        return samba ? ['samba'] : [];
+        return [...(samba ? ['samba'] : []), ...smb];
     if (!linuxSide(d))
-        return [];
+        return smb;
     const nft = unitInstalled(d, NFTABLES_UNIT);
-    return ['sysctl', ...(nft ? ['firewall'] : []), ...(samba ? ['samba'] : []), 'files', ...(nft || samba ? ['log'] : [])];
+    return [...smb, 'sysctl', ...(nft ? ['firewall'] : []), ...(samba ? ['samba'] : []), 'files', ...(nft || samba ? ['log'] : [])];
 }
 
 return { RESOLVED_UNIT, NFTABLES_UNIT, PKG_UNITS, unitInstalled, findPkgUnit, installedUnits, journalUnits, pkgUnitState, setPkgUnitState, forgetPkgUnits, pkgLog, pkgJournal, pkgUnitsRecord, restorePkgUnits, unitRunning, linuxSide, sambaOffered, hostPanels };
@@ -14407,8 +14581,8 @@ const SETTINGS_DOCS = [
             h('Laboratorio actual'),
             p('Decide qué pestañas y paneles muestran las ventanas de cada tipo de equipo. **Equipo** (nombre de host) e **Interfaces** están siempre.'),
             table(['Equipo', 'Activado por defecto', 'Se puede activar'], [
-                ['PC', 'TCP/IP, aplicaciones (navegador, correo, SSH, SFTP), servicio Samba, terminal GNU/Linux y terminal Windows', '—'],
-                ['Servidor', 'TCP/IP, cada servicio (SSH, DHCP, DNS, HTTP, correo, ficheros, registros y Samba), parámetros del kernel, firewall, terminal GNU/Linux y terminal Windows', '—'],
+                ['PC', 'TCP/IP, aplicaciones (navegador, correo, SSH, SFTP), servicio Samba, compartir archivos e impresoras (Windows), terminal GNU/Linux y terminal Windows', '—'],
+                ['Servidor', 'TCP/IP, cada servicio (SSH, DHCP, DNS, HTTP, correo, ficheros, registros y Samba), compartir archivos e impresoras (Windows), parámetros del kernel, firewall, terminal GNU/Linux y terminal Windows', '—'],
                 ['Router GNU/Linux', 'Parámetros del kernel, firewall, VPN, cada servicio y terminal GNU/Linux', 'Terminal Windows'],
                 ['Router y switch IOS', 'CLI y gestión web', '—'],
             ]),
@@ -14416,7 +14590,7 @@ const SETTINGS_DOCS = [
             h('La pestaña Configuración de cada equipo'),
             p('Cada PC, servidor y router GNU/Linux tiene además su propia pestaña **Configuración**: casillas para sus aplicaciones, servicios y terminales. Solo lista lo que el laboratorio permite (lo de arriba es el máximo), y al cambiar una casilla la ventana se reabre en esa pestaña con las pestañas nuevas.'),
             table(['Equipo', 'Activado por defecto', 'Desactivado por defecto'], [
-                ['PC', 'TCP/IP, navegador, cliente SSH y el terminal de su sistema operativo', 'Correo, Archivos (SFTP), Samba (con terminal GNU/Linux) y el terminal del otro sistema'],
+                ['PC', 'TCP/IP, navegador, cliente SSH y el terminal de su sistema operativo', 'Correo, Archivos (SFTP), Samba (con terminal GNU/Linux), Compartir archivos e impresoras para redes Microsoft (Windows) y el terminal del otro sistema'],
                 ['Servidor', 'Colocado desde la paleta: configuración IP, ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre (sin casilla)', 'Todos los servicios, Samba incluido, y el firewall: se marcan aquí o se instalan con apt (Instalar paquetes con apt)'],
                 ['Router GNU/Linux', 'Colocado desde la paleta: ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre', 'Servicios (Samba incluido), firewall y VPN (casilla o apt)'],
             ]),
@@ -15171,6 +15345,7 @@ const CLIENT_DOCS = {
                     ['net start [svc] · net stop svc', 'Igual que sc, con los mensajes de net.'],
                     ['hostname · whoami · ver · cls · help', 'Sistema y ayuda.'],
                     ['cd [carpeta] · cd .. · cd /d Z:\\carpeta', 'Cambia de carpeta; sin argumento muestra la actual. Cada unidad tiene su carpeta: `cd Z:\\x` solo cambia la de Z: y `cd /d` cambia también de unidad. Las rutas UNC (\\\\srv\\share) no pueden ser la carpeta actual.'],
+                    ['net share · net share NOMBRE=C:\\carpeta [/grant:everyone,READ|FULL] [/remark:"texto"] · net share NOMBRE /delete', 'Recursos que comparte este equipo (con «Compartir archivos e impresoras» marcado en Configuración; lo mismo que Servicios → SMB): la carpeta debe existir y Todos entra sin contraseña, con lectura o control total.'],
                     ['net view \\\\SERVIDOR · net use [Z: | *] \\\\srv\\share [/user:nombre] · net use Z: /delete', 'Recursos compartidos de un servidor SMB y unidades conectadas a ellos; `Z:` cambia a la unidad, que se usa como C: (dir, cd, copy, type, > y >>).'],
                     ['dir [ruta] [/b]', 'Lista una carpeta (admite * y ?); /b solo los nombres.'],
                     ['md carpeta · rd [/s] [/q] carpeta', 'Crea carpetas (también las intermedias) o las borra; /s con su contenido, tras preguntar «Are you sure (Y/N)?» salvo con /q.'],
@@ -15299,7 +15474,7 @@ const UTIL_DOCS = {
     wget: { group: 'red', synopsis: 'wget [-q] [-O FICHERO] URL', summary: 'Descarga a un fichero del directorio actual (nombre.1, nombre.2… si ya existe). «-qO-» escribe la página en la salida.' },
     apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PAQUETE... | remove|purge [-y] PAQUETE... | list [--installed] [PATRÓN] | moo', summary: 'Gestor de paquetes de Ubuntu 26.04 con alcance limitado: lee las fuentes reales (/etc/apt/sources.list.d/ubuntu.sources) y se conecta a archive.ubuntu.com y security.ubuntu.com por la red simulada; sin salida a Internet o sin DNS que los resuelva da los errores reales («Temporary failure resolving…»). El catálogo es ficticio y siempre está al día: update, upgrade y autoremove no cambian nada. install y remove sí: en un Server o router GNU/Linux activan o quitan la casilla y el panel del servicio (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) y arrancan o paran el servicio. En cualquier equipo GNU/Linux (también un PC), bind9utils trae named-checkconf y named-checkzone, e isc-kea trae kea-dhcp4 para comprobar configuraciones (kea-dhcp4 -t). Requiere root (sudo).', options: '-y  responde «sí» a «Continue? [Y/n]»\npurge  como remove, y borra la configuración' },
     nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f CAMPOS | -g CAMPOS] [general [status | hostname] | networking [connectivity] | device [status | show [IFAZ]] | connection [show [NOMBRE]]] | --version', summary: 'NetworkManager (se instala con «sudo apt install network-manager»): sin argumentos, un resumen por interfaz (estado, MAC, dirección IP, rutas) y la configuración DNS; device status y device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (los perfiles netplan-eth0 y lo); general status comprueba de verdad la conectividad (full con Internet, limited sin ella). Admite abreviaturas (nmcli d, nmcli c, nmcli g) y, para scripts, -t (sin cabecera, separado por «:»), -f (columnas o campos: -f DEVICE,STATE, -f IP4) y -g (solo los valores: nmcli -g IP4.ADDRESS dev show eth0). Solo consulta: la configuración se cambia con netplan, ip o la pestaña TCP/IP.' },
-    nmblookup: { group: 'red', synopsis: 'nmblookup [-U DIRECCIÓN] [-R] NOMBRE | -A DIRECCIÓN_IP', summary: 'Consulta NetBIOS (samba-common-bin, que trae samba): pregunta por un nombre con un broadcast a la subred (UDP 137) o, con -A, pide a un equipo su tabla de nombres y su MAC. Responden los Windows y los GNU/Linux con samba de la misma red (no cruza routers). Con -U pregunta por unicast a esa dirección y con -R pide recursión: `nmblookup -U 192.168.10.2 -R pc2` consulta al servidor WINS, que sí cruza routers; sin -U no se usa el `wins server` de smb.conf.' },
+    nmblookup: { group: 'red', synopsis: 'nmblookup [-S] [-U DIRECCIÓN] [-R] NOMBRE | -A DIRECCIÓN_IP', summary: 'Consulta NetBIOS (samba-common-bin, que trae samba): pregunta por un nombre con un broadcast a la subred (UDP 137) o, con -A, pide a un equipo su tabla de nombres y su MAC; -S pide además la tabla del equipo encontrado (NOMBRE<20> indica que comparte archivos). Responden los Windows y los GNU/Linux con samba de la misma red (no cruza routers). Con -U pregunta por unicast a esa dirección y con -R pide recursión: `nmblookup -U 192.168.10.2 -R pc2` consulta al servidor WINS, que sí cruza routers; sin -U no se usa el `wins server` de smb.conf.' },
     smbclient: { group: 'red', synopsis: 'smbclient -L SERVIDOR [-N | -U USUARIO[%CLAVE]] | //SERVIDOR/RECURSO [-N | -U USUARIO[%CLAVE]] [-c "ORDEN; ORDEN"]', summary: 'Cliente SMB (paquete smbclient): -L lista los recursos compartidos de un servidor; //SERVIDOR/RECURSO abre uno y, con el indicador «smb: \\>» o con -c, ejecuta ls, cd, get, put, mkdir, rmdir, rm, pwd, help y exit (`ls` y `rm` admiten comodines: `ls *.txt`, `rm *.tmp`). -N entra como invitado; -U con una cuenta de Samba (sin %CLAVE la pide). El servidor aplica read only, valid users y los permisos Linux de la cuenta.' },
     smbpasswd: { group: 'red', section: 8, synopsis: 'smbpasswd [-a | -x | -d | -e] [-s] [USUARIO]', summary: 'Cuentas de Samba (samba-common-bin): root añade (-a) un usuario Linux existente con su contraseña SMB, lo borra (-x), lo deshabilita (-d) o lo habilita (-e); cualquier otro usuario solo cambia su propia contraseña. -s lee las contraseñas de la entrada estándar, para scripts: printf \'clave\\nclave\\n\' | sudo smbpasswd -s -a ana.' },
     testparm: { group: 'red', synopsis: 'testparm [-s] [FICHERO]', summary: 'Comprueba /etc/samba/smb.conf (samba-common-bin): avisa de los parámetros desconocidos («Unknown parameter encountered») y vuelca las secciones que entiende, con los recursos ordenados por parámetro. Sin -s espera a que pulses Intro antes del volcado.' },
@@ -16624,8 +16799,11 @@ const APT_DOCS = [
             ]),
             p('mDNS va por multicast (224.0.0.251, puerto UDP 5353) a los equipos del mismo enlace: lo propagan los switches pero no los routers, así que solo funciona dentro de la misma red, y el otro equipo también debe tener avahi-daemon. En modo Simulación verás los paquetes MDNS; un cortafuegos que bloquee el puerto 5353 lo impide.'),
             p('Los equipos **Windows** (PC o Windows Server) traen mDNS de serie, como Windows 10 y 11: sin instalar nada responden a su nombre .local y preguntan por los demás (`ping pc1.local` en la Terminal Windows). Windows pregunta desde el puerto 5353 y la respuesta llega por multicast; nss-mdns, desde un puerto propio y con respuesta directa.'),
+            h('Sin terminal: la casilla de cada paquete'),
+            p('La pestaña **Configuración** de cada equipo con GNU/Linux tiene el apartado **Paquetes**: una casilla por paquete de herramientas del catálogo (network-manager, avahi-daemon, libnss-mdns, libnss-resolve, smbclient, samba-common-bin, winbind, libnss-winbind y bind9-utils). Marcarla hace lo mismo que `sudo apt install` (dependencias, scripts de instalación, servicios y /var/log/dpkg.log) sin necesitar red, como la casilla de Samba; desmarcarla, lo mismo que `sudo apt remove`. La terminal y la casilla se siguen: lo que instala una aparece marcado en la otra.'),
+            p('En **Configuración → Laboratorio actual**, **Paquetes del repositorio apt** decide qué paquetes existen en esta red. Uno desmarcado desaparece de la pestaña de los equipos y `apt install` responde «Unable to locate package», como si se hubiera quitado del repositorio; quien ya lo tiene lo conserva y puede quitarlo con `apt remove`.'),
             h('NetBIOS y carpetas compartidas: samba'),
-            p('Windows trae de serie NetBIOS sobre TCP/IP: responde a su nombre (NOMBRE<00>, WORKGROUP y NOMBRE<20>), resuelve un nombre sin punto por broadcast a su red (UDP 137) si el DNS no lo conoce y escucha SMB en TCP 139 y 445. Un equipo GNU/Linux hace lo mismo con el servicio **Samba** (paquete samba: smbd y nmbd); `nmblookup NOMBRE` (y `nmblookup -A IP`) consulta NetBIOS desde la terminal, y el nombre propio responde mientras nmbd está en marcha (`localhost` no es un nombre NetBIOS, tampoco en Windows).'),
+            p('Windows trae de serie NetBIOS sobre TCP/IP: responde a su nombre (NOMBRE<00> y WORKGROUP, y NOMBRE<20> si comparte archivos) y resuelve un nombre sin punto por broadcast a su red (UDP 137) si el DNS no lo conoce; con **Compartir archivos e impresoras para redes Microsoft** marcada en su pestaña **Configuración**, escucha además SMB en TCP 139 y 445. Un equipo GNU/Linux hace lo mismo con el servicio **Samba** (paquete samba: smbd y nmbd); `nmblookup NOMBRE` (y `nmblookup -A IP`) consulta NetBIOS desde la terminal, y el nombre propio responde mientras nmbd está en marcha (`localhost` no es un nombre NetBIOS, tampoco en Windows).'),
             p('Samba es un servicio más, como DNS o DHCP, en servidores, routers GNU/Linux y también PCs: smb.conf, las cuentas (`smbpasswd`), los permisos, `net use` desde Windows y `smbclient` desde GNU/Linux se explican en **Servidor → Samba** (páginas «Samba: compartir carpetas» y «Samba: acceder desde Windows y GNU/Linux»), y se practican en el laboratorio «Compartir carpetas con Samba en un servidor GNU/Linux».'),
             p('Para que los programas de GNU/Linux (ping, ssh…) resuelvan nombres NetBIOS, como en un Ubuntu real: `sudo apt install winbind libnss-winbind` y añadir **wins** a la línea `hosts:` de **/etc/nsswitch.conf** (por ejemplo `hosts: files dns wins`). Igual que mDNS, el broadcast NetBIOS no cruza routers; un servidor WINS sí (`wins support = yes` en el servidor y `wins server = IP` en los clientes; consulta «Resolución de nombres»).'),
             p('Por la misma razón, desde GNU/Linux mDNS necesita siempre avahi-daemon o libnss-mdns: al instalarlos, su script añade `mdns4_minimal [NOTFOUND=return]` a `hosts:` en /etc/nsswitch.conf, y al quitarlos lo borra.'),
@@ -16741,7 +16919,7 @@ const SAMBA_DOCS = [
             h('Encontrar el servidor por su nombre'),
             table(['Cliente', 'Cómo resuelve «srv»'], [
                 ['Windows (net view, net use, dir \\\\srv\\…)', 'hosts, DNS y, si no, LLMNR y NetBIOS a la vez: el nmbd de SRV responde al broadcast. Funciona sin servidor DNS en la misma red.'],
-                ['smbclient (GNU/Linux)', 'El orden de Samba, `name resolve order = lmhosts wins host bcast`: el sistema (/etc/hosts y DNS, según nsswitch.conf) y después un broadcast NetBIOS. Tampoco necesita DNS en la misma red.'],
+                ['smbclient (GNU/Linux)', 'El orden de Samba, `name resolve order = lmhosts wins host bcast`: con `wins server` en smb.conf pregunta primero a ese WINS por unicast (cruza routers); después el sistema (/etc/hosts y DNS, según nsswitch.conf) y un broadcast NetBIOS. Tampoco necesita DNS en la misma red. Si smb.conf escribe otro `name resolve order`, lo sigue.'],
                 ['ping, ssh… (GNU/Linux)', 'Solo lo que diga /etc/nsswitch.conf: sin `wins` (winbind y libnss-winbind) no conocen los nombres NetBIOS.'],
             ]),
             p('NetBIOS va por broadcast y **no cruza routers**: desde otra red, usa la dirección IP (`\\\\172.20.0.10\\publico`) o da de alta el nombre en un servidor DNS. Un nombre con puntos (srv.aula.lab) no es un nombre NetBIOS: solo lo resuelve el DNS.'),
@@ -16781,6 +16959,43 @@ const SAMBA_DOCS = [
             ]),
             tip('Verlo en Simulación', 'Con los filtros NBNS y SMB marcados, `net use` muestra la pregunta por el nombre (broadcast), su respuesta y la conexión TCP al puerto 445.'),
             exercise('Del PC GNU/Linux al servidor', 'En el laboratorio de Samba, desde PC1, sube un archivo a [publico] y luego lee [profes] como luis.', '`sudo apt install smbclient`; `smbclient //srv/publico -N -c \'put /etc/hostname pc1.txt\'` (el archivo queda de nobody en SRV). Para [profes], primero `sudo smbpasswd -a luis` en SRV; después `smbclient //srv/profes -U luis%luis1 -c ls`. smbclient encuentra «srv» por broadcast aunque `ping srv` no lo encuentre.'),
+        ],
+    },
+    {
+        id: 'win-compartir',
+        title: 'Compartir carpetas desde Windows',
+        summary: 'La casilla «Compartir archivos e impresoras para redes Microsoft», Servicios → SMB y net share, y cómo se usa el recurso desde GNU/Linux y desde otro Windows.',
+        markdownBase: MD,
+        blocks: [
+            p('Un equipo **Windows** (PC o Windows Server) comparte carpetas por SMB sin instalar nada, como uno real. Lo decide la casilla **Compartir archivos e impresoras para redes Microsoft** de su pestaña **Configuración**, que empieza desmarcada: es el servicio Servidor enlazado al adaptador de red.'),
+            table(['Casilla', 'Qué pasa'], [
+                ['Marcada', 'Escucha en TCP 139 y 445, registra NOMBRE<20> (`nbtstat -n`, y en el servidor WINS si lo tiene) y aparece la pestaña **Servicios → SMB**.'],
+                ['Desmarcada', 'Nadie responde en 139 y 445: smbclient da `NT_STATUS_CONNECTION_REFUSED` y `net view \\\\pc0`, «System error 53». Los recursos se conservan para cuando se vuelva a marcar.'],
+            ]),
+            h('Servicios → SMB y net share'),
+            p('Cada recurso tiene un nombre, una carpeta de la unidad C: que ya exista, un comentario y lo que puede hacer **Todos**: Lectura o Control total. Es el uso compartido **sin protección por contraseña**: cualquiera de la red entra sin contraseña; los archivos se leen y escriben con la cuenta del equipo y nunca fuera de la carpeta compartida.'),
+            p('El panel y la terminal son lo mismo: lo que se comparte en uno aparece en el otro.'),
+            table(['Orden', 'Qué hace'], [
+                ['net share', 'Lista IPC$ y los recursos.'],
+                ['net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL /remark:"Mis documentos"', 'Comparte la carpeta como «docs» con control total para Todos. Sin `/grant`, solo lectura.'],
+                ['net share docs', 'El detalle de un recurso: carpeta, comentario y permiso.'],
+                ['net share docs /delete · net share C:\\home\\alumno\\docs /delete', 'Deja de compartirlo, por nombre o por carpeta. La carpeta no se borra.'],
+            ]),
+            term('cmd', 'C:\\>net share\n\nShare name   Resource                        Remark\n\n-------------------------------------------------------------------------------\nIPC$                                         Remote IPC\ndocs         C:\\home\\alumno\\docs             Mis documentos\nThe command completed successfully.'),
+            h('Usarlo desde otro equipo'),
+            table(['Desde', 'Orden'], [
+                ['GNU/Linux (smbclient)', '`smbclient -L //pc0 -N` lista los recursos; `smbclient //pc0/docs -N -c \'put nota.txt\'` sube un archivo.'],
+                ['Otro Windows', '`net view \\\\pc0`, `net use Z: \\\\pc0\\docs` o directamente `dir \\\\pc0\\docs`.'],
+            ]),
+            table(['Error', 'Causa'], [
+                ['The Server service is not started. (2114)', 'La casilla está desmarcada.'],
+                ['The name has already been shared. (2118)', 'Ya hay un recurso con ese nombre, o es de Windows (IPC$, ADMIN$, C$…).'],
+                ['The device or directory does not exist. (2116)', 'La carpeta no existe (créala con `md`) o es un archivo.'],
+                ['NT_STATUS_ACCESS_DENIED · System error 5', 'Escribir en un recurso de solo lectura.'],
+                ['NT_STATUS_BAD_NETWORK_NAME · System error 67', 'El recurso no existe o se borró su carpeta.'],
+            ]),
+            tip('En la configuración general', '**Configuración → Laboratorio actual** tiene la casilla **Compartir archivos e impresoras para redes Microsoft (Windows)** para PC y Servidor, marcada por defecto. Desmarcada, los equipos de esa red no la ofrecen y no comparten nada.'),
+            exercise('De Windows a GNU/Linux', 'Con un PC Windows y un PC GNU/Linux en la misma red, comparte en Windows la carpeta C:\\home\\alumno\\docs para que el PC GNU/Linux pueda dejar archivos en ella.', 'En Windows: marca la casilla en Configuración, `md C:\\home\\alumno\\docs` y `net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL` (o Servicios → SMB con Todos: Control total). En GNU/Linux: `sudo apt install smbclient` y `smbclient //NOMBRE/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\home\\alumno\\docs` en Windows lo muestra.'),
         ],
     },
 ];
@@ -16955,8 +17170,8 @@ const SETTINGS_DOCS = [
             h('Current lab'),
             p('Decides which tabs and panels the windows of each kind of device show. **Device** (host name) and **Interfaces** are always there.'),
             table(['Device', 'On by default', 'Can be turned on'], [
-                ['PC', 'TCP/IP, applications (browser, mail, SSH, SFTP), Samba service, GNU/Linux terminal and Windows terminal', '—'],
-                ['Server', 'TCP/IP, each service (SSH, DHCP, DNS, HTTP, mail, files, logs and Samba), kernel parameters, firewall, GNU/Linux terminal and Windows terminal', '—'],
+                ['PC', 'TCP/IP, applications (browser, mail, SSH, SFTP), Samba service, file and printer sharing (Windows), GNU/Linux terminal and Windows terminal', '—'],
+                ['Server', 'TCP/IP, each service (SSH, DHCP, DNS, HTTP, mail, files, logs and Samba), file and printer sharing (Windows), kernel parameters, firewall, GNU/Linux terminal and Windows terminal', '—'],
                 ['GNU/Linux router', 'Kernel parameters, firewall, VPN, each service and GNU/Linux terminal', 'Windows terminal'],
                 ['IOS router and switch', 'CLI and web management', '—'],
             ]),
@@ -16964,7 +17179,7 @@ const SETTINGS_DOCS = [
             h('Each device’s Settings tab'),
             p('Every PC, server and GNU/Linux router also has its own **Settings** tab: boxes for its applications, services and terminals. It only lists what the lab allows (the table above is the maximum), and when a box changes the window reopens on that tab with the new tabs.'),
             table(['Device', 'On by default', 'Off by default'], [
-                ['PC', 'TCP/IP, browser, SSH client and the terminal of its operating system', 'Mail, Files (SFTP), Samba (with a GNU/Linux terminal) and the other system’s terminal'],
+                ['PC', 'TCP/IP, browser, SSH client and the terminal of its operating system', 'Mail, Files (SFTP), Samba (with a GNU/Linux terminal), File and Printer Sharing for Microsoft Networks (Windows) and the other system’s terminal'],
                 ['Server', 'Placed from the palette: TCP/IP, files, logs and the GNU/Linux terminal. Kernel parameters always (no box)', 'Every service, Samba included, and the firewall: ticked here or installed with apt (Installing packages with apt)'],
                 ['GNU/Linux router', 'Placed from the palette: files, logs and the GNU/Linux terminal. Kernel parameters always', 'Services (Samba included), firewall and VPN (box or apt)'],
             ]),
@@ -17719,6 +17934,7 @@ const CLIENT_DOCS = {
                     ['net start [svc] · net stop svc', 'Same as sc, with net’s messages.'],
                     ['hostname · whoami · ver · cls · help', 'System and help.'],
                     ['cd [folder] · cd .. · cd /d Z:\\folder', 'Changes folder; with no argument shows the current one. Each drive has its own folder: `cd Z:\\x` only changes Z:’s and `cd /d` also changes drive. UNC paths (\\\\srv\\share) cannot be the current folder.'],
+                    ['net share · net share NAME=C:\\folder [/grant:everyone,READ|FULL] [/remark:"text"] · net share NAME /delete', 'Shares of this device (with “File and Printer Sharing” ticked in Settings; the same as Services → SMB): the folder must exist and Everyone gets in without a password, with read or full control.'],
                     ['net view \\\\SERVER · net use [Z: | *] \\\\srv\\share [/user:name] · net use Z: /delete', 'Shares of an SMB server and drives connected to them; `Z:` switches to the drive, which is used like C: (dir, cd, copy, type, > and >>).'],
                     ['dir [path] [/b]', 'Lists a folder (accepts * and ?); /b names only.'],
                     ['md folder · rd [/s] [/q] folder', 'Creates folders (intermediate ones too) or removes them; /s with their contents, after asking “Are you sure (Y/N)?” unless /q.'],
@@ -17847,7 +18063,7 @@ const UTIL_DOCS = {
     wget: { group: 'red', synopsis: 'wget [-q] [-O FILE] URL', summary: 'Downloads to a file in the current directory (name.1, name.2… if it already exists). “-qO-” writes the page to the output.' },
     apt: { group: 'servicios', section: 8, synopsis: 'apt update | upgrade | full-upgrade | autoremove | install [-y] PACKAGE... | remove|purge [-y] PACKAGE... | list [--installed] [PATTERN] | moo', summary: 'Ubuntu 26.04 package manager, with a limited reach: it reads the real sources (/etc/apt/sources.list.d/ubuntu.sources) and connects to archive.ubuntu.com and security.ubuntu.com over the simulated network; with no way out to the Internet or no DNS that resolves them it gives the real errors (“Temporary failure resolving…”). The catalogue is fictitious and always up to date: update, upgrade and autoremove change nothing. install and remove do: on a Server or GNU/Linux router they tick or untick the box and panel of the service (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, wireguard, rsyslog) and start or stop the service. On any GNU/Linux device (a PC too), bind9utils brings named-checkconf and named-checkzone, and isc-kea brings kea-dhcp4 to check configurations (kea-dhcp4 -t). Needs root (sudo).', options: '-y  answers “yes” to “Continue? [Y/n]”\npurge  like remove, and deletes the configuration' },
     nmcli: { group: 'red', synopsis: 'nmcli [-t] [-f FIELDS | -g FIELDS] [general [status | hostname] | networking [connectivity] | device [status | show [IFACE]] | connection [show [NAME]]] | --version', summary: 'NetworkManager (installed with “sudo apt install network-manager”): with no arguments, an overview per interface (state, MAC, IP address, routes) and the DNS configuration; device status and device show (GENERAL, IP4.ADDRESS, IP4.GATEWAY, IP4.ROUTE, IP4.DNS…); connection show (the netplan-eth0 and lo profiles); general status really checks connectivity (full with Internet, limited without). Takes abbreviations (nmcli d, nmcli c, nmcli g) and, for scripts, -t (no header, “:” separated), -f (columns or fields: -f DEVICE,STATE, -f IP4) and -g (values only: nmcli -g IP4.ADDRESS dev show eth0). Read-only: the configuration is changed with netplan, ip or the TCP/IP tab.' },
-    nmblookup: { group: 'red', synopsis: 'nmblookup [-U ADDRESS] [-R] NAME | -A IP_ADDRESS', summary: 'NetBIOS query (samba-common-bin, which samba brings): asks for a name with a broadcast to the subnet (UDP 137) or, with -A, asks a device for its name table and MAC. Windows devices and GNU/Linux ones with samba on the same network answer (it does not cross routers). With -U it asks that address by unicast and with -R it asks for recursion: `nmblookup -U 192.168.10.2 -R pc2` queries the WINS server, which does cross routers; without -U the `wins server` of smb.conf is not used.' },
+    nmblookup: { group: 'red', synopsis: 'nmblookup [-S] [-U ADDRESS] [-R] NAME | -A IP_ADDRESS', summary: 'NetBIOS query (samba-common-bin, which samba brings): asks for a name with a broadcast to the subnet (UDP 137) or, with -A, asks a device for its name table and MAC; -S also asks for the table of the device it finds (NAME<20> means it shares files). Windows devices and GNU/Linux ones with samba on the same network answer (it does not cross routers). With -U it asks that address by unicast and with -R it asks for recursion: `nmblookup -U 192.168.10.2 -R pc2` queries the WINS server, which does cross routers; without -U the `wins server` of smb.conf is not used.' },
     smbclient: { group: 'red', synopsis: 'smbclient -L SERVER [-N | -U USER[%PASSWORD]] | //SERVER/SHARE [-N | -U USER[%PASSWORD]] [-c "COMMAND; COMMAND"]', summary: 'SMB client (smbclient package): -L lists the shares of a server; //SERVER/SHARE opens one and, at the “smb: \\>” prompt or with -c, runs ls, cd, get, put, mkdir, rmdir, rm, pwd, help and exit (`ls` and `rm` take wildcards: `ls *.txt`, `rm *.tmp`). -N logs in as the guest; -U with a Samba account (without %PASSWORD it asks for it). The server applies read only, valid users and the Linux permissions of the account.' },
     smbpasswd: { group: 'red', section: 8, synopsis: 'smbpasswd [-a | -x | -d | -e] [-s] [USER]', summary: 'Samba accounts (samba-common-bin): root adds (-a) an existing Linux user with its SMB password, deletes (-x), disables (-d) or enables (-e) it; any other user may only change their own password. -s reads the passwords from standard input, for scripts: printf \'secret\\nsecret\\n\' | sudo smbpasswd -s -a ana.' },
     testparm: { group: 'red', synopsis: 'testparm [-s] [FILE]', summary: 'Checks /etc/samba/smb.conf (samba-common-bin): warns about unknown parameters (“Unknown parameter encountered”) and dumps the sections it understands, with the shares sorted by parameter. Without -s it waits for Enter before the dump.' },
@@ -19172,8 +19388,11 @@ const APT_DOCS = [
             ]),
             p('mDNS goes by multicast (224.0.0.251, UDP port 5353) to the devices on the same link: switches pass it on but routers do not, so it only works within the same network, and the other device needs avahi-daemon too. In Simulation mode you will see the MDNS packets; a firewall that blocks port 5353 stops it.'),
             p('**Windows** devices (PC or Windows Server) have mDNS built in, as Windows 10 and 11 do: with nothing installed they answer to their .local name and ask for the others (`ping pc1.local` in the Windows terminal). Windows asks from port 5353 and the answer comes by multicast; nss-mdns, from a port of its own with a direct answer.'),
+            h('Without a terminal: one box per package'),
+            p('The **Settings** tab of every device with GNU/Linux has a **Packages** section: one box per tool package of the catalogue (network-manager, avahi-daemon, libnss-mdns, libnss-resolve, smbclient, samba-common-bin, winbind, libnss-winbind and bind9-utils). Ticking it does the same as `sudo apt install` (dependencies, install scripts, services and /var/log/dpkg.log) with no network needed, like the Samba box; unticking it, the same as `sudo apt remove`. The terminal and the box follow each other: what one installs shows ticked in the other.'),
+            p('In **Settings → Current lab**, **Packages in the apt repository** decides which packages exist in this network. One that is unticked leaves the devices’ tab and `apt install` answers “Unable to locate package”, as if it had been taken out of the repository; a device that already has it keeps it and can remove it with `apt remove`.'),
             h('NetBIOS and shared folders: samba'),
-            p('Windows has NetBIOS over TCP/IP built in: it answers to its name (NAME<00>, WORKGROUP and NAME<20>), resolves a name without a dot by broadcast to its network (UDP 137) when the DNS does not know it, and listens for SMB on TCP 139 and 445. A GNU/Linux device does the same with the **Samba** service (samba package: smbd and nmbd); `nmblookup NAME` (and `nmblookup -A IP`) asks NetBIOS from the terminal, and the device’s own name answers while nmbd is running (`localhost` is not a NetBIOS name, on Windows either).'),
+            p('Windows has NetBIOS over TCP/IP built in: it answers to its name (NAME<00> and WORKGROUP, and NAME<20> when it shares files) and resolves a name without a dot by broadcast to its network (UDP 137) when the DNS does not know it; with **File and Printer Sharing for Microsoft Networks** ticked in its **Settings** tab, it also listens for SMB on TCP 139 and 445. A GNU/Linux device does the same with the **Samba** service (samba package: smbd and nmbd); `nmblookup NAME` (and `nmblookup -A IP`) asks NetBIOS from the terminal, and the device’s own name answers while nmbd is running (`localhost` is not a NetBIOS name, on Windows either).'),
             p('Samba is one more service, like DNS or DHCP, on servers, GNU/Linux routers and PCs too: smb.conf, the accounts (`smbpasswd`), the permissions, `net use` from Windows and `smbclient` from GNU/Linux are explained under **Server → Samba** (the pages “Samba: sharing folders” and “Samba: access from Windows and GNU/Linux”), and practised in the “Sharing folders with Samba on a GNU/Linux server” lab.'),
             p('For GNU/Linux programs (ping, ssh…) to resolve NetBIOS names, as on a real Ubuntu: `sudo apt install winbind libnss-winbind` and add **wins** to the `hosts:` line of **/etc/nsswitch.conf** (for instance `hosts: files dns wins`). Like mDNS, the NetBIOS broadcast does not cross routers; a WINS server does (`wins support = yes` on the server and `wins server = IP` on the clients; see “Name resolution”).'),
             p('For the same reason, from GNU/Linux mDNS always needs avahi-daemon or libnss-mdns: when installed, its script adds `mdns4_minimal [NOTFOUND=return]` to `hosts:` in /etc/nsswitch.conf, and removes it when they go.'),
@@ -19289,7 +19508,7 @@ const SAMBA_DOCS = [
             h('Finding the server by its name'),
             table(['Client', 'How it resolves “srv”'], [
                 ['Windows (net view, net use, dir \\\\srv\\…)', 'hosts, DNS and, failing that, LLMNR and NetBIOS at once: SRV’s nmbd answers the broadcast. It works without a DNS server on the same network.'],
-                ['smbclient (GNU/Linux)', 'Samba’s order, `name resolve order = lmhosts wins host bcast`: the system (/etc/hosts and DNS, as nsswitch.conf says) and then a NetBIOS broadcast. It needs no DNS on the same network either.'],
+                ['smbclient (GNU/Linux)', 'Samba’s order, `name resolve order = lmhosts wins host bcast`: with `wins server` in smb.conf it first asks that WINS by unicast (it crosses routers); then the system (/etc/hosts and DNS, as nsswitch.conf says) and a NetBIOS broadcast. It needs no DNS on the same network either. If smb.conf sets another `name resolve order`, it follows it.'],
                 ['ping, ssh… (GNU/Linux)', 'Only what /etc/nsswitch.conf says: without `wins` (winbind and libnss-winbind) they do not know NetBIOS names.'],
             ]),
             p('NetBIOS goes by broadcast and **does not cross routers**: from another network, use the IP address (`\\\\172.20.0.10\\publico`) or add the name to a DNS server. A name with dots (srv.aula.lab) is not a NetBIOS name: only the DNS resolves it.'),
@@ -19329,6 +19548,43 @@ const SAMBA_DOCS = [
             ]),
             tip('Watch it in Simulation', 'With the NBNS and SMB filters ticked, `net use` shows the question for the name (broadcast), its answer and the TCP connection to port 445.'),
             exercise('From the GNU/Linux PC to the server', 'In the Samba lab, from PC1, upload a file to [publico] and then read [profes] as luis.', '`sudo apt install smbclient`; `smbclient //srv/publico -N -c \'put /etc/hostname pc1.txt\'` (the file belongs to nobody on SRV). For [profes], first `sudo smbpasswd -a luis` on SRV; then `smbclient //srv/profes -U luis%luis1 -c ls`. smbclient finds “srv” by broadcast although `ping srv` does not.'),
+        ],
+    },
+    {
+        id: 'win-compartir',
+        title: 'Sharing folders from Windows',
+        summary: 'The “File and Printer Sharing for Microsoft Networks” box, Services → SMB and net share, and how the share is used from GNU/Linux and from another Windows.',
+        markdownBase: MD,
+        blocks: [
+            p('A **Windows** device (PC or Windows Server) shares folders over SMB with nothing to install, as a real one does. The **File and Printer Sharing for Microsoft Networks** box of its **Settings** tab decides it, and it starts unticked: it is the Server service bound to the network adapter.'),
+            table(['Box', 'What happens'], [
+                ['Ticked', 'It listens on TCP 139 and 445, registers NAME<20> (`nbtstat -n`, and with the WINS server if it has one) and the **Services → SMB** tab appears.'],
+                ['Unticked', 'Nothing answers on 139 and 445: smbclient gives `NT_STATUS_CONNECTION_REFUSED` and `net view \\\\pc0`, “System error 53”. The shares are kept for when it is ticked again.'],
+            ]),
+            h('Services → SMB and net share'),
+            p('Each share has a name, a folder of drive C: that already exists, a remark and what **Everyone** may do: Read or Full Control. It is sharing **without password protection**: anyone on the network gets in without a password; the files are read and written with the device’s account and never outside the shared folder.'),
+            p('The panel and the terminal are the same thing: what is shared in one shows in the other.'),
+            table(['Command', 'What it does'], [
+                ['net share', 'Lists IPC$ and the shares.'],
+                ['net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL /remark:"My documents"', 'Shares the folder as “docs” with full control for Everyone. Without `/grant`, read only.'],
+                ['net share docs', 'The detail of a share: folder, remark and permission.'],
+                ['net share docs /delete · net share C:\\home\\alumno\\docs /delete', 'Stops sharing it, by name or by folder. The folder is not deleted.'],
+            ]),
+            term('cmd', 'C:\\>net share\n\nShare name   Resource                        Remark\n\n-------------------------------------------------------------------------------\nIPC$                                         Remote IPC\ndocs         C:\\home\\alumno\\docs             My documents\nThe command completed successfully.'),
+            h('Using it from another device'),
+            table(['From', 'Command'], [
+                ['GNU/Linux (smbclient)', '`smbclient -L //pc0 -N` lists the shares; `smbclient //pc0/docs -N -c \'put nota.txt\'` uploads a file.'],
+                ['Another Windows', '`net view \\\\pc0`, `net use Z: \\\\pc0\\docs` or straight `dir \\\\pc0\\docs`.'],
+            ]),
+            table(['Error', 'Cause'], [
+                ['The Server service is not started. (2114)', 'The box is unticked.'],
+                ['The name has already been shared. (2118)', 'There is already a share with that name, or it is one of Windows’ (IPC$, ADMIN$, C$…).'],
+                ['The device or directory does not exist. (2116)', 'The folder does not exist (create it with `md`) or it is a file.'],
+                ['NT_STATUS_ACCESS_DENIED · System error 5', 'Writing to a read-only share.'],
+                ['NT_STATUS_BAD_NETWORK_NAME · System error 67', 'The share does not exist or its folder was deleted.'],
+            ]),
+            tip('In the general settings', '**Settings → Current lab** has the **File and Printer Sharing for Microsoft Networks (Windows)** box for PC and Server, ticked by default. Unticked, the devices of that network do not offer it and share nothing.'),
+            exercise('From Windows to GNU/Linux', 'With a Windows PC and a GNU/Linux PC on the same network, share the folder C:\\home\\alumno\\docs on Windows so that the GNU/Linux PC can leave files in it.', 'On Windows: tick the box in Settings, `md C:\\home\\alumno\\docs` and `net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL` (or Services → SMB with Everyone: Full Control). On GNU/Linux: `sudo apt install smbclient` and `smbclient //NAME/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\home\\alumno\\docs` on Windows shows it.'),
         ],
     },
 ];
@@ -19394,6 +19650,7 @@ const NAMES_DOCS = [
                 ['nmblookup -U IP -R NOMBRE', 'GNU/Linux con samba', 'Pregunta por unicast a un servidor WINS (cruza routers). Sin `-U` sigue siendo broadcast, aunque smb.conf tenga `wins server`.'],
                 ['resolvectl [status] · query NOMBRE', 'GNU/Linux', 'DNS de cada interfaz, LLMNR y mDNS globales y por interfaz, y los ámbitos activos (Current Scopes); `query` resuelve con resolved y dice el protocolo (DNS, LLMNR/IPv4, mDNS/IPv4). **Nunca NetBIOS.** `resolvectl llmnr|mdns eth0 yes` los cambia en una interfaz (root).'],
                 ['getent hosts · ahosts NOMBRE', 'GNU/Linux', 'Resuelve como ping, siguiendo la línea `hosts:` de nsswitch.conf (files, resolve, mdns4_minimal, dns, wins). Estado 2 si no lo encuentra.'],
+                ['smbclient -L NOMBRE -N', 'GNU/Linux con smbclient', 'Con `wins server` en smb.conf pregunta primero al WINS (cruza routers), después al sistema y por broadcast: el orden de `name resolve order`.'],
                 ['ipconfig /all', 'Windows', 'Muestra el Primary (y Secondary) WINS Server, si lo hay.'],
             ]),
             term('cmd', 'C:\\>ping -n 1 win2\n\nPinging win2 [192.168.1.12] with 32 bytes of data:\n\nReply from 192.168.1.12: bytes=32 time<1ms TTL=128'),
@@ -19406,7 +19663,7 @@ const NAMES_DOCS = [
                 ['Cliente Windows', 'Pestaña TCP/IP: «Servidor WINS», o la opción 44 del DHCP', 'NetBT registra sus nombres al ponerlo, al cambiar de dirección y al abrir el laboratorio, y los refresca a la mitad del TTL. Lo usa antes que LLMNR y el broadcast (nodo h).'],
             ]),
             warn('Una cosa o la otra', 'Un nmbd no puede ser servidor y cliente a la vez: con `wins support = yes` y `wins server = …`, `testparm` da un error y nmbd no arranca.'),
-            p('En un router IOS, la opción 44 se da en el pool DHCP con `netbios-name-server 192.168.10.2`. En Simulación verás «NBNS Registration WIN-B2<00>», su respuesta con el TTL concedido y las consultas con RD (recursion desired); el detalle muestra Opcode, TTL y Rcode.'),
+            p('En un router IOS, la opción 44 se da en el pool DHCP con `netbios-name-server 192.168.10.2`; en el DHCP de un Servidor, un router GNU/Linux o Windows Server, con el campo **Servidor WINS (opción 44)** del pool (Servicios → DHCP o su gestión web), que va a `netbios-name-servers` en /etc/kea/kea-dhcp4.conf. En Simulación verás «NBNS Registration WIN-B2<00>», su respuesta con el TTL concedido y las consultas con RD (recursion desired); el detalle muestra Opcode, TTL y Rcode.'),
             term('shell', 'alumno@lnx-a:~$ nmblookup -U 192.168.10.2 -R win-b2\nquerying win-b2 on 192.168.10.2\n192.168.20.12 win-b2<00>'),
             h('Laboratorios'),
             p('En **Laboratorios… → Resolución de nombres** hay cuatro prácticas: «Nombres en una LAN sin DNS propio», «Nombres entre redes», «Nombres en GNU/Linux: systemd-resolved, NSS y WINS» y «DNS de empresa que reenvía a Internet».'),
@@ -19479,6 +19736,7 @@ const NAMES_DOCS = [
                 ['nmblookup -U IP -R NAME', 'GNU/Linux with samba', 'Asks a WINS server by unicast (it crosses routers). Without `-U` it is still a broadcast, even if smb.conf has `wins server`.'],
                 ['resolvectl [status] · query NAME', 'GNU/Linux', 'Each interface’s DNS, LLMNR and mDNS globally and per interface, and the active scopes (Current Scopes); `query` resolves through resolved and names the protocol (DNS, LLMNR/IPv4, mDNS/IPv4). **Never NetBIOS.** `resolvectl llmnr|mdns eth0 yes` changes them on one interface (root).'],
                 ['getent hosts · ahosts NAME', 'GNU/Linux', 'Resolves as ping does, following the `hosts:` line of nsswitch.conf (files, resolve, mdns4_minimal, dns, wins). Status 2 when it is not found.'],
+                ['smbclient -L NAME -N', 'GNU/Linux with smbclient', 'With `wins server` in smb.conf it first asks the WINS (it crosses routers), then the system and a broadcast: the order of `name resolve order`.'],
                 ['ipconfig /all', 'Windows', 'Shows the Primary (and Secondary) WINS Server, if there is one.'],
             ]),
             term('cmd', 'C:\\>ping -n 1 win2\n\nPinging win2 [192.168.1.12] with 32 bytes of data:\n\nReply from 192.168.1.12: bytes=32 time<1ms TTL=128'),
@@ -19491,7 +19749,7 @@ const NAMES_DOCS = [
                 ['Windows client', 'TCP/IP tab: “WINS server”, or DHCP option 44', 'NetBT registers its names when it is set, when the address changes and when the lab is opened, and refreshes them at half the TTL. It uses it before LLMNR and the broadcast (h-node).'],
             ]),
             warn('One or the other', 'An nmbd cannot be server and client at once: with `wins support = yes` and `wins server = …`, `testparm` gives an error and nmbd does not start.'),
-            p('On an IOS router, option 44 is given in the DHCP pool with `netbios-name-server 192.168.10.2`. In Simulation you will see “NBNS Registration WIN-B2<00>”, its answer with the granted TTL and the queries with RD (recursion desired); the detail shows Opcode, TTL and Rcode.'),
+            p('On an IOS router, option 44 is given in the DHCP pool with `netbios-name-server 192.168.10.2`; in the DHCP of a Server, a GNU/Linux router or Windows Server, with the pool’s **WINS server (option 44)** field (Services → DHCP or its web management), which goes to `netbios-name-servers` in /etc/kea/kea-dhcp4.conf. In Simulation you will see “NBNS Registration WIN-B2<00>”, its answer with the granted TTL and the queries with RD (recursion desired); the detail shows Opcode, TTL and Rcode.'),
             term('shell', 'alumno@lnx-a:~$ nmblookup -U 192.168.10.2 -R win-b2\nquerying win-b2 on 192.168.10.2\n192.168.20.12 win-b2<00>'),
             h('Labs'),
             p('Under **Labs… → Name resolution** there are four exercises: “Names in a LAN with no DNS of its own”, “Names across networks”, “Names on GNU/Linux: systemd-resolved, NSS and WINS” and “Company DNS forwarding to the Internet”.'),
@@ -19644,7 +19902,7 @@ const OUTLINE = [
             ['DNS', ['srv-dns', 'srv-dns-names']],
             ['HTTP', ['srv-http', 'srv-apache', 'srv-webadmin', 'srv-roundcube']],
             ['Correo', ['srv-mail']],
-            ['Samba', ['srv-samba', 'srv-samba-clientes']],
+            ['Samba', ['srv-samba', 'srv-samba-clientes', 'win-compartir']],
             ['Configuración y registros', ['srv-config-logs']],
         ],
     },
@@ -19693,7 +19951,7 @@ const OUTLINE = [
             ['DNS', ['srv-dns', 'srv-dns-names']],
             ['HTTP', ['srv-http', 'srv-apache', 'srv-webadmin', 'srv-roundcube']],
             ['Mail', ['srv-mail']],
-            ['Samba', ['srv-samba', 'srv-samba-clientes']],
+            ['Samba', ['srv-samba', 'srv-samba-clientes', 'win-compartir']],
             ['Configuration and logs', ['srv-config-logs']],
         ],
     },
@@ -21810,6 +22068,7 @@ function* sed(ctx) {
     let status = 0;
     for (const group of groups) {
         const texts = [];
+        let unread = false;
         for (const f of group) {
             if (f === '-') {
                 texts.push(yield* ctx.readAll());
@@ -21821,8 +22080,12 @@ function* sed(ctx) {
             catch (e) {
                 ctx.err(`sed: can't read ${f}: ${errMsg(e)}\n`);
                 status = 2;
+                unread = true;
             }
         }
+        // -i on a file it could not read: GNU sed goes on with the next one and does not create it.
+        if (inPlace && unread)
+            continue;
         const result = runSed(ctx, cmds, labels, lines(texts.join('')), !q.opts.has('n'));
         if (result.error) {
             ctx.err(`sed: ${result.error}\n`);
@@ -27006,7 +27269,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.36.0",
+    "version": "0.37.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -28862,6 +29125,9 @@ const { networkOf, formatIp, inSubnet } = __m["core/ip.js"];
 const MINUTES_PER_DAY = 1440;
 const MINUTES_PER_HOUR = 60;
 const TFTP_OPTION = 150;
+const MULTICAST_FIRST = 0xe0000000;
+/** A WINS server is one host: not 0.0.0.0, multicast or broadcast. */
+const isUnicast = (a) => a !== 0 && a < MULTICAST_FIRST;
 function ptPoolToIos(p) {
     const minutes = p.leaseMinutes;
     const lease = { days: Math.floor(minutes / MINUTES_PER_DAY), hours: Math.floor((minutes % MINUTES_PER_DAY) / MINUTES_PER_HOUR), minutes: minutes % MINUTES_PER_HOUR };
@@ -28871,6 +29137,7 @@ function ptPoolToIos(p) {
         defaultRouters: p.gateway !== undefined ? [p.gateway] : [],
         dnsServers: p.dns !== undefined ? [p.dns] : [],
         domainName: p.domain || undefined,
+        netbiosServers: p.wins !== undefined ? [p.wins] : [],
         lease,
         options: p.tftp !== undefined ? [{ code: TFTP_OPTION, kind: 'ip', value: '', ips: [p.tftp] }] : [],
         reservations: p.reservations.map((r) => (r.clientId ? { ip: r.ip, clientId: r.clientId } : { ip: r.ip, mac: r.mac, macAlways: true })),
@@ -28910,6 +29177,8 @@ function validatePool(p, others) {
         return t('pool.err.users');
     if (p.gateway !== undefined && !inSubnet(p.gateway, p.start, p.prefix))
         return t('pool.err.gateway');
+    if (p.wins !== undefined && !isUnicast(p.wins))
+        return t('pool.err.wins');
     const net = networkOf(p.start, p.prefix);
     if (others.some((o) => networkOf(o.start, o.prefix) === net && o.prefix === p.prefix))
         return t('pool.err.subnet');
@@ -29110,6 +29379,7 @@ function keaConf(s) {
             p.gateway !== undefined ? `{ "name": "routers", "data": "${formatIp(p.gateway)}" }` : '',
             p.dns !== undefined ? `{ "name": "domain-name-servers", "data": "${formatIp(p.dns)}" }` : '',
             p.domain ? `{ "name": "domain-name", "data": "${p.domain}" }` : '',
+            p.wins !== undefined ? `{ "name": "netbios-name-servers", "data": "${formatIp(p.wins)}" }` : '',
         ].filter(Boolean).join(',\n          ');
         const res = p.reservations.map((r) => `{ ${r.clientId ? `"client-id": "${linuxMac(r.clientId)}"` : `"hw-address": "${linuxMac(r.mac ?? '')}"`}, "ip-address": "${formatIp(r.ip)}" }`).join(',\n          ');
         return `      {
@@ -30564,7 +30834,7 @@ const KNOWN = new Set([
     'workgroup', 'server string', 'netbios name', 'log file', 'max log size', 'logging', 'panic action', 'server role',
     'obey pam restrictions', 'unix password sync', 'passwd program', 'passwd chat', 'pam password change', 'map to guest',
     'usershare allow guests', 'interfaces', 'bind interfaces only', 'security', 'guest account', 'wins support', 'wins server',
-    'comment', 'path', 'browseable', 'browsable', 'read only', 'writable', 'writeable', 'write ok', 'guest ok', 'public',
+    'name resolve order', 'comment', 'path', 'browseable', 'browsable', 'read only', 'writable', 'writeable', 'write ok', 'guest ok', 'public',
     'valid users', 'printable', 'create mask', 'create mode', 'directory mask', 'directory mode', 'force user', 'force group',
 ]);
 /** The sections as testparm dumps them, and the unknown parameters it warns about. */
@@ -30606,6 +30876,13 @@ function winsList(value) {
     const ips = (value ?? '').slice(0, MAX_WINS_TEXT).split(/[\s,]+/).map(parseIp).filter((ip) => ip !== null);
     return [...new Set(ips)].slice(0, MAX_WINS_SERVERS);
 }
+const RESOLVE_METHODS = ['lmhosts', 'wins', 'host', 'bcast'];
+const isResolveMethod = (w) => RESOLVE_METHODS.includes(w);
+/** «name resolve order = bcast wins»: the known methods in order, once each; none known is Samba's default. */
+function resolveOrder(value) {
+    const words = (value ?? '').slice(0, MAX_WINS_TEXT).toLowerCase().split(/[\s,]+/).filter(isResolveMethod);
+    return words.length ? [...new Set(words)] : [...RESOLVE_METHODS];
+}
 const globalParams = (all) => all.find((s) => s.name.toLowerCase() === 'global')?.params ?? new Map();
 /** Both at once (any «wins server» text, a name too, as Samba checks it): testparm reports it and nmbd will not start. */
 function winsConflict(all) {
@@ -30637,6 +30914,7 @@ function parseSmbConf(text) {
         mapToGuest: /^bad user$/i.test(global.get('map to guest') ?? ''),
         winsSupport: yes(global.get('wins support'), false),
         winsServers: winsList(global.get('wins server')),
+        nameResolveOrder: resolveOrder(global.get('name resolve order')),
         shares: all.filter((s) => s.name.toLowerCase() !== 'global').map(share),
         unknown,
     };
@@ -30677,6 +30955,7 @@ return { SMB_CONF, DEFAULT_SMB_CONF, smbSections, winsConflict, parseSmbConf, fi
 __m["net/netbios.js"] = (() => {
 const { registerLocalSockets } = __m["net/ipstack.js"];
 const { unitRunning } = __m["net/pkg-units.js"];
+const { winShareActive } = __m["net/win-shares.js"];
 const { runSync } = __m["net/sync.js"];
 const { broadcastOf } = __m["core/ip.js"];
 const NBNS_PORT = 137;
@@ -30692,8 +30971,8 @@ const MAX_NAME = 15;
 /** NetBIOS over TCP/IP is on in Windows; on GNU/Linux nmbd (samba) gives it, while it runs. */
 const windows = (h) => h.os === 'windows';
 const speaksNetbios = (h) => windows(h) || unitRunning(h, 'nmbd');
-/** The SMB server: Windows' own, or smbd while it runs. */
-const servesSmb = (h) => windows(h) || unitRunning(h, 'smbd');
+/** The SMB server: Windows' own with file and printer sharing on (win-shares.ts), or smbd while it runs. */
+const servesSmb = (h) => (windows(h) ? winShareActive(h) : unitRunning(h, 'smbd'));
 let smbHandler = () => null;
 function registerSmbServer(fn) {
     smbHandler = fn;
@@ -30703,10 +30982,12 @@ function registerWinsHandler(fn) {
     winsHandler = fn;
 }
 const netbiosName = (name) => name.toUpperCase().slice(0, MAX_NAME);
-/** A host's own names: NAME<00>, WORKGROUP<00> (group) and NAME<20> (its SMB server). */
+/** A host's own names: NAME<00>, WORKGROUP<00> (group) and NAME<20> (its SMB server: nmbd always registers it; Windows
+ * only with file and printer sharing on). */
 function ownNames(host) {
     const name = netbiosName(host.runtimeName());
-    return [{ name, suffix: WORKSTATION, group: false }, { name: WORKGROUP, suffix: WORKSTATION, group: true }, { name, suffix: FILE_SERVER, group: false }];
+    const base = [{ name, suffix: WORKSTATION, group: false }, { name: WORKGROUP, suffix: WORKSTATION, group: true }];
+    return windows(host) && !winShareActive(host) ? base : [...base, { name, suffix: FILE_SERVER, group: false }];
 }
 const waiting = new WeakMap();
 const caches = new WeakMap();
@@ -31140,7 +31421,10 @@ function llmnrLookup(host, name, done, on = () => true) {
 return { LLMNR_GROUP, LLMNR_PORT, LLMNR_WAIT_MS, setLlmnrResponder, registerLlmnr, llmnrLookup };
 })();
 __m["net/win-wins.js"] = (() => {
-const { winsRegister, winsSendAll } = __m["net/wins.js"];
+const { winsRegister, winsSend, winsSendAll } = __m["net/wins.js"];
+const { FILE_SERVER, netbiosName } = __m["net/netbios.js"];
+const { winShareActive } = __m["net/win-shares.js"];
+const { onAppsChange } = __m["net/device-apps.js"];
 /** What Windows asks for in a registration (0x493E0 seconds). */
 const WINDOWS_WINS_TTL_S = 300_000;
 const MULTICAST = 0xe0000000;
@@ -31151,6 +31435,10 @@ const generations = new WeakMap();
 /** The server and granted TTL to refresh with, and the hosts with that timer pending (one each, however often they register). */
 const current = new WeakMap();
 const pending = new WeakSet();
+/** Whether NAME<20> went with the names (sharing on when they were registered, or since). */
+const sharedFor = new WeakMap();
+/** The hosts of a workspace, by themselves: what a change of the Configuración tab (device-apps.ts) is about. */
+const attached = new WeakMap();
 /** NetBT keeps a primary and a secondary WINS server (what ipconfig /all shows): any more in the lease are left out. */
 const MAX_SERVERS = 2;
 /** A unicast address that can be a WINS server (not 0.0.0.0, broadcast or multicast). */
@@ -31194,6 +31482,7 @@ function checkWindowsWins(host) {
     registeredFor.set(host, key);
     current.delete(host);
     const gen = bump(host);
+    sharedFor.set(host, winShareActive(host));
     if (!key)
         return;
     winsRegister(host, servers, WINDOWS_WINS_TTL_S, () => generations.get(host) === gen, (server, ttlS) => {
@@ -31214,9 +31503,32 @@ function setWindowsWins(host, ip) {
     checkWindowsWins(host);
     return true;
 }
-/** A new host in the workspace: every change of its configuration may bring a new address or lease to register. */
+/** File and printer sharing turned on or off: NAME<20> registered or released with the server the names are with. */
+function sharingChanged(host) {
+    const on = winShareActive(host);
+    if (on === (sharedFor.get(host) ?? false))
+        return;
+    sharedFor.set(host, on);
+    const c = current.get(host);
+    if (!c)
+        return;
+    const name = { name: netbiosName(host.runtimeName()), suffix: FILE_SERVER, group: false };
+    winsSend(host, c.server, on ? 'registration' : 'release', name, on ? WINDOWS_WINS_TTL_S : 0);
+}
+let watching = false;
+/** A new host in the workspace: every change of its configuration may bring a new address or lease to register, and
+ * of its Configuración tab, its sharing box. */
 function attachWindowsWins(host) {
     host.onChange(() => checkWindowsWins(host));
+    attached.set(host, host);
+    if (watching)
+        return;
+    watching = true;
+    onAppsChange((d) => {
+        const h = attached.get(d);
+        if (h)
+            sharingChanged(h);
+    });
 }
 /** A host read back from a saved lab, once its links are up: it registers again. */
 function bootWindowsWins(host) {
@@ -38317,6 +38629,41 @@ function mooLines(moos, ms) {
 
 return { mooLines };
 })();
+__m["net/lab-packages.js"] = (() => {
+/**
+ * The package catalogue of a device's Configuración tab: apt's tool packages, which bring no service panel (those
+ * follow the Servicios boxes and the lab features; samba has its own). Each has a box in the device (apt install /
+ * apt remove, apt-install.ts) and one in Configuración → Laboratorio actual: a package the lab takes away is no longer
+ * in the archive (apt cannot find it), but a device that has it keeps it. Saved with the topology as the list of
+ * packages taken away.
+ */
+const { labViewOf } = __m["net/device-apps.js"];
+/** In the order the boxes list them (bind9utils, the old name of bind9-utils, is left to the terminal). */
+const CATALOG_PACKAGES = ['network-manager', 'avahi-daemon', 'libnss-mdns', 'libnss-resolve', 'smbclient', 'samba-common-bin', 'winbind', 'libnss-winbind', 'bind9-utils'];
+/** A longer list in a file is not a list of packages (the catalogue has a handful). */
+const MAX_LIST = 64;
+const inCatalogue = (name) => CATALOG_PACKAGES.includes(name);
+/** Not taken away by the lab (a package outside the catalogue always is available). */
+function packageAllowed(off, name) {
+    return !off.includes(name);
+}
+/** The device's lab keeps the package in its archive. */
+function labHasPackage(d, name) {
+    return packageAllowed(labViewOf(d).pkgsOff, name);
+}
+/** A copy with one package taken away (on) or given back, in catalogue order; names outside it are ignored. */
+function setPackageOff(off, name, on) {
+    return CATALOG_PACKAGES.filter((p) => (p === name ? on && inCatalogue(name) : off.includes(p)));
+}
+/** The `pkgsOff` of a topology file (untrusted): catalogue names, no repeats; anything else is «all available». */
+function parsePkgsOff(data) {
+    if (!Array.isArray(data) || data.length > MAX_LIST)
+        return [];
+    return CATALOG_PACKAGES.filter((p) => data.includes(p));
+}
+
+return { CATALOG_PACKAGES, packageAllowed, labHasPackage, setPackageOff, parsePkgsOff };
+})();
 __m["shells/apt-state.js"] = (() => {
 const { runsServices } = __m["devices/kinds.js"];
 const { APPS_BY_KIND, deviceApps, setDeviceApps } = __m["net/device-apps.js"];
@@ -38474,27 +38821,32 @@ const KEA_DEFAULT = `// This is a basic configuration for the Kea DHCPv4 server.
 }
 `;
 const KEA_PACKAGES = new Set(['kea', 'kea-dhcp4-server', 'isc-kea']);
+/**
+ * smb.conf is samba-common's conffile: the packages of the catalogue that bring it write it, on any host (no Servicios
+ * settings write it).
+ */
+const SMB_CONF_PACKAGES = new Set(['samba', 'smbclient', 'samba-common-bin', 'winbind']);
 /** The files a package ships, by path. */
 function shippedFiles(name) {
     if (KEA_PACKAGES.has(name))
         return new Map([[KEA_DHCP4_CONF, KEA_DEFAULT]]);
     if (name === 'bind9')
         return bindFiles(defaultServices().dns, []);
-    if (name === 'samba')
+    if (SMB_CONF_PACKAGES.has(name))
         return new Map([[SMB_CONF, DEFAULT_SMB_CONF]]);
     if (name === 'nftables')
         return new Map([[NFTABLES_CONF, DEFAULT_NFTABLES_CONF]]);
     return new Map();
 }
 
-return { KEA_DHCP4_CONF, shippedFiles };
+return { KEA_DHCP4_CONF, SMB_CONF_PACKAGES, shippedFiles };
 })();
 __m["shells/apt-scripts.js"] = (() => {
 const { FsError } = __m["bash/vfs.js"];
 const { hasPackage } = __m["net/host-packages.js"];
 const { DEFAULT_NSSWITCH, NSSWITCH, withMdns, withResolve } = __m["shells/nsswitch.js"];
 const { runsServices } = __m["devices/kinds.js"];
-const { shippedFiles } = __m["shells/apt-defaults.js"];
+const { SMB_CONF_PACKAGES, shippedFiles } = __m["shells/apt-defaults.js"];
 const { pkgInstalled, pkgRemoved } = __m["shells/pkg-service.js"];
 const { notifyAppsChange } = __m["net/device-apps.js"];
 /** Packages that add tabs to the Servicios of a GNU/Linux host (net/pkg-units.ts hostPanels). */
@@ -38525,7 +38877,7 @@ function writeShipped(fs, name) {
 }
 function afterPackage(fs, host, name, on) {
     // A Server or GNU/Linux router writes them from its Servicios settings (linux-files.ts); smb.conf has none.
-    if (on && (!runsServices(host.kind) || name === 'samba'))
+    if (on && (!runsServices(host.kind) || SMB_CONF_PACKAGES.has(name)))
         writeShipped(fs, name);
     if (name === 'avahi-daemon' || name === 'libnss-mdns') {
         editNsswitch(fs, (text) => withMdns(text, hasPackage(host, 'libnss-mdns')));
@@ -38587,15 +38939,52 @@ function leftoverNote(names) {
 
 return { findDep, markDependencies, orphans, leftoverNote };
 })();
+__m["shells/apt-core.js"] = (() => {
+const { PACKAGES, findPackage } = __m["shells/apt-catalog.js"];
+const { installedPackage, setPackage } = __m["shells/apt-state.js"];
+const { afterPackage } = __m["shells/apt-scripts.js"];
+const { markDependencies } = __m["shells/apt-auto.js"];
+const { setPackageInstalled } = __m["net/host-packages.js"];
+/** The packages to fetch for `todo` (dependencies not there yet first, each once). */
+function toFetch(host, todo) {
+    // What is there already (with what came with it) is not fetched again.
+    const present = PACKAGES.filter((p) => installedPackage(host, p)).flatMap((p) => [p.name, ...p.deps.map((d) => d.name)]);
+    const seen = new Set([...todo.map((p) => p.name), ...present]);
+    const deps = todo.flatMap((p) => p.deps.map((d) => ({ pkg: d, section: p.section }))).filter(({ pkg }) => !seen.has(pkg.name) && (seen.add(pkg.name), true));
+    return [...deps, ...todo.map((p) => ({ pkg: p, section: p.section }))];
+}
+/** dpkg after the download: the dependencies automatic, each package installed (manual) and its scripts run. */
+function commitInstall(fs, host, todo, fetched) {
+    markDependencies(host, todo, fetched);
+    for (const p of todo) {
+        setPackage(host, p, true);
+        afterPackage(fs, host, p.name, true);
+    }
+}
+/** dpkg removing packages (a catalogue one or a dependency); what they brought stays for autoremove. */
+function commitRemove(fs, host, todo) {
+    for (const d of todo) {
+        const p = findPackage(d.name);
+        if (p)
+            setPackage(host, p, false);
+        else
+            setPackageInstalled(host, d.name, false);
+        afterPackage(fs, host, d.name, false);
+    }
+}
+
+return { toFetch, commitInstall, commitRemove };
+})();
 __m["shells/apt.js"] = (() => {
 const { aptSources, mirrorStatus } = __m["shells/apt-net.js"];
 const { BASE, PACKAGES, findPackage, kb } = __m["shells/apt-catalog.js"];
 const { mooLines } = __m["shells/apt-moo.js"];
 const { sambaAllowed } = __m["net/device-apps.js"];
-const { installedPackage, setPackage } = __m["shells/apt-state.js"];
-const { afterPackage } = __m["shells/apt-scripts.js"];
-const { findDep, leftoverNote, markDependencies, orphans } = __m["shells/apt-auto.js"];
-const { isPackageAuto, setPackageAuto, setPackageInstalled } = __m["net/host-packages.js"];
+const { labHasPackage } = __m["net/lab-packages.js"];
+const { installedPackage } = __m["shells/apt-state.js"];
+const { commitInstall, commitRemove, toFetch } = __m["shells/apt-core.js"];
+const { findDep, leftoverNote, orphans } = __m["shells/apt-auto.js"];
+const { isPackageAuto, setPackageAuto } = __m["net/host-packages.js"];
 const READING = 'Reading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\n';
 const summary = (installing, removing) => `Summary:\n  Upgrading: 0, Installing: ${installing}, Removing: ${removing}, Not Upgrading: 0\n`;
 const NOTHING = summary(0, 0);
@@ -38673,14 +39062,6 @@ function* confirm(ctx, yes) {
 }
 const debName = (d) => `${d.name}_${d.version.replace(/^\d+:/, '')}_${d.arch}.deb`;
 const poolPath = (p, section) => `pool/${section}/${p.name.startsWith('lib') ? p.name.slice(0, 4) : p.name[0]}/${p.name}/${debName(p)}`;
-/** The packages to fetch for `todo` (dependencies not there yet first, each once). */
-function toFetch(host, todo) {
-    // What is there already (with what came with it) is not fetched again.
-    const present = PACKAGES.filter((p) => installedPackage(host, p)).flatMap((p) => [p.name, ...p.deps.map((d) => d.name)]);
-    const seen = new Set([...todo.map((p) => p.name), ...present]);
-    const deps = todo.flatMap((p) => p.deps.map((d) => ({ pkg: d, section: p.section }))).filter(({ pkg }) => !seen.has(pkg.name) && (seen.add(pkg.name), true));
-    return [...deps, ...todo.map((p) => ({ pkg: p, section: p.section }))];
-}
 function plan(todo, fetch) {
     const deps = fetch.filter(({ pkg }) => !todo.some((p) => p.name === pkg.name)).map(({ pkg }) => pkg.name);
     const size = fetch.reduce((n, { pkg }) => n + pkg.kb, 0);
@@ -38708,11 +39089,15 @@ function unpack(ctx, host, todo, fetch, archive) {
     });
     ctx.out(`${[...lines, ...setup, 'Processing triggers for man-db (2.13.1-1) ...', 'Processing triggers for libc-bin (2.42-0ubuntu3) ...'].join('\n')}\n`);
 }
+/**
+ * What the lab's archive offers: a lab whose Samba feature is off for this kind of device has no samba, and the
+ * catalogue packages the lab took away are gone (an installed one stays on the device).
+ */
+const inArchive = (host, name) => (name !== 'samba' || sambaAllowed(host)) && labHasPackage(host, name);
 const dbFiles = (host) => DB_FILES + PACKAGES.filter((p) => installedPackage(host, p)).length * 137;
 function* install(ctx, host, names, yes) {
     ctx.out(READING);
-    // A lab whose Samba feature is off for this kind of device has no samba in its archive.
-    const unknown = names.find((n) => (!findPackage(n) && BASE[n] === undefined) || (n === 'samba' && !sambaAllowed(host)));
+    const unknown = names.find((n) => (!findPackage(n) && BASE[n] === undefined) || !inArchive(host, n));
     if (unknown !== undefined) {
         ctx.err(`Error: Unable to locate package ${unknown}\n`);
         return 100;
@@ -38744,11 +39129,7 @@ function* install(ctx, host, names, yes) {
     if (reason !== undefined)
         return fetchFailed(ctx, archive, fetch, reason);
     unpack(ctx, host, todo, fetch, archive);
-    markDependencies(host, todo, fetch.map(({ pkg }) => pkg));
-    for (const p of todo) {
-        setPackage(host, p, true);
-        afterPackage(ctx.sh.env.fs, host, p.name, true);
-    }
+    commitInstall(ctx.sh.env.fs, host, todo, fetch.map(({ pkg }) => pkg));
     return 0;
 }
 function* remove(ctx, host, names, yes, purge) {
@@ -38781,14 +39162,7 @@ function* drop(ctx, host, todo, yes, purge) {
         return 1;
     const lines = todo.flatMap((p) => [`Removing ${p.name} (${p.version}) ...`, ...(purge ? [`Purging configuration files for ${p.name} (${p.version}) ...`] : [])]);
     ctx.out(`(Reading database ... ${dbFiles(host)} files and directories currently installed.)\n${lines.join('\n')}\nProcessing triggers for man-db (2.13.1-1) ...\n`);
-    for (const d of todo) {
-        const p = findPackage(d.name);
-        if (p)
-            setPackage(host, p, false);
-        else
-            setPackageInstalled(host, d.name, false);
-        afterPackage(ctx.sh.env.fs, host, d.name, false);
-    }
+    commitRemove(ctx.sh.env.fs, host, todo);
     return 0;
 }
 /** apt autoremove: the automatic packages nothing needs any more. */
@@ -38806,7 +39180,8 @@ const matches = (patterns, name) => !patterns.length || patterns.some((g) => new
 /** `apt list [--installed] [PATTERN...]`: the catalogue (or what is installed), with apt's warning for scripts. */
 function list(ctx, host, patterns, installedOnly) {
     const base = Object.entries(BASE).map(([name, version]) => ({ name, version, arch: 'amd64', on: true }));
-    const all = [...base, ...PACKAGES.map((p) => ({ name: p.name, version: p.version, arch: p.arch, on: installedPackage(host, p) }))];
+    const pkgs = PACKAGES.map((p) => ({ name: p.name, version: p.version, arch: p.arch, on: installedPackage(host, p) })).filter((p) => p.on || labHasPackage(host, p.name));
+    const all = [...base, ...pkgs];
     const shown = all.filter((p) => (!installedOnly || p.on) && matches(patterns, p.name)).sort((a, b) => a.name.localeCompare(b.name));
     const mark = (name) => (isPackageAuto(host, name) ? ' [installed,automatic]' : ' [installed]');
     ctx.err('\nWARNING: apt does not have a stable CLI interface. Use with caution in scripts.\n\n');
@@ -38857,7 +39232,7 @@ function apt(host) {
     return (ctx) => run(ctx, host);
 }
 
-return { toFetch, apt };
+return { apt };
 })();
 __m["shells/nmcli-model.js"] = (() => {
 const { formatIp } = __m["core/ip.js"];
@@ -39052,7 +39427,7 @@ __m["shells/nmblookup.js"] = (() => {
 const { hasPackage } = __m["net/host-packages.js"];
 const { WORKSTATION, nbnsAsk, netbiosName, ownNames, speaksNetbios } = __m["net/netbios.js"];
 const { broadcastOf, formatIp, parseIp } = __m["core/ip.js"];
-const USAGE = 'Usage: nmblookup [-A] [-U UNICAST-ADDRESS] [-R] NAME|IP\n';
+const USAGE = 'Usage: nmblookup [-A] [-S] [-U UNICAST-ADDRESS] [-R] NAME|IP\n';
 function status(ctx, host, target) {
     ctx.out(`Looking up status of ${target}\n`);
     const ip = parseIp(target);
@@ -39087,15 +39462,17 @@ function query(ctx, host, name, o) {
         return 1;
     }
     ctx.out(`${formatIp(ip)} ${name}<00>\n`);
-    return 0;
+    return o.lookupStatus ? status(ctx, host, formatIp(ip)) : 0;
 }
-/** -A, -R and -U ADDRESS (or -UADDRESS, --unicast=ADDRESS); the first other word is the name. Null: a usage error. */
+/** -A, -S (the node status of what the query finds), -R and -U ADDRESS (or -UADDRESS, --unicast=ADDRESS); the first other word is the name. Null: a usage error. */
 function parse(args) {
-    let o = { status: false, recurse: false };
+    let o = { status: false, lookupStatus: false, recurse: false };
     for (let i = 0; i < args.length; i++) {
         const a = args[i] ?? '';
         if (a === '-A')
             o = { ...o, status: true };
+        else if (a === '-S')
+            o = { ...o, lookupStatus: true };
         else if (a === '-R')
             o = { ...o, recurse: true };
         else if (a === '-U' || a === '--unicast') {
@@ -39556,6 +39933,9 @@ __m["shells/smbclient.js"] = (() => {
 const { hasPackage } = __m["net/host-packages.js"];
 const { resolveHost } = __m["shells/net-tools.js"];
 const { FILE_SERVER, nbnsResolve } = __m["net/netbios.js"];
+const { winsResolve } = __m["net/wins.js"];
+const { readHostFile } = __m["devices/server-firewall.js"];
+const { SMB_CONF, parseSmbConf } = __m["services/smb-conf.js"];
 const { ANONYMOUS, smbCall } = __m["clients/smb-client.js"];
 const { smbCommand } = __m["shells/smbclient-cmds.js"];
 const USAGE = 'Usage: smbclient [-?EgqBNPkV] [-?|--help] [--usage] [-M|--message=HOST] [-I|--ip-address=IP]\n        [-L|--list=HOST] [-c|--command=STRING] [-N|--no-pass] [-U|--user=[DOMAIN/]USERNAME[%PASSWORD]]\n        [-W|--workgroup=WORKGROUP] service <password>\n';
@@ -39622,18 +40002,30 @@ function connectError(ctx, server, status) {
 }
 /** A NetBIOS name: one label of up to 15 characters. */
 const NETBIOS_NAME = /^[^.\s]{1,15}$/;
+/** One method of «name resolve order»; smbclient asks NetBIOS for the server's file service, NAME<20>. */
+function resolveBy(host, method, server, wins) {
+    if (method === 'host') {
+        const r = resolveHost(host, server, 'linux');
+        return r.kind === 'ip' ? r.ip : undefined;
+    }
+    if (!NETBIOS_NAME.test(server))
+        return undefined;
+    if (method === 'wins')
+        return wins.length ? winsResolve(host, wins, server, FILE_SERVER) : undefined;
+    // No lmhosts file is simulated: that method finds nothing.
+    return method === 'bcast' ? nbnsResolve(host, server, FILE_SERVER) : undefined;
+}
 /**
- * Samba's «name resolve order» (lmhosts wins host bcast): no lmhosts file nor WINS server here, so the system
- * resolver (/etc/hosts, DNS… as nsswitch.conf says) and then a NetBIOS broadcast, which nmbd answers.
+ * Samba's «name resolve order» of smb.conf (lmhosts wins host bcast by default): the «wins server» by unicast, which
+ * crosses routers; the system resolver (/etc/hosts, DNS… as nsswitch.conf says); a NetBIOS broadcast, which nmbd answers.
  */
 function serverIp(ctx, host, server) {
-    const r = resolveHost(host, server, 'linux');
-    if (r.kind === 'ip')
-        return r.ip;
-    // smbclient asks for the server's file service, NAME<20>.
-    const bcast = NETBIOS_NAME.test(server) ? nbnsResolve(host, server, FILE_SERVER) : undefined;
-    if (bcast !== undefined)
-        return bcast;
+    const conf = parseSmbConf(readHostFile(host, SMB_CONF) ?? '');
+    for (const method of conf.nameResolveOrder) {
+        const ip = resolveBy(host, method, server, conf.winsServers);
+        if (ip !== undefined)
+            return ip;
+    }
     ctx.err(`do_connect: Connection to ${server} failed (Error NT_STATUS_UNSUCCESSFUL)\n`);
     return null;
 }
@@ -45913,6 +46305,193 @@ function netView(host, unc) {
 
 return { smbTarget, netUse, netView };
 })();
+__m["services/smb-windows.js"] = (() => {
+const { FsError, canAccess } = __m["bash/vfs.js"];
+const { addWinShare, findWinShare, removeWinShare, sharePath, winShares } = __m["net/win-shares.js"];
+const { hostFs } = __m["devices/host-fs.js"];
+const { defaultLinuxUser, hostUsers } = __m["shells/host-system.js"];
+const { resolveWinPath } = __m["shells/win-path.js"];
+/** Paths on the server are absolute, so a string that starts as a status is one. */
+const isStatus = (v) => v.startsWith('NT_STATUS_');
+/** The device's own account, as its Windows terminal (windows.ts). */
+function localCred(host) {
+    const users = hostUsers(host);
+    const account = users.find((u) => u.name === defaultLinuxUser(host)) ?? users[0];
+    return { uid: account?.uid ?? 0, gid: account?.gid ?? 0, groups: account?.groups ?? [] };
+}
+/** NetShareEnum: the shares by name, then IPC$; Windows gives no server comment. */
+function windowsShareList(host) {
+    const disks = [...winShares(host)]
+        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+        .map((s) => ({ name: s.name, type: 'Disk', comment: s.remark }));
+    return { status: 'NT_STATUS_OK', comment: '', shares: [...disks, { name: 'IPC$', type: 'IPC', comment: 'Remote IPC' }] };
+}
+/** The real directory of a share's C:\folder, or why it cannot be entered: gone (or not a folder), or denied. */
+function folderOf(fs, path, cred) {
+    const p = resolveWinPath(fs, '/', path, cred);
+    if (!p.ok)
+        return 'NT_STATUS_BAD_NETWORK_NAME';
+    try {
+        const root = fs.realpath(p.path);
+        if (fs.tryLookup(root)?.kind !== 'dir')
+            return 'NT_STATUS_BAD_NETWORK_NAME';
+        return canAccess(fs.lookup(root, cred), cred, 1) ? root : 'NT_STATUS_ACCESS_DENIED';
+    }
+    catch (e) {
+        return e instanceof FsError ? 'NT_STATUS_BAD_NETWORK_NAME' : 'NT_STATUS_UNSUCCESSFUL';
+    }
+}
+/** Tree connect: the share (its name in any case) and its folder, which must still be there and be entered. */
+function windowsTree(host, fs, name) {
+    const share = findWinShare(host, name);
+    if (!share)
+        return 'NT_STATUS_BAD_NETWORK_NAME';
+    const cred = localCred(host);
+    const root = folderOf(fs, share.path, cred);
+    return isStatus(root) ? root : { root, readOnly: share.access === 'read', cred };
+}
+/** The panel and `net share`: publishes a share of a folder that exists, and tells the device's open panels. */
+function publishWinShare(host, share) {
+    const path = sharePath(share.path);
+    if (path === undefined)
+        return /^[a-bd-z]:\\/i.test(share.path) ? 'folder' : 'path';
+    const fs = hostFs(host);
+    if (!fs || folderOf(fs, path, localCred(host)) === 'NT_STATUS_BAD_NETWORK_NAME')
+        return 'folder';
+    const err = addWinShare(host, { ...share, path });
+    if (!err)
+        host.notifyChange();
+    return err;
+}
+/** Stops sharing (the folder stays): whether there was such a share. */
+function unpublishWinShare(host, name) {
+    const done = removeWinShare(host, name);
+    if (done)
+        host.notifyChange();
+    return done;
+}
+
+return { windowsShareList, windowsTree, publishWinShare, unpublishWinShare };
+})();
+__m["shells/win-net-share.js"] = (() => {
+const { findWinShare, winShareActive, winShares } = __m["net/win-shares.js"];
+const { publishWinShare, unpublishWinShare } = __m["services/smb-windows.js"];
+const RULE = '-'.repeat(79);
+const DONE = 'The command completed successfully.';
+const NAME_COL = 13;
+const REMARK_COL = 45;
+const SYNTAX = [
+    'The syntax of this command is:', '', 'NET SHARE', 'sharename',
+    '          sharename=drive:path [/GRANT:user,[READ | CHANGE | FULL]]',
+    '                               [/USERS:number | /UNLIMITED]',
+    '                               [/REMARK:"text"]',
+    '                               [/CACHE:Manual | Documents| Programs | BranchCache | None]',
+    '          sharename [/USERS:number | /UNLIMITED]',
+    '                    [/REMARK:"text"]',
+    '                    [/CACHE:Manual | Documents | Programs | BranchCache | None]',
+    '          {sharename | devicename | drive:path} /DELETE',
+    '          sharename \\\\computername /DELETE', '',
+];
+/** A net.exe error (NERR_*), or a Win32 error told as a system error. */
+const helpMsg = (text, code) => [text, '', `More help is available by typing NET HELPMSG ${code}.`, ''];
+const systemError = (code, text) => [`System error ${code} has occurred.`, '', text, ''];
+const NOT_SHARED = helpMsg('This shared resource does not exist.', 2310);
+function publishError(err) {
+    switch (err) {
+        case 'exists':
+        case 'reserved': return helpMsg('The name has already been shared.', 2118);
+        case 'folder': return helpMsg('The device or directory does not exist.', 2116);
+        case 'name':
+        case 'path': return systemError(123, 'The filename, directory name, or volume label syntax is incorrect.');
+        default: return systemError(87, 'The parameter is incorrect.');
+    }
+}
+/** One share of the list: a name of 13 or more goes on a line of its own, and so does the remark after a long path. */
+function row(name, resource, remark) {
+    const lines = name.length >= NAME_COL ? [name] : [];
+    const start = `${name.length >= NAME_COL ? '' : name}`.padEnd(NAME_COL) + resource;
+    if (remark && start.length >= REMARK_COL)
+        return [...lines, start, `${''.padEnd(REMARK_COL)}${remark}`];
+    return [...lines, `${start.padEnd(REMARK_COL)}${remark}`.trimEnd()];
+}
+function list(host) {
+    const rows = winShares(host).flatMap((s) => row(s.name, s.path, s.remark));
+    return ['', `${'Share name'.padEnd(NAME_COL)}${'Resource'.padEnd(REMARK_COL - NAME_COL)}Remark`, '', RULE, ...row('IPC$', '', 'Remote IPC'), ...rows, DONE, ''];
+}
+function details(host, name) {
+    const field = (label, value) => `${label.padEnd(18)}${value}`.trimEnd();
+    if (name.toUpperCase() === 'IPC$') {
+        return [field('Share name', 'IPC$'), field('Path', ''), field('Remark', 'Remote IPC'), field('Maximum users', 'No limit'), 'Users', '', DONE, ''];
+    }
+    const s = findWinShare(host, name);
+    if (!s)
+        return NOT_SHARED;
+    return [
+        field('Share name', s.name), field('Path', s.path), field('Remark', s.remark), field('Maximum users', 'No limit'), 'Users',
+        field('Caching', 'Manual caching of documents'), field('Permission', `Everyone, ${s.access === 'full' ? 'FULL' : 'READ'}`), '', DONE, '',
+    ];
+}
+/** /DELETE of a share by name, or of every share of a folder (C:\folder). */
+function remove(host, target) {
+    const folder = /^[a-z]:\\/i.test(target) ? target.replace(/\\+$/, '').toLowerCase() : undefined;
+    const names = folder === undefined
+        ? [target]
+        : winShares(host).filter((s) => s.path.toLowerCase() === folder).map((s) => s.name);
+    const removed = names.filter((n) => unpublishWinShare(host, n));
+    return removed.length ? [`${target} was deleted successfully.`, ''] : NOT_SHARED;
+}
+/** The options after NAME=PATH; null for a syntax error. */
+function options(args) {
+    let o = { access: 'read', remark: '', user: 'everyone' };
+    for (const a of args) {
+        const m = /^\/(grant|remark|users|unlimited|cache)(?::(.*))?$/is.exec(a);
+        const key = (m?.[1] ?? '').toLowerCase();
+        const value = m?.[2] ?? '';
+        if (!m)
+            return null;
+        if (key === 'remark')
+            o = { ...o, remark: value };
+        else if (key === 'grant') {
+            const g = /^([^,]+),(read|full)$/i.exec(value);
+            if (!g)
+                return null;
+            o = { ...o, user: (g[1] ?? '').toLowerCase(), access: (g[2] ?? '').toLowerCase() === 'full' ? 'full' : 'read' };
+        }
+        else if (key === 'users' && !/^\d+$/.test(value))
+            return null;
+    }
+    return o;
+}
+function share(host, spec, rest) {
+    const eq = spec.indexOf('=');
+    const o = options(rest);
+    if (!o)
+        return SYNTAX;
+    if (o.user !== 'everyone')
+        return systemError(1332, 'No mapping between account names and security IDs was done.');
+    const s = { name: spec.slice(0, eq), path: spec.slice(eq + 1), remark: o.remark, access: o.access };
+    const err = publishWinShare(host, s);
+    return err ? publishError(err) : [`${s.name} was shared successfully.`, ''];
+}
+const DELETE = /^\/d(?:e(?:l(?:e(?:t(?:e)?)?)?)?)?$/i;
+/** `net share …` (the words after share). */
+function netShare(host, args) {
+    if (!winShareActive(host))
+        return helpMsg('The Server service is not started.', 2114);
+    const [first, ...rest] = args;
+    if (first === undefined)
+        return list(host);
+    if (first.startsWith('/'))
+        return SYNTAX;
+    if (rest.some((a) => DELETE.test(a)))
+        return rest.length === 1 ? remove(host, first) : SYNTAX;
+    if (first.includes('='))
+        return share(host, first, rest);
+    return rest.length ? SYNTAX : details(host, first);
+}
+
+return { netShare };
+})();
 __m["shells/win-fsctx.js"] = (() => {
 /** What the cmd.exe file commands share: the account's view of the Linux file system, cmd's messages and listings. */
 const { FsError, basename, dirname } = __m["bash/vfs.js"];
@@ -46858,6 +47437,7 @@ __m["shells/windows.js"] = (() => {
  */
 const { nbtstat } = __m["shells/win-nbt.js"];
 const { netUse, netView } = __m["shells/win-smb.js"];
+const { netShare } = __m["shells/win-net-share.js"];
 const { smbFileCommand } = __m["shells/win-smb-files.js"];
 const { timestampPromptOn, windowsTimestampPrompt } = __m["shells/prompt-clock.js"];
 const { runsServices } = __m["devices/kinds.js"];
@@ -46890,6 +47470,7 @@ const HELP = [
     '  copy | move | ren        Copy, move or rename files',
     '  Z: | cd /d Z:\\dir        Switch to a drive mapped with net use',
     '  net view | net use       SMB shares and mapped drives',
+    '  net share                Shares of this device (File and Printer Sharing)',
     '  type <file>              Show a file',
     '  edit <file>              Edit a file full screen',
     '  echo <text> [> file]     Print text (> and >> write it to a file)',
@@ -47200,6 +47781,8 @@ class WindowsShell extends BaseShell {
         const verb = (args[0] ?? '').toLowerCase();
         if (verb === 'view')
             return netView(this.host, args[1]);
+        if (verb === 'share')
+            return netShare(this.host, args.slice(1));
         if (verb !== 'use')
             return this.net(args);
         const r = netUse(this.host, args.slice(1));
@@ -47212,7 +47795,7 @@ class WindowsShell extends BaseShell {
         const verb = (args[0] ?? '').toLowerCase();
         const s = this.server();
         if (verb !== 'start' && verb !== 'stop')
-            return ['The syntax of this command is:', '', 'NET [ START | STOP | USE | VIEW ]'];
+            return ['The syntax of this command is:', '', 'NET [ SHARE | START | STOP | USE | VIEW ]'];
         if (verb === 'start' && !args[1])
             return ['These Windows services are started:', '', ...(s ? UNITS.filter((u) => unitActive(s.services, u.id)).map((u) => `   ${u.windowsDisplay}`) : []), '', 'The command completed successfully.'];
         const unit = args[1] ? findUnit(args.slice(1).join(' ')) : undefined;
@@ -48004,7 +48587,7 @@ function servicesToJson(s) {
             enabled: s.dhcp.enabled,
             pools: s.dhcp.pools.map((p) => ({
                 name: p.name, start: formatIp(p.start), prefix: p.prefix, maxUsers: p.maxUsers, gateway: ip(p.gateway), dns: ip(p.dns),
-                domain: p.domain, tftp: ip(p.tftp), leaseMinutes: p.leaseMinutes,
+                domain: p.domain, tftp: ip(p.tftp), wins: ip(p.wins), leaseMinutes: p.leaseMinutes,
                 reservations: p.reservations.map((r) => ({ ip: formatIp(r.ip), mac: r.mac, clientId: r.clientId, name: r.name })),
                 identifyBy: p.identifyBy,
             })),
@@ -48065,7 +48648,7 @@ function pool(v) {
     return {
         name: str(v.name, 'nombre de pool', 32), start, prefix: num(v.prefix, 'máscara de pool', 8, 30), maxUsers: num(v.maxUsers, 'usuarios del pool', 1, 65_534),
         gateway: optIp(v.gateway, 'puerta de enlace'), dns: optIp(v.dns, 'DNS del pool'), domain: v.domain === undefined ? undefined : str(v.domain, 'dominio'),
-        tftp: optIp(v.tftp, 'TFTP'), leaseMinutes: num(v.leaseMinutes, 'concesión', 1, 525_600, DEFAULT_LEASE_MINUTES),
+        tftp: optIp(v.tftp, 'TFTP'), wins: optIp(v.wins, 'WINS'), leaseMinutes: num(v.leaseMinutes, 'concesión', 1, 525_600, DEFAULT_LEASE_MINUTES),
         reservations: arr(v.reservations, 'reservas').map(reservation),
         identifyBy: v.identifyBy === undefined ? undefined : identifyBy(v.identifyBy),
     };
@@ -48276,6 +48859,7 @@ const { pkgUnitsRecord, restorePkgUnits } = __m["net/pkg-units.js"];
 const { bootPkgUnits } = __m["shells/pkg-service.js"];
 const { bootWins } = __m["shells/samba-wins.js"];
 const { bootWindowsWins, setWindowsWins, validWins, windowsWinsManual } = __m["net/win-wins.js"];
+const { restoreWinShares, winSharesRecord } = __m["net/win-shares.js"];
 const { Pc } = __m["devices/pc.js"];
 const { Server } = __m["devices/server.js"];
 const { restoreApps, restoreServer } = __m["net/topology-restore.js"];
@@ -48293,7 +48877,8 @@ function hostRecord(d) {
     const autoPackages = autoPackagesOf(d);
     const units = pkgUnitsRecord(d);
     const wins = windowsWinsManual(d);
-    const names = { ...(wins !== undefined ? { wins: formatIp(wins) } : {}), ...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), ...(autoPackages.length ? { autoPackages } : {}), ...(units ? { units } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
+    const winShare = winSharesRecord(d);
+    const names = { ...(wins !== undefined ? { wins: formatIp(wins) } : {}), ...(winShare ? { winShare } : {}), ...(enabled ? { enabled } : {}), ...(packages.length ? { packages } : {}), ...(autoPackages.length ? { autoPackages } : {}), ...(units ? { units } : {}), hostname: d.name, prettyHostname: d.prettyName, nics: nicsToJson(d), routes: routesToJson(d.staticRoutes), ...(d.dnsSearch.length ? { search: d.dnsSearch } : {}) };
     if (c.mode === 'dhcp')
         return { mode: 'dhcp', sendClientId: d.sendClientId, clientId, os, files, ...names };
     const opt = (n) => (n === undefined ? undefined : formatIp(n));
@@ -48322,6 +48907,7 @@ function restoreHost(device, pc, server) {
         device.setStatic(parseStatic(pc));
     const wins = typeof pc.wins === 'string' ? parseIp(pc.wins) : null;
     setWindowsWins(device, validWins(wins) ? wins : undefined);
+    restoreWinShares(device, pc.winShare);
     if (device instanceof Server)
         device.web.reload();
     if (device instanceof Server && server)
@@ -49105,6 +49691,7 @@ const { hostFs } = __m["devices/host-fs.js"];
 const { DEFAULT_SMB_CONF, SMB_CONF, findShare, parseSmbConf, serverComment } = __m["services/smb-conf.js"];
 const { readPassdb, unixAccount } = __m["services/smb-passdb.js"];
 const { groupNames } = __m["services/ssh-auth.js"];
+const { windowsShareList, windowsTree } = __m["services/smb-windows.js"];
 const NOBODY = 65534;
 const FILE_MODE = 0o744;
 const DIR_MODE = 0o755;
@@ -49235,10 +49822,11 @@ function operate(fs, op, path, to, cred) {
         default: return ok;
     }
 }
-function onShare(fs, root, share, op, cred) {
+function onShare(fs, tree, op) {
+    const { root, cred } = tree;
     if (op.op === 'tree')
         return { status: 'NT_STATUS_OK' };
-    if (WRITES.has(op.op) && share.readOnly)
+    if (WRITES.has(op.op) && tree.readOnly)
         return fail('NT_STATUS_ACCESS_DENIED');
     const path = resolve(fs, root, 'path' in op ? op.path : '', !ON_ENTRY.has(op.op));
     if (isStatus(path))
@@ -49267,7 +49855,10 @@ function answer(host, r) {
     if (!fs)
         return fail('NT_STATUS_UNSUCCESSFUL');
     if (host.os === 'windows') {
-        return r.req.op === 'shares' ? { status: 'NT_STATUS_OK', comment: '', shares: [{ name: 'IPC$', type: 'IPC', comment: 'Remote IPC' }] } : fail('NT_STATUS_BAD_NETWORK_NAME');
+        if (r.req.op === 'shares')
+            return windowsShareList(host);
+        const tree = windowsTree(host, fs, r.share);
+        return typeof tree === 'string' ? fail(tree) : onShare(fs, tree, r.req);
     }
     const conf = readConf(fs);
     const session = login(fs, conf, r);
@@ -49281,9 +49872,9 @@ function answer(host, r) {
     const root = connect(fs, share, session);
     if (isStatus(root))
         return fail(root);
-    return onShare(fs, root, share, r.req, session.cred);
+    return onShare(fs, { root, readOnly: share.readOnly, cred: session.cred }, r.req);
 }
-/** The SMB handler of netbios.ts (TCP 139/445 while smbd runs, or on Windows). */
+/** The SMB handler of netbios.ts (TCP 139/445 while smbd runs, or on Windows sharing files). */
 function smbServe(host, payload) {
     if (payload.app !== 'SMB' || payload.kind !== 'smb-request')
         return null;
@@ -55762,7 +56353,7 @@ function dhcpPage(server, base) {
         form(base, 'dhcp', 'dhcp', cards(section(t('wa.dhcpServer'), t('wa.dhcpHelp'), check('enabled', d.enabled, t('wa.enabled')))), buttons()),
         listenForm(server, base, 'dhcp'),
         cards(section(t('wa.pools'), t('wa.poolsHelp'), table([t('wa.name'), t('wa.start'), t('wa.users'), t('wa.gateway'), 'DNS', ''], rows, t('wa.noPools')))),
-        form(base, 'dhcp', 'pool-add', cards(section(t('wa.newPool'), t('wa.newPoolHelp'), row(t('wa.name'), text('name', '')), row(t('wa.start'), text('start', '')), row(t('wa.maskShort'), text('mask', '255.255.255.0')), row(t('wa.maxUsers'), text('max', '50')), row(t('wa.gateway'), text('gateway', '')), row('DNS', text('dns', '')), row(t('wa.domain'), text('domain', '')), row(t('wa.leasesBy'), choose('identify', 'client-id', [['client-id', t('wa.byIdOrMac')], ['mac', 'MAC']])))), buttons()),
+        form(base, 'dhcp', 'pool-add', cards(section(t('wa.newPool'), t('wa.newPoolHelp'), row(t('wa.name'), text('name', '')), row(t('wa.start'), text('start', '')), row(t('wa.maskShort'), text('mask', '255.255.255.0')), row(t('wa.maxUsers'), text('max', '50')), row(t('wa.gateway'), text('gateway', '')), row('DNS', text('dns', '')), row(t('wa.domain'), text('domain', '')), row(t('wa.wins'), text('wins', '')), row(t('wa.leasesBy'), choose('identify', 'client-id', [['client-id', t('wa.byIdOrMac')], ['mac', 'MAC']])))), buttons()),
         reservations(server, base),
         leases(server, base),
     ];
@@ -57047,10 +57638,11 @@ function addPool(server, f) {
     const prefix = parseMask((f.get('mask') ?? '').trim());
     const gateway = optIp(f.get('gateway'));
     const dns = optIp(f.get('dns'));
+    const wins = optIp(f.get('wins'));
     const max = Number(f.get('max'));
-    if (!start || prefix === null || gateway === null || dns === null || !Number.isInteger(max))
+    if (!start || prefix === null || gateway === null || dns === null || wins === null || !Number.isInteger(max))
         return { error: t('wa.err.pool') };
-    const pool = { name: (f.get('name') ?? '').trim(), start, prefix, maxUsers: max, gateway, dns, domain: (f.get('domain') ?? '').trim() || undefined, leaseMinutes: DEFAULT_LEASE_MINUTES, reservations: [], identifyBy: f.get('identify') === 'mac' ? 'mac' : undefined };
+    const pool = { name: (f.get('name') ?? '').trim(), start, prefix, maxUsers: max, gateway, dns, wins, domain: (f.get('domain') ?? '').trim() || undefined, leaseMinutes: DEFAULT_LEASE_MINUTES, reservations: [], identifyBy: f.get('identify') === 'mac' ? 'mac' : undefined };
     const err = validatePool(pool, server.services.dhcp.pools);
     return err ? { error: err } : set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, pools: [...s.dhcp.pools, pool] } }));
 }
@@ -58538,6 +59130,7 @@ const { FILE_VERSION, validateFile } = __m["net/topology-file.js"];
 const { FEATURES_V, fileFeatures } = __m["net/lab-features.js"];
 const { parseMissionState } = __m["labs/mission-state.js"];
 const { bindLab } = __m["net/device-apps.js"];
+const { parsePkgsOff } = __m["net/lab-packages.js"];
 const { registerMdns, setMdnsResponder } = __m["net/mdns.js"];
 const { registerLlmnr, setLlmnrResponder } = __m["net/llmnr.js"];
 const { attachNetbios, registerSmbServer, registerWinsHandler } = __m["net/netbios.js"];
@@ -58584,6 +59177,8 @@ class Topology {
     features = {};
     /** The web GUI of servers and Linux routers leaves out (instead of greying) what is off. */
     webHideOff = false;
+    /** Catalogue packages taken away from the lab's archive (lab-packages.ts), in catalogue order. */
+    pkgsOff = [];
     /** The guided lab this workspace is, with the hints already shown. */
     mission;
     nextDrawing = 1;
@@ -58595,7 +59190,7 @@ class Topology {
         const device = kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind, id, seed, this.clock, label);
         seeds.set(device, seed);
         if (device instanceof Host) {
-            bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff }));
+            bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff, pkgsOff: this.pkgsOff }));
             attachNetbios(device);
             attachWindowsWins(device);
         }
@@ -58700,7 +59295,7 @@ class Topology {
         const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
         const links = this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable }));
         const features = Object.keys(this.features).length ? { features: this.features, featuresV: FEATURES_V } : {};
-        const web = { ...(this.webHideOff ? { webHideOff: true } : {}), ...(this.mission ? { mission: this.mission } : {}) };
+        const web = { ...(this.webHideOff ? { webHideOff: true } : {}), ...(this.pkgsOff.length ? { pkgsOff: this.pkgsOff } : {}), ...(this.mission ? { mission: this.mission } : {}) };
         return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features, ...web };
     }
     static fromJSON(data) {
@@ -58717,6 +59312,7 @@ class Topology {
         topo.annotations = file.annotations ?? [];
         topo.features = fileFeatures(file.features, file.featuresV, file.sambaOff);
         topo.webHideOff = file.webHideOff === true;
+        topo.pkgsOff = parsePkgsOff(file.pkgsOff);
         topo.mission = parseMissionState(file.mission);
         topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
         for (const l of file.links)
@@ -62101,24 +62697,37 @@ const namesNetsLab = {
 
 return { namesLanLab, namesNetsLab };
 })();
+__m["shells/apt-install.js"] = (() => {
+const { findPackage } = __m["shells/apt-catalog.js"];
+const { installedPackage } = __m["shells/apt-state.js"];
+const { commitInstall, commitRemove, toFetch } = __m["shells/apt-core.js"];
+const { hostSystem } = __m["shells/host-system.js"];
+const { labHasPackage } = __m["net/lab-packages.js"];
+/** Installs (on) or removes (off) a catalogue package as apt would: whether anything changed. */
+function setAptInstalled(host, name, on) {
+    const p = findPackage(name);
+    // Nothing to install from an archive the lab took the package away from (removing it is still possible).
+    if (!p || installedPackage(host, p) === on || (on && !labHasPackage(host, name)))
+        return false;
+    const fs = hostSystem(host).fs;
+    if (on)
+        commitInstall(fs, host, [p], toFetch(host, [p]).map(({ pkg }) => pkg));
+    else
+        commitRemove(fs, host, [p]);
+    host.notifyChange();
+    return true;
+}
+
+return { setAptInstalled };
+})();
 __m["shells/samba-install.js"] = (() => {
 const { sambaAllowed } = __m["net/device-apps.js"];
-const { findPackage } = __m["shells/apt-catalog.js"];
-const { installedPackage, setPackage } = __m["shells/apt-state.js"];
-const { markDependencies } = __m["shells/apt-auto.js"];
-const { afterPackage } = __m["shells/apt-scripts.js"];
-const { toFetch } = __m["shells/apt.js"];
-const { hostSystem } = __m["shells/host-system.js"];
+const { setAptInstalled } = __m["shells/apt-install.js"];
 /** Installs (on) or removes (off) the samba package as apt would; nothing when already so or the lab forbids it. */
 function setSambaInstalled(host, on) {
-    const p = findPackage('samba');
-    if (!p || installedPackage(host, p) === on || (on && !sambaAllowed(host)))
+    if (on && !sambaAllowed(host))
         return;
-    if (on)
-        markDependencies(host, [p], toFetch(host, [p]).map(({ pkg }) => pkg));
-    setPackage(host, p, on);
-    afterPackage(hostSystem(host).fs, host, p.name, on);
-    host.notifyChange();
+    setAptInstalled(host, 'samba', on);
 }
 
 return { setSambaInstalled };
@@ -66186,6 +66795,7 @@ function poolFields(server, pool) {
         dns: input({ value: ipOrEmpty(pool?.dns ?? (s.dns.enabled ? server.config.ip : undefined)), inputmode: 'decimal' }),
         domain: input({ value: pool?.domain ?? '' }),
         tftp: input({ value: ipOrEmpty(pool?.tftp), inputmode: 'decimal' }),
+        wins: input({ value: ipOrEmpty(pool?.wins), inputmode: 'decimal' }),
         lease: input({ value: String(pool?.leaseMinutes ?? DEFAULT_LEASE_MINUTES), inputmode: 'numeric' }),
         identify: select(identify(), pool?.identifyBy ?? 'client-id'),
     };
@@ -66194,7 +66804,7 @@ function readPool(f, pool) {
     const opt = (i) => (i.value.trim() ? parseIp(i.value.trim()) : undefined);
     const start = parseIp(f.start.value.trim());
     const prefix = parseMask(f.mask.value.trim());
-    const vals = { gw: opt(f.gw), dns: opt(f.dns), tftp: opt(f.tftp) };
+    const vals = { gw: opt(f.gw), dns: opt(f.dns), tftp: opt(f.tftp), wins: opt(f.wins) };
     if (start === null)
         return t('dhcp.badStart');
     if (prefix === null)
@@ -66205,7 +66815,7 @@ function readPool(f, pool) {
     const lease = Number(f.lease.value);
     if (!Number.isInteger(maxUsers) || !Number.isInteger(lease) || lease < 1)
         return t('dhcp.badNumbers');
-    return { name: f.name.value.trim(), start, prefix, maxUsers, gateway: vals.gw ?? undefined, dns: vals.dns ?? undefined, tftp: vals.tftp ?? undefined, domain: f.domain.value.trim() || undefined, leaseMinutes: lease, reservations: pool?.reservations ?? [], identifyBy: f.identify.value === 'mac' ? 'mac' : undefined };
+    return { name: f.name.value.trim(), start, prefix, maxUsers, gateway: vals.gw ?? undefined, dns: vals.dns ?? undefined, tftp: vals.tftp ?? undefined, wins: vals.wins ?? undefined, domain: f.domain.value.trim() || undefined, leaseMinutes: lease, reservations: pool?.reservations ?? [], identifyBy: f.identify.value === 'mac' ? 'mac' : undefined };
 }
 function poolsTable(pools, editing, onSelect, onDelete) {
     return table(pools, [
@@ -66251,7 +66861,7 @@ function dhcpPanel(server, app) {
             onOff(t('dhcp.service'), s.dhcp.enabled, (on) => { server.setUnit('dhcp', on); app.afterCommand(); refresh(); }),
             listenBlock(server, 'dhcp', app),
             el('h3', {}, pool ? t('dhcp.editPool', { name: pool.name }) : t('dhcp.newPool')),
-            el('div', { class: 'grid3' }, field(t('dhcp.poolName'), f.name), field(t('dhcp.start'), f.start), field(t('dhcp.mask'), f.mask), field(t('dhcp.maxUsers'), f.max), field(t('dhcp.gateway'), f.gw), field(t('dhcp.dns'), f.dns), field(t('dhcp.domain'), f.domain), field(t('dhcp.tftp'), f.tftp), field(t('dhcp.lease'), f.lease), field(t('dhcp.identify'), f.identify, t('dhcp.identifyHint'))),
+            el('div', { class: 'grid3' }, field(t('dhcp.poolName'), f.name), field(t('dhcp.start'), f.start), field(t('dhcp.mask'), f.mask), field(t('dhcp.maxUsers'), f.max), field(t('dhcp.gateway'), f.gw), field(t('dhcp.dns'), f.dns), field(t('dhcp.domain'), f.domain), field(t('dhcp.tftp'), f.tftp), field(t('dhcp.wins'), f.wins), field(t('dhcp.lease'), f.lease), field(t('dhcp.identify'), f.identify, t('dhcp.identifyHint'))),
             el('div', { class: 'actions' }, button(pool ? t('dhcp.saveChanges') : t('dhcp.addPool'), save), pool ? button(t('dhcp.newPool'), () => { editing = null; refresh(); }, 'btn btn-quiet') : null),
             msg.el,
             el('h3', {}, t('dhcp.pools')),
@@ -66710,8 +67320,68 @@ function sambaPanel(host, app) {
 
 return { sambaPanel };
 })();
+__m["ui/win-share-panel.js"] = (() => {
+/**
+ * Servicios → SMB of a Windows PC or Server with «Compartir archivos e impresoras para redes Microsoft» ticked in its
+ * Configuración tab: the folders of drive C: it shares and what Everyone may do in each (the same as net share,
+ * shells/win-net-share.ts). Shares and remarks are the user's: they reach the page only as text.
+ */
+const { t } = __m["i18n/t.js"];
+const { el } = __m["ui/dom.js"];
+const { button, field, input, message, select, table } = __m["ui/forms.js"];
+const { liveHostPanel } = __m["ui/live.js"];
+const { winShares } = __m["net/win-shares.js"];
+const { publishWinShare, unpublishWinShare } = __m["services/smb-windows.js"];
+const ERRORS = {
+    name: 'wsh.err.name',
+    reserved: 'wsh.err.reserved',
+    exists: 'smb.err.exists',
+    path: 'wsh.err.path',
+    folder: 'wsh.err.folder',
+    remark: 'wsh.err.remark',
+    full: 'wsh.err.full',
+};
+const accessLabel = (a) => t(a === 'full' ? 'wsh.full' : 'wsh.read');
+function addForm(host, app, msg) {
+    const name = input({ placeholder: 'docs', 'aria-label': t('smb.share') });
+    const path = input({ placeholder: 'C:\\home\\alumno\\docs', 'aria-label': t('smb.path') });
+    const remark = input({ 'aria-label': t('smb.comment') });
+    const access = select([['read', t('wsh.read')], ['full', t('wsh.full')]], 'read');
+    const add = () => {
+        const share = { name: name.value.trim(), path: path.value.trim(), remark: remark.value, access: access.value === 'full' ? 'full' : 'read' };
+        const err = publishWinShare(host, share);
+        if (err)
+            msg.error(t(ERRORS[err]));
+        else
+            msg.clear();
+        app.afterCommand();
+    };
+    return [
+        el('h4', {}, t('smb.addShare')),
+        el('div', { class: 'grid3' }, field(t('smb.share'), name), field(t('smb.path'), path, t('wsh.hint')), field(t('smb.comment'), remark)),
+        field(t('wsh.permission'), access),
+        el('div', { class: 'actions' }, button(t('smb.add'), add)),
+    ];
+}
+function winSharePanel(host, app) {
+    // Outside the redraw: publishing redraws the panel (notifyChange) before its error is shown.
+    const msg = message();
+    return liveHostPanel(host, () => [
+        el('p', { class: 'muted' }, t('wsh.intro')),
+        msg.el,
+        el('section', { class: 'subsection' }, el('h3', {}, t('smb.shares')), table(winShares(host), [
+            { label: t('smb.share'), value: (s) => s.name, mono: true },
+            { label: t('smb.path'), value: (s) => s.path, mono: true },
+            { label: t('smb.comment'), value: (s) => s.remark },
+            { label: t('wsh.permission'), value: (s) => accessLabel(s.access) },
+        ], { empty: t('smb.noShares'), onDelete: (s) => { unpublishWinShare(host, s.name); msg.clear(); app.afterCommand(); } }), ...addForm(host, app, msg)),
+    ]);
+}
+
+return { winSharePanel };
+})();
 __m["ui/server-apps.js"] = (() => {
-/** Server → Servicios: SSH first, then DHCP, DNS, HTTP, Correo, Samba (with apt), Configuración and Registros. */
+/** Server → Servicios: SSH first, then DHCP, DNS, HTTP, Correo, Samba (with apt), SMB (Windows sharing), Configuración and Registros. */
 const { t } = __m["i18n/t.js"];
 const { firewallPanel, sysctlPanel } = __m["ui/firewall-panel.js"];
 const { vpnPanel } = __m["ui/vpn-panel.js"];
@@ -66722,6 +67392,7 @@ const { dnsPanel } = __m["ui/server-dns.js"];
 const { filesPanel } = __m["ui/files-panel.js"];
 const { logPanel, packageLogUnits } = __m["ui/log-panel.js"];
 const { sambaPanel } = __m["ui/samba-panel.js"];
+const { winSharePanel } = __m["ui/win-share-panel.js"];
 const { linuxSide } = __m["net/pkg-units.js"];
 const { validateAccess } = __m["services/config.js"];
 const { formatIp } = __m["core/ip.js"];
@@ -66750,6 +67421,8 @@ function servicePanels(server, app) {
         { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
         // apt install samba (Ubuntu): its own panel, beside the files and the logs of smbd and nmbd.
         { id: 'samba', label: t('smb.tab'), render: () => sambaPanel(server, app).root },
+        // Windows Server with file and printer sharing ticked in its Configuración tab.
+        { id: 'winshare', label: t('wsh.tab'), render: () => winSharePanel(server, app).root },
         // Windows Server keeps its configuration in the registry: the files are there only with its GNU/Linux terminal.
         ...(linuxSide(server) ? [{ id: 'files', label: t('srv.files'), render: () => filesPanel(server) }] : []),
         { id: 'log', label: t('srv.log'), render: () => logPanel(server, () => serverLogUnits(server), t('srv.journalHint')) },
@@ -66910,19 +67583,22 @@ return { servicesTab };
 })();
 __m["ui/pc-services.js"] = (() => {
 /**
- * Servicios of a GNU/Linux PC: the kernel parameters and the configuration files always, and what apt's packages
- * bring (net/pkg-units.ts → hostPanels): the nftables firewall, Samba, and the logs of either. A PC has no web GUI (no
- * HTTP server): everything else is done in its terminal.
+ * Servicios of a PC: on Windows the SMB shares while file and printer sharing is ticked; with a GNU/Linux terminal the
+ * kernel parameters and the configuration files always, and what apt's packages bring (net/pkg-units.ts → hostPanels):
+ * the nftables firewall, Samba, and the logs of either. A PC has no web GUI (no HTTP server): everything else is done
+ * in its terminal.
  */
 const { t } = __m["i18n/t.js"];
 const { subnav } = __m["ui/forms.js"];
 const { firewallPanel, sysctlPanel } = __m["ui/firewall-panel.js"];
 const { sambaPanel } = __m["ui/samba-panel.js"];
+const { winSharePanel } = __m["ui/win-share-panel.js"];
 const { filesPanel } = __m["ui/files-panel.js"];
 const { logPanel, packageLogUnits } = __m["ui/log-panel.js"];
 /** `panels`: hostPanels(host), in that order. */
 function pcServicesTab(host, app, panels) {
     const all = [
+        { id: 'winshare', label: t('wsh.tab'), render: () => winSharePanel(host, app).root },
         { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(host, app).root },
         { id: 'firewall', label: t('fw.tab'), render: () => firewallPanel(host, app).root },
         { id: 'samba', label: t('smb.tab'), render: () => sambaPanel(host, app).root },
@@ -68201,14 +68877,18 @@ return { promptToggle };
 __m["ui/device-config.js"] = (() => {
 /**
  * The Configuración tab of a PC, Server or Linux router: which applications, service panels and terminals the device
- * shows, among what its lab allows, and whether Samba is installed. A change redraws the window with the new tabs (device-windows.ts).
+ * shows, among what its lab allows, whether Samba is installed, and the catalogue of tool packages (lab-packages.ts).
+ * A change redraws the window with the new tabs (device-windows.ts).
  */
 const { el } = __m["ui/dom.js"];
 const { t, tDynamic } = __m["i18n/t.js"];
 const { APPS_BY_KIND, PC_APPS, deviceApps, labAllows, labViewOf, setDeviceApps } = __m["net/device-apps.js"];
-const { sambaOffered } = __m["net/pkg-units.js"];
+const { linuxSide, sambaOffered } = __m["net/pkg-units.js"];
 const { hasPackage } = __m["net/host-packages.js"];
 const { setSambaInstalled } = __m["shells/samba-install.js"];
+const { setAptInstalled } = __m["shells/apt-install.js"];
+const { CATALOG_PACKAGES, labHasPackage } = __m["net/lab-packages.js"];
+const { setWinShareOn, winShareOffered, winShareOn } = __m["net/win-shares.js"];
 const TERMINALS = ['linux', 'windows'];
 /** The PC applications and terminals are named as their tabs; the service panels as in Laboratorio actual. */
 const TAB_NAMES = {
@@ -68226,6 +68906,24 @@ function sambaBox(h, changed) {
     input.addEventListener('change', () => { setSambaInstalled(h, input.checked); changed(); });
     return [el('label', { class: 'set-choice' }, input, t('smb.tab'))];
 }
+/** File and printer sharing for Microsoft networks (a Windows device whose lab offers it): SMB/NetBIOS on or off. */
+function winShareBox(h, changed) {
+    if (!winShareOffered(h))
+        return [];
+    const input = el('input', { type: 'checkbox', name: 'dev-winshare', checked: winShareOn(h) });
+    input.addEventListener('change', () => { setWinShareOn(h, input.checked); changed(); });
+    return [el('label', { class: 'set-choice' }, input, t('dev.winshare'))];
+}
+/** The catalogue packages the lab keeps (a GNU/Linux terminal only): each box is apt install / apt remove. */
+function packageBoxes(h, changed) {
+    if (!linuxSide(h))
+        return [];
+    return CATALOG_PACKAGES.filter((name) => labHasPackage(h, name)).map((name) => {
+        const input = el('input', { type: 'checkbox', name: `dev-pkg-${name}`, checked: hasPackage(h, name), 'data-pkg': name });
+        input.addEventListener('change', () => { setAptInstalled(h, name, input.checked); changed(); });
+        return el('label', { class: 'set-choice' }, input, el('code', {}, name));
+    });
+}
 function group(title, boxes) {
     return boxes.length ? [el('fieldset', { class: 'set-group dev-group' }, el('legend', {}, title), ...boxes)] : [];
 }
@@ -68242,7 +68940,7 @@ function deviceConfig(h, changed) {
     };
     const apps = h.kind === 'pc' ? allowed.filter((id) => id === 'ip' || PC_APPS.includes(id)) : allowed.filter((id) => id === 'ip');
     const services = h.kind === 'pc' ? [] : allowed.filter((id) => id !== 'ip' && !TERMINALS.includes(id));
-    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed)]), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)));
+    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed), ...winShareBox(h, changed)]), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)), ...group(t('dev.packages'), packageBoxes(h, changed)));
 }
 
 return { deviceConfig };
@@ -68916,6 +69614,7 @@ const { t, tDynamic } = __m["i18n/t.js"];
 const { LOCALES, LOCALE_NAMES, getLocale, isLocale } = __m["i18n/locale.js"];
 const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } = __m["ui/preferences.js"];
 const { FEATURES_BY_KIND, featureOn, setFeature } = __m["net/lab-features.js"];
+const { CATALOG_PACKAGES, packageAllowed, setPackageOff } = __m["net/lab-packages.js"];
 /** The kinds whose windows have settings to switch (the cloud has none). */
 /** The «prompt con hora» box of the page built last, kept in step when a terminal footer changes it. */
 let stampBox;
@@ -68952,6 +69651,18 @@ function kindGroup(host, kind, changed) {
     });
     return el('fieldset', { class: 'set-group', 'data-kind': kind }, el('legend', {}, tDynamic(`set.kind.${kind}`)), ...boxes);
 }
+/** One box per catalogue package, for every kind: unticked, apt and the devices' Configuración no longer offer it. */
+function packagesGroup(host, changed) {
+    const boxes = CATALOG_PACKAGES.map((name) => {
+        const box = el('input', { type: 'checkbox', checked: packageAllowed(host.pkgsOff(), name), disabled: host.labLocked(), 'data-pkg': name });
+        box.addEventListener('change', () => {
+            host.setPkgsOff(setPackageOff(host.pkgsOff(), name, !box.checked));
+            changed();
+        });
+        return el('label', { class: 'set-choice' }, box, el('code', {}, name));
+    });
+    return el('fieldset', { class: 'set-group', 'data-kind': 'packages' }, el('legend', {}, t('set.packages')), el('p', { class: 'muted' }, t('set.packagesHint')), ...boxes);
+}
 function webOption(host, changed) {
     const box = el('input', { type: 'checkbox', checked: host.webHideOff(), disabled: host.labLocked(), 'data-feature': 'webHideOff' });
     box.addEventListener('change', () => { host.setWebHideOff(box.checked); changed(); });
@@ -68978,13 +69689,14 @@ class SettingsView {
         reset.addEventListener('click', () => {
             host.setFeatures({});
             host.setWebHideOff(false);
+            host.setPkgsOff([]);
             this.render();
             changed();
             this.lab.querySelector('.set-reset')?.focus();
         });
         reset.classList.add('set-reset');
         this.status.textContent = '';
-        this.lab.replaceChildren(el('h2', { id: 'set-lab' }, t('set.lab')), el('p', { class: 'muted' }, host.labLocked() ? t('set.labLocked') : t('set.labNote')), el('p', {}, t('set.always')), el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed))), webOption(host, changed), reset, this.status);
+        this.lab.replaceChildren(el('h2', { id: 'set-lab' }, t('set.lab')), el('p', { class: 'muted' }, host.labLocked() ? t('set.labLocked') : t('set.labNote')), el('p', {}, t('set.always')), el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed)), packagesGroup(host, changed)), webOption(host, changed), reset, this.status);
     }
 }
 
@@ -69581,7 +70293,7 @@ class App {
     stageEl;
     paletteEl;
     pageHost;
-    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
+    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, pkgsOff: () => this.topo.pkgsOff, setPkgsOff: (p) => { this.topo.pkgsOff = p; this.windows.closeAll(); this.afterCommand(); }, labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
     saveTimer = 0;
     interval;
     mode = 'realtime';

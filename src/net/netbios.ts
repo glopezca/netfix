@@ -2,7 +2,7 @@
  * NetBIOS over TCP/IP (RFC 1001/1002), as a Windows host has it built in and a GNU/Linux host with samba (nmbd, smbd):
  * names are found by a broadcast query to the subnet on UDP 137 (B-node, so never past a router) and answered by the
  * owner with a unicast reply; a node status request (NBSTAT) asks a host for its name table and MAC. Each host keeps a
- * cache of what it found (nbtstat -c). SMB servers (Windows, smbd) listen on TCP 139 and 445. A WINS server (wins.ts)
+ * cache of what it found (nbtstat -c). SMB servers (Windows sharing files, smbd) listen on TCP 139 and 445. A WINS server (wins.ts)
  * takes the unicast questions, registrations and releases before the host's own answer.
  */
 import type { Host } from '../devices/host.ts';
@@ -10,6 +10,7 @@ import type { IpPacket, NbnsMessage, NbnsName } from './packets.ts';
 import type { StackHost } from './ipstack.ts';
 import { registerLocalSockets } from './ipstack.ts';
 import { unitRunning } from './pkg-units.ts';
+import { winShareActive } from './win-shares.ts';
 import type { AppPayload } from './packets.ts';
 import type { Peer } from './tcp.ts';
 import { runSync } from './sync.ts';
@@ -29,8 +30,8 @@ const MAX_NAME = 15;
 /** NetBIOS over TCP/IP is on in Windows; on GNU/Linux nmbd (samba) gives it, while it runs. */
 const windows = (h: Host): boolean => h.os === 'windows';
 export const speaksNetbios = (h: Host): boolean => windows(h) || unitRunning(h, 'nmbd');
-/** The SMB server: Windows' own, or smbd while it runs. */
-const servesSmb = (h: Host): boolean => windows(h) || unitRunning(h, 'smbd');
+/** The SMB server: Windows' own with file and printer sharing on (win-shares.ts), or smbd while it runs. */
+const servesSmb = (h: Host): boolean => (windows(h) ? winShareActive(h) : unitRunning(h, 'smbd'));
 
 /** What answers an SMB request on 139/445 (services/smb-server.ts, registered from topology.ts). */
 export type SmbHandler = (host: Host, request: AppPayload, peer: Peer, localIp: number) => AppPayload | null;
@@ -50,10 +51,12 @@ export function registerWinsHandler(fn: WinsHandler): void {
 
 export const netbiosName = (name: string): string => name.toUpperCase().slice(0, MAX_NAME);
 
-/** A host's own names: NAME<00>, WORKGROUP<00> (group) and NAME<20> (its SMB server). */
+/** A host's own names: NAME<00>, WORKGROUP<00> (group) and NAME<20> (its SMB server: nmbd always registers it; Windows
+ * only with file and printer sharing on). */
 export function ownNames(host: Host): NbnsName[] {
   const name = netbiosName(host.runtimeName());
-  return [{ name, suffix: WORKSTATION, group: false }, { name: WORKGROUP, suffix: WORKSTATION, group: true }, { name, suffix: FILE_SERVER, group: false }];
+  const base: NbnsName[] = [{ name, suffix: WORKSTATION, group: false }, { name: WORKGROUP, suffix: WORKSTATION, group: true }];
+  return windows(host) && !winShareActive(host) ? base : [...base, { name, suffix: FILE_SERVER, group: false }];
 }
 
 const waiting = new WeakMap<object, Map<number, (m: NbnsMessage) => void>>();

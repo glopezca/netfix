@@ -1,7 +1,7 @@
 /**
  * nmblookup (samba-common-bin): NetBIOS name queries by broadcast (the own name answered here; `localhost` is no NetBIOS
  * name, as on Windows), or by unicast to one address with -U (-R sets «recursion desired», so a WINS server looks the
- * name up in its database), and node status with -A.
+ * name up in its database), and node status with -A (of an address) or -S (of what the query finds).
  */
 import type { CommandFn, Ctx } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
@@ -9,10 +9,12 @@ import { hasPackage } from '../net/host-packages.ts';
 import { WORKSTATION, nbnsAsk, netbiosName, ownNames, speaksNetbios } from '../net/netbios.ts';
 import { broadcastOf, formatIp, parseIp } from '../core/ip.ts';
 
-const USAGE = 'Usage: nmblookup [-A] [-U UNICAST-ADDRESS] [-R] NAME|IP\n';
+const USAGE = 'Usage: nmblookup [-A] [-S] [-U UNICAST-ADDRESS] [-R] NAME|IP\n';
 
 interface Options {
   readonly status: boolean;
+  /** -S: after the query, the node status of the address found. */
+  readonly lookupStatus: boolean;
   readonly recurse: boolean;
   readonly unicast?: string;
   readonly target?: string;
@@ -49,15 +51,16 @@ function query(ctx: Ctx, host: Host, name: string, o: Options): number {
     : local(host, name, a?.ip) ?? nbnsAsk(host, { type: 'NB', name, suffix: WORKSTATION, broadcast: true })?.addresses?.[0];
   if (ip === undefined) { ctx.out(`name_query failed to find name ${name}\n`); return 1; }
   ctx.out(`${formatIp(ip)} ${name}<00>\n`);
-  return 0;
+  return o.lookupStatus ? status(ctx, host, formatIp(ip)) : 0;
 }
 
-/** -A, -R and -U ADDRESS (or -UADDRESS, --unicast=ADDRESS); the first other word is the name. Null: a usage error. */
+/** -A, -S (the node status of what the query finds), -R and -U ADDRESS (or -UADDRESS, --unicast=ADDRESS); the first other word is the name. Null: a usage error. */
 function parse(args: readonly string[]): Options | null {
-  let o: Options = { status: false, recurse: false };
+  let o: Options = { status: false, lookupStatus: false, recurse: false };
   for (let i = 0; i < args.length; i++) {
     const a = args[i] ?? '';
     if (a === '-A') o = { ...o, status: true };
+    else if (a === '-S') o = { ...o, lookupStatus: true };
     else if (a === '-R') o = { ...o, recurse: true };
     else if (a === '-U' || a === '--unicast') {
       const v = args[++i];

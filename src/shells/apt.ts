@@ -11,10 +11,11 @@ import { BASE, PACKAGES, findPackage, kb } from './apt-catalog.ts';
 import type { AptDep, AptPackage } from './apt-catalog.ts';
 import { mooLines } from './apt-moo.ts';
 import { sambaAllowed } from '../net/device-apps.ts';
-import { installedPackage, setPackage } from './apt-state.ts';
-import { afterPackage } from './apt-scripts.ts';
-import { findDep, leftoverNote, markDependencies, orphans } from './apt-auto.ts';
-import { isPackageAuto, setPackageAuto, setPackageInstalled } from '../net/host-packages.ts';
+import { labHasPackage } from '../net/lab-packages.ts';
+import { installedPackage } from './apt-state.ts';
+import { commitInstall, commitRemove, toFetch } from './apt-core.ts';
+import { findDep, leftoverNote, orphans } from './apt-auto.ts';
+import { isPackageAuto, setPackageAuto } from '../net/host-packages.ts';
 
 const READING = 'Reading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\n';
 const summary = (installing: number, removing: number): string => `Summary:\n  Upgrading: 0, Installing: ${installing}, Removing: ${removing}, Not Upgrading: 0\n`;
@@ -95,15 +96,6 @@ function* confirm(ctx: Ctx, yes: boolean): Gen<boolean> {
 const debName = (d: AptDep): string => `${d.name}_${d.version.replace(/^\d+:/, '')}_${d.arch}.deb`;
 const poolPath = (p: AptDep, section: string): string => `pool/${section}/${p.name.startsWith('lib') ? p.name.slice(0, 4) : p.name[0]}/${p.name}/${debName(p)}`;
 
-/** The packages to fetch for `todo` (dependencies not there yet first, each once). */
-export function toFetch(host: Host, todo: readonly AptPackage[]): { pkg: AptDep; section: string }[] {
-  // What is there already (with what came with it) is not fetched again.
-  const present = PACKAGES.filter((p) => installedPackage(host, p)).flatMap((p) => [p.name, ...p.deps.map((d) => d.name)]);
-  const seen = new Set([...todo.map((p) => p.name), ...present]);
-  const deps = todo.flatMap((p) => p.deps.map((d) => ({ pkg: d, section: p.section }))).filter(({ pkg }) => !seen.has(pkg.name) && (seen.add(pkg.name), true));
-  return [...deps, ...todo.map((p) => ({ pkg: p as AptDep, section: p.section }))];
-}
-
 function plan(todo: readonly AptPackage[], fetch: readonly { pkg: AptDep }[]): string {
   const deps = fetch.filter(({ pkg }) => !todo.some((p) => p.name === pkg.name)).map(({ pkg }) => pkg.name);
   const size = fetch.reduce((n, { pkg }) => n + pkg.kb, 0);
@@ -133,12 +125,17 @@ function unpack(ctx: Ctx, host: Host, todo: readonly AptPackage[], fetch: readon
   ctx.out(`${[...lines, ...setup, 'Processing triggers for man-db (2.13.1-1) ...', 'Processing triggers for libc-bin (2.42-0ubuntu3) ...'].join('\n')}\n`);
 }
 
+/**
+ * What the lab's archive offers: a lab whose Samba feature is off for this kind of device has no samba, and the
+ * catalogue packages the lab took away are gone (an installed one stays on the device).
+ */
+const inArchive = (host: Host, name: string): boolean => (name !== 'samba' || sambaAllowed(host)) && labHasPackage(host, name);
+
 const dbFiles = (host: Host): number => DB_FILES + PACKAGES.filter((p) => installedPackage(host, p)).length * 137;
 
 function* install(ctx: Ctx, host: Host, names: readonly string[], yes: boolean): Gen<number> {
   ctx.out(READING);
-  // A lab whose Samba feature is off for this kind of device has no samba in its archive.
-  const unknown = names.find((n) => (!findPackage(n) && BASE[n] === undefined) || (n === 'samba' && !sambaAllowed(host)));
+  const unknown = names.find((n) => (!findPackage(n) && BASE[n] === undefined) || !inArchive(host, n));
   if (unknown !== undefined) { ctx.err(`Error: Unable to locate package ${unknown}\n`); return 100; }
   const newest = names.flatMap((n) => {
     const p = findPackage(n);
@@ -159,8 +156,7 @@ function* install(ctx: Ctx, host: Host, names: readonly string[], yes: boolean):
   const reason = mirrorStatus(host)(archive, 'dists/resolute/InRelease');
   if (reason !== undefined) return fetchFailed(ctx, archive, fetch, reason);
   unpack(ctx, host, todo, fetch, archive);
-  markDependencies(host, todo, fetch.map(({ pkg }) => pkg));
-  for (const p of todo) { setPackage(host, p, true); afterPackage(ctx.sh.env.fs, host, p.name, true); }
+  commitInstall(ctx.sh.env.fs, host, todo, fetch.map(({ pkg }) => pkg));
   return 0;
 }
 
@@ -184,12 +180,7 @@ function* drop(ctx: Ctx, host: Host, todo: readonly AptDep[], yes: boolean, purg
   if (!(yield* confirm(ctx, yes))) return 1;
   const lines = todo.flatMap((p) => [`Removing ${p.name} (${p.version}) ...`, ...(purge ? [`Purging configuration files for ${p.name} (${p.version}) ...`] : [])]);
   ctx.out(`(Reading database ... ${dbFiles(host)} files and directories currently installed.)\n${lines.join('\n')}\nProcessing triggers for man-db (2.13.1-1) ...\n`);
-  for (const d of todo) {
-    const p = findPackage(d.name);
-    if (p) setPackage(host, p, false);
-    else setPackageInstalled(host, d.name, false);
-    afterPackage(ctx.sh.env.fs, host, d.name, false);
-  }
+  commitRemove(ctx.sh.env.fs, host, todo);
   return 0;
 }
 
@@ -208,7 +199,8 @@ const matches = (patterns: readonly string[], name: string): boolean =>
 /** `apt list [--installed] [PATTERN...]`: the catalogue (or what is installed), with apt's warning for scripts. */
 function list(ctx: Ctx, host: Host, patterns: readonly string[], installedOnly: boolean): number {
   const base = Object.entries(BASE).map(([name, version]) => ({ name, version, arch: 'amd64', on: true }));
-  const all = [...base, ...PACKAGES.map((p) => ({ name: p.name, version: p.version, arch: p.arch, on: installedPackage(host, p) }))];
+  const pkgs = PACKAGES.map((p) => ({ name: p.name, version: p.version, arch: p.arch, on: installedPackage(host, p) })).filter((p) => p.on || labHasPackage(host, p.name));
+  const all = [...base, ...pkgs];
   const shown = all.filter((p) => (!installedOnly || p.on) && matches(patterns, p.name)).sort((a, b) => a.name.localeCompare(b.name));
   const mark = (name: string): string => (isPackageAuto(host, name) ? ' [installed,automatic]' : ' [installed]');
   ctx.err('\nWARNING: apt does not have a stable CLI interface. Use with caution in scripts.\n\n');

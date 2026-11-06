@@ -14,6 +14,7 @@ import type { Router } from '../../src/devices/router.ts';
 import { Topology } from '../../src/net/topology.ts';
 import { applyConfig } from '../../src/ios/session.ts';
 import { winsRecords } from '../../src/net/wins.ts';
+import { setWinShareOn } from '../../src/net/win-shares.ts';
 import { WINDOWS_WINS_TTL_S, setWindowsWins, validWins, windowsWinsManual, windowsWinsServers } from '../../src/net/win-wins.ts';
 
 const ip = (s: string): number => parseIp(s) ?? 0;
@@ -45,7 +46,7 @@ test('setting the WINS registers the names; ping from the other LAN finds them t
   assert.match(win(winA, 'ping -n 1 win-b2'), /could not find host win-b2/, 'without WINS: the broadcast stays in LAN A');
   setWindowsWins(b2, SRV_IP);
   t.net.runFor(1000);
-  assert.deepEqual(names(srv), ['WIN-B2<00>', 'WIN-B2<20>', 'WORKGROUP<00>']);
+  assert.deepEqual(names(srv), ['WIN-B2<00>', 'WORKGROUP<00>'], 'no NAME<20> while it shares nothing');
   const granted = winsRecords(srv)[0]?.expires ?? 0;
   assert.ok(Math.abs(granted - t.clock.now() - WINDOWS_WINS_TTL_S * 1000) < 5000, 'Windows asks for 300 000 s');
   setWindowsWins(winA, SRV_IP);
@@ -122,6 +123,7 @@ test('only a unicast address can be the WINS server', () => {
 
 test('a saved lab keeps the WINS, registers again, and a file with anything else in it has none', () => {
   const { t, b2 } = lab();
+  setWinShareOn(b2, true);
   setWindowsWins(b2, SRV_IP);
   t.net.runFor(1000);
   const json = t.toJSON();

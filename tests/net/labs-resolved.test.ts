@@ -11,6 +11,7 @@ import type { Host } from '../../src/devices/host.ts';
 import { Topology } from '../../src/net/topology.ts';
 import { winsRecords } from '../../src/net/wins.ts';
 import { setWindowsWins, windowsWinsManual } from '../../src/net/win-wins.ts';
+import { setWinShareOn } from '../../src/net/win-shares.ts';
 import { parseIp } from '../../src/core/ip.ts';
 
 const SRV_IP = parseIp('192.168.10.2') ?? 0;
@@ -27,7 +28,7 @@ const names = (srv: Host): string[] => winsRecords(srv).map((r) => `${r.name}<${
 test('SRV-WINS serves WINS from the start and WIN-A is registered with it', () => {
   const { h, sh, win } = lab();
   assert.match(sh('SRV-WINS', 'testparm -s 2>/dev/null | grep wins'), /wins support = Yes/);
-  assert.deepEqual(names(h('SRV-WINS')), ['WIN-A<00>', 'WIN-A<20>', 'WORKGROUP<00>']);
+  assert.deepEqual(names(h('SRV-WINS')), ['WIN-A<00>', 'WORKGROUP<00>']);
   assert.match(win('WIN-A', 'ipconfig /all'), /Primary WINS Server\.+: 192\.168\.10\.2/);
   assert.doesNotMatch(win('WIN-B', 'ipconfig /all'), /WINS/, 'WIN-B is the exercise');
 });
@@ -65,11 +66,21 @@ test('WIN-B: with its WINS set, ipconfig /all shows it and WIN-A finds win-b pas
   assert.match(win('WIN-A', 'ping -n 1 win-b'), /Pinging win-b \[192\.168\.20\.11\][\s\S]*Reply from 192\.168\.20\.11/);
 });
 
+test('WIN-A shares files: ticking the box registers WIN-A<20> with the WINS, unticking releases it', () => {
+  const { t, h } = lab();
+  setWinShareOn(h('WIN-A'), true);
+  t.net.runFor(1000);
+  assert.deepEqual(names(h('SRV-WINS')), ['WIN-A<00>', 'WIN-A<20>', 'WORKGROUP<00>']);
+  setWinShareOn(h('WIN-A'), false);
+  t.net.runFor(1000);
+  assert.deepEqual(names(h('SRV-WINS')), ['WIN-A<00>', 'WORKGROUP<00>']);
+});
+
 test('saved and read back, the WINS server serves again and WIN-A registers again', () => {
   const { t } = lab();
   const back = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
   back.net.runFor(1000);
   const { h } = lab(back);
   assert.equal(windowsWinsManual(h('WIN-A')), SRV_IP);
-  assert.deepEqual(names(h('SRV-WINS')), ['WIN-A<00>', 'WIN-A<20>', 'WORKGROUP<00>']);
+  assert.deepEqual(names(h('SRV-WINS')), ['WIN-A<00>', 'WORKGROUP<00>']);
 });

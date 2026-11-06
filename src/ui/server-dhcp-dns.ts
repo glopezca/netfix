@@ -36,6 +36,7 @@ function poolFields(server: Server, pool: PtDhcpPool | undefined) {
     dns: input({ value: ipOrEmpty(pool?.dns ?? (s.dns.enabled ? server.config.ip : undefined)), inputmode: 'decimal' }),
     domain: input({ value: pool?.domain ?? '' }),
     tftp: input({ value: ipOrEmpty(pool?.tftp), inputmode: 'decimal' }),
+    wins: input({ value: ipOrEmpty(pool?.wins), inputmode: 'decimal' }),
     lease: input({ value: String(pool?.leaseMinutes ?? DEFAULT_LEASE_MINUTES), inputmode: 'numeric' }),
     identify: select(identify(), pool?.identifyBy ?? 'client-id'),
   };
@@ -45,14 +46,14 @@ function readPool(f: PoolFields, pool: PtDhcpPool | undefined): PtDhcpPool | str
   const opt = (i: HTMLInputElement): number | undefined | null => (i.value.trim() ? parseIp(i.value.trim()) : undefined);
   const start = parseIp(f.start.value.trim());
   const prefix = parseMask(f.mask.value.trim());
-  const vals = { gw: opt(f.gw), dns: opt(f.dns), tftp: opt(f.tftp) };
+  const vals = { gw: opt(f.gw), dns: opt(f.dns), tftp: opt(f.tftp), wins: opt(f.wins) };
   if (start === null) return t('dhcp.badStart');
   if (prefix === null) return t('dhcp.badMask');
   if (Object.values(vals).some((v) => v === null)) return t('dhcp.badOptions');
   const maxUsers = Number(f.max.value);
   const lease = Number(f.lease.value);
   if (!Number.isInteger(maxUsers) || !Number.isInteger(lease) || lease < 1) return t('dhcp.badNumbers');
-  return { name: f.name.value.trim(), start, prefix, maxUsers, gateway: vals.gw ?? undefined, dns: vals.dns ?? undefined, tftp: vals.tftp ?? undefined, domain: f.domain.value.trim() || undefined, leaseMinutes: lease, reservations: pool?.reservations ?? [], identifyBy: f.identify.value === 'mac' ? 'mac' : undefined };
+  return { name: f.name.value.trim(), start, prefix, maxUsers, gateway: vals.gw ?? undefined, dns: vals.dns ?? undefined, tftp: vals.tftp ?? undefined, wins: vals.wins ?? undefined, domain: f.domain.value.trim() || undefined, leaseMinutes: lease, reservations: pool?.reservations ?? [], identifyBy: f.identify.value === 'mac' ? 'mac' : undefined };
 }
 
 function poolsTable(pools: readonly PtDhcpPool[], editing: string | null, onSelect: (p: PtDhcpPool) => void, onDelete: (p: PtDhcpPool) => void): HTMLElement {
@@ -99,7 +100,7 @@ export function dhcpPanel(server: Server, app: AfterChange): HTMLElement {
       el('h3', {}, pool ? t('dhcp.editPool', { name: pool.name }) : t('dhcp.newPool')),
       el('div', { class: 'grid3' }, field(t('dhcp.poolName'), f.name), field(t('dhcp.start'), f.start), field(t('dhcp.mask'), f.mask),
         field(t('dhcp.maxUsers'), f.max), field(t('dhcp.gateway'), f.gw), field(t('dhcp.dns'), f.dns),
-        field(t('dhcp.domain'), f.domain), field(t('dhcp.tftp'), f.tftp), field(t('dhcp.lease'), f.lease),
+        field(t('dhcp.domain'), f.domain), field(t('dhcp.tftp'), f.tftp), field(t('dhcp.wins'), f.wins), field(t('dhcp.lease'), f.lease),
         field(t('dhcp.identify'), f.identify, t('dhcp.identifyHint'))),
       el('div', { class: 'actions' }, button(pool ? t('dhcp.saveChanges') : t('dhcp.addPool'), save), pool ? button(t('dhcp.newPool'), () => { editing = null; refresh(); }, 'btn btn-quiet') : null),
       msg.el,

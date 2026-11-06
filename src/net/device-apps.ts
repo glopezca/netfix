@@ -35,9 +35,11 @@ export interface AppsDevice {
 export interface LabView {
   readonly features: LabFeatures;
   readonly webHideOff: boolean;
+  /** The catalogue packages taken away from the lab's archive (lab-packages.ts). */
+  readonly pkgsOff: readonly string[];
 }
 
-const NO_LAB: LabView = { features: {}, webHideOff: false };
+const NO_LAB: LabView = { features: {}, webHideOff: false, pkgsOff: [] };
 const chosen = new WeakMap<object, readonly FeatureId[]>();
 const labs = new WeakMap<object, () => LabView>();
 

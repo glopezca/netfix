@@ -10,6 +10,10 @@ import type { Binding } from '../dhcp/server.ts';
 const MINUTES_PER_DAY = 1440;
 const MINUTES_PER_HOUR = 60;
 const TFTP_OPTION = 150;
+const MULTICAST_FIRST = 0xe0000000;
+
+/** A WINS server is one host: not 0.0.0.0, multicast or broadcast. */
+const isUnicast = (a: number): boolean => a !== 0 && a < MULTICAST_FIRST;
 
 export function ptPoolToIos(p: PtDhcpPool): PoolConfig {
   const minutes = p.leaseMinutes;
@@ -20,6 +24,7 @@ export function ptPoolToIos(p: PtDhcpPool): PoolConfig {
     defaultRouters: p.gateway !== undefined ? [p.gateway] : [],
     dnsServers: p.dns !== undefined ? [p.dns] : [],
     domainName: p.domain || undefined,
+    netbiosServers: p.wins !== undefined ? [p.wins] : [],
     lease,
     options: p.tftp !== undefined ? [{ code: TFTP_OPTION, kind: 'ip', value: '', ips: [p.tftp] }] : [],
     reservations: p.reservations.map((r) => (r.clientId ? { ip: r.ip, clientId: r.clientId } : { ip: r.ip, mac: r.mac, macAlways: true })),
@@ -54,6 +59,7 @@ export function validatePool(p: PtDhcpPool, others: readonly PtDhcpPool[]): stri
   if (p.start < first || p.start > last) return t('pool.err.start', { ip: formatIp(p.start) });
   if (p.maxUsers < 1) return t('pool.err.users');
   if (p.gateway !== undefined && !inSubnet(p.gateway, p.start, p.prefix)) return t('pool.err.gateway');
+  if (p.wins !== undefined && !isUnicast(p.wins)) return t('pool.err.wins');
   const net = networkOf(p.start, p.prefix);
   if (others.some((o) => networkOf(o.start, o.prefix) === net && o.prefix === p.prefix)) return t('pool.err.subnet');
   const bad = p.reservations.find((r) => !inSubnet(r.ip, p.start, p.prefix));

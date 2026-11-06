@@ -102,11 +102,17 @@ const KEA_DEFAULT = `// This is a basic configuration for the Kea DHCPv4 server.
 
 const KEA_PACKAGES: ReadonlySet<string> = new Set(['kea', 'kea-dhcp4-server', 'isc-kea']);
 
+/**
+ * smb.conf is samba-common's conffile: the packages of the catalogue that bring it write it, on any host (no Servicios
+ * settings write it).
+ */
+export const SMB_CONF_PACKAGES: ReadonlySet<string> = new Set(['samba', 'smbclient', 'samba-common-bin', 'winbind']);
+
 /** The files a package ships, by path. */
 export function shippedFiles(name: string): ReadonlyMap<string, string> {
   if (KEA_PACKAGES.has(name)) return new Map([[KEA_DHCP4_CONF, KEA_DEFAULT]]);
   if (name === 'bind9') return bindFiles(defaultServices().dns, []);
-  if (name === 'samba') return new Map([[SMB_CONF, DEFAULT_SMB_CONF]]);
+  if (SMB_CONF_PACKAGES.has(name)) return new Map([[SMB_CONF, DEFAULT_SMB_CONF]]);
   if (name === 'nftables') return new Map([[NFTABLES_CONF, DEFAULT_NFTABLES_CONF]]);
   return new Map();
 }

@@ -1,4 +1,4 @@
-/** English (UK): Services → Samba panel (GNU/Linux server or PC) and the Services tab of a GNU/Linux PC. */
+/** English (UK): Services → Samba (GNU/Linux server or PC), Services → SMB on Windows and the Services tab of a GNU/Linux PC. */
 import type { SambaKey } from '../es-ES/samba.ts';
 
 export const SAMBA_EN: Readonly<Record<SambaKey, string>> = {
@@ -37,6 +37,18 @@ export const SAMBA_EN: Readonly<Record<SambaKey, string>> = {
   'smb.err.path': 'The folder must be an absolute path (starting with /) that is not a file.',
   'smb.err.user': 'That user does not exist on Linux.',
   'smb.err.password': 'Type a password.',
+  'wsh.tab': 'SMB',
+  'wsh.intro': 'The shares this device offers over SMB (TCP 139 and 445) with password protected sharing turned off: anyone on the network gets in as Everyone, without a password. The same as net share in the terminal.',
+  'wsh.permission': 'Permission',
+  'wsh.read': 'Everyone: Read',
+  'wsh.full': 'Everyone: Full Control',
+  'wsh.hint': 'A folder of drive C: that already exists (create it with md in the terminal).',
+  'wsh.err.name': 'Invalid share name (up to 80 characters, without " / \\ [ ] : | < > + = ; , ? *).',
+  'wsh.err.reserved': 'Windows keeps that name for itself (IPC$, ADMIN$, C$…).',
+  'wsh.err.path': 'The folder must be a path of drive C: (C:\\folder), without . or ..',
+  'wsh.err.folder': 'That folder does not exist on drive C:.',
+  'wsh.err.remark': 'Invalid remark (up to 256 characters, no control characters).',
+  'wsh.err.full': 'No room for more shares (32 at most).',
   'pcsvc.journalHint': 'Same as journalctl -u <service> in the computer\'s terminal.',
   'pcsvc.noUnits': 'No services installed. Install nftables or samba with apt.',
 };
