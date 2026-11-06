@@ -1957,3 +1957,12 @@ fuera de la carpeta, HTML de los paneles).
 - sin impresoras compartidas (la casilla solo comparte archivos);
 - sin recursos administrativos C$ y ADMIN$;
 - sin opción 46 en PT ni opción 44 por reserva.
+
+- **Hecho (v0.37.0)**, con la revisión de seguridad (sin hallazgos críticos ni altos):
+  - Los nombres y comentarios de los recursos rechazan los caracteres de control C1, los de ancho cero, las marcas bidi
+    y el BOM.
+  - Las carpetas pierden los puntos y espacios finales, como en Win32.
+  - Compartir `C:\` con control total se permite, como en Windows sin protección por contraseña.
+  - `apt install` de un paquete quitado del laboratorio responde «Error: Unable to locate package X» (apt 3).
+  - Ayuda «Compartir carpetas desde Windows» (`win-compartir`) y e2e `scripts/e2e-winshare.mjs`.
+  - Pendiente: desactivar la función en el laboratorio no envía la liberación de NOMBRE<20> al servidor WINS (desmarcar la casilla del equipo sí).
