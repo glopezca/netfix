@@ -158,6 +158,7 @@ export const CLIENT_DOCS: DocGroup = {
           ['net start [svc] · net stop svc', 'Igual que sc, con los mensajes de net.'],
           ['hostname · whoami · ver · cls · help', 'Sistema y ayuda.'],
           ['cd [carpeta] · cd .. · cd /d Z:\\carpeta', 'Cambia de carpeta; sin argumento muestra la actual. Cada unidad tiene su carpeta: `cd Z:\\x` solo cambia la de Z: y `cd /d` cambia también de unidad. Las rutas UNC (\\\\srv\\share) no pueden ser la carpeta actual.'],
+          ['net share · net share NOMBRE=C:\\carpeta [/grant:everyone,READ|FULL] [/remark:"texto"] · net share NOMBRE /delete', 'Recursos que comparte este equipo (con «Compartir archivos e impresoras» marcado en Configuración; lo mismo que Servicios → SMB): la carpeta debe existir y Todos entra sin contraseña, con lectura o control total.'],
           ['net view \\\\SERVIDOR · net use [Z: | *] \\\\srv\\share [/user:nombre] · net use Z: /delete', 'Recursos compartidos de un servidor SMB y unidades conectadas a ellos; `Z:` cambia a la unidad, que se usa como C: (dir, cd, copy, type, > y >>).'],
           ['dir [ruta] [/b]', 'Lista una carpeta (admite * y ?); /b solo los nombres.'],
           ['md carpeta · rd [/s] [/q] carpeta', 'Crea carpetas (también las intermedias) o las borra; /s con su contenido, tras preguntar «Are you sure (Y/N)?» salvo con /q.'],

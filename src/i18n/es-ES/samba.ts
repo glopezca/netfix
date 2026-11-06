@@ -1,4 +1,4 @@
-/** Español (España): panel Servicios → Samba (servidor o PC GNU/Linux) y Servicios de un PC GNU/Linux. */
+/** Español (España): Servicios → Samba (servidor o PC GNU/Linux), Servicios → SMB de Windows y Servicios de un PC GNU/Linux. */
 export const SAMBA_ES = {
   'smb.tab': 'Samba',
   'smb.service': 'Compartición de ficheros (smbd y nmbd)',
@@ -35,6 +35,18 @@ export const SAMBA_ES = {
   'smb.err.path': 'La carpeta debe ser una ruta absoluta (empieza por /) que no sea un fichero.',
   'smb.err.user': 'Ese usuario no existe en Linux.',
   'smb.err.password': 'Escribe una contraseña.',
+  'wsh.tab': 'SMB',
+  'wsh.intro': 'Los recursos que este equipo comparte por SMB (TCP 139 y 445) con el uso compartido protegido por contraseña desactivado: cualquiera de la red entra como Todos, sin contraseña. Es lo mismo que net share en la terminal.',
+  'wsh.permission': 'Permiso',
+  'wsh.read': 'Todos: Lectura',
+  'wsh.full': 'Todos: Control total',
+  'wsh.hint': 'Una carpeta de la unidad C: que ya exista (créala con md en la terminal).',
+  'wsh.err.name': 'Nombre de recurso no válido (hasta 80 caracteres, sin " / \\ [ ] : | < > + = ; , ? *).',
+  'wsh.err.reserved': 'Ese nombre lo reserva Windows (IPC$, ADMIN$, C$…).',
+  'wsh.err.path': 'La carpeta debe ser una ruta de la unidad C: (C:\\carpeta), sin . ni ..',
+  'wsh.err.folder': 'Esa carpeta no existe en la unidad C:.',
+  'wsh.err.remark': 'Comentario no válido (hasta 256 caracteres, sin caracteres de control).',
+  'wsh.err.full': 'No caben más recursos (32 como máximo).',
   'pcsvc.journalHint': 'Equivale a journalctl -u <servicio> en la terminal del equipo.',
   'pcsvc.noUnits': 'No hay servicios instalados. Instala nftables o samba con apt.',
 } as const;

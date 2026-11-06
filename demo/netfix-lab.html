@@ -4703,7 +4703,7 @@ const SETTINGS_EN = {
 return { SETTINGS_EN };
 })();
 __m["i18n/es-ES/samba.js"] = (() => {
-/** Español (España): panel Servicios → Samba (servidor o PC GNU/Linux) y Servicios de un PC GNU/Linux. */
+/** Español (España): Servicios → Samba (servidor o PC GNU/Linux), Servicios → SMB de Windows y Servicios de un PC GNU/Linux. */
 const SAMBA_ES = {
     'smb.tab': 'Samba',
     'smb.service': 'Compartición de ficheros (smbd y nmbd)',
@@ -4740,6 +4740,18 @@ const SAMBA_ES = {
     'smb.err.path': 'La carpeta debe ser una ruta absoluta (empieza por /) que no sea un fichero.',
     'smb.err.user': 'Ese usuario no existe en Linux.',
     'smb.err.password': 'Escribe una contraseña.',
+    'wsh.tab': 'SMB',
+    'wsh.intro': 'Los recursos que este equipo comparte por SMB (TCP 139 y 445) con el uso compartido protegido por contraseña desactivado: cualquiera de la red entra como Todos, sin contraseña. Es lo mismo que net share en la terminal.',
+    'wsh.permission': 'Permiso',
+    'wsh.read': 'Todos: Lectura',
+    'wsh.full': 'Todos: Control total',
+    'wsh.hint': 'Una carpeta de la unidad C: que ya exista (créala con md en la terminal).',
+    'wsh.err.name': 'Nombre de recurso no válido (hasta 80 caracteres, sin " / \\ [ ] : | < > + = ; , ? *).',
+    'wsh.err.reserved': 'Ese nombre lo reserva Windows (IPC$, ADMIN$, C$…).',
+    'wsh.err.path': 'La carpeta debe ser una ruta de la unidad C: (C:\\carpeta), sin . ni ..',
+    'wsh.err.folder': 'Esa carpeta no existe en la unidad C:.',
+    'wsh.err.remark': 'Comentario no válido (hasta 256 caracteres, sin caracteres de control).',
+    'wsh.err.full': 'No caben más recursos (32 como máximo).',
     'pcsvc.journalHint': 'Equivale a journalctl -u <servicio> en la terminal del equipo.',
     'pcsvc.noUnits': 'No hay servicios instalados. Instala nftables o samba con apt.',
 };
@@ -4783,6 +4795,18 @@ const SAMBA_EN = {
     'smb.err.path': 'The folder must be an absolute path (starting with /) that is not a file.',
     'smb.err.user': 'That user does not exist on Linux.',
     'smb.err.password': 'Type a password.',
+    'wsh.tab': 'SMB',
+    'wsh.intro': 'The shares this device offers over SMB (TCP 139 and 445) with password protected sharing turned off: anyone on the network gets in as Everyone, without a password. The same as net share in the terminal.',
+    'wsh.permission': 'Permission',
+    'wsh.read': 'Everyone: Read',
+    'wsh.full': 'Everyone: Full Control',
+    'wsh.hint': 'A folder of drive C: that already exists (create it with md in the terminal).',
+    'wsh.err.name': 'Invalid share name (up to 80 characters, without " / \\ [ ] : | < > + = ; , ? *).',
+    'wsh.err.reserved': 'Windows keeps that name for itself (IPC$, ADMIN$, C$…).',
+    'wsh.err.path': 'The folder must be a path of drive C: (C:\\folder), without . or ..',
+    'wsh.err.folder': 'That folder does not exist on drive C:.',
+    'wsh.err.remark': 'Invalid remark (up to 256 characters, no control characters).',
+    'wsh.err.full': 'No room for more shares (32 at most).',
     'pcsvc.journalHint': 'Same as journalctl -u <service> in the computer\'s terminal.',
     'pcsvc.noUnits': 'No services installed. Install nftables or samba with apt.',
 };
@@ -6172,6 +6196,131 @@ function runsServices(kind) {
 
 return { runsServices };
 })();
+__m["net/win-shares.js"] = (() => {
+/**
+ * «Compartir archivos e impresoras para redes Microsoft» on Windows (PC and Server): the binding of the Server service
+ * to the adapter, which the device's Configuración box ticks (unticked in each device; the lab's «winshare» feature
+ * decides whether the box is there), and the shares it publishes. As with «uso compartido con protección por
+ * contraseña» turned off: each share has a name, a folder of drive C:, a comment and what Everyone may do (read, or
+ * full control). Kept beside the device in a weak registry and saved with it; a record from a file is checked as if
+ * typed.
+ */
+const { featureOn } = __m["net/lab-features.js"];
+const { labViewOf, notifyAppsChange } = __m["net/device-apps.js"];
+/** What Windows allows: a share name of up to 80 characters, a comment of 256 and a path of MAX_PATH. */
+const MAX_NAME = 80;
+const MAX_REMARK = 256;
+const MAX_PATH = 260;
+/** More than a lab needs, and a bound on a crafted file. */
+const MAX_SHARES = 32;
+/** Characters a share name cannot have (as Windows: " / \ [ ] : | < > + = ; , ? *), nor control characters. */
+const BAD_NAME = /["/\\[\]:|<>+=;,?*\u0000-\u001f\u007f]/;
+/** The administrative shares Windows keeps for itself. */
+const RESERVED = /^(?:IPC|ADMIN|PRINT|[A-Z])\$$/i;
+/** Characters a folder name cannot have. */
+const BAD_SEGMENT = /[<>:"/|?*\u0000-\u001f\u007f]/;
+const NONE = { on: false, shares: [] };
+const states = new WeakMap();
+const stateOf = (d) => states.get(d) ?? NONE;
+/** C:\a\b tidied (upper-case drive, no trailing \), or undefined when it is not a plain folder of drive C:. */
+function sharePath(path) {
+    if (path.length > MAX_PATH || !/^[cC]:\\/.test(path))
+        return undefined;
+    const parts = path.slice(3).split('\\');
+    if (parts.at(-1) === '')
+        parts.pop();
+    if (parts.some((p) => p === '' || p === '.' || p === '..' || BAD_SEGMENT.test(p)))
+        return undefined;
+    return `C:\\${parts.join('\\')}`;
+}
+/** The share as it would be kept, or why not (beside the shares already there). */
+function checkShare(shares, s) {
+    if (!s.name || s.name.length > MAX_NAME || BAD_NAME.test(s.name))
+        return 'name';
+    if (RESERVED.test(s.name))
+        return 'reserved';
+    if (shares.some((x) => x.name.toLowerCase() === s.name.toLowerCase()))
+        return 'exists';
+    const path = sharePath(s.path);
+    if (path === undefined)
+        return 'path';
+    if (s.remark.length > MAX_REMARK || /[\u0000-\u001f\u007f]/.test(s.remark))
+        return 'remark';
+    if (shares.length >= MAX_SHARES)
+        return 'full';
+    return { name: s.name, path, remark: s.remark, access: s.access === 'full' ? 'full' : 'read' };
+}
+/** The box of the device's Configuración tab: a Windows device whose lab keeps the feature. */
+function winShareOffered(d) {
+    return d.os === 'windows' && featureOn(labViewOf(d).features, d.kind, 'winshare');
+}
+/** The box ticked (whether or not the lab still offers it). */
+function winShareOn(d) {
+    return stateOf(d).on;
+}
+/** File and printer sharing working: the box ticked on a device that offers it (SMB on 139/445, NAME<20>). */
+function winShareActive(d) {
+    return winShareOn(d) && winShareOffered(d);
+}
+function setWinShareOn(d, on) {
+    if (winShareOn(d) === on)
+        return;
+    states.set(d, { ...stateOf(d), on });
+    notifyAppsChange(d);
+}
+function winShares(d) {
+    return stateOf(d).shares;
+}
+function findWinShare(d, name) {
+    return winShares(d).find((s) => s.name.toLowerCase() === name.toLowerCase());
+}
+/** Publishes a share: undefined when done, or why not. */
+function addWinShare(d, share) {
+    const state = stateOf(d);
+    const checked = checkShare(state.shares, share);
+    if (typeof checked === 'string')
+        return checked;
+    states.set(d, { ...state, shares: [...state.shares, checked] });
+    return undefined;
+}
+/** Stops sharing (the folder stays): whether there was such a share. */
+function removeWinShare(d, name) {
+    const state = stateOf(d);
+    const rest = state.shares.filter((s) => s.name.toLowerCase() !== name.toLowerCase());
+    if (rest.length === state.shares.length)
+        return false;
+    states.set(d, { ...state, shares: rest });
+    return true;
+}
+/** What the file keeps: nothing while the box is unticked and there are no shares. */
+function winSharesRecord(d) {
+    const state = stateOf(d);
+    return state.on || state.shares.length ? { on: state.on, shares: state.shares } : undefined;
+}
+const isObj = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+/** A share of a file (untrusted): every field of the right type and accepted as if typed. */
+function shareOf(v) {
+    if (!isObj(v) || typeof v.name !== 'string' || typeof v.path !== 'string' || typeof v.remark !== 'string')
+        return undefined;
+    if (v.access !== 'read' && v.access !== 'full')
+        return undefined;
+    return { name: v.name, path: v.path, remark: v.remark, access: v.access };
+}
+/** Puts the `winShare` of a file back: the box only when `on` is true, the shares that pass the checks. */
+function restoreWinShares(d, data) {
+    if (!isObj(data))
+        return;
+    const list = Array.isArray(data.shares) ? data.shares.slice(0, MAX_SHARES * 2) : [];
+    const shares = list.reduce((kept, v) => {
+        const s = shareOf(v);
+        const checked = s && checkShare(kept, s);
+        return checked && typeof checked !== 'string' ? [...kept, checked] : kept;
+    }, []);
+    states.set(d, { on: data.on === true, shares });
+}
+
+return { MAX_SHARES, sharePath, winShareOffered, winShareOn, winShareActive, setWinShareOn, winShares, findWinShare, addWinShare, removeWinShare, winSharesRecord, restoreWinShares };
+})();
 __m["net/pkg-units.js"] = (() => {
 /**
  * The systemd units that apt's packages bring on any GNU/Linux host, a PC too: samba's smbd and nmbd (started and
@@ -6183,6 +6332,7 @@ __m["net/pkg-units.js"] = (() => {
 const { hasPackage } = __m["net/host-packages.js"];
 const { deviceApps, sambaAllowed } = __m["net/device-apps.js"];
 const { runsServices } = __m["devices/kinds.js"];
+const { winShareActive } = __m["net/win-shares.js"];
 /** systemd-resolved: the system's resolver (resolvectl, the «resolve» source of nsswitch.conf, LLMNR and mDNS). */
 const RESOLVED_UNIT = { name: 'systemd-resolved', pkg: 'systemd', process: 'systemd-resolved', description: 'Network Name Resolution', pid: 512, oneshot: false, startOnInstall: true, pcOnly: false, base: true, path: '/usr/lib/systemd/systemd-resolved' };
 const NFTABLES_UNIT = { name: 'nftables', pkg: 'nftables', process: 'nft', description: 'nftables', pid: 655, oneshot: true, startOnInstall: false, pcOnly: true };
@@ -6270,16 +6420,18 @@ function sambaOffered(d) {
 /**
  * What the packages add to the Servicios tab. A GNU/Linux PC: the kernel parameters and the configuration files
  * (always: every kernel has them), then the firewall with nftables, Samba with samba, and the logs of either. A Server
- * or Linux router has every other panel already: samba adds its own. A lab without Samba hides its panel.
+ * or Linux router has every other panel already: samba adds its own. A lab without Samba hides its panel. Windows with
+ * «Compartir archivos e impresoras» ticked (win-shares.ts) has its SMB panel, first on a PC.
  */
 function hostPanels(d) {
     const samba = hasPackage(d, 'samba') && sambaOffered(d);
+    const smb = winShareActive(d) ? ['winshare'] : [];
     if (runsServices(d.kind))
-        return samba ? ['samba'] : [];
+        return [...(samba ? ['samba'] : []), ...smb];
     if (!linuxSide(d))
-        return [];
+        return smb;
     const nft = unitInstalled(d, NFTABLES_UNIT);
-    return ['sysctl', ...(nft ? ['firewall'] : []), ...(samba ? ['samba'] : []), 'files', ...(nft || samba ? ['log'] : [])];
+    return [...smb, 'sysctl', ...(nft ? ['firewall'] : []), ...(samba ? ['samba'] : []), 'files', ...(nft || samba ? ['log'] : [])];
 }
 
 return { RESOLVED_UNIT, NFTABLES_UNIT, PKG_UNITS, unitInstalled, findPkgUnit, installedUnits, journalUnits, pkgUnitState, setPkgUnitState, forgetPkgUnits, pkgLog, pkgJournal, pkgUnitsRecord, restorePkgUnits, unitRunning, linuxSide, sambaOffered, hostPanels };
@@ -15188,6 +15340,7 @@ const CLIENT_DOCS = {
                     ['net start [svc] · net stop svc', 'Igual que sc, con los mensajes de net.'],
                     ['hostname · whoami · ver · cls · help', 'Sistema y ayuda.'],
                     ['cd [carpeta] · cd .. · cd /d Z:\\carpeta', 'Cambia de carpeta; sin argumento muestra la actual. Cada unidad tiene su carpeta: `cd Z:\\x` solo cambia la de Z: y `cd /d` cambia también de unidad. Las rutas UNC (\\\\srv\\share) no pueden ser la carpeta actual.'],
+                    ['net share · net share NOMBRE=C:\\carpeta [/grant:everyone,READ|FULL] [/remark:"texto"] · net share NOMBRE /delete', 'Recursos que comparte este equipo (con «Compartir archivos e impresoras» marcado en Configuración; lo mismo que Servicios → SMB): la carpeta debe existir y Todos entra sin contraseña, con lectura o control total.'],
                     ['net view \\\\SERVIDOR · net use [Z: | *] \\\\srv\\share [/user:nombre] · net use Z: /delete', 'Recursos compartidos de un servidor SMB y unidades conectadas a ellos; `Z:` cambia a la unidad, que se usa como C: (dir, cd, copy, type, > y >>).'],
                     ['dir [ruta] [/b]', 'Lista una carpeta (admite * y ?); /b solo los nombres.'],
                     ['md carpeta · rd [/s] [/q] carpeta', 'Crea carpetas (también las intermedias) o las borra; /s con su contenido, tras preguntar «Are you sure (Y/N)?» salvo con /q.'],
@@ -17736,6 +17889,7 @@ const CLIENT_DOCS = {
                     ['net start [svc] · net stop svc', 'Same as sc, with net’s messages.'],
                     ['hostname · whoami · ver · cls · help', 'System and help.'],
                     ['cd [folder] · cd .. · cd /d Z:\\folder', 'Changes folder; with no argument shows the current one. Each drive has its own folder: `cd Z:\\x` only changes Z:’s and `cd /d` also changes drive. UNC paths (\\\\srv\\share) cannot be the current folder.'],
+                    ['net share · net share NAME=C:\\folder [/grant:everyone,READ|FULL] [/remark:"text"] · net share NAME /delete', 'Shares of this device (with “File and Printer Sharing” ticked in Settings; the same as Services → SMB): the folder must exist and Everyone gets in without a password, with read or full control.'],
                     ['net view \\\\SERVER · net use [Z: | *] \\\\srv\\share [/user:name] · net use Z: /delete', 'Shares of an SMB server and drives connected to them; `Z:` switches to the drive, which is used like C: (dir, cd, copy, type, > and >>).'],
                     ['dir [path] [/b]', 'Lists a folder (accepts * and ?); /b names only.'],
                     ['md folder · rd [/s] [/q] folder', 'Creates folders (intermediate ones too) or removes them; /s with their contents, after asking “Are you sure (Y/N)?” unless /q.'],
@@ -30710,131 +30864,6 @@ function removeShare(text, name) {
 }
 
 return { SMB_CONF, DEFAULT_SMB_CONF, smbSections, winsConflict, parseSmbConf, findShare, serverComment, validShareName, addShare, removeShare };
-})();
-__m["net/win-shares.js"] = (() => {
-/**
- * «Compartir archivos e impresoras para redes Microsoft» on Windows (PC and Server): the binding of the Server service
- * to the adapter, which the device's Configuración box ticks (unticked in each device; the lab's «winshare» feature
- * decides whether the box is there), and the shares it publishes. As with «uso compartido con protección por
- * contraseña» turned off: each share has a name, a folder of drive C:, a comment and what Everyone may do (read, or
- * full control). Kept beside the device in a weak registry and saved with it; a record from a file is checked as if
- * typed.
- */
-const { featureOn } = __m["net/lab-features.js"];
-const { labViewOf, notifyAppsChange } = __m["net/device-apps.js"];
-/** What Windows allows: a share name of up to 80 characters, a comment of 256 and a path of MAX_PATH. */
-const MAX_NAME = 80;
-const MAX_REMARK = 256;
-const MAX_PATH = 260;
-/** More than a lab needs, and a bound on a crafted file. */
-const MAX_SHARES = 32;
-/** Characters a share name cannot have (as Windows: " / \ [ ] : | < > + = ; , ? *), nor control characters. */
-const BAD_NAME = /["/\\[\]:|<>+=;,?*\u0000-\u001f\u007f]/;
-/** The administrative shares Windows keeps for itself. */
-const RESERVED = /^(?:IPC|ADMIN|PRINT|[A-Z])\$$/i;
-/** Characters a folder name cannot have. */
-const BAD_SEGMENT = /[<>:"/|?*\u0000-\u001f\u007f]/;
-const NONE = { on: false, shares: [] };
-const states = new WeakMap();
-const stateOf = (d) => states.get(d) ?? NONE;
-/** C:\a\b tidied (upper-case drive, no trailing \), or undefined when it is not a plain folder of drive C:. */
-function sharePath(path) {
-    if (path.length > MAX_PATH || !/^[cC]:\\/.test(path))
-        return undefined;
-    const parts = path.slice(3).split('\\');
-    if (parts.at(-1) === '')
-        parts.pop();
-    if (parts.some((p) => p === '' || p === '.' || p === '..' || BAD_SEGMENT.test(p)))
-        return undefined;
-    return `C:\\${parts.join('\\')}`;
-}
-/** The share as it would be kept, or why not (beside the shares already there). */
-function checkShare(shares, s) {
-    if (!s.name || s.name.length > MAX_NAME || BAD_NAME.test(s.name))
-        return 'name';
-    if (RESERVED.test(s.name))
-        return 'reserved';
-    if (shares.some((x) => x.name.toLowerCase() === s.name.toLowerCase()))
-        return 'exists';
-    const path = sharePath(s.path);
-    if (path === undefined)
-        return 'path';
-    if (s.remark.length > MAX_REMARK || /[\u0000-\u001f\u007f]/.test(s.remark))
-        return 'remark';
-    if (shares.length >= MAX_SHARES)
-        return 'full';
-    return { name: s.name, path, remark: s.remark, access: s.access === 'full' ? 'full' : 'read' };
-}
-/** The box of the device's Configuración tab: a Windows device whose lab keeps the feature. */
-function winShareOffered(d) {
-    return d.os === 'windows' && featureOn(labViewOf(d).features, d.kind, 'winshare');
-}
-/** The box ticked (whether or not the lab still offers it). */
-function winShareOn(d) {
-    return stateOf(d).on;
-}
-/** File and printer sharing working: the box ticked on a device that offers it (SMB on 139/445, NAME<20>). */
-function winShareActive(d) {
-    return winShareOn(d) && winShareOffered(d);
-}
-function setWinShareOn(d, on) {
-    if (winShareOn(d) === on)
-        return;
-    states.set(d, { ...stateOf(d), on });
-    notifyAppsChange(d);
-}
-function winShares(d) {
-    return stateOf(d).shares;
-}
-function findWinShare(d, name) {
-    return winShares(d).find((s) => s.name.toLowerCase() === name.toLowerCase());
-}
-/** Publishes a share: undefined when done, or why not. */
-function addWinShare(d, share) {
-    const state = stateOf(d);
-    const checked = checkShare(state.shares, share);
-    if (typeof checked === 'string')
-        return checked;
-    states.set(d, { ...state, shares: [...state.shares, checked] });
-    return undefined;
-}
-/** Stops sharing (the folder stays): whether there was such a share. */
-function removeWinShare(d, name) {
-    const state = stateOf(d);
-    const rest = state.shares.filter((s) => s.name.toLowerCase() !== name.toLowerCase());
-    if (rest.length === state.shares.length)
-        return false;
-    states.set(d, { ...state, shares: rest });
-    return true;
-}
-/** What the file keeps: nothing while the box is unticked and there are no shares. */
-function winSharesRecord(d) {
-    const state = stateOf(d);
-    return state.on || state.shares.length ? { on: state.on, shares: state.shares } : undefined;
-}
-const isObj = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
-/** A share of a file (untrusted): every field of the right type and accepted as if typed. */
-function shareOf(v) {
-    if (!isObj(v) || typeof v.name !== 'string' || typeof v.path !== 'string' || typeof v.remark !== 'string')
-        return undefined;
-    if (v.access !== 'read' && v.access !== 'full')
-        return undefined;
-    return { name: v.name, path: v.path, remark: v.remark, access: v.access };
-}
-/** Puts the `winShare` of a file back: the box only when `on` is true, the shares that pass the checks. */
-function restoreWinShares(d, data) {
-    if (!isObj(data))
-        return;
-    const list = Array.isArray(data.shares) ? data.shares.slice(0, MAX_SHARES * 2) : [];
-    const shares = list.reduce((kept, v) => {
-        const s = shareOf(v);
-        const checked = s && checkShare(kept, s);
-        return checked && typeof checked !== 'string' ? [...kept, checked] : kept;
-    }, []);
-    states.set(d, { on: data.on === true, shares });
-}
-
-return { MAX_SHARES, sharePath, winShareOffered, winShareOn, winShareActive, setWinShareOn, winShares, findWinShare, addWinShare, removeWinShare, winSharesRecord, restoreWinShares };
 })();
 __m["net/netbios.js"] = (() => {
 const { registerLocalSockets } = __m["net/ipstack.js"];
@@ -46189,6 +46218,193 @@ function netView(host, unc) {
 
 return { smbTarget, netUse, netView };
 })();
+__m["services/smb-windows.js"] = (() => {
+const { FsError, canAccess } = __m["bash/vfs.js"];
+const { addWinShare, findWinShare, removeWinShare, sharePath, winShares } = __m["net/win-shares.js"];
+const { hostFs } = __m["devices/host-fs.js"];
+const { defaultLinuxUser, hostUsers } = __m["shells/host-system.js"];
+const { resolveWinPath } = __m["shells/win-path.js"];
+/** Paths on the server are absolute, so a string that starts as a status is one. */
+const isStatus = (v) => v.startsWith('NT_STATUS_');
+/** The device's own account, as its Windows terminal (windows.ts). */
+function localCred(host) {
+    const users = hostUsers(host);
+    const account = users.find((u) => u.name === defaultLinuxUser(host)) ?? users[0];
+    return { uid: account?.uid ?? 0, gid: account?.gid ?? 0, groups: account?.groups ?? [] };
+}
+/** NetShareEnum: the shares by name, then IPC$; Windows gives no server comment. */
+function windowsShareList(host) {
+    const disks = [...winShares(host)]
+        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+        .map((s) => ({ name: s.name, type: 'Disk', comment: s.remark }));
+    return { status: 'NT_STATUS_OK', comment: '', shares: [...disks, { name: 'IPC$', type: 'IPC', comment: 'Remote IPC' }] };
+}
+/** The real directory of a share's C:\folder, or why it cannot be entered: gone (or not a folder), or denied. */
+function folderOf(fs, path, cred) {
+    const p = resolveWinPath(fs, '/', path, cred);
+    if (!p.ok)
+        return 'NT_STATUS_BAD_NETWORK_NAME';
+    try {
+        const root = fs.realpath(p.path);
+        if (fs.tryLookup(root)?.kind !== 'dir')
+            return 'NT_STATUS_BAD_NETWORK_NAME';
+        return canAccess(fs.lookup(root, cred), cred, 1) ? root : 'NT_STATUS_ACCESS_DENIED';
+    }
+    catch (e) {
+        return e instanceof FsError ? 'NT_STATUS_BAD_NETWORK_NAME' : 'NT_STATUS_UNSUCCESSFUL';
+    }
+}
+/** Tree connect: the share (its name in any case) and its folder, which must still be there and be entered. */
+function windowsTree(host, fs, name) {
+    const share = findWinShare(host, name);
+    if (!share)
+        return 'NT_STATUS_BAD_NETWORK_NAME';
+    const cred = localCred(host);
+    const root = folderOf(fs, share.path, cred);
+    return isStatus(root) ? root : { root, readOnly: share.access === 'read', cred };
+}
+/** The panel and `net share`: publishes a share of a folder that exists, and tells the device's open panels. */
+function publishWinShare(host, share) {
+    const path = sharePath(share.path);
+    if (path === undefined)
+        return /^[a-bd-z]:\\/i.test(share.path) ? 'folder' : 'path';
+    const fs = hostFs(host);
+    if (!fs || folderOf(fs, path, localCred(host)) === 'NT_STATUS_BAD_NETWORK_NAME')
+        return 'folder';
+    const err = addWinShare(host, { ...share, path });
+    if (!err)
+        host.notifyChange();
+    return err;
+}
+/** Stops sharing (the folder stays): whether there was such a share. */
+function unpublishWinShare(host, name) {
+    const done = removeWinShare(host, name);
+    if (done)
+        host.notifyChange();
+    return done;
+}
+
+return { windowsShareList, windowsTree, publishWinShare, unpublishWinShare };
+})();
+__m["shells/win-net-share.js"] = (() => {
+const { findWinShare, winShareActive, winShares } = __m["net/win-shares.js"];
+const { publishWinShare, unpublishWinShare } = __m["services/smb-windows.js"];
+const RULE = '-'.repeat(79);
+const DONE = 'The command completed successfully.';
+const NAME_COL = 13;
+const REMARK_COL = 45;
+const SYNTAX = [
+    'The syntax of this command is:', '', 'NET SHARE', 'sharename',
+    '          sharename=drive:path [/GRANT:user,[READ | CHANGE | FULL]]',
+    '                               [/USERS:number | /UNLIMITED]',
+    '                               [/REMARK:"text"]',
+    '                               [/CACHE:Manual | Documents| Programs | BranchCache | None]',
+    '          sharename [/USERS:number | /UNLIMITED]',
+    '                    [/REMARK:"text"]',
+    '                    [/CACHE:Manual | Documents | Programs | BranchCache | None]',
+    '          {sharename | devicename | drive:path} /DELETE',
+    '          sharename \\\\computername /DELETE', '',
+];
+/** A net.exe error (NERR_*), or a Win32 error told as a system error. */
+const helpMsg = (text, code) => [text, '', `More help is available by typing NET HELPMSG ${code}.`, ''];
+const systemError = (code, text) => [`System error ${code} has occurred.`, '', text, ''];
+const NOT_SHARED = helpMsg('This shared resource does not exist.', 2310);
+function publishError(err) {
+    switch (err) {
+        case 'exists':
+        case 'reserved': return helpMsg('The name has already been shared.', 2118);
+        case 'folder': return helpMsg('The device or directory does not exist.', 2116);
+        case 'name':
+        case 'path': return systemError(123, 'The filename, directory name, or volume label syntax is incorrect.');
+        default: return systemError(87, 'The parameter is incorrect.');
+    }
+}
+/** One share of the list: a name of 13 or more goes on a line of its own, and so does the remark after a long path. */
+function row(name, resource, remark) {
+    const lines = name.length >= NAME_COL ? [name] : [];
+    const start = `${name.length >= NAME_COL ? '' : name}`.padEnd(NAME_COL) + resource;
+    if (remark && start.length >= REMARK_COL)
+        return [...lines, start, `${''.padEnd(REMARK_COL)}${remark}`];
+    return [...lines, `${start.padEnd(REMARK_COL)}${remark}`.trimEnd()];
+}
+function list(host) {
+    const rows = winShares(host).flatMap((s) => row(s.name, s.path, s.remark));
+    return ['', `${'Share name'.padEnd(NAME_COL)}${'Resource'.padEnd(REMARK_COL - NAME_COL)}Remark`, '', RULE, ...row('IPC$', '', 'Remote IPC'), ...rows, DONE, ''];
+}
+function details(host, name) {
+    const field = (label, value) => `${label.padEnd(18)}${value}`.trimEnd();
+    if (name.toUpperCase() === 'IPC$') {
+        return [field('Share name', 'IPC$'), field('Path', ''), field('Remark', 'Remote IPC'), field('Maximum users', 'No limit'), 'Users', '', DONE, ''];
+    }
+    const s = findWinShare(host, name);
+    if (!s)
+        return NOT_SHARED;
+    return [
+        field('Share name', s.name), field('Path', s.path), field('Remark', s.remark), field('Maximum users', 'No limit'), 'Users',
+        field('Caching', 'Manual caching of documents'), field('Permission', `Everyone, ${s.access === 'full' ? 'FULL' : 'READ'}`), '', DONE, '',
+    ];
+}
+/** /DELETE of a share by name, or of every share of a folder (C:\folder). */
+function remove(host, target) {
+    const folder = /^[a-z]:\\/i.test(target) ? target.replace(/\\+$/, '').toLowerCase() : undefined;
+    const names = folder === undefined
+        ? [target]
+        : winShares(host).filter((s) => s.path.toLowerCase() === folder).map((s) => s.name);
+    const removed = names.filter((n) => unpublishWinShare(host, n));
+    return removed.length ? [`${target} was deleted successfully.`, ''] : NOT_SHARED;
+}
+/** The options after NAME=PATH; null for a syntax error. */
+function options(args) {
+    let o = { access: 'read', remark: '', user: 'everyone' };
+    for (const a of args) {
+        const m = /^\/(grant|remark|users|unlimited|cache)(?::(.*))?$/is.exec(a);
+        const key = (m?.[1] ?? '').toLowerCase();
+        const value = m?.[2] ?? '';
+        if (!m)
+            return null;
+        if (key === 'remark')
+            o = { ...o, remark: value };
+        else if (key === 'grant') {
+            const g = /^([^,]+),(read|full)$/i.exec(value);
+            if (!g)
+                return null;
+            o = { ...o, user: (g[1] ?? '').toLowerCase(), access: (g[2] ?? '').toLowerCase() === 'full' ? 'full' : 'read' };
+        }
+        else if (key === 'users' && !/^\d+$/.test(value))
+            return null;
+    }
+    return o;
+}
+function share(host, spec, rest) {
+    const eq = spec.indexOf('=');
+    const o = options(rest);
+    if (!o)
+        return SYNTAX;
+    if (o.user !== 'everyone')
+        return systemError(1332, 'No mapping between account names and security IDs was done.');
+    const s = { name: spec.slice(0, eq), path: spec.slice(eq + 1), remark: o.remark, access: o.access };
+    const err = publishWinShare(host, s);
+    return err ? publishError(err) : [`${s.name} was shared successfully.`, ''];
+}
+const DELETE = /^\/d(?:e(?:l(?:e(?:t(?:e)?)?)?)?)?$/i;
+/** `net share …` (the words after share). */
+function netShare(host, args) {
+    if (!winShareActive(host))
+        return helpMsg('The Server service is not started.', 2114);
+    const [first, ...rest] = args;
+    if (first === undefined)
+        return list(host);
+    if (first.startsWith('/'))
+        return SYNTAX;
+    if (rest.some((a) => DELETE.test(a)))
+        return rest.length === 1 ? remove(host, first) : SYNTAX;
+    if (first.includes('='))
+        return share(host, first, rest);
+    return rest.length ? SYNTAX : details(host, first);
+}
+
+return { netShare };
+})();
 __m["shells/win-fsctx.js"] = (() => {
 /** What the cmd.exe file commands share: the account's view of the Linux file system, cmd's messages and listings. */
 const { FsError, basename, dirname } = __m["bash/vfs.js"];
@@ -47134,6 +47350,7 @@ __m["shells/windows.js"] = (() => {
  */
 const { nbtstat } = __m["shells/win-nbt.js"];
 const { netUse, netView } = __m["shells/win-smb.js"];
+const { netShare } = __m["shells/win-net-share.js"];
 const { smbFileCommand } = __m["shells/win-smb-files.js"];
 const { timestampPromptOn, windowsTimestampPrompt } = __m["shells/prompt-clock.js"];
 const { runsServices } = __m["devices/kinds.js"];
@@ -47166,6 +47383,7 @@ const HELP = [
     '  copy | move | ren        Copy, move or rename files',
     '  Z: | cd /d Z:\\dir        Switch to a drive mapped with net use',
     '  net view | net use       SMB shares and mapped drives',
+    '  net share                Shares of this device (File and Printer Sharing)',
     '  type <file>              Show a file',
     '  edit <file>              Edit a file full screen',
     '  echo <text> [> file]     Print text (> and >> write it to a file)',
@@ -47476,6 +47694,8 @@ class WindowsShell extends BaseShell {
         const verb = (args[0] ?? '').toLowerCase();
         if (verb === 'view')
             return netView(this.host, args[1]);
+        if (verb === 'share')
+            return netShare(this.host, args.slice(1));
         if (verb !== 'use')
             return this.net(args);
         const r = netUse(this.host, args.slice(1));
@@ -47488,7 +47708,7 @@ class WindowsShell extends BaseShell {
         const verb = (args[0] ?? '').toLowerCase();
         const s = this.server();
         if (verb !== 'start' && verb !== 'stop')
-            return ['The syntax of this command is:', '', 'NET [ START | STOP | USE | VIEW ]'];
+            return ['The syntax of this command is:', '', 'NET [ SHARE | START | STOP | USE | VIEW ]'];
         if (verb === 'start' && !args[1])
             return ['These Windows services are started:', '', ...(s ? UNITS.filter((u) => unitActive(s.services, u.id)).map((u) => `   ${u.windowsDisplay}`) : []), '', 'The command completed successfully.'];
         const unit = args[1] ? findUnit(args.slice(1).join(' ')) : undefined;
@@ -49377,48 +49597,6 @@ function withHint(state, hint) {
 }
 
 return { parseMissionState, withHint };
-})();
-__m["services/smb-windows.js"] = (() => {
-const { FsError, canAccess } = __m["bash/vfs.js"];
-const { findWinShare, winShares } = __m["net/win-shares.js"];
-const { defaultLinuxUser, hostUsers } = __m["shells/host-system.js"];
-const { resolveWinPath } = __m["shells/win-path.js"];
-/** The device's own account, as its Windows terminal (windows.ts). */
-function localCred(host) {
-    const users = hostUsers(host);
-    const account = users.find((u) => u.name === defaultLinuxUser(host)) ?? users[0];
-    return { uid: account?.uid ?? 0, gid: account?.gid ?? 0, groups: account?.groups ?? [] };
-}
-/** NetShareEnum: the shares by name, then IPC$; Windows gives no server comment. */
-function windowsShareList(host) {
-    const disks = [...winShares(host)]
-        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
-        .map((s) => ({ name: s.name, type: 'Disk', comment: s.remark }));
-    return { status: 'NT_STATUS_OK', comment: '', shares: [...disks, { name: 'IPC$', type: 'IPC', comment: 'Remote IPC' }] };
-}
-/** Tree connect: the share (its name in any case) and its folder, which must still be there and be entered. */
-function windowsTree(host, fs, name) {
-    const share = findWinShare(host, name);
-    if (!share)
-        return 'NT_STATUS_BAD_NETWORK_NAME';
-    const cred = localCred(host);
-    const path = resolveWinPath(fs, '/', share.path, cred);
-    if (!path.ok)
-        return 'NT_STATUS_BAD_NETWORK_NAME';
-    try {
-        const root = fs.realpath(path.path);
-        if (fs.tryLookup(root)?.kind !== 'dir')
-            return 'NT_STATUS_BAD_NETWORK_NAME';
-        if (!canAccess(fs.lookup(root, cred), cred, 1))
-            return 'NT_STATUS_ACCESS_DENIED';
-        return { root, readOnly: share.access === 'read', cred };
-    }
-    catch (e) {
-        return e instanceof FsError ? 'NT_STATUS_BAD_NETWORK_NAME' : 'NT_STATUS_UNSUCCESSFUL';
-    }
-}
-
-return { windowsShareList, windowsTree };
 })();
 __m["services/smb-server.js"] = (() => {
 const { FsError, canAccess } = __m["bash/vfs.js"];
@@ -67055,8 +67233,68 @@ function sambaPanel(host, app) {
 
 return { sambaPanel };
 })();
+__m["ui/win-share-panel.js"] = (() => {
+/**
+ * Servicios → SMB of a Windows PC or Server with «Compartir archivos e impresoras para redes Microsoft» ticked in its
+ * Configuración tab: the folders of drive C: it shares and what Everyone may do in each (the same as net share,
+ * shells/win-net-share.ts). Shares and remarks are the user's: they reach the page only as text.
+ */
+const { t } = __m["i18n/t.js"];
+const { el } = __m["ui/dom.js"];
+const { button, field, input, message, select, table } = __m["ui/forms.js"];
+const { liveHostPanel } = __m["ui/live.js"];
+const { winShares } = __m["net/win-shares.js"];
+const { publishWinShare, unpublishWinShare } = __m["services/smb-windows.js"];
+const ERRORS = {
+    name: 'wsh.err.name',
+    reserved: 'wsh.err.reserved',
+    exists: 'smb.err.exists',
+    path: 'wsh.err.path',
+    folder: 'wsh.err.folder',
+    remark: 'wsh.err.remark',
+    full: 'wsh.err.full',
+};
+const accessLabel = (a) => t(a === 'full' ? 'wsh.full' : 'wsh.read');
+function addForm(host, app, msg) {
+    const name = input({ placeholder: 'docs', 'aria-label': t('smb.share') });
+    const path = input({ placeholder: 'C:\\home\\alumno\\docs', 'aria-label': t('smb.path') });
+    const remark = input({ 'aria-label': t('smb.comment') });
+    const access = select([['read', t('wsh.read')], ['full', t('wsh.full')]], 'read');
+    const add = () => {
+        const share = { name: name.value.trim(), path: path.value.trim(), remark: remark.value, access: access.value === 'full' ? 'full' : 'read' };
+        const err = publishWinShare(host, share);
+        if (err)
+            msg.error(t(ERRORS[err]));
+        else
+            msg.clear();
+        app.afterCommand();
+    };
+    return [
+        el('h4', {}, t('smb.addShare')),
+        el('div', { class: 'grid3' }, field(t('smb.share'), name), field(t('smb.path'), path, t('wsh.hint')), field(t('smb.comment'), remark)),
+        field(t('wsh.permission'), access),
+        el('div', { class: 'actions' }, button(t('smb.add'), add)),
+    ];
+}
+function winSharePanel(host, app) {
+    // Outside the redraw: publishing redraws the panel (notifyChange) before its error is shown.
+    const msg = message();
+    return liveHostPanel(host, () => [
+        el('p', { class: 'muted' }, t('wsh.intro')),
+        msg.el,
+        el('section', { class: 'subsection' }, el('h3', {}, t('smb.shares')), table(winShares(host), [
+            { label: t('smb.share'), value: (s) => s.name, mono: true },
+            { label: t('smb.path'), value: (s) => s.path, mono: true },
+            { label: t('smb.comment'), value: (s) => s.remark },
+            { label: t('wsh.permission'), value: (s) => accessLabel(s.access) },
+        ], { empty: t('smb.noShares'), onDelete: (s) => { unpublishWinShare(host, s.name); msg.clear(); app.afterCommand(); } }), ...addForm(host, app, msg)),
+    ]);
+}
+
+return { winSharePanel };
+})();
 __m["ui/server-apps.js"] = (() => {
-/** Server → Servicios: SSH first, then DHCP, DNS, HTTP, Correo, Samba (with apt), Configuración and Registros. */
+/** Server → Servicios: SSH first, then DHCP, DNS, HTTP, Correo, Samba (with apt), SMB (Windows sharing), Configuración and Registros. */
 const { t } = __m["i18n/t.js"];
 const { firewallPanel, sysctlPanel } = __m["ui/firewall-panel.js"];
 const { vpnPanel } = __m["ui/vpn-panel.js"];
@@ -67067,6 +67305,7 @@ const { dnsPanel } = __m["ui/server-dns.js"];
 const { filesPanel } = __m["ui/files-panel.js"];
 const { logPanel, packageLogUnits } = __m["ui/log-panel.js"];
 const { sambaPanel } = __m["ui/samba-panel.js"];
+const { winSharePanel } = __m["ui/win-share-panel.js"];
 const { linuxSide } = __m["net/pkg-units.js"];
 const { validateAccess } = __m["services/config.js"];
 const { formatIp } = __m["core/ip.js"];
@@ -67095,6 +67334,8 @@ function servicePanels(server, app) {
         { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
         // apt install samba (Ubuntu): its own panel, beside the files and the logs of smbd and nmbd.
         { id: 'samba', label: t('smb.tab'), render: () => sambaPanel(server, app).root },
+        // Windows Server with file and printer sharing ticked in its Configuración tab.
+        { id: 'winshare', label: t('wsh.tab'), render: () => winSharePanel(server, app).root },
         // Windows Server keeps its configuration in the registry: the files are there only with its GNU/Linux terminal.
         ...(linuxSide(server) ? [{ id: 'files', label: t('srv.files'), render: () => filesPanel(server) }] : []),
         { id: 'log', label: t('srv.log'), render: () => logPanel(server, () => serverLogUnits(server), t('srv.journalHint')) },
@@ -67255,19 +67496,22 @@ return { servicesTab };
 })();
 __m["ui/pc-services.js"] = (() => {
 /**
- * Servicios of a GNU/Linux PC: the kernel parameters and the configuration files always, and what apt's packages
- * bring (net/pkg-units.ts → hostPanels): the nftables firewall, Samba, and the logs of either. A PC has no web GUI (no
- * HTTP server): everything else is done in its terminal.
+ * Servicios of a PC: on Windows the SMB shares while file and printer sharing is ticked; with a GNU/Linux terminal the
+ * kernel parameters and the configuration files always, and what apt's packages bring (net/pkg-units.ts → hostPanels):
+ * the nftables firewall, Samba, and the logs of either. A PC has no web GUI (no HTTP server): everything else is done
+ * in its terminal.
  */
 const { t } = __m["i18n/t.js"];
 const { subnav } = __m["ui/forms.js"];
 const { firewallPanel, sysctlPanel } = __m["ui/firewall-panel.js"];
 const { sambaPanel } = __m["ui/samba-panel.js"];
+const { winSharePanel } = __m["ui/win-share-panel.js"];
 const { filesPanel } = __m["ui/files-panel.js"];
 const { logPanel, packageLogUnits } = __m["ui/log-panel.js"];
 /** `panels`: hostPanels(host), in that order. */
 function pcServicesTab(host, app, panels) {
     const all = [
+        { id: 'winshare', label: t('wsh.tab'), render: () => winSharePanel(host, app).root },
         { id: 'sysctl', label: t('sysctl.tab'), render: () => sysctlPanel(host, app).root },
         { id: 'firewall', label: t('fw.tab'), render: () => firewallPanel(host, app).root },
         { id: 'samba', label: t('smb.tab'), render: () => sambaPanel(host, app).root },

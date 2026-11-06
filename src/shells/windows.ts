@@ -4,6 +4,7 @@
  */
 import { nbtstat } from './win-nbt.ts';
 import { netUse, netView } from './win-smb.ts';
+import { netShare } from './win-net-share.ts';
 import type { PasswordQuestion } from './win-smb.ts';
 import { smbFileCommand } from './win-smb-files.ts';
 import { timestampPromptOn, windowsTimestampPrompt } from './prompt-clock.ts';
@@ -44,6 +45,7 @@ const HELP = [
   '  copy | move | ren        Copy, move or rename files',
   '  Z: | cd /d Z:\\dir        Switch to a drive mapped with net use',
   '  net view | net use       SMB shares and mapped drives',
+  '  net share                Shares of this device (File and Printer Sharing)',
   '  type <file>              Show a file',
   '  edit <file>              Edit a file full screen',
   '  echo <text> [> file]     Print text (> and >> write it to a file)',
@@ -346,6 +348,7 @@ export class WindowsShell extends BaseShell {
   private netCommand(args: string[]): string[] {
     const verb = (args[0] ?? '').toLowerCase();
     if (verb === 'view') return netView(this.host, args[1]);
+    if (verb === 'share') return netShare(this.host, args.slice(1));
     if (verb !== 'use') return this.net(args);
     const r = netUse(this.host, args.slice(1));
     if (Array.isArray(r)) return r;
@@ -356,7 +359,7 @@ export class WindowsShell extends BaseShell {
   private net(args: string[]): string[] {
     const verb = (args[0] ?? '').toLowerCase();
     const s = this.server();
-    if (verb !== 'start' && verb !== 'stop') return ['The syntax of this command is:', '', 'NET [ START | STOP | USE | VIEW ]'];
+    if (verb !== 'start' && verb !== 'stop') return ['The syntax of this command is:', '', 'NET [ SHARE | START | STOP | USE | VIEW ]'];
     if (verb === 'start' && !args[1]) return ['These Windows services are started:', '', ...(s ? UNITS.filter((u) => unitActive(s.services, u.id)).map((u) => `   ${u.windowsDisplay}`) : []), '', 'The command completed successfully.'];
     const unit = args[1] ? findUnit(args.slice(1).join(' ')) : undefined;
     if (!s || !unit) return ['The service name is invalid.', '', 'More help is available by typing NET HELPMSG 2185.'];

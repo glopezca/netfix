@@ -9,6 +9,7 @@ import { hasPackage } from './host-packages.ts';
 import { deviceApps, sambaAllowed } from './device-apps.ts';
 import type { AppsDevice } from './device-apps.ts';
 import { runsServices } from '../devices/kinds.ts';
+import { winShareActive } from './win-shares.ts';
 
 export interface PkgUnit {
   readonly name: string;
@@ -140,12 +141,14 @@ export function sambaOffered(d: AppsDevice): boolean {
 /**
  * What the packages add to the Servicios tab. A GNU/Linux PC: the kernel parameters and the configuration files
  * (always: every kernel has them), then the firewall with nftables, Samba with samba, and the logs of either. A Server
- * or Linux router has every other panel already: samba adds its own. A lab without Samba hides its panel.
+ * or Linux router has every other panel already: samba adds its own. A lab without Samba hides its panel. Windows with
+ * «Compartir archivos e impresoras» ticked (win-shares.ts) has its SMB panel, first on a PC.
  */
 export function hostPanels(d: AppsDevice): string[] {
   const samba = hasPackage(d, 'samba') && sambaOffered(d);
-  if (runsServices(d.kind)) return samba ? ['samba'] : [];
-  if (!linuxSide(d)) return [];
+  const smb = winShareActive(d) ? ['winshare'] : [];
+  if (runsServices(d.kind)) return [...(samba ? ['samba'] : []), ...smb];
+  if (!linuxSide(d)) return smb;
   const nft = unitInstalled(d, NFTABLES_UNIT);
-  return ['sysctl', ...(nft ? ['firewall'] : []), ...(samba ? ['samba'] : []), 'files', ...(nft || samba ? ['log'] : [])];
+  return [...smb, 'sysctl', ...(nft ? ['firewall'] : []), ...(samba ? ['samba'] : []), 'files', ...(nft || samba ? ['log'] : [])];
 }

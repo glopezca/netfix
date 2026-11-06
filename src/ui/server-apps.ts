@@ -1,4 +1,4 @@
-/** Server → Servicios: SSH first, then DHCP, DNS, HTTP, Correo, Samba (with apt), Configuración and Registros. */
+/** Server → Servicios: SSH first, then DHCP, DNS, HTTP, Correo, Samba (with apt), SMB (Windows sharing), Configuración and Registros. */
 import { t } from '../i18n/t.ts';
 import { firewallPanel, sysctlPanel } from './firewall-panel.ts';
 import { vpnPanel } from './vpn-panel.ts';
@@ -11,6 +11,7 @@ import { filesPanel } from './files-panel.ts';
 import { logPanel, packageLogUnits } from './log-panel.ts';
 import type { LogUnit } from './log-panel.ts';
 import { sambaPanel } from './samba-panel.ts';
+import { winSharePanel } from './win-share-panel.ts';
 import { linuxSide } from '../net/pkg-units.ts';
 import type { Server } from '../devices/server.ts';
 import type { Account, WebAppAccess } from '../services/config.ts';
@@ -43,6 +44,8 @@ function servicePanels(server: Server, app: AfterChange): { id: string; label: s
     { id: 'mail', label: t('srv.mail'), render: () => mailPanel(server, app) },
     // apt install samba (Ubuntu): its own panel, beside the files and the logs of smbd and nmbd.
     { id: 'samba', label: t('smb.tab'), render: () => sambaPanel(server, app).root },
+    // Windows Server with file and printer sharing ticked in its Configuración tab.
+    { id: 'winshare', label: t('wsh.tab'), render: () => winSharePanel(server, app).root },
     // Windows Server keeps its configuration in the registry: the files are there only with its GNU/Linux terminal.
     ...(linuxSide(server) ? [{ id: 'files', label: t('srv.files'), render: () => filesPanel(server) }] : []),
     { id: 'log', label: t('srv.log'), render: () => logPanel(server, () => serverLogUnits(server), t('srv.journalHint')) },

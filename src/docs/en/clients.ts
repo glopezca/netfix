@@ -158,6 +158,7 @@ export const CLIENT_DOCS: DocGroup = {
           ['net start [svc] · net stop svc', 'Same as sc, with net’s messages.'],
           ['hostname · whoami · ver · cls · help', 'System and help.'],
           ['cd [folder] · cd .. · cd /d Z:\\folder', 'Changes folder; with no argument shows the current one. Each drive has its own folder: `cd Z:\\x` only changes Z:’s and `cd /d` also changes drive. UNC paths (\\\\srv\\share) cannot be the current folder.'],
+          ['net share · net share NAME=C:\\folder [/grant:everyone,READ|FULL] [/remark:"text"] · net share NAME /delete', 'Shares of this device (with “File and Printer Sharing” ticked in Settings; the same as Services → SMB): the folder must exist and Everyone gets in without a password, with read or full control.'],
           ['net view \\\\SERVER · net use [Z: | *] \\\\srv\\share [/user:name] · net use Z: /delete', 'Shares of an SMB server and drives connected to them; `Z:` switches to the drive, which is used like C: (dir, cd, copy, type, > and >>).'],
           ['dir [path] [/b]', 'Lists a folder (accepts * and ?); /b names only.'],
           ['md folder · rd [/s] [/q] folder', 'Creates folders (intermediate ones too) or removes them; /s with their contents, after asking “Are you sure (Y/N)?” unless /q.'],
