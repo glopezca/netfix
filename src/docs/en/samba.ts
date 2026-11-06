@@ -1,4 +1,4 @@
-/** Documentation: Samba, the file service (smb.conf, accounts, permissions) and how Windows and GNU/Linux use it. */
+/** Documentation: Samba, the file service (smb.conf, accounts, permissions), how Windows and GNU/Linux use it, and sharing folders from Windows. */
 import type { DocPage } from '../types.ts';
 import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from '../types.ts';
 
@@ -92,7 +92,7 @@ export const SAMBA_DOCS: readonly DocPage[] = [
       h('Finding the server by its name'),
       table(['Client', 'How it resolves “srv”'], [
         ['Windows (net view, net use, dir \\\\srv\\…)', 'hosts, DNS and, failing that, LLMNR and NetBIOS at once: SRV’s nmbd answers the broadcast. It works without a DNS server on the same network.'],
-        ['smbclient (GNU/Linux)', 'Samba’s order, `name resolve order = lmhosts wins host bcast`: the system (/etc/hosts and DNS, as nsswitch.conf says) and then a NetBIOS broadcast. It needs no DNS on the same network either.'],
+        ['smbclient (GNU/Linux)', 'Samba’s order, `name resolve order = lmhosts wins host bcast`: with `wins server` in smb.conf it first asks that WINS by unicast (it crosses routers); then the system (/etc/hosts and DNS, as nsswitch.conf says) and a NetBIOS broadcast. It needs no DNS on the same network either. If smb.conf sets another `name resolve order`, it follows it.'],
         ['ping, ssh… (GNU/Linux)', 'Only what /etc/nsswitch.conf says: without `wins` (winbind and libnss-winbind) they do not know NetBIOS names.'],
       ]),
       p('NetBIOS goes by broadcast and **does not cross routers**: from another network, use the IP address (`\\\\172.20.0.10\\publico`) or add the name to a DNS server. A name with dots (srv.aula.lab) is not a NetBIOS name: only the DNS resolves it.'),
@@ -132,6 +132,43 @@ export const SAMBA_DOCS: readonly DocPage[] = [
       ]),
       tip('Watch it in Simulation', 'With the NBNS and SMB filters ticked, `net use` shows the question for the name (broadcast), its answer and the TCP connection to port 445.'),
       exercise('From the GNU/Linux PC to the server', 'In the Samba lab, from PC1, upload a file to [publico] and then read [profes] as luis.', '`sudo apt install smbclient`; `smbclient //srv/publico -N -c \'put /etc/hostname pc1.txt\'` (the file belongs to nobody on SRV). For [profes], first `sudo smbpasswd -a luis` on SRV; then `smbclient //srv/profes -U luis%luis1 -c ls`. smbclient finds “srv” by broadcast although `ping srv` does not.'),
+    ],
+  },
+  {
+    id: 'win-compartir',
+    title: 'Sharing folders from Windows',
+    summary: 'The “File and Printer Sharing for Microsoft Networks” box, Services → SMB and net share, and how the share is used from GNU/Linux and from another Windows.',
+    markdownBase: MD,
+    blocks: [
+      p('A **Windows** device (PC or Windows Server) shares folders over SMB with nothing to install, as a real one does. The **File and Printer Sharing for Microsoft Networks** box of its **Settings** tab decides it, and it starts unticked: it is the Server service bound to the network adapter.'),
+      table(['Box', 'What happens'], [
+        ['Ticked', 'It listens on TCP 139 and 445, registers NAME<20> (`nbtstat -n`, and with the WINS server if it has one) and the **Services → SMB** tab appears.'],
+        ['Unticked', 'Nothing answers on 139 and 445: smbclient gives `NT_STATUS_CONNECTION_REFUSED` and `net view \\\\pc0`, “System error 53”. The shares are kept for when it is ticked again.'],
+      ]),
+      h('Services → SMB and net share'),
+      p('Each share has a name, a folder of drive C: that already exists, a remark and what **Everyone** may do: Read or Full Control. It is sharing **without password protection**: anyone on the network gets in without a password; the files are read and written with the device’s account and never outside the shared folder.'),
+      p('The panel and the terminal are the same thing: what is shared in one shows in the other.'),
+      table(['Command', 'What it does'], [
+        ['net share', 'Lists IPC$ and the shares.'],
+        ['net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL /remark:"My documents"', 'Shares the folder as “docs” with full control for Everyone. Without `/grant`, read only.'],
+        ['net share docs', 'The detail of a share: folder, remark and permission.'],
+        ['net share docs /delete · net share C:\\home\\alumno\\docs /delete', 'Stops sharing it, by name or by folder. The folder is not deleted.'],
+      ]),
+      term('cmd', 'C:\\>net share\n\nShare name   Resource                        Remark\n\n-------------------------------------------------------------------------------\nIPC$                                         Remote IPC\ndocs         C:\\home\\alumno\\docs             My documents\nThe command completed successfully.'),
+      h('Using it from another device'),
+      table(['From', 'Command'], [
+        ['GNU/Linux (smbclient)', '`smbclient -L //pc0 -N` lists the shares; `smbclient //pc0/docs -N -c \'put nota.txt\'` uploads a file.'],
+        ['Another Windows', '`net view \\\\pc0`, `net use Z: \\\\pc0\\docs` or straight `dir \\\\pc0\\docs`.'],
+      ]),
+      table(['Error', 'Cause'], [
+        ['The Server service is not started. (2114)', 'The box is unticked.'],
+        ['The name has already been shared. (2118)', 'There is already a share with that name, or it is one of Windows’ (IPC$, ADMIN$, C$…).'],
+        ['The device or directory does not exist. (2116)', 'The folder does not exist (create it with `md`) or it is a file.'],
+        ['NT_STATUS_ACCESS_DENIED · System error 5', 'Writing to a read-only share.'],
+        ['NT_STATUS_BAD_NETWORK_NAME · System error 67', 'The share does not exist or its folder was deleted.'],
+      ]),
+      tip('In the general settings', '**Settings → Current lab** has the **File and Printer Sharing for Microsoft Networks (Windows)** box for PC and Server, ticked by default. Unticked, the devices of that network do not offer it and share nothing.'),
+      exercise('From Windows to GNU/Linux', 'With a Windows PC and a GNU/Linux PC on the same network, share the folder C:\\home\\alumno\\docs on Windows so that the GNU/Linux PC can leave files in it.', 'On Windows: tick the box in Settings, `md C:\\home\\alumno\\docs` and `net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL` (or Services → SMB with Everyone: Full Control). On GNU/Linux: `sudo apt install smbclient` and `smbclient //NAME/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\home\\alumno\\docs` on Windows shows it.'),
     ],
   },
 ];

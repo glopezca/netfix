@@ -25,7 +25,7 @@ export const OUTLINE: readonly OutlineGroup[] = [
       ['DNS', ['srv-dns', 'srv-dns-names']],
       ['HTTP', ['srv-http', 'srv-apache', 'srv-webadmin', 'srv-roundcube']],
       ['Correo', ['srv-mail']],
-      ['Samba', ['srv-samba', 'srv-samba-clientes']],
+      ['Samba', ['srv-samba', 'srv-samba-clientes', 'win-compartir']],
       ['Configuración y registros', ['srv-config-logs']],
     ],
   },

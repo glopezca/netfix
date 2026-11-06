@@ -1,4 +1,4 @@
-/** Documentación: Samba, el servicio de ficheros (smb.conf, cuentas, permisos) y cómo se usa desde Windows y GNU/Linux. */
+/** Documentación: Samba, el servicio de ficheros (smb.conf, cuentas, permisos), cómo se usa desde Windows y GNU/Linux, y compartir carpetas desde Windows. */
 import type { DocPage } from './types.ts';
 import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from './types.ts';
 
@@ -92,7 +92,7 @@ export const SAMBA_DOCS: readonly DocPage[] = [
       h('Encontrar el servidor por su nombre'),
       table(['Cliente', 'Cómo resuelve «srv»'], [
         ['Windows (net view, net use, dir \\\\srv\\…)', 'hosts, DNS y, si no, LLMNR y NetBIOS a la vez: el nmbd de SRV responde al broadcast. Funciona sin servidor DNS en la misma red.'],
-        ['smbclient (GNU/Linux)', 'El orden de Samba, `name resolve order = lmhosts wins host bcast`: el sistema (/etc/hosts y DNS, según nsswitch.conf) y después un broadcast NetBIOS. Tampoco necesita DNS en la misma red.'],
+        ['smbclient (GNU/Linux)', 'El orden de Samba, `name resolve order = lmhosts wins host bcast`: con `wins server` en smb.conf pregunta primero a ese WINS por unicast (cruza routers); después el sistema (/etc/hosts y DNS, según nsswitch.conf) y un broadcast NetBIOS. Tampoco necesita DNS en la misma red. Si smb.conf escribe otro `name resolve order`, lo sigue.'],
         ['ping, ssh… (GNU/Linux)', 'Solo lo que diga /etc/nsswitch.conf: sin `wins` (winbind y libnss-winbind) no conocen los nombres NetBIOS.'],
       ]),
       p('NetBIOS va por broadcast y **no cruza routers**: desde otra red, usa la dirección IP (`\\\\172.20.0.10\\publico`) o da de alta el nombre en un servidor DNS. Un nombre con puntos (srv.aula.lab) no es un nombre NetBIOS: solo lo resuelve el DNS.'),
@@ -132,6 +132,43 @@ export const SAMBA_DOCS: readonly DocPage[] = [
       ]),
       tip('Verlo en Simulación', 'Con los filtros NBNS y SMB marcados, `net use` muestra la pregunta por el nombre (broadcast), su respuesta y la conexión TCP al puerto 445.'),
       exercise('Del PC GNU/Linux al servidor', 'En el laboratorio de Samba, desde PC1, sube un archivo a [publico] y luego lee [profes] como luis.', '`sudo apt install smbclient`; `smbclient //srv/publico -N -c \'put /etc/hostname pc1.txt\'` (el archivo queda de nobody en SRV). Para [profes], primero `sudo smbpasswd -a luis` en SRV; después `smbclient //srv/profes -U luis%luis1 -c ls`. smbclient encuentra «srv» por broadcast aunque `ping srv` no lo encuentre.'),
+    ],
+  },
+  {
+    id: 'win-compartir',
+    title: 'Compartir carpetas desde Windows',
+    summary: 'La casilla «Compartir archivos e impresoras para redes Microsoft», Servicios → SMB y net share, y cómo se usa el recurso desde GNU/Linux y desde otro Windows.',
+    markdownBase: MD,
+    blocks: [
+      p('Un equipo **Windows** (PC o Windows Server) comparte carpetas por SMB sin instalar nada, como uno real. Lo decide la casilla **Compartir archivos e impresoras para redes Microsoft** de su pestaña **Configuración**, que empieza desmarcada: es el servicio Servidor enlazado al adaptador de red.'),
+      table(['Casilla', 'Qué pasa'], [
+        ['Marcada', 'Escucha en TCP 139 y 445, registra NOMBRE<20> (`nbtstat -n`, y en el servidor WINS si lo tiene) y aparece la pestaña **Servicios → SMB**.'],
+        ['Desmarcada', 'Nadie responde en 139 y 445: smbclient da `NT_STATUS_CONNECTION_REFUSED` y `net view \\\\pc0`, «System error 53». Los recursos se conservan para cuando se vuelva a marcar.'],
+      ]),
+      h('Servicios → SMB y net share'),
+      p('Cada recurso tiene un nombre, una carpeta de la unidad C: que ya exista, un comentario y lo que puede hacer **Todos**: Lectura o Control total. Es el uso compartido **sin protección por contraseña**: cualquiera de la red entra sin contraseña; los archivos se leen y escriben con la cuenta del equipo y nunca fuera de la carpeta compartida.'),
+      p('El panel y la terminal son lo mismo: lo que se comparte en uno aparece en el otro.'),
+      table(['Orden', 'Qué hace'], [
+        ['net share', 'Lista IPC$ y los recursos.'],
+        ['net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL /remark:"Mis documentos"', 'Comparte la carpeta como «docs» con control total para Todos. Sin `/grant`, solo lectura.'],
+        ['net share docs', 'El detalle de un recurso: carpeta, comentario y permiso.'],
+        ['net share docs /delete · net share C:\\home\\alumno\\docs /delete', 'Deja de compartirlo, por nombre o por carpeta. La carpeta no se borra.'],
+      ]),
+      term('cmd', 'C:\\>net share\n\nShare name   Resource                        Remark\n\n-------------------------------------------------------------------------------\nIPC$                                         Remote IPC\ndocs         C:\\home\\alumno\\docs             Mis documentos\nThe command completed successfully.'),
+      h('Usarlo desde otro equipo'),
+      table(['Desde', 'Orden'], [
+        ['GNU/Linux (smbclient)', '`smbclient -L //pc0 -N` lista los recursos; `smbclient //pc0/docs -N -c \'put nota.txt\'` sube un archivo.'],
+        ['Otro Windows', '`net view \\\\pc0`, `net use Z: \\\\pc0\\docs` o directamente `dir \\\\pc0\\docs`.'],
+      ]),
+      table(['Error', 'Causa'], [
+        ['The Server service is not started. (2114)', 'La casilla está desmarcada.'],
+        ['The name has already been shared. (2118)', 'Ya hay un recurso con ese nombre, o es de Windows (IPC$, ADMIN$, C$…).'],
+        ['The device or directory does not exist. (2116)', 'La carpeta no existe (créala con `md`) o es un archivo.'],
+        ['NT_STATUS_ACCESS_DENIED · System error 5', 'Escribir en un recurso de solo lectura.'],
+        ['NT_STATUS_BAD_NETWORK_NAME · System error 67', 'El recurso no existe o se borró su carpeta.'],
+      ]),
+      tip('En la configuración general', '**Configuración → Laboratorio actual** tiene la casilla **Compartir archivos e impresoras para redes Microsoft (Windows)** para PC y Servidor, marcada por defecto. Desmarcada, los equipos de esa red no la ofrecen y no comparten nada.'),
+      exercise('De Windows a GNU/Linux', 'Con un PC Windows y un PC GNU/Linux en la misma red, comparte en Windows la carpeta C:\\home\\alumno\\docs para que el PC GNU/Linux pueda dejar archivos en ella.', 'En Windows: marca la casilla en Configuración, `md C:\\home\\alumno\\docs` y `net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL` (o Servicios → SMB con Todos: Control total). En GNU/Linux: `sudo apt install smbclient` y `smbclient //NOMBRE/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\home\\alumno\\docs` en Windows lo muestra.'),
     ],
   },
 ];
