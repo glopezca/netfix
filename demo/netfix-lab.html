@@ -785,6 +785,7 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; }
 .set-row { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
 .set-group { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 10px 14px 12px; margin: 12px 0; display: grid; gap: 6px; align-content: start; max-width: 520px; }
 .set-group legend { font-weight: 700; padding: 0 4px; }
+.set-group .set-sub { margin: 6px 0 0; font-weight: 600; color: var(--ink-2); }
 .set-choice { display: flex; align-items: center; gap: 8px; min-height: 28px; }
 .set-choice input { flex: none; width: 18px; height: 18px; accent-color: var(--accent); }
 .set-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0 16px; align-items: start; }
@@ -4625,8 +4626,11 @@ const SETTINGS_ES = {
     'dev.services': 'Servicios',
     'dev.terminals': 'Terminales',
     'dev.packages': 'Paquetes',
+    'dev.svcPackages': 'Paquetes de servicios',
+    'set.svcPackages': 'Servicios (instalarlo marca su casilla de servicio en el equipo)',
+    'set.toolPackages': 'Herramientas',
     'set.packages': 'Paquetes del repositorio apt (equipos con GNU/Linux)',
-    'set.packagesHint': 'Desmarcado, apt no lo encuentra y no aparece en la pestaña Configuración de los equipos; quien ya lo tiene lo conserva.',
+    'set.packagesHint': 'Desmarcado, apt no lo encuentra (ni su nombre corto, como ssh o kea) y no aparece en la pestaña Configuración de los equipos, tampoco la casilla de su servicio; quien ya lo tiene lo conserva y puede quitarlo.',
     'dev.changed': 'La ventana se ha reabierto con las pestañas elegidas.',
     'os.title': '¿Qué sistema operativo tiene {name}?',
     'os.body': 'Se activa su terminal y la pila de red de ese sistema. Puedes cambiarlo después en su pestaña Configuración (terminales) y en TCP/IP (sistema operativo).',
@@ -4692,8 +4696,11 @@ const SETTINGS_EN = {
     'dev.services': 'Services',
     'dev.terminals': 'Terminals',
     'dev.packages': 'Packages',
+    'dev.svcPackages': 'Service packages',
+    'set.svcPackages': 'Services (installing one ticks its service box in the device)',
+    'set.toolPackages': 'Tools',
     'set.packages': 'Packages in the apt repository (GNU/Linux devices)',
-    'set.packagesHint': 'When unticked, apt cannot find it and it is not listed in the devices\' Settings tab; a device that already has it keeps it.',
+    'set.packagesHint': 'When unticked, apt cannot find it (nor its short name, such as ssh or kea) and the devices\' Settings tab lists neither it nor its service box; a device that already has it keeps it and can remove it.',
     'dev.changed': 'The window has been reopened with the chosen tabs.',
     'os.title': 'Which operating system does {name} run?',
     'os.body': 'Its terminal and that system\'s network stack are turned on. You can change it later in its Settings tab (terminals) and in TCP/IP (operating system).',
@@ -16802,8 +16809,8 @@ const APT_DOCS = [
             p('mDNS va por multicast (224.0.0.251, puerto UDP 5353) a los equipos del mismo enlace: lo propagan los switches pero no los routers, así que solo funciona dentro de la misma red, y el otro equipo también debe tener avahi-daemon. En modo Simulación verás los paquetes MDNS; un cortafuegos que bloquee el puerto 5353 lo impide.'),
             p('Los equipos **Windows** (PC o Windows Server) traen mDNS de serie, como Windows 10 y 11: sin instalar nada responden a su nombre .local y preguntan por los demás (`ping pc1.local` en la Terminal Windows). Windows pregunta desde el puerto 5353 y la respuesta llega por multicast; nss-mdns, desde un puerto propio y con respuesta directa.'),
             h('Sin terminal: la casilla de cada paquete'),
-            p('La pestaña **Configuración** de cada equipo con GNU/Linux tiene el apartado **Paquetes**: una casilla por paquete de herramientas del catálogo (network-manager, avahi-daemon, libnss-mdns, libnss-resolve, smbclient, samba-common-bin, winbind, libnss-winbind y bind9-utils). Marcarla hace lo mismo que `sudo apt install` (dependencias, scripts de instalación, servicios y /var/log/dpkg.log) sin necesitar red, como la casilla de Samba; desmarcarla, lo mismo que `sudo apt remove`. La terminal y la casilla se siguen: lo que instala una aparece marcado en la otra.'),
-            p('En **Configuración → Laboratorio actual**, **Paquetes del repositorio apt** decide qué paquetes existen en esta red. Uno desmarcado desaparece de la pestaña de los equipos y `apt install` responde «Unable to locate package», como si se hubiera quitado del repositorio; quien ya lo tiene lo conserva y puede quitarlo con `apt remove`.'),
+            p('La pestaña **Configuración** de cada equipo con GNU/Linux tiene dos apartados de casillas, una por paquete del catálogo. **Paquetes de servicios**: los de los servicios que hacen algo en ese equipo (en un Server, openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, rsyslog y samba; un router GNU/Linux añade wireguard-tools; un PC, nftables y samba). La casilla de un paquete de servicio y la de su servicio en el apartado Servicios son la misma: marcar bind9 marca DNS y hace aparecer su panel en Servicios y su página en la gestión web, y desmarcar la casilla DNS es `apt remove bind9`; la casilla Correo instala o quita a la vez postfix, dovecot-imapd y dovecot-pop3d. **Paquetes**: las herramientas (network-manager, avahi-daemon, libnss-mdns, libnss-resolve, smbclient, samba-common-bin, winbind, libnss-winbind y bind9-utils). Marcar cualquiera hace lo mismo que `sudo apt install` (dependencias, scripts de instalación, servicios y /var/log/dpkg.log) sin necesitar red, como la casilla de Samba; desmarcarla, lo mismo que `sudo apt remove`. La terminal y la casilla se siguen: lo que instala una aparece marcado en la otra.'),
+            p('En **Configuración → Laboratorio actual**, **Paquetes del repositorio apt** decide qué paquetes existen en esta red. Están los paquetes de servicios y las herramientas. Uno desmarcado desaparece de la pestaña de los equipos y `apt install` responde «Unable to locate package», como si se hubiera quitado del repositorio, también por su nombre corto (ssh, kea, wireguard); en un equipo que no tiene ese servicio desaparece además su casilla de servicio. Quien ya lo tiene lo conserva y puede quitarlo con `apt remove` o con su casilla. La lista solo limita lo que se instala por su nombre: un paquete quitado que es dependencia de otro (bind9-utils de bind9, samba-common-bin de samba) llega igualmente con él. Un Windows sin terminal GNU/Linux no tiene apt y conserva siempre sus casillas de servicio.'),
             h('NetBIOS y carpetas compartidas: samba'),
             p('Windows trae de serie NetBIOS sobre TCP/IP: responde a su nombre (NOMBRE<00> y WORKGROUP, y NOMBRE<20> si comparte archivos) y resuelve un nombre sin punto por broadcast a su red (UDP 137) si el DNS no lo conoce; con **Compartir archivos e impresoras para redes Microsoft** marcada en su pestaña **Configuración**, escucha además SMB en TCP 139 y 445. Un equipo GNU/Linux hace lo mismo con el servicio **Samba** (paquete samba: smbd y nmbd); `nmblookup NOMBRE` (y `nmblookup -A IP`) consulta NetBIOS desde la terminal, y el nombre propio responde mientras nmbd está en marcha (`localhost` no es un nombre NetBIOS, tampoco en Windows).'),
             p('Samba es un servicio más, como DNS o DHCP, en servidores, routers GNU/Linux y también PCs: smb.conf, las cuentas (`smbpasswd`), los permisos, `net use` desde Windows y `smbclient` desde GNU/Linux se explican en **Servidor → Samba** (páginas «Samba: compartir carpetas» y «Samba: acceder desde Windows y GNU/Linux»), y se practican en el laboratorio «Compartir carpetas con Samba en un servidor GNU/Linux».'),
@@ -19391,8 +19398,8 @@ const APT_DOCS = [
             p('mDNS goes by multicast (224.0.0.251, UDP port 5353) to the devices on the same link: switches pass it on but routers do not, so it only works within the same network, and the other device needs avahi-daemon too. In Simulation mode you will see the MDNS packets; a firewall that blocks port 5353 stops it.'),
             p('**Windows** devices (PC or Windows Server) have mDNS built in, as Windows 10 and 11 do: with nothing installed they answer to their .local name and ask for the others (`ping pc1.local` in the Windows terminal). Windows asks from port 5353 and the answer comes by multicast; nss-mdns, from a port of its own with a direct answer.'),
             h('Without a terminal: one box per package'),
-            p('The **Settings** tab of every device with GNU/Linux has a **Packages** section: one box per tool package of the catalogue (network-manager, avahi-daemon, libnss-mdns, libnss-resolve, smbclient, samba-common-bin, winbind, libnss-winbind and bind9-utils). Ticking it does the same as `sudo apt install` (dependencies, install scripts, services and /var/log/dpkg.log) with no network needed, like the Samba box; unticking it, the same as `sudo apt remove`. The terminal and the box follow each other: what one installs shows ticked in the other.'),
-            p('In **Settings → Current lab**, **Packages in the apt repository** decides which packages exist in this network. One that is unticked leaves the devices’ tab and `apt install` answers “Unable to locate package”, as if it had been taken out of the repository; a device that already has it keeps it and can remove it with `apt remove`.'),
+            p('The **Settings** tab of every device with GNU/Linux has two sections of boxes, one per catalogue package. **Service packages**: those of the services that do something on that device (on a Server, openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd, dovecot-pop3d, nftables, rsyslog and samba; a GNU/Linux router adds wireguard-tools; a PC, nftables and samba). A service package’s box and its service box in the Services section are one: ticking bind9 ticks DNS and brings its panel to Services and its page to the web management, and unticking DNS is `apt remove bind9`; the Mail box installs or removes postfix, dovecot-imapd and dovecot-pop3d together. **Packages**: the tools (network-manager, avahi-daemon, libnss-mdns, libnss-resolve, smbclient, samba-common-bin, winbind, libnss-winbind and bind9-utils). Ticking any of them does the same as `sudo apt install` (dependencies, install scripts, services and /var/log/dpkg.log) with no network needed, like the Samba box; unticking it, the same as `sudo apt remove`. The terminal and the box follow each other: what one installs shows ticked in the other.'),
+            p('In **Settings → Current lab**, **Packages in the apt repository** decides which packages exist in this network. It holds the service packages and the tools. One that is unticked leaves the devices’ tab and `apt install` answers “Unable to locate package”, as if it had been taken out of the repository, by its short name too (ssh, kea, wireguard); on a device without that service its service box goes as well. A device that already has it keeps it and can remove it with `apt remove` or its box. The list only limits what is installed by name: a removed package that another one depends on (bind9-utils for bind9, samba-common-bin for samba) still comes with it. A Windows device without a GNU/Linux terminal has no apt and always keeps its service boxes.'),
             h('NetBIOS and shared folders: samba'),
             p('Windows has NetBIOS over TCP/IP built in: it answers to its name (NAME<00> and WORKGROUP, and NAME<20> when it shares files) and resolves a name without a dot by broadcast to its network (UDP 137) when the DNS does not know it; with **File and Printer Sharing for Microsoft Networks** ticked in its **Settings** tab, it also listens for SMB on TCP 139 and 445. A GNU/Linux device does the same with the **Samba** service (samba package: smbd and nmbd); `nmblookup NAME` (and `nmblookup -A IP`) asks NetBIOS from the terminal, and the device’s own name answers while nmbd is running (`localhost` is not a NetBIOS name, on Windows either).'),
             p('Samba is one more service, like DNS or DHCP, on servers, GNU/Linux routers and PCs too: smb.conf, the accounts (`smbpasswd`), the permissions, `net use` from Windows and `smbclient` from GNU/Linux are explained under **Server → Samba** (the pages “Samba: sharing folders” and “Samba: access from Windows and GNU/Linux”), and practised in the “Sharing folders with Samba on a GNU/Linux server” lab.'),
@@ -27271,7 +27278,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.37.1",
+    "version": "0.38.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -38633,21 +38640,27 @@ return { mooLines };
 })();
 __m["net/lab-packages.js"] = (() => {
 /**
- * The package catalogue of a device's Configuración tab: apt's tool packages, which bring no service panel (those
- * follow the Servicios boxes and the lab features; samba has its own). Each has a box in the device (apt install /
+ * The package catalogue of a device's Configuración tab: apt's service packages (each one is a service box: installing
+ * it ticks the box and brings its panel, apt-state.ts) and its tool packages. Each has a box in the device (apt install /
  * apt remove, apt-install.ts) and one in Configuración → Laboratorio actual: a package the lab takes away is no longer
- * in the archive (apt cannot find it), but a device that has it keeps it. Saved with the topology as the list of
- * packages taken away.
+ * in the archive (apt cannot find it, nor its short name), but a device that has it keeps it. Saved with the topology
+ * as the list of packages taken away.
  */
 const { labViewOf } = __m["net/device-apps.js"];
-/** In the order the boxes list them (bind9utils, the old name of bind9-utils, is left to the terminal). */
-const CATALOG_PACKAGES = ['network-manager', 'avahi-daemon', 'libnss-mdns', 'libnss-resolve', 'smbclient', 'samba-common-bin', 'winbind', 'libnss-winbind', 'bind9-utils'];
+/** The packages of Netfix's services, in the order of the Servicios tab. */
+const SERVICE_PACKAGES = ['openssh-server', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot-imapd', 'dovecot-pop3d', 'nftables', 'wireguard-tools', 'rsyslog', 'samba'];
+/** Tools without a panel (bind9utils, the old name of bind9-utils, is left to the terminal). */
+const TOOL_PACKAGES = ['network-manager', 'avahi-daemon', 'libnss-mdns', 'libnss-resolve', 'smbclient', 'samba-common-bin', 'winbind', 'libnss-winbind', 'bind9-utils'];
+/** In the order the boxes list them. */
+const CATALOG_PACKAGES = [...SERVICE_PACKAGES, ...TOOL_PACKAGES];
+/** Short names that only depend on a catalogue package: they go with it (apt cannot install them without it). */
+const SHORT = { ssh: 'openssh-server', kea: 'kea-dhcp4-server', 'isc-kea': 'kea-dhcp4-server', wireguard: 'wireguard-tools' };
 /** A longer list in a file is not a list of packages (the catalogue has a handful). */
 const MAX_LIST = 64;
 const inCatalogue = (name) => CATALOG_PACKAGES.includes(name);
 /** Not taken away by the lab (a package outside the catalogue always is available). */
 function packageAllowed(off, name) {
-    return !off.includes(name);
+    return !off.includes(SHORT[name] ?? name);
 }
 /** The device's lab keeps the package in its archive. */
 function labHasPackage(d, name) {
@@ -38664,7 +38677,7 @@ function parsePkgsOff(data) {
     return CATALOG_PACKAGES.filter((p) => data.includes(p));
 }
 
-return { CATALOG_PACKAGES, packageAllowed, labHasPackage, setPackageOff, parsePkgsOff };
+return { SERVICE_PACKAGES, TOOL_PACKAGES, CATALOG_PACKAGES, packageAllowed, labHasPackage, setPackageOff, parsePkgsOff };
 })();
 __m["shells/apt-state.js"] = (() => {
 const { runsServices } = __m["devices/kinds.js"];
@@ -68895,22 +68908,79 @@ function promptToggle(locked) {
 
 return { promptToggle };
 })();
+__m["shells/apt-offer.js"] = (() => {
+const { APPS_BY_KIND, deviceApps, setDeviceApps } = __m["net/device-apps.js"];
+const { setAptInstalled } = __m["shells/apt-install.js"];
+const { SERVICE_PACKAGES, TOOL_PACKAGES, labHasPackage } = __m["net/lab-packages.js"];
+const { PKG_UNITS, linuxSide, sambaOffered } = __m["net/pkg-units.js"];
+const { runsServices } = __m["devices/kinds.js"];
+const { findPackage } = __m["shells/apt-catalog.js"];
+/** The catalogue packages of a service box (the mail box has three: postfix, dovecot-imapd, dovecot-pop3d). */
+function servicePackages(id) {
+    return SERVICE_PACKAGES.filter((name) => findPackage(name)?.feature === id);
+}
+function serviceOffered(d, id) {
+    // Without a GNU/Linux terminal there is no apt: the box is the only way, as before.
+    if (!linuxSide(d) || deviceApps(d).includes(id))
+        return true;
+    const pkgs = servicePackages(id);
+    return pkgs.length === 0 || pkgs.some((name) => labHasPackage(d, name));
+}
+/**
+ * A service box ticked or unticked: on a GNU/Linux device it is apt install / apt remove of its packages (so the
+ * package boxes, Servicios, the web GUI and apt agree); a box without packages, or a device without apt, only shows
+ * or hides the panel.
+ */
+function setServiceBox(h, id, on) {
+    // Only a Server's or router's service boxes (a PC's SSH box is its client, not openssh-server).
+    const pkgs = linuxSide(h) && runsServices(h.kind) ? servicePackages(id) : [];
+    if (pkgs.length)
+        for (const name of pkgs)
+            setAptInstalled(h, name, on);
+    if (deviceApps(h).includes(id) === on)
+        return;
+    const rest = deviceApps(h).filter((x) => x !== id);
+    setDeviceApps(h, on ? [...rest, id] : rest);
+}
+/** A service package that does something on this device: a panel of it, or units it runs (nftables and samba on a PC). */
+function effective(h, name) {
+    if (name === 'samba')
+        return sambaOffered(h);
+    const feature = findPackage(name)?.feature;
+    if (feature !== undefined && runsServices(h.kind) && APPS_BY_KIND[h.kind].includes(feature))
+        return true;
+    return PKG_UNITS.some((u) => u.pkg === name && !(u.pcOnly && runsServices(h.kind)));
+}
+/** The catalogue of the device's Configuración tab (a GNU/Linux terminal only): its service packages, then the tools. */
+function devicePackages(h) {
+    if (!linuxSide(h))
+        return [];
+    return [...SERVICE_PACKAGES.filter((name) => effective(h, name)), ...TOOL_PACKAGES];
+}
+
+return { servicePackages, serviceOffered, setServiceBox, devicePackages };
+})();
 __m["ui/device-config.js"] = (() => {
 /**
  * The Configuración tab of a PC, Server or Linux router: which applications, service panels and terminals the device
- * shows, among what its lab allows, whether Samba is installed, and the catalogue of tool packages (lab-packages.ts).
+ * shows, among what its lab allows, whether Samba is installed, and the catalogue of apt packages (service packages
+ * and tools, lab-packages.ts).
  * A change redraws the window with the new tabs (device-windows.ts).
  */
 const { el } = __m["ui/dom.js"];
 const { t, tDynamic } = __m["i18n/t.js"];
-const { APPS_BY_KIND, PC_APPS, deviceApps, labAllows, labViewOf, setDeviceApps } = __m["net/device-apps.js"];
+const { APPS_BY_KIND, PC_APPS, deviceApps, labAllows, labViewOf, sambaAllowed, setDeviceApps } = __m["net/device-apps.js"];
 const { linuxSide, sambaOffered } = __m["net/pkg-units.js"];
 const { hasPackage } = __m["net/host-packages.js"];
 const { setSambaInstalled } = __m["shells/samba-install.js"];
 const { setAptInstalled } = __m["shells/apt-install.js"];
-const { CATALOG_PACKAGES, labHasPackage } = __m["net/lab-packages.js"];
+const { SERVICE_PACKAGES, labHasPackage } = __m["net/lab-packages.js"];
+const { devicePackages, serviceOffered, setServiceBox } = __m["shells/apt-offer.js"];
+const { findPackage } = __m["shells/apt-catalog.js"];
+const { installedPackage } = __m["shells/apt-state.js"];
 const { setWinShareOn, winShareOffered, winShareOn } = __m["net/win-shares.js"];
 const TERMINALS = ['linux', 'windows'];
+const SERVICE_SET = new Set(SERVICE_PACKAGES);
 /** The PC applications and terminals are named as their tabs; the service panels as in Laboratorio actual. */
 const TAB_NAMES = {
     ip: 'win.ip', browser: 'win.browser', mail: 'win.mail', ssh: 'ssh.tab', sftp: 'sftp.tab', linux: 'win.linuxTerm', windows: 'win.cmd',
@@ -68921,7 +68991,7 @@ function appName(h, id) {
 }
 /** Samba (when the lab allows it and the device has a GNU/Linux terminal): installs or removes the package, as apt. */
 function sambaBox(h, changed) {
-    if (!sambaOffered(h))
+    if (!sambaOffered(h) || (!hasPackage(h, 'samba') && !labHasPackage(h, 'samba')))
         return [];
     const input = el('input', { type: 'checkbox', name: 'dev-samba', checked: hasPackage(h, 'samba') });
     input.addEventListener('change', () => { setSambaInstalled(h, input.checked); changed(); });
@@ -68935,12 +69005,14 @@ function winShareBox(h, changed) {
     input.addEventListener('change', () => { setWinShareOn(h, input.checked); changed(); });
     return [el('label', { class: 'set-choice' }, input, t('dev.winshare'))];
 }
-/** The catalogue packages the lab keeps (a GNU/Linux terminal only): each box is apt install / apt remove. */
-function packageBoxes(h, changed) {
-    if (!linuxSide(h))
-        return [];
-    return CATALOG_PACKAGES.filter((name) => labHasPackage(h, name)).map((name) => {
-        const input = el('input', { type: 'checkbox', name: `dev-pkg-${name}`, checked: hasPackage(h, name), 'data-pkg': name });
+/**
+ * The catalogue packages of the device that its lab keeps, or that it has installed (so they can be removed): each box
+ * is apt install / apt remove; a service package's box and its service box always agree (both read apt's state).
+ */
+function packageBoxes(h, names, changed) {
+    const installed = (name) => { const p = findPackage(name); return p !== undefined && installedPackage(h, p); };
+    return names.filter((name) => installed(name) || (labHasPackage(h, name) && (name !== 'samba' || sambaAllowed(h)))).map((name) => {
+        const input = el('input', { type: 'checkbox', name: `dev-pkg-${name}`, checked: installed(name), 'data-pkg': name });
         input.addEventListener('change', () => { setAptInstalled(h, name, input.checked); changed(); });
         return el('label', { class: 'set-choice' }, input, el('code', {}, name));
     });
@@ -68952,16 +69024,13 @@ function deviceConfig(h, changed) {
     const allowed = APPS_BY_KIND[h.kind].filter((id) => labAllows(labViewOf(h).features, h.kind, id));
     const box = (id) => {
         const input = el('input', { type: 'checkbox', name: `dev-${id}`, checked: deviceApps(h).includes(id) });
-        input.addEventListener('change', () => {
-            const rest = deviceApps(h).filter((x) => x !== id);
-            setDeviceApps(h, input.checked ? [...rest, id] : rest);
-            changed();
-        });
+        input.addEventListener('change', () => { setServiceBox(h, id, input.checked); changed(); });
         return el('label', { class: 'set-choice' }, input, appName(h, id));
     };
     const apps = h.kind === 'pc' ? allowed.filter((id) => id === 'ip' || PC_APPS.includes(id)) : allowed.filter((id) => id === 'ip');
-    const services = h.kind === 'pc' ? [] : allowed.filter((id) => id !== 'ip' && !TERMINALS.includes(id));
-    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed), ...winShareBox(h, changed)]), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)), ...group(t('dev.packages'), packageBoxes(h, changed)));
+    const services = h.kind === 'pc' ? [] : allowed.filter((id) => id !== 'ip' && !TERMINALS.includes(id) && serviceOffered(h, id));
+    const packages = devicePackages(h);
+    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed), ...winShareBox(h, changed)]), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)), ...group(t('dev.svcPackages'), packageBoxes(h, packages.filter((n) => SERVICE_SET.has(n)), changed)), ...group(t('dev.packages'), packageBoxes(h, packages.filter((n) => !SERVICE_SET.has(n)), changed)));
 }
 
 return { deviceConfig };
@@ -69635,7 +69704,7 @@ const { t, tDynamic } = __m["i18n/t.js"];
 const { LOCALES, LOCALE_NAMES, getLocale, isLocale } = __m["i18n/locale.js"];
 const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } = __m["ui/preferences.js"];
 const { FEATURES_BY_KIND, featureOn, setFeature } = __m["net/lab-features.js"];
-const { CATALOG_PACKAGES, packageAllowed, setPackageOff } = __m["net/lab-packages.js"];
+const { SERVICE_PACKAGES, TOOL_PACKAGES, packageAllowed, setPackageOff } = __m["net/lab-packages.js"];
 /** The kinds whose windows have settings to switch (the cloud has none). */
 /** The «prompt con hora» box of the page built last, kept in step when a terminal footer changes it. */
 let stampBox;
@@ -69674,7 +69743,7 @@ function kindGroup(host, kind, changed) {
 }
 /** One box per catalogue package, for every kind: unticked, apt and the devices' Configuración no longer offer it. */
 function packagesGroup(host, changed) {
-    const boxes = CATALOG_PACKAGES.map((name) => {
+    const boxes = (names) => names.map((name) => {
         const box = el('input', { type: 'checkbox', checked: packageAllowed(host.pkgsOff(), name), disabled: host.labLocked(), 'data-pkg': name });
         box.addEventListener('change', () => {
             host.setPkgsOff(setPackageOff(host.pkgsOff(), name, !box.checked));
@@ -69682,7 +69751,7 @@ function packagesGroup(host, changed) {
         });
         return el('label', { class: 'set-choice' }, box, el('code', {}, name));
     });
-    return el('fieldset', { class: 'set-group', 'data-kind': 'packages' }, el('legend', {}, t('set.packages')), el('p', { class: 'muted' }, t('set.packagesHint')), ...boxes);
+    return el('fieldset', { class: 'set-group', 'data-kind': 'packages' }, el('legend', {}, t('set.packages')), el('p', { class: 'muted' }, t('set.packagesHint')), el('p', { class: 'set-sub' }, t('set.svcPackages')), ...boxes(SERVICE_PACKAGES), el('p', { class: 'set-sub' }, t('set.toolPackages')), ...boxes(TOOL_PACKAGES));
 }
 function webOption(host, changed) {
     const box = el('input', { type: 'checkbox', checked: host.webHideOff(), disabled: host.labLocked(), 'data-feature': 'webHideOff' });

@@ -6,7 +6,7 @@ import type { Locale } from '../i18n/locale.ts';
 import { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } from './preferences.ts';
 import { FEATURES_BY_KIND, featureOn, setFeature } from '../net/lab-features.ts';
 import type { LabFeatures } from '../net/lab-features.ts';
-import { CATALOG_PACKAGES, packageAllowed, setPackageOff } from '../net/lab-packages.ts';
+import { SERVICE_PACKAGES, TOOL_PACKAGES, packageAllowed, setPackageOff } from '../net/lab-packages.ts';
 import type { DeviceKind } from '../net/topology.ts';
 
 /** The kinds whose windows have settings to switch (the cloud has none). */
@@ -71,7 +71,7 @@ function kindGroup(host: SettingsHost, kind: DeviceKind, changed: () => void): H
 
 /** One box per catalogue package, for every kind: unticked, apt and the devices' Configuración no longer offer it. */
 function packagesGroup(host: SettingsHost, changed: () => void): HTMLElement {
-  const boxes = CATALOG_PACKAGES.map((name) => {
+  const boxes = (names: readonly string[]): HTMLElement[] => names.map((name) => {
     const box = el('input', { type: 'checkbox', checked: packageAllowed(host.pkgsOff(), name), disabled: host.labLocked(), 'data-pkg': name });
     box.addEventListener('change', () => {
       host.setPkgsOff(setPackageOff(host.pkgsOff(), name, !box.checked));
@@ -80,7 +80,9 @@ function packagesGroup(host: SettingsHost, changed: () => void): HTMLElement {
     return el('label', { class: 'set-choice' }, box, el('code', {}, name));
   });
   return el('fieldset', { class: 'set-group', 'data-kind': 'packages' }, el('legend', {}, t('set.packages')),
-    el('p', { class: 'muted' }, t('set.packagesHint')), ...boxes);
+    el('p', { class: 'muted' }, t('set.packagesHint')),
+    el('p', { class: 'set-sub' }, t('set.svcPackages')), ...boxes(SERVICE_PACKAGES),
+    el('p', { class: 'set-sub' }, t('set.toolPackages')), ...boxes(TOOL_PACKAGES));
 }
 
 function webOption(host: SettingsHost, changed: () => void): HTMLElement {

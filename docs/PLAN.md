@@ -1980,3 +1980,25 @@ desmarcada).
 - Los laboratorios grabados no cambian (sus servidores tienen marcados los servicios que usan).
 - Pruebas: `tests/services/installed-only.test.ts` (servidor y router colocados desde la paleta, marcar y desmarcar,
   correo por servicio).
+
+### Fase 57: los paquetes de servicios en el catálogo apt de cada equipo (v0.38.0)
+
+Petición: el catálogo apt de los equipos con GNU/Linux incluye todos los paquetes de servicios de Netfix (ssh,
+kea-dhcp4-server…), instalables y desinstalables desde la pestaña Configuración del equipo, sincronizados con las
+pestañas Servicios, la gestión web y apt en la terminal, y limitables desde la configuración del laboratorio.
+
+- `lab-packages.ts`: `SERVICE_PACKAGES` (openssh-server, kea-dhcp4-server, bind9, apache2, postfix, dovecot-imapd,
+  dovecot-pop3d, nftables, wireguard-tools, rsyslog, samba) + `TOOL_PACKAGES` = `CATALOG_PACKAGES`. Los nombres cortos
+  (ssh, kea, wireguard) siguen a su paquete: quitado openssh-server del repositorio, `apt install ssh` tampoco lo encuentra.
+- `apt-offer.ts`: `devicePackages` (los paquetes de servicio que hacen algo en ese equipo: panel en Server/router,
+  unidades en un PC —nftables, samba—, y después las herramientas) y `serviceOffered` (una casilla de servicio no
+  instalada desaparece si el laboratorio quitó todos sus paquetes; instalada, se queda para poder quitarla).
+- Configuración del equipo: apartados «Paquetes de servicios» y «Paquetes»; cada casilla es `apt install`/`apt remove`
+  (`setAptInstalled`) y lee el estado de apt (`installedPackage`), así que la casilla del paquete y la del servicio
+  siempre coinciden. Laboratorio actual: los mismos dos grupos en «Paquetes del repositorio apt».
+- Pruebas en `tests/net/lab-packages.test.ts` y e2e de Samba (bind9 ↔ DNS, apt remove, paquete quitado por el laboratorio).
+- **Hecho (v0.38.0)**, con la revisión: la casilla de un servicio de Server o router GNU/Linux también es apt
+  (`setServiceBox`: instala o quita sus paquetes; la de Correo, los tres), así que nunca se contradice con las de los
+  paquetes; la casilla SSH de un PC sigue siendo el cliente. Un Windows sin terminal GNU/Linux conserva sus casillas de
+  servicio aunque el laboratorio quite paquetes. `isc-kea` sigue a kea-dhcp4-server. Un paquete quitado que es
+  dependencia de otro llega con él (documentado).
