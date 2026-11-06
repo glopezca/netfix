@@ -15,6 +15,9 @@ import { KEA_DHCP4_CONF } from './apt-defaults.ts';
 import { keaStart } from './service-files.ts';
 import { namedStart } from './named-start.ts';
 import { registerUnitCheck } from '../devices/unit-checks.ts';
+import type { UnitCheck } from '../devices/unit-checks.ts';
+import { adoptEdits, familyOf, followModel, guardCheck, noteEdit } from './hand-edits.ts';
+import type { Family } from './hand-edits.ts';
 import type { DirMount } from '../bash/vfs.ts';
 import { seedRootfs, seedUsers } from '../bash/rootfs.ts';
 import { COREUTILS } from '../bash/coreutils/index.ts';
@@ -136,19 +139,20 @@ function keptUserFile(fs: Vfs, p: string): boolean {
 }
 
 /** The first write of an editable generated file: from then on it is the user's file. */
-function toUserFile(fs: Vfs, path: string, content: string, read: () => string): void {
+function toUserFile(host: Host, fs: Vfs, path: string, content: string, read: () => string): void {
   if (content.length > MAX_FILE) throw new FsError('EFBIG');
   fs.unmountFile(path);
   try {
     fs.writeFile(path, content);
   } catch (err) {
-    fs.mountFile(path, read, 0o644, (c) => { toUserFile(fs, path, c, read); });
+    fs.mountFile(path, read, 0o644, (c) => { toUserFile(host, fs, path, c, read); });
     throw err;
   }
+  noteEdit(host, path);
 }
 
 function writerOf(host: Host, fs: Vfs, p: string, read: () => string): ((c: string) => void) | undefined {
-  if (editable(p)) return (c) => { toUserFile(fs, p, c, read); };
+  if (editable(p)) return (c) => { toUserFile(host, fs, p, c, read); };
   const writer = WRITERS[p];
   return writer ? (c) => { writer(host, c); } : undefined;
 }
@@ -165,6 +169,18 @@ function refreshMounts(host: Host, e: Entry): void {
     e.fs.mountFile(p, () => read(p), PRIVATE_MODE[p] ?? 0o644, writerOf(host, e.fs, p, () => read(p)));
   }
   e.mounted = new Set(now.keys());
+}
+
+/** Servicios changed the model behind the family's files: root's copies of generated files give way to the model's. */
+function regenerate(host: Host, e: Entry, family: Family): void {
+  const read = (p: string): string => linuxFiles(host).get(p) ?? '';
+  for (const p of linuxFiles(host).keys()) {
+    const there = e.fs.tryLookup(p, ROOT, false);
+    if (familyOf(p) !== family || there?.kind !== 'file' || there.generated || e.fs.realpath(dirname(p)) !== dirname(p)) continue;
+    e.fs.usedBytes -= there.content.length;
+    e.fs.mountFile(p, () => read(p), PRIVATE_MODE[p] ?? 0o644, writerOf(host, e.fs, p, () => read(p)));
+    e.mounted.add(p);
+  }
 }
 
 function refreshUsers(host: Host, e: Entry): void {
@@ -246,8 +262,14 @@ function createSystem(host: Host): Entry {
 
 /** The (lazily created) system of a host, with its generated files and accounts brought up to date. */
 export function hostSystem(host: Host): HostSystem {
-  const e = systems.get(host) ?? createSystem(host);
-  systems.set(host, e);
+  let e = systems.get(host);
+  if (!e) {
+    const made = createSystem(host);
+    systems.set(host, made);
+    const server = asServer(host);
+    server?.onChange(() => { followModel(server, (f) => { regenerate(host, made, f); }); });
+    e = made;
+  }
   refreshUsers(host, e);
   refreshMounts(host, e);
   return e;
@@ -291,19 +313,29 @@ export function bootKernel(host: Host, files: readonly FileRecord[]): void {
   for (const path of sysctlFiles(fs)) applySysctlFile(fs, host, path);
 }
 
+/**
+ * A lab just loaded (its services already started with the saved files): the saved service files go with the saved
+ * model, so the next change from Servicios writes them again.
+ */
+export function adoptSavedFiles(server: Server, files: readonly FileRecord[]): void {
+  const families = new Set(files.filter((f) => f.kind === 'file').map((f) => familyOf(f.path)).filter((f) => f !== undefined));
+  if (!families.size) return;
+  hostSystem(server);
+  adoptEdits(server, families);
+}
+
+/** A unit's start or reload reads its files; a host whose system does not exist yet has only the generated ones. */
+function checkFiles(srv: Server, family: Family, run: (fs: Vfs) => UnitCheck): UnitCheck {
+  if (!systems.has(srv) && !(pendingFiles.get(srv) ?? []).some((f) => familyOf(f.path) === family)) return { ok: true };
+  const fs = hostSystem(srv).fs;
+  const e = systems.get(srv);
+  return guardCheck(srv, family, (f) => { if (e) regenerate(srv, e, f); }, () => run(fs));
+}
+
 registerHostFs((host) => hostSystem(host).fs);
-// kea-dhcp4 reads its file when it starts; a host whose system does not exist yet has only the generated one.
-registerUnitCheck('dhcp', (srv) => {
-  const kea = (f: FileRecord): boolean => f.path === KEA_DHCP4_CONF;
-  if (!systems.has(srv) && !(pendingFiles.get(srv) ?? []).some(kea)) return { ok: true };
-  return keaStart(srv, hostSystem(srv).fs);
-});
-// named reads /etc/bind when it starts and at rndc reload.
-registerUnitCheck('dns', (srv, mode) => {
-  const bind = (f: FileRecord): boolean => f.path.startsWith('/etc/bind/');
-  if (!systems.has(srv) && !(pendingFiles.get(srv) ?? []).some(bind)) return { ok: true };
-  return namedStart(srv, hostSystem(srv).fs, mode);
-});
+// kea-dhcp4 reads its file when it starts; named reads /etc/bind when it starts and at rndc reload.
+registerUnitCheck('dhcp', (srv) => checkFiles(srv, 'dhcp', (fs) => keaStart(srv, fs)));
+registerUnitCheck('dns', (srv, mode) => checkFiles(srv, 'dns', (fs) => namedStart(srv, fs, mode)));
 // Before the system exists, a file saved with the topology is read from the pending records (same result either way).
 registerHostFileReader((host, path) => {
   const e = systems.get(host);

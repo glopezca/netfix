@@ -85,6 +85,22 @@ export class Server extends Host {
   /** Starts and stops what changed, logged as systemd 257 does; a unit whose start fails stays stopped, failed. */
   setServices(requested: ServerServices): void {
     const before = this.services;
+    let next: ServerServices;
+    try {
+      next = this.startStop(before, requested);
+    } catch (err) {
+      this.services = before;
+      throw err;
+    }
+    if (before.firewall.enabled && !next.firewall.enabled) this.kernel.netfilter.flush();
+    this.services = next;
+    this.applyServices();
+    for (const u of UNITS) if (!unitActive(before, u.id) && unitActive(next, u.id)) this.logStarted(u);
+    this.changed();
+  }
+
+  /** Stops and starts the units whose state changes (a failed start is left off); a throw puts the model back. */
+  private startStop(before: ServerServices, requested: ServerServices): ServerServices {
     let next = requested;
     for (const u of UNITS) {
       const was = unitActive(before, u.id);
@@ -93,14 +109,12 @@ export class Server extends Host {
       else {
         // Type=simple (Kea): systemd says Started once it runs the process, nothing before.
         if (!u.simple) this.systemd(u.id, `Starting ${unitTitle(u)}...`);
+        // The start reads the files generated from the requested model (a lab loaded, or Servicios saving and starting).
+        this.services = next;
         next = this.startUnit(u, next) ?? setUnitActive(next, u.id, false);
       }
     }
-    if (before.firewall.enabled && !next.firewall.enabled) this.kernel.netfilter.flush();
-    this.services = next;
-    this.applyServices();
-    for (const u of UNITS) if (!unitActive(before, u.id) && unitActive(next, u.id)) this.logStarted(u);
-    this.changed();
+    return next;
   }
 
   private logStop(u: UnitInfo): void {
@@ -290,9 +304,7 @@ export class Server extends Host {
     this.setServices(setUnitActive(this.services, id, on));
   }
 
-  unitByName(name: string): UnitId | undefined {
-    return findUnit(name)?.id;
-  }
+  unitByName(name: string): UnitId | undefined { return findUnit(name)?.id; }
 
   private applyServices(): void {
     const s = this.services;
