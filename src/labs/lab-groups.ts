@@ -8,7 +8,7 @@ export const LAB_GROUPS: readonly (readonly [LabGroupId, readonly string[]])[] =
   ['dhcp', ['basico', 'reservas', 'relay', 'cliente']],
   ['switching', ['vlans', 'stp', 'snooping']],
   ['services', ['servidores', 'ssh-sftp', 'samba']],
-  ['names', ['nombres-lan', 'nombres-redes', 'dns-reenvio']],
+  ['names', ['nombres-lan', 'nombres-redes', 'nombres-resolved', 'dns-reenvio']],
   ['internet', ['internet', 'vpn-ipsec', 'vpn-wireguard']],
   ['security', ['linux-dmz', 'bastionado']],
 ];
