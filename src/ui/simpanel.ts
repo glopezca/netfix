@@ -4,7 +4,8 @@ import { el, svg, clear, prefersReducedMotion } from './dom.ts';
 import type { Canvas } from './canvas.ts';
 import type { Topology } from '../net/topology.ts';
 import type { SimEvent } from '../net/network.ts';
-import type { Frame, AppPayload, NbnsMessage } from '../net/packets.ts';
+import type { Frame, AppPayload } from '../net/packets.ts';
+import { nbnsFields, nbnsSummary } from './pdu-nbns.ts';
 import { frameProtocol, tcpService } from '../net/packets.ts';
 import { formatIp, formatMask } from '../core/ip.ts';
 import { formatMacCisco, formatHexId } from '../core/mac.ts';
@@ -217,19 +218,10 @@ function typeName(f: Frame): string {
   const app = frameProtocol(f);
   if (dns) return `${app} ${dns.response ? `${dns.rcode ?? 'NOERROR'}` : `${dns.qtype}?`} ${dns.qname}`;
   const nb = f.ip?.udp?.nbns;
-  if (nb) return `NBNS ${nb.type === 'NBSTAT' ? 'NBSTAT' : nb.response ? 'Response' : 'Query'} ${nbLabel(nb)}`;
+  if (nb) return nbnsSummary(nb);
   const tcp = f.ip?.tcp;
   if (tcp) return tcp.data ? `${tcp.data.app} ${appSummary(tcp.data)}` : `TCP ${tcp.flags.join(',')} ${tcpService(tcp)}`;
   return 'IPv4';
-}
-
-const nbLabel = (n: { readonly name: string; readonly suffix: number }): string => (n.name === '*' ? '*' : `${n.name}<${n.suffix.toString(16).toUpperCase().padStart(2, '0')}>`);
-
-function nbnsFields(n: NbnsMessage): [string, string | undefined][] {
-  return [['Transaction ID', `0x${n.id.toString(16).toUpperCase().padStart(4, '0')}`], ['QR', n.response ? t('pdu.response') : t('pdu.query')],
-    [t('pdu.question'), `${nbLabel(n)} ${n.type}`], ['B-node (broadcast)', n.broadcast ? t('pdu.yes') : undefined],
-    [t('pdu.answers'), n.addresses?.map(formatIp).join(', ')],
-    [t('pdu.nbNames'), n.names?.map((x) => `${nbLabel(x)}${x.group ? ' GROUP' : ''}`).join(' · ')], ['MAC', n.mac ? formatMacCisco(n.mac) : undefined]];
 }
 
 function kv(rows: readonly [string, string | undefined][]): HTMLElement {
