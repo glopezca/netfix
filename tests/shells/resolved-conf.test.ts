@@ -1,5 +1,5 @@
 /**
- * /etc/systemd/resolved.conf and the systemd-resolved unit (v0.35): the file is read as systemd does (sections, later
+ * /etc/systemd/resolved.conf and the systemd-resolved unit (v0.36): the file is read as systemd does (sections, later
  * assignments win, warnings in the journal) only when the unit starts or the host boots, so an edit needs a restart.
  */
 import { test } from 'node:test';

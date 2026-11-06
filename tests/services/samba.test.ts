@@ -184,3 +184,16 @@ test('the Samba lab keeps its shares across a saved file, and the Files view lis
   run(pc1, 'apt remove -y samba nftables');
   assert.deepEqual(configSources(pc1).map((s) => s.id), ['sysctl']);
 });
+
+test('smbclient resolves a bare name as Samba does (name resolve order = lmhosts wins host bcast): NetBIOS broadcast after the DNS', () => {
+  const { srv, pc1 } = lab();
+  run(pc1, 'apt install -y smbclient');
+  run(srv, "printf 'luis1\\nluis1\\n' | smbpasswd -s -a luis");
+  assert.match(run(pc1, 'ping -c 1 srv; echo "status $?"'), /status 2$/, 'glibc does not know srv (no wins in nsswitch.conf)');
+  run(srv, 'systemctl stop nmbd');
+  assert.match(run(pc1, 'smbclient -N -L srv 2>&1; echo "status $?"'), /do_connect: Connection to srv failed \(Error NT_STATUS_UNSUCCESSFUL\)\nstatus 1$/, 'without nmbd nobody answers the name');
+  run(srv, 'systemctl start nmbd');
+  assert.match(run(pc1, "smbclient //srv/publico -U luis%luis1 -c ls"), /^ {2}\. +D +0 /m, 'smbclient finds srv by broadcast');
+  assert.match(run(pc1, 'smbclient -N -L SRV'), /\tpublico         Disk/, 'NetBIOS names have no case');
+  assert.match(run(pc1, 'smbclient -N -L srv.aula.lab 2>&1; true'), /NT_STATUS_UNSUCCESSFUL/, 'a name with dots is not a NetBIOS name');
+});

@@ -1591,7 +1591,39 @@ Tres fallos menores de la revisión de la fase 50, con sus pruebas en `tests/ser
   raíz; una ruta de recurso que pasa por un archivo da el error de ruta en vez de una excepción; borrar un recurso solo
   borra recursos (no `[global]`). `cd nada\..` funciona como en Windows (que resuelve `..` sobre el texto).
 
-### Fase 53: resolución de nombres en GNU/Linux con systemd-resolved (DNS, LLMNR, mDNS), NSS y WINS (v0.35.0)
+### Fase 53: Samba como servicio de cada tipo de equipo, smbclient por NetBIOS y ayuda de Samba (v0.35.0)
+
+Petición: (1) en el laboratorio Samba, `net use //srv/publico Z:` y después `Z:` no cambia de unidad; (2) desde PC1,
+`smbclient //srv/publico` da `do_connect: Connection to srv failed (Error NT_STATUS_UNSUCCESSFUL)` aunque en SRV
+funciona; (3) Samba, servicio integrado de servidores, routers GNU/Linux y PCs, desactivado en cada equipo y activado
+(desactivable) en la configuración del laboratorio; apt install/remove de un servicio marca o desmarca su casilla y
+hace aparecer o desaparecer sus pestañas en Servicios y en la gestión web; (4) ayuda exhaustiva de Samba al nivel de
+DNS y ayuda de apt reformulada.
+
+- **(1) No es un fallo de Netfix, es la sintaxis de Windows:** `net use` pide `net use Z: \\srv\publico` (letra
+  primero, barras invertidas). Con `//srv/publico Z:` muestra su ayuda y no conecta nada, así que `Z:` responde «The
+  system cannot find the drive specified.»; con `\\srv\publico Z:` conecta sin letra (Z: es la contraseña), como
+  Windows. Se documenta en «Samba: acceder desde Windows y GNU/Linux».
+- **(2) Fallo de Netfix:** smbclient resolvía como glibc (nsswitch.conf, sin `wins`), pero Samba usa su propio
+  `name resolve order = lmhosts wins host bcast`: tras el sistema, un broadcast NetBIOS que responde el nmbd del
+  servidor. `src/shells/smbclient.ts` lo hace ahora para nombres de una etiqueta (≤ 15 caracteres); sin nmbd en el
+  servidor, o con un nombre con puntos que el DNS no conoce, sigue dando NT_STATUS_UNSUCCESSFUL, como el real.
+- **(3) Samba, función del laboratorio por tipo:** `samba` en `FEATURES_BY_KIND` de PC, Servidor y Router GNU/Linux
+  (activada por defecto; casilla «Servicio Samba (compartir ficheros)» de cada tipo). Sustituye a la casilla única
+  «Permitir instalación de Samba» (`allowSamba`); un archivo de la v0.34 con `sambaOff` desactiva Samba en los tres
+  tipos. En cada equipo la casilla Samba sigue al paquete (desmarcada hasta instalarlo). Una prueba recorre todos los
+  paquetes de servicio (openssh-server, kea, bind9, apache2, postfix, nftables, samba): apt install marca la casilla y
+  activa el panel y la página web; apt remove los quita (la página queda en gris, u oculta con la opción del laboratorio).
+- **(4) Ayuda:** Servidor → Samba: «Samba: compartir carpetas» (activarlo, smbd y nmbd, smb.conf, cuentas, dos capas
+  de permisos, panel y gestión web, ejercicio) y «Samba: acceder desde Windows y GNU/Linux» (resolución de nombres de
+  cada cliente, net use y sus trampas, smbclient, tabla de errores, ejercicio), es/en. apt: Samba en la tabla de
+  servicios, casilla y paquete siempre a la par, lo detallado pasa a las páginas de Samba. Configuración: Samba en las
+  tablas.
+- **Hecho (v0.35.0)**, con la revisión: las listas de `features` se guardan con `featuresV: 2`; una lista sin esa marca
+  (guardada antes de la v0.35, que nunca nombra Samba) deja Samba activado en vez de desactivarlo sin querer, y
+  `sambaOff` sigue desactivándolo. smbclient pregunta por NOMBRE<20> (el servicio de ficheros), como el real.
+
+### Fase 54: resolución de nombres en GNU/Linux con systemd-resolved (DNS, LLMNR, mDNS), NSS y WINS (v0.36.0)
 
 Petición: que la terminal GNU/Linux resuelva nombres con systemd-resolved (DNS, mDNS y LLMNR) y con NetBIOS, integrado
 en NSS y con WINS; documentarlo en la Ayuda y comprobar que funciona con `resolvectl`.
@@ -1800,7 +1832,7 @@ Decisiones del usuario (no se reabren):
     - configurar el WINS de WIN-B y comprobarlo con `ipconfig /all`.
 14. `test:` e2e (`scripts/e2e-names.mjs`): resolved.conf con nano y restart, `resolvectl status`, getent, nmblookup,
     el WINS en la UI y las filas de Simulación. Se ajustan `e2e-dns.mjs` y `e2e-docs.mjs` si comprueban textos viejos.
-15. `chore: v0.35.0`: la versión, about-data y PLAN.md.
+15. `chore: v0.36.0`: la versión, about-data y PLAN.md.
 
 `security-reviewer` (opus) revisa los commits 3, 7, 8 y 10. La cobertura debe ser ≥ 80 % en `wins.ts`,
 `resolved-conf.ts`, `nss-resolve.ts`, `nss-hosts.ts` y `getent.ts`.
@@ -1828,7 +1860,7 @@ Decisiones del usuario (no se reabren):
 - sin opción 44 en Kea ni en el DHCP de PT;
 - sin IPv6.
 
-- **Hecho (v0.35.0)**, con la revisión de seguridad: el servidor WINS acota el TTL a [6 h, 6 días], guarda como mucho
+- **Hecho (v0.36.0)**, con la revisión de seguridad: el servidor WINS acota el TTL a [6 h, 6 días], guarda como mucho
   512 registros (después responde RFS_ERR) y solo atiende consultas unicast con RD; Windows refresca a la mitad del TTL
   concedido con un único temporizador por equipo y usa como mucho dos servidores WINS de la concesión. La vista PDU de
   NBNS (`src/ui/pdu-nbns.ts`) traduce el opcode y el código de respuesta. Laboratorio «Nombres en GNU/Linux:

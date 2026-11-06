@@ -28,6 +28,7 @@ import { DNS_DOCS } from './dns.ts';
 import { HTTP_DOCS } from './http.ts';
 import { MAIL_DOCS } from './mail.ts';
 import { APT_DOCS } from './apt.ts';
+import { SAMBA_DOCS } from './samba.ts';
 import { NETFIX_DOCS as NETFIX_EN } from './en/netfix.ts';
 import { SETTINGS_DOCS as SETTINGS_EN } from './en/settings.ts';
 import { IOS_DOCS as IOS_EN } from './en/ios.ts';
@@ -50,6 +51,7 @@ import { DNS_DOCS as DNS_EN } from './en/dns.ts';
 import { HTTP_DOCS as HTTP_EN } from './en/http.ts';
 import { MAIL_DOCS as MAIL_EN } from './en/mail.ts';
 import { APT_DOCS as APT_EN } from './en/apt.ts';
+import { SAMBA_DOCS as SAMBA_EN } from './en/samba.ts';
 import { NAMES_DOCS } from './names.ts';
 import { NAMES_DOCS as NAMES_EN } from './en/names.ts';
 import { OUTLINE } from './outline.ts';
@@ -83,7 +85,7 @@ export interface DocSet {
 }
 
 const ES_PAGES: readonly DocPage[] = [...NETFIX_DOCS.pages, ...SETTINGS_DOCS, ...IOS_DOCS.pages, ...STP_DOCS, ...IOS_DHCP_DOCS, ...IOS_SEC_DOCS, ...SERVICE_DOCS.pages, ...DNS_DOCS, ...HTTP_DOCS, ...MAIL_DOCS, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
-    ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...APT_DOCS, ...NAMES_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE];
+    ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...APT_DOCS, ...SAMBA_DOCS, ...NAMES_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE];
 
 const ES: DocSet = {
   groups: arrange(OUTLINE, [...ES_PAGES, ...labDocs('es-ES', ES_PAGES)]),
@@ -104,7 +106,7 @@ const ES: DocSet = {
 };
 
 const EN_PAGES: readonly DocPage[] = [...NETFIX_EN.pages, ...SETTINGS_EN, ...IOS_EN.pages, ...STP_EN, ...IOS_DHCP_EN, ...IOS_SEC_EN, ...SERVICE_EN.pages, ...DNS_EN, ...HTTP_EN, ...MAIL_EN, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
-    ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...APT_EN, ...NAMES_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN];
+    ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...APT_EN, ...SAMBA_EN, ...NAMES_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN];
 
 const EN: DocSet = {
   groups: arrange(OUTLINE_EN, [...EN_PAGES, ...labDocs('en-GB', EN_PAGES)]),

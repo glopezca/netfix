@@ -7,6 +7,7 @@ import type { CommandFn, Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { hasPackage } from '../net/host-packages.ts';
 import { resolveHost } from './net-tools.ts';
+import { FILE_SERVER, nbnsResolve } from '../net/netbios.ts';
 import { ANONYMOUS, smbCall } from '../clients/smb-client.ts';
 import type { SmbClientStatus, SmbLogin } from '../clients/smb-client.ts';
 import { smbCommand } from './smbclient-cmds.ts';
@@ -75,9 +76,19 @@ function connectError(ctx: Ctx, server: string, status: SmbClientStatus): number
   return 1;
 }
 
+/** A NetBIOS name: one label of up to 15 characters. */
+const NETBIOS_NAME = /^[^.\s]{1,15}$/;
+
+/**
+ * Samba's «name resolve order» (lmhosts wins host bcast): no lmhosts file nor WINS server here, so the system
+ * resolver (/etc/hosts, DNS… as nsswitch.conf says) and then a NetBIOS broadcast, which nmbd answers.
+ */
 function serverIp(ctx: Ctx, host: Host, server: string): number | null {
   const r = resolveHost(host, server, 'linux');
   if (r.kind === 'ip') return r.ip;
+  // smbclient asks for the server's file service, NAME<20>.
+  const bcast = NETBIOS_NAME.test(server) ? nbnsResolve(host, server, FILE_SERVER) : undefined;
+  if (bcast !== undefined) return bcast;
   ctx.err(`do_connect: Connection to ${server} failed (Error NT_STATUS_UNSUCCESSFUL)\n`);
   return null;
 }

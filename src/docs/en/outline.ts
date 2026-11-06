@@ -13,6 +13,7 @@ export const OUTLINE: readonly OutlineGroup[] = [
       ['DNS', ['srv-dns', 'srv-dns-names']],
       ['HTTP', ['srv-http', 'srv-apache', 'srv-webadmin', 'srv-roundcube']],
       ['Mail', ['srv-mail']],
+      ['Samba', ['srv-samba', 'srv-samba-clientes']],
       ['Configuration and logs', ['srv-config-logs']],
     ],
   },

@@ -1,5 +1,5 @@
 /**
- * /etc/nsswitch.conf (v0.35): the «hosts:» line with its [STATUS=action] items as glibc reads them, and the maintainer
+ * /etc/nsswitch.conf (v0.36): the «hosts:» line with its [STATUS=action] items as glibc reads them, and the maintainer
  * scripts of libnss-resolve (resolve [!UNAVAIL=return] before dns) and libnss-mdns (mdns4_minimal before resolve or dns).
  */
 import { test } from 'node:test';

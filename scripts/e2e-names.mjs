@@ -1,4 +1,4 @@
-// End-to-end check (v0.35) of the lab «Nombres en GNU/Linux: systemd-resolved, NSS y WINS»: on LNX-A, LLMNR=yes in
+// End-to-end check (v0.36) of the lab «Nombres en GNU/Linux: systemd-resolved, NSS y WINS»: on LNX-A, LLMNR=yes in
 // resolved.conf with nano and a restart of systemd-resolved, resolvectl status and query, and getent without
 // libnss-resolve; on LNX-B, nmblookup -U -R and getent through the NSS source wins; on WIN-B, the WINS server of the
 // TCP/IP tab, ipconfig /all, and the NBNS registration rows and PDU in Simulación.

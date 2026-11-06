@@ -4608,8 +4608,7 @@ const SETTINGS_ES = {
     'set.feat.windows': 'Terminal Windows',
     'set.webHideOff': 'Ocultar en la gestión web de servidores y routers GNU/Linux las opciones desactivadas',
     'set.webHideOffHint': 'Sin marcar, aparecen en gris y no se pueden usar.',
-    'set.samba': 'Permitir instalación de Samba',
-    'set.sambaHint': 'Desmarcada, apt no encuentra el paquete samba y los equipos no muestran la casilla ni el panel de Samba (lo ya instalado se queda, sin panel).',
+    'set.feat.samba': 'Servicio Samba (compartir ficheros)',
     'dev.tab': 'Configuración',
     'dev.intro': 'Qué muestra este equipo. Lo que el laboratorio desactiva (Configuración → Laboratorio actual) no aparece aquí.',
     'dev.apps': 'Aplicaciones',
@@ -4671,8 +4670,7 @@ const SETTINGS_EN = {
     'set.feat.windows': 'Windows terminal',
     'set.webHideOff': 'Hide disabled options in the web management of servers and GNU/Linux routers',
     'set.webHideOffHint': 'When unticked, they are shown greyed out and cannot be used.',
-    'set.samba': 'Allow installing Samba',
-    'set.sambaHint': 'When unticked, apt cannot find the samba package and devices show neither the Samba box nor its panel (what is already installed stays, without its panel).',
+    'set.feat.samba': 'Samba service (file sharing)',
     'dev.tab': 'Settings',
     'dev.intro': 'What this device shows. Whatever the lab turns off (Settings → Current lab) is not listed here.',
     'dev.apps': 'Applications',
@@ -5956,14 +5954,17 @@ function resolvedStartLines(hostname) {
 return { RESOLVED_CONF, RESOLVED_DEFAULTS, parseSupport, parseResolvedConf, DEFAULT_RESOLVED_CONF, resolvedStartLines };
 })();
 __m["net/lab-features.js"] = (() => {
-/** The service panels of a Server or Linux router, each switched on its own. */
+/**
+ * The service panels of a Server or Linux router, each switched on its own. Samba is a lab feature of PCs too, but its
+ * box in a device follows the samba package (apt or the box install it), not the device's list of panels.
+ */
 const SERVICE_IDS = ['ssh', 'dhcp', 'dns', 'http', 'mail', 'files', 'log'];
-const FEATURE_IDS = ['ip', 'apps', 'browser', 'sftp', ...SERVICE_IDS, 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'];
+const FEATURE_IDS = ['ip', 'apps', 'browser', 'sftp', ...SERVICE_IDS, 'samba', 'sysctl', 'firewall', 'vpn', 'cli', 'web', 'linux', 'windows'];
 /** What can be switched on each kind, in the order the settings list them. */
 const FEATURES_BY_KIND = {
-    pc: ['ip', 'apps', 'linux', 'windows'],
-    server: ['ip', ...SERVICE_IDS, 'sysctl', 'firewall', 'linux', 'windows'],
-    linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'linux', 'windows'],
+    pc: ['ip', 'apps', 'samba', 'linux', 'windows'],
+    server: ['ip', ...SERVICE_IDS, 'samba', 'sysctl', 'firewall', 'linux', 'windows'],
+    linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'samba', 'linux', 'windows'],
     router: ['cli', 'web'],
     switch: ['cli', 'web'],
     cloud: [],
@@ -6002,6 +6003,14 @@ function setFeature(features, kind, id, on) {
     const rest = Object.fromEntries(Object.entries(features).filter(([k]) => k !== kind));
     return sameAsDefault(kind, next) ? rest : { ...rest, [kind]: next };
 }
+/** Samba on for every kind that has it (a list saved before the feature existed). */
+function withSamba(features) {
+    return KINDS.filter((k) => FEATURES_BY_KIND[k].includes('samba')).reduce((f, k) => setFeature(f, k, 'samba', true), features);
+}
+/** Samba off for every kind that has it (a v0.34 file with «sambaOff»). */
+function withoutSamba(features) {
+    return KINDS.filter((k) => FEATURES_BY_KIND[k].includes('samba')).reduce((f, k) => setFeature(f, k, 'samba', false), features);
+}
 /** The `features` of a topology file (untrusted): known kinds, known features of that kind, no repeats. */
 const isService = (f) => SERVICE_IDS.includes(f);
 function parseFeatures(data) {
@@ -6020,8 +6029,19 @@ function parseFeatures(data) {
     }
     return out;
 }
+/** The `featuresV` of a file whose lists know Samba (v0.35). */
+const FEATURES_V = 2;
+/**
+ * The lab settings of a file. A list saved before v0.35 never names Samba, which did not exist yet: Samba stays on,
+ * unless the file says «sambaOff» (v0.34's single switch), which turns it off for every kind.
+ */
+function fileFeatures(data, version, sambaOff) {
+    const parsed = parseFeatures(data);
+    const known = version === FEATURES_V ? parsed : withSamba(parsed);
+    return sambaOff === true ? withoutSamba(known) : known;
+}
 
-return { SERVICE_IDS, FEATURE_IDS, FEATURES_BY_KIND, featuresOf, featureOn, setFeature, parseFeatures };
+return { SERVICE_IDS, FEATURE_IDS, FEATURES_BY_KIND, featuresOf, featureOn, setFeature, withSamba, withoutSamba, parseFeatures, FEATURES_V, fileFeatures };
 })();
 __m["net/device-apps.js"] = (() => {
 /**
@@ -6046,7 +6066,7 @@ const PC_APPS = ['browser', 'mail', 'ssh', 'sftp'];
 const PC_OFF = ['mail', 'sftp'];
 /** A longer list in a file is not a list of applications. */
 const MAX_LIST = 64;
-const NO_LAB = { features: {}, webHideOff: false, samba: true };
+const NO_LAB = { features: {}, webHideOff: false };
 const chosen = new WeakMap();
 const labs = new WeakMap();
 /**
@@ -6104,9 +6124,9 @@ function bindLab(d, view) {
 function labViewOf(d) {
     return labs.get(d)?.() ?? NO_LAB;
 }
-/** The device's lab lets samba be installed (what is already installed stays, without its panel). */
+/** The lab's Samba feature for the device's kind: apt finds no samba package when off (what is installed stays, without its panel). */
 function sambaAllowed(d) {
-    return labViewOf(d).samba;
+    return featureOn(labViewOf(d).features, d.kind, 'samba');
 }
 /** Allowed by the device's lab and switched on in the device. */
 function appAvailable(d, id) {
@@ -14387,8 +14407,8 @@ const SETTINGS_DOCS = [
             h('Laboratorio actual'),
             p('Decide qué pestañas y paneles muestran las ventanas de cada tipo de equipo. **Equipo** (nombre de host) e **Interfaces** están siempre.'),
             table(['Equipo', 'Activado por defecto', 'Se puede activar'], [
-                ['PC', 'TCP/IP, aplicaciones (navegador, correo, SSH, SFTP), terminal GNU/Linux y terminal Windows', '—'],
-                ['Servidor', 'TCP/IP, cada servicio (SSH, DHCP, DNS, HTTP, correo, ficheros y registros), parámetros del kernel, firewall, terminal GNU/Linux y terminal Windows', '—'],
+                ['PC', 'TCP/IP, aplicaciones (navegador, correo, SSH, SFTP), servicio Samba, terminal GNU/Linux y terminal Windows', '—'],
+                ['Servidor', 'TCP/IP, cada servicio (SSH, DHCP, DNS, HTTP, correo, ficheros, registros y Samba), parámetros del kernel, firewall, terminal GNU/Linux y terminal Windows', '—'],
                 ['Router GNU/Linux', 'Parámetros del kernel, firewall, VPN, cada servicio y terminal GNU/Linux', 'Terminal Windows'],
                 ['Router y switch IOS', 'CLI y gestión web', '—'],
             ]),
@@ -14396,9 +14416,9 @@ const SETTINGS_DOCS = [
             h('La pestaña Configuración de cada equipo'),
             p('Cada PC, servidor y router GNU/Linux tiene además su propia pestaña **Configuración**: casillas para sus aplicaciones, servicios y terminales. Solo lista lo que el laboratorio permite (lo de arriba es el máximo), y al cambiar una casilla la ventana se reabre en esa pestaña con las pestañas nuevas.'),
             table(['Equipo', 'Activado por defecto', 'Desactivado por defecto'], [
-                ['PC', 'TCP/IP, navegador, cliente SSH y el terminal de su sistema operativo', 'Correo, Archivos (SFTP) y el terminal del otro sistema'],
-                ['Servidor', 'Colocado desde la paleta: configuración IP, ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre (sin casilla)', 'Todos los servicios y el firewall: se marcan aquí o se instalan con apt (Instalar paquetes con apt)'],
-                ['Router GNU/Linux', 'Colocado desde la paleta: ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre', 'Servicios, firewall y VPN (casilla o apt)'],
+                ['PC', 'TCP/IP, navegador, cliente SSH y el terminal de su sistema operativo', 'Correo, Archivos (SFTP), Samba (con terminal GNU/Linux) y el terminal del otro sistema'],
+                ['Servidor', 'Colocado desde la paleta: configuración IP, ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre (sin casilla)', 'Todos los servicios, Samba incluido, y el firewall: se marcan aquí o se instalan con apt (Instalar paquetes con apt)'],
+                ['Router GNU/Linux', 'Colocado desde la paleta: ficheros, registros y el terminal GNU/Linux. Parámetros del kernel siempre', 'Servicios (Samba incluido), firewall y VPN (casilla o apt)'],
             ]),
             p('En los laboratorios grabados, de cada pareja de PCs del mismo switch uno es Windows y el otro GNU/Linux; el correo solo está en los PCs con cuenta configurada y SFTP en PC1 de «SSH y SFTP con claves»; cada servidor muestra solo los servicios que arranca (más ficheros y registros).'),
             p('Los servidores de los laboratorios grabados y de los archivos guardados conservan los servicios que tenían.'),
@@ -16570,7 +16590,7 @@ const APT_DOCS = [
         summary: 'apt de Ubuntu 26.04 con alcance limitado: fuentes reales, red real y un catálogo ficticio que activa los servicios del servidor, nmcli, mDNS y Samba.',
         markdownBase: MD,
         blocks: [
-            p('Un **Server** o un **router GNU/Linux** colocado desde la paleta no trae ningún servicio: solo su configuración IP, los ficheros de configuración, los registros, los parámetros del kernel y su terminal. Cada servicio se añade con una casilla de su pestaña **Configuración** o, como en un Ubuntu real, instalando su paquete con `apt`.'),
+            p('Un **Server** o un **router GNU/Linux** colocado desde la paleta no trae ningún servicio: solo su configuración IP, los ficheros de configuración, los registros, los parámetros del kernel y su terminal. Cada servicio (SSH, DHCP, DNS, HTTP, correo, cortafuegos, VPN y también **Samba**, que además tienen los PCs con GNU/Linux) se añade con su casilla de la pestaña **Configuración** o, como en un Ubuntu real, instalando su paquete con `apt`. Los dos caminos siempre coinciden: `apt install` marca la casilla, añade su panel a **Servicios** y activa su página en la **gestión web**; `apt remove` la desmarca, quita el panel y desactiva la página (en gris, u oculta con la opción del laboratorio), y marcar o desmarcar la casilla equivale a instalar o quitar el paquete.'),
             p('apt lee las fuentes de Ubuntu 26.04 («resolute») de **/etc/apt/sources.list.d/ubuntu.sources** (formato deb822) y se conecta de verdad a archive.ubuntu.com y security.ubuntu.com por la red simulada. Solo funciona si el equipo tiene salida a la Internet emulada (una **Nube ISP** en el laboratorio) y un servidor DNS que resuelva esos nombres (8.8.8.8, o el tuyo reenviando a él).'),
             h('Qué hace cada orden'),
             table(['Orden', 'Qué hace en Netfix'], [
@@ -16590,6 +16610,7 @@ const APT_DOCS = [
                 ['nftables', 'Firewall (y, en la gestión web, Enrutamiento)'],
                 ['wireguard (o wireguard-tools)', 'VPN (router GNU/Linux)'],
                 ['rsyslog', 'Registros'],
+                ['samba', 'Samba (servidores, routers GNU/Linux y PCs). Configuración → Laboratorio actual puede quitárselo a cada tipo de equipo: entonces apt da «Unable to locate package samba».'],
             ]),
             h('Paquetes para cualquier equipo GNU/Linux'),
             p('Estos se instalan en cualquier terminal GNU/Linux, también en un PC, y quedan guardados con el equipo:'),
@@ -16599,19 +16620,18 @@ const APT_DOCS = [
                 ['libnss-mdns', 'Solo pregunta por los nombres .local; no responde por el suyo.'],
                 ['libnss-resolve', 'La fuente NSS `resolve`: ping, ssh y `getent` preguntan a systemd-resolved y ven lo mismo que `resolvectl query`, LLMNR y mDNS incluidos. Su instalación pone `resolve [!UNAVAIL=return]` delante de dns en /etc/nsswitch.conf.'],
                 ['nftables', 'El cortafuegos (`nft`, /etc/nftables.conf). En un PC añade a Servicios los paneles Firewall, Configuración y Registros.'],
-                ['samba', 'smbd y nmbd: NetBIOS y carpetas compartidas por SMB (smb.conf, `smbpasswd`, `testparm`, `nmblookup`). En un PC añade Samba, Configuración y Registros; en un servidor, el panel Samba.'],
                 ['smbclient', '`smbclient`: lista y abre carpetas compartidas de otro equipo (Windows o samba) desde la terminal.'],
             ]),
             p('mDNS va por multicast (224.0.0.251, puerto UDP 5353) a los equipos del mismo enlace: lo propagan los switches pero no los routers, así que solo funciona dentro de la misma red, y el otro equipo también debe tener avahi-daemon. En modo Simulación verás los paquetes MDNS; un cortafuegos que bloquee el puerto 5353 lo impide.'),
             p('Los equipos **Windows** (PC o Windows Server) traen mDNS de serie, como Windows 10 y 11: sin instalar nada responden a su nombre .local y preguntan por los demás (`ping pc1.local` en la Terminal Windows). Windows pregunta desde el puerto 5353 y la respuesta llega por multicast; nss-mdns, desde un puerto propio y con respuesta directa.'),
             h('NetBIOS y carpetas compartidas: samba'),
-            p('Windows trae de serie NetBIOS sobre TCP/IP: responde a su nombre (NOMBRE<00>, WORKGROUP y NOMBRE<20>), resuelve un nombre sin punto por broadcast a su red (UDP 137) si el DNS no lo conoce y escucha SMB en TCP 139 y 445. Un equipo GNU/Linux hace lo mismo con **samba** (smbd y nmbd): `sudo apt install samba` y Windows ya hace `ping` y `net view` a su nombre. samba trae `nmblookup NOMBRE` (y `nmblookup -A IP` para la tabla de nombres); el nombre propio responde mientras nmbd está en marcha, pero `nmblookup localhost` no (localhost no es un nombre NetBIOS, tampoco en Windows).'),
-            p('samba también es un **servidor de ficheros**: cada sección de **/etc/samba/smb.conf** (`[publico]`, `[profes]`…) comparte una carpeta con `path`, `read only`, `guest ok` y `valid users`; `sudo testparm` la comprueba y smbd la lee en cada conexión, sin reiniciar. Las cuentas de Samba son de usuarios Linux con su propia contraseña: `sudo smbpasswd -a ana`. Los permisos Linux de la carpeta siguen mandando (un invitado escribe como nobody). Desde Windows: `net view \\\\srv`, `net use Z: \\\\srv\\publico` y después `Z:` para cambiar a esa unidad y usarla como C:\\ (`cd`, `dir`, `copy`, `type`, `echo … > archivo`), o rutas Z:\\… desde C:; desde GNU/Linux, `smbclient -L //srv -N` y `smbclient //srv/profes -U ana`. Todo esto se practica en el laboratorio «Compartir carpetas con Samba en un servidor GNU/Linux».'),
+            p('Windows trae de serie NetBIOS sobre TCP/IP: responde a su nombre (NOMBRE<00>, WORKGROUP y NOMBRE<20>), resuelve un nombre sin punto por broadcast a su red (UDP 137) si el DNS no lo conoce y escucha SMB en TCP 139 y 445. Un equipo GNU/Linux hace lo mismo con el servicio **Samba** (paquete samba: smbd y nmbd); `nmblookup NOMBRE` (y `nmblookup -A IP`) consulta NetBIOS desde la terminal, y el nombre propio responde mientras nmbd está en marcha (`localhost` no es un nombre NetBIOS, tampoco en Windows).'),
+            p('Samba es un servicio más, como DNS o DHCP, en servidores, routers GNU/Linux y también PCs: smb.conf, las cuentas (`smbpasswd`), los permisos, `net use` desde Windows y `smbclient` desde GNU/Linux se explican en **Servidor → Samba** (páginas «Samba: compartir carpetas» y «Samba: acceder desde Windows y GNU/Linux»), y se practican en el laboratorio «Compartir carpetas con Samba en un servidor GNU/Linux».'),
             p('Para que los programas de GNU/Linux (ping, ssh…) resuelvan nombres NetBIOS, como en un Ubuntu real: `sudo apt install winbind libnss-winbind` y añadir **wins** a la línea `hosts:` de **/etc/nsswitch.conf** (por ejemplo `hosts: files dns wins`). Igual que mDNS, el broadcast NetBIOS no cruza routers; un servidor WINS sí (`wins support = yes` en el servidor y `wins server = IP` en los clientes; consulta «Resolución de nombres»).'),
             p('Por la misma razón, desde GNU/Linux mDNS necesita siempre avahi-daemon o libnss-mdns: al instalarlos, su script añade `mdns4_minimal [NOTFOUND=return]` a `hosts:` en /etc/nsswitch.conf, y al quitarlos lo borra.'),
             h('La pestaña Servicios de un PC GNU/Linux'),
             p('Un PC no tiene gestión web (no tiene servidor HTTP): lo que configura un servidor desde el navegador, en un PC se hace en su terminal o en su pestaña **Servicios**. Un PC con GNU/Linux muestra siempre los **Parámetros** del kernel (sysctl). `sudo apt install nftables` añade **Firewall**; `sudo apt install samba`, **Samba**; y cualquiera de los dos, **Configuración** (sus ficheros) y **Registros** (journalctl de nftables, smbd y nmbd). `sudo apt remove` los quita al momento. Un PC con Windows no tiene esta pestaña.'),
-            p('En un **Server** o un router GNU/Linux, instalar samba añade el panel **Samba** a Servicios: enciende o para smbd y nmbd, añade y borra recursos compartidos y crea, habilita o deshabilita las cuentas de Samba. Escribe en smb.conf y en las cuentas igual que las órdenes de la terminal, y smbd y nmbd aparecen en Registros.'),
+            p('En un **Server** o un router GNU/Linux, instalar samba añade el panel **Samba** a Servicios y la página Samba a la gestión web, y smbd y nmbd aparecen en Registros; quitarlo los hace desaparecer.'),
             term('shell', 'alumno@pc1:~$ ping -c 1 pc0.local\nPING pc0.local (192.168.10.10) 56(84) bytes of data.\n64 bytes from pc0.local (192.168.10.10): icmp_seq=1 ttl=64 time=0.400 ms'),
             term('shell', 'root@srv:~# apt install -y apache2\nReading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\nInstalling:\n  apache2\n\nInstalling dependencies:\n  apache2-bin  apache2-data  apache2-utils  libapr1t64  libaprutil1t64  ssl-cert\n…\nSetting up apache2 (2.4.62-1ubuntu1) ...\nCreated symlink \'/etc/systemd/system/multi-user.target.wants/apache2.service\' → \'/usr/lib/systemd/system/apache2.service\'.'),
             steps(['Coloca un servidor', 'Desde la paleta, con una salida a Internet (una Nube ISP o un router que llegue a ella) y como DNS 8.8.8.8.'], ['Abre su terminal GNU/Linux', '`sudo apt update` debe dar cuatro «Hit:».'], ['Instala el servicio', '`sudo apt install apache2`: la pestaña Servicios aparece al momento con HTTP, y la casilla HTTP de Configuración queda marcada.']),
@@ -16639,6 +16659,133 @@ const APT_DOCS = [
 ];
 
 return { APT_DOCS };
+})();
+__m["docs/samba.js"] = (() => {
+const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
+const SAMBA_DOCS = [
+    {
+        id: 'srv-samba',
+        title: 'Samba: compartir carpetas',
+        summary: 'El servicio Samba de servidores, routers GNU/Linux y PCs: cómo se activa, smbd y nmbd, smb.conf, las cuentas de Samba y las dos capas de permisos.',
+        markdownBase: MD,
+        blocks: [
+            p('**Samba** hace que un equipo GNU/Linux comparta carpetas con el protocolo de Windows (SMB) y responda a su nombre por NetBIOS, como un Windows más de la red. Es un servicio como DNS o DHCP: está en todos los **Servidores** y **routers GNU/Linux** y también en los **PCs** con terminal GNU/Linux, pero viene **desactivado** hasta que se instala.'),
+            figure({
+                type: 'sequence',
+                actors: ['PC0 (Windows)', 'Toda la LAN', 'SRV (nmbd · smbd)'],
+                messages: [
+                    { from: 0, to: 1, text: 'NBNS Query SRV<00>', note: 'broadcast UDP 137: ¿quién es SRV?' },
+                    { from: 2, to: 0, text: 'NBNS Response', note: 'nmbd: 172.20.0.10' },
+                    { from: 0, to: 2, text: 'TCP 445 · Negotiate', note: 'net use Z: \\\\srv\\publico' },
+                    { from: 0, to: 2, text: 'Session setup', note: 'usuario y contraseña de Samba, o invitado' },
+                    { from: 0, to: 2, text: 'Tree connect \\\\srv\\publico', note: 'smbd lee smb.conf y comprueba el acceso' },
+                    { from: 2, to: 0, text: 'OK', note: 'Z: queda conectada' },
+                ],
+            }, 'Lo que pasa al conectar una unidad. nmbd responde al nombre (NetBIOS) y smbd sirve los ficheros (SMB). En Simulación, con los filtros NBNS y SMB.'),
+            h('Activarlo y desactivarlo'),
+            table(['Dónde', 'Qué hace'], [
+                ['Configuración → Laboratorio actual', '**Servicio Samba** en PC, Servidor y Router GNU/Linux: marcado por defecto, se puede desmarcar para cada tipo. Desmarcado, apt no encuentra el paquete («Unable to locate package samba») y los equipos de ese tipo no muestran la casilla ni el panel de Samba, y su página web queda desactivada; lo que ya estaba instalado se queda, sin panel.'],
+                ['Pestaña Configuración del equipo', 'Casilla **Samba** en Servicios, **desmarcada** por defecto. Marcarla instala samba como `sudo apt install -y samba`; desmarcarla lo quita como `sudo apt remove -y samba`.'],
+                ['Terminal GNU/Linux', '`sudo apt install samba` marca la casilla, añade Samba a Servicios y activa su página web; `sudo apt remove samba` la desmarca, quita el panel y desactiva la página. Sus dependencias (samba-common-bin…) se quedan hasta `sudo apt autoremove`.'],
+            ]),
+            note('La casilla y apt son dos caminos para lo mismo, como en DNS (bind9) o DHCP (kea): siempre coinciden. Un PC con Windows no tiene Samba: su sistema ya comparte con SMB de serie.'),
+            h('Qué se instala'),
+            table(['Pieza', 'Qué es'], [
+                ['smbd', 'El servidor de ficheros: escucha SMB en TCP 139 y 445. `systemctl status smbd`.'],
+                ['nmbd', 'El servidor de nombres NetBIOS: responde a NOMBRE<00>, NOMBRE<20> y WORKGROUP en UDP 137. Sin él, Windows no encuentra el equipo por su nombre.'],
+                ['/etc/samba/smb.conf', 'La configuración: una sección [global] y una sección por carpeta compartida.'],
+                ['samba-common-bin', '`testparm`, `smbpasswd` y `nmblookup` (llega como dependencia automática).'],
+                ['Registros', 'smbd y nmbd entran en Servicios → Registros (`journalctl -u smbd`).'],
+            ]),
+            h('smb.conf: una sección por carpeta'),
+            p('Cada sección con un nombre entre corchetes es un **recurso compartido**. smbd relee smb.conf en cada conexión: tras editarlo no hace falta reiniciar, pero conviene comprobarlo con `sudo testparm -s`.'),
+            code('[publico]\n   comment = Carpeta pública\n   path = /srv/samba/publico\n   read only = no\n   guest ok = yes\n\n[profes]\n   comment = Solo profesorado\n   path = /srv/samba/profes\n   read only = no\n   valid users = ana luis'),
+            table(['Parámetro', 'Qué hace', 'Por defecto'], [
+                ['path', 'La carpeta del servidor que se comparte (tiene que existir).', '—'],
+                ['comment', 'La descripción que muestran `net view` y `smbclient -L`.', 'vacío'],
+                ['read only · writable', 'Solo lectura, o escritura (`writable = yes` equivale a `read only = no`).', 'read only = yes'],
+                ['guest ok · public', 'Admite invitados sin cuenta: trabajan como el usuario Linux **nobody**.', 'no'],
+                ['valid users', 'Solo esos usuarios de Samba pueden conectar (separados por espacios o comas).', 'todos'],
+                ['browseable', 'Si aparece en la lista de recursos (`no` lo oculta, pero se puede abrir por su nombre).', 'yes'],
+            ]),
+            p('En [global], `map to guest = bad user` (el valor de Ubuntu) hace que un usuario sin cuenta de Samba entre como invitado: solo llega a los recursos con `guest ok = yes`. testparm reconoce otros parámetros habituales (create mask, force user…) y avisa con «Unknown parameter encountered» de los que no conoce.'),
+            term('shell', 'root@srv:~# testparm -s\nLoad smb config files from /etc/samba/smb.conf\nLoaded services file OK.\nWeak crypto is allowed by GnuTLS (e.g. NTLM as a compatibility fallback)\n\nServer role: ROLE_STANDALONE\n\n# Global parameters\n[global]\n\tworkgroup = WORKGROUP\n…'),
+            h('Cuentas de Samba'),
+            p('Una cuenta de Samba es un **usuario Linux que ya existe** con una contraseña SMB propia, distinta de la de Linux. Las gestiona root:'),
+            table(['Orden', 'Qué hace'], [
+                ['sudo smbpasswd -a ana', 'Da de alta a ana (pide la contraseña dos veces).'],
+                ['printf \'ana1\\nana1\\n\' | sudo smbpasswd -s -a ana', 'Lo mismo sin preguntar, para scripts.'],
+                ['sudo smbpasswd -d ana · -e ana', 'Deshabilita o vuelve a habilitar la cuenta.'],
+                ['sudo smbpasswd -x ana', 'Borra la cuenta (el usuario Linux se queda).'],
+                ['smbpasswd', 'Sin root, cada usuario cambia solo su propia contraseña.'],
+                ['sudo pdbedit -L', 'Lista las cuentas (usuario:uid:).'],
+            ]),
+            h('Dos capas de permisos'),
+            list('**El recurso** (smb.conf): `valid users`, `guest ok` y `read only` deciden quién conecta y si puede escribir.', '**La carpeta** (Linux): smbd trabaja con los permisos del usuario que conecta (o de nobody si es invitado). Para entrar en el recurso basta el permiso x de la carpeta; para listarla hace falta r; para escribir, w.', 'Hacen falta **las dos**: `read only = no` no deja escribir en una carpeta 755 de root, y una carpeta 777 no se puede escribir si el recurso es de solo lectura.', 'No se sale del recurso: `..` y los enlaces que apuntan fuera no se siguen.'),
+            h('El panel Samba y la gestión web'),
+            p('Con samba instalado, la pestaña **Servicios** del equipo muestra **Samba**: enciende o para smbd y nmbd, añade y borra recursos (carpeta, comentario, solo lectura, invitados, usuarios válidos) y crea, habilita, deshabilita o borra cuentas. En un Server o router GNU/Linux, la gestión web tiene la misma página en Servicios → Samba. Los dos escriben en smb.conf y en las cuentas, igual que la terminal.'),
+            steps(['Instala el servicio', 'Marca **Samba** en la pestaña Configuración del servidor, o `sudo apt install samba`.'], ['Crea la carpeta', '`sudo mkdir -p /srv/samba/publico && sudo chmod 777 /srv/samba/publico`.'], ['Compártela', 'Servicios → Samba → nuevo recurso `publico` con esa carpeta, escritura e invitados; o la sección [publico] en smb.conf.'], ['Compruébalo', '`sudo testparm -s` y, desde un Windows de la misma red, `net view \\\\srv`.']),
+            warn('Errores habituales', 'La carpeta de `path` no existe, o sus permisos Linux no dejan entrar a quien conecta. Un usuario en `valid users` sin cuenta de Samba (`smbpasswd -a`): Windows da «Access is denied». nmbd parado: el equipo no responde a su nombre, aunque por su dirección IP siga funcionando.'),
+            exercise('Una carpeta para el profesorado', 'En el laboratorio «Compartir carpetas con Samba en un servidor GNU/Linux», luis está en `valid users` de [profes] pero `net use Y: \\\\srv\\profes /user:luis luis1` en PC0 da «System error 5 … Access is denied». Arréglalo.', 'luis no tiene cuenta de Samba: entra como invitado y [profes] no admite invitados. En SRV, `sudo smbpasswd -a luis` (o Servicios → Samba → cuentas). La carpeta ya le deja entrar: es 770 de ana:users y luis está en el grupo users (`id luis`).'),
+            check('Compruébalo', '`sudo pdbedit -L` lista ana y luis, y `net use Y: \\\\srv\\profes /user:luis luis1` responde «The command completed successfully.»'),
+        ],
+    },
+    {
+        id: 'srv-samba-clientes',
+        title: 'Samba: acceder desde Windows y GNU/Linux',
+        summary: 'Cómo se encuentra el servidor por su nombre, net view y net use en Windows, smbclient en GNU/Linux, y qué significa cada error.',
+        markdownBase: MD,
+        blocks: [
+            p('Para usar un recurso hace falta llegar al servidor por su **nombre** (o su dirección IP), iniciar sesión (con una cuenta de Samba o como invitado) y abrir el recurso. Cada cliente lo hace a su manera.'),
+            h('Encontrar el servidor por su nombre'),
+            table(['Cliente', 'Cómo resuelve «srv»'], [
+                ['Windows (net view, net use, dir \\\\srv\\…)', 'hosts, DNS y, si no, LLMNR y NetBIOS a la vez: el nmbd de SRV responde al broadcast. Funciona sin servidor DNS en la misma red.'],
+                ['smbclient (GNU/Linux)', 'El orden de Samba, `name resolve order = lmhosts wins host bcast`: el sistema (/etc/hosts y DNS, según nsswitch.conf) y después un broadcast NetBIOS. Tampoco necesita DNS en la misma red.'],
+                ['ping, ssh… (GNU/Linux)', 'Solo lo que diga /etc/nsswitch.conf: sin `wins` (winbind y libnss-winbind) no conocen los nombres NetBIOS.'],
+            ]),
+            p('NetBIOS va por broadcast y **no cruza routers**: desde otra red, usa la dirección IP (`\\\\172.20.0.10\\publico`) o da de alta el nombre en un servidor DNS. Un nombre con puntos (srv.aula.lab) no es un nombre NetBIOS: solo lo resuelve el DNS.'),
+            h('Desde Windows'),
+            table(['Orden', 'Qué hace'], [
+                ['net view \\\\srv', 'Los recursos visibles (browseable) del servidor.'],
+                ['net use Z: \\\\srv\\publico', 'Conecta la unidad Z: al recurso (sin /user, como invitado).'],
+                ['net use Z: \\\\srv\\profes /user:ana ana1', 'Con una cuenta de Samba; con `*` en vez de la contraseña, la pregunta.'],
+                ['net use * \\\\srv\\publico', 'La primera letra libre empezando por Z: («Drive Z: is now connected to …»).'],
+                ['net use', 'Las conexiones abiertas.'],
+                ['net use Z: /delete', 'Desconecta la unidad.'],
+                ['Z: · dir · cd · copy · type · del · md · ren', 'Cambia a la unidad y se usa como C:; también rutas `Z:\\carpeta` o `\\\\srv\\publico\\archivo` desde C:.'],
+            ]),
+            term('cmd', 'C:\\>net use Z: \\\\srv\\publico\nThe command completed successfully.\n\nC:\\>Z:\n\nZ:\\>dir\n Volume in drive Z is publico\n…'),
+            warn('El orden y las barras', 'La sintaxis es `net use LETRA: \\\\servidor\\recurso`, con **barras invertidas** y la letra **primero**. `net use //srv/publico Z:` da el texto de ayuda de la orden y no conecta nada, así que después `Z:` responde «The system cannot find the drive specified.», como en Windows. `net use \\\\srv\\publico Z:` sí conecta, pero sin letra: Windows toma «Z:» como la contraseña (`net use` lo lista con la columna Local vacía).'),
+            h('Desde GNU/Linux: smbclient'),
+            p('`sudo apt install smbclient` trae el cliente (no hace falta instalar samba). Funciona como un cliente FTP: abre el recurso y espera órdenes en `smb: \\>`, o las ejecuta con `-c`.'),
+            table(['Orden', 'Qué hace'], [
+                ['smbclient -L srv -N', 'Lista los recursos sin usuario (-N: sin contraseña).'],
+                ['smbclient //srv/publico -N', 'Abre el recurso como invitado.'],
+                ['smbclient //srv/profes -U ana', 'Como ana (pide la contraseña); `-U ana%ana1` la da en la orden.'],
+                ['-c \'put nota.txt; ls\'', 'Ejecuta las órdenes separadas por `;` y sale.'],
+                ['ls [máscara] · cd · pwd', 'Lista (con `*` y `?`), cambia de carpeta, muestra la actual.'],
+                ['get REMOTO [LOCAL] · put LOCAL [REMOTO]', 'Descarga o sube un archivo.'],
+                ['mkdir · rmdir · rm [máscara]', 'Crea y borra carpetas, borra archivos.'],
+                ['help · exit', 'Las órdenes disponibles; salir.'],
+            ]),
+            term('shell', 'alumno@pc1:~$ smbclient //srv/publico -N -c \'put /tmp/nota.txt nota.txt; ls\'\nputting file /tmp/nota.txt as \\nota.txt (0.5 kb/s) (average 0.5 kb/s)\n  .                                   D        0  …\n  nota.txt                            A        5  …'),
+            h('Qué significa cada error'),
+            table(['Error', 'Causa habitual', 'Qué revisar'], [
+                ['do_connect: … NT_STATUS_UNSUCCESSFUL', 'smbclient no encuentra el nombre.', 'nmbd en marcha en el servidor, misma red; o usa la dirección IP.'],
+                ['do_connect: … NT_STATUS_CONNECTION_REFUSED', 'Nadie escucha en el 445.', 'smbd en marcha (`systemctl status smbd`) y el cortafuegos.'],
+                ['session setup failed: NT_STATUS_LOGON_FAILURE · System error 1326', 'Contraseña de Samba incorrecta.', '`sudo smbpasswd -a USUARIO` en el servidor.'],
+                ['tree connect failed: NT_STATUS_BAD_NETWORK_NAME · System error 67', 'El recurso no existe.', 'El nombre de la sección en smb.conf (`testparm -s`).'],
+                ['tree connect failed: NT_STATUS_ACCESS_DENIED · System error 5', 'No estás en `valid users`, entras como invitado a un recurso sin `guest ok`, o la carpeta no te deja entrar.', 'smb.conf, la cuenta de Samba y los permisos Linux de `path`.'],
+                ['System error 53 · The network path was not found.', 'Windows no llega al servidor o no encuentra su nombre.', 'nmbd y smbd en marcha, misma red o dirección IP.'],
+            ]),
+            tip('Verlo en Simulación', 'Con los filtros NBNS y SMB marcados, `net use` muestra la pregunta por el nombre (broadcast), su respuesta y la conexión TCP al puerto 445.'),
+            exercise('Del PC GNU/Linux al servidor', 'En el laboratorio de Samba, desde PC1, sube un archivo a [publico] y luego lee [profes] como luis.', '`sudo apt install smbclient`; `smbclient //srv/publico -N -c \'put /etc/hostname pc1.txt\'` (el archivo queda de nobody en SRV). Para [profes], primero `sudo smbpasswd -a luis` en SRV; después `smbclient //srv/profes -U luis%luis1 -c ls`. smbclient encuentra «srv» por broadcast aunque `ping srv` no lo encuentre.'),
+        ],
+    },
+];
+
+return { SAMBA_DOCS };
 })();
 __m["docs/en/netfix.js"] = (() => {
 const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
@@ -16808,8 +16955,8 @@ const SETTINGS_DOCS = [
             h('Current lab'),
             p('Decides which tabs and panels the windows of each kind of device show. **Device** (host name) and **Interfaces** are always there.'),
             table(['Device', 'On by default', 'Can be turned on'], [
-                ['PC', 'TCP/IP, applications (browser, mail, SSH, SFTP), GNU/Linux terminal and Windows terminal', '—'],
-                ['Server', 'TCP/IP, each service (SSH, DHCP, DNS, HTTP, mail, files and logs), kernel parameters, firewall, GNU/Linux terminal and Windows terminal', '—'],
+                ['PC', 'TCP/IP, applications (browser, mail, SSH, SFTP), Samba service, GNU/Linux terminal and Windows terminal', '—'],
+                ['Server', 'TCP/IP, each service (SSH, DHCP, DNS, HTTP, mail, files, logs and Samba), kernel parameters, firewall, GNU/Linux terminal and Windows terminal', '—'],
                 ['GNU/Linux router', 'Kernel parameters, firewall, VPN, each service and GNU/Linux terminal', 'Windows terminal'],
                 ['IOS router and switch', 'CLI and web management', '—'],
             ]),
@@ -16817,9 +16964,9 @@ const SETTINGS_DOCS = [
             h('Each device’s Settings tab'),
             p('Every PC, server and GNU/Linux router also has its own **Settings** tab: boxes for its applications, services and terminals. It only lists what the lab allows (the table above is the maximum), and when a box changes the window reopens on that tab with the new tabs.'),
             table(['Device', 'On by default', 'Off by default'], [
-                ['PC', 'TCP/IP, browser, SSH client and the terminal of its operating system', 'Mail, Files (SFTP) and the other system’s terminal'],
-                ['Server', 'Placed from the palette: TCP/IP, files, logs and the GNU/Linux terminal. Kernel parameters always (no box)', 'Every service and the firewall: ticked here or installed with apt (Installing packages with apt)'],
-                ['GNU/Linux router', 'Placed from the palette: files, logs and the GNU/Linux terminal. Kernel parameters always', 'Services, firewall and VPN (box or apt)'],
+                ['PC', 'TCP/IP, browser, SSH client and the terminal of its operating system', 'Mail, Files (SFTP), Samba (with a GNU/Linux terminal) and the other system’s terminal'],
+                ['Server', 'Placed from the palette: TCP/IP, files, logs and the GNU/Linux terminal. Kernel parameters always (no box)', 'Every service, Samba included, and the firewall: ticked here or installed with apt (Installing packages with apt)'],
+                ['GNU/Linux router', 'Placed from the palette: files, logs and the GNU/Linux terminal. Kernel parameters always', 'Services (Samba included), firewall and VPN (box or apt)'],
             ]),
             p('In the recorded labs, of each pair of PCs on the same switch one runs Windows and the other GNU/Linux; mail is only on the PCs with an account set up, and SFTP on PC1 of “SSH and SFTP with keys”; each server shows only the services it starts (plus files and logs).'),
             p('The servers of the recorded labs and of saved files keep the services they had.'),
@@ -18991,7 +19138,7 @@ const APT_DOCS = [
         summary: 'Ubuntu 26.04 apt with a limited reach: real sources, a real network and a fictitious catalogue that turns on the server’s services, nmcli, mDNS and Samba.',
         markdownBase: MD,
         blocks: [
-            p('A **Server** or a **GNU/Linux router** placed from the palette brings no service: only its IP configuration, the configuration files, the logs, the kernel parameters and its terminal. Each service is added with a box in its **Settings** tab or, as on a real Ubuntu, by installing its package with `apt`.'),
+            p('A **Server** or a **GNU/Linux router** placed from the palette brings no service: only its IP configuration, the configuration files, the logs, the kernel parameters and its terminal. Each service (SSH, DHCP, DNS, HTTP, mail, firewall, VPN and also **Samba**, which GNU/Linux PCs have too) is added with its box in the **Settings** tab or, as on a real Ubuntu, by installing its package with `apt`. Both ways always agree: `apt install` ticks the box, adds its panel to **Services** and turns its page on in the **web management**; `apt remove` unticks it, takes the panel away and turns the page off (greyed, or hidden with the lab option), and ticking or unticking the box is the same as installing or removing the package.'),
             p('apt reads the Ubuntu 26.04 (“resolute”) sources from **/etc/apt/sources.list.d/ubuntu.sources** (deb822 format) and really connects to archive.ubuntu.com and security.ubuntu.com over the simulated network. It only works if the device has a way out to the emulated Internet (an **ISP cloud** in the lab) and a DNS server that resolves those names (8.8.8.8, or yours forwarding to it).'),
             h('What each command does'),
             table(['Command', 'What it does in Netfix'], [
@@ -19011,6 +19158,7 @@ const APT_DOCS = [
                 ['nftables', 'Firewall (and, in the web management, Routing)'],
                 ['wireguard (or wireguard-tools)', 'VPN (GNU/Linux router)'],
                 ['rsyslog', 'Logs'],
+                ['samba', 'Samba (servers, GNU/Linux routers and PCs). Settings → Current lab can take it away from each kind of device: then apt says “Unable to locate package samba”.'],
             ]),
             h('Packages for any GNU/Linux device'),
             p('These can be installed in any GNU/Linux terminal, on a PC too, and are saved with the device:'),
@@ -19020,19 +19168,18 @@ const APT_DOCS = [
                 ['libnss-mdns', 'Only asks for .local names; it does not answer for its own.'],
                 ['libnss-resolve', 'The NSS source `resolve`: ping, ssh and `getent` ask systemd-resolved and see the same as `resolvectl query`, LLMNR and mDNS included. Its installation puts `resolve [!UNAVAIL=return]` before dns in /etc/nsswitch.conf.'],
                 ['nftables', 'The firewall (`nft`, /etc/nftables.conf). On a PC it adds the Firewall, Configuration and Logs panels to Services.'],
-                ['samba', 'smbd and nmbd: NetBIOS and folders shared over SMB (smb.conf, `smbpasswd`, `testparm`, `nmblookup`). On a PC it adds Samba, Configuration and Logs; on a server, the Samba panel.'],
                 ['smbclient', '`smbclient`: lists and opens the shared folders of another device (Windows or samba) from the terminal.'],
             ]),
             p('mDNS goes by multicast (224.0.0.251, UDP port 5353) to the devices on the same link: switches pass it on but routers do not, so it only works within the same network, and the other device needs avahi-daemon too. In Simulation mode you will see the MDNS packets; a firewall that blocks port 5353 stops it.'),
             p('**Windows** devices (PC or Windows Server) have mDNS built in, as Windows 10 and 11 do: with nothing installed they answer to their .local name and ask for the others (`ping pc1.local` in the Windows terminal). Windows asks from port 5353 and the answer comes by multicast; nss-mdns, from a port of its own with a direct answer.'),
             h('NetBIOS and shared folders: samba'),
-            p('Windows has NetBIOS over TCP/IP built in: it answers to its name (NAME<00>, WORKGROUP and NAME<20>), resolves a name without a dot by broadcast to its network (UDP 137) when the DNS does not know it, and listens for SMB on TCP 139 and 445. A GNU/Linux device does the same with **samba** (smbd and nmbd): `sudo apt install samba` and Windows can already `ping` and `net view` its name. samba brings `nmblookup NAME` (and `nmblookup -A IP` for the name table); the device’s own name answers while nmbd is running, but `nmblookup localhost` does not (localhost is not a NetBIOS name, on Windows either).'),
-            p('samba is also a **file server**: each section of **/etc/samba/smb.conf** (`[publico]`, `[profes]`…) shares a folder with `path`, `read only`, `guest ok` and `valid users`; `sudo testparm` checks it and smbd reads it on every connection, with no restart. Samba accounts belong to Linux users and have their own password: `sudo smbpasswd -a ana`. The folder’s Linux permissions still apply (a guest writes as nobody). From Windows: `net view \\\\srv`, `net use Z: \\\\srv\\publico` and then `Z:` to switch to that drive and use it as C:\\ (`cd`, `dir`, `copy`, `type`, `echo … > file`), or Z:\\… paths from C:; from GNU/Linux, `smbclient -L //srv -N` and `smbclient //srv/profes -U ana`. You can practise all of it in the “Sharing folders with Samba on a GNU/Linux server” lab.'),
+            p('Windows has NetBIOS over TCP/IP built in: it answers to its name (NAME<00>, WORKGROUP and NAME<20>), resolves a name without a dot by broadcast to its network (UDP 137) when the DNS does not know it, and listens for SMB on TCP 139 and 445. A GNU/Linux device does the same with the **Samba** service (samba package: smbd and nmbd); `nmblookup NAME` (and `nmblookup -A IP`) asks NetBIOS from the terminal, and the device’s own name answers while nmbd is running (`localhost` is not a NetBIOS name, on Windows either).'),
+            p('Samba is one more service, like DNS or DHCP, on servers, GNU/Linux routers and PCs too: smb.conf, the accounts (`smbpasswd`), the permissions, `net use` from Windows and `smbclient` from GNU/Linux are explained under **Server → Samba** (the pages “Samba: sharing folders” and “Samba: access from Windows and GNU/Linux”), and practised in the “Sharing folders with Samba on a GNU/Linux server” lab.'),
             p('For GNU/Linux programs (ping, ssh…) to resolve NetBIOS names, as on a real Ubuntu: `sudo apt install winbind libnss-winbind` and add **wins** to the `hosts:` line of **/etc/nsswitch.conf** (for instance `hosts: files dns wins`). Like mDNS, the NetBIOS broadcast does not cross routers; a WINS server does (`wins support = yes` on the server and `wins server = IP` on the clients; see “Name resolution”).'),
             p('For the same reason, from GNU/Linux mDNS always needs avahi-daemon or libnss-mdns: when installed, its script adds `mdns4_minimal [NOTFOUND=return]` to `hosts:` in /etc/nsswitch.conf, and removes it when they go.'),
             h('The Services tab of a GNU/Linux PC'),
             p('A PC has no web management (it has no HTTP server): what a server configures from the browser, a PC does in its terminal or in its **Services** tab. A GNU/Linux PC always shows the kernel **Parameters** (sysctl). `sudo apt install nftables` adds **Firewall**; `sudo apt install samba`, **Samba**; and either of them, **Configuration** (their files) and **Logs** (journalctl of nftables, smbd and nmbd). `sudo apt remove` takes them away at once. A Windows PC has no such tab.'),
-            p('On a **Server** or a GNU/Linux router, installing samba adds the **Samba** panel to Services: it starts or stops smbd and nmbd, adds and deletes shares and creates, enables or disables the Samba accounts. It writes to smb.conf and to the accounts just as the terminal commands do, and smbd and nmbd show up in Logs.'),
+            p('On a **Server** or a GNU/Linux router, installing samba adds the **Samba** panel to Services and the Samba page to the web management, and smbd and nmbd show up in Logs; removing it makes them go.'),
             term('shell', 'alumno@pc1:~$ ping -c 1 pc0.local\nPING pc0.local (192.168.10.10) 56(84) bytes of data.\n64 bytes from pc0.local (192.168.10.10): icmp_seq=1 ttl=64 time=0.400 ms'),
             term('shell', 'root@srv:~# apt install -y apache2\nReading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\nInstalling:\n  apache2\n\nInstalling dependencies:\n  apache2-bin  apache2-data  apache2-utils  libapr1t64  libaprutil1t64  ssl-cert\n…\nSetting up apache2 (2.4.62-1ubuntu1) ...\nCreated symlink \'/etc/systemd/system/multi-user.target.wants/apache2.service\' → \'/usr/lib/systemd/system/apache2.service\'.'),
             steps(['Place a server', 'From the palette, with a way out to the Internet (an ISP cloud or a router that reaches it) and 8.8.8.8 as DNS.'], ['Open its GNU/Linux terminal', '`sudo apt update` should give four “Hit:”.'], ['Install the service', '`sudo apt install apache2`: the Services tab appears at once with HTTP, and the HTTP box in Settings is ticked.']),
@@ -19060,6 +19207,133 @@ const APT_DOCS = [
 ];
 
 return { APT_DOCS };
+})();
+__m["docs/en/samba.js"] = (() => {
+const { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } = __m["docs/types.js"];
+const MD = 'https://github.com/infogerman/netfix/blob/main/';
+const SAMBA_DOCS = [
+    {
+        id: 'srv-samba',
+        title: 'Samba: sharing folders',
+        summary: 'The Samba service of servers, GNU/Linux routers and PCs: how to turn it on, smbd and nmbd, smb.conf, Samba accounts and the two layers of permissions.',
+        markdownBase: MD,
+        blocks: [
+            p('**Samba** lets a GNU/Linux device share folders with the Windows protocol (SMB) and answer to its name through NetBIOS, like one more Windows on the network. It is a service like DNS or DHCP: every **Server** and **GNU/Linux router** has it, and so do the **PCs** with a GNU/Linux terminal, but it comes **turned off** until it is installed.'),
+            figure({
+                type: 'sequence',
+                actors: ['PC0 (Windows)', 'The whole LAN', 'SRV (nmbd · smbd)'],
+                messages: [
+                    { from: 0, to: 1, text: 'NBNS Query SRV<00>', note: 'UDP 137 broadcast: who is SRV?' },
+                    { from: 2, to: 0, text: 'NBNS Response', note: 'nmbd: 172.20.0.10' },
+                    { from: 0, to: 2, text: 'TCP 445 · Negotiate', note: 'net use Z: \\\\srv\\publico' },
+                    { from: 0, to: 2, text: 'Session setup', note: 'Samba user and password, or guest' },
+                    { from: 0, to: 2, text: 'Tree connect \\\\srv\\publico', note: 'smbd reads smb.conf and checks access' },
+                    { from: 2, to: 0, text: 'OK', note: 'Z: is connected' },
+                ],
+            }, 'What happens when a drive is mapped. nmbd answers to the name (NetBIOS) and smbd serves the files (SMB). In Simulation, with the NBNS and SMB filters.'),
+            h('Turning it on and off'),
+            table(['Where', 'What it does'], [
+                ['Settings → Current lab', '**Samba service** for PC, Server and GNU/Linux router: ticked by default, it can be unticked for each kind. Unticked, apt cannot find the package (“Unable to locate package samba”) and devices of that kind show neither the Samba box nor its panel, and its web page is turned off; what was already installed stays, without its panel.'],
+                ['The device’s Settings tab', '**Samba** box under Services, **unticked** by default. Ticking it installs samba as `sudo apt install -y samba`; unticking it removes it as `sudo apt remove -y samba`.'],
+                ['GNU/Linux terminal', '`sudo apt install samba` ticks the box, adds Samba to Services and turns its web page on; `sudo apt remove samba` unticks it, takes the panel away and turns the page off. Its dependencies (samba-common-bin…) stay until `sudo apt autoremove`.'],
+            ]),
+            note('The box and apt are two ways of doing the same, as with DNS (bind9) or DHCP (kea): they always agree. A Windows PC has no Samba: its system shares with SMB out of the box.'),
+            h('What gets installed'),
+            table(['Piece', 'What it is'], [
+                ['smbd', 'The file server: it listens for SMB on TCP 139 and 445. `systemctl status smbd`.'],
+                ['nmbd', 'The NetBIOS name server: it answers NAME<00>, NAME<20> and WORKGROUP on UDP 137. Without it, Windows does not find the device by its name.'],
+                ['/etc/samba/smb.conf', 'The configuration: a [global] section and one section per shared folder.'],
+                ['samba-common-bin', '`testparm`, `smbpasswd` and `nmblookup` (it arrives as an automatic dependency).'],
+                ['Logs', 'smbd and nmbd show up in Services → Logs (`journalctl -u smbd`).'],
+            ]),
+            h('smb.conf: one section per folder'),
+            p('Every section with a name in brackets is a **share**. smbd rereads smb.conf on every connection: after editing it there is no need to restart, but check it with `sudo testparm -s`.'),
+            code('[publico]\n   comment = Carpeta pública\n   path = /srv/samba/publico\n   read only = no\n   guest ok = yes\n\n[profes]\n   comment = Solo profesorado\n   path = /srv/samba/profes\n   read only = no\n   valid users = ana luis'),
+            table(['Parameter', 'What it does', 'Default'], [
+                ['path', 'The server folder that is shared (it must exist).', '—'],
+                ['comment', 'The description shown by `net view` and `smbclient -L`.', 'empty'],
+                ['read only · writable', 'Read only, or writable (`writable = yes` is the same as `read only = no`).', 'read only = yes'],
+                ['guest ok · public', 'Lets guests in without an account: they work as the Linux user **nobody**.', 'no'],
+                ['valid users', 'Only these Samba users may connect (separated by spaces or commas).', 'everyone'],
+                ['browseable', 'Whether it appears in the list of shares (`no` hides it, but it can still be opened by name).', 'yes'],
+            ]),
+            p('In [global], `map to guest = bad user` (Ubuntu’s value) makes a user without a Samba account come in as a guest: they only reach the shares with `guest ok = yes`. testparm knows other common parameters (create mask, force user…) and warns with “Unknown parameter encountered” about those it does not know.'),
+            term('shell', 'root@srv:~# testparm -s\nLoad smb config files from /etc/samba/smb.conf\nLoaded services file OK.\nWeak crypto is allowed by GnuTLS (e.g. NTLM as a compatibility fallback)\n\nServer role: ROLE_STANDALONE\n\n# Global parameters\n[global]\n\tworkgroup = WORKGROUP\n…'),
+            h('Samba accounts'),
+            p('A Samba account is an **existing Linux user** with an SMB password of its own, different from the Linux one. root manages them:'),
+            table(['Command', 'What it does'], [
+                ['sudo smbpasswd -a ana', 'Adds ana (it asks for the password twice).'],
+                ['printf \'ana1\\nana1\\n\' | sudo smbpasswd -s -a ana', 'The same without asking, for scripts.'],
+                ['sudo smbpasswd -d ana · -e ana', 'Disables or enables the account again.'],
+                ['sudo smbpasswd -x ana', 'Deletes the account (the Linux user stays).'],
+                ['smbpasswd', 'Without root, each user only changes their own password.'],
+                ['sudo pdbedit -L', 'Lists the accounts (user:uid:).'],
+            ]),
+            h('Two layers of permissions'),
+            list('**The share** (smb.conf): `valid users`, `guest ok` and `read only` decide who connects and whether they may write.', '**The folder** (Linux): smbd works with the permissions of the user who connects (or of nobody for a guest). Entering the share takes the folder’s x permission; listing it takes r; writing, w.', '**Both** are needed: `read only = no` does not let anyone write in a 755 folder of root’s, and a 777 folder cannot be written if the share is read only.', 'There is no way out of the share: `..` and links that point outside are not followed.'),
+            h('The Samba panel and the web management'),
+            p('With samba installed, the device’s **Services** tab shows **Samba**: it starts or stops smbd and nmbd, adds and deletes shares (folder, comment, read only, guests, valid users) and creates, enables, disables or deletes accounts. On a Server or GNU/Linux router, the web management has the same page under Services → Samba. Both write to smb.conf and to the accounts, just as the terminal does.'),
+            steps(['Install the service', 'Tick **Samba** in the server’s Settings tab, or `sudo apt install samba`.'], ['Create the folder', '`sudo mkdir -p /srv/samba/publico && sudo chmod 777 /srv/samba/publico`.'], ['Share it', 'Services → Samba → new share `publico` with that folder, writable and with guests; or the [publico] section in smb.conf.'], ['Check it', '`sudo testparm -s` and, from a Windows device on the same network, `net view \\\\srv`.']),
+            warn('Common mistakes', 'The `path` folder does not exist, or its Linux permissions do not let the user in. A user in `valid users` without a Samba account (`smbpasswd -a`): Windows says “Access is denied”. nmbd stopped: the device does not answer to its name, although it still works by its IP address.'),
+            exercise('A folder for the teachers', 'In the “Sharing folders with Samba on a GNU/Linux server” lab, luis is in [profes]’ `valid users` but `net use Y: \\\\srv\\profes /user:luis luis1` on PC0 gives “System error 5 … Access is denied”. Fix it.', 'luis has no Samba account: he comes in as a guest and [profes] takes no guests. On SRV, `sudo smbpasswd -a luis` (or Services → Samba → accounts). The folder already lets him in: it is 770 of ana:users and luis is in the users group (`id luis`).'),
+            check('Check it', '`sudo pdbedit -L` lists ana and luis, and `net use Y: \\\\srv\\profes /user:luis luis1` answers “The command completed successfully.”'),
+        ],
+    },
+    {
+        id: 'srv-samba-clientes',
+        title: 'Samba: access from Windows and GNU/Linux',
+        summary: 'How the server is found by its name, net view and net use on Windows, smbclient on GNU/Linux, and what each error means.',
+        markdownBase: MD,
+        blocks: [
+            p('Using a share takes reaching the server by its **name** (or its IP address), signing in (with a Samba account or as a guest) and opening the share. Each client does it its own way.'),
+            h('Finding the server by its name'),
+            table(['Client', 'How it resolves “srv”'], [
+                ['Windows (net view, net use, dir \\\\srv\\…)', 'hosts, DNS and, failing that, LLMNR and NetBIOS at once: SRV’s nmbd answers the broadcast. It works without a DNS server on the same network.'],
+                ['smbclient (GNU/Linux)', 'Samba’s order, `name resolve order = lmhosts wins host bcast`: the system (/etc/hosts and DNS, as nsswitch.conf says) and then a NetBIOS broadcast. It needs no DNS on the same network either.'],
+                ['ping, ssh… (GNU/Linux)', 'Only what /etc/nsswitch.conf says: without `wins` (winbind and libnss-winbind) they do not know NetBIOS names.'],
+            ]),
+            p('NetBIOS goes by broadcast and **does not cross routers**: from another network, use the IP address (`\\\\172.20.0.10\\publico`) or add the name to a DNS server. A name with dots (srv.aula.lab) is not a NetBIOS name: only the DNS resolves it.'),
+            h('From Windows'),
+            table(['Command', 'What it does'], [
+                ['net view \\\\srv', 'The server’s visible (browseable) shares.'],
+                ['net use Z: \\\\srv\\publico', 'Connects drive Z: to the share (without /user, as a guest).'],
+                ['net use Z: \\\\srv\\profes /user:ana ana1', 'With a Samba account; with `*` instead of the password, it asks for it.'],
+                ['net use * \\\\srv\\publico', 'The first free letter, from Z: down (“Drive Z: is now connected to …”).'],
+                ['net use', 'The open connections.'],
+                ['net use Z: /delete', 'Disconnects the drive.'],
+                ['Z: · dir · cd · copy · type · del · md · ren', 'Switches to the drive, used like C:; also `Z:\\folder` or `\\\\srv\\publico\\file` paths from C:.'],
+            ]),
+            term('cmd', 'C:\\>net use Z: \\\\srv\\publico\nThe command completed successfully.\n\nC:\\>Z:\n\nZ:\\>dir\n Volume in drive Z is publico\n…'),
+            warn('Order and slashes', 'The syntax is `net use LETTER: \\\\server\\share`, with **backslashes** and the letter **first**. `net use //srv/publico Z:` prints the command’s help and connects nothing, so `Z:` then answers “The system cannot find the drive specified.”, as on Windows. `net use \\\\srv\\publico Z:` does connect, but with no letter: Windows takes “Z:” as the password (`net use` lists it with an empty Local column).'),
+            h('From GNU/Linux: smbclient'),
+            p('`sudo apt install smbclient` brings the client (samba itself is not needed). It works like an FTP client: it opens the share and waits for commands at `smb: \\>`, or runs them with `-c`.'),
+            table(['Command', 'What it does'], [
+                ['smbclient -L srv -N', 'Lists the shares without a user (-N: no password).'],
+                ['smbclient //srv/publico -N', 'Opens the share as a guest.'],
+                ['smbclient //srv/profes -U ana', 'As ana (it asks for the password); `-U ana%ana1` gives it in the command.'],
+                ['-c \'put nota.txt; ls\'', 'Runs the commands separated by `;` and exits.'],
+                ['ls [mask] · cd · pwd', 'Lists (with `*` and `?`), changes folder, shows the current one.'],
+                ['get REMOTE [LOCAL] · put LOCAL [REMOTE]', 'Downloads or uploads a file.'],
+                ['mkdir · rmdir · rm [mask]', 'Creates and deletes folders, deletes files.'],
+                ['help · exit', 'The commands available; exit.'],
+            ]),
+            term('shell', 'alumno@pc1:~$ smbclient //srv/publico -N -c \'put /tmp/nota.txt nota.txt; ls\'\nputting file /tmp/nota.txt as \\nota.txt (0.5 kb/s) (average 0.5 kb/s)\n  .                                   D        0  …\n  nota.txt                            A        5  …'),
+            h('What each error means'),
+            table(['Error', 'Usual cause', 'What to check'], [
+                ['do_connect: … NT_STATUS_UNSUCCESSFUL', 'smbclient cannot find the name.', 'nmbd running on the server, same network; or use the IP address.'],
+                ['do_connect: … NT_STATUS_CONNECTION_REFUSED', 'Nobody listens on 445.', 'smbd running (`systemctl status smbd`) and the firewall.'],
+                ['session setup failed: NT_STATUS_LOGON_FAILURE · System error 1326', 'Wrong Samba password.', '`sudo smbpasswd -a USER` on the server.'],
+                ['tree connect failed: NT_STATUS_BAD_NETWORK_NAME · System error 67', 'The share does not exist.', 'The section name in smb.conf (`testparm -s`).'],
+                ['tree connect failed: NT_STATUS_ACCESS_DENIED · System error 5', 'You are not in `valid users`, you come in as a guest to a share without `guest ok`, or the folder does not let you in.', 'smb.conf, the Samba account and the Linux permissions of `path`.'],
+                ['System error 53 · The network path was not found.', 'Windows does not reach the server or cannot find its name.', 'nmbd and smbd running, same network or IP address.'],
+            ]),
+            tip('Watch it in Simulation', 'With the NBNS and SMB filters ticked, `net use` shows the question for the name (broadcast), its answer and the TCP connection to port 445.'),
+            exercise('From the GNU/Linux PC to the server', 'In the Samba lab, from PC1, upload a file to [publico] and then read [profes] as luis.', '`sudo apt install smbclient`; `smbclient //srv/publico -N -c \'put /etc/hostname pc1.txt\'` (the file belongs to nobody on SRV). For [profes], first `sudo smbpasswd -a luis` on SRV; then `smbclient //srv/profes -U luis%luis1 -c ls`. smbclient finds “srv” by broadcast although `ping srv` does not.'),
+        ],
+    },
+];
+
+return { SAMBA_DOCS };
 })();
 __m["docs/names.js"] = (() => {
 const { check, code, exercise, figure, h, list, p, table, term, tip, warn } = __m["docs/types.js"];
@@ -19370,6 +19644,7 @@ const OUTLINE = [
             ['DNS', ['srv-dns', 'srv-dns-names']],
             ['HTTP', ['srv-http', 'srv-apache', 'srv-webadmin', 'srv-roundcube']],
             ['Correo', ['srv-mail']],
+            ['Samba', ['srv-samba', 'srv-samba-clientes']],
             ['Configuración y registros', ['srv-config-logs']],
         ],
     },
@@ -19418,6 +19693,7 @@ const OUTLINE = [
             ['DNS', ['srv-dns', 'srv-dns-names']],
             ['HTTP', ['srv-http', 'srv-apache', 'srv-webadmin', 'srv-roundcube']],
             ['Mail', ['srv-mail']],
+            ['Samba', ['srv-samba', 'srv-samba-clientes']],
             ['Configuration and logs', ['srv-config-logs']],
         ],
     },
@@ -19461,6 +19737,7 @@ const { DNS_DOCS } = __m["docs/dns.js"];
 const { HTTP_DOCS } = __m["docs/http.js"];
 const { MAIL_DOCS } = __m["docs/mail.js"];
 const { APT_DOCS } = __m["docs/apt.js"];
+const { SAMBA_DOCS } = __m["docs/samba.js"];
 const { NETFIX_DOCS: NETFIX_EN } = __m["docs/en/netfix.js"];
 const { SETTINGS_DOCS: SETTINGS_EN } = __m["docs/en/settings.js"];
 const { IOS_DOCS: IOS_EN } = __m["docs/en/ios.js"];
@@ -19483,6 +19760,7 @@ const { DNS_DOCS: DNS_EN } = __m["docs/en/dns.js"];
 const { HTTP_DOCS: HTTP_EN } = __m["docs/en/http.js"];
 const { MAIL_DOCS: MAIL_EN } = __m["docs/en/mail.js"];
 const { APT_DOCS: APT_EN } = __m["docs/en/apt.js"];
+const { SAMBA_DOCS: SAMBA_EN } = __m["docs/en/samba.js"];
 const { NAMES_DOCS } = __m["docs/names.js"];
 const { NAMES_DOCS: NAMES_EN } = __m["docs/en/names.js"];
 const { OUTLINE } = __m["docs/outline.js"];
@@ -19490,7 +19768,7 @@ const { arrange } = __m["docs/arrange.js"];
 const { labDocs } = __m["docs/labs.js"];
 const { OUTLINE: OUTLINE_EN } = __m["docs/en/outline.js"];
 const ES_PAGES = [...NETFIX_DOCS.pages, ...SETTINGS_DOCS, ...IOS_DOCS.pages, ...STP_DOCS, ...IOS_DHCP_DOCS, ...IOS_SEC_DOCS, ...SERVICE_DOCS.pages, ...DNS_DOCS, ...HTTP_DOCS, ...MAIL_DOCS, ...SSH_DOCS, ...WEBAPP_DOCS, ...INTERNET_DOCS.pages,
-    ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...APT_DOCS, ...NAMES_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE];
+    ...SECURITY_DOCS.pages, ...CLIENT_DOCS.pages, ...LINUX_DOCS, ...APT_DOCS, ...SAMBA_DOCS, ...NAMES_DOCS, ...EDITOR_DOCS, ...BASH_LANGUAGE, ...BASH_REFERENCE];
 const ES = {
     groups: arrange(OUTLINE, [...ES_PAGES, ...labDocs('es-ES', ES_PAGES)]),
     utils: UTIL_DOCS,
@@ -19509,7 +19787,7 @@ const ES = {
     },
 };
 const EN_PAGES = [...NETFIX_EN.pages, ...SETTINGS_EN, ...IOS_EN.pages, ...STP_EN, ...IOS_DHCP_EN, ...IOS_SEC_EN, ...SERVICE_EN.pages, ...DNS_EN, ...HTTP_EN, ...MAIL_EN, ...SSH_EN, ...WEBAPP_EN, ...INTERNET_EN.pages,
-    ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...APT_EN, ...NAMES_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN];
+    ...SECURITY_EN.pages, ...CLIENT_EN.pages, ...LINUX_EN, ...APT_EN, ...SAMBA_EN, ...NAMES_EN, ...EDITOR_EN, ...BASH_LANGUAGE_EN, ...BASH_REFERENCE_EN];
 const EN = {
     groups: arrange(OUTLINE_EN, [...EN_PAGES, ...labDocs('en-GB', EN_PAGES)]),
     utils: UTIL_EN,
@@ -26728,7 +27006,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.35.0",
+    "version": "0.36.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -38433,7 +38711,7 @@ function unpack(ctx, host, todo, fetch, archive) {
 const dbFiles = (host) => DB_FILES + PACKAGES.filter((p) => installedPackage(host, p)).length * 137;
 function* install(ctx, host, names, yes) {
     ctx.out(READING);
-    // A lab without «Permitir instalación de Samba» has no samba in its archive.
+    // A lab whose Samba feature is off for this kind of device has no samba in its archive.
     const unknown = names.find((n) => (!findPackage(n) && BASE[n] === undefined) || (n === 'samba' && !sambaAllowed(host)));
     if (unknown !== undefined) {
         ctx.err(`Error: Unable to locate package ${unknown}\n`);
@@ -39277,6 +39555,7 @@ return { smbCommand };
 __m["shells/smbclient.js"] = (() => {
 const { hasPackage } = __m["net/host-packages.js"];
 const { resolveHost } = __m["shells/net-tools.js"];
+const { FILE_SERVER, nbnsResolve } = __m["net/netbios.js"];
 const { ANONYMOUS, smbCall } = __m["clients/smb-client.js"];
 const { smbCommand } = __m["shells/smbclient-cmds.js"];
 const USAGE = 'Usage: smbclient [-?EgqBNPkV] [-?|--help] [--usage] [-M|--message=HOST] [-I|--ip-address=IP]\n        [-L|--list=HOST] [-c|--command=STRING] [-N|--no-pass] [-U|--user=[DOMAIN/]USERNAME[%PASSWORD]]\n        [-W|--workgroup=WORKGROUP] service <password>\n';
@@ -39341,10 +39620,20 @@ function connectError(ctx, server, status) {
         ctx.err(`tree connect failed: ${status}\n`);
     return 1;
 }
+/** A NetBIOS name: one label of up to 15 characters. */
+const NETBIOS_NAME = /^[^.\s]{1,15}$/;
+/**
+ * Samba's «name resolve order» (lmhosts wins host bcast): no lmhosts file nor WINS server here, so the system
+ * resolver (/etc/hosts, DNS… as nsswitch.conf says) and then a NetBIOS broadcast, which nmbd answers.
+ */
 function serverIp(ctx, host, server) {
     const r = resolveHost(host, server, 'linux');
     if (r.kind === 'ip')
         return r.ip;
+    // smbclient asks for the server's file service, NAME<20>.
+    const bcast = NETBIOS_NAME.test(server) ? nbnsResolve(host, server, FILE_SERVER) : undefined;
+    if (bcast !== undefined)
+        return bcast;
     ctx.err(`do_connect: Connection to ${server} failed (Error NT_STATUS_UNSUCCESSFUL)\n`);
     return null;
 }
@@ -58246,7 +58535,7 @@ const { bootWireguard } = __m["shells/wg-boot.js"];
 const { Network } = __m["net/network.js"];
 const { drawable, makeAnnotation, MAX_ANNOTATIONS } = __m["net/annotations.js"];
 const { FILE_VERSION, validateFile } = __m["net/topology-file.js"];
-const { parseFeatures } = __m["net/lab-features.js"];
+const { FEATURES_V, fileFeatures } = __m["net/lab-features.js"];
 const { parseMissionState } = __m["labs/mission-state.js"];
 const { bindLab } = __m["net/device-apps.js"];
 const { registerMdns, setMdnsResponder } = __m["net/mdns.js"];
@@ -58293,9 +58582,8 @@ class Topology {
     annotations = [];
     /** Configuración → Laboratorio actual: the device settings shown (only the differences from the defaults). */
     features = {};
-    /** The web GUI of servers and Linux routers leaves out (instead of greying) what is off; apt may install samba. */
+    /** The web GUI of servers and Linux routers leaves out (instead of greying) what is off. */
     webHideOff = false;
-    allowSamba = true;
     /** The guided lab this workspace is, with the hints already shown. */
     mission;
     nextDrawing = 1;
@@ -58307,7 +58595,7 @@ class Topology {
         const device = kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind, id, seed, this.clock, label);
         seeds.set(device, seed);
         if (device instanceof Host) {
-            bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff, samba: this.allowSamba }));
+            bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff }));
             attachNetbios(device);
             attachWindowsWins(device);
         }
@@ -58411,8 +58699,8 @@ class Topology {
     toJSON() {
         const devices = [...this.placed.entries()].map(([id, p]) => record(id, p));
         const links = this.net.links.map((l) => ({ a: l.a, b: l.b, cable: l.cable }));
-        const features = Object.keys(this.features).length ? { features: this.features } : {};
-        const web = { ...(this.webHideOff ? { webHideOff: true } : {}), ...(this.allowSamba ? {} : { sambaOff: true }), ...(this.mission ? { mission: this.mission } : {}) };
+        const features = Object.keys(this.features).length ? { features: this.features, featuresV: FEATURES_V } : {};
+        const web = { ...(this.webHideOff ? { webHideOff: true } : {}), ...(this.mission ? { mission: this.mission } : {}) };
         return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features, ...web };
     }
     static fromJSON(data) {
@@ -58427,9 +58715,8 @@ class Topology {
         }
         topo.separateClouds();
         topo.annotations = file.annotations ?? [];
-        topo.features = parseFeatures(file.features);
+        topo.features = fileFeatures(file.features, file.featuresV, file.sambaOff);
         topo.webHideOff = file.webHideOff === true;
-        topo.allowSamba = file.sambaOff !== true;
         topo.mission = parseMissionState(file.mission);
         topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
         for (const l of file.links)
@@ -68670,11 +68957,6 @@ function webOption(host, changed) {
     box.addEventListener('change', () => { host.setWebHideOff(box.checked); changed(); });
     return el('label', { class: 'set-choice' }, box, t('set.webHideOff'), el('span', { class: 'muted' }, ` ${t('set.webHideOffHint')}`));
 }
-function sambaOption(host, changed) {
-    const box = el('input', { type: 'checkbox', checked: host.sambaAllowed(), disabled: host.labLocked(), 'data-feature': 'samba' });
-    box.addEventListener('change', () => { host.setSambaAllowed(box.checked); changed(); });
-    return el('label', { class: 'set-choice' }, box, t('set.samba'), el('span', { class: 'muted' }, ` ${t('set.sambaHint')}`));
-}
 class SettingsView {
     root;
     lab;
@@ -68696,14 +68978,13 @@ class SettingsView {
         reset.addEventListener('click', () => {
             host.setFeatures({});
             host.setWebHideOff(false);
-            host.setSambaAllowed(true);
             this.render();
             changed();
             this.lab.querySelector('.set-reset')?.focus();
         });
         reset.classList.add('set-reset');
         this.status.textContent = '';
-        this.lab.replaceChildren(el('h2', { id: 'set-lab' }, t('set.lab')), el('p', { class: 'muted' }, host.labLocked() ? t('set.labLocked') : t('set.labNote')), el('p', {}, t('set.always')), el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed))), webOption(host, changed), sambaOption(host, changed), reset, this.status);
+        this.lab.replaceChildren(el('h2', { id: 'set-lab' }, t('set.lab')), el('p', { class: 'muted' }, host.labLocked() ? t('set.labLocked') : t('set.labNote')), el('p', {}, t('set.always')), el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed))), webOption(host, changed), reset, this.status);
     }
 }
 
@@ -69300,7 +69581,7 @@ class App {
     stageEl;
     paletteEl;
     pageHost;
-    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, sambaAllowed: () => this.topo.allowSamba, setSambaAllowed: (on) => { this.topo.allowSamba = on; this.windows.closeAll(); this.afterCommand(); }, labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
+    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
     saveTimer = 0;
     interval;
     mode = 'realtime';
