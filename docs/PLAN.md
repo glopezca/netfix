@@ -2137,3 +2137,16 @@ ficheros guardados en el laboratorio.
 - sin varios rangos por subred, clases de cliente ni opciones DHCP fuera de las cuatro de la decisión 4;
 - sin `kill -HUP` al proceso de Kea (`DHCP4_DYNAMIC_RECONFIGURATION_FAIL`);
 - sin `kea-dhcp6` ni `keactrl`.
+
+- **Hecho (v0.38.0)**, con la revisión de seguridad (sin hallazgos críticos ni altos):
+  - El hallazgo bajo, un arranque que lanzaba una excepción y dejaba el modelo a medias, se corrigió: `setServices`
+    vuelve al modelo anterior.
+  - `systemctl reload` de una unidad parada o en failed se rechaza («Unit X.service is not active.»), como en systemd;
+    `reload-or-restart` la arranca.
+  - `journalctl -xeu UNIDAD`, la orden que sugiere systemctl, filtra la unidad y va al final; también `-n5`, `--unit=`
+    y `--lines=`.
+  - Ayuda: «Cuando un servicio no arranca» y «Los colores de systemctl y journalctl» en Servicios, «Editar
+    kea-dhcp4.conf a mano» en DHCP y «Editar BIND a mano» en DNS (es/en). e2e `scripts/e2e-service-files.mjs`.
+  - Límites que quedan: sin el catálogo de mensajes de `journalctl -x`; la zona inversa automática se genera aunque no
+    esté declarada; las opciones solo se leen de `named.conf.options`; un `include` relativo se rechaza; un cambio
+    desde la interfaz pierde lo editado y no aplicado (como en Webmin).
