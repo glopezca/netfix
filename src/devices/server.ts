@@ -17,6 +17,8 @@ import type { MailEnv } from '../services/mail-service.ts';
 import { findUnit, setUnitActive, unitActive, unitById, unitTitle, UNITS } from '../services/units.ts';
 import type { UnitId, UnitInfo } from '../services/units.ts';
 import { SshService } from '../services/ssh-service.ts';
+import { unitCheck } from './unit-checks.ts';
+import { journalLines } from './journal-text.ts';
 import { loadNftablesConf } from './server-firewall.ts';
 import { firstAddress } from '../net/dns.ts';
 import { BROADCAST_IP, formatIp } from '../core/ip.ts';
@@ -87,8 +89,9 @@ export class Server extends Host {
       if (was === unitActive(next, u.id)) continue;
       if (was) this.logStop(u);
       else {
-        this.systemd(u.id, `Starting ${unitTitle(u)}...`);
-        if (!this.startUnit(u.id)) next = setUnitActive(next, u.id, false);
+        // Type=simple (Kea): systemd says Started once it runs the process, nothing before.
+        if (!u.simple) this.systemd(u.id, `Starting ${unitTitle(u)}...`);
+        next = this.startUnit(u, next) ?? setUnitActive(next, u.id, false);
       }
     }
     if (before.firewall.enabled && !next.firewall.enabled) this.kernel.netfilter.flush();
@@ -111,12 +114,17 @@ export class Server extends Host {
     this.systemd(u.id, `${u.oneshot ? 'Finished' : 'Started'} ${unitTitle(u)}.`);
   }
 
-  /** What a unit's start runs; false when its process exits with an error (already in the journal). */
-  private startUnit(id: UnitId): boolean {
-    if (id === 'http') return this.startWeb();
-    if (id === 'ssh') return this.startSsh();
-    if (id === 'firewall') return this.startFirewall();
-    return true;
+  /** What a unit's start runs: the services it leaves, or null when its process exits with an error (in the journal). */
+  private startUnit(u: UnitInfo, next: ServerServices): ServerServices | null {
+    if (u.id === 'http') return this.startWeb() ? next : null;
+    if (u.id === 'ssh') return this.startSsh() ? next : null;
+    if (u.id === 'firewall') return this.startFirewall() ? next : null;
+    const check = unitCheck(u.id, this);
+    if (check.ok) return check.apply ? check.apply(next) : next;
+    if (u.simple) this.systemd(u.id, `Started ${unitTitle(u)}.`);
+    this.logLines(u.id, check.ident, check.lines);
+    this.failStart(u.id);
+    return null;
   }
 
   /** A line systemd itself writes in the unit's journal. */
@@ -130,7 +138,8 @@ export class Server extends Host {
     const status = u.start?.status ?? '1/FAILURE';
     this.systemd(id, `${u.linux}.service: ${u.start?.control ? 'Control' : 'Main'} process exited, code=exited, status=${status}`, 'notice');
     this.systemd(id, `${u.linux}.service: Failed with result 'exit-code'.`, 'warning');
-    this.systemd(id, `Failed to start ${unitTitle(u)}.`, 'err');
+    // A Type=simple unit had started: its main process exiting is not a failed start job.
+    if (!u.simple) this.systemd(id, `Failed to start ${unitTitle(u)}.`, 'err');
     this.failed = { ...this.failed, [id]: { time: this.clock.now(), status } };
   }
 
@@ -257,8 +266,9 @@ export class Server extends Host {
     else this.tcp.unlisten(port);
   }
 
-  log(unit: UnitId, line: string, meta: LogMeta = {}): void {
-    this.logs.push({ time: this.clock.now(), unit, line, ...meta });
+  /** A message in the unit's journal: one entry per line (journal-text.ts). */
+  log(unit: UnitId, text: string, meta: LogMeta = {}): void {
+    for (const line of journalLines(text)) this.logs.push({ time: this.clock.now(), unit, line, ...meta });
     if (this.logs.length > MAX_LOG) this.logs.splice(0, this.logs.length - MAX_LOG);
   }
 

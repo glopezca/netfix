@@ -13,7 +13,10 @@ import { hostKeyFiles } from '../services/ssh-hostkeys.ts';
 import type { Host } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import type { CommandFn, HostEnv, UserInfo } from '../bash/types.ts';
-import { Vfs } from '../bash/vfs.ts';
+import { FsError, MAX_FILE, ROOT, Vfs, dirname } from '../bash/vfs.ts';
+import { KEA_DHCP4_CONF } from './apt-defaults.ts';
+import { keaStart } from './service-files.ts';
+import { registerUnitCheck } from '../devices/unit-checks.ts';
 import type { DirMount } from '../bash/vfs.ts';
 import { seedRootfs, seedUsers } from '../bash/rootfs.ts';
 import { COREUTILS } from '../bash/coreutils/index.ts';
@@ -112,7 +115,60 @@ const WRITERS: Readonly<Record<string, (host: Host, content: string) => void>> =
 /** Generated files readable only by root (like Ubuntu's 600 netplan files). */
 const PRIVATE_MODE: Readonly<Record<string, number>> = { [NETPLAN_FILE]: 0o600 };
 
-/** Generated configuration files follow the live device config (zones, pools, netplan…). */
+/**
+ * Generated files root may rewrite as an ordinary file (root, 644, saved with the lab): saving applies nothing, the
+ * unit reads it when it starts (service-files.ts).
+ */
+const EDITABLE: ReadonlySet<string> = new Set([KEA_DHCP4_CONF]);
+/** The directories above the editable files: a saved lab may not replace them (by a link, say). */
+const EDITABLE_DIRS: ReadonlySet<string> = new Set(['/etc', '/etc/kea']);
+
+/** A saved editable file comes back as root's 644 file in place of the generated one, whatever its record says. */
+function restoreEditable(fs: Vfs, path: string, content: string): void {
+  const parent = dirname(path);
+  const dir = fs.tryLookup(parent, ROOT, false);
+  if (content.length > MAX_FILE || (dir !== undefined && dir.kind !== 'dir')) return;
+  const there = fs.tryLookup(path, ROOT, false);
+  if (there !== undefined && there.kind !== 'file') return;
+  if (there?.kind === 'file' && !there.generated) fs.usedBytes -= there.content.length;
+  fs.unmountFile(path);
+  fs.seed(path, { kind: 'file', content }, 0o644, 0, 0);
+  fs.lookup(path, ROOT, false).dirty = true;
+  fs.usedBytes += content.length;
+}
+
+/** The files of a saved lab: the editable ones and the directories above them apart, as root's. */
+function restoreRecords(fs: Vfs, records: readonly FileRecord[]): void {
+  importFiles(fs, records.filter((r) => !EDITABLE.has(r.path) && !EDITABLE_DIRS.has(r.path)));
+  for (const r of records) if (EDITABLE.has(r.path) && r.kind === 'file') restoreEditable(fs, r.path, r.content ?? '');
+}
+
+/** An editable path keeps the file there only if it is root's, not writable by others and not behind a link. */
+function keptUserFile(fs: Vfs, p: string): boolean {
+  const there = fs.tryLookup(p, ROOT, false);
+  if (!EDITABLE.has(p) || there?.kind !== 'file' || there.generated) return false;
+  return there.uid === 0 && (there.mode & 0o022) === 0 && fs.realpath(dirname(p)) === dirname(p);
+}
+
+/** The first write of an editable generated file: from then on it is the user's file. */
+function toUserFile(fs: Vfs, path: string, content: string, read: () => string): void {
+  if (content.length > MAX_FILE) throw new FsError('EFBIG');
+  fs.unmountFile(path);
+  try {
+    fs.writeFile(path, content);
+  } catch (err) {
+    fs.mountFile(path, read, 0o644, (c) => { toUserFile(fs, path, c, read); });
+    throw err;
+  }
+}
+
+function writerOf(host: Host, fs: Vfs, p: string, read: () => string): ((c: string) => void) | undefined {
+  if (EDITABLE.has(p)) return (c) => { toUserFile(fs, p, c, read); };
+  const writer = WRITERS[p];
+  return writer ? (c) => { writer(host, c); } : undefined;
+}
+
+/** Generated configuration files follow the live device config (zones, pools, netplan…); a user's file stays. */
 function refreshMounts(host: Host, e: Entry): void {
   const now = linuxFiles(host);
   now.set(NETPLAN_FILE, '');
@@ -120,8 +176,8 @@ function refreshMounts(host: Host, e: Entry): void {
   for (const p of e.mounted) if (!now.has(p)) e.fs.unmountFile(p);
   for (const p of now.keys()) {
     if (e.mounted.has(p)) continue;
-    const writer = WRITERS[p];
-    e.fs.mountFile(p, () => read(p), PRIVATE_MODE[p] ?? 0o644, writer ? (c) => writer(host, c) : undefined);
+    if (keptUserFile(e.fs, p)) continue;
+    e.fs.mountFile(p, () => read(p), PRIVATE_MODE[p] ?? 0o644, writerOf(host, e.fs, p, () => read(p)));
   }
   e.mounted = new Set(now.keys());
 }
@@ -197,7 +253,7 @@ function createSystem(host: Host): Entry {
     hostnames: () => ({ static: host.name.toLowerCase(), transient: host.runtimeName().toLowerCase(), pretty: host.prettyName }),
     setHostname: (kind, value) => setName(host, kind, value),
   };
-  importFiles(fs, pendingFiles.get(host) ?? []);
+  restoreRecords(fs, pendingFiles.get(host) ?? []);
   pendingFiles.delete(host);
   bootResolvedFrom(host, fs);
   return { fs, env, mounted: new Set(), usersKey: users.map((u) => u.name).join(',') };
@@ -223,7 +279,7 @@ export function savedFiles(host: Host): readonly FileRecord[] | undefined {
 export function restoreFiles(host: Host, files: readonly FileRecord[]): void {
   const e = systems.get(host);
   if (e) {
-    importFiles(e.fs, files);
+    restoreRecords(e.fs, files);
     bootResolvedFrom(host, e.fs);
     return;
   }
@@ -251,6 +307,12 @@ export function bootKernel(host: Host, files: readonly FileRecord[]): void {
 }
 
 registerHostFs((host) => hostSystem(host).fs);
+// kea-dhcp4 reads its file when it starts; a host whose system does not exist yet has only the generated one.
+registerUnitCheck('dhcp', (srv) => {
+  const kea = (f: FileRecord): boolean => f.path === KEA_DHCP4_CONF;
+  if (!systems.has(srv) && !(pendingFiles.get(srv) ?? []).some(kea)) return { ok: true };
+  return keaStart(srv, hostSystem(srv).fs);
+});
 // Before the system exists, a file saved with the topology is read from the pending records (same result either way).
 registerHostFileReader((host, path) => {
   const e = systems.get(host);

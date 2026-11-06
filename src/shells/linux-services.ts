@@ -93,7 +93,7 @@ function listUnits(host: Host, args: readonly string[], p: Paint): string[] {
   return [p('  UNIT                       LOAD   ACTIVE   SUB     DESCRIPTION', 'underline'), ...rows.map((r) => unitRow(r, p)), '', `${rows.length} loaded units listed.`];
 }
 
-const NEEDS_ROOT = new Set(['start', 'stop', 'restart', 'reload', 'force-reload', 'enable', 'disable']);
+const NEEDS_ROOT = new Set(['start', 'stop', 'restart', 'try-restart', 'reload', 'force-reload', 'reload-or-restart', 'try-reload-or-restart', 'enable', 'disable']);
 
 function notFound(verb: string, name: string): string[] {
   const unit = `${name.replace(/\.service$/, '')}.service`;
@@ -148,8 +148,9 @@ const wantsPath = (linux: string): string => `/etc/systemd/system/multi-user.tar
 const created = (linux: string): string => `Created symlink ${wantsPath(linux)} → /usr/lib/systemd/system/${linux}.service.`;
 const removed = (linux: string): string => `Removed "${wantsPath(linux)}".`;
 
+/** A Type=simple unit's start job succeeds once its process runs, even if it then exits (journal and status say why). */
 function started(server: Server, unit: UnitInfo): string[] {
-  return unitActive(server.services, unit.id) ? [] : jobFailed(unit.linux);
+  return unit.simple || unitActive(server.services, unit.id) ? [] : jobFailed(unit.linux);
 }
 
 function restart(server: Server, unit: UnitInfo): string[] {
@@ -167,13 +168,24 @@ function reload(server: Server, unit: UnitInfo): string[] {
   return restart(server, unit);
 }
 
+/** A unit without ExecReload (Kea): systemd refuses the reload job. */
+const notApplicable = (u: UnitInfo): string[] => [`Failed to reload ${u.linux}.service: Job type reload is not applicable for unit ${u.linux}.service.`];
+
+/** reload-or-restart: the unit's reload when it has one, a restart otherwise. */
+const reloadOrRestart = (server: Server, unit: UnitInfo): string[] => (unit.noReload ? restart(server, unit) : reload(server, unit));
+
 function runVerb(server: Server, unit: UnitInfo, verb: string, now: boolean): string[] {
+  const on = unitActive(server.services, unit.id);
   switch (verb) {
     case 'is-active': case 'is-failed': return [unitState(server, unit.id)];
     case 'is-enabled': return [server.autostart[unit.id] ? 'enabled' : 'disabled'];
     case 'start': server.setUnit(unit.id, true); return started(server, unit);
     case 'stop': server.setUnit(unit.id, false); return [];
-    case 'reload': case 'force-reload': return reload(server, unit);
+    case 'reload': return unit.noReload ? notApplicable(unit) : reload(server, unit);
+    case 'reload-or-restart': return reloadOrRestart(server, unit);
+    // force-reload is try-reload-or-restart: nothing happens to a unit that is not running.
+    case 'force-reload': case 'try-reload-or-restart': return on ? reloadOrRestart(server, unit) : [];
+    case 'try-restart': return on ? restart(server, unit) : [];
     case 'restart': return restart(server, unit);
     case 'enable':
       server.autostart = { ...server.autostart, [unit.id]: true };
@@ -199,6 +211,9 @@ function runPkgVerb(host: Host, u: PkgUnit, verb: string, now: boolean): string[
     case 'stop': stopPkgUnit(host, u); return [];
     case 'restart': stopPkgUnit(host, u); return startOrFail(host, u);
     case 'reload': case 'force-reload': return reloadPkgUnit(host, u);
+    case 'reload-or-restart': return s.active ? reloadPkgUnit(host, u) : startOrFail(host, u);
+    case 'try-reload-or-restart': return s.active ? reloadPkgUnit(host, u) : [];
+    case 'try-restart': if (!s.active) return []; stopPkgUnit(host, u); return startOrFail(host, u);
     case 'enable': {
       setPkgUnitState(host, u, { enabled: true });
       const link = s.enabled ? [] : [created(u.name)];

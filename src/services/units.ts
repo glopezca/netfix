@@ -19,6 +19,10 @@ export interface UnitInfo {
   readonly start?: UnitStart;
   /** Another name of the unit file (Alias=): systemctl finds the unit by it but enable/disable refuse it. */
   readonly alias?: string;
+  /** Type=simple (Kea): the start job ends once the process runs, so systemctl start succeeds even if it then exits. */
+  readonly simple?: boolean;
+  /** No ExecReload (Kea): `systemctl reload` is not applicable. */
+  readonly noReload?: boolean;
 }
 
 /** What starting a unit runs (from its unit file in Ubuntu). */
@@ -34,7 +38,7 @@ export interface UnitStart {
 }
 
 export const UNITS: readonly UnitInfo[] = [
-  { id: 'dhcp', linux: 'kea-dhcp4-server', aliases: ['kea-dhcp4', 'isc-dhcp-server', 'dhcpd'], process: 'kea-dhcp4', description: 'Kea DHCPv4 Service', windows: 'DHCPServer', windowsDisplay: 'Servidor DHCP', ports: [{ proto: 'udp', port: 67 }], pid: 812, start: { exec: 'ExecStart=/usr/sbin/kea-dhcp4 -c /etc/kea/kea-dhcp4.conf' } },
+  { id: 'dhcp', linux: 'kea-dhcp4-server', aliases: ['kea-dhcp4', 'isc-dhcp-server', 'dhcpd'], process: 'kea-dhcp4', description: 'Kea DHCPv4 Service', windows: 'DHCPServer', windowsDisplay: 'Servidor DHCP', ports: [{ proto: 'udp', port: 67 }], pid: 812, start: { exec: 'ExecStart=/usr/sbin/kea-dhcp4 -c /etc/kea/kea-dhcp4.conf' }, simple: true, noReload: true },
   { id: 'dns', linux: 'named', aliases: ['bind9'], alias: 'bind9', process: 'named', description: 'BIND Domain Name Server', windows: 'DNS', windowsDisplay: 'Servidor DNS', ports: [{ proto: 'udp', port: 53 }], pid: 845, start: { exec: 'ExecStart=/usr/sbin/named -f $OPTIONS' } },
   { id: 'http', linux: 'apache2', aliases: ['httpd'], process: 'apache2', description: 'The Apache HTTP Server', windows: 'W3SVC', windowsDisplay: 'Servicio de publicación World Wide Web', ports: [{ proto: 'tcp', port: 80 }], pid: 903, start: { exec: 'ExecStart=/usr/sbin/apachectl start', control: true, pid: 1123 } },
   { id: 'smtp', linux: 'postfix', aliases: ['smtp'], process: 'master', description: 'Postfix Mail Transport Agent', windows: 'SMTPSVC', windowsDisplay: 'Protocolo simple de transferencia de correo (SMTP)', ports: [{ proto: 'tcp', port: 25 }], pid: 1021 },
