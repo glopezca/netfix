@@ -63,7 +63,7 @@ export function dhcpPage(server: Server, base: string): Child {
     cards(section(t('wa.pools'), t('wa.poolsHelp'), table([t('wa.name'), t('wa.start'), t('wa.users'), t('wa.gateway'), 'DNS', ''], rows, t('wa.noPools')))),
     form(base, 'dhcp', 'pool-add', cards(section(t('wa.newPool'), t('wa.newPoolHelp'),
       row(t('wa.name'), text('name', '')), row(t('wa.start'), text('start', '')), row(t('wa.maskShort'), text('mask', '255.255.255.0')), row(t('wa.maxUsers'), text('max', '50')),
-      row(t('wa.gateway'), text('gateway', '')), row('DNS', text('dns', '')), row(t('wa.domain'), text('domain', '')),
+      row(t('wa.gateway'), text('gateway', '')), row('DNS', text('dns', '')), row(t('wa.domain'), text('domain', '')), row(t('wa.wins'), text('wins', '')),
       row(t('wa.leasesBy'), choose('identify', 'client-id', [['client-id', t('wa.byIdOrMac')], ['mac', 'MAC']])))), buttons()),
     reservations(server, base),
     leases(server, base),

@@ -23,6 +23,8 @@ export interface PtDhcpPool {
   readonly dns?: number;
   readonly domain?: string;
   readonly tftp?: number;
+  /** Option 44 (NetBIOS name server): the WINS server of the clients. */
+  readonly wins?: number;
   readonly leaseMinutes: number;
   readonly reservations: readonly DhcpReservation[];
   /** Undefined = client-id (Kea default): option 61 when present, the MAC otherwise. */

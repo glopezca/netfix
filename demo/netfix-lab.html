@@ -3034,7 +3034,7 @@ const SRV_ES = {
     'dhcp.byMac': 'Dirección MAC',
     'dhcp.badStart': 'La dirección IP inicial no es válida.',
     'dhcp.badMask': 'La máscara no es válida: usa una como 255.255.255.0 (o /24).',
-    'dhcp.badOptions': 'Revisa la puerta de enlace, el DNS o el TFTP (formato 192.168.1.1).',
+    'dhcp.badOptions': 'Revisa la puerta de enlace, el DNS, el TFTP o el WINS (formato 192.168.1.1).',
     'dhcp.badNumbers': 'Usuarios máximos y concesión deben ser números enteros.',
     'dhcp.name': 'Nombre',
     'dhcp.net': 'Red',
@@ -3053,6 +3053,7 @@ const SRV_ES = {
     'dhcp.dns': 'Servidor DNS',
     'dhcp.domain': 'Dominio',
     'dhcp.tftp': 'Servidor TFTP (opción 150)',
+    'dhcp.wins': 'Servidor WINS (opción 44)',
     'dhcp.lease': 'Concesión (minutos)',
     'dhcp.identify': 'Identificar concesiones automáticas por',
     'dhcp.identifyHint': 'Kea «match-client-id»: con MAC, un equipo que cambia de Client-ID conserva su dirección IP.',
@@ -3100,6 +3101,7 @@ const SRV_ES = {
     'pool.err.start': 'La dirección IP inicial {ip} no es una dirección de host de su subred.',
     'pool.err.users': 'El número máximo de usuarios debe ser al menos 1.',
     'pool.err.gateway': 'La puerta de enlace debe estar en la misma subred que el pool.',
+    'pool.err.wins': 'El servidor WINS ha de ser la dirección de un equipo (ni 0.0.0.0, ni multidifusión, ni difusión).',
     'pool.err.subnet': 'Ya hay un pool para esa subred.',
     'pool.err.resNet': 'La reserva {ip} no está en la subred del pool.',
     'pool.err.resId': 'Cada reserva necesita una MAC o un Client-ID (solo uno de los dos).',
@@ -3209,7 +3211,7 @@ const SRV_EN = {
     'dhcp.byMac': 'MAC address',
     'dhcp.badStart': 'The start address is not valid.',
     'dhcp.badMask': 'The mask is not valid: use one such as 255.255.255.0 (or /24).',
-    'dhcp.badOptions': 'Check the gateway, DNS or TFTP (format 192.168.1.1).',
+    'dhcp.badOptions': 'Check the gateway, DNS, TFTP or WINS (format 192.168.1.1).',
     'dhcp.badNumbers': 'Maximum users and lease must be whole numbers.',
     'dhcp.name': 'Name',
     'dhcp.net': 'Network',
@@ -3228,6 +3230,7 @@ const SRV_EN = {
     'dhcp.dns': 'DNS server',
     'dhcp.domain': 'Domain',
     'dhcp.tftp': 'TFTP server (option 150)',
+    'dhcp.wins': 'WINS server (option 44)',
     'dhcp.lease': 'Lease (minutes)',
     'dhcp.identify': 'Identify automatic leases by',
     'dhcp.identifyHint': 'Kea “match-client-id”: with MAC, a device that changes its Client-ID keeps its address.',
@@ -3275,6 +3278,7 @@ const SRV_EN = {
     'pool.err.start': 'The start address {ip} is not a host address of its subnet.',
     'pool.err.users': 'The maximum number of users must be at least 1.',
     'pool.err.gateway': 'The default gateway must be in the same subnet as the pool.',
+    'pool.err.wins': 'The WINS server must be the address of a host (not 0.0.0.0, multicast or broadcast).',
     'pool.err.subnet': 'There is already a pool for that subnet.',
     'pool.err.resNet': 'The reservation {ip} is not in the pool’s subnet.',
     'pool.err.resId': 'Each reservation needs a MAC or a Client-ID (only one of them).',
@@ -3388,6 +3392,7 @@ const WEB_ES = {
     'wa.maskShort': 'Máscara',
     'wa.maxUsers': 'Usuarios máximos',
     'wa.domain': 'Dominio',
+    'wa.wins': 'Servidor WINS (opción 44)',
     'wa.leasesBy': 'Concesiones por',
     'wa.byIdOrMac': 'Client-ID (opción 61) o MAC',
     'wa.records': 'Registros',
@@ -3661,6 +3666,7 @@ const WEB_EN = {
     'wa.maskShort': 'Mask',
     'wa.maxUsers': 'Maximum users',
     'wa.domain': 'Domain',
+    'wa.wins': 'WINS server (option 44)',
     'wa.leasesBy': 'Leases by',
     'wa.byIdOrMac': 'Client-ID (option 61) or MAC',
     'wa.records': 'Records',
@@ -28862,6 +28868,9 @@ const { networkOf, formatIp, inSubnet } = __m["core/ip.js"];
 const MINUTES_PER_DAY = 1440;
 const MINUTES_PER_HOUR = 60;
 const TFTP_OPTION = 150;
+const MULTICAST_FIRST = 0xe0000000;
+/** A WINS server is one host: not 0.0.0.0, multicast or broadcast. */
+const isUnicast = (a) => a !== 0 && a < MULTICAST_FIRST;
 function ptPoolToIos(p) {
     const minutes = p.leaseMinutes;
     const lease = { days: Math.floor(minutes / MINUTES_PER_DAY), hours: Math.floor((minutes % MINUTES_PER_DAY) / MINUTES_PER_HOUR), minutes: minutes % MINUTES_PER_HOUR };
@@ -28871,6 +28880,7 @@ function ptPoolToIos(p) {
         defaultRouters: p.gateway !== undefined ? [p.gateway] : [],
         dnsServers: p.dns !== undefined ? [p.dns] : [],
         domainName: p.domain || undefined,
+        netbiosServers: p.wins !== undefined ? [p.wins] : [],
         lease,
         options: p.tftp !== undefined ? [{ code: TFTP_OPTION, kind: 'ip', value: '', ips: [p.tftp] }] : [],
         reservations: p.reservations.map((r) => (r.clientId ? { ip: r.ip, clientId: r.clientId } : { ip: r.ip, mac: r.mac, macAlways: true })),
@@ -28910,6 +28920,8 @@ function validatePool(p, others) {
         return t('pool.err.users');
     if (p.gateway !== undefined && !inSubnet(p.gateway, p.start, p.prefix))
         return t('pool.err.gateway');
+    if (p.wins !== undefined && !isUnicast(p.wins))
+        return t('pool.err.wins');
     const net = networkOf(p.start, p.prefix);
     if (others.some((o) => networkOf(o.start, o.prefix) === net && o.prefix === p.prefix))
         return t('pool.err.subnet');
@@ -29110,6 +29122,7 @@ function keaConf(s) {
             p.gateway !== undefined ? `{ "name": "routers", "data": "${formatIp(p.gateway)}" }` : '',
             p.dns !== undefined ? `{ "name": "domain-name-servers", "data": "${formatIp(p.dns)}" }` : '',
             p.domain ? `{ "name": "domain-name", "data": "${p.domain}" }` : '',
+            p.wins !== undefined ? `{ "name": "netbios-name-servers", "data": "${formatIp(p.wins)}" }` : '',
         ].filter(Boolean).join(',\n          ');
         const res = p.reservations.map((r) => `{ ${r.clientId ? `"client-id": "${linuxMac(r.clientId)}"` : `"hw-address": "${linuxMac(r.mac ?? '')}"`}, "ip-address": "${formatIp(r.ip)}" }`).join(',\n          ');
         return `      {
@@ -48004,7 +48017,7 @@ function servicesToJson(s) {
             enabled: s.dhcp.enabled,
             pools: s.dhcp.pools.map((p) => ({
                 name: p.name, start: formatIp(p.start), prefix: p.prefix, maxUsers: p.maxUsers, gateway: ip(p.gateway), dns: ip(p.dns),
-                domain: p.domain, tftp: ip(p.tftp), leaseMinutes: p.leaseMinutes,
+                domain: p.domain, tftp: ip(p.tftp), wins: ip(p.wins), leaseMinutes: p.leaseMinutes,
                 reservations: p.reservations.map((r) => ({ ip: formatIp(r.ip), mac: r.mac, clientId: r.clientId, name: r.name })),
                 identifyBy: p.identifyBy,
             })),
@@ -48065,7 +48078,7 @@ function pool(v) {
     return {
         name: str(v.name, 'nombre de pool', 32), start, prefix: num(v.prefix, 'máscara de pool', 8, 30), maxUsers: num(v.maxUsers, 'usuarios del pool', 1, 65_534),
         gateway: optIp(v.gateway, 'puerta de enlace'), dns: optIp(v.dns, 'DNS del pool'), domain: v.domain === undefined ? undefined : str(v.domain, 'dominio'),
-        tftp: optIp(v.tftp, 'TFTP'), leaseMinutes: num(v.leaseMinutes, 'concesión', 1, 525_600, DEFAULT_LEASE_MINUTES),
+        tftp: optIp(v.tftp, 'TFTP'), wins: optIp(v.wins, 'WINS'), leaseMinutes: num(v.leaseMinutes, 'concesión', 1, 525_600, DEFAULT_LEASE_MINUTES),
         reservations: arr(v.reservations, 'reservas').map(reservation),
         identifyBy: v.identifyBy === undefined ? undefined : identifyBy(v.identifyBy),
     };
@@ -55762,7 +55775,7 @@ function dhcpPage(server, base) {
         form(base, 'dhcp', 'dhcp', cards(section(t('wa.dhcpServer'), t('wa.dhcpHelp'), check('enabled', d.enabled, t('wa.enabled')))), buttons()),
         listenForm(server, base, 'dhcp'),
         cards(section(t('wa.pools'), t('wa.poolsHelp'), table([t('wa.name'), t('wa.start'), t('wa.users'), t('wa.gateway'), 'DNS', ''], rows, t('wa.noPools')))),
-        form(base, 'dhcp', 'pool-add', cards(section(t('wa.newPool'), t('wa.newPoolHelp'), row(t('wa.name'), text('name', '')), row(t('wa.start'), text('start', '')), row(t('wa.maskShort'), text('mask', '255.255.255.0')), row(t('wa.maxUsers'), text('max', '50')), row(t('wa.gateway'), text('gateway', '')), row('DNS', text('dns', '')), row(t('wa.domain'), text('domain', '')), row(t('wa.leasesBy'), choose('identify', 'client-id', [['client-id', t('wa.byIdOrMac')], ['mac', 'MAC']])))), buttons()),
+        form(base, 'dhcp', 'pool-add', cards(section(t('wa.newPool'), t('wa.newPoolHelp'), row(t('wa.name'), text('name', '')), row(t('wa.start'), text('start', '')), row(t('wa.maskShort'), text('mask', '255.255.255.0')), row(t('wa.maxUsers'), text('max', '50')), row(t('wa.gateway'), text('gateway', '')), row('DNS', text('dns', '')), row(t('wa.domain'), text('domain', '')), row(t('wa.wins'), text('wins', '')), row(t('wa.leasesBy'), choose('identify', 'client-id', [['client-id', t('wa.byIdOrMac')], ['mac', 'MAC']])))), buttons()),
         reservations(server, base),
         leases(server, base),
     ];
@@ -57047,10 +57060,11 @@ function addPool(server, f) {
     const prefix = parseMask((f.get('mask') ?? '').trim());
     const gateway = optIp(f.get('gateway'));
     const dns = optIp(f.get('dns'));
+    const wins = optIp(f.get('wins'));
     const max = Number(f.get('max'));
-    if (!start || prefix === null || gateway === null || dns === null || !Number.isInteger(max))
+    if (!start || prefix === null || gateway === null || dns === null || wins === null || !Number.isInteger(max))
         return { error: t('wa.err.pool') };
-    const pool = { name: (f.get('name') ?? '').trim(), start, prefix, maxUsers: max, gateway, dns, domain: (f.get('domain') ?? '').trim() || undefined, leaseMinutes: DEFAULT_LEASE_MINUTES, reservations: [], identifyBy: f.get('identify') === 'mac' ? 'mac' : undefined };
+    const pool = { name: (f.get('name') ?? '').trim(), start, prefix, maxUsers: max, gateway, dns, wins, domain: (f.get('domain') ?? '').trim() || undefined, leaseMinutes: DEFAULT_LEASE_MINUTES, reservations: [], identifyBy: f.get('identify') === 'mac' ? 'mac' : undefined };
     const err = validatePool(pool, server.services.dhcp.pools);
     return err ? { error: err } : set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, pools: [...s.dhcp.pools, pool] } }));
 }
@@ -66186,6 +66200,7 @@ function poolFields(server, pool) {
         dns: input({ value: ipOrEmpty(pool?.dns ?? (s.dns.enabled ? server.config.ip : undefined)), inputmode: 'decimal' }),
         domain: input({ value: pool?.domain ?? '' }),
         tftp: input({ value: ipOrEmpty(pool?.tftp), inputmode: 'decimal' }),
+        wins: input({ value: ipOrEmpty(pool?.wins), inputmode: 'decimal' }),
         lease: input({ value: String(pool?.leaseMinutes ?? DEFAULT_LEASE_MINUTES), inputmode: 'numeric' }),
         identify: select(identify(), pool?.identifyBy ?? 'client-id'),
     };
@@ -66194,7 +66209,7 @@ function readPool(f, pool) {
     const opt = (i) => (i.value.trim() ? parseIp(i.value.trim()) : undefined);
     const start = parseIp(f.start.value.trim());
     const prefix = parseMask(f.mask.value.trim());
-    const vals = { gw: opt(f.gw), dns: opt(f.dns), tftp: opt(f.tftp) };
+    const vals = { gw: opt(f.gw), dns: opt(f.dns), tftp: opt(f.tftp), wins: opt(f.wins) };
     if (start === null)
         return t('dhcp.badStart');
     if (prefix === null)
@@ -66205,7 +66220,7 @@ function readPool(f, pool) {
     const lease = Number(f.lease.value);
     if (!Number.isInteger(maxUsers) || !Number.isInteger(lease) || lease < 1)
         return t('dhcp.badNumbers');
-    return { name: f.name.value.trim(), start, prefix, maxUsers, gateway: vals.gw ?? undefined, dns: vals.dns ?? undefined, tftp: vals.tftp ?? undefined, domain: f.domain.value.trim() || undefined, leaseMinutes: lease, reservations: pool?.reservations ?? [], identifyBy: f.identify.value === 'mac' ? 'mac' : undefined };
+    return { name: f.name.value.trim(), start, prefix, maxUsers, gateway: vals.gw ?? undefined, dns: vals.dns ?? undefined, tftp: vals.tftp ?? undefined, wins: vals.wins ?? undefined, domain: f.domain.value.trim() || undefined, leaseMinutes: lease, reservations: pool?.reservations ?? [], identifyBy: f.identify.value === 'mac' ? 'mac' : undefined };
 }
 function poolsTable(pools, editing, onSelect, onDelete) {
     return table(pools, [
@@ -66251,7 +66266,7 @@ function dhcpPanel(server, app) {
             onOff(t('dhcp.service'), s.dhcp.enabled, (on) => { server.setUnit('dhcp', on); app.afterCommand(); refresh(); }),
             listenBlock(server, 'dhcp', app),
             el('h3', {}, pool ? t('dhcp.editPool', { name: pool.name }) : t('dhcp.newPool')),
-            el('div', { class: 'grid3' }, field(t('dhcp.poolName'), f.name), field(t('dhcp.start'), f.start), field(t('dhcp.mask'), f.mask), field(t('dhcp.maxUsers'), f.max), field(t('dhcp.gateway'), f.gw), field(t('dhcp.dns'), f.dns), field(t('dhcp.domain'), f.domain), field(t('dhcp.tftp'), f.tftp), field(t('dhcp.lease'), f.lease), field(t('dhcp.identify'), f.identify, t('dhcp.identifyHint'))),
+            el('div', { class: 'grid3' }, field(t('dhcp.poolName'), f.name), field(t('dhcp.start'), f.start), field(t('dhcp.mask'), f.mask), field(t('dhcp.maxUsers'), f.max), field(t('dhcp.gateway'), f.gw), field(t('dhcp.dns'), f.dns), field(t('dhcp.domain'), f.domain), field(t('dhcp.tftp'), f.tftp), field(t('dhcp.wins'), f.wins), field(t('dhcp.lease'), f.lease), field(t('dhcp.identify'), f.identify, t('dhcp.identifyHint'))),
             el('div', { class: 'actions' }, button(pool ? t('dhcp.saveChanges') : t('dhcp.addPool'), save), pool ? button(t('dhcp.newPool'), () => { editing = null; refresh(); }, 'btn btn-quiet') : null),
             msg.el,
             el('h3', {}, t('dhcp.pools')),

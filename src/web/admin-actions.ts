@@ -49,9 +49,10 @@ function addPool(server: Server, f: Fields): Outcome {
   const prefix = parseMask((f.get('mask') ?? '').trim());
   const gateway = optIp(f.get('gateway'));
   const dns = optIp(f.get('dns'));
+  const wins = optIp(f.get('wins'));
   const max = Number(f.get('max'));
-  if (!start || prefix === null || gateway === null || dns === null || !Number.isInteger(max)) return { error: t('wa.err.pool') };
-  const pool = { name: (f.get('name') ?? '').trim(), start, prefix, maxUsers: max, gateway, dns, domain: (f.get('domain') ?? '').trim() || undefined, leaseMinutes: DEFAULT_LEASE_MINUTES, reservations: [], identifyBy: f.get('identify') === 'mac' ? 'mac' as const : undefined };
+  if (!start || prefix === null || gateway === null || dns === null || wins === null || !Number.isInteger(max)) return { error: t('wa.err.pool') };
+  const pool = { name: (f.get('name') ?? '').trim(), start, prefix, maxUsers: max, gateway, dns, wins, domain: (f.get('domain') ?? '').trim() || undefined, leaseMinutes: DEFAULT_LEASE_MINUTES, reservations: [], identifyBy: f.get('identify') === 'mac' ? 'mac' as const : undefined };
   const err = validatePool(pool, server.services.dhcp.pools);
   return err ? { error: err } : set(server, (s) => ({ ...s, dhcp: { ...s.dhcp, pools: [...s.dhcp.pools, pool] } }));
 }

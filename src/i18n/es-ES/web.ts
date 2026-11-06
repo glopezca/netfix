@@ -81,6 +81,7 @@ export const WEB_ES = {
   'wa.maskShort': 'Máscara',
   'wa.maxUsers': 'Usuarios máximos',
   'wa.domain': 'Dominio',
+  'wa.wins': 'Servidor WINS (opción 44)',
   'wa.leasesBy': 'Concesiones por',
   'wa.byIdOrMac': 'Client-ID (opción 61) o MAC',
   'wa.records': 'Registros',

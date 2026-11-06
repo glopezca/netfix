@@ -104,6 +104,15 @@ test('DHCP page: reservations by MAC, hexadecimal and ASCII client-id, and from 
   assert.equal(pool().reservations.length, 3);
 });
 
+test('DHCP page: a new pool takes the WINS server (option 44), and refuses one that is not an address', () => {
+  const { srv, web } = lab();
+  web.login('http://10.0.0.2:10000/', 'admin', 'netfix');
+  const form = (wins: string): [string, string][] => [['action', 'pool-add'], ['name', 'LAN'], ['start', '10.0.0.100'], ['mask', '255.255.255.0'], ['max', '20'], ['gateway', ''], ['dns', ''], ['domain', ''], ['wins', wins]];
+  assert.match(body(post(web, 'dhcp', form('10.0.0'))), /web-adm-error/);
+  assert.match(body(post(web, 'dhcp', form('10.0.0.2'))), /Los cambios se han guardado/);
+  assert.equal(srv.services.dhcp.pools.find((p) => p.name === 'LAN')?.wins, parseIp('10.0.0.2'));
+});
+
 test('SSH page: authentication methods edit sshd_config and reload ssh', () => {
   const { srv, web } = lab();
   web.login('http://10.0.0.2:10000/', 'admin', 'netfix');

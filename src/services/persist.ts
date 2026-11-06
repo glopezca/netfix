@@ -38,7 +38,7 @@ export function servicesToJson(s: ServerServices): ServicesJson {
       enabled: s.dhcp.enabled,
       pools: s.dhcp.pools.map((p) => ({
         name: p.name, start: formatIp(p.start), prefix: p.prefix, maxUsers: p.maxUsers, gateway: ip(p.gateway), dns: ip(p.dns),
-        domain: p.domain, tftp: ip(p.tftp), leaseMinutes: p.leaseMinutes,
+        domain: p.domain, tftp: ip(p.tftp), wins: ip(p.wins), leaseMinutes: p.leaseMinutes,
         reservations: p.reservations.map((r) => ({ ip: formatIp(r.ip), mac: r.mac, clientId: r.clientId, name: r.name })),
         identifyBy: p.identifyBy,
       })),
@@ -98,7 +98,7 @@ function pool(v: unknown): PtDhcpPool {
   return {
     name: str(v.name, 'nombre de pool', 32), start, prefix: num(v.prefix, 'máscara de pool', 8, 30), maxUsers: num(v.maxUsers, 'usuarios del pool', 1, 65_534),
     gateway: optIp(v.gateway, 'puerta de enlace'), dns: optIp(v.dns, 'DNS del pool'), domain: v.domain === undefined ? undefined : str(v.domain, 'dominio'),
-    tftp: optIp(v.tftp, 'TFTP'), leaseMinutes: num(v.leaseMinutes, 'concesión', 1, 525_600, DEFAULT_LEASE_MINUTES),
+    tftp: optIp(v.tftp, 'TFTP'), wins: optIp(v.wins, 'WINS'), leaseMinutes: num(v.leaseMinutes, 'concesión', 1, 525_600, DEFAULT_LEASE_MINUTES),
     reservations: arr(v.reservations, 'reservas').map(reservation),
     identifyBy: v.identifyBy === undefined ? undefined : identifyBy(v.identifyBy),
   };

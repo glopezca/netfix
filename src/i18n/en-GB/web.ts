@@ -83,6 +83,7 @@ export const WEB_EN: Readonly<Record<WebKey, string>> = {
   'wa.maskShort': 'Mask',
   'wa.maxUsers': 'Maximum users',
   'wa.domain': 'Domain',
+  'wa.wins': 'WINS server (option 44)',
   'wa.leasesBy': 'Leases by',
   'wa.byIdOrMac': 'Client-ID (option 61) or MAC',
   'wa.records': 'Records',

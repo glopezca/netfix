@@ -24,6 +24,7 @@ function keaConf(s: ServerServices): string {
       p.gateway !== undefined ? `{ "name": "routers", "data": "${formatIp(p.gateway)}" }` : '',
       p.dns !== undefined ? `{ "name": "domain-name-servers", "data": "${formatIp(p.dns)}" }` : '',
       p.domain ? `{ "name": "domain-name", "data": "${p.domain}" }` : '',
+      p.wins !== undefined ? `{ "name": "netbios-name-servers", "data": "${formatIp(p.wins)}" }` : '',
     ].filter(Boolean).join(',\n          ');
     const res = p.reservations.map((r) => `{ ${r.clientId ? `"client-id": "${linuxMac(r.clientId)}"` : `"hw-address": "${linuxMac(r.mac ?? '')}"`}, "ip-address": "${formatIp(r.ip)}" }`).join(',\n          ');
     return `      {
