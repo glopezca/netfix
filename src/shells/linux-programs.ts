@@ -63,7 +63,10 @@ function systemd(host: Host, kind: 'systemctl' | 'service'): CommandFn {
     const out = systemctl(host, args, ctx.cred.uid === 0);
     if (out.length && FAILURE.test(out[0] ?? '')) { ctx.err(`${out.join('\n')}\n`); return /could not be found|not found/.test(out[0] ?? '') ? 4 : 1; }
     lines(ctx, out);
-    if (args[0] === 'is-active' || args[0] === 'status') return out[0] === 'inactive' || out.some((l) => /Active: inactive/.test(l)) ? 3 : 0;
+    const verb = args.find((a) => !a.startsWith('-'));
+    if (verb === 'is-failed') return out[0] === 'failed' ? 0 : 1;
+    // LSB: 3 = not running (inactive or failed).
+    if (verb === 'is-active' || verb === 'status') return out[0] === 'inactive' || out[0] === 'failed' || out.some((l) => /Active: (inactive|failed)/.test(l)) ? 3 : 0;
     return 0;
   };
 }

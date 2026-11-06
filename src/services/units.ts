@@ -15,17 +15,44 @@ export interface UnitInfo {
   readonly pid: number;
   /** Type=oneshot with RemainAfterExit (nftables): "active (exited)", no main process. */
   readonly oneshot?: boolean;
+  /** The process a start runs, as `systemctl status` names it after a failure. */
+  readonly start?: UnitStart;
+  /** Another name of the unit file (Alias=): systemctl finds the unit by it but enable/disable refuse it. */
+  readonly alias?: string;
+}
+
+/** What starting a unit runs (from its unit file in Ubuntu). */
+export interface UnitStart {
+  /** `ExecStart=…` (or `ExecStartPre=…`) as systemctl prints it. */
+  readonly exec: string;
+  /** A control process (ExecStartPre, or a forking ExecStart such as apachectl): no "Main PID" after a failure. */
+  readonly control?: boolean;
+  /** Its PID, when not the unit's own. */
+  readonly pid?: number;
+  /** The exit status of a failed start (sshd -t exits 255). */
+  readonly status?: string;
 }
 
 export const UNITS: readonly UnitInfo[] = [
-  { id: 'dhcp', linux: 'kea-dhcp4-server', aliases: ['kea-dhcp4', 'isc-dhcp-server', 'dhcpd'], process: 'kea-dhcp4', description: 'Kea DHCPv4 Service', windows: 'DHCPServer', windowsDisplay: 'Servidor DHCP', ports: [{ proto: 'udp', port: 67 }], pid: 812 },
-  { id: 'dns', linux: 'bind9', aliases: ['named'], process: 'named', description: 'BIND Domain Name Server', windows: 'DNS', windowsDisplay: 'Servidor DNS', ports: [{ proto: 'udp', port: 53 }], pid: 845 },
-  { id: 'http', linux: 'apache2', aliases: ['httpd'], process: 'apache2', description: 'The Apache HTTP Server', windows: 'W3SVC', windowsDisplay: 'Servicio de publicación World Wide Web', ports: [{ proto: 'tcp', port: 80 }], pid: 903 },
+  { id: 'dhcp', linux: 'kea-dhcp4-server', aliases: ['kea-dhcp4', 'isc-dhcp-server', 'dhcpd'], process: 'kea-dhcp4', description: 'Kea DHCPv4 Service', windows: 'DHCPServer', windowsDisplay: 'Servidor DHCP', ports: [{ proto: 'udp', port: 67 }], pid: 812, start: { exec: 'ExecStart=/usr/sbin/kea-dhcp4 -c /etc/kea/kea-dhcp4.conf' } },
+  { id: 'dns', linux: 'named', aliases: ['bind9'], alias: 'bind9', process: 'named', description: 'BIND Domain Name Server', windows: 'DNS', windowsDisplay: 'Servidor DNS', ports: [{ proto: 'udp', port: 53 }], pid: 845, start: { exec: 'ExecStart=/usr/sbin/named -f $OPTIONS' } },
+  { id: 'http', linux: 'apache2', aliases: ['httpd'], process: 'apache2', description: 'The Apache HTTP Server', windows: 'W3SVC', windowsDisplay: 'Servicio de publicación World Wide Web', ports: [{ proto: 'tcp', port: 80 }], pid: 903, start: { exec: 'ExecStart=/usr/sbin/apachectl start', control: true, pid: 1123 } },
   { id: 'smtp', linux: 'postfix', aliases: ['smtp'], process: 'master', description: 'Postfix Mail Transport Agent', windows: 'SMTPSVC', windowsDisplay: 'Protocolo simple de transferencia de correo (SMTP)', ports: [{ proto: 'tcp', port: 25 }], pid: 1021 },
-  { id: 'mailbox', linux: 'dovecot', aliases: ['pop3', 'imap'], process: 'dovecot', description: 'Dovecot IMAP/POP3 email server', windows: 'POP3Svc', windowsDisplay: 'Servicio POP3/IMAP', ports: [{ proto: 'tcp', port: 110 }, { proto: 'tcp', port: 143 }], pid: 1088 },
-  { id: 'ssh', linux: 'ssh', aliases: ['sshd', 'openssh-server'], process: 'sshd', description: 'OpenBSD Secure Shell server', windows: 'sshd', windowsDisplay: 'OpenSSH SSH Server', ports: [{ proto: 'tcp', port: 22 }], pid: 701 },
-  { id: 'firewall', linux: 'nftables', aliases: ['nft'], process: 'nft', description: 'nftables', windows: 'MpsSvc', windowsDisplay: 'Windows Defender Firewall', ports: [], pid: 655, oneshot: true },
+  { id: 'mailbox', linux: 'dovecot', aliases: ['pop3', 'imap'], process: 'dovecot', description: 'Dovecot IMAP/POP3 email server', windows: 'POP3Svc', windowsDisplay: 'Servicio POP3/IMAP', ports: [{ proto: 'tcp', port: 110 }, { proto: 'tcp', port: 143 }], pid: 1088, start: { exec: 'ExecStart=/usr/sbin/dovecot -F' } },
+  { id: 'ssh', linux: 'ssh', aliases: ['sshd', 'openssh-server'], process: 'sshd', description: 'OpenBSD Secure Shell server', windows: 'sshd', windowsDisplay: 'OpenSSH SSH Server', ports: [{ proto: 'tcp', port: 22 }], pid: 701, start: { exec: 'ExecStartPre=/usr/sbin/sshd -t', control: true, status: '255/EXCEPTION' } },
+  { id: 'firewall', linux: 'nftables', aliases: ['nft'], process: 'nft', description: 'nftables', windows: 'MpsSvc', windowsDisplay: 'Windows Defender Firewall', ports: [], pid: 655, oneshot: true, start: { exec: 'ExecStart=/usr/sbin/nft -f /etc/nftables.conf' } },
 ];
+
+const BY_ID = Object.fromEntries(UNITS.map((u) => [u.id, u])) as Readonly<Record<UnitId, UnitInfo>>;
+
+export function unitById(id: UnitId): UnitInfo {
+  return BY_ID[id];
+}
+
+/** "apache2.service - The Apache HTTP Server", as systemd names a unit in its messages. */
+export function unitTitle(u: UnitInfo): string {
+  return `${u.linux}.service - ${u.description}`;
+}
 
 export function findUnit(name: string): UnitInfo | undefined {
   const n = name.trim().toLowerCase().replace(/\.service$/, '');

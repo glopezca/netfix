@@ -73,7 +73,7 @@ try {
   // Registros (v0.19.5): SSH first, then Kea … Dovecot (no nftables on a Server).
   await page.click('.subnav-item:has-text("Registros")');
   const units = (await page.locator('.window:visible select').first().locator('option').allTextContents()).map((o) => o.split(' ')[0]);
-  assert.deepEqual(units, ['ssh', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot']);
+  assert.deepEqual(units, ['ssh', 'kea-dhcp4-server', 'named', 'apache2', 'postfix', 'dovecot']);
   // Logs highlighted as vim shows them (filetype messages): time in Type green, program in Statement yellow.
   const log = page.locator('.window:visible pre.syn-view[data-filetype="messages"]');
   assert.equal(await log.locator('.syn-type').first().evaluate((n) => getComputedStyle(n).color), 'rgb(96, 255, 96)');
@@ -89,7 +89,7 @@ try {
   assert.deepEqual(routerItems, ['Parámetros', 'Firewall', 'Configuración', 'Registros'], routerItems.join(' | '));
   await page.click('.window:visible .subnav-item:has-text("Registros")');
   const routerUnits = (await page.locator('.window:visible select').first().locator('option').allTextContents()).map((o) => o.split(' ')[0]);
-  assert.deepEqual(routerUnits, ['ssh', 'nftables', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot'], 'a GNU/Linux router: nftables second');
+  assert.deepEqual(routerUnits, ['ssh', 'nftables', 'kea-dhcp4-server', 'named', 'apache2', 'postfix', 'dovecot'], 'a GNU/Linux router: nftables second');
   await page.click('.win-tab:has-text("Interfaces")');
   const eth2 = page.locator('.window:visible .nic-row:has-text("GigabitEthernet0/2")');
   assert.equal(await eth2.locator('button:has-text("Aplicar")').count(), 0);
