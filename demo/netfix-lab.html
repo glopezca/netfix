@@ -3030,6 +3030,7 @@ const SRV_ES = {
     'files.samba': 'Samba (smb.conf)',
     'files.hint': 'Los ficheros tal como están ahora en el disco (cat como root). Los cambios hechos en los paneles o en el terminal se ven al actualizar.',
     'files.none': 'Este servicio no tiene ficheros de configuración en el equipo.',
+    'files.nothing': 'No hay ningún servicio instalado con ficheros de configuración.',
     'dhcp.byClientId': 'Client-ID (opción 61) o, si no la envía, MAC',
     'dhcp.byMac': 'Dirección MAC',
     'dhcp.badStart': 'La dirección IP inicial no es válida.',
@@ -3207,6 +3208,7 @@ const SRV_EN = {
     'files.samba': 'Samba (smb.conf)',
     'files.hint': 'The files as they are on disk right now (cat as root). Changes made in the panels or in the terminal show up on refresh.',
     'files.none': 'This service has no configuration files on the device.',
+    'files.nothing': 'No installed service has configuration files.',
     'dhcp.byClientId': 'Client-ID (option 61) or, if not sent, MAC',
     'dhcp.byMac': 'MAC address',
     'dhcp.badStart': 'The start address is not valid.',
@@ -27269,7 +27271,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.37.0",
+    "version": "0.37.1",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -56042,6 +56044,18 @@ function setSshAuthMethods(server, want) {
 
 return { sshAuthMethods, setSshAuthMethods };
 })();
+__m["services/installed-units.js"] = (() => {
+const { appAvailable } = __m["net/device-apps.js"];
+const { logUnits } = __m["services/units.js"];
+/** The box of each unit (smtp and mailbox are the mail box). */
+const FEATURE = { smtp: 'mail', mailbox: 'mail' };
+/** A stopped service stays listed (its journal says why it stopped), as on a real system. */
+function installedLogUnits(d) {
+    return logUnits(d.kind).filter((u) => appAvailable(d, FEATURE[u.id] ?? u.id));
+}
+
+return { installedLogUnits };
+})();
 __m["services/dhcp-reservations.js"] = (() => {
 /** DHCP reservations of a Server (by MAC or by client-identifier): shared by its window and its web GUI. */
 const { t } = __m["i18n/t.js"];
@@ -56313,7 +56327,8 @@ const { sshAuthMethods } = __m["services/ssh-auth-settings.js"];
 const { h } = __m["web/html.js"];
 const { cards, section, row, text, check, choose, form, buttons } = __m["web/admin-layout.js"];
 const { formatIp, formatMask } = __m["core/ip.js"];
-const { UNITS, unitActive } = __m["services/units.js"];
+const { unitActive } = __m["services/units.js"];
+const { installedLogUnits } = __m["services/installed-units.js"];
 const { idKinds, identifierText } = __m["services/dhcp-reservations.js"];
 const { formatMacCisco, formatHexId } = __m["core/mac.js"];
 const { listenForm } = __m["web/admin-listen.js"];
@@ -56390,7 +56405,7 @@ function statusPage(server) {
     const c = server.config;
     const leases = server.dhcpEngine.allBindings(server.clock.now()).map((b) => [formatIp(b.ip), b.mac.match(/../g)?.join(':') ?? b.mac, b.hostname ?? '', b.type]);
     return h('table', {}, section(t('wa.device'), t('wa.deviceHelp'), table([t('wa.field'), t('wa.value')], [[t('wa.name'), server.name], [t('wa.system'), server.os === 'windows' ? 'Windows Server' : 'Ubuntu 26.04 LTS'], ['MAC', server.mac.match(/../g)?.join(':') ?? ''],
-        [t('wa.ip'), ip(c.ip)], [t('wa.maskShort'), c.prefix !== undefined ? formatMask(c.prefix) : ''], [t('wa.gateway'), ip(c.gateway)], ['DNS', ip(c.dns)], [t('wa.mode'), c.mode === 'dhcp' ? 'DHCP' : t('wa.static')]], '')), section(t('wa.services'), t('wa.servicesHelp'), table([t('wa.service'), t('wa.state')], UNITS.map((u) => [u.linux, unitActive(server.services, u.id) ? t('wa.active') : t('wa.stopped')]), '')), section(t('wa.dhcpLeases'), t('wa.dhcpLeasesHelp'), table(['IP', 'MAC', t('wa.name'), t('wa.type')], leases, t('wa.noDhcpLeases'))));
+        [t('wa.ip'), ip(c.ip)], [t('wa.maskShort'), c.prefix !== undefined ? formatMask(c.prefix) : ''], [t('wa.gateway'), ip(c.gateway)], ['DNS', ip(c.dns)], [t('wa.mode'), c.mode === 'dhcp' ? 'DHCP' : t('wa.static')]], '')), section(t('wa.services'), t('wa.servicesHelp'), table([t('wa.service'), t('wa.state')], installedLogUnits(server).map((u) => [u.linux, unitActive(server.services, u.id) ? t('wa.active') : t('wa.stopped')]), '')), section(t('wa.dhcpLeases'), t('wa.dhcpLeasesHelp'), table(['IP', 'MAC', t('wa.name'), t('wa.type')], leases, t('wa.noDhcpLeases'))));
 }
 function logPage(server) {
     const lines = server.logs.slice(-40).map((l) => `${new Date(l.time).toISOString().slice(11, 19)} ${l.unit}: ${l.line}`);
@@ -57910,10 +57925,12 @@ function configSources(device) {
     const panels = hostPanels(device);
     const samba = panels.includes('samba') ? [SAMBA] : [];
     const sysctl = appAvailable(device, 'sysctl') && linuxSide(device) ? [SYSCTL] : [];
+    // Only what is installed: a service whose box is off has no files to show.
+    const on = (s) => appAvailable(device, s.id);
     if (device.kind === 'linuxrouter')
-        return [...sysctl, ...ROUTER, ...SERVICES, ...samba];
+        return [...sysctl, ...ROUTER.filter(on), ...SERVICES.filter(on), ...samba];
     if (device.kind === 'server')
-        return [...sysctl, ...SERVICES, ...samba];
+        return [...sysctl, ...SERVICES.filter(on), ...samba];
     return [SYSCTL, ...ROUTER, SAMBA].filter((s) => panels.includes(s.id));
 }
 /** Most files a directory can contribute (a student filling /etc/bind must not freeze the view). */
@@ -57970,7 +57987,7 @@ function filesPage(server, base, q) {
     const sources = configSources(server);
     const current = sources.find((s) => s.id === q.get('svc')) ?? sources[0];
     if (!current)
-        return null;
+        return cards(section(t('srv.files'), t('files.hint'), t('files.nothing')));
     const tabs = sources.map((s) => h('li', { class: s.id === current.id ? 'web-adm-on' : undefined }, h('a', { href: `${base}/?page=files&svc=${s.id}` }, tDynamic(s.label))));
     const fs = hostFs(server);
     const files = fs ? configFiles(fs, current.id) : [];
@@ -67193,6 +67210,9 @@ function filesPanel(server, first = 'ssh') {
     const sources = configSources(server);
     let selected = sources.some((s) => s.id === first) ? first : sources[0]?.id ?? 'ssh';
     return livePanel((refresh) => {
+        // Nothing installed with files to show: no list, and no other service's files.
+        if (!sources.some((s) => s.id === selected))
+            return [el('p', { class: 'muted' }, t('files.nothing'))];
         const pick = select(sources.map((s) => [s.id, tDynamic(s.label)]), selected);
         pick.addEventListener('change', () => { selected = pick.value; refresh(); });
         const fs = hostFs(server);
@@ -67397,7 +67417,8 @@ const { linuxSide } = __m["net/pkg-units.js"];
 const { validateAccess } = __m["services/config.js"];
 const { formatIp } = __m["core/ip.js"];
 const { validateFileName } = __m["services/http-service.js"];
-const { logUnits, unitActive } = __m["services/units.js"];
+const { unitActive } = __m["services/units.js"];
+const { installedLogUnits } = __m["services/installed-units.js"];
 const { sshAuthMethods, setSshAuthMethods } = __m["services/ssh-auth-settings.js"];
 /**
  * The panels of the tab that Configuración → Laboratorio actual leaves on (`panels`: feature ids), in this order:
@@ -67571,10 +67592,10 @@ function sshPanel(server, app) {
         ];
     });
 }
-/** The server's own units (SSH first) and then those of apt's packages (smbd, nmbd). */
+/** The server's own units of what is installed (SSH first) and then those of apt's packages (smbd, nmbd). */
 function serverLogUnits(server) {
     return [
-        ...logUnits(server.kind).map((u) => ({ name: u.linux, active: unitActive(server.services, u.id) })),
+        ...installedLogUnits(server).map((u) => ({ name: u.linux, active: unitActive(server.services, u.id) })),
         ...packageLogUnits(server),
     ];
 }

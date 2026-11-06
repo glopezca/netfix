@@ -89,7 +89,7 @@ try {
   assert.deepEqual(routerItems, ['Parámetros', 'Firewall', 'Configuración', 'Registros'], routerItems.join(' | '));
   await page.click('.window:visible .subnav-item:has-text("Registros")');
   const routerUnits = (await page.locator('.window:visible select').first().locator('option').allTextContents()).map((o) => o.split(' ')[0]);
-  assert.deepEqual(routerUnits, ['ssh', 'nftables', 'kea-dhcp4-server', 'bind9', 'apache2', 'postfix', 'dovecot'], 'a GNU/Linux router: nftables second');
+  assert.deepEqual(routerUnits, ['nftables'], 'a GNU/Linux router: only what it has installed (v0.36)');
   await page.click('.win-tab:has-text("Interfaces")');
   const eth2 = page.locator('.window:visible .nic-row:has-text("GigabitEthernet0/2")');
   assert.equal(await eth2.locator('button:has-text("Aplicar")').count(), 0);

@@ -6,7 +6,8 @@ import { h } from './html.ts';
 import type { Child, Markup } from './html.ts';
 import { cards, section, row, text, check, choose, form, buttons } from './admin-layout.ts';
 import { formatIp, formatMask } from '../core/ip.ts';
-import { UNITS, unitActive } from '../services/units.ts';
+import { unitActive } from '../services/units.ts';
+import { installedLogUnits } from '../services/installed-units.ts';
 import type { WebAppAccess } from '../services/config.ts';
 import { idKinds, identifierText } from '../services/dhcp-reservations.ts';
 import { formatMacCisco, formatHexId } from '../core/mac.ts';
@@ -118,7 +119,7 @@ export function statusPage(server: Server): Child {
   return h('table', {},
     section(t('wa.device'), t('wa.deviceHelp'), table([t('wa.field'), t('wa.value')], [[t('wa.name'), server.name], [t('wa.system'), server.os === 'windows' ? 'Windows Server' : 'Ubuntu 26.04 LTS'], ['MAC', server.mac.match(/../g)?.join(':') ?? ''],
       [t('wa.ip'), ip(c.ip)], [t('wa.maskShort'), c.prefix !== undefined ? formatMask(c.prefix) : ''], [t('wa.gateway'), ip(c.gateway)], ['DNS', ip(c.dns)], [t('wa.mode'), c.mode === 'dhcp' ? 'DHCP' : t('wa.static')]], '')),
-    section(t('wa.services'), t('wa.servicesHelp'), table([t('wa.service'), t('wa.state')], UNITS.map((u) => [u.linux, unitActive(server.services, u.id) ? t('wa.active') : t('wa.stopped')]), '')),
+    section(t('wa.services'), t('wa.servicesHelp'), table([t('wa.service'), t('wa.state')], installedLogUnits(server).map((u) => [u.linux, unitActive(server.services, u.id) ? t('wa.active') : t('wa.stopped')]), '')),
     section(t('wa.dhcpLeases'), t('wa.dhcpLeasesHelp'), table(['IP', 'MAC', t('wa.name'), t('wa.type')], leases, t('wa.noDhcpLeases'))));
 }
 

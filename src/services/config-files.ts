@@ -5,6 +5,7 @@
  */
 import type { Vfs } from '../bash/vfs.ts';
 import type { AppsDevice } from '../net/device-apps.ts';
+import type { FeatureId } from '../net/lab-features.ts';
 import { appAvailable } from '../net/device-apps.ts';
 import { hostPanels, linuxSide } from '../net/pkg-units.ts';
 
@@ -48,8 +49,10 @@ export function configSources(device: AppsDevice): readonly ConfigSource[] {
   const panels = hostPanels(device);
   const samba = panels.includes('samba') ? [SAMBA] : [];
   const sysctl = appAvailable(device, 'sysctl') && linuxSide(device) ? [SYSCTL] : [];
-  if (device.kind === 'linuxrouter') return [...sysctl, ...ROUTER, ...SERVICES, ...samba];
-  if (device.kind === 'server') return [...sysctl, ...SERVICES, ...samba];
+  // Only what is installed: a service whose box is off has no files to show.
+  const on = (s: ConfigSource): boolean => appAvailable(device, s.id as FeatureId);
+  if (device.kind === 'linuxrouter') return [...sysctl, ...ROUTER.filter(on), ...SERVICES.filter(on), ...samba];
+  if (device.kind === 'server') return [...sysctl, ...SERVICES.filter(on), ...samba];
   return [SYSCTL, ...ROUTER, SAMBA].filter((s) => panels.includes(s.id));
 }
 

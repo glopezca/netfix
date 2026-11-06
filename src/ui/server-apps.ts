@@ -18,7 +18,8 @@ import type { Account, WebAppAccess } from '../services/config.ts';
 import { validateAccess } from '../services/config.ts';
 import { formatIp } from '../core/ip.ts';
 import { validateFileName } from '../services/http-service.ts';
-import { logUnits, unitActive } from '../services/units.ts';
+import { unitActive } from '../services/units.ts';
+import { installedLogUnits } from '../services/installed-units.ts';
 import { sshAuthMethods, setSshAuthMethods } from '../services/ssh-auth-settings.ts';
 
 /**
@@ -202,10 +203,10 @@ function sshPanel(server: Server, app: AfterChange): HTMLElement {
   });
 }
 
-/** The server's own units (SSH first) and then those of apt's packages (smbd, nmbd). */
+/** The server's own units of what is installed (SSH first) and then those of apt's packages (smbd, nmbd). */
 function serverLogUnits(server: Server): LogUnit[] {
   return [
-    ...logUnits(server.kind).map((u) => ({ name: u.linux, active: unitActive(server.services, u.id) })),
+    ...installedLogUnits(server).map((u) => ({ name: u.linux, active: unitActive(server.services, u.id) })),
     ...packageLogUnits(server),
   ];
 }
