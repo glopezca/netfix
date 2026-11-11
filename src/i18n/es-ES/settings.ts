@@ -52,6 +52,7 @@ export const SETTINGS_ES = {
   'dev.apps': 'Aplicaciones',
   'dev.services': 'Servicios',
   'dev.terminals': 'Terminales',
+  'dev.lastSystem': 'Un equipo tiene al menos un sistema operativo: marca el otro antes de quitar este.',
   'dev.packages': 'Paquetes',
   'dev.svcPackages': 'Paquetes de servicios',
   'set.svcPackages': 'Servicios (instalarlo marca su casilla de servicio en el equipo)',

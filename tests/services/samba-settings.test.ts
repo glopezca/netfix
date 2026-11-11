@@ -142,8 +142,8 @@ test('Servicios → Configuración has «Parámetros (sysctl)» on every GNU/Lin
   const { srv, pc1 } = lab();
   assert.equal(configSources(srv)[0]?.id, 'sysctl');
   assert.equal(configSources(srv)[0]?.label, 'files.sysctl');
-  assert.deepEqual(hostPanels(pc1), ['sysctl', 'files'], 'a GNU/Linux PC always has its files');
-  assert.deepEqual(configSources(pc1).map((s) => s.id), ['sysctl']);
+  assert.deepEqual(hostPanels(pc1), ['sysctl', 'firewall', 'files', 'log'], 'a GNU/Linux PC always has its files, and its base nftables');
+  assert.deepEqual(configSources(pc1).map((s) => s.id), ['sysctl', 'firewall'], 'with its /etc/nftables.conf');
   const t = new Topology();
   const lr = t.add('linuxrouter', 0, 0).device as Server;
   assert.equal(configSources(lr)[0]?.id, 'sysctl');

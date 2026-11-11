@@ -44,6 +44,8 @@ export function restoreHost(device: Host, pc: PcRecord, server: ServerRecord | u
   device.clientIdOverride = typeof pc.clientId === 'string' ? parseHexId(pc.clientId) ?? undefined : undefined;
   if (pc.os === 'linux' || pc.os === 'windows') device.os = pc.os;
   setDeviceApps(device, parseApps(pc.enabled, device.kind));
+  // The file says what the device has: a new PC's base packages (apt-auto.ts) go unless it lists them.
+  for (const name of packagesOf(device)) setPackageInstalled(device, name, false);
   for (const name of parsePackages(pc.packages)) setPackageInstalled(device, name, true);
   for (const name of parsePackages(pc.autoPackages)) setPackageAuto(device, name, true);
   restorePkgUnits(device, pc.units);

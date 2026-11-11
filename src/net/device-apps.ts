@@ -102,7 +102,9 @@ export function customApps(d: AppsDevice): readonly FeatureId[] | undefined {
 
 /** In catalogue order; a list equal to the defaults is forgotten, so the terminals follow a later change of system. */
 export function setDeviceApps(d: AppsDevice, list: readonly FeatureId[] | undefined): void {
-  const next = list && APPS_BY_KIND[d.kind].filter((id) => list.includes(id));
+  // A device keeps at least one system: with neither terminal, the one of its IP tab stays.
+  const kept = list && !list.includes('linux') && !list.includes('windows') ? [...list, d.os] : list;
+  const next = kept && APPS_BY_KIND[d.kind].filter((id) => kept.includes(id));
   const same = (a: readonly FeatureId[], b: readonly FeatureId[]): boolean => a.length === b.length && a.every((x, i) => x === b[i]);
   const before = deviceApps(d);
   if (!next || same(next, defaultApps(d))) chosen.delete(d);

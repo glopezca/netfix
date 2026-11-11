@@ -54,6 +54,7 @@ export const SETTINGS_EN: Readonly<Record<SettingsKey, string>> = {
   'dev.apps': 'Applications',
   'dev.services': 'Services',
   'dev.terminals': 'Terminals',
+  'dev.lastSystem': 'A device has at least one operating system: tick the other one before removing this one.',
   'dev.packages': 'Packages',
   'dev.svcPackages': 'Service packages',
   'set.svcPackages': 'Services (installing one ticks its service box in the device)',

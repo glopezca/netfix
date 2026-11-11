@@ -20,7 +20,31 @@ const win = (h: Host, cmd: string): string => createShell(h, 'windows').run(cmd)
 const terminals = (h: Host, ...on: ('linux' | 'windows')[]): void =>
   setDeviceApps(h, [...deviceApps(h).filter((id) => id !== 'linux' && id !== 'windows'), ...on]);
 
-test('the terminals say which systems a device has (with neither, its system of the IP tab)', () => {
+test('a device keeps at least one system: taking away its last terminal keeps the one of its IP tab', () => {
+  const topo = lab();
+  const [pc1, pc2] = [topo.byLabel('PC1') as Host, topo.byLabel('PC2') as Host];
+  terminals(pc1);
+  assert.ok(deviceApps(pc1).includes('linux'), 'a GNU/Linux PC keeps its GNU/Linux terminal');
+  terminals(pc2);
+  assert.ok(deviceApps(pc2).includes('windows'), 'a Windows PC keeps its Windows terminal');
+  terminals(pc1, 'linux', 'windows');
+  terminals(pc1, 'windows');
+  assert.deepEqual([hasSystem(pc1, 'linux'), hasSystem(pc1, 'windows')], [false, true], 'one of two may go');
+  const srv = new Topology().add('server', 0, 0).device as Host;
+  setDeviceApps(srv, deviceApps(srv).filter((id) => id !== 'linux'));
+  assert.ok(deviceApps(srv).includes('linux'), 'a Server too');
+});
+
+test('a file whose device has no terminal is read with the system of its IP tab', () => {
+  const topo = lab();
+  const file = JSON.parse(JSON.stringify(topo.toJSON())) as { devices: { label: string; pc?: { enabled?: string[] } }[] };
+  const rec = file.devices.find((d) => d.label === 'PC1')!;
+  rec.pc!.enabled = ['ip', 'browser'];
+  const pc1 = Topology.fromJSON(file).byLabel('PC1') as Host;
+  assert.ok(deviceApps(pc1).includes('linux'));
+});
+
+test('the terminals say which systems a device has', () => {
   const pc1 = lab().byLabel('PC1') as Host;
   assert.equal(pc1.os, 'linux');
   assert.deepEqual([hasSystem(pc1, 'linux'), hasSystem(pc1, 'windows')], [true, false]);

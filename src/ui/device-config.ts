@@ -66,9 +66,12 @@ function group(title: string, boxes: readonly HTMLElement[]): HTMLElement[] {
 export function deviceConfig(h: Host, changed: () => void): HTMLElement {
   const allowed = APPS_BY_KIND[h.kind].filter((id) => labAllows(labViewOf(h).features, h.kind, id));
   const box = (id: FeatureId): HTMLElement => {
-    const input = el('input', { type: 'checkbox', name: `dev-${id}`, checked: deviceApps(h).includes(id) });
+    const on = deviceApps(h).includes(id);
+    // The only system left cannot be taken away (device-apps.ts keeps it anyway).
+    const last = on && TERMINALS.includes(id) && !TERMINALS.some((o) => o !== id && deviceApps(h).includes(o));
+    const input = el('input', { type: 'checkbox', name: `dev-${id}`, checked: on, disabled: last });
     input.addEventListener('change', () => { setServiceBox(h, id, input.checked); changed(); });
-    return el('label', { class: 'set-choice' }, input, appName(h, id));
+    return el('label', { class: 'set-choice', ...(last ? { title: t('dev.lastSystem') } : {}) }, input, appName(h, id));
   };
   const apps = h.kind === 'pc' ? allowed.filter((id) => id === 'ip' || PC_APPS.includes(id)) : allowed.filter((id) => id === 'ip');
   const services = h.kind === 'pc' ? [] : allowed.filter((id) => id !== 'ip' && !TERMINALS.includes(id) && serviceOffered(h, id));
