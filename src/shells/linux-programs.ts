@@ -38,6 +38,7 @@ import { smbpasswd } from './smbpasswd.ts';
 import { pdbedit, testparm } from './samba-tools.ts';
 import { namedCheckconf, namedCheckzone, namedCompilezone } from './bind-tools.ts';
 import { keaDhcp4 } from './kea-tools.ts';
+import { mailTools } from './mail-tools.ts';
 
 const PACKAGES: Readonly<Record<string, string>> = {
   ifconfig: 'net-tools', netstat: 'net-tools', route: 'net-tools', arp: 'net-tools', traceroute: 'traceroute', tcpdump: 'tcpdump',
@@ -185,6 +186,6 @@ export function linuxPrograms(host: Host): Map<string, CommandFn> {
     ['smbclient', smbclient(host)], ['smbpasswd', smbpasswd(host)], ['testparm', testparm(host)], ['pdbedit', pdbedit(host)],
     ['named-checkzone', namedCheckzone(host)], ['named-compilezone', namedCompilezone(host)], ['named-checkconf', namedCheckconf(host)], ['kea-dhcp4', keaDhcp4(host)],
     ['command-not-found', commandNotFound],
-    ...(runsServices(host.kind) ? [...APACHE_TOOLS, ['rndc', rndc(host)] as const] : []),
+    ...(runsServices(host.kind) ? [...APACHE_TOOLS, ['rndc', rndc(host)] as const, ...mailTools(host)] : []),
   ]);
 }

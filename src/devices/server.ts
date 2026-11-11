@@ -249,23 +249,23 @@ export class Server extends Host {
   }
 
   /**
-   * `systemctl reload named` (ExecReload=rndc reload) or rndc itself: named reads its files again and keeps what it
-   * had when named.conf does not load. Returns the error, or null.
+   * ExecReload of a unit that reads its files again (rndc reload for named, `postfix reload`, `doveadm reload`): it
+   * keeps what it had when they do not load. bySystemd false is the program run by hand. Returns the error, or null.
    */
-  reloadDns(bySystemd = true): string | null {
-    const u = unitById('dns');
-    if (bySystemd) this.systemd('dns', `Reloading ${unitTitle(u)}...`);
-    const check = unitCheck('dns', this, 'reload');
-    if (check.ident && check.lines) this.logLines('dns', check.ident, check.lines);
+  reloadFiles(id: UnitId, bySystemd = true): string | null {
+    const u = unitById(id);
+    if (bySystemd) this.systemd(id, `Reloading ${unitTitle(u)}...`);
+    const check = unitCheck(id, this, 'reload');
+    if (check.ident && check.lines) this.logLines(id, check.ident, check.lines);
     if (!check.ok) {
       if (!bySystemd) return 'failure';
-      this.log('dns', "rndc: 'reload' failed: failure", { ident: RNDC });
-      this.failReload('dns');
+      if (id === 'dns') this.log('dns', "rndc: 'reload' failed: failure", { ident: RNDC });
+      this.failReload(id);
       return 'failure';
     }
     if (bySystemd) {
-      this.log('dns', 'server reload successful', { ident: RNDC });
-      this.systemd('dns', `Reloaded ${unitTitle(u)}.`);
+      if (id === 'dns') this.log('dns', 'server reload successful', { ident: RNDC });
+      this.systemd(id, `Reloaded ${unitTitle(u)}.`);
     }
     if (check.apply) this.setServices(check.apply(this.services));
     return null;
