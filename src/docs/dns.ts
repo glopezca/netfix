@@ -1,6 +1,6 @@
 /** Documentación: el servicio DNS de Server (bind9), en estilo guiado: zonas, modos de funcionamiento y nombres. */
 import type { DocPage } from './types.ts';
-import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from './types.ts';
+import { check, code, exercise, figure, h, list, note, p, shot, steps, table, term, tip, warn } from './types.ts';
 
 const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
@@ -62,6 +62,11 @@ export const DNS_DOCS: readonly DocPage[] = [
       note('Iterativo depende de los otros: sin Recursivo está apagado; con Recursivo y sin reenviadores está siempre encendido; con reenviadores, su casilla elige forward first (encendido: si los reenviadores no responden, itera) o forward only (apagado: SERVFAIL). El bloque explica por qué no se puede cambiar cuando es así.'),
       p('La Internet emulada tiene los 13 servidores raíz (las direcciones IP de /usr/share/dns/root.hints), servidores de dominio de primer nivel (com, net, org, es, me, google, arpa y uno genérico para los dominios registrados en las nubes) y los servidores autoritativos de los dominios públicos. Un dominio registrado en una nube con servidor propio se delega en ese servidor, así que la iteración llega hasta el DNS del alumno. Las delegaciones aprendidas también se guardan en caché: la segunda consulta de google.com ya no pregunta a la raíz.'),
       code('admin@srv:~$ journalctl -u bind9\nclient 192.168.10.21#50001 (www.google.com): query: www.google.com IN A + (192.168.10.2) → iterative resolution\nresolving www.google.com/A: iterative, starting at the root servers\n  www.google.com: referral to com. (a.gtld-servers.net)\n  www.google.com: referral to google.com. (ns1.google.com)'),
+      h('Los modos en el panel y en la gestión web'),
+      p('Los modos se cambian en el panel local del servidor (**Servicios → DNS**) o, desde otro equipo, en su gestión web (`http://192.168.10.2:10000/?page=dns`). Cada bloque o tarjeta indica la directiva de BIND que escribe.'),
+      shot('dns-panel', 'Panel local de SRV, Servicios → DNS: un bloque por modo, con su interruptor y la directiva de BIND (max-cache-ttl, forwarders…).'),
+      shot('dns-webgui', 'La misma configuración en la gestión web, abierta desde el navegador de PC0: una tarjeta por modo y su directiva al pie.'),
+      p('Las dos vistas escriben en `/etc/bind/named.conf.options` (caché, reenvío, recursión) y `/etc/bind/named.conf.local` (zonas), que root también edita desde la Terminal GNU/Linux (`sudo nano /etc/bind/named.conf.options`). Tras editarlos a mano, compruébalos con `named-checkconf` y `named-checkzone <zona> <fichero>` antes de `sudo systemctl reload named`.'),
       h('Interfaces de escucha'),
       p('Como listen-on de BIND: elige en qué direcciones IP atiende bind9. «Todas» es listen-on { any; }; cada interfaz marcada añade su dirección IP y lo, 127.0.0.1. Una consulta a otra dirección IP del equipo no tiene respuesta (dig acaba en «connection timed out»). **Aplicar** reinicia bind9, como systemctl restart bind9.'),
       code('options {\n\tlisten-on { 192.168.1.1; 127.0.0.1; };\n\t…\n};\n\nadmin@srv:~$ dig @127.0.0.1 www.aula.lab'),

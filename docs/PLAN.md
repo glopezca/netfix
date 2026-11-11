@@ -2225,3 +2225,26 @@ ficheros guardados en el laboratorio.
   - Límites que quedan: sin el catálogo de mensajes de `journalctl -x`; la zona inversa automática se genera aunque no
     esté declarada; las opciones solo se leen de `named.conf.options`; un `include` relativo se rechaza; un cambio
     desde la interfaz pierde lo editado y no aplicado (como en Webmin).
+
+### Fase 60: nftables en los PC, al menos un sistema operativo, ficheros editables documentados y capturas en la ayuda (v0.41.0)
+
+Petición (7 nov): (1) un PC recién creado muestra el paquete nftables pero no el servicio Firewall; (2) un equipo
+puede tener GNU/Linux, Windows o los dos, pero no ninguno; (3) la ayuda debe documentar cada fichero de configuración
+editable (de netplan a bind y kea) y sus tres vías de edición: entorno gráfico local, terminal y WebGUI en servidores
+y routers Linux; (4) capturas del panel local y de la WebGUI en los servicios, empezando por los modos del DNS,
+relacionadas con las directivas de los ficheros y con los comprobadores que se pueden invocar a mano.
+
+- **Hecho (v0.41.0)**:
+  - Partes 1 y 2 en el PR #13: nftables preinstalado (parado) en los PC con su panel Firewall; `setDeviceApps`
+    mantiene al menos un sistema y la casilla del último queda gris.
+  - Parte 3: tabla «Tres formas de editar la configuración» en GNU/Linux → ficheros (es/en), 12 ficheros × ventana,
+    terminal y gestión web; corregidas las filas de kea, bind y sshd (root los edita) y postfix/dovecot (generados).
+  - Parte 4: bloque de ayuda `shot` (imagen WebP con pie). `scripts/shots.mjs` captura con Playwright el panel local y
+    la gestión web de DNS, DHCP y Firewall en español e inglés (`assets/docs/<id>.<es|en>.webp`, convertidas a WebP en
+    el canvas del navegador, sin dependencias); `scripts/gen-shots.mjs` las incrusta en `src/ui/shots-data.ts` dentro
+    de `npm run build`. Las páginas DNS (modos), DHCP de Server y nftables las muestran junto al fichero, la edición
+    desde la terminal y su comprobador (`named-checkconf`/`named-checkzone`, `kea-dhcp4 -t`, `nft -c -f`).
+  - Pruebas: `tests/docs/shots.test.ts` (cada captura existe en los dos idiomas, WebP y < 80 kB), paridad es/en del
+    id de cada captura y `scripts/e2e-docs.mjs` comprueba que cargan.
+  - Límites: `dist/netfix.html` pasa de 3,8 a 4,5 MB; faltan capturas de SSH, HTTP, correo, Samba, VPN y netplan; las
+    capturas se regeneran a mano (`node scripts/shots.mjs`) cuando cambia la interfaz.

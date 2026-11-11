@@ -2,9 +2,11 @@
 import { el } from './dom.ts';
 import type { DocBlock } from '../docs/index.ts';
 import { inlineMarkdown } from '../docs/markdown.ts';
+import { getLocale } from '../i18n/locale.ts';
 import { t } from '../i18n/t.ts';
 import { docFigure } from './doc-figures.ts';
 import { docTerm } from './doc-term.ts';
+import { SHOTS } from './shots-data.ts';
 
 type Child = Node | string;
 
@@ -41,6 +43,11 @@ export function docBlock(b: DocBlock, md?: string): HTMLElement {
           ...b.solution.split('\n\n').map((s) => el('p', {}, ...inline(s, md)))) : null);
     case 'figure': return docFigure(b.figure, b.caption);
     case 'term': return docTerm(b.lang, b.text);
+    case 'shot': {
+      const src = SHOTS[`${b.id}.${getLocale() === 'en-GB' ? 'en' : 'es'}`] ?? SHOTS[`${b.id}.es`];
+      return el('figure', { class: 'doc-figure doc-shot' },
+        src ? el('img', { src, alt: b.caption, loading: 'lazy' }) : null, el('figcaption', {}, ...inline(b.caption, md)));
+    }
     case 'table':
       return el('div', { class: 'doc-table-wrap' }, el('table', { class: 'doc-table' },
         el('thead', {}, el('tr', {}, ...b.head.map((c) => el('th', { scope: 'col' }, ...inline(c, md))))),

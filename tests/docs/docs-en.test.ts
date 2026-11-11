@@ -47,6 +47,7 @@ function compareBlocks(where: string, es: readonly DocBlock[], en: readonly DocB
     if (b.kind === 'figure' && e.kind === 'figure' && JSON.stringify(shape(b.figure)) !== JSON.stringify(shape(e.figure))) bad.push(`${where} figure #${i}`);
     if (b.kind === 'table' && e.kind === 'table' && (b.head.length !== e.head.length || b.rows.length !== e.rows.length)) bad.push(`${where} table #${i}`);
     if (b.kind === 'list' && e.kind === 'list' && b.items.length !== e.items.length) bad.push(`${where} list #${i}`);
+    if (b.kind === 'shot' && e.kind === 'shot' && b.id !== e.id) bad.push(`${where} shot #${i}: ${b.id} vs ${e.id}`);
   });
 }
 

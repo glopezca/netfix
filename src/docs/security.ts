@@ -1,6 +1,6 @@
 /** Documentación: router GNU/Linux (parámetros, nftables y WireGuard), en estilo guiado. */
 import type { DocGroup } from './types.ts';
-import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from './types.ts';
+import { check, code, exercise, figure, h, list, note, p, shot, steps, table, term, tip, warn } from './types.ts';
 
 const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
@@ -64,6 +64,9 @@ export const SECURITY_DOCS: DocGroup = {
             { from: 1, to: 0, text: '200 OK', note: 'forward: ct state established' },
           ],
         }, 'La web de la DMZ publicada en la dirección IP pública de FW: DNAT en prerouting, filtro en forward y conntrack para la vuelta.'),
+        shot('firewall-panel', 'Panel Firewall de un servidor (Servicios → Firewall): tablas, cadenas y reglas, con su política.'),
+        shot('firewall-webgui', 'La página Firewall de la gestión web (`?page=firewall`): el mismo cortafuegos, con plantillas y «Guardar cambios».'),
+        p('El panel, la gestión web y `nft` en la Terminal GNU/Linux actúan sobre las mismas reglas; lo guardado va a `/etc/nftables.conf`, que root también edita a mano (`sudo nano /etc/nftables.conf`) y comprueba con `nft -c -f /etc/nftables.conf` antes de `sudo systemctl restart nftables`.'),
         h('Paso a paso: un cortafuegos con DMZ'),
         steps(
           ['Empieza cerrado', 'Cadenas input y forward con `policy drop`: lo que no se permita, se descarta.'],

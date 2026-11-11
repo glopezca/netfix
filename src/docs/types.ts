@@ -39,7 +39,9 @@ export type DocBlock =
   | { readonly kind: 'steps'; readonly items: readonly { readonly title: string; readonly text: string }[] }
   | { readonly kind: 'callout'; readonly tone: Tone; readonly title: string; readonly text: string; readonly solution?: string; readonly solutionLabel?: string }
   | { readonly kind: 'figure'; readonly figure: Figure; readonly caption: string }
-  | { readonly kind: 'term'; readonly lang: TermLang; readonly text: string };
+  | { readonly kind: 'term'; readonly lang: TermLang; readonly text: string }
+  /** A screenshot of the app: `assets/docs/<id>.<es|en>.webp`, embedded by scripts/gen-shots.mjs. */
+  | { readonly kind: 'shot'; readonly id: string; readonly caption: string };
 
 export interface DocPage {
   readonly id: string;
@@ -73,3 +75,4 @@ export const check = (title: string, text: string): DocBlock => ({ kind: 'callou
 export const exercise = (title: string, text: string, solution: string): DocBlock => ({ kind: 'callout', tone: 'exercise', title, text, solution });
 export const figure = (fig: Figure, caption: string): DocBlock => ({ kind: 'figure', figure: fig, caption });
 export const term = (lang: TermLang, text: string): DocBlock => ({ kind: 'term', lang, text });
+export const shot = (id: string, caption: string): DocBlock => ({ kind: 'shot', id, caption });

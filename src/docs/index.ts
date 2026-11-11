@@ -51,6 +51,7 @@ function blockText(b: DocBlock): string {
     case 'figure': return [b.caption, ...(b.figure.type === 'topology'
       ? [...b.figure.nodes.map((n) => `${n.label} ${n.note ?? ''}`), ...b.figure.links.map((l) => l.label ?? '')]
       : [...b.figure.actors, ...b.figure.messages.map((m) => `${m.text} ${m.note ?? ''}`)])].join('\n');
+    case 'shot': return b.caption;
     default: return b.text;
   }
 }
