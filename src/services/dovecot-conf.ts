@@ -60,7 +60,9 @@ export function parseDovecotConf(text: string, path = DOVECOT_CONF): DovecotConf
     }
     const err = lineError(path, i + 1, t, depth, lines.length);
     if (err !== undefined) return { error: err, lines, protocols: [] };
-    lines.push(`${'  '.repeat(depth)}${t.replace(/\s*=\s*/, ' = ')}`);
+    // indexOf, not /\s*=\s*/: that regex is quadratic on a long run of spaces without '='.
+    const eq = t.indexOf('=');
+    lines.push(`${'  '.repeat(depth)}${eq < 0 ? t : `${t.slice(0, eq).trimEnd()} = ${t.slice(eq + 1).trimStart()}`}`);
     if (t.endsWith('{')) { depth++; open = i + 1; }
     else if (depth === 0 && /^protocols\s*=/.test(t)) protocols = t.slice(t.indexOf('=') + 1).trim();
   }

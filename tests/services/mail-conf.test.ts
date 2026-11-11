@@ -46,3 +46,13 @@ test('hostile files stay cheap: a self-doubling $name and a huge line without a 
   assert.match(parseDovecotConf(`dovecot_config_version = 2.4.1\nservice ${' '.repeat(200000)}x\n`).error ?? '', /Expecting '='/);
   assert.ok(Date.now() - t0 < 1000);
 });
+
+test('hostile files stay cheap: long blank runs, $name blow-up and long warnings', () => {
+  const t0 = Date.now();
+  parseDovecotConf(`dovecot_config_version = 2.4.1\nnamespace${' '.repeat(200_000)}x {\n}\n`);
+  assert.ok(Date.now() - t0 < 1000, 'no quadratic regex on a long run of spaces');
+  const big = new Map([['a', 'x'.repeat(250_000)], ['myhostname', '$a'.repeat(2048)]]);
+  assert.ok((postfixValue(big, 'myhostname') ?? '').length <= 4096, 'expansion bounded within one pass');
+  const { warnings } = parseMainCf(`zzz_unknown = ${'y'.repeat(10_000)}\n`);
+  assert.ok(warnings.every((w) => w.length < 200), 'the unused-parameter warning is cut');
+});

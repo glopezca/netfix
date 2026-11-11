@@ -51,7 +51,7 @@ export function parseMainCf(text: string, path = MAIN_CF): MainCf {
     if (eq < 0 || !NAME.test(name)) return { params, warnings: [], error: `${path}, line ${l.line}: missing '=' after attribute name: "${name.slice(0, 64)}"` };
     params.set(name, l.text.slice(eq + 1).trim());
   }
-  const warnings = [...params].filter(([k]) => !(k in POSTFIX_DEFAULTS) && !KNOWN_PREFIX.test(k)).map(([k, v]) => `${path}: unused parameter: ${k}=${v}`);
+  const warnings = [...params].filter(([k]) => !(k in POSTFIX_DEFAULTS) && !KNOWN_PREFIX.test(k)).map(([k, v]) => `${path}: unused parameter: ${k}=${v.slice(0, 64)}`);
   return { params, warnings };
 }
 
@@ -62,7 +62,13 @@ export function postfixValue(params: ReadonlyMap<string, string>, name: string):
   let v = raw;
   // `a = $a$a` doubles at each pass: stop at a bound rather than grow without end.
   for (let i = 0; i < MAX_EXPAND && v.includes('$') && v.length <= MAX_VALUE; i++) {
-    v = v.replace(/\$\{?([A-Za-z0-9_]+)\}?/g, (_, n: string) => params.get(n) ?? POSTFIX_DEFAULTS[n] ?? '');
+    // The bound holds inside a pass too: one pass of `$a` × 2048 must not build a huge string.
+    let size = 0;
+    v = v.replace(/\$\{?([A-Za-z0-9_]+)\}?/g, (_, n: string) => {
+      const sub = size > MAX_VALUE ? '' : (params.get(n) ?? POSTFIX_DEFAULTS[n] ?? '').slice(0, MAX_VALUE);
+      size += sub.length;
+      return sub;
+    });
   }
   return v.slice(0, MAX_VALUE);
 }
