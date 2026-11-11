@@ -69,12 +69,14 @@ test('the Servicios tab of a GNU/Linux PC: kernel parameters and files, then wha
   const t = lab('internet');
   const [pc0, pc1] = [t.byLabel('PC0') as Host, t.byLabel('PC1') as Host];
   assert.deepEqual(hostPanels(pc0), [], 'a Windows PC has no Linux services');
-  assert.deepEqual(hostPanels(pc1), ['sysctl', 'files']);
+  assert.deepEqual(hostPanels(pc1), ['sysctl', 'firewall', 'files', 'log'], 'nftables comes with the base system');
   const changed: unknown[] = [];
   onAppsChange((d) => changed.push(d));
+  run(pc1, 'apt remove -y nftables');
+  assert.deepEqual(hostPanels(pc1), ['sysctl', 'files']);
+  assert.ok(changed.includes(pc1), 'the open window is redrawn');
   run(pc1, 'apt install -y nftables');
   assert.deepEqual(hostPanels(pc1), ['sysctl', 'firewall', 'files', 'log']);
-  assert.ok(changed.includes(pc1), 'the open window is redrawn');
   run(pc1, 'apt install -y samba');
   assert.deepEqual(hostPanels(pc1), ['sysctl', 'firewall', 'samba', 'files', 'log']);
   run(pc1, 'apt remove -y nftables samba');

@@ -131,8 +131,9 @@ test('review: the service box is apt too (the mail box installs its three packag
 test('review: a Windows server without a GNU/Linux terminal keeps its service boxes whatever the lab takes from apt', () => {
   const topo = EXAMPLES.find((e) => e.id === 'samba')!.build();
   const srv = topo.byLabel('SRV') as Server;
-  setDeviceApps(srv, deviceApps(srv).filter((id) => id !== 'dns' && id !== 'linux'));
   srv.os = 'windows';
+  // Its last terminal taken away: it keeps the system of its IP tab, Windows (device-apps.ts).
+  setDeviceApps(srv, deviceApps(srv).filter((id) => id !== 'dns' && id !== 'linux'));
   topo.pkgsOff = ['bind9'];
   assert.equal(serviceOffered(srv, 'dns'), true);
   assert.equal(packageAllowed(['kea-dhcp4-server'], 'isc-kea'), false, 'isc-kea goes with kea-dhcp4-server');

@@ -5,6 +5,7 @@ import type { NicRecord, RouteRecord } from './topology-nics.ts';
 import { bootLinked, hostRecord, restoreHost } from './topology-host.ts';
 import { LinuxRouter } from '../devices/linux-router.ts';
 import { bootWireguard } from '../shells/wg-boot.ts';
+import { preinstallBase } from '../shells/apt-auto.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
 import { Network } from './network.ts';
 import { drawable, makeAnnotation, MAX_ANNOTATIONS } from './annotations.ts';
@@ -186,6 +187,7 @@ export class Topology {
       bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff, pkgsOff: this.pkgsOff }));
       attachNetbios(device);
       attachWindowsWins(device);
+      if (device instanceof Pc) preinstallBase(device);
     }
     this.net.addDevice(device);
     const placed: Placed = { device, label, x, y };

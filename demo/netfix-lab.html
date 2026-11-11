@@ -4703,6 +4703,7 @@ const SETTINGS_ES = {
     'dev.apps': 'Aplicaciones',
     'dev.services': 'Servicios',
     'dev.terminals': 'Terminales',
+    'dev.lastSystem': 'Un equipo tiene al menos un sistema operativo: marca el otro antes de quitar este.',
     'dev.packages': 'Paquetes',
     'dev.svcPackages': 'Paquetes de servicios',
     'set.svcPackages': 'Servicios (instalarlo marca su casilla de servicio en el equipo)',
@@ -4773,6 +4774,7 @@ const SETTINGS_EN = {
     'dev.apps': 'Applications',
     'dev.services': 'Services',
     'dev.terminals': 'Terminals',
+    'dev.lastSystem': 'A device has at least one operating system: tick the other one before removing this one.',
     'dev.packages': 'Packages',
     'dev.svcPackages': 'Service packages',
     'set.svcPackages': 'Services (installing one ticks its service box in the device)',
@@ -6255,7 +6257,9 @@ function customApps(d) {
 }
 /** In catalogue order; a list equal to the defaults is forgotten, so the terminals follow a later change of system. */
 function setDeviceApps(d, list) {
-    const next = list && APPS_BY_KIND[d.kind].filter((id) => list.includes(id));
+    // A device keeps at least one system: with neither terminal, the one of its IP tab stays.
+    const kept = list && !list.includes('linux') && !list.includes('windows') ? [...list, d.os] : list;
+    const next = kept && APPS_BY_KIND[d.kind].filter((id) => kept.includes(id));
     const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
     const before = deviceApps(d);
     if (!next || same(next, defaultApps(d)))
@@ -37549,9 +37553,11 @@ function unitRows(host) {
 }
 /** `systemctl list-units`, or only the failed ones (`--failed`, `--state=failed`). */
 function listUnits(host, args, p) {
-    const rows = unitRows(host);
+    const all = unitRows(host);
     if (args.includes('--failed') || args.includes('--state=failed'))
-        return failedTable(rows.filter((r) => r.active === 'failed'), p);
+        return failedTable(all.filter((r) => r.active === 'failed'), p);
+    // As systemd: without --all only the active and failed units (a stopped, disabled nftables is not listed).
+    const rows = ['--all', '-a', 'list-unit-files'].some((a) => args.includes(a)) ? all : all.filter((r) => r.active !== 'inactive');
     if (!rows.length)
         return ['0 loaded units listed.'];
     return [p('  UNIT                       LOAD   ACTIVE   SUB     DESCRIPTION', 'underline'), ...rows.map((r) => unitRow(r, p)), '', `${rows.length} loaded units listed.`];
@@ -41675,6 +41681,7 @@ __m["shells/apt-auto.js"] = (() => {
 const { PACKAGES, findPackage } = __m["shells/apt-catalog.js"];
 const { autoPackagesOf, isPackageAuto, packagesOf, setPackageAuto, setPackageInstalled } = __m["net/host-packages.js"];
 const { hasPanel, installedPackage } = __m["shells/apt-state.js"];
+const { labHasPackage } = __m["net/lab-packages.js"];
 /** A package or dependency by name, with the version and size apt shows when it removes it. */
 function findDep(name) {
     return findPackage(name) ?? PACKAGES.flatMap((p) => p.deps).find((d) => d.name === name);
@@ -41689,6 +41696,18 @@ function markDependencies(host, todo, fetched) {
             continue;
         setPackageInstalled(host, d.name, true);
         setPackageAuto(host, d.name, true);
+    }
+}
+/** Ubuntu's base system brings nftables (priority important), as a Server has its firewall. */
+const PC_BASE = ['nftables'];
+/** A new PC gets the base packages its lab keeps, with their libraries marked automatic (installed stopped). */
+function preinstallBase(host) {
+    for (const name of PC_BASE) {
+        const p = findPackage(name);
+        if (!p || !labHasPackage(host, name))
+            continue;
+        setPackageInstalled(host, name, true);
+        markDependencies(host, [p], p.deps);
     }
 }
 /** The automatic packages nothing manual needs, once `without` is gone too (in name order). */
@@ -41714,7 +41733,7 @@ function leftoverNote(names) {
         : '';
 }
 
-return { findDep, markDependencies, orphans, leftoverNote };
+return { findDep, markDependencies, preinstallBase, orphans, leftoverNote };
 })();
 __m["shells/apt-core.js"] = (() => {
 const { PACKAGES, findPackage } = __m["shells/apt-catalog.js"];
@@ -50442,6 +50461,9 @@ function restoreHost(device, pc, server) {
     if (pc.os === 'linux' || pc.os === 'windows')
         device.os = pc.os;
     setDeviceApps(device, parseApps(pc.enabled, device.kind));
+    // The file says what the device has: a new PC's base packages (apt-auto.ts) go unless it lists them.
+    for (const name of packagesOf(device))
+        setPackageInstalled(device, name, false);
     for (const name of parsePackages(pc.packages))
         setPackageInstalled(device, name, true);
     for (const name of parsePackages(pc.autoPackages))
@@ -61002,6 +61024,7 @@ const { registerPlaced, renameDevice, savedLabel, syncDeviceName } = __m["net/de
 const { bootLinked, hostRecord, restoreHost } = __m["net/topology-host.js"];
 const { LinuxRouter } = __m["devices/linux-router.js"];
 const { bootWireguard } = __m["shells/wg-boot.js"];
+const { preinstallBase } = __m["shells/apt-auto.js"];
 const { Network } = __m["net/network.js"];
 const { drawable, makeAnnotation, MAX_ANNOTATIONS } = __m["net/annotations.js"];
 const { FILE_VERSION, validateFile } = __m["net/topology-file.js"];
@@ -61078,6 +61101,8 @@ class Topology {
             bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff, pkgsOff: this.pkgsOff }));
             attachNetbios(device);
             attachWindowsWins(device);
+            if (device instanceof Pc)
+                preinstallBase(device);
         }
         this.net.addDevice(device);
         const placed = { device, label, x, y };
@@ -70778,9 +70803,12 @@ function group(title, boxes) {
 function deviceConfig(h, changed) {
     const allowed = APPS_BY_KIND[h.kind].filter((id) => labAllows(labViewOf(h).features, h.kind, id));
     const box = (id) => {
-        const input = el('input', { type: 'checkbox', name: `dev-${id}`, checked: deviceApps(h).includes(id) });
+        const on = deviceApps(h).includes(id);
+        // The only system left cannot be taken away (device-apps.ts keeps it anyway).
+        const last = on && TERMINALS.includes(id) && !TERMINALS.some((o) => o !== id && deviceApps(h).includes(o));
+        const input = el('input', { type: 'checkbox', name: `dev-${id}`, checked: on, disabled: last });
         input.addEventListener('change', () => { setServiceBox(h, id, input.checked); changed(); });
-        return el('label', { class: 'set-choice' }, input, appName(h, id));
+        return el('label', { class: 'set-choice', ...(last ? { title: t('dev.lastSystem') } : {}) }, input, appName(h, id));
     };
     const apps = h.kind === 'pc' ? allowed.filter((id) => id === 'ip' || PC_APPS.includes(id)) : allowed.filter((id) => id === 'ip');
     const services = h.kind === 'pc' ? [] : allowed.filter((id) => id !== 'ip' && !TERMINALS.includes(id) && serviceOffered(h, id));

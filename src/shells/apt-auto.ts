@@ -8,6 +8,7 @@ import { PACKAGES, findPackage } from './apt-catalog.ts';
 import type { AptDep, AptPackage } from './apt-catalog.ts';
 import { autoPackagesOf, isPackageAuto, packagesOf, setPackageAuto, setPackageInstalled } from '../net/host-packages.ts';
 import { hasPanel, installedPackage } from './apt-state.ts';
+import { labHasPackage } from '../net/lab-packages.ts';
 
 /** A package or dependency by name, with the version and size apt shows when it removes it. */
 export function findDep(name: string): AptDep | undefined {
@@ -22,6 +23,19 @@ export function markDependencies(host: Host, todo: readonly AptPackage[], fetche
     if (p && hasPanel(host, p)) continue;
     setPackageInstalled(host, d.name, true);
     setPackageAuto(host, d.name, true);
+  }
+}
+
+/** Ubuntu's base system brings nftables (priority important), as a Server has its firewall. */
+const PC_BASE: readonly string[] = ['nftables'];
+
+/** A new PC gets the base packages its lab keeps, with their libraries marked automatic (installed stopped). */
+export function preinstallBase(host: Host): void {
+  for (const name of PC_BASE) {
+    const p = findPackage(name);
+    if (!p || !labHasPackage(host, name)) continue;
+    setPackageInstalled(host, name, true);
+    markDependencies(host, [p], p.deps);
   }
 }
 

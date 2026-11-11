@@ -87,8 +87,10 @@ function unitRows(host: Host): UnitRow[] {
 
 /** `systemctl list-units`, or only the failed ones (`--failed`, `--state=failed`). */
 function listUnits(host: Host, args: readonly string[], p: Paint): string[] {
-  const rows = unitRows(host);
-  if (args.includes('--failed') || args.includes('--state=failed')) return failedTable(rows.filter((r) => r.active === 'failed'), p);
+  const all = unitRows(host);
+  if (args.includes('--failed') || args.includes('--state=failed')) return failedTable(all.filter((r) => r.active === 'failed'), p);
+  // As systemd: without --all only the active and failed units (a stopped, disabled nftables is not listed).
+  const rows = ['--all', '-a', 'list-unit-files'].some((a) => args.includes(a)) ? all : all.filter((r) => r.active !== 'inactive');
   if (!rows.length) return ['0 loaded units listed.'];
   return [p('  UNIT                       LOAD   ACTIVE   SUB     DESCRIPTION', 'underline'), ...rows.map((r) => unitRow(r, p)), '', `${rows.length} loaded units listed.`];
 }
