@@ -8,25 +8,20 @@ import type { Host } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import type { UnitCheck } from '../devices/unit-checks.ts';
 import type { ServerServices } from '../services/config.ts';
+import type { UnitId } from '../services/units.ts';
 import { runsServices } from '../devices/kinds.ts';
-import { KEA_DHCP4_CONF } from './apt-defaults.ts';
+import { EDITABLE_CONFIGS, editableOf } from './editable-configs.ts';
 
-/** The files a unit reads: kea-dhcp4.conf for Kea, the files right in /etc/bind for named. */
-export type Family = 'dhcp' | 'dns';
+/** The files a unit reads (editable-configs.ts): kea-dhcp4.conf for Kea, the files right in /etc/bind for named… */
+export type Family = UnitId;
 
 export function familyOf(path: string): Family | undefined {
-  if (path === KEA_DHCP4_CONF) return 'dhcp';
-  return /^\/etc\/bind\/[^/]+$/.test(path) ? 'dns' : undefined;
+  return editableOf(path)?.unit;
 }
 
 /** The part of the model the family's files are written from (whether the unit runs is not part of it). */
 function fingerprint(server: Server, family: Family): string {
-  if (family === 'dhcp') {
-    const { enabled: _on, ...dhcp } = server.services.dhcp;
-    return JSON.stringify(dhcp);
-  }
-  const { enabled: _on, unloaded: _unloaded, ...dns } = server.services.dns;
-  return JSON.stringify(dns);
+  return JSON.stringify(EDITABLE_CONFIGS.find((c) => c.unit === family)?.model(server.services));
 }
 
 /** The model each family's hand-edited files go with. */

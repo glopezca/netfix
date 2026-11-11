@@ -1,7 +1,8 @@
 // End-to-end check (v0.40) of the service files edited by hand (Fase 59) in the lab «Servidores»: kea-dhcp4.conf with a
 // bad value (kea-dhcp4 -t, the unit failed, a red × in systemctl status, systemctl --failed), then a good edit that the
 // DHCP panel shows after the restart; named.conf.local broken (a reload that fails and keeps named running, the error in
-// journalctl -xeu), then a zone made in Servicios → DNS that writes the generated files again.
+// journalctl -xeu), then a zone made in Servicios → DNS that writes the generated files again; main.cf and dovecot.conf
+// broken (postfix check, postfix failed, doveconf -n, a dovecot reload that keeps it running) and the domain applied.
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { join, dirname } from 'node:path';
@@ -104,8 +105,29 @@ try {
   // The wizard's zone has its NS inside it and no A record yet: BIND does not load it, as the DNS panel warns.
   assert.match(await run(page, 'named-checkzone otra.lab /etc/bind/db.otra.lab'), /zone otra\.lab\/IN: NS 'ns\.otra\.lab' has no address records \(A or AAAA\)\nzone otra\.lab\/IN: not loaded due to errors\./);
   if (shots) await page.screenshot({ path: `${shots}/bind-regenerated.png` });
+
+  // 5. Mail: main.cf with a bad mydomain. postfix check says why, the restart leaves postfix failed; fixed, the Mail
+  // panel shows the new domain. dovecot.conf: a reload with an unknown setting keeps dovecot running.
+  const CF = '/etc/postfix/main.cf';
+  await run(page, `sudo sed -i 's/^mydomain = .*/mydomain = aula_lab/' ${CF}`);
+  assert.match(await run(page, 'sudo postfix check; echo "status $?"'), /postfix: fatal: file \/etc\/postfix\/main\.cf: parameter mydomain: bad parameter value: aula_lab\nstatus 1/);
+  assert.match(await run(page, 'sudo systemctl restart postfix; echo "status $?"'), /Job for postfix\.service failed[\s\S]*status 1/);
+  assert.match(await run(page, 'systemctl is-active postfix'), /^failed$/m);
+  assert.match(await run(page, 'journalctl -u postfix -n 5'), /postfix\/postfix-script\[1021\]: fatal: file \/etc\/postfix\/main\.cf: parameter mydomain: bad parameter value: aula_lab/);
+  await run(page, `sudo sed -i 's/^mydomain = .*/mydomain = empresa.es/' ${CF}`);
+  assert.match(await run(page, 'postconf mydomain'), /^mydomain = empresa\.es$/m);
+  await run(page, 'sudo systemctl restart postfix');
+  assert.match(await run(page, 'systemctl is-active postfix'), /^active$/m);
+  await run(page, "sudo sed -i 's/^mail_driver/mail_location = x\\nmail_driver/' /etc/dovecot/dovecot.conf");
+  assert.match(await run(page, 'doveconf -n; echo "status $?"'), /doveconf: Fatal: Error in configuration file \/etc\/dovecot\/dovecot\.conf line \d+: Unknown setting: mail_location\nstatus 89/);
+  assert.match(await run(page, 'sudo systemctl reload dovecot; echo "status $?"'), /Job for dovecot\.service failed[\s\S]*status 1/);
+  assert.match(await run(page, 'systemctl is-active dovecot'), /^active$/m, 'a bad reload keeps dovecot running');
+  if (shots) await page.screenshot({ path: `${shots}/mail-failed.png` });
+  await win.locator('.win-tab:has-text("Servicios")').click();
+  await page.click('.subnav-item:has-text("Correo")');
+  assert.match(await win.innerText(), /ana@empresa\.es/, 'the Mail panel shows the applied main.cf');
   assert.deepEqual(errors, []);
-  console.log('e2e service files OK: kea-dhcp4 -t, Kea failed in red, the applied edit in the panel, a BIND reload that fails, named.conf.local written again from the panel');
+  console.log('e2e service files OK: kea-dhcp4 -t, Kea failed in red, the applied edit in the panel, a BIND reload that fails, named.conf.local written again from the panel, main.cf and dovecot.conf checked, failed and applied');
 } finally {
   await browser.close();
   server.kill();

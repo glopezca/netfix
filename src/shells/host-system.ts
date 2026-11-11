@@ -11,9 +11,7 @@ import type { Host } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import type { CommandFn, HostEnv, UserInfo } from '../bash/types.ts';
 import { FsError, MAX_FILE, ROOT, Vfs, dirname } from '../bash/vfs.ts';
-import { KEA_DHCP4_CONF } from './apt-defaults.ts';
-import { keaStart } from './service-files.ts';
-import { namedStart } from './named-start.ts';
+import { EDITABLE_CONFIGS, editableOf } from './editable-configs.ts';
 import { registerUnitCheck } from '../devices/unit-checks.ts';
 import type { UnitCheck } from '../devices/unit-checks.ts';
 import { adoptEdits, familyOf, followModel, guardCheck, noteEdit } from './hand-edits.ts';
@@ -103,13 +101,13 @@ const WRITERS: Readonly<Record<string, (host: Host, content: string) => void>> =
 const PRIVATE_MODE: Readonly<Record<string, number>> = { [NETPLAN_FILE]: 0o600 };
 
 /**
- * Files root may write as ordinary files (root, 644, saved with the lab): kea-dhcp4.conf and the files right in
- * /etc/bind, generated or new. Saving applies nothing; the unit reads them when it starts (service-files.ts,
- * named-start.ts).
+ * Files root may write as ordinary files (root, 644, saved with the lab): those of editable-configs.ts (kea-dhcp4.conf,
+ * the files right in /etc/bind, main.cf, dovecot.conf), generated or new. Saving applies nothing; the unit reads them
+ * when it starts.
  */
-const editable = (p: string): boolean => p === KEA_DHCP4_CONF || /^\/etc\/bind\/[^/]+$/.test(p);
+const editable = (p: string): boolean => editableOf(p) !== undefined;
 /** The directories above the editable files: a saved lab may not replace them (by a link, say). */
-const EDITABLE_DIRS: ReadonlySet<string> = new Set(['/etc', '/etc/kea', '/etc/bind']);
+const EDITABLE_DIRS: ReadonlySet<string> = new Set(EDITABLE_CONFIGS.flatMap((c) => c.dirs));
 
 /** A saved editable file comes back as root's 644 file in place of the generated one, whatever its record says. */
 function restoreEditable(fs: Vfs, path: string, content: string): void {
@@ -333,9 +331,8 @@ function checkFiles(srv: Server, family: Family, run: (fs: Vfs) => UnitCheck): U
 }
 
 registerHostFs((host) => hostSystem(host).fs);
-// kea-dhcp4 reads its file when it starts; named reads /etc/bind when it starts and at rndc reload.
-registerUnitCheck('dhcp', (srv) => checkFiles(srv, 'dhcp', (fs) => keaStart(srv, fs)));
-registerUnitCheck('dns', (srv, mode) => checkFiles(srv, 'dns', (fs) => namedStart(srv, fs, mode)));
+// Each unit of editable-configs.ts reads its files when it starts (and at reload, those that have one).
+for (const c of EDITABLE_CONFIGS) registerUnitCheck(c.unit, (srv, mode) => checkFiles(srv, c.unit, (fs) => c.check(srv, fs, mode)));
 // Before the system exists, a file saved with the topology is read from the pending records (same result either way).
 registerHostFileReader((host, path) => {
   const e = systems.get(host);
