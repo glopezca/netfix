@@ -2248,3 +2248,22 @@ relacionadas con las directivas de los ficheros y con los comprobadores que se p
     id de cada captura y `scripts/e2e-docs.mjs` comprueba que cargan.
   - Límites: `dist/netfix.html` pasa de 3,8 a 4,5 MB; faltan capturas de SSH, HTTP, correo, Samba, VPN y netplan; las
     capturas se regeneran a mano (`node scripts/shots.mjs`) cuando cambia la interfaz.
+
+### Fase 61: capturas del resto de servicios y ficheros de correo editables; registro de ficheros editables (v0.42.0)
+
+Petición: (1) capturas del panel local y de la gestión web para el resto de servicios; (2) que los ficheros de correo
+se puedan editar y aplicar como los de Kea y BIND, y que sea lo normal para los servicios futuros.
+
+Hecho con un enjambre ruflo jerárquico (dos escritores en worktrees aislados, integración en la sesión principal):
+- **Capturas** (es/en): SSH, HTTP (Apache), Samba, VPN (WireGuard, laboratorio vpn-wireguard), netplan y correo, cada
+  par con el fichero, la edición desde la terminal y su comprobador. La captura de la gestión web del firewall ya no
+  muestra «cambios con nft sin guardar» (se activa y se guarda antes).
+- **Correo editable**: `/etc/postfix/main.cf` y `/etc/dovecot/dovecot.conf` como kea-dhcp4.conf: root, 644, se guardan
+  con el laboratorio; al arrancar, reiniciar o recargar postfix/dovecot se comprueban e importan (dominio; POP3/IMAP).
+  Con errores, la unidad queda failed y un reload conserva lo que corría. Órdenes nuevas: `postconf [-n] [PARAM…]`,
+  `postfix check|reload|status`, `doveconf -n`. dovecot.conf con la sintaxis de Dovecot 2.4.
+- **Por defecto en adelante**: registro `EDITABLE_CONFIGS` (`src/shells/editable-configs.ts`) con Kea, BIND y correo;
+  host-system.ts y hand-edits.ts lo leen. `tests/shells/editable-configs.test.ts` falla si un fichero de
+  `config-files.ts` no está registrado ni justificado en `UNREGISTERED`. Regla `.claude/rules/project/service-config-files.md`.
+- Límites: sin `sshd -t` como orden; sin `postfix start|stop`; los ajustes dentro de secciones de dovecot no se
+  comprueban; la huella de dovecot.conf es constante (cambiar POP3 en el panel no reescribe un fichero editado).

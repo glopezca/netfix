@@ -123,6 +123,9 @@ export const SECURITY_DOCS: DocGroup = {
         ),
         code('[Interface]\nAddress = 10.99.0.2/24\nListenPort = 51820\nPrivateKey = (the branch’s private key)\n\n[Peer]\nPublicKey = (the hub’s public key)\nAllowedIPs = 10.99.0.0/24, 10.1.0.0/24\nEndpoint = 81.32.5.2:51820\nPersistentKeepalive = 25'),
         check('Check it', '`wg show` must have a **latest handshake** and traffic both ways; a traceroute from one LAN to the other goes through the tunnel address.'),
+        shot('vpn-panel', 'CENTRAL’s panel, Services → VPN: the wg0 tunnel, the public key to give to the peers and the tunnel address.'),
+        shot('vpn-webgui', 'The VPN page of the web management (`?page=vpn`), opened from a PC on the hub’s LAN.'),
+        p('Both screens write **/etc/wireguard/wg0.conf** (mode 600) and restart the tunnel. Root edits it from the terminal with `sudo nano /etc/wireguard/wg0.conf` and applies it with `sudo wg-quick down wg0 && sudo wg-quick up wg0`; `sudo wg show` checks the result.'),
         term('shell', 'root@central:~# wg show\ninterface: wg0\n  public key: (the hub’s public key)\n  private key: (hidden)\n  listening port: 51820\n\npeer: (the branch’s public key)\n  endpoint: 81.33.3.2:51820\n  allowed ips: 10.99.0.2/32, 10.2.0.0/24\n  latest handshake: 29 seconds ago\n  transfer: 212 B received, 92 B sent\nalumno@pc0:~$ traceroute -n 10.2.0.10\ntraceroute to 10.2.0.10 (10.2.0.10), 30 hops max, 60 byte packets\n 1  10.1.0.1  4.400 ms  4.211 ms  4.292 ms\n 2  10.99.0.2  28.319 ms  28.400 ms  28.211 ms\n 3  10.2.0.10  32.238 ms  32.319 ms  32.400 ms'),
         table(['Command', 'Effect'], [
           ['wg-quick up wg0 · down wg0', 'Brings the tunnel up or down from /etc/wireguard/wg0.conf.'],

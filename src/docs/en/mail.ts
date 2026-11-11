@@ -1,6 +1,6 @@
 /** Documentation: the Server's mail service (postfix and dovecot), in guided style. */
 import type { DocPage } from '../types.ts';
-import { check, exercise, figure, h, p, steps, table, term, tip, warn } from '../types.ts';
+import { check, exercise, figure, h, p, shot, steps, table, term, tip, warn } from '../types.ts';
 
 const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
@@ -39,6 +39,13 @@ export const MAIL_DOCS: readonly DocPage[] = [
       term('messages', 'Oct 24 06:25:38 srv master[1021]: postfix/smtpd: connect from 192.168.10.100; from=<ana@aula.lab> nrcpt=1\nOct 24 06:25:38 srv master[1021]: postfix/local: to=<luis@aula.lab>, relay=local, status=sent (delivered to mailbox)\nOct 24 06:25:38 srv master[1021]: postfix/smtp: to=<bea@otro.lab>, status=bounced (Host or domain name not found. Name service error for name=otro.lab type=MX)'),
       tip('Webmail', 'With **Roundcube** (Services → HTTP → Web applications) users read and write from the browser, without setting up the PC’s mail client. It uses this same server’s IMAP and SMTP.'),
       warn('Common mistakes', '**bounced … type=MX**: the destination domain has no MX record (or the server does not resolve outside names). The PC does not send: SMTP is off or the outgoing server is mistyped. “Receive” brings nothing: the incoming protocol chosen on the PC (POP3 or IMAP) is off on the server, or the user or password do not match.'),
+      shot('mail-panel', 'SRV’s local panel, Services → Email: SMTP (postfix), POP3 and IMAP (dovecot), the domain and the accounts.'),
+      shot('mail-webgui', 'The Email page of the web management (`?page=mail`), opened from PC0: the same switches, the domain and the accounts.'),
+      h('Editing main.cf and dovecot.conf by hand'),
+      p('root can edit `/etc/postfix/main.cf` and `/etc/dovecot/dovecot.conf` from the GNU/Linux Terminal (`sudo nano /etc/postfix/main.cf`). Saving applies nothing: postfix and dovecot read their file when they start, restart or reload (`sudo systemctl reload postfix`, `sudo postfix reload`, `sudo systemctl reload dovecot`). From main.cf the domain is taken (**mydomain**, or myhostname without its first label); in dovecot.conf, **protocols** turns POP3 and IMAP on. If the file is right, the Email panel and the web management show what you wrote; if not, the unit is left **failed** and the error goes to the log. A reload with errors leaves the service as it was. Check first with `sudo postfix check`, `postconf -n` and `doveconf -n`:'),
+      term('shell', 'admin@srv:~$ sudo postfix check\npostfix: fatal: file /etc/postfix/main.cf: parameter mydomain: bad parameter value: aula_lab\nadmin@srv:~$ doveconf -n > /dev/null\ndoveconf: Fatal: Error in configuration file /etc/dovecot/dovecot.conf line 6: Unknown setting: mail_location\nadmin@srv:~$ sudo systemctl restart postfix\nJob for postfix.service failed because the control process exited with error code.\nSee "systemctl status postfix.service" and "journalctl -xeu postfix.service" for details.\nadmin@srv:~$ journalctl -u postfix -n 4'),
+      term('messages', "Nov 06 10:00:00 srv postfix/postfix-script[1021]: fatal: file /etc/postfix/main.cf: parameter mydomain: bad parameter value: aula_lab\nNov 06 10:00:00 srv systemd[1]: postfix.service: Main process exited, code=exited, status=1/FAILURE\nNov 06 10:00:00 srv systemd[1]: postfix.service: Failed with result 'exit-code'.\nNov 06 10:00:00 srv systemd[1]: Failed to start postfix.service - Postfix Mail Transport Agent."),
+      p('As in Webmin, changing the domain from the panel or the web management writes main.cf again from its settings: what you edited and did not apply is lost. Stopping or starting the service rewrites nothing. The lab saves the edited files and, when opened, postfix and dovecot start with them.'),
       exercise('A message that comes back', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, send from PC0 a message to luis@aula.lab and another to bea@otro.lab. What does postfix’s log say about each one?', 'For luis: `relay=local, status=sent (delivered to mailbox)`, and PC1 gets it with Receive. For bea: `status=bounced (Host or domain name not found. Name service error for name=otro.lab type=MX)`: the domain otro.lab does not exist, so there is no server to relay it to.'),
     ],
   },

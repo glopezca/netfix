@@ -47,6 +47,9 @@ const LINK: readonly ConfigSource[] = [
   { id: 'winbind', label: 'files.winbind', paths: ['/etc/nsswitch.conf', '/etc/samba/smb.conf'] },
 ];
 
+/** Every service the «Ficheros» view knows (tests/shells/editable-configs.test.ts checks each file has an owner). */
+export const CONFIG_SOURCES: readonly ConfigSource[] = [SYSCTL, ...ROUTER, ...SERVICES, SAMBA, ...LINK];
+
 /**
  * The services of a device in the order of its Services tab (the kernel parameters, the router's own panels, then
  * SSH…, then Samba when it is installed). A GNU/Linux PC has the kernel parameters and what its packages bring.

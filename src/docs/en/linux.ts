@@ -1,6 +1,6 @@
 /** Documentation: the GNU/Linux terminal (overview, file system, programs and network), in guided style. */
 import type { DocBlock, DocPage } from '../types.ts';
-import { check, code, exercise, h, list, note, p, steps, table, term, tip, warn } from '../types.ts';
+import { check, code, exercise, h, list, note, p, shot, steps, table, term, tip, warn } from '../types.ts';
 import { UTIL_DOCS, UTIL_GROUPS } from './utils.ts';
 import type { UtilDoc } from '../utils.ts';
 
@@ -64,7 +64,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
         ['/etc/hostname · /etc/resolv.conf · /etc/netplan/50-cloud-init.yaml', 'Generated: they follow the device’s IP configuration (resolv.conf has a “search” line with the netplan and DHCP domains)'],
         ['/etc/hosts', 'An ordinary file that root edits (sudo nano /etc/hosts): ping, ssh, curl, the browser and the Windows terminal (which shares the GNU/Linux file system) check it before DNS; nslookup, host and dig ask the DNS server only. hostname -f gives the first name on the device’s line. It is saved with the topology.'],
         ['/etc/kea · /etc/bind · /etc/ssh/sshd_config', 'Service configuration: written by their panels and by root as well (see the next table)'],
-        ['/etc/postfix · /etc/dovecot', 'Generated on servers: they follow the Mail panel'],
+        ['/etc/postfix · /etc/dovecot', 'Generated on servers from the Email panel; root can edit main.cf and dovecot.conf'],
         ['/var/lib/kea/kea-leases4.csv', 'Current DHCP leases'],
         ['/var/www/html', 'The web server’s pages (read and write with sudo)'],
         ['/usr/bin · /usr/sbin', 'Programs'],
@@ -72,7 +72,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
         ['/dev/null · /dev/zero · /dev/random · /dev/tty', 'Devices'],
         ['/proc/version · /proc/cpuinfo · /proc/meminfo', 'System information'],
       ]),
-      p('Generated files are read-only (“Read-only file system”): they are changed from the interface (TCP/IP, Services) and the terminal sees the change immediately. Some, among them netplan, kea-dhcp4.conf and the files in /etc/bind, are the exception: root can write them too (the table below lists them).'),
+      p('Generated files are read-only (“Read-only file system”): they are changed from the interface (TCP/IP, Services) and the terminal sees the change immediately. Some, among them netplan, kea-dhcp4.conf, the files in /etc/bind, main.cf and dovecot.conf, are the exception: root can write them too (the table below lists them).'),
       h('Three ways to edit the configuration'),
       p('Each configuration file can be changed from the device’s window, from the terminal as root or from the web management (Server and GNU/Linux router). All three write the same file. **Services → Configuration** and **Status → Configuration** on the web show it as it is, without editing it. A change from a panel rewrites the file, so anything edited by hand and not applied is lost.'),
       table(['File', 'Device window', 'Terminal (root)', 'Web management'], [
@@ -84,11 +84,14 @@ export const LINUX_DOCS: readonly DocPage[] = [
         ['/etc/kea/kea-dhcp4.conf', 'Services → DHCP', '`kea-dhcp4 -t` to check it, `systemctl restart kea-dhcp4-server`', 'Services → DHCP'],
         ['/etc/bind (named.conf.*, db.<zone>)', 'Services → DNS', '`named-checkconf`, `named-checkzone`, `rndc reload`', 'Services → DNS'],
         ['/etc/apache2', 'Services → HTTP (edits /var/www/html)', '`apache2ctl configtest`, `systemctl reload apache2`', 'Services → Web and webmail'],
-        ['/etc/postfix/main.cf · /etc/dovecot/dovecot.conf', 'Services → Mail', 'Read-only: generated from the panel', 'Services → Mail'],
+        ['/etc/postfix/main.cf · /etc/dovecot/dovecot.conf', 'Services → Email', '`sudo postfix check`, `postconf -n`, `doveconf -n`; `systemctl reload postfix` / `dovecot`', 'Services → Email'],
         ['/etc/samba/smb.conf', 'Services → Samba', '`testparm -s`; smbd rereads it on every connection', 'Services → Samba'],
         ['/etc/avahi/avahi-daemon.conf', 'Services → mDNS', 'Applied the next time avahi-daemon starts: `systemctl restart avahi-daemon`', 'Services → mDNS'],
         ['/etc/nsswitch.conf', 'Services → winbind (wins in “hosts:”)', '`sudo nano`; programs read it on their next lookup', 'Services → winbind'],
       ]),
+      shot('netplan-panel', 'SRV’s panel, TCP/IP tab: what is saved in /etc/netplan/50-cloud-init.yaml (DHCP or static, address, gateway and DNS).'),
+      shot('netplan-webgui', 'The “Basic setup” page of the web management (`?page=setup`): the same IP data, opened from PC0.'),
+      p('Both screens generate **/etc/netplan/50-cloud-init.yaml**. Root edits it by hand (`sudo nano /etc/netplan/50-cloud-init.yaml`) and applies it with `sudo netplan apply`; `sudo netplan try` tests it first and rolls back if it is not confirmed.'),
       h('Permissions'),
       p('Every file has an **owner**, a **group** and three permission triplets: **r** (read), **w** (write) and **x** (execute, or enter if it is a directory), for the owner, the group and the others.'),
       table(['ls -l column', 'Example', 'Meaning'], [

@@ -9,7 +9,7 @@ const USAGE = 'Usage: rndc [-b address] [-c config] [-s server] [-p port]\n\t[-k
 
 /** rndc reload: named answers whether its files loaded (it keeps what it had when named.conf does not). */
 function reload(ctx: Ctx, server: Server): number {
-  if (server.reloadDns(false)) { ctx.err("rndc: 'reload' failed: failure\n"); return 1; }
+  if (server.reloadFiles('dns', false)) { ctx.err("rndc: 'reload' failed: failure\n"); return 1; }
   ctx.out('server reload successful\n');
   return 0;
 }

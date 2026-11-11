@@ -1,6 +1,6 @@
 /** Documentation: the Server's HTTP service (Apache2 or IIS), in guided style. */
 import type { DocPage } from '../types.ts';
-import { check, code, exercise, figure, h, list, p, steps, table, term, tip, warn } from '../types.ts';
+import { check, code, exercise, figure, h, list, p, shot, steps, table, term, tip, warn } from '../types.ts';
 
 const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
@@ -47,6 +47,9 @@ export const HTTP_DOCS: readonly DocPage[] = [
     markdownBase: MD,
     blocks: [
       p('On a Server with Ubuntu, Apache 2.4 is configured as on Ubuntu, with the files in **/etc/apache2** (as root or with sudo). The HTTP panel still edits /var/www/html, the default site’s folder (000-default.conf). On Windows Server the service is IIS and it serves that same list of files.'),
+      shot('web-panel', 'SRV’s panel, Services → HTTP: the Apache2 service and its web applications (web management and Roundcube).'),
+      shot('web-webgui', 'The “Web and webmail” page of the web management (`?page=web`), opened from PC0.'),
+      p('Both screens switch Apache2 and the web applications on, and the panel edits the page in /var/www/html. Apache’s configuration lives in **/etc/apache2**: root edits it from the terminal (`sudo nano /etc/apache2/sites-available/…`) and checks it with `sudo apache2ctl configtest` (it must end in **Syntax OK**) before `sudo systemctl reload apache2`.'),
       table(['File or folder', 'What it is for'], [
         ['apache2.conf', 'Main configuration: includes the rest and defines the allowed <Directory> (/var/www and /usr/share).'],
         ['ports.conf', 'Ports with Listen (80; 443 if ssl is enabled).'],

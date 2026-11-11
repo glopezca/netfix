@@ -1,6 +1,6 @@
 /** Documentación: la Terminal GNU/Linux (visión general, sistema de ficheros, programas y red), en estilo guiado. */
 import type { DocBlock, DocPage } from './types.ts';
-import { check, code, exercise, h, list, note, p, steps, table, term, tip, warn } from './types.ts';
+import { check, code, exercise, h, list, note, p, shot, steps, table, term, tip, warn } from './types.ts';
 import { UTIL_DOCS, UTIL_GROUPS } from './utils.ts';
 import type { UtilDoc } from './utils.ts';
 
@@ -64,7 +64,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
         ['/etc/hostname · /etc/resolv.conf · /etc/netplan/50-cloud-init.yaml', 'Generados: siguen la configuración IP del equipo (resolv.conf incluye «search» con los dominios de netplan y de DHCP)'],
         ['/etc/hosts', 'Archivo normal que edita root (sudo nano /etc/hosts): ping, ssh, curl, el navegador y la Terminal Windows (que comparte el sistema de archivos GNU/Linux) lo consultan antes que el DNS; nslookup, host y dig preguntan solo al servidor DNS. hostname -f da el primer nombre de la línea del equipo. Se guarda con la topología.'],
         ['/etc/kea · /etc/bind · /etc/ssh/sshd_config', 'Configuración de los servicios: la escriben sus paneles y también root (ver la tabla siguiente)'],
-        ['/etc/postfix · /etc/dovecot', 'Generados en servidores: siguen el panel Correo'],
+        ['/etc/postfix · /etc/dovecot', 'Generados en servidores desde el panel Correo; root puede editar main.cf y dovecot.conf'],
         ['/var/lib/kea/kea-leases4.csv', 'Concesiones DHCP actuales'],
         ['/var/www/html', 'Las páginas del servidor web (lectura y escritura con sudo)'],
         ['/usr/bin · /usr/sbin', 'Programas'],
@@ -72,7 +72,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
         ['/dev/null · /dev/zero · /dev/random · /dev/tty', 'Dispositivos'],
         ['/proc/version · /proc/cpuinfo · /proc/meminfo', 'Información del sistema'],
       ]),
-      p('Los ficheros generados son de solo lectura («Read-only file system»): se cambian desde la interfaz (TCP/IP, Servicios) y la terminal los ve al momento. Algunos, entre otros netplan, kea-dhcp4.conf y los ficheros de /etc/bind, son la excepción: root también puede escribirlos (la tabla siguiente los detalla).'),
+      p('Los ficheros generados son de solo lectura («Read-only file system»): se cambian desde la interfaz (TCP/IP, Servicios) y la terminal los ve al momento. Algunos, entre otros netplan, kea-dhcp4.conf, los ficheros de /etc/bind, main.cf y dovecot.conf, son la excepción: root también puede escribirlos (la tabla siguiente los detalla).'),
       h('Tres maneras de editar la configuración'),
       p('Cada fichero de configuración se cambia desde la ventana del equipo, desde la terminal como root o desde la gestión web (Server y Router GNU/Linux). Las tres escriben el mismo fichero. **Servicios → Configuración** y **Estado → Configuración** en la web lo muestran tal como está, sin editarlo. Un cambio desde un panel vuelve a escribir el fichero, así que lo editado a mano y no aplicado se pierde.'),
       table(['Fichero', 'Ventana del equipo', 'Terminal (root)', 'Gestión web'], [
@@ -84,11 +84,14 @@ export const LINUX_DOCS: readonly DocPage[] = [
         ['/etc/kea/kea-dhcp4.conf', 'Servicios → DHCP', '`kea-dhcp4 -t` para comprobarlo, `systemctl restart kea-dhcp4-server`', 'Servicios → DHCP'],
         ['/etc/bind (named.conf.*, db.<zona>)', 'Servicios → DNS', '`named-checkconf`, `named-checkzone`, `rndc reload`', 'Servicios → DNS'],
         ['/etc/apache2', 'Servicios → HTTP (edita /var/www/html)', '`apache2ctl configtest`, `systemctl reload apache2`', 'Servicios → Web y correo web'],
-        ['/etc/postfix/main.cf · /etc/dovecot/dovecot.conf', 'Servicios → Correo', 'Solo lectura: se generan desde el panel', 'Servicios → Correo'],
+        ['/etc/postfix/main.cf · /etc/dovecot/dovecot.conf', 'Servicios → Correo', '`sudo postfix check`, `postconf -n`, `doveconf -n`; `systemctl reload postfix` / `dovecot`', 'Servicios → Correo'],
         ['/etc/samba/smb.conf', 'Servicios → Samba', '`testparm -s`; smbd lo relee en cada conexión', 'Servicios → Samba'],
         ['/etc/avahi/avahi-daemon.conf', 'Servicios → mDNS', 'Se aplica la próxima vez que arranca avahi-daemon: `systemctl restart avahi-daemon`', 'Servicios → mDNS'],
         ['/etc/nsswitch.conf', 'Servicios → winbind (wins en «hosts:»)', '`sudo nano`; lo leen los programas en la siguiente consulta', 'Servicios → winbind'],
       ]),
+      shot('netplan-panel', 'Panel de SRV, pestaña TCP/IP: lo que se guarda en /etc/netplan/50-cloud-init.yaml (DHCP o estática, dirección, puerta de enlace y DNS).'),
+      shot('netplan-webgui', 'La página «Configuración básica» de la gestión web (`?page=setup`): los mismos datos IP, abierta desde PC0.'),
+      p('Las dos pantallas generan **/etc/netplan/50-cloud-init.yaml**. Root lo edita a mano (`sudo nano /etc/netplan/50-cloud-init.yaml`) y lo aplica con `sudo netplan apply`; con `sudo netplan try` se prueba antes y vuelve atrás si no se confirma.'),
       h('Permisos'),
       p('Cada fichero tiene un **dueño**, un **grupo** y tres tríos de permisos: **r** (leer), **w** (escribir) y **x** (ejecutar, o entrar si es un directorio), para el dueño, el grupo y los demás.'),
       table(['Columna de ls -l', 'Ejemplo', 'Significa'], [

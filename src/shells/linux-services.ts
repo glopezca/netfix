@@ -167,9 +167,8 @@ function reload(server: Server, unit: UnitInfo): string[] {
   if (unit.id === 'http') return server.reloadWeb() ? jobFailed(unit.linux) : [];
   if (unit.id === 'firewall') return server.reloadFirewall() ? jobFailed(unit.linux) : [];
   if (unit.id === 'ssh') return server.reloadSsh() ? jobFailed(unit.linux) : [];
-  if (unit.id === 'dns') return server.reloadDns() ? jobFailed(unit.linux) : [];
-  // postfix and dovecot: their files are read again as a restart reads them.
-  return restart(server, unit);
+  // named, postfix and dovecot read their files again; a bad one keeps what runs.
+  return server.reloadFiles(unit.id) ? jobFailed(unit.linux) : [];
 }
 
 /** A unit without ExecReload (Kea): systemd refuses the reload job. */
