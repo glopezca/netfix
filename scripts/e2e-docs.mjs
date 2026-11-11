@@ -38,7 +38,12 @@ try {
   await page.locator('button[data-page="srv-dhcp"]').click();
   assert.equal(await page.locator('.doc-crumb').innerText(), 'Servidor › DHCP');
   const article = page.locator('article.doc-page');
-  assert.equal(await article.locator('figure.doc-figure').count(), 2, 'a topology and the DORA sequence');
+  assert.equal(await article.locator('figure.doc-figure:not(.doc-shot)').count(), 2, 'a topology and the DORA sequence');
+  // The local panel and the web management, as WebP screenshots that load (scripts/shots.mjs).
+  const imgs = article.locator('figure.doc-shot img');
+  assert.equal(await imgs.count(), 2);
+  for (const img of await imgs.all()) { await img.scrollIntoViewIfNeeded(); assert.ok(await img.evaluate(async (n) => { await n.decode(); return n.naturalWidth > 0 && n.src.startsWith('data:image/webp'); })); }
+  if (shots) await article.locator('figure.doc-shot').first().screenshot({ path: join(shots, 'doc-shot.png') });
   assert.equal(await article.locator('figure.doc-figure').first().locator('svg svg').count(), 4, 'the four devices drawn with the palette icons');
   assert.equal(await article.locator('.doc-steps > li').count(), 5);
   assert.equal(await article.locator('.doc-term-prompt').first().innerText(), 'alumno@pc0:~$ ');

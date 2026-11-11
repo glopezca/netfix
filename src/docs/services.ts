@@ -1,6 +1,6 @@
 /** Documentación: Server (pestañas y nombres de los servicios), DHCP, SSH, y Configuración y registros, en estilo guiado. */
 import type { DocGroup } from './types.ts';
-import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from './types.ts';
+import { check, code, exercise, figure, h, list, note, p, shot, steps, table, term, tip, warn } from './types.ts';
 
 const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
@@ -116,6 +116,9 @@ export const SERVICE_DOCS: DocGroup = {
           ['Client-ID', 'Hexadecimal con o sin puntos (0100.0142.abcd.ef); el típico de Windows es 01 + MAC'],
         ]),
         p('«Identificar concesiones automáticas por» decide cómo se reconoce a un cliente **sin** reserva: por **Client-ID o, si no lo envía, MAC** (lo normal en DHCP y en Kea) o solo por **MAC** (el mismo equipo conserva su dirección IP aunque cambie de sistema operativo). En la tabla de concesiones, «Reservar por MAC» y «Reservar por Client-ID» convierten una concesión en reserva con un clic.'),
+        shot('dhcp-panel', 'Panel local de SRV, Servicios → DHCP: los datos del pool y la tabla de pools con sus reservas.'),
+        shot('dhcp-webgui', 'La página DHCP de la gestión web (`?page=dhcp`), abierta desde PC0: los mismos pools, editables en remoto.'),
+        p('El panel, la gestión web y la Terminal GNU/Linux editan el mismo `/etc/kea/kea-dhcp4.conf`; el comprobador que se puede invocar a mano es `kea-dhcp4 -t /etc/kea/kea-dhcp4.conf`.'),
         h('Lo que se escribe en el fichero'),
         p('Cada cambio del panel se guarda en `/etc/kea/kea-dhcp4.conf`, el mismo fichero que editarías en un Ubuntu real (lo ves en **Servicios → Configuración**):'),
         term('json', '"interfaces-config": {\n  "interfaces": [ "*" ]\n},\n"reservations": [\n  { "hw-address": "00:fb:b1:18:68:78", "ip-address": "192.168.10.50" },\n  { "client-id": "01:00:50:f0:00:00:03", "ip-address": "192.168.10.51" }\n],\n"match-client-id": false'),

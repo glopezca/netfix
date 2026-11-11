@@ -1,6 +1,6 @@
 /** Documentation: Server (tabs and service names), DHCP, SSH, and Configuration and logs, in guided style. */
 import type { DocGroup } from '../types.ts';
-import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from '../types.ts';
+import { check, code, exercise, figure, h, list, note, p, shot, steps, table, term, tip, warn } from '../types.ts';
 
 const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
@@ -116,6 +116,9 @@ export const SERVICE_DOCS: DocGroup = {
           ['Client-ID', 'Hexadecimal with or without dots (0100.0142.abcd.ef); the usual Windows one is 01 + MAC'],
         ]),
         p('“Identify automatic leases by” decides how a client **without** a reservation is recognised: by **Client-ID or, if it sends none, MAC** (normal DHCP and Kea behaviour) or by **MAC** only (the same device keeps its IP address even if it changes operating system). In the lease table, “Reserve by MAC” and “Reserve by Client-ID” turn a lease into a reservation with one click.'),
+        shot('dhcp-panel', 'SRV’s local panel, Services → DHCP: the pool data and the table of pools with their reservations.'),
+        shot('dhcp-webgui', 'The DHCP page of the web management (`?page=dhcp`), opened from PC0: the same pools, editable remotely.'),
+        p('The panel, the web management and the GNU/Linux terminal edit the same `/etc/kea/kea-dhcp4.conf`; the checker you can run by hand is `kea-dhcp4 -t /etc/kea/kea-dhcp4.conf`.'),
         h('What is written to the file'),
         p('Every change in the panel is saved to `/etc/kea/kea-dhcp4.conf`, the same file you would edit on a real Ubuntu (see it in **Services → Configuration**):'),
         term('json', '"interfaces-config": {\n  "interfaces": [ "*" ]\n},\n"reservations": [\n  { "hw-address": "00:fb:b1:18:68:78", "ip-address": "192.168.10.50" },\n  { "client-id": "01:00:50:f0:00:00:03", "ip-address": "192.168.10.51" }\n],\n"match-client-id": false'),

@@ -1,6 +1,6 @@
 /** Documentation: the Server's DNS service (bind9), in guided style: zones, operating modes and names. */
 import type { DocPage } from '../types.ts';
-import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from '../types.ts';
+import { check, code, exercise, figure, h, list, note, p, shot, steps, table, term, tip, warn } from '../types.ts';
 
 const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
@@ -62,6 +62,11 @@ export const DNS_DOCS: readonly DocPage[] = [
       note('Iterative depends on the others: without Recursive it is off; with Recursive and no forwarders it is always on; with forwarders, its box chooses forward first (on: if the forwarders do not answer, it iterates) or forward only (off: SERVFAIL). The block explains why it cannot be changed when that is the case.'),
       p('The emulated Internet has the 13 root servers (the IP addresses of /usr/share/dns/root.hints), top-level domain servers (com, net, org, es, me, google, arpa and a generic one for the domains registered in the clouds) and the authoritative servers of the public domains. A domain registered in a cloud with its own server is delegated to that server, so the iteration reaches the student’s DNS. Learnt delegations are cached too: the second query for google.com no longer asks the root.'),
       code('admin@srv:~$ journalctl -u bind9\nclient 192.168.10.21#50001 (www.google.com): query: www.google.com IN A + (192.168.10.2) → iterative resolution\nresolving www.google.com/A: iterative, starting at the root servers\n  www.google.com: referral to com. (a.gtld-servers.net)\n  www.google.com: referral to google.com. (ns1.google.com)'),
+      h('The modes in the panel and in the web management'),
+      p('The modes are changed in the server’s local panel (**Services → DNS**) or, from another device, in its web management (`http://192.168.10.2:10000/?page=dns`). Each block or card shows the BIND directive it writes.'),
+      shot('dns-panel', 'SRV’s local panel, Services → DNS: one block per mode, with its switch and the BIND directive (max-cache-ttl, forwarders…).'),
+      shot('dns-webgui', 'The same configuration in the web management, opened from PC0’s browser: one card per mode and its directive at the bottom.'),
+      p('Both views write `/etc/bind/named.conf.options` (cache, forwarding, recursion) and `/etc/bind/named.conf.local` (zones), which root can also edit from the GNU/Linux terminal (`sudo nano /etc/bind/named.conf.options`). After editing them by hand, check them with `named-checkconf` and `named-checkzone <zone> <file>` before `sudo systemctl reload named`.'),
       h('Listen interfaces'),
       p('Like BIND’s listen-on: chooses on which IP addresses bind9 answers. “All” is listen-on { any; }; each ticked interface adds its IP address and lo, 127.0.0.1. A query to another IP address of the device gets no answer (dig ends with “connection timed out”). **Apply** restarts bind9, like systemctl restart bind9.'),
       code('options {\n\tlisten-on { 192.168.1.1; 127.0.0.1; };\n\t…\n};\n\nadmin@srv:~$ dig @127.0.0.1 www.aula.lab'),

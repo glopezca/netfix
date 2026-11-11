@@ -48,6 +48,7 @@
 
 /* Diagrams drawn from data (palette icons, cables, sequences of messages) */
 .doc-figure { margin: 16px 0; padding: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-win); }
+.doc-shot img { display: block; max-width: 100%; height: auto; margin: 0 auto; border: 1px solid var(--line); border-radius: 6px; }
 .doc-figure figcaption { margin-top: 6px; color: var(--ink-2); font-size: 14px; text-align: center; }
 .doc-fig-svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
 .doc-fig-cable { stroke: var(--ink-2); stroke-width: 2.5; }
