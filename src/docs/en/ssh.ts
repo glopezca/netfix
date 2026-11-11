@@ -1,6 +1,6 @@
 /** Documentation: SSH the OpenSSH way (key pairs, sshd_config, SFTP and scp), in guided style. */
 import type { DocPage } from '../types.ts';
-import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from '../types.ts';
+import { check, code, exercise, figure, h, list, note, p, shot, steps, table, term, tip, warn } from '../types.ts';
 
 const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
@@ -84,6 +84,9 @@ export const SSH_DOCS: readonly DocPage[] = [
       ),
       term('shell', "root@srv:~# echo 'PasswordAuthentication no' > /etc/ssh/sshd_config.d/10-solo-claves.conf\nroot@srv:~# systemctl reload ssh\nalumno@pc0:~$ ssh admin@srv.aula.lab\nadmin@srv.aula.lab: Permission denied (publickey)."),
       tip('From the panel', 'In **Services → SSH → Authentication** (and in web management), the **User and password** and **Key pair** boxes write PasswordAuthentication and PubkeyAuthentication to sshd_config and reload ssh. If a file in sshd_config.d sets the same option earlier, the panel warns that that one counts.'),
+      shot('ssh-panel', 'SRV’s panel, Services → SSH: the service switch and the authentication checkboxes.'),
+      shot('ssh-webgui', 'The SSH page of the web management (`?page=ssh`), opened from PC0: the same switches.'),
+      p('Both screens write **/etc/ssh/sshd_config** and reload ssh. Root does the same from the GNU/Linux Terminal with `sudo nano /etc/ssh/sshd_config`; to check it, `sudo systemctl reload ssh` (the unit runs `sshd -t` first and, if there is an error, `systemctl status ssh` shows `ExecStartPre=/usr/sbin/sshd -t (code=exited, status=255/EXCEPTION)`).'),
       warn('What is not there', 'Match, ForceCommand, ChrootDirectory, AuthenticationMethods and other access-control options are not implemented: sshd rejects them (“Unsupported option”) so that a practical never believes something is protected when it is not. An unknown or misspelt option also makes the reload fail (“Bad configuration option” in journalctl -u ssh).'),
       note('The server’s key is in /etc/ssh/ssh_host_ed25519_key (and the ecdsa and rsa ones). If it is deleted, ssh does not start: “sshd: no hostkeys available -- exiting.”; ssh-keygen -A creates the missing ones.'),
       exercise('Keys only for everyone', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, install PC1’s key for admin and turn off the password. Check that PC1 gets in and PC0 does not.', 'On PC1, `ssh-keygen` and `ssh-copy-id admin@srv.aula.lab`. On SRV, as root, `echo \'PasswordAuthentication no\' > /etc/ssh/sshd_config.d/10-solo-claves.conf` and `systemctl reload ssh` (or untick **User and password** in the panel). PC1: `ssh admin@srv.aula.lab hostname` gives srv. PC0: “admin@srv.aula.lab: Permission denied (publickey).”.'),
