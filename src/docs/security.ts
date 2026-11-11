@@ -123,6 +123,9 @@ export const SECURITY_DOCS: DocGroup = {
         ),
         code('[Interface]\nAddress = 10.99.0.2/24\nListenPort = 51820\nPrivateKey = (clave privada de la sucursal)\n\n[Peer]\nPublicKey = (clave pública de la central)\nAllowedIPs = 10.99.0.0/24, 10.1.0.0/24\nEndpoint = 81.32.5.2:51820\nPersistentKeepalive = 25'),
         check('Compruébalo', '`wg show` debe tener **latest handshake** y tráfico en los dos sentidos; un traceroute de una LAN a la otra pasa por la dirección del túnel.'),
+        shot('vpn-panel', 'Panel de CENTRAL, Servicios → VPN: el túnel wg0, la clave pública que se da a los pares y la dirección del túnel.'),
+        shot('vpn-webgui', 'La página VPN de la gestión web (`?page=vpn`), abierta desde un PC de la LAN de la central.'),
+        p('Las dos pantallas escriben **/etc/wireguard/wg0.conf** (permisos 600) y reinician el túnel. Root lo edita desde la terminal con `sudo nano /etc/wireguard/wg0.conf` y lo aplica con `sudo wg-quick down wg0 && sudo wg-quick up wg0`; `sudo wg show` comprueba el resultado.'),
         term('shell', 'root@central:~# wg show\ninterface: wg0\n  public key: (clave pública de la central)\n  private key: (hidden)\n  listening port: 51820\n\npeer: (clave pública de la sucursal)\n  endpoint: 81.33.3.2:51820\n  allowed ips: 10.99.0.2/32, 10.2.0.0/24\n  latest handshake: 29 seconds ago\n  transfer: 212 B received, 92 B sent\nalumno@pc0:~$ traceroute -n 10.2.0.10\ntraceroute to 10.2.0.10 (10.2.0.10), 30 hops max, 60 byte packets\n 1  10.1.0.1  4.400 ms  4.211 ms  4.292 ms\n 2  10.99.0.2  28.319 ms  28.400 ms  28.211 ms\n 3  10.2.0.10  32.238 ms  32.319 ms  32.400 ms'),
         table(['Orden', 'Efecto'], [
           ['wg-quick up wg0 · down wg0', 'Levanta o quita el túnel según /etc/wireguard/wg0.conf.'],

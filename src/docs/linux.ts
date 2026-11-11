@@ -1,6 +1,6 @@
 /** Documentación: la Terminal GNU/Linux (visión general, sistema de ficheros, programas y red), en estilo guiado. */
 import type { DocBlock, DocPage } from './types.ts';
-import { check, code, exercise, h, list, note, p, steps, table, term, tip, warn } from './types.ts';
+import { check, code, exercise, h, list, note, p, shot, steps, table, term, tip, warn } from './types.ts';
 import { UTIL_DOCS, UTIL_GROUPS } from './utils.ts';
 import type { UtilDoc } from './utils.ts';
 
@@ -89,6 +89,9 @@ export const LINUX_DOCS: readonly DocPage[] = [
         ['/etc/avahi/avahi-daemon.conf', 'Servicios → mDNS', 'Se aplica la próxima vez que arranca avahi-daemon: `systemctl restart avahi-daemon`', 'Servicios → mDNS'],
         ['/etc/nsswitch.conf', 'Servicios → winbind (wins en «hosts:»)', '`sudo nano`; lo leen los programas en la siguiente consulta', 'Servicios → winbind'],
       ]),
+      shot('netplan-panel', 'Panel de SRV, pestaña TCP/IP: lo que se guarda en /etc/netplan/50-cloud-init.yaml (DHCP o estática, dirección, puerta de enlace y DNS).'),
+      shot('netplan-webgui', 'La página «Configuración básica» de la gestión web (`?page=setup`): los mismos datos IP, abierta desde PC0.'),
+      p('Las dos pantallas generan **/etc/netplan/50-cloud-init.yaml**. Root lo edita a mano (`sudo nano /etc/netplan/50-cloud-init.yaml`) y lo aplica con `sudo netplan apply`; con `sudo netplan try` se prueba antes y vuelve atrás si no se confirma.'),
       h('Permisos'),
       p('Cada fichero tiene un **dueño**, un **grupo** y tres tríos de permisos: **r** (leer), **w** (escribir) y **x** (ejecutar, o entrar si es un directorio), para el dueño, el grupo y los demás.'),
       table(['Columna de ls -l', 'Ejemplo', 'Significa'], [

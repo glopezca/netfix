@@ -1,6 +1,6 @@
 /** Documentación: Samba, el servicio de ficheros (smb.conf, cuentas, permisos), cómo se usa desde Windows y GNU/Linux, y compartir carpetas desde Windows. */
 import type { DocPage } from './types.ts';
-import { check, code, exercise, figure, h, list, note, p, steps, table, term, tip, warn } from './types.ts';
+import { check, code, exercise, figure, h, list, note, p, shot, steps, table, term, tip, warn } from './types.ts';
 
 const MD = 'https://github.com/infogerman/netfix/blob/main/';
 
@@ -52,6 +52,9 @@ export const SAMBA_DOCS: readonly DocPage[] = [
       ]),
       p('En [global], `map to guest = bad user` (el valor de Ubuntu) hace que un usuario sin cuenta de Samba entre como invitado: solo llega a los recursos con `guest ok = yes`. testparm reconoce otros parámetros habituales (create mask, force user…) y avisa con «Unknown parameter encountered» de los que no conoce.'),
       term('shell', 'root@srv:~# testparm -s\nLoad smb config files from /etc/samba/smb.conf\nLoaded services file OK.\nWeak crypto is allowed by GnuTLS (e.g. NTLM as a compatibility fallback)\n\nServer role: ROLE_STANDALONE\n\n# Global parameters\n[global]\n\tworkgroup = WORKGROUP\n…'),
+      shot('samba-panel', 'Panel de SRV, Servicios → Samba (con el paquete samba instalado): interruptor, recursos compartidos y cuentas.'),
+      shot('samba-webgui', 'La página Samba de la gestión web (`?page=samba`), abierta desde PC0: los mismos recursos de smb.conf.'),
+      p('Lo que añades o quitas en las dos pantallas se escribe en **/etc/samba/smb.conf** (y las cuentas, en smbpasswd). Root lo edita igual desde la terminal con `sudo nano /etc/samba/smb.conf`, y `sudo testparm -s` lo comprueba y muestra el resultado.'),
       h('Cuentas de Samba'),
       p('Una cuenta de Samba es un **usuario Linux que ya existe** con una contraseña SMB propia, distinta de la de Linux. Las gestiona root:'),
       table(['Orden', 'Qué hace'], [
