@@ -53,6 +53,22 @@ export function renameDevice(p: Placed, label: string): void {
   syncDeviceName(p);
 }
 
+/** What systemd-hostnamed takes as a static name: labels of letters, digits and hyphens, not starting with one. */
+const STATIC_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
+const MAX_SYSTEM_NAME = 64;
+
+/**
+ * hostnamectl set-hostname and sysctl kernel.hostname: the device takes the name as typed and its host name is derived
+ * from it, as renaming it in Equipo does. 'locked' when the host is not on a topology.
+ */
+export function renameFromSystem(device: object, name: string): 'locked' | 'invalid' | null {
+  const p = placedOf(device);
+  if (!p) return 'locked';
+  if (name.length > MAX_SYSTEM_NAME || !STATIC_NAME.test(name) || name.split('.').some((l) => l.length > MAX_SYSTEM_NAME - 1)) return 'invalid';
+  renameDevice(p, name);
+  return null;
+}
+
 const IOS_DEFAULT = /^(Router|Switch)$/;
 const MAX_LABEL = 64;
 

@@ -56,7 +56,7 @@ export const CLIENT_DOCS: DocGroup = {
     {
       id: 'pc-equipo',
       title: 'Nombre del equipo',
-      summary: 'El nombre del diagrama y el nombre de host que se deriva de él (no se cambia desde la terminal).',
+      summary: 'El nombre del diagrama y el nombre de host que se deriva de él (desde la terminal, con hostnamectl set-hostname o sysctl kernel.hostname).',
       markdownBase: MD,
       blocks: [
         p('Cada equipo tiene un **nombre** (el que ves en el diagrama, p. ej. «Aula Pública 2º») y un **nombre de host**, el que usa el sistema en la red (aula-publica-2o). En Netfix el segundo se deriva siempre del primero, como en una red bien organizada: así cada equipo del diagrama tiene un nombre de host predecible. Vale para PCs, servidores, routers GNU/Linux y nubes; en los routers y switches IOS, el `hostname` sale igual del nombre, conservando mayúsculas.'),
@@ -74,8 +74,9 @@ export const CLIENT_DOCS: DocGroup = {
         h('Cambiarlo desde la terminal: hostnamectl'),
         table(['Dónde', 'Qué pasa en Netfix'], [
           ['Pestaña Equipo', 'Cambia el nombre del equipo y, con él, el nombre de host.'],
-          ['sudo hostnamectl set-hostname NOMBRE · sudo hostnamectl hostname NOMBRE', 'Pide la contraseña y renombra el equipo al momento: el equipo toma NOMBRE con la misma grafía (en el lienzo, el título de su ventana y la pestaña Equipo) y el nombre de host se deriva de él, como al renombrarlo en Equipo; /etc/hostname y `hostnamectl` lo muestran. Se guarda con el laboratorio. Un nombre que systemd no admite da «Invalid static hostname».'],
-          ['sudo hostname NOMBRE · hostnamectl --transient · sysctl -w kernel.hostname=…', 'Rechazados: en Netfix el nombre de host siempre sale del nombre del equipo.'],
+          ['sudo hostnamectl set-hostname NOMBRE · sudo hostnamectl hostname NOMBRE', 'Renombra el equipo al momento: el equipo toma NOMBRE con la misma grafía (en el lienzo, el título de su ventana y la pestaña Equipo) y el nombre de host se deriva de él, como al renombrarlo en Equipo; /etc/hostname y `hostnamectl` lo muestran. Se guarda con el laboratorio. Un nombre que systemd no admite da «Invalid static hostname».'],
+          ['sudo sysctl -w kernel.hostname=NOMBRE · /proc/sys/kernel/hostname · /etc/sysctl.conf', 'Igual que hostnamectl set-hostname: renombra el equipo y el nombre de host se deriva de él. También desde **Parámetros del kernel** (panel del equipo y gestión web). En Ubuntu sería un nombre transitorio; en Netfix se guarda con el laboratorio como nombre del equipo (una línea kernel.hostname en /etc/sysctl.conf vale con `sysctl -p` o `--system`, no al abrir el laboratorio). Un nombre no válido da «Invalid argument».'],
+          ['sudo hostname NOMBRE · hostnamectl --transient', 'Rechazados: en Netfix el nombre de host siempre sale del nombre del equipo.'],
           ['/etc/hostname', 'Fichero generado de solo lectura: muestra el nombre de host (también tras hostnamectl); editarlo no lo cambia.'],
           ['Gestión web → Configuración', 'Muestra el nombre de host sin campo para cambiarlo.'],
           ['sudo hostnamectl set-hostname --pretty "Texto libre"', 'Sí cambia el nombre descriptivo, que se guarda con la topología.'],

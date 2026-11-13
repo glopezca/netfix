@@ -57,13 +57,19 @@ const MIRRORS: Readonly<Record<string, string>> = {
 
 const MAX_TEXT = 64;
 
+/** kernel.hostname: the running name; setting it answers 'locked' (refused) or 'invalid'. */
+interface HostnameKey {
+  get(): string;
+  set(name: string): 'locked' | 'invalid' | null;
+}
+
 export class Sysctl {
   private readonly values = new Map<string, string>(SYSCTL_KEYS.map((k) => [k.name, k.value]));
   private readonly listeners = new Set<(name: string, value: string) => void>();
   /** kernel.hostname reads the running name of the host. */
-  private readonly hostname: { get(): string; set(name: string): string | null };
+  private readonly hostname: HostnameKey;
 
-  constructor(hostname: { get(): string; set(name: string): string | null }) {
+  constructor(hostname: HostnameKey) {
     this.hostname = hostname;
   }
 
@@ -90,7 +96,10 @@ export class Sysctl {
     if (!key) return 'unknown';
     const value = raw.trim();
     if (key.accepts === 'int' ? !/^\d{1,9}$/.test(value) : key.accepts === 'text' ? value.length === 0 || value.length > MAX_TEXT : !key.accepts.includes(value)) return 'invalid';
-    if (name === 'kernel.hostname') return this.hostname.set(value) ? 'denied' : null;
+    if (name === 'kernel.hostname') {
+      const r = this.hostname.set(value);
+      return r === 'locked' ? 'denied' : r;
+    }
     this.values.set(name, value);
     const mirror = MIRRORS[name];
     if (mirror) this.values.set(mirror, value);

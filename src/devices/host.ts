@@ -104,6 +104,7 @@ export abstract class Host implements NetDevice, StackHost {
     this.clock = clock;
     this.mac = macFromSeed(seed);
     this.kernel = new Kernel({
+      device: this,
       clock,
       runtimeName: () => this.runtimeName(),
       setTransientName: (n) => this.setTransientName(n),
