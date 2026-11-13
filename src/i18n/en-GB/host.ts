@@ -13,7 +13,7 @@ export const HOST_EN: Readonly<Record<HostKey, string>> = {
   'host.labelEmpty': 'The display name cannot be empty.',
   'host.saved': 'Applied. Host name: {name}.',
   'host.equivalents': 'Equivalents',
-  'host.eqLinux': 'GNU/Linux: on a real machine, sudo hostnamectl set-hostname NAME; Netfix refuses it because the host name comes from the device name. sudo hostnamectl set-hostname --pretty "Text" does change the pretty name.',
+  'host.eqLinux': 'GNU/Linux: on a real machine, sudo hostnamectl set-hostname NAME; it works in Netfix too: the device takes that name as typed (on the canvas and in this tab) and the host name is derived from it at once. `hostname NAME` still does not change it. sudo hostnamectl set-hostname --pretty "Text" does change the pretty name.',
   'host.eqWindows': 'Windows: Settings → System → Rename this PC.',
   'host.now': 'Right now: static “{static}”',
   'host.nowTransient': ', transient “{name}”',

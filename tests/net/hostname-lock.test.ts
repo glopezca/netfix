@@ -29,12 +29,10 @@ test('derived on creation and on rename; the Windows and GNU/Linux terminals sho
   assert.equal((t.add('linuxrouter', 0, 0).device as Server).name, 'linuxrouter0');
 });
 
-test('the terminal cannot change it (hostnamectl, hostname, sysctl, /etc/hostname); the pretty name can', () => {
+test('only hostnamectl changes it (hostname, sysctl and /etc/hostname cannot); the pretty name can', () => {
   const t = new Topology();
   const srv = t.add('server', 0, 0).device as Server;
   const root = createShell(srv, 'linux', 'root');
-  assert.match(all(root.run('hostnamectl set-hostname web01')), /Could not set static hostname: .*nombre del equipo/);
-  assert.match(all(root.run('hostnamectl hostname web01')), /Could not set static hostname/);
   assert.match(all(root.run('hostname web01')), /^hostname: .*nombre del equipo/m);
   assert.match(all(root.run('sysctl -w kernel.hostname=web01')), /sysctl: /);
   root.run('echo web01 > /etc/hostname');
@@ -95,4 +93,33 @@ test('review: two names that give the same host name keep different host names (
   assert.equal((b.device as Pc).name, 'pc-1', 'free again');
   const root = createShell(t.add('server', 0, 0).device as Server, 'linux', 'root');
   assert.match(all(root.run('sysctl -w kernel.hostname=x')), /permission denied on key "kernel\.hostname" \(.*nombre del equipo/);
+});
+
+test('hostnamectl set-hostname renames the device: its name as typed, the host name derived, everything at once', () => {
+  const t = new Topology();
+  const p = t.add('server', 0, 0);
+  const srv = p.device as Server;
+  const root = createShell(srv, 'linux', 'root');
+  assert.equal(all(root.run('hostnamectl set-hostname Web-01; echo $?')), '0');
+  assert.equal(p.label, 'Web-01', 'the device name keeps what was typed');
+  assert.equal(srv.name, 'web-01');
+  assert.match(all(root.run('hostnamectl')), /^ Static hostname: web-01$/m);
+  assert.equal(all(root.run('cat /etc/hostname')), 'web-01');
+  assert.equal(all(root.run('hostname')), 'web-01');
+  assert.equal(all(root.run('hostnamectl hostname srv2; echo $?')), '0', 'hostnamectl hostname NAME too');
+  assert.equal(p.label, 'srv2');
+  assert.match(all(root.run('hostnamectl set-hostname -bad; echo $?')), /^Could not set static hostname: Invalid static hostname '-bad'\n1$/);
+  assert.equal(p.label, 'srv2');
+  assert.match(all(root.run('hostname otro')), /^hostname: .*nombre del equipo/m, '`hostname NAME` stays refused');
+  const again = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
+  assert.equal(([...again.placed.values()][0]?.device as Server).name, 'srv2', 'saved with the lab');
+});
+
+test('a name another device has: the device gets it, its host name goes on with -2', () => {
+  const t = new Topology();
+  t.add('pc', 0, 0);
+  const p = t.add('pc', 0, 0);
+  createShell(p.device as Pc, 'linux', 'root').run('hostnamectl set-hostname pc0');
+  assert.equal(p.label, 'pc0');
+  assert.equal((p.device as Pc).name, 'pc0-2');
 });

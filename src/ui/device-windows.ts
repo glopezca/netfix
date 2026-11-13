@@ -194,6 +194,8 @@ function openHostWindow(placed: Placed, h: Host, app: WindowHost, again?: { init
   const tabs: Tab[] = [settingsTab, ifTab, ...(h instanceof LinuxRouter ? svc : [...svc, ...(has('ip') ? [ipTab] : []), ...pcApps]), ...order.filter(has).map(terminal), config];
   openHosts.set(h.id, { placed, app });
   handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => { openHosts.delete(h.id); disposers.forEach((f) => f()); }, again ?? {});
+  // hostnamectl set-hostname renames the device from its terminal: the title follows at once.
+  disposers.push(h.onChange(() => handle?.setTitle(`${placed.label} · ${model}`)));
 }
 
 /** Host windows open now, to redraw them when their boxes change. */
