@@ -1,5 +1,4 @@
 /** sysctl (procps-ng 4) and dmesg for the Ubuntu shell. */
-import { t } from '../i18n/t.ts';
 import type { CommandFn, Ctx } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { sysctlName, sysctlPath } from '../net/sysctl.ts';
@@ -73,7 +72,7 @@ function write(ctx: Ctx, host: Host, o: Opts, arg: string): number {
   }
   const r = host.kernel.sysctl.set(name, value);
   if (r !== null) {
-    ctx.err(r === 'denied' ? `sysctl: permission denied on key "${name}" (${t('host.locked')})\n` : `sysctl: setting key "${name}": Invalid argument\n`);
+    ctx.err(`sysctl: setting key "${name}": Invalid argument\n`);
     return EXIT_ERROR;
   }
   if (!o.quiet) ctx.out(`${name} = ${host.kernel.sysctl.get(name) ?? value}\n`);

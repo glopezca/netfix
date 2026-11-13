@@ -9,6 +9,7 @@ import { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } from '../services/sshd-config.ts';
 import { hostKeyFiles } from '../services/ssh-hostkeys.ts';
 import type { Host } from '../devices/host.ts';
 import { renameFromSystem } from '../net/device-names.ts';
+import { setTransient } from '../devices/host-kernel.ts';
 import type { Server } from '../devices/server.ts';
 import type { CommandFn, HostEnv, UserInfo } from '../bash/types.ts';
 import { FsError, MAX_FILE, ROOT, Vfs, dirname } from '../bash/vfs.ts';
@@ -195,8 +196,10 @@ function setName(host: Host, kind: 'static' | 'transient' | 'pretty', value: str
     host.setPrettyName(value === '' ? undefined : value.slice(0, MAX_PRETTY));
     return null;
   }
-  // hostnamectl set-hostname renames the device (Equipo); `hostname NAME` and --transient stay refused.
-  const r = kind === 'static' ? renameFromSystem(host, value) : 'locked';
+  // As on Ubuntu, `hostname NAME`, --transient and kernel.hostname set the transient (kernel) name until the next boot;
+  // hostnamectl set-hostname renames the device (Equipo), and its static name ends the transient one.
+  if (kind === 'transient') return setTransient({ staticName: () => host.name, setTransientName: (n) => host.setTransientName(n) }, value) ? null : `Invalid transient hostname '${value}'`;
+  const r = renameFromSystem(host, value);
   if (r === 'locked') return t('host.locked');
   return r === 'invalid' ? `Invalid static hostname '${value}'` : null;
 }
@@ -311,7 +314,7 @@ const bootResolvedFrom = (host: Host, fs: Vfs): void => bootResolved(host, fs.tr
 export function bootKernel(host: Host, files: readonly FileRecord[]): void {
   if (!files.some((f) => f.path === '/etc/sysctl.conf' || f.path.startsWith('/etc/sysctl.d/'))) return;
   const fs = hostSystem(host).fs;
-  for (const path of sysctlFiles(fs)) applySysctlFile(fs, host, path, true);
+  for (const path of sysctlFiles(fs)) applySysctlFile(fs, host, path);
 }
 
 /**

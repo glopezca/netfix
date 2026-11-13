@@ -7,15 +7,14 @@ import { LINUX_TTL, icmpQuote } from '../net/packets.ts';
 import { Netfilter } from '../net/netfilter.ts';
 import { Sysctl } from '../net/sysctl.ts';
 import { LOOPBACK } from '../net/ipstack.ts';
-import { renameFromSystem } from '../net/device-names.ts';
+import { validSystemName } from '../net/device-names.ts';
 
 const MAX_KERNEL_LOG = 200;
 
 export interface KernelHost {
-  /** The device itself (sysctl kernel.hostname renames it). */
-  readonly device: object;
   readonly clock: { now(): number };
   runtimeName(): string;
+  staticName(): string;
   setTransientName(name: string | undefined): void;
   /** Linux name (eth0…) of a NIC port; the loopback keeps "lo". */
   linuxIfName(port: string): string;
@@ -30,6 +29,14 @@ export interface KernelLogLine {
   readonly text: string;
 }
 
+/** Sets the running (transient) name; the static one again clears it. False for a name the kernel would refuse here. */
+export function setTransient(host: Pick<KernelHost, 'staticName' | 'setTransientName'>, raw: string): boolean {
+  if (!validSystemName(raw)) return false;
+  const name = raw.toLowerCase();
+  host.setTransientName(name === host.staticName().toLowerCase() ? undefined : name);
+  return true;
+}
+
 export class Kernel {
   readonly sysctl: Sysctl;
   readonly netfilter: Netfilter;
@@ -40,8 +47,8 @@ export class Kernel {
     this.host = host;
     this.sysctl = new Sysctl({
       get: () => host.runtimeName(),
-      // kernel.hostname renames the device, as hostnamectl set-hostname does: the host name comes from its name.
-      set: (name) => renameFromSystem(host.device, name),
+      // kernel.hostname is the transient name, as on Ubuntu: it lasts until the next boot (reopening the lab).
+      set: (name) => (setTransient(host, name) ? null : 'invalid'),
     });
     this.netfilter = new Netfilter({
       now: () => host.clock.now(),

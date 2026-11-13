@@ -31,11 +31,10 @@ test('derived on creation and on rename; the Windows and GNU/Linux terminals sho
   assert.equal((t.add('linuxrouter', 0, 0).device as Server).name, 'linuxrouter0');
 });
 
-test('hostname NAME and /etc/hostname cannot change it; the pretty name can', () => {
+test('/etc/hostname cannot change it; the pretty name can', () => {
   const t = new Topology();
   const srv = t.add('server', 0, 0).device as Server;
   const root = createShell(srv, 'linux', 'root');
-  assert.match(all(root.run('hostname web01')), /^hostname: .*nombre del equipo/m);
   root.run('echo web01 > /etc/hostname');
   assert.equal(srv.name, 'server0');
   assert.equal(all(root.run('cat /etc/hostname')), 'server0');
@@ -95,41 +94,63 @@ test('review: two names that give the same host name keep different host names (
   const root = createShell(t.add('server', 0, 0).device as Server, 'linux', 'root');
 });
 
-test('sysctl kernel.hostname renames the device too: -w, /proc/sys, sysctl.conf with -p, the panel and the web page', () => {
+test('transient name, as on Ubuntu: hostname, --transient, sysctl, /proc/sys, sysctl.conf and the panel set it', () => {
   const t = new Topology();
   const p = t.add('server', 0, 0);
   const srv = p.device as Server;
   const root = createShell(srv, 'linux', 'root');
-  assert.equal(all(root.run('sysctl -w kernel.hostname=Bastion; echo $?')), 'kernel.hostname = bastion\n0');
-  assert.equal(p.label, 'Bastion', 'the device takes it as typed');
-  assert.equal(srv.name, 'bastion');
-  root.run('echo web02 > /proc/sys/kernel/hostname');
-  assert.equal(srv.name, 'web02');
-  root.run('echo kernel.hostname=web03 > /etc/sysctl.d/90-name.conf; sysctl --system');
-  assert.equal(p.label, 'web03');
-  assert.equal(srv.kernel.sysctl.set('kernel.hostname', 'Panel-1'), null, 'the panel and the web page call sysctl.set');
-  assert.equal(srv.name, 'panel-1');
+  assert.equal(all(root.run('hostname bastion; echo $?')), '0');
+  assert.equal(p.label, 'Server0', 'the device name and the static name do not change');
+  assert.equal(srv.name, 'server0');
+  assert.equal(all(root.run('hostname; cat /etc/hostname; cat /proc/sys/kernel/hostname')), 'bastion\nserver0\nbastion');
+  assert.match(all(root.run('hostnamectl')), /^ Static hostname: server0\nTransient hostname: bastion$/m);
+  assert.equal(all(root.run('hostnamectl hostname --transient')), 'bastion');
+  assert.equal(all(createShell(srv, 'linux', 'root').run('echo "$HOSTNAME"')), 'bastion', 'a new shell (its prompt) uses it');
+  assert.equal(all(root.run('sysctl -w kernel.hostname=web02')), 'kernel.hostname = web02');
+  assert.equal(srv.runtimeName(), 'web02');
+  root.run('echo web03 > /proc/sys/kernel/hostname');
+  assert.equal(srv.runtimeName(), 'web03');
+  assert.equal(all(root.run('hostnamectl set-hostname --transient web04; echo $?')), '0');
+  assert.equal(srv.runtimeName(), 'web04');
+  assert.equal(saveSysctl(srv, 'kernel.hostname', 'panel-1'), null, 'the panel and the web page');
+  assert.equal(srv.runtimeName(), 'panel-1');
+  assert.equal(p.label, 'Server0');
   assert.match(all(root.run('sysctl -w kernel.hostname=-bad; echo $?')), /Invalid argument\n255$/);
-  assert.equal(p.label, 'Panel-1');
+  assert.match(all(root.run('hostname bad_name; echo $?')), /^hostname: the specified hostname is invalid\n1$/);
+  assert.match(all(root.run('hostnamectl set-hostname --transient -- -bad; echo $?')), /Invalid transient hostname '-bad'\n1$/);
+  assert.equal(srv.runtimeName(), 'panel-1');
 });
 
-test('review: kernel.hostname is not replayed when the lab opens, so a later rename in Equipo stays', () => {
+test('the static name ends the transient one: hostnamectl set-hostname and renaming in Equipo', () => {
   const t = new Topology();
   const p = t.add('server', 0, 0);
-  assert.equal(saveSysctl(p.device as Server, 'kernel.hostname', 'Panel-1'), null);
-  assert.equal(p.label, 'Panel-1');
-  createShell(p.device as Server, 'linux', 'root').run('echo kernel.hostname=Viejo > /etc/sysctl.d/90-name.conf');
-  renameDevice(p, 'Final');
-  const again = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
-  const q = [...again.placed.values()][0];
-  assert.equal(q?.label, 'Final');
-  assert.equal((q?.device as Server).name, 'final');
+  const srv = p.device as Server;
+  const root = createShell(srv, 'linux', 'root');
+  root.run('hostname temporal');
+  root.run('hostnamectl set-hostname web01');
+  assert.equal(srv.runtimeName(), 'web01');
+  root.run('hostname temporal');
+  renameDevice(p, 'Aula');
+  assert.equal(srv.runtimeName(), 'aula');
+  assert.equal(srv.transientName, undefined);
 });
 
-test('a host that is not on a topology keeps refusing kernel.hostname', () => {
+test('reopening the lab is a reboot: the transient name is lost, unless sysctl.conf sets it again', () => {
+  const t = new Topology();
+  t.add('server', 0, 0);
+  const pc = t.add('pc', 0, 0);
+  createShell(t.placed.values().next().value?.device as Server, 'linux', 'root').run('hostname temporal');
+  createShell(pc.device as Pc, 'linux', 'root').run('echo kernel.hostname=arranque > /etc/sysctl.d/90-name.conf; hostname otro');
+  const again = [...Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON()))).placed.values()];
+  assert.equal((again[0]?.device as Server).runtimeName(), 'server0');
+  assert.equal((again[1]?.device as Pc).runtimeName(), 'arranque', 'systemd-sysctl applies it at boot');
+  assert.equal(again[1]?.label, 'PC0');
+});
+
+test('a host outside a topology can still take a transient name', () => {
   const loose = new Server('x', 'loose', new SimClock(0), 9);
-  assert.match(saveSysctl(loose, 'kernel.hostname', 'x') ?? '', /permission denied on key "kernel\.hostname"/, 'the panel says so too');
-  assert.match(all(createShell(loose, 'linux', 'root').run('sysctl -w kernel.hostname=x')), /permission denied on key "kernel\.hostname"/);
+  assert.equal(all(createShell(loose, 'linux', 'root').run('sysctl -w kernel.hostname=x; echo $?')), 'kernel.hostname = x\n0');
+  assert.equal(loose.runtimeName(), 'x');
 });
 
 test('hostnamectl set-hostname renames the device: its name as typed, the host name derived, everything at once', () => {
@@ -147,7 +168,6 @@ test('hostnamectl set-hostname renames the device: its name as typed, the host n
   assert.equal(p.label, 'srv2');
   assert.match(all(root.run('hostnamectl set-hostname -bad; echo $?')), /^Could not set static hostname: Invalid static hostname '-bad'\n1$/);
   assert.equal(p.label, 'srv2');
-  assert.match(all(root.run('hostname otro')), /^hostname: .*nombre del equipo/m, '`hostname NAME` stays refused');
   const again = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
   assert.equal(([...again.placed.values()][0]?.device as Server).name, 'srv2', 'saved with the lab');
 });
