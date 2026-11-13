@@ -1537,9 +1537,9 @@ __m["i18n/es-ES/host.js"] = (() => {
 const HOST_ES = {
     'host.nameTitle': 'Identificación',
     'host.label': 'Nombre del equipo',
-    'host.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo, aquí o con sudo hostnamectl set-hostname NOMBRE en la terminal GNU/Linux (con la misma grafía). El nombre de host se deriva de él: minúsculas, sin tildes y con guiones.',
+    'host.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo, aquí o con sudo hostnamectl set-hostname NOMBRE en la terminal GNU/Linux (con la misma grafía). El nombre de host se deriva de él como en Ubuntu: conserva las mayúsculas, sin tildes y con guiones.',
     'host.hostname': 'Nombre de host',
-    'host.hostnameHint': 'El nombre estático: siempre se deriva del nombre del equipo, y sudo hostnamectl set-hostname lo cambia renombrando el equipo. Como en Ubuntu, sudo hostname NOMBRE, hostnamectl --transient y kernel.hostname (sysctl, /proc/sys, Parámetros del kernel) ponen un nombre transitorio, que se ve abajo y dura hasta reiniciar (reabrir el laboratorio). El nombre en uso lo envía el cliente DHCP (opción 12) y lo muestran el prompt (tras exec bash) y hostname; /etc/hostname guarda el estático.',
+    'host.hostnameHint': 'El nombre estático: siempre se deriva del nombre del equipo, con sus mayúsculas, y sudo hostnamectl set-hostname lo cambia renombrando el equipo. Como en Ubuntu, sudo hostname NOMBRE, hostnamectl --transient y kernel.hostname (sysctl, /proc/sys, Parámetros del kernel) ponen un nombre transitorio, que se ve abajo y dura hasta reiniciar (reabrir el laboratorio). El nombre en uso lo envía el cliente DHCP (opción 12) y lo muestran el prompt (tras exec bash) y hostname; /etc/hostname guarda el estático.',
     'host.pretty': 'Nombre descriptivo (pretty hostname)',
     'host.prettyHint': 'Solo en GNU/Linux: lo muestra hostnamectl.',
     'host.prettyPlaceholder': 'Opcional, texto libre',
@@ -1559,8 +1559,7 @@ const HOST_ES = {
     'resolvectl.oneServer': 'Netfix usa un servidor DNS por equipo: se queda el primero, {ip}',
     'resolvectl.primaryOnly': 'en Netfix el DNS y los dominios se cambian en el enlace principal ({link})',
     'host.err.long': 'El nombre de host admite como máximo {max} caracteres.',
-    'host.err.label': 'Cada parte del nombre admite como máximo {max} caracteres.',
-    'host.err.chars': 'Usa solo letras sin tilde, números y guiones (sin espacios; no puede empezar ni acabar en guion).',
+    'host.err.chars': 'Usa solo letras sin tilde (mayúsculas o minúsculas), números, guiones y puntos (sin espacios; ninguna parte puede empezar ni acabar en guion).',
     'iosdev.hostnameHint': 'Es el «hostname» de IOS (prompt Router# y show running-config). Siempre se deriva del nombre del equipo, conservando mayúsculas: no se puede cambiar con el comando hostname ni desde la gestión web.',
     'iosdev.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo; de él sale el hostname de IOS (letras, cifras y guiones; empieza por una letra).',
     'iosdev.eq': 'CLI: hostname solo acepta el nombre actual; para cambiarlo, cambia el nombre del equipo (se guarda con copy running-config startup-config).',
@@ -1573,9 +1572,9 @@ __m["i18n/en-GB/host.js"] = (() => {
 const HOST_EN = {
     'host.nameTitle': 'Device name',
     'host.label': 'Device name',
-    'host.labelHint': 'Shown in the diagram and applied when it changes, here or with sudo hostnamectl set-hostname NAME in the GNU/Linux terminal (as typed). The host name is derived from it: lowercase, no accents, hyphens.',
+    'host.labelHint': 'Shown in the diagram and applied when it changes, here or with sudo hostnamectl set-hostname NAME in the GNU/Linux terminal (as typed). The host name is derived from it as on Ubuntu: case kept, no accents, hyphens.',
     'host.hostname': 'Host name',
-    'host.hostnameHint': 'The static name: always derived from the device name, and sudo hostnamectl set-hostname changes it by renaming the device. As on Ubuntu, sudo hostname NAME, hostnamectl --transient and kernel.hostname (sysctl, /proc/sys, Kernel parameters) set a transient name, shown below, that lasts until a reboot (reopening the lab). The DHCP client sends the name in use (option 12) and the prompt (after exec bash) and hostname show it; /etc/hostname keeps the static one.',
+    'host.hostnameHint': 'The static name: always derived from the device name, case kept, and sudo hostnamectl set-hostname changes it by renaming the device. As on Ubuntu, sudo hostname NAME, hostnamectl --transient and kernel.hostname (sysctl, /proc/sys, Kernel parameters) set a transient name, shown below, that lasts until a reboot (reopening the lab). The DHCP client sends the name in use (option 12) and the prompt (after exec bash) and hostname show it; /etc/hostname keeps the static one.',
     'host.pretty': 'Pretty host name',
     'host.prettyHint': 'GNU/Linux only: shown by hostnamectl.',
     'host.prettyPlaceholder': 'Optional, free text',
@@ -1595,8 +1594,7 @@ const HOST_EN = {
     'resolvectl.oneServer': 'Netfix uses one DNS server per device: the first one is kept, {ip}',
     'resolvectl.primaryOnly': 'in Netfix the DNS server and domains are set on the main link ({link})',
     'host.err.long': 'The host name allows at most {max} characters.',
-    'host.err.label': 'Each part of the name allows at most {max} characters.',
-    'host.err.chars': 'Use only unaccented letters, digits and hyphens (no spaces; it cannot start or end with a hyphen).',
+    'host.err.chars': 'Use only unaccented letters (either case), digits, hyphens and dots (no spaces; no part can start or end with a hyphen).',
     'iosdev.hostnameHint': 'The IOS “hostname” (Router# prompt and show running-config). It always comes from the device name, keeping case: neither the hostname command nor web management can change it.',
     'iosdev.labelHint': 'Shown in the diagram and applied when it changes; the IOS hostname comes from it (letters, digits and hyphens, starting with a letter).',
     'iosdev.eq': 'CLI: hostname only accepts the current name; to change it, change the device name (saved with copy running-config startup-config).',
@@ -2448,7 +2446,7 @@ const CLOUD_ES = {
     'cloud.noNat': 'sin traducciones',
     'cloud.lines': 'Líneas',
     'cloud.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo.',
-    'cloud.hostnameHint': 'Se deriva del nombre de la nube (minúsculas, sin tildes y con guiones). El nombre del proveedor y el bloque público están en la pestaña ISP.',
+    'cloud.hostnameHint': 'Se deriva del nombre de la nube (conserva las mayúsculas, sin tildes y con guiones). El nombre del proveedor y el bloque público están en la pestaña ISP.',
     'cloud.err.domain': 'Dominio no válido: usa nombres como sede2.es o empresa.com.',
     'cloud.err.speed': 'Las velocidades deben estar entre 1 y 100000 Mbit/s.',
     'cloud.err.lanMask': 'La máscara de la LAN debe estar entre /8 y /30.',
@@ -2520,7 +2518,7 @@ const CLOUD_EN = {
     'cloud.noNat': 'no translations',
     'cloud.lines': 'Lines',
     'cloud.labelHint': 'Shown in the diagram and applied when it changes.',
-    'cloud.hostnameHint': 'Derived from the cloud name (lowercase, no accents, hyphens). The provider name and public block are in the ISP tab.',
+    'cloud.hostnameHint': 'Derived from the cloud name (case kept, no accents, hyphens). The provider name and public block are in the ISP tab.',
     'cloud.err.domain': 'Invalid domain: use names like sede2.es or company.com.',
     'cloud.err.speed': 'Speeds must be between 1 and 100000 Mbit/s.',
     'cloud.err.lanMask': 'The LAN mask must be between /8 and /30.',
@@ -3417,7 +3415,7 @@ const WEB_ES = {
     'wa.delete': 'Borrar',
     'wa.remove': 'Eliminar',
     'wa.name': 'Nombre',
-    'wa.hostnameHelp': 'Se deriva del nombre del equipo (pestaña Equipo de Netfix): minúsculas, sin tildes y con guiones.',
+    'wa.hostnameHelp': 'Se deriva del nombre del equipo (pestaña Equipo de Netfix): conserva las mayúsculas, sin tildes y con guiones.',
     'wa.hostname': 'Nombre de host',
     'wa.internet': 'Dirección de Internet',
     'wa.internetHelp': 'DHCP: el servidor pide su dirección. Estática: escríbela tú.',
@@ -3709,7 +3707,7 @@ const WEB_EN = {
     'wa.delete': 'Delete',
     'wa.remove': 'Remove',
     'wa.name': 'Name',
-    'wa.hostnameHelp': 'It comes from the device name (Device tab in Netfix): lowercase, no accents, hyphens.',
+    'wa.hostnameHelp': 'It comes from the device name (Device tab in Netfix): case kept, no accents, hyphens.',
     'wa.hostname': 'Host name',
     'wa.internet': 'Internet address',
     'wa.internetHelp': 'DHCP: the server asks for its address. Static: you write it.',
@@ -5532,13 +5530,30 @@ __m["core/hostname.js"] = (() => {
 /** Host name of a device derived from the name shown in the workspace (Equipo → Nombre). */
 /** One DNS label (RFC 1123): at most 63 characters. */
 const MAX_LABEL = 63;
+/** HOST_NAME_MAX of Linux, which systemd-hostnamed applies to the whole name. */
+const MAX_HOSTNAME = 64;
 const FALLBACK = 'equipo';
-/** Lowercase, accents and ñ to plain letters, anything else to single hyphens, none at the ends. */
+/** Tidy labels: no empty ones (`a..b`), no hyphen at their edges. */
+const tidyLabels = (name) => name.split('.').map((l) => l.replace(/^-+|-+$/g, '')).filter(Boolean).join('.');
+/**
+ * As Ubuntu keeps it: case kept, accents and ñ to plain letters, dots kept (an FQDN is a valid static name), anything
+ * else to single hyphens; labels without a hyphen at their edges, at most 64 characters in all (systemd's rules).
+ */
 function hostnameFromLabel(label) {
-    const plain = label.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-    const cut = plain.slice(0, MAX_LABEL).replace(/-+$/, '');
-    return cut || FALLBACK;
+    const plain = tidyLabels(label.normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9.]+/g, '-'));
+    return tidyLabels(plain.slice(0, MAX_HOSTNAME)) || FALLBACK;
+}
+/** The first label: what avahi, LLMNR and NetBIOS announce of a host name with dots (srv.aula.lab → srv). */
+const shortHostname = (name) => name.split('.')[0] || name;
+/** What systemd's hostname_is_valid takes: LDH labels (case kept), no hyphen at their edges, 64 characters at most. */
+const SYSTEM_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
+const validSystemName = (name) => name.length <= MAX_HOSTNAME && SYSTEM_NAME.test(name);
+/**
+ * systemd's hostname_cleanup: what hostnamectl set-hostname keeps of a name it does not take as it is (that name goes
+ * to the pretty name): letters, digits, hyphens and dots, case kept; no empty labels nor hyphens at their edges.
+ */
+function hostnameCleanup(name) {
+    return tidyLabels(name.replace(/[^A-Za-z0-9.-]/g, '')).slice(0, MAX_HOSTNAME).replace(/[.-]+$/, '');
 }
 const IOS_FALLBACK = { router: 'Router', switch: 'Switch' };
 /**
@@ -5551,11 +5566,11 @@ function iosHostnameFromLabel(label, kind) {
     return named.slice(0, MAX_LABEL).replace(/-+$/, '');
 }
 
-return { hostnameFromLabel, iosHostnameFromLabel };
+return { MAX_HOSTNAME, hostnameFromLabel, shortHostname, validSystemName, hostnameCleanup, iosHostnameFromLabel };
 })();
 __m["net/device-names.js"] = (() => {
-const { hostnameFromLabel, iosHostnameFromLabel } = __m["core/hostname.js"];
-const MAX_NAME = 63;
+const { hostnameFromLabel, iosHostnameFromLabel, validSystemName } = __m["core/hostname.js"];
+const MAX_NAME = 64;
 /** The devices a placed one lives with (its topology), to keep host names apart. */
 const owners = new WeakMap();
 /** Each device's place in the workspace, so the terminal (hostnamectl) can rename it. */
@@ -5569,15 +5584,14 @@ function placedOf(device) {
 }
 const isIos = (p) => p.device.kind === 'router' || p.device.kind === 'switch';
 /** The name a device shows now (IOS: compared without case). */
-const shown = (p) => (p.device.kind === 'router' || p.device.kind === 'switch' ? p.device.hostname.toLowerCase() : p.device.name);
+const shown = (p) => (p.device.kind === 'router' || p.device.kind === 'switch' ? p.device.hostname : p.device.name).toLowerCase();
 function freeName(p) {
     const d = p.device;
     const base = d.kind === 'router' || d.kind === 'switch' ? iosHostnameFromLabel(p.label, d.kind) : hostnameFromLabel(p.label);
     const ios = isIos(p);
     const taken = new Set([...(owners.get(p)?.() ?? [])].flatMap((o) => (o === p || isIos(o) !== ios ? [] : [shown(o)])));
-    const key = (n) => (ios ? n.toLowerCase() : n);
     let name = base;
-    for (let i = 2; taken.has(key(name)); i++)
+    for (let i = 2; taken.has(name.toLowerCase()); i++)
         name = `${base.slice(0, MAX_NAME - String(i).length - 1).replace(/-+$/, '')}-${i}`;
     return name;
 }
@@ -5596,13 +5610,6 @@ function syncDeviceName(p) {
 function renameDevice(p, label) {
     p.label = label;
     syncDeviceName(p);
-}
-/** What systemd-hostnamed takes as a static name: labels of letters, digits and hyphens, not starting with one. */
-const STATIC_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
-const MAX_SYSTEM_NAME = 64;
-/** A name hostnamectl, `hostname` or kernel.hostname accept: RFC 1123 labels, at most 64 characters (HOST_NAME_MAX). */
-function validSystemName(name) {
-    return name.length <= MAX_SYSTEM_NAME && STATIC_NAME.test(name) && name.split('.').every((l) => l.length < MAX_SYSTEM_NAME);
 }
 /**
  * hostnamectl set-hostname: the device takes the name as typed and its host name is derived from it, as renaming it in
@@ -5639,7 +5646,7 @@ function savedLabel(rec, taken) {
     return name;
 }
 
-return { registerPlaced, placedOf, syncDeviceName, renameDevice, validSystemName, renameFromSystem, savedLabel };
+return { registerPlaced, placedOf, syncDeviceName, renameDevice, renameFromSystem, savedLabel };
 })();
 __m["core/ip.js"] = (() => {
 /** IPv4 helpers. Addresses are unsigned 32-bit numbers. */
@@ -5926,7 +5933,7 @@ function nssNext(actions, status) {
         return status === 'SUCCESS' ? 'return' : 'continue';
     return hit.action === 'continue' ? 'continue' : 'return';
 }
-/** The sources of a «hosts:» line with their actions, without files (the caller asks /etc/hosts first). */
+/** The sources of a «hosts:» line with their actions, in order (files is /etc/hosts). */
 function parseHostsLine(line) {
     const out = [];
     for (const m of line.slice(0, MAX_LINE).matchAll(/\[([^\]]*)\]|([^\s[\]]+)/g)) {
@@ -5938,7 +5945,7 @@ function parseHostsLine(line) {
         else
             out.push({ source: m[2] ?? '', actions: [] });
     }
-    return out.filter((s) => s.source !== 'files').map((s) => ({ ...s, notFoundReturn: nssNext(s.actions, 'NOTFOUND') === 'return' }));
+    return out.map((s) => ({ ...s, notFoundReturn: nssNext(s.actions, 'NOTFOUND') === 'return' }));
 }
 /** The sources of «hosts:» in the host's /etc/nsswitch.conf (Ubuntu's when the file is not there). */
 function hostsSources(host) {
@@ -6681,6 +6688,170 @@ function countTransaction(host) {
 const transactionCount = (host) => transactions.get(host) ?? 0;
 
 return { resolvedDns, resolvedDomains, setResolvedDns, setResolvedDomains, revertResolved, resolvedConfig, setResolvedConfig, linkSupport, setLinkSupport, effectiveSupport, resolvedRunning, resolvedAsks, resolvedAnswers, countTransaction, transactionCount };
+})();
+__m["net/dns.js"] = (() => {
+const { formatIp, parseIp } = __m["core/ip.js"];
+const RESOLVER_PORT_BASE = 50_000;
+const RESOLVER_PORTS = 1000;
+const DEFAULT_TIMEOUT_MS = 5000;
+const MAX_CNAME_CHAIN = 8;
+class DnsResolver {
+    env;
+    waiting = new Map();
+    nextId = 0x1a2b;
+    constructor(env) {
+        this.env = env;
+    }
+    /** Port the host must hand DNS responses on (any port in the resolver range). */
+    ownsPort(port) {
+        return port >= RESOLVER_PORT_BASE && port < RESOLVER_PORT_BASE + RESOLVER_PORTS;
+    }
+    query(server, name, type, done, timeoutMs = DEFAULT_TIMEOUT_MS) {
+        if (server === undefined) {
+            done({ kind: 'noserver' });
+            return;
+        }
+        const id = this.nextId = (this.nextId + 1) & 0xffff;
+        const sport = RESOLVER_PORT_BASE + (id % RESOLVER_PORTS);
+        const msg = { id, response: false, qname: normalizeName(name), qtype: type, rd: true };
+        let settled = false;
+        const finish = (r) => {
+            if (settled)
+                return;
+            settled = true;
+            this.waiting.delete(id);
+            done(r);
+        };
+        this.waiting.set(id, (r) => finish(r));
+        if (!this.env.sendQuery(server, sport, msg)) {
+            finish({ kind: 'timeout', server });
+            return;
+        }
+        this.env.schedule(timeoutMs, () => finish({ kind: 'timeout', server }));
+    }
+    receive(msg, from) {
+        if (!msg.response)
+            return;
+        this.waiting.get(msg.id)?.({ kind: 'answer', msg, server: from });
+    }
+}
+function normalizeName(name) {
+    return name.trim().toLowerCase().replace(/\.+$/, '');
+}
+/** Follows CNAMEs inside one response and returns the first IPv4 address, if any. */
+function firstAddress(msg) {
+    let target = msg.qname;
+    for (let i = 0; i < MAX_CNAME_CHAIN; i++) {
+        const a = msg.answers?.find((r) => r.name === target && r.type === 'A');
+        if (a)
+            return parseIp(a.data) ?? undefined;
+        const cname = msg.answers?.find((r) => r.name === target && r.type === 'CNAME');
+        if (!cname)
+            return undefined;
+        target = cname.data;
+    }
+    return undefined;
+}
+/** "10.0.0.5" → "5.0.0.10.in-addr.arpa" */
+function reverseName(ip) {
+    return `${formatIp(ip).split('.').reverse().join('.')}.in-addr.arpa`;
+}
+/** "5.0.0.10.in-addr.arpa" → 10.0.0.5 */
+function ipFromReverse(name) {
+    const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)\.in-addr\.arpa$/.exec(normalizeName(name));
+    if (!m)
+        return undefined;
+    return parseIp([m[4], m[3], m[2], m[1]].join('.')) ?? undefined;
+}
+function isValidHostname(name) {
+    const n = normalizeName(name);
+    return n.length > 0 && n.length <= 253 && n.split('.').every((l) => /^(\*|[a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?)$/.test(l));
+}
+
+return { DnsResolver, normalizeName, firstAddress, reverseName, ipFromReverse, isValidHostname };
+})();
+__m["shells/hosts-file.js"] = (() => {
+const { normalizeName } = __m["net/dns.js"];
+const { parseIp } = __m["core/ip.js"];
+const { peekHostFile } = __m["devices/host-fs.js"];
+const LINUX_HOSTS = '/etc/hosts';
+/** C:\Windows\System32\drivers\etc\hosts on the device's disk. */
+const WINDOWS_HOSTS = '/Windows/System32/drivers/etc/hosts';
+/** Ubuntu's /etc/hosts as the installer leaves it, with the host name as it was given. */
+const ubuntuHosts = (name) => `127.0.0.1 localhost
+127.0.1.1 ${name}
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+`;
+/** The hosts file Windows ships: comments only (localhost is answered by the DNS client itself). */
+const WINDOWS_HOSTS_TEXT = `# Copyright (c) 1993-2009 Microsoft Corp.
+#
+# This is a sample HOSTS file used by Microsoft TCP/IP for Windows.
+#
+# This file contains the mappings of IP addresses to host names. Each
+# entry should be kept on an individual line. The IP address should
+# be placed in the first column followed by the corresponding host name.
+# The IP address and the host name should be separated by at least one
+# space.
+#
+# Additionally, comments (such as these) may be inserted on individual
+# lines or following the machine name denoted by a '#' symbol.
+#
+# For example:
+#
+#      102.54.94.97     rhino.acme.com          # source server
+#       38.25.63.10     x.acme.com              # x client host
+
+# localhost name resolution is handled within DNS itself.
+#\t127.0.0.1       localhost
+#\t::1             localhost
+`.replace(/\n/g, '\r\n');
+/** The sudo group stands for Windows' Administrators: they write the file (Full control), everyone else reads it. */
+const ADMINISTRATORS_GID = 27;
+/** The Windows terminal's disk gets the file Windows ships, unless it is there (a saved or edited one stays). */
+function seedWindowsHosts(fs) {
+    // Only on real folders (a file or a link on the way would not be Windows' folders): never over what is there.
+    const dirs = ['/Windows', '/Windows/System32', '/Windows/System32/drivers', '/Windows/System32/drivers/etc'];
+    if (dirs.some((d) => { const n = fs.tryLookup(d, undefined, false); return n !== undefined && n.kind !== 'dir'; }))
+        return;
+    if (!fs.tryLookup(WINDOWS_HOSTS, undefined, false))
+        fs.seed(WINDOWS_HOSTS, { kind: 'file', content: WINDOWS_HOSTS_TEXT }, 0o664, 0, ADMINISTRATORS_GID);
+}
+/** The file's text; a device whose system was never used has the default one (no need to build the system for it). */
+function hostsText(host, os) {
+    if (os === 'windows')
+        return peekHostFile(host, WINDOWS_HOSTS) ?? WINDOWS_HOSTS_TEXT;
+    return peekHostFile(host, LINUX_HOSTS) ?? ubuntuHosts(host.name);
+}
+/** The IPv4 lines of the hosts file, in order (IPv6 lines are kept in the file but Netfix routes IPv4 only). */
+function hostsEntries(host, os = 'linux') {
+    return hostsText(host, os).split(/\r?\n/).flatMap((line) => {
+        const [addr, ...names] = line.replace(/#.*/, '').trim().split(/\s+/);
+        const ip = addr ? parseIp(addr) : null;
+        return ip !== null && names.length > 0 ? [{ ip, names }] : [];
+    });
+}
+/** Every address line as it is written, IPv6 too (getent hosts lists them all). */
+function hostsRows(host, os = 'linux') {
+    return hostsText(host, os).split(/\r?\n/).flatMap((line) => {
+        const [addr, ...names] = line.replace(/#.*/, '').trim().split(/\s+/);
+        return addr && names.length > 0 && (parseIp(addr) !== null || /^[0-9a-f]*:[0-9a-f:.]*$/i.test(addr)) ? [{ addr, names }] : [];
+    });
+}
+/** The first line that has the name, without case. */
+function hostsEntry(host, name, os = 'linux') {
+    const wanted = normalizeName(name);
+    return hostsEntries(host, os).find((e) => e.names.some((n) => normalizeName(n) === wanted));
+}
+/** The address the hosts file gives a name (first matching line, IPv4). */
+const hostsLookup = (host, name, os = 'linux') => hostsEntry(host, name, os)?.ip;
+
+return { LINUX_HOSTS, WINDOWS_HOSTS, ubuntuHosts, WINDOWS_HOSTS_TEXT, seedWindowsHosts, hostsEntries, hostsRows, hostsEntry, hostsLookup };
 })();
 __m["core/yaml-lite.js"] = (() => {
 /**
@@ -9882,14 +10053,16 @@ const { LINUX_TTL, icmpQuote } = __m["net/packets.js"];
 const { Netfilter } = __m["net/netfilter.js"];
 const { Sysctl } = __m["net/sysctl.js"];
 const { LOOPBACK } = __m["net/ipstack.js"];
-const { validSystemName } = __m["net/device-names.js"];
+const { validSystemName } = __m["core/hostname.js"];
 const MAX_KERNEL_LOG = 200;
-/** Sets the running (transient) name; the static one again clears it. False for a name the kernel would refuse here. */
-function setTransient(host, raw) {
-    if (!validSystemName(raw))
+/**
+ * Sets the running (transient) name as typed; the static one again clears it. `hostname` and hostnamectl check it
+ * (false for a name they refuse); kernel.hostname does not, as the kernel takes any text up to 64 characters.
+ */
+function setTransient(host, name, checked = true) {
+    if (checked && !validSystemName(name))
         return false;
-    const name = raw.toLowerCase();
-    host.setTransientName(name === host.staticName().toLowerCase() ? undefined : name);
+    host.setTransientName(name === host.staticName() ? undefined : name);
     return true;
 }
 class Kernel {
@@ -9902,7 +10075,7 @@ class Kernel {
         this.sysctl = new Sysctl({
             get: () => host.runtimeName(),
             // kernel.hostname is the transient name, as on Ubuntu: it lasts until the next boot (reopening the lab).
-            set: (name) => (setTransient(host, name) ? null : 'invalid'),
+            set: (name) => (setTransient(host, name, false) ? null : 'invalid'),
         });
         this.netfilter = new Netfilter({
             now: () => host.clock.now(),
@@ -10086,87 +10259,6 @@ function displayName(name, origin) {
 }
 
 return { cleanOrigin, qualify, validateOrigin, validateName, effectiveRecords, displayName };
-})();
-__m["net/dns.js"] = (() => {
-const { formatIp, parseIp } = __m["core/ip.js"];
-const RESOLVER_PORT_BASE = 50_000;
-const RESOLVER_PORTS = 1000;
-const DEFAULT_TIMEOUT_MS = 5000;
-const MAX_CNAME_CHAIN = 8;
-class DnsResolver {
-    env;
-    waiting = new Map();
-    nextId = 0x1a2b;
-    constructor(env) {
-        this.env = env;
-    }
-    /** Port the host must hand DNS responses on (any port in the resolver range). */
-    ownsPort(port) {
-        return port >= RESOLVER_PORT_BASE && port < RESOLVER_PORT_BASE + RESOLVER_PORTS;
-    }
-    query(server, name, type, done, timeoutMs = DEFAULT_TIMEOUT_MS) {
-        if (server === undefined) {
-            done({ kind: 'noserver' });
-            return;
-        }
-        const id = this.nextId = (this.nextId + 1) & 0xffff;
-        const sport = RESOLVER_PORT_BASE + (id % RESOLVER_PORTS);
-        const msg = { id, response: false, qname: normalizeName(name), qtype: type, rd: true };
-        let settled = false;
-        const finish = (r) => {
-            if (settled)
-                return;
-            settled = true;
-            this.waiting.delete(id);
-            done(r);
-        };
-        this.waiting.set(id, (r) => finish(r));
-        if (!this.env.sendQuery(server, sport, msg)) {
-            finish({ kind: 'timeout', server });
-            return;
-        }
-        this.env.schedule(timeoutMs, () => finish({ kind: 'timeout', server }));
-    }
-    receive(msg, from) {
-        if (!msg.response)
-            return;
-        this.waiting.get(msg.id)?.({ kind: 'answer', msg, server: from });
-    }
-}
-function normalizeName(name) {
-    return name.trim().toLowerCase().replace(/\.+$/, '');
-}
-/** Follows CNAMEs inside one response and returns the first IPv4 address, if any. */
-function firstAddress(msg) {
-    let target = msg.qname;
-    for (let i = 0; i < MAX_CNAME_CHAIN; i++) {
-        const a = msg.answers?.find((r) => r.name === target && r.type === 'A');
-        if (a)
-            return parseIp(a.data) ?? undefined;
-        const cname = msg.answers?.find((r) => r.name === target && r.type === 'CNAME');
-        if (!cname)
-            return undefined;
-        target = cname.data;
-    }
-    return undefined;
-}
-/** "10.0.0.5" → "5.0.0.10.in-addr.arpa" */
-function reverseName(ip) {
-    return `${formatIp(ip).split('.').reverse().join('.')}.in-addr.arpa`;
-}
-/** "5.0.0.10.in-addr.arpa" → 10.0.0.5 */
-function ipFromReverse(name) {
-    const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)\.in-addr\.arpa$/.exec(normalizeName(name));
-    if (!m)
-        return undefined;
-    return parseIp([m[4], m[3], m[2], m[1]].join('.')) ?? undefined;
-}
-function isValidHostname(name) {
-    const n = normalizeName(name);
-    return n.length > 0 && n.length <= 253 && n.split('.').every((l) => /^(\*|[a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?)$/.test(l));
-}
-
-return { DnsResolver, normalizeName, firstAddress, reverseName, ipFromReverse, isValidHostname };
 })();
 __m["services/dns-zones.js"] = (() => {
 /**
@@ -20517,29 +20609,29 @@ const CLIENT_DOCS = {
             summary: 'El nombre del diagrama y el nombre de host que se deriva de él (desde la terminal, con hostnamectl set-hostname) y el nombre transitorio (hostname, sysctl), como en Ubuntu.',
             markdownBase: MD,
             blocks: [
-                p('Cada equipo tiene un **nombre** (el que ves en el diagrama, p. ej. «Aula Pública 2º») y un **nombre de host**, el que usa el sistema en la red (aula-publica-2o). En Netfix el segundo se deriva siempre del primero, como en una red bien organizada: así cada equipo del diagrama tiene un nombre de host predecible. Vale para PCs, servidores, routers GNU/Linux y nubes; en los routers y switches IOS, el `hostname` sale igual del nombre, conservando mayúsculas.'),
-                steps(['Cambia el nombre', 'Pestaña **Equipo** → **Nombre del equipo**. Se aplica al pulsar Intro o salir del campo.'], ['Mira el nombre de host', 'Debajo, de solo lectura: minúsculas, sin tildes y con guiones en lugar de espacios.'], ['Úsalo', 'Aparece en el prompt de la Terminal GNU/Linux, en /etc/hostname, en `hostname` y en lo que el cliente DHCP envía al servidor (opción 12, visible en las concesiones).']),
+                p('Cada equipo tiene un **nombre** (el que ves en el diagrama, p. ej. «Aula Pública 2º») y un **nombre de host**, el que usa el sistema en la red (Aula-Publica-2o). En Netfix el segundo se deriva siempre del primero, como en una red bien organizada: así cada equipo del diagrama tiene un nombre de host predecible. Se aplican las reglas de Ubuntu (systemd): letras, números, guiones y puntos, **conservando mayúsculas**, sin guion al principio ni al final de cada parte y hasta 64 caracteres. Vale para PCs, servidores, routers GNU/Linux y nubes; en los routers y switches IOS, el `hostname` sale igual del nombre.'),
+                steps(['Cambia el nombre', 'Pestaña **Equipo** → **Nombre del equipo**. Se aplica al pulsar Intro o salir del campo.'], ['Mira el nombre de host', 'Debajo, de solo lectura: con las mismas mayúsculas, sin tildes y con guiones en lugar de espacios.'], ['Úsalo', 'Aparece en el prompt de la Terminal GNU/Linux, en /etc/hostname, en `hostname` y en lo que el cliente DHCP envía al servidor (opción 12, visible en las concesiones).']),
                 table(['Nombre del equipo', 'Nombre de host'], [
-                    ['PC0', 'pc0'],
-                    ['Aula Pública 2º', 'aula-publica-2o'],
-                    ['SRV Intranet', 'srv-intranet'],
-                    ['dos equipos que darían el mismo', 'el segundo recibe -2 (pc-1, pc-1-2)'],
+                    ['PC0', 'PC0'],
+                    ['Aula Pública 2º', 'Aula-Publica-2o'],
+                    ['srv.aula.lab', 'srv.aula.lab (un FQDN también vale; mDNS, LLMNR y NetBIOS anuncian solo srv)'],
+                    ['dos equipos que darían el mismo sin contar mayúsculas', 'el segundo recibe -2 (PC-1, pc-1-2): en la red los nombres no distinguen mayúsculas'],
                 ]),
                 h('Cambiarlo desde la terminal: estático y transitorio'),
                 table(['Dónde', 'Qué pasa en Netfix'], [
                     ['Pestaña Equipo', 'Cambia el nombre del equipo y, con él, el nombre de host.'],
-                    ['sudo hostnamectl set-hostname NOMBRE · sudo hostnamectl hostname NOMBRE', 'Renombra el equipo al momento: el equipo toma NOMBRE con la misma grafía (en el lienzo, el título de su ventana y la pestaña Equipo) y el nombre de host se deriva de él, como al renombrarlo en Equipo; /etc/hostname y `hostnamectl` lo muestran. Se guarda con el laboratorio. Un nombre que systemd no admite da «Invalid static hostname».'],
-                    ['sudo hostname NOMBRE · sudo hostnamectl set-hostname --transient NOMBRE', 'Como en Ubuntu, ponen el **nombre transitorio** (el del núcleo): lo usan `hostname`, el prompt de las shells nuevas y el cliente DHCP (opción 12), y `hostnamectl` lo muestra como «Transient hostname». El nombre del equipo, el estático y /etc/hostname no cambian. Dura hasta reiniciar: al reabrir el laboratorio se pierde. Un nombre no válido da «the specified hostname is invalid» o «Invalid transient hostname».'],
-                    ['sudo sysctl -w kernel.hostname=NOMBRE · /proc/sys/kernel/hostname · Parámetros del kernel', 'Lo mismo: kernel.hostname es el nombre transitorio. Desde el panel del equipo o la gestión web se guarda en /etc/sysctl.d/99-netfix.conf, y una línea kernel.hostname en /etc/sysctl.conf o /etc/sysctl.d se aplica en cada arranque (al abrir el laboratorio), como hace systemd-sysctl.'],
+                    ['sudo hostnamectl set-hostname NOMBRE · sudo hostnamectl hostname NOMBRE', 'Renombra el equipo al momento: el equipo toma NOMBRE con la misma grafía (en el lienzo, el título de su ventana y la pestaña Equipo) y el nombre de host se deriva de él, como al renombrarlo en Equipo; /etc/hostname y `hostnamectl` lo muestran. Se guarda con el laboratorio. Si el nombre no vale tal cual («Aula 2»), como systemd: el nombre descriptivo es lo escrito y el estático su versión limpia (Aula2); si vale, el descriptivo se borra. Con --static, un nombre no válido da «Invalid static hostname».'],
+                    ['sudo hostname NOMBRE · sudo hostnamectl set-hostname --transient NOMBRE', 'Como en Ubuntu, ponen el **nombre transitorio** (el del núcleo): lo usan `hostname`, el prompt de las shells nuevas y el cliente DHCP (opción 12), y `hostnamectl` lo muestra como «Transient hostname». El nombre del equipo, el estático y /etc/hostname no cambian. Dura hasta reiniciar: al reabrir el laboratorio se pierde. Siguen las mismas reglas (mayúsculas incluidas): un nombre no válido da «the specified hostname is invalid» o «Invalid transient hostname», y uno de más de 64 caracteres, «name too long».'],
+                    ['sudo sysctl -w kernel.hostname=NOMBRE · /proc/sys/kernel/hostname · Parámetros del kernel', 'Lo mismo: kernel.hostname es el nombre transitorio. Como el núcleo, admite cualquier texto de hasta 64 caracteres (incluso con espacios). Desde el panel del equipo o la gestión web se guarda en /etc/sysctl.d/99-netfix.conf, y una línea kernel.hostname en /etc/sysctl.conf o /etc/sysctl.d se aplica en cada arranque (al abrir el laboratorio), como hace systemd-sysctl.'],
                     ['Volver al estático', 'hostnamectl set-hostname o renombrar el equipo en Equipo acaban con el transitorio; poner como transitorio el nombre estático, también.'],
                     ['/etc/hostname', 'Fichero generado de solo lectura: muestra el nombre estático (también tras hostnamectl, no tras hostname); editarlo no lo cambia.'],
                     ['Gestión web → Configuración', 'Muestra el nombre de host sin campo para cambiarlo.'],
                     ['sudo hostnamectl set-hostname --pretty "Texto libre"', 'Sí cambia el nombre descriptivo, que se guarda con la topología.'],
                 ]),
-                term('shell', 'alumno@pc0:~$ sudo hostnamectl set-hostname Web01\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: web01\nalumno@pc0:~$ exec bash\nalumno@web01:~$ sudo hostname prueba\nalumno@web01:~$ hostnamectl | head -2\n Static hostname: web01\nTransient hostname: prueba\nalumno@web01:~$ exec bash\nalumno@prueba:~$'),
-                tip('En un Ubuntu real', 'hostnamectl guarda el nombre tal cual en /etc/hostname. En Netfix el nombre de host sigue saliendo del nombre del equipo, así que diagrama y equipo nunca se contradicen: el equipo se llama Web01 y su nombre de host es web01. El prompt de bash cambia en la siguiente shell (`exec bash`), como en Ubuntu. Un error típico de Ubuntu: tras `hostname` sin tocar /etc/hosts, sudo avisa «unable to resolve host»; Netfix no lo simula.'),
-                warn('Errores típicos', 'Esperar que el nombre de host conserve mayúsculas o espacios: no lo hace (RFC 1123: letras sin tilde, números y guiones, hasta 63 caracteres). Buscar el equipo por su nombre en el DNS sin haberlo dado de alta: el nombre de host no se registra solo en el servidor DNS.'),
-                exercise('Renombra un PC', 'Cambia el nombre de PC1 a «Portátil Profe» y averigua su nombre de host sin mirar la pestaña Equipo.', 'En su Terminal GNU/Linux, el prompt pasa a ser `alumno@portatil-profe:~$`; `hostname` también lo muestra. En el diagrama el nombre aparece como «Portátil Profe».'),
+                term('shell', 'alumno@PC0:~$ sudo hostnamectl set-hostname Web01\nalumno@PC0:~$ hostnamectl | head -1\n Static hostname: Web01\nalumno@PC0:~$ exec bash\nalumno@Web01:~$ sudo hostname Prueba\nalumno@Web01:~$ hostnamectl | head -2\n Static hostname: Web01\nTransient hostname: Prueba\nalumno@Web01:~$ exec bash\nalumno@Prueba:~$'),
+                tip('En un Ubuntu real', 'hostnamectl guarda el nombre tal cual en /etc/hostname, con sus mayúsculas. En Netfix el nombre de host sigue saliendo del nombre del equipo, así que diagrama y equipo nunca se contradicen: el equipo se llama Web01 y su nombre de host también. El prompt de bash cambia en la siguiente shell (`exec bash`), como en Ubuntu. /etc/hosts no se toca al cambiar el nombre (tampoco en Ubuntu): la línea 127.0.1.1 conserva el nombre de la instalación, y el nombre nuevo se resuelve igualmente porque systemd-resolved lo sintetiza.'),
+                warn('Errores típicos', 'Esperar que el nombre de host conserve espacios o tildes: no lo hace (letras sin tilde, números, guiones y puntos, hasta 64 caracteres). Creer que las mayúsculas distinguen equipos: PC1 y pc1 son el mismo nombre para el DNS, LLMNR o NetBIOS. Buscar el equipo por su nombre en el DNS sin haberlo dado de alta: el nombre de host no se registra solo en el servidor DNS.'),
+                exercise('Renombra un PC', 'Cambia el nombre de PC1 a «Portátil Profe» y averigua su nombre de host sin mirar la pestaña Equipo.', 'En su Terminal GNU/Linux, el prompt pasa a ser `alumno@Portatil-Profe:~$`; `hostname` también lo muestra. En el diagrama el nombre aparece como «Portátil Profe».'),
             ],
         },
         {
@@ -20813,7 +20905,7 @@ const LINUX_DOCS = [
                 ['/home/alumno · /home/admin · /root', 'Directorios personales (.bashrc, .profile, .bash_history)'],
                 ['/etc/passwd · /etc/group · /etc/shadow', 'Cuentas del equipo, generadas a partir de las cuentas SSH (shadow solo para root)'],
                 ['/etc/hostname · /etc/resolv.conf · /etc/netplan/50-cloud-init.yaml', 'Generados: siguen la configuración IP del equipo (resolv.conf incluye «search» con los dominios de netplan y de DHCP)'],
-                ['/etc/hosts', 'Archivo normal que edita root (sudo nano /etc/hosts): ping, ssh, curl, el navegador y la Terminal Windows (que comparte el sistema de archivos GNU/Linux) lo consultan antes que el DNS; nslookup, host y dig preguntan solo al servidor DNS. hostname -f da el primer nombre de la línea del equipo. Se guarda con la topología.'],
+                ['/etc/hosts', 'Archivo normal que edita root (sudo nano /etc/hosts), el de Ubuntu de serie (127.0.1.1 con el nombre de host y las líneas IPv6): ping, ssh, curl y el navegador lo consultan donde diga `files` en /etc/nsswitch.conf; la Terminal Windows usa el suyo, C:\\Windows\\System32\\drivers\\etc\\hosts; nslookup, host y dig preguntan solo al servidor DNS. hostname -f da el primer nombre de la línea del equipo. Se guarda con la topología.'],
                 ['/etc/kea · /etc/bind · /etc/ssh/sshd_config', 'Configuración de los servicios: la escriben sus paneles y también root (ver la tabla siguiente)'],
                 ['/etc/postfix · /etc/dovecot', 'Generados en servidores desde el panel Correo; root puede editar main.cf y dovecot.conf'],
                 ['/var/lib/kea/kea-leases4.csv', 'Concesiones DHCP actuales'],
@@ -23187,29 +23279,29 @@ const CLIENT_DOCS = {
             summary: 'The name on the diagram and the host name derived from it (from the terminal, with hostnamectl set-hostname) and the transient name (hostname, sysctl), as on Ubuntu.',
             markdownBase: MD,
             blocks: [
-                p('Each device has a **name** (the one on the diagram, e.g. «Aula Pública 2º») and a **host name**, the one the system uses on the network (aula-publica-2o). In Netfix the second always comes from the first, as in a well-run network: every device on the diagram has a predictable host name. This applies to PCs, servers, GNU/Linux routers and clouds; on IOS routers and switches the `hostname` comes from the name too, keeping case.'),
-                steps(['Change the name', '**Device** tab → **Device name**. It applies when you press Enter or leave the field.'], ['See the host name', 'Below it, read-only: lower case, no accents and hyphens instead of spaces.'], ['Use it', 'It shows in the GNU/Linux Terminal prompt, in /etc/hostname, in `hostname` and in what the DHCP client sends the server (option 12, visible in the leases).']),
+                p('Each device has a **name** (the one on the diagram, e.g. «Aula Pública 2º») and a **host name**, the one the system uses on the network (Aula-Publica-2o). In Netfix the second always comes from the first, as in a well-run network: every device on the diagram has a predictable host name. Ubuntu’s (systemd’s) rules apply: letters, digits, hyphens and dots, **keeping case**, no hyphen at the start or end of each part and up to 64 characters. This applies to PCs, servers, GNU/Linux routers and clouds; on IOS routers and switches the `hostname` comes from the name too.'),
+                steps(['Change the name', '**Device** tab → **Device name**. It applies when you press Enter or leave the field.'], ['See the host name', 'Below it, read-only: the same capitals, no accents and hyphens instead of spaces.'], ['Use it', 'It shows in the GNU/Linux Terminal prompt, in /etc/hostname, in `hostname` and in what the DHCP client sends the server (option 12, visible in the leases).']),
                 table(['Device name', 'Host name'], [
-                    ['PC0', 'pc0'],
-                    ['Aula Pública 2º', 'aula-publica-2o'],
-                    ['SRV Intranet', 'srv-intranet'],
-                    ['two devices that would give the same', 'the second gets -2 (pc-1, pc-1-2)'],
+                    ['PC0', 'PC0'],
+                    ['Aula Pública 2º', 'Aula-Publica-2o'],
+                    ['srv.aula.lab', 'srv.aula.lab (an FQDN is fine too; mDNS, LLMNR and NetBIOS announce only srv)'],
+                    ['two devices that would give the same ignoring case', 'the second gets -2 (PC-1, pc-1-2): on the network names ignore case'],
                 ]),
                 h('Changing it from the terminal: static and transient'),
                 table(['Where', 'What happens in Netfix'], [
                     ['Device tab', 'Changes the device name and, with it, the host name.'],
-                    ['sudo hostnamectl set-hostname NAME · sudo hostnamectl hostname NAME', 'Renames the device at once: the device takes NAME as typed (on the canvas, its window title and the Device tab) and the host name is derived from it, as renaming it in Device does; /etc/hostname and `hostnamectl` show it. It is saved with the lab. A name systemd does not accept gives “Invalid static hostname”.'],
-                    ['sudo hostname NAME · sudo hostnamectl set-hostname --transient NAME', 'As on Ubuntu, they set the **transient name** (the kernel one): `hostname`, the prompt of new shells and the DHCP client (option 12) use it, and `hostnamectl` shows it as “Transient hostname”. The device name, the static name and /etc/hostname do not change. It lasts until a reboot: reopening the lab loses it. An invalid name gives “the specified hostname is invalid” or “Invalid transient hostname”.'],
-                    ['sudo sysctl -w kernel.hostname=NAME · /proc/sys/kernel/hostname · Kernel parameters', 'The same: kernel.hostname is the transient name. From the device panel or web management it is saved in /etc/sysctl.d/99-netfix.conf, and a kernel.hostname line in /etc/sysctl.conf or /etc/sysctl.d applies at every boot (when the lab opens), as systemd-sysctl does.'],
+                    ['sudo hostnamectl set-hostname NAME · sudo hostnamectl hostname NAME', 'Renames the device at once: the device takes NAME as typed (on the canvas, its window title and the Device tab) and the host name is derived from it, as renaming it in Device does; /etc/hostname and `hostnamectl` show it. It is saved with the lab. If the name is not valid as it is («Aula 2»), as systemd does: the pretty name is what was typed and the static one its cleaned form (Aula2); if it is valid, the pretty name is cleared. With --static, an invalid name gives “Invalid static hostname”.'],
+                    ['sudo hostname NAME · sudo hostnamectl set-hostname --transient NAME', 'As on Ubuntu, they set the **transient name** (the kernel one): `hostname`, the prompt of new shells and the DHCP client (option 12) use it, and `hostnamectl` shows it as “Transient hostname”. The device name, the static name and /etc/hostname do not change. It lasts until a reboot: reopening the lab loses it. The same rules apply (capitals included): an invalid name gives “the specified hostname is invalid” or “Invalid transient hostname”, and one over 64 characters “name too long”.'],
+                    ['sudo sysctl -w kernel.hostname=NAME · /proc/sys/kernel/hostname · Kernel parameters', 'The same: kernel.hostname is the transient name. Like the kernel, it takes any text up to 64 characters (even with spaces). From the device panel or web management it is saved in /etc/sysctl.d/99-netfix.conf, and a kernel.hostname line in /etc/sysctl.conf or /etc/sysctl.d applies at every boot (when the lab opens), as systemd-sysctl does.'],
                     ['Back to the static name', 'hostnamectl set-hostname or renaming the device in Device end the transient name; setting the static name as the transient one does too.'],
                     ['/etc/hostname', 'A generated, read-only file: it shows the static name (after hostnamectl too, not after hostname); editing it does not change it.'],
                     ['Web management → Setup', 'Shows the host name with no field to change it.'],
                     ['sudo hostnamectl set-hostname --pretty "Free text"', 'Does change the pretty name, which is saved with the topology.'],
                 ]),
-                term('shell', 'alumno@pc0:~$ sudo hostnamectl set-hostname Web01\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: web01\nalumno@pc0:~$ exec bash\nalumno@web01:~$ sudo hostname prueba\nalumno@web01:~$ hostnamectl | head -2\n Static hostname: web01\nTransient hostname: prueba\nalumno@web01:~$ exec bash\nalumno@prueba:~$'),
-                tip('On a real Ubuntu', 'hostnamectl stores the name as it is in /etc/hostname. In Netfix the host name still comes from the device name, so the diagram and the device never disagree: the device is called Web01 and its host name is web01. The bash prompt changes in the next shell (`exec bash`), as on Ubuntu. A typical Ubuntu error: after `hostname` without touching /etc/hosts, sudo warns “unable to resolve host”; Netfix does not simulate it.'),
-                warn('Common mistakes', 'Expecting the host name to keep capitals or spaces: it does not (RFC 1123: unaccented letters, digits and hyphens, up to 63 characters). Looking the device up by name in DNS without registering it: the host name is not added to the DNS server on its own.'),
-                exercise('Rename a PC', 'Change PC1’s name to «Portátil Profe» and find its host name without looking at the Device tab.', 'In its GNU/Linux Terminal the prompt becomes `alumno@portatil-profe:~$`; `hostname` shows it too. On the diagram the name appears as «Portátil Profe».'),
+                term('shell', 'alumno@PC0:~$ sudo hostnamectl set-hostname Web01\nalumno@PC0:~$ hostnamectl | head -1\n Static hostname: Web01\nalumno@PC0:~$ exec bash\nalumno@Web01:~$ sudo hostname Prueba\nalumno@Web01:~$ hostnamectl | head -2\n Static hostname: Web01\nTransient hostname: Prueba\nalumno@Web01:~$ exec bash\nalumno@Prueba:~$'),
+                tip('On a real Ubuntu', 'hostnamectl stores the name as it is in /etc/hostname, capitals included. In Netfix the host name still comes from the device name, so the diagram and the device never disagree: the device is called Web01 and so is its host name. The bash prompt changes in the next shell (`exec bash`), as on Ubuntu. /etc/hosts is not touched when the name changes (nor on Ubuntu): the 127.0.1.1 line keeps the name of the installation, and the new name still resolves because systemd-resolved synthesises it.'),
+                warn('Common mistakes', 'Expecting the host name to keep spaces or accents: it does not (unaccented letters, digits, hyphens and dots, up to 64 characters). Thinking capitals tell devices apart: PC1 and pc1 are the same name for DNS, LLMNR or NetBIOS. Looking the device up by name in DNS without registering it: the host name is not added to the DNS server on its own.'),
+                exercise('Rename a PC', 'Change PC1’s name to «Portátil Profe» and find its host name without looking at the Device tab.', 'In its GNU/Linux Terminal the prompt becomes `alumno@Portatil-Profe:~$`; `hostname` shows it too. On the diagram the name appears as «Portátil Profe».'),
             ],
         },
         {
@@ -23483,7 +23575,7 @@ const LINUX_DOCS = [
                 ['/home/alumno · /home/admin · /root', 'Home directories (.bashrc, .profile, .bash_history)'],
                 ['/etc/passwd · /etc/group · /etc/shadow', 'The device’s accounts, generated from the SSH accounts (shadow for root only)'],
                 ['/etc/hostname · /etc/resolv.conf · /etc/netplan/50-cloud-init.yaml', 'Generated: they follow the device’s IP configuration (resolv.conf has a “search” line with the netplan and DHCP domains)'],
-                ['/etc/hosts', 'An ordinary file that root edits (sudo nano /etc/hosts): ping, ssh, curl, the browser and the Windows terminal (which shares the GNU/Linux file system) check it before DNS; nslookup, host and dig ask the DNS server only. hostname -f gives the first name on the device’s line. It is saved with the topology.'],
+                ['/etc/hosts', 'An ordinary file that root edits (sudo nano /etc/hosts), Ubuntu’s out of the box (127.0.1.1 with the host name and the IPv6 lines): ping, ssh, curl and the browser check it wherever `files` is in /etc/nsswitch.conf; the Windows terminal uses its own, C:\\Windows\\System32\\drivers\\etc\\hosts; nslookup, host and dig ask the DNS server only. hostname -f gives the first name on the device’s line. It is saved with the topology.'],
                 ['/etc/kea · /etc/bind · /etc/ssh/sshd_config', 'Service configuration: written by their panels and by root as well (see the next table)'],
                 ['/etc/postfix · /etc/dovecot', 'Generated on servers from the Email panel; root can edit main.cf and dovecot.conf'],
                 ['/var/lib/kea/kea-leases4.csv', 'Current DHCP leases'],
@@ -24996,15 +25088,29 @@ const NAMES_DOCS = [
             p('Antes de enviar un `ping pc2`, el equipo necesita la **dirección IP** de pc2. Hay varias maneras de averiguarla: un fichero local, un servidor DNS o preguntar a toda la red local. Windows y GNU/Linux las prueban en un orden distinto, y solo una de ellas cruza routers.'),
             h('Los protocolos'),
             table(['Protocolo', 'Nombres', 'Cómo pregunta', 'Alcance', 'Quién responde en Netfix'], [
-                ['hosts', 'Cualquiera', 'Lee el fichero /etc/hosts del equipo', 'El propio equipo', 'Nadie: es local'],
+                ['hosts', 'Cualquiera', 'Lee el fichero hosts del sistema: /etc/hosts (GNU/Linux) o C:\\Windows\\System32\\drivers\\etc\\hosts (Windows)', 'El propio equipo', 'Nadie: es local'],
                 ['DNS', 'Con dominio (y sin punto, con el sufijo de búsqueda)', 'Unicast, UDP 53, al servidor DNS configurado', 'Cruza routers', 'Un servidor DNS (bind9, 8.8.8.8…)'],
                 ['mDNS', 'Acabados en .local', 'Multicast 224.0.0.251, UDP 5353', 'El enlace: no cruza routers', 'Windows de serie; GNU/Linux con avahi-daemon'],
                 ['LLMNR', 'De una sola etiqueta (pc2)', 'Multicast 224.0.0.252, UDP 5355, TTL 1', 'El enlace: no cruza routers', 'Windows de serie'],
                 ['NetBIOS (NBNS)', 'De una sola etiqueta, hasta 15 caracteres', 'Broadcast de la subred, UDP 137', 'La subred: no cruza routers', 'Windows de serie; GNU/Linux con samba'],
             ]),
             p('mDNS, LLMNR y NetBIOS no necesitan servidor: preguntan a todos los equipos del enlace y responde el que tiene ese nombre. Por eso sirven en una red de casa o un aula sin DNS propio, pero no para llegar a otra red.'),
+            h('Los ficheros hosts'),
+            p('Cada sistema tiene el suyo, como en un equipo real, y los dos están en el disco del equipo (en la Terminal Windows, C:\\ es la raíz /). Una línea es una dirección IP y sus nombres (el canónico primero, luego los alias); `#` empieza un comentario; los nombres no distinguen mayúsculas y gana la primera línea que tenga el nombre. Los cambios valen al momento y se guardan con el laboratorio.'),
+            table(['', 'GNU/Linux (Ubuntu)', 'Windows'], [
+                ['Fichero', '/etc/hosts', 'C:\\Windows\\System32\\drivers\\etc\\hosts'],
+                ['De serie', '127.0.0.1 localhost, 127.0.1.1 con el nombre de host de la instalación y las líneas IPv6 (::1 ip6-localhost…)', 'Solo comentarios: localhost y el propio nombre los responde el cliente DNS'],
+                ['Quién lo edita', 'root: `sudo nano /etc/hosts`', 'El grupo Administradores, que en Netfix es el grupo sudo (la cuenta del equipo lo es); las demás cuentas reciben «Access is denied.»: `edit C:\\Windows\\System32\\drivers\\etc\\hosts`'],
+                ['Cuándo se lee', 'Donde esté `files` en la línea `hosts:` de /etc/nsswitch.conf (al principio, de serie); sin `files`, no se lee', 'Antes que el DNS, LLMNR y NetBIOS'],
+                ['El propio nombre', 'Da 127.0.1.1 por su línea; sin ella (o tras `hostname`), systemd-resolved, detrás de `dns` o `resolve`, sintetiza el nombre en uso con la dirección IP del equipo', 'Siempre la dirección IP del equipo'],
+                ['Lo usan', 'ping, ssh, curl, getent, el navegador y resolvectl', 'ping, curl, net use, el navegador'],
+                ['No lo usan', 'nslookup, host y dig (preguntan al servidor DNS)', 'nslookup (pregunta al servidor DNS)'],
+            ]),
+            term('shell', "alumno@PC0:~$ getent hosts pc0\n127.0.1.1       PC0\nalumno@PC0:~$ echo '192.168.1.20 nas.aula.lab nas' | sudo tee -a /etc/hosts\nalumno@PC0:~$ ping -c 1 NAS\nPING NAS (192.168.1.20) 56(84) bytes of data."),
+            term('cmd', 'C:\\home\\alumno> echo 192.168.1.20 nas>> C:\\Windows\\System32\\drivers\\etc\\hosts\nC:\\home\\alumno> ping -n 1 NAS\n\nPinging NAS [192.168.1.20] with 32 bytes of data:\nReply from 192.168.1.20: bytes=32 time<1ms TTL=64'),
+            tip('Un PC con los dos sistemas', 'Si un equipo tiene terminal GNU/Linux y Windows, cada uno lee su fichero: una línea añadida a /etc/hosts no la ve Windows, y al revés.'),
             h('Orden en Windows'),
-            list('El fichero hosts (en Netfix, el /etc/hosts del equipo, el mismo de su terminal GNU/Linux).', 'Si el nombre acaba en **.local**: mDNS (y, si nadie responde, el DNS).', 'El **DNS**, con el sufijo de búsqueda: `ping srv` pregunta srv.aula.lab si el DHCP dio el dominio aula.lab.', 'Si el DNS no lo conoce y el nombre es de **una etiqueta**: **LLMNR y NetBIOS a la vez**. Gana la respuesta LLMNR; la de NetBIOS solo cuenta si LLMNR no encuentra nada.', 'Con un **servidor WINS** (nodo h), NetBIOS le pregunta antes por unicast, que cruza routers; si no tiene el nombre, LLMNR y el broadcast, como antes.'),
+            list('Su propio nombre y localhost, que responde el cliente DNS de Windows; después el fichero **C:\\Windows\\System32\\drivers\\etc\\hosts** (no el /etc/hosts de GNU/Linux).', 'Si el nombre acaba en **.local**: mDNS (y, si nadie responde, el DNS).', 'El **DNS**, con el sufijo de búsqueda: `ping srv` pregunta srv.aula.lab si el DHCP dio el dominio aula.lab.', 'Si el DNS no lo conoce y el nombre es de **una etiqueta**: **LLMNR y NetBIOS a la vez**. Gana la respuesta LLMNR; la de NetBIOS solo cuenta si LLMNR no encuentra nada.', 'Con un **servidor WINS** (nodo h), NetBIOS le pregunta antes por unicast, que cruza routers; si no tiene el nombre, LLMNR y el broadcast, como antes.'),
             figure({
                 type: 'sequence',
                 actors: ['WIN1', '8.8.8.8 (DNS)', 'Toda la LAN', 'WIN2'],
@@ -25082,15 +25188,29 @@ const NAMES_DOCS = [
             p('Before it sends `ping pc2`, a device needs pc2’s **IP address**. There are several ways to find it: a local file, a DNS server or asking the whole local network. Windows and GNU/Linux try them in a different order, and only one of them crosses routers.'),
             h('The protocols'),
             table(['Protocol', 'Names', 'How it asks', 'Reach', 'Who answers in Netfix'], [
-                ['hosts', 'Any', 'Reads the device’s /etc/hosts file', 'The device itself', 'Nobody: it is local'],
+                ['hosts', 'Any', 'Reads the system’s hosts file: /etc/hosts (GNU/Linux) or C:\\Windows\\System32\\drivers\\etc\\hosts (Windows)', 'The device itself', 'Nobody: it is local'],
                 ['DNS', 'With a domain (and without a dot, with the search suffix)', 'Unicast, UDP 53, to the configured DNS server', 'Crosses routers', 'A DNS server (bind9, 8.8.8.8…)'],
                 ['mDNS', 'Ending in .local', 'Multicast 224.0.0.251, UDP 5353', 'The link: does not cross routers', 'Windows out of the box; GNU/Linux with avahi-daemon'],
                 ['LLMNR', 'Single-label (pc2)', 'Multicast 224.0.0.252, UDP 5355, TTL 1', 'The link: does not cross routers', 'Windows out of the box'],
                 ['NetBIOS (NBNS)', 'Single-label, up to 15 characters', 'Subnet broadcast, UDP 137', 'The subnet: does not cross routers', 'Windows out of the box; GNU/Linux with samba'],
             ]),
             p('mDNS, LLMNR and NetBIOS need no server: they ask every device on the link and the one with that name answers. That is why they work in a home network or a classroom with no DNS of its own, but not to reach another network.'),
+            h('The hosts files'),
+            p('Each system has its own, as on a real machine, and both are on the device’s disk (in the Windows terminal, C:\\ is the root /). A line is an IP address and its names (the canonical one first, then the aliases); `#` starts a comment; names ignore case and the first line with the name wins. Changes apply at once and are saved with the lab.'),
+            table(['', 'GNU/Linux (Ubuntu)', 'Windows'], [
+                ['File', '/etc/hosts', 'C:\\Windows\\System32\\drivers\\etc\\hosts'],
+                ['Out of the box', '127.0.0.1 localhost, 127.0.1.1 with the host name of the installation and the IPv6 lines (::1 ip6-localhost…)', 'Comments only: the DNS client answers localhost and its own name'],
+                ['Who edits it', 'root: `sudo nano /etc/hosts`', 'The Administrators group, which in Netfix is the sudo group (the device’s account is in it); other accounts get “Access is denied.”: `edit C:\\Windows\\System32\\drivers\\etc\\hosts`'],
+                ['When it is read', 'Wherever `files` is on the `hosts:` line of /etc/nsswitch.conf (first, out of the box); without `files` it is not read', 'Before DNS, LLMNR and NetBIOS'],
+                ['Its own name', 'Gives 127.0.1.1 through its line; without it (or after `hostname`), systemd-resolved, behind `dns` or `resolve`, synthesises the name in use with the device’s IP address', 'Always the device’s IP address'],
+                ['Used by', 'ping, ssh, curl, getent, the browser and resolvectl', 'ping, curl, net use, the browser'],
+                ['Not used by', 'nslookup, host and dig (they ask the DNS server)', 'nslookup (it asks the DNS server)'],
+            ]),
+            term('shell', "alumno@PC0:~$ getent hosts pc0\n127.0.1.1       PC0\nalumno@PC0:~$ echo '192.168.1.20 nas.aula.lab nas' | sudo tee -a /etc/hosts\nalumno@PC0:~$ ping -c 1 NAS\nPING NAS (192.168.1.20) 56(84) bytes of data."),
+            term('cmd', 'C:\\home\\alumno> echo 192.168.1.20 nas>> C:\\Windows\\System32\\drivers\\etc\\hosts\nC:\\home\\alumno> ping -n 1 NAS\n\nPinging NAS [192.168.1.20] with 32 bytes of data:\nReply from 192.168.1.20: bytes=32 time<1ms TTL=64'),
+            tip('A PC with both systems', 'If a device has a GNU/Linux and a Windows terminal, each reads its own file: a line added to /etc/hosts is not seen by Windows, and the other way round.'),
             h('Order on Windows'),
-            list('The hosts file (in Netfix, the device’s /etc/hosts, the same one as its GNU/Linux terminal).', 'If the name ends in **.local**: mDNS (and, if nobody answers, the DNS).', 'The **DNS**, with the search suffix: `ping srv` asks for srv.aula.lab if DHCP gave the domain aula.lab.', 'If the DNS does not know it and the name is **single-label**: **LLMNR and NetBIOS at once**. The LLMNR answer wins; the NetBIOS one only counts if LLMNR finds nothing.', 'With a **WINS server** (h-node), NetBIOS asks it first by unicast, which crosses routers; if it does not have the name, LLMNR and the broadcast, as before.'),
+            list('Its own name and localhost, which the Windows DNS client answers; then the **C:\\Windows\\System32\\drivers\\etc\\hosts** file (not GNU/Linux’s /etc/hosts).', 'If the name ends in **.local**: mDNS (and, if nobody answers, the DNS).', 'The **DNS**, with the search suffix: `ping srv` asks for srv.aula.lab if DHCP gave the domain aula.lab.', 'If the DNS does not know it and the name is **single-label**: **LLMNR and NetBIOS at once**. The LLMNR answer wins; the NetBIOS one only counts if LLMNR finds nothing.', 'With a **WINS server** (h-node), NetBIOS asks it first by unicast, which crosses routers; if it does not have the name, LLMNR and the broadcast, as before.'),
             figure({
                 type: 'sequence',
                 actors: ['WIN1', '8.8.8.8 (DNS)', 'The whole LAN', 'WIN2'],
@@ -32291,6 +32411,7 @@ return { EXTRA };
 })();
 __m["bash/coreutils/hostnamectl.js"] = (() => {
 const { readLineFrom } = __m["bash/io.js"];
+const { MAX_HOSTNAME, hostnameCleanup, validSystemName } = __m["core/hostname.js"];
 const SUDO_GROUP = 27;
 const MACHINE_ID = '4f8d0c2a9b6e4c1d8e7f3a2b1c0d9e8f';
 const ACTION = 'org.freedesktop.hostname1.set-static-hostname';
@@ -32338,12 +32459,17 @@ function* setName(ctx, args) {
     }
     const kinds = ['static', 'transient', 'pretty'].filter((k) => flags.has(`--${k}`));
     const targets = kinds.length ? kinds : ['static'];
+    // As systemd: without a flag, a name it does not take as it is goes to the pretty name and its cleaned form to the static.
+    const cleaned = !kinds.length && !validSystemName(value) ? hostnameCleanup(value) : value;
     if (!(yield* authorize(ctx))) {
         ctx.err(`Could not set ${targets[0]} hostname: Access denied\n`);
         return 1;
     }
+    // Without a flag the pretty name follows: what was typed when it is not valid as it is, else none.
+    if (!kinds.length && cleaned !== '')
+        ctx.sh.env.setHostname?.('pretty', cleaned === value ? '' : value);
     for (const kind of targets) {
-        const err = ctx.sh.env.setHostname ? ctx.sh.env.setHostname(kind, value) : 'Access denied';
+        const err = ctx.sh.env.setHostname ? ctx.sh.env.setHostname(kind, cleaned || value) : 'Access denied';
         if (err) {
             ctx.err(`Could not set ${kind} hostname: ${err}\n`);
             return 1;
@@ -32402,6 +32528,10 @@ function hostname(ctx) {
     if (set !== undefined) {
         if (ctx.cred.uid !== 0) {
             ctx.err('hostname: you must be root to change the host name\n');
+            return 1;
+        }
+        if (set.length > MAX_HOSTNAME) {
+            ctx.err('hostname: name too long\n');
             return 1;
         }
         const err = ctx.sh.env.setHostname?.('transient', set) ?? null;
@@ -32663,7 +32793,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.45.0",
+    "version": "0.46.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -34275,7 +34405,6 @@ __m["shells/dns-client.js"] = (() => {
 const { normalizeName } = __m["net/dns.js"];
 const { runSync } = __m["net/sync.js"];
 const { parseIp } = __m["core/ip.js"];
-const { peekHostFile } = __m["devices/host-fs.js"];
 const { countTransaction, resolvedDns, resolvedDomains } = __m["shells/resolved.js"];
 const DNS_WAIT_MS = 6000;
 function dnsQuery(host, name, type, server) {
@@ -34300,23 +34429,6 @@ function configuredSearchDomains(host) {
     const domain = host.config.mode === 'dhcp' ? host.dhcpClient.lease?.domainName : undefined;
     return [...new Set([...host.dnsSearch.map(normalizeName), ...(domain ? [normalizeName(domain)] : [])])];
 }
-/** The IPv4 lines of /etc/hosts, in order. */
-function hostsEntries(host) {
-    // A device whose Linux system was never used still has the default file (no need to build the system for it).
-    const text = peekHostFile(host, '/etc/hosts') ?? `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n`;
-    return text.split('\n').flatMap((line) => {
-        const [addr, ...names] = line.replace(/#.*/, '').trim().split(/\s+/);
-        const ip = addr ? parseIp(addr) : null;
-        return ip !== null && names.length > 0 ? [{ ip, names }] : [];
-    });
-}
-/** The first line of /etc/hosts that has the name, as the `files` source of nsswitch. */
-function hostsEntry(host, name) {
-    const wanted = normalizeName(name.replace(/\.$/, ''));
-    return hostsEntries(host).find((e) => e.names.some((n) => normalizeName(n.replace(/\.$/, '')) === wanted));
-}
-/** The address /etc/hosts gives a name (first matching line, IPv4). */
-const hostsLookup = (host, name) => hostsEntry(host, name)?.ip;
 /**
  * The names the resolver tries, as glibc with ndots:1 (and Windows with its DNS suffix): a name without dots goes
  * with each search domain first, a name with dots goes as typed first, and a final dot means only as typed.
@@ -34351,7 +34463,7 @@ function dnsSearch(host, name, type, server) {
     return { result: nodata ?? last ?? dnsQuery(host, name, type, server), name };
 }
 
-return { dnsQuery, searchDomains, configuredSearchDomains, hostsEntries, hostsEntry, hostsLookup, resolutionCandidates, dnsSearch };
+return { dnsQuery, searchDomains, configuredSearchDomains, resolutionCandidates, dnsSearch };
 })();
 __m["dhcp/pool.js"] = (() => {
 const { inSubnet, classfulPrefix, networkOf, broadcastOf } = __m["core/ip.js"];
@@ -34612,7 +34724,7 @@ function serverFiles(server) {
     files.set('/etc/kea/kea-dhcp4.conf', keaConf(s));
     for (const [path, content] of bindFiles(s.dns, listenChoices(server, true)))
         files.set(path, content);
-    files.set('/etc/postfix/main.cf', `myhostname = ${server.name.toLowerCase()}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
+    files.set('/etc/postfix/main.cf', `myhostname = ${server.name}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
     files.set('/etc/dovecot/dovecot.conf', `dovecot_config_version = 2.4.1\ndovecot_storage_version = 2.4.1\nprotocols = ${[s.mail.pop3 ? 'pop3' : '', s.mail.imap ? 'imap' : ''].filter(Boolean).join(' ') || 'none'}\nmail_driver = maildir\nmail_path = ~/Maildir\n`);
     const excl = s.dhcp.pools.flatMap(ptExclusions).length;
     files.set('/var/lib/kea/kea-leases4.csv', ['address,hwaddr,client_id,valid_lifetime,expire,subnet_id,hostname',
@@ -34624,7 +34736,7 @@ function linuxFiles(host) {
     const c = host.config;
     const files = new Map([
         ['/etc/os-release', 'PRETTY_NAME="Ubuntu 26.04 LTS"\nNAME="Ubuntu"\nVERSION_ID="26.04"\nID=ubuntu\n'],
-        ['/etc/hostname', `${host.name.toLowerCase()}\n`],
+        ['/etc/hostname', `${host.name}\n`],
         ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n${configuredSearchDomains(host).length ? `search ${configuredSearchDomains(host).join(' ')}\n` : ''}`],
     ]);
     if (runsServices(host.kind))
@@ -34672,6 +34784,7 @@ const { registerLocalSockets } = __m["net/ipstack.js"];
 const { hasPackage } = __m["net/host-packages.js"];
 const { runSync } = __m["net/sync.js"];
 const { formatIp, parseIp } = __m["core/ip.js"];
+const { shortHostname } = __m["core/hostname.js"];
 const MDNS_GROUP = parseIp('224.0.0.251') ?? 0;
 const MDNS_PORT = 5353;
 /** nss-mdns gives up after about a second without an answer. */
@@ -34696,7 +34809,7 @@ function answerNames(h, iface) {
     // Routers and the hosts of the emulated Internet join no mDNS group.
     if (typeof h.runtimeName !== 'function')
         return [];
-    const own = h.runtimeName().toLowerCase();
+    const own = shortHostname(h.runtimeName()).toLowerCase();
     const avahi = linux(h) && unitRunning(h, 'avahi-daemon') ? avahiConfig(h) : undefined;
     return [
         ...(windows(h) || (linux(h) && resolvedAnswers(h, iface)) ? [own] : []),
@@ -34778,6 +34891,7 @@ const { winShareActive } = __m["net/win-shares.js"];
 const { hasSystem } = __m["net/device-apps.js"];
 const { runSync } = __m["net/sync.js"];
 const { broadcastOf } = __m["core/ip.js"];
+const { shortHostname } = __m["core/hostname.js"];
 const NBNS_PORT = 137;
 const SMB_PORTS = [139, 445];
 /** Windows asks three times, 750 ms apart. */
@@ -34805,7 +34919,7 @@ const netbiosName = (name) => name.toUpperCase().slice(0, MAX_NAME);
 /** A host's own names: NAME<00>, WORKGROUP<00> (group) and NAME<20> (its SMB server: nmbd always registers it; Windows
  * only with file and printer sharing on). */
 function ownNames(host) {
-    const name = netbiosName(host.runtimeName());
+    const name = netbiosName(shortHostname(host.runtimeName()));
     const base = [{ name, suffix: WORKSTATION, group: false }, { name: WORKGROUP, suffix: WORKSTATION, group: true }];
     return winShareActive(host) || unitRunning(host, 'nmbd') ? [...base, { name, suffix: FILE_SERVER, group: false }] : base;
 }
@@ -35152,6 +35266,7 @@ __m["net/llmnr.js"] = (() => {
 const { hasSystem } = __m["net/device-apps.js"];
 const { registerLocalSockets } = __m["net/ipstack.js"];
 const { formatIp, parseIp } = __m["core/ip.js"];
+const { shortHostname } = __m["core/hostname.js"];
 const LLMNR_GROUP = parseIp('224.0.0.252') ?? 0;
 const LLMNR_PORT = 5355;
 /** Windows waits about a second for an answer (it asks twice, RETRY_MS apart, then gives up). */
@@ -35176,7 +35291,7 @@ function answer(host, iface, p) {
     const own = host.l3Iface(iface)?.addrs[0]?.ip;
     if (!q || !p.udp || own === undefined || q.qtype !== 'A')
         return;
-    if (q.qname.replace(/\.$/, '').toLowerCase() !== host.runtimeName().toLowerCase())
+    if (q.qname.replace(/\.$/, '').toLowerCase() !== shortHostname(host.runtimeName()).toLowerCase())
         return;
     host.sendUdp(p.src, LLMNR_PORT, p.udp.sport, { dns: { id: q.id, response: true, qname: q.qname, qtype: 'A', rcode: 'NOERROR',
             answers: [{ name: q.qname, type: 'A', ttl: ANSWER_TTL, data: formatIp(own) }] } }, own, iface);
@@ -35437,12 +35552,15 @@ const { hasPackage } = __m["net/host-packages.js"];
 const { firstAddress, normalizeName, reverseName } = __m["net/dns.js"];
 const { runSync } = __m["net/sync.js"];
 const { parseIp } = __m["core/ip.js"];
-const { dnsQuery, dnsSearch, hostsLookup } = __m["shells/dns-client.js"];
+const { dnsQuery, dnsSearch } = __m["shells/dns-client.js"];
+const { hostsLookup } = __m["shells/hosts-file.js"];
 const { resolvedLookup } = __m["shells/nss-resolve.js"];
 const { resolvedRunning } = __m["shells/resolved.js"];
 const { unitRunning } = __m["net/pkg-units.js"];
 const { serviceSystem } = __m["net/device-apps.js"];
 const DEFAULT_HTTP_PORT = 80;
+/** 127.0.0.1. */
+const LOOPBACK_IP = 0x7f000001;
 const TCP_WAIT_MS = 6000;
 /** Remote commands may run network tools on the server (ping, dig, curl…). */
 const SSH_WAIT_MS = 60_000;
@@ -35458,7 +35576,7 @@ function dnsStep(host, target) {
     const addr = firstAddress(r.msg);
     return addr === undefined ? { kind: 'error', reason: 'nodata' } : { kind: 'ip', ip: addr, name: normalizeName(name), viaDns: true };
 }
-/** Windows: hosts, then mDNS for .local, the DNS (with its suffix) and, for a bare name, LLMNR and NetBIOS at once. */
+/** Windows (after its hosts file): mDNS for .local, the DNS (with its suffix) and, for a bare name, LLMNR and NetBIOS at once. */
 function windowsLookup(host, target) {
     if (isLocalName(target))
         return ip(mdnsResolve(host, normalizeName(target), true), normalizeName(target)) ?? dnsStep(host, target);
@@ -35485,6 +35603,15 @@ function resolveStep(host, target) {
 }
 /** One source of «hosts:»; a module that is not installed (or a source glibc does not know) is UNAVAIL. */
 function nssStep(host, source, target) {
+    if (source === 'files') {
+        const r = ip(hostsLookup(host, target), target);
+        return r ? { status: 'SUCCESS', result: r } : notFound;
+    }
+    // With systemd-resolved running, `dns` (its stub, 127.0.0.53) and `resolve` answer the name in use and localhost.
+    const viaResolved = source === 'dns' || (source === 'resolve' && hasPackage(host, 'libnss-resolve'));
+    const own = viaResolved && resolvedRunning(host) ? synthesised(host, target) : undefined;
+    if (own)
+        return { status: 'SUCCESS', result: own };
     if (source === 'dns') {
         const r = dnsStep(host, target);
         return { status: r.kind === 'ip' ? 'SUCCESS' : DNS_STATUS[r.reason], result: r };
@@ -35506,7 +35633,7 @@ function nssStep(host, source, target) {
     }
     return unavail;
 }
-/** GNU/Linux: the sources of «hosts:» in /etc/nsswitch.conf, in order, with their [STATUS=action] (files was already asked). */
+/** GNU/Linux: the sources of «hosts:» in /etc/nsswitch.conf, in order, with their [STATUS=action] (files is /etc/hosts). */
 function linuxLookup(host, target) {
     let last = { kind: 'error', reason: 'nxdomain' };
     for (const { source, actions } of hostsSources(host)) {
@@ -35518,19 +35645,26 @@ function linuxLookup(host, target) {
     }
     return last;
 }
-/** IP literal, the host's own name, /etc/hosts, then what the asking system does (linuxLookup, windowsLookup). */
-/** `client` defaults to the device's system (TCP/IP tab); the terminals say which one asks. */
+/** The name in use (transient or static) and localhost, as systemd-resolved and the Windows DNS client answer them. */
+function synthesised(host, target) {
+    const name = normalizeName(target);
+    if (name === 'localhost')
+        return ip(LOOPBACK_IP, target);
+    return name === normalizeName(host.runtimeName()) ? ip(host.config.ip, target) : undefined;
+}
+/**
+ * IP literal, then what the asking system does. GNU/Linux: «hosts:» of nsswitch.conf in order (files is /etc/hosts,
+ * where Ubuntu has the own name as 127.0.1.1; systemd-resolved, behind dns and resolve, synthesises the own name
+ * and localhost). Windows: its own name and localhost, its hosts file, then windowsLookup.
+ * `client` defaults to the device's system (TCP/IP tab); the terminals say which one asks.
+ */
 function resolveHost(host, target, client = serviceSystem(host)) {
     const literal = parseIp(target);
     if (literal !== null)
         return { kind: 'ip', ip: literal, name: target, viaDns: false };
-    // The host's own name answers with its network address (its hosts line, 127.0.1.1, is the loopback).
-    if (normalizeName(target) === host.name.toLowerCase() && host.config.ip !== undefined)
-        return { kind: 'ip', ip: host.config.ip, name: target, viaDns: false };
-    const local = hostsLookup(host, target);
-    if (local !== undefined)
-        return { kind: 'ip', ip: local, name: target, viaDns: false };
-    return client === 'windows' ? windowsLookup(host, target) : linuxLookup(host, target);
+    if (client === 'windows')
+        return synthesised(host, target) ?? ip(hostsLookup(host, target, 'windows'), target) ?? windowsLookup(host, target);
+    return linuxLookup(host, target);
 }
 function tcpCall(host, ip, port, payload, waitMs = TCP_WAIT_MS) {
     return runSync(host.hooks, (done) => host.connect(ip, port, payload, done, waitMs), waitMs + 1000) ?? { kind: 'timeout' };
@@ -35976,7 +36110,8 @@ class SshLogin {
     }
     connect() {
         const { target, port } = this.opts;
-        const resolved = resolveHost(this.host, target);
+        // Each terminal's ssh resolves as its own system does (its hosts file, nsswitch or the Windows DNS client).
+        const resolved = resolveHost(this.host, target, this.osName === 'Windows' ? 'windows' : 'linux');
         if (resolved.kind === 'error')
             return this.fail([`ssh: Could not resolve hostname ${target}: Name or service not known`]);
         this.ip = resolved.ip;
@@ -36519,7 +36654,8 @@ return { sftp };
 })();
 __m["shells/resolvectl-query.js"] = (() => {
 const { normalizeName, reverseName } = __m["net/dns.js"];
-const { dnsQuery, dnsSearch, hostsLookup } = __m["shells/dns-client.js"];
+const { dnsQuery, dnsSearch } = __m["shells/dns-client.js"];
+const { hostsLookup } = __m["shells/hosts-file.js"];
 const { resolvedLookup } = __m["shells/nss-resolve.js"];
 const { formatIp, parseIp } = __m["core/ip.js"];
 const QUERY_TYPES = ['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR', 'SOA'];
@@ -36553,7 +36689,8 @@ function failure(name, r) {
 const recordText = (a) => `${a.name.replace(/\.$/, '')} IN ${a.type} ${a.type === 'MX' ? `${a.priority ?? 10} ` : ''}${a.data}`;
 /** /etc/hosts, localhost and the host's own name: answered without asking a server. */
 function synthetic(host, name) {
-    const own = normalizeName(name) === host.name.toLowerCase() ? host.config.ip : undefined;
+    // resolved synthesises the name in use (transient or static) with the host's addresses, then reads /etc/hosts.
+    const own = normalizeName(name) === normalizeName(host.runtimeName()) ? host.config.ip : undefined;
     const ip = own ?? hostsLookup(host, name);
     return ip === undefined ? undefined : { lines: addressLines(name, [formatIp(ip)], linkFor(host, ip)), synthetic: true };
 }
@@ -36873,10 +37010,11 @@ return { resolvectl };
 })();
 __m["shells/getent.js"] = (() => {
 const { peekHostFile } = __m["devices/host-fs.js"];
-const { reverseName } = __m["net/dns.js"];
+const { normalizeName, reverseName } = __m["net/dns.js"];
 const { formatIp, parseIp } = __m["core/ip.js"];
 const { t } = __m["i18n/t.js"];
-const { dnsQuery, hostsEntries, hostsEntry } = __m["shells/dns-client.js"];
+const { dnsQuery } = __m["shells/dns-client.js"];
+const { hostsEntries, hostsRows } = __m["shells/hosts-file.js"];
 const { resolveHost } = __m["shells/net-tools.js"];
 const { hostsSources } = __m["shells/nsswitch.js"];
 const { shown } = __m["shells/resolvectl-query.js"];
@@ -36895,10 +37033,12 @@ const NOT_FOUND = 2;
 const USAGE_ERROR = 64;
 /** Each key may wait for the network: at most this many per run. */
 const MAX_KEYS = 64;
+/** The lines of /etc/hosts, when «hosts:» has files (else glibc never reads it). */
+const fileEntries = (host) => (hostsSources(host).some((s) => s.source === 'files') ? hostsEntries(host) : []);
 const hostsLine = (e) => `${formatIp(e.ip).padEnd(ADDRESS_COLUMN)} ${e.names.join(' ')}`;
 /** gethostbyaddr: /etc/hosts, then the PTR record when «hosts:» has a resolver. */
 function byAddress(host, ip) {
-    const local = hostsEntries(host).find((e) => e.ip === ip);
+    const local = fileEntries(host).find((e) => e.ip === ip);
     if (local)
         return local;
     if (!hostsSources(host).some((s) => s.source === 'dns' || s.source === 'resolve'))
@@ -36909,7 +37049,8 @@ function byAddress(host, ip) {
 }
 /** gethostbyname: the /etc/hosts line (with its aliases), then the rest of «hosts:». */
 function byName(host, key) {
-    const local = hostsEntry(host, key);
+    const wanted = normalizeName(key);
+    const local = fileEntries(host).find((e) => e.names.some((n) => normalizeName(n) === wanted));
     if (local)
         return local;
     const r = resolveHost(host, key, 'linux');
@@ -36936,7 +37077,8 @@ function fileDatabase(host, path) {
     };
 }
 function database(host, name) {
-    const all = () => hostsEntries(host).map(hostsLine);
+    const files = () => hostsSources(host).some((s) => s.source === 'files');
+    const all = () => (files() ? hostsRows(host).map((r) => `${r.addr.padEnd(ADDRESS_COLUMN)} ${r.names.join(' ')}`) : []);
     const one = (f) => ({ lookup: f, all });
     switch (name) {
         case 'hosts': return one((key) => {
@@ -38531,6 +38673,7 @@ const { nmbdStarted, nmbdStopped } = __m["shells/samba-wins.js"];
 const { AVAHI_CONF, parseAvahiConf } = __m["shells/avahi-conf.js"];
 const { setAvahiConfig } = __m["net/avahi.js"];
 const { PKG_UNITS, RESOLVED_UNIT, forgetPkgUnits, installedUnits, pkgLog, pkgUnitState, setPkgUnitState } = __m["net/pkg-units.js"];
+const { shortHostname } = __m["core/hostname.js"];
 const SAMBA_VERSION = '4.22.3-Ubuntu';
 const isNft = (u) => u.name === 'nftables';
 /** The nft error lines go to the unit's journal, followed by what systemd says of a failed start. */
@@ -38559,13 +38702,13 @@ function startLines(host, u) {
         return [`${u.process} version ${SAMBA_VERSION} started.`];
     const conf = parseResolvedConf(readHostFile(host, RESOLVED_CONF) ?? '');
     setResolvedConfig(host, conf);
-    return [...conf.warnings, ...resolvedStartLines(host.runtimeName().toLowerCase())];
+    return [...conf.warnings, ...resolvedStartLines(host.runtimeName())];
 }
 /** avahi-daemon reads its file as it starts (Netfix: host-name, disable-publishing) and says the name it publishes. */
 function avahiStartLines(host) {
     const conf = parseAvahiConf(readHostFile(host, AVAHI_CONF) ?? '');
     setAvahiConfig(host, conf);
-    const name = `${conf.hostName || host.runtimeName().toLowerCase()}.local`;
+    const name = `${conf.hostName || shortHostname(host.runtimeName())}.local`;
     return [
         "Found user 'avahi' (UID 107) and group 'avahi' (GID 114).", 'Successfully dropped root privileges.', 'avahi-daemon 0.8 starting up.',
         'Successfully called chroot().', 'Successfully dropped remaining capabilities.',
@@ -38826,11 +38969,11 @@ function serverEntry(host, unit, l) {
     return { time: l.time, head: `${stamp(l.time)} ${host} ${ident}: `, line: l.line, ...(l.priority ? { priority: l.priority } : {}) };
 }
 function serverEntries(server, unit) {
-    const host = server.name.toLowerCase();
+    const host = server.runtimeName();
     return server.journal(unit.id).map((l) => serverEntry(host, unit, l));
 }
 function pkgEntries(host, u) {
-    const name = host.name.toLowerCase();
+    const name = host.runtimeName();
     return pkgJournal(host, u).map((l) => ({ time: l.time, head: `${stamp(l.time)} ${name} ${l.systemd ? 'systemd[1]' : `${u.process}[${u.pid}]`}: `, line: l.line }));
 }
 /** The last entries as journalctl prints them: only the message takes its priority's colour. */
@@ -39032,7 +39175,7 @@ function runPkgVerb(host, u, verb, now) {
 /** Every journal entry of the host: its own units (a Server) and those of its packages, in time order. */
 function allEntries(host) {
     const server = asServer(host);
-    const name = host.name.toLowerCase();
+    const name = host.runtimeName();
     const own = server ? server.logs.map((l) => serverEntry(name, UNITS.find((x) => x.id === l.unit), l)) : [];
     return [...own, ...installedUnits(host).flatMap((u) => pkgEntries(host, u))].sort((a, b) => a.time - b.time);
 }
@@ -45041,6 +45184,7 @@ __m["shells/host-system.js"] = (() => {
 const { NSSWITCH, seededNsswitch } = __m["shells/nsswitch.js"];
 const { DEFAULT_RESOLVED_CONF, parseResolvedConf, RESOLVED_CONF } = __m["shells/resolved-conf.js"];
 const { setResolvedConfig } = __m["shells/resolved.js"];
+const { LINUX_HOSTS, ubuntuHosts } = __m["shells/hosts-file.js"];
 const { t } = __m["i18n/t.js"];
 const { runsServices } = __m["devices/kinds.js"];
 const { NETPLAN_FILE, netplanFileContent, writeNetplanFile } = __m["shells/netplan.js"];
@@ -45249,18 +45393,18 @@ function seedSsh(fs, host) {
         return;
     fs.seed(SSHD_CONFIG, { kind: 'file', content: DEFAULT_SSHD_CONFIG }, 0o644);
     fs.seed('/etc/ssh/sshd_config.d', { kind: 'dir' }, 0o755);
-    for (const f of hostKeyFiles(host.mac, host.name.toLowerCase()))
+    for (const f of hostKeyFiles(host.mac, host.name))
         fs.seed(f.path, { kind: 'file', content: f.content }, f.mode);
 }
 function createSystem(host) {
     const fs = new Vfs(() => host.clock.now());
     const programs = new Map([...COREUTILS, ...linuxPrograms(host)]);
     const users = hostUsers(host);
-    seedRootfs(fs, { hostname: host.name.toLowerCase(), users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
+    seedRootfs(fs, { hostname: host.name, users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
     // An ordinary file, as in Ubuntu: root edits it, it is saved with the topology and the resolver reads it first.
     fs.seed(NSSWITCH, { kind: 'file', content: seededNsswitch(host) }, 0o644);
     fs.seed(RESOLVED_CONF, { kind: 'file', content: DEFAULT_RESOLVED_CONF }, 0o644);
-    fs.seed('/etc/hosts', { kind: 'file', content: `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n` }, 0o644);
+    fs.seed(LINUX_HOSTS, { kind: 'file', content: ubuntuHosts(host.name) }, 0o644);
     fs.seed('/usr/lib/command-not-found', { kind: 'file', content: `${BINARY_MARK}command-not-found\n` }, 0o755);
     const server = asServer(host);
     seedSsh(fs, host);
@@ -45270,7 +45414,7 @@ function createSystem(host) {
         fs.mountDir(WWW, webRoot(server));
     }
     const env = {
-        get hostname() { return host.runtimeName().toLowerCase(); },
+        get hostname() { return host.runtimeName(); },
         fs,
         users: () => hostUsers(host),
         commands: programs,
@@ -45278,7 +45422,7 @@ function createSystem(host) {
         wait: (ms) => { host.hooks.runUntil(() => false, ms); },
         ipAddress: () => (host.config.ip !== undefined ? formatIp(host.config.ip) : ''),
         password: (name) => asServer(host)?.services.ssh.users.find((a) => a.name === name)?.password,
-        hostnames: () => ({ static: host.name.toLowerCase(), transient: host.runtimeName().toLowerCase(), pretty: host.prettyName }),
+        hostnames: () => ({ static: host.name, transient: host.runtimeName(), pretty: host.prettyName }),
         setHostname: (kind, value) => setName(host, kind, value),
     };
     restoreRecords(fs, pendingFiles.get(host) ?? []);
@@ -45726,25 +45870,22 @@ const { macFromSeed, clientIdFromMac } = __m["core/mac.js"];
 const { Kernel } = __m["devices/host-kernel.js"];
 const { lookupRoute, MAX_STATIC_ROUTES } = __m["devices/host-nics.js"];
 const { inSubnet, BROADCAST_IP } = __m["core/ip.js"];
+const { MAX_HOSTNAME } = __m["core/hostname.js"];
 const HOST_PORT = 'FastEthernet0';
 /** Linux name of the NIC (ip, nft iif/oif, netplan). */
 const HOST_LINUX_IF = 'eth0';
 const APIPA_NET = 0xa9fe0000;
 const APIPA_PREFIX = 16;
 const APIPA_HOST_SPACE = 0xfe00;
-const MAX_LABEL = 63;
-const MAX_HOSTNAME = 253;
-const LABEL = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
-/** RFC 1123 host name (letters, digits and hyphens; dot-separated labels). Returns an error or null. */
+/** Letters (either case), digits and hyphens; a hyphen never at the edge of a label (systemd's hostname_is_valid). */
+const LABEL = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/;
+/** A host name as systemd-hostnamed takes it (Ubuntu): RFC 1123 labels, case kept, 64 at most. Returns an error or null. */
 function validHostname(name) {
     if (name.trim() === '')
         return t('host.err.empty');
     if (name.length > MAX_HOSTNAME)
         return t('host.err.long', { max: MAX_HOSTNAME });
-    const labels = name.split('.');
-    if (labels.some((l) => l.length > MAX_LABEL))
-        return t('host.err.label', { max: MAX_LABEL });
-    if (!labels.every((l) => LABEL.test(l)))
+    if (!name.split('.').every((l) => LABEL.test(l)))
         return t('host.err.chars');
     return null;
 }
@@ -49421,6 +49562,7 @@ const { formatIp, formatMask, parseIp } = __m["core/ip.js"];
 const { formatMacCisco } = __m["core/mac.js"];
 const { formatLeaseTime } = __m["core/clock.js"];
 const { hostSystem, hostUsers, defaultLinuxUser } = __m["shells/host-system.js"];
+const { seedWindowsHosts } = __m["shells/hosts-file.js"];
 const { WinFiles } = __m["shells/win-files.js"];
 const { WinDrives } = __m["shells/win-drives.js"];
 const { splitCmdLine } = __m["shells/win-path.js"];
@@ -49510,7 +49652,9 @@ class WindowsShell extends BaseShell {
         const account = users.find((u) => u.name === name) ?? users[0];
         const cred = { uid: account?.uid ?? 0, gid: account?.gid ?? 0, groups: account?.groups ?? [] };
         this.admin = cred.uid === 0;
-        this.fileCmds = new WinFiles(hostSystem(this.host).fs, cred, account?.home ?? '/');
+        const fs = hostSystem(this.host).fs;
+        seedWindowsHosts(fs);
+        this.fileCmds = new WinFiles(fs, cred, account?.home ?? '/');
         return this.fileCmds;
     }
     sshStore(_cwd) {
@@ -59547,7 +59691,7 @@ function sysctlPage(server, base) {
 }
 function mdnsPage(server, base) {
     const conf = avahiSettings(server);
-    return form(base, 'mdns', 'mdns', cards(section(t('mdns.tab'), t('mdns.intro'), check('enabled', unitOn(server, 'avahi-daemon'), t('mdns.service'))), section(t('mdns.name'), t('mdns.hint'), row(t('mdns.name'), text('hostName', conf.hostName, { placeholder: server.runtimeName().toLowerCase() })), check('publish', conf.publish, t('mdns.publish')))), buttons());
+    return form(base, 'mdns', 'mdns', cards(section(t('mdns.tab'), t('mdns.intro'), check('enabled', unitOn(server, 'avahi-daemon'), t('mdns.service'))), section(t('mdns.name'), t('mdns.hint'), row(t('mdns.name'), text('hostName', conf.hostName, { placeholder: server.runtimeName() })), check('publish', conf.publish, t('mdns.publish')))), buttons());
 }
 function winbindPage(server, base) {
     const nss = hasPackage(server, 'libnss-winbind');
@@ -65823,9 +65967,9 @@ function dnsCheck(t, c) {
     }
     if (r.kind !== 'ip')
         return fail(`«${c.from}» no resuelve ${c.name}.`);
-    // /etc/hosts answers too, but the check is about the DNS service.
+    // The hosts file answers too, but the check is about the DNS service.
     if (!r.viaDns)
-        return fail(`«${c.from}» resuelve ${c.name} sin DNS (por /etc/hosts).`);
+        return fail(`«${c.from}» resuelve ${c.name} sin DNS (por el fichero hosts).`);
     if (c.ip && r.ip !== parseIp(c.ip))
         return fail(`«${c.from}» resuelve ${c.name} como ${formatIp(r.ip)}, no ${c.ip}.`);
     return pass(`«${c.from}» resuelve ${c.name} como ${formatIp(r.ip)}.`);
@@ -69655,7 +69799,7 @@ function mdnsPanel(host, app) {
     return liveHostPanel(host, () => {
         const running = unitOn(host, 'avahi-daemon');
         const conf = avahiSettings(host);
-        const name = input({ value: conf.hostName, placeholder: host.runtimeName().toLowerCase(), 'aria-label': t('mdns.name') });
+        const name = input({ value: conf.hostName, placeholder: host.runtimeName(), 'aria-label': t('mdns.name') });
         const publish = el('input', { type: 'checkbox', checked: conf.publish });
         const apply = () => {
             if (!setAvahiSettings(host, { hostName: name.value, publish: publish.checked }))
@@ -69664,7 +69808,7 @@ function mdnsPanel(host, app) {
             app.afterCommand();
         };
         const live = avahiConfig(host);
-        const now = !running ? t('mdns.stopped') : live.publish ? t('mdns.publishing', { name: `${live.hostName || host.runtimeName().toLowerCase()}.local` }) : t('mdns.silent');
+        const now = !running ? t('mdns.stopped') : live.publish ? t('mdns.publishing', { name: `${live.hostName || host.runtimeName()}.local` }) : t('mdns.silent');
         return [
             onOff(t('mdns.service'), running, (on) => { setUnitRunning(host, 'avahi-daemon', on); app.afterCommand(); }),
             el('p', { class: 'muted' }, t('mdns.intro')),
@@ -70565,7 +70709,7 @@ function redrawable(render, cls = 'pane-part') {
 }
 function keyring(pc) {
     const acct = hostUsers(pc).find((u) => u.name === USER);
-    return acct ? new SshKeyring(hostSystem(pc).fs, acct, pc.runtimeName().toLowerCase()) : null;
+    return acct ? new SshKeyring(hostSystem(pc).fs, acct, pc.runtimeName()) : null;
 }
 /** `ssh` command line of a session (values come from validated fields, quoted for bash). */
 function sshLine(p) {

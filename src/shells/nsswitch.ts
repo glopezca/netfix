@@ -71,7 +71,7 @@ export function nssNext(actions: readonly NssAction[], status: NssStatus): 'retu
   return hit.action === 'continue' ? 'continue' : 'return';
 }
 
-/** The sources of a «hosts:» line with their actions, without files (the caller asks /etc/hosts first). */
+/** The sources of a «hosts:» line with their actions, in order (files is /etc/hosts). */
 export function parseHostsLine(line: string): HostsSource[] {
   const out: { source: string; actions: NssAction[] }[] = [];
   for (const m of line.slice(0, MAX_LINE).matchAll(/\[([^\]]*)\]|([^\s[\]]+)/g)) {
@@ -80,7 +80,7 @@ export function parseHostsLine(line: string): HostsSource[] {
     else if (out.length >= MAX_SOURCES) break;
     else out.push({ source: m[2] ?? '', actions: [] });
   }
-  return out.filter((s) => s.source !== 'files').map((s) => ({ ...s, notFoundReturn: nssNext(s.actions, 'NOTFOUND') === 'return' }));
+  return out.map((s) => ({ ...s, notFoundReturn: nssNext(s.actions, 'NOTFOUND') === 'return' }));
 }
 
 /** The sources of «hosts:» in the host's /etc/nsswitch.conf (Ubuntu's when the file is not there). */

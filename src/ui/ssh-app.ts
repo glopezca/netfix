@@ -23,7 +23,7 @@ function redrawable(render: (redraw: () => void) => HTMLElement[], cls = 'pane-p
 
 function keyring(pc: Pc): SshKeyring | null {
   const acct = hostUsers(pc).find((u) => u.name === USER);
-  return acct ? new SshKeyring(hostSystem(pc).fs, acct, pc.runtimeName().toLowerCase()) : null;
+  return acct ? new SshKeyring(hostSystem(pc).fs, acct, pc.runtimeName()) : null;
 }
 
 /** `ssh` command line of a session (values come from validated fields, quoted for bash). */

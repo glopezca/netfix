@@ -17,13 +17,15 @@ function lab(): { t: Topology; srv: Server; pc: Pc } {
   return { t, srv, pc };
 }
 
-test('hostname rules (RFC 1123)', () => {
+test('hostname rules (systemd: RFC 1123 labels, case kept, 64 at most)', () => {
   assert.equal(validHostname('pc-aula1'), null);
+  assert.equal(validHostname('PC-Aula1'), null);
   assert.equal(validHostname('srv.aula.lab'), null);
   assert.match(validHostname('') ?? '', /vacío/);
   assert.match(validHostname('mal nombre') ?? '', /letras/);
   assert.match(validHostname('-guion') ?? '', /letras/);
-  assert.match(validHostname('x'.repeat(64)) ?? '', /63/);
+  assert.equal(validHostname('x'.repeat(64)), null);
+  assert.match(validHostname('x'.repeat(65)) ?? '', /64/);
 });
 
 test('setHostname changes the name used by DHCP, the shells and the generated files', () => {
@@ -41,9 +43,9 @@ test('hostnamectl shows the status; set-hostname asks the password and renames t
   const { srv } = lab();
   const sh = createShell(srv, 'linux');
   const status = sh.run('hostnamectl').join('\n');
-  assert.match(status, /^ Static hostname: server0$/m);
+  assert.match(status, /^ Static hostname: Server0$/m);
   assert.match(status, /^Operating System: Ubuntu 26\.04 LTS$/m);
-  assert.deepEqual(sh.run('hostnamectl hostname'), ['server0']);
+  assert.deepEqual(sh.run('hostnamectl hostname'), ['Server0']);
   assert.deepEqual(sh.run('hostnamectl set-hostname web01'), [
     '==== AUTHENTICATING FOR org.freedesktop.hostname1.set-static-hostname ====',
     'Authentication is required to set the statically configured local hostname, as well as the pretty hostname.',
@@ -60,11 +62,11 @@ test('sudo hostname NAME sets the transient name; /etc/hostname cannot change it
   const { pc } = lab();
   const sh = createShell(pc, 'linux');
   assert.deepEqual(sh.run('hostname temporal'), ['hostname: you must be root to change the host name']);
-  assert.deepEqual(sh.run('sudo hostname temporal; hostname; cat /etc/hostname'), ['temporal', 'pc0']);
+  assert.deepEqual(sh.run('sudo hostname temporal; hostname; cat /etc/hostname'), ['temporal', 'PC0']);
   assert.match(sh.run('echo otro > /etc/hostname').join(''), /Read-only file system/, 'generated from Equipo, like other generated files');
   sh.run('echo nuevo | sudo tee /etc/hostname');
-  assert.deepEqual(sh.run('cat /etc/hostname'), ['pc0']);
-  assert.equal(pc.name, 'pc0');
+  assert.deepEqual(sh.run('cat /etc/hostname'), ['PC0']);
+  assert.equal(pc.name, 'PC0');
 });
 
 test('saving and loading keeps the pretty name; the host name is derived again', () => {
@@ -72,5 +74,5 @@ test('saving and loading keeps the pretty name; the host name is derived again',
   createShell(pc, 'linux').run('sudo hostnamectl set-hostname --pretty "PC de Luis"');
   const t2 = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
   const names = [...t2.placed.values()].map((p) => [p.label, (p.device as Pc).name, (p.device as Pc).prettyName]);
-  assert.deepEqual(names, [['Server0', 'server0', undefined], ['PC0', 'pc0', 'PC de Luis']]);
+  assert.deepEqual(names, [['Server0', 'Server0', undefined], ['PC0', 'PC0', 'PC de Luis']]);
 });

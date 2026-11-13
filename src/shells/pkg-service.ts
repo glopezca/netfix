@@ -17,6 +17,7 @@ import { AVAHI_CONF, parseAvahiConf } from './avahi-conf.ts';
 import { setAvahiConfig } from '../net/avahi.ts';
 import { PKG_UNITS, RESOLVED_UNIT, forgetPkgUnits, installedUnits, pkgLog, pkgUnitState, setPkgUnitState } from '../net/pkg-units.ts';
 import type { PkgUnit } from '../net/pkg-units.ts';
+import { shortHostname } from '../core/hostname.ts';
 
 export const SAMBA_VERSION = '4.22.3-Ubuntu';
 
@@ -46,14 +47,14 @@ function startLines(host: Host, u: PkgUnit): string[] {
   if (u !== RESOLVED_UNIT) return [`${u.process} version ${SAMBA_VERSION} started.`];
   const conf = parseResolvedConf(readHostFile(host, RESOLVED_CONF) ?? '');
   setResolvedConfig(host, conf);
-  return [...conf.warnings, ...resolvedStartLines(host.runtimeName().toLowerCase())];
+  return [...conf.warnings, ...resolvedStartLines(host.runtimeName())];
 }
 
 /** avahi-daemon reads its file as it starts (Netfix: host-name, disable-publishing) and says the name it publishes. */
 function avahiStartLines(host: Host): string[] {
   const conf = parseAvahiConf(readHostFile(host, AVAHI_CONF) ?? '');
   setAvahiConfig(host, conf);
-  const name = `${conf.hostName || host.runtimeName().toLowerCase()}.local`;
+  const name = `${conf.hostName || shortHostname(host.runtimeName())}.local`;
   return [
     "Found user 'avahi' (UID 107) and group 'avahi' (GID 114).", 'Successfully dropped root privileges.', 'avahi-daemon 0.8 starting up.',
     'Successfully called chroot().', 'Successfully dropped remaining capabilities.',

@@ -79,7 +79,7 @@ test('an edit does nothing until the unit is restarted; the journal says what it
   const log = run(pc, 'journalctl -u systemd-resolved');
   assert.match(log, /systemd\[1\]: Starting systemd-resolved\.service - Network Name Resolution\.\.\./);
   assert.match(log, /systemd-resolved\[512\]: Positive Trust Anchors:\n.*systemd-resolved\[512\]: \. IN DS 20326 8 2 /);
-  assert.match(log, /systemd-resolved\[512\]: Using system hostname 'pc1'\.\n.*systemd\[1\]: Started systemd-resolved\.service - Network Name Resolution\.$/);
+  assert.match(log, /systemd-resolved\[512\]: Using system hostname 'PC1'\.\n.*systemd\[1\]: Started systemd-resolved\.service - Network Name Resolution\.$/);
   run(pc, `sed -i 's/^LLMNR=yes/LLMNR=maybe/' ${RESOLVED_CONF}; systemctl restart systemd-resolved`);
   assert.equal(resolvedConfig(pc).llmnr, 'no', 'an invalid value leaves the default');
   assert.match(run(pc, 'journalctl -u systemd-resolved -n 50'), /systemd-resolved\[512\]: \/etc\/systemd\/resolved\.conf:\d+: Failed to parse LLMNR=maybe, ignoring\./);

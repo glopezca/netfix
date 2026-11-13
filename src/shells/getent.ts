@@ -6,11 +6,12 @@
 import type { Ctx, CommandFn } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { peekHostFile } from '../devices/host-fs.ts';
-import { reverseName } from '../net/dns.ts';
+import { normalizeName, reverseName } from '../net/dns.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { t } from '../i18n/t.ts';
-import { dnsQuery, hostsEntries, hostsEntry } from './dns-client.ts';
-import type { HostsEntry } from './dns-client.ts';
+import { dnsQuery } from './dns-client.ts';
+import { hostsEntries, hostsRows } from './hosts-file.ts';
+import type { HostsEntry } from './hosts-file.ts';
 import { resolveHost } from './net-tools.ts';
 import { hostsSources } from './nsswitch.ts';
 import { shown } from './resolvectl-query.ts';
@@ -40,11 +41,13 @@ interface Database {
   readonly all: () => readonly string[];
 }
 
+/** The lines of /etc/hosts, when «hosts:» has files (else glibc never reads it). */
+const fileEntries = (host: Host): HostsEntry[] => (hostsSources(host).some((s) => s.source === 'files') ? hostsEntries(host) : []);
 const hostsLine = (e: HostsEntry): string => `${formatIp(e.ip).padEnd(ADDRESS_COLUMN)} ${e.names.join(' ')}`;
 
 /** gethostbyaddr: /etc/hosts, then the PTR record when «hosts:» has a resolver. */
 function byAddress(host: Host, ip: number): HostsEntry | undefined {
-  const local = hostsEntries(host).find((e) => e.ip === ip);
+  const local = fileEntries(host).find((e) => e.ip === ip);
   if (local) return local;
   if (!hostsSources(host).some((s) => s.source === 'dns' || s.source === 'resolve')) return undefined;
   const r = dnsQuery(host, reverseName(ip), 'PTR');
@@ -54,7 +57,8 @@ function byAddress(host: Host, ip: number): HostsEntry | undefined {
 
 /** gethostbyname: the /etc/hosts line (with its aliases), then the rest of «hosts:». */
 function byName(host: Host, key: string): HostsEntry | undefined {
-  const local = hostsEntry(host, key);
+  const wanted = normalizeName(key);
+  const local = fileEntries(host).find((e) => e.names.some((n) => normalizeName(n) === wanted));
   if (local) return local;
   const r = resolveHost(host, key, 'linux');
   return r.kind === 'ip' ? { ip: r.ip, names: [r.name] } : undefined;
@@ -82,7 +86,8 @@ function fileDatabase(host: Host, path: string): Database {
 }
 
 function database(host: Host, name: string): Database | undefined {
-  const all = (): string[] => hostsEntries(host).map(hostsLine);
+  const files = (): boolean => hostsSources(host).some((s) => s.source === 'files');
+  const all = (): string[] => (files() ? hostsRows(host).map((r) => `${r.addr.padEnd(ADDRESS_COLUMN)} ${r.names.join(' ')}`) : []);
   const one = (f: (key: string) => readonly string[] | undefined): Database => ({ lookup: f, all });
   switch (name) {
     case 'hosts': return one((key) => {

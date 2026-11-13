@@ -1,4 +1,4 @@
-/** /etc/hosts edited by root resolves names before DNS; netplan's nameservers.search gives a static host its search list. */
+/** /etc/hosts edited by root resolves names before DNS (GNU/Linux; Windows has its own file); netplan's nameservers.search gives a static host its search list. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EXAMPLES } from '../../src/net/examples.ts';
@@ -18,7 +18,7 @@ function lab(): { topo: Topology; pc: Pc } {
   return { topo, pc: topo.byLabel('PC0') as Pc };
 }
 
-test('/etc/hosts: only root edits it; ping, ssh or the browser use it before DNS, nslookup and dig do not', () => {
+test('/etc/hosts: only root edits it; ping, ssh or the browser use it before DNS, nslookup, dig and Windows do not', () => {
   const { pc } = lab();
   const sh = createShell(pc, 'linux');
   assert.match(all(sh.run("echo '192.168.50.2 aula-local' >> /etc/hosts")), /Permission denied/);
@@ -26,7 +26,7 @@ test('/etc/hosts: only root edits it; ping, ssh or the browser use it before DNS
   assert.match(all(sh.run('cat /etc/hosts')), /^192\.168\.50\.2 aula-local aula$/m);
   assert.match(all(sh.run('ping -c 1 aula')), /^PING aula \(192\.168\.50\.2\)/);
   assert.match(all(sh.run('nslookup aula-local')), /NXDOMAIN/, 'nslookup asks the DNS server only');
-  assert.match(all(createShell(pc, 'windows').run('ping -n 1 aula-local')), /Pinging aula-local \[192\.168\.50\.2\]/);
+  assert.match(all(createShell(pc, 'windows').run('ping -n 1 aula-local')), /could not find host aula-local/, 'Windows reads C:\\Windows\\System32\\drivers\\etc\\hosts');
 });
 
 test('hostname -f follows /etc/hosts; the edited file is saved with the topology', () => {
@@ -64,5 +64,5 @@ test('a saved /etc/hosts applies as soon as the topology loads, before the GNU/L
   hostSystem(pc).fs.writeFile('/etc/hosts', '10.0.0.9 nas\n', undefined, true);
   const loaded = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
   const again = loaded.byLabel('PC0') as Pc;
-  assert.deepEqual(resolveHost(again, 'nas'), { kind: 'ip', ip: 0x0a000009, name: 'nas', viaDns: false });
+  assert.deepEqual(resolveHost(again, 'nas', 'linux'), { kind: 'ip', ip: 0x0a000009, name: 'nas', viaDns: false });
 });

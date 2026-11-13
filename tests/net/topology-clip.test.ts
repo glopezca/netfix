@@ -37,7 +37,7 @@ test('copy takes the devices, only the cables between them and the drawings; pas
   const [r2, pc2] = out.devices;
   assert.equal((r2!.device as Router).hostname, 'Router1', 'the hostname comes from the new name (v0.19.4), the rest of the configuration comes along');
   assert.equal((pc2!.device as Pc).config.ip, parseIp('192.168.1.10'));
-  assert.equal((pc2!.device as Pc).name, 'pc2', 'host name derived from the new name');
+  assert.equal((pc2!.device as Pc).name, 'PC2', 'host name derived from the new name');
   assert.notEqual((pc2!.device as Pc).mac, (pc.device as Pc).mac, 'a new MAC');
   assert.ok(t.net.linkAt({ device: r2!.device.id, port: 'GigabitEthernet0/0' }), 'the cable between the copies');
   assert.equal(t.net.linkAt({ device: r2!.device.id, port: 'GigabitEthernet0/1' }), undefined);

@@ -11,6 +11,7 @@ import type { IpPacket } from './packets.ts';
 import type { StackHost } from './ipstack.ts';
 import { registerLocalSockets } from './ipstack.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
+import { shortHostname } from '../core/hostname.ts';
 
 export const LLMNR_GROUP = parseIp('224.0.0.252') ?? 0;
 export const LLMNR_PORT = 5355;
@@ -43,7 +44,7 @@ function answer(host: Host, iface: string, p: IpPacket): void {
   const q = p.udp?.dns;
   const own = host.l3Iface(iface)?.addrs[0]?.ip;
   if (!q || !p.udp || own === undefined || q.qtype !== 'A') return;
-  if (q.qname.replace(/\.$/, '').toLowerCase() !== host.runtimeName().toLowerCase()) return;
+  if (q.qname.replace(/\.$/, '').toLowerCase() !== shortHostname(host.runtimeName()).toLowerCase()) return;
   host.sendUdp(p.src, LLMNR_PORT, p.udp.sport, { dns: { id: q.id, response: true, qname: q.qname, qtype: 'A', rcode: 'NOERROR',
     answers: [{ name: q.qname, type: 'A', ttl: ANSWER_TTL, data: formatIp(own) }] } }, own, iface);
 }

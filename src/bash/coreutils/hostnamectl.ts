@@ -1,6 +1,7 @@
 /** hostnamectl (systemd-hostnamed) and `hostname`: show and change the static, transient and pretty names. */
 import type { CommandFn, Ctx, Gen, HostNames } from '../types.ts';
 import { readLineFrom } from '../io.ts';
+import { MAX_HOSTNAME, hostnameCleanup, validSystemName } from '../../core/hostname.ts';
 
 const SUDO_GROUP = 27;
 const MACHINE_ID = '4f8d0c2a9b6e4c1d8e7f3a2b1c0d9e8f';
@@ -48,12 +49,16 @@ function* setName(ctx: Ctx, args: readonly string[]): Gen<number> {
   if (value === undefined) { ctx.err('Too few arguments.\n'); return 1; }
   const kinds = (['static', 'transient', 'pretty'] as const).filter((k) => flags.has(`--${k}`));
   const targets = kinds.length ? kinds : (['static'] as const);
+  // As systemd: without a flag, a name it does not take as it is goes to the pretty name and its cleaned form to the static.
+  const cleaned = !kinds.length && !validSystemName(value) ? hostnameCleanup(value) : value;
   if (!(yield* authorize(ctx))) {
     ctx.err(`Could not set ${targets[0]} hostname: Access denied\n`);
     return 1;
   }
+  // Without a flag the pretty name follows: what was typed when it is not valid as it is, else none.
+  if (!kinds.length && cleaned !== '') ctx.sh.env.setHostname?.('pretty', cleaned === value ? '' : value);
   for (const kind of targets) {
-    const err = ctx.sh.env.setHostname ? ctx.sh.env.setHostname(kind, value) : 'Access denied';
+    const err = ctx.sh.env.setHostname ? ctx.sh.env.setHostname(kind, cleaned || value) : 'Access denied';
     if (err) { ctx.err(`Could not set ${kind} hostname: ${err}\n`); return 1; }
   }
   return 0;
@@ -103,6 +108,7 @@ function hostname(ctx: Ctx): number {
   const set = args.find((a) => !a.startsWith('-'));
   if (set !== undefined) {
     if (ctx.cred.uid !== 0) { ctx.err('hostname: you must be root to change the host name\n'); return 1; }
+    if (set.length > MAX_HOSTNAME) { ctx.err('hostname: name too long\n'); return 1; }
     const err = ctx.sh.env.setHostname?.('transient', set) ?? null;
     if (err) { ctx.err(`hostname: ${err.startsWith('Invalid') ? 'the specified hostname is invalid' : err}\n`); return 1; }
     return 0;

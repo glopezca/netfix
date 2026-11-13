@@ -88,7 +88,7 @@ test('review: nmcli -t, -f and -g for scripts; every profile listed; eth1 is not
   assert.match(run(pc, 'nmcli -f GENERAL.STATE device show eth0'), /^GENERAL\.STATE: +100 \(connected\)$/);
   assert.match(run(pc, 'nmcli -t -f NAME,TYPE c'), /^netplan-eth0:802-3-ethernet\nlo:loopback$/);
   assert.match(run(pc, 'nmcli networking connectivity'), /^full$/);
-  assert.match(run(pc, 'nmcli general hostname'), /^pc1$/);
+  assert.match(run(pc, 'nmcli general hostname'), /^PC1$/);
   const fw = lab('linux-dmz').byLabel('FW') as Host;
   run(fw, 'apt install -y network-manager; ip link set eth2 down');
   assert.match(run(fw, 'nmcli connection show'), /netplan-eth2 +[0-9a-f-]{36} +ethernet +-- /, 'a profile without its device');

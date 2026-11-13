@@ -26,6 +26,7 @@ import { formatIp, formatMask, parseIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
 import { formatLeaseTime } from '../core/clock.ts';
 import { hostSystem, hostUsers, defaultLinuxUser } from './host-system.ts';
+import { seedWindowsHosts } from './hosts-file.ts';
 import { WinFiles } from './win-files.ts';
 import { WinDrives } from './win-drives.ts';
 import { splitCmdLine } from './win-path.ts';
@@ -127,7 +128,9 @@ export class WindowsShell extends BaseShell {
     const account = users.find((u) => u.name === name) ?? users[0];
     const cred = { uid: account?.uid ?? 0, gid: account?.gid ?? 0, groups: account?.groups ?? [] };
     this.admin = cred.uid === 0;
-    this.fileCmds = new WinFiles(hostSystem(this.host).fs, cred, account?.home ?? '/');
+    const fs = hostSystem(this.host).fs;
+    seedWindowsHosts(fs);
+    this.fileCmds = new WinFiles(fs, cred, account?.home ?? '/');
     return this.fileCmds;
   }
 

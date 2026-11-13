@@ -44,7 +44,7 @@ export function mdnsPage(server: Server, base: string): Child {
   const conf = avahiSettings(server);
   return form(base, 'mdns', 'mdns', cards(
     section(t('mdns.tab'), t('mdns.intro'), check('enabled', unitOn(server, 'avahi-daemon'), t('mdns.service'))),
-    section(t('mdns.name'), t('mdns.hint'), row(t('mdns.name'), text('hostName', conf.hostName, { placeholder: server.runtimeName().toLowerCase() })),
+    section(t('mdns.name'), t('mdns.hint'), row(t('mdns.name'), text('hostName', conf.hostName, { placeholder: server.runtimeName() })),
       check('publish', conf.publish, t('mdns.publish')))), buttons());
 }
 

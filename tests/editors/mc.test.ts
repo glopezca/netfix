@@ -39,7 +39,7 @@ test('mc opens two panels with the menu, the command line and the function keys'
   assert.match(rows[3] ?? '', /^│\/\.\. +│UP--DIR│/);
   assert.ok(rows.some((r) => /^│\/docs +│ +DIR│/.test(r)));
   assert.ok(rows.some((r) => /^│ b\.txt +│ +1│/.test(r)));
-  assert.equal(rows[H - 2]?.trimEnd(), 'alumno@pc0:~$');
+  assert.equal(rows[H - 2]?.trimEnd(), 'alumno@PC0:~$');
   assert.match(rows[H - 1] ?? '', /^1Help +2Menu +3View +4Edit +5Copy/);
 });
 
@@ -111,7 +111,7 @@ test('mc works through SSH: frames and keys travel in the session', () => {
   sh.run('yes');
   sh.run('cisco');
   sh.run('mkdir remoto; mc');
-  assert.match(screen(sh)[H - 2] ?? '', /^admin@server0:~\$/);
+  assert.match(screen(sh)[H - 2] ?? '', /^admin@Server0:~\$/);
   assert.ok(screen(sh).some((r) => /\/remoto/.test(r)));
   press(sh, 'F7');
   type(sh, 'otro');

@@ -62,7 +62,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
         ['/home/alumno · /home/admin · /root', 'Directorios personales (.bashrc, .profile, .bash_history)'],
         ['/etc/passwd · /etc/group · /etc/shadow', 'Cuentas del equipo, generadas a partir de las cuentas SSH (shadow solo para root)'],
         ['/etc/hostname · /etc/resolv.conf · /etc/netplan/50-cloud-init.yaml', 'Generados: siguen la configuración IP del equipo (resolv.conf incluye «search» con los dominios de netplan y de DHCP)'],
-        ['/etc/hosts', 'Archivo normal que edita root (sudo nano /etc/hosts): ping, ssh, curl, el navegador y la Terminal Windows (que comparte el sistema de archivos GNU/Linux) lo consultan antes que el DNS; nslookup, host y dig preguntan solo al servidor DNS. hostname -f da el primer nombre de la línea del equipo. Se guarda con la topología.'],
+        ['/etc/hosts', 'Archivo normal que edita root (sudo nano /etc/hosts), el de Ubuntu de serie (127.0.1.1 con el nombre de host y las líneas IPv6): ping, ssh, curl y el navegador lo consultan donde diga `files` en /etc/nsswitch.conf; la Terminal Windows usa el suyo, C:\\Windows\\System32\\drivers\\etc\\hosts; nslookup, host y dig preguntan solo al servidor DNS. hostname -f da el primer nombre de la línea del equipo. Se guarda con la topología.'],
         ['/etc/kea · /etc/bind · /etc/ssh/sshd_config', 'Configuración de los servicios: la escriben sus paneles y también root (ver la tabla siguiente)'],
         ['/etc/postfix · /etc/dovecot', 'Generados en servidores desde el panel Correo; root puede editar main.cf y dovecot.conf'],
         ['/var/lib/kea/kea-leases4.csv', 'Concesiones DHCP actuales'],

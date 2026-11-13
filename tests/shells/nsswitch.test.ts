@@ -15,14 +15,14 @@ const run = (h: Host, cmd: string): string => plain(createShell(h, 'linux', 'roo
 const hosts = (line: string): string => `passwd: files\nhosts:          ${line}\nnetworks: files\n`;
 const hostsOf = (text: string): string => /^hosts:[ \t]*(.*)$/m.exec(text)?.[1] ?? '';
 
-test('the hosts line: sources in order, files left out, each with its actions', () => {
+test('the hosts line: sources in order (files too: /etc/hosts), each with its actions', () => {
   const s = parseHostsLine('files mdns4_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] dns wins');
-  assert.deepEqual(s.map((x) => x.source), ['mdns4_minimal', 'resolve', 'dns', 'wins']);
-  assert.deepEqual(s[0]?.actions, [{ status: 'NOTFOUND', negate: false, action: 'return' }]);
-  assert.deepEqual(s[1]?.actions, [{ status: 'UNAVAIL', negate: true, action: 'return' }]);
-  assert.equal(s[0]?.notFoundReturn, true);
-  assert.equal(s[1]?.notFoundReturn, true, '[!UNAVAIL=return] also returns on NOTFOUND');
-  assert.equal(s[2]?.notFoundReturn, false);
+  assert.deepEqual(s.map((x) => x.source), ['files', 'mdns4_minimal', 'resolve', 'dns', 'wins']);
+  assert.deepEqual(s[1]?.actions, [{ status: 'NOTFOUND', negate: false, action: 'return' }]);
+  assert.deepEqual(s[2]?.actions, [{ status: 'UNAVAIL', negate: true, action: 'return' }]);
+  assert.equal(s[1]?.notFoundReturn, true);
+  assert.equal(s[2]?.notFoundReturn, true, '[!UNAVAIL=return] also returns on NOTFOUND');
+  assert.equal(s[3]?.notFoundReturn, false);
 });
 
 test('glibc spelling: case, spaces inside the brackets, several items, bad items ignored', () => {

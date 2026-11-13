@@ -7,7 +7,7 @@ import { LINUX_TTL, icmpQuote } from '../net/packets.ts';
 import { Netfilter } from '../net/netfilter.ts';
 import { Sysctl } from '../net/sysctl.ts';
 import { LOOPBACK } from '../net/ipstack.ts';
-import { validSystemName } from '../net/device-names.ts';
+import { validSystemName } from '../core/hostname.ts';
 
 const MAX_KERNEL_LOG = 200;
 
@@ -29,11 +29,13 @@ export interface KernelLogLine {
   readonly text: string;
 }
 
-/** Sets the running (transient) name; the static one again clears it. False for a name the kernel would refuse here. */
-export function setTransient(host: Pick<KernelHost, 'staticName' | 'setTransientName'>, raw: string): boolean {
-  if (!validSystemName(raw)) return false;
-  const name = raw.toLowerCase();
-  host.setTransientName(name === host.staticName().toLowerCase() ? undefined : name);
+/**
+ * Sets the running (transient) name as typed; the static one again clears it. `hostname` and hostnamectl check it
+ * (false for a name they refuse); kernel.hostname does not, as the kernel takes any text up to 64 characters.
+ */
+export function setTransient(host: Pick<KernelHost, 'staticName' | 'setTransientName'>, name: string, checked = true): boolean {
+  if (checked && !validSystemName(name)) return false;
+  host.setTransientName(name === host.staticName() ? undefined : name);
   return true;
 }
 
@@ -48,7 +50,7 @@ export class Kernel {
     this.sysctl = new Sysctl({
       get: () => host.runtimeName(),
       // kernel.hostname is the transient name, as on Ubuntu: it lasts until the next boot (reopening the lab).
-      set: (name) => (setTransient(host, name) ? null : 'invalid'),
+      set: (name) => (setTransient(host, name, false) ? null : 'invalid'),
     });
     this.netfilter = new Netfilter({
       now: () => host.clock.now(),

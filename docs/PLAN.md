@@ -2308,3 +2308,26 @@ Petición: los nombres transitorios con el mismo efecto que en Ubuntu, y la ayud
 - `hostnamectl hostname --transient` (sin nombre) lo muestra; `hostname` con un nombre no válido: «the specified hostname
   is invalid».
 - Textos de la pestaña Equipo y ayuda (clients, utils hostname/hostnamectl/sysctl), es/en.
+
+### Fase: nombres con las reglas de Ubuntu y ficheros hosts de cada sistema (v0.46.0)
+
+Petición: nombres de host y transitorios con las mismas restricciones que Ubuntu (si admite mayúsculas, Netfix también),
+también al derivarlos del nombre del equipo; /etc/hosts y C:\Windows\System32\drivers\etc\hosts como en los sistemas
+originales; ayuda al día.
+
+- Reglas de systemd (`validSystemName`, core/hostname.ts): letras de cualquier caja, números, guiones y puntos; sin guion
+  al borde de una parte; 64 caracteres (HOST_NAME_MAX). `hostnameFromLabel` conserva mayúsculas y puntos (PC0 → PC0,
+  «Aula Pública 2º» → Aula-Publica-2o); dos nombres iguales sin contar caja reciben -2. Se quitan los `toLowerCase` de
+  prompt, /etc/hostname, hostnamectl, journal, avahi y claves SSH; las comparaciones siguen sin caja.
+- Transitorio con su caja; kernel.hostname admite cualquier texto de hasta 64 (como el núcleo); `hostname` largo:
+  «name too long». hostnamectl set-hostname sin opción: nombre no válido → descriptivo lo escrito y estático limpio
+  (`hostnameCleanup`); válido → borra el descriptivo.
+- hosts-file.ts: /etc/hosts de Ubuntu (127.0.1.1 con el nombre y líneas IPv6), leído donde diga `files` en nsswitch
+  (sin files no se lee; getent igual y enumera también IPv6); el propio nombre y localhost los sintetiza resolved si
+  nada responde. Windows: su C:\Windows\System32\drivers\etc\hosts (comentarios de serie, root:sudo 664 = grupo
+  Administradores), después de su nombre y localhost y antes de DNS/LLMNR/NetBIOS; ya no lee /etc/hosts.
+- Revisión (opus): el ssh de cada terminal resuelve como su sistema; el propio nombre solo lo sintetiza resolved detrás
+  de dns/resolve; mDNS, LLMNR y NetBIOS anuncian la primera etiqueta; un /Windows que no es carpeta no rompe la
+  Terminal Windows. e2e-v014 al día (Aula-Publica-2o); e2e-samba y e2e-v016 ya fallaban en main.
+- Ayuda: Nombre del equipo (reglas, ejemplos, sin «unable to resolve host»), red-nombres («Los ficheros hosts»),
+  linux.ts; textos de Equipo, gestión web y nube (es/en).

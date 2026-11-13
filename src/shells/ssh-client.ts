@@ -175,7 +175,8 @@ export class SshLogin {
 
   private connect(): LoginResult {
     const { target, port } = this.opts;
-    const resolved = resolveHost(this.host, target);
+    // Each terminal's ssh resolves as its own system does (its hosts file, nsswitch or the Windows DNS client).
+    const resolved = resolveHost(this.host, target, this.osName === 'Windows' ? 'windows' : 'linux');
     if (resolved.kind === 'error') return this.fail([`ssh: Could not resolve hostname ${target}: Name or service not known`]);
     this.ip = resolved.ip;
     const nonce = toBase64(cryptoRandom(NONCE_BYTES));

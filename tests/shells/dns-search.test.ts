@@ -44,8 +44,8 @@ test('Windows uses the connection-specific DNS suffix in ping and nslookup', () 
 
 test('hostname -f is the canonical name in /etc/hosts (Ubuntu does not add the DHCP domain there)', () => {
   const sh = createShell(lab(), 'linux');
-  assert.deepEqual(sh.run('hostname -f').map(plain), ['pc0']);
-  assert.match(sh.run('cat /etc/hosts').join('\n'), /^127\.0\.1\.1 pc0$/m, 'no .localdomain anywhere');
+  assert.deepEqual(sh.run('hostname -f').map(plain), ['PC0']);
+  assert.match(sh.run('cat /etc/hosts').join('\n'), /^127\.0\.1\.1 PC0$/m, 'no .localdomain anywhere');
 });
 
 test('no search without a DHCP domain (static IP, released lease), for addresses or reverse names', async () => {
