@@ -22,6 +22,7 @@ import { lookupRoute, MAX_STATIC_ROUTES } from './host-nics.ts';
 import type { WgManager } from './wg-manager.ts';
 import type { NicInfo, StaticRoute } from './host-nics.ts';
 import { inSubnet, BROADCAST_IP } from '../core/ip.ts';
+import { MAX_HOSTNAME } from '../core/hostname.ts';
 import type { SimClock } from '../core/clock.ts';
 
 export const HOST_PORT = 'FastEthernet0';
@@ -35,17 +36,14 @@ export type IpMode = 'static' | 'dhcp';
 export type DhcpStatus = 'idle' | 'requesting' | 'ok' | 'failed';
 export type HostOs = 'windows' | 'linux';
 
-const MAX_LABEL = 63;
-const MAX_HOSTNAME = 253;
-const LABEL = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
+/** Letters (either case), digits and hyphens; a hyphen never at the edge of a label (systemd's hostname_is_valid). */
+const LABEL = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/;
 
-/** RFC 1123 host name (letters, digits and hyphens; dot-separated labels). Returns an error or null. */
+/** A host name as systemd-hostnamed takes it (Ubuntu): RFC 1123 labels, case kept, 64 at most. Returns an error or null. */
 export function validHostname(name: string): string | null {
   if (name.trim() === '') return t('host.err.empty');
   if (name.length > MAX_HOSTNAME) return t('host.err.long', { max: MAX_HOSTNAME });
-  const labels = name.split('.');
-  if (labels.some((l) => l.length > MAX_LABEL)) return t('host.err.label', { max: MAX_LABEL });
-  if (!labels.every((l) => LABEL.test(l))) return t('host.err.chars');
+  if (!name.split('.').every((l) => LABEL.test(l))) return t('host.err.chars');
   return null;
 }
 

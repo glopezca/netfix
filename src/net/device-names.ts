@@ -1,13 +1,13 @@
 /**
  * The name of every device as its system sees it (host name) always comes from the name shown in the workspace
- * (core/hostname.ts): lowercase with hyphens for PCs, servers, Linux routers and clouds; for IOS routers and switches
- * the `hostname`, keeping case. Two names that give the same host name («PC 1», «pc-1») get -2, -3…, so every device
- * keeps its own (IOS names among IOS devices, compared without case).
+ * (core/hostname.ts), keeping case as Ubuntu and IOS do: hyphens for PCs, servers, Linux routers and clouds; for IOS
+ * routers and switches the `hostname`. Two names that give the same host name without case («PC 1», «pc-1») get -2,
+ * -3…, so every device keeps its own (IOS names among IOS devices).
  */
 import type { DeviceRecord, Placed } from './topology.ts';
-import { hostnameFromLabel, iosHostnameFromLabel } from '../core/hostname.ts';
+import { hostnameFromLabel, iosHostnameFromLabel, validSystemName } from '../core/hostname.ts';
 
-const MAX_NAME = 63;
+const MAX_NAME = 64;
 
 /** The devices a placed one lives with (its topology), to keep host names apart. */
 const owners = new WeakMap<Placed, () => Iterable<Placed>>();
@@ -25,16 +25,15 @@ export function placedOf(device: object): Placed | undefined {
 
 const isIos = (p: Placed): boolean => p.device.kind === 'router' || p.device.kind === 'switch';
 /** The name a device shows now (IOS: compared without case). */
-const shown = (p: Placed): string => (p.device.kind === 'router' || p.device.kind === 'switch' ? p.device.hostname.toLowerCase() : p.device.name);
+const shown = (p: Placed): string => (p.device.kind === 'router' || p.device.kind === 'switch' ? p.device.hostname : p.device.name).toLowerCase();
 
 function freeName(p: Placed): string {
   const d = p.device;
   const base = d.kind === 'router' || d.kind === 'switch' ? iosHostnameFromLabel(p.label, d.kind) : hostnameFromLabel(p.label);
   const ios = isIos(p);
   const taken = new Set([...(owners.get(p)?.() ?? [])].flatMap((o) => (o === p || isIos(o) !== ios ? [] : [shown(o)])));
-  const key = (n: string): string => (ios ? n.toLowerCase() : n);
   let name = base;
-  for (let i = 2; taken.has(key(name)); i++) name = `${base.slice(0, MAX_NAME - String(i).length - 1).replace(/-+$/, '')}-${i}`;
+  for (let i = 2; taken.has(name.toLowerCase()); i++) name = `${base.slice(0, MAX_NAME - String(i).length - 1).replace(/-+$/, '')}-${i}`;
   return name;
 }
 
@@ -51,15 +50,6 @@ export function syncDeviceName(p: Placed): void {
 export function renameDevice(p: Placed, label: string): void {
   p.label = label;
   syncDeviceName(p);
-}
-
-/** What systemd-hostnamed takes as a static name: labels of letters, digits and hyphens, not starting with one. */
-const STATIC_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
-const MAX_SYSTEM_NAME = 64;
-
-/** A name hostnamectl, `hostname` or kernel.hostname accept: RFC 1123 labels, at most 64 characters (HOST_NAME_MAX). */
-export function validSystemName(name: string): boolean {
-  return name.length <= MAX_SYSTEM_NAME && STATIC_NAME.test(name) && name.split('.').every((l) => l.length < MAX_SYSTEM_NAME);
 }
 
 /**

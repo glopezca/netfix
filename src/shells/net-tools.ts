@@ -11,7 +11,8 @@ import { firstAddress, normalizeName, reverseName } from '../net/dns.ts';
 import type { TcpResult } from '../net/tcp.ts';
 import { runSync } from '../net/sync.ts';
 import { parseIp } from '../core/ip.ts';
-import { dnsQuery, dnsSearch, hostsLookup } from './dns-client.ts';
+import { dnsQuery, dnsSearch } from './dns-client.ts';
+import { hostsLookup } from './hosts-file.ts';
 import { resolvedLookup } from './nss-resolve.ts';
 import { resolvedRunning } from './resolved.ts';
 import { unitRunning } from '../net/pkg-units.ts';
@@ -22,6 +23,8 @@ export type Resolved =
   | { readonly kind: 'error'; readonly reason: 'noserver' | 'timeout' | 'nxdomain' | 'nodata' };
 
 const DEFAULT_HTTP_PORT = 80;
+/** 127.0.0.1. */
+const LOOPBACK_IP = 0x7f000001;
 const TCP_WAIT_MS = 6000;
 /** Remote commands may run network tools on the server (ping, dig, curl…). */
 export const SSH_WAIT_MS = 60_000;
@@ -42,7 +45,7 @@ function dnsStep(host: Host, target: string): Resolved {
   return addr === undefined ? { kind: 'error', reason: 'nodata' } : { kind: 'ip', ip: addr, name: normalizeName(name), viaDns: true };
 }
 
-/** Windows: hosts, then mDNS for .local, the DNS (with its suffix) and, for a bare name, LLMNR and NetBIOS at once. */
+/** Windows (after its hosts file): mDNS for .local, the DNS (with its suffix) and, for a bare name, LLMNR and NetBIOS at once. */
 function windowsLookup(host: Host, target: string): Resolved {
   if (isLocalName(target)) return ip(mdnsResolve(host, normalizeName(target), true), normalizeName(target)) ?? dnsStep(host, target);
   const dns = dnsStep(host, target);
@@ -74,6 +77,14 @@ function resolveStep(host: Host, target: string): NssStep {
 
 /** One source of «hosts:»; a module that is not installed (or a source glibc does not know) is UNAVAIL. */
 function nssStep(host: Host, source: string, target: string): NssStep {
+  if (source === 'files') {
+    const r = ip(hostsLookup(host, target), target);
+    return r ? { status: 'SUCCESS', result: r } : notFound;
+  }
+  // With systemd-resolved running, `dns` (its stub, 127.0.0.53) and `resolve` answer the name in use and localhost.
+  const viaResolved = source === 'dns' || (source === 'resolve' && hasPackage(host, 'libnss-resolve'));
+  const own = viaResolved && resolvedRunning(host) ? synthesised(host, target) : undefined;
+  if (own) return { status: 'SUCCESS', result: own };
   if (source === 'dns') {
     const r = dnsStep(host, target);
     return { status: r.kind === 'ip' ? 'SUCCESS' : DNS_STATUS[r.reason], result: r };
@@ -94,7 +105,7 @@ function nssStep(host: Host, source: string, target: string): NssStep {
   return unavail;
 }
 
-/** GNU/Linux: the sources of «hosts:» in /etc/nsswitch.conf, in order, with their [STATUS=action] (files was already asked). */
+/** GNU/Linux: the sources of «hosts:» in /etc/nsswitch.conf, in order, with their [STATUS=action] (files is /etc/hosts). */
 function linuxLookup(host: Host, target: string): Resolved {
   let last: Resolved = { kind: 'error', reason: 'nxdomain' };
   for (const { source, actions } of hostsSources(host)) {
@@ -105,16 +116,24 @@ function linuxLookup(host: Host, target: string): Resolved {
   return last;
 }
 
-/** IP literal, the host's own name, /etc/hosts, then what the asking system does (linuxLookup, windowsLookup). */
-/** `client` defaults to the device's system (TCP/IP tab); the terminals say which one asks. */
+/** The name in use (transient or static) and localhost, as systemd-resolved and the Windows DNS client answer them. */
+function synthesised(host: Host, target: string): Step {
+  const name = normalizeName(target);
+  if (name === 'localhost') return ip(LOOPBACK_IP, target);
+  return name === normalizeName(host.runtimeName()) ? ip(host.config.ip, target) : undefined;
+}
+
+/**
+ * IP literal, then what the asking system does. GNU/Linux: «hosts:» of nsswitch.conf in order (files is /etc/hosts,
+ * where Ubuntu has the own name as 127.0.1.1; systemd-resolved, behind dns and resolve, synthesises the own name
+ * and localhost). Windows: its own name and localhost, its hosts file, then windowsLookup.
+ * `client` defaults to the device's system (TCP/IP tab); the terminals say which one asks.
+ */
 export function resolveHost(host: Host, target: string, client: NameClient = serviceSystem(host)): Resolved {
   const literal = parseIp(target);
   if (literal !== null) return { kind: 'ip', ip: literal, name: target, viaDns: false };
-  // The host's own name answers with its network address (its hosts line, 127.0.1.1, is the loopback).
-  if (normalizeName(target) === host.name.toLowerCase() && host.config.ip !== undefined) return { kind: 'ip', ip: host.config.ip, name: target, viaDns: false };
-  const local = hostsLookup(host, target);
-  if (local !== undefined) return { kind: 'ip', ip: local, name: target, viaDns: false };
-  return client === 'windows' ? windowsLookup(host, target) : linuxLookup(host, target);
+  if (client === 'windows') return synthesised(host, target) ?? ip(hostsLookup(host, target, 'windows'), target) ?? windowsLookup(host, target);
+  return linuxLookup(host, target);
 }
 
 export function tcpCall(host: Host, ip: number, port: number, payload: AppPayload, waitMs = TCP_WAIT_MS): TcpResult {

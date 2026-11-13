@@ -75,7 +75,7 @@ test('ssh-keygen: interactive generation, fingerprint, -y, -p and permissions', 
   sh.run('');
   const out = sh.run('');
   assert.equal(out[0], 'Your identification has been saved in /home/alumno/.ssh/id_ed25519');
-  assert.match(out[3] ?? '', /^SHA256:[A-Za-z0-9+/]{43} alumno@pc\d+$/);
+  assert.match(out[3] ?? '', /^SHA256:[A-Za-z0-9+/]{43} alumno@PC\d+$/);
   assert.equal(out[5], '+--[ED25519 256]--+');
   assert.equal(out[15], '+----[SHA256]-----+');
   const fs = hostSystem(pc).fs;
@@ -83,7 +83,7 @@ test('ssh-keygen: interactive generation, fingerprint, -y, -p and permissions', 
   assert.equal(fs.stat('/home/alumno/.ssh/id_ed25519.pub').mode & 0o777, 0o644);
   assert.match(fs.readFile('/home/alumno/.ssh/id_ed25519'), /^-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjE/);
   assert.equal(all(sh.run('ssh-keygen -y -f ~/.ssh/id_ed25519')), fs.readFile('/home/alumno/.ssh/id_ed25519.pub').trim());
-  assert.match(all(sh.run('ssh-keygen -l -f ~/.ssh/id_ed25519')), /^256 SHA256:\S+ alumno@pc\d+ \(ED25519\)$/);
+  assert.match(all(sh.run('ssh-keygen -l -f ~/.ssh/id_ed25519')), /^256 SHA256:\S+ alumno@PC\d+ \(ED25519\)$/);
   // Overwrite asks; "n" keeps the key.
   sh.run('ssh-keygen -f ~/.ssh/id_ed25519');
   assert.equal(sh.prompt(), 'Overwrite (y/n)? ');
@@ -115,7 +115,7 @@ test('ssh-copy-id installs the key and ssh then logs in without a password', () 
   assert.equal(fs.stat('/home/admin/.ssh/authorized_keys').mode & 0o777, 0o600);
   // Key login: no password prompt.
   assert.match(all(sh.run('ssh admin@10.0.0.2')), /Welcome to Ubuntu/);
-  assert.equal(plain(sh.prompt()), 'admin@server0:~$ ');
+  assert.equal(plain(sh.prompt()), 'admin@Server0:~$ ');
   sh.run('exit');
   assert.match(all(createShell(srv, 'linux').run('journalctl -u ssh')), /Accepted publickey for admin from 10\.0\.0\.10 port \d+ ssh2: ED25519 SHA256:/);
   // Remote command with the key; a second ssh-copy-id does not duplicate it.

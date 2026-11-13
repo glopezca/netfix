@@ -16,6 +16,7 @@ import type { AppPayload } from './packets.ts';
 import type { Peer } from './tcp.ts';
 import { runSync } from './sync.ts';
 import { broadcastOf } from '../core/ip.ts';
+import { shortHostname } from '../core/hostname.ts';
 
 export const NBNS_PORT = 137;
 const SMB_PORTS = [139, 445] as const;
@@ -55,7 +56,7 @@ export const netbiosName = (name: string): string => name.toUpperCase().slice(0,
 /** A host's own names: NAME<00>, WORKGROUP<00> (group) and NAME<20> (its SMB server: nmbd always registers it; Windows
  * only with file and printer sharing on). */
 export function ownNames(host: Host): NbnsName[] {
-  const name = netbiosName(host.runtimeName());
+  const name = netbiosName(shortHostname(host.runtimeName()));
   const base: NbnsName[] = [{ name, suffix: WORKSTATION, group: false }, { name: WORKGROUP, suffix: WORKSTATION, group: true }];
   return winShareActive(host) || unitRunning(host, 'nmbd') ? [...base, { name, suffix: FILE_SERVER, group: false }] : base;
 }

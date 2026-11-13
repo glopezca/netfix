@@ -8,7 +8,8 @@ import type { Host } from '../devices/host.ts';
 import type { DnsAnswer, DnsType } from '../net/packets.ts';
 import type { DnsResult } from '../net/dns.ts';
 import { normalizeName, reverseName } from '../net/dns.ts';
-import { dnsQuery, dnsSearch, hostsLookup } from './dns-client.ts';
+import { dnsQuery, dnsSearch } from './dns-client.ts';
+import { hostsLookup } from './hosts-file.ts';
 import { resolvedLookup } from './nss-resolve.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 
@@ -52,7 +53,8 @@ const recordText = (a: DnsAnswer): string => `${a.name.replace(/\.$/, '')} IN ${
 
 /** /etc/hosts, localhost and the host's own name: answered without asking a server. */
 function synthetic(host: Host, name: string): Found | undefined {
-  const own = normalizeName(name) === host.name.toLowerCase() ? host.config.ip : undefined;
+  // resolved synthesises the name in use (transient or static) with the host's addresses, then reads /etc/hosts.
+  const own = normalizeName(name) === normalizeName(host.runtimeName()) ? host.config.ip : undefined;
   const ip = own ?? hostsLookup(host, name);
   return ip === undefined ? undefined : { lines: addressLines(name, [formatIp(ip)], linkFor(host, ip)), synthetic: true };
 }

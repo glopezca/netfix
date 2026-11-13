@@ -72,7 +72,7 @@ test('a syntax error: systemctl says nothing, the unit is failed and Kea writes 
   assert.deepEqual(root.run('systemctl is-active kea-dhcp4-server; echo $?'), ['failed', '3']);
   assert.equal(srv.services.dhcp.enabled, false, 'DHCP stops answering');
   const reason = (checkKeaConf(P, `${SYNTAX}\n`).error ?? '').replace(/^Syntax check failed with: /, '');
-  const tail = root.run('journalctl -u kea-dhcp4-server -n 5').map((l) => l.replace(/^\w{3} \d\d \d\d:\d\d:\d\d server0 /, ''));
+  const tail = root.run('journalctl -u kea-dhcp4-server -n 5').map((l) => l.replace(/^\w{3} \d\d \d\d:\d\d:\d\d Server0 /, ''));
   assert.deepEqual(tail, [
     'systemd[1]: Started kea-dhcp4-server.service - Kea DHCPv4 Service.',
     `${KEA} DHCP4_CONFIG_LOAD_FAIL configuration error using file: ${P}, reason: ${reason}`,
@@ -89,8 +89,8 @@ test('what a file makes Kea write cannot fake a journal line nor colour the term
   root.run('systemctl restart kea-dhcp4-server');
   const shown = journal(root);
   // journald: each line of the message is an entry of its own, still written by Kea.
-  assert.doesNotMatch(shown, /server0 systemd\[1\]: Started evil/);
-  assert.match(shown, /server0 kea-dhcp4\[812\]: systemd\[1\]: Started evil\.\\x1b\[31m\./);
+  assert.doesNotMatch(shown, /Server0 systemd\[1\]: Started evil/);
+  assert.match(shown, /Server0 kea-dhcp4\[812\]: systemd\[1\]: Started evil\.\\x1b\[31m\./);
   assert.ok(!shown.includes('\u001b'), 'the escape is shown as \\x1b');
   srv.log('dhcp', 'y'.repeat(5000));
   assert.equal(srv.journal('dhcp').at(-1)?.line.length, 2049, 'a line is cut at 2048 characters');

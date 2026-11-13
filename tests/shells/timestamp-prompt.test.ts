@@ -35,10 +35,10 @@ test('Linux: the statement PS1 with colours, date (\\d), time (\\A), user@host:c
   setGlobalTimestampPrompt(true);
   const sh = createShell(pc, 'linux');
   const prompt = sh.prompt();
-  assert.match(prompt, /^\x1b\[32m[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \x1b\[36m\d{2}:\d{2} \x1b\[33m\w+@pc0:~\$ \x1b\[0m$/);
+  assert.match(prompt, /^\x1b\[32m[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \x1b\[36m\d{2}:\d{2} \x1b\[33m\w+@PC0:~\$ \x1b\[0m$/);
   assert.match(sh.run('echo "$PS1"').join('\n'), /^\\\[\\e\[32m\\\]\\d /, 'it is the PS1 variable, as if typed');
   sh.run('cd /etc');
-  assert.match(plain(sh.prompt()), /@pc0:\/etc\$ $/);
+  assert.match(plain(sh.prompt()), /@PC0:\/etc\$ $/);
 });
 
 test('Linux: unticking brings back the PS1 there was; a new session and root (#) follow the setting', () => {
@@ -55,7 +55,7 @@ test('Linux: unticking brings back the PS1 there was; a new session and root (#)
   sh.applyTimestampPrompt?.();
   sh.run('exit');
   assert.match(plain(sh.prompt()), DATE, 'the session that replaces the closed one');
-  assert.match(plain(createShell(pc, 'linux', 'root').prompt()), /root@pc0:~# $/);
+  assert.match(plain(createShell(pc, 'linux', 'root').prompt()), /root@PC0:~# $/);
 });
 
 test('Linux: a PS1 set by hand afterwards is kept when unticking', () => {
@@ -88,7 +88,7 @@ test('a classroom lock forces it on every device, also in SSH sessions; off wins
   sh.run('ssh ana@10.0.0.2');
   sh.run('yes');
   sh.run('ana1');
-  assert.match(plain(sh.prompt()), /^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{2}:\d{2} ana@server0:~\$ $/, 'the remote shell of the server');
+  assert.match(plain(sh.prompt()), /^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{2}:\d{2} ana@Server0:~\$ $/, 'the remote shell of the server');
   forceTimestampPrompt(false);
   setGlobalTimestampPrompt(true);
   assert.doesNotMatch(plain(createShell(srv, 'linux').prompt()), DATE);

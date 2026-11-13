@@ -79,7 +79,7 @@ test('journalctl colours the message by priority, not the prefix', () => {
   const { root } = lab();
   failApache(root);
   const log = root.run('journalctl -u apache2 --no-pager');
-  assert.match(log.at(-1) ?? '', new RegExp(`^Nov 06 10:00:00 server0 systemd\\[1\\]: ${esc(RED)}Failed to start`));
+  assert.match(log.at(-1) ?? '', new RegExp(`^Nov 06 10:00:00 Server0 systemd\\[1\\]: ${esc(RED)}Failed to start`));
   assert.ok(log.some((l) => l.endsWith(': Starting apache2.service - The Apache HTTP Server...')), 'info: plain');
 });
 

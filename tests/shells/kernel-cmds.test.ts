@@ -34,7 +34,7 @@ test('sysctl reads, writes as root, validates and mirrors /proc/sys', () => {
   assert.match(all(root.run('echo 7 > /proc/sys/net/ipv4/ip_forward')), /write error: Invalid argument/);
   assert.deepEqual(root.run('sysctl net.ipv4.ip_forward=2'), ['sysctl: setting key "net.ipv4.ip_forward": Invalid argument']);
   assert.deepEqual(root.run('sysctl net.ipv4.nope'), ['sysctl: cannot stat /proc/sys/net/ipv4/nope: No such file or directory']);
-  assert.equal(all(root.run('sysctl kernel.hostname')), 'kernel.hostname = server0', 'kernel.hostname is the running host name');
+  assert.equal(all(root.run('sysctl kernel.hostname')), 'kernel.hostname = Server0', 'kernel.hostname is the running host name');
   assert.ok(root.run('sysctl -a').includes('vm.swappiness = 60'));
 });
 

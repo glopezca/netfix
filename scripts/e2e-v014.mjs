@@ -34,11 +34,11 @@ try {
   assert.equal(await win.locator('button:has-text("Guardar"), button:has-text("Usar el nombre visible")').count(), 0);
   await win.locator('input[name="label"]').fill('Aula Pública 2º');
   await page.keyboard.press('Tab');
-  await page.waitForFunction(() => document.querySelector('.window input[name="hostname"]')?.value === 'aula-publica-2o');
+  await page.waitForFunction(() => document.querySelector('.window input[name="hostname"]')?.value === 'Aula-Publica-2o');
   assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('name')), 'pretty', 'focus moved on to the next field after the redraw');
   assert.equal(await page.locator('g.device-pc .device-label', { hasText: 'Aula Pública 2º' }).count(), 1);
   await page.click('.win-tab:has-text("Terminal GNU/Linux")');
-  assert.match(await page.locator('.terminal:visible .term-prompt').innerText(), /@aula-publica-2o:/);
+  assert.match(await page.locator('.terminal:visible .term-prompt').innerText(), /@Aula-Publica-2o:/);
   await page.click('.win-close');
   // The diagram: name and IP/CIDR, the host name is not repeated.
   // The diagram: the name under the device, the host name not repeated; its address at its cable end (v0.18).

@@ -73,7 +73,7 @@ function serverFiles(server: Server): Map<string, string> {
   webAppFiles(s, files);
   files.set('/etc/kea/kea-dhcp4.conf', keaConf(s));
   for (const [path, content] of bindFiles(s.dns, listenChoices(server, true))) files.set(path, content);
-  files.set('/etc/postfix/main.cf', `myhostname = ${server.name.toLowerCase()}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
+  files.set('/etc/postfix/main.cf', `myhostname = ${server.name}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
   files.set('/etc/dovecot/dovecot.conf', `dovecot_config_version = 2.4.1\ndovecot_storage_version = 2.4.1\nprotocols = ${[s.mail.pop3 ? 'pop3' : '', s.mail.imap ? 'imap' : ''].filter(Boolean).join(' ') || 'none'}\nmail_driver = maildir\nmail_path = ~/Maildir\n`);
   const excl = s.dhcp.pools.flatMap(ptExclusions).length;
   files.set('/var/lib/kea/kea-leases4.csv', ['address,hwaddr,client_id,valid_lifetime,expire,subnet_id,hostname',
@@ -87,7 +87,7 @@ export function linuxFiles(host: Host): Map<string, string> {
   const c = host.config;
   const files = new Map<string, string>([
     ['/etc/os-release', 'PRETTY_NAME="Ubuntu 26.04 LTS"\nNAME="Ubuntu"\nVERSION_ID="26.04"\nID=ubuntu\n'],
-    ['/etc/hostname', `${host.name.toLowerCase()}\n`],
+    ['/etc/hostname', `${host.name}\n`],
     ['/etc/resolv.conf', `# Netfix: servidor DNS configurado en el equipo\n${c.dns !== undefined ? `nameserver ${formatIp(c.dns)}` : '# (sin servidor DNS)'}\n${configuredSearchDomains(host).length ? `search ${configuredSearchDomains(host).join(' ')}\n` : ''}`],
   ]);
   if (runsServices(host.kind)) for (const [k, v] of serverFiles(host as Server)) files.set(k, v);

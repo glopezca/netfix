@@ -80,11 +80,12 @@ test('the checklist is untrusted JSON and is validated', () => {
 function withHostsEntry(): TopologyFile {
   const file = lab('basico');
   const pc0 = file.devices.find((d) => d.label === 'PC0')!;
-  const hosts = { path: '/etc/hosts', kind: 'file' as const, content: '127.0.0.1 localhost\n192.168.10.1 gw.aula.lab\n', mode: 0o644, uid: 0, gid: 0 };
+  // PC0 runs Windows: its hosts file is C:\Windows\System32\drivers\etc\hosts.
+  const hosts = { path: '/Windows/System32/drivers/etc/hosts', kind: 'file' as const, content: '192.168.10.1 gw.aula.lab\r\n', mode: 0o644, uid: 0, gid: 0 };
   return { ...file, devices: file.devices.map((d) => (d === pc0 ? { ...d, pc: { ...d.pc!, files: [hosts] } } : d)) };
 }
 
-test('dns needs a DNS answer: an /etc/hosts entry or an IP literal is not one', () => {
+test('dns needs a DNS answer: a hosts file entry or an IP literal is not one', () => {
   const r = evaluate(withHostsEntry(), parseChecklist([{ id: 'dns', check: { type: 'dns', from: 'PC0', name: 'gw.aula.lab' } }]));
   assert.equal(r.items[0]?.passed, false);
   assert.match(r.items[0]?.detail ?? '', /DNS/);
@@ -93,7 +94,7 @@ test('dns needs a DNS answer: an /etc/hosts entry or an IP literal is not one', 
 
 test('results do not depend on the order of the checks (saved files apply from the start, passive checks first)', () => {
   const ping = { id: 'ping', check: { type: 'ping', from: 'PC0', to: 'gw.aula.lab' } };
-  const file = { id: 'file', check: { type: 'file', device: 'PC0', path: '/etc/hosts', contains: 'gw.aula.lab' } };
+  const file = { id: 'file', check: { type: 'file', device: 'PC0', path: '/Windows/System32/drivers/etc/hosts', contains: 'gw.aula.lab' } };
   const a = evaluate(withHostsEntry(), parseChecklist([ping, file]));
   const b = evaluate(withHostsEntry(), parseChecklist([file, ping]));
   assert.deepEqual(passed(a), { ping: true, file: true });

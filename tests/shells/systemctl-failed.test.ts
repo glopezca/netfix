@@ -61,7 +61,7 @@ test('the journal: systemd[1] writes its own lines, the failing program writes i
   const { root } = lab();
   failApache(root);
   const log = all(root.run('journalctl -u apache2'));
-  assert.match(log, /server0 systemd\[1\]: Starting apache2\.service - The Apache HTTP Server\.\.\.\n/);
+  assert.match(log, /Server0 systemd\[1\]: Starting apache2\.service - The Apache HTTP Server\.\.\.\n/);
   assert.match(log, / apachectl\[1123\]: AH00526: Syntax error on line 16/);
   assert.match(log, / systemd\[1\]: apache2\.service: Control process exited, code=exited, status=1\/FAILURE\n.* systemd\[1\]: apache2\.service: Failed with result 'exit-code'\.\n.* systemd\[1\]: Failed to start apache2\.service - The Apache HTTP Server\.$/);
   assert.doesNotMatch(log, /apache2\[903\]: apachectl/, 'no process name twice');

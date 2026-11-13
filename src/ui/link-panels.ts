@@ -19,7 +19,7 @@ export function mdnsPanel(host: Host, app: AfterChange): LivePanel {
   return liveHostPanel(host, () => {
     const running = unitOn(host, 'avahi-daemon');
     const conf = avahiSettings(host);
-    const name = input({ value: conf.hostName, placeholder: host.runtimeName().toLowerCase(), 'aria-label': t('mdns.name') });
+    const name = input({ value: conf.hostName, placeholder: host.runtimeName(), 'aria-label': t('mdns.name') });
     const publish = el('input', { type: 'checkbox', checked: conf.publish });
     const apply = (): void => {
       if (!setAvahiSettings(host, { hostName: name.value, publish: publish.checked })) return msg.error(t('mdns.badName'));
@@ -27,7 +27,7 @@ export function mdnsPanel(host: Host, app: AfterChange): LivePanel {
       app.afterCommand();
     };
     const live = avahiConfig(host);
-    const now = !running ? t('mdns.stopped') : live.publish ? t('mdns.publishing', { name: `${live.hostName || host.runtimeName().toLowerCase()}.local` }) : t('mdns.silent');
+    const now = !running ? t('mdns.stopped') : live.publish ? t('mdns.publishing', { name: `${live.hostName || host.runtimeName()}.local` }) : t('mdns.silent');
     return [
       onOff(t('mdns.service'), running, (on) => { setUnitRunning(host, 'avahi-daemon', on); app.afterCommand(); }),
       el('p', { class: 'muted' }, t('mdns.intro')),

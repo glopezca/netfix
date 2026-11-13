@@ -39,12 +39,12 @@ function serverEntry(host: string, unit: UnitInfo | undefined, l: { readonly tim
 }
 
 function serverEntries(server: Server, unit: UnitInfo): Entry[] {
-  const host = server.name.toLowerCase();
+  const host = server.runtimeName();
   return server.journal(unit.id).map((l) => serverEntry(host, unit, l));
 }
 
 function pkgEntries(host: Host, u: PkgUnit): Entry[] {
-  const name = host.name.toLowerCase();
+  const name = host.runtimeName();
   return pkgJournal(host, u).map((l) => ({ time: l.time, head: `${stamp(l.time)} ${name} ${l.systemd ? 'systemd[1]' : `${u.process}[${u.pid}]`}: `, line: l.line }));
 }
 
@@ -233,7 +233,7 @@ function runPkgVerb(host: Host, u: PkgUnit, verb: string, now: boolean): string[
 /** Every journal entry of the host: its own units (a Server) and those of its packages, in time order. */
 function allEntries(host: Host): Entry[] {
   const server = asServer(host);
-  const name = host.name.toLowerCase();
+  const name = host.runtimeName();
   const own = server ? server.logs.map((l) => serverEntry(name, UNITS.find((x) => x.id === l.unit), l)) : [];
   return [...own, ...installedUnits(host).flatMap((u) => pkgEntries(host, u))].sort((a, b) => a.time - b.time);
 }

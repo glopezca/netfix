@@ -149,8 +149,8 @@ function dnsCheck(t: Topology, c: Extract<Check, { type: 'dns' }>): Outcome {
     return r.kind === 'ip' ? fail(`«${c.from}» resuelve ${c.name} como ${formatIp(r.ip)}.`) : pass(`«${c.from}» no resuelve ${c.name}.`);
   }
   if (r.kind !== 'ip') return fail(`«${c.from}» no resuelve ${c.name}.`);
-  // /etc/hosts answers too, but the check is about the DNS service.
-  if (!r.viaDns) return fail(`«${c.from}» resuelve ${c.name} sin DNS (por /etc/hosts).`);
+  // The hosts file answers too, but the check is about the DNS service.
+  if (!r.viaDns) return fail(`«${c.from}» resuelve ${c.name} sin DNS (por el fichero hosts).`);
   if (c.ip && r.ip !== parseIp(c.ip)) return fail(`«${c.from}» resuelve ${c.name} como ${formatIp(r.ip)}, no ${c.ip}.`);
   return pass(`«${c.from}» resuelve ${c.name} como ${formatIp(r.ip)}.`);
 }

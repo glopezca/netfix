@@ -25,9 +25,10 @@ function lab(): { pc0: Host; pc1: Host; pc2: Host } {
 test('getent hosts: files, the address as key, enumeration and exit statuses', () => {
   const { pc1 } = lab();
   assert.equal(run(pc1, 'getent hosts localhost; echo $?'), '127.0.0.1       localhost\n0');
-  assert.equal(run(pc1, 'getent hosts pc1'), '127.0.1.1       pc1', 'its /etc/hosts line');
-  assert.equal(run(pc1, 'getent hosts 127.0.1.1'), '127.0.1.1       pc1', 'an address: the reverse lookup');
-  assert.equal(run(pc1, 'getent hosts'), '127.0.0.1       localhost\n127.0.1.1       pc1');
+  assert.equal(run(pc1, 'getent hosts pc1'), '127.0.1.1       PC1', 'its /etc/hosts line (any case)');
+  assert.equal(run(pc1, 'getent hosts 127.0.1.1'), '127.0.1.1       PC1', 'an address: the reverse lookup');
+  assert.equal(run(pc1, 'getent hosts'), ['127.0.0.1       localhost', '127.0.1.1       PC1', '::1             ip6-localhost ip6-loopback', 'fe00::0         ip6-localnet',
+    'ff00::0         ip6-mcastprefix', 'ff02::1         ip6-allnodes', 'ff02::2         ip6-allrouters'].join('\n'), 'every line, IPv6 too');
   assert.equal(run(pc1, 'getent hosts nadie.aula.lab; echo $?'), '2', 'not found: nothing and 2');
   assert.equal(run(pc1, 'getent hosts nadie localhost; echo $?'), '127.0.0.1       localhost\n2', 'one key missing: 2');
   run(pc1, "printf '10.0.0.5 web.aula.lab web\\n' >> /etc/hosts", 'root');

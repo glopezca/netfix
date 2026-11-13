@@ -16,6 +16,7 @@ import { registerLocalSockets } from './ipstack.ts';
 import { hasPackage } from './host-packages.ts';
 import { runSync } from './sync.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
+import { shortHostname } from '../core/hostname.ts';
 
 export const MDNS_GROUP = parseIp('224.0.0.251') ?? 0;
 export const MDNS_PORT = 5353;
@@ -46,7 +47,7 @@ const linux = (h: object): boolean => hasSystem(h as AppsDevice, 'linux');
 function answerNames(h: Host, iface: string): string[] {
   // Routers and the hosts of the emulated Internet join no mDNS group.
   if (typeof (h as Partial<Host>).runtimeName !== 'function') return [];
-  const own = h.runtimeName().toLowerCase();
+  const own = shortHostname(h.runtimeName()).toLowerCase();
   const avahi = linux(h) && unitRunning(h, 'avahi-daemon') ? avahiConfig(h) : undefined;
   return [
     ...(windows(h) || (linux(h) && resolvedAnswers(h, iface)) ? [own] : []),

@@ -52,7 +52,7 @@ function write(root: ShellSession, path: string, text: string): void {
 }
 
 /** The journal of named without the date and host. */
-const journal = (root: ShellSession, n = 200): string[] => root.run(`journalctl -u named -n ${n}`).map((l) => l.replace(/^\w{3} \d\d \d\d:\d\d:\d\d server0 /, ''));
+const journal = (root: ShellSession, n = 200): string[] => root.run(`journalctl -u named -n ${n}`).map((l) => l.replace(/^\w{3} \d\d \d\d:\d\d:\d\d Server0 /, ''));
 
 test('root edits a zone file (it stays root 644); other users cannot; saving applies nothing', () => {
   const { srv, root, user, pc } = lab();

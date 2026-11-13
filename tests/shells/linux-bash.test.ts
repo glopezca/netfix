@@ -39,13 +39,13 @@ test('textLines keeps a final line without newline and drops the trailing empty 
 test('bash runs on the host file system with users, sudo groups and command-not-found', () => {
   const { pc } = lab();
   const sh = createShell(pc, 'linux');
-  assert.equal(plain(sh.prompt()), 'alumno@pc0:~$ ');
+  assert.equal(plain(sh.prompt()), 'alumno@PC0:~$ ');
   assert.deepEqual(sh.run('echo "$BASH_VERSION"'), ['5.3.20(1)-release']);
   assert.deepEqual(sh.run('echo hola > notas.txt; cat notas.txt; pwd'), ['hola', '/home/alumno']);
   assert.deepEqual(sh.run('id'), ['uid=1000(alumno) gid=1000(alumno) groups=1000(alumno),4(adm),27(sudo),100(users)']);
   assert.match(sh.run('ifconfig').join('\n'), /Command 'ifconfig' not found, but can be installed with:\nsudo apt install net-tools/);
   assert.deepEqual(sh.run('nada; echo $?'), ['nada: command not found', '127']);
-  assert.match(sh.run('cat /etc/hosts').join('\n'), /127\.0\.1\.1 pc0/);
+  assert.match(sh.run('cat /etc/hosts').join('\n'), /127\.0\.1\.1 PC0/);
   assert.match(sh.run('echo x > /etc/hosts').join('\n'), /Permission denied|Read-only file system/);
   assert.deepEqual(sh.run('for i in 1 2 3; do printf "%s-" $i; done; echo'), ['1-2-3-']);
 });
@@ -103,7 +103,7 @@ test('SSH: remote bash login shell, remote editor, Ctrl+C and logout', () => {
   sh.run('ssh admin@10.0.0.2');
   sh.run('yes');
   assert.match(sh.run('cisco').join('\n'), /Welcome to Ubuntu/);
-  assert.equal(plain(sh.prompt()), 'admin@server0:~$ ');
+  assert.equal(plain(sh.prompt()), 'admin@Server0:~$ ');
   assert.deepEqual(sh.run('shopt -q login_shell && echo login; whoami'), ['login', 'admin']);
   sh.run('nano remoto.txt');
   assert.equal(sh.editRequest?.()?.path, '/home/admin/remoto.txt');
@@ -113,7 +113,7 @@ test('SSH: remote bash login shell, remote editor, Ctrl+C and logout', () => {
   sh.run('read -p "nombre: " n');
   assert.equal(sh.prompt(), 'nombre: ');
   assert.deepEqual(sh.interrupt?.(), []);
-  assert.equal(plain(sh.prompt()), 'admin@server0:~$ ');
+  assert.equal(plain(sh.prompt()), 'admin@Server0:~$ ');
   assert.deepEqual(sh.run('exit 3'), ['logout', 'Connection to 10.0.0.2 closed.']);
   assert.deepEqual(sh.run('echo $?'), ['3']);
 });

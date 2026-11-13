@@ -2,6 +2,7 @@
 import { NSSWITCH, seededNsswitch } from './nsswitch.ts';
 import { DEFAULT_RESOLVED_CONF, parseResolvedConf, RESOLVED_CONF } from './resolved-conf.ts';
 import { setResolvedConfig } from './resolved.ts';
+import { LINUX_HOSTS, ubuntuHosts } from './hosts-file.ts';
 import { t } from '../i18n/t.ts';
 import { runsServices } from '../devices/kinds.ts';
 import { NETPLAN_FILE, netplanFileContent, writeNetplanFile } from './netplan.ts';
@@ -226,18 +227,18 @@ function seedSsh(fs: Vfs, host: Host): void {
   if (!asServer(host)) return;
   fs.seed(SSHD_CONFIG, { kind: 'file', content: DEFAULT_SSHD_CONFIG }, 0o644);
   fs.seed('/etc/ssh/sshd_config.d', { kind: 'dir' }, 0o755);
-  for (const f of hostKeyFiles(host.mac, host.name.toLowerCase())) fs.seed(f.path, { kind: 'file', content: f.content }, f.mode);
+  for (const f of hostKeyFiles(host.mac, host.name)) fs.seed(f.path, { kind: 'file', content: f.content }, f.mode);
 }
 
 function createSystem(host: Host): Entry {
   const fs = new Vfs(() => host.clock.now());
   const programs = new Map<string, CommandFn>([...COREUTILS, ...linuxPrograms(host)]);
   const users = hostUsers(host);
-  seedRootfs(fs, { hostname: host.name.toLowerCase(), users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
+  seedRootfs(fs, { hostname: host.name, users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
   // An ordinary file, as in Ubuntu: root edits it, it is saved with the topology and the resolver reads it first.
   fs.seed(NSSWITCH, { kind: 'file', content: seededNsswitch(host) }, 0o644);
   fs.seed(RESOLVED_CONF, { kind: 'file', content: DEFAULT_RESOLVED_CONF }, 0o644);
-  fs.seed('/etc/hosts', { kind: 'file', content: `127.0.0.1 localhost\n127.0.1.1 ${host.name.toLowerCase()}\n` }, 0o644);
+  fs.seed(LINUX_HOSTS, { kind: 'file', content: ubuntuHosts(host.name) }, 0o644);
   fs.seed('/usr/lib/command-not-found', { kind: 'file', content: `${BINARY_MARK}command-not-found\n` }, 0o755);
   const server = asServer(host);
   seedSsh(fs, host);
@@ -247,7 +248,7 @@ function createSystem(host: Host): Entry {
     fs.mountDir(WWW, webRoot(server));
   }
   const env: HostEnv = {
-    get hostname() { return host.runtimeName().toLowerCase(); },
+    get hostname() { return host.runtimeName(); },
     fs,
     users: () => hostUsers(host),
     commands: programs,
@@ -255,7 +256,7 @@ function createSystem(host: Host): Entry {
     wait: (ms) => { host.hooks.runUntil(() => false, ms); },
     ipAddress: () => (host.config.ip !== undefined ? formatIp(host.config.ip) : ''),
     password: (name) => asServer(host)?.services.ssh.users.find((a) => a.name === name)?.password,
-    hostnames: () => ({ static: host.name.toLowerCase(), transient: host.runtimeName().toLowerCase(), pretty: host.prettyName }),
+    hostnames: () => ({ static: host.name, transient: host.runtimeName(), pretty: host.prettyName }),
     setHostname: (kind, value) => setName(host, kind, value),
   };
   restoreRecords(fs, pendingFiles.get(host) ?? []);
