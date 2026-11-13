@@ -2279,3 +2279,18 @@ nombre de host se sigue derivando de él; los cambios se ven al momento en las v
   rechazados. Se guarda con el laboratorio.
 - La ventana del equipo cambia su título al cambiar el nombre; el lienzo se redibuja tras cada orden.
 - Ayuda (clients.ts es/en, utils) y textos de la pestaña Equipo; pruebas en hostname-lock y hostname.
+
+### Fase: sysctl kernel.hostname renombra el equipo; textos de la pestaña Equipo (v0.44.0)
+
+Petición: revisar los textos de la pestaña Equipo, que aún decían que el nombre de host no se cambia desde la terminal; y
+`sysctl -w kernel.hostname=` (y los Parámetros del kernel) también cambia el nombre de host.
+
+- `renameFromSystem` (device-names.ts): hostnamectl set-hostname y kernel.hostname (sysctl -w, /proc/sys, sysctl.conf,
+  panel y gestión web de Parámetros del kernel) renombran el equipo; fuera de una topología, 'locked'; nombre no válido,
+  «Invalid argument». Revisión: al abrir un laboratorio no se reaplica kernel.hostname de sysctl.conf (manda el nombre
+  guardado) y el panel no lo guarda en 99-netfix.conf; fuera de una topología el panel también lo rechaza.
+
+- `host.hostnameHint`, `host.labelHint` y `host.live` (es/en): hostnamectl set-hostname renombra el equipo;
+  `hostname NOMBRE` y /etc/hostname no; el prompt cambia tras `exec bash`. Ayuda de sysctl (utils es/en).
+- Ayuda (clients.ts es/en): resumen de «Nombre del equipo» y la fila de hostnamectl sin «pide la contraseña»
+  (sudo no la pide en Netfix).

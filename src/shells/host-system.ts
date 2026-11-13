@@ -8,8 +8,7 @@ import { NETPLAN_FILE, netplanFileContent, writeNetplanFile } from './netplan.ts
 import { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } from '../services/sshd-config.ts';
 import { hostKeyFiles } from '../services/ssh-hostkeys.ts';
 import type { Host } from '../devices/host.ts';
-import { validHostname } from '../devices/host.ts';
-import { placedOf, renameDevice } from '../net/device-names.ts';
+import { renameFromSystem } from '../net/device-names.ts';
 import type { Server } from '../devices/server.ts';
 import type { CommandFn, HostEnv, UserInfo } from '../bash/types.ts';
 import { FsError, MAX_FILE, ROOT, Vfs, dirname } from '../bash/vfs.ts';
@@ -196,17 +195,11 @@ function setName(host: Host, kind: 'static' | 'transient' | 'pretty', value: str
     host.setPrettyName(value === '' ? undefined : value.slice(0, MAX_PRETTY));
     return null;
   }
-  // hostnamectl set-hostname: the device takes the name as typed and its host name is derived from it (Equipo), as
-  // renaming it there does; `hostname NAME` and --transient stay refused.
-  const placed = kind === 'static' ? placedOf(host) : undefined;
-  if (!placed) return t('host.locked');
-  if (!STATIC_NAME.test(value) || validHostname(value)) return `Invalid static hostname '${value}'`;
-  renameDevice(placed, value);
-  return null;
+  // hostnamectl set-hostname renames the device (Equipo); `hostname NAME` and --transient stay refused.
+  const r = kind === 'static' ? renameFromSystem(host, value) : 'locked';
+  if (r === 'locked') return t('host.locked');
+  return r === 'invalid' ? `Invalid static hostname '${value}'` : null;
 }
-
-/** What systemd-hostnamed takes as a static name: labels of letters, digits and hyphens, not starting with one. */
-const STATIC_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
 
 const SSH_CLIENT_CONFIG = `# This is the ssh client system-wide configuration file.  See ssh_config(5).
 
@@ -318,7 +311,7 @@ const bootResolvedFrom = (host: Host, fs: Vfs): void => bootResolved(host, fs.tr
 export function bootKernel(host: Host, files: readonly FileRecord[]): void {
   if (!files.some((f) => f.path === '/etc/sysctl.conf' || f.path.startsWith('/etc/sysctl.d/'))) return;
   const fs = hostSystem(host).fs;
-  for (const path of sysctlFiles(fs)) applySysctlFile(fs, host, path);
+  for (const path of sysctlFiles(fs)) applySysctlFile(fs, host, path, true);
 }
 
 /**

@@ -56,7 +56,7 @@ export const CLIENT_DOCS: DocGroup = {
     {
       id: 'pc-equipo',
       title: 'Device name',
-      summary: 'The name on the diagram and the host name derived from it (it cannot be changed from the terminal).',
+      summary: 'The name on the diagram and the host name derived from it (from the terminal, with hostnamectl set-hostname or sysctl kernel.hostname).',
       markdownBase: MD,
       blocks: [
         p('Each device has a **name** (the one on the diagram, e.g. «Aula Pública 2º») and a **host name**, the one the system uses on the network (aula-publica-2o). In Netfix the second always comes from the first, as in a well-run network: every device on the diagram has a predictable host name. This applies to PCs, servers, GNU/Linux routers and clouds; on IOS routers and switches the `hostname` comes from the name too, keeping case.'),
@@ -74,8 +74,9 @@ export const CLIENT_DOCS: DocGroup = {
         h('Changing it from the terminal: hostnamectl'),
         table(['Where', 'What happens in Netfix'], [
           ['Device tab', 'Changes the device name and, with it, the host name.'],
-          ['sudo hostnamectl set-hostname NAME · sudo hostnamectl hostname NAME', 'Asks for the password and renames the device at once: the device takes NAME as typed (on the canvas, its window title and the Device tab) and the host name is derived from it, as renaming it in Device does; /etc/hostname and `hostnamectl` show it. It is saved with the lab. A name systemd does not accept gives “Invalid static hostname”.'],
-          ['sudo hostname NAME · hostnamectl --transient · sysctl -w kernel.hostname=…', 'Refused: in Netfix the host name always comes from the device name.'],
+          ['sudo hostnamectl set-hostname NAME · sudo hostnamectl hostname NAME', 'Renames the device at once: the device takes NAME as typed (on the canvas, its window title and the Device tab) and the host name is derived from it, as renaming it in Device does; /etc/hostname and `hostnamectl` show it. It is saved with the lab. A name systemd does not accept gives “Invalid static hostname”.'],
+          ['sudo sysctl -w kernel.hostname=NAME · /proc/sys/kernel/hostname · /etc/sysctl.conf', 'Same as hostnamectl set-hostname: renames the device and the host name is derived from it. Also from **Kernel parameters** (the device panel and web management). On Ubuntu it would be a transient name; in Netfix it is saved with the lab as the device name (a kernel.hostname line in /etc/sysctl.conf applies with `sysctl -p` or `--system`, not when the lab opens). An invalid name gives “Invalid argument”.'],
+          ['sudo hostname NAME · hostnamectl --transient', 'Refused: in Netfix the host name always comes from the device name.'],
           ['/etc/hostname', 'A generated, read-only file: it shows the host name (after hostnamectl too); editing it does not change it.'],
           ['Web management → Setup', 'Shows the host name with no field to change it.'],
           ['sudo hostnamectl set-hostname --pretty "Free text"', 'Does change the pretty name, which is saved with the topology.'],

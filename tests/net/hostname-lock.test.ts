@@ -7,7 +7,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
 import type { Pc } from '../../src/devices/pc.ts';
-import type { Server } from '../../src/devices/server.ts';
+import { Server } from '../../src/devices/server.ts';
+import { SimClock } from '../../src/core/clock.ts';
+import { saveSysctl } from '../../src/shells/kernel-save.ts';
 import type { Cloud } from '../../src/devices/cloud.ts';
 import { createShell } from '../../src/shells/factory.ts';
 import { BrowserEngine } from '../../src/clients/browser.ts';
@@ -29,12 +31,11 @@ test('derived on creation and on rename; the Windows and GNU/Linux terminals sho
   assert.equal((t.add('linuxrouter', 0, 0).device as Server).name, 'linuxrouter0');
 });
 
-test('only hostnamectl changes it (hostname, sysctl and /etc/hostname cannot); the pretty name can', () => {
+test('hostname NAME and /etc/hostname cannot change it; the pretty name can', () => {
   const t = new Topology();
   const srv = t.add('server', 0, 0).device as Server;
   const root = createShell(srv, 'linux', 'root');
   assert.match(all(root.run('hostname web01')), /^hostname: .*nombre del equipo/m);
-  assert.match(all(root.run('sysctl -w kernel.hostname=web01')), /sysctl: /);
   root.run('echo web01 > /etc/hostname');
   assert.equal(srv.name, 'server0');
   assert.equal(all(root.run('cat /etc/hostname')), 'server0');
@@ -92,7 +93,43 @@ test('review: two names that give the same host name keep different host names (
   renameDevice(b, 'pc-1');
   assert.equal((b.device as Pc).name, 'pc-1', 'free again');
   const root = createShell(t.add('server', 0, 0).device as Server, 'linux', 'root');
-  assert.match(all(root.run('sysctl -w kernel.hostname=x')), /permission denied on key "kernel\.hostname" \(.*nombre del equipo/);
+});
+
+test('sysctl kernel.hostname renames the device too: -w, /proc/sys, sysctl.conf with -p, the panel and the web page', () => {
+  const t = new Topology();
+  const p = t.add('server', 0, 0);
+  const srv = p.device as Server;
+  const root = createShell(srv, 'linux', 'root');
+  assert.equal(all(root.run('sysctl -w kernel.hostname=Bastion; echo $?')), 'kernel.hostname = bastion\n0');
+  assert.equal(p.label, 'Bastion', 'the device takes it as typed');
+  assert.equal(srv.name, 'bastion');
+  root.run('echo web02 > /proc/sys/kernel/hostname');
+  assert.equal(srv.name, 'web02');
+  root.run('echo kernel.hostname=web03 > /etc/sysctl.d/90-name.conf; sysctl --system');
+  assert.equal(p.label, 'web03');
+  assert.equal(srv.kernel.sysctl.set('kernel.hostname', 'Panel-1'), null, 'the panel and the web page call sysctl.set');
+  assert.equal(srv.name, 'panel-1');
+  assert.match(all(root.run('sysctl -w kernel.hostname=-bad; echo $?')), /Invalid argument\n255$/);
+  assert.equal(p.label, 'Panel-1');
+});
+
+test('review: kernel.hostname is not replayed when the lab opens, so a later rename in Equipo stays', () => {
+  const t = new Topology();
+  const p = t.add('server', 0, 0);
+  assert.equal(saveSysctl(p.device as Server, 'kernel.hostname', 'Panel-1'), null);
+  assert.equal(p.label, 'Panel-1');
+  createShell(p.device as Server, 'linux', 'root').run('echo kernel.hostname=Viejo > /etc/sysctl.d/90-name.conf');
+  renameDevice(p, 'Final');
+  const again = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
+  const q = [...again.placed.values()][0];
+  assert.equal(q?.label, 'Final');
+  assert.equal((q?.device as Server).name, 'final');
+});
+
+test('a host that is not on a topology keeps refusing kernel.hostname', () => {
+  const loose = new Server('x', 'loose', new SimClock(0), 9);
+  assert.match(saveSysctl(loose, 'kernel.hostname', 'x') ?? '', /permission denied on key "kernel\.hostname"/, 'the panel says so too');
+  assert.match(all(createShell(loose, 'linux', 'root').run('sysctl -w kernel.hostname=x')), /permission denied on key "kernel\.hostname"/);
 });
 
 test('hostnamectl set-hostname renames the device: its name as typed, the host name derived, everything at once', () => {

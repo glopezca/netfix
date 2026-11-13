@@ -7,10 +7,13 @@ import { LINUX_TTL, icmpQuote } from '../net/packets.ts';
 import { Netfilter } from '../net/netfilter.ts';
 import { Sysctl } from '../net/sysctl.ts';
 import { LOOPBACK } from '../net/ipstack.ts';
+import { renameFromSystem } from '../net/device-names.ts';
 
 const MAX_KERNEL_LOG = 200;
 
 export interface KernelHost {
+  /** The device itself (sysctl kernel.hostname renames it). */
+  readonly device: object;
   readonly clock: { now(): number };
   runtimeName(): string;
   setTransientName(name: string | undefined): void;
@@ -37,8 +40,8 @@ export class Kernel {
     this.host = host;
     this.sysctl = new Sysctl({
       get: () => host.runtimeName(),
-      // kernel.hostname is read-only in Netfix: the host name comes from the device name.
-      set: () => 'locked',
+      // kernel.hostname renames the device, as hostnamectl set-hostname does: the host name comes from its name.
+      set: (name) => renameFromSystem(host.device, name),
     });
     this.netfilter = new Netfilter({
       now: () => host.clock.now(),

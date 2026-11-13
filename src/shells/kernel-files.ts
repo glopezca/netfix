@@ -129,12 +129,16 @@ export function sysctlFiles(fs: Vfs): string[] {
 }
 
 /** Applies a sysctl.conf file; returns the applied `key = value` lines and the errors. */
-export function applySysctlFile(fs: Vfs, host: Host, path: string): { applied: string[]; errors: string[] } {
+/** `boot`: a lab being opened, where kernel.hostname is skipped (the device name is saved with the lab and wins). */
+const HOSTNAME_KEY = 'kernel.hostname';
+
+export function applySysctlFile(fs: Vfs, host: Host, path: string, boot = false): { applied: string[]; errors: string[] } {
   const applied: string[] = [];
   const errors: string[] = [];
   const text = fs.tryLookup(path)?.kind === 'file' ? fs.readFile(path) : null;
   if (text === null) return { applied, errors: [`sysctl: cannot open "${path}": No such file or directory`] };
   for (const e of parseSysctlConf(text)) {
+    if (boot && e.key === HOSTNAME_KEY) continue;
     const r = host.kernel.sysctl.set(e.key, e.value);
     if (r === null) applied.push(`${e.key} = ${host.kernel.sysctl.get(e.key) ?? e.value}`);
     else if (!e.quiet) errors.push(r === 'unknown' ? `sysctl: cannot stat ${sysctlPath(e.key)}: No such file or directory` : `sysctl: setting key "${e.key}": Invalid argument`);
