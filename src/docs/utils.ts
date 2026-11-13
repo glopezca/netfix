@@ -74,7 +74,7 @@ export const UTIL_DOCS: Readonly<Record<string, UtilDoc>> = {
   users: { group: 'sistema', synopsis: 'users', summary: 'Usuarios conectados.' },
   uname: { group: 'sistema', synopsis: 'uname [-asnrvmo]', summary: 'Sistema: Linux 6.17.0-14-generic x86_64 GNU/Linux.' },
   hostname: { group: 'sistema', synopsis: 'hostname [-I|-f|-s] [NOMBRE]', summary: 'Nombre del equipo (-I: sus direcciones IP). Con NOMBRE (root) cambia el nombre transitorio, que no se guarda.' },
-  hostnamectl: { group: 'sistema', synopsis: 'hostnamectl [status] | hostnamectl set-hostname NOMBRE [--static|--transient|--pretty] | hostnamectl hostname [NOMBRE]', summary: 'Muestra y cambia el nombre de host de forma persistente (/etc/hostname). Pide autenticación de polkit a los administradores; el prompt de bash cambia en la siguiente shell (exec bash).' },
+  hostnamectl: { group: 'sistema', synopsis: 'hostnamectl [status] | hostnamectl set-hostname NOMBRE [--static|--transient|--pretty] | hostnamectl hostname [NOMBRE]', summary: 'Muestra y cambia el nombre de host de forma persistente (/etc/hostname); en Netfix set-hostname renombra el equipo con esa grafía y el nombre de host se deriva de él. Pide autenticación de polkit a los administradores; el prompt de bash cambia en la siguiente shell (exec bash).' },
   uptime: { group: 'sistema', synopsis: 'uptime [-p]', summary: 'Tiempo encendido y carga.' },
   ps: { group: 'sistema', synopsis: 'ps [aux | -ef]', summary: 'Procesos (incluye los servicios del servidor).' },
   free: { group: 'sistema', synopsis: 'free [-h]', summary: 'Memoria.' },

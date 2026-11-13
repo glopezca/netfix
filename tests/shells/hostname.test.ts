@@ -37,7 +37,7 @@ test('setHostname changes the name used by DHCP, the shells and the generated fi
   assert.throws(() => pc.setHostname('no válido'), /letras/);
 });
 
-test('hostnamectl shows the status; set-hostname asks the password and is refused (the name comes from Equipo)', () => {
+test('hostnamectl shows the status; set-hostname asks the password and renames the device (v0.41)', () => {
   const { srv } = lab();
   const sh = createShell(srv, 'linux');
   const status = sh.run('hostnamectl').join('\n');
@@ -50,8 +50,8 @@ test('hostnamectl shows the status; set-hostname asks the password and is refuse
     'Authenticating as: admin',
   ]);
   assert.equal(sh.prompt(), 'Password: ');
-  assert.deepEqual(sh.run('cisco'), ['==== AUTHENTICATION COMPLETE ====', 'Could not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)']);
-  assert.equal(srv.name, 'server0');
+  assert.deepEqual(sh.run('cisco'), ['==== AUTHENTICATION COMPLETE ====']);
+  assert.equal(srv.name, 'web01');
   assert.deepEqual(sh.run('sudo hostnamectl set-hostname --pretty "Servidor web"; hostnamectl | grep --color=never Pretty'), []);
   assert.deepEqual(sh.run('cisco'), [' Pretty hostname: Servidor web']);
 });

@@ -8,6 +8,8 @@ import { NETPLAN_FILE, netplanFileContent, writeNetplanFile } from './netplan.ts
 import { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } from '../services/sshd-config.ts';
 import { hostKeyFiles } from '../services/ssh-hostkeys.ts';
 import type { Host } from '../devices/host.ts';
+import { validHostname } from '../devices/host.ts';
+import { placedOf, renameDevice } from '../net/device-names.ts';
 import type { Server } from '../devices/server.ts';
 import type { CommandFn, HostEnv, UserInfo } from '../bash/types.ts';
 import { FsError, MAX_FILE, ROOT, Vfs, dirname } from '../bash/vfs.ts';
@@ -194,9 +196,17 @@ function setName(host: Host, kind: 'static' | 'transient' | 'pretty', value: str
     host.setPrettyName(value === '' ? undefined : value.slice(0, MAX_PRETTY));
     return null;
   }
-  // The host name comes from the device name (Equipo), never from the terminal.
-  return t('host.locked');
+  // hostnamectl set-hostname: the device takes the name as typed and its host name is derived from it (Equipo), as
+  // renaming it there does; `hostname NAME` and --transient stay refused.
+  const placed = kind === 'static' ? placedOf(host) : undefined;
+  if (!placed) return t('host.locked');
+  if (!STATIC_NAME.test(value) || validHostname(value)) return `Invalid static hostname '${value}'`;
+  renameDevice(placed, value);
+  return null;
 }
+
+/** What systemd-hostnamed takes as a static name: labels of letters, digits and hyphens, not starting with one. */
+const STATIC_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
 
 const SSH_CLIENT_CONFIG = `# This is the ssh client system-wide configuration file.  See ssh_config(5).
 

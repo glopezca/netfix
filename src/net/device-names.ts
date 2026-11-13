@@ -11,9 +11,16 @@ const MAX_NAME = 63;
 
 /** The devices a placed one lives with (its topology), to keep host names apart. */
 const owners = new WeakMap<Placed, () => Iterable<Placed>>();
+/** Each device's place in the workspace, so the terminal (hostnamectl) can rename it. */
+const places = new WeakMap<object, Placed>();
 
 export function registerPlaced(p: Placed, all: () => Iterable<Placed>): void {
   owners.set(p, all);
+  places.set(p.device, p);
+}
+
+export function placedOf(device: object): Placed | undefined {
+  return places.get(device);
 }
 
 const isIos = (p: Placed): boolean => p.device.kind === 'router' || p.device.kind === 'switch';

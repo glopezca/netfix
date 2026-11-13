@@ -1546,7 +1546,7 @@ const HOST_ES = {
     'host.labelEmpty': 'El nombre visible no puede estar vacío.',
     'host.saved': 'Aplicado. Nombre de host: {name}.',
     'host.equivalents': 'Equivalencias',
-    'host.eqLinux': 'GNU/Linux: en un equipo real, sudo hostnamectl set-hostname NOMBRE; en Netfix lo rechaza porque el nombre de host sale del nombre del equipo. sudo hostnamectl set-hostname --pretty "Texto" sí cambia el nombre descriptivo.',
+    'host.eqLinux': 'GNU/Linux: en un equipo real, sudo hostnamectl set-hostname NOMBRE; en Netfix también funciona: el equipo toma ese nombre tal como se escribe (en el lienzo y en esta pestaña) y el nombre de host se deriva de él al momento. `hostname NOMBRE` sigue sin cambiarlo. sudo hostnamectl set-hostname --pretty "Texto" sí cambia el nombre descriptivo.',
     'host.eqWindows': 'Windows: Configuración → Sistema → Cambiar el nombre de este equipo.',
     'host.now': 'Ahora mismo: estático «{static}»',
     'host.nowTransient': ', transitorio «{name}»',
@@ -1582,7 +1582,7 @@ const HOST_EN = {
     'host.labelEmpty': 'The display name cannot be empty.',
     'host.saved': 'Applied. Host name: {name}.',
     'host.equivalents': 'Equivalents',
-    'host.eqLinux': 'GNU/Linux: on a real machine, sudo hostnamectl set-hostname NAME; Netfix refuses it because the host name comes from the device name. sudo hostnamectl set-hostname --pretty "Text" does change the pretty name.',
+    'host.eqLinux': 'GNU/Linux: on a real machine, sudo hostnamectl set-hostname NAME; it works in Netfix too: the device takes that name as typed (on the canvas and in this tab) and the host name is derived from it at once. `hostname NAME` still does not change it. sudo hostnamectl set-hostname --pretty "Text" does change the pretty name.',
     'host.eqWindows': 'Windows: Settings → System → Rename this PC.',
     'host.now': 'Right now: static “{static}”',
     'host.nowTransient': ', transient “{name}”',
@@ -5558,8 +5558,14 @@ const { hostnameFromLabel, iosHostnameFromLabel } = __m["core/hostname.js"];
 const MAX_NAME = 63;
 /** The devices a placed one lives with (its topology), to keep host names apart. */
 const owners = new WeakMap();
+/** Each device's place in the workspace, so the terminal (hostnamectl) can rename it. */
+const places = new WeakMap();
 function registerPlaced(p, all) {
     owners.set(p, all);
+    places.set(p.device, p);
+}
+function placedOf(device) {
+    return places.get(device);
 }
 const isIos = (p) => p.device.kind === 'router' || p.device.kind === 'switch';
 /** The name a device shows now (IOS: compared without case). */
@@ -5613,7 +5619,7 @@ function savedLabel(rec, taken) {
     return name;
 }
 
-return { registerPlaced, syncDeviceName, renameDevice, savedLabel };
+return { registerPlaced, placedOf, syncDeviceName, renameDevice, savedLabel };
 })();
 __m["core/ip.js"] = (() => {
 /** IPv4 helpers. Addresses are unsigned 32-bit numbers. */
@@ -8610,6 +8616,2074 @@ function loadHostKey(text) {
 
 return { HOST_KEY_PATH, hostKeyFiles, loadHostKey };
 })();
+__m["net/packets.js"] = (() => {
+/** The quote an ICMP error carries for a TCP or UDP packet (none for ICMP). */
+function icmpQuote(p) {
+    if (p.tcp)
+        return { protocol: 'tcp', src: p.src, dst: p.dst, sport: p.tcp.sport, dport: p.tcp.dport };
+    if (p.udp)
+        return { protocol: 'udp', src: p.src, dst: p.dst, sport: p.udp.sport, dport: p.udp.dport };
+    return undefined;
+}
+/** Destination of PVST+ BPDUs. */
+const PVST_MAC = '01000ccccccd';
+const DHCP_SERVER_PORT = 67;
+const DHCP_CLIENT_PORT = 68;
+const DNS_PORT = 53;
+const WELL_KNOWN_PORTS = {
+    22: 'SSH', 25: 'SMTP', 53: 'DNS', 80: 'HTTP', 110: 'POP3', 139: 'SMB', 143: 'IMAP', 445: 'SMB',
+};
+const DEFAULT_TTL = 255;
+const PC_TTL = 128;
+/** Initial TTL of Linux (net.ipv4.ip_default_ttl). */
+const LINUX_TTL = 64;
+/** DNS-format protocols on their own ports: mDNS and LLMNR. */
+const DNS_LIKE = { 5353: 'MDNS', 5355: 'LLMNR' };
+/** Label used by the simulation event list: DHCP, DNS, ARP, ICMP, HTTP, SMTP, POP3, IMAP, SSH or TCP. */
+function frameProtocol(frame) {
+    if (frame.bpdu)
+        return 'STP';
+    if (frame.arp)
+        return 'ARP';
+    const ip = frame.ip;
+    if (!ip)
+        return 'Ethernet';
+    if (ip.udp?.dhcp)
+        return 'DHCP';
+    if (ip.udp?.dns)
+        return DNS_LIKE[ip.udp.dport] ?? DNS_LIKE[ip.udp.sport] ?? 'DNS';
+    if (ip.udp?.nbns)
+        return 'NBNS';
+    if (ip.udp?.isakmp)
+        return 'ISAKMP';
+    if (ip.udp?.wg)
+        return 'WireGuard';
+    if (ip.esp)
+        return 'ESP';
+    if (ip.icmp)
+        return 'ICMP';
+    if (ip.tcp) {
+        if (ip.tcp.data)
+            return ip.tcp.data.app;
+        return tcpService(ip.tcp) === 'SMB' ? 'SMB' : 'TCP';
+    }
+    return 'IPv4';
+}
+/** Name of the application on a TCP connection, from its well-known port. */
+function tcpService(seg) {
+    return WELL_KNOWN_PORTS[seg.dport] ?? WELL_KNOWN_PORTS[seg.sport] ?? 'TCP';
+}
+
+return { icmpQuote, PVST_MAC, DHCP_SERVER_PORT, DHCP_CLIENT_PORT, DNS_PORT, WELL_KNOWN_PORTS, DEFAULT_TTL, PC_TTL, LINUX_TTL, frameProtocol, tcpService };
+})();
+__m["core/mac.js"] = (() => {
+/** MAC address and DHCP client-identifier helpers. MACs are 12 lowercase hex chars. */
+const HEX_RE = /^[0-9a-f]+$/;
+const MAC_HEX_LEN = 12;
+const BROADCAST_MAC = 'ffffffffffff';
+function stripSeparators(text) {
+    return text.toLowerCase().replace(/[.:\-]/g, '');
+}
+function parseMac(text) {
+    const hex = stripSeparators(text);
+    return hex.length === MAC_HEX_LEN && HEX_RE.test(hex) ? hex : null;
+}
+function groupBy4(hex) {
+    return (hex.match(/.{1,4}/g) ?? []).join('.');
+}
+function formatMacCisco(mac) {
+    return groupBy4(mac);
+}
+function formatMacPT(mac) {
+    return groupBy4(mac.toUpperCase());
+}
+/** Parses a hex client identifier such as "0100.1122.3344.55". */
+function parseHexId(text) {
+    const hex = stripSeparators(text);
+    if (hex.length === 0 || hex.length % 2 !== 0 || !HEX_RE.test(hex))
+        return null;
+    return hex;
+}
+function formatHexId(hex) {
+    return groupBy4(hex.toLowerCase());
+}
+/** Ethernet client-id (hardware type 01 + MAC), as sent by PCs. */
+function clientIdFromMac(mac) {
+    return `01${mac}`;
+}
+function asciiToHex(text) {
+    return Array.from(text, (ch) => ch.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+}
+const LCG_A = 1103515245;
+const LCG_C = 12345;
+const BYTE = 256;
+/** Deterministic unicast MAC derived from a numeric seed (OUI-like prefix 00xx). */
+function macFromSeed(seed) {
+    let state = (seed * 2654435761) >>> 0;
+    const bytes = [0];
+    for (let i = 0; i < 5; i++) {
+        state = (Math.imul(state, LCG_A) + LCG_C) >>> 0;
+        bytes.push((state >>> 16) % BYTE);
+    }
+    return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+return { BROADCAST_MAC, parseMac, formatMacCisco, formatMacPT, parseHexId, formatHexId, clientIdFromMac, asciiToHex, macFromSeed };
+})();
+__m["net/ipstack.js"] = (() => {
+const { inSubnet, broadcastOf, BROADCAST_IP } = __m["core/ip.js"];
+const { BROADCAST_MAC } = __m["core/mac.js"];
+const sockets = [];
+/** Each service registers once (mDNS, NetBIOS). */
+function registerLocalSockets(s) {
+    sockets.push(s);
+}
+const isMulticast = (ip) => ip >>> 28 === 0xe;
+/** 01:00:5e + the low 23 bits of the group (224.0.0.251 → 01005e0000fb). */
+function multicastMac(group) {
+    return `01005e${[(group >>> 16) & 0x7f, (group >>> 8) & 0xff, group & 0xff].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+const ARP_TIMEOUT_MS = 1000;
+/** Interface name the hooks see for traffic to the host's own addresses. */
+const LOOPBACK = 'lo';
+const LOOPBACK_NET = 127;
+const LOOPBACK_IP = 0x7f000001;
+const LOOPBACK_MAC = '000000000000';
+const MAX_PENDING = 4;
+/** /31 and /32 have no broadcast address. */
+const MAX_PREFIX = 32;
+class IpStack {
+    arp = new Map();
+    pending = new Map();
+    /** Pending echoes; `dup` keeps listening after the first answer (a broadcast is answered by several devices). */
+    echoWaiters = new Map();
+    host;
+    now;
+    constructor(host, now) {
+        this.host = host;
+        this.now = now;
+    }
+    /** One of our addresses, or the loopback network 127.0.0.0/8 (the kernel's lo). */
+    isMine(ip) {
+        return (ip >>> 24) === LOOPBACK_NET || this.host.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip));
+    }
+    isLocalBroadcast(iface, ip) {
+        return ip === BROADCAST_IP || iface.addrs.some((a) => broadcastOf(a.ip, a.prefix) === ip);
+    }
+    /** The interface whose subnet has `ip` as its broadcast address (directed broadcast), if any. */
+    directedIface(ip) {
+        for (const iface of this.host.l3Ifaces()) {
+            if (!iface.up)
+                continue;
+            const a = iface.addrs.find((x) => x.prefix < MAX_PREFIX - 1 && broadcastOf(x.ip, x.prefix) === ip);
+            if (a)
+                return { iface, addr: a.ip };
+        }
+        return undefined;
+    }
+    /** 255.255.255.255 or the broadcast address of one of our subnets (what ping -b is needed for). */
+    isBroadcast(ip) {
+        return ip === BROADCAST_IP || this.directedIface(ip) !== undefined;
+    }
+    receiveFrame(ifaceName, frame) {
+        const iface = this.host.l3Iface(ifaceName);
+        if (!iface?.up)
+            return;
+        if (!iface.pointToPoint && frame.dst !== iface.mac && frame.dst !== BROADCAST_MAC && !this.joined(frame.ip?.dst, frame.dst))
+            return;
+        if (frame.arp)
+            this.onArp(iface, frame);
+        else if (frame.ip)
+            this.onIp(iface, frame.ip, frame);
+    }
+    onArp(iface, frame) {
+        const arp = frame.arp;
+        const targetsMe = iface.addrs.some((a) => a.ip === arp.targetIp) || (this.host.answersArp?.(iface.name, arp.targetIp) ?? false);
+        if (targetsMe || this.arp.has(arp.senderIp))
+            this.learn(arp.senderIp, arp.senderMac, iface.name);
+        if (arp.op === 'request' && targetsMe) {
+            this.host.emit(iface.name, {
+                src: iface.mac, dst: arp.senderMac,
+                arp: { op: 'reply', senderMac: iface.mac, senderIp: arp.targetIp, targetMac: arp.senderMac, targetIp: arp.senderIp },
+            });
+        }
+    }
+    learn(ip, mac, iface) {
+        this.arp.set(ip, { mac, iface, learnedAt: this.now() });
+        const waiting = this.pending.get(ip);
+        if (!waiting)
+            return;
+        this.pending.delete(ip);
+        for (const p of waiting.packets)
+            this.emitIp(waiting.iface, mac, p);
+    }
+    onIp(iface, arrived, frame) {
+        this.host.noteFrame?.(arrived, frame);
+        const packet = this.host.prerouting ? this.host.prerouting(iface.name, arrived) : arrived;
+        if (!packet)
+            return;
+        // Martian: 127.0.0.0/8 never comes in from the wire (Linux drops it), only through lo.
+        if ((packet.dst >>> 24) === LOOPBACK_NET || (packet.src >>> 24) === LOOPBACK_NET)
+            return;
+        const directed = this.directedIface(packet.dst);
+        const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst) || directed !== undefined || this.joined(packet.dst);
+        if (!forMe) {
+            // 224.0.0.0/4 is never routed here (mDNS and the like stay on their link).
+            if (!isMulticast(packet.dst))
+                this.host.forward?.(iface.name, packet);
+            return;
+        }
+        // A directed broadcast for another of our subnets is ours too; the link only gets it if forwarding is on. One that
+        // arrived on a link of that subnet already reached it: relaying it again could bounce between routers forever.
+        if (directed && directed.iface.name !== iface.name && !this.isLocalBroadcast(iface, packet.dst))
+            this.relayDirected(iface.name, directed.iface, packet);
+        this.localIn(iface.name, packet, frame);
+    }
+    /** Allowed: the normal forwarding path (TTL, outbound ACL, IPsec, nftables) sends it out as a link broadcast. */
+    relayDirected(inIface, out, packet) {
+        if (out.up && this.host.forwardsDirectedBroadcast?.(out.name))
+            this.host.forward?.(inIface, packet);
+    }
+    /** Local delivery: input hook, then ICMP echo handling or the host's protocols. */
+    localIn(ifaceName, arrived, frame) {
+        const packet = this.host.input ? this.host.input(ifaceName, arrived) : arrived;
+        if (!packet)
+            return;
+        if (packet.icmp) {
+            this.onIcmp(ifaceName, packet, packet.icmp);
+            return;
+        }
+        if (packet.udp && sockets.some((s) => s.take(this.host, ifaceName, packet)))
+            return;
+        this.host.deliver(ifaceName, packet, frame);
+    }
+    /** Output hook for a locally generated packet; null = dropped by the firewall. */
+    outbound(iface, packet) {
+        return this.host.output ? this.host.output(iface, packet) : packet;
+    }
+    onIcmp(ifaceName, packet, icmp) {
+        if (icmp.type === 'echo-request') {
+            const src = this.echoSource(ifaceName, packet.dst);
+            if (src !== undefined)
+                this.send({ src, dst: packet.src, ttl: this.host.ttl, protocol: 'icmp', icmp: { ...icmp, type: 'echo-reply' } });
+            return;
+        }
+        if (icmp.type === 'unreachable' && icmp.orig) {
+            this.host.icmpUnreachable?.(icmp.orig, icmp.code ?? 'host');
+            return;
+        }
+        const key = `${icmp.id}:${icmp.seq}`;
+        const waiter = this.echoWaiters.get(key);
+        if (!waiter)
+            return;
+        const result = icmp.type === 'echo-reply' ? { kind: 'reply', from: packet.src, ttl: packet.ttl }
+            : icmp.type === 'unreachable' ? { kind: 'unreachable', from: packet.src, code: icmp.code ?? 'host' } : { kind: 'ttl', from: packet.src };
+        if (waiter.answered)
+            return waiter.dup?.(result);
+        waiter.answered = true;
+        if (!waiter.dup)
+            this.echoWaiters.delete(key);
+        waiter.first(result);
+    }
+    /** Who answers an echo: the address it was sent to; for a broadcast, our own address on that subnet (or none). */
+    echoSource(ifaceName, dst) {
+        const directed = this.directedIface(dst);
+        if (dst !== BROADCAST_IP && !directed)
+            return dst;
+        if (this.host.ignoresBroadcastEcho?.())
+            return undefined;
+        return directed?.addr ?? this.host.l3Iface(ifaceName)?.addrs[0]?.ip;
+    }
+    /** Stops listening for the answers of a ping (`id`), duplicates included. */
+    endEcho(id) {
+        for (const key of this.echoWaiters.keys())
+            if (key.startsWith(`${id}:`))
+                this.echoWaiters.delete(key);
+    }
+    /** Sends an ICMP echo request; the callback fires on reply/error (never on timeout). */
+    echo(dst, id, seq, src, onResult, ttl = this.host.ttl, onDup) {
+        if (this.isMine(dst)) {
+            this.host.schedule(0, () => onResult({ kind: 'reply', from: dst, ttl: this.host.ttl }));
+            return true;
+        }
+        const egress = this.host.route(dst);
+        if (!egress)
+            return false;
+        const srcIp = src ?? this.host.l3Iface(egress.iface)?.addrs[0]?.ip;
+        if (srcIp === undefined)
+            return false;
+        this.echoWaiters.set(`${id}:${seq}`, { first: onResult, dup: onDup, answered: false });
+        const out = this.outbound(egress.iface, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
+        if (out)
+            this.sendVia(egress, out);
+        // Only our own ping: a broadcast we forward was already delivered to us when it came in.
+        const iface = this.host.l3Iface(egress.iface);
+        if (out && iface && !iface.pointToPoint && this.isLocalBroadcast(iface, dst))
+            this.loopBroadcast(egress.iface, iface.mac, out);
+        return true;
+    }
+    /** Routes and sends a packet originated (or forwarded) by this host. */
+    send(packet) {
+        if (this.isMine(packet.dst))
+            return this.loopback(packet);
+        const egress = this.host.route(packet.dst);
+        if (!egress)
+            return false;
+        const out = this.outbound(egress.iface, packet);
+        if (out)
+            this.sendVia(egress, out);
+        return true;
+    }
+    /** Sends a locally generated packet through a given egress (output hook included). */
+    sendRouted(egress, packet) {
+        const out = this.outbound(egress.iface, packet);
+        if (out)
+            this.sendVia(egress, out);
+    }
+    sendVia(egress, original) {
+        const iface = this.host.l3Iface(egress.iface);
+        if (!iface?.up)
+            return;
+        const packet = this.host.postrouting ? this.host.postrouting(egress.iface, original) : original;
+        if (!packet)
+            return;
+        if (iface.pointToPoint || this.isLocalBroadcast(iface, packet.dst)) {
+            this.emitIp(egress.iface, BROADCAST_MAC, packet);
+            return;
+        }
+        const known = this.arp.get(egress.nextHop);
+        if (known) {
+            this.emitIp(egress.iface, known.mac, packet);
+            return;
+        }
+        this.resolve(iface, egress.nextHop, packet);
+    }
+    /**
+     * Linux hands a copy of every broadcast it sends to itself (ip_mc_output): a host that answers broadcast echoes
+     * answers its own ping -b. Only for its own echo requests, so DHCP and the rest are not seen twice.
+     */
+    loopBroadcast(ifaceName, mac, packet) {
+        if (this.host.ignoresBroadcastEcho?.() !== false)
+            return;
+        this.host.schedule(0, () => this.localIn(ifaceName, packet, { src: mac, dst: BROADCAST_MAC, ip: packet }));
+    }
+    /** Packets to one of our own addresses never reach the wire (like the kernel's loopback path). */
+    loopback(packet) {
+        const toLo = (packet.dst >>> 24) === LOOPBACK_NET;
+        const iface = this.host.l3Ifaces().find((i) => i.addrs.some((a) => a.ip === packet.dst));
+        if (!iface && !toLo)
+            return false;
+        // To 127.x the source is 127.0.0.1 too (a socket bound to lo), as on Linux.
+        const sent = toLo && (packet.src >>> 24) !== LOOPBACK_NET ? { ...packet, src: LOOPBACK_IP } : packet;
+        const out = this.outbound(LOOPBACK, sent);
+        if (!out)
+            return true;
+        const mac = iface?.mac ?? LOOPBACK_MAC;
+        this.host.schedule(0, () => this.localIn(LOOPBACK, out, { src: mac, dst: mac, ip: out }));
+        return true;
+    }
+    /** A multicast group this host has joined (with its MAC, when a frame brings one). */
+    joined(group, mac) {
+        if (group === undefined || !isMulticast(group) || (mac !== undefined && mac !== multicastMac(group)))
+            return false;
+        return sockets.some((s) => s.member(this.host, group));
+    }
+    /** Sends a datagram to a link-local multicast group (it is never routed: TTL 255, mDNS). */
+    multicast(ifaceName, packet) {
+        this.emitIp(ifaceName, multicastMac(packet.dst), packet);
+    }
+    /** Sends a frame on an interface to the broadcast MAC (DHCP, etc.). */
+    broadcast(ifaceName, packet) {
+        this.emitIp(ifaceName, BROADCAST_MAC, packet);
+    }
+    resolve(iface, target, packet) {
+        const waiting = this.pending.get(target);
+        if (waiting) {
+            const drop = this.host.dropOnArpMiss && packet.icmp?.type === 'echo-request';
+            if (!drop && waiting.packets.length < MAX_PENDING)
+                waiting.packets.push(packet);
+            return;
+        }
+        this.pending.set(target, { iface: iface.name, packets: this.host.dropOnArpMiss && packet.icmp?.type === 'echo-request' ? [] : [packet] });
+        const sender = iface.addrs.find((a) => inSubnet(target, a.ip, a.prefix)) ?? iface.addrs[0];
+        this.host.emit(iface.name, {
+            src: iface.mac, dst: BROADCAST_MAC,
+            arp: { op: 'request', senderMac: iface.mac, senderIp: sender?.ip ?? 0, targetMac: '000000000000', targetIp: target },
+        });
+        this.host.schedule(ARP_TIMEOUT_MS, () => {
+            if (this.pending.get(target))
+                this.pending.delete(target);
+        });
+    }
+    emitIp(iface, dstMac, packet) {
+        const mac = this.host.l3Iface(iface)?.mac ?? '';
+        this.host.emit(iface, { src: mac, dst: dstMac, ip: packet });
+    }
+    flushArp(iface) {
+        for (const [ip, e] of this.arp)
+            if (!iface || e.iface === iface)
+                this.arp.delete(ip);
+    }
+    setClock(now) {
+        this.now = now;
+    }
+}
+
+return { registerLocalSockets, multicastMac, LOOPBACK, IpStack };
+})();
+__m["net/tcp.js"] = (() => {
+const FIRST_EPHEMERAL = 49152;
+const LAST_EPHEMERAL = 65535;
+const DEFAULT_TIMEOUT_MS = 5000;
+const ISN_STEP = 64_000;
+class TcpLayer {
+    env;
+    listeners = new Map();
+    /** Ports open only while a condition holds (SMB on Windows or with samba: net/netbios.ts). */
+    whenOpen = new Map();
+    conns = new Map();
+    nextPort = FIRST_EPHEMERAL;
+    isn = 1_000;
+    constructor(env) {
+        this.env = env;
+    }
+    listen(port, handler, open) {
+        this.listeners.set(port, handler);
+        if (open)
+            this.whenOpen.set(port, open);
+    }
+    unlisten(port) {
+        this.listeners.delete(port);
+        this.whenOpen.delete(port);
+    }
+    isListening(port) {
+        return this.listeners.has(port) && this.whenOpen.get(port)?.() !== false;
+    }
+    listeningPorts() {
+        return [...this.listeners.keys()].filter((p) => this.isListening(p)).sort((a, b) => a - b);
+    }
+    /** Opens a connection, sends `payload` and reports the reply through `done` (exactly once). */
+    request(dst, dport, payload, done, timeoutMs = DEFAULT_TIMEOUT_MS) {
+        const localIp = this.env.sourceFor(dst);
+        if (localIp === undefined) {
+            done({ kind: 'noroute' });
+            return;
+        }
+        const sport = this.allocatePort();
+        const conn = { remote: { ip: dst, port: dport }, localIp, payload, done, seq: this.nextIsn(), finished: false };
+        this.conns.set(sport, conn);
+        this.emit(localIp, dst, { sport, dport, flags: ['SYN'], seq: conn.seq, ack: 0 });
+        this.env.schedule(timeoutMs, () => {
+            if (this.conns.get(sport) === conn)
+                this.finish(sport, { kind: 'timeout' });
+        });
+    }
+    /** Connect scan of one port (nc -z, nmap -sT): open, closed or filtered. */
+    probe(dst, dport, done, timeoutMs = DEFAULT_TIMEOUT_MS) {
+        const localIp = this.env.sourceFor(dst);
+        if (localIp === undefined) {
+            done('noroute');
+            return;
+        }
+        const sport = this.allocatePort();
+        const map = (r) => (r.kind === 'refused' ? 'closed' : r.kind === 'timeout' ? 'filtered'
+            : r.kind === 'unreachable' ? (r.reason === 'net' ? 'netunreach' : 'hostunreach') : 'noroute');
+        const conn = { remote: { ip: dst, port: dport }, localIp, done: (r) => done(map(r)), opened: () => done('open'), seq: this.nextIsn(), finished: false };
+        this.conns.set(sport, conn);
+        this.emit(localIp, dst, { sport, dport, flags: ['SYN'], seq: conn.seq, ack: 0 });
+        this.env.schedule(timeoutMs, () => {
+            if (this.conns.get(sport) === conn)
+                this.finish(sport, { kind: 'timeout' });
+        });
+    }
+    /** An ICMP unreachable quoting one of our SYNs: the connect fails (port unreachable = refused). */
+    icmpUnreachable(orig, code) {
+        const conn = this.conns.get(orig.sport);
+        if (!conn || conn.finished || conn.synAcked || conn.localIp !== orig.src || conn.remote.ip !== orig.dst || conn.remote.port !== orig.dport)
+            return;
+        this.finish(orig.sport, code === 'port' ? { kind: 'refused' } : { kind: 'unreachable', reason: code === 'net' ? 'net' : 'host' });
+    }
+    receive(packet) {
+        const seg = packet.tcp;
+        if (!seg)
+            return;
+        const client = this.conns.get(seg.dport);
+        if (client && client.remote.ip === packet.src && client.remote.port === seg.sport) {
+            this.onClientSegment(seg.dport, client, seg);
+            return;
+        }
+        this.onServerSegment(packet, seg);
+    }
+    // ------------------------------------------------------------ client side
+    onClientSegment(sport, conn, seg) {
+        if (has(seg, 'RST')) {
+            this.finish(sport, { kind: 'refused' });
+            return;
+        }
+        if (has(seg, 'SYN') && has(seg, 'ACK')) {
+            conn.seq += 1;
+            conn.synAcked = true;
+            if (!conn.payload) {
+                this.emit(conn.localIp, conn.remote.ip, { sport, dport: conn.remote.port, flags: ['RST', 'ACK'], seq: conn.seq, ack: seg.seq + 1 });
+                conn.finished = true;
+                this.conns.delete(sport);
+                conn.opened?.();
+                return;
+            }
+            this.emit(conn.localIp, conn.remote.ip, { sport, dport: conn.remote.port, flags: ['ACK', 'PSH'], seq: conn.seq, ack: seg.seq + 1, data: conn.payload });
+            return;
+        }
+        if (seg.data) {
+            this.emit(conn.localIp, conn.remote.ip, { sport, dport: conn.remote.port, flags: ['ACK'], seq: conn.seq + 1, ack: seg.seq + 1 });
+            this.finish(sport, { kind: 'ok', reply: seg.data });
+        }
+    }
+    finish(sport, result) {
+        const conn = this.conns.get(sport);
+        if (!conn || conn.finished)
+            return;
+        conn.finished = true;
+        this.conns.delete(sport);
+        conn.done(result);
+    }
+    // ------------------------------------------------------------ server side
+    onServerSegment(packet, seg) {
+        const reply = (flags, data) => this.emit(packet.dst, packet.src, { sport: seg.dport, dport: seg.sport, flags, seq: this.nextIsn(), ack: seg.seq + 1, data });
+        const handler = this.whenOpen.get(seg.dport)?.() === false ? undefined : this.listeners.get(seg.dport);
+        if (has(seg, 'SYN') && !has(seg, 'ACK')) {
+            reply(handler ? ['SYN', 'ACK'] : ['RST', 'ACK']);
+            return;
+        }
+        if (!seg.data)
+            return;
+        if (!handler) {
+            reply(['RST', 'ACK']);
+            return;
+        }
+        const answer = handler(seg.data, { ip: packet.src, port: seg.sport }, packet.dst);
+        if (answer)
+            reply(['ACK', 'PSH', 'FIN'], answer);
+        else
+            reply(['RST', 'ACK']);
+    }
+    // ------------------------------------------------------------ helpers
+    emit(src, dst, tcp) {
+        this.env.send({ src, dst, ttl: this.env.ttl, protocol: 'tcp', tcp });
+    }
+    allocatePort() {
+        for (let i = 0; i <= LAST_EPHEMERAL - FIRST_EPHEMERAL; i++) {
+            const port = this.nextPort;
+            this.nextPort = port >= LAST_EPHEMERAL ? FIRST_EPHEMERAL : port + 1;
+            if (!this.conns.has(port) && !this.listeners.has(port))
+                return port;
+        }
+        throw new Error('No free ephemeral ports');
+    }
+    nextIsn() {
+        this.isn = (this.isn + ISN_STEP) >>> 0;
+        return this.isn;
+    }
+}
+function has(seg, flag) {
+    return seg.flags.includes(flag);
+}
+
+return { TcpLayer };
+})();
+__m["net/dns.js"] = (() => {
+const { formatIp, parseIp } = __m["core/ip.js"];
+const RESOLVER_PORT_BASE = 50_000;
+const RESOLVER_PORTS = 1000;
+const DEFAULT_TIMEOUT_MS = 5000;
+const MAX_CNAME_CHAIN = 8;
+class DnsResolver {
+    env;
+    waiting = new Map();
+    nextId = 0x1a2b;
+    constructor(env) {
+        this.env = env;
+    }
+    /** Port the host must hand DNS responses on (any port in the resolver range). */
+    ownsPort(port) {
+        return port >= RESOLVER_PORT_BASE && port < RESOLVER_PORT_BASE + RESOLVER_PORTS;
+    }
+    query(server, name, type, done, timeoutMs = DEFAULT_TIMEOUT_MS) {
+        if (server === undefined) {
+            done({ kind: 'noserver' });
+            return;
+        }
+        const id = this.nextId = (this.nextId + 1) & 0xffff;
+        const sport = RESOLVER_PORT_BASE + (id % RESOLVER_PORTS);
+        const msg = { id, response: false, qname: normalizeName(name), qtype: type, rd: true };
+        let settled = false;
+        const finish = (r) => {
+            if (settled)
+                return;
+            settled = true;
+            this.waiting.delete(id);
+            done(r);
+        };
+        this.waiting.set(id, (r) => finish(r));
+        if (!this.env.sendQuery(server, sport, msg)) {
+            finish({ kind: 'timeout', server });
+            return;
+        }
+        this.env.schedule(timeoutMs, () => finish({ kind: 'timeout', server }));
+    }
+    receive(msg, from) {
+        if (!msg.response)
+            return;
+        this.waiting.get(msg.id)?.({ kind: 'answer', msg, server: from });
+    }
+}
+function normalizeName(name) {
+    return name.trim().toLowerCase().replace(/\.+$/, '');
+}
+/** Follows CNAMEs inside one response and returns the first IPv4 address, if any. */
+function firstAddress(msg) {
+    let target = msg.qname;
+    for (let i = 0; i < MAX_CNAME_CHAIN; i++) {
+        const a = msg.answers?.find((r) => r.name === target && r.type === 'A');
+        if (a)
+            return parseIp(a.data) ?? undefined;
+        const cname = msg.answers?.find((r) => r.name === target && r.type === 'CNAME');
+        if (!cname)
+            return undefined;
+        target = cname.data;
+    }
+    return undefined;
+}
+/** "10.0.0.5" → "5.0.0.10.in-addr.arpa" */
+function reverseName(ip) {
+    return `${formatIp(ip).split('.').reverse().join('.')}.in-addr.arpa`;
+}
+/** "5.0.0.10.in-addr.arpa" → 10.0.0.5 */
+function ipFromReverse(name) {
+    const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)\.in-addr\.arpa$/.exec(normalizeName(name));
+    if (!m)
+        return undefined;
+    return parseIp([m[4], m[3], m[2], m[1]].join('.')) ?? undefined;
+}
+function isValidHostname(name) {
+    const n = normalizeName(name);
+    return n.length > 0 && n.length <= 253 && n.split('.').every((l) => /^(\*|[a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?)$/.test(l));
+}
+
+return { DnsResolver, normalizeName, firstAddress, reverseName, ipFromReverse, isValidHostname };
+})();
+__m["dhcp/client.js"] = (() => {
+const { BROADCAST_IP } = __m["core/ip.js"];
+const RETRY_MS = 4000;
+const MAX_ATTEMPTS = 4;
+const MS = 1000;
+const INFINITE = 0xffffffff;
+const DEFAULT_PREFIX = 24;
+class DhcpClient {
+    state = 'STOPPED';
+    lease;
+    xid = 0;
+    attempts = 0;
+    generation = 0;
+    offer;
+    env;
+    constructor(env) {
+        this.env = env;
+    }
+    start() {
+        this.generation++;
+        this.lease = undefined;
+        this.attempts = 0;
+        this.discover();
+    }
+    stop() {
+        this.generation++;
+        this.state = 'STOPPED';
+    }
+    /** `ipconfig /release` / `release dhcp`: tells the server and forgets the lease. */
+    release() {
+        const lease = this.lease;
+        this.stop();
+        this.lease = undefined;
+        if (!lease)
+            return;
+        this.env.send(this.message('RELEASE', { ciaddr: lease.ip, serverId: lease.serverId }), lease.serverId, lease.ip);
+    }
+    /** `ipconfig /renew` / `renew dhcp`. */
+    renew() {
+        if (this.lease && this.state === 'BOUND') {
+            this.generation++;
+            this.state = 'RENEWING';
+            this.attempts = 0;
+            this.sendRenew();
+            return;
+        }
+        this.start();
+    }
+    receive(msg) {
+        if (msg.op !== 'BOOTREPLY' || msg.xid !== this.xid || msg.chaddr !== this.env.mac)
+            return;
+        const type = msg.options.messageType;
+        if (type === 'OFFER' && this.state === 'SELECTING')
+            this.onOffer(msg);
+        else if (type === 'ACK' && (this.state === 'REQUESTING' || this.state === 'RENEWING' || this.state === 'REBINDING'))
+            this.onAck(msg);
+        else if (type === 'NAK' && this.state !== 'BOUND' && this.state !== 'STOPPED')
+            this.onNak();
+    }
+    discover() {
+        this.state = 'SELECTING';
+        this.xid = randomXid();
+        this.offer = undefined;
+        this.env.send(this.message('DISCOVER', {}), BROADCAST_IP, 0);
+        this.retryLater(() => this.discover());
+    }
+    onOffer(msg) {
+        this.offer = msg;
+        this.state = 'REQUESTING';
+        this.attempts = 0;
+        this.generation++;
+        this.sendRequest();
+    }
+    sendRequest() {
+        const offer = this.offer;
+        if (!offer)
+            return;
+        this.env.send(this.message('REQUEST', { requestedIp: offer.yiaddr, serverId: offer.options.serverId }), BROADCAST_IP, 0);
+        this.retryLater(() => this.sendRequest());
+    }
+    sendRenew() {
+        const lease = this.lease;
+        if (!lease)
+            return;
+        this.env.send(this.message('REQUEST', { ciaddr: lease.ip }), lease.serverId, lease.ip);
+        this.retryLater(() => this.sendRenew());
+    }
+    retryLater(again) {
+        const gen = this.generation;
+        this.env.schedule(RETRY_MS, () => {
+            if (gen !== this.generation || this.state === 'BOUND' || this.state === 'STOPPED')
+                return;
+            this.attempts++;
+            if (this.attempts < MAX_ATTEMPTS) {
+                again();
+                return;
+            }
+            const hadLease = this.lease !== undefined;
+            this.state = 'INIT';
+            this.generation++;
+            if (hadLease)
+                this.env.onLost();
+            this.env.onFailed();
+        });
+    }
+    onAck(msg) {
+        const o = msg.options;
+        const lease = {
+            ip: msg.yiaddr || msg.ciaddr,
+            prefix: o.subnetPrefix ?? DEFAULT_PREFIX,
+            serverId: o.serverId ?? 0,
+            leaseSeconds: o.leaseSeconds ?? 0,
+            obtainedAt: this.env.now(),
+            routers: o.routers ?? [],
+            dnsServers: o.dnsServers ?? [],
+            winsServers: o.netbiosServers,
+            domainName: o.domainName,
+            hostname: o.hostname,
+            tftpServers: o.tftpServers,
+            bootfile: msg.file,
+            nextServer: msg.siaddr || undefined,
+        };
+        this.lease = lease;
+        this.state = 'BOUND';
+        this.generation++;
+        this.env.onBound(lease);
+        this.scheduleRenewal(lease);
+    }
+    scheduleRenewal(lease) {
+        if (lease.leaseSeconds === 0 || lease.leaseSeconds >= INFINITE)
+            return;
+        const gen = this.generation;
+        this.env.schedule((lease.leaseSeconds * MS) / 2, () => {
+            if (gen !== this.generation || this.state !== 'BOUND')
+                return;
+            this.renew();
+        });
+    }
+    onNak() {
+        const hadLease = this.lease !== undefined;
+        this.lease = undefined;
+        if (hadLease)
+            this.env.onLost();
+        this.start();
+    }
+    message(type, opts) {
+        return {
+            op: 'BOOTREQUEST', xid: this.xid, ciaddr: opts.ciaddr ?? 0, yiaddr: 0, siaddr: 0, giaddr: 0, chaddr: this.env.mac, broadcastFlag: false,
+            options: { messageType: type, clientId: this.env.clientId, hostname: this.env.hostname, requestedIp: opts.requestedIp, serverId: opts.serverId },
+        };
+    }
+}
+let xidCounter = 0x3903f326;
+function randomXid() {
+    xidCounter = (Math.imul(xidCounter, 1664525) + 1013904223) >>> 0;
+    return xidCounter;
+}
+
+return { DhcpClient };
+})();
+__m["devices/hooks.js"] = (() => {
+const DETACHED = {
+    peerUp: () => false,
+    portChanged: () => undefined,
+    transmit: () => undefined,
+    schedule: () => undefined,
+    ipInUse: () => false,
+    runUntil: (done) => done(),
+    peerTrunking: () => false,
+};
+/** Adds `n` to the last 24 bits of a MAC (consecutive interface MACs). */
+function macPlus(mac, n) {
+    const oui = mac.slice(0, 6);
+    const nic = (parseInt(mac.slice(6), 16) + n) & 0xffffff;
+    return `${oui}${nic.toString(16).padStart(6, '0')}`;
+}
+
+return { DETACHED, macPlus };
+})();
+__m["net/nft/model.js"] = (() => {
+/**
+ * nftables ruleset as immutable records: tables (family ip|inet) with chains, base chains with
+ * type/hook/priority/policy, and rules made of matches and one statement list ending in a verdict.
+ */
+const EMPTY_RULESET = { tables: [], nextHandle: 1 };
+/** Standard priorities by name (nft prints the name when the value matches). */
+const PRIORITY_NAMES = {
+    raw: -300, mangle: -150, dstnat: -100, filter: 0, security: 50, srcnat: 100,
+};
+/** Limits that protect the browser tab from huge rule files. */
+const NFT_LIMITS = { tables: 64, chainsPerTable: 64, rulesPerChain: 512, setItems: 256, jumpDepth: 16 };
+function findTable(rs, family, name) {
+    return rs.tables.find((t) => t.family === family && t.name === name);
+}
+function findChain(t, name) {
+    return t.chains.find((c) => c.name === name);
+}
+/** Returns a ruleset where `table` is replaced (or added). */
+function withTable(rs, table) {
+    const i = rs.tables.findIndex((t) => t.family === table.family && t.name === table.name);
+    const tables = i < 0 ? [...rs.tables, table] : rs.tables.map((t, j) => (j === i ? table : t));
+    return { ...rs, tables };
+}
+function withChain(t, chain) {
+    const i = t.chains.findIndex((c) => c.name === chain.name);
+    const chains = i < 0 ? [...t.chains, chain] : t.chains.map((c, j) => (j === i ? chain : c));
+    return { ...t, chains };
+}
+
+return { EMPTY_RULESET, PRIORITY_NAMES, NFT_LIMITS, findTable, findChain, withTable, withChain };
+})();
+__m["net/nft/eval.js"] = (() => {
+const { NFT_LIMITS, findChain } = __m["net/nft/model.js"];
+const { inSubnet } = __m["core/ip.js"];
+const ICMP_NAMES = { 'echo-request': 'echo-request', 'echo-reply': 'echo-reply', unreachable: 'destination-unreachable', 'ttl-exceeded': 'time-exceeded' };
+const PACKET_OVERHEAD = 40;
+function ports(p) {
+    const l4 = p.tcp ?? p.udp;
+    return l4 ? { sport: l4.sport, dport: l4.dport } : {};
+}
+function fieldValue(m, p, meta) {
+    const pt = ports(p);
+    switch (m.field) {
+        case 'ip saddr': return p.src;
+        case 'ip daddr': return p.dst;
+        case 'ip protocol':
+        case 'meta l4proto': return p.protocol;
+        case 'tcp dport': return p.tcp?.dport;
+        case 'tcp sport': return p.tcp?.sport;
+        case 'udp dport': return p.udp?.dport;
+        case 'udp sport': return p.udp?.sport;
+        case 'th dport': return pt.dport;
+        case 'th sport': return pt.sport;
+        case 'ct state': return meta.ct;
+        case 'iif':
+        case 'iifname': return meta.iif;
+        case 'oif':
+        case 'oifname': return meta.oif;
+        case 'icmp type': return p.icmp ? ICMP_NAMES[p.icmp.type] : undefined;
+    }
+}
+function valueMatches(v, x) {
+    switch (v.kind) {
+        case 'addr': return typeof x === 'number' && inSubnet(x, v.ip, v.prefix);
+        case 'num': return x === v.n;
+        case 'range': return typeof x === 'number' && x >= v.from && x <= v.to;
+        case 'word': return x === v.w;
+        case 'set': return v.items.some((i) => valueMatches(i, x));
+    }
+}
+/** A match on a field the packet does not have (tcp dport on UDP) never matches, even negated. */
+function matches(m, p, meta) {
+    const x = fieldValue(m, p, meta);
+    if (x === undefined)
+        return false;
+    return valueMatches(m.value, x) !== m.negate;
+}
+function count(env, r) {
+    if (!r.counter)
+        return;
+    const c = env.counters.get(r.handle) ?? { packets: 0, bytes: 0 };
+    c.packets += 1;
+    c.bytes += PACKET_OVERHEAD;
+    env.counters.set(r.handle, c);
+}
+function runChain(t, ch, p, meta, env, depth) {
+    if (depth > NFT_LIMITS.jumpDepth)
+        return { kind: 'final', verdict: { kind: 'drop' } };
+    for (const r of ch.rules) {
+        if (!r.matches.every((m) => matches(m, p, meta)))
+            continue;
+        count(env, r);
+        if (r.log !== undefined)
+            env.log?.(r.log, p, meta);
+        const v = r.verdict;
+        if (!v)
+            continue;
+        if (v.kind === 'return')
+            return { kind: 'return' };
+        if (v.kind === 'jump' || v.kind === 'goto') {
+            const target = findChain(t, v.chain);
+            const sub = target ? runChain(t, target, p, meta, env, depth + 1) : { kind: 'continue' };
+            if (sub.kind === 'final')
+                return sub;
+            if (v.kind === 'goto')
+                return { kind: 'return' };
+            continue;
+        }
+        return { kind: 'final', verdict: v };
+    }
+    return { kind: 'continue' };
+}
+function baseChains(rs, hook, type) {
+    return rs.tables
+        .flatMap((table) => table.chains.filter((c) => c.base?.hook === hook && c.base.type === type).map((chain) => ({ table, chain })))
+        .sort((a, b) => (a.chain.base?.priority ?? 0) - (b.chain.base?.priority ?? 0));
+}
+/** Filter chains of `hook`: accept, drop or reject. */
+function filterHook(rs, hook, p, meta, env) {
+    for (const { table, chain } of baseChains(rs, hook, 'filter')) {
+        const o = runChain(table, chain, p, meta, env, 0);
+        const v = o.kind === 'final' ? o.verdict : { kind: chain.base?.policy ?? 'accept' };
+        if (v.kind === 'drop')
+            return { verdict: 'drop' };
+        if (v.kind === 'reject')
+            return { verdict: 'reject', with: v.with };
+    }
+    return { verdict: 'accept' };
+}
+/** NAT chains of `hook` (only for the first packet of a connection): the translation, if any. */
+function natHook(rs, hook, p, meta, env) {
+    for (const { table, chain } of baseChains(rs, hook, 'nat')) {
+        const o = runChain(table, chain, p, meta, env, 0);
+        if (o.kind !== 'final') {
+            if (chain.base?.policy === 'drop')
+                return 'drop';
+            continue;
+        }
+        const v = o.verdict;
+        if (v.kind === 'masquerade' || v.kind === 'snat' || v.kind === 'dnat')
+            return v;
+        if (v.kind === 'drop' || v.kind === 'reject')
+            return 'drop';
+        // accept ends this chain only: a nat chain of another table may still translate.
+    }
+    return null;
+}
+/** Hooks that have at least one base chain (to skip work when the ruleset is empty). */
+function activeHooks(rs) {
+    return new Set(rs.tables.flatMap((t) => t.chains.flatMap((c) => (c.base ? [c.base.hook] : []))));
+}
+
+return { filterHook, natHook, activeHooks };
+})();
+__m["net/conntrack.js"] = (() => {
+const CT_MAX = 4096;
+const TIMEOUT_MS = { tcp: 7_200_000, udp: 120_000, icmp: 30_000 };
+const UNREPLIED_MS = 30_000;
+const CLOSING_MS = 10_000;
+function tupleOf(p) {
+    if (p.tcp)
+        return { proto: 'tcp', src: p.src, dst: p.dst, sport: p.tcp.sport, dport: p.tcp.dport };
+    if (p.udp)
+        return { proto: 'udp', src: p.src, dst: p.dst, sport: p.udp.sport, dport: p.udp.dport };
+    if (p.icmp && (p.icmp.type === 'echo-request' || p.icmp.type === 'echo-reply'))
+        return { proto: 'icmp', src: p.src, dst: p.dst, sport: p.icmp.id, dport: p.icmp.id };
+    return null;
+}
+const key = (t) => `${t.proto}|${t.src}|${t.sport}|${t.dst}|${t.dport}`;
+const swap = (t) => ({ ...t, src: t.dst, dst: t.src, sport: t.dport, dport: t.sport });
+/** The tuples a connection shows in the original direction, after DNAT, and after DNAT + SNAT. */
+function origStages(e) {
+    const afterDnat = e.dnat ? { ...e.orig, dst: e.dnat.ip, dport: e.dnat.port ?? e.orig.dport } : e.orig;
+    const afterAll = e.snat ? { ...afterDnat, src: e.snat.ip, sport: e.snat.port ?? afterDnat.sport } : afterDnat;
+    return [e.orig, afterDnat, afterAll];
+}
+/** Reply tuples: as it arrives (swap of the final original), after undoing SNAT, after undoing both. */
+function replyStages(e) {
+    const [, afterDnat, afterAll] = origStages(e);
+    const arrives = swap(afterAll);
+    return [arrives, { ...arrives, dst: e.orig.src, dport: e.orig.sport }, swap(e.orig), swap(afterDnat)];
+}
+class Conntrack {
+    index = new Map();
+    entries = new Set();
+    now;
+    constructor(now) {
+        this.now = now;
+    }
+    get size() {
+        return this.entries.size;
+    }
+    list() {
+        this.expire();
+        return [...this.entries];
+    }
+    lookup(p) {
+        const t = tupleOf(p);
+        const hit = t ? this.index.get(key(t)) : undefined;
+        if (!hit || this.expired(hit.entry))
+            return null;
+        return hit;
+    }
+    /** State of `p` and the connection it belongs to (a new, unconfirmed one when unknown). */
+    classify(p) {
+        const hit = this.lookup(p);
+        if (hit) {
+            const established = hit.dir === 'reply' || hit.entry.seenReply;
+            return { state: established ? 'established' : 'new', entry: hit.entry, dir: hit.dir };
+        }
+        if (p.icmp && (p.icmp.type === 'unreachable' || p.icmp.type === 'ttl-exceeded'))
+            return { state: this.related(p) ? 'related' : 'invalid', entry: null, dir: 'orig' };
+        const t = tupleOf(p);
+        if (!t)
+            return { state: 'untracked', entry: null, dir: 'orig' };
+        if (t.proto === 'tcp' && !p.tcp?.flags.includes('SYN'))
+            return { state: 'invalid', entry: null, dir: 'orig' };
+        if (p.icmp?.type === 'echo-reply')
+            return { state: 'invalid', entry: null, dir: 'orig' };
+        return { state: 'new', entry: { orig: t, seenReply: false, confirmed: false, closing: false, lastSeen: this.now(), packets: 0 }, dir: 'orig' };
+    }
+    /** The connection whose packet an ICMP error quotes, as that packet left (after NAT). */
+    quoted(p) {
+        const q = p.icmp?.orig;
+        const hit = q ? this.index.get(key({ proto: q.protocol, src: q.src, sport: q.sport, dst: q.dst, dport: q.dport })) : undefined;
+        return hit && !this.expired(hit.entry) ? hit : null;
+    }
+    /** An ICMP error about a known connection between the same hosts. */
+    related(p) {
+        for (const e of this.entries) {
+            if ([...origStages(e), ...replyStages(e)].some((t) => t.src === p.dst || t.dst === p.dst))
+                return true;
+        }
+        return false;
+    }
+    /** Records a packet of `entry` (and confirms a new connection); false when the table is full. */
+    see(entry, dir, p) {
+        if (!entry.confirmed) {
+            this.expire();
+            if (this.entries.size >= CT_MAX)
+                return false;
+            entry.confirmed = true;
+            this.entries.add(entry);
+        }
+        if (dir === 'reply')
+            entry.seenReply = true;
+        if (p.tcp?.flags.includes('FIN') || p.tcp?.flags.includes('RST'))
+            entry.closing = true;
+        entry.lastSeen = this.now();
+        entry.packets += 1;
+        this.reindex(entry);
+        return true;
+    }
+    /** (Re)indexes all the tuples of a confirmed connection, e.g. after NAT was decided. */
+    reindex(entry) {
+        if (!entry.confirmed)
+            return;
+        for (const t of origStages(entry))
+            this.index.set(key(t), { entry, dir: 'orig' });
+        for (const t of replyStages(entry))
+            this.index.set(key(t), { entry, dir: 'reply' });
+    }
+    /** Is a translated tuple (in the reply direction) already used by another connection? */
+    replyTaken(t) {
+        const hit = this.index.get(key(swap(t)));
+        return hit !== undefined && !this.expired(hit.entry);
+    }
+    flush() {
+        this.index.clear();
+        this.entries.clear();
+    }
+    expired(e) {
+        const limit = e.closing ? CLOSING_MS : e.seenReply ? TIMEOUT_MS[e.orig.proto] : Math.min(UNREPLIED_MS, TIMEOUT_MS[e.orig.proto]);
+        return this.now() - e.lastSeen > limit;
+    }
+    /** Drops expired connections: one pass over the entries and one over the index. */
+    expire() {
+        const gone = new Set();
+        for (const e of this.entries)
+            if (this.expired(e))
+                gone.add(e);
+        if (!gone.size)
+            return;
+        for (const e of gone)
+            this.entries.delete(e);
+        for (const [k, v] of this.index)
+            if (gone.has(v.entry))
+                this.index.delete(k);
+    }
+}
+
+return { CT_MAX, tupleOf, origStages, replyStages, Conntrack };
+})();
+__m["net/nat.js"] = (() => {
+const FIRST_PAT_PORT = 1024;
+const LAST_PORT = 65535;
+const MAX_ENTRIES = 4096;
+function flowOf(p) {
+    if (p.tcp)
+        return { proto: 'tcp', sport: p.tcp.sport, dport: p.tcp.dport };
+    if (p.udp)
+        return { proto: 'udp', sport: p.udp.sport, dport: p.udp.dport };
+    const id = p.icmp?.id ?? 0;
+    return { proto: 'icmp', sport: id, dport: id };
+}
+function rewriteSrc(p, ip, port) {
+    if (port === undefined)
+        return { ...p, src: ip };
+    if (p.tcp)
+        return { ...p, src: ip, tcp: { ...p.tcp, sport: port } };
+    if (p.udp)
+        return { ...p, src: ip, udp: { ...p.udp, sport: port } };
+    return p.icmp ? { ...p, src: ip, icmp: { ...p.icmp, id: port } } : { ...p, src: ip };
+}
+function rewriteDst(p, ip, port) {
+    if (port === undefined)
+        return { ...p, dst: ip };
+    if (p.tcp)
+        return { ...p, dst: ip, tcp: { ...p.tcp, dport: port } };
+    if (p.udp)
+        return { ...p, dst: ip, udp: { ...p.udp, dport: port } };
+    return p.icmp ? { ...p, dst: ip, icmp: { ...p.icmp, id: port } } : { ...p, dst: ip };
+}
+function staticMatchesOut(s, p, f) {
+    return s.local === p.src && (s.proto === undefined || (s.proto === f.proto && s.localPort === f.sport));
+}
+function staticMatchesIn(s, p, f) {
+    return s.global === p.dst && (s.proto === undefined || (s.proto === f.proto && s.globalPort === f.dport));
+}
+class NatTable {
+    dynamic = [];
+    hits = 0;
+    misses = 0;
+    /** Inside → outside: translates the source; null when no rule applies, 'drop' when the rule cannot. */
+    inside(p, statics, target) {
+        if (p.protocol === 'esp')
+            return this.insideEsp(p, statics, target);
+        const f = flowOf(p);
+        const st = statics.find((s) => staticMatchesOut(s, p, f));
+        if (st)
+            return this.hit(rewriteSrc(p, st.global, st.proto ? st.globalPort : undefined));
+        const known = this.dynamic.find((e) => e.insideLocal === p.src && (e.proto === null || (e.proto === f.proto && e.localPort === f.sport)));
+        if (known)
+            return this.hit(rewriteSrc(p, known.insideGlobal, known.proto ? known.globalPort : undefined));
+        const t = target(p);
+        if (!t)
+            return null;
+        this.misses += 1;
+        if (t === 'exhausted')
+            return 'drop';
+        const reserved = new Set(statics.filter((s) => s.global === t.global && s.proto === f.proto).map((s) => s.globalPort));
+        const port = t.overload ? this.freePort(f.proto, t.global, f.sport, reserved) : 0;
+        if (port === null)
+            return 'drop';
+        const entry = t.overload
+            ? { proto: f.proto, insideLocal: p.src, insideGlobal: t.global, localPort: f.sport, globalPort: port, outside: p.dst, outsidePort: f.dport, static: false, rule: t.rule }
+            : { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false, rule: t.rule };
+        this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
+        return rewriteSrc(p, entry.insideGlobal, entry.proto ? entry.globalPort : undefined);
+    }
+    /**
+     * ESP has no ports: a 1:1 translation (static, or a dynamic one without overload) can carry it; PAT
+     * cannot, so the packet is dropped (that is why IPsec behind a NAT needs NAT-T or public addresses).
+     */
+    insideEsp(p, statics, target) {
+        const st = statics.find((s) => s.local === p.src && s.proto === undefined);
+        if (st)
+            return this.hit({ ...p, src: st.global });
+        const known = this.dynamic.find((e) => e.insideLocal === p.src && e.proto === null);
+        if (known)
+            return this.hit({ ...p, src: known.insideGlobal });
+        const t = target(p);
+        if (!t)
+            return null;
+        if (t === 'exhausted' || t.overload)
+            return 'drop';
+        const entry = { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false, rule: t.rule };
+        this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
+        return { ...p, src: t.global };
+    }
+    /** Outside → inside: translates the destination, or returns null when nothing maps it. */
+    outside(p, statics) {
+        if (p.icmp?.orig)
+            return this.related(p, statics);
+        if (p.protocol === 'esp') {
+            const whole = statics.find((s) => s.global === p.dst && s.proto === undefined) ?? this.dynamic.find((e) => e.proto === null && e.insideGlobal === p.dst);
+            return whole ? this.hit({ ...p, dst: 'local' in whole ? whole.local : whole.insideLocal }) : null;
+        }
+        const f = flowOf(p);
+        const port = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f));
+        if (port)
+            return this.hit(rewriteDst(p, port.local, port.localPort));
+        const known = this.dynamic.find((e) => e.insideGlobal === p.dst && (e.proto === null || (e.proto === f.proto && e.globalPort === f.dport)));
+        if (known)
+            return this.hit(rewriteDst(p, known.insideLocal, known.proto ? known.localPort : undefined));
+        const whole = statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
+        return whole ? this.hit(rewriteDst(p, whole.local)) : null;
+    }
+    /**
+     * An ICMP error about a translated packet (RFC 5508): the quote is the packet as it left, so its source is the inside
+     * global address and port; both it and the outer destination go back to the inside local ones.
+     */
+    related(p, statics) {
+        const q = p.icmp?.orig;
+        if (!p.icmp || !q)
+            return null;
+        const st = statics.find((s) => s.global === q.src && s.proto === q.protocol && s.globalPort === q.sport) ?? statics.find((s) => s.global === q.src && s.proto === undefined);
+        // A PAT entry also records the outside end, so an error about the router's own traffic from that address is not taken for it.
+        const dyn = st ? undefined : this.dynamic.find((e) => e.insideGlobal === q.src && (e.proto === null || (e.proto === q.protocol && e.globalPort === q.sport && e.outside === q.dst && e.outsidePort === q.dport)));
+        const local = st ? { ip: st.local, port: st.proto ? st.localPort : undefined } : dyn ? { ip: dyn.insideLocal, port: dyn.proto ? dyn.localPort : undefined } : null;
+        if (!local)
+            return null;
+        return this.hit(unNatError(p, local.ip, local.port));
+    }
+    /** Is this global address (and pool member) taken by a 1:1 dynamic translation? */
+    globalInUse(global) {
+        return this.dynamic.some((e) => e.proto === null && e.insideGlobal === global);
+    }
+    entries() {
+        return this.dynamic;
+    }
+    /** clear ip nat translation * (statistics are kept, like IOS). */
+    clear() {
+        this.dynamic = [];
+    }
+    /** Factory state (reload): no translations and zeroed statistics. */
+    reset() {
+        this.dynamic = [];
+        this.hits = 0;
+        this.misses = 0;
+    }
+    hit(p) {
+        this.hits += 1;
+        return p;
+    }
+    /** The inside port itself when free, else the first free one; null when every port is taken. */
+    freePort(proto, global, wanted, reserved) {
+        const used = new Set(this.dynamic.filter((e) => e.proto === proto && e.insideGlobal === global).map((e) => e.globalPort));
+        const free = (port) => !used.has(port) && !reserved.has(port);
+        if (wanted > 0 && free(wanted))
+            return wanted;
+        for (let port = FIRST_PAT_PORT; port <= LAST_PORT; port++)
+            if (free(port))
+                return port;
+        return null;
+    }
+}
+/**
+ * An ICMP error sent back to `ip`, its quote showing `ip` (and `port`, when translated) as the source and, when the
+ * connection was also destination-translated, its original destination.
+ */
+function unNatError(p, ip, port, to) {
+    const q = p.icmp?.orig;
+    if (!p.icmp || !q)
+        return { ...p, dst: ip };
+    const dst = to ? { dst: to.ip, dport: to.port } : {};
+    return { ...p, dst: ip, icmp: { ...p.icmp, orig: { ...q, src: ip, sport: port ?? q.sport, ...dst } } };
+}
+
+return { flowOf, rewriteSrc, rewriteDst, NatTable, unNatError };
+})();
+__m["net/klog.js"] = (() => {
+const { formatIp } = __m["core/ip.js"];
+/** Above this initial TTL the sender is Windows (128), below it Linux (64): ping size and the DF bit depend on it. */
+const LINUX_MAX_TTL = 64;
+const IP_HEADER = 20;
+const ICMP_TYPES = { 'echo-reply': 0, unreachable: 3, 'echo-request': 8, 'ttl-exceeded': 11 };
+const UNREACHABLE_CODES = { net: 0, host: 1, port: 3, admin: 13 };
+/** Order in which the kernel prints the TCP flags. */
+const TCP_FLAG_ORDER = ['ACK', 'PSH', 'RST', 'SYN', 'FIN'];
+const TCP_WINDOW = 64240;
+const fromLinux = (p) => p.ttl <= LINUX_MAX_TTL;
+/** IP total length of the usual packet of each kind (ping: 56 data bytes on Linux, 32 on Windows). */
+function ipLength(p) {
+    if (p.icmp)
+        return p.icmp.type === 'echo-request' || p.icmp.type === 'echo-reply' ? (fromLinux(p) ? 84 : 60) : 56;
+    if (p.tcp)
+        return p.tcp.flags.includes('SYN') ? (fromLinux(p) ? 60 : 52) : 52;
+    if (p.udp)
+        return p.udp.dns ? 73 : 76;
+    return IP_HEADER;
+}
+function l4(p) {
+    if (p.icmp) {
+        const code = p.icmp.type === 'unreachable' ? UNREACHABLE_CODES[p.icmp.code ?? 'host'] ?? 1 : 0;
+        const echo = p.icmp.type === 'echo-request' || p.icmp.type === 'echo-reply' ? ` ID=${p.icmp.id} SEQ=${p.icmp.seq}` : '';
+        return `PROTO=ICMP TYPE=${ICMP_TYPES[p.icmp.type] ?? 0} CODE=${code}${echo}`;
+    }
+    if (p.tcp) {
+        const flags = TCP_FLAG_ORDER.filter((f) => p.tcp?.flags.includes(f)).join(' ');
+        return `PROTO=TCP SPT=${p.tcp.sport} DPT=${p.tcp.dport} WINDOW=${TCP_WINDOW} RES=0x00 ${flags}${flags ? ' ' : ''}URGP=0`;
+    }
+    if (p.udp)
+        return `PROTO=UDP SPT=${p.udp.sport} DPT=${p.udp.dport} LEN=${ipLength(p) - IP_HEADER}`;
+    return `PROTO=${p.protocol.toUpperCase()}`;
+}
+/** TCP and everything Linux sends go with Don't Fragment (path MTU discovery); Windows' ping and UDP do not. */
+const dontFragment = (p) => p.tcp !== undefined || fromLinux(p);
+function kernelLogLine(prefix, p, m) {
+    const mac = m.iif !== undefined && m.mac ? ` MAC=${m.mac}` : '';
+    const df = dontFragment(p) ? ' DF' : '';
+    return `${prefix}IN=${m.iif ?? ''} OUT=${m.oif ?? ''}${mac} SRC=${formatIp(p.src)} DST=${formatIp(p.dst)} LEN=${ipLength(p)} TOS=0x00 PREC=0x00 TTL=${p.ttl} ID=${m.id}${df} ${l4(p)}`;
+}
+/** «dst:src:08:00» as the kernel prints the MAC header (MACs are 12 hex characters). */
+function macHeader(dst, src) {
+    const pairs = (hex) => (hex.match(/../g) ?? []).join(':');
+    return `${pairs(dst)}:${pairs(src)}:08:00`;
+}
+
+return { kernelLogLine, macHeader };
+})();
+__m["net/netfilter.js"] = (() => {
+const { EMPTY_RULESET } = __m["net/nft/model.js"];
+const { activeHooks, filterHook, natHook } = __m["net/nft/eval.js"];
+const { Conntrack, tupleOf } = __m["net/conntrack.js"];
+const { rewriteDst, rewriteSrc, unNatError } = __m["net/nat.js"];
+const { formatIp } = __m["core/ip.js"];
+const { kernelLogLine, macHeader } = __m["net/klog.js"];
+const FIRST_NAT_PORT = 32768;
+const LAST_NAT_PORT = 60999;
+class Netfilter {
+    ruleset = EMPTY_RULESET;
+    counters = new Map();
+    ct;
+    env;
+    ctx = new WeakMap();
+    hooks = new Set();
+    /** Ethernet header of each arrived packet (MAC= of the log line). */
+    macs = new WeakMap();
+    /** IP identification of the logged packets (a fixed walk: deterministic, no repeats nearby). */
+    ipId = 4242;
+    constructor(env) {
+        this.env = env;
+        this.ct = new Conntrack(() => env.now());
+    }
+    /** Replaces the ruleset (nft commands, nftables.service); counters of removed rules go away. */
+    setRuleset(rs) {
+        this.ruleset = rs;
+        this.hooks = activeHooks(rs);
+        const live = new Set(rs.tables.flatMap((t) => t.chains.flatMap((c) => c.rules.map((r) => r.handle))));
+        for (const h of this.counters.keys())
+            if (!live.has(h))
+                this.counters.delete(h);
+    }
+    /** Nothing to do when no base chain exists (the common case: no firewall). */
+    get active() {
+        return this.hooks.size > 0;
+    }
+    /** Keeps the conntrack context when a packet is copied (TTL decrement while forwarding). */
+    carry(from, to) {
+        const c = this.ctx.get(from);
+        if (c)
+            this.ctx.set(to, c);
+        return to;
+    }
+    evalEnv(hook) {
+        return {
+            counters: this.counters,
+            log: (prefix, p, meta) => {
+                // The kernel lowers the TTL of a forwarded packet before the forward hook.
+                const seen = hook === 'forward' ? { ...p, ttl: p.ttl - 1 } : p;
+                this.ipId = (this.ipId * 7919 + 1) % 65536;
+                this.env.log(kernelLogLine(prefix, seen, { iif: meta.iif, oif: meta.oif, mac: this.macs.get(p), id: this.ipId }));
+            },
+        };
+    }
+    context(p) {
+        const known = this.ctx.get(p);
+        if (known)
+            return known;
+        const c = this.ct.classify(p);
+        return { entry: c.entry, dir: c.dir, state: c.state };
+    }
+    keep(p, c) {
+        this.ctx.set(p, c);
+        return p;
+    }
+    filter(hook, p, meta) {
+        if (!this.hooks.has(hook))
+            return true;
+        const r = filterHook(this.ruleset, hook, p, meta, this.evalEnv(hook));
+        if (r.verdict === 'reject')
+            this.env.reject(p, r.with, hook === 'forward' ? meta.iif : undefined);
+        return r.verdict === 'accept';
+    }
+    /** The Ethernet header a packet arrived in, for the MAC= of the kernel log. */
+    noteFrame(p, dstMac, srcMac) {
+        this.macs.set(p, macHeader(dstMac, srcMac));
+    }
+    /** Incoming packet before routing: undo SNAT of replies, apply or decide DNAT, filter prerouting. */
+    prerouting(iif, p) {
+        if (!this.active)
+            return p;
+        const c = this.context(p);
+        let out = p;
+        const quoted = c.state === 'related' ? this.ct.quoted(p) : null;
+        if (quoted?.dir === 'orig' && quoted.entry.snat?.ip === p.icmp?.orig?.src) {
+            // An ICMP error about a source-translated packet goes back to the inside host (RFC 5508), quoting it as sent.
+            const o = quoted.entry.orig;
+            out = unNatError(p, o.src, o.sport, { ip: o.dst, port: o.dport });
+        }
+        else if (c.entry?.confirmed) {
+            if (c.dir === 'orig' && c.entry.dnat)
+                out = rewriteDst(p, c.entry.dnat.ip, c.entry.dnat.port);
+            if (c.dir === 'reply' && c.entry.snat)
+                out = rewriteDst(p, c.entry.orig.src, c.entry.orig.sport);
+        }
+        else if (c.entry && this.hooks.has('prerouting')) {
+            const d = natHook(this.ruleset, 'prerouting', p, { iif, ct: c.state }, this.evalEnv('prerouting'));
+            if (d === 'drop')
+                return null;
+            if (d?.kind === 'dnat') {
+                c.entry.dnat = { ip: d.ip, port: d.port };
+                out = rewriteDst(p, d.ip, d.port);
+            }
+        }
+        const mac = this.macs.get(p);
+        if (mac && out !== p)
+            this.macs.set(out, mac);
+        if (!this.filter('prerouting', out, { iif, ct: c.state }))
+            return null;
+        return this.keep(out, c);
+    }
+    /** Packet for this host: filter input and confirm the connection. */
+    input(iif, p) {
+        if (!this.active)
+            return p;
+        const c = this.context(p);
+        if (!this.filter('input', p, { iif, ct: c.state }))
+            return null;
+        if (c.entry && !this.ct.see(c.entry, c.dir, p))
+            return null;
+        return p;
+    }
+    /** Transit packet (router): filter forward. */
+    forward(iif, oif, p) {
+        if (!this.active)
+            return p;
+        const c = this.context(p);
+        return this.filter('forward', p, { iif, oif, ct: c.state }) ? this.keep(p, { ...c, iif }) : null;
+    }
+    /** Locally generated packet: conntrack, DNAT of the output nat chain, filter output. */
+    output(oif, p) {
+        if (!this.active)
+            return p;
+        const c = this.context(p);
+        let out = p;
+        if (c.entry && !c.entry.confirmed && this.hooks.has('output')) {
+            const d = natHook(this.ruleset, 'output', p, { oif, ct: c.state }, this.evalEnv('output'));
+            if (d === 'drop')
+                return null;
+            if (d?.kind === 'dnat') {
+                c.entry.dnat = { ip: d.ip, port: d.port };
+                out = rewriteDst(p, d.ip, d.port);
+            }
+        }
+        if (!this.filter('output', out, { oif, ct: c.state }))
+            return null;
+        return this.keep(out, c);
+    }
+    /** Leaving packet: apply or decide SNAT/masquerade, undo DNAT of replies, confirm. */
+    postrouting(oif, p, arrival) {
+        if (!this.active)
+            return p;
+        const c = this.context(p);
+        const iif = arrival ?? c.iif;
+        let out = p;
+        if (c.entry?.confirmed) {
+            if (c.dir === 'orig' && c.entry.snat)
+                out = rewriteSrc(p, c.entry.snat.ip, c.entry.snat.port);
+            if (c.dir === 'reply' && c.entry.dnat)
+                out = rewriteSrc(p, c.entry.orig.dst, c.entry.orig.dport);
+        }
+        else if (c.entry && this.hooks.has('postrouting')) {
+            const d = natHook(this.ruleset, 'postrouting', p, { iif, oif, ct: c.state }, this.evalEnv('postrouting'));
+            if (d === 'drop')
+                return null;
+            const to = d && d.kind !== 'dnat' ? this.snatTarget(p, d.kind === 'masquerade' ? this.env.ifaceIp(oif) : d.ip, d.kind === 'snat' ? d.port : undefined) : null;
+            // No address on the interface or no free port: the kernel drops it rather than leak the private source.
+            if (d && d.kind !== 'dnat' && !to)
+                return null;
+            if (to) {
+                c.entry.snat = to;
+                out = rewriteSrc(p, to.ip, to.port);
+            }
+        }
+        if (!this.filter('postrouting', out, { iif, oif, ct: c.state }))
+            return null;
+        if (c.entry && !this.ct.see(c.entry, c.dir, p))
+            return null;
+        return out;
+    }
+    /** Source after SNAT, keeping the port unless another connection already uses it (like the kernel). */
+    snatTarget(p, ip, port) {
+        const t = tupleOf(p);
+        if (ip === undefined || !t)
+            return null;
+        if (port !== undefined)
+            return { ip, port };
+        const free = (sport) => !this.ct.replyTaken({ ...t, src: ip, sport, dport: t.proto === 'icmp' ? sport : t.dport });
+        if (free(t.sport))
+            return { ip, port: t.sport };
+        for (let n = FIRST_NAT_PORT; n <= LAST_NAT_PORT; n++)
+            if (free(n))
+                return { ip, port: n };
+        return null;
+    }
+    /** `systemctl stop nftables` / `nft flush ruleset`. */
+    flush() {
+        this.setRuleset(EMPTY_RULESET);
+        this.counters.clear();
+    }
+}
+
+return { Netfilter };
+})();
+__m["net/sysctl.js"] = (() => {
+/**
+ * Kernel parameters (sysctl) of a simulated Linux host, with Ubuntu's defaults. A few have effects in
+ * Netfix (forwarding, ignoring pings, the host name); the rest are accepted and kept, as a lab expects.
+ */
+const BOOL = ['0', '1'];
+const SYSCTL_KEYS = [
+    { name: 'kernel.domainname', value: '(none)', accepts: 'text', effect: false },
+    { name: 'kernel.hostname', value: '', accepts: 'text', effect: true },
+    { name: 'kernel.sysrq', value: '176', accepts: 'int', effect: false },
+    { name: 'net.ipv4.conf.all.accept_source_route', value: '0', accepts: BOOL, effect: false },
+    { name: 'net.ipv4.conf.all.secure_redirects', value: '1', accepts: BOOL, effect: false },
+    { name: 'net.ipv6.conf.all.accept_redirects', value: '1', accepts: BOOL, effect: false },
+    { name: 'net.ipv6.conf.all.accept_source_route', value: '0', accepts: BOOL, effect: false },
+    { name: 'net.ipv4.conf.all.accept_redirects', value: '1', accepts: BOOL, effect: false },
+    { name: 'net.ipv4.conf.all.bc_forwarding', value: '0', accepts: BOOL, effect: true },
+    { name: 'net.ipv4.conf.all.forwarding', value: '0', accepts: BOOL, effect: true },
+    { name: 'net.ipv4.conf.all.log_martians', value: '0', accepts: BOOL, effect: false },
+    { name: 'net.ipv4.conf.all.rp_filter', value: '2', accepts: ['0', '1', '2'], effect: false },
+    { name: 'net.ipv4.conf.all.send_redirects', value: '1', accepts: BOOL, effect: false },
+    { name: 'net.ipv4.conf.default.rp_filter', value: '2', accepts: ['0', '1', '2'], effect: false },
+    { name: 'net.ipv4.icmp_echo_ignore_all', value: '0', accepts: BOOL, effect: true },
+    { name: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1', accepts: BOOL, effect: true },
+    { name: 'net.ipv4.ip_default_ttl', value: '64', accepts: 'int', effect: false },
+    { name: 'net.ipv4.ip_forward', value: '0', accepts: BOOL, effect: true },
+    { name: 'net.ipv4.tcp_syncookies', value: '1', accepts: BOOL, effect: false },
+    { name: 'net.ipv6.conf.all.disable_ipv6', value: '0', accepts: BOOL, effect: false },
+    { name: 'net.ipv6.conf.all.forwarding', value: '0', accepts: BOOL, effect: false },
+    { name: 'net.netfilter.nf_conntrack_max', value: '4096', accepts: 'int', effect: false },
+    { name: 'vm.swappiness', value: '60', accepts: 'int', effect: false },
+];
+/** `net/ipv4/ip_forward` (a /proc/sys path) or `net/ipv4/ip_forward` typed with slashes → dotted name. */
+function sysctlName(text) {
+    return text.replace(/^\/proc\/sys\//, '').replace(/\//g, '.');
+}
+function sysctlPath(name) {
+    return `/proc/sys/${name.replace(/\./g, '/')}`;
+}
+/** Keys that mirror each other (ip_forward and conf.all.forwarding are the same switch). */
+const MIRRORS = {
+    'net.ipv4.ip_forward': 'net.ipv4.conf.all.forwarding',
+    'net.ipv4.conf.all.forwarding': 'net.ipv4.ip_forward',
+};
+const MAX_TEXT = 64;
+class Sysctl {
+    values = new Map(SYSCTL_KEYS.map((k) => [k.name, k.value]));
+    listeners = new Set();
+    /** kernel.hostname reads the running name of the host. */
+    hostname;
+    constructor(hostname) {
+        this.hostname = hostname;
+    }
+    has(name) {
+        return this.values.has(name);
+    }
+    get(name) {
+        return name === 'kernel.hostname' ? this.hostname.get() : this.values.get(name);
+    }
+    /** All keys, sorted (sysctl -a). */
+    names() {
+        return [...this.values.keys()].sort();
+    }
+    enabled(name) {
+        return this.get(name) === '1';
+    }
+    /** Sets a value; returns 'unknown', 'invalid' or null when applied. */
+    set(name, raw) {
+        const key = SYSCTL_KEYS.find((k) => k.name === name);
+        if (!key)
+            return 'unknown';
+        const value = raw.trim();
+        if (key.accepts === 'int' ? !/^\d{1,9}$/.test(value) : key.accepts === 'text' ? value.length === 0 || value.length > MAX_TEXT : !key.accepts.includes(value))
+            return 'invalid';
+        if (name === 'kernel.hostname')
+            return this.hostname.set(value) ? 'denied' : null;
+        this.values.set(name, value);
+        const mirror = MIRRORS[name];
+        if (mirror)
+            this.values.set(mirror, value);
+        for (const l of this.listeners)
+            l(name, value);
+        return null;
+    }
+    onChange(listener) {
+        this.listeners.add(listener);
+        return () => this.listeners.delete(listener);
+    }
+    /** Boot: back to the defaults (before /etc/sysctl.conf is applied). */
+    reset() {
+        for (const k of SYSCTL_KEYS)
+            if (k.name !== 'kernel.hostname')
+                this.values.set(k.name, k.value);
+        for (const l of this.listeners)
+            l('*', '');
+    }
+}
+/** `key = value` lines of a sysctl.conf file (comments with # or ;, `-key` ignores errors). */
+function parseSysctlConf(text) {
+    return text.split('\n').flatMap((raw, i) => {
+        const line = raw.trim();
+        if (!line || line.startsWith('#') || line.startsWith(';'))
+            return [];
+        const m = /^(-?)([\w./-]+)\s*=\s*(.*)$/.exec(line);
+        return m ? [{ key: sysctlName(m[2] ?? ''), value: (m[3] ?? '').trim(), quiet: m[1] === '-', line: i + 1 }] : [];
+    });
+}
+
+return { SYSCTL_KEYS, sysctlName, sysctlPath, Sysctl, parseSysctlConf };
+})();
+__m["devices/host-kernel.js"] = (() => {
+const { LINUX_TTL, icmpQuote } = __m["net/packets.js"];
+const { Netfilter } = __m["net/netfilter.js"];
+const { Sysctl } = __m["net/sysctl.js"];
+const { LOOPBACK } = __m["net/ipstack.js"];
+const MAX_KERNEL_LOG = 200;
+class Kernel {
+    sysctl;
+    netfilter;
+    log = [];
+    host;
+    constructor(host) {
+        this.host = host;
+        this.sysctl = new Sysctl({
+            get: () => host.runtimeName(),
+            // kernel.hostname is read-only in Netfix: the host name comes from the device name.
+            set: () => 'locked',
+        });
+        this.netfilter = new Netfilter({
+            now: () => host.clock.now(),
+            log: (line) => this.printk(line),
+            ifaceIp: (name) => host.linuxIfIp(name),
+            reject: (p, kind, iif) => this.reject(p, kind, iif),
+        });
+    }
+    printk(text) {
+        this.log.push({ time: this.host.clock.now(), text });
+        if (this.log.length > MAX_KERNEL_LOG)
+            this.log.splice(0, this.log.length - MAX_KERNEL_LOG);
+    }
+    name(port) {
+        return port === LOOPBACK ? LOOPBACK : this.host.linuxIfName(port);
+    }
+    prerouting(port, p) {
+        return this.netfilter.prerouting(this.name(port), p);
+    }
+    input(port, p) {
+        if (p.icmp?.type === 'echo-request' && this.sysctl.enabled('net.ipv4.icmp_echo_ignore_all'))
+            return null;
+        return this.netfilter.input(this.name(port), p);
+    }
+    output(port, p) {
+        return this.netfilter.output(this.name(port), p);
+    }
+    postrouting(port, p, iif) {
+        return this.netfilter.postrouting(this.name(port), p, iif);
+    }
+    /**
+     * `reject`: TCP RST for TCP (unless an ICMP type was asked), ICMP port unreachable otherwise (or the type asked).
+     * The RST answers as the destination; the ICMP error comes from this host (the arrival interface when forwarding).
+     */
+    reject(p, kind, iif) {
+        if (p.icmp && p.icmp.type !== 'echo-request')
+            return;
+        const ttl = LINUX_TTL;
+        if (p.tcp && (kind === undefined || kind === 'tcp reset')) {
+            this.host.sendRaw({ src: p.dst, dst: p.src, ttl, protocol: 'tcp', tcp: { sport: p.tcp.dport, dport: p.tcp.sport, flags: ['RST', 'ACK'], seq: 0, ack: p.tcp.seq + 1 } });
+            return;
+        }
+        const src = iif === undefined ? p.dst : this.host.linuxIfIp(iif);
+        if (src === undefined)
+            return;
+        const code = kind === 'icmp admin-prohibited' ? 'admin' : kind === 'icmp host-unreachable' ? 'host' : 'port';
+        const orig = icmpQuote(p);
+        this.host.sendRaw({ src, dst: p.src, ttl, protocol: 'icmp', icmp: { type: 'unreachable', id: p.icmp?.id ?? 0, seq: p.icmp?.seq ?? 0, code, ...(orig ? { orig } : {}) } });
+    }
+}
+
+return { Kernel };
+})();
+__m["devices/host.js"] = (() => {
+const { t } = __m["i18n/t.js"];
+const { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DNS_PORT, LINUX_TTL, PC_TTL } = __m["net/packets.js"];
+
+const { IpStack } = __m["net/ipstack.js"];
+const { TcpLayer } = __m["net/tcp.js"];
+const { DnsResolver } = __m["net/dns.js"];
+const { DhcpClient } = __m["dhcp/client.js"];
+const { DETACHED } = __m["devices/hooks.js"];
+const { macFromSeed, clientIdFromMac } = __m["core/mac.js"];
+const { Kernel } = __m["devices/host-kernel.js"];
+const { lookupRoute, MAX_STATIC_ROUTES } = __m["devices/host-nics.js"];
+const { inSubnet, BROADCAST_IP } = __m["core/ip.js"];
+const HOST_PORT = 'FastEthernet0';
+/** Linux name of the NIC (ip, nft iif/oif, netplan). */
+const HOST_LINUX_IF = 'eth0';
+const APIPA_NET = 0xa9fe0000;
+const APIPA_PREFIX = 16;
+const APIPA_HOST_SPACE = 0xfe00;
+const MAX_LABEL = 63;
+const MAX_HOSTNAME = 253;
+const LABEL = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
+/** RFC 1123 host name (letters, digits and hyphens; dot-separated labels). Returns an error or null. */
+function validHostname(name) {
+    if (name.trim() === '')
+        return t('host.err.empty');
+    if (name.length > MAX_HOSTNAME)
+        return t('host.err.long', { max: MAX_HOSTNAME });
+    const labels = name.split('.');
+    if (labels.some((l) => l.length > MAX_LABEL))
+        return t('host.err.label', { max: MAX_LABEL });
+    if (!labels.every((l) => LABEL.test(l)))
+        return t('host.err.chars');
+    return null;
+}
+class Host {
+    id;
+    /** Static host name (hostnamectl, /etc/hostname, Windows computer name). */
+    name;
+    /** Transient name set with `hostname NAME` (not saved); undefined = the static name. */
+    transientName = undefined;
+    /** hostnamectl's pretty host name (free text). */
+    prettyName = undefined;
+    mac;
+    hooks = DETACHED;
+    config = { mode: 'static' };
+    /** DNS search domains of netplan's `nameservers.search` (the DHCP domain is added while the lease lasts). */
+    dnsSearch = [];
+    /** Operating system of the default terminal (both terminals are always available). */
+    os = 'windows';
+    /** Windows-style clients send option 61 = 01 + MAC. */
+    sendClientId = true;
+    /** Option 61 to send instead of 01 + MAC (lowercase hex), like dhclient's `send dhcp-client-identifier`. */
+    clientIdOverride = undefined;
+    portUp = true;
+    dhcpStatus = 'idle';
+    stack;
+    dhcpClient;
+    tcp;
+    resolver;
+    clock;
+    /** sysctl, netfilter (nftables) and the kernel log. */
+    kernel;
+    /** Routes added with `ip route add NET via GW` (running configuration; the default route is `config.gateway`). */
+    staticRoutes = [];
+    statusListeners = new Set();
+    dropOnArpMiss = false;
+    /** Initial TTL of what this host sends: 64 on Linux, 128 on Windows. */
+    get ttl() { return this.os === 'linux' ? LINUX_TTL : PC_TTL; }
+    /** Linux aborts a connect() in SYN_SENT on an ICMP unreachable quoting it (tcp_v4_err); Windows ignores it. */
+    icmpUnreachable(orig, code) { if (orig.protocol === 'tcp' && this.os === 'linux')
+        this.tcp.icmpUnreachable(orig, code); }
+    /** Windows never answers an echo to a broadcast address; Linux only with icmp_echo_ignore_broadcasts=0. */
+    ignoresBroadcastEcho = () => this.os === 'windows' || this.kernel.sysctl.enabled('net.ipv4.icmp_echo_ignore_broadcasts');
+    constructor(id, name, clock, seed) {
+        this.id = id;
+        this.name = name;
+        this.clock = clock;
+        this.mac = macFromSeed(seed);
+        this.kernel = new Kernel({
+            clock,
+            runtimeName: () => this.runtimeName(),
+            setTransientName: (n) => this.setTransientName(n),
+            linuxIfName: (port) => this.linuxIfName(port),
+            linuxIfIp: (name) => this.linuxIfIp(name),
+            sendRaw: (p) => {
+                const egress = this.route(p.dst);
+                if (egress)
+                    this.stack.sendVia(egress, p);
+            },
+        });
+        this.kernel.sysctl.onChange(() => this.changed());
+        this.stack = new IpStack(this, () => clock.now());
+        this.dhcpClient = this.createDhcpClient();
+        const host = this;
+        this.tcp = new TcpLayer({
+            get ttl() { return host.ttl; },
+            send: (p) => this.stack.send(p),
+            sourceFor: (dst) => this.sourceFor(dst),
+            schedule: (d, fn) => this.hooks.schedule(d, fn),
+        });
+        this.resolver = new DnsResolver({
+            sendQuery: (server, sport, msg) => this.sendUdp(server, sport, DNS_PORT, { dns: msg }),
+            schedule: (d, fn) => this.hooks.schedule(d, fn),
+        });
+    }
+    /** Source address towards `dst`: the address of the egress interface (routers with several NICs, wg0). */
+    sourceFor(dst) {
+        const egress = this.route(dst);
+        if (!egress)
+            return undefined;
+        return this.l3Iface(egress.iface)?.addrs[0]?.ip ?? this.config.ip;
+    }
+    displayName() {
+        return this.name;
+    }
+    /** The name the running system uses (gethostname). */
+    runtimeName() {
+        return this.transientName ?? this.name;
+    }
+    /** Sets the static host name (and the running one). Throws on an invalid name. */
+    setHostname(name) {
+        const err = validHostname(name);
+        if (err)
+            throw new Error(err);
+        this.name = name;
+        this.transientName = undefined;
+        this.changed();
+    }
+    /** hostnamectl --pretty (undefined clears it). */
+    setPrettyName(name) {
+        this.prettyName = name;
+        this.changed();
+    }
+    /** `hostname NAME` / hostnamectl --transient (undefined = back to the static name). */
+    setTransientName(name) {
+        this.transientName = name;
+        this.changed();
+    }
+    /** `ip link set dev eth0 up|down`: administrative state of the NIC. */
+    setPortUp(up) {
+        if (this.portUp === up)
+            return;
+        this.portUp = up;
+        this.hooks.portChanged(this.primaryPort());
+        this.changed();
+    }
+    /** dhclient -r: releases the lease and leaves the interface without an address. */
+    releaseDhcp() {
+        this.dhcpClient.release();
+        this.hooks.runUntil(() => false, 10);
+        this.config = { mode: 'dhcp' };
+        this.dhcpStatus = 'idle';
+        this.changed();
+    }
+    onChange(listener) {
+        this.statusListeners.add(listener);
+        return () => this.statusListeners.delete(listener);
+    }
+    /** Tells open panels that something outside the device's own setters changed (nft, sysctl files…). */
+    notifyChange() {
+        this.changed();
+    }
+    changed() {
+        for (const l of this.statusListeners)
+            l();
+    }
+    // ------------------------------------------------------------ IP configuration
+    setStatic(cfg) {
+        this.dhcpClient.stop();
+        this.dhcpStatus = 'idle';
+        this.config = { ...cfg, mode: 'static' };
+        this.stack.flushArp();
+        this.changed();
+    }
+    /** Switches to DHCP and starts DORA. */
+    useDhcp() {
+        this.config = { mode: 'dhcp' };
+        this.dhcpStatus = 'requesting';
+        this.stack.flushArp();
+        this.changed();
+        this.dhcpClient.start();
+    }
+    clientId() {
+        if (!this.sendClientId)
+            return undefined;
+        return this.clientIdOverride ?? clientIdFromMac(this.mac);
+    }
+    createDhcpClient() {
+        return new DhcpClient({
+            mac: this.mac,
+            send: (msg, dst, src) => {
+                const dhcp = { ...msg, options: { ...msg.options, clientId: this.clientId(), hostname: this.runtimeName() } };
+                this.sendUdp(dst, DHCP_CLIENT_PORT, DHCP_SERVER_PORT, { dhcp }, src);
+            },
+            schedule: (d, fn) => this.hooks.schedule(d, fn),
+            now: () => this.clock.now(),
+            onBound: (lease) => this.applyLease(lease),
+            onFailed: () => this.applyApipa(),
+            onLost: () => { this.config = { mode: 'dhcp' }; this.changed(); },
+        });
+    }
+    applyLease(lease) {
+        this.config = { mode: 'dhcp', ip: lease.ip, prefix: lease.prefix, gateway: lease.routers[0], dns: lease.dnsServers[0] };
+        this.dhcpStatus = 'ok';
+        this.changed();
+    }
+    applyApipa() {
+        const host = (parseInt(this.mac.slice(8), 16) % APIPA_HOST_SPACE) + 0x100;
+        this.config = { mode: 'dhcp', ip: (APIPA_NET + host) >>> 0, prefix: APIPA_PREFIX };
+        this.dhcpStatus = 'failed';
+        this.changed();
+    }
+    // ------------------------------------------------------------ transport helpers
+    /** Sends a UDP datagram; broadcasts go out of `port` (the main NIC by default) directly. */
+    sendUdp(dst, sport, dport, body, src, port = this.primaryPort()) {
+        const from = src ?? (dst === BROADCAST_IP ? this.ifaceConfig(port)?.ip : this.sourceFor(dst)) ?? this.config.ip ?? 0;
+        const packet = { src: from, dst, ttl: this.ttl, protocol: 'udp', udp: { sport, dport, ...body } };
+        if (dst === BROADCAST_IP) {
+            this.stack.broadcast(port, packet);
+            return true;
+        }
+        return this.stack.send(packet);
+    }
+    /** DNS lookup through the configured server (asynchronous). */
+    lookup(name, type, done, server = this.config.dns) {
+        this.resolver.query(server, name, type, done);
+    }
+    /** Opens a TCP connection and exchanges one request/reply (asynchronous). */
+    connect(dst, port, payload, done, timeoutMs) {
+        this.tcp.request(dst, port, payload, done, timeoutMs);
+    }
+    // ------------------------------------------------------------ NetDevice
+    /** The NIC that the IP configuration, DHCP client and hostname belong to. */
+    primaryPort() {
+        return HOST_PORT;
+    }
+    /** Address of a NIC (the main one uses `config`). */
+    ifaceConfig(port) {
+        return port === this.primaryPort() ? this.config : undefined;
+    }
+    portNames() {
+        return [HOST_PORT];
+    }
+    portAdminUp(_port) {
+        return this.portUp;
+    }
+    linkUp() {
+        return this.portUp && this.hooks.peerUp(this.primaryPort());
+    }
+    receive(_port, frame) {
+        this.stack.receiveFrame(HOST_PORT, frame);
+    }
+    onLinkEvent(_port, up) {
+        if (up && this.config.mode === 'dhcp' && this.dhcpStatus !== 'ok')
+            this.useDhcp();
+        this.changed();
+    }
+    ownsIp(ip) {
+        return this.config.ip === ip;
+    }
+    // ------------------------------------------------------------ StackHost
+    l3Iface(name) {
+        return name === HOST_PORT ? this.l3Ifaces()[0] : undefined;
+    }
+    l3Ifaces() {
+        const { ip, prefix } = this.config;
+        const addrs = ip !== undefined && prefix !== undefined ? [{ ip, prefix }] : [];
+        return [{ name: HOST_PORT, mac: this.mac, addrs, up: this.linkUp() }];
+    }
+    emit(_iface, frame) {
+        this.hooks.transmit(HOST_PORT, frame);
+    }
+    schedule(delayMs, fn) {
+        this.hooks.schedule(delayMs, fn);
+    }
+    route(dst) {
+        return lookupRoute(this.nics(), this.staticRoutes, this.config.gateway, dst);
+    }
+    // ------------------------------------------------------------ NICs (ip addr / ip link / ip route)
+    /** The NICs as `ip` shows them (one on a PC or Server). */
+    nics() {
+        const { ip, prefix } = this.config;
+        return [{ port: HOST_PORT, linux: HOST_LINUX_IF, mac: this.mac, up: this.linkUp(), adminUp: this.portUp, ip, prefix, dhcp: this.config.mode === 'dhcp' }];
+    }
+    /** `ip addr add|del` on a NIC (undefined removes the address and the routes through it). */
+    setNicAddress(port, addr) {
+        if (port !== this.primaryPort())
+            return;
+        this.setStatic(addr ? { ...addr, gateway: undefined, dns: this.config.dns } : { dns: this.config.dns });
+    }
+    setNicUp(port, up) {
+        if (port === this.primaryPort())
+            this.setPortUp(up);
+    }
+    setStaticRoutes(routes) {
+        this.staticRoutes = routes.slice(0, MAX_STATIC_ROUTES);
+        this.changed();
+    }
+    deliver(iface, packet) {
+        if (packet.tcp) {
+            this.tcp.receive(packet);
+            return;
+        }
+        const udp = packet.udp;
+        if (!udp)
+            return;
+        if (udp.dhcp && udp.dport === DHCP_CLIENT_PORT)
+            this.dhcpClient.receive(udp.dhcp);
+        else if (udp.dns?.response && this.resolver.ownsPort(udp.dport))
+            this.resolver.receive(udp.dns, packet.src);
+        else
+            this.onUdp(packet, iface);
+    }
+    /** Linux name of a NIC port (eth0 for the only NIC of a PC or Server). */
+    linuxIfName(port) {
+        return port === HOST_PORT ? HOST_LINUX_IF : port;
+    }
+    /** IPv4 address of a Linux interface name (masquerade, nft). */
+    linuxIfIp(name) {
+        const port = this.portNames().find((p) => this.linuxIfName(p) === name);
+        return port === undefined ? undefined : this.ifaceConfig(port)?.ip;
+    }
+    // ------------------------------------------------------------ netfilter hooks
+    // The kernel (sysctl + nftables) decides; each hook returns the packet, rewritten, or null when dropped.
+    prerouting = (iface, packet) => this.kernel.prerouting(iface, packet);
+    noteFrame = (packet, frame) => this.kernel.netfilter.noteFrame(packet, frame.dst, frame.src);
+    input = (iface, packet) => this.kernel.input(iface, packet);
+    output = (iface, packet) => this.kernel.output(iface, packet);
+    postrouting = (iface, packet) => this.kernel.postrouting(iface, packet);
+    /** WireGuard links (Linux router only). */
+    wgLinks() { return undefined; }
+    /** Server-side UDP services (DHCP on 67, DNS on 53). Plain hosts (a PC) run none. */
+    onUdp(_packet, _iface) { }
+}
+
+return { DHCP_SERVER_PORT, DNS_PORT, HOST_PORT, HOST_LINUX_IF, validHostname, Host };
+})();
 __m["services/config.js"] = (() => {
 /** Server service configuration (immutable records, edited from the GUI or restored from JSON). */
 const { t } = __m["i18n/t.js"];
@@ -8740,87 +10814,6 @@ function displayName(name, origin) {
 }
 
 return { cleanOrigin, qualify, validateOrigin, validateName, effectiveRecords, displayName };
-})();
-__m["net/dns.js"] = (() => {
-const { formatIp, parseIp } = __m["core/ip.js"];
-const RESOLVER_PORT_BASE = 50_000;
-const RESOLVER_PORTS = 1000;
-const DEFAULT_TIMEOUT_MS = 5000;
-const MAX_CNAME_CHAIN = 8;
-class DnsResolver {
-    env;
-    waiting = new Map();
-    nextId = 0x1a2b;
-    constructor(env) {
-        this.env = env;
-    }
-    /** Port the host must hand DNS responses on (any port in the resolver range). */
-    ownsPort(port) {
-        return port >= RESOLVER_PORT_BASE && port < RESOLVER_PORT_BASE + RESOLVER_PORTS;
-    }
-    query(server, name, type, done, timeoutMs = DEFAULT_TIMEOUT_MS) {
-        if (server === undefined) {
-            done({ kind: 'noserver' });
-            return;
-        }
-        const id = this.nextId = (this.nextId + 1) & 0xffff;
-        const sport = RESOLVER_PORT_BASE + (id % RESOLVER_PORTS);
-        const msg = { id, response: false, qname: normalizeName(name), qtype: type, rd: true };
-        let settled = false;
-        const finish = (r) => {
-            if (settled)
-                return;
-            settled = true;
-            this.waiting.delete(id);
-            done(r);
-        };
-        this.waiting.set(id, (r) => finish(r));
-        if (!this.env.sendQuery(server, sport, msg)) {
-            finish({ kind: 'timeout', server });
-            return;
-        }
-        this.env.schedule(timeoutMs, () => finish({ kind: 'timeout', server }));
-    }
-    receive(msg, from) {
-        if (!msg.response)
-            return;
-        this.waiting.get(msg.id)?.({ kind: 'answer', msg, server: from });
-    }
-}
-function normalizeName(name) {
-    return name.trim().toLowerCase().replace(/\.+$/, '');
-}
-/** Follows CNAMEs inside one response and returns the first IPv4 address, if any. */
-function firstAddress(msg) {
-    let target = msg.qname;
-    for (let i = 0; i < MAX_CNAME_CHAIN; i++) {
-        const a = msg.answers?.find((r) => r.name === target && r.type === 'A');
-        if (a)
-            return parseIp(a.data) ?? undefined;
-        const cname = msg.answers?.find((r) => r.name === target && r.type === 'CNAME');
-        if (!cname)
-            return undefined;
-        target = cname.data;
-    }
-    return undefined;
-}
-/** "10.0.0.5" → "5.0.0.10.in-addr.arpa" */
-function reverseName(ip) {
-    return `${formatIp(ip).split('.').reverse().join('.')}.in-addr.arpa`;
-}
-/** "5.0.0.10.in-addr.arpa" → 10.0.0.5 */
-function ipFromReverse(name) {
-    const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)\.in-addr\.arpa$/.exec(normalizeName(name));
-    if (!m)
-        return undefined;
-    return parseIp([m[4], m[3], m[2], m[1]].join('.')) ?? undefined;
-}
-function isValidHostname(name) {
-    const n = normalizeName(name);
-    return n.length > 0 && n.length <= 253 && n.split('.').every((l) => /^(\*|[a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?)$/.test(l));
-}
-
-return { DnsResolver, normalizeName, firstAddress, reverseName, ipFromReverse, isValidHostname };
 })();
 __m["services/dns-zones.js"] = (() => {
 /**
@@ -9962,38 +11955,6 @@ function removeShare(text, name) {
 }
 
 return { SMB_CONF, DEFAULT_SMB_CONF, smbSections, winsConflict, parseSmbConf, findShare, serverComment, validShareName, addShare, removeShare };
-})();
-__m["net/nft/model.js"] = (() => {
-/**
- * nftables ruleset as immutable records: tables (family ip|inet) with chains, base chains with
- * type/hook/priority/policy, and rules made of matches and one statement list ending in a verdict.
- */
-const EMPTY_RULESET = { tables: [], nextHandle: 1 };
-/** Standard priorities by name (nft prints the name when the value matches). */
-const PRIORITY_NAMES = {
-    raw: -300, mangle: -150, dstnat: -100, filter: 0, security: 50, srcnat: 100,
-};
-/** Limits that protect the browser tab from huge rule files. */
-const NFT_LIMITS = { tables: 64, chainsPerTable: 64, rulesPerChain: 512, setItems: 256, jumpDepth: 16 };
-function findTable(rs, family, name) {
-    return rs.tables.find((t) => t.family === family && t.name === name);
-}
-function findChain(t, name) {
-    return t.chains.find((c) => c.name === name);
-}
-/** Returns a ruleset where `table` is replaced (or added). */
-function withTable(rs, table) {
-    const i = rs.tables.findIndex((t) => t.family === table.family && t.name === table.name);
-    const tables = i < 0 ? [...rs.tables, table] : rs.tables.map((t, j) => (j === i ? table : t));
-    return { ...rs, tables };
-}
-function withChain(t, chain) {
-    const i = t.chains.findIndex((c) => c.name === chain.name);
-    const chains = i < 0 ? [...t.chains, chain] : t.chains.map((c, j) => (j === i ? chain : c));
-    return { ...t, chains };
-}
-
-return { EMPTY_RULESET, PRIORITY_NAMES, NFT_LIMITS, findTable, findChain, withTable, withChain };
 })();
 __m["net/nft/lexer.js"] = (() => {
 /** Tokens of the nft language (command line and rule files), with positions for nft's ^^^ error marks. */
@@ -11684,60 +13645,6 @@ function checkKeaConf(path, text) {
 }
 
 return { checkKeaConf };
-})();
-__m["core/mac.js"] = (() => {
-/** MAC address and DHCP client-identifier helpers. MACs are 12 lowercase hex chars. */
-const HEX_RE = /^[0-9a-f]+$/;
-const MAC_HEX_LEN = 12;
-const BROADCAST_MAC = 'ffffffffffff';
-function stripSeparators(text) {
-    return text.toLowerCase().replace(/[.:\-]/g, '');
-}
-function parseMac(text) {
-    const hex = stripSeparators(text);
-    return hex.length === MAC_HEX_LEN && HEX_RE.test(hex) ? hex : null;
-}
-function groupBy4(hex) {
-    return (hex.match(/.{1,4}/g) ?? []).join('.');
-}
-function formatMacCisco(mac) {
-    return groupBy4(mac);
-}
-function formatMacPT(mac) {
-    return groupBy4(mac.toUpperCase());
-}
-/** Parses a hex client identifier such as "0100.1122.3344.55". */
-function parseHexId(text) {
-    const hex = stripSeparators(text);
-    if (hex.length === 0 || hex.length % 2 !== 0 || !HEX_RE.test(hex))
-        return null;
-    return hex;
-}
-function formatHexId(hex) {
-    return groupBy4(hex.toLowerCase());
-}
-/** Ethernet client-id (hardware type 01 + MAC), as sent by PCs. */
-function clientIdFromMac(mac) {
-    return `01${mac}`;
-}
-function asciiToHex(text) {
-    return Array.from(text, (ch) => ch.charCodeAt(0).toString(16).padStart(2, '0')).join('');
-}
-const LCG_A = 1103515245;
-const LCG_C = 12345;
-const BYTE = 256;
-/** Deterministic unicast MAC derived from a numeric seed (OUI-like prefix 00xx). */
-function macFromSeed(seed) {
-    let state = (seed * 2654435761) >>> 0;
-    const bytes = [0];
-    for (let i = 0; i < 5; i++) {
-        state = (Math.imul(state, LCG_A) + LCG_C) >>> 0;
-        bytes.push((state >>> 16) % BYTE);
-    }
-    return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-return { BROADCAST_MAC, parseMac, formatMacCisco, formatMacPT, parseHexId, formatHexId, clientIdFromMac, asciiToHex, macFromSeed };
 })();
 __m["services/kea-import.js"] = (() => {
 /**
@@ -19265,17 +21172,17 @@ const CLIENT_DOCS = {
                     ['SRV Intranet', 'srv-intranet'],
                     ['dos equipos que darían el mismo', 'el segundo recibe -2 (pc-1, pc-1-2)'],
                 ]),
-                h('Por qué no se cambia desde la terminal'),
+                h('Cambiarlo desde la terminal: hostnamectl'),
                 table(['Dónde', 'Qué pasa en Netfix'], [
                     ['Pestaña Equipo', 'Cambia el nombre del equipo y, con él, el nombre de host.'],
-                    ['sudo hostnamectl set-hostname NOMBRE', 'Pide la contraseña y responde «Could not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo».'],
-                    ['sudo hostname NOMBRE · sysctl -w kernel.hostname=…', 'Rechazado por lo mismo.'],
-                    ['/etc/hostname', 'Fichero generado de solo lectura (Read-only file system).'],
+                    ['sudo hostnamectl set-hostname NOMBRE · sudo hostnamectl hostname NOMBRE', 'Pide la contraseña y renombra el equipo al momento: el equipo toma NOMBRE con la misma grafía (en el lienzo, el título de su ventana y la pestaña Equipo) y el nombre de host se deriva de él, como al renombrarlo en Equipo; /etc/hostname y `hostnamectl` lo muestran. Se guarda con el laboratorio. Un nombre que systemd no admite da «Invalid static hostname».'],
+                    ['sudo hostname NOMBRE · hostnamectl --transient · sysctl -w kernel.hostname=…', 'Rechazados: en Netfix el nombre de host siempre sale del nombre del equipo.'],
+                    ['/etc/hostname', 'Fichero generado de solo lectura: muestra el nombre de host (también tras hostnamectl); editarlo no lo cambia.'],
                     ['Gestión web → Configuración', 'Muestra el nombre de host sin campo para cambiarlo.'],
                     ['sudo hostnamectl set-hostname --pretty "Texto libre"', 'Sí cambia el nombre descriptivo, que se guarda con la topología.'],
                 ]),
-                term('shell', 'alumno@pc0:~$ sudo hostnamectl set-hostname web01\nCould not set static hostname: en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: pc0'),
-                tip('En un Ubuntu real', 'Esas órdenes sí cambian el nombre. En Netfix se bloquean para que el nombre de host salga siempre del diagrama y el alumnado no tenga que adivinarlo.'),
+                term('shell', 'alumno@pc0:~$ sudo hostnamectl set-hostname Web01\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: web01\nalumno@pc0:~$ exec bash\nalumno@web01:~$'),
+                tip('En un Ubuntu real', 'hostnamectl guarda el nombre tal cual en /etc/hostname. En Netfix el nombre de host sigue saliendo del nombre del equipo, así que diagrama y equipo nunca se contradicen: el equipo se llama Web01 y su nombre de host es web01. El prompt de bash cambia en la siguiente shell (`exec bash`), como en Ubuntu.'),
                 warn('Errores típicos', 'Esperar que el nombre de host conserve mayúsculas o espacios: no lo hace (RFC 1123: letras sin tilde, números y guiones, hasta 63 caracteres). Buscar el equipo por su nombre en el DNS sin haberlo dado de alta: el nombre de host no se registra solo en el servidor DNS.'),
                 exercise('Renombra un PC', 'Cambia el nombre de PC1 a «Portátil Profe» y averigua su nombre de host sin mirar la pestaña Equipo.', 'En su Terminal GNU/Linux, el prompt pasa a ser `alumno@portatil-profe:~$`; `hostname` también lo muestra. En el diagrama el nombre aparece como «Portátil Profe».'),
             ],
@@ -19424,7 +21331,7 @@ const UTIL_DOCS = {
     users: { group: 'sistema', synopsis: 'users', summary: 'Usuarios conectados.' },
     uname: { group: 'sistema', synopsis: 'uname [-asnrvmo]', summary: 'Sistema: Linux 6.17.0-14-generic x86_64 GNU/Linux.' },
     hostname: { group: 'sistema', synopsis: 'hostname [-I|-f|-s] [NOMBRE]', summary: 'Nombre del equipo (-I: sus direcciones IP). Con NOMBRE (root) cambia el nombre transitorio, que no se guarda.' },
-    hostnamectl: { group: 'sistema', synopsis: 'hostnamectl [status] | hostnamectl set-hostname NOMBRE [--static|--transient|--pretty] | hostnamectl hostname [NOMBRE]', summary: 'Muestra y cambia el nombre de host de forma persistente (/etc/hostname). Pide autenticación de polkit a los administradores; el prompt de bash cambia en la siguiente shell (exec bash).' },
+    hostnamectl: { group: 'sistema', synopsis: 'hostnamectl [status] | hostnamectl set-hostname NOMBRE [--static|--transient|--pretty] | hostnamectl hostname [NOMBRE]', summary: 'Muestra y cambia el nombre de host de forma persistente (/etc/hostname); en Netfix set-hostname renombra el equipo con esa grafía y el nombre de host se deriva de él. Pide autenticación de polkit a los administradores; el prompt de bash cambia en la siguiente shell (exec bash).' },
     uptime: { group: 'sistema', synopsis: 'uptime [-p]', summary: 'Tiempo encendido y carga.' },
     ps: { group: 'sistema', synopsis: 'ps [aux | -ef]', summary: 'Procesos (incluye los servicios del servidor).' },
     free: { group: 'sistema', synopsis: 'free [-h]', summary: 'Memoria.' },
@@ -21933,17 +23840,17 @@ const CLIENT_DOCS = {
                     ['SRV Intranet', 'srv-intranet'],
                     ['two devices that would give the same', 'the second gets -2 (pc-1, pc-1-2)'],
                 ]),
-                h('Why it cannot be changed from the terminal'),
+                h('Changing it from the terminal: hostnamectl'),
                 table(['Where', 'What happens in Netfix'], [
                     ['Device tab', 'Changes the device name and, with it, the host name.'],
-                    ['sudo hostnamectl set-hostname NAME', 'Asks for the password and answers “Could not set static hostname: in Netfix the host name comes from the device name”.'],
-                    ['sudo hostname NAME · sysctl -w kernel.hostname=…', 'Refused for the same reason.'],
-                    ['/etc/hostname', 'A generated, read-only file (Read-only file system).'],
+                    ['sudo hostnamectl set-hostname NAME · sudo hostnamectl hostname NAME', 'Asks for the password and renames the device at once: the device takes NAME as typed (on the canvas, its window title and the Device tab) and the host name is derived from it, as renaming it in Device does; /etc/hostname and `hostnamectl` show it. It is saved with the lab. A name systemd does not accept gives “Invalid static hostname”.'],
+                    ['sudo hostname NAME · hostnamectl --transient · sysctl -w kernel.hostname=…', 'Refused: in Netfix the host name always comes from the device name.'],
+                    ['/etc/hostname', 'A generated, read-only file: it shows the host name (after hostnamectl too); editing it does not change it.'],
                     ['Web management → Setup', 'Shows the host name with no field to change it.'],
                     ['sudo hostnamectl set-hostname --pretty "Free text"', 'Does change the pretty name, which is saved with the topology.'],
                 ]),
-                term('shell', 'alumno@pc0:~$ sudo hostnamectl set-hostname web01\nCould not set static hostname: in Netfix the host name comes from the device name (Device tab)\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: pc0'),
-                tip('On a real Ubuntu', 'Those commands do change the name. Netfix blocks them so the host name always comes from the diagram and students never have to guess it.'),
+                term('shell', 'alumno@pc0:~$ sudo hostnamectl set-hostname Web01\nalumno@pc0:~$ hostnamectl | head -1\n Static hostname: web01\nalumno@pc0:~$ exec bash\nalumno@web01:~$'),
+                tip('On a real Ubuntu', 'hostnamectl stores the name as it is in /etc/hostname. In Netfix the host name still comes from the device name, so the diagram and the device never disagree: the device is called Web01 and its host name is web01. The bash prompt changes in the next shell (`exec bash`), as on Ubuntu.'),
                 warn('Common mistakes', 'Expecting the host name to keep capitals or spaces: it does not (RFC 1123: unaccented letters, digits and hyphens, up to 63 characters). Looking the device up by name in DNS without registering it: the host name is not added to the DNS server on its own.'),
                 exercise('Rename a PC', 'Change PC1’s name to «Portátil Profe» and find its host name without looking at the Device tab.', 'In its GNU/Linux Terminal the prompt becomes `alumno@portatil-profe:~$`; `hostname` shows it too. On the diagram the name appears as «Portátil Profe».'),
             ],
@@ -22092,7 +23999,7 @@ const UTIL_DOCS = {
     users: { group: 'sistema', synopsis: 'users', summary: 'Logged-in users.' },
     uname: { group: 'sistema', synopsis: 'uname [-asnrvmo]', summary: 'System: Linux 6.17.0-14-generic x86_64 GNU/Linux.' },
     hostname: { group: 'sistema', synopsis: 'hostname [-I|-f|-s] [NAME]', summary: 'Name of the machine (-I: its IP addresses). With NAME (root) it changes the transient name, which is not saved.' },
-    hostnamectl: { group: 'sistema', synopsis: 'hostnamectl [status] | hostnamectl set-hostname NAME [--static|--transient|--pretty] | hostnamectl hostname [NAME]', summary: 'Shows and changes the host name persistently (/etc/hostname). Asks administrators for polkit authentication; the bash prompt changes in the next shell (exec bash).' },
+    hostnamectl: { group: 'sistema', synopsis: 'hostnamectl [status] | hostnamectl set-hostname NAME [--static|--transient|--pretty] | hostnamectl hostname [NAME]', summary: 'Shows and changes the host name persistently (/etc/hostname); in Netfix set-hostname renames the device as typed and the host name is derived from it. Asks administrators for polkit authentication; the bash prompt changes in the next shell (exec bash).' },
     uptime: { group: 'sistema', synopsis: 'uptime [-p]', summary: 'Time running and load.' },
     ps: { group: 'sistema', synopsis: 'ps [aux | -ef]', summary: 'Processes (includes the server’s services).' },
     free: { group: 'sistema', synopsis: 'free [-h]', summary: 'Memory.' },
@@ -31398,7 +33305,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.42.0",
+    "version": "0.43.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -33391,307 +35298,6 @@ function avahiConfig(host) {
 }
 
 return { AVAHI_DEFAULT, setAvahiConfig, avahiConfig };
-})();
-__m["net/ipstack.js"] = (() => {
-const { inSubnet, broadcastOf, BROADCAST_IP } = __m["core/ip.js"];
-const { BROADCAST_MAC } = __m["core/mac.js"];
-const sockets = [];
-/** Each service registers once (mDNS, NetBIOS). */
-function registerLocalSockets(s) {
-    sockets.push(s);
-}
-const isMulticast = (ip) => ip >>> 28 === 0xe;
-/** 01:00:5e + the low 23 bits of the group (224.0.0.251 → 01005e0000fb). */
-function multicastMac(group) {
-    return `01005e${[(group >>> 16) & 0x7f, (group >>> 8) & 0xff, group & 0xff].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
-}
-const ARP_TIMEOUT_MS = 1000;
-/** Interface name the hooks see for traffic to the host's own addresses. */
-const LOOPBACK = 'lo';
-const LOOPBACK_NET = 127;
-const LOOPBACK_IP = 0x7f000001;
-const LOOPBACK_MAC = '000000000000';
-const MAX_PENDING = 4;
-/** /31 and /32 have no broadcast address. */
-const MAX_PREFIX = 32;
-class IpStack {
-    arp = new Map();
-    pending = new Map();
-    /** Pending echoes; `dup` keeps listening after the first answer (a broadcast is answered by several devices). */
-    echoWaiters = new Map();
-    host;
-    now;
-    constructor(host, now) {
-        this.host = host;
-        this.now = now;
-    }
-    /** One of our addresses, or the loopback network 127.0.0.0/8 (the kernel's lo). */
-    isMine(ip) {
-        return (ip >>> 24) === LOOPBACK_NET || this.host.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip));
-    }
-    isLocalBroadcast(iface, ip) {
-        return ip === BROADCAST_IP || iface.addrs.some((a) => broadcastOf(a.ip, a.prefix) === ip);
-    }
-    /** The interface whose subnet has `ip` as its broadcast address (directed broadcast), if any. */
-    directedIface(ip) {
-        for (const iface of this.host.l3Ifaces()) {
-            if (!iface.up)
-                continue;
-            const a = iface.addrs.find((x) => x.prefix < MAX_PREFIX - 1 && broadcastOf(x.ip, x.prefix) === ip);
-            if (a)
-                return { iface, addr: a.ip };
-        }
-        return undefined;
-    }
-    /** 255.255.255.255 or the broadcast address of one of our subnets (what ping -b is needed for). */
-    isBroadcast(ip) {
-        return ip === BROADCAST_IP || this.directedIface(ip) !== undefined;
-    }
-    receiveFrame(ifaceName, frame) {
-        const iface = this.host.l3Iface(ifaceName);
-        if (!iface?.up)
-            return;
-        if (!iface.pointToPoint && frame.dst !== iface.mac && frame.dst !== BROADCAST_MAC && !this.joined(frame.ip?.dst, frame.dst))
-            return;
-        if (frame.arp)
-            this.onArp(iface, frame);
-        else if (frame.ip)
-            this.onIp(iface, frame.ip, frame);
-    }
-    onArp(iface, frame) {
-        const arp = frame.arp;
-        const targetsMe = iface.addrs.some((a) => a.ip === arp.targetIp) || (this.host.answersArp?.(iface.name, arp.targetIp) ?? false);
-        if (targetsMe || this.arp.has(arp.senderIp))
-            this.learn(arp.senderIp, arp.senderMac, iface.name);
-        if (arp.op === 'request' && targetsMe) {
-            this.host.emit(iface.name, {
-                src: iface.mac, dst: arp.senderMac,
-                arp: { op: 'reply', senderMac: iface.mac, senderIp: arp.targetIp, targetMac: arp.senderMac, targetIp: arp.senderIp },
-            });
-        }
-    }
-    learn(ip, mac, iface) {
-        this.arp.set(ip, { mac, iface, learnedAt: this.now() });
-        const waiting = this.pending.get(ip);
-        if (!waiting)
-            return;
-        this.pending.delete(ip);
-        for (const p of waiting.packets)
-            this.emitIp(waiting.iface, mac, p);
-    }
-    onIp(iface, arrived, frame) {
-        this.host.noteFrame?.(arrived, frame);
-        const packet = this.host.prerouting ? this.host.prerouting(iface.name, arrived) : arrived;
-        if (!packet)
-            return;
-        // Martian: 127.0.0.0/8 never comes in from the wire (Linux drops it), only through lo.
-        if ((packet.dst >>> 24) === LOOPBACK_NET || (packet.src >>> 24) === LOOPBACK_NET)
-            return;
-        const directed = this.directedIface(packet.dst);
-        const forMe = this.isMine(packet.dst) || this.isLocalBroadcast(iface, packet.dst) || directed !== undefined || this.joined(packet.dst);
-        if (!forMe) {
-            // 224.0.0.0/4 is never routed here (mDNS and the like stay on their link).
-            if (!isMulticast(packet.dst))
-                this.host.forward?.(iface.name, packet);
-            return;
-        }
-        // A directed broadcast for another of our subnets is ours too; the link only gets it if forwarding is on. One that
-        // arrived on a link of that subnet already reached it: relaying it again could bounce between routers forever.
-        if (directed && directed.iface.name !== iface.name && !this.isLocalBroadcast(iface, packet.dst))
-            this.relayDirected(iface.name, directed.iface, packet);
-        this.localIn(iface.name, packet, frame);
-    }
-    /** Allowed: the normal forwarding path (TTL, outbound ACL, IPsec, nftables) sends it out as a link broadcast. */
-    relayDirected(inIface, out, packet) {
-        if (out.up && this.host.forwardsDirectedBroadcast?.(out.name))
-            this.host.forward?.(inIface, packet);
-    }
-    /** Local delivery: input hook, then ICMP echo handling or the host's protocols. */
-    localIn(ifaceName, arrived, frame) {
-        const packet = this.host.input ? this.host.input(ifaceName, arrived) : arrived;
-        if (!packet)
-            return;
-        if (packet.icmp) {
-            this.onIcmp(ifaceName, packet, packet.icmp);
-            return;
-        }
-        if (packet.udp && sockets.some((s) => s.take(this.host, ifaceName, packet)))
-            return;
-        this.host.deliver(ifaceName, packet, frame);
-    }
-    /** Output hook for a locally generated packet; null = dropped by the firewall. */
-    outbound(iface, packet) {
-        return this.host.output ? this.host.output(iface, packet) : packet;
-    }
-    onIcmp(ifaceName, packet, icmp) {
-        if (icmp.type === 'echo-request') {
-            const src = this.echoSource(ifaceName, packet.dst);
-            if (src !== undefined)
-                this.send({ src, dst: packet.src, ttl: this.host.ttl, protocol: 'icmp', icmp: { ...icmp, type: 'echo-reply' } });
-            return;
-        }
-        if (icmp.type === 'unreachable' && icmp.orig) {
-            this.host.icmpUnreachable?.(icmp.orig, icmp.code ?? 'host');
-            return;
-        }
-        const key = `${icmp.id}:${icmp.seq}`;
-        const waiter = this.echoWaiters.get(key);
-        if (!waiter)
-            return;
-        const result = icmp.type === 'echo-reply' ? { kind: 'reply', from: packet.src, ttl: packet.ttl }
-            : icmp.type === 'unreachable' ? { kind: 'unreachable', from: packet.src, code: icmp.code ?? 'host' } : { kind: 'ttl', from: packet.src };
-        if (waiter.answered)
-            return waiter.dup?.(result);
-        waiter.answered = true;
-        if (!waiter.dup)
-            this.echoWaiters.delete(key);
-        waiter.first(result);
-    }
-    /** Who answers an echo: the address it was sent to; for a broadcast, our own address on that subnet (or none). */
-    echoSource(ifaceName, dst) {
-        const directed = this.directedIface(dst);
-        if (dst !== BROADCAST_IP && !directed)
-            return dst;
-        if (this.host.ignoresBroadcastEcho?.())
-            return undefined;
-        return directed?.addr ?? this.host.l3Iface(ifaceName)?.addrs[0]?.ip;
-    }
-    /** Stops listening for the answers of a ping (`id`), duplicates included. */
-    endEcho(id) {
-        for (const key of this.echoWaiters.keys())
-            if (key.startsWith(`${id}:`))
-                this.echoWaiters.delete(key);
-    }
-    /** Sends an ICMP echo request; the callback fires on reply/error (never on timeout). */
-    echo(dst, id, seq, src, onResult, ttl = this.host.ttl, onDup) {
-        if (this.isMine(dst)) {
-            this.host.schedule(0, () => onResult({ kind: 'reply', from: dst, ttl: this.host.ttl }));
-            return true;
-        }
-        const egress = this.host.route(dst);
-        if (!egress)
-            return false;
-        const srcIp = src ?? this.host.l3Iface(egress.iface)?.addrs[0]?.ip;
-        if (srcIp === undefined)
-            return false;
-        this.echoWaiters.set(`${id}:${seq}`, { first: onResult, dup: onDup, answered: false });
-        const out = this.outbound(egress.iface, { src: srcIp, dst, ttl, protocol: 'icmp', icmp: { type: 'echo-request', id, seq } });
-        if (out)
-            this.sendVia(egress, out);
-        // Only our own ping: a broadcast we forward was already delivered to us when it came in.
-        const iface = this.host.l3Iface(egress.iface);
-        if (out && iface && !iface.pointToPoint && this.isLocalBroadcast(iface, dst))
-            this.loopBroadcast(egress.iface, iface.mac, out);
-        return true;
-    }
-    /** Routes and sends a packet originated (or forwarded) by this host. */
-    send(packet) {
-        if (this.isMine(packet.dst))
-            return this.loopback(packet);
-        const egress = this.host.route(packet.dst);
-        if (!egress)
-            return false;
-        const out = this.outbound(egress.iface, packet);
-        if (out)
-            this.sendVia(egress, out);
-        return true;
-    }
-    /** Sends a locally generated packet through a given egress (output hook included). */
-    sendRouted(egress, packet) {
-        const out = this.outbound(egress.iface, packet);
-        if (out)
-            this.sendVia(egress, out);
-    }
-    sendVia(egress, original) {
-        const iface = this.host.l3Iface(egress.iface);
-        if (!iface?.up)
-            return;
-        const packet = this.host.postrouting ? this.host.postrouting(egress.iface, original) : original;
-        if (!packet)
-            return;
-        if (iface.pointToPoint || this.isLocalBroadcast(iface, packet.dst)) {
-            this.emitIp(egress.iface, BROADCAST_MAC, packet);
-            return;
-        }
-        const known = this.arp.get(egress.nextHop);
-        if (known) {
-            this.emitIp(egress.iface, known.mac, packet);
-            return;
-        }
-        this.resolve(iface, egress.nextHop, packet);
-    }
-    /**
-     * Linux hands a copy of every broadcast it sends to itself (ip_mc_output): a host that answers broadcast echoes
-     * answers its own ping -b. Only for its own echo requests, so DHCP and the rest are not seen twice.
-     */
-    loopBroadcast(ifaceName, mac, packet) {
-        if (this.host.ignoresBroadcastEcho?.() !== false)
-            return;
-        this.host.schedule(0, () => this.localIn(ifaceName, packet, { src: mac, dst: BROADCAST_MAC, ip: packet }));
-    }
-    /** Packets to one of our own addresses never reach the wire (like the kernel's loopback path). */
-    loopback(packet) {
-        const toLo = (packet.dst >>> 24) === LOOPBACK_NET;
-        const iface = this.host.l3Ifaces().find((i) => i.addrs.some((a) => a.ip === packet.dst));
-        if (!iface && !toLo)
-            return false;
-        // To 127.x the source is 127.0.0.1 too (a socket bound to lo), as on Linux.
-        const sent = toLo && (packet.src >>> 24) !== LOOPBACK_NET ? { ...packet, src: LOOPBACK_IP } : packet;
-        const out = this.outbound(LOOPBACK, sent);
-        if (!out)
-            return true;
-        const mac = iface?.mac ?? LOOPBACK_MAC;
-        this.host.schedule(0, () => this.localIn(LOOPBACK, out, { src: mac, dst: mac, ip: out }));
-        return true;
-    }
-    /** A multicast group this host has joined (with its MAC, when a frame brings one). */
-    joined(group, mac) {
-        if (group === undefined || !isMulticast(group) || (mac !== undefined && mac !== multicastMac(group)))
-            return false;
-        return sockets.some((s) => s.member(this.host, group));
-    }
-    /** Sends a datagram to a link-local multicast group (it is never routed: TTL 255, mDNS). */
-    multicast(ifaceName, packet) {
-        this.emitIp(ifaceName, multicastMac(packet.dst), packet);
-    }
-    /** Sends a frame on an interface to the broadcast MAC (DHCP, etc.). */
-    broadcast(ifaceName, packet) {
-        this.emitIp(ifaceName, BROADCAST_MAC, packet);
-    }
-    resolve(iface, target, packet) {
-        const waiting = this.pending.get(target);
-        if (waiting) {
-            const drop = this.host.dropOnArpMiss && packet.icmp?.type === 'echo-request';
-            if (!drop && waiting.packets.length < MAX_PENDING)
-                waiting.packets.push(packet);
-            return;
-        }
-        this.pending.set(target, { iface: iface.name, packets: this.host.dropOnArpMiss && packet.icmp?.type === 'echo-request' ? [] : [packet] });
-        const sender = iface.addrs.find((a) => inSubnet(target, a.ip, a.prefix)) ?? iface.addrs[0];
-        this.host.emit(iface.name, {
-            src: iface.mac, dst: BROADCAST_MAC,
-            arp: { op: 'request', senderMac: iface.mac, senderIp: sender?.ip ?? 0, targetMac: '000000000000', targetIp: target },
-        });
-        this.host.schedule(ARP_TIMEOUT_MS, () => {
-            if (this.pending.get(target))
-                this.pending.delete(target);
-        });
-    }
-    emitIp(iface, dstMac, packet) {
-        const mac = this.host.l3Iface(iface)?.mac ?? '';
-        this.host.emit(iface, { src: mac, dst: dstMac, ip: packet });
-    }
-    flushArp(iface) {
-        for (const [ip, e] of this.arp)
-            if (!iface || e.iface === iface)
-                this.arp.delete(ip);
-    }
-    setClock(now) {
-        this.now = now;
-    }
-}
-
-return { registerLocalSockets, multicastMac, LOOPBACK, IpStack };
 })();
 __m["net/mdns.js"] = (() => {
 /**
@@ -40848,115 +42454,6 @@ function* sshKeygen(ctx) {
 
 return { sshKeygen };
 })();
-__m["net/sysctl.js"] = (() => {
-/**
- * Kernel parameters (sysctl) of a simulated Linux host, with Ubuntu's defaults. A few have effects in
- * Netfix (forwarding, ignoring pings, the host name); the rest are accepted and kept, as a lab expects.
- */
-const BOOL = ['0', '1'];
-const SYSCTL_KEYS = [
-    { name: 'kernel.domainname', value: '(none)', accepts: 'text', effect: false },
-    { name: 'kernel.hostname', value: '', accepts: 'text', effect: true },
-    { name: 'kernel.sysrq', value: '176', accepts: 'int', effect: false },
-    { name: 'net.ipv4.conf.all.accept_source_route', value: '0', accepts: BOOL, effect: false },
-    { name: 'net.ipv4.conf.all.secure_redirects', value: '1', accepts: BOOL, effect: false },
-    { name: 'net.ipv6.conf.all.accept_redirects', value: '1', accepts: BOOL, effect: false },
-    { name: 'net.ipv6.conf.all.accept_source_route', value: '0', accepts: BOOL, effect: false },
-    { name: 'net.ipv4.conf.all.accept_redirects', value: '1', accepts: BOOL, effect: false },
-    { name: 'net.ipv4.conf.all.bc_forwarding', value: '0', accepts: BOOL, effect: true },
-    { name: 'net.ipv4.conf.all.forwarding', value: '0', accepts: BOOL, effect: true },
-    { name: 'net.ipv4.conf.all.log_martians', value: '0', accepts: BOOL, effect: false },
-    { name: 'net.ipv4.conf.all.rp_filter', value: '2', accepts: ['0', '1', '2'], effect: false },
-    { name: 'net.ipv4.conf.all.send_redirects', value: '1', accepts: BOOL, effect: false },
-    { name: 'net.ipv4.conf.default.rp_filter', value: '2', accepts: ['0', '1', '2'], effect: false },
-    { name: 'net.ipv4.icmp_echo_ignore_all', value: '0', accepts: BOOL, effect: true },
-    { name: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1', accepts: BOOL, effect: true },
-    { name: 'net.ipv4.ip_default_ttl', value: '64', accepts: 'int', effect: false },
-    { name: 'net.ipv4.ip_forward', value: '0', accepts: BOOL, effect: true },
-    { name: 'net.ipv4.tcp_syncookies', value: '1', accepts: BOOL, effect: false },
-    { name: 'net.ipv6.conf.all.disable_ipv6', value: '0', accepts: BOOL, effect: false },
-    { name: 'net.ipv6.conf.all.forwarding', value: '0', accepts: BOOL, effect: false },
-    { name: 'net.netfilter.nf_conntrack_max', value: '4096', accepts: 'int', effect: false },
-    { name: 'vm.swappiness', value: '60', accepts: 'int', effect: false },
-];
-/** `net/ipv4/ip_forward` (a /proc/sys path) or `net/ipv4/ip_forward` typed with slashes → dotted name. */
-function sysctlName(text) {
-    return text.replace(/^\/proc\/sys\//, '').replace(/\//g, '.');
-}
-function sysctlPath(name) {
-    return `/proc/sys/${name.replace(/\./g, '/')}`;
-}
-/** Keys that mirror each other (ip_forward and conf.all.forwarding are the same switch). */
-const MIRRORS = {
-    'net.ipv4.ip_forward': 'net.ipv4.conf.all.forwarding',
-    'net.ipv4.conf.all.forwarding': 'net.ipv4.ip_forward',
-};
-const MAX_TEXT = 64;
-class Sysctl {
-    values = new Map(SYSCTL_KEYS.map((k) => [k.name, k.value]));
-    listeners = new Set();
-    /** kernel.hostname reads the running name of the host. */
-    hostname;
-    constructor(hostname) {
-        this.hostname = hostname;
-    }
-    has(name) {
-        return this.values.has(name);
-    }
-    get(name) {
-        return name === 'kernel.hostname' ? this.hostname.get() : this.values.get(name);
-    }
-    /** All keys, sorted (sysctl -a). */
-    names() {
-        return [...this.values.keys()].sort();
-    }
-    enabled(name) {
-        return this.get(name) === '1';
-    }
-    /** Sets a value; returns 'unknown', 'invalid' or null when applied. */
-    set(name, raw) {
-        const key = SYSCTL_KEYS.find((k) => k.name === name);
-        if (!key)
-            return 'unknown';
-        const value = raw.trim();
-        if (key.accepts === 'int' ? !/^\d{1,9}$/.test(value) : key.accepts === 'text' ? value.length === 0 || value.length > MAX_TEXT : !key.accepts.includes(value))
-            return 'invalid';
-        if (name === 'kernel.hostname')
-            return this.hostname.set(value) ? 'denied' : null;
-        this.values.set(name, value);
-        const mirror = MIRRORS[name];
-        if (mirror)
-            this.values.set(mirror, value);
-        for (const l of this.listeners)
-            l(name, value);
-        return null;
-    }
-    onChange(listener) {
-        this.listeners.add(listener);
-        return () => this.listeners.delete(listener);
-    }
-    /** Boot: back to the defaults (before /etc/sysctl.conf is applied). */
-    reset() {
-        for (const k of SYSCTL_KEYS)
-            if (k.name !== 'kernel.hostname')
-                this.values.set(k.name, k.value);
-        for (const l of this.listeners)
-            l('*', '');
-    }
-}
-/** `key = value` lines of a sysctl.conf file (comments with # or ;, `-key` ignores errors). */
-function parseSysctlConf(text) {
-    return text.split('\n').flatMap((raw, i) => {
-        const line = raw.trim();
-        if (!line || line.startsWith('#') || line.startsWith(';'))
-            return [];
-        const m = /^(-?)([\w./-]+)\s*=\s*(.*)$/.exec(line);
-        return m ? [{ key: sysctlName(m[2] ?? ''), value: (m[3] ?? '').trim(), quiet: m[1] === '-', line: i + 1 }] : [];
-    });
-}
-
-return { SYSCTL_KEYS, sysctlName, sysctlPath, Sysctl, parseSysctlConf };
-})();
 __m["shells/kernel-files.js"] = (() => {
 const { FsError } = __m["bash/vfs.js"];
 const { SYSCTL_KEYS, parseSysctlConf, sysctlPath } = __m["net/sysctl.js"];
@@ -44193,6 +45690,8 @@ const { runsServices } = __m["devices/kinds.js"];
 const { NETPLAN_FILE, netplanFileContent, writeNetplanFile } = __m["shells/netplan.js"];
 const { SSHD_CONFIG, DEFAULT_SSHD_CONFIG } = __m["services/sshd-config.js"];
 const { hostKeyFiles } = __m["services/ssh-hostkeys.js"];
+const { validHostname } = __m["devices/host.js"];
+const { placedOf, renameDevice } = __m["net/device-names.js"];
 const { FsError, MAX_FILE, ROOT, Vfs, dirname } = __m["bash/vfs.js"];
 const { EDITABLE_CONFIGS, editableOf } = __m["shells/editable-configs.js"];
 const { registerUnitCheck } = __m["devices/unit-checks.js"];
@@ -44363,9 +45862,18 @@ function setName(host, kind, value) {
         host.setPrettyName(value === '' ? undefined : value.slice(0, MAX_PRETTY));
         return null;
     }
-    // The host name comes from the device name (Equipo), never from the terminal.
-    return t('host.locked');
+    // hostnamectl set-hostname: the device takes the name as typed and its host name is derived from it (Equipo), as
+    // renaming it there does; `hostname NAME` and --transient stay refused.
+    const placed = kind === 'static' ? placedOf(host) : undefined;
+    if (!placed)
+        return t('host.locked');
+    if (!STATIC_NAME.test(value) || validHostname(value))
+        return `Invalid static hostname '${value}'`;
+    renameDevice(placed, value);
+    return null;
 }
+/** What systemd-hostnamed takes as a static name: labels of letters, digits and hyphens, not starting with one. */
+const STATIC_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
 const SSH_CLIENT_CONFIG = `# This is the ssh client system-wide configuration file.  See ssh_config(5).
 
 Include /etc/ssh/ssh_config.d/*.conf
@@ -44513,1497 +46021,6 @@ registerHostFileReader((host, path) => {
 });
 
 return { defaultLinuxUser, hostUsers, hostSystem, savedFiles, restoreFiles, bootKernel, adoptSavedFiles };
-})();
-__m["net/packets.js"] = (() => {
-/** The quote an ICMP error carries for a TCP or UDP packet (none for ICMP). */
-function icmpQuote(p) {
-    if (p.tcp)
-        return { protocol: 'tcp', src: p.src, dst: p.dst, sport: p.tcp.sport, dport: p.tcp.dport };
-    if (p.udp)
-        return { protocol: 'udp', src: p.src, dst: p.dst, sport: p.udp.sport, dport: p.udp.dport };
-    return undefined;
-}
-/** Destination of PVST+ BPDUs. */
-const PVST_MAC = '01000ccccccd';
-const DHCP_SERVER_PORT = 67;
-const DHCP_CLIENT_PORT = 68;
-const DNS_PORT = 53;
-const WELL_KNOWN_PORTS = {
-    22: 'SSH', 25: 'SMTP', 53: 'DNS', 80: 'HTTP', 110: 'POP3', 139: 'SMB', 143: 'IMAP', 445: 'SMB',
-};
-const DEFAULT_TTL = 255;
-const PC_TTL = 128;
-/** Initial TTL of Linux (net.ipv4.ip_default_ttl). */
-const LINUX_TTL = 64;
-/** DNS-format protocols on their own ports: mDNS and LLMNR. */
-const DNS_LIKE = { 5353: 'MDNS', 5355: 'LLMNR' };
-/** Label used by the simulation event list: DHCP, DNS, ARP, ICMP, HTTP, SMTP, POP3, IMAP, SSH or TCP. */
-function frameProtocol(frame) {
-    if (frame.bpdu)
-        return 'STP';
-    if (frame.arp)
-        return 'ARP';
-    const ip = frame.ip;
-    if (!ip)
-        return 'Ethernet';
-    if (ip.udp?.dhcp)
-        return 'DHCP';
-    if (ip.udp?.dns)
-        return DNS_LIKE[ip.udp.dport] ?? DNS_LIKE[ip.udp.sport] ?? 'DNS';
-    if (ip.udp?.nbns)
-        return 'NBNS';
-    if (ip.udp?.isakmp)
-        return 'ISAKMP';
-    if (ip.udp?.wg)
-        return 'WireGuard';
-    if (ip.esp)
-        return 'ESP';
-    if (ip.icmp)
-        return 'ICMP';
-    if (ip.tcp) {
-        if (ip.tcp.data)
-            return ip.tcp.data.app;
-        return tcpService(ip.tcp) === 'SMB' ? 'SMB' : 'TCP';
-    }
-    return 'IPv4';
-}
-/** Name of the application on a TCP connection, from its well-known port. */
-function tcpService(seg) {
-    return WELL_KNOWN_PORTS[seg.dport] ?? WELL_KNOWN_PORTS[seg.sport] ?? 'TCP';
-}
-
-return { icmpQuote, PVST_MAC, DHCP_SERVER_PORT, DHCP_CLIENT_PORT, DNS_PORT, WELL_KNOWN_PORTS, DEFAULT_TTL, PC_TTL, LINUX_TTL, frameProtocol, tcpService };
-})();
-__m["net/tcp.js"] = (() => {
-const FIRST_EPHEMERAL = 49152;
-const LAST_EPHEMERAL = 65535;
-const DEFAULT_TIMEOUT_MS = 5000;
-const ISN_STEP = 64_000;
-class TcpLayer {
-    env;
-    listeners = new Map();
-    /** Ports open only while a condition holds (SMB on Windows or with samba: net/netbios.ts). */
-    whenOpen = new Map();
-    conns = new Map();
-    nextPort = FIRST_EPHEMERAL;
-    isn = 1_000;
-    constructor(env) {
-        this.env = env;
-    }
-    listen(port, handler, open) {
-        this.listeners.set(port, handler);
-        if (open)
-            this.whenOpen.set(port, open);
-    }
-    unlisten(port) {
-        this.listeners.delete(port);
-        this.whenOpen.delete(port);
-    }
-    isListening(port) {
-        return this.listeners.has(port) && this.whenOpen.get(port)?.() !== false;
-    }
-    listeningPorts() {
-        return [...this.listeners.keys()].filter((p) => this.isListening(p)).sort((a, b) => a - b);
-    }
-    /** Opens a connection, sends `payload` and reports the reply through `done` (exactly once). */
-    request(dst, dport, payload, done, timeoutMs = DEFAULT_TIMEOUT_MS) {
-        const localIp = this.env.sourceFor(dst);
-        if (localIp === undefined) {
-            done({ kind: 'noroute' });
-            return;
-        }
-        const sport = this.allocatePort();
-        const conn = { remote: { ip: dst, port: dport }, localIp, payload, done, seq: this.nextIsn(), finished: false };
-        this.conns.set(sport, conn);
-        this.emit(localIp, dst, { sport, dport, flags: ['SYN'], seq: conn.seq, ack: 0 });
-        this.env.schedule(timeoutMs, () => {
-            if (this.conns.get(sport) === conn)
-                this.finish(sport, { kind: 'timeout' });
-        });
-    }
-    /** Connect scan of one port (nc -z, nmap -sT): open, closed or filtered. */
-    probe(dst, dport, done, timeoutMs = DEFAULT_TIMEOUT_MS) {
-        const localIp = this.env.sourceFor(dst);
-        if (localIp === undefined) {
-            done('noroute');
-            return;
-        }
-        const sport = this.allocatePort();
-        const map = (r) => (r.kind === 'refused' ? 'closed' : r.kind === 'timeout' ? 'filtered'
-            : r.kind === 'unreachable' ? (r.reason === 'net' ? 'netunreach' : 'hostunreach') : 'noroute');
-        const conn = { remote: { ip: dst, port: dport }, localIp, done: (r) => done(map(r)), opened: () => done('open'), seq: this.nextIsn(), finished: false };
-        this.conns.set(sport, conn);
-        this.emit(localIp, dst, { sport, dport, flags: ['SYN'], seq: conn.seq, ack: 0 });
-        this.env.schedule(timeoutMs, () => {
-            if (this.conns.get(sport) === conn)
-                this.finish(sport, { kind: 'timeout' });
-        });
-    }
-    /** An ICMP unreachable quoting one of our SYNs: the connect fails (port unreachable = refused). */
-    icmpUnreachable(orig, code) {
-        const conn = this.conns.get(orig.sport);
-        if (!conn || conn.finished || conn.synAcked || conn.localIp !== orig.src || conn.remote.ip !== orig.dst || conn.remote.port !== orig.dport)
-            return;
-        this.finish(orig.sport, code === 'port' ? { kind: 'refused' } : { kind: 'unreachable', reason: code === 'net' ? 'net' : 'host' });
-    }
-    receive(packet) {
-        const seg = packet.tcp;
-        if (!seg)
-            return;
-        const client = this.conns.get(seg.dport);
-        if (client && client.remote.ip === packet.src && client.remote.port === seg.sport) {
-            this.onClientSegment(seg.dport, client, seg);
-            return;
-        }
-        this.onServerSegment(packet, seg);
-    }
-    // ------------------------------------------------------------ client side
-    onClientSegment(sport, conn, seg) {
-        if (has(seg, 'RST')) {
-            this.finish(sport, { kind: 'refused' });
-            return;
-        }
-        if (has(seg, 'SYN') && has(seg, 'ACK')) {
-            conn.seq += 1;
-            conn.synAcked = true;
-            if (!conn.payload) {
-                this.emit(conn.localIp, conn.remote.ip, { sport, dport: conn.remote.port, flags: ['RST', 'ACK'], seq: conn.seq, ack: seg.seq + 1 });
-                conn.finished = true;
-                this.conns.delete(sport);
-                conn.opened?.();
-                return;
-            }
-            this.emit(conn.localIp, conn.remote.ip, { sport, dport: conn.remote.port, flags: ['ACK', 'PSH'], seq: conn.seq, ack: seg.seq + 1, data: conn.payload });
-            return;
-        }
-        if (seg.data) {
-            this.emit(conn.localIp, conn.remote.ip, { sport, dport: conn.remote.port, flags: ['ACK'], seq: conn.seq + 1, ack: seg.seq + 1 });
-            this.finish(sport, { kind: 'ok', reply: seg.data });
-        }
-    }
-    finish(sport, result) {
-        const conn = this.conns.get(sport);
-        if (!conn || conn.finished)
-            return;
-        conn.finished = true;
-        this.conns.delete(sport);
-        conn.done(result);
-    }
-    // ------------------------------------------------------------ server side
-    onServerSegment(packet, seg) {
-        const reply = (flags, data) => this.emit(packet.dst, packet.src, { sport: seg.dport, dport: seg.sport, flags, seq: this.nextIsn(), ack: seg.seq + 1, data });
-        const handler = this.whenOpen.get(seg.dport)?.() === false ? undefined : this.listeners.get(seg.dport);
-        if (has(seg, 'SYN') && !has(seg, 'ACK')) {
-            reply(handler ? ['SYN', 'ACK'] : ['RST', 'ACK']);
-            return;
-        }
-        if (!seg.data)
-            return;
-        if (!handler) {
-            reply(['RST', 'ACK']);
-            return;
-        }
-        const answer = handler(seg.data, { ip: packet.src, port: seg.sport }, packet.dst);
-        if (answer)
-            reply(['ACK', 'PSH', 'FIN'], answer);
-        else
-            reply(['RST', 'ACK']);
-    }
-    // ------------------------------------------------------------ helpers
-    emit(src, dst, tcp) {
-        this.env.send({ src, dst, ttl: this.env.ttl, protocol: 'tcp', tcp });
-    }
-    allocatePort() {
-        for (let i = 0; i <= LAST_EPHEMERAL - FIRST_EPHEMERAL; i++) {
-            const port = this.nextPort;
-            this.nextPort = port >= LAST_EPHEMERAL ? FIRST_EPHEMERAL : port + 1;
-            if (!this.conns.has(port) && !this.listeners.has(port))
-                return port;
-        }
-        throw new Error('No free ephemeral ports');
-    }
-    nextIsn() {
-        this.isn = (this.isn + ISN_STEP) >>> 0;
-        return this.isn;
-    }
-}
-function has(seg, flag) {
-    return seg.flags.includes(flag);
-}
-
-return { TcpLayer };
-})();
-__m["dhcp/client.js"] = (() => {
-const { BROADCAST_IP } = __m["core/ip.js"];
-const RETRY_MS = 4000;
-const MAX_ATTEMPTS = 4;
-const MS = 1000;
-const INFINITE = 0xffffffff;
-const DEFAULT_PREFIX = 24;
-class DhcpClient {
-    state = 'STOPPED';
-    lease;
-    xid = 0;
-    attempts = 0;
-    generation = 0;
-    offer;
-    env;
-    constructor(env) {
-        this.env = env;
-    }
-    start() {
-        this.generation++;
-        this.lease = undefined;
-        this.attempts = 0;
-        this.discover();
-    }
-    stop() {
-        this.generation++;
-        this.state = 'STOPPED';
-    }
-    /** `ipconfig /release` / `release dhcp`: tells the server and forgets the lease. */
-    release() {
-        const lease = this.lease;
-        this.stop();
-        this.lease = undefined;
-        if (!lease)
-            return;
-        this.env.send(this.message('RELEASE', { ciaddr: lease.ip, serverId: lease.serverId }), lease.serverId, lease.ip);
-    }
-    /** `ipconfig /renew` / `renew dhcp`. */
-    renew() {
-        if (this.lease && this.state === 'BOUND') {
-            this.generation++;
-            this.state = 'RENEWING';
-            this.attempts = 0;
-            this.sendRenew();
-            return;
-        }
-        this.start();
-    }
-    receive(msg) {
-        if (msg.op !== 'BOOTREPLY' || msg.xid !== this.xid || msg.chaddr !== this.env.mac)
-            return;
-        const type = msg.options.messageType;
-        if (type === 'OFFER' && this.state === 'SELECTING')
-            this.onOffer(msg);
-        else if (type === 'ACK' && (this.state === 'REQUESTING' || this.state === 'RENEWING' || this.state === 'REBINDING'))
-            this.onAck(msg);
-        else if (type === 'NAK' && this.state !== 'BOUND' && this.state !== 'STOPPED')
-            this.onNak();
-    }
-    discover() {
-        this.state = 'SELECTING';
-        this.xid = randomXid();
-        this.offer = undefined;
-        this.env.send(this.message('DISCOVER', {}), BROADCAST_IP, 0);
-        this.retryLater(() => this.discover());
-    }
-    onOffer(msg) {
-        this.offer = msg;
-        this.state = 'REQUESTING';
-        this.attempts = 0;
-        this.generation++;
-        this.sendRequest();
-    }
-    sendRequest() {
-        const offer = this.offer;
-        if (!offer)
-            return;
-        this.env.send(this.message('REQUEST', { requestedIp: offer.yiaddr, serverId: offer.options.serverId }), BROADCAST_IP, 0);
-        this.retryLater(() => this.sendRequest());
-    }
-    sendRenew() {
-        const lease = this.lease;
-        if (!lease)
-            return;
-        this.env.send(this.message('REQUEST', { ciaddr: lease.ip }), lease.serverId, lease.ip);
-        this.retryLater(() => this.sendRenew());
-    }
-    retryLater(again) {
-        const gen = this.generation;
-        this.env.schedule(RETRY_MS, () => {
-            if (gen !== this.generation || this.state === 'BOUND' || this.state === 'STOPPED')
-                return;
-            this.attempts++;
-            if (this.attempts < MAX_ATTEMPTS) {
-                again();
-                return;
-            }
-            const hadLease = this.lease !== undefined;
-            this.state = 'INIT';
-            this.generation++;
-            if (hadLease)
-                this.env.onLost();
-            this.env.onFailed();
-        });
-    }
-    onAck(msg) {
-        const o = msg.options;
-        const lease = {
-            ip: msg.yiaddr || msg.ciaddr,
-            prefix: o.subnetPrefix ?? DEFAULT_PREFIX,
-            serverId: o.serverId ?? 0,
-            leaseSeconds: o.leaseSeconds ?? 0,
-            obtainedAt: this.env.now(),
-            routers: o.routers ?? [],
-            dnsServers: o.dnsServers ?? [],
-            winsServers: o.netbiosServers,
-            domainName: o.domainName,
-            hostname: o.hostname,
-            tftpServers: o.tftpServers,
-            bootfile: msg.file,
-            nextServer: msg.siaddr || undefined,
-        };
-        this.lease = lease;
-        this.state = 'BOUND';
-        this.generation++;
-        this.env.onBound(lease);
-        this.scheduleRenewal(lease);
-    }
-    scheduleRenewal(lease) {
-        if (lease.leaseSeconds === 0 || lease.leaseSeconds >= INFINITE)
-            return;
-        const gen = this.generation;
-        this.env.schedule((lease.leaseSeconds * MS) / 2, () => {
-            if (gen !== this.generation || this.state !== 'BOUND')
-                return;
-            this.renew();
-        });
-    }
-    onNak() {
-        const hadLease = this.lease !== undefined;
-        this.lease = undefined;
-        if (hadLease)
-            this.env.onLost();
-        this.start();
-    }
-    message(type, opts) {
-        return {
-            op: 'BOOTREQUEST', xid: this.xid, ciaddr: opts.ciaddr ?? 0, yiaddr: 0, siaddr: 0, giaddr: 0, chaddr: this.env.mac, broadcastFlag: false,
-            options: { messageType: type, clientId: this.env.clientId, hostname: this.env.hostname, requestedIp: opts.requestedIp, serverId: opts.serverId },
-        };
-    }
-}
-let xidCounter = 0x3903f326;
-function randomXid() {
-    xidCounter = (Math.imul(xidCounter, 1664525) + 1013904223) >>> 0;
-    return xidCounter;
-}
-
-return { DhcpClient };
-})();
-__m["devices/hooks.js"] = (() => {
-const DETACHED = {
-    peerUp: () => false,
-    portChanged: () => undefined,
-    transmit: () => undefined,
-    schedule: () => undefined,
-    ipInUse: () => false,
-    runUntil: (done) => done(),
-    peerTrunking: () => false,
-};
-/** Adds `n` to the last 24 bits of a MAC (consecutive interface MACs). */
-function macPlus(mac, n) {
-    const oui = mac.slice(0, 6);
-    const nic = (parseInt(mac.slice(6), 16) + n) & 0xffffff;
-    return `${oui}${nic.toString(16).padStart(6, '0')}`;
-}
-
-return { DETACHED, macPlus };
-})();
-__m["net/nft/eval.js"] = (() => {
-const { NFT_LIMITS, findChain } = __m["net/nft/model.js"];
-const { inSubnet } = __m["core/ip.js"];
-const ICMP_NAMES = { 'echo-request': 'echo-request', 'echo-reply': 'echo-reply', unreachable: 'destination-unreachable', 'ttl-exceeded': 'time-exceeded' };
-const PACKET_OVERHEAD = 40;
-function ports(p) {
-    const l4 = p.tcp ?? p.udp;
-    return l4 ? { sport: l4.sport, dport: l4.dport } : {};
-}
-function fieldValue(m, p, meta) {
-    const pt = ports(p);
-    switch (m.field) {
-        case 'ip saddr': return p.src;
-        case 'ip daddr': return p.dst;
-        case 'ip protocol':
-        case 'meta l4proto': return p.protocol;
-        case 'tcp dport': return p.tcp?.dport;
-        case 'tcp sport': return p.tcp?.sport;
-        case 'udp dport': return p.udp?.dport;
-        case 'udp sport': return p.udp?.sport;
-        case 'th dport': return pt.dport;
-        case 'th sport': return pt.sport;
-        case 'ct state': return meta.ct;
-        case 'iif':
-        case 'iifname': return meta.iif;
-        case 'oif':
-        case 'oifname': return meta.oif;
-        case 'icmp type': return p.icmp ? ICMP_NAMES[p.icmp.type] : undefined;
-    }
-}
-function valueMatches(v, x) {
-    switch (v.kind) {
-        case 'addr': return typeof x === 'number' && inSubnet(x, v.ip, v.prefix);
-        case 'num': return x === v.n;
-        case 'range': return typeof x === 'number' && x >= v.from && x <= v.to;
-        case 'word': return x === v.w;
-        case 'set': return v.items.some((i) => valueMatches(i, x));
-    }
-}
-/** A match on a field the packet does not have (tcp dport on UDP) never matches, even negated. */
-function matches(m, p, meta) {
-    const x = fieldValue(m, p, meta);
-    if (x === undefined)
-        return false;
-    return valueMatches(m.value, x) !== m.negate;
-}
-function count(env, r) {
-    if (!r.counter)
-        return;
-    const c = env.counters.get(r.handle) ?? { packets: 0, bytes: 0 };
-    c.packets += 1;
-    c.bytes += PACKET_OVERHEAD;
-    env.counters.set(r.handle, c);
-}
-function runChain(t, ch, p, meta, env, depth) {
-    if (depth > NFT_LIMITS.jumpDepth)
-        return { kind: 'final', verdict: { kind: 'drop' } };
-    for (const r of ch.rules) {
-        if (!r.matches.every((m) => matches(m, p, meta)))
-            continue;
-        count(env, r);
-        if (r.log !== undefined)
-            env.log?.(r.log, p, meta);
-        const v = r.verdict;
-        if (!v)
-            continue;
-        if (v.kind === 'return')
-            return { kind: 'return' };
-        if (v.kind === 'jump' || v.kind === 'goto') {
-            const target = findChain(t, v.chain);
-            const sub = target ? runChain(t, target, p, meta, env, depth + 1) : { kind: 'continue' };
-            if (sub.kind === 'final')
-                return sub;
-            if (v.kind === 'goto')
-                return { kind: 'return' };
-            continue;
-        }
-        return { kind: 'final', verdict: v };
-    }
-    return { kind: 'continue' };
-}
-function baseChains(rs, hook, type) {
-    return rs.tables
-        .flatMap((table) => table.chains.filter((c) => c.base?.hook === hook && c.base.type === type).map((chain) => ({ table, chain })))
-        .sort((a, b) => (a.chain.base?.priority ?? 0) - (b.chain.base?.priority ?? 0));
-}
-/** Filter chains of `hook`: accept, drop or reject. */
-function filterHook(rs, hook, p, meta, env) {
-    for (const { table, chain } of baseChains(rs, hook, 'filter')) {
-        const o = runChain(table, chain, p, meta, env, 0);
-        const v = o.kind === 'final' ? o.verdict : { kind: chain.base?.policy ?? 'accept' };
-        if (v.kind === 'drop')
-            return { verdict: 'drop' };
-        if (v.kind === 'reject')
-            return { verdict: 'reject', with: v.with };
-    }
-    return { verdict: 'accept' };
-}
-/** NAT chains of `hook` (only for the first packet of a connection): the translation, if any. */
-function natHook(rs, hook, p, meta, env) {
-    for (const { table, chain } of baseChains(rs, hook, 'nat')) {
-        const o = runChain(table, chain, p, meta, env, 0);
-        if (o.kind !== 'final') {
-            if (chain.base?.policy === 'drop')
-                return 'drop';
-            continue;
-        }
-        const v = o.verdict;
-        if (v.kind === 'masquerade' || v.kind === 'snat' || v.kind === 'dnat')
-            return v;
-        if (v.kind === 'drop' || v.kind === 'reject')
-            return 'drop';
-        // accept ends this chain only: a nat chain of another table may still translate.
-    }
-    return null;
-}
-/** Hooks that have at least one base chain (to skip work when the ruleset is empty). */
-function activeHooks(rs) {
-    return new Set(rs.tables.flatMap((t) => t.chains.flatMap((c) => (c.base ? [c.base.hook] : []))));
-}
-
-return { filterHook, natHook, activeHooks };
-})();
-__m["net/conntrack.js"] = (() => {
-const CT_MAX = 4096;
-const TIMEOUT_MS = { tcp: 7_200_000, udp: 120_000, icmp: 30_000 };
-const UNREPLIED_MS = 30_000;
-const CLOSING_MS = 10_000;
-function tupleOf(p) {
-    if (p.tcp)
-        return { proto: 'tcp', src: p.src, dst: p.dst, sport: p.tcp.sport, dport: p.tcp.dport };
-    if (p.udp)
-        return { proto: 'udp', src: p.src, dst: p.dst, sport: p.udp.sport, dport: p.udp.dport };
-    if (p.icmp && (p.icmp.type === 'echo-request' || p.icmp.type === 'echo-reply'))
-        return { proto: 'icmp', src: p.src, dst: p.dst, sport: p.icmp.id, dport: p.icmp.id };
-    return null;
-}
-const key = (t) => `${t.proto}|${t.src}|${t.sport}|${t.dst}|${t.dport}`;
-const swap = (t) => ({ ...t, src: t.dst, dst: t.src, sport: t.dport, dport: t.sport });
-/** The tuples a connection shows in the original direction, after DNAT, and after DNAT + SNAT. */
-function origStages(e) {
-    const afterDnat = e.dnat ? { ...e.orig, dst: e.dnat.ip, dport: e.dnat.port ?? e.orig.dport } : e.orig;
-    const afterAll = e.snat ? { ...afterDnat, src: e.snat.ip, sport: e.snat.port ?? afterDnat.sport } : afterDnat;
-    return [e.orig, afterDnat, afterAll];
-}
-/** Reply tuples: as it arrives (swap of the final original), after undoing SNAT, after undoing both. */
-function replyStages(e) {
-    const [, afterDnat, afterAll] = origStages(e);
-    const arrives = swap(afterAll);
-    return [arrives, { ...arrives, dst: e.orig.src, dport: e.orig.sport }, swap(e.orig), swap(afterDnat)];
-}
-class Conntrack {
-    index = new Map();
-    entries = new Set();
-    now;
-    constructor(now) {
-        this.now = now;
-    }
-    get size() {
-        return this.entries.size;
-    }
-    list() {
-        this.expire();
-        return [...this.entries];
-    }
-    lookup(p) {
-        const t = tupleOf(p);
-        const hit = t ? this.index.get(key(t)) : undefined;
-        if (!hit || this.expired(hit.entry))
-            return null;
-        return hit;
-    }
-    /** State of `p` and the connection it belongs to (a new, unconfirmed one when unknown). */
-    classify(p) {
-        const hit = this.lookup(p);
-        if (hit) {
-            const established = hit.dir === 'reply' || hit.entry.seenReply;
-            return { state: established ? 'established' : 'new', entry: hit.entry, dir: hit.dir };
-        }
-        if (p.icmp && (p.icmp.type === 'unreachable' || p.icmp.type === 'ttl-exceeded'))
-            return { state: this.related(p) ? 'related' : 'invalid', entry: null, dir: 'orig' };
-        const t = tupleOf(p);
-        if (!t)
-            return { state: 'untracked', entry: null, dir: 'orig' };
-        if (t.proto === 'tcp' && !p.tcp?.flags.includes('SYN'))
-            return { state: 'invalid', entry: null, dir: 'orig' };
-        if (p.icmp?.type === 'echo-reply')
-            return { state: 'invalid', entry: null, dir: 'orig' };
-        return { state: 'new', entry: { orig: t, seenReply: false, confirmed: false, closing: false, lastSeen: this.now(), packets: 0 }, dir: 'orig' };
-    }
-    /** The connection whose packet an ICMP error quotes, as that packet left (after NAT). */
-    quoted(p) {
-        const q = p.icmp?.orig;
-        const hit = q ? this.index.get(key({ proto: q.protocol, src: q.src, sport: q.sport, dst: q.dst, dport: q.dport })) : undefined;
-        return hit && !this.expired(hit.entry) ? hit : null;
-    }
-    /** An ICMP error about a known connection between the same hosts. */
-    related(p) {
-        for (const e of this.entries) {
-            if ([...origStages(e), ...replyStages(e)].some((t) => t.src === p.dst || t.dst === p.dst))
-                return true;
-        }
-        return false;
-    }
-    /** Records a packet of `entry` (and confirms a new connection); false when the table is full. */
-    see(entry, dir, p) {
-        if (!entry.confirmed) {
-            this.expire();
-            if (this.entries.size >= CT_MAX)
-                return false;
-            entry.confirmed = true;
-            this.entries.add(entry);
-        }
-        if (dir === 'reply')
-            entry.seenReply = true;
-        if (p.tcp?.flags.includes('FIN') || p.tcp?.flags.includes('RST'))
-            entry.closing = true;
-        entry.lastSeen = this.now();
-        entry.packets += 1;
-        this.reindex(entry);
-        return true;
-    }
-    /** (Re)indexes all the tuples of a confirmed connection, e.g. after NAT was decided. */
-    reindex(entry) {
-        if (!entry.confirmed)
-            return;
-        for (const t of origStages(entry))
-            this.index.set(key(t), { entry, dir: 'orig' });
-        for (const t of replyStages(entry))
-            this.index.set(key(t), { entry, dir: 'reply' });
-    }
-    /** Is a translated tuple (in the reply direction) already used by another connection? */
-    replyTaken(t) {
-        const hit = this.index.get(key(swap(t)));
-        return hit !== undefined && !this.expired(hit.entry);
-    }
-    flush() {
-        this.index.clear();
-        this.entries.clear();
-    }
-    expired(e) {
-        const limit = e.closing ? CLOSING_MS : e.seenReply ? TIMEOUT_MS[e.orig.proto] : Math.min(UNREPLIED_MS, TIMEOUT_MS[e.orig.proto]);
-        return this.now() - e.lastSeen > limit;
-    }
-    /** Drops expired connections: one pass over the entries and one over the index. */
-    expire() {
-        const gone = new Set();
-        for (const e of this.entries)
-            if (this.expired(e))
-                gone.add(e);
-        if (!gone.size)
-            return;
-        for (const e of gone)
-            this.entries.delete(e);
-        for (const [k, v] of this.index)
-            if (gone.has(v.entry))
-                this.index.delete(k);
-    }
-}
-
-return { CT_MAX, tupleOf, origStages, replyStages, Conntrack };
-})();
-__m["net/nat.js"] = (() => {
-const FIRST_PAT_PORT = 1024;
-const LAST_PORT = 65535;
-const MAX_ENTRIES = 4096;
-function flowOf(p) {
-    if (p.tcp)
-        return { proto: 'tcp', sport: p.tcp.sport, dport: p.tcp.dport };
-    if (p.udp)
-        return { proto: 'udp', sport: p.udp.sport, dport: p.udp.dport };
-    const id = p.icmp?.id ?? 0;
-    return { proto: 'icmp', sport: id, dport: id };
-}
-function rewriteSrc(p, ip, port) {
-    if (port === undefined)
-        return { ...p, src: ip };
-    if (p.tcp)
-        return { ...p, src: ip, tcp: { ...p.tcp, sport: port } };
-    if (p.udp)
-        return { ...p, src: ip, udp: { ...p.udp, sport: port } };
-    return p.icmp ? { ...p, src: ip, icmp: { ...p.icmp, id: port } } : { ...p, src: ip };
-}
-function rewriteDst(p, ip, port) {
-    if (port === undefined)
-        return { ...p, dst: ip };
-    if (p.tcp)
-        return { ...p, dst: ip, tcp: { ...p.tcp, dport: port } };
-    if (p.udp)
-        return { ...p, dst: ip, udp: { ...p.udp, dport: port } };
-    return p.icmp ? { ...p, dst: ip, icmp: { ...p.icmp, id: port } } : { ...p, dst: ip };
-}
-function staticMatchesOut(s, p, f) {
-    return s.local === p.src && (s.proto === undefined || (s.proto === f.proto && s.localPort === f.sport));
-}
-function staticMatchesIn(s, p, f) {
-    return s.global === p.dst && (s.proto === undefined || (s.proto === f.proto && s.globalPort === f.dport));
-}
-class NatTable {
-    dynamic = [];
-    hits = 0;
-    misses = 0;
-    /** Inside → outside: translates the source; null when no rule applies, 'drop' when the rule cannot. */
-    inside(p, statics, target) {
-        if (p.protocol === 'esp')
-            return this.insideEsp(p, statics, target);
-        const f = flowOf(p);
-        const st = statics.find((s) => staticMatchesOut(s, p, f));
-        if (st)
-            return this.hit(rewriteSrc(p, st.global, st.proto ? st.globalPort : undefined));
-        const known = this.dynamic.find((e) => e.insideLocal === p.src && (e.proto === null || (e.proto === f.proto && e.localPort === f.sport)));
-        if (known)
-            return this.hit(rewriteSrc(p, known.insideGlobal, known.proto ? known.globalPort : undefined));
-        const t = target(p);
-        if (!t)
-            return null;
-        this.misses += 1;
-        if (t === 'exhausted')
-            return 'drop';
-        const reserved = new Set(statics.filter((s) => s.global === t.global && s.proto === f.proto).map((s) => s.globalPort));
-        const port = t.overload ? this.freePort(f.proto, t.global, f.sport, reserved) : 0;
-        if (port === null)
-            return 'drop';
-        const entry = t.overload
-            ? { proto: f.proto, insideLocal: p.src, insideGlobal: t.global, localPort: f.sport, globalPort: port, outside: p.dst, outsidePort: f.dport, static: false, rule: t.rule }
-            : { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false, rule: t.rule };
-        this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
-        return rewriteSrc(p, entry.insideGlobal, entry.proto ? entry.globalPort : undefined);
-    }
-    /**
-     * ESP has no ports: a 1:1 translation (static, or a dynamic one without overload) can carry it; PAT
-     * cannot, so the packet is dropped (that is why IPsec behind a NAT needs NAT-T or public addresses).
-     */
-    insideEsp(p, statics, target) {
-        const st = statics.find((s) => s.local === p.src && s.proto === undefined);
-        if (st)
-            return this.hit({ ...p, src: st.global });
-        const known = this.dynamic.find((e) => e.insideLocal === p.src && e.proto === null);
-        if (known)
-            return this.hit({ ...p, src: known.insideGlobal });
-        const t = target(p);
-        if (!t)
-            return null;
-        if (t === 'exhausted' || t.overload)
-            return 'drop';
-        const entry = { proto: null, insideLocal: p.src, insideGlobal: t.global, static: false, rule: t.rule };
-        this.dynamic = [...this.dynamic.slice(-(MAX_ENTRIES - 1)), entry];
-        return { ...p, src: t.global };
-    }
-    /** Outside → inside: translates the destination, or returns null when nothing maps it. */
-    outside(p, statics) {
-        if (p.icmp?.orig)
-            return this.related(p, statics);
-        if (p.protocol === 'esp') {
-            const whole = statics.find((s) => s.global === p.dst && s.proto === undefined) ?? this.dynamic.find((e) => e.proto === null && e.insideGlobal === p.dst);
-            return whole ? this.hit({ ...p, dst: 'local' in whole ? whole.local : whole.insideLocal }) : null;
-        }
-        const f = flowOf(p);
-        const port = statics.find((s) => s.proto !== undefined && staticMatchesIn(s, p, f));
-        if (port)
-            return this.hit(rewriteDst(p, port.local, port.localPort));
-        const known = this.dynamic.find((e) => e.insideGlobal === p.dst && (e.proto === null || (e.proto === f.proto && e.globalPort === f.dport)));
-        if (known)
-            return this.hit(rewriteDst(p, known.insideLocal, known.proto ? known.localPort : undefined));
-        const whole = statics.find((s) => s.proto === undefined && staticMatchesIn(s, p, f));
-        return whole ? this.hit(rewriteDst(p, whole.local)) : null;
-    }
-    /**
-     * An ICMP error about a translated packet (RFC 5508): the quote is the packet as it left, so its source is the inside
-     * global address and port; both it and the outer destination go back to the inside local ones.
-     */
-    related(p, statics) {
-        const q = p.icmp?.orig;
-        if (!p.icmp || !q)
-            return null;
-        const st = statics.find((s) => s.global === q.src && s.proto === q.protocol && s.globalPort === q.sport) ?? statics.find((s) => s.global === q.src && s.proto === undefined);
-        // A PAT entry also records the outside end, so an error about the router's own traffic from that address is not taken for it.
-        const dyn = st ? undefined : this.dynamic.find((e) => e.insideGlobal === q.src && (e.proto === null || (e.proto === q.protocol && e.globalPort === q.sport && e.outside === q.dst && e.outsidePort === q.dport)));
-        const local = st ? { ip: st.local, port: st.proto ? st.localPort : undefined } : dyn ? { ip: dyn.insideLocal, port: dyn.proto ? dyn.localPort : undefined } : null;
-        if (!local)
-            return null;
-        return this.hit(unNatError(p, local.ip, local.port));
-    }
-    /** Is this global address (and pool member) taken by a 1:1 dynamic translation? */
-    globalInUse(global) {
-        return this.dynamic.some((e) => e.proto === null && e.insideGlobal === global);
-    }
-    entries() {
-        return this.dynamic;
-    }
-    /** clear ip nat translation * (statistics are kept, like IOS). */
-    clear() {
-        this.dynamic = [];
-    }
-    /** Factory state (reload): no translations and zeroed statistics. */
-    reset() {
-        this.dynamic = [];
-        this.hits = 0;
-        this.misses = 0;
-    }
-    hit(p) {
-        this.hits += 1;
-        return p;
-    }
-    /** The inside port itself when free, else the first free one; null when every port is taken. */
-    freePort(proto, global, wanted, reserved) {
-        const used = new Set(this.dynamic.filter((e) => e.proto === proto && e.insideGlobal === global).map((e) => e.globalPort));
-        const free = (port) => !used.has(port) && !reserved.has(port);
-        if (wanted > 0 && free(wanted))
-            return wanted;
-        for (let port = FIRST_PAT_PORT; port <= LAST_PORT; port++)
-            if (free(port))
-                return port;
-        return null;
-    }
-}
-/**
- * An ICMP error sent back to `ip`, its quote showing `ip` (and `port`, when translated) as the source and, when the
- * connection was also destination-translated, its original destination.
- */
-function unNatError(p, ip, port, to) {
-    const q = p.icmp?.orig;
-    if (!p.icmp || !q)
-        return { ...p, dst: ip };
-    const dst = to ? { dst: to.ip, dport: to.port } : {};
-    return { ...p, dst: ip, icmp: { ...p.icmp, orig: { ...q, src: ip, sport: port ?? q.sport, ...dst } } };
-}
-
-return { flowOf, rewriteSrc, rewriteDst, NatTable, unNatError };
-})();
-__m["net/klog.js"] = (() => {
-const { formatIp } = __m["core/ip.js"];
-/** Above this initial TTL the sender is Windows (128), below it Linux (64): ping size and the DF bit depend on it. */
-const LINUX_MAX_TTL = 64;
-const IP_HEADER = 20;
-const ICMP_TYPES = { 'echo-reply': 0, unreachable: 3, 'echo-request': 8, 'ttl-exceeded': 11 };
-const UNREACHABLE_CODES = { net: 0, host: 1, port: 3, admin: 13 };
-/** Order in which the kernel prints the TCP flags. */
-const TCP_FLAG_ORDER = ['ACK', 'PSH', 'RST', 'SYN', 'FIN'];
-const TCP_WINDOW = 64240;
-const fromLinux = (p) => p.ttl <= LINUX_MAX_TTL;
-/** IP total length of the usual packet of each kind (ping: 56 data bytes on Linux, 32 on Windows). */
-function ipLength(p) {
-    if (p.icmp)
-        return p.icmp.type === 'echo-request' || p.icmp.type === 'echo-reply' ? (fromLinux(p) ? 84 : 60) : 56;
-    if (p.tcp)
-        return p.tcp.flags.includes('SYN') ? (fromLinux(p) ? 60 : 52) : 52;
-    if (p.udp)
-        return p.udp.dns ? 73 : 76;
-    return IP_HEADER;
-}
-function l4(p) {
-    if (p.icmp) {
-        const code = p.icmp.type === 'unreachable' ? UNREACHABLE_CODES[p.icmp.code ?? 'host'] ?? 1 : 0;
-        const echo = p.icmp.type === 'echo-request' || p.icmp.type === 'echo-reply' ? ` ID=${p.icmp.id} SEQ=${p.icmp.seq}` : '';
-        return `PROTO=ICMP TYPE=${ICMP_TYPES[p.icmp.type] ?? 0} CODE=${code}${echo}`;
-    }
-    if (p.tcp) {
-        const flags = TCP_FLAG_ORDER.filter((f) => p.tcp?.flags.includes(f)).join(' ');
-        return `PROTO=TCP SPT=${p.tcp.sport} DPT=${p.tcp.dport} WINDOW=${TCP_WINDOW} RES=0x00 ${flags}${flags ? ' ' : ''}URGP=0`;
-    }
-    if (p.udp)
-        return `PROTO=UDP SPT=${p.udp.sport} DPT=${p.udp.dport} LEN=${ipLength(p) - IP_HEADER}`;
-    return `PROTO=${p.protocol.toUpperCase()}`;
-}
-/** TCP and everything Linux sends go with Don't Fragment (path MTU discovery); Windows' ping and UDP do not. */
-const dontFragment = (p) => p.tcp !== undefined || fromLinux(p);
-function kernelLogLine(prefix, p, m) {
-    const mac = m.iif !== undefined && m.mac ? ` MAC=${m.mac}` : '';
-    const df = dontFragment(p) ? ' DF' : '';
-    return `${prefix}IN=${m.iif ?? ''} OUT=${m.oif ?? ''}${mac} SRC=${formatIp(p.src)} DST=${formatIp(p.dst)} LEN=${ipLength(p)} TOS=0x00 PREC=0x00 TTL=${p.ttl} ID=${m.id}${df} ${l4(p)}`;
-}
-/** «dst:src:08:00» as the kernel prints the MAC header (MACs are 12 hex characters). */
-function macHeader(dst, src) {
-    const pairs = (hex) => (hex.match(/../g) ?? []).join(':');
-    return `${pairs(dst)}:${pairs(src)}:08:00`;
-}
-
-return { kernelLogLine, macHeader };
-})();
-__m["net/netfilter.js"] = (() => {
-const { EMPTY_RULESET } = __m["net/nft/model.js"];
-const { activeHooks, filterHook, natHook } = __m["net/nft/eval.js"];
-const { Conntrack, tupleOf } = __m["net/conntrack.js"];
-const { rewriteDst, rewriteSrc, unNatError } = __m["net/nat.js"];
-const { formatIp } = __m["core/ip.js"];
-const { kernelLogLine, macHeader } = __m["net/klog.js"];
-const FIRST_NAT_PORT = 32768;
-const LAST_NAT_PORT = 60999;
-class Netfilter {
-    ruleset = EMPTY_RULESET;
-    counters = new Map();
-    ct;
-    env;
-    ctx = new WeakMap();
-    hooks = new Set();
-    /** Ethernet header of each arrived packet (MAC= of the log line). */
-    macs = new WeakMap();
-    /** IP identification of the logged packets (a fixed walk: deterministic, no repeats nearby). */
-    ipId = 4242;
-    constructor(env) {
-        this.env = env;
-        this.ct = new Conntrack(() => env.now());
-    }
-    /** Replaces the ruleset (nft commands, nftables.service); counters of removed rules go away. */
-    setRuleset(rs) {
-        this.ruleset = rs;
-        this.hooks = activeHooks(rs);
-        const live = new Set(rs.tables.flatMap((t) => t.chains.flatMap((c) => c.rules.map((r) => r.handle))));
-        for (const h of this.counters.keys())
-            if (!live.has(h))
-                this.counters.delete(h);
-    }
-    /** Nothing to do when no base chain exists (the common case: no firewall). */
-    get active() {
-        return this.hooks.size > 0;
-    }
-    /** Keeps the conntrack context when a packet is copied (TTL decrement while forwarding). */
-    carry(from, to) {
-        const c = this.ctx.get(from);
-        if (c)
-            this.ctx.set(to, c);
-        return to;
-    }
-    evalEnv(hook) {
-        return {
-            counters: this.counters,
-            log: (prefix, p, meta) => {
-                // The kernel lowers the TTL of a forwarded packet before the forward hook.
-                const seen = hook === 'forward' ? { ...p, ttl: p.ttl - 1 } : p;
-                this.ipId = (this.ipId * 7919 + 1) % 65536;
-                this.env.log(kernelLogLine(prefix, seen, { iif: meta.iif, oif: meta.oif, mac: this.macs.get(p), id: this.ipId }));
-            },
-        };
-    }
-    context(p) {
-        const known = this.ctx.get(p);
-        if (known)
-            return known;
-        const c = this.ct.classify(p);
-        return { entry: c.entry, dir: c.dir, state: c.state };
-    }
-    keep(p, c) {
-        this.ctx.set(p, c);
-        return p;
-    }
-    filter(hook, p, meta) {
-        if (!this.hooks.has(hook))
-            return true;
-        const r = filterHook(this.ruleset, hook, p, meta, this.evalEnv(hook));
-        if (r.verdict === 'reject')
-            this.env.reject(p, r.with, hook === 'forward' ? meta.iif : undefined);
-        return r.verdict === 'accept';
-    }
-    /** The Ethernet header a packet arrived in, for the MAC= of the kernel log. */
-    noteFrame(p, dstMac, srcMac) {
-        this.macs.set(p, macHeader(dstMac, srcMac));
-    }
-    /** Incoming packet before routing: undo SNAT of replies, apply or decide DNAT, filter prerouting. */
-    prerouting(iif, p) {
-        if (!this.active)
-            return p;
-        const c = this.context(p);
-        let out = p;
-        const quoted = c.state === 'related' ? this.ct.quoted(p) : null;
-        if (quoted?.dir === 'orig' && quoted.entry.snat?.ip === p.icmp?.orig?.src) {
-            // An ICMP error about a source-translated packet goes back to the inside host (RFC 5508), quoting it as sent.
-            const o = quoted.entry.orig;
-            out = unNatError(p, o.src, o.sport, { ip: o.dst, port: o.dport });
-        }
-        else if (c.entry?.confirmed) {
-            if (c.dir === 'orig' && c.entry.dnat)
-                out = rewriteDst(p, c.entry.dnat.ip, c.entry.dnat.port);
-            if (c.dir === 'reply' && c.entry.snat)
-                out = rewriteDst(p, c.entry.orig.src, c.entry.orig.sport);
-        }
-        else if (c.entry && this.hooks.has('prerouting')) {
-            const d = natHook(this.ruleset, 'prerouting', p, { iif, ct: c.state }, this.evalEnv('prerouting'));
-            if (d === 'drop')
-                return null;
-            if (d?.kind === 'dnat') {
-                c.entry.dnat = { ip: d.ip, port: d.port };
-                out = rewriteDst(p, d.ip, d.port);
-            }
-        }
-        const mac = this.macs.get(p);
-        if (mac && out !== p)
-            this.macs.set(out, mac);
-        if (!this.filter('prerouting', out, { iif, ct: c.state }))
-            return null;
-        return this.keep(out, c);
-    }
-    /** Packet for this host: filter input and confirm the connection. */
-    input(iif, p) {
-        if (!this.active)
-            return p;
-        const c = this.context(p);
-        if (!this.filter('input', p, { iif, ct: c.state }))
-            return null;
-        if (c.entry && !this.ct.see(c.entry, c.dir, p))
-            return null;
-        return p;
-    }
-    /** Transit packet (router): filter forward. */
-    forward(iif, oif, p) {
-        if (!this.active)
-            return p;
-        const c = this.context(p);
-        return this.filter('forward', p, { iif, oif, ct: c.state }) ? this.keep(p, { ...c, iif }) : null;
-    }
-    /** Locally generated packet: conntrack, DNAT of the output nat chain, filter output. */
-    output(oif, p) {
-        if (!this.active)
-            return p;
-        const c = this.context(p);
-        let out = p;
-        if (c.entry && !c.entry.confirmed && this.hooks.has('output')) {
-            const d = natHook(this.ruleset, 'output', p, { oif, ct: c.state }, this.evalEnv('output'));
-            if (d === 'drop')
-                return null;
-            if (d?.kind === 'dnat') {
-                c.entry.dnat = { ip: d.ip, port: d.port };
-                out = rewriteDst(p, d.ip, d.port);
-            }
-        }
-        if (!this.filter('output', out, { oif, ct: c.state }))
-            return null;
-        return this.keep(out, c);
-    }
-    /** Leaving packet: apply or decide SNAT/masquerade, undo DNAT of replies, confirm. */
-    postrouting(oif, p, arrival) {
-        if (!this.active)
-            return p;
-        const c = this.context(p);
-        const iif = arrival ?? c.iif;
-        let out = p;
-        if (c.entry?.confirmed) {
-            if (c.dir === 'orig' && c.entry.snat)
-                out = rewriteSrc(p, c.entry.snat.ip, c.entry.snat.port);
-            if (c.dir === 'reply' && c.entry.dnat)
-                out = rewriteSrc(p, c.entry.orig.dst, c.entry.orig.dport);
-        }
-        else if (c.entry && this.hooks.has('postrouting')) {
-            const d = natHook(this.ruleset, 'postrouting', p, { iif, oif, ct: c.state }, this.evalEnv('postrouting'));
-            if (d === 'drop')
-                return null;
-            const to = d && d.kind !== 'dnat' ? this.snatTarget(p, d.kind === 'masquerade' ? this.env.ifaceIp(oif) : d.ip, d.kind === 'snat' ? d.port : undefined) : null;
-            // No address on the interface or no free port: the kernel drops it rather than leak the private source.
-            if (d && d.kind !== 'dnat' && !to)
-                return null;
-            if (to) {
-                c.entry.snat = to;
-                out = rewriteSrc(p, to.ip, to.port);
-            }
-        }
-        if (!this.filter('postrouting', out, { iif, oif, ct: c.state }))
-            return null;
-        if (c.entry && !this.ct.see(c.entry, c.dir, p))
-            return null;
-        return out;
-    }
-    /** Source after SNAT, keeping the port unless another connection already uses it (like the kernel). */
-    snatTarget(p, ip, port) {
-        const t = tupleOf(p);
-        if (ip === undefined || !t)
-            return null;
-        if (port !== undefined)
-            return { ip, port };
-        const free = (sport) => !this.ct.replyTaken({ ...t, src: ip, sport, dport: t.proto === 'icmp' ? sport : t.dport });
-        if (free(t.sport))
-            return { ip, port: t.sport };
-        for (let n = FIRST_NAT_PORT; n <= LAST_NAT_PORT; n++)
-            if (free(n))
-                return { ip, port: n };
-        return null;
-    }
-    /** `systemctl stop nftables` / `nft flush ruleset`. */
-    flush() {
-        this.setRuleset(EMPTY_RULESET);
-        this.counters.clear();
-    }
-}
-
-return { Netfilter };
-})();
-__m["devices/host-kernel.js"] = (() => {
-const { LINUX_TTL, icmpQuote } = __m["net/packets.js"];
-const { Netfilter } = __m["net/netfilter.js"];
-const { Sysctl } = __m["net/sysctl.js"];
-const { LOOPBACK } = __m["net/ipstack.js"];
-const MAX_KERNEL_LOG = 200;
-class Kernel {
-    sysctl;
-    netfilter;
-    log = [];
-    host;
-    constructor(host) {
-        this.host = host;
-        this.sysctl = new Sysctl({
-            get: () => host.runtimeName(),
-            // kernel.hostname is read-only in Netfix: the host name comes from the device name.
-            set: () => 'locked',
-        });
-        this.netfilter = new Netfilter({
-            now: () => host.clock.now(),
-            log: (line) => this.printk(line),
-            ifaceIp: (name) => host.linuxIfIp(name),
-            reject: (p, kind, iif) => this.reject(p, kind, iif),
-        });
-    }
-    printk(text) {
-        this.log.push({ time: this.host.clock.now(), text });
-        if (this.log.length > MAX_KERNEL_LOG)
-            this.log.splice(0, this.log.length - MAX_KERNEL_LOG);
-    }
-    name(port) {
-        return port === LOOPBACK ? LOOPBACK : this.host.linuxIfName(port);
-    }
-    prerouting(port, p) {
-        return this.netfilter.prerouting(this.name(port), p);
-    }
-    input(port, p) {
-        if (p.icmp?.type === 'echo-request' && this.sysctl.enabled('net.ipv4.icmp_echo_ignore_all'))
-            return null;
-        return this.netfilter.input(this.name(port), p);
-    }
-    output(port, p) {
-        return this.netfilter.output(this.name(port), p);
-    }
-    postrouting(port, p, iif) {
-        return this.netfilter.postrouting(this.name(port), p, iif);
-    }
-    /**
-     * `reject`: TCP RST for TCP (unless an ICMP type was asked), ICMP port unreachable otherwise (or the type asked).
-     * The RST answers as the destination; the ICMP error comes from this host (the arrival interface when forwarding).
-     */
-    reject(p, kind, iif) {
-        if (p.icmp && p.icmp.type !== 'echo-request')
-            return;
-        const ttl = LINUX_TTL;
-        if (p.tcp && (kind === undefined || kind === 'tcp reset')) {
-            this.host.sendRaw({ src: p.dst, dst: p.src, ttl, protocol: 'tcp', tcp: { sport: p.tcp.dport, dport: p.tcp.sport, flags: ['RST', 'ACK'], seq: 0, ack: p.tcp.seq + 1 } });
-            return;
-        }
-        const src = iif === undefined ? p.dst : this.host.linuxIfIp(iif);
-        if (src === undefined)
-            return;
-        const code = kind === 'icmp admin-prohibited' ? 'admin' : kind === 'icmp host-unreachable' ? 'host' : 'port';
-        const orig = icmpQuote(p);
-        this.host.sendRaw({ src, dst: p.src, ttl, protocol: 'icmp', icmp: { type: 'unreachable', id: p.icmp?.id ?? 0, seq: p.icmp?.seq ?? 0, code, ...(orig ? { orig } : {}) } });
-    }
-}
-
-return { Kernel };
-})();
-__m["devices/host.js"] = (() => {
-const { t } = __m["i18n/t.js"];
-const { DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DNS_PORT, LINUX_TTL, PC_TTL } = __m["net/packets.js"];
-
-const { IpStack } = __m["net/ipstack.js"];
-const { TcpLayer } = __m["net/tcp.js"];
-const { DnsResolver } = __m["net/dns.js"];
-const { DhcpClient } = __m["dhcp/client.js"];
-const { DETACHED } = __m["devices/hooks.js"];
-const { macFromSeed, clientIdFromMac } = __m["core/mac.js"];
-const { Kernel } = __m["devices/host-kernel.js"];
-const { lookupRoute, MAX_STATIC_ROUTES } = __m["devices/host-nics.js"];
-const { inSubnet, BROADCAST_IP } = __m["core/ip.js"];
-const HOST_PORT = 'FastEthernet0';
-/** Linux name of the NIC (ip, nft iif/oif, netplan). */
-const HOST_LINUX_IF = 'eth0';
-const APIPA_NET = 0xa9fe0000;
-const APIPA_PREFIX = 16;
-const APIPA_HOST_SPACE = 0xfe00;
-const MAX_LABEL = 63;
-const MAX_HOSTNAME = 253;
-const LABEL = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
-/** RFC 1123 host name (letters, digits and hyphens; dot-separated labels). Returns an error or null. */
-function validHostname(name) {
-    if (name.trim() === '')
-        return t('host.err.empty');
-    if (name.length > MAX_HOSTNAME)
-        return t('host.err.long', { max: MAX_HOSTNAME });
-    const labels = name.split('.');
-    if (labels.some((l) => l.length > MAX_LABEL))
-        return t('host.err.label', { max: MAX_LABEL });
-    if (!labels.every((l) => LABEL.test(l)))
-        return t('host.err.chars');
-    return null;
-}
-class Host {
-    id;
-    /** Static host name (hostnamectl, /etc/hostname, Windows computer name). */
-    name;
-    /** Transient name set with `hostname NAME` (not saved); undefined = the static name. */
-    transientName = undefined;
-    /** hostnamectl's pretty host name (free text). */
-    prettyName = undefined;
-    mac;
-    hooks = DETACHED;
-    config = { mode: 'static' };
-    /** DNS search domains of netplan's `nameservers.search` (the DHCP domain is added while the lease lasts). */
-    dnsSearch = [];
-    /** Operating system of the default terminal (both terminals are always available). */
-    os = 'windows';
-    /** Windows-style clients send option 61 = 01 + MAC. */
-    sendClientId = true;
-    /** Option 61 to send instead of 01 + MAC (lowercase hex), like dhclient's `send dhcp-client-identifier`. */
-    clientIdOverride = undefined;
-    portUp = true;
-    dhcpStatus = 'idle';
-    stack;
-    dhcpClient;
-    tcp;
-    resolver;
-    clock;
-    /** sysctl, netfilter (nftables) and the kernel log. */
-    kernel;
-    /** Routes added with `ip route add NET via GW` (running configuration; the default route is `config.gateway`). */
-    staticRoutes = [];
-    statusListeners = new Set();
-    dropOnArpMiss = false;
-    /** Initial TTL of what this host sends: 64 on Linux, 128 on Windows. */
-    get ttl() { return this.os === 'linux' ? LINUX_TTL : PC_TTL; }
-    /** Linux aborts a connect() in SYN_SENT on an ICMP unreachable quoting it (tcp_v4_err); Windows ignores it. */
-    icmpUnreachable(orig, code) { if (orig.protocol === 'tcp' && this.os === 'linux')
-        this.tcp.icmpUnreachable(orig, code); }
-    /** Windows never answers an echo to a broadcast address; Linux only with icmp_echo_ignore_broadcasts=0. */
-    ignoresBroadcastEcho = () => this.os === 'windows' || this.kernel.sysctl.enabled('net.ipv4.icmp_echo_ignore_broadcasts');
-    constructor(id, name, clock, seed) {
-        this.id = id;
-        this.name = name;
-        this.clock = clock;
-        this.mac = macFromSeed(seed);
-        this.kernel = new Kernel({
-            clock,
-            runtimeName: () => this.runtimeName(),
-            setTransientName: (n) => this.setTransientName(n),
-            linuxIfName: (port) => this.linuxIfName(port),
-            linuxIfIp: (name) => this.linuxIfIp(name),
-            sendRaw: (p) => {
-                const egress = this.route(p.dst);
-                if (egress)
-                    this.stack.sendVia(egress, p);
-            },
-        });
-        this.kernel.sysctl.onChange(() => this.changed());
-        this.stack = new IpStack(this, () => clock.now());
-        this.dhcpClient = this.createDhcpClient();
-        const host = this;
-        this.tcp = new TcpLayer({
-            get ttl() { return host.ttl; },
-            send: (p) => this.stack.send(p),
-            sourceFor: (dst) => this.sourceFor(dst),
-            schedule: (d, fn) => this.hooks.schedule(d, fn),
-        });
-        this.resolver = new DnsResolver({
-            sendQuery: (server, sport, msg) => this.sendUdp(server, sport, DNS_PORT, { dns: msg }),
-            schedule: (d, fn) => this.hooks.schedule(d, fn),
-        });
-    }
-    /** Source address towards `dst`: the address of the egress interface (routers with several NICs, wg0). */
-    sourceFor(dst) {
-        const egress = this.route(dst);
-        if (!egress)
-            return undefined;
-        return this.l3Iface(egress.iface)?.addrs[0]?.ip ?? this.config.ip;
-    }
-    displayName() {
-        return this.name;
-    }
-    /** The name the running system uses (gethostname). */
-    runtimeName() {
-        return this.transientName ?? this.name;
-    }
-    /** Sets the static host name (and the running one). Throws on an invalid name. */
-    setHostname(name) {
-        const err = validHostname(name);
-        if (err)
-            throw new Error(err);
-        this.name = name;
-        this.transientName = undefined;
-        this.changed();
-    }
-    /** hostnamectl --pretty (undefined clears it). */
-    setPrettyName(name) {
-        this.prettyName = name;
-        this.changed();
-    }
-    /** `hostname NAME` / hostnamectl --transient (undefined = back to the static name). */
-    setTransientName(name) {
-        this.transientName = name;
-        this.changed();
-    }
-    /** `ip link set dev eth0 up|down`: administrative state of the NIC. */
-    setPortUp(up) {
-        if (this.portUp === up)
-            return;
-        this.portUp = up;
-        this.hooks.portChanged(this.primaryPort());
-        this.changed();
-    }
-    /** dhclient -r: releases the lease and leaves the interface without an address. */
-    releaseDhcp() {
-        this.dhcpClient.release();
-        this.hooks.runUntil(() => false, 10);
-        this.config = { mode: 'dhcp' };
-        this.dhcpStatus = 'idle';
-        this.changed();
-    }
-    onChange(listener) {
-        this.statusListeners.add(listener);
-        return () => this.statusListeners.delete(listener);
-    }
-    /** Tells open panels that something outside the device's own setters changed (nft, sysctl files…). */
-    notifyChange() {
-        this.changed();
-    }
-    changed() {
-        for (const l of this.statusListeners)
-            l();
-    }
-    // ------------------------------------------------------------ IP configuration
-    setStatic(cfg) {
-        this.dhcpClient.stop();
-        this.dhcpStatus = 'idle';
-        this.config = { ...cfg, mode: 'static' };
-        this.stack.flushArp();
-        this.changed();
-    }
-    /** Switches to DHCP and starts DORA. */
-    useDhcp() {
-        this.config = { mode: 'dhcp' };
-        this.dhcpStatus = 'requesting';
-        this.stack.flushArp();
-        this.changed();
-        this.dhcpClient.start();
-    }
-    clientId() {
-        if (!this.sendClientId)
-            return undefined;
-        return this.clientIdOverride ?? clientIdFromMac(this.mac);
-    }
-    createDhcpClient() {
-        return new DhcpClient({
-            mac: this.mac,
-            send: (msg, dst, src) => {
-                const dhcp = { ...msg, options: { ...msg.options, clientId: this.clientId(), hostname: this.runtimeName() } };
-                this.sendUdp(dst, DHCP_CLIENT_PORT, DHCP_SERVER_PORT, { dhcp }, src);
-            },
-            schedule: (d, fn) => this.hooks.schedule(d, fn),
-            now: () => this.clock.now(),
-            onBound: (lease) => this.applyLease(lease),
-            onFailed: () => this.applyApipa(),
-            onLost: () => { this.config = { mode: 'dhcp' }; this.changed(); },
-        });
-    }
-    applyLease(lease) {
-        this.config = { mode: 'dhcp', ip: lease.ip, prefix: lease.prefix, gateway: lease.routers[0], dns: lease.dnsServers[0] };
-        this.dhcpStatus = 'ok';
-        this.changed();
-    }
-    applyApipa() {
-        const host = (parseInt(this.mac.slice(8), 16) % APIPA_HOST_SPACE) + 0x100;
-        this.config = { mode: 'dhcp', ip: (APIPA_NET + host) >>> 0, prefix: APIPA_PREFIX };
-        this.dhcpStatus = 'failed';
-        this.changed();
-    }
-    // ------------------------------------------------------------ transport helpers
-    /** Sends a UDP datagram; broadcasts go out of `port` (the main NIC by default) directly. */
-    sendUdp(dst, sport, dport, body, src, port = this.primaryPort()) {
-        const from = src ?? (dst === BROADCAST_IP ? this.ifaceConfig(port)?.ip : this.sourceFor(dst)) ?? this.config.ip ?? 0;
-        const packet = { src: from, dst, ttl: this.ttl, protocol: 'udp', udp: { sport, dport, ...body } };
-        if (dst === BROADCAST_IP) {
-            this.stack.broadcast(port, packet);
-            return true;
-        }
-        return this.stack.send(packet);
-    }
-    /** DNS lookup through the configured server (asynchronous). */
-    lookup(name, type, done, server = this.config.dns) {
-        this.resolver.query(server, name, type, done);
-    }
-    /** Opens a TCP connection and exchanges one request/reply (asynchronous). */
-    connect(dst, port, payload, done, timeoutMs) {
-        this.tcp.request(dst, port, payload, done, timeoutMs);
-    }
-    // ------------------------------------------------------------ NetDevice
-    /** The NIC that the IP configuration, DHCP client and hostname belong to. */
-    primaryPort() {
-        return HOST_PORT;
-    }
-    /** Address of a NIC (the main one uses `config`). */
-    ifaceConfig(port) {
-        return port === this.primaryPort() ? this.config : undefined;
-    }
-    portNames() {
-        return [HOST_PORT];
-    }
-    portAdminUp(_port) {
-        return this.portUp;
-    }
-    linkUp() {
-        return this.portUp && this.hooks.peerUp(this.primaryPort());
-    }
-    receive(_port, frame) {
-        this.stack.receiveFrame(HOST_PORT, frame);
-    }
-    onLinkEvent(_port, up) {
-        if (up && this.config.mode === 'dhcp' && this.dhcpStatus !== 'ok')
-            this.useDhcp();
-        this.changed();
-    }
-    ownsIp(ip) {
-        return this.config.ip === ip;
-    }
-    // ------------------------------------------------------------ StackHost
-    l3Iface(name) {
-        return name === HOST_PORT ? this.l3Ifaces()[0] : undefined;
-    }
-    l3Ifaces() {
-        const { ip, prefix } = this.config;
-        const addrs = ip !== undefined && prefix !== undefined ? [{ ip, prefix }] : [];
-        return [{ name: HOST_PORT, mac: this.mac, addrs, up: this.linkUp() }];
-    }
-    emit(_iface, frame) {
-        this.hooks.transmit(HOST_PORT, frame);
-    }
-    schedule(delayMs, fn) {
-        this.hooks.schedule(delayMs, fn);
-    }
-    route(dst) {
-        return lookupRoute(this.nics(), this.staticRoutes, this.config.gateway, dst);
-    }
-    // ------------------------------------------------------------ NICs (ip addr / ip link / ip route)
-    /** The NICs as `ip` shows them (one on a PC or Server). */
-    nics() {
-        const { ip, prefix } = this.config;
-        return [{ port: HOST_PORT, linux: HOST_LINUX_IF, mac: this.mac, up: this.linkUp(), adminUp: this.portUp, ip, prefix, dhcp: this.config.mode === 'dhcp' }];
-    }
-    /** `ip addr add|del` on a NIC (undefined removes the address and the routes through it). */
-    setNicAddress(port, addr) {
-        if (port !== this.primaryPort())
-            return;
-        this.setStatic(addr ? { ...addr, gateway: undefined, dns: this.config.dns } : { dns: this.config.dns });
-    }
-    setNicUp(port, up) {
-        if (port === this.primaryPort())
-            this.setPortUp(up);
-    }
-    setStaticRoutes(routes) {
-        this.staticRoutes = routes.slice(0, MAX_STATIC_ROUTES);
-        this.changed();
-    }
-    deliver(iface, packet) {
-        if (packet.tcp) {
-            this.tcp.receive(packet);
-            return;
-        }
-        const udp = packet.udp;
-        if (!udp)
-            return;
-        if (udp.dhcp && udp.dport === DHCP_CLIENT_PORT)
-            this.dhcpClient.receive(udp.dhcp);
-        else if (udp.dns?.response && this.resolver.ownsPort(udp.dport))
-            this.resolver.receive(udp.dns, packet.src);
-        else
-            this.onUdp(packet, iface);
-    }
-    /** Linux name of a NIC port (eth0 for the only NIC of a PC or Server). */
-    linuxIfName(port) {
-        return port === HOST_PORT ? HOST_LINUX_IF : port;
-    }
-    /** IPv4 address of a Linux interface name (masquerade, nft). */
-    linuxIfIp(name) {
-        const port = this.portNames().find((p) => this.linuxIfName(p) === name);
-        return port === undefined ? undefined : this.ifaceConfig(port)?.ip;
-    }
-    // ------------------------------------------------------------ netfilter hooks
-    // The kernel (sysctl + nftables) decides; each hook returns the packet, rewritten, or null when dropped.
-    prerouting = (iface, packet) => this.kernel.prerouting(iface, packet);
-    noteFrame = (packet, frame) => this.kernel.netfilter.noteFrame(packet, frame.dst, frame.src);
-    input = (iface, packet) => this.kernel.input(iface, packet);
-    output = (iface, packet) => this.kernel.output(iface, packet);
-    postrouting = (iface, packet) => this.kernel.postrouting(iface, packet);
-    /** WireGuard links (Linux router only). */
-    wgLinks() { return undefined; }
-    /** Server-side UDP services (DHCP on 67, DNS on 53). Plain hosts (a PC) run none. */
-    onUdp(_packet, _iface) { }
-}
-
-return { DHCP_SERVER_PORT, DNS_PORT, HOST_PORT, HOST_LINUX_IF, validHostname, Host };
 })();
 __m["devices/pc.js"] = (() => {
 /** Packet Tracer-style PC: a host with client applications (browser, mail, SSH, terminals). */
@@ -71456,6 +71473,8 @@ function openHostWindow(placed, h, app, again) {
     const tabs = [settingsTab, ifTab, ...(h instanceof LinuxRouter ? svc : [...svc, ...(has('ip') ? [ipTab] : []), ...pcApps]), ...order.filter(has).map(terminal), config];
     openHosts.set(h.id, { placed, app });
     handle = app.windows.show(h.id, `${placed.label} · ${model}`, allowed(app, h.kind, tabs), () => { openHosts.delete(h.id); disposers.forEach((f) => f()); }, again ?? {});
+    // hostnamectl set-hostname renames the device from its terminal: the title follows at once.
+    disposers.push(h.onChange(() => handle?.setTitle(`${placed.label} · ${model}`)));
 }
 /** Host windows open now, to redraw them when their boxes change. */
 const openHosts = new Map();

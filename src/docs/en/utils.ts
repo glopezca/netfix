@@ -67,7 +67,7 @@ export const UTIL_DOCS: Readonly<Record<string, UtilDoc>> = {
   users: { group: 'sistema', synopsis: 'users', summary: 'Logged-in users.' },
   uname: { group: 'sistema', synopsis: 'uname [-asnrvmo]', summary: 'System: Linux 6.17.0-14-generic x86_64 GNU/Linux.' },
   hostname: { group: 'sistema', synopsis: 'hostname [-I|-f|-s] [NAME]', summary: 'Name of the machine (-I: its IP addresses). With NAME (root) it changes the transient name, which is not saved.' },
-  hostnamectl: { group: 'sistema', synopsis: 'hostnamectl [status] | hostnamectl set-hostname NAME [--static|--transient|--pretty] | hostnamectl hostname [NAME]', summary: 'Shows and changes the host name persistently (/etc/hostname). Asks administrators for polkit authentication; the bash prompt changes in the next shell (exec bash).' },
+  hostnamectl: { group: 'sistema', synopsis: 'hostnamectl [status] | hostnamectl set-hostname NAME [--static|--transient|--pretty] | hostnamectl hostname [NAME]', summary: 'Shows and changes the host name persistently (/etc/hostname); in Netfix set-hostname renames the device as typed and the host name is derived from it. Asks administrators for polkit authentication; the bash prompt changes in the next shell (exec bash).' },
   uptime: { group: 'sistema', synopsis: 'uptime [-p]', summary: 'Time running and load.' },
   ps: { group: 'sistema', synopsis: 'ps [aux | -ef]', summary: 'Processes (includes the server’s services).' },
   free: { group: 'sistema', synopsis: 'free [-h]', summary: 'Memory.' },

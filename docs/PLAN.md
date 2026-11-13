@@ -2267,3 +2267,15 @@ Hecho con un enjambre ruflo jerárquico (dos escritores en worktrees aislados, i
   `config-files.ts` no está registrado ni justificado en `UNREGISTERED`. Regla `.claude/rules/project/service-config-files.md`.
 - Límites: sin `sshd -t` como orden; sin `postfix start|stop`; los ajustes dentro de secciones de dovecot no se
   comprueban; la huella de dovecot.conf es constante (cambiar POP3 en el panel no reescribe un fichero editado).
+
+### Fase: hostnamectl renombra el equipo (v0.43.0)
+
+Petición: `hostnamectl set-hostname` plenamente funcional: el nombre del equipo pasa a ser el dado (misma grafía) y el
+nombre de host se sigue derivando de él; los cambios se ven al momento en las ventanas del equipo y en el lienzo.
+
+- `host-system.ts` `setName` (static): valida como systemd («Invalid static hostname 'x'») y llama a `renameDevice`
+  (el mismo camino que la pestaña Equipo: etiqueta con la grafía escrita, nombre de host derivado, -2 si está cogido).
+  `placedOf` (device-names.ts) da el Placed de un dispositivo. `hostname NOMBRE`, `--transient` y sysctl siguen
+  rechazados. Se guarda con el laboratorio.
+- La ventana del equipo cambia su título al cambiar el nombre; el lienzo se redibuja tras cada orden.
+- Ayuda (clients.ts es/en, utils) y textos de la pestaña Equipo; pruebas en hostname-lock y hostname.

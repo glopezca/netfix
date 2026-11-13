@@ -11,7 +11,7 @@ export const HOST_ES = {
   'host.labelEmpty': 'El nombre visible no puede estar vacío.',
   'host.saved': 'Aplicado. Nombre de host: {name}.',
   'host.equivalents': 'Equivalencias',
-  'host.eqLinux': 'GNU/Linux: en un equipo real, sudo hostnamectl set-hostname NOMBRE; en Netfix lo rechaza porque el nombre de host sale del nombre del equipo. sudo hostnamectl set-hostname --pretty "Texto" sí cambia el nombre descriptivo.',
+  'host.eqLinux': 'GNU/Linux: en un equipo real, sudo hostnamectl set-hostname NOMBRE; en Netfix también funciona: el equipo toma ese nombre tal como se escribe (en el lienzo y en esta pestaña) y el nombre de host se deriva de él al momento. `hostname NOMBRE` sigue sin cambiarlo. sudo hostnamectl set-hostname --pretty "Texto" sí cambia el nombre descriptivo.',
   'host.eqWindows': 'Windows: Configuración → Sistema → Cambiar el nombre de este equipo.',
   'host.now': 'Ahora mismo: estático «{static}»',
   'host.nowTransient': ', transitorio «{name}»',
