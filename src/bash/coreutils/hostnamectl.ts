@@ -68,7 +68,8 @@ function* hostnamectl(ctx: Ctx): Gen<number> {
   if (verb === 'set-hostname') return yield* setName(ctx, [...opts, ...rest]);
   if (verb === 'hostname' || verb === 'pretty-hostname') {
     const kind = verb === 'pretty-hostname' ? '--pretty' : opts.find((o) => o === '--transient' || o === '--pretty') ?? '--static';
-    if (rest.length) return yield* setName(ctx, [kind, ...rest]);
+    const value = rest.filter((r) => !r.startsWith('--'));
+    if (value.length) return yield* setName(ctx, [kind, ...value]);
     const n = names(ctx);
     ctx.out(`${kind === '--pretty' ? n.pretty ?? '' : kind === '--transient' ? n.transient : n.static}\n`);
     return 0;
@@ -103,7 +104,7 @@ function hostname(ctx: Ctx): number {
   if (set !== undefined) {
     if (ctx.cred.uid !== 0) { ctx.err('hostname: you must be root to change the host name\n'); return 1; }
     const err = ctx.sh.env.setHostname?.('transient', set) ?? null;
-    if (err) { ctx.err(`hostname: ${err}\n`); return 1; }
+    if (err) { ctx.err(`hostname: ${err.startsWith('Invalid') ? 'the specified hostname is invalid' : err}\n`); return 1; }
     return 0;
   }
   const name = names(ctx).transient;

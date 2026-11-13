@@ -57,14 +57,19 @@ export function renameDevice(p: Placed, label: string): void {
 const STATIC_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
 const MAX_SYSTEM_NAME = 64;
 
+/** A name hostnamectl, `hostname` or kernel.hostname accept: RFC 1123 labels, at most 64 characters (HOST_NAME_MAX). */
+export function validSystemName(name: string): boolean {
+  return name.length <= MAX_SYSTEM_NAME && STATIC_NAME.test(name) && name.split('.').every((l) => l.length < MAX_SYSTEM_NAME);
+}
+
 /**
- * hostnamectl set-hostname and sysctl kernel.hostname: the device takes the name as typed and its host name is derived
- * from it, as renaming it in Equipo does. 'locked' when the host is not on a topology.
+ * hostnamectl set-hostname: the device takes the name as typed and its host name is derived from it, as renaming it in
+ * Equipo does (which also ends a transient name). 'locked' when the host is not on a topology.
  */
 export function renameFromSystem(device: object, name: string): 'locked' | 'invalid' | null {
   const p = placedOf(device);
   if (!p) return 'locked';
-  if (name.length > MAX_SYSTEM_NAME || !STATIC_NAME.test(name) || name.split('.').some((l) => l.length > MAX_SYSTEM_NAME - 1)) return 'invalid';
+  if (!validSystemName(name)) return 'invalid';
   renameDevice(p, name);
   return null;
 }

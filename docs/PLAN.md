@@ -2294,3 +2294,17 @@ Petición: revisar los textos de la pestaña Equipo, que aún decían que el nom
   `hostname NOMBRE` y /etc/hostname no; el prompt cambia tras `exec bash`. Ayuda de sysctl (utils es/en).
 - Ayuda (clients.ts es/en): resumen de «Nombre del equipo» y la fila de hostnamectl sin «pide la contraseña»
   (sudo no la pide en Netfix).
+
+### Fase: nombre transitorio como en Ubuntu (v0.45.0)
+
+Petición: los nombres transitorios con el mismo efecto que en Ubuntu, y la ayuda al día.
+
+- `sudo hostname NOMBRE`, `hostnamectl set-hostname --transient` y kernel.hostname (sysctl -w, /proc/sys, sysctl.conf,
+  Parámetros del kernel en el panel y la gestión web) ponen el nombre transitorio (`setTransient`, host-kernel.ts): lo
+  usan `hostname`, `$HOSTNAME`/prompt de shells nuevas y la opción 12 de DHCP; `hostnamectl` muestra «Transient
+  hostname». No cambian el equipo, el estático ni /etc/hostname. Corrige la v0.44: kernel.hostname ya no renombra.
+- Dura hasta reiniciar: no se guarda; al abrir el laboratorio, systemd-sysctl reaplica kernel.hostname de sysctl.conf.
+  hostnamectl set-hostname o renombrar en Equipo acaban con él.
+- `hostnamectl hostname --transient` (sin nombre) lo muestra; `hostname` con un nombre no válido: «the specified hostname
+  is invalid».
+- Textos de la pestaña Equipo y ayuda (clients, utils hostname/hostnamectl/sysctl), es/en.

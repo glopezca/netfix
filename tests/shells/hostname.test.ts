@@ -1,4 +1,4 @@
-/** Host name: derived from the device name (Equipo); hostnamectl, hostname and /etc/hostname cannot change it. */
+/** Host name: derived from the device name (Equipo); hostnamectl set-hostname renames it, hostname NAME sets a transient one. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Topology } from '../../src/net/topology.ts';
@@ -56,11 +56,11 @@ test('hostnamectl shows the status; set-hostname asks the password and renames t
   assert.deepEqual(sh.run('cisco'), [' Pretty hostname: Servidor web']);
 });
 
-test('hostname NAME and /etc/hostname cannot change it either', () => {
+test('sudo hostname NAME sets the transient name; /etc/hostname cannot change it', () => {
   const { pc } = lab();
   const sh = createShell(pc, 'linux');
   assert.deepEqual(sh.run('hostname temporal'), ['hostname: you must be root to change the host name']);
-  assert.deepEqual(sh.run('sudo hostname temporal; hostname'), ['hostname: en Netfix el nombre de host se deriva del nombre del equipo (pestaña Equipo)', 'pc0']);
+  assert.deepEqual(sh.run('sudo hostname temporal; hostname; cat /etc/hostname'), ['temporal', 'pc0']);
   assert.match(sh.run('echo otro > /etc/hostname').join(''), /Read-only file system/, 'generated from Equipo, like other generated files');
   sh.run('echo nuevo | sudo tee /etc/hostname');
   assert.deepEqual(sh.run('cat /etc/hostname'), ['pc0']);
