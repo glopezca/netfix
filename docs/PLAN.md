@@ -2346,3 +2346,10 @@ tenga los mismos editores que GNU/Linux.
   la carpeta actual; `path`; %PATH%, %USERNAME%, %USERPROFILE%, %COMPUTERNAME%, %SystemRoot%, %windir%, %SystemDrive%;
   órdenes internas pegadas a la ruta (`cd..`, `cd\`, `dir/w`); `..` no sube de C:\.
 - Ayuda (clients, samba, dns, names, internet, ios-sec, netfix, services) y marcadores de ruta de los paneles, es/en.
+
+### Fase: bienvenida y ayuda de la terminal de Windows con nano.exe y vim.exe (v0.47.1)
+
+- La ventana se abre como la de GNU/Linux: «Microsoft Windows [Version 10.0.20348.2700] · cmd.exe en Netfix» y una línea
+  de ayuda con los editores (edit, nano.exe, vim.exe en %PATH%); `help` los lista como nano.exe|vim.exe.
+- Ayuda (clients, es/en): las cuentas detrás de cada usuario de Windows (user → alumno, Administrator → admin, ambas en
+  sudo = Administradores) y las órdenes nano.exe / vim.exe.

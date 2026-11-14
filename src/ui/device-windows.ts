@@ -147,7 +147,7 @@ function shellTerminal(placed: Placed, h: Host, os: HostOs, app: WindowHost): Te
   if (!term) {
     const shell = createShell(h, os);
     const intro = os === 'windows'
-      ? [t('win.windowsIntro'), '']
+      ? [t('win.windowsIntro'), t('win.windowsHelp'), '']
       : [t('win.linuxIntro'), t('win.linuxHelp'), ''];
     const backend: ConsoleBackend = {
       prompt: () => shell.prompt(), run: (l) => shell.run(l), secret: () => shell.secret(),

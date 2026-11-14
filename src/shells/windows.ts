@@ -51,7 +51,7 @@ const HELP = [
   '  net share                Shares of this device (File and Printer Sharing)',
   '  type <file>              Show a file',
   '  edit <file>              Edit a file full screen',
-  '  nano | vim <file>        The GNU/Linux editors (C:\\Program Files\\Git\\usr\\bin, in %PATH%)',
+  '  nano.exe|vim.exe <file>  The GNU/Linux editors (C:\\Program Files\\Git\\usr\\bin, in %PATH%)',
   '  path                     Show %PATH%',
   '  echo <text> [> file]     Print text (> and >> write it to a file)',
   '  curl [-I] <url>          HTTP client',
