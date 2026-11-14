@@ -71,6 +71,7 @@ tests/      *.test.ts  (unit + integración DORA/relay) ; e2e/ (Playwright)
 - El empaquetador no admite reexportaciones (`export { x } from …`) ni imports solo por efecto: importa
   del módulo de origen. Para que `src/devices` no importe código de `src/web` se usan **registros**
   (`registerHostFs`, `registerWebApp`, `registerIosWeb`) que `registerWebApps()` rellena al cargar `net/topology.ts`.
+  Excepción (P5, aprobada 2026-11-15): solo los ficheros de entrada del paquete (`src/pkg/*.ts`) pueden reexportar.
 - `src/ui/brand-data.ts` es generado desde `assets/brand/` (`npm run brand`, también en `npm run build`); las páginas web
   simuladas solo nombran clases `web-brand-*` y la imagen la pone el CSS de la app.
 - `src/docs/about-data.ts` es generado (`npm run about`, también lo hace `npm run build`): tras cambiar la
