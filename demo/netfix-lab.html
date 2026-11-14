@@ -72933,14 +72933,18 @@ function embedSession(options) {
     const session = Object.freeze({ policy: parseRestrictions(o.restrictions), embedded: true, onChange: listener ?? null });
     return { session, topology: o.topology === undefined ? new Topology() : Topology.fromJSON(o.topology) };
 }
+/** `netfix.evaluate`: the checklist is validated before marking. */
+function evaluateFile(topology, checklist) {
+    return evaluate(topology, parseChecklist(checklist));
+}
+
+return { STANDALONE, embedSession, evaluateFile };
+})();
+__m["ui/embed-api.js"] = (() => {
 /** The element `netfix.embed` mounts on (the host page may pass anything). */
 function checkMount(mount) {
     if (typeof HTMLElement === 'undefined' || !(mount instanceof HTMLElement))
         throw new Error('netfix.embed: falta el elemento donde montar Netfix');
-}
-/** `netfix.evaluate`: the checklist is validated before marking. */
-function evaluateFile(topology, checklist) {
-    return evaluate(topology, parseChecklist(checklist));
 }
 /** Publishes the API as `globalThis.netfix` (read-only, so a page script cannot swap it). */
 function installApi(api) {
@@ -72950,7 +72954,7 @@ function installApi(api) {
     Object.defineProperty(globalThis, 'netfix', { value: Object.freeze(api), enumerable: false, writable: false, configurable: false });
 }
 
-return { STANDALONE, embedSession, checkMount, evaluateFile, installApi };
+return { checkMount, installApi };
 })();
 __m["ui/main.js"] = (() => {
 /** Netfix application shell: top bar, workspace, palette, views, windows and simulation panel. */
@@ -72981,7 +72985,8 @@ const { DrawState, drawBar } = __m["ui/draw-bar.js"];
 const { detectLocale, setLocale, LOCALE_STORAGE_KEY } = __m["i18n/locale.js"];
 const { allowsLab, allowsTab, lockedPrompt } = __m["classroom/restrictions.js"];
 const { forceTimestampPrompt } = __m["shells/prompt-clock.js"];
-const { STANDALONE, checkMount, embedSession, evaluateFile, installApi } = __m["classroom/embed.js"];
+const { STANDALONE, embedSession, evaluateFile } = __m["classroom/embed.js"];
+const { checkMount, installApi } = __m["ui/embed-api.js"];
 const BROWSER_STORE = { get: safeStorageGet, set: safeStorageSet };
 const TICK_MS = 250;
 const AUTOSAVE_DELAY_MS = 800;

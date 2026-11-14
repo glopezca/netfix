@@ -31,11 +31,6 @@ export interface EmbedHandle {
   destroy(): void;
 }
 
-export interface NetfixApi {
-  embed(mount: HTMLElement, options?: unknown): EmbedHandle;
-  evaluate(topology: unknown, checklist: unknown): Evaluation;
-}
-
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
@@ -52,19 +47,7 @@ export function embedSession(options: unknown): { readonly session: AppSession; 
   return { session, topology: o.topology === undefined ? new Topology() : Topology.fromJSON(o.topology) };
 }
 
-/** The element `netfix.embed` mounts on (the host page may pass anything). */
-export function checkMount(mount: unknown): asserts mount is HTMLElement {
-  if (typeof HTMLElement === 'undefined' || !(mount instanceof HTMLElement)) throw new Error('netfix.embed: falta el elemento donde montar Netfix');
-}
-
 /** `netfix.evaluate`: the checklist is validated before marking. */
 export function evaluateFile(topology: unknown, checklist: unknown): Evaluation {
   return evaluate(topology, parseChecklist(checklist));
-}
-
-/** Publishes the API as `globalThis.netfix` (read-only, so a page script cannot swap it). */
-export function installApi(api: NetfixApi): void {
-  // Own property only: an element with id="netfix" also shows up as a (named) property of window.
-  if (Object.hasOwn(globalThis, 'netfix')) throw new Error('netfix: la API ya está instalada (¿Netfix cargado dos veces?)');
-  Object.defineProperty(globalThis, 'netfix', { value: Object.freeze(api), enumerable: false, writable: false, configurable: false });
 }
