@@ -33,7 +33,8 @@ import type { Locale } from '../i18n/locale.ts';
 import { allowsLab, allowsTab, lockedPrompt } from '../classroom/restrictions.ts';
 import { forceTimestampPrompt } from '../shells/prompt-clock.ts';
 import type { DeviceKind } from '../net/topology.ts';
-import { STANDALONE, checkMount, embedSession, evaluateFile, installApi } from '../classroom/embed.ts';
+import { STANDALONE, embedSession, evaluateFile } from '../classroom/embed.ts';
+import { checkMount, installApi } from './embed-api.ts';
 import type { AppSession, EmbedHandle } from '../classroom/embed.ts';
 
 const BROWSER_STORE: KeyStore = { get: safeStorageGet, set: safeStorageSet };
