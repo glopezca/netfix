@@ -209,11 +209,11 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForSelector('.term-input:visible');
   await typeLine('type notes.txt');
-  assert.match(await page.locator('.terminal:visible').innerText(), /C:\\home\\alumno>type notes\.txt\nfirst line\nfrom edit/);
+  assert.match(await page.locator('.terminal:visible').innerText(), /C:\\Users\\user>type notes\.txt\nfirst line\nfrom edit/);
   await page.click('.win-tab:has-text("Settings")'); // PC0 runs Windows: add the GNU/Linux terminal
   await page.locator('.window input[name="dev-linux"]').check();
   await page.click('.win-tab:has-text("GNU/Linux terminal")');
-  await typeLine('cat ~/notes.txt');
+  await typeLine('cat /mnt/c/Users/user/notes.txt');
   assert.match(await page.locator('.terminal:visible').innerText(), /first line\nfrom edit/);
   await desk.close();
 

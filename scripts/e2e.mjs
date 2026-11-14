@@ -123,7 +123,7 @@ try {
   await type('yes');
   await type('netfix');
   await type('systemctl is-active apache2');
-  assert.match(await page.locator('.terminal:visible').innerText(), /admin@srv:~\$ systemctl is-active apache2\nactive/);
+  assert.match(await page.locator('.terminal:visible').innerText(), /admin@SRV:~\$ systemctl is-active apache2\nactive/);
   if (shots) await page.screenshot({ path: `${shots}/ssh.png` });
 
   // 5. bash 5.3 + editors: nano through SSH, vim locally, colours and completion.

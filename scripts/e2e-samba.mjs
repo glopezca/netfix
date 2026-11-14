@@ -42,7 +42,7 @@ try {
 
   // PC1 (GNU/Linux): the kernel parameters and its files, and no web GUI; apt brings the rest and takes it away.
   await page.dblclick('g.device:has-text("PC1")');
-  assert.deepEqual(await subnav(), ['Parámetros', 'Configuración']);
+  assert.deepEqual(await subnav(), ['Parámetros', 'Firewall', 'Configuración', 'Registros']);
   await win.locator('.win-tab:has-text("Terminal GNU/Linux")').click();
   assert.match(await run(page, 'sudo apt install -y nftables samba'), /Setting up samba/);
   await page.waitForTimeout(300);
