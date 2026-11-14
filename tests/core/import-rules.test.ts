@@ -30,8 +30,9 @@ test('R1: nothing outside src/ui imports src/ui', () => {
   assert.deepEqual(show(edges.filter((e) => dirOf(e.from) !== 'ui' && dirOf(e.to) === 'ui')), []);
 });
 
-test('R2: only src/ui imports src/classroom by value', () => {
-  const bad = edges.filter((e) => !e.isType && dirOf(e.to) === 'classroom' && !['ui', 'classroom'].includes(dirOf(e.from)));
+test('R2: only src/ui (and the package entries, P5) imports src/classroom by value', () => {
+  // src/pkg/*.ts re-export the public classroom API (P5, approved 2026-11-15); the engine itself still never does.
+  const bad = edges.filter((e) => !e.isType && dirOf(e.to) === 'classroom' && !['ui', 'classroom', 'pkg'].includes(dirOf(e.from)));
   assert.deepEqual(show(bad), []);
 });
 

@@ -96,7 +96,7 @@ en la tabla de §6 de `DEPENDENCY-MAP.md`; aquí solo las reglas que la Fase 1 d
 | # | Regla | Estado en `5c7b3e9` | Cómo comprobarla |
 |---|---|---|---|
 | R1 | Nada fuera de `src/ui` importa `src/ui` (ni de valor ni de tipo) | **Cumple** (`grep` sin resultados) | `grep` en CI o prueba de grafo |
-| R2 | Solo `src/ui` importa `src/classroom` de valor | **Cumple** (`labs` solo como tipo) | ídem |
+| R2 | Solo `src/ui` (y las entradas del paquete `src/pkg/*.ts`, excepción P5) importa `src/classroom` de valor | **Cumple** (`labs` solo como tipo) | ídem |
 | R3 | `src/core` no importa ningún otro directorio | **Cumple** | ídem |
 | R4 | El Core compila sin `DOM` en `lib`: solo `ES2022` más una declaración ambiental mínima de globales web que existen en Node y Workers (`TextEncoder`, `TextDecoder`, `atob`, `btoa`, `crypto.getRandomValues`) | **Incumple en 25 sitios** (§3.3); solo 3 son DOM real | `tsc` con un `tsconfig` del Core sin `DOM` |
 | R5 | Ningún fichero de `src/` importa paquetes externos, `node:*` ni Cloudflare | **Cumple** (`grep "node:"` en `src` sin importaciones; `package.json` solo tiene `typescript` en `devDependencies`) | `grep` en CI |
