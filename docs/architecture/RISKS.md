@@ -77,7 +77,7 @@ Bloquean la fase indicada. Se recogen de cada documento; la discusión está en 
 | P2 | Repositorio canónico y destino del espejo `infogerman` | Fase 3 | `PACKAGING.md` §6 |
 | P3 | Versión del primer paquete y retomar tags | Fase 3 | `PACKAGING.md` §6; `CLASSROOM-CONSUMPTION.md` §8.1 |
 | P4 | Lockfile en Netfix; Playwright y `workerd` como `devDependencies` | Fase 3 | `PACKAGING.md` §6 |
-| P5 | Excepción escrita a la regla «sin reexportaciones» para los ficheros de entrada del paquete | Fase 1 (paso 3) | `PACKAGING.md` §6; `CORE.md` paso 3 |
+| P5 | Excepción escrita a la regla «sin reexportaciones» para los ficheros de entrada del paquete (aprobada por el propietario (2026-11-15)) | Fase 1 (paso 3) | `PACKAGING.md` §6; `CORE.md` paso 3 |
 | D1 | `version` actual como `topologySchemaVersion` (recomendado) o campo `schemaVersion` nuevo | Fase 2 | `PUBLIC-API.md` §6 |
 | D2 | Errores tipados en la API pública o `Error` + mensaje | Fase 2 | `PUBLIC-API.md` §6 |
 | D3 | `saveTopology`/`loadTopology` frente a `Topology.fromJSON`/`toJSON` | Fase 2 | `PUBLIC-API.md` §6 |
