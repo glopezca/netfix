@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "lib": ["ES2022"] },
+  "include": ["src/**/*.ts", "config/core-globals.d.ts"],
+  "exclude": ["src/ui"]
+}
