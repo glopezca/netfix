@@ -54,22 +54,22 @@ try {
   await tick(win.locator('input[name="dev-winshare"]'), true);
   assert.ok((await tabs()).includes('Servicios'), 'the box brings Servicios → SMB');
   await tab('Terminal Windows');
-  await run(page, 'md C:\\home\\alumno\\docs');
+  await run(page, 'md C:\\Users\\user\\docs');
   await tab('Servicios');
   assert.deepEqual(await win.locator('.subnav-item').allInnerTexts(), ['SMB']);
   await win.getByLabel('Recurso', { exact: true }).fill('docs');
-  await win.getByLabel('Carpeta', { exact: true }).fill('C:\\home\\alumno\\nada');
+  await win.getByLabel('Carpeta', { exact: true }).fill('C:\\Users\\user\\nada');
   await win.getByRole('combobox', { name: /^Permiso/ }).selectOption('full');
   await win.locator('button:text-is("Añadir")').click();
   assert.equal(await win.locator('.form-msg[data-kind="error"]').count(), 1, 'a missing folder is refused');
-  await win.getByLabel('Carpeta', { exact: true }).fill('C:\\home\\alumno\\docs');
+  await win.getByLabel('Carpeta', { exact: true }).fill('C:\\Users\\user\\docs');
   await win.getByLabel('Comentario', { exact: true }).fill('Mis documentos');
   await win.locator('button:text-is("Añadir")').click();
   const shares = await win.locator('table').first().innerText();
-  assert.match(shares, /docs\s+C:\\home\\alumno\\docs\s+Mis documentos\s+Todos: Control total/);
+  assert.match(shares, /docs\s+C:\\Users\\user\\docs\s+Mis documentos\s+Todos: Control total/);
   if (shots) await page.screenshot({ path: `${shots}/win-smb.png` });
   await tab('Terminal Windows');
-  assert.match(await run(page, 'net share'), /\ndocs {9}C:\\home\\alumno\\docs {13}Mis documentos\n/);
+  assert.match(await run(page, 'net share'), /\ndocs {9}C:\\Users\\user\\docs {14}Mis documentos\n/);
   await win.locator('.win-close').click();
 
   // 2. LNX-A: smbclient comes with its box in Configuración → Paquetes, writes into the share, and goes with it.
@@ -89,7 +89,7 @@ try {
   await win.locator('.win-close').click();
   await page.dblclick('g.device:has-text("WIN-A")');
   await tab('Terminal Windows');
-  assert.match(await run(page, 'dir C:\\home\\alumno\\docs'), /linux\.txt/);
+  assert.match(await run(page, 'dir C:\\Users\\user\\docs'), /linux\.txt/);
   await win.locator('.win-close').click();
 
   // 3. Configuración → Laboratorio actual: a package out of the repository, and sharing off for the PCs.

@@ -62,13 +62,13 @@ try {
   assert.equal(await win.locator('input[name="hostname"]').getAttribute('readonly'), '');
   await win.locator('input[name="label"]').fill('Operador Norte');
   await page.keyboard.press('Tab');
-  await page.waitForFunction(() => document.querySelector('.window input[name="hostname"]')?.value === 'operador-norte');
+  await page.waitForFunction(() => document.querySelector('.window input[name="hostname"]')?.value === 'Operador-Norte');
   const caption = await page.locator('g.device-cloud', { hasText: 'Operador Norte' }).locator('text').allTextContents();
   assert.ok(caption.some((x) => /^\d+\.\d+\.0\.0\/16$/.test(x)), `the public block under the name: ${caption.join(' | ')}`);
   if (shots) await page.screenshot({ path: `${shots}/cloud.png` });
   await page.click('.win-close');
 
-  // A PC: the terminal cannot change the host name.
+  // A PC: sudo hostname sets the transient name (v0.45).
   await page.selectOption('select.select >> nth=0', 'servidores');
   await page.dblclick('g.device-pc >> nth=1'); // PC1 runs Linux
   await page.click('.win-tab:has-text("Terminal GNU/Linux")');
@@ -76,7 +76,10 @@ try {
   await term.locator('input.term-input').fill('sudo hostname otro');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(150);
-  assert.match(await term.locator('.term-screen').innerText(), /nombre del equipo/);
+  await term.locator('input.term-input').fill('hostname');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(150);
+  assert.match(await term.locator('.term-screen').innerText(), /\notro$/);
   // v0.17: resolvectl through the same resolver.
   await term.locator('input.term-input').fill('resolvectl query www.aula.lab');
   await page.keyboard.press('Enter');
