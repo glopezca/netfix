@@ -1,5 +1,7 @@
 # CORE — clasificación de módulos y frontera del Core
 
+> **Revalidado en `6e7c887` (`0.47.0`):** ver `README.md`; las cifras de `5c7b3e9` siguen valiendo salvo lo allí indicado.
+
 > **Tipo:** Fase 0 (auditoría y diseño), tareas 2, 3 y 7 de `NETFIX-MIGRATION-ECC.md`, con el desglose de la Fase 1.
 > No modifica código de producto.
 > **Netfix:** rama `docs/phase0-architecture` = `origin/main` @ `5c7b3e9`, `package.json` versión `0.46.0`.
@@ -47,7 +49,7 @@ Categorías pedidas por el plan. «Evidencia» es la razón concreta, no la impr
 | `src/ios` (31 / 4095) | **Simulación** | Analizador y comandos IOS; sin APIs de entorno |
 | `src/services` (51 / 6825) | **Simulación** | DNS, HTTP, SSH, SMB, correo. `services/persist.ts` es (de)serialización, no almacenamiento (§3.2 de `DEPENDENCY-MAP.md`) |
 | `src/bash` (76 / 12052) | **Simulación** (emulación de SO) | Intérprete y VFS. Hora real en `bash/interp-types.ts:15`, `bash/interp.ts:170`, `bash/exec.ts:141,168`; `Math.random` en `bash/specials.ts:11`, `bash/coreutils/extra.ts:38`. `bash/vfs-persist.ts` es serialización |
-| `src/shells` (96 / 11615) | **Simulación** (emulación de SO) | Shells Linux/Windows. Registro por efecto de carga en `shells/host-system.ts:340,344` (en `496a092` eran `:333,337`) |
+| `src/shells` (97 / 11732 en `6e7c887`; 96 / 11615 en `5c7b3e9`) | **Simulación** (emulación de SO) | Shells Linux/Windows. Registro por efecto de carga en `shells/host-system.ts:355,359` (`:340,344` en `5c7b3e9`, `:333,337` en `496a092`) |
 | `src/editors` (18 / 2581) | **Simulación** (emulación de SO) | Motores de texto sin DOM; la UI dibuja el `Frame` |
 | `src/web` (27 / 2266) | **Simulación** | Aplicaciones web **simuladas** dentro de la red; no es la UI. `web/sessions.ts:8` usa `crypto.getRandomValues` |
 | `src/clients` (6 / 638) | **Simulación** | Clientes simulados; `clients/browser.ts` es el navegador simulado, no usa `fetch` real |
@@ -99,7 +101,7 @@ en la tabla de §6 de `DEPENDENCY-MAP.md`; aquí solo las reglas que la Fase 1 d
 | R4 | El Core compila sin `DOM` en `lib`: solo `ES2022` más una declaración ambiental mínima de globales web que existen en Node y Workers (`TextEncoder`, `TextDecoder`, `atob`, `btoa`, `crypto.getRandomValues`) | **Incumple en 25 sitios** (§3.3); solo 3 son DOM real | `tsc` con un `tsconfig` del Core sin `DOM` |
 | R5 | Ningún fichero de `src/` importa paquetes externos, `node:*` ni Cloudflare | **Cumple** (`grep "node:"` en `src` sin importaciones; `package.json` solo tiene `typescript` en `devDependencies`) | `grep` en CI |
 | R6 | La hora real y la aleatoriedad entran al Core por un punto inyectable | **Incumple** (§3.4) | prueba de determinismo |
-| R7 | Un registro por efecto de carga solo se rellena desde un módulo que cualquier entrada pública importa siempre | **Cumple de hecho**: `net/topology.ts:27-33,55` y `shells/host-system.ts:340,344` están en el cierre de `Topology` | prueba de importación en Node desde la entrada pública |
+| R7 | Un registro por efecto de carga solo se rellena desde un módulo que cualquier entrada pública importa siempre | **Cumple de hecho**: `net/topology.ts:27-33,55` y `shells/host-system.ts:355,359` están en el cierre de `Topology` | prueba de importación en Node desde la entrada pública |
 | R8 | FixITClassroom solo importa la API pública | **Incumple**: 9 rutas internas en `src/worker/netfix.ts:6-16` y 4 en `src/web/core/checks.ts:6`, `policy.ts:6-7`, `assignment.ts:6` | Fase 4, no Fase 1 |
 
 ## 3. Violaciones actuales de la frontera (concretas)

@@ -1,5 +1,7 @@
 # Mapa de dependencias de Netfix
 
+> **Revalidado en `6e7c887` (`0.47.0`):** ver `README.md`; las cifras de `5c7b3e9` siguen valiendo salvo lo allí indicado.
+
 > Fase 0 (auditoría), tareas 2, 3 y 7 de `NETFIX-MIGRATION-ECC.md`. Solo lectura: no se ha modificado código de producto.
 > Estado auditado: `main` @ `5c7b3e9`, `package.json` versión `0.46.0` (auditado originalmente en `496a092` / `0.42.0`
 > y revalidado; el plan cita `0.31.0`, que es la versión fijada por el submódulo de FixITClassroom, no la de `main`).
@@ -265,7 +267,7 @@ prueba que corrija dos veces el mismo fichero y compare resultados.
 
 Las dependencias inversas se resuelven con registros que se rellenan **al cargar un módulo**:
 `net/topology.ts:27-33,55` (`registerMdns`, `registerLlmnr`, `registerSmbServer`, `registerWinsHandler`,
-`registerWebApps`) y `shells/host-system.ts:340,344` (`registerHostFs`, `registerHostFileReader`). Otros registros:
+`registerWebApps`) y `shells/host-system.ts:355,359` (`registerHostFs`, `registerHostFileReader`). Otros registros:
 `devices/ios-web.ts:15`, `devices/unit-checks.ts:23`, `devices/server-web.ts:26`, `net/ipstack.ts:33`.
 
 Consecuencia para el empaquetado: el paquete **no puede declararse `"sideEffects": false`**, y un bundler que elimine

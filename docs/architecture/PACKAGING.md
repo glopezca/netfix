@@ -1,5 +1,7 @@
 # PACKAGING (Fase 0): estado inicial, empaquetado, licencia, CI y pruebas
 
+> **Revalidado en `6e7c887` (`0.47.0`):** ver `README.md`; las cifras de `5c7b3e9` siguen valiendo salvo lo allí indicado.
+
 > **Tipo:** auditoría y diseño (Fase 0 de `NETFIX-MIGRATION-ECC.md`: entregable `PACKAGING.md`, «Plan de pruebas y corpus de regresión», riesgos de licencia). No modifica código de producto.
 > **Fecha:** 2026-11-13.
 > **Netfix:** rama `docs/phase0-architecture` = `origin/main` @ `5c7b3e9` (`5c7b3e915174696459ce4a65f840c24af84b79f5`). Sin seguimiento en git: `docs/architecture/`, `graphify-out/`, `.claude-flow/`, `.swarm/`.

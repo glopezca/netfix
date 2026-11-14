@@ -1,5 +1,7 @@
 # CLASSROOM-CONSUMPTION — cómo FixITClassroom consume Netfix hoy
 
+> **Revalidado en `6e7c887` (`0.47.0`):** ver `README.md`; las cifras de `5c7b3e9` siguen valiendo salvo lo allí indicado.
+
 > **Fase 0** de `NETFIX-MIGRATION-ECC.md` (tareas 5 y 6). Auditoría de solo lectura; no se ha modificado código de producto.
 > **Fecha:** 2026-11-12.
 > **Netfix:** `5c7b3e9` (`git describe`: `v0.32.0-82-g5c7b3e9`; `package.json` dice `0.46.0`). Auditado originalmente contra `main` @ `496a092` (`0.42.0`); revalidado contra `5c7b3e9` (entre ambos: trabajo de nombres de equipo y un cambio de texto en `src/classroom/evaluate.ts`).

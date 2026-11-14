@@ -1,5 +1,7 @@
 # API pública y flujos de topología (Fase 0)
 
+> **Revalidado en `6e7c887` (`0.47.0`):** ver `README.md`; las cifras de `5c7b3e9` siguen valiendo salvo lo allí indicado.
+
 > **Tipo:** auditoría y diseño (Fase 0, tareas 4, 8 y 9 de `NETFIX-MIGRATION-ECC.md`). No modifica código de producto.
 > **Netfix:** `main` @ `5c7b3e9`, `package.json` versión `0.46.0` (el plan dice `0.31.0`: desactualizado). Auditado
 > originalmente en `496a092` (`0.42.0`) y revalidado en `5c7b3e9`: `496a092..5c7b3e9` es trabajo de nombres de equipo

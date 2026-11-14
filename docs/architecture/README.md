@@ -4,11 +4,14 @@ Plan: `NETFIX-MIGRATION-ECC.md` (opción B; documento de coordinación fuera de 
 
 | Fase | Estado | Gate |
 |------|--------|------|
-| 0 — Auditoría y diseño | Entregables completos (2026-11-13) | GATE 0: pendiente de aprobación del propietario |
+| 0 — Auditoría y diseño | Entregables completos (2026-11-13), revalidados en `6e7c887` (2026-11-14) | GATE 0: pendiente de aprobación del propietario |
 | 1–9 | No iniciadas | — |
 
 Base auditada: Netfix `main` @ `5c7b3e9` (`0.46.0`), FixITClassroom `main` @ `d443d98`. `DEPENDENCY-MAP.md`, `PUBLIC-API.md` y
 `CLASSROOM-CONSUMPTION.md` se auditaron en `496a092` y se revalidaron en `5c7b3e9` (solo cambió el trabajo de nombres de equipo).
+
+> **Revalidación en `6e7c887` (`0.47.0`, merge PR #20, 2026-11-14):** `5c7b3e9..6e7c887` es el disco de Windows en `/mnt/c` (26 ficheros de `src`, +195/−74). No toca ningún fichero que consuma Classroom (`classroom/`, `net/topology*.ts`, `core/clock.ts`, `net/examples.ts`, `ui/main.ts`). Entra en el cierre de `evaluate.ts` por `shells/host-system.ts` el fichero nuevo `shells/win-system.ts` (solo VFS: `devices/kinds.ts`, `bash/{vfs,types,path}.ts`, `shells/{win-path,hosts-file}.ts`; sin APIs de navegador). Los registros de `host-system.ts` pasan a `:355,359`. `src/**/*.ts`: 622 ficheros. `npm run check` (typecheck, 1167 pruebas, build) pasa en `6e7c887`; `e2e` y `workerd` siguen **NO VERIFICADO**.
+
 
 ## Entregables de la Fase 0
 
