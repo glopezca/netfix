@@ -17,6 +17,11 @@ jobs:
       - run: npx tsc -p tsconfig.json
       - run: npm run test:coverage
       - run: npx tsc -p tsconfig.build.json && node scripts/build.mjs --skip-tsc
+      # e2e subset (R27): Playwright is installed outside the repo (not a dependency); the scripts find it via PLAYWRIGHT_PATH.
+      - run: npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright && node "$RUNNER_TEMP/pw/node_modules/playwright/cli.js" install --with-deps chromium
+      - run: for s in e2e-embed e2e-missions e2e-devices; do node scripts/$s.mjs || exit 1; done
+        env:
+          PLAYWRIGHT_PATH: ${{ runner.temp }}/pw/node_modules
       - uses: actions/upload-artifact@v4
         with:
           name: netfix-dist
