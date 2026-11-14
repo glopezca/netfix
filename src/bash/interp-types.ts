@@ -8,6 +8,8 @@ export interface Budget {
 }
 
 export const MAX_MS = 4000;
+// Measured: corpus + whole suite peak at 852 steps per run; 200k is ~235x that margin (~0.8 s of steps) and ends in Workers, where Date.now() never advances.
+export const MAX_STEPS = 200_000;
 export const MAX_OUTPUT = 4 * 1024 * 1024;
 export const CHECK_EVERY = 256;
 

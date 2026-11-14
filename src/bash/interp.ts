@@ -24,7 +24,7 @@ export { SET_OPTIONS, SET_LETTERS };
 export type { SetOption };
 import { makeCtx, ttyFds } from './io.ts';
 import { runSync } from './run-sync.ts';
-import { freshBudget, MAX_OUTPUT, CHECK_EVERY } from './interp-types.ts';
+import { freshBudget, MAX_OUTPUT, MAX_STEPS, CHECK_EVERY } from './interp-types.ts';
 import type { Budget, HistoryStore, Job } from './interp-types.ts';
 import { runSourceText } from './source.ts';
 import { inheritTraceLevel } from './xtrace.ts';
@@ -167,7 +167,7 @@ export class Interp {
 
   tick(): void {
     this.budget.steps++;
-    if (this.budget.steps % CHECK_EVERY === 0 && Date.now() > this.budget.deadline) {
+    if (this.budget.steps > MAX_STEPS || (this.budget.steps % CHECK_EVERY === 0 && Date.now() > this.budget.deadline)) {
       throw new AbortSignal(124, 'bash: Netfix: ejecución detenida tras 4 s (¿bucle infinito?)');
     }
   }
