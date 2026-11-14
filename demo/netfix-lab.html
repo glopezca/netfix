@@ -2542,7 +2542,8 @@ const UI_ES = {
     'win.console': 'Consola de {name}',
     'win.cloud': '{name} · Nube ISP',
     'win.webAdmin': 'Gestión web',
-    'win.windowsIntro': 'Microsoft Windows (Netfix) · escribe help para ver los comandos.',
+    'win.windowsIntro': 'Microsoft Windows [Versión 10.0.20348.2700] · cmd.exe en Netfix',
+    'win.windowsHelp': 'Ayuda: help o la pestaña Ayuda. Editores: edit, nano.exe y vim.exe (en %PATH%).',
     'win.linuxIntro': 'Ubuntu 26.04 LTS (GNU/Linux 6.17.0-14-generic x86_64) · GNU bash 5.3 en Netfix',
     'win.linuxHelp': 'Ayuda: help, man <orden> o la pestaña Ayuda. Editores: nano y vim.',
     'common.unavailable': 'No disponible',
@@ -2751,7 +2752,8 @@ const UI_EN = {
     'win.console': 'Console of {name}',
     'win.cloud': '{name} · ISP cloud',
     'win.webAdmin': 'Web management',
-    'win.windowsIntro': 'Microsoft Windows (Netfix) · type help to see the commands.',
+    'win.windowsIntro': 'Microsoft Windows [Version 10.0.20348.2700] · cmd.exe on Netfix',
+    'win.windowsHelp': 'Help: help or the Help tab. Editors: edit, nano.exe and vim.exe (in %PATH%).',
     'win.linuxIntro': 'Ubuntu 26.04 LTS (GNU/Linux 6.17.0-14-generic x86_64) · GNU bash 5.3 on Netfix',
     'win.linuxHelp': 'Help: help, man <command> or the Help tab. Editors: nano and vim.',
     'common.unavailable': 'Not available',
@@ -20837,7 +20839,7 @@ const CLIENT_DOCS = {
             markdownBase: MD,
             blocks: [
                 p('La **Terminal Windows** imita a cmd.exe. Sirve para comprobar la red (`ipconfig`, `ping`, `tracert`, `nslookup`), gestionar los servicios de un Windows Server (`sc`, `net`) y trabajar con archivos. Windows tiene su propio disco, aparte del de GNU/Linux: en la unidad **C:\\** están `C:\\Windows\\System32\\drivers\\etc\\hosts`, `C:\\Users\\<usuario>` (con su carpeta `.ssh` si el equipo ofrece el servicio SSH) y `C:\\Program Files\\Git\\usr\\bin`, que está en %PATH% y trae **nano.exe** y **vim.exe**. Las carpetas se separan con \\ (o /), los nombres no distinguen mayúsculas y `..` no sube más allá de C:\\.'),
-                p('En un equipo con los dos sistemas, GNU/Linux ve ese disco en **/mnt/c** (como WSL): `ls /mnt/c/Users`, `nano /mnt/c/Windows/System32/drivers/etc/hosts`. La terminal empieza en C:\\Users\\user en los PC (C:\\Users\\Administrator en los servidores) y trabaja con los permisos de la cuenta GNU/Linux del equipo: lo que esa cuenta no puede escribir da «Access is denied.».'),
+                p('En un equipo con los dos sistemas, GNU/Linux ve ese disco en **/mnt/c** (como WSL): `ls /mnt/c/Users`, `nano /mnt/c/Windows/System32/drivers/etc/hosts`. La terminal empieza en C:\\Users\\user en los PC (C:\\Users\\Administrator en los servidores) y trabaja con los permisos de la cuenta GNU/Linux del equipo (user es alumno y Administrator es admin; las dos están en sudo, que hace de Administradores de Windows, y editan el fichero hosts): lo que esa cuenta no puede escribir da «Access is denied.». La ventana se abre recordando `help` y los editores: edit, nano.exe y vim.exe.'),
                 h('Las órdenes de red, paso a paso'),
                 steps(['¿Qué dirección tengo?', '`ipconfig` (con `/all`, también la MAC, el servidor DHCP, el DNS y las fechas de la concesión).'], ['¿Llego a la puerta de enlace?', '`ping 192.168.10.1`: si responde, la red local funciona.'], ['¿Resuelvo nombres?', '`nslookup srv.aula.lab`: si da la dirección IP, el DNS funciona.'], ['¿Y un nombre sin punto?', '`ping pc2`: si el DNS no lo conoce, Windows pregunta por NetBIOS con un broadcast a su red (UDP 137). `nbtstat -n` muestra sus nombres, `nbtstat -a PC2` los de otro equipo con su MAC, `nbtstat -c` la caché y `net view \\\\PC2` si tiene SMB.'], ['¿Y sin servidor DNS?', '`ping pc1.local`: Windows trae mDNS de serie y pregunta por los nombres .local en su red (un equipo GNU/Linux responde si tiene avahi-daemon). `nslookup` no usa mDNS: solo pregunta al DNS.'], ['¿Por dónde va el tráfico?', '`tracert 8.8.8.8`: un salto por cada router del camino.']),
                 term('cmd', 'C:\\Users\\user> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\Users\\user> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
@@ -20863,7 +20865,7 @@ const CLIENT_DOCS = {
                     ['del [/q] archivo · copy [/y] origen destino · move [/y] origen destino · ren archivo nombre', 'Borra, copia, mueve o renombra archivos (admiten * y ?; *.* es todo). del de una carpeta o de *.* pregunta antes salvo /q; copy y move preguntan antes de sobrescribir salvo /y; copy de varios archivos sobre uno los une; move también mueve o renombra carpetas.'],
                     ['type archivo', 'Muestra el contenido de un archivo.'],
                     ['edit archivo', 'Editor a pantalla completa (Microsoft Edit): Ctrl+S guarda, Ctrl+Q o Esc sale y pregunta si hay cambios, Ctrl+F busca (F3 siguiente), Ctrl+G va a una línea, Ctrl+Z/Ctrl+Y deshacen y rehacen. F10 (también en la barra táctil) o Alt+letra abren los menús File, Edit, View y Help: la letra resaltada de cada menú y de cada opción es la que la elige; flechas para moverse, Intro para elegir y Esc para cerrar. Un archivo que la cuenta no puede escribir se abre en solo lectura.'],
-                    ['nano archivo · vim archivo', 'Los mismos editores que en GNU/Linux (las mismas teclas: en nano Ctrl+O guarda y Ctrl+X sale; en vim `i` escribe, Esc y `:wq` guardan y salen), con rutas de Windows: `nano C:\\Windows\\System32\\drivers\\etc\\hosts`. Están en C:\\Program Files\\Git\\usr\\bin, que está en %PATH% (también valen nano.exe y vim.exe).'],
+                    ['nano.exe archivo · vim.exe archivo', 'Los mismos editores que en GNU/Linux (las mismas teclas: en nano Ctrl+O guarda y Ctrl+X sale; en vim `i` escribe, Esc y `:wq` guardan y salen), con rutas de Windows: `nano C:\\Windows\\System32\\drivers\\etc\\hosts`. Están en C:\\Program Files\\Git\\usr\\bin, que está en %PATH% (también valen nano.exe y vim.exe).'],
                     ['path · echo %PATH%', 'Muestra %PATH%. En la línea se sustituyen %PATH%, %USERNAME%, %USERPROFILE%, %COMPUTERNAME%, %SystemRoot%, %windir% y %SystemDrive%; otro %NOMBRE% queda tal cual.'],
                     ['echo texto · orden > archivo · orden >> archivo', 'echo imprime el texto (echo. una línea en blanco); > guarda la salida de cualquier orden en un archivo, >> la añade al final y > nul la descarta.'],
                 ]),
@@ -23509,7 +23511,7 @@ const CLIENT_DOCS = {
             markdownBase: MD,
             blocks: [
                 p('The **Windows Terminal** imitates cmd.exe. It checks the network (`ipconfig`, `ping`, `tracert`, `nslookup`), manages the services of a Windows Server (`sc`, `net`) and works with files. Windows has its own disk, apart from GNU/Linux’s: drive **C:\\** holds `C:\\Windows\\System32\\drivers\\etc\\hosts`, `C:\\Users\\<user>` (with its `.ssh` folder if the device offers the SSH service) and `C:\\Program Files\\Git\\usr\\bin`, which is in %PATH% and has **nano.exe** and **vim.exe**. Folders are separated with \\ (or /), names are case-insensitive and `..` never goes above C:\\.'),
-                p('On a device with both systems, GNU/Linux sees that disk at **/mnt/c** (as WSL does): `ls /mnt/c/Users`, `nano /mnt/c/Windows/System32/drivers/etc/hosts`. The terminal starts in C:\\Users\\user on PCs (C:\\Users\\Administrator on servers) and works with the permissions of the device’s GNU/Linux account: what that account cannot write gives “Access is denied.”.'),
+                p('On a device with both systems, GNU/Linux sees that disk at **/mnt/c** (as WSL does): `ls /mnt/c/Users`, `nano /mnt/c/Windows/System32/drivers/etc/hosts`. The terminal starts in C:\\Users\\user on PCs (C:\\Users\\Administrator on servers) and works with the permissions of the device’s GNU/Linux account (user is alumno, Administrator is admin; both are in sudo, which stands for Windows’ Administrators, so they edit the hosts file): what that account cannot write gives “Access is denied.”. The window opens with a reminder of `help` and the editors: edit, nano.exe and vim.exe.'),
                 h('The network commands, step by step'),
                 steps(['What is my address?', '`ipconfig` (with `/all`, also the MAC, DHCP server, DNS and lease dates).'], ['Do I reach the gateway?', '`ping 192.168.10.1`: if it answers, the local network works.'], ['Do names resolve?', '`nslookup srv.aula.lab`: if it gives the IP address, DNS works.'], ['And a name without a dot?', '`ping pc2`: if the DNS does not know it, Windows asks by NetBIOS with a broadcast to its network (UDP 137). `nbtstat -n` shows its names, `nbtstat -a PC2` another device’s with its MAC, `nbtstat -c` the cache and `net view \\\\PC2` whether it has SMB.'], ['And without a DNS server?', '`ping pc1.local`: Windows has mDNS built in and asks for .local names on its network (a GNU/Linux device answers if it has avahi-daemon). `nslookup` does not use mDNS: it only asks the DNS.'], ['Which way does traffic go?', '`tracert 8.8.8.8`: one hop for each router on the way.']),
                 term('cmd', 'C:\\Users\\user> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\Users\\user> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
@@ -23535,7 +23537,7 @@ const CLIENT_DOCS = {
                     ['del [/q] file · copy [/y] source target · move [/y] source target · ren file name', 'Deletes, copies, moves or renames files (they accept * and ?; *.* is everything). del of a folder or of *.* asks first unless /q; copy and move ask before overwriting unless /y; copying several files onto one joins them; move also moves or renames folders.'],
                     ['type file', 'Shows a file’s contents.'],
                     ['edit file', 'Full-screen editor (Microsoft Edit): Ctrl+S saves, Ctrl+Q or Esc quits and asks if there are changes, Ctrl+F finds (F3 next), Ctrl+G goes to a line, Ctrl+Z/Ctrl+Y undo and redo. F10 (also on the touch bar) or Alt+letter open the File, Edit, View and Help menus: the highlighted letter of each menu and option picks it; arrows to move, Enter to choose and Esc to close. A file the account cannot write opens read-only.'],
-                    ['nano file · vim file', 'The same editors as on GNU/Linux (the same keys: in nano Ctrl+O saves and Ctrl+X quits; in vim `i` types, Esc and `:wq` save and quit), with Windows paths: `nano C:\\Windows\\System32\\drivers\\etc\\hosts`. They are in C:\\Program Files\\Git\\usr\\bin, which is in %PATH% (nano.exe and vim.exe work too).'],
+                    ['nano.exe file · vim.exe file', 'The same editors as on GNU/Linux (the same keys: in nano Ctrl+O saves and Ctrl+X quits; in vim `i` types, Esc and `:wq` save and quit), with Windows paths: `nano C:\\Windows\\System32\\drivers\\etc\\hosts`. They are in C:\\Program Files\\Git\\usr\\bin, which is in %PATH% (nano.exe and vim.exe work too).'],
                     ['path · echo %PATH%', 'Shows %PATH%. On the line, %PATH%, %USERNAME%, %USERPROFILE%, %COMPUTERNAME%, %SystemRoot%, %windir% and %SystemDrive% are replaced; any other %NAME% stays as typed.'],
                     ['echo text · command > file · command >> file', 'echo prints the text (echo. a blank line); > saves any command’s output to a file, >> appends it and > nul discards it.'],
                 ]),
@@ -32962,7 +32964,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.47.0",
+    "version": "0.47.1",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -49680,7 +49682,7 @@ const HELP = [
     '  net share                Shares of this device (File and Printer Sharing)',
     '  type <file>              Show a file',
     '  edit <file>              Edit a file full screen',
-    '  nano | vim <file>        The GNU/Linux editors (C:\\Program Files\\Git\\usr\\bin, in %PATH%)',
+    '  nano.exe|vim.exe <file>  The GNU/Linux editors (C:\\Program Files\\Git\\usr\\bin, in %PATH%)',
     '  path                     Show %PATH%',
     '  echo <text> [> file]     Print text (> and >> write it to a file)',
     '  curl [-I] <url>          HTTP client',
@@ -71720,7 +71722,7 @@ function shellTerminal(placed, h, os, app) {
     if (!term) {
         const shell = createShell(h, os);
         const intro = os === 'windows'
-            ? [t('win.windowsIntro'), '']
+            ? [t('win.windowsIntro'), t('win.windowsHelp'), '']
             : [t('win.linuxIntro'), t('win.linuxHelp'), ''];
         const backend = {
             prompt: () => shell.prompt(), run: (l) => shell.run(l), secret: () => shell.secret(),

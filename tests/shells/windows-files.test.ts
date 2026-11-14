@@ -118,6 +118,7 @@ test('nano and vim from Git\'s usr\\bin: Windows paths, a new buffer saved by na
   assert.deepEqual(bash.run('cat /mnt/c/Users/user/hola.txt /mnt/c/Users/user/otro.txt').map(plain), ['hola', 'x']);
   assert.deepEqual(win.run('echo %USERPROFILE% %NOPE%'), ['C:\\Users\\user %NOPE%']);
   assert.match(win.run('path')[0] ?? '', /Git\\usr\\bin$/);
+  assert.ok(win.run('help').some((l) => l.includes('nano.exe|vim.exe')), 'help names the editors as on %PATH%');
   win.run('cd..');
   assert.equal(win.prompt(), 'C:\\Users>');
   win.run('cd\\');
