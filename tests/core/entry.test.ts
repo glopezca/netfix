@@ -2,6 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as core from '../../src/pkg/core.ts';
+// A leaf module: importing it registers nothing (the entry must have done it).
+import { hostFs } from '../../src/devices/host-fs.ts';
 
 const SURFACE = [
   'FILE_VERSION', 'validateFile', 'Topology', 'EXAMPLES', 'allowsDevice', 'allowsLab', 'allowsTab', 'parseRestrictions',
@@ -28,4 +30,7 @@ test('R7: the registries fill on import (host files readable, which needs regist
   const file = core.EXAMPLES[0]!.build().toJSON();
   const r = core.evaluate(file, core.parseChecklist([{ id: 'f', check: { type: 'file', device: 'PC0', path: '/etc/hostname' } }]));
   assert.equal(r.items[0]!.passed, true, r.items[0]!.detail);
+  // The file check reads through hostSystem directly; the registry itself is what host-fs.ts consumers (nftables, samba) use.
+  const pc = [...core.Topology.fromJSON(file).placed.values()].map((p) => p.device).find((d) => d.kind === 'pc');
+  assert.ok(pc && hostFs(pc as Parameters<typeof hostFs>[0]), 'registerHostFs ran when the entry was imported');
 });
