@@ -4,8 +4,9 @@ Plan: `NETFIX-MIGRATION-ECC.md` (opción B; documento de coordinación fuera de 
 
 | Fase | Estado | Gate |
 |------|--------|------|
-| 0 — Auditoría y diseño | Entregables completos (2026-11-13), revalidados en `6e7c887` (2026-11-14) | GATE 0: pendiente de aprobación del propietario |
-| 1–9 | No iniciadas | — |
+| 0 — Auditoría y diseño | Entregables completos (2026-11-13), revalidados en `6e7c887` (2026-11-14) | GATE 0: **aprobado** por el propietario (2026-11-14) |
+| 1 — Core | En curso (PR 1.1–1.8, `RISKS.md` §3) | GATE 1 |
+| 2–9 | No iniciadas | — |
 
 Base auditada: Netfix `main` @ `5c7b3e9` (`0.46.0`), FixITClassroom `main` @ `d443d98`. `DEPENDENCY-MAP.md`, `PUBLIC-API.md` y
 `CLASSROOM-CONSUMPTION.md` se auditaron en `496a092` y se revalidaron en `5c7b3e9` (solo cambió el trabajo de nombres de equipo).
@@ -27,5 +28,5 @@ Base auditada: Netfix `main` @ `5c7b3e9` (`0.46.0`), FixITClassroom `main` @ `d4
 ## Para la siguiente sesión
 
 1. Leer este fichero y `RISKS.md` §2 (decisiones pendientes) y §3 (desglose en PR).
-2. No empezar la Fase 1 sin aprobación explícita de GATE 0.
+2. GATE 0 aprobado el 2026-11-14; la Fase 1 sigue el desglose de `RISKS.md` §3 y no pasa de GATE 1 sin aprobación.
 3. No escribir artefactos de la migración en `/tmp`.
