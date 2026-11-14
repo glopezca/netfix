@@ -1,6 +1,6 @@
 /**
  * The hosts files, as the two systems read them: /etc/hosts (GNU/Linux, the `files` source of nsswitch) and
- * C:\Windows\System32\drivers\etc\hosts (Windows, read before DNS). Both are on the device's disk (C:\ is /), are
+ * C:\Windows\System32\drivers\etc\hosts (Windows, read before DNS). Both are on the device's disk (C:\ is /mnt/c), are
  * ordinary files only root / the Administrators (the sudo group) write, apply at once and are saved with the lab. A line is an address
  * and its names (the canonical one first); `#` starts a comment; names match without case and the first line wins.
  */
@@ -9,10 +9,13 @@ import { normalizeName } from '../net/dns.ts';
 import { parseIp } from '../core/ip.ts';
 import { peekHostFile } from '../devices/host-fs.ts';
 import type { Vfs } from '../bash/vfs.ts';
+import { WIN_ROOT } from './win-path.ts';
 
 export const LINUX_HOSTS = '/etc/hosts';
 /** C:\Windows\System32\drivers\etc\hosts on the device's disk. */
-export const WINDOWS_HOSTS = '/Windows/System32/drivers/etc/hosts';
+export const WINDOWS_HOSTS = `${WIN_ROOT}/Windows/System32/drivers/etc/hosts`;
+/** Where it was before v0.47 (C:\ was the root /): a lab saved then still has it there. */
+const LEGACY_WINDOWS_HOSTS = '/Windows/System32/drivers/etc/hosts';
 
 /** Ubuntu's /etc/hosts as the installer leaves it, with the host name as it was given. */
 export const ubuntuHosts = (name: string): string => `127.0.0.1 localhost
@@ -53,12 +56,16 @@ export const WINDOWS_HOSTS_TEXT = `# Copyright (c) 1993-2009 Microsoft Corp.
 /** The sudo group stands for Windows' Administrators: they write the file (Full control), everyone else reads it. */
 const ADMINISTRATORS_GID = 27;
 
-/** The Windows terminal's disk gets the file Windows ships, unless it is there (a saved or edited one stays). */
+/** The Windows disk gets the file Windows ships, unless it is there (a saved or edited one stays). */
 export function seedWindowsHosts(fs: Vfs): void {
   // Only on real folders (a file or a link on the way would not be Windows' folders): never over what is there.
-  const dirs = ['/Windows', '/Windows/System32', '/Windows/System32/drivers', '/Windows/System32/drivers/etc'];
+  const dirs = ['/mnt', WIN_ROOT, `${WIN_ROOT}/Windows`, `${WIN_ROOT}/Windows/System32`, `${WIN_ROOT}/Windows/System32/drivers`, `${WIN_ROOT}/Windows/System32/drivers/etc`];
   if (dirs.some((d) => { const n = fs.tryLookup(d, undefined, false); return n !== undefined && n.kind !== 'dir'; })) return;
-  if (!fs.tryLookup(WINDOWS_HOSTS, undefined, false)) fs.seed(WINDOWS_HOSTS, { kind: 'file', content: WINDOWS_HOSTS_TEXT }, 0o664, 0, ADMINISTRATORS_GID);
+  if (fs.tryLookup(WINDOWS_HOSTS, undefined, false)) return;
+  fs.seed(WINDOWS_HOSTS, { kind: 'file', content: WINDOWS_HOSTS_TEXT }, 0o664, 0, ADMINISTRATORS_GID);
+  // A lab from before v0.47 had its edited file at /Windows/…: it moves to C:\ (and is saved there from now on).
+  const old = fs.tryLookup(LEGACY_WINDOWS_HOSTS, undefined, false);
+  if (old?.kind === 'file' && old.dirty) fs.writeFile(WINDOWS_HOSTS, old.content);
 }
 
 /** One line with an IPv4 address: the canonical name first, then the aliases. */
@@ -71,7 +78,7 @@ export type HostsOs = 'linux' | 'windows';
 
 /** The file's text; a device whose system was never used has the default one (no need to build the system for it). */
 function hostsText(host: Host, os: HostsOs): string {
-  if (os === 'windows') return peekHostFile(host, WINDOWS_HOSTS) ?? WINDOWS_HOSTS_TEXT;
+  if (os === 'windows') return peekHostFile(host, WINDOWS_HOSTS) ?? peekHostFile(host, LEGACY_WINDOWS_HOSTS) ?? WINDOWS_HOSTS_TEXT;
   return peekHostFile(host, LINUX_HOSTS) ?? ubuntuHosts(host.name);
 }
 

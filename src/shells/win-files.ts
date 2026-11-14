@@ -6,7 +6,7 @@
 import { basename, canAccess, dirname } from '../bash/vfs.ts';
 import type { Vfs, Cred } from '../bash/vfs.ts';
 import type { EditSpec } from '../bash/types.ts';
-import { hasWildcard, resolveWinPath, toWindowsPath } from './win-path.ts';
+import { WIN_ROOT, hasWildcard, resolveWinPath, toWindowsPath } from './win-path.ts';
 import type { Redirect } from './win-path.ts';
 import { DENIED, NO_DRIVE, NO_FILE, NO_PATH, SYNTAX, WinFs, fsMessage, inDir } from './win-fsctx.ts';
 import type { Confirm } from './win-fsctx.ts';
@@ -23,7 +23,7 @@ export class WinFiles {
   pending: Confirm | null = null;
 
   constructor(fs: Vfs, cred: Cred, home: string) {
-    this.ctx = new WinFs(fs, cred, fs.tryLookup(home, cred)?.kind === 'dir' ? home : '/');
+    this.ctx = new WinFs(fs, cred, fs.tryLookup(home, cred)?.kind === 'dir' ? home : WIN_ROOT);
   }
 
   /** The file system as this account sees it (the share commands copy to and from it). */
@@ -196,10 +196,14 @@ export class WinFiles {
     }
   }
 
-  /** edit file: the full-screen editor on the file (read-only when the account cannot write it). */
-  private edit(args: readonly string[]): string[] {
+  /**
+   * edit file (Microsoft Edit), or nano / vim from Git's usr\bin: the full-screen editor on the file, read-only when the
+   * account cannot write it. nano and vim show and save Windows paths (and start on a new buffer without a file).
+   */
+  edit(args: readonly string[], editor: EditSpec['editor'] = 'msedit'): string[] {
     const ctx = this.ctx;
-    const name = args.find((a) => !a.startsWith('/'));
+    const name = args.find((a) => !a.startsWith('/') || editor !== 'msedit');
+    if (!name && editor !== 'msedit') { this.editing = { editor, path: '', content: '', exists: false, readOnly: false }; return []; }
     if (!name) return [SYNTAX];
     const p = ctx.path(name);
     if (p === null) return [NO_DRIVE];
@@ -211,7 +215,7 @@ export class WinFiles {
     } catch (err) {
       return [fsMessage(err)];
     }
-    this.editing = { editor: 'msedit', path: p, content, exists, readOnly: !this.writable(p, exists) };
+    this.editing = { editor, path: editor === 'msedit' ? p : toWindowsPath(p), content, exists, readOnly: !this.writable(p, exists) };
     return [];
   }
 
@@ -221,11 +225,17 @@ export class WinFiles {
     return !(node.kind === 'file' && node.generated && !node.writeBack);
   }
 
-  /** Saves the file `edit` opened (only that one: the permissions of the account apply). */
+  /**
+   * Saves the file `edit` opened (only that one), or the Windows path nano / vim write to (another name too, from the
+   * current folder): the permissions of the account apply.
+   */
   saveEdit(path: string, content: string): string | null {
-    if (path !== this.editing?.path) return 'No editor is open for that file';
+    const open = this.editing;
+    if (!open || (open.editor === 'msedit' && path !== open.path)) return 'No editor is open for that file';
+    const target = open.editor === 'msedit' ? path : this.ctx.path(path);
+    if (target === null) return NO_DRIVE;
     try {
-      this.ctx.fs.writeFile(path, content, this.ctx.cred);
+      this.ctx.fs.writeFile(target, content, this.ctx.cred);
       return null;
     } catch (err) {
       return fsMessage(err);

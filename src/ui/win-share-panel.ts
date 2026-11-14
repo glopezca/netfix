@@ -19,7 +19,7 @@ const accessLabel = (a: ShareAccess): string => t(a === 'full' ? 'wsh.full' : 'w
 
 function addForm(host: Host, app: AfterChange, msg: ReturnType<typeof message>): HTMLElement[] {
   const name = input({ placeholder: 'docs', 'aria-label': t('smb.share') });
-  const path = input({ placeholder: 'C:\\home\\alumno\\docs', 'aria-label': t('smb.path') });
+  const path = input({ placeholder: 'C:\\Users\\user\\docs', 'aria-label': t('smb.path') });
   const remark = input({ 'aria-label': t('smb.comment') });
   const access = select([['read', t('wsh.read')], ['full', t('wsh.full')]], 'read');
   const add = (): void => {

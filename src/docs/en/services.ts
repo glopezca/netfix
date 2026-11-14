@@ -45,7 +45,7 @@ export const SERVICE_DOCS: DocGroup = {
         ]),
         h('Managing the services from the terminal'),
         term('shell', 'admin@srv:~$ systemctl status named\n● named.service - BIND Domain Name Server\n     Loaded: loaded (/usr/lib/systemd/system/named.service; enabled; preset: enabled)\n     Active: active (running)\n     Main PID: 845 (named)'),
-        code('admin@srv:~$ sudo systemctl stop apache2\nadmin@srv:~$ sudo systemctl enable --now named\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 20\nadmin@srv:~$ ss -tulpn\n\nC:\\home\\admin> sc query W3SVC\nC:\\home\\admin> net stop DNS'),
+        code('admin@srv:~$ sudo systemctl stop apache2\nadmin@srv:~$ sudo systemctl enable --now named\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 20\nadmin@srv:~$ ss -tulpn\n\nC:\\Users\\Administrator> sc query W3SVC\nC:\\Users\\Administrator> net stop DNS'),
         warn('Without sudo', 'systemctl start, stop, restart, enable and disable answer “Interactive authentication required”, as on Ubuntu: they need root privileges.'),
         h('When a service does not start'),
         p('On start, restart or reload, each service reads its files and checks them as on Ubuntu: Kea as `kea-dhcp4 -t`, BIND as `named-checkconf`, Apache as `apache2ctl configtest`, sshd as `sshd -t` and nftables as `nft -c`. If there is an error, the service does not start: the unit is left **failed** and the journal says why. A `reload` that fails keeps the previous configuration running, and reloading a stopped service is refused (“Unit named.service is not active.”).'),

@@ -45,7 +45,7 @@ export const SERVICE_DOCS: DocGroup = {
         ]),
         h('Gestionar los servicios desde la terminal'),
         term('shell', 'admin@srv:~$ systemctl status named\n● named.service - BIND Domain Name Server\n     Loaded: loaded (/usr/lib/systemd/system/named.service; enabled; preset: enabled)\n     Active: active (running)\n     Main PID: 845 (named)'),
-        code('admin@srv:~$ sudo systemctl stop apache2\nadmin@srv:~$ sudo systemctl enable --now named\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 20\nadmin@srv:~$ ss -tulpn\n\nC:\\home\\admin> sc query W3SVC\nC:\\home\\admin> net stop DNS'),
+        code('admin@srv:~$ sudo systemctl stop apache2\nadmin@srv:~$ sudo systemctl enable --now named\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 20\nadmin@srv:~$ ss -tulpn\n\nC:\\Users\\Administrator> sc query W3SVC\nC:\\Users\\Administrator> net stop DNS'),
         warn('Sin sudo', 'systemctl start, stop, restart, enable y disable responden «Interactive authentication required», como en Ubuntu: hacen falta privilegios de root.'),
         h('Cuando un servicio no arranca'),
         p('Al arrancar, reiniciar o recargar, cada servicio lee sus ficheros y los comprueba como en Ubuntu: Kea como `kea-dhcp4 -t`, BIND como `named-checkconf`, Apache como `apache2ctl configtest`, sshd como `sshd -t` y nftables como `nft -c`. Si hay un error, el servicio no arranca: la unidad queda **failed** y el registro dice por qué. Un `reload` que falla deja en marcha la configuración anterior, y recargar un servicio parado se rechaza («Unit named.service is not active.»).'),

@@ -65,9 +65,9 @@ test('Windows hosts: the Administrators write it; entries apply at once, any cas
   const pc = lab();
   const user = createShell(pc, 'windows');
   user.run('dir C:\\');
-  assert.equal(all(createShell(pc, 'linux').run('stat -c "%U %g %a" /Windows/System32/drivers/etc/hosts')), 'root 27 664', 'Administrators: the sudo group');
+  assert.equal(all(createShell(pc, 'linux').run('stat -c "%U %g %a" /mnt/c/Windows/System32/drivers/etc/hosts')), 'root 27 664', 'Administrators: the sudo group');
   assert.deepEqual(user.run('echo 10.0.0.9   NAS.aula.lan  nas   # el NAS>> C:\\Windows\\System32\\drivers\\etc\\hosts'), []);
-  createShell(pc, 'linux', 'root').run("echo '10.0.0.8 nas' >> /Windows/System32/drivers/etc/hosts");
+  createShell(pc, 'linux', 'root').run("echo '10.0.0.8 nas' >> /mnt/c/Windows/System32/drivers/etc/hosts");
   assert.match(all(user.run('ping -n 1 Nas')), /Pinging Nas \[10\.0\.0\.9\]/);
   assert.match(all(user.run('ping -n 1 nas.AULA.lan')), /\[10\.0\.0\.9\]/);
   assert.match(all(user.run('nslookup nas')), /can't find nas|Non-existent domain|No response|timed out|UnKnown/i, 'nslookup asks the DNS server only');
@@ -77,9 +77,21 @@ test('the Windows hosts file is saved with the lab', () => {
   const t = new Topology();
   const pc = t.add('pc', 0, 0).device as Pc;
   pc.setStatic({ ip: 0x0a000002, prefix: 24 });
-  createShell(pc, 'linux', 'root').run("mkdir -p /Windows/System32/drivers/etc; echo '10.0.0.7 impresora' > /Windows/System32/drivers/etc/hosts");
+  createShell(pc, 'linux', 'root').run("mkdir -p /mnt/c/Windows/System32/drivers/etc; echo '10.0.0.7 impresora' > /mnt/c/Windows/System32/drivers/etc/hosts");
   const again = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON()))).byLabel('PC0') as Pc;
   assert.deepEqual(resolveHost(again, 'impresora', 'windows'), { kind: 'ip', ip: 0x0a000007, name: 'impresora', viaDns: false });
+});
+
+test('a lab saved before C:\\ moved to /mnt/c keeps its Windows hosts file', () => {
+  const t = new Topology();
+  const pc = t.add('pc', 0, 0).device as Pc;
+  pc.setStatic({ ip: 0x0a000002, prefix: 24 });
+  createShell(pc, 'linux', 'root').run("mkdir -p /Windows/System32/drivers/etc; echo '10.0.0.7 impresora' > /Windows/System32/drivers/etc/hosts");
+  // Saved as Netfix 0.46 did; reading it needs no system, opening the terminal moves it to C:\.
+  const again = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON()))).byLabel('PC0') as Pc;
+  assert.deepEqual(resolveHost(again, 'impresora', 'windows'), { kind: 'ip', ip: 0x0a000007, name: 'impresora', viaDns: false });
+  assert.match(all(createShell(again, 'windows').run('type C:\\Windows\\System32\\drivers\\etc\\hosts')), /^10\.0\.0\.7 impresora$/m);
+  assert.equal(resolveHost(again, 'impresora', 'windows').kind, 'ip');
 });
 
 test('review: each terminal\'s ssh resolves as its system does', () => {

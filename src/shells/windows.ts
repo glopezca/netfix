@@ -1,6 +1,7 @@
 /**
  * Windows Command Prompt: ipconfig, ping, nslookup, netstat, arp, curl, ssh, sc / net (servers) and the file
- * commands (dir, cd, md, rd, del, copy, move, ren, type, echo, edit) on the device's Linux file system.
+ * commands (dir, cd, md, rd, del, copy, move, ren, type, echo, edit, nano, vim) on the device's Windows disk (C:\ is
+ * /mnt/c of its file system).
  */
 import { nbtstat } from './win-nbt.ts';
 import { netUse, netView } from './win-smb.ts';
@@ -20,13 +21,14 @@ import type { Host } from '../devices/host.ts';
 import { HOST_PORT } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import { findUnit, unitActive, openPorts, UNITS } from '../services/units.ts';
+import { toWindowsPath } from './win-path.ts';
 import { runPing } from '../net/ping.ts';
 import { tracert } from './trace-cmds.ts';
 import { formatIp, formatMask, parseIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
 import { formatLeaseTime } from '../core/clock.ts';
 import { hostSystem, hostUsers, defaultLinuxUser } from './host-system.ts';
-import { seedWindowsHosts } from './hosts-file.ts';
+import { GIT_BIN, WIN_EDITORS, WIN_PATH, seedWindowsDisk, usersDir, windowsAccount } from './win-system.ts';
 import { WinFiles } from './win-files.ts';
 import { WinDrives } from './win-drives.ts';
 import { splitCmdLine } from './win-path.ts';
@@ -42,13 +44,15 @@ const MS = 1000;
 const HELP = [
   'Available commands:',
   '  arp -a | arp -d          Show / delete the ARP cache',
-  '  cd | dir | md | rd | del Folders and files (C:\\ is the Linux root /)',
+  '  cd | dir | md | rd | del Folders and files (cd.. and cd\\ work too)',
   '  copy | move | ren        Copy, move or rename files',
   '  Z: | cd /d Z:\\dir        Switch to a drive mapped with net use',
   '  net view | net use       SMB shares and mapped drives',
   '  net share                Shares of this device (File and Printer Sharing)',
   '  type <file>              Show a file',
   '  edit <file>              Edit a file full screen',
+  '  nano | vim <file>        The GNU/Linux editors (C:\\Program Files\\Git\\usr\\bin, in %PATH%)',
+  '  path                     Show %PATH%',
   '  echo <text> [> file]     Print text (> and >> write it to a file)',
   '  curl [-I] <url>          HTTP client',
   '  help | ?                 This help',
@@ -99,6 +103,9 @@ export function ipconfig(host: Host, all: boolean): string[] {
   return lines;
 }
 
+/** Internal commands cmd.exe takes glued to a path or switch (cd.., cd\\, dir/w): the name ends at . \\ or /. */
+const GLUED = /^(\s*)(cd|chdir|dir|md|mkdir|rd|rmdir|del|erase|type)(?=[.\\/])/i;
+
 const NOT_PERMITTED = ['', 'The operation failed as no adapter is in the state permissible for', 'this operation.', ''];
 
 export class WindowsShell extends BaseShell {
@@ -123,14 +130,13 @@ export class WindowsShell extends BaseShell {
   /** The file commands, as the Linux account of the device this terminal works as (created on first use). */
   private files(): WinFiles {
     if (this.fileCmds) return this.fileCmds;
-    const users = hostUsers(this.host);
-    const name = users.some((u) => u.name === this.user.toLowerCase()) ? this.user.toLowerCase() : defaultLinuxUser(this.host);
-    const account = users.find((u) => u.name === name) ?? users[0];
+    const account = windowsAccount(hostUsers(this.host), this.user, defaultLinuxUser(this.host));
     const cred = { uid: account?.uid ?? 0, gid: account?.gid ?? 0, groups: account?.groups ?? [] };
     this.admin = cred.uid === 0;
     const fs = hostSystem(this.host).fs;
-    seedWindowsHosts(fs);
-    this.fileCmds = new WinFiles(fs, cred, account?.home ?? '/');
+    const srv = this.server();
+    seedWindowsDisk(fs, this.user, account, srv !== undefined && unitActive(srv.services, 'ssh'));
+    this.fileCmds = new WinFiles(fs, cred, usersDir(this.user));
     return this.fileCmds;
   }
 
@@ -168,7 +174,7 @@ export class WindowsShell extends BaseShell {
     }
     const files = this.files();
     if (files.pending) return files.answer(line);
-    const parsed = splitCmdLine(line.trim());
+    const parsed = splitCmdLine(this.expand(line).trim().replace(GLUED, '$1$2 '));
     if (parsed.error) return ['The syntax of the command is incorrect.'];
     const [first, ...args] = parsed.words;
     if (!first) return [];
@@ -187,6 +193,21 @@ export class WindowsShell extends BaseShell {
     this.ns = null;
     this.question = null;
     return [];
+  }
+
+  /** %NAME% of the environment (any case); an unknown name stays as typed, as in cmd.exe. */
+  private expand(line: string): string {
+    const env: Record<string, string> = {
+      path: WIN_PATH, username: this.user, userprofile: toWindowsPath(usersDir(this.user)), computername: this.host.name.toUpperCase(),
+      systemroot: 'C:\\Windows', windir: 'C:\\Windows', systemdrive: 'C:',
+    };
+    return line.replace(/%([A-Za-z_]\w*)%/g, (all, name: string) => env[name.toLowerCase()] ?? all);
+  }
+
+  /** nano / vim (or nano.exe, vim.exe): found through %PATH% in Git's usr\bin while the program is there. */
+  private editor(name: string): 'nano' | 'vim' | null {
+    const e = WIN_EDITORS.find((x) => name === x || name === `${x}.exe`);
+    return e && this.files().winFs.kindOf(`${GIT_BIN}/${e}.exe`) === 'file' ? e : null;
   }
 
   private nslookup(args: string[]): string[] {
@@ -216,6 +237,8 @@ export class WindowsShell extends BaseShell {
     const paths = this.drives.paths(name, args);
     const share = smbFileCommand(this.host, this.files().winFs, name, paths);
     if (share) return this.files().ask(share);
+    const editor = this.editor(name);
+    if (editor) return this.files().edit(paths, editor);
     const file = this.files().run(name, paths, text);
     if (file) return file;
     switch (cmd.toLowerCase()) {
@@ -234,6 +257,7 @@ export class WindowsShell extends BaseShell {
       case 'nbtstat': return nbtstat(this.host, args);
       case 'help': case '?': return HELP;
       case 'cls': return [];
+      case 'path': return [`PATH=${WIN_PATH}`];
       case 'exit':
         if (this.remote) this.closed = true;
         return [];
