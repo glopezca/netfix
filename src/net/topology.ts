@@ -151,11 +151,11 @@ const MAX_DRAWING_ID = 999_999_999;
 const SETTLE_MS = 30_000;
 
 export class Topology {
-  readonly clock = new SimClock();
-  readonly net = new Network(this.clock);
+  readonly clock: SimClock;
+  readonly net: Network;
   readonly placed = new Map<string, Placed>();
   /** The emulated Internet shared by every ISP cloud of this workspace. */
-  readonly internet = makeInternet(this.net);
+  readonly internet: InternetCore;
   private nextSeed = 1;
   private nextId = 1;
   /** Drawings of the workspace (replaced, never mutated). */
@@ -169,6 +169,13 @@ export class Topology {
   /** The guided lab this workspace is, with the hints already shown. */
   mission: MissionState | undefined;
   private nextDrawing = 1;
+
+  /** `baseMs` pins the simulated wall-clock start (deterministic marking); omitted = Date.now(), as before. */
+  constructor(baseMs?: number) {
+    this.clock = new SimClock(baseMs);
+    this.net = new Network(this.clock);
+    this.internet = makeInternet(this.net);
+  }
 
   /** Configuración → Laboratorio actual changed: every host re-reads what its lab offers (sharing sends its release). */
   setFeatures(next: LabFeatures): void {
@@ -298,9 +305,9 @@ export class Topology {
     return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features, ...web };
   }
 
-  static fromJSON(data: unknown): Topology {
+  static fromJSON(data: unknown, baseMs?: number): Topology {
     const file = validateFile(data);
-    const topo = new Topology();
+    const topo = new Topology(baseMs);
     const labels = new Set(file.devices.map((d) => d.label));
     for (const d of file.devices) {
       const placed = topo.add(d.kind, d.x, d.y, { id: d.id, seed: d.seed, label: savedLabel(d, labels) });
