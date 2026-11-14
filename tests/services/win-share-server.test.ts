@@ -26,10 +26,10 @@ function lab() {
 /** PC0 shares its folder docs as «docs» (full control) and as «Leer» (read only). */
 function sharing(pc0: Host): void {
   setWinShareOn(pc0, true);
-  win(pc0, 'mkdir C:\\home\\alumno\\docs');
-  win(pc0, 'echo hola> C:\\home\\alumno\\docs\\a.txt');
-  assert.equal(addWinShare(pc0, { name: 'docs', path: 'C:\\home\\alumno\\docs', remark: 'Documentos', access: 'full' }), undefined);
-  assert.equal(addWinShare(pc0, { name: 'Leer', path: 'C:\\home\\alumno\\docs', remark: '', access: 'read' }), undefined);
+  win(pc0, 'mkdir C:\\Users\\user\\docs');
+  win(pc0, 'echo hola> C:\\Users\\user\\docs\\a.txt');
+  assert.equal(addWinShare(pc0, { name: 'docs', path: 'C:\\Users\\user\\docs', remark: 'Documentos', access: 'full' }), undefined);
+  assert.equal(addWinShare(pc0, { name: 'Leer', path: 'C:\\Users\\user\\docs', remark: '', access: 'read' }), undefined);
 }
 
 test('the box unticked: no SMB on 139/445, no NAME<20>, and the clients cannot reach it', () => {
@@ -56,7 +56,7 @@ test('the box ticked: smbclient lists the shares and works in them with what Eve
   assert.match(sh(pc1, `smbclient //${ip0}/docs -N -c 'get a.txt /tmp/a.txt' 2>&1; cat /tmp/a.txt`), /hola/);
   sh(pc1, "echo 'desde linux' > /tmp/n.txt");
   sh(pc1, `smbclient //${ip0}/DOCS -N -c 'put /tmp/n.txt n.txt' 2>&1`);
-  assert.equal(win(pc0, 'type C:\\home\\alumno\\docs\\n.txt'), 'desde linux');
+  assert.equal(win(pc0, 'type C:\\Users\\user\\docs\\n.txt'), 'desde linux');
   assert.match(sh(pc1, `smbclient //${ip0}/leer -N -c 'put /tmp/n.txt m.txt' 2>&1`), /NT_STATUS_ACCESS_DENIED/);
   assert.match(sh(pc1, `smbclient //${ip0}/leer -N -c 'ls' 2>&1`), /^ {2}a\.txt +A? *\d+ /m);
   assert.match(sh(pc1, `smbclient //${ip0}/docs -N -c 'get ../Windows/x x' 2>&1`), /NT_STATUS_OBJECT_PATH_SYNTAX_BAD/);
@@ -66,9 +66,9 @@ test('the box ticked: smbclient lists the shares and works in them with what Eve
 test('a share whose folder is gone is not found', () => {
   const { pc0, pc1, ip0 } = lab();
   setWinShareOn(pc0, true);
-  win(pc0, 'mkdir C:\\home\\alumno\\tmpshare');
-  addWinShare(pc0, { name: 'tmp', path: 'C:\\home\\alumno\\tmpshare', remark: '', access: 'full' });
-  win(pc0, 'rmdir C:\\home\\alumno\\tmpshare');
+  win(pc0, 'mkdir C:\\Users\\user\\tmpshare');
+  addWinShare(pc0, { name: 'tmp', path: 'C:\\Users\\user\\tmpshare', remark: '', access: 'full' });
+  win(pc0, 'rmdir C:\\Users\\user\\tmpshare');
   assert.match(sh(pc1, `smbclient //${ip0}/tmp -N -c 'ls' 2>&1`), /tree connect failed: NT_STATUS_BAD_NETWORK_NAME/);
 });
 

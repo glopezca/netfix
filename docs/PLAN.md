@@ -2331,3 +2331,18 @@ originales; ayuda al día.
   Terminal Windows. e2e-v014 al día (Aula-Publica-2o); e2e-samba y e2e-v016 ya fallaban en main.
 - Ayuda: Nombre del equipo (reglas, ejemplos, sin «unable to resolve host»), red-nombres («Los ficheros hosts»),
   linux.ts; textos de Equipo, gestión web y nube (es/en).
+
+### Fase: disco de Windows en C:\ (/mnt/c) y editores nano / vim en Windows (v0.47.0)
+
+Petición: que Windows tenga su propio sistema de ficheros, que GNU/Linux lo vea como en WSL y que el terminal de Windows
+tenga los mismos editores que GNU/Linux.
+
+- C:\ es /mnt/c del sistema de ficheros del equipo (antes era la raíz /): C:\Users\<usuario> (Administrator en servidores,
+  user en PC, con .ssh si corre el servicio SSH), el fichero hosts y C:\Program Files\Git\usr\bin con nano.exe y vim.exe.
+  win-system.ts lo siembra sin pisar nada; se siembra en cuanto el equipo tiene Windows, también si lo recibe después de
+  crear su sistema (el panel de recursos compartidos encuentra C:\Users sin abrir antes el terminal).
+- Laboratorios anteriores: el hosts de Windows editado en /Windows/… pasa a C:\ y se sigue leyendo mientras no exista.
+- Terminal: `nano` / `vim` (y .exe) por %PATH% con rutas de Windows, buffer nuevo sin fichero y guardado por nombre desde
+  la carpeta actual; `path`; %PATH%, %USERNAME%, %USERPROFILE%, %COMPUTERNAME%, %SystemRoot%, %windir%, %SystemDrive%;
+  órdenes internas pegadas a la ruta (`cd..`, `cd\`, `dir/w`); `..` no sube de C:\.
+- Ayuda (clients, samba, dns, names, internet, ios-sec, netfix, services) y marcadores de ruta de los paneles, es/en.

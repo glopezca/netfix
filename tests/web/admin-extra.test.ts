@@ -75,7 +75,7 @@ test('Windows sharing: there once the server has Windows; shares added and remov
   assert.match(body(web.open(`${URL}?page=status`)), /web-adm-nav-winshare/);
   post(web, 'winshare', [['action', 'wsh-service'], ['enabled', '1']]);
   assert.equal(winShareOn(srv), true);
-  post(web, 'winshare', [['action', 'wsh-add'], ['name', 'docs'], ['path', 'C:\\home'], ['remark', '<b>x</b>'], ['access', 'read']]);
+  post(web, 'winshare', [['action', 'wsh-add'], ['name', 'docs'], ['path', 'C:\\Users'], ['remark', '<b>x</b>'], ['access', 'read']]);
   assert.ok(findWinShare(srv, 'docs'));
   const page = body(web.open(`${URL}?page=winshare`));
   assert.match(page, /&lt;b&gt;x&lt;\/b&gt;/);

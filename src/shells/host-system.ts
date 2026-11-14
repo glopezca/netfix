@@ -28,6 +28,9 @@ import { linuxPrograms } from './linux-programs.ts';
 import { formatIp } from '../core/ip.ts';
 import { exportFiles, importFiles } from '../bash/vfs-persist.ts';
 import { seedApache } from '../services/apache/defaults.ts';
+import { hasSystem } from '../net/device-apps.ts';
+import { unitActive } from '../services/units.ts';
+import { defaultWindowsUser, seedWindowsDisk, windowsAccount } from './win-system.ts';
 import { registerHostFs, registerHostFileReader } from '../devices/host-fs.ts';
 import { seedKernel, sysctlFiles, applySysctlFile } from './kernel-files.ts';
 import type { FileRecord } from '../bash/vfs-persist.ts';
@@ -40,6 +43,8 @@ export interface HostSystem {
 interface Entry extends HostSystem {
   mounted: Set<string>;
   usersKey: string;
+  /** C:\ laid out (once the device has Windows, even if it got it after the system was built). */
+  winDisk: boolean;
 }
 
 const FIRST_UID = 1000;
@@ -262,7 +267,16 @@ function createSystem(host: Host): Entry {
   restoreRecords(fs, pendingFiles.get(host) ?? []);
   pendingFiles.delete(host);
   bootResolvedFrom(host, fs);
-  return { fs, env, mounted: new Set(), usersKey: users.map((u) => u.name).join(',') };
+  return { fs, env, mounted: new Set(), usersKey: users.map((u) => u.name).join(','), winDisk: false };
+}
+
+/** A device with Windows has C:\ at /mnt/c (GNU/Linux sees it there too), after the saved files: they win. */
+function refreshWindowsDisk(host: Host, e: Entry): void {
+  if (e.winDisk || !hasSystem(host, 'windows')) return;
+  const user = defaultWindowsUser(host.kind);
+  const server = asServer(host);
+  seedWindowsDisk(e.fs, user, windowsAccount(hostUsers(host), user, defaultLinuxUser(host)), server !== undefined && unitActive(server.services, 'ssh'));
+  e.winDisk = true;
 }
 
 /** The (lazily created) system of a host, with its generated files and accounts brought up to date. */
@@ -277,6 +291,7 @@ export function hostSystem(host: Host): HostSystem {
   }
   refreshUsers(host, e);
   refreshMounts(host, e);
+  refreshWindowsDisk(host, e);
   return e;
 }
 

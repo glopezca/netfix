@@ -153,11 +153,11 @@ export const SAMBA_DOCS: readonly DocPage[] = [
       p('El panel y la terminal son lo mismo: lo que se comparte en uno aparece en el otro.'),
       table(['Orden', 'Qué hace'], [
         ['net share', 'Lista IPC$ y los recursos.'],
-        ['net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL /remark:"Mis documentos"', 'Comparte la carpeta como «docs» con control total para Todos. Sin `/grant`, solo lectura.'],
+        ['net share docs=C:\\Users\\user\\docs /grant:everyone,FULL /remark:"Mis documentos"', 'Comparte la carpeta como «docs» con control total para Todos. Sin `/grant`, solo lectura.'],
         ['net share docs', 'El detalle de un recurso: carpeta, comentario y permiso.'],
-        ['net share docs /delete · net share C:\\home\\alumno\\docs /delete', 'Deja de compartirlo, por nombre o por carpeta. La carpeta no se borra.'],
+        ['net share docs /delete · net share C:\\Users\\user\\docs /delete', 'Deja de compartirlo, por nombre o por carpeta. La carpeta no se borra.'],
       ]),
-      term('cmd', 'C:\\>net share\n\nShare name   Resource                        Remark\n\n-------------------------------------------------------------------------------\nIPC$                                         Remote IPC\ndocs         C:\\home\\alumno\\docs             Mis documentos\nThe command completed successfully.'),
+      term('cmd', 'C:\\>net share\n\nShare name   Resource                        Remark\n\n-------------------------------------------------------------------------------\nIPC$                                         Remote IPC\ndocs         C:\\Users\\user\\docs              Mis documentos\nThe command completed successfully.'),
       h('Usarlo desde otro equipo'),
       table(['Desde', 'Orden'], [
         ['GNU/Linux (smbclient)', '`smbclient -L //pc0 -N` lista los recursos; `smbclient //pc0/docs -N -c \'put nota.txt\'` sube un archivo.'],
@@ -171,7 +171,7 @@ export const SAMBA_DOCS: readonly DocPage[] = [
         ['NT_STATUS_BAD_NETWORK_NAME · System error 67', 'El recurso no existe o se borró su carpeta.'],
       ]),
       tip('En la configuración general', '**Configuración → Laboratorio actual** tiene la casilla **Compartir archivos e impresoras para redes Microsoft (Windows)** para PC, Servidor y Router GNU/Linux, marcada por defecto. Desmarcada, los equipos de esa red no la ofrecen y no comparten nada.'),
-      exercise('De Windows a GNU/Linux', 'Con un PC Windows y un PC GNU/Linux en la misma red, comparte en Windows la carpeta C:\\home\\alumno\\docs para que el PC GNU/Linux pueda dejar archivos en ella.', 'En Windows: marca la casilla en Configuración, `md C:\\home\\alumno\\docs` y `net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL` (o Servicios → SMB con Todos: Control total). En GNU/Linux: `sudo apt install smbclient` y `smbclient //NOMBRE/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\home\\alumno\\docs` en Windows lo muestra.'),
+      exercise('De Windows a GNU/Linux', 'Con un PC Windows y un PC GNU/Linux en la misma red, comparte en Windows la carpeta C:\\Users\\user\\docs para que el PC GNU/Linux pueda dejar archivos en ella.', 'En Windows: marca la casilla en Configuración, `md C:\\Users\\user\\docs` y `net share docs=C:\\Users\\user\\docs /grant:everyone,FULL` (o Servicios → SMB con Todos: Control total). En GNU/Linux: `sudo apt install smbclient` y `smbclient //NOMBRE/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\Users\\user\\docs` en Windows lo muestra.'),
     ],
   },
 ];

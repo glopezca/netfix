@@ -119,7 +119,7 @@ export const IOS_SEC_DOCS: readonly DocPage[] = [
       ),
       code('crypto isakmp policy 10\n encryption aes 256\n hash sha\n authentication pre-share\n group 5\ncrypto isakmp key Netfix-VPN-2026 address 81.33.5.2\ncrypto ipsec transform-set TS-AES esp-aes 256 esp-sha-hmac\nip access-list extended VPN\n permit ip 192.168.10.0 0.0.0.255 192.168.20.0 0.0.0.255\ncrypto map VPN 10 ipsec-isakmp\n set peer 81.33.5.2\n set transform-set TS-AES\n match address VPN\ninterface GigabitEthernet0/1\n crypto map VPN'),
       check('Check it', 'Ping from one LAN to the other: the first ones are lost while it negotiates. Then the IKE SA is in **QM_IDLE** and the encaps/decaps counters go up.'),
-      term('cmd', 'C:\\home\\alumno> ping -n 4 192.168.20.10\nPinging 192.168.20.10 with 32 bytes of data:\nRequest timed out.\nRequest timed out.\nReply from 192.168.20.10: bytes=32 time<1ms TTL=126\nReply from 192.168.20.10: bytes=32 time<1ms TTL=126'),
+      term('cmd', 'C:\\Users\\user> ping -n 4 192.168.20.10\nPinging 192.168.20.10 with 32 bytes of data:\nRequest timed out.\nRequest timed out.\nReply from 192.168.20.10: bytes=32 time<1ms TTL=126\nReply from 192.168.20.10: bytes=32 time<1ms TTL=126'),
       term('ios', 'SEDE-A#show crypto isakmp sa\nIPv4 Crypto ISAKMP SA\ndst             src             state          conn-id status\n81.33.5.2       81.32.5.2       QM_IDLE           1001 ACTIVE\nSEDE-A#show crypto ipsec sa | include encaps|decaps\n   #pkts encaps: 3, #pkts encrypt: 3, #pkts digest: 3\n   #pkts decaps: 2, #pkts decrypt: 2, #pkts verify: 2'),
       table(['Command', 'What it shows'], [
         ['show crypto isakmp sa', 'The IKE SA: QM_IDLE when it is ready, MM_NO_STATE if it fails.'],

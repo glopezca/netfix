@@ -63,7 +63,7 @@ export function winSharePage(server: Server, base: string): Child {
     form(base, 'winshare', 'wsh-service', cards(section(t('dev.winshare'), t('wsh.intro'), check('enabled', winShareOn(server), t('wa.enabled')))), buttons()),
     cards(section(t('smb.shares'), '', table([t('smb.share'), t('smb.path'), t('smb.comment'), t('wsh.permission'), ''], rows, t('smb.noShares')))),
     form(base, 'winshare', 'wsh-add', cards(section(t('smb.addShare'), t('wsh.hint'),
-      row(t('smb.share'), text('name', '', { placeholder: 'docs' })), row(t('smb.path'), text('path', '', { placeholder: 'C:\\home\\alumno\\docs' })),
+      row(t('smb.share'), text('name', '', { placeholder: 'docs' })), row(t('smb.path'), text('path', '', { placeholder: 'C:\\Users\\user\\docs' })),
       row(t('smb.comment'), text('remark', '')), row(t('wsh.permission'), choose('access', 'read', [['read', t('wsh.read')], ['full', t('wsh.full')]])))), buttons(t('smb.add'))),
   ];
 }

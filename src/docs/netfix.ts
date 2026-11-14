@@ -31,7 +31,7 @@ export const NETFIX_DOCS: DocGroup = {
           ['Pon las direcciones IP', 'Doble clic en PC0 → **TCP/IP** → Estática: 192.168.1.10 y máscara 255.255.255.0. En PC1, 192.168.1.11.'],
           ['Pruébalo', 'En PC0 → **Terminal Windows**: `ping 192.168.1.11`.'],
         ),
-        term('cmd', 'C:\\home\\alumno> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
+        term('cmd', 'C:\\Users\\user> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
         tip('Sin montar nada', '**Laboratorios…** carga prácticas ya preparadas, con sus equipos configurados y áreas dibujadas. Son el mejor punto de partida para cada tema de esta ayuda.'),
         h('Barra superior'),
         table(['Control', 'Qué hace'], [

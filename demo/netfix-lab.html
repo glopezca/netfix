@@ -6770,13 +6770,173 @@ function isValidHostname(name) {
 
 return { DnsResolver, normalizeName, firstAddress, reverseName, ipFromReverse, isValidHostname };
 })();
+__m["shells/win-path.js"] = (() => {
+/** Where drive C:\ is in the device's file system. */
+const WIN_ROOT = '/mnt/c';
+const ROOT_PARTS = WIN_ROOT.split('/').filter(Boolean);
+/** The folders of a Linux path under C:\ (none for C:\ itself or a path outside it). */
+const winParts = (linux) => {
+    const parts = linux.split('/').filter(Boolean);
+    return ROOT_PARTS.every((p, i) => parts[i] === p) ? parts.slice(ROOT_PARTS.length) : [];
+};
+/** C:\Users\user for /mnt/c/Users/user. */
+function toWindowsPath(linux) {
+    return `C:\\${winParts(linux).join('\\')}`;
+}
+/**
+ * Words (double quotes group and are removed) and the last > or >> outside quotes, followed by its file name
+ * (`nul` discards the output; `2>` sends errors, which are not told apart here, so it is ignored). A > with no
+ * file name is a syntax error.
+ */
+function splitCmdLine(line) {
+    const words = [];
+    let word = null;
+    let quoted = false;
+    let redirect = null;
+    let target = false;
+    let missing = false;
+    let text = '';
+    const flush = () => {
+        if (word === null)
+            return;
+        if (target && redirect) {
+            redirect.path = word;
+            target = false;
+        }
+        else
+            words.push(word);
+        word = null;
+    };
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i] ?? '';
+        if (ch === '"') {
+            quoted = !quoted;
+            word ??= '';
+            if (!target)
+                text += ch;
+            continue;
+        }
+        if (!quoted && ch === '>') {
+            const stderr = word === '2' && !/\s/.test(line[i - 1] ?? ' ') && (i < 2 || /\s/.test(line[i - 2] ?? ' '));
+            if (stderr) {
+                word = null;
+                text = text.slice(0, -1);
+            }
+            else
+                flush();
+            if (target)
+                missing = true;
+            const append = line[i + 1] === '>';
+            if (append)
+                i++;
+            redirect = { path: '', append, stderr };
+            target = true;
+            continue;
+        }
+        if (!quoted && /\s/.test(ch)) {
+            flush();
+            if (!target)
+                text += ch;
+            continue;
+        }
+        word = (word ?? '') + ch;
+        if (!target)
+            text += ch;
+    }
+    flush();
+    if (redirect && (!redirect.path || missing))
+        return { words, redirect: null, text, error: true };
+    const out = redirect && !redirect.stderr ? { path: redirect.path, append: redirect.append } : null;
+    return { words, redirect: out, text, error: false };
+}
+/**
+ * cmd.exe wildcards: * any run of characters, ? one character, case-insensitive; *.* is every name and a final .*
+ * also matches names without a dot. Linear backtracking on the last *, never exponential.
+ */
+function wildMatch(pattern, name) {
+    if (pattern === '*.*')
+        return true;
+    if (pattern.endsWith('.*') && glob(pattern.slice(0, -2).toLowerCase(), name.toLowerCase()))
+        return true;
+    return glob(pattern.toLowerCase(), name.toLowerCase());
+}
+function glob(p, s) {
+    let i = 0;
+    let j = 0;
+    let star = -1;
+    let mark = 0;
+    while (j < s.length) {
+        if (i < p.length && (p[i] === '?' || p[i] === s[j])) {
+            i++;
+            j++;
+        }
+        else if (i < p.length && p[i] === '*') {
+            star = i++;
+            mark = j;
+        }
+        else if (star >= 0) {
+            i = star + 1;
+            j = ++mark;
+        }
+        else
+            return false;
+    }
+    while (p[i] === '*')
+        i++;
+    return i === p.length;
+}
+function hasWildcard(name) {
+    return /[*?]/.test(name);
+}
+/** The entry of `dir` whose name matches `name` exactly or, failing that, without regard to case. */
+function matchEntry(fs, dir, name, cred) {
+    if (fs.tryLookup(`${dir === '/' ? '' : dir}/${name}`, cred))
+        return name;
+    try {
+        return fs.readdir(dir, cred).find((n) => n.toLowerCase() === name.toLowerCase()) ?? name;
+    }
+    catch {
+        return name;
+    }
+}
+/** Linux path of a Windows path typed in the folder `cwd` (a Linux path). */
+function resolveWinPath(fs, cwd, input, cred) {
+    let rest = input.replace(/\//g, '\\');
+    let parts = rest.startsWith('\\') ? [] : winParts(cwd);
+    const drive = /^([A-Za-z]):(.*)$/.exec(rest);
+    if (drive) {
+        if ((drive[1] ?? '').toUpperCase() !== 'C')
+            return { ok: false, error: 'drive' };
+        rest = drive[2] ?? '';
+        // "C:" alone or "C:name" is relative to the current folder of the drive, as in cmd.exe.
+        parts = rest.startsWith('\\') ? [] : winParts(cwd);
+    }
+    for (const seg of rest.split('\\')) {
+        if (seg === '' || seg === '.')
+            continue;
+        // .. never goes above C:\ (cmd.exe stays at the root).
+        if (seg === '..') {
+            parts.pop();
+            continue;
+        }
+        const dir = [WIN_ROOT, ...parts].join('/');
+        parts.push(matchEntry(fs, dir, seg.replace(/[. ]+$/, '') || seg, cred));
+    }
+    return { ok: true, path: [WIN_ROOT, ...parts].join('/') };
+}
+
+return { WIN_ROOT, toWindowsPath, splitCmdLine, wildMatch, hasWildcard, resolveWinPath };
+})();
 __m["shells/hosts-file.js"] = (() => {
 const { normalizeName } = __m["net/dns.js"];
 const { parseIp } = __m["core/ip.js"];
 const { peekHostFile } = __m["devices/host-fs.js"];
+const { WIN_ROOT } = __m["shells/win-path.js"];
 const LINUX_HOSTS = '/etc/hosts';
 /** C:\Windows\System32\drivers\etc\hosts on the device's disk. */
-const WINDOWS_HOSTS = '/Windows/System32/drivers/etc/hosts';
+const WINDOWS_HOSTS = `${WIN_ROOT}/Windows/System32/drivers/etc/hosts`;
+/** Where it was before v0.47 (C:\ was the root /): a lab saved then still has it there. */
+const LEGACY_WINDOWS_HOSTS = '/Windows/System32/drivers/etc/hosts';
 /** Ubuntu's /etc/hosts as the installer leaves it, with the host name as it was given. */
 const ubuntuHosts = (name) => `127.0.0.1 localhost
 127.0.1.1 ${name}
@@ -6813,19 +6973,24 @@ const WINDOWS_HOSTS_TEXT = `# Copyright (c) 1993-2009 Microsoft Corp.
 `.replace(/\n/g, '\r\n');
 /** The sudo group stands for Windows' Administrators: they write the file (Full control), everyone else reads it. */
 const ADMINISTRATORS_GID = 27;
-/** The Windows terminal's disk gets the file Windows ships, unless it is there (a saved or edited one stays). */
+/** The Windows disk gets the file Windows ships, unless it is there (a saved or edited one stays). */
 function seedWindowsHosts(fs) {
     // Only on real folders (a file or a link on the way would not be Windows' folders): never over what is there.
-    const dirs = ['/Windows', '/Windows/System32', '/Windows/System32/drivers', '/Windows/System32/drivers/etc'];
+    const dirs = ['/mnt', WIN_ROOT, `${WIN_ROOT}/Windows`, `${WIN_ROOT}/Windows/System32`, `${WIN_ROOT}/Windows/System32/drivers`, `${WIN_ROOT}/Windows/System32/drivers/etc`];
     if (dirs.some((d) => { const n = fs.tryLookup(d, undefined, false); return n !== undefined && n.kind !== 'dir'; }))
         return;
-    if (!fs.tryLookup(WINDOWS_HOSTS, undefined, false))
-        fs.seed(WINDOWS_HOSTS, { kind: 'file', content: WINDOWS_HOSTS_TEXT }, 0o664, 0, ADMINISTRATORS_GID);
+    if (fs.tryLookup(WINDOWS_HOSTS, undefined, false))
+        return;
+    fs.seed(WINDOWS_HOSTS, { kind: 'file', content: WINDOWS_HOSTS_TEXT }, 0o664, 0, ADMINISTRATORS_GID);
+    // A lab from before v0.47 had its edited file at /Windows/…: it moves to C:\ (and is saved there from now on).
+    const old = fs.tryLookup(LEGACY_WINDOWS_HOSTS, undefined, false);
+    if (old?.kind === 'file' && old.dirty)
+        fs.writeFile(WINDOWS_HOSTS, old.content);
 }
 /** The file's text; a device whose system was never used has the default one (no need to build the system for it). */
 function hostsText(host, os) {
     if (os === 'windows')
-        return peekHostFile(host, WINDOWS_HOSTS) ?? WINDOWS_HOSTS_TEXT;
+        return peekHostFile(host, WINDOWS_HOSTS) ?? peekHostFile(host, LEGACY_WINDOWS_HOSTS) ?? WINDOWS_HOSTS_TEXT;
     return peekHostFile(host, LINUX_HOSTS) ?? ubuntuHosts(host.name);
 }
 /** The IPv4 lines of the hosts file, in order (IPv6 lines are kept in the file but Netfix routes IPv4 only). */
@@ -19760,7 +19925,7 @@ const NETFIX_DOCS = {
                     links: [{ a: 'pc0', b: 'sw' }, { a: 'pc1', b: 'sw' }],
                 }, 'Dos PC unidos por un switch en la misma red: lo mínimo para que se vean.'),
                 steps(['Coloca los equipos', 'En la paleta elige **PC** y haz clic dos veces en el área de trabajo (PC0 y PC1); después elige **Switch** y haz clic entre ellos.'], ['Conecta los cables', 'Elige **Cable**, haz clic en PC0, elige su puerto (FastEthernet0) y después en el switch y un puerto libre. Igual con PC1. El tipo de cable se elige solo y las luces del enlace se ponen en verde.'], ['Pon las direcciones IP', 'Doble clic en PC0 → **TCP/IP** → Estática: 192.168.1.10 y máscara 255.255.255.0. En PC1, 192.168.1.11.'], ['Pruébalo', 'En PC0 → **Terminal Windows**: `ping 192.168.1.11`.']),
-                term('cmd', 'C:\\home\\alumno> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
+                term('cmd', 'C:\\Users\\user> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
                 tip('Sin montar nada', '**Laboratorios…** carga prácticas ya preparadas, con sus equipos configurados y áreas dibujadas. Son el mejor punto de partida para cada tema de esta ayuda.'),
                 h('Barra superior'),
                 table(['Control', 'Qué hace'], [
@@ -20345,7 +20510,7 @@ const IOS_SEC_DOCS = [
             steps(['Política ISAKMP (fase 1)', '`crypto isakmp policy 10` con cifrado, hash, autenticación y grupo DH: `encryption aes 256`, `hash sha`, `authentication pre-share`, `group 5`.'], ['Clave compartida', '`crypto isakmp key Netfix-VPN-2026 address 81.33.5.2` (la dirección IP pública de la otra sede).'], ['Transform-set (fase 2)', '`crypto ipsec transform-set TS-AES esp-aes 256 esp-sha-hmac`.'], ['Tráfico interesante', 'Una ACL extendida de tu LAN a la suya. En la otra sede, la misma al revés (ACL espejo).'], ['Crypto map', '`crypto map VPN 10 ipsec-isakmp` con `set peer`, `set transform-set` y `match address`, y aplícalo con `crypto map VPN` en la interfaz pública.']),
             code('crypto isakmp policy 10\n encryption aes 256\n hash sha\n authentication pre-share\n group 5\ncrypto isakmp key Netfix-VPN-2026 address 81.33.5.2\ncrypto ipsec transform-set TS-AES esp-aes 256 esp-sha-hmac\nip access-list extended VPN\n permit ip 192.168.10.0 0.0.0.255 192.168.20.0 0.0.0.255\ncrypto map VPN 10 ipsec-isakmp\n set peer 81.33.5.2\n set transform-set TS-AES\n match address VPN\ninterface GigabitEthernet0/1\n crypto map VPN'),
             check('Compruébalo', 'Haz ping de una LAN a la otra: los primeros se pierden mientras se negocia. Después, la SA de IKE está en **QM_IDLE** y los contadores encaps/decaps suben.'),
-            term('cmd', 'C:\\home\\alumno> ping -n 4 192.168.20.10\nPinging 192.168.20.10 with 32 bytes of data:\nRequest timed out.\nRequest timed out.\nReply from 192.168.20.10: bytes=32 time<1ms TTL=126\nReply from 192.168.20.10: bytes=32 time<1ms TTL=126'),
+            term('cmd', 'C:\\Users\\user> ping -n 4 192.168.20.10\nPinging 192.168.20.10 with 32 bytes of data:\nRequest timed out.\nRequest timed out.\nReply from 192.168.20.10: bytes=32 time<1ms TTL=126\nReply from 192.168.20.10: bytes=32 time<1ms TTL=126'),
             term('ios', 'SEDE-A#show crypto isakmp sa\nIPv4 Crypto ISAKMP SA\ndst             src             state          conn-id status\n81.33.5.2       81.32.5.2       QM_IDLE           1001 ACTIVE\nSEDE-A#show crypto ipsec sa | include encaps|decaps\n   #pkts encaps: 3, #pkts encrypt: 3, #pkts digest: 3\n   #pkts decaps: 2, #pkts decrypt: 2, #pkts verify: 2'),
             table(['Orden', 'Qué muestra'], [
                 ['show crypto isakmp sa', 'La SA de IKE: QM_IDLE cuando está lista, MM_NO_STATE si falla.'],
@@ -20408,7 +20573,7 @@ const SERVICE_DOCS = {
                 ]),
                 h('Gestionar los servicios desde la terminal'),
                 term('shell', 'admin@srv:~$ systemctl status named\n● named.service - BIND Domain Name Server\n     Loaded: loaded (/usr/lib/systemd/system/named.service; enabled; preset: enabled)\n     Active: active (running)\n     Main PID: 845 (named)'),
-                code('admin@srv:~$ sudo systemctl stop apache2\nadmin@srv:~$ sudo systemctl enable --now named\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 20\nadmin@srv:~$ ss -tulpn\n\nC:\\home\\admin> sc query W3SVC\nC:\\home\\admin> net stop DNS'),
+                code('admin@srv:~$ sudo systemctl stop apache2\nadmin@srv:~$ sudo systemctl enable --now named\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 20\nadmin@srv:~$ ss -tulpn\n\nC:\\Users\\Administrator> sc query W3SVC\nC:\\Users\\Administrator> net stop DNS'),
                 warn('Sin sudo', 'systemctl start, stop, restart, enable y disable responden «Interactive authentication required», como en Ubuntu: hacen falta privilegios de root.'),
                 h('Cuando un servicio no arranca'),
                 p('Al arrancar, reiniciar o recargar, cada servicio lee sus ficheros y los comprueba como en Ubuntu: Kea como `kea-dhcp4 -t`, BIND como `named-checkconf`, Apache como `apache2ctl configtest`, sshd como `sshd -t` y nftables como `nft -c`. Si hay un error, el servicio no arranca: la unidad queda **failed** y el registro dice por qué. Un `reload` que falla deja en marcha la configuración anterior, y recargar un servicio parado se rechaza («Unit named.service is not active.»).'),
@@ -20597,7 +20762,7 @@ const CLIENT_DOCS = {
                     ['Client-ID personalizado (texto ASCII)', 'El texto como bytes, p. ej. PC-profesor.'],
                 ]),
                 check('Compruébalo', 'En la Terminal Windows, `ipconfig /all` muestra la dirección IP, la máscara, la puerta de enlace, el servidor DHCP y las fechas de la concesión. Después, `ping` a la puerta de enlace y a un nombre.'),
-                term('cmd', 'C:\\home\\alumno> ipconfig /all\n\nFastEthernet0 Connection:(default port)\n\n   Connection-specific DNS Suffix..: aula.lab\n   Physical Address................: 0063.B914.34B5\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\n   DHCP Servers....................: 192.168.10.2\n   DNS Servers.....................: 192.168.10.2\nC:\\home\\alumno> ping -n 2 srv.aula.lab\nReply from 192.168.10.2: bytes=32 time<1ms TTL=64'),
+                term('cmd', 'C:\\Users\\user> ipconfig /all\n\nFastEthernet0 Connection:(default port)\n\n   Connection-specific DNS Suffix..: aula.lab\n   Physical Address................: 0063.B914.34B5\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\n   DHCP Servers....................: 192.168.10.2\n   DNS Servers.....................: 192.168.10.2\nC:\\Users\\user> ping -n 2 srv.aula.lab\nReply from 192.168.10.2: bytes=32 time<1ms TTL=64'),
                 p('En la Terminal GNU/Linux, lo mismo con `ip -4 addr`, `ip route` (la puerta de enlace es la ruta «default») y `cat /etc/resolv.conf` (el servidor DNS).'),
                 warn('Errores típicos', 'Máscara distinta de la del resto de la red: hay equipos a los que «no se ve». Puerta de enlace fuera de la red del PC (o vacía): funciona dentro de la LAN pero no fuera. Dos equipos con la **misma dirección IP**: fallan los dos de forma intermitente. Una dirección **169.254.x.x** significa que DHCP no respondió: revisa el cable, el servidor y su pool.'),
                 exercise('Del PC a mano al PC por DHCP', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», pon PC0 con la dirección IP estática 192.168.10.20/24, puerta 192.168.10.1 y DNS 192.168.10.2; comprueba con ping srv.aula.lab y después vuelve a DHCP.', 'Configuración IP → Estática y rellena los cuatro campos. En la Terminal Windows, `ping srv.aula.lab` responde desde 192.168.10.2. Vuelve a **DHCP**: `ipconfig` muestra de nuevo 192.168.10.100 (la concesión que el servidor le guardaba).'),
@@ -20671,11 +20836,11 @@ const CLIENT_DOCS = {
             summary: 'Las órdenes de cmd.exe en PCs y servidores Windows: red, servicios y archivos.',
             markdownBase: MD,
             blocks: [
-                p('La **Terminal Windows** imita a cmd.exe. Sirve para comprobar la red (`ipconfig`, `ping`, `tracert`, `nslookup`), gestionar los servicios de un Windows Server (`sc`, `net`) y trabajar con archivos. Trabaja sobre el mismo sistema de archivos que la Terminal GNU/Linux del equipo: la unidad **C:\\** es la raíz /, las carpetas se separan con \\ (o /) y los nombres no distinguen mayúsculas.'),
-                p('Empieza en la carpeta personal de la cuenta GNU/Linux (C:\\home\\alumno en los PC, C:\\home\\admin en los servidores) y respeta sus permisos: lo que esa cuenta no puede escribir da «Access is denied.».'),
+                p('La **Terminal Windows** imita a cmd.exe. Sirve para comprobar la red (`ipconfig`, `ping`, `tracert`, `nslookup`), gestionar los servicios de un Windows Server (`sc`, `net`) y trabajar con archivos. Windows tiene su propio disco, aparte del de GNU/Linux: en la unidad **C:\\** están `C:\\Windows\\System32\\drivers\\etc\\hosts`, `C:\\Users\\<usuario>` (con su carpeta `.ssh` si el equipo ofrece el servicio SSH) y `C:\\Program Files\\Git\\usr\\bin`, que está en %PATH% y trae **nano.exe** y **vim.exe**. Las carpetas se separan con \\ (o /), los nombres no distinguen mayúsculas y `..` no sube más allá de C:\\.'),
+                p('En un equipo con los dos sistemas, GNU/Linux ve ese disco en **/mnt/c** (como WSL): `ls /mnt/c/Users`, `nano /mnt/c/Windows/System32/drivers/etc/hosts`. La terminal empieza en C:\\Users\\user en los PC (C:\\Users\\Administrator en los servidores) y trabaja con los permisos de la cuenta GNU/Linux del equipo: lo que esa cuenta no puede escribir da «Access is denied.».'),
                 h('Las órdenes de red, paso a paso'),
                 steps(['¿Qué dirección tengo?', '`ipconfig` (con `/all`, también la MAC, el servidor DHCP, el DNS y las fechas de la concesión).'], ['¿Llego a la puerta de enlace?', '`ping 192.168.10.1`: si responde, la red local funciona.'], ['¿Resuelvo nombres?', '`nslookup srv.aula.lab`: si da la dirección IP, el DNS funciona.'], ['¿Y un nombre sin punto?', '`ping pc2`: si el DNS no lo conoce, Windows pregunta por NetBIOS con un broadcast a su red (UDP 137). `nbtstat -n` muestra sus nombres, `nbtstat -a PC2` los de otro equipo con su MAC, `nbtstat -c` la caché y `net view \\\\PC2` si tiene SMB.'], ['¿Y sin servidor DNS?', '`ping pc1.local`: Windows trae mDNS de serie y pregunta por los nombres .local en su red (un equipo GNU/Linux responde si tiene avahi-daemon). `nslookup` no usa mDNS: solo pregunta al DNS.'], ['¿Por dónde va el tráfico?', '`tracert 8.8.8.8`: un salto por cada router del camino.']),
-                term('cmd', 'C:\\home\\alumno> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\home\\alumno> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
+                term('cmd', 'C:\\Users\\user> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\Users\\user> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
                 h('Todas las órdenes'),
                 table(['Orden', 'Uso'], [
                     ['ipconfig [/all]', 'Configuración IP; /all añade MAC, servidor DHCP, DNS y fechas de la concesión.'],
@@ -20690,7 +20855,7 @@ const CLIENT_DOCS = {
                     ['sc query [svc] · sc start|stop svc', 'Servicios de Windows Server (W3SVC, DNS, DHCPServer, SMTPSVC, POP3Svc, sshd).'],
                     ['net start [svc] · net stop svc', 'Igual que sc, con los mensajes de net.'],
                     ['hostname · whoami · ver · cls · help', 'Sistema y ayuda.'],
-                    ['cd [carpeta] · cd .. · cd /d Z:\\carpeta', 'Cambia de carpeta; sin argumento muestra la actual. Cada unidad tiene su carpeta: `cd Z:\\x` solo cambia la de Z: y `cd /d` cambia también de unidad. Las rutas UNC (\\\\srv\\share) no pueden ser la carpeta actual.'],
+                    ['cd [carpeta] · cd .. · cd.. · cd\\ · cd /d Z:\\carpeta', 'Cambia de carpeta; sin argumento muestra la actual. Como en cmd.exe, el nombre de una orden interna puede ir pegado a la ruta o la opción, sin espacio: `cd..`, `cd\\`, `cd\\Windows`, `dir/b`, `dir..`, `md\\x`, `type\\ruta`. Cada unidad tiene su carpeta: `cd Z:\\x` solo cambia la de Z: y `cd /d` cambia también de unidad. Las rutas UNC (\\\\srv\\share) no pueden ser la carpeta actual.'],
                     ['net share · net share NOMBRE=C:\\carpeta [/grant:everyone,READ|FULL] [/remark:"texto"] · net share NOMBRE /delete', 'Recursos que comparte este equipo (con «Compartir archivos e impresoras» marcado en Configuración; lo mismo que Servicios → SMB): la carpeta debe existir y Todos entra sin contraseña, con lectura o control total.'],
                     ['net view \\\\SERVIDOR · net use [Z: | *] \\\\srv\\share [/user:nombre] · net use Z: /delete', 'Recursos compartidos de un servidor SMB y unidades conectadas a ellos; `Z:` cambia a la unidad, que se usa como C: (dir, cd, copy, type, > y >>).'],
                     ['dir [ruta] [/b]', 'Lista una carpeta (admite * y ?); /b solo los nombres.'],
@@ -20698,11 +20863,13 @@ const CLIENT_DOCS = {
                     ['del [/q] archivo · copy [/y] origen destino · move [/y] origen destino · ren archivo nombre', 'Borra, copia, mueve o renombra archivos (admiten * y ?; *.* es todo). del de una carpeta o de *.* pregunta antes salvo /q; copy y move preguntan antes de sobrescribir salvo /y; copy de varios archivos sobre uno los une; move también mueve o renombra carpetas.'],
                     ['type archivo', 'Muestra el contenido de un archivo.'],
                     ['edit archivo', 'Editor a pantalla completa (Microsoft Edit): Ctrl+S guarda, Ctrl+Q o Esc sale y pregunta si hay cambios, Ctrl+F busca (F3 siguiente), Ctrl+G va a una línea, Ctrl+Z/Ctrl+Y deshacen y rehacen. F10 (también en la barra táctil) o Alt+letra abren los menús File, Edit, View y Help: la letra resaltada de cada menú y de cada opción es la que la elige; flechas para moverse, Intro para elegir y Esc para cerrar. Un archivo que la cuenta no puede escribir se abre en solo lectura.'],
+                    ['nano archivo · vim archivo', 'Los mismos editores que en GNU/Linux (las mismas teclas: en nano Ctrl+O guarda y Ctrl+X sale; en vim `i` escribe, Esc y `:wq` guardan y salen), con rutas de Windows: `nano C:\\Windows\\System32\\drivers\\etc\\hosts`. Están en C:\\Program Files\\Git\\usr\\bin, que está en %PATH% (también valen nano.exe y vim.exe).'],
+                    ['path · echo %PATH%', 'Muestra %PATH%. En la línea se sustituyen %PATH%, %USERNAME%, %USERPROFILE%, %COMPUTERNAME%, %SystemRoot%, %windir% y %SystemDrive%; otro %NOMBRE% queda tal cual.'],
                     ['echo texto · orden > archivo · orden >> archivo', 'echo imprime el texto (echo. una línea en blanco); > guarda la salida de cualquier orden en un archivo, >> la añade al final y > nul la descarta.'],
                 ]),
-                code('C:\\home\\alumno> ipconfig /all > red.txt\nC:\\home\\alumno> type red.txt\nC:\\home\\alumno> edit notas.txt\nC:\\home\\alumno> copy notas.txt \\tmp\nC:\\home\\alumno> ssh admin@192.168.10.2'),
-                p('Lo que se crea aquí aparece en la Terminal GNU/Linux (`cat ~/red.txt`, `nano ~/notas.txt`) y al revés. Los errores imitan Windows: «… is not recognized as an internal or external command», «Request timed out.», «FAILED 1060»…'),
-                tip('Prompt con fecha y hora', 'La casilla **Prompt con marca de fecha y hora**, al pie de la terminal, cambia el prompt al de esta función de PowerShell: fecha y hora en cian oscuro, usuario@equipo en verde, la ruta en amarillo y $ (# si la cuenta es de administrador), p. ej. `Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$`. Sirve para que las capturas de una práctica demuestren cuándo se hicieron. Es un ajuste general, desactivado por defecto (también en Configuración → Generales): vale para todas las terminales de todos los equipos.'),
+                code('C:\\Users\\user> ipconfig /all > red.txt\nC:\\Users\\user> type red.txt\nC:\\Users\\user> edit notas.txt\nC:\\Users\\user> nano C:\\Windows\\System32\\drivers\\etc\\hosts\nC:\\Users\\user> cd..\nC:\\Users> cd\\\nC:\\> C:\\Users\\user> ssh admin@192.168.10.2'),
+                p('En un equipo con los dos sistemas, lo que se crea aquí aparece en la Terminal GNU/Linux bajo /mnt/c (`cat /mnt/c/Users/user/red.txt`) y al revés. Los errores imitan Windows: «… is not recognized as an internal or external command», «Request timed out.», «FAILED 1060»…'),
+                tip('Prompt con fecha y hora', 'La casilla **Prompt con marca de fecha y hora**, al pie de la terminal, cambia el prompt al de esta función de PowerShell: fecha y hora en cian oscuro, usuario@equipo en verde, la ruta en amarillo y $ (# si la cuenta es de administrador), p. ej. `Thu Oct 22 18:28:05 user@pc0 C:\\Users\\user$`. Sirve para que las capturas de una práctica demuestren cuándo se hicieron. Es un ajuste general, desactivado por defecto (también en Configuración → Generales): vale para todas las terminales de todos los equipos.'),
                 warn('Errores típicos', 'Escribir órdenes de GNU/Linux (`ls`, `ip a`): cmd responde «is not recognized…»; usa `dir` e `ipconfig`. Olvidar que `ipconfig /renew` necesita que el PC esté en DHCP. Intentar escribir fuera de tu carpeta personal: «Access is denied.».'),
                 exercise('Guarda tu configuración en un archivo', 'Guarda la salida de `ipconfig /all` en `red.txt` y ábrela desde la Terminal GNU/Linux del mismo PC.', 'En cmd: `ipconfig /all > red.txt`. En la Terminal GNU/Linux: `cat ~/red.txt` (o `less ~/red.txt`). Es el mismo archivo: los dos terminales comparten el sistema de archivos.'),
             ],
@@ -21623,7 +21790,7 @@ const INTERNET_DOCS = {
                     ['!H · «reports: Destination host unreachable.»', 'El router no encuentra el equipo en su red.'],
                     ['!X (GNU/Linux) · !A (IOS)', 'Prohibido por administración: una ACL o una regla `reject` del camino.'],
                 ]),
-                term('cmd', 'C:\\home\\alumno> tracert -d 11.22.33.44\n\nTracing route to 11.22.33.44 over a maximum of 30 hops\n\n  1     8 ms     4 ms     4 ms  192.168.10.1\n  2     *        6 ms     6 ms  81.32.5.1\n  3    10 ms    10 ms    10 ms  81.32.0.1\n  4    14 ms    14 ms    14 ms  198.51.100.1\n  5    14 ms    14 ms    14 ms  198.51.100.2\n  6  198.51.100.2  reports: Destination net unreachable.\n\nTrace complete.'),
+                term('cmd', 'C:\\Users\\user> tracert -d 11.22.33.44\n\nTracing route to 11.22.33.44 over a maximum of 30 hops\n\n  1     8 ms     4 ms     4 ms  192.168.10.1\n  2     *        6 ms     6 ms  81.32.5.1\n  3    10 ms    10 ms    10 ms  81.32.0.1\n  4    14 ms    14 ms    14 ms  198.51.100.1\n  5    14 ms    14 ms    14 ms  198.51.100.2\n  6  198.51.100.2  reports: Destination net unreachable.\n\nTrace complete.'),
                 tip('Por dónde empezar', 'El último salto que responde es el último que funciona: el problema está entre él y el siguiente. Mira la tabla de rutas (`show ip route`, `ip route`) y los filtros (ACL, nftables) de ese router.'),
                 exercise('¿Dónde se corta?', 'En el laboratorio «Bastionado: ACL, nftables y sshd», lanza `traceroute -n 172.20.0.10` desde ALUMNO. ¿En qué salto se corta y por qué?', 'El salto 1 es GW (192.168.20.1) respondiendo «tiempo excedido». En el salto 2 el propio GW responde `!X` en las tres sondas: su ACL A-SERVIDORES en g0/2 no deja pasar el ICMP de ALUMNO (solo el de 192.168.10.0/24). Desde ADMIN, el mismo traceroute llega hasta 172.20.0.10.'),
             ],
@@ -21951,7 +22118,7 @@ const DNS_DOCS = [
             h('nslookup interactivo'),
             p('Sin argumentos, `nslookup` entra en su **modo interactivo**, en la Terminal GNU/Linux y en la Terminal Windows: muestra el indicador `>` y cada línea es un nombre (o una dirección IP, que busca en la zona inversa) o una orden. `set type=mx` (también `set q=ns`, `set type=soa`…) cambia el tipo de registro, `server` cambia el servidor DNS, `set debug` muestra cada respuesta por secciones, `set all` las opciones y `exit` vuelve a la terminal. `nslookup - 192.168.10.2` entra preguntando a ese servidor, y fuera del modo interactivo vale `nslookup -type=mx aula.lab`.'),
             term('shell', 'alumno@pc1:~$ nslookup\n> www\nServer:\t\t192.168.10.2\nAddress:\t192.168.10.2#53\n\nwww.aula.lab\tcanonical name = srv.aula.lab.\nName:\tsrv.aula.lab\nAddress: 192.168.10.2\n\n> set type=mx\n> aula.lab\nServer:\t\t192.168.10.2\nAddress:\t192.168.10.2#53\n\naula.lab\tmail exchanger = 10 srv.aula.lab.\n\n> exit'),
-            term('cmd', 'C:\\home\\alumno> nslookup\nDefault Server:  srv.aula.lab\nAddress:  192.168.10.2\n\n> set type=ns\n> aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\naula.lab\tnameserver = srv.aula.lab\n\n> exit'),
+            term('cmd', 'C:\\Users\\user> nslookup\nDefault Server:  srv.aula.lab\nAddress:  192.168.10.2\n\n> set type=ns\n> aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\naula.lab\tnameserver = srv.aula.lab\n\n> exit'),
             tip('El nombre del servidor', 'Windows nombra el servidor por su registro PTR: con la zona inversa de aula.lab muestra srv.aula.lab; sin ella, «UnKnown». Ubuntu muestra siempre la dirección IP (o el nombre que se le dio con `server`).'),
             h('Los modos de funcionamiento'),
             p('Un mismo servidor puede cumplir varias funciones a la vez. Cada bloque tiene su interruptor; lo habitual en un aula es **Autoritativo** para la zona propia y **Recursivo** con **Caché** para los equipos de la red.'),
@@ -22380,11 +22547,11 @@ const SAMBA_DOCS = [
             p('El panel y la terminal son lo mismo: lo que se comparte en uno aparece en el otro.'),
             table(['Orden', 'Qué hace'], [
                 ['net share', 'Lista IPC$ y los recursos.'],
-                ['net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL /remark:"Mis documentos"', 'Comparte la carpeta como «docs» con control total para Todos. Sin `/grant`, solo lectura.'],
+                ['net share docs=C:\\Users\\user\\docs /grant:everyone,FULL /remark:"Mis documentos"', 'Comparte la carpeta como «docs» con control total para Todos. Sin `/grant`, solo lectura.'],
                 ['net share docs', 'El detalle de un recurso: carpeta, comentario y permiso.'],
-                ['net share docs /delete · net share C:\\home\\alumno\\docs /delete', 'Deja de compartirlo, por nombre o por carpeta. La carpeta no se borra.'],
+                ['net share docs /delete · net share C:\\Users\\user\\docs /delete', 'Deja de compartirlo, por nombre o por carpeta. La carpeta no se borra.'],
             ]),
-            term('cmd', 'C:\\>net share\n\nShare name   Resource                        Remark\n\n-------------------------------------------------------------------------------\nIPC$                                         Remote IPC\ndocs         C:\\home\\alumno\\docs             Mis documentos\nThe command completed successfully.'),
+            term('cmd', 'C:\\>net share\n\nShare name   Resource                        Remark\n\n-------------------------------------------------------------------------------\nIPC$                                         Remote IPC\ndocs         C:\\Users\\user\\docs              Mis documentos\nThe command completed successfully.'),
             h('Usarlo desde otro equipo'),
             table(['Desde', 'Orden'], [
                 ['GNU/Linux (smbclient)', '`smbclient -L //pc0 -N` lista los recursos; `smbclient //pc0/docs -N -c \'put nota.txt\'` sube un archivo.'],
@@ -22398,7 +22565,7 @@ const SAMBA_DOCS = [
                 ['NT_STATUS_BAD_NETWORK_NAME · System error 67', 'El recurso no existe o se borró su carpeta.'],
             ]),
             tip('En la configuración general', '**Configuración → Laboratorio actual** tiene la casilla **Compartir archivos e impresoras para redes Microsoft (Windows)** para PC, Servidor y Router GNU/Linux, marcada por defecto. Desmarcada, los equipos de esa red no la ofrecen y no comparten nada.'),
-            exercise('De Windows a GNU/Linux', 'Con un PC Windows y un PC GNU/Linux en la misma red, comparte en Windows la carpeta C:\\home\\alumno\\docs para que el PC GNU/Linux pueda dejar archivos en ella.', 'En Windows: marca la casilla en Configuración, `md C:\\home\\alumno\\docs` y `net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL` (o Servicios → SMB con Todos: Control total). En GNU/Linux: `sudo apt install smbclient` y `smbclient //NOMBRE/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\home\\alumno\\docs` en Windows lo muestra.'),
+            exercise('De Windows a GNU/Linux', 'Con un PC Windows y un PC GNU/Linux en la misma red, comparte en Windows la carpeta C:\\Users\\user\\docs para que el PC GNU/Linux pueda dejar archivos en ella.', 'En Windows: marca la casilla en Configuración, `md C:\\Users\\user\\docs` y `net share docs=C:\\Users\\user\\docs /grant:everyone,FULL` (o Servicios → SMB con Todos: Control total). En GNU/Linux: `sudo apt install smbclient` y `smbclient //NOMBRE/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\Users\\user\\docs` en Windows lo muestra.'),
         ],
     },
 ];
@@ -22430,7 +22597,7 @@ const NETFIX_DOCS = {
                     links: [{ a: 'pc0', b: 'sw' }, { a: 'pc1', b: 'sw' }],
                 }, 'Two PCs joined by a switch on the same network: the minimum for them to see each other.'),
                 steps(['Place the devices', 'In the palette choose **PC** and click twice on the workspace (PC0 and PC1); then choose **Switch** and click between them.'], ['Plug in the cables', 'Choose **Cable**, click PC0, pick its port (FastEthernet0) and then the switch and a free port. The same with PC1. The cable type is chosen for you and the link lights turn green.'], ['Set the IP addresses', 'Double-click PC0 → **TCP/IP** → Static: 192.168.1.10 and mask 255.255.255.0. On PC1, 192.168.1.11.'], ['Test it', 'On PC0 → **Windows terminal**: `ping 192.168.1.11`.']),
-                term('cmd', 'C:\\home\\alumno> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
+                term('cmd', 'C:\\Users\\user> ping 192.168.1.11\n\nPinging 192.168.1.11 with 32 bytes of data:\n\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128\nReply from 192.168.1.11: bytes=32 time<1ms TTL=128'),
                 tip('Without building anything', '**Labs…** loads ready-made practicals, with their devices configured and their areas drawn. They are the best starting point for each topic in this help.'),
                 h('Top bar'),
                 table(['Control', 'What it does'], [
@@ -23015,7 +23182,7 @@ const IOS_SEC_DOCS = [
             steps(['ISAKMP policy (phase 1)', '`crypto isakmp policy 10` with encryption, hash, authentication and DH group: `encryption aes 256`, `hash sha`, `authentication pre-share`, `group 5`.'], ['Shared key', '`crypto isakmp key Netfix-VPN-2026 address 81.33.5.2` (the other site’s public IP address).'], ['Transform-set (phase 2)', '`crypto ipsec transform-set TS-AES esp-aes 256 esp-sha-hmac`.'], ['Interesting traffic', 'An extended ACL from your LAN to theirs. On the other site, the same reversed (mirror ACL).'], ['Crypto map', '`crypto map VPN 10 ipsec-isakmp` with `set peer`, `set transform-set` and `match address`, and apply it with `crypto map VPN` on the public interface.']),
             code('crypto isakmp policy 10\n encryption aes 256\n hash sha\n authentication pre-share\n group 5\ncrypto isakmp key Netfix-VPN-2026 address 81.33.5.2\ncrypto ipsec transform-set TS-AES esp-aes 256 esp-sha-hmac\nip access-list extended VPN\n permit ip 192.168.10.0 0.0.0.255 192.168.20.0 0.0.0.255\ncrypto map VPN 10 ipsec-isakmp\n set peer 81.33.5.2\n set transform-set TS-AES\n match address VPN\ninterface GigabitEthernet0/1\n crypto map VPN'),
             check('Check it', 'Ping from one LAN to the other: the first ones are lost while it negotiates. Then the IKE SA is in **QM_IDLE** and the encaps/decaps counters go up.'),
-            term('cmd', 'C:\\home\\alumno> ping -n 4 192.168.20.10\nPinging 192.168.20.10 with 32 bytes of data:\nRequest timed out.\nRequest timed out.\nReply from 192.168.20.10: bytes=32 time<1ms TTL=126\nReply from 192.168.20.10: bytes=32 time<1ms TTL=126'),
+            term('cmd', 'C:\\Users\\user> ping -n 4 192.168.20.10\nPinging 192.168.20.10 with 32 bytes of data:\nRequest timed out.\nRequest timed out.\nReply from 192.168.20.10: bytes=32 time<1ms TTL=126\nReply from 192.168.20.10: bytes=32 time<1ms TTL=126'),
             term('ios', 'SEDE-A#show crypto isakmp sa\nIPv4 Crypto ISAKMP SA\ndst             src             state          conn-id status\n81.33.5.2       81.32.5.2       QM_IDLE           1001 ACTIVE\nSEDE-A#show crypto ipsec sa | include encaps|decaps\n   #pkts encaps: 3, #pkts encrypt: 3, #pkts digest: 3\n   #pkts decaps: 2, #pkts decrypt: 2, #pkts verify: 2'),
             table(['Command', 'What it shows'], [
                 ['show crypto isakmp sa', 'The IKE SA: QM_IDLE when it is ready, MM_NO_STATE if it fails.'],
@@ -23078,7 +23245,7 @@ const SERVICE_DOCS = {
                 ]),
                 h('Managing the services from the terminal'),
                 term('shell', 'admin@srv:~$ systemctl status named\n● named.service - BIND Domain Name Server\n     Loaded: loaded (/usr/lib/systemd/system/named.service; enabled; preset: enabled)\n     Active: active (running)\n     Main PID: 845 (named)'),
-                code('admin@srv:~$ sudo systemctl stop apache2\nadmin@srv:~$ sudo systemctl enable --now named\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 20\nadmin@srv:~$ ss -tulpn\n\nC:\\home\\admin> sc query W3SVC\nC:\\home\\admin> net stop DNS'),
+                code('admin@srv:~$ sudo systemctl stop apache2\nadmin@srv:~$ sudo systemctl enable --now named\nadmin@srv:~$ journalctl -u kea-dhcp4-server -n 20\nadmin@srv:~$ ss -tulpn\n\nC:\\Users\\Administrator> sc query W3SVC\nC:\\Users\\Administrator> net stop DNS'),
                 warn('Without sudo', 'systemctl start, stop, restart, enable and disable answer “Interactive authentication required”, as on Ubuntu: they need root privileges.'),
                 h('When a service does not start'),
                 p('On start, restart or reload, each service reads its files and checks them as on Ubuntu: Kea as `kea-dhcp4 -t`, BIND as `named-checkconf`, Apache as `apache2ctl configtest`, sshd as `sshd -t` and nftables as `nft -c`. If there is an error, the service does not start: the unit is left **failed** and the journal says why. A `reload` that fails keeps the previous configuration running, and reloading a stopped service is refused (“Unit named.service is not active.”).'),
@@ -23267,7 +23434,7 @@ const CLIENT_DOCS = {
                     ['Custom Client-ID (ASCII text)', 'The text as bytes, e.g. PC-profesor.'],
                 ]),
                 check('Check it', 'In the Windows Terminal, `ipconfig /all` shows the IP address, mask, gateway, DHCP server and lease dates. Then `ping` the gateway and a name.'),
-                term('cmd', 'C:\\home\\alumno> ipconfig /all\n\nFastEthernet0 Connection:(default port)\n\n   Connection-specific DNS Suffix..: aula.lab\n   Physical Address................: 0063.B914.34B5\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\n   DHCP Servers....................: 192.168.10.2\n   DNS Servers.....................: 192.168.10.2\nC:\\home\\alumno> ping -n 2 srv.aula.lab\nReply from 192.168.10.2: bytes=32 time<1ms TTL=64'),
+                term('cmd', 'C:\\Users\\user> ipconfig /all\n\nFastEthernet0 Connection:(default port)\n\n   Connection-specific DNS Suffix..: aula.lab\n   Physical Address................: 0063.B914.34B5\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\n   DHCP Servers....................: 192.168.10.2\n   DNS Servers.....................: 192.168.10.2\nC:\\Users\\user> ping -n 2 srv.aula.lab\nReply from 192.168.10.2: bytes=32 time<1ms TTL=64'),
                 p('In the GNU/Linux Terminal, the same with `ip -4 addr`, `ip route` (the gateway is the “default” route) and `cat /etc/resolv.conf` (the DNS server).'),
                 warn('Common mistakes', 'A mask different from the rest of the network: some devices “cannot be seen”. A gateway outside the PC’s network (or empty): it works inside the LAN but not beyond. Two devices with the **same IP address**: both fail now and then. A **169.254.x.x** address means DHCP did not answer: check the cable, the server and its pool.'),
                 exercise('From a hand-set PC to DHCP', 'In the «Server: DHCP, DNS, web, mail and SSH» lab, give PC0 the static IP address 192.168.10.20/24, gateway 192.168.10.1 and DNS 192.168.10.2; check with ping srv.aula.lab and then go back to DHCP.', 'IP Configuration → Static and fill in the four fields. In the Windows Terminal, `ping srv.aula.lab` answers from 192.168.10.2. Back to **DHCP**: `ipconfig` shows 192.168.10.100 again (the lease the server kept for it).'),
@@ -23341,11 +23508,11 @@ const CLIENT_DOCS = {
             summary: 'The cmd.exe commands on Windows PCs and servers: network, services and files.',
             markdownBase: MD,
             blocks: [
-                p('The **Windows Terminal** imitates cmd.exe. It checks the network (`ipconfig`, `ping`, `tracert`, `nslookup`), manages the services of a Windows Server (`sc`, `net`) and works with files. It works on the same file system as the device’s GNU/Linux Terminal: drive **C:\\** is the root /, folders are separated with \\ (or /) and names are case-insensitive.'),
-                p('It starts in the home folder of the GNU/Linux account (C:\\home\\alumno on PCs, C:\\home\\admin on servers) and respects its permissions: what that account cannot write gives “Access is denied.”.'),
+                p('The **Windows Terminal** imitates cmd.exe. It checks the network (`ipconfig`, `ping`, `tracert`, `nslookup`), manages the services of a Windows Server (`sc`, `net`) and works with files. Windows has its own disk, apart from GNU/Linux’s: drive **C:\\** holds `C:\\Windows\\System32\\drivers\\etc\\hosts`, `C:\\Users\\<user>` (with its `.ssh` folder if the device offers the SSH service) and `C:\\Program Files\\Git\\usr\\bin`, which is in %PATH% and has **nano.exe** and **vim.exe**. Folders are separated with \\ (or /), names are case-insensitive and `..` never goes above C:\\.'),
+                p('On a device with both systems, GNU/Linux sees that disk at **/mnt/c** (as WSL does): `ls /mnt/c/Users`, `nano /mnt/c/Windows/System32/drivers/etc/hosts`. The terminal starts in C:\\Users\\user on PCs (C:\\Users\\Administrator on servers) and works with the permissions of the device’s GNU/Linux account: what that account cannot write gives “Access is denied.”.'),
                 h('The network commands, step by step'),
                 steps(['What is my address?', '`ipconfig` (with `/all`, also the MAC, DHCP server, DNS and lease dates).'], ['Do I reach the gateway?', '`ping 192.168.10.1`: if it answers, the local network works.'], ['Do names resolve?', '`nslookup srv.aula.lab`: if it gives the IP address, DNS works.'], ['And a name without a dot?', '`ping pc2`: if the DNS does not know it, Windows asks by NetBIOS with a broadcast to its network (UDP 137). `nbtstat -n` shows its names, `nbtstat -a PC2` another device’s with its MAC, `nbtstat -c` the cache and `net view \\\\PC2` whether it has SMB.'], ['And without a DNS server?', '`ping pc1.local`: Windows has mDNS built in and asks for .local names on its network (a GNU/Linux device answers if it has avahi-daemon). `nslookup` does not use mDNS: it only asks the DNS.'], ['Which way does traffic go?', '`tracert 8.8.8.8`: one hop for each router on the way.']),
-                term('cmd', 'C:\\home\\alumno> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\home\\alumno> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
+                term('cmd', 'C:\\Users\\user> ipconfig\n   IPv4 Address....................: 192.168.10.100\n   Subnet Mask.....................: 255.255.255.0\n   Default Gateway.................: 192.168.10.1\nC:\\Users\\user> nslookup srv.aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\nName:    srv.aula.lab\nAddress:  192.168.10.2'),
                 h('All the commands'),
                 table(['Command', 'Use'], [
                     ['ipconfig [/all]', 'IP configuration; /all adds MAC, DHCP server, DNS and lease dates.'],
@@ -23360,7 +23527,7 @@ const CLIENT_DOCS = {
                     ['sc query [svc] · sc start|stop svc', 'Windows Server services (W3SVC, DNS, DHCPServer, SMTPSVC, POP3Svc, sshd).'],
                     ['net start [svc] · net stop svc', 'Same as sc, with net’s messages.'],
                     ['hostname · whoami · ver · cls · help', 'System and help.'],
-                    ['cd [folder] · cd .. · cd /d Z:\\folder', 'Changes folder; with no argument shows the current one. Each drive has its own folder: `cd Z:\\x` only changes Z:’s and `cd /d` also changes drive. UNC paths (\\\\srv\\share) cannot be the current folder.'],
+                    ['cd [folder] · cd .. · cd.. · cd\\ · cd /d Z:\\folder', 'Changes folder; with no argument shows the current one. As in cmd.exe, an internal command’s name may be glued to the path or switch, with no space: `cd..`, `cd\\`, `cd\\Windows`, `dir/b`, `dir..`, `md\\x`, `type\\path`. Each drive has its own folder: `cd Z:\\x` only changes Z:’s and `cd /d` also changes drive. UNC paths (\\\\srv\\share) cannot be the current folder.'],
                     ['net share · net share NAME=C:\\folder [/grant:everyone,READ|FULL] [/remark:"text"] · net share NAME /delete', 'Shares of this device (with “File and Printer Sharing” ticked in Settings; the same as Services → SMB): the folder must exist and Everyone gets in without a password, with read or full control.'],
                     ['net view \\\\SERVER · net use [Z: | *] \\\\srv\\share [/user:name] · net use Z: /delete', 'Shares of an SMB server and drives connected to them; `Z:` switches to the drive, which is used like C: (dir, cd, copy, type, > and >>).'],
                     ['dir [path] [/b]', 'Lists a folder (accepts * and ?); /b names only.'],
@@ -23368,11 +23535,13 @@ const CLIENT_DOCS = {
                     ['del [/q] file · copy [/y] source target · move [/y] source target · ren file name', 'Deletes, copies, moves or renames files (they accept * and ?; *.* is everything). del of a folder or of *.* asks first unless /q; copy and move ask before overwriting unless /y; copying several files onto one joins them; move also moves or renames folders.'],
                     ['type file', 'Shows a file’s contents.'],
                     ['edit file', 'Full-screen editor (Microsoft Edit): Ctrl+S saves, Ctrl+Q or Esc quits and asks if there are changes, Ctrl+F finds (F3 next), Ctrl+G goes to a line, Ctrl+Z/Ctrl+Y undo and redo. F10 (also on the touch bar) or Alt+letter open the File, Edit, View and Help menus: the highlighted letter of each menu and option picks it; arrows to move, Enter to choose and Esc to close. A file the account cannot write opens read-only.'],
+                    ['nano file · vim file', 'The same editors as on GNU/Linux (the same keys: in nano Ctrl+O saves and Ctrl+X quits; in vim `i` types, Esc and `:wq` save and quit), with Windows paths: `nano C:\\Windows\\System32\\drivers\\etc\\hosts`. They are in C:\\Program Files\\Git\\usr\\bin, which is in %PATH% (nano.exe and vim.exe work too).'],
+                    ['path · echo %PATH%', 'Shows %PATH%. On the line, %PATH%, %USERNAME%, %USERPROFILE%, %COMPUTERNAME%, %SystemRoot%, %windir% and %SystemDrive% are replaced; any other %NAME% stays as typed.'],
                     ['echo text · command > file · command >> file', 'echo prints the text (echo. a blank line); > saves any command’s output to a file, >> appends it and > nul discards it.'],
                 ]),
-                code('C:\\home\\alumno> ipconfig /all > red.txt\nC:\\home\\alumno> type red.txt\nC:\\home\\alumno> edit notas.txt\nC:\\home\\alumno> copy notas.txt \\tmp\nC:\\home\\alumno> ssh admin@192.168.10.2'),
-                p('What is created here shows up in the GNU/Linux Terminal (`cat ~/red.txt`, `nano ~/notas.txt`) and the other way round. Errors imitate Windows: “… is not recognized as an internal or external command”, “Request timed out.”, “FAILED 1060”…'),
-                tip('Prompt with date and time', 'The **Prompt with date and time stamp** box, at the foot of the terminal, switches the prompt to this PowerShell function’s: date and time in dark cyan, user@device in green, the path in yellow and $ (# for an administrator account), e.g. `Thu Oct 22 18:28:05 user@pc0 C:\\home\\alumno$`. It lets screenshots of a practical prove when they were taken. It is a general setting, off by default (also in Settings → General): it applies to every terminal of every device.'),
+                code('C:\\Users\\user> ipconfig /all > red.txt\nC:\\Users\\user> type red.txt\nC:\\Users\\user> edit notas.txt\nC:\\Users\\user> nano C:\\Windows\\System32\\drivers\\etc\\hosts\nC:\\Users\\user> cd..\nC:\\Users> cd\\\nC:\\> C:\\Users\\user> ssh admin@192.168.10.2'),
+                p('On a device with both systems, what is created here shows up in the GNU/Linux Terminal under /mnt/c (`cat /mnt/c/Users/user/red.txt`) and the other way round. Errors imitate Windows: “… is not recognized as an internal or external command”, “Request timed out.”, “FAILED 1060”…'),
+                tip('Prompt with date and time', 'The **Prompt with date and time stamp** box, at the foot of the terminal, switches the prompt to this PowerShell function’s: date and time in dark cyan, user@device in green, the path in yellow and $ (# for an administrator account), e.g. `Thu Oct 22 18:28:05 user@pc0 C:\\Users\\user$`. It lets screenshots of a practical prove when they were taken. It is a general setting, off by default (also in Settings → General): it applies to every terminal of every device.'),
                 warn('Common mistakes', 'Typing GNU/Linux commands (`ls`, `ip a`): cmd answers “is not recognized…”; use `dir` and `ipconfig`. Forgetting that `ipconfig /renew` needs the PC on DHCP. Trying to write outside your home folder: “Access is denied.”.'),
                 exercise('Save your configuration to a file', 'Save the output of `ipconfig /all` to `red.txt` and open it from the GNU/Linux Terminal of the same PC.', 'In cmd: `ipconfig /all > red.txt`. In the GNU/Linux Terminal: `cat ~/red.txt` (or `less ~/red.txt`). It is the same file: both terminals share the file system.'),
             ],
@@ -24293,7 +24462,7 @@ const INTERNET_DOCS = {
                     ['!H · “reports: Destination host unreachable.”', 'The router cannot find the device on its network.'],
                     ['!X (GNU/Linux) · !A (IOS)', 'Administratively prohibited: an ACL or a `reject` rule on the way.'],
                 ]),
-                term('cmd', 'C:\\home\\alumno> tracert -d 11.22.33.44\n\nTracing route to 11.22.33.44 over a maximum of 30 hops\n\n  1     8 ms     4 ms     4 ms  192.168.10.1\n  2     *        6 ms     6 ms  81.32.5.1\n  3    10 ms    10 ms    10 ms  81.32.0.1\n  4    14 ms    14 ms    14 ms  198.51.100.1\n  5    14 ms    14 ms    14 ms  198.51.100.2\n  6  198.51.100.2  reports: Destination net unreachable.\n\nTrace complete.'),
+                term('cmd', 'C:\\Users\\user> tracert -d 11.22.33.44\n\nTracing route to 11.22.33.44 over a maximum of 30 hops\n\n  1     8 ms     4 ms     4 ms  192.168.10.1\n  2     *        6 ms     6 ms  81.32.5.1\n  3    10 ms    10 ms    10 ms  81.32.0.1\n  4    14 ms    14 ms    14 ms  198.51.100.1\n  5    14 ms    14 ms    14 ms  198.51.100.2\n  6  198.51.100.2  reports: Destination net unreachable.\n\nTrace complete.'),
                 tip('Where to start', 'The last hop that answers is the last one that works: the problem is between it and the next. Look at that router’s routing table (`show ip route`, `ip route`) and filters (ACL, nftables).'),
                 exercise('Where does it stop?', 'In the «Hardening: ACL, nftables and sshd» lab, run `traceroute -n 172.20.0.10` from ALUMNO. At which hop does it stop and why?', 'Hop 1 is GW (192.168.20.1) answering “time exceeded”. At hop 2 GW itself answers `!X` to all three probes: its ACL A-SERVIDORES on g0/2 does not let ALUMNO’s ICMP through (only 192.168.10.0/24’s). From ADMIN, the same traceroute reaches 172.20.0.10.'),
             ],
@@ -24621,7 +24790,7 @@ const DNS_DOCS = [
             h('Interactive nslookup'),
             p('Without arguments, `nslookup` enters its **interactive mode**, in the GNU/Linux Terminal and in the Windows Terminal: it shows the `>` prompt and each line is a name (or an IP address, looked up in the reverse zone) or a command. `set type=mx` (also `set q=ns`, `set type=soa`…) changes the record type, `server` changes the DNS server, `set debug` shows each answer by sections, `set all` the options and `exit` goes back to the terminal. `nslookup - 192.168.10.2` starts asking that server, and outside the interactive mode `nslookup -type=mx aula.lab` works too.'),
             term('shell', 'alumno@pc1:~$ nslookup\n> www\nServer:\t\t192.168.10.2\nAddress:\t192.168.10.2#53\n\nwww.aula.lab\tcanonical name = srv.aula.lab.\nName:\tsrv.aula.lab\nAddress: 192.168.10.2\n\n> set type=mx\n> aula.lab\nServer:\t\t192.168.10.2\nAddress:\t192.168.10.2#53\n\naula.lab\tmail exchanger = 10 srv.aula.lab.\n\n> exit'),
-            term('cmd', 'C:\\home\\alumno> nslookup\nDefault Server:  srv.aula.lab\nAddress:  192.168.10.2\n\n> set type=ns\n> aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\naula.lab\tnameserver = srv.aula.lab\n\n> exit'),
+            term('cmd', 'C:\\Users\\user> nslookup\nDefault Server:  srv.aula.lab\nAddress:  192.168.10.2\n\n> set type=ns\n> aula.lab\nServer:  srv.aula.lab\nAddress:  192.168.10.2\n\naula.lab\tnameserver = srv.aula.lab\n\n> exit'),
             tip('The server name', 'Windows names the server by its PTR record: with the reverse zone of aula.lab it shows srv.aula.lab; without it, «UnKnown». Ubuntu always shows the IP address (or the name given with `server`).'),
             h('The operating modes'),
             p('The same server can do several jobs at once. Each block has its switch; the usual setup in a classroom is **Authoritative** for its own zone and **Recursive** with **Cache** for the devices of the network.'),
@@ -25050,11 +25219,11 @@ const SAMBA_DOCS = [
             p('The panel and the terminal are the same thing: what is shared in one shows in the other.'),
             table(['Command', 'What it does'], [
                 ['net share', 'Lists IPC$ and the shares.'],
-                ['net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL /remark:"My documents"', 'Shares the folder as “docs” with full control for Everyone. Without `/grant`, read only.'],
+                ['net share docs=C:\\Users\\user\\docs /grant:everyone,FULL /remark:"My documents"', 'Shares the folder as “docs” with full control for Everyone. Without `/grant`, read only.'],
                 ['net share docs', 'The detail of a share: folder, remark and permission.'],
-                ['net share docs /delete · net share C:\\home\\alumno\\docs /delete', 'Stops sharing it, by name or by folder. The folder is not deleted.'],
+                ['net share docs /delete · net share C:\\Users\\user\\docs /delete', 'Stops sharing it, by name or by folder. The folder is not deleted.'],
             ]),
-            term('cmd', 'C:\\>net share\n\nShare name   Resource                        Remark\n\n-------------------------------------------------------------------------------\nIPC$                                         Remote IPC\ndocs         C:\\home\\alumno\\docs             My documents\nThe command completed successfully.'),
+            term('cmd', 'C:\\>net share\n\nShare name   Resource                        Remark\n\n-------------------------------------------------------------------------------\nIPC$                                         Remote IPC\ndocs         C:\\Users\\user\\docs              My documents\nThe command completed successfully.'),
             h('Using it from another device'),
             table(['From', 'Command'], [
                 ['GNU/Linux (smbclient)', '`smbclient -L //pc0 -N` lists the shares; `smbclient //pc0/docs -N -c \'put nota.txt\'` uploads a file.'],
@@ -25068,7 +25237,7 @@ const SAMBA_DOCS = [
                 ['NT_STATUS_BAD_NETWORK_NAME · System error 67', 'The share does not exist or its folder was deleted.'],
             ]),
             tip('In the general settings', '**Settings → Current lab** has the **File and Printer Sharing for Microsoft Networks (Windows)** box for PC, Server and GNU/Linux router, ticked by default. Unticked, the devices of that network do not offer it and share nothing.'),
-            exercise('From Windows to GNU/Linux', 'With a Windows PC and a GNU/Linux PC on the same network, share the folder C:\\home\\alumno\\docs on Windows so that the GNU/Linux PC can leave files in it.', 'On Windows: tick the box in Settings, `md C:\\home\\alumno\\docs` and `net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL` (or Services → SMB with Everyone: Full Control). On GNU/Linux: `sudo apt install smbclient` and `smbclient //NAME/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\home\\alumno\\docs` on Windows shows it.'),
+            exercise('From Windows to GNU/Linux', 'With a Windows PC and a GNU/Linux PC on the same network, share the folder C:\\Users\\user\\docs on Windows so that the GNU/Linux PC can leave files in it.', 'On Windows: tick the box in Settings, `md C:\\Users\\user\\docs` and `net share docs=C:\\Users\\user\\docs /grant:everyone,FULL` (or Services → SMB with Everyone: Full Control). On GNU/Linux: `sudo apt install smbclient` and `smbclient //NAME/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\Users\\user\\docs` on Windows shows it.'),
         ],
     },
 ];
@@ -25107,7 +25276,7 @@ const NAMES_DOCS = [
                 ['No lo usan', 'nslookup, host y dig (preguntan al servidor DNS)', 'nslookup (pregunta al servidor DNS)'],
             ]),
             term('shell', "alumno@PC0:~$ getent hosts pc0\n127.0.1.1       PC0\nalumno@PC0:~$ echo '192.168.1.20 nas.aula.lab nas' | sudo tee -a /etc/hosts\nalumno@PC0:~$ ping -c 1 NAS\nPING NAS (192.168.1.20) 56(84) bytes of data."),
-            term('cmd', 'C:\\home\\alumno> echo 192.168.1.20 nas>> C:\\Windows\\System32\\drivers\\etc\\hosts\nC:\\home\\alumno> ping -n 1 NAS\n\nPinging NAS [192.168.1.20] with 32 bytes of data:\nReply from 192.168.1.20: bytes=32 time<1ms TTL=64'),
+            term('cmd', 'C:\\Users\\user> echo 192.168.1.20 nas>> C:\\Windows\\System32\\drivers\\etc\\hosts\nC:\\Users\\user> ping -n 1 NAS\n\nPinging NAS [192.168.1.20] with 32 bytes of data:\nReply from 192.168.1.20: bytes=32 time<1ms TTL=64'),
             tip('Un PC con los dos sistemas', 'Si un equipo tiene terminal GNU/Linux y Windows, cada uno lee su fichero: una línea añadida a /etc/hosts no la ve Windows, y al revés.'),
             h('Orden en Windows'),
             list('Su propio nombre y localhost, que responde el cliente DNS de Windows; después el fichero **C:\\Windows\\System32\\drivers\\etc\\hosts** (no el /etc/hosts de GNU/Linux).', 'Si el nombre acaba en **.local**: mDNS (y, si nadie responde, el DNS).', 'El **DNS**, con el sufijo de búsqueda: `ping srv` pregunta srv.aula.lab si el DHCP dio el dominio aula.lab.', 'Si el DNS no lo conoce y el nombre es de **una etiqueta**: **LLMNR y NetBIOS a la vez**. Gana la respuesta LLMNR; la de NetBIOS solo cuenta si LLMNR no encuentra nada.', 'Con un **servidor WINS** (nodo h), NetBIOS le pregunta antes por unicast, que cruza routers; si no tiene el nombre, LLMNR y el broadcast, como antes.'),
@@ -25207,7 +25376,7 @@ const NAMES_DOCS = [
                 ['Not used by', 'nslookup, host and dig (they ask the DNS server)', 'nslookup (it asks the DNS server)'],
             ]),
             term('shell', "alumno@PC0:~$ getent hosts pc0\n127.0.1.1       PC0\nalumno@PC0:~$ echo '192.168.1.20 nas.aula.lab nas' | sudo tee -a /etc/hosts\nalumno@PC0:~$ ping -c 1 NAS\nPING NAS (192.168.1.20) 56(84) bytes of data."),
-            term('cmd', 'C:\\home\\alumno> echo 192.168.1.20 nas>> C:\\Windows\\System32\\drivers\\etc\\hosts\nC:\\home\\alumno> ping -n 1 NAS\n\nPinging NAS [192.168.1.20] with 32 bytes of data:\nReply from 192.168.1.20: bytes=32 time<1ms TTL=64'),
+            term('cmd', 'C:\\Users\\user> echo 192.168.1.20 nas>> C:\\Windows\\System32\\drivers\\etc\\hosts\nC:\\Users\\user> ping -n 1 NAS\n\nPinging NAS [192.168.1.20] with 32 bytes of data:\nReply from 192.168.1.20: bytes=32 time<1ms TTL=64'),
             tip('A PC with both systems', 'If a device has a GNU/Linux and a Windows terminal, each reads its own file: a line added to /etc/hosts is not seen by Windows, and the other way round.'),
             h('Order on Windows'),
             list('Its own name and localhost, which the Windows DNS client answers; then the **C:\\Windows\\System32\\drivers\\etc\\hosts** file (not GNU/Linux’s /etc/hosts).', 'If the name ends in **.local**: mDNS (and, if nobody answers, the DNS).', 'The **DNS**, with the search suffix: `ping srv` asks for srv.aula.lab if DHCP gave the domain aula.lab.', 'If the DNS does not know it and the name is **single-label**: **LLMNR and NetBIOS at once**. The LLMNR answer wins; the NetBIOS one only counts if LLMNR finds nothing.', 'With a **WINS server** (h-node), NetBIOS asks it first by unicast, which crosses routers; if it does not have the name, LLMNR and the broadcast, as before.'),
@@ -32793,7 +32962,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.46.0",
+    "version": "0.47.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/infogerman/netfix",
@@ -43733,154 +43902,6 @@ function smbPath(path) {
 
 return { SMB_PORT, ANONYMOUS, smbCall, smbPath };
 })();
-__m["shells/win-path.js"] = (() => {
-/** C:\home\alumno for /home/alumno. */
-function toWindowsPath(linux) {
-    return `C:\\${linux.split('/').filter(Boolean).join('\\')}`;
-}
-/**
- * Words (double quotes group and are removed) and the last > or >> outside quotes, followed by its file name
- * (`nul` discards the output; `2>` sends errors, which are not told apart here, so it is ignored). A > with no
- * file name is a syntax error.
- */
-function splitCmdLine(line) {
-    const words = [];
-    let word = null;
-    let quoted = false;
-    let redirect = null;
-    let target = false;
-    let missing = false;
-    let text = '';
-    const flush = () => {
-        if (word === null)
-            return;
-        if (target && redirect) {
-            redirect.path = word;
-            target = false;
-        }
-        else
-            words.push(word);
-        word = null;
-    };
-    for (let i = 0; i < line.length; i++) {
-        const ch = line[i] ?? '';
-        if (ch === '"') {
-            quoted = !quoted;
-            word ??= '';
-            if (!target)
-                text += ch;
-            continue;
-        }
-        if (!quoted && ch === '>') {
-            const stderr = word === '2' && !/\s/.test(line[i - 1] ?? ' ') && (i < 2 || /\s/.test(line[i - 2] ?? ' '));
-            if (stderr) {
-                word = null;
-                text = text.slice(0, -1);
-            }
-            else
-                flush();
-            if (target)
-                missing = true;
-            const append = line[i + 1] === '>';
-            if (append)
-                i++;
-            redirect = { path: '', append, stderr };
-            target = true;
-            continue;
-        }
-        if (!quoted && /\s/.test(ch)) {
-            flush();
-            if (!target)
-                text += ch;
-            continue;
-        }
-        word = (word ?? '') + ch;
-        if (!target)
-            text += ch;
-    }
-    flush();
-    if (redirect && (!redirect.path || missing))
-        return { words, redirect: null, text, error: true };
-    const out = redirect && !redirect.stderr ? { path: redirect.path, append: redirect.append } : null;
-    return { words, redirect: out, text, error: false };
-}
-/**
- * cmd.exe wildcards: * any run of characters, ? one character, case-insensitive; *.* is every name and a final .*
- * also matches names without a dot. Linear backtracking on the last *, never exponential.
- */
-function wildMatch(pattern, name) {
-    if (pattern === '*.*')
-        return true;
-    if (pattern.endsWith('.*') && glob(pattern.slice(0, -2).toLowerCase(), name.toLowerCase()))
-        return true;
-    return glob(pattern.toLowerCase(), name.toLowerCase());
-}
-function glob(p, s) {
-    let i = 0;
-    let j = 0;
-    let star = -1;
-    let mark = 0;
-    while (j < s.length) {
-        if (i < p.length && (p[i] === '?' || p[i] === s[j])) {
-            i++;
-            j++;
-        }
-        else if (i < p.length && p[i] === '*') {
-            star = i++;
-            mark = j;
-        }
-        else if (star >= 0) {
-            i = star + 1;
-            j = ++mark;
-        }
-        else
-            return false;
-    }
-    while (p[i] === '*')
-        i++;
-    return i === p.length;
-}
-function hasWildcard(name) {
-    return /[*?]/.test(name);
-}
-/** The entry of `dir` whose name matches `name` exactly or, failing that, without regard to case. */
-function matchEntry(fs, dir, name, cred) {
-    if (fs.tryLookup(`${dir === '/' ? '' : dir}/${name}`, cred))
-        return name;
-    try {
-        return fs.readdir(dir, cred).find((n) => n.toLowerCase() === name.toLowerCase()) ?? name;
-    }
-    catch {
-        return name;
-    }
-}
-/** Linux path of a Windows path typed in the folder `cwd` (a Linux path). */
-function resolveWinPath(fs, cwd, input, cred) {
-    let rest = input.replace(/\//g, '\\');
-    let parts = rest.startsWith('\\') ? [] : cwd.split('/').filter(Boolean);
-    const drive = /^([A-Za-z]):(.*)$/.exec(rest);
-    if (drive) {
-        if ((drive[1] ?? '').toUpperCase() !== 'C')
-            return { ok: false, error: 'drive' };
-        rest = drive[2] ?? '';
-        // "C:" alone or "C:name" is relative to the current folder of the drive, as in cmd.exe.
-        parts = rest.startsWith('\\') ? [] : cwd.split('/').filter(Boolean);
-    }
-    for (const seg of rest.split('\\')) {
-        if (seg === '' || seg === '.')
-            continue;
-        if (seg === '..') {
-            parts.pop();
-            continue;
-        }
-        const dir = `/${parts.join('/')}`;
-        parts.push(matchEntry(fs, dir, seg.replace(/[. ]+$/, '') || seg, cred));
-    }
-    return { ok: true, path: `/${parts.join('/')}` };
-}
-
-return { toWindowsPath, splitCmdLine, wildMatch, hasWildcard, resolveWinPath };
-})();
 __m["shells/smbclient-cmds.js"] = (() => {
 const { smbCall, smbPath } = __m["clients/smb-client.js"];
 const { hasWildcard, wildMatch } = __m["shells/win-path.js"];
@@ -45179,6 +45200,54 @@ function importFiles(fs, records) {
 
 return { exportFiles, validFileRecords, importFiles };
 })();
+__m["shells/win-system.js"] = (() => {
+/**
+ * The Windows disk of a device, apart from GNU/Linux: C:\ is /mnt/c of its file system, so on a device with both
+ * systems GNU/Linux reaches it there (as in WSL). It holds Windows' hosts file, C:\Users\<user> (with .ssh when the
+ * device runs the SSH service) and Git for Windows' usr\bin, in %PATH%, with the same nano and vim as GNU/Linux.
+ */
+const { runsServices } = __m["devices/kinds.js"];
+const { BINARY_MARK } = __m["bash/path.js"];
+const { WIN_ROOT } = __m["shells/win-path.js"];
+const { seedWindowsHosts } = __m["shells/hosts-file.js"];
+const GIT_BIN = `${WIN_ROOT}/Program Files/Git/usr/bin`;
+/** %PATH% of the terminal: Windows' folders, then Git's usr\bin (nano.exe, vim.exe). */
+const WIN_PATH = 'C:\\Windows\\system32;C:\\Windows;C:\\Program Files\\Git\\usr\\bin';
+/** The programs of Git's usr\bin: the editors GNU/Linux has, on Windows paths. */
+const WIN_EDITORS = ['nano', 'vim'];
+/** The Windows account a terminal opens with: Administrator on a Server, user on a PC. */
+const defaultWindowsUser = (kind) => (runsServices(kind) ? 'Administrator' : 'user');
+const usersDir = (user) => `${WIN_ROOT}/Users/${user}`;
+/** The account a Windows user works as: the GNU/Linux one with its name (lower case), else the device's main one. */
+function windowsAccount(users, user, main) {
+    return users.find((u) => u.name === user.toLowerCase()) ?? users.find((u) => u.name === main) ?? users[0];
+}
+/** A folder, unless something is already there (a saved or edited disk keeps what it has). */
+function folder(fs, path, mode, owner) {
+    if (!fs.tryLookup(path, undefined, false))
+        fs.seed(path, { kind: 'dir' }, mode, owner?.uid ?? 0, owner?.gid ?? 0);
+}
+/** Lays out C:\ (idempotent): what is there already is never replaced, and a non-folder at /mnt/c is left alone. */
+function seedWindowsDisk(fs, user, owner, sshService) {
+    const root = fs.tryLookup(WIN_ROOT, undefined, false);
+    if (root && root.kind !== 'dir')
+        return;
+    seedWindowsHosts(fs);
+    folder(fs, `${WIN_ROOT}/Users`, 0o755);
+    folder(fs, usersDir(user), 0o755, owner);
+    if (sshService)
+        folder(fs, `${usersDir(user)}/.ssh`, 0o700, owner);
+    folder(fs, GIT_BIN, 0o755);
+    for (const e of WIN_EDITORS) {
+        const exe = `${GIT_BIN}/${e}.exe`;
+        // The same program as GNU/Linux's (bash runs it from /mnt/c too).
+        if (!fs.tryLookup(exe, undefined, false))
+            fs.seed(exe, { kind: 'file', content: `${BINARY_MARK}${e}\n` }, 0o755);
+    }
+}
+
+return { GIT_BIN, WIN_PATH, WIN_EDITORS, defaultWindowsUser, usersDir, windowsAccount, seedWindowsDisk };
+})();
 __m["shells/host-system.js"] = (() => {
 /** Per-host Ubuntu system: file system (rootfs + generated config + web root + user files), accounts and programs. */
 const { NSSWITCH, seededNsswitch } = __m["shells/nsswitch.js"];
@@ -45204,6 +45273,9 @@ const { linuxPrograms } = __m["shells/linux-programs.js"];
 const { formatIp } = __m["core/ip.js"];
 const { exportFiles, importFiles } = __m["bash/vfs-persist.js"];
 const { seedApache } = __m["services/apache/defaults.js"];
+const { hasSystem } = __m["net/device-apps.js"];
+const { unitActive } = __m["services/units.js"];
+const { defaultWindowsUser, seedWindowsDisk, windowsAccount } = __m["shells/win-system.js"];
 const { registerHostFs, registerHostFileReader } = __m["devices/host-fs.js"];
 const { seedKernel, sysctlFiles, applySysctlFile } = __m["shells/kernel-files.js"];
 const FIRST_UID = 1000;
@@ -45428,7 +45500,16 @@ function createSystem(host) {
     restoreRecords(fs, pendingFiles.get(host) ?? []);
     pendingFiles.delete(host);
     bootResolvedFrom(host, fs);
-    return { fs, env, mounted: new Set(), usersKey: users.map((u) => u.name).join(',') };
+    return { fs, env, mounted: new Set(), usersKey: users.map((u) => u.name).join(','), winDisk: false };
+}
+/** A device with Windows has C:\ at /mnt/c (GNU/Linux sees it there too), after the saved files: they win. */
+function refreshWindowsDisk(host, e) {
+    if (e.winDisk || !hasSystem(host, 'windows'))
+        return;
+    const user = defaultWindowsUser(host.kind);
+    const server = asServer(host);
+    seedWindowsDisk(e.fs, user, windowsAccount(hostUsers(host), user, defaultLinuxUser(host)), server !== undefined && unitActive(server.services, 'ssh'));
+    e.winDisk = true;
 }
 /** The (lazily created) system of a host, with its generated files and accounts brought up to date. */
 function hostSystem(host) {
@@ -45442,6 +45523,7 @@ function hostSystem(host) {
     }
     refreshUsers(host, e);
     refreshMounts(host, e);
+    refreshWindowsDisk(host, e);
     return e;
 }
 /** The user files of a host, for the topology file (undefined when there are none). */
@@ -49126,7 +49208,7 @@ __m["shells/win-files.js"] = (() => {
  * a folder or *.* and overwriting with copy or move ask first, as cmd.exe does (/Q and /Y skip the question).
  */
 const { basename, canAccess, dirname } = __m["bash/vfs.js"];
-const { hasWildcard, resolveWinPath, toWindowsPath } = __m["shells/win-path.js"];
+const { WIN_ROOT, hasWildcard, resolveWinPath, toWindowsPath } = __m["shells/win-path.js"];
 const { DENIED, NO_DRIVE, NO_FILE, NO_PATH, SYNTAX, WinFs, fsMessage, inDir } = __m["shells/win-fsctx.js"];
 const { dirCommand } = __m["shells/win-dir.js"];
 const { transfer } = __m["shells/win-copy.js"];
@@ -49138,7 +49220,7 @@ class WinFiles {
     /** A question waiting for the next line. */
     pending = null;
     constructor(fs, cred, home) {
-        this.ctx = new WinFs(fs, cred, fs.tryLookup(home, cred)?.kind === 'dir' ? home : '/');
+        this.ctx = new WinFs(fs, cred, fs.tryLookup(home, cred)?.kind === 'dir' ? home : WIN_ROOT);
     }
     /** The file system as this account sees it (the share commands copy to and from it). */
     get winFs() {
@@ -49339,10 +49421,17 @@ class WinFiles {
             return [fsMessage(err)];
         }
     }
-    /** edit file: the full-screen editor on the file (read-only when the account cannot write it). */
-    edit(args) {
+    /**
+     * edit file (Microsoft Edit), or nano / vim from Git's usr\bin: the full-screen editor on the file, read-only when the
+     * account cannot write it. nano and vim show and save Windows paths (and start on a new buffer without a file).
+     */
+    edit(args, editor = 'msedit') {
         const ctx = this.ctx;
-        const name = args.find((a) => !a.startsWith('/'));
+        const name = args.find((a) => !a.startsWith('/') || editor !== 'msedit');
+        if (!name && editor !== 'msedit') {
+            this.editing = { editor, path: '', content: '', exists: false, readOnly: false };
+            return [];
+        }
         if (!name)
             return [SYNTAX];
         const p = ctx.path(name);
@@ -49359,7 +49448,7 @@ class WinFiles {
         catch (err) {
             return [fsMessage(err)];
         }
-        this.editing = { editor: 'msedit', path: p, content, exists, readOnly: !this.writable(p, exists) };
+        this.editing = { editor, path: editor === 'msedit' ? p : toWindowsPath(p), content, exists, readOnly: !this.writable(p, exists) };
         return [];
     }
     writable(p, exists) {
@@ -49368,12 +49457,19 @@ class WinFiles {
             return false;
         return !(node.kind === 'file' && node.generated && !node.writeBack);
     }
-    /** Saves the file `edit` opened (only that one: the permissions of the account apply). */
+    /**
+     * Saves the file `edit` opened (only that one), or the Windows path nano / vim write to (another name too, from the
+     * current folder): the permissions of the account apply.
+     */
     saveEdit(path, content) {
-        if (path !== this.editing?.path)
+        const open = this.editing;
+        if (!open || (open.editor === 'msedit' && path !== open.path))
             return 'No editor is open for that file';
+        const target = open.editor === 'msedit' ? path : this.ctx.path(path);
+        if (target === null)
+            return NO_DRIVE;
         try {
-            this.ctx.fs.writeFile(path, content, this.ctx.cred);
+            this.ctx.fs.writeFile(target, content, this.ctx.cred);
             return null;
         }
         catch (err) {
@@ -49541,7 +49637,8 @@ return { WinDrives };
 __m["shells/windows.js"] = (() => {
 /**
  * Windows Command Prompt: ipconfig, ping, nslookup, netstat, arp, curl, ssh, sc / net (servers) and the file
- * commands (dir, cd, md, rd, del, copy, move, ren, type, echo, edit) on the device's Linux file system.
+ * commands (dir, cd, md, rd, del, copy, move, ren, type, echo, edit, nano, vim) on the device's Windows disk (C:\ is
+ * /mnt/c of its file system).
  */
 const { nbtstat } = __m["shells/win-nbt.js"];
 const { netUse, netView } = __m["shells/win-smb.js"];
@@ -49556,13 +49653,14 @@ const { dnsSearch } = __m["shells/dns-client.js"];
 const { startNslookup } = __m["shells/nslookup.js"];
 const { HOST_PORT } = __m["devices/host.js"];
 const { findUnit, unitActive, openPorts, UNITS } = __m["services/units.js"];
+const { toWindowsPath } = __m["shells/win-path.js"];
 const { runPing } = __m["net/ping.js"];
 const { tracert } = __m["shells/trace-cmds.js"];
 const { formatIp, formatMask, parseIp } = __m["core/ip.js"];
 const { formatMacCisco } = __m["core/mac.js"];
 const { formatLeaseTime } = __m["core/clock.js"];
 const { hostSystem, hostUsers, defaultLinuxUser } = __m["shells/host-system.js"];
-const { seedWindowsHosts } = __m["shells/hosts-file.js"];
+const { GIT_BIN, WIN_EDITORS, WIN_PATH, seedWindowsDisk, usersDir, windowsAccount } = __m["shells/win-system.js"];
 const { WinFiles } = __m["shells/win-files.js"];
 const { WinDrives } = __m["shells/win-drives.js"];
 const { splitCmdLine } = __m["shells/win-path.js"];
@@ -49575,13 +49673,15 @@ const MS = 1000;
 const HELP = [
     'Available commands:',
     '  arp -a | arp -d          Show / delete the ARP cache',
-    '  cd | dir | md | rd | del Folders and files (C:\\ is the Linux root /)',
+    '  cd | dir | md | rd | del Folders and files (cd.. and cd\\ work too)',
     '  copy | move | ren        Copy, move or rename files',
     '  Z: | cd /d Z:\\dir        Switch to a drive mapped with net use',
     '  net view | net use       SMB shares and mapped drives',
     '  net share                Shares of this device (File and Printer Sharing)',
     '  type <file>              Show a file',
     '  edit <file>              Edit a file full screen',
+    '  nano | vim <file>        The GNU/Linux editors (C:\\Program Files\\Git\\usr\\bin, in %PATH%)',
+    '  path                     Show %PATH%',
     '  echo <text> [> file]     Print text (> and >> write it to a file)',
     '  curl [-I] <url>          HTTP client',
     '  help | ?                 This help',
@@ -49625,6 +49725,8 @@ function ipconfig(host, all) {
     lines.push('');
     return lines;
 }
+/** Internal commands cmd.exe takes glued to a path or switch (cd.., cd\\, dir/w): the name ends at . \\ or /. */
+const GLUED = /^(\s*)(cd|chdir|dir|md|mkdir|rd|rmdir|del|erase|type)(?=[.\\/])/i;
 const NOT_PERMITTED = ['', 'The operation failed as no adapter is in the state permissible for', 'this operation.', ''];
 class WindowsShell extends BaseShell {
     osName = 'Windows';
@@ -49647,14 +49749,13 @@ class WindowsShell extends BaseShell {
     files() {
         if (this.fileCmds)
             return this.fileCmds;
-        const users = hostUsers(this.host);
-        const name = users.some((u) => u.name === this.user.toLowerCase()) ? this.user.toLowerCase() : defaultLinuxUser(this.host);
-        const account = users.find((u) => u.name === name) ?? users[0];
+        const account = windowsAccount(hostUsers(this.host), this.user, defaultLinuxUser(this.host));
         const cred = { uid: account?.uid ?? 0, gid: account?.gid ?? 0, groups: account?.groups ?? [] };
         this.admin = cred.uid === 0;
         const fs = hostSystem(this.host).fs;
-        seedWindowsHosts(fs);
-        this.fileCmds = new WinFiles(fs, cred, account?.home ?? '/');
+        const srv = this.server();
+        seedWindowsDisk(fs, this.user, account, srv !== undefined && unitActive(srv.services, 'ssh'));
+        this.fileCmds = new WinFiles(fs, cred, usersDir(this.user));
         return this.fileCmds;
     }
     sshStore(_cwd) {
@@ -49692,7 +49793,7 @@ class WindowsShell extends BaseShell {
         const files = this.files();
         if (files.pending)
             return files.answer(line);
-        const parsed = splitCmdLine(line.trim());
+        const parsed = splitCmdLine(this.expand(line).trim().replace(GLUED, '$1$2 '));
         if (parsed.error)
             return ['The syntax of the command is incorrect.'];
         const [first, ...args] = parsed.words;
@@ -49712,6 +49813,19 @@ class WindowsShell extends BaseShell {
         this.ns = null;
         this.question = null;
         return [];
+    }
+    /** %NAME% of the environment (any case); an unknown name stays as typed, as in cmd.exe. */
+    expand(line) {
+        const env = {
+            path: WIN_PATH, username: this.user, userprofile: toWindowsPath(usersDir(this.user)), computername: this.host.name.toUpperCase(),
+            systemroot: 'C:\\Windows', windir: 'C:\\Windows', systemdrive: 'C:',
+        };
+        return line.replace(/%([A-Za-z_]\w*)%/g, (all, name) => env[name.toLowerCase()] ?? all);
+    }
+    /** nano / vim (or nano.exe, vim.exe): found through %PATH% in Git's usr\bin while the program is there. */
+    editor(name) {
+        const e = WIN_EDITORS.find((x) => name === x || name === `${x}.exe`);
+        return e && this.files().winFs.kindOf(`${GIT_BIN}/${e}.exe`) === 'file' ? e : null;
     }
     nslookup(args) {
         const start = startNslookup(this.host, true, args);
@@ -49741,6 +49855,9 @@ class WindowsShell extends BaseShell {
         const share = smbFileCommand(this.host, this.files().winFs, name, paths);
         if (share)
             return this.files().ask(share);
+        const editor = this.editor(name);
+        if (editor)
+            return this.files().edit(paths, editor);
         const file = this.files().run(name, paths, text);
         if (file)
             return file;
@@ -49761,6 +49878,7 @@ class WindowsShell extends BaseShell {
             case 'help':
             case '?': return HELP;
             case 'cls': return [];
+            case 'path': return [`PATH=${WIN_PATH}`];
             case 'exit':
                 if (this.remote)
                     this.closed = true;
@@ -49927,9 +50045,10 @@ __m["shells/factory.js"] = (() => {
 const { runsServices } = __m["devices/kinds.js"];
 const { LinuxShell } = __m["shells/linux.js"];
 const { WindowsShell } = __m["shells/windows.js"];
+const { defaultWindowsUser } = __m["shells/win-system.js"];
 function defaultUser(host, os) {
     if (os === 'windows')
-        return runsServices(host.kind) ? 'Administrator' : 'user';
+        return defaultWindowsUser(host.kind);
     return runsServices(host.kind) ? 'admin' : 'alumno';
 }
 function createShell(host, os, user = defaultUser(host, os), remote = false) {
@@ -59703,7 +59822,7 @@ function winSharePage(server, base) {
     return [
         form(base, 'winshare', 'wsh-service', cards(section(t('dev.winshare'), t('wsh.intro'), check('enabled', winShareOn(server), t('wa.enabled')))), buttons()),
         cards(section(t('smb.shares'), '', table([t('smb.share'), t('smb.path'), t('smb.comment'), t('wsh.permission'), ''], rows, t('smb.noShares')))),
-        form(base, 'winshare', 'wsh-add', cards(section(t('smb.addShare'), t('wsh.hint'), row(t('smb.share'), text('name', '', { placeholder: 'docs' })), row(t('smb.path'), text('path', '', { placeholder: 'C:\\home\\alumno\\docs' })), row(t('smb.comment'), text('remark', '')), row(t('wsh.permission'), choose('access', 'read', [['read', t('wsh.read')], ['full', t('wsh.full')]])))), buttons(t('smb.add'))),
+        form(base, 'winshare', 'wsh-add', cards(section(t('smb.addShare'), t('wsh.hint'), row(t('smb.share'), text('name', '', { placeholder: 'docs' })), row(t('smb.path'), text('path', '', { placeholder: 'C:\\Users\\user\\docs' })), row(t('smb.comment'), text('remark', '')), row(t('wsh.permission'), choose('access', 'read', [['read', t('wsh.read')], ['full', t('wsh.full')]])))), buttons(t('smb.add'))),
     ];
 }
 function packageRows(base, list) {
@@ -69866,7 +69985,7 @@ const { PUBLISH_ERRORS: ERRORS, publishWinShare, unpublishWinShare } = __m["serv
 const accessLabel = (a) => t(a === 'full' ? 'wsh.full' : 'wsh.read');
 function addForm(host, app, msg) {
     const name = input({ placeholder: 'docs', 'aria-label': t('smb.share') });
-    const path = input({ placeholder: 'C:\\home\\alumno\\docs', 'aria-label': t('smb.path') });
+    const path = input({ placeholder: 'C:\\Users\\user\\docs', 'aria-label': t('smb.path') });
     const remark = input({ 'aria-label': t('smb.comment') });
     const access = select([['read', t('wsh.read')], ['full', t('wsh.full')]], 'read');
     const add = () => {

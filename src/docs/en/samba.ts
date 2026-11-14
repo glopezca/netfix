@@ -153,11 +153,11 @@ export const SAMBA_DOCS: readonly DocPage[] = [
       p('The panel and the terminal are the same thing: what is shared in one shows in the other.'),
       table(['Command', 'What it does'], [
         ['net share', 'Lists IPC$ and the shares.'],
-        ['net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL /remark:"My documents"', 'Shares the folder as “docs” with full control for Everyone. Without `/grant`, read only.'],
+        ['net share docs=C:\\Users\\user\\docs /grant:everyone,FULL /remark:"My documents"', 'Shares the folder as “docs” with full control for Everyone. Without `/grant`, read only.'],
         ['net share docs', 'The detail of a share: folder, remark and permission.'],
-        ['net share docs /delete · net share C:\\home\\alumno\\docs /delete', 'Stops sharing it, by name or by folder. The folder is not deleted.'],
+        ['net share docs /delete · net share C:\\Users\\user\\docs /delete', 'Stops sharing it, by name or by folder. The folder is not deleted.'],
       ]),
-      term('cmd', 'C:\\>net share\n\nShare name   Resource                        Remark\n\n-------------------------------------------------------------------------------\nIPC$                                         Remote IPC\ndocs         C:\\home\\alumno\\docs             My documents\nThe command completed successfully.'),
+      term('cmd', 'C:\\>net share\n\nShare name   Resource                        Remark\n\n-------------------------------------------------------------------------------\nIPC$                                         Remote IPC\ndocs         C:\\Users\\user\\docs              My documents\nThe command completed successfully.'),
       h('Using it from another device'),
       table(['From', 'Command'], [
         ['GNU/Linux (smbclient)', '`smbclient -L //pc0 -N` lists the shares; `smbclient //pc0/docs -N -c \'put nota.txt\'` uploads a file.'],
@@ -171,7 +171,7 @@ export const SAMBA_DOCS: readonly DocPage[] = [
         ['NT_STATUS_BAD_NETWORK_NAME · System error 67', 'The share does not exist or its folder was deleted.'],
       ]),
       tip('In the general settings', '**Settings → Current lab** has the **File and Printer Sharing for Microsoft Networks (Windows)** box for PC, Server and GNU/Linux router, ticked by default. Unticked, the devices of that network do not offer it and share nothing.'),
-      exercise('From Windows to GNU/Linux', 'With a Windows PC and a GNU/Linux PC on the same network, share the folder C:\\home\\alumno\\docs on Windows so that the GNU/Linux PC can leave files in it.', 'On Windows: tick the box in Settings, `md C:\\home\\alumno\\docs` and `net share docs=C:\\home\\alumno\\docs /grant:everyone,FULL` (or Services → SMB with Everyone: Full Control). On GNU/Linux: `sudo apt install smbclient` and `smbclient //NAME/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\home\\alumno\\docs` on Windows shows it.'),
+      exercise('From Windows to GNU/Linux', 'With a Windows PC and a GNU/Linux PC on the same network, share the folder C:\\Users\\user\\docs on Windows so that the GNU/Linux PC can leave files in it.', 'On Windows: tick the box in Settings, `md C:\\Users\\user\\docs` and `net share docs=C:\\Users\\user\\docs /grant:everyone,FULL` (or Services → SMB with Everyone: Full Control). On GNU/Linux: `sudo apt install smbclient` and `smbclient //NAME/docs -N -c \'put /etc/hostname linux.txt\'`; `dir C:\\Users\\user\\docs` on Windows shows it.'),
     ],
   },
 ];

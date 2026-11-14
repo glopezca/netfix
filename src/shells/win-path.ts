@@ -1,7 +1,7 @@
 /**
- * The Windows terminal works on the Linux file system of the same device: drive C:\ is the root /, folders are
- * separated by \ (or /) and names are matched without regard to case, as on Windows. Also the cmd.exe command
- * line (quotes and > / >> redirection) and its * ? wildcards.
+ * The Windows terminal has its own disk: drive C:\ is /mnt/c of the device's file system (where GNU/Linux sees it on a
+ * device with both systems, as in WSL), folders are separated by \ (or /) and names are matched without regard to
+ * case, as on Windows. Also the cmd.exe command line (quotes and > / >> redirection) and its * ? wildcards.
  */
 import type { Vfs, Cred } from '../bash/vfs.ts';
 
@@ -21,9 +21,19 @@ export interface CmdLine {
 
 export type WinResolve = { readonly ok: true; readonly path: string } | { readonly ok: false; readonly error: 'drive' };
 
-/** C:\home\alumno for /home/alumno. */
+/** Where drive C:\ is in the device's file system. */
+export const WIN_ROOT = '/mnt/c';
+const ROOT_PARTS = WIN_ROOT.split('/').filter(Boolean);
+
+/** The folders of a Linux path under C:\ (none for C:\ itself or a path outside it). */
+const winParts = (linux: string): string[] => {
+  const parts = linux.split('/').filter(Boolean);
+  return ROOT_PARTS.every((p, i) => parts[i] === p) ? parts.slice(ROOT_PARTS.length) : [];
+};
+
+/** C:\Users\user for /mnt/c/Users/user. */
 export function toWindowsPath(linux: string): string {
-  return `C:\\${linux.split('/').filter(Boolean).join('\\')}`;
+  return `C:\\${winParts(linux).join('\\')}`;
 }
 
 /**
@@ -106,19 +116,20 @@ function matchEntry(fs: Vfs, dir: string, name: string, cred: Cred): string {
 /** Linux path of a Windows path typed in the folder `cwd` (a Linux path). */
 export function resolveWinPath(fs: Vfs, cwd: string, input: string, cred: Cred): WinResolve {
   let rest = input.replace(/\//g, '\\');
-  let parts: string[] = rest.startsWith('\\') ? [] : cwd.split('/').filter(Boolean);
+  let parts: string[] = rest.startsWith('\\') ? [] : winParts(cwd);
   const drive = /^([A-Za-z]):(.*)$/.exec(rest);
   if (drive) {
     if ((drive[1] ?? '').toUpperCase() !== 'C') return { ok: false, error: 'drive' };
     rest = drive[2] ?? '';
     // "C:" alone or "C:name" is relative to the current folder of the drive, as in cmd.exe.
-    parts = rest.startsWith('\\') ? [] : cwd.split('/').filter(Boolean);
+    parts = rest.startsWith('\\') ? [] : winParts(cwd);
   }
   for (const seg of rest.split('\\')) {
     if (seg === '' || seg === '.') continue;
+    // .. never goes above C:\ (cmd.exe stays at the root).
     if (seg === '..') { parts.pop(); continue; }
-    const dir = `/${parts.join('/')}`;
+    const dir = [WIN_ROOT, ...parts].join('/');
     parts.push(matchEntry(fs, dir, seg.replace(/[. ]+$/, '') || seg, cred));
   }
-  return { ok: true, path: `/${parts.join('/')}` };
+  return { ok: true, path: [WIN_ROOT, ...parts].join('/') };
 }

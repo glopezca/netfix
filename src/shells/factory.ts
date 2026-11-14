@@ -4,9 +4,10 @@ import type { Host, HostOs } from '../devices/host.ts';
 import type { ShellSession } from './base.ts';
 import { LinuxShell } from './linux.ts';
 import { WindowsShell } from './windows.ts';
+import { defaultWindowsUser } from './win-system.ts';
 
 export function defaultUser(host: Host, os: HostOs): string {
-  if (os === 'windows') return runsServices(host.kind) ? 'Administrator' : 'user';
+  if (os === 'windows') return defaultWindowsUser(host.kind);
   return runsServices(host.kind) ? 'admin' : 'alumno';
 }
 

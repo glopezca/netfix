@@ -33,7 +33,7 @@ export const NAMES_DOCS: readonly DocPage[] = [
         ['Not used by', 'nslookup, host and dig (they ask the DNS server)', 'nslookup (it asks the DNS server)'],
       ]),
       term('shell', "alumno@PC0:~$ getent hosts pc0\n127.0.1.1       PC0\nalumno@PC0:~$ echo '192.168.1.20 nas.aula.lab nas' | sudo tee -a /etc/hosts\nalumno@PC0:~$ ping -c 1 NAS\nPING NAS (192.168.1.20) 56(84) bytes of data."),
-      term('cmd', 'C:\\home\\alumno> echo 192.168.1.20 nas>> C:\\Windows\\System32\\drivers\\etc\\hosts\nC:\\home\\alumno> ping -n 1 NAS\n\nPinging NAS [192.168.1.20] with 32 bytes of data:\nReply from 192.168.1.20: bytes=32 time<1ms TTL=64'),
+      term('cmd', 'C:\\Users\\user> echo 192.168.1.20 nas>> C:\\Windows\\System32\\drivers\\etc\\hosts\nC:\\Users\\user> ping -n 1 NAS\n\nPinging NAS [192.168.1.20] with 32 bytes of data:\nReply from 192.168.1.20: bytes=32 time<1ms TTL=64'),
       tip('A PC with both systems', 'If a device has a GNU/Linux and a Windows terminal, each reads its own file: a line added to /etc/hosts is not seen by Windows, and the other way round.'),
       h('Order on Windows'),
       list(
