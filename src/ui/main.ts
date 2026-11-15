@@ -34,7 +34,8 @@ import { allowsLab, allowsTab, lockedPrompt } from '../classroom/restrictions.ts
 import { forceTimestampPrompt } from '../shells/prompt-clock.ts';
 import type { DeviceKind } from '../net/topology.ts';
 import { STANDALONE, embedSession, evaluateFile } from '../classroom/embed.ts';
-import { checkMount, installApi } from './embed-api.ts';
+import { checkMount } from './embed-api.ts';
+import type { NetfixApi } from './embed-api.ts';
 import type { AppSession, EmbedHandle } from '../classroom/embed.ts';
 
 const BROWSER_STORE: KeyStore = { get: safeStorageGet, set: safeStorageSet };
@@ -372,7 +373,13 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology): App {
   return app;
 }
 
-installApi({
+/** The page's whole interface; `ui/boot.ts` starts it on `#app` (importing this module has no effects, R7). */
+export function startStandalone(mount: HTMLElement): App {
+  return start(mount, STANDALONE);
+}
+
+/** What `ui/boot.ts` publishes as `globalThis.netfix`. */
+export const NETFIX_API: NetfixApi = {
   embed: (mount, options): EmbedHandle => {
     checkMount(mount);
     const { session: s, topology } = embedSession(options);
@@ -393,7 +400,4 @@ installApi({
     };
   },
   evaluate: evaluateFile,
-});
-
-const mount = document.getElementById('app');
-if (mount && mount.dataset.embed === undefined) start(mount, STANDALONE);
+};

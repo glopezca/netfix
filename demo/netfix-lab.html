@@ -5493,40 +5493,48 @@ function isObject(v) {
 function configLines(v) {
     return v === undefined || (Array.isArray(v) && v.length <= MAX_CONFIG_LINES && v.every((l) => typeof l === 'string' && l.length <= MAX_CONFIG_LINE));
 }
+class TopologyFileError extends Error {
+    code;
+    constructor(code, message) {
+        super(message);
+        this.name = 'TopologyFileError';
+        this.code = code;
+    }
+}
 /** Validates untrusted JSON before building a topology from it. */
 function validateFile(data) {
     if (!isObject(data) || (data.format !== 'netfix' && data.format !== 'netsim') || (data.version !== 1 && data.version !== FILE_VERSION))
-        throw new Error(t('load.notNetfix'));
+        throw new TopologyFileError('not-netfix', t('load.notNetfix'));
     const { devices, links } = data;
     if (!Array.isArray(devices) || !Array.isArray(links))
-        throw new Error(t('load.incomplete'));
+        throw new TopologyFileError('incomplete', t('load.incomplete'));
     if (devices.length > MAX_DEVICES || links.length > MAX_DEVICES * 2)
-        throw new Error(t('load.tooBig', { max: MAX_DEVICES }));
+        throw new TopologyFileError('too-big', t('load.tooBig', { max: MAX_DEVICES }));
     for (const d of devices) {
         if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'].includes(String(d.kind)))
-            throw new Error(t('load.badDevice'));
+            throw new TopologyFileError('bad-device', t('load.badDevice'));
         if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string')
-            throw new Error(t('load.deviceData', { id: d.id }));
+            throw new TopologyFileError('device-data', t('load.deviceData', { id: d.id }));
         if (d.label.length > MAX_LABEL)
-            throw new Error(t('load.deviceData', { id: d.id }));
+            throw new TopologyFileError('device-data', t('load.deviceData', { id: d.id }));
         if (!configLines(d.config) || !(d.startup === null || configLines(d.startup)))
-            throw new Error(t('load.deviceConfig', { id: d.id }));
+            throw new TopologyFileError('device-config', t('load.deviceConfig', { id: d.id }));
     }
     for (const l of links) {
         if (!isObject(l) || !isObject(l.a) || !isObject(l.b) || [l.a.device, l.a.port, l.b.device, l.b.port].some((x) => typeof x !== 'string'))
-            throw new Error(t('load.badLink'));
+            throw new TopologyFileError('bad-link', t('load.badLink'));
     }
     let annotations;
     try {
         annotations = annotationsFromJson(data.annotations);
     }
     catch {
-        throw new Error(t('load.drawings'));
+        throw new TopologyFileError('drawings', t('load.drawings'));
     }
     return { ...data, annotations };
 }
 
-return { FILE_VERSION, MAX_DEVICES, validateFile };
+return { FILE_VERSION, MAX_DEVICES, TopologyFileError, validateFile };
 })();
 __m["core/hostname.js"] = (() => {
 /** Host name of a device derived from the name shown in the workspace (Equipo → Nombre). */
@@ -31015,13 +31023,15 @@ return { runSync };
 __m["bash/interp-types.js"] = (() => {
 /** Data shared by an interpreter and its subshells: the execution budget, the history and the job table. */
 const MAX_MS = 4000;
+// Measured: corpus + whole suite peak at 852 steps per run; 200k is ~235x that margin (~0.8 s of steps) and ends in Workers, where Date.now() never advances.
+const MAX_STEPS = 200_000;
 const MAX_OUTPUT = 4 * 1024 * 1024;
 const CHECK_EVERY = 256;
 function freshBudget() {
     return { steps: 0, deadline: Date.now() + MAX_MS, output: 0 };
 }
 
-return { MAX_MS, MAX_OUTPUT, CHECK_EVERY, freshBudget };
+return { MAX_MS, MAX_STEPS, MAX_OUTPUT, CHECK_EVERY, freshBudget };
 })();
 __m["bash/source.js"] = (() => {
 const { DiscardSignal } = __m["bash/types.js"];
@@ -31199,7 +31209,7 @@ const { SET_OPTIONS, SET_LETTERS, SHOPT_ON, SHOPT_OFF } = __m["bash/options.js"]
 
 const { makeCtx, ttyFds } = __m["bash/io.js"];
 const { runSync } = __m["bash/run-sync.js"];
-const { freshBudget, MAX_OUTPUT, CHECK_EVERY } = __m["bash/interp-types.js"];
+const { freshBudget, MAX_OUTPUT, MAX_STEPS, CHECK_EVERY } = __m["bash/interp-types.js"];
 const { runSourceText } = __m["bash/source.js"];
 const { inheritTraceLevel } = __m["bash/xtrace.js"];
 const { dynamicVariable, optionFlags, specialParameter } = __m["bash/specials.js"];
@@ -31341,7 +31351,7 @@ class Interp {
     // ------------------------------------------------------------ limits
     tick() {
         this.budget.steps++;
-        if (this.budget.steps % CHECK_EVERY === 0 && Date.now() > this.budget.deadline) {
+        if (this.budget.steps > MAX_STEPS || (this.budget.steps % CHECK_EVERY === 0 && Date.now() > this.budget.deadline)) {
             throw new AbortSignal(124, 'bash: Netfix: ejecución detenida tras 4 s (¿bucle infinito?)');
         }
     }
@@ -32964,10 +32974,10 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.47.1",
+    "version": "0.48.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
-    "repository": "https://github.com/infogerman/netfix",
+    "repository": "https://github.com/glopezca/netfix",
     "licenseMarkdown": "# Licencia y atribuciones\n\n- **Autoría:** Germán López Castro\n- **Repositorio:** <https://github.com/infogerman/netfix>\n\nNetfix usa dos licencias según el tipo de material, las dos con la misma idea de\n«compartir igual»: quien distribuya versiones modificadas debe publicarlas con la misma licencia.\n\n| Material | Licencia |\n|---|---|\n| Código fuente: `src/`, `tests/`, `scripts/`, configuración del proyecto y los archivos que genera el build | [GNU GPL v3.0 o posterior](https://www.gnu.org/licenses/gpl-3.0.html) (`GPL-3.0-or-later`) — texto completo en [`LICENSE`](LICENSE) |\n| Documentación e imágenes: `README.md`, `docs/`, capturas y textos de los laboratorios | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es) — [texto legal](https://creativecommons.org/licenses/by-sa/4.0/legalcode.es) |\n| `.claude/` (reglas y agentes de Everything Claude Code) | MIT, de sus autores (ver más abajo) |\n\nLa GPL es una licencia pensada para software: exige entregar el código fuente junto con\ncualquier versión distribuida (también la página HTML compilada) y protege el derecho de\nuso, estudio, modificación y redistribución. Creative Commons recomienda no usar sus licencias\npara código, por eso CC BY-SA 4.0 queda solo para la documentación. Las dos licencias son\ncompatibles en un sentido: el material CC BY-SA 4.0 puede incorporarse a obras GPLv3.\n\n## Aviso de copyright del código\n\n```\nNetfix — simulador de redes orientado a los servicios en red e Internet,\ncon un enfoque especial en las tareas realizadas desde sistemas operativos\nreales emulados. Ejecutable desde un navegador.\nCopyright (C) 2026 Germán López Castro\n\nThis program is free software: you can redistribute it and/or modify\nit under the terms of the GNU General Public License as published by\nthe Free Software Foundation, either version 3 of the License, or\n(at your option) any later version.\n\nThis program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\nMERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\nGNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License\nalong with this program.  If not, see <https://www.gnu.org/licenses/>.\n```\n\n## Atribución recomendada\n\nPara la documentación o las capturas:\n\n> «Netfix», de Germán López Castro (<https://github.com/infogerman/netfix>),\n> distribuido bajo licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).\n\nPara el software o una obra derivada:\n\n> Basado en «Netfix», de Germán López Castro (<https://github.com/infogerman/netfix>),\n> GPL-3.0-or-later. Cambios: …\n\n## Otras licencias y aportaciones\n\nEl autor puede licenciar Netfix con otros términos en productos propios (doble licencia); la versión pública sigue\nsiendo software libre con las licencias anteriores. Por eso las aportaciones de terceros solo se integran con un\nacuerdo de cesión de derechos: ver [CONTRIBUTING.md](CONTRIBUTING.md).\n\n## Componentes de terceros\n\n### Everything Claude Code (ECC)\n\nLas reglas y los agentes de la carpeta `.claude/` (`.claude/rules/`, `.claude/agents/`,\n`.claude/commands/`) proceden de\n[Everything Claude Code](https://github.com/affaan-m/everything-claude-code)\ny se mantienen bajo su licencia original **MIT**, © 2026 Affaan Mustafa.\nEl texto completo está en [`.claude/ECC-LICENSE`](.claude/ECC-LICENSE).\nLa licencia MIT es compatible con la GPLv3; la GPL y la CC BY-SA de este repositorio no se\naplican a esos archivos. Excepción: `.claude/rules/project/` contiene reglas propias de Netfix (por ejemplo, el modelo\nrecomendado para cada fase) y es documentación del proyecto, bajo CC BY-SA 4.0.\n\n### Marcas\n\nCisco, Cisco IOS y Packet Tracer son marcas de Cisco Systems, Inc. Microsoft y Windows son\nmarcas de Microsoft Corporation. Netfix es un proyecto educativo independiente, sin relación\ncon Cisco ni con Microsoft ni respaldado por ellas. Los símbolos de red de la interfaz son\ndibujos propios de este proyecto.\n"
 };
 
@@ -61846,11 +61856,11 @@ const PREFIX = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server',
 const MAX_DRAWING_ID = 999_999_999;
 const SETTLE_MS = 30_000;
 class Topology {
-    clock = new SimClock();
-    net = new Network(this.clock);
+    clock;
+    net;
     placed = new Map();
     /** The emulated Internet shared by every ISP cloud of this workspace. */
-    internet = makeInternet(this.net);
+    internet;
     nextSeed = 1;
     nextId = 1;
     /** Drawings of the workspace (replaced, never mutated). */
@@ -61864,6 +61874,12 @@ class Topology {
     /** The guided lab this workspace is, with the hints already shown. */
     mission;
     nextDrawing = 1;
+    /** `baseMs` pins the simulated wall-clock start (deterministic marking); omitted = Date.now(), as before. */
+    constructor(baseMs) {
+        this.clock = new SimClock(baseMs);
+        this.net = new Network(this.clock);
+        this.internet = makeInternet(this.net);
+    }
     /** Configuración → Laboratorio actual changed: every host re-reads what its lab offers (sharing sends its release). */
     setFeatures(next) {
         this.features = next;
@@ -61989,9 +62005,9 @@ class Topology {
         const web = { ...(this.webHideOff ? { webHideOff: true } : {}), ...(this.pkgsOff.length ? { pkgsOff: this.pkgsOff } : {}), ...(this.mission ? { mission: this.mission } : {}) };
         return { format: 'netfix', version: FILE_VERSION, devices, links, ...(this.annotations.length ? { annotations: this.annotations } : {}), ...features, ...web };
     }
-    static fromJSON(data) {
+    static fromJSON(data, baseMs) {
         const file = validateFile(data);
-        const topo = new Topology();
+        const topo = new Topology(baseMs);
         const labels = new Set(file.devices.map((d) => d.label));
         for (const d of file.devices) {
             const placed = topo.add(d.kind, d.x, d.y, { id: d.id, seed: d.seed, label: savedLabel(d, labels) });
@@ -65968,6 +65984,14 @@ const { resolveHost, httpRequest } = __m["shells/net-tools.js"];
 const { hostSystem } = __m["shells/host-system.js"];
 const { runSync } = __m["net/sync.js"];
 const { Session } = __m["ios/session.js"];
+const { ABOUT } = __m["docs/about-data.js"];
+const { FILE_VERSION } = __m["net/topology-file.js"];
+/**
+ * Bump when the meaning of a check or of the score changes (a different mark for the same file and checklist);
+ * not for new check types or fixes that leave existing marks alone. Stored with each result to explain old marks.
+ */
+const EVALUATION_VERSION = 1;
+const RUNTIME_INFO = { engineVersion: ABOUT.version, topologySchemaVersion: FILE_VERSION, evaluationVersion: EVALUATION_VERSION };
 const PING_COUNT = 3;
 const PING_TIMEOUT_MS = 2000;
 const HTTP_ERROR = 400;
@@ -66214,11 +66238,12 @@ function mark(file, checklist) {
         score: items.reduce((n, i) => n + (i.passed ? i.weight : 0), 0),
         max: items.reduce((n, i) => n + i.weight, 0),
         items,
+        runtime: RUNTIME_INFO,
         ...(t.mission ? { mission: { id: t.mission.id, hints: t.mission.hints.length, solution: t.mission.solution === true } } : {}),
     };
 }
 
-return { WORK_LIMIT, evaluate };
+return { EVALUATION_VERSION, RUNTIME_INFO, WORK_LIMIT, evaluate };
 })();
 __m["ui/preferences.js"] = (() => {
 /** General settings of this browser (Configuración → Generales): theme, the unsaved-changes question, the missions, language of the page. */
@@ -72986,7 +73011,7 @@ const { detectLocale, setLocale, LOCALE_STORAGE_KEY } = __m["i18n/locale.js"];
 const { allowsLab, allowsTab, lockedPrompt } = __m["classroom/restrictions.js"];
 const { forceTimestampPrompt } = __m["shells/prompt-clock.js"];
 const { STANDALONE, embedSession, evaluateFile } = __m["classroom/embed.js"];
-const { checkMount, installApi } = __m["ui/embed-api.js"];
+const { checkMount } = __m["ui/embed-api.js"];
 const BROWSER_STORE = { get: safeStorageGet, set: safeStorageSet };
 const TICK_MS = 250;
 const AUTOSAVE_DELAY_MS = 800;
@@ -73331,7 +73356,12 @@ function start(mount, s, topo) {
     app = new App(mount, s, topo);
     return app;
 }
-installApi({
+/** The page's whole interface; `ui/boot.ts` starts it on `#app` (importing this module has no effects, R7). */
+function startStandalone(mount) {
+    return start(mount, STANDALONE);
+}
+/** What `ui/boot.ts` publishes as `globalThis.netfix`. */
+const NETFIX_API = {
     embed: (mount, options) => {
         checkMount(mount);
         const { session: s, topology } = embedSession(options);
@@ -73353,10 +73383,21 @@ installApi({
         };
     },
     evaluate: evaluateFile,
-});
+};
+
+return { startStandalone, NETFIX_API };
+})();
+__m["ui/boot.js"] = (() => {
+/**
+ * Netfix's page entry (the build starts here): publishes `globalThis.netfix` and starts the standalone app on `#app`
+ * unless that mount has `data-embed`. `ui/main.ts` only defines, so a host can mount Netfix without an iframe (R7).
+ */
+const { NETFIX_API, startStandalone } = __m["ui/main.js"];
+const { installApi } = __m["ui/embed-api.js"];
+installApi(NETFIX_API);
 const mount = document.getElementById('app');
 if (mount && mount.dataset.embed === undefined)
-    start(mount, STANDALONE);
+    startStandalone(mount);
 
 return {  };
 })();

@@ -104,7 +104,7 @@ Cada PR sigue TDD y `npm run check`; ninguno cruza un GATE sin aprobación.
 | 1.5 | Reloj inyectable en `Topology` (paso 4) | M | M | R16 |
 | 1.6 | Corte de bash por pasos, independiente de la hora (paso 5) | M | A | R9 |
 | 1.7 | Subconjunto de e2e en CI | S | B | R27 |
-| 1.8 | (opcional; obligatorio antes de la Fase 6) Separar «definir» de «arrancar» en `ui/main.ts` (paso 6) | M | A | R7 |
+| 1.8 | **Hecho** (Fase 6): `ui/boot.ts` instala el global y arranca; `ui/main.ts` solo define. Queda el estado de instancia única (Fase 6) | M | A | R7 |
 
 ### Fase 2 — Contratos y esquema (Netfix)
 
