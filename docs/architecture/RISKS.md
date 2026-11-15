@@ -74,9 +74,9 @@ Bloquean la fase indicada. Se recogen de cada documento; la discusión está en 
 |---|---|---|---|
 | G0 | Aprobar esta auditoría (GATE 0) y la frontera «Core = todo menos `src/ui`» | Fase 1 | `CORE.md` §2 |
 | L1–L6 | Licencia: revisión jurídica de D1, titularidad del código asistido por IA, licencia de `src/docs` (GPL o CC BY-SA), autorización de publicación | Fase 3 | `PACKAGING.md` §3 |
-| P1 | Registro: GitHub Packages (recomendado), tarball en Release o npm público | Fase 3 | `PACKAGING.md` §6 |
-| P2 | Repositorio canónico y destino del espejo `infogerman` | Fase 3 | `PACKAGING.md` §6 |
-| P3 | Versión del primer paquete y retomar tags | Fase 3 | `PACKAGING.md` §6; `CLASSROOM-CONSUMPTION.md` §8.1 |
+| P1 | **Decidida (2026-11-15):** GitHub Packages (`npm.pkg.github.com`) | Fase 3 | `PACKAGING.md` §6 |
+| P2 | **Decidida (2026-11-15):** canónico `glopezca/netfix`; el espejo `infogerman` se mantiene (`sync-infogerman.yml` sin cambios) | Fase 3 | `PACKAGING.md` §6 |
+| P3 | **Decidida (2026-11-15):** tag `v0.47.1` en `main` @ `a90416a`; el primer paquete toma la versión de `main` al publicar | Fase 3 | `PACKAGING.md` §6; `CLASSROOM-CONSUMPTION.md` §8.1 |
 | P4 | Lockfile en Netfix; Playwright y `workerd` como `devDependencies` | Fase 3 | `PACKAGING.md` §6 |
 | P5 | Excepción escrita a la regla «sin reexportaciones» para los ficheros de entrada del paquete (aprobada por el propietario (2026-11-15)) | Fase 1 (paso 3) | `PACKAGING.md` §6; `CORE.md` paso 3 |
 | D1 | **Decidida (2026-11-15):** `version` actual como `topologySchemaVersion`; sin campo nuevo | Fase 2 | `PUBLIC-API.md` §6 |

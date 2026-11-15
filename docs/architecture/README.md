@@ -6,8 +6,9 @@ Plan: `NETFIX-MIGRATION-ECC.md` (opción B; documento de coordinación fuera de 
 |------|--------|------|
 | 0 — Auditoría y diseño | Entregables completos (2026-11-13), revalidados en `6e7c887` (2026-11-14) | GATE 0: **aprobado** por el propietario (2026-11-14) |
 | 1 — Core | Completada (PR #23–#32; 1.8 opcional, pendiente antes de la Fase 6) | GATE 1: **aprobado** por el propietario (2026-11-15) |
-| 2 — Contratos y esquema | 2.1–2.5 en PR (#34–#36 y el de 2.5); contratos en `PUBLIC-API.md` §3 | GATE 2: pendiente |
-| 3–9 | No iniciadas | — |
+| 2 — Contratos y esquema | Completada (PR #34–#37); contratos en `PUBLIC-API.md` §3 | GATE 2: **aprobado** por el propietario (2026-11-15) |
+| 3 — Paquete | 3.1 en PR (lockfile, `repository` canónico, tag `v0.47.1`); P1–P3 decididas; L1–L6 pendientes (bloquean publicar) | — |
+| 4–9 | No iniciadas | — |
 
 Base auditada: Netfix `main` @ `5c7b3e9` (`0.46.0`), FixITClassroom `main` @ `d443d98`. `DEPENDENCY-MAP.md`, `PUBLIC-API.md` y
 `CLASSROOM-CONSUMPTION.md` se auditaron en `496a092` y se revalidaron en `5c7b3e9` (solo cambió el trabajo de nombres de equipo).
