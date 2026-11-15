@@ -132,6 +132,15 @@ Usa los nombres de `PUBLIC-API.md` §3. Cada subpath reexporta funciones que ya 
 - `sideEffects`: `net/topology.ts` registra servicios al cargarse, y `ui/main.ts` instala el global (`PUBLIC-API.md` §3.5). Rutas exactas: **NO VERIFICADO** hasta que exista `dist/pkg`.
 - Los ficheros de entrada (`src/pkg/*.ts`, nombre propuesto) los compila el mismo `tsc` y no los importa `ui/main.ts`, así que el build standalone no cambia (§1.2).
 
+> **Implementado en PR 3.2 (2026-11-15).** Diferencias con la propuesta: el build del paquete es `tsconfig.pkg.json`
+> (`npm run build:pkg`, también en `prepack`) en `dist/pkg/`, así que las entradas están en `dist/pkg/pkg/{topology,classroom,ui}.js`
+> y el build standalone no cambia. CSS y favicon se publican desde `src/ui/*.css` y `assets/brand/favicon.png`, sin copia.
+> Sin `sideEffects` (por defecto: todo tiene efectos; los registros se llenan al cargar en varios módulos). `private: true`
+> se mantiene hasta el PR de publicación (3.5). `src/pkg/core.ts` es la unión de `topology` y `classroom`, sin subpath.
+> Comprobado con `npm pack` en un consumidor de prueba: `.d.ts` resuelven con `NodeNext`, `lib ES2022` sin DOM y
+> `skipLibCheck: false` (los especificadores `.ts` en los `.d.ts` resuelven); `ui` compila con DOM; rutas internas →
+> `ERR_PACKAGE_PATH_NOT_EXPORTED`; tarball 2,6 MB, 627 `.d.ts`. Las pruebas automáticas de esto son el PR 3.3.
+
 ### 2.3 Fuentes TS o JS compilado + `.d.ts`
 
 **JS compilado + `.d.ts`**, por cuatro motivos:

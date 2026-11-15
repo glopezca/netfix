@@ -10,7 +10,7 @@ const licenseMarkdown = readFileSync(join(root, 'LICENSE.md'), 'utf8');
 const repoUrl = String(pkg.repository?.url ?? pkg.repository ?? '').replace(/^git\+/, '').replace(/\.git$/, '');
 
 const data = {
-  name: pkg.name,
+  name: pkg.name.replace(/^@[^/]+\//, ""), // the package scope is not part of the product name
   version: pkg.version,
   description: pkg.description,
   license: pkg.license,
