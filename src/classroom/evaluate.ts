@@ -19,6 +19,25 @@ import { runSync } from '../net/sync.ts';
 import type { ProbeResult } from '../net/tcp.ts';
 import { Session } from '../ios/session.ts';
 import type { Check, ChecklistItem } from './checklist.ts';
+import { ABOUT } from '../docs/about-data.ts';
+import { FILE_VERSION } from '../net/topology-file.ts';
+
+/**
+ * Bump when the meaning of a check or of the score changes (a different mark for the same file and checklist);
+ * not for new check types or fixes that leave existing marks alone. Stored with each result to explain old marks.
+ */
+export const EVALUATION_VERSION = 1;
+
+/** What produced an `Evaluation`, for reproducing it. No commit: the build has no git step to take it from. */
+export interface NetfixRuntimeInfo {
+  /** `package.json` version (via the generated `ABOUT`). */
+  readonly engineVersion: string;
+  /** The topology file `version` this engine writes (`FILE_VERSION`). */
+  readonly topologySchemaVersion: number;
+  readonly evaluationVersion: number;
+}
+
+export const RUNTIME_INFO: NetfixRuntimeInfo = { engineVersion: ABOUT.version, topologySchemaVersion: FILE_VERSION, evaluationVersion: EVALUATION_VERSION };
 
 export interface ItemResult {
   readonly id: string;
@@ -33,6 +52,7 @@ export interface Evaluation {
   readonly score: number;
   readonly max: number;
   readonly items: readonly ItemResult[];
+  readonly runtime: NetfixRuntimeInfo;
   /** The guided lab the file belongs to: hints read and whether "View solution" was used. */
   readonly mission?: { readonly id: string; readonly hints: number; readonly solution: boolean };
 }
@@ -264,6 +284,7 @@ function mark(file: unknown, checklist: readonly ChecklistItem[]): Evaluation {
     score: items.reduce((n, i) => n + (i.passed ? i.weight : 0), 0),
     max: items.reduce((n, i) => n + i.weight, 0),
     items,
+    runtime: RUNTIME_INFO,
     ...(t.mission ? { mission: { id: t.mission.id, hints: t.mission.hints.length, solution: t.mission.solution === true } } : {}),
   };
 }
