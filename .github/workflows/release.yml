@@ -1,0 +1,65 @@
+name: Release
+
+# Publishes @glopezca/netfix to GitHub Packages from a reviewed tag (PACKAGING.md §4.1).
+# While package.json keeps "private": true (L1–L6 pending), the publish job stops before `npm publish`.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Tag matches package.json and belongs to main
+        run: |
+          version="v$(node -p 'require("./package.json").version')"
+          [ "$GITHUB_REF_NAME" = "$version" ] || { echo "tag $GITHUB_REF_NAME != $version"; exit 1; }
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "tag is not on main"; exit 1; }
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - run: npm run test:pack
+      - run: npm install --prefix "$RUNNER_TEMP/wd" --no-audit --no-fund workerd@1.20261023.1
+      - run: npm run test:workerd
+        env:
+          WORKERD_BIN: ${{ runner.temp }}/wd/node_modules/@cloudflare/workerd-linux-64/bin/workerd
+      # Standalone build stays intact (GATE 3).
+      - run: npx tsc -p tsconfig.build.json && node scripts/build.mjs --skip-tsc
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: package-release # required reviewer
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+      # npm does not reliably refuse a private package given as a tarball: guard explicitly (L1–L6).
+      - name: Publication authorised
+        run: |
+          node -e 'if (require("./package.json").private) { console.error("private: true (L1–L6 pending)"); process.exit(1) }'
+      - run: npm ci --no-audit --no-fund
+      - id: pack
+        run: echo "tgz=$(npm pack --silent)" >> "$GITHUB_OUTPUT"
+      - run: npm publish "${{ steps.pack.outputs.tgz }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: ${{ steps.pack.outputs.tgz }}

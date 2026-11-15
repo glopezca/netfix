@@ -208,6 +208,8 @@ jobs:
   - Retomar los tags (hoy `v0.32.0` frente a `0.46.0`).
   - Fijar las acciones por SHA en los workflows nuevos.
 - Antes de cada publicación real: ejecutar con `npm publish --dry-run`, o en un ámbito de prueba si el propietario lo autoriza (plan, Fase 3 tarea 9).
+- **PR 3.5:** `release.yml` hecho según el esquema (acciones fijadas por SHA, lockfile de PR 3.1, tag `v0.47.1`). `publish` falla a propósito mientras `package.json` tenga `private: true`: `npm publish` de un tarball no lo rechaza (comprobado con `--dry-run`), así que lo hace un paso propio. Publicar = resolver L1–L6, quitar `private` y empujar un tag nuevo; el entorno `package-release` pide revisor.
+- Instalación autenticada (tarea 10): `.npmrc` del consumidor con `@glopezca:registry=https://npm.pkg.github.com` y, fuera del repositorio, `//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}` con un token `read:packages`; en Actions, `NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}` y `packages: read` (§4.2). Después `npm install @glopezca/netfix@<versión exacta>`.
 - Fuera de la Fase 3, pero conviene: añadir `permissions: contents: read` de nivel superior a `ci.yml`. Revisar `sync-infogerman.yml`: hace un `--force` con un token de otra cuenta y es independiente de la publicación (decisión L3).
 
 ### 4.2 Classroom: consumo (Fase 4)
