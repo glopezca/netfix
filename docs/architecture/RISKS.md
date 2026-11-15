@@ -77,7 +77,7 @@ Bloquean la fase indicada. Se recogen de cada documento; la discusión está en 
 | P1 | **Decidida (2026-11-15):** GitHub Packages (`npm.pkg.github.com`) | Fase 3 | `PACKAGING.md` §6 |
 | P2 | **Decidida (2026-11-15):** canónico `glopezca/netfix`; el espejo `infogerman` se mantiene (`sync-infogerman.yml` sin cambios) | Fase 3 | `PACKAGING.md` §6 |
 | P3 | **Decidida (2026-11-15):** tag `v0.47.1` en `main` @ `a90416a`; el primer paquete toma la versión de `main` al publicar | Fase 3 | `PACKAGING.md` §6; `CLASSROOM-CONSUMPTION.md` §8.1 |
-| P4 | Lockfile en Netfix; Playwright y `workerd` como `devDependencies` | Fase 3 | `PACKAGING.md` §6 |
+| P4 | Lockfile en Netfix; Playwright y `workerd` como `devDependencies`. **Decidido 2026-11-15:** fuera del repositorio, solo en CI | Fase 3 | `PACKAGING.md` §6 |
 | P5 | Excepción escrita a la regla «sin reexportaciones» para los ficheros de entrada del paquete (aprobada por el propietario (2026-11-15)) | Fase 1 (paso 3) | `PACKAGING.md` §6; `CORE.md` paso 3 |
 | D1 | **Decidida (2026-11-15):** `version` actual como `topologySchemaVersion`; sin campo nuevo | Fase 2 | `PUBLIC-API.md` §6 |
 | D2 | **Decidida (2026-11-15):** errores tipados con `code` estable (más el mensaje) | Fase 2 | `PUBLIC-API.md` §6 |

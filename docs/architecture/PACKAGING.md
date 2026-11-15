@@ -248,7 +248,7 @@ jobs:
 |---|---|---|
 | Contenido del paquete | `npm pack --dry-run --json` contra una lista blanca (sin `tests/`, `.claude/`, `graphify-out/` ni `_site/`) | no existe |
 | Importación en Node | proyecto temporal en el runner: instalar el `.tgz` e importar `./topology`, `./classroom` y `./ui` (este último solo comprobando el tipo, sin DOM) | no existe |
-| Ejecución en workerd | `evaluate` sobre el corpus dentro de workerd. En Netfix exigiría una `devDependency` nueva (`wrangler`/`miniflare`), algo nuevo en un repositorio con cero dependencias: **decisión pendiente**. Alternativa: hacerla en Classroom, que ya tiene `wrangler` | no existe. Que `0.46.0` funcione en Workers: **NO VERIFICADO** (`DEPENDENCY-MAP.md` §4) |
+| Ejecución en workerd | `evaluate` sobre el corpus dentro de workerd. En Netfix exigiría una `devDependency` nueva (`wrangler`/`miniflare`), algo nuevo en un repositorio con cero dependencias: **decisión pendiente**. Alternativa: hacerla en Classroom, que ya tiene `wrangler` | **PR 3.4:** `npm run test:workerd` (`scripts/workerd-smoke.mjs`, en CI): `evaluate` sobre los 37 fixtures v0.31/v0.46 en Node y en `workerd test` (`1.20261023.1`, fecha `2026-10-16`, las de Classroom) con resultado idéntico, más `Intl` es-ES/en-GB. workerd fuera del repositorio (P4) |
 | Tamaño y CPU | límite de tamaño del bundle del Worker y `bench:evaluate` en el runtime real | sin medir en workerd (`CLASSROOM-CONSUMPTION.md` §9) |
 | Standalone intacto | `build` + `e2e` en CI, o al menos `e2e-embed` y `e2e-missions`, con Playwright fijado como `devDependency` | e2e fuera de CI |
 | Tipos para el consumidor | `tsc` de Classroom (Worker con `lib WebWorker`) contra los `.d.ts` instalados | no existe |
@@ -260,6 +260,6 @@ jobs:
 | P1 | Registro: GitHub Packages (recomendado), tarball en un Release o npm público |
 | P2 | Repositorio canónico y espejo `infogerman` (`repository`, `LICENSE.md`, `sync-infogerman.yml`) |
 | P3 | Versión del primer paquete y retomar los tags (`v0.32.0` frente a `0.46.0`); relación con `CLASSROOM-CONSUMPTION.md` §8.1 |
-| P4 | Añadir `package-lock.json` a Netfix, y Playwright y workerd como `devDependencies` |
+| P4 | Añadir `package-lock.json` a Netfix, y Playwright y workerd como `devDependencies`. **Decidido 2026-11-15:** lockfile sí (PR 3.1); Playwright y workerd se instalan fuera del repositorio solo en CI, con versión fija |
 | P5 | Excepción escrita a la regla «sin reexportaciones» para los ficheros de entrada del paquete |
 | L1–L6 | Licencia (§3): sin resolver, **no se publica** |
