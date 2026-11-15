@@ -1,6 +1,6 @@
 {
   "name": "@glopezca/netfix",
-  "version": "0.47.2",
+  "version": "0.48.0",
   "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
   "type": "module",
   "exports": {
@@ -11,6 +11,10 @@
     "./classroom": {
       "types": "./dist/pkg/pkg/classroom.d.ts",
       "default": "./dist/pkg/pkg/classroom.js"
+    },
+    "./authoring": {
+      "types": "./dist/pkg/pkg/authoring.d.ts",
+      "default": "./dist/pkg/pkg/authoring.js"
     },
     "./ui": {
       "types": "./dist/pkg/pkg/ui.d.ts",

@@ -186,6 +186,15 @@ web apps e i18n). Que Classroom lo ejecute hoy en Workers con v0.31.0 es evidenc
 5. **Idioma.** Los mensajes de `validateFile` salen de `t()` con el locale global (por defecto `es-ES`); los `detail`
    de `evaluate` están en castellano fijo en el código.
 
+### 3.5b Edición sin simulador (`authoring`, neutral, desde 0.48.0)
+
+Lo que necesita un editor de restricciones, listas de comprobación y laboratorios en el navegador sin cargar el
+simulador (Fase 4: el front end de Classroom pasaba de 127 KB a 2,1 MB importando `topology`/`classroom`):
+`allowsDevice`, `allowsLab`, `allowsTab`, `parseRestrictions`, `NO_RESTRICTIONS`, `DEVICE_KINDS`, `parseChecklist`,
+`LABS_ES` y los tipos `Restrictions`, `Check`, `ChecklistItem`, `DeviceKind`. Son los mismos valores que en `classroom` y
+`topology`. `pack-check` comprueba que su grafo de imports solo toca `classroom/restrictions`, `classroom/checklist`,
+`i18n/*/labs` y `core/*`.
+
 ### 3.6 Metadatos (`metadata`, neutral)
 
 | Símbolo | Origen | Valor |

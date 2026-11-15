@@ -44,7 +44,7 @@ check(stray.length === 0, `Unexpected files in the tarball: ${stray.slice(0, 5).
 run('tar', ['-xzf', tarball, '-C', pkgDir, '--strip-components=1']);
 writeFileSync(join(consumer, 'package.json'), JSON.stringify({ name: 'consumer', private: true, type: 'module' }));
 
-// 3. Runtime: topology/classroom load in Node; ui and assets resolve; internal paths are closed.
+// 3. Runtime: topology/classroom/authoring load in Node; ui and assets resolve; internal paths are closed.
 writeFileSync(join(consumer, 'runtime.mjs'), `
 import assert from 'node:assert/strict';
 const topo = await import('@glopezca/netfix/topology');
@@ -57,6 +57,25 @@ assert.ok(new cls.WorkLimitError() instanceof Error);
 // Class/module identity across subpaths: classroom's work limit must stop topology's simulation (shared net/network.js).
 const json = topo.EXAMPLES[0].build().toJSON();
 assert.throws(() => cls.withWorkLimit(1, () => topo.Topology.fromJSON(json)), cls.WorkLimitError);
+// authoring: same values as classroom/topology, and an import graph without the simulator (light for a browser editor).
+const auth = await import('@glopezca/netfix/authoring');
+assert.equal(auth.parseRestrictions, cls.parseRestrictions);
+assert.equal(auth.parseChecklist, cls.parseChecklist);
+assert.equal(auth.LABS_ES, topo.LABS_ES);
+const { readFileSync } = await import('node:fs');
+const { dirname, resolve, relative } = await import('node:path');
+const { fileURLToPath } = await import('node:url');
+const entry = fileURLToPath(import.meta.resolve('@glopezca/netfix/authoring'));
+const base = resolve(dirname(entry), '..');
+const seen = new Set(), todo = [entry];
+while (todo.length) {
+  const f = todo.pop();
+  if (seen.has(f)) continue;
+  seen.add(f);
+  for (const [, spec] of readFileSync(f, 'utf8').matchAll(/(?:from|import)\\s*['"](\\.[^'"]+)['"]/g)) todo.push(resolve(dirname(f), spec));
+}
+const heavy = [...seen].map((f) => relative(base, f)).filter((f) => !/^(pkg\\/authoring|classroom\\/(restrictions|checklist)|i18n\\/[^/]+\\/labs|core\\/[a-z-]+)\\.js$/.test(f));
+assert.deepEqual(heavy, [], 'authoring must not load the simulator');
 for (const p of ['@glopezca/netfix/ui', '@glopezca/netfix/ui/styles.css', '@glopezca/netfix/ui/favicon.png', '@glopezca/netfix/package.json']) import.meta.resolve(p);
 for (const p of ['@glopezca/netfix', '@glopezca/netfix/dist/pkg/net/network.js', '@glopezca/netfix/src/ui/main.ts']) {
   assert.throws(() => import.meta.resolve(p), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' }, p);
@@ -73,8 +92,9 @@ const tsconfig = (lib, file) => JSON.stringify({
 writeFileSync(join(consumer, 'core.ts'), `
 import { Topology, validateFile, TopologyFileError, type TopologyFile } from '@glopezca/netfix/topology';
 import { evaluate, parseChecklist, WorkLimitError, type Evaluation } from '@glopezca/netfix/classroom';
-export const used: unknown[] = [Topology, validateFile, TopologyFileError, evaluate, parseChecklist, WorkLimitError];
-export type Used = [TopologyFile, Evaluation];
+import { parseRestrictions, LABS_ES, type Restrictions, type ChecklistItem, type DeviceKind } from '@glopezca/netfix/authoring';
+export const used: unknown[] = [Topology, validateFile, TopologyFileError, evaluate, parseChecklist, WorkLimitError, parseRestrictions, LABS_ES];
+export type Used = [TopologyFile, Evaluation, Restrictions, ChecklistItem, DeviceKind];
 `);
 writeFileSync(join(consumer, 'ui.ts'), `
 import '@glopezca/netfix/ui';
