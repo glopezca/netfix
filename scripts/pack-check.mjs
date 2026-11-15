@@ -54,6 +54,9 @@ assert.equal(typeof topo.validateFile, 'function');
 assert.equal(typeof cls.evaluate, 'function');
 assert.equal(typeof cls.evaluateFile, 'function');
 assert.ok(new cls.WorkLimitError() instanceof Error);
+// Class/module identity across subpaths: classroom's work limit must stop topology's simulation (shared net/network.js).
+const json = topo.EXAMPLES[0].build().toJSON();
+assert.throws(() => cls.withWorkLimit(1, () => topo.Topology.fromJSON(json)), cls.WorkLimitError);
 for (const p of ['@glopezca/netfix/ui', '@glopezca/netfix/ui/styles.css', '@glopezca/netfix/ui/favicon.png', '@glopezca/netfix/package.json']) import.meta.resolve(p);
 for (const p of ['@glopezca/netfix', '@glopezca/netfix/dist/pkg/net/network.js', '@glopezca/netfix/src/ui/main.ts']) {
   assert.throws(() => import.meta.resolve(p), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' }, p);
