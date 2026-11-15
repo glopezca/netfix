@@ -1,0 +1,730 @@
+{
+ "format": "netfix",
+ "version": 2,
+ "devices": [
+  {
+   "id": "d1",
+   "kind": "cloud",
+   "label": "ISP-Norte",
+   "x": 460,
+   "y": 90,
+   "seed": 1,
+   "cloud": {
+    "isp": "ISP-Norte",
+    "block": "81.32.0.0",
+    "ports": {
+     "Coaxial0": {
+      "mode": "router",
+      "down": 600,
+      "up": 60,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "Coaxial1": {
+      "mode": "router",
+      "down": 600,
+      "up": 60,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "DSL0": {
+      "mode": "router",
+      "down": 100,
+      "up": 10,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "DSL1": {
+      "mode": "router",
+      "down": 100,
+      "up": 10,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "Fibra0": {
+      "mode": "public",
+      "down": 1000,
+      "up": 1000,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "Fibra1": {
+      "mode": "router",
+      "down": 1000,
+      "up": 1000,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     }
+    },
+    "domains": []
+   }
+  },
+  {
+   "id": "d2",
+   "kind": "router",
+   "label": "GW",
+   "x": 460,
+   "y": 285,
+   "seed": 2,
+   "config": [
+    "!",
+    "version 15.1",
+    "no service timestamps log datetime msec",
+    "no service timestamps debug datetime msec",
+    "no service password-encryption",
+    "!",
+    "hostname GW",
+    "!",
+    "!",
+    "no ip domain-lookup",
+    "ip cef",
+    "no ipv6 cef",
+    "!",
+    "!",
+    "interface GigabitEthernet0/0",
+    " description LAN de la empresa (servidor DNS)",
+    " ip address 192.168.50.1 255.255.255.0",
+    " ip nat inside",
+    " duplex auto",
+    " speed auto",
+    "!",
+    "interface GigabitEthernet0/1",
+    " ip address dhcp",
+    " ip nat outside",
+    " duplex auto",
+    " speed auto",
+    "!",
+    "interface GigabitEthernet0/2",
+    " description Red de invitados",
+    " ip address 192.168.60.1 255.255.255.0",
+    " ip nat inside",
+    " duplex auto",
+    " speed auto",
+    "!",
+    "interface Vlan1",
+    " no ip address",
+    " shutdown",
+    "!",
+    "ip nat inside source list 1 interface GigabitEthernet0/1 overload",
+    "ip classless",
+    "!",
+    "ip flow-export version 9",
+    "!",
+    "access-list 1 permit 192.168.50.0 0.0.0.255",
+    "access-list 1 permit 192.168.60.0 0.0.0.255",
+    "!",
+    "!",
+    "line con 0",
+    "!",
+    "line aux 0",
+    "!",
+    "line vty 0 4",
+    " login",
+    "!",
+    "!",
+    "!",
+    "end"
+   ],
+   "startup": null
+  },
+  {
+   "id": "d3",
+   "kind": "switch",
+   "label": "Switch0",
+   "x": 300,
+   "y": 585,
+   "seed": 3,
+   "config": [
+    "!",
+    "version 15.0",
+    "no service timestamps log datetime msec",
+    "no service timestamps debug datetime msec",
+    "no service password-encryption",
+    "!",
+    "hostname Switch0",
+    "!",
+    "spanning-tree mode pvst",
+    "spanning-tree extend system-id",
+    "!",
+    "interface FastEthernet0/1",
+    "!",
+    "interface FastEthernet0/2",
+    "!",
+    "interface FastEthernet0/3",
+    "!",
+    "interface FastEthernet0/4",
+    "!",
+    "interface FastEthernet0/5",
+    "!",
+    "interface FastEthernet0/6",
+    "!",
+    "interface FastEthernet0/7",
+    "!",
+    "interface FastEthernet0/8",
+    "!",
+    "interface FastEthernet0/9",
+    "!",
+    "interface FastEthernet0/10",
+    "!",
+    "interface FastEthernet0/11",
+    "!",
+    "interface FastEthernet0/12",
+    "!",
+    "interface FastEthernet0/13",
+    "!",
+    "interface FastEthernet0/14",
+    "!",
+    "interface FastEthernet0/15",
+    "!",
+    "interface FastEthernet0/16",
+    "!",
+    "interface FastEthernet0/17",
+    "!",
+    "interface FastEthernet0/18",
+    "!",
+    "interface FastEthernet0/19",
+    "!",
+    "interface FastEthernet0/20",
+    "!",
+    "interface FastEthernet0/21",
+    "!",
+    "interface FastEthernet0/22",
+    "!",
+    "interface FastEthernet0/23",
+    "!",
+    "interface FastEthernet0/24",
+    "!",
+    "interface GigabitEthernet0/1",
+    "!",
+    "interface GigabitEthernet0/2",
+    "!",
+    "interface Vlan1",
+    " no ip address",
+    " shutdown",
+    "!",
+    "!",
+    "!",
+    "!",
+    "line con 0",
+    "!",
+    "line aux 0",
+    "!",
+    "line vty 0 4",
+    " login",
+    "!",
+    "!",
+    "!",
+    "end"
+   ],
+   "startup": null
+  },
+  {
+   "id": "d4",
+   "kind": "pc",
+   "label": "PC0",
+   "x": 190,
+   "y": 825,
+   "seed": 4,
+   "pc": {
+    "mode": "dhcp",
+    "sendClientId": true,
+    "os": "windows",
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "PC0",
+    "apps": {
+     "inbox": []
+    }
+   }
+  },
+  {
+   "id": "d5",
+   "kind": "pc",
+   "label": "PC1",
+   "x": 410,
+   "y": 825,
+   "seed": 5,
+   "pc": {
+    "mode": "dhcp",
+    "sendClientId": true,
+    "os": "linux",
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "PC1",
+    "apps": {
+     "inbox": []
+    }
+   }
+  },
+  {
+   "id": "d6",
+   "kind": "server",
+   "label": "NS1",
+   "x": 620,
+   "y": 585,
+   "seed": 6,
+   "pc": {
+    "mode": "static",
+    "ip": "192.168.50.2",
+    "mask": "/24",
+    "gateway": "192.168.50.1",
+    "dns": "127.0.0.1",
+    "sendClientId": true,
+    "os": "linux",
+    "files": [
+     {
+      "path": "/etc/bind",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/dovecot",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/kea",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/netplan",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/postfix",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/kernel",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf/all",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf/default",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6/conf",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6/conf/all",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/netfilter",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/vm",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/usr/share/dns",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/var/lib/kea",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/var/www/html",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     }
+    ],
+    "enabled": [
+     "ip",
+     "dhcp",
+     "dns",
+     "http",
+     "files",
+     "log",
+     "linux"
+    ],
+    "hostname": "NS1"
+   },
+   "server": {
+    "services": {
+     "dhcp": {
+      "enabled": true,
+      "pools": [
+       {
+        "name": "serverPool",
+        "start": "192.168.50.100",
+        "prefix": 24,
+        "maxUsers": 50,
+        "gateway": "192.168.50.1",
+        "dns": "192.168.50.2",
+        "domain": "empresa.lan",
+        "leaseMinutes": 1440,
+        "reservations": [
+         {
+          "ip": "192.168.50.50",
+          "mac": "00fbb1186878",
+          "name": "PC1"
+         }
+        ]
+       }
+      ]
+     },
+     "dns": {
+      "enabled": true,
+      "recursion": true,
+      "forwarders": [
+       "8.8.8.8",
+       "8.8.4.4"
+      ],
+      "forwardOnly": true,
+      "allowRecursion": "localnets",
+      "zones": [
+       {
+        "name": "empresa.lan",
+        "kind": "forward",
+        "soa": {
+         "mname": "ns1.empresa.lan",
+         "rname": "admin.empresa.lan",
+         "serial": 2026102101,
+         "refresh": 604800,
+         "retry": 86400,
+         "expire": 2419200,
+         "minimum": 3600
+        },
+        "ns": [
+         "ns1.empresa.lan"
+        ],
+        "records": [
+         {
+          "name": "ns1",
+          "type": "A",
+          "value": "192.168.50.2",
+          "ttl": 86400
+         },
+         {
+          "name": "intranet",
+          "type": "A",
+          "value": "192.168.50.2",
+          "ttl": 86400
+         },
+         {
+          "name": "www",
+          "type": "CNAME",
+          "value": "intranet",
+          "ttl": 86400
+         }
+        ]
+       }
+      ]
+     },
+     "http": {
+      "enabled": true,
+      "files": [
+       {
+        "name": "index.html",
+        "content": "<!doctype html>\n<html lang=\"es\">\n<head><meta charset=\"utf-8\"><title>Server</title></head>\n<body>\n<p><span class=\"web-brand-logo\">Netfix</span></p>\n<h1>Servidor web de Netfix</h1>\n<p>Esta página la sirve el servicio HTTP de un servidor de Netfix.</p>\n<p>Edita <code>index.html</code> en la pestaña Servicios → HTTP, o crea páginas nuevas.</p>\n<p><a href=\"ayuda.html\">Ayuda</a></p>\n</body>\n</html>"
+       },
+       {
+        "name": "ayuda.html",
+        "content": "<!doctype html>\n<html lang=\"es\">\n<head><meta charset=\"utf-8\"><title>Ayuda</title></head>\n<body>\n<h1>Ayuda</h1>\n<p>Prueba desde un PC: navegador, <code>curl http://IP/</code> o <code>wget</code>.</p>\n<p><a href=\"index.html\">Volver</a></p>\n</body>\n</html>"
+       }
+      ]
+     },
+     "mail": {
+      "smtp": false,
+      "pop3": false,
+      "imap": false,
+      "domain": "",
+      "users": []
+     },
+     "ssh": {
+      "enabled": false,
+      "users": []
+     },
+     "webapps": {
+      "roundcube": {
+       "enabled": false,
+       "mode": "alias",
+       "alias": "/roundcube",
+       "port": 8080
+      },
+      "admin": {
+       "enabled": false,
+       "mode": "port",
+       "alias": "/admin",
+       "port": 10000,
+       "user": "admin",
+       "password": "netfix"
+      }
+     }
+    },
+    "autostart": {
+     "dhcp": true,
+     "dns": true,
+     "http": true,
+     "smtp": true,
+     "mailbox": true,
+     "ssh": true,
+     "firewall": false
+    },
+    "mailboxes": {}
+   }
+  },
+  {
+   "id": "d7",
+   "kind": "pc",
+   "label": "INVITADO",
+   "x": 760,
+   "y": 585,
+   "seed": 7,
+   "pc": {
+    "mode": "static",
+    "ip": "192.168.60.10",
+    "mask": "/24",
+    "gateway": "192.168.60.1",
+    "dns": "192.168.50.2",
+    "sendClientId": true,
+    "os": "linux",
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "INVITADO",
+    "apps": {
+     "inbox": []
+    }
+   }
+  }
+ ],
+ "links": [
+  {
+   "a": {
+    "device": "d2",
+    "port": "GigabitEthernet0/1"
+   },
+   "b": {
+    "device": "d1",
+    "port": "Fibra0"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d2",
+    "port": "GigabitEthernet0/0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "GigabitEthernet0/1"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d4",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "FastEthernet0/1"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d5",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "FastEthernet0/2"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d6",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "FastEthernet0/24"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d7",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d2",
+    "port": "GigabitEthernet0/2"
+   },
+   "cable": "auto"
+  }
+ ],
+ "annotations": [
+  {
+   "id": "a1",
+   "kind": "rect",
+   "points": [
+    {
+     "x": 390,
+     "y": 4
+    },
+    {
+     "x": 573,
+     "y": 156
+    }
+   ],
+   "color": "#455a64",
+   "fill": true,
+   "width": 2,
+   "text": "Internet · red pública",
+   "size": 14
+  },
+  {
+   "id": "a2",
+   "kind": "rect",
+   "points": [
+    {
+     "x": 120,
+     "y": 453
+    },
+    {
+     "x": 690,
+     "y": 891
+    }
+   ],
+   "color": "#388e3c",
+   "fill": true,
+   "width": 2,
+   "text": "Empresa · red privada 192.168.50.0/24",
+   "size": 14
+  },
+  {
+   "id": "a3",
+   "kind": "rect",
+   "points": [
+    {
+     "x": 690,
+     "y": 453
+    },
+    {
+     "x": 911,
+     "y": 651
+    }
+   ],
+   "color": "#7b1fa2",
+   "fill": true,
+   "width": 2,
+   "text": "Invitados · 192.168.60.0/24",
+   "size": 14
+  }
+ ]
+}

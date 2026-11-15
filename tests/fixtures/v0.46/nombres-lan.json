@@ -1,0 +1,579 @@
+{
+ "format": "netfix",
+ "version": 2,
+ "devices": [
+  {
+   "id": "d1",
+   "kind": "cloud",
+   "label": "ISP-Norte",
+   "x": 490,
+   "y": 90,
+   "seed": 1,
+   "cloud": {
+    "isp": "ISP-Norte",
+    "block": "81.32.0.0",
+    "ports": {
+     "Coaxial0": {
+      "mode": "router",
+      "down": 600,
+      "up": 60,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "Coaxial1": {
+      "mode": "router",
+      "down": 600,
+      "up": 60,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "DSL0": {
+      "mode": "router",
+      "down": 100,
+      "up": 10,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "DSL1": {
+      "mode": "router",
+      "down": 100,
+      "up": 10,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "Fibra0": {
+      "mode": "public",
+      "down": 1000,
+      "up": 1000,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "Fibra1": {
+      "mode": "router",
+      "down": 1000,
+      "up": 1000,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     }
+    },
+    "domains": []
+   }
+  },
+  {
+   "id": "d2",
+   "kind": "router",
+   "label": "GW",
+   "x": 490,
+   "y": 300,
+   "seed": 2,
+   "config": [
+    "!",
+    "version 15.1",
+    "no service timestamps log datetime msec",
+    "no service timestamps debug datetime msec",
+    "no service password-encryption",
+    "!",
+    "hostname GW",
+    "!",
+    "!",
+    "no ip domain-lookup",
+    "ip cef",
+    "no ipv6 cef",
+    "!",
+    "!",
+    "interface GigabitEthernet0/0",
+    " description LAN",
+    " ip address 192.168.1.1 255.255.255.0",
+    " ip nat inside",
+    " duplex auto",
+    " speed auto",
+    "!",
+    "interface GigabitEthernet0/1",
+    " ip address dhcp",
+    " ip nat outside",
+    " duplex auto",
+    " speed auto",
+    "!",
+    "interface GigabitEthernet0/2",
+    " no ip address",
+    " duplex auto",
+    " speed auto",
+    " shutdown",
+    "!",
+    "interface Vlan1",
+    " no ip address",
+    " shutdown",
+    "!",
+    "ip nat inside source list 1 interface GigabitEthernet0/1 overload",
+    "ip classless",
+    "!",
+    "ip flow-export version 9",
+    "!",
+    "access-list 1 permit 192.168.1.0 0.0.0.255",
+    "!",
+    "!",
+    "line con 0",
+    "!",
+    "line aux 0",
+    "!",
+    "line vty 0 4",
+    " login",
+    "!",
+    "!",
+    "!",
+    "end"
+   ],
+   "startup": null
+  },
+  {
+   "id": "d3",
+   "kind": "switch",
+   "label": "Switch0",
+   "x": 490,
+   "y": 524,
+   "seed": 3,
+   "config": [
+    "!",
+    "version 15.0",
+    "no service timestamps log datetime msec",
+    "no service timestamps debug datetime msec",
+    "no service password-encryption",
+    "!",
+    "hostname Switch0",
+    "!",
+    "spanning-tree mode pvst",
+    "spanning-tree extend system-id",
+    "!",
+    "interface FastEthernet0/1",
+    "!",
+    "interface FastEthernet0/2",
+    "!",
+    "interface FastEthernet0/3",
+    "!",
+    "interface FastEthernet0/4",
+    "!",
+    "interface FastEthernet0/5",
+    "!",
+    "interface FastEthernet0/6",
+    "!",
+    "interface FastEthernet0/7",
+    "!",
+    "interface FastEthernet0/8",
+    "!",
+    "interface FastEthernet0/9",
+    "!",
+    "interface FastEthernet0/10",
+    "!",
+    "interface FastEthernet0/11",
+    "!",
+    "interface FastEthernet0/12",
+    "!",
+    "interface FastEthernet0/13",
+    "!",
+    "interface FastEthernet0/14",
+    "!",
+    "interface FastEthernet0/15",
+    "!",
+    "interface FastEthernet0/16",
+    "!",
+    "interface FastEthernet0/17",
+    "!",
+    "interface FastEthernet0/18",
+    "!",
+    "interface FastEthernet0/19",
+    "!",
+    "interface FastEthernet0/20",
+    "!",
+    "interface FastEthernet0/21",
+    "!",
+    "interface FastEthernet0/22",
+    "!",
+    "interface FastEthernet0/23",
+    "!",
+    "interface FastEthernet0/24",
+    "!",
+    "interface GigabitEthernet0/1",
+    "!",
+    "interface GigabitEthernet0/2",
+    "!",
+    "interface Vlan1",
+    " no ip address",
+    " shutdown",
+    "!",
+    "!",
+    "!",
+    "!",
+    "line con 0",
+    "!",
+    "line aux 0",
+    "!",
+    "line vty 0 4",
+    " login",
+    "!",
+    "!",
+    "!",
+    "end"
+   ],
+   "startup": null
+  },
+  {
+   "id": "d4",
+   "kind": "pc",
+   "label": "WIN1",
+   "x": 160,
+   "y": 804,
+   "seed": 4,
+   "pc": {
+    "mode": "static",
+    "ip": "192.168.1.11",
+    "mask": "/24",
+    "gateway": "192.168.1.1",
+    "dns": "8.8.8.8",
+    "sendClientId": true,
+    "os": "windows",
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "WIN1",
+    "apps": {
+     "inbox": []
+    }
+   }
+  },
+  {
+   "id": "d5",
+   "kind": "pc",
+   "label": "WIN2",
+   "x": 380,
+   "y": 804,
+   "seed": 5,
+   "pc": {
+    "mode": "static",
+    "ip": "192.168.1.12",
+    "mask": "/24",
+    "gateway": "192.168.1.1",
+    "dns": "8.8.8.8",
+    "sendClientId": true,
+    "os": "windows",
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "WIN2",
+    "apps": {
+     "inbox": []
+    }
+   }
+  },
+  {
+   "id": "d6",
+   "kind": "pc",
+   "label": "LNX1",
+   "x": 600,
+   "y": 804,
+   "seed": 6,
+   "pc": {
+    "mode": "static",
+    "ip": "192.168.1.21",
+    "mask": "/24",
+    "gateway": "192.168.1.1",
+    "dns": "8.8.8.8",
+    "sendClientId": true,
+    "os": "linux",
+    "files": [
+     {
+      "path": "/etc/avahi",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/avahi/avahi-daemon.conf",
+      "mode": 420,
+      "uid": 0,
+      "gid": 0,
+      "kind": "file",
+      "content": "# This file is part of avahi.\n#\n# avahi is free software; you can redistribute it and/or modify it\n# under the terms of the GNU Lesser General Public License as\n# published by the Free Software Foundation; either version 2 of the\n# License, or (at your option) any later version.\n#\n# avahi is distributed in the hope that it will be useful, but WITHOUT\n# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY\n# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public\n# License for more details.\n#\n# You should have received a copy of the GNU Lesser General Public\n# License along with avahi; if not, write to the Free Software\n# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307\n# USA.\n\n# See avahi-daemon.conf(5) for more information on this configuration\n# file!\n\n[server]\n#host-name=foo\n#domain-name=local\n#browse-domains=0pointer.de, zeroconf.org\nuse-ipv4=yes\nuse-ipv6=yes\n#allow-interfaces=eth0\n#deny-interfaces=eth1\n#check-response-ttl=no\n#use-iff-running=no\n#enable-dbus=yes\n#disallow-other-stacks=no\n#allow-point-to-point=no\n#cache-entries-max=4096\n#clients-max=4096\n#objects-per-client-max=1024\n#entries-per-entry-group-max=32\nratelimit-interval-usec=1000000\nratelimit-burst=1000\n\n[wide-area]\nenable-wide-area=yes\n\n[publish]\n#disable-publishing=no\n#disable-user-service-publishing=no\n#add-service-cookie=no\n#publish-addresses=yes\npublish-hinfo=no\npublish-workstation=no\n#publish-domain=yes\n#publish-dns-servers=192.168.50.1, 192.168.50.2\n#publish-resolv-conf-dns-servers=yes\n#publish-aaaa-on-ipv4=yes\n#publish-a-on-ipv6=no\n\n[reflector]\n#enable-reflector=no\n#reflect-ipv=no\n#reflect-filters=_airplay._tcp.local,_raop._tcp.local\n\n[rlimits]\n#rlimit-as=\n#rlimit-core=0\n#rlimit-data=8388608\n#rlimit-fsize=0\n#rlimit-nofile=768\n#rlimit-stack=8388608\n#rlimit-nproc=3\n"
+     },
+     {
+      "path": "/etc/netplan",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/nsswitch.conf",
+      "mode": 420,
+      "uid": 0,
+      "gid": 0,
+      "kind": "file",
+      "content": "# /etc/nsswitch.conf\n#\n# Example configuration of GNU Name Service Switch functionality.\n# If you have the `glibc-doc-reference' and `info' packages installed, try:\n# `info libc \"Name Service Switch\"' for information about this file.\n\npasswd:         files systemd\ngroup:          files systemd\nshadow:         files systemd\ngshadow:        files systemd\n\nhosts:          files mdns4_minimal [NOTFOUND=return] dns\nnetworks:       files\n\nprotocols:      db files\nservices:       db files\nethers:         db files\nrpc:            db files\n\nnetgroup:       nis\n"
+     },
+     {
+      "path": "/proc/sys",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/kernel",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf/all",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf/default",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6/conf",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6/conf/all",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/netfilter",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/vm",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     }
+    ],
+    "packages": [
+     "avahi-daemon",
+     "libavahi-common3",
+     "libavahi-core7",
+     "libdaemon0",
+     "libnftables1",
+     "libnftnl11",
+     "libnss-mdns",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libavahi-common3",
+     "libavahi-core7",
+     "libdaemon0",
+     "libnftables1",
+     "libnftnl11",
+     "libnss-mdns"
+    ],
+    "hostname": "LNX1",
+    "apps": {
+     "inbox": []
+    }
+   }
+  },
+  {
+   "id": "d7",
+   "kind": "pc",
+   "label": "LNX2",
+   "x": 820,
+   "y": 804,
+   "seed": 7,
+   "pc": {
+    "mode": "static",
+    "ip": "192.168.1.22",
+    "mask": "/24",
+    "gateway": "192.168.1.1",
+    "dns": "8.8.8.8",
+    "sendClientId": true,
+    "os": "linux",
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "LNX2",
+    "apps": {
+     "inbox": []
+    }
+   }
+  }
+ ],
+ "links": [
+  {
+   "a": {
+    "device": "d2",
+    "port": "GigabitEthernet0/1"
+   },
+   "b": {
+    "device": "d1",
+    "port": "Fibra0"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d2",
+    "port": "GigabitEthernet0/0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "GigabitEthernet0/1"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d4",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "FastEthernet0/1"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d5",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "FastEthernet0/2"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d6",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "FastEthernet0/3"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d7",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "FastEthernet0/4"
+   },
+   "cable": "auto"
+  }
+ ],
+ "annotations": [
+  {
+   "id": "a1",
+   "kind": "rect",
+   "points": [
+    {
+     "x": 420,
+     "y": 4
+    },
+    {
+     "x": 603,
+     "y": 156
+    }
+   ],
+   "color": "#455a64",
+   "fill": true,
+   "width": 2,
+   "text": "Internet · red pública",
+   "size": 14
+  },
+  {
+   "id": "a2",
+   "kind": "rect",
+   "points": [
+    {
+     "x": 90,
+     "y": 392
+    },
+    {
+     "x": 890,
+     "y": 870
+    }
+   ],
+   "color": "#388e3c",
+   "fill": true,
+   "width": 2,
+   "text": "LAN · red privada 192.168.1.0/24",
+   "size": 14
+  }
+ ]
+}

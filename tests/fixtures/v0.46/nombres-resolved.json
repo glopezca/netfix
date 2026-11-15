@@ -1,0 +1,848 @@
+{
+ "format": "netfix",
+ "version": 2,
+ "devices": [
+  {
+   "id": "d1",
+   "kind": "cloud",
+   "label": "ISP-Norte",
+   "x": 896,
+   "y": 90,
+   "seed": 1,
+   "cloud": {
+    "isp": "ISP-Norte",
+    "block": "81.32.0.0",
+    "ports": {
+     "Coaxial0": {
+      "mode": "router",
+      "down": 600,
+      "up": 60,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "Coaxial1": {
+      "mode": "router",
+      "down": 600,
+      "up": 60,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "DSL0": {
+      "mode": "router",
+      "down": 100,
+      "up": 10,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "DSL1": {
+      "mode": "router",
+      "down": 100,
+      "up": 10,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "Fibra0": {
+      "mode": "public",
+      "down": 1000,
+      "up": 1000,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     },
+     "Fibra1": {
+      "mode": "router",
+      "down": 1000,
+      "up": 1000,
+      "lanIp": "192.168.1.1",
+      "lanPrefix": 24,
+      "forwards": []
+     }
+    },
+    "domains": []
+   }
+  },
+  {
+   "id": "d2",
+   "kind": "router",
+   "label": "GW",
+   "x": 584,
+   "y": 315,
+   "seed": 2,
+   "config": [
+    "!",
+    "version 15.1",
+    "no service timestamps log datetime msec",
+    "no service timestamps debug datetime msec",
+    "no service password-encryption",
+    "!",
+    "hostname GW",
+    "!",
+    "!",
+    "no ip domain-lookup",
+    "ip cef",
+    "no ipv6 cef",
+    "!",
+    "!",
+    "interface GigabitEthernet0/0",
+    " description LAN A",
+    " ip address 192.168.10.1 255.255.255.0",
+    " ip nat inside",
+    " duplex auto",
+    " speed auto",
+    "!",
+    "interface GigabitEthernet0/1",
+    " description LAN B",
+    " ip address 192.168.20.1 255.255.255.0",
+    " ip nat inside",
+    " duplex auto",
+    " speed auto",
+    "!",
+    "interface GigabitEthernet0/2",
+    " ip address dhcp",
+    " ip nat outside",
+    " duplex auto",
+    " speed auto",
+    "!",
+    "interface Vlan1",
+    " no ip address",
+    " shutdown",
+    "!",
+    "ip nat inside source list 1 interface GigabitEthernet0/2 overload",
+    "ip classless",
+    "!",
+    "ip flow-export version 9",
+    "!",
+    "access-list 1 permit 192.168.10.0 0.0.0.255",
+    "access-list 1 permit 192.168.20.0 0.0.0.255",
+    "!",
+    "!",
+    "line con 0",
+    "!",
+    "line aux 0",
+    "!",
+    "line vty 0 4",
+    " login",
+    "!",
+    "!",
+    "!",
+    "end"
+   ],
+   "startup": null
+  },
+  {
+   "id": "d3",
+   "kind": "switch",
+   "label": "SW-A",
+   "x": 296,
+   "y": 585,
+   "seed": 3,
+   "config": [
+    "!",
+    "version 15.0",
+    "no service timestamps log datetime msec",
+    "no service timestamps debug datetime msec",
+    "no service password-encryption",
+    "!",
+    "hostname SW-A",
+    "!",
+    "spanning-tree mode pvst",
+    "spanning-tree extend system-id",
+    "!",
+    "interface FastEthernet0/1",
+    "!",
+    "interface FastEthernet0/2",
+    "!",
+    "interface FastEthernet0/3",
+    "!",
+    "interface FastEthernet0/4",
+    "!",
+    "interface FastEthernet0/5",
+    "!",
+    "interface FastEthernet0/6",
+    "!",
+    "interface FastEthernet0/7",
+    "!",
+    "interface FastEthernet0/8",
+    "!",
+    "interface FastEthernet0/9",
+    "!",
+    "interface FastEthernet0/10",
+    "!",
+    "interface FastEthernet0/11",
+    "!",
+    "interface FastEthernet0/12",
+    "!",
+    "interface FastEthernet0/13",
+    "!",
+    "interface FastEthernet0/14",
+    "!",
+    "interface FastEthernet0/15",
+    "!",
+    "interface FastEthernet0/16",
+    "!",
+    "interface FastEthernet0/17",
+    "!",
+    "interface FastEthernet0/18",
+    "!",
+    "interface FastEthernet0/19",
+    "!",
+    "interface FastEthernet0/20",
+    "!",
+    "interface FastEthernet0/21",
+    "!",
+    "interface FastEthernet0/22",
+    "!",
+    "interface FastEthernet0/23",
+    "!",
+    "interface FastEthernet0/24",
+    "!",
+    "interface GigabitEthernet0/1",
+    "!",
+    "interface GigabitEthernet0/2",
+    "!",
+    "interface Vlan1",
+    " no ip address",
+    " shutdown",
+    "!",
+    "!",
+    "!",
+    "!",
+    "line con 0",
+    "!",
+    "line aux 0",
+    "!",
+    "line vty 0 4",
+    " login",
+    "!",
+    "!",
+    "!",
+    "end"
+   ],
+   "startup": null
+  },
+  {
+   "id": "d4",
+   "kind": "switch",
+   "label": "SW-B",
+   "x": 860,
+   "y": 585,
+   "seed": 4,
+   "config": [
+    "!",
+    "version 15.0",
+    "no service timestamps log datetime msec",
+    "no service timestamps debug datetime msec",
+    "no service password-encryption",
+    "!",
+    "hostname SW-B",
+    "!",
+    "spanning-tree mode pvst",
+    "spanning-tree extend system-id",
+    "!",
+    "interface FastEthernet0/1",
+    "!",
+    "interface FastEthernet0/2",
+    "!",
+    "interface FastEthernet0/3",
+    "!",
+    "interface FastEthernet0/4",
+    "!",
+    "interface FastEthernet0/5",
+    "!",
+    "interface FastEthernet0/6",
+    "!",
+    "interface FastEthernet0/7",
+    "!",
+    "interface FastEthernet0/8",
+    "!",
+    "interface FastEthernet0/9",
+    "!",
+    "interface FastEthernet0/10",
+    "!",
+    "interface FastEthernet0/11",
+    "!",
+    "interface FastEthernet0/12",
+    "!",
+    "interface FastEthernet0/13",
+    "!",
+    "interface FastEthernet0/14",
+    "!",
+    "interface FastEthernet0/15",
+    "!",
+    "interface FastEthernet0/16",
+    "!",
+    "interface FastEthernet0/17",
+    "!",
+    "interface FastEthernet0/18",
+    "!",
+    "interface FastEthernet0/19",
+    "!",
+    "interface FastEthernet0/20",
+    "!",
+    "interface FastEthernet0/21",
+    "!",
+    "interface FastEthernet0/22",
+    "!",
+    "interface FastEthernet0/23",
+    "!",
+    "interface FastEthernet0/24",
+    "!",
+    "interface GigabitEthernet0/1",
+    "!",
+    "interface GigabitEthernet0/2",
+    "!",
+    "interface Vlan1",
+    " no ip address",
+    " shutdown",
+    "!",
+    "!",
+    "!",
+    "!",
+    "line con 0",
+    "!",
+    "line aux 0",
+    "!",
+    "line vty 0 4",
+    " login",
+    "!",
+    "!",
+    "!",
+    "end"
+   ],
+   "startup": null
+  },
+  {
+   "id": "d5",
+   "kind": "pc",
+   "label": "LNX-A",
+   "x": 296,
+   "y": 855,
+   "seed": 5,
+   "pc": {
+    "mode": "static",
+    "ip": "192.168.10.21",
+    "mask": "/24",
+    "gateway": "192.168.10.1",
+    "dns": "8.8.8.8",
+    "sendClientId": true,
+    "os": "linux",
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "LNX-A",
+    "apps": {
+     "inbox": []
+    }
+   }
+  },
+  {
+   "id": "d6",
+   "kind": "pc",
+   "label": "WIN-A",
+   "x": 512,
+   "y": 855,
+   "seed": 6,
+   "pc": {
+    "mode": "static",
+    "ip": "192.168.10.11",
+    "mask": "/24",
+    "gateway": "192.168.10.1",
+    "dns": "8.8.8.8",
+    "sendClientId": true,
+    "os": "windows",
+    "wins": "192.168.10.2",
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "WIN-A",
+    "apps": {
+     "inbox": []
+    }
+   }
+  },
+  {
+   "id": "d7",
+   "kind": "pc",
+   "label": "WIN-B",
+   "x": 752,
+   "y": 855,
+   "seed": 7,
+   "pc": {
+    "mode": "static",
+    "ip": "192.168.20.11",
+    "mask": "/24",
+    "gateway": "192.168.20.1",
+    "dns": "8.8.8.8",
+    "sendClientId": true,
+    "os": "windows",
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "WIN-B",
+    "apps": {
+     "inbox": []
+    }
+   }
+  },
+  {
+   "id": "d8",
+   "kind": "pc",
+   "label": "LNX-B",
+   "x": 968,
+   "y": 855,
+   "seed": 8,
+   "pc": {
+    "mode": "static",
+    "ip": "192.168.20.21",
+    "mask": "/24",
+    "gateway": "192.168.20.1",
+    "dns": "8.8.8.8",
+    "sendClientId": true,
+    "os": "linux",
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "LNX-B",
+    "apps": {
+     "inbox": []
+    }
+   }
+  },
+  {
+   "id": "d9",
+   "kind": "server",
+   "label": "SRV-WINS",
+   "x": 80,
+   "y": 855,
+   "seed": 9,
+   "pc": {
+    "mode": "static",
+    "ip": "192.168.10.2",
+    "mask": "/24",
+    "gateway": "192.168.10.1",
+    "dns": "8.8.8.8",
+    "sendClientId": true,
+    "os": "linux",
+    "files": [
+     {
+      "path": "/etc/bind",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/dovecot",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/kea",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/netplan",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/postfix",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/samba",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/samba/smb.conf",
+      "mode": 420,
+      "uid": 0,
+      "gid": 0,
+      "kind": "file",
+      "content": "#\n# Sample configuration file for the Samba suite for Debian GNU/Linux.\n#\n# Any line which starts with a ; (semi-colon) or a # (hash)\n# is a comment and is ignored. In this example we will use a #\n# for commentary and a ; for parts of the config file that you\n# may wish to enable\n#\n# NOTE: Whenever you modify this file you should run the command\n# \"testparm\" to check that you have not made any basic syntactic\n# errors.\n\n#======================= Global Settings =======================\n\n[global]\n\n## Browsing/Identification ###\n\n# Change this to the workgroup/NT-domain name your Samba server will part of\n   workgroup = WORKGROUP\n   wins support = yes\n\n# server string is the equivalent of the NT Description field\n   server string = %h server (Samba, Ubuntu)\n\n#### Debugging/Accounting ####\n\n# This tells Samba to use a separate log file for each machine\n# that connects\n   log file = /var/log/samba/log.%m\n\n# Cap the size of the individual log files (in KiB).\n   max log size = 1000\n\n   logging = file\n\n####### Authentication #######\n\n   server role = standalone server\n\n   obey pam restrictions = yes\n\n# This option controls how unsuccessful authentication attempts are mapped\n# to anonymous connections\n   map to guest = bad user\n\n############ Misc ############\n\n# Allow users who've been granted usershare privileges to create\n# public shares, not just authenticated ones\n   usershare allow guests = yes\n\n#======================= Share Definitions =======================\n\n[printers]\n   comment = All Printers\n   browseable = no\n   path = /var/tmp\n   printable = yes\n   guest ok = no\n   read only = yes\n   create mask = 0700\n\n# Windows clients look for this share name as a source of downloadable\n# printer drivers\n[print$]\n   comment = Printer Drivers\n   path = /var/lib/samba/printers\n   browseable = yes\n   read only = yes\n   guest ok = no\n"
+     },
+     {
+      "path": "/proc/sys",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/kernel",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf/all",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf/default",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6/conf",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6/conf/all",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/netfilter",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/vm",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/usr/share/dns",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/var/lib/kea",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/var/www/html",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     }
+    ],
+    "enabled": [
+     "ip",
+     "http",
+     "files",
+     "log",
+     "linux"
+    ],
+    "packages": [
+     "python3-samba",
+     "samba",
+     "samba-common",
+     "samba-common-bin",
+     "samba-libs",
+     "tdb-tools"
+    ],
+    "autoPackages": [
+     "python3-samba",
+     "samba-common",
+     "samba-common-bin",
+     "samba-libs",
+     "tdb-tools"
+    ],
+    "hostname": "SRV-WINS"
+   },
+   "server": {
+    "services": {
+     "dhcp": {
+      "enabled": false,
+      "pools": []
+     },
+     "dns": {
+      "enabled": false,
+      "zones": []
+     },
+     "http": {
+      "enabled": true,
+      "files": [
+       {
+        "name": "index.html",
+        "content": "<!doctype html>\n<html lang=\"es\">\n<head><meta charset=\"utf-8\"><title>Server</title></head>\n<body>\n<p><span class=\"web-brand-logo\">Netfix</span></p>\n<h1>Servidor web de Netfix</h1>\n<p>Esta página la sirve el servicio HTTP de un servidor de Netfix.</p>\n<p>Edita <code>index.html</code> en la pestaña Servicios → HTTP, o crea páginas nuevas.</p>\n<p><a href=\"ayuda.html\">Ayuda</a></p>\n</body>\n</html>"
+       },
+       {
+        "name": "ayuda.html",
+        "content": "<!doctype html>\n<html lang=\"es\">\n<head><meta charset=\"utf-8\"><title>Ayuda</title></head>\n<body>\n<h1>Ayuda</h1>\n<p>Prueba desde un PC: navegador, <code>curl http://IP/</code> o <code>wget</code>.</p>\n<p><a href=\"index.html\">Volver</a></p>\n</body>\n</html>"
+       }
+      ]
+     },
+     "mail": {
+      "smtp": false,
+      "pop3": false,
+      "imap": false,
+      "domain": "",
+      "users": []
+     },
+     "ssh": {
+      "enabled": false,
+      "users": []
+     },
+     "webapps": {
+      "roundcube": {
+       "enabled": false,
+       "mode": "alias",
+       "alias": "/roundcube",
+       "port": 8080
+      },
+      "admin": {
+       "enabled": false,
+       "mode": "port",
+       "alias": "/admin",
+       "port": 10000,
+       "user": "admin",
+       "password": "netfix"
+      }
+     }
+    },
+    "autostart": {
+     "dhcp": true,
+     "dns": true,
+     "http": true,
+     "smtp": true,
+     "mailbox": true,
+     "ssh": true,
+     "firewall": false
+    },
+    "mailboxes": {}
+   }
+  }
+ ],
+ "links": [
+  {
+   "a": {
+    "device": "d2",
+    "port": "GigabitEthernet0/2"
+   },
+   "b": {
+    "device": "d1",
+    "port": "Fibra0"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d2",
+    "port": "GigabitEthernet0/0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "GigabitEthernet0/1"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d2",
+    "port": "GigabitEthernet0/1"
+   },
+   "b": {
+    "device": "d4",
+    "port": "GigabitEthernet0/1"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d5",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "FastEthernet0/1"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d6",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "FastEthernet0/2"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d7",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d4",
+    "port": "FastEthernet0/1"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d8",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d4",
+    "port": "FastEthernet0/2"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d9",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d3",
+    "port": "FastEthernet0/24"
+   },
+   "cable": "auto"
+  }
+ ],
+ "annotations": [
+  {
+   "id": "a1",
+   "kind": "rect",
+   "points": [
+    {
+     "x": 826,
+     "y": 4
+    },
+    {
+     "x": 1009,
+     "y": 156
+    }
+   ],
+   "color": "#455a64",
+   "fill": true,
+   "width": 2,
+   "text": "Internet · red pública",
+   "size": 14
+  },
+  {
+   "id": "a2",
+   "kind": "rect",
+   "points": [
+    {
+     "x": 10,
+     "y": 453
+    },
+    {
+     "x": 582,
+     "y": 921
+    }
+   ],
+   "color": "#388e3c",
+   "fill": true,
+   "width": 2,
+   "text": "LAN A · red privada 192.168.10.0/24",
+   "size": 14
+  },
+  {
+   "id": "a3",
+   "kind": "rect",
+   "points": [
+    {
+     "x": 682,
+     "y": 453
+    },
+    {
+     "x": 1038,
+     "y": 921
+    }
+   ],
+   "color": "#0097a7",
+   "fill": true,
+   "width": 2,
+   "text": "LAN B · red privada 192.168.20.0/24",
+   "size": 14
+  }
+ ]
+}
