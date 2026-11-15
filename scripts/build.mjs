@@ -52,7 +52,7 @@ function visit(path, stack) {
   state.set(path, 'done');
   order.push(path);
 }
-const entry = 'ui/main.js';
+const entry = 'ui/boot.js';
 visit(entry, []);
 
 // Classic-script bundle: each module becomes a function scope, run in dependency order.
@@ -87,7 +87,7 @@ const single = readFileSync(join(root, 'src/ui/index.html'), 'utf8')
   .replace('<link rel="stylesheet" href="styles.css">', () => `<style>\n${css}\n</style>`)
   .replace('<link rel="stylesheet" href="web-admin.css">', () => `<style>\n${webCss}\n</style>`)
   .replace('<link rel="stylesheet" href="docs.css">', () => `<style>\n${docsCss}\n</style>`)
-  .replace('<script type="module" src="js/ui/main.js"></script>', () => `<script>${inlineScript}</script>`)
+  .replace('<script type="module" src="js/ui/boot.js"></script>', () => `<script>${inlineScript}</script>`)
   .replace('href="favicon.png"', () => `href="${dataUri('favicon.png')}"`)
   .replace('href="apple-touch-icon.png"', () => `href="${dataUri('apple-touch-icon.png')}"`);
 writeFileSync(join(dist, 'netfix.html'), single);
