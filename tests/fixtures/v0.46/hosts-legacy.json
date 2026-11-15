@@ -1,0 +1,164 @@
+{
+ "format": "netfix",
+ "version": 2,
+ "devices": [
+  {
+   "id": "d1",
+   "kind": "pc",
+   "label": "PC0",
+   "x": 0,
+   "y": 0,
+   "seed": 1,
+   "pc": {
+    "mode": "static",
+    "ip": "10.0.0.2",
+    "mask": "/24",
+    "sendClientId": true,
+    "os": "windows",
+    "files": [
+     {
+      "path": "/etc/netplan",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/kernel",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf/all",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf/default",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6/conf",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6/conf/all",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/netfilter",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/vm",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/Windows",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/Windows/System32",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/Windows/System32/drivers",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/Windows/System32/drivers/etc",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/Windows/System32/drivers/etc/hosts",
+      "mode": 420,
+      "uid": 0,
+      "gid": 0,
+      "kind": "file",
+      "content": "10.0.0.7 impresora\n"
+     }
+    ],
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "PC0",
+    "apps": {
+     "inbox": []
+    }
+   }
+  }
+ ],
+ "links": []
+}

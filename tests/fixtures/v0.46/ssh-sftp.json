@@ -1,0 +1,500 @@
+{
+ "format": "netfix",
+ "version": 2,
+ "devices": [
+  {
+   "id": "d1",
+   "kind": "switch",
+   "label": "Switch0",
+   "x": 460,
+   "y": 380,
+   "seed": 1,
+   "config": [
+    "!",
+    "version 15.0",
+    "no service timestamps log datetime msec",
+    "no service timestamps debug datetime msec",
+    "no service password-encryption",
+    "!",
+    "hostname Switch0",
+    "!",
+    "spanning-tree mode pvst",
+    "spanning-tree extend system-id",
+    "!",
+    "interface FastEthernet0/1",
+    "!",
+    "interface FastEthernet0/2",
+    "!",
+    "interface FastEthernet0/3",
+    "!",
+    "interface FastEthernet0/4",
+    "!",
+    "interface FastEthernet0/5",
+    "!",
+    "interface FastEthernet0/6",
+    "!",
+    "interface FastEthernet0/7",
+    "!",
+    "interface FastEthernet0/8",
+    "!",
+    "interface FastEthernet0/9",
+    "!",
+    "interface FastEthernet0/10",
+    "!",
+    "interface FastEthernet0/11",
+    "!",
+    "interface FastEthernet0/12",
+    "!",
+    "interface FastEthernet0/13",
+    "!",
+    "interface FastEthernet0/14",
+    "!",
+    "interface FastEthernet0/15",
+    "!",
+    "interface FastEthernet0/16",
+    "!",
+    "interface FastEthernet0/17",
+    "!",
+    "interface FastEthernet0/18",
+    "!",
+    "interface FastEthernet0/19",
+    "!",
+    "interface FastEthernet0/20",
+    "!",
+    "interface FastEthernet0/21",
+    "!",
+    "interface FastEthernet0/22",
+    "!",
+    "interface FastEthernet0/23",
+    "!",
+    "interface FastEthernet0/24",
+    "!",
+    "interface GigabitEthernet0/1",
+    "!",
+    "interface GigabitEthernet0/2",
+    "!",
+    "interface Vlan1",
+    " no ip address",
+    " shutdown",
+    "!",
+    "!",
+    "!",
+    "!",
+    "line con 0",
+    "!",
+    "line aux 0",
+    "!",
+    "line vty 0 4",
+    " login",
+    "!",
+    "!",
+    "!",
+    "end"
+   ],
+   "startup": null
+  },
+  {
+   "id": "d2",
+   "kind": "server",
+   "label": "SRV",
+   "x": 760,
+   "y": 380,
+   "seed": 2,
+   "pc": {
+    "mode": "static",
+    "ip": "172.20.0.10",
+    "mask": "/24",
+    "gateway": "172.20.0.1",
+    "dns": "127.0.0.1",
+    "sendClientId": true,
+    "os": "linux",
+    "files": [
+     {
+      "path": "/etc/bind",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/dovecot",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/kea",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/netplan",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/etc/postfix",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/home/ana/bienvenida.txt",
+      "mode": 420,
+      "uid": 7735,
+      "gid": 7735,
+      "kind": "file",
+      "content": "Hola Ana: sube aquí tus entregas con SFTP.\n"
+     },
+     {
+      "path": "/proc/sys",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/kernel",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf/all",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv4/conf/default",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6/conf",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/ipv6/conf/all",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/net/netfilter",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/proc/sys/vm",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/srv/compartido",
+      "mode": 493,
+      "uid": 1000,
+      "gid": 1000,
+      "kind": "dir"
+     },
+     {
+      "path": "/usr/share/dns",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/var/lib/kea",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     },
+     {
+      "path": "/var/www/html",
+      "mode": 493,
+      "uid": 0,
+      "gid": 0,
+      "kind": "dir"
+     }
+    ],
+    "enabled": [
+     "ip",
+     "ssh",
+     "dns",
+     "http",
+     "files",
+     "log",
+     "linux"
+    ],
+    "hostname": "SRV"
+   },
+   "server": {
+    "services": {
+     "dhcp": {
+      "enabled": false,
+      "pools": []
+     },
+     "dns": {
+      "enabled": true,
+      "zones": [
+       {
+        "name": "aula.lab",
+        "kind": "forward",
+        "soa": {
+         "mname": "srv.aula.lab",
+         "rname": "admin.aula.lab",
+         "serial": 2026102101,
+         "refresh": 604800,
+         "retry": 86400,
+         "expire": 2419200,
+         "minimum": 3600
+        },
+        "ns": [
+         "srv.aula.lab"
+        ],
+        "records": [
+         {
+          "name": "srv",
+          "type": "A",
+          "value": "172.20.0.10",
+          "ttl": 86400
+         }
+        ]
+       }
+      ]
+     },
+     "http": {
+      "enabled": true,
+      "files": [
+       {
+        "name": "index.html",
+        "content": "<!doctype html>\n<html lang=\"es\">\n<head><meta charset=\"utf-8\"><title>Server</title></head>\n<body>\n<p><span class=\"web-brand-logo\">Netfix</span></p>\n<h1>Servidor web de Netfix</h1>\n<p>Esta página la sirve el servicio HTTP de un servidor de Netfix.</p>\n<p>Edita <code>index.html</code> en la pestaña Servicios → HTTP, o crea páginas nuevas.</p>\n<p><a href=\"ayuda.html\">Ayuda</a></p>\n</body>\n</html>"
+       },
+       {
+        "name": "ayuda.html",
+        "content": "<!doctype html>\n<html lang=\"es\">\n<head><meta charset=\"utf-8\"><title>Ayuda</title></head>\n<body>\n<h1>Ayuda</h1>\n<p>Prueba desde un PC: navegador, <code>curl http://IP/</code> o <code>wget</code>.</p>\n<p><a href=\"index.html\">Volver</a></p>\n</body>\n</html>"
+       }
+      ]
+     },
+     "mail": {
+      "smtp": false,
+      "pop3": false,
+      "imap": false,
+      "domain": "",
+      "users": []
+     },
+     "ssh": {
+      "enabled": true,
+      "users": [
+       {
+        "name": "admin",
+        "password": "netfix"
+       },
+       {
+        "name": "ana",
+        "password": "ana1"
+       }
+      ]
+     },
+     "webapps": {
+      "roundcube": {
+       "enabled": false,
+       "mode": "alias",
+       "alias": "/roundcube",
+       "port": 8080
+      },
+      "admin": {
+       "enabled": false,
+       "mode": "port",
+       "alias": "/admin",
+       "port": 10000,
+       "user": "admin",
+       "password": "netfix"
+      }
+     }
+    },
+    "autostart": {
+     "dhcp": true,
+     "dns": true,
+     "http": true,
+     "smtp": true,
+     "mailbox": true,
+     "ssh": true,
+     "firewall": false
+    },
+    "mailboxes": {}
+   }
+  },
+  {
+   "id": "d3",
+   "kind": "pc",
+   "label": "PC0",
+   "x": 220,
+   "y": 580,
+   "seed": 3,
+   "pc": {
+    "mode": "static",
+    "ip": "172.20.0.21",
+    "mask": "/24",
+    "gateway": "172.20.0.1",
+    "dns": "172.20.0.10",
+    "sendClientId": true,
+    "os": "windows",
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "PC0",
+    "apps": {
+     "inbox": []
+    }
+   }
+  },
+  {
+   "id": "d4",
+   "kind": "pc",
+   "label": "PC1",
+   "x": 460,
+   "y": 580,
+   "seed": 4,
+   "pc": {
+    "mode": "static",
+    "ip": "172.20.0.22",
+    "mask": "/24",
+    "gateway": "172.20.0.1",
+    "dns": "172.20.0.10",
+    "sendClientId": true,
+    "os": "linux",
+    "enabled": [
+     "ip",
+     "browser",
+     "ssh",
+     "sftp",
+     "linux"
+    ],
+    "packages": [
+     "libnftables1",
+     "libnftnl11",
+     "nftables"
+    ],
+    "autoPackages": [
+     "libnftables1",
+     "libnftnl11"
+    ],
+    "hostname": "PC1",
+    "apps": {
+     "inbox": []
+    }
+   }
+  }
+ ],
+ "links": [
+  {
+   "a": {
+    "device": "d2",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d1",
+    "port": "FastEthernet0/24"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d3",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d1",
+    "port": "FastEthernet0/1"
+   },
+   "cable": "auto"
+  },
+  {
+   "a": {
+    "device": "d4",
+    "port": "FastEthernet0"
+   },
+   "b": {
+    "device": "d1",
+    "port": "FastEthernet0/2"
+   },
+   "cable": "auto"
+  }
+ ],
+ "annotations": [
+  {
+   "id": "a1",
+   "kind": "rect",
+   "points": [
+    {
+     "x": 150,
+     "y": 248
+    },
+    {
+     "x": 830,
+     "y": 646
+    }
+   ],
+   "color": "#388e3c",
+   "fill": true,
+   "width": 2,
+   "text": "Aula · red privada 172.20.0.0/24",
+   "size": 14
+  }
+ ]
+}
