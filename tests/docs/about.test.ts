@@ -15,7 +15,7 @@ test('about-data.ts is in sync with package.json and LICENSE.md (run npm run abo
   assert.equal(ABOUT.version, pkg.version);
   assert.equal(ABOUT.description, pkg.description);
   assert.equal(ABOUT.license, pkg.license);
-  assert.equal(ABOUT.repository, 'https://github.com/infogerman/netfix');
+  assert.equal(ABOUT.repository, 'https://github.com/glopezca/netfix');
   assert.equal(ABOUT.licenseMarkdown, readFileSync(new URL('LICENSE.md', root), 'utf8'));
   const generated = execFileSync(process.execPath, [new URL('scripts/gen-about.mjs', root).pathname, '--stdout'], { encoding: 'utf8' });
   assert.equal(generated, readFileSync(new URL('src/docs/about-data.ts', root), 'utf8'));
