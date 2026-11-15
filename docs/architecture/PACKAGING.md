@@ -139,7 +139,9 @@ Usa los nombres de `PUBLIC-API.md` §3. Cada subpath reexporta funciones que ya 
 > se mantiene hasta el PR de publicación (3.5). `src/pkg/core.ts` es la unión de `topology` y `classroom`, sin subpath.
 > Comprobado con `npm pack` en un consumidor de prueba: `.d.ts` resuelven con `NodeNext`, `lib ES2022` sin DOM y
 > `skipLibCheck: false` (los especificadores `.ts` en los `.d.ts` resuelven); `ui` compila con DOM; rutas internas →
-> `ERR_PACKAGE_PATH_NOT_EXPORTED`; tarball 2,6 MB, 627 `.d.ts`. Las pruebas automáticas de esto son el PR 3.3.
+> `ERR_PACKAGE_PATH_NOT_EXPORTED`; tarball 2,6 MB, 627 `.d.ts`. Las pruebas automáticas de esto son el PR 3.3:
+> `npm run test:pack` (`scripts/pack-check.mjs`, también en CI) empaqueta, instala el tarball en un consumidor desechable
+> en `node_modules/.cache/pack-check` y comprueba contenido, imports en Node, rutas cerradas y los `.d.ts` con `tsc`.
 
 ### 2.3 Fuentes TS o JS compilado + `.d.ts`
 

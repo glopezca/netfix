@@ -54,6 +54,7 @@
     "brand": "node scripts/gen-brand.mjs",
     "site": "npm run build && node scripts/build-site.mjs",
     "build:pkg": "tsc -p tsconfig.pkg.json",
+    "test:pack": "node scripts/pack-check.mjs",
     "prepack": "npm run build:pkg"
   },
   "devDependencies": {

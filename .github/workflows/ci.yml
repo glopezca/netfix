@@ -16,6 +16,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npx tsc -p tsconfig.json
       - run: npm run test:coverage
+      # Package as a consumer sees it (PR 3.3): tarball contents, imports, closed internal paths, .d.ts without DOM.
+      - run: npm run test:pack
       - run: npx tsc -p tsconfig.build.json && node scripts/build.mjs --skip-tsc
       # e2e subset (R27): Playwright is installed outside the repo (not a dependency); the scripts find it via PLAYWRIGHT_PATH.
       - run: npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.64.1 && node "$RUNNER_TEMP/pw/node_modules/playwright/cli.js" install --with-deps chromium
