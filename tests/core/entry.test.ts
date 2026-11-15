@@ -9,11 +9,18 @@ const SURFACE = [
   'FILE_VERSION', 'validateFile', 'Topology', 'EXAMPLES', 'allowsDevice', 'allowsLab', 'allowsTab', 'parseRestrictions',
   'parseChecklist', 'evaluate', 'WORK_LIMIT', 'evaluateFile', 'checkMarkingBudget', 'MARK_MAX_DEVICES',
   'MARK_MAX_CONFIG_LINES', 'withWorkLimit', 'WorkLimitError',
+  // Phase 2: metadata (2.1), typed format errors (D2), and what Classroom also imports (C3).
+  'RUNTIME_INFO', 'EVALUATION_VERSION', 'TopologyFileError', 'NO_RESTRICTIONS', 'DEVICE_KINDS', 'LABS_ES',
 ];
 
 test('the entry exposes the PUBLIC-API 3.1-3.2 surface', () => {
   for (const name of SURFACE) assert.notEqual((core as Record<string, unknown>)[name], undefined, name);
   assert.equal(core.FILE_VERSION, 2);
+});
+
+test('a bad file fails with a TopologyFileError code, and marks carry RUNTIME_INFO', () => {
+  assert.throws(() => core.validateFile({ format: 'netfix', version: 2, devices: [] }), (e: unknown) => e instanceof core.TopologyFileError && e.code === 'incomplete');
+  assert.deepEqual(core.evaluate(core.EXAMPLES[0]!.build().toJSON(), []).runtime, core.RUNTIME_INFO);
 });
 
 test('a lab loads and is evaluated from the entry alone', () => {

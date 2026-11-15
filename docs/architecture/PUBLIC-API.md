@@ -1,4 +1,4 @@
-# API pública y flujos de topología (Fase 0)
+# API pública y flujos de topología (Fase 0; contratos de la Fase 2 en §3)
 
 > **Revalidado en `6e7c887` (`0.47.0`):** ver `README.md`; las cifras de `5c7b3e9` siguen valiendo salvo lo allí indicado.
 
@@ -110,41 +110,41 @@ ni de evaluación (`FixITClassroom/migrations/0001_init.sql`, `0004_results.sql`
 en `migrations/*.sql` sin resultados). La corrección usa la lista de comprobación **actual** de la tarea, no la que
 había al entregar (`worker/grading.ts`, función `target`).
 
-## 3. API pública inicial propuesta
+## 3. Contratos públicos (Fase 2, vigentes)
 
-Regla: cada entrada reexporta una función o tipo que ya existe. No se propone ninguna firma nueva. Los nombres de los
-subpath son una propuesta de empaquetado (ver `PACKAGING.md`); las funciones no.
+> **Fase 2 (PR 2.5):** esta sección sustituye a la propuesta de la Fase 0 con las decisiones D1, D2, D3 y C3. La
+> superficie neutral (§3.1, §3.2, §3.6) la exporta hoy `src/pkg/core.ts` y la comprueba `tests/core/entry.test.ts`;
+> los subpath `netfix/topology` y `netfix/classroom` son su reparto en el paquete (Fase 3, `PACKAGING.md`).
+> Cada entrada es un símbolo existente con su nombre de hoy (D3): no hay envoltorios.
 
 ### 3.1 `netfix/topology` (neutral de runtime)
 
-| Entrada | Envuelve | Entrada → salida |
+| Símbolo | Origen | Entrada → salida |
 |---|---|---|
-| `TOPOLOGY_FILE_VERSION` | `FILE_VERSION` (`src/net/topology-file.ts`) | `2` |
-| `validateTopologyFile` | `validateFile` (`src/net/topology-file.ts`) | `unknown` → `TopologyFile`; lanza `Error` con mensaje traducido |
-| `loadTopology` | `Topology.fromJSON` (`src/net/topology.ts`) | `unknown` → `Topology` (valida, construye, asienta 30 s simulados) |
-| `saveTopology` | `Topology#toJSON` | `Topology` → `TopologyFile` v2 |
-| `normalizeTopologyFile` | `Topology.fromJSON(x).toJSON()` (patrón de `checkTopology` de Classroom) | `unknown` → `TopologyFile` en forma normal |
-| `LABS` | `EXAMPLES` (`src/net/examples.ts`) | `Example[]` con `id` y `build(): Topology` |
+| `FILE_VERSION` | `src/net/topology-file.ts` | `2`: el `topologySchemaVersion` (D1, §4.1) |
+| `validateFile` | ídem | `unknown` → `TopologyFile`; lanza `TopologyFileError` (§3.7) |
+| `TopologyFileError`, tipo `TopologyFileErrorCode` | ídem | error de formato con `code` estable (D2) |
+| `Topology.fromJSON` | `src/net/topology.ts` | `unknown` → `Topology` (valida, construye, asienta 30 s simulados); lanza `TopologyFileError` |
+| `Topology#toJSON` | ídem | `Topology` → `TopologyFile` v2. `fromJSON(x).toJSON()` es la forma normal (punto fijo tras una carga) |
+| `EXAMPLES` | `src/net/examples.ts` | `Example[]` con `id` y `build(): Topology` (C3) |
+| `LABS_ES` | `src/i18n/es-ES/labs.ts` | textos en castellano de los laboratorios (C3) |
 | tipos | `TopologyFile`, `DeviceRecord`, `PcRecord`, `ServerRecord`, `DeviceKind` | |
-
-`saveTopology` choca de nombre con `saveTopology` de `src/ui/save-file.ts` (diálogo de guardado). Decidir nombre en
-Fase 2.
 
 ### 3.2 `netfix/classroom` (neutral de runtime)
 
-| Entrada | Envuelve | Entrada → salida |
+| Símbolo | Origen | Entrada → salida |
 |---|---|---|
 | `parseRestrictions` | `src/classroom/restrictions.ts` | `unknown` → `Restrictions` (congelado); lanza |
-| `allowsDevice`, `allowsLab`, `allowsTab` | ídem | consultas puras sobre `Restrictions` |
+| `allowsDevice`, `allowsLab`, `allowsTab`, `NO_RESTRICTIONS`, `DEVICE_KINDS` | ídem | consultas puras y valores por defecto |
 | `parseChecklist` | `src/classroom/checklist.ts` | `unknown` → `readonly ChecklistItem[]`; lanza |
-| `evaluate` | `src/classroom/evaluate.ts` | `(file: unknown, checklist, workLimit = WORK_LIMIT)` → `Evaluation`; lanza `Error` si el archivo no es válido o agota el límite |
+| `evaluate` | `src/classroom/evaluate.ts` | `(file: unknown, checklist, workLimit = WORK_LIMIT)` → `Evaluation` (con `runtime`, §3.6); lanza `TopologyFileError` o `WorkLimitError` |
 | `evaluateFile` | `src/classroom/embed.ts` | `(topology: unknown, checklist: unknown)` → `Evaluation` (valida la lista antes) |
 | `checkMarkingBudget`, `MARK_MAX_DEVICES`, `MARK_MAX_CONFIG_LINES` | `src/classroom/budget.ts` | `unknown` → `void`; lanza |
-| `withWorkLimit`, `WorkLimitError`, `WORK_LIMIT` | `src/net/network.ts`, `src/classroom/evaluate.ts` | Classroom los usa hoy para acotar `fromJSON` |
+| `withWorkLimit`, `WorkLimitError`, `WORK_LIMIT` | `src/net/network.ts`, `src/classroom/evaluate.ts` | acotan `fromJSON` y la corrección |
 | tipos | `Restrictions`, `Check`, `ChecklistItem`, `Evaluation`, `ItemResult` | |
 
-Esto cubre uno a uno los imports actuales de `FixITClassroom/src/worker/netfix.ts`. No queda ningún import profundo
-sin entrada equivalente.
+Cubre uno a uno los imports actuales de `FixITClassroom/src/worker/netfix.ts` y `src/web/core/*`
+(`tests/phase1/classroom-surface.test.ts`).
 
 ### 3.3 `netfix/ui` (solo navegador)
 
@@ -182,9 +182,36 @@ web apps e i18n). Que Classroom lo ejecute hoy en Workers con v0.31.0 es evidenc
 3. **Estado global de módulo en el Core:** `workLeft` (`src/net/network.ts`), `current` locale (`src/i18n/locale.ts`),
    bloqueo del prompt (`forceTimestampPrompt`). Seguro en un Worker de un solo hilo y ejecución síncrona; no reentrante.
 4. **Errores como `Error` con texto.** Classroom distingue validación de bug con `err.constructor === Error`
-   (`worker/netfix.ts`, función `netfix`). No hay códigos de error.
+   (`worker/netfix.ts`, función `netfix`). No hay códigos de error. **Fase 2:** `validateFile` lanza `TopologyFileError` con `code` (§3.7).
 5. **Idioma.** Los mensajes de `validateFile` salen de `t()` con el locale global (por defecto `es-ES`); los `detail`
    de `evaluate` están en castellano fijo en el código.
+
+### 3.6 Metadatos (`metadata`, neutral)
+
+| Símbolo | Origen | Valor |
+|---|---|---|
+| `RUNTIME_INFO` | `src/classroom/evaluate.ts` | `{ engineVersion, topologySchemaVersion, evaluationVersion }`, el mismo objeto que lleva cada `Evaluation.runtime` |
+| `EVALUATION_VERSION` | ídem | `1`; sube cuando cambia la nota de un mismo archivo y lista (no por comprobaciones nuevas) |
+| tipo `NetfixRuntimeInfo` | ídem | |
+
+`engineVersion` es la `version` de `package.json` (vía `ABOUT`). **Sin `engineCommit`** (propuesta del plan): el build
+no tiene paso git; con la versión publicada basta para reproducir (§5.3, punto 6). Guardarlo con la nota es de
+Classroom (Fase 7).
+
+### 3.7 Política de compatibilidad y errores de formato
+
+- **Versión de esquema (D1):** `format` + `version`; se lee `version` 1 y 2 y los `format` `netfix` y `netsim`. `version`
+  solo sube ante un cambio incompatible; los campos opcionales nuevos no la suben (§4.1). Lo comprueban los corpus
+  `tests/fixtures/v0.1` (netsim), `v0.31` y `v0.46` (`tests/compat/`).
+- **Errores (D2):** el contrato es `TopologyFileError.code`, unión cerrada: `not-netfix`, `incomplete`, `too-big`,
+  `bad-device`, `device-data`, `device-config`, `bad-link`, `drawings` (significado en `src/net/topology-file.ts`).
+  El mensaje es texto traducido y puede cambiar: no se compara. **Cambio para Classroom:** hoy distingue validación de
+  fallo con `err.constructor === Error` (§3.5, punto 4); con `TopologyFileError` esa prueba da falso y un archivo
+  inválido pasaría de 400 a 500. Al subir de versión (Fase 7) la prueba pasa a ser `instanceof TopologyFileError`
+  (identidad de clases entre subpath: R8, Fase 3). Los demás errores de validación (`parseChecklist`,
+  `parseRestrictions`, `checkMarkingBudget`) siguen siendo `Error` sin código.
+- **Cambios de contrato:** quitar o renombrar un símbolo de §3.1–3.6, o un `code`, es incompatible (versión mayor del
+  paquete); añadir es compatible.
 
 ## 4. Estrategia de compatibilidad de topologías
 

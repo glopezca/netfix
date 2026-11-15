@@ -6,7 +6,7 @@ Plan: `NETFIX-MIGRATION-ECC.md` (opción B; documento de coordinación fuera de 
 |------|--------|------|
 | 0 — Auditoría y diseño | Entregables completos (2026-11-13), revalidados en `6e7c887` (2026-11-14) | GATE 0: **aprobado** por el propietario (2026-11-14) |
 | 1 — Core | Completada (PR #23–#32; 1.8 opcional, pendiente antes de la Fase 6) | GATE 1: **aprobado** por el propietario (2026-11-15) |
-| 2 — Contratos y esquema | En curso (`RISKS.md` §3) | GATE 2 |
+| 2 — Contratos y esquema | 2.1–2.5 en PR (#34–#36 y el de 2.5); contratos en `PUBLIC-API.md` §3 | GATE 2: pendiente |
 | 3–9 | No iniciadas | — |
 
 Base auditada: Netfix `main` @ `5c7b3e9` (`0.46.0`), FixITClassroom `main` @ `d443d98`. `DEPENDENCY-MAP.md`, `PUBLIC-API.md` y

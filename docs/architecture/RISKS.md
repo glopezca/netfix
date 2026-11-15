@@ -64,6 +64,7 @@ Probabilidad (P) e impacto (I): A alto, M medio, B bajo.
 | R26 | Limpieza de listeners y temporizadores en `destroy()` **NO VERIFICADO**: fugas al montar y desmontar varias veces | M | M | Prueba de montaje/desmontaje repetido (Fase 6) | 6 | `CLASSROOM-CONSUMPTION.md` §7.3 |
 | R27 | e2e (Playwright) fuera de CI: regresiones del standalone pueden pasar inadvertidas al extraer | M | M | Ejecutar un subconjunto de e2e en CI antes de GATE 1 | 1 | `PACKAGING.md` §5.1 |
 | R28 | Ruta de ficheros de Windows: desde `0.47.0` C:\ es `/mnt/c` (antes `/`). Un laboratorio guardado antes lleva el hosts de Windows en `/Windows/…`; Netfix ≥0.47 lo migra y lo lee, pero un motor `<0.47` (el Worker de Classroom en `v0.31.0`) no ve los ficheros guardados en `/mnt/c` | M | B | Mismo motor en navegador y Worker (R17); caso de prueba de compatibilidad con un laboratorio `0.46` y otro `0.47` en el corpus (Fase 3) | 3 | `shells/hosts-file.ts` (`LEGACY_WINDOWS_HOSTS`); `README.md` (revalidación en `6e7c887`) |
+| R29 | `TopologyFileError` (D2, PR 2.2) es subclase de `Error`: Classroom clasifica con `err.constructor === Error` (`worker/netfix.ts:26`), así que al subir de versión un archivo inválido pasaría de 400 a 500 | M | A | Cambiar la prueba a `instanceof TopologyFileError` en el mismo PR que sube la versión, con un caso de archivo inválido → 400 | 7 | `PUBLIC-API.md` §3.7 |
 
 ## 2. Decisiones pendientes del propietario
 
