@@ -18,6 +18,11 @@ jobs:
       - run: npm run test:coverage
       # Package as a consumer sees it (PR 3.3): tarball contents, imports, closed internal paths, .d.ts without DOM.
       - run: npm run test:pack
+      # workerd smoke test (PR 3.4, R11/R12). workerd stays out of the repo (P4), pinned to FixITClassroom's version.
+      - run: npm install --prefix "$RUNNER_TEMP/wd" --no-audit --no-fund workerd@1.20261023.1
+      - run: npm run test:workerd
+        env:
+          WORKERD_BIN: ${{ runner.temp }}/wd/node_modules/@cloudflare/workerd-linux-64/bin/workerd
       - run: npx tsc -p tsconfig.build.json && node scripts/build.mjs --skip-tsc
       # e2e subset (R27): Playwright is installed outside the repo (not a dependency); the scripts find it via PLAYWRIGHT_PATH.
       - run: npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.64.1 && node "$RUNNER_TEMP/pw/node_modules/playwright/cli.js" install --with-deps chromium

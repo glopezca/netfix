@@ -55,6 +55,7 @@
     "site": "npm run build && node scripts/build-site.mjs",
     "build:pkg": "tsc -p tsconfig.pkg.json",
     "test:pack": "node scripts/pack-check.mjs",
+    "test:workerd": "node scripts/workerd-smoke.mjs",
     "prepack": "npm run build:pkg"
   },
   "devDependencies": {
