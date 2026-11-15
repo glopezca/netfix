@@ -1,8 +1,33 @@
 {
-  "name": "netfix",
+  "name": "@glopezca/netfix",
   "version": "0.47.1",
   "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
   "type": "module",
+  "exports": {
+    "./topology": {
+      "types": "./dist/pkg/pkg/topology.d.ts",
+      "default": "./dist/pkg/pkg/topology.js"
+    },
+    "./classroom": {
+      "types": "./dist/pkg/pkg/classroom.d.ts",
+      "default": "./dist/pkg/pkg/classroom.js"
+    },
+    "./ui": {
+      "types": "./dist/pkg/pkg/ui.d.ts",
+      "default": "./dist/pkg/pkg/ui.js"
+    },
+    "./ui/*.css": "./src/ui/*.css",
+    "./ui/favicon.png": "./assets/brand/favicon.png",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/pkg/",
+    "src/ui/*.css",
+    "assets/brand/favicon.png",
+    "LICENSE",
+    "LICENSE.md",
+    "README.md"
+  ],
   "private": true,
   "license": "GPL-3.0-or-later",
   "author": "glopezca",
@@ -12,6 +37,9 @@
   },
   "engines": {
     "node": ">=22.18"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
     "test": "node --test \"tests/**/*.test.ts\"",
@@ -24,7 +52,9 @@
     "about": "node scripts/gen-about.mjs",
     "bench:evaluate": "node scripts/bench-evaluate.ts",
     "brand": "node scripts/gen-brand.mjs",
-    "site": "npm run build && node scripts/build-site.mjs"
+    "site": "npm run build && node scripts/build-site.mjs",
+    "build:pkg": "tsc -p tsconfig.pkg.json",
+    "prepack": "npm run build:pkg"
   },
   "devDependencies": {
     "typescript": "^5.8.0"

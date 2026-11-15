@@ -11,7 +11,7 @@ const root = new URL('../../', import.meta.url);
 const pkg = JSON.parse(readFileSync(new URL('package.json', root), 'utf8')) as { name: string; version: string; description: string; license: string };
 
 test('about-data.ts is in sync with package.json and LICENSE.md (run npm run about)', () => {
-  assert.equal(ABOUT.name, pkg.name);
+  assert.equal(ABOUT.name, pkg.name.replace(/^@[^/]+\//, ''));
   assert.equal(ABOUT.version, pkg.version);
   assert.equal(ABOUT.description, pkg.description);
   assert.equal(ABOUT.license, pkg.license);

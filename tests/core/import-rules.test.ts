@@ -26,8 +26,9 @@ test('sanity: the scan sees the known edges', () => {
   assert.ok(edges.some((e) => e.from === 'src/ui/main.ts' && e.to === 'src/classroom/embed.ts'));
 });
 
-test('R1: nothing outside src/ui imports src/ui', () => {
-  assert.deepEqual(show(edges.filter((e) => dirOf(e.from) !== 'ui' && dirOf(e.to) === 'ui')), []);
+test('R1: nothing outside src/ui imports src/ui (except the browser entry src/pkg/ui.ts)', () => {
+  // src/pkg/ui.ts is the `./ui` subpath (PUBLIC-API.md §3.3); the Node/Worker entries must stay UI-free.
+  assert.deepEqual(show(edges.filter((e) => dirOf(e.from) !== 'ui' && dirOf(e.to) === 'ui' && e.from !== 'src/pkg/ui.ts')), []);
 });
 
 test('R2: only src/ui (and the package entries, P5) imports src/classroom by value', () => {
