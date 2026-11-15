@@ -264,4 +264,4 @@ jobs:
 | P3 | Versión del primer paquete y retomar los tags (`v0.32.0` frente a `0.46.0`); relación con `CLASSROOM-CONSUMPTION.md` §8.1 |
 | P4 | Añadir `package-lock.json` a Netfix, y Playwright y workerd como `devDependencies`. **Decidido 2026-11-15:** lockfile sí (PR 3.1); Playwright y workerd se instalan fuera del repositorio solo en CI, con versión fija |
 | P5 | Excepción escrita a la regla «sin reexportaciones» para los ficheros de entrada del paquete |
-| L1–L6 | Licencia (§3): sin resolver, **no se publica** |
+| L1–L6 | Licencia (§3). **Resueltas por el propietario (2026-11-15)**, que autoriza publicar (L6): se quita `private: true` y se publica `v0.47.2` |
