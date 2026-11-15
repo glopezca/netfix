@@ -286,8 +286,8 @@ Límites de la medición: 3 rúbricas de 3 a 5 elementos, ninguna con VPN, SSH n
 | B1 | `src/ui/main.ts` tiene efectos al importar (instala el global, autoarranca) y estado de instancia única. Montar sin iframe exige separar "definir" de "arrancar". Es el único cambio de código inevitable para `netfix/ui` | bloqueo técnico, Fase 1/6 |
 | B2 | Sin versión de motor/evaluación en `Evaluation` ni en D1, y lista de comprobación no congelada: las notas históricas no son auditables hoy. Classroom en v0.31.0, Netfix en v0.46.0 | bloqueo de reproducibilidad, Fase 2/7 |
 | B3 | Reloj de pared en `Topology` y aleatoriedad criptográfica en VPN/SSH durante la carga: determinismo medido solo en 3 misiones sin VPN | riesgo, requiere test antes de GATE 2 |
-| D1 | ¿`version` actual como `topologySchemaVersion` (recomendado) o campo `schemaVersion` nuevo? | decisión del propietario |
-| D2 | ¿Errores tipados (códigos) en la API pública, o se mantiene `Error` + mensaje? Cambia el contrato con Classroom | decisión |
-| D3 | Nombre de `saveTopology`/`loadTopology` públicos frente a `Topology.fromJSON`/`toJSON` directos | decisión menor |
+| D1 | ¿`version` actual como `topologySchemaVersion` (recomendado) o campo `schemaVersion` nuevo? | **decidida 2026-11-15:** `version` |
+| D2 | ¿Errores tipados (códigos) en la API pública, o se mantiene `Error` + mensaje? Cambia el contrato con Classroom | **decidida 2026-11-15:** errores tipados con `code` |
+| D3 | Nombre de `saveTopology`/`loadTopology` públicos frente a `Topology.fromJSON`/`toJSON` directos | **decidida 2026-11-15:** `fromJSON`/`toJSON` |
 | D4 | Muestra de entregas reales de R2 como corpus de regresión | requiere autorización |
 | D5 | Estilos: `src/ui/styles.css` es global; sin iframe colisiona con el CSS del anfitrión. **NO VERIFICADO** el alcance | fuera de este documento, Fase 6 |
