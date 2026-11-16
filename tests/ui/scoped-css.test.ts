@@ -35,3 +35,8 @@ test('every top-level rule of the Netfix stylesheets is scoped to .netfix-root',
     }
   }
 });
+
+test('the mount takes the size its host gives it: .netfix-root sets no height (a host class would lose to it)', () => {
+  const css = readFileSync(new URL('../../src/ui/styles.css', import.meta.url), 'utf8');
+  for (const m of css.matchAll(/^\.netfix-root \{([^{}]*)/gm)) assert.doesNotMatch(m[1] ?? '', /(^|[;\s])height\s*:/, 'height on .netfix-root');
+});
