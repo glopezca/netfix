@@ -64,7 +64,6 @@ export const APP_EN: Readonly<Record<AppKey, string>> = {
   'hint.language': 'Language: English (UK).',
   'file.description': 'Netfix topology',
   'file.prefix': 'topology',
-  'clock.utc': '{time} UTC',
   'term.keys': 'Keys',
   'term.key.home': 'Home',
   'term.key.end': 'End',

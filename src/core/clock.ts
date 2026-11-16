@@ -43,6 +43,12 @@ export function formatShowClock(epochMs: number): string {
   return `*${time} UTC ${DAYS[d.getUTCDay()]} ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()} ${d.getUTCFullYear()}`;
 }
 
+/** The toolbar clock: the simulated time in the client's zone (its system clock's, unless `timeZone`), e.g. "21:00:40 CET". */
+export function formatToolbarClock(epochMs: number, locale: string, timeZone?: string): string {
+  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', timeZoneName: 'short', timeZone })
+    .format(epochMs);
+}
+
 /** "Oct 11 2026 11:31 AM" as printed in DHCP binding/conflict tables. */
 export function formatLeaseTime(epochMs: number): string {
   const d = new Date(epochMs);

@@ -25,6 +25,9 @@ try {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('g.device-router');
+  // The toolbar clock follows the system clock: the lab's 30 s settle does not put it ahead.
+  const clockSkew = await page.evaluate(() => Math.abs(Date.parse(document.querySelector('.clock').getAttribute('datetime')) - Date.now()));
+  assert.ok(clockSkew < 2000, `toolbar clock ${clockSkew} ms off the system clock`);
   // Favicon: the N isotype, declared in the HTML and served next to it.
   assert.equal((await page.request.get(`http://localhost:${port}/favicon.png`)).status(), 200);
   assert.match(await page.getAttribute('link[rel="icon"]', 'href') ?? '', /^data:image\/png|favicon\.png$/);

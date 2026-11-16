@@ -33,6 +33,7 @@ import { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } from '../i18n/
 import type { Locale } from '../i18n/locale.ts';
 import { allowsLab, allowsTab, lockedPrompt } from '../classroom/restrictions.ts';
 import { forceTimestampPrompt } from '../shells/prompt-clock.ts';
+import { formatToolbarClock } from '../core/clock.ts';
 import type { DeviceKind } from '../net/topology.ts';
 import { STANDALONE, embedSession, evaluateFile } from '../classroom/embed.ts';
 import { checkMount } from './embed-api.ts';
@@ -94,6 +95,7 @@ class App {
     this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
     this.view = initial.view === 'docs' && !this.session.policy.docs ? 'net' : initial.view;
     this.topo = topo ?? initialWorkspace(BROWSER_STORE, this.saved, () => EXAMPLES[0]!.build());
+    this.topo.clock.set(Date.now()); // the settle ran the lab ~30 s ahead: its wall clock is the system's (like `clock set`)
     if (topo) this.saved.adopt(topo);
     this.hintEl = el('p', { class: 'hint', role: 'status' });
     this.clockEl = el('time', { class: 'clock' });
@@ -284,7 +286,7 @@ class App {
   private tick(): void {
     if (this.mode === 'realtime' || this.topo.net.pending() > 0) this.topo.net.runFor(TICK_MS);
     const now = new Date(this.topo.clock.now());
-    this.clockEl.textContent = t('clock.utc', { time: now.toISOString().slice(11, 19) });
+    this.clockEl.textContent = formatToolbarClock(now.getTime(), getLocale());
     this.clockEl.setAttribute('datetime', now.toISOString());
     this.canvas.requestRender();
   }
@@ -299,6 +301,7 @@ class App {
     this.windows.closeAll();
     forgetAll();
     this.topo = topo;
+    topo.clock.set(Date.now());
     this.saved.mark(topo);
     this.canvas.setTopology(topo);
     this.sim.attach(topo);
