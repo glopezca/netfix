@@ -748,6 +748,9 @@
   .listen-block, .rpz-block { border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px 10px; margin: 12px 0; }
   .listen-block h3, .rpz-block h3 { margin: 4px 0; }
   .listen-row { display: flex; gap: 10px; align-items: center; margin: 4px 0; }
+  .listen-block legend { font-weight: 700; padding: 0 4px; }
+  .listen-row.indent { margin-left: 26px; }
+  .listen-row input[type=text] { flex: 1; min-width: 0; }
   /* Servicios → Ficheros: one block per file. */
   .conf-file h4 { margin: 14px 0 4px; font-size: 12.5px; }
   .port-addr { fill: var(--ink); }
@@ -4469,6 +4472,10 @@ const DNSUI_ES = {
     'dnsm.it.first': 'Con reenviadores: activado = forward first (si no responden, itera); desactivado = forward only.',
     'dnsm.rec.allow': 'Clientes con recursión (allow-recursion)',
     'dnsm.rec.hint': 'Redes o direcciones separadas por ; (192.168.0.0/24; localhost). localnets son las redes de este servidor: {nets}. Con ! delante se excluye; manda el primero que coincide.',
+    'dnsm.rec.boxHint': 'Personalizado: redes o direcciones separadas por ; (192.168.0.0/24; !192.168.0.5), van antes que las casillas. localnets son las redes de este servidor: {nets}. Con ! delante se excluye; manda el primero que coincide. Sin localnets se eligen sus redes una a una.',
+    'dnsm.rec.any': 'Todas (any)',
+    'dnsm.rec.custom': 'Valor personalizado',
+    'dnsm.rec.localhost': 'este servidor (sus direcciones y 127.0.0.0/8)',
     'dnsm.rec.explain': 'Sin recursión el servidor solo responde por sus zonas (REFUSED para el resto), aunque tenga reenviadores.',
     'dnsm.zone.list': 'Zonas',
     'dnsm.zone.name': 'Zona',
@@ -4625,6 +4632,10 @@ const DNSUI_EN = {
     'dnsm.it.first': 'With forwarders: on = forward first (if they do not answer, it iterates); off = forward only.',
     'dnsm.rec.allow': 'Clients allowed recursion (allow-recursion)',
     'dnsm.rec.hint': 'Networks or addresses separated by ; (192.168.0.0/24; localhost). localnets are the networks of this server: {nets}. ! in front excludes; the first match wins.',
+    'dnsm.rec.boxHint': 'Custom: networks or addresses separated by ; (192.168.0.0/24; !192.168.0.5), placed before the boxes. localnets are the networks of this server: {nets}. ! in front excludes; the first match wins. Without localnets its networks are chosen one by one.',
+    'dnsm.rec.any': 'All (any)',
+    'dnsm.rec.custom': 'Custom value',
+    'dnsm.rec.localhost': 'this server (its addresses and 127.0.0.0/8)',
     'dnsm.rec.explain': 'Without recursion the server only answers for its zones (REFUSED for the rest), even with forwarders.',
     'dnsm.zone.list': 'Zones',
     'dnsm.zone.name': 'Zone',
@@ -10780,15 +10791,40 @@ function amlAllows(list, client, local) {
     }
     return false;
 }
+/** The networks of the server's interfaces (a.b.c.d/n), without repeats. */
+function interfaceNetworks(local) {
+    return [...new Set(local.flatMap((l) => (l.ip !== undefined && l.prefix !== undefined ? [`${formatIp(networkOf(l.ip, l.prefix))}/${l.prefix}`] : [])))];
+}
 /** What localnets is on this server: the networks of its interfaces and 127.0.0.0/8. */
 function localNetworks(local) {
-    const nets = local.flatMap((l) => (l.ip !== undefined && l.prefix !== undefined ? [`${formatIp(networkOf(l.ip, l.prefix))}/${l.prefix}`] : []));
-    return [...new Set([...nets, '127.0.0.0/8'])].join(', ');
+    return [...new Set([...interfaceNetworks(local), '127.0.0.0/8'])].join(', ');
+}
+/** The list the boxes make: any alone, or the typed text first (its `!` exclusions must come before what they cut), then the boxes. */
+function recursionText(c) {
+    if (c.any)
+        return 'any';
+    const boxes = [c.localnets ? 'localnets' : '', c.localhost ? 'localhost' : '', ...(c.localnets ? [] : c.nets)];
+    return [c.custom.trim().replace(/[;,\s]+$/, ''), ...boxes].filter(Boolean).join('; ');
+}
+/**
+ * The boxes for a list read from named.conf.options; `nets` are this server's networks. Without `!` the order does
+ * not change who matches, so the boxes may reorder it; with `!` a list the boxes would reorder goes whole into the text.
+ */
+function recursionChoice(list, nets) {
+    const key = (e) => { const n = network(e); return n ? `${formatIp(n[0])}/${n[1]}` : e; };
+    const named = ['any', 'localnets', 'localhost'];
+    const c = {
+        any: list.includes('any'), localnets: list.includes('localnets'), localhost: list.includes('localhost'),
+        nets: nets.filter((n) => list.some((e) => key(e) === n)),
+        custom: amlText(list.filter((e) => !named.includes(e) && !nets.includes(key(e)))),
+    };
+    const exact = recursionText(c) === amlText(list);
+    return exact || !list.some((e) => e.startsWith('!')) ? c : { any: false, localnets: false, localhost: false, nets: [], custom: amlText(list) };
 }
 /** As named.conf writes it inside `{ … }` (without the last `;`). */
 const amlText = (list) => list.join('; ');
 
-return { DEFAULT_ALLOW_RECURSION, MAX_AML, parseAml, expandAcls, amlAllows, localNetworks, amlText };
+return { DEFAULT_ALLOW_RECURSION, MAX_AML, parseAml, expandAcls, amlAllows, interfaceNetworks, localNetworks, recursionText, recursionChoice, amlText };
 })();
 __m["services/named-options.js"] = (() => {
 const { formatIp, parseIp } = __m["core/ip.js"];
@@ -33121,7 +33157,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.53.1",
+    "version": "0.54.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -69866,7 +69902,7 @@ const { field, input, button, onOff, message, table } = __m["ui/forms.js"];
 const { MODE_DIRECTIVES, dnsModes, setCache, setForwarders, setIterative, setRecursion } = __m["services/dns-edit.js"];
 const { commit } = __m["ui/dns-commit.js"];
 const { forwardersText, GOOGLE_FORWARDERS } = __m["services/dns-recursion.js"];
-const { amlText, DEFAULT_ALLOW_RECURSION, localNetworks } = __m["services/dns-aml.js"];
+const { DEFAULT_ALLOW_RECURSION, interfaceNetworks, localNetworks, recursionChoice, recursionText } = __m["services/dns-aml.js"];
 const { DEFAULT_MAX_CACHE_TTL } = __m["services/named-options.js"];
 const { ROOT_SERVERS } = __m["net/dns-roots.js"];
 const { livePanel } = __m["ui/server-dhcp-dns.js"];
@@ -69918,11 +69954,35 @@ function iterativeBlock(server, app, msg) {
 }
 function recursiveBlock(server, app, msg) {
     const s = server.services.dns;
-    const allow = input({ value: amlText(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION), placeholder: amlText(DEFAULT_ALLOW_RECURSION), spellcheck: 'false', 'data-field': 'allow-recursion' });
-    const apply = (on) => commit(server, app, msg, setRecursion(server.services.dns, on, allow.value), true);
+    const nets = interfaceNetworks(server.nics());
+    const c = recursionChoice(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION, nets);
+    const box = (checked) => el('input', { type: 'checkbox', checked });
+    const any = box(c.any);
+    const localnets = box(c.localnets);
+    const localhost = box(c.localhost);
+    const netBoxes = nets.map((n) => ({ n, box: box(c.nets.includes(n)) }));
+    const customBox = box(c.custom !== '');
+    const custom = input({ value: c.custom, placeholder: '192.168.0.0/24; !192.168.0.5', spellcheck: 'false', 'data-field': 'allow-recursion', 'aria-label': t('dnsm.rec.custom') });
+    // As «Interfaces de escucha»: any greys out the rest; localnets already covers each local network.
+    const sync = () => {
+        for (const b of [localnets, localhost, customBox])
+            b.disabled = any.checked;
+        for (const { box: b } of netBoxes)
+            b.disabled = any.checked || localnets.checked;
+        custom.disabled = any.checked || !customBox.checked;
+    };
+    for (const b of [any, localnets, customBox])
+        b.addEventListener('change', sync);
+    sync();
+    const text = () => recursionText({
+        any: any.checked, localnets: localnets.checked, localhost: localhost.checked,
+        nets: netBoxes.filter((b) => b.box.checked).map((b) => b.n), custom: customBox.checked ? custom.value : '',
+    });
+    const row = (b, label, sub) => el('label', { class: 'check listen-row' }, b, el('span', { class: 'mono' }, label), typeof sub === 'string' ? el('span', { class: 'muted' }, sub) : sub ?? null);
+    const apply = (on) => commit(server, app, msg, setRecursion(server.services.dns, on, text()), true);
     return modeBlock('recursive', dnsModes(s).recursive, apply, [
         el('p', { class: 'muted' }, t('dnsm.rec.explain')),
-        field(t('dnsm.rec.allow'), allow, t('dnsm.rec.hint', { nets: localNetworks(server.nics()) })),
+        el('fieldset', { class: 'listen-block', 'data-field': 'allow-recursion-boxes' }, el('legend', {}, t('dnsm.rec.allow')), row(any, t('dnsm.rec.any')), row(localnets, 'localnets', localNetworks(server.nics())), ...netBoxes.map((b) => { const r = row(b.box, b.n); r.classList.add('indent'); return r; }), row(localhost, 'localhost', t('dnsm.rec.localhost')), row(customBox, t('dnsm.rec.custom'), custom), el('p', { class: 'field-hint' }, t('dnsm.rec.boxHint', { nets: localNetworks(server.nics()) }))),
         el('div', { class: 'actions' }, button(t('dnsm.apply'), () => apply(server.services.dns.recursion === true))),
     ]);
 }

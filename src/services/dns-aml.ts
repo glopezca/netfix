@@ -88,10 +88,40 @@ export function amlAllows(list: Aml, client: number, local: readonly LocalAddres
   return false;
 }
 
+/** The networks of the server's interfaces (a.b.c.d/n), without repeats. */
+export function interfaceNetworks(local: readonly LocalAddress[]): string[] {
+  return [...new Set(local.flatMap((l) => (l.ip !== undefined && l.prefix !== undefined ? [`${formatIp(networkOf(l.ip, l.prefix))}/${l.prefix}`] : [])))];
+}
+
 /** What localnets is on this server: the networks of its interfaces and 127.0.0.0/8. */
 export function localNetworks(local: readonly LocalAddress[]): string {
-  const nets = local.flatMap((l) => (l.ip !== undefined && l.prefix !== undefined ? [`${formatIp(networkOf(l.ip, l.prefix))}/${l.prefix}`] : []));
-  return [...new Set([...nets, '127.0.0.0/8'])].join(', ');
+  return [...new Set([...interfaceNetworks(local), '127.0.0.0/8'])].join(', ');
+}
+
+/** The boxes of the «Clientes con recursión» dialog: any, localnets, localhost, each local network and typed text. */
+export interface RecursionChoice { readonly any: boolean; readonly localnets: boolean; readonly localhost: boolean; readonly nets: readonly string[]; readonly custom: string }
+
+/** The list the boxes make: any alone, or the typed text first (its `!` exclusions must come before what they cut), then the boxes. */
+export function recursionText(c: RecursionChoice): string {
+  if (c.any) return 'any';
+  const boxes = [c.localnets ? 'localnets' : '', c.localhost ? 'localhost' : '', ...(c.localnets ? [] : c.nets)];
+  return [c.custom.trim().replace(/[;,\s]+$/, ''), ...boxes].filter(Boolean).join('; ');
+}
+
+/**
+ * The boxes for a list read from named.conf.options; `nets` are this server's networks. Without `!` the order does
+ * not change who matches, so the boxes may reorder it; with `!` a list the boxes would reorder goes whole into the text.
+ */
+export function recursionChoice(list: Aml, nets: readonly string[]): RecursionChoice {
+  const key = (e: string): string => { const n = network(e); return n ? `${formatIp(n[0])}/${n[1]}` : e; };
+  const named = ['any', 'localnets', 'localhost'];
+  const c: RecursionChoice = {
+    any: list.includes('any'), localnets: list.includes('localnets'), localhost: list.includes('localhost'),
+    nets: nets.filter((n) => list.some((e) => key(e) === n)),
+    custom: amlText(list.filter((e) => !named.includes(e) && !nets.includes(key(e)))),
+  };
+  const exact = recursionText(c) === amlText(list);
+  return exact || !list.some((e) => e.startsWith('!')) ? c : { any: false, localnets: false, localhost: false, nets: [], custom: amlText(list) };
 }
 
 /** As named.conf writes it inside `{ … }` (without the last `;`). */
