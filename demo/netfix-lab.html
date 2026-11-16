@@ -92,8 +92,9 @@
   color-scheme: dark;
 }
 
+/* The host sizes the mount (the standalone page gives #app 100dvh in index.html). */
 .netfix-root {
-  height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden;
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden;
   background: var(--ws); color: var(--ink); font: 15px/1.45 var(--font-ui);
   &, * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -32998,7 +32999,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.49.0",
+    "version": "0.49.1",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",

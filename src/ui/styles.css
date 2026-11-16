@@ -64,8 +64,9 @@
   color-scheme: dark;
 }
 
+/* The host sizes the mount (the standalone page gives #app 100dvh in index.html). */
 .netfix-root {
-  height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden;
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden;
   background: var(--ws); color: var(--ink); font: 15px/1.45 var(--font-ui);
   &, * { box-sizing: border-box; }
   [hidden] { display: none !important; }
