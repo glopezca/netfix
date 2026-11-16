@@ -92,7 +92,7 @@ export class WindowManager {
     const body = el('div', { class: 'win-body' });
     const root = el('section', { class: 'window', role: 'dialog', 'aria-labelledby': `wt-${key}` }, header, tabBar, body);
     if (opts.like) root.style.cssText = opts.like.style.cssText;
-    else place(root, (this.cascade++ % 6) * 28);
+    else place(root, (this.cascade++ % 6) * 28, this.layer);
     const select = tabStrip(tabs, tabBar, body);
     tabBar.hidden = tabs.length < 2;
     const handle = {
@@ -128,16 +128,17 @@ export class WindowManager {
   }
 }
 
-/** First position of a window: fully inside the viewport and below the real top bar. */
-function place(root: HTMLElement, offset: number): void {
-  // The default width is min(880px, 100vw - 16px).
-  const width = Math.min(880, window.innerWidth - 16);
-  root.style.left = `${Math.max(8, Math.min(window.innerWidth - width - 8, 120 + offset))}px`;
+/** First position of a window: fully inside the layer (the mount, not the viewport: a host's page may have its own bar above) and below Netfix's top bar. */
+function place(root: HTMLElement, offset: number, layer: HTMLElement): void {
+  const box = layer.getBoundingClientRect();
+  // The default width is min(880px, 100% - 16px) of the layer.
+  const width = Math.min(880, box.width - 16);
+  root.style.left = `${Math.max(8, Math.min(box.width - width - 8, 120 + offset))}px`;
   // The top bar wraps to two rows on medium widths (and collapses into a menu on phones).
-  const barBottom = Math.ceil(uiRoot().querySelector('.topbar')?.getBoundingClientRect().bottom ?? 56);
+  const barBottom = Math.ceil((uiRoot().querySelector('.topbar')?.getBoundingClientRect().bottom ?? box.top + 56) - box.top);
   const top = barBottom + 12 + offset;
   root.style.top = `${top}px`;
-  root.style.maxHeight = `calc(100dvh - ${top + 8}px)`;
+  root.style.maxHeight = `calc(100% - ${top + 8}px)`;
 }
 
 /** Tab buttons of a window; each tab is drawn the first time it is shown and then kept. */
@@ -178,9 +179,10 @@ function makeDraggable(win: HTMLElement, handle: HTMLElement): void {
     const startY = e.clientY - win.offsetTop;
     handle.setPointerCapture(e.pointerId);
     if (win.dataset.max === 'true' || window.matchMedia('(max-width: 760px)').matches) return;
+    const layer = win.parentElement ?? document.documentElement;
     const move = (ev: PointerEvent): void => {
-      win.style.left = `${Math.max(0, Math.min(window.innerWidth - 80, ev.clientX - startX))}px`;
-      win.style.top = `${Math.max(0, Math.min(window.innerHeight - 40, ev.clientY - startY))}px`;
+      win.style.left = `${Math.max(0, Math.min(layer.clientWidth - 80, ev.clientX - startX))}px`;
+      win.style.top = `${Math.max(0, Math.min(layer.clientHeight - 40, ev.clientY - startY))}px`;
     };
     const up = (): void => {
       handle.removeEventListener('pointermove', move);

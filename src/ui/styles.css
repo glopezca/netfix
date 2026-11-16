@@ -64,9 +64,9 @@
   color-scheme: dark;
 }
 
-/* The host sizes the mount (the standalone page gives #app 100dvh in index.html). */
+/* The host sizes the mount (the standalone page gives #app 100dvh in index.html); its windows stay inside it (position). */
 .netfix-root {
-  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden;
+  position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden;
   background: var(--ws); color: var(--ink); font: 15px/1.45 var(--font-ui);
   &, * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -165,9 +165,9 @@
   .hint { margin: 0; align-self: center; color: var(--ink-2); max-width: 70ch; }
 
   /* ---------------------------------------------------------------- windows */
-  .win-layer { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+  .win-layer { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
   .window {
-    position: absolute; pointer-events: auto; width: min(880px, calc(100vw - 16px)); height: min(600px, calc(100vh - 110px));
+    position: absolute; pointer-events: auto; width: min(880px, calc(100% - 16px)); height: min(600px, calc(100% - 110px));
     display: grid; grid-template-rows: auto auto 1fr; background: var(--panel); border: 1px solid var(--line);
     border-radius: var(--radius-win); box-shadow: var(--shadow); overflow: hidden; resize: both; min-width: 320px; min-height: 240px;
   }
@@ -523,7 +523,7 @@
   .win-btn { border: 0; background: none; font-size: 16px; line-height: 1; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; }
   .win-btn:hover { background: var(--accent-soft); }
   .win-btn[aria-pressed="true"] { background: var(--accent-soft); }
-  .window[data-max="true"] { left: 8px !important; top: 8px !important; width: calc(100vw - 16px); height: calc(100dvh - 16px); resize: none; }
+  .window[data-max="true"] { left: 8px !important; top: 8px !important; width: calc(100% - 16px); height: calc(100% - 16px); max-height: none; resize: none; }
   .window[data-max="true"] .win-head { cursor: default; }
   .win-tabs { overflow-x: auto; scrollbar-width: thin; }
   .win-tab { white-space: nowrap; flex: none; }
@@ -583,7 +583,7 @@
     .pal-item { min-width: 56px; padding: 2px 4px; }
     .pal-item svg { width: 36px; height: 27px; }
     .pal-model { display: none; }
-    .window { left: 0 !important; top: 0 !important; width: 100vw; height: 100dvh; border-radius: 0; border: 0; resize: none; min-width: 0; min-height: 0; }
+    .window { left: 0 !important; top: 0 !important; width: 100%; height: 100%; max-height: none; border-radius: 0; border: 0; resize: none; min-width: 0; min-height: 0; }
     .win-head { cursor: default; }
     .win-max { display: none; }
     .about-hero { grid-template-columns: 1fr; }
