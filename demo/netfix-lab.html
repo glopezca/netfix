@@ -92,9 +92,9 @@
   color-scheme: dark;
 }
 
-/* The host sizes the mount (the standalone page gives #app 100dvh in index.html). */
+/* The host sizes the mount (the standalone page gives #app 100dvh in index.html); its windows stay inside it (position). */
 .netfix-root {
-  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden;
+  position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden;
   background: var(--ws); color: var(--ink); font: 15px/1.45 var(--font-ui);
   &, * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -193,9 +193,9 @@
   .hint { margin: 0; align-self: center; color: var(--ink-2); max-width: 70ch; }
 
   /* ---------------------------------------------------------------- windows */
-  .win-layer { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+  .win-layer { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
   .window {
-    position: absolute; pointer-events: auto; width: min(880px, calc(100vw - 16px)); height: min(600px, calc(100vh - 110px));
+    position: absolute; pointer-events: auto; width: min(880px, calc(100% - 16px)); height: min(600px, calc(100% - 110px));
     display: grid; grid-template-rows: auto auto 1fr; background: var(--panel); border: 1px solid var(--line);
     border-radius: var(--radius-win); box-shadow: var(--shadow); overflow: hidden; resize: both; min-width: 320px; min-height: 240px;
   }
@@ -551,7 +551,7 @@
   .win-btn { border: 0; background: none; font-size: 16px; line-height: 1; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; }
   .win-btn:hover { background: var(--accent-soft); }
   .win-btn[aria-pressed="true"] { background: var(--accent-soft); }
-  .window[data-max="true"] { left: 8px !important; top: 8px !important; width: calc(100vw - 16px); height: calc(100dvh - 16px); resize: none; }
+  .window[data-max="true"] { left: 8px !important; top: 8px !important; width: calc(100% - 16px); height: calc(100% - 16px); max-height: none; resize: none; }
   .window[data-max="true"] .win-head { cursor: default; }
   .win-tabs { overflow-x: auto; scrollbar-width: thin; }
   .win-tab { white-space: nowrap; flex: none; }
@@ -611,7 +611,7 @@
     .pal-item { min-width: 56px; padding: 2px 4px; }
     .pal-item svg { width: 36px; height: 27px; }
     .pal-model { display: none; }
-    .window { left: 0 !important; top: 0 !important; width: 100vw; height: 100dvh; border-radius: 0; border: 0; resize: none; min-width: 0; min-height: 0; }
+    .window { left: 0 !important; top: 0 !important; width: 100%; height: 100%; max-height: none; border-radius: 0; border: 0; resize: none; min-width: 0; min-height: 0; }
     .win-head { cursor: default; }
     .win-max { display: none; }
     .about-hero { grid-template-columns: 1fr; }
@@ -33121,7 +33121,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.52.0",
+    "version": "0.53.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -64045,7 +64045,7 @@ class WindowManager {
         if (opts.like)
             root.style.cssText = opts.like.style.cssText;
         else
-            place(root, (this.cascade++ % 6) * 28);
+            place(root, (this.cascade++ % 6) * 28, this.layer);
         const select = tabStrip(tabs, tabBar, body);
         tabBar.hidden = tabs.length < 2;
         const handle = {
@@ -64082,16 +64082,17 @@ class WindowManager {
         return handle;
     }
 }
-/** First position of a window: fully inside the viewport and below the real top bar. */
-function place(root, offset) {
-    // The default width is min(880px, 100vw - 16px).
-    const width = Math.min(880, window.innerWidth - 16);
-    root.style.left = `${Math.max(8, Math.min(window.innerWidth - width - 8, 120 + offset))}px`;
+/** First position of a window: fully inside the layer (the mount, not the viewport: a host's page may have its own bar above) and below Netfix's top bar. */
+function place(root, offset, layer) {
+    const box = layer.getBoundingClientRect();
+    // The default width is min(880px, 100% - 16px) of the layer.
+    const width = Math.min(880, box.width - 16);
+    root.style.left = `${Math.max(8, Math.min(box.width - width - 8, 120 + offset))}px`;
     // The top bar wraps to two rows on medium widths (and collapses into a menu on phones).
-    const barBottom = Math.ceil(uiRoot().querySelector('.topbar')?.getBoundingClientRect().bottom ?? 56);
+    const barBottom = Math.ceil((uiRoot().querySelector('.topbar')?.getBoundingClientRect().bottom ?? box.top + 56) - box.top);
     const top = barBottom + 12 + offset;
     root.style.top = `${top}px`;
-    root.style.maxHeight = `calc(100dvh - ${top + 8}px)`;
+    root.style.maxHeight = `calc(100% - ${top + 8}px)`;
 }
 /** Tab buttons of a window; each tab is drawn the first time it is shown and then kept. */
 function tabStrip(tabs, tabBar, body) {
@@ -64132,9 +64133,10 @@ function makeDraggable(win, handle) {
         handle.setPointerCapture(e.pointerId);
         if (win.dataset.max === 'true' || window.matchMedia('(max-width: 760px)').matches)
             return;
+        const layer = win.parentElement ?? document.documentElement;
         const move = (ev) => {
-            win.style.left = `${Math.max(0, Math.min(window.innerWidth - 80, ev.clientX - startX))}px`;
-            win.style.top = `${Math.max(0, Math.min(window.innerHeight - 40, ev.clientY - startY))}px`;
+            win.style.left = `${Math.max(0, Math.min(layer.clientWidth - 80, ev.clientX - startX))}px`;
+            win.style.top = `${Math.max(0, Math.min(layer.clientHeight - 40, ev.clientY - startY))}px`;
         };
         const up = () => {
             handle.removeEventListener('pointermove', move);
