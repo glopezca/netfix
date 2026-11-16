@@ -54,7 +54,7 @@ export const FIREWALL_EN: Readonly<Record<FirewallKey, string>> = {
   'fw.badField': 'Check the “{field}” field.',
   'fw.notLinux': 'The nftables firewall is only available on Ubuntu devices.',
   'sysctl.tab': 'Parameters',
-  'sysctl.intro': 'Kernel parameters. They are applied and saved in /etc/sysctl.d/99-netfix.conf; with “sysctl -w” in the terminal they only last until a restart.',
+  'sysctl.intro': 'Kernel parameters. They are applied and saved in /etc/sysctl.conf, which shows what is saved; with “sysctl -w” or “echo 1 > /proc/sys/…” in the terminal they only last until a restart, and what you edit in /etc/sysctl.conf is applied with “sysctl -p”.',
   'sysctl.key': 'Parameter',
   'sysctl.value': 'Value',
   'sysctl.effect': 'Effect in Netfix',

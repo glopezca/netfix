@@ -1777,7 +1777,7 @@ const FIREWALL_ES = {
     'fw.badField': 'Revisa el campo «{field}».',
     'fw.notLinux': 'El cortafuegos nftables solo está en los equipos Ubuntu.',
     'sysctl.tab': 'Parámetros',
-    'sysctl.intro': 'Parámetros del núcleo. Se aplican y se guardan en /etc/sysctl.d/99-netfix.conf; con «sysctl -w» en la terminal solo duran hasta reiniciar.',
+    'sysctl.intro': 'Parámetros del núcleo. Se aplican y se guardan en /etc/sysctl.conf, que muestra lo guardado; con «sysctl -w» o «echo 1 > /proc/sys/…» en la terminal solo duran hasta reiniciar, y lo que edites en /etc/sysctl.conf se aplica con «sysctl -p».',
     'sysctl.key': 'Parámetro',
     'sysctl.value': 'Valor',
     'sysctl.effect': 'Efecto en Netfix',
@@ -1844,7 +1844,7 @@ const FIREWALL_EN = {
     'fw.badField': 'Check the “{field}” field.',
     'fw.notLinux': 'The nftables firewall is only available on Ubuntu devices.',
     'sysctl.tab': 'Parameters',
-    'sysctl.intro': 'Kernel parameters. They are applied and saved in /etc/sysctl.d/99-netfix.conf; with “sysctl -w” in the terminal they only last until a restart.',
+    'sysctl.intro': 'Kernel parameters. They are applied and saved in /etc/sysctl.conf, which shows what is saved; with “sysctl -w” or “echo 1 > /proc/sys/…” in the terminal they only last until a restart, and what you edit in /etc/sysctl.conf is applied with “sysctl -p”.',
     'sysctl.key': 'Parameter',
     'sysctl.value': 'Value',
     'sysctl.effect': 'Effect in Netfix',
@@ -3590,7 +3590,7 @@ const WEB_ES = {
     'fwa.routes': 'Rutas estáticas',
     'fwa.router': 'Activar router',
     'fwa.routerTitle': 'Router',
-    'fwa.routerHelp': 'Marcada = net.ipv4.ip_forward = 1: el equipo reenvía paquetes entre sus redes. Al guardar se cambia ese parámetro (y se guarda en /etc/sysctl.d/99-netfix.conf).',
+    'fwa.routerHelp': 'Marcada = net.ipv4.ip_forward = 1: el equipo reenvía paquetes entre sus redes. Solo lo refleja: se cambia en net.ipv4.ip_forward, aquí abajo (se guarda en /etc/sysctl.conf), con sysctl o editando /etc/sysctl.conf y aplicándolo con sysctl -p.',
     'fwa.routesHelp': 'Redes que se alcanzan por otro router.',
     'fwa.net': 'Red',
     'fwa.via': 'Siguiente salto',
@@ -3882,7 +3882,7 @@ const WEB_EN = {
     'fwa.routes': 'Static routes',
     'fwa.router': 'Enable router',
     'fwa.routerTitle': 'Router',
-    'fwa.routerHelp': 'Ticked = net.ipv4.ip_forward = 1: the device forwards packets between its networks. Saving changes that parameter (and stores it in /etc/sysctl.d/99-netfix.conf).',
+    'fwa.routerHelp': 'Ticked = net.ipv4.ip_forward = 1: the device forwards packets between its networks. It only reflects it: change net.ipv4.ip_forward below (saved in /etc/sysctl.conf), with sysctl, or by editing /etc/sysctl.conf and applying it with sysctl -p.',
     'fwa.routesHelp': 'Networks reached through another router.',
     'fwa.net': 'Network',
     'fwa.via': 'Next hop',
@@ -20944,7 +20944,7 @@ const CLIENT_DOCS = {
                     ['Pestaña Equipo', 'Cambia el nombre del equipo y, con él, el nombre de host.'],
                     ['sudo hostnamectl set-hostname NOMBRE · sudo hostnamectl hostname NOMBRE', 'Renombra el equipo al momento: el equipo toma NOMBRE con la misma grafía (en el lienzo, el título de su ventana y la pestaña Equipo) y el nombre de host se deriva de él, como al renombrarlo en Equipo; /etc/hostname y `hostnamectl` lo muestran. Se guarda con el laboratorio. Si el nombre no vale tal cual («Aula 2»), como systemd: el nombre descriptivo es lo escrito y el estático su versión limpia (Aula2); si vale, el descriptivo se borra. Con --static, un nombre no válido da «Invalid static hostname».'],
                     ['sudo hostname NOMBRE · sudo hostnamectl set-hostname --transient NOMBRE', 'Como en Ubuntu, ponen el **nombre transitorio** (el del núcleo): lo usan `hostname`, el prompt de las shells nuevas y el cliente DHCP (opción 12), y `hostnamectl` lo muestra como «Transient hostname». El nombre del equipo, el estático y /etc/hostname no cambian. Dura hasta reiniciar: al reabrir el laboratorio se pierde. Siguen las mismas reglas (mayúsculas incluidas): un nombre no válido da «the specified hostname is invalid» o «Invalid transient hostname», y uno de más de 64 caracteres, «name too long».'],
-                    ['sudo sysctl -w kernel.hostname=NOMBRE · /proc/sys/kernel/hostname · Parámetros del kernel', 'Lo mismo: kernel.hostname es el nombre transitorio. Como el núcleo, admite cualquier texto de hasta 64 caracteres (incluso con espacios). Desde el panel del equipo o la gestión web se guarda en /etc/sysctl.d/99-netfix.conf, y una línea kernel.hostname en /etc/sysctl.conf o /etc/sysctl.d se aplica en cada arranque (al abrir el laboratorio), como hace systemd-sysctl.'],
+                    ['sudo sysctl -w kernel.hostname=NOMBRE · /proc/sys/kernel/hostname · Parámetros del kernel', 'Lo mismo: kernel.hostname es el nombre transitorio. Como el núcleo, admite cualquier texto de hasta 64 caracteres (incluso con espacios). Desde el panel del equipo o la gestión web se guarda en /etc/sysctl.conf, y una línea kernel.hostname en /etc/sysctl.conf o /etc/sysctl.d se aplica en cada arranque (al abrir el laboratorio), como hace systemd-sysctl.'],
                     ['Volver al estático', 'hostnamectl set-hostname o renombrar el equipo en Equipo acaban con el transitorio; poner como transitorio el nombre estático, también.'],
                     ['/etc/hostname', 'Fichero generado de solo lectura: muestra el nombre estático (también tras hostnamectl, no tras hostname); editarlo no lo cambia.'],
                     ['Gestión web → Configuración', 'Muestra el nombre de host sin campo para cambiarlo.'],
@@ -22152,7 +22152,7 @@ const SECURITY_DOCS = {
                 h('Paso a paso: que enrute'),
                 steps(['Direcciones de las interfaces', 'Pestaña **Interfaces** (o `ip addr add 192.168.1.1/24 dev eth1`). eth0 puede pedir la suya por DHCP al operador.'], ['Activa el reenvío', '**Servicios → Parámetros**: `net.ipv4.ip_forward` = 1 y **Aplicar y guardar**. Sin él, el router responde a ping en sus direcciones IP pero descarta todo lo que pasa de una interfaz a otra.'], ['Rutas', 'Las redes conectadas se añaden solas; las demás con `ip route add RED via SIGUIENTE` o en la pestaña Interfaces.'], ['NAT de salida', '**Servicios → Firewall → Plantilla** «Router con NAT de salida por eth0», o una regla `oifname "eth0" masquerade` (ver nftables).']),
                 term('shell', 'root@fw:~# ip -br addr\nlo               UNKNOWN        127.0.0.1/8\neth0             UP             81.32.5.2/29\neth1             UP             192.168.1.1/24\neth2             UP             172.16.0.1/24\nroot@fw:~# sysctl net.ipv4.ip_forward\nnet.ipv4.ip_forward = 1\nroot@fw:~# ip route\ndefault via 81.32.5.1 dev eth0 proto dhcp metric 100\n81.32.5.0/29 dev eth0 proto kernel scope link src 81.32.5.2\n172.16.0.0/24 dev eth2 proto kernel scope link src 172.16.0.1\n192.168.1.0/24 dev eth1 proto kernel scope link src 192.168.1.1'),
-                note('La casilla **Activar router** de Servicios → Parámetros solo refleja net.ipv4.ip_forward (marcada si vale 1); se cambia en la tabla o con sysctl. En la gestión web (Seguridad → Enrutamiento) la misma casilla sí se puede marcar: al guardar cambia ip_forward y lo guarda en /etc/sysctl.d/99-netfix.conf.'),
+                note('La casilla **Activar router** de Servicios → Parámetros solo refleja net.ipv4.ip_forward (marcada si vale 1); se cambia en la tabla o con sysctl. En la gestión web (Seguridad → Enrutamiento) es igual: solo lo refleja. Lo que se guarda desde el panel o la gestión web va a /etc/sysctl.conf (la línea #net.ipv4.ip_forward=1 se descomenta); también puedes editar ese archivo y aplicarlo con sysctl -p, o escribir el valor con echo 1 > /proc/sys/net/ipv4/ip_forward, que como sysctl -w dura hasta reiniciar.'),
                 table(['Dónde', 'Qué se configura'], [
                     ['Pestaña Interfaces', 'Dirección IP de cada eth, DHCP en eth0, rutas estáticas y reenvío.'],
                     ['Servicios → Parámetros', 'Parámetros del núcleo (sysctl: net.ipv4.ip_forward…); se aplica y se guarda.'],
@@ -23616,7 +23616,7 @@ const CLIENT_DOCS = {
                     ['Device tab', 'Changes the device name and, with it, the host name.'],
                     ['sudo hostnamectl set-hostname NAME · sudo hostnamectl hostname NAME', 'Renames the device at once: the device takes NAME as typed (on the canvas, its window title and the Device tab) and the host name is derived from it, as renaming it in Device does; /etc/hostname and `hostnamectl` show it. It is saved with the lab. If the name is not valid as it is («Aula 2»), as systemd does: the pretty name is what was typed and the static one its cleaned form (Aula2); if it is valid, the pretty name is cleared. With --static, an invalid name gives “Invalid static hostname”.'],
                     ['sudo hostname NAME · sudo hostnamectl set-hostname --transient NAME', 'As on Ubuntu, they set the **transient name** (the kernel one): `hostname`, the prompt of new shells and the DHCP client (option 12) use it, and `hostnamectl` shows it as “Transient hostname”. The device name, the static name and /etc/hostname do not change. It lasts until a reboot: reopening the lab loses it. The same rules apply (capitals included): an invalid name gives “the specified hostname is invalid” or “Invalid transient hostname”, and one over 64 characters “name too long”.'],
-                    ['sudo sysctl -w kernel.hostname=NAME · /proc/sys/kernel/hostname · Kernel parameters', 'The same: kernel.hostname is the transient name. Like the kernel, it takes any text up to 64 characters (even with spaces). From the device panel or web management it is saved in /etc/sysctl.d/99-netfix.conf, and a kernel.hostname line in /etc/sysctl.conf or /etc/sysctl.d applies at every boot (when the lab opens), as systemd-sysctl does.'],
+                    ['sudo sysctl -w kernel.hostname=NAME · /proc/sys/kernel/hostname · Kernel parameters', 'The same: kernel.hostname is the transient name. Like the kernel, it takes any text up to 64 characters (even with spaces). From the device panel or web management it is saved in /etc/sysctl.conf, and a kernel.hostname line in /etc/sysctl.conf or /etc/sysctl.d applies at every boot (when the lab opens), as systemd-sysctl does.'],
                     ['Back to the static name', 'hostnamectl set-hostname or renaming the device in Device end the transient name; setting the static name as the transient one does too.'],
                     ['/etc/hostname', 'A generated, read-only file: it shows the static name (after hostnamectl too, not after hostname); editing it does not change it.'],
                     ['Web management → Setup', 'Shows the host name with no field to change it.'],
@@ -24824,7 +24824,7 @@ const SECURITY_DOCS = {
                 h('Step by step: make it route'),
                 steps(['Interface addresses', '**Interfaces** tab (or `ip addr add 192.168.1.1/24 dev eth1`). eth0 can get its own from the operator by DHCP.'], ['Turn forwarding on', '**Services → Parameters**: `net.ipv4.ip_forward` = 1 and **Apply and save**. Without it, the router answers ping on its own IP addresses but drops everything that goes from one interface to another.'], ['Routes', 'Connected networks are added by themselves; the others with `ip route add NETWORK via NEXT-HOP` or in the Interfaces tab.'], ['Outbound NAT', '**Services → Firewall → Template** “Router with outbound NAT on eth0”, or an `oifname "eth0" masquerade` rule (see nftables).']),
                 term('shell', 'root@fw:~# ip -br addr\nlo               UNKNOWN        127.0.0.1/8\neth0             UP             81.32.5.2/29\neth1             UP             192.168.1.1/24\neth2             UP             172.16.0.1/24\nroot@fw:~# sysctl net.ipv4.ip_forward\nnet.ipv4.ip_forward = 1\nroot@fw:~# ip route\ndefault via 81.32.5.1 dev eth0 proto dhcp metric 100\n81.32.5.0/29 dev eth0 proto kernel scope link src 81.32.5.2\n172.16.0.0/24 dev eth2 proto kernel scope link src 172.16.0.1\n192.168.1.0/24 dev eth1 proto kernel scope link src 192.168.1.1'),
-                note('The **Enable router** box in Services → Parameters only reflects net.ipv4.ip_forward (ticked when it is 1); it is changed in the table or with sysctl. In web management (Security → Routing) the same box can be ticked: saving changes ip_forward and stores it in /etc/sysctl.d/99-netfix.conf.'),
+                note('The **Enable router** box in Services → Parameters only reflects net.ipv4.ip_forward (ticked when it is 1); it is changed in the table or with sysctl. In web management (Security → Routing) it is the same: it only reflects it. What the panel or web management saves goes to /etc/sysctl.conf (the #net.ipv4.ip_forward=1 line is uncommented); you can also edit that file and apply it with sysctl -p, or write the value with echo 1 > /proc/sys/net/ipv4/ip_forward, which like sysctl -w lasts until a restart.'),
                 table(['Where', 'What is configured'], [
                     ['Interfaces tab', 'IP address of each eth, DHCP on eth0, static routes and forwarding.'],
                     ['Services → Parameters', 'Kernel parameters (sysctl: net.ipv4.ip_forward…); applied and saved.'],
@@ -33121,7 +33121,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.51.0",
+    "version": "0.52.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -59109,7 +59109,8 @@ function routingPage(server, base) {
     const keys = SYSCTL_KEYS.filter((k) => k.effect || k.name.startsWith('net.ipv4.conf.all'));
     const routes = server.staticRoutes.map((r) => h('tr', {}, h('td', { class: 'web-adm-mono' }, `${formatIp(r.net)}/${r.prefix}`), h('td', { class: 'web-adm-mono' }, formatIp(r.via)), h('td', {}, del(base, 'routing', 'route-del', `${formatIp(r.net)}/${r.prefix}`))));
     return [
-        form(base, 'routing', 'router-enable', cards(section(t('fwa.routerTitle'), t('fwa.routerHelp'), check('enabled', sysctl.enabled('net.ipv4.ip_forward'), t('fwa.router')))), buttons()),
+        // A mirror of net.ipv4.ip_forward, never a control of its own (as in Services → Parameters).
+        cards(section(t('fwa.routerTitle'), t('fwa.routerHelp'), check('enabled', sysctl.enabled('net.ipv4.ip_forward'), t('fwa.router'), true))),
         ...keys.map((k) => form(base, 'routing', 'sysctl-set', h('input', { type: 'hidden', name: 'key', value: k.name }), cards(section(k.name, k.effect ? t('fwa.effect') : t('fwa.noEffect'), Array.isArray(k.accepts) ? choose('value', sysctl.get(k.name) ?? '', k.accepts.map((v) => [v, v])) : text('value', sysctl.get(k.name) ?? ''))), buttons())),
         section(t('fwa.routes'), t('fwa.routesHelp'), h('table', { class: 'web-adm-list' }, h('tr', {}, h('th', {}, t('fwa.net')), h('th', {}, t('fwa.via')), h('th', {}, '')), routes.length ? routes : h('tr', {}, h('td', { colspan: 3 }, t('fwa.noRoutes'))))),
         form(base, 'routing', 'route-add', cards(section(t('fwa.newRoute'), t('fwa.newRouteHelp'), row(t('fwa.net'), text('to', '', { placeholder: '10.0.0.0/8' })), row(t('fwa.via'), text('via', '')))), buttons()),
@@ -59271,10 +59272,36 @@ return { ruleFromForm, nftEdit, moveRule, NFT_TEMPLATES };
 })();
 __m["shells/kernel-save.js"] = (() => {
 const { hostSystem } = __m["shells/host-system.js"];
-const { NETFIX_SYSCTL } = __m["shells/kernel-files.js"];
+const { NETFIX_SYSCTL, SYSCTL_CONF } = __m["shells/kernel-files.js"];
 const { parseSysctlConf } = __m["net/sysctl.js"];
-const HEADER = '# Netfix: parámetros guardados desde la ventana del equipo o la gestión web.\n';
-/** Applies `key = value` and records it in 99-netfix.conf (replacing an earlier value). Returns an error or null. */
+const readText = (fs, path) => (fs.tryLookup(path)?.kind === 'file' ? fs.readFile(path) : null);
+/** `key = value` in place of `line` (also a commented `#key=…`, which is uncommented), keeping its spacing. */
+const withValue = (line, value) => line.replace(/^\s*[#;]\s*/, '').replace(/(=\s*).*$/, (_, eq) => `${eq}${value}`);
+/** sysctl.conf with the key's line set: the active one, else the commented stock one, else a new line at the end. */
+function confWith(text, key, value) {
+    const lines = text.split('\n');
+    const isKey = (l) => parseSysctlConf(l).some((e) => e.key === key);
+    const commented = (l) => /^\s*[#;]/.test(l) && isKey(l.replace(/^\s*[#;]\s*/, ''));
+    const active = lines.findIndex(isKey);
+    const at = active >= 0 ? active : lines.findIndex(commented);
+    // Later active lines would win on `sysctl -p`: they go, so the file says one thing.
+    const out = lines.flatMap((l, i) => (i === at ? [withValue(l, value)] : isKey(l) ? [] : [l]));
+    if (at < 0)
+        out.splice(out.at(-1) === '' ? out.length - 1 : out.length, 0, `${key} = ${value}`);
+    return `${out.join('\n').replace(/\n*$/, '')}\n`;
+}
+/** Labs saved before 0.52 kept GUI values in 99-netfix.conf: the key leaves it, and the file goes when nothing is left. */
+function dropLegacy(fs, key) {
+    const old = readText(fs, NETFIX_SYSCTL);
+    if (old === null || !parseSysctlConf(old).some((e) => e.key === key))
+        return;
+    const kept = old.split('\n').filter((l) => !parseSysctlConf(l).some((e) => e.key === key)).join('\n');
+    if (parseSysctlConf(kept).length === 0)
+        fs.remove(NETFIX_SYSCTL);
+    else
+        fs.writeFile(NETFIX_SYSCTL, kept, undefined, false, 0o644);
+}
+/** Applies `key = value` and records it in /etc/sysctl.conf. Returns an error (sysctl's words) or null. */
 function saveSysctl(host, key, value) {
     const r = host.kernel.sysctl.set(key, value);
     if (r === 'unknown')
@@ -59282,10 +59309,8 @@ function saveSysctl(host, key, value) {
     if (r === 'invalid')
         return `sysctl: setting key "${key}": Invalid argument`;
     const fs = hostSystem(host).fs;
-    const old = fs.tryLookup(NETFIX_SYSCTL)?.kind === 'file' ? fs.readFile(NETFIX_SYSCTL) : HEADER;
-    const kept = old.split('\n').filter((l) => !parseSysctlConf(l).some((e) => e.key === key));
-    const text = `${[...kept.filter((l, i) => l !== '' || i < kept.length - 1), `${key} = ${value}`].join('\n')}\n`;
-    fs.writeFile(NETFIX_SYSCTL, text, undefined, false, 0o644);
+    fs.writeFile(SYSCTL_CONF, confWith(readText(fs, SYSCTL_CONF) ?? '', key, value), undefined, false, 0o644);
+    dropLegacy(fs, key);
     return null;
 }
 
@@ -59422,10 +59447,6 @@ function securityAction(server, f) {
         case 'fw-rule-del': return k?.chain && k.handle !== undefined ? commit(server, `delete rule ${k.family} ${k.table} ${k.chain} handle ${k.handle}`) : { error: t('fwa.noRule') };
         case 'fw-rule-up': return move(server, f, -1);
         case 'fw-rule-down': return move(server, f, 1);
-        case 'router-enable': {
-            const err = saveSysctl(server, 'net.ipv4.ip_forward', f.get('enabled') === '1' ? '1' : '0');
-            return err ? { error: err } : saved();
-        }
         case 'sysctl-set': {
             const err = saveSysctl(server, (f.get('key') ?? '').trim(), (f.get('value') ?? '').trim());
             return err ? { error: err } : saved();

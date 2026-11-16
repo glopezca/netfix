@@ -90,8 +90,8 @@ export function routingPage(server: Server, base: string): Child {
   const routes = server.staticRoutes.map((r) => h('tr', {}, h('td', { class: 'web-adm-mono' }, `${formatIp(r.net)}/${r.prefix}`), h('td', { class: 'web-adm-mono' }, formatIp(r.via)),
     h('td', {}, del(base, 'routing', 'route-del', `${formatIp(r.net)}/${r.prefix}`))));
   return [
-    form(base, 'routing', 'router-enable', cards(section(t('fwa.routerTitle'), t('fwa.routerHelp'),
-      check('enabled', sysctl.enabled('net.ipv4.ip_forward'), t('fwa.router')))), buttons()),
+    // A mirror of net.ipv4.ip_forward, never a control of its own (as in Services → Parameters).
+    cards(section(t('fwa.routerTitle'), t('fwa.routerHelp'), check('enabled', sysctl.enabled('net.ipv4.ip_forward'), t('fwa.router'), true))),
     ...keys.map((k) => form(base, 'routing', 'sysctl-set', h('input', { type: 'hidden', name: 'key', value: k.name }),
       cards(section(k.name, k.effect ? t('fwa.effect') : t('fwa.noEffect'),
         Array.isArray(k.accepts) ? choose('value', sysctl.get(k.name) ?? '', k.accepts.map((v) => [v, v] as const)) : text('value', sysctl.get(k.name) ?? ''))), buttons())),

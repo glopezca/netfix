@@ -52,7 +52,7 @@ export const FIREWALL_ES = {
   'fw.badField': 'Revisa el campo «{field}».',
   'fw.notLinux': 'El cortafuegos nftables solo está en los equipos Ubuntu.',
   'sysctl.tab': 'Parámetros',
-  'sysctl.intro': 'Parámetros del núcleo. Se aplican y se guardan en /etc/sysctl.d/99-netfix.conf; con «sysctl -w» en la terminal solo duran hasta reiniciar.',
+  'sysctl.intro': 'Parámetros del núcleo. Se aplican y se guardan en /etc/sysctl.conf, que muestra lo guardado; con «sysctl -w» o «echo 1 > /proc/sys/…» en la terminal solo duran hasta reiniciar, y lo que edites en /etc/sysctl.conf se aplica con «sysctl -p».',
   'sysctl.key': 'Parámetro',
   'sysctl.value': 'Valor',
   'sysctl.effect': 'Efecto en Netfix',

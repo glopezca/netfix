@@ -206,7 +206,7 @@ export const WEB_ES = {
   'fwa.routes': 'Rutas estáticas',
   'fwa.router': 'Activar router',
   'fwa.routerTitle': 'Router',
-  'fwa.routerHelp': 'Marcada = net.ipv4.ip_forward = 1: el equipo reenvía paquetes entre sus redes. Al guardar se cambia ese parámetro (y se guarda en /etc/sysctl.d/99-netfix.conf).',
+  'fwa.routerHelp': 'Marcada = net.ipv4.ip_forward = 1: el equipo reenvía paquetes entre sus redes. Solo lo refleja: se cambia en net.ipv4.ip_forward, aquí abajo (se guarda en /etc/sysctl.conf), con sysctl o editando /etc/sysctl.conf y aplicándolo con sysctl -p.',
   'fwa.routesHelp': 'Redes que se alcanzan por otro router.',
   'fwa.net': 'Red',
   'fwa.via': 'Siguiente salto',
