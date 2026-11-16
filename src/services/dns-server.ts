@@ -6,20 +6,23 @@ import { answerFromZones } from './dns-service.ts';
 import { servedZones } from './dns-zones.ts';
 import { DEFAULT_MAX_CACHE_TTL, iterates } from './named-options.ts';
 import { ROOT_IPS } from '../net/dns-roots.ts';
-import { DnsForwarder, recursionAllowed } from './dns-forwarder.ts';
+import { DnsForwarder } from './dns-forwarder.ts';
+import { amlAllows, DEFAULT_ALLOW_RECURSION } from './dns-aml.ts';
+import type { LocalAddress } from './dns-aml.ts';
 import { formatIp } from '../core/ip.ts';
 import { RPZ_ZONE, rpzAnswer } from './dns-rpz.ts';
 import { normalizeName } from '../net/dns.ts';
 
 export interface DnsHost {
   readonly services: { readonly dns: DnsSettings };
-  readonly config: { readonly ip?: number; readonly prefix?: number };
   sendUdp(dst: number, sport: number, dport: number, body: { dns: DnsMessage }): boolean;
   log(unit: 'dns', line: string): void;
   readonly hooks: { schedule(delayMs: number, fn: () => void): void };
   readonly clock: { now(): number };
   /** Whether bind listens on the address `dst` (listen-on). */
   dnsListensOn(dst: number): boolean;
+  /** Every interface address: allow-recursion's localhost and localnets come from all of them. */
+  nics(): readonly LocalAddress[];
 }
 
 const within = (name: string, zone: string): boolean => name === zone || name.endsWith(`.${zone}`);
@@ -62,7 +65,7 @@ export class ServerDns {
   private query(src: number, sport: number, dst: number, q: DnsMessage): void {
     const s = this.host.services.dns;
     const forwarders = s.forwarders ?? [];
-    const recursion = s.recursion === true && recursionAllowed(s.allowRecursion ?? 'localnets', src, this.host.config);
+    const recursion = s.recursion === true && amlAllows(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION, src, this.host.nics());
     const unloaded = s.unloaded ?? [];
     const zones = servedZones(s).filter((z) => !unloaded.includes(z.zone.name));
     const qname = normalizeName(q.qname);

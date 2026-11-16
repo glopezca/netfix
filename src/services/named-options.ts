@@ -1,11 +1,14 @@
 /**
  * /etc/bind/named.conf.options: generated from the DNS settings and editable (root): `max-cache-ttl`, forwarders,
- * `forward only|first`, `recursion yes|no` and `allow-recursion { localnets; | any; }` change the server.
+ * `forward only|first`, `recursion yes|no` and `allow-recursion { … }` (with the `acl` lists of this file) change
+ * the server.
  */
 import type { DnsSettings } from './config.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { dnsListenAddresses, ifacesOfAddresses } from './listen.ts';
 import type { ListenChoice } from './listen.ts';
+import { amlText, DEFAULT_ALLOW_RECURSION, expandAcls, parseAml } from './dns-aml.ts';
+import type { Aml } from './dns-aml.ts';
 
 export const NAMED_OPTIONS = '/etc/bind/named.conf.options';
 const MAX_FORWARDERS = 8;
@@ -42,7 +45,7 @@ export function namedOptions(s: DnsSettings, choices: readonly ListenChoice[] = 
     '',
     '\t// Recursivo: resuelve cualquier nombre para los clientes permitidos',
     `\trecursion ${s.recursion === true ? 'yes' : 'no'};`,
-    `\tallow-recursion { ${s.allowRecursion === 'any' ? 'any' : 'localnets; localhost'}; };`,
+    `\tallow-recursion { ${amlText(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION) || 'none'}; };`,
     '',
     '\t// Interfaces de escucha: direcciones en las que atiende consultas (any = todas)',
     listenOnLine(s, choices),
@@ -97,6 +100,22 @@ function stripComments(text: string): string {
   return out;
 }
 
+/** `acl nombre { … };` of this file: their elements, to expand where allow-recursion names them. */
+function acls(text: string): Map<string, Aml> {
+  const out = new Map<string, Aml>();
+  for (const m of text.matchAll(/\bacl\s+"?([\w.-]+)"?\s*\{([^{}]*)\}\s*;/g)) {
+    out.set((m[1] ?? '').toLowerCase(), (m[2] ?? '').replace(/!\s+/g, '!').split(/[;\s]+/).filter(Boolean));
+  }
+  return out;
+}
+
+/** allow-recursion as named reads it (missing = BIND's default); named-checkconf has already checked the grammar. */
+function allowRecursionOf(text: string): Aml | { error: string } {
+  const inner = block(text, 'allow-recursion');
+  if (inner === null) return DEFAULT_ALLOW_RECURSION;
+  return parseAml(expandAcls(inner.replace(/!\s+/g, '!').split(/[;\s]+/).filter(Boolean), acls(text)).join(';'));
+}
+
 function block(text: string, name: string): string | null {
   // [^{}]: each attempt stops at the next brace, so a hostile file cannot make this quadratic.
   const m = new RegExp(`\\b${name}\\s*\\{([^{}]*)\\}\\s*;`).exec(text);
@@ -120,7 +139,8 @@ export function parseNamedOptions(text: string, current: DnsSettings, choices: r
   const recursion = /\brecursion\s+(yes|no)\s*;/.exec(clean)?.[1];
   const forward = /\bforward\s+(only|first)\s*;/.exec(clean)?.[1];
   const ttl = /\bmax-cache-ttl\s+(\d+[smhdw]?)\s*;/i.exec(clean)?.[1];
-  const allow = block(clean, 'allow-recursion') ?? '';
+  const allow = allowRecursionOf(clean);
+  if ('error' in allow) return { error: `${NAMED_OPTIONS}: allow-recursion: ${allow.error}` };
   return {
     ...current,
     // BIND's defaults when a statement is missing: recursion yes, forward first, max-cache-ttl one week.
@@ -128,7 +148,7 @@ export function parseNamedOptions(text: string, current: DnsSettings, choices: r
     forwarders,
     forwardOnly: forward === 'only',
     maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(seconds(ttl), MAX_TTL),
-    allowRecursion: /\bany\b/.test(allow) ? 'any' : 'localnets',
+    allowRecursion: allow,
     listenOn: listenOnOf(LISTEN_ON.exec(clean)?.[1] ?? null, current, choices),
     publicNames: { ...current.publicNames, enabled: /\bresponse-policy\s*\{[^{}]*\bzone\s+"rpz\.publicos"/.test(clean) },
   };

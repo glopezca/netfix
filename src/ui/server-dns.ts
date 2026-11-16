@@ -4,7 +4,7 @@
  */
 import { t, tDynamic } from '../i18n/t.ts';
 import { el } from './dom.ts';
-import { field, input, select, button, onOff, message, table } from './forms.ts';
+import { field, input, button, onOff, message, table } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';
 import type { Server } from '../devices/server.ts';
 import type { DnsSettings } from '../services/config.ts';
@@ -12,6 +12,7 @@ import { MODE_DIRECTIVES, dnsModes, setCache, setForwarders, setIterative, setRe
 import type { DnsMode, ModeState } from '../services/dns-edit.ts';
 import { commit } from './dns-commit.ts';
 import { forwardersText, GOOGLE_FORWARDERS } from '../services/dns-recursion.ts';
+import { amlText, DEFAULT_ALLOW_RECURSION, localNetworks } from '../services/dns-aml.ts';
 import { DEFAULT_MAX_CACHE_TTL } from '../services/named-options.ts';
 import { ROOT_SERVERS } from '../net/dns-roots.ts';
 import { livePanel } from './server-dhcp-dns.ts';
@@ -75,12 +76,12 @@ function iterativeBlock(server: Server, app: AfterChange, msg: ReturnType<typeof
 
 function recursiveBlock(server: Server, app: AfterChange, msg: ReturnType<typeof message>): HTMLElement {
   const s = server.services.dns;
-  const allow = select([['localnets', t('dns.rec.localnets')], ['any', t('dns.rec.any')]], s.allowRecursion ?? 'localnets');
-  const value = (): 'localnets' | 'any' => (allow.value === 'any' ? 'any' : 'localnets');
-  return modeBlock('recursive', dnsModes(s).recursive, (on) => commit(server, app, msg, setRecursion(server.services.dns, on, value()), true), [
+  const allow = input({ value: amlText(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION), placeholder: amlText(DEFAULT_ALLOW_RECURSION), spellcheck: 'false', 'data-field': 'allow-recursion' });
+  const apply = (on: boolean): boolean => commit(server, app, msg, setRecursion(server.services.dns, on, allow.value), true);
+  return modeBlock('recursive', dnsModes(s).recursive, apply, [
     el('p', { class: 'muted' }, t('dnsm.rec.explain')),
-    el('div', { class: 'grid3' }, field(t('dnsm.rec.allow'), allow)),
-    el('div', { class: 'actions' }, button(t('dnsm.apply'), () => commit(server, app, msg, setRecursion(server.services.dns, s.recursion === true, value()), true))),
+    field(t('dnsm.rec.allow'), allow, t('dnsm.rec.hint', { nets: localNetworks(server.nics()) })),
+    el('div', { class: 'actions' }, button(t('dnsm.apply'), () => apply(server.services.dns.recursion === true))),
   ]);
 }
 

@@ -38,7 +38,7 @@ function modes(server: Server, f: Fields): Edited {
   // A switch that was locked on the page was not sent: it is not a request to turn iteration off.
   const iterativeSent = dnsModes(s).iterative.locked === undefined;
   return chain(s,
-    (x) => setRecursion(x, on('recursive'), x.allowRecursion ?? 'localnets'),
+    (x) => setRecursion(x, on('recursive')),
     (x) => (on('forwarder') === dnsModes(x).forwarder.on ? x : setForwarders(x, on('forwarder') ? GOOGLE_FORWARDERS : '')),
     (x) => (on('cache') === dnsModes(x).cache.on ? x : setCache(x, on('cache'))),
     (x) => setAuthoritative(x, on('authoritative')),
@@ -64,7 +64,7 @@ function edit(server: Server, f: Fields, action: string): Edited | undefined {
     case 'dns-cache': return setCache(s, (f.get('ttl') ?? '').trim() !== '0', f.get('ttl'));
     case 'dns-forwarders': return setForwarders(s, f.get('forwarders') ?? '');
     case 'dns-iterative': return setIterative(s, f.get('forward') === 'first');
-    case 'dns-recursive': return setRecursion(s, f.has('recursion'), f.get('allow') === 'any' ? 'any' : 'localnets');
+    case 'dns-recursive': return setRecursion(s, f.has('recursion'), f.get('allow') ?? '');
     case 'zone-add': return addZone(s, draftFrom(f), day);
     case 'zone-del': return removeZone(s, zone);
     case 'zone-ns': return setZoneNs(s, zone, f.get('ns') ?? '', day);

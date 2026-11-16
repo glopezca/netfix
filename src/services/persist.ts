@@ -12,6 +12,8 @@ import { MAX_ZONES, defaultSoa, recordTypesFor, validateZone, zonesFromLegacy } 
 import { validateRecord } from './dns-service.ts';
 import { normalizeName } from '../net/dns.ts';
 import { publicNamesFromJson, publicNamesToJson } from './dns-rpz.ts';
+import { DEFAULT_ALLOW_RECURSION, parseAml } from './dns-aml.ts';
+import type { Aml } from './dns-aml.ts';
 
 type Json = Record<string, unknown>;
 
@@ -168,6 +170,15 @@ function webapps(v: unknown): WebApps {
 }
 
 /** Interfaces a service listens on (eth0…, lo); a file may only name interfaces, never anything else. */
+/** allow-recursion: a list of elements; before 0.51, 'localnets' (written as localnets; localhost) or 'any'. */
+function allowRecursionOf(v: unknown): Aml {
+  if (v === 'any') return ['any'];
+  if (v === 'localnets') return DEFAULT_ALLOW_RECURSION;
+  const list = Array.isArray(v) && v.every((x) => typeof x === 'string') ? parseAml(v.join(';')) : { error: '' };
+  if ('error' in list) throw new Error(t('load.allowRecursion'));
+  return list;
+}
+
 function ifaceList(v: unknown): string[] {
   // Empty would leave the service answering nobody: the panel refuses it too.
   if (!Array.isArray(v) || v.length === 0 || v.length > MAX_LISTEN) throw new Error(t('load.ifaces'));
@@ -225,7 +236,7 @@ function dnsFromJson(n: Json): DnsSettings {
     ...(n.maxCacheTtl !== undefined ? { maxCacheTtl: num(n.maxCacheTtl, 'max-cache-ttl', 0, MAX_TIMER) } : {}),
     ...(fwd.length ? { forwarders: fwd } : {}),
     ...(fwd.length || n.forwardOnly !== undefined ? { forwardOnly: n.forwardOnly !== false } : {}),
-    ...(n.allowRecursion !== undefined ? { allowRecursion: n.allowRecursion === 'any' ? 'any' as const : 'localnets' as const } : {}),
+    ...(n.allowRecursion !== undefined ? { allowRecursion: allowRecursionOf(n.allowRecursion) } : {}),
     ...(n.listenOn !== undefined ? { listenOn: ifaceList(n.listenOn) } : {}),
     ...(n.publicNames !== undefined ? { publicNames: publicNamesFromJson(n.publicNames, t('load.publicNames')) } : {}),
   };

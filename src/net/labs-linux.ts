@@ -3,6 +3,7 @@
  * kept apart) and a bind9 server that answers its zone and forwards the rest to 8.8.8.8 (localnets only).
  */
 import { newZone } from '../services/dns-zones.ts';
+import { DEFAULT_ALLOW_RECURSION } from '../services/dns-aml.ts';
 import { LABS_ES } from '../i18n/es-ES/labs.ts';
 import type { Example } from './examples.ts';
 import { Topology } from './topology.ts';
@@ -127,7 +128,7 @@ function dnsServer(srv: Server, pcMac: string): void {
     ...srv.services,
     dhcp: { enabled: true, pools: [{ name: 'serverPool', start: ip('192.168.50.100'), prefix: 24, maxUsers: 50, gateway: ip('192.168.50.1'), dns: ip('192.168.50.2'), domain: 'empresa.lan', leaseMinutes: 1440, reservations: [{ ip: ip('192.168.50.50'), mac: pcMac, name: 'PC1' }] }] },
     dns: {
-      enabled: true, recursion: true, forwarders: [ip('8.8.8.8'), ip('8.8.4.4')], forwardOnly: true, allowRecursion: 'localnets',
+      enabled: true, recursion: true, forwarders: [ip('8.8.8.8'), ip('8.8.4.4')], forwardOnly: true, allowRecursion: DEFAULT_ALLOW_RECURSION,
       zones: [{ ...newZone('empresa.lan', 'forward', ['ns1.empresa.lan']), records: [
         { name: 'ns1', type: 'A', value: '192.168.50.2', ttl: 86400 },
         { name: 'intranet', type: 'A', value: '192.168.50.2', ttl: 86400 },

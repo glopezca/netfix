@@ -6,7 +6,7 @@
  */
 import type { DnsAnswer, DnsMessage } from '../net/packets.ts';
 import { normalizeName } from '../net/dns.ts';
-import { formatIp, inSubnet } from '../core/ip.ts';
+import { formatIp } from '../core/ip.ts';
 import { closestServers, iterStep } from './dns-iterate.ts';
 
 export const FORWARD_TIMEOUT_MS = 1200;
@@ -19,8 +19,6 @@ const MAX_STEPS = 20;
 /** Servers tried per zone while iterating (bind does not wait for all 13 roots). */
 const TRIES_PER_ZONE = 3;
 const DEFAULT_MAX_TTL = 604800;
-
-export type AllowRecursion = 'localnets' | 'any';
 
 export interface ForwarderEnv {
   send(dst: number, sport: number, msg: DnsMessage): void;
@@ -62,13 +60,6 @@ interface Pending {
   prefix: readonly DnsAnswer[];
   steps: number;
   done: boolean;
-}
-
-/** Whether `client` may use recursion (localnets = same subnet as the server, or the server itself). */
-export function recursionAllowed(allow: AllowRecursion, client: number, local: { ip?: number; prefix?: number }): boolean {
-  if (allow === 'any') return true;
-  if (local.ip === undefined || local.prefix === undefined) return false;
-  return client === local.ip || (client >>> 24) === 127 || inSubnet(client, local.ip, local.prefix);
 }
 
 const keyOf = (name: string, type: string): string => `${normalizeName(name)}/${type}`;

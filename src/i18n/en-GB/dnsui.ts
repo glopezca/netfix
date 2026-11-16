@@ -100,6 +100,7 @@ export const DNSUI_EN: Record<DnsUiKey, string> = {
   'dnsm.it.explain': 'The server asks a root server, which refers it to the servers of the top-level domain (.com, .es…); these refer it to the domain\'s servers, which answer with authority. Every hop shows in Simulation mode and in journalctl -u named.',
   'dnsm.it.first': 'With forwarders: on = forward first (if they do not answer, it iterates); off = forward only.',
   'dnsm.rec.allow': 'Clients allowed recursion (allow-recursion)',
+  'dnsm.rec.hint': 'Networks or addresses separated by ; (192.168.0.0/24; localhost). localnets are the networks of this server: {nets}. ! in front excludes; the first match wins.',
   'dnsm.rec.explain': 'Without recursion the server only answers for its zones (REFUSED for the rest), even with forwarders.',
   'dnsm.zone.list': 'Zones',
   'dnsm.zone.name': 'Zone',

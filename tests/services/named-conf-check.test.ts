@@ -110,7 +110,7 @@ const LAB: DnsSettings = {
 };
 const MODES: Record<string, DnsSettings> = {
   autoritativo: LAB,
-  recursivo: { ...LAB, recursion: true, allowRecursion: 'any' },
+  recursivo: { ...LAB, recursion: true, allowRecursion: ['192.168.10.0/24', '!192.168.10.9', 'localhost'] },
   reenviador: { ...LAB, recursion: true, forwarders: [0x08080808, 0x01010101], forwardOnly: false },
   'solo caché': { ...LAB, authoritative: false, recursion: true, maxCacheTtl: 0 },
   'escucha en lo': { ...LAB, listenOn: ['lo'] },

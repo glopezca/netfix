@@ -2,6 +2,7 @@
 import type { DnsSettings } from './config.ts';
 import { parseIp, formatIp } from '../core/ip.ts';
 import { t } from '../i18n/t.ts';
+import type { Aml } from './dns-aml.ts';
 
 export const MAX_FORWARDERS = 8;
 export const GOOGLE_FORWARDERS = '8.8.8.8, 8.8.4.4';
@@ -9,7 +10,7 @@ export const GOOGLE_FORWARDERS = '8.8.8.8, 8.8.4.4';
 export interface RecursionInput {
   readonly forwarders: string;
   readonly forwardOnly: boolean;
-  readonly allowRecursion: 'localnets' | 'any';
+  readonly allowRecursion: Aml;
 }
 
 export function forwardersText(s: DnsSettings): string {

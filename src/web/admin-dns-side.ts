@@ -12,6 +12,7 @@ import { bindFiles, NAMED_LOCAL } from '../services/bind-files.ts';
 import { NAMED_OPTIONS, DEFAULT_MAX_CACHE_TTL, iterates } from '../services/named-options.ts';
 import { rnameToEmail, servedZones } from '../services/dns-zones.ts';
 import { forwardersText } from '../services/dns-recursion.ts';
+import { amlText, DEFAULT_ALLOW_RECURSION } from '../services/dns-aml.ts';
 import { dnsLink } from './admin-dns-links.ts';
 import type { Query } from './admin-dns-links.ts';
 
@@ -46,7 +47,7 @@ const item = (title: string, text: string): Markup => h('details', { class: 'web
 
 function explanation(server: Server): Child[] {
   const s = server.services.dns;
-  const allow = s.allowRecursion === 'any' ? 'any' : 'localnets; localhost';
+  const allow = amlText(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION);
   const fwd = forwardersText(s);
   const ttl = s.maxCacheTtl ?? DEFAULT_MAX_CACHE_TTL;
   const zones = servedZones(s).map(({ zone: z, auto }) => item(t('wad.ex.t.zone', { kind: t(z.kind === 'reverse' ? 'zone.kind.reverse' : 'zone.kind.forward'), name: z.name }),

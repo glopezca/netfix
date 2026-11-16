@@ -1,0 +1,80 @@
+{
+  "format": "netfix",
+  "version": 2,
+  "devices": [
+    {
+      "id": "d1", "kind": "linuxrouter", "label": "pingüino00", "x": 792, "y": 149, "seed": 1,
+      "pc": {
+        "mode": "static", "ip": "10.0.2.15", "mask": "/24", "gateway": "10.0.2.1", "dns": "8.8.8.8", "sendClientId": true, "os": "linux",
+        "files": [
+          { "path": "/etc/nftables.conf", "mode": 493, "uid": 0, "gid": 0, "kind": "file", "content": "#!/usr/sbin/nft -f\n\nflush ruleset\n\ntable inet filter {\n\tchain input {\n\t\ttype filter hook input priority filter; policy drop;\n\t\tct state established,related accept\n\t\tiif \"lo\" accept\n\t\tiifname != \"eth0\" accept\n\t\ticmp type echo-request accept\n\t}\n\n\tchain forward {\n\t\ttype filter hook forward priority filter; policy drop;\n\t\tct state established,related accept\n\t\tiifname != \"eth0\" oifname \"eth0\" accept\n\t}\n}\ntable ip nat {\n\tchain postrouting {\n\t\ttype nat hook postrouting priority srcnat; policy accept;\n\t\toifname \"eth0\" masquerade\n\t}\n}\n" },
+          { "path": "/etc/sysctl.d/99-netfix.conf", "mode": 420, "uid": 0, "gid": 0, "kind": "file", "content": "# Netfix: parámetros guardados desde la ventana del equipo o la gestión web.\nnet.ipv4.ip_forward = 1\nnet.ipv4.conf.all.forwarding = 1\n" }
+        ],
+        "enabled": ["firewall", "dhcp", "dns", "files", "log", "linux"],
+        "packages": ["bind9-libs", "bind9-utils", "dns-root-data", "kea-common", "libkea-asiolink56", "libkea-dhcpsrv62", "libkea-log61", "libnftables1", "libnftnl11"],
+        "autoPackages": ["bind9-libs", "bind9-utils", "dns-root-data", "kea-common", "libkea-asiolink56", "libkea-dhcpsrv62", "libkea-log61", "libnftables1", "libnftnl11"],
+        "hostname": "pinguino00", "prettyHostname": "Enrutador y servidor DHCP y DNS",
+        "nics": [{ "port": "GigabitEthernet0/1", "ip": "192.168.0.254", "prefix": 24 }, { "port": "GigabitEthernet0/2", "down": true }]
+      },
+      "server": {
+        "services": {
+          "dhcp": {
+            "enabled": true,
+            "pools": [{
+              "name": "serverPool", "start": "192.168.0.128", "prefix": 24, "maxUsers": 32, "gateway": "192.168.0.254", "dns": "192.168.0.254",
+              "domain": "artico.es", "leaseMinutes": 1440,
+              "reservations": [{ "ip": "192.168.0.16", "mac": "0063b91434b5", "name": "foca00" }, { "ip": "192.168.0.17", "mac": "00fbb1186878", "name": "oso00" }]
+            }],
+            "interfaces": ["eth1"]
+          },
+          "dns": {
+            "enabled": true,
+            "zones": [{
+              "name": "artico.es", "kind": "forward",
+              "soa": { "mname": "ns", "rname": "circulo.polar.es", "serial": 2026111608, "refresh": 604800, "retry": 86400, "expire": 2419200, "minimum": 3600 },
+              "ns": ["ns"],
+              "records": [
+                { "name": "ns", "type": "A", "value": "192.168.0.254", "ttl": 86400 },
+                { "name": "artico.es", "type": "NS", "value": "ns", "ttl": 86400 },
+                { "name": "pinguino00", "type": "A", "value": "192.168.0.254", "ttl": 86400 },
+                { "name": "foca00", "type": "A", "value": "192.168.0.16", "ttl": 86400 },
+                { "name": "oso00", "type": "A", "value": "192.168.0.17", "ttl": 86400 }
+              ]
+            }],
+            "listenOn": ["eth1"], "forwarders": ["8.8.8.8", "8.8.4.4"], "forwardOnly": false, "allowRecursion": "any", "recursion": true,
+            "publicNames": { "enabled": false }, "maxCacheTtl": 604800, "authoritative": true
+          },
+          "http": { "enabled": false, "files": [] },
+          "mail": { "smtp": false, "pop3": false, "imap": false, "domain": "", "users": [] },
+          "ssh": { "enabled": false, "users": [] },
+          "firewall": { "enabled": true }
+        },
+        "autostart": { "dhcp": true, "dns": true, "http": true, "smtp": true, "mailbox": true, "ssh": true, "firewall": true },
+        "mailboxes": {}
+      }
+    },
+    { "id": "d3", "kind": "switch", "label": "Switch0", "x": 1012, "y": 409, "seed": 3, "startup": null },
+    {
+      "id": "d4", "kind": "pc", "label": "foca00", "x": 1351, "y": 242, "seed": 4,
+      "pc": { "mode": "dhcp", "sendClientId": true, "os": "linux", "packages": ["libnftables1", "libnftnl11", "nftables"], "autoPackages": ["libnftables1", "libnftnl11"], "hostname": "foca00", "apps": { "inbox": [] } }
+    },
+    {
+      "id": "d5", "kind": "pc", "label": "oso00", "x": 1355, "y": 553, "seed": 5,
+      "pc": { "mode": "dhcp", "sendClientId": true, "os": "windows", "packages": ["libnftables1", "libnftnl11", "nftables"], "autoPackages": ["libnftables1", "libnftnl11"], "hostname": "oso00", "apps": { "inbox": [] } }
+    },
+    {
+      "id": "d6", "kind": "cloud", "label": "Redes conectadas CyL", "x": 514, "y": 409, "seed": 6,
+      "cloud": {
+        "isp": "Redes conectadas CyL", "block": "81.32.0.0",
+        "ports": { "Fibra0": { "mode": "router", "down": 1000, "up": 1000, "lanIp": "10.0.2.1", "lanPrefix": 24, "forwards": [], "dnsRelay": true } },
+        "domains": []
+      }
+    }
+  ],
+  "links": [
+    { "a": { "device": "d1", "port": "GigabitEthernet0/1" }, "b": { "device": "d3", "port": "FastEthernet0/1" }, "cable": "auto" },
+    { "a": { "device": "d3", "port": "FastEthernet0/2" }, "b": { "device": "d4", "port": "FastEthernet0" }, "cable": "auto" },
+    { "a": { "device": "d3", "port": "FastEthernet0/3" }, "b": { "device": "d5", "port": "FastEthernet0" }, "cable": "auto" },
+    { "a": { "device": "d1", "port": "GigabitEthernet0/0" }, "b": { "device": "d6", "port": "Fibra0" }, "cable": "auto" }
+  ]
+}

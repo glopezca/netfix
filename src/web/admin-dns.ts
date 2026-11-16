@@ -11,6 +11,7 @@ import { buttons, cards, check, choose, form, row, section, text } from './admin
 import { DNS_MODES, MODE_DIRECTIVES, dnsModes } from '../services/dns-edit.ts';
 import type { DnsMode } from '../services/dns-edit.ts';
 import { forwardersText, GOOGLE_FORWARDERS } from '../services/dns-recursion.ts';
+import { amlText, DEFAULT_ALLOW_RECURSION, localNetworks } from '../services/dns-aml.ts';
 import { DEFAULT_MAX_CACHE_TTL } from '../services/named-options.ts';
 import { ROOT_SERVERS } from '../net/dns-roots.ts';
 import { zonesTab } from './admin-dns-zones.ts';
@@ -82,7 +83,8 @@ function recursiveTab(server: Server, base: string): Child {
   return [
     h('p', {}, t('dnsm.rec.explain')),
     form(base, 'dns', 'dns-recursive', keepMode('recursive'), check('recursion', s.recursion === true, t('wad.recursion')),
-      row(t('dnsm.rec.allow'), choose('allow', s.allowRecursion ?? 'localnets', [['localnets', t('dns.rec.localnets')], ['any', t('dns.rec.any')]])), buttons()),
+      row(t('dnsm.rec.allow'), text('allow', amlText(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION), { placeholder: amlText(DEFAULT_ALLOW_RECURSION) })),
+      h('p', { class: 'web-adm-help' }, t('dnsm.rec.hint', { nets: localNetworks(server.nics()) })), buttons()),
   ];
 }
 
