@@ -86,7 +86,7 @@ Bloquean la fase indicada. Se recogen de cada documento; la discusión está en 
 | C2 | Dónde se guarda la versión de motor y evaluación por resultado; si una recorrección conserva el resultado anterior | Fase 5/7 | `CLASSROOM-CONSUMPTION.md` §8.2 |
 | C3 | **Decidida (2026-11-15):** `EXAMPLES` y `LABS_ES` son API pública del paquete | Fase 2 | `CLASSROOM-CONSUMPTION.md` §8.3 |
 | C4 | Si `lab.html` (laboratorio libre) sigue como página aparte o se monta nativo | Fase 6 | `CLASSROOM-CONSUMPTION.md` §8.4 |
-| C5 | Estrategia de aislamiento de CSS sin iframe | Fase 6 | `CLASSROOM-CONSUMPTION.md` §8.5; `PUBLIC-API.md` D5 |
+| C5 | Estrategia de aislamiento de CSS sin iframe. **Decidida 2026-11-16:** clase raíz `.netfix-root` (todas las reglas anidadas bajo ella; vista, modo, idioma y marca en el montaje, no en la página) | Fase 6 | `CLASSROOM-CONSUMPTION.md` §8.5; `PUBLIC-API.md` D5 |
 
 ## 3. Desglose en PR de las fases siguientes
 

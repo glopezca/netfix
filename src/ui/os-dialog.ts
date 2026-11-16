@@ -2,7 +2,7 @@
  * The question when a PC is placed: Linux, Windows or both. Windows is focused, and Esc or a click outside keeps it
  * (the default system). Servers do not ask: they run GNU/Linux until changed.
  */
-import { el } from './dom.ts';
+import { el, uiRoot } from './dom.ts';
 import { button } from './forms.ts';
 import { t } from '../i18n/t.ts';
 import { choosePcSystem, freshApps, setDeviceApps } from '../net/device-apps.ts';
@@ -28,7 +28,7 @@ export function askPcSystem(name: string): Promise<PcSystem> {
     );
     dialog.addEventListener('cancel', (e) => { e.preventDefault(); close('windows'); });
     dialog.addEventListener('click', (e) => { if (e.target === dialog) close('windows'); });
-    document.body.appendChild(dialog);
+    uiRoot().appendChild(dialog);
     dialog.showModal();
     windows.focus();
   });

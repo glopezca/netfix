@@ -326,4 +326,4 @@ Límites de la medición: 3 rúbricas de 3 a 5 elementos, ninguna con VPN, SSH n
 | D2 | ¿Errores tipados (códigos) en la API pública, o se mantiene `Error` + mensaje? Cambia el contrato con Classroom | **decidida 2026-11-15:** errores tipados con `code` |
 | D3 | Nombre de `saveTopology`/`loadTopology` públicos frente a `Topology.fromJSON`/`toJSON` directos | **decidida 2026-11-15:** `fromJSON`/`toJSON` |
 | D4 | Muestra de entregas reales de R2 como corpus de regresión | requiere autorización |
-| D5 | Estilos: `src/ui/styles.css` es global; sin iframe colisiona con el CSS del anfitrión. **NO VERIFICADO** el alcance | fuera de este documento, Fase 6 |
+| D5 | Estilos: `src/ui/styles.css` era global; sin iframe colisiona con el CSS del anfitrión | **resuelta en 0.49.0** (C5): todo cuelga de `.netfix-root`; montado, Netfix no toca `<html>`, `<body>`, título ni icono de la página (`scripts/e2e-embed.mjs`). El CSS del anfitrión aún puede alcanzar a Netfix: lo acota Classroom |

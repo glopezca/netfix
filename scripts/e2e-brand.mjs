@@ -40,7 +40,7 @@ try {
     const view = document.createElement('div');
     view.className = 'browser-view';
     view.innerHTML = '<footer class="web-adm-foot web-brand-foot"><span class="web-brand-n">Netfix</span>Netfix · gestión web</footer>';
-    document.body.append(view);
+    document.querySelector('.netfix-root').append(view); // Netfix's CSS applies inside its mount only (C5)
     const s = getComputedStyle(view.querySelector('.web-brand-n'));
     return { image: s.backgroundImage.slice(0, 30), width: s.width };
   });

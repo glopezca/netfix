@@ -1,5 +1,5 @@
 /** Floating device windows: draggable, stackable, with tabs (like Packet Tracer). */
-import { el } from './dom.ts';
+import { el, uiRoot } from './dom.ts';
 import { t } from '../i18n/t.ts';
 
 export interface Tab {
@@ -134,7 +134,7 @@ function place(root: HTMLElement, offset: number): void {
   const width = Math.min(880, window.innerWidth - 16);
   root.style.left = `${Math.max(8, Math.min(window.innerWidth - width - 8, 120 + offset))}px`;
   // The top bar wraps to two rows on medium widths (and collapses into a menu on phones).
-  const barBottom = Math.ceil(document.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 56);
+  const barBottom = Math.ceil(uiRoot().querySelector('.topbar')?.getBoundingClientRect().bottom ?? 56);
   const top = barBottom + 12 + offset;
   root.style.top = `${top}px`;
   root.style.maxHeight = `calc(100dvh - ${top + 8}px)`;

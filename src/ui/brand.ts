@@ -3,17 +3,26 @@ import { el } from './dom.ts';
 import { BRAND } from './brand-data.ts';
 import type { BrandImages } from './brand-data.ts';
 
-/** Exposes the images as CSS custom properties and sets the favicon (once, at start-up). */
-export function applyBrand(doc: Document = document): void {
-  const root = doc.documentElement.style;
-  root.setProperty('--brand-logo', `url("${BRAND.logo}")`);
-  root.setProperty('--brand-isologo-n', `url("${BRAND.isologoN}")`);
-  root.setProperty('--brand-isologo', `url("${BRAND.isologo}")`);
-  root.setProperty('--brand-diamond', `url("${BRAND.diamond}")`);
+/** The images as CSS custom properties: [property, image]. */
+const BRAND_VARS = [['--brand-logo', 'logo'], ['--brand-isologo-n', 'isologoN'], ['--brand-isologo', 'isologo'], ['--brand-diamond', 'diamond']] as const;
+
+/**
+ * Exposes the images as CSS custom properties on Netfix's mount (doc bullets, web GUIs); on its own page (`page`),
+ * also its favicon. Embedded, the host's <html> and icon are the host's (C5).
+ */
+export function applyBrand(mount: HTMLElement, page: boolean): void {
+  for (const [prop, kind] of BRAND_VARS) mount.style.setProperty(prop, `url("${BRAND[kind]}")`);
+  if (!page) return;
+  const doc = mount.ownerDocument;
   const icon = doc.querySelector('link[rel="icon"]') ?? doc.head.appendChild(el('link', { rel: 'icon', type: 'image/png' }));
   icon.setAttribute('href', BRAND.favicon);
   const touch = doc.querySelector('link[rel="apple-touch-icon"]') ?? doc.head.appendChild(el('link', { rel: 'apple-touch-icon' }));
   touch.setAttribute('href', BRAND.appleTouchIcon);
+}
+
+/** Takes the custom properties off the mount again (the host gets its element back as it was). */
+export function removeBrand(mount: HTMLElement): void {
+  for (const [prop] of BRAND_VARS) mount.style.removeProperty(prop);
 }
 
 export function brandImage(kind: keyof BrandImages, cls: string, alt: string): HTMLImageElement {
