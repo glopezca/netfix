@@ -83,6 +83,11 @@ try {
   await row.locator('button').click();
   await page.waitForTimeout(100);
   assert.equal(await page.locator('.router-flag input').isChecked(), false, 'the box follows the parameter');
+  // Redrawn after the change, it is still a mirror: disabled, and a forced click changes nothing.
+  assert.equal(await page.locator('.router-flag input').isDisabled(), true, 'still not clickable after a redraw');
+  await page.locator('.router-flag input').click({ force: true });
+  await page.locator('.router-flag').click({ force: true });
+  assert.equal(await page.locator('.router-flag input').isChecked(), false, 'clicking it does not tick it');
   assert.deepEqual(errors, []);
   console.log('e2e DNS y router: OK');
 } finally {
