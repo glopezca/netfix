@@ -92,7 +92,24 @@ try {
   await page.evaluate(() => globalThis.handle.destroy());
   assert.deepEqual(await page.evaluate(() => [...document.getElementById('app').attributes].map((a) => a.name)), ['id', 'data-embed'], 'the mount is given back as it was');
   assert.deepEqual(await pageState(), hostPage);
+  // netfix.lab: the whole standalone lab in the host's element (settings open, autosave, theme), the page left alone.
+  await page.evaluate(() => { globalThis.handle = netfix.lab(document.getElementById('app')); });
+  await page.waitForSelector('.topbar');
+  assert.deepEqual(await pageState(), hostPage, 'the lab leaves the host page alone');
+  await page.selectOption('.file-actions select', 'basico');
+  await page.waitForSelector('g.device-pc');
+  await page.click('[data-view="settings"]');
+  await page.waitForSelector('.settings');
+  assert.equal(await page.locator('.settings input[data-feature]:disabled').count(), 0, 'lab settings are not locked');
+  await page.check('input[name="set-theme"][value="dark"]');
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
+  await page.evaluate(() => globalThis.handle.destroy());
+  assert.ok(await page.evaluate(() => localStorage.getItem('netfix:workspace:v1')), 'the lab autosaves on leaving');
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), undefined, 'destroy puts the host theme back');
+  assert.deepEqual(await page.evaluate(() => [...document.getElementById('app').attributes].map((a) => a.name)), ['id', 'data-embed']);
+  assert.deepEqual(await pageState(), hostPage);
   await assert.rejects(page.evaluate(() => netfix.embed('#app')), /elemento/);
+  await assert.rejects(page.evaluate(() => netfix.lab('#app')), /elemento/);
   assert.deepEqual(errors, []);
   process.stdout.write('e2e embed: ok\n');
 } finally {
