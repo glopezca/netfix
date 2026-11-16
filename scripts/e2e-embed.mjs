@@ -22,6 +22,12 @@ try {
   await page.route('http://aula.test/**', (r) => r.fulfill({ contentType: 'text/html', body: html }));
   await page.goto('http://aula.test/practica');
   assert.equal(await page.locator('.topbar').count(), 0, 'data-embed: it waits for netfix.embed');
+  // C5: mounted in the host's page, Netfix leaves the page itself alone (title, language, <html>, <body>, icon).
+  const pageState = () => page.evaluate(() => ({
+    title: document.title, lang: document.documentElement.lang, html: document.documentElement.getAttribute('style'),
+    body: [...document.body.attributes].map((a) => `${a.name}=${a.value}`).join(' '), icon: document.querySelector('link[rel="icon"]')?.getAttribute('href') ?? null,
+  }));
+  const hostPage = await pageState();
   await page.evaluate(() => {
     globalThis.changes = 0;
     globalThis.handle = netfix.embed(document.getElementById('app'), {
@@ -30,6 +36,8 @@ try {
     });
   });
   await page.waitForSelector('.topbar');
+  assert.deepEqual(await pageState(), hostPage, 'the host page is untouched while Netfix runs');
+  assert.equal(await page.getAttribute('#app', 'class'), 'netfix-root');
   assert.deepEqual(await page.locator('.pal-devices .pal-name').allTextContents(), ['PC', 'Switch IOS']);
   assert.equal(await page.locator('[data-view="docs"]').count(), 0, 'no Documentation view');
   assert.equal(await page.getByRole('button', { name: 'Abrir' }).count(), 0, 'no Open');
@@ -65,6 +73,8 @@ try {
   assert.equal(marks.score, 1);
   await page.evaluate(() => globalThis.handle.destroy());
   assert.equal(await page.locator('.topbar').count(), 0);
+  assert.deepEqual(await page.evaluate(() => [...document.getElementById('app').attributes].map((a) => a.name)), ['id', 'data-embed'], 'the mount is given back as it was');
+  assert.deepEqual(await pageState(), hostPage);
   await assert.rejects(page.evaluate(() => netfix.embed('#app')), /elemento/);
   assert.deepEqual(errors, []);
   process.stdout.write('e2e embed: ok\n');

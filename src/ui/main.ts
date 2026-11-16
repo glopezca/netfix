@@ -1,5 +1,5 @@
 /** Netfix application shell: top bar, workspace, palette, views, windows and simulation panel. */
-import { applyBrand } from './brand.ts';
+import { applyBrand, removeBrand } from './brand.ts';
 import { el, safeStorageGet, safeStorageSet } from './dom.ts';
 import { Canvas } from './canvas.ts';
 import type { Tool } from './canvas.ts';
@@ -28,7 +28,7 @@ import type { Replacement } from './confirm-dialog.ts';
 import { syncUndoButtons, undoShortcut } from './undo-keys.ts';
 import { t } from '../i18n/t.ts';
 import { DrawState, drawBar } from './draw-bar.ts';
-import { detectLocale, setLocale, LOCALE_STORAGE_KEY } from '../i18n/locale.ts';
+import { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
 import { allowsLab, allowsTab, lockedPrompt } from '../classroom/restrictions.ts';
 import { forceTimestampPrompt } from '../shells/prompt-clock.ts';
@@ -63,6 +63,8 @@ class App {
   private readonly drawBarEl: HTMLElement;
   private view: View = 'net';
   private readonly session: AppSession;
+  /** The mount: it carries .netfix-root and the current view and mode (never the host page's <body>). */
+  private readonly rootEl: HTMLElement;
   /** What was last loaded or saved to a file: opening a lab over other changes asks first. */
   private readonly saved: SavedState;
   private readonly onKeyDown = (e: KeyboardEvent): void => {
@@ -85,6 +87,7 @@ class App {
   };
 
   constructor(root: HTMLElement, session: AppSession, topo?: Topology, initial: { readonly view: View; readonly mode: Mode } = { view: 'net', mode: 'realtime' }) {
+    this.rootEl = root;
     this.session = session;
     this.saved = new SavedState(session.embedded ? MEMORY_STORE : BROWSER_STORE);
     this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
@@ -178,7 +181,7 @@ class App {
   private setMode(m: Mode, hint = true): void {
     this.mode = m;
     this.sim.setActive(m === 'simulation');
-    document.body.dataset.mode = m;
+    this.rootEl.dataset.mode = m;
     if (hint) this.hintEl.textContent = t(m === 'simulation' ? 'hint.simulation' : 'hint.realtime');
   }
 
@@ -208,7 +211,7 @@ class App {
     this.stageEl.hidden = view !== 'net';
     this.paletteEl.hidden = view !== 'net';
     this.pageHost.hidden = view === 'net';
-    document.body.dataset.view = view;
+    this.rootEl.dataset.view = view;
     this.view = view;
     if (view === 'docs') this.pages.focusDocs();
     if (view === 'settings') this.pages.refreshSettings();
@@ -237,7 +240,7 @@ class App {
   private openDoc(id: string): void {
     this.showView('docs');
     this.pages.showDoc(id);
-    for (const b of document.querySelectorAll<HTMLElement>('.topbar [data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === 'docs'));
+    for (const b of this.rootEl.querySelectorAll<HTMLElement>('.topbar [data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === 'docs'));
   }
 
   /** "PC0 (FastEthernet0)" at the far end of a cable, for the device windows. */
@@ -341,6 +344,14 @@ let app: App | null = null;
 let mountEl: HTMLElement | null = null;
 let session: AppSession = STANDALONE;
 
+const ROOT_CLASS = 'netfix-root';
+
+/** The language of the mount; embedded, the page's title and <html lang> belong to the host. */
+function applyLanguage(mount: HTMLElement, s: AppSession): void {
+  mount.lang = getLocale();
+  if (!s.embedded) applyDocumentLanguage();
+}
+
 /** Rebuilds the interface in another language, keeping the topology (open windows are closed). */
 function changeLocale(locale: Locale): void {
   if (!session.embedded) safeStorageSet(LOCALE_STORAGE_KEY, locale);
@@ -349,7 +360,7 @@ function changeLocale(locale: Locale): void {
   const where = app.where();
   app.dispose();
   setLocale(locale);
-  applyDocumentLanguage();
+  applyLanguage(mountEl, session);
   app = new App(mountEl, session, topo, where);
   app.announce(t('hint.language'));
 }
@@ -363,10 +374,11 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology): App {
   session = s;
   MEMORY_STORE.clear();
   setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
-  applyDocumentLanguage();
+  mount.classList.add(ROOT_CLASS);
+  applyLanguage(mount, s);
   // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.
   if (!s.embedded) { applyTheme(); loadTimestampPrompt(); loadMissionsPref(); } else classroomMissions();
-  applyBrand();
+  applyBrand(mount, !s.embedded);
   // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
   forceTimestampPrompt(lockedPrompt(s.policy));
   app = new App(mount, s, topo);
@@ -396,6 +408,12 @@ export const NETFIX_API: NetfixApi = {
         app = null;
         forceTimestampPrompt(undefined);
         mount.replaceChildren();
+        // The host gets its element back as it was: no Netfix class, view, mode or language left on it.
+        mount.classList.remove(ROOT_CLASS);
+        for (const k of ['view', 'mode'] as const) delete mount.dataset[k];
+        mount.removeAttribute('lang');
+        removeBrand(mount);
+        for (const attr of ['class', 'style']) if (mount.getAttribute(attr) === '') mount.removeAttribute(attr);
       },
     };
   },

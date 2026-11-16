@@ -92,7 +92,7 @@ try {
   await page.waitForSelector('.doc-group:has-text("GNU/Linux Terminal")');
   await page.selectOption('.select-lang', 'es-ES');
   await page.waitForSelector('.doc-group:has-text("Terminal GNU/Linux")');
-  assert.equal(await page.getAttribute('body', 'data-view'), 'docs');
+  assert.equal(await page.getAttribute('#app', 'data-view'), 'docs');
   assert.equal(await page.locator('button.seg[aria-pressed="true"]:has-text("Ayuda")').count(), 1);
   await page.selectOption('.select-lang', 'en-GB');
   await page.waitForSelector('.doc-group:has-text("GNU/Linux router")');

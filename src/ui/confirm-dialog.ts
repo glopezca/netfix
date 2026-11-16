@@ -1,5 +1,5 @@
 /** A modal question with two answers (Cancel is focused, and Esc or a click outside also cancels). */
-import { el } from './dom.ts';
+import { el, uiRoot } from './dom.ts';
 import { button } from './forms.ts';
 import { t } from '../i18n/t.ts';
 
@@ -28,7 +28,7 @@ export function confirmDialog(text: ConfirmText): Promise<boolean> {
     );
     dialog.addEventListener('cancel', (e) => { e.preventDefault(); close(false); });
     dialog.addEventListener('click', (e) => { if (e.target === dialog) close(false); });
-    document.body.appendChild(dialog);
+    uiRoot().appendChild(dialog);
     dialog.showModal();
     cancel.focus();
   });

@@ -10,7 +10,7 @@ Plan: `NETFIX-MIGRATION-ECC.md` (opción B; documento de coordinación fuera de 
 | 3 — Paquete | Completada (PR #38–#44); `@glopezca/netfix` publicado en GitHub Packages (`0.47.2`, `0.48.0` con `./authoring`) | GATE 3: **aprobado** por el propietario (2026-11-15) |
 | 4 — Classroom consume el paquete | Completada (Classroom PR #12, `0.48.0` fijado; staging desplegado) | GATE 4: **aprobado** por el propietario (2026-11-15) |
 | 5 — Core en el Worker | Completada (Classroom PR #13–#16): versión del motor por resultado, hash de la entrega, autorización negativa, límites medidos en workerd (`DESPLIEGUE.md`), reentregas de cola | GATE 5: **aprobado** por el propietario (2026-11-15) |
-| 6 — Frontend nativo sin iframe | En curso: 1.8 (`ui/boot.ts` arranca; `ui/main.ts` solo define) | — |
+| 6 — Frontend nativo sin iframe | En curso: 1.8 (`ui/boot.ts` arranca; `ui/main.ts` solo define); C5 decidida: CSS bajo `.netfix-root` (0.49.0) | — |
 | 7–9 | No iniciadas | — |
 
 Base auditada: Netfix `main` @ `5c7b3e9` (`0.46.0`), FixITClassroom `main` @ `d443d98`. `DEPENDENCY-MAP.md`, `PUBLIC-API.md` y

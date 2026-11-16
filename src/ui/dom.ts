@@ -33,6 +33,11 @@ function append(node: Node, children: readonly Child[]): void {
   }
 }
 
+/** Netfix's mount (`.netfix-root`): its dialogs live inside it, where its CSS applies (C5). */
+export function uiRoot(): HTMLElement {
+  return document.querySelector<HTMLElement>('.netfix-root') ?? document.body;
+}
+
 export function clear(node: Node): void {
   while (node.firstChild) node.removeChild(node.firstChild);
 }
