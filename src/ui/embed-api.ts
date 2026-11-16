@@ -4,6 +4,8 @@ import type { Evaluation } from '../classroom/evaluate.ts';
 
 export interface NetfixApi {
   embed(mount: HTMLElement, options?: unknown): EmbedHandle;
+  /** The standalone lab (its settings, theme, autosave and preferences) mounted in a host page's element. */
+  lab(mount: HTMLElement): EmbedHandle;
   evaluate(topology: unknown, checklist: unknown): Evaluation;
 }
 

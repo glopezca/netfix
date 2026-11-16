@@ -30,6 +30,13 @@ de comprobación no debe llegar nunca al navegador del alumno y el archivo de `o
 entrada no fiable que hay que volver a corregir. `detail` y `title` pueden contener texto del alumno: muéstralos con
 `textContent`.
 
+## Laboratorio libre en otra página
+
+`netfix.lab(elemento)` monta el laboratorio completo, como la página propia de Netfix: ajustes, tema, autoguardado,
+idioma y preferencias en el navegador (las mismas claves `netfix:*` del origen). No toca el título, `<html lang>` ni el
+icono de la página; el tema sí necesita `<html data-theme>`, y `destroy()` lo deja como estaba, además de guardar el
+trabajo y devolver el elemento vacío. No admite opciones ni restricciones: para una práctica, `netfix.embed`.
+
 ## Restricciones
 
 Todo lo que no se indica queda permitido.

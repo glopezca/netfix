@@ -344,13 +344,15 @@ class App {
 let app: App | null = null;
 let mountEl: HTMLElement | null = null;
 let session: AppSession = STANDALONE;
+/** Whether Netfix owns the page (its title, <html lang>, favicon): standalone on its own page, not embedded or a hosted lab. */
+let onPage = true;
 
 const ROOT_CLASS = 'netfix-root';
 
-/** The language of the mount; embedded, the page's title and <html lang> belong to the host. */
-function applyLanguage(mount: HTMLElement, s: AppSession): void {
+/** The language of the mount; mounted in a host, the page's title and <html lang> belong to the host. */
+function applyLanguage(mount: HTMLElement): void {
   mount.lang = getLocale();
-  if (!s.embedded) applyDocumentLanguage();
+  if (onPage) applyDocumentLanguage();
 }
 
 /** Rebuilds the interface in another language, keeping the topology (open windows are closed). */
@@ -361,26 +363,27 @@ function changeLocale(locale: Locale): void {
   const where = app.where();
   app.dispose();
   setLocale(locale);
-  applyLanguage(mountEl, session);
+  applyLanguage(mountEl);
   app = new App(mountEl, session, topo, where);
   app.announce(t('hint.language'));
 }
 
 /** Starts the interface in `mount` (one per page: a new start replaces the previous one). */
-function start(mount: HTMLElement, s: AppSession, topo?: Topology): App {
+function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.embedded): App {
   app?.dispose();
   app = null;
   if (mountEl && mountEl !== mount) mountEl.replaceChildren();
   mountEl = mount;
   session = s;
+  onPage = page;
   MEMORY_STORE.clear();
   if (s.embedded) clearClipboard(); // each classroom mount starts with nothing copied from the one before
   setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
   mount.classList.add(ROOT_CLASS);
-  applyLanguage(mount, s);
+  applyLanguage(mount);
   // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.
   if (!s.embedded) { applyTheme(); loadTimestampPrompt(); loadMissionsPref(); } else classroomMissions();
-  applyBrand(mount, !s.embedded);
+  applyBrand(mount, page);
   // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
   forceTimestampPrompt(lockedPrompt(s.policy));
   app = new App(mount, s, topo);
@@ -392,33 +395,50 @@ export function startStandalone(mount: HTMLElement): App {
   return start(mount, STANDALONE);
 }
 
+/** The handle of a mount in a host element; `destroy` gives the host its element back as it was. */
+function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefined, release: () => void): EmbedHandle {
+  let last = start(mount, s, topology, false);
+  // A language change rebuilds the App with the same session: the handle follows the current one.
+  const current = (): App | null => (session === s ? app : null);
+  return {
+    exportTopology: () => (last = current() ?? last).topo.toJSON(),
+    destroy: () => {
+      const live = current();
+      if (!live) return;
+      last = live;
+      live.dispose();
+      app = null;
+      forceTimestampPrompt(undefined);
+      clearClipboard();
+      mount.replaceChildren();
+      // No Netfix class, view, mode or language left on the element.
+      mount.classList.remove(ROOT_CLASS);
+      for (const k of ['view', 'mode'] as const) delete mount.dataset[k];
+      mount.removeAttribute('lang');
+      removeBrand(mount);
+      for (const attr of ['class', 'style']) if (mount.getAttribute(attr) === '') mount.removeAttribute(attr);
+      release();
+    },
+  };
+}
+
 /** What `ui/boot.ts` publishes as `globalThis.netfix`. */
 export const NETFIX_API: NetfixApi = {
   embed: (mount, options): EmbedHandle => {
     checkMount(mount);
     const { session: s, topology } = embedSession(options);
-    let last = start(mount, s, topology);
-    // A language change rebuilds the App with the same session: the handle follows the current one.
-    const current = (): App | null => (session === s ? app : null);
-    return {
-      exportTopology: () => (last = current() ?? last).topo.toJSON(),
-      destroy: () => {
-        const live = current();
-        if (!live) return;
-        last = live;
-        live.dispose();
-        app = null;
-        forceTimestampPrompt(undefined);
-        clearClipboard();
-        mount.replaceChildren();
-        // The host gets its element back as it was: no Netfix class, view, mode or language left on it.
-        mount.classList.remove(ROOT_CLASS);
-        for (const k of ['view', 'mode'] as const) delete mount.dataset[k];
-        mount.removeAttribute('lang');
-        removeBrand(mount);
-        for (const attr of ['class', 'style']) if (mount.getAttribute(attr) === '') mount.removeAttribute(attr);
-      },
-    };
+    return hosted(mount, s, topology, () => undefined);
+  },
+  // The standalone lab (settings, theme, autosave, preferences) in a host's element; its theme needs <html data-theme>,
+  // which destroy puts back. A fresh session object, so a handle never follows another mount's App.
+  lab: (mount): EmbedHandle => {
+    checkMount(mount);
+    const html = document.documentElement;
+    const theme = html.dataset.theme;
+    return hosted(mount, { ...STANDALONE }, undefined, () => {
+      if (theme === undefined) delete html.dataset.theme;
+      else html.dataset.theme = theme;
+    });
   },
   evaluate: evaluateFile,
 };
