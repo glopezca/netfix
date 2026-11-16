@@ -32999,7 +32999,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.49.1",
+    "version": "0.49.2",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -62200,6 +62200,11 @@ const MAX_PASTES = 10;
 let clipboard = null;
 let pastes = 0;
 let space = false;
+/** Forgets what was copied: a classroom mount must not paste one student's devices into the next one's work. */
+function clearClipboard() {
+    clipboard = null;
+    pastes = 0;
+}
 /** Space held: dragging the background pans instead of drawing a selection box. */
 function spaceHeld() {
     return space;
@@ -62537,7 +62542,7 @@ class GroupSelection {
     }
 }
 
-return { BOX_PRESS_MS, spaceHeld, GroupSelection };
+return { BOX_PRESS_MS, clearClipboard, spaceHeld, GroupSelection };
 })();
 __m["classroom/restrictions.js"] = (() => {
 const DEVICE_KINDS = ['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'];
@@ -72393,7 +72398,9 @@ function generalSection(host) {
     stampBox = stamp;
     const missions = el('input', { type: 'checkbox', checked: missionsShown(), 'data-setting': 'missions' });
     missions.addEventListener('change', () => setMissionsShown(missions.checked));
-    return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' }, el('h2', { id: 'set-general' }, t('set.general')), el('p', { class: 'muted' }, t('set.generalNote')), el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang), el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), el('label', { class: 'set-choice' }, confirm, t('set.confirm')), el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)), el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
+    return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' }, el('h2', { id: 'set-general' }, t('set.general')), el('p', { class: 'muted' }, t('set.generalNote')), el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang), 
+    // Embedded, the page and this browser's storage are the host's: no theme on its <html>, nothing kept for later.
+    host.labLocked() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), host.labLocked() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')), el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)), el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }
 function kindGroup(host, kind, changed) {
     const boxes = FEATURES_BY_KIND[kind].map((id) => {
@@ -73017,6 +73024,7 @@ const { MissionPanel } = __m["ui/mission-panel.js"];
 const { startLab, viewSolution } = __m["labs/mission-build.js"];
 const { missionById } = __m["labs/missions.js"];
 const { openDeviceWindow, forgetDevice, forgetAll } = __m["ui/device-windows.js"];
+const { clearClipboard } = __m["ui/group-select.js"];
 const { afterPlaced } = __m["ui/os-dialog.js"];
 const { Topology } = __m["net/topology.js"];
 const { EXAMPLES } = __m["net/examples.js"];
@@ -73375,6 +73383,8 @@ function start(mount, s, topo) {
     mountEl = mount;
     session = s;
     MEMORY_STORE.clear();
+    if (s.embedded)
+        clearClipboard(); // each classroom mount starts with nothing copied from the one before
     setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
     mount.classList.add(ROOT_CLASS);
     applyLanguage(mount, s);
@@ -73414,6 +73424,7 @@ const NETFIX_API = {
                 live.dispose();
                 app = null;
                 forceTimestampPrompt(undefined);
+                clearClipboard();
                 mount.replaceChildren();
                 // The host gets its element back as it was: no Netfix class, view, mode or language left on it.
                 mount.classList.remove(ROOT_CLASS);

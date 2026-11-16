@@ -51,8 +51,9 @@ function generalSection(host: SettingsHost): HTMLElement {
     el('h2', { id: 'set-general' }, t('set.general')),
     el('p', { class: 'muted' }, t('set.generalNote')),
     el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang),
-    el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios),
-    el('label', { class: 'set-choice' }, confirm, t('set.confirm')),
+    // Embedded, the page and this browser's storage are the host's: no theme on its <html>, nothing kept for later.
+    host.labLocked() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios),
+    host.labLocked() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')),
     el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)),
     el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }
