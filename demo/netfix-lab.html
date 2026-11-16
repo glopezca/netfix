@@ -33121,7 +33121,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.53.0",
+    "version": "0.53.1",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -72718,7 +72718,9 @@ function segmented(label, items, current, fn, attr = 'data-value') {
     return el('div', { class: 'segmented', role: 'group', 'aria-label': label }, ...buttons);
 }
 function languageSelect(actions) {
-    const s = el('select', { class: 'select select-lang', 'aria-label': t('top.language'), title: t('top.language') }, ...LOCALES.map((l) => el('option', { value: l, selected: l === getLocale(), lang: l }, `${LOCALE_SHORT[l]} · ${LOCALE_NAMES[l]}`)));
+    const s = el('select', { class: 'select select-lang', 'aria-label': t('top.language'), title: t('top.language') }, 
+    // The bar shows the short code; the full name is each option's accessible name (and Settings lists it in full).
+    ...LOCALES.map((l) => el('option', { value: l, selected: l === getLocale(), lang: l, 'aria-label': LOCALE_NAMES[l], title: LOCALE_NAMES[l] }, LOCALE_SHORT[l])));
     s.addEventListener('change', () => { if (isLocale(s.value))
         actions.setLocale(s.value); });
     return s;

@@ -211,6 +211,12 @@ try {
   await page.click('button.seg:has-text("Red")');
 
   // 10. Language: English (UK) rebuilds the interface, keeps the topology and is remembered.
+  // At 1666 px the whole bar fits one row: the language select is compact (its short code), not a lone second row.
+  await page.setViewportSize({ width: 1666, height: 860 });
+  const barRows = await page.evaluate(() => new Set([...document.querySelectorAll('.topbar > *, .topbar-menu > *')]
+    .filter((e) => e.offsetWidth && !e.classList.contains('topbar-menu')).map((e) => { const r = e.getBoundingClientRect(); return Math.round((r.top + r.bottom) / 2 / 8); })).size);
+  assert.equal(barRows, 1, 'the top bar fits one row at 1666 px');
+  await page.setViewportSize({ width: 1400, height: 860 });
   const devicesBefore = await page.locator('g.device').count();
   await page.selectOption('.select-lang', 'en-GB');
   await page.waitForSelector('button.seg:has-text("Network")');
