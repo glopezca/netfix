@@ -63,7 +63,7 @@ test('the mode cards apply together: recursion with Google forwarders, forward f
   assert.match(post(web, [['action', 'dns-cache'], ['ttl', 'mucho'], ['mode', 'cache']]), /web-adm-error[\s\S]*max-cache-ttl es un número/);
   post(web, [['action', 'dns-recursive'], ['allow', 'any']]);
   assert.equal(srv.services.dns.recursion, false, 'an unticked recursion box turns it off');
-  assert.equal(srv.services.dns.allowRecursion, 'any');
+  assert.deepEqual(srv.services.dns.allowRecursion, ['any']);
 });
 
 test('the zone wizard: SOA, then NS, then kind; a bad step comes back with its error and what was typed', () => {

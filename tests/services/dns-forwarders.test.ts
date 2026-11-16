@@ -25,7 +25,7 @@ function lab(): { t: Topology; srv: Server; local: Pc; remote: Pc } {
   return { t, srv, local, remote };
 }
 
-function withForwarders(srv: Server, forwarders: string[], allow: 'localnets' | 'any' = 'localnets'): void {
+function withForwarders(srv: Server, forwarders: string[], allow: readonly string[] = ['localnets', 'localhost']): void {
   srv.setServices({ ...srv.services, dns: { ...srv.services.dns, recursion: true, forwarders: forwarders.map(ip), forwardOnly: true, allowRecursion: allow } });
 }
 
@@ -66,7 +66,7 @@ test('allow-recursion localnets refuses outside clients; any is an open resolver
   const sh = createShell(remote, 'linux');
   assert.match(all(sh.run('dig @81.33.3.2 www.google.com')), /status: REFUSED/);
   assert.match(all(sh.run('dig @81.33.3.2 www.sede2.es')), /status: NOERROR/);
-  withForwarders(srv, ['8.8.8.8'], 'any');
+  withForwarders(srv, ['8.8.8.8'], ['any']);
   assert.match(all(sh.run('dig @81.33.3.2 www.google.com')), /status: NOERROR/);
 });
 
@@ -101,7 +101,7 @@ test('named.conf.options shows and changes the recursion; settings survive save 
   root.run('systemctl restart named');
   assert.deepEqual(srv.services.dns.forwarders, [ip('8.8.4.4')]);
   assert.equal(srv.services.dns.forwardOnly, false);
-  assert.equal(srv.services.dns.allowRecursion, 'any');
+  assert.deepEqual(srv.services.dns.allowRecursion, ['any']);
   assert.equal(srv.services.dns.recursion, true, 'a file without «recursion» gets BIND\'s default: yes');
   assert.match(all(root.run('cat /etc/bind/named.conf.options')), /^options \{\n  forwarders \{ 8\.8\.4\.4; \};/, 'named does not rewrite the file root wrote');
   assert.match(all(createShell(local, 'linux').run('dig +short @192.168.1.10 ubuntu.com')), /185\.125\.190\.20/);
@@ -111,7 +111,7 @@ test('named.conf.options shows and changes the recursion; settings survive save 
   const copy = Topo.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
   const again = [...copy.placed.values()].find((p) => p.label === 'SRV-SEDE2')!.device as Server;
   assert.deepEqual(again.services.dns.forwarders, [ip('8.8.4.4')]);
-  assert.equal(again.services.dns.allowRecursion, 'any');
+  assert.deepEqual(again.services.dns.allowRecursion, ['any']);
 });
 
 test('ISP DNS relay: the line gateway is the DNS and relays to Google', () => {

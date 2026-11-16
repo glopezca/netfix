@@ -55,6 +55,18 @@ try {
   await page.click('.dns-wizard button:has-text("Crear zona")');
   assert.match(await page.locator('.window .form-msg[data-kind="ok"]').innerText(), /Zona otra\.lab creada/);
   assert.match(await page.locator('.dns-zone-editor').innerText(), /Esta zona admite: A, CNAME, MX, NS, TXT/);
+  // Recursion clients: allow-recursion is an editable list; localnets is shown as this server's networks.
+  const rec = page.locator('.dns-mode[data-mode="recursive"]');
+  assert.match(await rec.innerText(), /localnets son las redes de este servidor: [\d./, ]*127\.0\.0\.0\/8/);
+  const allowList = rec.locator('input[data-field="allow-recursion"]');
+  assert.equal(await allowList.inputValue(), 'localnets; localhost');
+  await allowList.fill('192.168.10.0/24; lan');
+  await rec.locator('button:has-text("Aplicar")').click();
+  assert.match(await page.locator('.window .form-msg[data-kind="error"]').innerText(), /«lan» no es un elemento de la lista/);
+  await allowList.fill('192.168.10.0/24, !192.168.10.9; localhost');
+  await rec.locator('button:has-text("Aplicar")').click();
+  await page.waitForSelector('.window .form-msg[data-kind="error"]', { state: 'detached' });
+  assert.equal(await rec.locator('input[data-field="allow-recursion"]').inputValue(), '192.168.10.0/24; !192.168.10.9; localhost');
   await page.click('.win-close');
 
   // 2. GNU/Linux router → Services → Parameters: the box mirrors ip_forward and cannot be clicked.

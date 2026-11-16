@@ -83,7 +83,10 @@ test('records: only the types of the zone kind, validated, and every change rais
   assert.deepEqual(s.zones[0]?.ns, ['ns.aula.lab', 'ns2.aula.lab']);
   assert.ok('error' in setZoneNs(s, 'aula.lab', '', DAY));
   assert.equal(ymdOf(Date.UTC(2026, 9, 21, 12)), DAY);
-  assert.deepEqual(ok(setRecursion(s, true, 'any')).allowRecursion, 'any');
+  assert.deepEqual(ok(setRecursion(s, true, 'any')).allowRecursion, ['any']);
+  assert.deepEqual(ok(setRecursion(s, true, '192.168.0.0/24, !192.168.0.9; localhost')).allowRecursion, ['192.168.0.0/24', '!192.168.0.9', 'localhost']);
+  assert.match((setRecursion(s, true, 'lan') as { error: string }).error, /«lan»/);
+  assert.match((setRecursion(s, true, ' ') as { error: string }).error, /none/);
   assert.deepEqual(ok(setForwarders(s, '1.1.1.1')).forwarders, [parseIp('1.1.1.1')]);
 });
 

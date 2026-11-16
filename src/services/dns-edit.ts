@@ -5,6 +5,7 @@
 import { t } from '../i18n/t.ts';
 import type { DnsRecord, DnsSettings, DnsZone } from './config.ts';
 import { applyRecursion } from './dns-recursion.ts';
+import { DEFAULT_ALLOW_RECURSION, parseAml } from './dns-aml.ts';
 import { DEFAULT_MAX_CACHE_TTL, iterates } from './named-options.ts';
 import { MAX_RECORDS, MAX_ZONES, emailToRname, isReverseZone, newZone, nextSerial, recordTypesFor, reverseZoneName, validateZone } from './dns-zones.ts';
 import { validateRecord } from './dns-service.ts';
@@ -81,7 +82,7 @@ export function setCache(s: DnsSettings, on: boolean, ttlText?: string): Edited 
 }
 
 export function setForwarders(s: DnsSettings, text: string): Edited {
-  return applyRecursion(s, { forwarders: text, forwardOnly: s.forwardOnly !== false, allowRecursion: s.allowRecursion ?? 'localnets' });
+  return applyRecursion(s, { forwarders: text, forwardOnly: s.forwardOnly !== false, allowRecursion: s.allowRecursion ?? DEFAULT_ALLOW_RECURSION });
 }
 
 /** Iterative on = `forward first` (only when there are forwarders: otherwise it follows recursion). */
@@ -90,7 +91,13 @@ export function setIterative(s: DnsSettings, on: boolean): Edited {
   return locked ? { error: locked } : { ...s, forwardOnly: !on };
 }
 
-export const setRecursion = (s: DnsSettings, on: boolean, allow: 'localnets' | 'any'): Edited => ({ ...s, recursion: on, allowRecursion: allow });
+/** recursion yes|no and, when given, the allow-recursion list as typed (undefined keeps the current one). */
+export function setRecursion(s: DnsSettings, on: boolean, allowText?: string): Edited {
+  if (allowText === undefined) return { ...s, recursion: on };
+  const list = parseAml(allowText);
+  if ('error' in list) return list;
+  return list.length === 0 ? { error: t('dns.err.amlEmpty') } : { ...s, recursion: on, allowRecursion: list };
+}
 
 export const setAuthoritative = (s: DnsSettings, on: boolean): Edited => ({ ...s, authoritative: on });
 

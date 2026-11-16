@@ -125,8 +125,8 @@ export interface DnsSettings {
   readonly forwarders?: readonly number[];
   /** forward only (true, default) or forward first. */
   readonly forwardOnly?: boolean;
-  /** allow-recursion: localnets (default) or any. */
-  readonly allowRecursion?: 'localnets' | 'any';
+  /** allow-recursion's address match list (services/dns-aml.ts); undefined = BIND's default, localnets; localhost. */
+  readonly allowRecursion?: readonly string[];
   /** listen-on as interfaces (eth0…, lo); undefined = any. */
   readonly listenOn?: readonly string[];
   /** «Nombres públicos»: response policy zone rpz.publicos (services/dns-rpz.ts). */

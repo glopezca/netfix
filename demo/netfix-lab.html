@@ -1631,12 +1631,13 @@ return { HOST_EN };
 __m["i18n/es-ES/dns.js"] = (() => {
 /** Español (España): recursión y reenviadores de bind9 (GUI y gestión web). */
 const DNS_ES = {
-    'dns.rec.localnets': 'Red local (localnets)',
-    'dns.rec.any': 'Cualquiera (any: resolvedor abierto, no recomendado)',
     'dns.relay': 'DNS del operador (relé)',
     'dns.relayHint': 'El DHCP de la línea entrega la dirección IP del router como DNS y este reenvía las consultas a 8.8.8.8 y 8.8.4.4 (con caché), como el router de casa.',
     'dns.relayOn': 'DNS: {ip} (relé del operador a 8.8.8.8 y 8.8.4.4).',
     'dns.err.ip': '«{value}» no es una dirección IPv4.',
+    'dns.err.aml': '«{value}» no es un elemento de la lista: una red (192.168.0.0/24), una dirección, localnets, localhost, any o none, con ! delante para excluirlo.',
+    'dns.err.amlEmpty': 'La lista está vacía: escribe none para no dar recursión a nadie.',
+    'dns.err.amlMany': 'Como mucho {max} elementos en la lista.',
     'dns.err.many': 'Como máximo {max} reenviadores.',
 };
 
@@ -1644,12 +1645,13 @@ return { DNS_ES };
 })();
 __m["i18n/en-GB/dns.js"] = (() => {
 const DNS_EN = {
-    'dns.rec.localnets': 'Local network (localnets)',
-    'dns.rec.any': 'Anyone (any: open resolver, not recommended)',
     'dns.relay': 'ISP DNS (relay)',
     'dns.relayHint': 'The line’s DHCP hands out the router’s IP address as DNS and the router relays queries to 8.8.8.8 and 8.8.4.4 (with a cache), like a home router.',
     'dns.relayOn': 'DNS: {ip} (ISP relay to 8.8.8.8 and 8.8.4.4).',
     'dns.err.ip': '“{value}” is not an IPv4 address.',
+    'dns.err.aml': '“{value}” is not a list element: a network (192.168.0.0/24), an address, localnets, localhost, any or none, with ! in front to exclude it.',
+    'dns.err.amlEmpty': 'The list is empty: write none to give recursion to nobody.',
+    'dns.err.amlMany': 'At most {max} elements in the list.',
     'dns.err.many': 'At most {max} forwarders.',
 };
 
@@ -3987,6 +3989,7 @@ const LOAD_ES = {
     'load.reservationId': 'Client-ID de reserva no válido (hexadecimal).',
     'load.origin': 'Origen de zona DNS no válido.',
     'load.record': 'Registro DNS no válido.',
+    'load.allowRecursion': 'Lista allow-recursion no válida (redes, direcciones, localnets, localhost, any o none).',
     'load.ifaces': 'Lista de interfaces de escucha no válida (eth0, eth1… o lo).',
     'load.publicNames': 'Lista de nombres públicos del DNS no válida.',
     'load.zone': 'Zona DNS «{name}» no válida: {error}',
@@ -4057,6 +4060,7 @@ const LOAD_EN = {
     'load.reservationId': 'Invalid reservation Client-ID (hexadecimal).',
     'load.origin': 'Invalid DNS zone origin.',
     'load.record': 'Invalid DNS record.',
+    'load.allowRecursion': 'Invalid allow-recursion list (networks, addresses, localnets, localhost, any or none).',
     'load.ifaces': 'Invalid list of listen interfaces (eth0, eth1… or lo).',
     'load.publicNames': 'Invalid DNS public names list.',
     'load.zone': 'Invalid DNS zone «{name}»: {error}',
@@ -4464,6 +4468,7 @@ const DNSUI_ES = {
     'dnsm.it.explain': 'El servidor pregunta a un servidor raíz, que le remite a los servidores del dominio de primer nivel (.com, .es…); estos le remiten a los del dominio, que responden con autoridad. Cada salto se ve en el modo Simulación y en journalctl -u named.',
     'dnsm.it.first': 'Con reenviadores: activado = forward first (si no responden, itera); desactivado = forward only.',
     'dnsm.rec.allow': 'Clientes con recursión (allow-recursion)',
+    'dnsm.rec.hint': 'Redes o direcciones separadas por ; (192.168.0.0/24; localhost). localnets son las redes de este servidor: {nets}. Con ! delante se excluye; manda el primero que coincide.',
     'dnsm.rec.explain': 'Sin recursión el servidor solo responde por sus zonas (REFUSED para el resto), aunque tenga reenviadores.',
     'dnsm.zone.list': 'Zonas',
     'dnsm.zone.name': 'Zona',
@@ -4619,6 +4624,7 @@ const DNSUI_EN = {
     'dnsm.it.explain': 'The server asks a root server, which refers it to the servers of the top-level domain (.com, .es…); these refer it to the domain\'s servers, which answer with authority. Every hop shows in Simulation mode and in journalctl -u named.',
     'dnsm.it.first': 'With forwarders: on = forward first (if they do not answer, it iterates); off = forward only.',
     'dnsm.rec.allow': 'Clients allowed recursion (allow-recursion)',
+    'dnsm.rec.hint': 'Networks or addresses separated by ; (192.168.0.0/24; localhost). localnets are the networks of this server: {nets}. ! in front excludes; the first match wins.',
     'dnsm.rec.explain': 'Without recursion the server only answers for its zones (REFUSED for the rest), even with forwarders.',
     'dnsm.zone.list': 'Zones',
     'dnsm.zone.name': 'Zone',
@@ -10686,9 +10692,108 @@ function ifacesOfAddresses(addresses, choices) {
 
 return { LOOPBACK, MAX_LISTEN, IFACE_NAME, listenChoices, listens, setDhcpInterfaces, setDnsListen, dnsListenAddresses, dnsListensOn, ifacesOfAddresses };
 })();
+__m["services/dns-aml.js"] = (() => {
+/**
+ * BIND's address match lists (allow-recursion): the elements in order, the first that matches the client decides (a
+ * `!` element refuses) and no match refuses. `localhost` is the server's own addresses and `localnets` the networks
+ * of all its interfaces, both with 127.0.0.0/8, as named builds them from the interfaces it finds.
+ */
+const { formatIp, inSubnet, networkOf, parseIp } = __m["core/ip.js"];
+const { t } = __m["i18n/t.js"];
+/** BIND's default allow-recursion (also what Ubuntu's named.conf.options leaves implicit). */
+const DEFAULT_ALLOW_RECURSION = Object.freeze(['localnets', 'localhost']);
+const MAX_AML = 32;
+const BUILTIN = ['any', 'none', 'localhost', 'localnets'];
+const MAX_ACL_DEPTH = 8;
+const MAX_ACL_VISITS = 1024;
+/** a.b.c.d, a.b.c.d/n or BIND's short form (10/8, 192.168/16): [network, prefix], or null. */
+function network(text) {
+    const [addr = '', bits, extra] = text.split('/');
+    const octets = addr.split('.');
+    if (extra !== undefined || octets.length > 4 || (bits === undefined && octets.length !== 4))
+        return null;
+    const ip = parseIp([...octets, '0', '0', '0'].slice(0, 4).join('.'));
+    const prefix = bits === undefined ? 32 : /^\d{1,2}$/.test(bits) ? Number(bits) : NaN;
+    return ip === null || !(prefix <= 32) ? null : [ip, prefix];
+}
+const isElement = (e) => {
+    const body = e.startsWith('!') ? e.slice(1) : e;
+    return BUILTIN.includes(body) || network(body) !== null;
+};
+/** The elements of a list typed or read from a file (`;`, `,` or spaces between them), or a translated error. */
+function parseAml(text) {
+    const list = text.replace(/!\s+/g, '!').split(/[;,\s]+/).filter(Boolean)
+        .map((e) => (BUILTIN.includes(e.replace(/^!/, '').toLowerCase()) ? e.toLowerCase() : e));
+    if (list.length > MAX_AML)
+        return { error: t('dns.err.amlMany', { max: MAX_AML }) };
+    const bad = list.find((e) => !isElement(e));
+    return bad === undefined ? list : { error: t('dns.err.aml', { value: bad }) };
+}
+/**
+ * Replaces `acl` names defined in the same file by their elements; a name not defined matches nobody (`none`).
+ * It stops past MAX_AML elements (parseAml then refuses the list), so nested acls cannot blow up a hand-made file.
+ */
+function expandAcls(list, acls) {
+    const out = [];
+    // Every element visited counts, acl names too: empty acls nested many times push nothing but would still take k^8 steps.
+    let budget = MAX_ACL_VISITS;
+    const walk = (items, negated, depth) => {
+        for (const e of items) {
+            if (out.length > MAX_AML || --budget < 0)
+                return;
+            const neg = e.startsWith('!') !== negated;
+            const name = (e.startsWith('!') ? e.slice(1) : e).toLowerCase();
+            const body = BUILTIN.includes(name) || network(name) !== null ? undefined : acls.get(name);
+            // shortcut: !acl negates each element, exact when the acl has no `!` of its own; nest lists if that is needed.
+            if (body && depth < MAX_ACL_DEPTH) {
+                walk(body, neg, depth + 1);
+                continue;
+            }
+            const known = BUILTIN.includes(name) || network(name) !== null;
+            out.push(known ? `${neg ? '!' : ''}${name}` : 'none'); // an undefined acl, or one nested too deep, matches nobody
+        }
+    };
+    walk(list, false, 0);
+    // Out of budget: one element too many, so parseAml refuses the list instead of using a part of it.
+    return budget < 0 ? Array.from({ length: MAX_AML + 1 }, () => 'none') : out;
+}
+const isLoopback = (client) => (client >>> 24) === 127;
+function matches(element, client, local) {
+    if (element === 'any')
+        return true;
+    if (element === 'none')
+        return false;
+    if (element === 'localhost')
+        return isLoopback(client) || local.some((l) => l.ip === client);
+    if (element === 'localnets') {
+        return isLoopback(client) || local.some((l) => l.ip !== undefined && l.prefix !== undefined && inSubnet(client, l.ip, l.prefix));
+    }
+    const net = network(element);
+    return net !== null && inSubnet(client, net[0], net[1]);
+}
+/** Whether the list allows `client`, given the server's interface addresses. */
+function amlAllows(list, client, local) {
+    for (const e of list) {
+        const negated = e.startsWith('!');
+        if (matches(negated ? e.slice(1) : e, client, local))
+            return !negated;
+    }
+    return false;
+}
+/** What localnets is on this server: the networks of its interfaces and 127.0.0.0/8. */
+function localNetworks(local) {
+    const nets = local.flatMap((l) => (l.ip !== undefined && l.prefix !== undefined ? [`${formatIp(networkOf(l.ip, l.prefix))}/${l.prefix}`] : []));
+    return [...new Set([...nets, '127.0.0.0/8'])].join(', ');
+}
+/** As named.conf writes it inside `{ … }` (without the last `;`). */
+const amlText = (list) => list.join('; ');
+
+return { DEFAULT_ALLOW_RECURSION, MAX_AML, parseAml, expandAcls, amlAllows, localNetworks, amlText };
+})();
 __m["services/named-options.js"] = (() => {
 const { formatIp, parseIp } = __m["core/ip.js"];
 const { dnsListenAddresses, ifacesOfAddresses } = __m["services/listen.js"];
+const { amlText, DEFAULT_ALLOW_RECURSION, expandAcls, parseAml } = __m["services/dns-aml.js"];
 const NAMED_OPTIONS = '/etc/bind/named.conf.options';
 const MAX_FORWARDERS = 8;
 const MAX_TTL = 2_147_483_647;
@@ -10721,7 +10826,7 @@ function namedOptions(s, choices = []) {
         '',
         '\t// Recursivo: resuelve cualquier nombre para los clientes permitidos',
         `\trecursion ${s.recursion === true ? 'yes' : 'no'};`,
-        `\tallow-recursion { ${s.allowRecursion === 'any' ? 'any' : 'localnets; localhost'}; };`,
+        `\tallow-recursion { ${amlText(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION) || 'none'}; };`,
         '',
         '\t// Interfaces de escucha: direcciones en las que atiende consultas (any = todas)',
         listenOnLine(s, choices),
@@ -10774,6 +10879,21 @@ function stripComments(text) {
     }
     return out;
 }
+/** `acl nombre { … };` of this file: their elements, to expand where allow-recursion names them. */
+function acls(text) {
+    const out = new Map();
+    for (const m of text.matchAll(/\bacl\s+"?([\w.-]+)"?\s*\{([^{}]*)\}\s*;/g)) {
+        out.set((m[1] ?? '').toLowerCase(), (m[2] ?? '').replace(/!\s+/g, '!').split(/[;\s]+/).filter(Boolean));
+    }
+    return out;
+}
+/** allow-recursion as named reads it (missing = BIND's default); named-checkconf has already checked the grammar. */
+function allowRecursionOf(text) {
+    const inner = block(text, 'allow-recursion');
+    if (inner === null)
+        return DEFAULT_ALLOW_RECURSION;
+    return parseAml(expandAcls(inner.replace(/!\s+/g, '!').split(/[;\s]+/).filter(Boolean), acls(text)).join(';'));
+}
 function block(text, name) {
     // [^{}]: each attempt stops at the next brace, so a hostile file cannot make this quadratic.
     const m = new RegExp(`\\b${name}\\s*\\{([^{}]*)\\}\\s*;`).exec(text);
@@ -10800,7 +10920,9 @@ function parseNamedOptions(text, current, choices = []) {
     const recursion = /\brecursion\s+(yes|no)\s*;/.exec(clean)?.[1];
     const forward = /\bforward\s+(only|first)\s*;/.exec(clean)?.[1];
     const ttl = /\bmax-cache-ttl\s+(\d+[smhdw]?)\s*;/i.exec(clean)?.[1];
-    const allow = block(clean, 'allow-recursion') ?? '';
+    const allow = allowRecursionOf(clean);
+    if ('error' in allow)
+        return { error: `${NAMED_OPTIONS}: allow-recursion: ${allow.error}` };
     return {
         ...current,
         // BIND's defaults when a statement is missing: recursion yes, forward first, max-cache-ttl one week.
@@ -10808,7 +10930,7 @@ function parseNamedOptions(text, current, choices = []) {
         forwarders,
         forwardOnly: forward === 'only',
         maxCacheTtl: ttl === undefined ? DEFAULT_MAX_CACHE_TTL : Math.min(seconds(ttl), MAX_TTL),
-        allowRecursion: /\bany\b/.test(allow) ? 'any' : 'localnets',
+        allowRecursion: allow,
         listenOn: listenOnOf(LISTEN_ON.exec(clean)?.[1] ?? null, current, choices),
         publicNames: { ...current.publicNames, enabled: /\bresponse-policy\s*\{[^{}]*\bzone\s+"rpz\.publicos"/.test(clean) },
     };
@@ -22161,7 +22283,7 @@ const DNS_DOCS = [
                 ['Caché', 'Guarda durante su TTL lo que obtiene por recursión; 0 = no guarda nada. Muestra el contenido y se vacía con rndc flush.', 'max-cache-ttl'],
                 ['Agente de reenvío', 'Pasa las consultas que no sabe responder a otros servidores (el DNS del operador, 8.8.8.8…).', 'forwarders { … };'],
                 ['Autoritativo', 'Responde con autoridad (flag aa) por sus zonas. Apagado, las zonas se conservan pero no se cargan.', 'zone "…" { type master; }; en named.conf.local'],
-                ['Recursivo', 'Acepta consultas recursivas y devuelve la respuesta completa. Sin él, el servidor solo responde por sus zonas (REFUSED para el resto), aunque tenga reenviadores.', 'recursion yes | no; allow-recursion'],
+                ['Recursivo', 'Acepta consultas recursivas y devuelve la respuesta completa. Sin él, el servidor solo responde por sus zonas (REFUSED para el resto), aunque tenga reenviadores. Los clientes salen de allow-recursion, una lista que se edita en la vista del equipo: redes (192.168.0.0/24), direcciones, localnets (las redes de todas sus interfaces), localhost, any o none; con ! delante se excluye y manda el primero que coincide. Sin la línea, BIND usa localnets; localhost.', 'recursion yes | no; allow-recursion { localnets; localhost; }'],
                 ['Iterativo', 'Resuelve él mismo: servidor raíz → dominio de primer nivel → servidores del dominio. No es una opción de BIND: es lo que hace la recursión sin reenviadores o, con ellos, con forward first.', 'forward first | only; zone "." { type hint; };'],
             ]),
             figure({
@@ -24833,7 +24955,7 @@ const DNS_DOCS = [
                 ['Cache', 'Keeps what it gets by recursion for its TTL; 0 = keeps nothing. Shows the contents and is emptied with rndc flush.', 'max-cache-ttl'],
                 ['Forwarder', 'Passes the queries it cannot answer to other servers (the ISP’s DNS, 8.8.8.8…).', 'forwarders { … };'],
                 ['Authoritative', 'Answers with authority (aa flag) for its zones. Switched off, the zones are kept but not loaded.', 'zone "…" { type master; }; in named.conf.local'],
-                ['Recursive', 'Accepts recursive queries and returns the full answer. Without it, the server only answers for its zones (REFUSED for the rest), even with forwarders.', 'recursion yes | no; allow-recursion'],
+                ['Recursive', 'Accepts recursive queries and returns the full answer. Without it, the server only answers for its zones (REFUSED for the rest), even with forwarders. The clients come from allow-recursion, a list edited in the device view: networks (192.168.0.0/24), addresses, localnets (the networks of all its interfaces), localhost, any or none; ! in front excludes and the first match wins. Without the line, BIND uses localnets; localhost.', 'recursion yes | no; allow-recursion { localnets; localhost; }'],
                 ['Iterative', 'Resolves by itself: root server → top-level domain → the domain’s servers. It is not a BIND option: it is what recursion does without forwarders or, with them, with forward first.', 'forward first | only; zone "." { type hint; };'],
             ]),
             figure({
@@ -32999,7 +33121,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.50.0",
+    "version": "0.51.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -46831,7 +46953,7 @@ return { iterStep, closestServers };
 })();
 __m["services/dns-forwarder.js"] = (() => {
 const { normalizeName } = __m["net/dns.js"];
-const { formatIp, inSubnet } = __m["core/ip.js"];
+const { formatIp } = __m["core/ip.js"];
 const { closestServers, iterStep } = __m["services/dns-iterate.js"];
 const FORWARD_TIMEOUT_MS = 1200;
 const FIRST_PORT = 40_000;
@@ -46843,14 +46965,6 @@ const MAX_STEPS = 20;
 /** Servers tried per zone while iterating (bind does not wait for all 13 roots). */
 const TRIES_PER_ZONE = 3;
 const DEFAULT_MAX_TTL = 604800;
-/** Whether `client` may use recursion (localnets = same subnet as the server, or the server itself). */
-function recursionAllowed(allow, client, local) {
-    if (allow === 'any')
-        return true;
-    if (local.ip === undefined || local.prefix === undefined)
-        return false;
-    return client === local.ip || (client >>> 24) === 127 || inSubnet(client, local.ip, local.prefix);
-}
 const keyOf = (name, type) => `${normalizeName(name)}/${type}`;
 class DnsForwarder {
     env;
@@ -46998,7 +47112,7 @@ class DnsForwarder {
     }
 }
 
-return { FORWARD_TIMEOUT_MS, recursionAllowed, DnsForwarder };
+return { FORWARD_TIMEOUT_MS, DnsForwarder };
 })();
 __m["services/dns-server.js"] = (() => {
 const { DNS_PORT } = __m["net/packets.js"];
@@ -47006,7 +47120,8 @@ const { answerFromZones } = __m["services/dns-service.js"];
 const { servedZones } = __m["services/dns-zones.js"];
 const { DEFAULT_MAX_CACHE_TTL, iterates } = __m["services/named-options.js"];
 const { ROOT_IPS } = __m["net/dns-roots.js"];
-const { DnsForwarder, recursionAllowed } = __m["services/dns-forwarder.js"];
+const { DnsForwarder } = __m["services/dns-forwarder.js"];
+const { amlAllows, DEFAULT_ALLOW_RECURSION } = __m["services/dns-aml.js"];
 const { formatIp } = __m["core/ip.js"];
 const { RPZ_ZONE, rpzAnswer } = __m["services/dns-rpz.js"];
 const { normalizeName } = __m["net/dns.js"];
@@ -47049,7 +47164,7 @@ class ServerDns {
     query(src, sport, dst, q) {
         const s = this.host.services.dns;
         const forwarders = s.forwarders ?? [];
-        const recursion = s.recursion === true && recursionAllowed(s.allowRecursion ?? 'localnets', src, this.host.config);
+        const recursion = s.recursion === true && amlAllows(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION, src, this.host.nics());
         const unloaded = s.unloaded ?? [];
         const zones = servedZones(s).filter((z) => !unloaded.includes(z.zone.name));
         const qname = normalizeName(q.qname);
@@ -50958,6 +51073,7 @@ const { MAX_ZONES, defaultSoa, recordTypesFor, validateZone, zonesFromLegacy } =
 const { validateRecord } = __m["services/dns-service.js"];
 const { normalizeName } = __m["net/dns.js"];
 const { publicNamesFromJson, publicNamesToJson } = __m["services/dns-rpz.js"];
+const { DEFAULT_ALLOW_RECURSION, parseAml } = __m["services/dns-aml.js"];
 const MAX_ITEMS = 500;
 const MAX_TEXT = 200_000;
 const RECORD_TYPES = new Set(['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR']);
@@ -51103,6 +51219,17 @@ function webapps(v) {
     };
 }
 /** Interfaces a service listens on (eth0…, lo); a file may only name interfaces, never anything else. */
+/** allow-recursion: a list of elements; before 0.51, 'localnets' (written as localnets; localhost) or 'any'. */
+function allowRecursionOf(v) {
+    if (v === 'any')
+        return ['any'];
+    if (v === 'localnets')
+        return DEFAULT_ALLOW_RECURSION;
+    const list = Array.isArray(v) && v.every((x) => typeof x === 'string') ? parseAml(v.join(';')) : { error: '' };
+    if ('error' in list)
+        throw new Error(t('load.allowRecursion'));
+    return list;
+}
 function ifaceList(v) {
     // Empty would leave the service answering nobody: the panel refuses it too.
     if (!Array.isArray(v) || v.length === 0 || v.length > MAX_LISTEN)
@@ -51160,7 +51287,7 @@ function dnsFromJson(n) {
         ...(n.maxCacheTtl !== undefined ? { maxCacheTtl: num(n.maxCacheTtl, 'max-cache-ttl', 0, MAX_TIMER) } : {}),
         ...(fwd.length ? { forwarders: fwd } : {}),
         ...(fwd.length || n.forwardOnly !== undefined ? { forwardOnly: n.forwardOnly !== false } : {}),
-        ...(n.allowRecursion !== undefined ? { allowRecursion: n.allowRecursion === 'any' ? 'any' : 'localnets' } : {}),
+        ...(n.allowRecursion !== undefined ? { allowRecursion: allowRecursionOf(n.allowRecursion) } : {}),
         ...(n.listenOn !== undefined ? { listenOn: ifaceList(n.listenOn) } : {}),
         ...(n.publicNames !== undefined ? { publicNames: publicNamesFromJson(n.publicNames, t('load.publicNames')) } : {}),
     };
@@ -59952,6 +60079,7 @@ __m["services/dns-edit.js"] = (() => {
  */
 const { t } = __m["i18n/t.js"];
 const { applyRecursion } = __m["services/dns-recursion.js"];
+const { DEFAULT_ALLOW_RECURSION, parseAml } = __m["services/dns-aml.js"];
 const { DEFAULT_MAX_CACHE_TTL, iterates } = __m["services/named-options.js"];
 const { MAX_RECORDS, MAX_ZONES, emailToRname, isReverseZone, newZone, nextSerial, recordTypesFor, reverseZoneName, validateZone } = __m["services/dns-zones.js"];
 const { validateRecord } = __m["services/dns-service.js"];
@@ -59991,14 +60119,22 @@ function setCache(s, on, ttlText) {
     return Number.isInteger(ttl) && ttl > 0 && ttl <= MAX_TTL ? { ...s, maxCacheTtl: ttl } : { error: t('dnsm.err.ttl') };
 }
 function setForwarders(s, text) {
-    return applyRecursion(s, { forwarders: text, forwardOnly: s.forwardOnly !== false, allowRecursion: s.allowRecursion ?? 'localnets' });
+    return applyRecursion(s, { forwarders: text, forwardOnly: s.forwardOnly !== false, allowRecursion: s.allowRecursion ?? DEFAULT_ALLOW_RECURSION });
 }
 /** Iterative on = `forward first` (only when there are forwarders: otherwise it follows recursion). */
 function setIterative(s, on) {
     const locked = dnsModes(s).iterative.locked;
     return locked ? { error: locked } : { ...s, forwardOnly: !on };
 }
-const setRecursion = (s, on, allow) => ({ ...s, recursion: on, allowRecursion: allow });
+/** recursion yes|no and, when given, the allow-recursion list as typed (undefined keeps the current one). */
+function setRecursion(s, on, allowText) {
+    if (allowText === undefined)
+        return { ...s, recursion: on };
+    const list = parseAml(allowText);
+    if ('error' in list)
+        return list;
+    return list.length === 0 ? { error: t('dns.err.amlEmpty') } : { ...s, recursion: on, allowRecursion: list };
+}
 const setAuthoritative = (s, on) => ({ ...s, authoritative: on });
 const nsList = (text) => [...new Set(text.split(/[\s,;]+/).map(normalizeName).filter(Boolean))];
 /** Name of the zone in the draft (a network typed for a reverse zone becomes its in-addr.arpa name). */
@@ -60211,7 +60347,7 @@ function modes(server, f) {
     const s = server.services.dns;
     // A switch that was locked on the page was not sent: it is not a request to turn iteration off.
     const iterativeSent = dnsModes(s).iterative.locked === undefined;
-    return chain(s, (x) => setRecursion(x, on('recursive'), x.allowRecursion ?? 'localnets'), (x) => (on('forwarder') === dnsModes(x).forwarder.on ? x : setForwarders(x, on('forwarder') ? GOOGLE_FORWARDERS : '')), (x) => (on('cache') === dnsModes(x).cache.on ? x : setCache(x, on('cache'))), (x) => setAuthoritative(x, on('authoritative')), (x) => (!iterativeSent || dnsModes(x).iterative.locked || on('iterative') === dnsModes(x).iterative.on ? x : setIterative(x, on('iterative'))));
+    return chain(s, (x) => setRecursion(x, on('recursive')), (x) => (on('forwarder') === dnsModes(x).forwarder.on ? x : setForwarders(x, on('forwarder') ? GOOGLE_FORWARDERS : '')), (x) => (on('cache') === dnsModes(x).cache.on ? x : setCache(x, on('cache'))), (x) => setAuthoritative(x, on('authoritative')), (x) => (!iterativeSent || dnsModes(x).iterative.locked || on('iterative') === dnsModes(x).iterative.on ? x : setIterative(x, on('iterative'))));
 }
 function record(f) {
     const type = (f.get('type') ?? 'A');
@@ -60231,7 +60367,7 @@ function edit(server, f, action) {
         case 'dns-cache': return setCache(s, (f.get('ttl') ?? '').trim() !== '0', f.get('ttl'));
         case 'dns-forwarders': return setForwarders(s, f.get('forwarders') ?? '');
         case 'dns-iterative': return setIterative(s, f.get('forward') === 'first');
-        case 'dns-recursive': return setRecursion(s, f.has('recursion'), f.get('allow') === 'any' ? 'any' : 'localnets');
+        case 'dns-recursive': return setRecursion(s, f.has('recursion'), f.get('allow') ?? '');
         case 'zone-add': return addZone(s, draftFrom(f), day);
         case 'zone-del': return removeZone(s, zone);
         case 'zone-ns': return setZoneNs(s, zone, f.get('ns') ?? '', day);
@@ -60467,6 +60603,7 @@ const { bindFiles, NAMED_LOCAL } = __m["services/bind-files.js"];
 const { NAMED_OPTIONS, DEFAULT_MAX_CACHE_TTL, iterates } = __m["services/named-options.js"];
 const { rnameToEmail, servedZones } = __m["services/dns-zones.js"];
 const { forwardersText } = __m["services/dns-recursion.js"];
+const { amlText, DEFAULT_ALLOW_RECURSION } = __m["services/dns-aml.js"];
 const { dnsLink } = __m["web/admin-dns-links.js"];
 const FILE_TABS = ['options', 'local', 'zones'];
 /** One span per line (the CSS numbers them); comments get their own colour. */
@@ -60491,7 +60628,7 @@ function generated(server, base, q, mode) {
 const item = (title, text) => h('details', { class: 'web-adm-explain-item' }, h('summary', {}, title), h('p', {}, text));
 function explanation(server) {
     const s = server.services.dns;
-    const allow = s.allowRecursion === 'any' ? 'any' : 'localnets; localhost';
+    const allow = amlText(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION);
     const fwd = forwardersText(s);
     const ttl = s.maxCacheTtl ?? DEFAULT_MAX_CACHE_TTL;
     const zones = servedZones(s).map(({ zone: z, auto }) => item(t('wad.ex.t.zone', { kind: t(z.kind === 'reverse' ? 'zone.kind.reverse' : 'zone.kind.forward'), name: z.name }), `${t('wad.ex.zone', { mname: z.soa.mname, mail: rnameToEmail(z.soa.rname), serial: z.soa.serial, ns: z.ns.join(', '), count: z.records.length })}${auto ? ` ${t('wad.ex.zoneAuto')}` : ''}`));
@@ -60520,6 +60657,7 @@ const { h } = __m["web/html.js"];
 const { buttons, cards, check, choose, form, row, section, text } = __m["web/admin-layout.js"];
 const { DNS_MODES, MODE_DIRECTIVES, dnsModes } = __m["services/dns-edit.js"];
 const { forwardersText, GOOGLE_FORWARDERS } = __m["services/dns-recursion.js"];
+const { amlText, DEFAULT_ALLOW_RECURSION, localNetworks } = __m["services/dns-aml.js"];
 const { DEFAULT_MAX_CACHE_TTL } = __m["services/named-options.js"];
 const { ROOT_SERVERS } = __m["net/dns-roots.js"];
 const { zonesTab } = __m["web/admin-dns-zones.js"];
@@ -60569,7 +60707,7 @@ function recursiveTab(server, base) {
     const s = server.services.dns;
     return [
         h('p', {}, t('dnsm.rec.explain')),
-        form(base, 'dns', 'dns-recursive', keepMode('recursive'), check('recursion', s.recursion === true, t('wad.recursion')), row(t('dnsm.rec.allow'), choose('allow', s.allowRecursion ?? 'localnets', [['localnets', t('dns.rec.localnets')], ['any', t('dns.rec.any')]])), buttons()),
+        form(base, 'dns', 'dns-recursive', keepMode('recursive'), check('recursion', s.recursion === true, t('wad.recursion')), row(t('dnsm.rec.allow'), text('allow', amlText(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION), { placeholder: amlText(DEFAULT_ALLOW_RECURSION) })), h('p', { class: 'web-adm-help' }, t('dnsm.rec.hint', { nets: localNetworks(server.nics()) })), buttons()),
     ];
 }
 function specific(server, base, q, mode) {
@@ -64943,6 +65081,7 @@ __m["net/labs-linux.js"] = (() => {
  * kept apart) and a bind9 server that answers its zone and forwards the rest to 8.8.8.8 (localnets only).
  */
 const { newZone } = __m["services/dns-zones.js"];
+const { DEFAULT_ALLOW_RECURSION } = __m["services/dns-aml.js"];
 const { LABS_ES } = __m["i18n/es-ES/labs.js"];
 const { Topology } = __m["net/topology.js"];
 const { applyConfig } = __m["ios/session.js"];
@@ -65051,7 +65190,7 @@ function dnsServer(srv, pcMac) {
         ...srv.services,
         dhcp: { enabled: true, pools: [{ name: 'serverPool', start: ip('192.168.50.100'), prefix: 24, maxUsers: 50, gateway: ip('192.168.50.1'), dns: ip('192.168.50.2'), domain: 'empresa.lan', leaseMinutes: 1440, reservations: [{ ip: ip('192.168.50.50'), mac: pcMac, name: 'PC1' }] }] },
         dns: {
-            enabled: true, recursion: true, forwarders: [ip('8.8.8.8'), ip('8.8.4.4')], forwardOnly: true, allowRecursion: 'localnets',
+            enabled: true, recursion: true, forwarders: [ip('8.8.8.8'), ip('8.8.4.4')], forwardOnly: true, allowRecursion: DEFAULT_ALLOW_RECURSION,
             zones: [{ ...newZone('empresa.lan', 'forward', ['ns1.empresa.lan']), records: [
                         { name: 'ns1', type: 'A', value: '192.168.50.2', ttl: 86400 },
                         { name: 'intranet', type: 'A', value: '192.168.50.2', ttl: 86400 },
@@ -69700,10 +69839,11 @@ __m["ui/server-dns.js"] = (() => {
  */
 const { t, tDynamic } = __m["i18n/t.js"];
 const { el } = __m["ui/dom.js"];
-const { field, input, select, button, onOff, message, table } = __m["ui/forms.js"];
+const { field, input, button, onOff, message, table } = __m["ui/forms.js"];
 const { MODE_DIRECTIVES, dnsModes, setCache, setForwarders, setIterative, setRecursion } = __m["services/dns-edit.js"];
 const { commit } = __m["ui/dns-commit.js"];
 const { forwardersText, GOOGLE_FORWARDERS } = __m["services/dns-recursion.js"];
+const { amlText, DEFAULT_ALLOW_RECURSION, localNetworks } = __m["services/dns-aml.js"];
 const { DEFAULT_MAX_CACHE_TTL } = __m["services/named-options.js"];
 const { ROOT_SERVERS } = __m["net/dns-roots.js"];
 const { livePanel } = __m["ui/server-dhcp-dns.js"];
@@ -69755,12 +69895,12 @@ function iterativeBlock(server, app, msg) {
 }
 function recursiveBlock(server, app, msg) {
     const s = server.services.dns;
-    const allow = select([['localnets', t('dns.rec.localnets')], ['any', t('dns.rec.any')]], s.allowRecursion ?? 'localnets');
-    const value = () => (allow.value === 'any' ? 'any' : 'localnets');
-    return modeBlock('recursive', dnsModes(s).recursive, (on) => commit(server, app, msg, setRecursion(server.services.dns, on, value()), true), [
+    const allow = input({ value: amlText(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION), placeholder: amlText(DEFAULT_ALLOW_RECURSION), spellcheck: 'false', 'data-field': 'allow-recursion' });
+    const apply = (on) => commit(server, app, msg, setRecursion(server.services.dns, on, allow.value), true);
+    return modeBlock('recursive', dnsModes(s).recursive, apply, [
         el('p', { class: 'muted' }, t('dnsm.rec.explain')),
-        el('div', { class: 'grid3' }, field(t('dnsm.rec.allow'), allow)),
-        el('div', { class: 'actions' }, button(t('dnsm.apply'), () => commit(server, app, msg, setRecursion(server.services.dns, s.recursion === true, value()), true))),
+        field(t('dnsm.rec.allow'), allow, t('dnsm.rec.hint', { nets: localNetworks(server.nics()) })),
+        el('div', { class: 'actions' }, button(t('dnsm.apply'), () => apply(server.services.dns.recursion === true))),
     ]);
 }
 function dnsPanel(server, app) {

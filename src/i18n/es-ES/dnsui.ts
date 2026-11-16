@@ -98,6 +98,7 @@ export const DNSUI_ES = {
   'dnsm.it.explain': 'El servidor pregunta a un servidor raíz, que le remite a los servidores del dominio de primer nivel (.com, .es…); estos le remiten a los del dominio, que responden con autoridad. Cada salto se ve en el modo Simulación y en journalctl -u named.',
   'dnsm.it.first': 'Con reenviadores: activado = forward first (si no responden, itera); desactivado = forward only.',
   'dnsm.rec.allow': 'Clientes con recursión (allow-recursion)',
+  'dnsm.rec.hint': 'Redes o direcciones separadas por ; (192.168.0.0/24; localhost). localnets son las redes de este servidor: {nets}. Con ! delante se excluye; manda el primero que coincide.',
   'dnsm.rec.explain': 'Sin recursión el servidor solo responde por sus zonas (REFUSED para el resto), aunque tenga reenviadores.',
   'dnsm.zone.list': 'Zonas',
   'dnsm.zone.name': 'Zona',

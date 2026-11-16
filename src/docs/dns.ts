@@ -42,7 +42,7 @@ export const DNS_DOCS: readonly DocPage[] = [
         ['Caché', 'Guarda durante su TTL lo que obtiene por recursión; 0 = no guarda nada. Muestra el contenido y se vacía con rndc flush.', 'max-cache-ttl'],
         ['Agente de reenvío', 'Pasa las consultas que no sabe responder a otros servidores (el DNS del operador, 8.8.8.8…).', 'forwarders { … };'],
         ['Autoritativo', 'Responde con autoridad (flag aa) por sus zonas. Apagado, las zonas se conservan pero no se cargan.', 'zone "…" { type master; }; en named.conf.local'],
-        ['Recursivo', 'Acepta consultas recursivas y devuelve la respuesta completa. Sin él, el servidor solo responde por sus zonas (REFUSED para el resto), aunque tenga reenviadores.', 'recursion yes | no; allow-recursion'],
+        ['Recursivo', 'Acepta consultas recursivas y devuelve la respuesta completa. Sin él, el servidor solo responde por sus zonas (REFUSED para el resto), aunque tenga reenviadores. Los clientes salen de allow-recursion, una lista que se edita en la vista del equipo: redes (192.168.0.0/24), direcciones, localnets (las redes de todas sus interfaces), localhost, any o none; con ! delante se excluye y manda el primero que coincide. Sin la línea, BIND usa localnets; localhost.', 'recursion yes | no; allow-recursion { localnets; localhost; }'],
         ['Iterativo', 'Resuelve él mismo: servidor raíz → dominio de primer nivel → servidores del dominio. No es una opción de BIND: es lo que hace la recursión sin reenviadores o, con ellos, con forward first.', 'forward first | only; zone "." { type hint; };'],
       ]),
       figure({

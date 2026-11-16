@@ -42,7 +42,7 @@ export const DNS_DOCS: readonly DocPage[] = [
         ['Cache', 'Keeps what it gets by recursion for its TTL; 0 = keeps nothing. Shows the contents and is emptied with rndc flush.', 'max-cache-ttl'],
         ['Forwarder', 'Passes the queries it cannot answer to other servers (the ISP’s DNS, 8.8.8.8…).', 'forwarders { … };'],
         ['Authoritative', 'Answers with authority (aa flag) for its zones. Switched off, the zones are kept but not loaded.', 'zone "…" { type master; }; in named.conf.local'],
-        ['Recursive', 'Accepts recursive queries and returns the full answer. Without it, the server only answers for its zones (REFUSED for the rest), even with forwarders.', 'recursion yes | no; allow-recursion'],
+        ['Recursive', 'Accepts recursive queries and returns the full answer. Without it, the server only answers for its zones (REFUSED for the rest), even with forwarders. The clients come from allow-recursion, a list edited in the device view: networks (192.168.0.0/24), addresses, localnets (the networks of all its interfaces), localhost, any or none; ! in front excludes and the first match wins. Without the line, BIND uses localnets; localhost.', 'recursion yes | no; allow-recursion { localnets; localhost; }'],
         ['Iterative', 'Resolves by itself: root server → top-level domain → the domain’s servers. It is not a BIND option: it is what recursion does without forwarders or, with them, with forward first.', 'forward first | only; zone "." { type hint; };'],
       ]),
       figure({
