@@ -67,7 +67,8 @@ function segmented(label: string, items: readonly (readonly [string, string])[],
 
 function languageSelect(actions: TopbarActions): HTMLSelectElement {
   const s = el('select', { class: 'select select-lang', 'aria-label': t('top.language'), title: t('top.language') },
-    ...LOCALES.map((l) => el('option', { value: l, selected: l === getLocale(), lang: l }, `${LOCALE_SHORT[l]} · ${LOCALE_NAMES[l]}`)));
+    // The bar shows the short code; the full name is each option's accessible name (and Settings lists it in full).
+    ...LOCALES.map((l) => el('option', { value: l, selected: l === getLocale(), lang: l, 'aria-label': LOCALE_NAMES[l], title: LOCALE_NAMES[l] }, LOCALE_SHORT[l])));
   s.addEventListener('change', () => { if (isLocale(s.value)) actions.setLocale(s.value); });
   return s;
 }
