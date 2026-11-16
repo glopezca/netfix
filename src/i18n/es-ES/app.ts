@@ -62,7 +62,6 @@ export const APP_ES = {
   'hint.language': 'Idioma: español (España).',
   'file.description': 'Topología de Netfix',
   'file.prefix': 'topologia',
-  'clock.utc': '{time} UTC',
   'term.keys': 'Teclas',
   'term.key.home': 'Inicio',
   'term.key.end': 'Fin',

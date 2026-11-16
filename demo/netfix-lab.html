@@ -1302,7 +1302,6 @@ const APP_ES = {
     'hint.language': 'Idioma: español (España).',
     'file.description': 'Topología de Netfix',
     'file.prefix': 'topologia',
-    'clock.utc': '{time} UTC',
     'term.keys': 'Teclas',
     'term.key.home': 'Inicio',
     'term.key.end': 'Fin',
@@ -1380,7 +1379,6 @@ const APP_EN = {
     'hint.language': 'Language: English (UK).',
     'file.description': 'Netfix topology',
     'file.prefix': 'topology',
-    'clock.utc': '{time} UTC',
     'term.keys': 'Keys',
     'term.key.home': 'Home',
     'term.key.end': 'End',
@@ -33121,7 +33119,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.53.1",
+    "version": "0.53.2",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -49233,6 +49231,11 @@ function formatShowClock(epochMs) {
     const time = `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())}.${String(d.getUTCMilliseconds()).padStart(3, '0')}`;
     return `*${time} UTC ${DAYS[d.getUTCDay()]} ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()} ${d.getUTCFullYear()}`;
 }
+/** The toolbar clock: the simulated time in the client's zone (its system clock's, unless `timeZone`), e.g. "21:00:40 CET". */
+function formatToolbarClock(epochMs, locale, timeZone) {
+    return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', timeZoneName: 'short', timeZone })
+        .format(epochMs);
+}
 /** "Oct 11 2026 11:31 AM" as printed in DHCP binding/conflict tables. */
 function formatLeaseTime(epochMs) {
     const d = new Date(epochMs);
@@ -49255,7 +49258,7 @@ function parseClockSet(time, day, month, year) {
 }
 const MONTH_NAMES = MONTHS;
 
-return { SimClock, formatShowClock, formatLeaseTime, parseClockSet, MONTH_NAMES };
+return { SimClock, formatShowClock, formatToolbarClock, formatLeaseTime, parseClockSet, MONTH_NAMES };
 })();
 __m["shells/win-copy.js"] = (() => {
 /**
@@ -73208,6 +73211,7 @@ const { DrawState, drawBar } = __m["ui/draw-bar.js"];
 const { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } = __m["i18n/locale.js"];
 const { allowsLab, allowsTab, lockedPrompt } = __m["classroom/restrictions.js"];
 const { forceTimestampPrompt } = __m["shells/prompt-clock.js"];
+const { formatToolbarClock } = __m["core/clock.js"];
 const { STANDALONE, embedSession, evaluateFile } = __m["classroom/embed.js"];
 const { checkMount } = __m["ui/embed-api.js"];
 const BROWSER_STORE = { get: safeStorageGet, set: safeStorageSet };
@@ -73267,6 +73271,7 @@ class App {
         this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
         this.view = initial.view === 'docs' && !this.session.policy.docs ? 'net' : initial.view;
         this.topo = topo ?? initialWorkspace(BROWSER_STORE, this.saved, () => EXAMPLES[0].build());
+        this.topo.clock.set(Date.now()); // the settle ran the lab ~30 s ahead: its wall clock is the system's (like `clock set`)
         if (topo)
             this.saved.adopt(topo);
         this.hintEl = el('p', { class: 'hint', role: 'status' });
@@ -73460,7 +73465,7 @@ class App {
         if (this.mode === 'realtime' || this.topo.net.pending() > 0)
             this.topo.net.runFor(TICK_MS);
         const now = new Date(this.topo.clock.now());
-        this.clockEl.textContent = t('clock.utc', { time: now.toISOString().slice(11, 19) });
+        this.clockEl.textContent = formatToolbarClock(now.getTime(), getLocale());
         this.clockEl.setAttribute('datetime', now.toISOString());
         this.canvas.requestRender();
     }
@@ -73473,6 +73478,7 @@ class App {
         this.windows.closeAll();
         forgetAll();
         this.topo = topo;
+        topo.clock.set(Date.now());
         this.saved.mark(topo);
         this.canvas.setTopology(topo);
         this.sim.attach(topo);
