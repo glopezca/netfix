@@ -9,6 +9,7 @@ import { MissionPanel } from './mission-panel.ts';
 import { startLab, viewSolution } from '../labs/mission-build.ts';
 import { missionById } from '../labs/missions.ts';
 import { openDeviceWindow, forgetDevice, forgetAll } from './device-windows.ts';
+import { clearClipboard } from './group-select.ts';
 import { afterPlaced } from './os-dialog.ts';
 import { Topology } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
@@ -373,6 +374,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology): App {
   mountEl = mount;
   session = s;
   MEMORY_STORE.clear();
+  if (s.embedded) clearClipboard(); // each classroom mount starts with nothing copied from the one before
   setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
   mount.classList.add(ROOT_CLASS);
   applyLanguage(mount, s);
@@ -407,6 +409,7 @@ export const NETFIX_API: NetfixApi = {
         live.dispose();
         app = null;
         forceTimestampPrompt(undefined);
+        clearClipboard();
         mount.replaceChildren();
         // The host gets its element back as it was: no Netfix class, view, mode or language left on it.
         mount.classList.remove(ROOT_CLASS);

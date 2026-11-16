@@ -63,6 +63,12 @@ let clipboard: Clip | null = null;
 let pastes = 0;
 let space = false;
 
+/** Forgets what was copied: a classroom mount must not paste one student's devices into the next one's work. */
+export function clearClipboard(): void {
+  clipboard = null;
+  pastes = 0;
+}
+
 /** Space held: dragging the background pans instead of drawing a selection box. */
 export function spaceHeld(): boolean {
   return space;

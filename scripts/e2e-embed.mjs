@@ -71,8 +71,25 @@ try {
   assert.equal(file.devices.length, 5);
   const marks = await page.evaluate((f) => netfix.evaluate(f, [{ id: 'gw', check: { type: 'ping', from: 'PC0', to: '192.168.10.1' } }]), file);
   assert.equal(marks.score, 1);
+  // Embedded, the settings leave the host page's theme and this browser's storage alone (no theme, no confirm choice).
+  await page.click('[data-view="settings"]');
+  await page.waitForSelector('.settings');
+  assert.equal(await page.locator('input[name="set-theme"]').count(), 0, 'no theme choice when embedded');
+  await page.click('[data-view="net"]');
+  // Something copied in this mount must not reach the next one (a teacher reviewing one student after another).
+  await page.click('g.device-pc >> nth=0');
+  await page.keyboard.press('Control+c');
   await page.evaluate(() => globalThis.handle.destroy());
   assert.equal(await page.locator('.topbar').count(), 0);
+  await page.evaluate(() => { globalThis.handle = netfix.embed(document.getElementById('app'), { restrictions: {}, onChange: () => undefined }); });
+  await page.waitForSelector('.topbar');
+  const before = await page.locator('g.device').count();
+  await page.locator('.workspace').click({ position: { x: 20, y: 20 } });
+  await page.keyboard.press('Control+v');
+  await page.waitForTimeout(300);
+  assert.equal(await page.locator('g.device').count(), before, 'the clipboard of the last mount is gone');
+  assert.deepEqual(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('netfix:'))), [], 'nothing kept in the host browser');
+  await page.evaluate(() => globalThis.handle.destroy());
   assert.deepEqual(await page.evaluate(() => [...document.getElementById('app').attributes].map((a) => a.name)), ['id', 'data-embed'], 'the mount is given back as it was');
   assert.deepEqual(await pageState(), hostPage);
   await assert.rejects(page.evaluate(() => netfix.embed('#app')), /elemento/);
