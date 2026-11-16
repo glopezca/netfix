@@ -12,7 +12,7 @@ import { MODE_DIRECTIVES, dnsModes, setCache, setForwarders, setIterative, setRe
 import type { DnsMode, ModeState } from '../services/dns-edit.ts';
 import { commit } from './dns-commit.ts';
 import { forwardersText, GOOGLE_FORWARDERS } from '../services/dns-recursion.ts';
-import { amlText, DEFAULT_ALLOW_RECURSION, localNetworks } from '../services/dns-aml.ts';
+import { DEFAULT_ALLOW_RECURSION, interfaceNetworks, localNetworks, recursionChoice, recursionText } from '../services/dns-aml.ts';
 import { DEFAULT_MAX_CACHE_TTL } from '../services/named-options.ts';
 import { ROOT_SERVERS } from '../net/dns-roots.ts';
 import { livePanel } from './server-dhcp-dns.ts';
@@ -76,11 +76,40 @@ function iterativeBlock(server: Server, app: AfterChange, msg: ReturnType<typeof
 
 function recursiveBlock(server: Server, app: AfterChange, msg: ReturnType<typeof message>): HTMLElement {
   const s = server.services.dns;
-  const allow = input({ value: amlText(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION), placeholder: amlText(DEFAULT_ALLOW_RECURSION), spellcheck: 'false', 'data-field': 'allow-recursion' });
-  const apply = (on: boolean): boolean => commit(server, app, msg, setRecursion(server.services.dns, on, allow.value), true);
+  const nets = interfaceNetworks(server.nics());
+  const c = recursionChoice(s.allowRecursion ?? DEFAULT_ALLOW_RECURSION, nets);
+  const box = (checked: boolean): HTMLInputElement => el('input', { type: 'checkbox', checked });
+  const any = box(c.any);
+  const localnets = box(c.localnets);
+  const localhost = box(c.localhost);
+  const netBoxes = nets.map((n) => ({ n, box: box(c.nets.includes(n)) }));
+  const customBox = box(c.custom !== '');
+  const custom = input({ value: c.custom, placeholder: '192.168.0.0/24; !192.168.0.5', spellcheck: 'false', 'data-field': 'allow-recursion', 'aria-label': t('dnsm.rec.custom') });
+  // As «Interfaces de escucha»: any greys out the rest; localnets already covers each local network.
+  const sync = (): void => {
+    for (const b of [localnets, localhost, customBox]) b.disabled = any.checked;
+    for (const { box: b } of netBoxes) b.disabled = any.checked || localnets.checked;
+    custom.disabled = any.checked || !customBox.checked;
+  };
+  for (const b of [any, localnets, customBox]) b.addEventListener('change', sync);
+  sync();
+  const text = (): string => recursionText({
+    any: any.checked, localnets: localnets.checked, localhost: localhost.checked,
+    nets: netBoxes.filter((b) => b.box.checked).map((b) => b.n), custom: customBox.checked ? custom.value : '',
+  });
+  const row = (b: HTMLInputElement, label: string, sub?: string | HTMLElement): HTMLElement =>
+    el('label', { class: 'check listen-row' }, b, el('span', { class: 'mono' }, label), typeof sub === 'string' ? el('span', { class: 'muted' }, sub) : sub ?? null);
+  const apply = (on: boolean): boolean => commit(server, app, msg, setRecursion(server.services.dns, on, text()), true);
   return modeBlock('recursive', dnsModes(s).recursive, apply, [
     el('p', { class: 'muted' }, t('dnsm.rec.explain')),
-    field(t('dnsm.rec.allow'), allow, t('dnsm.rec.hint', { nets: localNetworks(server.nics()) })),
+    el('fieldset', { class: 'listen-block', 'data-field': 'allow-recursion-boxes' },
+      el('legend', {}, t('dnsm.rec.allow')),
+      row(any, t('dnsm.rec.any')),
+      row(localnets, 'localnets', localNetworks(server.nics())),
+      ...netBoxes.map((b) => { const r = row(b.box, b.n); r.classList.add('indent'); return r; }),
+      row(localhost, 'localhost', t('dnsm.rec.localhost')),
+      row(customBox, t('dnsm.rec.custom'), custom),
+      el('p', { class: 'field-hint' }, t('dnsm.rec.boxHint', { nets: localNetworks(server.nics()) }))),
     el('div', { class: 'actions' }, button(t('dnsm.apply'), () => apply(server.services.dns.recursion === true))),
   ]);
 }

@@ -10,6 +10,7 @@ import type { Server } from '../../src/devices/server.ts';
 import type { Pc } from '../../src/devices/pc.ts';
 import { createShell } from '../../src/shells/factory.ts';
 import { hostSystem } from '../../src/shells/host-system.ts';
+import { DEFAULT_ALLOW_RECURSION, interfaceNetworks, recursionChoice, recursionText } from '../../src/services/dns-aml.ts';
 
 const FIXTURE = new URL('../fixtures/dns-allow-recursion.json', import.meta.url);
 const OPTIONS = '/etc/bind/named.conf.options';
@@ -61,4 +62,22 @@ test('the list edited in the host view is written to the file and survives save 
   const copy = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
   const again = [...copy.placed.values()].find((p) => p.label === 'pingüino00')?.device as Server;
   assert.deepEqual(again.services.dns.allowRecursion, ['192.168.0.0/24', 'localhost']);
+});
+
+test('the «Clientes con recursión» boxes come from the file and give back the same list', () => {
+  const { router } = lab();
+  const nets = interfaceNetworks(router.nics());
+  assert.ok(nets.includes('192.168.0.0/24'), nets.join());
+  const round = (list: readonly string[]): string => recursionText(recursionChoice(list, nets));
+  assert.deepEqual(recursionChoice(DEFAULT_ALLOW_RECURSION, nets), { any: false, localnets: true, localhost: true, nets: [], custom: '' }, 'default: localnets and localhost');
+  assert.deepEqual(recursionChoice(['192.168.0.0/24', 'localhost'], nets), { any: false, localnets: false, localhost: true, nets: ['192.168.0.0/24'], custom: '' }, 'a local network gets its own box');
+  assert.equal(recursionChoice(['10/8', 'localhost'], nets).custom, '10/8', 'other networks go to the custom text');
+  assert.equal(recursionText({ any: true, localnets: true, localhost: true, nets, custom: '10/8' }), 'any', 'any greys out the rest');
+  assert.equal(recursionText({ any: false, localnets: true, localhost: false, nets, custom: '' }), 'localnets', 'localnets covers the networks');
+  assert.equal(round(['!192.168.0.16', 'localnets', 'localhost']), '!192.168.0.16; localnets; localhost', 'an exclusion stays first');
+  assert.deepEqual(recursionChoice(['localnets', '!192.168.0.16'], nets), { any: false, localnets: false, localhost: false, nets: [], custom: 'localnets; !192.168.0.16' }, 'an order the boxes would change stays as text');
+  // Boxes → file → named reads it back → the same boxes.
+  allow(router, `${recursionText({ any: false, localnets: false, localhost: true, nets: ['192.168.0.0/24'], custom: '' })};`);
+  assert.match(String(hostSystem(router).fs.readFile(OPTIONS)), /allow-recursion \{ localhost; 192\.168\.0\.0\/24; \};/);
+  assert.deepEqual(recursionChoice(router.services.dns.allowRecursion ?? [], nets).nets, ['192.168.0.0/24']);
 });
