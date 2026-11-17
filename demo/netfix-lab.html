@@ -33167,7 +33167,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.56.0",
+    "version": "0.57.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -66517,8 +66517,11 @@ function setTheme(value) {
     applyTheme(value);
 }
 /** Ask before a lab, Nuevo or Abrir replaces unsaved changes (on unless turned off). */
+/** Set by a host page that owns this preference (`confirmUnsaved` option); undefined: this browser's setting. */
+let confirmOverride;
+function overrideConfirmUnsaved(on) { confirmOverride = on; }
 function confirmUnsaved() {
-    return safeStorageGet(CONFIRM_KEY) !== 'off';
+    return confirmOverride ?? safeStorageGet(CONFIRM_KEY) !== 'off';
 }
 function setConfirmUnsaved(on) {
     safeStorageSet(CONFIRM_KEY, on ? 'on' : 'off');
@@ -66581,7 +66584,7 @@ function onMissionsShown(fn) {
     return () => { missionListeners.delete(fn); };
 }
 
-return { THEMES, theme, applyTheme, setTheme, confirmUnsaved, setConfirmUnsaved, applyDocumentLanguage, loadTimestampPrompt, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, loadMissionsPref, missionsShown, setMissionsShown, classroomMissions, onMissionsShown };
+return { THEMES, theme, applyTheme, setTheme, overrideConfirmUnsaved, confirmUnsaved, setConfirmUnsaved, applyDocumentLanguage, loadTimestampPrompt, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, loadMissionsPref, missionsShown, setMissionsShown, classroomMissions, onMissionsShown };
 })();
 __m["ui/mission-panel.js"] = (() => {
 /**
@@ -72636,9 +72639,9 @@ function generalSection(host) {
     stampBox = stamp;
     const missions = el('input', { type: 'checkbox', checked: missionsShown(), 'data-setting': 'missions' });
     missions.addEventListener('change', () => setMissionsShown(missions.checked));
-    return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' }, el('h2', { id: 'set-general' }, t('set.general')), el('p', { class: 'muted' }, t('set.generalNote')), el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang), 
+    return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' }, el('h2', { id: 'set-general' }, t('set.general')), el('p', { class: 'muted' }, t('set.generalNote')), host.hostOwned() ? null : el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang), 
     // Embedded, the page and this browser's storage are the host's: no theme on its <html>, nothing kept for later.
-    host.labLocked() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), host.labLocked() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')), el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)), el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
+    host.labLocked() || host.hostOwned() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), host.labLocked() || host.hostOwned() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')), el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)), el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }
 function kindGroup(host, kind, changed) {
     const boxes = FEATURES_BY_KIND[kind].map((id) => {
@@ -72824,10 +72827,11 @@ function topbar(actions, clockEl, mode, view = 'net', policy = NO_RESTRICTIONS, 
         ])),
         el('div', { class: 'time' }, clockEl, ...only([[policy.clock, advance]])),
         ...only([[policy.simulation, segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime'))]]),
-        languageSelect(actions)
-    ];
+        ...(hosted ? [] : [languageSelect(actions)])
+    ]; // hosted, the host's own Language menu sets it
     let closeMenu = () => undefined; // hosted, the host closes its own menu
-    const views = segmented(t('top.view'), VIEWS.filter(([v]) => v !== 'docs' || policy.docs).map(([v, k]) => [v, t(k)]), view, (v) => {
+    // Hosted, the host's Help, About and Settings menus open those pages: the bar keeps only the way back to the network.
+    const views = segmented(t('top.view'), VIEWS.filter(([v]) => (hosted ? v === 'net' : v !== 'docs' || policy.docs)).map(([v, k]) => [v, t(k)]), view, (v) => {
         actions.showView(v);
         closeMenu();
     }, 'data-view');
@@ -73251,32 +73255,41 @@ function evaluateFile(topology, checklist) {
 return { STANDALONE, embedSession, evaluateFile };
 })();
 __m["ui/embed-api.js"] = (() => {
+const { isLocale } = __m["i18n/locale.js"];
 /** The element `netfix.embed` mounts on (the host page may pass anything). */
 function checkMount(mount) {
     if (typeof HTMLElement === 'undefined' || !(mount instanceof HTMLElement))
         throw new Error('netfix.embed: falta el elemento donde montar Netfix');
 }
+const NO_HOST = Object.freeze({ toolbar: null, locale: null, confirmUnsaved: undefined });
+const HOST_KEYS = ['toolbar', 'locale', 'confirmUnsaved'];
 /**
- * The `toolbar` option of `netfix.embed` and `netfix.lab`: an element of the host page (its menu, say) where Netfix puts
- * its top bar, so the workspace gets the whole mount. Not inside the mount, nor around it: each would empty the other.
+ * Takes the host options out of `options` (the rest goes on to `embedSession`). `toolbar` must be a page element not
+ * inside the mount nor around it (each would empty the other); `locale`, one of Netfix's; `confirmUnsaved`, a boolean.
  */
-function takeToolbar(mount, options) {
-    if (typeof options !== 'object' || options === null || !Object.hasOwn(options, 'toolbar'))
-        return { rest: options, toolbar: null };
-    const { toolbar, ...rest } = options;
-    if (typeof HTMLElement === 'undefined' || !(toolbar instanceof HTMLElement))
-        throw new Error('netfix: «toolbar» debe ser un elemento de la página');
-    if (mount.contains(toolbar) || toolbar.contains(mount))
-        throw new Error('netfix: «toolbar» no puede estar dentro del elemento donde se monta Netfix ni contenerlo');
-    return { rest, toolbar };
-}
-/** `netfix.lab` options: none, or only `toolbar`. */
-function labToolbar(mount, options) {
-    const { rest, toolbar } = takeToolbar(mount, options);
-    if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
-        throw new Error('netfix.lab: la única opción es «toolbar»');
+function takeHostOptions(mount, options) {
+    if (typeof options !== 'object' || options === null || !HOST_KEYS.some((k) => Object.hasOwn(options, k)))
+        return { rest: options, host: NO_HOST };
+    const { toolbar, locale, confirmUnsaved, ...rest } = options;
+    if (toolbar !== undefined) {
+        if (typeof HTMLElement === 'undefined' || !(toolbar instanceof HTMLElement))
+            throw new Error('netfix: «toolbar» debe ser un elemento de la página');
+        if (mount.contains(toolbar) || toolbar.contains(mount))
+            throw new Error('netfix: «toolbar» no puede estar dentro del elemento donde se monta Netfix ni contenerlo');
     }
-    return toolbar;
+    if (locale !== undefined && !isLocale(locale))
+        throw new Error('netfix: «locale» no es un idioma de Netfix');
+    if (confirmUnsaved !== undefined && typeof confirmUnsaved !== 'boolean')
+        throw new Error('netfix: «confirmUnsaved» debe ser true o false');
+    return { rest, host: { toolbar: toolbar ?? null, locale: locale ?? null, confirmUnsaved: confirmUnsaved } };
+}
+/** `netfix.lab` options: none, or only the host options. */
+function labOptions(mount, options) {
+    const { rest, host } = takeHostOptions(mount, options);
+    if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
+        throw new Error('netfix.lab: solo admite «toolbar», «locale» y «confirmUnsaved»');
+    }
+    return host;
 }
 /** Publishes the API as `globalThis.netfix` (read-only, so a page script cannot swap it). */
 function installApi(api) {
@@ -73286,7 +73299,7 @@ function installApi(api) {
     Object.defineProperty(globalThis, 'netfix', { value: Object.freeze(api), enumerable: false, writable: false, configurable: false });
 }
 
-return { checkMount, takeToolbar, labToolbar, installApi };
+return { checkMount, NO_HOST, takeHostOptions, labOptions, installApi };
 })();
 __m["ui/main.js"] = (() => {
 /** Netfix application shell: top bar, workspace, palette, views, windows and simulation panel. */
@@ -73304,7 +73317,7 @@ const { afterPlaced } = __m["ui/os-dialog.js"];
 const { Topology } = __m["net/topology.js"];
 const { EXAMPLES } = __m["net/examples.js"];
 const { Pages } = __m["ui/pages.js"];
-const { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown } = __m["ui/preferences.js"];
+const { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, overrideConfirmUnsaved } = __m["ui/preferences.js"];
 const { featureOn } = __m["net/lab-features.js"];
 const { topbar } = __m["ui/topbar.js"];
 const { palette } = __m["ui/palette.js"];
@@ -73315,12 +73328,12 @@ const { confirmDialog, unsavedText } = __m["ui/confirm-dialog.js"];
 const { syncUndoButtons, undoShortcut } = __m["ui/undo-keys.js"];
 const { t } = __m["i18n/t.js"];
 const { DrawState, drawBar } = __m["ui/draw-bar.js"];
-const { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } = __m["i18n/locale.js"];
+const { detectLocale, getLocale, isLocale, setLocale, LOCALE_STORAGE_KEY } = __m["i18n/locale.js"];
 const { allowsLab, allowsTab, lockedPrompt } = __m["classroom/restrictions.js"];
 const { forceTimestampPrompt } = __m["shells/prompt-clock.js"];
 const { formatToolbarClock } = __m["core/clock.js"];
 const { STANDALONE, embedSession, evaluateFile } = __m["classroom/embed.js"];
-const { checkMount, labToolbar, takeToolbar } = __m["ui/embed-api.js"];
+const { NO_HOST, checkMount, labOptions, takeHostOptions } = __m["ui/embed-api.js"];
 const BROWSER_STORE = { get: safeStorageGet, set: safeStorageSet };
 const TICK_MS = 250;
 const AUTOSAVE_DELAY_MS = 800;
@@ -73336,10 +73349,12 @@ class App {
     fileInput;
     /** The top bar: at the top of the mount, or in the host page's element (`toolbar` option). */
     barEl;
+    /** The bar is in a host page's menu: the host owns the language, theme, help, about and the unsaved question. */
+    hosted;
     stageEl;
     paletteEl;
     pageHost;
-    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, pkgsOff: () => this.topo.pkgsOff, setPkgsOff: (p) => { this.topo.pkgsOff = p; this.windows.closeAll(); this.afterCommand(); }, labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
+    pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, pkgsOff: () => this.topo.pkgsOff, setPkgsOff: (p) => { this.topo.pkgsOff = p; this.windows.closeAll(); this.afterCommand(); }, labLocked: () => this.session.embedded, hostOwned: () => this.hosted, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
     saveTimer = 0;
     interval;
     mode = 'realtime';
@@ -73414,7 +73429,8 @@ class App {
         this.pageHost = el('main', { class: 'docs-host', hidden: true });
         this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
         this.fileInput.addEventListener('change', () => void this.openFile());
-        this.barEl = this.topbar(hostBar !== null);
+        this.hosted = hostBar !== null;
+        this.barEl = this.topbar(this.hosted);
         hostBar?.replaceChildren(this.barEl);
         root.replaceChildren(...(hostBar ? [] : [this.barEl]), this.stageEl, this.pageHost, this.paletteEl, winLayer, this.fileInput);
         this.canvas.setTool({ kind: 'select' });
@@ -73625,6 +73641,15 @@ class App {
         this.load(topo, t('hint.opened', { name }));
         return true;
     }
+    /** `handle.showView`: the host's menus open Netfix's pages (Help needs the classroom to allow it). */
+    showHosted(view) {
+        const allowed = ['net', 'docs', 'settings', 'about'];
+        const v = allowed.find((x) => x === view);
+        if (!v || (v === 'docs' && !this.session.policy.docs))
+            return false;
+        this.showView(v);
+        return true;
+    }
     /** `handle.markSaved`: the host stored the network. */
     markSaved() { this.saved.mark(this.topo); }
     async openFile() {
@@ -73668,8 +73693,8 @@ function applyLanguage(mount) {
 }
 /** Rebuilds the interface in another language, keeping the topology (open windows are closed). */
 function changeLocale(locale) {
-    if (!session.embedded)
-        safeStorageSet(LOCALE_STORAGE_KEY, locale);
+    if (!session.embedded && !barHost)
+        safeStorageSet(LOCALE_STORAGE_KEY, locale); // a host keeps its own choice
     if (!mountEl || !app)
         return;
     const topo = app.topo;
@@ -73681,7 +73706,8 @@ function changeLocale(locale) {
     app.announce(t('hint.language'));
 }
 /** Starts the interface in `mount` (one per page: a new start replaces the previous one). */
-function start(mount, s, topo, page = !s.embedded, bar = null) {
+function start(mount, s, topo, page = !s.embedded, host = NO_HOST) {
+    const bar = host.toolbar;
     app?.dispose();
     app = null;
     if (mountEl && mountEl !== mount)
@@ -73700,12 +73726,15 @@ function start(mount, s, topo, page = !s.embedded, bar = null) {
     MEMORY_STORE.clear();
     if (s.embedded)
         clearClipboard(); // each classroom mount starts with nothing copied from the one before
-    setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
+    setLocale(host.locale ?? detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
+    overrideConfirmUnsaved(host.confirmUnsaved);
     mount.classList.add(ROOT_CLASS);
     applyLanguage(mount);
     // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.
+    // With its bar in a host's menu, the host's theme (on <html>) is the one shown.
     if (!s.embedded) {
-        applyTheme();
+        if (!bar)
+            applyTheme();
         loadTimestampPrompt();
         loadMissionsPref();
     }
@@ -73722,8 +73751,9 @@ function startStandalone(mount) {
     return start(mount, STANDALONE);
 }
 /** The handle of a mount in a host element; `destroy` gives the host its element back as it was. */
-function hosted(mount, s, topology, release, bar) {
-    let last = start(mount, s, topology, false, bar);
+function hosted(mount, s, topology, release, host) {
+    const bar = host.toolbar;
+    let last = start(mount, s, topology, false, host);
     // A language change rebuilds the App with the same session: the handle follows the current one.
     const current = () => (session === s ? app : null);
     return {
@@ -73733,6 +73763,15 @@ function hosted(mount, s, topology, release, bar) {
             return current()?.openHosted(topo, String(name)) ?? false;
         },
         markSaved: () => current()?.markSaved(),
+        showView: (view) => current()?.showHosted(view) ?? false,
+        setLocale: (locale) => {
+            if (!isLocale(locale))
+                throw new Error('netfix: «locale» no es un idioma de Netfix');
+            if (current() && locale !== getLocale())
+                changeLocale(locale);
+        },
+        setConfirmUnsaved: (on) => { if (current())
+            overrideConfirmUnsaved(on === true); },
         destroy: () => {
             const live = current();
             if (!live)
@@ -73741,6 +73780,7 @@ function hosted(mount, s, topology, release, bar) {
             live.dispose();
             app = null;
             forceTimestampPrompt(undefined);
+            overrideConfirmUnsaved(undefined);
             clearClipboard();
             mount.replaceChildren();
             if (bar)
@@ -73763,15 +73803,15 @@ function hosted(mount, s, topology, release, bar) {
 const NETFIX_API = {
     embed: (mount, options) => {
         checkMount(mount);
-        const { rest, toolbar } = takeToolbar(mount, options);
+        const { rest, host } = takeHostOptions(mount, options);
         const { session: s, topology } = embedSession(rest);
-        return hosted(mount, s, topology, () => undefined, toolbar);
+        return hosted(mount, s, topology, () => undefined, host);
     },
     // The standalone lab (settings, theme, autosave, preferences) in a host's element; its theme needs <html data-theme>,
     // which destroy puts back. A fresh session object, so a handle never follows another mount's App.
     lab: (mount, options) => {
         checkMount(mount);
-        const toolbar = labToolbar(mount, options);
+        const host = labOptions(mount, options);
         const html = document.documentElement;
         const theme = html.dataset.theme;
         return hosted(mount, { ...STANDALONE }, undefined, () => {
@@ -73779,7 +73819,7 @@ const NETFIX_API = {
                 delete html.dataset.theme;
             else
                 html.dataset.theme = theme;
-        }, toolbar);
+        }, host);
     },
     evaluate: evaluateFile,
 };

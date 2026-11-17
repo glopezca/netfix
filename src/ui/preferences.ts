@@ -31,8 +31,12 @@ export function setTheme(value: Theme): void {
 }
 
 /** Ask before a lab, Nuevo or Abrir replaces unsaved changes (on unless turned off). */
+/** Set by a host page that owns this preference (`confirmUnsaved` option); undefined: this browser's setting. */
+let confirmOverride: boolean | undefined;
+export function overrideConfirmUnsaved(on: boolean | undefined): void { confirmOverride = on; }
+
 export function confirmUnsaved(): boolean {
-  return safeStorageGet(CONFIRM_KEY) !== 'off';
+  return confirmOverride ?? safeStorageGet(CONFIRM_KEY) !== 'off';
 }
 
 export function setConfirmUnsaved(on: boolean): void {

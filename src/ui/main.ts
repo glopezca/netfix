@@ -14,7 +14,7 @@ import { afterPlaced } from './os-dialog.ts';
 import { Topology } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
 import { Pages } from './pages.ts';
-import { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown } from './preferences.ts';
+import { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, overrideConfirmUnsaved } from './preferences.ts';
 import { featureOn } from '../net/lab-features.ts';
 import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
 import { topbar } from './topbar.ts';
@@ -29,14 +29,15 @@ import type { Replacement } from './confirm-dialog.ts';
 import { syncUndoButtons, undoShortcut } from './undo-keys.ts';
 import { t } from '../i18n/t.ts';
 import { DrawState, drawBar } from './draw-bar.ts';
-import { detectLocale, getLocale, setLocale, LOCALE_STORAGE_KEY } from '../i18n/locale.ts';
+import { detectLocale, getLocale, isLocale, setLocale, LOCALE_STORAGE_KEY } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
 import { allowsLab, allowsTab, lockedPrompt } from '../classroom/restrictions.ts';
 import { forceTimestampPrompt } from '../shells/prompt-clock.ts';
 import { formatToolbarClock } from '../core/clock.ts';
 import type { DeviceKind } from '../net/topology.ts';
 import { STANDALONE, embedSession, evaluateFile } from '../classroom/embed.ts';
-import { checkMount, labToolbar, takeToolbar } from './embed-api.ts';
+import { NO_HOST, checkMount, labOptions, takeHostOptions } from './embed-api.ts';
+import type { HostOptions } from './embed-api.ts';
 import type { NetfixApi } from './embed-api.ts';
 import type { AppSession, EmbedHandle } from '../classroom/embed.ts';
 
@@ -56,10 +57,12 @@ class App {
   private readonly fileInput: HTMLInputElement;
   /** The top bar: at the top of the mount, or in the host page's element (`toolbar` option). */
   private readonly barEl: HTMLElement;
+  /** The bar is in a host page's menu: the host owns the language, theme, help, about and the unsaved question. */
+  private readonly hosted: boolean;
   private readonly stageEl: HTMLElement;
   private readonly paletteEl: HTMLElement;
   private readonly pageHost: HTMLElement;
-  private readonly pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, pkgsOff: () => this.topo.pkgsOff, setPkgsOff: (p) => { this.topo.pkgsOff = p; this.windows.closeAll(); this.afterCommand(); }, labLocked: () => this.session.embedded, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
+  private readonly pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, pkgsOff: () => this.topo.pkgsOff, setPkgsOff: (p) => { this.topo.pkgsOff = p; this.windows.closeAll(); this.afterCommand(); }, labLocked: () => this.session.embedded, hostOwned: () => this.hosted, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
   private saveTimer = 0;
   private readonly interval: number;
   private mode: Mode = 'realtime';
@@ -129,7 +132,8 @@ class App {
     this.pageHost = el('main', { class: 'docs-host', hidden: true });
     this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
     this.fileInput.addEventListener('change', () => void this.openFile());
-    this.barEl = this.topbar(hostBar !== null);
+    this.hosted = hostBar !== null;
+    this.barEl = this.topbar(this.hosted);
     hostBar?.replaceChildren(this.barEl);
     root.replaceChildren(...(hostBar ? [] : [this.barEl]), this.stageEl, this.pageHost, this.paletteEl, winLayer, this.fileInput);
     this.canvas.setTool({ kind: 'select' });
@@ -342,6 +346,15 @@ class App {
     return true;
   }
 
+  /** `handle.showView`: the host's menus open Netfix's pages (Help needs the classroom to allow it). */
+  showHosted(view: unknown): boolean {
+    const allowed: readonly View[] = ['net', 'docs', 'settings', 'about'];
+    const v = allowed.find((x) => x === view);
+    if (!v || (v === 'docs' && !this.session.policy.docs)) return false;
+    this.showView(v);
+    return true;
+  }
+
   /** `handle.markSaved`: the host stored the network. */
   markSaved(): void { this.saved.mark(this.topo); }
 
@@ -386,7 +399,7 @@ function applyLanguage(mount: HTMLElement): void {
 
 /** Rebuilds the interface in another language, keeping the topology (open windows are closed). */
 function changeLocale(locale: Locale): void {
-  if (!session.embedded) safeStorageSet(LOCALE_STORAGE_KEY, locale);
+  if (!session.embedded && !barHost) safeStorageSet(LOCALE_STORAGE_KEY, locale); // a host keeps its own choice
   if (!mountEl || !app) return;
   const topo = app.topo;
   const where = app.where();
@@ -398,7 +411,8 @@ function changeLocale(locale: Locale): void {
 }
 
 /** Starts the interface in `mount` (one per page: a new start replaces the previous one). */
-function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.embedded, bar: HTMLElement | null = null): App {
+function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.embedded, host: HostOptions = NO_HOST): App {
+  const bar = host.toolbar;
   app?.dispose();
   app = null;
   if (mountEl && mountEl !== mount) mountEl.replaceChildren();
@@ -411,11 +425,13 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   onPage = page;
   MEMORY_STORE.clear();
   if (s.embedded) clearClipboard(); // each classroom mount starts with nothing copied from the one before
-  setLocale(detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
+  setLocale(host.locale ?? detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
+  overrideConfirmUnsaved(host.confirmUnsaved);
   mount.classList.add(ROOT_CLASS);
   applyLanguage(mount);
   // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.
-  if (!s.embedded) { applyTheme(); loadTimestampPrompt(); loadMissionsPref(); } else classroomMissions();
+  // With its bar in a host's menu, the host's theme (on <html>) is the one shown.
+  if (!s.embedded) { if (!bar) applyTheme(); loadTimestampPrompt(); loadMissionsPref(); } else classroomMissions();
   applyBrand(mount, page);
   // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
   forceTimestampPrompt(lockedPrompt(s.policy));
@@ -429,8 +445,9 @@ export function startStandalone(mount: HTMLElement): App {
 }
 
 /** The handle of a mount in a host element; `destroy` gives the host its element back as it was. */
-function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefined, release: () => void, bar: HTMLElement | null): EmbedHandle {
-  let last = start(mount, s, topology, false, bar);
+function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefined, release: () => void, host: HostOptions): EmbedHandle {
+  const bar = host.toolbar;
+  let last = start(mount, s, topology, false, host);
   // A language change rebuilds the App with the same session: the handle follows the current one.
   const current = (): App | null => (session === s ? app : null);
   return {
@@ -440,6 +457,12 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
       return current()?.openHosted(topo, String(name)) ?? false;
     },
     markSaved: () => current()?.markSaved(),
+    showView: (view) => current()?.showHosted(view) ?? false,
+    setLocale: (locale) => {
+      if (!isLocale(locale)) throw new Error('netfix: «locale» no es un idioma de Netfix');
+      if (current() && locale !== getLocale()) changeLocale(locale);
+    },
+    setConfirmUnsaved: (on) => { if (current()) overrideConfirmUnsaved(on === true); },
     destroy: () => {
       const live = current();
       if (!live) return;
@@ -447,6 +470,7 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
       live.dispose();
       app = null;
       forceTimestampPrompt(undefined);
+      overrideConfirmUnsaved(undefined);
       clearClipboard();
       mount.replaceChildren();
       if (bar) releaseBar(bar);
@@ -466,21 +490,21 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
 export const NETFIX_API: NetfixApi = {
   embed: (mount, options): EmbedHandle => {
     checkMount(mount);
-    const { rest, toolbar } = takeToolbar(mount, options);
+    const { rest, host } = takeHostOptions(mount, options);
     const { session: s, topology } = embedSession(rest);
-    return hosted(mount, s, topology, () => undefined, toolbar);
+    return hosted(mount, s, topology, () => undefined, host);
   },
   // The standalone lab (settings, theme, autosave, preferences) in a host's element; its theme needs <html data-theme>,
   // which destroy puts back. A fresh session object, so a handle never follows another mount's App.
   lab: (mount, options): EmbedHandle => {
     checkMount(mount);
-    const toolbar = labToolbar(mount, options);
+    const host = labOptions(mount, options);
     const html = document.documentElement;
     const theme = html.dataset.theme;
     return hosted(mount, { ...STANDALONE }, undefined, () => {
       if (theme === undefined) delete html.dataset.theme;
       else html.dataset.theme = theme;
-    }, toolbar);
+    }, host);
   },
   evaluate: evaluateFile,
 };
