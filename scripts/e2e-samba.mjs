@@ -93,6 +93,7 @@ try {
   const cfg = async () => { await win.locator('.win-tab:has-text("Configuración")').first().click(); await page.waitForTimeout(200); };
   assert.equal(await win.locator('input[name="dev-pkg-samba"]').isChecked(), true, 'samba in the service packages, ticked');
   assert.equal(await win.locator('input[name="dev-pkg-bind9"]').isChecked(), false);
+  await win.locator('details.dev-collapse').evaluateAll((ds) => ds.forEach((d) => { d.open = true; })); // collapsed at first
   await win.locator('input[name="dev-pkg-bind9"]').check();
   await page.waitForTimeout(300);
   await cfg();

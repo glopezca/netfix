@@ -59,6 +59,11 @@ function packageBoxes(h: Host, list: readonly ListedPackage[], changed: () => vo
   });
 }
 
+/** The catalogue packages: collapsed at first, like «Ver la solución» (a long list the device's settings rarely need). */
+function collapsed(title: string, boxes: readonly HTMLElement[]): HTMLElement[] {
+  return boxes.length ? [el('details', { class: 'set-group dev-group dev-collapse' }, el('summary', {}, title), ...boxes)] : [];
+}
+
 function group(title: string, boxes: readonly HTMLElement[]): HTMLElement[] {
   return boxes.length ? [el('fieldset', { class: 'set-group dev-group' }, el('legend', {}, title), ...boxes)] : [];
 }
@@ -81,6 +86,6 @@ export function deviceConfig(h: Host, changed: () => void): HTMLElement {
     ...group(t('dev.apps'), apps.map(box)),
     ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed), ...winShareBox(h, changed)]),
     ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)),
-    ...group(t('dev.svcPackages'), packageBoxes(h, packages.filter((p) => p.service), changed)),
-    ...group(t('dev.packages'), packageBoxes(h, packages.filter((p) => !p.service), changed)));
+    ...collapsed(t('dev.svcPackages'), packageBoxes(h, packages.filter((p) => p.service), changed)),
+    ...collapsed(t('dev.packages'), packageBoxes(h, packages.filter((p) => !p.service), changed)));
 }

@@ -204,11 +204,13 @@
   .pal-model { font-size: 11px; color: var(--ink-2); }
   .pal-glyph { font-size: 22px; line-height: 33px; height: 33px; }
   .hint { margin: 0; align-self: center; color: var(--ink-2); max-width: 70ch; }
+  .dev-collapse > summary { cursor: pointer; font-weight: 700; margin-bottom: 4px; }
+  .dev-collapse:not([open]) > summary { margin-bottom: 0; }
   /* Hosted: the palette is a sidebar on the left; the clock, the mode and the hint float over the workspace. */
   &[data-bar="host"] .stage { grid-column: 2; grid-row: 1; }
   &[data-bar="host"] .docs-host { grid-column: 1 / -1; grid-row: 1; }
   &[data-bar="host"] .palette {
-    grid-column: 1; grid-row: 1; flex-direction: column; align-items: stretch; gap: 8px; padding: 8px 6px;
+    grid-column: 1; grid-row: 1; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; padding: 8px 6px;
     overflow-x: hidden; overflow-y: auto; border-top: 0; border-right: 1px solid var(--line);
   }
   &[data-bar="host"] .pal-group { flex-direction: column; gap: 2px; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--line); }
@@ -33207,7 +33209,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.58.0",
+    "version": "0.59.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -71922,6 +71924,10 @@ function packageBoxes(h, list, changed) {
         return el('label', { class: 'set-choice' }, input, el('code', {}, name));
     });
 }
+/** The catalogue packages: collapsed at first, like «Ver la solución» (a long list the device's settings rarely need). */
+function collapsed(title, boxes) {
+    return boxes.length ? [el('details', { class: 'set-group dev-group dev-collapse' }, el('summary', {}, title), ...boxes)] : [];
+}
 function group(title, boxes) {
     return boxes.length ? [el('fieldset', { class: 'set-group dev-group' }, el('legend', {}, title), ...boxes)] : [];
 }
@@ -71938,7 +71944,7 @@ function deviceConfig(h, changed) {
     const apps = h.kind === 'pc' ? allowed.filter((id) => id === 'ip' || PC_APPS.includes(id)) : allowed.filter((id) => id === 'ip');
     const services = h.kind === 'pc' ? [] : allowed.filter((id) => id !== 'ip' && !TERMINALS.includes(id) && serviceOffered(h, id));
     const packages = listedPackages(h);
-    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed), ...winShareBox(h, changed)]), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)), ...group(t('dev.svcPackages'), packageBoxes(h, packages.filter((p) => p.service), changed)), ...group(t('dev.packages'), packageBoxes(h, packages.filter((p) => !p.service), changed)));
+    return el('section', { class: 'dev-config', 'aria-label': t('dev.tab') }, el('p', { class: 'muted' }, t('dev.intro')), ...group(t('dev.apps'), apps.map(box)), ...group(t('dev.services'), [...services.map(box), ...sambaBox(h, changed), ...winShareBox(h, changed)]), ...group(t('dev.terminals'), allowed.filter((id) => TERMINALS.includes(id)).map(box)), ...collapsed(t('dev.svcPackages'), packageBoxes(h, packages.filter((p) => p.service), changed)), ...collapsed(t('dev.packages'), packageBoxes(h, packages.filter((p) => !p.service), changed)));
 }
 
 return { deviceConfig };
