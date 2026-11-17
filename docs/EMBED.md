@@ -16,6 +16,8 @@ comprobación, en el navegador o en un servidor sin interfaz.
     onChange: (archivo) => enviarAlServidor(archivo),
   });
   // practica.exportTopology()  → archivo de topología actual
+  // practica.open(archivo, nombre) → lo abre como Importar… (pregunta si hay cambios sin guardar); true si lo abrió
+  // practica.markSaved()       → la página ha guardado la red: deja de contar como cambios sin guardar
   // practica.destroy()         → detiene el simulador y vacía el elemento
 </script>
 ```

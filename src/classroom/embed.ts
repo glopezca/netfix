@@ -27,6 +27,13 @@ export const STANDALONE: AppSession = Object.freeze({ policy: NO_RESTRICTIONS, e
 export interface EmbedHandle {
   /** The current topology, as a saved file. */
   exportTopology(): TopologyFile;
+  /**
+   * Opens a file the host read from its own storage, as Import… does: over unsaved changes it asks first. Resolves to
+   * whether it was opened (false: the user kept their work, or Netfix is no longer mounted); a bad file throws.
+   */
+  open(file: unknown, name: string): Promise<boolean>;
+  /** The host stored the current topology: it is no longer unsaved work. */
+  markSaved(): void;
   /** Stops the simulator and empties the mount element. */
   destroy(): void;
 }

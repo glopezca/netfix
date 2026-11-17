@@ -17,7 +17,8 @@ try {
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 860 }, locale: 'es-ES' });
   const page = await ctx.newPage();
   // A lab over unsaved changes asks first (scripts/e2e-unsaved.mjs checks it); these flows always go ahead.
-  await page.addLocatorHandler(page.locator('dialog.confirm-dialog[open]'), (d) => d.locator('button.danger').click());
+  const confirmOpen = page.locator('dialog.confirm-dialog[open]');
+  await page.addLocatorHandler(confirmOpen, (d) => d.locator('button.danger').click());
   page.on('pageerror', (e) => errors.push(e.message));
   await page.route('http://aula.test/**', (r) => r.fulfill({ contentType: 'text/html', body: html }));
   await page.goto('http://aula.test/practica');
@@ -131,6 +132,25 @@ try {
   await page.click('#app .workspace', { position: { x: 40, y: 30 } });
   await page.locator('#app dialog.os-dialog .btn-primary').click({ timeout: 5000 });
   assert.equal(await page.locator('#host-menu .window, #host-menu dialog').count(), 0, 'nothing of the workspace in the host menu');
+  // handle.open / markSaved: a file from the host's storage, asked over unsaved changes like Import….
+  const saved = await page.evaluate(() => globalThis.handle.exportTopology());
+  await assert.rejects(page.evaluate(() => globalThis.handle.open({ format: 'otro' }, 'x.json')));
+  await page.evaluate(() => globalThis.handle.markSaved());
+  let asked = 0;
+  const count = () => { asked++; };
+  await page.exposeFunction('countAsk', count);
+  await page.evaluate(() => new MutationObserver(() => { if (document.querySelector('dialog.confirm-dialog[open]')) globalThis.countAsk(); }).observe(document.body, { subtree: true, attributes: true, childList: true }));
+  assert.equal(await page.evaluate((f) => globalThis.handle.open(f, 'guardada.json'), saved), true);
+  assert.equal(asked, 0, 'a saved network is replaced without asking');
+  assert.match(await page.locator('#app .hint').innerText(), /guardada\.json/);
+  await page.click('#host-menu [data-view="settings"]'); // an unsaved change: a lab feature off
+  await page.locator('#app .settings input[data-feature] >> nth=0').click();
+  await page.click('#host-menu [data-view="net"]');
+  await page.removeLocatorHandler(confirmOpen); // from here the question is answered by hand
+  const opening = page.evaluate((f) => globalThis.handle.open(f, 'otra.json'), saved);
+  await page.locator('#app dialog.confirm-dialog[open] button.danger').click(); // the question over unsaved changes
+  assert.equal(await opening, true);
+  assert.ok(asked > 0, 'unsaved changes are asked about first');
   await page.click('#host-menu [data-view="settings"]');
   await page.waitForSelector('#app .settings');
   await page.click('#host-menu [data-view="net"]');

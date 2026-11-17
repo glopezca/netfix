@@ -114,7 +114,9 @@
   .topbar.is-hosted { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 10px; padding: 12px; border: 0; }
   .topbar.is-hosted .time { margin-left: 0; }
   .topbar.is-hosted .select { max-width: none; }
-  .topbar.is-hosted > .segmented { overflow-x: auto; }
+  .topbar.is-hosted > .segmented { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); }
+  .topbar.is-hosted .file-actions { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .topbar.is-hosted .file-actions .select { grid-column: 1 / -1; width: 100%; }
   .brand { margin: 0 8px 0 0; line-height: 0; }
   .brand-logo { height: 30px; width: auto; display: block; }
   .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -1303,7 +1305,7 @@ const APP_ES = {
     'unsaved.proceed': 'Abrir el laboratorio',
     'unsaved.bodyNew': 'La red actual tiene cambios que no has guardado. Si empiezas una red nueva, se perderán.',
     'unsaved.proceedNew': 'Empezar una red nueva',
-    'unsaved.bodyOpen': 'La red actual tiene cambios que no has guardado. Si importas otro archivo, se perderán.',
+    'unsaved.bodyOpen': 'La red actual tiene cambios que no has guardado. Si abres otro archivo, se perderán.',
     'unsaved.proceedOpen': 'Elegir otro archivo',
     'hint.copied': 'Topología copiada al portapapeles: pégala en un archivo .json para guardarla.',
     'hint.copyFailed': 'No se pudo copiar. Usa la versión descargable de Netfix para guardar archivos.',
@@ -1380,7 +1382,7 @@ const APP_EN = {
     'unsaved.proceed': 'Open the lab',
     'unsaved.bodyNew': 'The current network has changes you have not saved. If you start a new network, they will be lost.',
     'unsaved.proceedNew': 'Start a new network',
-    'unsaved.bodyOpen': 'The current network has changes you have not saved. If you import another file, they will be lost.',
+    'unsaved.bodyOpen': 'The current network has changes you have not saved. If you open another file, they will be lost.',
     'unsaved.proceedOpen': 'Choose another file',
     'hint.copied': 'Topology copied to the clipboard: paste it into a .json file to keep it.',
     'hint.copyFailed': 'Could not copy. Use the downloadable version of Netfix to save files.',
@@ -33165,7 +33167,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.55.0",
+    "version": "0.56.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -73616,6 +73618,15 @@ class App {
             this.saved.mark(this.topo);
         this.hintEl.textContent = done.message;
     }
+    /** `handle.open`: a file from the host's storage, after the same question as Import…. */
+    async openHosted(topo, name) {
+        if (!(await this.replaceAllowed('open')))
+            return false;
+        this.load(topo, t('hint.opened', { name }));
+        return true;
+    }
+    /** `handle.markSaved`: the host stored the network. */
+    markSaved() { this.saved.mark(this.topo); }
     async openFile() {
         const file = this.fileInput.files?.[0];
         this.fileInput.value = '';
@@ -73717,6 +73728,11 @@ function hosted(mount, s, topology, release, bar) {
     const current = () => (session === s ? app : null);
     return {
         exportTopology: () => (last = current() ?? last).topo.toJSON(),
+        open: async (file, name) => {
+            const topo = Topology.fromJSON(file); // a bad file throws before anything is asked or replaced
+            return current()?.openHosted(topo, String(name)) ?? false;
+        },
+        markSaved: () => current()?.markSaved(),
         destroy: () => {
             const live = current();
             if (!live)
