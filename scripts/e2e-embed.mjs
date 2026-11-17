@@ -40,7 +40,7 @@ try {
   assert.equal(await page.getAttribute('#app', 'class'), 'netfix-root');
   assert.deepEqual(await page.locator('.pal-devices .pal-name').allTextContents(), ['PC', 'Switch IOS']);
   assert.equal(await page.locator('[data-view="docs"]').count(), 0, 'no Documentation view');
-  assert.equal(await page.getByRole('button', { name: 'Abrir' }).count(), 0, 'no Open');
+  assert.equal(await page.getByRole('button', { name: 'Importar…' }).count(), 0, 'no Import');
   assert.equal(await page.locator('.segmented[aria-label="Modo"]').count(), 0, 'no simulation mode');
   const labs = await page.locator('select[aria-label] option').allTextContents();
   assert.ok(labs.length >= 2, String(labs));
@@ -110,6 +110,28 @@ try {
   assert.deepEqual(await pageState(), hostPage);
   await assert.rejects(page.evaluate(() => netfix.embed('#app')), /elemento/);
   await assert.rejects(page.evaluate(() => netfix.lab('#app')), /elemento/);
+  // toolbar: the top bar goes in the host's element (its menu), without the logo; the mount is all workspace.
+  await page.evaluate(() => { const m = document.createElement('div'); m.id = 'host-menu'; document.body.prepend(m); });
+  await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { toolbar: '#host-menu' })), /toolbar/);
+  await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { theme: 'dark' })), /única opción/);
+  await page.evaluate(() => { globalThis.handle = netfix.lab(document.getElementById('app'), { toolbar: document.getElementById('host-menu') }); });
+  await page.waitForSelector('#host-menu .topbar.is-hosted');
+  assert.equal(await page.locator('#app .topbar').count(), 0, 'no bar left in the mount');
+  assert.equal(await page.locator('#host-menu .brand-logo, #host-menu .menu-toggle').count(), 0, 'no logo nor phone menu in the host');
+  assert.equal(await page.getAttribute('#app', 'data-bar'), 'host');
+  assert.ok(await page.locator('#host-menu').getByRole('button', { name: 'Importar…' }).isVisible());
+  const stageTop = await page.evaluate(() => document.querySelector('#app .stage').getBoundingClientRect().top - document.getElementById('app').getBoundingClientRect().top);
+  assert.equal(stageTop, 0, 'the workspace starts at the top of the mount');
+  await page.click('#host-menu [data-view="settings"]');
+  await page.waitForSelector('#app .settings');
+  await page.click('#host-menu [data-view="net"]');
+  await page.selectOption('#host-menu select[aria-label="Idioma"]', 'en-GB');
+  await page.waitForSelector('#host-menu button:text-is("Import…")');
+  assert.equal(await page.locator('#host-menu .topbar').count(), 1, 'a language change rebuilds the bar in the host');
+  await page.evaluate(() => globalThis.handle.destroy());
+  assert.deepEqual(await page.evaluate(() => [...document.getElementById('host-menu').attributes].map((a) => a.name)), ['id'], 'the host menu is given back as it was');
+  assert.equal(await page.locator('#host-menu *').count(), 0);
+  assert.deepEqual(await page.evaluate(() => [...document.getElementById('app').attributes].map((a) => a.name)), ['id', 'data-embed']);
   assert.deepEqual(errors, []);
   process.stdout.write('e2e embed: ok\n');
 } finally {

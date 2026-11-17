@@ -84,25 +84,25 @@ try {
   await page.waitForTimeout(150);
   assert.equal(await page.locator('g.device').count(), 0, 'Nuevo empties the workspace');
 
-  // Nuevo and Abrir without changes do not ask; Abrir over changes asks before the file chooser.
+  // Nuevo and Importar without changes do not ask; Importar over changes asks before the file chooser.
   await page.click('button:has-text("Nuevo")');
   assert.equal(await page.locator('dialog.confirm-dialog').count(), 0);
   let chooser = page.waitForEvent('filechooser', { timeout: 2000 });
-  await page.click('button:has-text("Abrir")');
+  await page.click('button:has-text("Importar")');
   await (await chooser).setFiles([]);
   await labs.selectOption({ index: 1 });
   await page.waitForTimeout(200);
   await removeOnePc();
   let opened = false;
   page.once('filechooser', () => { opened = true; });
-  await page.click('button:has-text("Abrir")');
+  await page.click('button:has-text("Importar")');
   await dialog.waitFor();
   assert.match(await dialog.innerText(), /otro archivo/);
   await dialog.locator('button:has-text("Cancelar")').click();
   await page.waitForTimeout(300);
   assert.equal(opened, false, 'Cancel does not open the file chooser');
   chooser = page.waitForEvent('filechooser', { timeout: 3000 });
-  await page.click('button:has-text("Abrir")');
+  await page.click('button:has-text("Importar")');
   await dialog.locator('button:has-text("Elegir otro archivo")').click();
   await (await chooser).setFiles([]);
 
@@ -115,7 +115,7 @@ try {
   await page.locator('dialog.confirm-dialog[open]').waitFor();
   await page.keyboard.press('Escape');
   assert.deepEqual(errors, []);
-  console.log('e2e unsaved OK: no blank workspace; labs, Nuevo and Abrir ask only over changes; Cancel/Esc keep them; kept across reloads');
+  console.log('e2e unsaved OK: no blank workspace; labs, Nuevo and Importar ask only over changes; Cancel/Esc keep them; kept across reloads');
 } finally {
   await browser.close();
   server.kill();

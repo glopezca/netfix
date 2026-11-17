@@ -36,7 +36,7 @@ export const NETFIX_DOCS: DocGroup = {
         h('Barra superior'),
         table(['Control', 'Qué hace'], [
           ['Red / Ayuda / Configuración / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta ayuda, los ajustes (ver «Configuración»), la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
-          ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S). Nuevo, Abrir y Laboratorios preguntan antes de reemplazar una red con cambios sin guardar.'],
+          ['Nuevo · Importar… · Exportar', 'Área vacía, importar un .json o exportar la topología (Ctrl+S). Nuevo, Importar y Laboratorios preguntan antes de reemplazar una red con cambios sin guardar.'],
           ['Laboratorios…', 'Carga una práctica preparada, agrupada por temas: DHCP (básico, reservas, relay, router cliente); Conmutación y VLAN (router-on-a-stick, spanning tree, snooping); Servicios (Server, SSH/SFTP); Resolución de nombres (LAN sin DNS propio, nombres entre redes, DNS que reenvía); Internet y VPN (dos sedes, IPsec, WireGuard); Seguridad (router GNU/Linux con DMZ, bastionado).'],
           ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
           ['Tiempo real / Simulación', 'Modo de ejecución (ver «Tiempo real y simulación»).'],
@@ -64,7 +64,7 @@ export const NETFIX_DOCS: DocGroup = {
         ]),
         note('Los campos de los equipos se aplican al cambiarlos (Intro o al salir del campo): nombre, direcciones, nube e ISP. Llevan botón los servicios («Aplicar» equivale a reiniciarlos con systemctl), los formularios que se traducen a órdenes de IOS y las listas (añadir un pool, una zona, una ruta…).'),
         note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim). En móvil y tableta las ventanas ocupan la pantalla, el lienzo se mueve con un dedo y se amplía pellizcando, una pulsación larga abre un equipo y la terminal tiene una barra de teclas: Esc, Tab, Ctrl (se queda pulsada para la tecla siguiente), flechas, Inicio, Fin, RePág, AvPág, ^C y ^D, y con un editor abierto F1-F10. Fuera de los editores, Inicio y Fin van al principio o al final de la línea, y RePág y AvPág desplazan la salida.'),
-        warn('Errores habituales', 'Dos equipos con la misma dirección IP, o con máscaras distintas: el ping falla a ratos o no sale. Un cable en un puerto apagado (luz roja): en un router hace falta `no shutdown`. Cerrar la pestaña del navegador no pierde nada (el área de trabajo se guarda sola), pero para entregar una práctica usa **Guardar**.'),
+        warn('Errores habituales', 'Dos equipos con la misma dirección IP, o con máscaras distintas: el ping falla a ratos o no sale. Un cable en un puerto apagado (luz roja): en un router hace falta `no shutdown`. Cerrar la pestaña del navegador no pierde nada (el área de trabajo se guarda sola), pero para entregar una práctica usa **Exportar**.'),
         exercise('Tres en la misma red', 'Añade un tercer PC al switch de «Tu primera red» con la dirección IP 192.168.1.12/24 y comprueba desde él que llega a los otros dos.', 'Coloca PC2, conéctalo a un puerto libre del switch, ponle 192.168.1.12 y máscara 255.255.255.0 en TCP/IP, y en su Terminal Windows `ping 192.168.1.10` y `ping 192.168.1.11`: los dos responden («Reply from …»). No hace falta puerta de enlace: los tres están en la misma red.'),
       ],
     },
@@ -131,11 +131,11 @@ export const NETFIX_DOCS: DocGroup = {
     },
     {
       id: 'guardar',
-      title: 'Guardar y abrir',
+      title: 'Exportar e importar',
       summary: 'Qué guarda el archivo .json, cómo se recupera y cómo entregar una práctica.',
       markdownBase: MD,
       blocks: [
-        p('Guardar (o Ctrl+S) crea un archivo .json con toda la arquitectura. En Chrome y Edge aparece el diálogo para elegir nombre y carpeta; en otros navegadores se descarga. Además, el área de trabajo se guarda sola en el navegador.'),
+        p('Exportar (o Ctrl+S) crea un archivo .json con toda la arquitectura. En Chrome y Edge aparece el diálogo para elegir nombre y carpeta; en otros navegadores se descarga. Además, el área de trabajo se guarda sola en el navegador.'),
         list(
           'Posiciones de los equipos y cables.',
           'Configuración IOS (running-config y startup-config).',
@@ -144,10 +144,10 @@ export const NETFIX_DOCS: DocGroup = {
           'Ficheros creados o modificados desde la Terminal GNU/Linux (home, scripts, cambios en /etc, historial de bash).',
         ),
         note('Límites de los ficheros de la terminal: 256 KiB por fichero y 4 MiB por equipo. Los ficheros generados (configuración de servicios) no se guardan: se recalculan.'),
-        p('Abrir… valida el archivo antes de usarlo y sigue aceptando el formato anterior (v1).'),
+        p('Importar… valida el archivo antes de usarlo y sigue aceptando el formato anterior (v1).'),
         steps(
-          ['Guarda', '**Guardar** (Ctrl+S) y elige un nombre que diga qué es: `practica3-dhcp-apellido.json`.'],
-          ['Comprueba', '**Nuevo** para vaciar el área y **Abrir…** con tu archivo: debe aparecer todo como lo dejaste.'],
+          ['Exporta', '**Exportar** (Ctrl+S) y elige un nombre que diga qué es: `practica3-dhcp-apellido.json`.'],
+          ['Comprueba', '**Nuevo** para vaciar el área e **Importar…** con tu archivo: debe aparecer todo como lo dejaste.'],
           ['Entrega', 'Ese .json es lo que se sube a la plataforma del curso.'],
         ),
         warn('Lo que no se guarda', 'La salida de las terminales y los procesos en marcha (una sesión SSH abierta, un `ping` largo). Los cambios hechos en la CLI de IOS sí se guardan en la running-config, pero si quieres que sobrevivan a un `reload` del router, guárdalos también con `copy running-config startup-config`.'),

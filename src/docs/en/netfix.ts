@@ -36,7 +36,7 @@ export const NETFIX_DOCS: DocGroup = {
         h('Top bar'),
         table(['Control', 'What it does'], [
           ['Network / Help / Settings / Donations / About', 'Switches between the workspace, this help, the settings (see “Settings”), the page for supporting the project (PayPal.Me) and the version, authorship, licence and attribution information (taken from package.json and LICENSE.md).'],
-          ['New · Open… · Save', 'Empty workspace, open a .json file or save the topology (Ctrl+S). New, Open and Labs ask before replacing a network with unsaved changes.'],
+          ['New · Import… · Export', 'Empty workspace, import a .json file or export the topology (Ctrl+S). New, Import and Labs ask before replacing a network with unsaved changes.'],
           ['Labs…', 'Loads a ready-made exercise, grouped by theme: DHCP (basic, reservations, relay, client router); Switching and VLANs (router-on-a-stick, spanning tree, snooping); Services (Server, SSH/SFTP); Name resolution (LAN with no DNS of its own, names across networks, forwarding DNS); Internet and VPN (two sites, IPsec, WireGuard); Security (GNU/Linux router with DMZ, hardening).'],
           ['Clock and “Advance clock…”', 'Simulated time. Moving it forward 1 minute, 1 hour or 1 day makes DHCP leases expire or renew.'],
           ['Realtime / Simulation', 'Execution mode (see “Realtime and simulation”).'],
@@ -64,7 +64,7 @@ export const NETFIX_DOCS: DocGroup = {
         ]),
         note('Device fields apply when they change (Enter or leaving the field): name, addresses, cloud and ISP. Buttons remain for services («Apply» is restarting them with systemctl), forms that become IOS commands and lists (add a pool, a zone, a route…).'),
         note('Windows are moved by their title bar and resized from the corner. Escape closes the active window (except inside nano or vim). On phones and tablets windows fill the screen, the canvas is panned with one finger and zoomed by pinching, a long press opens a device and the terminal has a key bar: Esc, Tab, Ctrl (held for the next key), arrows, Home, End, PgUp, PgDn, ^C and ^D, plus F1-F10 while an editor is open. Outside the editors, Home and End go to the start or end of the line, and PgUp and PgDn scroll the output.'),
-        warn('Common mistakes', 'Two devices with the same IP address, or with different masks: the ping fails now and then or does not get out. A cable in a port that is shut down (red light): on a router you need `no shutdown`. Closing the browser tab loses nothing (the workspace saves itself), but to hand in a practical use **Save**.'),
+        warn('Common mistakes', 'Two devices with the same IP address, or with different masks: the ping fails now and then or does not get out. A cable in a port that is shut down (red light): on a router you need `no shutdown`. Closing the browser tab loses nothing (the workspace saves itself), but to hand in a practical use **Export**.'),
         exercise('Three on the same network', 'Add a third PC to the switch of “Your first network” with the IP address 192.168.1.12/24 and check from it that it reaches the other two.', 'Place PC2, plug it into a free switch port, give it 192.168.1.12 and mask 255.255.255.0 in TCP/IP, and in its Windows terminal `ping 192.168.1.10` and `ping 192.168.1.11`: both answer (“Reply from …”). No gateway is needed: the three are on the same network.'),
       ],
     },
@@ -131,11 +131,11 @@ export const NETFIX_DOCS: DocGroup = {
     },
     {
       id: 'guardar',
-      title: 'Saving and opening',
+      title: 'Exporting and importing',
       summary: 'What the .json file stores, how it is restored and how to hand in a practical.',
       markdownBase: MD,
       blocks: [
-        p('Save (or Ctrl+S) creates a .json file with the whole architecture. In Chrome and Edge a dialogue appears for choosing the name and folder; in other browsers it is downloaded. The workspace is also saved automatically in the browser.'),
+        p('Export (or Ctrl+S) creates a .json file with the whole architecture. In Chrome and Edge a dialogue appears for choosing the name and folder; in other browsers it is downloaded. The workspace is also saved automatically in the browser.'),
         list(
           'Positions of devices and cables.',
           'IOS configuration (running-config and startup-config).',
@@ -144,10 +144,10 @@ export const NETFIX_DOCS: DocGroup = {
           'Files created or modified from the GNU/Linux Terminal (home, scripts, changes in /etc, bash history).',
         ),
         note('Limits for terminal files: 256 KiB per file and 4 MiB per device. Generated files (service configuration) are not saved: they are recalculated.'),
-        p('Open… validates the file before using it and still accepts the previous format (v1).'),
+        p('Import… validates the file before using it and still accepts the previous format (v1).'),
         steps(
-          ['Save', '**Save** (Ctrl+S) and choose a name that says what it is: `practica3-dhcp-surname.json`.'],
-          ['Check', '**New** to empty the workspace and **Open…** with your file: everything must appear as you left it.'],
+          ['Export', '**Export** (Ctrl+S) and choose a name that says what it is: `practica3-dhcp-surname.json`.'],
+          ['Check', '**New** to empty the workspace and **Import…** with your file: everything must appear as you left it.'],
           ['Hand it in', 'That .json is what you upload to the course platform.'],
         ),
         warn('What is not saved', 'The output of the terminals and running processes (an open SSH session, a long `ping`). Changes made in the IOS CLI are saved in the running-config, but if you want them to survive a router `reload`, also save them with `copy running-config startup-config`.'),

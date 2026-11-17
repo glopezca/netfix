@@ -12,7 +12,9 @@ const LITERAL = /(['`])((?:(?!\1)[^\\]|\\.)*?)\1/g;
 const SPANISH_CHARS = /[áéíóúñÁÉÍÓÚÑ¿¡]/;
 const SPANISH_WORDS = /^(Guardar|Eliminar|Borrar|Añadir|Nombre|Usuario|Contraseña|Servicios?|Equipo|Correo|Activado|Desactivado|Puerto|Tipo|Valor|Dominio|Registros|Estado|Aplicar|Cancelar|Cerrar|Abrir|Enviar|Recibir|Buscar|Navegador|Ninguna?|Ninguno)$/;
 /** Literals that are data, not interface text (example names typed by the user, Cisco/Linux output, errors thrown to the embedding page's developer). */
-const ALLOWED = new Set(['www  ·  @  ·  *  ·  host.otro.dom.', 'srv  ·  @  ·  srv.otro.dom.', 'netfix: la API ya está instalada (¿Netfix cargado dos veces?)']);
+const ALLOWED = new Set(['www  ·  @  ·  *  ·  host.otro.dom.', 'srv  ·  @  ·  srv.otro.dom.', 'netfix: la API ya está instalada (¿Netfix cargado dos veces?)',
+  'netfix: «toolbar» debe ser un elemento de la página', 'netfix: «toolbar» no puede estar dentro del elemento donde se monta Netfix ni contenerlo',
+  'netfix.lab: la única opción es «toolbar»']);
 
 function offenders(file: string): string[] {
   const lines = readFileSync(file, 'utf8').split('\n');

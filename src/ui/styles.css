@@ -64,6 +64,10 @@
   color-scheme: dark;
 }
 
+/* The bar in the host's element: only Netfix's look, not the mount's layout; the mount is then all workspace. */
+.netfix-bar.netfix-root { display: block; position: static; overflow: visible; background: var(--panel); color: var(--ink); font: 15px/1.45 var(--font-ui); }
+[data-bar="host"].netfix-root { grid-template-rows: minmax(0, 1fr) auto; }
+
 /* The host sizes the mount (the standalone page gives #app 100dvh in index.html); its windows stay inside it (position). */
 .netfix-root {
   position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden;
@@ -78,6 +82,11 @@
     padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
   }
   .topbar .select { max-width: 11rem; }
+  /* In the host page's menu (`toolbar` option): one control per row, the host's menu is the frame. */
+  .topbar.is-hosted { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 10px; padding: 12px; border: 0; }
+  .topbar.is-hosted .time { margin-left: 0; }
+  .topbar.is-hosted .select { max-width: none; }
+  .topbar.is-hosted > .segmented { overflow-x: auto; }
   .brand { margin: 0 8px 0 0; line-height: 0; }
   .brand-logo { height: 30px; width: auto; display: block; }
   .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

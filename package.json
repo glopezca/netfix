@@ -1,6 +1,6 @@
 {
   "name": "@glopezca/netfix",
-  "version": "0.54.0",
+  "version": "0.55.0",
   "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
   "type": "module",
   "exports": {
@@ -22,12 +22,14 @@
     },
     "./ui/*.css": "./src/ui/*.css",
     "./ui/favicon.png": "./assets/brand/favicon.png",
+    "./ui/logo.webp": "./assets/brand/logo.webp",
     "./package.json": "./package.json"
   },
   "files": [
     "dist/pkg/",
     "src/ui/*.css",
     "assets/brand/favicon.png",
+    "assets/brand/logo.webp",
     "LICENSE",
     "LICENSE.md",
     "README.md"

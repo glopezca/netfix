@@ -35,7 +35,16 @@ entrada no fiable que hay que volver a corregir. `detail` y `title` pueden conte
 `netfix.lab(elemento)` monta el laboratorio completo, como la página propia de Netfix: ajustes, tema, autoguardado,
 idioma y preferencias en el navegador (las mismas claves `netfix:*` del origen). No toca el título, `<html lang>` ni el
 icono de la página; el tema sí necesita `<html data-theme>`, y `destroy()` lo deja como estaba, además de guardar el
-trabajo y devolver el elemento vacío. No admite opciones ni restricciones: para una práctica, `netfix.embed`.
+trabajo y devolver el elemento vacío. No admite restricciones (para una práctica, `netfix.embed`); su única opción es
+`toolbar`.
+
+## La barra en el menú de la página (`toolbar`)
+
+`netfix.lab(elemento, { toolbar })` y `netfix.embed(elemento, { …, toolbar })` ponen la barra superior de Netfix (vistas,
+Nuevo, Importar…, Exportar, laboratorios, reloj, modo e idioma) en `toolbar`, un elemento de la página (su menú
+desplegable, por ejemplo), sin el logotipo ni el menú del móvil: la página muestra el nombre de Netfix y abre y cierra
+su menú. El área de trabajo ocupa entonces todo el elemento montado. `toolbar` no puede estar dentro de ese elemento
+ni contenerlo; `destroy()` lo devuelve vacío y sin clases de Netfix. El logotipo está en `@glopezca/netfix/ui/logo.webp`.
 
 ## Restricciones
 

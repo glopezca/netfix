@@ -36,7 +36,7 @@ import { forceTimestampPrompt } from '../shells/prompt-clock.ts';
 import { formatToolbarClock } from '../core/clock.ts';
 import type { DeviceKind } from '../net/topology.ts';
 import { STANDALONE, embedSession, evaluateFile } from '../classroom/embed.ts';
-import { checkMount } from './embed-api.ts';
+import { checkMount, labToolbar, takeToolbar } from './embed-api.ts';
 import type { NetfixApi } from './embed-api.ts';
 import type { AppSession, EmbedHandle } from '../classroom/embed.ts';
 
@@ -54,6 +54,8 @@ class App {
   private readonly clockEl: HTMLElement;
   private readonly toolButtons = new Map<string, HTMLButtonElement>();
   private readonly fileInput: HTMLInputElement;
+  /** The top bar: at the top of the mount, or in the host page's element (`toolbar` option). */
+  private readonly barEl: HTMLElement;
   private readonly stageEl: HTMLElement;
   private readonly paletteEl: HTMLElement;
   private readonly pageHost: HTMLElement;
@@ -88,7 +90,7 @@ class App {
     this.workspaceActive = e.target instanceof Node && this.canvas.root.contains(e.target);
   };
 
-  constructor(root: HTMLElement, session: AppSession, topo?: Topology, initial: { readonly view: View; readonly mode: Mode } = { view: 'net', mode: 'realtime' }) {
+  constructor(root: HTMLElement, session: AppSession, topo?: Topology, initial: { readonly view: View; readonly mode: Mode } = { view: 'net', mode: 'realtime' }, hostBar: HTMLElement | null = null) {
     this.rootEl = root;
     this.session = session;
     this.saved = new SavedState(session.embedded ? MEMORY_STORE : BROWSER_STORE);
@@ -127,7 +129,9 @@ class App {
     this.pageHost = el('main', { class: 'docs-host', hidden: true });
     this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
     this.fileInput.addEventListener('change', () => void this.openFile());
-    root.replaceChildren(this.topbar(), this.stageEl, this.pageHost, this.paletteEl, winLayer, this.fileInput);
+    this.barEl = this.topbar(hostBar !== null);
+    hostBar?.replaceChildren(this.barEl);
+    root.replaceChildren(...(hostBar ? [] : [this.barEl]), this.stageEl, this.pageHost, this.paletteEl, winLayer, this.fileInput);
     this.canvas.setTool({ kind: 'select' });
     this.canvas.render();
     this.canvas.frameContent();
@@ -164,7 +168,7 @@ class App {
     return app === this && this.topo === topo;
   }
 
-  private topbar(): HTMLElement {
+  private topbar(hosted: boolean): HTMLElement {
     return topbar({
       newWorkspace: () => void this.replaceAllowed('new').then((ok) => ok && this.load(new Topology(), t('hint.empty'))),
       openFile: () => void this.replaceAllowed('open').then((ok) => ok && this.fileInput.click()),
@@ -178,7 +182,7 @@ class App {
       setMode: (m) => this.setMode(m),
       showView: (v) => this.showView(v),
       setLocale: (l) => changeLocale(l),
-    }, this.clockEl, this.mode, this.view, this.session.policy);
+    }, this.clockEl, this.mode, this.view, this.session.policy, hosted);
   }
 
   private setMode(m: Mode, hint = true): void {
@@ -243,7 +247,7 @@ class App {
   private openDoc(id: string): void {
     this.showView('docs');
     this.pages.showDoc(id);
-    for (const b of this.rootEl.querySelectorAll<HTMLElement>('.topbar [data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === 'docs'));
+    for (const b of this.barEl.querySelectorAll<HTMLElement>('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === 'docs'));
   }
 
   /** "PC0 (FastEthernet0)" at the far end of a cable, for the device windows. */
@@ -346,15 +350,27 @@ class App {
 
 let app: App | null = null;
 let mountEl: HTMLElement | null = null;
+/** The host page's element for the top bar (`toolbar` option), or null: the bar is at the top of the mount. */
+let barHost: HTMLElement | null = null;
 let session: AppSession = STANDALONE;
 /** Whether Netfix owns the page (its title, <html lang>, favicon): standalone on its own page, not embedded or a hosted lab. */
 let onPage = true;
 
 const ROOT_CLASS = 'netfix-root';
+const BAR_CLASS = 'netfix-bar';
+
+/** Gives the host its toolbar element back empty, without Netfix's classes or language. */
+function releaseBar(bar: HTMLElement): void {
+  bar.replaceChildren();
+  bar.classList.remove(ROOT_CLASS, BAR_CLASS);
+  bar.removeAttribute('lang');
+  if (bar.getAttribute('class') === '') bar.removeAttribute('class');
+}
 
 /** The language of the mount; mounted in a host, the page's title and <html lang> belong to the host. */
 function applyLanguage(mount: HTMLElement): void {
   mount.lang = getLocale();
+  if (barHost) barHost.lang = mount.lang;
   if (onPage) applyDocumentLanguage();
 }
 
@@ -367,16 +383,20 @@ function changeLocale(locale: Locale): void {
   app.dispose();
   setLocale(locale);
   applyLanguage(mountEl);
-  app = new App(mountEl, session, topo, where);
+  app = new App(mountEl, session, topo, where, barHost);
   app.announce(t('hint.language'));
 }
 
 /** Starts the interface in `mount` (one per page: a new start replaces the previous one). */
-function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.embedded): App {
+function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.embedded, bar: HTMLElement | null = null): App {
   app?.dispose();
   app = null;
   if (mountEl && mountEl !== mount) mountEl.replaceChildren();
+  if (barHost && barHost !== bar) releaseBar(barHost);
   mountEl = mount;
+  barHost = bar;
+  bar?.classList.add(ROOT_CLASS, BAR_CLASS); // the bar keeps Netfix's look (its rules hang off .netfix-root)
+  if (bar) mount.dataset.bar = 'host'; else delete mount.dataset.bar;
   session = s;
   onPage = page;
   MEMORY_STORE.clear();
@@ -389,7 +409,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   applyBrand(mount, page);
   // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
   forceTimestampPrompt(lockedPrompt(s.policy));
-  app = new App(mount, s, topo);
+  app = new App(mount, s, topo, undefined, bar);
   return app;
 }
 
@@ -399,8 +419,8 @@ export function startStandalone(mount: HTMLElement): App {
 }
 
 /** The handle of a mount in a host element; `destroy` gives the host its element back as it was. */
-function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefined, release: () => void): EmbedHandle {
-  let last = start(mount, s, topology, false);
+function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefined, release: () => void, bar: HTMLElement | null): EmbedHandle {
+  let last = start(mount, s, topology, false, bar);
   // A language change rebuilds the App with the same session: the handle follows the current one.
   const current = (): App | null => (session === s ? app : null);
   return {
@@ -414,9 +434,11 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
       forceTimestampPrompt(undefined);
       clearClipboard();
       mount.replaceChildren();
+      if (bar) releaseBar(bar);
+      barHost = null;
       // No Netfix class, view, mode or language left on the element.
       mount.classList.remove(ROOT_CLASS);
-      for (const k of ['view', 'mode'] as const) delete mount.dataset[k];
+      for (const k of ['view', 'mode', 'bar'] as const) delete mount.dataset[k];
       mount.removeAttribute('lang');
       removeBrand(mount);
       for (const attr of ['class', 'style']) if (mount.getAttribute(attr) === '') mount.removeAttribute(attr);
@@ -429,19 +451,21 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
 export const NETFIX_API: NetfixApi = {
   embed: (mount, options): EmbedHandle => {
     checkMount(mount);
-    const { session: s, topology } = embedSession(options);
-    return hosted(mount, s, topology, () => undefined);
+    const { rest, toolbar } = takeToolbar(mount, options);
+    const { session: s, topology } = embedSession(rest);
+    return hosted(mount, s, topology, () => undefined, toolbar);
   },
   // The standalone lab (settings, theme, autosave, preferences) in a host's element; its theme needs <html data-theme>,
   // which destroy puts back. A fresh session object, so a handle never follows another mount's App.
-  lab: (mount): EmbedHandle => {
+  lab: (mount, options): EmbedHandle => {
     checkMount(mount);
+    const toolbar = labToolbar(mount, options);
     const html = document.documentElement;
     const theme = html.dataset.theme;
     return hosted(mount, { ...STANDALONE }, undefined, () => {
       if (theme === undefined) delete html.dataset.theme;
       else html.dataset.theme = theme;
-    });
+    }, toolbar);
   },
   evaluate: evaluateFile,
 };

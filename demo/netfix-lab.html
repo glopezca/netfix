@@ -92,6 +92,10 @@
   color-scheme: dark;
 }
 
+/* The bar in the host's element: only Netfix's look, not the mount's layout; the mount is then all workspace. */
+.netfix-bar.netfix-root { display: block; position: static; overflow: visible; background: var(--panel); color: var(--ink); font: 15px/1.45 var(--font-ui); }
+[data-bar="host"].netfix-root { grid-template-rows: minmax(0, 1fr) auto; }
+
 /* The host sizes the mount (the standalone page gives #app 100dvh in index.html); its windows stay inside it (position). */
 .netfix-root {
   position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden;
@@ -106,6 +110,11 @@
     padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
   }
   .topbar .select { max-width: 11rem; }
+  /* In the host page's menu (`toolbar` option): one control per row, the host's menu is the frame. */
+  .topbar.is-hosted { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 10px; padding: 12px; border: 0; }
+  .topbar.is-hosted .time { margin-left: 0; }
+  .topbar.is-hosted .select { max-width: none; }
+  .topbar.is-hosted > .segmented { overflow-x: auto; }
   .brand { margin: 0 8px 0 0; line-height: 0; }
   .brand-logo { height: 30px; width: auto; display: block; }
   .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -1258,9 +1267,9 @@ const APP_ES = {
     'top.mode': 'Modo',
     'top.file': 'Archivo',
     'top.new': 'Nuevo',
-    'top.open': 'Abrir…',
-    'top.save': 'Guardar',
-    'top.saveTitle': 'Guardar la topología en un archivo .json (Ctrl+S)',
+    'top.open': 'Importar…',
+    'top.save': 'Exportar',
+    'top.saveTitle': 'Exportar la topología a un archivo .json (Ctrl+S)',
     'top.view': 'Vista',
     'top.menu': 'Menú',
     'top.language': 'Idioma',
@@ -1288,17 +1297,17 @@ const APP_ES = {
     'hint.empty': 'Área de trabajo vacía.',
     'unsaved.title': 'Cambios sin guardar',
     'unsaved.body': 'La red actual tiene cambios que no has guardado. Si abres el laboratorio «{lab}», se perderán.',
-    'unsaved.keep': 'Para conservarlos, cancela y pulsa Guardar.',
+    'unsaved.keep': 'Para conservarlos, cancela y pulsa Exportar.',
     'unsaved.cancel': 'Cancelar',
     'unsaved.proceed': 'Abrir el laboratorio',
     'unsaved.bodyNew': 'La red actual tiene cambios que no has guardado. Si empiezas una red nueva, se perderán.',
     'unsaved.proceedNew': 'Empezar una red nueva',
-    'unsaved.bodyOpen': 'La red actual tiene cambios que no has guardado. Si abres otro archivo, se perderán.',
+    'unsaved.bodyOpen': 'La red actual tiene cambios que no has guardado. Si importas otro archivo, se perderán.',
     'unsaved.proceedOpen': 'Elegir otro archivo',
     'hint.copied': 'Topología copiada al portapapeles: pégala en un archivo .json para guardarla.',
     'hint.copyFailed': 'No se pudo copiar. Usa la versión descargable de Netfix para guardar archivos.',
     'hint.saved': 'Topología guardada.',
-    'hint.downloaded': 'Descargado {name}. Ábrelo luego con Abrir….',
+    'hint.downloaded': 'Descargado {name}. Ábrelo luego con Importar….',
     'hint.opened': 'Abierto {name}.',
     'hint.openFailed': 'No se pudo abrir {name}: {error}',
     'hint.unknownFormat': 'formato desconocido',
@@ -1335,9 +1344,9 @@ const APP_EN = {
     'top.mode': 'Mode',
     'top.file': 'File',
     'top.new': 'New',
-    'top.open': 'Open…',
-    'top.save': 'Save',
-    'top.saveTitle': 'Save the topology to a .json file (Ctrl+S)',
+    'top.open': 'Import…',
+    'top.save': 'Export',
+    'top.saveTitle': 'Export the topology to a .json file (Ctrl+S)',
     'top.view': 'View',
     'top.menu': 'Menu',
     'top.language': 'Language',
@@ -1365,17 +1374,17 @@ const APP_EN = {
     'hint.empty': 'Empty workspace.',
     'unsaved.title': 'Unsaved changes',
     'unsaved.body': 'The current network has changes you have not saved. If you open the lab “{lab}”, they will be lost.',
-    'unsaved.keep': 'To keep them, cancel and press Save.',
+    'unsaved.keep': 'To keep them, cancel and press Export.',
     'unsaved.cancel': 'Cancel',
     'unsaved.proceed': 'Open the lab',
     'unsaved.bodyNew': 'The current network has changes you have not saved. If you start a new network, they will be lost.',
     'unsaved.proceedNew': 'Start a new network',
-    'unsaved.bodyOpen': 'The current network has changes you have not saved. If you open another file, they will be lost.',
+    'unsaved.bodyOpen': 'The current network has changes you have not saved. If you import another file, they will be lost.',
     'unsaved.proceedOpen': 'Choose another file',
     'hint.copied': 'Topology copied to the clipboard: paste it into a .json file to keep it.',
     'hint.copyFailed': 'Could not copy. Use the downloadable version of Netfix to save files.',
     'hint.saved': 'Topology saved.',
-    'hint.downloaded': 'Downloaded {name}. Open it later with Open….',
+    'hint.downloaded': 'Downloaded {name}. Open it later with Import….',
     'hint.opened': 'Opened {name}.',
     'hint.openFailed': 'Could not open {name}: {error}',
     'hint.unknownFormat': 'unknown format',
@@ -20121,7 +20130,7 @@ const NETFIX_DOCS = {
                 h('Barra superior'),
                 table(['Control', 'Qué hace'], [
                     ['Red / Ayuda / Configuración / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta ayuda, los ajustes (ver «Configuración»), la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
-                    ['Nuevo · Abrir… · Guardar', 'Área vacía, abrir un .json o guardar la topología (Ctrl+S). Nuevo, Abrir y Laboratorios preguntan antes de reemplazar una red con cambios sin guardar.'],
+                    ['Nuevo · Importar… · Exportar', 'Área vacía, importar un .json o exportar la topología (Ctrl+S). Nuevo, Importar y Laboratorios preguntan antes de reemplazar una red con cambios sin guardar.'],
                     ['Laboratorios…', 'Carga una práctica preparada, agrupada por temas: DHCP (básico, reservas, relay, router cliente); Conmutación y VLAN (router-on-a-stick, spanning tree, snooping); Servicios (Server, SSH/SFTP); Resolución de nombres (LAN sin DNS propio, nombres entre redes, DNS que reenvía); Internet y VPN (dos sedes, IPsec, WireGuard); Seguridad (router GNU/Linux con DMZ, bastionado).'],
                     ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
                     ['Tiempo real / Simulación', 'Modo de ejecución (ver «Tiempo real y simulación»).'],
@@ -20139,7 +20148,7 @@ const NETFIX_DOCS = {
                 ]),
                 note('Los campos de los equipos se aplican al cambiarlos (Intro o al salir del campo): nombre, direcciones, nube e ISP. Llevan botón los servicios («Aplicar» equivale a reiniciarlos con systemctl), los formularios que se traducen a órdenes de IOS y las listas (añadir un pool, una zona, una ruta…).'),
                 note('Las ventanas se mueven por la cabecera y cambian de tamaño desde la esquina. Escape cierra la ventana activa (salvo dentro de nano o vim). En móvil y tableta las ventanas ocupan la pantalla, el lienzo se mueve con un dedo y se amplía pellizcando, una pulsación larga abre un equipo y la terminal tiene una barra de teclas: Esc, Tab, Ctrl (se queda pulsada para la tecla siguiente), flechas, Inicio, Fin, RePág, AvPág, ^C y ^D, y con un editor abierto F1-F10. Fuera de los editores, Inicio y Fin van al principio o al final de la línea, y RePág y AvPág desplazan la salida.'),
-                warn('Errores habituales', 'Dos equipos con la misma dirección IP, o con máscaras distintas: el ping falla a ratos o no sale. Un cable en un puerto apagado (luz roja): en un router hace falta `no shutdown`. Cerrar la pestaña del navegador no pierde nada (el área de trabajo se guarda sola), pero para entregar una práctica usa **Guardar**.'),
+                warn('Errores habituales', 'Dos equipos con la misma dirección IP, o con máscaras distintas: el ping falla a ratos o no sale. Un cable en un puerto apagado (luz roja): en un router hace falta `no shutdown`. Cerrar la pestaña del navegador no pierde nada (el área de trabajo se guarda sola), pero para entregar una práctica usa **Exportar**.'),
                 exercise('Tres en la misma red', 'Añade un tercer PC al switch de «Tu primera red» con la dirección IP 192.168.1.12/24 y comprueba desde él que llega a los otros dos.', 'Coloca PC2, conéctalo a un puerto libre del switch, ponle 192.168.1.12 y máscara 255.255.255.0 en TCP/IP, y en su Terminal Windows `ping 192.168.1.10` y `ping 192.168.1.11`: los dos responden («Reply from …»). No hace falta puerta de enlace: los tres están en la misma red.'),
             ],
         },
@@ -20194,15 +20203,15 @@ const NETFIX_DOCS = {
         },
         {
             id: 'guardar',
-            title: 'Guardar y abrir',
+            title: 'Exportar e importar',
             summary: 'Qué guarda el archivo .json, cómo se recupera y cómo entregar una práctica.',
             markdownBase: MD,
             blocks: [
-                p('Guardar (o Ctrl+S) crea un archivo .json con toda la arquitectura. En Chrome y Edge aparece el diálogo para elegir nombre y carpeta; en otros navegadores se descarga. Además, el área de trabajo se guarda sola en el navegador.'),
+                p('Exportar (o Ctrl+S) crea un archivo .json con toda la arquitectura. En Chrome y Edge aparece el diálogo para elegir nombre y carpeta; en otros navegadores se descarga. Además, el área de trabajo se guarda sola en el navegador.'),
                 list('Posiciones de los equipos y cables.', 'Configuración IOS (running-config y startup-config).', 'Dirección IP, Client-ID y sistema operativo de PCs y servidores.', 'Servicios, registros DNS, pools y reservas DHCP, páginas web, buzones y cuentas de correo.', 'Ficheros creados o modificados desde la Terminal GNU/Linux (home, scripts, cambios en /etc, historial de bash).'),
                 note('Límites de los ficheros de la terminal: 256 KiB por fichero y 4 MiB por equipo. Los ficheros generados (configuración de servicios) no se guardan: se recalculan.'),
-                p('Abrir… valida el archivo antes de usarlo y sigue aceptando el formato anterior (v1).'),
-                steps(['Guarda', '**Guardar** (Ctrl+S) y elige un nombre que diga qué es: `practica3-dhcp-apellido.json`.'], ['Comprueba', '**Nuevo** para vaciar el área y **Abrir…** con tu archivo: debe aparecer todo como lo dejaste.'], ['Entrega', 'Ese .json es lo que se sube a la plataforma del curso.']),
+                p('Importar… valida el archivo antes de usarlo y sigue aceptando el formato anterior (v1).'),
+                steps(['Exporta', '**Exportar** (Ctrl+S) y elige un nombre que diga qué es: `practica3-dhcp-apellido.json`.'], ['Comprueba', '**Nuevo** para vaciar el área e **Importar…** con tu archivo: debe aparecer todo como lo dejaste.'], ['Entrega', 'Ese .json es lo que se sube a la plataforma del curso.']),
                 warn('Lo que no se guarda', 'La salida de las terminales y los procesos en marcha (una sesión SSH abierta, un `ping` largo). Los cambios hechos en la CLI de IOS sí se guardan en la running-config, pero si quieres que sobrevivan a un `reload` del router, guárdalos también con `copy running-config startup-config`.'),
                 exercise('Ida y vuelta', 'Carga el laboratorio «DHCP básico», añade la descripción «LAN del aula» a GigabitEthernet0/0 de GW, guarda el archivo, pulsa Nuevo y ábrelo otra vez.', 'Tras Abrir…, en la CLI de GW `show running-config | section 0/0` sigue mostrando `description LAN del aula`: la configuración de IOS viaja dentro del .json.'),
             ],
@@ -20247,7 +20256,7 @@ const SETTINGS_DOCS = [
         summary: 'Idioma, tema y aviso de cambios sin guardar; y qué ajustes muestra cada tipo de equipo en el laboratorio abierto.',
         markdownBase: MD,
         blocks: [
-            p('La pestaña **Configuración** (junto a Ayuda) tiene dos apartados. **Generales** vale para cualquier red y se guarda en este navegador. **Laboratorio actual** es de la red abierta: se guarda con ella al pulsar Guardar, y viaja en el archivo .netfix.json.'),
+            p('La pestaña **Configuración** (junto a Ayuda) tiene dos apartados. **Generales** vale para cualquier red y se guarda en este navegador. **Laboratorio actual** es de la red abierta: se guarda con ella al pulsar Exportar, y viaja en el archivo .netfix.json.'),
             h('Generales'),
             table(['Ajuste', 'Qué hace'], [
                 ['Idioma', 'Español (España) o English (UK), como el desplegable de la barra superior.'],
@@ -20277,7 +20286,7 @@ const SETTINGS_DOCS = [
             p('**Los sistemas de un equipo son sus terminales.** Marcar la terminal Windows en un equipo GNU/Linux le da Windows, con lo que trae de serie (Compartir archivos e impresoras para redes Microsoft, NetBIOS, LLMNR y mDNS propios); desmarcarla se lo quita, y con ello su servicio de compartir. Lo mismo con la terminal GNU/Linux (apt, sus paquetes y sus servicios). Con las dos marcadas, la pestaña **Servicios** agrupa sus paneles bajo **GNU/Linux** y **Windows**. Sin ninguna terminal marcada, el equipo tiene el sistema de su pestaña TCP/IP.'),
             p('Al **colocar un PC** desde la paleta, Netfix pregunta si es GNU/Linux, Windows o ambos, y activa su terminal y la pila de red de ese sistema (TCP/IP → sistema operativo). Se puede cambiar después. Los servidores no preguntan: llevan GNU/Linux.'),
             p('La **gestión web** de servidores y routers GNU/Linux enseña en gris, sin formularios, las páginas de lo desactivado (en el equipo o en el laboratorio). Con la casilla **Ocultar en la gestión web… las opciones desactivadas** de Laboratorio actual ni siquiera aparecen en el menú.'),
-            steps(['Abre la pestaña', '**Configuración**, apartado **Laboratorio actual**.'], ['Marca o desmarca', 'Cada casilla cambia al momento. Las ventanas abiertas se cierran: al abrirlas de nuevo ya tienen las pestañas nuevas.'], ['Guarda', 'Es un cambio de la red: **Guardar** lo lleva al archivo, y cambiar de laboratorio sin guardar avisa.']),
+            steps(['Abre la pestaña', '**Configuración**, apartado **Laboratorio actual**.'], ['Marca o desmarca', 'Cada casilla cambia al momento. Las ventanas abiertas se cierran: al abrirlas de nuevo ya tienen las pestañas nuevas.'], ['Exporta', 'Es un cambio de la red: **Exportar** lo lleva al archivo, y cambiar de laboratorio sin guardar avisa.']),
             check('Compruébalo', 'Desmarca **Terminal Windows** en PC y abre un PC: ya no tiene esa pestaña. **Restablecer los valores predeterminados** la devuelve.'),
             tip('En el aula', 'Embebido en una práctica de Netfix Classroom, el apartado del laboratorio es de solo lectura, y las restricciones del profesor siguen mandando: una pestaña que él oculta no aparece aunque esté marcada aquí.'),
             exercise('Un servidor con cortafuegos', 'En el laboratorio «Server: DHCP, DNS, web, correo y SSH», haz que el servidor muestre el panel Firewall y comprueba que no bloquea el acceso web.', 'En la ventana de SRV, pestaña **Configuración**, marca **Firewall** (o en su terminal `sudo apt install nftables`). Después, Servicios → Firewall aparece con su servicio parado. Desde PC0, el navegador sigue abriendo http://www.aula.lab mientras no actives nftables con reglas que lo impidan.'),
@@ -22793,7 +22802,7 @@ const NETFIX_DOCS = {
                 h('Top bar'),
                 table(['Control', 'What it does'], [
                     ['Network / Help / Settings / Donations / About', 'Switches between the workspace, this help, the settings (see “Settings”), the page for supporting the project (PayPal.Me) and the version, authorship, licence and attribution information (taken from package.json and LICENSE.md).'],
-                    ['New · Open… · Save', 'Empty workspace, open a .json file or save the topology (Ctrl+S). New, Open and Labs ask before replacing a network with unsaved changes.'],
+                    ['New · Import… · Export', 'Empty workspace, import a .json file or export the topology (Ctrl+S). New, Import and Labs ask before replacing a network with unsaved changes.'],
                     ['Labs…', 'Loads a ready-made exercise, grouped by theme: DHCP (basic, reservations, relay, client router); Switching and VLANs (router-on-a-stick, spanning tree, snooping); Services (Server, SSH/SFTP); Name resolution (LAN with no DNS of its own, names across networks, forwarding DNS); Internet and VPN (two sites, IPsec, WireGuard); Security (GNU/Linux router with DMZ, hardening).'],
                     ['Clock and “Advance clock…”', 'Simulated time. Moving it forward 1 minute, 1 hour or 1 day makes DHCP leases expire or renew.'],
                     ['Realtime / Simulation', 'Execution mode (see “Realtime and simulation”).'],
@@ -22811,7 +22820,7 @@ const NETFIX_DOCS = {
                 ]),
                 note('Device fields apply when they change (Enter or leaving the field): name, addresses, cloud and ISP. Buttons remain for services («Apply» is restarting them with systemctl), forms that become IOS commands and lists (add a pool, a zone, a route…).'),
                 note('Windows are moved by their title bar and resized from the corner. Escape closes the active window (except inside nano or vim). On phones and tablets windows fill the screen, the canvas is panned with one finger and zoomed by pinching, a long press opens a device and the terminal has a key bar: Esc, Tab, Ctrl (held for the next key), arrows, Home, End, PgUp, PgDn, ^C and ^D, plus F1-F10 while an editor is open. Outside the editors, Home and End go to the start or end of the line, and PgUp and PgDn scroll the output.'),
-                warn('Common mistakes', 'Two devices with the same IP address, or with different masks: the ping fails now and then or does not get out. A cable in a port that is shut down (red light): on a router you need `no shutdown`. Closing the browser tab loses nothing (the workspace saves itself), but to hand in a practical use **Save**.'),
+                warn('Common mistakes', 'Two devices with the same IP address, or with different masks: the ping fails now and then or does not get out. A cable in a port that is shut down (red light): on a router you need `no shutdown`. Closing the browser tab loses nothing (the workspace saves itself), but to hand in a practical use **Export**.'),
                 exercise('Three on the same network', 'Add a third PC to the switch of “Your first network” with the IP address 192.168.1.12/24 and check from it that it reaches the other two.', 'Place PC2, plug it into a free switch port, give it 192.168.1.12 and mask 255.255.255.0 in TCP/IP, and in its Windows terminal `ping 192.168.1.10` and `ping 192.168.1.11`: both answer (“Reply from …”). No gateway is needed: the three are on the same network.'),
             ],
         },
@@ -22866,15 +22875,15 @@ const NETFIX_DOCS = {
         },
         {
             id: 'guardar',
-            title: 'Saving and opening',
+            title: 'Exporting and importing',
             summary: 'What the .json file stores, how it is restored and how to hand in a practical.',
             markdownBase: MD,
             blocks: [
-                p('Save (or Ctrl+S) creates a .json file with the whole architecture. In Chrome and Edge a dialogue appears for choosing the name and folder; in other browsers it is downloaded. The workspace is also saved automatically in the browser.'),
+                p('Export (or Ctrl+S) creates a .json file with the whole architecture. In Chrome and Edge a dialogue appears for choosing the name and folder; in other browsers it is downloaded. The workspace is also saved automatically in the browser.'),
                 list('Positions of devices and cables.', 'IOS configuration (running-config and startup-config).', 'IP address, Client-ID and operating system of PCs and servers.', 'Services, DNS records, DHCP pools and reservations, web pages, mailboxes and mail accounts.', 'Files created or modified from the GNU/Linux Terminal (home, scripts, changes in /etc, bash history).'),
                 note('Limits for terminal files: 256 KiB per file and 4 MiB per device. Generated files (service configuration) are not saved: they are recalculated.'),
-                p('Open… validates the file before using it and still accepts the previous format (v1).'),
-                steps(['Save', '**Save** (Ctrl+S) and choose a name that says what it is: `practica3-dhcp-surname.json`.'], ['Check', '**New** to empty the workspace and **Open…** with your file: everything must appear as you left it.'], ['Hand it in', 'That .json is what you upload to the course platform.']),
+                p('Import… validates the file before using it and still accepts the previous format (v1).'),
+                steps(['Export', '**Export** (Ctrl+S) and choose a name that says what it is: `practica3-dhcp-surname.json`.'], ['Check', '**New** to empty the workspace and **Import…** with your file: everything must appear as you left it.'], ['Hand it in', 'That .json is what you upload to the course platform.']),
                 warn('What is not saved', 'The output of the terminals and running processes (an open SSH session, a long `ping`). Changes made in the IOS CLI are saved in the running-config, but if you want them to survive a router `reload`, also save them with `copy running-config startup-config`.'),
                 exercise('There and back', 'Load the «Basic DHCP» lab, add the description “LAN del aula” to GW’s GigabitEthernet0/0, save the file, click New and open it again.', 'After Open…, `show running-config | section 0/0` in GW’s CLI still shows `description LAN del aula`: the IOS configuration travels inside the .json.'),
             ],
@@ -22919,7 +22928,7 @@ const SETTINGS_DOCS = [
         summary: 'Language, theme and the unsaved-changes question; and which settings each kind of device shows in the open lab.',
         markdownBase: MD,
         blocks: [
-            p('The **Settings** tab (next to Help) has two sections. **General** applies to any network and is kept in this browser. **Current lab** belongs to the open network: it is saved with it when you press Save, and travels in the .netfix.json file.'),
+            p('The **Settings** tab (next to Help) has two sections. **General** applies to any network and is kept in this browser. **Current lab** belongs to the open network: it is saved with it when you press Export, and travels in the .netfix.json file.'),
             h('General'),
             table(['Setting', 'What it does'], [
                 ['Language', 'Español (España) or English (UK), like the drop-down in the top bar.'],
@@ -22949,7 +22958,7 @@ const SETTINGS_DOCS = [
             p('**A device’s systems are its terminals.** Ticking the Windows terminal on a GNU/Linux device gives it Windows, with what it brings out of the box (File and Printer Sharing for Microsoft Networks, its own NetBIOS, LLMNR and mDNS); unticking it takes it away, and its sharing service with it. The same goes for the GNU/Linux terminal (apt, its packages and its services). With both ticked, the **Services** tab groups its panels under **GNU/Linux** and **Windows**. With no terminal ticked, the device has the system of its TCP/IP tab.'),
             p('When you **place a PC** from the palette, Netfix asks whether it runs GNU/Linux, Windows or both, and turns on its terminal and that system’s network stack (TCP/IP → operating system). It can be changed later. Servers do not ask: they run GNU/Linux.'),
             p('The **web management** of servers and GNU/Linux routers shows greyed out, without forms, the pages of whatever is off (on the device or in the lab). With the **Hide disabled options in the web management…** box of Current lab they are not even in the menu.'),
-            steps(['Open the tab', '**Settings**, section **Current lab**.'], ['Tick or untick', 'Each box applies at once. Open windows close: when opened again they have the new tabs.'], ['Save', 'It is a change to the network: **Save** puts it in the file, and changing lab without saving asks first.']),
+            steps(['Open the tab', '**Settings**, section **Current lab**.'], ['Tick or untick', 'Each box applies at once. Open windows close: when opened again they have the new tabs.'], ['Export', 'It is a change to the network: **Export** puts it in the file, and changing lab without saving asks first.']),
             check('Check it', 'Untick **Windows terminal** for PC and open a PC: it no longer has that tab. **Restore the defaults** brings it back.'),
             tip('In the classroom', 'Embedded in a Netfix Classroom exercise, the lab section is read-only, and the teacher’s restrictions still rule: a tab the teacher hides does not appear even if it is ticked here.'),
             exercise('A server with a firewall', 'In the lab “Server: DHCP, DNS, web, mail and SSH”, make the server show the Firewall panel and check that it does not block web access.', 'In the SRV window, **Settings** tab, tick **Firewall** (or in its terminal `sudo apt install nftables`). Then, Services → Firewall appears with its service stopped. From PC0, the browser still opens http://www.aula.lab as long as you do not start nftables with rules that prevent it.'),
@@ -33155,7 +33164,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.54.0",
+    "version": "0.55.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -72799,24 +72808,37 @@ function labGroups(allowed) {
 function only(items) {
     return items.filter(([on]) => on).map(([, x]) => x);
 }
-function topbar(actions, clockEl, mode, view = 'net', policy = NO_RESTRICTIONS) {
+/** `hosted`: the bar goes in the host page's own menu (`toolbar` option of `netfix.lab`/`netfix.embed`), without the
+ * logo or the phone menu: the host shows Netfix's name and opens and closes it. */
+function topbar(actions, clockEl, mode, view = 'net', policy = NO_RESTRICTIONS, hosted = false) {
     const allowed = EXAMPLES.filter((e) => allowsLab(policy, e.id));
     const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), labGroups(allowed), (id) => actions.loadExample(id));
     const advance = actionSelect(t('top.advanceLabel'), t('top.advance'), [[String(MINUTE), t('top.plusMinute')], [String(60 * MINUTE), t('top.plusHour')], [String(24 * 60 * MINUTE), t('top.plusDay')]], (v) => actions.advance(Number(v)));
+    const items = [
+        el('nav', { class: 'file-actions', 'aria-label': t('top.file') }, ...only([
+            [policy.fileNew, button(t('top.new'), () => actions.newWorkspace())], [policy.fileOpen, button(t('top.open'), () => actions.openFile())],
+            [policy.fileSave, button(t('top.save'), () => actions.save(), { title: t('top.saveTitle') })], [allowed.length > 0, labs]
+        ])),
+        el('div', { class: 'time' }, clockEl, ...only([[policy.clock, advance]])),
+        ...only([[policy.simulation, segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime'))]]),
+        languageSelect(actions)
+    ];
+    let closeMenu = () => undefined; // hosted, the host closes its own menu
+    const views = segmented(t('top.view'), VIEWS.filter(([v]) => v !== 'docs' || policy.docs).map(([v, k]) => [v, t(k)]), view, (v) => {
+        actions.showView(v);
+        closeMenu();
+    }, 'data-view');
+    if (hosted)
+        return el('div', { class: 'topbar is-hosted', role: 'group', 'aria-label': 'Netfix' }, views, ...items);
     const menuId = 'topbar-menu';
     const toggle = el('button', { type: 'button', class: 'btn menu-toggle', 'aria-expanded': 'false', 'aria-controls': menuId }, el('span', { 'aria-hidden': 'true' }, '☰'), el('span', { class: 'menu-toggle-label' }, t('top.menu')));
-    const menu = el('div', { class: 'topbar-menu', id: menuId }, el('nav', { class: 'file-actions', 'aria-label': t('top.file') }, ...only([
-        [policy.fileNew, button(t('top.new'), () => actions.newWorkspace())], [policy.fileOpen, button(t('top.open'), () => actions.openFile())],
-        [policy.fileSave, button(t('top.save'), () => actions.save(), { title: t('top.saveTitle') })], [allowed.length > 0, labs]
-    ])), el('div', { class: 'time' }, clockEl, ...only([[policy.clock, advance]])), ...only([[policy.simulation, segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime'))]]), languageSelect(actions));
-    const bar = el('header', { class: 'topbar', 'data-open': 'false' }, el('h1', { class: 'brand' }, brandImage('logo', 'brand-logo', 'Netfix')), segmented(t('top.view'), VIEWS.filter(([v]) => v !== 'docs' || policy.docs).map(([v, k]) => [v, t(k)]), view, (v) => {
-        actions.showView(v);
-        setOpen(false);
-    }, 'data-view'), toggle, menu);
+    const menu = el('div', { class: 'topbar-menu', id: menuId }, ...items);
+    const bar = el('header', { class: 'topbar', 'data-open': 'false' }, el('h1', { class: 'brand' }, brandImage('logo', 'brand-logo', 'Netfix')), views, toggle, menu);
     const setOpen = (open) => {
         bar.dataset.open = String(open);
         toggle.setAttribute('aria-expanded', String(open));
     };
+    closeMenu = () => setOpen(false);
     toggle.addEventListener('click', () => setOpen(bar.dataset.open !== 'true'));
     menu.addEventListener('click', (e) => { if (e.target.closest('button.btn'))
         setOpen(false); });
@@ -73231,6 +73253,28 @@ function checkMount(mount) {
     if (typeof HTMLElement === 'undefined' || !(mount instanceof HTMLElement))
         throw new Error('netfix.embed: falta el elemento donde montar Netfix');
 }
+/**
+ * The `toolbar` option of `netfix.embed` and `netfix.lab`: an element of the host page (its menu, say) where Netfix puts
+ * its top bar, so the workspace gets the whole mount. Not inside the mount, nor around it: each would empty the other.
+ */
+function takeToolbar(mount, options) {
+    if (typeof options !== 'object' || options === null || !Object.hasOwn(options, 'toolbar'))
+        return { rest: options, toolbar: null };
+    const { toolbar, ...rest } = options;
+    if (typeof HTMLElement === 'undefined' || !(toolbar instanceof HTMLElement))
+        throw new Error('netfix: «toolbar» debe ser un elemento de la página');
+    if (mount.contains(toolbar) || toolbar.contains(mount))
+        throw new Error('netfix: «toolbar» no puede estar dentro del elemento donde se monta Netfix ni contenerlo');
+    return { rest, toolbar };
+}
+/** `netfix.lab` options: none, or only `toolbar`. */
+function labToolbar(mount, options) {
+    const { rest, toolbar } = takeToolbar(mount, options);
+    if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
+        throw new Error('netfix.lab: la única opción es «toolbar»');
+    }
+    return toolbar;
+}
 /** Publishes the API as `globalThis.netfix` (read-only, so a page script cannot swap it). */
 function installApi(api) {
     // Own property only: an element with id="netfix" also shows up as a (named) property of window.
@@ -73239,7 +73283,7 @@ function installApi(api) {
     Object.defineProperty(globalThis, 'netfix', { value: Object.freeze(api), enumerable: false, writable: false, configurable: false });
 }
 
-return { checkMount, installApi };
+return { checkMount, takeToolbar, labToolbar, installApi };
 })();
 __m["ui/main.js"] = (() => {
 /** Netfix application shell: top bar, workspace, palette, views, windows and simulation panel. */
@@ -73273,7 +73317,7 @@ const { allowsLab, allowsTab, lockedPrompt } = __m["classroom/restrictions.js"];
 const { forceTimestampPrompt } = __m["shells/prompt-clock.js"];
 const { formatToolbarClock } = __m["core/clock.js"];
 const { STANDALONE, embedSession, evaluateFile } = __m["classroom/embed.js"];
-const { checkMount } = __m["ui/embed-api.js"];
+const { checkMount, labToolbar, takeToolbar } = __m["ui/embed-api.js"];
 const BROWSER_STORE = { get: safeStorageGet, set: safeStorageSet };
 const TICK_MS = 250;
 const AUTOSAVE_DELAY_MS = 800;
@@ -73287,6 +73331,8 @@ class App {
     clockEl;
     toolButtons = new Map();
     fileInput;
+    /** The top bar: at the top of the mount, or in the host page's element (`toolbar` option). */
+    barEl;
     stageEl;
     paletteEl;
     pageHost;
@@ -73324,7 +73370,7 @@ class App {
     onPointerDown = (e) => {
         this.workspaceActive = e.target instanceof Node && this.canvas.root.contains(e.target);
     };
-    constructor(root, session, topo, initial = { view: 'net', mode: 'realtime' }) {
+    constructor(root, session, topo, initial = { view: 'net', mode: 'realtime' }, hostBar = null) {
         this.rootEl = root;
         this.session = session;
         this.saved = new SavedState(session.embedded ? MEMORY_STORE : BROWSER_STORE);
@@ -73365,7 +73411,9 @@ class App {
         this.pageHost = el('main', { class: 'docs-host', hidden: true });
         this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
         this.fileInput.addEventListener('change', () => void this.openFile());
-        root.replaceChildren(this.topbar(), this.stageEl, this.pageHost, this.paletteEl, winLayer, this.fileInput);
+        this.barEl = this.topbar(hostBar !== null);
+        hostBar?.replaceChildren(this.barEl);
+        root.replaceChildren(...(hostBar ? [] : [this.barEl]), this.stageEl, this.pageHost, this.paletteEl, winLayer, this.fileInput);
         this.canvas.setTool({ kind: 'select' });
         this.canvas.render();
         this.canvas.frameContent();
@@ -73402,7 +73450,7 @@ class App {
             return false;
         return app === this && this.topo === topo;
     }
-    topbar() {
+    topbar(hosted) {
         return topbar({
             newWorkspace: () => void this.replaceAllowed('new').then((ok) => ok && this.load(new Topology(), t('hint.empty'))),
             openFile: () => void this.replaceAllowed('open').then((ok) => ok && this.fileInput.click()),
@@ -73417,7 +73465,7 @@ class App {
             setMode: (m) => this.setMode(m),
             showView: (v) => this.showView(v),
             setLocale: (l) => changeLocale(l),
-        }, this.clockEl, this.mode, this.view, this.session.policy);
+        }, this.clockEl, this.mode, this.view, this.session.policy, hosted);
     }
     setMode(m, hint = true) {
         this.mode = m;
@@ -73481,7 +73529,7 @@ class App {
     openDoc(id) {
         this.showView('docs');
         this.pages.showDoc(id);
-        for (const b of this.rootEl.querySelectorAll('.topbar [data-view]'))
+        for (const b of this.barEl.querySelectorAll('[data-view]'))
             b.setAttribute('aria-pressed', String(b.dataset.view === 'docs'));
     }
     /** "PC0 (FastEthernet0)" at the far end of a cable, for the device windows. */
@@ -73583,13 +73631,26 @@ class App {
 }
 let app = null;
 let mountEl = null;
+/** The host page's element for the top bar (`toolbar` option), or null: the bar is at the top of the mount. */
+let barHost = null;
 let session = STANDALONE;
 /** Whether Netfix owns the page (its title, <html lang>, favicon): standalone on its own page, not embedded or a hosted lab. */
 let onPage = true;
 const ROOT_CLASS = 'netfix-root';
+const BAR_CLASS = 'netfix-bar';
+/** Gives the host its toolbar element back empty, without Netfix's classes or language. */
+function releaseBar(bar) {
+    bar.replaceChildren();
+    bar.classList.remove(ROOT_CLASS, BAR_CLASS);
+    bar.removeAttribute('lang');
+    if (bar.getAttribute('class') === '')
+        bar.removeAttribute('class');
+}
 /** The language of the mount; mounted in a host, the page's title and <html lang> belong to the host. */
 function applyLanguage(mount) {
     mount.lang = getLocale();
+    if (barHost)
+        barHost.lang = mount.lang;
     if (onPage)
         applyDocumentLanguage();
 }
@@ -73604,16 +73665,24 @@ function changeLocale(locale) {
     app.dispose();
     setLocale(locale);
     applyLanguage(mountEl);
-    app = new App(mountEl, session, topo, where);
+    app = new App(mountEl, session, topo, where, barHost);
     app.announce(t('hint.language'));
 }
 /** Starts the interface in `mount` (one per page: a new start replaces the previous one). */
-function start(mount, s, topo, page = !s.embedded) {
+function start(mount, s, topo, page = !s.embedded, bar = null) {
     app?.dispose();
     app = null;
     if (mountEl && mountEl !== mount)
         mountEl.replaceChildren();
+    if (barHost && barHost !== bar)
+        releaseBar(barHost);
     mountEl = mount;
+    barHost = bar;
+    bar?.classList.add(ROOT_CLASS, BAR_CLASS); // the bar keeps Netfix's look (its rules hang off .netfix-root)
+    if (bar)
+        mount.dataset.bar = 'host';
+    else
+        delete mount.dataset.bar;
     session = s;
     onPage = page;
     MEMORY_STORE.clear();
@@ -73633,7 +73702,7 @@ function start(mount, s, topo, page = !s.embedded) {
     applyBrand(mount, page);
     // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
     forceTimestampPrompt(lockedPrompt(s.policy));
-    app = new App(mount, s, topo);
+    app = new App(mount, s, topo, undefined, bar);
     return app;
 }
 /** The page's whole interface; `ui/boot.ts` starts it on `#app` (importing this module has no effects, R7). */
@@ -73641,8 +73710,8 @@ function startStandalone(mount) {
     return start(mount, STANDALONE);
 }
 /** The handle of a mount in a host element; `destroy` gives the host its element back as it was. */
-function hosted(mount, s, topology, release) {
-    let last = start(mount, s, topology, false);
+function hosted(mount, s, topology, release, bar) {
+    let last = start(mount, s, topology, false, bar);
     // A language change rebuilds the App with the same session: the handle follows the current one.
     const current = () => (session === s ? app : null);
     return {
@@ -73657,9 +73726,12 @@ function hosted(mount, s, topology, release) {
             forceTimestampPrompt(undefined);
             clearClipboard();
             mount.replaceChildren();
+            if (bar)
+                releaseBar(bar);
+            barHost = null;
             // No Netfix class, view, mode or language left on the element.
             mount.classList.remove(ROOT_CLASS);
-            for (const k of ['view', 'mode'])
+            for (const k of ['view', 'mode', 'bar'])
                 delete mount.dataset[k];
             mount.removeAttribute('lang');
             removeBrand(mount);
@@ -73674,13 +73746,15 @@ function hosted(mount, s, topology, release) {
 const NETFIX_API = {
     embed: (mount, options) => {
         checkMount(mount);
-        const { session: s, topology } = embedSession(options);
-        return hosted(mount, s, topology, () => undefined);
+        const { rest, toolbar } = takeToolbar(mount, options);
+        const { session: s, topology } = embedSession(rest);
+        return hosted(mount, s, topology, () => undefined, toolbar);
     },
     // The standalone lab (settings, theme, autosave, preferences) in a host's element; its theme needs <html data-theme>,
     // which destroy puts back. A fresh session object, so a handle never follows another mount's App.
-    lab: (mount) => {
+    lab: (mount, options) => {
         checkMount(mount);
+        const toolbar = labToolbar(mount, options);
         const html = document.documentElement;
         const theme = html.dataset.theme;
         return hosted(mount, { ...STANDALONE }, undefined, () => {
@@ -73688,7 +73762,7 @@ const NETFIX_API = {
                 delete html.dataset.theme;
             else
                 html.dataset.theme = theme;
-        });
+        }, toolbar);
     },
     evaluate: evaluateFile,
 };
