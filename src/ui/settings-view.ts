@@ -3,7 +3,7 @@ import { el } from './dom.ts';
 import { t, tDynamic } from '../i18n/t.ts';
 import { LOCALES, LOCALE_NAMES, getLocale, isLocale } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
-import { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } from './preferences.ts';
+import { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, toolHelp, setToolHelp, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } from './preferences.ts';
 import { FEATURES_BY_KIND, featureOn, setFeature } from '../net/lab-features.ts';
 import type { LabFeatures } from '../net/lab-features.ts';
 import { SERVICE_PACKAGES, TOOL_PACKAGES, packageAllowed, setPackageOff } from '../net/lab-packages.ts';
@@ -12,6 +12,8 @@ import type { DeviceKind } from '../net/topology.ts';
 /** The kinds whose windows have settings to switch (the cloud has none). */
 /** The «prompt con hora» box of the page built last, kept in step when a terminal footer changes it. */
 let stampBox: HTMLInputElement | undefined;
+/** The help box of the page built last: the hint note's «do not show again» changes it too (synced on each visit). */
+let helpBox: HTMLInputElement | undefined;
 onTimestampPrompt(() => { if (stampBox) stampBox.checked = timestampPrompt(); });
 
 const KINDS: readonly DeviceKind[] = ['pc', 'server', 'linuxrouter', 'router', 'switch'];
@@ -47,6 +49,9 @@ function generalSection(host: SettingsHost): HTMLElement {
   const stamp = el('input', { type: 'checkbox', checked: timestampPrompt(), disabled: host.promptLocked() });
   stamp.addEventListener('change', () => setTimestampPromptPref(stamp.checked));
   stampBox = stamp;
+  const help = el('input', { type: 'checkbox', checked: toolHelp(), 'data-setting': 'tool-help' });
+  help.addEventListener('change', () => setToolHelp(help.checked));
+  helpBox = help;
   const missions = el('input', { type: 'checkbox', checked: missionsShown(), 'data-setting': 'missions' });
   missions.addEventListener('change', () => setMissionsShown(missions.checked));
   return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' },
@@ -56,6 +61,7 @@ function generalSection(host: SettingsHost): HTMLElement {
     // Embedded, the page and this browser's storage are the host's: no theme on its <html>, nothing kept for later.
     host.labLocked() || host.hostOwned() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios),
     host.labLocked() || host.hostOwned() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')),
+    host.hostOwned() ? el('label', { class: 'set-choice' }, help, t('set.toolHelp')) : null,
     el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)),
     el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }
@@ -113,6 +119,7 @@ export class SettingsView {
   /** The lab section, from the network open now (called each time the tab is shown). */
   render(): void {
     const host = this.host;
+    if (helpBox) helpBox.checked = toolHelp();
     const reset = el('button', { type: 'button', class: 'btn', disabled: host.labLocked() }, t('set.reset'));
     const changed = (): void => { this.status.textContent = t('set.changed'); };
     reset.addEventListener('click', () => {

@@ -1,4 +1,7 @@
-/** Bottom palette: devices to place, editing tools, zoom controls and the hint line. */
+/**
+ * Bottom palette: devices to place, editing tools, zoom controls and the hint line. With the bar in a host's menu, the
+ * palette is a sidebar of devices and tools, and the actions (undo/redo, clipboard, zoom) go in the host's `actions`.
+ */
 import { el, staticSvg } from './dom.ts';
 import type { Tool } from './canvas.ts';
 import { ICONS, modelLabel } from './icons.ts';
@@ -37,8 +40,11 @@ function drawToggle(actions: PaletteActions): HTMLButtonElement {
   return b;
 }
 
-/** The palette; classroom restrictions leave out devices, the editing tools (topology locked) and drawing. */
-export function palette(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, hintEl: HTMLElement, policy: Restrictions = NO_RESTRICTIONS): HTMLElement {
+/**
+ * The palette; classroom restrictions leave out devices, the editing tools (topology locked) and drawing. `actionsBox`
+ * (hosted): the element that takes the action groups instead of the palette, and no hint line in it.
+ */
+export function palette(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, hintEl: HTMLElement, policy: Restrictions = NO_RESTRICTIONS, actionsBox: HTMLElement | null = null): HTMLElement {
   const deviceBtn = (kind: DeviceKind, name: string): HTMLButtonElement => {
     const b = el('button', { type: 'button', class: 'pal-item', 'aria-pressed': 'false' },
       staticSvg(ICONS[kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, modelLabel(kind)));
@@ -71,14 +77,17 @@ export function palette(actions: PaletteActions, buttons: Map<string, HTMLButton
   };
   const edit = policy.editTopology;
   const devices = edit ? PLACEABLE.filter(([k]) => allowsDevice(policy, k)) : [];
-  return el('footer', { class: 'palette' },
+  const groups = [
+    el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))),
+    ...(edit ? [el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('clip.group') }, clipBtn('copy', '⧉'), clipBtn('paste', '⎘'), clipBtn('duplicate', '⊕'), clipBtn('delete', '🗑︎'))] : []),
+    el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('pal.zoomGroup') }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))),
+  ];
+  actionsBox?.replaceChildren(...groups);
+  return el(actionsBox ? 'nav' : 'footer', { class: 'palette', 'aria-label': t('pal.label') },
     ...(devices.length ? [el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...devices.map(([k, name]) => deviceBtn(k, t(name))))] : []),
     el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') },
       toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'),
       ...(edit ? [toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')] : []),
       ...(policy.drawing ? [drawToggle(actions)] : [])),
-    el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))),
-    ...(edit ? [el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('clip.group') }, clipBtn('copy', '⧉'), clipBtn('paste', '⎘'), clipBtn('duplicate', '⊕'), clipBtn('delete', '🗑︎'))] : []),
-    el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))),
-    hintEl);
+    ...(actionsBox ? [] : [...groups, hintEl]));
 }

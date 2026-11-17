@@ -112,12 +112,38 @@ try {
   await assert.rejects(page.evaluate(() => netfix.embed('#app')), /elemento/);
   await assert.rejects(page.evaluate(() => netfix.lab('#app')), /elemento/);
   // toolbar: the top bar goes in the host's element (its menu), without the logo; the mount is all workspace.
-  await page.evaluate(() => { const m = document.createElement('div'); m.id = 'host-menu'; document.body.prepend(m); });
+  await page.evaluate(() => {
+    const m = document.createElement('div'); m.id = 'host-menu'; document.body.prepend(m);
+    const a = document.createElement('div'); a.id = 'host-actions'; document.body.prepend(a);
+  });
   await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { toolbar: '#host-menu' })), /toolbar/);
   await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { theme: 'dark' })), /solo admite/);
   await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { locale: 'fr-FR' })), /locale/);
-  await page.evaluate(() => { globalThis.handle = netfix.lab(document.getElementById('app'), { toolbar: document.getElementById('host-menu'), locale: 'es-ES' }); });
+  await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { toolbar: document.getElementById('host-menu'), actions: document.getElementById('host-menu') })), /distintos/);
+  await page.evaluate(() => { globalThis.handle = netfix.lab(document.getElementById('app'), { toolbar: document.getElementById('host-menu'), actions: document.getElementById('host-actions'), locale: 'es-ES' }); });
   await page.waitForSelector('#host-menu .topbar.is-hosted');
+  // The palette is a sidebar on the left of the workspace; undo/redo, clipboard and zoom are in the host's actions.
+  const side = await page.evaluate(() => {
+    const p = document.querySelector('#app .palette').getBoundingClientRect(); const w = document.querySelector('#app .workspace').getBoundingClientRect();
+    return { left: p.right <= w.left + 1, tall: p.height > p.width };
+  });
+  assert.deepEqual(side, { left: true, tall: true }, 'a sidebar');
+  assert.equal(await page.locator('#host-actions .undo-btn, #host-actions .redo-btn, #host-actions .clip-copy').count(), 3);
+  assert.ok(await page.locator('#host-actions button[aria-label="Acercar"]').isVisible(), 'zoom in the host');
+  assert.equal(await page.locator('#app .palette .zoom-group, #app .palette .hint').count(), 0);
+  // The clock and the mode float at the top right of the workspace, not in the menu.
+  assert.equal(await page.locator('#host-menu .time, #host-menu .clock').count(), 0);
+  assert.ok(await page.locator('#app .ws-wrap > .float-bar .clock').isVisible());
+  // The tool's help shows in a note at first; «no volver a mostrar» turns it off (Configuración keeps it).
+  const note = page.locator('#app .hint-note');
+  await note.waitFor({ state: 'visible' });
+  assert.match(await note.innerText(), /Arrastra/);
+  await note.locator('input[type="checkbox"]').check();
+  assert.equal(await note.isHidden(), true);
+  assert.equal(await page.evaluate(() => localStorage.getItem('netfix:tool-help')), 'off');
+  await page.click('#app .pal-tool.pal-select');
+  await page.waitForTimeout(150);
+  assert.equal(await note.isHidden(), true, 'no help once turned off');
   // The host owns language, help, about, settings and donations: the bar keeps only the way back to the network.
   assert.deepEqual(await page.locator('#host-menu [data-view]').evaluateAll((b) => b.map((x) => x.dataset.view)), ['net']);
   assert.equal(await page.locator('#host-menu select[aria-label="Idioma"]').count(), 0, 'no language select');
@@ -148,9 +174,13 @@ try {
   assert.equal(await page.evaluate((f) => globalThis.handle.open(f, 'guardada.json'), saved), true);
   assert.equal(asked, 0, 'a saved network is replaced without asking');
   assert.match(await page.locator('#app .hint').innerText(), /guardada\.json/);
+  assert.ok(await note.isVisible(), 'messages still show with the help turned off');
   assert.equal(await page.evaluate(() => globalThis.handle.showView('settings')), true); // an unsaved change: a lab feature off
   await page.locator('#app .settings input[data-feature] >> nth=0').click();
   assert.equal(await page.locator('#app #set-lang, #app input[name="set-theme"]').count(), 0, 'the host sets the language and theme');
+  assert.equal(await page.locator('#app input[data-setting="tool-help"]').isChecked(), false);
+  await page.locator('#app input[data-setting="tool-help"]').check();
+  assert.equal(await page.evaluate(() => localStorage.getItem('netfix:tool-help')), 'on');
   await page.click('#host-menu [data-view="net"]');
   await page.removeLocatorHandler(confirmOpen); // from here the question is answered by hand
   const opening = page.evaluate((f) => globalThis.handle.open(f, 'otra.json'), saved);
@@ -177,6 +207,8 @@ try {
   await page.evaluate(() => globalThis.handle.destroy());
   assert.deepEqual(await page.evaluate(() => [...document.getElementById('host-menu').attributes].map((a) => a.name)), ['id'], 'the host menu is given back as it was');
   assert.equal(await page.locator('#host-menu *').count(), 0);
+  assert.deepEqual(await page.evaluate(() => [...document.getElementById('host-actions').attributes].map((x) => x.name)), ['id'], 'the host actions given back as they were');
+  assert.equal(await page.locator('#host-actions *').count(), 0);
   assert.deepEqual(await page.evaluate(() => [...document.getElementById('app').attributes].map((a) => a.name)), ['id', 'data-embed']);
   assert.deepEqual(errors, []);
   process.stdout.write('e2e embed: ok\n');

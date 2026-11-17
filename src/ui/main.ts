@@ -14,11 +14,11 @@ import { afterPlaced } from './os-dialog.ts';
 import { Topology } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
 import { Pages } from './pages.ts';
-import { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, overrideConfirmUnsaved } from './preferences.ts';
+import { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, overrideConfirmUnsaved, setToolHelp, toolHelp } from './preferences.ts';
 import { featureOn } from '../net/lab-features.ts';
 import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
-import { topbar } from './topbar.ts';
-import type { Mode, View } from './topbar.ts';
+import { floatBar, topbar } from './topbar.ts';
+import type { Mode, TopbarActions, View } from './topbar.ts';
 import { palette } from './palette.ts';
 import { labText } from './lab-text.ts';
 import { readTopologyFile, saveTopology } from './save-file.ts';
@@ -44,6 +44,7 @@ import type { AppSession, EmbedHandle } from '../classroom/embed.ts';
 const BROWSER_STORE: KeyStore = { get: safeStorageGet, set: safeStorageSet };
 const TICK_MS = 250;
 const AUTOSAVE_DELAY_MS = 800;
+const NOTE_MS = 6000;
 
 class App {
   topo: Topology;
@@ -59,6 +60,14 @@ class App {
   private readonly barEl: HTMLElement;
   /** The bar is in a host page's menu: the host owns the language, theme, help, about and the unsaved question. */
   private readonly hosted: boolean;
+  /** Hosted: undo/redo, clipboard and zoom, in the host's `actions` element (or at the foot of the sidebar). */
+  private readonly actionsBox: HTMLElement | null;
+  /** Hosted: the hint line as a note over the workspace (tool help that can be turned off; messages for a while). */
+  private readonly note: HTMLElement | null;
+  private noteWatch: MutationObserver | null = null;
+  private noteTimer = 0;
+  /** The text just put in the hint line is a tool's help (the canvas's), not a message. */
+  private helpPending = false;
   private readonly stageEl: HTMLElement;
   private readonly paletteEl: HTMLElement;
   private readonly pageHost: HTMLElement;
@@ -93,8 +102,9 @@ class App {
     this.workspaceActive = e.target instanceof Node && this.canvas.root.contains(e.target);
   };
 
-  constructor(root: HTMLElement, session: AppSession, topo?: Topology, initial: { readonly view: View; readonly mode: Mode } = { view: 'net', mode: 'realtime' }, hostBar: HTMLElement | null = null) {
+  constructor(root: HTMLElement, session: AppSession, topo?: Topology, initial: { readonly view: View; readonly mode: Mode } = { view: 'net', mode: 'realtime' }, hostBar: HTMLElement | null = null, hostActions: HTMLElement | null = null) {
     this.rootEl = root;
+    this.hosted = hostBar !== null;
     this.session = session;
     this.saved = new SavedState(session.embedded ? MEMORY_STORE : BROWSER_STORE);
     this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
@@ -107,7 +117,7 @@ class App {
     this.canvas = new Canvas(this.topo, {
       open: (id) => this.open(id),
       changed: () => this.afterCommand(),
-      hint: (text) => { this.hintEl.textContent = text; },
+      hint: (text) => { this.helpPending = true; this.hintEl.textContent = text; },
       removed: (id) => { this.windows.close(id); forgetDevice(id); },
       placed: (p) => afterPlaced(p, () => this.afterCommand()),
     }, this.drawState);
@@ -125,14 +135,18 @@ class App {
         this.canvas.draw.deleteAll();
       },
     }, this.toolButtons);
-    this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.mission.root, this.sim.root);
+    this.note = this.hosted ? this.hintNote() : null;
+    // Hosted, the clock, the mode and the hint float over the workspace, which a wrapper frames (it scrolls itself).
+    const workspace = this.note ? el('div', { class: 'ws-wrap' }, this.canvas.root, floatBar(this.barActions(), this.clockEl, this.mode, this.session.policy), this.note) : this.canvas.root;
+    this.stageEl = el('main', { class: 'stage' }, workspace, this.drawBarEl, this.mission.root, this.sim.root);
+    this.actionsBox = this.hosted ? el('div', { class: 'nf-actions', role: 'group', 'aria-label': t('undo.group') }) : null;
     this.paletteEl = palette({
       selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw(), undo: (redo) => this.undo(redo), clip: (a) => this.canvas.group.run(a),
-    }, this.toolButtons, this.hintEl, this.session.policy);
+    }, this.toolButtons, this.hintEl, this.session.policy, this.actionsBox);
+    if (this.actionsBox) (hostActions ?? this.paletteEl).append(this.actionsBox);
     this.pageHost = el('main', { class: 'docs-host', hidden: true });
     this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
     this.fileInput.addEventListener('change', () => void this.openFile());
-    this.hosted = hostBar !== null;
     this.barEl = this.topbar(this.hosted);
     hostBar?.replaceChildren(this.barEl);
     root.replaceChildren(...(hostBar ? [] : [this.barEl]), this.stageEl, this.pageHost, this.paletteEl, winLayer, this.fileInput);
@@ -144,7 +158,7 @@ class App {
     window.addEventListener('pointerdown', this.onPointerDown, { capture: true });
     this.setMode(this.mode, false);
     this.showView(this.view);
-    syncUndoButtons(this.paletteEl, this.canvas.edits());
+    syncUndoButtons(this.actionsBox ?? this.paletteEl, this.canvas.edits());
     this.tick();
   }
 
@@ -156,6 +170,8 @@ class App {
     window.clearInterval(this.interval);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('pointerdown', this.onPointerDown, { capture: true });
+    this.noteWatch?.disconnect();
+    window.clearTimeout(this.noteTimer);
     if (!this.session.embedded || this.saveTimer) this.flushSave();
     this.windows.closeAll();
     this.sim.dispose();
@@ -172,8 +188,32 @@ class App {
     return app === this && this.topo === topo;
   }
 
+  /** The note over the workspace that takes the hint line: tool help until closed (unless turned off), messages for 6 s. */
+  private hintNote(): HTMLElement {
+    const close = el('button', { type: 'button', class: 'hint-close', 'aria-label': t('hint.close'), title: t('hint.close') }, '×');
+    const never = el('input', { type: 'checkbox' });
+    const note = el('div', { class: 'hint-note', hidden: true }, this.hintEl,
+      el('label', { class: 'hint-never' }, never, t('hint.noMoreHelp')), close);
+    close.addEventListener('click', () => { note.hidden = true; });
+    never.addEventListener('change', () => { if (never.checked) { setToolHelp(false); note.hidden = true; } });
+    this.noteWatch = new MutationObserver(() => {
+      const help = this.helpPending;
+      this.helpPending = false;
+      window.clearTimeout(this.noteTimer);
+      note.dataset.kind = help ? 'help' : 'message';
+      note.hidden = !this.hintEl.textContent || (help && !toolHelp());
+      if (!help) this.noteTimer = window.setTimeout(() => { note.hidden = true; }, NOTE_MS);
+    });
+    this.noteWatch.observe(this.hintEl, { childList: true, characterData: true, subtree: true });
+    return note;
+  }
+
   private topbar(hosted: boolean): HTMLElement {
-    return topbar({
+    return topbar(this.barActions(), this.clockEl, this.mode, this.view, this.session.policy, hosted);
+  }
+
+  private barActions(): TopbarActions {
+    return {
       newWorkspace: () => void this.replaceAllowed('new').then((ok) => ok && this.load(new Topology(), t('hint.empty'))),
       openFile: () => void this.replaceAllowed('open').then((ok) => ok && this.fileInput.click()),
       save: () => void this.save(),
@@ -186,7 +226,7 @@ class App {
       setMode: (m) => this.setMode(m),
       showView: (v) => this.showView(v),
       setLocale: (l) => changeLocale(l),
-    }, this.clockEl, this.mode, this.view, this.session.policy, hosted);
+    };
   }
 
   private setMode(m: Mode, hint = true): void {
@@ -221,6 +261,7 @@ class App {
     }
     this.stageEl.hidden = view !== 'net';
     this.paletteEl.hidden = view !== 'net';
+    if (this.actionsBox) this.actionsBox.hidden = view !== 'net';
     this.pageHost.hidden = view === 'net';
     this.rootEl.dataset.view = view;
     this.view = view;
@@ -264,7 +305,7 @@ class App {
     this.topo.net.runFor(20);
     this.canvas.edits().syncDrawings(performance.now());
     this.canvas.render();
-    syncUndoButtons(this.paletteEl, this.canvas.edits());
+    syncUndoButtons(this.actionsBox ?? this.paletteEl, this.canvas.edits());
     this.scheduleSave();
   }
 
@@ -314,7 +355,7 @@ class App {
     this.canvas.setTopology(topo);
     this.sim.attach(topo);
     this.mission.attach(topo);
-    syncUndoButtons(this.paletteEl, this.canvas.edits());
+    syncUndoButtons(this.actionsBox ?? this.paletteEl, this.canvas.edits());
     this.pages.refreshSettings();
     this.hintEl.textContent = message;
     this.scheduleSave();
@@ -375,17 +416,20 @@ let app: App | null = null;
 let mountEl: HTMLElement | null = null;
 /** The host page's element for the top bar (`toolbar` option), or null: the bar is at the top of the mount. */
 let barHost: HTMLElement | null = null;
+/** The host page's element for the workspace's actions (`actions` option), or null. */
+let actionsHost: HTMLElement | null = null;
 let session: AppSession = STANDALONE;
 /** Whether Netfix owns the page (its title, <html lang>, favicon): standalone on its own page, not embedded or a hosted lab. */
 let onPage = true;
 
 const ROOT_CLASS = 'netfix-root';
 const BAR_CLASS = 'netfix-bar';
+const ACTIONS_CLASS = 'netfix-actions';
 
 /** Gives the host its toolbar element back empty, without Netfix's classes or language. */
 function releaseBar(bar: HTMLElement): void {
   bar.replaceChildren();
-  bar.classList.remove(ROOT_CLASS, BAR_CLASS);
+  bar.classList.remove(ROOT_CLASS, BAR_CLASS, ACTIONS_CLASS);
   bar.removeAttribute('lang');
   if (bar.getAttribute('class') === '') bar.removeAttribute('class');
 }
@@ -394,6 +438,7 @@ function releaseBar(bar: HTMLElement): void {
 function applyLanguage(mount: HTMLElement): void {
   mount.lang = getLocale();
   if (barHost) barHost.lang = mount.lang;
+  if (actionsHost) actionsHost.lang = mount.lang;
   if (onPage) applyDocumentLanguage();
 }
 
@@ -406,7 +451,7 @@ function changeLocale(locale: Locale): void {
   app.dispose();
   setLocale(locale);
   applyLanguage(mountEl);
-  app = new App(mountEl, session, topo, where, barHost);
+  app = new App(mountEl, session, topo, where, barHost, actionsHost);
   app.announce(t('hint.language'));
 }
 
@@ -417,9 +462,12 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   app = null;
   if (mountEl && mountEl !== mount) mountEl.replaceChildren();
   if (barHost && barHost !== bar) releaseBar(barHost);
+  if (actionsHost && actionsHost !== host.actions) releaseBar(actionsHost);
   mountEl = mount;
   barHost = bar;
+  actionsHost = host.actions;
   bar?.classList.add(ROOT_CLASS, BAR_CLASS); // the bar keeps Netfix's look (its rules hang off .netfix-root)
+  host.actions?.classList.add(ROOT_CLASS, ACTIONS_CLASS);
   if (bar) mount.dataset.bar = 'host'; else delete mount.dataset.bar;
   session = s;
   onPage = page;
@@ -435,7 +483,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   applyBrand(mount, page);
   // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
   forceTimestampPrompt(lockedPrompt(s.policy));
-  app = new App(mount, s, topo, undefined, bar);
+  app = new App(mount, s, topo, undefined, bar, host.actions);
   return app;
 }
 
@@ -474,7 +522,9 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
       clearClipboard();
       mount.replaceChildren();
       if (bar) releaseBar(bar);
+      if (host.actions) releaseBar(host.actions);
       barHost = null;
+      actionsHost = null;
       // No Netfix class, view, mode or language left on the element.
       mount.classList.remove(ROOT_CLASS);
       for (const k of ['view', 'mode', 'bar'] as const) delete mount.dataset[k];

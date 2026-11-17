@@ -10,6 +10,16 @@ export type Theme = (typeof THEMES)[number];
 const THEME_KEY = 'netfix:theme';
 const CONFIRM_KEY = 'netfix:confirm-unsaved';
 const STAMP_KEY = 'netfix:timestamp-prompt';
+const TOOL_HELP_KEY = 'netfix:tool-help';
+
+/** With the bar in a host's menu, each tool's help («Arrastra para mover…») shows in a note that can be turned off. */
+export function toolHelp(): boolean {
+  return safeStorageGet(TOOL_HELP_KEY) !== 'off';
+}
+
+export function setToolHelp(on: boolean): void {
+  safeStorageSet(TOOL_HELP_KEY, on ? 'on' : 'off');
+}
 const stampListeners = new Set<() => void>();
 /** Saved only outside the classroom (embedded pages leave the host page's storage alone). */
 let stampStored = false;

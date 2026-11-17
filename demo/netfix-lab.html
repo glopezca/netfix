@@ -94,7 +94,9 @@
 
 /* The bar in the host's element: only Netfix's look, not the mount's layout; the mount is then all workspace. */
 .netfix-bar.netfix-root { display: block; position: static; overflow: visible; background: var(--panel); color: var(--ink); font: 15px/1.45 var(--font-ui); }
-[data-bar="host"].netfix-root { grid-template-rows: minmax(0, 1fr) auto; }
+[data-bar="host"].netfix-root { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+/* The host's element for the workspace's actions (undo/redo, clipboard, zoom): only Netfix's look. */
+.netfix-actions.netfix-root { display: flex; align-items: center; position: static; overflow: visible; background: transparent; color: var(--ink); font: 15px/1.45 var(--font-ui); }
 
 /* The host sizes the mount (the standalone page gives #app 100dvh in index.html); its windows stay inside it (position). */
 .netfix-root {
@@ -202,6 +204,34 @@
   .pal-model { font-size: 11px; color: var(--ink-2); }
   .pal-glyph { font-size: 22px; line-height: 33px; height: 33px; }
   .hint { margin: 0; align-self: center; color: var(--ink-2); max-width: 70ch; }
+  /* Hosted: the palette is a sidebar on the left; the clock, the mode and the hint float over the workspace. */
+  &[data-bar="host"] .stage { grid-column: 2; grid-row: 1; }
+  &[data-bar="host"] .docs-host { grid-column: 1 / -1; grid-row: 1; }
+  &[data-bar="host"] .palette {
+    grid-column: 1; grid-row: 1; flex-direction: column; align-items: stretch; gap: 8px; padding: 8px 6px;
+    overflow-x: hidden; overflow-y: auto; border-top: 0; border-right: 1px solid var(--line);
+  }
+  &[data-bar="host"] .pal-group { flex-direction: column; gap: 2px; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--line); }
+  &[data-bar="host"] .pal-group:last-child { border-bottom: 0; }
+  &[data-bar="host"] .pal-item { min-width: 72px; padding: 4px; }
+  &[data-bar="host"] .palette .nf-actions { flex-direction: column; }
+  .nf-actions { display: flex; align-items: center; gap: 8px; }
+  .nf-actions .zoom-group:last-child { padding-right: 0; border-right: 0; }
+  .ws-wrap { position: relative; flex: 1; min-width: 0; display: flex; }
+  .float-bar {
+    position: absolute; top: 8px; right: 8px; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-ctl); box-shadow: var(--shadow);
+  }
+  .float-bar .time { margin-left: 0; }
+  .hint-note {
+    position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 5; width: min(46rem, calc(100% - 24px));
+    display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px 8px 14px; font-size: 14px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-ctl); box-shadow: var(--shadow);
+  }
+  &[data-bar="host"] .hint-note .hint { display: block; flex: 1; max-width: none; align-self: auto; }
+  .hint-never { display: none; align-items: center; gap: 4px; white-space: nowrap; font-size: 13px; color: var(--ink-2); }
+  .hint-note[data-kind="help"] .hint-never { display: inline-flex; }
+  .hint-close { border: 0; background: none; font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; color: var(--ink-2); }
 
   /* ---------------------------------------------------------------- windows */
   .win-layer { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
@@ -1076,8 +1106,8 @@ function append(node, children) {
 }
 /** Netfix's mount (`.netfix-root`): its dialogs live inside it, where its CSS applies (C5). */
 function uiRoot() {
-    // Not the host's toolbar element (`toolbar` option), which also wears .netfix-root for its look and may come first.
-    return document.querySelector('.netfix-root:not(.netfix-bar)') ?? document.body;
+    // Not the host's toolbar or actions elements (options), which also wear .netfix-root for their look and may come first.
+    return document.querySelector('.netfix-root:not(.netfix-bar):not(.netfix-actions)') ?? document.body;
 }
 function clear(node) {
     while (node.firstChild)
@@ -1286,6 +1316,10 @@ const APP_ES = {
     'pal.cable': 'Cable',
     'pal.delete': 'Eliminar',
     'pal.zoomIn': 'Acercar',
+    'pal.zoomGroup': 'Zoom',
+    'pal.label': 'Paleta',
+    'hint.close': 'Cerrar el aviso',
+    'hint.noMoreHelp': 'No volver a mostrar la ayuda',
     'pal.zoomOut': 'Alejar',
     'pal.zoomFit': 'Ajustar a la red',
     'kind.router': 'Router IOS',
@@ -1363,6 +1397,10 @@ const APP_EN = {
     'pal.cable': 'Cable',
     'pal.delete': 'Delete',
     'pal.zoomIn': 'Zoom in',
+    'pal.zoomGroup': 'Zoom',
+    'pal.label': 'Palette',
+    'hint.close': 'Close the note',
+    'hint.noMoreHelp': 'Do not show the help again',
     'pal.zoomOut': 'Zoom out',
     'pal.zoomFit': 'Fit to network',
     'kind.router': 'IOS router',
@@ -4716,6 +4754,7 @@ const SETTINGS_ES = {
     'set.themeLight': 'Claro',
     'set.themeDark': 'Oscuro',
     'set.missions': 'Mostrar las misiones de los laboratorios',
+    'set.toolHelp': 'Mostrar la ayuda de cada herramienta («Arrastra para mover…»)',
     'set.missionsHint': '(el panel Misión junto al área de trabajo y el grupo Laboratorios de la Ayuda)',
     'set.confirm': 'Avisar antes de reemplazar una red con cambios sin guardar',
     'set.timestamp': 'Prompt con marca de fecha y hora en todas las terminales GNU/Linux y Windows',
@@ -4787,6 +4826,7 @@ const SETTINGS_EN = {
     'set.themeLight': 'Light',
     'set.themeDark': 'Dark',
     'set.missions': 'Show the labs’ missions',
+    'set.toolHelp': 'Show each tool’s help («Drag to move…»)',
     'set.missionsHint': '(the Mission panel beside the workspace and the Labs group of the Help tab)',
     'set.confirm': 'Ask before replacing a network with unsaved changes',
     'set.timestamp': 'Date and time stamped prompt in every GNU/Linux and Windows terminal',
@@ -33167,7 +33207,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.57.0",
+    "version": "0.58.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -66498,6 +66538,14 @@ const THEMES = ['auto', 'light', 'dark'];
 const THEME_KEY = 'netfix:theme';
 const CONFIRM_KEY = 'netfix:confirm-unsaved';
 const STAMP_KEY = 'netfix:timestamp-prompt';
+const TOOL_HELP_KEY = 'netfix:tool-help';
+/** With the bar in a host's menu, each tool's help («Arrastra para mover…») shows in a note that can be turned off. */
+function toolHelp() {
+    return safeStorageGet(TOOL_HELP_KEY) !== 'off';
+}
+function setToolHelp(on) {
+    safeStorageSet(TOOL_HELP_KEY, on ? 'on' : 'off');
+}
 const stampListeners = new Set();
 /** Saved only outside the classroom (embedded pages leave the host page's storage alone). */
 let stampStored = false;
@@ -66584,7 +66632,7 @@ function onMissionsShown(fn) {
     return () => { missionListeners.delete(fn); };
 }
 
-return { THEMES, theme, applyTheme, setTheme, overrideConfirmUnsaved, confirmUnsaved, setConfirmUnsaved, applyDocumentLanguage, loadTimestampPrompt, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, loadMissionsPref, missionsShown, setMissionsShown, classroomMissions, onMissionsShown };
+return { THEMES, toolHelp, setToolHelp, theme, applyTheme, setTheme, overrideConfirmUnsaved, confirmUnsaved, setConfirmUnsaved, applyDocumentLanguage, loadTimestampPrompt, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, loadMissionsPref, missionsShown, setMissionsShown, classroomMissions, onMissionsShown };
 })();
 __m["ui/mission-panel.js"] = (() => {
 /**
@@ -72613,12 +72661,14 @@ __m["ui/settings-view.js"] = (() => {
 const { el } = __m["ui/dom.js"];
 const { t, tDynamic } = __m["i18n/t.js"];
 const { LOCALES, LOCALE_NAMES, getLocale, isLocale } = __m["i18n/locale.js"];
-const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } = __m["ui/preferences.js"];
+const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, toolHelp, setToolHelp, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } = __m["ui/preferences.js"];
 const { FEATURES_BY_KIND, featureOn, setFeature } = __m["net/lab-features.js"];
 const { SERVICE_PACKAGES, TOOL_PACKAGES, packageAllowed, setPackageOff } = __m["net/lab-packages.js"];
 /** The kinds whose windows have settings to switch (the cloud has none). */
 /** The «prompt con hora» box of the page built last, kept in step when a terminal footer changes it. */
 let stampBox;
+/** The help box of the page built last: the hint note's «do not show again» changes it too (synced on each visit). */
+let helpBox;
 onTimestampPrompt(() => { if (stampBox)
     stampBox.checked = timestampPrompt(); });
 const KINDS = ['pc', 'server', 'linuxrouter', 'router', 'switch'];
@@ -72637,11 +72687,14 @@ function generalSection(host) {
     const stamp = el('input', { type: 'checkbox', checked: timestampPrompt(), disabled: host.promptLocked() });
     stamp.addEventListener('change', () => setTimestampPromptPref(stamp.checked));
     stampBox = stamp;
+    const help = el('input', { type: 'checkbox', checked: toolHelp(), 'data-setting': 'tool-help' });
+    help.addEventListener('change', () => setToolHelp(help.checked));
+    helpBox = help;
     const missions = el('input', { type: 'checkbox', checked: missionsShown(), 'data-setting': 'missions' });
     missions.addEventListener('change', () => setMissionsShown(missions.checked));
     return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' }, el('h2', { id: 'set-general' }, t('set.general')), el('p', { class: 'muted' }, t('set.generalNote')), host.hostOwned() ? null : el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang), 
     // Embedded, the page and this browser's storage are the host's: no theme on its <html>, nothing kept for later.
-    host.labLocked() || host.hostOwned() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), host.labLocked() || host.hostOwned() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')), el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)), el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
+    host.labLocked() || host.hostOwned() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), host.labLocked() || host.hostOwned() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')), host.hostOwned() ? el('label', { class: 'set-choice' }, help, t('set.toolHelp')) : null, el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)), el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }
 function kindGroup(host, kind, changed) {
     const boxes = FEATURES_BY_KIND[kind].map((id) => {
@@ -72687,6 +72740,8 @@ class SettingsView {
     /** The lab section, from the network open now (called each time the tab is shown). */
     render() {
         const host = this.host;
+        if (helpBox)
+            helpBox.checked = toolHelp();
         const reset = el('button', { type: 'button', class: 'btn', disabled: host.labLocked() }, t('set.reset'));
         const changed = () => { this.status.textContent = t('set.changed'); };
         reset.addEventListener('click', () => {
@@ -72810,6 +72865,18 @@ function labGroups(allowed) {
         return items.length ? [[tDynamic(`labgroup.${group}`), items]] : [];
     });
 }
+/** The clock (with «Avanzar reloj…» if the classroom allows it) and the mode switch (if it allows simulation). */
+function clockAndMode(actions, clockEl, mode, policy) {
+    const advance = actionSelect(t('top.advanceLabel'), t('top.advance'), [[String(MINUTE), t('top.plusMinute')], [String(60 * MINUTE), t('top.plusHour')], [String(24 * 60 * MINUTE), t('top.plusDay')]], (v) => actions.advance(Number(v)));
+    return [
+        el('div', { class: 'time' }, clockEl, ...only([[policy.clock, advance]])),
+        ...only([[policy.simulation, segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime'))]]),
+    ];
+}
+/** With the bar in a host's menu: the clock and the mode in a bar floating at the top right of the workspace. */
+function floatBar(actions, clockEl, mode, policy = NO_RESTRICTIONS) {
+    return el('div', { class: 'float-bar', role: 'group', 'aria-label': t('top.mode') }, ...clockAndMode(actions, clockEl, mode, policy));
+}
 /** What the classroom restrictions leave of a list: the items whose flag is on. */
 function only(items) {
     return items.filter(([on]) => on).map(([, x]) => x);
@@ -72819,16 +72886,14 @@ function only(items) {
 function topbar(actions, clockEl, mode, view = 'net', policy = NO_RESTRICTIONS, hosted = false) {
     const allowed = EXAMPLES.filter((e) => allowsLab(policy, e.id));
     const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), labGroups(allowed), (id) => actions.loadExample(id));
-    const advance = actionSelect(t('top.advanceLabel'), t('top.advance'), [[String(MINUTE), t('top.plusMinute')], [String(60 * MINUTE), t('top.plusHour')], [String(24 * 60 * MINUTE), t('top.plusDay')]], (v) => actions.advance(Number(v)));
     const items = [
         el('nav', { class: 'file-actions', 'aria-label': t('top.file') }, ...only([
             [policy.fileNew, button(t('top.new'), () => actions.newWorkspace())], [policy.fileOpen, button(t('top.open'), () => actions.openFile())],
             [policy.fileSave, button(t('top.save'), () => actions.save(), { title: t('top.saveTitle') })], [allowed.length > 0, labs]
         ])),
-        el('div', { class: 'time' }, clockEl, ...only([[policy.clock, advance]])),
-        ...only([[policy.simulation, segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime'))]]),
-        ...(hosted ? [] : [languageSelect(actions)])
-    ]; // hosted, the host's own Language menu sets it
+        // Hosted, the clock and the mode float over the workspace (floatBar) and the host's Language menu sets the language.
+        ...(hosted ? [] : [...clockAndMode(actions, clockEl, mode, policy), languageSelect(actions)])
+    ];
     let closeMenu = () => undefined; // hosted, the host closes its own menu
     // Hosted, the host's Help, About and Settings menus open those pages: the bar keeps only the way back to the network.
     const views = segmented(t('top.view'), VIEWS.filter(([v]) => (hosted ? v === 'net' : v !== 'docs' || policy.docs)).map(([v, k]) => [v, t(k)]), view, (v) => {
@@ -72853,10 +72918,13 @@ function topbar(actions, clockEl, mode, view = 'net', policy = NO_RESTRICTIONS, 
     return bar;
 }
 
-return { topbar };
+return { floatBar, topbar };
 })();
 __m["ui/palette.js"] = (() => {
-/** Bottom palette: devices to place, editing tools, zoom controls and the hint line. */
+/**
+ * Bottom palette: devices to place, editing tools, zoom controls and the hint line. With the bar in a host's menu, the
+ * palette is a sidebar of devices and tools, and the actions (undo/redo, clipboard, zoom) go in the host's `actions`.
+ */
 const { el, staticSvg } = __m["ui/dom.js"];
 const { ICONS, modelLabel } = __m["ui/icons.js"];
 const { t } = __m["i18n/t.js"];
@@ -72874,8 +72942,11 @@ function drawToggle(actions) {
     });
     return b;
 }
-/** The palette; classroom restrictions leave out devices, the editing tools (topology locked) and drawing. */
-function palette(actions, buttons, hintEl, policy = NO_RESTRICTIONS) {
+/**
+ * The palette; classroom restrictions leave out devices, the editing tools (topology locked) and drawing. `actionsBox`
+ * (hosted): the element that takes the action groups instead of the palette, and no hint line in it.
+ */
+function palette(actions, buttons, hintEl, policy = NO_RESTRICTIONS, actionsBox = null) {
     const deviceBtn = (kind, name) => {
         const b = el('button', { type: 'button', class: 'pal-item', 'aria-pressed': 'false' }, staticSvg(ICONS[kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, modelLabel(kind)));
         b.addEventListener('click', () => actions.selectTool({ kind: 'place', device: kind }, `place-${kind}`));
@@ -72906,7 +72977,13 @@ function palette(actions, buttons, hintEl, policy = NO_RESTRICTIONS) {
     };
     const edit = policy.editTopology;
     const devices = edit ? PLACEABLE.filter(([k]) => allowsDevice(policy, k)) : [];
-    return el('footer', { class: 'palette' }, ...(devices.length ? [el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...devices.map(([k, name]) => deviceBtn(k, t(name))))] : []), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), ...(edit ? [toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')] : []), ...(policy.drawing ? [drawToggle(actions)] : [])), el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))), ...(edit ? [el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('clip.group') }, clipBtn('copy', '⧉'), clipBtn('paste', '⎘'), clipBtn('duplicate', '⊕'), clipBtn('delete', '🗑︎'))] : []), el('div', { class: 'zoom-group', role: 'group' }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))), hintEl);
+    const groups = [
+        el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))),
+        ...(edit ? [el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('clip.group') }, clipBtn('copy', '⧉'), clipBtn('paste', '⎘'), clipBtn('duplicate', '⊕'), clipBtn('delete', '🗑︎'))] : []),
+        el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('pal.zoomGroup') }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))),
+    ];
+    actionsBox?.replaceChildren(...groups);
+    return el(actionsBox ? 'nav' : 'footer', { class: 'palette', 'aria-label': t('pal.label') }, ...(devices.length ? [el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...devices.map(([k, name]) => deviceBtn(k, t(name))))] : []), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), ...(edit ? [toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')] : []), ...(policy.drawing ? [drawToggle(actions)] : [])), ...(actionsBox ? [] : [...groups, hintEl]));
 }
 
 return { PLACEABLE, palette };
@@ -73261,8 +73338,18 @@ function checkMount(mount) {
     if (typeof HTMLElement === 'undefined' || !(mount instanceof HTMLElement))
         throw new Error('netfix.embed: falta el elemento donde montar Netfix');
 }
-const NO_HOST = Object.freeze({ toolbar: null, locale: null, confirmUnsaved: undefined });
-const HOST_KEYS = ['toolbar', 'locale', 'confirmUnsaved'];
+const NO_HOST = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined });
+const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved'];
+/** A host element for part of Netfix: in the page, and neither inside the mount nor around it (each would empty the other). */
+function hostElement(mount, v, name) {
+    if (v === undefined)
+        return null;
+    if (typeof HTMLElement === 'undefined' || !(v instanceof HTMLElement))
+        throw new Error(`netfix: «${name}» debe ser un elemento de la página`);
+    if (mount.contains(v) || v.contains(mount))
+        throw new Error(`netfix: «${name}» no puede estar dentro del elemento donde se monta Netfix ni contenerlo`);
+    return v;
+}
 /**
  * Takes the host options out of `options` (the rest goes on to `embedSession`). `toolbar` must be a page element not
  * inside the mount nor around it (each would empty the other); `locale`, one of Netfix's; `confirmUnsaved`, a boolean.
@@ -73270,24 +73357,22 @@ const HOST_KEYS = ['toolbar', 'locale', 'confirmUnsaved'];
 function takeHostOptions(mount, options) {
     if (typeof options !== 'object' || options === null || !HOST_KEYS.some((k) => Object.hasOwn(options, k)))
         return { rest: options, host: NO_HOST };
-    const { toolbar, locale, confirmUnsaved, ...rest } = options;
-    if (toolbar !== undefined) {
-        if (typeof HTMLElement === 'undefined' || !(toolbar instanceof HTMLElement))
-            throw new Error('netfix: «toolbar» debe ser un elemento de la página');
-        if (mount.contains(toolbar) || toolbar.contains(mount))
-            throw new Error('netfix: «toolbar» no puede estar dentro del elemento donde se monta Netfix ni contenerlo');
-    }
+    const { toolbar, actions, locale, confirmUnsaved, ...rest } = options;
+    const bar = hostElement(mount, toolbar, 'toolbar');
+    const acts = hostElement(mount, actions, 'actions');
+    if (bar && acts && (bar.contains(acts) || acts.contains(bar)))
+        throw new Error('netfix: «toolbar» y «actions» deben ser elementos distintos y separados');
     if (locale !== undefined && !isLocale(locale))
         throw new Error('netfix: «locale» no es un idioma de Netfix');
     if (confirmUnsaved !== undefined && typeof confirmUnsaved !== 'boolean')
         throw new Error('netfix: «confirmUnsaved» debe ser true o false');
-    return { rest, host: { toolbar: toolbar ?? null, locale: locale ?? null, confirmUnsaved: confirmUnsaved } };
+    return { rest, host: { toolbar: bar, actions: acts, locale: locale ?? null, confirmUnsaved: confirmUnsaved } };
 }
 /** `netfix.lab` options: none, or only the host options. */
 function labOptions(mount, options) {
     const { rest, host } = takeHostOptions(mount, options);
     if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
-        throw new Error('netfix.lab: solo admite «toolbar», «locale» y «confirmUnsaved»');
+        throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale» y «confirmUnsaved»');
     }
     return host;
 }
@@ -73317,9 +73402,9 @@ const { afterPlaced } = __m["ui/os-dialog.js"];
 const { Topology } = __m["net/topology.js"];
 const { EXAMPLES } = __m["net/examples.js"];
 const { Pages } = __m["ui/pages.js"];
-const { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, overrideConfirmUnsaved } = __m["ui/preferences.js"];
+const { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, overrideConfirmUnsaved, setToolHelp, toolHelp } = __m["ui/preferences.js"];
 const { featureOn } = __m["net/lab-features.js"];
-const { topbar } = __m["ui/topbar.js"];
+const { floatBar, topbar } = __m["ui/topbar.js"];
 const { palette } = __m["ui/palette.js"];
 const { labText } = __m["ui/lab-text.js"];
 const { readTopologyFile, saveTopology } = __m["ui/save-file.js"];
@@ -73337,6 +73422,7 @@ const { NO_HOST, checkMount, labOptions, takeHostOptions } = __m["ui/embed-api.j
 const BROWSER_STORE = { get: safeStorageGet, set: safeStorageSet };
 const TICK_MS = 250;
 const AUTOSAVE_DELAY_MS = 800;
+const NOTE_MS = 6000;
 class App {
     topo;
     canvas;
@@ -73351,6 +73437,14 @@ class App {
     barEl;
     /** The bar is in a host page's menu: the host owns the language, theme, help, about and the unsaved question. */
     hosted;
+    /** Hosted: undo/redo, clipboard and zoom, in the host's `actions` element (or at the foot of the sidebar). */
+    actionsBox;
+    /** Hosted: the hint line as a note over the workspace (tool help that can be turned off; messages for a while). */
+    note;
+    noteWatch = null;
+    noteTimer = 0;
+    /** The text just put in the hint line is a tool's help (the canvas's), not a message. */
+    helpPending = false;
     stageEl;
     paletteEl;
     pageHost;
@@ -73388,8 +73482,9 @@ class App {
     onPointerDown = (e) => {
         this.workspaceActive = e.target instanceof Node && this.canvas.root.contains(e.target);
     };
-    constructor(root, session, topo, initial = { view: 'net', mode: 'realtime' }, hostBar = null) {
+    constructor(root, session, topo, initial = { view: 'net', mode: 'realtime' }, hostBar = null, hostActions = null) {
         this.rootEl = root;
+        this.hosted = hostBar !== null;
         this.session = session;
         this.saved = new SavedState(session.embedded ? MEMORY_STORE : BROWSER_STORE);
         this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
@@ -73403,7 +73498,7 @@ class App {
         this.canvas = new Canvas(this.topo, {
             open: (id) => this.open(id),
             changed: () => this.afterCommand(),
-            hint: (text) => { this.hintEl.textContent = text; },
+            hint: (text) => { this.helpPending = true; this.hintEl.textContent = text; },
             removed: (id) => { this.windows.close(id); forgetDevice(id); },
             placed: (p) => afterPlaced(p, () => this.afterCommand()),
         }, this.drawState);
@@ -73422,14 +73517,19 @@ class App {
                 this.canvas.draw.deleteAll();
             },
         }, this.toolButtons);
-        this.stageEl = el('main', { class: 'stage' }, this.canvas.root, this.drawBarEl, this.mission.root, this.sim.root);
+        this.note = this.hosted ? this.hintNote() : null;
+        // Hosted, the clock, the mode and the hint float over the workspace, which a wrapper frames (it scrolls itself).
+        const workspace = this.note ? el('div', { class: 'ws-wrap' }, this.canvas.root, floatBar(this.barActions(), this.clockEl, this.mode, this.session.policy), this.note) : this.canvas.root;
+        this.stageEl = el('main', { class: 'stage' }, workspace, this.drawBarEl, this.mission.root, this.sim.root);
+        this.actionsBox = this.hosted ? el('div', { class: 'nf-actions', role: 'group', 'aria-label': t('undo.group') }) : null;
         this.paletteEl = palette({
             selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw(), undo: (redo) => this.undo(redo), clip: (a) => this.canvas.group.run(a),
-        }, this.toolButtons, this.hintEl, this.session.policy);
+        }, this.toolButtons, this.hintEl, this.session.policy, this.actionsBox);
+        if (this.actionsBox)
+            (hostActions ?? this.paletteEl).append(this.actionsBox);
         this.pageHost = el('main', { class: 'docs-host', hidden: true });
         this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
         this.fileInput.addEventListener('change', () => void this.openFile());
-        this.hosted = hostBar !== null;
         this.barEl = this.topbar(this.hosted);
         hostBar?.replaceChildren(this.barEl);
         root.replaceChildren(...(hostBar ? [] : [this.barEl]), this.stageEl, this.pageHost, this.paletteEl, winLayer, this.fileInput);
@@ -73441,7 +73541,7 @@ class App {
         window.addEventListener('pointerdown', this.onPointerDown, { capture: true });
         this.setMode(this.mode, false);
         this.showView(this.view);
-        syncUndoButtons(this.paletteEl, this.canvas.edits());
+        syncUndoButtons(this.actionsBox ?? this.paletteEl, this.canvas.edits());
         this.tick();
     }
     /** Where the user is (kept when the interface is rebuilt in another language). */
@@ -73451,6 +73551,8 @@ class App {
         window.clearInterval(this.interval);
         window.removeEventListener('keydown', this.onKeyDown);
         window.removeEventListener('pointerdown', this.onPointerDown, { capture: true });
+        this.noteWatch?.disconnect();
+        window.clearTimeout(this.noteTimer);
         if (!this.session.embedded || this.saveTimer)
             this.flushSave();
         this.windows.closeAll();
@@ -73469,8 +73571,33 @@ class App {
             return false;
         return app === this && this.topo === topo;
     }
+    /** The note over the workspace that takes the hint line: tool help until closed (unless turned off), messages for 6 s. */
+    hintNote() {
+        const close = el('button', { type: 'button', class: 'hint-close', 'aria-label': t('hint.close'), title: t('hint.close') }, '×');
+        const never = el('input', { type: 'checkbox' });
+        const note = el('div', { class: 'hint-note', hidden: true }, this.hintEl, el('label', { class: 'hint-never' }, never, t('hint.noMoreHelp')), close);
+        close.addEventListener('click', () => { note.hidden = true; });
+        never.addEventListener('change', () => { if (never.checked) {
+            setToolHelp(false);
+            note.hidden = true;
+        } });
+        this.noteWatch = new MutationObserver(() => {
+            const help = this.helpPending;
+            this.helpPending = false;
+            window.clearTimeout(this.noteTimer);
+            note.dataset.kind = help ? 'help' : 'message';
+            note.hidden = !this.hintEl.textContent || (help && !toolHelp());
+            if (!help)
+                this.noteTimer = window.setTimeout(() => { note.hidden = true; }, NOTE_MS);
+        });
+        this.noteWatch.observe(this.hintEl, { childList: true, characterData: true, subtree: true });
+        return note;
+    }
     topbar(hosted) {
-        return topbar({
+        return topbar(this.barActions(), this.clockEl, this.mode, this.view, this.session.policy, hosted);
+    }
+    barActions() {
+        return {
             newWorkspace: () => void this.replaceAllowed('new').then((ok) => ok && this.load(new Topology(), t('hint.empty'))),
             openFile: () => void this.replaceAllowed('open').then((ok) => ok && this.fileInput.click()),
             save: () => void this.save(),
@@ -73484,7 +73611,7 @@ class App {
             setMode: (m) => this.setMode(m),
             showView: (v) => this.showView(v),
             setLocale: (l) => changeLocale(l),
-        }, this.clockEl, this.mode, this.view, this.session.policy, hosted);
+        };
     }
     setMode(m, hint = true) {
         this.mode = m;
@@ -73520,6 +73647,8 @@ class App {
         }
         this.stageEl.hidden = view !== 'net';
         this.paletteEl.hidden = view !== 'net';
+        if (this.actionsBox)
+            this.actionsBox.hidden = view !== 'net';
         this.pageHost.hidden = view === 'net';
         this.rootEl.dataset.view = view;
         this.view = view;
@@ -73560,7 +73689,7 @@ class App {
         this.topo.net.runFor(20);
         this.canvas.edits().syncDrawings(performance.now());
         this.canvas.render();
-        syncUndoButtons(this.paletteEl, this.canvas.edits());
+        syncUndoButtons(this.actionsBox ?? this.paletteEl, this.canvas.edits());
         this.scheduleSave();
     }
     /** Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z on the network view. */
@@ -73610,7 +73739,7 @@ class App {
         this.canvas.setTopology(topo);
         this.sim.attach(topo);
         this.mission.attach(topo);
-        syncUndoButtons(this.paletteEl, this.canvas.edits());
+        syncUndoButtons(this.actionsBox ?? this.paletteEl, this.canvas.edits());
         this.pages.refreshSettings();
         this.hintEl.textContent = message;
         this.scheduleSave();
@@ -73670,15 +73799,18 @@ let app = null;
 let mountEl = null;
 /** The host page's element for the top bar (`toolbar` option), or null: the bar is at the top of the mount. */
 let barHost = null;
+/** The host page's element for the workspace's actions (`actions` option), or null. */
+let actionsHost = null;
 let session = STANDALONE;
 /** Whether Netfix owns the page (its title, <html lang>, favicon): standalone on its own page, not embedded or a hosted lab. */
 let onPage = true;
 const ROOT_CLASS = 'netfix-root';
 const BAR_CLASS = 'netfix-bar';
+const ACTIONS_CLASS = 'netfix-actions';
 /** Gives the host its toolbar element back empty, without Netfix's classes or language. */
 function releaseBar(bar) {
     bar.replaceChildren();
-    bar.classList.remove(ROOT_CLASS, BAR_CLASS);
+    bar.classList.remove(ROOT_CLASS, BAR_CLASS, ACTIONS_CLASS);
     bar.removeAttribute('lang');
     if (bar.getAttribute('class') === '')
         bar.removeAttribute('class');
@@ -73688,6 +73820,8 @@ function applyLanguage(mount) {
     mount.lang = getLocale();
     if (barHost)
         barHost.lang = mount.lang;
+    if (actionsHost)
+        actionsHost.lang = mount.lang;
     if (onPage)
         applyDocumentLanguage();
 }
@@ -73702,7 +73836,7 @@ function changeLocale(locale) {
     app.dispose();
     setLocale(locale);
     applyLanguage(mountEl);
-    app = new App(mountEl, session, topo, where, barHost);
+    app = new App(mountEl, session, topo, where, barHost, actionsHost);
     app.announce(t('hint.language'));
 }
 /** Starts the interface in `mount` (one per page: a new start replaces the previous one). */
@@ -73714,9 +73848,13 @@ function start(mount, s, topo, page = !s.embedded, host = NO_HOST) {
         mountEl.replaceChildren();
     if (barHost && barHost !== bar)
         releaseBar(barHost);
+    if (actionsHost && actionsHost !== host.actions)
+        releaseBar(actionsHost);
     mountEl = mount;
     barHost = bar;
+    actionsHost = host.actions;
     bar?.classList.add(ROOT_CLASS, BAR_CLASS); // the bar keeps Netfix's look (its rules hang off .netfix-root)
+    host.actions?.classList.add(ROOT_CLASS, ACTIONS_CLASS);
     if (bar)
         mount.dataset.bar = 'host';
     else
@@ -73743,7 +73881,7 @@ function start(mount, s, topo, page = !s.embedded, host = NO_HOST) {
     applyBrand(mount, page);
     // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
     forceTimestampPrompt(lockedPrompt(s.policy));
-    app = new App(mount, s, topo, undefined, bar);
+    app = new App(mount, s, topo, undefined, bar, host.actions);
     return app;
 }
 /** The page's whole interface; `ui/boot.ts` starts it on `#app` (importing this module has no effects, R7). */
@@ -73785,7 +73923,10 @@ function hosted(mount, s, topology, release, host) {
             mount.replaceChildren();
             if (bar)
                 releaseBar(bar);
+            if (host.actions)
+                releaseBar(host.actions);
             barHost = null;
+            actionsHost = null;
             // No Netfix class, view, mode or language left on the element.
             mount.classList.remove(ROOT_CLASS);
             for (const k of ['view', 'mode', 'bar'])

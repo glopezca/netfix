@@ -13,8 +13,9 @@ test('host options: none leaves the options as they were; a bad toolbar, locale 
   assert.deepEqual(takeHostOptions(mount, options), { rest: options, host: NO_HOST });
   assert.deepEqual(takeHostOptions(mount, undefined), { rest: undefined, host: NO_HOST });
   assert.deepEqual(takeHostOptions(mount, { restrictions: {}, locale: 'en-GB', confirmUnsaved: false }),
-    { rest: { restrictions: {} }, host: { toolbar: null, locale: 'en-GB', confirmUnsaved: false } });
+    { rest: { restrictions: {} }, host: { toolbar: null, actions: null, locale: 'en-GB', confirmUnsaved: false } });
   assert.throws(() => takeHostOptions(mount, { toolbar: '#bar' }), /toolbar/);
+  assert.throws(() => takeHostOptions(mount, { actions: '#acts' }), /actions/);
   assert.throws(() => takeHostOptions(mount, { locale: 'fr-FR' }), /locale/);
   assert.throws(() => takeHostOptions(mount, { confirmUnsaved: 'no' }), /confirmUnsaved/);
 });

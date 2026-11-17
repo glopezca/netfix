@@ -20,14 +20,24 @@ export function checkMount(mount: unknown): asserts mount is HTMLElement {
 export interface HostOptions {
   /** An element of the host page (its menu, say) for Netfix's top bar; null: the bar is at the top of the mount. */
   readonly toolbar: HTMLElement | null;
+  /** An element of the host page (its bar) for the workspace's actions: undo/redo, clipboard and zoom. */
+  readonly actions: HTMLElement | null;
   /** The interface language, chosen by the host (it then keeps it: nothing is stored in this browser). */
   readonly locale: Locale | null;
   /** Whether replacing unsaved work asks first; undefined: this browser's setting. */
   readonly confirmUnsaved: boolean | undefined;
 }
 
-export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, locale: null, confirmUnsaved: undefined });
-const HOST_KEYS = ['toolbar', 'locale', 'confirmUnsaved'] as const;
+export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined });
+const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved'] as const;
+
+/** A host element for part of Netfix: in the page, and neither inside the mount nor around it (each would empty the other). */
+function hostElement(mount: HTMLElement, v: unknown, name: string): HTMLElement | null {
+  if (v === undefined) return null;
+  if (typeof HTMLElement === 'undefined' || !(v instanceof HTMLElement)) throw new Error(`netfix: «${name}» debe ser un elemento de la página`);
+  if (mount.contains(v) || v.contains(mount)) throw new Error(`netfix: «${name}» no puede estar dentro del elemento donde se monta Netfix ni contenerlo`);
+  return v;
+}
 
 /**
  * Takes the host options out of `options` (the rest goes on to `embedSession`). `toolbar` must be a page element not
@@ -35,21 +45,20 @@ const HOST_KEYS = ['toolbar', 'locale', 'confirmUnsaved'] as const;
  */
 export function takeHostOptions(mount: HTMLElement, options: unknown): { readonly rest: unknown; readonly host: HostOptions } {
   if (typeof options !== 'object' || options === null || !HOST_KEYS.some((k) => Object.hasOwn(options, k))) return { rest: options, host: NO_HOST };
-  const { toolbar, locale, confirmUnsaved, ...rest } = options as Record<string, unknown>;
-  if (toolbar !== undefined) {
-    if (typeof HTMLElement === 'undefined' || !(toolbar instanceof HTMLElement)) throw new Error('netfix: «toolbar» debe ser un elemento de la página');
-    if (mount.contains(toolbar) || toolbar.contains(mount)) throw new Error('netfix: «toolbar» no puede estar dentro del elemento donde se monta Netfix ni contenerlo');
-  }
+  const { toolbar, actions, locale, confirmUnsaved, ...rest } = options as Record<string, unknown>;
+  const bar = hostElement(mount, toolbar, 'toolbar');
+  const acts = hostElement(mount, actions, 'actions');
+  if (bar && acts && (bar.contains(acts) || acts.contains(bar))) throw new Error('netfix: «toolbar» y «actions» deben ser elementos distintos y separados');
   if (locale !== undefined && !isLocale(locale)) throw new Error('netfix: «locale» no es un idioma de Netfix');
   if (confirmUnsaved !== undefined && typeof confirmUnsaved !== 'boolean') throw new Error('netfix: «confirmUnsaved» debe ser true o false');
-  return { rest, host: { toolbar: (toolbar as HTMLElement | undefined) ?? null, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined } };
+  return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined } };
 }
 
 /** `netfix.lab` options: none, or only the host options. */
 export function labOptions(mount: HTMLElement, options: unknown): HostOptions {
   const { rest, host } = takeHostOptions(mount, options);
   if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
-    throw new Error('netfix.lab: solo admite «toolbar», «locale» y «confirmUnsaved»');
+    throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale» y «confirmUnsaved»');
   }
   return host;
 }

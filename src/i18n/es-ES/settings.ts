@@ -12,6 +12,7 @@ export const SETTINGS_ES = {
   'set.themeLight': 'Claro',
   'set.themeDark': 'Oscuro',
   'set.missions': 'Mostrar las misiones de los laboratorios',
+  'set.toolHelp': 'Mostrar la ayuda de cada herramienta («Arrastra para mover…»)',
   'set.missionsHint': '(el panel Misión junto al área de trabajo y el grupo Laboratorios de la Ayuda)',
   'set.confirm': 'Avisar antes de reemplazar una red con cambios sin guardar',
   'set.timestamp': 'Prompt con marca de fecha y hora en todas las terminales GNU/Linux y Windows',
