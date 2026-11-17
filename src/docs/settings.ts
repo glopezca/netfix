@@ -11,7 +11,7 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
     summary: 'Idioma, tema y aviso de cambios sin guardar; y qué ajustes muestra cada tipo de equipo en el laboratorio abierto.',
     markdownBase: MD,
     blocks: [
-      p('La pestaña **Configuración** (junto a Ayuda) tiene dos apartados. **Generales** vale para cualquier red y se guarda en este navegador. **Laboratorio actual** es de la red abierta: se guarda con ella al pulsar Guardar, y viaja en el archivo .netfix.json.'),
+      p('La pestaña **Configuración** (junto a Ayuda) tiene dos apartados. **Generales** vale para cualquier red y se guarda en este navegador. **Laboratorio actual** es de la red abierta: se guarda con ella al pulsar Exportar, y viaja en el archivo .netfix.json.'),
       h('Generales'),
       table(['Ajuste', 'Qué hace'], [
         ['Idioma', 'Español (España) o English (UK), como el desplegable de la barra superior.'],
@@ -44,7 +44,7 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
       steps(
         ['Abre la pestaña', '**Configuración**, apartado **Laboratorio actual**.'],
         ['Marca o desmarca', 'Cada casilla cambia al momento. Las ventanas abiertas se cierran: al abrirlas de nuevo ya tienen las pestañas nuevas.'],
-        ['Guarda', 'Es un cambio de la red: **Guardar** lo lleva al archivo, y cambiar de laboratorio sin guardar avisa.'],
+        ['Exporta', 'Es un cambio de la red: **Exportar** lo lleva al archivo, y cambiar de laboratorio sin guardar avisa.'],
       ),
       check('Compruébalo', 'Desmarca **Terminal Windows** en PC y abre un PC: ya no tiene esa pestaña. **Restablecer los valores predeterminados** la devuelve.'),
       tip('En el aula', 'Embebido en una práctica de Netfix Classroom, el apartado del laboratorio es de solo lectura, y las restricciones del profesor siguen mandando: una pestaña que él oculta no aparece aunque esté marcada aquí.'),

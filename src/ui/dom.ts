@@ -35,7 +35,8 @@ function append(node: Node, children: readonly Child[]): void {
 
 /** Netfix's mount (`.netfix-root`): its dialogs live inside it, where its CSS applies (C5). */
 export function uiRoot(): HTMLElement {
-  return document.querySelector<HTMLElement>('.netfix-root') ?? document.body;
+  // Not the host's toolbar element (`toolbar` option), which also wears .netfix-root for its look and may come first.
+  return document.querySelector<HTMLElement>('.netfix-root:not(.netfix-bar)') ?? document.body;
 }
 
 export function clear(node: Node): void {

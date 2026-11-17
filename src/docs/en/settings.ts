@@ -11,7 +11,7 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
     summary: 'Language, theme and the unsaved-changes question; and which settings each kind of device shows in the open lab.',
     markdownBase: MD,
     blocks: [
-      p('The **Settings** tab (next to Help) has two sections. **General** applies to any network and is kept in this browser. **Current lab** belongs to the open network: it is saved with it when you press Save, and travels in the .netfix.json file.'),
+      p('The **Settings** tab (next to Help) has two sections. **General** applies to any network and is kept in this browser. **Current lab** belongs to the open network: it is saved with it when you press Export, and travels in the .netfix.json file.'),
       h('General'),
       table(['Setting', 'What it does'], [
         ['Language', 'Español (España) or English (UK), like the drop-down in the top bar.'],
@@ -44,7 +44,7 @@ export const SETTINGS_DOCS: readonly DocPage[] = [
       steps(
         ['Open the tab', '**Settings**, section **Current lab**.'],
         ['Tick or untick', 'Each box applies at once. Open windows close: when opened again they have the new tabs.'],
-        ['Save', 'It is a change to the network: **Save** puts it in the file, and changing lab without saving asks first.'],
+        ['Export', 'It is a change to the network: **Export** puts it in the file, and changing lab without saving asks first.'],
       ),
       check('Check it', 'Untick **Windows terminal** for PC and open a PC: it no longer has that tab. **Restore the defaults** brings it back.'),
       tip('In the classroom', 'Embedded in a Netfix Classroom exercise, the lab section is read-only, and the teacher’s restrictions still rule: a tab the teacher hides does not appear even if it is ticked here.'),
