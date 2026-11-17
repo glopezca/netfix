@@ -78,11 +78,14 @@ try {
   assert.match(await run(page, 'smbclient -L win-a -N'), /Command 'smbclient' not found, but can be installed with:\nsudo apt install smbclient/);
   await tab('Configuración');
   const pkg = win.locator('input[name="dev-pkg-smbclient"]');
+  const openPkgs = () => win.locator('details.dev-collapse').evaluateAll((ds) => ds.forEach((d) => { d.open = true; })); // collapsed at first
+  await openPkgs();
   await tick(pkg, true);
   await tab('Terminal GNU/Linux');
   assert.match(await run(page, 'smbclient -L win-a -N'), /docs +Disk +Mis documentos/);
   assert.match(await run(page, "smbclient //win-a/docs -N -c 'put /etc/hostname linux.txt'"), /putting file \/etc\/hostname as \\linux\.txt/);
   await tab('Configuración');
+  await openPkgs();
   await tick(pkg, false);
   await tab('Terminal GNU/Linux');
   assert.match(await run(page, 'smbclient -L win-a -N'), /Command 'smbclient' not found, but can be installed with:\nsudo apt install smbclient/, 'the unticked box is apt remove');

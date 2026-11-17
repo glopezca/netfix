@@ -176,6 +176,8 @@
   .pal-model { font-size: 11px; color: var(--ink-2); }
   .pal-glyph { font-size: 22px; line-height: 33px; height: 33px; }
   .hint { margin: 0; align-self: center; color: var(--ink-2); max-width: 70ch; }
+  .dev-collapse > summary { cursor: pointer; font-weight: 700; margin-bottom: 4px; }
+  .dev-collapse:not([open]) > summary { margin-bottom: 0; }
   /* Hosted: the palette is a sidebar on the left; the clock, the mode and the hint float over the workspace. */
   &[data-bar="host"] .stage { grid-column: 2; grid-row: 1; }
   &[data-bar="host"] .docs-host { grid-column: 1 / -1; grid-row: 1; }
