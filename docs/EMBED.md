@@ -45,6 +45,11 @@ trabajo y devolver el elemento vacío. No admite restricciones (para una prácti
 
 ## Opciones de la página que aloja Netfix
 
+`actions` (un elemento de la página, con `toolbar`) recibe deshacer/rehacer, el portapapeles y el zoom. Con la barra
+en el menú de la página, la paleta es una barra lateral de equipos y herramientas, el reloj y el modo flotan arriba a la
+derecha del área de trabajo, y la línea de ayuda es una nota sobre ella: la ayuda de cada herramienta se puede dejar
+de mostrar («No volver a mostrar», o en Configuración) y los mensajes se ven unos segundos.
+
 `netfix.lab` y `netfix.embed` admiten además `locale` (`'es-ES'` o `'en-GB'`: el idioma lo elige la página, y Netfix
 no lo guarda) y `confirmUnsaved` (`true`/`false`: si reemplazar trabajo sin guardar pregunta antes; sin ella, la
 preferencia de este navegador).

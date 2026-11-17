@@ -81,6 +81,21 @@ function labGroups(allowed: readonly Example[]): Options {
   });
 }
 
+/** The clock (with «Avanzar reloj…» if the classroom allows it) and the mode switch (if it allows simulation). */
+function clockAndMode(actions: TopbarActions, clockEl: HTMLElement, mode: Mode, policy: Restrictions): HTMLElement[] {
+  const advance = actionSelect(t('top.advanceLabel'), t('top.advance'),
+    [[String(MINUTE), t('top.plusMinute')], [String(60 * MINUTE), t('top.plusHour')], [String(24 * 60 * MINUTE), t('top.plusDay')]], (v) => actions.advance(Number(v)));
+  return [
+    el('div', { class: 'time' }, clockEl, ...only([[policy.clock, advance]])),
+    ...only([[policy.simulation, segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime'))]]),
+  ];
+}
+
+/** With the bar in a host's menu: the clock and the mode in a bar floating at the top right of the workspace. */
+export function floatBar(actions: TopbarActions, clockEl: HTMLElement, mode: Mode, policy: Restrictions = NO_RESTRICTIONS): HTMLElement {
+  return el('div', { class: 'float-bar', role: 'group', 'aria-label': t('top.mode') }, ...clockAndMode(actions, clockEl, mode, policy));
+}
+
 /** What the classroom restrictions leave of a list: the items whose flag is on. */
 function only(items: readonly (readonly [boolean, HTMLElement])[]): HTMLElement[] {
   return items.filter(([on]) => on).map(([, x]) => x);
@@ -91,15 +106,12 @@ function only(items: readonly (readonly [boolean, HTMLElement])[]): HTMLElement[
 export function topbar(actions: TopbarActions, clockEl: HTMLElement, mode: Mode, view: View = 'net', policy: Restrictions = NO_RESTRICTIONS, hosted = false): HTMLElement {
   const allowed = EXAMPLES.filter((e) => allowsLab(policy, e.id));
   const labs = actionSelect(t('top.examplesLabel'), t('top.examples'), labGroups(allowed), (id) => actions.loadExample(id));
-  const advance = actionSelect(t('top.advanceLabel'), t('top.advance'),
-    [[String(MINUTE), t('top.plusMinute')], [String(60 * MINUTE), t('top.plusHour')], [String(24 * 60 * MINUTE), t('top.plusDay')]], (v) => actions.advance(Number(v)));
   const items = [
     el('nav', { class: 'file-actions', 'aria-label': t('top.file') }, ...only([
       [policy.fileNew, button(t('top.new'), () => actions.newWorkspace())], [policy.fileOpen, button(t('top.open'), () => actions.openFile())],
       [policy.fileSave, button(t('top.save'), () => actions.save(), { title: t('top.saveTitle') })], [allowed.length > 0, labs]])),
-    el('div', { class: 'time' }, clockEl, ...only([[policy.clock, advance]])),
-    ...only([[policy.simulation, segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime'))]]),
-    ...(hosted ? [] : [languageSelect(actions)])]; // hosted, the host's own Language menu sets it
+    // Hosted, the clock and the mode float over the workspace (floatBar) and the host's Language menu sets the language.
+    ...(hosted ? [] : [...clockAndMode(actions, clockEl, mode, policy), languageSelect(actions)])];
   let closeMenu = (): void => undefined; // hosted, the host closes its own menu
   // Hosted, the host's Help, About and Settings menus open those pages: the bar keeps only the way back to the network.
   const views = segmented(t('top.view'), VIEWS.filter(([v]) => (hosted ? v === 'net' : v !== 'docs' || policy.docs)).map(([v, k]) => [v, t(k)] as const), view, (v) => {
