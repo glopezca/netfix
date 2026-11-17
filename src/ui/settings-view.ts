@@ -27,6 +27,8 @@ export interface SettingsHost {
   setPkgsOff(next: readonly string[]): void;
   /** Embedded in a classroom exercise: the lab section is read-only. */
   labLocked(): boolean;
+  /** The bar is in a host page's menu: the host sets the language, theme and unsaved question for its whole page. */
+  hostOwned(): boolean;
   /** The classroom fixes the timestamp prompt. */
   promptLocked(): boolean;
   setLocale(l: Locale): void;
@@ -50,10 +52,10 @@ function generalSection(host: SettingsHost): HTMLElement {
   return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' },
     el('h2', { id: 'set-general' }, t('set.general')),
     el('p', { class: 'muted' }, t('set.generalNote')),
-    el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang),
+    host.hostOwned() ? null : el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang),
     // Embedded, the page and this browser's storage are the host's: no theme on its <html>, nothing kept for later.
-    host.labLocked() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios),
-    host.labLocked() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')),
+    host.labLocked() || host.hostOwned() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios),
+    host.labLocked() || host.hostOwned() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')),
     el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)),
     el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }

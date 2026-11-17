@@ -18,6 +18,9 @@ comprobación, en el navegador o en un servidor sin interfaz.
   // practica.exportTopology()  → archivo de topología actual
   // practica.open(archivo, nombre) → lo abre como Importar… (pregunta si hay cambios sin guardar); true si lo abrió
   // practica.markSaved()       → la página ha guardado la red: deja de contar como cambios sin guardar
+  // practica.showView('docs')  → muestra una página de Netfix: 'net', 'docs', 'settings' o 'about' (false si no puede)
+  // practica.setLocale('en-GB') → cambia el idioma (la red se conserva)
+  // practica.setConfirmUnsaved(false) → reemplazar trabajo sin guardar ya no pregunta
   // practica.destroy()         → detiene el simulador y vacía el elemento
 </script>
 ```
@@ -40,12 +43,21 @@ icono de la página; el tema sí necesita `<html data-theme>`, y `destroy()` lo 
 trabajo y devolver el elemento vacío. No admite restricciones (para una práctica, `netfix.embed`); su única opción es
 `toolbar`.
 
+## Opciones de la página que aloja Netfix
+
+`netfix.lab` y `netfix.embed` admiten además `locale` (`'es-ES'` o `'en-GB'`: el idioma lo elige la página, y Netfix
+no lo guarda) y `confirmUnsaved` (`true`/`false`: si reemplazar trabajo sin guardar pregunta antes; sin ella, la
+preferencia de este navegador).
+
 ## La barra en el menú de la página (`toolbar`)
 
 `netfix.lab(elemento, { toolbar })` y `netfix.embed(elemento, { …, toolbar })` ponen la barra superior de Netfix (vistas,
-Nuevo, Importar…, Exportar, laboratorios, reloj, modo e idioma) en `toolbar`, un elemento de la página (su menú
+Nuevo, Importar…, Exportar, laboratorios, reloj y modo) en `toolbar`, un elemento de la página (su menú
 desplegable, por ejemplo), sin el logotipo ni el menú del móvil: la página muestra el nombre de Netfix y abre y cierra
-su menú. El área de trabajo ocupa entonces todo el elemento montado. `toolbar` no puede estar dentro de ese elemento
+su menú. La página es entonces la dueña del idioma, el tema, la Ayuda, Acerca de, la Configuración y la pregunta de
+cambios sin guardar: la barra no tiene selector de idioma ni más vista que la red (las demás páginas se abren con
+`showView`), Netfix no aplica su tema y su Configuración no muestra idioma, tema ni esa pregunta. Donaciones no se
+ofrece. El área de trabajo ocupa entonces todo el elemento montado. `toolbar` no puede estar dentro de ese elemento
 ni contenerlo; `destroy()` lo devuelve vacío y sin clases de Netfix. El logotipo está en `@glopezca/netfix/ui/logo.webp`.
 
 ## Restricciones

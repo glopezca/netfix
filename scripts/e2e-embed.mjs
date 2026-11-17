@@ -114,9 +114,14 @@ try {
   // toolbar: the top bar goes in the host's element (its menu), without the logo; the mount is all workspace.
   await page.evaluate(() => { const m = document.createElement('div'); m.id = 'host-menu'; document.body.prepend(m); });
   await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { toolbar: '#host-menu' })), /toolbar/);
-  await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { theme: 'dark' })), /única opción/);
-  await page.evaluate(() => { globalThis.handle = netfix.lab(document.getElementById('app'), { toolbar: document.getElementById('host-menu') }); });
+  await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { theme: 'dark' })), /solo admite/);
+  await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { locale: 'fr-FR' })), /locale/);
+  await page.evaluate(() => { globalThis.handle = netfix.lab(document.getElementById('app'), { toolbar: document.getElementById('host-menu'), locale: 'es-ES' }); });
   await page.waitForSelector('#host-menu .topbar.is-hosted');
+  // The host owns language, help, about, settings and donations: the bar keeps only the way back to the network.
+  assert.deepEqual(await page.locator('#host-menu [data-view]').evaluateAll((b) => b.map((x) => x.dataset.view)), ['net']);
+  assert.equal(await page.locator('#host-menu select[aria-label="Idioma"]').count(), 0, 'no language select');
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), undefined, 'the host\'s theme is left alone');
   assert.equal(await page.locator('#app .topbar').count(), 0, 'no bar left in the mount');
   assert.equal(await page.locator('#host-menu .brand-logo, #host-menu .menu-toggle').count(), 0, 'no logo nor phone menu in the host');
   assert.equal(await page.getAttribute('#app', 'data-bar'), 'host');
@@ -143,19 +148,31 @@ try {
   assert.equal(await page.evaluate((f) => globalThis.handle.open(f, 'guardada.json'), saved), true);
   assert.equal(asked, 0, 'a saved network is replaced without asking');
   assert.match(await page.locator('#app .hint').innerText(), /guardada\.json/);
-  await page.click('#host-menu [data-view="settings"]'); // an unsaved change: a lab feature off
+  assert.equal(await page.evaluate(() => globalThis.handle.showView('settings')), true); // an unsaved change: a lab feature off
   await page.locator('#app .settings input[data-feature] >> nth=0').click();
+  assert.equal(await page.locator('#app #set-lang, #app input[name="set-theme"]').count(), 0, 'the host sets the language and theme');
   await page.click('#host-menu [data-view="net"]');
   await page.removeLocatorHandler(confirmOpen); // from here the question is answered by hand
   const opening = page.evaluate((f) => globalThis.handle.open(f, 'otra.json'), saved);
   await page.locator('#app dialog.confirm-dialog[open] button.danger').click(); // the question over unsaved changes
   assert.equal(await opening, true);
   assert.ok(asked > 0, 'unsaved changes are asked about first');
-  await page.click('#host-menu [data-view="settings"]');
-  await page.waitForSelector('#app .settings');
-  await page.click('#host-menu [data-view="net"]');
-  await page.selectOption('#host-menu select[aria-label="Idioma"]', 'en-GB');
+  // The host's unsaved question off: over unsaved work the file is opened without asking.
+  await page.evaluate(() => globalThis.handle.showView('settings'));
+  await page.locator('#app .settings input[data-feature] >> nth=0').click();
+  await page.evaluate(() => globalThis.handle.setConfirmUnsaved(false));
+  const askedBefore = asked;
+  assert.equal(await page.evaluate((f) => globalThis.handle.open(f, 'sin-preguntar.json'), saved), true);
+  assert.equal(asked, askedBefore, 'no question when the host turned it off');
+  for (const v of ['docs', 'about', 'net']) {
+    assert.equal(await page.evaluate((x) => globalThis.handle.showView(x), v), true, v);
+    assert.equal(await page.getAttribute('#app', 'data-view'), v);
+  }
+  assert.equal(await page.evaluate(() => globalThis.handle.showView('donate')), false, 'no donations in a host');
+  await assert.rejects(page.evaluate(() => globalThis.handle.setLocale('fr-FR')), /locale/);
+  await page.evaluate(() => globalThis.handle.setLocale('en-GB'));
   await page.waitForSelector('#host-menu button:text-is("Import…")');
+  assert.equal(await page.evaluate(() => localStorage.getItem('netfix:locale')), null, 'the host\'s language is not stored by Netfix');
   assert.equal(await page.locator('#host-menu .topbar').count(), 1, 'a language change rebuilds the bar in the host');
   await page.evaluate(() => globalThis.handle.destroy());
   assert.deepEqual(await page.evaluate(() => [...document.getElementById('host-menu').attributes].map((a) => a.name)), ['id'], 'the host menu is given back as it was');

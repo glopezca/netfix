@@ -34,6 +34,12 @@ export interface EmbedHandle {
   open(file: unknown, name: string): Promise<boolean>;
   /** The host stored the current topology: it is no longer unsaved work. */
   markSaved(): void;
+  /** Shows one of Netfix's pages: 'net', 'docs' (if the classroom allows it), 'settings' or 'about'. False: not shown. */
+  showView(view: string): boolean;
+  /** The interface in another language (the host's choice: rebuilt, the network kept). */
+  setLocale(locale: string): void;
+  /** Whether replacing unsaved work asks first (the host's setting). */
+  setConfirmUnsaved(on: boolean): void;
   /** Stops the simulator and empties the mount element. */
   destroy(): void;
 }

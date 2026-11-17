@@ -99,9 +99,10 @@ export function topbar(actions: TopbarActions, clockEl: HTMLElement, mode: Mode,
       [policy.fileSave, button(t('top.save'), () => actions.save(), { title: t('top.saveTitle') })], [allowed.length > 0, labs]])),
     el('div', { class: 'time' }, clockEl, ...only([[policy.clock, advance]])),
     ...only([[policy.simulation, segmented(t('top.mode'), [['realtime', t('top.realtime')], ['simulation', t('top.simulation')]], mode, (v) => actions.setMode(v === 'simulation' ? 'simulation' : 'realtime'))]]),
-    languageSelect(actions)];
+    ...(hosted ? [] : [languageSelect(actions)])]; // hosted, the host's own Language menu sets it
   let closeMenu = (): void => undefined; // hosted, the host closes its own menu
-  const views = segmented(t('top.view'), VIEWS.filter(([v]) => v !== 'docs' || policy.docs).map(([v, k]) => [v, t(k)] as const), view, (v) => {
+  // Hosted, the host's Help, About and Settings menus open those pages: the bar keeps only the way back to the network.
+  const views = segmented(t('top.view'), VIEWS.filter(([v]) => (hosted ? v === 'net' : v !== 'docs' || policy.docs)).map(([v, k]) => [v, t(k)] as const), view, (v) => {
     actions.showView(v as View);
     closeMenu();
   }, 'data-view');

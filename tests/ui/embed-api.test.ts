@@ -1,25 +1,28 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkMount, labToolbar, takeToolbar } from '../../src/ui/embed-api.ts';
+import { NO_HOST, checkMount, labOptions, takeHostOptions } from '../../src/ui/embed-api.ts';
 
 test('netfix.embed needs an element to mount on', () => {
   assert.throws(() => checkMount('#app'), /elemento/);
   assert.throws(() => checkMount(undefined), /elemento/);
 });
 
-test('toolbar option: none leaves the options as they were; anything but a page element is refused', () => {
+test('host options: none leaves the options as they were; a bad toolbar, locale or confirmUnsaved is refused', () => {
   const mount = {} as HTMLElement;
   const options = { restrictions: {} };
-  assert.deepEqual(takeToolbar(mount, options), { rest: options, toolbar: null });
-  assert.deepEqual(takeToolbar(mount, undefined), { rest: undefined, toolbar: null });
-  assert.throws(() => takeToolbar(mount, { toolbar: '#bar' }), /toolbar/);
+  assert.deepEqual(takeHostOptions(mount, options), { rest: options, host: NO_HOST });
+  assert.deepEqual(takeHostOptions(mount, undefined), { rest: undefined, host: NO_HOST });
+  assert.deepEqual(takeHostOptions(mount, { restrictions: {}, locale: 'en-GB', confirmUnsaved: false }),
+    { rest: { restrictions: {} }, host: { toolbar: null, locale: 'en-GB', confirmUnsaved: false } });
+  assert.throws(() => takeHostOptions(mount, { toolbar: '#bar' }), /toolbar/);
+  assert.throws(() => takeHostOptions(mount, { locale: 'fr-FR' }), /locale/);
+  assert.throws(() => takeHostOptions(mount, { confirmUnsaved: 'no' }), /confirmUnsaved/);
 });
 
-test('netfix.lab takes no option but toolbar', () => {
+test('netfix.lab takes no option but the host ones', () => {
   const mount = {} as HTMLElement;
-  assert.equal(labToolbar(mount, undefined), null);
-  assert.equal(labToolbar(mount, {}), null);
-  assert.throws(() => labToolbar(mount, { autosave: false }), /única opción/);
-  assert.throws(() => labToolbar(mount, 'x'), /única opción/);
-  assert.throws(() => labToolbar(mount, [1]), /única opción/);
+  assert.equal(labOptions(mount, undefined), NO_HOST);
+  assert.equal(labOptions(mount, {}).toolbar, null);
+  assert.equal(labOptions(mount, { locale: 'es-ES' }).locale, 'es-ES');
+  for (const bad of [{ autosave: false }, 'x', [1]]) assert.throws(() => labOptions(mount, bad), /solo admite/);
 });

@@ -1,6 +1,8 @@
 /** DOM side of `netfix.embed` / `netfix.evaluate` (needs `HTMLElement` and `globalThis`, so it lives in `ui`, not the Core). */
 import type { EmbedHandle } from '../classroom/embed.ts';
 import type { Evaluation } from '../classroom/evaluate.ts';
+import { isLocale } from '../i18n/locale.ts';
+import type { Locale } from '../i18n/locale.ts';
 
 export interface NetfixApi {
   embed(mount: HTMLElement, options?: unknown): EmbedHandle;
@@ -14,25 +16,42 @@ export function checkMount(mount: unknown): asserts mount is HTMLElement {
   if (typeof HTMLElement === 'undefined' || !(mount instanceof HTMLElement)) throw new Error('netfix.embed: falta el elemento donde montar Netfix');
 }
 
-/**
- * The `toolbar` option of `netfix.embed` and `netfix.lab`: an element of the host page (its menu, say) where Netfix puts
- * its top bar, so the workspace gets the whole mount. Not inside the mount, nor around it: each would empty the other.
- */
-export function takeToolbar(mount: HTMLElement, options: unknown): { readonly rest: unknown; readonly toolbar: HTMLElement | null } {
-  if (typeof options !== 'object' || options === null || !Object.hasOwn(options, 'toolbar')) return { rest: options, toolbar: null };
-  const { toolbar, ...rest } = options as Record<string, unknown>;
-  if (typeof HTMLElement === 'undefined' || !(toolbar instanceof HTMLElement)) throw new Error('netfix: «toolbar» debe ser un elemento de la página');
-  if (mount.contains(toolbar) || toolbar.contains(mount)) throw new Error('netfix: «toolbar» no puede estar dentro del elemento donde se monta Netfix ni contenerlo');
-  return { rest, toolbar };
+/** What a host page decides for Netfix (options of `netfix.embed` and `netfix.lab`). */
+export interface HostOptions {
+  /** An element of the host page (its menu, say) for Netfix's top bar; null: the bar is at the top of the mount. */
+  readonly toolbar: HTMLElement | null;
+  /** The interface language, chosen by the host (it then keeps it: nothing is stored in this browser). */
+  readonly locale: Locale | null;
+  /** Whether replacing unsaved work asks first; undefined: this browser's setting. */
+  readonly confirmUnsaved: boolean | undefined;
 }
 
-/** `netfix.lab` options: none, or only `toolbar`. */
-export function labToolbar(mount: HTMLElement, options: unknown): HTMLElement | null {
-  const { rest, toolbar } = takeToolbar(mount, options);
-  if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
-    throw new Error('netfix.lab: la única opción es «toolbar»');
+export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, locale: null, confirmUnsaved: undefined });
+const HOST_KEYS = ['toolbar', 'locale', 'confirmUnsaved'] as const;
+
+/**
+ * Takes the host options out of `options` (the rest goes on to `embedSession`). `toolbar` must be a page element not
+ * inside the mount nor around it (each would empty the other); `locale`, one of Netfix's; `confirmUnsaved`, a boolean.
+ */
+export function takeHostOptions(mount: HTMLElement, options: unknown): { readonly rest: unknown; readonly host: HostOptions } {
+  if (typeof options !== 'object' || options === null || !HOST_KEYS.some((k) => Object.hasOwn(options, k))) return { rest: options, host: NO_HOST };
+  const { toolbar, locale, confirmUnsaved, ...rest } = options as Record<string, unknown>;
+  if (toolbar !== undefined) {
+    if (typeof HTMLElement === 'undefined' || !(toolbar instanceof HTMLElement)) throw new Error('netfix: «toolbar» debe ser un elemento de la página');
+    if (mount.contains(toolbar) || toolbar.contains(mount)) throw new Error('netfix: «toolbar» no puede estar dentro del elemento donde se monta Netfix ni contenerlo');
   }
-  return toolbar;
+  if (locale !== undefined && !isLocale(locale)) throw new Error('netfix: «locale» no es un idioma de Netfix');
+  if (confirmUnsaved !== undefined && typeof confirmUnsaved !== 'boolean') throw new Error('netfix: «confirmUnsaved» debe ser true o false');
+  return { rest, host: { toolbar: (toolbar as HTMLElement | undefined) ?? null, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined } };
+}
+
+/** `netfix.lab` options: none, or only the host options. */
+export function labOptions(mount: HTMLElement, options: unknown): HostOptions {
+  const { rest, host } = takeHostOptions(mount, options);
+  if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
+    throw new Error('netfix.lab: solo admite «toolbar», «locale» y «confirmUnsaved»');
+  }
+  return host;
 }
 
 /** Publishes the API as `globalThis.netfix` (read-only, so a page script cannot swap it). */
