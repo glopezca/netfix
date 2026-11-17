@@ -180,7 +180,7 @@
   &[data-bar="host"] .stage { grid-column: 2; grid-row: 1; }
   &[data-bar="host"] .docs-host { grid-column: 1 / -1; grid-row: 1; }
   &[data-bar="host"] .palette {
-    grid-column: 1; grid-row: 1; flex-direction: column; align-items: stretch; gap: 8px; padding: 8px 6px;
+    grid-column: 1; grid-row: 1; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; padding: 8px 6px;
     overflow-x: hidden; overflow-y: auto; border-top: 0; border-right: 1px solid var(--line);
   }
   &[data-bar="host"] .pal-group { flex-direction: column; gap: 2px; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--line); }
