@@ -52,7 +52,7 @@ export const APP_EN: Readonly<Record<AppKey, string>> = {
   'unsaved.proceed': 'Open the lab',
   'unsaved.bodyNew': 'The current network has changes you have not saved. If you start a new network, they will be lost.',
   'unsaved.proceedNew': 'Start a new network',
-  'unsaved.bodyOpen': 'The current network has changes you have not saved. If you import another file, they will be lost.',
+  'unsaved.bodyOpen': 'The current network has changes you have not saved. If you open another file, they will be lost.',
   'unsaved.proceedOpen': 'Choose another file',
   'hint.copied': 'Topology copied to the clipboard: paste it into a .json file to keep it.',
   'hint.copyFailed': 'Could not copy. Use the downloadable version of Netfix to save files.',

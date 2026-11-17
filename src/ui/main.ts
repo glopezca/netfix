@@ -335,6 +335,16 @@ class App {
     this.hintEl.textContent = done.message;
   }
 
+  /** `handle.open`: a file from the host's storage, after the same question as Import…. */
+  async openHosted(topo: Topology, name: string): Promise<boolean> {
+    if (!(await this.replaceAllowed('open'))) return false;
+    this.load(topo, t('hint.opened', { name }));
+    return true;
+  }
+
+  /** `handle.markSaved`: the host stored the network. */
+  markSaved(): void { this.saved.mark(this.topo); }
+
   private async openFile(): Promise<void> {
     const file = this.fileInput.files?.[0];
     this.fileInput.value = '';
@@ -425,6 +435,11 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
   const current = (): App | null => (session === s ? app : null);
   return {
     exportTopology: () => (last = current() ?? last).topo.toJSON(),
+    open: async (file, name) => {
+      const topo = Topology.fromJSON(file); // a bad file throws before anything is asked or replaced
+      return current()?.openHosted(topo, String(name)) ?? false;
+    },
+    markSaved: () => current()?.markSaved(),
     destroy: () => {
       const live = current();
       if (!live) return;

@@ -50,7 +50,7 @@ export const APP_ES = {
   'unsaved.proceed': 'Abrir el laboratorio',
   'unsaved.bodyNew': 'La red actual tiene cambios que no has guardado. Si empiezas una red nueva, se perderán.',
   'unsaved.proceedNew': 'Empezar una red nueva',
-  'unsaved.bodyOpen': 'La red actual tiene cambios que no has guardado. Si importas otro archivo, se perderán.',
+  'unsaved.bodyOpen': 'La red actual tiene cambios que no has guardado. Si abres otro archivo, se perderán.',
   'unsaved.proceedOpen': 'Elegir otro archivo',
   'hint.copied': 'Topología copiada al portapapeles: pégala en un archivo .json para guardarla.',
   'hint.copyFailed': 'No se pudo copiar. Usa la versión descargable de Netfix para guardar archivos.',
