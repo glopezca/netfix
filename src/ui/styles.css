@@ -86,7 +86,9 @@
   .topbar.is-hosted { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 10px; padding: 12px; border: 0; }
   .topbar.is-hosted .time { margin-left: 0; }
   .topbar.is-hosted .select { max-width: none; }
-  .topbar.is-hosted > .segmented { overflow-x: auto; }
+  .topbar.is-hosted > .segmented { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); }
+  .topbar.is-hosted .file-actions { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .topbar.is-hosted .file-actions .select { grid-column: 1 / -1; width: 100%; }
   .brand { margin: 0 8px 0 0; line-height: 0; }
   .brand-logo { height: 30px; width: auto; display: block; }
   .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
