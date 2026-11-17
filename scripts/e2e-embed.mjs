@@ -122,6 +122,15 @@ try {
   assert.ok(await page.locator('#host-menu').getByRole('button', { name: 'Importar…' }).isVisible());
   const stageTop = await page.evaluate(() => document.querySelector('#app .stage').getBoundingClientRect().top - document.getElementById('app').getBoundingClientRect().top);
   assert.equal(stageTop, 0, 'the workspace starts at the top of the mount');
+  // Windows and dialogs go in the mount, not in the host's element (it comes first in the page and wears .netfix-root).
+  await page.selectOption('#host-menu .file-actions select', 'basico');
+  await page.dblclick('#app g.device-pc >> nth=0');
+  await page.waitForSelector('#app .window');
+  await page.keyboard.press('Escape');
+  await page.click('#app .pal-devices .pal-item >> nth=0');
+  await page.click('#app .workspace', { position: { x: 40, y: 30 } });
+  await page.locator('#app dialog.os-dialog .btn-primary').click({ timeout: 5000 });
+  assert.equal(await page.locator('#host-menu .window, #host-menu dialog').count(), 0, 'nothing of the workspace in the host menu');
   await page.click('#host-menu [data-view="settings"]');
   await page.waitForSelector('#app .settings');
   await page.click('#host-menu [data-view="net"]');

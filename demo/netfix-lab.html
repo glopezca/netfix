@@ -1074,7 +1074,8 @@ function append(node, children) {
 }
 /** Netfix's mount (`.netfix-root`): its dialogs live inside it, where its CSS applies (C5). */
 function uiRoot() {
-    return document.querySelector('.netfix-root') ?? document.body;
+    // Not the host's toolbar element (`toolbar` option), which also wears .netfix-root for its look and may come first.
+    return document.querySelector('.netfix-root:not(.netfix-bar)') ?? document.body;
 }
 function clear(node) {
     while (node.firstChild)
