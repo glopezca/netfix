@@ -119,6 +119,7 @@ try {
   await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { toolbar: '#host-menu' })), /toolbar/);
   await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { theme: 'dark' })), /solo admite/);
   await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { locale: 'fr-FR' })), /locale/);
+  await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { palette: 'top' })), /palette/);
   await assert.rejects(page.evaluate(() => netfix.lab(document.getElementById('app'), { toolbar: document.getElementById('host-menu'), actions: document.getElementById('host-menu') })), /distintos/);
   await page.evaluate(() => { globalThis.handle = netfix.lab(document.getElementById('app'), { toolbar: document.getElementById('host-menu'), actions: document.getElementById('host-actions'), locale: 'es-ES' }); });
   await page.waitForSelector('#host-menu .topbar.is-hosted');
@@ -154,6 +155,9 @@ try {
   assert.ok(await page.locator('#host-menu').getByRole('button', { name: 'Importar…' }).isVisible());
   const stageTop = await page.evaluate(() => document.querySelector('#app .stage').getBoundingClientRect().top - document.getElementById('app').getBoundingClientRect().top);
   assert.equal(stageTop, 0, 'the workspace starts at the top of the mount');
+  // The sidebar (the default): each name on the right of its icon, not below it.
+  const [icon, name] = await page.evaluate(() => ['svg', '.pal-name'].map((q) => document.querySelector(`#app .pal-devices .pal-item ${q}`).getBoundingClientRect().toJSON()));
+  assert.ok(name.left >= icon.right && name.top < icon.bottom, `name beside its icon: ${JSON.stringify({ icon, name })}`);
   // Windows and dialogs go in the mount, not in the host's element (it comes first in the page and wears .netfix-root).
   await page.selectOption('#host-menu .file-actions select', 'basico');
   await page.dblclick('#app g.device-pc >> nth=0');
@@ -199,6 +203,16 @@ try {
     assert.equal(await page.getAttribute('#app', 'data-view'), v);
   }
   assert.equal(await page.evaluate(() => globalThis.handle.showView('donate')), false, 'no donations in a host');
+  // handle.file: the bar's Nuevo / Importar… / Exportar for the host's own File menu.
+  assert.equal(await page.evaluate(() => globalThis.handle.file('print')), false);
+  assert.equal(await page.evaluate(() => globalThis.handle.file('new')), true);
+  await page.waitForFunction(() => document.querySelectorAll('#app g.device').length === 0);
+  const download = page.waitForEvent('download');
+  assert.equal(await page.evaluate(() => globalThis.handle.file('export')), true);
+  assert.match((await download).suggestedFilename(), /\.json$/);
+  const chooser = page.waitForEvent('filechooser');
+  assert.equal(await page.evaluate(() => globalThis.handle.file('import')), true);
+  await chooser;
   await assert.rejects(page.evaluate(() => globalThis.handle.setLocale('fr-FR')), /locale/);
   await page.evaluate(() => globalThis.handle.setLocale('en-GB'));
   await page.waitForSelector('#host-menu button:text-is("Import…")');
@@ -210,6 +224,12 @@ try {
   assert.deepEqual(await page.evaluate(() => [...document.getElementById('host-actions').attributes].map((x) => x.name)), ['id'], 'the host actions given back as they were');
   assert.equal(await page.locator('#host-actions *').count(), 0);
   assert.deepEqual(await page.evaluate(() => [...document.getElementById('app').attributes].map((a) => a.name)), ['id', 'data-embed']);
+  // palette: 'bottom': the classic layout, devices and tools under the workspace.
+  await page.evaluate(() => { globalThis.handle = netfix.lab(document.getElementById('app'), { toolbar: document.getElementById('host-menu'), palette: 'bottom' }); });
+  const [stage, pal] = await page.evaluate(() => ['.stage', '.palette'].map((q) => document.querySelector(`#app ${q}`).getBoundingClientRect().toJSON()));
+  assert.ok(pal.top >= stage.bottom - 1 && pal.width >= stage.width - 1, `palette below: ${JSON.stringify({ stage, pal })}`);
+  await page.evaluate(() => globalThis.handle.destroy());
+  assert.deepEqual(await page.evaluate(() => [...document.getElementById('app').attributes].map((a) => a.name)), ['id', 'data-embed'], 'no data-palette left');
   assert.deepEqual(errors, []);
   process.stdout.write('e2e embed: ok\n');
 } finally {

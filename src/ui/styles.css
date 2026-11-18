@@ -67,6 +67,8 @@
 /* The bar in the host's element: only Netfix's look, not the mount's layout; the mount is then all workspace. */
 .netfix-bar.netfix-root { display: block; position: static; overflow: visible; background: var(--panel); color: var(--ink); font: 15px/1.45 var(--font-ui); }
 [data-bar="host"].netfix-root { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+/* Hosted with palette: 'bottom': the classic layout, the palette under the workspace. */
+[data-bar="host"][data-palette="bottom"].netfix-root { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
 /* The host's element for the workspace's actions (undo/redo, clipboard, zoom): only Netfix's look. */
 .netfix-actions.netfix-root { display: flex; align-items: center; position: static; overflow: visible; background: transparent; color: var(--ink); font: 15px/1.45 var(--font-ui); }
 
@@ -178,17 +180,24 @@
   .hint { margin: 0; align-self: center; color: var(--ink-2); max-width: 70ch; }
   .dev-collapse > summary { cursor: pointer; font-weight: 700; margin-bottom: 4px; }
   .dev-collapse:not([open]) > summary { margin-bottom: 0; }
-  /* Hosted: the palette is a sidebar on the left; the clock, the mode and the hint float over the workspace. */
-  &[data-bar="host"] .stage { grid-column: 2; grid-row: 1; }
+  /* Hosted: the palette is a sidebar on the left (or below, data-palette="bottom"); the clock, the mode and the hint
+     float over the workspace. In the sidebar, each name (and model) goes on the right of its icon. */
   &[data-bar="host"] .docs-host { grid-column: 1 / -1; grid-row: 1; }
-  &[data-bar="host"] .palette {
+  &[data-bar="host"][data-palette="bottom"] .stage { grid-row: 1; }
+  &[data-bar="host"][data-palette="bottom"] .palette { grid-row: 2; }
+  &[data-bar="host"]:not([data-palette="bottom"]) .stage { grid-column: 2; grid-row: 1; }
+  &[data-bar="host"]:not([data-palette="bottom"]) .palette {
     grid-column: 1; grid-row: 1; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; padding: 8px 6px;
     overflow-x: hidden; overflow-y: auto; border-top: 0; border-right: 1px solid var(--line);
   }
-  &[data-bar="host"] .pal-group { flex-direction: column; gap: 2px; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--line); }
-  &[data-bar="host"] .pal-group:last-child { border-bottom: 0; }
-  &[data-bar="host"] .pal-item { min-width: 72px; padding: 4px; }
-  &[data-bar="host"] .palette .nf-actions { flex-direction: column; }
+  &[data-bar="host"]:not([data-palette="bottom"]) {
+    .pal-group { flex-direction: column; gap: 2px; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--line); }
+    .pal-group:last-child { border-bottom: 0; }
+    .pal-item { grid-template-columns: 36px auto; justify-items: start; align-items: center; column-gap: 8px; min-width: 0; padding: 4px 10px 4px 4px; text-align: left; }
+    .pal-item > svg, .pal-item > .pal-glyph { grid-row: span 2; justify-self: center; width: 36px; height: 27px; }
+    .pal-tool > .pal-glyph { grid-row: auto; font-size: 20px; line-height: 27px; text-align: center; }
+    .palette .nf-actions { flex-direction: column; }
+  }
   .nf-actions { display: flex; align-items: center; gap: 8px; }
   .nf-actions .zoom-group:last-child { padding-right: 0; border-right: 0; }
   .ws-wrap { position: relative; flex: 1; min-width: 0; display: flex; }
