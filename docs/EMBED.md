@@ -54,7 +54,9 @@ de mostrar («No volver a mostrar», o en Configuración) y los mensajes se ven 
 `netfix.lab` y `netfix.embed` admiten además `locale` (`'es-ES'` o `'en-GB'`: el idioma lo elige la página, y Netfix
 no lo guarda) y `confirmUnsaved` (`true`/`false`: si reemplazar trabajo sin guardar pregunta antes; sin ella, la
 preferencia de este navegador). Con `toolbar`, `palette: 'bottom'` deja la paleta debajo del área de trabajo, como en la
-página de Netfix; sin ella (`'side'`), es la barra lateral, con el nombre de cada equipo a la derecha de su icono.
+página de Netfix; sin ella (`'side'`), es la barra lateral, con el nombre de cada equipo a la derecha de su icono. `piles` (`true`/`false`)
+apila los equipos parecidos en un botón (Router: IOS o GNU/Linux; PC: Windows, GNU/Linux o ambos); sin ella, la preferencia
+de este navegador, desmarcada de serie.
 
 ## La barra en el menú de la página (`toolbar`)
 

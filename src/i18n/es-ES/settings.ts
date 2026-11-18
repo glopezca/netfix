@@ -15,6 +15,7 @@ export const SETTINGS_ES = {
   'set.toolHelp': 'Mostrar la ayuda de cada herramienta («Arrastra para mover…»)',
   'set.missionsHint': '(el panel Misión junto al área de trabajo y el grupo Laboratorios de la Ayuda)',
   'set.confirm': 'Avisar antes de reemplazar una red con cambios sin guardar',
+  'set.piles': 'Agrupar equipos parecidos en un botón (Router: IOS o GNU/Linux; PC: Windows, GNU/Linux o ambos)',
   'set.timestamp': 'Prompt con marca de fecha y hora en todas las terminales GNU/Linux y Windows',
   'set.lab': 'Laboratorio actual',
   'set.labNote': 'Qué ajustes muestran las ventanas de cada tipo de equipo en esta red. Se guarda con la topología; al cambiarlo se cierran las ventanas abiertas.',

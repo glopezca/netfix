@@ -13,13 +13,15 @@ test('host options: none leaves the options as they were; a bad toolbar, locale,
   assert.deepEqual(takeHostOptions(mount, options), { rest: options, host: NO_HOST });
   assert.deepEqual(takeHostOptions(mount, undefined), { rest: undefined, host: NO_HOST });
   assert.deepEqual(takeHostOptions(mount, { restrictions: {}, locale: 'en-GB', confirmUnsaved: false }),
-    { rest: { restrictions: {} }, host: { toolbar: null, actions: null, locale: 'en-GB', confirmUnsaved: false, palette: 'side' } });
+    { rest: { restrictions: {} }, host: { toolbar: null, actions: null, locale: 'en-GB', confirmUnsaved: false, palette: 'side', piles: undefined } });
   assert.equal(takeHostOptions(mount, { palette: 'bottom' }).host.palette, 'bottom');
   assert.throws(() => takeHostOptions(mount, { toolbar: '#bar' }), /toolbar/);
   assert.throws(() => takeHostOptions(mount, { actions: '#acts' }), /actions/);
   assert.throws(() => takeHostOptions(mount, { locale: 'fr-FR' }), /locale/);
   assert.throws(() => takeHostOptions(mount, { confirmUnsaved: 'no' }), /confirmUnsaved/);
   assert.throws(() => takeHostOptions(mount, { palette: 'top' }), /palette/);
+  assert.equal(takeHostOptions(mount, { piles: true }).host.piles, true, 'a host piles similar devices');
+  assert.throws(() => takeHostOptions(mount, { piles: 'yes' }), /piles/);
 });
 
 test('netfix.lab takes no option but the host ones', () => {

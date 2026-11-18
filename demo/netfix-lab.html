@@ -205,6 +205,11 @@
   .pal-name { font-weight: 700; font-size: 13px; }
   .pal-model { font-size: 11px; color: var(--ink-2); }
   .pal-glyph { font-size: 22px; line-height: 33px; height: 33px; }
+  /* Piles (setting): the variants unfold in the palette's own flow (it scrolls, so a popup would be cut off). */
+  .pal-pile, .pal-pile-menu { display: contents; }
+  .pal-pile-btn[aria-expanded="true"] { border-color: var(--accent); }
+  .pal-pile:has(.pal-variant[aria-pressed="true"]) > .pal-pile-btn { border-color: var(--accent); background: var(--accent-soft); }
+  .pal-variant { box-shadow: inset 3px 0 0 var(--accent-soft); }
   .hint { margin: 0; align-self: center; color: var(--ink-2); max-width: 70ch; }
   .dev-collapse > summary { cursor: pointer; font-weight: 700; margin-bottom: 4px; }
   .dev-collapse:not([open]) > summary { margin-bottom: 0; }
@@ -1322,6 +1327,9 @@ const APP_ES = {
     'view.about': 'Acerca de',
     'view.donate': 'Donaciones',
     'pal.devices': 'Dispositivos',
+    'pal.routers': 'Router',
+    'pal.pileHint': 'Varios modelos: elige uno',
+    'pal.pileCount': '{n} modelos ▸',
     'pal.tools': 'Herramientas',
     'pal.select': 'Seleccionar',
     'pal.cable': 'Cable',
@@ -1403,6 +1411,9 @@ const APP_EN = {
     'view.about': 'About',
     'view.donate': 'Donations',
     'pal.devices': 'Devices',
+    'pal.routers': 'Router',
+    'pal.pileHint': 'Several models: pick one',
+    'pal.pileCount': '{n} models ▸',
     'pal.tools': 'Tools',
     'pal.select': 'Select',
     'pal.cable': 'Cable',
@@ -4770,6 +4781,7 @@ const SETTINGS_ES = {
     'set.toolHelp': 'Mostrar la ayuda de cada herramienta («Arrastra para mover…»)',
     'set.missionsHint': '(el panel Misión junto al área de trabajo y el grupo Laboratorios de la Ayuda)',
     'set.confirm': 'Avisar antes de reemplazar una red con cambios sin guardar',
+    'set.piles': 'Agrupar equipos parecidos en un botón (Router: IOS o GNU/Linux; PC: Windows, GNU/Linux o ambos)',
     'set.timestamp': 'Prompt con marca de fecha y hora en todas las terminales GNU/Linux y Windows',
     'set.lab': 'Laboratorio actual',
     'set.labNote': 'Qué ajustes muestran las ventanas de cada tipo de equipo en esta red. Se guarda con la topología; al cambiarlo se cierran las ventanas abiertas.',
@@ -4842,6 +4854,7 @@ const SETTINGS_EN = {
     'set.toolHelp': 'Show each tool’s help («Drag to move…»)',
     'set.missionsHint': '(the Mission panel beside the workspace and the Labs group of the Help tab)',
     'set.confirm': 'Ask before replacing a network with unsaved changes',
+    'set.piles': 'Pile similar devices on one button (Router: IOS or GNU/Linux; PC: Windows, GNU/Linux or both)',
     'set.timestamp': 'Date and time stamped prompt in every GNU/Linux and Windows terminal',
     'set.lab': 'Current lab',
     'set.labNote': 'Which settings the windows of each kind of device show in this network. Saved with the topology; changing it closes the open windows.',
@@ -20318,6 +20331,7 @@ const SETTINGS_DOCS = [
                 ['Idioma', 'Español (España) o English (UK), como el desplegable de la barra superior.'],
                 ['Tema', 'Automático (el del sistema), claro u oscuro.'],
                 ['Avisar antes de reemplazar…', 'Si está desmarcado, Laboratorios, Nuevo y Abrir reemplazan la red sin preguntar aunque tenga cambios sin guardar.'],
+                ['Agrupar equipos parecidos', 'Desmarcado de serie. Marcado, la paleta tiene un botón Router (pulsado, elige Router IOS o Router GNU/Linux) y un botón PC (PC Windows, PC GNU/Linux o PC con ambos): el PC elegido así no pregunta su sistema al colocarlo.'],
                 ['Mostrar las misiones de los laboratorios', 'Desactivado por defecto. Al marcarlo aparecen el panel Misión junto al área de trabajo (en los laboratorios que tienen misión: encargo, tareas, pistas, Comprobar y Ver solución) y el grupo Laboratorios de la Ayuda. En el aula, las misiones se muestran siempre y el profesor decide si hay pistas, comprobación y solución.'],
                 ['Prompt con marca de fecha y hora', 'Desactivado por defecto. Pone la fecha y la hora en el prompt de todas las terminales GNU/Linux y Windows (la misma casilla está al pie de cada terminal). En el aula, el profesor puede fijarlo.'],
             ]),
@@ -22990,6 +23004,7 @@ const SETTINGS_DOCS = [
                 ['Language', 'Español (España) or English (UK), like the drop-down in the top bar.'],
                 ['Theme', 'Automatic (the system’s), light or dark.'],
                 ['Ask before replacing…', 'When unticked, Labs, New and Open replace the network without asking even if it has unsaved changes.'],
+                ['Pile similar devices', 'Unticked by default. Ticked, the palette has one Router button (pressed, it offers IOS router or GNU/Linux router) and one PC button (Windows PC, GNU/Linux PC or PC with both): a PC chosen that way does not ask for its system when placed.'],
                 ['Show the labs’ missions', 'Off by default. When ticked, the Mission panel shows beside the workspace (in the labs that have a mission: ticket, tasks, hints, Check and View solution) and so does the Labs group of the Help tab. In the classroom missions always show and the teacher decides whether there are hints, checking and the solution.'],
                 ['Date and time stamped prompt', 'Off by default. Puts the date and time in the prompt of every GNU/Linux and Windows terminal (the same box is at the foot of each terminal). In the classroom the teacher may fix it.'],
             ]),
@@ -33220,7 +33235,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.60.0",
+    "version": "0.62.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -63697,7 +63712,6 @@ class EditHistory {
 return { MAX_EDITS, historyFor, EditHistory };
 })();
 __m["ui/canvas.js"] = (() => {
-/** Logical workspace: devices, cables with link lights, placing, moving, cabling, deleting. */
 const { el, svg, clear, staticSvg } = __m["ui/dom.js"];
 const { ICONS, ICON_W, ICON_H, modelLabel } = __m["ui/icons.js"];
 const { Viewport } = __m["ui/viewport.js"];
@@ -63939,9 +63953,10 @@ class Canvas {
         }
         if (this.tool.kind === 'place') {
             const { x, y } = this.toWorld(e);
-            const placed = this.edits().addDevice(this.tool.device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
+            const { device, system } = this.tool;
+            const placed = this.edits().addDevice(device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
             this.setTool({ kind: 'select' });
-            this.events.placed(placed);
+            this.events.placed(placed, system);
             return;
         }
         this.pendingEnd = null;
@@ -66595,6 +66610,27 @@ function confirmUnsaved() {
 function setConfirmUnsaved(on) {
     safeStorageSet(CONFIRM_KEY, on ? 'on' : 'off');
 }
+/** Similar devices piled on one palette button (Router: IOS or GNU/Linux; PC: Windows, GNU/Linux or both); off unless turned on. */
+const PILES_KEY = 'netfix:device-piles';
+/** Set by a host page (`piles` option); undefined: this browser's setting. */
+let pilesOverride;
+const pilesListeners = new Set();
+function overrideDevicePiles(on) { pilesOverride = on; }
+function devicePiles() {
+    return pilesOverride ?? safeStorageGet(PILES_KEY) === 'on';
+}
+/** The settings box: kept in this browser and, for the session, over the host's choice; the palette redraws. */
+function setDevicePiles(on) {
+    safeStorageSet(PILES_KEY, on ? 'on' : 'off');
+    if (pilesOverride !== undefined)
+        pilesOverride = on;
+    for (const l of pilesListeners)
+        l();
+}
+function onDevicePiles(listener) {
+    pilesListeners.add(listener);
+    return () => pilesListeners.delete(listener);
+}
 /** The page's language, title and description in the current language. */
 function applyDocumentLanguage() {
     document.documentElement.lang = getLocale();
@@ -66653,7 +66689,7 @@ function onMissionsShown(fn) {
     return () => { missionListeners.delete(fn); };
 }
 
-return { THEMES, toolHelp, setToolHelp, theme, applyTheme, setTheme, overrideConfirmUnsaved, confirmUnsaved, setConfirmUnsaved, applyDocumentLanguage, loadTimestampPrompt, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, loadMissionsPref, missionsShown, setMissionsShown, classroomMissions, onMissionsShown };
+return { THEMES, toolHelp, setToolHelp, theme, applyTheme, setTheme, overrideConfirmUnsaved, confirmUnsaved, setConfirmUnsaved, overrideDevicePiles, devicePiles, setDevicePiles, onDevicePiles, applyDocumentLanguage, loadTimestampPrompt, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, loadMissionsPref, missionsShown, setMissionsShown, classroomMissions, onMissionsShown };
 })();
 __m["ui/mission-panel.js"] = (() => {
 /**
@@ -72220,15 +72256,22 @@ function askPcSystem(name) {
  * After a device is placed: a PC asks for its system; a Server or Linux router starts with no service running (its
  * boxes are off until ticked or installed with apt, and Apache is not there yet). Either way it is unsaved work.
  */
-function afterPlaced(placed, changed) {
+function afterPlaced(placed, changed, system) {
     const pc = placed.device;
     if (pc instanceof Server) {
         pc.setServices({ ...pc.services, http: { ...pc.services.http, enabled: false } });
         setDeviceApps(pc, freshApps(pc));
     }
     changed();
-    if (pc instanceof Pc)
-        void askPcSystem(placed.label).then((s) => { choosePcSystem(pc, s); changed(); });
+    if (!(pc instanceof Pc))
+        return;
+    // Picked from the PC pile in the palette: no question.
+    if (system) {
+        choosePcSystem(pc, system);
+        changed();
+        return;
+    }
+    void askPcSystem(placed.label).then((s) => { choosePcSystem(pc, s); changed(); });
 }
 
 return { askPcSystem, afterPlaced };
@@ -72707,7 +72750,7 @@ __m["ui/settings-view.js"] = (() => {
 const { el } = __m["ui/dom.js"];
 const { t, tDynamic } = __m["i18n/t.js"];
 const { LOCALES, LOCALE_NAMES, getLocale, isLocale } = __m["i18n/locale.js"];
-const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, toolHelp, setToolHelp, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } = __m["ui/preferences.js"];
+const { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, toolHelp, setToolHelp, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown, devicePiles, setDevicePiles } = __m["ui/preferences.js"];
 const { FEATURES_BY_KIND, featureOn, setFeature } = __m["net/lab-features.js"];
 const { SERVICE_PACKAGES, TOOL_PACKAGES, packageAllowed, setPackageOff } = __m["net/lab-packages.js"];
 /** The kinds whose windows have settings to switch (the cloud has none). */
@@ -72736,11 +72779,13 @@ function generalSection(host) {
     const help = el('input', { type: 'checkbox', checked: toolHelp(), 'data-setting': 'tool-help' });
     help.addEventListener('change', () => setToolHelp(help.checked));
     helpBox = help;
+    const pile = el('input', { type: 'checkbox', checked: devicePiles(), 'data-setting': 'piles' });
+    pile.addEventListener('change', () => setDevicePiles(pile.checked));
     const missions = el('input', { type: 'checkbox', checked: missionsShown(), 'data-setting': 'missions' });
     missions.addEventListener('change', () => setMissionsShown(missions.checked));
     return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' }, el('h2', { id: 'set-general' }, t('set.general')), el('p', { class: 'muted' }, t('set.generalNote')), host.hostOwned() ? null : el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang), 
     // Embedded, the page and this browser's storage are the host's: no theme on its <html>, nothing kept for later.
-    host.labLocked() || host.hostOwned() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), host.labLocked() || host.hostOwned() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')), host.hostOwned() ? el('label', { class: 'set-choice' }, help, t('set.toolHelp')) : null, el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)), el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
+    host.labLocked() || host.hostOwned() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios), host.labLocked() || host.hostOwned() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')), host.hostOwned() ? el('label', { class: 'set-choice' }, help, t('set.toolHelp')) : null, el('label', { class: 'set-choice' }, pile, t('set.piles')), el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)), el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }
 function kindGroup(host, kind, changed) {
     const boxes = FEATURES_BY_KIND[kind].map((id) => {
@@ -72975,9 +73020,60 @@ const { el, staticSvg } = __m["ui/dom.js"];
 const { ICONS, modelLabel } = __m["ui/icons.js"];
 const { t } = __m["i18n/t.js"];
 const { NO_RESTRICTIONS, allowsDevice } = __m["classroom/restrictions.js"];
+const { devicePiles } = __m["ui/preferences.js"];
 const PLACEABLE = [
     ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
 ];
+/** The piles (setting «Agrupar equipos parecidos»): one button per family, its variants in a small menu. */
+function piles() {
+    const pc = (system) => ({ kind: 'pc', system, name: `${t('kind.pc')} ${t(`os.${system}`)}`, model: system === 'both' ? `${t('os.windows')} + ${t('os.linux')}` : t(`os.${system}`) });
+    return [
+        ['kind.pc', [pc('windows'), pc('linux'), pc('both')]],
+        ['kind.server', [{ kind: 'server', name: t('kind.server'), model: modelLabel('server') }]],
+        ['kind.switch', [{ kind: 'switch', name: t('kind.switch'), model: modelLabel('switch') }]],
+        ['pal.routers', [{ kind: 'router', name: t('kind.router'), model: modelLabel('router') }, { kind: 'linuxrouter', name: t('kind.linuxrouter'), model: modelLabel('linuxrouter') }]],
+        ['kind.cloud', [{ kind: 'cloud', name: t('kind.cloud'), model: modelLabel('cloud') }]],
+    ];
+}
+const variantKey = (v) => (v.system ? `place-${v.kind}-${v.system}` : `place-${v.kind}`);
+function variantBtn(actions, buttons, v, cls) {
+    const b = el('button', { type: 'button', class: cls, 'aria-pressed': 'false' }, staticSvg(ICONS[v.kind]), el('span', { class: 'pal-name' }, v.name), el('span', { class: 'pal-model' }, v.model));
+    b.addEventListener('click', () => actions.selectTool({ kind: 'place', device: v.kind, ...(v.system ? { system: v.system } : {}) }, variantKey(v)));
+    buttons.set(variantKey(v), b);
+    return b;
+}
+/** A family with several variants: its button opens the menu of them (Esc or leaving it closes it). */
+function pileBtn(actions, buttons, name, variants) {
+    const first = variants[0];
+    const menu = el('div', { class: 'pal-pile-menu', role: 'group', 'aria-label': name, hidden: true });
+    const main = el('button', { type: 'button', class: 'pal-item pal-pile-btn', 'aria-expanded': 'false', title: t('pal.pileHint') }, staticSvg(ICONS[first.kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, t('pal.pileCount', { n: String(variants.length) })));
+    const pile = el('div', { class: 'pal-pile' }, main, menu);
+    const show = (open) => { menu.hidden = !open; main.setAttribute('aria-expanded', String(open)); };
+    main.addEventListener('click', () => show(menu.hidden));
+    menu.append(...variants.map((v) => {
+        const b = variantBtn(actions, buttons, v, 'pal-item pal-variant');
+        b.addEventListener('click', () => { show(false); main.focus(); });
+        return b;
+    }));
+    pile.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) {
+        e.stopPropagation();
+        show(false);
+        main.focus();
+    } });
+    pile.addEventListener('focusout', (e) => { if (!(e.relatedTarget instanceof Node && pile.contains(e.relatedTarget)))
+        show(false); });
+    return pile;
+}
+/** The palette's devices: one button each, or the piles when the setting is on; what restrictions allow only. */
+function deviceGroup(actions, buttons, policy = NO_RESTRICTIONS) {
+    if (!policy.editTopology)
+        return null;
+    const items = devicePiles()
+        ? piles().map(([name, all]) => [t(name), all.filter((v) => allowsDevice(policy, v.kind))]).filter(([, vs]) => vs.length > 0)
+            .map(([name, vs]) => (vs.length === 1 ? variantBtn(actions, buttons, vs[0], 'pal-item') : pileBtn(actions, buttons, name, vs)))
+        : PLACEABLE.filter(([k]) => allowsDevice(policy, k)).map(([k, name]) => variantBtn(actions, buttons, { kind: k, name: t(name), model: modelLabel(k) }, 'pal-item'));
+    return items.length ? el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...items) : null;
+}
 /** «Dibujo»: opens the bar with shapes, colours and labels (it is not a tool by itself). */
 function drawToggle(actions) {
     const b = el('button', { type: 'button', class: 'pal-item pal-tool pal-draw', 'aria-pressed': 'false', 'aria-expanded': 'false', title: t('draw.openHint') }, el('span', { class: 'pal-glyph', 'aria-hidden': 'true' }, '✎'), el('span', { class: 'pal-name' }, t('draw.open')));
@@ -72993,12 +73089,6 @@ function drawToggle(actions) {
  * (hosted): the element that takes the action groups instead of the palette, and no hint line in it.
  */
 function palette(actions, buttons, hintEl, policy = NO_RESTRICTIONS, actionsBox = null) {
-    const deviceBtn = (kind, name) => {
-        const b = el('button', { type: 'button', class: 'pal-item', 'aria-pressed': 'false' }, staticSvg(ICONS[kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, modelLabel(kind)));
-        b.addEventListener('click', () => actions.selectTool({ kind: 'place', device: kind }, `place-${kind}`));
-        buttons.set(`place-${kind}`, b);
-        return b;
-    };
     const toolBtn = (key, name, tool, glyph) => {
         const b = el('button', { type: 'button', class: `pal-item pal-tool pal-${key}`, 'aria-pressed': 'false' }, el('span', { class: 'pal-glyph', 'aria-hidden': 'true' }, glyph), el('span', { class: 'pal-name' }, name));
         b.addEventListener('click', () => actions.selectTool(tool, key));
@@ -73022,17 +73112,16 @@ function palette(actions, buttons, hintEl, policy = NO_RESTRICTIONS, actionsBox 
         return b;
     };
     const edit = policy.editTopology;
-    const devices = edit ? PLACEABLE.filter(([k]) => allowsDevice(policy, k)) : [];
     const groups = [
         el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('undo.group') }, undoBtn(false, '↶', t('undo.undo')), undoBtn(true, '↷', t('undo.redo'))),
         ...(edit ? [el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('clip.group') }, clipBtn('copy', '⧉'), clipBtn('paste', '⎘'), clipBtn('duplicate', '⊕'), clipBtn('delete', '🗑︎'))] : []),
         el('div', { class: 'zoom-group', role: 'group', 'aria-label': t('pal.zoomGroup') }, zoomBtn('out', '−', t('pal.zoomOut')), zoomBtn('fit', '⤢', t('pal.zoomFit')), zoomBtn('in', '+', t('pal.zoomIn'))),
     ];
     actionsBox?.replaceChildren(...groups);
-    return el(actionsBox ? 'nav' : 'footer', { class: 'palette', 'aria-label': t('pal.label') }, ...(devices.length ? [el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...devices.map(([k, name]) => deviceBtn(k, t(name))))] : []), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), ...(edit ? [toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')] : []), ...(policy.drawing ? [drawToggle(actions)] : [])), ...(actionsBox ? [] : [...groups, hintEl]));
+    return el(actionsBox ? 'nav' : 'footer', { class: 'palette', 'aria-label': t('pal.label') }, deviceGroup(actions, buttons, policy), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), ...(edit ? [toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')] : []), ...(policy.drawing ? [drawToggle(actions)] : [])), ...(actionsBox ? [] : [...groups, hintEl]));
 }
 
-return { PLACEABLE, palette };
+return { PLACEABLE, deviceGroup, palette };
 })();
 __m["ui/save-file.js"] = (() => {
 /** Saving the topology: clipboard in the embedded artifact, file picker when available, download otherwise. */
@@ -73384,8 +73473,8 @@ function checkMount(mount) {
     if (typeof HTMLElement === 'undefined' || !(mount instanceof HTMLElement))
         throw new Error('netfix.embed: falta el elemento donde montar Netfix');
 }
-const NO_HOST = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side' });
-const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette'];
+const NO_HOST = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', piles: undefined });
+const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'piles'];
 /** A host element for part of Netfix: in the page, and neither inside the mount nor around it (each would empty the other). */
 function hostElement(mount, v, name) {
     if (v === undefined)
@@ -73403,7 +73492,7 @@ function hostElement(mount, v, name) {
 function takeHostOptions(mount, options) {
     if (typeof options !== 'object' || options === null || !HOST_KEYS.some((k) => Object.hasOwn(options, k)))
         return { rest: options, host: NO_HOST };
-    const { toolbar, actions, locale, confirmUnsaved, palette, ...rest } = options;
+    const { toolbar, actions, locale, confirmUnsaved, palette, piles, ...rest } = options;
     const bar = hostElement(mount, toolbar, 'toolbar');
     const acts = hostElement(mount, actions, 'actions');
     if (bar && acts && (bar.contains(acts) || acts.contains(bar)))
@@ -73414,13 +73503,15 @@ function takeHostOptions(mount, options) {
         throw new Error('netfix: «confirmUnsaved» debe ser true o false');
     if (palette !== undefined && palette !== 'side' && palette !== 'bottom')
         throw new Error('netfix: «palette» debe ser \'side\' o \'bottom\'');
-    return { rest, host: { toolbar: bar, actions: acts, locale: locale ?? null, confirmUnsaved: confirmUnsaved, palette: palette ?? 'side' } };
+    if (piles !== undefined && typeof piles !== 'boolean')
+        throw new Error('netfix: «piles» debe ser true o false');
+    return { rest, host: { toolbar: bar, actions: acts, locale: locale ?? null, confirmUnsaved: confirmUnsaved, palette: palette ?? 'side', piles: piles } };
 }
 /** `netfix.lab` options: none, or only the host options. */
 function labOptions(mount, options) {
     const { rest, host } = takeHostOptions(mount, options);
     if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
-        throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale», «confirmUnsaved» y «palette»');
+        throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale», «confirmUnsaved», «palette» y «piles»');
     }
     return host;
 }
@@ -73450,10 +73541,10 @@ const { afterPlaced } = __m["ui/os-dialog.js"];
 const { Topology } = __m["net/topology.js"];
 const { EXAMPLES } = __m["net/examples.js"];
 const { Pages } = __m["ui/pages.js"];
-const { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, overrideConfirmUnsaved, setToolHelp, toolHelp } = __m["ui/preferences.js"];
+const { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, onDevicePiles, overrideConfirmUnsaved, overrideDevicePiles, setToolHelp, toolHelp } = __m["ui/preferences.js"];
 const { featureOn } = __m["net/lab-features.js"];
 const { floatBar, topbar } = __m["ui/topbar.js"];
-const { palette } = __m["ui/palette.js"];
+const { deviceGroup, palette } = __m["ui/palette.js"];
 const { labText } = __m["ui/lab-text.js"];
 const { readTopologyFile, saveTopology } = __m["ui/save-file.js"];
 const { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } = __m["ui/workspace-store.js"];
@@ -73495,6 +73586,7 @@ class App {
     helpPending = false;
     stageEl;
     paletteEl;
+    pilesWatch = null;
     pageHost;
     pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, pkgsOff: () => this.topo.pkgsOff, setPkgsOff: (p) => { this.topo.pkgsOff = p; this.windows.closeAll(); this.afterCommand(); }, labLocked: () => this.session.embedded, hostOwned: () => this.hosted, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
     saveTimer = 0;
@@ -73548,7 +73640,7 @@ class App {
             changed: () => this.afterCommand(),
             hint: (text) => { this.helpPending = true; this.hintEl.textContent = text; },
             removed: (id) => { this.windows.close(id); forgetDevice(id); },
-            placed: (p) => afterPlaced(p, () => this.afterCommand()),
+            placed: (p, system) => afterPlaced(p, () => this.afterCommand(), system),
         }, this.drawState);
         this.canvas.restrict(this.session.policy);
         this.canvas.draw.locked = !this.session.policy.drawing;
@@ -73570,9 +73662,21 @@ class App {
         const workspace = this.note ? el('div', { class: 'ws-wrap' }, this.canvas.root, floatBar(this.barActions(), this.clockEl, this.mode, this.session.policy), this.note) : this.canvas.root;
         this.stageEl = el('main', { class: 'stage' }, workspace, this.drawBarEl, this.mission.root, this.sim.root);
         this.actionsBox = this.hosted ? el('div', { class: 'nf-actions', role: 'group', 'aria-label': t('undo.group') }) : null;
-        this.paletteEl = palette({
+        const palActions = {
             selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw(), undo: (redo) => this.undo(redo), clip: (a) => this.canvas.group.run(a),
-        }, this.toolButtons, this.hintEl, this.session.policy, this.actionsBox);
+        };
+        this.paletteEl = palette(palActions, this.toolButtons, this.hintEl, this.session.policy, this.actionsBox);
+        // The piles setting redraws only the devices (the tool goes back to Select: its button may be gone).
+        this.pilesWatch = onDevicePiles(() => {
+            for (const k of [...this.toolButtons.keys()])
+                if (k.startsWith('place-'))
+                    this.toolButtons.delete(k);
+            const fresh = deviceGroup(palActions, this.toolButtons, this.session.policy);
+            const old = this.paletteEl.querySelector('.pal-devices');
+            if (old && fresh)
+                old.replaceWith(fresh);
+            this.selectTool({ kind: 'select' }, 'select');
+        });
         if (this.actionsBox)
             (hostActions ?? this.paletteEl).append(this.actionsBox);
         this.pageHost = el('main', { class: 'docs-host', hidden: true });
@@ -73598,6 +73702,7 @@ class App {
     dispose() {
         window.clearInterval(this.interval);
         window.removeEventListener('keydown', this.onKeyDown);
+        this.pilesWatch?.();
         window.removeEventListener('pointerdown', this.onPointerDown, { capture: true });
         this.noteWatch?.disconnect();
         window.clearTimeout(this.noteTimer);
@@ -73927,6 +74032,7 @@ function start(mount, s, topo, page = !s.embedded, host = NO_HOST) {
         clearClipboard(); // each classroom mount starts with nothing copied from the one before
     setLocale(host.locale ?? detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
     overrideConfirmUnsaved(host.confirmUnsaved);
+    overrideDevicePiles(host.piles);
     mount.classList.add(ROOT_CLASS);
     applyLanguage(mount);
     // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.
@@ -73981,6 +74087,7 @@ function hosted(mount, s, topology, release, host) {
             app = null;
             forceTimestampPrompt(undefined);
             overrideConfirmUnsaved(undefined);
+            overrideDevicePiles(undefined);
             clearClipboard();
             mount.replaceChildren();
             if (bar)

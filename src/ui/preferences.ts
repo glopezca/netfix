@@ -53,6 +53,26 @@ export function setConfirmUnsaved(on: boolean): void {
   safeStorageSet(CONFIRM_KEY, on ? 'on' : 'off');
 }
 
+/** Similar devices piled on one palette button (Router: IOS or GNU/Linux; PC: Windows, GNU/Linux or both); off unless turned on. */
+const PILES_KEY = 'netfix:device-piles';
+/** Set by a host page (`piles` option); undefined: this browser's setting. */
+let pilesOverride: boolean | undefined;
+const pilesListeners = new Set<() => void>();
+export function overrideDevicePiles(on: boolean | undefined): void { pilesOverride = on; }
+export function devicePiles(): boolean {
+  return pilesOverride ?? safeStorageGet(PILES_KEY) === 'on';
+}
+/** The settings box: kept in this browser and, for the session, over the host's choice; the palette redraws. */
+export function setDevicePiles(on: boolean): void {
+  safeStorageSet(PILES_KEY, on ? 'on' : 'off');
+  if (pilesOverride !== undefined) pilesOverride = on;
+  for (const l of pilesListeners) l();
+}
+export function onDevicePiles(listener: () => void): () => void {
+  pilesListeners.add(listener);
+  return () => pilesListeners.delete(listener);
+}
+
 /** The page's language, title and description in the current language. */
 export function applyDocumentLanguage(): void {
   document.documentElement.lang = getLocale();

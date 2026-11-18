@@ -1,4 +1,5 @@
 /** Logical workspace: devices, cables with link lights, placing, moving, cabling, deleting. */
+import type { PcSystem } from '../net/device-apps.ts';
 import { el, svg, clear, staticSvg } from './dom.ts';
 import { ICONS, ICON_W, ICON_H, modelLabel } from './icons.ts';
 import type { Topology, DeviceKind, Placed } from '../net/topology.ts';
@@ -21,14 +22,15 @@ import { t } from '../i18n/t.ts';
 import { CAPTION_LINE, deviceCaption } from './device-caption.ts';
 import type { MessageKey } from '../i18n/catalog.ts';
 
-export type Tool = { kind: 'select' } | { kind: 'cable' } | { kind: 'delete' } | { kind: 'place'; device: DeviceKind } | { kind: 'draw'; shape: ShapeKind };
+/** `system`: a PC's system chosen from its pile in the palette (no question after placing it). */
+export type Tool = { kind: 'select' } | { kind: 'cable' } | { kind: 'delete' } | { kind: 'place'; device: DeviceKind; system?: PcSystem } | { kind: 'draw'; shape: ShapeKind };
 
 export interface CanvasEvents {
   open(id: string): void;
   changed(): void;
   hint(text: string): void;
   removed(id: string): void;
-  placed(p: Placed): void; // with the palette: a PC then asks for its system
+  placed(p: Placed, system?: PcSystem): void; // with the palette: a PC then asks for its system (unless its pile chose it)
 }
 
 export const WORLD_W = 2400;
@@ -275,9 +277,10 @@ export class Canvas {
     }
     if (this.tool.kind === 'place') {
       const { x, y } = this.toWorld(e);
-      const placed = this.edits().addDevice(this.tool.device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
+      const { device, system } = this.tool;
+      const placed = this.edits().addDevice(device, clamp(x, 40, WORLD_W - 40), clamp(y, 40, WORLD_H - 40));
       this.setTool({ kind: 'select' });
-      this.events.placed(placed);
+      this.events.placed(placed, system);
       return;
     }
     this.pendingEnd = null;

@@ -14,12 +14,12 @@ import { afterPlaced } from './os-dialog.ts';
 import { Topology } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
 import { Pages } from './pages.ts';
-import { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, overrideConfirmUnsaved, setToolHelp, toolHelp } from './preferences.ts';
+import { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, onDevicePiles, overrideConfirmUnsaved, overrideDevicePiles, setToolHelp, toolHelp } from './preferences.ts';
 import { featureOn } from '../net/lab-features.ts';
 import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
 import { floatBar, topbar } from './topbar.ts';
 import type { Mode, TopbarActions, View } from './topbar.ts';
-import { palette } from './palette.ts';
+import { deviceGroup, palette, type PaletteActions } from './palette.ts';
 import { labText } from './lab-text.ts';
 import { readTopologyFile, saveTopology } from './save-file.ts';
 import { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } from './workspace-store.ts';
@@ -70,6 +70,7 @@ class App {
   private helpPending = false;
   private readonly stageEl: HTMLElement;
   private readonly paletteEl: HTMLElement;
+  private pilesWatch: (() => void) | null = null;
   private readonly pageHost: HTMLElement;
   private readonly pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, pkgsOff: () => this.topo.pkgsOff, setPkgsOff: (p) => { this.topo.pkgsOff = p; this.windows.closeAll(); this.afterCommand(); }, labLocked: () => this.session.embedded, hostOwned: () => this.hosted, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
   private saveTimer = 0;
@@ -119,7 +120,7 @@ class App {
       changed: () => this.afterCommand(),
       hint: (text) => { this.helpPending = true; this.hintEl.textContent = text; },
       removed: (id) => { this.windows.close(id); forgetDevice(id); },
-      placed: (p) => afterPlaced(p, () => this.afterCommand()),
+      placed: (p, system) => afterPlaced(p, () => this.afterCommand(), system),
     }, this.drawState);
     this.canvas.restrict(this.session.policy);
     this.canvas.draw.locked = !this.session.policy.drawing;
@@ -140,9 +141,18 @@ class App {
     const workspace = this.note ? el('div', { class: 'ws-wrap' }, this.canvas.root, floatBar(this.barActions(), this.clockEl, this.mode, this.session.policy), this.note) : this.canvas.root;
     this.stageEl = el('main', { class: 'stage' }, workspace, this.drawBarEl, this.mission.root, this.sim.root);
     this.actionsBox = this.hosted ? el('div', { class: 'nf-actions', role: 'group', 'aria-label': t('undo.group') }) : null;
-    this.paletteEl = palette({
+    const palActions: PaletteActions = {
       selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw(), undo: (redo) => this.undo(redo), clip: (a) => this.canvas.group.run(a),
-    }, this.toolButtons, this.hintEl, this.session.policy, this.actionsBox);
+    };
+    this.paletteEl = palette(palActions, this.toolButtons, this.hintEl, this.session.policy, this.actionsBox);
+    // The piles setting redraws only the devices (the tool goes back to Select: its button may be gone).
+    this.pilesWatch = onDevicePiles(() => {
+      for (const k of [...this.toolButtons.keys()]) if (k.startsWith('place-')) this.toolButtons.delete(k);
+      const fresh = deviceGroup(palActions, this.toolButtons, this.session.policy);
+      const old = this.paletteEl.querySelector('.pal-devices');
+      if (old && fresh) old.replaceWith(fresh);
+      this.selectTool({ kind: 'select' }, 'select');
+    });
     if (this.actionsBox) (hostActions ?? this.paletteEl).append(this.actionsBox);
     this.pageHost = el('main', { class: 'docs-host', hidden: true });
     this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
@@ -169,6 +179,7 @@ class App {
   dispose(): void {
     window.clearInterval(this.interval);
     window.removeEventListener('keydown', this.onKeyDown);
+    this.pilesWatch?.();
     window.removeEventListener('pointerdown', this.onPointerDown, { capture: true });
     this.noteWatch?.disconnect();
     window.clearTimeout(this.noteTimer);
@@ -485,6 +496,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   if (s.embedded) clearClipboard(); // each classroom mount starts with nothing copied from the one before
   setLocale(host.locale ?? detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
   overrideConfirmUnsaved(host.confirmUnsaved);
+  overrideDevicePiles(host.piles);
   mount.classList.add(ROOT_CLASS);
   applyLanguage(mount);
   // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.
@@ -530,6 +542,7 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
       app = null;
       forceTimestampPrompt(undefined);
       overrideConfirmUnsaved(undefined);
+      overrideDevicePiles(undefined);
       clearClipboard();
       mount.replaceChildren();
       if (bar) releaseBar(bar);
