@@ -1347,6 +1347,7 @@ const APP_ES = {
     'kind.pc': 'PC',
     'kind.server': 'Servidor',
     'kind.cloud': 'Nube',
+    'kind.classlan': 'LAN de clase',
     'hint.simulation': 'Simulación: lo que hagas (ipconfig /renew, ping, DHCP) queda en la lista de eventos. Pulsa Reproducir.',
     'hint.realtime': 'Tiempo real: la red funciona sola; los cambios se aplican al instante.',
     'hint.advanced': 'Reloj adelantado: las concesiones se renuevan o caducan como en un equipo real.',
@@ -1431,6 +1432,7 @@ const APP_EN = {
     'kind.pc': 'PC',
     'kind.server': 'Server',
     'kind.cloud': 'Cloud',
+    'kind.classlan': 'Classroom LAN',
     'hint.simulation': 'Simulation: whatever you do (ipconfig /renew, ping, DHCP) is added to the event list. Press Play.',
     'hint.realtime': 'Realtime: the network runs by itself; changes apply immediately.',
     'hint.advanced': 'Clock advanced: leases renew or expire as on real equipment.',
@@ -2641,6 +2643,18 @@ __m["i18n/es-ES/ui.js"] = (() => {
 const UI_ES = {
     'win.console': 'Consola de {name}',
     'win.cloud': '{name} · Nube ISP',
+    'win.classlan': '{name} · LAN de clase',
+    'classlan.tab': 'LAN de clase',
+    'classlan.mode': 'Modo',
+    'classlan.nat': 'NAT (de serie)',
+    'classlan.bridgeMode': 'Puente',
+    'classlan.bridge': 'Puente',
+    'classlan.offline': 'Sin clase',
+    'classlan.notInClass': 'Sin conexión: la LAN de clase solo une laboratorios abiertos en Netfix Classroom.',
+    'classlan.inClassBridge': 'En la LAN de clase, en modo puente: este puerto comparte segmento con los demás laboratorios en puente.',
+    'classlan.inClassNat': 'En la LAN de clase con la dirección {ip} (NAT).',
+    'classlan.natHint': 'Router con NAT: tus equipos salen a la LAN de clase con su dirección; los demás llegan a tus servicios por los puertos que reenvíes abajo, y responde al ping.',
+    'classlan.bridgeHint': 'Puente: las tramas pasan tal cual a los demás laboratorios en puente, como en un switch compartido. Dos laboratorios con las mismas direcciones chocan.',
     'win.webAdmin': 'Gestión web',
     'win.windowsIntro': 'Microsoft Windows [Versión 10.0.20348.2700] · cmd.exe en Netfix',
     'win.windowsHelp': 'Ayuda: help o la pestaña Ayuda. Editores: edit, nano.exe y vim.exe (en %PATH%).',
@@ -2678,6 +2692,7 @@ const UI_ES = {
     'docs.pages': '{n} páginas',
     'docs.noResults': 'Sin resultados',
     'model.cloud': 'ISP → Internet',
+    'model.classlan': 'Netfix Classroom',
     'ip.customPlaceholder': 'vacío = 01 + MAC',
     'ip.idFormat': 'Formato del Client-ID',
     'ip.hex': 'Hexadecimal',
@@ -2851,6 +2866,18 @@ __m["i18n/en-GB/ui.js"] = (() => {
 const UI_EN = {
     'win.console': 'Console of {name}',
     'win.cloud': '{name} · ISP cloud',
+    'win.classlan': '{name} · Classroom LAN',
+    'classlan.tab': 'Classroom LAN',
+    'classlan.mode': 'Mode',
+    'classlan.nat': 'NAT (default)',
+    'classlan.bridgeMode': 'Bridge',
+    'classlan.bridge': 'Bridge',
+    'classlan.offline': 'No class',
+    'classlan.notInClass': 'Not connected: the Classroom LAN only joins labs open in Netfix Classroom.',
+    'classlan.inClassBridge': 'On the Classroom LAN, bridged: this port shares a segment with the other bridged labs.',
+    'classlan.inClassNat': 'On the Classroom LAN with the address {ip} (NAT).',
+    'classlan.natHint': 'Router with NAT: your devices reach the Classroom LAN with its address; the others reach your services through the ports you forward below, and it answers ping.',
+    'classlan.bridgeHint': 'Bridge: frames go as they are to the other bridged labs, as on a shared switch. Two labs with the same addresses clash.',
     'win.webAdmin': 'Web management',
     'win.windowsIntro': 'Microsoft Windows [Version 10.0.20348.2700] · cmd.exe on Netfix',
     'win.windowsHelp': 'Help: help or the Help tab. Editors: edit, nano.exe and vim.exe (in %PATH%).',
@@ -2888,6 +2915,7 @@ const UI_EN = {
     'docs.pages': '{n} pages',
     'docs.noResults': 'No results',
     'model.cloud': 'ISP → Internet',
+    'model.classlan': 'Netfix Classroom',
     'ip.customPlaceholder': 'empty = 01 + MAC',
     'ip.idFormat': 'Client-ID format',
     'ip.hex': 'Hexadecimal',
@@ -5163,12 +5191,19 @@ const CLOUD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width
     <circle cx="32" cy="29" r="7"/><path d="M25 29 h14 M32 22 c-3 4 -3 10 0 14 M32 22 c3 4 3 10 0 14"/>
   </g>
 </svg>`;
+/** Classroom LAN: the cloud with three linked screens (the labs of the class). */
+const CLASSLAN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="64" height="48">
+  <path d="M16 40 h34 a10 10 0 0 0 1 -19.9 a14 14 0 0 0 -26.5 -4.6 a10.5 10.5 0 0 0 -8.5 24.5 z" fill="var(--dev-side)" stroke="var(--dev-edge)" stroke-width="1.6" stroke-linejoin="round"/>
+  <g stroke="var(--dev-mark)" stroke-width="1.6" fill="none" stroke-linejoin="round">
+    <rect x="21" y="21" width="8" height="6"/><rect x="35" y="21" width="8" height="6"/><rect x="28" y="31" width="8" height="6"/><path d="M29 24 h6 M32 27 v4"/>
+  </g>
+</svg>`;
 /** Both routers (IOS and Linux) share the router symbol; the model line («2911» / «Ubuntu») tells them apart. */
-const ICONS = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, linuxrouter: ROUTER, cloud: CLOUD };
-const MODEL_LABEL = { router: '2911', switch: '2960-24TT', pc: 'PC', server: 'Server', linuxrouter: 'Ubuntu', cloud: 'ISP' };
+const ICONS = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, linuxrouter: ROUTER, cloud: CLOUD, classlan: CLASSLAN };
+const MODEL_LABEL = { router: '2911', switch: '2960-24TT', pc: 'PC', server: 'Server', linuxrouter: 'Ubuntu', cloud: 'ISP', classlan: 'LAN' };
 /** Model label shown under the icon (the cloud is translated). */
 function modelLabel(kind) {
-    return kind === 'cloud' ? t('model.cloud') : MODEL_LABEL[kind];
+    return kind === 'cloud' ? t('model.cloud') : kind === 'classlan' ? t('model.classlan') : MODEL_LABEL[kind];
 }
 
 return { ICON_W, ICON_H, ICONS, MODEL_LABEL, modelLabel };
@@ -5629,7 +5664,7 @@ function validateFile(data) {
     if (devices.length > MAX_DEVICES || links.length > MAX_DEVICES * 2)
         throw new TopologyFileError('too-big', t('load.tooBig', { max: MAX_DEVICES }));
     for (const d of devices) {
-        if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'].includes(String(d.kind)))
+        if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud', 'classlan'].includes(String(d.kind)))
             throw new TopologyFileError('bad-device', t('load.badDevice'));
         if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string')
             throw new TopologyFileError('device-data', t('load.deviceData', { id: d.id }));
@@ -5727,7 +5762,7 @@ function freeName(p) {
 function syncDeviceName(p) {
     const d = p.device;
     const name = freeName(p);
-    if (d.kind === 'cloud')
+    if (d.kind === 'cloud' || d.kind === 'classlan')
         d.name = name;
     else if (d.kind === 'router' || d.kind === 'switch')
         d.setDerivedHostname(name);
@@ -6264,6 +6299,7 @@ const FEATURES_BY_KIND = {
     router: ['cli', 'web'],
     switch: ['cli', 'web'],
     cloud: [],
+    classlan: [],
 };
 /** On by default, except the Linux router's Windows terminal (each device then decides: device-apps.ts). */
 const DEFAULT_OFF = {
@@ -20211,6 +20247,7 @@ const NETFIX_DOCS = {
                 table(['Equipo', 'Pestañas'], [
                     ['Router IOS / Switch IOS', 'Equipo (nombre visible y, derivado de él, el hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
                     ['Nube ISP', 'Equipo (nombre y nombre de host derivado), ISP (proveedor, bloque público, dominios), Interfaces (resumen de las seis líneas) y Líneas (modo, LAN, NAT, redirección de puertos).'],
+                    ['LAN de clase (solo en Netfix Classroom)', 'Une este laboratorio con los demás abiertos en la clase. NAT (de serie): router con DHCP para tu red, NAT a su dirección de clase 10.N.1.2 y reenvío de puertos para que los demás lleguen a tus servicios. Puente: las tramas pasan tal cual a los laboratorios en puente, como en un switch compartido (dos laboratorios con las mismas direcciones chocan). Fuera de Netfix Classroom queda sin conexión.'],
                     ['PC', 'Equipo, Interfaces (MAC, enlace, velocidad, extremo del cable y estado del puerto), TCP/IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Terminal Windows y Terminal GNU/Linux.'],
                     ['Router GNU/Linux', 'Equipo, Interfaces (dirección de eth0-eth2, MAC, extremo del cable, reenvío y rutas; al quitar «DHCP» a eth0 se queda como fija la dirección recibida, ya editable), Servicios (Parámetros, Firewall, VPN, y los servicios de Server empezando por SSH) y Terminal GNU/Linux.'],
                     ['Server', 'Equipo, Interfaces, Servicios (SSH, DHCP, DNS, HTTP, correo, Configuración y Registros), TCP/IP, Terminal GNU/Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router GNU/Linux (en su terminal siguen sysctl y nft).'],
@@ -22884,6 +22921,7 @@ const NETFIX_DOCS = {
                 table(['Device', 'Tabs'], [
                     ['IOS router / IOS switch', 'Device (workspace name and, derived from it, the hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
                     ['ISP Cloud', 'Device (name and derived host name), ISP (provider, public block, domains), Interfaces (summary of the six lines) and Lines (mode, LAN, NAT, port forwarding).'],
+                    ['Classroom LAN (Netfix Classroom only)', 'Joins this lab with the others open in the class. NAT (default): a router with DHCP for your network, NAT to its classroom address 10.N.1.2 and port forwarding so the others reach your services. Bridge: frames go as they are to the bridged labs, as on a shared switch (two labs with the same addresses clash). Outside Netfix Classroom it is disconnected.'],
                     ['PC', 'Device, Interfaces (MAC, link, speed, far end of the cable and port status), TCP/IP, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and GNU/Linux terminal.'],
                     ['GNU/Linux router', 'Device, Interfaces (address of eth0-eth2, MAC, far end of the cable, forwarding and routes; unticking “DHCP” on eth0 keeps the address it received as static, now editable), Services (Parameters, Firewall, VPN, and the Server services starting with SSH) and GNU/Linux terminal.'],
                     ['Server', 'Device, Interfaces, Services (SSH, DHCP, DNS, HTTP, mail, Configuration and Logs), TCP/IP, GNU/Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the GNU/Linux router (sysctl and nft remain in its terminal).'],
@@ -33235,7 +33273,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.62.0",
+    "version": "0.63.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -61676,13 +61714,17 @@ function validateCloud(s, otherBlocks = []) {
 const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 const ipOf = (v, d) => (typeof v === 'string' ? parseIp(v) ?? d : d);
 const obj = (v) => (typeof v === 'object' && v !== null ? v : {});
+/** One line's settings for the file. */
+function portToJson(c) {
+    return { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}) };
+}
 function cloudToJson(s) {
     const ports = Object.fromEntries(CLOUD_PORTS.map((p) => {
-        const c = s.ports[p];
-        return [p, { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}) }];
+        return [p, portToJson(s.ports[p])];
     }));
     return { isp: s.isp, block: formatIp(s.block), ports, domains: s.domains.map((d) => ({ ...d, ip: formatIp(d.ip) })) };
 }
+/** One line's settings from an untrusted file (also the Classroom LAN's router); invalid: the defaults. */
 function portFromJson(port, v) {
     const d = defaultPort(port);
     const o = obj(v);
@@ -61703,7 +61745,7 @@ function cloudFromJson(v, fallback) {
     return validateCloud(s) ? { ...fallback, ports, domains } : s;
 }
 
-return { CLOUD_PORTS, BLOCK_PREFIX, LINE_PREFIX, accessOf, ACCESS_LABEL, defaultPort, defaultCloud, lineSubnet, ispHop, reservedAddress, validDomain, validatePort, validateCloud, cloudToJson, cloudFromJson };
+return { CLOUD_PORTS, BLOCK_PREFIX, LINE_PREFIX, accessOf, ACCESS_LABEL, defaultPort, defaultCloud, lineSubnet, ispHop, reservedAddress, validDomain, validatePort, validateCloud, portToJson, cloudToJson, portFromJson, cloudFromJson };
 })();
 __m["devices/cloud-port.js"] = (() => {
 /**
@@ -61735,6 +61777,7 @@ class CloudPort {
     name;
     settings;
     owner;
+    /** Where packets for outside go: the emulated Internet, or the Classroom LAN's relay. */
     core;
     appliedNet = -1;
     /** ISP DNS relay (router mode with dnsRelay): customers' queries to the gateway, relayed to Google. */
@@ -61998,6 +62041,200 @@ class Cloud {
 
 return { Cloud };
 })();
+__m["net/classlan.js"] = (() => {
+const MAX_LAB = 250;
+const CLASS_NET = 10 << 24;
+/** A message bigger than this (serialized) is not a frame anyone builds by hand: dropped. */
+const MAX_MESSAGE_CHARS = 16_384;
+const MAX_DEPTH = 12;
+const MAC_RE = /^[0-9a-f]{12}$/;
+const PROTOCOLS = ['icmp', 'udp', 'tcp', 'esp'];
+/** The classroom block of lab k: 10.k.0.0/16. */
+function labBlock(lab) {
+    return (CLASS_NET + ((Math.max(0, Math.min(MAX_LAB, Math.trunc(lab))) & 0xff) << 16)) >>> 0;
+}
+function validLab(v) {
+    return typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= MAX_LAB;
+}
+function plainDepth(v, depth) {
+    if (depth > MAX_DEPTH)
+        return false;
+    if (v === null || ['string', 'number', 'boolean'].includes(typeof v))
+        return typeof v !== 'number' || Number.isFinite(v);
+    if (Array.isArray(v))
+        return v.every((x) => plainDepth(x, depth + 1));
+    if (typeof v !== 'object' || Object.getPrototypeOf(v) !== Object.prototype)
+        return false;
+    return Object.values(v).every((x) => plainDepth(x, depth + 1));
+}
+const isIp = (v) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 0xffffffff;
+function validPacket(p) {
+    if (typeof p !== 'object' || p === null)
+        return false;
+    const o = p;
+    return isIp(o.src) && isIp(o.dst) && typeof o.ttl === 'number' && o.ttl >= 0 && o.ttl <= 255 && PROTOCOLS.includes(String(o.protocol));
+}
+function validFrame(f) {
+    if (typeof f !== 'object' || f === null)
+        return false;
+    const o = f;
+    if (typeof o.src !== 'string' || typeof o.dst !== 'string' || !MAC_RE.test(o.src) || !MAC_RE.test(o.dst))
+        return false;
+    if (o.vlan !== undefined && !(typeof o.vlan === 'number' && Number.isInteger(o.vlan) && o.vlan >= 1 && o.vlan <= 4094))
+        return false;
+    return o.ip === undefined || validPacket(o.ip);
+}
+/** A message from the relay, or null: only plain data, small, with the fields the simulation relies on. */
+function classLanMessage(v) {
+    let text;
+    try {
+        text = JSON.stringify(v);
+    }
+    catch {
+        return null;
+    }
+    if (typeof text !== 'string' || text.length > MAX_MESSAGE_CHARS)
+        return null;
+    const copy = JSON.parse(text);
+    if (!plainDepth(copy, 0) || typeof copy !== 'object' || copy === null)
+        return null;
+    const m = copy;
+    if (m.kind === 'frame' && validFrame(m.frame))
+        return { kind: 'frame', frame: m.frame };
+    if (m.kind === 'ip' && validPacket(m.packet))
+        return { kind: 'ip', packet: m.packet };
+    return null;
+}
+
+return { MAX_LAB, MAX_MESSAGE_CHARS, labBlock, validLab, classLanMessage };
+})();
+__m["devices/classlan.js"] = (() => {
+const { DETACHED, macPlus } = __m["devices/hooks.js"];
+const { macFromSeed } = __m["core/mac.js"];
+const { CloudPort } = __m["devices/cloud-port.js"];
+const { defaultPort, portFromJson, portToJson, validatePort } = __m["devices/cloud-config.js"];
+const { classLanMessage, labBlock } = __m["net/classlan.js"];
+const CLASSLAN_PORT = 'Ethernet0';
+/** The line name the shared router code uses for its addresses (the first line of a /16: x.y.1.0/29). */
+const LINE = 'Coaxial0';
+function defaultClassLan() {
+    return { mode: 'nat', router: defaultPort(LINE) };
+}
+function classLanToJson(s) {
+    return { mode: s.mode, router: portToJson(s.router) };
+}
+/** Settings from an untrusted file; anything invalid falls back to the defaults. */
+function classLanFromJson(v) {
+    const o = typeof v === 'object' && v !== null ? v : {};
+    const router = portFromJson(LINE, o.router);
+    return { mode: o.mode === 'bridge' ? 'bridge' : 'nat', router: { ...router, mode: 'router' } };
+}
+class ClassLan {
+    kind = 'classlan';
+    id;
+    hooks = DETACHED;
+    name;
+    settings = defaultClassLan();
+    /** The NAT router (only used in NAT mode). */
+    router;
+    clock;
+    mac;
+    link = null;
+    stopListening = null;
+    constructor(opts) {
+        this.id = opts.id;
+        this.name = opts.name;
+        this.clock = opts.clock;
+        this.mac = macFromSeed(opts.seed + 7_919);
+        const owner = {
+            id: this.id,
+            block: () => labBlock(this.link?.lab ?? 0),
+            mac: () => macPlus(this.mac, 1),
+            peerUp: () => this.hooks.peerUp(CLASSLAN_PORT),
+            transmit: (_port, frame) => this.hooks.transmit(CLASSLAN_PORT, frame),
+            schedule: (d, fn) => this.hooks.schedule(d, fn),
+            now: () => this.clock.now(),
+        };
+        this.router = new CloudPort(owner, { send: (p) => this.send({ kind: 'ip', packet: p }) }, LINE, this.settings.router);
+    }
+    /** Joins (or leaves, with null) the class's LAN; the router's classroom address follows the lab's number. */
+    connect(link) {
+        this.stopListening?.();
+        this.stopListening = null;
+        this.link = link;
+        this.router.apply(this.settings.router);
+        if (link)
+            this.stopListening = link.onMessage((m) => this.fromClass(m));
+    }
+    /** connect() that returns the device (for building it in one expression). */
+    connectTo(link) {
+        this.connect(link);
+        return this;
+    }
+    connected() {
+        return this.link !== null;
+    }
+    /** The router's classroom address (NAT mode), or null when not in a class. */
+    classAddress() {
+        return this.link ? this.router.wan() : null;
+    }
+    /** Replaces the settings (checked first); a new mode or router setting starts the router afresh. */
+    setSettings(next) {
+        const router = { ...next.router, mode: 'router' };
+        const err = validatePort(router);
+        if (err)
+            return err;
+        this.settings = { mode: next.mode, router };
+        this.router.apply(router);
+        return null;
+    }
+    send(message) {
+        this.link?.send(message);
+    }
+    /** From another lab: checked, then delivered on the next tick (never inside the relay's callback). */
+    fromClass(raw) {
+        const m = classLanMessage(raw);
+        if (!m)
+            return;
+        this.hooks.schedule(0, () => {
+            try {
+                if (m.kind === 'frame' && this.settings.mode === 'bridge')
+                    this.hooks.transmit(CLASSLAN_PORT, m.frame);
+                else if (m.kind === 'ip' && this.settings.mode === 'nat' && this.router.owns(m.packet.dst))
+                    this.router.fromInternet(m.packet);
+            }
+            catch {
+                // A frame built by hand in another browser that the simulation cannot handle: dropped, this lab goes on.
+            }
+        });
+    }
+    // ------------------------------------------------------------ NetDevice
+    displayName() {
+        return this.name;
+    }
+    portNames() {
+        return [CLASSLAN_PORT];
+    }
+    portAdminUp() {
+        return true;
+    }
+    receive(_port, frame) {
+        if (this.settings.mode === 'bridge')
+            this.send({ kind: 'frame', frame });
+        else
+            this.router.stack.receiveFrame(LINE, frame);
+    }
+    onLinkEvent(_port, up) {
+        if (!up)
+            this.router.stack.flushArp();
+    }
+    ownsIp(ip) {
+        return this.settings.mode === 'nat' && this.router.l3Ifaces().some((i) => i.addrs.some((a) => a.ip === ip));
+    }
+}
+
+return { CLASSLAN_PORT, defaultClassLan, classLanToJson, classLanFromJson, ClassLan };
+})();
 __m["net/internet.js"] = (() => {
 const { parseIp } = __m["core/ip.js"];
 const ip = (t) => parseIp(t) ?? 0;
@@ -62158,11 +62395,12 @@ const { servicesToJson } = __m["services/persist.js"];
 const { applyConfig } = __m["ios/session.js"];
 const { registerWebApps } = __m["web/apps.js"];
 const { Cloud } = __m["devices/cloud.js"];
+const { ClassLan, classLanFromJson, classLanToJson } = __m["devices/classlan.js"];
 const { cloudFromJson, cloudToJson } = __m["devices/cloud-config.js"];
 const { InternetCore } = __m["net/internet.js"];
 const { populateInternet } = __m["net/internet-hosts.js"];
 registerWebApps();
-const PREFIX = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'Cloud' };
+const PREFIX = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'Cloud', classlan: 'ClassLAN' };
 /** Drawing ids stay short (aN) even after a crafted file. */
 const MAX_DRAWING_ID = 999_999_999;
 const SETTLE_MS = 30_000;
@@ -62184,6 +62422,8 @@ class Topology {
     pkgsOff = [];
     /** The guided lab this workspace is, with the hints already shown. */
     mission;
+    /** The host's Classroom LAN (Netfix Classroom), or null: its devices are then disconnected. */
+    classLan = null;
     nextDrawing = 1;
     /** `baseMs` pins the simulated wall-clock start (deterministic marking); omitted = Date.now(), as before. */
     constructor(baseMs) {
@@ -62203,7 +62443,7 @@ class Topology {
         const seed = opts.seed ?? this.nextSeed++;
         this.nextSeed = Math.max(this.nextSeed, seed + 1);
         const label = opts.label ?? this.nextLabel(kind);
-        const device = kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind, id, seed, this.clock, label);
+        const device = kind === 'cloud' ? this.newCloud(id, seed, label) : kind === 'classlan' ? new ClassLan({ id, name: label, clock: this.clock, seed }).connectTo(this.classLan) : createDevice(kind, id, seed, this.clock, label);
         seeds.set(device, seed);
         if (device instanceof Host) {
             bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff, pkgsOff: this.pkgsOff }));
@@ -62218,6 +62458,13 @@ class Topology {
         registerPlaced(placed, () => this.placed.values());
         syncDeviceName(placed);
         return placed;
+    }
+    /** Joins every Classroom LAN device to the host's link (or leaves it, with null). */
+    useClassLan(link) {
+        this.classLan = link;
+        for (const p of this.placed.values())
+            if (p.device instanceof ClassLan)
+                p.device.connect(link);
     }
     newCloud(id, seed, label) {
         const used = [...this.placed.values()].flatMap((p) => (p.device instanceof Cloud ? [p.device.settings.block] : []));
@@ -62245,6 +62492,8 @@ class Topology {
         const d = this.placed.get(id)?.device;
         if (d instanceof Cloud)
             d.detach();
+        if (d instanceof ClassLan)
+            d.connect(null);
         this.net.removeDevice(id);
         this.placed.delete(id);
     }
@@ -62263,6 +62512,8 @@ class Topology {
                 d.setSettings({ ...d.settings, block: this.internet.freeBlock([...used, ...d.otherBlocks()]) });
             d.attach();
         }
+        if (d instanceof ClassLan)
+            d.connect(this.classLan);
         this.net.addDevice(d);
         this.placed.set(id, placed);
         registerPlaced(placed, () => this.placed.values());
@@ -62369,6 +62620,8 @@ function record(id, p) {
     const base = { id, kind: d.kind, label: p.label, x: Math.round(p.x), y: Math.round(p.y), seed };
     if (d instanceof Cloud)
         return { ...base, cloud: cloudToJson(d.settings) };
+    if (d instanceof ClassLan)
+        return { ...base, classlan: classLanToJson(d.settings) };
     if (d instanceof Host) {
         const pc = hostRecord(d);
         if (d instanceof Pc)
@@ -62386,6 +62639,10 @@ function deviceSeed(d) {
 function restore(device, rec) {
     if (device instanceof Cloud) {
         device.setSettings(cloudFromJson(rec.cloud, device.settings));
+        return;
+    }
+    if (device instanceof ClassLan) {
+        device.setSettings(classLanFromJson(rec.classlan));
         return;
     }
     if (device instanceof Host) {
@@ -62831,10 +63088,10 @@ class GroupSelection {
 return { BOX_PRESS_MS, clearClipboard, spaceHeld, GroupSelection };
 })();
 __m["classroom/restrictions.js"] = (() => {
-const DEVICE_KINDS = ['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'];
-const TAB_IDS = ['host', 'ifaces', 'cli', 'web', 'ip', 'svc', 'mail', 'ssh', 'sftp', 'linux', 'windows', 'apps', 'isp', 'lines'];
+const DEVICE_KINDS = ['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud', 'classlan'];
+const TAB_IDS = ['host', 'ifaces', 'cli', 'web', 'ip', 'svc', 'mail', 'ssh', 'sftp', 'linux', 'windows', 'apps', 'isp', 'lines', 'classlan'];
 /** The first tab of each window (Device; ISP for the cloud): kept even when a list leaves it out, so a window is never empty. */
-const firstTab = (k) => (k === 'cloud' ? 'isp' : 'host');
+const firstTab = (k) => (k === 'cloud' ? 'isp' : k === 'classlan' ? 'classlan' : 'host');
 const FLAGS = ['docs', 'fileOpen', 'fileSave', 'fileNew', 'simulation', 'clock', 'drawing', 'editTopology', 'missionCheck', 'hints', 'solution'];
 /** «Prompt con marca de fecha y hora»: each device decides (free), or the teacher locks it on or off. */
 const PROMPT_MODES = ['free', 'on', 'off'];
@@ -62968,6 +63225,10 @@ function portAddresses(p, port) {
     let list;
     if (d.kind === 'router' || d.kind === 'switch')
         list = iosAddresses(d, port);
+    else if (d.kind === 'classlan') {
+        const a = d.settings.mode === 'nat' ? d.router.gatewayAddr() : undefined;
+        list = cidr(a?.ip, a?.prefix);
+    }
     else if (d.kind === 'cloud') {
         const line = [...d.lines].find(([name]) => name === port)?.[1];
         const a = line?.gatewayAddr();
@@ -62983,6 +63244,13 @@ function portAddresses(p, port) {
 return { iosVirtualAddresses, portAddresses };
 })();
 __m["ui/device-caption.js"] = (() => {
+/**
+ * Caption under a device in the diagram: its name and, below, what identifies it on the network: the IP/CIDR of each
+ * NIC with an address and no cable (with a cable, it goes under the interface name at the end of the cable), the
+ * addresses of IOS virtual interfaces, the public block of a cloud. The host name (IOS `hostname` too) is derived from
+ * the name, so it is not repeated.
+ */
+const { t } = __m["i18n/t.js"];
 const { formatIp } = __m["core/ip.js"];
 const { BLOCK_PREFIX } = __m["devices/cloud-config.js"];
 const { ICON_H, ICON_W } = __m["ui/icons.js"];
@@ -62997,6 +63265,11 @@ function extraLines(p, linked) {
     // A cloud: its public block, as a device shows its IP/CIDR (the provider name is in its ISP tab).
     if (d.kind === 'cloud')
         return [`${formatIp(d.settings.block)}/${BLOCK_PREFIX}`];
+    // The Classroom LAN: its mode and, under NAT and in a class, its classroom address.
+    if (d.kind === 'classlan') {
+        const at = d.classAddress();
+        return [d.settings.mode === 'bridge' ? t('classlan.bridge') : at === null ? t('classlan.offline') : `NAT ${formatIp(at)}`];
+    }
     if (d.kind === 'router' || d.kind === 'switch')
         return iosVirtualAddresses(d);
     return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined && !linked?.(n.port) ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
@@ -71883,7 +72156,7 @@ function cloudTabs(cloud, app) {
     ];
 }
 
-return { cloudTabs };
+return { forwardsSection, cloudTabs };
 })();
 __m["ui/cloud-device.js"] = (() => {
 /**
@@ -71924,6 +72197,75 @@ function cloudSettings(placed, cloud, app) {
 }
 
 return { cloudSettings };
+})();
+__m["ui/classlan-window.js"] = (() => {
+/**
+ * Classroom LAN window: whether this lab is in a class, NAT or bridge, and under NAT the router's LAN (DHCP), its
+ * classroom address and the forwarded ports (as an ISP line in router mode, so the same section).
+ */
+const { t } = __m["i18n/t.js"];
+const { el } = __m["ui/dom.js"];
+const { field, input, message, onCommit } = __m["ui/forms.js"];
+const { livePanel } = __m["ui/server-dhcp-dns.js"];
+const { forwardsSection } = __m["ui/cloud-window.js"];
+const { formatIp, formatMask, parseIp, parseMask } = __m["core/ip.js"];
+function modeRadio(d, change) {
+    const name = `classlan-mode-${d.id}`;
+    const radio = (mode, label) => {
+        const r = el('input', { type: 'radio', name, value: mode, checked: d.settings.mode === mode });
+        r.addEventListener('change', () => { if (r.checked)
+            change({ ...d.settings, mode }); });
+        return el('label', { class: 'radio' }, r, label);
+    };
+    return el('fieldset', { class: 'mode' }, el('legend', {}, t('classlan.mode')), radio('nat', t('classlan.nat')), radio('bridge', t('classlan.bridgeMode')));
+}
+function panel(d, app) {
+    const msg = message();
+    return livePanel((refresh) => {
+        const s = d.settings;
+        const put = (next) => {
+            const err = d.setSettings(next);
+            if (err)
+                return msg.error(err);
+            app.afterCommand();
+            refresh();
+        };
+        const at = d.classAddress();
+        const peer = app.connected('Ethernet0');
+        const status = !d.connected() ? t('classlan.notInClass') : s.mode === 'bridge' ? t('classlan.inClassBridge') : t('classlan.inClassNat', { ip: formatIp(at ?? 0) });
+        const parts = [
+            el('p', { class: 'status', 'data-state': d.connected() ? 'ok' : 'failed' }, status),
+            el('p', { class: 'muted' }, peer ? t('cloud.connected', { peer }) : t('cloud.noCable')),
+            modeRadio(d, put),
+            el('p', { class: 'muted' }, s.mode === 'nat' ? t('classlan.natHint') : t('classlan.bridgeHint')),
+            msg.el,
+        ];
+        if (s.mode === 'bridge')
+            return parts;
+        const lan = input({ value: formatIp(s.router.lanIp) });
+        const mask = input({ value: formatMask(s.router.lanPrefix) });
+        const apply = () => {
+            const ip = parseIp(lan.value.trim());
+            const prefix = parseMask(mask.value.trim());
+            if (ip === null || prefix === null)
+                return msg.error(t('cloud.badLan'));
+            put({ ...s, router: { ...s.router, lanIp: ip, lanPrefix: prefix } });
+        };
+        onCommit(lan, apply);
+        onCommit(mask, apply);
+        const leases = d.router.leases().map((b) => `${formatIp(b.ip)} → ${b.hostname ?? b.mac}`);
+        return [...parts,
+            el('div', { class: 'grid2' }, field(t('cloud.routerLan'), lan), field(t('cloud.lanMask'), mask)),
+            el('p', { class: 'muted' }, t('cloud.lanDhcp', { net: `${formatIp(s.router.lanIp)}/${s.router.lanPrefix}` })),
+            el('p', { class: 'muted' }, t('cloud.leases', { list: leases.join(' · ') || t('cloud.none') })),
+            ...forwardsSection(d.router, (forwards) => put({ ...s, router: { ...s.router, forwards } }))];
+    });
+}
+function classLanTabs(d, app) {
+    return [{ id: 'classlan', label: t('classlan.tab'), render: () => panel(d, app) }];
+}
+
+return { classLanTabs };
 })();
 __m["ui/prompt-toggle.js"] = (() => {
 /**
@@ -72052,6 +72394,8 @@ const { iosWebSettings } = __m["ui/ios-web-settings.js"];
 const { Cloud } = __m["devices/cloud.js"];
 const { cloudTabs } = __m["ui/cloud-window.js"];
 const { cloudSettings } = __m["ui/cloud-device.js"];
+const { ClassLan } = __m["devices/classlan.js"];
+const { classLanTabs } = __m["ui/classlan-window.js"];
 const { promptToggle } = __m["ui/prompt-toggle.js"];
 const { onTimestampPrompt } = __m["ui/preferences.js"];
 const { featureOn, SERVICE_IDS } = __m["net/lab-features.js"];
@@ -72114,6 +72458,10 @@ function openDeviceWindow(placed, host) {
     const d = placed.device;
     if (d instanceof Host) {
         openHostWindow(placed, d, host);
+        return;
+    }
+    if (d instanceof ClassLan) {
+        host.windows.show(d.id, t('win.classlan', { name: placed.label }), allowed(host, d.kind, classLanTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) })));
         return;
     }
     if (d instanceof Cloud) {
@@ -73022,8 +73370,12 @@ const { t } = __m["i18n/t.js"];
 const { NO_RESTRICTIONS, allowsDevice } = __m["classroom/restrictions.js"];
 const { devicePiles } = __m["ui/preferences.js"];
 const PLACEABLE = [
-    ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
+    ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'], ['classlan', 'kind.classlan'],
 ];
+/** The Classroom LAN is placeable only when the host page (Netfix Classroom) gives the link to the class. */
+let classLanOffered = false;
+function offerClassLan(on) { classLanOffered = on; }
+const offered = (kind) => kind !== 'classlan' || classLanOffered;
 /** The piles (setting «Agrupar equipos parecidos»): one button per family, its variants in a small menu. */
 function piles() {
     const pc = (system) => ({ kind: 'pc', system, name: `${t('kind.pc')} ${t(`os.${system}`)}`, model: system === 'both' ? `${t('os.windows')} + ${t('os.linux')}` : t(`os.${system}`) });
@@ -73033,6 +73385,7 @@ function piles() {
         ['kind.switch', [{ kind: 'switch', name: t('kind.switch'), model: modelLabel('switch') }]],
         ['pal.routers', [{ kind: 'router', name: t('kind.router'), model: modelLabel('router') }, { kind: 'linuxrouter', name: t('kind.linuxrouter'), model: modelLabel('linuxrouter') }]],
         ['kind.cloud', [{ kind: 'cloud', name: t('kind.cloud'), model: modelLabel('cloud') }]],
+        ['kind.classlan', [{ kind: 'classlan', name: t('kind.classlan'), model: modelLabel('classlan') }]],
     ];
 }
 const variantKey = (v) => (v.system ? `place-${v.kind}-${v.system}` : `place-${v.kind}`);
@@ -73069,9 +73422,9 @@ function deviceGroup(actions, buttons, policy = NO_RESTRICTIONS) {
     if (!policy.editTopology)
         return null;
     const items = devicePiles()
-        ? piles().map(([name, all]) => [t(name), all.filter((v) => allowsDevice(policy, v.kind))]).filter(([, vs]) => vs.length > 0)
+        ? piles().map(([name, all]) => [t(name), all.filter((v) => offered(v.kind) && allowsDevice(policy, v.kind))]).filter(([, vs]) => vs.length > 0)
             .map(([name, vs]) => (vs.length === 1 ? variantBtn(actions, buttons, vs[0], 'pal-item') : pileBtn(actions, buttons, name, vs)))
-        : PLACEABLE.filter(([k]) => allowsDevice(policy, k)).map(([k, name]) => variantBtn(actions, buttons, { kind: k, name: t(name), model: modelLabel(k) }, 'pal-item'));
+        : PLACEABLE.filter(([k]) => offered(k) && allowsDevice(policy, k)).map(([k, name]) => variantBtn(actions, buttons, { kind: k, name: t(name), model: modelLabel(k) }, 'pal-item'));
     return items.length ? el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...items) : null;
 }
 /** «Dibujo»: opens the bar with shapes, colours and labels (it is not a tool by itself). */
@@ -73121,7 +73474,7 @@ function palette(actions, buttons, hintEl, policy = NO_RESTRICTIONS, actionsBox 
     return el(actionsBox ? 'nav' : 'footer', { class: 'palette', 'aria-label': t('pal.label') }, deviceGroup(actions, buttons, policy), el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') }, toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'), ...(edit ? [toolBtn('cable', t('pal.cable'), { kind: 'cable' }, '⌇'), toolBtn('delete', t('pal.delete'), { kind: 'delete' }, '✕')] : []), ...(policy.drawing ? [drawToggle(actions)] : [])), ...(actionsBox ? [] : [...groups, hintEl]));
 }
 
-return { PLACEABLE, deviceGroup, palette };
+return { PLACEABLE, offerClassLan, deviceGroup, palette };
 })();
 __m["ui/save-file.js"] = (() => {
 /** Saving the topology: clipboard in the embedded artifact, file picker when available, download otherwise. */
@@ -73467,14 +73820,16 @@ function evaluateFile(topology, checklist) {
 return { STANDALONE, embedSession, evaluateFile };
 })();
 __m["ui/embed-api.js"] = (() => {
+/** DOM side of `netfix.embed` / `netfix.evaluate` (needs `HTMLElement` and `globalThis`, so it lives in `ui`, not the Core). */
+const { validLab } = __m["net/classlan.js"];
 const { isLocale } = __m["i18n/locale.js"];
 /** The element `netfix.embed` mounts on (the host page may pass anything). */
 function checkMount(mount) {
     if (typeof HTMLElement === 'undefined' || !(mount instanceof HTMLElement))
         throw new Error('netfix.embed: falta el elemento donde montar Netfix');
 }
-const NO_HOST = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', piles: undefined });
-const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'piles'];
+const NO_HOST = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', piles: undefined, classroomLan: null });
+const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'piles', 'classroomLan'];
 /** A host element for part of Netfix: in the page, and neither inside the mount nor around it (each would empty the other). */
 function hostElement(mount, v, name) {
     if (v === undefined)
@@ -73492,7 +73847,7 @@ function hostElement(mount, v, name) {
 function takeHostOptions(mount, options) {
     if (typeof options !== 'object' || options === null || !HOST_KEYS.some((k) => Object.hasOwn(options, k)))
         return { rest: options, host: NO_HOST };
-    const { toolbar, actions, locale, confirmUnsaved, palette, piles, ...rest } = options;
+    const { toolbar, actions, locale, confirmUnsaved, palette, piles, classroomLan, ...rest } = options;
     const bar = hostElement(mount, toolbar, 'toolbar');
     const acts = hostElement(mount, actions, 'actions');
     if (bar && acts && (bar.contains(acts) || acts.contains(bar)))
@@ -73505,13 +73860,23 @@ function takeHostOptions(mount, options) {
         throw new Error('netfix: «palette» debe ser \'side\' o \'bottom\'');
     if (piles !== undefined && typeof piles !== 'boolean')
         throw new Error('netfix: «piles» debe ser true o false');
-    return { rest, host: { toolbar: bar, actions: acts, locale: locale ?? null, confirmUnsaved: confirmUnsaved, palette: palette ?? 'side', piles: piles } };
+    const lan = classroomLan === undefined ? null : linkOf(classroomLan);
+    return { rest, host: { toolbar: bar, actions: acts, locale: locale ?? null, confirmUnsaved: confirmUnsaved, palette: palette ?? 'side', piles: piles, classroomLan: lan } };
+}
+/** The host's Classroom LAN link: its lab number (1-250) and its two functions; anything else is refused. */
+function linkOf(v) {
+    const o = typeof v === 'object' && v !== null ? v : {};
+    if (!validLab(o.lab) || typeof o.send !== 'function' || typeof o.onMessage !== 'function')
+        throw new Error('netfix: «classroomLan» necesita lab (1-250), send() y onMessage()');
+    const send = o.send;
+    const onMessage = o.onMessage;
+    return { lab: o.lab, send: (m) => send(m), onMessage: (l) => onMessage(l) };
 }
 /** `netfix.lab` options: none, or only the host options. */
 function labOptions(mount, options) {
     const { rest, host } = takeHostOptions(mount, options);
     if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
-        throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale», «confirmUnsaved», «palette» y «piles»');
+        throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale», «confirmUnsaved», «palette», «piles» y «classroomLan»');
     }
     return host;
 }
@@ -73526,7 +73891,6 @@ function installApi(api) {
 return { checkMount, NO_HOST, takeHostOptions, labOptions, installApi };
 })();
 __m["ui/main.js"] = (() => {
-/** Netfix application shell: top bar, workspace, palette, views, windows and simulation panel. */
 const { applyBrand, removeBrand } = __m["ui/brand.js"];
 const { el, safeStorageGet, safeStorageSet } = __m["ui/dom.js"];
 const { Canvas } = __m["ui/canvas.js"];
@@ -73544,7 +73908,7 @@ const { Pages } = __m["ui/pages.js"];
 const { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, onDevicePiles, overrideConfirmUnsaved, overrideDevicePiles, setToolHelp, toolHelp } = __m["ui/preferences.js"];
 const { featureOn } = __m["net/lab-features.js"];
 const { floatBar, topbar } = __m["ui/topbar.js"];
-const { deviceGroup, palette } = __m["ui/palette.js"];
+const { deviceGroup, offerClassLan, palette } = __m["ui/palette.js"];
 const { labText } = __m["ui/lab-text.js"];
 const { readTopologyFile, saveTopology } = __m["ui/save-file.js"];
 const { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } = __m["ui/workspace-store.js"];
@@ -73630,6 +73994,7 @@ class App {
         this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
         this.view = initial.view === 'docs' && !this.session.policy.docs ? 'net' : initial.view;
         this.topo = topo ?? initialWorkspace(BROWSER_STORE, this.saved, () => EXAMPLES[0].build());
+        this.topo.useClassLan(classLan);
         this.topo.clock.set(Date.now()); // the settle ran the lab ~30 s ahead: its wall clock is the system's (like `clock set`)
         if (topo)
             this.saved.adopt(topo);
@@ -73886,7 +74251,9 @@ class App {
     load(topo, message) {
         this.windows.closeAll();
         forgetAll();
+        this.topo.useClassLan(null);
         this.topo = topo;
+        topo.useClassLan(classLan);
         topo.clock.set(Date.now());
         this.saved.mark(topo);
         this.canvas.setTopology(topo);
@@ -73958,6 +74325,8 @@ class App {
     announce(text) { this.hintEl.textContent = text; }
 }
 let app = null;
+/** The host's Classroom LAN link (Netfix Classroom), joined by every workspace this mount opens. */
+let classLan = null;
 let mountEl = null;
 /** The host page's element for the top bar (`toolbar` option), or null: the bar is at the top of the mount. */
 let barHost = null;
@@ -74033,6 +74402,8 @@ function start(mount, s, topo, page = !s.embedded, host = NO_HOST) {
     setLocale(host.locale ?? detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
     overrideConfirmUnsaved(host.confirmUnsaved);
     overrideDevicePiles(host.piles);
+    classLan = host.classroomLan;
+    offerClassLan(classLan !== null);
     mount.classList.add(ROOT_CLASS);
     applyLanguage(mount);
     // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.

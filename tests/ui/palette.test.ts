@@ -7,8 +7,8 @@ import { t } from '../../src/i18n/t.ts';
 import { setLocale } from '../../src/i18n/locale.ts';
 
 test('the palette lists PC, Server, switch, the two routers together and the cloud', () => {
-  assert.deepEqual(PLACEABLE.map(([k]) => k), ['pc', 'server', 'switch', 'router', 'linuxrouter', 'cloud']);
-  assert.deepEqual(PLACEABLE.map(([, key]) => t(key)), ['PC', 'Servidor', 'Switch IOS', 'Router IOS', 'Router GNU/Linux', 'Nube']);
+  assert.deepEqual(PLACEABLE.map(([k]) => k), ['pc', 'server', 'switch', 'router', 'linuxrouter', 'cloud', 'classlan']);
+  assert.deepEqual(PLACEABLE.map(([, key]) => t(key)), ['PC', 'Servidor', 'Switch IOS', 'Router IOS', 'Router GNU/Linux', 'Nube', 'LAN de clase']);
   assert.equal(MODEL_LABEL.router, '2911');
   assert.equal(MODEL_LABEL.linuxrouter, 'Ubuntu');
   // One router symbol on the canvas and in the palette (the old terminal-prompt icon is gone).
@@ -16,7 +16,7 @@ test('the palette lists PC, Server, switch, the two routers together and the clo
   assert.equal(t('model.cloud'), 'ISP → Internet');
   setLocale('en-GB');
   try {
-    assert.deepEqual(PLACEABLE.map(([, key]) => t(key)), ['PC', 'Server', 'IOS switch', 'IOS router', 'GNU/Linux router', 'Cloud']);
+    assert.deepEqual(PLACEABLE.map(([, key]) => t(key)), ['PC', 'Server', 'IOS switch', 'IOS router', 'GNU/Linux router', 'Cloud', 'Classroom LAN']);
   } finally {
     setLocale('es-ES');
   }

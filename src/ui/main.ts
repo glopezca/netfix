@@ -20,7 +20,7 @@ import { featureOn } from '../net/lab-features.ts';
 import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
 import { floatBar, topbar } from './topbar.ts';
 import type { Mode, TopbarActions, View } from './topbar.ts';
-import { deviceGroup, palette, type PaletteActions } from './palette.ts';
+import { deviceGroup, offerClassLan, palette, type PaletteActions } from './palette.ts';
 import { labText } from './lab-text.ts';
 import { readTopologyFile, saveTopology } from './save-file.ts';
 import { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } from './workspace-store.ts';
@@ -504,6 +504,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   overrideConfirmUnsaved(host.confirmUnsaved);
   overrideDevicePiles(host.piles);
   classLan = host.classroomLan;
+  offerClassLan(classLan !== null);
   mount.classList.add(ROOT_CLASS);
   applyLanguage(mount);
   // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.
