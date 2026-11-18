@@ -3,7 +3,7 @@ import { el } from './dom.ts';
 import { t, tDynamic } from '../i18n/t.ts';
 import { LOCALES, LOCALE_NAMES, getLocale, isLocale } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
-import { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, toolHelp, setToolHelp, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown } from './preferences.ts';
+import { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, toolHelp, setToolHelp, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown, devicePiles, setDevicePiles } from './preferences.ts';
 import { FEATURES_BY_KIND, featureOn, setFeature } from '../net/lab-features.ts';
 import type { LabFeatures } from '../net/lab-features.ts';
 import { SERVICE_PACKAGES, TOOL_PACKAGES, packageAllowed, setPackageOff } from '../net/lab-packages.ts';
@@ -52,6 +52,8 @@ function generalSection(host: SettingsHost): HTMLElement {
   const help = el('input', { type: 'checkbox', checked: toolHelp(), 'data-setting': 'tool-help' });
   help.addEventListener('change', () => setToolHelp(help.checked));
   helpBox = help;
+  const pile = el('input', { type: 'checkbox', checked: devicePiles(), 'data-setting': 'piles' });
+  pile.addEventListener('change', () => setDevicePiles(pile.checked));
   const missions = el('input', { type: 'checkbox', checked: missionsShown(), 'data-setting': 'missions' });
   missions.addEventListener('change', () => setMissionsShown(missions.checked));
   return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' },
@@ -62,6 +64,7 @@ function generalSection(host: SettingsHost): HTMLElement {
     host.labLocked() || host.hostOwned() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios),
     host.labLocked() || host.hostOwned() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')),
     host.hostOwned() ? el('label', { class: 'set-choice' }, help, t('set.toolHelp')) : null,
+    el('label', { class: 'set-choice' }, pile, t('set.piles')),
     el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)),
     el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }

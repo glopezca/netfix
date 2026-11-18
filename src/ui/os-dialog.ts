@@ -38,12 +38,15 @@ export function askPcSystem(name: string): Promise<PcSystem> {
  * After a device is placed: a PC asks for its system; a Server or Linux router starts with no service running (its
  * boxes are off until ticked or installed with apt, and Apache is not there yet). Either way it is unsaved work.
  */
-export function afterPlaced(placed: Placed, changed: () => void): void {
+export function afterPlaced(placed: Placed, changed: () => void, system?: PcSystem): void {
   const pc = placed.device;
   if (pc instanceof Server) {
     pc.setServices({ ...pc.services, http: { ...pc.services.http, enabled: false } });
     setDeviceApps(pc, freshApps(pc));
   }
   changed();
-  if (pc instanceof Pc) void askPcSystem(placed.label).then((s) => { choosePcSystem(pc, s); changed(); });
+  if (!(pc instanceof Pc)) return;
+  // Picked from the PC pile in the palette: no question.
+  if (system) { choosePcSystem(pc, system); changed(); return; }
+  void askPcSystem(placed.label).then((s) => { choosePcSystem(pc, s); changed(); });
 }

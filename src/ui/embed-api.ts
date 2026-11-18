@@ -28,10 +28,12 @@ export interface HostOptions {
   readonly confirmUnsaved: boolean | undefined;
   /** Hosted (with `toolbar`): devices and tools in a sidebar on the left ('side', the default) or below ('bottom'). */
   readonly palette: 'side' | 'bottom';
+  /** Similar devices piled on one palette button; undefined: this browser's setting (off by default). */
+  readonly piles: boolean | undefined;
 }
 
-export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side' });
-const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette'] as const;
+export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', piles: undefined });
+const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'piles'] as const;
 
 /** A host element for part of Netfix: in the page, and neither inside the mount nor around it (each would empty the other). */
 function hostElement(mount: HTMLElement, v: unknown, name: string): HTMLElement | null {
@@ -47,21 +49,22 @@ function hostElement(mount: HTMLElement, v: unknown, name: string): HTMLElement 
  */
 export function takeHostOptions(mount: HTMLElement, options: unknown): { readonly rest: unknown; readonly host: HostOptions } {
   if (typeof options !== 'object' || options === null || !HOST_KEYS.some((k) => Object.hasOwn(options, k))) return { rest: options, host: NO_HOST };
-  const { toolbar, actions, locale, confirmUnsaved, palette, ...rest } = options as Record<string, unknown>;
+  const { toolbar, actions, locale, confirmUnsaved, palette, piles, ...rest } = options as Record<string, unknown>;
   const bar = hostElement(mount, toolbar, 'toolbar');
   const acts = hostElement(mount, actions, 'actions');
   if (bar && acts && (bar.contains(acts) || acts.contains(bar))) throw new Error('netfix: «toolbar» y «actions» deben ser elementos distintos y separados');
   if (locale !== undefined && !isLocale(locale)) throw new Error('netfix: «locale» no es un idioma de Netfix');
   if (confirmUnsaved !== undefined && typeof confirmUnsaved !== 'boolean') throw new Error('netfix: «confirmUnsaved» debe ser true o false');
   if (palette !== undefined && palette !== 'side' && palette !== 'bottom') throw new Error('netfix: «palette» debe ser \'side\' o \'bottom\'');
-  return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined, palette: palette ?? 'side' } };
+  if (piles !== undefined && typeof piles !== 'boolean') throw new Error('netfix: «piles» debe ser true o false');
+  return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined, palette: palette ?? 'side', piles: piles as boolean | undefined } };
 }
 
 /** `netfix.lab` options: none, or only the host options. */
 export function labOptions(mount: HTMLElement, options: unknown): HostOptions {
   const { rest, host } = takeHostOptions(mount, options);
   if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
-    throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale», «confirmUnsaved» y «palette»');
+    throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale», «confirmUnsaved», «palette» y «piles»');
   }
   return host;
 }
