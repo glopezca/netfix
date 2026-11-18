@@ -95,6 +95,8 @@
 /* The bar in the host's element: only Netfix's look, not the mount's layout; the mount is then all workspace. */
 .netfix-bar.netfix-root { display: block; position: static; overflow: visible; background: var(--panel); color: var(--ink); font: 15px/1.45 var(--font-ui); }
 [data-bar="host"].netfix-root { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+/* Hosted with palette: 'bottom': the classic layout, the palette under the workspace. */
+[data-bar="host"][data-palette="bottom"].netfix-root { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
 /* The host's element for the workspace's actions (undo/redo, clipboard, zoom): only Netfix's look. */
 .netfix-actions.netfix-root { display: flex; align-items: center; position: static; overflow: visible; background: transparent; color: var(--ink); font: 15px/1.45 var(--font-ui); }
 
@@ -206,17 +208,24 @@
   .hint { margin: 0; align-self: center; color: var(--ink-2); max-width: 70ch; }
   .dev-collapse > summary { cursor: pointer; font-weight: 700; margin-bottom: 4px; }
   .dev-collapse:not([open]) > summary { margin-bottom: 0; }
-  /* Hosted: the palette is a sidebar on the left; the clock, the mode and the hint float over the workspace. */
-  &[data-bar="host"] .stage { grid-column: 2; grid-row: 1; }
+  /* Hosted: the palette is a sidebar on the left (or below, data-palette="bottom"); the clock, the mode and the hint
+     float over the workspace. In the sidebar, each name (and model) goes on the right of its icon. */
   &[data-bar="host"] .docs-host { grid-column: 1 / -1; grid-row: 1; }
-  &[data-bar="host"] .palette {
+  &[data-bar="host"][data-palette="bottom"] .stage { grid-row: 1; }
+  &[data-bar="host"][data-palette="bottom"] .palette { grid-row: 2; }
+  &[data-bar="host"]:not([data-palette="bottom"]) .stage { grid-column: 2; grid-row: 1; }
+  &[data-bar="host"]:not([data-palette="bottom"]) .palette {
     grid-column: 1; grid-row: 1; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; padding: 8px 6px;
     overflow-x: hidden; overflow-y: auto; border-top: 0; border-right: 1px solid var(--line);
   }
-  &[data-bar="host"] .pal-group { flex-direction: column; gap: 2px; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--line); }
-  &[data-bar="host"] .pal-group:last-child { border-bottom: 0; }
-  &[data-bar="host"] .pal-item { min-width: 72px; padding: 4px; }
-  &[data-bar="host"] .palette .nf-actions { flex-direction: column; }
+  &[data-bar="host"]:not([data-palette="bottom"]) {
+    .pal-group { flex-direction: column; gap: 2px; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--line); }
+    .pal-group:last-child { border-bottom: 0; }
+    .pal-item { grid-template-columns: 36px auto; justify-items: start; align-items: center; column-gap: 8px; min-width: 0; padding: 4px 10px 4px 4px; text-align: left; }
+    .pal-item > svg, .pal-item > .pal-glyph { grid-row: span 2; justify-self: center; width: 36px; height: 27px; }
+    .pal-tool > .pal-glyph { grid-row: auto; font-size: 20px; line-height: 27px; text-align: center; }
+    .palette .nf-actions { flex-direction: column; }
+  }
   .nf-actions { display: flex; align-items: center; gap: 8px; }
   .nf-actions .zoom-group:last-child { padding-right: 0; border-right: 0; }
   .ws-wrap { position: relative; flex: 1; min-width: 0; display: flex; }
@@ -3179,6 +3188,7 @@ const SRV_ES = {
     'res.id': 'MAC o Client-ID',
     'res.desc': 'Descripción',
     'res.add': 'Añadir reserva',
+    'res.edit': 'Editar',
     'res.hint': 'Por MAC: coincide con la dirección física aunque el cliente envíe otro Client-ID (como «hw-address» en Kea). Por Client-ID: coincide con la opción 61 que envía el cliente.',
     'res.identifier': 'Identificador',
     'res.none': 'Sin reservas. La MAC y el Client-ID de cada equipo están en su pestaña TCP/IP.',
@@ -3377,6 +3387,7 @@ const SRV_EN = {
     'res.id': 'MAC or Client-ID',
     'res.desc': 'Description',
     'res.add': 'Add reservation',
+    'res.edit': 'Edit',
     'res.hint': 'By MAC: matches the physical address even if the client sends another Client-ID (like “hw-address” in Kea). By Client-ID: matches the option 61 the client sends.',
     'res.identifier': 'Identifier',
     'res.none': 'No reservations. Each device’s MAC and Client-ID are in its TCP/IP tab.',
@@ -20177,7 +20188,7 @@ const NETFIX_DOCS = {
                     ['Red / Ayuda / Configuración / Donaciones / Acerca de', 'Cambia entre el área de trabajo, esta ayuda, los ajustes (ver «Configuración»), la página para apoyar el proyecto (PayPal.Me) y la información de versión, autoría, licencias y atribuciones (tomada de package.json y LICENSE.md).'],
                     ['Nuevo · Importar… · Exportar', 'Área vacía, importar un .json o exportar la topología (Ctrl+S). Nuevo, Importar y Laboratorios preguntan antes de reemplazar una red con cambios sin guardar.'],
                     ['Laboratorios…', 'Carga una práctica preparada, agrupada por temas: DHCP (básico, reservas, relay, router cliente); Conmutación y VLAN (router-on-a-stick, spanning tree, snooping); Servicios (Server, SSH/SFTP); Resolución de nombres (LAN sin DNS propio, nombres entre redes, DNS que reenvía); Internet y VPN (dos sedes, IPsec, WireGuard); Seguridad (router GNU/Linux con DMZ, bastionado).'],
-                    ['Reloj y «Avanzar reloj…»', 'Hora simulada. Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
+                    ['Reloj y «Avanzar reloj…»', 'Hora simulada: empieza en la del sistema, en la zona horaria del equipo (CET, CEST…). Adelantarla 1 minuto, 1 hora o 1 día hace caducar o renovar concesiones DHCP.'],
                     ['Tiempo real / Simulación', 'Modo de ejecución (ver «Tiempo real y simulación»).'],
                     ['Idioma', 'Español (España) o English (UK): cambia toda la interfaz, la ayuda y las páginas web simuladas sin recargar.'],
                 ]),
@@ -20188,7 +20199,7 @@ const NETFIX_DOCS = {
                     ['Router IOS / Switch IOS', 'Equipo (nombre visible y, derivado de él, el hostname), Interfaces (estado, MAC, extremo del cable, descripción, dirección o VLAN y shutdown, aplicados como órdenes de la CLI), CLI (Cisco IOS 15) y Gestión web (ip http server).'],
                     ['Nube ISP', 'Equipo (nombre y nombre de host derivado), ISP (proveedor, bloque público, dominios), Interfaces (resumen de las seis líneas) y Líneas (modo, LAN, NAT, redirección de puertos).'],
                     ['PC', 'Equipo, Interfaces (MAC, enlace, velocidad, extremo del cable y estado del puerto), TCP/IP, Navegador, Correo, Cliente SSH, Archivos (SFTP), Terminal Windows y Terminal GNU/Linux.'],
-                    ['Router GNU/Linux', 'Equipo, Interfaces (dirección de eth0-eth2, MAC, extremo del cable, reenvío y rutas), Servicios (Parámetros, Firewall, VPN, y los servicios de Server empezando por SSH) y Terminal GNU/Linux.'],
+                    ['Router GNU/Linux', 'Equipo, Interfaces (dirección de eth0-eth2, MAC, extremo del cable, reenvío y rutas; al quitar «DHCP» a eth0 se queda como fija la dirección recibida, ya editable), Servicios (Parámetros, Firewall, VPN, y los servicios de Server empezando por SSH) y Terminal GNU/Linux.'],
                     ['Server', 'Equipo, Interfaces, Servicios (SSH, DHCP, DNS, HTTP, correo, Configuración y Registros), TCP/IP, Terminal GNU/Linux y Terminal Windows. Sin paneles de núcleo ni cortafuegos: son del Router GNU/Linux (en su terminal siguen sysctl y nft).'],
                 ]),
                 note('Los campos de los equipos se aplican al cambiarlos (Intro o al salir del campo): nombre, direcciones, nube e ISP. Llevan botón los servicios («Aplicar» equivale a reiniciarlos con systemctl), los formularios que se traducen a órdenes de IOS y las listas (añadir un pool, una zona, una ruta…).'),
@@ -20258,7 +20269,7 @@ const NETFIX_DOCS = {
                 p('Importar… valida el archivo antes de usarlo y sigue aceptando el formato anterior (v1).'),
                 steps(['Exporta', '**Exportar** (Ctrl+S) y elige un nombre que diga qué es: `practica3-dhcp-apellido.json`.'], ['Comprueba', '**Nuevo** para vaciar el área e **Importar…** con tu archivo: debe aparecer todo como lo dejaste.'], ['Entrega', 'Ese .json es lo que se sube a la plataforma del curso.']),
                 warn('Lo que no se guarda', 'La salida de las terminales y los procesos en marcha (una sesión SSH abierta, un `ping` largo). Los cambios hechos en la CLI de IOS sí se guardan en la running-config, pero si quieres que sobrevivan a un `reload` del router, guárdalos también con `copy running-config startup-config`.'),
-                exercise('Ida y vuelta', 'Carga el laboratorio «DHCP básico», añade la descripción «LAN del aula» a GigabitEthernet0/0 de GW, guarda el archivo, pulsa Nuevo y ábrelo otra vez.', 'Tras Abrir…, en la CLI de GW `show running-config | section 0/0` sigue mostrando `description LAN del aula`: la configuración de IOS viaja dentro del .json.'),
+                exercise('Ida y vuelta', 'Carga el laboratorio «DHCP básico», añade la descripción «LAN del aula» a GigabitEthernet0/0 de GW, guarda el archivo, pulsa Nuevo y ábrelo otra vez.', 'Tras Importar…, en la CLI de GW `show running-config | section 0/0` sigue mostrando `description LAN del aula`: la configuración de IOS viaja dentro del .json.'),
             ],
         },
         {
@@ -20877,12 +20888,12 @@ const SERVICE_DOCS = {
                     ['Concesión (minutos)', '1440', 'Cuánto dura el préstamo; a la mitad, el cliente lo renueva'],
                 ]),
                 h('Reservas: siempre la misma dirección IP'),
-                p('Una **reserva** da siempre la misma dirección a un equipo concreto, identificado por su **MAC** o por su **Client-ID** (opción 61). Se usa para impresoras, servidores o el PC del profesor. Selecciona el pool, añade la reserva y, si quieres, un nombre. La dirección IP debe estar en la subred del pool y no se admiten direcciones IP ni identificadores repetidos.'),
+                p('Una **reserva** da siempre la misma dirección a un equipo concreto, identificado por su **MAC** o por su **Client-ID** (opción 61). Se usa para impresoras, servidores o el PC del profesor. Selecciona el pool, añade la reserva y, si quieres, un nombre. La dirección IP debe estar en la subred del pool. **Editar** carga una reserva en el formulario: al guardarla sustituye a la que tenga esa dirección o ese cliente, así que cambiar la dirección de un equipo o dársela a otro es un solo paso. **Borrar** la deshace.'),
                 table(['Identificador', 'Formato que admite Netfix'], [
                     ['MAC', '0001.42AB.CDEF o 00:01:42:ab:cd:ef'],
                     ['Client-ID', 'Hexadecimal con o sin puntos (0100.0142.abcd.ef); el típico de Windows es 01 + MAC'],
                 ]),
-                p('«Identificar concesiones automáticas por» decide cómo se reconoce a un cliente **sin** reserva: por **Client-ID o, si no lo envía, MAC** (lo normal en DHCP y en Kea) o solo por **MAC** (el mismo equipo conserva su dirección IP aunque cambie de sistema operativo). En la tabla de concesiones, «Reservar por MAC» y «Reservar por Client-ID» convierten una concesión en reserva con un clic.'),
+                p('«Identificar concesiones automáticas por» decide cómo se reconoce a un cliente **sin** reserva: por **Client-ID o, si no lo envía, MAC** (lo normal en DHCP y en Kea) o solo por **MAC** (el mismo equipo conserva su dirección IP aunque cambie de sistema operativo). En la tabla de concesiones, «Reservar por MAC» y «Reservar por Client-ID» convierten una concesión en reserva con un clic (si el cliente ya tenía otra reserva, se mueve a esa dirección).'),
                 shot('dhcp-panel', 'Panel local de SRV, Servicios → DHCP: los datos del pool y la tabla de pools con sus reservas.'),
                 shot('dhcp-webgui', 'La página DHCP de la gestión web (`?page=dhcp`), abierta desde PC0: los mismos pools, editables en remoto.'),
                 p('El panel, la gestión web y la Terminal GNU/Linux editan el mismo `/etc/kea/kea-dhcp4.conf`; el comprobador que se puede invocar a mano es `kea-dhcp4 -t /etc/kea/kea-dhcp4.conf`.'),
@@ -22849,7 +22860,7 @@ const NETFIX_DOCS = {
                     ['Network / Help / Settings / Donations / About', 'Switches between the workspace, this help, the settings (see “Settings”), the page for supporting the project (PayPal.Me) and the version, authorship, licence and attribution information (taken from package.json and LICENSE.md).'],
                     ['New · Import… · Export', 'Empty workspace, import a .json file or export the topology (Ctrl+S). New, Import and Labs ask before replacing a network with unsaved changes.'],
                     ['Labs…', 'Loads a ready-made exercise, grouped by theme: DHCP (basic, reservations, relay, client router); Switching and VLANs (router-on-a-stick, spanning tree, snooping); Services (Server, SSH/SFTP); Name resolution (LAN with no DNS of its own, names across networks, forwarding DNS); Internet and VPN (two sites, IPsec, WireGuard); Security (GNU/Linux router with DMZ, hardening).'],
-                    ['Clock and “Advance clock…”', 'Simulated time. Moving it forward 1 minute, 1 hour or 1 day makes DHCP leases expire or renew.'],
+                    ['Clock and “Advance clock…”', 'Simulated time: it starts at the system’s, in the computer’s time zone (CET, CEST…). Moving it forward 1 minute, 1 hour or 1 day makes DHCP leases expire or renew.'],
                     ['Realtime / Simulation', 'Execution mode (see “Realtime and simulation”).'],
                     ['Language', 'Español (España) or English (UK): changes the whole interface, the help and the simulated web pages without reloading.'],
                 ]),
@@ -22860,7 +22871,7 @@ const NETFIX_DOCS = {
                     ['IOS router / IOS switch', 'Device (workspace name and, derived from it, the hostname), Interfaces (state, MAC, far end of the cable, description, address or VLAN and shutdown, applied as CLI commands), CLI (Cisco IOS 15) and Web management (ip http server).'],
                     ['ISP Cloud', 'Device (name and derived host name), ISP (provider, public block, domains), Interfaces (summary of the six lines) and Lines (mode, LAN, NAT, port forwarding).'],
                     ['PC', 'Device, Interfaces (MAC, link, speed, far end of the cable and port status), TCP/IP, Web Browser, Mail, SSH client, Files (SFTP), Windows terminal and GNU/Linux terminal.'],
-                    ['GNU/Linux router', 'Device, Interfaces (address of eth0-eth2, MAC, far end of the cable, forwarding and routes), Services (Parameters, Firewall, VPN, and the Server services starting with SSH) and GNU/Linux terminal.'],
+                    ['GNU/Linux router', 'Device, Interfaces (address of eth0-eth2, MAC, far end of the cable, forwarding and routes; unticking “DHCP” on eth0 keeps the address it received as static, now editable), Services (Parameters, Firewall, VPN, and the Server services starting with SSH) and GNU/Linux terminal.'],
                     ['Server', 'Device, Interfaces, Services (SSH, DHCP, DNS, HTTP, mail, Configuration and Logs), TCP/IP, GNU/Linux terminal and Windows terminal. No kernel or firewall panels: they belong to the GNU/Linux router (sysctl and nft remain in its terminal).'],
                 ]),
                 note('Device fields apply when they change (Enter or leaving the field): name, addresses, cloud and ISP. Buttons remain for services («Apply» is restarting them with systemctl), forms that become IOS commands and lists (add a pool, a zone, a route…).'),
@@ -22930,7 +22941,7 @@ const NETFIX_DOCS = {
                 p('Import… validates the file before using it and still accepts the previous format (v1).'),
                 steps(['Export', '**Export** (Ctrl+S) and choose a name that says what it is: `practica3-dhcp-surname.json`.'], ['Check', '**New** to empty the workspace and **Import…** with your file: everything must appear as you left it.'], ['Hand it in', 'That .json is what you upload to the course platform.']),
                 warn('What is not saved', 'The output of the terminals and running processes (an open SSH session, a long `ping`). Changes made in the IOS CLI are saved in the running-config, but if you want them to survive a router `reload`, also save them with `copy running-config startup-config`.'),
-                exercise('There and back', 'Load the «Basic DHCP» lab, add the description “LAN del aula” to GW’s GigabitEthernet0/0, save the file, click New and open it again.', 'After Open…, `show running-config | section 0/0` in GW’s CLI still shows `description LAN del aula`: the IOS configuration travels inside the .json.'),
+                exercise('There and back', 'Load the «Basic DHCP» lab, add the description “LAN del aula” to GW’s GigabitEthernet0/0, save the file, click New and open it again.', 'After Import…, `show running-config | section 0/0` in GW’s CLI still shows `description LAN del aula`: the IOS configuration travels inside the .json.'),
             ],
         },
         {
@@ -23549,12 +23560,12 @@ const SERVICE_DOCS = {
                     ['Lease (minutes)', '1440', 'How long the loan lasts; halfway through, the client renews it'],
                 ]),
                 h('Reservations: always the same IP address'),
-                p('A **reservation** always gives the same address to one particular device, identified by its **MAC** or its **Client-ID** (option 61). It is used for printers, servers or the teacher’s PC. Select the pool, add the reservation and, if you like, a name. The IP address must be in the pool’s subnet, and repeated IP addresses or identifiers are refused.'),
+                p('A **reservation** always gives the same address to one particular device, identified by its **MAC** or its **Client-ID** (option 61). It is used for printers, servers or the teacher’s PC. Select the pool, add the reservation and, if you like, a name. The IP address must be in the pool’s subnet. **Edit** loads a reservation into the form: saving it replaces the one with that address or that client, so changing a device’s address or giving it to another device is a single step. **Delete** undoes it.'),
                 table(['Identifier', 'Format Netfix accepts'], [
                     ['MAC', '0001.42AB.CDEF or 00:01:42:ab:cd:ef'],
                     ['Client-ID', 'Hexadecimal with or without dots (0100.0142.abcd.ef); the usual Windows one is 01 + MAC'],
                 ]),
-                p('“Identify automatic leases by” decides how a client **without** a reservation is recognised: by **Client-ID or, if it sends none, MAC** (normal DHCP and Kea behaviour) or by **MAC** only (the same device keeps its IP address even if it changes operating system). In the lease table, “Reserve by MAC” and “Reserve by Client-ID” turn a lease into a reservation with one click.'),
+                p('“Identify automatic leases by” decides how a client **without** a reservation is recognised: by **Client-ID or, if it sends none, MAC** (normal DHCP and Kea behaviour) or by **MAC** only (the same device keeps its IP address even if it changes operating system). In the lease table, “Reserve by MAC” and “Reserve by Client-ID” turn a lease into a reservation with one click (if the client already had another reservation, it moves to that address).'),
                 shot('dhcp-panel', 'SRV’s local panel, Services → DHCP: the pool data and the table of pools with their reservations.'),
                 shot('dhcp-webgui', 'The DHCP page of the web management (`?page=dhcp`), opened from PC0: the same pools, editable remotely.'),
                 p('The panel, the web management and the GNU/Linux terminal edit the same `/etc/kea/kea-dhcp4.conf`; the checker you can run by hand is `kea-dhcp4 -t /etc/kea/kea-dhcp4.conf`.'),
@@ -33209,7 +33220,7 @@ return { BAT_TOOLS };
 __m["docs/about-data.js"] = (() => {
 const ABOUT = {
     "name": "netfix",
-    "version": "0.59.0",
+    "version": "0.60.0",
     "description": "Simulador de redes orientado a los servicios en red e Internet y con un enfoque especial en las tareas realizadas desde sistemas operativos reales emulados. Ejecutable desde un navegador.",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/glopezca/netfix",
@@ -58717,7 +58728,15 @@ function readIdentifier(kind, text) {
 function identifierText(r) {
     return r.clientId ? `Client-ID ${formatHexId(r.clientId)}` : `MAC ${formatMacCisco(r.mac ?? '')}`;
 }
-/** Turns the automatic lease of `ip` into a reservation of its pool. */
+/**
+ * `r` in place of any reservation with its address or its identifier: moving a client to another address, or an
+ * address to another client, is one step (two entries for one client or one address would be refused).
+ */
+function withReservation(list, r) {
+    const sameClient = (x) => (r.mac !== undefined ? x.mac === r.mac : r.clientId !== undefined && x.clientId === r.clientId);
+    return [...list.filter((x) => x.ip !== r.ip && !sameClient(x)), r];
+}
+/** Turns the automatic lease of `ip` into a reservation of its pool (replacing the client's earlier one, if any). */
 function reserveLease(server, ip, by) {
     const lease = server.dhcpEngine.allBindings(server.clock.now()).find((b) => b.ip === ip && b.type === 'Automatic');
     if (!lease)
@@ -58726,10 +58745,10 @@ function reserveLease(server, ip, by) {
     const r = leaseToReservation(lease, by);
     if (!pool || !r)
         return t('res.err.noId');
-    return setReservations(server, pool.name, [...pool.reservations.filter((x) => x.ip !== ip), r]);
+    return setReservations(server, pool.name, withReservation(pool.reservations, r));
 }
 
-return { idKinds, setReservations, readIdentifier, identifierText, reserveLease };
+return { idKinds, setReservations, readIdentifier, identifierText, withReservation, reserveLease };
 })();
 __m["web/admin-listen.js"] = (() => {
 /**
@@ -60533,7 +60552,7 @@ const { extraAction } = __m["web/admin-extra.js"];
 const { linuxSide } = __m["net/pkg-units.js"];
 const { parseIp, parseMask } = __m["core/ip.js"];
 const { validatePool } = __m["services/dhcp-pt.js"];
-const { readIdentifier, reserveLease, setReservations } = __m["services/dhcp-reservations.js"];
+const { readIdentifier, reserveLease, setReservations, withReservation } = __m["services/dhcp-reservations.js"];
 const { setSshAuthMethods } = __m["services/ssh-auth-settings.js"];
 const { dnsAction } = __m["web/admin-dns-actions.js"];
 const { validateAccess, DEFAULT_LEASE_MINUTES } = __m["services/config.js"];
@@ -60586,7 +60605,7 @@ function addReservation(server, f) {
     if (typeof id === 'string')
         return { error: id };
     const name = (f.get('name') ?? '').trim().slice(0, 64) || undefined;
-    return outcome(setReservations(server, pool.name, [...pool.reservations, { ip, ...id, name }]));
+    return outcome(setReservations(server, pool.name, withReservation(pool.reservations, { ip, ...id, name })));
 }
 function deleteReservation(server, f) {
     const [poolName = '', ipText = ''] = (f.get('key') ?? '').split('|');
@@ -67095,9 +67114,13 @@ function nicRow(r, n, app, msg, peer) {
             r.useDhcp();
             r.hooks.runUntil(() => r.dhcpStatus !== 'requesting', DHCP_WAIT_MS);
             app.afterCommand();
+            return;
         }
-        else
-            apply();
+        // Off: static with the address the lease gave (and its gateway and DNS), editable from now on. apply() would see
+        // the same address as now and change nothing, leaving the interface on DHCP with its fields greyed out.
+        const a = readAddress(ip.value, mask.value) ?? undefined;
+        r.setStatic({ ip: a?.ip, prefix: a?.prefix, gateway: r.config.gateway, dns: r.config.dns });
+        app.afterCommand();
     });
     const state = n.adminUp ? (n.up ? t('router.up') : `${t('router.up')} (${t('router.noCable')})`) : t('router.down');
     const toggle = onOff(state, n.adminUp, (on) => { r.setNicUp(n.port, on); app.afterCommand(); });
@@ -69189,8 +69212,12 @@ function hostIpConfig(h, app) {
     };
     const applyStatic = () => {
         const r = readStatic(inputs);
-        if (typeof r === 'string')
+        if (typeof r === 'string') {
+            // Static chosen but the fields (greyed out under DHCP) do not make an address yet: let them be filled in.
+            for (const i of Object.values(inputs))
+                i.disabled = false;
             return msg.error(r);
+        }
         msg.clear();
         h.setStatic(r);
         app.afterCommand();
@@ -69546,7 +69573,7 @@ __m["ui/server-dhcp-res.js"] = (() => {
 const { t } = __m["i18n/t.js"];
 const { el } = __m["ui/dom.js"];
 const { field, input, select, button, message, table } = __m["ui/forms.js"];
-const { idKinds, setReservations, readIdentifier, identifierText, reserveLease } = __m["services/dhcp-reservations.js"];
+const { idKinds, setReservations, readIdentifier, identifierText, reserveLease, withReservation } = __m["services/dhcp-reservations.js"];
 const { formatIp, parseIp } = __m["core/ip.js"];
 const { formatMacCisco, formatHexId } = __m["core/mac.js"];
 const { formatLeaseTime } = __m["core/clock.js"];
@@ -69571,13 +69598,26 @@ function reservationsPanel(server, pool, app, refresh) {
         const ident = readIdentifier(kind.value, id.value.trim());
         if (typeof ident === 'string')
             return msg.error(ident);
-        apply([...pool.reservations, { ip: a, ...ident, name: name.value.trim() || undefined }]);
+        apply(withReservation(pool.reservations, { ip: a, ...ident, name: name.value.trim() || undefined }));
+    };
+    // Editar: the form takes the reservation; saving it replaces the one with its address or its client.
+    const editRow = (r) => {
+        ip.value = formatIp(r.ip);
+        kind.value = r.clientId ? 'hex' : 'mac';
+        id.value = r.clientId ? formatHexId(r.clientId) : formatMacCisco(r.mac ?? '');
+        name.value = r.name ?? '';
+        kind.dispatchEvent(new Event('change'));
+        ip.focus();
     };
     return el('section', { class: 'subsection' }, el('h3', {}, t('res.title', { pool: pool.name })), el('div', { class: 'grid3' }, field(t('res.ip'), ip), field(t('res.by'), kind), field(t('res.id'), id), field(t('res.desc'), name)), el('div', { class: 'actions' }, button(t('res.add'), add)), msg.el, el('p', { class: 'muted' }, t('res.hint')), table(pool.reservations, [
         { label: 'IP', value: (r) => formatIp(r.ip), mono: true },
         { label: t('res.identifier'), value: identifierText, mono: true },
         { label: t('res.desc'), value: (r) => r.name ?? '' },
-    ], { empty: t('res.none'), onDelete: (r) => apply(pool.reservations.filter((x) => x !== r)) }));
+    ], {
+        empty: t('res.none'),
+        actions: (r) => [button(t('res.edit'), () => editRow(r), 'btn btn-quiet btn-small')],
+        onDelete: (r) => apply(pool.reservations.filter((x) => x !== r)),
+    }));
 }
 function reservationKind(server, b) {
     const pool = server.services.dhcp.pools.find((p) => p.name === b.pool);
@@ -73344,8 +73384,8 @@ function checkMount(mount) {
     if (typeof HTMLElement === 'undefined' || !(mount instanceof HTMLElement))
         throw new Error('netfix.embed: falta el elemento donde montar Netfix');
 }
-const NO_HOST = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined });
-const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved'];
+const NO_HOST = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side' });
+const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette'];
 /** A host element for part of Netfix: in the page, and neither inside the mount nor around it (each would empty the other). */
 function hostElement(mount, v, name) {
     if (v === undefined)
@@ -73363,7 +73403,7 @@ function hostElement(mount, v, name) {
 function takeHostOptions(mount, options) {
     if (typeof options !== 'object' || options === null || !HOST_KEYS.some((k) => Object.hasOwn(options, k)))
         return { rest: options, host: NO_HOST };
-    const { toolbar, actions, locale, confirmUnsaved, ...rest } = options;
+    const { toolbar, actions, locale, confirmUnsaved, palette, ...rest } = options;
     const bar = hostElement(mount, toolbar, 'toolbar');
     const acts = hostElement(mount, actions, 'actions');
     if (bar && acts && (bar.contains(acts) || acts.contains(bar)))
@@ -73372,13 +73412,15 @@ function takeHostOptions(mount, options) {
         throw new Error('netfix: «locale» no es un idioma de Netfix');
     if (confirmUnsaved !== undefined && typeof confirmUnsaved !== 'boolean')
         throw new Error('netfix: «confirmUnsaved» debe ser true o false');
-    return { rest, host: { toolbar: bar, actions: acts, locale: locale ?? null, confirmUnsaved: confirmUnsaved } };
+    if (palette !== undefined && palette !== 'side' && palette !== 'bottom')
+        throw new Error('netfix: «palette» debe ser \'side\' o \'bottom\'');
+    return { rest, host: { toolbar: bar, actions: acts, locale: locale ?? null, confirmUnsaved: confirmUnsaved, palette: palette ?? 'side' } };
 }
 /** `netfix.lab` options: none, or only the host options. */
 function labOptions(mount, options) {
     const { rest, host } = takeHostOptions(mount, options);
     if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
-        throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale» y «confirmUnsaved»');
+        throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale», «confirmUnsaved» y «palette»');
     }
     return host;
 }
@@ -73785,6 +73827,15 @@ class App {
         this.showView(v);
         return true;
     }
+    /** `handle.file`: the bar's Nuevo, Importar… or Exportar, if the restrictions allow it. */
+    fileHosted(action) {
+        const p = this.session.policy;
+        const run = { new: p.fileNew && this.barActions().newWorkspace, import: p.fileOpen && this.barActions().openFile, export: p.fileSave && this.barActions().save }[String(action)];
+        if (!run)
+            return false;
+        run();
+        return true;
+    }
     /** `handle.markSaved`: the host stored the network. */
     markSaved() { this.saved.mark(this.topo); }
     async openFile() {
@@ -73865,6 +73916,10 @@ function start(mount, s, topo, page = !s.embedded, host = NO_HOST) {
         mount.dataset.bar = 'host';
     else
         delete mount.dataset.bar;
+    if (bar && host.palette === 'bottom')
+        mount.dataset.palette = 'bottom';
+    else
+        delete mount.dataset.palette;
     session = s;
     onPage = page;
     MEMORY_STORE.clear();
@@ -73908,6 +73963,7 @@ function hosted(mount, s, topology, release, host) {
         },
         markSaved: () => current()?.markSaved(),
         showView: (view) => current()?.showHosted(view) ?? false,
+        file: (action) => current()?.fileHosted(action) ?? false,
         setLocale: (locale) => {
             if (!isLocale(locale))
                 throw new Error('netfix: «locale» no es un idioma de Netfix');
@@ -73935,7 +73991,7 @@ function hosted(mount, s, topology, release, host) {
             actionsHost = null;
             // No Netfix class, view, mode or language left on the element.
             mount.classList.remove(ROOT_CLASS);
-            for (const k of ['view', 'mode', 'bar'])
+            for (const k of ['view', 'mode', 'bar', 'palette'])
                 delete mount.dataset[k];
             mount.removeAttribute('lang');
             removeBrand(mount);

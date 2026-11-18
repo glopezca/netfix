@@ -45,7 +45,13 @@ function nicRow(r: LinuxRouter, n: NicInfo, app: AfterChange, msg: ReturnType<ty
       r.useDhcp();
       r.hooks.runUntil(() => r.dhcpStatus !== 'requesting', DHCP_WAIT_MS);
       app.afterCommand();
-    } else apply();
+      return;
+    }
+    // Off: static with the address the lease gave (and its gateway and DNS), editable from now on. apply() would see
+    // the same address as now and change nothing, leaving the interface on DHCP with its fields greyed out.
+    const a = readAddress(ip.value, mask.value) ?? undefined;
+    r.setStatic({ ip: a?.ip, prefix: a?.prefix, gateway: r.config.gateway, dns: r.config.dns });
+    app.afterCommand();
   });
   const state = n.adminUp ? (n.up ? t('router.up') : `${t('router.up')} (${t('router.noCable')})`) : t('router.down');
   const toggle = onOff(state, n.adminUp, (on) => { r.setNicUp(n.port, on); app.afterCommand(); });

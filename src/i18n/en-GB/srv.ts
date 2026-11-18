@@ -141,6 +141,7 @@ export const SRV_EN: Readonly<Record<SrvKey, string>> = {
   'res.id': 'MAC or Client-ID',
   'res.desc': 'Description',
   'res.add': 'Add reservation',
+  'res.edit': 'Edit',
   'res.hint': 'By MAC: matches the physical address even if the client sends another Client-ID (like “hw-address” in Kea). By Client-ID: matches the option 61 the client sends.',
   'res.identifier': 'Identifier',
   'res.none': 'No reservations. Each device’s MAC and Client-ID are in its TCP/IP tab.',

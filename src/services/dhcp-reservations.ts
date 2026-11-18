@@ -35,12 +35,21 @@ export function identifierText(r: Pick<DhcpReservation, 'mac' | 'clientId'>): st
   return r.clientId ? `Client-ID ${formatHexId(r.clientId)}` : `MAC ${formatMacCisco(r.mac ?? '')}`;
 }
 
-/** Turns the automatic lease of `ip` into a reservation of its pool. */
+/**
+ * `r` in place of any reservation with its address or its identifier: moving a client to another address, or an
+ * address to another client, is one step (two entries for one client or one address would be refused).
+ */
+export function withReservation(list: readonly DhcpReservation[], r: DhcpReservation): DhcpReservation[] {
+  const sameClient = (x: DhcpReservation): boolean => (r.mac !== undefined ? x.mac === r.mac : r.clientId !== undefined && x.clientId === r.clientId);
+  return [...list.filter((x) => x.ip !== r.ip && !sameClient(x)), r];
+}
+
+/** Turns the automatic lease of `ip` into a reservation of its pool (replacing the client's earlier one, if any). */
 export function reserveLease(server: Server, ip: number, by: LeaseIdentity): string | null {
   const lease = server.dhcpEngine.allBindings(server.clock.now()).find((b) => b.ip === ip && b.type === 'Automatic');
   if (!lease) return t('res.err.noLease');
   const pool = server.services.dhcp.pools.find((p) => p.name === lease.pool);
   const r = leaseToReservation(lease, by);
   if (!pool || !r) return t('res.err.noId');
-  return setReservations(server, pool.name, [...pool.reservations.filter((x) => x.ip !== ip), r]);
+  return setReservations(server, pool.name, withReservation(pool.reservations, r));
 }
