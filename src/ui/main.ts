@@ -396,6 +396,15 @@ class App {
     return true;
   }
 
+  /** `handle.file`: the bar's Nuevo, Importar… or Exportar, if the restrictions allow it. */
+  fileHosted(action: unknown): boolean {
+    const p = this.session.policy;
+    const run = { new: p.fileNew && this.barActions().newWorkspace, import: p.fileOpen && this.barActions().openFile, export: p.fileSave && this.barActions().save }[String(action)];
+    if (!run) return false;
+    run();
+    return true;
+  }
+
   /** `handle.markSaved`: the host stored the network. */
   markSaved(): void { this.saved.mark(this.topo); }
 
@@ -469,6 +478,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   bar?.classList.add(ROOT_CLASS, BAR_CLASS); // the bar keeps Netfix's look (its rules hang off .netfix-root)
   host.actions?.classList.add(ROOT_CLASS, ACTIONS_CLASS);
   if (bar) mount.dataset.bar = 'host'; else delete mount.dataset.bar;
+  if (bar && host.palette === 'bottom') mount.dataset.palette = 'bottom'; else delete mount.dataset.palette;
   session = s;
   onPage = page;
   MEMORY_STORE.clear();
@@ -506,6 +516,7 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
     },
     markSaved: () => current()?.markSaved(),
     showView: (view) => current()?.showHosted(view) ?? false,
+    file: (action) => current()?.fileHosted(action) ?? false,
     setLocale: (locale) => {
       if (!isLocale(locale)) throw new Error('netfix: «locale» no es un idioma de Netfix');
       if (current() && locale !== getLocale()) changeLocale(locale);
@@ -527,7 +538,7 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
       actionsHost = null;
       // No Netfix class, view, mode or language left on the element.
       mount.classList.remove(ROOT_CLASS);
-      for (const k of ['view', 'mode', 'bar'] as const) delete mount.dataset[k];
+      for (const k of ['view', 'mode', 'bar', 'palette'] as const) delete mount.dataset[k];
       mount.removeAttribute('lang');
       removeBrand(mount);
       for (const attr of ['class', 'style']) if (mount.getAttribute(attr) === '') mount.removeAttribute(attr);

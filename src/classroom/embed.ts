@@ -40,6 +40,11 @@ export interface EmbedHandle {
   setLocale(locale: string): void;
   /** Whether replacing unsaved work asks first (the host's setting). */
   setConfirmUnsaved(on: boolean): void;
+  /**
+   * The bar's file actions, for a host's own File menu: 'new' (Nuevo), 'import' (Importar…, the file picker) or 'export'
+   * (Exportar). False: not allowed by the restrictions, or Netfix is no longer mounted.
+   */
+  file(action: string): boolean;
   /** Stops the simulator and empties the mount element. */
   destroy(): void;
 }

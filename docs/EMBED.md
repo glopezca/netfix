@@ -21,6 +21,7 @@ comprobación, en el navegador o en un servidor sin interfaz.
   // practica.showView('docs')  → muestra una página de Netfix: 'net', 'docs', 'settings' o 'about' (false si no puede)
   // practica.setLocale('en-GB') → cambia el idioma (la red se conserva)
   // practica.setConfirmUnsaved(false) → reemplazar trabajo sin guardar ya no pregunta
+  // practica.file('new')       → Nuevo, Importar… ('import') o Exportar ('export') de la barra, para el menú Archivo de la página
   // practica.destroy()         → detiene el simulador y vacía el elemento
 </script>
 ```
@@ -52,7 +53,8 @@ de mostrar («No volver a mostrar», o en Configuración) y los mensajes se ven 
 
 `netfix.lab` y `netfix.embed` admiten además `locale` (`'es-ES'` o `'en-GB'`: el idioma lo elige la página, y Netfix
 no lo guarda) y `confirmUnsaved` (`true`/`false`: si reemplazar trabajo sin guardar pregunta antes; sin ella, la
-preferencia de este navegador).
+preferencia de este navegador). Con `toolbar`, `palette: 'bottom'` deja la paleta debajo del área de trabajo, como en la
+página de Netfix; sin ella (`'side'`), es la barra lateral, con el nombre de cada equipo a la derecha de su icono.
 
 ## La barra en el menú de la página (`toolbar`)
 

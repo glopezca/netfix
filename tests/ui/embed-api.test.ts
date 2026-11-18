@@ -7,17 +7,19 @@ test('netfix.embed needs an element to mount on', () => {
   assert.throws(() => checkMount(undefined), /elemento/);
 });
 
-test('host options: none leaves the options as they were; a bad toolbar, locale or confirmUnsaved is refused', () => {
+test('host options: none leaves the options as they were; a bad toolbar, locale, confirmUnsaved or palette is refused', () => {
   const mount = {} as HTMLElement;
   const options = { restrictions: {} };
   assert.deepEqual(takeHostOptions(mount, options), { rest: options, host: NO_HOST });
   assert.deepEqual(takeHostOptions(mount, undefined), { rest: undefined, host: NO_HOST });
   assert.deepEqual(takeHostOptions(mount, { restrictions: {}, locale: 'en-GB', confirmUnsaved: false }),
-    { rest: { restrictions: {} }, host: { toolbar: null, actions: null, locale: 'en-GB', confirmUnsaved: false } });
+    { rest: { restrictions: {} }, host: { toolbar: null, actions: null, locale: 'en-GB', confirmUnsaved: false, palette: 'side' } });
+  assert.equal(takeHostOptions(mount, { palette: 'bottom' }).host.palette, 'bottom');
   assert.throws(() => takeHostOptions(mount, { toolbar: '#bar' }), /toolbar/);
   assert.throws(() => takeHostOptions(mount, { actions: '#acts' }), /actions/);
   assert.throws(() => takeHostOptions(mount, { locale: 'fr-FR' }), /locale/);
   assert.throws(() => takeHostOptions(mount, { confirmUnsaved: 'no' }), /confirmUnsaved/);
+  assert.throws(() => takeHostOptions(mount, { palette: 'top' }), /palette/);
 });
 
 test('netfix.lab takes no option but the host ones', () => {
