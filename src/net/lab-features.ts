@@ -22,6 +22,7 @@ export const FEATURES_BY_KIND: Readonly<Record<DeviceKind, readonly FeatureId[]>
   router: ['cli', 'web'],
   switch: ['cli', 'web'],
   cloud: [],
+  classlan: [],
 };
 
 /** On by default, except the Linux router's Windows terminal (each device then decides: device-apps.ts). */

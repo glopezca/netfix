@@ -4,6 +4,7 @@
  * addresses of IOS virtual interfaces, the public block of a cloud. The host name (IOS `hostname` too) is derived from
  * the name, so it is not repeated.
  */
+import { t } from '../i18n/t.ts';
 import type { Placed } from '../net/topology.ts';
 import { formatIp } from '../core/ip.ts';
 import { BLOCK_PREFIX } from '../devices/cloud-config.ts';
@@ -26,6 +27,11 @@ function extraLines(p: Placed, linked?: (port: string) => boolean): string[] {
   const d = p.device;
   // A cloud: its public block, as a device shows its IP/CIDR (the provider name is in its ISP tab).
   if (d.kind === 'cloud') return [`${formatIp(d.settings.block)}/${BLOCK_PREFIX}`];
+  // The Classroom LAN: its mode and, under NAT and in a class, its classroom address.
+  if (d.kind === 'classlan') {
+    const at = d.classAddress();
+    return [d.settings.mode === 'bridge' ? t('classlan.bridge') : at === null ? t('classlan.offline') : `NAT ${formatIp(at)}`];
+  }
   if (d.kind === 'router' || d.kind === 'switch') return iosVirtualAddresses(d);
   return d.nics().flatMap((n) => (n.ip !== undefined && n.prefix !== undefined && !linked?.(n.port) ? [`${formatIp(n.ip)}/${n.prefix}`] : []));
 }

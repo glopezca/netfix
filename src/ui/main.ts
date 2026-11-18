@@ -1,4 +1,5 @@
 /** Netfix application shell: top bar, workspace, palette, views, windows and simulation panel. */
+import type { ClassLanLink } from '../net/classlan.ts';
 import { applyBrand, removeBrand } from './brand.ts';
 import { el, safeStorageGet, safeStorageSet } from './dom.ts';
 import { Canvas } from './canvas.ts';
@@ -19,7 +20,7 @@ import { featureOn } from '../net/lab-features.ts';
 import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
 import { floatBar, topbar } from './topbar.ts';
 import type { Mode, TopbarActions, View } from './topbar.ts';
-import { deviceGroup, palette, type PaletteActions } from './palette.ts';
+import { deviceGroup, offerClassLan, palette, type PaletteActions } from './palette.ts';
 import { labText } from './lab-text.ts';
 import { readTopologyFile, saveTopology } from './save-file.ts';
 import { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } from './workspace-store.ts';
@@ -111,6 +112,7 @@ class App {
     this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
     this.view = initial.view === 'docs' && !this.session.policy.docs ? 'net' : initial.view;
     this.topo = topo ?? initialWorkspace(BROWSER_STORE, this.saved, () => EXAMPLES[0]!.build());
+    this.topo.useClassLan(classLan);
     this.topo.clock.set(Date.now()); // the settle ran the lab ~30 s ahead: its wall clock is the system's (like `clock set`)
     if (topo) this.saved.adopt(topo);
     this.hintEl = el('p', { class: 'hint', role: 'status' });
@@ -360,7 +362,9 @@ class App {
   load(topo: Topology, message: string): void {
     this.windows.closeAll();
     forgetAll();
+    this.topo.useClassLan(null);
     this.topo = topo;
+    topo.useClassLan(classLan);
     topo.clock.set(Date.now());
     this.saved.mark(topo);
     this.canvas.setTopology(topo);
@@ -433,6 +437,8 @@ class App {
 }
 
 let app: App | null = null;
+/** The host's Classroom LAN link (Netfix Classroom), joined by every workspace this mount opens. */
+let classLan: ClassLanLink | null = null;
 let mountEl: HTMLElement | null = null;
 /** The host page's element for the top bar (`toolbar` option), or null: the bar is at the top of the mount. */
 let barHost: HTMLElement | null = null;
@@ -497,6 +503,8 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   setLocale(host.locale ?? detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
   overrideConfirmUnsaved(host.confirmUnsaved);
   overrideDevicePiles(host.piles);
+  classLan = host.classroomLan;
+  offerClassLan(classLan !== null);
   mount.classList.add(ROOT_CLASS);
   applyLanguage(mount);
   // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.

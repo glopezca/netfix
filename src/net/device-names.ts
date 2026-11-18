@@ -41,7 +41,7 @@ function freeName(p: Placed): string {
 export function syncDeviceName(p: Placed): void {
   const d = p.device;
   const name = freeName(p);
-  if (d.kind === 'cloud') d.name = name;
+  if (d.kind === 'cloud' || d.kind === 'classlan') d.name = name;
   else if (d.kind === 'router' || d.kind === 'switch') d.setDerivedHostname(name);
   else if (d.name !== name || d.transientName !== undefined) d.setHostname(name);
 }

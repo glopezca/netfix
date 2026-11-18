@@ -39,7 +39,10 @@ export function portAddresses(p: Placed, port: string): string[] {
   const d = p.device;
   let list: string[];
   if (d.kind === 'router' || d.kind === 'switch') list = iosAddresses(d, port);
-  else if (d.kind === 'cloud') {
+  else if (d.kind === 'classlan') {
+    const a = d.settings.mode === 'nat' ? d.router.gatewayAddr() : undefined;
+    list = cidr(a?.ip, a?.prefix);
+  } else if (d.kind === 'cloud') {
     const line = [...d.lines].find(([name]) => name === port)?.[1];
     const a = line?.gatewayAddr();
     list = cidr(a?.ip, a?.prefix);

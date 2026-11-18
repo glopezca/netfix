@@ -6,12 +6,12 @@
  */
 import type { DeviceKind } from '../net/topology.ts';
 
-export const DEVICE_KINDS: readonly DeviceKind[] = ['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'];
-export const TAB_IDS = ['host', 'ifaces', 'cli', 'web', 'ip', 'svc', 'mail', 'ssh', 'sftp', 'linux', 'windows', 'apps', 'isp', 'lines'] as const;
+export const DEVICE_KINDS: readonly DeviceKind[] = ['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud', 'classlan'];
+export const TAB_IDS = ['host', 'ifaces', 'cli', 'web', 'ip', 'svc', 'mail', 'ssh', 'sftp', 'linux', 'windows', 'apps', 'isp', 'lines', 'classlan'] as const;
 export type TabId = (typeof TAB_IDS)[number];
 
 /** The first tab of each window (Device; ISP for the cloud): kept even when a list leaves it out, so a window is never empty. */
-const firstTab = (k: DeviceKind): TabId => (k === 'cloud' ? 'isp' : 'host');
+const firstTab = (k: DeviceKind): TabId => (k === 'cloud' ? 'isp' : k === 'classlan' ? 'classlan' : 'host');
 const FLAGS = ['docs', 'fileOpen', 'fileSave', 'fileNew', 'simulation', 'clock', 'drawing', 'editTopology', 'missionCheck', 'hints', 'solution'] as const;
 type Flag = (typeof FLAGS)[number];
 /** «Prompt con marca de fecha y hora»: each device decides (free), or the teacher locks it on or off. */

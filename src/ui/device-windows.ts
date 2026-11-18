@@ -30,6 +30,8 @@ import { iosWebSettings } from './ios-web-settings.ts';
 import { Cloud } from '../devices/cloud.ts';
 import { cloudTabs } from './cloud-window.ts';
 import { cloudSettings } from './cloud-device.ts';
+import { ClassLan } from '../devices/classlan.ts';
+import { classLanTabs } from './classlan-window.ts';
 import { promptToggle } from './prompt-toggle.ts';
 import { onTimestampPrompt } from './preferences.ts';
 import { featureOn, SERVICE_IDS } from '../net/lab-features.ts';
@@ -114,6 +116,10 @@ export function openDeviceWindow(placed: Placed, host: WindowHost): void {
   const d = placed.device;
   if (d instanceof Host) {
     openHostWindow(placed, d, host);
+    return;
+  }
+  if (d instanceof ClassLan) {
+    host.windows.show(d.id, t('win.classlan', { name: placed.label }), allowed(host, d.kind, classLanTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) })));
     return;
   }
   if (d instanceof Cloud) {

@@ -27,8 +27,13 @@ export interface PaletteActions {
 export type ClipAction = 'copy' | 'paste' | 'duplicate' | 'delete';
 
 export const PLACEABLE: readonly (readonly [DeviceKind, MessageKey])[] = [
-  ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
+  ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'], ['classlan', 'kind.classlan'],
 ];
+
+/** The Classroom LAN is placeable only when the host page (Netfix Classroom) gives the link to the class. */
+let classLanOffered = false;
+export function offerClassLan(on: boolean): void { classLanOffered = on; }
+const offered = (kind: DeviceKind): boolean => kind !== 'classlan' || classLanOffered;
 
 /** A choice of a pile: a device kind and, for a PC, its system. */
 interface Variant { readonly kind: DeviceKind; readonly system?: PcSystem; readonly name: string; readonly model: string }
@@ -42,6 +47,7 @@ function piles(): readonly (readonly [MessageKey, readonly Variant[]])[] {
     ['kind.switch', [{ kind: 'switch', name: t('kind.switch'), model: modelLabel('switch') }]],
     ['pal.routers', [{ kind: 'router', name: t('kind.router'), model: modelLabel('router') }, { kind: 'linuxrouter', name: t('kind.linuxrouter'), model: modelLabel('linuxrouter') }]],
     ['kind.cloud', [{ kind: 'cloud', name: t('kind.cloud'), model: modelLabel('cloud') }]],
+    ['kind.classlan', [{ kind: 'classlan', name: t('kind.classlan'), model: modelLabel('classlan') }]],
   ];
 }
 
@@ -77,9 +83,9 @@ function pileBtn(actions: PaletteActions, buttons: Map<string, HTMLButtonElement
 export function deviceGroup(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, policy: Restrictions = NO_RESTRICTIONS): HTMLElement | null {
   if (!policy.editTopology) return null;
   const items = devicePiles()
-    ? piles().map(([name, all]) => [t(name), all.filter((v) => allowsDevice(policy, v.kind))] as const).filter(([, vs]) => vs.length > 0)
+    ? piles().map(([name, all]) => [t(name), all.filter((v) => offered(v.kind) && allowsDevice(policy, v.kind))] as const).filter(([, vs]) => vs.length > 0)
       .map(([name, vs]) => (vs.length === 1 ? variantBtn(actions, buttons, vs[0]!, 'pal-item') : pileBtn(actions, buttons, name, vs)))
-    : PLACEABLE.filter(([k]) => allowsDevice(policy, k)).map(([k, name]) => variantBtn(actions, buttons, { kind: k, name: t(name), model: modelLabel(k) }, 'pal-item'));
+    : PLACEABLE.filter(([k]) => offered(k) && allowsDevice(policy, k)).map(([k, name]) => variantBtn(actions, buttons, { kind: k, name: t(name), model: modelLabel(k) }, 'pal-item'));
   return items.length ? el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...items) : null;
 }
 

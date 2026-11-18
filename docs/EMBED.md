@@ -57,6 +57,11 @@ preferencia de este navegador). Con `toolbar`, `palette: 'bottom'` deja la palet
 página de Netfix; sin ella (`'side'`), es la barra lateral, con el nombre de cada equipo a la derecha de su icono. `piles` (`true`/`false`)
 apila los equipos parecidos en un botón (Router: IOS o GNU/Linux; PC: Windows, GNU/Linux o ambos); sin ella, la preferencia
 de este navegador, desmarcada de serie.
+`classroomLan` (Netfix Classroom) une el laboratorio con los demás de la clase mediante el equipo «LAN de clase»: un objeto
+`{ lab, send(mensaje), onMessage(oyente) }` con `lab` el número del laboratorio en la clase (1-250, su red de clase es
+10.lab.0.0/16). Netfix envía `{ kind: 'frame', frame }` (puente) o `{ kind: 'ip', packet }` (NAT) y comprueba lo que recibe
+(solo datos, como mucho 16 KB, MAC y direcciones válidas); la página reenvía cada mensaje a los demás laboratorios. Sin
+ella, el equipo no está en la paleta y, si llega en un archivo, queda sin conexión.
 
 ## La barra en el menú de la página (`toolbar`)
 
