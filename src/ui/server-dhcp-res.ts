@@ -5,7 +5,7 @@ import { field, input, select, button, message, table } from './forms.ts';
 import type { AfterChange } from './host-ip.ts';
 import type { Server } from '../devices/server.ts';
 import type { DhcpReservation, LeaseIdentity, PtDhcpPool } from '../services/config.ts';
-import { idKinds, setReservations, readIdentifier, identifierText, reserveLease } from '../services/dhcp-reservations.ts';
+import { idKinds, setReservations, readIdentifier, identifierText, reserveLease, withReservation } from '../services/dhcp-reservations.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { formatMacCisco, formatHexId } from '../core/mac.ts';
 import { formatLeaseTime } from '../core/clock.ts';
@@ -29,7 +29,16 @@ export function reservationsPanel(server: Server, pool: PtDhcpPool, app: AfterCh
     if (a === null) return msg.error(t('res.badIp'));
     const ident = readIdentifier(kind.value, id.value.trim());
     if (typeof ident === 'string') return msg.error(ident);
-    apply([...pool.reservations, { ip: a, ...ident, name: name.value.trim() || undefined }]);
+    apply(withReservation(pool.reservations, { ip: a, ...ident, name: name.value.trim() || undefined }));
+  };
+  // Editar: the form takes the reservation; saving it replaces the one with its address or its client.
+  const editRow = (r: DhcpReservation): void => {
+    ip.value = formatIp(r.ip);
+    kind.value = r.clientId ? 'hex' : 'mac';
+    id.value = r.clientId ? formatHexId(r.clientId) : formatMacCisco(r.mac ?? '');
+    name.value = r.name ?? '';
+    kind.dispatchEvent(new Event('change'));
+    ip.focus();
   };
   return el('section', { class: 'subsection' },
     el('h3', {}, t('res.title', { pool: pool.name })),
@@ -40,7 +49,11 @@ export function reservationsPanel(server: Server, pool: PtDhcpPool, app: AfterCh
       { label: 'IP', value: (r) => formatIp(r.ip), mono: true },
       { label: t('res.identifier'), value: identifierText, mono: true },
       { label: t('res.desc'), value: (r) => r.name ?? '' },
-    ], { empty: t('res.none'), onDelete: (r) => apply(pool.reservations.filter((x) => x !== r)) }));
+    ], {
+      empty: t('res.none'),
+      actions: (r) => [button(t('res.edit'), () => editRow(r), 'btn btn-quiet btn-small')],
+      onDelete: (r) => apply(pool.reservations.filter((x) => x !== r)),
+    }));
 }
 
 function reservationKind(server: Server, b: Binding): string {

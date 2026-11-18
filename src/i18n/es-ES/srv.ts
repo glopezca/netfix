@@ -139,6 +139,7 @@ export const SRV_ES = {
   'res.id': 'MAC o Client-ID',
   'res.desc': 'Descripción',
   'res.add': 'Añadir reserva',
+  'res.edit': 'Editar',
   'res.hint': 'Por MAC: coincide con la dirección física aunque el cliente envíe otro Client-ID (como «hw-address» en Kea). Por Client-ID: coincide con la opción 61 que envía el cliente.',
   'res.identifier': 'Identificador',
   'res.none': 'Sin reservas. La MAC y el Client-ID de cada equipo están en su pestaña TCP/IP.',

@@ -137,7 +137,11 @@ export function hostIpConfig(h: Host, app: AfterChange): { root: HTMLElement; di
 
   const applyStatic = (): void => {
     const r = readStatic(inputs);
-    if (typeof r === 'string') return msg.error(r);
+    if (typeof r === 'string') {
+      // Static chosen but the fields (greyed out under DHCP) do not make an address yet: let them be filled in.
+      for (const i of Object.values(inputs)) i.disabled = false;
+      return msg.error(r);
+    }
     msg.clear();
     h.setStatic(r);
     app.afterCommand();

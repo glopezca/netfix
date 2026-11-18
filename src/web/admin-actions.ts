@@ -10,7 +10,7 @@ import { linuxSide } from '../net/pkg-units.ts';
 import type { Server } from '../devices/server.ts';
 import { parseIp, parseMask } from '../core/ip.ts';
 import { validatePool } from '../services/dhcp-pt.ts';
-import { readIdentifier, reserveLease, setReservations } from '../services/dhcp-reservations.ts';
+import { readIdentifier, reserveLease, setReservations, withReservation } from '../services/dhcp-reservations.ts';
 import { setSshAuthMethods } from '../services/ssh-auth-settings.ts';
 import { dnsAction } from './admin-dns-actions.ts';
 import { validateAccess, DEFAULT_LEASE_MINUTES } from '../services/config.ts';
@@ -69,7 +69,7 @@ function addReservation(server: Server, f: Fields): Outcome {
   const id = readIdentifier(f.get('kind') ?? 'mac', (f.get('id') ?? '').trim());
   if (typeof id === 'string') return { error: id };
   const name = (f.get('name') ?? '').trim().slice(0, 64) || undefined;
-  return outcome(setReservations(server, pool.name, [...pool.reservations, { ip, ...id, name }]));
+  return outcome(setReservations(server, pool.name, withReservation(pool.reservations, { ip, ...id, name })));
 }
 
 function deleteReservation(server: Server, f: Fields): Outcome {
