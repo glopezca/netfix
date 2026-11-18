@@ -1,4 +1,6 @@
 /** DOM side of `netfix.embed` / `netfix.evaluate` (needs `HTMLElement` and `globalThis`, so it lives in `ui`, not the Core). */
+import { validLab } from '../net/classlan.ts';
+import type { ClassLanLink } from '../net/classlan.ts';
 import type { EmbedHandle } from '../classroom/embed.ts';
 import type { Evaluation } from '../classroom/evaluate.ts';
 import { isLocale } from '../i18n/locale.ts';
@@ -30,10 +32,12 @@ export interface HostOptions {
   readonly palette: 'side' | 'bottom';
   /** Similar devices piled on one palette button; undefined: this browser's setting (off by default). */
   readonly piles: boolean | undefined;
+  /** Netfix Classroom: the relay that joins this lab to the class's other labs (the Classroom LAN device). */
+  readonly classroomLan: ClassLanLink | null;
 }
 
-export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', piles: undefined });
-const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'piles'] as const;
+export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', piles: undefined, classroomLan: null });
+const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'piles', 'classroomLan'] as const;
 
 /** A host element for part of Netfix: in the page, and neither inside the mount nor around it (each would empty the other). */
 function hostElement(mount: HTMLElement, v: unknown, name: string): HTMLElement | null {
@@ -49,7 +53,7 @@ function hostElement(mount: HTMLElement, v: unknown, name: string): HTMLElement 
  */
 export function takeHostOptions(mount: HTMLElement, options: unknown): { readonly rest: unknown; readonly host: HostOptions } {
   if (typeof options !== 'object' || options === null || !HOST_KEYS.some((k) => Object.hasOwn(options, k))) return { rest: options, host: NO_HOST };
-  const { toolbar, actions, locale, confirmUnsaved, palette, piles, ...rest } = options as Record<string, unknown>;
+  const { toolbar, actions, locale, confirmUnsaved, palette, piles, classroomLan, ...rest } = options as Record<string, unknown>;
   const bar = hostElement(mount, toolbar, 'toolbar');
   const acts = hostElement(mount, actions, 'actions');
   if (bar && acts && (bar.contains(acts) || acts.contains(bar))) throw new Error('netfix: «toolbar» y «actions» deben ser elementos distintos y separados');
@@ -57,14 +61,24 @@ export function takeHostOptions(mount: HTMLElement, options: unknown): { readonl
   if (confirmUnsaved !== undefined && typeof confirmUnsaved !== 'boolean') throw new Error('netfix: «confirmUnsaved» debe ser true o false');
   if (palette !== undefined && palette !== 'side' && palette !== 'bottom') throw new Error('netfix: «palette» debe ser \'side\' o \'bottom\'');
   if (piles !== undefined && typeof piles !== 'boolean') throw new Error('netfix: «piles» debe ser true o false');
-  return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined, palette: palette ?? 'side', piles: piles as boolean | undefined } };
+  const lan = classroomLan === undefined ? null : linkOf(classroomLan);
+  return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined, palette: palette ?? 'side', piles: piles as boolean | undefined, classroomLan: lan } };
+}
+
+/** The host's Classroom LAN link: its lab number (1-250) and its two functions; anything else is refused. */
+function linkOf(v: unknown): ClassLanLink {
+  const o = typeof v === 'object' && v !== null ? v as Record<string, unknown> : {};
+  if (!validLab(o.lab) || typeof o.send !== 'function' || typeof o.onMessage !== 'function') throw new Error('netfix: «classroomLan» necesita lab (1-250), send() y onMessage()');
+  const send = o.send as ClassLanLink['send'];
+  const onMessage = o.onMessage as ClassLanLink['onMessage'];
+  return { lab: o.lab, send: (m) => send(m), onMessage: (l) => onMessage(l) };
 }
 
 /** `netfix.lab` options: none, or only the host options. */
 export function labOptions(mount: HTMLElement, options: unknown): HostOptions {
   const { rest, host } = takeHostOptions(mount, options);
   if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
-    throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale», «confirmUnsaved», «palette» y «piles»');
+    throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale», «confirmUnsaved», «palette», «piles» y «classroomLan»');
   }
   return host;
 }

@@ -74,7 +74,7 @@ function ispTab(cloud: Cloud, app: CloudHost): HTMLElement {
   });
 }
 
-function forwardsSection(line: CloudPort, change: (forwards: readonly PortForward[]) => void): HTMLElement[] {
+export function forwardsSection(line: CloudPort, change: (forwards: readonly PortForward[]) => void): HTMLElement[] {
   const proto = select([['tcp', 'TCP'], ['udp', 'UDP']]);
   const port = input({ placeholder: '80', inputmode: 'numeric' });
   const to = input({ placeholder: '192.168.1.10' });

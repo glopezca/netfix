@@ -140,15 +140,20 @@ const num = (v: unknown, d: number): number => (typeof v === 'number' && Number.
 const ipOf = (v: unknown, d: number): number => (typeof v === 'string' ? parseIp(v) ?? d : d);
 const obj = (v: unknown): Record<string, unknown> => (typeof v === 'object' && v !== null ? v as Record<string, unknown> : {});
 
+/** One line's settings for the file. */
+export function portToJson(c: CloudPortSettings): unknown {
+  return { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}) };
+}
+
 export function cloudToJson(s: CloudSettings): unknown {
   const ports = Object.fromEntries(CLOUD_PORTS.map((p) => {
-    const c = s.ports[p];
-    return [p, { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}) }];
+    return [p, portToJson(s.ports[p])];
   }));
   return { isp: s.isp, block: formatIp(s.block), ports, domains: s.domains.map((d) => ({ ...d, ip: formatIp(d.ip) })) };
 }
 
-function portFromJson(port: string, v: unknown): CloudPortSettings {
+/** One line's settings from an untrusted file (also the Classroom LAN's router); invalid: the defaults. */
+export function portFromJson(port: string, v: unknown): CloudPortSettings {
   const d = defaultPort(port);
   const o = obj(v);
   const forwards = (Array.isArray(o.forwards) ? o.forwards : []).slice(0, MAX_FORWARDS).map(obj).map((f) => ({

@@ -50,7 +50,7 @@ export function validateFile(data: unknown): TopologyFile {
   if (!Array.isArray(devices) || !Array.isArray(links)) throw new TopologyFileError('incomplete', t('load.incomplete'));
   if (devices.length > MAX_DEVICES || links.length > MAX_DEVICES * 2) throw new TopologyFileError('too-big', t('load.tooBig', { max: MAX_DEVICES }));
   for (const d of devices) {
-    if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'].includes(String(d.kind))) throw new TopologyFileError('bad-device', t('load.badDevice'));
+    if (!isObject(d) || typeof d.id !== 'string' || !['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud', 'classlan'].includes(String(d.kind))) throw new TopologyFileError('bad-device', t('load.badDevice'));
     if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string') throw new TopologyFileError('device-data', t('load.deviceData', { id: d.id }));
     if (d.label.length > MAX_LABEL) throw new TopologyFileError('device-data', t('load.deviceData', { id: d.id }));
     if (!configLines(d.config) || !(d.startup === null || configLines(d.startup))) throw new TopologyFileError('device-config', t('load.deviceConfig', { id: d.id }));

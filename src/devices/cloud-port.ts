@@ -45,12 +45,13 @@ export class CloudPort implements StackHost {
   readonly name: string;
   settings: CloudPortSettings;
   private readonly owner: PortOwner;
-  private readonly core: InternetCore;
+  /** Where packets for outside go: the emulated Internet, or the Classroom LAN's relay. */
+  private readonly core: Pick<InternetCore, 'send'>;
   private appliedNet = -1;
   /** ISP DNS relay (router mode with dnsRelay): customers' queries to the gateway, relayed to Google. */
   readonly relay: DnsForwarder;
 
-  constructor(owner: PortOwner, core: InternetCore, name: string, settings: CloudPortSettings) {
+  constructor(owner: PortOwner, core: Pick<InternetCore, 'send'>, name: string, settings: CloudPortSettings) {
     this.owner = owner;
     this.core = core;
     this.name = name;
