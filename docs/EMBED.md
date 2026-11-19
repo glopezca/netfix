@@ -61,7 +61,15 @@ de este navegador, desmarcada de serie.
 `{ lab, send(mensaje), onMessage(oyente) }` con `lab` el número del laboratorio en la clase (1-250, su red de clase es
 10.lab.0.0/16). Netfix envía `{ kind: 'frame', frame }` (puente) o `{ kind: 'ip', packet }` (NAT) y comprueba lo que recibe
 (solo datos, como mucho 16 KB, MAC y direcciones válidas); la página reenvía cada mensaje a los demás laboratorios. Sin
-ella, el equipo no está en la paleta y, si llega en un archivo, queda sin conexión.
+ella, el equipo no está en la paleta y, si llega en un archivo, queda sin conexión. Con `close()` (opcional) en ese
+objeto, Netfix lo llama al borrar el último equipo «LAN de clase» del laboratorio, para que la página salga de la LAN;
+desde entonces el equipo ya no se puede poner con ese enlace.
+Para quien tiene varias clases, `classroomLan` puede ser en su lugar `{ classes: [{ id, name }], join(id) }` (de 1 a 50
+clases, `id` y `name` texto no vacío de hasta 80 caracteres): al elegir el equipo en la paleta Netfix pregunta «¿A qué
+clase pertenece esta LAN?» (con una sola clase, no pregunta), llama a `join(id)` y espera el enlace de arriba (o `null`
+si no se ha podido entrar: el equipo no se pone y se avisa). Cancelar no pone el equipo. Al borrar el último equipo
+llama a `close()` del enlace y, la siguiente vez, vuelve a preguntar. Los tipos son `ClassLanLink`, `ClassLanChooser`
+y `ClassLanClass` de `@glopezca/netfix/ui`.
 
 ## La barra en el menú de la página (`toolbar`)
 

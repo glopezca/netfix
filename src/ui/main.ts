@@ -1,5 +1,5 @@
 /** Netfix application shell: top bar, workspace, palette, views, windows and simulation panel. */
-import type { ClassLanLink } from '../net/classlan.ts';
+import { ClassLanState, askClass } from './lan-chooser.ts';
 import { applyBrand, removeBrand } from './brand.ts';
 import { el, safeStorageGet, safeStorageSet } from './dom.ts';
 import { Canvas } from './canvas.ts';
@@ -112,7 +112,7 @@ class App {
     this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
     this.view = initial.view === 'docs' && !this.session.policy.docs ? 'net' : initial.view;
     this.topo = topo ?? initialWorkspace(BROWSER_STORE, this.saved, () => EXAMPLES[0]!.build());
-    this.topo.useClassLan(classLan);
+    this.topo.useClassLan(classLan.current);
     this.topo.clock.set(Date.now()); // the settle ran the lab ~30 s ahead: its wall clock is the system's (like `clock set`)
     if (topo) this.saved.adopt(topo);
     this.hintEl = el('p', { class: 'hint', role: 'status' });
@@ -262,6 +262,7 @@ class App {
 
   private selectTool(tool: Tool, key: string): void {
     const same = this.toolButtons.get(key)?.getAttribute('aria-pressed') === 'true' && key !== 'select';
+    if (!same && key === 'place-classlan' && classLan.needsJoin) { void this.joinClassLan(tool, key); return; }
     const nextKey = same ? 'select' : key;
     for (const [k, b] of this.toolButtons) b.setAttribute('aria-pressed', String(k === nextKey));
     this.canvas.setTool(same ? { kind: 'select' } : tool);
@@ -326,7 +327,18 @@ class App {
   }
 
   private syncClassLan(): void {
-    syncClassLanButton(this.toolButtons, [...this.topo.net.devices.values()].some((d) => d.kind === 'classlan'), () => this.selectTool({ kind: 'select' }, 'select'));
+    const placed = [...this.topo.net.devices.values()].some((d) => d.kind === 'classlan');
+    if (classLan.track(placed)) this.topo.useClassLan(null); // the last one went: the host's link was given back
+    syncClassLanButton(this.toolButtons, placed, () => this.selectTool({ kind: 'select' }, 'select'));
+  }
+
+  /** The Classroom LAN tool with a chooser: which class first (and join it); only then the tool is picked. */
+  private async joinClassLan(tool: Tool, key: string): Promise<void> {
+    const link = await classLan.join(askClass);
+    if (link === 'cancel' || app !== this) return;
+    if (link === null) { this.hintEl.textContent = t('classlan.joinFailed'); return; }
+    this.topo.useClassLan(link);
+    this.selectTool(tool, key);
   }
 
   /** Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z on the network view. */
@@ -371,7 +383,7 @@ class App {
     forgetAll();
     this.topo.useClassLan(null);
     this.topo = topo;
-    topo.useClassLan(classLan);
+    topo.useClassLan(classLan.current);
     topo.clock.set(Date.now());
     this.saved.mark(topo);
     this.canvas.setTopology(topo);
@@ -445,8 +457,8 @@ class App {
 }
 
 let app: App | null = null;
-/** The host's Classroom LAN link (Netfix Classroom), joined by every workspace this mount opens. */
-let classLan: ClassLanLink | null = null;
+/** The host's Classroom LAN (Netfix Classroom), joined by every workspace this mount opens. */
+let classLan = new ClassLanState(null);
 let mountEl: HTMLElement | null = null;
 /** The host page's element for the top bar (`toolbar` option), or null: the bar is at the top of the mount. */
 let barHost: HTMLElement | null = null;
@@ -511,8 +523,8 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   setLocale(host.locale ?? detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
   overrideConfirmUnsaved(host.confirmUnsaved);
   overrideDevicePiles(host.piles);
-  classLan = host.classroomLan;
-  offerClassLan(classLan !== null);
+  classLan = new ClassLanState(host.classroomLan);
+  offerClassLan(classLan.offered);
   mount.classList.add(ROOT_CLASS);
   applyLanguage(mount);
   // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.

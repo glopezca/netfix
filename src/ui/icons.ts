@@ -63,10 +63,10 @@ const CLASSLAN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" wi
   </g>
 </svg>`;
 
-/** Both routers (IOS and Linux) share the router symbol; the model line («2911» / «Ubuntu») tells them apart. */
+/** Both routers (IOS and Linux) share the router symbol; the model line («Cisco 2911» / «Ubuntu») tells them apart. */
 export const ICONS: Readonly<Record<DeviceKind, string>> = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, linuxrouter: ROUTER, cloud: CLOUD, classlan: CLASSLAN };
 
-export const MODEL_LABEL: Readonly<Record<DeviceKind, string>> = { router: '2911', switch: '2960-24TT', pc: 'PC', server: 'Server', linuxrouter: 'Ubuntu', cloud: 'ISP', classlan: 'LAN' };
+export const MODEL_LABEL: Readonly<Record<DeviceKind, string>> = { router: 'Cisco 2911', switch: 'Cisco 2960-24TT', pc: 'PC', server: 'Server', linuxrouter: 'Ubuntu', cloud: 'ISP', classlan: 'LAN' };
 
 /** Model label shown under the icon (the cloud is translated). */
 export function modelLabel(kind: DeviceKind): string {

@@ -17,7 +17,28 @@ export interface ClassLanLink {
   send(message: ClassLanMessage): void;
   /** Messages from the other labs; returns the function that stops listening. */
   onMessage(listener: (message: unknown) => void): () => void;
+  /** Optional: the lab's last Classroom LAN device was deleted, so the host may leave the class's LAN. */
+  close?(): void;
 }
+
+/** A class the person may join the Classroom LAN of. */
+export interface ClassLanClass {
+  readonly id: string;
+  /** Shown in the question and given to the device (up to 80 characters). */
+  readonly name: string;
+}
+
+/**
+ * The host option `classroomLan` for someone in several classes: placing the Classroom LAN device asks which class
+ * (straight away with only one) and then joins it; null from `join` (refused, unreachable) leaves the device unplaced.
+ */
+export interface ClassLanChooser {
+  /** 1-50 classes. */
+  readonly classes: readonly ClassLanClass[];
+  join(id: string): Promise<ClassLanLink | null>;
+}
+
+export const isLanChooser = (v: ClassLanLink | ClassLanChooser): v is ClassLanChooser => 'join' in v;
 
 export const MAX_LAB = 250;
 const CLASS_NET = 10 << 24;

@@ -1,6 +1,6 @@
 /** DOM side of `netfix.embed` / `netfix.evaluate` (needs `HTMLElement` and `globalThis`, so it lives in `ui`, not the Core). */
 import { validLab } from '../net/classlan.ts';
-import type { ClassLanLink } from '../net/classlan.ts';
+import type { ClassLanChooser, ClassLanClass, ClassLanLink } from '../net/classlan.ts';
 import type { EmbedHandle } from '../classroom/embed.ts';
 import type { Evaluation } from '../classroom/evaluate.ts';
 import { isLocale } from '../i18n/locale.ts';
@@ -32,8 +32,9 @@ export interface HostOptions {
   readonly palette: 'side' | 'bottom';
   /** Similar devices piled on one palette button; undefined: this browser's setting (off by default). */
   readonly piles: boolean | undefined;
-  /** Netfix Classroom: the relay that joins this lab to the class's other labs (the Classroom LAN device). */
-  readonly classroomLan: ClassLanLink | null;
+  /** Netfix Classroom: the relay that joins this lab to the class's other labs (the Classroom LAN device), or the
+   * classes to ask about when the device is placed. */
+  readonly classroomLan: ClassLanLink | ClassLanChooser | null;
 }
 
 export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', piles: undefined, classroomLan: null });
@@ -61,20 +62,49 @@ export function takeHostOptions(mount: HTMLElement, options: unknown): { readonl
   if (confirmUnsaved !== undefined && typeof confirmUnsaved !== 'boolean') throw new Error('netfix: «confirmUnsaved» debe ser true o false');
   if (palette !== undefined && palette !== 'side' && palette !== 'bottom') throw new Error('netfix: «palette» debe ser \'side\' o \'bottom\'');
   if (piles !== undefined && typeof piles !== 'boolean') throw new Error('netfix: «piles» debe ser true o false');
-  const lan = classroomLan === undefined ? null : linkOf(classroomLan);
+  const lan = classroomLan === undefined ? null : lanOf(classroomLan);
   return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined, palette: palette ?? 'side', piles: piles as boolean | undefined, classroomLan: lan } };
 }
 
 const MAX_LAN_NAME = 64;
+const MAX_LAN_CLASSES = 50;
+const MAX_CLASS_NAME = 80;
+const LAN_SHAPE = 'netfix: «classroomLan» necesita lab (1-250), send() y onMessage() (y close() opcional), o classes (1-50, {id, name}) y join(id)';
 
-/** The host's Classroom LAN link: its lab number (1-250), its two functions and, optionally, the class's name. */
+/** The host's Classroom LAN link: its lab number (1-250), its two functions and, optionally, the class's name and close(). */
 function linkOf(v: unknown): ClassLanLink {
   const o = typeof v === 'object' && v !== null ? v as Record<string, unknown> : {};
-  if (!validLab(o.lab) || typeof o.send !== 'function' || typeof o.onMessage !== 'function') throw new Error('netfix: «classroomLan» necesita lab (1-250), send() y onMessage()');
+  if (!validLab(o.lab) || typeof o.send !== 'function' || typeof o.onMessage !== 'function' || (o.close !== undefined && typeof o.close !== 'function')) throw new Error(LAN_SHAPE);
   const send = o.send as ClassLanLink['send'];
   const onMessage = o.onMessage as ClassLanLink['onMessage'];
+  const close = o.close as (() => void) | undefined;
   const name = typeof o.name === 'string' ? o.name.trim().slice(0, MAX_LAN_NAME) : '';
-  return { lab: o.lab, ...(name ? { name } : {}), send: (m) => send(m), onMessage: (l) => onMessage(l) };
+  return { lab: o.lab, ...(name ? { name } : {}), send: (m) => send(m), onMessage: (l) => onMessage(l), ...(close ? { close: () => close() } : {}) };
+}
+
+const text = (v: unknown, max: number): v is string => typeof v === 'string' && v.trim() !== '' && v.length <= max;
+
+/** The host's classes to ask about: 1-50 with an id and a name; `join` resolves a link checked like a plain one (or null). */
+function chooserOf(o: Record<string, unknown>): ClassLanChooser {
+  const list = o.classes;
+  if (!Array.isArray(list) || list.length < 1 || list.length > MAX_LAN_CLASSES || typeof o.join !== 'function') throw new Error(LAN_SHAPE);
+  const classes: ClassLanClass[] = list.map((c: unknown) => {
+    const { id, name } = typeof c === 'object' && c !== null ? c as Record<string, unknown> : {};
+    if (!text(id, MAX_CLASS_NAME) || !text(name, MAX_CLASS_NAME)) throw new Error(LAN_SHAPE);
+    return { id, name: name.trim() };
+  });
+  const join = o.join as (id: string) => Promise<unknown>;
+  return {
+    classes,
+    join: async (id) => {
+      const got = await join(id);
+      return got === null ? null : linkOf(got); // a malformed link fails here, like the plain option
+    },
+  };
+}
+
+function lanOf(v: unknown): ClassLanLink | ClassLanChooser {
+  return typeof v === 'object' && v !== null && 'classes' in v ? chooserOf(v as Record<string, unknown>) : linkOf(v);
 }
 
 /** `netfix.lab` options: none, or only the host options. */
