@@ -14,7 +14,7 @@ export const APT_DOCS: readonly DocPage[] = [
     markdownBase: MD,
     blocks: [
       p('A **Server** or a **GNU/Linux router** placed from the palette brings no service: only its IP configuration, the configuration files, the logs, the kernel parameters and its terminal. Each service (SSH, DHCP, DNS, HTTP, mail, firewall, VPN and also **Samba**, which GNU/Linux PCs have too) is added with its box in the **Settings** tab or, as on a real Ubuntu, by installing its package with `apt`. Both ways always agree: `apt install` ticks the box, adds its panel to **Services** and turns its page on in the **web management**; `apt remove` unticks it, takes the panel away and turns the page off (greyed, or hidden with the lab option), and ticking or unticking the box is the same as installing or removing the package.'),
-      p('apt reads the Ubuntu 26.04 (“resolute”) sources from **/etc/apt/sources.list.d/ubuntu.sources** (deb822 format) and really connects to archive.ubuntu.com and security.ubuntu.com over the simulated network. It only works if the device has a way out to the emulated Internet (an **ISP cloud** in the lab) and a DNS server that resolves those names (8.8.8.8, or yours forwarding to it).'),
+      p('apt reads the Ubuntu 26.04 (“resolute”) sources from **/etc/apt/sources.list.d/ubuntu.sources** (deb822 format) and really connects to archive.ubuntu.com and security.ubuntu.com over the simulated network. It only works if the device has a way out to the emulated Internet (an **ISP WAN** in the lab) and a DNS server that resolves those names (8.8.8.8, or yours forwarding to it).'),
       h('What each command does'),
       table(['Command', 'What it does in Netfix'], [
         ['sudo apt update', 'Checks each source (“Hit:”) and changes nothing: the catalogue is always up to date. Offline: “Ign:”, “Err:” and the real warnings.'],
@@ -61,7 +61,7 @@ export const APT_DOCS: readonly DocPage[] = [
       term('shell', 'alumno@pc1:~$ ping -c 1 pc0.local\nPING pc0.local (192.168.10.10) 56(84) bytes of data.\n64 bytes from pc0.local (192.168.10.10): icmp_seq=1 ttl=64 time=0.400 ms'),
       term('shell', 'root@srv:~# apt install -y apache2\nReading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\nInstalling:\n  apache2\n\nInstalling dependencies:\n  apache2-bin  apache2-data  apache2-utils  libapr1t64  libaprutil1t64  ssl-cert\n…\nSetting up apache2 (2.4.62-1ubuntu1) ...\nCreated symlink \'/etc/systemd/system/multi-user.target.wants/apache2.service\' → \'/usr/lib/systemd/system/apache2.service\'.'),
       steps(
-        ['Place a server', 'From the palette, with a way out to the Internet (an ISP cloud or a router that reaches it) and 8.8.8.8 as DNS.'],
+        ['Place a server', 'From the palette, with a way out to the Internet (an ISP WAN or a router that reaches it) and 8.8.8.8 as DNS.'],
         ['Open its GNU/Linux terminal', '`sudo apt update` should give four “Hit:”.'],
         ['Install the service', '`sudo apt install apache2`: the Services tab appears at once with HTTP, and the HTTP box in Settings is ticked.'],
       ),

@@ -3,7 +3,7 @@ import type { UiKey } from '../es-ES/ui.ts';
 
 export const UI_EN: Readonly<Record<UiKey, string>> = {
   'win.console': 'Console of {name}',
-  'win.cloud': '{name} · ISP cloud',
+  'win.cloud': '{name} · ISP WAN',
   'win.classlan': '{name} · Classroom LAN',
   'classlan.tab': 'Classroom LAN',
   'classlan.mode': 'Mode',
@@ -52,7 +52,7 @@ export const UI_EN: Readonly<Record<UiKey, string>> = {
   'docs.onePage': '1 page',
   'docs.pages': '{n} pages',
   'docs.noResults': 'No results',
-  'model.cloud': 'ISP → Internet',
+  'model.cloud': 'Internet',
   'model.classlan': 'Netfix Classroom',
   'ip.customPlaceholder': 'empty = 01 + MAC',
   'ip.idFormat': 'Client-ID format',

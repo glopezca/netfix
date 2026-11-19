@@ -56,7 +56,7 @@ test('clouds: reserved or duplicate public blocks and NS delegation to the emula
   const t = new Topology();
   const a = t.add('cloud', 0, 0).device as Cloud;
   const b = t.add('cloud', 0, 0).device as Cloud;
-  assert.match(validateCloud({ ...b.settings, block: a.settings.block }, b.otherBlocks()) ?? '', /ya lo usa otra nube/);
+  assert.match(validateCloud({ ...b.settings, block: a.settings.block }, b.otherBlocks()) ?? '', /ya lo usa otra WAN del ISP/);
   assert.match(validateCloud({ ...b.settings, block: ip('8.8.0.0') }) ?? '', /Internet emulada/);
   assert.match(validateCloud({ ...b.settings, domains: [{ name: 'x.es', kind: 'ns', ip: ip('8.8.8.8') }] }) ?? '', /no es una dirección pública/);
   const loaded = cloudFromJson({ isp: 'X', block: '81.40.0.0', domains: [{ name: 'evil.es', kind: 'ns', ip: '8.8.8.8' }] }, b.settings);

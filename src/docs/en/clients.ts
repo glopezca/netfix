@@ -59,7 +59,7 @@ export const CLIENT_DOCS: DocGroup = {
       summary: 'The name on the diagram and the host name derived from it (from the terminal, with hostnamectl set-hostname) and the transient name (hostname, sysctl), as on Ubuntu.',
       markdownBase: MD,
       blocks: [
-        p('Each device has a **name** (the one on the diagram, e.g. «Aula Pública 2º») and a **host name**, the one the system uses on the network (Aula-Publica-2o). In Netfix the second always comes from the first, as in a well-run network: every device on the diagram has a predictable host name. Ubuntu’s (systemd’s) rules apply: letters, digits, hyphens and dots, **keeping case**, no hyphen at the start or end of each part and up to 64 characters. This applies to PCs, servers, GNU/Linux routers and clouds; on IOS routers and switches the `hostname` comes from the name too.'),
+        p('Each device has a **name** (the one on the diagram, e.g. «Aula Pública 2º») and a **host name**, the one the system uses on the network (Aula-Publica-2o). In Netfix the second always comes from the first, as in a well-run network: every device on the diagram has a predictable host name. Ubuntu’s (systemd’s) rules apply: letters, digits, hyphens and dots, **keeping case**, no hyphen at the start or end of each part and up to 64 characters. This applies to PCs, servers, GNU/Linux routers and ISP WANs; on IOS routers and switches the `hostname` comes from the name too.'),
         steps(
           ['Change the name', '**Device** tab → **Device name**. It applies when you press Enter or leave the field.'],
           ['See the host name', 'Below it, read-only: the same capitals, no accents and hyphens instead of spaces.'],

@@ -1,4 +1,4 @@
-/** Español (España): ventana de la nube ISP y validación de su configuración. */
+/** Español (España): ventana de la WAN del ISP y validación de su configuración. */
 export const CLOUD_ES = {
   'cloud.saved': 'Guardado.',
   'cloud.badBlock': 'Escribe el bloque como 81.32.0.0.',
@@ -12,7 +12,7 @@ export const CLOUD_ES = {
   'cloud.block': 'Bloque público (/16)',
   'cloud.blockHint': 'Cada línea usa un /29: {a}, {b}…',
   'cloud.domains': 'Dominios registrados',
-  'cloud.domainsHint': 'Los publican los DNS públicos 8.8.8.8 y 8.8.4.4 para todas las nubes.',
+  'cloud.domainsHint': 'Los publican los DNS públicos 8.8.8.8 y 8.8.4.4 para todas las WAN del ISP.',
   'cloud.domain': 'Dominio',
   'cloud.type': 'Tipo',
   'cloud.delegated': 'NS (delegado)',
@@ -52,7 +52,7 @@ export const CLOUD_ES = {
   'cloud.noNat': 'sin traducciones',
   'cloud.lines': 'Líneas',
   'cloud.labelHint': 'Se muestra en el diagrama y se aplica al cambiarlo.',
-  'cloud.hostnameHint': 'Se deriva del nombre de la nube (conserva las mayúsculas, sin tildes y con guiones). El nombre del proveedor y el bloque público están en la pestaña ISP.',
+  'cloud.hostnameHint': 'Se deriva del nombre de la WAN del ISP (conserva las mayúsculas, sin tildes y con guiones). El nombre del proveedor y el bloque público están en la pestaña ISP.',
   'cloud.err.domain': 'Dominio no válido: usa nombres como sede2.es o empresa.com.',
   'cloud.err.speed': 'Las velocidades deben estar entre 1 y 100000 Mbit/s.',
   'cloud.err.lanMask': 'La máscara de la LAN debe estar entre /8 y /30.',
@@ -63,7 +63,7 @@ export const CLOUD_ES = {
   'cloud.err.isp': 'Escribe el nombre del ISP (máximo 40 caracteres).',
   'cloud.err.block': 'El bloque público debe ser una red /16 (por ejemplo 81.32.0.0).',
   'cloud.err.reserved': '{net}/16 es privada, especial o de la Internet emulada: elige otro bloque público.',
-  'cloud.err.used': '{net}/16 ya lo usa otra nube.',
+  'cloud.err.used': '{net}/16 ya lo usa otra WAN del ISP.',
   'cloud.err.domains': 'Demasiados dominios registrados.',
   'cloud.err.domainIp': '{name}: {ip} no es una dirección pública de un cliente.',
 } as const;

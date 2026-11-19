@@ -25,7 +25,7 @@ export const IFACES_EN: Readonly<Record<IfacesKey, string>> = {
   'hostif.eqLinux': 'GNU/Linux: ip link show, ip -br a and sudo ip link set dev eth0 down|up.',
   'hostif.eqWindows': 'Windows: ipconfig /all (MAC under “Physical Address”).',
   'hostif.eqIp': 'Turning the port off cuts the link: the far end sees it down, as if the cable were unplugged.',
-  'cloudif.intro': 'The six lines of the cloud. Each one is configured in the Lines tab.',
+  'cloudif.intro': 'The six lines of the ISP WAN. Each one is configured in the Lines tab.',
   'cloudif.access': 'Access',
   'cloudif.customer': 'Customer side',
 };

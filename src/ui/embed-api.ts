@@ -65,13 +65,16 @@ export function takeHostOptions(mount: HTMLElement, options: unknown): { readonl
   return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined, palette: palette ?? 'side', piles: piles as boolean | undefined, classroomLan: lan } };
 }
 
-/** The host's Classroom LAN link: its lab number (1-250) and its two functions; anything else is refused. */
+const MAX_LAN_NAME = 64;
+
+/** The host's Classroom LAN link: its lab number (1-250), its two functions and, optionally, the class's name. */
 function linkOf(v: unknown): ClassLanLink {
   const o = typeof v === 'object' && v !== null ? v as Record<string, unknown> : {};
   if (!validLab(o.lab) || typeof o.send !== 'function' || typeof o.onMessage !== 'function') throw new Error('netfix: «classroomLan» necesita lab (1-250), send() y onMessage()');
   const send = o.send as ClassLanLink['send'];
   const onMessage = o.onMessage as ClassLanLink['onMessage'];
-  return { lab: o.lab, send: (m) => send(m), onMessage: (l) => onMessage(l) };
+  const name = typeof o.name === 'string' ? o.name.trim().slice(0, MAX_LAN_NAME) : '';
+  return { lab: o.lab, ...(name ? { name } : {}), send: (m) => send(m), onMessage: (l) => onMessage(l) };
 }
 
 /** `netfix.lab` options: none, or only the host options. */

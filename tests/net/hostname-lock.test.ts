@@ -70,14 +70,19 @@ test('the web GUI shows the host name without a field and ignores one sent', () 
   assert.equal(srv.name, 'Server0');
 });
 
-test('a cloud behaves the same: host name derived from its name, its ISP name apart', () => {
+test('an ISP WAN behaves the same: host name derived from its name; its ISP name follows it until edited', () => {
   const t = new Topology();
   const p = t.add('cloud', 0, 0);
   const cloud = p.device as Cloud;
-  assert.equal(cloud.name, 'Cloud0');
+  assert.equal(cloud.name, 'ISP0');
+  assert.equal(cloud.settings.isp, 'ISP0', 'the ISP name starts as the device name');
   renameDevice(p, 'ISP Norte');
   assert.equal(cloud.name, 'ISP-Norte');
-  assert.equal(cloud.settings.isp, 'ISP Cloud0', 'the provider name is a setting of the ISP tab');
+  assert.equal(cloud.settings.isp, 'ISP Norte', 'and follows a rename');
+  cloud.setSettings({ ...cloud.settings, isp: 'Telefónica' });
+  renameDevice(p, 'Sede');
+  assert.equal(cloud.settings.isp, 'Telefónica', 'once edited in the ISP tab, it stays');
+  renameDevice(p, 'ISP Norte');
   const again = Topology.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
   assert.equal(([...again.placed.values()][0]?.device as Cloud).name, 'ISP-Norte');
 });

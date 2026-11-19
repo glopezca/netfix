@@ -7,7 +7,7 @@ import { macFromSeed } from '../core/mac.ts';
 import { DETACHED, macPlus } from './hooks.ts';
 import type { DeviceHooks } from './hooks.ts';
 import { CloudPort } from './cloud-port.ts';
-import { CLOUD_PORTS, defaultCloud, ispHop } from './cloud-config.ts';
+import { CLOUD_PORTS, MAX_ISP, defaultCloud, ispHop } from './cloud-config.ts';
 import type { CloudDomain, CloudPortName, CloudSettings } from './cloud-config.ts';
 
 export class Cloud implements NetDevice, InternetEdge {
@@ -27,7 +27,7 @@ export class Cloud implements NetDevice, InternetEdge {
     this.clock = opts.clock;
     this.core = opts.core;
     this.baseMac = macFromSeed(opts.seed + 104_729);
-    this.settings = defaultCloud(`ISP ${opts.name}`, opts.block);
+    this.settings = defaultCloud(opts.name.slice(0, MAX_ISP), opts.block); // the ISP name starts as the device's (ISP tab edits it)
     const owner = {
       id: this.id,
       block: () => this.settings.block,

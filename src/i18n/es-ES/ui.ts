@@ -1,7 +1,7 @@
 /** Español (España): ventanas de los equipos, terminal, formularios y documentación. */
 export const UI_ES = {
   'win.console': 'Consola de {name}',
-  'win.cloud': '{name} · Nube ISP',
+  'win.cloud': '{name} · WAN del ISP',
   'win.classlan': '{name} · LAN de clase',
   'classlan.tab': 'LAN de clase',
   'classlan.mode': 'Modo',
@@ -50,7 +50,7 @@ export const UI_ES = {
   'docs.onePage': '1 página',
   'docs.pages': '{n} páginas',
   'docs.noResults': 'Sin resultados',
-  'model.cloud': 'ISP → Internet',
+  'model.cloud': 'Internet',
   'model.classlan': 'Netfix Classroom',
   'ip.customPlaceholder': 'vacío = 01 + MAC',
   'ip.idFormat': 'Formato del Client-ID',

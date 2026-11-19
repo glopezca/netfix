@@ -26,5 +26,5 @@ test('a GNU/Linux router: one line per NIC with an address; an IOS router adds n
   assert.deepEqual(deviceCaption(r).extra, [], 'its hostname is its name: nothing to add');
   (r.device as Router).hostname = 'R1';
   assert.deepEqual([deviceCaption(r).extra, (r.device as Router).hostname], [[], 'Router0'], 'the hostname cannot drift from the name');
-  assert.deepEqual(deviceCaption(t.add('cloud', 0, 0)), { name: 'Cloud0', extra: ['81.32.0.0/16'] }, 'a cloud: its public block, like a device its IP/CIDR');
+  assert.deepEqual(deviceCaption(t.add('cloud', 0, 0)), { name: 'ISP0', extra: ['81.32.0.0/16'] }, 'a cloud: its public block, like a device its IP/CIDR');
 });
