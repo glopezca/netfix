@@ -44,7 +44,7 @@ export const NETFIX_DOCS: DocGroup = {
         ]),
         h('Palette and tools'),
         list(
-          'In order: PC, Server, IOS switch (2960-24TT), IOS router (2911), GNU/Linux router (Ubuntu on 2911 hardware) and ISP WAN (Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.',
+          'In order: PC, Server, IOS switch (Cisco 2960-24TT), IOS router (Cisco 2911), GNU/Linux router (Ubuntu on Cisco 2911 hardware) and ISP WAN (Internet). Both routers sit together and share the router symbol. Pick one and click (or tap) on the workspace.',
           'Cable: click a device, choose the port, and repeat at the other end. The cable type is chosen automatically. Each end shows the link light, the short interface name (Gig0/0, Fa0) and its IP/CIDR below (also one learnt by DHCP; on a router trunk, those of its subinterfaces).',
           'Select: drag devices; double-click opens their window. With a device or a cable selected, Del or Backspace removes it (a device takes its cables with it).',
           'Multiple selection: drag a box over the background to select the devices and drawings inside it (Shift adds to the selection; Shift+click adds or removes one). Dragging one of them moves the whole group; Del deletes it and Escape clears the selection. To pan the view use the wheel, the middle or right button, Space+drag or one finger.',

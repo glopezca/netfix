@@ -9,7 +9,8 @@ import { setLocale } from '../../src/i18n/locale.ts';
 test('the palette lists PC, Server, switch, the two routers together and the cloud', () => {
   assert.deepEqual(PLACEABLE.map(([k]) => k), ['pc', 'server', 'switch', 'router', 'linuxrouter', 'cloud', 'classlan']);
   assert.deepEqual(PLACEABLE.map(([, key]) => t(key)), ['PC', 'Servidor', 'Switch IOS', 'Router IOS', 'Router GNU/Linux', 'WAN del ISP', 'LAN de clase']);
-  assert.equal(MODEL_LABEL.router, '2911');
+  assert.equal(MODEL_LABEL.router, 'Cisco 2911');
+  assert.equal(MODEL_LABEL.switch, 'Cisco 2960-24TT');
   assert.equal(MODEL_LABEL.linuxrouter, 'Ubuntu');
   // One router symbol on the canvas and in the palette (the old terminal-prompt icon is gone).
   assert.equal(ICONS.linuxrouter, ICONS.router);
