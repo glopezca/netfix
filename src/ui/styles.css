@@ -177,8 +177,13 @@
   .pal-name { font-weight: 700; font-size: 13px; }
   .pal-model { font-size: 11px; color: var(--ink-2); }
   .pal-glyph { font-size: 22px; line-height: 33px; height: 33px; }
-  /* Piles (setting): the variants unfold in the palette's own flow (it scrolls, so a popup would be cut off). */
-  .pal-pile, .pal-pile-menu { display: contents; }
+  /* Piles (setting): the variants float over the palette in a popover (top layer, so its scroll does not cut them). */
+  .pal-pile { display: contents; }
+  .pal-pile-menu {
+    position: fixed; inset: auto; margin: 0; padding: 4px; display: flex; flex-direction: column; gap: 2px; color: inherit;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-ctl); box-shadow: var(--shadow);
+  }
+  .pal-pile-menu:not(:popover-open) { display: none; }
   .pal-pile-btn[aria-expanded="true"] { border-color: var(--accent); }
   .pal-pile:has(.pal-variant[aria-pressed="true"]) > .pal-pile-btn { border-color: var(--accent); background: var(--accent-soft); }
   .pal-variant { box-shadow: inset 3px 0 0 var(--accent-soft); }

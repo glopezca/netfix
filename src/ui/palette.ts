@@ -60,21 +60,51 @@ function variantBtn(actions: PaletteActions, buttons: Map<string, HTMLButtonElem
   return b;
 }
 
-/** A family with several variants: its button opens the menu of them (Esc or leaving it closes it). */
+interface Box { readonly left: number; readonly top: number; readonly right: number }
+interface Size { readonly width: number; readonly height: number }
+const PILE_GAP = 4;
+
+/** Where a pile's menu floats (viewport px): beside its button in a column palette, above it in a row; on screen. */
+export function pileMenuAt(btn: Box, menu: Size, column: boolean, view: Size): { left: number; top: number } {
+  const left = column ? btn.right + PILE_GAP : btn.left;
+  const top = column ? btn.top : btn.top - menu.height - PILE_GAP;
+  return { left: Math.max(0, Math.min(left, view.width - menu.width)), top: Math.max(0, Math.min(top, view.height - menu.height)) };
+}
+
+/**
+ * A family with several variants: its button opens the menu of them (Esc or leaving it closes it). The menu is a
+ * popover (top layer): it floats over the other icons instead of pushing them, and the palette's scroll cannot cut it.
+ */
 function pileBtn(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, name: string, variants: readonly Variant[]): HTMLElement {
   const first = variants[0]!;
-  const menu = el('div', { class: 'pal-pile-menu', role: 'group', 'aria-label': name, hidden: true });
+  const menu = el('div', { class: 'pal-pile-menu', role: 'group', 'aria-label': name, popover: 'manual' });
   const main = el('button', { type: 'button', class: 'pal-item pal-pile-btn', 'aria-expanded': 'false', title: t('pal.pileHint') },
     staticSvg(ICONS[first.kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, t('pal.pileCount', { n: String(variants.length) })));
   const pile = el('div', { class: 'pal-pile' }, main, menu);
-  const show = (open: boolean): void => { menu.hidden = !open; main.setAttribute('aria-expanded', String(open)); };
-  main.addEventListener('click', () => show(menu.hidden));
+  const isOpen = (): boolean => main.getAttribute('aria-expanded') === 'true';
+  // Safari does not focus a clicked button, so focusout alone would leave the menu open: a press elsewhere closes it.
+  const outside = (e: PointerEvent): void => { if (!(e.target instanceof Node && pile.contains(e.target))) show(false); };
+  const show = (open: boolean): void => {
+    main.setAttribute('aria-expanded', String(open));
+    if (!open) {
+      document.removeEventListener('pointerdown', outside, true);
+      if (menu.isConnected && menu.matches(':popover-open')) menu.hidePopover();
+      return;
+    }
+    document.addEventListener('pointerdown', outside, true);
+    menu.showPopover();
+    const column = getComputedStyle(pile.parentElement ?? pile).flexDirection === 'column';
+    const at = pileMenuAt(main.getBoundingClientRect(), menu.getBoundingClientRect(), column, { width: innerWidth, height: innerHeight });
+    menu.style.left = `${at.left}px`;
+    menu.style.top = `${at.top}px`;
+  };
+  main.addEventListener('click', () => show(!isOpen()));
   menu.append(...variants.map((v) => {
     const b = variantBtn(actions, buttons, v, 'pal-item pal-variant');
     b.addEventListener('click', () => { show(false); main.focus(); });
     return b;
   }));
-  pile.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) { e.stopPropagation(); show(false); main.focus(); } });
+  pile.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen()) { e.stopPropagation(); show(false); main.focus(); } });
   pile.addEventListener('focusout', (e) => { if (!(e.relatedTarget instanceof Node && pile.contains(e.relatedTarget))) show(false); });
   return pile;
 }
