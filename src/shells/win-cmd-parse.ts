@@ -93,6 +93,41 @@ export function batchArgs(text: string): string[] {
   return text.match(/(?:"[^"]*"?|[^\s"])+/g) ?? [];
 }
 
+// ------------------------------------------------------------ if
+
+/** What an if condition looks at: variables, the last errorlevel and whether a path (or wildcard) exists. */
+export interface Condition {
+  readonly get: (name: string) => string | undefined;
+  readonly errorlevel: number;
+  readonly exists: (path: string) => boolean;
+}
+
+/** if's condition ([/i] [not] exist | defined | errorlevel N | a==b | a OP b): whether it holds and the command after it. */
+export function condition(s: string, x: Condition): { ok: boolean; rest: string } | null {
+  const ci = /^\/i\s+/i.test(s);
+  let t = ci ? s.replace(/^\/i\s+/i, '') : s;
+  const not = /^not\s+/i.test(t);
+  if (not) t = t.replace(/^not\s+/i, '');
+  const done = (ok: boolean, rest: string | undefined): { ok: boolean; rest: string } => ({ ok: ok !== not, rest: rest ?? '' });
+  let m = /^exist\s+("[^"]*"|\S+)\s*(.*)$/is.exec(t);
+  if (m) return done(x.exists(unquote(m[1] ?? '')), m[2]);
+  if ((m = /^defined\s+(\S+)\s*(.*)$/is.exec(t))) return done(x.get(m[1] ?? '') !== undefined, m[2]);
+  if ((m = /^errorlevel\s+(\d+)\s*(.*)$/is.exec(t))) return done(x.errorlevel >= Number(m[1]), m[2]);
+  if ((m = /^("[^"]*"|[^\s=]+)\s*==\s*("[^"]*"|[^\s=]*)\s*(.*)$/s.exec(t))) {
+    const [a, b] = [m[1] ?? '', m[2] ?? ''];
+    return done(ci ? a.toLowerCase() === b.toLowerCase() : a === b, m[3]);
+  }
+  if ((m = /^("[^"]*"|\S+)\s+(EQU|NEQ|LSS|LEQ|GTR|GEQ)\s+("[^"]*"|\S+)\s*(.*)$/is.exec(t))) return done(compare(m[1] ?? '', (m[2] ?? '').toUpperCase(), m[3] ?? '', ci), m[4]);
+  return null;
+}
+
+function compare(a: string, op: string, b: string, ci: boolean): boolean {
+  const [x, y] = [unquote(a), unquote(b)];
+  const numeric = /^-?\d+$/.test(x) && /^-?\d+$/.test(y);
+  const d = numeric ? Number(x) - Number(y) : (ci ? x.toLowerCase() : x).localeCompare(ci ? y.toLowerCase() : y);
+  return { EQU: d === 0, NEQ: d !== 0, LSS: d < 0, LEQ: d <= 0, GTR: d > 0, GEQ: d >= 0 }[op] ?? false;
+}
+
 // ------------------------------------------------------------ set /a
 
 class Arith {
