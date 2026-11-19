@@ -20,7 +20,7 @@ import { featureOn } from '../net/lab-features.ts';
 import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
 import { floatBar, topbar } from './topbar.ts';
 import type { Mode, TopbarActions, View } from './topbar.ts';
-import { deviceGroup, offerClassLan, palette, type PaletteActions } from './palette.ts';
+import { deviceGroup, offerClassLan, palette, syncClassLanButton, type PaletteActions } from './palette.ts';
 import { labText } from './lab-text.ts';
 import { readTopologyFile, saveTopology } from './save-file.ts';
 import { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } from './workspace-store.ts';
@@ -154,7 +154,9 @@ class App {
       const old = this.paletteEl.querySelector('.pal-devices');
       if (old && fresh) old.replaceWith(fresh);
       this.selectTool({ kind: 'select' }, 'select');
+      this.syncClassLan();
     });
+    this.syncClassLan();
     if (this.actionsBox) (hostActions ?? this.paletteEl).append(this.actionsBox);
     this.pageHost = el('main', { class: 'docs-host', hidden: true });
     this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
@@ -319,7 +321,12 @@ class App {
     this.canvas.edits().syncDrawings(performance.now());
     this.canvas.render();
     syncUndoButtons(this.actionsBox ?? this.paletteEl, this.canvas.edits());
+    this.syncClassLan();
     this.scheduleSave();
+  }
+
+  private syncClassLan(): void {
+    syncClassLanButton(this.toolButtons, [...this.topo.net.devices.values()].some((d) => d.kind === 'classlan'), () => this.selectTool({ kind: 'select' }, 'select'));
   }
 
   /** Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z on the network view. */
@@ -371,6 +378,7 @@ class App {
     this.sim.attach(topo);
     this.mission.attach(topo);
     syncUndoButtons(this.actionsBox ?? this.paletteEl, this.canvas.edits());
+    this.syncClassLan();
     this.pages.refreshSettings();
     this.hintEl.textContent = message;
     this.scheduleSave();

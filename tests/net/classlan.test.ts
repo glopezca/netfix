@@ -109,3 +109,11 @@ test('without a class the device keeps its settings, is disconnected, and surviv
   assert.equal(again.settings.mode, 'bridge');
   assert.equal(again.connected(), false);
 });
+
+test('the Classroom LAN device is called as the host\'s class; without a class name, ClassLAN0', () => {
+  const link: ClassLanLink = { lab: 3, name: '1º SMR B', send: () => {}, onMessage: () => () => {} };
+  const named = new Topology();
+  named.useClassLan(link);
+  assert.equal(named.add('classlan', 0, 0).label, '1º SMR B');
+  assert.equal(new Topology().add('classlan', 0, 0).label, 'ClassLAN0');
+});

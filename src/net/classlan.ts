@@ -12,6 +12,8 @@ export type ClassLanMessage = { readonly kind: 'frame'; readonly frame: Frame } 
 export interface ClassLanLink {
   /** This lab's number in the class (1-250), given by the host: its classroom block is 10.lab.0.0/16. */
   readonly lab: number;
+  /** The class's name, for the device's name (optional; up to 64 characters). */
+  readonly name?: string;
   send(message: ClassLanMessage): void;
   /** Messages from the other labs; returns the function that stops listening. */
   onMessage(listener: (message: unknown) => void): () => void;

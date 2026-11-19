@@ -69,6 +69,9 @@ export function defaultPort(port: string): CloudPortSettings {
   return { mode: 'router', down, up, lanIp: LAN_DEFAULT, lanPrefix: LAN_PREFIX, forwards: [] };
 }
 
+/** Longest ISP name kept. */
+export const MAX_ISP = 40;
+
 export function defaultCloud(isp: string, block: number): CloudSettings {
   const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, defaultPort(p)])) as Record<CloudPortName, CloudPortSettings>;
   return { isp, block, ports, domains: [] };
@@ -170,6 +173,6 @@ export function cloudFromJson(v: unknown, fallback: CloudSettings): CloudSetting
   const domains = (Array.isArray(o.domains) ? o.domains : []).slice(0, MAX_DOMAINS).map(obj)
     .map((d) => ({ name: String(d.name ?? '').toLowerCase(), kind: d.kind === 'ns' ? 'ns' as const : 'a' as const, ip: ipOf(d.ip, 0) }))
     .filter((d) => validDomain(d.name) === null && !reservedAddress(d.ip));
-  const s = { isp: typeof o.isp === 'string' ? o.isp.slice(0, 40) : fallback.isp, block: ipOf(o.block, fallback.block), ports, domains };
+  const s = { isp: typeof o.isp === 'string' ? o.isp.slice(0, MAX_ISP) : fallback.isp, block: ipOf(o.block, fallback.block), ports, domains };
   return validateCloud(s) ? { ...fallback, ports, domains } : s;
 }

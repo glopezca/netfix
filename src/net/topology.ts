@@ -149,7 +149,7 @@ export interface TopologyFile {
   readonly mission?: unknown;
 }
 
-const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'Cloud', classlan: 'ClassLAN' };
+const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'ISP', classlan: 'ClassLAN' };
 /** Drawing ids stay short (aN) even after a crafted file. */
 const MAX_DRAWING_ID = 999_999_999;
 const SETTLE_MS = 30_000;
@@ -193,7 +193,8 @@ export class Topology {
     const id = opts.id ?? `d${this.nextId++}`;
     const seed = opts.seed ?? this.nextSeed++;
     this.nextSeed = Math.max(this.nextSeed, seed + 1);
-    const label = opts.label ?? this.nextLabel(kind);
+    // The Classroom LAN device is called as the host's class (one per lab); else Router0, ISP0…
+    const label = opts.label ?? (kind === 'classlan' && this.classLan?.name ? this.classLan.name : this.nextLabel(kind));
     const device = kind === 'cloud' ? this.newCloud(id, seed, label) : kind === 'classlan' ? new ClassLan({ id, name: label, clock: this.clock, seed }).connectTo(this.classLan) : createDevice(kind, id, seed, this.clock, label);
     seeds.set(device, seed);
     if (device instanceof Host) {

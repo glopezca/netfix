@@ -133,7 +133,7 @@ export const IOS_SEC_DOCS: readonly DocPage[] = [
         ['%CRYPTO-6-IKMP_MODE_FAILURE … Quick mode', 'Transform-set o ACL espejo distintos.'],
         ['%CRYPTO-4-RECVD_PKT_NOT_IPSEC', 'Llega en claro tráfico que el túnel debería proteger.'],
       ]),
-      warn('Errores habituales', 'Claves, políticas o transform-sets distintos en cada sede. ACL que no son espejo. Con NAT overload en la misma interfaz, el tráfico entre sedes se traduce antes de cifrarse: exclúyelo de la NAT con una ACL extendida (deny ip LAN1 LAN2 antes del permit). ESP no tiene puertos: atraviesa una NAT 1:1 pero una PAT lo descarta; usa direcciones IP públicas (línea «Dirección IP pública» de la nube ISP).'),
+      warn('Errores habituales', 'Claves, políticas o transform-sets distintos en cada sede. ACL que no son espejo. Con NAT overload en la misma interfaz, el tráfico entre sedes se traduce antes de cifrarse: exclúyelo de la NAT con una ACL extendida (deny ip LAN1 LAN2 antes del permit). ESP no tiene puertos: atraviesa una NAT 1:1 pero una PAT lo descarta; usa direcciones IP públicas (línea «Dirección IP pública» de la WAN del ISP).'),
       note('El simulador no cifra los bytes: ESP transporta el paquete original, pero el comportamiento (negociación, SPI, contadores, errores) es el de IOS.'),
       exercise('Levanta el túnel', 'En el laboratorio «VPN IPsec entre dos sedes (2911)», haz que PC0 (sede A) llegue a PC2 (sede B) y comprueba en SEDE-A que el túnel está arriba.', 'En la Terminal Windows de PC0: `ping -n 4 192.168.20.10`: dos «Request timed out.» y dos respuestas. En SEDE-A, `show crypto isakmp sa` muestra 81.33.5.2 81.32.5.2 QM_IDLE ACTIVE, y `show crypto ipsec sa` cuenta los paquetes encapsulados y desencapsulados.'),
     ],

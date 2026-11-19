@@ -109,6 +109,18 @@ function pileBtn(actions: PaletteActions, buttons: Map<string, HTMLButtonElement
   return pile;
 }
 
+/**
+ * One Classroom LAN per lab: its button is off while one is on the canvas, and on again once it is deleted. `leave`
+ * drops the tool if it was still picked. shortcut: paste/duplicate can still copy one; block them too if it matters.
+ */
+export function syncClassLanButton(buttons: ReadonlyMap<string, HTMLButtonElement>, placed: boolean, leave: () => void): void {
+  const b = buttons.get('place-classlan');
+  if (!b) return;
+  if (placed && b.getAttribute('aria-pressed') === 'true') leave();
+  b.disabled = placed;
+  b.title = placed ? t('pal.classlanOne') : '';
+}
+
 /** The palette's devices: one button each, or the piles when the setting is on; what restrictions allow only. */
 export function deviceGroup(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, policy: Restrictions = NO_RESTRICTIONS): HTMLElement | null {
   if (!policy.editTopology) return null;

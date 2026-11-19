@@ -23,7 +23,7 @@ export const IFACES_ES = {
   'hostif.eqLinux': 'GNU/Linux: ip link show, ip -br a y sudo ip link set dev eth0 down|up.',
   'hostif.eqWindows': 'Windows: ipconfig /all (MAC en «Dirección física»).',
   'hostif.eqIp': 'Apagar el puerto corta el enlace: el otro extremo lo ve caído, como al desconectar el cable.',
-  'cloudif.intro': 'Las seis líneas de la nube. Cada una se configura en la pestaña Líneas.',
+  'cloudif.intro': 'Las seis líneas de la WAN del ISP. Cada una se configura en la pestaña Líneas.',
   'cloudif.access': 'Acceso',
   'cloudif.customer': 'Lado del cliente',
 } as const;

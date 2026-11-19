@@ -6,6 +6,7 @@
  */
 import type { DeviceRecord, Placed } from './topology.ts';
 import { hostnameFromLabel, iosHostnameFromLabel, validSystemName } from '../core/hostname.ts';
+import { MAX_ISP } from '../devices/cloud-config.ts';
 
 const MAX_NAME = 64;
 
@@ -48,6 +49,9 @@ export function syncDeviceName(p: Placed): void {
 
 /** Equipo → name: the label and, from it, the host name. */
 export function renameDevice(p: Placed, label: string): void {
+  const d = p.device;
+  // The ISP name follows the device's name until someone edits it (before 0.64 it started as «ISP <name>»).
+  if (d.kind === 'cloud' && [p.label, `ISP ${p.label}`].includes(d.settings.isp)) d.setSettings({ ...d.settings, isp: label.slice(0, MAX_ISP) });
   p.label = label;
   syncDeviceName(p);
 }

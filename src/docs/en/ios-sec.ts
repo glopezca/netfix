@@ -133,7 +133,7 @@ export const IOS_SEC_DOCS: readonly DocPage[] = [
         ['%CRYPTO-6-IKMP_MODE_FAILURE … Quick mode', 'Different transform-set or mirror ACL.'],
         ['%CRYPTO-4-RECVD_PKT_NOT_IPSEC', 'Traffic the tunnel should protect arrives in clear.'],
       ]),
-      warn('Common mistakes', 'Different keys, policies or transform-sets on each site. ACLs that are not mirrors. With NAT overload on the same interface, inter-site traffic is translated before being encrypted: exempt it from NAT with an extended ACL (deny ip LAN1 LAN2 before the permit). ESP has no ports: it crosses a 1:1 NAT but a PAT drops it; use public IP addresses (the ISP cloud’s “Public IP address” line).'),
+      warn('Common mistakes', 'Different keys, policies or transform-sets on each site. ACLs that are not mirrors. With NAT overload on the same interface, inter-site traffic is translated before being encrypted: exempt it from NAT with an extended ACL (deny ip LAN1 LAN2 before the permit). ESP has no ports: it crosses a 1:1 NAT but a PAT drops it; use public IP addresses (the ISP WAN’s “Public IP address” line).'),
       note('The simulator does not encrypt the bytes: ESP carries the original packet, but the behaviour (negotiation, SPI, counters, errors) is IOS’s.'),
       exercise('Bring the tunnel up', 'In the «IPsec VPN between two sites (2911)» lab, get PC0 (site A) to reach PC2 (site B) and check on SEDE-A that the tunnel is up.', 'In PC0’s Windows terminal: `ping -n 4 192.168.20.10`: two “Request timed out.” and two replies. On SEDE-A, `show crypto isakmp sa` shows 81.33.5.2 81.32.5.2 QM_IDLE ACTIVE, and `show crypto ipsec sa` counts the encapsulated and decapsulated packets.'),
     ],
