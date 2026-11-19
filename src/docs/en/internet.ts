@@ -14,7 +14,7 @@ export const INTERNET_DOCS: DocGroup = {
       summary: 'An operator’s way out to the Internet: cable, xDSL and fibre lines, operator-router or public-IP-address mode, and port forwarding.',
       markdownBase: MD,
       blocks: [
-        p('The **Cloud** (palette → Cloud) is an **Internet service provider**: each of its six ports is a customer line, like the one reaching a home or a company. Coaxial0-1 (DOCSIS cable), DSL0-1 (VDSL2) and Fibra0-1 (FTTH). A router (GigabitEthernet), a switch or a PC is plugged into each line.'),
+        p('The **WAN Connection** (palette → WAN Connection) is an **Internet service provider**: each of its six ports is a customer line, like the one reaching a home or a company. Coaxial0-1 (DOCSIS cable), DSL0-1 (VDSL2) and Fibra0-1 (FTTH). A router (GigabitEthernet), a switch or a PC is plugged into each line.'),
         figure({
           type: 'topology',
           nodes: [
