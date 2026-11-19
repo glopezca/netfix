@@ -21,6 +21,12 @@ export interface McFs {
   mkdir(path: string): string | null;
   /** The prompt of the shell, shown on mc's command line. */
   prompt(dir: string): string;
+  /** The top folder, with no ".." above it (GNU/Linux: /; Windows: C:\). */
+  readonly root?: string;
+  /** How a path is shown (title, dialogs, viewer); GNU/Linux: ~ for the home folder. */
+  show?(path: string): string;
+  /** The path typed in a dialog, from folder `dir`; null when it cannot be reached (another drive). */
+  parse?(text: string, dir: string): string | null;
 }
 
 export function joinPath(dir: string, name: string): string {
