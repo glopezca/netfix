@@ -14,7 +14,7 @@ export const INTERNET_DOCS: DocGroup = {
       summary: 'La salida a Internet de un operador: líneas de cable, xDSL y fibra, modo router del operador o dirección IP pública, y redirección de puertos.',
       markdownBase: MD,
       blocks: [
-        p('La **Nube** (paleta → Nube) es un **proveedor de Internet**: cada uno de sus seis puertos es una línea de cliente, como la que llega a una casa o a una empresa. Coaxial0-1 (cable DOCSIS), DSL0-1 (VDSL2) y Fibra0-1 (FTTH). A cada línea se conecta un router (GigabitEthernet), un switch o un PC.'),
+        p('La **Conexión WAN** (paleta → Conexión WAN) es un **proveedor de Internet**: cada uno de sus seis puertos es una línea de cliente, como la que llega a una casa o a una empresa. Coaxial0-1 (cable DOCSIS), DSL0-1 (VDSL2) y Fibra0-1 (FTTH). A cada línea se conecta un router (GigabitEthernet), un switch o un PC.'),
         figure({
           type: 'topology',
           nodes: [

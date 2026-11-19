@@ -47,7 +47,7 @@ export const APP_EN: Readonly<Record<AppKey, string>> = {
   'kind.switch': 'IOS switch',
   'kind.pc': 'PC',
   'kind.server': 'Server',
-  'kind.cloud': 'Cloud',
+  'kind.cloud': 'WAN Connection',
   'kind.classlan': 'Classroom LAN',
   'hint.simulation': 'Simulation: whatever you do (ipconfig /renew, ping, DHCP) is added to the event list. Press Play.',
   'hint.realtime': 'Realtime: the network runs by itself; changes apply immediately.',

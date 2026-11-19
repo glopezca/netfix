@@ -45,7 +45,7 @@ export const APP_ES = {
   'kind.switch': 'Switch IOS',
   'kind.pc': 'PC',
   'kind.server': 'Servidor',
-  'kind.cloud': 'Nube',
+  'kind.cloud': 'Conexión WAN',
   'kind.classlan': 'LAN de clase',
   'hint.simulation': 'Simulación: lo que hagas (ipconfig /renew, ping, DHCP) queda en la lista de eventos. Pulsa Reproducir.',
   'hint.realtime': 'Tiempo real: la red funciona sola; los cambios se aplican al instante.',
