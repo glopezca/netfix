@@ -66,7 +66,7 @@ Observaciones que condicionan el diseño:
 | Contrato | Módulo | Forma |
 |---|---|---|
 | Restricciones | `src/classroom/restrictions.ts` | `Restrictions`: `labs`, `devices`, `tabs`, `timestampPrompt` y 11 flags booleanos. Sin campo de versión. Campo desconocido = error |
-| Lista de comprobación | `src/classroom/checklist.ts` | `ChecklistItem[]` (1 a 200): `id`, `title?`, `weight` (0 a 100), `check`. 10 tipos de `Check`: `device, link, ip, ping, dns, tcp, output, http, file, config`. Sin versión |
+| Lista de comprobación | `src/classroom/checklist.ts` | `ChecklistItem[]` (1 a 200): `id`, `title?`, `weight` (0 a 100), `check`. 11 tipos de `Check`: `device, link, ip, ping, dns, tcp, output, run, http, file, config` (`run`, 0.68.0: una orden en la bash o el cmd.exe de un PC o servidor, para Codefix). Sin versión |
 | Resultado | `src/classroom/evaluate.ts` | `Evaluation`: `score`, `max`, `items: ItemResult[]`, `mission?`. Sin versión de motor ni de evaluación |
 | Estado de misión | `src/labs/mission-state.ts` | `MissionState`: `id`, `hints`, `solution?` |
 

@@ -17,6 +17,8 @@ export type Check =
   | { readonly type: 'tcp'; readonly from: string; readonly to: string; readonly port: number; readonly expect: 'success' | 'fail' }
   /** A read-only `show …` command run on an IOS device: its output must contain the text. */
   | { readonly type: 'output'; readonly device: string; readonly command: string; readonly contains: string }
+  /** Codefix (D24): any command run in a PC's or server's bash (or cmd.exe, shell 'cmd'): its output must contain the text. */
+  | { readonly type: 'run'; readonly device: string; readonly shell?: 'bash' | 'cmd'; readonly command: string; readonly contains: string }
   | { readonly type: 'http'; readonly from: string; readonly url: string; readonly status?: number; readonly contains?: string }
   | { readonly type: 'file'; readonly device: string; readonly path: string; readonly contains?: string }
   /** `section`: the lines must be inside it (the indented lines under that unindented line, e.g. an interface). */
@@ -109,6 +111,7 @@ const SCHEMAS: Readonly<Record<Check['type'], Readonly<Record<string, Field>>>> 
   dns: { from: label, name: dnsName, 'ip?': ipText, 'expect?': expect },
   tcp: { from: label, to: text(NAME_RE), port, 'expect?': expect },
   output: { device: label, command: showCommand, contains: text(null) },
+  run: { device: label, 'shell?': oneOf(['bash', 'cmd']), command: plain, contains: text(null) },
   http: { from: label, url: httpUrl, 'status?': status, 'contains?': text(null) },
   file: { device: label, path, 'contains?': text(null) },
   config: { device: label, 'section?': configLine, lines },
