@@ -57,6 +57,14 @@ export function splitCmdLine(line: string): CmdLine {
   for (let i = 0; i < line.length; i++) {
     const ch = line[i] ?? '';
     if (ch === '"') { quoted = !quoted; word ??= ''; if (!target) text += ch; continue; }
+    // ^ outside quotes takes the next character literally (^& ^> ^^ ^" and a space in a name: a^ b).
+    if (!quoted && ch === '^') {
+      const next = line[++i];
+      if (next === undefined) continue;
+      word = (word ?? '') + next;
+      if (!target) text += next;
+      continue;
+    }
     if (!quoted && ch === '>') {
       const stderr = word === '2' && !/\s/.test(line[i - 1] ?? ' ') && (i < 2 || /\s/.test(line[i - 2] ?? ' '));
       if (stderr) { word = null; text = text.slice(0, -1); } else flush();

@@ -129,10 +129,11 @@ export class McApp implements Editor {
     const what = names.length === 1 ? `"${names[0]}"` : `${names.length} files/directories`;
     const title = op === 'copy' ? 'Copy' : 'Move';
     this.dialog = {
-      kind: 'input', title, label: `${op === 'copy' ? 'Copy' : 'Move'} ${what} to:`, value: `${this.other.dir.replace(/\/?$/, '/')}`,
+      kind: 'input', title, label: `${op === 'copy' ? 'Copy' : 'Move'} ${what} to:`, value: this.folderText(this.other.dir),
       onOk: (target) => {
         const sources = names.map((n) => joinPath(this.panel.dir, n));
-        const err = op === 'copy' ? this.fs.copy(sources, target) : this.fs.move(sources, target);
+        const to = this.typed(target);
+        const err = to === null ? 'The system cannot find the drive specified.' : op === 'copy' ? this.fs.copy(sources, to) : this.fs.move(sources, to);
         this.panel.marked.clear();
         this.fail(err);
       },
@@ -141,10 +142,10 @@ export class McApp implements Editor {
 
   private mkdir(name: string): void {
     if (!name.trim()) return;
-    const path = name.startsWith('/') ? name : joinPath(this.panel.dir, name.trim());
-    const err = this.fs.mkdir(path);
+    const path = this.fs.parse ? this.fs.parse(name.trim(), this.panel.dir) : name.startsWith('/') ? name : joinPath(this.panel.dir, name.trim());
+    const err = path === null ? 'The system cannot find the drive specified.' : this.fs.mkdir(path);
     this.fail(err);
-    if (!err) this.panel.reload(this.fs, name.trim().split('/').pop());
+    if (!err) this.panel.reload(this.fs, name.trim().split(/[\\/]/).pop());
   }
 
   private remove(): void {
@@ -161,10 +162,25 @@ export class McApp implements Editor {
     };
   }
 
+  private shown(path: string): string {
+    return this.fs.show ? this.fs.show(path) : path;
+  }
+
+  /** A folder as typed in a dialog, ending in its separator (/ or \\). */
+  private folderText(dir: string): string {
+    const shown = this.shown(dir);
+    return this.fs.show ? (shown.endsWith('\\') ? shown : `${shown}\\`) : shown.replace(/\/?$/, '/');
+  }
+
+  /** The target typed in a dialog, as the file system takes it (GNU/Linux: as typed). */
+  private typed(text: string): string | null {
+    return this.fs.parse ? this.fs.parse(text.trim(), this.panel.dir) : text;
+  }
+
   private view(path: string): void {
     const r = this.fs.read(path);
-    if (typeof r !== 'string') { this.fail(`Cannot open "${path}" for reading\n${r.error}`); return; }
-    this.viewer = { name: path, lines: r.split('\n').map(expandTabs), top: 0 };
+    if (typeof r !== 'string') { this.fail(`Cannot open "${this.shown(path)}" for reading\n${r.error}`); return; }
+    this.viewer = { name: this.shown(path), lines: r.split('\n').map(expandTabs), top: 0 };
   }
 
   private viewerKey(v: Viewer, k: KeyInput): void {
@@ -181,8 +197,13 @@ export class McApp implements Editor {
 
   private edit(path: string): void {
     const r = this.fs.read(path);
-    if (typeof r !== 'string') { this.fail(`Cannot open "${path}" for reading\n${r.error}`); return; }
-    this.editor = new NanoEditor({ editor: 'nano', path, content: r, exists: true, readOnly: false }, { save: (p, c) => this.fs.write(p, c) });
+    if (typeof r !== 'string') { this.fail(`Cannot open "${this.shown(path)}" for reading\n${r.error}`); return; }
+    // nano shows and takes paths as the system writes them (C:\... on Windows).
+    const save = (p: string, c: string): string | null => {
+      const to = this.fs.parse ? this.fs.parse(p, this.panel.dir) : p;
+      return to === null ? 'The system cannot find the drive specified.' : this.fs.write(to, c);
+    };
+    this.editor = new NanoEditor({ editor: 'nano', path: this.shown(path), content: r, exists: true, readOnly: false }, { save });
   }
 
   private editorKey(k: KeyInput): void {
@@ -201,8 +222,8 @@ export class McApp implements Editor {
     if (this.viewer) return this.viewerFrame(this.viewer, width, height);
     const panelH = Math.max(6, height - 3);
     const leftW = Math.floor(width / 2);
-    const left = this.panels[0].render(leftW, panelH, this.active === 0, this.fs.home);
-    const right = this.panels[1].render(width - leftW, panelH, this.active === 1, this.fs.home);
+    const left = this.panels[0].render(leftW, panelH, this.active === 0, this.fs);
+    const right = this.panels[1].render(width - leftW, panelH, this.active === 1, this.fs);
     const rows: Span[][] = [[{ text: fit(MENU, width), style: 'menu' }]];
     for (let i = 0; i < panelH; i++) rows.push([...(left[i] ?? []), ...(right[i] ?? [])]);
     const prompt = this.fs.prompt(this.panel.dir);

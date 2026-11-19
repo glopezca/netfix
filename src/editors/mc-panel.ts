@@ -40,7 +40,7 @@ export class Panel {
     } else {
       this.error = null;
       const sorted = [...listed].sort((a, b) => Number(b.dir) - Number(a.dir) || a.name.localeCompare(b.name));
-      this.entries = this.dir === '/' ? sorted : [{ name: '..', dir: true, link: false, exec: false, size: 4096, mtime: 0 }, ...sorted];
+      this.entries = this.dir === (fs.root ?? '/') ? sorted : [{ name: '..', dir: true, link: false, exec: false, size: 4096, mtime: 0 }, ...sorted];
     }
     for (const m of [...this.marked]) if (!this.entries.some((e) => e.name === m)) this.marked.delete(m);
     const at = keep === undefined ? -1 : this.entries.findIndex((e) => e.name === keep);
@@ -102,12 +102,12 @@ export class Panel {
   }
 
   /** Rows of the panel (borders included), `height` rows high. */
-  render(width: number, height: number, active: boolean, home: string): Span[][] {
+  render(width: number, height: number, active: boolean, fs: McFs): Span[][] {
     const inner = width - 2;
     const listRows = Math.max(1, height - 5);
     if (this.cursor < this.top) this.top = this.cursor;
     if (this.cursor >= this.top + listRows) this.top = this.cursor - listRows + 1;
-    const title = ` ${shortPath(this.dir, home)} `.slice(0, inner - 2);
+    const title = ` ${fs.show ? fs.show(this.dir) : shortPath(this.dir, fs.home)} `.slice(0, inner - 2);
     const left = Math.max(1, Math.floor((inner - title.length) / 2));
     const rows: Span[][] = [[{ text: `┌${'─'.repeat(left)}`, style: 'panel' }, { text: title, style: active ? 'cursor' : 'panel' }, { text: `${'─'.repeat(Math.max(0, inner - left - title.length))}┐`, style: 'panel' }]];
     const nameW = Math.max(4, inner - SIZE_W - TIME_W - 2);

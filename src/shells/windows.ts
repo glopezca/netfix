@@ -20,26 +20,28 @@ import type { Nslookup } from './nslookup.ts';
 import type { Host } from '../devices/host.ts';
 import { HOST_PORT } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
-import { findUnit, unitActive, openPorts, UNITS } from '../services/units.ts';
-import { toWindowsPath } from './win-path.ts';
+import { unitActive, openPorts } from '../services/units.ts';
+import { netService, sc, serverOf } from './win-services.ts';
+import { WinCmd } from './win-cmd.ts';
+import { startWinMc } from './win-mc.ts';
+import type { McApp } from '../editors/mc.ts';
+import type { Frame, KeyInput } from '../editors/buffer.ts';
 import { runPing } from '../net/ping.ts';
 import { tracert } from './trace-cmds.ts';
-import { formatIp, formatMask, parseIp } from '../core/ip.ts';
+import { formatIp, parseIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
-import { formatLeaseTime } from '../core/clock.ts';
 import { hostSystem, hostUsers, defaultLinuxUser } from './host-system.ts';
 import { GIT_BIN, WIN_EDITORS, WIN_PATH, seedWindowsDisk, usersDir, windowsAccount } from './win-system.ts';
 import { WinFiles } from './win-files.ts';
 import { WinDrives } from './win-drives.ts';
-import { splitCmdLine } from './win-path.ts';
+import { splitCmdLine, toWindowsPath } from './win-path.ts';
 import type { EditSpec } from '../bash/types.ts';
-import { windowsWinsServers } from '../net/win-wins.ts';
+import { ipconfig } from './win-ipconfig.ts';
 
 const PING_TIMEOUT_MS = 1000;
 const DEFAULT_PING_COUNT = 4;
 const MAX_PING_COUNT = 100;
 const DHCP_WAIT_MS = 20_000;
-const MS = 1000;
 
 const HELP = [
   'Available commands:',
@@ -52,6 +54,10 @@ const HELP = [
   '  type <file>              Show a file',
   '  edit <file>              Edit a file full screen',
   '  nano.exe|vim.exe <file>  The GNU/Linux editors (C:\\Program Files\\Git\\usr\\bin, in %PATH%)',
+  '  mc.exe [dir [dir]]       Midnight Commander, the two-panel file manager (same folder)',
+  '  set [name[=value]]       Variables (set /a: arithmetic); %name% is replaced in the line',
+  '  a & b | a && b | a || b  Run b always, after a success, or after a failure',
+  '  file.bat [args]          Run a batch file (also .cmd; if, for, goto, call, %1...)',
   '  path                     Show %PATH%',
   '  echo <text> [> file]     Print text (> and >> write it to a file)',
   '  curl [-I] <url>          HTTP client',
@@ -66,42 +72,6 @@ const HELP = [
   '  ssh user@host            SSH client',
   '  sc query [svc] | sc start|stop <svc> | net start [svc] | net stop <svc>   (Server)',
 ];
-
-function linkLocal(mac: string): string {
-  const b = (mac.match(/../g) ?? []).map((x) => parseInt(x, 16));
-  const first = ((b[0] ?? 0) ^ 0x02).toString(16).padStart(2, '0');
-  const h = (x: number): string => x.toString(16).toUpperCase().padStart(2, '0');
-  const groups = [`${first}${h(b[1] ?? 0)}`, `${h(b[2] ?? 0)}FF`, `FE${h(b[3] ?? 0)}`, `${h(b[4] ?? 0)}${h(b[5] ?? 0)}`];
-  return `FE80::${groups.map((g) => g.replace(/^0+(?=.)/, '')).join(':')}`.toUpperCase();
-}
-
-export function ipconfig(host: Host, all: boolean): string[] {
-  const c = host.config;
-  const lease = host.dhcpClient.lease;
-  const lines = ['', `${HOST_PORT} Connection:(default port)`, ''];
-  lines.push(`   Connection-specific DNS Suffix..: ${lease?.domainName ?? ''}`);
-  if (all) lines.push(`   Physical Address................: ${formatMacCisco(host.mac).toUpperCase()}`);
-  lines.push(
-    `   Link-local IPv6 Address.........: ${linkLocal(host.mac)}`,
-    '   IPv6 Address....................: ::',
-    `   IPv4 Address....................: ${c.ip !== undefined ? formatIp(c.ip) : '0.0.0.0'}`,
-    `   Subnet Mask.....................: ${c.prefix !== undefined ? formatMask(c.prefix) : '0.0.0.0'}`,
-    '   Default Gateway.................: ::',
-    `                                     ${c.gateway !== undefined ? formatIp(c.gateway) : '0.0.0.0'}`,
-  );
-  if (all) {
-    lines.push(`   DHCP Servers....................: ${lease ? formatIp(lease.serverId) : '0.0.0.0'}`, `   DNS Servers.....................: ${c.dns !== undefined ? formatIp(c.dns) : '0.0.0.0'}`);
-    const [primary, secondary] = windowsWinsServers(host);
-    if (primary !== undefined) lines.push(`   Primary WINS Server.............: ${formatIp(primary)}`);
-    if (secondary !== undefined) lines.push(`   Secondary WINS Server...........: ${formatIp(secondary)}`);
-    if (lease) {
-      const exp = lease.leaseSeconds >= 0xffffffff ? 'Infinite' : formatLeaseTime(lease.obtainedAt + lease.leaseSeconds * MS);
-      lines.push(`   Lease Obtained..................: ${formatLeaseTime(lease.obtainedAt)}`, `   Lease Expires...................: ${exp}`);
-    }
-  }
-  lines.push('');
-  return lines;
-}
 
 /** Internal commands cmd.exe takes glued to a path or switch (cd.., cd\\, dir/w): the name ends at . \\ or /. */
 const GLUED = /^(\s*)(cd|chdir|dir|md|mkdir|rd|rmdir|del|erase|type)(?=[.\\/])/i;
@@ -120,11 +90,24 @@ export class WindowsShell extends BaseShell {
   private question: PasswordQuestion | null = null;
   /** C: and the drives mapped with net use, each with its own folder. */
   private readonly drives: WinDrives;
+  /** cmd.exe's variables, chains and batch files around the commands below. */
+  private readonly cmd: WinCmd;
+  /** mc.exe while it is open. */
+  private screen: McApp | null = null;
 
   constructor(host: Host, user: string, remote = false) {
     super(host, user);
     this.remote = remote;
     this.drives = new WinDrives(host);
+    this.cmd = new WinCmd({
+      env: () => this.env(),
+      simple: (text) => this.simpleLine(text),
+      prompt: () => this.files().prompt(),
+      path: (input) => this.files().winFs.path(input),
+      kindOf: (path) => this.files().winFs.kindOf(path),
+      read: (path) => { try { return this.files().winFs.fs.readFile(path, this.files().winFs.cred); } catch { return null; } },
+      glob: (pattern) => { const l = this.files().winFs.listing(pattern); return typeof l === 'string' ? [] : l.names; },
+    });
   }
 
   /** The file commands, as the Linux account of the device this terminal works as (created on first use). */
@@ -134,7 +117,7 @@ export class WindowsShell extends BaseShell {
     const cred = { uid: account?.uid ?? 0, gid: account?.gid ?? 0, groups: account?.groups ?? [] };
     this.admin = cred.uid === 0;
     const fs = hostSystem(this.host).fs;
-    const srv = this.server();
+    const srv = serverOf(this.host);
     seedWindowsDisk(fs, this.user, account, srv !== undefined && unitActive(srv.services, 'ssh'));
     this.fileCmds = new WinFiles(fs, cred, usersDir(this.user));
     return this.fileCmds;
@@ -174,7 +157,13 @@ export class WindowsShell extends BaseShell {
     }
     const files = this.files();
     if (files.pending) return files.answer(line);
-    const parsed = splitCmdLine(this.expand(line).trim().replace(GLUED, '$1$2 '));
+    return this.cmd.run(line);
+  }
+
+  /** One simple cmd.exe command (the line already expanded): quoted words, and > or >> sending the output to a file. */
+  private simpleLine(line: string): string[] {
+    const files = this.files();
+    const parsed = splitCmdLine(line.trim().replace(GLUED, '$1$2 '));
     if (parsed.error) return ['The syntax of the command is incorrect.'];
     const [first, ...args] = parsed.words;
     if (!first) return [];
@@ -195,13 +184,33 @@ export class WindowsShell extends BaseShell {
     return [];
   }
 
-  /** %NAME% of the environment (any case); an unknown name stays as typed, as in cmd.exe. */
-  private expand(line: string): string {
-    const env: Record<string, string> = {
-      path: WIN_PATH, username: this.user, userprofile: toWindowsPath(usersDir(this.user)), computername: this.host.name.toUpperCase(),
-      systemroot: 'C:\\Windows', windir: 'C:\\Windows', systemdrive: 'C:',
+  /** The system's variables (set adds its own on top). */
+  private env(): Record<string, string> {
+    return {
+      Path: WIN_PATH, USERNAME: this.user, USERPROFILE: toWindowsPath(usersDir(this.user)), COMPUTERNAME: this.host.name.toUpperCase(),
+      SystemRoot: 'C:\\Windows', windir: 'C:\\Windows', SystemDrive: 'C:',
     };
-    return line.replace(/%([A-Za-z_]\w*)%/g, (all, name: string) => env[name.toLowerCase()] ?? all);
+  }
+
+  /** mc / mc.exe, from Git's usr\bin while it is there: the full-screen file manager on Windows paths. */
+  private mc(name: string, args: string[]): string[] | null {
+    if (name !== 'mc' && name !== 'mc.exe') return null;
+    const w = this.files().winFs;
+    if (w.kindOf(`${GIT_BIN}/mc.exe`) !== 'file') return null;
+    const app = startWinMc(w, args);
+    if (Array.isArray(app)) return app;
+    this.screen = app;
+    return [];
+  }
+
+  protected override localScreenFrame(width: number, height: number): Frame | null {
+    return this.screen?.frame(width, height) ?? null;
+  }
+
+  protected override localScreenKey(key: KeyInput): string[] {
+    this.screen?.key(key);
+    if (this.screen?.closed) this.screen = null;
+    return [];
   }
 
   /** nano / vim (or nano.exe, vim.exe): found through %PATH% in Git's usr\bin while the program is there. */
@@ -239,6 +248,8 @@ export class WindowsShell extends BaseShell {
     if (share) return this.files().ask(share);
     const editor = this.editor(name);
     if (editor) return this.files().edit(paths, editor);
+    const mc = this.mc(name, paths);
+    if (mc) return mc;
     const file = this.files().run(name, paths, text);
     if (file) return file;
     switch (cmd.toLowerCase()) {
@@ -252,7 +263,7 @@ export class WindowsShell extends BaseShell {
       case 'hostname': return [this.host.name];
       case 'whoami': return [`${this.host.name.toLowerCase()}\\${this.user.toLowerCase()}`];
       case 'ver': return ['', 'Microsoft Windows [Version 10.0.20348.2700]', ''];
-      case 'sc': return this.sc(args);
+      case 'sc': return sc(this.host, args);
       case 'net': return this.netCommand(args);
       case 'nbtstat': return nbtstat(this.host, args);
       case 'help': case '?': return HELP;
@@ -261,7 +272,8 @@ export class WindowsShell extends BaseShell {
       case 'exit':
         if (this.remote) this.closed = true;
         return [];
-      default: return this.notFound(cmd);
+      // A batch file sees its arguments as typed: a quoted one keeps its quotes in %1 (%~1 drops them).
+      default: return this.cmd.batch(cmd, args.map((x) => (/[\s&()^]/.test(x) ? `"${x}"` : x))) ?? this.notFound(cmd);
     }
   }
 
@@ -344,55 +356,15 @@ export class WindowsShell extends BaseShell {
     return head ? [`HTTP/1.1 ${r.response.status} ${r.response.reason}`, `Server: ${r.response.server}`, `Content-Type: ${r.response.contentType}`, ''] : r.response.body.split('\n');
   }
 
-  // ------------------------------------------------------------ services (Server)
-
-  private server(): Server | undefined {
-    return runsServices(this.host.kind) ? (this.host as Server) : undefined;
-  }
-
-  private sc(args: string[]): string[] {
-    const verb = (args[0] ?? '').toLowerCase();
-    const s = this.server();
-    const unit = args[1] ? findUnit(args[1]) : undefined;
-    if (verb === 'query' && !args[1]) return s ? UNITS.flatMap((u) => this.scBlock(s, u.windows)) : [];
-    if (!s || !unit) return [`[SC] OpenService FAILED 1060:`, '', 'The specified service does not exist as an installed service.', ''];
-    if (verb === 'query') return this.scBlock(s, unit.windows);
-    if (verb !== 'start' && verb !== 'stop') return ['DESCRIPTION:', '        SC is a command line program used for communicating with the Service Control Manager.'];
-    const running = unitActive(s.services, unit.id);
-    if (verb === 'start' && running) return ['[SC] StartService FAILED 1056:', '', 'An instance of the service is already running.', ''];
-    if (verb === 'stop' && !running) return ['[SC] ControlService FAILED 1062:', '', 'The service has not been started.', ''];
-    s.setUnit(unit.id, verb === 'start');
-    return this.scBlock(s, unit.windows);
-  }
-
-  private scBlock(s: Server, name: string): string[] {
-    const unit = findUnit(name);
-    if (!unit) return [];
-    const on = unitActive(s.services, unit.id);
-    return ['', `SERVICE_NAME: ${unit.windows}`, '        TYPE               : 10  WIN32_OWN_PROCESS', `        STATE              : ${on ? '4  RUNNING' : '1  STOPPED'}`, '        WIN32_EXIT_CODE    : 0  (0x0)'];
-  }
-
   private netCommand(args: string[]): string[] {
     const verb = (args[0] ?? '').toLowerCase();
     if (verb === 'view') return netView(this.host, args[1]);
     if (verb === 'share') return netShare(this.host, args.slice(1));
-    if (verb !== 'use') return this.net(args);
+    if (verb !== 'use') return netService(this.host, args);
     const r = netUse(this.host, args.slice(1));
     if (Array.isArray(r)) return r;
     this.question = r;
     return [];
   }
 
-  private net(args: string[]): string[] {
-    const verb = (args[0] ?? '').toLowerCase();
-    const s = this.server();
-    if (verb !== 'start' && verb !== 'stop') return ['The syntax of this command is:', '', 'NET [ SHARE | START | STOP | USE | VIEW ]'];
-    if (verb === 'start' && !args[1]) return ['These Windows services are started:', '', ...(s ? UNITS.filter((u) => unitActive(s.services, u.id)).map((u) => `   ${u.windowsDisplay}`) : []), '', 'The command completed successfully.'];
-    const unit = args[1] ? findUnit(args.slice(1).join(' ')) : undefined;
-    if (!s || !unit) return ['The service name is invalid.', '', 'More help is available by typing NET HELPMSG 2185.'];
-    const running = unitActive(s.services, unit.id);
-    if ((verb === 'start') === running) return [verb === 'start' ? 'The requested service has already been started.' : `The ${unit.windowsDisplay} service is not started.`];
-    s.setUnit(unit.id, verb === 'start');
-    return [`The ${unit.windowsDisplay} service was ${verb === 'start' ? 'started' : 'stopped'} successfully.`, ''];
-  }
 }
