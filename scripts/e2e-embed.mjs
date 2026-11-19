@@ -230,6 +230,20 @@ try {
   assert.ok(pal.top >= stage.bottom - 1 && pal.width >= stage.width - 1, `palette below: ${JSON.stringify({ stage, pal })}`);
   await page.evaluate(() => globalThis.handle.destroy());
   assert.deepEqual(await page.evaluate(() => [...document.getElementById('app').attributes].map((a) => a.name)), ['id', 'data-embed'], 'no data-palette left');
+  // netfix.code (Codefix, D24): only a terminal on a one-PC lab, the whole mount; the host page edits its files.
+  await page.evaluate(() => {
+    globalThis.runs = 0;
+    globalThis.code = netfix.code(document.getElementById('app'), { os: 'linux', files: [{ path: 'suma.sh', content: 'echo $(( $1 + $2 ))\n' }], onRun: () => { globalThis.runs++; } });
+  });
+  await page.locator('#app .term-input').fill('bash suma.sh 2 3');
+  await page.locator('#app .term-input').press('Enter');
+  await page.waitForFunction(() => /\n5(\n|$)/.test(document.querySelector('#app .term-screen').innerText));
+  await page.evaluate(() => globalThis.code.run('echo hola > nota.txt'));
+  assert.deepEqual(await page.evaluate(() => globalThis.code.files().map((f) => f.path)), ['nota.txt', 'suma.sh'], 'what the terminal writes, the host lists');
+  assert.equal(await page.evaluate(() => globalThis.runs), 2, 'the host hears every command');
+  assert.ok((await page.locator('#app .terminal').boundingBox()).height > 400, 'the terminal fills the mount');
+  await page.evaluate(() => globalThis.code.destroy());
+  assert.deepEqual(await page.evaluate(() => [...document.getElementById('app').attributes].map((a) => a.name)), ['id', 'data-embed'], 'nothing of netfix.code left');
   assert.deepEqual(errors, []);
   process.stdout.write('e2e embed: ok\n');
 } finally {

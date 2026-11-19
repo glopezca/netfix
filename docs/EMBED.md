@@ -44,6 +44,17 @@ icono de la página; el tema sí necesita `<html data-theme>`, y `destroy()` lo 
 trabajo y devolver el elemento vacío. No admite restricciones (para una práctica, `netfix.embed`); su única opción es
 `toolbar`.
 
+## Solo el terminal, para un editor de código (`netfix.code`)
+
+Para Codefix (D24 de FixIT Classroom), `netfix.code(elemento, { os, topology?, files?, onRun? })` monta solo un
+terminal de Netfix —bash con `os: 'linux'` o cmd.exe con `os: 'windows'`— sobre un laboratorio de un PC (`PC`), a
+toda la altura del elemento, para una página que edita los archivos con su propio editor. `topology` es un archivo
+de Netfix guardado antes (si no, un PC nuevo); `files`, archivos `{ path, content }` que se escriben en la carpeta
+personal del usuario (rutas relativas, sin `..`); `onRun` se llama tras cada orden del terminal (los archivos pueden
+haber cambiado). El objeto que devuelve tiene `files()` (los archivos de texto de esa carpeta, sin los ocultos),
+`write(ruta, contenido)`, `remove(ruta)`, `run(línea)` (como si se escribiera y se pulsara Intro), `focus()`,
+`exportTopology()` (lo que la página guarda, y lo que corrige la comprobación `run`) y `destroy()`.
+
 ## Opciones de la página que aloja Netfix
 
 `actions` (un elemento de la página, con `toolbar`) recibe deshacer/rehacer, el portapapeles y el zoom. Con la barra

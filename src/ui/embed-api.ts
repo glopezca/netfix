@@ -5,12 +5,15 @@ import type { EmbedHandle } from '../classroom/embed.ts';
 import type { Evaluation } from '../classroom/evaluate.ts';
 import { isLocale } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
+import type { CodeHandle } from './code-mount.ts';
 
 export interface NetfixApi {
   embed(mount: HTMLElement, options?: unknown): EmbedHandle;
   /** The standalone lab (its settings, theme, autosave and preferences) mounted in a host page's element. */
   lab(mount: HTMLElement, options?: unknown): EmbedHandle;
   evaluate(topology: unknown, checklist: unknown): Evaluation;
+  /** Codefix (D24): a terminal on a one-PC lab whose files the host page edits ({ os, topology?, files?, onRun? }). */
+  code(mount: HTMLElement, options?: unknown): CodeHandle;
 }
 
 /** The element `netfix.embed` mounts on (the host page may pass anything). */

@@ -1,7 +1,7 @@
 /** Codefix on Netfix (D24): a one-PC lab with the starting files, marked by running commands in its bash or cmd.exe. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CODE_LAB_DEVICE, codeLab } from '../../src/classroom/code-lab.ts';
+import { CODE_LAB_DEVICE, CodeLab, codeLab } from '../../src/classroom/code-lab.ts';
 import { parseChecklist } from '../../src/classroom/checklist.ts';
 import { evaluate } from '../../src/classroom/evaluate.ts';
 import { Topology } from '../../src/net/topology.ts';
@@ -37,4 +37,24 @@ test('run checks are validated, and run only on a PC or server', () => {
   t.add('switch', 0, 0, { label: 'SW' });
   const e = evaluate(t.toJSON(), parseChecklist([{ id: 'x', weight: 1, check: { type: 'run', device: 'SW', command: 'ls', contains: 'a' } }]));
   assert.match(e.items[0]?.detail ?? '', /no es un PC ni un servidor/);
+});
+
+test('CodeLab: the workbench lists, writes and removes the user\'s files, and the terminal sees them', () => {
+  const lab = new CodeLab('linux');
+  lab.write('a.sh', 'echo a\n');
+  lab.write('lib/b.sh', 'echo b\n');
+  assert.deepEqual(lab.files().map((f) => f.path), ['a.sh', 'lib/b.sh'], 'no hidden files (.bashrc…)');
+  const sh = createShell(lab.pc, 'linux');
+  sh.prompt();
+  sh.run('echo c > c.txt');
+  assert.deepEqual(lab.files().map((f) => [f.path, f.content]), [['a.sh', 'echo a\n'], ['c.txt', 'c\n'], ['lib/b.sh', 'echo b\n']], 'what the terminal writes, the workbench lists');
+  lab.remove('a.sh');
+  const again = new CodeLab('linux', Topology.fromJSON(lab.toJSON()));
+  assert.deepEqual(again.files().map((f) => f.path), ['c.txt', 'lib/b.sh'], 'saved and loaded with the topology');
+  assert.throws(() => lab.write('../x', ''), /ruta/);
+  const win = new CodeLab('windows');
+  win.write('hola.bat', '@echo hola\n');
+  const cmd = createShell(win.pc, 'windows');
+  cmd.prompt();
+  assert.deepEqual(cmd.run('hola'), ['hola']);
 });

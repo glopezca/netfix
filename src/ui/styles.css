@@ -72,6 +72,8 @@
 /* The host's element for the workspace's actions (undo/redo, clipboard, zoom): only Netfix's look. */
 .netfix-actions.netfix-root { display: flex; align-items: center; position: static; overflow: visible; background: transparent; color: var(--ink); font: 15px/1.45 var(--font-ui); }
 
+/* netfix.code (Codefix): only the terminal, at the mount's height. */
+[data-code].netfix-root { display: block; & > .terminal { height: 100%; } }
 /* The host sizes the mount (the standalone page gives #app 100dvh in index.html); its windows stay inside it (position). */
 .netfix-root {
   position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden;

@@ -5,4 +5,5 @@
 import '../ui/boot.ts';
 export type { EmbedHandle, ChangeListener } from '../classroom/embed.ts';
 export type { NetfixApi } from '../ui/embed-api.ts';
+export type { CodeHandle } from '../ui/code-mount.ts';
 export type { ClassLanChooser, ClassLanClass, ClassLanLink, ClassLanMessage } from '../net/classlan.ts';

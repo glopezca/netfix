@@ -1,5 +1,6 @@
 /** Netfix application shell: top bar, workspace, palette, views, windows and simulation panel. */
 import { ClassLanState, askClass } from './lan-chooser.ts';
+import { mountCode } from './code-mount.ts';
 import { applyBrand, removeBrand } from './brand.ts';
 import { el, safeStorageGet, safeStorageSet } from './dom.ts';
 import { Canvas } from './canvas.ts';
@@ -609,4 +610,5 @@ export const NETFIX_API: NetfixApi = {
     }, host);
   },
   evaluate: evaluateFile,
+  code: mountCode,
 };
