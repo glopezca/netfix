@@ -1,16 +1,17 @@
 /**
- * The cmd.exe interpreter around the Windows terminal's commands: %VAR% expansion, & && || chains, ( ) groups, set
- * (and set /a), if, for, and batch files (.bat / .cmd) with @, echo off, rem / ::, labels, goto, call, shift, pause and
- * exit /b. The terminal runs each simple command (WinCmdHost.simple); everything else happens here.
+ * The cmd.exe interpreter around the Windows terminal's commands: %VAR% expansion, & && || chains, | pipes, < input,
+ * ( ) groups, set (set /a, set /p), if, for (for /l, for /f), and batch files (.bat / .cmd) with @, echo off,
+ * rem / ::, labels, goto, call, shift, pause and exit /b. The terminal runs each simple command (WinCmdHost.simple).
  */
-import { arith, batchArgs, closingParen, expandLine, openParens, splitChain } from './win-cmd-parse.ts';
+import { arith, batchArgs, closingParen, condition, expandLine, openParens, splitChain, type Link } from './win-cmd-parse.ts';
+import { forFHeader, forFLines, splitPipe, takeInput, type ForF } from './win-cmd-io.ts';
 import { hasWildcard } from './win-path.ts';
 
 export interface WinCmdHost {
   /** The system's variables (Path, USERNAME…), by their usual names. */
   env(): Record<string, string>;
-  /** One simple command (with its quotes and > redirection). */
-  simple(text: string): string[];
+  /** One simple command (with its quotes and > redirection), reading `input` (a pipe or <) if it reads any. */
+  simple(text: string, input: readonly string[] | null): { out: string[]; code?: number };
   prompt(): string;
   /** Linux path of a Windows path from the current folder, or null (another drive). */
   path(input: string): string | null;
@@ -30,11 +31,19 @@ interface Frame {
   readonly depth: number;
 }
 
+/** set /p waiting for the answer typed at its prompt; what was left of its line runs after it. */
+interface Waiting {
+  readonly name: string;
+  readonly prompt: string;
+  readonly f: Frame | null;
+  rest: readonly Link[] | null;
+}
+
 const SYNTAX = ['The syntax of the command is incorrect.'];
 /** A batch file running in a loop is cut off after this many lines (cmd.exe would run until Ctrl+C). */
 export const MAX_BATCH_STEPS = 10_000;
 const MAX_DEPTH = 16;
-// shortcut: errorlevel is guessed from the output (a Windows error message = 1); a per-command exit code would be exact.
+// shortcut: a command without its own exit code gets it from its output (a Windows error message = 1).
 const FAILED = /not recognized|Invalid Command|cannot find|syntax of the command|Access is denied|File Not Found|could not|is invalid|FAILED|not defined|Divide by zero|unable to|already exists|No such directory/i;
 
 const unquote = (s: string): string => (s.startsWith('"') && s.endsWith('"') && s.length >= 2 ? s.slice(1, -1) : s);
@@ -47,6 +56,9 @@ export class WinCmd {
   private steps = 0;
   /** Batch files run so far: a command that was one keeps the errorlevel its exit /b left. */
   private batches = 0;
+  /** The batch files running, innermost last (set /p leaves them here to go on after its answer). */
+  private stack: Frame[] = [];
+  private waiting: Waiting | null = null;
 
   constructor(host: WinCmdHost) {
     this.host = host;
@@ -61,40 +73,98 @@ export class WinCmd {
     return Object.entries(this.host.env()).find(([k]) => k.toLowerCase() === key)?.[1];
   }
 
+  /** The prompt of a set /p waiting for its answer, or null. */
+  get asking(): string | null {
+    return this.waiting?.prompt ?? null;
+  }
+
   /** A line typed at the prompt. */
   run(line: string): string[] {
     this.steps = 0;
+    this.stack = [];
     return this.line(expandLine(line, { get: (n) => this.get(n) }), null);
   }
 
-  /** A line already expanded: its chain, piece by piece. */
-  private line(text: string, f: Frame | null): string[] {
-    const out: string[] = [];
-    for (const link of splitChain(text)) {
-      if (f?.done) break;
-      if ((link.op === '&&' && this.errorlevel !== 0) || (link.op === '||' && this.errorlevel === 0)) continue;
-      out.push(...this.piece(link.text, f));
+  /** The answer to set /p: the variable takes it, then its line and the batch files waiting go on. */
+  answer(text: string): string[] {
+    const w = this.waiting;
+    if (!w) return [];
+    this.waiting = null;
+    this.steps = 0;
+    this.assign(w.name, text);
+    const out = w.rest ? this.links(w.rest, w.f) : [];
+    while (this.stack.length && !this.waiting) {
+      out.push(...this.loop(this.stack[this.stack.length - 1] as Frame));
+      if (!this.waiting) this.stack.pop();
     }
     return out;
   }
 
-  private piece(raw: string, f: Frame | null): string[] {
-    const t = raw.trim().replace(/^@\s*/, '');
+  /** Ctrl+C at a set /p prompt: the batch files stop. */
+  cancel(): void {
+    this.waiting = null;
+    this.stack = [];
+  }
+
+  /** A file's lines (nul: none), or null when it cannot be read. */
+  readLines(name: string): string[] | null {
+    if (name.toLowerCase() === 'nul') return [];
+    const path = this.host.path(name);
+    const text = path === null || this.host.kindOf(path) !== 'file' ? null : this.host.read(path);
+    if (text === null) return null;
+    const lines = text.split(/\r?\n/);
+    if (lines.at(-1) === '') lines.pop();
+    return lines;
+  }
+
+  /** A line already expanded: its chain, piece by piece. */
+  private line(text: string, f: Frame | null): string[] {
+    return this.links(splitChain(text), f);
+  }
+
+  private links(list: readonly Link[], f: Frame | null): string[] {
+    const out: string[] = [];
+    for (const [i, link] of list.entries()) {
+      if (f?.done || this.waiting) break;
+      if ((link.op === '&&' && this.errorlevel !== 0) || (link.op === '||' && this.errorlevel === 0)) continue;
+      out.push(...this.pipeline(link.text, f));
+      // The innermost chain keeps its rest; shortcut: the rest of an outer for loop or ( ) block around set /p is not run.
+      const w = this.waiting as Waiting | null;
+      if (w && !w.rest) w.rest = list.slice(i + 1);
+    }
+    return out;
+  }
+
+  /** a | b | c: each command reads what the one before wrote. */
+  private pipeline(text: string, f: Frame | null): string[] {
+    const stages = splitPipe(text);
+    if (stages.length === 1) return this.piece(text, f, null, false);
+    if (stages.some((s) => !s.trim())) { this.errorlevel = 1; return SYNTAX; }
+    let input: string[] | null = null;
+    for (const [i, s] of stages.entries()) input = this.piece(s, f, input, i > 0);
+    return input ?? [];
+  }
+
+  private piece(raw: string, f: Frame | null, piped: readonly string[] | null, inPipe: boolean): string[] {
+    const red = takeInput(raw);
+    const input = red.path === null ? piped : this.readLines(red.path);
+    if (red.path !== null && input === null) { this.errorlevel = 1; return ['The system cannot find the file specified.']; }
+    const lead = red.text.replace(/^\s*@?\s*/, '');
+    const t = lead.trimEnd();
     if (!t || t.startsWith('::') || t.startsWith(':')) return [];
     if (t.startsWith('(')) {
       const end = closingParen(t, 0);
       if (end === t.length - 1) return this.line(t.slice(1, -1), f);
     }
-    const m = /^([^\s(=;,]+)\s*(.*)$/s.exec(t);
+    const m = /^([^\s(=;,]+)\s*(.*)$/s.exec(lead);
     const word = (m?.[1] ?? '').toLowerCase();
     const rest = m?.[2] ?? '';
     switch (word) {
-      case 'rem': return [];
-      case 'set': return this.set(rest);
+      case 'set': return this.set(rest, f, input, inPipe);
       case 'if': return this.ifCmd(rest, f);
       case 'for': return this.forCmd(rest, f);
       case 'pause': return ['Press any key to continue . . .'];
-      case 'setlocal': case 'endlocal': return [];
+      case 'rem': case 'setlocal': case 'endlocal': return [];
       case 'goto': return f ? this.goto(f, rest.trim().replace(/^:/, '')) : [];
       case 'shift': if (f) f.args = [f.args[0] ?? '', ...f.args.slice(2)]; return [];
       case 'call': return this.call(rest, f);
@@ -107,17 +177,18 @@ export class WinCmd {
     }
     if (f && word === 'exit') { f.done = true; return []; }
     const before = this.batches;
-    const out = this.host.simple(t);
-    if (this.batches === before) this.errorlevel = out.some((l) => FAILED.test(l)) ? 1 : 0;
-    return out;
+    const r = this.host.simple(t, input);
+    if (this.batches === before) this.errorlevel = r.code ?? (r.out.some((l) => FAILED.test(l)) ? 1 : 0);
+    return r.out;
   }
 
   // ------------------------------------------------------------ set
 
-  private set(rest: string): string[] {
+  private set(rest: string, f: Frame | null, input: readonly string[] | null, inPipe: boolean): string[] {
     const r = rest.trim();
-    if (/^\/a\b/i.test(r)) return this.setArith(r.slice(2));
-    if (/^\/p\b/i.test(r)) return SYNTAX; // shortcut: no set /p (it needs to wait for a typed answer)
+    if (/^\/p\b/i.test(r)) return this.setPrompt(rest.replace(/^\s*\/p\s*/i, ''), f, input, inPipe);
+    // At the prompt set /a prints the result; a batch file does not.
+    if (/^\/a\b/i.test(r)) { const out = this.setArith(r.slice(2)); return f ? [] : out; }
     if (!r) return this.listVars('');
     const a = r.startsWith('"') ? r.slice(1, r.lastIndexOf('"') > 0 ? r.lastIndexOf('"') : undefined) : r;
     const eq = a.indexOf('=');
@@ -129,6 +200,28 @@ export class WinCmd {
     else this.vars.set(name.toLowerCase(), [name, value]);
     this.errorlevel = 0;
     return [];
+  }
+
+  /** set /p NAME=prompt: the first line of < input, or the answer typed (in a pipe it runs apart and sets nothing). */
+  private setPrompt(spec: string, f: Frame | null, input: readonly string[] | null, inPipe: boolean): string[] {
+    const a = spec.startsWith('"') ? spec.slice(1, spec.lastIndexOf('"') > 0 ? spec.lastIndexOf('"') : undefined) : spec;
+    const eq = a.indexOf('=');
+    if (eq < 0) return SYNTAX;
+    const name = a.slice(0, eq);
+    const prompt = a.slice(eq + 1);
+    if (input === null) {
+      this.waiting = { name, prompt, f, rest: null };
+      return [];
+    }
+    this.assign(inPipe ? '' : name, inPipe ? '' : (input[0] ?? ''));
+    return prompt ? [prompt] : [];
+  }
+
+  /** What set /p read: an empty answer leaves the variable as it was and errorlevel 1. */
+  private assign(name: string, value: string): void {
+    if (!name || !value) { this.errorlevel = 1; return; }
+    this.vars.set(name.toLowerCase(), [name, value]);
+    this.errorlevel = 0;
   }
 
   private listVars(prefix: string): string[] {
@@ -144,29 +237,10 @@ export class WinCmd {
     if (typeof r === 'string') { this.errorlevel = 1; return [r]; }
     for (const [name, value] of r.sets) this.vars.set(name.toLowerCase(), [name, value]);
     this.errorlevel = 0;
-    // At the prompt set /a prints the result; a batch file does not (the caller drops it then).
     return [String(r.last)];
   }
 
   // ------------------------------------------------------------ if and for
-
-  private condition(s: string): { ok: boolean; rest: string } | null {
-    const ci = /^\/i\s+/i.test(s);
-    let t = ci ? s.replace(/^\/i\s+/i, '') : s;
-    const not = /^not\s+/i.test(t);
-    if (not) t = t.replace(/^not\s+/i, '');
-    const done = (ok: boolean, rest: string | undefined): { ok: boolean; rest: string } => ({ ok: ok !== not, rest: rest ?? '' });
-    let m = /^exist\s+("[^"]*"|\S+)\s*(.*)$/is.exec(t);
-    if (m) return done(this.exists(unquote(m[1] ?? '')), m[2]);
-    if ((m = /^defined\s+(\S+)\s*(.*)$/is.exec(t))) return done(this.get(m[1] ?? '') !== undefined, m[2]);
-    if ((m = /^errorlevel\s+(\d+)\s*(.*)$/is.exec(t))) return done(this.errorlevel >= Number(m[1]), m[2]);
-    if ((m = /^("[^"]*"|[^\s=]+)\s*==\s*("[^"]*"|[^\s=]*)\s*(.*)$/s.exec(t))) {
-      const [a, b] = [m[1] ?? '', m[2] ?? ''];
-      return done(ci ? a.toLowerCase() === b.toLowerCase() : a === b, m[3]);
-    }
-    if ((m = /^("[^"]*"|\S+)\s+(EQU|NEQ|LSS|LEQ|GTR|GEQ)\s+("[^"]*"|\S+)\s*(.*)$/is.exec(t))) return done(compare(m[1] ?? '', (m[2] ?? '').toUpperCase(), m[3] ?? '', ci), m[4]);
-    return null;
-  }
 
   private exists(p: string): boolean {
     if (hasWildcard(p)) return this.host.glob(p).length > 0;
@@ -175,7 +249,7 @@ export class WinCmd {
   }
 
   private ifCmd(rest: string, f: Frame | null): string[] {
-    const c = this.condition(rest.trim());
+    const c = condition(rest.trim(), { get: (n) => this.get(n), errorlevel: this.errorlevel, exists: (p) => this.exists(p) });
     if (!c || !c.rest) return SYNTAX;
     let then = c.rest;
     let otherwise = '';
@@ -189,8 +263,9 @@ export class WinCmd {
     return this.line(c.ok ? then : otherwise, f);
   }
 
-  /** for %v in (set) do cmd, and for /l %v in (start,step,end) do cmd (%%v in a batch file). */
+  /** for %v in (set) do cmd, for /l %v in (start,step,end) do cmd and for /f (%%v in a batch file). */
   private forCmd(rest: string, f: Frame | null): string[] {
+    if (/^\/f\b/i.test(rest.trim())) return this.forF(rest.trim(), f);
     const m = /^(\/l\s+)?%(\w)\s+in\s*\(([^)]*)\)\s*do\s+(.+)$/is.exec(rest.trim());
     if (!m) return SYNTAX;
     const [, numeric, v = '', set = '', body = ''] = m;
@@ -205,14 +280,45 @@ export class WinCmd {
     } else {
       values = batchArgs(set.replace(/[,;]/g, ' ')).flatMap((item) => (hasWildcard(item) ? this.host.glob(unquote(item)) : [item]));
     }
+    return this.turns(values.map((value) => new Map([[v, value]])), body, f);
+  }
+
+  /** Runs the body once per turn with its loop variables replaced; every turn counts against the batch limit. */
+  private turns(all: readonly ReadonlyMap<string, string>[], body: string, f: Frame | null): string[] {
     const out: string[] = [];
-    for (const value of values) {
-      if (f?.done) break;
-      // Every turn counts against the same limit as batch lines: nested loops cannot run on for ever.
+    for (const vars of all) {
+      if (f?.done || this.waiting) break;
       if (++this.steps > MAX_BATCH_STEPS) { out.push(`^C (Netfix stopped the for loop after ${MAX_BATCH_STEPS} turns)`); if (f) f.done = true; break; }
-      out.push(...this.line(body.replaceAll(`%${v}`, value), f));
+      const re = new RegExp(`%([${[...vars.keys()].map((k) => k.replace(/[\\\]^-]/g, '\\$&')).join('')}])`, 'g');
+      out.push(...this.line(body.replace(re, (all1, k: string) => vars.get(k) ?? all1), f));
     }
     return out;
+  }
+
+  /** for /f ["options"] %v in (files | "string" | 'command') do cmd (with usebackq: "files", 'string', `command`). */
+  private forF(text: string, f: Frame | null): string[] {
+    const h = forFHeader(text);
+    if (Array.isArray(h)) return h;
+    const lines = this.forSource(h.source, h.options);
+    if ('error' in lines) return lines.error;
+    const first = h.variable.charCodeAt(0);
+    const turns = forFLines(lines.lines, h.options).map((vals) => new Map(vals.map((value, i) => [String.fromCharCode(first + i), value])));
+    return this.turns(turns, h.body, f);
+  }
+
+  private forSource(src: string, o: ForF): { lines: string[] } | { error: string[] } {
+    const cmd = (o.usebackq ? /^`([^]*)`$/ : /^'([^]*)'$/).exec(src);
+    // The command runs apart: the ^ that kept its | & > from the for line are gone by then.
+    if (cmd) return { lines: this.line((cmd[1] ?? '').replace(/\^(.)/g, '$1'), null) };
+    const str = (o.usebackq ? /^'([^]*)'$/ : /^"([^]*)"$/).exec(src);
+    if (str) return { lines: [str[1] ?? ''] };
+    const lines: string[] = [];
+    for (const name of batchArgs(src).map(unquote)) {
+      const got = this.readLines(name);
+      if (got === null) return { error: [`The system cannot find the file ${name}.`] };
+      lines.push(...got);
+    }
+    return { lines };
   }
 
   // ------------------------------------------------------------ batch files
@@ -243,8 +349,16 @@ export class WinCmd {
   }
 
   private frame(f: Frame): string[] {
+    this.stack.push(f);
+    const out = this.loop(f);
+    if (!this.waiting) this.stack.pop();
+    return out;
+  }
+
+  /** A batch file's lines from where it is, until it ends, exits or waits for set /p. */
+  private loop(f: Frame): string[] {
     const out: string[] = [];
-    while (!f.done && f.pc < f.lines.length) {
+    while (!f.done && !this.waiting && f.pc < f.lines.length) {
       if (++this.steps > MAX_BATCH_STEPS) { out.push(`^C (Netfix stopped ${f.name} after ${MAX_BATCH_STEPS} lines)`); f.done = true; break; }
       let text = f.lines[f.pc++] ?? '';
       // A ( left open goes on to the next lines, up to its ).
@@ -252,9 +366,7 @@ export class WinCmd {
       const trimmed = text.trim();
       if (!trimmed || trimmed.startsWith(':')) continue;
       if (f.echo.on && !trimmed.startsWith('@')) out.push(`${this.host.prompt()}${trimmed}`);
-      const silent = /^@?\s*set\s+\/a\b/i.test(trimmed); // set /a prints nothing inside a batch file
-      const lines = this.line(expandLine(text, { get: (n) => this.get(n), args: f.args }), f);
-      if (!silent) out.push(...lines);
+      out.push(...this.line(expandLine(text, { get: (n) => this.get(n), args: f.args }), f));
     }
     return out;
   }
@@ -284,11 +396,4 @@ export class WinCmd {
     f.done = true;
     return [];
   }
-}
-
-function compare(a: string, op: string, b: string, ci: boolean): boolean {
-  const [x, y] = [unquote(a), unquote(b)];
-  const numeric = /^-?\d+$/.test(x) && /^-?\d+$/.test(y);
-  const d = numeric ? Number(x) - Number(y) : (ci ? x.toLowerCase() : x).localeCompare(ci ? y.toLowerCase() : y);
-  return { EQU: d === 0, NEQ: d !== 0, LSS: d < 0, LEQ: d <= 0, GTR: d > 0, GEQ: d >= 0 }[op] ?? false;
 }

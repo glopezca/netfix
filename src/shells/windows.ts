@@ -23,6 +23,7 @@ import type { Server } from '../devices/server.ts';
 import { unitActive, openPorts } from '../services/units.ts';
 import { netService, sc, serverOf } from './win-services.ts';
 import { WinCmd } from './win-cmd.ts';
+import { FILTERS, runFilter } from './win-cmd-io.ts';
 import { startWinMc } from './win-mc.ts';
 import type { McApp } from '../editors/mc.ts';
 import type { Frame, KeyInput } from '../editors/buffer.ts';
@@ -101,7 +102,7 @@ export class WindowsShell extends BaseShell {
     this.drives = new WinDrives(host);
     this.cmd = new WinCmd({
       env: () => this.env(),
-      simple: (text) => this.simpleLine(text),
+      simple: (text, input) => this.simpleLine(text, input),
       prompt: () => this.files().prompt(),
       path: (input) => this.files().winFs.path(input),
       kindOf: (path) => this.files().winFs.kindOf(path),
@@ -130,6 +131,7 @@ export class WindowsShell extends BaseShell {
   protected localPrompt(): string {
     if (this.ns) return '> ';
     if (this.question) return this.question.prompt;
+    if (this.cmd.asking !== null) return this.cmd.asking;
     const files = this.files();
     const drive = files.pending ? null : this.drives.here();
     const here = drive === null ? files.prompt() : `${drive}>`;
@@ -155,23 +157,29 @@ export class WindowsShell extends BaseShell {
       this.question = null;
       return q.answer(line);
     }
+    if (this.cmd.asking !== null) return this.cmd.answer(line);
     const files = this.files();
     if (files.pending) return files.answer(line);
     return this.cmd.run(line);
   }
 
-  /** One simple cmd.exe command (the line already expanded): quoted words, and > or >> sending the output to a file. */
-  private simpleLine(line: string): string[] {
+  /**
+   * One simple cmd.exe command (the line already expanded): quoted words, and > or >> sending the output to a file.
+   * find, findstr, sort and more read `input` (a pipe or <) and leave their own errorlevel.
+   */
+  private simpleLine(line: string, input: readonly string[] | null): { out: string[]; code?: number } {
     const files = this.files();
     const parsed = splitCmdLine(line.trim().replace(GLUED, '$1$2 '));
-    if (parsed.error) return ['The syntax of the command is incorrect.'];
+    if (parsed.error) return { out: ['The syntax of the command is incorrect.'] };
     const [first, ...args] = parsed.words;
-    if (!first) return [];
+    if (!first) return { out: [] };
     // echo. and echo: print what follows (a blank line when nothing does).
     const cmd = /^echo[.:(]/i.test(first) ? 'echo' : first;
-    if (cmd.toLowerCase() === 'ssh') return this.startSsh(args);
-    const out = this.runLocal(cmd, args, parsed.text);
-    return parsed.redirect ? this.drives.redirect(parsed.redirect, out) ?? files.redirect(parsed.redirect, out) : out;
+    if (cmd.toLowerCase() === 'ssh') return { out: this.startSsh(args) };
+    const name = cmd.toLowerCase().replace(/\.exe$/, '');
+    const filtered = FILTERS.has(name) ? runFilter(name, parsed.text.trim().replace(/^\S+\s*/, ''), input, (n) => this.cmd.readLines(n)) : null;
+    const out = filtered?.out ?? this.runLocal(cmd, args, parsed.text);
+    return { out: parsed.redirect ? this.drives.redirect(parsed.redirect, out) ?? files.redirect(parsed.redirect, out) : out, code: filtered?.code };
   }
 
   protected override localSecret(): boolean {
@@ -181,6 +189,7 @@ export class WindowsShell extends BaseShell {
   protected override localInterrupt(): string[] {
     this.ns = null;
     this.question = null;
+    this.cmd.cancel();
     return [];
   }
 
