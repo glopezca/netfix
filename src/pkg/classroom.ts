@@ -5,6 +5,8 @@
 export { allowsDevice, allowsLab, allowsTab, parseRestrictions, NO_RESTRICTIONS, DEVICE_KINDS } from '../classroom/restrictions.ts';
 export type { Restrictions } from '../classroom/restrictions.ts';
 export { parseChecklist } from '../classroom/checklist.ts';
+export { codeLab, CODE_LAB_DEVICE } from '../classroom/code-lab.ts';
+export type { CodeLabFile } from '../classroom/code-lab.ts';
 export type { Check, ChecklistItem } from '../classroom/checklist.ts';
 export { evaluate, WORK_LIMIT, RUNTIME_INFO, EVALUATION_VERSION } from '../classroom/evaluate.ts';
 export type { Evaluation, ItemResult, NetfixRuntimeInfo } from '../classroom/evaluate.ts';
