@@ -7,6 +7,9 @@
 import type { DeviceRecord, Placed } from './topology.ts';
 import { hostnameFromLabel, iosHostnameFromLabel, validSystemName } from '../core/hostname.ts';
 import { MAX_ISP } from '../devices/cloud-config.ts';
+import { isExtensionDevice } from './device-kinds.ts';
+
+import { cloudOf, hostOf, iosOf } from './device-guards.ts';
 
 const MAX_NAME = 64;
 
@@ -24,13 +27,13 @@ export function placedOf(device: object): Placed | undefined {
   return places.get(device);
 }
 
-const isIos = (p: Placed): boolean => p.device.kind === 'router' || p.device.kind === 'switch';
+const isIos = (p: Placed): boolean => iosOf(p.device);
 /** The name a device shows now (IOS: compared without case). */
-const shown = (p: Placed): string => (p.device.kind === 'router' || p.device.kind === 'switch' ? p.device.hostname : p.device.name).toLowerCase();
+const shown = (p: Placed): string => (iosOf(p.device) ? p.device.hostname : p.device.name).toLowerCase();
 
 function freeName(p: Placed): string {
   const d = p.device;
-  const base = d.kind === 'router' || d.kind === 'switch' ? iosHostnameFromLabel(p.label, d.kind) : hostnameFromLabel(p.label);
+  const base = iosOf(d) ? iosHostnameFromLabel(p.label, d.kind) : hostnameFromLabel(p.label);
   const ios = isIos(p);
   const taken = new Set([...(owners.get(p)?.() ?? [])].flatMap((o) => (o === p || isIos(o) !== ios ? [] : [shown(o)])));
   let name = base;
@@ -42,16 +45,17 @@ function freeName(p: Placed): string {
 export function syncDeviceName(p: Placed): void {
   const d = p.device;
   const name = freeName(p);
-  if (d.kind === 'cloud' || d.kind === 'classlan') d.name = name;
-  else if (d.kind === 'router' || d.kind === 'switch') d.setDerivedHostname(name);
-  else if (d.name !== name || d.transientName !== undefined) d.setHostname(name);
+  if (iosOf(d)) d.setDerivedHostname(name);
+  else if (hostOf(d)) {
+    if (d.name !== name || d.transientName !== undefined) d.setHostname(name);
+  } else if (cloudOf(d) || isExtensionDevice(d)) d.name = name;
 }
 
 /** Equipo → name: the label and, from it, the host name. */
 export function renameDevice(p: Placed, label: string): void {
   const d = p.device;
   // The ISP name follows the device's name until someone edits it (before 0.64 it started as «ISP <name>»).
-  if (d.kind === 'cloud' && [p.label, `ISP ${p.label}`].includes(d.settings.isp)) d.setSettings({ ...d.settings, isp: label.slice(0, MAX_ISP) });
+  if (cloudOf(d) && [p.label, `ISP ${p.label}`].includes(d.settings.isp)) d.setSettings({ ...d.settings, isp: label.slice(0, MAX_ISP) });
   p.label = label;
   syncDeviceName(p);
 }
@@ -81,7 +85,7 @@ export function savedLabel(rec: DeviceRecord, taken: Set<string>): string {
   if (rec.kind !== 'router' && rec.kind !== 'switch') return rec.label;
   const line = rec.config?.find((l) => l.startsWith('hostname '));
   const name = line?.slice('hostname '.length).trim() ?? '';
-  if (!name || IOS_DEFAULT.test(name) || name.length > MAX_LABEL || iosHostnameFromLabel(rec.label, rec.kind) === name) return rec.label;
+  if (!name || IOS_DEFAULT.test(name) || name.length > MAX_LABEL || iosHostnameFromLabel(rec.label, rec.kind as 'router' | 'switch') === name) return rec.label;
   // Another device already has (or took) that name: this one keeps its own, so names stay unique.
   if (taken.has(name)) return rec.label;
   taken.add(name);

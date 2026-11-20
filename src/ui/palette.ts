@@ -4,7 +4,8 @@
  */
 import { el, staticSvg } from './dom.ts';
 import type { Tool } from './canvas.ts';
-import { ICONS, modelLabel } from './icons.ts';
+import { iconOf, modelLabel } from './icons.ts';
+import { deviceUi, deviceUiKinds } from './device-kind-ui.ts';
 import type { DeviceKind } from '../net/topology.ts';
 import { t } from '../i18n/t.ts';
 import type { MessageKey } from '../i18n/catalog.ts';
@@ -27,34 +28,39 @@ export interface PaletteActions {
 export type ClipAction = 'copy' | 'paste' | 'duplicate' | 'delete';
 
 export const PLACEABLE: readonly (readonly [DeviceKind, MessageKey])[] = [
-  ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'], ['classlan', 'kind.classlan'],
+  ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
 ];
 
-/** The Classroom LAN is placeable only when the host page (Netfix Classroom) gives the link to the class. */
-let classLanOffered = false;
-export function offerClassLan(on: boolean): void { classLanOffered = on; }
-const offered = (kind: DeviceKind): boolean => kind !== 'classlan' || classLanOffered;
+/** A registered kind is in the palette when its interface says so (e.g. only with the host page's context). */
+const offered = (kind: DeviceKind): boolean => deviceUi(kind)?.offered?.() ?? true;
+
+/** The palette's buttons, built-in kinds then registered ones, with their names in the page's language. */
+const placeable = (): readonly (readonly [DeviceKind, string])[] => [
+  ...PLACEABLE.map(([k, name]) => [k, t(name)] as const),
+  ...deviceUiKinds().map((k) => [k, deviceUi(k)?.name() ?? k] as const),
+];
 
 /** A choice of a pile: a device kind and, for a PC, its system. */
 interface Variant { readonly kind: DeviceKind; readonly system?: PcSystem; readonly name: string; readonly model: string }
 
 /** The piles (setting «Agrupar equipos parecidos»): one button per family, its variants in a small menu. */
-function piles(): readonly (readonly [MessageKey, readonly Variant[]])[] {
+function piles(): readonly (readonly [string, readonly Variant[]])[] {
   const pc = (system: PcSystem): Variant => ({ kind: 'pc', system, name: `${t('kind.pc')} ${t(`os.${system}`)}`, model: system === 'both' ? `${t('os.windows')} + ${t('os.linux')}` : t(`os.${system}`) });
+  const one = (kind: DeviceKind, name: string): readonly [string, readonly Variant[]] => [name, [{ kind, name, model: modelLabel(kind) }]];
   return [
-    ['kind.pc', [pc('windows'), pc('linux'), pc('both')]],
-    ['kind.server', [{ kind: 'server', name: t('kind.server'), model: modelLabel('server') }]],
-    ['kind.switch', [{ kind: 'switch', name: t('kind.switch'), model: modelLabel('switch') }]],
-    ['pal.routers', [{ kind: 'router', name: t('kind.router'), model: modelLabel('router') }, { kind: 'linuxrouter', name: t('kind.linuxrouter'), model: modelLabel('linuxrouter') }]],
-    ['kind.cloud', [{ kind: 'cloud', name: t('kind.cloud'), model: modelLabel('cloud') }]],
-    ['kind.classlan', [{ kind: 'classlan', name: t('kind.classlan'), model: modelLabel('classlan') }]],
+    [t('kind.pc'), [pc('windows'), pc('linux'), pc('both')]],
+    one('server', t('kind.server')),
+    one('switch', t('kind.switch')),
+    [t('pal.routers'), [{ kind: 'router', name: t('kind.router'), model: modelLabel('router') }, { kind: 'linuxrouter', name: t('kind.linuxrouter'), model: modelLabel('linuxrouter') }]],
+    one('cloud', t('kind.cloud')),
+    ...deviceUiKinds().map((k) => one(k, deviceUi(k)?.name() ?? k)),
   ];
 }
 
 const variantKey = (v: Variant): string => (v.system ? `place-${v.kind}-${v.system}` : `place-${v.kind}`);
 
 function variantBtn(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, v: Variant, cls: string): HTMLButtonElement {
-  const b = el('button', { type: 'button', class: cls, 'aria-pressed': 'false' }, staticSvg(ICONS[v.kind]), el('span', { class: 'pal-name' }, v.name), el('span', { class: 'pal-model' }, v.model));
+  const b = el('button', { type: 'button', class: cls, 'aria-pressed': 'false' }, staticSvg(iconOf(v.kind)), el('span', { class: 'pal-name' }, v.name), el('span', { class: 'pal-model' }, v.model));
   b.addEventListener('click', () => actions.selectTool({ kind: 'place', device: v.kind, ...(v.system ? { system: v.system } : {}) }, variantKey(v)));
   buttons.set(variantKey(v), b);
   return b;
@@ -79,7 +85,7 @@ function pileBtn(actions: PaletteActions, buttons: Map<string, HTMLButtonElement
   const first = variants[0]!;
   const menu = el('div', { class: 'pal-pile-menu', role: 'group', 'aria-label': name, popover: 'manual' });
   const main = el('button', { type: 'button', class: 'pal-item pal-pile-btn', 'aria-expanded': 'false', title: t('pal.pileHint') },
-    staticSvg(ICONS[first.kind]), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, t('pal.pileCount', { n: String(variants.length) })));
+    staticSvg(iconOf(first.kind)), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, t('pal.pileCount', { n: String(variants.length) })));
   const pile = el('div', { class: 'pal-pile' }, main, menu);
   const isOpen = (): boolean => main.getAttribute('aria-expanded') === 'true';
   // Safari does not focus a clicked button, so focusout alone would leave the menu open: a press elsewhere closes it.
@@ -110,24 +116,29 @@ function pileBtn(actions: PaletteActions, buttons: Map<string, HTMLButtonElement
 }
 
 /**
- * One Classroom LAN per lab: its button is off while one is on the canvas, and on again once it is deleted. `leave`
- * drops the tool if it was still picked. shortcut: paste/duplicate can still copy one; block them too if it matters.
+ * Kinds that are one per lab (their interface's `oneOnly`): a button is off while one is on the canvas, and on again
+ * once it is deleted. `leave` drops the tool if it was still picked. shortcut: paste/duplicate can still copy one;
+ * block them too if it matters.
  */
-export function syncClassLanButton(buttons: ReadonlyMap<string, HTMLButtonElement>, placed: boolean, leave: () => void): void {
-  const b = buttons.get('place-classlan');
-  if (!b) return;
-  if (placed && b.getAttribute('aria-pressed') === 'true') leave();
-  b.disabled = placed;
-  b.title = placed ? t('pal.classlanOne') : '';
+export function syncOneOnlyButtons(buttons: ReadonlyMap<string, HTMLButtonElement>, placed: ReadonlySet<string>, leave: () => void): void {
+  for (const kind of deviceUiKinds()) {
+    const one = deviceUi(kind)?.oneOnly;
+    const b = buttons.get(`place-${kind}`);
+    if (!one || !b) continue;
+    const taken = placed.has(kind);
+    if (taken && b.getAttribute('aria-pressed') === 'true') leave();
+    b.disabled = taken;
+    b.title = taken ? one() : '';
+  }
 }
 
 /** The palette's devices: one button each, or the piles when the setting is on; what restrictions allow only. */
 export function deviceGroup(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, policy: Restrictions = NO_RESTRICTIONS): HTMLElement | null {
   if (!policy.editTopology) return null;
   const items = devicePiles()
-    ? piles().map(([name, all]) => [t(name), all.filter((v) => offered(v.kind) && allowsDevice(policy, v.kind))] as const).filter(([, vs]) => vs.length > 0)
+    ? piles().map(([name, all]) => [name, all.filter((v) => offered(v.kind) && allowsDevice(policy, v.kind))] as const).filter(([, vs]) => vs.length > 0)
       .map(([name, vs]) => (vs.length === 1 ? variantBtn(actions, buttons, vs[0]!, 'pal-item') : pileBtn(actions, buttons, name, vs)))
-    : PLACEABLE.filter(([k]) => offered(k) && allowsDevice(policy, k)).map(([k, name]) => variantBtn(actions, buttons, { kind: k, name: t(name), model: modelLabel(k) }, 'pal-item'));
+    : placeable().filter(([k]) => offered(k) && allowsDevice(policy, k)).map(([k, name]) => variantBtn(actions, buttons, { kind: k, name, model: modelLabel(k) }, 'pal-item'));
   return items.length ? el('div', { class: 'pal-group pal-devices', role: 'group', 'aria-label': t('pal.devices') }, ...items) : null;
 }
 

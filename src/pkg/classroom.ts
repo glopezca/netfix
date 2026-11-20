@@ -17,5 +17,8 @@ import { registerRunCheck } from '../classroom/run-check.ts';
 export { runOnHost } from '../classroom/host-run.ts';
 export type { HostRun } from '../classroom/host-run.ts';
 
-// S23: `run` is a registered type until it moves to Classroom's extension pack.
+import { registerClassLanKind } from '../devices/classlan-kind.ts';
+
+// S23: `run` and the Classroom LAN are registered until they move to FixIT Classroom's extension pack.
 registerRunCheck();
+registerClassLanKind();

@@ -51,7 +51,7 @@ test('reserving a lease of a client that already had a reservation moves it inst
 test('a Linux router off DHCP keeps the lease\'s address as static and can then change it', () => {
   const t = new Topology();
   const srv = t.add('server', 0, 0).device as Server;
-  const r = t.add('linux-router', 0, 0).device as LinuxRouter;
+  const r = t.add('linuxrouter', 0, 0).device as LinuxRouter;
   t.connect({ device: srv.id, port: 'FastEthernet0' }, { device: r.id, port: r.primaryPort() });
   srv.setStatic({ ip: ip('192.168.1.2'), prefix: 24 });
   srv.setServices({ ...srv.services, dhcp: { enabled: true, pools: [{ name: 'serverPool', start: ip('192.168.1.100'), prefix: 24, maxUsers: 50, leaseMinutes: 60, reservations: [], gateway: ip('192.168.1.1') }] } });

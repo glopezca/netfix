@@ -3,6 +3,7 @@
  * (host name) and «Interfaces» are always there. Saved with the topology, only as differences from the defaults.
  */
 import type { DeviceKind } from './topology.ts';
+import { BUILTIN_DEVICE_KINDS, isBuiltinKind, type BuiltinDeviceKind } from './device-kinds.ts';
 
 /**
  * The service panels of a Server or Linux router, each switched on its own. Samba is a lab feature of PCs too, but its
@@ -15,25 +16,26 @@ export type FeatureId = (typeof FEATURE_IDS)[number];
 export type LabFeatures = Readonly<Partial<Record<DeviceKind, readonly FeatureId[]>>>;
 
 /** What can be switched on each kind, in the order the settings list them. */
-export const FEATURES_BY_KIND: Readonly<Record<DeviceKind, readonly FeatureId[]>> = {
+export const FEATURES_BY_KIND: Readonly<Record<BuiltinDeviceKind, readonly FeatureId[]>> = {
   pc: ['ip', 'apps', 'samba', 'winshare', 'linux', 'windows'],
   server: ['ip', ...SERVICE_IDS, 'samba', 'winshare', 'sysctl', 'firewall', 'linux', 'windows'],
   linuxrouter: ['sysctl', 'firewall', 'vpn', ...SERVICE_IDS, 'samba', 'winshare', 'linux', 'windows'],
   router: ['cli', 'web'],
   switch: ['cli', 'web'],
   cloud: [],
-  classlan: [],
 };
+/** A registered kind (net/device-kinds.ts) has no features to switch. */
+const catalogue = (kind: DeviceKind): readonly FeatureId[] => (isBuiltinKind(kind) ? FEATURES_BY_KIND[kind] : []);
 
 /** On by default, except the Linux router's Windows terminal (each device then decides: device-apps.ts). */
 const DEFAULT_OFF: Readonly<Partial<Record<DeviceKind, readonly FeatureId[]>>> = {
   linuxrouter: ['windows'],
 };
 
-const KINDS = Object.keys(FEATURES_BY_KIND) as DeviceKind[];
+const KINDS = BUILTIN_DEVICE_KINDS;
 
 function defaults(kind: DeviceKind): FeatureId[] {
-  return FEATURES_BY_KIND[kind].filter((f) => !(DEFAULT_OFF[kind] ?? []).includes(f));
+  return catalogue(kind).filter((f) => !(DEFAULT_OFF[kind] ?? []).includes(f));
 }
 
 /** A longer list in a file is not a list of features (each kind has at most a handful). */
@@ -55,18 +57,18 @@ export function featureOn(features: LabFeatures, kind: DeviceKind, id: FeatureId
 
 /** A copy with one feature switched; a kind back to its defaults is left out. */
 export function setFeature(features: LabFeatures, kind: DeviceKind, id: FeatureId, on: boolean): LabFeatures {
-  if (!FEATURES_BY_KIND[kind].includes(id)) return features;
+  if (!catalogue(kind).includes(id)) return features;
   const current = new Set(featuresOf(features, kind));
   if (on) current.add(id);
   else current.delete(id);
-  const next = FEATURES_BY_KIND[kind].filter((f) => current.has(f));
+  const next = catalogue(kind).filter((f) => current.has(f));
   const rest = Object.fromEntries(Object.entries(features).filter(([k]) => k !== kind)) as LabFeatures;
   return sameAsDefault(kind, next) ? rest : { ...rest, [kind]: next };
 }
 
 /** A feature on (a list saved before it existed) or off for every kind that has it. */
 function switchAll(features: LabFeatures, id: FeatureId, on: boolean): LabFeatures {
-  return KINDS.filter((k) => FEATURES_BY_KIND[k].includes(id)).reduce((f, k) => setFeature(f, k, id, on), features);
+  return KINDS.filter((k) => catalogue(k).includes(id)).reduce((f, k) => setFeature(f, k, id, on), features);
 }
 
 /** The `features` of a topology file (untrusted): known kinds, known features of that kind, no repeats. */
@@ -80,7 +82,7 @@ export function parseFeatures(data: unknown): LabFeatures {
     if (!Array.isArray(list) || list.length > MAX_LIST) continue;
     /** Up to v0.24.0 one «services» switch stood for every service panel. */
     const legacy = list.includes('services');
-    const on = FEATURES_BY_KIND[kind].filter((f) => list.includes(f) || (legacy && isService(f)));
+    const on = catalogue(kind).filter((f) => list.includes(f) || (legacy && isService(f)));
     if (!sameAsDefault(kind, on)) out[kind] = on;
   }
   return out;

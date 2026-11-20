@@ -128,7 +128,11 @@ había al entregar (`worker/grading.ts`, función `target`).
 | `Topology#toJSON` | ídem | `Topology` → `TopologyFile` v2. `fromJSON(x).toJSON()` es la forma normal (punto fijo tras una carga) |
 | `EXAMPLES` | `src/net/examples.ts` | `Example[]` con `id` y `build(): Topology` (C3) |
 | `LABS_ES` | `src/i18n/es-ES/labs.ts` | textos en castellano de los laboratorios (C3) |
-| tipos | `TopologyFile`, `DeviceRecord`, `PcRecord`, `ServerRecord`, `DeviceKind` | |
+| `registerDeviceKind`, `declareDeviceKind`, `deviceKinds` (los dos últimos también en `netfix/authoring`) | `src/net/device-kinds.ts` | punto de extensión (S23): un tipo de equipo con `prefix`, `tabs` (la primera nunca se oculta), `create`, `save`/`load` (sus ajustes en el archivo, bajo `field` o el tipo; `load` recibe datos no fiables), `connect` (el contexto que da la página con `Topology#setKindContext`) y `label`. `declareDeviceKind` solo da el nombre y las pestañas (restricciones y listas de comprobación lo aceptan). Un archivo con un tipo no declarado da `bad-device` |
+| `Topology#setKindContext` | `src/net/topology.ts` | `(tipo, contexto)`: lo reciben los equipos de ese tipo puestos y los nuevos (sustituye a `useClassLan`) |
+| tipos | `TopologyFile`, `DeviceRecord`, `PcRecord`, `ServerRecord`, `DeviceKind` (los integrados o uno registrado: los `Record<DeviceKind, …>` de quien lo use ya no cubren todos), `BuiltinDeviceKind`, `DeviceKindDef`, `ExtensionDevice` | |
+
+La LAN de clase ya es un tipo registrado (`devices/classlan-kind.ts`; su aspecto, `ui/classlan-kind.ts` con `ui/device-kind-ui.ts`): `netfix/topology`, `netfix/classroom` y la app la registran y `netfix/authoring` la declara hasta que pase al paquete de extensión de FixIT Classroom (S23, D25).
 
 ### 3.2 `netfix/classroom` (neutral de runtime)
 

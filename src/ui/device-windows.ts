@@ -30,8 +30,9 @@ import { iosWebSettings } from './ios-web-settings.ts';
 import { Cloud } from '../devices/cloud.ts';
 import { cloudTabs } from './cloud-window.ts';
 import { cloudSettings } from './cloud-device.ts';
-import { ClassLan } from '../devices/classlan.ts';
-import { classLanTabs } from './classlan-window.ts';
+import { isExtensionDevice } from '../net/device-kinds.ts';
+import { iosOf } from '../net/device-guards.ts';
+import { deviceUi } from './device-kind-ui.ts';
 import { promptToggle } from './prompt-toggle.ts';
 import { onTimestampPrompt } from './preferences.ts';
 import { featureOn, SERVICE_IDS } from '../net/lab-features.ts';
@@ -118,8 +119,10 @@ export function openDeviceWindow(placed: Placed, host: WindowHost): void {
     openHostWindow(placed, d, host);
     return;
   }
-  if (d instanceof ClassLan) {
-    host.windows.show(d.id, t('win.classlan', { name: placed.label }), allowed(host, d.kind, classLanTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) })));
+  if (isExtensionDevice(d)) {
+    const ui = deviceUi(d.kind);
+    if (!ui) return;
+    host.windows.show(d.id, ui.windowTitle(placed.label), allowed(host, d.kind, ui.tabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) })));
     return;
   }
   if (d instanceof Cloud) {
@@ -128,6 +131,7 @@ export function openDeviceWindow(placed: Placed, host: WindowHost): void {
     handle = host.windows.show(d.id, t('win.cloud', { name: placed.label }), allowed(host, d.kind, [equipo, ...cloudTabs(d, { afterCommand: () => host.afterCommand(), connected: (port) => host.peerLabel?.(d.id, port) })]));
     return;
   }
+  if (!iosOf(d)) return;
   const term = cliTerminal(placed, host);
   let handle: { setTitle(t: string): void } | undefined;
   const device = iosDeviceSettings(placed, d, { afterCommand: () => host.afterCommand(), retitle: (title) => handle?.setTitle(title) });

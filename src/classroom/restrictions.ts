@@ -4,14 +4,17 @@
  * Check, hints and View solution are on, and whether the timestamp prompt of the terminals is locked on or off.
  * It arrives as untrusted JSON, so it is validated strictly; anything left out stays allowed.
  */
-import type { DeviceKind } from '../net/topology.ts';
+import { KNOWN_DEVICE_KINDS, declaredTabs, type DeviceKind } from '../net/device-kinds.ts';
 
-export const DEVICE_KINDS: readonly DeviceKind[] = ['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud', 'classlan'];
-export const TAB_IDS = ['host', 'ifaces', 'cli', 'web', 'ip', 'svc', 'mail', 'ssh', 'sftp', 'linux', 'windows', 'apps', 'isp', 'lines', 'classlan'] as const;
-export type TabId = (typeof TAB_IDS)[number];
+/** The kinds a policy may name: built-in and declared ones (net/device-kinds.ts), live. */
+export const DEVICE_KINDS: readonly DeviceKind[] = KNOWN_DEVICE_KINDS;
+const BUILTIN_TABS = ['host', 'ifaces', 'cli', 'web', 'ip', 'svc', 'mail', 'ssh', 'sftp', 'linux', 'windows', 'apps', 'isp', 'lines'] as const;
+/** A window tab: a built-in one or one of a declared kind. */
+export type TabId = string;
+const isTab = (x: unknown): x is TabId => typeof x === 'string' && ((BUILTIN_TABS as readonly string[]).includes(x) || DEVICE_KINDS.some((k) => declaredTabs(k)?.includes(x)));
 
-/** The first tab of each window (Device; ISP for the cloud): kept even when a list leaves it out, so a window is never empty. */
-const firstTab = (k: DeviceKind): TabId => (k === 'cloud' ? 'isp' : k === 'classlan' ? 'classlan' : 'host');
+/** The first tab of each window (Device; ISP for the cloud; a declared kind's first): kept even when a list leaves it out, so a window is never empty. */
+const firstTab = (k: DeviceKind): TabId => (k === 'cloud' ? 'isp' : declaredTabs(k)?.[0] ?? 'host');
 const FLAGS = ['docs', 'fileOpen', 'fileSave', 'fileNew', 'simulation', 'clock', 'drawing', 'editTopology', 'missionCheck', 'hints', 'solution'] as const;
 type Flag = (typeof FLAGS)[number];
 /** «Prompt con marca de fecha y hora»: each device decides (free), or the teacher locks it on or off. */
@@ -60,10 +63,9 @@ function kind(v: string, field: string): DeviceKind {
 }
 
 function tabList(v: unknown, field: string): TabId[] {
-  return stringList(v, field, TAB_IDS.length).map((x) => {
-    const id = TAB_IDS.find((t) => t === x);
-    if (!id) invalid(`${field}: pestaña desconocida «${x}»`);
-    return id;
+  return stringList(v, field, BUILTIN_TABS.length + 16).map((x) => {
+    if (!isTab(x)) invalid(`${field}: pestaña desconocida «${x}»`);
+    return x;
   });
 }
 
