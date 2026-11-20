@@ -8,6 +8,7 @@ import { Viewport } from './viewport.ts';
 import { placeInside } from './viewport-math.ts';
 import { clamp, triangle } from './canvas-geometry.ts';
 import { dragDevice } from './device-drag.ts';
+import { bindDeviceMenu, type DeviceMenu } from './device-menu.ts';
 import type { DeviceDragHost } from './device-drag.ts';
 import { GroupSelection, spaceHeld } from './group-select.ts';
 import { allowsDevice, NO_RESTRICTIONS } from '../classroom/restrictions.ts';
@@ -46,6 +47,7 @@ export class Canvas {
   private readonly linkLayer: SVGGElement;
   private readonly deviceLayer: SVGGElement;
   private readonly menu: HTMLElement;
+  private readonly deviceMenu: DeviceMenu;
   private topo: Topology;
   private tool: Tool = { kind: 'select' };
   private selected: string | null = null;
@@ -91,7 +93,7 @@ export class Canvas {
       editable: () => this.editable, drawingLocked: () => this.draw.locked, allows: (k) => allowsDevice(this.policy, k),
     });
     this.svgEl.appendChild(this.group.layer);
-    this.svgEl.addEventListener('contextmenu', (e) => e.preventDefault());
+    this.deviceMenu = bindDeviceMenu(this.svgEl, this.root, { placed: (id) => this.topo.get(id), editable: () => this.editable, open: (id) => this.events.open(id), remove: (id) => { this.selected = id; this.deleteSingle(); } });
     this.svgEl.addEventListener('pointerdown', (e) => { this.lastPointer = e.pointerType; }, { capture: true });
     this.svgEl.addEventListener('pointerdown', (e) => this.onBackground(e));
     this.root.addEventListener('keydown', (e) => this.handleKey(e));
@@ -297,6 +299,7 @@ export class Canvas {
     e.stopPropagation();
     this.hideMenu();
     this.draw.deselect();
+    if (e.button === 2) return; // the device menu (device-menu.ts), not a drag
     if (this.tool.kind === 'delete') {
       this.edits().removeDevice(id);
       this.events.removed(id);
@@ -315,7 +318,7 @@ export class Canvas {
 
   private readonly dragHost: DeviceDragHost = {
     toWorld: (e) => this.toWorld(e), world: { w: WORLD_W, h: WORLD_H }, scale: () => this.viewport.scale, pinching: () => this.viewport.pinching(),
-    gesture: (on) => { this.gesture = on; }, renderLinks: () => this.renderLinks(), open: (id) => this.events.open(id),
+    gesture: (on) => { this.gesture = on; }, renderLinks: () => this.renderLinks(), open: (id) => this.deviceMenu.show(id),
     done: (id, moved, origin, ev) => {
       if (moved) { this.edits().moved(id, origin); this.events.changed(); } else { this.markSelection(); if (ev.type === 'pointerup') this.tapped(id, ev); }
     },
@@ -372,9 +375,7 @@ export class Canvas {
     this.events.changed();
   }
 
-  private hideMenu(): void {
-    this.menu.hidden = true;
-  }
+  private hideMenu(): void { this.menu.hidden = true; }
 
   /** Escape: back to Select; Supr or Backspace: delete the selected drawing, device (with its cables) or cable. */
   handleKey(e: KeyboardEvent): void {
