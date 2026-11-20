@@ -53,7 +53,7 @@ try {
   const items = await page.locator('.window:visible .subnav-item').allInnerTexts();
   assert.deepEqual(items, ['Parámetros', 'SSH', 'DHCP', 'DNS', 'HTTP', 'Correo', 'Configuración', 'Registros'], 'kernel parameters always (v0.26)');
   await page.click('.subnav-item:has-text("DNS")');
-  const block = page.locator('.listen-block');
+  const block = page.locator('section.listen-block');
   assert.match(await block.innerText(), /Interfaces de escucha[\s\S]*Todas[\s\S]*eth0[\s\S]*lo/);
   await block.locator('label:has-text("Todas") input').uncheck();
   await block.locator('label:has-text("lo") input').check();

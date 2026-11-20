@@ -55,18 +55,28 @@ try {
   await page.click('.dns-wizard button:has-text("Crear zona")');
   assert.match(await page.locator('.window .form-msg[data-kind="ok"]').innerText(), /Zona otra\.lab creada/);
   assert.match(await page.locator('.dns-zone-editor').innerText(), /Esta zona admite: A, CNAME, MX, NS, TXT/);
-  // Recursion clients: allow-recursion is an editable list; localnets is shown as this server's networks.
+  // Recursion clients (0.54.0): boxes for any, localnets, each network, localhost and a typed list; BIND's default ticks
+  // localnets and localhost, and localnets is shown as this server's networks.
   const rec = page.locator('.dns-mode[data-mode="recursive"]');
   assert.match(await rec.innerText(), /localnets son las redes de este servidor: [\d./, ]*127\.0\.0\.0\/8/);
+  const recBox = (name) => rec.locator(`label:has(span.mono:text-is("${name}")) input[type=checkbox]`);
+  assert.ok(await recBox('localnets').isChecked(), 'default allow-recursion: localnets');
+  assert.ok(await recBox('localhost').isChecked(), 'default allow-recursion: localhost');
   const allowList = rec.locator('input[data-field="allow-recursion"]');
-  assert.equal(await allowList.inputValue(), 'localnets; localhost');
+  assert.equal(await allowList.inputValue(), '');
+  assert.ok(await allowList.isDisabled(), 'the typed list waits for its box');
+  await recBox('localnets').uncheck();
+  await rec.locator('label:has(input[data-field="allow-recursion"]) input[type=checkbox]').check();
   await allowList.fill('192.168.10.0/24; lan');
   await rec.locator('button:has-text("Aplicar")').click();
   assert.match(await page.locator('.window .form-msg[data-kind="error"]').innerText(), /«lan» no es un elemento de la lista/);
-  await allowList.fill('192.168.10.0/24, !192.168.10.9; localhost');
+  await allowList.fill('192.168.10.0/24, !192.168.10.9');
   await rec.locator('button:has-text("Aplicar")').click();
   await page.waitForSelector('.window .form-msg[data-kind="error"]', { state: 'detached' });
-  assert.equal(await rec.locator('input[data-field="allow-recursion"]').inputValue(), '192.168.10.0/24; !192.168.10.9; localhost');
+  // The list keeps its order (a ! must stay before what it cuts): typed text first, then localhost.
+  const after = rec.locator('input[data-field="allow-recursion"]');
+  const kept = await after.inputValue();
+  assert.ok(kept === '192.168.10.0/24; !192.168.10.9' ? await recBox('localhost').isChecked() : kept === '192.168.10.0/24; !192.168.10.9; localhost', `allow-recursion kept: ${kept}`);
   await page.click('.win-close');
 
   // 2. GNU/Linux router → Services → Parameters: the box mirrors ip_forward and cannot be clicked.
