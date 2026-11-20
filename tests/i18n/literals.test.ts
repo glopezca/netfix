@@ -16,7 +16,9 @@ const ALLOWED = new Set(['www  ·  @  ·  *  ·  host.otro.dom.', 'srv  ·  @  �
   'netfix: «${name}» debe ser un elemento de la página', 'netfix: «${name}» no puede estar dentro del elemento donde se monta Netfix ni contenerlo',
   'netfix: «toolbar» y «actions» deben ser elementos distintos y separados',
   'netfix.lab: solo admite «toolbar», «actions», «locale» y «confirmUnsaved»', 'netfix: «locale» no es un idioma de Netfix',
-  'netfix: «confirmUnsaved» debe ser true o false', 'netfix.code: opción desconocida «${extra}»', 'netfix.code: «onRun» debe ser una función']);
+  'netfix: «confirmUnsaved» debe ser true o false', 'netfix.code: opción desconocida «${extra}»', 'netfix.code: «onRun» debe ser una función',
+  'netfix: «${name}» no puede ser una opción del anfitrión', 'netfix: la opción «${name}» ya está registrada',
+  'netfix: el tipo de equipo «${spec.kind}» ya tiene opción del anfitrión']);
 
 function offenders(file: string): string[] {
   const lines = readFileSync(file, 'utf8').split('\n');

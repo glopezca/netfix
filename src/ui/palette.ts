@@ -6,6 +6,7 @@ import { el, staticSvg } from './dom.ts';
 import type { Tool } from './canvas.ts';
 import { iconOf, modelLabel } from './icons.ts';
 import { deviceUi, deviceUiKinds } from './device-kind-ui.ts';
+import { kindOffered } from './host-options.ts';
 import type { DeviceKind } from '../net/topology.ts';
 import { t } from '../i18n/t.ts';
 import type { MessageKey } from '../i18n/catalog.ts';
@@ -32,7 +33,7 @@ export const PLACEABLE: readonly (readonly [DeviceKind, MessageKey])[] = [
 ];
 
 /** A registered kind is in the palette when its interface says so (e.g. only with the host page's context). */
-const offered = (kind: DeviceKind): boolean => deviceUi(kind)?.offered?.() ?? true;
+const offered = (kind: DeviceKind): boolean => kindOffered(kind) && (deviceUi(kind)?.offered?.() ?? true);
 
 /** The palette's buttons, built-in kinds then registered ones, with their names in the page's language. */
 const placeable = (): readonly (readonly [DeviceKind, string])[] => [

@@ -1,7 +1,7 @@
 /**
  * The Classroom LAN's look in the editor (S23): its palette button (only with the host's link, one per lab), icon,
  * window, the line under it and its gateway at the cable end, through ui/device-kind-ui.ts. It moves to FixIT
- * Classroom's pack in S23 phase 2.
+ * Classroom's pack in S23 phase 2. The host option `classroomLan` decides whether it is offered (ui/host-options.ts).
  */
 import { t } from '../i18n/t.ts';
 import { formatIp } from '../core/ip.ts';
@@ -9,6 +9,8 @@ import { ClassLan } from '../devices/classlan.ts';
 import { CLASSLAN_KIND } from '../devices/classlan-kind.ts';
 import { deviceUi, registerDeviceUi } from './device-kind-ui.ts';
 import { classLanTabs } from './classlan-window.ts';
+import { registerHostOption } from './host-options.ts';
+import { classLanHost, parseClassLan } from './lan-chooser.ts';
 
 const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="64" height="48">
   <path d="M16 40 h34 a10 10 0 0 0 1 -19.9 a14 14 0 0 0 -26.5 -4.6 a10.5 10.5 0 0 0 -8.5 24.5 z" fill="var(--dev-side)" stroke="var(--dev-edge)" stroke-width="1.6" stroke-linejoin="round"/>
@@ -17,11 +19,6 @@ const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width=
   </g>
 </svg>`;
 
-/** Placeable only when the host page (Netfix Classroom) gives the link to the class. */
-let offered = false;
-export function offerClassLan(on: boolean): void {
-  offered = on;
-}
 
 function caption(d: ClassLan): string[] {
   const at = d.classAddress();
@@ -43,7 +40,8 @@ export function registerClassLanUi(): void {
     tabs: (d, ctx) => (d instanceof ClassLan ? classLanTabs(d, ctx) : []),
     caption: (d) => (d instanceof ClassLan ? caption(d) : []),
     portAddresses: (d) => (d instanceof ClassLan ? gateway(d) : []),
-    offered: () => offered,
     oneOnly: () => t('pal.classlanOne'),
   });
+  // Placeable only when the host page (Netfix Classroom) gives the link to the class, or the classes to choose from.
+  registerHostOption('classroomLan', { kind: CLASSLAN_KIND, parse: parseClassLan, start: (v) => classLanHost(v) });
 }

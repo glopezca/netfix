@@ -1,6 +1,5 @@
 /** DOM side of `netfix.embed` / `netfix.evaluate` (needs `HTMLElement` and `globalThis`, so it lives in `ui`, not the Core). */
-import { validLab } from '../net/classlan.ts';
-import type { ClassLanChooser, ClassLanClass, ClassLanLink } from '../net/classlan.ts';
+import { hostOption, hostOptionNames } from './host-options.ts';
 import type { EmbedHandle } from '../classroom/embed.ts';
 import type { Evaluation } from '../classroom/evaluate.ts';
 import { isLocale } from '../i18n/locale.ts';
@@ -35,13 +34,12 @@ export interface HostOptions {
   readonly palette: 'side' | 'bottom';
   /** Similar devices piled on one palette button; undefined: this browser's setting (off by default). */
   readonly piles: boolean | undefined;
-  /** Netfix Classroom: the relay that joins this lab to the class's other labs (the Classroom LAN device), or the
-   * classes to ask about when the device is placed. */
-  readonly classroomLan: ClassLanLink | ClassLanChooser | null;
+  /** The values of the options extensions registered (ui/host-options.ts), checked, by option name. */
+  readonly extensions: Readonly<Record<string, unknown>>;
 }
 
-export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', piles: undefined, classroomLan: null });
-const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'piles', 'classroomLan'] as const;
+export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', piles: undefined, extensions: Object.freeze({}) });
+const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'piles'] as const;
 
 /** A host element for part of Netfix: in the page, and neither inside the mount nor around it (each would empty the other). */
 function hostElement(mount: HTMLElement, v: unknown, name: string): HTMLElement | null {
@@ -56,8 +54,8 @@ function hostElement(mount: HTMLElement, v: unknown, name: string): HTMLElement 
  * inside the mount nor around it (each would empty the other); `locale`, one of Netfix's; `confirmUnsaved`, a boolean.
  */
 export function takeHostOptions(mount: HTMLElement, options: unknown): { readonly rest: unknown; readonly host: HostOptions } {
-  if (typeof options !== 'object' || options === null || !HOST_KEYS.some((k) => Object.hasOwn(options, k))) return { rest: options, host: NO_HOST };
-  const { toolbar, actions, locale, confirmUnsaved, palette, piles, classroomLan, ...rest } = options as Record<string, unknown>;
+  if (typeof options !== 'object' || options === null || ![...HOST_KEYS, ...hostOptionNames()].some((k) => Object.hasOwn(options, k))) return { rest: options, host: NO_HOST };
+  const { toolbar, actions, locale, confirmUnsaved, palette, piles, ...others } = options as Record<string, unknown>;
   const bar = hostElement(mount, toolbar, 'toolbar');
   const acts = hostElement(mount, actions, 'actions');
   if (bar && acts && (bar.contains(acts) || acts.contains(bar))) throw new Error('netfix: «toolbar» y «actions» deben ser elementos distintos y separados');
@@ -65,56 +63,28 @@ export function takeHostOptions(mount: HTMLElement, options: unknown): { readonl
   if (confirmUnsaved !== undefined && typeof confirmUnsaved !== 'boolean') throw new Error('netfix: «confirmUnsaved» debe ser true o false');
   if (palette !== undefined && palette !== 'side' && palette !== 'bottom') throw new Error('netfix: «palette» debe ser \'side\' o \'bottom\'');
   if (piles !== undefined && typeof piles !== 'boolean') throw new Error('netfix: «piles» debe ser true o false');
-  const lan = classroomLan === undefined ? null : lanOf(classroomLan);
-  return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined, palette: palette ?? 'side', piles: piles as boolean | undefined, classroomLan: lan } };
+  const { rest, extensions } = takeExtensions(others);
+  return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined, palette: palette ?? 'side', piles: piles as boolean | undefined, extensions } };
 }
 
-const MAX_LAN_NAME = 64;
-const MAX_LAN_CLASSES = 50;
-const MAX_CLASS_NAME = 80;
-const LAN_SHAPE = 'netfix: «classroomLan» necesita lab (1-250), send() y onMessage() (y close() opcional), o classes (1-50, {id, name}) y join(id)';
-
-/** The host's Classroom LAN link: its lab number (1-250), its two functions and, optionally, the class's name and close(). */
-function linkOf(v: unknown): ClassLanLink {
-  const o = typeof v === 'object' && v !== null ? v as Record<string, unknown> : {};
-  if (!validLab(o.lab) || typeof o.send !== 'function' || typeof o.onMessage !== 'function' || (o.close !== undefined && typeof o.close !== 'function')) throw new Error(LAN_SHAPE);
-  const send = o.send as ClassLanLink['send'];
-  const onMessage = o.onMessage as ClassLanLink['onMessage'];
-  const close = o.close as (() => void) | undefined;
-  const name = typeof o.name === 'string' ? o.name.trim().slice(0, MAX_LAN_NAME) : '';
-  return { lab: o.lab, ...(name ? { name } : {}), send: (m) => send(m), onMessage: (l) => onMessage(l), ...(close ? { close: () => close() } : {}) };
-}
-
-const text = (v: unknown, max: number): v is string => typeof v === 'string' && v.trim() !== '' && v.length <= max;
-
-/** The host's classes to ask about: 1-50 with an id and a name; `join` resolves a link checked like a plain one (or null). */
-function chooserOf(o: Record<string, unknown>): ClassLanChooser {
-  const list = o.classes;
-  if (!Array.isArray(list) || list.length < 1 || list.length > MAX_LAN_CLASSES || typeof o.join !== 'function') throw new Error(LAN_SHAPE);
-  const classes: ClassLanClass[] = list.map((c: unknown) => {
-    const { id, name } = typeof c === 'object' && c !== null ? c as Record<string, unknown> : {};
-    if (!text(id, MAX_CLASS_NAME) || !text(name, MAX_CLASS_NAME)) throw new Error(LAN_SHAPE);
-    return { id, name: name.trim() };
-  });
-  const join = o.join as (id: string) => Promise<unknown>;
-  return {
-    classes,
-    join: async (id) => {
-      const got = await join(id);
-      return got === null ? null : linkOf(got); // a malformed link fails here, like the plain option
-    },
-  };
-}
-
-function lanOf(v: unknown): ClassLanLink | ClassLanChooser {
-  return typeof v === 'object' && v !== null && 'classes' in v ? chooserOf(v as Record<string, unknown>) : linkOf(v);
+/** The registered extension options out of `options`, each checked by its extension. */
+function takeExtensions(options: Record<string, unknown>): { readonly rest: Record<string, unknown>; readonly extensions: Readonly<Record<string, unknown>> } {
+  // No prototype: an own «__proto__» key stays a plain key (and embedSession rejects it as unknown).
+  const rest: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  const extensions: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  for (const [k, v] of Object.entries(options)) {
+    const spec = hostOption(k);
+    if (spec && v !== undefined) extensions[k] = spec.parse(v);
+    else if (!spec) rest[k] = v;
+  }
+  return { rest, extensions: Object.freeze(extensions) };
 }
 
 /** `netfix.lab` options: none, or only the host options. */
 export function labOptions(mount: HTMLElement, options: unknown): HostOptions {
   const { rest, host } = takeHostOptions(mount, options);
   if (rest !== undefined && (typeof rest !== 'object' || rest === null || Array.isArray(rest) || Object.keys(rest).length > 0)) {
-    throw new Error('netfix.lab: solo admite «toolbar», «actions», «locale», «confirmUnsaved», «palette», «piles» y «classroomLan»');
+    throw new Error(`netfix.lab: solo admite ${[...HOST_KEYS, ...hostOptionNames()].map((k) => `«${k}»`).join(', ')}`);
   }
   return host;
 }
