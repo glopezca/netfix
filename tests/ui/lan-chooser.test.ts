@@ -1,12 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ClassLanState } from '../../src/ui/lan-chooser.ts';
+import { ClassLanState, classLanHost } from '../../src/ui/lan-chooser.ts';
 import { takeHostOptions } from '../../src/ui/embed-api.ts';
 import type { ClassLanChooser, ClassLanLink } from '../../src/net/classlan.ts';
+import { registerClassLanUi } from '../../src/ui/classlan-kind.ts';
+
+registerClassLanUi(); // the host option «classroomLan» (S23: an extension's, ui/host-options.ts)
 
 const mount = {} as HTMLElement;
 const link = (lab: number, closed: number[] = []): ClassLanLink => ({ lab, send: () => {}, onMessage: () => () => {}, close: () => { closed.push(lab); } });
-const chooserOf = (v: unknown): ClassLanChooser => takeHostOptions(mount, { classroomLan: v }).host.classroomLan as ClassLanChooser;
+const chooserOf = (v: unknown): ClassLanChooser => takeHostOptions(mount, { classroomLan: v }).host.extensions.classroomLan as ClassLanChooser;
 
 test('classroomLan as a chooser: 1-50 classes with id and name, and join()', async () => {
   const c = chooserOf({ classes: [{ id: 'c1', name: '  1º SMR A ' }], join: async () => ({ ...link(4), name: '1º SMR A' }) });
@@ -20,7 +23,7 @@ test('classroomLan as a chooser: 1-50 classes with id and name, and join()', asy
     assert.throws(() => takeHostOptions(mount, { classroomLan: bad }), /classroomLan/);
   }
   assert.throws(() => takeHostOptions(mount, { classroomLan: { ...link(2), close: 'x' } }), /classroomLan/, 'close must be a function');
-  assert.equal(typeof takeHostOptions(mount, { classroomLan: link(2) }).host.classroomLan, 'object');
+  assert.equal(typeof takeHostOptions(mount, { classroomLan: link(2) }).host.extensions.classroomLan, 'object');
 });
 
 test('a chooser with one class joins it without asking; with two it asks; Cancel joins nothing', async () => {
@@ -68,4 +71,19 @@ test('deleting the last LAN device calls close(); a chooser asks again, a plain 
   keep.track(true);
   assert.equal(keep.track(false), false, 'a plain link without close() stays, as before');
   assert.equal(keep.current?.lab, 5);
+});
+
+test('the Classroom LAN as a kind host: offered with the option, joins before the tool, gives the link back', async () => {
+  assert.equal(classLanHost(null).offered, false);
+  const closed: number[] = [];
+  const classes = [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }];
+  const h = classLanHost({ classes, join: async (id) => (id === 'b' ? link(9, closed) : null) }, async () => 'b');
+  assert.deepEqual([h.offered, h.context], [true, null]);
+  assert.equal(await h.prepare?.(), true);
+  assert.equal((h.context as ClassLanLink).lab, 9);
+  assert.equal(h.track?.(true), false);
+  assert.equal(h.track?.(false), true, 'the last one went: the context changed');
+  assert.deepEqual([h.context, closed], [null, [9]]);
+  assert.equal(await classLanHost({ classes, join: async () => null }, async () => null).prepare?.(), false, 'cancelled');
+  assert.match(String(await classLanHost({ classes, join: async () => null }, async () => 'a').prepare?.()), /./, 'refused: a message');
 });

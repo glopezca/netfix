@@ -1,5 +1,6 @@
 /** Netfix application shell: top bar, workspace, palette, views, windows and simulation panel. */
-import { ClassLanState, askClass } from './lan-chooser.ts';
+import { startKindHosts } from './host-options.ts';
+import type { KindHost } from './host-options.ts';
 import { mountCode } from './code-mount.ts';
 import { applyBrand, removeBrand } from './brand.ts';
 import { el, safeStorageGet, safeStorageSet } from './dom.ts';
@@ -22,8 +23,8 @@ import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
 import { floatBar, topbar } from './topbar.ts';
 import type { Mode, TopbarActions, View } from './topbar.ts';
 import { deviceGroup, palette, syncOneOnlyButtons, type PaletteActions } from './palette.ts';
-import { offerClassLan, registerClassLanUi } from './classlan-kind.ts';
-import { CLASSLAN_KIND, registerClassLanKind } from '../devices/classlan-kind.ts';
+import { registerClassLanUi } from './classlan-kind.ts';
+import { registerClassLanKind } from '../devices/classlan-kind.ts';
 import { labText } from './lab-text.ts';
 import { readTopologyFile, saveTopology } from './save-file.ts';
 import { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } from './workspace-store.ts';
@@ -115,7 +116,7 @@ class App {
     this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
     this.view = initial.view === 'docs' && !this.session.policy.docs ? 'net' : initial.view;
     this.topo = topo ?? initialWorkspace(BROWSER_STORE, this.saved, () => EXAMPLES[0]!.build());
-    this.topo.setKindContext(CLASSLAN_KIND, classLan.current);
+    applyKindContexts(this.topo);
     this.topo.clock.set(Date.now()); // the settle ran the lab ~30 s ahead: its wall clock is the system's (like `clock set`)
     if (topo) this.saved.adopt(topo);
     this.hintEl = el('p', { class: 'hint', role: 'status' });
@@ -157,9 +158,9 @@ class App {
       const old = this.paletteEl.querySelector('.pal-devices');
       if (old && fresh) old.replaceWith(fresh);
       this.selectTool({ kind: 'select' }, 'select');
-      this.syncClassLan();
+      this.syncKinds();
     });
-    this.syncClassLan();
+    this.syncKinds();
     if (this.actionsBox) (hostActions ?? this.paletteEl).append(this.actionsBox);
     this.pageHost = el('main', { class: 'docs-host', hidden: true });
     this.fileInput = el('input', { type: 'file', accept: '.json,.netfix,application/json', hidden: true });
@@ -265,7 +266,13 @@ class App {
 
   private selectTool(tool: Tool, key: string): void {
     const same = this.toolButtons.get(key)?.getAttribute('aria-pressed') === 'true' && key !== 'select';
-    if (!same && key === 'place-classlan' && classLan.needsJoin) { void this.joinClassLan(tool, key); return; }
+    const kind = !same && tool.kind === 'place' ? tool.device : null; // the kind, also for a variant (place-<kind>-<system>)
+    const prepare = kind === null ? undefined : kindHosts.get(kind)?.prepare;
+    if (kind !== null && prepare) { void this.prepareKind(kind, prepare, tool, key); return; }
+    this.pickTool(tool, key, same);
+  }
+
+  private pickTool(tool: Tool, key: string, same: boolean): void {
     const nextKey = same ? 'select' : key;
     for (const [k, b] of this.toolButtons) b.setAttribute('aria-pressed', String(k === nextKey));
     this.canvas.setTool(same ? { kind: 'select' } : tool);
@@ -325,23 +332,29 @@ class App {
     this.canvas.edits().syncDrawings(performance.now());
     this.canvas.render();
     syncUndoButtons(this.actionsBox ?? this.paletteEl, this.canvas.edits());
-    this.syncClassLan();
+    this.syncKinds();
     this.scheduleSave();
   }
 
-  private syncClassLan(): void {
-    const kinds = new Set([...this.topo.net.devices.values()].map((d) => d.kind));
-    if (classLan.track(kinds.has(CLASSLAN_KIND))) this.topo.setKindContext(CLASSLAN_KIND, null); // the last one went: the host's link was given back
+  private syncKinds(): void {
+    const kinds = new Set<string>([...this.topo.net.devices.values()].map((d) => d.kind));
+    // The last one of a hosted kind went: its host may have taken its context back (a Classroom LAN link given back).
+    for (const [k, h] of kindHosts) if (h.track?.(kinds.has(k))) this.topo.setKindContext(k, h.context);
     syncOneOnlyButtons(this.toolButtons, kinds, () => this.selectTool({ kind: 'select' }, 'select'));
   }
 
-  /** The Classroom LAN tool with a chooser: which class first (and join it); only then the tool is picked. */
-  private async joinClassLan(tool: Tool, key: string): Promise<void> {
-    const link = await classLan.join(askClass);
-    if (link === 'cancel' || app !== this) return;
-    if (link === null) { this.hintEl.textContent = t('classlan.joinFailed'); return; }
-    this.topo.setKindContext(CLASSLAN_KIND, link);
-    this.selectTool(tool, key);
+  /** A hosted kind's tool: its host's step first (the Classroom LAN asks which class and joins it); only then the tool is picked. */
+  private async prepareKind(kind: string, prepare: () => Promise<boolean | string>, tool: Tool, key: string): Promise<void> {
+    let ready: boolean | string;
+    try {
+      ready = await prepare();
+    } catch (e) {
+      ready = e instanceof Error ? e.message : String(e); // an extension's step failed: say why, pick nothing
+    }
+    if (ready === false || app !== this) return;
+    if (typeof ready === 'string') { this.hintEl.textContent = ready; return; }
+    this.topo.setKindContext(kind, kindHosts.get(kind)?.context ?? null);
+    this.pickTool(tool, key, false);
   }
 
   /** Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z on the network view. */
@@ -384,16 +397,16 @@ class App {
   load(topo: Topology, message: string): void {
     this.windows.closeAll();
     forgetAll();
-    this.topo.setKindContext(CLASSLAN_KIND, null);
+    for (const k of kindHosts.keys()) this.topo.setKindContext(k, null);
     this.topo = topo;
-    topo.setKindContext(CLASSLAN_KIND, classLan.current);
+    applyKindContexts(topo);
     topo.clock.set(Date.now());
     this.saved.mark(topo);
     this.canvas.setTopology(topo);
     this.sim.attach(topo);
     this.mission.attach(topo);
     syncUndoButtons(this.actionsBox ?? this.paletteEl, this.canvas.edits());
-    this.syncClassLan();
+    this.syncKinds();
     this.pages.refreshSettings();
     this.hintEl.textContent = message;
     this.scheduleSave();
@@ -460,11 +473,16 @@ class App {
 }
 
 let app: App | null = null;
-/** The host's Classroom LAN (Netfix Classroom), joined by every workspace this mount opens. */
-// S23: the Classroom LAN is a registered kind (it moves to FixIT Classroom's pack in phase 2).
+// S23: the Classroom LAN is a registered kind with a host option (it moves to FixIT Classroom's pack in phase 2).
 registerClassLanKind();
 registerClassLanUi();
-let classLan = new ClassLanState(null);
+/** This mount's hosts of the kinds with a host option (ui/host-options.ts), shared by every workspace it opens. */
+let kindHosts: ReadonlyMap<string, KindHost> = startKindHosts({});
+
+/** Gives a workspace's devices of each hosted kind their host's current context. */
+function applyKindContexts(topo: Topology): void {
+  for (const [k, h] of kindHosts) topo.setKindContext(k, h.context);
+}
 let mountEl: HTMLElement | null = null;
 /** The host page's element for the top bar (`toolbar` option), or null: the bar is at the top of the mount. */
 let barHost: HTMLElement | null = null;
@@ -529,8 +547,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   setLocale(host.locale ?? detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
   overrideConfirmUnsaved(host.confirmUnsaved);
   overrideDevicePiles(host.piles);
-  classLan = new ClassLanState(host.classroomLan);
-  offerClassLan(classLan.offered);
+  kindHosts = startKindHosts(host.extensions);
   mount.classList.add(ROOT_CLASS);
   applyLanguage(mount);
   // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.
