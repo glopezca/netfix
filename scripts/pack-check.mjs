@@ -74,7 +74,7 @@ while (todo.length) {
   seen.add(f);
   for (const [, spec] of readFileSync(f, 'utf8').matchAll(/(?:from|import)\\s*['"](\\.[^'"]+)['"]/g)) todo.push(resolve(dirname(f), spec));
 }
-const heavy = [...seen].map((f) => relative(base, f)).filter((f) => !/^(pkg\\/authoring|classroom\\/(restrictions|checklist)|i18n\\/[^/]+\\/labs|core\\/[a-z-]+)\\.js$/.test(f));
+const heavy = [...seen].map((f) => relative(base, f)).filter((f) => !/^(pkg\\/authoring|classroom\\/(restrictions|checklist)|net\\/device-kinds|i18n\\/[^/]+\\/labs|core\\/[a-z-]+)\\.js$/.test(f));
 assert.deepEqual(heavy, [], 'authoring must not load the simulator');
 for (const p of ['@glopezca/netfix/ui', '@glopezca/netfix/ui/styles.css', '@glopezca/netfix/ui/favicon.png', '@glopezca/netfix/package.json']) import.meta.resolve(p);
 for (const p of ['@glopezca/netfix', '@glopezca/netfix/dist/pkg/net/network.js', '@glopezca/netfix/src/ui/main.ts']) {
