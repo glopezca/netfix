@@ -162,9 +162,13 @@ Cubre uno a uno los imports actuales de `FixITClassroom/src/worker/netfix.ts` y 
 | `EmbedHandle.exportTopology` | `App.topo.toJSON()` | → `TopologyFile` |
 | `EmbedHandle.destroy` | `App.dispose()` + `mount.replaceChildren()` | → `void` |
 | tipos | `EmbedHandle`, `ChangeListener`, `NetfixApi` (`src/classroom/embed.ts`) | |
+| `registerHostOption` | `src/ui/host-options.ts` | punto de extensión (S23): `(nombre, { kind, parse, start })` añade una opción de `netfix.embed` y `netfix.lab` para un tipo de equipo registrado. `parse` valida el valor de la página (lanza); `start(valor \| null)` da, por montaje, un `KindHost`: `offered` (la paleta lo ofrece), `context` (lo reciben sus equipos con `setKindContext`), `prepare?()` antes de elegir su herramienta (`true`, `false` = cancelado, o el texto de por qué no) y `track?(hay)` tras cada cambio (`true`: cambió `context`). Nombre `[a-z][A-Za-z0-9]*`, no uno de Netfix ni ya registrado; una opción por tipo |
+| tipos | `HostOptionSpec`, `KindHost` (`src/ui/host-options.ts`) | |
 
 Es el `mountNetfix` del §4.3 del plan con la forma que ya existe. Lo que **no** existe y el plan pide (eventos, errores
 tipados, cancelación, adaptador de persistencia) no se propone aquí: requiere decisión.
+
+La opción `classroomLan` ya es una opción registrada (`ui/classlan-kind.ts` con `ui/lan-chooser.ts`) hasta que pase al paquete de extensión de FixIT Classroom (S23, D25).
 
 ### 3.4 Neutral frente a solo navegador
 
