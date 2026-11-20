@@ -28,5 +28,9 @@ export { Host } from '../devices/host.ts';
 export type { HostOs } from '../devices/host.ts';
 export type { Cred, Vfs } from '../bash/vfs.ts';
 export { createShell, defaultUser } from '../shells/factory.ts';
+// Terminal programs of an extension (S24 of FixIT Classroom): /usr/bin or %PATH%, with the user's permissions.
+export { registerProgram } from '../shells/programs.ts';
+export type { FileEntry, HostFiles, ProgramCall, ProgramDef, ProgramDoc, ProgramSystem } from '../shells/programs.ts';
+export { hostFiles } from '../shells/host-files.ts';
 export { defaultLinuxUser, hostSystem, hostUsers } from '../shells/host-system.ts';
 export { windowsAccount } from '../shells/win-system.ts';

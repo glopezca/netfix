@@ -22,6 +22,8 @@ import type { Family } from './hand-edits.ts';
 import type { DirMount } from '../bash/vfs.ts';
 import { seedRootfs, seedUsers } from '../bash/rootfs.ts';
 import { COREUTILS } from '../bash/coreutils/index.ts';
+import { extensionPrograms } from './linux-ext-programs.ts';
+import { seedWindowsPrograms } from './win-programs.ts';
 import { BINARY_MARK } from '../bash/path.ts';
 import { linuxFiles } from './linux-files.ts';
 import { linuxPrograms } from './linux-programs.ts';
@@ -237,7 +239,8 @@ function seedSsh(fs: Vfs, host: Host): void {
 
 function createSystem(host: Host): Entry {
   const fs = new Vfs(() => host.clock.now());
-  const programs = new Map<string, CommandFn>([...COREUTILS, ...linuxPrograms(host)]);
+  // The core's programs win over an extension's with the same name (registerProgram refuses COREUTILS' names).
+  const programs = new Map<string, CommandFn>([...extensionPrograms(host), ...COREUTILS, ...linuxPrograms(host)]);
   const users = hostUsers(host);
   seedRootfs(fs, { hostname: host.name, users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
   // An ordinary file, as in Ubuntu: root edits it, it is saved with the topology and the resolver reads it first.
@@ -276,6 +279,7 @@ function refreshWindowsDisk(host: Host, e: Entry): void {
   const user = defaultWindowsUser(host.kind);
   const server = asServer(host);
   seedWindowsDisk(e.fs, user, windowsAccount(hostUsers(host), user, defaultLinuxUser(host)), server !== undefined && unitActive(server.services, 'ssh'));
+  seedWindowsPrograms(e.fs, host);
   e.winDisk = true;
 }
 
