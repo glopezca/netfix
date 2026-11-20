@@ -46,7 +46,6 @@ export const APP_ES = {
   'kind.pc': 'PC',
   'kind.server': 'Servidor',
   'kind.cloud': 'WAN del ISP',
-  'kind.classlan': 'LAN de clase',
   'hint.simulation': 'Simulación: lo que hagas (ipconfig /renew, ping, DHCP) queda en la lista de eventos. Pulsa Reproducir.',
   'hint.realtime': 'Tiempo real: la red funciona sola; los cambios se aplican al instante.',
   'hint.advanced': 'Reloj adelantado: las concesiones se renuevan o caducan como en un equipo real.',
