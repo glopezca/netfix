@@ -208,6 +208,13 @@ export class Terminal {
     this.openFullScreenIfRequested();
   }
 
+  /** A line run as if typed and Enter pressed (a host page's Run button); ignored while a full-screen program is open. */
+  type(line: string): void {
+    if (this.full) return;
+    this.input.value = line;
+    this.submit();
+  }
+
   private submit(): void {
     const text = this.input.value;
     this.echo(text);
