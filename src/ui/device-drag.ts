@@ -1,4 +1,4 @@
-/** Dragging one device on the workspace (a long press on touch screens opens it instead). */
+/** Dragging one device on the workspace (a long press on touch screens opens its menu instead). */
 import type { Placed } from '../net/topology.ts';
 import type { Point } from '../net/annotations.ts';
 import { clamp } from './canvas-geometry.ts';
@@ -15,6 +15,7 @@ export interface DeviceDragHost {
   pinching(): boolean;
   gesture(on: boolean): void;
   renderLinks(): void;
+  /** A long press on a touch screen: the device's menu. */
   open(id: string): void;
   /** Released: `moved` from `origin`, or a tap or click (`ev` tells which). */
   done(id: string, moved: boolean, origin: Point, ev: PointerEvent): void;

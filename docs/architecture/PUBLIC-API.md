@@ -180,7 +180,7 @@ clases y simulación se comparten entre subrutas. Quitar o cambiar uno es incomp
 |---|---|
 | `netfix/topology` | `deviceKindDef`, `macFromSeed`, `formatIp`, `formatMask`, `parseIp`, `parseMask`, `DETACHED`, `macPlus`, `CloudPort`, `defaultPort`, `portFromJson`, `portToJson`, `validatePort`, `Host`, `createShell`, `defaultUser`, `defaultLinuxUser`, `hostSystem`, `hostUsers`, `windowsAccount`, `registerProgram`, `hostFiles`; tipos `NetDevice`, `Frame`, `IpPacket`, `SimClock`, `DeviceHooks`, `CloudPortSettings`, `HostOs`, `Cred`, `Vfs`, `ProgramDef`, `ProgramCall`, `ProgramDoc`, `ProgramSystem`, `HostFiles`, `FileEntry` |
 | `netfix/classroom` | `checkKind` (y los ya citados `registerCheckKind`, `checkFields`, `runOnHost`) |
-| `netfix/ui` | `registerDeviceUi`, `deviceUi`, `el`, `uiRoot`, `button`, `field`, `input`, `message`, `onCommit`, `livePanel`, `forwardsSection`, `Terminal`, `checkMount`, `getLocale`, `onLocaleChange`; tipos `DeviceUi`, `DeviceWindowContext`, `Tab`, `Locale` |
+| `netfix/ui` | `registerDeviceUi`, `deviceUi`, `registerDeviceAction`, `el`, `uiRoot`, `button`, `field`, `input`, `message`, `onCommit`, `livePanel`, `forwardsSection`, `Terminal`, `checkMount`, `getLocale`, `onLocaleChange`; tipos `DeviceUi`, `DeviceWindowContext`, `Tab`, `Locale`, `DeviceAction` |
 
 **Programas del terminal (0.72.0).** `registerProgram({ name, systems, windowsDir?, doc: { es, en }, applies, run })`
 añade un programa: en GNU/Linux, `/usr/bin/<name>` (lo ven `which`, `ls`, el completado y `man`); en Windows,
@@ -190,6 +190,12 @@ sistema del equipo; en Windows, en cada uso). `run(call)` recibe `argv`, el usua
 `files`: leer, escribir, listar y resolver rutas **con los permisos de ese usuario** (lo mismo que `nano`). Los
 programas del núcleo siempre ganan: un nombre suyo se rechaza. `hostFiles(host, system?)` da los archivos de un equipo
 sin terminal, como su usuario de consola, para acciones del área de trabajo.
+
+**Menú contextual de los equipos (0.72.0).** Clic derecho (al soltar sin mover: arrastrar con el botón derecho sigue
+desplazando), la tecla Menú o Mayús+F10 sobre un equipo con el foco, y una pulsación larga en pantallas táctiles (antes
+abría el equipo; el doble toque sigue abriéndolo). Lista «Abrir», las entradas de las extensiones para ese equipo y
+«Eliminar» si el laboratorio se puede editar. `registerDeviceAction({ id, label: { es, en }, applies, run })` añade una
+entrada; `applies(placed)` decide en qué equipos sale y `run(placed)` recibe el equipo (con `hostFiles` sus archivos).
 
 ### 3.4 Neutral frente a solo navegador
 
