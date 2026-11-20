@@ -18,8 +18,7 @@ import { hostSystem } from '../shells/host-system.ts';
 import { runSync } from '../net/sync.ts';
 import type { ProbeResult } from '../net/tcp.ts';
 import { Session } from '../ios/session.ts';
-import { createShell } from '../shells/factory.ts';
-import type { Check, ChecklistItem } from './checklist.ts';
+import { checkKind, isBuiltinCheck, type Check, type ChecklistItem, type ExtensionCheck } from './checklist.ts';
 import { ABOUT } from '../docs/about-data.ts';
 import { FILE_VERSION } from '../net/topology-file.ts';
 
@@ -225,17 +224,6 @@ function outputCheck(t: Topology, c: Extract<Check, { type: 'output' }>): Outcom
   return out.includes(c.contains) ? pass(`«${c.command}» en «${c.device}» muestra «${c.contains}».`) : fail(`«${c.command}» en «${c.device}» no muestra «${c.contains}».`);
 }
 
-/** A command in the host's own terminal (its default user, from its home folder), within the marking's work limit. */
-function runCheck(t: Topology, c: Extract<Check, { type: 'run' }>): Outcome {
-  const d = find(t, c.device);
-  if ('passed' in d) return d;
-  if (!(d instanceof Host)) return fail(`«${c.device}» no es un PC ni un servidor.`);
-  const sh = createShell(d, c.shell === 'cmd' ? 'windows' : 'linux');
-  sh.prompt();
-  const out = sh.run(c.command).join('\n');
-  return out.includes(c.contains) ? pass(`«${c.command}» en «${c.device}» muestra «${c.contains}».`) : fail(`«${c.command}» en «${c.device}» no muestra «${c.contains}».`);
-}
-
 /** The indented lines under the unindented line `head` (undefined when it is not there). */
 function section(lines: readonly string[], head: string): string[] | undefined {
   const at = lines.findIndex((l) => l.trim() === head.trim() && !/^\s/.test(l));
@@ -255,7 +243,8 @@ function configCheck(t: Topology, c: Extract<Check, { type: 'config' }>): Outcom
   return missing.length ? fail(`Falta en la configuración de «${c.device}»: ${missing.map((l) => l.trim()).join(' | ')}`) : pass(`La configuración de «${c.device}» es correcta.`);
 }
 
-function run(t: Topology, c: Check): Outcome {
+function run(t: Topology, c: Check | ExtensionCheck): Outcome {
+  if (!isBuiltinCheck(c)) return checkKind(c.type)?.evaluate(t, c) ?? fail(`Tipo de comprobación «${c.type}» sin registrar.`);
   switch (c.type) {
     case 'device': return deviceCheck(t, c);
     case 'link': return linkCheck(t, c);
@@ -267,11 +256,10 @@ function run(t: Topology, c: Check): Outcome {
     case 'config': return configCheck(t, c);
     case 'tcp': return tcpCheck(t, c);
     case 'output': return outputCheck(t, c);
-    case 'run': return runCheck(t, c);
   }
 }
 
-function safeRun(t: Topology, c: Check): Outcome {
+function safeRun(t: Topology, c: Check | ExtensionCheck): Outcome {
   try {
     return run(t, c);
   } catch (e) {
@@ -285,13 +273,14 @@ export function evaluate(file: unknown, checklist: readonly ChecklistItem[], wor
 }
 
 /** Checks that send traffic and advance the simulated time; they run after the rest, so order never changes a mark. */
-const ACTIVE: ReadonlySet<Check['type']> = new Set(['ping', 'dns', 'http', 'tcp']);
+const ACTIVE: ReadonlySet<string> = new Set(['ping', 'dns', 'http', 'tcp']);
+const isActive = (type: string): boolean => ACTIVE.has(type) || checkKind(type)?.active === true;
 
 function mark(file: unknown, checklist: readonly ChecklistItem[]): Evaluation {
   const t = load(file);
   const outcomes = new Map<ChecklistItem, Outcome>();
-  for (const it of checklist) if (!ACTIVE.has(it.check.type)) outcomes.set(it, safeRun(t, it.check));
-  for (const it of checklist) if (ACTIVE.has(it.check.type)) outcomes.set(it, safeRun(t, it.check));
+  for (const it of checklist) if (!isActive(it.check.type)) outcomes.set(it, safeRun(t, it.check));
+  for (const it of checklist) if (isActive(it.check.type)) outcomes.set(it, safeRun(t, it.check));
   const items = checklist.map((it): ItemResult => ({ id: it.id, ...(it.title ? { title: it.title } : {}), weight: it.weight, ...(outcomes.get(it) ?? fail('')) }));
   return {
     score: items.reduce((n, i) => n + (i.passed ? i.weight : 0), 0),

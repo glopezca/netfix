@@ -7,6 +7,9 @@ import { evaluate } from '../../src/classroom/evaluate.ts';
 import { Topology } from '../../src/net/topology.ts';
 import { createShell } from '../../src/shells/factory.ts';
 import type { Host } from '../../src/devices/host.ts';
+import { registerRunCheck } from '../../src/classroom/run-check.ts';
+
+registerRunCheck(); // a registered type (S23), as the package entries do
 
 const item = (id: string, command: string, contains: string, shell?: 'bash' | 'cmd'): unknown => ({ id, weight: 1, check: { type: 'run', device: CODE_LAB_DEVICE, command, contains, ...(shell ? { shell } : {}) } });
 

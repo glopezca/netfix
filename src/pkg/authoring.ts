@@ -5,7 +5,7 @@
  */
 export { allowsDevice, allowsLab, allowsTab, parseRestrictions, NO_RESTRICTIONS, DEVICE_KINDS } from '../classroom/restrictions.ts';
 export type { Restrictions } from '../classroom/restrictions.ts';
-export { parseChecklist } from '../classroom/checklist.ts';
-export type { Check, ChecklistItem } from '../classroom/checklist.ts';
+export { checkFields, parseChecklist, registerCheckKind } from '../classroom/checklist.ts';
+export type { Check, CheckField, CheckKind, CheckOutcome, ChecklistItem, ExtensionCheck } from '../classroom/checklist.ts';
 export { LABS_ES } from '../i18n/es-ES/labs.ts';
 export type { DeviceKind } from '../net/topology.ts';
