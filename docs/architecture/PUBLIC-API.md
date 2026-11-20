@@ -128,11 +128,11 @@ había al entregar (`worker/grading.ts`, función `target`).
 | `Topology#toJSON` | ídem | `Topology` → `TopologyFile` v2. `fromJSON(x).toJSON()` es la forma normal (punto fijo tras una carga) |
 | `EXAMPLES` | `src/net/examples.ts` | `Example[]` con `id` y `build(): Topology` (C3) |
 | `LABS_ES` | `src/i18n/es-ES/labs.ts` | textos en castellano de los laboratorios (C3) |
-| `registerDeviceKind`, `declareDeviceKind`, `deviceKinds` (los dos últimos también en `netfix/authoring`) | `src/net/device-kinds.ts` | punto de extensión (S23): un tipo de equipo con `prefix`, `tabs` (la primera nunca se oculta), `create`, `save`/`load` (sus ajustes en el archivo, bajo `field` o el tipo; `load` recibe datos no fiables), `connect` (el contexto que da la página con `Topology#setKindContext`) y `label`. `declareDeviceKind` solo da el nombre y las pestañas (restricciones y listas de comprobación lo aceptan). Un archivo con un tipo no declarado da `bad-device` |
+| `registerDeviceKind`, `declareDeviceKind`, `deviceKinds` (los dos últimos también en `netfix/authoring`) | `src/net/device-kinds.ts` | punto de extensión (S23): un tipo de equipo con `prefix`, `tabs` (la primera nunca se oculta), `create`, `save`/`load` (sus ajustes en el archivo, bajo `field` o el tipo; `load` recibe datos no fiables), `connect` (el contexto que da la página con `Topology#setKindContext`) y `label`. `declareDeviceKind` solo da el nombre y las pestañas (restricciones y listas de comprobación lo aceptan). Un archivo con un tipo no declarado da `bad-device` («… que solo existe con una extensión de Netfix», 0.71.0) |
 | `Topology#setKindContext` | `src/net/topology.ts` | `(tipo, contexto)`: lo reciben los equipos de ese tipo puestos y los nuevos (sustituye a `useClassLan`) |
 | tipos | `TopologyFile`, `DeviceRecord`, `PcRecord`, `ServerRecord`, `DeviceKind` (los integrados o uno registrado: los `Record<DeviceKind, …>` de quien lo use ya no cubren todos), `BuiltinDeviceKind`, `DeviceKindDef`, `ExtensionDevice` | |
 
-La LAN de clase ya es un tipo registrado (`devices/classlan-kind.ts`; su aspecto, `ui/classlan-kind.ts` con `ui/device-kind-ui.ts`): `netfix/topology`, `netfix/classroom` y la app la registran y `netfix/authoring` la declara hasta que pase al paquete de extensión de FixIT Classroom (S23, D25).
+Desde 0.71.0 la LAN de clase no está en Netfix: es del paquete de extensión de FixIT Classroom (S23, D25), que la registra con estos puntos y el SDK del §3.5.
 
 ### 3.2 `netfix/classroom` (neutral de runtime)
 
@@ -147,9 +147,10 @@ La LAN de clase ya es un tipo registrado (`devices/classlan-kind.ts`; su aspecto
 | `registerCheckKind`, `checkFields` (también en `netfix/authoring`) | `src/classroom/checklist.ts` | punto de extensión (S23): `(tipo, { fields, evaluate, active? })` añade un tipo de comprobación; `parseChecklist` valida sus campos con esos validadores y `evaluate` lo corrige dentro del límite de trabajo (si lanza, falla solo ese elemento). Nombre `[a-z][a-z0-9-]{0,31}`, no uno ya existente |
 | `runOnHost` | `src/classroom/host-run.ts` | `(topology, etiqueta, 'linux' \| 'windows', línea)` → `{ output }` o `{ error }`: una orden en el terminal de un PC o servidor |
 | `withWorkLimit`, `WorkLimitError`, `WORK_LIMIT` | `src/net/network.ts`, `src/classroom/evaluate.ts` | acotan `fromJSON` y la corrección |
+| `checkKind` | `src/classroom/checklist.ts` | `(tipo)` → el `CheckKind` registrado o `undefined` (0.71.0) |
 | tipos | `Restrictions`, `Check`, `ExtensionCheck`, `CheckKind`, `CheckField`, `CheckOutcome`, `ChecklistItem`, `Evaluation`, `ItemResult`, `HostRun` | |
 
-La comprobación `run` (Codefix) ya es un tipo registrado: `netfix/classroom` la registra al cargarse hasta que pase al paquete de extensión de FixIT Classroom (S23, D25).
+Desde 0.71.0 la comprobación `run` y el laboratorio de código (`codeLab`) de Codefix no están en Netfix: son del paquete de extensión de FixIT Classroom (S23, D25).
 
 Cubre uno a uno los imports actuales de `FixITClassroom/src/worker/netfix.ts` y `src/web/core/*`
 (`tests/phase1/classroom-surface.test.ts`).
@@ -168,7 +169,18 @@ Cubre uno a uno los imports actuales de `FixITClassroom/src/worker/netfix.ts` y 
 Es el `mountNetfix` del §4.3 del plan con la forma que ya existe. Lo que **no** existe y el plan pide (eventos, errores
 tipados, cancelación, adaptador de persistencia) no se propone aquí: requiere decisión.
 
-La opción `classroomLan` ya es una opción registrada (`ui/classlan-kind.ts` con `ui/lan-chooser.ts`) hasta que pase al paquete de extensión de FixIT Classroom (S23, D25).
+Desde 0.71.0 `netfix.code` y la opción `classroomLan` no están en Netfix: son del paquete de extensión de FixIT Classroom (S23, D25).
+
+### 3.4b SDK de extensiones (0.71.0)
+
+Lo que usa un tipo de equipo o un laboratorio hecho fuera del núcleo; mismos módulos que los equipos del núcleo, así que
+clases y simulación se comparten entre subrutas. Quitar o cambiar uno es incompatible, como el resto de esta página.
+
+| Subruta | Símbolos |
+|---|---|
+| `netfix/topology` | `deviceKindDef`, `macFromSeed`, `formatIp`, `formatMask`, `parseIp`, `parseMask`, `DETACHED`, `macPlus`, `CloudPort`, `defaultPort`, `portFromJson`, `portToJson`, `validatePort`, `Host`, `createShell`, `defaultUser`, `defaultLinuxUser`, `hostSystem`, `hostUsers`, `windowsAccount`; tipos `NetDevice`, `Frame`, `IpPacket`, `SimClock`, `DeviceHooks`, `CloudPortSettings`, `HostOs`, `Cred`, `Vfs` |
+| `netfix/classroom` | `checkKind` (y los ya citados `registerCheckKind`, `checkFields`, `runOnHost`) |
+| `netfix/ui` | `registerDeviceUi`, `deviceUi`, `el`, `uiRoot`, `button`, `field`, `input`, `message`, `onCommit`, `livePanel`, `forwardsSection`, `Terminal`, `checkMount`, `getLocale`, `onLocaleChange`; tipos `DeviceUi`, `DeviceWindowContext`, `Tab`, `Locale` |
 
 ### 3.4 Neutral frente a solo navegador
 

@@ -4,21 +4,12 @@
  */
 export { allowsDevice, allowsLab, allowsTab, parseRestrictions, NO_RESTRICTIONS, DEVICE_KINDS } from '../classroom/restrictions.ts';
 export type { Restrictions } from '../classroom/restrictions.ts';
-export { checkFields, parseChecklist, registerCheckKind } from '../classroom/checklist.ts';
-export { codeLab, CODE_LAB_DEVICE } from '../classroom/code-lab.ts';
-export type { CodeLabFile } from '../classroom/code-lab.ts';
+export { checkFields, checkKind, parseChecklist, registerCheckKind } from '../classroom/checklist.ts';
 export type { Check, CheckField, CheckKind, CheckOutcome, ChecklistItem, ExtensionCheck } from '../classroom/checklist.ts';
 export { evaluate, WORK_LIMIT, RUNTIME_INFO, EVALUATION_VERSION } from '../classroom/evaluate.ts';
 export type { Evaluation, ItemResult, NetfixRuntimeInfo } from '../classroom/evaluate.ts';
 export { evaluateFile } from '../classroom/embed.ts';
 export { checkMarkingBudget, MARK_MAX_DEVICES, MARK_MAX_CONFIG_LINES } from '../classroom/budget.ts';
 export { withWorkLimit, WorkLimitError } from '../net/network.ts';
-import { registerRunCheck } from '../classroom/run-check.ts';
 export { runOnHost } from '../classroom/host-run.ts';
 export type { HostRun } from '../classroom/host-run.ts';
-
-import { registerClassLanKind } from '../devices/classlan-kind.ts';
-
-// S23: `run` and the Classroom LAN are registered until they move to FixIT Classroom's extension pack.
-registerRunCheck();
-registerClassLanKind();

@@ -3,6 +3,7 @@ export const LOAD_ES = {
   'load.notNetfix': 'No es un archivo de Netfix válido.',
   'load.incomplete': 'Archivo incompleto: faltan dispositivos o enlaces.',
   'load.badDevice': 'Dispositivo no válido en el archivo.',
+  'load.unknownKind': 'Este laboratorio tiene un equipo de tipo «{kind}», que solo existe con una extensión de Netfix (por ejemplo, en Netfix Classroom).',
   'load.deviceData': 'Datos incompletos para {id}.',
   'load.deviceConfig': 'Configuración no válida en {id}.',
   'load.drawings': 'Dibujos no válidos en el archivo.',

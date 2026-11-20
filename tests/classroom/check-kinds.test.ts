@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import { checkFields, parseChecklist, registerCheckKind } from '../../src/classroom/checklist.ts';
 import { evaluate } from '../../src/classroom/evaluate.ts';
 import { runOnHost } from '../../src/classroom/host-run.ts';
-import { codeLab, CODE_LAB_DEVICE } from '../../src/classroom/code-lab.ts';
 import { Topology } from '../../src/net/topology.ts';
 
 const item = (check: unknown): unknown => ({ id: 'a', weight: 2, check });
@@ -39,7 +38,8 @@ test('evaluate marks an extension check with its evaluator; one that throws fail
 });
 
 test('runOnHost runs a line in a host\'s shell, from its home folder, or says why it cannot', () => {
-  const t = Topology.fromJSON(codeLab('linux', [{ path: 'hola.sh', content: 'echo hola\n' }]));
-  assert.deepEqual(runOnHost(t, CODE_LAB_DEVICE, 'linux', 'bash hola.sh'), { output: ['hola'] });
+  const t = new Topology();
+  const pc = t.add('pc', 100, 100);
+  assert.deepEqual(runOnHost(t, pc.label, 'linux', 'echo hola'), { output: ['hola'] });
   assert.deepEqual(runOnHost(t, 'nadie', 'linux', 'ls'), { error: 'No existe el equipo «nadie».' });
 });

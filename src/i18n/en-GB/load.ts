@@ -5,6 +5,7 @@ export const LOAD_EN: Readonly<Record<LoadKey, string>> = {
   'load.notNetfix': 'This is not a valid Netfix file.',
   'load.incomplete': 'Incomplete file: devices or links are missing.',
   'load.badDevice': 'Invalid device in the file.',
+  'load.unknownKind': 'This lab has a device of type «{kind}», which only exists with a Netfix extension (in Netfix Classroom, for example).',
   'load.deviceData': 'Incomplete data for {id}.',
   'load.deviceConfig': 'Invalid configuration in {id}.',
   'load.drawings': 'Invalid drawings in the file.',

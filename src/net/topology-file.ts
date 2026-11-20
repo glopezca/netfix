@@ -45,13 +45,19 @@ export class TopologyFileError extends Error {
 }
 
 /** Validates untrusted JSON before building a topology from it. */
+/** A well-formed kind that is not known here belongs to an extension (Netfix Classroom's, say): the message names it. */
+function badDevice(kind: unknown): TopologyFileError {
+  if (typeof kind === 'string' && /^[a-z][a-z0-9-]{0,31}$/.test(kind)) return new TopologyFileError('bad-device', t('load.unknownKind', { kind }));
+  return new TopologyFileError('bad-device', t('load.badDevice'));
+}
+
 export function validateFile(data: unknown): TopologyFile {
   if (!isObject(data) || (data.format !== 'netfix' && data.format !== 'netsim') || (data.version !== 1 && data.version !== FILE_VERSION)) throw new TopologyFileError('not-netfix', t('load.notNetfix'));
   const { devices, links } = data;
   if (!Array.isArray(devices) || !Array.isArray(links)) throw new TopologyFileError('incomplete', t('load.incomplete'));
   if (devices.length > MAX_DEVICES || links.length > MAX_DEVICES * 2) throw new TopologyFileError('too-big', t('load.tooBig', { max: MAX_DEVICES }));
   for (const d of devices) {
-    if (!isObject(d) || typeof d.id !== 'string' || !deviceKinds().includes(String(d.kind))) throw new TopologyFileError('bad-device', t('load.badDevice'));
+    if (!isObject(d) || typeof d.id !== 'string' || !deviceKinds().includes(String(d.kind))) throw badDevice(isObject(d) ? d.kind : undefined);
     if (![d.x, d.y, d.seed].every((n) => typeof n === 'number' && Number.isFinite(n)) || typeof d.label !== 'string') throw new TopologyFileError('device-data', t('load.deviceData', { id: d.id }));
     if (d.label.length > MAX_LABEL) throw new TopologyFileError('device-data', t('load.deviceData', { id: d.id }));
     if (!configLines(d.config) || !(d.startup === null || configLines(d.startup))) throw new TopologyFileError('device-config', t('load.deviceConfig', { id: d.id }));

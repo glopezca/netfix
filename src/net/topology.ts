@@ -123,7 +123,7 @@ export interface DeviceRecord {
   readonly server?: ServerRecord;
   /** ISP cloud settings (lines, public block, registered domains). */
   readonly cloud?: unknown;
-  /** A registered kind's settings, under its key (`field`, default the kind: `classlan` for the Classroom LAN). */
+  /** A registered kind's settings, under its key (`field`, default the kind). */
   readonly [extension: string]: unknown;
 }
 
@@ -173,7 +173,6 @@ export class Topology {
   pkgsOff: readonly string[] = [];
   /** The guided lab this workspace is, with the hints already shown. */
   mission: MissionState | undefined;
-  /** The host's Classroom LAN (Netfix Classroom), or null: its devices are then disconnected. */
   /** The host page's context for each registered kind (setKindContext), handed to its devices. */
   private readonly contexts = new Map<string, unknown>();
   private nextDrawing = 1;
