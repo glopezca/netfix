@@ -140,8 +140,12 @@ había al entregar (`worker/grading.ts`, función `target`).
 | `evaluate` | `src/classroom/evaluate.ts` | `(file: unknown, checklist, workLimit = WORK_LIMIT)` → `Evaluation` (con `runtime`, §3.6); lanza `TopologyFileError` o `WorkLimitError` |
 | `evaluateFile` | `src/classroom/embed.ts` | `(topology: unknown, checklist: unknown)` → `Evaluation` (valida la lista antes) |
 | `checkMarkingBudget`, `MARK_MAX_DEVICES`, `MARK_MAX_CONFIG_LINES` | `src/classroom/budget.ts` | `unknown` → `void`; lanza |
+| `registerCheckKind`, `checkFields` (también en `netfix/authoring`) | `src/classroom/checklist.ts` | punto de extensión (S23): `(tipo, { fields, evaluate, active? })` añade un tipo de comprobación; `parseChecklist` valida sus campos con esos validadores y `evaluate` lo corrige dentro del límite de trabajo (si lanza, falla solo ese elemento). Nombre `[a-z][a-z0-9-]{0,31}`, no uno ya existente |
+| `runOnHost` | `src/classroom/host-run.ts` | `(topology, etiqueta, 'linux' \| 'windows', línea)` → `{ output }` o `{ error }`: una orden en el terminal de un PC o servidor |
 | `withWorkLimit`, `WorkLimitError`, `WORK_LIMIT` | `src/net/network.ts`, `src/classroom/evaluate.ts` | acotan `fromJSON` y la corrección |
-| tipos | `Restrictions`, `Check`, `ChecklistItem`, `Evaluation`, `ItemResult` | |
+| tipos | `Restrictions`, `Check`, `ExtensionCheck`, `CheckKind`, `CheckField`, `CheckOutcome`, `ChecklistItem`, `Evaluation`, `ItemResult`, `HostRun` | |
+
+La comprobación `run` (Codefix) ya es un tipo registrado: `netfix/classroom` la registra al cargarse hasta que pase al paquete de extensión de FixIT Classroom (S23, D25).
 
 Cubre uno a uno los imports actuales de `FixITClassroom/src/worker/netfix.ts` y `src/web/core/*`
 (`tests/phase1/classroom-surface.test.ts`).

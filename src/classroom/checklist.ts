@@ -3,7 +3,7 @@
  * weight and one check. It arrives as untrusted JSON (written by a teacher, stored by the server), so every field is
  * validated and bounded; text is compared literally (no regular expressions, so no ReDoS).
  */
-import type { DeviceKind } from '../net/topology.ts';
+import type { DeviceKind, Topology } from '../net/topology.ts';
 import { parseIp } from '../core/ip.ts';
 import { DEVICE_KINDS } from './restrictions.ts';
 
@@ -17,18 +17,22 @@ export type Check =
   | { readonly type: 'tcp'; readonly from: string; readonly to: string; readonly port: number; readonly expect: 'success' | 'fail' }
   /** A read-only `show …` command run on an IOS device: its output must contain the text. */
   | { readonly type: 'output'; readonly device: string; readonly command: string; readonly contains: string }
-  /** Codefix (D24): any command run in a PC's or server's bash (or cmd.exe, shell 'cmd'): its output must contain the text. */
-  | { readonly type: 'run'; readonly device: string; readonly shell?: 'bash' | 'cmd'; readonly command: string; readonly contains: string }
   | { readonly type: 'http'; readonly from: string; readonly url: string; readonly status?: number; readonly contains?: string }
   | { readonly type: 'file'; readonly device: string; readonly path: string; readonly contains?: string }
   /** `section`: the lines must be inside it (the indented lines under that unindented line, e.g. an interface). */
   | { readonly type: 'config'; readonly device: string; readonly section?: string; readonly lines: readonly string[] };
 
+/** A check of a type registered with `registerCheckKind`: its fields as its validators returned them. */
+export interface ExtensionCheck {
+  readonly type: string;
+  readonly [field: string]: unknown;
+}
+
 export interface ChecklistItem {
   readonly id: string;
   readonly title?: string;
   readonly weight: number;
-  readonly check: Check;
+  readonly check: Check | ExtensionCheck;
 }
 
 export const MAX_ITEMS = 200;
@@ -44,7 +48,9 @@ const LABEL_RE = new RegExp(`^${VISIBLE}{1,64}$`, 'u');
 const LINE_RE = new RegExp(`^${VISIBLE}+$`, 'u');
 const NAME_RE = /^[A-Za-z0-9.-]{1,253}$/;
 
-type Field = (v: unknown, at: string) => unknown;
+/** Validates one field of a check (`at` names it in the error) and returns its value; throws when it is not valid. */
+export type CheckField = (v: unknown, at: string) => unknown;
+type Field = CheckField;
 
 function invalid(why: string): never {
   throw new Error(`Lista de comprobación no válida: ${why}`);
@@ -111,23 +117,66 @@ const SCHEMAS: Readonly<Record<Check['type'], Readonly<Record<string, Field>>>> 
   dns: { from: label, name: dnsName, 'ip?': ipText, 'expect?': expect },
   tcp: { from: label, to: text(NAME_RE), port, 'expect?': expect },
   output: { device: label, command: showCommand, contains: text(null) },
-  run: { device: label, 'shell?': oneOf(['bash', 'cmd']), command: plain, contains: text(null) },
   http: { from: label, url: httpUrl, 'status?': status, 'contains?': text(null) },
   file: { device: label, path, 'contains?': text(null) },
   config: { device: label, 'section?': configLine, lines },
 };
 
+/** The marking of one check: passed or not, and what the student reads about it. */
+export interface CheckOutcome {
+  readonly passed: boolean;
+  readonly detail: string;
+}
+
+/** A check type added from outside the core (an extension pack): its fields and how it is marked. */
+export interface CheckKind {
+  /** Field name → validator; a name ending in `?` is optional. */
+  readonly fields: Readonly<Record<string, CheckField>>;
+  /** It sends traffic or advances the simulated time: it is marked after the passive checks. */
+  readonly active?: boolean;
+  /** Marks the check on the student's topology; runs within the marking's work limit, and a throw fails only this item. */
+  readonly evaluate: (t: Topology, check: ExtensionCheck) => CheckOutcome;
+}
+
+const KIND_RE = /^[a-z][a-z0-9-]{0,31}$/;
+const kinds = new Map<string, CheckKind>();
+
+/** Adds a check type (lowercase, digits and dashes, up to 32): it cannot take a built-in name or one already registered. */
+export function registerCheckKind(type: string, kind: CheckKind): void {
+  if (!KIND_RE.test(type)) throw new Error(`Tipo de comprobación: nombre no válido «${type}»`);
+  if (Object.hasOwn(SCHEMAS, type) || kinds.has(type)) throw new Error(`El tipo de comprobación «${type}» ya existe`);
+  kinds.set(type, Object.freeze({ ...kind, fields: Object.freeze({ ...kind.fields }) }));
+}
+
+/** The registered type `type`, if any. */
+export const checkKind = (type: string): CheckKind | undefined => kinds.get(type);
+
+/** A built-in check (the rest are of registered types). */
+export const isBuiltinCheck = (c: Check | ExtensionCheck): c is Check => Object.hasOwn(SCHEMAS, c.type);
+
+/** The validators of the built-in fields, for registered types: the same limits and messages. */
+export const checkFields = Object.freeze({
+  /** A device's name as the topology shows it. */
+  label: label as CheckField,
+  /** One visible line of up to 200 characters (a command). */
+  plain: plain as CheckField,
+  /** Text to look for in an output, up to 500 characters, compared literally. */
+  contains: text(null) as CheckField,
+  oneOf: (values: readonly string[]): CheckField => oneOf(values),
+});
+
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-function isType(v: unknown): v is Check['type'] {
-  return typeof v === 'string' && Object.hasOwn(SCHEMAS, v);
+function schemaOf(type: unknown): Readonly<Record<string, Field>> | undefined {
+  if (typeof type !== 'string') return undefined;
+  return Object.hasOwn(SCHEMAS, type) ? SCHEMAS[type as Check['type']] : kinds.get(type)?.fields;
 }
 
-function parseCheck(v: unknown, at: string): Check {
-  if (!isRecord(v) || !isType(v.type)) invalid(`${at}.type desconocido`);
-  const schema = SCHEMAS[v.type];
+function parseCheck(v: unknown, at: string): Check | ExtensionCheck {
+  const schema = isRecord(v) ? schemaOf(v.type) : undefined;
+  if (!isRecord(v) || !schema) invalid(`${at}.type desconocido`);
   const out: Record<string, unknown> = { type: v.type };
   const names = new Set(Object.keys(schema).map((k) => k.replace(/\?$/, '')));
   const extra = Object.keys(v).find((k) => k !== 'type' && !names.has(k));
@@ -141,7 +190,7 @@ function parseCheck(v: unknown, at: string): Check {
     out[name] = field(v[name], `${at}.${name}`);
   }
   if (v.type === 'ping' || v.type === 'tcp') out.expect ??= 'success';
-  return Object.freeze(out) as Check;
+  return Object.freeze(out) as Check | ExtensionCheck;
 }
 
 function parseItem(v: unknown, i: number, seen: Set<string>): ChecklistItem {
