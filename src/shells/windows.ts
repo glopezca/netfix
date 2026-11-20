@@ -32,7 +32,8 @@ import { tracert } from './trace-cmds.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
 import { hostSystem, hostUsers, defaultLinuxUser } from './host-system.ts';
-import { GIT_BIN, WIN_EDITORS, WIN_PATH, seedWindowsDisk, usersDir, windowsAccount } from './win-system.ts';
+import { GIT_BIN, WIN_EDITORS, seedWindowsDisk, usersDir, windowsAccount } from './win-system.ts';
+import { runWindowsProgram, seedWindowsPrograms, windowsPathFor } from './win-programs.ts';
 import { WinFiles } from './win-files.ts';
 import { WinDrives } from './win-drives.ts';
 import { splitCmdLine, toWindowsPath } from './win-path.ts';
@@ -120,6 +121,7 @@ export class WindowsShell extends BaseShell {
     const fs = hostSystem(this.host).fs;
     const srv = serverOf(this.host);
     seedWindowsDisk(fs, this.user, account, srv !== undefined && unitActive(srv.services, 'ssh'));
+    seedWindowsPrograms(fs, this.host);
     this.fileCmds = new WinFiles(fs, cred, usersDir(this.user));
     return this.fileCmds;
   }
@@ -196,7 +198,7 @@ export class WindowsShell extends BaseShell {
   /** The system's variables (set adds its own on top). */
   private env(): Record<string, string> {
     return {
-      Path: WIN_PATH, USERNAME: this.user, USERPROFILE: toWindowsPath(usersDir(this.user)), COMPUTERNAME: this.host.name.toUpperCase(),
+      Path: windowsPathFor(this.host), USERNAME: this.user, USERPROFILE: toWindowsPath(usersDir(this.user)), COMPUTERNAME: this.host.name.toUpperCase(),
       SystemRoot: 'C:\\Windows', windir: 'C:\\Windows', SystemDrive: 'C:',
     };
   }
@@ -259,6 +261,8 @@ export class WindowsShell extends BaseShell {
     if (editor) return this.files().edit(paths, editor);
     const mc = this.mc(name, paths);
     if (mc) return mc;
+    const program = runWindowsProgram(this.host, name, args, this.files().winFs, this.user, usersDir(this.user));
+    if (program) return program;
     const file = this.files().run(name, paths, text);
     if (file) return file;
     switch (cmd.toLowerCase()) {
@@ -277,7 +281,7 @@ export class WindowsShell extends BaseShell {
       case 'nbtstat': return nbtstat(this.host, args);
       case 'help': case '?': return HELP;
       case 'cls': return [];
-      case 'path': return [`PATH=${WIN_PATH}`];
+      case 'path': return [`PATH=${windowsPathFor(this.host)}`];
       case 'exit':
         if (this.remote) this.closed = true;
         return [];

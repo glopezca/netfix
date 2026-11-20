@@ -5,6 +5,7 @@ import type { BuiltinDoc } from './bash-builtins.ts';
 import { getLocale } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
 import { docSet } from './sets.ts';
+import { extensionUtilDocs } from './extension-docs.ts';
 
 export type { DocBlock, DocGroup, DocPage } from './types.ts';
 
@@ -15,7 +16,8 @@ export function docGroups(locale: Locale = getLocale()): readonly DocGroup[] {
 
 /** Programs documented for man (in the current language). */
 export function utilDocs(locale: Locale = getLocale()): Readonly<Record<string, UtilDoc>> {
-  return docSet(locale).utils;
+  // Extensions' programs after the core's (registerProgram never takes a core name).
+  return { ...docSet(locale).utils, ...extensionUtilDocs(locale) };
 }
 
 /** bash builtins documented for help (in the current language). */

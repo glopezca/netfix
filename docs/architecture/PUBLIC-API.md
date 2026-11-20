@@ -178,9 +178,18 @@ clases y simulación se comparten entre subrutas. Quitar o cambiar uno es incomp
 
 | Subruta | Símbolos |
 |---|---|
-| `netfix/topology` | `deviceKindDef`, `macFromSeed`, `formatIp`, `formatMask`, `parseIp`, `parseMask`, `DETACHED`, `macPlus`, `CloudPort`, `defaultPort`, `portFromJson`, `portToJson`, `validatePort`, `Host`, `createShell`, `defaultUser`, `defaultLinuxUser`, `hostSystem`, `hostUsers`, `windowsAccount`; tipos `NetDevice`, `Frame`, `IpPacket`, `SimClock`, `DeviceHooks`, `CloudPortSettings`, `HostOs`, `Cred`, `Vfs` |
+| `netfix/topology` | `deviceKindDef`, `macFromSeed`, `formatIp`, `formatMask`, `parseIp`, `parseMask`, `DETACHED`, `macPlus`, `CloudPort`, `defaultPort`, `portFromJson`, `portToJson`, `validatePort`, `Host`, `createShell`, `defaultUser`, `defaultLinuxUser`, `hostSystem`, `hostUsers`, `windowsAccount`, `registerProgram`, `hostFiles`; tipos `NetDevice`, `Frame`, `IpPacket`, `SimClock`, `DeviceHooks`, `CloudPortSettings`, `HostOs`, `Cred`, `Vfs`, `ProgramDef`, `ProgramCall`, `ProgramDoc`, `ProgramSystem`, `HostFiles`, `FileEntry` |
 | `netfix/classroom` | `checkKind` (y los ya citados `registerCheckKind`, `checkFields`, `runOnHost`) |
 | `netfix/ui` | `registerDeviceUi`, `deviceUi`, `el`, `uiRoot`, `button`, `field`, `input`, `message`, `onCommit`, `livePanel`, `forwardsSection`, `Terminal`, `checkMount`, `getLocale`, `onLocaleChange`; tipos `DeviceUi`, `DeviceWindowContext`, `Tab`, `Locale` |
+
+**Programas del terminal (0.72.0).** `registerProgram({ name, systems, windowsDir?, doc: { es, en }, applies, run })`
+añade un programa: en GNU/Linux, `/usr/bin/<name>` (lo ven `which`, `ls`, el completado y `man`); en Windows,
+`<name>.exe` en `C:\<windowsDir>` (por defecto `Program Files\<name>`), carpeta que entra en `%PATH%` y se ejecuta con
+o sin `.exe`, como `vim.exe`. `applies(host)` decide qué equipos lo tienen (en GNU/Linux se pregunta al preparar el
+sistema del equipo; en Windows, en cada uso). `run(call)` recibe `argv`, el usuario, la carpeta actual, `out`/`err` y
+`files`: leer, escribir, listar y resolver rutas **con los permisos de ese usuario** (lo mismo que `nano`). Los
+programas del núcleo siempre ganan: un nombre suyo se rechaza. `hostFiles(host, system?)` da los archivos de un equipo
+sin terminal, como su usuario de consola, para acciones del área de trabajo.
 
 ### 3.4 Neutral frente a solo navegador
 
