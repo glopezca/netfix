@@ -30,7 +30,6 @@ export const APP_EN: Readonly<Record<AppKey, string>> = {
   'pal.devices': 'Devices',
   'pal.routers': 'Router',
   'pal.pileHint': 'Several models: pick one',
-  'pal.classlanOne': 'This lab already has its Classroom LAN: delete it to place it again.',
   'pal.pileCount': '{n} models ▸',
   'pal.tools': 'Tools',
   'pal.select': 'Select',

@@ -44,17 +44,6 @@ icono de la página; el tema sí necesita `<html data-theme>`, y `destroy()` lo 
 trabajo y devolver el elemento vacío. No admite restricciones (para una práctica, `netfix.embed`); su única opción es
 `toolbar`.
 
-## Solo el terminal, para un editor de código (`netfix.code`)
-
-Para Codefix (D24 de FixIT Classroom), `netfix.code(elemento, { os, topology?, files?, onRun? })` monta solo un
-terminal de Netfix —bash con `os: 'linux'` o cmd.exe con `os: 'windows'`— sobre un laboratorio de un PC (`PC`), a
-toda la altura del elemento, para una página que edita los archivos con su propio editor. `topology` es un archivo
-de Netfix guardado antes (si no, un PC nuevo); `files`, archivos `{ path, content }` que se escriben en la carpeta
-personal del usuario (rutas relativas, sin `..`); `onRun` se llama tras cada orden del terminal (los archivos pueden
-haber cambiado). El objeto que devuelve tiene `files()` (los archivos de texto de esa carpeta, sin los ocultos),
-`write(ruta, contenido)`, `remove(ruta)`, `run(línea)` (como si se escribiera y se pulsara Intro), `focus()`,
-`exportTopology()` (lo que la página guarda, y lo que corrige la comprobación `run`) y `destroy()`.
-
 ## Opciones de la página que aloja Netfix
 
 `actions` (un elemento de la página, con `toolbar`) recibe deshacer/rehacer, el portapapeles y el zoom. Con la barra
@@ -68,19 +57,8 @@ preferencia de este navegador). Con `toolbar`, `palette: 'bottom'` deja la palet
 página de Netfix; sin ella (`'side'`), es la barra lateral, con el nombre de cada equipo a la derecha de su icono. `piles` (`true`/`false`)
 apila los equipos parecidos en un botón (Router: IOS o GNU/Linux; PC: Windows, GNU/Linux o ambos); sin ella, la preferencia
 de este navegador, desmarcada de serie.
-`classroomLan` (Netfix Classroom) une el laboratorio con los demás de la clase mediante el equipo «LAN de clase»: un objeto
-`{ lab, send(mensaje), onMessage(oyente) }` con `lab` el número del laboratorio en la clase (1-250, su red de clase es
-10.lab.0.0/16). Netfix envía `{ kind: 'frame', frame }` (puente) o `{ kind: 'ip', packet }` (NAT) y comprueba lo que recibe
-(solo datos, como mucho 16 KB, MAC y direcciones válidas); la página reenvía cada mensaje a los demás laboratorios. Sin
-ella, el equipo no está en la paleta y, si llega en un archivo, queda sin conexión. Con `close()` (opcional) en ese
-objeto, Netfix lo llama al borrar el último equipo «LAN de clase» del laboratorio, para que la página salga de la LAN;
-desde entonces el equipo ya no se puede poner con ese enlace.
-Para quien tiene varias clases, `classroomLan` puede ser en su lugar `{ classes: [{ id, name }], join(id) }` (de 1 a 50
-clases, `id` y `name` texto no vacío de hasta 80 caracteres): al elegir el equipo en la paleta Netfix pregunta «¿A qué
-clase pertenece esta LAN?» (con una sola clase, no pregunta), llama a `join(id)` y espera el enlace de arriba (o `null`
-si no se ha podido entrar: el equipo no se pone y se avisa). Cancelar no pone el equipo. Al borrar el último equipo
-llama a `close()` del enlace y, la siguiente vez, vuelve a preguntar. Los tipos son `ClassLanLink`, `ClassLanChooser`
-y `ClassLanClass` de `@glopezca/netfix/ui`.
+Una extensión puede añadir opciones propias con `registerHostOption` (PUBLIC-API.md §3.3). Desde 0.71.0 la LAN de
+clase (`classroomLan`) y el terminal de Codefix (`netfix.code`) no están en Netfix: son de Netfix Classroom.
 
 ## La barra en el menú de la página (`toolbar`)
 

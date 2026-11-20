@@ -30,7 +30,7 @@ class Box implements ExtensionDevice {
 const file = (kind: string): unknown => ({ format: 'netfix', version: new Topology().toJSON().version, devices: [{ id: 'd0', kind, label: 'X', x: 0, y: 0, seed: 1, config: [], startup: null }], links: [] });
 
 test('an undeclared kind is refused in a file, a restriction and a checklist; declared, all three take it', () => {
-  assert.throws(() => validateFile(file('ext-box')), /Dispositivo no válido/);
+  assert.throws(() => validateFile(file('ext-box')), /tipo «ext-box», que solo existe con una extensión/);
   assert.throws(() => parseRestrictions({ devices: ['ext-box'] }));
   registerDeviceKind('ext-box', {
     prefix: 'Box', tabs: ['box', 'box-extra'],

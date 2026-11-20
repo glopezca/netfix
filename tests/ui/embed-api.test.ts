@@ -1,9 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NO_HOST, checkMount, labOptions, takeHostOptions } from '../../src/ui/embed-api.ts';
-import { registerClassLanUi } from '../../src/ui/classlan-kind.ts';
-
-registerClassLanUi(); // the host option «classroomLan» (S23: an extension's, ui/host-options.ts)
 
 test('netfix.embed needs an element to mount on', () => {
   assert.throws(() => checkMount('#app'), /elemento/);
@@ -25,16 +22,7 @@ test('host options: none leaves the options as they were; a bad toolbar, locale,
   assert.throws(() => takeHostOptions(mount, { confirmUnsaved: 'no' }), /confirmUnsaved/);
   assert.throws(() => takeHostOptions(mount, { palette: 'top' }), /palette/);
   assert.equal(takeHostOptions(mount, { piles: true }).host.piles, true, 'a host piles similar devices');
-  const link = { lab: 2, name: '  1º SMR B  ', send: () => {}, onMessage: () => () => {} };
-  assert.equal(takeHostOptions(mount, { classroomLan: link }).host.extensions.classroomLan?.name, '1º SMR B', 'the class name, trimmed');
-  assert.equal(takeHostOptions(mount, { classroomLan: { ...link, name: 7 } }).host.extensions.classroomLan?.name, undefined, 'a name that is not text is left out');
   assert.throws(() => takeHostOptions(mount, { piles: 'yes' }), /piles/);
-  // Netfix Classroom's LAN: a lab number and the two functions, nothing else.
-  const lan = takeHostOptions(mount, { classroomLan: { lab: 3, send: () => undefined, onMessage: () => () => undefined } }).host.extensions.classroomLan;
-  assert.equal(lan?.lab, 3);
-  for (const bad of [{ lab: 0, send: () => undefined, onMessage: () => () => undefined }, { lab: 3, send: 'x', onMessage: () => () => undefined }, 'lan']) {
-    assert.throws(() => takeHostOptions(mount, { classroomLan: bad }), /classroomLan/);
-  }
 });
 
 test('netfix.lab takes no option but the host ones', () => {

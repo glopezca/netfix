@@ -23,7 +23,8 @@ test('devices and links must be arrays, and no more than MAX_DEVICES devices (2x
 });
 
 test('bad devices and links are refused with their message', () => {
-  assert.throws(() => validateFile(file({ devices: [{ ...dev(1), kind: 'toaster' }] })), /Dispositivo no válido en el archivo\./);
+  assert.throws(() => validateFile(file({ devices: [{ ...dev(1), kind: 'toaster' }] })), /tipo «toaster», que solo existe con una extensión/);
+  assert.throws(() => validateFile(file({ devices: [{ ...dev(1), kind: 42 }] })), /Dispositivo no válido en el archivo\./);
   assert.throws(() => validateFile(file({ devices: [{ ...dev(1), x: 'a' }] })), /Datos incompletos para d1\./);
   assert.throws(() => validateFile(file({ devices: [{ ...dev(1), label: 'x'.repeat(65) }] })), /Datos incompletos para d1\./);
   assert.throws(() => validateFile(file({ devices: [{ ...dev(1), config: [1] }] })), /d1/);

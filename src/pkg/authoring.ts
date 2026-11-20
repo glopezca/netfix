@@ -10,8 +10,3 @@ export type { Check, CheckField, CheckKind, CheckOutcome, ChecklistItem, Extensi
 export { LABS_ES } from '../i18n/es-ES/labs.ts';
 export type { DeviceKind } from '../net/topology.ts';
 export { declareDeviceKind, deviceKinds } from '../net/device-kinds.ts';
-import { declareDeviceKind } from '../net/device-kinds.ts';
-
-// S23: restrictions and checklists may name the Classroom LAN (declared by name only: this entry stays light; the
-// tabs must match devices/classlan-kind.ts).
-declareDeviceKind('classlan', { tabs: ['classlan'] });

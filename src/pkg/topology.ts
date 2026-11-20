@@ -10,7 +10,23 @@ export { EXAMPLES } from '../net/examples.ts';
 export { LABS_ES } from '../i18n/es-ES/labs.ts';
 export { declareDeviceKind, deviceKinds, registerDeviceKind } from '../net/device-kinds.ts';
 export type { BuiltinDeviceKind, DeviceKindDef, ExtensionDevice } from '../net/device-kinds.ts';
-import { registerClassLanKind } from '../devices/classlan-kind.ts';
 
-// S23: the Classroom LAN is a registered kind until it moves to FixIT Classroom's extension pack.
-registerClassLanKind();
+// Extension SDK (S23): what a device kind or a code lab built outside the core uses (PUBLIC-API.md §3.5). Same modules as
+// the core's own devices, so classes and the simulation are shared with every other subpath.
+export { deviceKindDef } from '../net/device-kinds.ts';
+export type { NetDevice } from '../net/network.ts';
+export type { Frame, IpPacket } from '../net/packets.ts';
+export type { SimClock } from '../core/clock.ts';
+export { macFromSeed } from '../core/mac.ts';
+export { formatIp, formatMask, parseIp, parseMask } from '../core/ip.ts';
+export { DETACHED, macPlus } from '../devices/hooks.ts';
+export type { DeviceHooks } from '../devices/hooks.ts';
+export { CloudPort } from '../devices/cloud-port.ts';
+export { defaultPort, portFromJson, portToJson, validatePort } from '../devices/cloud-config.ts';
+export type { CloudPortSettings } from '../devices/cloud-config.ts';
+export { Host } from '../devices/host.ts';
+export type { HostOs } from '../devices/host.ts';
+export type { Cred, Vfs } from '../bash/vfs.ts';
+export { createShell, defaultUser } from '../shells/factory.ts';
+export { defaultLinuxUser, hostSystem, hostUsers } from '../shells/host-system.ts';
+export { windowsAccount } from '../shells/win-system.ts';

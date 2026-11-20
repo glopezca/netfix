@@ -28,7 +28,6 @@ export const APP_ES = {
   'pal.devices': 'Dispositivos',
   'pal.routers': 'Router',
   'pal.pileHint': 'Varios modelos: elige uno',
-  'pal.classlanOne': 'Este laboratorio ya tiene su LAN de clase: bórrala para volver a ponerla.',
   'pal.pileCount': '{n} modelos ▸',
   'pal.tools': 'Herramientas',
   'pal.select': 'Seleccionar',

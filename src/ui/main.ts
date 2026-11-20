@@ -1,7 +1,6 @@
 /** Netfix application shell: top bar, workspace, palette, views, windows and simulation panel. */
 import { startKindHosts } from './host-options.ts';
 import type { KindHost } from './host-options.ts';
-import { mountCode } from './code-mount.ts';
 import { applyBrand, removeBrand } from './brand.ts';
 import { el, safeStorageGet, safeStorageSet } from './dom.ts';
 import { Canvas } from './canvas.ts';
@@ -23,8 +22,6 @@ import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
 import { floatBar, topbar } from './topbar.ts';
 import type { Mode, TopbarActions, View } from './topbar.ts';
 import { deviceGroup, palette, syncOneOnlyButtons, type PaletteActions } from './palette.ts';
-import { registerClassLanUi } from './classlan-kind.ts';
-import { registerClassLanKind } from '../devices/classlan-kind.ts';
 import { labText } from './lab-text.ts';
 import { readTopologyFile, saveTopology } from './save-file.ts';
 import { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } from './workspace-store.ts';
@@ -473,9 +470,6 @@ class App {
 }
 
 let app: App | null = null;
-// S23: the Classroom LAN is a registered kind with a host option (it moves to FixIT Classroom's pack in phase 2).
-registerClassLanKind();
-registerClassLanUi();
 /** This mount's hosts of the kinds with a host option (ui/host-options.ts), shared by every workspace it opens. */
 let kindHosts: ReadonlyMap<string, KindHost> = startKindHosts({});
 
@@ -632,5 +626,4 @@ export const NETFIX_API: NetfixApi = {
     }, host);
   },
   evaluate: evaluateFile,
-  code: mountCode,
 };
