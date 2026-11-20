@@ -48,16 +48,16 @@ import type { MailAccount } from '../clients/mail-client.ts';
 import { applyConfig } from '../ios/session.ts';
 import { registerWebApps } from '../web/apps.ts';
 import { Cloud } from '../devices/cloud.ts';
-import { ClassLan, classLanFromJson, classLanToJson } from '../devices/classlan.ts';
-import type { ClassLanLink } from './classlan.ts';
+import { deviceKindDef, isBuiltinKind, isExtensionDevice, type BuiltinDeviceKind, type DeviceKind as Kind, type ExtensionDevice } from './device-kinds.ts';
 import { cloudFromJson, cloudToJson } from '../devices/cloud-config.ts';
 import { InternetCore } from './internet.ts';
 import { populateInternet } from './internet-hosts.ts';
 
 registerWebApps();
 
-export type DeviceKind = 'router' | 'switch' | 'pc' | 'server' | 'linuxrouter' | 'cloud' | 'classlan';
-export type AnyDevice = Router | Switch | Pc | Server | Cloud | ClassLan;
+/** A built-in kind or one registered from outside the core (net/device-kinds.ts). */
+export type DeviceKind = Kind;
+export type AnyDevice = Router | Switch | Pc | Server | Cloud | ExtensionDevice;
 
 export interface Placed {
   readonly device: AnyDevice;
@@ -123,8 +123,8 @@ export interface DeviceRecord {
   readonly server?: ServerRecord;
   /** ISP cloud settings (lines, public block, registered domains). */
   readonly cloud?: unknown;
-  /** Classroom LAN settings (mode, NAT router). */
-  readonly classlan?: unknown;
+  /** A registered kind's settings, under its key (`field`, default the kind: `classlan` for the Classroom LAN). */
+  readonly [extension: string]: unknown;
 }
 
 export interface TopologyFile {
@@ -149,7 +149,8 @@ export interface TopologyFile {
   readonly mission?: unknown;
 }
 
-const PREFIX: Readonly<Record<DeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'ISP', classlan: 'ClassLAN' };
+const PREFIX: Readonly<Record<BuiltinDeviceKind, string>> = { router: 'Router', switch: 'Switch', pc: 'PC', server: 'Server', linuxrouter: 'LinuxRouter', cloud: 'ISP' };
+const prefixOf = (kind: DeviceKind): string => (isBuiltinKind(kind) ? PREFIX[kind] : deviceKindDef(kind)?.prefix ?? kind);
 /** Drawing ids stay short (aN) even after a crafted file. */
 const MAX_DRAWING_ID = 999_999_999;
 const SETTLE_MS = 30_000;
@@ -173,7 +174,8 @@ export class Topology {
   /** The guided lab this workspace is, with the hints already shown. */
   mission: MissionState | undefined;
   /** The host's Classroom LAN (Netfix Classroom), or null: its devices are then disconnected. */
-  private classLan: ClassLanLink | null = null;
+  /** The host page's context for each registered kind (setKindContext), handed to its devices. */
+  private readonly contexts = new Map<string, unknown>();
   private nextDrawing = 1;
 
   /** `baseMs` pins the simulated wall-clock start (deterministic marking); omitted = Date.now(), as before. */
@@ -193,9 +195,12 @@ export class Topology {
     const id = opts.id ?? `d${this.nextId++}`;
     const seed = opts.seed ?? this.nextSeed++;
     this.nextSeed = Math.max(this.nextSeed, seed + 1);
-    // The Classroom LAN device is called as the host's class (one per lab); else Router0, ISP0…
-    const label = opts.label ?? (kind === 'classlan' && this.classLan?.name ? this.classLan.name : this.nextLabel(kind));
-    const device = kind === 'cloud' ? this.newCloud(id, seed, label) : kind === 'classlan' ? new ClassLan({ id, name: label, clock: this.clock, seed }).connectTo(this.classLan) : createDevice(kind, id, seed, this.clock, label);
+    // A registered kind may take its label from the host's context (the Classroom LAN: the class's name); else Router0, ISP0…
+    const def = isBuiltinKind(kind) ? undefined : deviceKindDef(kind);
+    if (!isBuiltinKind(kind) && !def) throw new Error(`Tipo de equipo sin registrar «${kind}»`);
+    const label = opts.label ?? def?.label?.(this.contexts.get(kind) ?? null) ?? this.nextLabel(kind);
+    const device = def ? def.create({ id, name: label, clock: this.clock, seed }) : kind === 'cloud' ? this.newCloud(id, seed, label) : createDevice(kind as Exclude<BuiltinDeviceKind, 'cloud'>, id, seed, this.clock, label);
+    if (def && isExtensionDevice(device)) def.connect?.(device, this.contexts.get(kind) ?? null);
     seeds.set(device, seed);
     if (device instanceof Host) {
       bindLab(device, () => ({ features: this.features, webHideOff: this.webHideOff, pkgsOff: this.pkgsOff }));
@@ -211,10 +216,11 @@ export class Topology {
     return placed;
   }
 
-  /** Joins every Classroom LAN device to the host's link (or leaves it, with null). */
-  useClassLan(link: ClassLanLink | null): void {
-    this.classLan = link;
-    for (const p of this.placed.values()) if (p.device instanceof ClassLan) p.device.connect(link);
+  /** The host page's context for a registered kind (a link, a session…; null: none): every device of it takes it now, new ones later. */
+  setKindContext(kind: string, context: unknown): void {
+    this.contexts.set(kind, context);
+    const connect = deviceKindDef(kind)?.connect;
+    if (connect) for (const p of this.placed.values()) if (p.device.kind === kind && isExtensionDevice(p.device)) connect(p.device, context);
   }
 
 
@@ -236,13 +242,14 @@ export class Topology {
 
   private nextLabel(kind: DeviceKind): string {
     const used = new Set([...this.placed.values()].map((p) => p.label));
-    for (let i = 0; ; i++) if (!used.has(`${PREFIX[kind]}${i}`)) return `${PREFIX[kind]}${i}`;
+    const prefix = prefixOf(kind);
+    for (let i = 0; ; i++) if (!used.has(`${prefix}${i}`)) return `${prefix}${i}`;
   }
 
   remove(id: string): void {
     const d = this.placed.get(id)?.device;
     if (d instanceof Cloud) d.detach();
-    if (d instanceof ClassLan) d.connect(null);
+    if (d && isExtensionDevice(d)) deviceKindDef(d.kind)?.connect?.(d, null);
     this.net.removeDevice(id);
     this.placed.delete(id);
   }
@@ -259,7 +266,7 @@ export class Topology {
       if (used.includes(d.settings.block)) d.setSettings({ ...d.settings, block: this.internet.freeBlock([...used, ...d.otherBlocks()]) });
       d.attach();
     }
-    if (d instanceof ClassLan) d.connect(this.classLan);
+    if (isExtensionDevice(d)) deviceKindDef(d.kind)?.connect?.(d, this.contexts.get(d.kind) ?? null);
     this.net.addDevice(d);
     this.placed.set(id, placed);
     registerPlaced(placed, () => this.placed.values());
@@ -354,7 +361,7 @@ function makeInternet(net: Network): InternetCore {
   return core;
 }
 
-function createDevice(kind: Exclude<DeviceKind, 'cloud' | 'classlan'>, id: string, seed: number, clock: SimClock, label: string): AnyDevice {
+function createDevice(kind: Exclude<BuiltinDeviceKind, 'cloud'>, id: string, seed: number, clock: SimClock, label: string): AnyDevice {
   if (kind === 'router') return new Router({ id, clock, seed });
   if (kind === 'switch') return new Switch({ id, clock, seed });
   if (kind === 'server') return new Server(id, label, clock, seed);
@@ -367,7 +374,10 @@ export function record(id: string, p: Placed): DeviceRecord {
   const seed = deviceSeed(d);
   const base = { id, kind: d.kind, label: p.label, x: Math.round(p.x), y: Math.round(p.y), seed };
   if (d instanceof Cloud) return { ...base, cloud: cloudToJson(d.settings) };
-  if (d instanceof ClassLan) return { ...base, classlan: classLanToJson(d.settings) };
+  if (isExtensionDevice(d)) {
+    const def = deviceKindDef(d.kind);
+    return def ? { ...base, [def.field ?? d.kind]: def.save(d) } : base;
+  }
   if (d instanceof Host) {
     const pc = hostRecord(d);
     if (d instanceof Pc) return { ...base, pc: { ...pc, apps: { mail: d.mailAccount, inbox: d.inbox, url: d.browserUrl || undefined } } };
@@ -387,8 +397,9 @@ export function restore(device: AnyDevice, rec: DeviceRecord): void {
     device.setSettings(cloudFromJson(rec.cloud, device.settings));
     return;
   }
-  if (device instanceof ClassLan) {
-    device.setSettings(classLanFromJson(rec.classlan));
+  if (isExtensionDevice(device)) {
+    const def = deviceKindDef(device.kind);
+    def?.load(device, rec[def.field ?? device.kind]);
     return;
   }
   if (device instanceof Host) {

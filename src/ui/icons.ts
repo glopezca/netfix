@@ -1,6 +1,7 @@
 /** Device artwork: generic network-diagram symbols drawn for this project. */
 import { t } from '../i18n/t.ts';
-import type { DeviceKind } from '../net/topology.ts';
+import { isBuiltinKind, type BuiltinDeviceKind, type DeviceKind } from '../net/device-kinds.ts';
+import { deviceUi } from './device-kind-ui.ts';
 
 export const ICON_W = 64;
 export const ICON_H = 48;
@@ -56,20 +57,17 @@ const CLOUD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width
 </svg>`;
 
 /** Classroom LAN: the cloud with three linked screens (the labs of the class). */
-const CLASSLAN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="64" height="48">
-  <path d="M16 40 h34 a10 10 0 0 0 1 -19.9 a14 14 0 0 0 -26.5 -4.6 a10.5 10.5 0 0 0 -8.5 24.5 z" fill="var(--dev-side)" stroke="var(--dev-edge)" stroke-width="1.6" stroke-linejoin="round"/>
-  <g stroke="var(--dev-mark)" stroke-width="1.6" fill="none" stroke-linejoin="round">
-    <rect x="21" y="21" width="8" height="6"/><rect x="35" y="21" width="8" height="6"/><rect x="28" y="31" width="8" height="6"/><path d="M29 24 h6 M32 27 v4"/>
-  </g>
-</svg>`;
-
 /** Both routers (IOS and Linux) share the router symbol; the model line («Cisco 2911» / «Ubuntu») tells them apart. */
-export const ICONS: Readonly<Record<DeviceKind, string>> = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, linuxrouter: ROUTER, cloud: CLOUD, classlan: CLASSLAN };
+export const ICONS: Readonly<Record<BuiltinDeviceKind, string>> = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, linuxrouter: ROUTER, cloud: CLOUD };
 
-export const MODEL_LABEL: Readonly<Record<DeviceKind, string>> = { router: 'Cisco 2911', switch: 'Cisco 2960-24TT', pc: 'PC', server: 'Server', linuxrouter: 'Ubuntu', cloud: 'ISP', classlan: 'LAN' };
+/** A kind's icon: a registered kind brings its own (else the PC's). */
+export const iconOf = (kind: DeviceKind): string => (isBuiltinKind(kind) ? ICONS[kind] : deviceUi(kind)?.icon ?? PC);
 
-/** Model label shown under the icon (the cloud is translated). */
+export const MODEL_LABEL: Readonly<Record<BuiltinDeviceKind, string>> = { router: 'Cisco 2911', switch: 'Cisco 2960-24TT', pc: 'PC', server: 'Server', linuxrouter: 'Ubuntu', cloud: 'ISP' };
+
+/** Model label shown under the icon (the cloud is translated; a registered kind brings its own). */
 export function modelLabel(kind: DeviceKind): string {
-  return kind === 'cloud' ? t('model.cloud') : kind === 'classlan' ? t('model.classlan') : MODEL_LABEL[kind];
+  if (!isBuiltinKind(kind)) return deviceUi(kind)?.model() ?? kind;
+  return kind === 'cloud' ? t('model.cloud') : MODEL_LABEL[kind];
 }
 

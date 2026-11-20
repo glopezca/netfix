@@ -8,3 +8,9 @@ export { Topology } from '../net/topology.ts';
 export type { TopologyFile, DeviceRecord, PcRecord, ServerRecord, DeviceKind } from '../net/topology.ts';
 export { EXAMPLES } from '../net/examples.ts';
 export { LABS_ES } from '../i18n/es-ES/labs.ts';
+export { declareDeviceKind, deviceKinds, registerDeviceKind } from '../net/device-kinds.ts';
+export type { BuiltinDeviceKind, DeviceKindDef, ExtensionDevice } from '../net/device-kinds.ts';
+import { registerClassLanKind } from '../devices/classlan-kind.ts';
+
+// S23: the Classroom LAN is a registered kind until it moves to FixIT Classroom's extension pack.
+registerClassLanKind();

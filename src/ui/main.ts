@@ -21,7 +21,9 @@ import { featureOn } from '../net/lab-features.ts';
 import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
 import { floatBar, topbar } from './topbar.ts';
 import type { Mode, TopbarActions, View } from './topbar.ts';
-import { deviceGroup, offerClassLan, palette, syncClassLanButton, type PaletteActions } from './palette.ts';
+import { deviceGroup, palette, syncOneOnlyButtons, type PaletteActions } from './palette.ts';
+import { offerClassLan, registerClassLanUi } from './classlan-kind.ts';
+import { CLASSLAN_KIND, registerClassLanKind } from '../devices/classlan-kind.ts';
 import { labText } from './lab-text.ts';
 import { readTopologyFile, saveTopology } from './save-file.ts';
 import { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } from './workspace-store.ts';
@@ -113,7 +115,7 @@ class App {
     this.mode = this.session.policy.simulation ? initial.mode : 'realtime';
     this.view = initial.view === 'docs' && !this.session.policy.docs ? 'net' : initial.view;
     this.topo = topo ?? initialWorkspace(BROWSER_STORE, this.saved, () => EXAMPLES[0]!.build());
-    this.topo.useClassLan(classLan.current);
+    this.topo.setKindContext(CLASSLAN_KIND, classLan.current);
     this.topo.clock.set(Date.now()); // the settle ran the lab ~30 s ahead: its wall clock is the system's (like `clock set`)
     if (topo) this.saved.adopt(topo);
     this.hintEl = el('p', { class: 'hint', role: 'status' });
@@ -328,9 +330,9 @@ class App {
   }
 
   private syncClassLan(): void {
-    const placed = [...this.topo.net.devices.values()].some((d) => d.kind === 'classlan');
-    if (classLan.track(placed)) this.topo.useClassLan(null); // the last one went: the host's link was given back
-    syncClassLanButton(this.toolButtons, placed, () => this.selectTool({ kind: 'select' }, 'select'));
+    const kinds = new Set([...this.topo.net.devices.values()].map((d) => d.kind));
+    if (classLan.track(kinds.has(CLASSLAN_KIND))) this.topo.setKindContext(CLASSLAN_KIND, null); // the last one went: the host's link was given back
+    syncOneOnlyButtons(this.toolButtons, kinds, () => this.selectTool({ kind: 'select' }, 'select'));
   }
 
   /** The Classroom LAN tool with a chooser: which class first (and join it); only then the tool is picked. */
@@ -338,7 +340,7 @@ class App {
     const link = await classLan.join(askClass);
     if (link === 'cancel' || app !== this) return;
     if (link === null) { this.hintEl.textContent = t('classlan.joinFailed'); return; }
-    this.topo.useClassLan(link);
+    this.topo.setKindContext(CLASSLAN_KIND, link);
     this.selectTool(tool, key);
   }
 
@@ -382,9 +384,9 @@ class App {
   load(topo: Topology, message: string): void {
     this.windows.closeAll();
     forgetAll();
-    this.topo.useClassLan(null);
+    this.topo.setKindContext(CLASSLAN_KIND, null);
     this.topo = topo;
-    topo.useClassLan(classLan.current);
+    topo.setKindContext(CLASSLAN_KIND, classLan.current);
     topo.clock.set(Date.now());
     this.saved.mark(topo);
     this.canvas.setTopology(topo);
@@ -459,6 +461,9 @@ class App {
 
 let app: App | null = null;
 /** The host's Classroom LAN (Netfix Classroom), joined by every workspace this mount opens. */
+// S23: the Classroom LAN is a registered kind (it moves to FixIT Classroom's pack in phase 2).
+registerClassLanKind();
+registerClassLanUi();
 let classLan = new ClassLanState(null);
 let mountEl: HTMLElement | null = null;
 /** The host page's element for the top bar (`toolbar` option), or null: the bar is at the top of the mount. */

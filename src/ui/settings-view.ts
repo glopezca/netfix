@@ -7,7 +7,7 @@ import { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, toolHelp, s
 import { FEATURES_BY_KIND, featureOn, setFeature } from '../net/lab-features.ts';
 import type { LabFeatures } from '../net/lab-features.ts';
 import { SERVICE_PACKAGES, TOOL_PACKAGES, packageAllowed, setPackageOff } from '../net/lab-packages.ts';
-import type { DeviceKind } from '../net/topology.ts';
+import type { BuiltinDeviceKind, DeviceKind } from '../net/device-kinds.ts';
 
 /** The kinds whose windows have settings to switch (the cloud has none). */
 /** The «prompt con hora» box of the page built last, kept in step when a terminal footer changes it. */
@@ -16,7 +16,7 @@ let stampBox: HTMLInputElement | undefined;
 let helpBox: HTMLInputElement | undefined;
 onTimestampPrompt(() => { if (stampBox) stampBox.checked = timestampPrompt(); });
 
-const KINDS: readonly DeviceKind[] = ['pc', 'server', 'linuxrouter', 'router', 'switch'];
+const KINDS: readonly BuiltinDeviceKind[] = ['pc', 'server', 'linuxrouter', 'router', 'switch'];
 
 export interface SettingsHost {
   features(): LabFeatures;
@@ -69,7 +69,7 @@ function generalSection(host: SettingsHost): HTMLElement {
     el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }
 
-function kindGroup(host: SettingsHost, kind: DeviceKind, changed: () => void): HTMLElement {
+function kindGroup(host: SettingsHost, kind: BuiltinDeviceKind, changed: () => void): HTMLElement {
   const boxes = FEATURES_BY_KIND[kind].map((id) => {
     const box = el('input', { type: 'checkbox', checked: featureOn(host.features(), kind, id), disabled: host.labLocked(), 'data-feature': `${kind}:${id}` });
     box.addEventListener('change', () => {

@@ -9,6 +9,9 @@ import { parseIp, formatIp } from '../../src/core/ip.ts';
 import { createShell } from '../../src/shells/factory.ts';
 import { classLanMessage } from '../../src/net/classlan.ts';
 import type { ClassLanLink } from '../../src/net/classlan.ts';
+import { CLASSLAN_KIND, registerClassLanKind } from '../../src/devices/classlan-kind.ts';
+
+registerClassLanKind(); // a registered kind (S23), as the package entries and the app do
 
 const ip = (t: string): number => parseIp(t)!;
 const sh = (h: Pc | Server, cmd: string): string => createShell(h, 'linux').run(cmd).join('\n');
@@ -52,12 +55,12 @@ test('NAT: a lab pings another lab\'s classroom address and reaches its web thro
   const lanA = a.add('classlan', 0, 0).device as ClassLan;
   const pc = a.add('pc', 0, 0).device as Pc;
   a.connect({ device: lanA.id, port: 'Ethernet0' }, { device: pc.id, port: 'FastEthernet0' });
-  a.useClassLan(r.join(a, 1));
+  a.setKindContext(CLASSLAN_KIND, r.join(a, 1));
   const b = new Topology();
   const lanB = b.add('classlan', 0, 0).device as ClassLan;
   const srv = b.add('server', 0, 0).device as Server;
   b.connect({ device: lanB.id, port: 'Ethernet0' }, { device: srv.id, port: 'FastEthernet0' });
-  b.useClassLan(r.join(b, 2));
+  b.setKindContext(CLASSLAN_KIND, r.join(b, 2));
   srv.setStatic({ ip: ip('192.168.1.10'), prefix: 24, gateway: ip('192.168.1.1') });
   assert.equal(lanB.setSettings({ ...lanB.settings, router: { ...lanB.settings.router, forwards: [{ proto: 'tcp', port: 80, ip: ip('192.168.1.10'), toPort: 80 }] } }), null);
   pc.useDhcp();
@@ -79,7 +82,7 @@ test('bridge: two labs share a segment and ping each other\'s PCs directly', () 
     const pc = t.add('pc', 0, 0).device as Pc;
     t.connect({ device: lan.id, port: 'Ethernet0' }, { device: pc.id, port: 'FastEthernet0' });
     assert.equal(lan.setSettings({ ...lan.settings, mode: 'bridge' }), null);
-    t.useClassLan(r.join(t, n));
+    t.setKindContext(CLASSLAN_KIND, r.join(t, n));
     pc.setStatic({ ip: ip(addr), prefix: 24 });
     t.settle();
     return { t, pc };
@@ -113,7 +116,7 @@ test('without a class the device keeps its settings, is disconnected, and surviv
 test('the Classroom LAN device is called as the host\'s class; without a class name, ClassLAN0', () => {
   const link: ClassLanLink = { lab: 3, name: '1º SMR B', send: () => {}, onMessage: () => () => {} };
   const named = new Topology();
-  named.useClassLan(link);
+  named.setKindContext(CLASSLAN_KIND, link);
   assert.equal(named.add('classlan', 0, 0).label, '1º SMR B');
   assert.equal(new Topology().add('classlan', 0, 0).label, 'ClassLAN0');
 });

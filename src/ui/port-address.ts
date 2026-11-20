@@ -3,6 +3,9 @@
  * of an IOS interface (also learnt by DHCP; for a trunk to a router on a stick, its subinterfaces) or of an ISP cloud
  * line (the operator router's LAN, or the line's gateway when it is public).
  */
+import { isExtensionDevice } from '../net/device-kinds.ts';
+import { cloudOf, hostOf, iosOf } from '../net/device-guards.ts';
+import { deviceUi } from './device-kind-ui.ts';
 import type { Placed } from '../net/topology.ts';
 import { formatIp } from '../core/ip.ts';
 import { isSubinterface, parentOf, shortIfaceName } from '../ios/interfaces.ts';
@@ -38,17 +41,15 @@ export function iosVirtualAddresses(d: Extract<Placed['device'], { kind: 'router
 export function portAddresses(p: Placed, port: string): string[] {
   const d = p.device;
   let list: string[];
-  if (d.kind === 'router' || d.kind === 'switch') list = iosAddresses(d, port);
-  else if (d.kind === 'classlan') {
-    const a = d.settings.mode === 'nat' ? d.router.gatewayAddr() : undefined;
-    list = cidr(a?.ip, a?.prefix);
-  } else if (d.kind === 'cloud') {
+  if (iosOf(d)) list = iosAddresses(d, port);
+  else if (isExtensionDevice(d)) list = [...(deviceUi(d.kind)?.portAddresses?.(d, port) ?? [])];
+  else if (cloudOf(d)) {
     const line = [...d.lines].find(([name]) => name === port)?.[1];
     const a = line?.gatewayAddr();
     list = cidr(a?.ip, a?.prefix);
-  } else {
+  } else if (hostOf(d)) {
     const nic = d.nics().find((n) => n.port === port);
     list = cidr(nic?.ip, nic?.prefix);
-  }
+  } else list = [];
   return list.slice(0, MAX_ADDRESSES);
 }

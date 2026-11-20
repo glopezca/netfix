@@ -1,4 +1,5 @@
 /** Topology and discrete-event engine. Every frame on a cable is recorded for simulation mode. */
+import type { DeviceKind } from './device-kinds.ts';
 import { TaskQueue } from './task-queue.ts';
 import { SimClock } from '../core/clock.ts';
 import type { Frame } from './packets.ts';
@@ -25,7 +26,7 @@ export interface Link {
 /** What the network needs from a device. */
 export interface NetDevice {
   readonly id: string;
-  readonly kind: 'router' | 'switch' | 'pc' | 'server' | 'linuxrouter' | 'cloud' | 'classlan';
+  readonly kind: DeviceKind;
   hooks: DeviceHooks;
   displayName(): string;
   portNames(): readonly string[];
