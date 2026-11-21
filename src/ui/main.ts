@@ -23,6 +23,7 @@ import { floatBar, topbar } from './topbar.ts';
 import type { Mode, TopbarActions, View } from './topbar.ts';
 import { deviceGroup, palette, syncOneOnlyButtons, type PaletteActions } from './palette.ts';
 import { labText } from './lab-text.ts';
+import { hostLabs } from './host-labs.ts';
 import { readTopologyFile, saveTopology } from './save-file.ts';
 import { AUTOSAVE_KEY, MEMORY_STORE, SavedState, initialWorkspace, notifyHost } from './workspace-store.ts';
 import type { KeyStore } from './workspace-store.ts';
@@ -233,11 +234,7 @@ class App {
       newWorkspace: () => void this.replaceAllowed('new').then((ok) => ok && this.load(new Topology(), t('hint.empty'))),
       openFile: () => void this.replaceAllowed('open').then((ok) => ok && this.fileInput.click()),
       save: () => void this.save(),
-      loadExample: (id) => {
-        const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, id));
-        const text = ex ? labText(ex) : null;
-        if (ex && text) void this.replaceAllowed({ lab: text.title }).then((ok) => ok && this.load(startLab(ex), missionById(id) && missionsShown() ? t('mission.ui.loaded', { title: text.title }) : text.summary));
-      },
+      loadExample: (id) => void this.openLabHosted(id),
       advance: (ms) => this.advance(ms),
       setMode: (m) => this.setMode(m),
       showView: (v) => this.showView(v),
@@ -436,6 +433,16 @@ class App {
   }
 
   /** `handle.showView`: the host's menus open Netfix's pages (Help needs the classroom to allow it). */
+  /** The Labs menu and `handle.openLab`: a lab the restrictions allow, asked first over unsaved work. */
+  async openLabHosted(id: unknown): Promise<boolean> {
+    const ex = EXAMPLES.find((e) => e.id === id && allowsLab(this.session.policy, e.id));
+    if (!ex) return false;
+    const text = labText(ex);
+    if (!(await this.replaceAllowed({ lab: text.title }))) return false;
+    this.load(startLab(ex), missionById(ex.id) && missionsShown() ? t('mission.ui.loaded', { title: text.title }) : text.summary);
+    return true;
+  }
+
   showHosted(view: unknown): boolean {
     const allowed: readonly View[] = ['net', 'docs', 'settings', 'about'];
     const v = allowed.find((x) => x === view);
@@ -576,6 +583,8 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
     changed: () => current()?.afterCommand(),
     showView: (view) => current()?.showHosted(view) ?? false,
     file: (action) => current()?.fileHosted(action) ?? false,
+    labs: () => (current() ? hostLabs(s.policy) : []),
+    openLab: async (id) => (await current()?.openLabHosted(id)) ?? false,
     setLocale: (locale) => {
       if (!isLocale(locale)) throw new Error('netfix: «locale» no es un idioma de Netfix');
       if (current() && locale !== getLocale()) changeLocale(locale);

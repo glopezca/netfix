@@ -60,6 +60,10 @@ apila los equipos parecidos en un botón (Router: IOS o GNU/Linux; PC: Microsoft
 preferencia de este navegador, desmarcada de serie. `missions` (`true`/`false`, desde 0.76.0) muestra u oculta los
 laboratorios guiados (el panel Misión y su grupo en la Ayuda) sin tocar la preferencia de este navegador; sin ella,
 `netfix.lab` sigue esa preferencia (desmarcada de serie) y `netfix.embed` las muestra siempre.
+`handle.labs()` (desde 0.77.0) da los laboratorios que permiten las restricciones, en el orden del menú Labs…: `id`,
+`title` (en el idioma de Netfix), `chapter` y `chapterTitle` (su capítulo) y `mission` (si tiene misión). Con ellos
+una página monta su propio menú y abre uno con `handle.openLab(id)`, que pregunta antes si hay cambios sin guardar y
+resuelve a `true` si lo abrió.
 Una extensión puede añadir opciones propias con `registerHostOption` (PUBLIC-API.md §3.3). Desde 0.71.0 la LAN de
 clase (`classroomLan`) y el terminal de Codefix (`netfix.code`) no están en Netfix: son de Netfix Classroom.
 
