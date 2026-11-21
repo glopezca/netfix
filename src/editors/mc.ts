@@ -1,6 +1,7 @@
 /**
- * GNU Midnight Commander 4.8 (simplified): two panels, F3 viewer, F4 editor (nano, Ubuntu's default
- * editor), F5 copy, F6 rename/move, F7 mkdir, F8 delete, F10 quit. Esc + digit = F-key, as in mc.
+ * GNU Midnight Commander 4.8 (simplified): two panels, F3 viewer, F4 editor (nano, Ubuntu's default editor, or the
+ * host's editor program as with $EDITOR, which also opens a text file on Enter), F5 copy, F6 rename/move, F7 mkdir,
+ * F8 delete, F10 quit. Esc + digit = F-key, as in mc.
  */
 import { mcCredits } from './mc-credits.ts';
 import type { Editor, Frame, KeyInput, Span } from './buffer.ts';
@@ -89,7 +90,7 @@ export class McApp implements Editor {
       case 'End': p.cursor = p.entries.length - 1; break;
       case 'Tab': this.active = this.active === 0 ? 1 : 0; break;
       case 'Insert': p.toggleMark(); break;
-      case 'Enter': if (!p.enter(this.fs)) this.fkey(3); break;
+      case 'Enter': if (!p.enter(this.fs)) this.fkey(this.fs.edit && p.current()?.exec === false ? 4 : 3); break; // a host editor opens text files
       default: break;
     }
   }
@@ -196,6 +197,11 @@ export class McApp implements Editor {
   }
 
   private edit(path: string): void {
+    if (this.fs.edit) { // the host's editor program (as $EDITOR): it takes the file, mc stays on its panels
+      const err = this.fs.edit(path);
+      if (err) this.fail(err);
+      return;
+    }
     const r = this.fs.read(path);
     if (typeof r !== 'string') { this.fail(`Cannot open "${this.shown(path)}" for reading\n${r.error}`); return; }
     // nano shows and takes paths as the system writes them (C:\... on Windows).

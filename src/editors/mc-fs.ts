@@ -25,6 +25,8 @@ export interface McFs {
   readonly root?: string;
   /** How a path is shown (title, dialogs, viewer); GNU/Linux: ~ for the home folder. */
   show?(path: string): string;
+  /** Opens a file in the host's editor program (shells/programs.ts `editor`) instead of nano: an error or null. */
+  edit?(path: string): string | null;
   /** The path typed in a dialog, from folder `dir`; null when it cannot be reached (another drive). */
   parse?(text: string, dir: string): string | null;
 }
