@@ -7,12 +7,10 @@ import { DEFAULT_ALLOW_RECURSION } from '../services/dns-aml.ts';
 import { LABS_ES } from '../i18n/es-ES/labs.ts';
 import type { Example } from './examples.ts';
 import { Topology } from './topology.ts';
-import type { Router } from '../devices/router.ts';
 import type { Pc } from '../devices/pc.ts';
 import type { Server } from '../devices/server.ts';
 import type { LinuxRouter } from '../devices/linux-router.ts';
 import type { Switch } from '../devices/switch.ts';
-import { applyConfig } from '../ios/session.ts';
 import { parseIp } from '../core/ip.ts';
 import { createShell } from '../shells/factory.ts';
 import { branchLan, cloud } from './labs-vpn.ts';
@@ -32,6 +30,36 @@ export function rootScript(host: Server, script: string): void {
 
 export function fileCmd(path: string, text: string): string {
   return `cat > ${path} <<'NETFIX_EOF'\n${text.trim()}\nNETFIX_EOF`;
+}
+
+// ------------------------------------------------------------ Linux router as a LAN gateway
+
+/** Masquerade out of eth0, the WAN; forwarding stays open (Ubuntu's nftables default is accept). */
+const NAT_RULES = `
+flush ruleset
+
+table ip nat {
+  chain postrouting {
+    type nat hook postrouting priority srcnat; policy accept;
+    oifname "eth0" masquerade
+  }
+}`;
+
+/**
+ * GW as a GNU/Linux router: forwarding on and one address per LAN (`lans`, as 192.168.1.1/24). With a `wan`, eth0
+ * goes to it and asks for its address by DHCP, NAT masquerades the LANs and they start at eth1; without, at eth0.
+ * Returns GW and the router ports of the LANs, in order, for the caller to cable.
+ */
+export function linuxGateway(t: Topology, x: number, y: number, lans: readonly string[], wan?: { id: string; port: string }): { gw: LinuxRouter; ports: string[] } {
+  const gw = t.add('linuxrouter', x, y, { label: 'GW' }).device as LinuxRouter;
+  const first = wan ? 1 : 0;
+  if (wan) link(t, gw.id, 'GigabitEthernet0/0', wan.id, wan.port);
+  const addrs = lans.map((a, i) => `ip addr add ${a} dev eth${first + i}`).join('\n');
+  rootScript(gw, `${addrs}
+${fileCmd('/etc/sysctl.d/99-router.conf', 'net.ipv4.ip_forward = 1')}
+sysctl -q --system${wan ? `\n${fileCmd('/etc/nftables.conf', NAT_RULES)}\nsystemctl enable --now nftables` : ''}`);
+  if (wan) gw.useDhcp();
+  return { gw, ports: lans.map((_, i) => `GigabitEthernet0/${first + i}`) };
 }
 
 // ------------------------------------------------------------ Linux router: NAT and DMZ
@@ -101,26 +129,6 @@ systemctl enable --now nftables`);
 
 // ------------------------------------------------------------ company DNS with forwarders
 
-const GW_DNS = `
-hostname GW
-no ip domain-lookup
-interface GigabitEthernet0/0
- description LAN de la empresa (servidor DNS)
- ip address 192.168.50.1 255.255.255.0
- ip nat inside
- no shutdown
-interface GigabitEthernet0/2
- description Red de invitados
- ip address 192.168.60.1 255.255.255.0
- ip nat inside
- no shutdown
-interface GigabitEthernet0/1
- ip address dhcp
- ip nat outside
- no shutdown
-access-list 1 permit 192.168.50.0 0.0.0.255
-access-list 1 permit 192.168.60.0 0.0.0.255
-ip nat inside source list 1 interface GigabitEthernet0/1 overload`;
 
 function dnsServer(srv: Server, pcMac: string): void {
   srv.setStatic({ ip: ip('192.168.50.2'), prefix: 24, gateway: ip('192.168.50.1'), dns: ip('127.0.0.1') });
@@ -145,17 +153,15 @@ export const dnsForwardLab: Example = {
   build: () => {
     const t = new Topology();
     const norte = cloud(t, 'ISP-Norte', 460, 'Fibra0', 'public');
-    const gw = t.add('router', 460, 220, { label: 'GW' }).device as Router;
-    link(t, gw.id, 'GigabitEthernet0/1', norte.id, 'Fibra0');
-    applyConfig(gw, GW_DNS.trim().split('\n'));
-    const pcs = branchLan(t, 300, { id: gw.id, port: 'GigabitEthernet0/0' }, '192.168.50', 2);
+    const { gw, ports: [lan, guests] } = linuxGateway(t, 460, 220, ['192.168.50.1/24', '192.168.60.1/24'], { id: norte.id, port: 'Fibra0' });
+    const pcs = branchLan(t, 300, { id: gw.id, port: lan ?? '' }, '192.168.50', 2);
     const sw = t.byLabel('Switch0') as Switch;
     const srv = t.add('server', 620, 420, { label: 'NS1' }).device as Server;
     link(t, srv.id, 'FastEthernet0', sw.id, 'FastEthernet0/24');
     dnsServer(srv, (pcs[1] as Pc).mac);
     const guest = t.add('pc', 760, 420, { label: 'INVITADO' }).device as Pc;
     guest.os = 'linux';
-    link(t, guest.id, 'FastEthernet0', gw.id, 'GigabitEthernet0/2');
+    link(t, guest.id, 'FastEthernet0', gw.id, guests ?? '');
     guest.setStatic({ ip: ip('192.168.60.10'), prefix: 24, gateway: ip('192.168.60.1'), dns: ip('192.168.50.2') });
     t.settle();
     for (const p of pcs) p.useDhcp();

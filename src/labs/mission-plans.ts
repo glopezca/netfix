@@ -109,5 +109,43 @@ const namesNets: MissionPlan = {
   ],
 };
 
+const ping = (from: string, to: string): Check => ({ type: 'ping', from, to, expect: 'success' });
+
+/** nombres-lan: LNX2 has nothing; three ways to a name without a DNS of the LAN. */
+const namesLan: MissionPlan = {
+  id: 'nombres-lan',
+  tasks: 3,
+  docs: ['red-nombres', 'linux-apt', 'srv-samba-clientes'],
+  items: [
+    { id: 'mdns', task: 1, check: ping('LNX2', 'lnx1.local') },
+    { id: 'hosts', task: 2, check: ping('LNX2', 'win1') },
+    { id: 'netbios', task: 3, weight: 2, check: ping('WIN1', 'lnx2') },
+  ],
+};
+
+/** nombres-resolved: LLMNR through systemd-resolved, WINS for GNU/Linux and for Windows, past GW. */
+const namesResolved: MissionPlan = {
+  id: 'nombres-resolved',
+  tasks: 3,
+  docs: ['red-nombres', 'linux-apt', 'srv-samba-clientes'],
+  items: [
+    { id: 'llmnr', task: 1, weight: 2, check: ping('LNX-A', 'win-a') },
+    { id: 'wins-linux', task: 2, weight: 2, check: ping('LNX-B', 'win-a') },
+    { id: 'wins-windows', task: 3, check: ping('WIN-A', 'win-b') },
+  ],
+};
+
+/** dns-reenvio: a mistyped forwarder, the guests left out of recursion, a record nobody added. */
+const dnsForward: MissionPlan = {
+  id: 'dns-reenvio',
+  tasks: 3,
+  docs: ['srv-dns', 'srv-dns-names', 'red-nombres'],
+  items: [
+    { id: 'forwarder', task: 1, weight: 2, check: { type: 'dns', from: 'PC0', name: 'www.google.com' } },
+    { id: 'guests', task: 2, weight: 2, check: { type: 'dns', from: 'INVITADO', name: 'www.google.com' } },
+    { id: 'record', task: 3, check: { type: 'dns', from: 'PC0', name: 'impresora.empresa.lan', ip: '192.168.50.60' } },
+  ],
+};
+
 /** The missions, in the order of the Labs menu. */
-export const MISSION_PLANS: readonly MissionPlan[] = [basico, basicoLinux, reservas, reservasLinux, relay, cliente, namesNets];
+export const MISSION_PLANS: readonly MissionPlan[] = [basico, basicoLinux, reservas, reservasLinux, relay, cliente, namesLan, namesNets, namesResolved, dnsForward];

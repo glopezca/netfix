@@ -76,3 +76,21 @@ test('cliente: dhcp4 on CPE\'s eth0, the ISP\'s reservation with 01 + MAC and it
   t.settle();
   assert.deepEqual(failing('cliente', t), []);
 });
+
+test('dns-reenvio: forwarders and allow-recursion edited in named.conf.options, the printer in the zone, rndc reload', () => {
+  const t = missionStart('dns-reenvio');
+  assert.deepEqual(failing('dns-reenvio', t).map((f) => f.split(':')[0]), ['forwarder', 'guests', 'record']);
+  const out = root(t, 'NS1', `sed -i 's/8\\.8\\.8\\.9;/8.8.8.8; 8.8.4.4;/; s/allow-recursion { localnets; localhost; };/allow-recursion { localnets; localhost; 192.168.60.0\\/24; };/' /etc/bind/named.conf.options
+echo 'impresora       86400   IN  A     192.168.50.60' >> /etc/bind/db.empresa.lan
+named-checkconf; echo $?; named-checkzone empresa.lan /etc/bind/db.empresa.lan >/dev/null; echo $?; rndc reload`);
+  assert.deepEqual(out.slice(0, 2), ['0', '0']);
+  t.settle();
+  assert.deepEqual(failing('dns-reenvio', t), []);
+});
+
+test('nombres-lan: avahi-daemon, a line in /etc/hosts and samba on LNX2, as the hints say', () => {
+  const t = missionStart('nombres-lan');
+  root(t, 'LNX2', "apt install -y avahi-daemon >/dev/null; echo '192.168.1.11 win1' | tee -a /etc/hosts >/dev/null; apt install -y samba >/dev/null");
+  t.net.runFor(2000);
+  assert.deepEqual(failing('nombres-lan', t), []);
+});

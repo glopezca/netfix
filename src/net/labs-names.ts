@@ -6,15 +6,14 @@ import { newZone } from '../services/dns-zones.ts';
 import { LABS_ES } from '../i18n/es-ES/labs.ts';
 import type { Example } from './examples.ts';
 import { Topology } from './topology.ts';
-import type { Router } from '../devices/router.ts';
 import type { Pc } from '../devices/pc.ts';
 import type { Server } from '../devices/server.ts';
 import type { Switch } from '../devices/switch.ts';
 import type { HostOs } from '../devices/host.ts';
 import { setAptInstalled } from '../shells/apt-install.ts';
-import { applyConfig } from '../ios/session.ts';
 import { parseIp } from '../core/ip.ts';
 import { cloud } from './labs-vpn.ts';
+import { linuxGateway } from './labs-linux.ts';
 
 const ip = (x: string): number => parseIp(x) ?? 0;
 
@@ -38,21 +37,6 @@ function pcOn(t: Topology, sw: Switch, port: number, spec: PcSpec, y: number): P
 
 // ------------------------------------------------------------ One LAN, no DNS server of its own
 
-/** A home router: NAT to the ISP, the public DNS for everything (it knows no name of the LAN). */
-const GW_HOME = `
-hostname GW
-no ip domain-lookup
-interface GigabitEthernet0/0
- description LAN
- ip address 192.168.1.1 255.255.255.0
- ip nat inside
- no shutdown
-interface GigabitEthernet0/1
- ip address dhcp
- ip nat outside
- no shutdown
-access-list 1 permit 192.168.1.0 0.0.0.255
-ip nat inside source list 1 interface GigabitEthernet0/1 overload`;
 
 const LAN_PCS: readonly PcSpec[] = [
   { label: 'WIN1', os: 'windows', x: 160, addr: '192.168.1.11' },
@@ -68,11 +52,9 @@ export const namesLanLab: Example = {
   build: () => {
     const t = new Topology();
     const isp = cloud(t, 'ISP-Norte', 490, 'Fibra0', 'public');
-    const gw = t.add('router', 490, 240, { label: 'GW' }).device as Router;
-    link(t, gw.id, 'GigabitEthernet0/1', isp.id, 'Fibra0');
-    applyConfig(gw, GW_HOME.trim().split('\n'));
+    const { gw, ports: [lan] } = linuxGateway(t, 490, 240, ['192.168.1.1/24'], { id: isp.id, port: 'Fibra0' });
     const sw = t.add('switch', 490, 400, { label: 'Switch0' }).device as Switch;
-    link(t, gw.id, 'GigabitEthernet0/0', sw.id, 'GigabitEthernet0/1');
+    link(t, gw.id, lan ?? '', sw.id, 'GigabitEthernet0/1');
     for (const [i, spec] of LAN_PCS.entries()) {
       const pc = pcOn(t, sw, i + 1, spec, 600);
       pc.setStatic({ ip: ip(spec.addr), prefix: 24, gateway: ip('192.168.1.1'), dns: ip('8.8.8.8') });
@@ -87,17 +69,6 @@ export const namesLanLab: Example = {
 
 // ------------------------------------------------------------ Two LANs and a DNS server
 
-const GW_NAMES = `
-hostname GW
-no ip domain-lookup
-interface GigabitEthernet0/0
- description LAN A
- ip address 192.168.10.1 255.255.255.0
- no shutdown
-interface GigabitEthernet0/1
- description LAN B
- ip address 192.168.20.1 255.255.255.0
- no shutdown`;
 
 const NETS_PCS: readonly (PcSpec & { readonly lan: 'a' | 'b' })[] = [
   { label: 'WIN-A', os: 'windows', x: 360, addr: '192.168.10.11', lan: 'a' },
@@ -125,12 +96,11 @@ export const namesNetsLab: Example = {
   summary: LABS_ES['lab.nombres-redes.summary'],
   build: () => {
     const t = new Topology();
-    const gw = t.add('router', 500, 100, { label: 'GW' }).device as Router;
-    applyConfig(gw, GW_NAMES.trim().split('\n'));
+    const { gw, ports: [a, b] } = linuxGateway(t, 500, 100, ['192.168.10.1/24', '192.168.20.1/24']);
     const swA = t.add('switch', 260, 280, { label: 'SW-A' }).device as Switch;
     const swB = t.add('switch', 750, 280, { label: 'SW-B' }).device as Switch;
-    link(t, gw.id, 'GigabitEthernet0/0', swA.id, 'GigabitEthernet0/1');
-    link(t, gw.id, 'GigabitEthernet0/1', swB.id, 'GigabitEthernet0/1');
+    link(t, gw.id, a ?? '', swA.id, 'GigabitEthernet0/1');
+    link(t, gw.id, b ?? '', swB.id, 'GigabitEthernet0/1');
     const srv = t.add('server', 140, 480, { label: 'SRV' }).device as Server;
     link(t, srv.id, 'FastEthernet0', swA.id, 'FastEthernet0/24');
     namesServer(srv);

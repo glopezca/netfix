@@ -32,6 +32,13 @@ function lab(): { t: Topology; srv: Host; winA: Host; b2: Host } {
   return { t, srv, winA, b2 };
 }
 
+/** An IOS DHCP server for LAN B (GW is a GNU/Linux router since D28): R-DHCP on SW-B with the pool `lines`. */
+function iosPoolOnLanB(t: Topology, lines: readonly string[]): void {
+  const r = t.add('router', 0, 0, { label: 'R-DHCP' }).device as Router;
+  t.connect({ device: r.id, port: 'GigabitEthernet0/0' }, { device: t.byLabel('SW-B')?.id ?? '', port: 'FastEthernet0/20' });
+  applyConfig(r, ['interface GigabitEthernet0/0', ' ip address 192.168.20.254 255.255.255.0', ' no shutdown', ...lines]);
+}
+
 const names = (srv: Host): string[] => winsRecords(srv).map((r) => `${r.name}<${r.suffix.toString(16).padStart(2, '0')}>`);
 
 test('ipconfig /all shows the WINS server only when there is one', () => {
@@ -89,7 +96,7 @@ test('a new address registers again; any other change sends nothing', () => {
 
 test('option 44 of an IOS pool is the WINS of a DHCP client; one typed in wins over it', () => {
   const { t, srv, b2 } = lab();
-  applyConfig(t.byLabel('GW') as Router, ['ip dhcp excluded-address 192.168.20.1 192.168.20.99', 'ip dhcp pool LAN-B', ' network 192.168.20.0 255.255.255.0', ' default-router 192.168.20.1', ' netbios-name-server 192.168.10.2 192.168.10.3']);
+  iosPoolOnLanB(t, ['ip dhcp excluded-address 192.168.20.1 192.168.20.99', 'ip dhcp pool LAN-B', ' network 192.168.20.0 255.255.255.0', ' default-router 192.168.20.1', ' netbios-name-server 192.168.10.2 192.168.10.3']);
   b2.useDhcp();
   t.net.runFor(10_000);
   assert.deepEqual(b2.dhcpClient.lease?.winsServers, [SRV_IP, ip('192.168.10.3')]);
@@ -103,7 +110,7 @@ test('option 44 of an IOS pool is the WINS of a DHCP client; one typed in wins o
 test('NetBT keeps two WINS servers of the lease, however many come', () => {
   const { t, b2 } = lab();
   const many = Array.from({ length: 6 }, (_, i) => `192.168.10.${i + 2}`).join(' ');
-  applyConfig(t.byLabel('GW') as Router, ['ip dhcp excluded-address 192.168.20.1 192.168.20.99', 'ip dhcp pool LAN-B', ' network 192.168.20.0 255.255.255.0', ' default-router 192.168.20.1', ` netbios-name-server ${many}`]);
+  iosPoolOnLanB(t, ['ip dhcp excluded-address 192.168.20.1 192.168.20.99', 'ip dhcp pool LAN-B', ' network 192.168.20.0 255.255.255.0', ' default-router 192.168.20.1', ` netbios-name-server ${many}`]);
   b2.useDhcp();
   t.net.runFor(10_000);
   assert.deepEqual(windowsWinsServers(b2), [SRV_IP, ip('192.168.10.3')]);
