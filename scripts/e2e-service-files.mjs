@@ -126,8 +126,17 @@ try {
   await win.locator('.win-tab:has-text("Servicios")').click();
   await page.click('.subnav-item:has-text("Correo")');
   assert.match(await win.innerText(), /ana@empresa\.es/, 'the Mail panel shows the applied main.cf');
+  // 6. isc-dhcp-relay (S26): disabled as installed; Ubuntu's empty file fails the start ("No servers specified."), in the journal; SERVERS set, it runs.
+  await win.locator('.win-tab:has-text("Terminal GNU/Linux")').click();
+  assert.match(await run(page, 'systemctl is-enabled isc-dhcp-relay'), /^disabled$/m);
+  await run(page, 'sudo systemctl restart isc-dhcp-relay');
+  assert.match(await run(page, 'systemctl is-active isc-dhcp-relay'), /^failed$/m);
+  assert.match(await run(page, 'journalctl -u isc-dhcp-relay'), /isc-dhcp-relay\[874\]: No servers specified\./);
+  await run(page, `sudo sed -i 's/^SERVERS=.*/SERVERS="192.168.10.1"/' /etc/default/isc-dhcp-relay`);
+  await run(page, 'sudo systemctl restart isc-dhcp-relay');
+  assert.match(await run(page, 'systemctl is-active isc-dhcp-relay'), /^active$/m, 'a good file starts it');
   assert.deepEqual(errors, []);
-  console.log('e2e service files OK: kea-dhcp4 -t, Kea failed in red, the applied edit in the panel, a BIND reload that fails, named.conf.local written again from the panel, main.cf and dovecot.conf checked, failed and applied');
+  console.log('e2e service files OK: kea-dhcp4 -t, Kea failed in red, the applied edit in the panel, a BIND reload that fails, named.conf.local written again from the panel, main.cf and dovecot.conf checked, failed and applied, isc-dhcp-relay failed without servers and started with them');
 } finally {
   await browser.close();
   server.kill();

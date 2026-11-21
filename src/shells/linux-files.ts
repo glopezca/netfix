@@ -1,4 +1,5 @@
 /** Read-only view of the files a student would inspect on Ubuntu (generated from the live config). */
+import { RELAY_DEFAULT, relayDefaultText } from '../services/relay-conf.ts';
 import { listenChoices } from '../services/listen.ts';
 import { runsServices } from '../devices/kinds.ts';
 import type { Host } from '../devices/host.ts';
@@ -72,6 +73,7 @@ function serverFiles(server: Server): Map<string, string> {
   const files = new Map<string, string>();
   webAppFiles(s, files);
   files.set('/etc/kea/kea-dhcp4.conf', keaConf(s));
+  files.set(RELAY_DEFAULT, relayDefaultText(s.relay));
   for (const [path, content] of bindFiles(s.dns, listenChoices(server, true))) files.set(path, content);
   files.set('/etc/postfix/main.cf', `myhostname = ${server.name}.${s.mail.domain || 'localdomain'}\nmydomain = ${s.mail.domain || 'localdomain'}\nmydestination = $mydomain, localhost\ninet_interfaces = all\nhome_mailbox = Maildir/\n`);
   files.set('/etc/dovecot/dovecot.conf', `dovecot_config_version = 2.4.1\ndovecot_storage_version = 2.4.1\nprotocols = ${[s.mail.pop3 ? 'pop3' : '', s.mail.imap ? 'imap' : ''].filter(Boolean).join(' ') || 'none'}\nmail_driver = maildir\nmail_path = ~/Maildir\n`);

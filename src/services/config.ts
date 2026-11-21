@@ -1,5 +1,6 @@
 /** Server service configuration (immutable records, edited from the GUI or restored from JSON). */
 import { t } from '../i18n/t.ts';
+import type { RelaySettings } from './relay-conf.ts';
 
 /** A reservation identifies the client by MAC (Kea `hw-address`) or by client-id (option 61). */
 export interface DhcpReservation {
@@ -150,6 +151,8 @@ export interface ServerServices {
   readonly ssh: { readonly enabled: boolean; readonly users: readonly Account[] };
   /** nftables.service: loads /etc/nftables.conf at boot and on start/restart/reload. */
   readonly firewall: { readonly enabled: boolean };
+  /** isc-dhcp-relay (dhcrelay): /etc/default/isc-dhcp-relay's SERVERS and INTERFACES (services/relay-conf.ts). */
+  readonly relay: { readonly enabled: boolean } & RelaySettings;
   readonly webapps: WebApps;
 }
 
@@ -187,6 +190,7 @@ export function defaultServices(): ServerServices {
     mail: { smtp: false, pop3: false, imap: false, domain: '', users: [] },
     ssh: { enabled: false, users: [] },
     firewall: { enabled: false },
+    relay: { enabled: false, servers: [], interfaces: [] },
     webapps: defaultWebApps(),
   };
 }

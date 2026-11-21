@@ -82,6 +82,7 @@ export const LINUX_DOCS: readonly DocPage[] = [
         ['/etc/wireguard/wg0.conf', 'Servicios → VPN', '`wg-quick up wg0` o `systemctl enable --now wg-quick@wg0`', 'Seguridad → VPN (Router GNU/Linux)'],
         ['/etc/ssh/sshd_config · sshd_config.d', 'Servicios → SSH', '`systemctl reload ssh`', 'Servicios → SSH'],
         ['/etc/kea/kea-dhcp4.conf', 'Servicios → DHCP', '`kea-dhcp4 -t` para comprobarlo, `systemctl restart kea-dhcp4-server`', 'Servicios → DHCP'],
+        ['/etc/default/isc-dhcp-relay', '—', '`sudo nano` y `systemctl restart isc-dhcp-relay` (no hay comprobador: lo valida el arranque)', '—'],
         ['/etc/bind (named.conf.*, db.<zona>)', 'Servicios → DNS', '`named-checkconf`, `named-checkzone`, `rndc reload`', 'Servicios → DNS'],
         ['/etc/apache2', 'Servicios → HTTP (edita /var/www/html)', '`apache2ctl configtest`, `systemctl reload apache2`', 'Servicios → Web y correo web'],
         ['/etc/postfix/main.cf · /etc/dovecot/dovecot.conf', 'Servicios → Correo', '`sudo postfix check`, `postconf -n`, `doveconf -n`; `systemctl reload postfix` / `dovecot`', 'Servicios → Correo'],
