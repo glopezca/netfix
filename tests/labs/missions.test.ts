@@ -74,7 +74,8 @@ test('missions are listed once, in the order of the labs menu', () => {
 });
 
 test('every mission text key belongs to a mission (no leftovers)', () => {
-  const known = new Set(MISSIONS.flatMap((m) => missionKeys(m)));
-  const extra = Object.keys(CATALOGS['es-ES']).filter((k) => /^mission\.(?!chapter\.|prologue|ui\.|doc\.)/.test(k) && !known.has(k));
+  // .teacher: the mission's own teacher, optional (labs/story.ts); mission.school: the story's school.
+  const known = new Set(MISSIONS.flatMap((m) => [...missionKeys(m), `mission.${m.id}.teacher`]));
+  const extra = Object.keys(CATALOGS['es-ES']).filter((k) => /^mission\.(?!chapter\.|prologue|ui\.|doc\.|school$)/.test(k) && !known.has(k));
   assert.deepEqual(extra, []);
 });

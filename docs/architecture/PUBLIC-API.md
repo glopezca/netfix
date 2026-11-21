@@ -180,7 +180,7 @@ clases y simulación se comparten entre subrutas. Quitar o cambiar uno es incomp
 |---|---|
 | `netfix/topology` | `deviceKindDef`, `macFromSeed`, `formatIp`, `formatMask`, `parseIp`, `parseMask`, `DETACHED`, `macPlus`, `CloudPort`, `defaultPort`, `portFromJson`, `portToJson`, `validatePort`, `Host`, `createShell`, `defaultUser`, `defaultLinuxUser`, `hostSystem`, `hostUsers`, `windowsAccount`, `registerProgram`, `hostFiles`; tipos `NetDevice`, `Frame`, `IpPacket`, `SimClock`, `DeviceHooks`, `CloudPortSettings`, `HostOs`, `Cred`, `Vfs`, `ProgramDef`, `ProgramCall`, `ProgramDoc`, `ProgramSystem`, `HostFiles`, `FileEntry` |
 | `netfix/classroom` | `checkKind` (y los ya citados `registerCheckKind`, `checkFields`, `runOnHost`) |
-| `netfix/ui` | `registerDeviceUi`, `deviceUi`, `registerDeviceAction`, `el`, `uiRoot`, `button`, `field`, `input`, `message`, `onCommit`, `livePanel`, `forwardsSection`, `Terminal`, `checkMount`, `getLocale`, `onLocaleChange`; tipos `DeviceUi`, `DeviceWindowContext`, `Tab`, `Locale`, `DeviceAction` |
+| `netfix/ui` | `registerDeviceUi`, `deviceUi`, `registerDeviceAction`, `el`, `uiRoot`, `button`, `field`, `input`, `message`, `onCommit`, `livePanel`, `forwardsSection`, `Terminal`, `checkMount`, `getLocale`, `onLocaleChange`, `setStoryNames`; tipos `DeviceUi`, `DeviceWindowContext`, `Tab`, `Locale`, `DeviceAction`, `StoryNames` |
 
 **Programas del terminal (0.72.0).** `registerProgram({ name, systems, windowsDir?, doc: { es, en }, applies, run })`
 añade un programa: en GNU/Linux, `/usr/bin/<name>` (lo ven `which`, `ls`, el completado y `man`); en Windows,
@@ -200,6 +200,12 @@ desplazando), la tecla Menú o Mayús+F10 sobre un equipo con el foco, y una pul
 abría el equipo; el doble toque sigue abriéndolo). Lista «Abrir», las entradas de las extensiones para ese equipo y
 «Eliminar» si el laboratorio se puede editar. `registerDeviceAction({ id, label: { es, en }, applies, run })` añade una
 entrada; `applies(placed)` decide en qué equipos sale y `run(placed)` recibe el equipo (con `hostFiles` sus archivos).
+
+**Reparto de las misiones (0.74.0).** Los textos de las misiones nombran un centro (`{school}`, de serie «IES Aula») y a
+su docente (`{teacher}`, de serie el de cada misión). `setStoryNames({ school, teacher })` pone los de la aplicación
+anfitriona en el panel Misión y en las páginas de ayuda de los laboratorios; `setStoryNames({})` vuelve al reparto
+propio. Los nombres se limpian (letras, cifras y puntuación básica, 80 caracteres como mucho), porque las páginas de
+ayuda tratan los textos como markdown.
 
 ### 3.4 Neutral frente a solo navegador
 

@@ -4,6 +4,8 @@
  */
 export const MISSIONS_ES = {
   'mission.prologue': 'Acabas de entrar como técnico júnior en Soporte Netfix, una pequeña empresa que mantiene las redes de institutos y empresas de la zona. Marta, la administradora de sistemas más veterana, será tu mentora. Cada misión empieza con el aviso de un cliente: léelo, averigua qué pasa, arréglalo y pulsa Comprobar. Las pistas no restan puntos, pero quedan anotadas.',
+  /** The school of the story; a host (FixIT Classroom) puts the real one in its place (labs/story.ts). */
+  'mission.school': 'IES Aula',
   'mission.ui.panel': 'Misión',
   'mission.ui.fold': 'Plegar la misión',
   'mission.ui.unfold': 'Desplegar la misión',
@@ -30,11 +32,11 @@ export const MISSIONS_ES = {
   'mission.ui.docs': 'Para saber más',
   'mission.ui.loaded': 'Misión: {title}. Lee el aviso en el panel de la derecha.',
   'mission.chapter.dhcp': 'Capítulo 1 · Sin dirección no hay red',
-  'mission.chapter.dhcp.intro': 'Los primeros avisos llegan del IES Aula y de la sede B de un cliente: equipos que no reciben dirección o que la reciben a medias.',
+  'mission.chapter.dhcp.intro': 'Los primeros avisos llegan de {school} y de la sede B de un cliente: equipos que no reciben dirección o que la reciben a medias.',
   'mission.chapter.switching': 'Capítulo 2 · Cables, VLAN y bucles',
   'mission.chapter.switching.intro': 'La red crece: VLAN por departamento, enlaces redundantes y un servidor DHCP que no debería estar ahí.',
   'mission.chapter.services': 'Capítulo 3 · Los servicios del instituto',
-  'mission.chapter.services.intro': 'El servidor del IES Aula da DNS, web, correo y SSH; los avisos hablan de nombres que no existen y de accesos poco seguros.',
+  'mission.chapter.services.intro': 'El servidor de {school} da DNS, web, correo y SSH; los avisos hablan de nombres que no existen y de accesos poco seguros.',
   'mission.chapter.names': 'Capítulo 4 · ¿Cómo se llama ese equipo?',
   'mission.chapter.names.intro': 'Nombres que funcionan en una red y no en otra, y un DNS de empresa que contesta a quien no debe.',
   'mission.chapter.internet': 'Capítulo 5 · Salir a Internet',
@@ -66,7 +68,8 @@ export const MISSIONS_ES = {
   'mission.doc.solution': 'La solución',
   'mission.doc.solutionText': 'Inténtalo antes de mirarla. En el panel, Ver solución carga el laboratorio resuelto.',
 
-  'mission.basico.from': 'Lucía, jefa de estudios del IES Aula',
+  'mission.basico.teacher': 'Lucía',
+  'mission.basico.from': '{teacher} (jefatura de estudios, {school})',
   'mission.basico.ticket': 'Hola: desde esta mañana los tres PCs del aula 3 tienen dirección IP, pero no abren ninguna web ni encuentran nada fuera del aula. El técnico que vino ayer «limpió» la configuración del router GW antes de irse. ¿Podéis mirarlo? Tenemos examen a las doce.',
   'mission.basico.purpose': 'Un servidor DHCP entrega mucho más que una dirección IP: también la puerta de enlace, el DNS y el dominio. Aprenderás a ver qué ha recibido un cliente, a encontrar lo que falta en un pool de IOS y a pedir una concesión nueva.',
   'mission.basico.task.1': 'Haz que el pool LAN de GW vuelva a anunciar la puerta de enlace 192.168.10.1.',
@@ -112,7 +115,8 @@ export const MISSIONS_ES = {
   'mission.relay.debrief': 'Marta: «El relay tiene dos mitades y el becario se olvidó de las dos. ip helper-address convierte la difusión en un paquete normal dirigido al servidor, con el giaddr para elegir el pool; y el servidor responde al giaddr, así que necesita ruta de vuelta. Si un relay no va, revisa siempre los dos sentidos.»',
   'mission.relay.solution': 'En EDGE: interface GigabitEthernet0/1, ip helper-address 10.0.0.1. En DHCP-SRV: ip route 10.20.0.0 255.255.255.0 10.0.0.2. Luego ipconfig /renew en PC0 y sudo dhclient en PC1.',
 
-  'mission.nombres-redes.from': 'Jorge, profesor de informática del IES Aula',
+  'mission.nombres-redes.teacher': 'Jorge',
+  'mission.nombres-redes.from': '{teacher} (departamento de informática, {school})',
   'mission.nombres-redes.ticket': 'Hola. Hemos montado un segundo laboratorio (LAN B) con el equipo nuevo WIN-B2. Desde WIN-B le hago ping a win-b2 sin problema, pero desde WIN-A, en la LAN A, me dice que no encuentra el host. A win-b sí llego desde las dos. ¿Qué tiene win-b2 de especial?',
   'mission.nombres-redes.purpose': 'Windows resuelve nombres por varios caminos: el archivo hosts, DNS con el sufijo del dominio y, dentro de la propia red, LLMNR y NetBIOS. Estos dos últimos usan difusión o multidifusión y no cruzan routers. Aprenderás a distinguir qué método funciona en cada caso y a dar de alta un equipo en una zona DNS.',
   'mission.nombres-redes.task.1': 'Comprueba desde WIN-B que win-b2 responde por nombre y averigua por qué método se resuelve.',

@@ -3,6 +3,7 @@ import type { MissionsKey } from '../es-ES/missions.ts';
 
 export const MISSIONS_EN: Readonly<Record<MissionsKey, string>> = {
   'mission.prologue': 'You have just joined Soporte Netfix as a junior technician: a small firm that looks after the networks of local schools and businesses. Marta, the most experienced systems administrator, is your mentor. Every mission starts with a ticket from a client: read it, find out what is wrong, fix it and press Check. Hints cost no marks, but they are recorded.',
+  'mission.school': 'IES Aula',
   'mission.ui.panel': 'Mission',
   'mission.ui.fold': 'Fold the mission',
   'mission.ui.unfold': 'Unfold the mission',
@@ -29,11 +30,11 @@ export const MISSIONS_EN: Readonly<Record<MissionsKey, string>> = {
   'mission.ui.docs': 'Further reading',
   'mission.ui.loaded': 'Mission: {title}. Read the ticket in the panel on the right.',
   'mission.chapter.dhcp': 'Chapter 1 · No address, no network',
-  'mission.chapter.dhcp.intro': 'The first tickets come from IES Aula and from a client’s branch B: computers that get no address, or only half of one.',
+  'mission.chapter.dhcp.intro': 'The first tickets come from {school} and from a client’s branch B: computers that get no address, or only half of one.',
   'mission.chapter.switching': 'Chapter 2 · Cables, VLANs and loops',
   'mission.chapter.switching.intro': 'The network grows: a VLAN per department, redundant links and a DHCP server that should not be there.',
   'mission.chapter.services': 'Chapter 3 · The school’s services',
-  'mission.chapter.services.intro': 'The IES Aula server provides DNS, web, mail and SSH; the tickets are about names that do not exist and access that is not safe.',
+  'mission.chapter.services.intro': 'The {school} server provides DNS, web, mail and SSH; the tickets are about names that do not exist and access that is not safe.',
   'mission.chapter.names': 'Chapter 4 · What is that computer called?',
   'mission.chapter.names.intro': 'Names that work in one network but not in another, and a company DNS that answers whoever asks.',
   'mission.chapter.internet': 'Chapter 5 · Out to the Internet',
@@ -65,7 +66,8 @@ export const MISSIONS_EN: Readonly<Record<MissionsKey, string>> = {
   'mission.doc.solution': 'The solution',
   'mission.doc.solutionText': 'Try it before you look. In the panel, View solution loads the solved lab.',
 
-  'mission.basico.from': 'Lucía, head of studies at IES Aula',
+  'mission.basico.teacher': 'Lucía',
+  'mission.basico.from': '{teacher} (head of studies, {school})',
   'mission.basico.ticket': 'Hi: since this morning the three PCs in room 3 have an IP address, but they cannot open any website or reach anything outside the room. The technician who came yesterday “cleaned up” the configuration of router GW before leaving. Could you have a look? We have an exam at twelve.',
   'mission.basico.purpose': 'A DHCP server hands out much more than an IP address: also the default gateway, the DNS server and the domain. You will learn to see what a client has received, to find what is missing in an IOS pool and to ask for a new lease.',
   'mission.basico.task.1': 'Make GW’s LAN pool announce the default gateway 192.168.10.1 again.',
@@ -111,7 +113,8 @@ export const MISSIONS_EN: Readonly<Record<MissionsKey, string>> = {
   'mission.relay.debrief': 'Marta: “A relay has two halves and the intern forgot both. ip helper-address turns the broadcast into an ordinary packet addressed to the server, with the giaddr to choose the pool; and the server answers the giaddr, so it needs a route back. When a relay fails, always check both directions.”',
   'mission.relay.solution': 'On EDGE: interface GigabitEthernet0/1, ip helper-address 10.0.0.1. On DHCP-SRV: ip route 10.20.0.0 255.255.255.0 10.0.0.2. Then ipconfig /renew on PC0 and sudo dhclient on PC1.',
 
-  'mission.nombres-redes.from': 'Jorge, IT teacher at IES Aula',
+  'mission.nombres-redes.teacher': 'Jorge',
+  'mission.nombres-redes.from': '{teacher} (IT department, {school})',
   'mission.nombres-redes.ticket': 'Hi. We have set up a second lab (LAN B) with the new computer WIN-B2. From WIN-B I can ping win-b2 fine, but from WIN-A, in LAN A, it says it cannot find the host. I can reach win-b from both. What is so special about win-b2?',
   'mission.nombres-redes.purpose': 'Windows resolves names in several ways: the hosts file, DNS with the domain suffix and, inside its own network, LLMNR and NetBIOS. Those last two use broadcast or multicast and do not cross routers. You will learn to tell which method works in each case and to add a computer to a DNS zone.',
   'mission.nombres-redes.task.1': 'Check from WIN-B that win-b2 answers by name, and find out which method resolves it.',
