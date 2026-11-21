@@ -34,6 +34,7 @@ import { formatMacCisco } from '../core/mac.ts';
 import { hostSystem, hostUsers, defaultLinuxUser } from './host-system.ts';
 import { GIT_BIN, WIN_EDITORS, seedWindowsDisk, usersDir, windowsAccount } from './win-system.ts';
 import { runWindowsProgram, seedWindowsPrograms, windowsPathFor } from './win-programs.ts';
+import { editorProgram } from './programs.ts';
 import { WinFiles } from './win-files.ts';
 import { WinDrives } from './win-drives.ts';
 import { splitCmdLine, toWindowsPath } from './win-path.ts';
@@ -208,7 +209,10 @@ export class WindowsShell extends BaseShell {
     if (name !== 'mc' && name !== 'mc.exe') return null;
     const w = this.files().winFs;
     if (w.kindOf(`${GIT_BIN}/mc.exe`) !== 'file') return null;
-    const app = startWinMc(w, args);
+    const editor = editorProgram(this.host, 'windows');
+    const edit = editor ? (path: string): string | null =>
+      runWindowsProgram(this.host, editor.name, [path], w, this.user, usersDir(this.user)) === null ? `${editor.name}.exe: not found` : null : undefined;
+    const app = startWinMc(w, args, edit);
     if (Array.isArray(app)) return app;
     this.screen = app;
     return [];

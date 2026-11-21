@@ -35,7 +35,9 @@ function entries(ctx: Ctx, dir: string): McEntry[] | string {
 
 export function mcFs(ctx: Ctx): McFs {
   const fs = ctx.sh.env.fs;
+  const editor = ctx.sh.env.editorProgram?.();
   return {
+    ...(editor ? { edit: (path: string) => run(ctx, [editor, path]) } : {}),
     home: ctx.sh.user.home,
     list: (dir) => entries(ctx, dir),
     read: (path) => { try { return fs.readFile(path, ctx.cred); } catch (e) { return { error: errMsg(e) }; } },

@@ -60,6 +60,12 @@ export interface ProgramDef {
   /** Its folder on C:\ (default: Program Files/<name>), added to %PATH%. */
   readonly windowsDir?: string;
   readonly doc: { readonly es: ProgramDoc; readonly en: ProgramDoc };
+  /**
+   * A file editor (`code FILE`): Midnight Commander opens text files with it (F4, and Enter on one that is not a
+   * program) on the hosts that have it, as mc with use_internal_edit off runs $EDITOR. It runs without a screen of its
+   * own: it hands the file to its host page. Hosts with none keep mc's own editor and viewer.
+   */
+  readonly editor?: boolean;
   /** Whether a host has it; asked when its system is laid out (GNU/Linux) and on each use (Windows). */
   readonly applies: (host: Host) => boolean;
   /** Its exit status (0 when nothing is returned). */
@@ -75,6 +81,11 @@ export function registerProgram(def: ProgramDef): void {
   if (def.systems.length === 0) throw new Error(`Programa «${def.name}»: indica al menos un sistema`);
   defs.set(def.name, def);
   registerExtensionDocs(def.name, { 'es-ES': def.doc.es, 'en-GB': def.doc.en });
+}
+
+/** The editor program (`editor`) a host has on one system, if any: the first registered. */
+export function editorProgram(host: Host, system: ProgramSystem): ProgramDef | undefined {
+  return programsOn(host, system).find((d) => d.editor === true);
 }
 
 /** The registered programs a host has on one system. */

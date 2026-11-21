@@ -190,6 +190,9 @@ sistema del equipo; en Windows, en cada uso). `run(call)` recibe `argv`, el usua
 `files`: leer, escribir, listar y resolver rutas **con los permisos de ese usuario** (lo mismo que `nano`). Los
 programas del núcleo siempre ganan: un nombre suyo se rechaza. `hostFiles(host, system?)` da los archivos de un equipo
 sin terminal, como su usuario de consola, para acciones del área de trabajo.
+Con `editor: true` (0.81.0) el programa es además el editor de Midnight Commander en los equipos que lo tienen, como
+`$EDITOR` con `use_internal_edit` desactivado: F4, e Intro sobre un archivo que no es un programa, lo abren con él
+(`argv[1]`, la ruta tal como la escribe el sistema) y mc sigue en sus paneles. Sin uno, mc usa nano y su visor.
 
 **Cambios desde fuera (0.73.0).** `handle.changed()` (de `netfix.embed` y `netfix.lab`): la página cambió la red sin
 pasar por Netfix (el editor de una extensión escribió archivos de un equipo con `hostFiles`); se guarda como una edición

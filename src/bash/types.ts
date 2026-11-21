@@ -115,6 +115,8 @@ export interface HostEnv {
   hostnames?(): HostNames;
   /** Changes a host name; returns an error message or null. */
   setHostname?(kind: 'static' | 'transient' | 'pretty', value: string): string | null;
+  /** The command of the host's editor program (shells/programs.ts `editor`), mc's $EDITOR; undefined when none. */
+  editorProgram?(): string | undefined;
 }
 
 export interface HostNames {

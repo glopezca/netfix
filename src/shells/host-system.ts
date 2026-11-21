@@ -23,6 +23,7 @@ import type { DirMount } from '../bash/vfs.ts';
 import { seedRootfs, seedUsers } from '../bash/rootfs.ts';
 import { COREUTILS } from '../bash/coreutils/index.ts';
 import { extensionPrograms } from './linux-ext-programs.ts';
+import { editorProgram } from './programs.ts';
 import { seedWindowsPrograms } from './win-programs.ts';
 import { BINARY_MARK } from '../bash/path.ts';
 import { linuxFiles } from './linux-files.ts';
@@ -266,6 +267,8 @@ function createSystem(host: Host): Entry {
     password: (name) => asServer(host)?.services.ssh.users.find((a) => a.name === name)?.password,
     hostnames: () => ({ static: host.name, transient: host.runtimeName(), pretty: host.prettyName }),
     setHostname: (kind, value) => setName(host, kind, value),
+    // Only one laid out in /usr/bin (asked when the system was laid out): mc runs it as a command.
+    editorProgram: () => { const name = editorProgram(host, 'linux')?.name; return name !== undefined && programs.has(name) ? name : undefined; },
   };
   restoreRecords(fs, pendingFiles.get(host) ?? []);
   pendingFiles.delete(host);

@@ -47,9 +47,11 @@ function each(ctx: WinFs, sources: readonly string[], target: string, op: (from:
   }
 }
 
-export function winMcFs(ctx: WinFs): McFs {
+/** `edit`: the host's editor program (shells/programs.ts `editor`), given a C:\\ path; mc's nano without it. */
+export function winMcFs(ctx: WinFs, edit?: (windowsPath: string) => string | null): McFs {
   const tryFs = (f: () => void): string | null => { try { f(); return null; } catch (e) { return fsMessage(e); } };
   return {
+    ...(edit ? { edit: (path: string) => edit(toWindowsPath(path)) } : {}),
     home: WIN_ROOT,
     root: WIN_ROOT,
     list: (dir) => entries(ctx, dir),
@@ -66,12 +68,12 @@ export function winMcFs(ctx: WinFs): McFs {
 }
 
 /** mc.exe [left [right]]: the app on the current folder (or the ones given), or the error to print. */
-export function startWinMc(ctx: WinFs, args: readonly string[]): McApp | string[] {
+export function startWinMc(ctx: WinFs, args: readonly string[], edit?: (windowsPath: string) => string | null): McApp | string[] {
   const dirs: string[] = [];
   for (const a of args.filter((x) => !x.startsWith('-'))) {
     const p = ctx.path(a);
     if (p === null || ctx.kindOf(p) !== 'dir') return [`mc: ${a}: No such directory`];
     dirs.push(p);
   }
-  return new McApp(winMcFs(ctx), dirs[0] ?? ctx.cwd, dirs[1] ?? dirs[0] ?? ctx.cwd);
+  return new McApp(winMcFs(ctx, edit), dirs[0] ?? ctx.cwd, dirs[1] ?? dirs[0] ?? ctx.cwd);
 }
