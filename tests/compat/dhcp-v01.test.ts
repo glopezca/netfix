@@ -54,7 +54,8 @@ const LAB_IDS = Object.keys(golden).filter((id) => id !== 'blanco');
 
 test('v0.1 labs produce the same IOS and PC outputs as before Server', () => {
   assert.ok(LAB_IDS.includes('reservas') && LAB_IDS.length === 6);
-  for (const id of LAB_IDS) {
+  // D28 (S26): relay and cliente moved to the GNU/Linux router; their v0.1 files still open (the tests below).
+  for (const id of LAB_IDS.filter((l) => l !== 'relay' && l !== 'cliente')) {
     const ex = EXAMPLES.find((e) => e.id === id);
     assert.ok(ex, `falta el laboratorio ${id}`);
     assert.deepEqual(snapshot(ex.build()), golden[id], id);

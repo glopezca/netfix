@@ -53,6 +53,8 @@ const internet = (topo: Topology, clouds: readonly string[]): void => area(topo,
 const LAB_AREAS: Readonly<Record<string, (topo: Topology) => void>> = {
   basico: (o) => area(o, ['Switch0', 'PC0', 'PC1', 'PC2'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
   reservas: (o) => area(o, ['Switch0', 'PC0', 'PC1', 'PC2'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
+  'reservas-linux': (o) => area(o, ['Switch0', 'PC0', 'PC1', 'PC2'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
+  'basico-linux': (o) => area(o, ['Switch0', 'PC0', 'PC1', 'PC2'], COLOR.lan, lan(t('area.name.lan'), '192.168.10.0/24')),
   relay: (o) => area(o, ['Switch0', 'PC0', 'PC1'], COLOR.lan, lan(t('area.name.remote'), '10.20.0.0/24')),
   vlans: (o) => {
     area(o, ['PC0', 'PC1'], COLOR.lan, t('area.vlan', { id: '10', net: '172.16.10.0/24' }));
@@ -119,7 +121,7 @@ const LAB_AREAS: Readonly<Record<string, (topo: Topology) => void>> = {
  * is stretched from its top-left device, horizontally and vertically (tests/ui/lab-labels.test.ts keeps them apart).
  */
 const LAB_SPREAD: Readonly<Record<string, readonly [number, number]>> = {
-  basico: [1, 1.2], reservas: [1, 1.2], snooping: [1, 1.2], relay: [1, 1.3], vlans: [1, 1.1], servidores: [1, 1.3], internet: [1, 1.4], 'vpn-ipsec': [1, 1.4], 'vpn-wireguard': [1, 1.4], 'linux-dmz': [1.3, 1.4], 'dns-reenvio': [1, 1.5], 'nombres-lan': [1, 1.4], 'nombres-redes': [1.2, 1.5], 'nombres-resolved': [1.2, 1.5],
+  basico: [1, 1.2], 'basico-linux': [1, 1.2], reservas: [1, 1.2], 'reservas-linux': [1, 1.2], snooping: [1, 1.2], relay: [1, 1.3], vlans: [1, 1.1], servidores: [1, 1.3], internet: [1, 1.4], 'vpn-ipsec': [1, 1.4], 'vpn-wireguard': [1, 1.4], 'linux-dmz': [1.3, 1.4], 'dns-reenvio': [1, 1.5], 'nombres-lan': [1, 1.4], 'nombres-redes': [1.2, 1.5], 'nombres-resolved': [1.2, 1.5],
 };
 
 function spread(id: string, topo: Topology): void {

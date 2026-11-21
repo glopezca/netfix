@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EXAMPLES } from '../../src/net/examples.ts';
 import { Pc } from '../../src/devices/pc.ts';
-import { Router } from '../../src/devices/router.ts';
+import type { LinuxRouter } from '../../src/devices/linux-router.ts';
 import { formatIp } from '../../src/core/ip.ts';
 
 function pcs(t: ReturnType<(typeof EXAMPLES)[number]['build']>): Pc[] {
@@ -28,8 +28,15 @@ test('snooping example ignores the rogue gateway', () => {
   for (const pc of pcs(t)) assert.equal(formatIp(pc.config.gateway!), '192.168.10.1');
 });
 
-test('client example gives the CPE its fixed WAN address', () => {
+test('client example gives the GNU/Linux CPE its fixed WAN address by DHCP', () => {
   const t = EXAMPLES.find((e) => e.id === 'cliente')!.build();
-  const cpe = t.byLabel('CPE') as Router;
-  assert.equal(formatIp(cpe.dhcpLearned('GigabitEthernet0/1')!.ip), '100.64.0.77');
+  const cpe = t.byLabel('CPE') as LinuxRouter;
+  assert.deepEqual([cpe.config.mode, formatIp(cpe.config.ip!), formatIp(cpe.config.gateway!)], ['dhcp', '100.64.0.77', '100.64.0.1']);
+});
+
+test('the GNU/Linux DHCP labs: Kea reservations, and the relay to a server in another network', () => {
+  const res = EXAMPLES.find((e) => e.id === 'reservas-linux')!.build();
+  assert.deepEqual(pcs(res).map((p) => formatIp(p.config.ip!)), ['192.168.10.100', '192.168.10.101', '192.168.10.150']);
+  const relay = EXAMPLES.find((e) => e.id === 'relay')!.build();
+  assert.deepEqual(pcs(relay).map((p) => `${formatIp(p.config.ip!)} gw ${formatIp(p.config.gateway!)}`), ['10.20.0.10 gw 10.20.0.1', '10.20.0.11 gw 10.20.0.1']);
 });

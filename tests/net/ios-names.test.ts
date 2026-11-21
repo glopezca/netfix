@@ -83,7 +83,7 @@ test('in every lab the name of each IOS device is its hostname', () => {
 
 test('the labs keep the hostnames their exercises talk about, now as device names', () => {
   const names = (id: string): string[] => [...(EXAMPLES.find((e) => e.id === id)?.build().placed.values() ?? [])]
-    .filter((p) => p.device.kind === 'router').map((p) => p.label).sort();
+    .filter((p) => ['router', 'linuxrouter', 'server'].includes(p.device.kind)).map((p) => p.label).sort(); // D28: relay and cliente on GNU/Linux
   assert.deepEqual(names('basico'), ['GW']);
   assert.deepEqual(names('relay'), ['DHCP-SRV', 'EDGE']);
   assert.deepEqual(names('snooping'), ['GW', 'ROGUE']);

@@ -5,7 +5,7 @@
 export type LabGroupId = 'dhcp' | 'switching' | 'services' | 'names' | 'internet' | 'security';
 
 export const LAB_GROUPS: readonly (readonly [LabGroupId, readonly string[]])[] = [
-  ['dhcp', ['basico', 'reservas', 'relay', 'cliente']],
+  ['dhcp', ['basico', 'basico-linux', 'reservas', 'reservas-linux', 'relay', 'cliente']],
   ['switching', ['vlans', 'stp', 'snooping']],
   ['services', ['servidores', 'ssh-sftp', 'samba']],
   ['names', ['nombres-lan', 'nombres-redes', 'nombres-resolved', 'dns-reenvio']],
