@@ -219,6 +219,12 @@ try {
   const chooser = page.waitForEvent('filechooser');
   assert.equal(await page.evaluate(() => globalThis.handle.file('import')), true);
   await chooser;
+  // handle.labs / openLab (0.77.0): a host's own Labs menu.
+  const hostLabs = await page.evaluate(() => globalThis.handle.labs());
+  assert.ok(hostLabs.some((l) => l.id === 'basico' && l.chapter === 'dhcp' && l.mission), 'basico, in the DHCP chapter, with its mission');
+  assert.equal(await page.evaluate(() => globalThis.handle.openLab('no-such-lab')), false);
+  assert.equal(await page.evaluate(() => globalThis.handle.openLab('stp')), true);
+  await page.waitForFunction(() => document.querySelectorAll('#app g.device').length > 0, null, { timeout: 5000 }); // the lab, not the empty network
   await assert.rejects(page.evaluate(() => globalThis.handle.setLocale('fr-FR')), /locale/);
   await page.evaluate(() => globalThis.handle.setLocale('en-GB'));
   await page.waitForSelector('#host-menu button:text-is("Import…")');

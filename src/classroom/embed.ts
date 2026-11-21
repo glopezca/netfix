@@ -50,6 +50,16 @@ export interface EmbedHandle {
    * (Exportar). False: not allowed by the restrictions, or Netfix is no longer mounted.
    */
   file(action: string): boolean;
+  /**
+   * The labs the restrictions allow, in the Labs menu's order (0.77.0): id, title in Netfix's language, chapter (id and
+   * title) and whether it has a mission. For a host's own Labs menu.
+   */
+  labs(): readonly { readonly id: string; readonly title: string; readonly chapter: string; readonly chapterTitle: string; readonly mission: boolean }[];
+  /**
+   * Opens a lab as the Labs menu does (its mission's starting state): over unsaved changes it asks first. Resolves to
+   * whether it was opened (false: unknown or not allowed, the user kept their work, or Netfix is no longer mounted).
+   */
+  openLab(id: string): Promise<boolean>;
   /** Stops the simulator and empties the mount element. */
   destroy(): void;
 }
