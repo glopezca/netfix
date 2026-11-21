@@ -16,7 +16,7 @@ import { afterPlaced } from './os-dialog.ts';
 import { Topology } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
 import { Pages } from './pages.ts';
-import { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, onDevicePiles, overrideConfirmUnsaved, overrideDevicePiles, setToolHelp, toolHelp } from './preferences.ts';
+import { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, hostMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, onDevicePiles, overrideConfirmUnsaved, overrideDevicePiles, setToolHelp, toolHelp } from './preferences.ts';
 import { featureOn } from '../net/lab-features.ts';
 import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
 import { floatBar, topbar } from './topbar.ts';
@@ -547,6 +547,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   // Embedded, the page (and its theme) belongs to the host, and the classroom's restrictions decide what the missions offer.
   // With its bar in a host's menu, the host's theme (on <html>) is the one shown.
   if (!s.embedded) { if (!bar) applyTheme(); loadTimestampPrompt(); loadMissionsPref(); } else classroomMissions();
+  if (host.missions !== undefined) hostMissions(host.missions); // a host's choice wins over both
   applyBrand(mount, page);
   // The lock reaches every shell, also the ones opened over SSH from inside the simulation.
   forceTimestampPrompt(lockedPrompt(s.policy));

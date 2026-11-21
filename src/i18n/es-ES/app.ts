@@ -44,6 +44,7 @@ export const APP_ES = {
   'kind.linuxrouter': 'Router GNU/Linux',
   'kind.switch': 'Switch IOS',
   'kind.pc': 'PC',
+  'kind.pcOs': 'PC {os}',
   'kind.server': 'Servidor',
   'kind.cloud': 'WAN del ISP',
   'hint.simulation': 'Simulación: lo que hagas (ipconfig /renew, ping, DHCP) queda en la lista de eventos. Pulsa Reproducir.',

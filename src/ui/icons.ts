@@ -57,13 +57,13 @@ const CLOUD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width
 </svg>`;
 
 /** Classroom LAN: the cloud with three linked screens (the labs of the class). */
-/** Both routers (IOS and Linux) share the router symbol; the model line («Cisco 2911» / «Ubuntu») tells them apart. */
+/** Both routers (IOS and Linux) share the router symbol; the model line («Cisco 2911» / «Ubuntu Server») tells them apart. */
 export const ICONS: Readonly<Record<BuiltinDeviceKind, string>> = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, linuxrouter: ROUTER, cloud: CLOUD };
 
 /** A kind's icon: a registered kind brings its own (else the PC's). */
 export const iconOf = (kind: DeviceKind): string => (isBuiltinKind(kind) ? ICONS[kind] : deviceUi(kind)?.icon ?? PC);
 
-export const MODEL_LABEL: Readonly<Record<BuiltinDeviceKind, string>> = { router: 'Cisco 2911', switch: 'Cisco 2960-24TT', pc: 'PC', server: 'Server', linuxrouter: 'Ubuntu', cloud: 'ISP' };
+export const MODEL_LABEL: Readonly<Record<BuiltinDeviceKind, string>> = { router: 'Cisco 2911', switch: 'Cisco 2960-24TT', pc: 'PC', server: 'Ubuntu Server', linuxrouter: 'Ubuntu Server', cloud: 'ISP' };
 
 /** Model label shown under the icon (the cloud is translated; a registered kind brings its own). */
 export function modelLabel(kind: DeviceKind): string {

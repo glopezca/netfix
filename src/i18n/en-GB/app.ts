@@ -46,6 +46,7 @@ export const APP_EN: Readonly<Record<AppKey, string>> = {
   'kind.linuxrouter': 'GNU/Linux router',
   'kind.switch': 'IOS switch',
   'kind.pc': 'PC',
+  'kind.pcOs': '{os} PC',
   'kind.server': 'Server',
   'kind.cloud': 'ISP WAN',
   'hint.simulation': 'Simulation: whatever you do (ipconfig /renew, ping, DHCP) is added to the event list. Press Play.',

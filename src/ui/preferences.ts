@@ -125,10 +125,15 @@ export function setMissionsShown(on: boolean): void {
   for (const fn of missionListeners) fn();
 }
 
+/** A host page's choice (its `missions` option): shown or hidden for this mount, the browser's setting left alone. */
+export function hostMissions(on: boolean): void {
+  missionsStored = false;
+  missionsOn = on;
+}
+
 /** In the classroom (embedded) missions always show, and the host page's storage is left alone. */
 export function classroomMissions(): void {
-  missionsStored = false;
-  missionsOn = true;
+  hostMissions(true);
 }
 
 /** The mission panel and the Help tab redraw when the option changes; the result stops listening. */

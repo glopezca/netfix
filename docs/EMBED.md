@@ -56,8 +56,10 @@ de mostrar («No volver a mostrar», o en Configuración) y los mensajes se ven 
 no lo guarda) y `confirmUnsaved` (`true`/`false`: si reemplazar trabajo sin guardar pregunta antes; sin ella, la
 preferencia de este navegador). Con `toolbar`, `palette: 'bottom'` deja la paleta debajo del área de trabajo, como en la
 página de Netfix; sin ella (`'side'`), es la barra lateral, con el nombre de cada equipo a la derecha de su icono. `piles` (`true`/`false`)
-apila los equipos parecidos en un botón (Router: IOS o GNU/Linux; PC: Windows, GNU/Linux o ambos); sin ella, la preferencia
-de este navegador, desmarcada de serie.
+apila los equipos parecidos en un botón (Router: IOS o GNU/Linux; PC: Microsoft Windows, GNU/Linux o MultiOS); sin ella, la
+preferencia de este navegador, desmarcada de serie. `missions` (`true`/`false`, desde 0.76.0) muestra u oculta los
+laboratorios guiados (el panel Misión y su grupo en la Ayuda) sin tocar la preferencia de este navegador; sin ella,
+`netfix.lab` sigue esa preferencia (desmarcada de serie) y `netfix.embed` las muestra siempre.
 Una extensión puede añadir opciones propias con `registerHostOption` (PUBLIC-API.md §3.3). Desde 0.71.0 la LAN de
 clase (`classroomLan`) y el terminal de Codefix (`netfix.code`) no están en Netfix: son de Netfix Classroom.
 

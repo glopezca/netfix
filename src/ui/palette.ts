@@ -44,9 +44,14 @@ const placeable = (): readonly (readonly [DeviceKind, string])[] => [
 /** A choice of a pile: a device kind and, for a PC, its system. */
 interface Variant { readonly kind: DeviceKind; readonly system?: PcSystem; readonly name: string; readonly model: string }
 
+/** A PC by its system: «PC Microsoft Windows», «PC GNU/Linux», «PC MultiOS» (English: «MultiOS PC»). */
+export function pcName(system: PcSystem): string {
+  return t('kind.pcOs', { os: t(`os.${system}`) });
+}
+
 /** The piles (setting «Agrupar equipos parecidos»): one button per family, its variants in a small menu. */
 function piles(): readonly (readonly [string, readonly Variant[]])[] {
-  const pc = (system: PcSystem): Variant => ({ kind: 'pc', system, name: `${t('kind.pc')} ${t(`os.${system}`)}`, model: system === 'both' ? `${t('os.windows')} + ${t('os.linux')}` : t(`os.${system}`) });
+  const pc = (system: PcSystem): Variant => ({ kind: 'pc', system, name: pcName(system), model: system === 'both' ? 'Windows + GNU/Linux' : t(`os.${system}`) });
   const one = (kind: DeviceKind, name: string): readonly [string, readonly Variant[]] => [name, [{ kind, name, model: modelLabel(kind) }]];
   return [
     [t('kind.pc'), [pc('windows'), pc('linux'), pc('both')]],
