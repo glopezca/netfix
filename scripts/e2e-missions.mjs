@@ -5,6 +5,8 @@ import { createRequire } from 'node:module';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import { MISSION_PLANS } from '../src/labs/mission-plans.ts';
+import { MISSIONS_ES } from '../src/i18n/es-ES/missions.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
@@ -51,6 +53,16 @@ try {
   await page.locator('.mission-actions button').filter({ hasText: 'Comprobar' }).click();
   assert.equal(await page.locator('.mission-score').getAttribute('data-state'), 'ok', 'the solved mission passes');
 
+  // Every guided lab opens with its own mission panel (its first task), and a lab with none hides it.
+  for (const { id } of MISSION_PLANS) {
+    await page.locator('select.select').first().selectOption(id);
+    await page.waitForSelector('.mission:not([hidden])', { timeout: 10000 });
+    const task = MISSIONS_ES[`mission.${id}.task.1`];
+    await page.waitForFunction((text) => document.querySelector('.mission')?.textContent?.includes(text), task, { timeout: 10000 });
+  }
+  await page.locator('select.select').first().selectOption('vlans');
+  await page.waitForSelector('.mission', { state: 'hidden', timeout: 10000 });
+
   // The classroom can independently hide checking, hints and the solution action.
   const classroom = await browser.newPage({ viewport: { width: 1400, height: 950 }, locale: 'es-ES' });
   await classroom.route('http://aula.test/**', (r) => r.fulfill({ contentType: 'text/html', body: html }));
@@ -67,7 +79,7 @@ try {
   assert.equal(await classroom.locator('.mission-actions').count(), 0);
   assert.deepEqual(errors, []);
   await classroom.evaluate(() => globalThis.handle.destroy());
-  console.log('e2e missions OK: off by default and turned on in Configuración, hint, check, solution, passing score and classroom restrictions');
+  console.log('e2e missions OK: off by default and turned on in Configuración, hint, check, solution, passing score, every mission panel on its own lab and classroom restrictions');
 } finally {
   await browser.close();
   server.kill();

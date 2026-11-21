@@ -15,6 +15,8 @@ import { cpeNetplan, RELAY_FILE } from '../net/labs-dhcp-linux.ts';
 import type { PtDhcpPool } from '../services/config.ts';
 import { clientIdFromMac, formatHexId, formatMacCisco } from '../core/mac.ts';
 import { parseIp } from '../core/ip.ts';
+import { createShell } from '../shells/factory.ts';
+import { setWindowsWins } from '../net/win-wins.ts';
 import type { DnsRecord } from '../services/config.ts';
 import { MISSION_PLANS } from './mission-plans.ts';
 import type { MissionPlan } from './mission-plans.ts';
@@ -130,6 +132,54 @@ ip dhcp pool CLIENTES
   t.settle();
 }
 
+/** Runs commands as root in the GNU/Linux terminal of `label` (history expansion off). */
+function rootOn(t: Topology, label: string, script: string): void {
+  const sh = createShell(host(t, label), 'linux', 'root');
+  sh.run('set +H');
+  sh.run(script.trim());
+}
+
+/** LNX2: avahi for .local, win1 in /etc/hosts, samba so that Windows finds it by NetBIOS. */
+function solveNamesLan(t: Topology): void {
+  rootOn(t, 'LNX2', `apt install -y avahi-daemon samba
+echo '192.168.1.11 win1' >> /etc/hosts`);
+  t.net.runFor(2000);
+}
+
+/** LLMNR in resolved + libnss-resolve on LNX-A; WINS in smb.conf and nsswitch on LNX-B; WIN-B's WINS server. */
+function solveNamesResolved(t: Topology): void {
+  rootOn(t, 'LNX-A', `sed -i 's/^#LLMNR=no/LLMNR=yes/' /etc/systemd/resolved.conf
+systemctl restart systemd-resolved
+apt install -y libnss-resolve`);
+  rootOn(t, 'LNX-B', `apt install -y samba winbind libnss-winbind
+sed -i 's/^   workgroup = WORKGROUP$/&\\n   wins server = 192.168.10.2/' /etc/samba/smb.conf
+systemctl restart nmbd
+sed -i 's/^hosts:.*/& wins/' /etc/nsswitch.conf`);
+  setWindowsWins(host(t, 'WIN-B'), parseIp('192.168.10.2') ?? 0);
+  t.net.runFor(1000);
+}
+
+function dnsOf(t: Topology): { srv: Server; dns: Server['services']['dns'] } {
+  const srv = t.byLabel('NS1');
+  if (!(srv instanceof Server)) throw new Error('mission: NS1 is not a server');
+  return { srv, dns: srv.services.dns };
+}
+
+/** The new technician typed 8.8.8.9 and dropped 8.8.4.4: with forward only, every Internet name fails. */
+function breakForwarders(t: Topology): void {
+  const { srv, dns } = dnsOf(t);
+  srv.setServices({ ...srv.services, dns: { ...dns, forwarders: [parseIp('8.8.8.9') ?? 0] } });
+  t.settle();
+}
+
+/** Recursion for the guest network too, and the printer in the zone. */
+function solveDnsForward(t: Topology): void {
+  const { srv, dns } = dnsOf(t);
+  srv.setServices({ ...srv.services, dns: { ...dns, allowRecursion: [...(dns.allowRecursion ?? []), '192.168.60.0/24'] } });
+  addDnsRecord(t, 'NS1', 'empresa.lan', { name: 'impresora', type: 'A', value: '192.168.50.60', ttl: 86400 });
+  t.settle();
+}
+
 const CHANGES: Readonly<Record<string, Changes>> = {
   basico: { start: (t) => ios(t, 'GW', 'ip dhcp pool LAN\n no default-router\n no dns-server') },
   'basico-linux': { start: breakBasicoLinux },
@@ -137,6 +187,9 @@ const CHANGES: Readonly<Record<string, Changes>> = {
   'reservas-linux': { start: breakReservasLinux },
   relay: { start: breakRelay },
   cliente: { start: breakClient },
+  'nombres-lan': { solve: solveNamesLan },
+  'nombres-resolved': { solve: solveNamesResolved },
+  'dns-reenvio': { start: breakForwarders, solve: solveDnsForward },
   'nombres-redes': { solve: (t) => addDnsRecord(t, 'SRV', 'aula.lab', { name: 'win-b2', type: 'A', value: '192.168.20.12', ttl: 86400 }) },
 };
 
