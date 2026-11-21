@@ -4,6 +4,7 @@ import { EXAMPLES } from '../../src/net/examples.ts';
 import { Pc } from '../../src/devices/pc.ts';
 import type { LinuxRouter } from '../../src/devices/linux-router.ts';
 import { formatIp } from '../../src/core/ip.ts';
+import { evaluate } from '../../src/classroom/evaluate.ts';
 
 function pcs(t: ReturnType<(typeof EXAMPLES)[number]['build']>): Pc[] {
   return [...t.placed.values()].map((p) => p.device).filter((d): d is Pc => d instanceof Pc);
@@ -39,4 +40,16 @@ test('the GNU/Linux DHCP labs: Kea reservations, and the relay to a server in an
   assert.deepEqual(pcs(res).map((p) => formatIp(p.config.ip!)), ['192.168.10.100', '192.168.10.101', '192.168.10.150']);
   const relay = EXAMPLES.find((e) => e.id === 'relay')!.build();
   assert.deepEqual(pcs(relay).map((p) => `${formatIp(p.config.ip!)} gw ${formatIp(p.config.gateway!)}`), ['10.20.0.10 gw 10.20.0.1', '10.20.0.11 gw 10.20.0.1']);
+});
+
+test('the names labs go through a GNU/Linux GW: NAT to the Internet, routing between their LANs (D28)', () => {
+  const cases: readonly [string, string, string][] = [
+    ['nombres-lan', 'WIN1', '8.8.8.8'], ['nombres-resolved', 'LNX-B', '8.8.8.8'], ['dns-reenvio', 'INVITADO', '8.8.8.8'], ['nombres-redes', 'WIN-A', '192.168.20.11'],
+  ];
+  for (const [id, from, to] of cases) {
+    const t = EXAMPLES.find((e) => e.id === id)!.build();
+    assert.equal(t.byLabel('GW')?.kind, 'linuxrouter', id);
+    const r = evaluate(t.toJSON(), [{ id: 'ping', check: { type: 'ping', from, to, expect: 'success' } }]);
+    assert.equal(r.score, r.max, `${id}: ${from} → ${to}`);
+  }
 });

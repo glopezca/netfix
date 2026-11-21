@@ -8,15 +8,13 @@
 import { LABS_ES } from '../i18n/es-ES/labs.ts';
 import type { Example } from './examples.ts';
 import { Topology } from './topology.ts';
-import type { Router } from '../devices/router.ts';
 import type { Pc } from '../devices/pc.ts';
 import type { Server } from '../devices/server.ts';
 import type { Switch } from '../devices/switch.ts';
 import type { HostOs } from '../devices/host.ts';
-import { applyConfig } from '../ios/session.ts';
 import { parseIp } from '../core/ip.ts';
 import { cloud } from './labs-vpn.ts';
-import { rootScript } from './labs-linux.ts';
+import { linuxGateway, rootScript } from './labs-linux.ts';
 import { setSambaInstalled } from '../shells/samba-install.ts';
 import { setWindowsWins } from './win-wins.ts';
 
@@ -24,26 +22,6 @@ const ip = (x: string): number => parseIp(x) ?? 0;
 const RESOLVED_WINS_IP = '192.168.10.2';
 const DNS = '8.8.8.8';
 
-const GW_TWO_LANS = `
-hostname GW
-no ip domain-lookup
-interface GigabitEthernet0/0
- description LAN A
- ip address 192.168.10.1 255.255.255.0
- ip nat inside
- no shutdown
-interface GigabitEthernet0/1
- description LAN B
- ip address 192.168.20.1 255.255.255.0
- ip nat inside
- no shutdown
-interface GigabitEthernet0/2
- ip address dhcp
- ip nat outside
- no shutdown
-access-list 1 permit 192.168.10.0 0.0.0.255
-access-list 1 permit 192.168.20.0 0.0.0.255
-ip nat inside source list 1 interface GigabitEthernet0/2 overload`;
 
 /** nmbd as the WINS server: one line in [global] of Ubuntu's smb.conf, and a restart. */
 const WINS_SETUP = `sed -i 's/^   workgroup = WORKGROUP$/&\\n   wins support = yes/' /etc/samba/smb.conf
@@ -97,13 +75,11 @@ export const resolvedLab: Example = {
   build: () => {
     const t = new Topology();
     const isp = cloud(t, 'ISP-Norte', 760, 'Fibra0', 'public');
-    const gw = t.add('router', 500, 240, { label: 'GW' }).device as Router;
-    link(t, gw.id, 'GigabitEthernet0/2', isp.id, 'Fibra0');
-    applyConfig(gw, GW_TWO_LANS.trim().split('\n'));
+    const { gw, ports: [a, b] } = linuxGateway(t, 500, 240, ['192.168.10.1/24', '192.168.20.1/24'], { id: isp.id, port: 'Fibra0' });
     const swA = t.add('switch', 260, 420, { label: 'SW-A' }).device as Switch;
     const swB = t.add('switch', 730, 420, { label: 'SW-B' }).device as Switch;
-    link(t, gw.id, 'GigabitEthernet0/0', swA.id, 'GigabitEthernet0/1');
-    link(t, gw.id, 'GigabitEthernet0/1', swB.id, 'GigabitEthernet0/1');
+    link(t, gw.id, a ?? '', swA.id, 'GigabitEthernet0/1');
+    link(t, gw.id, b ?? '', swB.id, 'GigabitEthernet0/1');
     for (const spec of HOSTS) hostOn(t, spec.lan === 'a' ? swA : swB, spec);
     t.settle();
     winsServer(t, swA);
