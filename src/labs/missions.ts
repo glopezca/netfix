@@ -9,8 +9,12 @@ import { IosDevice } from '../ios/device.ts';
 import { applyConfig } from '../ios/session.ts';
 import { Server } from '../devices/server.ts';
 import { Host } from '../devices/host.ts';
-import { Router } from '../devices/router.ts';
+import { LinuxRouter } from '../devices/linux-router.ts';
+import { rootScript } from '../net/labs-linux.ts';
+import { cpeNetplan, RELAY_FILE } from '../net/labs-dhcp-linux.ts';
+import type { PtDhcpPool } from '../services/config.ts';
 import { clientIdFromMac, formatHexId, formatMacCisco } from '../core/mac.ts';
+import { parseIp } from '../core/ip.ts';
 import type { DnsRecord } from '../services/config.ts';
 import { MISSION_PLANS } from './mission-plans.ts';
 import type { MissionPlan } from './mission-plans.ts';
@@ -65,30 +69,74 @@ ip dhcp pool LAN
   t.settle();
 }
 
-const WAN = 'GigabitEthernet0/1';
+function linuxRouter(t: Topology, label: string): LinuxRouter {
+  const d = t.byLabel(label);
+  if (!(d instanceof LinuxRouter)) throw new Error(`mission: ${label} is not a GNU/Linux router`);
+  return d;
+}
 
-/** The ISP keyed the CPE's fixed lease as if it were a PC (01 + MAC) and lost the pool's gateway; the CPE asks for nothing. */
+/** The PCs forget their lease and ask from scratch, as after a reinstall or a reboot. */
+function renew(t: Topology, labels: readonly string[]): void {
+  t.settle();
+  for (const l of labels) host(t, l).releaseDhcp();
+  t.settle();
+}
+
+/** Kea on `label` with its only pool changed by `edit`. */
+function keaPool(t: Topology, label: string, edit: (p: PtDhcpPool) => PtDhcpPool): void {
+  const r = linuxRouter(t, label);
+  r.setServices({ ...r.services, dhcp: { ...r.services.dhcp, pools: r.services.dhcp.pools.map(edit) } });
+}
+
+const PCS = ['PC0', 'PC1', 'PC2'];
+
+/** The technician "cleaned" Kea's pool: no routers and no domain-name-servers in its option-data. */
+function breakBasicoLinux(t: Topology): void {
+  keaPool(t, 'GW', ({ gateway: _g, dns: _d, ...rest }) => rest);
+  renew(t, PCS);
+}
+
+/** The three slips of reservas, in Kea: a client-id without its 01, a mistyped hw-address, PC1's client-id on .150. */
+function breakReservasLinux(t: Topology): void {
+  const [pc0, pc1] = [host(t, 'PC0').mac, host(t, 'PC1').mac];
+  keaPool(t, 'GW', (p) => ({ ...p, reservations: [
+    { ip: parseIp('192.168.10.100') ?? 0, clientId: clientIdFromMac(pc0).slice(2), name: 'pc0' },
+    { ip: parseIp('192.168.10.101') ?? 0, mac: typo(pc1), name: 'pc1' },
+    { ip: parseIp('192.168.10.150') ?? 0, clientId: clientIdFromMac(pc1), name: 'pc2' },
+  ] }));
+  renew(t, PCS);
+}
+
+/** The intern left the relay as Ubuntu installs it, and DHCP-SRV with no way back to the branch. */
+function breakRelay(t: Topology): void {
+  rootScript(linuxRouter(t, 'EDGE'), `systemctl disable --now isc-dhcp-relay
+sed -i 's/^SERVERS=.*/SERVERS=""/; s/^INTERFACES=.*/INTERFACES=""/' ${RELAY_FILE}`);
+  const srv = t.byLabel('DHCP-SRV');
+  if (!(srv instanceof Server)) throw new Error('mission: DHCP-SRV is not a server');
+  const { gateway: _g, ...noGateway } = srv.config;
+  srv.setStatic({ ...noGateway, ip: srv.config.ip ?? 0, prefix: srv.config.prefix ?? 30 });
+  renew(t, ['PC0', 'PC1']);
+}
+
+/** The ISP keyed CPE's fixed lease by its bare MAC (no 01) and lost the pool's gateway; CPE asks for nothing. */
 function breakClient(t: Topology): void {
-  const cpe = t.byLabel('CPE');
-  if (!(cpe instanceof Router)) throw new Error('mission: CPE is not a router');
+  const cpe = linuxRouter(t, 'CPE');
   ios(t, 'ISP', `ip dhcp pool CPE-FIJO
- no client-identifier ${cpe.plane.clientIdText(WAN)}
- client-identifier ${pcId(cpe.ifaceMac(WAN))}
+ no client-identifier ${formatHexId(clientIdFromMac(cpe.mac))}
+ client-identifier ${formatHexId(cpe.mac)}
 ip dhcp pool CLIENTES
  no default-router`);
-  ios(t, 'CPE', `interface ${WAN}\n no ip address dhcp\n no ip address`);
+  rootScript(cpe, cpeNetplan(false));
+  t.settle();
 }
 
 const CHANGES: Readonly<Record<string, Changes>> = {
   basico: { start: (t) => ios(t, 'GW', 'ip dhcp pool LAN\n no default-router\n no dns-server') },
+  'basico-linux': { start: breakBasicoLinux },
   reservas: { start: breakReservations },
+  'reservas-linux': { start: breakReservasLinux },
+  relay: { start: breakRelay },
   cliente: { start: breakClient },
-  relay: {
-    start: (t) => {
-      ios(t, 'EDGE', 'interface GigabitEthernet0/1\n no ip helper-address 10.0.0.1');
-      ios(t, 'DHCP-SRV', 'no ip route 10.20.0.0 255.255.255.0 10.0.0.2');
-    },
-  },
   'nombres-redes': { solve: (t) => addDnsRecord(t, 'SRV', 'aula.lab', { name: 'win-b2', type: 'A', value: '192.168.20.12', ttl: 86400 }) },
 };
 

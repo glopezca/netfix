@@ -1,4 +1,4 @@
-/** Ready-made labs that show each DHCP feature working. */
+/** Ready-made labs that show each DHCP feature working (the GNU/Linux router's DHCP chapter: labs-dhcp-linux.ts). */
 import { setLabDevices } from './lab-presets.ts';
 import { newZone } from '../services/dns-zones.ts';
 import { decorateLab } from './lab-areas.ts';
@@ -18,6 +18,7 @@ import { hardeningLab, sshLab } from './labs-security.ts';
 import { sambaLab } from './labs-samba.ts';
 import { namesLanLab, namesNetsLab } from './labs-names.ts';
 import { resolvedLab } from './labs-resolved.ts';
+import { basicoLinuxLab, clienteLinuxLab, relayLinuxLab, reservasLinuxLab } from './labs-dhcp-linux.ts';
 
 export interface Example {
   readonly id: string;
@@ -102,46 +103,9 @@ ip dhcp pool PC1-FIJO
       return startDhcp(t, p);
     },
   },
-  {
-    id: 'relay',
-    title: LABS_ES['lab.relay.title'],
-    summary: LABS_ES['lab.relay.summary'],
-    build: () => {
-      const t = new Topology();
-      const srv = t.add('router', 240, 140, { label: 'DHCP-SRV' }).device as Router;
-      const edge = t.add('router', 600, 140, { label: 'EDGE' }).device as Router;
-      const s = t.add('switch', 600, 320).device as Switch;
-      link(t, srv.id, 'GigabitEthernet0/0', edge.id, 'GigabitEthernet0/0');
-      link(t, edge.id, 'GigabitEthernet0/1', s.id, 'GigabitEthernet0/1');
-      const p = [0, 1].map((i) => {
-        const pc = t.add('pc', 480 + i * 240, 500).device as Pc;
-        if (i === 1) pc.os = 'linux';
-        link(t, pc.id, 'FastEthernet0', s.id, `FastEthernet0/${i + 1}`);
-        return pc;
-      });
-      conf(srv, `
-hostname DHCP-SRV
-ip dhcp excluded-address 10.20.0.1 10.20.0.9
-ip dhcp pool SEDE-B
- network 10.20.0.0 255.255.255.0
- default-router 10.20.0.1
- dns-server 10.0.0.1
-interface GigabitEthernet0/0
- ip address 10.0.0.1 255.255.255.252
- no shutdown
-ip route 10.20.0.0 255.255.255.0 10.0.0.2`);
-      conf(edge, `
-hostname EDGE
-interface GigabitEthernet0/0
- ip address 10.0.0.2 255.255.255.252
- no shutdown
-interface GigabitEthernet0/1
- ip address 10.20.0.1 255.255.255.0
- ip helper-address 10.0.0.1
- no shutdown`);
-      return startDhcp(t, p);
-    },
-  },
+  basicoLinuxLab,
+  reservasLinuxLab,
+  relayLinuxLab,
   {
     id: 'vlans',
     title: LABS_ES['lab.vlans.title'],
@@ -234,36 +198,7 @@ interface GigabitEthernet0/1
       return startDhcp(t, p);
     },
   },
-  {
-    id: 'cliente',
-    title: LABS_ES['lab.cliente.title'],
-    summary: LABS_ES['lab.cliente.summary'],
-    build: () => {
-      const t = new Topology();
-      const isp = t.add('router', 300, 200, { label: 'ISP' }).device as Router;
-      const cpe = t.add('router', 640, 200, { label: 'CPE' }).device as Router;
-      link(t, isp.id, 'GigabitEthernet0/0', cpe.id, 'GigabitEthernet0/1');
-      conf(isp, `
-hostname ISP
-ip dhcp excluded-address 100.64.0.1
-ip dhcp pool CLIENTES
- network 100.64.0.0 255.255.255.0
- default-router 100.64.0.1
-ip dhcp pool CPE-FIJO
- host 100.64.0.77 255.255.255.0
- client-identifier ${cpe.plane.clientIdText('GigabitEthernet0/1')}
-interface GigabitEthernet0/0
- ip address 100.64.0.1 255.255.255.0
- no shutdown`);
-      conf(cpe, `
-hostname CPE
-interface GigabitEthernet0/1
- ip address dhcp
- no shutdown`);
-      t.settle();
-      return t;
-    },
-  },
+  clienteLinuxLab,
   {
     id: 'servidores',
     title: LABS_ES['lab.servidores.title'],
