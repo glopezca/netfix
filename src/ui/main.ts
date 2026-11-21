@@ -572,6 +572,7 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
       return current()?.openHosted(topo, String(name)) ?? false;
     },
     markSaved: () => current()?.markSaved(),
+    changed: () => current()?.afterCommand(),
     showView: (view) => current()?.showHosted(view) ?? false,
     file: (action) => current()?.fileHosted(action) ?? false,
     setLocale: (locale) => {

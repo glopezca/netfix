@@ -53,6 +53,12 @@ try {
   await page.waitForTimeout(1200);
   assert.ok(await page.evaluate(() => globalThis.changes) > 0, 'changes reach the host page');
   assert.equal(await page.evaluate(() => localStorage.getItem('netfix:workspace:v1')), null, 'nothing autosaved in the browser');
+  // handle.changed (0.73.0): the host changed the network outside Netfix (an extension's editor wrote a file) and the
+  // change goes to onChange as an edit would.
+  await page.waitForTimeout(1200);
+  await page.evaluate(() => { globalThis.changes = 0; globalThis.handle.changed(); });
+  await page.waitForTimeout(1200);
+  assert.equal(await page.evaluate(() => globalThis.changes), 1, 'handle.changed reaches onChange once');
   // The teacher locked the timestamp prompt on: the box is ticked and greyed, and the prompt carries the date.
   await page.click('.win-tab:has-text("Terminal Windows")');
   const box = page.locator('.terminal:visible .term-foot-box');
