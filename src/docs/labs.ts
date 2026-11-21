@@ -7,7 +7,7 @@ import type { DocBlock, DocPage } from './types.ts';
 import type { OutlineGroup } from './outline.ts';
 import { p, h, list, note, steps, table } from './types.ts';
 import type { Locale } from '../i18n/locale.ts';
-import { tDynamic } from '../i18n/t.ts';
+import { storyText } from '../labs/story.ts';
 import { LAB_GROUPS } from '../labs/lab-groups.ts';
 import { HINT_LEVELS, MISSION_PLANS } from '../labs/mission-plans.ts';
 import type { MissionPlan } from '../labs/mission-plans.ts';
@@ -42,7 +42,7 @@ function rubric(m: MissionPlan, tr: Tr): DocBlock[] {
 }
 
 function labPage(m: MissionPlan, locale: Locale, others: readonly DocPage[]): DocPage {
-  const tr: Tr = (key, params) => tDynamic(key, params, locale);
+  const tr: Tr = (key, params) => storyText(key, params, locale);
   const k = `mission.${m.id}`;
   const group = LAB_GROUPS.find(([, ids]) => ids.includes(m.id))?.[0];
   const further = m.docs.flatMap((id) => others.find((o) => o.id === id)?.title ?? []);
@@ -63,7 +63,7 @@ function labPage(m: MissionPlan, locale: Locale, others: readonly DocPage[]): Do
 }
 
 function introPage(locale: Locale): DocPage {
-  const tr: Tr = (key, params) => tDynamic(key, params, locale);
+  const tr: Tr = (key, params) => storyText(key, params, locale);
   const chapters = LAB_GROUPS.filter(([, ids]) => missionIds(ids).length).map(([g]) => `**${tr(`mission.chapter.${g}`)}.** ${tr(`mission.chapter.${g}.intro`)}`);
   return {
     id: 'labs-intro', title: tr('mission.doc.introTitle'), summary: tr('mission.doc.introSummary'), markdownBase: MD,
@@ -78,7 +78,7 @@ function introPage(locale: Locale): DocPage {
 
 /** The Labs group of the outline: how missions work, then a section per chapter with its missions. */
 export function labsOutline(locale: Locale, title: string): OutlineGroup {
-  const chapters = LAB_GROUPS.map(([g, ids]) => [tDynamic(`mission.chapter.${g}`, {}, locale), missionIds(ids).map(labPageId)] as const);
+  const chapters = LAB_GROUPS.map(([g, ids]) => [storyText(`mission.chapter.${g}`, {}, locale), missionIds(ids).map(labPageId)] as const);
   return { id: 'labs', title, icon: 'mission', sections: [[null, ['labs-intro']], ...chapters.filter(([, ids]) => ids.length)] };
 }
 

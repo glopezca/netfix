@@ -7,7 +7,8 @@ import { el, clear } from './dom.ts';
 import { button } from './forms.ts';
 import { confirmDialog } from './confirm-dialog.ts';
 import { labText } from './lab-text.ts';
-import { t, tDynamic } from '../i18n/t.ts';
+import { t } from '../i18n/t.ts';
+import { storyText } from '../labs/story.ts';
 import type { Topology } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
 import { LAB_GROUPS } from '../labs/lab-groups.ts';
@@ -97,16 +98,16 @@ export class MissionPanel {
     const ex = EXAMPLES.find((e) => e.id === m.id);
     const group = LAB_GROUPS.find(([, ids]) => ids.includes(m.id))?.[0];
     this.heading.textContent = `${t('mission.ui.panel')} · ${ex ? labText(ex).title : m.id}`;
-    this.chapter.textContent = group ? tDynamic(`mission.chapter.${group}`) : '';
+    this.chapter.textContent = group ? storyText(`mission.chapter.${group}`) : '';
     this.body.append(...[this.ticket(m), this.tasks(m), this.actions(), this.report(m), this.solution(m), this.further(m)].filter(present));
   }
 
   private ticket(m: Mission): HTMLElement {
     const k = `mission.${m.id}`;
     return el('section', { class: 'mission-ticket' },
-      el('p', { class: 'mission-from' }, t('mission.ui.from', { who: tDynamic(`${k}.from`) })),
-      el('blockquote', {}, tDynamic(`${k}.ticket`)),
-      el('details', { class: 'mission-purpose' }, el('summary', {}, t('mission.ui.purpose')), el('p', {}, tDynamic(`${k}.purpose`))));
+      el('p', { class: 'mission-from' }, t('mission.ui.from', { who: storyText(`${k}.from`) })),
+      el('blockquote', {}, storyText(`${k}.ticket`)),
+      el('details', { class: 'mission-purpose' }, el('summary', {}, t('mission.ui.purpose')), el('p', {}, storyText(`${k}.purpose`))));
   }
 
   /** Levels of hint already read for task `n` (in order: level 2 counts only after level 1). */
@@ -123,10 +124,10 @@ export class MissionPanel {
 
   private task(m: Mission, n: number): HTMLElement {
     const seen = this.seen(n);
-    const li = el('li', { 'data-task': String(n) }, el('p', {}, tDynamic(taskKey(m, n))));
+    const li = el('li', { 'data-task': String(n) }, el('p', {}, storyText(taskKey(m, n))));
     if (seen > 0) {
       li.append(el('ul', { class: 'mission-hints' }, ...range(seen).map((l) =>
-        el('li', { tabindex: '-1' }, el('strong', {}, t('mission.ui.hint', { n: l })), ' ', tDynamic(hintKey(m, n, l))))));
+        el('li', { tabindex: '-1' }, el('strong', {}, t('mission.ui.hint', { n: l })), ' ', storyText(hintKey(m, n, l))))));
     }
     if (this.policy.hints && seen < HINT_LEVELS) {
       li.append(button(t('mission.ui.nextHint', { n: seen + 1, total: HINT_LEVELS }), () => this.reveal(n, seen + 1), 'btn btn-quiet mission-hint-btn'));
@@ -177,7 +178,7 @@ export class MissionPanel {
         el('span', { class: 'mission-mark', 'aria-hidden': 'true' }, i.passed ? '✓' : '✗'),
         el('span', { class: 'visually-hidden' }, `${t(i.passed ? 'mission.ui.passed' : 'mission.ui.failed')}: `),
         el('span', {}, i.title ?? i.id), ' ', el('small', {}, i.detail)))),
-      done ? el('blockquote', { class: 'mission-debrief' }, tDynamic(`mission.${m.id}.debrief`)) : null);
+      done ? el('blockquote', { class: 'mission-debrief' }, storyText(`mission.${m.id}.debrief`)) : null);
   }
 
   /** After View solution: what was done, and Marta's explanation. */
@@ -186,8 +187,8 @@ export class MissionPanel {
     return el('section', { class: 'mission-solution' },
       el('p', { class: 'muted' }, t('mission.ui.solved')),
       el('details', { open: true }, el('summary', {}, t('mission.ui.solutionShown')),
-        el('p', {}, tDynamic(`mission.${m.id}.solution`)),
-        el('blockquote', { class: 'mission-debrief' }, tDynamic(`mission.${m.id}.debrief`))));
+        el('p', {}, storyText(`mission.${m.id}.solution`)),
+        el('blockquote', { class: 'mission-debrief' }, storyText(`mission.${m.id}.debrief`))));
   }
 
   private async askSolution(): Promise<void> {

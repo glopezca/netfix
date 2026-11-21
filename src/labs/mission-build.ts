@@ -7,7 +7,7 @@ import type { Example } from '../net/examples.ts';
 import type { Topology } from '../net/topology.ts';
 import type { MissionState } from './mission-state.ts';
 import { Host } from '../devices/host.ts';
-import { tDynamic } from '../i18n/t.ts';
+import { storyText } from './story.ts';
 import type { Locale } from '../i18n/locale.ts';
 import type { ChecklistItem } from '../classroom/checklist.ts';
 import { missionById } from './missions.ts';
@@ -58,7 +58,7 @@ export function viewSolution(state: MissionState): Topology {
 
 /** The rubric as a checklist, titled in `locale`. */
 export function missionRubric(m: Mission, locale?: Locale): readonly ChecklistItem[] {
-  return m.items.map((i) => ({ id: i.id, weight: i.weight ?? 1, title: tDynamic(`mission.${m.id}.check.${i.id}`, {}, locale), check: i.check }));
+  return m.items.map((i) => ({ id: i.id, weight: i.weight ?? 1, title: storyText(`mission.${m.id}.check.${i.id}`, {}, locale), check: i.check }));
 }
 
 export const taskKey = (m: Mission, n: number): string => `mission.${m.id}.task.${n}`;
