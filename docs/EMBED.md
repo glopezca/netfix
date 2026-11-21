@@ -18,6 +18,7 @@ comprobación, en el navegador o en un servidor sin interfaz.
   // practica.exportTopology()  → archivo de topología actual
   // practica.open(archivo, nombre) → lo abre como Importar… (pregunta si hay cambios sin guardar); true si lo abrió
   // practica.markSaved()       → la página ha guardado la red: deja de contar como cambios sin guardar
+  // practica.changed()         → la página cambió la red por fuera (una extensión escribió archivos): va a onChange como una edición
   // practica.showView('docs')  → muestra una página de Netfix: 'net', 'docs', 'settings' o 'about' (false si no puede)
   // practica.setLocale('en-GB') → cambia el idioma (la red se conserva)
   // practica.setConfirmUnsaved(false) → reemplazar trabajo sin guardar ya no pregunta

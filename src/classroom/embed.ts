@@ -34,6 +34,11 @@ export interface EmbedHandle {
   open(file: unknown, name: string): Promise<boolean>;
   /** The host stored the current topology: it is no longer unsaved work. */
   markSaved(): void;
+  /**
+   * The host changed the network outside Netfix (an extension's editor wrote a device's files, 0.73.0): it is saved
+   * as an edit would be — `onChange` embedded, the browser's autosave in the lab — and counts as unsaved work.
+   */
+  changed(): void;
   /** Shows one of Netfix's pages: 'net', 'docs' (if the classroom allows it), 'settings' or 'about'. False: not shown. */
   showView(view: string): boolean;
   /** The interface in another language (the host's choice: rebuilt, the network kept). */

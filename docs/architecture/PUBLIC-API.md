@@ -191,6 +191,10 @@ sistema del equipo; en Windows, en cada uso). `run(call)` recibe `argv`, el usua
 programas del núcleo siempre ganan: un nombre suyo se rechaza. `hostFiles(host, system?)` da los archivos de un equipo
 sin terminal, como su usuario de consola, para acciones del área de trabajo.
 
+**Cambios desde fuera (0.73.0).** `handle.changed()` (de `netfix.embed` y `netfix.lab`): la página cambió la red sin
+pasar por Netfix (el editor de una extensión escribió archivos de un equipo con `hostFiles`); se guarda como una edición
+—`onChange` en el modo incrustado, el autoguardado del navegador en el laboratorio— y cuenta como trabajo sin guardar.
+
 **Menú contextual de los equipos (0.72.0).** Clic derecho (al soltar sin mover: arrastrar con el botón derecho sigue
 desplazando), la tecla Menú o Mayús+F10 sobre un equipo con el foco, y una pulsación larga en pantallas táctiles (antes
 abría el equipo; el doble toque sigue abriéndolo). Lista «Abrir», las entradas de las extensiones para ese equipo y
