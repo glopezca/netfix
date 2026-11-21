@@ -8,6 +8,9 @@ import type { Topology } from '../net/topology.ts';
 import { IosDevice } from '../ios/device.ts';
 import { applyConfig } from '../ios/session.ts';
 import { Server } from '../devices/server.ts';
+import { Host } from '../devices/host.ts';
+import { Router } from '../devices/router.ts';
+import { clientIdFromMac, formatHexId, formatMacCisco } from '../core/mac.ts';
 import type { DnsRecord } from '../services/config.ts';
 import { MISSION_PLANS } from './mission-plans.ts';
 import type { MissionPlan } from './mission-plans.ts';
@@ -36,8 +39,50 @@ function addDnsRecord(t: Topology, label: string, zone: string, record: DnsRecor
   srv.setServices({ ...srv.services, dns: { ...dns, zones } });
 }
 
+function host(t: Topology, label: string): Host {
+  const d = t.byLabel(label);
+  if (!(d instanceof Host)) throw new Error(`mission: ${label} is not a host`);
+  return d;
+}
+
+const pcId = (mac: string): string => formatHexId(clientIdFromMac(mac));
+/** A MAC with its last digit mistyped. */
+const typo = (mac: string): string => mac.slice(0, -1) + (mac.endsWith('a') ? 'b' : 'a');
+
+/** Three fixed addresses, three classic slips: the id without its 01, a mistyped MAC, a line copied from another PC. */
+function breakReservations(t: Topology): void {
+  const [pc0, pc1] = [host(t, 'PC0').mac, host(t, 'PC1').mac];
+  ios(t, 'GW', `ip dhcp pool PC0-FIJO
+ no client-identifier ${pcId(pc0)}
+ client-identifier ${formatMacCisco(pc0)}
+ip dhcp pool PC1-FIJO
+ no hardware-address ${formatMacCisco(pc1)}
+ hardware-address ${formatMacCisco(typo(pc1))}
+ip dhcp pool LAN
+ no address 192.168.10.150
+ address 192.168.10.150 client-id ${pcId(pc1)}`);
+  host(t, 'PC2').releaseDhcp(); // reinstalled: it asks from scratch, not for the address it had
+  t.settle();
+}
+
+const WAN = 'GigabitEthernet0/1';
+
+/** The ISP keyed the CPE's fixed lease as if it were a PC (01 + MAC) and lost the pool's gateway; the CPE asks for nothing. */
+function breakClient(t: Topology): void {
+  const cpe = t.byLabel('CPE');
+  if (!(cpe instanceof Router)) throw new Error('mission: CPE is not a router');
+  ios(t, 'ISP', `ip dhcp pool CPE-FIJO
+ no client-identifier ${cpe.plane.clientIdText(WAN)}
+ client-identifier ${pcId(cpe.ifaceMac(WAN))}
+ip dhcp pool CLIENTES
+ no default-router`);
+  ios(t, 'CPE', `interface ${WAN}\n no ip address dhcp\n no ip address`);
+}
+
 const CHANGES: Readonly<Record<string, Changes>> = {
   basico: { start: (t) => ios(t, 'GW', 'ip dhcp pool LAN\n no default-router\n no dns-server') },
+  reservas: { start: breakReservations },
+  cliente: { start: breakClient },
   relay: {
     start: (t) => {
       ios(t, 'EDGE', 'interface GigabitEthernet0/1\n no ip helper-address 10.0.0.1');

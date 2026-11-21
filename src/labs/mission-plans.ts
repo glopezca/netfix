@@ -39,6 +39,19 @@ const basico: MissionPlan = {
   ],
 };
 
+const fixed = (device: string, ip: string): Check => ({ type: 'ip', device, mode: 'dhcp', ip });
+
+const reservas: MissionPlan = {
+  id: 'reservas',
+  tasks: 3,
+  docs: ['ios-reservas', 'ios-dhcp', 'pc-ip'],
+  items: [
+    { id: 'pc0', task: 1, check: fixed('PC0', '192.168.10.100') },
+    { id: 'pc1', task: 2, check: fixed('PC1', '192.168.10.101') },
+    { id: 'pc2', task: 3, check: fixed('PC2', '192.168.10.150') },
+  ],
+};
+
 const relay: MissionPlan = {
   id: 'relay',
   tasks: 3,
@@ -49,6 +62,18 @@ const relay: MissionPlan = {
     { id: 'pc0', task: 3, check: lease('PC0', '10.20.0.0/24', '10.20.0.1') },
     { id: 'pc1', task: 3, check: lease('PC1', '10.20.0.0/24', '10.20.0.1') },
     { id: 'ping', task: 3, check: { type: 'ping', from: 'PC0', to: '10.0.0.1', expect: 'success' } },
+  ],
+};
+
+const cliente: MissionPlan = {
+  id: 'cliente',
+  tasks: 3,
+  docs: ['ios-dhcp', 'ios-reservas', 'ios-show'],
+  items: [
+    { id: 'dhcp', task: 1, check: { type: 'config', device: 'CPE', section: 'interface GigabitEthernet0/1', lines: [' ip address dhcp'] } },
+    { id: 'fixed', task: 2, weight: 2, check: { type: 'output', device: 'CPE', command: 'show ip interface brief', contains: '100.64.0.77' } },
+    { id: 'router', task: 3, check: { type: 'config', device: 'ISP', section: 'ip dhcp pool CLIENTES', lines: [' default-router 100.64.0.1'] } },
+    { id: 'route', task: 3, check: { type: 'output', device: 'CPE', command: 'show ip route', contains: 'Gateway of last resort is 100.64.0.1' } },
   ],
 };
 
@@ -64,4 +89,4 @@ const namesNets: MissionPlan = {
 };
 
 /** The missions, in the order of the Labs menu. */
-export const MISSION_PLANS: readonly MissionPlan[] = [basico, relay, namesNets];
+export const MISSION_PLANS: readonly MissionPlan[] = [basico, reservas, relay, cliente, namesNets];
