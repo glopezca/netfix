@@ -27,7 +27,7 @@ export interface HostOptionSpec<T = unknown> {
 }
 
 const specs = new Map<string, HostOptionSpec>();
-const RESERVED = new Set(['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'piles', 'topology', 'restrictions', 'onChange']);
+const RESERVED = new Set(['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'piles', 'missions', 'topology', 'restrictions', 'onChange']);
 
 export function registerHostOption<T>(name: string, spec: HostOptionSpec<T>): void {
   if (!/^[a-z][A-Za-z0-9]*$/.test(name) || RESERVED.has(name)) throw new Error(`netfix: «${name}» no puede ser una opción del anfitrión`);

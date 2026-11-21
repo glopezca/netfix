@@ -67,6 +67,6 @@ export const SETTINGS_EN: Readonly<Record<SettingsKey, string>> = {
   'os.title': 'Which operating system does {name} run?',
   'os.body': 'Its terminal and that system\'s network stack are turned on. You can change it later in its Settings tab (terminals) and in TCP/IP (operating system).',
   'os.linux': 'GNU/Linux',
-  'os.windows': 'Windows',
-  'os.both': 'Both',
+  'os.windows': 'Microsoft Windows',
+  'os.both': 'MultiOS',
 };

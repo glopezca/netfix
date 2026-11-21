@@ -65,8 +65,8 @@ export const SETTINGS_ES = {
   'os.title': '¿Qué sistema operativo tiene {name}?',
   'os.body': 'Se activa su terminal y la pila de red de ese sistema. Puedes cambiarlo después en su pestaña Configuración (terminales) y en TCP/IP (sistema operativo).',
   'os.linux': 'GNU/Linux',
-  'os.windows': 'Windows',
-  'os.both': 'Ambos',
+  'os.windows': 'Microsoft Windows',
+  'os.both': 'MultiOS',
 } as const;
 
 export type SettingsKey = keyof typeof SETTINGS_ES;
