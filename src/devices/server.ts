@@ -20,6 +20,7 @@ import { SshService } from '../services/ssh-service.ts';
 import { unitCheck } from './unit-checks.ts';
 import { journalLines } from './journal-text.ts';
 import { loadNftablesConf } from './server-firewall.ts';
+import { relayDhcp } from './server-relay.ts';
 import { BROADCAST_IP, formatIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
 import type { SimClock } from '../core/clock.ts';
@@ -62,7 +63,7 @@ export class Server extends Host {
   override os: HostOs = 'linux';
   services: ServerServices = defaultServices();
   /** Units enabled at boot (`systemctl enable`, Windows "Automatic"). */
-  autostart: Record<UnitId, boolean> = { dhcp: true, dns: true, http: true, smtp: true, mailbox: true, ssh: true, firewall: false };
+  autostart: Record<UnitId, boolean> = { dhcp: true, dns: true, http: true, smtp: true, mailbox: true, ssh: true, firewall: false, relay: false };
   readonly dhcpEngine = new DhcpServer();
   readonly mailboxes = new Mailboxes();
   readonly logs: LogEntry[] = [];
@@ -354,7 +355,7 @@ export class Server extends Host {
   protected override onUdp(packet: IpPacket, iface: string): void {
     const udp = packet.udp;
     if (!udp) return;
-    if (udp.dport === DHCP_SERVER_PORT && udp.dhcp && udp.dhcp.op === 'BOOTREQUEST') this.onDhcp(udp.dhcp, iface);
+    if (udp.dport === DHCP_SERVER_PORT && udp.dhcp) { if (!relayDhcp(this, udp.dhcp, iface) && udp.dhcp.op === 'BOOTREQUEST') this.onDhcp(udp.dhcp, iface); }
     else if (udp.dns) this.dns.handle(packet);
   }
 

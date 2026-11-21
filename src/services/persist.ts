@@ -29,6 +29,7 @@ export interface ServicesJson {
   readonly mail: ServerServices['mail'];
   readonly ssh: ServerServices['ssh'];
   readonly firewall?: ServerServices['firewall'];
+  readonly relay?: { enabled: boolean; servers: string[]; interfaces: string[] };
   readonly webapps?: ServerServices['webapps'];
 }
 
@@ -53,6 +54,8 @@ export function servicesToJson(s: ServerServices): ServicesJson {
     mail: s.mail,
     ssh: s.ssh,
     ...(s.firewall.enabled ? { firewall: s.firewall } : {}),
+    ...(s.relay.enabled || s.relay.servers.length > 0 || s.relay.interfaces.length > 0
+      ? { relay: { enabled: s.relay.enabled, servers: s.relay.servers.map(formatIp), interfaces: [...s.relay.interfaces] } } : {}),
     webapps: s.webapps,
   };
 }
@@ -179,9 +182,21 @@ function allowRecursionOf(v: unknown): Aml {
   return list;
 }
 
+/** isc-dhcp-relay: off with no servers unless the file says otherwise; servers are addresses, interfaces Linux names. */
+function relayFromJson(v: unknown): ServerServices['relay'] {
+  if (!isObj(v)) return { enabled: false, servers: [], interfaces: [] };
+  const list = arr(v.servers, 'servidores del relé');
+  if (list.length > MAX_LISTEN) throw new Error(t('load.list', { what: label('servidores del relé') }));
+  const servers = list.map((x) => optIp(x, 'servidor del relé'));
+  if (servers.some((x) => x === undefined)) throw new Error(t('load.ip', { what: label('servidor del relé') }));
+  const names = arr(v.interfaces, 'interfaces del relé');
+  return { enabled: bool(v.enabled), servers: servers as number[], interfaces: names.length === 0 ? [] : ifaceList(names) };
+}
+
 function ifaceList(v: unknown): string[] {
   // Empty would leave the service answering nobody: the panel refuses it too.
-  if (!Array.isArray(v) || v.length === 0 || v.length > MAX_LISTEN) throw new Error(t('load.ifaces'));
+  // Repeated names count once, as the relay's and Kea's files read them.
+  if (!Array.isArray(v) || v.length === 0 || new Set(v).size > MAX_LISTEN) throw new Error(t('load.ifaces'));
   return [...new Set(v.map((x) => {
     if (typeof x !== 'string' || !IFACE_NAME.test(x)) throw new Error(t('load.ifaces'));
     return x;
@@ -257,6 +272,7 @@ export function servicesFromJson(v: unknown): ServerServices {
     mail: { smtp: bool(m.smtp), pop3: bool(m.pop3), imap: bool(m.imap), domain: m.domain === undefined ? '' : str(m.domain, 'dominio de correo'), users: arr(m.users, 'usuarios de correo').map(account) },
     ssh: { enabled: bool(s.enabled), users: arr(s.users, 'usuarios SSH').map(account) },
     firewall: { enabled: isObj(v.firewall) ? bool(v.firewall.enabled) : false },
+    relay: relayFromJson(v.relay),
     webapps: webapps(v.webapps),
   };
 }

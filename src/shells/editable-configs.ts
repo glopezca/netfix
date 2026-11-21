@@ -16,6 +16,8 @@ import { namedStart } from './named-start.ts';
 import { dovecotStart, postfixStart } from './mail-start.ts';
 import { MAIN_CF } from '../services/postfix-conf.ts';
 import { DOVECOT_CONF } from '../services/dovecot-conf.ts';
+import { RELAY_DEFAULT } from '../services/relay-conf.ts';
+import { relayStart } from './relay-start.ts';
 
 export interface EditableConfig {
   /** The unit that reads the files (also the family hand-edits.ts follows). */
@@ -42,6 +44,7 @@ export const EDITABLE_CONFIGS: readonly EditableConfig[] = [
     model: (s) => ({ ...s.dns, enabled: undefined, unloaded: undefined }), check: namedStart,
   },
   { unit: 'smtp', owns: (p) => p === MAIN_CF, dirs: ['/etc', '/etc/postfix'], model: (s) => s.mail.domain, check: postfixStart },
+  { unit: 'relay', owns: (p) => p === RELAY_DEFAULT, dirs: ['/etc', '/etc/default'], model: (s) => ({ ...s.relay, enabled: undefined }), check: relayStart },
   // dovecot.conf is written from the POP3/IMAP switches, which are also whether dovecot runs: a stop must not rewrite it.
   { unit: 'mailbox', owns: (p) => p === DOVECOT_CONF, dirs: ['/etc', '/etc/dovecot'], model: () => '', check: dovecotStart },
 ];
