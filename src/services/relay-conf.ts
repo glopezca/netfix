@@ -3,6 +3,7 @@
  * OPTIONS) that its init script sources before starting dhcrelay. Read at the unit's start (shells/relay-start.ts).
  */
 import { formatIp, parseIp } from '../core/ip.ts';
+import { MAX_LISTEN } from './listen.ts';
 
 export const RELAY_DEFAULT = '/etc/default/isc-dhcp-relay';
 
@@ -61,9 +62,11 @@ function assignments(text: string): Map<string, string> | { readonly error: stri
 export function parseRelayDefault(text: string, nics: readonly string[]): RelaySettings | { readonly error: string } {
   const vars = assignments(text);
   if ('error' in vars) return vars;
-  const words = (name: string): string[] => (vars.get(name) ?? '').split(/\s+/).filter(Boolean);
+  const words = (name: string): string[] => [...new Set((vars.get(name) ?? '').split(/\s+/).filter(Boolean))];
   const names = words('SERVERS');
   if (names.length === 0) return { error: 'No servers specified.' };
+  // shortcut: dhcrelay takes any number; a lab saves at most MAX_LISTEN of each (services/persist.ts), so more fail here.
+  if (names.length > MAX_LISTEN) return { error: `Netfix: at most ${MAX_LISTEN} servers in SERVERS` };
   const servers: number[] = [];
   for (const n of names) {
     const ip = parseIp(n);
@@ -71,6 +74,7 @@ export function parseRelayDefault(text: string, nics: readonly string[]): RelayS
     servers.push(ip);
   }
   const interfaces = words('INTERFACES');
+  if (interfaces.length > MAX_LISTEN) return { error: `Netfix: at most ${MAX_LISTEN} interfaces in INTERFACES` };
   const missing = interfaces.find((i) => !nics.includes(i));
   if (missing) return { error: `Error getting hardware address for "${missing}": No such device` };
   return { servers, interfaces };

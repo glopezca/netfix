@@ -34,6 +34,8 @@ export interface DhcpMessage {
   readonly yiaddr: number;
   readonly siaddr: number;
   readonly giaddr: number;
+  /** Relay agents it went through (BOOTP hops); absent: none. */
+  readonly hops?: number;
   readonly chaddr: string;
   readonly broadcastFlag: boolean;
   readonly file?: string;

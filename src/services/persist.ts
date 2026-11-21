@@ -195,7 +195,8 @@ function relayFromJson(v: unknown): ServerServices['relay'] {
 
 function ifaceList(v: unknown): string[] {
   // Empty would leave the service answering nobody: the panel refuses it too.
-  if (!Array.isArray(v) || v.length === 0 || v.length > MAX_LISTEN) throw new Error(t('load.ifaces'));
+  // Repeated names count once, as the relay's and Kea's files read them.
+  if (!Array.isArray(v) || v.length === 0 || new Set(v).size > MAX_LISTEN) throw new Error(t('load.ifaces'));
   return [...new Set(v.map((x) => {
     if (typeof x !== 'string' || !IFACE_NAME.test(x)) throw new Error(t('load.ifaces'));
     return x;

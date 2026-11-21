@@ -8,6 +8,9 @@ import type { DhcpMessage } from '../net/packets.ts';
 import { DHCP_CLIENT_PORT, DHCP_SERVER_PORT } from '../net/packets.ts';
 import { BROADCAST_IP, formatIp } from '../core/ip.ts';
 
+/** dhcrelay's default maximum hop count (-c). */
+const MAX_HOPS = 10;
+
 /** aa:bb:cc:dd:ee:ff, as dhcrelay logs a client. */
 const hw = (mac: string): string => (mac.match(/../g) ?? []).join(':');
 
@@ -25,7 +28,10 @@ export function relayDhcp(server: Server, msg: DhcpMessage, arrived: string): bo
   }
   const own = served(arrived) ? server.ifaceConfig(arrived)?.ip : undefined;
   if (own === undefined) return false;
-  const relayed: DhcpMessage = { ...msg, giaddr: msg.giaddr || own };
+  // dhcrelay's -c 10, and a request it relayed itself coming back: dropped, so two relays cannot feed each other.
+  const hops = msg.hops ?? 0;
+  if (hops >= MAX_HOPS || server.portNames().some((p) => server.ifaceConfig(p)?.ip === msg.giaddr)) return false;
+  const relayed: DhcpMessage = { ...msg, giaddr: msg.giaddr || own, hops: hops + 1 };
   for (const dst of r.servers) {
     server.log('relay', `Forwarded BOOTREQUEST for ${hw(msg.chaddr)} to ${formatIp(dst)}`);
     server.sendUdp(dst, DHCP_SERVER_PORT, DHCP_SERVER_PORT, { dhcp: relayed });

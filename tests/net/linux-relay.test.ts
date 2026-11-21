@@ -76,3 +76,18 @@ test('the relay settings and the edited file are saved with the lab', () => {
   assert.deepEqual(lr2.services.relay, { enabled: true, servers: [ip('10.0.0.1')], interfaces: [] });
   assert.equal(lr2.autostart.relay, true);
 });
+
+test('two relays that send to each other stop at 10 hops, as dhcrelay -c 10 (no storm)', () => {
+  const t = new Topology();
+  const [a, b] = [t.add('linuxrouter', 0, 0).device as LinuxRouter, t.add('linuxrouter', 0, 0).device as LinuxRouter];
+  const pc = t.add('pc', 0, 0).device as Pc;
+  t.connect({ device: a.id, port: 'GigabitEthernet0/0' }, { device: b.id, port: 'GigabitEthernet0/0' });
+  t.connect({ device: a.id, port: 'GigabitEthernet0/1' }, { device: pc.id, port: 'FastEthernet0' });
+  const [ra, rb] = [createShell(a, 'linux', 'root'), createShell(b, 'linux', 'root')];
+  ra.run(`ip addr add 10.0.0.1/24 dev eth0; ip addr add 10.20.0.1/24 dev eth1; sed -i 's/^SERVERS=.*/SERVERS="10.0.0.2"/' ${F}; systemctl start isc-dhcp-relay`);
+  rb.run(`ip addr add 10.0.0.2/24 dev eth0; sed -i 's/^SERVERS=.*/SERVERS="10.0.0.1"/' ${F}; systemctl start isc-dhcp-relay`);
+  pc.useDhcp();
+  t.settle();
+  const forwarded = (r: LinuxRouter): number => r.logs.filter((l) => l.unit === 'relay' && l.line.startsWith('Forwarded BOOTREQUEST')).length;
+  assert.ok(forwarded(a) + forwarded(b) <= 40, `bounded: ${forwarded(a)} + ${forwarded(b)}`);
+});

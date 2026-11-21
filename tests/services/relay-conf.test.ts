@@ -28,3 +28,9 @@ test('what dhcrelay refuses: no servers, a server that is not an address, an int
   assert.deepEqual(parseRelayDefault('SERVERS="10.0.0.1"\nINTERFACES="eth9"\n', NICS), { error: 'Error getting hardware address for "eth9": No such device' });
   assert.deepEqual(parseRelayDefault('SERVERS="10.0.0.1\n', NICS), { error: '/etc/default/isc-dhcp-relay: line 1: unexpected EOF while looking for matching `"\'' });
 });
+
+test('repeated servers and interfaces count once; more than the lab can save is refused at the start', () => {
+  assert.deepEqual(parseRelayDefault('SERVERS="10.0.0.1 10.0.0.1"\nINTERFACES="eth1 eth1"\n', NICS), { servers: [ip('10.0.0.1')], interfaces: ['eth1'] });
+  const nine = Array.from({ length: 9 }, (_, i) => `10.0.0.${i + 1}`).join(' ');
+  assert.deepEqual(parseRelayDefault(`SERVERS="${nine}"\n`, NICS), { error: 'Netfix: at most 8 servers in SERVERS' });
+});
