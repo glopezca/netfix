@@ -193,6 +193,8 @@ sin terminal, como su usuario de consola, para acciones del área de trabajo.
 Con `editor: true` (0.81.0) el programa es además el editor de Midnight Commander en los equipos que lo tienen, como
 `$EDITOR` con `use_internal_edit` desactivado: F4, e Intro sobre un archivo que no es un programa, lo abren con él
 (`argv[1]`, la ruta tal como la escribe el sistema) y mc sigue en sus paneles. Sin uno, mc usa nano y su visor.
+Con `aliases: ['otro']` (0.85.0) el programa tiene más nombres: `/usr/bin/otro` es un enlace simbólico a `<name>` y en
+Windows hay un `otro.exe` junto a `<name>.exe`; `argv[0]` es el nombre escrito y un alias tampoco puede pisar otro nombre.
 
 **Cambios desde fuera (0.73.0).** `handle.changed()` (de `netfix.embed` y `netfix.lab`): la página cambió la red sin
 pasar por Netfix (el editor de una extensión escribió archivos de un equipo con `hostFiles`); se guarda como una edición
