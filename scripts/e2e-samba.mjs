@@ -78,6 +78,7 @@ try {
 
   // The lab: «Servicio Samba» for PCs, servers and GNU/Linux routers, on by default. Off for PCs, PC1's Configuración has no Samba box.
   await page.click('button.seg[data-view="settings"]');
+  await page.evaluate(() => { for (const d of document.querySelectorAll('.settings details.set-panel')) d.open = true; }); // panels fold (0.88.0)
   for (const kind of ['pc', 'server', 'linuxrouter']) assert.equal(await page.locator(`input[data-feature="${kind}:samba"]`).isChecked(), true, kind);
   await page.locator('input[data-feature="pc:samba"]').uncheck();
   await page.click('button.seg[data-view="net"]');
@@ -109,7 +110,8 @@ try {
   await win.locator('.win-close').click();
   // The lab takes bind9 away: no package box and no DNS box on a server without DNS.
   await page.click('button.seg[data-view="settings"]');
-  await page.locator('fieldset[data-kind="packages"] input[data-pkg="bind9"]').uncheck();
+  await page.evaluate(() => { for (const d of document.querySelectorAll('.settings details.set-panel')) d.open = true; }); // panels fold (0.88.0)
+  await page.locator('details[data-kind="packages"] input[data-pkg="bind9"]').uncheck();
   await page.click('button.seg[data-view="net"]');
   await page.dblclick('g.device:has-text("SRV")');
   await cfg();
@@ -119,6 +121,7 @@ try {
 
   // Both systems (v0.39): Windows added to PC1 brings its sharing box; Servicios groups GNU/Linux and Windows.
   await page.click('button.seg[data-view="settings"]');
+  await page.evaluate(() => { for (const d of document.querySelectorAll('.settings details.set-panel')) d.open = true; }); // panels fold (0.88.0)
   await page.locator('input[data-feature="pc:samba"]').check();
   await page.click('button.seg[data-view="net"]');
   await page.dblclick('g.device:has-text("PC1")');

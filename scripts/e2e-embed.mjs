@@ -108,6 +108,7 @@ try {
   await page.click('[data-view="settings"]');
   await page.waitForSelector('.settings');
   assert.equal(await page.locator('.settings input[data-feature]:disabled').count(), 0, 'lab settings are not locked');
+  await page.evaluate(() => { for (const d of document.querySelectorAll('.settings details.set-panel')) d.open = true; }); // panels fold (0.88.0)
   await page.check('input[name="set-theme"][value="dark"]');
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
   await page.evaluate(() => globalThis.handle.destroy());
@@ -186,6 +187,7 @@ try {
   assert.match(await page.locator('#app .hint').innerText(), /guardada\.json/);
   assert.ok(await note.isVisible(), 'messages still show with the help turned off');
   assert.equal(await page.evaluate(() => globalThis.handle.showView('settings')), true); // an unsaved change: a lab feature off
+  await page.evaluate(() => { for (const d of document.querySelectorAll('.settings details.set-panel')) d.open = true; }); // panels fold (0.88.0)
   await page.locator('#app .settings input[data-feature] >> nth=0').click();
   assert.equal(await page.locator('#app #set-lang, #app input[name="set-theme"]').count(), 0, 'the host sets the language and theme');
   assert.equal(await page.locator('#app input[data-setting="tool-help"]').isChecked(), false);
@@ -199,6 +201,7 @@ try {
   assert.ok(asked > 0, 'unsaved changes are asked about first');
   // The host's unsaved question off: over unsaved work the file is opened without asking.
   await page.evaluate(() => globalThis.handle.showView('settings'));
+  await page.evaluate(() => { for (const d of document.querySelectorAll('.settings details.set-panel')) d.open = true; }); // panels fold (0.88.0)
   await page.locator('#app .settings input[data-feature] >> nth=0').click();
   await page.evaluate(() => globalThis.handle.setConfirmUnsaved(false));
   const askedBefore = asked;

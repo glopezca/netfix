@@ -61,12 +61,20 @@ function generalSection(host: SettingsHost): HTMLElement {
     el('p', { class: 'muted' }, t('set.generalNote')),
     host.hostOwned() ? null : el('div', { class: 'set-row' }, el('label', { for: 'set-lang' }, t('set.language')), lang),
     // Embedded, the page and this browser's storage are the host's: no theme on its <html>, nothing kept for later.
-    host.labLocked() || host.hostOwned() ? null : el('fieldset', { class: 'set-group' }, el('legend', {}, t('set.theme')), ...radios),
+    host.labLocked() || host.hostOwned() ? null : panel('theme', t('set.theme'), ...radios),
     host.labLocked() || host.hostOwned() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')),
     host.hostOwned() ? el('label', { class: 'set-choice' }, help, t('set.toolHelp')) : null,
     el('label', { class: 'set-choice' }, pile, t('set.piles')),
     el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)),
     el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
+}
+
+/**
+ * A panel of options: its heading folds them (closed at first, as the missions' solutions), so the page shows every
+ * heading at once. `data-kind` names it, for the tests and a host that shows one at a time (FixIT Classroom).
+ */
+function panel(id: string, title: string, ...children: (HTMLElement | null)[]): HTMLElement {
+  return el('details', { class: 'set-group set-panel', 'data-kind': id }, el('summary', {}, title), ...children);
 }
 
 function kindGroup(host: SettingsHost, kind: BuiltinDeviceKind, changed: () => void): HTMLElement {
@@ -78,7 +86,7 @@ function kindGroup(host: SettingsHost, kind: BuiltinDeviceKind, changed: () => v
     });
     return el('label', { class: 'set-choice' }, box, tDynamic(`set.feat.${id}`));
   });
-  return el('fieldset', { class: 'set-group', 'data-kind': kind }, el('legend', {}, tDynamic(`set.kind.${kind}`)), ...boxes);
+  return panel(kind, tDynamic(`set.kind.${kind}`), ...boxes);
 }
 
 /** One box per catalogue package, for every kind: unticked, apt and the devices' Configuración no longer offer it. */
@@ -91,7 +99,7 @@ function packagesGroup(host: SettingsHost, changed: () => void): HTMLElement {
     });
     return el('label', { class: 'set-choice' }, box, el('code', {}, name));
   });
-  return el('fieldset', { class: 'set-group', 'data-kind': 'packages' }, el('legend', {}, t('set.packages')),
+  return panel('packages', t('set.packages'),
     el('p', { class: 'muted' }, t('set.packagesHint')),
     el('p', { class: 'set-sub' }, t('set.svcPackages')), ...boxes(SERVICE_PACKAGES),
     el('p', { class: 'set-sub' }, t('set.toolPackages')), ...boxes(TOOL_PACKAGES));
