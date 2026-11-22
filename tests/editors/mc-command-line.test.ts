@@ -25,7 +25,7 @@ function pc(os: 'linux' | 'windows'): ShellSession {
 
 test('GNU/Linux: typing on the panels goes to the command line, Backspace takes it back', () => {
   const sh = pc('linux');
-  sh.run('mc');
+  sh.run('mc .');
   type(sh, 'echo hola');
   press(sh, 'Backspace');
   assert.equal(screen(sh)[22]?.trimEnd(), 'alumno@PC0:~$ echo hol');
@@ -34,7 +34,7 @@ test('GNU/Linux: typing on the panels goes to the command line, Backspace takes 
 
 test('GNU/Linux: Enter runs the line from the panel\'s folder; its output stays until a key, then the panels come back', () => {
   const sh = pc('linux');
-  sh.run('mc');
+  sh.run('mc .');
   type(sh, 'echo hola > nuevo.txt; echo hecho; pwd');
   press(sh, 'Enter');
   const out = screen(sh).join('\n');
@@ -50,7 +50,7 @@ test('GNU/Linux: Enter runs the line from the panel\'s folder; its output stays 
 
 test('GNU/Linux: cd on the command line moves the active panel; Enter with nothing typed still opens the entry', () => {
   const sh = pc('linux');
-  sh.run('mc');
+  sh.run('mc .');
   type(sh, 'cd docs');
   press(sh, 'Enter');
   assert.equal(screen(sh)[22]?.trimEnd(), 'alumno@PC0:~/docs$', 'no output: straight back to the panels, now in docs');
@@ -61,7 +61,7 @@ test('GNU/Linux: cd on the command line moves the active panel; Enter with nothi
 
 test('Windows: mc.exe runs the line with cmd.exe from the panel\'s folder, and cd moves the panel', () => {
   const sh = pc('windows');
-  sh.run('mc.exe');
+  sh.run('mc.exe .');
   type(sh, 'echo hola> nuevo.txt');
   press(sh, 'Enter'); // nothing printed: straight back to the panels
   assert.ok(screen(sh).some((r) => /│ nuevo\.txt +│/.test(r)));

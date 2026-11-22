@@ -23,7 +23,7 @@ import { t } from '../i18n/t.ts';
 import { aboutInfo } from '../docs/about.ts';
 
 const KEYS: readonly [string, string][] = [['1', 'Help'], ['2', 'Menu'], ['3', 'View'], ['4', 'Edit'], ['5', 'Copy'], ['6', 'RenMov'], ['7', 'Mkdir'], ['8', 'Delete'], ['9', 'PullDn'], ['10', 'Quit']];
-const NO_DRIVE = 'The system cannot find the drive specified.';
+import { NO_DRIVE, copyOrMove, makeDir, removePicked } from './mc-ops.ts';
 
 /** F1: Netfix's help, then the credits of Netfix and GNU Midnight Commander. */
 function help(): string[] {
@@ -60,11 +60,30 @@ export class McApp implements Editor {
   private ctrlXPending = false;
   private height = 24;
 
-  constructor(fs: McFs, left: string, right: string) {
+  /** `tree`: mc opened with no folder named — the left (top) panel is the tree, the other one that folder's files. */
+  constructor(fs: McFs, left: string, right: string, tree = false) {
     this.fs = fs;
     this.setup = loadSetup(fs);
     this.panels = [new Panel(left), new Panel(right)];
     this.applyPanelOptions();
+    if (tree) this.setTree(0, true);
+  }
+
+  /** Left/Right › Tree: that panel shows the folders, the other one the files of the folder under its cursor. */
+  setTree(side: 0 | 1, on: boolean): void {
+    const p = this.panels[side];
+    const o = this.panels[side === 0 ? 1 : 0];
+    p.showTree(this.fs, on);
+    o.filesOnly = on;
+    o.go(this.fs, on ? p.dir : o.dir);
+  }
+
+  /** After the tree's cursor moved: the other panel shows that folder. */
+  private follow(): void {
+    const p = this.panel;
+    if (!p.tree) return;
+    p.dir = p.tree.selected;
+    if (this.other.dir !== p.dir) this.other.go(this.fs, p.dir);
   }
 
   get panel(): Panel {
@@ -103,7 +122,7 @@ export class McApp implements Editor {
     if (this.prefixKey(k)) return;
     const f = /^F(\d{1,2})$/.exec(k.key);
     if (f) { this.fkey(Number(f[1])); return; }
-    const action = keyAction(k, this.line === '');
+    const action = keyAction(k, this.line === '' && this.panel.mode !== 'tree'); // + and - open and close the tree's folders
     if (action) { this.act(action); return; }
     this.navKey(k);
   }
@@ -129,7 +148,7 @@ export class McApp implements Editor {
   }
 
   private menuKey(st: MenuState, k: KeyInput): void {
-    const r = menuKey(st, k);
+    const r = menuKey(st, k, this.setup.horizontalSplit);
     this.menu = r.state;
     if (r.item) this.act(r.item.action, st.menu === 4 ? 1 : st.menu === 0 ? 0 : this.active);
   }
@@ -140,6 +159,12 @@ export class McApp implements Editor {
   }
 
   private navKey(k: KeyInput): void {
+    const tree = this.panel.tree;
+    if (tree && !k.ctrl && !k.alt) {
+      if (k.key === 'Enter' && this.other.mode === 'list') { this.active = this.active === 0 ? 1 : 0; return; }
+      const treeKey = k.key.length > 1 || (this.line === '' && (k.key === '+' || k.key === '-'));
+      if (treeKey && tree.key(k, this.fs, this.setup.showDotFiles, Math.max(1, this.height - 8))) { this.follow(); return; }
+    }
     if (this.commandKey(k)) return;
     const p = this.panel;
     const page = Math.max(1, this.height - 8);
@@ -153,7 +178,7 @@ export class McApp implements Editor {
       case 'PageDown': p.move(page); break;
       case 'Home': p.cursor = 0; break;
       case 'End': p.cursor = p.entries.length - 1; break;
-      case 'Tab': if (this.other.mode === 'list') this.active = this.active === 0 ? 1 : 0; break;
+      case 'Tab': if (this.other.mode === 'list' || this.other.mode === 'tree') this.active = this.active === 0 ? 1 : 0; break;
       case 'Insert': p.toggleMark(this.setup.markMovesDown); break;
       case 'Enter': if (!p.enter(this.fs)) this.fkey(this.fs.edit && p.current()?.exec === false ? 4 : 3); break; // a host editor opens text files
       default: break;
@@ -189,10 +214,10 @@ export class McApp implements Editor {
       case 2: this.act('userMenu'); break;
       case 3: if (cur && !cur.dir) this.view(joinPath(p.dir, cur.name)); break;
       case 4: if (cur && !cur.dir) this.edit(joinPath(p.dir, cur.name)); break;
-      case 5: this.transfer('copy'); break;
-      case 6: this.transfer('move'); break;
-      case 7: this.dialog = { kind: 'input', title: mcT('Create a new Directory'), label: mcT('Enter directory name:'), value: '', onOk: (v) => this.mkdir(v) }; break;
-      case 8: this.remove(); break;
+      case 5: copyOrMove(this, 'copy'); break;
+      case 6: copyOrMove(this, 'move'); break;
+      case 7: this.dialog = { kind: 'input', title: mcT('Create a new Directory'), label: mcT('Enter directory name:'), value: '', onOk: (v) => makeDir(this, v) }; break;
+      case 8: removePicked(this); break;
       case 9: this.menu = { menu: this.active === 0 ? 0 : 4, item: 0 }; break;
       case 10: this.quit(); break;
       default: break;
@@ -217,46 +242,6 @@ export class McApp implements Editor {
   fail(err: string | null, title = mcT('Error')): void {
     this.reload();
     if (err) this.dialog = { kind: 'message', title, lines: err.split('\n'), error: true };
-  }
-
-  private what(names: readonly string[]): string {
-    return names.length === 1 ? `"${names[0]}"` : `${names.length} ${mcT('files/directories')}`;
-  }
-
-  private transfer(op: 'copy' | 'move'): void {
-    const names = this.panel.selection();
-    if (!names.length) return;
-    this.dialog = {
-      kind: 'input', title: mcQ(op === 'copy' ? 'DialogTitle|Copy' : 'DialogTitle|Move'), label: mcFormat(mcT(op === 'copy' ? 'Copy %s to:' : 'Move %s to:'), this.what(names)),
-      value: this.folderText(this.other.dir),
-      onOk: (target) => {
-        const sources = names.map((n) => joinPath(this.panel.dir, n));
-        const to = this.typed(target);
-        const err = to === null ? NO_DRIVE : op === 'copy' ? this.fs.copy(sources, to) : this.fs.move(sources, to);
-        this.panel.marked.clear();
-        this.fail(err);
-      },
-    };
-  }
-
-  private mkdir(name: string): void {
-    if (!name.trim()) return;
-    const path = this.typed(name);
-    const err = path === null ? NO_DRIVE : this.fs.mkdir(path);
-    this.fail(err);
-    if (!err) this.panel.reload(this.fs, name.trim().split(/[\\/]/).pop());
-  }
-
-  private remove(): void {
-    const names = this.panel.selection();
-    if (!names.length) return;
-    const doIt = (): void => {
-      const err = this.fs.remove(names.map((n) => joinPath(this.panel.dir, n)));
-      this.panel.marked.clear();
-      this.fail(err);
-    };
-    if (!this.setup.confirmDelete) { doIt(); return; }
-    this.dialog = { kind: 'confirm', title: mcQ('DialogTitle|Delete'), text: mcFormat(mcT('Delete %s?'), this.what(names)), yes: true, onYes: doIt };
   }
 
   shown(path: string): string {
@@ -347,12 +332,12 @@ export class McApp implements Editor {
     if (this.output) return this.outputFrame(this.output, width, height);
     const s = this.setup;
     const bar = s.menubarVisible || this.menu !== null;
-    const rows: Span[][] = bar ? [menuBar(width, this.menu)] : [];
+    const rows: Span[][] = bar ? [menuBar(width, this.menu, s.horizontalSplit)] : [];
     rows.push(...this.panelRows(width, Math.max(6, height - Number(bar) - Number(s.commandPrompt) - Number(s.keybarVisible))));
     const prompt = this.fs.prompt(this.panel.dir);
     if (s.commandPrompt) rows.push([{ text: fit(prompt + this.line, width) }]);
     if (s.keybarVisible) rows.push(this.keyBar(width));
-    if (this.menu) drawMenu(rows, this.menu, width);
+    if (this.menu) drawMenu(rows, this.menu, width, s.horizontalSplit);
     const cursor = this.dialog ? drawDialog(this.dialog, rows, width)
       : s.commandPrompt && !this.menu ? { row: rows.length - 1 - Number(s.keybarVisible), col: Math.min(width - 1, prompt.length + this.line.length) } : null;
     return { rows: rows.slice(0, height), cursor };

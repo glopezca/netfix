@@ -30,7 +30,7 @@ function pc(): { t: Topology; host: Pc; sh: ShellSession } {
 
 test('mc opens two panels with the menu, the command line and the function keys', () => {
   const { sh } = pc();
-  assert.deepEqual(sh.run('mc'), []);
+  assert.deepEqual(sh.run('mc .'), []);
   const rows = screen(sh);
   assert.equal(rows.length, H);
   assert.match(rows[0] ?? '', /^ {2}Izquierdo {5}Archivo {5}Utilidades {5}Opciones {5}Derecho/, 'mc\'s own Spanish');
@@ -45,7 +45,7 @@ test('mc opens two panels with the menu, the command line and the function keys'
 
 test('F7 creates a directory, F5 copies to the other panel, F8 deletes, F10 quits', () => {
   const { host, sh } = pc();
-  sh.run('mc');
+  sh.run('mc .');
   const fs = hostSystem(host).fs;
   press(sh, 'F7');
   assert.ok(screen(sh).some((r) => r.includes('Crear directorio')));
@@ -110,7 +110,7 @@ test('mc works through SSH: frames and keys travel in the session', () => {
   sh.run('ssh admin@10.0.0.2');
   sh.run('yes');
   sh.run('cisco');
-  sh.run('mkdir remoto; mc');
+  sh.run('mkdir remoto; mc .');
   assert.match(screen(sh)[H - 2] ?? '', /^admin@Server0:~\$/);
   assert.ok(screen(sh).some((r) => /\/remoto/.test(r)));
   press(sh, 'F7');
@@ -124,7 +124,7 @@ test('mc works through SSH: frames and keys travel in the session', () => {
 test('F1: help, then the credits of Netfix and the real ones of GNU Midnight Commander, in the interface language', () => {
   const { sh } = pc();
   const a = aboutInfo();
-  sh.run('mc');
+  sh.run('mc .');
   press(sh, 'F1');
   assert.ok(screen(sh).some((r) => r.includes(`Netfix ${a.version} · © ${a.author}`)), 'help footer');
   const credits = mcCredits().join('\n');
@@ -143,7 +143,7 @@ test('F1: help, then the credits of Netfix and the real ones of GNU Midnight Com
   assert.match(sh.run('mc --version')[0] ?? '', new RegExp(`GNU Midnight Commander ${MC_RELEASE.replace(/\./g, '\\.')}`));
   setLocale('en-GB');
   try {
-    sh.run('mc');
+    sh.run('mc .');
     press(sh, 'Escape', '1');
     const en = screen(sh).join('\n');
     assert.ok(en.includes(`Author: ${a.author}`));
@@ -155,7 +155,7 @@ test('F1: help, then the credits of Netfix and the real ones of GNU Midnight Com
 
 test('Alt+, (or Esc ,) splits the panels top and bottom, and again side by side, as mc does', () => {
   const { sh } = pc();
-  sh.run('mc');
+  sh.run('mc .');
   press(sh, { key: ',', alt: true });
   let rows = screen(sh);
   const tops = rows.flatMap((r, i) => (/^┌─+ ~ ─+┐$/.test(r) ? [i] : []));

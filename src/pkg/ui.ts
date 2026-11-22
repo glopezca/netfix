@@ -22,7 +22,7 @@ export { livePanel } from '../ui/server-dhcp-dns.ts';
 export { forwardsSection } from '../ui/cloud-window.ts';
 export { Terminal } from '../ui/terminal.ts';
 export { checkMount } from '../ui/embed-api.ts';
-export { getLocale, onLocaleChange } from '../i18n/locale.ts';
+export { getLocale, onLocaleChange, setLocale } from '../i18n/locale.ts';
 // The missions' school and teacher (FixIT Classroom: the organisation and the class's teacher).
 export { setMissionChapters, setStoryNames } from '../labs/story.ts';
 export type { StoryNames } from '../labs/story.ts';

@@ -69,7 +69,7 @@ function* mc(ctx: Ctx): Gen<number> {
   for (const d of dirs) {
     if (ctx.sh.env.fs.tryLookup(d, ctx.cred)?.kind !== 'dir') { ctx.err(`mc: ${d}: No such directory\n`); return 1; }
   }
-  const app = new McApp(mcFs(ctx), dirs[0] ?? ctx.cwd, dirs[1] ?? dirs[0] ?? ctx.cwd);
+  const app = new McApp(mcFs(ctx), dirs[0] ?? ctx.cwd, dirs[1] ?? dirs[0] ?? ctx.cwd, dirs.length === 0);
   yield { kind: 'screen', app };
   return 0;
 }

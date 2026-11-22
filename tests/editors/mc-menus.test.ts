@@ -42,7 +42,7 @@ test('every menu title and item has its Spanish text from mc\'s translation', ()
 
 test('F9 opens the active panel\'s menu; arrows move between menus, Esc closes', () => {
   const { sh } = pc();
-  sh.run('mc');
+  sh.run('mc .');
   press(sh, 'F9');
   assert.ok(has(sh, 'forMato de listado...') && has(sh, 'conexión por FTP...'), 'Izquierdo');
   press(sh, 'ArrowRight');
@@ -60,7 +60,7 @@ test('F9 opens the active panel\'s menu; arrows move between menus, Esc closes',
 
 test('Options › Layout: the split, the menu bar and the key bar; Save setup writes mc\'s ini, read when mc starts', () => {
   const { host, sh } = pc();
-  sh.run('mc');
+  sh.run('mc .');
   menu(sh, OPTIONS, 'p');
   assert.ok(has(sh, 'Disposición de paneles') && has(sh, '(*) Vertical') && has(sh, '( ) Horizontal'));
   press(sh, 'ArrowDown', ' ', 'Enter');
@@ -70,19 +70,19 @@ test('Options › Layout: the split, the menu bar and the key bar; Save setup wr
   press(sh, 'Enter');
   assert.match(hostSystem(host).fs.readFile('/home/alumno/.config/mc/ini'), /\[Layout\]\nhorizontal_split=true\nmenubar_visible=true/);
   press(sh, 'F10', 'Enter');
-  sh.run('mc');
+  sh.run('mc .');
   assert.equal(stacked(sh), 2, 'read again when mc starts');
   menu(sh, OPTIONS, 'p');
   press(sh, 'ArrowDown', 'ArrowDown', ' ', 'ArrowDown', ' ', 'Enter');
-  assert.doesNotMatch(screen(sh)[0] ?? '', /Izquierdo/, 'no menu bar');
+  assert.doesNotMatch(screen(sh)[0] ?? '', /aRriba/, 'no menu bar');
   assert.doesNotMatch(screen(sh).join('\n'), /1Ayuda/, 'no key bar');
   press(sh, 'F9');
-  assert.match(screen(sh)[0] ?? '', /Izquierdo/, 'F9 still shows it');
+  assert.match(screen(sh)[0] ?? '', /^ {2}aRriba +Archivo +Utilidades +Opciones +aBajo/, 'F9 still shows it; one over the other, Left and Right are Above and Below');
 });
 
 test('Alt+, and Esc , switch the split for the session, without writing the setup', () => {
   const { host, sh } = pc();
-  sh.run('mc');
+  sh.run('mc .');
   press(sh, alt(','));
   assert.equal(stacked(sh), 2);
   press(sh, 'Escape', ',');
@@ -93,7 +93,7 @@ test('Alt+, and Esc , switch the split for the session, without writing the setu
 
 test('Options: confirmation off quits at once; panel options hide dot files', () => {
   const { sh } = pc();
-  sh.run('touch .oculto && mc');
+  sh.run('touch .oculto && mc .');
   assert.ok(screen(sh).some((r) => r.includes('.oculto')));
   menu(sh, OPTIONS, 'l');
   press(sh, ' ', 'Enter');
@@ -140,7 +140,7 @@ test('File: select group (+), invert (*), chmod (C-x c), symlink (C-x s), quick 
 
 test('Command: history (M-h), hotlist (C-\\), compare directories (C-x d), directory sizes (C-Space), find file (M-?)', () => {
   const { sh } = pc();
-  sh.run('cp c.txt dest/ && printf "z" > dest/b.txt && mc');
+  sh.run('cp c.txt dest/ && printf "z" > dest/b.txt && mc .');
   type(sh, 'echo hola');
   press(sh, 'Enter', 'x', alt('h'));
   assert.ok(has(sh, 'echo hola'));
@@ -164,7 +164,7 @@ test('Command: history (M-h), hotlist (C-\\), compare directories (C-x d), direc
 
 test('Left/Right: sort order, filter, brief listing, quick view and info', () => {
   const { sh } = pc();
-  sh.run('mc');
+  sh.run('mc .');
   press(sh, 'F9', 'o');
   assert.ok(has(sh, 'Ordenar') && has(sh, '(*) Nombre') && has(sh, '[ ] inveRtir'));
   press(sh, 'Escape', 'F9', 'f', 'Backspace');
@@ -182,7 +182,7 @@ test('Left/Right: sort order, filter, brief listing, quick view and info', () =>
 
 test('what has nothing to act on in Netfix says so, in mc\'s words', () => {
   const { sh } = pc();
-  sh.run('mc');
+  sh.run('mc .');
   press(sh, 'F9', 'p');
   assert.ok(has(sh, 'No implementado todavía'), 'Izquierdo › conexión por FTP');
   press(sh, 'Enter', 'F2');
@@ -193,7 +193,7 @@ test('in English: menus, dialogs and key bar in mc\'s own English', () => {
   setLocale('en-GB');
   try {
     const { sh } = pc();
-    sh.run('mc');
+    sh.run('mc .');
     assert.match(screen(sh)[0] ?? '', /^ {2}Left {5}File {5}Command {5}Options {5}Right/);
     assert.match(screen(sh)[H - 1] ?? '', /^1Help +2Menu +3View +4Edit +5Copy +6RenMov +7Mkdir +8Delete +9PullDn +10Quit/);
     menu(sh, OPTIONS, 'l');
@@ -206,7 +206,7 @@ test('in English: menus, dialogs and key bar in mc\'s own English', () => {
 test('Windows: the ini under %APPDATA%; chmod and links are not there', () => {
   const { host, sh } = pc('windows');
   sh.prompt();
-  sh.run('mc.exe');
+  sh.run('mc.exe .');
   menu(sh, OPTIONS, 'g');
   press(sh, 'Enter');
   assert.ok(hostSystem(host).fs.exists('/mnt/c/Users/user/AppData/Roaming/Midnight Commander/ini'));

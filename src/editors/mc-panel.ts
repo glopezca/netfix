@@ -7,6 +7,7 @@ import { fit } from './buffer.ts';
 import type { McEntry, McFs } from './mc-fs.ts';
 import { joinPath, shortPath } from './mc-fs.ts';
 import { hotLabel, mcT } from './mc-i18n.ts';
+import { DirTree } from './mc-tree.ts';
 
 /** A column's title, as mc takes it from its sort field ("&Modify time" → "Modify time"). */
 const column = (msgid: string): string => hotLabel(mcT(msgid)).text;
@@ -20,7 +21,7 @@ const TIME_W = 12;
 export type SortKey = 'unsorted' | 'name' | 'extension' | 'mtime' | 'size';
 /** The letter mc shows in the header's corner for each sort order. */
 const SORT_MARK: Readonly<Record<SortKey, string>> = { unsorted: 'u', name: 'n', extension: 'e', mtime: 'm', size: 's' };
-export type PanelMode = 'list' | 'info' | 'quick';
+export type PanelMode = 'list' | 'info' | 'quick' | 'tree';
 
 export function mcTime(ms: number): string {
   const d = new Date(ms);
@@ -66,6 +67,10 @@ export class Panel {
   filter: string | null = null;
   brief = false;
   mode: PanelMode = 'list';
+  /** Left/Right › Tree: the folders, the other panel showing the one under the cursor. */
+  tree: DirTree | null = null;
+  /** Beside a tree: only the folder's files (its folders are in the tree). */
+  filesOnly = false;
   /** Options › Panel options, shared by both panels. */
   hidden = true;
   mix = false;
@@ -86,10 +91,14 @@ export class Panel {
     } else {
       this.error = null;
       const re = this.filter ? globRe(this.filter) : null;
-      const shown = listed.filter((e) => (this.hidden || !e.name.startsWith('.')) && (e.dir || !re || re.test(e.name)));
+      const shown = listed.filter((e) => (this.hidden || !e.name.startsWith('.')) && (e.dir ? !this.filesOnly : !re || re.test(e.name)));
       const sign = this.reverse ? -1 : 1;
       const sorted = [...shown].sort((a, b) => (this.mix ? 0 : Number(b.dir) - Number(a.dir)) || sign * compare(this.sort, a, b));
-      this.entries = this.dir === (fs.root ?? '/') ? sorted : [UP, ...sorted];
+      this.entries = this.dir === (fs.root ?? '/') || this.filesOnly ? sorted : [UP, ...sorted];
+    }
+    if (this.tree) {
+      this.tree.refresh(fs, this.hidden, this.dir);
+      this.dir = this.tree.selected;
     }
     for (const m of [...this.marked]) if (!this.entries.some((e) => e.name === m)) this.marked.delete(m);
     const at = keep === undefined ? -1 : this.entries.findIndex((e) => e.name === keep);
@@ -145,6 +154,13 @@ export class Panel {
     const from = this.dir;
     this.go(fs, joinPath(this.dir, cur.name), cur.name === '..' ? from.split('/').pop() : undefined);
     return true;
+  }
+
+  /** Turns the tree on (from the top folder, open down to this one) or off. */
+  showTree(fs: McFs, on: boolean): void {
+    this.tree = on ? new DirTree(fs.root ?? '/', this.dir) : null;
+    this.mode = on ? 'tree' : 'list';
+    this.reload(fs);
   }
 
   /** Shows another folder. */
@@ -220,7 +236,9 @@ export class Panel {
     const left = Math.max(1, Math.floor((inner - title.length) / 2));
     const edge = (spans: Span[]): Span[] => [{ text: '│', style: 'panel' }, ...spans, { text: '│', style: 'panel' }];
     const rows: Span[][] = [[{ text: `┌${'─'.repeat(left)}`, style: 'panel' }, { text: title, style: active ? 'cursor' : 'panel' }, { text: `${'─'.repeat(Math.max(0, inner - left - title.length))}┐`, style: 'panel' }]];
-    if (aside) {
+    if (this.mode === 'tree' && this.tree) {
+      rows.push(...this.tree.rows(inner, height - 2, active).map(edge));
+    } else if (aside) {
       for (let r = 0; r < height - 2; r++) rows.push(edge([{ text: fit(aside[r] ?? '', inner), style: 'panel' }]));
     } else {
       rows.push(edge(this.header(inner)), ...this.listRows(inner, listRows, active).map(edge));

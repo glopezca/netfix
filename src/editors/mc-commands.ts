@@ -316,9 +316,10 @@ function panelAction(app: McApp, a: McAction, side: 0 | 1): boolean {
     case 'listing': listing(app, p); return true;
     case 'sort': sortOrder(app, p); return true;
     case 'filter': filter(app, p); return true;
-    case 'rescan': p.reload(app.fs, p.current()?.name); return true;
+    case 'rescan': app.reload(); return true; // both panels: a host rereads mc after changes made elsewhere (Codefix)
     case 'info': aside(app, side, 'info'); return true;
     case 'quickView': aside(app, side, 'quick'); return true;
+    case 'tree': app.setTree(side, p.mode !== 'tree'); return true;
     default: return false;
   }
 }
@@ -344,6 +345,7 @@ function fileAction(app: McApp, a: McAction): boolean {
 function commandAction(app: McApp, a: McAction): boolean {
   switch (a) {
     case 'find': find(app); return true;
+    case 'dirTree': app.setTree(app.active, app.panel.mode !== 'tree'); return true;
     case 'swap': app.panels = [app.panels[1], app.panels[0]]; return true;
     case 'panelsOnOff': app.output = app.lastOutput.length ? app.lastOutput : [app.fs.prompt(app.panel.dir)]; return true;
     case 'compareDirs': compareDirs(app); return true;

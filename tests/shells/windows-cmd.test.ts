@@ -140,5 +140,5 @@ test('mc.exe: Midnight Commander on Windows paths, from Git\'s usr\\bin', () => 
   assert.equal(hostSystem(pc).fs.tryLookup('/mnt/c/Users/user/Copia/bucle', undefined, false)?.kind, 'link');
   assert.deepEqual(w.run('mc C:\\nada'), ['mc: C:\\nada: No such directory']);
   hostSystem(pc).fs.remove('/mnt/c/Program Files/Git/usr/bin/mc.exe');
-  assert.deepEqual(w.run('mc'), ['Invalid Command.'], 'gone from usr\\bin, gone from the terminal');
+  assert.deepEqual(w.run('mc .'), ['Invalid Command.'], 'gone from usr\\bin, gone from the terminal');
 });

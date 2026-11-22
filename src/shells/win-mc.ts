@@ -78,5 +78,5 @@ export function startWinMc(ctx: WinFs, args: readonly string[], edit?: (windowsP
     if (p === null || ctx.kindOf(p) !== 'dir') return [`mc: ${a}: No such directory`];
     dirs.push(p);
   }
-  return new McApp(winMcFs(ctx, edit, run, profile), dirs[0] ?? ctx.cwd, dirs[1] ?? dirs[0] ?? ctx.cwd);
+  return new McApp(winMcFs(ctx, edit, run, profile), dirs[0] ?? ctx.cwd, dirs[1] ?? dirs[0] ?? ctx.cwd, dirs.length === 0);
 }
