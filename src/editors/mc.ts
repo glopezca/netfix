@@ -1,7 +1,7 @@
 /**
  * GNU Midnight Commander 4.8 (simplified): two panels, F3 viewer, F4 editor (nano, Ubuntu's default editor, or the
  * host's editor program as with $EDITOR, which also opens a text file on Enter), F5 copy, F6 rename/move, F7 mkdir,
- * F8 delete, F10 quit. Esc + digit = F-key, as in mc. What is typed goes to the command line under the panels, and
+ * F8 delete, F10 quit. Esc + digit = F-key, as in mc. Alt+, (Esc ,) splits the panels top and bottom or side by side. What is typed goes to the command line under the panels, and
  * Enter runs it in the shell from the active panel's folder (its output until a key; a cd moves the panel).
  */
 import { mcCredits } from './mc-credits.ts';
@@ -38,6 +38,8 @@ export class McApp implements Editor {
   private viewer: Viewer | null = null;
   private editor: NanoEditor | null = null;
   private escPending = false;
+  /** mc's panel split: side by side (its default) or one over the other. */
+  private horizontal = false;
   /** The command line's text, and the output of the line it ran (shown until a key is pressed). */
   private line = '';
   private output: readonly string[] | null = null;
@@ -72,8 +74,10 @@ export class McApp implements Editor {
     if (this.escPending) {
       this.escPending = false;
       if (/^[0-9]$/.test(k.key)) { this.fkey(k.key === '0' ? 10 : Number(k.key)); return; }
+      if (k.key === ',') { this.horizontal = !this.horizontal; return; }
     }
     if (k.key === 'Escape') { this.escPending = true; return; }
+    if (k.alt && (k.key === ',' || k.code === 'Comma')) { this.horizontal = !this.horizontal; return; }
     const f = /^F(\d{1,2})$/.exec(k.key);
     if (f) { this.fkey(Number(f[1])); return; }
     this.navKey(k);
@@ -252,17 +256,25 @@ export class McApp implements Editor {
     if (this.editor) return this.editor.frame(width, height);
     if (this.viewer) return this.viewerFrame(this.viewer, width, height);
     if (this.output) return this.outputFrame(this.output, width, height);
-    const panelH = Math.max(6, height - 3);
-    const leftW = Math.floor(width / 2);
-    const left = this.panels[0].render(leftW, panelH, this.active === 0, this.fs);
-    const right = this.panels[1].render(width - leftW, panelH, this.active === 1, this.fs);
-    const rows: Span[][] = [[{ text: fit(MENU, width), style: 'menu' }]];
-    for (let i = 0; i < panelH; i++) rows.push([...(left[i] ?? []), ...(right[i] ?? [])]);
+    const rows: Span[][] = [[{ text: fit(MENU, width), style: 'menu' }], ...this.panelRows(width, Math.max(6, height - 3))];
     const prompt = this.fs.prompt(this.panel.dir);
     rows.push([{ text: fit(prompt + this.line, width) }]);
     rows.push(this.keyBar(width));
     const cursor = this.dialog ? drawDialog(this.dialog, rows, width) : { row: height - 2, col: Math.min(width - 1, prompt.length + this.line.length) };
     return { rows: rows.slice(0, height), cursor };
+  }
+
+  /** Both panels in `height` rows: side by side, or one over the other (the top one gets the odd row). */
+  private panelRows(width: number, height: number): Span[][] {
+    const [a, b] = this.panels;
+    if (this.horizontal) {
+      const topH = Math.ceil(height / 2);
+      return [...a.render(width, topH, this.active === 0, this.fs), ...b.render(width, height - topH, this.active === 1, this.fs)];
+    }
+    const leftW = Math.floor(width / 2);
+    const left = a.render(leftW, height, this.active === 0, this.fs);
+    const right = b.render(width - leftW, height, this.active === 1, this.fs);
+    return left.map((row, i) => [...row, ...(right[i] ?? [])]);
   }
 
   private keyBar(width: number): Span[] {
