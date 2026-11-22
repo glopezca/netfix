@@ -68,8 +68,7 @@ export const MISSIONS_ES = {
   'mission.doc.solution': 'La solución',
   'mission.doc.solutionText': 'Inténtalo antes de mirarla. En el panel, Ver solución carga el laboratorio resuelto.',
 
-  'mission.basico.teacher': 'Lucía',
-  'mission.basico.from': '{teacher} (jefatura de estudios, {school})',
+  'mission.basico.from': 'Rafael (jefatura de estudios, {school})',
   'mission.basico.ticket': 'Hola: desde esta mañana los tres PCs del aula 3 tienen dirección IP, pero no abren ninguna web ni encuentran nada fuera del aula. El técnico que vino ayer «limpió» la configuración del router GW antes de irse. ¿Podéis mirarlo? Tenemos examen a las doce.',
   'mission.basico.purpose': 'Un servidor DHCP entrega mucho más que una dirección IP: también la puerta de enlace, el DNS y el dominio. Aprenderás a ver qué ha recibido un cliente, a encontrar lo que falta en un pool de IOS y a pedir una concesión nueva.',
   'mission.basico.task.1': 'Haz que el pool LAN de GW vuelva a anunciar la puerta de enlace 192.168.10.1.',
@@ -92,8 +91,7 @@ export const MISSIONS_ES = {
   'mission.basico.debrief': 'Marta: «Bien visto. Cuando un cliente “tiene IP pero no navega”, mira qué más ha recibido: la puerta de enlace y el DNS viajan en la misma oferta DHCP (opciones 3 y 6). Y recuerda que el cliente no se entera de nada hasta que renueva.»',
   'mission.basico.solution': 'En GW: configure terminal, ip dhcp pool LAN, default-router 192.168.10.1, dns-server 8.8.8.8, end. Después, ipconfig /renew en los Windows y sudo dhclient en el GNU/Linux; show ip dhcp binding en GW lo confirma.',
 
-  'mission.basico-linux.teacher': 'Lucía',
-  'mission.basico-linux.from': '{teacher} (jefatura de estudios, {school})',
+  'mission.basico-linux.from': 'Rafael (jefatura de estudios, {school})',
   'mission.basico-linux.ticket': 'Hola: en el aula 4, la del router GNU/Linux, los tres PCs tienen dirección IP pero no abren ninguna web ni encuentran nada fuera del aula. El técnico que vino ayer «limpió» la configuración del servidor DHCP de GW antes de irse. ¿Podéis mirarlo? Tenemos examen a las doce.',
   'mission.basico-linux.purpose': 'Un servidor DHCP entrega mucho más que una dirección IP: también la puerta de enlace, el DNS y el dominio. Aprenderás a ver qué ha recibido un cliente, a encontrar lo que falta en el option-data de Kea (/etc/kea/kea-dhcp4.conf), a comprobar el fichero y a reiniciar el servicio.',
   'mission.basico-linux.task.1': 'Haz que el servidor Kea de GW vuelva a anunciar la puerta de enlace 192.168.10.1 (opción routers).',

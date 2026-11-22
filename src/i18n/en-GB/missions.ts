@@ -66,8 +66,7 @@ export const MISSIONS_EN: Readonly<Record<MissionsKey, string>> = {
   'mission.doc.solution': 'The solution',
   'mission.doc.solutionText': 'Try it before you look. In the panel, View solution loads the solved lab.',
 
-  'mission.basico.teacher': 'Lucía',
-  'mission.basico.from': '{teacher} (head of studies, {school})',
+  'mission.basico.from': 'Rafael (head of studies, {school})',
   'mission.basico.ticket': 'Hi: since this morning the three PCs in room 3 have an IP address, but they cannot open any website or reach anything outside the room. The technician who came yesterday “cleaned up” the configuration of router GW before leaving. Could you have a look? We have an exam at twelve.',
   'mission.basico.purpose': 'A DHCP server hands out much more than an IP address: also the default gateway, the DNS server and the domain. You will learn to see what a client has received, to find what is missing in an IOS pool and to ask for a new lease.',
   'mission.basico.task.1': 'Make GW’s LAN pool announce the default gateway 192.168.10.1 again.',
@@ -90,8 +89,7 @@ export const MISSIONS_EN: Readonly<Record<MissionsKey, string>> = {
   'mission.basico.debrief': 'Marta: “Well spotted. When a client ‘has an IP but cannot browse’, look at what else it received: the gateway and the DNS server travel in the same DHCP offer (options 3 and 6). And remember the client learns nothing until it renews.”',
   'mission.basico.solution': 'On GW: configure terminal, ip dhcp pool LAN, default-router 192.168.10.1, dns-server 8.8.8.8, end. Then ipconfig /renew on the Windows PCs and sudo dhclient on the GNU/Linux one; show ip dhcp binding on GW confirms it.',
 
-  'mission.basico-linux.teacher': 'Lucía',
-  'mission.basico-linux.from': '{teacher} (head of studies, {school})',
+  'mission.basico-linux.from': 'Rafael (head of studies, {school})',
   'mission.basico-linux.ticket': 'Hi: in room 4, the one with the GNU/Linux router, the three PCs have an IP address but cannot open any website or find anything outside the room. The technician who came yesterday “cleaned up” the DHCP server on GW before leaving. Could you have a look? We have an exam at twelve.',
   'mission.basico-linux.purpose': 'A DHCP server hands out much more than an IP address: also the gateway, the DNS server and the domain. You will learn to see what a client has received, to find what is missing in Kea’s option-data (/etc/kea/kea-dhcp4.conf), to check the file and to restart the service.',
   'mission.basico-linux.task.1': 'Make GW’s Kea server advertise the gateway 192.168.10.1 again (routers option).',

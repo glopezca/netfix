@@ -8,7 +8,7 @@ import { button } from './forms.ts';
 import { confirmDialog } from './confirm-dialog.ts';
 import { labText } from './lab-text.ts';
 import { t } from '../i18n/t.ts';
-import { storyText } from '../labs/story.ts';
+import { missionChapter, storyText } from '../labs/story.ts';
 import type { Topology } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
 import { LAB_GROUPS } from '../labs/lab-groups.ts';
@@ -98,7 +98,7 @@ export class MissionPanel {
     const ex = EXAMPLES.find((e) => e.id === m.id);
     const group = LAB_GROUPS.find(([, ids]) => ids.includes(m.id))?.[0];
     this.heading.textContent = `${t('mission.ui.panel')} · ${ex ? labText(ex).title : m.id}`;
-    this.chapter.textContent = group ? storyText(`mission.chapter.${group}`) : '';
+    this.chapter.textContent = missionChapter(m.id) ?? (group ? storyText(`mission.chapter.${group}`) : '');
     this.body.append(...[this.ticket(m), this.tasks(m), this.actions(), this.report(m), this.solution(m), this.further(m)].filter(present));
   }
 

@@ -180,7 +180,7 @@ clases y simulación se comparten entre subrutas. Quitar o cambiar uno es incomp
 |---|---|
 | `netfix/topology` | `deviceKindDef`, `macFromSeed`, `formatIp`, `formatMask`, `parseIp`, `parseMask`, `DETACHED`, `macPlus`, `CloudPort`, `defaultPort`, `portFromJson`, `portToJson`, `validatePort`, `Host`, `createShell`, `defaultUser`, `defaultLinuxUser`, `hostSystem`, `hostUsers`, `windowsAccount`, `registerProgram`, `hostFiles`; tipos `NetDevice`, `Frame`, `IpPacket`, `SimClock`, `DeviceHooks`, `CloudPortSettings`, `HostOs`, `Cred`, `Vfs`, `ProgramDef`, `ProgramCall`, `ProgramDoc`, `ProgramSystem`, `HostFiles`, `FileEntry` |
 | `netfix/classroom` | `checkKind` (y los ya citados `registerCheckKind`, `checkFields`, `runOnHost`) |
-| `netfix/ui` | `registerDeviceUi`, `deviceUi`, `registerDeviceAction`, `el`, `uiRoot`, `button`, `field`, `input`, `message`, `onCommit`, `livePanel`, `forwardsSection`, `Terminal`, `checkMount`, `getLocale`, `onLocaleChange`, `setStoryNames`; tipos `DeviceUi`, `DeviceWindowContext`, `Tab`, `Locale`, `DeviceAction`, `StoryNames` |
+| `netfix/ui` | `registerDeviceUi`, `deviceUi`, `registerDeviceAction`, `el`, `uiRoot`, `button`, `field`, `input`, `message`, `onCommit`, `livePanel`, `forwardsSection`, `Terminal`, `checkMount`, `getLocale`, `onLocaleChange`, `setStoryNames`, `setMissionChapters`; tipos `DeviceUi`, `DeviceWindowContext`, `Tab`, `Locale`, `DeviceAction`, `StoryNames` |
 
 **Programas del terminal (0.72.0).** `registerProgram({ name, systems, windowsDir?, doc: { es, en }, applies, run })`
 añade un programa: en GNU/Linux, `/usr/bin/<name>` (lo ven `which`, `ls`, el completado y `man`); en Windows,
@@ -209,6 +209,12 @@ su docente (`{teacher}`, de serie el de cada misión). `setStoryNames({ school, 
 anfitriona en el panel Misión y en las páginas de ayuda de los laboratorios; `setStoryNames({})` vuelve al reparto
 propio. Los nombres se limpian (letras, cifras y puntuación básica, 80 caracteres como mucho), porque las páginas de
 ayuda tratan los textos como markdown.
+La jefatura de estudios es siempre Rafael (0.82.0), nunca el docente de la anfitriona.
+
+**Línea de la misión (0.82.0).** `setMissionChapters({ [idMisión]: texto })` pone la línea de encima del título del panel
+Misión en lugar de su capítulo (FixIT Classroom: los RA de la clase); `setMissionChapters({})` vuelve a los capítulos.
+Se muestra como texto, sin caracteres de control y con 120 caracteres como mucho; las misiones que no nombra conservan su
+capítulo, y las páginas de ayuda no cambian.
 
 ### 3.4 Neutral frente a solo navegador
 
