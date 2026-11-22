@@ -71,6 +71,7 @@ export const EDITOR_DOCS: readonly DocPage[] = [
         ['F5 · F6', 'Copiar · mover o renombrar al directorio del otro panel'],
         ['F7 · F8', 'Crear directorio · borrar (pide confirmación)'],
         ['Ctrl+R', 'Releer los paneles (tras cambios hechos desde otra terminal)'],
+        ['Escribir · Intro', 'Lo que escribes va a la línea de órdenes de debajo; Intro la ejecuta desde el directorio del panel activo (su salida, hasta pulsar una tecla; `cd` mueve el panel)'],
         ['F1 · F2/F9 · F10', 'Ayuda · créditos de Netfix y de GNU Midnight Commander · salir'],
       ]),
       tip('Sin teclas de función', 'En un portátil sin F1-F12 o en una tablet, pulsa **Esc** y después el número: Esc 5 = F5, Esc 0 = F10. En pantallas táctiles, la barra de teclas de la terminal tiene Esc.'),

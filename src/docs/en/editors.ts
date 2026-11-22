@@ -71,6 +71,7 @@ export const EDITOR_DOCS: readonly DocPage[] = [
         ['F5 · F6', 'Copy · move or rename into the other panel’s directory'],
         ['F7 · F8', 'Make a directory · delete (asks for confirmation)'],
         ['Ctrl+R', 'Reread the panels (after changes made from another terminal)'],
+        ['Typing · Enter', 'What you type goes to the command line below; Enter runs it from the active panel’s directory (its output until you press a key; `cd` moves the panel)'],
         ['F1 · F2/F9 · F10', 'Help · credits of Netfix and GNU Midnight Commander · quit'],
       ]),
       tip('No function keys', 'On a laptop without F1-F12 or on a tablet, press **Esc** and then the digit: Esc 5 = F5, Esc 0 = F10. On touch screens, the terminal’s key bar has Esc.'),

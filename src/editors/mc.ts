@@ -1,7 +1,8 @@
 /**
  * GNU Midnight Commander 4.8 (simplified): two panels, F3 viewer, F4 editor (nano, Ubuntu's default editor, or the
  * host's editor program as with $EDITOR, which also opens a text file on Enter), F5 copy, F6 rename/move, F7 mkdir,
- * F8 delete, F10 quit. Esc + digit = F-key, as in mc.
+ * F8 delete, F10 quit. Esc + digit = F-key, as in mc. What is typed goes to the command line under the panels, and
+ * Enter runs it in the shell from the active panel's folder (its output until a key; a cd moves the panel).
  */
 import { mcCredits } from './mc-credits.ts';
 import type { Editor, Frame, KeyInput, Span } from './buffer.ts';
@@ -37,6 +38,9 @@ export class McApp implements Editor {
   private viewer: Viewer | null = null;
   private editor: NanoEditor | null = null;
   private escPending = false;
+  /** The command line's text, and the output of the line it ran (shown until a key is pressed). */
+  private line = '';
+  private output: readonly string[] | null = null;
   private height = 24;
 
   constructor(fs: McFs, left: string, right: string) {
@@ -58,6 +62,7 @@ export class McApp implements Editor {
   key(k: KeyInput): void {
     if (this.editor) { this.editorKey(k); return; }
     if (this.viewer) { this.viewerKey(this.viewer, k); return; }
+    if (this.output) { this.output = null; return; }
     const open = this.dialog;
     if (open) {
       // a dialog's action may open another one (an error after a copy): close only the one answered
@@ -75,6 +80,7 @@ export class McApp implements Editor {
   }
 
   private navKey(k: KeyInput): void {
+    if (this.commandKey(k)) return;
     const p = this.panel;
     const page = Math.max(1, this.height - 8);
     const c = k.key.toLowerCase();
@@ -93,6 +99,25 @@ export class McApp implements Editor {
       case 'Enter': if (!p.enter(this.fs)) this.fkey(this.fs.edit && p.current()?.exec === false ? 4 : 3); break; // a host editor opens text files
       default: break;
     }
+  }
+
+  /** Typing, Backspace and Enter on the command line (only where the shell can run it). */
+  private commandKey(k: KeyInput): boolean {
+    if (!this.fs.run || k.ctrl || k.alt) return false;
+    if (k.key.length === 1) this.line += k.key;
+    else if (k.key === 'Backspace' && this.line) this.line = this.line.slice(0, -1);
+    else if (k.key === 'Enter' && this.line.trim()) this.runLine(this.fs.run);
+    else return false;
+    return true;
+  }
+
+  private runLine(run: NonNullable<McFs['run']>): void {
+    const echo = `${this.fs.prompt(this.panel.dir)}${this.line}`;
+    const r = run(this.line, this.panel.dir);
+    this.line = '';
+    this.panel.dir = r.dir;
+    this.reload();
+    if (r.lines.length > 0) this.output = [echo, ...r.lines];
   }
 
   private fkey(n: number): void {
@@ -226,6 +251,7 @@ export class McApp implements Editor {
     this.height = height;
     if (this.editor) return this.editor.frame(width, height);
     if (this.viewer) return this.viewerFrame(this.viewer, width, height);
+    if (this.output) return this.outputFrame(this.output, width, height);
     const panelH = Math.max(6, height - 3);
     const leftW = Math.floor(width / 2);
     const left = this.panels[0].render(leftW, panelH, this.active === 0, this.fs);
@@ -233,9 +259,9 @@ export class McApp implements Editor {
     const rows: Span[][] = [[{ text: fit(MENU, width), style: 'menu' }]];
     for (let i = 0; i < panelH; i++) rows.push([...(left[i] ?? []), ...(right[i] ?? [])]);
     const prompt = this.fs.prompt(this.panel.dir);
-    rows.push([{ text: fit(prompt, width) }]);
+    rows.push([{ text: fit(prompt + this.line, width) }]);
     rows.push(this.keyBar(width));
-    const cursor = this.dialog ? drawDialog(this.dialog, rows, width) : { row: height - 2, col: Math.min(width - 1, prompt.length) };
+    const cursor = this.dialog ? drawDialog(this.dialog, rows, width) : { row: height - 2, col: Math.min(width - 1, prompt.length + this.line.length) };
     return { rows: rows.slice(0, height), cursor };
   }
 
@@ -246,6 +272,12 @@ export class McApp implements Editor {
       spans.push({ text: n, style: 'keynum' }, { text: fit(label, cell - n.length), style: 'keylabel' });
     }
     return spans;
+  }
+
+  /** The output of a command-line line, as the terminal shows it, until a key brings the panels back. */
+  private outputFrame(lines: readonly string[], width: number, height: number): Frame {
+    const shown = [...lines.flatMap((l) => expandTabs(l).split('\n')), 'Press any key to continue...'].slice(-height);
+    return { rows: shown.map((l) => [{ text: l.slice(0, width) }]), cursor: null };
   }
 
   private viewerFrame(v: Viewer, width: number, height: number): Frame {
