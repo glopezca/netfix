@@ -153,3 +153,20 @@ test('mc shows the credits of Netfix and the real ones of GNU Midnight Commander
     setLocale('es-ES');
   }
 });
+
+test('Alt+, (or Esc ,) splits the panels top and bottom, and again side by side, as mc does', () => {
+  const { sh } = pc();
+  sh.run('mc');
+  press(sh, { key: ',', alt: true });
+  let rows = screen(sh);
+  const tops = rows.flatMap((r, i) => (/^┌─+ ~ ─+┐$/.test(r) ? [i] : []));
+  assert.equal(tops.length, 2, 'two full-width panels, one over the other');
+  assert.equal(tops[0], 1);
+  assert.equal(rows[H - 2]?.trimEnd(), 'alumno@PC0:~$');
+  assert.ok(rows.slice(1, H - 2).every((r) => r.length === W));
+  press(sh, 'Tab', 'Escape', ',');
+  rows = screen(sh);
+  assert.match(rows[1] ?? '', /^┌─+ ~ ─+┐┌─+ ~ ─+┐$/);
+  press(sh, { key: '≤', alt: true, code: 'Comma' }); // Option+, on a Mac keyboard
+  assert.equal(screen(sh).filter((r) => /^┌─+ ~ ─+┐$/.test(r)).length, 2);
+});

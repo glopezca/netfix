@@ -66,6 +66,7 @@ export const EDITOR_DOCS: readonly DocPage[] = [
         ['↑ ↓ · PgUp PgDn · Home End', 'Move through the list'],
         ['Enter', 'Enters a directory (`/..` goes up); on a file, shows it'],
         ['Insert · Ctrl+T', 'Marks or unmarks a file (to copy or delete several)'],
+        ['Alt+, · Esc ,', 'Panels side by side (the default) or one over the other'],
         ['F3', 'View the file (q or F3 to go back)'],
         ['F4', 'Edit it with nano (Ubuntu’s default editor)'],
         ['F5 · F6', 'Copy · move or rename into the other panel’s directory'],
