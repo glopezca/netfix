@@ -79,7 +79,7 @@ export const APT_DOCS: readonly DocPage[] = [
     blocks: [
       p('Como los programas de verdad, Netfix esconde algunas sorpresas. Por ahora son dos.'),
       h('Los créditos de Midnight Commander'),
-      p('En `mc`, **F2** o **F9** abren los créditos de Netfix y de GNU Midnight Commander.'),
+      p('En `mc`, **F1** abre su ayuda y, debajo, los créditos de Netfix y de GNU Midnight Commander.'),
       h('La supervaca de apt'),
       p('`apt moo` dibuja la vaca de apt, igual que en un Ubuntu real. Prueba también `apt moo moo` y `apt moo moo moo`. En algunas fechas la frase cambia, y el 1 de abril la vaca es otra (cuenta la fecha del reloj de la simulación).'),
       term('shell', `alumno@pc1:~$ apt moo\n${COW}`),

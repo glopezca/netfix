@@ -56,6 +56,8 @@ export interface ProgramCall {
 
 export interface ProgramDef {
   readonly name: string;
+  /** Other names for it: a symlink to it in /usr/bin on GNU/Linux, another <alias>.exe beside it on Windows. */
+  readonly aliases?: readonly string[];
   readonly systems: readonly ProgramSystem[];
   /** Its folder on C:\ (default: Program Files/<name>), added to %PATH%. */
   readonly windowsDir?: string;
@@ -75,12 +77,17 @@ export interface ProgramDef {
 const NAME_RE = /^[a-z][a-z0-9-]{0,31}$/;
 const defs = new Map<string, ProgramDef>();
 
+const taken = (name: string): boolean => COREUTILS.has(name) || [...defs.values()].some((d) => d.name === name || (d.aliases ?? []).includes(name));
+
 export function registerProgram(def: ProgramDef): void {
-  if (!NAME_RE.test(def.name)) throw new Error(`Programa: nombre no válido «${def.name}»`);
-  if (defs.has(def.name) || COREUTILS.has(def.name)) throw new Error(`El programa «${def.name}» ya existe`);
+  const names = [def.name, ...(def.aliases ?? [])];
+  for (const n of names) {
+    if (!NAME_RE.test(n)) throw new Error(`Programa: nombre no válido «${n}»`);
+    if (taken(n) || names.indexOf(n) !== names.lastIndexOf(n)) throw new Error(`El programa «${n}» ya existe`);
+  }
   if (def.systems.length === 0) throw new Error(`Programa «${def.name}»: indica al menos un sistema`);
   defs.set(def.name, def);
-  registerExtensionDocs(def.name, { 'es-ES': def.doc.es, 'en-GB': def.doc.en });
+  for (const n of names) registerExtensionDocs(n, { 'es-ES': def.doc.es, 'en-GB': def.doc.en });
 }
 
 /** The editor program (`editor`) a host has on one system, if any: the first registered. */

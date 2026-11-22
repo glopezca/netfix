@@ -18,6 +18,7 @@ function pagesOf(v: unknown): readonly DocPage[] | null {
 
 /** First word of a line when it looks like code (a lowercase command, a path, a flag, a prompt…). */
 function codeWord(line: string): string | null {
+  if (/^1\p{L}+\s+2\p{L}/u.test(line.trim())) return null; // a key bar (mc's 1Ayuda 2Menú… / 1Help 2Menu…): translated, not a command
   const w = line.trim().split(/\s+/)[0] ?? '';
   return /^[a-z0-9_./$#!:\-[{<>|&;=*~@"'`]/.test(w) && !/^\(/.test(w) ? w : null;
 }

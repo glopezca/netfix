@@ -49,6 +49,7 @@ export function mcFs(ctx: Ctx): McFs {
   return {
     ...(editor ? { edit: (path: string) => run(ctx, [editor, path]) } : {}),
     home: ctx.sh.user.home,
+    exec: (argv) => run(ctx, argv),
     list: (dir) => entries(ctx, dir),
     read: (path) => { try { return fs.readFile(path, ctx.cred); } catch (e) { return { error: errMsg(e) }; } },
     write: (path, content) => { try { fs.writeFile(path, content, ctx.cred); return null; } catch (e) { return errMsg(e); } },

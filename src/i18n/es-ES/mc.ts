@@ -4,9 +4,9 @@ export const MC_ES = {
   'mc.help.1': 'Tab: cambiar de panel   Insert / Ctrl+T: marcar',
   'mc.help.2': 'Intro: entrar en el directorio   Ctrl+R: releer',
   'mc.help.3': 'F3 ver · F4 editar · F5 copiar · F6 mover/renombrar',
-  'mc.help.4': 'F7 crear directorio · F8 borrar · F10 salir',
-  'mc.help.5': 'Sin teclas de función: Esc y el número (Esc 5 = F5)',
-  'mc.help.about': 'F2 o F9: créditos de Netfix y de GNU Midnight Commander',
+  'mc.help.4': 'F7 crear directorio · F8 borrar · F9 menús · F10 salir',
+  'mc.help.5': 'Sin teclas de función: Esc y el número (Esc 5 = F5); Esc y una letra = Alt y la letra',
+  'mc.help.about': 'Alt+, paneles lado a lado o uno sobre otro (Opciones › Presentación). Debajo, los créditos.',
   'mc.about.title': 'Acerca de · Netfix y GNU Midnight Commander',
   'mc.about.app': 'Netfix {version} · simulador de redes',
   'mc.about.author': 'Autoría: {author}',
@@ -22,7 +22,7 @@ export const MC_ES = {
   'mc.about.translatorsEnGb': 'Traducción al inglés británico de mc:',
   'mc.about.translatorsAll': 'Y los equipos de traducción de los demás idiomas ({site}).',
   'mc.about.close': 'q, Esc o F10: volver a los paneles.',
-  'mc.about.menus': 'Los menús desplegables no están disponibles en Netfix.',
+  'mc.about.menus': 'Sus textos en español son los de la traducción de mc (GNU GPL v3 o posterior).',
   'mc.footer': 'Netfix {version} · © {author}',
 } as const;
 

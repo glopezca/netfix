@@ -95,3 +95,20 @@ test('hostFiles: a device\'s files without a terminal, as its default user and w
   assert.throws(() => files.write('/root/x.txt', 'x'), /denied|Permission/i);
   assert.deepEqual(createShell(a, 'linux').run('cat hola.py').map(plain), ['print(1)']);
 });
+
+test('aliases: a symlink in /usr/bin on GNU/Linux, another .exe on Windows; argv[0] is the name typed', () => {
+  const { a } = twoPcs();
+  const calls: ProgramCall[] = [];
+  registerProgram({ name: 'xprog-main', aliases: ['xprog-alias'], systems: ['linux', 'windows'], windowsDir: 'Program Files/Alias', doc: doc('xprog-main'), applies: (h) => h === a, run: (call) => { calls.push(call); call.out('ok\n'); } });
+  const sh = createShell(a, 'linux');
+  assert.deepEqual(sh.run('readlink /usr/bin/xprog-alias').map(plain), ['xprog-main']);
+  assert.deepEqual(sh.run('xprog-alias').map(plain), ['ok']);
+  assert.equal(calls.at(-1)?.argv[0], 'xprog-alias');
+  const win = createShell(a, 'windows');
+  win.prompt();
+  assert.deepEqual(win.run('dir /b "C:\\Program Files\\Alias"'), ['xprog-alias.exe', 'xprog-main.exe']);
+  assert.deepEqual(win.run('xprog-alias.exe'), ['ok']);
+  assert.deepEqual(win.run('xprog-alias'), ['ok']);
+  assert.throws(() => registerProgram({ name: 'xprog-other', aliases: ['ls'], systems: ['linux'], doc: doc('x'), applies: () => true, run: () => 0 }), /ya existe/);
+  assert.throws(() => registerProgram({ name: 'xprog-other2', aliases: ['xprog-alias'], systems: ['linux'], doc: doc('x'), applies: () => true, run: () => 0 }), /ya existe/);
+});

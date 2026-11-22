@@ -4,6 +4,7 @@
  */
 import type { CommandFn } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
+import type { Vfs } from '../bash/vfs.ts';
 import { exitOf, programsOn, userFiles } from './programs.ts';
 
 export function extensionPrograms(host: Host): [string, CommandFn][] {
@@ -13,4 +14,9 @@ export function extensionPrograms(host: Host): [string, CommandFn][] {
     const files = userFiles(env.fs, ctx.cred, 'linux', user?.home ?? '/', ctx.cwd);
     return exitOf(def, { host, system: 'linux', argv: ctx.argv, user: user?.name ?? String(ctx.cred.uid), cwd: ctx.cwd, files, out: (t) => ctx.out(t), err: (t) => ctx.err(t) });
   }]);
+}
+
+/** Each alias of those programs: a symlink beside it in /usr/bin (as /usr/bin/vi → vim). */
+export function seedProgramAliases(fs: Vfs, host: Host): void {
+  for (const def of programsOn(host, 'linux')) for (const alias of def.aliases ?? []) fs.seed(`/usr/bin/${alias}`, { kind: 'link', target: def.name });
 }

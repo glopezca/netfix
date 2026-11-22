@@ -29,6 +29,12 @@ export interface McFs {
   edit?(path: string): string | null;
   /** Runs a line typed on mc's command line in the shell, from folder `dir`: its output and the folder it ends in. */
   run?(line: string, dir: string): { readonly lines: readonly string[]; readonly dir: string };
+  /** Windows (Git's mc.exe): its ini under %APPDATA% of `profile`; no chmod, chown nor links. */
+  readonly windows?: boolean;
+  /** The user's folder when `home` is not it (Windows: home is C:\\, the profile C:\\Users\\user). */
+  readonly profile?: string;
+  /** Runs a file utility (chmod, chown, ln…) with these arguments as the user: its error text or null. GNU/Linux only. */
+  exec?(argv: readonly string[]): string | null;
   /** The path typed in a dialog, from folder `dir`; null when it cannot be reached (another drive). */
   parse?(text: string, dir: string): string | null;
 }

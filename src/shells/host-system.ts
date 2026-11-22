@@ -22,7 +22,7 @@ import type { Family } from './hand-edits.ts';
 import type { DirMount } from '../bash/vfs.ts';
 import { seedRootfs, seedUsers } from '../bash/rootfs.ts';
 import { COREUTILS } from '../bash/coreutils/index.ts';
-import { extensionPrograms } from './linux-ext-programs.ts';
+import { extensionPrograms, seedProgramAliases } from './linux-ext-programs.ts';
 import { editorProgram } from './programs.ts';
 import { seedWindowsPrograms } from './win-programs.ts';
 import { BINARY_MARK } from '../bash/path.ts';
@@ -244,6 +244,7 @@ function createSystem(host: Host): Entry {
   const programs = new Map<string, CommandFn>([...extensionPrograms(host), ...COREUTILS, ...linuxPrograms(host)]);
   const users = hostUsers(host);
   seedRootfs(fs, { hostname: host.name, users, programs: [...programs.keys()].filter((p) => p !== 'command-not-found') });
+  seedProgramAliases(fs, host);
   // An ordinary file, as in Ubuntu: root edits it, it is saved with the topology and the resolver reads it first.
   fs.seed(NSSWITCH, { kind: 'file', content: seededNsswitch(host) }, 0o644);
   fs.seed(RESOLVED_CONF, { kind: 'file', content: DEFAULT_RESOLVED_CONF }, 0o644);

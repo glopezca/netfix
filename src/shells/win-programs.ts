@@ -11,7 +11,7 @@ import type { WinFs } from './win-fsctx.ts';
 import { exitOf, programsOn, userFiles, windowsDirOf, type ProgramDef } from './programs.ts';
 
 const dirOf = (def: ProgramDef): string => `${WIN_ROOT}/${windowsDirOf(def)}`;
-const exeOf = (def: ProgramDef): string => `${dirOf(def)}/${def.name}.exe`;
+const exeOf = (def: ProgramDef, name = def.name): string => `${dirOf(def)}/${name}.exe`;
 
 /** Each program the host has: its folders and its .exe (what is there already is kept). */
 export function seedWindowsPrograms(fs: Vfs, host: Host): void {
@@ -21,7 +21,9 @@ export function seedWindowsPrograms(fs: Vfs, host: Host): void {
       path = `${path}/${part}`;
       if (!fs.tryLookup(path, undefined, false)) fs.seed(path, { kind: 'dir' }, 0o755);
     }
-    if (!fs.tryLookup(exeOf(def), undefined, false)) fs.seed(exeOf(def), { kind: 'file', content: `${BINARY_MARK}${def.name}\n` }, 0o755);
+    for (const name of [def.name, ...(def.aliases ?? [])]) {
+      if (!fs.tryLookup(exeOf(def, name), undefined, false)) fs.seed(exeOf(def, name), { kind: 'file', content: `${BINARY_MARK}${def.name}\n` }, 0o755);
+    }
   }
 }
 
@@ -33,8 +35,9 @@ export function windowsPathFor(host: Host): string {
 
 /** Runs `name` (or name.exe) when the host has it and its .exe is there; null when it is not one of them. */
 export function runWindowsProgram(host: Host, name: string, args: readonly string[], w: WinFs, user: string, home: string): string[] | null {
-  const def = programsOn(host, 'windows').find((d) => name === d.name || name === `${d.name}.exe`);
-  if (!def || w.kindOf(exeOf(def)) !== 'file') return null;
+  const called = name.replace(/\.exe$/i, '');
+  const def = programsOn(host, 'windows').find((d) => called === d.name || (d.aliases ?? []).includes(called));
+  if (!def || w.kindOf(exeOf(def, called)) !== 'file') return null;
   let text = '';
   const files = userFiles(w.fs, w.cred, 'windows', home, w.cwd);
   exitOf(def, { host, system: 'windows', argv: [name, ...args], user, cwd: files.cwd, files, out: (t) => { text += t; }, err: (t) => { text += t; } });

@@ -39,7 +39,7 @@ test('GNU/Linux: Enter runs the line from the panel\'s folder; its output stays 
   press(sh, 'Enter');
   const out = screen(sh).join('\n');
   assert.match(out, /hecho\n\/home\/alumno/);
-  assert.match(out, /Press any key to continue/);
+  assert.match(out, /Presione cualquier tecla para continuar\.\.\./);
   press(sh, 'x');
   const rows = screen(sh);
   assert.ok(rows.some((r) => /│ nuevo\.txt +│/.test(r)), 'the panels read their folders again');
