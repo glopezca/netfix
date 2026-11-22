@@ -17,6 +17,20 @@ const visible = (g: DocGroup): boolean => g.id !== LABS_GROUP || missionsShown()
 const groups = (): DocGroup[] => docGroups().filter(visible);
 const pageOf = (id: string): DocPage | undefined => groups().flatMap((g) => g.pages).find((p) => p.id === id);
 
+/**
+ * A group's icon (PUBLIC-API §3.4b, a host's own help): devices, their palette icon; topics (concepts, terminal, bash,
+ * labs), theirs; Netfix, its N; else a dot. Drawn with the --dev-* colours, so inside a .netfix-root.
+ */
+export function docGroupIcon(g: DocGroup): Element {
+  const art = g.icon === undefined ? undefined : isTopicIcon(g.icon) ? TOPIC_ICONS[g.icon] : ICONS[g.icon];
+  const icon = art ? staticSvg(art) : g.id === 'netfix' ? brandImage('isologoN', 'doc-group-brand', '') : el('span', { class: 'doc-group-dot', 'aria-hidden': 'true' });
+  icon.classList.add('doc-group-icon');
+  return icon;
+}
+
+/** The groups the Documentation tab lists: the labs' only with the missions on (Configuración → Generales; a host says). */
+export const shownDocGroups = (missions = missionsShown()): DocGroup[] => docGroups().filter((g) => g.id !== LABS_GROUP || missions);
+
 export class DocsView {
   readonly root: HTMLElement;
   private readonly toc: HTMLElement;
@@ -79,10 +93,7 @@ export class DocsView {
 
   /** A group: its icon and title (folds), then its sections as subheadings and the pages indented below them. */
   private groupBox(g: DocGroup): HTMLElement {
-    // Devices: their palette icon; topics (concepts, terminal, bash): theirs; Netfix: its N.
-    const art = g.icon === undefined ? undefined : isTopicIcon(g.icon) ? TOPIC_ICONS[g.icon] : ICONS[g.icon];
-    const icon = art ? staticSvg(art) : g.id === 'netfix' ? brandImage('isologoN', 'doc-group-brand', '') : el('span', { class: 'doc-group-dot', 'aria-hidden': 'true' });
-    icon.classList.add('doc-group-icon');
+    const icon = docGroupIcon(g);
     const items: HTMLElement[] = [];
     let section: string | undefined;
     for (const p of g.pages) {

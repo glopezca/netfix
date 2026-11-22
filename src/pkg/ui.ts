@@ -27,3 +27,10 @@ export { getLocale, onLocaleChange, setLocale } from '../i18n/locale.ts';
 export { setMissionChapters, setStoryNames } from '../labs/story.ts';
 export type { StoryNames } from '../labs/story.ts';
 export type { Locale } from '../i18n/locale.ts';
+
+// The documentation for a host's own help (0.87.0; FixIT Classroom draws it in its consoles): the groups shown, search,
+// a page's blocks and a group's icon, in Netfix's words and styles (docs.css, inside a .netfix-root).
+export { searchDocs } from '../docs/index.ts';
+export type { DocBlock, DocGroup, DocPage, SearchHit } from '../docs/index.ts';
+export { docBlock } from '../ui/doc-blocks.ts';
+export { docGroupIcon, shownDocGroups } from '../ui/docs-view.ts';
