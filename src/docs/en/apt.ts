@@ -79,7 +79,7 @@ export const APT_DOCS: readonly DocPage[] = [
     blocks: [
       p('Like real programs, Netfix hides a few surprises. For now there are two.'),
       h('Midnight Commander’s credits'),
-      p('In `mc`, **F2** or **F9** open the credits of Netfix and GNU Midnight Commander.'),
+      p('In `mc`, **F1** opens its help and, below it, the credits of Netfix and GNU Midnight Commander.'),
       h('apt’s super cow'),
       p('`apt moo` draws apt’s cow, just as on a real Ubuntu. Try `apt moo moo` and `apt moo moo moo` too. On some dates the phrase changes, and on 1 April the cow is another one (the simulation clock’s date counts).'),
       term('shell', `alumno@pc1:~$ apt moo\n${COW}`),

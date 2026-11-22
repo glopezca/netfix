@@ -33,14 +33,14 @@ test('mc opens two panels with the menu, the command line and the function keys'
   assert.deepEqual(sh.run('mc'), []);
   const rows = screen(sh);
   assert.equal(rows.length, H);
-  assert.match(rows[0] ?? '', /^ {2}Left {5}File {5}Command/);
+  assert.match(rows[0] ?? '', /^ {2}Izquierdo {5}Archivo {5}Utilidades {5}Opciones {5}Derecho/, 'mc\'s own Spanish');
   assert.match(rows[1] ?? '', /^┌─+ ~ ─+┐┌─+ ~ ─+┐$/);
-  assert.match(rows[2] ?? '', /\.n {3}Name/);
-  assert.match(rows[3] ?? '', /^│\/\.\. +│UP--DIR│/);
+  assert.match(rows[2] ?? '', /\.n {3}Nombre +│ Tamaño│fecha Modifi│/);
+  assert.match(rows[3] ?? '', /^│\/\.\. +│DIR-ANT│/);
   assert.ok(rows.some((r) => /^│\/docs +│ +DIR│/.test(r)));
   assert.ok(rows.some((r) => /^│ b\.txt +│ +1│/.test(r)));
   assert.equal(rows[H - 2]?.trimEnd(), 'alumno@PC0:~$');
-  assert.match(rows[H - 1] ?? '', /^1Help +2Menu +3View +4Edit +5Copy/);
+  assert.match(rows[H - 1] ?? '', /^1Ayuda +2Menú +3Ver +4Editar +5Copiar +6RenMov +7Mkdir +8Borrar +9Menú +10Salir/);
 });
 
 test('F7 creates a directory, F5 copies to the other panel, F8 deletes, F10 quits', () => {
@@ -48,7 +48,7 @@ test('F7 creates a directory, F5 copies to the other panel, F8 deletes, F10 quit
   sh.run('mc');
   const fs = hostSystem(host).fs;
   press(sh, 'F7');
-  assert.ok(screen(sh).some((r) => r.includes('Create a new Directory')));
+  assert.ok(screen(sh).some((r) => r.includes('Crear directorio')));
   type(sh, 'nuevo');
   press(sh, 'Enter');
   assert.equal(fs.tryLookup('/home/alumno/nuevo')?.kind, 'dir');
@@ -57,15 +57,15 @@ test('F7 creates a directory, F5 copies to the other panel, F8 deletes, F10 quit
   press(sh, 'End');
   assert.match(screen(sh)[screen(sh).length - 4] ?? '', /b\.txt/, 'the mini-status shows the file under the cursor');
   press(sh, 'F5');
-  assert.ok(screen(sh).some((r) => /Copy "b\.txt" to:/.test(r)));
+  assert.ok(screen(sh).some((r) => /Copiar "b\.txt" a:/.test(r)));
   press(sh, 'Enter');
   assert.equal(fs.readFile('/home/alumno/dest/b.txt'), 'x');
   press(sh, 'F8');
-  assert.ok(screen(sh).some((r) => r.includes('Delete file "b.txt"?')));
+  assert.ok(screen(sh).some((r) => r.includes('¿Borrar "b.txt"?')));
   press(sh, 'Enter');
   assert.equal(fs.exists('/home/alumno/b.txt'), false);
   press(sh, 'Escape', '0');
-  assert.ok(screen(sh).some((r) => r.includes('Do you really want to quit')));
+  assert.ok(screen(sh).some((r) => r.includes('¿Desea realmente salir del Midnight Commander?')));
   assert.deepEqual(press(sh, 'Enter'), []);
   assert.equal(sh.screenFrame?.(W, H), null);
   assert.deepEqual(sh.run('echo $?; ls --color=never'), ['0', 'dest  docs  nuevo']);
@@ -94,7 +94,7 @@ test('F3 views and F4 edits with nano, saving with the user rights', () => {
   type(sh, 'cero ');
   press(sh, { key: 'o', ctrl: true }, 'Enter', { key: 'x', ctrl: true });
   assert.equal(hostSystem(host).fs.readFile('/home/alumno/docs/a.txt'), 'cero uno\ndos\n');
-  assert.match(screen(sh)[0] ?? '', /Left/, 'back in the panels');
+  assert.match(screen(sh)[0] ?? '', /Izquierdo/, 'back in the panels');
 });
 
 test('mc works through SSH: frames and keys travel in the session', () => {
@@ -121,13 +121,12 @@ test('mc works through SSH: frames and keys travel in the session', () => {
   assert.equal(hostSystem(srv).fs.tryLookup('/home/admin/otro')?.kind, 'dir');
 });
 
-test('mc shows the credits of Netfix and the real ones of GNU Midnight Commander (F1 help, F2/F9), in the interface language', () => {
+test('F1: help, then the credits of Netfix and the real ones of GNU Midnight Commander, in the interface language', () => {
   const { sh } = pc();
   const a = aboutInfo();
   sh.run('mc');
   press(sh, 'F1');
   assert.ok(screen(sh).some((r) => r.includes(`Netfix ${a.version} · © ${a.author}`)), 'help footer');
-  press(sh, 'Enter', 'F9');
   const credits = mcCredits().join('\n');
   for (const text of [`Netfix ${a.version}`, `Autoría: ${a.author}`, 'GPL-3.0-or-later', 'github.com/glopezca/netfix',
     `GNU Midnight Commander ${MC_RELEASE}`, MC_COPYRIGHT, 'GNU GPL v3 o posterior', MC_SITE, 'Fundado en 1994 por Miguel de Icaza',
@@ -145,7 +144,7 @@ test('mc shows the credits of Netfix and the real ones of GNU Midnight Commander
   setLocale('en-GB');
   try {
     sh.run('mc');
-    press(sh, 'Escape', '2');
+    press(sh, 'Escape', '1');
     const en = screen(sh).join('\n');
     assert.ok(en.includes(`Author: ${a.author}`));
     assert.ok(mcCredits().join('\n').includes('Founded in 1994 by Miguel de Icaza'));

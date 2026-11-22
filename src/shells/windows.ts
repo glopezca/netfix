@@ -224,7 +224,7 @@ export class WindowsShell extends BaseShell {
         this.screen = screen;
       }
     };
-    const app = startWinMc(w, args, edit, run);
+    const app = startWinMc(w, args, edit, run, usersDir(this.user));
     if (Array.isArray(app)) return app;
     this.screen = app;
     return [];
