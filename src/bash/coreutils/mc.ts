@@ -18,6 +18,16 @@ function run(ctx: Ctx, argv: readonly string[]): string | null {
   return status === 0 ? null : err.chunks.join('').trim() || `${argv[0]}: error ${status}`;
 }
 
+/** mc's command line: the line in a copy of the shell from the panel's folder, its output and stderr, and where it ended. */
+function runLine(ctx: Ctx, line: string, dir: string): { lines: string[]; dir: string } {
+  const sh = ctx.sh.clone();
+  const out = bufferSink();
+  const fds = new Map([[0, { read: { kind: 'null' as const } }], [1, { write: out }], [2, { write: out }]]);
+  runSync(sh.runSource(`cd -- '${dir.replaceAll("'", "'\\''")}'\n${line}`, fds));
+  const text = out.chunks.join('').replace(/\n$/, '');
+  return { lines: text ? text.split('\n') : [], dir: sh.cwd };
+}
+
 function entries(ctx: Ctx, dir: string): McEntry[] | string {
   const fs = ctx.sh.env.fs;
   try {
@@ -46,6 +56,7 @@ export function mcFs(ctx: Ctx): McFs {
     move: (sources, target) => run(ctx, ['mv', '--', ...sources, target]),
     remove: (paths) => run(ctx, ['rm', '-rf', '--', ...paths]),
     mkdir: (path) => run(ctx, ['mkdir', '-p', '--', path]),
+    run: (line, dir) => runLine(ctx, line, dir),
     prompt: (dir) => `${ctx.sh.user.name}@${ctx.sh.startHostname}:${dir === ctx.sh.user.home ? '~' : dir.startsWith(`${ctx.sh.user.home}/`) ? `~${dir.slice(ctx.sh.user.home.length)}` : dir}${ctx.cred.uid === 0 ? '#' : '$'} `,
   };
 }

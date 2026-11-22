@@ -212,7 +212,19 @@ export class WindowsShell extends BaseShell {
     const editor = editorProgram(this.host, 'windows');
     const edit = editor ? (path: string): string | null =>
       runWindowsProgram(this.host, editor.name, [path], w, this.user, usersDir(this.user)) === null ? `${editor.name}.exe: not found` : null : undefined;
-    const app = startWinMc(w, args, edit);
+    // mc's command line: cmd.exe runs the line from the panel's folder; the shell keeps its own folder and screen.
+    const run = (line: string, dir: string): { lines: string[]; dir: string } => {
+      const [cwd, screen] = [w.cwd, this.screen];
+      w.cwd = dir;
+      try {
+        const lines = this.cmd.run(line);
+        return { lines, dir: w.cwd };
+      } finally {
+        w.cwd = cwd;
+        this.screen = screen;
+      }
+    };
+    const app = startWinMc(w, args, edit, run);
     if (Array.isArray(app)) return app;
     this.screen = app;
     return [];

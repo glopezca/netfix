@@ -27,6 +27,8 @@ export interface McFs {
   show?(path: string): string;
   /** Opens a file in the host's editor program (shells/programs.ts `editor`) instead of nano: an error or null. */
   edit?(path: string): string | null;
+  /** Runs a line typed on mc's command line in the shell, from folder `dir`: its output and the folder it ends in. */
+  run?(line: string, dir: string): { readonly lines: readonly string[]; readonly dir: string };
   /** The path typed in a dialog, from folder `dir`; null when it cannot be reached (another drive). */
   parse?(text: string, dir: string): string | null;
 }
