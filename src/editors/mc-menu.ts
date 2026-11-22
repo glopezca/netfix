@@ -62,7 +62,7 @@ export const MC_MENUS: readonly McMenu[] = [
     it('Edit &extension file', '', 'editExt'), it('Edit &menu file', '', 'editMenu'), it('Edit hi&ghlighting group file', '', 'editHighlight'),
   ] },
   { title: '&Options', items: [
-    it('&Configuration...', '', 'config'), it('&Layout...', '', 'layout'), it('&Panel options...', '', 'panelOptions'),
+    it('&Configuration...', '', 'config'), it('&Layout...', '', 'layout'), it('Panel spli&t', 'M-,', 'split'), it('&Panel options...', '', 'panelOptions'),
     it('C&onfirmation...', '', 'confirm'), it('&Appearance...', '', 'appearance'), it('&Display bits...', '', 'displayBits'),
     it('Learn &keys...', '', 'learnKeys'), it('&Virtual FS...', '', 'vfs'), null, it('&Save setup', '', 'saveSetup'),
   ] },
@@ -76,12 +76,26 @@ export interface MenuState {
 
 const GAP = 5;
 
+/** A menu's title: with the panels one over the other, Left and Right are mc's Above and Below. */
+export function menuTitle(i: number, horizontal: boolean): string {
+  if (horizontal && i === 0) return '&Above';
+  if (horizontal && i === MC_MENUS.length - 1) return '&Below';
+  return MC_MENUS[i]?.title ?? '';
+}
+
+/** The space between titles: up to five, fewer on a narrow screen so all five titles fit (at least one). */
+function gap(width: number, horizontal: boolean): number {
+  const titles = MC_MENUS.reduce((n, _, i) => n + hotLabel(mcT(menuTitle(i, horizontal))).text.length, 0);
+  return Math.max(1, Math.min(GAP, Math.floor((width - 2 - titles) / (MC_MENUS.length - 1))));
+}
+
 /** Column of each title in the bar ("  Left     File     Command…"). */
-function columns(): number[] {
+function columns(width: number, horizontal: boolean): number[] {
   let col = 2;
-  return MC_MENUS.map((m) => {
+  const g = gap(width, horizontal);
+  return MC_MENUS.map((_, i) => {
     const at = col;
-    col += hotLabel(mcT(m.title)).text.length + GAP;
+    col += hotLabel(mcT(menuTitle(i, horizontal))).text.length + g;
     return at;
   });
 }
@@ -94,20 +108,21 @@ function hotSpans(label: string, selected: boolean, base: Span['style']): Span[]
 }
 
 /** The bar (row 0), its open menu highlighted. */
-export function menuBar(width: number, open: MenuState | null): Span[] {
+export function menuBar(width: number, open: MenuState | null, horizontal = false): Span[] {
   const spans: Span[] = [{ text: '  ', style: 'menu' }];
-  MC_MENUS.forEach((m, i) => spans.push(...hotSpans(m.title, open?.menu === i, 'menu'), { text: ' '.repeat(GAP), style: 'menu' }));
+  const g = gap(width, horizontal);
+  MC_MENUS.forEach((_, i) => spans.push(...hotSpans(menuTitle(i, horizontal), open?.menu === i, 'menu'), { text: ' '.repeat(g), style: 'menu' }));
   const used = spans.reduce((n, s) => n + s.text.length, 0);
   return sliceSpans([...spans, { text: fit('', Math.max(0, width - used)), style: 'menu' }], 0, width);
 }
 
 /** The open menu's box over the screen rows (row 0 is the bar). */
-export function drawMenu(rows: Span[][], st: MenuState, width: number): void {
+export function drawMenu(rows: Span[][], st: MenuState, width: number, horizontal = false): void {
   const m = MC_MENUS[st.menu];
   if (!m) return;
   const labels = m.items.map((x) => (x ? hotLabel(mcT(x.label)).text.length + (x.keys ? x.keys.length + 3 : 0) : 0));
   const inner = Math.min(width - 2, Math.max(...labels) + 2);
-  const left = Math.max(0, Math.min(columns()[st.menu] ?? 0, width - inner - 2));
+  const left = Math.max(0, Math.min(columns(width, horizontal)[st.menu] ?? 0, width - inner - 2));
   const put = (r: number, spans: Span[]): void => {
     const row = rows[r];
     if (row) rows[r] = [...sliceSpans(row, 0, left), ...sliceSpans(spans, 0, inner + 2), ...sliceSpans(row, left + inner + 2, Number.MAX_SAFE_INTEGER)];
@@ -140,7 +155,7 @@ const hotOf = (label: string): string => {
 };
 
 /** A key while the menu is open: moves, switches menu, runs an item (Enter or its hotkey) or closes it. */
-export function menuKey(st: MenuState, k: KeyInput): { readonly state: MenuState | null; readonly item?: McItem } {
+export function menuKey(st: MenuState, k: KeyInput, horizontal = false): { readonly state: MenuState | null; readonly item?: McItem } {
   const m = MC_MENUS[st.menu];
   if (!m || ['Escape', 'F9', 'F10'].includes(k.key) || (k.ctrl && ['c', 'g'].includes(k.key.toLowerCase()))) return { state: null };
   const n = MC_MENUS.length;
@@ -157,6 +172,6 @@ export function menuKey(st: MenuState, k: KeyInput): { readonly state: MenuState
   const c = k.key.toLowerCase();
   const hit = m.items.find((x) => x !== null && hotOf(x.label) === c);
   if (hit) return { state: null, item: hit };
-  const menu = MC_MENUS.findIndex((x) => hotOf(x.title) === c);
+  const menu = MC_MENUS.findIndex((_, i) => hotOf(menuTitle(i, horizontal)) === c);
   return { state: menu >= 0 ? first(menu) : st };
 }

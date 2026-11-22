@@ -3,11 +3,13 @@
  * by mc's Spanish translators, credited in mc-credits.ts); the few lines marked Netfix's own are not in mc.
  */
 export const MC_ES: Readonly<Record<string, string>> = {
+  '&Above': 'a&Rriba',
   '&Active VFS list': 'directorios virtuales (&VFS)...',
   '&Add current': 'aña&Dir actual',
   '&Advanced chown': 'c&Ambiar dueño y permisos...',
   '&Appearance...': '&Aspecto...',
   '&Background jobs': '&Procesos en 2º plano...',
+  '&Below': 'a&Bajo',
   '&Brief file list:': 'listado &Breve:',
   '&Cancel': '&Cancelar',
   '&Command': '&Utilidades',
@@ -128,6 +130,7 @@ export const MC_ES: Readonly<Record<string, string>> = {
   'Not implemented yet': 'No implementado todavía',
   'Owner name:': 'Dueño:',
   'Panel options': 'Opciones de los paneles',
+  'Panel spli&t': '&Disposición de paneles', // Netfix
   'Panel split': 'Disposición de paneles',
   'Paneli&ze': 'búsqueda e&Xterna',
   'Permissions (octal) and owner[:group]:': 'Permisos (octal) y dueño[:grupo]:', // Netfix
