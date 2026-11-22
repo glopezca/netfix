@@ -28,8 +28,8 @@ export function docGroupIcon(g: DocGroup): Element {
   return icon;
 }
 
-/** The groups the Documentation tab lists: the labs' only with the missions on (Configuración → Generales). */
-export const shownDocGroups = (): DocGroup[] => groups();
+/** The groups the Documentation tab lists: the labs' only with the missions on (Configuración → Generales; a host says). */
+export const shownDocGroups = (missions = missionsShown()): DocGroup[] => docGroups().filter((g) => g.id !== LABS_GROUP || missions);
 
 export class DocsView {
   readonly root: HTMLElement;

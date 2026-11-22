@@ -14,5 +14,6 @@ test('a host gets the Documentation tab\'s groups, with their device icons, and 
   setMissionsShown(true);
   assert.ok(shownDocGroups().some((g) => g.id === 'labs'));
   setMissionsShown(false);
+  assert.ok(shownDocGroups(true).some((g) => g.id === 'labs'), 'a host with the missions on (FixIT Classroom) asks for them');
   assert.ok(searchDocs('dhcp').length > 0, 'search finds pages across groups');
 });
