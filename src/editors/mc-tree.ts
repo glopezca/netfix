@@ -102,7 +102,8 @@ export class DirTree {
       const node = this.nodes[i];
       if (!node) { out.push([{ text: ' '.repeat(width), style: 'panel' }]); continue; }
       const style = i === this.cursor ? (active ? 'cursor' : 'marked') : 'dir';
-      out.push([{ text: node.prefix.slice(0, width), style: 'panel' }, { text: fit(node.name, Math.max(0, width - node.prefix.length)), style }]);
+      const name: Span = { text: fit(node.name, Math.max(0, width - node.prefix.length)), style };
+      out.push(node.prefix ? [{ text: node.prefix.slice(0, width), style: 'panel' }, name] : [name]); // no empty span (the top folder)
     }
     return out;
   }

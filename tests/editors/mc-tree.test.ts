@@ -77,3 +77,11 @@ test('Options › Panel split (M-,) switches it from the menu', () => {
   press(sh, 'd');
   assert.equal(screen(sh).filter((r) => /^┌─+ ~ ─+┐$/.test(r)).length, 2);
 });
+
+test('Ctrl+R reads both panels again: a file made elsewhere shows beside the tree', () => {
+  const { host, sh } = pc();
+  sh.run('mc');
+  hostSystem(host).fs.writeFile('/home/alumno/nuevo.sh', 'echo');
+  press(sh, { key: 'r', ctrl: true });
+  assert.ok(right(sh).some((r) => /│ nuevo\.sh/.test(r)));
+});
