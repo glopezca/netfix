@@ -99,7 +99,8 @@ try {
   await page.click('button.seg:has-text("Configuración")');
   const settings = page.locator('.settings');
   await settings.waitFor();
-  const catalogue = settings.locator('fieldset[data-kind="packages"] input[data-pkg="smbclient"]');
+  await page.evaluate(() => { for (const d of document.querySelectorAll('.settings details.set-panel')) d.open = true; }); // panels fold (0.88.0)
+  const catalogue = settings.locator('details[data-kind="packages"] input[data-pkg="smbclient"]');
   assert.ok(await catalogue.isChecked());
   await catalogue.uncheck();
   await settings.locator('input[data-feature="pc:winshare"]').uncheck();

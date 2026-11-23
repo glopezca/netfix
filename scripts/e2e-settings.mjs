@@ -36,6 +36,14 @@ try {
   await page.click('button.seg:has-text("Configuración")');
   const settings = page.locator('.settings');
   await settings.waitFor();
+  // 0.88.0: every panel folds under its heading, closed at first, so the page shows them all at once.
+  const panels = settings.locator('details.set-panel');
+  assert.ok(await panels.count() >= 7, 'the theme, each kind of device and the packages');
+  assert.equal(await settings.locator('details.set-panel[open]').count(), 0, 'all closed at first');
+  assert.equal(await settings.locator('input[data-feature="pc:windows"]').isVisible(), false, 'their options hidden');
+  await settings.locator('details.set-panel[data-kind="pc"] > summary').click();
+  assert.equal(await settings.locator('input[data-feature="pc:windows"]').isVisible(), true, 'its heading opens it');
+  await page.evaluate(() => { for (const d of document.querySelectorAll('.settings details.set-panel')) d.open = true; }); // panels fold (0.88.0)
   assert.equal(await settings.locator('input[data-feature="server:firewall"]').isChecked(), true, 'the lab allows everything by default (v0.26)');
   assert.equal(await settings.locator('input[data-feature="linuxrouter:sysctl"]').isChecked(), true);
   if (shots) await page.screenshot({ path: `${shots}/settings.png`, fullPage: false });
@@ -73,6 +81,7 @@ try {
 
   // Without the unsaved question, a lab replaces the changes at once.
   await page.click('button.seg:has-text("Configuración")');
+  await page.evaluate(() => { for (const d of document.querySelectorAll('.settings details.set-panel')) d.open = true; }); // panels fold (0.88.0)
   await settings.locator('input[data-feature="pc:windows"]').check();
   await settings.locator('label:has-text("Avisar antes de reemplazar") input').uncheck();
   await page.click('button.seg:has-text("Red")');

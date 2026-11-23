@@ -828,6 +828,9 @@
   .set-row { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
   .set-group { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 10px 14px 12px; margin: 12px 0; display: grid; gap: 6px; align-content: start; max-width: 520px; }
   .set-group legend { font-weight: 700; padding: 0 4px; }
+  /* A panel folds under its heading, with the arrow of the missions' solutions; closed it is just that line. */
+  .set-panel > summary { font-weight: 700; padding: 0 4px; cursor: pointer; }
+  .set-panel:not([open]) { padding-bottom: 10px; }
   .set-group .set-sub { margin: 6px 0 0; font-weight: 600; color: var(--ink-2); }
   .set-choice { display: flex; align-items: center; gap: 8px; min-height: 28px; }
   .set-choice input { flex: none; width: 18px; height: 18px; accent-color: var(--accent); }
