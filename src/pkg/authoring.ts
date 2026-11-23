@@ -9,4 +9,4 @@ export { checkFields, parseChecklist, registerCheckKind } from '../classroom/che
 export type { Check, CheckField, CheckKind, CheckOutcome, ChecklistItem, ExtensionCheck } from '../classroom/checklist.ts';
 export { LABS_ES } from '../i18n/es-ES/labs.ts';
 export type { DeviceKind } from '../net/topology.ts';
-export { declareDeviceKind, deviceKinds } from '../net/device-kinds.ts';
+export { PALETTE_KINDS, declareDeviceKind, deviceKinds } from '../net/device-kinds.ts';

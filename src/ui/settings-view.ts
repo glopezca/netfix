@@ -7,16 +7,17 @@ import { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, toolHelp, s
 import { FEATURES_BY_KIND, featureOn, setFeature } from '../net/lab-features.ts';
 import type { LabFeatures } from '../net/lab-features.ts';
 import { SERVICE_PACKAGES, TOOL_PACKAGES, packageAllowed, setPackageOff } from '../net/lab-packages.ts';
+import { PALETTE_KINDS } from '../net/device-kinds.ts';
 import type { BuiltinDeviceKind, DeviceKind } from '../net/device-kinds.ts';
 
-/** The kinds whose windows have settings to switch (the cloud has none). */
 /** The «prompt con hora» box of the page built last, kept in step when a terminal footer changes it. */
 let stampBox: HTMLInputElement | undefined;
 /** The help box of the page built last: the hint note's «do not show again» changes it too (synced on each visit). */
 let helpBox: HTMLInputElement | undefined;
 onTimestampPrompt(() => { if (stampBox) stampBox.checked = timestampPrompt(); });
 
-const KINDS: readonly BuiltinDeviceKind[] = ['pc', 'server', 'linuxrouter', 'router', 'switch'];
+/** The kinds with a panel, in the palette's order (the cloud has nothing to switch). */
+export const SETTINGS_KINDS: readonly BuiltinDeviceKind[] = PALETTE_KINDS.filter((k) => FEATURES_BY_KIND[k].length > 0);
 
 export interface SettingsHost {
   features(): LabFeatures;
@@ -147,7 +148,7 @@ export class SettingsView {
       el('h2', { id: 'set-lab' }, t('set.lab')),
       el('p', { class: 'muted' }, host.labLocked() ? t('set.labLocked') : t('set.labNote')),
       el('p', {}, t('set.always')),
-      el('div', { class: 'set-kinds' }, ...KINDS.map((k) => kindGroup(host, k, changed)), packagesGroup(host, changed)),
+      el('div', { class: 'set-kinds' }, ...SETTINGS_KINDS.map((k) => kindGroup(host, k, changed)), packagesGroup(host, changed)),
       webOption(host, changed),
       reset, this.status);
   }

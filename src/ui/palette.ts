@@ -8,6 +8,7 @@ import { iconOf, modelLabel } from './icons.ts';
 import { deviceUi, deviceUiKinds } from './device-kind-ui.ts';
 import { kindOffered } from './host-options.ts';
 import type { DeviceKind } from '../net/topology.ts';
+import { PALETTE_KINDS } from '../net/device-kinds.ts';
 import { t } from '../i18n/t.ts';
 import type { MessageKey } from '../i18n/catalog.ts';
 import { NO_RESTRICTIONS, allowsDevice } from '../classroom/restrictions.ts';
@@ -28,9 +29,7 @@ export interface PaletteActions {
 
 export type ClipAction = 'copy' | 'paste' | 'duplicate' | 'delete';
 
-export const PLACEABLE: readonly (readonly [DeviceKind, MessageKey])[] = [
-  ['pc', 'kind.pc'], ['server', 'kind.server'], ['switch', 'kind.switch'], ['router', 'kind.router'], ['linuxrouter', 'kind.linuxrouter'], ['cloud', 'kind.cloud'],
-];
+export const PLACEABLE: readonly (readonly [DeviceKind, MessageKey])[] = PALETTE_KINDS.map((k) => [k, `kind.${k}`] as const);
 
 /** A registered kind is in the palette when its interface says so (e.g. only with the host page's context). */
 const offered = (kind: DeviceKind): boolean => kindOffered(kind) && (deviceUi(kind)?.offered?.() ?? true);
@@ -53,14 +52,13 @@ export function pcName(system: PcSystem): string {
 function piles(): readonly (readonly [string, readonly Variant[]])[] {
   const pc = (system: PcSystem): Variant => ({ kind: 'pc', system, name: pcName(system), model: system === 'both' ? 'Windows + GNU/Linux' : t(`os.${system}`) });
   const one = (kind: DeviceKind, name: string): readonly [string, readonly Variant[]] => [name, [{ kind, name, model: modelLabel(kind) }]];
-  return [
-    [t('kind.pc'), [pc('windows'), pc('linux'), pc('both')]],
-    one('server', t('kind.server')),
-    one('switch', t('kind.switch')),
-    [t('pal.routers'), [{ kind: 'router', name: t('kind.router'), model: modelLabel('router') }, { kind: 'linuxrouter', name: t('kind.linuxrouter'), model: modelLabel('linuxrouter') }]],
-    one('cloud', t('kind.cloud')),
-    ...deviceUiKinds().map((k) => one(k, deviceUi(k)?.name() ?? k)),
-  ];
+  // In the palette's order: the PCs by system; both routers in one pile, where the IOS router is.
+  const builtin = PALETTE_KINDS.flatMap((k): (readonly [string, readonly Variant[]])[] => {
+    if (k === 'pc') return [[t('kind.pc'), [pc('windows'), pc('linux'), pc('both')]]];
+    if (k === 'router') return [[t('pal.routers'), [{ kind: 'router', name: t('kind.router'), model: modelLabel('router') }, { kind: 'linuxrouter', name: t('kind.linuxrouter'), model: modelLabel('linuxrouter') }]]];
+    return k === 'linuxrouter' ? [] : [one(k, t(`kind.${k}`))];
+  });
+  return [...builtin, ...deviceUiKinds().map((k) => one(k, deviceUi(k)?.name() ?? k))];
 }
 
 const variantKey = (v: Variant): string => (v.system ? `place-${v.kind}-${v.system}` : `place-${v.kind}`);
