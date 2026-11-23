@@ -33,3 +33,9 @@ test('a PC\'s pile names its system: Microsoft Windows, GNU/Linux or MultiOS', (
     setLocale('es-ES');
   }
 });
+
+test('Configuración\'s device panels follow the palette (the cloud has none)', async () => {
+  const { SETTINGS_KINDS } = await import('../../src/ui/settings-view.ts');
+  assert.deepEqual(SETTINGS_KINDS, PLACEABLE.map(([k]) => k).filter((k) => k !== 'cloud'));
+  assert.deepEqual(SETTINGS_KINDS, ['pc', 'server', 'switch', 'router', 'linuxrouter']);
+});

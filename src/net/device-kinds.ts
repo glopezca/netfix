@@ -8,6 +8,8 @@ import type { SimClock } from '../core/clock.ts';
 
 export type BuiltinDeviceKind = 'router' | 'switch' | 'pc' | 'server' | 'linuxrouter' | 'cloud';
 export const BUILTIN_DEVICE_KINDS: readonly BuiltinDeviceKind[] = ['router', 'switch', 'pc', 'server', 'linuxrouter', 'cloud'];
+/** The palette's order of the built-in kinds (registered ones follow): its piles and Configuración's panels follow it. */
+export const PALETTE_KINDS: readonly BuiltinDeviceKind[] = ['pc', 'server', 'switch', 'router', 'linuxrouter', 'cloud'];
 /** A built-in kind or one registered with `registerDeviceKind`. */
 export type DeviceKind = BuiltinDeviceKind | (string & Record<never, never>);
 
