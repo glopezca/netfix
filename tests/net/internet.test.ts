@@ -9,6 +9,7 @@ import type { Router } from '../../src/devices/router.ts';
 import type { Server } from '../../src/devices/server.ts';
 import { Session } from '../../src/ios/session.ts';
 import { parseIp, formatIp } from '../../src/core/ip.ts';
+import { portFromJson, portToJson, validatePort } from '../../src/devices/cloud-config.ts';
 import { createShell } from '../../src/shells/factory.ts';
 import { BrowserEngine } from '../../src/clients/browser.ts';
 
@@ -118,4 +119,30 @@ test('clouds are saved and restored with their lines, forwards and domains', asy
   assert.equal(sur.settings.ports.DSL0.forwards.length, 3);
   assert.equal((t.byLabel('ISP-Norte') as Cloud).settings.ports.Fibra0.mode, 'public');
   assert.match(sh(t.byLabel('PC1') as Pc, 'host www.sede2.es'), /has address 81\.33\.3\.2/);
+});
+
+test('DMZ (0.91.0): whatever is not forwarded goes to the exposed host — ping and its web — and the setting is checked and saved', () => {
+  const t = new Topology();
+  const ca = t.add('cloud', 0, 0).device as Cloud;
+  const cb = t.add('cloud', 0, 0).device as Cloud;
+  const a = t.add('pc', 0, 0).device as Pc;
+  const srv = t.add('server', 0, 0).device as Server;
+  t.connect({ device: ca.id, port: 'Fibra0' }, { device: a.id, port: 'FastEthernet0' });
+  t.connect({ device: cb.id, port: 'DSL0' }, { device: srv.id, port: 'FastEthernet0' });
+  srv.setStatic({ ip: ip('192.168.1.10'), prefix: 24, gateway: ip('192.168.1.1'), dns: ip('8.8.8.8') });
+  a.useDhcp();
+  t.settle();
+  // Without it, the router answers the ping itself and refuses the web.
+  assert.match(sh(a, 'ping -c 1 81.33.3.2'), /ttl=25\d /, 'the router\'s own reply (TTL 255 minus the hops)');
+  assert.match(sh(a, 'curl -s http://81.33.3.2/; echo rc=$?'), /rc=7/);
+  cb.setSettings({ ...cb.settings, ports: { ...cb.settings.ports, DSL0: { ...cb.settings.ports.DSL0, dmz: ip('192.168.1.10') } } });
+  t.settle();
+  assert.match(sh(a, 'ping -c 1 81.33.3.2'), /1 received/);
+  assert.match(sh(a, 'ping -c 1 81.33.3.2'), /ttl=[56]\d /, 'the exposed host answers (TTL 64 minus the hops), not the router');
+  assert.match(sh(a, 'curl -sI http://81.33.3.2/ | head -1'), /200 OK/);
+  const line = cb.settings.ports.DSL0;
+  assert.equal(portFromJson('DSL0', JSON.parse(JSON.stringify(portToJson(line)))).dmz, ip('192.168.1.10'), 'saved with the lab');
+  assert.ok(validatePort({ ...line, dmz: ip('10.0.0.5') }), 'outside the LAN');
+  assert.ok(validatePort({ ...line, dmz: line.lanIp }), 'the router itself');
+  assert.equal(portFromJson('DSL0', { ...JSON.parse(JSON.stringify(portToJson(line))), dmz: '8.8.8.8' }).dmz, undefined, 'a bad one in a file: the defaults');
 });

@@ -74,7 +74,11 @@ function ispTab(cloud: Cloud, app: CloudHost): HTMLElement {
   });
 }
 
-export function forwardsSection(line: CloudPort, change: (forwards: readonly PortForward[]) => void): HTMLElement[] {
+/**
+ * The forwarded ports, and (given `changeDmz`, 0.91.0) the exposed host that gets whatever is not forwarded, ping
+ * included — a field left empty takes it away.
+ */
+export function forwardsSection(line: CloudPort, change: (forwards: readonly PortForward[]) => void, changeDmz?: (ip: number | null) => void): HTMLElement[] {
   const proto = select([['tcp', 'TCP'], ['udp', 'UDP']]);
   const port = input({ placeholder: '80', inputmode: 'numeric' });
   const to = input({ placeholder: '192.168.1.10' });
@@ -90,7 +94,14 @@ export function forwardsSection(line: CloudPort, change: (forwards: readonly Por
     el('div', { class: 'grid2' }, field(t('cloud.protocol'), proto), field(t('cloud.publicPort'), port)),
     el('div', { class: 'grid2' }, field(t('cloud.lanIp'), to), field(t('cloud.innerPort'), toPort)),
     el('div', { class: 'actions' }, button(t('cloud.addForward'), add)),
+    ...(changeDmz ? dmzField(line, changeDmz) : []),
   ];
+}
+
+function dmzField(line: CloudPort, changeDmz: (ip: number | null) => void): HTMLElement[] {
+  const dmz = input({ value: line.settings.dmz === undefined ? '' : formatIp(line.settings.dmz), placeholder: '192.168.1.10' });
+  onCommit(dmz, () => changeDmz(dmz.value.trim() === '' ? null : parseIp(dmz.value.trim()) ?? 0));
+  return [el('h3', {}, t('cloud.dmz')), field(t('cloud.dmzHost'), dmz), el('p', { class: 'muted' }, t('cloud.dmzHint'))];
 }
 
 function linePanel(cloud: Cloud, name: CloudPortName, app: CloudHost): HTMLElement {
@@ -131,7 +142,10 @@ function linePanel(cloud: Cloud, name: CloudPortName, app: CloudHost): HTMLEleme
         : [el('li', {}, t('cloud.subnet', { net: `${formatIp(sub.net)}/${LINE_PREFIX}`, gw: formatIp(sub.gw) })), el('li', {}, t('cloud.subnetDhcp', { ip: formatIp(sub.customer), from: formatIp(sub.customer + 1), to: formatIp(sub.customer + 4) }))])),
       el('p', { class: 'muted' }, t('cloud.leases', { list: leases.join(' · ') || t('cloud.none') })),
       c.mode === 'router' ? el('p', { class: 'muted mono' }, `NAT: ${nat.join(' · ') || t('cloud.noNat')}`) : el('div', {}),
-      ...(c.mode === 'router' ? forwardsSection(line, (forwards) => put({ ...c, forwards })) : []),
+      ...(c.mode === 'router' ? forwardsSection(line, (forwards) => put({ ...c, forwards }), (dmz) => {
+        const { dmz: _old, ...rest } = c;
+        put(dmz === null ? rest : { ...rest, dmz });
+      }) : []),
     ];
   });
 }

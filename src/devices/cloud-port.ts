@@ -167,7 +167,9 @@ export class CloudPort implements StackHost {
 
   private forwards(): StaticNat[] {
     const wan = this.wan();
-    return this.settings.forwards.map((f) => ({ local: f.ip, global: wan, proto: f.proto, localPort: f.toPort, globalPort: f.port }));
+    const ports: StaticNat[] = this.settings.forwards.map((f) => ({ local: f.ip, global: wan, proto: f.proto, localPort: f.toPort, globalPort: f.port }));
+    // The DMZ (0.91.0): the whole address, after the forwards and the open flows (nat.ts outside looks in that order).
+    return this.settings.dmz === undefined ? ports : [...ports, { local: this.settings.dmz, global: wan }];
   }
 
   private icmpError(packet: IpPacket, src: number, type: 'ttl-exceeded' | 'unreachable'): void {
