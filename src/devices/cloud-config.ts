@@ -29,6 +29,8 @@ export interface CloudPortSettings {
   readonly forwards: readonly PortForward[];
   /** Router mode: the gateway is the customers' DNS and relays to Google (dnsmasq-style). */
   readonly dnsRelay?: boolean;
+  /** Router mode: the exposed host (DMZ, 0.91.0) that gets whatever no forward or open flow takes — ping included. */
+  readonly dmz?: number;
 }
 
 export interface CloudDomain {
@@ -115,6 +117,7 @@ export function validatePort(p: CloudPortSettings): string | null {
     if (![f.port, f.toPort].every((n) => Number.isInteger(n) && n >= 1 && n <= 65535)) return t('cloud.err.ports');
     if (!inSubnet(f.ip, p.lanIp, p.lanPrefix) || f.ip === p.lanIp) return t('cloud.err.forwardLan', { ip: formatIp(f.ip) });
   }
+  if (p.dmz !== undefined && (!inSubnet(p.dmz, p.lanIp, p.lanPrefix) || p.dmz === p.lanIp || p.dmz === net || p.dmz === (net | (0xffffffff >>> p.lanPrefix)) >>> 0)) return t('cloud.err.dmz', { ip: formatIp(p.dmz) });
   const dup = p.forwards.find((f, i) => p.forwards.findIndex((g) => g.proto === f.proto && g.port === f.port) !== i);
   return dup ? t('cloud.err.dupForward', { proto: dup.proto.toUpperCase(), port: dup.port }) : null;
 }
@@ -145,7 +148,7 @@ const obj = (v: unknown): Record<string, unknown> => (typeof v === 'object' && v
 
 /** One line's settings for the file. */
 export function portToJson(c: CloudPortSettings): unknown {
-  return { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}) };
+  return { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}), ...(c.dmz !== undefined ? { dmz: formatIp(c.dmz) } : {}) };
 }
 
 export function cloudToJson(s: CloudSettings): unknown {
@@ -162,7 +165,8 @@ export function portFromJson(port: string, v: unknown): CloudPortSettings {
   const forwards = (Array.isArray(o.forwards) ? o.forwards : []).slice(0, MAX_FORWARDS).map(obj).map((f) => ({
     proto: f.proto === 'udp' ? 'udp' as const : 'tcp' as const, port: num(f.port, 0), ip: ipOf(f.ip, 0), toPort: num(f.toPort, 0),
   }));
-  const p = { mode: o.mode === 'public' ? 'public' as const : 'router' as const, down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards, ...(o.dnsRelay === true ? { dnsRelay: true } : {}) };
+  const p = { mode: o.mode === 'public' ? 'public' as const : 'router' as const, down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards, ...(o.dnsRelay === true ? { dnsRelay: true } : {}),
+    ...(typeof o.dmz === 'string' && parseIp(o.dmz) !== null ? { dmz: parseIp(o.dmz)! } : {}) };
   return validatePort(p) ? d : p;
 }
 
