@@ -462,6 +462,8 @@ class App {
 
   /** `handle.markSaved`: the host stored the network. */
   markSaved(): void { this.saved.mark(this.topo); }
+  /** `handle.unsaved`: the network differs from the one last saved. */
+  unsavedHosted(): boolean { return this.saved.dirty(this.topo); }
 
   private async openFile(): Promise<void> {
     const file = this.fileInput.files?.[0];
@@ -583,6 +585,7 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
       return current()?.openHosted(topo, String(name)) ?? false;
     },
     markSaved: () => current()?.markSaved(),
+    unsaved: () => current()?.unsavedHosted() ?? false,
     changed: () => current()?.afterCommand(),
     showView: (view) => current()?.showHosted(view) ?? false,
     file: (action) => current()?.fileHosted(action) ?? false,
