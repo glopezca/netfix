@@ -34,6 +34,8 @@ export interface EmbedHandle {
   open(file: unknown, name: string): Promise<boolean>;
   /** The host stored the current topology: it is no longer unsaved work. */
   markSaved(): void;
+  /** Whether there is work not yet saved (0.90.0): a host's way back asks first (its `back` option). */
+  unsaved(): boolean;
   /**
    * The host changed the network outside Netfix (an extension's editor wrote a device's files, 0.73.0): it is saved
    * as an edit would be — `onChange` embedded, the browser's autosave in the lab — and counts as unsaved work.

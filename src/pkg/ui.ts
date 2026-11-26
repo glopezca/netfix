@@ -34,3 +34,5 @@ export { searchDocs } from '../docs/index.ts';
 export type { DocBlock, DocGroup, DocPage, SearchHit } from '../docs/index.ts';
 export { docBlock } from '../ui/doc-blocks.ts';
 export { docGroupIcon, shownDocGroups } from '../ui/docs-view.ts';
+export { aboutView } from '../ui/about-view.ts';
+export type { HostBack } from '../ui/embed-api.ts';

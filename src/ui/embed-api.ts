@@ -35,10 +35,16 @@ export interface HostOptions {
   readonly missions: boolean | undefined;
   /** The values of the options extensions registered (ui/host-options.ts), checked, by option name. */
   readonly extensions: Readonly<Record<string, unknown>>;
+  /** A way back to the host's page, first in the palette (its label; `onClick` asks over unsaved work, if it wants). */
+  readonly back: HostBack | null;
 }
 
-export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', piles: undefined, missions: undefined, extensions: Object.freeze({}) });
-const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'piles', 'missions'] as const;
+export interface HostBack { readonly label: string; readonly onClick: () => void }
+
+const BACK_LABEL_MAX = 60;
+
+export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', piles: undefined, missions: undefined, extensions: Object.freeze({}), back: null });
+const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'piles', 'missions', 'back'] as const;
 
 /** A host element for part of Netfix: in the page, and neither inside the mount nor around it (each would empty the other). */
 function hostElement(mount: HTMLElement, v: unknown, name: string): HTMLElement | null {
@@ -54,7 +60,7 @@ function hostElement(mount: HTMLElement, v: unknown, name: string): HTMLElement 
  */
 export function takeHostOptions(mount: HTMLElement, options: unknown): { readonly rest: unknown; readonly host: HostOptions } {
   if (typeof options !== 'object' || options === null || ![...HOST_KEYS, ...hostOptionNames()].some((k) => Object.hasOwn(options, k))) return { rest: options, host: NO_HOST };
-  const { toolbar, actions, locale, confirmUnsaved, palette, piles, missions, ...others } = options as Record<string, unknown>;
+  const { toolbar, actions, locale, confirmUnsaved, palette, piles, missions, back, ...others } = options as Record<string, unknown>;
   const bar = hostElement(mount, toolbar, 'toolbar');
   const acts = hostElement(mount, actions, 'actions');
   if (bar && acts && (bar.contains(acts) || acts.contains(bar))) throw new Error('netfix: «toolbar» y «actions» deben ser elementos distintos y separados');
@@ -64,7 +70,16 @@ export function takeHostOptions(mount: HTMLElement, options: unknown): { readonl
   if (piles !== undefined && typeof piles !== 'boolean') throw new Error('netfix: «piles» debe ser true o false');
   if (missions !== undefined && typeof missions !== 'boolean') throw new Error('netfix: «missions» debe ser true o false');
   const { rest, extensions } = takeExtensions(others);
-  return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined, palette: palette ?? 'side', piles: piles as boolean | undefined, missions: missions as boolean | undefined, extensions } };
+  return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined, palette: palette ?? 'side', piles: piles as boolean | undefined, missions: missions as boolean | undefined, extensions, back: backOf(back) } };
+}
+
+/** The host's way back: a short label and a function. */
+function backOf(v: unknown): HostBack | null {
+  if (v === undefined) return null;
+  const label: unknown = typeof v === 'object' && v !== null ? Reflect.get(v, 'label') : undefined;
+  const onClick: unknown = typeof v === 'object' && v !== null ? Reflect.get(v, 'onClick') : undefined;
+  if (typeof label !== 'string' || label.trim() === '' || label.length > BACK_LABEL_MAX || typeof onClick !== 'function') throw new Error('netfix: «back» debe ser { label, onClick }');
+  return { label: label.trim(), onClick: () => { (onClick as () => void)(); } };
 }
 
 /** The registered extension options out of `options`, each checked by its extension. */

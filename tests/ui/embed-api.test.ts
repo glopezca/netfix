@@ -14,7 +14,7 @@ test('host options: none leaves the options as they were; a bad toolbar, locale,
   assert.deepEqual(takeHostOptions(mount, undefined), { rest: undefined, host: NO_HOST });
   const taken = takeHostOptions(mount, { restrictions: {}, locale: 'en-GB', confirmUnsaved: false });
   assert.deepEqual({ rest: { ...taken.rest as object }, host: { ...taken.host, extensions: { ...taken.host.extensions } } },
-    { rest: { restrictions: {} }, host: { toolbar: null, actions: null, locale: 'en-GB', confirmUnsaved: false, palette: 'side', piles: undefined, missions: undefined, extensions: {} } });
+    { rest: { restrictions: {} }, host: { toolbar: null, actions: null, locale: 'en-GB', confirmUnsaved: false, palette: 'side', piles: undefined, missions: undefined, extensions: {}, back: null } });
   assert.equal(takeHostOptions(mount, { palette: 'bottom' }).host.palette, 'bottom');
   assert.throws(() => takeHostOptions(mount, { toolbar: '#bar' }), /toolbar/);
   assert.throws(() => takeHostOptions(mount, { actions: '#acts' }), /actions/);
@@ -25,6 +25,14 @@ test('host options: none leaves the options as they were; a bad toolbar, locale,
   assert.throws(() => takeHostOptions(mount, { piles: 'yes' }), /piles/);
   assert.equal(takeHostOptions(mount, { missions: true }).host.missions, true, 'a host shows the guided labs');
   assert.throws(() => takeHostOptions(mount, { missions: 1 }), /missions/);
+  let backs = 0;
+  const back = takeHostOptions(mount, { back: { label: ' Volver ', onClick: () => { backs++; } } }).host.back;
+  assert.equal(back?.label, 'Volver', 'a host\'s way back, first in the palette');
+  back?.onClick();
+  assert.equal(backs, 1);
+  for (const bad of [{ label: '', onClick: () => {} }, { label: 'x' }, { label: 'x'.repeat(61), onClick: () => {} }, 'back']) {
+    assert.throws(() => takeHostOptions(mount, { back: bad }), /back/);
+  }
 });
 
 test('netfix.lab takes no option but the host ones', () => {
