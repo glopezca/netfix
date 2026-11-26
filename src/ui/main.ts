@@ -40,7 +40,7 @@ import { formatToolbarClock } from '../core/clock.ts';
 import type { DeviceKind } from '../net/topology.ts';
 import { STANDALONE, embedSession, evaluateFile } from '../classroom/embed.ts';
 import { NO_HOST, checkMount, labOptions, takeHostOptions } from './embed-api.ts';
-import type { HostOptions } from './embed-api.ts';
+import type { HostBack, HostOptions } from './embed-api.ts';
 import type { NetfixApi } from './embed-api.ts';
 import type { AppSession, EmbedHandle } from '../classroom/embed.ts';
 
@@ -148,7 +148,7 @@ class App {
     const palActions: PaletteActions = {
       selectTool: (tool, key) => this.selectTool(tool, key), zoom: (a) => this.canvas.zoom(a), toggleDraw: () => this.toggleDraw(), undo: (redo) => this.undo(redo), clip: (a) => this.canvas.group.run(a),
     };
-    this.paletteEl = palette(palActions, this.toolButtons, this.hintEl, this.session.policy, this.actionsBox);
+    this.paletteEl = palette(palActions, this.toolButtons, this.hintEl, this.session.policy, this.actionsBox, backHost);
     // The piles setting redraws only the devices (the tool goes back to Select: its button may be gone).
     this.pilesWatch = onDevicePiles(() => {
       for (const k of [...this.toolButtons.keys()]) if (k.startsWith('place-')) this.toolButtons.delete(k);
@@ -489,6 +489,8 @@ let mountEl: HTMLElement | null = null;
 let barHost: HTMLElement | null = null;
 /** The host page's element for the workspace's actions (`actions` option), or null. */
 let actionsHost: HTMLElement | null = null;
+/** A host's way back (its `back` option), first in the palette. */
+let backHost: HostBack | null = null;
 let session: AppSession = STANDALONE;
 /** Whether Netfix owns the page (its title, <html lang>, favicon): standalone on its own page, not embedded or a hosted lab. */
 let onPage = true;
@@ -537,6 +539,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   mountEl = mount;
   barHost = bar;
   actionsHost = host.actions;
+  backHost = host.back;
   bar?.classList.add(ROOT_CLASS, BAR_CLASS); // the bar keeps Netfix's look (its rules hang off .netfix-root)
   host.actions?.classList.add(ROOT_CLASS, ACTIONS_CLASS);
   if (bar) mount.dataset.bar = 'host'; else delete mount.dataset.bar;

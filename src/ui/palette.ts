@@ -2,6 +2,7 @@
  * Bottom palette: devices to place, editing tools, zoom controls and the hint line. With the bar in a host's menu, the
  * palette is a sidebar of devices and tools, and the actions (undo/redo, clipboard, zoom) go in the host's `actions`.
  */
+import type { HostBack } from './embed-api.ts';
 import { el, staticSvg } from './dom.ts';
 import type { Tool } from './canvas.ts';
 import { iconOf, modelLabel } from './icons.ts';
@@ -158,11 +159,19 @@ function drawToggle(actions: PaletteActions): HTMLButtonElement {
   return b;
 }
 
+/** A host's way back (its `back` option), first in the palette. */
+function backGroup(back: HostBack): HTMLElement {
+  const b = el('button', { type: 'button', class: 'pal-item pal-tool pal-back', 'aria-label': back.label, title: back.label },
+    el('span', { class: 'pal-glyph', 'aria-hidden': 'true' }, '←'), el('span', { class: 'pal-name' }, back.label));
+  b.addEventListener('click', back.onClick);
+  return el('div', { class: 'pal-group pal-back-group', role: 'group' }, b);
+}
+
 /**
  * The palette; classroom restrictions leave out devices, the editing tools (topology locked) and drawing. `actionsBox`
  * (hosted): the element that takes the action groups instead of the palette, and no hint line in it.
  */
-export function palette(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, hintEl: HTMLElement, policy: Restrictions = NO_RESTRICTIONS, actionsBox: HTMLElement | null = null): HTMLElement {
+export function palette(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, hintEl: HTMLElement, policy: Restrictions = NO_RESTRICTIONS, actionsBox: HTMLElement | null = null, back: HostBack | null = null): HTMLElement {
   const toolBtn = (key: string, name: string, tool: Tool, glyph: string): HTMLButtonElement => {
     const b = el('button', { type: 'button', class: `pal-item pal-tool pal-${key}`, 'aria-pressed': 'false' },
       el('span', { class: 'pal-glyph', 'aria-hidden': 'true' }, glyph), el('span', { class: 'pal-name' }, name));
@@ -194,6 +203,7 @@ export function palette(actions: PaletteActions, buttons: Map<string, HTMLButton
   ];
   actionsBox?.replaceChildren(...groups);
   return el(actionsBox ? 'nav' : 'footer', { class: 'palette', 'aria-label': t('pal.label') },
+    ...(back ? [backGroup(back)] : []),
     deviceGroup(actions, buttons, policy),
     el('div', { class: 'pal-group', role: 'group', 'aria-label': t('pal.tools') },
       toolBtn('select', t('pal.select'), { kind: 'select' }, '↖'),
