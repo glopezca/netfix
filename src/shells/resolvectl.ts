@@ -2,7 +2,9 @@
  * resolvectl (systemd-resolved) in the Linux terminals: status, query, dns, domain, llmnr, mdns, revert, flush-caches,
  * reset-server-features and statistics, as systemd 258 prints them. Changes are runtime state (shells/resolved.ts).
  */
-import type { Ctx, CommandFn } from '../bash/types.ts';
+import type { Ctx, CommandFn, Gen } from '../bash/types.ts';
+import type { Steps } from '../net/live-wait.ts';
+import { stepsIn } from './live-steps.ts';
 import type { Host } from '../devices/host.ts';
 import type { DnsType } from '../net/packets.ts';
 import { searchDomains } from './dns-client.ts';
@@ -181,12 +183,12 @@ function privileged(ctx: Ctx, what: string): boolean {
 /** At most this many names per query (each may try the whole search list). */
 const MAX_QUERY_NAMES = 64;
 
-function queryVerb(ctx: Ctx, host: Host, p: Parsed, names: readonly string[]): number {
+function* queryVerb(ctx: Ctx, host: Host, p: Parsed, names: readonly string[]): Steps<number> {
   const type = queryType(p.type);
   if (typeof type === 'object') { ctx.err(`${type.error}\n`); return 1; }
   if (!names.length) { ctx.err('Too few arguments.\n'); return 1; }
   if (names.length > MAX_QUERY_NAMES) { ctx.err('Too many arguments.\n'); return 1; }
-  return query(ctx, host, names, { type, legend: p.legend });
+  return yield* query(ctx, host, names, { type, legend: p.legend });
 }
 
 function revertVerb(ctx: Ctx, host: Host, name: string | undefined): number {
@@ -198,7 +200,7 @@ function revertVerb(ctx: Ctx, host: Host, name: string | undefined): number {
 }
 
 export function resolvectl(host: Host): CommandFn {
-  return (ctx) => {
+  return function* (ctx): Gen<number> {
     const args = ctx.argv.slice(1);
     if (args.includes('-h') || args.includes('--help')) { out(ctx, HELP); return 0; }
     const p = parse(args);
@@ -211,7 +213,7 @@ export function resolvectl(host: Host): CommandFn {
         out(ctx, status(host, link));
         return 0;
       }
-      case 'query': return queryVerb(ctx, host, p, rest);
+      case 'query': return yield* stepsIn(host.hooks, queryVerb(ctx, host, p, rest), ctx.sh.liveWaits);
       case 'dns': case 'domain': return perLink(ctx, host, verb, rest);
       case 'llmnr': case 'mdns': return supportVerb(ctx, host, verb, rest);
       case 'revert': return revertVerb(ctx, host, rest[0]);

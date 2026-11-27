@@ -1,7 +1,7 @@
 /** Network operations shared by the Linux and Windows shells and the desktop apps. */
-import { mdnsResolve } from '../net/mdns.ts';
-import { winsLookup } from './samba-wins.ts';
-import { windowsLinkResolve } from '../net/win-names.ts';
+import { mdnsResolveSteps } from '../net/mdns.ts';
+import { winsLookupSteps } from './samba-wins.ts';
+import { windowsLinkResolveSteps } from '../net/win-names.ts';
 import { hostsSources, nssNext } from './nsswitch.ts';
 import type { NssStatus } from './nsswitch.ts';
 import { hasPackage } from '../net/host-packages.ts';
@@ -11,9 +11,9 @@ import { firstAddress, normalizeName, reverseName } from '../net/dns.ts';
 import type { TcpResult } from '../net/tcp.ts';
 import { runSteps, type Steps } from '../net/live-wait.ts';
 import { parseIp } from '../core/ip.ts';
-import { dnsQuery, dnsSearch } from './dns-client.ts';
+import { dnsQuerySteps, dnsSearchSteps } from './dns-client.ts';
 import { hostsLookup } from './hosts-file.ts';
-import { resolvedLookup } from './nss-resolve.ts';
+import { resolvedLookupSteps } from './nss-resolve.ts';
 import { resolvedRunning } from './resolved.ts';
 import { unitRunning } from '../net/pkg-units.ts';
 import { serviceSystem } from '../net/device-apps.ts';
@@ -37,8 +37,8 @@ const ip = (addr: number | undefined, name: string): Step => (addr === undefined
 const isLocalName = (name: string): boolean => /\.local\.?$/i.test(name);
 const singleLabel = (name: string): boolean => !name.replace(/\.$/, '').includes('.');
 
-function dnsStep(host: Host, target: string): Resolved {
-  const { result: r, name } = dnsSearch(host, target, 'A');
+function* dnsStep(host: Host, target: string): Steps<Resolved> {
+  const { result: r, name } = yield* dnsSearchSteps(host, target, 'A');
   if (r.kind !== 'answer') return { kind: 'error', reason: r.kind };
   if (r.msg.rcode === 'NXDOMAIN' || r.msg.rcode === 'REFUSED' || r.msg.rcode === 'SERVFAIL') return { kind: 'error', reason: 'nxdomain' };
   const addr = firstAddress(r.msg);
@@ -46,11 +46,11 @@ function dnsStep(host: Host, target: string): Resolved {
 }
 
 /** Windows (after its hosts file): mDNS for .local, the DNS (with its suffix) and, for a bare name, LLMNR and NetBIOS at once. */
-function windowsLookup(host: Host, target: string): Resolved {
-  if (isLocalName(target)) return ip(mdnsResolve(host, normalizeName(target), true), normalizeName(target)) ?? dnsStep(host, target);
-  const dns = dnsStep(host, target);
+function* windowsLookup(host: Host, target: string): Steps<Resolved> {
+  if (isLocalName(target)) return ip(yield* mdnsResolveSteps(host, normalizeName(target), true), normalizeName(target)) ?? (yield* dnsStep(host, target));
+  const dns = yield* dnsStep(host, target);
   if (dns.kind === 'ip' || !singleLabel(target)) return dns;
-  return ip(windowsLinkResolve(host, target), target) ?? dns;
+  return ip(yield* windowsLinkResolveSteps(host, target), target) ?? dns;
 }
 
 /** What one NSS module answers: its status for glibc and, when it found the name, the address. */
@@ -67,16 +67,16 @@ const DNS_STATUS: Readonly<Record<Extract<Resolved, { kind: 'error' }>['reason']
  * libnss-resolve: systemd-resolved answers (LLMNR, mDNS, DNS). A stopped unit is UNAVAIL ([!UNAVAIL=return] lets the
  * next source try); any failure of resolved itself is NOTFOUND.
  */
-function resolveStep(host: Host, target: string): NssStep {
+function* resolveStep(host: Host, target: string): Steps<NssStep> {
   if (!resolvedRunning(host)) return unavail;
-  const r = resolvedLookup(host, target);
+  const r = yield* resolvedLookupSteps(host, target);
   if (r.kind === 'link') return { status: 'SUCCESS', result: { kind: 'ip', ip: r.ip, name: normalizeName(target), viaDns: false } };
   const addr = r.kind === 'dns' && r.result.kind === 'answer' && r.result.msg.rcode === 'NOERROR' ? firstAddress(r.result.msg) : undefined;
   return r.kind === 'dns' && addr !== undefined ? { status: 'SUCCESS', result: { kind: 'ip', ip: addr, name: normalizeName(r.name), viaDns: true } } : notFound;
 }
 
 /** One source of «hosts:»; a module that is not installed (or a source glibc does not know) is UNAVAIL. */
-function nssStep(host: Host, source: string, target: string): NssStep {
+function* nssStep(host: Host, source: string, target: string): Steps<NssStep> {
   if (source === 'files') {
     const r = ip(hostsLookup(host, target), target);
     return r ? { status: 'SUCCESS', result: r } : notFound;
@@ -86,30 +86,30 @@ function nssStep(host: Host, source: string, target: string): NssStep {
   const own = viaResolved && resolvedRunning(host) ? synthesised(host, target) : undefined;
   if (own) return { status: 'SUCCESS', result: own };
   if (source === 'dns') {
-    const r = dnsStep(host, target);
+    const r = yield* dnsStep(host, target);
     return { status: r.kind === 'ip' ? 'SUCCESS' : DNS_STATUS[r.reason], result: r };
   }
-  if (source === 'resolve' && hasPackage(host, 'libnss-resolve')) return resolveStep(host, target);
+  if (source === 'resolve' && hasPackage(host, 'libnss-resolve')) return yield* resolveStep(host, target);
   // nss-mdns asks through avahi-daemon: without it running the module has nothing to ask.
   if (source.startsWith('mdns') && hasPackage(host, 'libnss-mdns') && unitRunning(host, 'avahi-daemon')) {
     // The _minimal modules only take .local names: anything else is UNAVAIL, so [NOTFOUND=return] does not stop it.
     if (source.endsWith('_minimal') && !isLocalName(target)) return unavail;
-    const r = ip(mdnsResolve(host, normalizeName(target), false), normalizeName(target));
+    const r = ip(yield* mdnsResolveSteps(host, normalizeName(target), false), normalizeName(target));
     return r ? { status: 'SUCCESS', result: r } : notFound;
   }
   // nss_wins asks winbindd: stopped, wins finds nothing.
   if (source === 'wins' && hasPackage(host, 'libnss-winbind') && unitRunning(host, 'winbind')) {
-    const r = singleLabel(target) ? ip(winsLookup(host, target), target) : undefined;
+    const r = singleLabel(target) ? ip(yield* winsLookupSteps(host, target), target) : undefined;
     return r ? { status: 'SUCCESS', result: r } : notFound;
   }
   return unavail;
 }
 
 /** GNU/Linux: the sources of «hosts:» in /etc/nsswitch.conf, in order, with their [STATUS=action] (files is /etc/hosts). */
-function linuxLookup(host: Host, target: string): Resolved {
+function* linuxLookup(host: Host, target: string): Steps<Resolved> {
   let last: Resolved = { kind: 'error', reason: 'nxdomain' };
   for (const { source, actions } of hostsSources(host)) {
-    const step = nssStep(host, source, target);
+    const step = yield* nssStep(host, source, target);
     if (step.result) last = step.result;
     if (nssNext(actions, step.status) === 'return') return step.status === 'SUCCESS' ? last : step.result ?? { kind: 'error', reason: 'nxdomain' };
   }
@@ -130,10 +130,15 @@ function synthesised(host: Host, target: string): Step {
  * `client` defaults to the device's system (TCP/IP tab); the terminals say which one asks.
  */
 export function resolveHost(host: Host, target: string, client: NameClient = serviceSystem(host)): Resolved {
+  return runSteps(host.hooks, resolveHostSteps(host, target, client));
+}
+
+/** resolveHost as steps (0.94.0): DNS, mDNS, LLMNR and NetBIOS waited for live by a terminal or an app. */
+export function* resolveHostSteps(host: Host, target: string, client: NameClient = serviceSystem(host)): Steps<Resolved> {
   const literal = parseIp(target);
   if (literal !== null) return { kind: 'ip', ip: literal, name: target, viaDns: false };
-  if (client === 'windows') return synthesised(host, target) ?? ip(hostsLookup(host, target, 'windows'), target) ?? windowsLookup(host, target);
-  return linuxLookup(host, target);
+  if (client === 'windows') return synthesised(host, target) ?? ip(hostsLookup(host, target, 'windows'), target) ?? (yield* windowsLookup(host, target));
+  return yield* linuxLookup(host, target);
 }
 
 export function tcpCall(host: Host, ip: number, port: number, payload: AppPayload, waitMs = TCP_WAIT_MS): TcpResult {
@@ -184,11 +189,11 @@ export function httpRequest(host: Host, url: string, opts: HttpOptions = {}): Ht
   return runSteps(host.hooks, httpSteps(host, url, opts));
 }
 
-/** httpRequest as steps (0.92.0). The name is still resolved at once (shortcut: a DNS server in another page is not waited for live). */
+/** httpRequest as steps (0.92.0; the name waited for live too, 0.94.0). */
 export function* httpSteps(host: Host, url: string, opts: HttpOptions = {}): Steps<HttpOutcome> {
   const parts = parseUrl(url);
   if (!parts) return { kind: 'error', code: 3, message: `URL rejected: Malformed input to a URL function (solo se admite http://)` };
-  const target = resolveHost(host, parts.host, opts.client);
+  const target = yield* resolveHostSteps(host, parts.host, opts.client);
   if (target.kind === 'error') return { kind: 'error', code: 6, message: `Could not resolve host: ${parts.host}` };
   const headers: HttpHeaders = { host: `${parts.host}${parts.port !== DEFAULT_HTTP_PORT ? `:${parts.port}` : ''}`, 'user-agent': 'Netfix', ...opts.headers };
   const r = yield* tcpSteps(host, target.ip, parts.port, { app: 'HTTP', kind: 'request', method: opts.method ?? 'GET', host: parts.host, path: parts.path, headers, body: opts.body });
@@ -199,7 +204,11 @@ export function* httpSteps(host: Host, url: string, opts: HttpOptions = {}): Ste
 }
 
 export function reverseLookup(host: Host, ip: number, server?: number): DnsMessage | undefined {
-  const r = dnsQuery(host, reverseName(ip), 'PTR', server);
+  return runSteps(host.hooks, reverseLookupSteps(host, ip, server));
+}
+
+export function* reverseLookupSteps(host: Host, ip: number, server?: number): Steps<DnsMessage | undefined> {
+  const r = yield* dnsQuerySteps(host, reverseName(ip), 'PTR', server);
   return r.kind === 'answer' ? r.msg : undefined;
 }
 

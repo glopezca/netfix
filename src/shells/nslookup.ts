@@ -7,7 +7,9 @@ import type { Ctx, Gen } from '../bash/types.ts';
 import type { DnsType } from '../net/packets.ts';
 import type { DnsResult } from '../net/dns.ts';
 import { reverseName } from '../net/dns.ts';
-import { dnsQuery, dnsSearch, searchDomains } from './dns-client.ts';
+import { dnsQuerySteps, dnsSearchSteps, searchDomains } from './dns-client.ts';
+import { runSteps, type Steps } from '../net/live-wait.ts';
+import { stepsIn } from './live-steps.ts';
 import { resolvedDns } from './resolved.ts';
 import { nslookupOutput, serverHead } from './nslookup-format.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
@@ -60,13 +62,18 @@ export class Nslookup {
   /** The last lookup found records of the asked type (the exit status of a one-shot run). */
   ok = false;
   private server: Server | undefined;
-  private readonly initial: Server | undefined;
+  private initial: Server | undefined;
+  private readonly initialIp: number | undefined;
 
   constructor(host: Host, windows: boolean, server?: number) {
     this.host = host;
     this.windows = windows;
-    const ip = server ?? resolvedDns(host);
-    this.initial = ip === undefined ? undefined : this.named(ip);
+    this.initialIp = server ?? resolvedDns(host);
+  }
+
+  /** The default server, named (Windows asks it for its PTR record): a step before anything else (0.94.0). */
+  *begin(): Steps<void> {
+    this.initial = this.initialIp === undefined ? undefined : yield* this.named(this.initialIp);
     this.server = this.initial;
   }
 
@@ -83,27 +90,31 @@ export class Nslookup {
     return serverHead(this.server.label, this.server.ip, true, 'default');
   }
 
-  lookup(name: string, serverArg?: string): string[] {
-    const other = serverArg === undefined ? this.server : this.resolveServer(serverArg, this.server);
+  *lookup(name: string, serverArg?: string): Steps<string[]> {
+    const other = serverArg === undefined ? this.server : yield* this.resolveServer(serverArg, this.server);
     if (typeof other === 'string') return [other];
     const ip = parseIp(name);
     const reverse = ip !== null && this.type === 'A';
-    const result: DnsResult = reverse ? dnsQuery(this.host, reverseName(ip), 'PTR', other?.ip) : dnsSearch(this.host, name, this.type, other?.ip).result;
+    const result: DnsResult = reverse ? yield* dnsQuerySteps(this.host, reverseName(ip), 'PTR', other?.ip) : (yield* dnsSearchSteps(this.host, name, this.type, other?.ip)).result;
     const asked = reverse ? 'PTR' : this.type;
     this.ok = result.kind === 'answer' && (result.msg.answers ?? []).some((a) => a.type === asked);
     return nslookupOutput(name, result, this.windows, { serverLabel: other?.label, debug: this.debug });
   }
 
-  /** One line typed at the `>` prompt. */
+  /** One line typed at the `>` prompt, waiting synchronously (the Windows prompt's interactive session). */
   line(text: string): NsReply {
+    return runSteps(this.host.hooks, this.lineSteps(text));
+  }
+
+  *lineSteps(text: string): Steps<NsReply> {
     const [cmd = '', ...args] = text.trim().split(/\s+/).filter(Boolean);
     const lower = cmd.toLowerCase();
     if (!cmd) return { out: [], exit: false };
     if (lower === 'exit') return { out: [], exit: true };
     if (lower === 'set') return { out: args[0] ? this.set(args[0]) : [], exit: false };
-    if (lower === 'server' || lower === 'lserver') return { out: this.changeServer(args[0], lower === 'lserver'), exit: false };
+    if (lower === 'server' || lower === 'lserver') return { out: yield* this.changeServer(args[0], lower === 'lserver'), exit: false };
     if (lower === 'help' || lower === '?') return { out: this.windows ? WINDOWS_HELP : [`The '${cmd}' command is not yet implemented.`], exit: false };
-    return { out: this.lookup(cmd, args[0]), exit: false };
+    return { out: yield* this.lookup(cmd, args[0]), exit: false };
   }
 
   private set(option: string): string[] {
@@ -131,26 +142,26 @@ export class Nslookup {
   }
 
   /** `nslookup - SERVER` with a name: the server for the session, an error line when it does not resolve. */
-  useServer(name: string): string[] {
-    const found = this.resolveServer(name, this.server);
+  *useServer(name: string): Steps<string[]> {
+    const found = yield* this.resolveServer(name, this.server);
     if (typeof found === 'string') return [found];
     this.server = found;
     return [];
   }
 
-  private changeServer(name: string | undefined, fromInitial: boolean): string[] {
+  private *changeServer(name: string | undefined, fromInitial: boolean): Steps<string[]> {
     if (!name) return [];
-    const found = this.resolveServer(name, fromInitial ? this.initial : this.server);
+    const found = yield* this.resolveServer(name, fromInitial ? this.initial : this.server);
     if (typeof found === 'string') return [found];
     this.server = found;
     return serverHead(found.label, found.ip, this.windows, 'default');
   }
 
   /** An address as it is; a name, looked up with the given server. */
-  private resolveServer(name: string, via: Server | undefined): Server | string {
+  private *resolveServer(name: string, via: Server | undefined): Steps<Server | string> {
     const ip = parseIp(name);
-    if (ip !== null) return this.named(ip, this.windows ? `[${name}]` : name);
-    const r = dnsSearch(this.host, name, 'A', via?.ip).result;
+    if (ip !== null) return yield* this.named(ip, this.windows ? `[${name}]` : name);
+    const r = (yield* dnsSearchSteps(this.host, name, 'A', via?.ip)).result;
     const a = r.kind === 'answer' ? r.msg.answers?.find((x) => x.type === 'A') : undefined;
     const addr = a ? parseIp(a.data) : null;
     if (addr !== null && addr !== undefined) return { ip: addr, label: this.windows ? a?.name ?? name : name };
@@ -160,9 +171,9 @@ export class Nslookup {
   }
 
   /** Windows names a server by its PTR record (asked to that server), falling back to `fallback` or UnKnown. */
-  private named(ip: number, fallback?: string): Server {
+  private *named(ip: number, fallback?: string): Steps<Server> {
     if (!this.windows) return { ip, label: fallback ?? formatIp(ip) };
-    const r = dnsQuery(this.host, reverseName(ip), 'PTR', ip);
+    const r = yield* dnsQuerySteps(this.host, reverseName(ip), 'PTR', ip);
     const ptr = r.kind === 'answer' ? r.msg.answers?.find((a) => a.type === 'PTR')?.data : undefined;
     return { ip, label: ptr ?? fallback ?? 'UnKnown' };
   }
@@ -176,30 +187,37 @@ export function parseNslookupArgs(args: readonly string[]): { opts: string[]; na
 }
 
 /** The NAME of a one-shot lookup (with its options), or an interactive session; an error line when an option is wrong. */
-export function startNslookup(host: Host, windows: boolean, args: readonly string[]): { ns: Nslookup; interactive: boolean; out: string[] } {
+export function startNslookup(host: Host, windows: boolean, args: readonly string[]): NsStart {
+  return runSteps(host.hooks, startNslookupSteps(host, windows, args));
+}
+
+type NsStart = { ns: Nslookup; interactive: boolean; out: string[] };
+
+export function* startNslookupSteps(host: Host, windows: boolean, args: readonly string[]): Steps<NsStart> {
   const { opts, name, server } = parseNslookupArgs(args);
   const serverIp = server === undefined ? undefined : parseIp(server) ?? undefined;
   const ns = new Nslookup(host, windows, serverIp);
+  yield* ns.begin();
   const errors = opts.map((o) => ns.option(o)).filter((e): e is string => e !== null);
   if (errors.length) return { ns, interactive: false, out: errors };
   if (name === undefined || name === '-') {
-    const failed = server !== undefined && serverIp === undefined ? ns.useServer(server) : [];
+    const failed = server !== undefined && serverIp === undefined ? yield* ns.useServer(server) : [];
     return { ns, interactive: true, out: [...failed, ...ns.banner()] };
   }
-  return { ns, interactive: false, out: ns.lookup(name, serverIp === undefined ? server : undefined) };
+  return { ns, interactive: false, out: yield* ns.lookup(name, serverIp === undefined ? server : undefined) };
 }
 
 /** The Ubuntu program: one lookup, or the `>` prompt until exit or Ctrl+D. */
 export function nslookupProgram(host: Host) {
   return function* run(ctx: Ctx): Gen<number> {
-    const start = startNslookup(host, false, ctx.argv.slice(1));
+    const start = yield* stepsIn(host.hooks, startNslookupSteps(host, false, ctx.argv.slice(1)), ctx.sh.liveWaits);
     const print = (lines: readonly string[]): void => { if (lines.length) ctx.out(`${lines.join('\n')}\n`); };
     print(start.out);
     if (!start.interactive) return start.ns.ok ? 0 : 1;
     for (;;) {
       const line = yield* ctx.readLine('> ');
       if (line === null) return 0;
-      const reply = start.ns.line(line.text);
+      const reply = yield* stepsIn(host.hooks, start.ns.lineSteps(line.text), ctx.sh.liveWaits);
       print(reply.out);
       if (reply.exit) return 0;
     }

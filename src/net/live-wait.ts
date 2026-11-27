@@ -45,6 +45,24 @@ export function waitLive(w: Wait): Promise<void> {
   });
 }
 
+/** A wait for a condition (0.94.0): DHCP bound, a scan's answers… */
+export function* waitFor(done: () => boolean, ms: number): Steps<void> {
+  if (!done()) yield { done, ms };
+}
+
+/** runSync as a step (0.94.0): starts `op`, then waits until it calls back or `ms` pass; undefined if it never did. */
+export function* untilDone<T>(op: (done: (r: T) => void) => void, ms: number): Steps<T | undefined> {
+  let result: T | undefined;
+  let finished = false;
+  op((r) => {
+    if (finished) return;
+    finished = true;
+    result = r;
+  });
+  if (!finished) yield { done: () => finished, ms };
+  return result;
+}
+
 export async function runLive<T>(steps: Steps<T>): Promise<T> {
   for (let r = steps.next(); ; r = steps.next()) {
     if (r.done) return r.value;

@@ -3,16 +3,18 @@
  * hosts ones through /etc/nsswitch.conf (net-tools.ts resolveHost: files, resolve, mdns, wins, dns…). Exit 0 when
  * every key was found, 2 when one was not, 1 for a database or argument error, 64 for a bad option (argp).
  */
-import type { Ctx, CommandFn } from '../bash/types.ts';
+import type { Ctx, CommandFn, Gen } from '../bash/types.ts';
+import type { Steps } from '../net/live-wait.ts';
+import { stepsIn } from './live-steps.ts';
 import type { Host } from '../devices/host.ts';
 import { peekHostFile } from '../devices/host-fs.ts';
 import { normalizeName, reverseName } from '../net/dns.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { t } from '../i18n/t.ts';
-import { dnsQuery } from './dns-client.ts';
+import { dnsQuerySteps } from './dns-client.ts';
 import { hostsEntries, hostsRows } from './hosts-file.ts';
 import type { HostsEntry } from './hosts-file.ts';
-import { resolveHost } from './net-tools.ts';
+import { resolveHostSteps } from './net-tools.ts';
 import { hostsSources } from './nsswitch.ts';
 import { shown } from './resolvectl-query.ts';
 
@@ -33,7 +35,8 @@ const USAGE_ERROR = 64;
 const MAX_KEYS = 64;
 
 /** The lines one key prints, or undefined when the database does not have it. */
-type Lookup = (key: string) => readonly string[] | undefined;
+/** A lookup as steps (0.94.0): the hosts databases may ask a DNS server outside the page. */
+type Lookup = (key: string) => Steps<readonly string[] | undefined>;
 
 interface Database {
   readonly lookup: Lookup;
@@ -46,28 +49,28 @@ const fileEntries = (host: Host): HostsEntry[] => (hostsSources(host).some((s) =
 const hostsLine = (e: HostsEntry): string => `${formatIp(e.ip).padEnd(ADDRESS_COLUMN)} ${e.names.join(' ')}`;
 
 /** gethostbyaddr: /etc/hosts, then the PTR record when «hosts:» has a resolver. */
-function byAddress(host: Host, ip: number): HostsEntry | undefined {
+function* byAddress(host: Host, ip: number): Steps<HostsEntry | undefined> {
   const local = fileEntries(host).find((e) => e.ip === ip);
   if (local) return local;
   if (!hostsSources(host).some((s) => s.source === 'dns' || s.source === 'resolve')) return undefined;
-  const r = dnsQuery(host, reverseName(ip), 'PTR');
+  const r = yield* dnsQuerySteps(host, reverseName(ip), 'PTR');
   const name = r.kind === 'answer' ? r.msg.answers?.find((a) => a.type === 'PTR')?.data.replace(/\.$/, '') : undefined;
   return name ? { ip, names: [name] } : undefined;
 }
 
 /** gethostbyname: the /etc/hosts line (with its aliases), then the rest of «hosts:». */
-function byName(host: Host, key: string): HostsEntry | undefined {
+function* byName(host: Host, key: string): Steps<HostsEntry | undefined> {
   const wanted = normalizeName(key);
   const local = fileEntries(host).find((e) => e.names.some((n) => normalizeName(n) === wanted));
   if (local) return local;
-  const r = resolveHost(host, key, 'linux');
+  const r = yield* resolveHostSteps(host, key, 'linux');
   return r.kind === 'ip' ? { ip: r.ip, names: [r.name] } : undefined;
 }
 
 /** getaddrinfo with AI_CANONNAME: one line per socket type, the canonical name on the first (a literal is itself). */
-function addrinfo(host: Host, key: string, v6: boolean): string[] | undefined {
+function* addrinfo(host: Host, key: string, v6: boolean): Steps<string[] | undefined> {
   const literal = parseIp(key);
-  const e = literal !== null ? { ip: literal, names: [key] } : byName(host, key);
+  const e = literal !== null ? { ip: literal, names: [key] } : yield* byName(host, key);
   if (!e) return undefined;
   const addr = (v6 ? `::ffff:${formatIp(e.ip)}` : formatIp(e.ip)).padEnd(ADDRESS_COLUMN);
   return [['STREAM', e.names[0] ?? key], ['DGRAM', ''], ['RAW', '']].map(([kind = '', name]) => `${addr} ${kind.padEnd(SOCKET_COLUMN)} ${name}`);
@@ -77,7 +80,7 @@ function addrinfo(host: Host, key: string, v6: boolean): string[] | undefined {
 function fileDatabase(host: Host, path: string): Database {
   const rows = (): string[] => (peekHostFile(host, path) ?? '').split('\n').filter((r) => r !== '');
   return {
-    lookup: (key) => {
+    lookup: function* (key) {
       const row = rows().find((r) => (/^\d+$/.test(key) ? r.split(':')[2] === key : r.split(':')[0] === key));
       return row === undefined ? undefined : [row];
     },
@@ -88,11 +91,11 @@ function fileDatabase(host: Host, path: string): Database {
 function database(host: Host, name: string): Database | undefined {
   const files = (): boolean => hostsSources(host).some((s) => s.source === 'files');
   const all = (): string[] => (files() ? hostsRows(host).map((r) => `${r.addr.padEnd(ADDRESS_COLUMN)} ${r.names.join(' ')}`) : []);
-  const one = (f: (key: string) => readonly string[] | undefined): Database => ({ lookup: f, all });
+  const one = (f: Lookup): Database => ({ lookup: f, all });
   switch (name) {
-    case 'hosts': return one((key) => {
+    case 'hosts': return one(function* (key) {
       const ip = parseIp(key);
-      const e = ip !== null ? byAddress(host, ip) : byName(host, key);
+      const e = ip !== null ? yield* byAddress(host, ip) : yield* byName(host, key);
       return e ? [hostsLine(e)] : undefined;
     });
     case 'ahosts': case 'ahostsv4': return one((key) => addrinfo(host, key, false));
@@ -125,7 +128,7 @@ function parse(ctx: Ctx, args: readonly string[]): Parsed {
 const print = (ctx: Ctx, lines: readonly string[]): void => { if (lines.length) ctx.out(`${lines.join('\n')}\n`); };
 
 export function getent(host: Host): CommandFn {
-  return (ctx) => {
+  return function* (ctx): Gen<number> {
     const p = parse(ctx, ctx.argv.slice(1));
     if ('exit' in p) return p.exit;
     const [name, ...keys] = p.words;
@@ -137,7 +140,7 @@ export function getent(host: Host): CommandFn {
     if (keys.length > MAX_KEYS) ctx.err(`getent: ${t('getent.tooMany', { max: String(MAX_KEYS) })}\n`);
     let status = 0;
     for (const key of keys.slice(0, MAX_KEYS)) {
-      const lines = db.lookup(key);
+      const lines = yield* stepsIn(host.hooks, db.lookup(key), ctx.sh.liveWaits);
       if (lines) print(ctx, lines);
       else status = NOT_FOUND;
     }

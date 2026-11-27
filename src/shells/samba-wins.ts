@@ -8,8 +8,9 @@
 import type { Host } from '../devices/host.ts';
 import { readHostFile } from '../devices/server-firewall.ts';
 import { SMB_CONF, parseSmbConf } from '../services/smb-conf.ts';
-import { setWinsServer, winsRegister, winsResolve, winsSendAll } from '../net/wins.ts';
-import { WORKSTATION, nbnsResolve } from '../net/netbios.ts';
+import { setWinsServer, winsRegister, winsResolveSteps, winsSendAll } from '../net/wins.ts';
+import { runSteps, type Steps } from '../net/live-wait.ts';
+import { WORKSTATION, nbnsResolveSteps } from '../net/netbios.ts';
 import { unitRunning } from '../net/pkg-units.ts';
 
 /** Samba's default «max ttl»: what a client asks of its WINS server. */
@@ -77,6 +78,10 @@ export function bootWins(host: Host): void {
 
 /** libnss_wins (the `wins` of «hosts:»): the servers of `wins server`, then a broadcast to the subnet. */
 export function winsLookup(host: Host, name: string): number | undefined {
+  return runSteps(host.hooks, winsLookupSteps(host, name));
+}
+
+export function* winsLookupSteps(host: Host, name: string): Steps<number | undefined> {
   const servers = parseSmbConf(readHostFile(host, SMB_CONF) ?? '').winsServers;
-  return winsResolve(host, servers, name, WORKSTATION) ?? nbnsResolve(host, name);
+  return (yield* winsResolveSteps(host, servers, name, WORKSTATION)) ?? (yield* nbnsResolveSteps(host, name));
 }

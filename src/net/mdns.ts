@@ -14,7 +14,7 @@ import type { IpPacket } from './packets.ts';
 import type { StackHost } from './ipstack.ts';
 import { registerLocalSockets } from './ipstack.ts';
 import { hasPackage } from './host-packages.ts';
-import { runSync } from './sync.ts';
+import { runSteps, untilDone, type Steps } from './live-wait.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { shortHostname } from '../core/hostname.ts';
 
@@ -101,12 +101,16 @@ export function registerMdns(): void {
 
 /** The address of `name` (…​.local) on the host's links, or undefined when nobody answers. */
 export function mdnsResolve(host: Host, name: string, windowsClient: boolean): number | undefined {
+  return runSteps(host.hooks, mdnsResolveSteps(host, name, windowsClient));
+}
+
+export function* mdnsResolveSteps(host: Host, name: string, windowsClient: boolean): Steps<number | undefined> {
   registerMdns();
   // Windows asks from 5353 and hears the answer on the group; nss-mdns from a one-shot port.
   const port = windowsClient ? MDNS_PORT : FIRST_PORT + (nextPort++ % PORTS);
   const pending = waiting.get(host) ?? new Map<number, { readonly name: string; readonly done: (ip: number) => void }>();
   waiting.set(host, pending);
-  const ip = runSync<number | undefined>(host.hooks, (done) => {
+  const ip = yield* untilDone<number | undefined>((done) => {
     pending.set(port, { name: name.toLowerCase(), done });
     host.hooks.schedule(QUERY_MS, () => done(undefined));
     for (const iface of host.l3Ifaces().filter((i) => i.up && i.addrs.length)) {

@@ -6,18 +6,22 @@
 import type { Host } from '../devices/host.ts';
 import { LLMNR_WAIT_MS, llmnrLookup } from './llmnr.ts';
 import { NBNS_WAIT_MS, WORKSTATION, nbnsLookup } from './netbios.ts';
-import { runSync } from './sync.ts';
-import { winsResolve } from './wins.ts';
+import { runSteps, untilDone, type Steps } from './live-wait.ts';
+import { winsResolveSteps } from './wins.ts';
 import { windowsWinsServers } from './win-wins.ts';
 
 const MARGIN_MS = 500;
 
 export function windowsLinkResolve(host: Host, name: string): number | undefined {
-  return winsResolve(host, windowsWinsServers(host), name, WORKSTATION) ?? linkResolve(host, name);
+  return runSteps(host.hooks, windowsLinkResolveSteps(host, name));
 }
 
-function linkResolve(host: Host, name: string): number | undefined {
-  return runSync<number | undefined>(host.hooks, (done) => {
+export function* windowsLinkResolveSteps(host: Host, name: string): Steps<number | undefined> {
+  return (yield* winsResolveSteps(host, windowsWinsServers(host), name, WORKSTATION)) ?? (yield* linkResolve(host, name));
+}
+
+function linkResolve(host: Host, name: string): Steps<number | undefined> {
+  return untilDone<number | undefined>((done) => {
     let llmnr: number | undefined | null = null;
     let nbns: number | undefined | null = null;
     const settle = (): void => {
