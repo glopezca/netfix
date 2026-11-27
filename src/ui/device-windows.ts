@@ -74,6 +74,7 @@ function iosBackend(device: IosDevice, session: Session): ConsoleBackend {
     ctrlZ: () => session.ctrlZ(),
     secret: () => session.isSecretInput(),
     onAsync: (cb) => device.onConsole(cb),
+    later: () => session.later(),
   };
 }
 
@@ -165,7 +166,7 @@ function shellTerminal(placed: Placed, h: Host, os: HostOs, app: WindowHost): Te
       editRequest: () => shell.editRequest?.() ?? null, saveEdit: (p, c) => (shell.saveEdit ? shell.saveEdit(p, c) : t('common.unavailable')),
       closeEdit: () => shell.closeEdit?.() ?? [],
       screenFrame: (w, h) => shell.screenFrame?.(w, h) ?? null, screenKey: (k) => shell.screenKey?.(k) ?? [],
-      applyPrompt: () => shell.applyTimestampPrompt?.(),
+      applyPrompt: () => shell.applyTimestampPrompt?.(), later: () => shell.later?.() ?? null,
     };
     const footer = promptToggle(app.promptLock?.());
     footers.set(key, footer);

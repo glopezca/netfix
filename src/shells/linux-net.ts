@@ -1,11 +1,12 @@
 /** iproute2, ping, dig/host and dhclient as programs of the bash core (Ubuntu output). */
-import type { Ctx } from '../bash/types.ts';
+import type { Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { resolveHost } from './net-tools.ts';
 import { dnsQuery, dnsSearch } from './dns-client.ts';
 import { linuxMac } from './linux-files.ts';
 import { digOutput, hostOutput } from './dns-format.ts';
-import { runPing } from '../net/ping.ts';
+import { pingSteps } from '../net/ping.ts';
+import { stepsIn } from './live-steps.ts';
 import type { PingOutcome } from '../net/ping.ts';
 import { reverseName } from '../net/dns.ts';
 import type { DnsType, UnreachableCode } from '../net/packets.ts';
@@ -177,7 +178,7 @@ function replyLines(results: readonly PingOutcome[], who: (from: number) => stri
 }
 
 export function ping(host: Host) {
-  return (ctx: Ctx): number => {
+  return function* (ctx: Ctx): Gen<number> {
     const args = ctx.argv.slice(1);
     const { count, target } = pingCount(args);
     if (!target) { ctx.err('ping: usage error: Destination address required\n'); return 1; }
@@ -186,7 +187,7 @@ export function ping(host: Host) {
     const broadcast = host.stack.isBroadcast(r.ip);
     if (broadcast && !wantsBroadcast(args)) { ctx.err(BROADCAST_HINT); return 2; }
     if (broadcast) ctx.err('WARNING: pinging broadcast address\n');
-    const results = runPing(host.stack, host.hooks, r.ip, { count, timeoutMs: PING_TIMEOUT_MS });
+    const results = yield* stepsIn(host.hooks, pingSteps(host.stack, r.ip, { count, timeoutMs: PING_TIMEOUT_MS }));
     if (results.every((x) => x.kind === 'noroute')) { ctx.err('ping: connect: Network is unreachable\n'); return 2; }
     const addr = formatIp(r.ip);
     // The name as resolved (www → www.empresa.lan with the search domain), as ping shows it.

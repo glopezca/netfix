@@ -45,7 +45,7 @@ export class CloudPort implements StackHost {
   readonly name: string;
   settings: CloudPortSettings;
   private readonly owner: PortOwner;
-  /** Where packets for outside go: the emulated Internet, or the Classroom LAN's relay. */
+  /** Where packets for outside go: the emulated Internet, or a host's relay (a registered kind's router). */
   private readonly core: Pick<InternetCore, 'send'>;
   private appliedNet = -1;
   /** ISP DNS relay (router mode with dnsRelay): customers' queries to the gateway, relayed to Google. */

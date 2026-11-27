@@ -98,6 +98,7 @@ export class LinuxShell extends BaseShell {
     const out = textLines(text);
     const pending = this.session.pending();
     if (pending?.kind === 'ssh') out.push(...this.startSsh(pending.args, pending.cwd));
+    if (pending?.kind === 'wait') this.waitFor(pending.until.then(() => (this.session.pending() === pending ? this.after(this.session.resume('')) : [])));
     if (this.session.closed) {
       this.exitCode = this.session.exitCode;
       if (this.remoteSession) this.closed = true;

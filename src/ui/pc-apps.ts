@@ -8,7 +8,7 @@ import { renderHtml } from './html-render.ts';
 import { resolveLink } from '../web/url.ts';
 import type { Pc } from '../devices/pc.ts';
 import { BrowserEngine } from '../clients/browser.ts';
-import type { BrowseResult } from '../clients/browser.ts';
+import type { BrowseResult, Navigation } from '../clients/browser.ts';
 import { sendMail, receiveMail } from '../clients/mail-client.ts';
 import type { MailAccount } from '../clients/mail-client.ts';
 import { formatIp } from '../core/ip.ts';
@@ -53,21 +53,24 @@ export function browserApp(pc: Pc, app: AfterChange): HTMLElement {
     }
     if (r.kind === 'auth') {
       status.textContent = `401 Unauthorized · ${r.realm}`;
-      view.replaceChildren(authBox(r.url, r.realm, r.failed, (u, p) => show(engine.login(r.url, u, p))));
+      view.replaceChildren(authBox(r.url, r.realm, r.failed, (u, p) => { engine.remember(r.url, u, p); load(r.url); }));
       return;
     }
     const res = r.response;
     const page = renderHtml(res.contentType.startsWith('text/html') ? res.body : `<pre>${res.body.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c)}</pre>`, {
       link: (href) => go(resolveLink(r.url, href)),
-      submit: (action, method, fields) => show(engine.open(resolveLink(r.url, action || r.url), { method, form: fields, initiator: r.url })),
+      submit: (action, method, fields) => load(resolveLink(r.url, action || r.url), { method, form: fields, initiator: r.url }),
     });
     status.textContent = `${res.status} ${res.reason} · ${formatIp(r.ip)} · ${res.server}${page.title ? ` · ${page.title}` : ''}`;
     view.replaceChildren(page.body);
   };
-  const go = (target: string): void => {
+  // A network that reaches out of the page (0.92.0): the page comes when its replies do, «Cargando…» meanwhile.
+  const load = (target: string, nav?: Navigation): void => {
     status.textContent = t('pc.loading');
-    show(engine.open(target.trim()));
+    if (engine.live()) void engine.openLive(target, nav).then(show);
+    else show(engine.open(target, nav));
   };
+  const go = (target: string): void => load(target.trim());
   const back = button('←', () => {
     history.pop();
     const prev = history.pop();

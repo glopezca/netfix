@@ -26,6 +26,8 @@ export type Interaction =
   | { readonly kind: 'edit'; readonly spec: EditSpec; readonly save: (path: string, content: string) => string | null }
   /** Nested interactive shell (bash, sudo -i, su): resumed with its exit status when it ends. */
   | { readonly kind: 'shell'; readonly user: UserInfo; readonly login: boolean }
+  /** A reply waited for live (0.92.0, net/live-wait.ts): resumed when `until` settles; driven synchronously, at once. */
+  | { readonly kind: 'wait'; readonly until: Promise<void> }
   /** Full-screen program (mc): resumed with "0" when it closes. */
   | { readonly kind: 'screen'; readonly app: ScreenApp }
   /** ssh client session, handled by the terminal adapter; resumed with its exit status. */

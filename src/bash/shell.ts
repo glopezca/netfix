@@ -80,6 +80,7 @@ export class BashSession {
   prompt(): string {
     if (this.child) return this.child.prompt();
     if (this.waiting?.kind === 'line') return this.promptPrefix + this.waiting.prompt;
+    if (this.waiting?.kind === 'wait') return ''; // a command waiting live for a reply: no prompt yet
     if (this.buffer) return this.sh.prompt(this.sh.getVar('PS2') ?? '> ');
     return this.sh.prompt(this.sh.getVar('PS1') ?? '\\s-\\v\\$ ');
   }

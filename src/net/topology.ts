@@ -194,7 +194,7 @@ export class Topology {
     const id = opts.id ?? `d${this.nextId++}`;
     const seed = opts.seed ?? this.nextSeed++;
     this.nextSeed = Math.max(this.nextSeed, seed + 1);
-    // A registered kind may take its label from the host's context (the Classroom LAN: the class's name); else Router0, ISP0…
+    // A registered kind may take its label from the host's context; else Router0, ISP0…
     const def = isBuiltinKind(kind) ? undefined : deviceKindDef(kind);
     if (!isBuiltinKind(kind) && !def) throw new Error(`Tipo de equipo sin registrar «${kind}»`);
     const label = opts.label ?? def?.label?.(this.contexts.get(kind) ?? null) ?? this.nextLabel(kind);

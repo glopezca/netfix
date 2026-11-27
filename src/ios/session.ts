@@ -49,6 +49,8 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
   crypto: string | undefined;
   private state: InputState = { kind: 'normal' };
   private output: string[] = [];
+  private busy = false;
+  private waitOutput: Promise<string[]> | null = null;
 
   constructor(device: D, opts: { initialDialog?: boolean } = {}) {
     this.device = device;
@@ -61,6 +63,7 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
   }
 
   prompt(): string {
+    if (this.busy) return '';
     if (this.state.kind === 'password') return 'Password: ';
     if (this.state.kind === 'dialog') return 'Continue with configuration dialog? [yes/no]: ';
     return `${this.device.hostname}${PROMPT_SUFFIX[this.mode]}`;
@@ -81,11 +84,24 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
 
   /** Executes one line and returns the output lines (the echoed command is not included). */
   input(line: string): string[] {
+    if (this.busy) return [];
     this.output = [];
     if (this.state.kind === 'dialog') this.handleDialog(line);
     else if (this.state.kind === 'password') this.handlePassword(line);
     else this.dispatch(line);
     return this.output;
+  }
+
+  /** A command waiting live for a reply (0.92.0): its output, handed to the console once; the prompt is hidden meanwhile. */
+  waitFor(output: Promise<string[]>): void {
+    this.busy = true;
+    this.waitOutput = output.finally(() => { this.busy = false; });
+  }
+
+  later(): Promise<string[]> | null {
+    const p = this.waitOutput;
+    this.waitOutput = null;
+    return p;
   }
 
   help(lineBeforeQuestion: string): string[] {

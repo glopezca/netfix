@@ -332,12 +332,12 @@ class App {
 
   private syncKinds(): void {
     const kinds = new Set<string>([...this.topo.net.devices.values()].map((d) => d.kind));
-    // The last one of a hosted kind went: its host may have taken its context back (a Classroom LAN link given back).
+    // The last one of a hosted kind went: its host may have taken its context back (a link given back).
     for (const [k, h] of kindHosts) if (h.track?.(kinds.has(k))) this.topo.setKindContext(k, h.context);
     syncOneOnlyButtons(this.toolButtons, kinds, () => this.selectTool({ kind: 'select' }, 'select'));
   }
 
-  /** A hosted kind's tool: its host's step first (the Classroom LAN asks which class and joins it); only then the tool is picked. */
+  /** A hosted kind's tool: its host's step first (it may ask the user and join something); only then the tool is picked. */
   private async prepareKind(kind: string, prepare: () => Promise<boolean | string>, tool: Tool, key: string): Promise<void> {
     let ready: boolean | string;
     try {

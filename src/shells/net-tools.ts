@@ -9,7 +9,7 @@ import type { Host } from '../devices/host.ts';
 import type { AppPayload, DnsMessage, HttpHeaders, HttpMethod } from '../net/packets.ts';
 import { firstAddress, normalizeName, reverseName } from '../net/dns.ts';
 import type { TcpResult } from '../net/tcp.ts';
-import { runSync } from '../net/sync.ts';
+import { runSteps, type Steps } from '../net/live-wait.ts';
 import { parseIp } from '../core/ip.ts';
 import { dnsQuery, dnsSearch } from './dns-client.ts';
 import { hostsLookup } from './hosts-file.ts';
@@ -137,7 +137,15 @@ export function resolveHost(host: Host, target: string, client: NameClient = ser
 }
 
 export function tcpCall(host: Host, ip: number, port: number, payload: AppPayload, waitMs = TCP_WAIT_MS): TcpResult {
-  return runSync<TcpResult>(host.hooks, (done) => host.connect(ip, port, payload, done, waitMs), waitMs + 1000) ?? { kind: 'timeout' };
+  return runSteps(host.hooks, tcpSteps(host, ip, port, payload, waitMs));
+}
+
+/** One TCP exchange as steps (0.92.0): tcpCall drives it synchronously, a live wait (net/live-wait.ts) in real time. */
+export function* tcpSteps(host: Host, ip: number, port: number, payload: AppPayload, waitMs = TCP_WAIT_MS): Steps<TcpResult> {
+  let result: TcpResult | undefined;
+  host.connect(ip, port, payload, (r) => { result ??= r; }, waitMs);
+  yield { done: () => result !== undefined, ms: waitMs + 1000 };
+  return result ?? { kind: 'timeout' };
 }
 
 export interface UrlParts {
@@ -173,12 +181,17 @@ export function httpGet(host: Host, url: string, method: HttpMethod = 'GET', cli
 
 /** One HTTP request (no redirects followed); the Host header carries the port when it is not 80. */
 export function httpRequest(host: Host, url: string, opts: HttpOptions = {}): HttpOutcome {
+  return runSteps(host.hooks, httpSteps(host, url, opts));
+}
+
+/** httpRequest as steps (0.92.0). The name is still resolved at once (shortcut: a DNS server in another page is not waited for live). */
+export function* httpSteps(host: Host, url: string, opts: HttpOptions = {}): Steps<HttpOutcome> {
   const parts = parseUrl(url);
   if (!parts) return { kind: 'error', code: 3, message: `URL rejected: Malformed input to a URL function (solo se admite http://)` };
   const target = resolveHost(host, parts.host, opts.client);
   if (target.kind === 'error') return { kind: 'error', code: 6, message: `Could not resolve host: ${parts.host}` };
   const headers: HttpHeaders = { host: `${parts.host}${parts.port !== DEFAULT_HTTP_PORT ? `:${parts.port}` : ''}`, 'user-agent': 'Netfix', ...opts.headers };
-  const r = tcpCall(host, target.ip, parts.port, { app: 'HTTP', kind: 'request', method: opts.method ?? 'GET', host: parts.host, path: parts.path, headers, body: opts.body });
+  const r = yield* tcpSteps(host, target.ip, parts.port, { app: 'HTTP', kind: 'request', method: opts.method ?? 'GET', host: parts.host, path: parts.path, headers, body: opts.body });
   if (r.kind === 'ok' && r.reply.app === 'HTTP' && r.reply.kind === 'response') return { kind: 'ok', response: r.reply, ip: target.ip };
   if (r.kind === 'refused' || r.kind === 'unreachable') return { kind: 'error', code: 7, message: `Failed to connect to ${parts.host} port ${parts.port} after 0 ms: Couldn't connect to server` };
   if (r.kind === 'noroute') return { kind: 'error', code: 7, message: `Failed to connect to ${parts.host} port ${parts.port} after 0 ms: Couldn't connect to server` };

@@ -29,7 +29,7 @@ function extraLines(p: Placed, linked?: (port: string) => boolean): string[] {
   const d = p.device;
   // A cloud: its public block, as a device shows its IP/CIDR (the provider name is in its ISP tab).
   if (cloudOf(d)) return [`${formatIp(d.settings.block)}/${BLOCK_PREFIX}`];
-  // A registered kind: the lines its interface gives (the Classroom LAN: its mode and classroom address).
+  // A registered kind: the lines its interface gives.
   if (isExtensionDevice(d)) return [...(deviceUi(d.kind)?.caption?.(d) ?? [])];
   if (iosOf(d)) return iosVirtualAddresses(d);
   if (!hostOf(d)) return [];
