@@ -1,6 +1,7 @@
 /** Shell skeleton shared by Linux and Windows: prompt, password input and SSH client sessions (with remote editors). */
 import type { Host } from '../devices/host.ts';
-import { tcpCall, tcpSteps, SSH_WAIT_MS } from './net-tools.ts';
+import { tcpSteps, SSH_WAIT_MS } from './net-tools.ts';
+import type { TcpResult } from '../net/tcp.ts';
 import { runLive, runSteps, waitsLive, type Steps } from '../net/live-wait.ts';
 import { SshLogin, parseSshArgs } from './ssh-client.ts';
 import type { SshClientStore, LoginResult } from './ssh-client.ts';
@@ -114,8 +115,10 @@ export abstract class BaseShell implements ShellSession {
     const n = ++this.waits;
     this.busy = true;
     // A wait that ends in another wait (ping's next packet) stays busy: only the last one frees the prompt.
-    this.waitOutput = output
-      .then((lines) => (n <= this.interruptedUpTo ? [] : lines))
+    const mine = output.then((lines) => (n <= this.interruptedUpTo ? [] : lines));
+    // Output not handed to the terminal yet (a save, then closing the editor) comes first, not lost.
+    const before = this.waitOutput;
+    this.waitOutput = (before ? Promise.all([before, mine]).then(([a, b]) => [...a, ...b]) : mine)
       .finally(() => { if (this.waits === n) this.busy = false; });
   }
 
@@ -185,9 +188,16 @@ export abstract class BaseShell implements ShellSession {
   saveEdit(path: string, content: string): string | null {
     if (this.state.kind !== 'remote') return this.localSaveEdit(path, content);
     const st = this.state;
-    const r = tcpCall(this.host, st.ip, st.port, { app: 'SSH', kind: 'edit', session: st.session, action: 'save', path, content });
-    const out = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
-    return out ? out.saveError ?? null : 'Connection lost';
+    const steps = tcpSteps(this.host, st.ip, st.port, { app: 'SSH', kind: 'edit', session: st.session, action: 'save', path, content });
+    const error = (r: TcpResult): string | null => {
+      const out = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
+      return out ? out.saveError ?? null : 'Connection lost';
+    };
+    if (!this.liveWaits || !waitsLive(this.host.hooks)) return error(runSteps(this.host.hooks, steps));
+    // Live (0.94.0): sent now, answered later. The server said whether the file is writable when the editor opened it
+    // (EditSpec.readOnly), so the editor goes on; a failure is printed in the terminal when the answer comes.
+    this.waitFor(runLive(steps).then((r) => { const e = error(r); return e ? [`${path}: ${e}`] : []; }));
+    return null;
   }
 
   closeEdit(): string[] {

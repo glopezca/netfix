@@ -4,7 +4,8 @@
  */
 import type { Host } from '../devices/host.ts';
 import type { SftpOp, SftpResult } from '../net/packets.ts';
-import { tcpCall, SSH_WAIT_MS } from '../shells/net-tools.ts';
+import { tcpSteps, SSH_WAIT_MS } from '../shells/net-tools.ts';
+import { runSteps, type Steps } from '../net/live-wait.ts';
 
 const CLOSED: SftpResult = { status: 'failure', message: 'Connection closed' };
 
@@ -42,8 +43,17 @@ export class SftpSession {
   }
 
   /** Asks the server for the login directory (realpath "."), like OpenSSH right after connecting. */
+  /** The device's hooks (a client drives the steps below synchronously or live). */
+  get hooks(): Host['hooks'] {
+    return this.host.hooks;
+  }
+
   start(): SftpResult {
-    const r = this.request({ op: 'realpath', path: '.' });
+    return runSteps(this.host.hooks, this.startSteps());
+  }
+
+  *startSteps(): Steps<SftpResult> {
+    const r = yield* this.requestSteps({ op: 'realpath', path: '.' });
     if (r.status === 'ok' && r.path) this.cwd = r.path;
     return r;
   }
@@ -53,8 +63,13 @@ export class SftpSession {
   }
 
   request(req: SftpOp): SftpResult {
+    return runSteps(this.host.hooks, this.requestSteps(req));
+  }
+
+  /** One request as steps (0.94.0): waited for live when the server is outside the page. */
+  *requestSteps(req: SftpOp): Steps<SftpResult> {
     if (this.closed) return CLOSED;
-    const r = tcpCall(this.host, this.ip, this.port, { app: 'SSH', kind: 'sftp', session: this.id, req }, SSH_WAIT_MS);
+    const r = yield* tcpSteps(this.host, this.ip, this.port, { app: 'SSH', kind: 'sftp', session: this.id, req }, SSH_WAIT_MS);
     const out = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
     if (!out?.sftp) {
       this.closed = true;
@@ -65,8 +80,12 @@ export class SftpSession {
 
   /** cd: the target must exist and be a directory. */
   cd(path: string): SftpResult {
+    return runSteps(this.host.hooks, this.cdSteps(path));
+  }
+
+  *cdSteps(path: string): Steps<SftpResult> {
     const target = this.abs(path);
-    const r = this.request({ op: 'stat', path: target });
+    const r = yield* this.requestSteps({ op: 'stat', path: target });
     if (r.status !== 'ok') return r;
     if (r.entry?.kind !== 'dir') return { status: 'failure', message: `"${target}" is not a directory` };
     this.cwd = target;

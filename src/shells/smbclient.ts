@@ -6,13 +6,15 @@
 import type { CommandFn, Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { hasPackage } from '../net/host-packages.ts';
-import { resolveHost } from './net-tools.ts';
-import { FILE_SERVER, nbnsResolve } from '../net/netbios.ts';
-import { winsResolve } from '../net/wins.ts';
+import { resolveHostSteps } from './net-tools.ts';
+import type { Steps } from '../net/live-wait.ts';
+import { stepsIn } from './live-steps.ts';
+import { FILE_SERVER, nbnsResolveSteps } from '../net/netbios.ts';
+import { winsResolveSteps } from '../net/wins.ts';
 import { readHostFile } from '../devices/server-firewall.ts';
 import { SMB_CONF, parseSmbConf } from '../services/smb-conf.ts';
 import type { NameResolveMethod } from '../services/smb-conf.ts';
-import { ANONYMOUS, smbCall } from '../clients/smb-client.ts';
+import { ANONYMOUS, smbCallSteps } from '../clients/smb-client.ts';
 import type { SmbClientStatus, SmbLogin } from '../clients/smb-client.ts';
 import { smbCommand } from './smbclient-cmds.ts';
 import type { SmbSession } from './smbclient-cmds.ts';
@@ -84,35 +86,35 @@ function connectError(ctx: Ctx, server: string, status: SmbClientStatus): number
 const NETBIOS_NAME = /^[^.\s]{1,15}$/;
 
 /** One method of «name resolve order»; smbclient asks NetBIOS for the server's file service, NAME<20>. */
-function resolveBy(host: Host, method: NameResolveMethod, server: string, wins: readonly number[]): number | undefined {
+function* resolveBy(host: Host, method: NameResolveMethod, server: string, wins: readonly number[]): Steps<number | undefined> {
   if (method === 'host') {
-    const r = resolveHost(host, server, 'linux');
+    const r = yield* resolveHostSteps(host, server, 'linux');
     return r.kind === 'ip' ? r.ip : undefined;
   }
   if (!NETBIOS_NAME.test(server)) return undefined;
-  if (method === 'wins') return wins.length ? winsResolve(host, wins, server, FILE_SERVER) : undefined;
+  if (method === 'wins') return wins.length ? yield* winsResolveSteps(host, wins, server, FILE_SERVER) : undefined;
   // No lmhosts file is simulated: that method finds nothing.
-  return method === 'bcast' ? nbnsResolve(host, server, FILE_SERVER) : undefined;
+  return method === 'bcast' ? yield* nbnsResolveSteps(host, server, FILE_SERVER) : undefined;
 }
 
 /**
  * Samba's «name resolve order» of smb.conf (lmhosts wins host bcast by default): the «wins server» by unicast, which
  * crosses routers; the system resolver (/etc/hosts, DNS… as nsswitch.conf says); a NetBIOS broadcast, which nmbd answers.
  */
-function serverIp(ctx: Ctx, host: Host, server: string): number | null {
+function* serverIp(ctx: Ctx, host: Host, server: string): Steps<number | null> {
   const conf = parseSmbConf(readHostFile(host, SMB_CONF) ?? '');
   for (const method of conf.nameResolveOrder) {
-    const ip = resolveBy(host, method, server, conf.winsServers);
+    const ip = yield* resolveBy(host, method, server, conf.winsServers);
     if (ip !== undefined) return ip;
   }
   ctx.err(`do_connect: Connection to ${server} failed (Error NT_STATUS_UNSUCCESSFUL)\n`);
   return null;
 }
 
-function listShares(ctx: Ctx, host: Host, server: string, login: SmbLogin): number {
-  const ip = serverIp(ctx, host, server);
+function* listShares(ctx: Ctx, host: Host, server: string, login: SmbLogin): Steps<number> {
+  const ip = yield* serverIp(ctx, host, server);
   if (ip === null) return 1;
-  const r = smbCall(host, ip, login, 'IPC$', { op: 'shares' });
+  const r = yield* smbCallSteps(host, ip, login, 'IPC$', { op: 'shares' });
   if (r.status !== 'NT_STATUS_OK') return connectError(ctx, server, r.status);
   const line = (a: string, b: string, c: string): string => `\t${a.padEnd(16)}${b.padEnd(10)}${c}`;
   const rows = (r.shares ?? []).map((s) => line(s.name, s.type, s.comment));
@@ -125,7 +127,7 @@ function* session(ctx: Ctx, s: SmbSession, commands: string | undefined): Gen<nu
     let status = 0;
     // As smbclient: every ; ends a command, even inside quotes (process_command_string splits with strchr).
     for (const line of commands.split(';')) {
-      const r = smbCommand(ctx, s, line.trim());
+      const r = yield* stepsIn(s.host.hooks, smbCommand(ctx, s, line.trim()), ctx.sh.liveWaits);
       if (r === 'fail') status = 1;
       if (r === 'quit') break;
     }
@@ -134,7 +136,7 @@ function* session(ctx: Ctx, s: SmbSession, commands: string | undefined): Gen<nu
   ctx.out('Try "help" to get a list of possible commands.\n');
   for (;;) {
     const line = yield* ctx.readLine(`smb: ${s.cwd}> `);
-    if (line === null || smbCommand(ctx, s, line.text.trim()) === 'quit') return 0;
+    if (line === null || (yield* stepsIn(s.host.hooks, smbCommand(ctx, s, line.text.trim()), ctx.sh.liveWaits)) === 'quit') return 0;
   }
 }
 
@@ -147,12 +149,12 @@ export function smbclient(host: Host): CommandFn {
     const o = parseArgs(ctx.argv.slice(1));
     if (!o) { ctx.err(USAGE); return 1; }
     const login = yield* credentials(ctx, o);
-    if (o.list !== undefined) return listShares(ctx, host, o.list.replace(/^(\/\/|\\\\)/, '').replace(/[/\\].*$/, ''), login);
+    if (o.list !== undefined) return yield* stepsIn(host.hooks, listShares(ctx, host, o.list.replace(/^(\/\/|\\\\)/, '').replace(/[/\\].*$/, ''), login), ctx.sh.liveWaits);
     const target = service(o.service ?? '');
     if (!target) { ctx.err(`${o.service ?? ''}: Not enough '\\' characters in service\n${USAGE}`); return 1; }
-    const ip = serverIp(ctx, host, target.server);
+    const ip = yield* stepsIn(host.hooks, serverIp(ctx, host, target.server), ctx.sh.liveWaits);
     if (ip === null) return 1;
-    const tree = smbCall(host, ip, login, target.share, { op: 'tree' });
+    const tree = yield* stepsIn(host.hooks, smbCallSteps(host, ip, login, target.share, { op: 'tree' }), ctx.sh.liveWaits);
     if (tree.status !== 'NT_STATUS_OK') return connectError(ctx, target.server, tree.status);
     return yield* session(ctx, { host, ip, server: target.server, share: target.share, login, cwd: '\\' }, o.commands);
   };

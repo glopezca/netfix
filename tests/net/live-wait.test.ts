@@ -188,6 +188,79 @@ test('ssh from a terminal waits live (0.93.0): login, password, a remote command
   }
 });
 
+/** Times differ between a fast-forwarded and a live run: «12.3 ms», «at 2026-11-27 10:00», «in 1.02 seconds». */
+const untimed = (text: string): string => text.replace(/\d+\.\d+ ms/g, 'T ms').replace(/ at \d{4}-\d\d-\d\d \d\d:\d\d/g, ' at D').replace(/in \d+\.\d+ seconds/g, 'in T seconds').replace(/ in \d+(?:\.\d+)?(?:us|ms|s)\./g, ' in T.');
+
+/** A command in a terminal, all its output: synchronously (nobody opted in), or live with the page's clock running. */
+async function both(id: string, label: string, os: 'linux' | 'windows', cmd: string): Promise<{ sync: string; live: string }> {
+  const { EXAMPLES } = await import('../../src/net/examples.ts');
+  const build = (): Topology => EXAMPLES.find((e) => e.id === id)!.build();
+  const a = build();
+  const sync = createShell(a.byLabel(label) as Pc, os).run(cmd).join('\n');
+  const b = build();
+  for (const p of b.placed.values()) if (p.label !== label) Object.assign(p.device, { reachesOutside: () => true });
+  const stop = clock(b);
+  try {
+    const sh = terminal(b.byLabel(label) as Pc, os);
+    const first = sh.run(cmd);
+    return { sync: untimed(sync).trimEnd(), live: untimed([...first, await rest(() => sh.later?.() ?? null)].join('\n')).trimEnd() };
+  } finally {
+    stop();
+  }
+}
+
+test('0.94.0: every other client waits live and prints what it printed before — DNS tools, names, scans, NetBIOS, SMB', async () => {
+  const cases: [string, string, 'linux' | 'windows', string][] = [
+    ['servidores', 'PC1', 'linux', 'host www.aula.lab'],
+    ['servidores', 'PC1', 'linux', 'dig www.aula.lab +short'],
+    ['servidores', 'PC1', 'linux', 'nslookup www.aula.lab'],
+    ['servidores', 'PC1', 'linux', 'getent hosts www.aula.lab'],
+    ['servidores', 'PC1', 'linux', 'resolvectl query www.aula.lab'],
+    ['servidores', 'PC1', 'linux', 'ping -c 1 www.aula.lab'],
+    ['servidores', 'PC1', 'linux', 'curl -s -o /dev/null -w "%{http_code}" http://www.aula.lab/'],
+    ['servidores', 'PC1', 'linux', 'nmap -p 22,80,443 192.168.10.2'],
+    ['servidores', 'PC1', 'linux', 'nc -zv 192.168.10.2 80'],
+    ['servidores', 'PC1', 'windows', 'nslookup www.aula.lab'],
+    ['servidores', 'PC1', 'windows', 'ping -n 1 www.aula.lab'],
+    ['samba', 'PC0', 'windows', 'net view \\\\SRV'],
+    ['samba', 'PC0', 'windows', 'nbtstat -a SRV'],
+  ];
+  for (const [id, label, os, cmd] of cases) {
+    const r = await both(id, label, os, cmd);
+    assert.equal(r.live, r.sync, `${id} ${label} ${os}: ${cmd}`);
+  }
+  const trace = await both('servidores', 'PC1', 'linux', 'traceroute -n 8.8.8.8');
+  assert.equal(trace.live.split('\n').length, trace.sync.split('\n').length, 'traceroute: the same hops');
+});
+
+test('0.94.0: sftp from a terminal and the PC apps (mail, SFTP) wait live too', async () => {
+  const { EXAMPLES } = await import('../../src/net/examples.ts');
+  const { drive } = await import('../../src/net/live-wait.ts');
+  const { FileTransfer } = await import('../../src/clients/file-transfer.ts');
+  const t = EXAMPLES.find((e) => e.id === 'ssh-sftp')!.build();
+  Object.assign(t.byLabel('SRV') as Server, { reachesOutside: () => true });
+  const stop = clock(t);
+  try {
+    const pc = t.byLabel('PC1') as Pc;
+    const sh = terminal(pc, 'linux');
+    sh.run('sftp -o StrictHostKeyChecking=accept-new ana@172.20.0.10');
+    await rest(() => sh.later?.() ?? null);
+    assert.match(sh.prompt(), /password: $/);
+    sh.run('ana1');
+    assert.match(await rest(() => sh.later?.() ?? null), /Connected to 172\.20\.0\.10/);
+    sh.run('ls');
+    assert.match(await rest(() => sh.later?.() ?? null), /bienvenida\.txt/);
+    sh.run('bye');
+    await rest(() => sh.later?.() ?? null);
+    const { hostSystem, hostUsers } = await import('../../src/shells/host-system.ts');
+    const ft = new FileTransfer(pc, hostSystem(pc).fs, hostUsers(pc).find((u) => u.name === 'alumno')!);
+    assert.equal(await drive(pc.hooks, ft.connectSteps({ host: '172.20.0.10', port: 22, user: 'ana', password: 'ana1' }, { hostKey: () => true, passphrase: () => null })), true);
+    assert.ok((await drive(pc.hooks, ft.remoteListSteps())).some((e) => e.name === 'bienvenida.txt'), 'the SFTP app lists the server live');
+  } finally {
+    stop();
+  }
+});
+
 test('steps: the same client driven synchronously or live gives the same result', async () => {
   function* twoWaits(): Generator<{ done: () => boolean; ms: number }, number, void> {
     let n = 0;

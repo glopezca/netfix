@@ -3,10 +3,12 @@
  * name, as on Windows), or by unicast to one address with -U (-R sets «recursion desired», so a WINS server looks the
  * name up in its database), and node status with -A (of an address) or -S (of what the query finds).
  */
-import type { CommandFn, Ctx } from '../bash/types.ts';
+import type { CommandFn, Ctx, Gen } from '../bash/types.ts';
+import type { Steps } from '../net/live-wait.ts';
+import { stepsIn } from './live-steps.ts';
 import type { Host } from '../devices/host.ts';
 import { hasPackage } from '../net/host-packages.ts';
-import { WORKSTATION, nbnsAsk, netbiosName, ownNames, speaksNetbios } from '../net/netbios.ts';
+import { WORKSTATION, nbnsAskSteps, netbiosName, ownNames, speaksNetbios } from '../net/netbios.ts';
 import { broadcastOf, formatIp, parseIp } from '../core/ip.ts';
 
 const USAGE = 'Usage: nmblookup [-A] [-S] [-U UNICAST-ADDRESS] [-R] NAME|IP\n';
@@ -20,10 +22,10 @@ interface Options {
   readonly target?: string;
 }
 
-function status(ctx: Ctx, host: Host, target: string): number {
+function* status(ctx: Ctx, host: Host, target: string): Steps<number> {
   ctx.out(`Looking up status of ${target}\n`);
   const ip = parseIp(target);
-  const r = ip === null ? undefined : nbnsAsk(host, { type: 'NBSTAT', name: '*', suffix: WORKSTATION, broadcast: false }, ip);
+  const r = ip === null ? undefined : yield* nbnsAskSteps(host, { type: 'NBSTAT', name: '*', suffix: WORKSTATION, broadcast: false }, ip);
   if (!r?.names) { ctx.out(`No reply from ${target}\n\n`); return 1; }
   const rows = r.names.map((n) => `\t${n.name.padEnd(15)} <${n.suffix.toString(16).padStart(2, '0')}> - ${n.group ? '<GROUP>' : '       '} B <ACTIVE> `);
   ctx.out(`${rows.join('\n')}\n\n\tMAC Address = ${(r.mac?.match(/../g) ?? []).join('-').toUpperCase()}\n\n`);
@@ -37,21 +39,21 @@ function local(host: Host, name: string, own: number | undefined): number | unde
 }
 
 /** A unicast question to one address; a negative answer (NAM_ERR from a WINS server) finds nothing. */
-function unicast(host: Host, name: string, to: string, recurse: boolean): number | undefined {
+function* unicast(host: Host, name: string, to: string, recurse: boolean): Steps<number | undefined> {
   const ip = parseIp(to);
-  const r = ip === null ? undefined : nbnsAsk(host, { type: 'NB', name, suffix: WORKSTATION, broadcast: false, rd: recurse }, ip);
+  const r = ip === null ? undefined : yield* nbnsAskSteps(host, { type: 'NB', name, suffix: WORKSTATION, broadcast: false, rd: recurse }, ip);
   return r && (r.rcode ?? 0) === 0 ? r.addresses?.[0] : undefined;
 }
 
-function query(ctx: Ctx, host: Host, name: string, o: Options): number {
+function* query(ctx: Ctx, host: Host, name: string, o: Options): Steps<number> {
   const a = host.l3Ifaces().find((i) => i.up && i.addrs.length)?.addrs[0];
   ctx.out(`querying ${name} on ${o.unicast ?? (a ? formatIp(broadcastOf(a.ip, a.prefix)) : '0.0.0.0')}\n`);
   const ip = o.unicast !== undefined
-    ? unicast(host, name, o.unicast, o.recurse)
-    : local(host, name, a?.ip) ?? nbnsAsk(host, { type: 'NB', name, suffix: WORKSTATION, broadcast: true })?.addresses?.[0];
+    ? yield* unicast(host, name, o.unicast, o.recurse)
+    : local(host, name, a?.ip) ?? (yield* nbnsAskSteps(host, { type: 'NB', name, suffix: WORKSTATION, broadcast: true }))?.addresses?.[0];
   if (ip === undefined) { ctx.out(`name_query failed to find name ${name}\n`); return 1; }
   ctx.out(`${formatIp(ip)} ${name}<00>\n`);
-  return o.lookupStatus ? status(ctx, host, formatIp(ip)) : 0;
+  return o.lookupStatus ? yield* status(ctx, host, formatIp(ip)) : 0;
 }
 
 /** -A, -S (the node status of what the query finds), -R and -U ADDRESS (or -UADDRESS, --unicast=ADDRESS); the first other word is the name. Null: a usage error. */
@@ -74,7 +76,7 @@ function parse(args: readonly string[]): Options | null {
 }
 
 export function nmblookup(host: Host): CommandFn {
-  return (ctx) => {
+  return function* (ctx): Gen<number> {
     if (!hasPackage(host, 'samba-common-bin')) {
       ctx.err("Command 'nmblookup' not found, but can be installed with:\nsudo apt install samba-common-bin\n");
       return 127;
@@ -82,6 +84,6 @@ export function nmblookup(host: Host): CommandFn {
     if (ctx.argv.some((a) => a === '-h' || a === '--help' || a === '-?')) { ctx.out(USAGE); return 0; }
     const o = parse(ctx.argv.slice(1));
     if (!o?.target) { ctx.err(USAGE); return 1; }
-    return o.status ? status(ctx, host, o.target) : query(ctx, host, o.target, o);
+    return yield* stepsIn(host.hooks, o.status ? status(ctx, host, o.target) : query(ctx, host, o.target, o), ctx.sh.liveWaits);
   };
 }

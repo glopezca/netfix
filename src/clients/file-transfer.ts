@@ -8,6 +8,7 @@ import type { Cred, Vfs } from '../bash/vfs.ts';
 import { FsError } from '../bash/vfs.ts';
 import type { UserInfo } from '../bash/types.ts';
 import { SshLogin } from '../shells/ssh-client.ts';
+import { runSteps, type Steps } from '../net/live-wait.ts';
 import { linuxSshStore } from '../shells/ssh-stores.ts';
 import { baseName, joinPath, SftpSession } from './sftp-client.ts';
 
@@ -55,22 +56,27 @@ export class FileTransfer {
     this.log = [...this.log.slice(-(MAX_LOG - 1)), { kind, text }];
   }
 
-  private loginLoop(login: SshLogin, p: ConnectParams, ask: Asker): SftpSession | null {
-    let r = login.begin();
+  private *loginLoop(login: SshLogin, p: ConnectParams, ask: Asker): Steps<SftpSession | null> {
+    let r = yield* login.beginSteps();
     let passwordSent = false;
     for (;;) {
       r.lines.filter((l) => l.trim()).forEach((l) => this.add(/denied|failed|closed|refused|timed out|Could not|incorrect|verification/i.test(l) ? 'error' : 'status', l));
       if (r.failed) return null;
       if (r.session) return new SftpSession(this.host, r.session.ip, p.port, r.session.id);
       const waiting = login.waiting();
-      if (waiting === 'hostkey') r = login.input(ask.hostKey(p.host, login.hostFingerprint()) ? 'yes' : 'no');
-      else if (waiting === 'passphrase') r = login.input(ask.passphrase(login.prompt()) ?? '');
-      else if (waiting === 'password' && !passwordSent) { passwordSent = true; r = login.input(p.password); }
+      if (waiting === 'hostkey') r = yield* login.inputSteps(ask.hostKey(p.host, login.hostFingerprint()) ? 'yes' : 'no');
+      else if (waiting === 'passphrase') r = yield* login.inputSteps(ask.passphrase(login.prompt()) ?? '');
+      else if (waiting === 'password' && !passwordSent) { passwordSent = true; r = yield* login.inputSteps(p.password); }
       else { this.add('error', 'Error: Authentication failed.'); return null; }
     }
   }
 
   connect(p: ConnectParams, ask: Asker): boolean {
+    return runSteps(this.host.hooks, this.connectSteps(p, ask));
+  }
+
+  /** As steps (0.94.0): the SFTP app waits live for a server outside the page (live-wait.ts drive). */
+  *connectSteps(p: ConnectParams, ask: Asker): Steps<boolean> {
     this.disconnect();
     this.add('status', `Status: Connecting to ${p.host}:${p.port}...`);
     const store = linuxSshStore(this.fs, this.acct);
@@ -78,12 +84,12 @@ export class FileTransfer {
       user: p.user || this.acct.name, target: p.host, port: p.port, identities: p.identity ? [p.identity] : [],
       strict: 'ask', password: true, pubkey: true, batch: false, subsystem: 'sftp',
     });
-    const s = this.loginLoop(login, p, ask);
+    const s = yield* this.loginLoop(login, p, ask);
     if (!s) {
       this.add('error', 'Error: Could not connect to server');
       return false;
     }
-    s.start();
+    yield* s.startSteps();
     this.session = s;
     this.target = `${p.user || this.acct.name}@${p.host}`;
     this.add('status', `Status: Connected to ${p.host}`);
@@ -114,8 +120,12 @@ export class FileTransfer {
   }
 
   remoteList(): readonly SftpEntry[] {
+    return runSteps(this.host.hooks, this.remoteListSteps());
+  }
+
+  *remoteListSteps(): Steps<readonly SftpEntry[]> {
     if (!this.session) return [];
-    const r = this.session.request({ op: 'list', path: this.session.cwd });
+    const r = yield* this.session.requestSteps({ op: 'list', path: this.session.cwd });
     if (r.status !== 'ok') this.fail(`Directory ${this.session.cwd}`, r);
     return r.entries ?? [];
   }
@@ -126,8 +136,12 @@ export class FileTransfer {
   }
 
   remoteCd(name: string): void {
+    runSteps(this.host.hooks, this.remoteCdSteps(name));
+  }
+
+  *remoteCdSteps(name: string): Steps<void> {
     if (!this.session) return;
-    const r = this.session.cd(name);
+    const r = yield* this.session.cdSteps(name);
     if (r.status !== 'ok') this.fail(`cd ${name}`, r);
     else this.add('status', `Status: Directory listing of "${this.session.cwd}" successful`);
   }
@@ -137,6 +151,10 @@ export class FileTransfer {
   }
 
   upload(name: string): boolean {
+    return runSteps(this.host.hooks, this.uploadSteps(name));
+  }
+
+  *uploadSteps(name: string): Steps<boolean> {
     if (!this.session) return false;
     const src = joinPath(this.localDir, name);
     let data: string;
@@ -149,17 +167,21 @@ export class FileTransfer {
     }
     const dst = joinPath(this.session.cwd, baseName(src));
     this.add('command', `Command: put "${src}" "${dst}"`);
-    const r = this.session.request({ op: 'write', path: dst, data });
+    const r = (yield* this.session.requestSteps({ op: 'write', path: dst, data }));
     if (r.status !== 'ok') { this.fail(`put ${dst}`, r); return false; }
     this.add('status', `Status: File transfer successful, transferred ${data.length} bytes`);
     return true;
   }
 
   download(name: string): boolean {
+    return runSteps(this.host.hooks, this.downloadSteps(name));
+  }
+
+  *downloadSteps(name: string): Steps<boolean> {
     if (!this.session) return false;
     const src = joinPath(this.session.cwd, name);
     this.add('command', `Command: get "${src}" "${joinPath(this.localDir, name)}"`);
-    const r = this.session.request({ op: 'read', path: src });
+    const r = (yield* this.session.requestSteps({ op: 'read', path: src }));
     if (r.status !== 'ok') { this.fail(`get ${src}`, r); return false; }
     try {
       this.fs.writeFile(joinPath(this.localDir, name), r.data ?? '', this.cred);
@@ -173,12 +195,16 @@ export class FileTransfer {
 
   /** mkdir / delete / rename on the remote side. */
   remote(op: 'mkdir' | 'delete' | 'rename', name: string, to?: string): boolean {
+    return runSteps(this.host.hooks, this.remoteSteps(op, name, to));
+  }
+
+  *remoteSteps(op: 'mkdir' | 'delete' | 'rename', name: string, to?: string): Steps<boolean> {
     if (!this.session) return false;
     const path = joinPath(this.session.cwd, name);
-    const entry = this.session.request({ op: 'stat', path }).entry;
-    const r = op === 'mkdir' ? this.session.request({ op: 'mkdir', path })
-      : op === 'rename' ? this.session.request({ op: 'rename', path, to: joinPath(this.session.cwd, to ?? name) })
-        : this.session.request({ op: entry?.kind === 'dir' ? 'rmdir' : 'remove', path });
+    const entry = (yield* this.session.requestSteps({ op: 'stat', path })).entry;
+    const r = op === 'mkdir' ? (yield* this.session.requestSteps({ op: 'mkdir', path }))
+      : op === 'rename' ? (yield* this.session.requestSteps({ op: 'rename', path, to: joinPath(this.session.cwd, to ?? name) }))
+        : (yield* this.session.requestSteps({ op: entry?.kind === 'dir' ? 'rmdir' : 'remove', path }));
     this.add('command', `Command: ${op === 'delete' ? (entry?.kind === 'dir' ? 'rmdir' : 'rm') : op} "${path}"${to ? ` "${to}"` : ''}`);
     if (r.status !== 'ok') { this.fail(`${op} ${path}`, r); return false; }
     return true;

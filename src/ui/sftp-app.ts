@@ -6,6 +6,7 @@ import type { Pc } from '../devices/pc.ts';
 import type { SftpEntry } from '../net/packets.ts';
 import { hostSystem, hostUsers } from '../shells/host-system.ts';
 import { FileTransfer } from '../clients/file-transfer.ts';
+import { drive, type Steps } from '../net/live-wait.ts';
 import { t } from '../i18n/t.ts';
 
 const USER = 'alumno';
@@ -55,18 +56,17 @@ function pane(o: PaneOpts): HTMLElement {
       el('tbody', {}, ...(o.path !== '/' ? [up] : []), ...sorted.map(row)))));
 }
 
-function connectBar(ft: FileTransfer, redraw: () => void): HTMLElement {
+function connectBar(ft: FileTransfer, redraw: () => void, run: (steps: Steps<unknown>) => void): HTMLElement {
   const host = input({ placeholder: '10.0.0.2', 'aria-label': t('ssh.host') });
   const user = input({ value: 'admin', 'aria-label': t('ssh.user') });
   const pass = input({ type: 'password', autocomplete: 'off', 'aria-label': t('sftp.password') });
   const port = input({ value: '22', inputmode: 'numeric', class: 'ft-port', 'aria-label': t('ssh.port') });
   const go = (): void => {
-    ft.connect({ host: host.value.trim(), port: Number(port.value) || 22, user: user.value.trim(), password: pass.value }, {
+    run(ft.connectSteps({ host: host.value.trim(), port: Number(port.value) || 22, user: user.value.trim(), password: pass.value }, {
       hostKey: (h, fp) => globalThis.confirm(t('sftp.hostKey', { host: h, fp })),
       passphrase: (prompt) => globalThis.prompt(prompt) ?? null,
-    });
+    }));
     pass.value = '';
-    redraw();
   };
   pass.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
   const labelled = (text: string, ctrl: HTMLElement): HTMLElement => el('label', { class: 'ft-field' }, el('span', {}, text), ctrl);
@@ -80,23 +80,30 @@ export function sftpApp(pc: Pc, app: AfterChange): HTMLElement {
   if (!ft) return root;
   let localSel: string | null = null;
   let remoteSel: string | null = null;
+  // The remote listing is kept and asked again after each remote action: a server outside the page answers later (0.94.0).
+  let remoteEntries: readonly SftpEntry[] = [];
+  const refresh = (): void => {
+    if (!ft.session) { redraw(); return; }
+    void drive(pc.hooks, ft.remoteListSteps()).then((entries) => { remoteEntries = entries; redraw(); });
+  };
+  const run = (steps: Steps<unknown>): void => { void drive(pc.hooks, steps).then(refresh); };
   const redraw = (): void => {
     app.afterCommand();
-    const need = (sel: string | null, fn: (n: string) => void): void => { if (sel) fn(sel); else globalThis.alert(t('sftp.select')); redraw(); };
+    const need = (sel: string | null, fn: (n: string) => void): void => { if (sel) fn(sel); else globalThis.alert(t('sftp.select')); };
     const log = el('div', { class: 'ft-log', role: 'log', 'aria-label': t('sftp.log') }, ...ft.log.slice(-60).map((l) => el('div', { class: `ft-${l.kind}` }, l.text)));
     const local = pane({ title: t('sftp.local'), path: ft.localDir, entries: ft.localList(), selected: localSel, select: (n) => { localSel = n; redraw(); }, open: (n) => { ft.localCd(n); localSel = null; redraw(); } });
     const remote = ft.session
-      ? pane({ title: `${t('sftp.remote')} · ${ft.target}`, path: ft.session.cwd, entries: ft.remoteList(), selected: remoteSel, select: (n) => { remoteSel = n; redraw(); }, open: (n) => { ft.remoteCd(n); remoteSel = null; redraw(); } })
+      ? pane({ title: `${t('sftp.remote')} · ${ft.target}`, path: ft.session.cwd, entries: remoteEntries, selected: remoteSel, select: (n) => { remoteSel = n; redraw(); }, open: (n) => { remoteSel = null; run(ft.remoteCdSteps(n)); } })
       : el('section', { class: 'ft-pane' }, el('p', { class: 'muted' }, t('sftp.notConnected')));
     const actions = el('div', { class: 'row-actions ft-actions' },
-      button(t('sftp.upload'), () => need(localSel, (n) => ft.upload(n))), button(t('sftp.download'), () => need(remoteSel, (n) => ft.download(n))),
-      button(t('sftp.mkdir'), () => { const n = globalThis.prompt(t('sftp.askName')); if (n) ft.remote('mkdir', n); redraw(); }, 'btn btn-small'),
-      button(t('sftp.rename'), () => need(remoteSel, (n) => { const to = globalThis.prompt(t('sftp.askName'), n); if (to) ft.remote('rename', n, to); }), 'btn btn-small'),
-      button(t('sftp.delete'), () => need(remoteSel, (n) => { if (globalThis.confirm(t('sftp.confirmDelete', { name: n }))) ft.remote('delete', n); }), 'btn btn-small danger'),
-      button(t('sftp.refresh'), redraw, 'btn btn-small'));
-    root.replaceChildren(connectBar(ft, redraw), log, el('div', { class: 'ft-panes' }, local, remote), ...(ft.session ? [actions] : []));
+      button(t('sftp.upload'), () => need(localSel, (n) => run(ft.uploadSteps(n)))), button(t('sftp.download'), () => need(remoteSel, (n) => run(ft.downloadSteps(n)))),
+      button(t('sftp.mkdir'), () => { const n = globalThis.prompt(t('sftp.askName')); if (n) run(ft.remoteSteps('mkdir', n)); }, 'btn btn-small'),
+      button(t('sftp.rename'), () => need(remoteSel, (n) => { const to = globalThis.prompt(t('sftp.askName'), n); if (to) run(ft.remoteSteps('rename', n, to)); }), 'btn btn-small'),
+      button(t('sftp.delete'), () => need(remoteSel, (n) => { if (globalThis.confirm(t('sftp.confirmDelete', { name: n }))) run(ft.remoteSteps('delete', n)); }), 'btn btn-small danger'),
+      button(t('sftp.refresh'), refresh, 'btn btn-small'));
+    root.replaceChildren(connectBar(ft, redraw, run), log, el('div', { class: 'ft-panes' }, local, remote), ...(ft.session ? [actions] : []));
     log.scrollTop = log.scrollHeight;
   };
-  redraw();
+  refresh();
   return root;
 }

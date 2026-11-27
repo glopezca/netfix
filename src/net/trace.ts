@@ -7,6 +7,7 @@ import type { EchoResult, IpStack } from './ipstack.ts';
 import type { UnreachableCode } from './packets.ts';
 import type { DeviceHooks } from '../devices/hooks.ts';
 import { formatIp } from '../core/ip.ts';
+import { runSteps, type Steps } from './live-wait.ts';
 
 export interface Probe {
   readonly from: number;
@@ -38,6 +39,11 @@ export const DEFAULT_MAX_HOPS = 30;
 let traceId = 0x5000;
 
 export function runTrace(stack: IpStack, hooks: DeviceHooks, dst: number, o: TraceOptions): TraceResult {
+  return runSteps(hooks, traceSteps(stack, dst, o));
+}
+
+/** The same probes as steps (0.94.0): waited for live when the network reaches out of the page. */
+export function* traceSteps(stack: IpStack, dst: number, o: TraceOptions): Steps<TraceResult> {
   const id = traceId++ & 0xffff;
   const hops: Hop[] = [];
   let seq = 0;
@@ -49,7 +55,7 @@ export function runTrace(stack: IpStack, hooks: DeviceHooks, dst: number, o: Tra
       let result: EchoResult | undefined;
       const sent = stack.echo(dst, id, seq++, undefined, (r) => { result = r; }, ttl);
       if (!sent) return { hops, reached: false, noroute: true };
-      hooks.runUntil(() => result !== undefined, o.timeoutMs);
+      yield { done: () => result !== undefined, ms: o.timeoutMs };
       probes.push(result ? { from: result.from, ms: o.now() - start, ...(result.kind === 'unreachable' ? { unreachable: result.code } : {}) } : null);
       if (result && result.kind !== 'ttl') done = true;
     }

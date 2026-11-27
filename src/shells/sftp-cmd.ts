@@ -3,6 +3,8 @@ import type { CommandFn, Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import { baseName, joinPath } from '../clients/sftp-client.ts';
 import type { SftpSession } from '../clients/sftp-client.ts';
+import type { SftpOp, SftpResult } from '../net/packets.ts';
+import { stepsIn } from './live-steps.ts';
 import { columns, longLine, progress, statusText } from './sftp-format.ts';
 import { loginOptions, sftpLogin, transferArgs } from './sftp-login.ts';
 import { FsError } from '../bash/vfs.ts';
@@ -29,6 +31,11 @@ rm path                            Delete remote file
 rmdir path                         Remove remote directory
 ?                                  Synonym for help`;
 
+/** One request, waited for live when the terminal opted in and the server is outside the page (0.94.0). */
+function req(ctx: Ctx, st: State, op: SftpOp): Gen<SftpResult> {
+  return stepsIn(st.s.hooks, st.s.requestSteps(op), ctx.sh.liveWaits);
+}
+
 interface State {
   readonly s: SftpSession;
   /** Login directory (cd without arguments). */
@@ -39,23 +46,23 @@ interface State {
 const say = (ctx: Ctx, text: string): void => ctx.out(`${text}\n`);
 const warn = (ctx: Ctx, text: string): void => ctx.err(`${text}\n`);
 
-function ls(ctx: Ctx, st: State, args: readonly string[]): void {
+function* ls(ctx: Ctx, st: State, args: readonly string[]): Gen<void> {
   const flags = args.filter((a) => a.startsWith('-')).join('');
   const given = args.find((a) => !a.startsWith('-'));
   const target = st.s.abs(given ?? '.');
-  const one = st.s.request({ op: 'stat', path: target });
+  const one = (yield* req(ctx, st, { op: 'stat', path: target }));
   if (one.status !== 'ok') return warn(ctx, `Can't ls: "${target}" not found`);
-  const r = one.entry?.kind === 'dir' ? st.s.request({ op: 'list', path: target }) : { ...one, entries: one.entry ? [{ ...one.entry, name: given ?? one.entry.name }] : [] };
+  const r = one.entry?.kind === 'dir' ? (yield* req(ctx, st, { op: 'list', path: target })) : { ...one, entries: one.entry ? [{ ...one.entry, name: given ?? one.entry.name }] : [] };
   if (r.status !== 'ok') return warn(ctx, `remote readdir("${target}"): ${statusText(r)}`);
   const entries = (r.entries ?? []).filter((e) => flags.includes('a') || !e.name.startsWith('.'));
   if (flags.includes('l')) entries.forEach((e) => say(ctx, longLine(e, ctx.sh.env.now())));
   else columns(entries.map((e) => e.name)).forEach((l) => say(ctx, l));
 }
 
-function get(ctx: Ctx, st: State, remote: string | undefined, local: string | undefined): void {
+function* get(ctx: Ctx, st: State, remote: string | undefined, local: string | undefined): Gen<void> {
   if (!remote) return warn(ctx, 'You must specify at least one path after a get command.');
   const src = st.s.abs(remote);
-  const r = st.s.request({ op: 'read', path: src });
+  const r = (yield* req(ctx, st, { op: 'read', path: src }));
   if (r.status === 'no-such-file') return warn(ctx, `File "${src}" not found.`);
   if (r.status !== 'ok') return warn(ctx, `remote open("${src}"): ${statusText(r)}`);
   const dst = joinPath(st.lcwd, local ?? baseName(src));
@@ -70,7 +77,7 @@ function get(ctx: Ctx, st: State, remote: string | undefined, local: string | un
   }
 }
 
-function put(ctx: Ctx, st: State, local: string | undefined, remote: string | undefined): void {
+function* put(ctx: Ctx, st: State, local: string | undefined, remote: string | undefined): Gen<void> {
   if (!local) return warn(ctx, 'You must specify at least one path after a put command.');
   const src = joinPath(st.lcwd, local);
   let data: string;
@@ -81,37 +88,37 @@ function put(ctx: Ctx, st: State, local: string | undefined, remote: string | un
     return warn(ctx, `stat ${local}: ${e.code === 'EACCES' ? 'Permission denied' : e.code === 'EISDIR' ? 'Is a directory' : 'No such file or directory'}`);
   }
   let dst = st.s.abs(remote ?? baseName(src));
-  if (st.s.request({ op: 'stat', path: dst }).entry?.kind === 'dir') dst = `${dst}/${baseName(src)}`;
+  if ((yield* req(ctx, st, { op: 'stat', path: dst })).entry?.kind === 'dir') dst = `${dst}/${baseName(src)}`;
   say(ctx, `Uploading ${local} to ${dst}`);
-  const r = st.s.request({ op: 'write', path: dst, data });
+  const r = (yield* req(ctx, st, { op: 'write', path: dst, data }));
   if (r.status !== 'ok') return warn(ctx, `dest open "${dst}": ${statusText(r)}`);
   say(ctx, progress(baseName(src), data.length));
 }
 
-function simple(ctx: Ctx, st: State, cmd: string, args: readonly string[]): void {
+function* simple(ctx: Ctx, st: State, cmd: string, args: readonly string[]): Gen<void> {
   const [a, b] = args;
   if (a === undefined) return warn(ctx, `You must specify a path after a ${cmd} command.`);
   const path = st.s.abs(a);
   if (cmd === 'mkdir' || cmd === 'rmdir') {
-    const r = st.s.request({ op: cmd, path });
+    const r = (yield* req(ctx, st, { op: cmd, path }));
     if (r.status !== 'ok') warn(ctx, `remote ${cmd} "${path}": ${statusText(r)}`);
   } else if (cmd === 'rm') {
     say(ctx, `Removing ${path}`);
-    const r = st.s.request({ op: 'remove', path });
+    const r = (yield* req(ctx, st, { op: 'remove', path }));
     if (r.status !== 'ok') warn(ctx, `Couldn't delete file: ${statusText(r)}`);
   } else if (cmd === 'rename') {
     if (b === undefined) return warn(ctx, 'You must specify two paths after a rename command.');
-    const r = st.s.request({ op: 'rename', path, to: st.s.abs(b) });
+    const r = (yield* req(ctx, st, { op: 'rename', path, to: st.s.abs(b) }));
     if (r.status !== 'ok') warn(ctx, `Couldn't rename file "${path}" to "${st.s.abs(b)}": ${statusText(r)}`);
   }
 }
 
-function chmod(ctx: Ctx, st: State, args: readonly string[]): void {
+function* chmod(ctx: Ctx, st: State, args: readonly string[]): Gen<void> {
   const [mode, file] = args;
   if (!mode || !/^[0-7]{1,4}$/.test(mode) || !file) return warn(ctx, "You must supply a numeric argument to the chmod command.");
   const path = st.s.abs(file);
   say(ctx, `Changing mode on ${path}`);
-  const r = st.s.request({ op: 'chmod', path, mode: parseInt(mode, 8) });
+  const r = (yield* req(ctx, st, { op: 'chmod', path, mode: parseInt(mode, 8) }));
   if (r.status !== 'ok') warn(ctx, `Couldn't setstat on "${path}": ${statusText(r)}`);
 }
 
@@ -137,12 +144,12 @@ function* command(ctx: Ctx, st: State, line: string): Gen<boolean> {
   if (['bye', 'exit', 'quit'].includes(cmd)) return false;
   if (cmd === 'help' || cmd === '?') say(ctx, HELP);
   else if (cmd === 'pwd') say(ctx, `Remote working directory: ${st.s.cwd}`);
-  else if (cmd === 'cd') { const r = st.s.cd(args[0] ?? st.home); if (r.status !== 'ok') warn(ctx, r.status === 'failure' ? `Can't change directory: ${r.message ?? ''}` : `Can't change directory: Can't check target`); }
-  else if (cmd === 'ls' || cmd === 'dir') ls(ctx, st, args);
-  else if (cmd === 'get') get(ctx, st, args[0], args[1]);
-  else if (cmd === 'put') put(ctx, st, args[0], args[1]);
-  else if (['mkdir', 'rmdir', 'rm', 'rename'].includes(cmd)) simple(ctx, st, cmd, args);
-  else if (cmd === 'chmod') chmod(ctx, st, args);
+  else if (cmd === 'cd') { const r = yield* stepsIn(st.s.hooks, st.s.cdSteps(args[0] ?? st.home), ctx.sh.liveWaits); if (r.status !== 'ok') warn(ctx, r.status === 'failure' ? `Can't change directory: ${r.message ?? ''}` : `Can't change directory: Can't check target`); }
+  else if (cmd === 'ls' || cmd === 'dir') yield* ls(ctx, st, args);
+  else if (cmd === 'get') yield* get(ctx, st, args[0], args[1]);
+  else if (cmd === 'put') yield* put(ctx, st, args[0], args[1]);
+  else if (['mkdir', 'rmdir', 'rm', 'rename'].includes(cmd)) yield* simple(ctx, st, cmd, args);
+  else if (cmd === 'chmod') yield* chmod(ctx, st, args);
   else if (['lpwd', 'lcd', 'lls', 'lmkdir'].includes(cmd)) yield* local(ctx, st, cmd, args);
   else warn(ctx, 'Invalid command.');
   return !st.s.closed;
@@ -159,7 +166,7 @@ export function sftp(host: Host): CommandFn {
     if (typeof session === 'number') { ctx.err('Connection closed\n'); return session; }
     say(ctx, `Connected to ${opts.target}.`);
     const st: State = { s: session, home: session.cwd, lcwd: ctx.cwd };
-    if (startDir) session.cd(startDir);
+    if (startDir) yield* stepsIn(host.hooks, session.cdSteps(startDir), ctx.sh.liveWaits);
     const script = t.batch !== undefined ? readBatch(ctx, t.batch) : null;
     if (script !== null) {
       for (const line of script) {

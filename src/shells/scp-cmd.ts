@@ -5,6 +5,7 @@ import { baseName, joinPath } from '../clients/sftp-client.ts';
 import type { SftpSession } from '../clients/sftp-client.ts';
 import { progress, statusText } from './sftp-format.ts';
 import { loginOptions, sftpLogin, transferArgs } from './sftp-login.ts';
+import { stepsIn } from './live-steps.ts';
 import { FsError } from '../bash/vfs.ts';
 
 const USAGE = 'usage: scp [-346ABCOpqRrsTv] [-c cipher] [-D sftp_server_path] [-F ssh_config]\n           [-i identity_file] [-J destination] [-l limit] [-o ssh_option]\n           [-P port] [-S program] [-X sftp_option] source ... target\n';
@@ -25,7 +26,7 @@ function fsText(e: unknown): string {
   return e.code === 'EACCES' ? 'Permission denied' : e.code === 'EISDIR' ? 'Is a directory' : 'No such file or directory';
 }
 
-function upload(ctx: Ctx, s: SftpSession, src: string, dst: string, quiet: boolean): boolean {
+function* upload(ctx: Ctx, s: SftpSession, src: string, dst: string, quiet: boolean): Gen<boolean> {
   let data: string;
   try {
     data = ctx.sh.env.fs.readFile(ctx.resolve(src), ctx.cred);
@@ -34,16 +35,16 @@ function upload(ctx: Ctx, s: SftpSession, src: string, dst: string, quiet: boole
     return false;
   }
   let target = s.abs(dst);
-  if (!dst || s.request({ op: 'stat', path: target }).entry?.kind === 'dir') target = joinPath(target, baseName(src));
-  const r = s.request({ op: 'write', path: target, data });
+  if (!dst || (yield* stepsIn(s.hooks, s.requestSteps({ op: 'stat', path: target }), ctx.sh.liveWaits)).entry?.kind === 'dir') target = joinPath(target, baseName(src));
+  const r = (yield* stepsIn(s.hooks, s.requestSteps({ op: 'write', path: target, data }), ctx.sh.liveWaits));
   if (r.status !== 'ok') { ctx.err(`scp: dest open "${target}": ${statusText(r)}\nscp: failed to upload file ${src} to ${dst}\n`); return false; }
   if (!quiet) ctx.out(`${progress(baseName(src), data.length)}\n`);
   return true;
 }
 
-function download(ctx: Ctx, s: SftpSession, src: string, dst: string, quiet: boolean): boolean {
+function* download(ctx: Ctx, s: SftpSession, src: string, dst: string, quiet: boolean): Gen<boolean> {
   const path = s.abs(src);
-  const r = s.request({ op: 'read', path });
+  const r = (yield* stepsIn(s.hooks, s.requestSteps({ op: 'read', path }), ctx.sh.liveWaits));
   if (r.status !== 'ok') { ctx.err(`scp: ${path}: ${statusText(r)}\n`); return false; }
   let target = ctx.resolve(dst);
   if (ctx.sh.env.fs.tryLookup(target, ctx.cred)?.kind === 'dir') target = joinPath(target, baseName(path));
@@ -74,7 +75,7 @@ export function scp(host: Host): CommandFn {
     if (typeof session === 'number') { ctx.err('scp: Connection closed\n'); return session; }
     let ok = true;
     for (const src of sources) {
-      const done = target.remote ? upload(ctx, session, src.path, target.path, t.quiet) : download(ctx, session, src.path, target.path, t.quiet);
+      const done = target.remote ? yield* upload(ctx, session, src.path, target.path, t.quiet) : yield* download(ctx, session, src.path, target.path, t.quiet);
       ok = ok && done;
     }
     return ok ? 0 : 1;

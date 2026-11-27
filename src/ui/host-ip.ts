@@ -1,4 +1,5 @@
 /** "TCP/IP" tab for PCs and servers. */
+import { drive, waitFor } from '../net/live-wait.ts';
 import { t } from '../i18n/t.ts';
 import { el } from './dom.ts';
 import { field, copyRow, input, message } from './forms.ts';
@@ -152,9 +153,8 @@ export function hostIpConfig(h: Host, app: AfterChange): { root: HTMLElement; di
     msg.clear();
     h.useDhcp();
     fill();
-    h.hooks.runUntil(() => h.dhcpStatus !== 'requesting', DHCP_WAIT_MS);
-    app.afterCommand();
-    fill();
+    // A DHCP server outside the page (bridged) answers later: waited for live (0.94.0).
+    void drive(h.hooks, waitFor(() => h.dhcpStatus !== 'requesting', DHCP_WAIT_MS)).then(() => { app.afterCommand(); fill(); });
   });
   staticRadio.addEventListener('change', applyStatic);
   for (const i of Object.values(inputs)) i.addEventListener('change', applyStatic);

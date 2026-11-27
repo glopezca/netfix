@@ -2,7 +2,8 @@
 import { t } from '../i18n/t.ts';
 import type { Host } from '../devices/host.ts';
 import type { MailMessage } from '../net/packets.ts';
-import { resolveHost, tcpCall } from '../shells/net-tools.ts';
+import { resolveHostSteps, tcpSteps } from '../shells/net-tools.ts';
+import { runSteps, type Steps } from '../net/live-wait.ts';
 
 export interface MailAccount {
   readonly name: string;
@@ -27,20 +28,29 @@ function connectError(server: string, proto: string, kind: string): MailOutcome 
 }
 
 export function sendMail(host: Host, account: MailAccount, to: readonly string[], subject: string, body: string): MailOutcome {
+  return runSteps(host.hooks, sendMailSteps(host, account, to, subject, body));
+}
+
+/** As steps (0.94.0): the mail app waits live for a server outside the page. */
+export function* sendMailSteps(host: Host, account: MailAccount, to: readonly string[], subject: string, body: string): Steps<MailOutcome> {
   if (to.length === 0) return { ok: false, text: t('mailc.noRecipient') };
-  const target = resolveHost(host, account.outgoing);
+  const target = yield* resolveHostSteps(host, account.outgoing);
   if (target.kind === 'error') return { ok: false, text: t('mailc.noOutgoing', { server: account.outgoing }) };
   const mail: MailMessage = { from: account.address, to, subject, body, date: host.clock.now() };
-  const r = tcpCall(host, target.ip, PORTS.SMTP, { app: 'SMTP', kind: 'request', helo: host.name, mail });
+  const r = yield* tcpSteps(host, target.ip, PORTS.SMTP, { app: 'SMTP', kind: 'request', helo: host.name, mail });
   if (r.kind !== 'ok') return connectError(account.outgoing, 'SMTP', r.kind);
   if (r.reply.kind !== 'reply') return { ok: false, text: t('mailc.badSmtp') };
   return r.reply.code === '250' ? { ok: true, text: `${r.reply.code} ${r.reply.text}`, messages: [] } : { ok: false, text: `${r.reply.code} ${r.reply.text}` };
 }
 
 export function receiveMail(host: Host, account: MailAccount): MailOutcome {
-  const target = resolveHost(host, account.incoming);
+  return runSteps(host.hooks, receiveMailSteps(host, account));
+}
+
+export function* receiveMailSteps(host: Host, account: MailAccount): Steps<MailOutcome> {
+  const target = yield* resolveHostSteps(host, account.incoming);
   if (target.kind === 'error') return { ok: false, text: t('mailc.noIncoming', { server: account.incoming }) };
-  const r = tcpCall(host, target.ip, PORTS[account.protocol], { app: account.protocol, kind: 'request', user: account.user, password: account.password });
+  const r = yield* tcpSteps(host, target.ip, PORTS[account.protocol], { app: account.protocol, kind: 'request', user: account.user, password: account.password });
   if (r.kind !== 'ok') return connectError(account.incoming, account.protocol, r.kind);
   if (r.reply.kind !== 'reply') return { ok: false, text: t('mailc.badReply') };
   const ok = r.reply.code === '+OK' || r.reply.code === 'OK';

@@ -70,5 +70,10 @@ export async function runLive<T>(steps: Steps<T>): Promise<T> {
   }
 }
 
+/** A PC app's request (0.94.0): live when the network reaches out of the page, else at once (the same promise either way). */
+export function drive<T>(hooks: Pick<DeviceHooks, 'runUntil' | 'outside'>, steps: Steps<T>): Promise<T> {
+  return hooks.outside?.() === true ? runLive(steps) : Promise.resolve(runSteps(hooks, steps));
+}
+
 /** Whether a device's waits must be live (its network reaches out of the page). */
 export const waitsLive = (hooks: Pick<DeviceHooks, 'outside'>): boolean => hooks.outside?.() === true;
