@@ -1,6 +1,7 @@
 /** Shell skeleton shared by Linux and Windows: prompt, password input and SSH client sessions (with remote editors). */
 import type { Host } from '../devices/host.ts';
-import { tcpCall, SSH_WAIT_MS } from './net-tools.ts';
+import { tcpCall, tcpSteps, SSH_WAIT_MS } from './net-tools.ts';
+import { runLive, runSteps, waitsLive, type Steps } from '../net/live-wait.ts';
 import { SshLogin, parseSshArgs } from './ssh-client.ts';
 import type { SshClientStore, LoginResult } from './ssh-client.ts';
 import type { AppPayload } from '../net/packets.ts';
@@ -126,9 +127,20 @@ export abstract class BaseShell implements ShellSession {
 
   run(line: string): string[] {
     if (this.busy) return [];
-    if (this.state.kind === 'login') return this.loginStep(this.state.login, this.state.login.input(line));
-    if (this.state.kind === 'remote') return this.remoteRequest({ kind: 'command', line });
+    if (this.state.kind === 'login') return this.live(this.loginInput(this.state.login, line));
+    if (this.state.kind === 'remote') return this.live(this.remoteSteps({ kind: 'command', line }));
     return this.runLocalLine(line);
+  }
+
+  /** An ssh exchange: synchronous, or live in a terminal whose network reaches out of the page (0.93.0). */
+  private live(steps: Steps<string[]>): string[] {
+    if (!this.liveWaits || !waitsLive(this.host.hooks)) return runSteps(this.host.hooks, steps);
+    this.waitFor(runLive(steps));
+    return [];
+  }
+
+  private *loginInput(login: SshLogin, line: string): Steps<string[]> {
+    return yield* this.loginStep(login, yield* login.inputSteps(line));
   }
 
   /** A line typed in the local shell (Windows: one command; Linux: bash). */
@@ -147,13 +159,13 @@ export abstract class BaseShell implements ShellSession {
   interrupt(): string[] {
     this.busy = false;
     this.interruptedUpTo = this.waits;
-    if (this.state.kind === 'remote') return this.remoteRequest({ kind: 'key', key: 'int' });
+    if (this.state.kind === 'remote') return this.live(this.remoteSteps({ kind: 'key', key: 'int' }));
     if (this.state.kind === 'login') return this.endSsh([], SSH_FAILED);
     return this.localInterrupt();
   }
 
   eof(): string[] {
-    if (this.state.kind === 'remote') return this.remoteRequest({ kind: 'key', key: 'eof' });
+    if (this.state.kind === 'remote') return this.live(this.remoteSteps({ kind: 'key', key: 'eof' }));
     if (this.state.kind === 'login') return this.endSsh([], SSH_FAILED);
     return this.localEof();
   }
@@ -179,7 +191,7 @@ export abstract class BaseShell implements ShellSession {
   }
 
   closeEdit(): string[] {
-    if (this.state.kind === 'remote') return this.remoteRequest({ kind: 'edit', action: 'close' });
+    if (this.state.kind === 'remote') return this.live(this.remoteSteps({ kind: 'edit', action: 'close' }));
     return this.localCloseEdit();
   }
 
@@ -195,7 +207,7 @@ export abstract class BaseShell implements ShellSession {
 
   screenKey(key: KeyInput): string[] {
     if (this.state.kind !== 'remote') return this.localScreenKey(key);
-    return this.remoteRequest({ kind: 'screen', key, ...this.state.size });
+    return this.live(this.remoteSteps({ kind: 'screen', key, ...this.state.size }));
   }
 
   protected localScreenFrame(_width: number, _height: number): Frame | null {
@@ -225,7 +237,11 @@ export abstract class BaseShell implements ShellSession {
     if (typeof opts === 'string') return this.endSsh(opts.split('\n'), SSH_FAILED);
     const login = new SshLogin(this.host, this.osName, this.sshStore(cwd), opts);
     this.state = { kind: 'login', login };
-    return this.loginStep(login, login.begin());
+    return this.live(this.sshBegin(login));
+  }
+
+  private *sshBegin(login: SshLogin): Steps<string[]> {
+    return yield* this.loginStep(login, yield* login.beginSteps());
   }
 
   private endSsh(lines: string[], status: number): string[] {
@@ -234,24 +250,29 @@ export abstract class BaseShell implements ShellSession {
   }
 
   /** Output of a login step; once authenticated, an interactive session or the remote command. */
-  private loginStep(login: SshLogin, r: LoginResult): string[] {
+  private *loginStep(login: SshLogin, r: LoginResult): Steps<string[]> {
     if (r.failed) return this.endSsh(r.lines, SSH_FAILED);
     if (!r.session) return r.lines;
     const { target, port, command } = login.opts;
     const quiet = command !== undefined;
     this.state = { kind: 'remote', target, ip: r.session.ip, port, session: r.session.id, prompt: r.session.prompt, secret: false, edit: null, screen: null, size: { ...DEFAULT_SCREEN }, quiet };
     if (!quiet) return [...r.lines, ...r.session.banner];
-    const out = [...r.lines, ...this.remoteRequest({ kind: 'command', line: command })];
+    const out = [...r.lines, ...yield* this.remoteSteps({ kind: 'command', line: command })];
     if (this.state.kind !== 'remote') return out;
     // `ssh host command` runs no login shell: the remote "logout" is not shown.
-    const end = this.remoteRequest({ kind: 'command', line: 'exit $?' });
+    const end = yield* this.remoteSteps({ kind: 'command', line: 'exit $?' });
     return [...out, ...(end[0] === 'logout' ? end.slice(1) : end)];
   }
 
+  /** Synchronous: a window resize while a remote full-screen program runs (its output is the next frame). */
   private remoteRequest(req: DistributiveOmit<SshRequest, 'app' | 'session'>): string[] {
+    return runSteps(this.host.hooks, this.remoteSteps(req));
+  }
+
+  private *remoteSteps(req: DistributiveOmit<SshRequest, 'app' | 'session'>): Steps<string[]> {
     if (this.state.kind !== 'remote') return [];
     const st = this.state;
-    const r = tcpCall(this.host, st.ip, st.port, { ...req, app: 'SSH', session: st.session } as SshRequest, SSH_WAIT_MS);
+    const r = yield* tcpSteps(this.host, st.ip, st.port, { ...req, app: 'SSH', session: st.session } as SshRequest, SSH_WAIT_MS);
     const out: SshOutput | undefined = r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
     const closing = st.quiet && out ? [] : [`Connection to ${st.target} closed.`];
     if (!out || out.closed) return this.endSsh([...(out?.lines ?? []), ...closing], out ? out.status ?? 0 : SSH_FAILED);

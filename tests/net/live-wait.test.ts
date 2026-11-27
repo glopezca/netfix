@@ -162,6 +162,32 @@ test('Ctrl+C in the Windows prompt and the IOS console: the late report is dropp
   }
 });
 
+test('ssh from a terminal waits live (0.93.0): login, password, a remote command, exit', async () => {
+  const { EXAMPLES } = await import('../../src/net/examples.ts');
+  const t = EXAMPLES.find((e) => e.id === 'ssh-sftp')!.build();
+  Object.assign(t.byLabel('SRV') as Server, { reachesOutside: () => true });
+  const stop = clock(t);
+  try {
+    const sh = terminal(t.byLabel('PC1') as Pc, 'linux');
+    assert.deepEqual(sh.run('ssh -o StrictHostKeyChecking=accept-new ana@172.20.0.10'), [], 'the server has not answered yet');
+    assert.match(await rest(() => sh.later?.() ?? null), /Permanently added '172\.20\.0\.10'/);
+    assert.match(sh.prompt(), /ana@172\.20\.0\.10's password: $/);
+    sh.run('ana1');
+    await rest(() => sh.later?.() ?? null);
+    assert.match(sh.prompt(), /ana@/, 'the remote prompt');
+    sh.run('whoami');
+    assert.equal(await rest(() => sh.later?.() ?? null), 'ana');
+    sh.run('exit');
+    assert.match(await rest(() => sh.later?.() ?? null), /Connection to 172\.20\.0\.10 closed/);
+    assert.doesNotMatch(sh.prompt(), /^ana@/, 'back in the local shell');
+    const once = createShell(t.byLabel('PC1') as Pc, 'linux');
+    once.run('ssh -o StrictHostKeyChecking=accept-new ana@172.20.0.10');
+    assert.match(once.prompt(), /password: $/, 'a shell nobody opted in stays synchronous');
+  } finally {
+    stop();
+  }
+});
+
 test('steps: the same client driven synchronously or live gives the same result', async () => {
   function* twoWaits(): Generator<{ done: () => boolean; ms: number }, number, void> {
     let n = 0;

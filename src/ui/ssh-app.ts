@@ -35,6 +35,7 @@ function sshLine(p: Omit<SshProfile, 'name'>): string {
 /** A terminal running `ssh`; `end` logs out of the remote session and frees the terminal. */
 function terminalFor(pc: Pc, p: Omit<SshProfile, 'name'>, app: AfterChange): { term: Terminal; end: () => void } {
   const shell = createShell(pc, 'linux', USER);
+  shell.liveWaits = true; // a terminal: across pages, the server's answers are waited for live (0.93.0)
   const first = shell.run(sshLine(p));
   const backend: ConsoleBackend = {
     prompt: () => shell.prompt(), run: (l) => shell.run(l),
@@ -43,6 +44,7 @@ function terminalFor(pc: Pc, p: Omit<SshProfile, 'name'>, app: AfterChange): { t
     editRequest: () => shell.editRequest?.() ?? null, saveEdit: (path, c) => (shell.saveEdit ? shell.saveEdit(path, c) : t('common.unavailable')),
     closeEdit: () => shell.closeEdit?.() ?? [],
     screenFrame: (w, h) => shell.screenFrame?.(w, h) ?? null, screenKey: (k) => shell.screenKey?.(k) ?? [],
+    later: () => shell.later?.() ?? null,
   };
   const term = new Terminal(backend, { intro: first, label: `SSH ${p.user || USER}@${p.host}`, afterRun: () => app.afterCommand() });
   return { term, end: () => { shell.interrupt?.(); shell.run('exit'); term.dispose(); app.afterCommand(); } };
