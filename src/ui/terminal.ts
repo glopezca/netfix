@@ -97,6 +97,7 @@ export class Terminal {
     this.unsubscribe = backend.onAsync?.((l) => this.print([l]));
     this.print(opts.intro ?? []);
     this.refreshPrompt();
+    this.followLater(); // a backend already waiting (an ssh opened before the terminal)
   }
 
   /** The prompt setting of the device changed: apply it to the shell and draw the prompt again. */
@@ -208,7 +209,11 @@ export class Terminal {
     this.afterRun();
     this.refreshPrompt();
     this.openFullScreenIfRequested();
-    // A command waiting live for a reply (0.92.0): the rest of its output, and the prompt, when the wait ends.
+    this.followLater();
+  }
+
+  /** A command waiting live for a reply (0.92.0): the rest of its output, and the prompt, when the wait ends. */
+  private followLater(): void {
     const next = this.backend.later?.();
     if (next) void next.then((l) => this.after(l), () => this.after([]));
   }

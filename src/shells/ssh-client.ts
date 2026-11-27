@@ -4,7 +4,8 @@
  */
 import type { Host } from '../devices/host.ts';
 import type { AppPayload } from '../net/packets.ts';
-import { resolveHost, tcpCall } from './net-tools.ts';
+import { resolveHost, tcpSteps } from './net-tools.ts';
+import { runSteps, type Steps } from '../net/live-wait.ts';
 import { toBase64 } from '../core/sha256.ts';
 import { formatIp } from '../core/ip.ts';
 import { parsePublicLine, parsePrivateFile, isEncrypted, sameBlob, fingerprint, signChallenge, verifySignature, publicLine, cryptoRandom, LABEL } from '../net/ssh-keys.ts';
@@ -154,8 +155,8 @@ export class SshLogin {
     return this.hostKey ? fingerprint(this.hostKey.blob) : '';
   }
 
-  private call(payload: Omit<Extract<AppPayload, { app: 'SSH'; kind: 'auth' }>, 'app' | 'kind' | 'clientOs' | 'challenge'>): SshOut | undefined {
-    const r = tcpCall(this.host, this.ip, this.opts.port, { app: 'SSH', kind: 'auth', clientOs: this.osName, challenge: this.challenge, subsystem: this.opts.subsystem, ...payload });
+  private *call(payload: Omit<Extract<AppPayload, { app: 'SSH'; kind: 'auth' }>, 'app' | 'kind' | 'clientOs' | 'challenge'>): Steps<SshOut | undefined> {
+    const r = yield* tcpSteps(this.host, this.ip, this.opts.port, { app: 'SSH', kind: 'auth', clientOs: this.osName, challenge: this.challenge, subsystem: this.opts.subsystem, ...payload });
     return r.kind === 'ok' && r.reply.app === 'SSH' && r.reply.kind === 'output' ? r.reply : undefined;
   }
 
@@ -165,22 +166,27 @@ export class SshLogin {
 
   /** Like OpenSSH, missing -i files are reported before connecting. */
   begin(): LoginResult {
+    return runSteps(this.host.hooks, this.beginSteps());
+  }
+
+  /** begin() as steps (0.93.0): a terminal waits for the server live when the network reaches out of the page. */
+  *beginSteps(): Steps<LoginResult> {
     const explicit = this.opts.identities.map((p) => this.store.resolve(p));
     const missing = this.opts.identities.filter((p) => this.store.readIdentity(this.store.resolve(p)) === 'missing');
     this.queue = explicit.filter((p) => this.store.readIdentity(p) !== 'missing');
     const warnings = missing.map((p) => `Warning: Identity file ${p} not accessible: No such file or directory.`);
-    const r = this.connect();
+    const r = yield* this.connect();
     return { ...r, lines: [...warnings, ...r.lines] } as LoginResult;
   }
 
-  private connect(): LoginResult {
+  private *connect(): Steps<LoginResult> {
     const { target, port } = this.opts;
     // Each terminal's ssh resolves as its own system does (its hosts file, nsswitch or the Windows DNS client).
     const resolved = resolveHost(this.host, target, this.osName === 'Windows' ? 'windows' : 'linux');
     if (resolved.kind === 'error') return this.fail([`ssh: Could not resolve hostname ${target}: Name or service not known`]);
     this.ip = resolved.ip;
     const nonce = toBase64(cryptoRandom(NONCE_BYTES));
-    const probe = tcpCall(this.host, this.ip, port, { app: 'SSH', kind: 'auth', method: 'none', nonce, user: this.opts.user, password: '', clientOs: this.osName });
+    const probe = yield* tcpSteps(this.host, this.ip, port, { app: 'SSH', kind: 'auth', method: 'none', nonce, user: this.opts.user, password: '', clientOs: this.osName });
     if (probe.kind === 'refused') return this.fail([`ssh: connect to host ${target} port ${port}: Connection refused`]);
     if (probe.kind === 'unreachable') return this.fail([`ssh: connect to host ${target} port ${port}: ${probe.reason === 'net' ? 'Network is unreachable' : 'No route to host'}`]);
     if (probe.kind !== 'ok') return this.fail([`ssh: connect to host ${target} port ${port}: ${probe.kind === 'noroute' ? 'Network is unreachable' : 'Connection timed out'}`]);
@@ -193,7 +199,7 @@ export class SshLogin {
       return this.fail([`ssh_dispatch_run_fatal: Connection to ${formatIp(this.ip)} port ${port}: incorrect signature`]);
     }
     this.methods = out.methods ?? [];
-    return this.checkHostKey();
+    return yield* this.checkHostKey();
   }
 
   // ------------------------------------------------------------ host key
@@ -214,20 +220,20 @@ export class SshLogin {
     });
   }
 
-  private checkHostKey(): LoginResult {
+  private *checkHostKey(): Steps<LoginResult> {
     const key = this.hostKey;
     if (!key) return this.fail(['Host key verification failed.']);
     const same = this.known().filter((k) => k.key.type === key.type);
-    if (same.some((k) => sameBlob(k.key.blob, key.blob))) return this.authenticate([]);
+    if (same.some((k) => sameBlob(k.key.blob, key.blob))) return yield* this.authenticate([]);
     const changed = same[0];
     if (changed) {
       const warning = hostKeyChanged(LABEL[key.type], fingerprint(key.blob), this.knownHostsPath(), changed.line, this.opts.target);
       if (this.opts.strict !== 'no') return this.fail(warning);
       this.passwordBlocked = true;
-      return this.authenticate([...warning.slice(0, -2), ...mitmPasswordDisabled()]);
+      return yield* this.authenticate([...warning.slice(0, -2), ...mitmPasswordDisabled()]);
     }
     const fp = fingerprint(key.blob);
-    if (this.opts.strict === 'no' || this.opts.strict === 'accept-new') return this.authenticate(this.remember());
+    if (this.opts.strict === 'no' || this.opts.strict === 'accept-new') return yield* this.authenticate(this.remember());
     if (this.opts.strict === 'yes' || this.opts.batch) return this.fail([`No ${LABEL[key.type]} host key is known for ${this.opts.target} and you have requested strict checking.`, 'Host key verification failed.']);
     this.step = { kind: 'hostkey' };
     const shown = this.opts.target === formatIp(this.ip) ? this.opts.target : `${this.opts.target} (${formatIp(this.ip)})`;
@@ -241,12 +247,12 @@ export class SshLogin {
     return [`Warning: Permanently added '${this.opts.target}' (${LABEL[key.type]}) to the list of known hosts.`];
   }
 
-  private answerHostKey(line: string): LoginResult {
+  private *answerHostKey(line: string): Steps<LoginResult> {
     const a = line.trim();
     const fp = this.hostKey ? fingerprint(this.hostKey.blob) : '';
     if (a === 'yes' || (a !== '' && a === fp)) {
       this.step = { kind: 'idle' };
-      return this.authenticate(this.remember());
+      return yield* this.authenticate(this.remember());
     }
     if (a === 'no') return this.fail(['Host key verification failed.']);
     return { lines: ["Please type 'yes', 'no' or the fingerprint: "] };
@@ -254,13 +260,13 @@ export class SshLogin {
 
   // ------------------------------------------------------------ authentication
 
-  private authenticate(lines: string[]): LoginResult {
+  private *authenticate(lines: string[]): Steps<LoginResult> {
     const pubkey = this.opts.pubkey && this.methods.includes('publickey');
     this.queue = pubkey ? [...new Set([...this.queue, ...this.store.defaultIdentities()])] : [];
-    return this.nextIdentity(lines);
+    return yield* this.nextIdentity(lines);
   }
 
-  private nextIdentity(lines: string[]): LoginResult {
+  private *nextIdentity(lines: string[]): Steps<LoginResult> {
     for (let path = this.queue.shift(); path !== undefined; path = this.queue.shift()) {
       const file = this.store.readIdentity(path);
       if (typeof file === 'string') continue;
@@ -278,38 +284,38 @@ export class SshLogin {
         lines.push(`Load key "${path}": invalid format`);
         continue;
       }
-      const r = this.tryKey(kp, lines);
+      const r = yield* this.tryKey(kp, lines);
       if (r) return r;
     }
     return this.passwordStep(lines);
   }
 
-  private tryKey(kp: KeyPair, lines: string[]): LoginResult | null {
+  private *tryKey(kp: KeyPair, lines: string[]): Steps<LoginResult | null> {
     const key = publicLine(kp);
-    const out = this.call({ method: 'publickey', user: this.opts.user, password: '', key, signature: signChallenge(kp, userAuthMessage(this.challenge, this.hostKey?.blob ?? new Uint8Array(), this.opts.user, key)) });
+    const out = yield* this.call({ method: 'publickey', user: this.opts.user, password: '', key, signature: signChallenge(kp, userAuthMessage(this.challenge, this.hostKey?.blob ?? new Uint8Array(), this.opts.user, key)) });
     if (out?.ok && out.session) return this.opened(out, lines);
     if (out?.closed) return this.fail([...lines, ...out.lines]);
     return null;
   }
 
-  private answerPassphrase(line: string): LoginResult {
+  private *answerPassphrase(line: string): Steps<LoginResult> {
     const s = this.step;
     if (s.kind !== 'passphrase') return { lines: [] };
     if (line === '') {
       this.step = { kind: 'idle' };
-      return this.nextIdentity([]);
+      return yield* this.nextIdentity([]);
     }
     const kp = parsePrivateFile(s.text, line);
     if (typeof kp === 'string') {
       if (s.tries + 1 >= MAX_PASSPHRASE_TRIES) {
         this.step = { kind: 'idle' };
-        return this.nextIdentity([]);
+        return yield* this.nextIdentity([]);
       }
       this.step = { ...s, tries: s.tries + 1 };
       return { lines: [] };
     }
     this.step = { kind: 'idle' };
-    return this.tryKey(kp, []) ?? this.nextIdentity([]);
+    return (yield* this.tryKey(kp, [])) ?? (yield* this.nextIdentity([]));
   }
 
   private passwordStep(lines: string[]): LoginResult {
@@ -324,10 +330,10 @@ export class SshLogin {
     return `${this.opts.user}@${this.opts.target}: Permission denied (${this.methods.join(',') || 'none'}).`;
   }
 
-  private answerPassword(line: string): LoginResult {
+  private *answerPassword(line: string): Steps<LoginResult> {
     const s = this.step;
     if (s.kind !== 'password') return { lines: [] };
-    const out = this.call({ method: 'password', user: this.opts.user, password: line });
+    const out = yield* this.call({ method: 'password', user: this.opts.user, password: line });
     if (!out) return this.fail([`Connection to ${this.opts.target} closed by remote host.`]);
     if (out.ok && out.session) return this.opened(out, []);
     if (out.closed) return this.fail([...out.lines]);
@@ -342,9 +348,13 @@ export class SshLogin {
   }
 
   input(line: string): LoginResult {
-    if (this.step.kind === 'hostkey') return this.answerHostKey(line);
-    if (this.step.kind === 'passphrase') return this.answerPassphrase(line);
-    if (this.step.kind === 'password') return this.answerPassword(line);
+    return runSteps(this.host.hooks, this.inputSteps(line));
+  }
+
+  *inputSteps(line: string): Steps<LoginResult> {
+    if (this.step.kind === 'hostkey') return yield* this.answerHostKey(line);
+    if (this.step.kind === 'passphrase') return yield* this.answerPassphrase(line);
+    if (this.step.kind === 'password') return yield* this.answerPassword(line);
     return { lines: [] };
   }
 }
