@@ -13,23 +13,24 @@ import { runsServices } from '../devices/kinds.ts';
 import { windowsSshStore } from './ssh-stores.ts';
 import type { SshClientStore } from './ssh-client.ts';
 import { BaseShell } from './base.ts';
-import { resolveHost, httpSteps } from './net-tools.ts';
+import { resolveHostSteps, httpSteps } from './net-tools.ts';
 import { dnsSearch } from './dns-client.ts';
-import { startNslookup } from './nslookup.ts';
+import { startNslookupSteps } from './nslookup.ts';
 import type { Nslookup } from './nslookup.ts';
 import type { Host } from '../devices/host.ts';
 import { HOST_PORT } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import { unitActive, openPorts } from '../services/units.ts';
 import { netService, sc, serverOf } from './win-services.ts';
-import { WinCmd } from './win-cmd.ts';
+import { FAILED, WinCmd } from './win-cmd.ts';
 import { FILTERS, runFilter } from './win-cmd-io.ts';
 import { startWinMc } from './win-mc.ts';
 import type { McApp } from '../editors/mc.ts';
 import type { Frame, KeyInput } from '../editors/buffer.ts';
 import { pingSteps } from '../net/ping.ts';
 import { pingReport } from './win-ping.ts';
-import { runLive, runSteps, waitsLive, type Steps } from '../net/live-wait.ts';
+import { HELP } from './win-help.ts';
+import { runLive, runSteps, waitFor, waitsLive, type Steps } from '../net/live-wait.ts';
 import { tracert } from './trace-cmds.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
@@ -48,35 +49,6 @@ const DEFAULT_PING_COUNT = 4;
 const MAX_PING_COUNT = 100;
 const DHCP_WAIT_MS = 20_000;
 
-const HELP = [
-  'Available commands:',
-  '  arp -a | arp -d          Show / delete the ARP cache',
-  '  cd | dir | md | rd | del Folders and files (cd.. and cd\\ work too)',
-  '  copy | move | ren        Copy, move or rename files',
-  '  Z: | cd /d Z:\\dir        Switch to a drive mapped with net use',
-  '  net view | net use       SMB shares and mapped drives',
-  '  net share                Shares of this device (File and Printer Sharing)',
-  '  type <file>              Show a file',
-  '  edit <file>              Edit a file full screen',
-  '  nano.exe|vim.exe <file>  The GNU/Linux editors (C:\\Program Files\\Git\\usr\\bin, in %PATH%)',
-  '  mc.exe [dir [dir]]       Midnight Commander, the two-panel file manager (same folder)',
-  '  set [name[=value]]       Variables (set /a: arithmetic); %name% is replaced in the line',
-  '  a & b | a && b | a || b  Run b always, after a success, or after a failure',
-  '  file.bat [args]          Run a batch file (also .cmd; if, for, goto, call, %1...)',
-  '  path                     Show %PATH%',
-  '  echo <text> [> file]     Print text (> and >> write it to a file)',
-  '  curl [-I] <url>          HTTP client',
-  '  help | ?                 This help',
-  '  hostname | whoami | ver  System information',
-  '  ipconfig [/all]          Show IP configuration',
-  '  ipconfig /release|/renew Release / renew the DHCP lease',
-  '  netstat -an              Listening ports and connections',
-  '  nslookup [name [srv]]    DNS lookup (no name: interactive, exit to leave)',
-  '  ping [-n N] <host>       Send ICMP echo requests',
-  '  tracert [-h N] <host>    Trace the route to a host',
-  '  ssh user@host            SSH client',
-  '  sc query [svc] | sc start|stop <svc> | net start [svc] | net stop <svc>   (Server)',
-];
 
 /** Internal commands cmd.exe takes glued to a path or switch (cd.., cd\\, dir/w): the name ends at . \\ or /. */
 const GLUED = /^(\s*)(cd|chdir|dir|md|mkdir|rd|rmdir|del|erase|type)(?=[.\\/])/i;
@@ -153,16 +125,20 @@ export class WindowsShell extends BaseShell {
 
   /** One cmd.exe line: quoted words, and > or >> sending the output to a file. */
   protected override runLocalLine(line: string): string[] {
-    this.plainLine = /^\s*(ping|curl)(\s[^|&<>^()]*)?$/i.test(line);
+    this.plainLine = /^\s*(ping|curl|nslookup|nbtstat|tracert|ipconfig|net)(\s[^|&<>^()]*)?$/i.test(line);
     if (this.ns) {
-      const reply = this.ns.line(line);
-      if (reply.exit) this.ns = null;
-      return reply.out;
+      const ns = this.ns;
+      this.plainLine = true; // a line at nslookup's own `>` prompt
+      return this.stepsThen(ns.lineSteps(line), (reply) => {
+        if (reply.exit) this.ns = null;
+        return reply.out;
+      });
     }
     if (this.question) {
       const q = this.question;
       this.question = null;
-      return q.answer(line);
+      this.plainLine = true; // the password asked: connecting may wait live
+      return this.stepsThen(q.answer(line), (l) => l);
     }
     if (this.cmd.asking !== null) return this.cmd.answer(line);
     const files = this.files();
@@ -251,9 +227,10 @@ export class WindowsShell extends BaseShell {
   }
 
   private nslookup(args: string[]): string[] {
-    const start = startNslookup(this.host, true, args);
-    if (start.interactive) this.ns = start.ns;
-    return start.out;
+    return this.stepsThen(startNslookupSteps(this.host, true, args), (start) => {
+      if (start.interactive) this.ns = start.ns;
+      return start.out;
+    });
   }
 
   protected override localEditRequest(): EditSpec | null {
@@ -288,7 +265,7 @@ export class WindowsShell extends BaseShell {
     switch (cmd.toLowerCase()) {
       case 'ipconfig': return this.ipconfig(arg);
       case 'ping': return this.ping(args);
-      case 'tracert': return tracert(this.host, args);
+      case 'tracert': return this.stepsThen(tracert(this.host, args), (l) => l);
       case 'arp': return this.arp(arg);
       case 'nslookup': return this.nslookup(args);
       case 'netstat': return this.netstat();
@@ -298,7 +275,7 @@ export class WindowsShell extends BaseShell {
       case 'ver': return ['', 'Microsoft Windows [Version 10.0.20348.2700]', ''];
       case 'sc': return sc(this.host, args);
       case 'net': return this.netCommand(args);
-      case 'nbtstat': return nbtstat(this.host, args);
+      case 'nbtstat': return this.stepsThen(nbtstat(this.host, args), (l) => l);
       case 'help': case '?': return HELP;
       case 'cls': return [];
       case 'path': return [`PATH=${windowsPathFor(this.host)}`];
@@ -322,9 +299,9 @@ export class WindowsShell extends BaseShell {
     if (h.config.mode !== 'dhcp') return NOT_PERMITTED;
     h.dhcpStatus = 'requesting';
     h.dhcpClient.renew();
-    h.hooks.runUntil(() => h.dhcpClient.state === 'BOUND' || h.dhcpStatus === 'failed', DHCP_WAIT_MS);
-    if (h.dhcpClient.state !== 'BOUND') return ['', `An error occurred while renewing interface ${HOST_PORT} : unable to contact your DHCP server. Request has timed out.`, ''];
-    return ipconfig(h, false);
+    // A DHCP server in another page (bridged): its answer is waited for live (0.94.0).
+    return this.stepsThen(waitFor(() => h.dhcpClient.state === 'BOUND' || h.dhcpStatus === 'failed', DHCP_WAIT_MS), () => (h.dhcpClient.state !== 'BOUND'
+      ? ['', `An error occurred while renewing interface ${HOST_PORT} : unable to contact your DHCP server. Request has timed out.`, ''] : ipconfig(h, false)));
   }
 
   private release(): string[] {
@@ -342,17 +319,28 @@ export class WindowsShell extends BaseShell {
     const count = nIdx >= 0 ? Math.min(MAX_PING_COUNT, Math.max(1, Number(args[nIdx + 1]) || DEFAULT_PING_COUNT)) : DEFAULT_PING_COUNT;
     const target = args.filter((_, i) => nIdx < 0 || (i !== nIdx && i !== nIdx + 1)).pop();
     if (!target) return this.notFound('ping');
-    const r = resolveHost(this.host, target, 'windows');
-    if (r.kind === 'error') return [`Ping request could not find host ${target}. Please check the name and try again.`];
-    const ip = formatIp(r.ip);
-    // A name (from DNS or the hosts file) shows with its address; an address alone shows bare.
-    const header = ['', `Pinging ${parseIp(target) === null ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
-    return this.stepsThen(pingSteps(this.host.stack, r.ip, { count, timeoutMs: PING_TIMEOUT_MS }), (results) => pingReport(results, ip, count), header);
+    const host = this.host;
+    // The name is looked up live too (0.94.0): the header and the replies come when the answers do.
+    return this.stepsThen((function* (): Steps<string[]> {
+      const r = yield* resolveHostSteps(host, target, 'windows');
+      if (r.kind === 'error') return [`Ping request could not find host ${target}. Please check the name and try again.`];
+      const ip = formatIp(r.ip);
+      // A name (from DNS or the hosts file) shows with its address; an address alone shows bare.
+      const header = ['', `Pinging ${parseIp(target) === null ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
+      return [...header, ...pingReport(yield* pingSteps(host.stack, r.ip, { count, timeoutMs: PING_TIMEOUT_MS }), ip, count)];
+    })(), (l) => l);
   }
   /** A client's waits: fast-forwarded in a network all in this page, else live — the header now, the rest when it ends (0.92.0). */
   private stepsThen<T>(steps: Steps<T>, show: (r: T) => string[], header: string[] = []): string[] {
     if (!this.liveWaits || !this.plainLine || !waitsLive(this.host.hooks)) return [...header, ...show(runSteps(this.host.hooks, steps))];
-    this.waitFor(runLive(steps).then(show));
+    // Interrupted (Ctrl+C), the answer changes nothing: no nslookup session or password question comes back (review).
+    const wait = this.nextWait();
+    this.waitFor(runLive(steps).then((r) => {
+      if (!this.stillWaiting(wait)) return [];
+      const lines = show(r);
+      this.cmd.errorlevel = lines.some((l) => FAILED.test(l)) ? 1 : 0; // as when it runs at once
+      return lines;
+    }));
     return header;
   }
 
@@ -387,13 +375,14 @@ export class WindowsShell extends BaseShell {
 
   private netCommand(args: string[]): string[] {
     const verb = (args[0] ?? '').toLowerCase();
-    if (verb === 'view') return netView(this.host, args[1]);
+    if (verb === 'view') return this.stepsThen(netView(this.host, args[1]), (l) => l);
     if (verb === 'share') return netShare(this.host, args.slice(1));
     if (verb !== 'use') return netService(this.host, args);
-    const r = netUse(this.host, args.slice(1));
-    if (Array.isArray(r)) return r;
-    this.question = r;
-    return [];
+    return this.stepsThen(netUse(this.host, args.slice(1)), (r) => {
+      if (Array.isArray(r)) return r;
+      this.question = r;
+      return [];
+    });
   }
 
 }

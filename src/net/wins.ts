@@ -7,7 +7,8 @@
  */
 import type { Host } from '../devices/host.ts';
 import type { IpPacket, NbnsMessage, NbnsName, NbnsOpcode } from './packets.ts';
-import { nbnsAsk, nbnsQuery, netbiosName, ownNames, reply, speaksNetbios } from './netbios.ts';
+import { nbnsAsk, nbnsAskSteps, nbnsQuery, netbiosName, ownNames, reply, speaksNetbios } from './netbios.ts';
+import { runSteps, type Steps } from './live-wait.ts';
 
 /** Samba's «min wins ttl» and «max wins ttl» (6 hours, 6 days): what the server grants. */
 export const WINS_MIN_TTL_S = 6 * 3600;
@@ -132,6 +133,10 @@ export function winsAsk(host: Host, server: number, name: string, suffix: number
   return nbnsAsk(host, { type: 'NB', name, suffix, broadcast: false, rd: true }, server);
 }
 
+export function winsAskSteps(host: Host, server: number, name: string, suffix: number): Steps<NbnsMessage | undefined> {
+  return nbnsAskSteps(host, { type: 'NB', name, suffix, broadcast: false, rd: true }, server);
+}
+
 /**
  * The host's names go to the first server of the list that takes the first one (silence or a refusal: the next); the
  * others follow. `done` gets that server and the TTL it granted, or undefined; `live` false stops it (an older run).
@@ -154,8 +159,12 @@ export function winsRegister(host: Host, servers: readonly number[], ttlS: numbe
  * name is not there, or it is a group name). A negative answer ends the search, as in libnss_wins and NetBT.
  */
 export function winsResolve(host: Host, servers: readonly number[], name: string, suffix: number): number | undefined {
+  return runSteps(host.hooks, winsResolveSteps(host, servers, name, suffix));
+}
+
+export function* winsResolveSteps(host: Host, servers: readonly number[], name: string, suffix: number): Steps<number | undefined> {
   for (const server of servers) {
-    const r = winsAsk(host, server, name, suffix);
+    const r = yield* winsAskSteps(host, server, name, suffix);
     if (r === undefined) continue;
     const ip = (r.rcode ?? 0) === 0 ? r.addresses?.[0] : undefined;
     return ip === GROUP_ADDRESS ? undefined : ip;

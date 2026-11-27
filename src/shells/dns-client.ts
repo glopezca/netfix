@@ -6,20 +6,25 @@ import type { Host } from '../devices/host.ts';
 import type { DnsType } from '../net/packets.ts';
 import type { DnsResult } from '../net/dns.ts';
 import { normalizeName } from '../net/dns.ts';
-import { runSync } from '../net/sync.ts';
+import { runSteps, untilDone, type Steps } from '../net/live-wait.ts';
 import { parseIp } from '../core/ip.ts';
 import { countTransaction, resolvedDns, resolvedDomains } from './resolved.ts';
 
 const DNS_WAIT_MS = 6000;
 
 export function dnsQuery(host: Host, name: string, type: DnsType, server?: number): DnsResult {
+  return runSteps(host.hooks, dnsQuerySteps(host, name, type, server));
+}
+
+/** One query as steps (0.94.0): a terminal or an app waits live for a server outside the page. */
+export function* dnsQuerySteps(host: Host, name: string, type: DnsType, server?: number): Steps<DnsResult> {
   const target = type === 'PTR' ? name : normalizeName(name);
   const to = server ?? resolvedDns(host);
   // Only lookups that go through the resolver (dig @server asks that server directly).
   if (server === undefined) countTransaction(host);
   // No server at all (none configured, or resolvectl dns eth0 ""): lookup() would fall back to the configured one.
   if (to === undefined) return { kind: 'noserver' };
-  return runSync<DnsResult>(host.hooks, (done) => host.lookup(target, type, done, to), DNS_WAIT_MS) ?? { kind: 'timeout', server: to ?? 0 };
+  return (yield* untilDone<DnsResult>((done) => host.lookup(target, type, done, to), DNS_WAIT_MS)) ?? { kind: 'timeout', server: to ?? 0 };
 }
 
 /** The search domains of the host: netplan's `nameservers.search`, then the DHCP domain (option 15) while the lease lasts. */
@@ -53,16 +58,20 @@ const found = (r: DnsResult): boolean => r.kind === 'answer' && r.msg.rcode === 
  * exists without that record) is reported before a later NXDOMAIN.
  */
 export function dnsSearch(host: Host, name: string, type: DnsType, server?: number): { readonly result: DnsResult; readonly name: string } {
+  return runSteps(host.hooks, dnsSearchSteps(host, name, type, server));
+}
+
+export function* dnsSearchSteps(host: Host, name: string, type: DnsType, server?: number): Steps<{ readonly result: DnsResult; readonly name: string }> {
   const literal = parseIp(name) !== null || type === 'PTR' || /\.arpa\.?$/i.test(name);
   const candidates = literal ? [name] : resolutionCandidates(name, searchDomains(host));
   let nodata: DnsResult | null = null;
   let last: DnsResult | null = null;
   for (const candidate of candidates) {
-    const result = dnsQuery(host, candidate, type, server);
+    const result = yield* dnsQuerySteps(host, candidate, type, server);
     if (found(result)) return { result, name: candidate };
     if (result.kind !== 'answer' || result.msg.rcode === 'REFUSED') return { result, name };
     if (result.msg.rcode === 'NOERROR') nodata ??= result;
     last = result;
   }
-  return { result: nodata ?? last ?? dnsQuery(host, name, type, server), name };
+  return { result: nodata ?? last ?? (yield* dnsQuerySteps(host, name, type, server)), name };
 }

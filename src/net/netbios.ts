@@ -14,7 +14,7 @@ import { winShareActive } from './win-shares.ts';
 import { hasSystem } from './device-apps.ts';
 import type { AppPayload } from './packets.ts';
 import type { Peer } from './tcp.ts';
-import { runSync } from './sync.ts';
+import { runSteps, untilDone, type Steps } from './live-wait.ts';
 import { broadcastOf } from '../core/ip.ts';
 import { shortHostname } from '../core/hostname.ts';
 
@@ -134,7 +134,11 @@ export function nbnsQuery(host: Host, q: Omit<NbnsMessage, 'id' | 'response'>, t
 
 /** nbnsQuery, waiting for the answer. */
 export function nbnsAsk(host: Host, q: Omit<NbnsMessage, 'id' | 'response'>, to?: number): NbnsMessage | undefined {
-  return runSync<NbnsMessage | undefined>(host.hooks, (done) => nbnsQuery(host, q, to, done), QUERY_MS + 500);
+  return runSteps(host.hooks, nbnsAskSteps(host, q, to));
+}
+
+export function nbnsAskSteps(host: Host, q: Omit<NbnsMessage, 'id' | 'response'>, to?: number): Steps<NbnsMessage | undefined> {
+  return untilDone<NbnsMessage | undefined>((done) => nbnsQuery(host, q, to, done), QUERY_MS + 500);
 }
 
 function cacheOf(host: Host): Map<string, CacheEntry> {
@@ -160,7 +164,11 @@ export function nbnsLookup(host: Host, name: string, suffix: number, done: (ip: 
 
 /** nbnsLookup, waiting for the answer (what Windows does after DNS). */
 export function nbnsResolve(host: Host, name: string, suffix = WORKSTATION): number | undefined {
-  return runSync<number | undefined>(host.hooks, (done) => nbnsLookup(host, name, suffix, done), QUERY_MS + 500);
+  return runSteps(host.hooks, nbnsResolveSteps(host, name, suffix));
+}
+
+export function* nbnsResolveSteps(host: Host, name: string, suffix = WORKSTATION): Steps<number | undefined> {
+  return yield* untilDone<number | undefined>((done) => nbnsLookup(host, name, suffix, done), QUERY_MS + 500);
 }
 
 export const NBNS_WAIT_MS = QUERY_MS;

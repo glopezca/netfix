@@ -8,9 +8,9 @@ import type { Host } from '../devices/host.ts';
 import type { DnsResult } from '../net/dns.ts';
 import { normalizeName } from '../net/dns.ts';
 import { LLMNR_WAIT_MS, llmnrLookup } from '../net/llmnr.ts';
-import { mdnsResolve } from '../net/mdns.ts';
-import { runSync } from '../net/sync.ts';
-import { dnsSearch, searchDomains } from './dns-client.ts';
+import { mdnsResolveSteps } from '../net/mdns.ts';
+import { runSteps, untilDone, type Steps } from '../net/live-wait.ts';
+import { dnsSearchSteps, searchDomains } from './dns-client.ts';
 import { resolvedAsks } from './resolved.ts';
 import type { Protocol } from './resolved.ts';
 
@@ -30,23 +30,27 @@ const noAnswer: ResolvedLookup = { kind: 'failed', reason: 'attempts' };
 const scopeOn = (host: Host, p: Protocol) => (iface: string): boolean => resolvedAsks(host, host.linuxIfName(iface), p);
 const hasScope = (host: Host, p: Protocol): boolean => host.l3Ifaces().some((i) => i.up && i.addrs.length > 0 && scopeOn(host, p)(i.name));
 
-function llmnr(host: Host, name: string): number | undefined {
-  return runSync<number | undefined>(host.hooks, (done) => llmnrLookup(host, name, done, scopeOn(host, 'llmnr')), LLMNR_WAIT_MS + MARGIN_MS);
+function llmnr(host: Host, name: string): Steps<number | undefined> {
+  return untilDone<number | undefined>((done) => llmnrLookup(host, name, done, scopeOn(host, 'llmnr')), LLMNR_WAIT_MS + MARGIN_MS);
 }
 
 export function resolvedLookup(host: Host, name: string): ResolvedLookup {
+  return runSteps(host.hooks, resolvedLookupSteps(host, name));
+}
+
+export function* resolvedLookupSteps(host: Host, name: string): Steps<ResolvedLookup> {
   const bare = name.replace(/\.$/, '');
   if (/\.local$/i.test(bare)) {
     if (!hasScope(host, 'mdns')) return noScope;
-    const ip = mdnsResolve(host, normalizeName(bare), false);
+    const ip = yield* mdnsResolveSteps(host, normalizeName(bare), false);
     return ip === undefined ? noAnswer : { kind: 'link', ip, protocol: 'mDNS/IPv4' };
   }
-  if (bare.includes('.')) return { kind: 'dns', ...dnsSearch(host, name, 'A') };
+  if (bare.includes('.')) return { kind: 'dns', ...yield* dnsSearchSteps(host, name, 'A') };
   const linkLocal = hasScope(host, 'llmnr');
   if (linkLocal) {
-    const ip = llmnr(host, bare);
+    const ip = yield* llmnr(host, bare);
     if (ip !== undefined) return { kind: 'link', ip, protocol: 'LLMNR/IPv4' };
   }
-  if (searchDomains(host).length > 0) return { kind: 'dns', ...dnsSearch(host, name, 'A') };
+  if (searchDomains(host).length > 0) return { kind: 'dns', ...yield* dnsSearchSteps(host, name, 'A') };
   return linkLocal ? noAnswer : noScope;
 }

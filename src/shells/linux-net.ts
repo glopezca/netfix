@@ -1,14 +1,15 @@
 /** iproute2, ping, dig/host and dhclient as programs of the bash core (Ubuntu output). */
 import type { Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
-import { resolveHost } from './net-tools.ts';
-import { dnsQuery, dnsSearch } from './dns-client.ts';
+import { resolveHostSteps } from './net-tools.ts';
+import { waitFor, type Steps } from '../net/live-wait.ts';
+import { dnsQuerySteps, dnsSearchSteps } from './dns-client.ts';
 import { linuxMac } from './linux-files.ts';
 import { digOutput, hostOutput } from './dns-format.ts';
 import { pingSteps } from '../net/ping.ts';
 import { stepsIn } from './live-steps.ts';
 import type { PingOutcome } from '../net/ping.ts';
-import { reverseName } from '../net/dns.ts';
+import { reverseName, type DnsResult } from '../net/dns.ts';
 import type { DnsType, UnreachableCode } from '../net/packets.ts';
 import { formatIp, broadcastOf, parseIp } from '../core/ip.ts';
 import { ipWrite, routeLines } from './linux-ip.ts';
@@ -182,7 +183,7 @@ export function ping(host: Host) {
     const args = ctx.argv.slice(1);
     const { count, target } = pingCount(args);
     if (!target) { ctx.err('ping: usage error: Destination address required\n'); return 1; }
-    const r = resolveHost(host, target, 'linux');
+    const r = yield* stepsIn(host.hooks, resolveHostSteps(host, target, 'linux'), ctx.sh.liveWaits);
     if (r.kind === 'error') { ctx.err(`ping: ${target}: ${r.reason === 'nxdomain' ? 'Name or service not known' : 'Temporary failure in name resolution'}\n`); return 2; }
     const broadcast = host.stack.isBroadcast(r.ip);
     if (broadcast && !wantsBroadcast(args)) { ctx.err(BROADCAST_HINT); return 2; }
@@ -211,7 +212,7 @@ function digTarget(rest: readonly string[], type: DnsType | undefined): string |
 }
 
 export function dig(host: Host) {
-  return (ctx: Ctx): number => {
+  return function* (ctx: Ctx): Gen<number> {
     const args = ctx.argv.slice(1);
     const server = args.find((a) => a.startsWith('@'));
     const rest = args.filter((a) => !a.startsWith('@') && !a.startsWith('+'));
@@ -221,11 +222,16 @@ export function dig(host: Host) {
     const qtype: DnsType = rest.includes('-x') ? 'PTR' : type ?? 'A';
     const srv = server ? parseIp(server.slice(1)) ?? undefined : undefined;
     // dig does not use the search list unless +search (its default is +nosearch).
-    const search = args.includes('+search') && qtype !== 'PTR' ? dnsSearch(host, name, qtype, srv) : { result: dnsQuery(host, name, qtype, srv), name };
+    const query = args.includes('+search') && qtype !== 'PTR' ? dnsSearchSteps(host, name, qtype, srv) : asSearch(dnsQuerySteps(host, name, qtype, srv), name);
+    const search = yield* stepsIn(host.hooks, query, ctx.sh.liveWaits);
     const res = search.result;
     lines(ctx, digOutput(search.name, qtype, res, args.includes('+short'), host.clock.now()));
     return res.kind === 'timeout' ? 9 : 0;
   };
+}
+
+function* asSearch(q: Steps<DnsResult>, name: string): Steps<{ readonly result: DnsResult; readonly name: string }> {
+  return { result: yield* q, name };
 }
 
 function serverArg(text: string | undefined): number | undefined {
@@ -233,28 +239,29 @@ function serverArg(text: string | undefined): number | undefined {
 }
 
 export function hostCmd(host: Host) {
-  return (ctx: Ctx): number => {
+  return function* (ctx: Ctx): Gen<number> {
     const args = ctx.argv.slice(1);
     const tIdx = args.indexOf('-t');
     const type = tIdx >= 0 ? (args[tIdx + 1] ?? 'A').toUpperCase() : 'A';
     const [name, srv] = args.filter((a, i) => !a.startsWith('-') && !(tIdx >= 0 && i === tIdx + 1));
     if (!name) { ctx.err('Usage: host [-t type] name [server]\n'); return 1; }
     const qtype = (DNS_TYPES as readonly string[]).includes(type) ? type as DnsType : 'A';
-    const { result: res } = dnsSearch(host, name, qtype, serverArg(srv));
+    const { result: res } = yield* stepsIn(host.hooks, dnsSearchSteps(host, name, qtype, serverArg(srv)), ctx.sh.liveWaits);
     lines(ctx, hostOutput(name, res));
     return res.kind === 'answer' && res.msg.rcode === 'NOERROR' && (res.msg.answers?.length ?? 0) > 0 ? 0 : 1;
   };
 }
 
 export function dhclient(host: Host) {
-  return (ctx: Ctx): number => {
+  return function* (ctx: Ctx): Gen<number> {
     if (ctx.cred.uid !== 0) { ctx.err('dhclient: Permission denied (are you root?)\n'); return 1; }
     if (ctx.argv.includes('-r')) {
       host.releaseDhcp();
       return 0;
     }
     host.useDhcp();
-    host.hooks.runUntil(() => host.dhcpStatus !== 'requesting', DHCP_WAIT_MS);
+    // A DHCP server in another page (bridged): its offer is waited for live (0.94.0).
+    yield* stepsIn(host.hooks, waitFor(() => host.dhcpStatus !== 'requesting', DHCP_WAIT_MS), ctx.sh.liveWaits);
     if (host.dhcpStatus === 'ok') return 0;
     ctx.err('No DHCPOFFERS received.\nNo working leases in persistent database - sleeping.\n');
     return 2;

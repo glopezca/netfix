@@ -5,9 +5,10 @@
  * remembers them for the session of its user, so every terminal of the PC sees them.
  */
 import type { Host } from '../devices/host.ts';
-import { ANONYMOUS, smbCall, smbPath } from '../clients/smb-client.ts';
+import { ANONYMOUS, smbCallSteps, smbPath } from '../clients/smb-client.ts';
+import type { Steps } from '../net/live-wait.ts';
 import type { SmbClientStatus, SmbLogin } from '../clients/smb-client.ts';
-import { resolveHost } from './net-tools.ts';
+import { resolveHost, resolveHostSteps } from './net-tools.ts';
 
 /** A drive letter (or a connection without one, Local '') to a share. */
 interface Mapping {
@@ -32,7 +33,8 @@ export interface SmbTarget {
 /** net use asking for the password of /user:NAME (typed without echo). */
 export interface PasswordQuestion {
   readonly prompt: string;
-  readonly answer: (password: string) => string[];
+  /** Steps (0.94.0): connecting may wait live for a server outside the page. */
+  readonly answer: (password: string) => Steps<string[]>;
 }
 
 const RULE = '-'.repeat(79);
@@ -112,10 +114,10 @@ function remove(host: Host, local: string): string[] {
 }
 
 /** Tree connect with that login; the drive is recorded when the server accepts it. */
-function connect(host: Host, local: string, server: string, share: string, login: SmbLogin): string[] {
-  const r = resolveHost(host, server, 'windows');
+function* connect(host: Host, local: string, server: string, share: string, login: SmbLogin): Steps<string[]> {
+  const r = yield* resolveHostSteps(host, server, 'windows');
   if (r.kind !== 'ip') return systemError(53, NOT_FOUND_PATH);
-  const tree = smbCall(host, r.ip, login, share, { op: 'tree' });
+  const tree = yield* smbCallSteps(host, r.ip, login, share, { op: 'tree' });
   if (tree.status !== 'NT_STATUS_OK') return connectError(tree.status);
   const kept = mapped(host).filter((m) => !(local ? m.local === local : !m.local && sameShare(m, server, share)));
   mappings.set(host, [...kept, { local, server, share, ip: r.ip, login }]);
@@ -134,7 +136,7 @@ function useArgs(args: readonly string[]): UseArgs {
 }
 
 /** `net use [X: | *] [\\server\share [password | *]] [/user:name] [/delete]`. */
-export function netUse(host: Host, args: readonly string[]): string[] | PasswordQuestion {
+export function* netUse(host: Host, args: readonly string[]): Steps<string[] | PasswordQuestion> {
   const o = useArgs(args);
   const [first, second, third] = o.words;
   if (!first) return listing(host);
@@ -147,23 +149,23 @@ export function netUse(host: Host, args: readonly string[]): string[] | Password
   const local = letter === '*' ? [...LETTERS].map((l) => `${l}:`).find((l) => !used.includes(l)) ?? '' : letter;
   if (letter === '*' && !local) return systemError(85, 'The local device name is already in use.');
   if (local === 'C:' || (letter !== '*' && local && used.includes(local))) return systemError(85, 'The local device name is already in use.');
-  const done = (login: SmbLogin): string[] => {
-    const out = connect(host, local, unc.server, unc.share, login);
+  const done = function* (login: SmbLogin): Steps<string[]> {
+    const out = yield* connect(host, local, unc.server, unc.share, login);
     return letter === '*' && out === DONE ? [`Drive ${local} is now connected to \\\\${unc.server}\\${unc.share}.`, '', ...DONE] : out;
   };
-  if (o.user === undefined) return done(ANONYMOUS);
+  if (o.user === undefined) return yield* done(ANONYMOUS);
   const user = o.user;
-  if (password === undefined || password === '*') return { prompt: `Enter the password for '${user}' to connect to '${unc.server}': `, answer: (p) => ['', ...done({ user, password: p })] };
-  return done({ user, password });
+  if (password === undefined || password === '*') return { prompt: `Enter the password for '${user}' to connect to '${unc.server}': `, answer: function* (p) { return ['', ...yield* done({ user, password: p })]; } };
+  return yield* done({ user, password });
 }
 
 /** `net view \\NAME`: the server's comment and its visible disk shares (hidden ones end in $), Used as a mapped drive. */
-export function netView(host: Host, unc: string | undefined): string[] {
+export function* netView(host: Host, unc: string | undefined): Steps<string[]> {
   const name = (unc ?? '').replace(/^\\\\/, '').replace(/\\.*$/, '');
   if (!name) return ['The syntax of this command is:', '', 'NET VIEW', '[\\\\computername [/CACHE] | [/ALL] | /DOMAIN[:domainname]]'];
-  const r = resolveHost(host, name, 'windows');
+  const r = yield* resolveHostSteps(host, name, 'windows');
   if (r.kind !== 'ip') return systemError(53, NOT_FOUND_PATH);
-  const reply = smbCall(host, r.ip, loginFor(host, name, ''), 'IPC$', { op: 'shares' });
+  const reply = yield* smbCallSteps(host, r.ip, loginFor(host, name, ''), 'IPC$', { op: 'shares' });
   if (reply.status !== 'NT_STATUS_OK') return connectError(reply.status);
   const disks = (reply.shares ?? []).filter((s) => s.type === 'Disk' && !s.name.endsWith('$')).sort((a, b) => a.name.localeCompare(b.name));
   if (!disks.length) return ['There are no entries in the list.', ''];

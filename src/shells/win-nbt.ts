@@ -4,7 +4,8 @@
  */
 import type { Host } from '../devices/host.ts';
 import type { NbnsName } from '../net/packets.ts';
-import { WORKSTATION, nbnsAsk, nbnsCache, nbnsResolve, ownNames, purgeNbnsCache } from '../net/netbios.ts';
+import { WORKSTATION, nbnsAskSteps, nbnsCache, nbnsResolveSteps, ownNames, purgeNbnsCache } from '../net/netbios.ts';
+import type { Steps } from '../net/live-wait.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 
 const RULE = `    ${'-'.repeat(45)}`;
@@ -18,9 +19,9 @@ function header(host: Host): string[] {
   return ['', 'Ethernet:', `Node IpAddress: [${ip !== undefined ? formatIp(ip) : '0.0.0.0'}] Scope Id: []`, ''];
 }
 
-function remote(host: Host, target: string, byAddress: boolean): string[] {
-  const ip = byAddress ? parseIp(target) ?? undefined : nbnsResolve(host, target, WORKSTATION);
-  const status = ip === undefined ? undefined : nbnsAsk(host, { type: 'NBSTAT', name: '*', suffix: WORKSTATION, broadcast: false }, ip);
+function* remote(host: Host, target: string, byAddress: boolean): Steps<string[]> {
+  const ip = byAddress ? parseIp(target) ?? undefined : yield* nbnsResolveSteps(host, target, WORKSTATION);
+  const status = ip === undefined ? undefined : yield* nbnsAskSteps(host, { type: 'NBSTAT', name: '*', suffix: WORKSTATION, broadcast: false }, ip);
   if (!status?.names) return [...header(host), '    Host not found.', ''];
   return [...header(host), '           NetBIOS Remote Machine Name Table', '', '       Name               Type         Status', RULE,
     ...status.names.map(nameRow), '', `    MAC Address = ${winMac(status.mac ?? '')}`, ''];
@@ -36,11 +37,12 @@ function cache(host: Host): string[] {
 const USAGE = ['', 'Displays protocol statistics and current TCP/IP connections using NBT (NetBIOS over TCP/IP).', '',
   'NBTSTAT [ [-a RemoteName] [-A IP address] [-c] [-n] [-R] ]', ''];
 
-export function nbtstat(host: Host, args: readonly string[]): string[] {
+/** As steps (0.94.0): -a and -A ask a machine that may be outside the page. */
+export function* nbtstat(host: Host, args: readonly string[]): Steps<string[]> {
   const [flag, value] = args;
   if (flag === '-n') return [...header(host), '                NetBIOS Local Name Table', '', '       Name               Type         Status', RULE, ...ownNames(host).map(nameRow), ''];
   if (flag === '-c') return cache(host);
   if (flag === '-R') { purgeNbnsCache(host); return ['    Successful purge and preload of the NBT Remote Cache Name Table.', '']; }
-  if ((flag === '-a' || flag === '-A') && value) return remote(host, value, flag === '-A');
+  if ((flag === '-a' || flag === '-A') && value) return yield* remote(host, value, flag === '-A');
   return USAGE;
 }

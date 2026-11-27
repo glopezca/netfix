@@ -44,7 +44,7 @@ const SYNTAX = ['The syntax of the command is incorrect.'];
 export const MAX_BATCH_STEPS = 10_000;
 const MAX_DEPTH = 16;
 // shortcut: a command without its own exit code gets it from its output (a Windows error message = 1).
-const FAILED = /not recognized|Invalid Command|cannot find|syntax of the command|Access is denied|File Not Found|could not|is invalid|FAILED|not defined|Divide by zero|unable to|already exists|No such directory/i;
+export const FAILED = /not recognized|Invalid Command|cannot find|syntax of the command|Access is denied|File Not Found|could not|is invalid|FAILED|not defined|Divide by zero|unable to|already exists|No such directory/i;
 
 const unquote = (s: string): string => (s.startsWith('"') && s.endsWith('"') && s.length >= 2 ? s.slice(1, -1) : s);
 
@@ -52,7 +52,7 @@ export class WinCmd {
   private readonly host: WinCmdHost;
   /** Variables set with set (their own case kept), on top of the system's. */
   private readonly vars = new Map<string, [string, string]>();
-  private errorlevel = 0;
+  errorlevel = 0; // set by windows.ts too, for a command whose output came later (a live wait)
   private steps = 0;
   /** Batch files run so far: a command that was one keeps the errorlevel its exit /b left. */
   private batches = 0;

@@ -9,7 +9,7 @@ import { formatMacCisco } from '../../core/mac.ts';
 import { pingSteps } from '../../net/ping.ts';
 import { runLive, runSteps, waitsLive } from '../../net/live-wait.ts';
 import type { PingOutcome } from '../../net/ping.ts';
-import { runTrace, iosTraceLines, DEFAULT_MAX_HOPS } from '../../net/trace.ts';
+import { traceSteps, iosTraceLines, DEFAULT_MAX_HOPS } from '../../net/trace.ts';
 
 const TRACE_TIMEOUT_MS = 3000;
 import { parseIfaceName } from '../interfaces.ts';
@@ -135,8 +135,10 @@ export const ROUTER_NET_EXEC: readonly Def[] = [
       const dst = parseIp(target);
       if (dst === null) return cli.out('% Unrecognized host or address, or protocol not running.', '');
       const r = cli.device;
-      const res = runTrace(r.plane.stack, r.hooks, dst, { maxHops: DEFAULT_MAX_HOPS, probes: 3, timeoutMs: TRACE_TIMEOUT_MS, now: () => r.clock.elapsed() });
-      cli.out(...iosTraceLines(target, res));
+      const steps = traceSteps(r.plane.stack, dst, { maxHops: DEFAULT_MAX_HOPS, probes: 3, timeoutMs: TRACE_TIMEOUT_MS, now: () => r.clock.elapsed() });
+      // As ping: a network reaching out of the page prints the hops when the probes have been answered (0.94.0).
+      if (cli.session.canWaitLive && waitsLive(r.hooks)) cli.session.waitFor(runLive(steps).then((res) => iosTraceLines(target, res)));
+      else cli.out(...iosTraceLines(target, runSteps(r.hooks, steps)));
     },
   },
   { syntax: 'show {arp | ip arp}', run: (cli) => cli.out(...showArp(cli.device.plane.stack, ownArp(cli.device), cli.device.clock.now())) },

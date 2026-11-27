@@ -1,4 +1,5 @@
 /** "Interfaces" tab of the Linux router: address per NIC, WAN by DHCP, gateway, DNS, forwarding and routes. */
+import { drive, waitFor } from '../net/live-wait.ts';
 import { el } from './dom.ts';
 import { button, field, input, message, onCommit, onOff, table } from './forms.ts';
 import { liveHostPanel } from './live.ts';
@@ -43,8 +44,7 @@ function nicRow(r: LinuxRouter, n: NicInfo, app: AfterChange, msg: ReturnType<ty
   dhcp.addEventListener('change', () => {
     if (dhcp.checked) {
       r.useDhcp();
-      r.hooks.runUntil(() => r.dhcpStatus !== 'requesting', DHCP_WAIT_MS);
-      app.afterCommand();
+      void drive(r.hooks, waitFor(() => r.dhcpStatus !== 'requesting', DHCP_WAIT_MS)).then(() => app.afterCommand());
       return;
     }
     // Off: static with the address the lease gave (and its gateway and DNS), editable from now on. apply() would see

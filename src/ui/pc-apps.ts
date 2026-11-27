@@ -9,7 +9,8 @@ import { resolveLink } from '../web/url.ts';
 import type { Pc } from '../devices/pc.ts';
 import { BrowserEngine } from '../clients/browser.ts';
 import type { BrowseResult, Navigation } from '../clients/browser.ts';
-import { sendMail, receiveMail } from '../clients/mail-client.ts';
+import { sendMailSteps, receiveMailSteps } from '../clients/mail-client.ts';
+import { drive } from '../net/live-wait.ts';
 import type { MailAccount } from '../clients/mail-client.ts';
 import { formatIp } from '../core/ip.ts';
 import { formatLeaseTime } from '../core/clock.ts';
@@ -119,21 +120,36 @@ export function mailApp(pc: Pc, app: AfterChange): HTMLElement {
     const subject = input();
     const body = el('textarea', { rows: '5', 'aria-label': t('mail.message') });
     const sendMsg = message();
+    let sending = false;
     const send = (): void => {
       if (!pc.mailAccount) return sendMsg.error(t('mail.needAccount'));
-      const r = sendMail(pc, pc.mailAccount, to.value.split(',').map((x) => x.trim()).filter(Boolean), subject.value, body.value);
-      app.afterCommand();
-      if (r.ok) { to.value = ''; subject.value = ''; body.value = ''; sendMsg.ok(t('mail.sent', { text: r.text })); } else sendMsg.error(r.text);
+      if (sending) return; // a double click sends once
+      sending = true;
+      sendMsg.ok(t('pc.loading')); // a server outside the page answers later (0.94.0)
+      const draft = [to.value, subject.value, body.value].join('\0');
+      void drive(pc.hooks, sendMailSteps(pc, pc.mailAccount, to.value.split(',').map((x) => x.trim()).filter(Boolean), subject.value, body.value)).then((r) => {
+        sending = false;
+        app.afterCommand();
+        if (!r.ok) return sendMsg.error(r.text);
+        // Cleared only if it is still the mail sent: another one typed meanwhile stays (review).
+        if ([to.value, subject.value, body.value].join('\0') === draft) { to.value = ''; subject.value = ''; body.value = ''; }
+        sendMsg.ok(t('mail.sent', { text: r.text }));
+      });
     };
     const recvMsg = message();
     const receive = (): void => {
       if (!pc.mailAccount) return recvMsg.error(t('mail.needAccount'));
-      const r = receiveMail(pc, pc.mailAccount);
-      app.afterCommand();
-      if (!r.ok) return recvMsg.error(r.text);
-      pc.inbox = pc.mailAccount.protocol === 'IMAP' ? [...r.messages] : [...pc.inbox, ...r.messages];
-      reading = -1;
-      refresh();
+      const account = pc.mailAccount;
+      recvMsg.ok(t('pc.loading'));
+      void drive(pc.hooks, receiveMailSteps(pc, account)).then((r) => {
+        app.afterCommand();
+        if (pc.mailAccount !== account) return recvMsg.clear(); // another account meanwhile: not its mail
+        if (!r.ok) return recvMsg.error(r.text);
+        recvMsg.clear();
+        pc.inbox = account.protocol === 'IMAP' ? [...r.messages] : [...pc.inbox, ...r.messages];
+        reading = -1;
+        refresh();
+      });
     };
     const open = pc.inbox[reading];
     return [

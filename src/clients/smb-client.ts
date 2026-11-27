@@ -4,7 +4,8 @@
  */
 import type { Host } from '../devices/host.ts';
 import type { SmbOp, SmbReply, SmbStatus } from '../net/smb-types.ts';
-import { tcpCall } from '../shells/net-tools.ts';
+import { tcpSteps } from '../shells/net-tools.ts';
+import { runSteps, type Steps } from '../net/live-wait.ts';
 import { ntHash } from '../services/smb-passdb.ts';
 
 export const SMB_PORT = 445;
@@ -28,8 +29,13 @@ const transport = (kind: string): SmbClientStatus =>
   (kind === 'refused' ? 'NT_STATUS_CONNECTION_REFUSED' : kind === 'timeout' ? 'NT_STATUS_IO_TIMEOUT' : 'NT_STATUS_HOST_UNREACHABLE');
 
 export function smbCall(host: Host, ip: number, login: SmbLogin, share: string, req: SmbOp): SmbResult {
+  return runSteps(host.hooks, smbCallSteps(host, ip, login, share, req));
+}
+
+/** One SMB request as steps (0.94.0): waited for live when the server is outside the page. */
+export function* smbCallSteps(host: Host, ip: number, login: SmbLogin, share: string, req: SmbOp): Steps<SmbResult> {
   const smb = { user: login.user, hash: login.user ? ntHash(login.password) : '', share, req };
-  const r = tcpCall(host, ip, SMB_PORT, { app: 'SMB', kind: 'smb-request', smb });
+  const r = yield* tcpSteps(host, ip, SMB_PORT, { app: 'SMB', kind: 'smb-request', smb });
   if (r.kind !== 'ok') return { status: transport(r.kind) };
   return r.reply.app === 'SMB' && r.reply.kind === 'smb-reply' ? r.reply.smb : { status: 'NT_STATUS_UNSUCCESSFUL' };
 }

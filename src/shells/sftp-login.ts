@@ -8,6 +8,8 @@ import { parseSshArgs, SshLogin } from './ssh-client.ts';
 import type { LoginResult, SshOptions } from './ssh-client.ts';
 import { linuxSshStore } from './ssh-stores.ts';
 import { SftpSession } from '../clients/sftp-client.ts';
+import type { Steps } from '../net/live-wait.ts';
+import { stepsIn } from './live-steps.ts';
 
 export interface TransferArgs {
   /** ssh-style options (-p PORT, -i FILE, -o OPT). */
@@ -56,16 +58,17 @@ export function* sftpLogin(ctx: Ctx, host: Host, opts: SshOptions): Gen<SftpSess
   const acct = ctx.sh.env.users().find((u) => u.uid === ctx.cred.uid);
   if (!acct) return 255;
   const login = new SshLogin(host, 'Linux', linuxSshStore(ctx.sh.env.fs, acct, ctx.cwd), opts);
-  let r = login.begin();
+  const live = <T>(steps: Steps<T>): Gen<T> => stepsIn(host.hooks, steps, ctx.sh.liveWaits);
+  let r = yield* live(login.beginSteps());
   for (;;) {
     show(ctx, r);
     if (r.failed) return 255;
     if (r.session) break;
     const line = yield* ctx.readLine(login.prompt(), login.secret());
     if (line === null) return 255;
-    r = login.input(line.text);
+    r = yield* live(login.inputSteps(line.text));
   }
   const session = new SftpSession(host, r.session.ip, opts.port, r.session.id);
-  session.start();
+  yield* live(session.startSteps());
   return session;
 }

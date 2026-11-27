@@ -2,7 +2,8 @@
 import type { Ctx } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
 import type { SmbEntry, SmbOp } from '../net/smb-types.ts';
-import { smbCall, smbPath } from '../clients/smb-client.ts';
+import { smbCallSteps, smbPath } from '../clients/smb-client.ts';
+import type { Steps } from '../net/live-wait.ts';
 import type { SmbLogin, SmbResult } from '../clients/smb-client.ts';
 import { hasWildcard, wildMatch } from './win-path.ts';
 
@@ -22,7 +23,7 @@ export type Outcome = 'ok' | 'fail' | 'quit';
 const BLOCKS = '\t\t30787492 blocks of size 1024. 21345612 blocks available';
 const HELP = ['?              cd             del            dir            exit', 'get            help           ls             mkdir          put', 'pwd            q              quit           rm             rmdir'];
 
-const call = (s: SmbSession, req: SmbOp): SmbResult => smbCall(s.host, s.ip, s.login, s.share, req);
+const call = (s: SmbSession, req: SmbOp): Steps<SmbResult> => smbCallSteps(s.host, s.ip, s.login, s.share, req);
 
 /** A path typed at the prompt, on the share: from the root when it starts with a slash, else from the current directory. */
 function remote(s: SmbSession, name: string): string {
@@ -62,11 +63,11 @@ function noSuchFile(ctx: Ctx, what: string): Outcome {
   return 'fail';
 }
 
-function ls(ctx: Ctx, s: SmbSession, arg: string | undefined): Outcome {
+function* ls(ctx: Ctx, s: SmbSession, arg: string | undefined): Steps<Outcome> {
   const path = arg ? remote(s, arg) : smbPath(s.cwd);
   const m = masked(path);
   const shown = m ? path : inDir(path, '*');
-  const r = call(s, { op: 'list', path: m?.dir ?? path });
+  const r = yield* call(s, { op: 'list', path: m?.dir ?? path });
   if (r.status !== 'NT_STATUS_OK') return failed(ctx, r, `listing ${shown}`);
   const entries = (r.entries ?? []).filter((e) => !m || wildMatch(m.mask, e.name));
   if (!entries.length) return noSuchFile(ctx, `listing ${shown}`);
@@ -75,22 +76,22 @@ function ls(ctx: Ctx, s: SmbSession, arg: string | undefined): Outcome {
 }
 
 /** rm with a mask: every file of the directory that matches it (directories are left alone, as smbclient does). */
-function removeMatching(ctx: Ctx, s: SmbSession, path: string, m: Mask): Outcome {
-  const r = call(s, { op: 'list', path: m.dir });
+function* removeMatching(ctx: Ctx, s: SmbSession, path: string, m: Mask): Steps<Outcome> {
+  const r = yield* call(s, { op: 'list', path: m.dir });
   if (r.status !== 'NT_STATUS_OK') return failed(ctx, r, `deleting remote file ${path}`);
   const files = (r.entries ?? []).filter((e) => !e.dir && wildMatch(m.mask, e.name));
   if (!files.length) return noSuchFile(ctx, `deleting remote file ${path}`);
   let outcome: Outcome = 'ok';
   for (const f of files) {
     const one = inDir(m.dir, f.name);
-    const d = call(s, { op: 'remove', path: one });
+    const d = yield* call(s, { op: 'remove', path: one });
     if (d.status !== 'NT_STATUS_OK') outcome = failed(ctx, d, `deleting remote file ${one}`);
   }
   return outcome;
 }
 
 /** cd: «..» is worked out here, as smbclient does, before asking the server whether the directory exists. */
-function cd(ctx: Ctx, s: SmbSession, arg: string | undefined): Outcome {
+function* cd(ctx: Ctx, s: SmbSession, arg: string | undefined): Steps<Outcome> {
   if (!arg) { ctx.out(`Current directory is \\\\${s.server}\\${s.share}${s.cwd}\n`); return 'ok'; }
   const parts: string[] = [];
   for (const p of remote(s, arg).split('\\').filter(Boolean)) {
@@ -98,7 +99,7 @@ function cd(ctx: Ctx, s: SmbSession, arg: string | undefined): Outcome {
     else if (p !== '.') parts.push(p);
   }
   const target = parts.length ? `\\${parts.join('\\')}\\` : '\\';
-  const r = call(s, { op: 'stat', path: smbPath(target) });
+  const r = yield* call(s, { op: 'stat', path: smbPath(target) });
   if (r.status === 'NT_STATUS_OK' && !r.entry?.dir) { ctx.err(`cd ${target.slice(0, -1)}: NT_STATUS_NOT_A_DIRECTORY\n`); return 'fail'; }
   if (r.status !== 'NT_STATUS_OK') { ctx.err(`cd ${target.slice(0, -1) || '\\'}: ${r.status}\n`); return 'fail'; }
   s.cwd = target;
@@ -107,11 +108,11 @@ function cd(ctx: Ctx, s: SmbSession, arg: string | undefined): Outcome {
 
 const rate = (bytes: number): string => (bytes / 1024 / 0.01).toFixed(1);
 
-function get(ctx: Ctx, s: SmbSession, args: readonly string[]): Outcome {
+function* get(ctx: Ctx, s: SmbSession, args: readonly string[]): Steps<Outcome> {
   const [name, local = name?.split(/[\\/]/).pop()] = args;
   if (!name || !local) { ctx.err('get <filename> [localname]\n'); return 'fail'; }
   const path = remote(s, name);
-  const r = call(s, { op: 'read', path });
+  const r = yield* call(s, { op: 'read', path });
   if (r.status !== 'NT_STATUS_OK') return failed(ctx, r, `opening remote file ${path}`);
   const data = r.data ?? '';
   try {
@@ -124,7 +125,7 @@ function get(ctx: Ctx, s: SmbSession, args: readonly string[]): Outcome {
   return 'ok';
 }
 
-function put(ctx: Ctx, s: SmbSession, args: readonly string[]): Outcome {
+function* put(ctx: Ctx, s: SmbSession, args: readonly string[]): Steps<Outcome> {
   const [local, name = local?.split('/').pop()] = args;
   if (!local || !name) { ctx.err('put <filename> [remotename]\n'); return 'fail'; }
   let data: string;
@@ -135,7 +136,7 @@ function put(ctx: Ctx, s: SmbSession, args: readonly string[]): Outcome {
     return 'fail';
   }
   const path = remote(s, name);
-  const r = call(s, { op: 'write', path, data });
+  const r = yield* call(s, { op: 'write', path, data });
   if (r.status !== 'NT_STATUS_OK') return failed(ctx, r, `opening remote file ${path}`);
   ctx.out(`putting file ${local} as ${path} (${rate(data.length)} kb/s) (average ${rate(data.length)} kb/s)\n`);
   return 'ok';
@@ -148,14 +149,14 @@ const SIMPLE: Readonly<Record<string, { readonly op: 'mkdir' | 'rmdir' | 'remove
   rm: { op: 'remove', what: 'deleting remote file' }, del: { op: 'remove', what: 'deleting remote file' },
 };
 
-function simple(ctx: Ctx, s: SmbSession, cmd: string, arg: string | undefined): Outcome {
+function* simple(ctx: Ctx, s: SmbSession, cmd: string, arg: string | undefined): Steps<Outcome> {
   const c = SIMPLE[cmd];
   if (!c) return 'fail';
   if (!arg) { ctx.err(`${cmd} <${c.op === 'remove' ? 'mask' : 'directory'}>\n`); return 'fail'; }
   const path = remote(s, arg);
   const m = c.op === 'remove' ? masked(path) : null;
-  if (m) return removeMatching(ctx, s, path, m);
-  const r = call(s, { op: c.op, path });
+  if (m) return yield* removeMatching(ctx, s, path, m);
+  const r = yield* call(s, { op: c.op, path });
   return r.status === 'NT_STATUS_OK' ? 'ok' : failed(ctx, r, `${c.what} ${path}`);
 }
 
@@ -164,19 +165,19 @@ function words(line: string): string[] {
   return [...line.matchAll(/"([^"]*)"|(\S+)/g)].map((m) => m[1] ?? m[2] ?? '');
 }
 
-export function smbCommand(ctx: Ctx, s: SmbSession, line: string): Outcome {
+export function* smbCommand(ctx: Ctx, s: SmbSession, line: string): Steps<Outcome> {
   const [cmd = '', ...args] = words(line);
   switch (cmd.toLowerCase()) {
     case '': return 'ok';
-    case 'ls': case 'dir': return ls(ctx, s, args[0]);
-    case 'cd': return cd(ctx, s, args[0]);
+    case 'ls': case 'dir': return yield* ls(ctx, s, args[0]);
+    case 'cd': return yield* cd(ctx, s, args[0]);
     case 'pwd': ctx.out(`Current directory is \\\\${s.server}\\${s.share}${s.cwd}\n`); return 'ok';
-    case 'get': return get(ctx, s, args);
-    case 'put': return put(ctx, s, args);
+    case 'get': return yield* get(ctx, s, args);
+    case 'put': return yield* put(ctx, s, args);
     case 'help': case '?': ctx.out(`${HELP.join('\n')}\n`); return 'ok';
     case 'exit': case 'quit': case 'q': case 'bye': return 'quit';
     default:
-      if (SIMPLE[cmd.toLowerCase()]) return simple(ctx, s, cmd.toLowerCase(), args[0]);
+      if (SIMPLE[cmd.toLowerCase()]) return yield* simple(ctx, s, cmd.toLowerCase(), args[0]);
       ctx.err(`${cmd}: command not found\n`);
       return 'fail';
   }

@@ -8,9 +8,10 @@ import type { Host } from '../devices/host.ts';
 import type { DnsAnswer, DnsType } from '../net/packets.ts';
 import type { DnsResult } from '../net/dns.ts';
 import { normalizeName, reverseName } from '../net/dns.ts';
-import { dnsQuery, dnsSearch } from './dns-client.ts';
+import { dnsQuerySteps, dnsSearchSteps } from './dns-client.ts';
+import type { Steps } from '../net/live-wait.ts';
 import { hostsLookup } from './hosts-file.ts';
-import { resolvedLookup } from './nss-resolve.ts';
+import { resolvedLookupSteps } from './nss-resolve.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 
 export const QUERY_TYPES: readonly DnsType[] = ['A', 'CNAME', 'MX', 'NS', 'TXT', 'PTR', 'SOA'];
@@ -68,24 +69,24 @@ function took(ms: number): string {
   return ms < 1000 ? `${ms.toFixed(1)}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 
-function lookup(host: Host, name: string, type: DnsType | 'empty' | undefined): Found | string {
+function* lookup(host: Host, name: string, type: DnsType | 'empty' | undefined): Steps<Found | string> {
   if (type === 'empty') return `'${name}' does not have any RR of the requested type`;
   const literal = parseIp(name);
   if (literal !== null) {
-    const r = dnsQuery(host, reverseName(literal), 'PTR');
+    const r = yield* dnsQuerySteps(host, reverseName(literal), 'PTR');
     const ptr = r.kind === 'answer' ? (r.msg.answers ?? []).filter((a) => a.type === 'PTR').map((a) => a.data.replace(/\.$/, '')) : [];
     return ptr.length ? { lines: addressLines(name, ptr, linkFor(host, literal)), synthetic: false } : failure(reverseName(literal), r);
   }
-  if (!type) return synthetic(host, name) ?? addressLookup(host, name);
-  const { result } = dnsSearch(host, name, type);
+  if (!type) return synthetic(host, name) ?? (yield* addressLookup(host, name));
+  const { result } = yield* dnsSearchSteps(host, name, type);
   const records = (result.kind === 'answer' ? result.msg.answers ?? [] : []).filter((a) => a.type === type);
   const link = host.linuxIfName(host.primaryPort());
   return records.length ? { lines: records.map((a) => `${recordText(a).padEnd(RECORD_COLUMN)}-- link: ${link}`), synthetic: false } : failure(name, result);
 }
 
 /** An address the way resolved looks it up: mDNS, LLMNR or DNS (nss-resolve.ts). */
-function addressLookup(host: Host, name: string): Found | string {
-  const r = resolvedLookup(host, name);
+function* addressLookup(host: Host, name: string): Steps<Found | string> {
+  const r = yield* resolvedLookupSteps(host, name);
   const link = host.linuxIfName(host.primaryPort());
   if (r.kind === 'link') return { lines: addressLines(name, [formatIp(r.ip)], link), synthetic: false, protocol: r.protocol };
   if (r.kind === 'failed') return r.reason === 'noscope' ? NO_SCOPE : NO_ANSWER;
@@ -100,12 +101,13 @@ export interface QueryOptions {
 }
 
 /** One block per name; a failure goes to stderr and makes the exit status 1. */
-export function query(ctx: Ctx, host: Host, names: readonly string[], opts: QueryOptions): number {
+/** As steps (0.94.0): a terminal waits live for a DNS server outside the page. */
+export function* query(ctx: Ctx, host: Host, names: readonly string[], opts: QueryOptions): Steps<number> {
   let status = 0;
   for (const name of names) {
     const start = host.clock.now();
     // A name longer than DNS allows, or with control characters, never reaches the resolver (nor the screen as is).
-    const r = name.length > MAX_NAME || shown(name) !== name ? 'Invalid domain name' : lookup(host, name, opts.type);
+    const r = name.length > MAX_NAME || shown(name) !== name ? 'Invalid domain name' : yield* lookup(host, name, opts.type);
     if (typeof r === 'string') {
       ctx.err(`${shown(name)}: resolve call failed: ${r}\n`);
       status = 1;
