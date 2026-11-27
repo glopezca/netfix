@@ -1,7 +1,8 @@
 /** The PC web browser's engine: navigation, forms, cookies, redirects and HTTP Basic authentication. */
 import { getLocale } from '../i18n/locale.ts';
 import type { Host } from '../devices/host.ts';
-import { httpRequest } from '../shells/net-tools.ts';
+import { httpSteps } from '../shells/net-tools.ts';
+import { runLive, runSteps, waitsLive, type Steps } from '../net/live-wait.ts';
 import type { HttpOutcome } from '../shells/net-tools.ts';
 import type { HttpMethod } from '../net/packets.ts';
 import { basicHeader, encodeForm } from '../web/http.ts';
@@ -51,6 +52,25 @@ export class BrowserEngine {
 
   /** Opens a URL (following redirects), sending cookies and saved credentials. */
   open(target: string, nav: Navigation = {}): BrowseResult {
+    return runSteps(this.host.hooks, this.openSteps(target, nav));
+  }
+
+  /** The same, waiting live for the replies (0.92.0): for a network that reaches out of the page (`live()`). */
+  openLive(target: string, nav: Navigation = {}): Promise<BrowseResult> {
+    return runLive(this.openSteps(target, nav));
+  }
+
+  /** Whether pages must be fetched live (openLive): the device's network reaches out of the page. */
+  live(): boolean {
+    return waitsLive(this.host.hooks);
+  }
+
+  /** Remembers user and password for the site (login, or the live window's own open after it). */
+  remember(url: string, user: string, password: string): void {
+    this.credentials.set(originOf(url), basicHeader(user, password));
+  }
+
+  private *openSteps(target: string, nav: Navigation): Steps<BrowseResult> {
     let url = /^https?:\/\//i.test(target) ? target : `http://${target}`;
     let method: HttpMethod = nav.method ?? 'GET';
     let body: string | undefined;
@@ -63,7 +83,7 @@ export class BrowserEngine {
     // not with a cross-site POST or a redirect to another site: a page cannot drive a router behind the user's back.
     let credentials = !nav.initiator || method === 'GET' || originOf(nav.initiator) === originOf(url);
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-      const r = this.fetch(url, method, body, credentials);
+      const r = yield* this.fetchSteps(url, method, body, credentials);
       if (r.kind === 'error') return { kind: 'error', url, code: r.code, message: r.message };
       const res = r.response;
       this.storeCookies(url, res);
@@ -86,7 +106,7 @@ export class BrowserEngine {
 
   /** Remembers user and password for the site and opens the URL again. */
   login(url: string, user: string, password: string): BrowseResult {
-    this.credentials.set(originOf(url), basicHeader(user, password));
+    this.remember(url, user, password);
     return this.open(url);
   }
 
@@ -97,14 +117,14 @@ export class BrowserEngine {
     return list.filter(([, c]) => path.startsWith(c.path)).map(([k, c]) => `${k}=${c.value}`).join('; ');
   }
 
-  private fetch(url: string, method: HttpMethod, body: string | undefined, credentials: boolean): HttpOutcome {
+  private fetchSteps(url: string, method: HttpMethod, body: string | undefined, credentials: boolean): Steps<HttpOutcome> {
     const headers: Record<string, string> = { 'user-agent': 'Mozilla/5.0 (Netfix)', 'accept-language': `${getLocale()},${getLocale().slice(0, 2)};q=0.9` };
     const cookie = credentials ? this.cookieHeader(url) : '';
     if (cookie) headers.cookie = cookie;
     const auth = credentials ? this.credentials.get(originOf(url)) : undefined;
     if (auth) headers.authorization = auth;
     if (body !== undefined) headers['content-type'] = 'application/x-www-form-urlencoded';
-    return httpRequest(this.host, url, { method, headers, body });
+    return httpSteps(this.host, url, { method, headers, body });
   }
 
   private storeCookies(url: string, res: HttpResponse): void {

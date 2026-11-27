@@ -38,6 +38,8 @@ export interface ConsoleBackend {
   screenKey?(key: KeyInput): string[];
   /** Applies the device's timestamp-prompt setting to the shell (Linux: PS1). */
   applyPrompt?(): void;
+  /** A command waiting live for a reply (0.92.0): its output when the wait ends; null: none. */
+  later?(): Promise<string[]> | null;
 }
 
 const MAX_LINES = 3000;
@@ -206,6 +208,9 @@ export class Terminal {
     this.afterRun();
     this.refreshPrompt();
     this.openFullScreenIfRequested();
+    // A command waiting live for a reply (0.92.0): the rest of its output, and the prompt, when the wait ends.
+    const next = this.backend.later?.();
+    if (next) void next.then((l) => this.after(l), () => this.after([]));
   }
 
   /** A line run as if typed and Enter pressed (a host page's Run button); ignored while a full-screen program is open. */

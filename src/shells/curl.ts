@@ -1,7 +1,8 @@
 /** curl for the Ubuntu terminal: methods, data, headers, cookies, Basic auth, redirects (-L) and verbose output. */
-import type { CommandFn, Ctx } from '../bash/types.ts';
+import type { CommandFn, Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
-import { httpRequest } from './net-tools.ts';
+import { httpSteps } from './net-tools.ts';
+import { stepsIn } from './live-steps.ts';
 import type { HttpOutcome } from './net-tools.ts';
 import type { HttpHeaders, HttpMethod } from '../net/packets.ts';
 import { basicHeader } from '../web/http.ts';
@@ -113,7 +114,7 @@ function writeOut(ctx: Ctx, file: string, body: string): boolean {
 }
 
 export function curl(host: Host): CommandFn {
-  return (ctx: Ctx): number => {
+  return function* (ctx: Ctx): Gen<number> {
     const o = parse(ctx.argv.slice(1));
     if (o.error) { ctx.err(`curl: ${o.error}\ncurl: try 'curl --help' or 'curl --manual' for more information\n`); return 2; }
     if (!o.url) { ctx.err("curl: try 'curl --help' or 'curl --manual' for more information\n"); return 2; }
@@ -125,7 +126,7 @@ export function curl(host: Host): CommandFn {
     let written = '';
     for (let hop = 0; ; hop++) {
       const headers: Record<string, string> = { 'user-agent': USER_AGENT, accept: '*/*', ...(body !== undefined ? { 'content-type': 'application/x-www-form-urlencoded' } : {}), ...o.headers };
-      const r = httpRequest(host, url, { method, headers, body, client: 'linux' });
+      const r = yield* stepsIn(host.hooks, httpSteps(host, url, { method, headers, body, client: 'linux' }), ctx.sh.liveWaits);
       if (r.kind === 'error') {
         if (!o.silent || o.showError) ctx.err(`curl: (${r.code}) ${r.message}\n`);
         if (o.writeOut !== undefined) ctx.out(writeOutText(o.writeOut, undefined, url));

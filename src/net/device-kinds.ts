@@ -19,7 +19,7 @@ export interface ExtensionDevice extends NetDevice {
 }
 
 export interface DeviceKindDef {
-  /** The label of a new one: prefix + first free number (ClassLAN0…). */
+  /** The label of a new one: prefix + first free number (as Router0…). */
   readonly prefix: string;
   /** The key of its settings in a saved device (default: the kind). */
   readonly field?: string;

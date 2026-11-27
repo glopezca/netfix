@@ -13,7 +13,8 @@ const { runScript } = await import(${JSON.stringify(HARNESS)});
 try { runScript('while :; do :; done'); } catch (e) { process.stdout.write('status=' + e.code); }`;
 
 test('an infinite bash loop ends even with Date.now frozen', () => {
-  const r = spawnSync(process.execPath, ['--input-type=module', '-e', CHILD], { encoding: 'utf8', timeout: 5000, killSignal: 'SIGKILL' });
-  assert.equal(r.error, undefined, 'the loop did not end within 5 s');
+  // A hang never ends; 15 s leaves room for the whole suite running in parallel (about 1 s alone, over 3 s under load).
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', CHILD], { encoding: 'utf8', timeout: 15_000, killSignal: 'SIGKILL' });
+  assert.equal(r.error, undefined, 'the loop did not end within 15 s');
   assert.match(r.stdout, /^status=124$/);
 });

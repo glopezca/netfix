@@ -56,7 +56,6 @@ const CLOUD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width
   </g>
 </svg>`;
 
-/** Classroom LAN: the cloud with three linked screens (the labs of the class). */
 /** Both routers (IOS and Linux) share the router symbol; the model line («Cisco 2911» / «Ubuntu Server») tells them apart. */
 export const ICONS: Readonly<Record<BuiltinDeviceKind, string>> = { router: ROUTER, switch: SWITCH, pc: PC, server: SERVER, linuxrouter: ROUTER, cloud: CLOUD };
 

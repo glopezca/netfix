@@ -49,6 +49,13 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
   crypto: string | undefined;
   private state: InputState = { kind: 'normal' };
   private output: string[] = [];
+  private busy = false;
+  private waitOutput: Promise<string[]> | null = null;
+  private waits = 0;
+  private interruptedUpTo = 0;
+  private liveLine = false;
+  /** Set by an interactive console that calls later() (0.92.0); other callers (web pages, checks) stay synchronous. */
+  liveWaits = false;
 
   constructor(device: D, opts: { initialDialog?: boolean } = {}) {
     this.device = device;
@@ -61,6 +68,7 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
   }
 
   prompt(): string {
+    if (this.busy) return '';
     if (this.state.kind === 'password') return 'Password: ';
     if (this.state.kind === 'dialog') return 'Continue with configuration dialog? [yes/no]: ';
     return `${this.device.hostname}${PROMPT_SUFFIX[this.mode]}`;
@@ -81,11 +89,37 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
 
   /** Executes one line and returns the output lines (the echoed command is not included). */
   input(line: string): string[] {
+    if (this.busy) return [];
+    this.liveLine = this.liveWaits && !line.includes('|');
     this.output = [];
     if (this.state.kind === 'dialog') this.handleDialog(line);
     else if (this.state.kind === 'password') this.handlePassword(line);
     else this.dispatch(line);
     return this.output;
+  }
+
+  /** A command waiting live for a reply (0.92.0): its output, handed to the console once; the prompt is hidden meanwhile. */
+  get canWaitLive(): boolean {
+    return this.liveLine;
+  }
+
+  waitFor(output: Promise<string[]>): void {
+    const n = ++this.waits;
+    this.busy = true;
+    this.waitOutput = output.then((l) => (n <= this.interruptedUpTo ? [] : l)).finally(() => { if (this.waits === n) this.busy = false; });
+  }
+
+  /** Ctrl+C (the escape sequence): a command waiting live is abandoned and the prompt comes back. */
+  interrupt(): string[] {
+    this.interruptedUpTo = this.waits;
+    this.busy = false;
+    return [];
+  }
+
+  later(): Promise<string[]> | null {
+    const p = this.waitOutput;
+    this.waitOutput = null;
+    return p;
   }
 
   help(lineBeforeQuestion: string): string[] {
@@ -116,6 +150,7 @@ export class Session<D extends IosDevice = IosDevice> implements SessionApi {
 
   /** Ctrl+Z */
   ctrlZ(): string[] {
+    if (this.busy) return [];
     this.output = [];
     if (!EXEC_MODES.has(this.mode)) this.endConfig();
     return this.output;

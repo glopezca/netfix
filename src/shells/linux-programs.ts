@@ -9,7 +9,8 @@ import { wgQuick } from './wg-quick.ts';
 import { runsServices } from '../devices/kinds.ts';
 import type { CommandFn, Ctx, Gen } from '../bash/types.ts';
 import type { Host } from '../devices/host.ts';
-import { httpGet } from './net-tools.ts';
+import { httpSteps } from './net-tools.ts';
+import { stepsIn } from './live-steps.ts';
 import { byteLength } from '../web/http.ts';
 import { systemctl, journalctl, ss, ssOptions } from './linux-services.ts';
 import { colorMode, painter } from './systemd-colors.ts';
@@ -122,7 +123,7 @@ function wgetArgs(argv: readonly string[]): string[] {
 }
 
 function wget(host: Host): CommandFn {
-  return (ctx: Ctx): number => {
+  return function* (ctx: Ctx): Gen<number> {
     const args = wgetArgs(ctx.argv.slice(1));
     const quiet = args.includes('-q') || args.includes('--quiet');
     const oIdx = args.findIndex((a) => a === '-O' || a === '--output-document');
@@ -131,7 +132,7 @@ function wget(host: Host): CommandFn {
     const say = (t: string): void => { if (!quiet) ctx.err(t); };
     const stamp = new Date(host.clock.now()).toISOString().slice(0, 19).replace('T', ' ');
     say(`--${stamp}--  ${url}\n`);
-    const r = httpGet(host, url, 'GET', 'linux');
+    const r = yield* stepsIn(host.hooks, httpSteps(host, url, { method: 'GET', client: 'linux' }), ctx.sh.liveWaits);
     if (r.kind === 'error') { say(r.code === 6 ? `wget: unable to resolve host address ‘${url.replace(/^\w+:\/\//, '').split(/[/:]/)[0]}’\n` : `${r.message}.\n`); return 4; }
     const res = r.response;
     say(`Connecting to ${url.replace(/^\w+:\/\//, '').split('/')[0]}... connected.\nHTTP request sent, awaiting response... ${res.status} ${res.reason}\n`);

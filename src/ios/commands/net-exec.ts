@@ -6,7 +6,8 @@ import type { IpStack } from '../../net/ipstack.ts';
 import type { DeviceHooks } from '../../devices/hooks.ts';
 import { parseIp, formatIp, formatMask } from '../../core/ip.ts';
 import { formatMacCisco } from '../../core/mac.ts';
-import { runPing } from '../../net/ping.ts';
+import { pingSteps } from '../../net/ping.ts';
+import { runLive, runSteps, waitsLive } from '../../net/live-wait.ts';
 import type { PingOutcome } from '../../net/ping.ts';
 import { runTrace, iosTraceLines, DEFAULT_MAX_HOPS } from '../../net/trace.ts';
 
@@ -34,23 +35,31 @@ export function iosPing(cli: Cli, host: PingCapable, target: string, count: numb
     cli.out(`% Invalid source address- IP address not on any of our up interfaces`);
     return;
   }
-  const results = runPing(host.stack, host.hooks, dst, { count, timeoutMs: PING_TIMEOUT_MS, src });
-  if (host.stack.isBroadcast(dst) && results.some((r) => r.kind === 'reply')) return broadcastReplies(cli, results, count, target);
+  const steps = pingSteps(host.stack, dst, { count, timeoutMs: PING_TIMEOUT_MS, src });
+  const report = (results: readonly PingOutcome[]): string[] => pingLines(host.stack.isBroadcast(dst), results, count, target, src);
+  // A network reaching out of the page (0.92.0): the console prints the report when the replies have come.
+  if (cli.session.canWaitLive && waitsLive(host.hooks)) cli.session.waitFor(runLive(steps).then(report));
+  else cli.out(...report(runSteps(host.hooks, steps)));
+}
+
+function pingLines(broadcast: boolean, results: readonly PingOutcome[], count: number, target: string, src: number | undefined): string[] {
+  if (broadcast && results.some((r) => r.kind === 'reply')) return broadcastReplies(results, count, target);
   const marks = results.map((r) => (r.kind === 'reply' ? '!' : r.kind === 'unreachable' ? 'U' : r.kind === 'ttl' ? '&' : '.')).join('');
   const ok = results.filter((r) => r.kind === 'reply').length;
   const pct = Math.round((ok * 100) / count);
-  cli.out('Type escape sequence to abort.', `Sending ${count}, 100-byte ICMP Echos to ${target}, timeout is 2 seconds:`);
-  if (src !== undefined) cli.out(`Packet sent with a source address of ${formatIp(src)} `);
-  cli.out(marks, `Success rate is ${pct} percent (${ok}/${count})${ok > 0 ? ', round-trip min/avg/max = 0/0/1 ms' : ''}`);
+  return ['Type escape sequence to abort.', `Sending ${count}, 100-byte ICMP Echos to ${target}, timeout is 2 seconds:`,
+    ...(src !== undefined ? [`Packet sent with a source address of ${formatIp(src)} `] : []),
+    marks, `Success rate is ${pct} percent (${ok}/${count})${ok > 0 ? ', round-trip min/avg/max = 0/0/1 ms' : ''}`];
 }
 
 /** A broadcast is answered by several devices: IOS lists each answer instead of !!!!! and the success rate. */
-function broadcastReplies(cli: Cli, results: readonly PingOutcome[], count: number, target: string): void {
-  cli.out('Type escape sequence to abort.', `Sending ${count}, 100-byte ICMP Echos to ${target}, timeout is 2 seconds:`, '');
+function broadcastReplies(results: readonly PingOutcome[], count: number, target: string): string[] {
+  const lines = ['Type escape sequence to abort.', `Sending ${count}, 100-byte ICMP Echos to ${target}, timeout is 2 seconds:`, ''];
   results.forEach((r, i) => {
-    if (r.kind !== 'reply') return cli.out('.');
-    for (const x of [r, ...(r.dups ?? [])]) cli.out(`Reply to request ${i} from ${formatIp(x.from)}, 1 ms`);
+    if (r.kind !== 'reply') { lines.push('.'); return; }
+    for (const x of [r, ...(r.dups ?? [])]) lines.push(`Reply to request ${i} from ${formatIp(x.from)}, 1 ms`);
   });
+  return lines;
 }
 
 export function showArp(stack: IpStack, own: readonly { ip: number; mac: string; iface: string }[], now: number): string[] {

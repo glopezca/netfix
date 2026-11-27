@@ -37,6 +37,10 @@ export interface ShellSession {
   screenFrame?(width: number, height: number): Frame | null;
   /** A key for the full-screen program; returns the shell output when the program ends. */
   screenKey?(key: KeyInput): string[];
+  /** A command waiting live for a reply (0.92.0): the output it prints when the wait ends, once; null: none. */
+  later?(): Promise<string[]> | null;
+  /** Set by an interactive terminal that calls later() (0.92.0); other callers (checks, ssh, scripts) stay synchronous. */
+  liveWaits?: boolean;
 }
 
 export const DEFAULT_SCREEN = { width: 80, height: 24 } as const;
@@ -61,6 +65,13 @@ export abstract class BaseShell implements ShellSession {
   readonly user: string;
   closed = false;
   private state: State = { kind: 'local' };
+  /** A command waiting live (0.92.0): its output, handed to the terminal once; the prompt is hidden meanwhile. */
+  private waitOutput: Promise<string[]> | null = null;
+  private busy = false;
+  private waits = 0;
+  /** Waits up to this one were interrupted (Ctrl+C): their late output is dropped. */
+  private interruptedUpTo = 0;
+  liveWaits = false;
 
   constructor(host: Host, user: string) {
     this.host = host;
@@ -81,6 +92,7 @@ export abstract class BaseShell implements ShellSession {
   protected abstract sshStore(cwd?: string): SshClientStore;
 
   prompt(): string {
+    if (this.busy) return '';
     if (this.state.kind === 'login') return this.state.login.prompt();
     if (this.state.kind === 'remote') return this.state.prompt;
     return this.localPrompt();
@@ -96,7 +108,24 @@ export abstract class BaseShell implements ShellSession {
     return false;
   }
 
+  /** A command that waits live for a reply: what it prints when the wait ends. */
+  protected waitFor(output: Promise<string[]>): void {
+    const n = ++this.waits;
+    this.busy = true;
+    // A wait that ends in another wait (ping's next packet) stays busy: only the last one frees the prompt.
+    this.waitOutput = output
+      .then((lines) => (n <= this.interruptedUpTo ? [] : lines))
+      .finally(() => { if (this.waits === n) this.busy = false; });
+  }
+
+  later(): Promise<string[]> | null {
+    const p = this.waitOutput;
+    this.waitOutput = null;
+    return p;
+  }
+
   run(line: string): string[] {
+    if (this.busy) return [];
     if (this.state.kind === 'login') return this.loginStep(this.state.login, this.state.login.input(line));
     if (this.state.kind === 'remote') return this.remoteRequest({ kind: 'command', line });
     return this.runLocalLine(line);
@@ -116,6 +145,8 @@ export abstract class BaseShell implements ShellSession {
   }
 
   interrupt(): string[] {
+    this.busy = false;
+    this.interruptedUpTo = this.waits;
     if (this.state.kind === 'remote') return this.remoteRequest({ kind: 'key', key: 'int' });
     if (this.state.kind === 'login') return this.endSsh([], SSH_FAILED);
     return this.localInterrupt();

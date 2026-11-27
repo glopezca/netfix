@@ -13,7 +13,7 @@ import { runsServices } from '../devices/kinds.ts';
 import { windowsSshStore } from './ssh-stores.ts';
 import type { SshClientStore } from './ssh-client.ts';
 import { BaseShell } from './base.ts';
-import { resolveHost, httpGet } from './net-tools.ts';
+import { resolveHost, httpSteps } from './net-tools.ts';
 import { dnsSearch } from './dns-client.ts';
 import { startNslookup } from './nslookup.ts';
 import type { Nslookup } from './nslookup.ts';
@@ -27,7 +27,9 @@ import { FILTERS, runFilter } from './win-cmd-io.ts';
 import { startWinMc } from './win-mc.ts';
 import type { McApp } from '../editors/mc.ts';
 import type { Frame, KeyInput } from '../editors/buffer.ts';
-import { runPing } from '../net/ping.ts';
+import { pingSteps } from '../net/ping.ts';
+import { pingReport } from './win-ping.ts';
+import { runLive, runSteps, waitsLive, type Steps } from '../net/live-wait.ts';
 import { tracert } from './trace-cmds.ts';
 import { formatIp, parseIp } from '../core/ip.ts';
 import { formatMacCisco } from '../core/mac.ts';
@@ -91,6 +93,7 @@ export class WindowsShell extends BaseShell {
   private ns: Nslookup | null = null;
   /** net use waiting for a password (typed without echo). */
   private question: PasswordQuestion | null = null;
+  private plainLine = false; // the line typed is a plain ping or curl: it may wait live
   /** C: and the drives mapped with net use, each with its own folder. */
   private readonly drives: WinDrives;
   /** cmd.exe's variables, chains and batch files around the commands below. */
@@ -150,6 +153,7 @@ export class WindowsShell extends BaseShell {
 
   /** One cmd.exe line: quoted words, and > or >> sending the output to a file. */
   protected override runLocalLine(line: string): string[] {
+    this.plainLine = /^\s*(ping|curl)(\s[^|&<>^()]*)?$/i.test(line);
     if (this.ns) {
       const reply = this.ns.line(line);
       if (reply.exit) this.ns = null;
@@ -342,21 +346,16 @@ export class WindowsShell extends BaseShell {
     if (r.kind === 'error') return [`Ping request could not find host ${target}. Please check the name and try again.`];
     const ip = formatIp(r.ip);
     // A name (from DNS or the hosts file) shows with its address; an address alone shows bare.
-    const lines = ['', `Pinging ${parseIp(target) === null ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
-    const results = runPing(this.host.stack, this.host.hooks, r.ip, { count, timeoutMs: PING_TIMEOUT_MS });
-    for (const x of results) {
-      if (x.kind === 'reply') lines.push(`Reply from ${formatIp(x.from)}: bytes=32 time<1ms TTL=${x.ttl}`);
-      else if (x.kind === 'unreachable') lines.push(`Reply from ${formatIp(x.from)}: Destination host unreachable.`);
-      else if (x.kind === 'ttl') lines.push(`Reply from ${formatIp(x.from)}: TTL expired in transit.`);
-      else lines.push('Request timed out.');
-    }
-    const received = results.filter((x) => x.kind === 'reply').length;
-    const lost = count - received;
-    lines.push('', `Ping statistics for ${ip}:`, `    Packets: Sent = ${count}, Received = ${received}, Lost = ${lost} (${Math.round((lost * 100) / count)}% loss),`);
-    if (received > 0) lines.push('Approximate round trip times in milli-seconds:', '    Minimum = 0ms, Maximum = 0ms, Average = 0ms');
-    lines.push('');
-    return lines;
+    const header = ['', `Pinging ${parseIp(target) === null ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
+    return this.stepsThen(pingSteps(this.host.stack, r.ip, { count, timeoutMs: PING_TIMEOUT_MS }), (results) => pingReport(results, ip, count), header);
   }
+  /** A client's waits: fast-forwarded in a network all in this page, else live — the header now, the rest when it ends (0.92.0). */
+  private stepsThen<T>(steps: Steps<T>, show: (r: T) => string[], header: string[] = []): string[] {
+    if (!this.liveWaits || !this.plainLine || !waitsLive(this.host.hooks)) return [...header, ...show(runSteps(this.host.hooks, steps))];
+    this.waitFor(runLive(steps).then(show));
+    return header;
+  }
+
 
   private arp(arg: string): string[] {
     if (arg === '-d') {
@@ -380,9 +379,10 @@ export class WindowsShell extends BaseShell {
     const head = args.includes('-I');
     const url = args.find((a) => !a.startsWith('-'));
     if (!url) return ["curl: try 'curl --help' for more information"];
-    const r = httpGet(this.host, url, head ? 'HEAD' : 'GET', 'windows');
-    if (r.kind === 'error') return [`curl: (${r.code}) ${r.message}`];
-    return head ? [`HTTP/1.1 ${r.response.status} ${r.response.reason}`, `Server: ${r.response.server}`, `Content-Type: ${r.response.contentType}`, ''] : r.response.body.split('\n');
+    return this.stepsThen(httpSteps(this.host, url, { method: head ? 'HEAD' : 'GET', client: 'windows' }), (r) => {
+      if (r.kind === 'error') return [`curl: (${r.code}) ${r.message}`];
+      return head ? [`HTTP/1.1 ${r.response.status} ${r.response.reason}`, `Server: ${r.response.server}`, `Content-Type: ${r.response.contentType}`, ''] : r.response.body.split('\n');
+    });
   }
 
   private netCommand(args: string[]): string[] {

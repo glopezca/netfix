@@ -158,7 +158,7 @@ export function cloudToJson(s: CloudSettings): unknown {
   return { isp: s.isp, block: formatIp(s.block), ports, domains: s.domains.map((d) => ({ ...d, ip: formatIp(d.ip) })) };
 }
 
-/** One line's settings from an untrusted file (also the Classroom LAN's router); invalid: the defaults. */
+/** One line's settings from an untrusted file (also a registered kind's router); invalid: the defaults. */
 export function portFromJson(port: string, v: unknown): CloudPortSettings {
   const d = defaultPort(port);
   const o = obj(v);

@@ -44,6 +44,11 @@ export interface NetDevice {
   portBlocked?(port: string): boolean;
   /** A switch sends its BPDUs (every 2 s while the network runs). */
   stpHello?(): void;
+  /**
+   * A device that carries traffic out of this page (a host's kind linked to other pages, 0.92.0): replies may come in a
+   * later task of the browser, so clients wait for them in real time instead of fast-forwarding the clock.
+   */
+  reachesOutside?(): boolean;
 }
 
 export interface SimEvent {
@@ -191,6 +196,7 @@ export class Network {
       schedule: (delay, fn) => this.schedule(delay, fn),
       ipInUse: (ip, except) => [...this.devices.values()].some((d) => d.id !== except && d.ownsIp(ip)),
       runUntil: (done, maxMs) => this.runUntil(done, maxMs),
+      outside: () => this.reachesOutside(),
       peerTrunking: (port) => {
         const peer = this.peerOf({ device: device.id, port });
         const dev = peer ? this.devices.get(peer.device) : undefined;
@@ -313,6 +319,12 @@ export class Network {
     this.clock.advanceTo(task.time);
     task.value();
     return true;
+  }
+
+  /** Whether a device carries traffic out of this page (clients then wait live: net/live-wait.ts). */
+  reachesOutside(): boolean {
+    for (const d of this.devices.values()) if (d.reachesOutside?.() === true) return true;
+    return false;
   }
 
   /** Processes every task due within the next `ms` of simulated time. */

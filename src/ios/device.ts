@@ -20,6 +20,10 @@ export interface Cli<D extends IosDevice = IosDevice> {
 /** The subset of Session used by command handlers (avoids an import cycle). */
 export interface SessionApi {
   mode: ModeName;
+  /** The line may wait live (0.92.0): an interactive console that prints output later, and no output filter (`|`). */
+  readonly canWaitLive: boolean;
+  /** A command waiting live for a reply: the console prints this output when it settles. */
+  waitFor(output: Promise<string[]>): void;
   ifaces: readonly string[];
   pool: string | undefined;
   poolClass: string | undefined;
