@@ -197,6 +197,7 @@ export class BashSession {
   private pause(i: Interaction): void {
     if (i.kind === 'shell') {
       this.child = new BashSession(this.sh.env, i.user, { login: i.login });
+      this.child.sh.liveWaits = this.sh.liveWaits;
       this.child.sh.setVar('SHLVL', String(Number(this.sh.getVar('SHLVL') ?? 1) + 1), { export: true });
       this.waiting = i;
       return;

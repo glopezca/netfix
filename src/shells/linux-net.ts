@@ -187,7 +187,7 @@ export function ping(host: Host) {
     const broadcast = host.stack.isBroadcast(r.ip);
     if (broadcast && !wantsBroadcast(args)) { ctx.err(BROADCAST_HINT); return 2; }
     if (broadcast) ctx.err('WARNING: pinging broadcast address\n');
-    const results = yield* stepsIn(host.hooks, pingSteps(host.stack, r.ip, { count, timeoutMs: PING_TIMEOUT_MS }));
+    const results = yield* stepsIn(host.hooks, pingSteps(host.stack, r.ip, { count, timeoutMs: PING_TIMEOUT_MS }), ctx.sh.liveWaits);
     if (results.every((x) => x.kind === 'noroute')) { ctx.err('ping: connect: Network is unreachable\n'); return 2; }
     const addr = formatIp(r.ip);
     // The name as resolved (www → www.empresa.lan with the search domain), as ping shows it.

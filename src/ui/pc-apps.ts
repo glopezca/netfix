@@ -65,10 +65,13 @@ export function browserApp(pc: Pc, app: AfterChange): HTMLElement {
     view.replaceChildren(page.body);
   };
   // A network that reaches out of the page (0.92.0): the page comes when its replies do, «Cargando…» meanwhile.
+  let latest = 0;
   const load = (target: string, nav?: Navigation): void => {
     status.textContent = t('pc.loading');
-    if (engine.live()) void engine.openLive(target, nav).then(show);
-    else show(engine.open(target, nav));
+    if (!engine.live()) { show(engine.open(target, nav)); return; }
+    const n = ++latest; // only the last navigation is shown, whichever reply comes first
+    const failed = (): BrowseResult => ({ kind: 'error', url: target, code: 7, message: t('pc.checkService') });
+    void engine.openLive(target, nav).catch(failed).then((r) => { if (n === latest) show(r); });
   };
   const go = (target: string): void => load(target.trim());
   const back = button('←', () => {

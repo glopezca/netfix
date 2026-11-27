@@ -132,7 +132,7 @@ function wget(host: Host): CommandFn {
     const say = (t: string): void => { if (!quiet) ctx.err(t); };
     const stamp = new Date(host.clock.now()).toISOString().slice(0, 19).replace('T', ' ');
     say(`--${stamp}--  ${url}\n`);
-    const r = yield* stepsIn(host.hooks, httpSteps(host, url, { method: 'GET', client: 'linux' }));
+    const r = yield* stepsIn(host.hooks, httpSteps(host, url, { method: 'GET', client: 'linux' }), ctx.sh.liveWaits);
     if (r.kind === 'error') { say(r.code === 6 ? `wget: unable to resolve host address ‘${url.replace(/^\w+:\/\//, '').split(/[/:]/)[0]}’\n` : `${r.message}.\n`); return 4; }
     const res = r.response;
     say(`Connecting to ${url.replace(/^\w+:\/\//, '').split('/')[0]}... connected.\nHTTP request sent, awaiting response... ${res.status} ${res.reason}\n`);

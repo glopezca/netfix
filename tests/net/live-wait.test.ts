@@ -41,6 +41,13 @@ function clock(t: Topology): () => void {
   return () => clearInterval(timer);
 }
 
+/** A terminal window's shell: it prints a live wait's output later, so it opts in (0.92.0). */
+function terminal(pc: Pc, os: 'linux' | 'windows'): ReturnType<typeof createShell> {
+  const sh = createShell(pc, os);
+  sh.liveWaits = true;
+  return sh;
+}
+
 /** Everything a shell prints after a live wait (one wait may end in another: ping's next packet). */
 async function rest(later: () => Promise<string[]> | null): Promise<string> {
   let out: string[] = [];
@@ -61,13 +68,16 @@ test('Linux terminal, reaching out: ping and curl wait live, no prompt meanwhile
   assert.equal(t.net.reachesOutside(), true);
   const stop = clock(t);
   try {
-    const sh = createShell(pc, 'linux');
+    const sh = terminal(pc, 'linux');
     assert.deepEqual(sh.run('ping -c 2 192.168.2.10'), [], 'nothing yet: the replies have not come');
     assert.equal(sh.prompt(), '', 'no prompt while it waits');
     assert.match(await rest(() => sh.later?.() ?? null), /2 packets transmitted, 2 received/);
     assert.notEqual(sh.prompt(), '');
     sh.run('curl -s -o /dev/null -w "%{http_code}" http://192.168.2.10/; echo " rc=$?"');
     assert.match(await rest(() => sh.later?.() ?? null), /200 rc=0/);
+    // Driven synchronously inside $(…): the wait fast-forwards, as before (review: it used to be skipped).
+    assert.match(sh.run('x=$(curl -s -o /dev/null -w "%{http_code}" http://192.168.2.10/); echo "got=$x"').join('\n'), /got=200/);
+    assert.equal(sh.later?.() ?? null, null);
   } finally {
     stop();
   }
@@ -77,7 +87,7 @@ test('Ctrl+C while waiting live: the prompt comes back and the late reply prints
   const { t, pc } = lab(true);
   const stop = clock(t);
   try {
-    const sh = createShell(pc, 'linux');
+    const sh = terminal(pc, 'linux');
     sh.run('ping -c 4 192.168.2.10');
     const pending = sh.later?.();
     sh.interrupt?.();
@@ -92,12 +102,13 @@ test('Windows prompt, IOS console and the browser wait live too', async () => {
   const { t, pc, r } = lab(true);
   const stop = clock(t);
   try {
-    const win = createShell(pc, 'windows');
+    const win = terminal(pc, 'windows');
     assert.match(win.run('ping -n 2 192.168.2.10').join('\n'), /Pinging 192\.168\.2\.10/, 'the header at once');
     assert.match(await rest(() => win.later?.() ?? null), /Received = 2, Lost = 0/);
     win.run('curl http://192.168.2.10/');
     assert.match(await rest(() => win.later?.() ?? null), /<html|<!DOCTYPE/i);
     const ios = new Session(r);
+    ios.liveWaits = true;
     ios.mode = 'exec';
     assert.deepEqual(ios.input('ping 192.168.2.10'), []);
     assert.equal(ios.prompt(), '');
@@ -106,6 +117,46 @@ test('Windows prompt, IOS console and the browser wait live too', async () => {
     assert.equal(web.live(), true);
     const page = await web.openLive('http://192.168.2.10/');
     assert.equal(page.kind === 'page' ? page.response.status : page.kind, 200);
+  } finally {
+    stop();
+  }
+});
+
+test('callers that are not a terminal window stay synchronous: checks, ssh, a pipe, a redirection, a filter', async () => {
+  const { t, pc, r } = lab(true);
+  const stop = clock(t);
+  try {
+    assert.match(createShell(pc, 'linux').run('ping -c 2 192.168.2.10').join('\n'), /2 received/, 'a shell nobody opted in');
+    const ios = new Session(r);
+    ios.mode = 'exec';
+    assert.match(ios.input('ping 192.168.2.10').join('\n'), /Success rate is 100 percent/, 'an IOS session for a web page or a check');
+    const win = terminal(pc, 'windows');
+    win.run('ping -n 1 192.168.2.10 > out.txt');
+    assert.equal(win.later?.() ?? null, null, 'a redirection gets the whole output at once');
+    assert.match(win.run('type out.txt').join('\n'), /Received = 1/);
+    assert.match(win.run('ping -n 1 192.168.2.10 | find "TTL"').join('\n'), /TTL=/);
+  } finally {
+    stop();
+  }
+});
+
+test('Ctrl+C in the Windows prompt and the IOS console: the late report is dropped', async () => {
+  const { t, pc, r } = lab(true);
+  const stop = clock(t);
+  try {
+    const win = terminal(pc, 'windows');
+    win.run('ping -n 4 192.168.2.10');
+    const late = win.later?.();
+    win.interrupt?.();
+    assert.deepEqual(await late, []);
+    const ios = new Session(r);
+    ios.liveWaits = true;
+    ios.mode = 'exec';
+    ios.input('ping 192.168.2.10');
+    const iosLate = ios.later();
+    assert.deepEqual(ios.interrupt(), []);
+    assert.notEqual(ios.prompt(), '', 'the prompt is back');
+    assert.deepEqual(await iosLate, []);
   } finally {
     stop();
   }

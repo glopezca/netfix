@@ -38,7 +38,7 @@ export function iosPing(cli: Cli, host: PingCapable, target: string, count: numb
   const steps = pingSteps(host.stack, dst, { count, timeoutMs: PING_TIMEOUT_MS, src });
   const report = (results: readonly PingOutcome[]): string[] => pingLines(host.stack.isBroadcast(dst), results, count, target, src);
   // A network reaching out of the page (0.92.0): the console prints the report when the replies have come.
-  if (waitsLive(host.hooks) && cli.session.waitFor) cli.session.waitFor(runLive(steps).then(report));
+  if (cli.session.canWaitLive && waitsLive(host.hooks)) cli.session.waitFor(runLive(steps).then(report));
   else cli.out(...report(runSteps(host.hooks, steps)));
 }
 

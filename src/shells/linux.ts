@@ -90,6 +90,7 @@ export class LinuxShell extends BaseShell {
 
   protected override runLocalLine(line: string): string[] {
     hostSystem(this.host);
+    this.session.sh.liveWaits = this.liveWaits;
     return this.after(this.session.input(line));
   }
 

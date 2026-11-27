@@ -93,6 +93,7 @@ export class WindowsShell extends BaseShell {
   private ns: Nslookup | null = null;
   /** net use waiting for a password (typed without echo). */
   private question: PasswordQuestion | null = null;
+  private plainLine = false; // the line typed is a plain ping or curl: it may wait live
   /** C: and the drives mapped with net use, each with its own folder. */
   private readonly drives: WinDrives;
   /** cmd.exe's variables, chains and batch files around the commands below. */
@@ -152,6 +153,7 @@ export class WindowsShell extends BaseShell {
 
   /** One cmd.exe line: quoted words, and > or >> sending the output to a file. */
   protected override runLocalLine(line: string): string[] {
+    this.plainLine = /^\s*(ping|curl)(\s[^|&<>^()]*)?$/i.test(line);
     if (this.ns) {
       const reply = this.ns.line(line);
       if (reply.exit) this.ns = null;
@@ -347,10 +349,9 @@ export class WindowsShell extends BaseShell {
     const header = ['', `Pinging ${parseIp(target) === null ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
     return this.stepsThen(pingSteps(this.host.stack, r.ip, { count, timeoutMs: PING_TIMEOUT_MS }), (results) => pingReport(results, ip, count), header);
   }
-
   /** A client's waits: fast-forwarded in a network all in this page, else live — the header now, the rest when it ends (0.92.0). */
   private stepsThen<T>(steps: Steps<T>, show: (r: T) => string[], header: string[] = []): string[] {
-    if (!waitsLive(this.host.hooks)) return [...header, ...show(runSteps(this.host.hooks, steps))];
+    if (!this.liveWaits || !this.plainLine || !waitsLive(this.host.hooks)) return [...header, ...show(runSteps(this.host.hooks, steps))];
     this.waitFor(runLive(steps).then(show));
     return header;
   }

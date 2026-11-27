@@ -55,6 +55,8 @@ export class Interp {
   readonly pid: number;
   bashpid: number;
   subshell = 0;
+  /** Driven by an interactive terminal that prints output later (0.92.0): network waits may then be live. */
+  liveWaits = false;
   traps = new Map<string, string>();
   funcNames: string[] = [];
   lineno = 0;
