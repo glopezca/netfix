@@ -6,9 +6,9 @@
  */
 import type { Host } from '../devices/host.ts';
 import { ANONYMOUS, smbCallSteps, smbPath } from '../clients/smb-client.ts';
-import type { Steps } from '../net/live-wait.ts';
+import { runSteps, type Steps } from '../net/live-wait.ts';
 import type { SmbClientStatus, SmbLogin } from '../clients/smb-client.ts';
-import { resolveHost, resolveHostSteps } from './net-tools.ts';
+import { resolveHostSteps } from './net-tools.ts';
 
 /** A drive letter (or a connection without one, Local '') to a share. */
 interface Mapping {
@@ -80,6 +80,17 @@ function loginFor(host: Host, server: string, share: string): SmbLogin {
  * message of a server that cannot be found.
  */
 export function smbTarget(host: Host, input: string): SmbTarget | string | null {
+  return runSteps(host.hooks, smbTargetSteps(host, input));
+}
+
+/** Whether a name is on a share — a mapped drive or a UNC path — without asking the network (0.95.0). */
+export function onShare(host: Host, input: string): boolean {
+  const drive = /^([a-z]):/i.exec(input);
+  return drive ? mapped(host).some((m) => m.local === `${(drive[1] ?? '').toUpperCase()}:`) : input.startsWith('\\\\');
+}
+
+/** smbTarget as steps (0.95.0): a UNC server's name is looked up live when the network reaches out of the page. */
+export function* smbTargetSteps(host: Host, input: string): Steps<SmbTarget | string | null> {
   const drive = /^([a-z]):(.*)$/i.exec(input);
   if (drive) {
     const local = `${(drive[1] ?? '').toUpperCase()}:`;
@@ -88,7 +99,7 @@ export function smbTarget(host: Host, input: string): SmbTarget | string | null 
   }
   const unc = parseUnc(input);
   if (!unc) return input.startsWith('\\\\') ? NOT_FOUND_PATH : null;
-  const r = resolveHost(host, unc.server, 'windows');
+  const r = yield* resolveHostSteps(host, unc.server, 'windows');
   if (r.kind !== 'ip') return NOT_FOUND_PATH;
   return { host, ip: r.ip, login: loginFor(host, unc.server, unc.share), share: unc.share, root: `\\\\${unc.server}\\${unc.share}`, path: smbPath(unc.rest) };
 }

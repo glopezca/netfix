@@ -5,10 +5,13 @@
  * drive they name. When a mapping goes, so does its folder, and the terminal is back on C:.
  */
 import type { Host } from '../devices/host.ts';
-import { smbCall } from '../clients/smb-client.ts';
+import { smbCallSteps } from '../clients/smb-client.ts';
+import type { SmbResult } from '../clients/smb-client.ts';
+import type { SmbOp } from '../net/smb-types.ts';
+import { runSteps, type Steps } from '../net/live-wait.ts';
 import type { Redirect } from './win-path.ts';
 import { NO_DRIVE, NO_PATH } from './win-fsctx.ts';
-import { smbTarget } from './win-smb.ts';
+import { onShare, smbTarget, smbTargetSteps } from './win-smb.ts';
 import type { SmbTarget } from './win-smb.ts';
 import { smbMessage } from './win-smb-files.ts';
 import type { WinFiles } from './win-files.ts';
@@ -97,53 +100,62 @@ export class WinDrives {
     return out;
   }
 
-  /** cd / chdir: on a mapped drive here; on C: by the local file commands. */
-  cd(args: readonly string[], local: WinFiles): string[] {
+  /**
+   * cd / chdir: on a mapped drive here, its folder asked of the server (live when it is outside the page, 0.95.0); on C:
+   * by the local file commands. `apply` makes the change: the terminal calls it only if the wait was not interrupted.
+   */
+  *cd(args: readonly string[], local: WinFiles): Steps<{ readonly out: string[]; readonly apply?: () => void }> {
     const switchDrive = args.some((a) => a.toLowerCase() === '/d');
     const target = args.filter((a) => a.toLowerCase() !== '/d').join(' ');
-    if (target.startsWith('\\\\')) return [UNC];
+    if (target.startsWith('\\\\')) return { out: [UNC] };
     const m = /^([a-z]):(.*)$/i.exec(target);
     const d = m ? `${(m[1] ?? '').toUpperCase()}:` : this.drive();
     if (d === LOCAL) {
       const out = local.run('cd', args, '') ?? [];
-      if (switchDrive && !out.length) this.current = LOCAL;
-      return out;
+      return { out, apply: () => { if (switchDrive && !out.length) this.current = LOCAL; } };
     }
     const t = this.share(d);
-    if (!t) return [NO_DRIVE];
+    if (!t) return { out: [NO_DRIVE] };
     const rest = m ? m[2] ?? '' : target;
-    if (!rest) {
-      if (!switchDrive) return [`${d}${this.folder(d)}`];
-      this.current = d;
-      return [];
-    }
+    if (!rest) return switchDrive ? { out: [], apply: () => { this.current = d; } } : { out: [`${d}${this.folder(d)}`] };
     const path = join(this.folder(d), rest);
-    const err = path === '\\' ? null : this.notFolder(t, path);
-    if (err) return [err];
-    this.folders.set(d, { share: shareKey(t), path });
-    if (switchDrive) this.current = d;
-    return [];
+    const err = path === '\\' ? null : yield* this.notFolder(t, path);
+    if (err) return { out: [err] };
+    return { out: [], apply: () => {
+      this.folders.set(d, { share: shareKey(t), path });
+      if (switchDrive) this.current = d;
+    } };
   }
 
-  private notFolder(t: SmbTarget, path: string): string | null {
-    const r = smbCall(this.host, t.ip, t.login, t.share, { op: 'stat', path });
+  private *notFolder(t: SmbTarget, path: string): Steps<string | null> {
+    const r = yield* smbCallSteps(this.host, t.ip, t.login, t.share, { op: 'stat', path });
     if (r.status !== 'NT_STATUS_OK') return smbMessage(r.status, NO_PATH);
     return r.entry?.dir ? null : 'The directory name is invalid.';
   }
 
+  /** Whether `> name` / `>> name` writes onto a share (known without the network). */
+  redirectsToShare(r: Redirect): boolean {
+    return onShare(this.host, this.full(r.path));
+  }
+
   /** > or >> onto a share (mapped drive or UNC path); null when the file is local. */
   redirect(r: Redirect, lines: readonly string[]): string[] | null {
-    const t = smbTarget(this.host, this.full(r.path));
+    return runSteps(this.host.hooks, this.redirectSteps(r, lines));
+  }
+
+  /** The same as steps (0.95.0): the share may be outside the page. */
+  *redirectSteps(r: Redirect, lines: readonly string[]): Steps<string[] | null> {
+    const t = yield* smbTargetSteps(this.host, this.full(r.path));
     if (t === null) return null;
     if (typeof t === 'string') return [t];
-    const call = (req: Parameters<typeof smbCall>[4]): ReturnType<typeof smbCall> => smbCall(this.host, t.ip, t.login, t.share, req);
+    const call = (req: SmbOp): Steps<SmbResult> => smbCallSteps(this.host, t.ip, t.login, t.share, req);
     let before = '';
     if (r.append) {
-      const old = call({ op: 'read', path: t.path });
+      const old = yield* call({ op: 'read', path: t.path });
       if (old.status === 'NT_STATUS_OK') before = old.data ?? '';
       else if (old.status !== 'NT_STATUS_OBJECT_NAME_NOT_FOUND') return [smbMessage(old.status, NO_PATH)];
     }
-    const w = call({ op: 'write', path: t.path, data: `${before}${lines.length ? `${lines.join('\n')}\n` : ''}` });
+    const w = yield* call({ op: 'write', path: t.path, data: `${before}${lines.length ? `${lines.join('\n')}\n` : ''}` });
     return w.status === 'NT_STATUS_OK' ? [] : [smbMessage(w.status, NO_PATH)];
   }
 }

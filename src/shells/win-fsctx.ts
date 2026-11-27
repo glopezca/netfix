@@ -1,4 +1,5 @@
 /** What the cmd.exe file commands share: the account's view of the Linux file system, cmd's messages and listings. */
+import type { Steps } from '../net/live-wait.ts';
 import { FsError, basename, dirname } from '../bash/vfs.ts';
 import type { Vfs, Cred } from '../bash/vfs.ts';
 import { hasWildcard, resolveWinPath, wildMatch } from './win-path.ts';
@@ -30,6 +31,8 @@ export interface Confirm {
   /** Answer that runs the action (Y, or Y/A for Overwrite). */
   readonly accept: RegExp;
   readonly yes: () => string[];
+  /** The same action as steps (a share outside the page answers later, 0.95.0); the prompt then waits for it. */
+  readonly yesSteps?: () => Steps<string[]>;
   readonly no: () => string[];
 }
 

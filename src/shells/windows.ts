@@ -65,7 +65,8 @@ export class WindowsShell extends BaseShell {
   private ns: Nslookup | null = null;
   /** net use waiting for a password (typed without echo). */
   private question: PasswordQuestion | null = null;
-  private plainLine = false; // the line typed is a plain ping or curl: it may wait live
+  private plainLine = false;
+  private redirectLine = false; // the line typed is a plain ping or curl: it may wait live
   /** C: and the drives mapped with net use, each with its own folder. */
   private readonly drives: WinDrives;
   /** cmd.exe's variables, chains and batch files around the commands below. */
@@ -125,7 +126,8 @@ export class WindowsShell extends BaseShell {
 
   /** One cmd.exe line: quoted words, and > or >> sending the output to a file. */
   protected override runLocalLine(line: string): string[] {
-    this.plainLine = /^\s*(ping|curl|nslookup|nbtstat|tracert|ipconfig|net)(\s[^|&<>^()]*)?$/i.test(line);
+    this.redirectLine = /^[^|&<]*>>?[^|&<>]*$/.test(line); // one command typed with > or >> (not a batch file's lines)
+    this.plainLine = /^\s*(ping|curl|nslookup|nbtstat|tracert|ipconfig|net|dir|type|md|mkdir|rd|rmdir|del|erase|ren|rename|copy|move|cd|chdir)(\s[^|&<>^()]*)?$/i.test(line);
     if (this.ns) {
       const ns = this.ns;
       this.plainLine = true; // a line at nslookup's own `>` prompt
@@ -142,6 +144,12 @@ export class WindowsShell extends BaseShell {
     }
     if (this.cmd.asking !== null) return this.cmd.answer(line);
     const files = this.files();
+    const confirm = files.pending;
+    if (confirm?.yesSteps && confirm.accept.test(line)) {
+      files.pending = null;
+      this.plainLine = true; // Y to a question about a share: the action may wait live (0.95.0)
+      return this.stepsThen(confirm.yesSteps(), (l) => l);
+    }
     if (files.pending) return files.answer(line);
     return this.cmd.run(line);
   }
@@ -162,7 +170,9 @@ export class WindowsShell extends BaseShell {
     const name = cmd.toLowerCase().replace(/\.exe$/, '');
     const filtered = FILTERS.has(name) ? runFilter(name, parsed.text.trim().replace(/^\S+\s*/, ''), input, (n) => this.cmd.readLines(n)) : null;
     const out = filtered?.out ?? this.runLocal(cmd, args, parsed.text);
-    return { out: parsed.redirect ? this.drives.redirect(parsed.redirect, out) ?? files.redirect(parsed.redirect, out) : out, code: filtered?.code };
+    // > onto a share: the command ran at once (a line with > never waits live), then the write may (0.95.0).
+    if (parsed.redirect && this.drives.redirectsToShare(parsed.redirect)) return { out: this.stepsThen(this.drives.redirectSteps(parsed.redirect, out), (l) => l ?? [], [], this.redirectLine), code: filtered?.code };
+    return { out: parsed.redirect ? files.redirect(parsed.redirect, out) : out, code: filtered?.code };
   }
 
   protected override localSecret(): boolean {
@@ -250,10 +260,10 @@ export class WindowsShell extends BaseShell {
     const arg = (args[0] ?? '').toLowerCase();
     const name = cmd.toLowerCase();
     if (/^[a-z]:$/.test(name) && !args.length) return this.drives.select(name);
-    if (name === 'cd' || name === 'chdir') return this.drives.cd(args, this.files());
+    if (name === 'cd' || name === 'chdir') return this.stepsThen(this.drives.cd(args, this.files()), (r) => { r.apply?.(); return r.out; });
     const paths = this.drives.paths(name, args);
     const share = smbFileCommand(this.host, this.files().winFs, name, paths);
-    if (share) return this.files().ask(share);
+    if (share) return this.stepsThen(share, (r) => this.files().ask(r));
     const editor = this.editor(name);
     if (editor) return this.files().edit(paths, editor);
     const mc = this.mc(name, paths);
@@ -331,8 +341,8 @@ export class WindowsShell extends BaseShell {
     })(), (l) => l);
   }
   /** A client's waits: fast-forwarded in a network all in this page, else live — the header now, the rest when it ends (0.92.0). */
-  private stepsThen<T>(steps: Steps<T>, show: (r: T) => string[], header: string[] = []): string[] {
-    if (!this.liveWaits || !this.plainLine || !waitsLive(this.host.hooks)) return [...header, ...show(runSteps(this.host.hooks, steps))];
+  private stepsThen<T>(steps: Steps<T>, show: (r: T) => string[], header: string[] = [], anyLine = false): string[] {
+    if (!this.liveWaits || !(this.plainLine || anyLine) || !waitsLive(this.host.hooks)) return [...header, ...show(runSteps(this.host.hooks, steps))];
     // Interrupted (Ctrl+C), the answer changes nothing: no nslookup session or password question comes back (review).
     const wait = this.nextWait();
     this.waitFor(runLive(steps).then((r) => {
