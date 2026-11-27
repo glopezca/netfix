@@ -120,12 +120,20 @@ export function mailApp(pc: Pc, app: AfterChange): HTMLElement {
     const subject = input();
     const body = el('textarea', { rows: '5', 'aria-label': t('mail.message') });
     const sendMsg = message();
+    let sending = false;
     const send = (): void => {
       if (!pc.mailAccount) return sendMsg.error(t('mail.needAccount'));
+      if (sending) return; // a double click sends once
+      sending = true;
       sendMsg.ok(t('pc.loading')); // a server outside the page answers later (0.94.0)
+      const draft = [to.value, subject.value, body.value].join('\0');
       void drive(pc.hooks, sendMailSteps(pc, pc.mailAccount, to.value.split(',').map((x) => x.trim()).filter(Boolean), subject.value, body.value)).then((r) => {
+        sending = false;
         app.afterCommand();
-        if (r.ok) { to.value = ''; subject.value = ''; body.value = ''; sendMsg.ok(t('mail.sent', { text: r.text })); } else sendMsg.error(r.text);
+        if (!r.ok) return sendMsg.error(r.text);
+        // Cleared only if it is still the mail sent: another one typed meanwhile stays (review).
+        if ([to.value, subject.value, body.value].join('\0') === draft) { to.value = ''; subject.value = ''; body.value = ''; }
+        sendMsg.ok(t('mail.sent', { text: r.text }));
       });
     };
     const recvMsg = message();
@@ -135,6 +143,7 @@ export function mailApp(pc: Pc, app: AfterChange): HTMLElement {
       recvMsg.ok(t('pc.loading'));
       void drive(pc.hooks, receiveMailSteps(pc, account)).then((r) => {
         app.afterCommand();
+        if (pc.mailAccount !== account) return recvMsg.clear(); // another account meanwhile: not its mail
         if (!r.ok) return recvMsg.error(r.text);
         recvMsg.clear();
         pc.inbox = account.protocol === 'IMAP' ? [...r.messages] : [...pc.inbox, ...r.messages];

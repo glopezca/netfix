@@ -110,14 +110,16 @@ export function* mdnsResolveSteps(host: Host, name: string, windowsClient: boole
   const port = windowsClient ? MDNS_PORT : FIRST_PORT + (nextPort++ % PORTS);
   const pending = waiting.get(host) ?? new Map<number, { readonly name: string; readonly done: (ip: number) => void }>();
   waiting.set(host, pending);
-  const ip = yield* untilDone<number | undefined>((done) => {
-    pending.set(port, { name: name.toLowerCase(), done });
-    host.hooks.schedule(QUERY_MS, () => done(undefined));
-    for (const iface of host.l3Ifaces().filter((i) => i.up && i.addrs.length)) {
-      host.stack.multicast(iface.name, { src: iface.addrs[0]?.ip ?? 0, dst: MDNS_GROUP, ttl: LINK_LOCAL_TTL, protocol: 'udp',
-        udp: { sport: port, dport: MDNS_PORT, dns: { id: port & 0xffff, response: false, qname: name, qtype: 'A' } } });
-    }
-  }, QUERY_MS + 500);
-  pending.delete(port);
-  return ip;
+  try {
+    return yield* untilDone<number | undefined>((done) => {
+      pending.set(port, { name: name.toLowerCase(), done });
+      host.hooks.schedule(QUERY_MS, () => done(undefined));
+      for (const iface of host.l3Ifaces().filter((i) => i.up && i.addrs.length)) {
+        host.stack.multicast(iface.name, { src: iface.addrs[0]?.ip ?? 0, dst: MDNS_GROUP, ttl: LINK_LOCAL_TTL, protocol: 'udp',
+          udp: { sport: port, dport: MDNS_PORT, dns: { id: port & 0xffff, response: false, qname: name, qtype: 'A' } } });
+      }
+    }, QUERY_MS + 500);
+  } finally {
+    pending.delete(port); // also on Ctrl+C (a live wait abandoned): review
+  }
 }

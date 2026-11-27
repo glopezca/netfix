@@ -103,8 +103,11 @@ test('Windows prompt, IOS console and the browser wait live too', async () => {
   const stop = clock(t);
   try {
     const win = terminal(pc, 'windows');
-    assert.match(win.run('ping -n 2 192.168.2.10').join('\n'), /Pinging 192\.168\.2\.10/, 'the header at once');
-    assert.match(await rest(() => win.later?.() ?? null), /Received = 2, Lost = 0/);
+    assert.deepEqual(win.run('ping -n 2 192.168.2.10'), [], 'the name may be looked up live too (0.94.0): all of it later');
+    assert.match(await rest(() => win.later?.() ?? null), /Pinging 192\.168\.2\.10[\s\S]*Received = 2, Lost = 0/);
+    win.run('tracert nada.invalid');
+    assert.match(await rest(() => win.later?.() ?? null), /Unable to resolve target system name/);
+    assert.match(win.run('echo %errorlevel%').join('\n'), /^1$/m, 'errorlevel from the live command\'s output (review)');
     win.run('curl http://192.168.2.10/');
     assert.match(await rest(() => win.later?.() ?? null), /<html|<!DOCTYPE/i);
     const ios = new Session(r);
@@ -149,6 +152,12 @@ test('Ctrl+C in the Windows prompt and the IOS console: the late report is dropp
     const late = win.later?.();
     win.interrupt?.();
     assert.deepEqual(await late, []);
+    // An interrupted nslookup does not come back as a session when its answer arrives (review).
+    win.run('nslookup');
+    const nsLate = win.later?.();
+    win.interrupt?.();
+    await nsLate;
+    assert.match(win.prompt(), /^C:\\/, 'the prompt, not nslookup\'s `>`');
     const ios = new Session(r);
     ios.liveWaits = true;
     ios.mode = 'exec';

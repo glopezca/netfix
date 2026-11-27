@@ -13,7 +13,7 @@ import { runsServices } from '../devices/kinds.ts';
 import { windowsSshStore } from './ssh-stores.ts';
 import type { SshClientStore } from './ssh-client.ts';
 import { BaseShell } from './base.ts';
-import { resolveHost, httpSteps } from './net-tools.ts';
+import { resolveHostSteps, httpSteps } from './net-tools.ts';
 import { dnsSearch } from './dns-client.ts';
 import { startNslookupSteps } from './nslookup.ts';
 import type { Nslookup } from './nslookup.ts';
@@ -22,7 +22,7 @@ import { HOST_PORT } from '../devices/host.ts';
 import type { Server } from '../devices/server.ts';
 import { unitActive, openPorts } from '../services/units.ts';
 import { netService, sc, serverOf } from './win-services.ts';
-import { WinCmd } from './win-cmd.ts';
+import { FAILED, WinCmd } from './win-cmd.ts';
 import { FILTERS, runFilter } from './win-cmd-io.ts';
 import { startWinMc } from './win-mc.ts';
 import type { McApp } from '../editors/mc.ts';
@@ -319,17 +319,28 @@ export class WindowsShell extends BaseShell {
     const count = nIdx >= 0 ? Math.min(MAX_PING_COUNT, Math.max(1, Number(args[nIdx + 1]) || DEFAULT_PING_COUNT)) : DEFAULT_PING_COUNT;
     const target = args.filter((_, i) => nIdx < 0 || (i !== nIdx && i !== nIdx + 1)).pop();
     if (!target) return this.notFound('ping');
-    const r = resolveHost(this.host, target, 'windows');
-    if (r.kind === 'error') return [`Ping request could not find host ${target}. Please check the name and try again.`];
-    const ip = formatIp(r.ip);
-    // A name (from DNS or the hosts file) shows with its address; an address alone shows bare.
-    const header = ['', `Pinging ${parseIp(target) === null ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
-    return this.stepsThen(pingSteps(this.host.stack, r.ip, { count, timeoutMs: PING_TIMEOUT_MS }), (results) => pingReport(results, ip, count), header);
+    const host = this.host;
+    // The name is looked up live too (0.94.0): the header and the replies come when the answers do.
+    return this.stepsThen((function* (): Steps<string[]> {
+      const r = yield* resolveHostSteps(host, target, 'windows');
+      if (r.kind === 'error') return [`Ping request could not find host ${target}. Please check the name and try again.`];
+      const ip = formatIp(r.ip);
+      // A name (from DNS or the hosts file) shows with its address; an address alone shows bare.
+      const header = ['', `Pinging ${parseIp(target) === null ? `${r.name} [${ip}]` : ip} with 32 bytes of data:`, ''];
+      return [...header, ...pingReport(yield* pingSteps(host.stack, r.ip, { count, timeoutMs: PING_TIMEOUT_MS }), ip, count)];
+    })(), (l) => l);
   }
   /** A client's waits: fast-forwarded in a network all in this page, else live — the header now, the rest when it ends (0.92.0). */
   private stepsThen<T>(steps: Steps<T>, show: (r: T) => string[], header: string[] = []): string[] {
     if (!this.liveWaits || !this.plainLine || !waitsLive(this.host.hooks)) return [...header, ...show(runSteps(this.host.hooks, steps))];
-    this.waitFor(runLive(steps).then(show));
+    // Interrupted (Ctrl+C), the answer changes nothing: no nslookup session or password question comes back (review).
+    const wait = this.nextWait();
+    this.waitFor(runLive(steps).then((r) => {
+      if (!this.stillWaiting(wait)) return [];
+      const lines = show(r);
+      this.cmd.errorlevel = lines.some((l) => FAILED.test(l)) ? 1 : 0; // as when it runs at once
+      return lines;
+    }));
     return header;
   }
 

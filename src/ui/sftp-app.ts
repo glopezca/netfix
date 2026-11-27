@@ -82,11 +82,23 @@ export function sftpApp(pc: Pc, app: AfterChange): HTMLElement {
   let remoteSel: string | null = null;
   // The remote listing is kept and asked again after each remote action: a server outside the page answers later (0.94.0).
   let remoteEntries: readonly SftpEntry[] = [];
+  let asked = 0; // only the last listing asked is drawn, and only for the session it was asked of (review)
+  let busy = false; // one remote action at a time: a second click waits for the first to finish
   const refresh = (): void => {
-    if (!ft.session) { redraw(); return; }
-    void drive(pc.hooks, ft.remoteListSteps()).then((entries) => { remoteEntries = entries; redraw(); });
+    const session = ft.session;
+    if (!session) { remoteEntries = []; redraw(); return; }
+    const n = ++asked;
+    void drive(pc.hooks, ft.remoteListSteps()).then((entries) => {
+      if (n !== asked || ft.session !== session) return;
+      remoteEntries = entries;
+      redraw();
+    });
   };
-  const run = (steps: Steps<unknown>): void => { void drive(pc.hooks, steps).then(refresh); };
+  const run = (steps: Steps<unknown>): void => {
+    if (busy) return;
+    busy = true;
+    void drive(pc.hooks, steps).finally(() => { busy = false; refresh(); });
+  };
   const redraw = (): void => {
     app.afterCommand();
     const need = (sel: string | null, fn: (n: string) => void): void => { if (sel) fn(sel); else globalThis.alert(t('sftp.select')); };

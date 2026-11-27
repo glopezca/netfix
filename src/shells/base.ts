@@ -111,6 +111,15 @@ export abstract class BaseShell implements ShellSession {
   }
 
   /** A command that waits live for a reply: what it prints when the wait ends. */
+  /** The number the next waitFor gets, and whether that wait is still wanted (not interrupted by Ctrl+C). */
+  protected nextWait(): number {
+    return this.waits + 1;
+  }
+
+  protected stillWaiting(n: number): boolean {
+    return n > this.interruptedUpTo;
+  }
+
   protected waitFor(output: Promise<string[]>): void {
     const n = ++this.waits;
     this.busy = true;
@@ -138,8 +147,16 @@ export abstract class BaseShell implements ShellSession {
   /** An ssh exchange: synchronous, or live in a terminal whose network reaches out of the page (0.93.0). */
   private live(steps: Steps<string[]>): string[] {
     if (!this.liveWaits || !waitsLive(this.host.hooks)) return runSteps(this.host.hooks, steps);
-    this.waitFor(runLive(steps));
+    this.waitFor(this.inOrder(steps));
     return [];
+  }
+
+  /** Live ssh exchanges one after another, as sent: a save is answered before the editor's close (review). */
+  private sshQueue: Promise<unknown> = Promise.resolve();
+  private inOrder<T>(steps: Steps<T>): Promise<T> {
+    const next = this.sshQueue.then(() => runLive(steps));
+    this.sshQueue = next.catch(() => undefined);
+    return next;
   }
 
   private *loginInput(login: SshLogin, line: string): Steps<string[]> {
@@ -196,7 +213,7 @@ export abstract class BaseShell implements ShellSession {
     if (!this.liveWaits || !waitsLive(this.host.hooks)) return error(runSteps(this.host.hooks, steps));
     // Live (0.94.0): sent now, answered later. The server said whether the file is writable when the editor opened it
     // (EditSpec.readOnly), so the editor goes on; a failure is printed in the terminal when the answer comes.
-    this.waitFor(runLive(steps).then((r) => { const e = error(r); return e ? [`${path}: ${e}`] : []; }));
+    this.waitFor(this.inOrder(steps).then((r) => { const e = error(r); return e ? [`${path}: ${e}`] : []; }));
     return null;
   }
 
