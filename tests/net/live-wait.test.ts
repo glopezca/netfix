@@ -270,6 +270,28 @@ test('0.94.0: sftp from a terminal and the PC apps (mail, SFTP) wait live too', 
   }
 });
 
+test('0.95.0: a Windows mapped drive on a server outside the page — net use, dir, >, type, md, copy, cd, Z:, del with Y', async () => {
+  const { EXAMPLES } = await import('../../src/net/examples.ts');
+  const lines = ['net use Z: \\\\SRV\\publico', 'dir Z:', 'echo hola > Z:\\x.txt', 'type Z:\\x.txt', 'md Z:\\d', 'copy Z:\\x.txt Z:\\d', 'cd Z:\\d', 'Z:', 'dir', 'del Z:\\d\\*', 'Y', 'dir Z:\\d'];
+  const clockOf = (text: string): string => untimed(text).replace(/\d\d\/\d\d\/\d{4} {2}\d\d:\d\d [AP]M/g, 'DATE');
+  const a = EXAMPLES.find((e) => e.id === 'samba')!.build();
+  const sync = createShell(a.byLabel('PC0') as Pc, 'windows');
+  const expected = lines.map((l) => clockOf(sync.run(l).join('\n')));
+  const b = EXAMPLES.find((e) => e.id === 'samba')!.build();
+  Object.assign(b.byLabel('SRV') as Server, { reachesOutside: () => true });
+  const stop = clock(b);
+  try {
+    const win = terminal(b.byLabel('PC0') as Pc, 'windows');
+    for (const [i, l] of lines.entries()) {
+      const out = [...win.run(l), await rest(() => win.later?.() ?? null)].join('\n').replace(/\n$/, '');
+      assert.equal(clockOf(out).trimEnd(), expected[i]?.trimEnd(), l);
+    }
+    assert.match(win.prompt(), /^Z:\\d>/, 'the current folder followed cd and Z:');
+  } finally {
+    stop();
+  }
+});
+
 test('steps: the same client driven synchronously or live gives the same result', async () => {
   function* twoWaits(): Generator<{ done: () => boolean; ms: number }, number, void> {
     let n = 0;
