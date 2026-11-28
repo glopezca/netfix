@@ -7,6 +7,17 @@ export type { TopologyFileErrorCode } from '../net/topology-file.ts';
 export { Topology } from '../net/topology.ts';
 export type { TopologyFile, DeviceRecord, PcRecord, ServerRecord, DeviceKind } from '../net/topology.ts';
 export { EXAMPLES } from '../net/examples.ts';
+export type { Example } from '../net/examples.ts';
+// Labs of an extension (0.99.0): a lab and its mission, built with the classes below.
+export { registerLab } from '../labs/extension-labs.ts';
+export type { ExtensionLab } from '../labs/extension-labs.ts';
+export { missionById } from '../labs/missions.ts';
+export type { Mission } from '../labs/missions.ts';
+export type { MissionItem } from '../labs/mission-plans.ts';
+export type { LabGroupId } from '../labs/lab-groups.ts';
+export type { Server } from '../devices/server.ts';
+export type { Pc } from '../devices/pc.ts';
+export type { Switch } from '../devices/switch.ts';
 export { LABS_ES } from '../i18n/es-ES/labs.ts';
 export { declareDeviceKind, deviceKinds, registerDeviceKind } from '../net/device-kinds.ts';
 export type { BuiltinDeviceKind, DeviceKindDef, ExtensionDevice } from '../net/device-kinds.ts';

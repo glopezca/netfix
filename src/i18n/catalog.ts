@@ -60,3 +60,9 @@ export const CATALOGS: Readonly<Record<Locale, Readonly<Record<MessageKey, strin
   'es-ES': ES,
   'en-GB': { ...APP_EN, ...CANVAS_EN, ...PAGES_EN, ...MC_EN, ...HOST_EN, ...DNS_EN, ...ROUTER_EN, ...FIREWALL_EN, ...VPN_EN, ...APPS_EN, ...LABS_EN, ...MISSIONS_EN, ...UI_EN, ...CLOUD_EN, ...SRV_EN, ...WEB_EN, ...LOAD_EN, ...IFACES_EN, ...DRAW_EN, ...UNDO_EN, ...ZONES_EN, ...DNSUI_EN, ...SETTINGS_EN, ...SAMBA_EN },
 };
+
+/** An extension's messages (labs/extension-labs.ts registerLab): new keys only, Netfix's own are never replaced. */
+export function addMessages(locale: Locale, messages: Readonly<Record<string, string>>): void {
+  const table = CATALOGS[locale] as Record<string, string>;
+  for (const [key, text] of Object.entries(messages)) if (!Object.hasOwn(table, key)) table[key] = text;
+}
