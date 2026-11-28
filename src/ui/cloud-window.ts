@@ -6,7 +6,7 @@ import { livePanel } from './server-dhcp-dns.ts';
 import type { Tab } from './windows.ts';
 import type { Cloud } from '../devices/cloud.ts';
 import type { CloudPort } from '../devices/cloud-port.ts';
-import { ACCESS_LABEL, CLOUD_PORTS, LINE_PREFIX, accessOf, ispHop, lineSubnet, validateCloud, validDomain } from '../devices/cloud-config.ts';
+import { ACCESS_LABEL, ACCESS_TYPES, CLOUD_PORTS, DEFAULT_PVC, LINE_PREFIX, SPEEDS, defaultWan, ispHop, lineSubnet, validateCloud, validDomain } from '../devices/cloud-config.ts';
 import type { CloudDomain, CloudPortName, CloudPortSettings, PortForward } from '../devices/cloud-config.ts';
 import { formatIp, formatMask, parseIp, parseMask } from '../core/ip.ts';
 import { BACKBONE } from '../net/internet.ts';
@@ -53,7 +53,7 @@ function ispTab(cloud: Cloud, app: CloudHost): HTMLElement {
     };
     return [
       el('h3', {}, t('cloud.provider')),
-      el('div', { class: 'grid2' }, field(t('cloud.ispName'), isp), field(t('cloud.block'), block, t('cloud.blockHint', { a: formatIp(lineSubnet(s.block, 'Coaxial0').net), b: formatIp(lineSubnet(s.block, 'Coaxial1').net) }))),
+      el('div', { class: 'grid2' }, field(t('cloud.ispName'), isp), field(t('cloud.block'), block, t('cloud.blockHint', { a: formatIp(lineSubnet(s.block, 'GigabitEthernet0').net), b: formatIp(lineSubnet(s.block, 'GigabitEthernet1').net) }))),
       msg.el,
       el('h3', {}, t('cloud.domains')),
       el('p', { class: 'muted' }, t('cloud.domainsHint')),
@@ -104,6 +104,23 @@ function dmzField(line: CloudPort, changeDmz: (ip: number | null) => void): HTML
   return [el('h3', {}, t('cloud.dmz')), field(t('cloud.dmzHost'), dmz), el('p', { class: 'muted' }, t('cloud.dmzHint'))];
 }
 
+/** The line's WAN access (0.96.0): its kind and, for xDSL, its ATM circuit; a new kind brings that access's speeds. */
+function wanSection(c: CloudPortSettings, put: (next: CloudPortSettings) => void): HTMLElement[] {
+  const kind = select(ACCESS_TYPES.map((k) => [k, ACCESS_LABEL[k]] as [string, string]), c.wan.kind);
+  const vpi = input({ value: String(c.wan.pvc?.vpi ?? DEFAULT_PVC.vpi), inputmode: 'numeric', 'aria-label': t('cloud.vpi') });
+  const vci = input({ value: String(c.wan.pvc?.vci ?? DEFAULT_PVC.vci), inputmode: 'numeric', 'aria-label': t('cloud.vci') });
+  onCommit(kind, () => {
+    const next = ACCESS_TYPES.find((k) => k === kind.value) ?? c.wan.kind;
+    const [down, up] = SPEEDS[next];
+    put({ ...c, wan: defaultWan(next), down, up });
+  });
+  const pvc = (): void => put({ ...c, wan: { kind: 'xdsl', pvc: { vpi: Number(vpi.value), vci: Number(vci.value) } } });
+  onCommit(vpi, pvc);
+  onCommit(vci, pvc);
+  return [el('h3', {}, t('cloud.wanAccess')), el('div', { class: 'grid2' }, field(t('cloud.wanKind'), kind),
+    c.wan.kind === 'xdsl' ? field('ATM PVC (VPI/VCI)', el('div', { class: 'grid2' }, vpi, vci)) : el('div', {})), el('p', { class: 'muted' }, t('cloud.wanHint'))];
+}
+
 function linePanel(cloud: Cloud, name: CloudPortName, app: CloudHost): HTMLElement {
   const msg = message();
   return livePanel((refresh) => {
@@ -129,8 +146,9 @@ function linePanel(cloud: Cloud, name: CloudPortName, app: CloudHost): HTMLEleme
     const leases = line.leases().map((b) => `${formatIp(b.ip)} → ${b.hostname ?? b.mac}`);
     const nat = line.nat.entries().slice(-8).map((e) => `${e.proto ?? 'ip'} ${formatIp(e.insideLocal)}:${e.localPort ?? ''} → ${formatIp(e.insideGlobal)}:${e.globalPort ?? ''}`);
     return [
-      el('h3', {}, `${name} · ${ACCESS_LABEL[accessOf(name)]}`),
+      el('h3', {}, `${name} · ${ACCESS_LABEL[c.wan.kind]}`),
       el('p', { class: 'muted' }, peer ? t('cloud.connected', { peer }) : t('cloud.noCable')),
+      ...wanSection(c, put),
       el('div', { class: 'grid2' }, field(t('cloud.mode'), mode, t('cloud.modeHint')), field(t('cloud.speed'), el('div', { class: 'grid2' }, down, up))),
       c.mode === 'router' ? el('div', { class: 'grid2' }, field(t('cloud.routerLan'), lan), field(t('cloud.lanMask'), mask)) : el('div', {}),
       c.mode === 'router' ? el('label', { class: 'check' }, relay, ` ${t('dns.relay')}`) : el('div', {}),
@@ -163,7 +181,7 @@ function interfacesTab(cloud: Cloud, app: CloudHost): HTMLElement {
       el('p', { class: 'muted' }, t('cloudif.intro')),
       table<PortRow>(rows, [
         { label: t('iosif.iface'), value: (r) => r.name, mono: true },
-        { label: t('cloudif.access'), value: (r) => ACCESS_LABEL[accessOf(r.name)] },
+        { label: t('cloudif.access'), value: (r) => ACCESS_LABEL[r.line.settings.wan.kind] },
         { label: t('cloud.mode'), value: (r) => (r.line.settings.mode === 'router' ? t('cloud.modeRouter') : t('cloud.modePublic')) },
         { label: t('cloudif.customer'), value: (r) => (r.line.settings.mode === 'router' ? `WAN ${formatIp(r.line.wan())} · LAN ${formatIp(r.line.settings.lanIp)}/${r.line.settings.lanPrefix}` : `${formatIp(r.line.line().net)}/${LINE_PREFIX}`), mono: true },
         { label: t('hostif.peer'), value: (r) => app.connected(r.name) ?? t('cloud.noCable') },

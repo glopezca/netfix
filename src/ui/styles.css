@@ -67,6 +67,8 @@
 /* The bar in the host's element: only Netfix's look, not the mount's layout; the mount is then all workspace. */
 .netfix-bar.netfix-root { display: block; position: static; overflow: visible; background: var(--panel); color: var(--ink); font: 15px/1.45 var(--font-ui); }
 [data-bar="host"].netfix-root { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+/* A compact rail (host option `rail`, 0.96.0): its column stays narrow, also while `hover` shows the names over the canvas. */
+[data-bar="host"][data-rail]:not([data-palette="bottom"]).netfix-root { grid-template-columns: 56px minmax(0, 1fr); }
 /* Hosted with palette: 'bottom': the classic layout, the palette under the workspace. */
 [data-bar="host"][data-palette="bottom"].netfix-root { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
 /* The host's element for the workspace's actions (undo/redo, clipboard, zoom): only Netfix's look. */
@@ -209,6 +211,18 @@
     .pal-item > svg, .pal-item > .pal-glyph { grid-row: span 2; justify-self: center; width: 36px; height: 27px; }
     .pal-tool > .pal-glyph { grid-row: auto; font-size: 20px; line-height: 27px; text-align: center; }
     .palette .nf-actions { flex-direction: column; }
+  }
+  /* Compact rail: icons only, as a console's rail; the names stay for screen readers (and each button's title). */
+  &[data-bar="host"][data-rail]:not([data-palette="bottom"]) {
+    .palette { position: relative; z-index: 6; width: 56px; padding: 8px 4px; }
+    .pal-item { grid-template-columns: 36px; justify-items: center; padding: 4px; }
+    .pal-name, .pal-model { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  }
+  /* `hover`: while the pointer or the focus is on it, the rail shows its names again, over the workspace. */
+  &[data-bar="host"][data-rail="hover"]:not([data-palette="bottom"]) .palette:is(:hover, :focus-within) {
+    width: max-content; min-width: 200px; box-shadow: var(--shadow);
+    .pal-item { grid-template-columns: 36px auto; justify-items: start; padding: 4px 10px 4px 4px; }
+    .pal-name, .pal-model { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
   }
   .nf-actions { display: flex; align-items: center; gap: 8px; }
   .nf-actions .zoom-group:last-child { padding-right: 0; border-right: 0; }

@@ -49,7 +49,7 @@ import { applyConfig } from '../ios/session.ts';
 import { registerWebApps } from '../web/apps.ts';
 import { Cloud } from '../devices/cloud.ts';
 import { deviceKindDef, isBuiltinKind, isExtensionDevice, type BuiltinDeviceKind, type DeviceKind as Kind, type ExtensionDevice } from './device-kinds.ts';
-import { cloudFromJson, cloudToJson } from '../devices/cloud-config.ts';
+import { LEGACY_CLOUD_PORTS, cloudFromJson, cloudToJson } from '../devices/cloud-config.ts';
 import { InternetCore } from './internet.ts';
 import { populateInternet } from './internet-hosts.ts';
 
@@ -344,7 +344,10 @@ export class Topology {
     topo.pkgsOff = parsePkgsOff(file.pkgsOff);
     topo.mission = parseMissionState(file.mission);
     topo.nextDrawing = topo.annotations.reduce((n, a) => Math.max(n, Math.min(MAX_DRAWING_ID, Number(/^a(\d{1,9})$/.exec(a.id)?.[1] ?? 0)) + 1), 1);
-    for (const l of file.links) topo.connect(l.a, l.b, l.cable);
+    // A cloud's ports before 0.96.0 were named after their access (Fibra0…): each link goes to the same line now.
+    const end = (e: { device: string; port: string }): { device: string; port: string } =>
+      (topo.get(e.device)?.device.kind === 'cloud' && LEGACY_CLOUD_PORTS[e.port] ? { ...e, port: LEGACY_CLOUD_PORTS[e.port] ?? e.port } : e);
+    for (const l of file.links) topo.connect(end(l.a), end(l.b), l.cable);
     for (const p of topo.placed.values()) if (p.device instanceof Host) bootLinked(p.device);
     for (const p of topo.placed.values()) if (p.device instanceof LinuxRouter) bootWireguard(p.device);
     topo.settle();

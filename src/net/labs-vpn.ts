@@ -22,7 +22,7 @@ function link(t: Topology, a: string, ap: string, b: string, bp: string): void {
   t.connect({ device: a, port: ap }, { device: b, port: bp });
 }
 
-export function cloud(t: Topology, label: string, x: number, port: 'Fibra0' | 'DSL0', mode: LineMode): Cloud {
+export function cloud(t: Topology, label: string, x: number, port: 'GigabitEthernet4' | 'GigabitEthernet2', mode: LineMode): Cloud {
   const c = t.add('cloud', x, 90, { label }).device as Cloud;
   c.setSettings({ ...c.settings, isp: label, ports: { ...c.settings.ports, [port]: { ...c.settings.ports[port], mode } } });
   return c;
@@ -93,12 +93,12 @@ export const ipsecLab: Example = {
   summary: LABS_ES['lab.vpn-ipsec.summary'],
   build: () => {
     const t = new Topology();
-    const norte = cloud(t, 'ISP-Norte', 240, 'Fibra0', 'public');
-    const sur = cloud(t, 'ISP-Sur', 780, 'Fibra0', 'public');
+    const norte = cloud(t, 'ISP-Norte', 240, 'GigabitEthernet4', 'public');
+    const sur = cloud(t, 'ISP-Sur', 780, 'GigabitEthernet4', 'public');
     const a = t.add('router', 240, 260, { label: 'SEDE-A' }).device as Router;
     const b = t.add('router', 780, 260, { label: 'SEDE-B' }).device as Router;
-    link(t, a.id, 'GigabitEthernet0/1', norte.id, 'Fibra0');
-    link(t, b.id, 'GigabitEthernet0/1', sur.id, 'Fibra0');
+    link(t, a.id, 'GigabitEthernet0/1', norte.id, 'GigabitEthernet4');
+    link(t, b.id, 'GigabitEthernet0/1', sur.id, 'GigabitEthernet4');
     applyConfig(a, siteBase('SEDE-A', '192.168.10', '192.168.20').trim().split('\n'));
     applyConfig(b, siteBase('SEDE-B', '192.168.20', '192.168.10').trim().split('\n'));
     const pcs = [...branchLan(t, 240, { id: a.id, port: 'GigabitEthernet0/0' }, '192.168.10', 2), ...branchLan(t, 780, { id: b.id, port: 'GigabitEthernet0/0' }, '192.168.20', 2)];
@@ -170,12 +170,12 @@ export const wireguardLab: Example = {
   summary: LABS_ES['lab.vpn-wireguard.summary'],
   build: () => {
     const t = new Topology();
-    const norte = cloud(t, 'ISP-Norte', 240, 'Fibra0', 'public');
-    const sur = cloud(t, 'ISP-Sur', 780, 'DSL0', 'router');
+    const norte = cloud(t, 'ISP-Norte', 240, 'GigabitEthernet4', 'public');
+    const sur = cloud(t, 'ISP-Sur', 780, 'GigabitEthernet2', 'router');
     const hub = t.add('linuxrouter', 240, 260, { label: 'CENTRAL' }).device as LinuxRouter;
     const branch = t.add('linuxrouter', 780, 260, { label: 'SUCURSAL' }).device as LinuxRouter;
-    link(t, hub.id, 'GigabitEthernet0/0', norte.id, 'Fibra0');
-    link(t, branch.id, 'GigabitEthernet0/0', sur.id, 'DSL0');
+    link(t, hub.id, 'GigabitEthernet0/0', norte.id, 'GigabitEthernet4');
+    link(t, branch.id, 'GigabitEthernet0/0', sur.id, 'GigabitEthernet2');
     branchLan(t, 240, { id: hub.id, port: 'GigabitEthernet0/1' }, '10.1.0', 2, '10.1.0.1');
     branchLan(t, 780, { id: branch.id, port: 'GigabitEthernet0/1' }, '10.2.0', 2, '10.2.0.1');
     hub.useDhcp();

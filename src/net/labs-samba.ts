@@ -81,9 +81,9 @@ export const sambaLab: Example = {
   summary: LABS_ES['lab.samba.summary'],
   build: () => {
     const t = new Topology();
-    const isp = cloud(t, 'ISP-Norte', 640, 'Fibra0', 'public');
+    const isp = cloud(t, 'ISP-Norte', 640, 'GigabitEthernet4', 'public');
     const gw = t.add('router', 460, 240, { label: 'GW' }).device as Router;
-    link(t, gw.id, 'GigabitEthernet0/1', isp.id, 'Fibra0');
+    link(t, gw.id, 'GigabitEthernet0/1', isp.id, 'GigabitEthernet4');
     applyConfig(gw, GW_NAT.trim().split('\n'));
     const sw = t.add('switch', 460, 400, { label: 'Switch0' }).device as Switch;
     link(t, gw.id, 'GigabitEthernet0/0', sw.id, 'GigabitEthernet0/1');

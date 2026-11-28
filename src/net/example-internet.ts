@@ -41,7 +41,7 @@ ip nat inside source list 1 interface GigabitEthernet0/1 overload`;
 function sede1(t: Topology, isp: Cloud): Pc[] {
   const r = t.add('router', 240, 260, { label: 'SEDE1' }).device as Router;
   const s = t.add('switch', 240, 420).device as Switch;
-  link(t, r.id, 'GigabitEthernet0/1', isp.id, 'Fibra0');
+  link(t, r.id, 'GigabitEthernet0/1', isp.id, 'GigabitEthernet4');
   link(t, r.id, 'GigabitEthernet0/0', s.id, 'GigabitEthernet0/1');
   applyConfig(r, SEDE1.trim().split('\n'));
   return [0, 1].map((i) => {
@@ -57,7 +57,7 @@ function sede2(t: Topology, isp: Cloud): Pc {
   const s = t.add('switch', 780, 420).device as Switch;
   const srv = t.add('server', 900, 580, { label: 'SRV-SEDE2' }).device as Server;
   const pc = t.add('pc', 660, 580).device as Pc;
-  link(t, s.id, 'GigabitEthernet0/1', isp.id, 'DSL0');
+  link(t, s.id, 'GigabitEthernet0/1', isp.id, 'GigabitEthernet2');
   link(t, srv.id, 'FastEthernet0', s.id, 'FastEthernet0/24');
   link(t, pc.id, 'FastEthernet0', s.id, 'FastEthernet0/1');
   srv.setStatic({ ip: ip('192.168.1.10'), prefix: 24, gateway: ip('192.168.1.1'), dns: ip('8.8.8.8') });
@@ -74,7 +74,7 @@ function sede2(t: Topology, isp: Cloud): Pc {
   isp.setSettings({
     ...isp.settings,
     isp: 'ISP-Sur',
-    ports: { ...isp.settings.ports, DSL0: { ...isp.settings.ports.DSL0, forwards: [tcp(80), tcp(22), { proto: 'udp', port: 53, ip: ip('192.168.1.10'), toPort: 53 }] } },
+    ports: { ...isp.settings.ports, GigabitEthernet2: { ...isp.settings.ports.GigabitEthernet2, forwards: [tcp(80), tcp(22), { proto: 'udp', port: 53, ip: ip('192.168.1.10'), toPort: 53 }] } },
     domains: [{ name: 'sede2.es', kind: 'ns', ip: ip('81.33.3.2') }],
   });
   return pc;
@@ -88,7 +88,7 @@ export const internetExample: Example = {
     const t = new Topology();
     const norte = t.add('cloud', 240, 90, { label: 'ISP-Norte' }).device as Cloud;
     const sur = t.add('cloud', 780, 90, { label: 'ISP-Sur' }).device as Cloud;
-    norte.setSettings({ ...norte.settings, isp: 'ISP-Norte', ports: { ...norte.settings.ports, Fibra0: { ...norte.settings.ports.Fibra0, mode: 'public' } } });
+    norte.setSettings({ ...norte.settings, isp: 'ISP-Norte', ports: { ...norte.settings.ports, GigabitEthernet4: { ...norte.settings.ports.GigabitEthernet4, mode: 'public' } } });
     const pcs = [...sede1(t, norte), sede2(t, sur)];
     for (const p of pcs) p.useDhcp();
     t.settle();

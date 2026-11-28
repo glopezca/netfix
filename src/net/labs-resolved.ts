@@ -74,8 +74,8 @@ export const resolvedLab: Example = {
   summary: LABS_ES['lab.nombres-resolved.summary'],
   build: () => {
     const t = new Topology();
-    const isp = cloud(t, 'ISP-Norte', 760, 'Fibra0', 'public');
-    const { gw, ports: [a, b] } = linuxGateway(t, 500, 240, ['192.168.10.1/24', '192.168.20.1/24'], { id: isp.id, port: 'Fibra0' });
+    const isp = cloud(t, 'ISP-Norte', 760, 'GigabitEthernet4', 'public');
+    const { gw, ports: [a, b] } = linuxGateway(t, 500, 240, ['192.168.10.1/24', '192.168.20.1/24'], { id: isp.id, port: 'GigabitEthernet4' });
     const swA = t.add('switch', 260, 420, { label: 'SW-A' }).device as Switch;
     const swB = t.add('switch', 730, 420, { label: 'SW-B' }).device as Switch;
     link(t, gw.id, a ?? '', swA.id, 'GigabitEthernet0/1');

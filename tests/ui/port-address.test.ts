@@ -21,10 +21,10 @@ test('a PC, an IOS router (also its subinterfaces on a trunk) and a cloud line',
   assert.deepEqual(portAddresses(r, 'GigabitEthernet0/1'), ['172.16.10.1/24', '172.16.20.1/24'], 'router on a stick');
   assert.deepEqual(portAddresses(r, 'GigabitEthernet0/2'), []);
   const c = t.add('cloud', 0, 0);
-  assert.deepEqual(portAddresses(c, 'Fibra0'), ['192.168.1.1/24'], 'the operator router LAN');
+  assert.deepEqual(portAddresses(c, 'GigabitEthernet4'), ['192.168.1.1/24'], 'the operator router LAN');
   const cloud = c.device as Cloud;
-  cloud.setSettings({ ...cloud.settings, ports: { ...cloud.settings.ports, Coaxial0: { ...cloud.settings.ports.Coaxial0, mode: 'public' } } });
-  assert.match(portAddresses(c, 'Coaxial0')[0] ?? '', /^81\.32\.\d+\.1\/29$/, 'a public line: its gateway');
+  cloud.setSettings({ ...cloud.settings, ports: { ...cloud.settings.ports, GigabitEthernet0: { ...cloud.settings.ports.GigabitEthernet0, mode: 'public' } } });
+  assert.match(portAddresses(c, 'GigabitEthernet0')[0] ?? '', /^81\.32\.\d+\.1\/29$/, 'a public line: its gateway');
 });
 
 test('the caption keeps only the addresses of interfaces without a cable', () => {

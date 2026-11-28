@@ -71,7 +71,7 @@ test('a domain delegated to 8.8.8.8 answers SERVFAIL instead of looping forever'
   const t = new Topology();
   const c = t.add('cloud', 0, 0).device as Cloud;
   const pc = t.add('pc', 0, 0).device as Pc;
-  t.connect({ device: c.id, port: 'Fibra0' }, { device: pc.id, port: 'FastEthernet0' });
+  t.connect({ device: c.id, port: 'GigabitEthernet4' }, { device: pc.id, port: 'FastEthernet0' });
   c.setSettings({ ...c.settings, domains: [{ name: 'evil.es', kind: 'ns', ip: ip('8.8.8.8') }] });
   pc.useDhcp();
   t.settle();
@@ -117,8 +117,8 @@ test('operator router with a small LAN (/29) hands out addresses inside it', () 
   const t = new Topology();
   const c = t.add('cloud', 0, 0).device as Cloud;
   const pc = t.add('pc', 0, 0).device as Pc;
-  t.connect({ device: c.id, port: 'DSL1' }, { device: pc.id, port: 'FastEthernet0' });
-  c.setSettings({ ...c.settings, ports: { ...c.settings.ports, DSL1: { ...c.settings.ports.DSL1, lanIp: ip('192.168.5.6'), lanPrefix: 29 } } });
+  t.connect({ device: c.id, port: 'GigabitEthernet3' }, { device: pc.id, port: 'FastEthernet0' });
+  c.setSettings({ ...c.settings, ports: { ...c.settings.ports, GigabitEthernet3: { ...c.settings.ports.GigabitEthernet3, lanIp: ip('192.168.5.6'), lanPrefix: 29 } } });
   pc.useDhcp();
   t.settle();
   assert.equal(formatIp(pc.config.ip ?? 0), '192.168.5.2');

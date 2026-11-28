@@ -1,14 +1,32 @@
 /**
- * Settings of the ISP cloud: each port is a customer line (cable, xDSL or FTTx) that either hands a
- * public /29 to the customer's router (DHCP) or acts as the operator's router (LAN, DHCP, NAT, port
- * forwarding). Domains registered at the ISP are published by the public DNS servers 8.8.8.8/8.8.4.4.
+ * Settings of the ISP cloud: each port is a customer line — an Ethernet port for the customer's LAN (0.96.0) and the
+ * line's WAN access, its own setting (cable, xDSL with its ATM circuit, FTTH) — that either hands a public /29 to the
+ * customer's router (DHCP) or acts as the operator's router (LAN, DHCP, NAT, port forwarding). Domains registered at
+ * the ISP are published by the public DNS servers 8.8.8.8/8.8.4.4.
  */
 import { t } from '../i18n/t.ts';
 import { formatIp, inSubnet, networkOf, parseIp } from '../core/ip.ts';
 
-export const CLOUD_PORTS = ['Coaxial0', 'Coaxial1', 'DSL0', 'DSL1', 'Fibra0', 'Fibra1'] as const;
+export const CLOUD_PORTS = ['GigabitEthernet0', 'GigabitEthernet1', 'GigabitEthernet2', 'GigabitEthernet3', 'GigabitEthernet4', 'GigabitEthernet5'] as const;
 export type CloudPortName = (typeof CLOUD_PORTS)[number];
+/** Before 0.96.0 a port was named after its access; a lab saved then opens with each line where it was. */
+export const LEGACY_CLOUD_PORTS: Readonly<Record<string, CloudPortName>> = {
+  Coaxial0: 'GigabitEthernet0', Coaxial1: 'GigabitEthernet1', DSL0: 'GigabitEthernet2', DSL1: 'GigabitEthernet3', Fibra0: 'GigabitEthernet4', Fibra1: 'GigabitEthernet5',
+};
 export type AccessType = 'cable' | 'xdsl' | 'fttx';
+export const ACCESS_TYPES: readonly AccessType[] = ['cable', 'xdsl', 'fttx'];
+
+/** An ATM permanent virtual circuit (VPI/VCI) of an xDSL line: kept for ATM WAN networks; informative for now. */
+export interface AtmPvc {
+  readonly vpi: number;
+  readonly vci: number;
+}
+
+/** How the line reaches the ISP (0.96.0): only informative today, ready for WAN networks (ATM, Frame Relay…). */
+export interface WanAccess {
+  readonly kind: AccessType;
+  readonly pvc?: AtmPvc;
+}
 export type LineMode = 'public' | 'router';
 
 export interface PortForward {
@@ -20,6 +38,8 @@ export interface PortForward {
 
 export interface CloudPortSettings {
   readonly mode: LineMode;
+  /** The WAN access of the line (0.96.0); the port itself is Ethernet. */
+  readonly wan: WanAccess;
   /** Contracted speeds in Mbit/s (informative). */
   readonly down: number;
   readonly up: number;
@@ -57,18 +77,30 @@ const MAX_FORWARDS = 32;
 const MAX_DOMAINS = 32;
 const MAX_SPEED = 100_000;
 
+/** The access a line has by default, by its place: two cable lines, two xDSL, two FTTH (as the ports were named before). */
 export function accessOf(port: string): AccessType {
-  if (port.startsWith('Coaxial')) return 'cable';
-  if (port.startsWith('DSL')) return 'xdsl';
-  return 'fttx';
+  const i = CLOUD_PORTS.indexOf((LEGACY_CLOUD_PORTS[port] ?? port) as CloudPortName);
+  return i < 2 ? 'cable' : i < 4 ? 'xdsl' : 'fttx';
+}
+
+/** The usual ATM circuit of an xDSL line in Spain (VPI 8, VCI 32). */
+export const DEFAULT_PVC: AtmPvc = { vpi: 8, vci: 32 };
+const MAX_VPI = 255;
+const MIN_VCI = 32;
+const MAX_VCI = 65535;
+
+export function defaultWan(kind: AccessType): WanAccess {
+  return kind === 'xdsl' ? { kind, pvc: DEFAULT_PVC } : { kind };
 }
 
 export const ACCESS_LABEL: Readonly<Record<AccessType, string>> = { cable: 'Cable (DOCSIS 3.1)', xdsl: 'xDSL (VDSL2)', fttx: 'FTTH (GPON)' };
-const SPEEDS: Readonly<Record<AccessType, readonly [number, number]>> = { cable: [600, 60], xdsl: [100, 10], fttx: [1000, 1000] };
+/** The contracted speeds a line of that access starts with (Mbit/s down, up). */
+export const SPEEDS: Readonly<Record<AccessType, readonly [number, number]>> = { cable: [600, 60], xdsl: [100, 10], fttx: [1000, 1000] };
 
 export function defaultPort(port: string): CloudPortSettings {
-  const [down, up] = SPEEDS[accessOf(port)];
-  return { mode: 'router', down, up, lanIp: LAN_DEFAULT, lanPrefix: LAN_PREFIX, forwards: [] };
+  const kind = accessOf(port);
+  const [down, up] = SPEEDS[kind];
+  return { mode: 'router', wan: defaultWan(kind), down, up, lanIp: LAN_DEFAULT, lanPrefix: LAN_PREFIX, forwards: [] };
 }
 
 /** Longest ISP name kept. */
@@ -107,7 +139,16 @@ export function validDomain(name: string): string | null {
   return null;
 }
 
+function validateWan(w: WanAccess): string | null {
+  if (!ACCESS_TYPES.includes(w.kind)) return t('cloud.err.wan');
+  if (w.pvc === undefined) return null;
+  const { vpi, vci } = w.pvc;
+  return w.kind === 'xdsl' && Number.isInteger(vpi) && Number.isInteger(vci) && vpi >= 0 && vpi <= MAX_VPI && vci >= MIN_VCI && vci <= MAX_VCI ? null : t('cloud.err.pvc');
+}
+
 export function validatePort(p: CloudPortSettings): string | null {
+  const wan = validateWan(p.wan);
+  if (wan) return wan;
   if (!Number.isInteger(p.down) || !Number.isInteger(p.up) || p.down < 1 || p.up < 1 || p.down > MAX_SPEED || p.up > MAX_SPEED) return t('cloud.err.speed');
   if (p.lanPrefix < 8 || p.lanPrefix > 30) return t('cloud.err.lanMask');
   const net = networkOf(p.lanIp, p.lanPrefix);
@@ -148,7 +189,7 @@ const obj = (v: unknown): Record<string, unknown> => (typeof v === 'object' && v
 
 /** One line's settings for the file. */
 export function portToJson(c: CloudPortSettings): unknown {
-  return { mode: c.mode, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}), ...(c.dmz !== undefined ? { dmz: formatIp(c.dmz) } : {}) };
+  return { mode: c.mode, wan: { kind: c.wan.kind, ...(c.wan.pvc ? { pvc: { ...c.wan.pvc } } : {}) }, down: c.down, up: c.up, lanIp: formatIp(c.lanIp), lanPrefix: c.lanPrefix, forwards: c.forwards.map((f) => ({ ...f, ip: formatIp(f.ip) })), ...(c.dnsRelay ? { dnsRelay: true } : {}), ...(c.dmz !== undefined ? { dmz: formatIp(c.dmz) } : {}) };
 }
 
 export function cloudToJson(s: CloudSettings): unknown {
@@ -165,7 +206,12 @@ export function portFromJson(port: string, v: unknown): CloudPortSettings {
   const forwards = (Array.isArray(o.forwards) ? o.forwards : []).slice(0, MAX_FORWARDS).map(obj).map((f) => ({
     proto: f.proto === 'udp' ? 'udp' as const : 'tcp' as const, port: num(f.port, 0), ip: ipOf(f.ip, 0), toPort: num(f.toPort, 0),
   }));
-  const p = { mode: o.mode === 'public' ? 'public' as const : 'router' as const, down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards, ...(o.dnsRelay === true ? { dnsRelay: true } : {}),
+  const w = obj(o.wan);
+  const kind = ACCESS_TYPES.find((k) => k === w.kind) ?? d.wan.kind;
+  const pvc = obj(w.pvc);
+  // A file before 0.96.0 has no `wan`: the line's access by its place, as its port's name said.
+  const wan: WanAccess = o.wan === undefined ? d.wan : { kind, ...(w.pvc !== undefined ? { pvc: { vpi: num(pvc.vpi, -1), vci: num(pvc.vci, -1) } } : {}) };
+  const p = { mode: o.mode === 'public' ? 'public' as const : 'router' as const, wan, down: num(o.down, d.down), up: num(o.up, d.up), lanIp: ipOf(o.lanIp, d.lanIp), lanPrefix: num(o.lanPrefix, d.lanPrefix), forwards, ...(o.dnsRelay === true ? { dnsRelay: true } : {}),
     ...(typeof o.dmz === 'string' && parseIp(o.dmz) !== null ? { dmz: parseIp(o.dmz)! } : {}) };
   return validatePort(p) ? d : p;
 }
@@ -173,7 +219,9 @@ export function portFromJson(port: string, v: unknown): CloudPortSettings {
 /** Settings from an untrusted file; anything invalid falls back to the defaults. */
 export function cloudFromJson(v: unknown, fallback: CloudSettings): CloudSettings {
   const o = obj(v);
-  const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, portFromJson(p, obj(o.ports)[p])])) as Record<CloudPortName, CloudPortSettings>;
+  const saved = obj(o.ports);
+  const legacy = (p: CloudPortName): unknown => saved[Object.keys(LEGACY_CLOUD_PORTS).find((k) => LEGACY_CLOUD_PORTS[k] === p) ?? ''];
+  const ports = Object.fromEntries(CLOUD_PORTS.map((p) => [p, portFromJson(p, saved[p] ?? legacy(p))])) as Record<CloudPortName, CloudPortSettings>;
   const domains = (Array.isArray(o.domains) ? o.domains : []).slice(0, MAX_DOMAINS).map(obj)
     .map((d) => ({ name: String(d.name ?? '').toLowerCase(), kind: d.kind === 'ns' ? 'ns' as const : 'a' as const, ip: ipOf(d.ip, 0) }))
     .filter((d) => validDomain(d.name) === null && !reservedAddress(d.ip));
