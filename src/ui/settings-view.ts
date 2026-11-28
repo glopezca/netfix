@@ -3,7 +3,8 @@ import { el } from './dom.ts';
 import { t, tDynamic } from '../i18n/t.ts';
 import { LOCALES, LOCALE_NAMES, getLocale, isLocale } from '../i18n/locale.ts';
 import type { Locale } from '../i18n/locale.ts';
-import { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, toolHelp, setToolHelp, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown, devicePiles, setDevicePiles } from './preferences.ts';
+import { THEMES, theme, setTheme, confirmUnsaved, setConfirmUnsaved, toolHelp, setToolHelp, timestampPrompt, setTimestampPromptPref, onTimestampPrompt, missionsShown, setMissionsShown, devicePiles, setDevicePiles, deviceMarks, setDeviceMarks } from './preferences.ts';
+import { DEVICE_MARKS } from './device-marks.ts';
 import { FEATURES_BY_KIND, featureOn, setFeature } from '../net/lab-features.ts';
 import type { LabFeatures } from '../net/lab-features.ts';
 import { SERVICE_PACKAGES, TOOL_PACKAGES, packageAllowed, setPackageOff } from '../net/lab-packages.ts';
@@ -55,6 +56,9 @@ function generalSection(host: SettingsHost): HTMLElement {
   helpBox = help;
   const pile = el('input', { type: 'checkbox', checked: devicePiles(), 'data-setting': 'piles' });
   pile.addEventListener('change', () => setDevicePiles(pile.checked));
+  // 0.98.0: what each device runs, drawn on its icon (GNU/Linux as Ubuntu or Tux), or plain icons.
+  const marks = el('select', { class: 'select', id: 'set-marks', 'data-setting': 'marks' }, ...DEVICE_MARKS.map((m) => el('option', { value: m, selected: m === deviceMarks() }, tDynamic(`set.marks${m[0]?.toUpperCase()}${m.slice(1)}`))));
+  marks.addEventListener('change', () => { const m = DEVICE_MARKS.find((x) => x === marks.value); if (m) setDeviceMarks(m); });
   const missions = el('input', { type: 'checkbox', checked: missionsShown(), 'data-setting': 'missions' });
   missions.addEventListener('change', () => setMissionsShown(missions.checked));
   return el('section', { class: 'set-section', 'aria-labelledby': 'set-general' },
@@ -66,6 +70,7 @@ function generalSection(host: SettingsHost): HTMLElement {
     host.labLocked() || host.hostOwned() ? null : el('label', { class: 'set-choice' }, confirm, t('set.confirm')),
     host.hostOwned() ? el('label', { class: 'set-choice' }, help, t('set.toolHelp')) : null,
     el('label', { class: 'set-choice' }, pile, t('set.piles')),
+    el('div', { class: 'set-row' }, el('label', { for: 'set-marks' }, t('set.marks')), marks),
     el('label', { class: 'set-choice' }, missions, t('set.missions'), el('span', { class: 'muted' }, ` ${t('set.missionsHint')}`)),
     el('label', { class: 'set-choice' }, stamp, t('set.timestamp'), host.promptLocked() ? el('span', { class: 'muted' }, ` ${t('term.timestampLocked')}`) : null));
 }

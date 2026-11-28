@@ -55,7 +55,11 @@ de mostrar («No volver a mostrar», o en Configuración) y los mensajes se ven 
 `netfix.lab` y `netfix.embed` admiten además `locale` (`'es-ES'` o `'en-GB'`: el idioma lo elige la página, y Netfix
 no lo guarda) y `confirmUnsaved` (`true`/`false`: si reemplazar trabajo sin guardar pregunta antes; sin ella, la
 preferencia de este navegador). Con `toolbar`, `palette: 'bottom'` deja la paleta debajo del área de trabajo, como en la
-página de Netfix; sin ella (`'side'`), es la barra lateral, con el nombre de cada equipo a la derecha de su icono. `piles` (`true`/`false`)
+página de Netfix; sin ella (`'side'`), es la barra lateral, con el nombre de cada equipo a la derecha de su icono. `rail`
+(0.96.0; 0.97.0, suave) la deja como el carril de una consola: `'compact'`, solo iconos; `'hover'`, que muestra los nombres
+sobre el área de trabajo al pasar el ratón; `'full'` (de serie), como siempre. `marks` (0.98.0) dibuja en cada equipo lo que
+ejecuta: `'ubuntu'` o `'tux'` para GNU/Linux (junto a Windows en los PC y servidores e IOS en routers y switches), `'none'`,
+sin marcas; sin ella, la preferencia de este navegador (Ubuntu de serie). `piles` (`true`/`false`)
 apila los equipos parecidos en un botón (Router: IOS o GNU/Linux; PC: Microsoft Windows, GNU/Linux o MultiOS); sin ella, la
 preferencia de este navegador, desmarcada de serie. `missions` (`true`/`false`, desde 0.76.0) muestra u oculta los
 laboratorios guiados (el panel Misión y su grupo en la Ayuda) sin tocar la preferencia de este navegador; sin ella,

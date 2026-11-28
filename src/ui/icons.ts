@@ -2,6 +2,9 @@
 import { t } from '../i18n/t.ts';
 import { isBuiltinKind, type BuiltinDeviceKind, type DeviceKind } from '../net/device-kinds.ts';
 import { deviceUi } from './device-kind-ui.ts';
+import { markOf, withMark, type IconSystem } from './device-marks.ts';
+import { deviceMarks } from './preferences.ts';
+import { deviceApps, type AppsDevice } from '../net/device-apps.ts';
 
 export const ICON_W = 64;
 export const ICON_H = 48;
@@ -61,6 +64,18 @@ export const ICONS: Readonly<Record<BuiltinDeviceKind, string>> = { router: ROUT
 
 /** A kind's icon: a registered kind brings its own (else the PC's). */
 export const iconOf = (kind: DeviceKind): string => (isBuiltinKind(kind) ? ICONS[kind] : deviceUi(kind)?.icon ?? PC);
+
+/** A device's icon with the mark of what it runs (0.98.0, the setting «Marcas en los equipos»; device-marks.ts). */
+export function deviceIcon(kind: DeviceKind, system?: IconSystem): string {
+  return withMark(iconOf(kind), markOf(kind, system, deviceMarks()));
+}
+
+/** What a placed PC or server runs, for its mark: Windows, GNU/Linux, or both (a PC with both terminals). */
+export function iconSystemOf(d: { readonly kind: DeviceKind; readonly os?: unknown }): IconSystem | undefined {
+  if (d.kind !== 'pc' && d.kind !== 'server') return undefined;
+  const os = d.os === 'linux' ? 'linux' : 'windows';
+  return d.kind === 'pc' && os === 'windows' && deviceApps(d as unknown as AppsDevice).includes('linux') ? 'both' : os;
+}
 
 export const MODEL_LABEL: Readonly<Record<BuiltinDeviceKind, string>> = { router: 'Cisco 2911', switch: 'Cisco 2960-24TT', pc: 'PC', server: 'Ubuntu Server', linuxrouter: 'Ubuntu Server', cloud: 'ISP' };
 

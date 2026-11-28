@@ -14,7 +14,7 @@ test('host options: none leaves the options as they were; a bad toolbar, locale,
   assert.deepEqual(takeHostOptions(mount, undefined), { rest: undefined, host: NO_HOST });
   const taken = takeHostOptions(mount, { restrictions: {}, locale: 'en-GB', confirmUnsaved: false });
   assert.deepEqual({ rest: { ...taken.rest as object }, host: { ...taken.host, extensions: { ...taken.host.extensions } } },
-    { rest: { restrictions: {} }, host: { toolbar: null, actions: null, locale: 'en-GB', confirmUnsaved: false, palette: 'side', rail: 'full', piles: undefined, missions: undefined, extensions: {}, back: null } });
+    { rest: { restrictions: {} }, host: { toolbar: null, actions: null, locale: 'en-GB', confirmUnsaved: false, palette: 'side', rail: 'full', marks: undefined, piles: undefined, missions: undefined, extensions: {}, back: null } });
   assert.equal(takeHostOptions(mount, { palette: 'bottom' }).host.palette, 'bottom');
   assert.throws(() => takeHostOptions(mount, { toolbar: '#bar' }), /toolbar/);
   assert.throws(() => takeHostOptions(mount, { actions: '#acts' }), /actions/);
@@ -25,6 +25,9 @@ test('host options: none leaves the options as they were; a bad toolbar, locale,
   assert.equal(takeHostOptions(mount, { rail: 'hover' }).host.rail, 'hover');
   assert.equal(takeHostOptions(mount, { rail: 'compact' }).host.rail, 'compact');
   assert.throws(() => takeHostOptions(mount, { rail: 'mini' }), /rail/);
+  // 0.98.0: the devices' marks, as the host chooses (or none).
+  assert.equal(takeHostOptions(mount, { marks: 'tux' }).host.marks, 'tux');
+  assert.throws(() => takeHostOptions(mount, { marks: 'redhat' }), /marks/);
   assert.equal(takeHostOptions(mount, { piles: true }).host.piles, true, 'a host piles similar devices');
   assert.throws(() => takeHostOptions(mount, { piles: 'yes' }), /piles/);
   assert.equal(takeHostOptions(mount, { missions: true }).host.missions, true, 'a host shows the guided labs');

@@ -16,7 +16,7 @@ import { afterPlaced } from './os-dialog.ts';
 import { Topology } from '../net/topology.ts';
 import { EXAMPLES } from '../net/examples.ts';
 import { Pages } from './pages.ts';
-import { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, hostMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, onDevicePiles, overrideConfirmUnsaved, overrideDevicePiles, setToolHelp, toolHelp } from './preferences.ts';
+import { applyDocumentLanguage, applyTheme, confirmUnsaved, classroomMissions, hostMissions, loadMissionsPref, loadTimestampPrompt, missionsShown, onDevicePiles, onDeviceMarks, overrideDeviceMarks, overrideConfirmUnsaved, overrideDevicePiles, setToolHelp, toolHelp } from './preferences.ts';
 import { featureOn } from '../net/lab-features.ts';
 import type { FeatureId, LabFeatures } from '../net/lab-features.ts';
 import { floatBar, topbar } from './topbar.ts';
@@ -74,6 +74,7 @@ class App {
   private readonly stageEl: HTMLElement;
   private readonly paletteEl: HTMLElement;
   private pilesWatch: (() => void) | null = null;
+  private marksWatch: (() => void) | null = null;
   private readonly pageHost: HTMLElement;
   private readonly pages = new Pages({ features: () => this.topo.features, setFeatures: (f) => this.setFeatures(f), webHideOff: () => this.topo.webHideOff, setWebHideOff: (on) => { this.topo.webHideOff = on; this.afterCommand(); }, pkgsOff: () => this.topo.pkgsOff, setPkgsOff: (p) => { this.topo.pkgsOff = p; this.windows.closeAll(); this.afterCommand(); }, labLocked: () => this.session.embedded, hostOwned: () => this.hosted, promptLocked: () => this.promptLock() !== undefined, setLocale: (l) => changeLocale(l) });
   private saveTimer = 0;
@@ -150,12 +151,17 @@ class App {
     };
     this.paletteEl = palette(palActions, this.toolButtons, this.hintEl, this.session.policy, this.actionsBox, backHost);
     // The piles setting redraws only the devices (the tool goes back to Select: its button may be gone).
-    this.pilesWatch = onDevicePiles(() => {
+    const redrawDevices = (): void => {
       for (const k of [...this.toolButtons.keys()]) if (k.startsWith('place-')) this.toolButtons.delete(k);
       const fresh = deviceGroup(palActions, this.toolButtons, this.session.policy);
       const old = this.paletteEl.querySelector('.pal-devices');
       if (old && fresh) old.replaceWith(fresh);
       this.selectTool({ kind: 'select' }, 'select');
+    };
+    // The marks setting (0.98.0) redraws them too, and the devices on the canvas.
+    this.marksWatch = onDeviceMarks(() => { redrawDevices(); this.canvas.render(); });
+    this.pilesWatch = onDevicePiles(() => {
+      redrawDevices();
       this.syncKinds();
     });
     this.syncKinds();
@@ -186,6 +192,7 @@ class App {
     window.clearInterval(this.interval);
     window.removeEventListener('keydown', this.onKeyDown);
     this.pilesWatch?.();
+    this.marksWatch?.();
     window.removeEventListener('pointerdown', this.onPointerDown, { capture: true });
     this.noteWatch?.disconnect();
     window.clearTimeout(this.noteTimer);
@@ -554,6 +561,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   setLocale(host.locale ?? detectLocale(s.embedded ? null : safeStorageGet(LOCALE_STORAGE_KEY), navigator.languages ?? [navigator.language]));
   overrideConfirmUnsaved(host.confirmUnsaved);
   overrideDevicePiles(host.piles);
+  overrideDeviceMarks(host.marks);
   kindHosts = startKindHosts(host.extensions);
   mount.classList.add(ROOT_CLASS);
   applyLanguage(mount);
@@ -606,6 +614,7 @@ function hosted(mount: HTMLElement, s: AppSession, topology: Topology | undefine
       forceTimestampPrompt(undefined);
       overrideConfirmUnsaved(undefined);
       overrideDevicePiles(undefined);
+      overrideDeviceMarks(undefined);
       clearClipboard();
       mount.replaceChildren();
       if (bar) releaseBar(bar);
