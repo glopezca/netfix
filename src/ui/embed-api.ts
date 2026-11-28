@@ -1,4 +1,5 @@
 /** DOM side of `netfix.embed` / `netfix.evaluate` (needs `HTMLElement` and `globalThis`, so it lives in `ui`, not the Core). */
+import { DEVICE_MARKS, type DeviceMarks } from './device-marks.ts';
 import { hostOption, hostOptionNames } from './host-options.ts';
 import type { EmbedHandle } from '../classroom/embed.ts';
 import type { Evaluation } from '../classroom/evaluate.ts';
@@ -34,6 +35,8 @@ export interface HostOptions {
    * 'hover' (compact, the names again over the workspace while the pointer or the focus is on it).
    */
   readonly rail: RailStyle;
+  /** The devices' brand marks (0.98.0): GNU/Linux as Ubuntu or Tux, or none; undefined: this browser's setting. */
+  readonly marks: DeviceMarks | undefined;
   /** Similar devices piled on one palette button; undefined: this browser's setting (off by default). */
   readonly piles: boolean | undefined;
   /** Whether the guided labs (missions) show; undefined: this browser's setting (off by default; embedded, always on). */
@@ -51,8 +54,8 @@ export interface HostBack { readonly label: string; readonly onClick: () => void
 
 const BACK_LABEL_MAX = 60;
 
-export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', rail: 'full', piles: undefined, missions: undefined, extensions: Object.freeze({}), back: null });
-const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'rail', 'piles', 'missions', 'back'] as const;
+export const NO_HOST: HostOptions = Object.freeze({ toolbar: null, actions: null, locale: null, confirmUnsaved: undefined, palette: 'side', rail: 'full', marks: undefined, piles: undefined, missions: undefined, extensions: Object.freeze({}), back: null });
+const HOST_KEYS = ['toolbar', 'actions', 'locale', 'confirmUnsaved', 'palette', 'rail', 'marks', 'piles', 'missions', 'back'] as const;
 
 /** A host element for part of Netfix: in the page, and neither inside the mount nor around it (each would empty the other). */
 function hostElement(mount: HTMLElement, v: unknown, name: string): HTMLElement | null {
@@ -68,7 +71,7 @@ function hostElement(mount: HTMLElement, v: unknown, name: string): HTMLElement 
  */
 export function takeHostOptions(mount: HTMLElement, options: unknown): { readonly rest: unknown; readonly host: HostOptions } {
   if (typeof options !== 'object' || options === null || ![...HOST_KEYS, ...hostOptionNames()].some((k) => Object.hasOwn(options, k))) return { rest: options, host: NO_HOST };
-  const { toolbar, actions, locale, confirmUnsaved, palette, rail, piles, missions, back, ...others } = options as Record<string, unknown>;
+  const { toolbar, actions, locale, confirmUnsaved, palette, rail, marks, piles, missions, back, ...others } = options as Record<string, unknown>;
   const bar = hostElement(mount, toolbar, 'toolbar');
   const acts = hostElement(mount, actions, 'actions');
   if (bar && acts && (bar.contains(acts) || acts.contains(bar))) throw new Error('netfix: «toolbar» y «actions» deben ser elementos distintos y separados');
@@ -76,10 +79,11 @@ export function takeHostOptions(mount: HTMLElement, options: unknown): { readonl
   if (confirmUnsaved !== undefined && typeof confirmUnsaved !== 'boolean') throw new Error('netfix: «confirmUnsaved» debe ser true o false');
   if (palette !== undefined && palette !== 'side' && palette !== 'bottom') throw new Error('netfix: «palette» debe ser \'side\' o \'bottom\'');
   if (rail !== undefined && !RAILS.some((r) => r === rail)) throw new Error('netfix: «rail» debe ser \'full\', \'compact\' o \'hover\'');
+  if (marks !== undefined && !DEVICE_MARKS.some((m) => m === marks)) throw new Error('netfix: «marks» debe ser \'ubuntu\', \'tux\' o \'none\'');
   if (piles !== undefined && typeof piles !== 'boolean') throw new Error('netfix: «piles» debe ser true o false');
   if (missions !== undefined && typeof missions !== 'boolean') throw new Error('netfix: «missions» debe ser true o false');
   const { rest, extensions } = takeExtensions(others);
-  return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined, palette: palette ?? 'side', rail: (rail as RailStyle | undefined) ?? 'full', piles: piles as boolean | undefined, missions: missions as boolean | undefined, extensions, back: backOf(back) } };
+  return { rest, host: { toolbar: bar, actions: acts, locale: (locale as Locale | undefined) ?? null, confirmUnsaved: confirmUnsaved as boolean | undefined, palette: palette ?? 'side', rail: (rail as RailStyle | undefined) ?? 'full', marks: marks as DeviceMarks | undefined, piles: piles as boolean | undefined, missions: missions as boolean | undefined, extensions, back: backOf(back) } };
 }
 
 /** The host's way back: a short label and a function. */

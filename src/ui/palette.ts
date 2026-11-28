@@ -5,7 +5,7 @@
 import type { HostBack } from './embed-api.ts';
 import { el, staticSvg } from './dom.ts';
 import type { Tool } from './canvas.ts';
-import { iconOf, modelLabel } from './icons.ts';
+import { deviceIcon, modelLabel } from './icons.ts';
 import { deviceUi, deviceUiKinds } from './device-kind-ui.ts';
 import { kindOffered } from './host-options.ts';
 import type { DeviceKind } from '../net/topology.ts';
@@ -65,7 +65,7 @@ function piles(): readonly (readonly [string, readonly Variant[]])[] {
 const variantKey = (v: Variant): string => (v.system ? `place-${v.kind}-${v.system}` : `place-${v.kind}`);
 
 function variantBtn(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, v: Variant, cls: string): HTMLButtonElement {
-  const b = el('button', { type: 'button', class: cls, 'aria-pressed': 'false', title: v.name }, staticSvg(iconOf(v.kind)), el('span', { class: 'pal-name' }, v.name), el('span', { class: 'pal-model' }, v.model));
+  const b = el('button', { type: 'button', class: cls, 'aria-pressed': 'false', title: v.name }, staticSvg(deviceIcon(v.kind, v.system)), el('span', { class: 'pal-name' }, v.name), el('span', { class: 'pal-model' }, v.model));
   b.addEventListener('click', () => actions.selectTool({ kind: 'place', device: v.kind, ...(v.system ? { system: v.system } : {}) }, variantKey(v)));
   buttons.set(variantKey(v), b);
   return b;
@@ -90,7 +90,7 @@ function pileBtn(actions: PaletteActions, buttons: Map<string, HTMLButtonElement
   const first = variants[0]!;
   const menu = el('div', { class: 'pal-pile-menu', role: 'group', 'aria-label': name, popover: 'manual' });
   const main = el('button', { type: 'button', class: 'pal-item pal-pile-btn', 'aria-expanded': 'false', title: t('pal.pileHint') },
-    staticSvg(iconOf(first.kind)), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, t('pal.pileCount', { n: String(variants.length) })));
+    staticSvg(deviceIcon(first.kind, first.system)), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, t('pal.pileCount', { n: String(variants.length) })));
   const pile = el('div', { class: 'pal-pile' }, main, menu);
   const isOpen = (): boolean => main.getAttribute('aria-expanded') === 'true';
   // Safari does not focus a clicked button, so focusout alone would leave the menu open: a press elsewhere closes it.

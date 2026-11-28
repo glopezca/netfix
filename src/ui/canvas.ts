@@ -1,7 +1,7 @@
 /** Logical workspace: devices, cables with link lights, placing, moving, cabling, deleting. */
 import type { PcSystem } from '../net/device-apps.ts';
 import { el, svg, clear, staticSvg } from './dom.ts';
-import { iconOf, ICON_W, ICON_H, modelLabel } from './icons.ts';
+import { deviceIcon, iconSystemOf, ICON_W, ICON_H, modelLabel } from './icons.ts';
 import type { Topology, DeviceKind, Placed } from '../net/topology.ts';
 import type { Endpoint, Link } from '../net/network.ts';
 import { Viewport } from './viewport.ts';
@@ -238,7 +238,7 @@ export class Canvas {
       transform: `translate(${p.x} ${p.y})`, tabindex: '0', 'data-id': id, role: 'button', 'aria-label': `${p.label} (${modelLabel(d.kind)})`,
     });
     g.appendChild(svg('rect', { class: 'device-halo', x: -ICON_W / 2 - 8, y: -ICON_H / 2 - 8, width: ICON_W + 16, height: ICON_H + 16, rx: 10 }));
-    const icon = staticSvg(iconOf(d.kind));
+    const icon = staticSvg(deviceIcon(d.kind, iconSystemOf(d as { kind: typeof d.kind; os?: unknown })));
     icon.setAttribute('x', String(-ICON_W / 2));
     icon.setAttribute('y', String(-ICON_H / 2));
     g.appendChild(icon);

@@ -1,4 +1,5 @@
 /** General settings of this browser (Configuración → Generales): theme, the unsaved-changes question, the missions, language of the page. */
+import { DEVICE_MARKS, type DeviceMarks } from './device-marks.ts';
 import { safeStorageGet, safeStorageSet } from './dom.ts';
 import { getLocale } from '../i18n/locale.ts';
 import { t } from '../i18n/t.ts';
@@ -51,6 +52,25 @@ export function confirmUnsaved(): boolean {
 
 export function setConfirmUnsaved(on: boolean): void {
   safeStorageSet(CONFIRM_KEY, on ? 'on' : 'off');
+}
+
+/** The devices' brand marks (0.98.0): GNU/Linux as Ubuntu (the default) or Tux, or none; a host may set them (`marks`). */
+const MARKS_KEY = 'netfix:device-marks';
+let marksOverride: DeviceMarks | undefined;
+const marksListeners = new Set<() => void>();
+export function overrideDeviceMarks(m: DeviceMarks | undefined): void { marksOverride = m; }
+export function deviceMarks(): DeviceMarks {
+  const saved = safeStorageGet(MARKS_KEY);
+  return marksOverride ?? DEVICE_MARKS.find((m) => m === saved) ?? 'ubuntu';
+}
+export function setDeviceMarks(m: DeviceMarks): void {
+  safeStorageSet(MARKS_KEY, m);
+  if (marksOverride !== undefined) marksOverride = m;
+  for (const l of marksListeners) l();
+}
+export function onDeviceMarks(listener: () => void): () => void {
+  marksListeners.add(listener);
+  return () => marksListeners.delete(listener);
 }
 
 /** Similar devices piled on one palette button (Router: IOS or GNU/Linux; PC: Windows, GNU/Linux or both); off unless turned on. */
