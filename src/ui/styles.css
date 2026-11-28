@@ -212,17 +212,25 @@
     .pal-tool > .pal-glyph { grid-row: auto; font-size: 20px; line-height: 27px; text-align: center; }
     .palette .nf-actions { flex-direction: column; }
   }
-  /* Compact rail: icons only, as a console's rail; the names stay for screen readers (and each button's title). */
+  /* Compact rail: icons only, as a console's rail. The names stay laid out beside the icons, beyond the rail's width and
+     transparent (screen readers still read them; each button has its title), so widening it moves nothing. */
   &[data-bar="host"][data-rail]:not([data-palette="bottom"]) {
-    .palette { position: relative; z-index: 6; width: 56px; padding: 8px 4px; }
-    .pal-item { grid-template-columns: 36px; justify-items: center; padding: 4px; }
-    .pal-name, .pal-model { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .palette { position: relative; z-index: 6; width: 56px; padding: 8px 4px; overflow: hidden; }
+    .pal-item { overflow: hidden; }
+    .pal-name, .pal-model { white-space: nowrap; opacity: 0; }
   }
-  /* `hover`: while the pointer or the focus is on it, the rail shows its names again, over the workspace. */
-  &[data-bar="host"][data-rail="hover"]:not([data-palette="bottom"]) .palette:is(:hover, :focus-within) {
-    width: max-content; min-width: 200px; box-shadow: var(--shadow);
-    .pal-item { grid-template-columns: 36px auto; justify-items: start; padding: 4px 10px 4px 4px; }
-    .pal-name, .pal-model { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+  /* `hover` (0.97.0: smooth): the rail widens over the workspace and its names fade in after a short pause, so a pointer
+     passing by does not open it; it closes a little after the pointer leaves. */
+  &[data-bar="host"][data-rail="hover"]:not([data-palette="bottom"]) .palette {
+    transition: width 200ms ease-in-out 180ms, box-shadow 200ms ease-in-out 180ms;
+    .pal-name, .pal-model { transition: opacity 120ms ease-out 120ms; }
+    &:is(:hover, :focus-within) {
+      width: 220px; box-shadow: var(--shadow); transition-delay: 90ms;
+      .pal-name, .pal-model { opacity: 1; transition-delay: 200ms; }
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &[data-bar="host"][data-rail="hover"] .palette, &[data-bar="host"][data-rail="hover"] .palette :is(.pal-name, .pal-model) { transition: none; }
   }
   .nf-actions { display: flex; align-items: center; gap: 8px; }
   .nf-actions .zoom-group:last-child { padding-right: 0; border-right: 0; }
