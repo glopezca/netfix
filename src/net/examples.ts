@@ -261,7 +261,13 @@ interface GigabitEthernet0/0
 ];
 
 /** The labs, with areas drawn around their networks where they help to read the diagram, and their device settings. */
-export const EXAMPLES: readonly Example[] = LABS.map((ex) => ({ ...ex, build: () => withPreset(ex.id, decorateLab(ex.id, ex.build())) }));
+const examples: Example[] = LABS.map((ex) => ({ ...ex, build: () => withPreset(ex.id, decorateLab(ex.id, ex.build())) }));
+export const EXAMPLES: readonly Example[] = examples;
+
+/** An extension's lab, after Netfix's own (labs/extension-labs.ts registerLab). */
+export function addExample(ex: Example): void {
+  examples.push(ex);
+}
 
 function withPreset(id: string, topo: Topology): Topology {
   setLabDevices(id, topo);

@@ -194,7 +194,13 @@ const CHANGES: Readonly<Record<string, Changes>> = {
 };
 
 /** The missions, in the order of the Labs menu. */
-export const MISSIONS: readonly Mission[] = MISSION_PLANS.map((p) => ({ ...p, ...CHANGES[p.id] }));
+const missions: Mission[] = MISSION_PLANS.map((p) => ({ ...p, ...CHANGES[p.id] }));
+export const MISSIONS: readonly Mission[] = missions;
+
+/** An extension's mission (labs/extension-labs.ts registerLab). */
+export function addMission(m: Mission): void {
+  missions.push(m);
+}
 
 export function missionById(id: string): Mission | undefined {
   return MISSIONS.find((m) => m.id === id);

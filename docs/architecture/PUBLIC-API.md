@@ -179,9 +179,16 @@ clases y simulación se comparten entre subrutas. Quitar o cambiar uno es incomp
 
 | Subruta | Símbolos |
 |---|---|
-| `netfix/topology` | `deviceKindDef`, `macFromSeed`, `formatIp`, `formatMask`, `parseIp`, `parseMask`, `DETACHED`, `macPlus`, `CloudPort`, `defaultPort`, `portFromJson`, `portToJson`, `validatePort`, `Host`, `createShell`, `defaultUser`, `defaultLinuxUser`, `hostSystem`, `hostUsers`, `windowsAccount`, `registerProgram`, `hostFiles`; tipos `NetDevice`, `Frame`, `IpPacket`, `SimClock`, `DeviceHooks`, `CloudPortSettings`, `HostOs`, `Cred`, `Vfs`, `ProgramDef`, `ProgramCall`, `ProgramDoc`, `ProgramSystem`, `HostFiles`, `FileEntry` |
+| `netfix/topology` | `deviceKindDef`, `macFromSeed`, `formatIp`, `formatMask`, `parseIp`, `parseMask`, `DETACHED`, `macPlus`, `CloudPort`, `defaultPort`, `portFromJson`, `portToJson`, `validatePort`, `Host`, `createShell`, `defaultUser`, `defaultLinuxUser`, `hostSystem`, `hostUsers`, `windowsAccount`, `registerProgram`, `hostFiles`, `registerLab`, `missionById` (0.99.0); tipos `Example`, `ExtensionLab`, `Mission`, `MissionItem`, `LabGroupId`, `Server`, `Pc`, `Switch` (0.99.0), `NetDevice`, `Frame`, `IpPacket`, `SimClock`, `DeviceHooks`, `CloudPortSettings`, `HostOs`, `Cred`, `Vfs`, `ProgramDef`, `ProgramCall`, `ProgramDoc`, `ProgramSystem`, `HostFiles`, `FileEntry` |
 | `netfix/classroom` | `checkKind` (y los ya citados `registerCheckKind`, `checkFields`, `runOnHost`) |
 | `netfix/ui` | `registerDeviceUi`, `deviceUi`, `registerDeviceAction`, `el`, `uiRoot`, `button`, `field`, `input`, `message`, `onCommit`, `livePanel`, `forwardsSection`, `Terminal`, `checkMount`, `getLocale`, `onLocaleChange`, `setLocale` (0.86.0: un `netfix.code` del anfitrión en su idioma), `setStoryNames`, `setMissionChapters`, `shownDocGroups(missions?)`, `searchDocs`, `docBlock`, `docGroupIcon` (0.87.0: la documentación en la ayuda del anfitrión; los bloques y los iconos, con docs.css dentro de un `.netfix-root`); tipos `DeviceUi`, `DeviceWindowContext`, `Tab`, `Locale`, `DeviceAction`, `StoryNames`, `DocGroup`, `DocPage`, `DocBlock`, `SearchHit` |
+
+**Laboratorios de una extensión (0.99.0).** `registerLab({ example, group, mission?, messages })` añade un laboratorio
+tras los de Netfix, al final del capítulo `group` del menú Laboratorios, con su misión guiada si la tiene (misma `id`; sus
+elementos admiten tipos de comprobación registrados) y sus textos (`lab.<id>.*`, `mission.<id>.*`) en es-ES y en-GB: solo
+claves nuevas, nunca sustituye las de Netfix. Registrado, es uno más: el menú, `labs()`/`openLab()` del anfitrión, el
+panel de misiones y `EXAMPLES` (de donde el anfitrión saca el archivo de una actividad). Una segunda llamada con la misma
+`id` no hace nada; regístralo igual en todos los paquetes (página y Worker) para que las `id` coincidan.
 
 **Programas del terminal (0.72.0).** `registerProgram({ name, systems, windowsDir?, doc: { es, en }, applies, run })`
 añade un programa: en GNU/Linux, `/usr/bin/<name>` (lo ven `which`, `ls`, el completado y `man`); en Windows,

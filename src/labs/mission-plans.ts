@@ -3,7 +3,7 @@
  * worth reading. The texts live in the catalogue (mission.<id>.*); how the lab is broken or finished lives in
  * missions.ts. No imports of the simulator, so the documentation can build its lab pages from here.
  */
-import type { Check } from '../classroom/checklist.ts';
+import type { Check, ExtensionCheck } from '../classroom/checklist.ts';
 
 /** Hints per task, from the most general to the most specific. */
 export const HINT_LEVELS = 3;
@@ -13,7 +13,8 @@ export interface MissionItem {
   /** The task (1-based) the item checks. */
   readonly task: number;
   readonly weight?: number;
-  readonly check: Check;
+  /** A built-in check, or one an extension registered (registerCheckKind). */
+  readonly check: Check | ExtensionCheck;
 }
 
 export interface MissionPlan {
@@ -148,4 +149,10 @@ const dnsForward: MissionPlan = {
 };
 
 /** The missions, in the order of the Labs menu. */
-export const MISSION_PLANS: readonly MissionPlan[] = [basico, basicoLinux, reservas, reservasLinux, relay, cliente, namesLan, namesNets, namesResolved, dnsForward];
+const plans: MissionPlan[] = [basico, basicoLinux, reservas, reservasLinux, relay, cliente, namesLan, namesNets, namesResolved, dnsForward];
+export const MISSION_PLANS: readonly MissionPlan[] = plans;
+
+/** An extension's mission plan (labs/extension-labs.ts registerLab). */
+export function addMissionPlan(p: MissionPlan): void {
+  plans.push(p);
+}
