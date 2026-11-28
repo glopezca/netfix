@@ -14,14 +14,14 @@ export const INTERNET_DOCS: DocGroup = {
       summary: 'An operator’s way out to the Internet: cable, xDSL and fibre lines, operator-router or public-IP-address mode, and port forwarding.',
       markdownBase: MD,
       blocks: [
-        p('The **ISP WAN** (palette → ISP WAN) is an **Internet service provider**: each of its six ports is a customer line, like the one reaching a home or a company. Coaxial0-1 (DOCSIS cable), DSL0-1 (VDSL2) and Fibra0-1 (FTTH). A router (GigabitEthernet), a switch or a PC is plugged into each line.'),
+        p('The **ISP WAN** (palette → ISP WAN) is an **Internet service provider**: each of its six ports is a customer line, like the one reaching a home or a company. Its ports are Ethernet (GigabitEthernet0 to 5): the customer\'s LAN plugs into each — a router, a switch or a PC. How the line reaches the ISP is a setting of each, **WAN access**: DOCSIS cable (by default on 0 and 1), VDSL2 (2 and 3, with its ATM circuit: VPI/VCI) or FTTH (4 and 5).'),
         figure({
           type: 'topology',
           nodes: [
             { id: 'norte', kind: 'cloud', label: 'ISP-Norte', x: 15, y: 0 },
             { id: 'sur', kind: 'cloud', label: 'ISP-Sur', x: 70, y: 0 },
-            { id: 'sede1', kind: 'router', label: 'SEDE1', x: 15, y: 25, note: 'Fibra0 · public IP address' },
-            { id: 'sw', kind: 'switch', label: 'Switch1', x: 70, y: 25, note: 'DSL0 · operator router' },
+            { id: 'sede1', kind: 'router', label: 'SEDE1', x: 15, y: 25, note: 'GigabitEthernet4 · public IP address' },
+            { id: 'sw', kind: 'switch', label: 'Switch1', x: 70, y: 25, note: 'GigabitEthernet2 · operator router' },
             { id: 'srv', kind: 'server', label: 'SRV-SEDE2', x: 85, y: 50, note: '192.168.1.10' },
           ],
           links: [{ a: 'norte', b: 'sur', label: 'Internet' }, { a: 'norte', b: 'sede1' }, { a: 'sur', b: 'sw' }, { a: 'sw', b: 'srv' }],
@@ -33,16 +33,16 @@ export const INTERNET_DOCS: DocGroup = {
         ]),
         h('Step by step: publishing a server behind the operator router'),
         steps(
-          ['Plug in the line', 'A cable from DSL0 (for example) to the site’s switch; the devices get 192.168.1.x by DHCP.'],
+          ['Plug in the line', 'A cable from GigabitEthernet2 (for example) to the site’s switch; the devices get 192.168.1.x by DHCP.'],
           ['Fix the server’s IP address', 'The server needs a static LAN IP address (192.168.1.10) so the forwarding does not change.'],
-          ['Forward the port', 'Double-click the ISP WAN → **Lines** → DSL0 → **Port forwarding (NAT)**: TCP 80 → 192.168.1.10:80.'],
+          ['Forward the port', 'Double-click the ISP WAN → **Lines** → GigabitEthernet2 → **Port forwarding (NAT)**: TCP 80 → 192.168.1.10:80.'],
           ['Test it from outside', 'From another site, `curl http://81.33.3.2/` (the line’s public IP address) must return the website.'],
         ),
         check('Check it', '`curl ifconfig.me` tells you with which public IP address each device goes out to the Internet: all the devices of a line share that line’s address.'),
         term('shell', 'alumno@pc1:~$ curl -s ifconfig.me\n81.32.5.2\nadmin@srv-sede2:~$ curl -s ifconfig.me\n81.33.3.2\nalumno@pc1:~$ curl http://81.33.3.2:8080/\ncurl: (7) Failed to connect to 81.33.3.2 port 8080 after 0 ms: Couldn\'t connect to server'),
         h('Addresses'),
         list(
-          'Each ISP WAN has its own public /16 block (the first 81.32.0.0, the second 81.33.0.0…). Port number i (Coaxial0 = 1, Coaxial1 = 2, DSL0 = 3, DSL1 = 4, Fibra0 = 5, Fibra1 = 6) uses x.y.i.0/29.',
+          'Each ISP WAN has its own public /16 block (the first 81.32.0.0, the second 81.33.0.0…). Port number i (GigabitEthernet0 = 1, GigabitEthernet1 = 2, GigabitEthernet2 = 3, GigabitEthernet3 = 4, GigabitEthernet4 = 5, GigabitEthernet5 = 6) uses x.y.i.0/29.',
           'The ISP’s router on the backbone is x.y.0.1 and shows up in traceroute.',
           'Each line has its own IP plane: several lines can use 192.168.1.0/24 at the same time.',
         ),
@@ -51,7 +51,7 @@ export const INTERNET_DOCS: DocGroup = {
           ['Lines', 'Per line: mode, contracted speeds (informative), LAN IP address and mask, DHCP leases, NAT translations and port forwarding (TCP or UDP, public port → LAN IP address:port).'],
         ]),
         warn('Common mistakes', 'Without forwarding, only the router itself answers from the Internet (ping to the public IP address); any other port is refused and curl says “Couldn\'t connect to server”. Forwarding to a server with a DHCP IP address: if it changes, the forwarding points at another device. Plugging a router into an “Operator router” line: you get double NAT.'),
-        exercise('Which IP address does each site go out with?', 'In the «Internet: two sites and public DNS» lab, find out with which public IP address PC1 (site 1) goes out and with which SRV-SEDE2 (site 2) does. Which line and mode does each have?', '`curl -s ifconfig.me`: PC1 goes out with 81.32.5.2 (ISP-Norte, Fibra0 = port 5, Public IP address mode: the one SEDE1 gets by DHCP on g0/1) and SRV-SEDE2 with 81.33.3.2 (ISP-Sur, DSL0 = port 3, Operator router mode: the ISP WAN does the NAT).'),
+        exercise('Which IP address does each site go out with?', 'In the «Internet: two sites and public DNS» lab, find out with which public IP address PC1 (site 1) goes out and with which SRV-SEDE2 (site 2) does. Which line and mode does each have?', '`curl -s ifconfig.me`: PC1 goes out with 81.32.5.2 (ISP-Norte, GigabitEthernet4 = port 5, Public IP address mode: the one SEDE1 gets by DHCP on g0/1) and SRV-SEDE2 with 81.33.3.2 (ISP-Sur, GigabitEthernet2 = port 3, Operator router mode: the ISP WAN does the NAT).'),
       ],
     },
     {
@@ -93,7 +93,7 @@ export const INTERNET_DOCS: DocGroup = {
         term('shell', 'alumno@pc1:~$ host www.sede2.es\nwww.sede2.es is an alias for srv.sede2.es.\nsrv.sede2.es has address 81.33.3.2\nalumno@pc1:~$ curl -sI http://www.sede2.es | head -1\nHTTP/1.1 200 OK'),
         warn('Common mistakes', 'Putting the server’s private IP address (192.168.1.10) in the zone: it cannot be reached from outside. Forgetting to forward UDP 53: 8.8.8.8 gets no answer and the name does not resolve. Registering the domain as type A when you wanted to manage the zone yourself.'),
         note('In simulation mode the packets crossing the Internet show up as events between the ISP WANs (“Internet” port).'),
-        exercise('Follow www.sede2.es', 'In the «Internet: two sites and public DNS» lab, who really answers when PC1 asks for www.sede2.es? Find the pieces in the ISP-Sur ISP WAN and in SRV-SEDE2.', 'In ISP-Sur → ISP, sede2.es is registered as NS with 81.33.3.2; on line DSL0, forwarding takes TCP 80, TCP 22 and UDP 53 to 192.168.1.10. SRV-SEDE2 has the sede2.es zone (www CNAME srv, srv A 81.33.3.2). So `host www.sede2.es` on PC1 returns the alias from SRV-SEDE2’s zone, and SRV-SEDE2 also serves the website.'),
+        exercise('Follow www.sede2.es', 'In the «Internet: two sites and public DNS» lab, who really answers when PC1 asks for www.sede2.es? Find the pieces in the ISP-Sur ISP WAN and in SRV-SEDE2.', 'In ISP-Sur → ISP, sede2.es is registered as NS with 81.33.3.2; on line GigabitEthernet2, forwarding takes TCP 80, TCP 22 and UDP 53 to 192.168.1.10. SRV-SEDE2 has the sede2.es zone (www CNAME srv, srv A 81.33.3.2). So `host www.sede2.es` on PC1 returns the alias from SRV-SEDE2’s zone, and SRV-SEDE2 also serves the website.'),
       ],
     },
     {

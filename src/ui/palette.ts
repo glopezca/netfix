@@ -65,7 +65,7 @@ function piles(): readonly (readonly [string, readonly Variant[]])[] {
 const variantKey = (v: Variant): string => (v.system ? `place-${v.kind}-${v.system}` : `place-${v.kind}`);
 
 function variantBtn(actions: PaletteActions, buttons: Map<string, HTMLButtonElement>, v: Variant, cls: string): HTMLButtonElement {
-  const b = el('button', { type: 'button', class: cls, 'aria-pressed': 'false' }, staticSvg(iconOf(v.kind)), el('span', { class: 'pal-name' }, v.name), el('span', { class: 'pal-model' }, v.model));
+  const b = el('button', { type: 'button', class: cls, 'aria-pressed': 'false', title: v.name }, staticSvg(iconOf(v.kind)), el('span', { class: 'pal-name' }, v.name), el('span', { class: 'pal-model' }, v.model));
   b.addEventListener('click', () => actions.selectTool({ kind: 'place', device: v.kind, ...(v.system ? { system: v.system } : {}) }, variantKey(v)));
   buttons.set(variantKey(v), b);
   return b;

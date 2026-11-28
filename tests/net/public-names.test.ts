@@ -20,7 +20,7 @@ function home(): Pc {
   const t = new Topology();
   const cloud = t.add('cloud', 0, 0).device as Cloud;
   const pc = t.add('pc', 0, 0).device as Pc;
-  t.connect({ device: cloud.id, port: 'Fibra0' }, { device: pc.id, port: 'FastEthernet0' });
+  t.connect({ device: cloud.id, port: 'GigabitEthernet4' }, { device: pc.id, port: 'FastEthernet0' });
   pc.useDhcp();
   t.settle();
   return pc;

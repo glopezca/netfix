@@ -117,14 +117,14 @@ test('named.conf.options shows and changes the recursion; settings survive save 
 test('ISP DNS relay: the line gateway is the DNS and relays to Google', () => {
   const { t, local } = lab();
   const isp = [...t.placed.values()].map((p) => p.device).find((d): d is Cloud => d.kind === 'cloud' && d.settings.isp === 'ISP-Sur')!;
-  isp.setSettings({ ...isp.settings, ports: { ...isp.settings.ports, DSL0: { ...isp.settings.ports.DSL0, dnsRelay: true } } });
+  isp.setSettings({ ...isp.settings, ports: { ...isp.settings.ports, GigabitEthernet2: { ...isp.settings.ports.GigabitEthernet2, dnsRelay: true } } });
   local.useDhcp();
   t.settle(5000);
   assert.equal(local.config.dns, ip('192.168.1.1'));
   const sh = createShell(local, 'linux');
   assert.match(all(sh.run('nslookup www.debian.org')), /Server:\t\t192\.168\.1\.1[\s\S]*Non-authoritative answer:\nName:\twww\.debian\.org\nAddress: 151\.101\.2\.132/);
-  assert.equal(isp.lines.get('DSL0')?.relay.cacheSize(), 1);
+  assert.equal(isp.lines.get('GigabitEthernet2')?.relay.cacheSize(), 1);
   const saved = Topo.fromJSON(JSON.parse(JSON.stringify(t.toJSON())));
   const again = [...saved.placed.values()].map((p) => p.device).find((d): d is Cloud => d.kind === 'cloud' && d.settings.isp === 'ISP-Sur')!;
-  assert.equal(again.settings.ports.DSL0.dnsRelay, true);
+  assert.equal(again.settings.ports.GigabitEthernet2.dnsRelay, true);
 });

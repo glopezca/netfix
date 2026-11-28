@@ -102,16 +102,16 @@ export const dmzLab: Example = {
   summary: LABS_ES['lab.linux-dmz.summary'],
   build: () => {
     const t = new Topology();
-    const norte = cloud(t, 'ISP-Norte', 240, 'Fibra0', 'public');
-    const sur = cloud(t, 'ISP-Sur', 780, 'DSL0', 'router');
+    const norte = cloud(t, 'ISP-Norte', 240, 'GigabitEthernet4', 'public');
+    const sur = cloud(t, 'ISP-Sur', 780, 'GigabitEthernet2', 'router');
     const fw = t.add('linuxrouter', 240, 260, { label: 'FW' }).device as LinuxRouter;
-    link(t, fw.id, 'GigabitEthernet0/0', norte.id, 'Fibra0');
+    link(t, fw.id, 'GigabitEthernet0/0', norte.id, 'GigabitEthernet4');
     branchLan(t, 160, { id: fw.id, port: 'GigabitEthernet0/1' }, '192.168.1', 2, '192.168.1.1');
     const web = t.add('server', 420, 420, { label: 'WEB-DMZ' }).device as Server;
     link(t, fw.id, 'GigabitEthernet0/2', web.id, 'FastEthernet0');
     web.setStatic({ ip: ip('172.16.0.80'), prefix: 24, gateway: ip('172.16.0.1'), dns: ip('8.8.8.8') });
     const ext = t.add('pc', 780, 420, { label: 'CLIENTE-EXT' }).device as Pc;
-    link(t, ext.id, 'FastEthernet0', sur.id, 'DSL0');
+    link(t, ext.id, 'FastEthernet0', sur.id, 'GigabitEthernet2');
     ext.os = 'linux';
     fw.useDhcp();
     ext.useDhcp();
@@ -152,8 +152,8 @@ export const dnsForwardLab: Example = {
   summary: LABS_ES['lab.dns-reenvio.summary'],
   build: () => {
     const t = new Topology();
-    const norte = cloud(t, 'ISP-Norte', 460, 'Fibra0', 'public');
-    const { gw, ports: [lan, guests] } = linuxGateway(t, 460, 220, ['192.168.50.1/24', '192.168.60.1/24'], { id: norte.id, port: 'Fibra0' });
+    const norte = cloud(t, 'ISP-Norte', 460, 'GigabitEthernet4', 'public');
+    const { gw, ports: [lan, guests] } = linuxGateway(t, 460, 220, ['192.168.50.1/24', '192.168.60.1/24'], { id: norte.id, port: 'GigabitEthernet4' });
     const pcs = branchLan(t, 300, { id: gw.id, port: lan ?? '' }, '192.168.50', 2);
     const sw = t.byLabel('Switch0') as Switch;
     const srv = t.add('server', 620, 420, { label: 'NS1' }).device as Server;

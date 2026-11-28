@@ -546,6 +546,7 @@ function start(mount: HTMLElement, s: AppSession, topo?: Topology, page = !s.emb
   host.actions?.classList.add(ROOT_CLASS, ACTIONS_CLASS);
   if (bar) mount.dataset.bar = 'host'; else delete mount.dataset.bar;
   if (bar && host.palette === 'bottom') mount.dataset.palette = 'bottom'; else delete mount.dataset.palette;
+  if (bar && host.palette !== 'bottom' && host.rail !== 'full') mount.dataset.rail = host.rail; else delete mount.dataset.rail;
   session = s;
   onPage = page;
   MEMORY_STORE.clear();

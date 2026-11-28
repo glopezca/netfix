@@ -14,14 +14,14 @@ export const INTERNET_DOCS: DocGroup = {
       summary: 'La salida a Internet de un operador: líneas de cable, xDSL y fibra, modo router del operador o dirección IP pública, y redirección de puertos.',
       markdownBase: MD,
       blocks: [
-        p('La **WAN del ISP** (paleta → WAN del ISP) es un **proveedor de Internet**: cada uno de sus seis puertos es una línea de cliente, como la que llega a una casa o a una empresa. Coaxial0-1 (cable DOCSIS), DSL0-1 (VDSL2) y Fibra0-1 (FTTH). A cada línea se conecta un router (GigabitEthernet), un switch o un PC.'),
+        p('La **WAN del ISP** (paleta → WAN del ISP) es un **proveedor de Internet**: cada uno de sus seis puertos es una línea de cliente, como la que llega a una casa o a una empresa. Sus puertos son Ethernet (GigabitEthernet0 a 5): a cada uno se conecta la LAN del cliente — un router, un switch o un PC —. Cómo llega la línea al ISP es un ajuste de cada una, **Acceso WAN**: cable DOCSIS (de serie en 0 y 1), VDSL2 (2 y 3, con su circuito ATM: VPI/VCI) o FTTH (4 y 5).'),
         figure({
           type: 'topology',
           nodes: [
             { id: 'norte', kind: 'cloud', label: 'ISP-Norte', x: 15, y: 0 },
             { id: 'sur', kind: 'cloud', label: 'ISP-Sur', x: 70, y: 0 },
-            { id: 'sede1', kind: 'router', label: 'SEDE1', x: 15, y: 25, note: 'Fibra0 · dirección IP pública' },
-            { id: 'sw', kind: 'switch', label: 'Switch1', x: 70, y: 25, note: 'DSL0 · router del operador' },
+            { id: 'sede1', kind: 'router', label: 'SEDE1', x: 15, y: 25, note: 'GigabitEthernet4 · dirección IP pública' },
+            { id: 'sw', kind: 'switch', label: 'Switch1', x: 70, y: 25, note: 'GigabitEthernet2 · router del operador' },
             { id: 'srv', kind: 'server', label: 'SRV-SEDE2', x: 85, y: 50, note: '192.168.1.10' },
           ],
           links: [{ a: 'norte', b: 'sur', label: 'Internet' }, { a: 'norte', b: 'sede1' }, { a: 'sur', b: 'sw' }, { a: 'sw', b: 'srv' }],
@@ -33,16 +33,16 @@ export const INTERNET_DOCS: DocGroup = {
         ]),
         h('Paso a paso: publicar un servidor detrás del router del operador'),
         steps(
-          ['Conecta la línea', 'Un cable de DSL0 (por ejemplo) al switch de la sede; los equipos reciben 192.168.1.x por DHCP.'],
+          ['Conecta la línea', 'Un cable de GigabitEthernet2 (por ejemplo) al switch de la sede; los equipos reciben 192.168.1.x por DHCP.'],
           ['Fija la dirección IP del servidor', 'El servidor necesita una dirección IP estática de la LAN (192.168.1.10) para que la redirección no cambie.'],
-          ['Redirige el puerto', 'Doble clic en la WAN del ISP → **Líneas** → DSL0 → **Redirección de puertos (NAT)**: TCP 80 → 192.168.1.10:80.'],
+          ['Redirige el puerto', 'Doble clic en la WAN del ISP → **Líneas** → GigabitEthernet2 → **Redirección de puertos (NAT)**: TCP 80 → 192.168.1.10:80.'],
           ['Pruébalo desde fuera', 'Desde otra sede, `curl http://81.33.3.2/` (la dirección IP pública de la línea) debe devolver la web.'],
         ),
         check('Compruébalo', '`curl ifconfig.me` dice con qué dirección IP pública sale cada equipo a Internet: todos los de una línea comparten la de esa línea.'),
         term('shell', 'alumno@pc1:~$ curl -s ifconfig.me\n81.32.5.2\nadmin@srv-sede2:~$ curl -s ifconfig.me\n81.33.3.2\nalumno@pc1:~$ curl http://81.33.3.2:8080/\ncurl: (7) Failed to connect to 81.33.3.2 port 8080 after 0 ms: Couldn\'t connect to server'),
         h('Direcciones'),
         list(
-          'Cada WAN del ISP tiene un bloque público /16 propio (la primera 81.32.0.0, la segunda 81.33.0.0…). El puerto número i (Coaxial0 = 1, Coaxial1 = 2, DSL0 = 3, DSL1 = 4, Fibra0 = 5, Fibra1 = 6) usa x.y.i.0/29.',
+          'Cada WAN del ISP tiene un bloque público /16 propio (la primera 81.32.0.0, la segunda 81.33.0.0…). El puerto número i (GigabitEthernet0 = 1, GigabitEthernet1 = 2, GigabitEthernet2 = 3, GigabitEthernet3 = 4, GigabitEthernet4 = 5, GigabitEthernet5 = 6) usa x.y.i.0/29.',
           'El router del ISP en la red troncal es x.y.0.1 y aparece en traceroute.',
           'Cada línea tiene su propio plano IP: varias líneas pueden usar 192.168.1.0/24 a la vez.',
         ),
@@ -51,7 +51,7 @@ export const INTERNET_DOCS: DocGroup = {
           ['Líneas', 'Por línea: modo, velocidades contratadas (informativas), dirección IP y máscara de la LAN, concesiones DHCP, traducciones NAT y redirección de puertos (TCP o UDP, puerto público → dirección IP:puerto de la LAN).'],
         ]),
         warn('Errores habituales', 'Sin redirección, desde Internet solo responde el propio router (ping a la dirección IP pública); cualquier otro puerto se rechaza y curl dice «Couldn\'t connect to server». Redirigir a un servidor con dirección IP por DHCP: si cambia, la redirección apunta a otro equipo. Conectar un router en modo «Router del operador»: tendrás doble NAT.'),
-        exercise('¿Con qué dirección IP sale cada sede?', 'En el laboratorio «Internet: dos sedes y DNS públicos», averigua con qué dirección IP pública sale PC1 (sede 1) y con cuál SRV-SEDE2 (sede 2). ¿Qué línea y modo tiene cada una?', '`curl -s ifconfig.me`: PC1 sale con 81.32.5.2 (ISP-Norte, Fibra0 = puerto 5, modo Dirección IP pública: es la que SEDE1 recibe por DHCP en g0/1) y SRV-SEDE2 con 81.33.3.2 (ISP-Sur, DSL0 = puerto 3, modo Router del operador: el NAT lo hace la WAN del ISP).'),
+        exercise('¿Con qué dirección IP sale cada sede?', 'En el laboratorio «Internet: dos sedes y DNS públicos», averigua con qué dirección IP pública sale PC1 (sede 1) y con cuál SRV-SEDE2 (sede 2). ¿Qué línea y modo tiene cada una?', '`curl -s ifconfig.me`: PC1 sale con 81.32.5.2 (ISP-Norte, GigabitEthernet4 = puerto 5, modo Dirección IP pública: es la que SEDE1 recibe por DHCP en g0/1) y SRV-SEDE2 con 81.33.3.2 (ISP-Sur, GigabitEthernet2 = puerto 3, modo Router del operador: el NAT lo hace la WAN del ISP).'),
       ],
     },
     {
@@ -93,7 +93,7 @@ export const INTERNET_DOCS: DocGroup = {
         term('shell', 'alumno@pc1:~$ host www.sede2.es\nwww.sede2.es is an alias for srv.sede2.es.\nsrv.sede2.es has address 81.33.3.2\nalumno@pc1:~$ curl -sI http://www.sede2.es | head -1\nHTTP/1.1 200 OK'),
         warn('Errores habituales', 'Poner en la zona la dirección IP privada del servidor (192.168.1.10): desde fuera no se llega. Olvidar redirigir UDP 53: 8.8.8.8 no obtiene respuesta y el nombre no resuelve. Registrar el dominio tipo A cuando querías gestionar tú la zona.'),
         note('En modo simulación los paquetes que cruzan Internet aparecen como eventos entre las WAN del ISP (puerto «Internet»).'),
-        exercise('Sigue a www.sede2.es', 'En el laboratorio «Internet: dos sedes y DNS públicos», ¿quién responde de verdad cuando PC1 pregunta por www.sede2.es? Busca las piezas en la WAN ISP-Sur y en SRV-SEDE2.', 'En ISP-Sur → ISP, sede2.es está registrado como NS con 81.33.3.2; en la línea DSL0, la redirección lleva TCP 80, TCP 22 y UDP 53 a 192.168.1.10. SRV-SEDE2 tiene la zona sede2.es (www CNAME srv, srv A 81.33.3.2). Así `host www.sede2.es` en PC1 devuelve el alias de la zona de SRV-SEDE2, y la web la sirve también SRV-SEDE2.'),
+        exercise('Sigue a www.sede2.es', 'En el laboratorio «Internet: dos sedes y DNS públicos», ¿quién responde de verdad cuando PC1 pregunta por www.sede2.es? Busca las piezas en la WAN ISP-Sur y en SRV-SEDE2.', 'En ISP-Sur → ISP, sede2.es está registrado como NS con 81.33.3.2; en la línea GigabitEthernet2, la redirección lleva TCP 80, TCP 22 y UDP 53 a 192.168.1.10. SRV-SEDE2 tiene la zona sede2.es (www CNAME srv, srv A 81.33.3.2). Así `host www.sede2.es` en PC1 devuelve el alias de la zona de SRV-SEDE2, y la web la sirve también SRV-SEDE2.'),
       ],
     },
     {

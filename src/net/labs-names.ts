@@ -51,8 +51,8 @@ export const namesLanLab: Example = {
   summary: LABS_ES['lab.nombres-lan.summary'],
   build: () => {
     const t = new Topology();
-    const isp = cloud(t, 'ISP-Norte', 490, 'Fibra0', 'public');
-    const { gw, ports: [lan] } = linuxGateway(t, 490, 240, ['192.168.1.1/24'], { id: isp.id, port: 'Fibra0' });
+    const isp = cloud(t, 'ISP-Norte', 490, 'GigabitEthernet4', 'public');
+    const { gw, ports: [lan] } = linuxGateway(t, 490, 240, ['192.168.1.1/24'], { id: isp.id, port: 'GigabitEthernet4' });
     const sw = t.add('switch', 490, 400, { label: 'Switch0' }).device as Switch;
     link(t, gw.id, lan ?? '', sw.id, 'GigabitEthernet0/1');
     for (const [i, spec] of LAN_PCS.entries()) {
