@@ -33,17 +33,18 @@ function ubuntu(cx: number, cy: number, r: number, paint: string): string {
 }
 
 /**
- * A penguin's head (Tux), `s` tall: the head filled, its light face cut out in the surface's colour `ground`, the eyes
- * as two dots on the face and the beak below them.
+ * Tux from the shoulders up (0.98.1; chosen over the whole penguin, whose face is lost at icon size), in a 10 × 10 box
+ * placed `s` tall at (cx, cy): the head and shoulders in `paint`, the light face and the eyes' whites in `--dev-face`
+ * (else the surface's colour `ground`), the eyes and the beak — amber, `--dev-beak` — as Tux's.
  */
 function tux(cx: number, cy: number, s: number, paint: string, ground: string): string {
-  const w = s * 0.44;
-  const h = s * 0.5;
-  const eye = (dx: number): string => `<circle cx="${n(cx + dx)}" cy="${n(cy - h * 0.05)}" r="${n(s * 0.075)}"/>`;
-  return `<ellipse cx="${n(cx)}" cy="${n(cy)}" rx="${n(w)}" ry="${n(h)}" fill="${paint}"/>`
-    + `<ellipse cx="${n(cx)}" cy="${n(cy + h * 0.22)}" rx="${n(w * 0.7)}" ry="${n(h * 0.62)}" fill="${ground}"/>`
-    + `<g fill="${paint}">${eye(-w * 0.3)}${eye(w * 0.3)}`
-    + `<path d="M${n(cx - w * 0.32)} ${n(cy + h * 0.3)} h${n(w * 0.64)} l${n(-w * 0.32)} ${n(h * 0.3)} z"/></g>`;
+  const face = `var(--dev-face, ${ground})`;
+  return `<g transform="translate(${n(cx - s / 2)} ${n(cy - s / 2)}) scale(${n(s / 10)})">`
+    + `<path d="M5 0.2 C2.3 0.2 1.7 2.4 1.8 4.4 C0.7 5.6 0.2 7.6 0.2 9.8 H9.8 C9.8 7.6 9.3 5.6 8.2 4.4 C8.3 2.4 7.7 0.2 5 0.2 Z" fill="${paint}"/>`
+    + `<path d="M5 3.2 C3.3 3 2.4 4.6 2.6 6.4 C2.8 8.4 3.6 9.8 5 9.8 C6.4 9.8 7.2 8.4 7.4 6.4 C7.6 4.6 6.7 3 5 3.2 Z" fill="${face}"/>`
+    + `<ellipse cx="3.9" cy="3.1" rx="0.95" ry="1.25" fill="${face}"/><ellipse cx="6.1" cy="3.1" rx="0.95" ry="1.25" fill="${face}"/>`
+    + `<circle cx="4.1" cy="3.4" r="0.45" fill="${paint}"/><circle cx="5.9" cy="3.4" r="0.45" fill="${paint}"/>`
+    + `<path d="M3.4 4.6 Q5 3.9 6.6 4.6 Q5 5.9 3.4 4.6 Z" fill="var(--dev-beak, #f2b134)"/></g>`;
 }
 
 /** Bars of three heights, as a bridge (Cisco IOS), `w` wide and `h` tall, centred on (cx, cy). */
@@ -61,7 +62,7 @@ const SCREEN = 'var(--dev-screen)';
 const FRONT = 'var(--dev-side)';
 
 function linuxMark(marks: DeviceMarks, cx: number, cy: number, size: number, paint: string, ground: string): string {
-  return marks === 'tux' ? tux(cx, cy, size, paint, ground) : ubuntu(cx, cy, size * 0.45, paint);
+  return marks === 'tux' ? tux(cx, cy, size * 1.2, paint, ground) : ubuntu(cx, cy, size * 0.45, paint);
 }
 
 /** The mark drawn over an icon of 64 × 48 (an SVG fragment), or '' when it has none. */

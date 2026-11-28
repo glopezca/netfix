@@ -5,7 +5,7 @@
 import type { HostBack } from './embed-api.ts';
 import { el, staticSvg } from './dom.ts';
 import type { Tool } from './canvas.ts';
-import { deviceIcon, modelLabel } from './icons.ts';
+import { deviceIcon, iconOf, modelLabel } from './icons.ts';
 import { deviceUi, deviceUiKinds } from './device-kind-ui.ts';
 import { kindOffered } from './host-options.ts';
 import type { DeviceKind } from '../net/topology.ts';
@@ -90,7 +90,8 @@ function pileBtn(actions: PaletteActions, buttons: Map<string, HTMLButtonElement
   const first = variants[0]!;
   const menu = el('div', { class: 'pal-pile-menu', role: 'group', 'aria-label': name, popover: 'manual' });
   const main = el('button', { type: 'button', class: 'pal-item pal-pile-btn', 'aria-expanded': 'false', title: t('pal.pileHint') },
-    staticSvg(deviceIcon(first.kind, first.system)), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, t('pal.pileCount', { n: String(variants.length) })));
+    // A pile is a family, not one system: its button shows no mark (0.98.1); each variant inside shows its own.
+    staticSvg(iconOf(first.kind)), el('span', { class: 'pal-name' }, name), el('span', { class: 'pal-model' }, t('pal.pileCount', { n: String(variants.length) })));
   const pile = el('div', { class: 'pal-pile' }, main, menu);
   const isOpen = (): boolean => main.getAttribute('aria-expanded') === 'true';
   // Safari does not focus a clicked button, so focusout alone would leave the menu open: a press elsewhere closes it.
